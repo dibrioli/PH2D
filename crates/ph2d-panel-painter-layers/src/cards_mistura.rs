@@ -2,7 +2,7 @@
 //! nos dois painéis. Só onde a lei age — o Pincel do Digital sem o flag da aquarela, como o Fine Thread só no Smear do
 //! Digital. Com `Off` os números ficam à vista, esmaecidos ([`ph2d_tool_painter::Dependente::MisturaDesligada`]).
 
-use crate::cards_linhas::{Item, escolha, fila, filete};
+use crate::cards_linhas::{Item, escolha_sem_rotulo, fila};
 use crate::paint_wetpaint::Numero;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::WidgetStore;
@@ -114,9 +114,19 @@ pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
     }
 }
 
-/// O grupo no cartão Basics, depois de um filete: o rótulo do seletor é o nome do grupo (nunca um 2.º título).
+/// O grupo no cartão Basics: um título que dobra (nasce dobrado, como o Grain Behavior) é o nome do grupo, e o
+/// seletor por baixo dele vai sem rótulo (nunca um 2.º título).
 pub(crate) fn grupo_da_mistura(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
-    let y = filete(c, y);
+    let y = crate::cards_rampa::titulo_que_dobra(
+        c,
+        pids::PAINTER_BRUSH_MIX_SECTION,
+        "panel.painter_layers.brush.mix_mode",
+        None,
+        y,
+    );
+    if c.store.is_collapsed(pids::PAINTER_BRUSH_MIX_SECTION) {
+        return y;
+    }
     let atual = indice(b);
     let segs: Vec<Seg<'_>> = OPCOES
         .iter()
@@ -129,7 +139,7 @@ pub(crate) fn grupo_da_mistura(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -
             on: i == atual,
         })
         .collect();
-    let y = escolha(c, tr("panel.painter_layers.brush.mix_mode"), &segs, y);
+    let y = escolha_sem_rotulo(c, &segs, y);
     let atual = indice_da_amostra(b);
     let segs: Vec<Seg<'_>> = AMOSTRAS
         .iter()

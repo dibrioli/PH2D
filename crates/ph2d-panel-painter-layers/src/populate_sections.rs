@@ -84,4 +84,7 @@ pub(crate) fn register_collapsible_sections(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_BRUSH_GRAIN_BEHAVIOR_SECTION,
         true,
     );
+    // A Color mixing (08/11) chegou aberta no Basics e somou `214 px` à abertura: nasce dobrada, o título é o grupo.
+    store.mark_collapsible_section(ph2d_tool_painter::ids::PAINTER_BRUSH_MIX_SECTION);
+    store.set_collapsed_if_unchosen(ph2d_tool_painter::ids::PAINTER_BRUSH_MIX_SECTION, true);
 }

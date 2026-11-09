@@ -356,8 +356,25 @@ pub(crate) fn paint_accumulate_e_fio(
         );
     }
     // Color mixing (a mistura opaca do Digital): onde a lei age, o mesmo grupo do cartão Basics.
+    // Nasce dobrada, como no cartão (`PAINTER_BRUSH_MIX_SECTION`).
     if crate::cards_mistura::oferecida(brush) {
-        y = crate::cards_mistura::paint_de_antes(ctx, theme, x, content_w, y, brush);
+        let (y_dobra, fold) = paint_sub_section(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            ph2d_i18n::tr("panel.painter_layers.brush.mix_mode"),
+            ph2d_tool_painter::ids::PAINTER_BRUSH_MIX_SECTION,
+        );
+        y = match fold {
+            Some(fold) => {
+                let fim =
+                    crate::cards_mistura::paint_de_antes(ctx, theme, x, content_w, y_dobra, brush);
+                end_fold(ctx, fold, fim)
+            }
+            None => y_dobra,
+        };
     }
     y
 }

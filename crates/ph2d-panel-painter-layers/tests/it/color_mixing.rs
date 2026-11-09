@@ -3,9 +3,49 @@
 
 use super::h1_os_cartoes::{Mesa, pincel};
 use super::h10_fotos::foto;
+use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tool_painter::ids as p;
 use ph2d_tool_painter::{ModoMisturaOpaca, PaintMedia};
+
+/// Só Topo e Basics abertos, e a Color mixing (`PAINTER_BRUSH_MIX_SECTION`, nasce dobrada) aberta.
+fn abre_o_basics(m: &mut Mesa) {
+    m.so_abertos(&[p::PAINTER_CARD_TOPO, p::PAINTER_CARD_BASICOS]);
+    if m.host.store().is_collapsed(p::PAINTER_BRUSH_MIX_SECTION) {
+        m.host
+            .store_mut()
+            .toggle_collapsed(p::PAINTER_BRUSH_MIX_SECTION);
+    }
+    m.assenta();
+}
+
+/// ⭐ **Color mixing dobra** (nasce dobrado, o Basics abre sem ele): o clique no título esconde o seletor, o Sample e os
+/// números, e outro clique devolve-os.
+#[test]
+fn a_mistura_dobra_pelo_titulo() {
+    let (b, _) = pincel(PaintMedia::Digital, "brush");
+    let mut m = Mesa::nova(true, b, false);
+    abre_o_basics(&mut m);
+    let _ = m.clica(p::PAINTER_BRUSH_MIX_SECTION);
+    m.assenta();
+    for id in p::PAINTER_BRUSH_MIX_MODES
+        .iter()
+        .chain(&p::PAINTER_BRUSH_MIX_SAMPLES)
+        .chain(&p::PAINTER_BRUSH_MIX_FIELDS)
+    {
+        assert!(m.rect(*id).is_none(), "{id:?} à vista com a dobra fechada");
+    }
+    let _ = m.clica(p::PAINTER_BRUSH_MIX_SECTION);
+    m.assenta();
+    assert!(
+        m.rect(p::PAINTER_BRUSH_MIX_MODES[1]).is_some(),
+        "a dobra não reabriu"
+    );
+    assert!(
+        m.rect(p::PAINTER_BRUSH_MIX_SAMPLES[0]).is_some(),
+        "a dobra não reabriu"
+    );
+}
 
 /// No Pincel do Digital, nos dois painéis: o seletor e os cinco números pintados; com `Off` os números esmaecidos e o
 /// seletor vivo; o clique em «Blend» e o arrasto num número chegam à ferramenta.
@@ -15,7 +55,7 @@ fn a_mistura_aparece_no_digital_e_o_clique_chega() {
         let (b, _) = pincel(PaintMedia::Digital, "brush");
         assert_eq!(b.mistura_opaca.modo, ModoMisturaOpaca::Off);
         let mut m = Mesa::nova(cartoes, b, false);
-        m.so_abertos(&[p::PAINTER_CARD_TOPO, p::PAINTER_CARD_BASICOS]);
+        abre_o_basics(&mut m);
         for id in p::PAINTER_BRUSH_MIX_MODES
             .iter()
             .chain(&p::PAINTER_BRUSH_MIX_FIELDS)
@@ -65,7 +105,7 @@ fn o_sample_da_mistura_aparece_esmaece_e_o_clique_chega() {
         assert_eq!(b.mistura_opaca.amostra, AmostraDaMistura::EstaCamada);
         // Off: à vista, esmaecido, com a dica da inércia.
         let mut m = Mesa::nova(cartoes, b, false);
-        m.so_abertos(&[p::PAINTER_CARD_TOPO, p::PAINTER_CARD_BASICOS]);
+        abre_o_basics(&mut m);
         let modo = m.rect(p::PAINTER_BRUSH_MIX_MODES[0]).expect("o modo");
         for id in p::PAINTER_BRUSH_MIX_SAMPLES {
             let r = m
@@ -87,7 +127,7 @@ fn o_sample_da_mistura_aparece_esmaece_e_o_clique_chega() {
         b.mistura_opaca.modo = ModoMisturaOpaca::WetBlend;
         b.inercias = ph2d_tool_painter::Inercias::NENHUMA;
         let mut m = Mesa::nova(cartoes, b, false);
-        m.so_abertos(&[p::PAINTER_CARD_TOPO, p::PAINTER_CARD_BASICOS]);
+        abre_o_basics(&mut m);
         for id in p::PAINTER_BRUSH_MIX_SAMPLES {
             assert_eq!(
                 m.host.store().tooltip_for(id),
@@ -132,7 +172,7 @@ fn a_mistura_some_onde_a_lei_nao_corre() {
         for cartoes in [true, false] {
             let (b, _) = pincel(meio, modo);
             let mut m = Mesa::nova(cartoes, b, false);
-            m.so_abertos(&[p::PAINTER_CARD_TOPO, p::PAINTER_CARD_BASICOS]);
+            abre_o_basics(&mut m);
             for id in p::PAINTER_BRUSH_MIX_MODES
                 .iter()
                 .chain(&p::PAINTER_BRUSH_MIX_FIELDS)
@@ -167,7 +207,7 @@ fn color_mixing_foto() {
         }
         let janela = Rect::new(0.0, 0.0, 1600.0, 2400.0);
         let mut m = Mesa::na_janela(true, b, false, janela);
-        m.so_abertos(&[p::PAINTER_CARD_TOPO, p::PAINTER_CARD_BASICOS]);
+        abre_o_basics(&mut m);
         foto(&gpu, &dir, nome, &mut m);
     }
 }

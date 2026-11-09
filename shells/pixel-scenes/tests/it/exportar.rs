@@ -606,3 +606,134 @@ fn o_repeat_acende_quando_o_export_comeca() {
     );
     p.espera();
 }
+
+/// P14e-2 (4): **Open de um `.ase` com `ph2d.collider`** nasce o objecto COM a filha que segue a
+/// slice, no MESMO `born_from_paste` (um quadro = um passo do desfazer do mundo); a marca sai do
+/// documento ao ler; regravar pelo conjunto do mundo dá UMA marca.
+#[test]
+fn open_de_um_ase_com_collider_nasce_a_filha() {
+    let mut p = Palco::novo("open_collider");
+    // (d) A régua do PROJECTO (50 px/m, não a de omissão 100): o `deriva` a escreve.
+    p.hero.project.pixels_per_meter = 50.0;
+    ph2d_app_pixel::deriva(&p.app, p.sim.world_mut(), Some(&p.hero));
+    let s = ph2d_pixel_cena::fixture::heroi_p14();
+    let corpo = ph2d_pixel_cena::fixture::body(&s);
+    let marcado = ph2d_pixel_cena::com_colliders(&s, &std::collections::BTreeSet::from([corpo.0]));
+    let c = p.pasta.join("heroi.ase");
+    std::fs::write(&c, ph2d_pixel_io::ase::escrever(&marcado).expect("grava").0).expect("grava");
+    responde_o_proximo(c);
+    p.app.pede(R::File(A::Open));
+    p.quadro();
+    let bits = object_add::born_from_paste(&mut p.sim, &mut p.app, spawn_root)
+        .expect("há nascimento")
+        .expect("nasceu");
+    let e = ph2d_ecs::Entity::try_from_bits(bits).expect("entidade");
+    let key = p
+        .sim
+        .world()
+        .get::<ph2d_ecs::PixelSprite>(e)
+        .expect("pixel")
+        .0;
+    let doc = p.app.doc(key).expect("doc").sprite.clone();
+    let id = doc
+        .slices()
+        .iter()
+        .find(|x| x.name == "body")
+        .expect("body")
+        .id;
+    let filha = ph2d_pixel_cena::collider_da_slice(p.sim.world(), e, id)
+        .expect("a filha nasce com o objecto");
+    // A forma da filha na régua do projecto: a do Add Collider com 1/50 m por píxel.
+    let mut w = SimWorld::new();
+    let o = w.world_mut().spawn(ph2d_ecs::Transform::IDENTITY).id();
+    let q = doc.frames()[0].id;
+    let f2 = ph2d_pixel_cena::adiciona_collider_da_slice(w.world_mut(), o, id, &doc, q, 1.0 / 50.0)
+        .expect("molde");
+    let forma = |w: &ph2d_ecs::World, f| {
+        let c = w.get::<ph2d_physics_ecs::Collider>(f).expect("collider");
+        (c.shape, c.offset)
+    };
+    assert_eq!(
+        forma(p.sim.world(), filha),
+        forma(w.world(), f2),
+        "régua do projecto"
+    );
+    assert!(
+        !ph2d_pixel_cena::slice_e_collider(doc.slice(id).expect("body")),
+        "a marca sai do documento"
+    );
+    let mundo = ph2d_pixel_cena::slices_com_collider(p.sim.world_mut(), key);
+    assert_eq!(mundo.len(), 1);
+    let (b, _) = ph2d_pixel_io::ase::escrever(&ph2d_pixel_cena::com_colliders(&doc, &mundo))
+        .expect("regrava");
+    let (_, _, de_novo) = ph2d_pixel_io::ase::ler_com_colliders(&b).expect("relê");
+    assert_eq!(de_novo, mundo, "regravar não duplica a marca");
+}
+
+/// P14e-2 (5): **Export e Repeat Last Export gravam a marca que vem do MUNDO** (`a_gravar`): o
+/// herói aberto com o collider em `body` sai no `.ase` com `ph2d.collider`, pelo clique do Export e
+/// pela tecla do Repeat. *Mutação: cada caminho a gravar o documento cru ⇒ vermelho.*
+#[test]
+fn export_e_repeat_gravam_o_collider_do_mundo() {
+    let mut p = Palco::novo("export_collider");
+    let s = ph2d_pixel_cena::fixture::heroi_p14();
+    let corpo = ph2d_pixel_cena::fixture::body(&s);
+    let marcado = ph2d_pixel_cena::com_colliders(&s, &std::collections::BTreeSet::from([corpo.0]));
+    let c = p.pasta.join("heroi_in.ase");
+    std::fs::write(&c, ph2d_pixel_io::ase::escrever(&marcado).expect("grava").0).expect("grava");
+    responde_o_proximo(c);
+    p.app.pede(R::File(A::Open));
+    p.quadro();
+    let bits = object_add::born_from_paste(&mut p.sim, &mut p.app, spawn_root)
+        .expect("há nascimento")
+        .expect("nasceu");
+    let e = ph2d_ecs::Entity::try_from_bits(bits).expect("entidade");
+    p.key = p
+        .sim
+        .world()
+        .get::<ph2d_ecs::PixelSprite>(e)
+        .expect("pixel")
+        .0;
+    p.bits = bits;
+    p.hero.gizmo.mode.enter(bits, ObjectMode::Draw);
+    let mut cam = Camera2d::default();
+    p.app
+        .frame(&mut p.sim, &mut cam, WINDOW, PPM, Some(bits), spawn_root);
+    ph2d_app_pixel::deriva(&p.app, p.sim.world_mut(), Some(&p.hero));
+    p.quadro();
+    let marca = |b: &[u8]| {
+        let (r, _, col) = ph2d_pixel_io::ase::ler_com_colliders(b).expect("relê");
+        let id = r
+            .slices()
+            .iter()
+            .find(|x| x.name == "body")
+            .expect("body")
+            .id;
+        col.contains(&id.0)
+    };
+    p.app.pede(R::File(A::ExportAs));
+    p.quadro();
+    let saida = p.pasta.join("heroi_out.ase");
+    responde_o_proximo(saida.clone());
+    canal::pede(Pedido::Exportar(Export::Ficheiro(ExportAs {
+        pedido: render::Pedido {
+            escala: 1.0,
+            ..render::Pedido::default()
+        },
+        formato: Formato::Ase,
+        repeat: 0,
+    })));
+    p.quadro();
+    p.espera();
+    assert!(
+        marca(&std::fs::read(&saida).expect("o Export gravou")),
+        "o Export leva a marca"
+    );
+    std::fs::remove_file(&saida).expect("apaga");
+    p.tecla(KeyCode::KeyX, true, true, false);
+    p.espera();
+    assert!(
+        marca(&std::fs::read(&saida).expect("o Repeat gravou")),
+        "o Repeat leva a marca"
+    );
+}

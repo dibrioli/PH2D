@@ -17,6 +17,13 @@ FEITO nesta janela (desempenho do Wet Wash Mix, **Bug #84**; dono: «muito mais 
 - Deps/features: o rayon em `ph2d-painter-brush` ganhou usos (ADR-0200) e há a `float_roundtrip` do 10b ⇒ na integração: suíte inteira.
 
 ABERTO:
+- ⛔⛔ **PRIMEIRO — smoke do dono 10/11 depois de 5a02ad9c9d: «bem melhor mas inaceitável em traços rápidos (30 px = 6 fps)».**
+  A sonda (`sonda_custo_do_veu`, só o `on_canvas_pointer` + drenagem a cada 3 eventos, sem GPU nem quadro) dava ~0,26 ms
+  por px ⇒ ~35 fps a 90 px/quadro: o APP paga ~5× o que a sonda vê. NÃO cure às cegas: meça no caminho do app
+  (`PH2D_PAINT_PERF=1`, o `PaintFrameTimer`, `measure_input_cost.rs`/`measure_preview_drain.rs`, `o_custo_no_caminho_do_app`):
+  quantos px/eventos por quadro a caneta real entrega num traço rápido, o `take_preview_arc` (composição das camadas, upload
+  à GPU da caixa do véu), e o acordar do pool rayon com o render a correr (ADR-0173: 1–2 ms por lote, 20–40 ms com um
+  trabalhador desagendado). Depois ponha o Wet Wash Mix no gate do caminho do app com teto de 16 ms/quadro.
 1. **Desempenho do Wet Wash Mix:** ainda acima de 16 ms/quadro a 90 px/quadro. Próximo corte EXATO = a película (`mistura_opaca_carimbo`, ~45 % da rota). Proposta NÃO exata, à espera do dono: o véu a meia resolução (~3× no kernel; o alarme de miniatura decide). Risco: acordar o pool no app com trabalhador desagendado (ADR-0173) — o smoke do dono decide.
 2. Corrigir o comentário da receita do Wet Wash Mix (`csp_secos.rs` ~142) · gate que arraste os CINCO números do cartão Paint Mixing (e corrigir «seis números» na doc) · alargar `o_custo_no_caminho_do_app` a mais pincéis.
 3. Smoke do dono PENDENTE: prévia do pincel (Bug #83), com as duas decisões tomadas sem ele (Sync ⇒ menu sem nome; sem Sync, voltar reaplica o preset e ajustes fora de tamanho/opacidade/modo perdem-se) · cartão Paint Mixing · «Save as default» do Wet Wash (`6c0c7a59ca`) · fluidez do Wet Wash Mix e as miniaturas acima.

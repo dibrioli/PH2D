@@ -38,3 +38,23 @@ fn pingpong_com_passadas_impares_acaba_na_ponta_de_chegada() {
     // Forward conta passadas = ciclos, como sempre.
     assert_eq!(sequencia(0, 2), [2, 3, 4, 2, 3, 4]);
 }
+
+/// O Pixel Sprite nasce com `current` vazio (como o GEF) e as tags podem ser renomeadas: o início
+/// vale o `start`, senão o `current`, senão o 1.º clip — nunca um nome que a lista não tem.
+#[test]
+fn o_animador_sem_clip_valido_comeca_no_primeiro() {
+    use ph2d_ecs::SpriteAnimations;
+    let mut lib = SpriteAnimations::new();
+    for n in ["idle", "run"] {
+        lib.insert(tag_do_aseprite(n, 0, 1, 0, 0, &[100; 2]))
+            .expect("entra");
+    }
+    let mut a = SpriteAnimator::new("");
+    assert_eq!(a.start_or_current(&lib), "idle", "vazio ⇒ o 1.º");
+    a.current = "corre".into();
+    assert_eq!(a.start_or_current(&lib), "idle", "renomeado ⇒ o 1.º");
+    a.current = "run".into();
+    assert_eq!(a.start_or_current(&lib), "run");
+    a.start = Some("idle".into());
+    assert_eq!(a.start_or_current(&lib), "idle", "o «Start with» manda");
+}

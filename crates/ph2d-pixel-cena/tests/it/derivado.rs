@@ -33,7 +33,7 @@ fn mundo(s: &Sprite) -> SimWorld {
         Transform::IDENTITY,
         Name::new("Heroi"),
         PixelSprite(1),
-        animador_de_nascenca(s),
+        animador_de_nascenca(),
     ));
     sim
 }

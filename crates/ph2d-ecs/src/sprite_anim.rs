@@ -425,12 +425,15 @@ impl SpriteAnimator {
         }
     }
 
-    /// A animação que vale ao começar: a escolhida, se a lista ainda a tem; senão o `current`.
+    /// A animação que vale ao começar: a escolhida, se a lista ainda a tem; senão o `current`, se a
+    /// lista o tem; senão a 1.ª da lista (um `current` vazio ou de uma tag renomeada não toca nada).
     #[must_use]
-    pub fn start_or_current(&self, lib: &SpriteAnimations) -> &str {
-        self.start
-            .as_deref()
-            .filter(|n| lib.get(n).is_some())
+    pub fn start_or_current<'a>(&'a self, lib: &'a SpriteAnimations) -> &'a str {
+        [self.start.as_deref(), Some(self.current.as_str())]
+            .into_iter()
+            .flatten()
+            .find(|n| lib.get(n).is_some())
+            .or_else(|| lib.iter().next().map(|t| t.name.as_str()))
             .unwrap_or(&self.current)
     }
 

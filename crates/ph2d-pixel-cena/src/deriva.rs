@@ -65,15 +65,12 @@ pub fn deriva<'a>(world: &mut World, doc_de: impl Fn(u32) -> Option<(&'a Sprite,
     }
 }
 
-/// O animador com que um Pixel Sprite NASCE: o do Animated Sprite do Game Engine (Autoplay ligado),
-/// a tocar o primeiro clip do documento.
+/// O animador com que um Pixel Sprite NASCE: o do Animated Sprite do Game Engine (Autoplay ligado,
+/// `current` vazio). Vazio começa no 1.º clip ([`SpriteAnimator::start_or_current`]), e renomear
+/// uma tag não o deixa a apontar para nada.
 #[must_use]
-pub fn animador_de_nascenca(sprite: &Sprite) -> SpriteAnimator {
-    let primeiro = sprite
-        .tags()
-        .first()
-        .map_or(CLIP_SEM_TAGS, |t| t.name.as_str());
-    let mut a = SpriteAnimator::new(primeiro);
+pub fn animador_de_nascenca() -> SpriteAnimator {
+    let mut a = SpriteAnimator::new("");
     a.autoplay = true;
     a
 }

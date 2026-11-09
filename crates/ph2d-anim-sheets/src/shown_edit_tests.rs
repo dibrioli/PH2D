@@ -146,6 +146,12 @@ fn a_folha_extra_ilegivel_nao_cai_na_folha_zero() {
     sheets.0[0].asset = AssetId::from_digest([7; 32]);
     w.entity_mut(e).insert(sheets);
     assert_eq!(read_shown(&w, e, &db), ShownRead::Unreadable);
+    // Há recurso, mas não é uma imagem que o verbo leia (textura comprimida): `Unreadable` também, nunca a folha 0.
+    // *Mutação: `First` quando a imagem não descodifica ⇒ o verbo editava a folha 0.*
+    let mut sheets = w.get::<SpriteSheets>(e).unwrap().clone();
+    sheets.0[0].asset = db.insert_ktx2_bytes(ph2d_asset::TierIndex::DESKTOP, &[1, 2, 3]);
+    w.entity_mut(e).insert(sheets);
+    assert_eq!(read_shown(&w, e, &db), ShownRead::Unreadable);
 }
 
 /// ⭐ Auditoria do fecho 08/11 (I): uma folha de 16 bits diz-se, como a folha 0; a de 8 e a folha 0 não.

@@ -5,10 +5,12 @@ use crate::frame::CodeFrame;
 use crate::geom;
 use crate::palette::Palette;
 use crate::view::CodeView;
-use ph2d_editor_core::paint::{fill_circle, paint_text, rect_to_vello};
+use ph2d_editor_core::paint::{
+    fill_circle, frame_radius, paint_text, rect_to_vello, stroke_rounded_rect,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Spacing, StrokeToken, TypeToken};
+use ph2d_tokens::{Radius, Spacing, StrokeToken, TypeToken};
 use ph2d_vector::{Affine, BezPath, Brush, VectorScene};
 
 /// Um ponto de parada (linha 0-based). `armed = false`: não há código nessa linha (ponto oco —
@@ -58,6 +60,8 @@ pub(crate) fn worst_problem(
 pub struct Ghost {
     pub line: usize,
     pub text: String,
+    /// O maior número de caracteres que esta linha já mostrou: a moldura não encolhe enquanto corre.
+    pub min_chars: usize,
 }
 
 /// O estado do depurador que a pintura mostra.
@@ -125,16 +129,25 @@ impl CodeView {
             if room <= 0.0 {
                 continue;
             }
-            paint_text(
-                ts,
-                scene,
-                &g.text,
-                x,
-                row.y + (self.m.line_h - font) * 0.5,
-                font,
-                room,
-                pal.number,
-            );
+            // A moldura à volta do valor, da largura do texto mais comprido já visto (os dígitos que
+            // faltam contam como «0»): o valor muda e ela não mexe.
+            let short = g.min_chars.saturating_sub(g.text.chars().count());
+            let widest = format!("{}{}", g.text, "0".repeat(short));
+            let shaped = ts.layout(&widest, font, f32::INFINITY);
+            let w = shaped.width().min(room);
+            // Na linha de base do código ao lado (centrar a caixa da letra descia-o ~2 px; foto 09/11).
+            let base = shaped.lines().next().map_or(font, |l| l.metrics().baseline);
+            let ty = row.y + self.m.text_dy + self.m.baseline - base;
+            let (pad, inset) = (Spacing::Sm.px(), Spacing::Xxs.px());
+            let frame = Rect {
+                x: x - pad,
+                y: row.y + inset,
+                w: w + pad * 2.0,
+                h: (self.m.line_h - inset * 2.0).max(0.0),
+            };
+            let radius = frame_radius(pal.theme, Radius::Sm.px());
+            stroke_rounded_rect(scene, frame, radius, StrokeToken::Thin.px(), pal.border);
+            paint_text(ts, scene, &g.text, x, ty, font, room, pal.number);
         }
     }
 

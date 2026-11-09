@@ -80,3 +80,38 @@ Fotos: `ferramentas/smoke/cena14/fotos_q3.sh <passo> <saída> [espera]` (Xvfb `:
   `ph2d-panel-code` `bancada` (+ `tests/it/bancada/puras.rs`), `ph2d-app-code` `bancada`, `onda_b`; cena 13.
 - O mesmo acabamento em todos: tecto, rolagem em linhas inteiras, barra ↕ com calha, separador ↔ só onde há coluna
   do lado, âmbar = mudou (`ph2d_tokens::changed`).
+
+## 5. Smoke do dono 09/11 (Q3)
+
+Três pedidos, todos no `ph2d-panel-code` (zero linhas na `ph2d-app-code`, 26 627/26 628; `code-smoke` 614/614):
+
+- **Dicas de rato na tabela ao vivo** (`debug_card/live_marks.rs`, novo): `DebugCardView::look` devolve
+  `PointerLook::Hand` sobre as células `line` e `value` da Sheet do Live (`cell_at` → `Layout::hit` →
+  `Hit::Cell`; só em tabelas com coluna `line`) e lembra-a em `cell_hover` (vale um quadro, como o `spark_hover`);
+  `press` guarda-a em `cell_pressed` até ao `release`. Pintura depois de `ph2d_ui_table::paint`: pairar = moldura
+  `BorderStrong`/`Thin`, premida = `Accent`/`Thick`, ambas recuadas `Xxs` e com `frame_radius(Sm)`.
+- **Nada mexe quando os números vivos mudam de largura**: `live_marks::Steady` guarda a maior largura natural por
+  coluna (Sheet) e a maior largura do valor por chave (Strip); só crescem e zeram quando o quadro sai do Live
+  (`DebugCardView::paint`: parado ou sem linhas). Na Strip o valor encosta à direita da largura estável e o traço
+  fica a seguir a ela. Os Cards já tinham a caixa fixa da grelha.
+- **Moldura nos números vivos do código** (`debug_marks.rs::paint_ghosts`): `Ghost.min_chars` (o maior número de
+  caracteres visto por linha, `LiveSampler::widest`, zera com o sampler) dá a largura da moldura (o texto com os
+  caracteres que faltam como «0»), `Border`/`Thin`/`frame_radius(Sm)`, `Sm` dos lados, a linha menos `Xxs`. O texto
+  passou para a linha de base do código ao lado (antes centrava a caixa da letra e ficava ~2 px abaixo; foto).
+- `live.rs` estava no tecto (600): `short_number`, `span_text` (re-exportados) e `tip` mudaram-se para
+  `live_marks.rs`; `live.rs` 556.
+
+| Prova (`ph2d-panel-code` `valores_ao_vivo`) | Vermelho (mutação) → verde |
+|---|---|
+| `as_celulas_line_e_value_pedem_a_mao` | sem o `cell_at` no `look`: reprova ✓ |
+| `os_numeros_vivos_mudam_de_largura_e_nada_mexe` — Sheet: «1.2» → «12345.678» → «1.2», `lay.cols` da 3.ª = da 2.ª | `Steady::cols` sem o máx: reprova ✓ |
+| idem — Strip: a caixa do traço não se desloca | `Steady::strip` sem o máx: reprova ✓ |
+| idem — `Ghost.min_chars` não desce | `widest` sem o máx: reprova ✓ |
+
+⚠️ A régua da largura precisa da mono MEDIDA: com um `CodeView::new()` cru o `advance` é 0 e todas as colunas ficam
+no `min_col` (a mutação sobrevivia). O teste usa `pinta_medido` (uma pintura de aquecimento do código antes).
+
+Verdes também: `quadro_do_depurador` 5; `ph2d-app-code` `depurador` 13, `barra_da_aba` 6; `ph2d-ui-table` `o_`/`a_` 12;
+`ph2d-editor-core` `shell_only_shrinks`, `workspace_file_loc_cap`, `panel_loc_cap`, `no_magic_numeric`,
+`no_literal_color`, `hr15`. Fotos: `ferramentas/smoke/cena14/passo_7.png` (molduras no código e a tabela),
+`passo_7_pairar_line.png` (`RATO="568 533"`: moldura à volta do «17»), `passo_10.png` (Strip).

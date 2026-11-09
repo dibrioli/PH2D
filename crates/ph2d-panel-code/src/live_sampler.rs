@@ -33,6 +33,8 @@ pub struct LiveSampler {
     /// Quando se amostrou (ns do relógio da aba).
     sampled: Option<u128>,
     trails: Trails,
+    /// O texto mais comprido (em caracteres) visto por linha 0-based.
+    widest: BTreeMap<usize, usize>,
 }
 
 impl Default for LiveSampler {
@@ -42,6 +44,7 @@ impl Default for LiveSampler {
             rows: Vec::new(),
             sampled: None,
             trails: Trails::new(window_samples()),
+            widest: BTreeMap::new(),
         }
     }
 }
@@ -58,11 +61,17 @@ impl LiveSampler {
         self.ghosts = live
             .iter()
             .filter(|(n, _)| **n >= 1)
-            .map(|(n, l)| Ghost {
-                line: *n as usize - 1,
-                text: ghost_text(l),
+            .map(|(n, l)| (*n as usize - 1, ghost_text(l)))
+            .filter(|(_, text)| !text.is_empty())
+            .map(|(line, text)| {
+                let seen = self.widest.entry(line).or_default();
+                *seen = (*seen).max(text.chars().count());
+                Ghost {
+                    line,
+                    text,
+                    min_chars: *seen,
+                }
             })
-            .filter(|g| !g.text.is_empty())
             .collect();
         self.rows = live_rows(live, &mut self.trails);
         self.sampled = Some(now_ns);

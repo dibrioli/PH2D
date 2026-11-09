@@ -67,6 +67,20 @@ fn pinta(v: &mut DebugCardView, c: &DebugCard) -> Rect {
     r
 }
 
+/// Como [`pinta`], com a mono medida (uma pintura de aquecimento do código): as larguras do texto
+/// são as de verdade.
+fn pinta_medido(v: &mut DebugCardView, c: &DebugCard) {
+    let h = v.height(c, ABA);
+    let r = Rect::new(ABA.x, ABA.y + ABA.h - h, ABA.w, h);
+    let mut ts = TextSystem::without_system_fonts();
+    let mut code = CodeView::new();
+    let buf = ph2d_code_buffer::Buffer::new("a\n");
+    let _ = crate::pinta(&mut code, &buf, &mut ts, ABA, &crate::Deco::default());
+    let mut scene = VectorScene::new();
+    let ids = [NodeId(1), NodeId(2)];
+    v.paint(c, ids, r, &mut code, &mut scene, &mut ts, Theme::default());
+}
+
 fn centro(r: Rect) -> (f32, f32) {
     (r.x + r.w * 0.5, r.y + r.h * 0.5)
 }
@@ -204,4 +218,110 @@ fn os_cards_e_a_strip_ao_vivo_tambem_tem_o_traco_e_o_grafico() {
             "{style:?}"
         );
     }
+}
+
+/// Uma amostra em que o `self.t` (linha 13) vale `t` e o `label` (14) fica igual.
+fn amostra(s: &mut LiveSampler, i: u128, t: &str) -> DebugCard {
+    let var = |n: &str, v: &str, k| Var::leaf(n, v, k);
+    let live = BTreeMap::from([
+        (
+            13,
+            LineLive {
+                hits: 1,
+                values: vec![var("self.t", t, ValueKind::Number)],
+                prints: 0,
+            },
+        ),
+        (
+            14,
+            LineLive {
+                hits: 1,
+                values: vec![var("label", "\"shape\"", ValueKind::String)],
+                prints: 0,
+            },
+        ),
+    ]);
+    s.take(i * PERIODO, &live);
+    let who = WhoTag {
+        name: "Circle".into(),
+        color: None,
+    };
+    live_card(who, s.rows.clone())
+}
+
+/// Smoke do dono 09/11: as células Line (vai à linha) e Value (copia) pedem a mão.
+#[test]
+fn as_celulas_line_e_value_pedem_a_mao() {
+    let (_, c) = amostrado(3);
+    let mut v = DebugCardView::default();
+    pinta(&mut v, &c);
+    let (lay, ..) = v.painted.table.clone().expect("a Sheet");
+    for col in ["line", "value"] {
+        let (x, y) = centro(lay.cell_rect(0, col).expect(col));
+        assert_eq!(v.look(x, y), Some(PointerLook::Hand), "{col}");
+    }
+    let (x, y) = centro(lay.cell_rect(0, "name").expect("name"));
+    assert_eq!(v.look(x, y), None, "o Name não clica");
+}
+
+/// Smoke do dono 09/11: o número vivo cresce e volta a encolher — as colunas da Sheet e o traço da
+/// Strip não mexem (as larguras só crescem enquanto o Live dura).
+#[test]
+fn os_numeros_vivos_mudam_de_largura_e_nada_mexe() {
+    let valores = ["1.2", "12345.678", "1.2"];
+    let mut s = LiveSampler::default();
+    let mut v = DebugCardView::default();
+    let mut cols = Vec::new();
+    for (i, t) in valores.iter().enumerate() {
+        let c = amostra(&mut s, i as u128 + 1, t);
+        pinta_medido(&mut v, &c);
+        cols.push(v.painted.table.clone().expect("a Sheet").0.cols);
+        eprintln!(
+            "DBG {t} {:?} {:?}",
+            v.painted.table.as_ref().unwrap().0.cols,
+            v.painted.table.as_ref().unwrap().1[0].cells[2].text
+        );
+    }
+    assert_ne!(
+        cols[0], cols[1],
+        "a régua mede: o número comprido alarga o Value"
+    );
+    assert_eq!(
+        cols[1], cols[2],
+        "a Sheet: nada encolhe quando o número encurta"
+    );
+    let traco = |c: &[ph2d_ui_table::ColSpan]| c.iter().find(|s| s.key == "trail").map(|s| s.x);
+    assert!(
+        traco(&cols[2]) >= traco(&cols[1]),
+        "o traço não anda para a esquerda"
+    );
+
+    let mut s = LiveSampler::default();
+    let mut v = DebugCardView::default();
+    v.style = CardStyle::Strip;
+    let mut sparks = Vec::new();
+    for (i, t) in valores.iter().enumerate() {
+        let c = amostra(&mut s, i as u128 + 1, t);
+        pinta_medido(&mut v, &c);
+        sparks.push(v.painted.sparks.first().expect("o traço").1);
+    }
+    assert_eq!(sparks[1], sparks[2], "a Strip: o traço não se desloca");
+
+    // O texto no fim da linha: a moldura guarda o texto mais comprido já visto.
+    let mut s = LiveSampler::default();
+    let mut antes = 0;
+    for (i, t) in valores.iter().enumerate() {
+        amostra(&mut s, i as u128 + 1, t);
+        let g = s.ghosts.iter().find(|g| g.line == 12).expect("linha 13");
+        assert!(
+            g.min_chars >= antes && g.min_chars >= g.text.chars().count(),
+            "{g:?}"
+        );
+        antes = g.min_chars;
+    }
+    assert_eq!(
+        antes,
+        "self.t = 12345.678".chars().count(),
+        "não desce com o «1.2»"
+    );
 }

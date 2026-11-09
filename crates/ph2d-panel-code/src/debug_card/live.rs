@@ -3,6 +3,8 @@
 //! uma célula por variável com o traço ao lado do valor. Pairar sobre um traço diz mín · máx ·
 //! actual; clicar abre o gráfico grande (por baixo da linha na Sheet, no pé nas outras).
 
+use super::live_marks::tip;
+pub use super::live_marks::{short_number, span_text};
 use super::{CardBox, DebugCardView};
 use crate::table_text::CodeCells;
 use crate::view::CodeView;
@@ -185,7 +187,9 @@ fn sheet(
     let (cols, m) = (live_columns(), Metrics::standard());
     let rows = live_sheet_rows(c, st.graph.as_deref());
     let mut text = CodeCells { view, theme };
-    let natural = natural_widths(&cols, &rows, &m, ts, &mut text);
+    let natural = st
+        .steady
+        .cols(natural_widths(&cols, &rows, &m, ts, &mut text));
     let table_r = Rect::new(body.x, body.y, body.w, (body.h - rh).max(0.0));
     reveal_graph(st, &rows, table_r.h - m.header_h, &m);
     let lay = ph2d_ui_table::layout(&cols, &rows, &natural, &mut st.table, table_r, &m);
@@ -193,6 +197,9 @@ fn sheet(
     ph2d_ui_table::paint(
         &lay, &cols, &rows, &st.table, tones, scene, ts, &mut text, theme,
     );
+    let hover = st.cell_hover.take();
+    let pressed = st.cell_pressed.as_ref();
+    super::live_marks::paint_cells(&lay, &rows, hover.as_ref(), pressed, scene, theme);
     for span in &lay.rows {
         let row = &rows[span.index];
         if row.cells.get(3).is_some_and(|c| c.spark.is_some())
@@ -408,7 +415,7 @@ fn strip(
     let pad = Spacing::Sm.px();
     let small = TypeToken::Xs.px();
     let spark_w = Metrics::standard().spark_w;
-    let mut cells: Vec<(&LiveRow, String, String, f32)> = Vec::new();
+    let mut cells: Vec<(&LiveRow, String, String, f32, f32)> = Vec::new();
     let mut used = 0.0;
     for r in &c.live {
         let key = tr_with(
@@ -417,20 +424,26 @@ fn strip(
         );
         let value = shown_value(&r.var);
         let kw = ts.layout(&key, small, f32::INFINITY).width();
-        let mut vw = CodeCells { view, theme }.width(ts, &value, true);
-        if r.trail.is_some() {
-            vw += pad + spark_w;
-        }
-        let cw = vw.max(kw) + super::inset() * 2.0;
+        // A largura do valor só cresce enquanto o Live dura: o traço e a célula seguinte não mexem.
+        let vw = st.steady.strip(
+            &r.var.key,
+            CodeCells { view, theme }.width(ts, &value, true),
+        );
+        let spark = if r.trail.is_some() {
+            pad + spark_w
+        } else {
+            0.0
+        };
+        let cw = (vw + spark).max(kw) + super::inset() * 2.0;
         if used + cw > body.w && !cells.is_empty() {
             break;
         }
         used += cw;
-        cells.push((r, key, value, cw));
+        cells.push((r, key, value, cw, vw));
     }
     let extra = (body.w - used).max(0.0) / cells.len().max(1) as f32;
     let mut x = body.x;
-    for (r, key, value, cw) in cells {
+    for (r, key, value, cw, vw) in cells {
         let cell = Rect::new(x, body.y, (cw + extra).min(body.x + body.w - x), body.h);
         if x > body.x {
             let hair = Rect::new(x, body.y, StrokeToken::Thin.px(), body.h);
@@ -447,8 +460,9 @@ fn strip(
         let right = cell.x + cell.w - pad;
         let row = (body.y + pad + small, rh);
         let mut text = CodeCells { view, theme };
-        let vw = text.width(ts, &value, true);
-        text.paint(ts, scene, &value, value_ink(&r.var), true, kx, row, right);
+        // Encostado à direita da largura estável: os dígitos (mono) ficam no mesmo sítio.
+        let vx = kx + vw - text.width(ts, &value, true);
+        text.paint(ts, scene, &value, value_ink(&r.var), true, vx, row, right);
         if let Some(s) = &r.trail {
             let sx = kx + vw + pad;
             let at = Rect::new(sx, row.0, (right - sx).max(0.0).min(spark_w), rh);
@@ -458,64 +472,6 @@ fn strip(
         st.painted.values.push((r.var.value.clone(), cell));
         x += cell.w;
     }
-}
-
-/// Um número curto para o gráfico e a dica (até duas casas, sem zeros à direita).
-#[must_use]
-pub fn short_number(v: f32) -> String {
-    let s = format!("{v:.2}");
-    let s = s.trim_end_matches('0').trim_end_matches('.');
-    if s == "-0" { "0".into() } else { s.into() }
-}
-
-/// «min 0.12 · max 3.42 · now 3.42» de `samples`.
-#[must_use]
-pub fn span_text(samples: &[f32]) -> Option<String> {
-    let s = Span::of(samples)?;
-    Some(tr_with(
-        "code.debug.span",
-        &[
-            ("min", &short_number(s.min)),
-            ("max", &short_number(s.max)),
-            ("now", &short_number(s.now)),
-        ],
-    ))
-}
-
-/// A dica sobre um traço: mín · máx · actual, por cima dele (por baixo se não cabe), dentro do quadro.
-fn tip(
-    r: &LiveRow,
-    at: Rect,
-    body: Rect,
-    scene: &mut VectorScene,
-    ts: &mut TextSystem,
-    theme: Theme,
-) {
-    let Some(s) = r.trail.as_deref().and_then(span_text) else {
-        return;
-    };
-    let rh = ph2d_tokens::row_pitch_px();
-    let pad = Spacing::Sm.px();
-    let font = TypeToken::Xs.px();
-    let w = ts.layout(&s, font, f32::INFINITY).width() + pad * 2.0;
-    let x = (at.x + at.w - w).clamp(body.x, (body.x + body.w - w).max(body.x));
-    let y = if at.y - rh >= body.y {
-        at.y - rh
-    } else {
-        at.y + at.h
-    };
-    let r = Rect::new(x, y, w, rh);
-    let radius = frame_radius(theme, Radius::Sm.px());
-    fill_rounded_rect(scene, r, radius, resolve(ColorToken::Bg3, theme));
-    stroke_rounded_rect(
-        scene,
-        r,
-        radius,
-        StrokeToken::Thin.px(),
-        resolve(ColorToken::BorderStrong, theme),
-    );
-    let tone = resolve(ColorToken::Text1, theme);
-    paint_text(ts, scene, &s, x + pad, y + (rh - font) * 0.5, font, w, tone);
 }
 
 /// ⭐ O gráfico grande de `r` em `at`: o máximo e o mínimo à esquerda com as suas linhas, o traço

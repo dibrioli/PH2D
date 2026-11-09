@@ -12,6 +12,7 @@
 mod boxes;
 mod head;
 pub mod live;
+mod live_marks;
 mod sheet;
 pub mod split;
 
@@ -114,6 +115,12 @@ pub struct DebugCardView {
     pub graph: Option<String>,
     /// O traço debaixo do rato (o `look` lembra-o; a pintura mostra mín · máx · actual).
     spark_hover: std::cell::RefCell<Option<String>>,
+    /// A célula Line/Value da Sheet ao vivo debaixo do rato (como o `spark_hover`: vale um quadro).
+    cell_hover: std::cell::RefCell<Option<live_marks::CellAt>>,
+    /// A célula Line/Value premida, até largar o botão.
+    cell_pressed: Option<live_marks::CellAt>,
+    /// As larguras do Live que só crescem (zeram ao sair dele).
+    steady: live_marks::Steady,
 }
 
 /// Os ids dos dois botões (os comandos da aba: Continue, Next line).
@@ -187,6 +194,9 @@ impl DebugCardView {
                 ink(ColorToken::Danger),
             );
             y += rh;
+        }
+        if c.stopped() || c.live.is_empty() {
+            self.steady = live_marks::Steady::default();
         }
         if !c.stopped() && c.live.is_empty() {
             return;
@@ -273,6 +283,7 @@ impl DebugCardView {
                     .map(CardClick::Jump),
                 _ => None,
             };
+            self.cell_pressed = live_marks::cell_at(p, x, y);
             let (lay, rows) = (lay.clone(), rows.clone());
             self.table.press(&hit, (x, y), &lay, &rows);
             return Some(copy.unwrap_or(CardClick::Taken));
@@ -302,6 +313,10 @@ impl DebugCardView {
         }
         if let Some((key, _)) = p.sparks.iter().find(|(_, r)| r.contains(x, y)) {
             self.spark_hover.replace(Some(key.clone()));
+            return Some(ph2d_editor_core::doc_surface::PointerLook::Hand);
+        }
+        if let Some(cell) = live_marks::cell_at(p, x, y) {
+            self.cell_hover.replace(Some(cell));
             return Some(ph2d_editor_core::doc_surface::PointerLook::Hand);
         }
         let sheet = p.table.as_ref().and_then(|(lay, ..)| lay.bar().hit());
@@ -335,6 +350,7 @@ impl DebugCardView {
         let resized = self.resizing.take().is_some()
             | self.cards_drag.take().is_some()
             | self.splitting.take().is_some();
+        self.cell_pressed = None;
         self.table.release() || resized
     }
 

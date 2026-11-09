@@ -321,3 +321,35 @@ fn reafinar_um_corpo_vivo_e_o_mesmo_que_cria_lo() {
         "a mudança não se vê nesta cena — as linhas não provam nada: {mudos:?}"
     );
 }
+
+/// **Fechar e reabrir o olho pelo `retune_body` deixa a massa CERTA logo à saída**, antes de qualquer
+/// `step` (quem lê o corpo a seguir — o Inspector, a sonda — não espera o passo): fechado pesa
+/// `MASS_WITHOUT_SHAPE_KG`; reaberto, o quilo sai e volta a massa da forma (o ramo `was_off`).
+#[test]
+fn reabrir_o_olho_pelo_retune_devolve_a_massa_da_forma_sem_esperar_o_passo() {
+    let mut w = PhysicsWorld::new();
+    let b = w.spawn_body(bola());
+    let aberta = w.body_mass(b);
+    assert!(w.retune_body(
+        b,
+        &BodyDesc {
+            shape_off: true,
+            ..bola()
+        }
+    ));
+    let fechada = w.body_mass(b);
+    assert!(w.retune_body(b, &bola()));
+    let reaberta = w.body_mass(b);
+    assert!(
+        (fechada - ph2d_physics::MASS_WITHOUT_SHAPE_KG).abs() < 1e-5,
+        "fechada pesa {fechada}"
+    );
+    assert!(
+        (aberta - ph2d_physics::MASS_WITHOUT_SHAPE_KG).abs() > 0.1,
+        "a fixtura não distingue a forma do quilo: {aberta}"
+    );
+    assert!(
+        (reaberta - aberta).abs() < 1e-5,
+        "reaberta pesa {reaberta}, a forma pesa {aberta}"
+    );
+}

@@ -371,3 +371,46 @@ fn um_corpo_sem_forma_fica_no_solver_e_so_o_dinamico_cai() {
         }
     }
 }
+
+/// **Reabrir o olho a meio do play devolve a massa da FORMA** (o ramo `was_off` do `retune_body`): o
+/// corpo de uma forma só pesa a forma; de olho fechado pesa `MASS_WITHOUT_SHAPE_KG`; reaberto, o
+/// quilo emprestado sai e volta a pesar a forma — nunca forma + 1 kg.
+#[test]
+fn reabrir_o_olho_devolve_a_massa_da_forma() {
+    let mut sim = SimWorld::new();
+    let w = sim.world_mut();
+    let corpo = w
+        .spawn((
+            Name::new("Solo"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Transform::from_translation(Vec2::new(0.0, 3.0)),
+        ))
+        .id();
+    let f = w
+        .spawn((caixa(0.3), Transform::IDENTITY, ChildOf(corpo)))
+        .id();
+    let mut bridge = PhysicsBridge::new();
+    let massa = |bridge: &PhysicsBridge| bridge.body_mass(corpo).expect("no solver");
+    corre(&mut sim, &mut bridge, 0, 0);
+    let aberta = massa(&bridge);
+    olho(&mut sim, f);
+    corre(&mut sim, &mut bridge, 1, 1);
+    let fechada = massa(&bridge);
+    olho(&mut sim, f);
+    corre(&mut sim, &mut bridge, 2, 2);
+    let reaberta = massa(&bridge);
+    assert!(
+        (fechada - ph2d_physics::MASS_WITHOUT_SHAPE_KG).abs() < 1e-5,
+        "fechada pesa {fechada}"
+    );
+    assert!(
+        (aberta - ph2d_physics::MASS_WITHOUT_SHAPE_KG).abs() > 0.1,
+        "a fixtura não distingue a forma do quilo: {aberta}"
+    );
+    assert!(
+        (reaberta - aberta).abs() < 1e-5,
+        "reaberta pesa {reaberta}, a forma pesa {aberta}"
+    );
+}

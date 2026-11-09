@@ -59,6 +59,8 @@ ph2d-pixel-cena = { path = "../../crates/ph2d-pixel-cena" }
 ph2d-pixel-luz = { path = "../../crates/ph2d-pixel-luz" }
 # A sonda da cena 26 (`cena26.rs`): a física e a regra de animação.
 ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
+# Frame All / Frame Selected sobre a cena 26 (`enquadrar.rs`): a lei do pedido do botão VIEW.
+ph2d-app-vec = { path = "../../crates/ph2d-app-vec" }
 bevy_ecs = "0.20"
 half = "2"
 vello = "0.11.0"

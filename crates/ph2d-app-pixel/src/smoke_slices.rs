@@ -83,3 +83,13 @@ pub fn stage_heroi(
     app.wants_edit = None;
     Some(bits)
 }
+
+/// A cena 26 abre enquadrada; `PH2D_PIXEL_SMOKE_PLAY=1` entra em Play (`ph2d_app_host::smoke_drive`).
+pub(crate) fn conduz_o_heroi(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
+    static Q: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    if crate::smoke::armed_level() == Some(26) {
+        let q = Q.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let fisica = ph2d_panel_timeline::ids::TIMELINE_PHYSICS;
+        ph2d_app_host::smoke_drive::enquadra_e_joga(hero, q, "PH2D_PIXEL_SMOKE_PLAY", fisica);
+    }
+}

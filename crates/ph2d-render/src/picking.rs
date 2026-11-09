@@ -60,6 +60,25 @@ impl WorldBbox {
         ([cx, cy], [hw, hh])
     }
 
+    /// The world AABB of the LOCAL box `(center, half)` (relative to the pivot) under `t`
+    /// (translation, rotation, scale; skew ignored, like the object gizmo) — how a family that draws
+    /// itself answers *Frame All / Frame Selected*.
+    #[must_use]
+    pub fn of_local_box(t: &ph2d_ecs::Transform, center: [f32; 2], half: [f32; 2]) -> Self {
+        let (s, k) = t.rotation.sin_cos();
+        let (ax, ay) = (center[0] * t.scale.x, center[1] * t.scale.y);
+        let (hx, hy) = ((half[0] * t.scale.x).abs(), (half[1] * t.scale.y).abs());
+        let c = [
+            t.translation.x + ax * k - ay * s,
+            t.translation.y + ax * s + ay * k,
+        ];
+        let h = [hx * k.abs() + hy * s.abs(), hx * s.abs() + hy * k.abs()];
+        Self {
+            min: [c[0] - h[0], c[1] - h[1]],
+            max: [c[0] + h[0], c[1] + h[1]],
+        }
+    }
+
     /// True when `point` lies inside (or on the boundary of) the box.
     pub fn contains(&self, point: [f32; 2]) -> bool {
         point[0] >= self.min[0]

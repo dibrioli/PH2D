@@ -31,14 +31,28 @@ impl crate::App {
         let hero = hero_screen.as_mut()?;
         let (area, margin) = ph2d_app_host::canvas_area::frame_target(hero, viewport);
         let (sim, flip): (&SimWorld, &ph2d_flip::FlipDoc) = (sim, flip);
+        let (w, ppm) = (sim.world(), hero.project.pixels_per_meter);
+        use {
+            ph2d_app_flip::gizmo_view as fl, ph2d_app_light2d::gizmo as lz,
+            ph2d_app_pixel::draw as px,
+        };
+        let mut others = fl::drawn_aabbs(sim, flip);
+        others.extend(
+            px::caixas_desenhadas(w, ppm)
+                .into_iter()
+                .chain(lz::caixas_desenhadas(w, ppm)),
+        );
         let src = view_request::Sources {
             sim,
             present: present.world_mut(),
             scene: vec_scene,
             xf: vec_xf,
             drawn_paths: frame_order.vector_ranks.iter().map(|&(id, _)| id).collect(),
-            others: ph2d_app_flip::gizmo_view::drawn_aabbs(sim, flip),
-            other_box: &mut |e| ph2d_app_flip::gizmo_view::world_aabb(sim, flip, e),
+            others,
+            other_box: &mut |e| {
+                let caixa = fl::world_aabb(sim, flip, e).or_else(|| px::caixa_mundo(w, e, ppm));
+                caixa.or_else(|| lz::caixa_mundo(w, e, ppm))
+            },
             selection: hero.gizmo.iter_selected().collect(),
             area,
             window,

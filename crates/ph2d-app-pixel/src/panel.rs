@@ -126,6 +126,7 @@ pub fn frame(
         .for_each(|k| app.keys = k);
     crate::cartao::publica(app, world, hero, editing);
     crate::smoke::conduz_o_cartao(world, hero);
+    crate::smoke_slices::conduz_o_heroi(hero);
     crate::smoke_intervalo::conduz(hero);
     crate::smoke_efeitos::conduz(app, hero);
     crate::smoke_exporta::conduz(app);

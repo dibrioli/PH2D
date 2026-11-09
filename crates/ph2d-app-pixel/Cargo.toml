@@ -45,6 +45,8 @@ ph2d-text = { path = "../ph2d-text" }
 winit = "0.30"
 # A foto do gesto a meio da cena 16 (`smoke_intervalo::conduz`): os ids da grelha e a arena do despacho.
 ph2d-panel-pixel-timeline = { path = "../ph2d-panel-pixel-timeline" }
+# O interruptor Physics da barra de transporte, que o condutor da cena 26 carrega (`smoke_slices`).
+ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
 # A janela Preview (P5): o tocar dela e o canal da imagem.
 ph2d-panel-pixel-preview = { path = "../ph2d-panel-pixel-preview" }
 # Export e Import (P9b): as janelas e o canal das opções.

@@ -130,6 +130,47 @@ pub fn glifos(
     out
 }
 
+/// ⭐ **A caixa de MUNDO da luz `e`** para o *Frame All / Frame Selected*: a lâmpada (`tamanho_m`) ou o
+/// anel do objeto vazio, o que for maior — o que o [`pick_at`] pega, à régua do projeto. `None` = não
+/// é luz, ou está escondida.
+#[must_use]
+pub fn caixa_mundo(
+    world: &World,
+    e: Entity,
+    pixels_per_meter: f32,
+) -> Option<ph2d_render::WorldBbox> {
+    let luz = world.get::<Luz>(e)?;
+    if ph2d_ecs::is_hidden_in_tree(world, e) {
+        return None;
+    }
+    let t = ph2d_ecs::world_transform_into(world, e, &mut Vec::new())?;
+    let anel = 2.0 * ph2d_editor_core::HANDLE_SIZE_PX / pixels_per_meter.max(f32::EPSILON)
+        * (t.scale.x * t.scale.y).abs().sqrt();
+    let lampada = if luz.tipo == TipoDeLuz::Ambiente {
+        0.0
+    } else {
+        luz.tamanho_m
+    };
+    let r = anel.max(lampada);
+    let c = [t.translation.x, t.translation.y];
+    Some(ph2d_render::WorldBbox {
+        min: [c[0] - r, c[1] - r],
+        max: [c[0] + r, c[1] + r],
+    })
+}
+
+/// As caixas de mundo de toda `Luz` visível ([`caixa_mundo`]).
+#[must_use]
+pub fn caixas_desenhadas(world: &World, pixels_per_meter: f32) -> Vec<ph2d_render::WorldBbox> {
+    let Some(mut q) = world.try_query::<(Entity, &Luz)>() else {
+        return Vec::new();
+    };
+    let es: Vec<Entity> = q.iter(world).map(|(e, _)| e).collect();
+    es.into_iter()
+        .filter_map(|e| caixa_mundo(world, e, pixels_per_meter))
+        .collect()
+}
+
 /// **Desenha o gizmo de toda `Luz` visível.**
 pub fn desenhar(
     world: &World,

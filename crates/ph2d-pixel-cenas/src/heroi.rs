@@ -15,8 +15,9 @@ use ph2d_pixel_core::{NewSprite, Op, Patch, Rect, Sprite, apply, slice};
 pub const PPM: f64 = 100.0;
 /// O herói nasce aqui (m) e cai.
 pub const HEROI: [f32; 2] = [0.0, 0.0];
-/// A lâmpada, à esquerda do herói, à altura dele já pousado.
-pub const LAMPADA: [f32; 2] = [-0.6, -0.12];
+/// A lâmpada, acima e à esquerda do herói pousado: o ícone fica longe do chão e do herói, e o
+/// topo da sombra dele ainda cai na parede.
+pub const LAMPADA: [f32; 2] = [-0.55, -0.04];
 /// O chão: 100 × 10 px, centro em (0, −0,4) m ⇒ o topo em −0,35 m.
 pub const CHAO: (u32, u32, [f32; 2]) = (100, 10, [0.0, -0.4]);
 /// A parede: 8 × 40 px, centro em (0,34, −0,15) m ⇒ a face esquerda em x = 0,30 m, do chão a 0,05 m.

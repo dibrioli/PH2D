@@ -48,6 +48,7 @@ pub mod clipboard;
 pub mod family;
 pub mod modal;
 pub mod open;
+pub mod smoke_drive;
 
 pub use family::{AppFamily, AppFamilyRegistry, SmokeRouter};
 

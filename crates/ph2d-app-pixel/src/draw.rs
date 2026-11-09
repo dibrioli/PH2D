@@ -8,7 +8,7 @@ use ph2d_host::WindowSize;
 use ph2d_pixel_render::{
     CURSOR_CORE, draw_border, draw_cell_cursor, draw_marching_ants, draw_symmetry_axes, mask_edges,
 };
-use ph2d_render::Camera2d;
+use ph2d_render::{Camera2d, WorldBbox};
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::VectorScene;
 
@@ -61,6 +61,22 @@ pub fn caixa_local(bits: u64, ppm: f32) -> Option<([f32; 2], [f32; 2])> {
             ([(hw - px) / ppm, (py - hh) / ppm], [hw / ppm, hh / ppm])
         })
     })
+}
+
+/// ⭐ A caixa de MUNDO do Pixel Sprite `e` (*Frame All / Selected*): a do gizmo sob o `Transform`.
+#[must_use]
+pub fn caixa_mundo(w: &ph2d_ecs::World, e: ph2d_ecs::Entity, ppm: f32) -> Option<WorldBbox> {
+    let (c, half) = caixa_local(e.to_bits(), ppm)?;
+    let t = ph2d_ecs::world_transform_into(w, e, &mut Vec::new())?;
+    Some(WorldBbox::of_local_box(&t, c, half))
+}
+
+/// As caixas de mundo de todo Pixel Sprite desenhado no último quadro (o escondido não entra).
+#[must_use]
+pub fn caixas_desenhadas(w: &ph2d_ecs::World, ppm: f32) -> Vec<WorldBbox> {
+    let es: Vec<_> = DRAWN.with(|d| d.borrow().iter().map(|s| s.bits).collect());
+    let es = es.into_iter().filter_map(ph2d_ecs::Entity::try_from_bits);
+    es.filter_map(|e| caixa_mundo(w, e, ppm)).collect()
 }
 
 /// Espessura das linhas do modo Draw, em píxeis de ECRÃ (saem com `Affine::IDENTITY`).

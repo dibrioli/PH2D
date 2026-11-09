@@ -248,6 +248,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Edit in Painter. Every object using this image updates when you leave Draw"
         }
         "card.insp.verb_pixel" => "Pixel",
+        "card.insp.pixel_pivot" => "Pivot",
+        "card.insp.pixel_pivot_center" => "Center",
+        "card.insp.pixel_pivot_tip" => {
+            "The point that sits on the object position: the center, or a slice pivot"
+        }
         "card.insp.edit_in_pixel_tip" => "Edit in Pixel. The thumbnail updates when you leave Draw",
         "card.insp.replace_receipt" => "{aw} \u{00d7} {ah} \u{2192} {bw} \u{00d7} {bh} px",
         "card.insp.keep_old_size" => "Keep old size",

@@ -79,6 +79,7 @@ mod cards_componentes;
 mod cards_corpos;
 mod cards_objeto;
 mod cards_pilha;
+mod cards_pixel_pivot;
 mod cards_sprite;
 mod cards_sprite_cabeca;
 mod cards_sprite_folhas;

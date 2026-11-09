@@ -29,6 +29,9 @@ fn cartao(rgba: &Arc<Vec<u8>>, size: [u32; 2]) -> PixelSpriteCard {
         size,
         rgba: rgba.clone(),
         thumb: [2, 1],
+        doc: 7,
+        pivots: vec![(3, "feet".to_owned())],
+        pivot: None,
     }
 }
 
@@ -246,4 +249,53 @@ fn nada_do_cartao_do_pixel_e_cortado_no_minimo_do_painel() {
         let l = *lado.get_or_insert(p.foto.w);
         assert!((p.foto.w - l).abs() < 0.01, "a miniatura mudou a {largura}");
     }
+}
+
+/// ⭐ **Pivot** (P14 §6): a lista existe e é pintada no cartão, com *Center* escolhido; abrir e
+/// escolher «feet» pede ao documento do objecto a slice dela, e *Center* pede `None`. A sequência
+/// (o passo no documento e a origem que muda) prova-se em `shells/pixel-scenes` (`pivo`).
+#[test]
+fn o_pivot_do_cartao_pede_a_slice_ao_documento() {
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::pixel_panel::PixelRequest;
+    let (mut host, mut st, _) = cena([32, 32]);
+    let r = pinta(&mut host, &mut st);
+    let dd = rect_de(&r, INSP_PIXEL_PIVOT_DD).expect("a lista Pivot pintada");
+    assert_eq!(ph2d_i18n::tr("card.insp.pixel_pivot"), "Pivot");
+    let _ = host.drained_actions();
+    let mut pede = |i: usize| {
+        let _ = host.apply_panel_event::<InspectorPanel>(
+            &mut st,
+            WidgetEvent::Click(INSP_PIXEL_PIVOT_OPT[i]),
+        );
+        host.drained_actions()
+    };
+    assert_eq!(
+        pede(1),
+        [EditorAction::Pixel(PixelRequest::PivotSlice {
+            doc: 7,
+            slice: Some(3)
+        })]
+    );
+    assert_eq!(
+        pede(0),
+        [EditorAction::Pixel(PixelRequest::PivotSlice {
+            doc: 7,
+            slice: None
+        })]
+    );
+    assert!(pede(2).is_empty(), "linha sem slice não pede nada");
+    // O clique real na caixa chega à caixa, e ela é uma lista declarada (abre).
+    let mut ev = Vec::new();
+    for kind in [PointerKind::Move, PointerKind::Down, PointerKind::Up] {
+        ev.extend(host.dispatch_pointer_event(evento(dd.x + dd.w * 0.5, dd.y + dd.h * 0.5, kind)));
+    }
+    assert!(
+        ev.contains(&WidgetEvent::Click(INSP_PIXEL_PIVOT_DD)),
+        "{ev:?}"
+    );
+    use ph2d_editor_core::panel::cards::dropdown;
+    assert!(dropdown::on_click(INSP_PIXEL_PIVOT_DD), "a lista declarada");
+    assert_eq!(dropdown::open(), Some(INSP_PIXEL_PIVOT_DD));
+    let _ = dropdown::on_click(INSP_PIXEL_PIVOT_DD);
 }

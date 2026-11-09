@@ -181,6 +181,9 @@ fn o_cartao_do_pixel_sprite_preso_e_o_dele_e_pede_o_draw_dele() {
             size: [96, 64],
             rgba: std::sync::Arc::new(vec![255; 16]),
             thumb: [2, 2],
+            doc: 1,
+            pivots: Vec::new(),
+            pivot: None,
         }]);
     h.gizmo.replace_selection(Some(A));
     h.store

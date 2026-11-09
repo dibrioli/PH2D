@@ -123,3 +123,61 @@ fn o_centro_fixo_so_mora_na_porta() {
         achados.join("\n")
     );
 }
+
+/// ⭐ **Pivot do cartão** (P14 §6), a SEQUÊNCIA: o cartão publica as slices com pivô; o pedido
+/// `PivotSlice` grava no documento (UM passo do Pixel) e a origem passa a ser o pivô; *Center*
+/// e o desfazer devolvem o centro.
+#[test]
+fn o_pivot_do_cartao_muda_a_origem_num_passo() {
+    use ph2d_editor_core::pixel_panel::PixelRequest;
+    let (mut app, mut sim, camera, bits) = born();
+    let key = input::key_of(sim.world(), bits).expect("marcador");
+    com_pivo_nos_pes(&mut app, key);
+    let centro = |app: &ph2d_app_pixel::PixelApp, sim: &ph2d_ecs::SimWorld| {
+        let d = app.doc(key).expect("doc");
+        let e = Entity::try_from_bits(bits).expect("e");
+        input::origem_px(sim.world(), e, d)
+    };
+    let feet = app
+        .doc(key)
+        .expect("doc")
+        .sprite
+        .pivot_slice()
+        .expect("pés")
+        .0;
+    app.aplica(PixelRequest::PivotSlice {
+        doc: key,
+        slice: None,
+    });
+    assert_eq!(centro(&app, &sim), (16.0, 16.0), "Center");
+    let n = app.doc(key).expect("doc").history.undo_len();
+    app.aplica(PixelRequest::PivotSlice {
+        doc: key,
+        slice: Some(feet),
+    });
+    assert_eq!(centro(&app, &sim), (16.0, 31.0), "a origem nos pés");
+    assert_eq!(
+        app.doc(key).expect("doc").history.undo_len(),
+        n + 1,
+        "UM passo"
+    );
+    assert!(app.undo(key));
+    assert_eq!(
+        centro(&app, &sim),
+        (16.0, 16.0),
+        "o desfazer devolve o centro"
+    );
+    // O cartão lista a slice com pivô, para a lista do Inspector.
+    let mut hero = ph2d_editor_core::screens::hero::HeroScreen::new(ph2d_editor_core::NodeId(1));
+    hero.gizmo.replace_selection(Some(bits));
+    let _ = ph2d_app_pixel::panel::frame(
+        &mut app,
+        sim.world(),
+        &mut hero,
+        &mut ph2d_editor_core::ToastQueue::default(),
+    );
+    let c = hero.store.pixel_sprite_card(bits).expect("o cartão");
+    assert_eq!(c.doc, key);
+    assert_eq!(c.pivots.iter().map(|(s, _)| *s).collect::<Vec<_>>(), [feet]);
+    let _ = (&mut sim, camera);
+}

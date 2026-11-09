@@ -321,6 +321,12 @@ pub struct PixelSpriteCard {
     pub rgba: std::sync::Arc<Vec<u8>>,
     /// O tamanho de [`Self::rgba`].
     pub thumb: [u32; 2],
+    /// O documento (a chave) do objecto: o *Pivot* grava nele.
+    pub doc: u32,
+    /// As slices com pivô (id cru, nome), na ordem por nome: as opções do *Pivot* além de *Center*.
+    pub pivots: Vec<(u32, String)>,
+    /// A slice do pivô escolhida; `None` = *Center*.
+    pub pivot: Option<u32>,
 }
 
 /// Os diálogos do Pixel Art no `WidgetStore`.
@@ -478,6 +484,12 @@ pub struct PixelUserInfo {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PixelRequest {
     Tool(PixelTool),
+    /// P14 §6: o *Pivot* do cartão Pixel Sprite — a slice `slice` (cru) do documento `doc` é a origem
+    /// do objecto; `None` = *Center*. Um passo do desfazer do Pixel.
+    PivotSlice {
+        doc: u32,
+        slice: Option<u32>,
+    },
     /// P12 U: um gesto do cartão User Data sobre um dono (um passo «User Data»).
     UserData(PixelOwner, user_data::CardEdit),
     /// Um botão de grupo: a última usada na mão, e o flyout abre/fecha.

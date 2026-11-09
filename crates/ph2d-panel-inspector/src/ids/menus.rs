@@ -110,3 +110,16 @@ pub const INSP_ANIM_REMOVE_EMPTY_FRAMES: NodeId = hash_node_id("insp_anim_remove
 pub const INSP_ANIM_DELETE_EMPTY_ANIMS: NodeId = hash_node_id("insp_anim_delete_empty_anims");
 /// O selo da tinta do Painter a caminho da prévia do cartão Animation (só a dica: não se clica).
 pub const INSP_ANIM_PREVIEW_SYNC: NodeId = hash_node_id("insp_anim_preview_sync");
+/// P14 §6: o *Pivot* do cartão Pixel Sprite — a lista e as linhas (0 = *Center*, depois as slices
+/// com pivô por nome; 64 slices, a tabela da lista de animações).
+pub const INSP_PIXEL_PIVOT_DD: NodeId = hash_node_id("insp_pixel_pivot_dd");
+pub const INSP_PIXEL_PIVOT_OPT: [NodeId; 65] = {
+    let base = hash_node_id("insp_pixel_pivot_opt");
+    let mut t = [base; 65];
+    let mut i = 0;
+    while i < 65 {
+        t[i] = NodeId(base.0.wrapping_add(i as u64));
+        i += 1;
+    }
+    t
+};

@@ -75,6 +75,15 @@ fn cartao(app: &mut PixelApp, key: u32, bits: u64, em_draw: bool) -> Option<Pixe
         size: [doc.sprite.width(), doc.sprite.height()],
         rgba: Arc::clone(&m.rgba),
         thumb: m.lado,
+        doc: key,
+        pivots: doc
+            .sprite
+            .slices_by_name()
+            .into_iter()
+            .filter(|c| c.keys.iter().any(|k| k.shape.pivot.is_some()))
+            .map(|c| (c.id.0, c.name.clone()))
+            .collect(),
+        pivot: doc.sprite.pivot_slice().map(|s| s.0),
     })
 }
 

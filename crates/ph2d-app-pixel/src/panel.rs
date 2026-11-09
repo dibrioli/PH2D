@@ -35,6 +35,16 @@ impl PixelApp {
             self.assenta();
             crate::viva::assenta(self);
         }
+        // O Pivot do cartão (P14 §6): no documento do objecto, não no do Draw.
+        if let PixelRequest::PivotSlice { doc, slice } = r {
+            let id = slice.map(ph2d_pixel_core::SliceId);
+            let op = self
+                .docs
+                .get(&doc)
+                .and_then(|d| ph2d_pixel_core::slice::set_pivot(&d.sprite, id));
+            self.passo_nomeado(doc, op, "pixel.history.pivot");
+            return;
+        }
         if let (PixelRequest::UserData(o, e), Some(k)) = (&r, self.chave) {
             let op = self
                 .docs

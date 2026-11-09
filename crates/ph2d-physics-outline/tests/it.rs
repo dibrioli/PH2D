@@ -231,7 +231,8 @@ fn acima_do_tecto_o_detail_sobe_e_diz() {
     };
     let t = trace(&m, &asked);
     assert!(t.raised, "o tecto tinha de subir o Detail");
-    assert!(t.outline.detail_q4 > 1 || t.outline.min_island_px > 0);
+    assert_eq!(t.outline.detail_q4, 1, "o Detail PEDIDO fica");
+    assert!(t.outline.raised_q4 > 1 && t.outline.detail_used_q4() == t.outline.raised_q4);
 }
 
 /// A entrada da app: `Shape(3)` pedido no CORPO retraça a 1.ª forma pelos pixels do `AssetDb` (átlas);

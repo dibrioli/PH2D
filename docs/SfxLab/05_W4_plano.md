@@ -207,6 +207,8 @@ Sorte: 9 de 12 ao acaso sai 7,3 % das vezes; 10 de 12, 1,9 %. Casos repetidos in
 
 **Do dono:** convidar a pessoa (engenheiro de som de games; sem vínculo com o projeto) · 1h30 para fazer os sons · a aprovação desta régua ANTES · decidir se paga. Sem profissional, W5 fica por decisão dele.
 
+**Revisto em 07/11:** o dono decidiu que não há profissional; ele mesmo faz o teste, pelo [roteiro](06_roteiro_de_teste_do_dono.md). A régua fica; muda o peso: quem julga fez os sons, então «falta material» e «motor ou exploração» valem mais que «compete». Para reduzir o viés, a audição é no dia seguinte, com casos repetidos e a marca «reconheci» (o relatório conta com e sem). A página de audição e a extração dos sons do projeto só se constroem depois da Parte 3 do roteiro.
+
 ## Ordem
 
 Em série: cada passo usa o anterior; as medições finais vão num lote só (§0.10).

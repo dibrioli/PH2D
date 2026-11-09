@@ -166,7 +166,7 @@ passo de undo); o cartão diz quando o tecto subiu o Detail (W4).
 - ⚠️ **Tecto de LOC:** `ph2d-app-physics` está 64 linhas ACIMA (55 579 > 55 515, `crates/ph2d-editor-core/tests/it/architecture_the_shell_only_shrinks.rs:221`)
   por commits anteriores desta linha. Cura = MOVER para crate não-`app` antes de W4 (que acrescenta lá).
 
-## Auto Key dos pontos do Outline — desenho (09/11, ABERTO)
+## Auto Key dos pontos do Outline — desenho (FEITO 09/11, salvo o gate de undo pela shell — ver «Fase 2»)
 
 Lei do dono (19–20/10, `project-memory/project_autokey_records_everything_2026_10_19.md`): o Auto Key grava TUDO, pontos
 incluídos; mexer um ponto grava a FORMA INTEIRA numa chave; acrescentar/apagar ponto vale em TODAS as chaves (chave por
@@ -213,3 +213,14 @@ losango no painel, e os pontos são gesto de canvas (uma entrada não casaria na
 **Fase 2 encaixa:** `shells/desktop/src/render_loop/autokey_pass.rs` `propagar_topologia` (o 2.º chamador do LCS, ao lado do
 `apagar_do_fit`), com o alinhamento extraído de `ph2d-app-vec/src/canais_topologia.rs:41` `alinhar`; `escritos` já assume a
 topologia de hoje em todas as chaves.
+
+**Fase 2 FEITA 09/11** — `2d7eb1435a`: o LCS saiu para `ph2d_timeline::topologia::{contornos, alinhar}` (const-genérico
+em N campos; as duas crates já dependiam da timeline, sem ciclo) — UMA função, dois chamadores (vetor, 8 campos; FISICA,
+2); `canais_pontos::{mudou, pede_topologia, propagar}` (ponto novo no mesmo parâmetro do segmento dos vizinhos
+alinhados, em cada chave; trilhas órfãs purgadas; o Fit dentro); a shell só troca a chamada (+0). Gate
+`acrescentar_e_apagar_um_ponto_vale_nas_duas_chaves` (mutações: só a 1.ª chave · sem a posição alinhada).
+`c263478e25`: `a_forma_outline_atravessa_o_arquivo` leva `custom` e a trilha 51/52 pelo `read_project_file` (mutação:
+`#[serde(skip)]` no `custom`). ⛔ **ABERTO: o gate de undo pela shell** (arrastar = um Ctrl+Z tira ponto e chave;
+acrescentar com 2 chaves = um passo; Fit = um passo) — escrito, verde, mutações vermelhas (sem `canais_pontos::propagar`;
+sem `liga_gesto_da_cena`), mas ~200 linhas e a shell tem 24 de folga: espera MOVER código da shell (HOWTO §2; o
+`morph_set_tests` e o `padding_bridge` têm armadilhas — irmão `world_tests`, censo textual de `panel_visibility`).

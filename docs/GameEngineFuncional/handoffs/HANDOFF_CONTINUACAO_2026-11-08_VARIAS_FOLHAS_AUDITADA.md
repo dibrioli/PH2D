@@ -33,4 +33,4 @@ Mutações do Add Object do 1.º commit · handoff da rodada anterior sem handof
 
 - Editor: `bash scripts/cargo-test-narrow.sh ph2d-host-game-scenes editor_animacoes` (63 verdes).
 - Catraca: `bash scripts/ph2d-run.sh cargo test -p ph2d-editor-core --test it the_shell_only_shrinks` (verde; folgas pequenas: `ph2d-app-painter` e `ph2d-app-components` perto do tecto — código novo vai para crate não-`app`).
-- Smoke: `PH2D_GAME_SMOKE=5 ./target/smoke/ph2d-host-desktop` («Two Sheets»); fotos `docs/Components/ferramentas/fotografa_cena.sh` com `PH2D_GAME_SMOKE_FOTO=animado_folhas|animado_folhas_editor|animado_folhas_apagada`.
+- Smoke: `PH2D_GAME_SMOKE=5 ./target/smoke/ph2d-host-desktop` («Two Sheets»); fotos `docs/Components/ferramentas/fotografa_cena.sh` com `PH2D_GAME_SMOKE_FOTO=animado_folhas|animado_folhas_editor|animado_folhas_apagada|animado_folhas_trim`.

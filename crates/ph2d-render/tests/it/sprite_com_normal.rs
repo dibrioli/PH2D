@@ -11,7 +11,8 @@ use ph2d_ecs::PresentWorld;
 use ph2d_gpu::GpuContext;
 use ph2d_host::WindowSize;
 use ph2d_render::{
-    Camera2d, LiftedInstances, LuzRecebida, RenderInstance, SpriteRenderer, TextureAtlas,
+    Camera2d, LiftedInstances, LuzRecebida, OSSOS_POR_VERTICE, RenderInstance, SpriteMesh,
+    SpriteMeshSkin, SpriteRenderer, TextureAtlas,
 };
 
 const W: u32 = 64;
@@ -129,6 +130,8 @@ struct Caso {
     no_atlas: bool,
     /// O sprite como MEMBRO de um recorte (`ClipOnly`) cujo molde é ele mesmo (o mesmo quad).
     recorte: bool,
+    /// O sprite como MALHA com pele de um osso (peso 1) e este afim LOCAL→LOCAL do osso.
+    osso: Option<[f32; 6]>,
 }
 
 const HOJE: Caso = Caso {
@@ -140,6 +143,7 @@ const HOJE: Caso = Caso {
     normal_alheia: false,
     no_atlas: false,
     recorte: false,
+    osso: None,
 };
 
 /// Devolve os bytes RGBA do alvo e quantas normais o renderer tem alocadas.
@@ -258,6 +262,8 @@ fn quadro(gpu: &GpuContext, c: Caso) -> (Vec<u8>, usize) {
             },
             None,
         );
+    } else if let Some(afim) = c.osso {
+        extra.push(inst, Some(&malha_de_um_osso(afim)));
     } else {
         extra.push(inst, None);
     }
@@ -570,5 +576,53 @@ fn o_sprite_com_normal_recortado_acende_igual() {
     assert_eq!(
         hoje, hoje_r,
         "sem normal, o recorte pelo próprio quad tem de dar os bytes do livre"
+    );
+}
+
+/// O quad 1×1 como malha de dois triângulos, todo o peso num osso com o afim `afim`.
+fn malha_de_um_osso(afim: [f32; 6]) -> SpriteMesh {
+    let local: Vec<[f32; 2]> = vec![[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]];
+    let uv = local
+        .iter()
+        .map(|p| SpriteMesh::uv_at(*p, [0.0, 0.0], [1.0, 1.0]).expect("size não nulo"))
+        .collect();
+    let mut pesos = [0.0_f32; OSSOS_POR_VERTICE];
+    pesos[0] = 1.0;
+    SpriteMesh {
+        local,
+        uv,
+        tris: vec![[0, 1, 2], [0, 2, 3]],
+        skin: Some(SpriteMeshSkin {
+            pesos: vec![pesos; 4],
+            ossos: vec![[0; OSSOS_POR_VERTICE]; 4],
+            afins: vec![afim],
+            juntas: vec![[0.0, 0.0]],
+            angulos: vec![[1.0, 0.0]],
+        }),
+    }
+}
+
+/// ⭐ A pele: a normal roda pela base do OSSO que deforma o vértice, não só pela da instância.
+/// Normal `+x`, luz de CIMA: o osso em repouso dá o plano; girado +90° (`+x → +y`) acende.
+#[test]
+fn a_normal_da_malha_roda_com_o_osso() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sprite normal: sem placa — saltado");
+        return;
+    };
+    let de_cima = |osso| Caso {
+        osso: Some(osso),
+        momento: Some([0.0, MOMENTO]),
+        ..com((N_MAIS_X, N_MAIS_X), 0)
+    };
+    let repouso = miolo(&quadro(&gpu, de_cima([1.0, 0.0, 0.0, 1.0, 0.0, 0.0])).0);
+    let mais90 = miolo(&quadro(&gpu, de_cima([0.0, 1.0, -1.0, 0.0, 0.0, 0.0])).0);
+    let menos90 = miolo(&quadro(&gpu, de_cima([0.0, -1.0, 1.0, 0.0, 0.0, 0.0])).0);
+    eprintln!(
+        "sprite normal pele: repouso {repouso:.1} · osso +90° {mais90:.1} · −90° {menos90:.1}"
+    );
+    assert!(
+        mais90 > repouso + 30.0 && repouso > menos90 + 30.0,
+        "a normal não rodou com o osso: repouso {repouso:.1}, +90° {mais90:.1}, −90° {menos90:.1}"
     );
 }

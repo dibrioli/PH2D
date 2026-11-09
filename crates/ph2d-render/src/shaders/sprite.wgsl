@@ -141,6 +141,41 @@ fn posa_pela_pele(vi: u32, qp: vec2<f32>) -> vec2<f32> {
     );
 }
 
+// ⭐ P14 — o LINEAR da pele no vértice (espaço do quad, coluna-maior): a derivada da
+// `posa_pela_pele` em `qp` — a rotação `S⁻¹R(θ̄)S` no ramo da junta, `Σ ŵ_i·A_i` no linear. É a
+// base local do osso que deforma o vértice; a normal roda por ela (o `base` não depende de `qp`).
+fn linear_da_pele(vi: u32) -> vec4<f32> {
+    let b = skin_b[vi];
+    let w = skin_w[vi];
+    let a0 = skin_a[b.x];
+    let n = a0.info.y;
+    var den = 0.0;
+    for (var i = 0u; i < 4u; i = i + 1u) {
+        if (w[i] <= 0.0) { continue; }
+        for (var j = i + 1u; j < 4u; j = j + 1u) {
+            if (w[j] > 0.0) { den = den + w[i] * w[j]; }
+        }
+    }
+    var lin = vec4<f32>(0.0);
+    var sx = 0.0;
+    var sy = 0.0;
+    var soma = 0.0;
+    for (var k = 0u; k < 4u; k = k + 1u) {
+        if (w[k] == 0.0) { continue; }
+        let a = skin_a[b[k]];
+        lin = lin + w[k] * a.lin;
+        sx = sx + w[k] * a.ang.x;
+        sy = sy + w[k] * a.ang.y;
+        soma = soma + w[k];
+    }
+    if (soma == 0.0) { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }
+    if (den <= 0.0 || (sx == 0.0 && sy == 0.0)) { return lin; }
+    let n2 = fma(sx, sx, sy * sy);
+    let co = fma(sx, sx, -(sy * sy)) / n2;
+    let si = 2.0 * sx * sy / n2;
+    return vec4<f32>(co, si * a0.razao.x, -si * a0.razao.y, co);
+}
+
 struct VertexInput {
     @location(0) quad_pos: vec2<f32>,  // unit quad corner in [-0.5, 0.5]
     @location(1) quad_uv:  vec2<f32>,  // [0, 1]; (0,0)=top-left, (1,1)=bottom-right
@@ -218,6 +253,10 @@ struct VertexOutput {
     // ⭐ P14: o linear LOCAL → MUNDO da instância (`basis · diag(size)`, com os espelhos do `flip_uv`),
     // coluna-maior — o que leva a normal da imagem aos eixos do mundo. Só o `fs_main_n` o lê.
     @location(11) @interpolate(flat) lin_n: vec4<f32>,
+    // ⭐ P14: a pele — `F·J·F` (o linear da pele `J` conjugado pelos espelhos `F`), interpolado, e
+    // `com_pele` (flat): sem pele o `fs_main_n` usa só o `lin_n`, os bytes de antes.
+    @location(12) pele_j: vec4<f32>,
+    @location(13) @interpolate(flat) com_pele: u32,
 };
 
 // Wrap `t` into [0,1] per the resolved RepeatMode (W3.T3.11): 2 Enabled
@@ -331,6 +370,13 @@ fn vs_main(@builtin(vertex_index) vi: u32, v: VertexInput, i: InstanceInput) -> 
     let ex = select(1.0, -1.0, flip_x) * i.size.x;
     let ey = select(1.0, -1.0, flip_y) * i.size.y;
     out.lin_n = vec4<f32>(i.basis.xy * ex, i.basis.zw * ey);
+    out.com_pele = select(1u, 0u, skin_b[vi].x == SEM_PELE);
+    out.pele_j = vec4<f32>(1.0, 0.0, 0.0, 1.0);
+    if (out.com_pele == 1u) {
+        let j = linear_da_pele(vi);
+        let fxy = select(1.0, -1.0, flip_x != flip_y);
+        out.pele_j = vec4<f32>(j.x, fxy * j.y, fxy * j.z, j.w);
+    }
     return out;
 }
 
@@ -430,7 +476,13 @@ fn fs_main_n(in: VertexOutput) -> @location(0) vec4<f32> {
     let onde = select(recorte_uv(uv, in.atlas_uv, dim, vec2<f32>(1.0), 0.0), uv, wraps);
     let nb = textureSampleLevel(normal_tex, atlas_sampler, onde, 0.0);
     // Alfa 0 = esta célula do átlas não tem normal: `n = 0`, o `luz_em` de hoje por ramo.
-    let n_xy = select(vec2<f32>(0.0), normal_no_mundo(nb.rgb, in.lin_n), nb.a > 0.0);
+    // A pele: `L = lin_n · F·J·F` (a base local do osso, coluna-maior).
+    var l = in.lin_n;
+    if (in.com_pele == 1u) {
+        let j = in.pele_j;
+        l = vec4<f32>(l.xy * j.x + l.zw * j.y, l.xy * j.z + l.zw * j.w);
+    }
+    let n_xy = select(vec2<f32>(0.0), normal_no_mundo(nb.rgb, l), nb.a > 0.0);
     return luz_receber_n(cor, in.mundo, n_xy, in.sem_luz);
 }
 

@@ -109,3 +109,38 @@ fn a_curva_do_detail_nao_e_passo_de_undo_a_tocar() {
     assert_eq!(par(&sim, forma), vivo_final, "parada, a curva é documento");
     conducao.repor(&mut sim, &reg, vivo);
 }
+
+/// (e) **O Detail editado no cartão chega ao que o Auto Key lê**: a edição pelo funil do dreno
+/// (`apply_physics_edit` + fila) e `publicar` dão `CONTORNO_DETALHE` = 6 na FORMA (a trilha da
+/// chave, opção B) — o Auto Key grava a diferença de `CanaisLidos`. *Mutação: `ler` do Detail a
+/// devolver o padrão ⇒ vermelho.*
+#[test]
+fn o_detail_do_cartao_publica_o_canal_que_o_auto_key_grava() {
+    use ph2d_editor_core::{OutlineEdit, PhysicsFieldEdit as P};
+    let (reg, mut sim, body, _db) = pente();
+    let b = body.to_bits();
+    let dono = dono_da_chave(
+        sim.world(),
+        b,
+        ph2d_timeline::PropKind::Field(k(f::CONTORNO_DETALHE)),
+    );
+    assert_ne!(dono, b, "a trilha é a da forma");
+    let lido = |sim: &SimWorld| {
+        sim.world()
+            .resource::<CanaisLidos>()
+            .valor(dono, k(f::CONTORNO_DETALHE))
+    };
+    publicar(&mut sim, &[b]);
+    assert_eq!(lido(&sim), Some(2.0));
+    let q = EditorCommandQueue::new();
+    crate::physics_apply::apply_physics_edit(
+        &mut sim,
+        b,
+        P::Outline(OutlineEdit::Detail(6.0)),
+        &q,
+        &reg,
+    );
+    apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
+    publicar(&mut sim, &[b]);
+    assert_eq!(lido(&sim), Some(6.0), "o Auto Key vê o Detail novo");
+}

@@ -542,7 +542,10 @@ mod tooltip_placement_tests {
     fn a_target_at_the_left_edge_keeps_the_tooltip_inside() {
         let target = Rect::new(8.0, 400.0, 24.0, 24.0);
         let got = tooltip_rect(target, 200.0, 22.0, GAP, VP);
-        assert!(got.x >= VP.x + GAP - 1e-3, "nao pode encostar na borda: {got:?}");
+        assert!(
+            got.x >= VP.x + GAP - 1e-3,
+            "nao pode encostar na borda: {got:?}"
+        );
         assert!(got.x + got.w <= VP.x + VP.w + 1e-3);
     }
 

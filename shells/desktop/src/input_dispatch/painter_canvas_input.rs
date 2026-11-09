@@ -1,19 +1,7 @@
-//! Canvas painting input (SHELL-only) — routes Primary pointer Down/Move/Up to
-//! the active [`PainterTool`] as `CanvasPaintTool::on_canvas_pointer` (ADR-0040
-//! Amendment 3), converting screen → image-space pixels via the selected sprite's
-//! on-screen footprint.
-//!
-//! Mirrors the bgremoval protection-brush plumbing (`protect_brush.rs`): gate on
-//! the painter being active + a selected sprite, then map screen → image px with
-//! the FULL sprite affine (`ph2d_sprite_screen::sprite_image_to_screen_affine` —
-//! size · scale · rotation · anchor · camera), so the brush tracks the sprite
-//! under any transform. The concrete downcast to [`PainterTool`] is the documented
-//! ADR-0040 §3 exception (same shape as protect_brush / eyedropper), here used to
-//! read `canvas_size` + deliver the pointer.
-//!
-//! Pressão e tilt são os do evento (`ph2d_pen::porta::tinta`, ADR-0189): a caneta dá os dela, o
-//! rato `1.0` e `[0, 0]`. A ponta de BORRACHA apaga o traço dela; o `Up` fecha o traço com a pressão
-//! do último contacto (o `Up` da caneta traz `0`, e as figuras re-carimbam no `Up`).
+//! Canvas painting input (SHELL-only): Primary Down/Move/Up → the active [`PainterTool`]
+//! (`CanvasPaintTool::on_canvas_pointer`, ADR-0040 Am. 3), screen → image px by the FULL sprite
+//! affine; the downcast is the ADR-0040 §3 exception. Pressure/tilt come from `ph2d_pen::porta::tinta`
+//! (ADR-0189); the `Up` closes with the last contact's pressure (the pen's `Up` carries `0`).
 
 use std::cell::Cell;
 
@@ -23,26 +11,12 @@ use ph2d_tool_painter::PainterTool;
 use crate::App;
 
 use ph2d_app_painter::canvas_down::canvas_down_accepts;
-/// ⭐ **A LEI mudou-se para [`ph2d_app_painter::shape_grab`]** (W2 Fase D) e é re-exportada daqui.
-///
-/// Ela é pura (entra um afim, sai um `f32`) e este ficheiro é de **gesto** — enquanto a lei morava
-/// aqui, ela prendia à shell o `painter_bridge_overlays.rs`, que só a quer para desenhar as alças
-/// no tamanho em que elas se agarram. ⚠️ A re-exportação mantém `super::painter_canvas_input::…`
-/// byte a byte igual no `painter_curve_input.rs`.
+/// A lei vive em [`ph2d_app_painter::shape_grab`]; re-exportada para `painter_curve_input.rs`.
 pub(crate) use ph2d_app_painter::shape_grab::shape_grab_tol_from_affine;
 
-/// ⭐⭐⭐ **A MALHA SOB O CURSOR — a porta ÚNICA das duas entradas de canvas do Painter.**
-///
-/// ⛔⛔ **Ela nasceu porque a lei estava numa entrada só** (2026-09-14): o `deliver_canvas_pointer`
-/// perguntava à malha desde a wave anterior e o `deliver_canvas_hover` **não** — ele mapeava o
-/// cursor pelo afim do quad de REPOUSO e não punha deformação nenhuma. ⇒ numa arte dobrada, enquanto
-/// o artista apenas passeia o rato, o app calculava a posição errada e o anel do pincel desenhava a
-/// forma de repouso. *Uma lei escrita numa das duas entradas ainda não é uma lei.*
-///
-/// ⭐ **O TAMANHO DO DAB entra na pergunta** (3.º report do dono, 2026-09-14): uma malha é afim POR
-/// TRIÂNGULO, e perguntar num PONTO dá ao dab inteiro a deformação de um pedaço dele — com um pincel
-/// grande sobre uma malha grossa isso chega a deixar a marca MENOS redonda do que não corrigir nada
-/// (`1,38` contra `1,19`, medido). ⚠️ O raio é o do dab **ANTES** da composição, senão é um laço.
+/// A malha sob o cursor — a porta ÚNICA das duas entradas de canvas (pincelada e passeio).
+/// O tamanho do dab entra na pergunta (a malha é afim por triângulo); o raio é o de ANTES da
+/// composição, senão é um laço.
 pub(crate) fn malha_sob_o_cursor(
     present: &mut ph2d_ecs::World,
     bits: u64,
@@ -56,17 +30,9 @@ pub(crate) fn malha_sob_o_cursor(
     ph2d_render::mesh_uv(present, bits, world, starting, footprint_uv)
 }
 
-/// A deformação local que a resposta da malha carrega — identidade fora dela.
-///
-/// ⚠️ **Extraída de propósito:** os dois consumidores (a tinta e o anel do pincel) têm de ler a
-/// MESMA, e um `match` escrito duas vezes diverge no primeiro braço que alguém acrescentar.
-///
-/// ⭐⭐⭐ **E ela é a ÚNICA conversão entre os dois gémeos** — a `ph2d_render::MeshWarp`, que o
-/// renderer mede da malha, e a `ph2d_painter_brush::canvas_warp::CanvasWarp`, que o motor de
-/// pincel consome. Os dois tipos existem separados porque o motor de pincel é **dev-dependency**
-/// do renderer (os gates dele reconciliam contra a lei canónica em vez de a re-implementar), e uma
-/// aresta de release do renderer para o pincel puxaria o pincel inteiro para o grafo de desenho.
-/// ⛔ A costura é aqui, é uma só, e há gate a mantê-la assim.
+/// A deformação local da resposta da malha (identidade fora dela), lida pela tinta e pelo anel.
+/// É a ÚNICA conversão `ph2d_render::MeshWarp` → `CanvasWarp` (gémeos separados para o pincel não
+/// entrar no grafo de release do renderer).
 pub(crate) fn warp_da_malha(malha: ph2d_render::MeshUv) -> ph2d_tool_painter::CanvasWarp {
     match malha {
         ph2d_render::MeshUv::Use { warp, .. } => ph2d_tool_painter::CanvasWarp {
@@ -95,9 +61,7 @@ pub(crate) fn traco_de_teste(abre: bool) -> f32 {
 }
 
 impl App {
-    /// Borrow the active tool as the concrete [`PainterTool`] (the ADR-0040 §3
-    /// downcast exception, allowlisted to the painter-input modules — this file +
-    /// `painter_falloff_input`). `None` when the Painter is not the active tool.
+    /// The active tool as [`PainterTool`] (ADR-0040 §3 downcast); `None` when not the Painter.
     pub(crate) fn painter_tool_mut(&mut self) -> Option<&mut PainterTool> {
         self.gfx
             .as_mut()?
@@ -107,24 +71,11 @@ impl App {
             .downcast_mut::<PainterTool>()
     }
 
-    /// Primary Down on the canvas while the Painter is active: convert to image
-    /// space and deliver as [`PointerPhase::Down`]. Returns `true` (consuming the
-    /// click) iff the painter started a stroke, so it doesn't also pick/move the
-    /// sprite.
+    /// Primary Down while the Painter is active: deliver as [`PointerPhase::Down`]. `true` (consumes
+    /// the click) iff a stroke started, so it doesn't also pick/move the sprite.
     pub(crate) fn painter_canvas_down(&mut self, px: f32, py: f32, pressure: f32) -> bool {
-        // A press over the editor's CHROME belongs to the chrome's own widgets — sliders, colour picker,
-        // buttons. Don't start a canvas stroke there: that paints *through* the UI and steals the drag
-        // (the stroke's Move capture swallows it).
-        //
-        // This asked `store.panel_at(..)` and ONLY that, which is half the question — and the half that
-        // misses exactly what Enio reported on 2026-07-16: the left rail's buttons and the top bars are
-        // **not inside any panel rect**, so `panel_at` said "not a panel" and the brush painted behind the
-        // button the artist had just clicked. (The C&F button was patched for this one-off in 2026-07-03,
-        // by hard-coding its id in `arm_fill_drag_if_on_button` — one button, the same bug.) The whole
-        // question, gizmo exception included, lives in `forwarding::chrome_claims`.
-        //
-        // A stroke already open keeps painting over the chrome via the Move path (it does not re-enter
-        // here) — dragging off the artwork must not chop the stroke at the panel's edge.
+        // A press over the CHROME belongs to its widgets (the one door, rails and bars included); an
+        // open stroke keeps painting over it via the Move path.
         if crate::chrome_hit::pointer_over_chrome(self.gfx.as_ref(), px, py) {
             return false;
         }
@@ -157,35 +108,23 @@ impl App {
         }
     }
 
-    /// CursorMoved while a painter stroke is open: deliver as [`PointerPhase::Move`].
-    /// Returns `true` (early-returning the move) while a stroke is active.
-    ///
-    /// **Per-frame coalescing (perf):** for the restore + whole-shape re-stamp methods
-    /// ([`PainterTool::coalesces_canvas_motion`]) every raw winit `CursorMoved` between frames used to
-    /// re-stamp the ENTIRE shape — a death-spiral under high-Hz input (more events → more re-stamps →
-    /// slower frame → more events), and all but the last per frame are reverted by the next move's
-    /// restore, so wasted. Here those Moves are BUFFERED (latest wins) and flushed once per frame by
-    /// [`Self::flush_pending_painter_move`]; incremental / Free Hand methods (which deposit dabs / capture
-    /// path samples per event) deliver immediately as before. See `HANDOFF_per_layer_color_perf` §1.R.
+    /// CursorMoved while a stroke is open: deliver as [`PointerPhase::Move`]; `true` while active.
+    /// Whole-shape re-stamp methods ([`PainterTool::coalesces_canvas_motion`]) are BUFFERED (latest
+    /// wins) and flushed once per frame by [`Self::flush_pending_painter_move`]; incremental ones
+    /// deliver per event.
     pub(crate) fn painter_canvas_move(&mut self, px: f32, py: f32, pressure: f32) -> bool {
         if !STROKE_ACTIVE.with(Cell::get) {
-            // No stroke: this is a HOVER. Feed it to the painter so the brush-cursor ring can already wear
-            // the orientation the next dab will use (Rake / Flow) before the pen goes down. It consumes
-            // nothing — panning, gizmos and every other Move consumer still see this event.
+            // HOVER: feeds the brush ring's orientation; consumes nothing.
             self.deliver_canvas_hover(px, py);
             return false;
         }
         if self.painter_coalesces_motion() {
-            // Coalesce: keep only the latest position; the frame loop delivers ONE Move per frame.
             self.pending_painter_move = Some((px, py, pressure));
-            return true; // consume the move (don't pan / drive a gizmo) — delivered at the frame flush
+            return true; // delivered at the frame flush
         }
-        // Non-coalescing delivery is authoritative for the latest position: drop any move buffered while
-        // the method was still coalescing (a mid-stroke method flip), so the frame flush can't later
-        // re-stamp at that now-stale position.
+        // A mid-stroke method flip must not leave a stale buffered move for the flush.
         self.pending_painter_move = None;
-        // Incremental methods stamp per raw event (between frames). Time each so the HUD's "paint ms"
-        // reflects the REAL per-frame painter cost, not just the once-per-frame coalesced flush.
+        // Timed so the HUD's "paint ms" counts per-event stamps too.
         let t0 = std::time::Instant::now();
         STROKE_PRESSURE.with(|s| s.set(pressure));
         let delivered = self.deliver_canvas_pointer(px, py, pressure, PointerPhase::Move);
@@ -202,9 +141,7 @@ impl App {
         delivered
     }
 
-    /// Whether the active tool is the Painter in a stroke method that only ever shows the latest pointer
-    /// position (so its Moves may be coalesced to one delivery per frame). Scoped mutable downcast — the
-    /// `Tool` trait exposes only `as_any_mut`, and the read is cheap.
+    /// The Painter is in a method whose Moves may be coalesced to one delivery per frame.
     fn painter_coalesces_motion(&mut self) -> bool {
         self.gfx
             .as_mut()
@@ -213,13 +150,9 @@ impl App {
             .is_some_and(|p| p.coalesces_canvas_motion())
     }
 
-    /// Deliver a **hover** (cursor moved, no button) to the painter, in image px. The minimal sibling of
-    /// [`Self::deliver_canvas_pointer`]: same screen -> image affine, but it touches no gesture state, no
-    /// modifiers, no grab tolerance and no grid snap — a hover is not a gesture, and the only thing that
-    /// reads it is the brush-cursor ring's orientation.
-    ///
-    /// ⚠️ It must stay side-effect-free and must NOT consume the event: hovering is also how you aim a pan
-    /// or a gizmo grab.
+    /// Deliver a **hover** (no button) in image px — the minimal sibling of
+    /// [`Self::deliver_canvas_pointer`]: no gesture state, modifiers, grab tol or snap. Side-effect-free
+    /// and never consumes (hovering also aims a pan or a gizmo grab).
     fn deliver_canvas_hover(&mut self, px: f32, py: f32) {
         let Some(gfx) = self.gfx.as_mut() else { return };
         if !gfx
@@ -258,8 +191,7 @@ impl App {
         if iw == 0 || ih == 0 {
             return;
         }
-        // ⚠️ O empréstimo do Painter **larga-se aqui**: a pergunta à malha precisa do mundo de
-        // PRESENTE, que vive no mesmo `gfx`.
+        // O empréstimo do Painter larga-se aqui: a malha precisa do mundo de PRESENTE do mesmo `gfx`.
         let world = camera.screen_to_world((px, py), window_size);
         let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
             iw,
@@ -271,11 +203,7 @@ impl App {
             window_size,
         );
         let img = affine.inverse() * ph2d_vector::Point::new(f64::from(px), f64::from(py));
-        // ⭐⭐⭐ **O PASSEIO PERGUNTA À MALHA, como a pincelada já perguntava** (2026-09-14). Sem
-        // isto, numa arte dobrada o app resolvia a posição do cursor pelo quad de REPOUSO e deixava
-        // a deformação na identidade — e o anel do pincel, que a lê, desenhava a forma de repouso
-        // por cima da arte dobrada. ⚠️ `starting = false`: passear nunca ABRE um traço, logo aqui
-        // nunca há o que recusar.
+        // O passeio pergunta à malha como a pincelada; `starting = false`: nunca abre um traço.
         let malha =
             malha_sob_o_cursor(gfx.present.world_mut(), bits, world, false, raio_px, iw, ih);
         let Some(painter) = gfx
@@ -294,9 +222,7 @@ impl App {
         painter.on_canvas_hover([hx, hy]);
     }
 
-    /// Deliver the buffered (coalesced) painter Move, if any, as one [`PointerPhase::Move`]. Called once
-    /// per frame at the top of `run_render_frame` (before the encode window) and before a pen-up, so the
-    /// final position is stamped before the stroke commits.
+    /// Deliver the buffered painter Move, if any — once per frame and before a pen-up.
     pub(crate) fn flush_pending_painter_move(&mut self) {
         let Some((px, py, pressure)) = self.pending_painter_move.take() else {
             return; // nothing buffered — incremental stamps (if any) are timed in `painter_canvas_move`
@@ -317,8 +243,7 @@ impl App {
     /// Primary Up: close any open painter stroke. No-op when not painting.
     pub(crate) fn painter_canvas_up(&mut self) {
         if STROKE_ACTIVE.with(Cell::get) {
-            // Stamp any buffered (coalesced) final position BEFORE the commit, so the released shape
-            // matches the last cursor position rather than the previous frame's flush.
+            // The buffered final position is stamped BEFORE the commit.
             self.flush_pending_painter_move();
             STROKE_ACTIVE.with(|s| s.set(false));
             let (px, py) = self.last_pointer;
@@ -328,13 +253,8 @@ impl App {
         self.pen_eraser_end();
     }
 
-    /// Gate on painter-active + a selected sprite, convert screen→image pixels via
-    /// the sprite footprint, and deliver one [`CanvasPointer`]. Returns the tool's
-    /// `consumed` result, or `false` when the sample was not delivered (not the
-    /// painter / no selection / Down outside the footprint).
-    ///
-    /// `pub(crate)` so the Fill (Bucket) ColorDrop drag (`input_dispatch::fill_drag`) can deliver its
-    /// button-initiated drop through the same screen→image conversion + `on_canvas_pointer` path.
+    /// Painter-active + selected sprite → one [`CanvasPointer`] in image px. Returns the tool's
+    /// `consumed`, or `false` when not delivered (not the painter / no selection / Down outside).
     pub(crate) fn deliver_canvas_pointer(
         &mut self,
         px: f32,
@@ -345,9 +265,8 @@ impl App {
         self.deliver_canvas_pointer_colordrop(px, py, pressure, phase, None)
     }
 
-    /// [`Self::deliver_canvas_pointer`] for the C&F drag: `colordrop` = the mode the ColorDrop returns to.
-    /// Fill begins only once a Down lands inside the footprint — a drag that never reaches the sprite
-    /// leaves no mode switch behind (and none in a macro being recorded, W11).
+    /// [`Self::deliver_canvas_pointer`] for the C&F drag (`colordrop` = the mode to return to); Fill
+    /// begins only once a Down lands inside the footprint.
     pub(crate) fn deliver_canvas_pointer_colordrop(
         &mut self,
         px: f32,
@@ -356,9 +275,7 @@ impl App {
         phase: PointerPhase,
         colordrop: Option<&str>,
     ) -> bool {
-        // Read Alt before the `gfx` borrow — the Line method constrains to 45° while it's held
-        // (Blender Alt-drag). The frozen `CanvasPointer` carries no modifiers, so it's forwarded
-        // out-of-band via `PainterTool::set_line_constrain` just before delivery.
+        // Modifiers read before the `gfx` borrow; forwarded out-of-band (`CanvasPointer` has none).
         let alt = self.modifiers.alt_key();
         let shift = self.modifiers.shift_key();
         let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
@@ -379,9 +296,7 @@ impl App {
         let Some(bits) = hero.gizmo.selection else {
             return false;
         };
-        // Sprite on-screen footprint (mirrors bgremoval_preview.rs / protect_brush).
-        // ⚠️ **Pose de MUNDO, e é ESTE o sítio do bug:** aqui decide-se se o ponteiro caiu sobre
-        // o sprite, e com a pose local uma sprite FILHA recusa toda pincelada.
+        // Pose de MUNDO: com a local, uma sprite FILHA recusaria toda pincelada.
         let entity = ph2d_ecs::Entity::from_bits(bits);
         let (Some(tr), Some(sprite)) = (
             ph2d_ecs::world_transform(gfx.sim.world(), entity),
@@ -392,9 +307,7 @@ impl App {
         // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
         let sprite_grid = gfx.sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
         let window_size = gfx.scene_window();
-        // ⭐⭐⭐ **A ARTE DOBRADA MANDA NO PONTEIRO** — o afim abaixo é o do QUAD DE REPOUSO e não
-        // sabe o que é uma malha. A lei (e o porquê) vive na [`ph2d_render::mesh_uv`]; `Quad` deixa
-        // o caminho de sempre INTOCADO, que é o que mantém a grelha da folha e o *Repeat Image*.
+        // A arte dobrada manda no ponteiro (lei em `ph2d_render::mesh_uv`); `Quad` = o afim de sempre.
         let world = gfx.camera.screen_to_world((px, py), window_size);
         let Some(tool) = gfx.tools.active_mut() else {
             return false;
@@ -420,10 +333,7 @@ impl App {
             // Um traço não NASCE sobre o quad de repouso de uma arte que se desenha dobrada.
             return false;
         }
-        // Screen → image-px via the FULL sprite affine (size · scale · rotation · anchor · camera) —
-        // the same geometry the renderer + bgremoval use, so the brush tracks the sprite under any
-        // resize, AR change OR rotation. `u`/`v` is the image fraction, NOT clamped (a Repeat-Image
-        // neighbour tile lands outside `[0, 1]`).
+        // `u`/`v` is the image fraction, NOT clamped (a Repeat-Image neighbour lands outside `[0, 1]`).
         let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
             iw,
             ih,
@@ -434,8 +344,7 @@ impl App {
             window_size,
         );
         let img = affine.inverse() * ph2d_vector::Point::new(f64::from(px), f64::from(py));
-        // ⭐⭐⭐ **E a FORMA do dab também é da malha** — redondo na TEXTURA sai uma lasca no ecrã
-        // onde a arte comprime. A lei vive na `ph2d_painter_brush::canvas_warp`.
+        // A FORMA do dab também é da malha (`ph2d_painter_brush::canvas_warp`).
         painter.set_canvas_warp(warp_da_malha(malha));
         let (u, v) = match malha {
             ph2d_render::MeshUv::Use { u: mu, v: mv, .. } => (mu, mv), // a UV de repouso ALI
@@ -444,16 +353,9 @@ impl App {
                 (img.y / f64::from(ih)) as f32,
             ),
         };
-        // A Down only starts a stroke when inside the footprint (outside clicks fall through to pan /
-        // selection); Move/Up always reach an open stroke so you can paint to and past the edge.
-        // **Repeat Image + Tiling**: the 8 neighbour tiles are paintable too — extend the Down hit
-        // region to the 3×3 grid on each tiled axis. The coordinate is passed UN-wrapped so a stroke
-        // crossing a tile boundary stays continuous; the painter's Tiling dab-wrap maps those off-
-        // canvas dabs back onto the canvas, and the preview re-tiles the painted result.
-        // **Deform Transform live**: the gizmo's corner squares sit EXACTLY on the footprint edge in a
-        // whole-image transform, so most of each square's clickable disc lies OUTSIDE `[0,1]` uv — the
-        // tool grants a grab margin so those Downs reach the DEFORM gizmo instead of falling through to
-        // the sprite gizmo (whose scale handles occupy the same screen corners).
+        // Only a Down is gated by the footprint (Move/Up reach an open stroke past the edge). Repeat +
+        // Tiling extends it to the 3×3 grid (coordinate UN-wrapped); a live Deform grants a grab margin
+        // so its corner squares win over the sprite gizmo.
         let tol = shape_grab_tol_from_affine(&affine);
         painter.set_shape_grab_tol_px(tol);
         let margin_uv = {
@@ -483,15 +385,8 @@ impl App {
             tilt: ph2d_pen::porta::tinta().tilt(),
             phase,
         };
-        // The shape-editor grab radius (`tol`) was already pushed above (before the footprint gate, so the
-        // deform-gizmo margin reads the fresh value). Also refreshed once per frame in
-        // `ph2d_app_painter::painter_bridge_overlays::refresh_shape_grab_tol`, so a zoom with no pointer event
-        // doesn't leave the drawn handles stale.
         super::painter_canvas_mods::forward(painter, shift, ctrl, alt);
-        // Grid snap for drawing-tool points: resolve the pointer to the nearest editor-grid node in WORLD
-        // space (reuses `GridSnapState::snap_world` — all grid kinds + magnetism), map it back to image px,
-        // and forward it. Only when the snap grid is ON; brush painting is unaffected (the tool consumes
-        // this only in shape point-placement paths, never in gizmo / corner-handle drags).
+        // Grid snap (only when ON) for shape point placement: nearest grid node in WORLD → image px.
         let grid_snap = if gfx
             .hero_screen
             .as_ref()
@@ -512,15 +407,10 @@ impl App {
             None
         };
         painter.set_grid_snap(grid_snap);
-        // L0 (plano 26): carimba a chegada deste evento para o `paint_perf` fechar o relógio
-        // `evento → frame`. Aqui, e não antes das guardas: um Down fora da pegada do sprite cai para o
-        // pan/seleção e nunca vira pixel, então cronometrá-lo mediria uma latência que não existe.
+        // Carimbo da chegada DEPOIS das guardas (um Down recusado nunca vira pixel) e o custo da
+        // entrega, que corre fora do `run_render_frame`.
         ph2d_app_painter::paint_perf::stamp_pointer();
-        // …e quanto ele CUSTA. ⚠️ Isto roda no handler de input do winit, FORA do `run_render_frame`
-        // que o `PaintFrameTimer` cronometra — então até aqui carimbar dabs a 4096² não aparecia em
-        // `frame`, nem em `dispatch`, nem em nenhum dos 17 sub-slots do relatório.
         let t0 = ph2d_app_painter::paint_perf::on().then(std::time::Instant::now);
-        // ⚠️ A fase é lida ANTES da chamada: `ev` é movido para dentro dela.
         let phase = ph2d_app_painter::paint_perf::InputPhase::of(ev.phase);
         let consumed = painter.on_canvas_pointer(ev);
         if let Some(t0) = t0 {
@@ -530,23 +420,17 @@ impl App {
         consumed
     }
 
-    /// Enter: commit the in-progress shape (Curve/Circle — bake the painted stroke). Returns `true`
-    /// (consuming the key) iff a shape session was open, so Enter falls through to text fields / other
-    /// handlers otherwise. Mirror of the Falloff-delete shell helper (ADR-0040 §3 downcast).
+    /// Enter: commit the in-progress shape. `true` (consumes) iff a session was open.
     pub(crate) fn painter_shape_commit(&mut self) -> bool {
         let Some(painter) = self.painter_tool_mut() else {
             return false;
         };
-        // A CANETA da seleção fecha com Enter — a mesma tecla que termina toda figura em mãos. Ela vem
-        // ANTES do Offset porque é a sessão MAIS INTERNA: enquanto um caminho está aberto, ele é o que
-        // a mão está fazendo, e um Enter que assasse o offset por baixo dele largaria o caminho vivo
-        // sobre uma seleção que mudou.
+        // A caneta da seleção vem ANTES do Offset: é a sessão mais interna.
         if painter.selection_pen_live() {
             painter.selection_pen_commit();
             return true;
         }
-        // A live Selection Offset (grow/shrink or Apply & Keep rings) takes Enter as its **Apply** — bake the
-        // current (possibly ringed) selection + leave offset mode, mirroring the stroke editor's Enter = Apply.
+        // A live Selection Offset takes Enter as its Apply.
         if painter.selection_offset_engaged() {
             painter.selection_offset_apply();
             return true;
@@ -554,10 +438,7 @@ impl App {
         painter.commit_open_shape()
     }
 
-    /// Secondary (right-click) Down while a Line polyline is still being drawn: END point-creation and
-    /// enter the editing phase (Blender/CAD convention — right-click finishes the chain). Returns `true`
-    /// (consuming, so no context menu opens) iff it ended an in-progress Line. No-op otherwise, so a
-    /// right-click falls through to the context menu when there's no open Line.
+    /// Right-click while a Line is being drawn ends point creation; `true` (no context menu) iff it did.
     pub(crate) fn painter_line_finish_points(&mut self) -> bool {
         let Some(painter) = self.painter_tool_mut() else {
             return false;
@@ -571,8 +452,7 @@ impl App {
         let Some(painter) = self.painter_tool_mut() else {
             return false;
         };
-        // A caneta descarta com Esc — e devolve a seleção ao que era antes dela, sem gastar undo (nada
-        // foi commitado). Precede o cancel de figura pela mesma razão do Enter: é a sessão mais interna.
+        // A caneta (sessão mais interna) descarta primeiro, sem gastar undo.
         if painter.selection_pen_cancel() {
             return true;
         }

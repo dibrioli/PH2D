@@ -148,7 +148,10 @@ fn a_primeira_marca_do_wet_refaz_a_imagem_inteira() {
     let _ = t.current_preview();
     assert!(t.composited.is_some(), "a régua precisa do cache cheio");
     desce(&mut t);
-    assert!(t.composited.is_none(), "a 1.ª marca do Wet não derrubou o cache");
+    assert!(
+        t.composited.is_none(),
+        "a 1.ª marca do Wet não derrubou o cache"
+    );
     solta(&mut t);
     let _ = t.current_preview();
     assert!(t.composited.is_some(), "a régua precisa do cache cheio");
@@ -222,7 +225,10 @@ fn o_tooth_do_digital_age_com_um_grain_escolhido() {
     t.abre_a_sprite(vec![255u8; (N * N * 4) as usize], N, N);
     t.set_substrate_depth(1.0);
     t.set_brush_texture_kind(ph2d_painter_brush::TextureKind::Noise as u8);
-    assert!(t.paint.brush.texture.is_active(), "a régua precisa do Grain");
+    assert!(
+        t.paint.brush.texture.is_active(),
+        "a régua precisa do Grain"
+    );
     assert!(t.papel_pode_morder(), "a régua precisa do papel a morder");
     assert!(
         !t.inercias().inerte(Dependente::ToothDoDigital),

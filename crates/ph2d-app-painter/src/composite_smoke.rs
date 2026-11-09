@@ -216,6 +216,7 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
         _ => {}
     }
     // A foto da prévia de um pincel de fábrica (08/11, os esbatedores): `PH2D_COMPOSITE_PRESET=<nome>`.
+    #[cfg(feature = "panel-painter-layers")]
     if let Ok(nome) = std::env::var("PH2D_COMPOSITE_PRESET") {
         let raiz =
             std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");

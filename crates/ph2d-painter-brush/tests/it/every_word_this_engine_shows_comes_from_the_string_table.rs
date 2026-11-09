@@ -17,7 +17,28 @@ const PREFIX: &str = "paint_brush.";
 const TABLE: &str = "crates/ph2d-i18n/src/paint_engines.rs";
 
 /// ⭐ As excepções, **com o mecanismo**.
-const NOT_LANGUAGE: &[Excecao] = &[];
+const NOT_LANGUAGE: &[Excecao] = &[
+    (
+        "mistura_opaca.rs",
+        "Off",
+        "o NOME GRAVADO no JSON do pincel (`nome`/`do_nome`), igual em toda língua; o painel pinta `tr(…)`",
+    ),
+    (
+        "mistura_opaca.rs",
+        "WetBlend",
+        "o NOME GRAVADO no JSON do pincel (`nome`/`do_nome`), igual em toda língua; o painel pinta `tr(…)`",
+    ),
+    (
+        "mistura_opaca.rs",
+        "ThisLayer",
+        "o NOME GRAVADO no JSON do pincel (`nome`/`do_nome`), igual em toda língua; o painel pinta `tr(…)`",
+    ),
+    (
+        "mistura_opaca.rs",
+        "AllVisibleLayers",
+        "o NOME GRAVADO no JSON do pincel (`nome`/`do_nome`), igual em toda língua; o painel pinta `tr(…)`",
+    ),
+];
 
 #[test]
 fn every_word_this_engine_shows_comes_from_the_string_table() {

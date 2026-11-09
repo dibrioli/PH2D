@@ -420,8 +420,8 @@ impl PainterTool {
                         color: d.color,
                         ..branco
                     },
-                    shape_basis: sb.clone(),
-                    grain_basis: basis.clone(),
+                    shape_basis: *sb,
+                    grain_basis: basis,
                     colors,
                     color_shift: d.color_shift,
                     coverage: 1.0,

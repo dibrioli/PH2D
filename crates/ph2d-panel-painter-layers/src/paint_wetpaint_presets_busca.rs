@@ -93,7 +93,7 @@ pub(crate) fn passo(
         None if p < 0 => n + p,
         None => (p - 1).max(0),
     };
-    Some(vivas[i.clamp(0, n - 1) as usize])
+    Some(vivas[i.clamp(0, n - 1) as usize]) // CLAMP-OK: n ≥ 1 (lista não vazia verificada acima)
 }
 
 /// A busca escrita no campo agora.

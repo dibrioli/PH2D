@@ -380,8 +380,8 @@ fn same_as_paper_nunca_muda_o_paper() {
                 }
             }
         }
-        let (sem, _) = ensaio(meio, &[none.clone()], &Gesto::Nenhum);
-        let (com, _) = ensaio(meio, &[none.clone()], &caixa);
+        let (sem, _) = ensaio(meio, std::slice::from_ref(&none), &Gesto::Nenhum);
+        let (com, _) = ensaio(meio, std::slice::from_ref(&none), &caixa);
         let n = diferenca(&sem, &com).0;
         assert_eq!(
             n, 0,

@@ -416,6 +416,30 @@ pub fn remap_instance_of(
     hits
 }
 
+/// ⭐⭐ **A cadeia que uma edição de arte percorre**: a entidade tocada e, enquanto a peça tem [`LinkedArt`] (o
+/// `Alt+D`, Enio 2026-08-27), a peça do MESTRE de que nasceu, e assim por diante. Sem a marca, editar uma cópia é
+/// edição DELA (o sync captura um override, que é o que *Instantiate* promete). Escrever no mestre não é override:
+/// o passe seguinte leva os bytes a todas as instâncias e a editada já os tem (`want == have`). Para uma cópia ligada
+/// diferente: *Detach from Master*. Leitores: os píxeis da folha 0 (`texture_rebind`) e as folhas extra
+/// (`ph2d-anim-sheets::shown_edit`). A guarda contra laço é «sem entidade repetida», não um tecto de saltos.
+pub fn linked_art_chain(world: &mut World, entity: Entity) -> Vec<Entity> {
+    let by_id: BTreeMap<u64, Entity> = {
+        let mut q = world.query::<(Entity, &StableId)>();
+        q.iter(world).map(|(e, s)| (s.0, e)).collect()
+    };
+    let mut out = vec![entity];
+    let mut cur = entity;
+    while world.get::<LinkedArt>(cur).is_some()
+        && let Some(link) = world.get::<InstanceOf>(cur).copied()
+        && let Some(&up) = by_id.get(&link.master)
+        && !out.contains(&up)
+    {
+        out.push(up);
+        cur = up;
+    }
+    out
+}
+
 #[cfg(test)]
 #[path = "instantiate_tests.rs"]
 mod tests;

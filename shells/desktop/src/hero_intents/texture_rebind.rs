@@ -74,70 +74,9 @@ pub(crate) fn rebind_to_individual(
     }
 }
 
-/// ⭐⭐ **A cadeia que uma edição de pixels percorre**: a entidade tocada, e — se ela é peça de uma
-/// **instância** — a peça do MESTRE de que nasceu, e assim por diante.
-///
-/// # ⭐⭐⭐ A subida é do modo LIGADO, e só dele (Enio, 2026-08-27)
-///
-/// > *«No modelo Blender há os dois modos: Duplicate e Duplicate Linked.»*
-///
-/// A cadeia só sobe enquanto a peça tem [`ph2d_ecs::LinkedArt`] — o `Alt+D`. Sem a marca, pintar
-/// uma cópia é uma edição **dela**, o passe de sync lê *«só a instância mexeu»* e captura um
-/// override, que é o que *Instantiate* promete.
-///
-/// # ⚠️ Das duas razões originais, uma MORREU e ninguém reconferiu a nota
-///
-/// Este bloco dizia (F4.5) que a subida valia para **toda** cópia, por duas razões:
-///
-/// 1. **Uma imagem é um ASSET, não uma propriedade** — em todo motor 2D pintar a textura muda quem
-///    a usa. ⭐ Continua verdade, e é exactamente o que **dividir a arte** quer dizer: virou o modo,
-///    em vez de ser uma lei do app.
-/// 2. ⛔ **«A receita está ESCONDIDA, então pintá-la não é alcançável por gesto nenhum»** — era
-///    verdade na F4.5 e **deixou de o ser na F4.6**: escolher a linha da receita põe-na na tela
-///    (`MasterEditing`), e o artista pinta-a directamente. *Quem move o número que tornava algo
-///    inalcançável tem de reconferir a nota.*
-///
-/// ⛔⛔ E enquanto valia para todas, ela era **metade de uma incoerência**: a tinta de uma cópia
-/// subia e a **geometria vetorial da mesma cópia** não (`instance_sync_docs` capturava override),
-/// sem nada na tela a explicar a diferença. Hoje as duas leem a mesma marca.
-///
-/// ⚠️ **Não é um override, e é por construção:** ao escrever no mestre o passe seguinte lê *«o
-/// mestre mexeu-se»* e leva os bytes a **todas** as instâncias; a que foi pintada já os tem, logo
-/// `want == have` e ela não é reescrita. O ponto fixo do sync fica intacto.
-///
-/// ⛔ **A FRONTEIRA, nomeada:** para pintar UMA cópia ligada diferente das outras, *Detach from
-/// Master* primeiro — ou tê-la criado com *Instantiate* em vez de *Instantiate Linked*.
-///
-/// ⚠️ **Sem entidade repetida**, e a guarda não é um tecto numérico: um elo corrompido que
-/// apontasse para trás daria um laço infinito dentro de um commit de ferramenta, e um número
-/// máximo de saltos transformaria isso numa contagem que ninguém sabe explicar.
+/// A cadeia da arte LIGADA: [`ph2d_ecs::linked_art_chain`] (a lei e o porquê moram lá).
 fn write_through_targets(sim: &mut SimWorld, entity: Entity) -> Vec<Entity> {
-    let by_id: std::collections::BTreeMap<u64, Entity> = {
-        let mut q = sim.world_mut().query::<(Entity, &ph2d_ecs::StableId)>();
-        q.iter(sim.world()).map(|(e, s)| (s.0, e)).collect()
-    };
-    let mut out = vec![entity];
-    let mut cur = entity;
-    // ⭐⭐⭐ **A subida é do modo LIGADO, e só dele** (Enio, 2026-08-27).
-    //
-    // ⚠️ Uma das duas razões desta subida MORREU e ninguém reconferiu a nota: *«a receita está
-    // escondida, então pintá-la não é alcançável por gesto nenhum»* era verdade na F4.5 e deixou
-    // de o ser na F4.6 — hoje escolher a linha da receita põe-na na tela, e o artista pinta-a
-    // directamente. Sobra a razão 1 (*uma imagem é um asset*), e ela não é uma lei do app: é o que
-    // uma cópia **LIGADA** quer dizer. *Quem move o número que tornava algo inalcançável tem de
-    // reconferir a nota.*
-    //
-    // ⛔ Sem a marca, a subida punha a tinta de UMA cópia em TODAS — e a geometria vetorial da
-    // mesma cópia fazia o contrário, no mesmo objeto, sem nada na tela a explicar a diferença.
-    while sim.world().get::<ph2d_ecs::LinkedArt>(cur).is_some()
-        && let Some(link) = sim.world().get::<ph2d_ecs::InstanceOf>(cur).copied()
-        && let Some(&up) = by_id.get(&link.master)
-        && !out.contains(&up)
-    {
-        out.push(up);
-        cur = up;
-    }
-    out
+    ph2d_ecs::linked_art_chain(sim.world_mut(), entity)
 }
 
 /// As invariantes de re-alojamento aplicadas a UMA entidade — o corpo de sempre.

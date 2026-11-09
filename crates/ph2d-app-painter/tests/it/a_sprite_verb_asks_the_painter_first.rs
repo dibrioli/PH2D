@@ -92,10 +92,7 @@ fn merge_leva_a_tinta_das_fontes() {
 #[test]
 fn o_pivo_ao_conteudo_ve_a_tinta() {
     // O comportamento: `painter_bridge_por_assar_tests::o_pivo_ao_conteudo_encaixa_na_tinta_por_assar`.
-    tem(
-        "input_dispatch/gizmo_drag.rs",
-        "por.centro_do_conteudo(drag.entity_bits",
-    );
+    tem("input_dispatch/gizmo_drag.rs", "por.ou(drag.entity_bits");
 }
 
 #[test]

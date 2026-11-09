@@ -187,33 +187,26 @@ impl App {
     /// MovePivot drag, or `None` if the source can't be read or the
     /// sprite is fully transparent.
     ///
-    /// Reads the sprite source via the arch-gated `read_sprite_source`
-    /// chokepoint (one GPU readback for an Individual texture — done once
-    /// per drag, cached by the caller), scans the alpha channel for the
-    /// opaque bounds, then maps the bbox center (texture px) through the
-    /// quad's frame to world: `quad_center + R·((u-0.5)·size·scale,
-    /// −(v-0.5)·size·scale)`, where `quad_center = drag.pivot_world` and
+    /// Reads the VISIBLE sheet via `read_shown_source` (one GPU readback for an
+    /// Individual texture — done once per drag, cached by the caller); the
+    /// local bbox center is `ph2d_sprite_edit::pivot::centro_do_desenho`, mapped
+    /// to world as `quad_center + R·(local·scale)`, where `quad_center = drag.pivot_world` and
     /// `R`/`scale` are the WORLD pose (pai·local, sem skew — o skew entra no
-    /// `ramo_gizmo_mover_pivo`). The Y term is negated because image rows run
-    /// top-down while world Y is up.
+    /// `ramo_gizmo_mover_pivo`).
     fn compute_pivot_content_center(
         &mut self,
         drag: &ph2d_editor_core::GizmoDragState,
     ) -> Option<[f32; 2]> {
         let gfx = self.gfx.as_mut()?;
         let entity = ph2d_ecs::Entity::from_bits(drag.entity_bits);
-        let size = gfx
-            .sim
-            .world()
-            .get::<ph2d_render::Sprite>(entity)
-            .map(|s| s.size)?;
         // PRECISION-READONLY: MEDIÇÃO pura — só o canal alfa entra, e só para achar a caixa
         // opaca a que a âncora encaixa. Nenhum pixel volta para a sprite, por isso os 8 bits que
-        // o `read_sprite_source` devolve não custam precisão nenhuma a ninguém.
-        // A tinta por assar de uma sprite a ser pintada também é conteúdo (#53).
+        // o `read_shown_source` devolve não custam precisão nenhuma a ninguém.
+        // A tinta por assar de uma sprite a ser pintada também é conteúdo (#53). A folha lida é
+        // a VISÍVEL, a do Pivot editado (doc 27 §3 item 1).
         let por = ph2d_app_painter::painter_bridge_queries::por_assar(&mut gfx.tools);
-        let [u, v] = por.centro_do_conteudo(drag.entity_bits, || {
-            crate::hero_intents::texture_edit::read_sprite_source(
+        let img = por.ou(drag.entity_bits, || {
+            crate::hero_intents::texture_edit::read_shown_source(
                 entity,
                 &gfx.sim,
                 &mut gfx.renderer,
@@ -222,10 +215,11 @@ impl App {
             )
             .map(|s| s.image)
         })?;
+        let [cx, cy] = ph2d_sprite_edit::pivot::centro_do_desenho(gfx.sim.world(), entity, &img)?;
         let mundo = ph2d_editor_core::compose_snapshot(drag.parent_world, drag.start_transform);
         let scale = mundo.scale;
-        let local_x = u * size[0] * scale[0];
-        let local_y = -v * size[1] * scale[1];
+        let local_x = cx * scale[0];
+        let local_y = cy * scale[1];
         // T1.3.5 cross-OS bit-identical.
         let (sin_r, cos_r) = libm::sincosf(mundo.rotation);
         let qc = drag.pivot_world;

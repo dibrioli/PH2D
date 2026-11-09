@@ -233,7 +233,7 @@ pub use graveyard::{GRAVEYARD_DEPTH, Graveyard};
 pub use image_use_memory::{ImageRegion, ImageUseLook, ImageUseMemory, ImageUseState, RegionLook};
 pub use instantiate::{
     DeepCopy, InstanceOf, LinkedArt, ObjectInstance, OrphanOverride, OverrideKey,
-    deep_copy_subtree, deep_copy_subtree_many, remap_instance_of,
+    deep_copy_subtree, deep_copy_subtree_many, linked_art_chain, remap_instance_of,
 };
 pub use lifetime::{
     Death, DeathCause, DestroyOutside, Lifetime, LifetimeRuntime, RunOnCopy, Spawned, is_transient,

@@ -44,8 +44,32 @@ pub fn read_extra(world: &World, e: Entity, db: &AssetDb) -> Option<ExtraRead> {
 
 /// ⭐ **Põe o resultado do verbo na folha `sheet` de `e`**: a folha passa à imagem `asset` (já na biblioteca e na
 /// placa: quem chama sobe-a antes, para uma falha não deixar a folha trocada) e `whole`, o tamanho que o verbo deu à
-/// imagem inteira, volta a ser o de uma célula. `false` se a folha não existe.
+/// imagem inteira, volta a ser o de uma célula. Com arte LIGADA sobe ao mestre ([`ph2d_ecs::linked_art_chain`]), como
+/// os píxeis da folha 0. `false` se a folha não existe em `e`.
 pub fn set_image(world: &mut World, e: Entity, sheet: u8, asset: AssetId, whole: [f32; 2]) -> bool {
+    let set = |s: &mut ph2d_ecs::ExtraSheet| {
+        s.asset = asset;
+        s.size = [
+            whole[0] / s.hframes.max(1) as f32,
+            whole[1] / s.vframes.max(1) as f32,
+        ];
+    };
+    if !edit_sheet(world, e, sheet, set) {
+        return false;
+    }
+    for x in ph2d_ecs::linked_art_chain(world, e).into_iter().skip(1) {
+        edit_sheet(world, x, sheet, set);
+    }
+    true
+}
+
+/// Edita a folha `sheet ≥ 1` de `e`; `false` se não existe.
+fn edit_sheet(
+    world: &mut World,
+    e: Entity,
+    sheet: u8,
+    f: impl FnOnce(&mut ph2d_ecs::ExtraSheet),
+) -> bool {
     let Some(mut sheets) = world.get::<SpriteSheets>(e).cloned() else {
         return false;
     };
@@ -55,11 +79,7 @@ pub fn set_image(world: &mut World, e: Entity, sheet: u8, asset: AssetId, whole:
     else {
         return false;
     };
-    x.asset = asset;
-    x.size = [
-        whole[0] / x.hframes.max(1) as f32,
-        whole[1] / x.vframes.max(1) as f32,
-    ];
+    f(x);
     world.entity_mut(e).insert(sheets);
     true
 }
@@ -86,21 +106,13 @@ pub fn place(
         }
         return;
     }
-    let Some(mut sheets) = world.get::<SpriteSheets>(e).cloned() else {
-        return;
-    };
-    let Some(x) = usize::from(sheet)
-        .checked_sub(1)
-        .and_then(|i| sheets.0.get_mut(i))
-    else {
-        return;
-    };
-    let base = new_anchor.unwrap_or(x.anchor);
-    x.anchor = [
-        base[0] + new_t[0] - old_t[0],
-        base[1] + new_t[1] - old_t[1],
-    ];
-    world.entity_mut(e).insert(sheets);
+    // O Pivot da folha é arte: sobe com ela (a folha 0 não, o `Transform` é do objeto).
+    for x in ph2d_ecs::linked_art_chain(world, e) {
+        edit_sheet(world, x, sheet, |s| {
+            let base = new_anchor.unwrap_or(s.anchor);
+            s.anchor = [base[0] + new_t[0] - old_t[0], base[1] + new_t[1] - old_t[1]];
+        });
+    }
 }
 
 #[cfg(test)]

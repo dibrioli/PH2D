@@ -153,3 +153,41 @@ fn a_folha_visivel_que_saiu_cai_na_primeira() {
     w.entity_mut(e).remove::<SpriteSheets>();
     assert_eq!(ph2d_ecs::shown_sheet(&w, e), 0);
 }
+
+/// A imagem inteira da folha 1, como o `read_shown_source` da shell a lê.
+fn imagem_da_folha_1(w: &World, e: Entity, db: &AssetDb) -> ph2d_render::SpriteImage {
+    let s = w.get::<SpriteSheets>(e).unwrap().0[0];
+    let asset = db.get(&s.asset).unwrap();
+    let (lw, lh, px) = asset.image_rgba8().unwrap();
+    ph2d_render::SpriteImage::from_bytes(lw, lh, px.into_owned(), ph2d_render::AlphaMode::Straight)
+}
+
+/// ⭐ O encaixe do Pivot ao desenho (CTRL) com a folha 1 à vista mede o desenho DELA no quad DELA (3 × 3), e numa
+/// folha com várias células, a união das células sobre UMA célula (a lei do Pivot de 9 pontos).
+///
+/// *Mutações: o tamanho do `Sprite` (a folha 0, 2 × 2) ⇒ −0,5 e reprova; a imagem inteira como se fosse uma célula
+/// ⇒ o centro em x de 16 px e reprova.*
+#[test]
+fn o_encaixe_do_pivot_mede_a_folha_visivel() {
+    let db = AssetDb::default();
+    let (mut w, e, _) = duas_folhas(&db);
+    let img = imagem_da_folha_1(&w, e, &db);
+    // O desenho em u 0,25..0,75, v 0,5..1 de um quad 3 × 3: o centro dele = (0, −0,75) desde o centro do quad.
+    assert_eq!(centro_do_desenho(&w, e, &img), Some([0.0, -0.75]));
+    // Duas células de 8 × 8: o boneco em x 2..6 na primeira e 1..5 na segunda ⇒ a união 1..6 da célula.
+    let mut px = vec![0_u8; 16 * 8 * 4];
+    for y in 4..8 {
+        for x in (2..6).chain(9..13) {
+            px[(y * 16 + x) * 4 + 3] = 255;
+        }
+    }
+    let mut sheets = w.get::<SpriteSheets>(e).unwrap().clone();
+    sheets.0[0].asset = db.insert_image_rgba8(16, 8, px);
+    sheets.0[0].hframes = 2;
+    w.entity_mut(e).insert(sheets);
+    let img = imagem_da_folha_1(&w, e, &db);
+    assert_eq!(centro_do_desenho(&w, e, &img), Some([-0.1875, -0.75]));
+    // A folha 0 à vista: a lei de sempre (o quad do `Sprite`, 2 × 2, sobre a imagem lida: x 2..13 de 16).
+    w.entity_mut(e).insert(ShownSheet(0));
+    assert_eq!(centro_do_desenho(&w, e, &img), Some([-0.0625, -0.5]));
+}

@@ -312,6 +312,30 @@ pub fn espelha_no_lugar(world: &mut World, e: Entity, ppm: f32, eixo: usize) -> 
     true
 }
 
+/// ⭐ **O centro do desenho para o encaixe do Pivot** (CTRL no arrasto), em metros locais desde o centro do quad da
+/// folha cujo Pivot se edita (a visível, [`sprite_do_pivot`]). `img` = a imagem INTEIRA dessa folha. Folha `k ≥ 1`: a
+/// união das células sobre o quad de UMA célula, como o Pivot de 9 pontos. Folha `0`: a lei de sempre. `None` = toda
+/// transparente.
+#[must_use]
+pub fn centro_do_desenho(
+    world: &World,
+    e: Entity,
+    img: &ph2d_render::SpriteImage,
+) -> Option<[f32; 2]> {
+    let (k, s) = sprite_do_pivot(world, e)?;
+    let janela = [0, 0, img.width, img.height];
+    let extra = world.get::<SpriteSheets>(e).and_then(|x| x.sheet(k));
+    if let Some(x) = extra.filter(|_| k > 0) {
+        let grade = [x.hframes.max(1), x.vframes.max(1)];
+        let f = fracao_opaca(&img.pixels, img.width, janela, grade)?;
+        return Some(ponto_local(&s, f, [1, 1]));
+    }
+    let f = fracao_opaca(&img.pixels, img.width, janela, [1, 1])?;
+    let u = (f[0] + f[2]) * 0.5 - 0.5;
+    let v = (f[1] + f[3]) * 0.5 - 0.5;
+    Some([u * s.size[0], -v * s.size[1]])
+}
+
 /// ⭐ O campo Pivot do cartão Look. `false` se nada mudou.
 pub fn set_pivot(
     world: &mut World,

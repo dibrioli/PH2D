@@ -254,6 +254,8 @@ pub const DESCS: &[D] = &[
         ("elapsed_ticks", Hidden::Runtime),
         ("pingpong_reverse", Hidden::Runtime),
         ("repeat_count", Hidden::Runtime),
+        // «Starts with» (GEF 24/26): a linha própria do cartão Animated Sprite, escolhida da lista.
+        ("start", Hidden::OwnSection),
     ]),
     // ⭐ Os TRÊS do corte (ADR-0164 F1 passo 6 / ADR-0166) — `Authored` e `O::IMAGE`: é a
     // paleta do F3 que os anexa, e só a um objeto-imagem. A ausência de cada um é o default
@@ -278,7 +280,9 @@ pub const DESCS: &[D] = &[
         SPRITE_GRID,
     )
     .coded("sprite_grid")
-    .row_of("ph2d::render::Sprite"),
+    .row_of("ph2d::render::Sprite")
+    // A folha do quadro na tela (GEF 26): o tocador escreve-a pelo `FrameRef`; o cartão não a mostra.
+    .hiding(&[("sheet", Hidden::Runtime)]),
     // Os pixels editados desta sprite (`project_sprite_pixels.rs`): identidade de CONTEÚDO,
     // posta pelo funil de commit das oito ferramentas de imagem. O artista não a anexa.
     D::machinery(

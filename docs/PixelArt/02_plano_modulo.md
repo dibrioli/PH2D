@@ -182,10 +182,12 @@ Tiles**, Space+Tab, Export Tileset · além do Aseprite: **autotile 47** (MVP W8
 real — o MVP deixou isto PARCIAL) e grelhas **iso/hex** (como o Pixelorama). **Smoke 11.**
 
 ### P11 — Slices (estudo §3)
+**Estado: feita, smoke do dono OK (08/11, cena 24); entregue em [handoffs/HANDOFF_INTEGRACAO_line_PixelArt_2026-11-08_P11_P12.md](handoffs/HANDOFF_INTEGRACAO_line_PixelArt_2026-11-08_P11_P12.md).**
 Slice tool, **9-slice** e **pivot** arrastáveis (pedido da comunidade), keys por frame, export em
 `meta.slices`/`--split-slices`. **Smoke 12.**
 
 ### P12 — Ergonomia (estudo §6)
+**Estado: feita, smokes 1–3 do dono OK (08/11, cena 25); entregue em [handoffs/HANDOFF_INTEGRACAO_line_PixelArt_2026-11-08_P11_P12.md](handoffs/HANDOFF_INTEGRACAO_line_PixelArt_2026-11-08_P11_P12.md).**
 Atalhos por omissão **iguais aos do Aseprite** (e editáveis), Run Command, Undo History, autosave
 e recuperação, user data/propriedades, preferências do módulo (grade, onion, xadrez). **Smoke 13.**
 ⛔ Exceção do dono (07/11): o balde é `P` e o Gradient `Shift+P`, nunca o `G` do Aseprite; o `G` é da

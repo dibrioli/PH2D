@@ -28,3 +28,11 @@ pub(super) struct UniformePreenche {
     pub(super) fina: u32,
     pub(super) _p: [u32; 3],
 }
+
+impl super::C3 {
+    /// Os grupos 8×8 da REGIÃO da fina deste quadro (o despacho da fina de `F` e o da de `M`).
+    pub(in crate::solver) fn grupos_da_fina(&self) -> [u32; 2] {
+        let (a, b) = (self.u.inicio, self.u.fim);
+        [(b[0] - a[0]).div_ceil(8), (b[1] - a[1]).div_ceil(8)]
+    }
+}

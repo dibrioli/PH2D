@@ -219,11 +219,12 @@ impl Momento {
         p.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
         let fina = if distantes { &self.fina[1] } else { &None };
         let fina = fina.as_ref().or(self.fina[0].as_ref()).expect("a fina");
-        let gf = s.cfg.grade_da_fluencia();
+        // Só a região da fina de `F` (o `c3_momento` desloca por `fina.inicio`, como a `c3_fina`).
+        let [gx, gy] = s.c3.grupos_da_fina();
         p.set_pipeline(fina);
         p.set_bind_group(0, &s.c3.cena, &[]);
         p.set_bind_group(2, &self.fina_grupo, &[]);
-        p.dispatch_workgroups(gf.largura.div_ceil(8), gf.altura.div_ceil(8), 1);
+        p.dispatch_workgroups(gx, gy, 1);
     }
 
     /// `[Mx, My]` na grade da fluência.

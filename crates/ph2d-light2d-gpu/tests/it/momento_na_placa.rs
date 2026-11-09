@@ -170,3 +170,51 @@ fn sem_normal_nao_aloca_o_momento() {
     assert!(b.m.is_some() && b.bytes > 0);
     assert!(a.f == b.f, "o momento mexeu no F");
 }
+
+/// ⭐ P14c-placa 4 — JUNTO A UM OPACO, só com o céu (toda a luz é a c0): o `M` dos texels de fora a ≤ 4 texels
+/// da parede contra o gabarito. Prende a c0 de `M` onde metade das direções está tapada.
+#[test]
+fn junto_ao_opaco_o_momento_e_o_do_gabarito() {
+    let Some(gpu) = gpu() else { return };
+    let (x0, x1, y0, y1) = (2.5_f64, 2.8, 1.5, 3.6);
+    // Só o céu: junto à parede toda a luz é a c0 (sem lâmpada direta), e o `M` aponta para longe dela.
+    let cena = CenaDeLuz {
+        oclusores: vec![oclusor(
+            vec![
+                [x0 as f32, y0 as f32],
+                [x1 as f32, y0 as f32],
+                [x1 as f32, y1 as f32],
+                [x0 as f32, y1 as f32],
+            ],
+            1.0,
+        )],
+        ceu: [0.5, 0.5, 0.6],
+        com_normal: true,
+        ..Default::default()
+    };
+    let l = rodar(&gpu, &cena);
+    let gab = Gabarito::novo(&cena);
+    let g = l.g;
+    let colado = |k: usize| {
+        let p = g.centro(k as u32 % g.largura, k as u32 / g.largura);
+        let dx = (x0 - p[0]).max(p[0] - x1).max(0.0);
+        let dy = (y0 - p[1]).max(p[1] - y1).max(0.0);
+        let d = dx.hypot(dy);
+        d > 0.0 && d <= 4.0 * g.texel_m
+    };
+    let mut pior = 0.0_f64;
+    for n in [[0.0, 0.0], [1.0, 0.0], [-1.0, 0.0], [0.0, 1.0], [0.0, -1.0]] {
+        let r = gabarito_por(&g, |p| gab.luz_em_n(p, n));
+        let e = rmse_rel(&l.luz_em_n(n), &r, colado);
+        eprintln!("junto ao opaco, n = {n:?}: rmse relativo {e:.4}");
+        pior = pior.max(e);
+    }
+    assert!(
+        pior <= TETO_JUNTO,
+        "junto ao opaco: placa × gabarito {pior:.4} > {TETO_JUNTO}"
+    );
+}
+
+/// O MEDIDO + folga (09/11, RADV, rmse relativo): `n = 0` 0,0489 · `(1, 0)` 0,0616 · `(−1, 0)` 0,0877 ·
+/// `(0, 1)` 0,0554 · `(0, −1)` 0,0629. Visto vermelho sem a c0 de `Mx` (0,4123 · 0,5276).
+const TETO_JUNTO: f64 = 0.10;

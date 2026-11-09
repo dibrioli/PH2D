@@ -353,7 +353,9 @@ pub(crate) fn build(
     // Enio — *«uma sprite que foi deletada do canvas não consegui deletar do painel»*.
     // ⭐ O que o projecto trouxe está na biblioteca mesmo sem ninguém a usar (a fábrica, uma imagem
     // importada cuja sprite se apagou) — é o que o seletor oferece (plano GEF 12, o *Project* da Unity).
-    for id in atlas_assets.values() {
+    // E as normais em uso (P14e): a do import nasce fora do átlas.
+    let normais = ph2d_sprite_edit::normais::em_uso();
+    for id in atlas_assets.values().chain(&normais) {
         if !live.contains(id) && !remembered.is_forgotten(id) {
             remembered.remember(
                 *id,

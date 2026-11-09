@@ -2,7 +2,7 @@
 //! `imagem de cor → imagem normal`, por conteúdo (blake3) — como a `CanvasTexture` da Godot e a *secondary texture*
 //! da Unity. Todo sprite que mostra aquela imagem (textura própria ou célula do átlas) acende pela MESMA normal.
 //!
-//! A verdade é UMA: o mapa deste módulo, que viaja no `LibraryDoc` do `ProjectState` (undo e ficheiro, irmão das
+//! A verdade é UMA: o mapa [`ph2d_sprite_edit::normais`] (a biblioteca lê-o para dar nome à normal), que viaja no `LibraryDoc` do `ProjectState` (undo e ficheiro, irmão das
 //! lápides). O `SpriteRenderer` é só a cópia na placa: [`sincronizar`] a refaz a partir daqui.
 
 use ph2d_asset::{AssetDb, AssetId};
@@ -60,8 +60,6 @@ impl PlacaDeNormais for SpriteRenderer {
 
 #[derive(Default)]
 struct Estado {
-    /// A verdade: imagem de cor → imagem normal.
-    mapa: BTreeMap<AssetId, AssetId>,
     /// O que a placa tem agora (para [`sincronizar`] só mexer no que mudou).
     na_placa: BTreeMap<Alvo, AssetId>,
     /// A cerca: o que a placa RECUSOU, até a verdade mudar (nova escolha, undo, abrir) — não se repete a cada quadro.
@@ -75,10 +73,8 @@ thread_local! {
 /// Os pares `(cor, normal)`, ordenados — o que o `LibraryDoc` grava (bytes iguais para o mesmo estado).
 #[must_use]
 pub fn normais() -> Vec<([u8; 32], [u8; 32])> {
-    NORMAIS.with(|n| {
-        n.borrow()
-            .mapa
-            .iter()
+    ph2d_sprite_edit::normais::com(|mapa| {
+        mapa.iter()
             .map(|(c, m)| (*c.as_bytes(), *m.as_bytes()))
             .collect()
     })
@@ -86,10 +82,9 @@ pub fn normais() -> Vec<([u8; 32], [u8; 32])> {
 
 /// A porta de volta (undo, abrir projeto): o conjunto inteiro.
 pub fn set_normais(pares: &[([u8; 32], [u8; 32])]) {
-    NORMAIS.with(|n| {
-        let mut n = n.borrow_mut();
-        n.recusadas.clear();
-        n.mapa = pares
+    NORMAIS.with(|n| n.borrow_mut().recusadas.clear());
+    ph2d_sprite_edit::normais::muda(|mapa| {
+        *mapa = pares
             .iter()
             .map(|(c, m)| (AssetId::from_digest(*c), AssetId::from_digest(*m)))
             .collect();
@@ -99,7 +94,7 @@ pub fn set_normais(pares: &[([u8; 32], [u8; 32])]) {
 /// A normal da imagem `cor`, se tem.
 #[must_use]
 pub fn normal_de(cor: AssetId) -> Option<AssetId> {
-    NORMAIS.with(|n| n.borrow().mapa.get(&cor).copied())
+    ph2d_sprite_edit::normais::com(|mapa| mapa.get(&cor).copied())
 }
 
 thread_local! {
@@ -158,14 +153,10 @@ pub fn escolher_normal(
             return Err(erro("app.sprite_anim.normal_map.other_size"));
         }
     }
-    NORMAIS.with(|n| {
-        let mut n = n.borrow_mut();
-        n.recusadas.clear();
-        let mapa = &mut n.mapa;
-        match normal {
-            Some(m) => mapa.insert(cor, m),
-            None => mapa.remove(&cor),
-        }
+    NORMAIS.with(|n| n.borrow_mut().recusadas.clear());
+    ph2d_sprite_edit::normais::muda(|mapa| match normal {
+        Some(m) => mapa.insert(cor, m),
+        None => mapa.remove(&cor),
     });
     Ok(())
 }
@@ -195,25 +186,23 @@ pub fn aplica_edicao(
 /// Os alvos que a verdade pede: cada célula do átlas e cada textura própria de sprite cuja imagem tem normal.
 #[must_use]
 pub fn alvos(world: &mut World, atlas: &BTreeMap<u32, AssetId>) -> BTreeMap<Alvo, AssetId> {
-    NORMAIS.with(|n| {
-        let mapa = &n.borrow().mapa;
-        let mut out = BTreeMap::new();
-        if mapa.is_empty() {
-            return out;
+    let mapa = ph2d_sprite_edit::normais::com(BTreeMap::clone);
+    let mut out = BTreeMap::new();
+    if mapa.is_empty() {
+        return out;
+    }
+    for (key, cor) in atlas {
+        if let Some(m) = mapa.get(cor) {
+            out.insert(Alvo::Celula(*key), *m);
         }
-        for (key, cor) in atlas {
-            if let Some(m) = mapa.get(cor) {
-                out.insert(Alvo::Celula(*key), *m);
-            }
+    }
+    let mut q = world.query::<(&Sprite, &SpritePixels)>();
+    for (s, p) in q.iter(world) {
+        if let (SpriteSource::Individual { texture_id }, Some(m)) = (s.source, mapa.get(&p.0)) {
+            out.insert(Alvo::Textura(texture_id), *m);
         }
-        let mut q = world.query::<(&Sprite, &SpritePixels)>();
-        for (s, p) in q.iter(world) {
-            if let (SpriteSource::Individual { texture_id }, Some(m)) = (s.source, mapa.get(&p.0)) {
-                out.insert(Alvo::Textura(texture_id), *m);
-            }
-        }
-        out
-    })
+    }
+    out
 }
 
 /// ⭐ **A placa segue a verdade** — uma vez por quadro; só mexe no que mudou (nada a fazer = sem custo).

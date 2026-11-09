@@ -40,3 +40,36 @@ fn a_normal_do_ase_entra_na_imagem_importada() {
         "a normal é a do Pixel"
     );
 }
+
+/// ⭐ P14e: a normal que o import cria entra na biblioteca com o nome `<cor>_n` (o sufixo do `_n.png`), e a linha
+/// **Normal Map** do cartão mostra-o pela MESMA porta da shell (`nome_da_normal` + `session_library`).
+/// *Visto VERMELHO sem `normais::nomeia`: o nome vinha vazio.*
+#[test]
+fn a_normal_importada_tem_nome() {
+    use ph2d_app_sprite_anim::normal_map as nm;
+    nm::set_normais(&[]);
+    let db = ph2d_asset::AssetDb::new();
+    let cor = db.insert_image_rgba8(2, 2, vec![200; 16]);
+    let normal = db.insert_image_rgba8(2, 2, vec![128; 16]);
+    let atlas: std::collections::BTreeMap<u32, ph2d_asset::AssetId> =
+        [(7, cor)].into_iter().collect();
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn((
+            ph2d_render::Sprite::atlas(7, [1.0; 2], [1.0; 4]),
+            ph2d_ecs::Name("heroi".into()),
+        ))
+        .id();
+    let porta: ph2d_sprite_ase_import::EscolherNormal = nm::escolher_normal;
+    porta(sim.world(), &db, &atlas, e, Some(normal)).expect("liga");
+    let n = nm::normal_do_sprite(sim.world(), &atlas, e).expect("o sprite tem normal");
+    let lib = ph2d_app_components::library_names::session_library(&mut sim, &db, &atlas);
+    assert_eq!(lib.get(&cor).map(String::as_str), Some("heroi"));
+    let nome = nm::nome_da_normal(n, || lib.get(&n).cloned().unwrap_or_default());
+    assert_eq!(
+        nome, "heroi_n",
+        "a linha Normal Map mostra o nome da normal"
+    );
+    nm::set_normais(&[]);
+}

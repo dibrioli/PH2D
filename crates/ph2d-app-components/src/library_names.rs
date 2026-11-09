@@ -126,6 +126,7 @@ pub(crate) fn library(
     ph2d_sprite_edit::imagem::herda_o_nome(&mut ids, &live, |id| {
         paths.get(id).and_then(|p| stem(p))
     });
+    ph2d_sprite_edit::normais::nomeia(&mut ids, |id| paths.get(id).and_then(|p| stem(p)));
     unique(&paths, &ids)
 }
 

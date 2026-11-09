@@ -407,3 +407,72 @@ const TETO_DENTRO: f64 = 0.20;
 /// ⭐ A holográfica (09/11, RADV, com as metades do cone 0): 0,0546 · 0,1703 · 0,0678 · 0,0826 · 0,0715 (sem
 /// as metades 0,2137 · 0,0766 · 0,0923 · 0,0800 nos quatro de normal).
 const TETO_DENTRO_HOLO: f64 = 0.19;
+
+/// ⭐ P14c-placa 6 — O CANTO no passe próprio (`Canto::passe_proprio`, a `c3_fina_cantos`): a fina de `F` adia os
+/// texels de duas faces, a de `M` (`c3_momento`) calcula-os em linha com o MESMO código do canto (as constantes
+/// `comuns`, sem `CANTO_ADIA`). ⇒ `M` é o mesmo bit com e sem o passe próprio, e nos texels de dentro junto aos
+/// quatro vértices do corpo o `luz_em_n` com o passe próprio fica no gabarito.
+#[test]
+fn com_o_canto_adiado_o_momento_e_o_do_canto_em_linha() {
+    let Some(gpu) = gpu() else { return };
+    let (x0, x1, y0, y1) = (2.4_f64, 3.2, 1.6, 3.4);
+    let cena = CenaDeLuz {
+        emissores: vec![Emissor::Ponto {
+            centro: [1.2, 2.3],
+            intensidade: [1.0, 0.8, 0.6],
+            alcance_m: 4.0,
+        }],
+        oclusores: vec![oclusor(
+            vec![
+                [x0 as f32, y0 as f32],
+                [x1 as f32, y0 as f32],
+                [x1 as f32, y1 as f32],
+                [x0 as f32, y1 as f32],
+            ],
+            1.0,
+        )],
+        ceu: [0.05, 0.05, 0.08],
+        com_normal: true,
+        ..Default::default()
+    };
+    let gab = Gabarito::novo(&cena);
+    for ((modo, cfg), teto) in modos().into_iter().zip([TETO_CANTO, TETO_CANTO_HOLO]) {
+        // A fina com 2 texels por célula (a visibilidade medida: só com ela o canto se adia).
+        let cfg = Config { fina: 2, ..cfg };
+        let adiado = Config {
+            canto: ph2d_light2d_gpu::Canto {
+                passe_proprio: true,
+                ..cfg.canto
+            },
+            ..cfg.clone()
+        };
+        assert!(adiado.adia_o_canto() && !cfg.adia_o_canto(), "{modo}");
+        let (a, b) = (
+            rodar_com(&gpu, &cena, cfg, 1),
+            rodar_com(&gpu, &cena, adiado, 1),
+        );
+        assert!(a.m == b.m, "{modo}: o passe próprio do canto mexeu no M");
+        let g = b.g;
+        // Dentro, a ≤ 3 texels das DUAS faces de um vértice.
+        let no_canto = |k: usize| {
+            let p = g.centro(k as u32 % g.largura, k as u32 / g.largura);
+            let (dx, dy) = ((p[0] - x0).min(x1 - p[0]), (p[1] - y0).min(y1 - p[1]));
+            dx > 0.0 && dy > 0.0 && dx.max(dy) <= 3.0 * g.texel_m
+        };
+        let mut pior = 0.0_f64;
+        for n in [[0.0, 0.0], [1.0, 0.0], [-1.0, 0.0], [0.0, 1.0], [0.0, -1.0]] {
+            let r = gabarito_por(&g, |p| gab.luz_em_n(p, n));
+            let e = rmse_rel(&b.luz_em_n(n), &r, no_canto);
+            eprintln!("{modo} canto adiado, n = {n:?}: rmse relativo {e:.4}");
+            pior = pior.max(e);
+        }
+        assert!(pior <= teto, "{modo} canto adiado: {pior:.4} > {teto}");
+    }
+}
+
+/// O MEDIDO + folga (09/11, RADV, fina 2, o passe próprio): clássica `n = 0` 0,3013 · `(1, 0)` 0,2966 · `(−1, 0)`
+/// 0,3427 · `(0, 1)` 0,3616 · `(0, −1)` 0,3314; holográfica 0,3102 · 0,3169 · 0,3458 · 0,3649 · 0,3443. O grosso é o
+/// do `F` (`n = 0`) no vértice; o `M` acrescenta ≤ 0,06. Visto vermelho (o `M` muda) com a `c3_momento` compilada
+/// com `CANTO_ADIA` quando o canto se adia.
+const TETO_CANTO: f64 = 0.38;
+const TETO_CANTO_HOLO: f64 = 0.38;

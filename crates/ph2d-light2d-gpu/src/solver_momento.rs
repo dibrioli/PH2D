@@ -58,12 +58,23 @@ struct MioloDoMomento {
 }
 
 impl MioloDoMomento {
-    fn novo(s: &Solver, gpu: &GpuContext, lista: &PassList, fina: [&wgpu::Texture; 2]) -> Option<Self> {
+    fn novo(
+        s: &Solver,
+        gpu: &GpuContext,
+        lista: &PassList,
+        fina: [&wgpu::Texture; 2],
+    ) -> Option<Self> {
         let f = s.miolo.as_ref()?;
         let [i0, ..] = Opcionais::de(&s.cfg).miolo?;
-        let decl = lista.texturas.iter().find(|t| t.nome == NOME_CONHECIDO_DO_MIOLO)?;
+        let decl = lista
+            .texturas
+            .iter()
+            .find(|t| t.nome == NOME_CONHECIDO_DO_MIOLO)?;
         let conhecido = textura(&gpu.device, decl);
-        let u = lista.buffers.iter().find(|b| b.nome == NOME_UNIFORME_DO_MIOLO)?;
+        let u = lista
+            .buffers
+            .iter()
+            .find(|b| b.nome == NOME_UNIFORME_DO_MIOLO)?;
         let uniforme = super::criar_buffer(&gpu.device, u.nome, u.bytes, u.usos);
         let cfg = Config {
             anel_fora_da_regiao: false,
@@ -307,7 +318,12 @@ impl Momento {
     }
 
     /// ⭐ P14c-placa 6 — o miolo de `M`, depois do de `F` (a pirâmide dele está livre).
-    pub(super) fn gravar_miolo(&self, gpu: &GpuContext, enc: &mut wgpu::CommandEncoder, texel_m: f64) {
+    pub(super) fn gravar_miolo(
+        &self,
+        gpu: &GpuContext,
+        enc: &mut wgpu::CommandEncoder,
+        texel_m: f64,
+    ) {
         for m in self.miolo.iter().flat_map(|m| &m.xy) {
             m.gravar(gpu, enc, texel_m, None);
         }
@@ -338,10 +354,11 @@ impl Momento {
     pub(super) fn recursos(&self) -> impl Iterator<Item = (&'static str, &wgpu::Texture)> {
         let proprias = self.texturas.len() + usize::from(self.miolo.is_some());
         let base = self.lista.texturas.len() - proprias;
-        self.lista.texturas[base..]
-            .iter()
-            .map(|t| t.nome)
-            .zip(self.texturas.iter().chain(self.miolo.as_ref().map(|m| &m.conhecido)))
+        self.lista.texturas[base..].iter().map(|t| t.nome).zip(
+            self.texturas
+                .iter()
+                .chain(self.miolo.as_ref().map(|m| &m.conhecido)),
+        )
     }
 }
 

@@ -65,7 +65,6 @@ const BYTES_POR_TEXEL_DA_BASE: u32 = 52;
 /// a tabela em `docs/Luz2D/handoffs/HANDOFF_CONTINUACAO_W5q_2026-10-14_CUSTO_DO_QUADRO.md`).
 const BLOCO_ATE_TEXELS: u32 = 16_384;
 
-/// Uma caixa `[inicio, fim)` num nível.
 type Caixa = ([u32; 2], [u32; 2]);
 
 #[derive(Clone, Copy)]
@@ -246,8 +245,9 @@ impl DoMiolo {
                     1 => f16,
                     _ => f32,
                 };
-                let de_m = i == 0 && e.momento.is_some();
-                pipeline(if de_m { "miolo_classifica_momento" } else { ENTRADAS[i] }, formato)
+                let m = usize::from(i == 0 && e.momento.is_some());
+                let entrada = [ENTRADAS[i], "miolo_classifica_momento"][m];
+                pipeline(entrada, formato)
             })
             .collect();
         // ⭐ W5o: a base — o nível mais fino `b ≥ 2` de onde os níveis até ao topo cabem na memória de

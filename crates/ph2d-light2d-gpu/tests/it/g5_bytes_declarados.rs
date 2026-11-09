@@ -355,7 +355,11 @@ fn g5_o_momento_e_o_que_a_pass_list_declara() {
     o_momento_declarado(
         &gpu,
         c.clone(),
-        &["luz2d momento c0", "luz2d momento fina", "luz2d momento miolo"],
+        &[
+            "luz2d momento c0",
+            "luz2d momento fina",
+            "luz2d momento miolo",
+        ],
         6,
     );
     // ⭐ P14c-placa 5 — a holográfica: a c0 de `M` no laço dos quadrantes (o acumulado e a grade, buffers).

@@ -39,7 +39,10 @@
 | Godot | `/usr/bin/godot` 4.7.2, **MIT** (`pacman -Qi`); precedentes corridos: `pixel-io/tests/folha.rs:445` `o_godot_recorta_igual`, `ferramentas/oraculo_godot_*.py` |
 | Tecto `ph2d-app-pixel` | **11 239 de 11 278** (`the_shell_only_shrinks:222`): folga 39 ⇒ o código novo vive numa crate NOVA |
 | Contrato §6 | grep `trait Tool|NodeOp|…|enum VectorOp|impl … for` nas 10 crates tocadas: **0** em todas (§4) |
-| ❓ a medir no passo 0 | (a) a colagem do vetor já multiplica a arte do Pixel pela luz? (b) o Play tira foto do mundo e repõe? (c) como o `GlobalTransform` fica fora do diff do undo e do ficheiro (o molde do «derivado») |
+| Passo 0 (a) — medido | a banda do Pixel é `BandSource::Vector` (`band_blit.rs:39`, `recebe_luz = true`): **toda** a banda é multiplicada por `acender → luz_em` (`band_blit.wgsl:68-84`), não por `luz_receber`; **sem** `NaoRecebeLuz` por objeto. O Pixel Sprite já recebe luz, plana e sem opt-out |
+| Passo 0 (b) — medido | Play: `undo_jogo.rs:46-60` fotografa (`ProjectState::capture`); Stop: `restore` faz despawn + respawn do snapshot (`undo.rs:94-102`). Componente NÃO registado some no Stop e em todo undo. `tick_sprite_animations` (`ph2d-app-sprite-anim/src/tick.rs:23`) corre também no editor, só mexe em animadores a tocar |
+| Passo 0 (c) — medido | ficheiro e undo gravam **só o registado**, sempre por `entry.serialize` (`save.rs:311`, `incremental.rs:456`, `snapshot.rs:290`); `GlobalTransform` é `PresentComponent` não registado. Registar não sobe `PROJECT_SCHEMA` por si (opcional, só gravado quando presente: `registry.rs:311`) |
+| Passo 0 (d) — medido | 34 leitores de `SpriteAnimations` em 14 ficheiros de produção (6 crates) |
 
 ## 2. Estado da arte — o que os outros fazem, e o que abandonaram
 
@@ -72,16 +75,16 @@
 |---|---|---|
 | Que quadro este Pixel Sprite mostra agora? | `quadro_mostrado(world, e, doc) -> FrameId`: o do `SpriteAnimator` em Play, o `doc.frame` no editor | desenho, camada de luz, collider, pivô, cartão |
 | Tag do Aseprite/Pixel → clip do motor | `ph2d_ecs::sprite_anim::tag_do_aseprite(nome, from, to, direção, repeat, durações) -> (AnimationTag, nota)`, **movida** de `ase_import.rs:131` | `ase_import` e `ph2d-pixel-cena` (censo: zero `AnimationTag {` construído fora dela nesses dois) |
-| Que clips tem esta entidade? | `ph2d_ecs::sprite_anim::biblioteca(world, e)`: `ClipsDerivados` se houver, senão `SpriteAnimations` | animador, cartão, Luau, verbo `Play Clip` (censo: zero `get::<SpriteAnimations>` fora dela) |
+| O que é derivado e não se grava? | `ComponentRegistry::derivado_quando::<C, Marca>()`: na entidade com `Marca`, o `serialize` de `C` devolve `None` (ficheiro, undo, foto do Play — as três passam por ele) | `(SpriteAnimations, PixelSprite)`, `(ColliderShape, SegueSlice)` |
+| Quem reescreve o derivado? | o sistema da família `deriva(world, app)`: reescreve quando o `doc.stamp` muda **ou** o componente falta (undo e Stop fazem respawn sem ele) | — |
 | Onde está a origem? | `pivo_px(doc, frame)`: o pivô da slice escolhida em `Sprite.pivot_slice` (doc), senão o centro | desenho, clique, collider, luz, JSON, `.tres` |
 | Rect px → forma de colisão | `ph2d_physics_ecs::forma_de_retangulo(rect_px, pivo_px, m_por_px) -> (ColliderShape, offset_m)` | Pixel e import do Sprite Inspector |
-| Que forma tem esta filha agora? | `ph2d_physics_ecs::forma_efetiva(world, e)`: `FormaDerivada` se houver, senão `ColliderShape` | ponte do rapier, gizmo, clique (censo: zero leitores diretos de `ColliderShape` nesses três) |
 | Que normal tem este texel? | a camada com `Layer.normal = true`; `compose_normal(sprite, frame)` (só essas camadas; a cor exclui-as) | desenho da banda normal, `_n.png`, `.ase` |
 | Que luz recebe com esta normal? | `luz_receber(cor, mundo, n_xy, sem_luz)` em `receber.wgsl` (a MESMA, sprite e colagem) e `luz_em_n` no gabarito | todo receptor |
 
-**A — derivado, nunca gravado.** As tags são do documento Pixel (undo próprio, ADR-0196). Escrevê-las em `SpriteAnimations` (gravado, no diff do mundo) era o defeito do ADR-0199: o undo do mundo veria um passo que ninguém fez, e duas verdades. ⇒ `ClipsDerivados(SpriteAnimations)`: componente **não gravado e fora do diff**, como o `GlobalTransform` (passo 0 (c) mede o molde), reescrito pela família quando o `doc.stamp` muda. O `SpriteAnimator` (Autoplay, tag inicial) é escolha do artista no OBJECTO ⇒ gravado, como em qualquer Animated Sprite.
+**A — derivado, nunca gravado (revisto pelo passo 0).** As tags são do documento Pixel (undo próprio, ADR-0196). Escrevê-las em `SpriteAnimations` GRAVADO era o defeito do ADR-0199: o undo do mundo veria um passo que ninguém fez, e duas verdades. A primeira escolha, um tipo `ClipsDerivados` lido por uma porta `biblioteca()`, obrigava a reescrever **34 leitores em 6 crates** de outras famílias (passo 0 d). ⇒ O componente continua a ser `SpriteAnimations` (o ECS conversa por componentes: os 34 leitores, o cartão, o Luau e o verbo `Play Clip` funcionam sem mudar), e o registo passa a saber que ele é **derivado quando a entidade tem `PixelSprite`**: o `serialize` dele devolve `None` ali, logo não entra no ficheiro, no diff do undo nem na foto do Play. O `SpriteAnimator` (Autoplay, tag inicial) é escolha do artista no OBJECTO ⇒ gravado, como em qualquer Animated Sprite.
 
-**C — a forma por quadro.** «Add Collider» é um GESTO: `nasce_com_forma` com o retângulo da key no quadro 0 (o `ColliderShape` gravado, para o ficheiro e para quem abre sem Pixel) + `SegueSlice { slice: SliceId }` (gravado). A cada quadro, a família escreve `FormaDerivada(ColliderShape, offset)` (não gravado, fora do diff) com a key em `quadro_mostrado`. Não muta documento fora de gesto ⇒ não colide com a recusa do ADR-0199. ⚠️ `ColliderShape` é append-only e **não** ganha variante (o enum não pode conhecer o Pixel). Slice escondida no quadro ⇒ a forma desliga (sensor mudo), não some da árvore.
+**C — a forma por quadro.** «Add Collider» é um GESTO: `nasce_com_forma` + `SegueSlice { slice: SliceId }` (gravado). O `ColliderShape` da filha é **derivado quando ela tem `SegueSlice`** (a mesma regra do registo): a família escreve-o a cada quadro com a key em `quadro_mostrado`, e ele nunca entra no ficheiro nem no undo ⇒ não há passo que ninguém fez, e a recusa do ADR-0199 não se aplica. Ponte do rapier, gizmo e clique continuam a ler `ColliderShape`: zero leitores mudam. ⚠️ `ColliderShape` é append-only e **não** ganha variante. Slice escondida no quadro ⇒ a forma desliga (sensor mudo), não some da árvore. A conferir no P14b: a ponte do rapier refaz o collider quando o `ColliderShape` muda em execução.
 
 **L — a lei da luz com normal.** Recusada a «Lambert com lâmpada a uma altura»: exige um parâmetro novo em cada luz e quebra o forno branco. Escolha: o núcleo de flatland **cardioide**, `k(ω, n) = (1 + n_xy·ω̂) / 2π`:
 - `∫k dω = 1` para toda normal ⇒ o forno branco vale sempre (campo uniforme ⇒ a mesma luz);
@@ -98,7 +101,7 @@
 
 - **§6:** zero. Prova: o grep da §1 (`trait Tool|NodeOp|OpResolver|NodeManifest|RasterEditTool|CanvasPaintTool|PanelEvent`, `enum VectorOp`, `impl … for`) nas crates `ph2d-ecs ph2d-physics-ecs ph2d-light2d-{ref,gpu,ecs} ph2d-app-light2d ph2d-pixel-{core,io} ph2d-app-pixel ph2d-render` dá 0. Repete-se no fecho sobre o diff.
 - **Blob Pixel:** `Layer.normal: bool`, `Sprite.pivot_slice: Option<SliceId>` ⇒ `MINOR 6 → 7`, sem leitor de versão velha (§0.11).
-- **Mundo:** `SegueSlice` gravado ⇒ entra no registo de componentes e na tabela `PORTAS` (Gravado); `ClipsDerivados` e `FormaDerivada` ⇒ `Recusado(DERIVADO)`. Se o registo exigir degrau, `PROJECT_SCHEMA` sobe e **conta-se** (`python3 scripts/schema-recount.py`), nunca se escolhe.
+- **Mundo:** `SegueSlice` gravado ⇒ entra no registo de componentes e na tabela `PORTAS` (Gravado). `derivado_quando` não muda bytes de projeto sem Pixel. Se algo exigir degrau, `PROJECT_SCHEMA` sobe e **conta-se** (`python3 scripts/schema-recount.py`), nunca se escolhe.
 - **Sprite do motor com normal:** a segunda textura entra no `SavedAsset` (chave da célula + sufixo `_n`) ⇒ degrau contado.
 - **`.ase`:** camada normal = user data da camada com a propriedade `ph2d.normal`; o pivô escolhido = propriedade do sprite. LibreSprite lê de volta (corrida), o Trial mostra (foto).
 
@@ -124,8 +127,9 @@ Todas as strings em inglês, por chave i18n; tamanhos por token.
 | `a_tag_do_pixel_e_a_do_aseprite_pela_mesma_porta` | `.ase` importado e Pixel Sprite dão `AnimationTag` iguais campo a campo |
 | `o_jogo_e_o_editor_tocam_o_mesmo_quadro` | `SpriteAnimator` × `play.rs` em `t = 0..2000` ms, passo 1 |
 | `a_sequencia_e_a_do_godot` | fixture do Godot (§3) × o nosso, por passo |
-| `os_clips_derivados_nao_entram_no_undo_nem_no_ficheiro` | editar uma tag ⇒ zero passos no undo do mundo; salvar e abrir ⇒ byte-igual sem `ClipsDerivados` |
-| `a_forma_segue_a_key_da_slice` | quadro 2 → 3 ⇒ o cuboide do rapier encolhe; `forma_efetiva` no gizmo = no rapier |
+| `os_clips_derivados_nao_entram_no_undo_nem_no_ficheiro` | editar uma tag ⇒ zero passos no undo do mundo; o snapshot do Pixel Sprite não leva `SpriteAnimations`; um Sprite comum continua a levá-lo |
+| `os_clips_voltam_depois_do_undo_e_do_stop` | undo e Stop (respawn) ⇒ no quadro seguinte o `SpriteAnimations` está lá, igual às tags |
+| `a_forma_segue_a_key_da_slice` | quadro 2 → 3 ⇒ o cuboide do rapier encolhe; o gizmo mostra o mesmo |
 | `o_collider_nasce_por_gesto_e_desfaz_num_passo` | Add Collider ⇒ 1 passo; Ctrl+Z ⇒ a filha some |
 | `o_pivo_e_a_origem_em_todo_leitor` | desenho, clique, collider e JSON com o mesmo pivô por quadro |
 | `forno_branco_vale_para_toda_normal` (gabarito) | campo uniforme ⇒ a mesma luz para 16 normais |
@@ -137,9 +141,9 @@ Todas as strings em inglês, por chave i18n; tamanhos por token.
 | `a_folha_normal_tem_o_recorte_da_cor` | `_n.png` × folha de cor, quadro a quadro |
 | `o_tres_abre_no_godot` | Godot carrega o `.tres` sem erro e lista as 3 animações |
 | `o_inspector_abre_o_que_o_pixel_grava` | grava `.ase` e folha ⇒ import ⇒ tags, pivô, colliders e normal iguais ao Pixel Sprite |
-| censos | zero `AnimationTag {` fora da porta; zero `get::<SpriteAnimations>` fora de `biblioteca`; zero leitores diretos de `ColliderShape` na ponte/gizmo/clique |
+| censo | zero `AnimationTag {` construído fora da porta em `ase_import` e `ph2d-pixel-cena` |
 
-Mutação (fecho): tirar a guarda `n_xy = 0`, trocar o sinal de `ω̂`, ler `doc.frame` em vez de `quadro_mostrado`, gravar `ClipsDerivados` ⇒ cada uma sangra num gate acima.
+Mutação (fecho): tirar a guarda `n_xy = 0`, trocar o sinal de `ω̂`, ler `doc.frame` em vez de `quadro_mostrado`, tirar o `derivado_quando` ⇒ cada uma sangra num gate acima.
 
 ## 8. Cenas de smoke (números MEDIDOS pela sonda headless antes da mensagem)
 
@@ -161,6 +165,8 @@ Mutação (fecho): tirar a guarda `n_xy = 0`, trocar o sinal de `ω̂`, ler `doc
 |---|---|
 | Tags → `NamedClip` da Timeline | a Timeline é o `AnimationPlayer`; quadros são conteúdo da imagem (ObjectsAndComponents §123) |
 | Escrever as tags em `SpriteAnimations` gravado | duas verdades + passo de undo que ninguém fez (ADR-0199) |
+| Tipo `ClipsDerivados` + porta `biblioteca()` | 34 leitores em 6 crates a reescrever (passo 0 d); a regra no registo dá o mesmo sem tocar nenhum |
+| `FormaDerivada` + porta `forma_efetiva()` | idem: a mesma regra no registo cobre o `ColliderShape` |
 | `ColliderShape::PixelSlice` | o enum da física não pode conhecer o Pixel; append-only seria uma dependência invertida |
 | Normal com «altura da lâmpada» (Godot/Unity) | parâmetro novo em toda luz; quebra o forno branco e a identidade byte a byte do plano |
 | Normal map de tela inteira sempre ligado (Unity) | custo em toda cena; a nossa banda só existe com normal à vista |

@@ -274,6 +274,39 @@ impl SpriteRenderer {
         self.normais.len()
     }
 
+    /// ⭐ P14 — as caixas no MUNDO (`[x0, y0, x1, y1]`) dos sprites da cena cuja imagem tem normal
+    /// (textura individual com normal, ou recorte dentro de uma célula do átlas com normal). A luz
+    /// liga o momento `M` só se alguma cruza a grade dela. Sem normal registada: nada, sem consulta.
+    #[must_use]
+    pub fn caixas_com_normal(&self, present: &mut PresentWorld) -> Vec<[f64; 4]> {
+        let mut out = Vec::new();
+        if self.normais.len() == 0 {
+            return out;
+        }
+        let celulas: Vec<[f32; 4]> = self
+            .normais
+            .chaves_das_celulas()
+            .map(|k| self.atlas.region_uv(k))
+            .collect();
+        let dentro = |uv: [f32; 4], c: &[f32; 4]| {
+            let (u0, u1) = (uv[0].min(uv[2]), uv[0].max(uv[2]));
+            let (v0, v1) = (uv[1].min(uv[3]), uv[1].max(uv[3]));
+            u0 >= c[0] && v0 >= c[1] && u1 <= c[2] && v1 <= c[3]
+        };
+        let mut q = present.world_mut().query::<&RenderInstance>();
+        for i in q.iter(present.world()) {
+            let com = if i.texture_id == RenderInstance::ATLAS_TEXTURE_ID {
+                celulas.iter().any(|c| dentro(i.atlas_uv, c))
+            } else {
+                self.normais.tem(i.texture_id)
+            };
+            if com {
+                out.push(caixa_no_mundo(i));
+            }
+        }
+        out
+    }
+
     /// A textura `texture_id` tem normal registada?
     #[must_use]
     pub fn tem_normal(&self, texture_id: u32) -> bool {
@@ -709,3 +742,23 @@ fn compute_runs(scratch: &[RenderInstance], runs: &mut Vec<DrawRun>) {
 #[cfg(test)]
 #[path = "renderer_tests.rs"]
 mod tests;
+
+/// A caixa no mundo do quad de uma instância (`world_pos + basis·(anchor + q·size)`, `q ∈ ±½`).
+fn caixa_no_mundo(i: &RenderInstance) -> [f64; 4] {
+    let mut c = [
+        f64::INFINITY,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+        f64::NEG_INFINITY,
+    ];
+    for q in [[-0.5_f32, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]] {
+        let l = [
+            i.anchor[0] + q[0] * i.size[0],
+            i.anchor[1] + q[1] * i.size[1],
+        ];
+        let x = f64::from(i.world_pos[0] + l[0] * i.basis[0] + l[1] * i.basis[2]);
+        let y = f64::from(i.world_pos[1] + l[0] * i.basis[1] + l[1] * i.basis[3]);
+        c = [c[0].min(x), c[1].min(y), c[2].max(x), c[3].max(y)];
+    }
+    c
+}

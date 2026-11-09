@@ -71,6 +71,10 @@ impl NormaisDosSprites {
         self.celulas.get(&key).map(|(_, _, b)| b.as_slice())
     }
 
+    pub(crate) fn chaves_das_celulas(&self) -> impl Iterator<Item = u32> + '_ {
+        self.celulas.keys().copied()
+    }
+
     pub(crate) fn tem_celula(&self, key: u32) -> bool {
         self.celulas.contains_key(&key)
     }

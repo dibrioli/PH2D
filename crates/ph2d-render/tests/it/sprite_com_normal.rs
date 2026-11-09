@@ -626,3 +626,73 @@ fn a_normal_da_malha_roda_com_o_osso() {
         "a normal não rodou com o osso: repouso {repouso:.1}, +90° {mais90:.1}, −90° {menos90:.1}"
     );
 }
+
+/// ⭐ As caixas que a luz cruza com a grade: só o sprite cuja imagem tem normal, no sítio do mundo.
+#[test]
+fn as_caixas_com_normal_sao_so_as_dos_sprites_com_normal() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sprite normal: sem placa — saltado");
+        return;
+    };
+    let mut atlas = TextureAtlas::new(&gpu, 256);
+    let cel: Vec<u8> = (0..CEL * CEL).flat_map(|_| COR_A).collect();
+    atlas.insert(&gpu, 1, CEL, CEL, &cel).expect("célula 1");
+    atlas.insert(&gpu, 2, CEL, CEL, &cel).expect("célula 2");
+    let uvs = [atlas.region_uv(1), atlas.region_uv(2)];
+    let mut r = SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 8);
+    let com = r
+        .acquire_individual(2 * CEL, CEL, &folha(COR_A, COR_B))
+        .expect("cor");
+    let sem = r
+        .acquire_individual(2 * CEL, CEL, &folha(COR_A, COR_B))
+        .expect("cor");
+    let mut present = PresentWorld::new();
+    let quad = |texture_id, atlas_uv, x: f32| RenderInstance {
+        world_pos: [x, 0.0],
+        size: [1.0, 1.0],
+        atlas_uv,
+        tint: [1.0; 4],
+        basis: RenderInstance::IDENTITY_BASIS,
+        premultiplied: 0.0,
+        anchor: [0.0, 0.0],
+        per_corner_tint: [[1.0; 4]; 4],
+        opacity: 1.0,
+        flip_uv: 0,
+        texture_id,
+        z_order: 0,
+        sampling: RenderInstance::SAMPLING_DEFAULT,
+        uv_xform: RenderInstance::IDENTITY_UV_XFORM,
+        clip_group: RenderInstance::CLIP_GROUP_NONE,
+        clip_meta: 0,
+        sub_order: 0,
+    };
+    present
+        .world_mut()
+        .spawn(quad(com, [0.0, 0.0, 0.5, 1.0], 10.0));
+    present
+        .world_mut()
+        .spawn(quad(sem, [0.0, 0.0, 0.5, 1.0], 20.0));
+    present
+        .world_mut()
+        .spawn(quad(RenderInstance::ATLAS_TEXTURE_ID, uvs[0], 30.0));
+    present
+        .world_mut()
+        .spawn(quad(RenderInstance::ATLAS_TEXTURE_ID, uvs[1], 40.0));
+    assert!(
+        r.caixas_com_normal(&mut present).is_empty(),
+        "sem normal registada, caixas"
+    );
+    let n: Vec<u8> = folha(N_MAIS_X, N_MAIS_X);
+    r.definir_normal(com, Some((2 * CEL, CEL, &n)))
+        .expect("normal");
+    let nc: Vec<u8> = (0..CEL * CEL).flat_map(|_| N_MAIS_X).collect();
+    r.definir_normal_da_celula(1, Some((CEL, CEL, &nc)))
+        .expect("normal da célula");
+    let mut caixas = r.caixas_com_normal(&mut present);
+    caixas.sort_by(|a, b| a[0].total_cmp(&b[0]));
+    eprintln!("caixas com normal: {caixas:?}");
+    assert_eq!(
+        caixas,
+        vec![[9.5, -0.5, 10.5, 0.5], [29.5, -0.5, 30.5, 0.5]]
+    );
+}

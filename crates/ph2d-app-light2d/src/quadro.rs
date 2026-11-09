@@ -84,8 +84,8 @@ pub struct LuzDoQuadro {
     outros: crate::outras::CamadaDeOutros,
     /// ⭐ P14c-pixel 2: a banda normal de cada faixa (com alguma, a cena liga `com_normal`).
     normais: crate::NormaisDasFaixas,
-    /// ⭐ P14 (Sprite do motor): algum sprite do passe de sprites tem normal map (`SpriteRenderer::normais_alocadas`).
-    sprites_com_normal: bool,
+    /// ⭐ P14 (Sprite do motor): as caixas no mundo dos sprites com normal map (`SpriteRenderer::caixas_com_normal`).
+    caixas_de_normal: Vec<[f64; 4]>,
     /// ⭐ A fábrica das pipelines, partilhada pelos solvers de cada grade: a janela redimensionada (o
     /// maximizar muda o tamanho a cada quadro) só realoca — recompilar custava ~2 s por quadro.
     fabrica: ph2d_light2d_gpu::Fabrica,
@@ -161,7 +161,7 @@ impl LuzDoQuadro {
             vetores: crate::vetor::CamadaVetorial::default(),
             outros: crate::outras::CamadaDeOutros::default(),
             normais: crate::NormaisDasFaixas::default(),
-            sprites_com_normal: false,
+            caixas_de_normal: Vec::new(),
             fabrica: ph2d_light2d_gpu::Fabrica::default(),
             smoke_encenado: false,
             semeadas: Vec::new(),
@@ -232,7 +232,6 @@ impl LuzDoQuadro {
         alvo_px: (u32, u32),
     ) -> bool {
         self.cena = cena_de_luz(world);
-        self.cena.com_normal = self.normais.alguma() || self.sprites_com_normal;
         self.sem_luz_no_quadro = false;
         self.mundo_para_tela = mundo_para_tela;
         self.alvo_px = alvo_px;
@@ -244,6 +243,7 @@ impl LuzDoQuadro {
         } else {
             grade_do_quadro(mundo_para_tela, alvo_px, self.degrau)
         };
+        self.cena.com_normal = self.normais.alguma() || self.normal_na_grade();
         self.fina = fina_do_quadro(mundo_para_tela, self.degrau);
         self.captura = captura_do_quadro(mundo_para_tela, self.degrau);
         self.sem_luz.clear();
@@ -330,9 +330,25 @@ impl LuzDoQuadro {
         self.degrau = base.com_fina_engrossada(k);
     }
 
-    /// ⭐ P14: a shell diz se o passe de sprites tem algum normal map (liga o momento `M` do solver).
-    pub fn com_sprites_de_normal(&mut self, sim: bool) {
-        self.sprites_com_normal = sim;
+    /// ⭐ P14: a shell passa as caixas no mundo dos sprites com normal map; só uma que cruze a grade
+    /// (a vista com a margem que a luz resolve) liga o momento `M` — fora dela, 0 bytes de `M`.
+    pub fn com_sprites_de_normal(&mut self, caixas: &[[f64; 4]]) {
+        self.caixas_de_normal.clear();
+        self.caixas_de_normal.extend_from_slice(caixas);
+    }
+
+    fn normal_na_grade(&self) -> bool {
+        let Some(g) = self.grade else {
+            return false;
+        };
+        let [x0, y0] = g.origem_m;
+        let (x1, y1) = (
+            x0 + f64::from(g.largura) * g.texel_m,
+            y0 + f64::from(g.altura) * g.texel_m,
+        );
+        self.caixas_de_normal
+            .iter()
+            .any(|c| c[0] < x1 && c[2] > x0 && c[1] < y1 && c[3] > y0)
     }
 
     /// ⭐ **Porta 2a** — re-coleta a cena logo antes do solver. As edições do quadro (o Inspector, o
@@ -344,7 +360,7 @@ impl LuzDoQuadro {
             return;
         }
         self.cena = cena_de_luz(world);
-        self.cena.com_normal = self.normais.alguma() || self.sprites_com_normal;
+        self.cena.com_normal = self.normais.alguma() || self.normal_na_grade();
         self.sem_luz_no_quadro = self.cena.luzes == 0;
         self.sem_luz.clear();
         self.sem_luz.extend(self.cena.nao_recebem.iter().copied());

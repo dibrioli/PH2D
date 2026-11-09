@@ -46,6 +46,7 @@ mod mass_override;
 mod measure_impact;
 mod measure_joint_break;
 mod measure_joint_pair;
+mod measure_outline_pieces;
 mod measure_pulley;
 mod measure_pulley_bias_radius;
 mod measure_pulley_budget;

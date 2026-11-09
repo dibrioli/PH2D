@@ -122,6 +122,105 @@ impl Outline {
     }
 }
 
+/// Most convex pieces one Outline shape may have. Resource: the solver tick — measured (W0, table in
+/// `README.md`) 0.30 ms per tick for 257 pieces all touching the floor, 0.61 ms for two stacked.
+pub const MAX_PIECES: usize = 256;
+/// Most outline points before the pieces are cut. Resource: the retrace, synchronous in the frame of
+/// the gesture (dragging Detail) and of keyed Detail in Play — measured 3.6 ms for 516 points (W0),
+/// under a quarter of a 60 Hz frame. The cost is O(points²): whoever lowers that order re-measures this.
+pub const MAX_POINTS: usize = 512;
+
+/// A traced outline that fits [`MAX_POINTS`] and [`MAX_PIECES`], and the parameters that made it fit.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Fitted {
+    pub outline: Outline,
+    pub pieces: Vec<Vec<[i32; 2]>>,
+    /// The parameters used: equal to the asked ones unless the ceiling raised them.
+    pub params: Params,
+}
+
+impl Fitted {
+    /// Whether the ceiling raised Detail (or, past the picture's size, Ignore specks under).
+    #[must_use]
+    pub fn raised(&self, asked: Params) -> bool {
+        self.params != asked
+    }
+}
+
+/// [`trace`] then [`convex_pieces`] at `p`, if the result fits both ceilings.
+fn fits(mask: &Mask, p: Params) -> Option<Fitted> {
+    let outline = trace(mask, p);
+    if outline.vertex_count() > MAX_POINTS {
+        return None;
+    }
+    let pieces = convex_pieces(&outline, p.detail_q4);
+    (pieces.len() <= MAX_PIECES).then_some(Fitted {
+        outline,
+        pieces,
+        params: p,
+    })
+}
+
+/// The smallest knob value above `lo` (known not to fit) and up to `cap` whose result fits: doubling,
+/// then bisection. Deterministic integer steps.
+fn smallest(mask: &Mask, lo: u16, cap: u16, at: impl Fn(u16) -> Params) -> Option<(u16, Fitted)> {
+    if lo >= cap {
+        return None;
+    }
+    let (mut lo, mut hi) = (lo, lo.max(1));
+    let mut best = loop {
+        hi = hi.saturating_mul(2).min(cap);
+        if let Some(f) = fits(mask, at(hi)) {
+            break f;
+        }
+        if hi >= cap {
+            return None;
+        }
+        lo = hi;
+    };
+    while hi - lo > 1 {
+        let mid = lo + (hi - lo) / 2;
+        match fits(mask, at(mid)) {
+            Some(f) => (hi, best) = (mid, f),
+            None => lo = mid,
+        }
+    }
+    Some((hi, best))
+}
+
+/// [`trace`] then [`convex_pieces`], raising Detail to the SMALLEST value whose outline fits both
+/// ceilings (never cutting the art). Only when Detail already spans the picture and the islands alone
+/// are too many does Ignore specks under rise the same way.
+#[must_use]
+pub fn trace_fitted(mask: &Mask, asked: Params) -> Fitted {
+    if let Some(f) = fits(mask, asked) {
+        return f;
+    }
+    let span =
+        u16::try_from(mask.w.max(mask.h).saturating_mul(Q4.unsigned_abs())).unwrap_or(u16::MAX);
+    let detail_q4 = asked.detail_q4.max(span);
+    let at_detail = |d| Params {
+        detail_q4: d,
+        ..asked
+    };
+    if let Some((_, f)) = smallest(mask, asked.detail_q4, detail_q4, at_detail) {
+        return f;
+    }
+    let at_specks = |s| Params {
+        detail_q4,
+        min_island_px: s,
+    };
+    smallest(mask, asked.min_island_px, u16::MAX, at_specks).map_or_else(
+        // Unreachable in practice (at `u16::MAX` px every island goes): empty, never a panic.
+        || Fitted {
+            outline: Outline::default(),
+            pieces: Vec::new(),
+            params: at_specks(u16::MAX),
+        },
+        |(_, f)| f,
+    )
+}
+
 /// Mask → covering outline. See `README.md` for the steps.
 #[must_use]
 pub fn trace(mask: &Mask, params: Params) -> Outline {

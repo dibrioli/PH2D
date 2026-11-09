@@ -43,7 +43,7 @@ Leitor: a próxima LLM desta linha. Aprovado pelo dono em 08/11/2026 («faça co
 |---|---|---|---|
 | W3 | Add ▸ Collision Shape (3 casos) + lista «Shapes» no cartão | não | **agora** (antes da integração da noite) |
 | W1 | `ph2d-outline-trace` contra as fixtures do Godot (0 % de arte fora; anel com buraco; disco em 1 peça; L em 2) | não | **agora** |
-| W0 | medir o custo das peças; escrever o tecto | não | depois da integração |
+| W0 | medir o custo das peças; escrever o tecto | não | **feito 09/11**: `MAX_PIECES = 256` (tique do solver), `MAX_POINTS = 512` (retraço), `trace_fitted`; tabela no README da crate |
 | W2 | motor e formato (schema 220), rapier, rewind, espelho | **sim** | depois da integração |
 | W4 | Outline no cartão + Auto Key | sim | depois |
 | W5 | canvas: alças de todas as formas, pontos do Outline, seguir a imagem | sim | depois |

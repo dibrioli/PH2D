@@ -55,6 +55,40 @@ Bound in the test: empty covered ≤ 11 % (worst: crescent at 4 px, 10.3 %); hol
 0.5 px is the O(S²) chord-conflict pass and the O(n²) ear search over ~170–290 vertices; at the default
 2 px every case is ≤ 128 µs. Re-run: `cargo test -p ph2d-outline-trace --profile smoke -- --ignored timing --nocapture`.
 
+## Ceilings (W0, 09/11) — `MAX_PIECES = 256`, `MAX_POINTS = 512`, `trace_fitted`
+
+Measured by `crates/ph2d-physics/tests/it/measure_outline_pieces.rs` (`--profile smoke`, minimum of 7
+interleaved rounds, the product's `PhysicsWorld::step`: 4 sub-steps, our solver parameters). Fixture: a
+comb with its teeth down (bar 12 px, teeth 3 × 12 px, gap 3 px), 64 px/m, Detail 2 px — every piece
+touches the floor, the worst case of contacts per piece. Base: a box of the same size, 3.6 µs (alone)
+and 5.0 µs (two stacked).
+
+| teeth | pieces | outline points | trace + pieces | build compound | one, resting | two, stacked |
+|---|---|---|---|---|---|---|
+| 16 | 17 | 68 | 0.11 ms | 7 µs | 21 µs | 41 µs |
+| 64 | 65 | 260 | 1.02 ms | 26 µs | 77 µs | 154 µs |
+| 128 | 129 | 516 | 3.56 ms | 53 µs | 151 µs | 318 µs |
+| 256 | 257 | 1028 | 13.4 ms | 100 µs | 300 µs | 608 µs |
+| 512 | 513 | 2052 | 53.7 ms | 190 µs | 602 µs | 1238 µs |
+
+- **`MAX_PIECES = 256`** — resource: the solver tick, ~1.2 µs per touching piece per tick (0.30 ms at 257).
+- **`MAX_POINTS = 512`** — resource: the retrace, synchronous in the frame of the gesture (dragging Detail)
+  and of keyed Detail in Play; 3.56 ms at 516 points, under a quarter of a 60 Hz frame. O(points²).
+- Above either, `trace_fitted` raises Detail to the SMALLEST value that fits (doubling, then bisection);
+  only when Detail spans the picture does Ignore specks under rise. Never cuts the art (`tests/tecto.rs`).
+- ⭐ **The pieces were CUBIC before this measure** (761 ms at 513 teeth, 14.9 ms at 129): Hertel–Mehlhorn
+  scanned every later polygon for each edge's twin, and the merge rescanned from `(0, 1)` after every
+  merge. An edge→owner index and a resumed scan give the SAME sequence (one owner per directed index edge;
+  after a merge only piece `i` is new) — byte-identical over 21 masks × 3 Details × 2 speck settings
+  (16 107 pieces, one sha256), and `hero_union_outline_is_byte_stable` unchanged. 14× at 512 teeth.
+- ⛔ Not done: the remaining O(points²) (ear search, chord-conflict pass) — a lower order moves `MAX_POINTS`.
+
+| mutation (09/11) | red |
+|---|---|
+| no Detail search (straight to specks) | `acima_do_tecto_o_detail_sobe_ao_menor_que_cabe` |
+| no bisection (first doubling wins) | idem (192 → 256 q4: not the smallest) |
+| no specks step | `ilhas_demais_sobem_o_ignore_specks_depois_do_detail` |
+
 ## Mutation proofs (08/11; each restored, tree clean)
 
 | mutation | red |

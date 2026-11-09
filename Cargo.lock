@@ -10694,6 +10694,7 @@ dependencies = [
  "blake3",
  "dhat",
  "libm",
+ "ph2d-outline-trace",
  "rapier2d",
 ]
 

@@ -51,6 +51,8 @@ libm = { version = "=0.2.16", default-features = false }
 # declares a budget owns a gate that MEASURES it. `measure_checkpoint` is that
 # gate — it decides the checkpoint ring's stride from real heap bytes.
 dhat = "0.3"
+# W0 do Outline (plano f2): as peças convexas reais que o tecto mede (`measure_outline_pieces`).
+ph2d-outline-trace = { path = "../ph2d-outline-trace" }
 
 [lints]
 workspace = true

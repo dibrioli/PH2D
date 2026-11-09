@@ -112,10 +112,28 @@ fn groups(o: &Outline) -> Vec<(&Ring, Vec<&Ring>)> {
     out
 }
 
+/// Who owns each directed index edge. A directed edge lives in at most one polygon (indices are unique
+/// even where the hole bridges repeat a point), so «the first later polygon holding the twin» is «the
+/// owner, if it comes later» — the same answer as a scan, without the scan (W0: the scan was cubic).
+#[derive(Default)]
+struct EdgeOwner(std::collections::BTreeMap<(u32, u32), usize>);
+
+impl EdgeOwner {
+    fn claim(&mut self, poly: &[u32], owner: usize) {
+        for e in 0..poly.len() {
+            self.0.insert((poly[e], poly[(e + 1) % poly.len()]), owner);
+        }
+    }
+}
+
 /// Hertel–Mehlhorn over index triangles: drop a shared diagonal whenever both junctions stay convex.
 #[must_use]
 pub fn hertel_mehlhorn(v: &[P], tris: &[[u32; 3]]) -> Vec<Vec<u32>> {
     let mut polys: Vec<Vec<u32>> = tris.iter().map(|t| t.to_vec()).collect();
+    let mut owner = EdgeOwner::default();
+    for (k, p) in polys.iter().enumerate() {
+        owner.claim(p, k);
+    }
     let pt = |i: u32| v[i as usize];
     let mut i = 0;
     while i < polys.len() {
@@ -123,12 +141,17 @@ pub fn hertel_mehlhorn(v: &[P], tris: &[[u32; 3]]) -> Vec<Vec<u32>> {
         while e < polys[i].len() {
             let n1 = polys[i].len();
             let (a, b) = (polys[i][e], polys[i][(e + 1) % n1]);
-            let found = (i + 1..polys.len()).find_map(|j| {
-                let pj = &polys[j];
-                (0..pj.len())
-                    .find(|f| pj[*f] == b && pj[(f + 1) % pj.len()] == a)
-                    .map(|f| (j, f))
-            });
+            let found = owner
+                .0
+                .get(&(b, a))
+                .copied()
+                .filter(|j| *j > i)
+                .and_then(|j| {
+                    let pj = &polys[j];
+                    (0..pj.len())
+                        .find(|f| pj[*f] == b && pj[(f + 1) % pj.len()] == a)
+                        .map(|f| (j, f))
+                });
             let Some((j, f)) = found else {
                 e += 1;
                 continue;
@@ -144,8 +167,14 @@ pub fn hertel_mehlhorn(v: &[P], tris: &[[u32; 3]]) -> Vec<Vec<u32>> {
             }
             let mut merged: Vec<u32> = (0..n1).map(|t| p1[(e + 1 + t) % n1]).collect(); // b .. a
             merged.extend((2..n2).map(|t| p2[(f + t) % n2])); // after a .. before b
+            owner.0.remove(&(a, b));
+            owner.0.remove(&(b, a));
+            owner.claim(&merged, i);
             polys[i] = merged;
             polys.swap_remove(j);
+            if j < polys.len() {
+                owner.claim(&polys[j], j);
+            }
             e = 0;
         }
         i += 1;
@@ -198,6 +227,37 @@ fn merge_ok(h: &[P], u: &[P], holes: &[&Ring], eps: i64) -> bool {
     u.iter().all(|p| near(*p)) && holes.iter().all(|r| r.iter().all(|p| !strictly_in(*p)))
 }
 
+/// The merged hull of `i` and `j`, when they share an edge and the merge is allowed.
+fn try_merge(pieces: &[Vec<P>], i: usize, j: usize, holes: &[&Ring], eps: i64) -> Option<Vec<P>> {
+    if !shares_edge(&pieces[i], &pieces[j]) {
+        return None;
+    }
+    let both: Vec<P> = pieces[i].iter().chain(&pieces[j]).copied().collect();
+    let h = hull(both.clone());
+    merge_ok(&h, &both, holes, eps).then_some(h)
+}
+
+/// Merge the lexicographically FIRST allowed pair `(i, j)` until none is left — the same sequence as
+/// rescanning from `(0, 1)` after every merge, without the rescan: after a merge only piece `i` is new,
+/// so the rows before it can only gain the pair with column `i`, and the scan resumes at row `i`.
+fn merge_neighbours(pieces: &mut Vec<Vec<P>>, holes: &[&Ring], eps: i64) {
+    let mut changed = 0;
+    loop {
+        let column = (0..changed)
+            .find_map(|r| try_merge(pieces, r, changed, holes, eps).map(|h| (r, changed, h)));
+        let hit = column.or_else(|| {
+            (changed..pieces.len()).find_map(|i| {
+                (i + 1..pieces.len())
+                    .find_map(|j| try_merge(pieces, i, j, holes, eps).map(|h| (i, j, h)))
+            })
+        });
+        let Some((i, j, h)) = hit else { break };
+        pieces[i] = h;
+        pieces.remove(j);
+        changed = i;
+    }
+}
+
 /// Convex pieces in Q4, outer orientation, deterministic order.
 #[must_use]
 pub fn convex_pieces(o: &Outline, detail_q4: u16) -> Vec<Vec<[i32; 2]>> {
@@ -209,23 +269,7 @@ pub fn convex_pieces(o: &Outline, detail_q4: u16) -> Vec<Vec<[i32; 2]>> {
             .into_iter()
             .map(|p| p.into_iter().map(|i| v[i as usize]).collect())
             .collect();
-        'again: loop {
-            for i in 0..pieces.len() {
-                for j in i + 1..pieces.len() {
-                    if !shares_edge(&pieces[i], &pieces[j]) {
-                        continue;
-                    }
-                    let both: Vec<P> = pieces[i].iter().chain(&pieces[j]).copied().collect();
-                    let h = hull(both.clone());
-                    if merge_ok(&h, &both, &holes, eps) {
-                        pieces[i] = h;
-                        pieces.remove(j);
-                        continue 'again;
-                    }
-                }
-            }
-            break;
-        }
+        merge_neighbours(&mut pieces, &holes, eps);
         out.extend(pieces);
     }
     for p in &mut out {

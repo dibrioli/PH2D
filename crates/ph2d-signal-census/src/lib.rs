@@ -32,8 +32,11 @@ pub struct Campo {
     pub component: &'static str,
     pub field: &'static str,
     pub role: Role,
-    pub read: fn(&World, &mut dyn FnMut(&str)),
+    pub read: Leitor,
 }
+
+/// Como uma linha de [`CAMPOS`] lê os nomes do mundo.
+pub type Leitor = fn(&World, &mut dyn FnMut(&str));
 
 macro_rules! campo {
     ($comp:ty, $field:literal, $role:ident, |$c:ident, $put:ident| $body:expr) => {
@@ -181,14 +184,12 @@ struct Fnv(u64);
 impl Fnv {
     /// Oito bytes por passo (o byte a byte custava `35 µs` nos 200 objectos).
     fn bytes(&mut self, b: &[u8]) {
-        let mut c = b.chunks_exact(8);
-        for w in &mut c {
-            self.mix(u64::from_le_bytes([
-                w[0], w[1], w[2], w[3], w[4], w[5], w[6], w[7],
-            ]));
+        let (blocos, cauda) = b.as_chunks::<8>();
+        for w in blocos {
+            self.mix(u64::from_le_bytes(*w));
         }
         let mut resto = [0u8; 8];
-        resto[..c.remainder().len()].copy_from_slice(c.remainder());
+        resto[..cauda.len()].copy_from_slice(cauda);
         self.mix(u64::from_le_bytes(resto) ^ ((b.len() as u64) << 56));
     }
     fn mix(&mut self, x: u64) {

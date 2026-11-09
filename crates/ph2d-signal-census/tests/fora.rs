@@ -93,7 +93,7 @@ fn o_on_hit_ouvido_so_pelo_motion_nao_diz_nobody() {
         motion: Some(&mudo),
         ..Fora::default()
     };
-    assert!(census(&w, &f).names.get("  ").is_none());
+    assert!(!census(&w, &f).names.contains_key("  "));
 }
 
 #[test]

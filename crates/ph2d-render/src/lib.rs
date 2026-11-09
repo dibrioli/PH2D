@@ -128,9 +128,9 @@ pub use atlas::{
     DISC_TILE_PX, FACTORY_ART, FIRST_IMPORT_KEY, FLAG_FRAME_MS, FLAG_SHEET, FLAG_SHEET_KEY,
     FactoryArt, GROUND_TILE, GROUND_TILE_KEY, HERO_ART, HERO_SHEET_CELL_PX, HERO_SHEET_COLS,
     HERO_SHEET_KEY, HERO_SHEET_ROWS, HERO_SHEET_SOLE_BELOW_CENTRE, HERO_SHEET_TAGS, HILLS_TILE,
-    HILLS_TILE_KEY, HeroTag, PLATFORM_TILE, PLATFORM_TILE_KEY, ROCK_ART, ROCK_KEY, TextureAtlas, WHITE_TILE_KEY,
-    WHITE_TILE_UV, disc_tile_pixels, factory_image, factory_pixels, hero_sheet_pixels,
-    veste_o_heroi, wrap_image,
+    HILLS_TILE_KEY, HeroTag, PLATFORM_TILE, PLATFORM_TILE_KEY, ROCK_ART, ROCK_KEY, TextureAtlas,
+    WHITE_TILE_KEY, WHITE_TILE_UV, disc_tile_pixels, factory_image, factory_pixels,
+    hero_sheet_pixels, veste_o_heroi, wrap_image,
 };
 pub use camera::{Camera2d, CameraUniform};
 pub use sink_style::{SinkStyle, StyleReach};

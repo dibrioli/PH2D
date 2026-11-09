@@ -16,8 +16,8 @@
 pub mod smoke;
 
 use ph2d_ecs::{
-    ChildOf, Entity, Name, RootOrder, Transform, VecPathRef, World,
-    ordered_children, set_sibling_order,
+    ChildOf, Entity, Name, RootOrder, Transform, VecPathRef, World, ordered_children,
+    set_sibling_order,
 };
 use ph2d_outline_trace::Mask;
 use ph2d_physics_ecs::{Collider, ColliderOutline, ColliderShape};
@@ -125,7 +125,9 @@ pub fn convert(world: &mut World, scene: &mut VecScene, e: Entity) -> Result<Ent
     let (collider, outline) = shape_of(path)?;
     let transform = world.get::<Transform>(e).copied().unwrap_or_default();
     let parent = world.get::<ChildOf>(e).map(|c| c.0);
-    let name = ph2d_unique_name::unique_names_in(world, ph2d_physics_ecs::NOME_DA_FORMA, 1).pop().unwrap_or_default();
+    let name = ph2d_unique_name::unique_names_in(world, ph2d_physics_ecs::NOME_DA_FORMA, 1)
+        .pop()
+        .unwrap_or_default();
     let shape = world
         .spawn((Name::new(name), transform, collider, outline))
         .id();
@@ -172,7 +174,12 @@ fn flatten_contour(verts: &[ph2d_vec_scene::VecVertex], closed: bool, tol: f64) 
     let last = if closed { n } else { n - 1 };
     for i in 0..last {
         let (a, b) = (&verts[i], &verts[(i + 1) % n]);
-        cubic([a.anchor, a.out_handle, b.in_handle, b.anchor], tol, 0, &mut out);
+        cubic(
+            [a.anchor, a.out_handle, b.in_handle, b.anchor],
+            tol,
+            0,
+            &mut out,
+        );
     }
     out
 }

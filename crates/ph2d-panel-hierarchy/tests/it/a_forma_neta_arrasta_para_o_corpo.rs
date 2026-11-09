@@ -160,5 +160,9 @@ fn a_forma_neta_arrasta_para_dentro_do_corpo_e_la_fica() {
     let i = &pedidos[0];
     let ent = |n: Option<NodeId>| n.map(|n| Entity::from_bits(n.0));
     assert_eq!(ent(Some(i.dragged)), Some(neta));
-    assert_eq!(ent(i.new_parent), Some(corpo), "o pedido larga a neta no corpo");
+    assert_eq!(
+        ent(i.new_parent),
+        Some(corpo),
+        "o pedido larga a neta no corpo"
+    );
 }

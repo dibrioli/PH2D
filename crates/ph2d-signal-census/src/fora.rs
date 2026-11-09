@@ -45,8 +45,11 @@ pub struct Origem {
     pub doc: &'static str,
     pub field: &'static str,
     pub role: Role,
-    pub read: fn(&Fora<'_>, &mut dyn FnMut(&str)),
+    pub read: LeitorFora,
 }
+
+/// Como uma linha de [`FORA`] lê os nomes do documento dela.
+pub type LeitorFora = fn(&Fora<'_>, &mut dyn FnMut(&str));
 
 /// Os nós `ty` do grafo e o nome de cada um.
 fn nomes_de_nos(g: &Graph, ty: &str, put: &mut dyn FnMut(&str)) {

@@ -183,6 +183,11 @@ pub fn build_info(
     if region.is_none() && agent.is_none() && cost_area.is_none() && link.is_none() {
         return None;
     }
+    let corpos_desligados = if region.is_some() {
+        corpos_desligados(world)
+    } else {
+        Vec::new()
+    };
     Some(InspectorNavInfo {
         entity_bits: bits,
         region,
@@ -191,7 +196,31 @@ pub fn build_info(
         link,
         clock_playing,
         selected_count,
+        corpos_desligados,
     })
+}
+
+/// ⭐ (dono 09/11) **Os corpos de formas TODAS desligadas** — têm forma, nenhuma ligada: a ponte
+/// descreve-os `shape_off`, e a malha e o desvio saltam-nos. A MESMA pergunta (`main_shape`).
+/// Ordenados pelo nome (um corpo sem `Name`, que o editor não cria, fica de fora).
+fn corpos_desligados(world: &World) -> Vec<String> {
+    let Some(mut q) = world.try_query::<(Entity, &RigidBody)>() else {
+        return Vec::new();
+    };
+    let mut out: Vec<String> = q
+        .iter(world)
+        .filter(|&(e, _)| {
+            ph2d_physics_ecs::tem_forma(world, e)
+                && ph2d_physics_ecs::main_shape(world, e).is_none()
+        })
+        .filter_map(|(e, _)| {
+            world
+                .get::<ph2d_ecs::Name>(e)
+                .map(|n| n.as_str().to_owned())
+        })
+        .collect();
+    out.sort();
+    out
 }
 
 /// ⭐ (W7) **O dreno da ÁREA e do ATALHO** — `None` = a edição não é destes dois.

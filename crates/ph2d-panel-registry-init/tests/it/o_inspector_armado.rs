@@ -1241,6 +1241,10 @@ fn arma_o_top20() {
         }),
         clock_playing: false,
         selected_count: selecionados(),
+        // (dono 09/11) O aviso dos corpos de olho fechado, com nomes a ELIDIR (a frase mais longa).
+        corpos_desligados: ["Door", "Gate", "Left Wall", "Right Wall"]
+            .map(String::from)
+            .to_vec(),
     }));
     // O MOTION INPUT (ciclo 19) — no estado que pinta MAIS linhas: a queixa do nome que o grafo
     // não lê, os chips dos nomes do grafo e a linha do número.

@@ -86,6 +86,7 @@ pub(crate) fn info(
         link,
         clock_playing: true,
         selected_count: 1,
+        corpos_desligados: Vec::new(),
     }
 }
 

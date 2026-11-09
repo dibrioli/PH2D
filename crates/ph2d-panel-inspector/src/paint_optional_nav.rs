@@ -34,7 +34,7 @@ pub(crate) fn push_nav_sections<'a>(
             header_h,
             move |c, t, y| {
                 crate::sections::nav::paint_nav_region_section(
-                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, r,
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, r, info,
                 )
             },
         );

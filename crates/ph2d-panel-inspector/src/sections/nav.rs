@@ -15,7 +15,8 @@
 
 use super::*;
 use ph2d_editor_core::nav_edits::{
-    AgentQueixa, InspectorNavAgent, InspectorNavRegion, NavAlvoModo, NavEstado, RegionQueixa,
+    AgentQueixa, InspectorNavAgent, InspectorNavInfo, InspectorNavRegion, NavAlvoModo, NavEstado,
+    RegionQueixa,
 };
 use ph2d_editor_core::property_row::{Seccao, paint_choice_row};
 use ph2d_editor_core::widget::key_mark::{Eixos, Rotulo};
@@ -96,6 +97,7 @@ pub(crate) fn paint_nav_region_section(
     w: f32,
     y: f32,
     r: &InspectorNavRegion,
+    info: &InspectorNavInfo,
 ) -> f32 {
     let (fold, mut cur_y) = match cabecalho(
         scene,
@@ -121,6 +123,26 @@ pub(crate) fn paint_nav_region_section(
             w,
             cur_y,
             tr(chave_da_regiao(q)),
+            ColorToken::Warn,
+        );
+    }
+    // (dono 09/11) Os corpos de olho fechado em todas as formas não barram o caminho.
+    if let Some((n, nomes, mais)) = info.aviso_desligados() {
+        let mut lista = nomes.join(", ");
+        if mais {
+            lista.push_str(", \u{2026}");
+        }
+        cur_y = super::rows::aviso(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            &tr_with(
+                "panel.inspector.nav.bodies_with_every_shape_off",
+                &[("n", &n), ("names", &lista)],
+            ),
             ColorToken::Warn,
         );
     }

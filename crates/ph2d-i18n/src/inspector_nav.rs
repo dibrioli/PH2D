@@ -15,6 +15,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.nav.no_layer_blocks" => {
             "No layer is a wall \u{2014} agents walk straight through everything."
         }
+        "panel.inspector.nav.bodies_with_every_shape_off" => {
+            "{n} {n?body has|bodies have} every shape hidden, so {n?it doesn't|they don't} block the path: {names}"
+        }
         "panel.inspector.nav.target_none" => "None",
         "panel.inspector.nav.target_object" => "Object",
         "panel.inspector.nav.target_point" => "Point",

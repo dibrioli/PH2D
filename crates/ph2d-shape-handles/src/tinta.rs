@@ -15,6 +15,17 @@ const ALCA_SOB_PX: f64 = 6.0; // LITERAL-PX-OK: meia-alça sob o ponteiro
 const MIOLO_PX: f64 = 3.0; // LITERAL-PX-OK: raio do ponto do miolo
 const TRACO_PX: f64 = 1.5; // LITERAL-PX-OK: traço do contorno e das alças
 const TRACEJADO_PX: [f64; 2] = [6.0, 4.0]; // LITERAL-PX-OK: o tracejado do Sensor
+const CAIXA_RECUADA_PX: f64 = 1.0; // LITERAL-PX-OK: a caixa da imagem atrás dos pontos
+
+/// A caixa da imagem: com os pontos do «Outline» em edição ela recua (tracejada, `Text3`) e o caminho é o herói.
+#[must_use]
+pub fn tinta_da_caixa(com_pontos: bool) -> (ColorToken, bool) {
+    if com_pontos {
+        (ColorToken::Text3, true)
+    } else {
+        (ColorToken::Selection, false)
+    }
+}
 
 /// O contorno em ecrã: a mesma figura que o solver simula, pela mesma pose.
 #[must_use]
@@ -64,7 +75,10 @@ pub fn desenhar(
         return;
     };
     let m = Medida::de(col);
+    let com_pontos = crate::pontos::do_alvo(world, alvo).is_some();
+    let (token, tracejada) = tinta_da_caixa(com_pontos);
     let cor = resolve(ColorToken::Selection, theme);
+    let cor_da_caixa = resolve(token, theme);
     let fundo = resolve(ColorToken::Bg0, theme);
     let s = scene.inner_mut();
     let traco = if col.is_sensor {
@@ -72,15 +86,20 @@ pub fn desenhar(
     } else {
         Stroke::new(TRACO_PX)
     };
+    let da_caixa = if tracejada {
+        Stroke::new(CAIXA_RECUADA_PX).with_dashes(0.0, TRACEJADO_PX)
+    } else {
+        traco.clone()
+    };
     s.stroke(
-        &traco,
+        &da_caixa,
         Affine::IDENTITY,
-        &Brush::Solid(cor),
+        &Brush::Solid(cor_da_caixa),
         None,
         &contorno(&pose, &m, cam, win),
     );
     // W5: com os pontos do «Outline» a caixa não tem alças (não arrasta).
-    if crate::pontos::do_alvo(world, alvo).is_some() {
+    if com_pontos {
         crate::tinta_pontos::desenhar(world, alvo, cam, win, ponteiro, theme, &traco, scene);
         return;
     }

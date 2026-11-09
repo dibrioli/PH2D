@@ -58,7 +58,10 @@ impl crate::App {
         let pointer = self.last_pointer;
         // Com o palco aberto o rato é do jogo: nada do editor está debaixo dele (foto do plano 11).
         let palco = self.no_palco();
-        self.hovered_object = (!palco)
+        // A editar a forma de colisão, o canvas é das alças e dos pontos: nada mais se acende por baixo.
+        let forma = (self.gfx.as_ref())
+            .is_some_and(|g| ph2d_shape_handles::editando(g.sim.world()).is_some());
+        self.hovered_object = (!palco && !forma)
             .then(|| self.pick_hovered_object(pointer))
             .flatten();
         // ⭐ **A geometria do contorno é resolvida AQUI, com o objecto.** Ela precisa da

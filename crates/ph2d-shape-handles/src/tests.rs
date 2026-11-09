@@ -657,3 +657,14 @@ fn a_mao_da_familia_segura_so_durante_o_arrasto() {
         assert!(!segura(&c), "acabou");
     }
 }
+
+/// ⭐ (12) **Com os pontos em edição a caixa da imagem recua**: tracejada em `Text3`, nunca o realce do caminho;
+/// sem pontos volta à `Selection` cheia. *Mutação: a caixa sempre `Selection` ⇒ vermelho.*
+#[test]
+fn com_os_pontos_a_caixa_da_imagem_recua() {
+    use crate::tinta::tinta_da_caixa;
+    use ph2d_tokens::ColorToken as T;
+    assert_eq!(tinta_da_caixa(true), (T::Text3, true));
+    assert_eq!(tinta_da_caixa(false), (T::Selection, false));
+    assert_ne!(tinta_da_caixa(true).0, T::Accent, "o realce é do caminho");
+}

@@ -384,8 +384,26 @@ pub fn outline_para_as_fotos(world: &mut World) -> Option<(Entity, [f32; 2])> {
     let nome = std::env::var("PH2D_PHYSICS_SMOKE_OUTLINE").ok()?;
     let mut q = world.query::<(Entity, &Name, &Transform)>();
     let (corpo, _, t) = q.iter(world).find(|(_, n, _)| n.0 == nome.trim())?;
-    let centro = [t.translation.x, t.translation.y];
+    let mut centro = [t.translation.x, t.translation.y];
     let forma = ph2d_physics_ecs::main_shape(world, corpo)?;
+    // A moeda redonda (lei para fora, dono 09/11): `PH2D_PHYSICS_SMOKE_OUTLINE_LADO=<m>` (só fotos) põe a arte do
+    // corpo nesse lado, 2,5 m acima (fora da Ring), e uma bola vira um Outline traçado dela.
+    let lado = std::env::var("PH2D_PHYSICS_SMOKE_OUTLINE_LADO").ok();
+    if let Some(lado) = lado.and_then(|v| v.trim().parse::<f32>().ok()) {
+        if let Some(mut s) = world.get_mut::<Sprite>(corpo) {
+            s.size = [lado, lado];
+        }
+        if let Some(mut t) = world.get_mut::<Transform>(corpo) {
+            t.translation.y += 2.5;
+            centro = [t.translation.x, t.translation.y];
+        }
+        if let Some(mut c) = world.get_mut::<Collider>(forma) {
+            c.shape = ColliderShape::Outline {
+                half_x: lado * 0.5,
+                half_y: lado * 0.5,
+            };
+        }
+    }
     let detail = std::env::var("PH2D_PHYSICS_SMOKE_OUTLINE_DETAIL").ok();
     if let Some(px) = detail.and_then(|v| v.trim().parse::<f32>().ok()) {
         let cur = world
@@ -468,3 +486,6 @@ mod tests;
 #[cfg(test)]
 #[path = "ficha_migra_tests.rs"]
 mod migra_tests;
+#[cfg(test)]
+#[path = "ficha_moeda_tests.rs"]
+mod moeda_tests;

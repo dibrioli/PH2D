@@ -11,7 +11,10 @@
 use crate::paint_wetpaint_presets::{escolher_preset, preset_escolhido};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
-use ph2d_editor_core::panel::{PaintCtx, PanelHostInternal, camada_das_listas};
+use ph2d_editor_core::panel::{
+    PaintCtx, PanelHostInternal, camada_das_listas, dropdown_list_scroll_to_row,
+    dropdown_list_top_rows_h,
+};
 use ph2d_editor_core::widget::{
     Dropdown, DropdownOption, PaintedPopover, TextInput, TextInputState,
     paint_text_input_with_buffer,
@@ -33,8 +36,7 @@ const ALTO_DO_CAMPO: f32 = ph2d_card_stack::metrics::FIELD_H;
 #[must_use]
 fn altura_da_faixa(chip: Rect, panel: Rect) -> f32 {
     let dd = Dropdown::<usize>::new(ids::PAINTER_WETPAINT_PRESET, "", Vec::new());
-    let ultima = dd.option_rect_in(chip, panel, LINHAS_DO_CAMPO - 1);
-    ultima.y + ultima.h - panel.y
+    dropdown_list_top_rows_h(&dd, chip, panel, LINHAS_DO_CAMPO)
 }
 
 thread_local! {
@@ -208,19 +210,8 @@ pub(crate) fn realce(
 /// Rola a lista até a linha `i` (já contadas as do campo) caber por baixo da faixa fixa.
 fn a_vista(ctx: &mut PaintCtx, opcoes: &[DropdownOption<usize>], chip: Rect, i: usize) {
     let dd = Dropdown::new(ids::PAINTER_WETPAINT_PRESET, "", com_campo(opcoes.to_vec())).open(true);
-    let panel = dd.popover_rect_fitted(chip, Some(ctx.viewport), ctx.text_system);
-    let r = dd.option_rect_in_scrolled(chip, panel, i, 0.0);
-    let topo = r.y - panel.y;
-    let store = ctx.host.store_mut();
-    let mut s = store.panel_scroll(ids::PAINTER_WETPAINT_PRESET);
-    let faixa = altura_da_faixa(chip, panel);
-    if topo - faixa < s {
-        // A linha de cima (o título da família) vem com ela.
-        s = (topo - r.h - faixa).max(0.0);
-    } else if topo + r.h > s + panel.h {
-        s = topo + r.h - panel.h;
-    }
-    store.set_panel_scroll(ids::PAINTER_WETPAINT_PRESET, s);
+    let regiao = ctx.viewport;
+    dropdown_list_scroll_to_row(ctx, &dd, chip, regiao, i, LINHAS_DO_CAMPO);
 }
 
 /// As opções com as [`LINHAS_DO_CAMPO`] linhas da faixa no topo (títulos vazios: não se escolhem nem se arrastam).
@@ -360,14 +351,14 @@ fn pinta_faixa(
 /// Os eventos do campo. `None` = não é daqui.
 pub(crate) fn try_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<bool> {
     match ev {
-        WidgetEvent::Submit(id) if id == CAMPO => {
+        WidgetEvent::Submit(id) if id == ids::PAINTER_WETPAINT_PRESET_SEARCH => {
             match REALCE_ID.with(Cell::get).and_then(preset_escolhido) {
                 Some(rel) => escolher_preset(host, rel),
                 None => foca(host.store_mut(), false),
             }
             Some(true)
         }
-        WidgetEvent::Cancel(id) if id == CAMPO => {
+        WidgetEvent::Cancel(id) if id == ids::PAINTER_WETPAINT_PRESET_SEARCH => {
             let vazio = matches!(
                 host.store().get(CAMPO),
                 Some(InteractiveState::TextInput { text, .. }) if text.is_empty()
@@ -384,7 +375,7 @@ pub(crate) fn try_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Op
             Some(true)
         }
         WidgetEvent::Click(id) | WidgetEvent::TextChanged(id) | WidgetEvent::Blur(id)
-            if id == CAMPO =>
+            if id == ids::PAINTER_WETPAINT_PRESET_SEARCH =>
         {
             Some(true)
         }

@@ -125,6 +125,46 @@ pub fn dropdown_list_bands<T: Clone + PartialEq>(
     visible_option_bands(dd, chip, panel, scroll).collect()
 }
 
+/// A altura, do topo de `panel`, que as primeiras `rows` linhas de `dd` ocupam — a faixa fixa de quem
+/// reserva linhas no topo da lista (o campo da busca do Preset do Painter).
+#[must_use]
+pub fn dropdown_list_top_rows_h<T: Clone + PartialEq>(
+    dd: &Dropdown<T>,
+    chip: Rect,
+    panel: Rect,
+    rows: usize,
+) -> f32 {
+    let Some(ultima) = rows.checked_sub(1) else {
+        return 0.0;
+    };
+    let r = dd.option_rect_in(chip, panel, ultima);
+    r.y + r.h - panel.y
+}
+
+/// Rola a lista aberta de `dd` (sob `chip`, em `region`) até a linha `index` caber por baixo das
+/// `fixed_top_rows` linhas fixas do topo; ao subir, a linha de cima (o título da família) vem com ela.
+pub fn dropdown_list_scroll_to_row<T: Clone + PartialEq>(
+    ctx: &mut PaintCtx,
+    dd: &Dropdown<T>,
+    chip: Rect,
+    region: Rect,
+    index: usize,
+    fixed_top_rows: usize,
+) {
+    let panel = dd.popover_rect_fitted(chip, Some(region), ctx.text_system);
+    let r = dd.option_rect_in(chip, panel, index);
+    let topo = r.y - panel.y;
+    let faixa = dropdown_list_top_rows_h(dd, chip, panel, fixed_top_rows);
+    let store = ctx.host.store_mut();
+    let mut s = store.panel_scroll(dd.id);
+    if topo - faixa < s {
+        s = (topo - r.h - faixa).max(0.0);
+    } else if topo + r.h > s + panel.h {
+        s = topo + r.h - panel.h;
+    }
+    store.set_panel_scroll(dd.id, s);
+}
+
 /// A rolagem gravada, clampada ao que `dd` transborda em `panel`.
 fn rolagem<T: Clone + PartialEq>(
     store: &WidgetStore,

@@ -105,3 +105,95 @@ Papel sintético NOSSO tipo Cold Press (`simula.papel_sintetico`, semente 9: den
 - **Nenhum correu sobre papel com grão.** A sonda pinta em tela lisa (o «Textured Paper» do New Image pede o app ou
   uma sonda nova), o grão do Krita e do CSP é a textura do próprio preset, e o MyPaint não tem papel. Só as
   simulações usam papel, e é o sintético acima.
+
+## FASE 2 — rodada 2 (09/11): o papel decide a cobertura pela PRESSÃO (só receita; nada no motor)
+
+> Lei do estado da arte (Sousa & Buchanan 1999; Rudolf, Mould & Neufeld 2003/2005): a tinta pousa onde o bastão
+> ALCANÇA a altura do papel; pouca pressão = só os picos, muita = os vales também; repassar enche o dente.
+> **Folha:** [`folha_variantes.png`](folha_variantes.png) (linhas: nosso hoje · Krita Chalk Soft · 4 variantes · simulação
+> do enchimento; colunas: vazio · branco · blocos à pressão 1 · rampa 0,1→1 · 2 passadas na rampa · detalhe 200 %).
+
+**Como correu.** A sonda ganhou `PH2D_V3_PRESSAO=rampa` (0,1→1,0 ao longo de cada traço) e `PH2D_V3_PASSADAS=<n>` (a cena
+repete-se por cima); sem elas faz o de antes. `bash corre_lei.sh <scratch>` corre [`var_pastel_lei.tsv`](var_pastel_lei.tsv)
+(+ `T=…/var_pastel_lei2.tsv`) em pressão 1 (ida e volta), rampa e rampa ×2 — uma compilação `smoke`, ~25 s por condição.
+`python3 -I lei.py <s>` (réguas), `krita_rampa.py <s>` (Krita Chalk Soft na rampa: `prepara_rampa.py` + `krita_bateria.py`),
+`folha_lei.py <s> .` (simulação + folha). **A altura do papel** é medida no próprio motor: a variante `papel`
+(LinearHeight a d = 1, sem mãos ⇒ cobertura = t) dá o mapa, em ranking. Todas as variantes: `spray_count`, `dab_jitter`
+e `jitter` fora; o mesmo `Noise` 48 px do `PAPEL_ASPERO`, `depth_pressure` ligado.
+
+### Pressão 1 (reta da coluna vazia, as réguas da rodada 1) [M]
+
+| linha | modo · d · jitter · dureza · opac. | cobertura | cv | buracos | borda | grão | coerência | corr. altura |
+|---|---|---|---|---|---|---|---|---|
+| nosso hoje | spray | 0,26 | 0,91 | 41 % | 12,5 | 1×1 | 0,01 | 0,11 |
+| **Krita Chalk Soft** | — | **0,97** | **0,07** | 0 % | 3,0 | 3×3 | 0,79 | — |
+| ⭐ **H_d08_j07** | Height · 0,8 · 0,7 · 0,85 Smooth · 1 | **0,98** | **0,08** | 0,7 % | 2,0 | 1×2 | **1,00** | 0,13 |
+| H_d09_j07 | Height · 0,9 · 0,7 · 0,85 · 1 | 0,99 | 0,02 | 0 % | 2,0 | 1×1 | 0,93 | 0,10 |
+| H_j07 / H (d 0,7) | Height · 0,7 · 0,7/1 · 0,85 · 1 | 0,92 | 0,26 | 6,4 % | 2,0 | 2×2 | 1,00 | 0,42 |
+| H_o08 | Height · 0,7 · 1 · 0,85 · 0,8 | 0,74 | 0,26 | 6,4 % | 2,0 | 2×2 | 1,00 | 0,42 |
+| H_d05 | Height · 0,5 · 1 | 0,49 | 1,01 | 50 % | 9,0 | 3×2 | 1,00 | 0,87 |
+| LH (d 0,7) | LinearHeight · 0,7 · 1 · 0,85 · 1 | 0,28 | 0,61 | 8,5 % | 7,5 | 4×3 | 1,00 | 0,99 |
+| LH_d09 | LinearHeight · 0,9 · 1 | 0,43 | 0,31 | 0 % | 2,0 | 4×4 | 1,00 | 0,99 |
+| SUB | Subtract · 0,7 · 1 | 0,64 | 0,14 | 0 % | 2,0 | 4×4 | 1,00 | 0,99 |
+
+Dureza 0,6 (H_h06, LH_h06) e `pressureOpacity` 0,3 (LH_po03) mudam ≤ 0,01 a cobertura; a dureza 0,6 só alarga a borda
+(5,5 px). `LH_g24` (papel de 24 px) não se compara: a altura medida é a do de 48.
+
+### Cobertura × pressão (rampa; núcleo ±5 px da reta, janelas de 50 px) [M]
+
+| linha | p 0,2 | 0,35 | 0,5 | 0,65 | 0,8 | 0,95 | corr. com a altura (0,2 · 0,35 · 0,5) |
+|---|---|---|---|---|---|---|---|
+| nosso hoje | 0,06 | 0,10 | 0,15 | 0,18 | 0,24 | 0,26 | 0,07 · 0,04 · 0,00 (sobe por QUANTIDADE de pontos) |
+| **Krita Chalk Soft** | 0,06 | 0,19 | 0,45 | 0,88 | 0,99 | 1,00 | (sem a nossa altura) |
+| ⭐ **H_d08_j07** | 0,05 | 0,14 | 0,30 | 0,58 | 0,81 | 0,97 | **0,57 · 0,82 · 0,82** |
+| H_d09_j07 | 0,09 | 0,20 | 0,47 | 0,69 | 0,85 | 0,97 | 0,71 · 0,88 · 0,64 |
+| H_j07 | 0,03 | 0,08 | 0,15 | 0,38 | 0,67 | 0,93 | 0,42 · 0,67 · 0,78 |
+| H (jitter 1) | 0,00 | 0,02 | 0,03 | 0,19 | 0,59 | 0,92 | — · 0,33 · 0,48 |
+| LH_d09 | 0,00 | 0,01 | 0,02 | 0,10 | 0,28 | 0,47 | 0,07 · 0,39 · 0,70 |
+| SUB | 0,31 | 0,40 | 0,47 | 0,54 | 0,60 | 0,67 | pinta 100 % dos píxeis em TODA pressão: lei invertida |
+
+- **O Height com `depth_pressure` É a lei** (picos primeiro, vales depois): no H_d08_j07 a fracção pintada sobe
+  0,15 → 0,30 → 0,51 → 0,81 → 0,95 → 1,00 e, nas pressões baixas, o que pinta é o ALTO do papel (corr. 0,8). O nosso de
+  hoje não tem correlação nenhuma com o papel em pressão nenhuma.
+- O LinearHeight é a lei «suave» mas a rampa dele tem a largura da profundidade inteira: nunca enche (0,28 a 0,47 à
+  pressão 1) — um véu. O limiar suave de largura curta (`(t − (1 − d))/W`, W ≈ 0,1) **não se exprime por composição**.
+- `depth_jitter` 0,7 em vez de 1 adianta a curva para a do Krita (a 0,5: 0,30–0,47 contra 0,45).
+
+### Enchimento: 1 × 2 passadas (H_d08_j07, rampa) [M] e simulação [D]
+
+| | p 0,35 | 0,5 | 0,65 | 0,8 | vales (quartil baixo) a 0,5 · 0,65 · 0,8 |
+|---|---|---|---|---|---|
+| motor, 1 passada | 0,14 | 0,30 | 0,58 | 0,81 | 0,00 · 0,16 · 0,68 |
+| motor, 2 passadas | 0,21 | 0,42 | 0,74 | 0,92 | 0,00 · 0,20 · 0,78 |
+| Krita, 1 → 2 passadas | 0,19 → 0,33 | 0,45 → 0,66 | 0,88 → 0,97 | 0,99 → 1,00 | píxeis vazios que a 2.ª pinta: **0 %** |
+| sim. `h_ef = h + k·alfa` no PRÓPRIO píxel, k 0,5 e 1 | 0,22 | 0,43 | 0,74 | 0,93 | 0,00 · 0,22 · 0,79 (= o motor) |
+| sim. alfa da VIZINHANÇA (1,5 px), k 0,5 | 0,28 | 0,59 | 0,88 | 0,97 | 0,00 · **0,77** · **0,95** |
+| sim. alfa da VIZINHANÇA (1,5 px), k 1 | 0,30 | 0,64 | 0,88 | 0,97 | **0,33** · **0,77** · **0,95** |
+
+- **O motor de hoje NÃO enche o dente:** a 2.ª passada pinta exactamente os mesmos píxeis (fracção pintada 0,805 →
+  0,807); só escurece o que já tinha tinta (o composto). **O Krita também não** (0 % dos vazios ganham tinta).
+- **O enchimento no próprio píxel não faz nada** (k 0,5 = k 1 = o motor): um vale vazio tem alfa 0 e não sobe. O que
+  enche é a tinta pousada À VOLTA (o pó dos picos empurrado para o vale): com a vizinhança de 1,5 px, os vales a meia
+  pressão passam de 0,00–0,20 a 0,33–0,77, e a curva de 2 passadas (0,30 · 0,64 · 0,88) cai em cima da do Krita ×2
+  (0,33 · 0,66 · 0,97).
+- [D] **Vale construir** (é o critério 5 — cobre mais com repasse — e é o que nenhum dos oráculos faz): uma camada de
+  «altura pousada» por traço, `h_ef = h + k·desfoque(alfa_pousado, ~1,5 px)`, lida pelo Height no lugar de `t`. É motor
+  (uma textura de estado por camada), fora desta rodada.
+
+### A receita (H_d08_j07) para `csp_secos.rs`, se o dono aprovar [M]
+
+Tirar `jitter`, `spray_count`, `dab_jitter`; `hardness` 1,0 → **0,85**; `falloff` Sharp → **Smooth**; `grain_depth` 0,6 →
+**0,8**; `opacity` 0,6 → **1,0**; e o papel do Pastel com a lei `{"depth_jitter": 0.7, "depth_min": 0.0,
+"depth_pressure": true, "mode": 4}` (o resto do `PAPEL_ASPERO` igual; o Crayon continua com o seu). Mãos, `spacing`,
+`color_jitter_sat` e `mistura_opaca` iguais.
+
+### Ressalvas
+
+- À pressão 1 o H_d08_j07 é quase chapado (0,98) como o Chalk Soft (0,97), mas os poucos buracos são MANCHAS do `Noise`
+  de 48 px (detalhe 200 %), não o grão fino de 3 px do Krita. O grão fino é o próximo eixo (`size` do papel; a régua de
+  altura tem de ser medida no mesmo papel).
+- O Height é binário por píxel: a meia pressão a borda dos grãos é dura (dentes de 1–2 px). Um limiar suave curto pede motor.
+- Na coluna «branco» as nossas variantes saem mais claras que no vazio: é a `mistura_opaca` (Amount 0,5) a apanhar o
+  branco; o Krita não mistura.
+- A simulação corre só na reta (onde a altura foi medida); na linha da simulação o «detalhe» é a reta NA RAMPA.
+- Nenhum papel com grão de verdade (o «Textured Paper») — o papel é o `Noise` do próprio preset.

@@ -21,23 +21,26 @@ fn receita(nome: &str) -> &'static ReceitaMeio {
         .unwrap_or_else(|| panic!("receita {nome} não existe"))
 }
 
-// Um ponto só = toque: Down, um tique, Up.
-fn traca(t: &mut PainterTool, s: &[[f32; 2]]) {
-    let cp = |pos, phase| CanvasPointer {
+// Um ponto só = toque: Down, um tique, Up. `rampa`: a pressão sobe de 0,1 a 1,0 ao longo do traço (senão 1,0).
+fn traca(t: &mut PainterTool, s: &[[f32; 2]], rampa: bool) {
+    let n = s.len().saturating_sub(1).max(1) as f32;
+    let pr = |i: usize| if rampa { 0.1 + 0.9 * i as f32 / n } else { 1.0 };
+    let cp = |pos, pressure, phase| CanvasPointer {
         pos,
-        pressure: 1.0,
+        pressure,
         tilt: [0.0, 0.0],
         phase,
     };
-    t.on_canvas_pointer(cp(s[0], PointerPhase::Down));
-    for &p in &s[1..] {
-        t.on_canvas_pointer(cp(p, PointerPhase::Move));
+    t.on_canvas_pointer(cp(s[0], pr(0), PointerPhase::Down));
+    for (i, &p) in s.iter().enumerate().skip(1) {
+        t.on_canvas_pointer(cp(p, pr(i), PointerPhase::Move));
         t.on_tick(8.0);
     }
     if s.len() == 1 {
         t.on_tick(8.0);
     }
-    t.on_canvas_pointer(cp(*s.last().expect("ponto"), PointerPhase::Up));
+    let fim = s.len() - 1;
+    t.on_canvas_pointer(cp(s[fim], pr(fim), PointerPhase::Up));
     t.on_tick(8.0);
 }
 
@@ -64,6 +67,20 @@ fn sonda_csp_v3_revisao() {
         .collect();
     assert_eq!(tracos.len(), 12, "12 traços");
     let so = std::env::var("PH2D_V3_SO").ok();
+    // `PH2D_V3_PRESSAO=rampa` (pressão 0,1→1,0 ao longo de cada traço) e `PH2D_V3_PASSADAS=<n>` (a cena inteira
+    // repete-se n vezes por cima); sem elas, o de sempre. A saída leva `__rampa`/`__x<n>` no nome.
+    let rampa = std::env::var("PH2D_V3_PRESSAO").is_ok_and(|v| v == "rampa");
+    let passadas: usize =
+        std::env::var("PH2D_V3_PASSADAS").map_or(1, |v| v.parse().expect("passadas"));
+    let cond = format!(
+        "{}{}",
+        if rampa { "__rampa" } else { "" },
+        if passadas > 1 {
+            format!("__x{passadas}")
+        } else {
+            String::new()
+        }
+    );
     let tsv = std::fs::read_to_string(d.join("pinceis.tsv")).expect("pinceis");
     let diam_de = |nome: &str| -> f32 {
         let l = tsv.lines().find(|l| l.split('\t').nth(2) == Some(nome));
@@ -160,10 +177,12 @@ fn sonda_csp_v3_revisao() {
         assert_eq!(t.preset_aplicar(&p), Ok(Vec::new()));
         t.set_brush_size_px(diam / 2.0); // raio; o diâmetro de fábrica do CSP
         t.set_brush_color_srgb8([0, 160, 60]);
-        for s in &tracos {
-            traca(&mut t, s);
+        for _ in 0..passadas {
+            for s in &tracos {
+                traca(&mut t, s, rampa);
+            }
         }
-        let slug = format!("{}{sufixo}", nome.replace(' ', "_"));
+        let slug = format!("{}{sufixo}{cond}", nome.replace(' ', "_"));
         std::fs::write(o.join(format!("{slug}.rgba")), t.run_full().0).expect("grava");
         eprintln!("[v3] {nome} ok {:.1}s", t0.elapsed().as_secs_f64());
     }

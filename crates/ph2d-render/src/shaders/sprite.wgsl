@@ -429,7 +429,9 @@ fn fs_main_n(in: VertexOutput) -> @location(0) vec4<f32> {
     let wraps = in.repeat_mode == 2u || in.repeat_mode == 3u || any(in.uv_xform.zw != vec2<f32>(0.0));
     let onde = select(recorte_uv(uv, in.atlas_uv, dim, vec2<f32>(1.0), 0.0), uv, wraps);
     let nb = textureSampleLevel(normal_tex, atlas_sampler, onde, 0.0);
-    return luz_receber_n(cor, in.mundo, normal_no_mundo(nb.rgb, in.lin_n), in.sem_luz);
+    // Alfa 0 = esta célula do átlas não tem normal: `n = 0`, o `luz_em` de hoje por ramo.
+    let n_xy = select(vec2<f32>(0.0), normal_no_mundo(nb.rgb, in.lin_n), nb.a > 0.0);
+    return luz_receber_n(cor, in.mundo, n_xy, in.sem_luz);
 }
 
 // ─── ClipChildren stencil-mark pass (W3 §8; ADR-0070/0074-amendment) ───

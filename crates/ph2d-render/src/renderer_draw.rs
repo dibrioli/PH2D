@@ -19,6 +19,8 @@ impl SpriteRenderer {
     fn ensure_run_sampler_bg(&mut self, texture_id: u32, sampling: u32) {
         if texture_id == RenderInstance::ATLAS_TEXTURE_ID {
             self.ensure_atlas_sampler_bg(sampling);
+            self.normais
+                .garantir_atlas(&self.gpu, &self.atlas, sampling);
         } else if !RenderInstance::is_cooked_texture_id(texture_id) {
             let bgl = &self.pipeline.material_bgl;
             self.individual

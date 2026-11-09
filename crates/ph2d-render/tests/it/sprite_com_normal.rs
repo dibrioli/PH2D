@@ -125,6 +125,8 @@ struct Caso {
     momento: Option<[f64; 2]>,
     /// Regista a normal de OUTRA textura (a do sprite fica sem): as pipelines nascem, este não as usa.
     normal_alheia: bool,
+    /// As duas células no ÁTLAS (chaves 1 e 2, a cor `COR_A`/`COR_B`); só a 1 recebe a normal `.0`.
+    no_atlas: bool,
 }
 
 const HOJE: Caso = Caso {
@@ -134,6 +136,7 @@ const HOJE: Caso = Caso {
     flip: 0,
     momento: Some([MOMENTO, 0.0]),
     normal_alheia: false,
+    no_atlas: false,
 };
 
 /// Devolve os bytes RGBA do alvo e quantas normais o renderer tem alocadas.
@@ -172,16 +175,27 @@ fn quadro(gpu: &GpuContext, c: Caso) -> (Vec<u8>, usize) {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
         view_formats: &[],
     });
-    let mut renderer = SpriteRenderer::new(
-        gpu.clone(),
-        wgpu::TextureFormat::Rgba8Unorm,
-        TextureAtlas::new(gpu, 256),
-        8,
-    );
+    let mut atlas = TextureAtlas::new(gpu, 256);
+    if c.no_atlas {
+        let cel = |cor: [u8; 4]| -> Vec<u8> { (0..CEL * CEL).flat_map(|_| cor).collect() };
+        atlas
+            .insert(gpu, 1, CEL, CEL, &cel(COR_A))
+            .expect("célula 1");
+        atlas
+            .insert(gpu, 2, CEL, CEL, &cel(COR_B))
+            .expect("célula 2");
+    }
+    let uv_da_celula = [atlas.region_uv(1), atlas.region_uv(2)];
+    let mut renderer = SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 8);
     let tex = renderer
         .acquire_individual(2 * CEL, CEL, &folha(COR_A, COR_B))
         .expect("textura do sprite");
-    if let Some((a, b)) = c.normal {
+    if let (true, Some((a, _))) = (c.no_atlas, c.normal) {
+        let n: Vec<u8> = (0..CEL * CEL).flat_map(|_| a).collect();
+        renderer
+            .definir_normal_da_celula(1, Some((CEL, CEL, &n)))
+            .expect("normal da célula 1");
+    } else if let Some((a, b)) = c.normal {
         renderer
             .definir_normal(tex, Some((2 * CEL, CEL, &folha(a, b))))
             .expect("normal da folha");
@@ -195,10 +209,18 @@ fn quadro(gpu: &GpuContext, c: Caso) -> (Vec<u8>, usize) {
             .expect("normal alheia");
     }
     let u0 = 0.5 * c.celula as f32;
+    let (atlas_uv, texture_id) = if c.no_atlas {
+        (
+            uv_da_celula[c.celula as usize],
+            RenderInstance::ATLAS_TEXTURE_ID,
+        )
+    } else {
+        ([u0, 0.0, u0 + 0.5, 1.0], tex)
+    };
     let inst = RenderInstance {
         world_pos: [0.0, 0.0],
         size: [1.0, 1.0],
-        atlas_uv: [u0, 0.0, u0 + 0.5, 1.0],
+        atlas_uv,
         tint: [1.0; 4],
         basis: c.basis,
         premultiplied: 0.0,
@@ -206,7 +228,7 @@ fn quadro(gpu: &GpuContext, c: Caso) -> (Vec<u8>, usize) {
         per_corner_tint: [[1.0; 4]; 4],
         opacity: 1.0,
         flip_uv: c.flip,
-        texture_id: tex,
+        texture_id,
         z_order: 0,
         sampling: RenderInstance::SAMPLING_DEFAULT,
         uv_xform: RenderInstance::IDENTITY_UV_XFORM,
@@ -428,4 +450,38 @@ fn a_normal_de_outro_tamanho_e_recusada() {
     assert_eq!(r.normais_alocadas(), 1);
     r.definir_normal(tex, None).expect("tirar");
     assert_eq!(r.normais_alocadas(), 0);
+}
+
+#[test]
+fn a_celula_do_atlas_com_normal_acende_e_a_vizinha_e_a_de_hoje() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sprite normal: sem placa — saltado");
+        return;
+    };
+    let atlas = Caso {
+        no_atlas: true,
+        ..HOJE
+    };
+    let com_n = Caso {
+        normal: Some((N_MAIS_X, N_MAIS_X)),
+        ..atlas
+    };
+    let plana = miolo(&quadro(&gpu, atlas).0);
+    let acesa = miolo(&quadro(&gpu, com_n).0);
+    let vizinha_hoje = quadro(&gpu, Caso { celula: 1, ..atlas });
+    let vizinha = quadro(&gpu, Caso { celula: 1, ..com_n });
+    eprintln!(
+        "sprite atlas: célula com normal {acesa:.1} (plana {plana:.1}) · vizinha {:.1} = hoje {:.1}",
+        miolo(&vizinha.0),
+        miolo(&vizinha_hoje.0)
+    );
+    assert!(
+        acesa > plana + 10.0,
+        "a célula do átlas não leu a normal: {acesa:.1} × {plana:.1}"
+    );
+    assert_eq!(vizinha.1, 1);
+    assert_eq!(
+        vizinha.0, vizinha_hoje.0,
+        "a célula vizinha SEM normal mudou (lê alfa 0 = n 0, a luz de hoje)"
+    );
 }

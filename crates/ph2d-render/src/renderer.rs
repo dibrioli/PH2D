@@ -245,6 +245,23 @@ impl SpriteRenderer {
             .definir(&self.gpu, &self.pipeline, cor, texture_id, normal)
     }
 
+    /// ⭐ P14 — o NORMAL MAP de uma célula `key` do átlas (o Sprite do motor gravado vive no átlas):
+    /// uma textura irmã do átlas recebe-o no MESMO retângulo da célula. Tamanho = o da célula.
+    pub fn definir_normal_da_celula(
+        &mut self,
+        key: u32,
+        normal: Option<(u32, u32, &[u8])>,
+    ) -> Result<(), String> {
+        self.normais
+            .definir_celula(&self.gpu, &self.pipeline, &self.atlas, key, normal)
+    }
+
+    /// A célula `key` do átlas tem normal registada?
+    #[must_use]
+    pub fn celula_tem_normal(&self, key: u32) -> bool {
+        self.normais.tem_celula(key)
+    }
+
     /// Quantas texturas têm normal registada (0 = nada alocado para normais).
     #[must_use]
     pub fn normais_alocadas(&self) -> usize {

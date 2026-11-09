@@ -2,7 +2,7 @@
 //! `c3_momento.wgsl`). Só existe com receptor de normal à vista (`CenaDeLuz::com_normal`): sem ele nada
 //! se aloca nem se despacha, e o quadro é o de sempre. Dois passes depois da C3: a c0 de `M` (nível 0
 //! das cascatas, lendo o nível 1 que a c0 leu) e a fina de `M` (o `luz_do_texel` com `MOMENTO`).
-//! Fora daqui: a holográfica, o rebote e o miolo (o `M` deles é 0 — a lacuna está no plano §11).
+//! Na holográfica a c0 de `M` nasce no laço dos quadrantes ([`MomentoHrc`], plano §11 «P14c-placa 5»).
 //! Módulo-filho do [`super`] (o tecto de 700 LOC do `solver.rs`).
 
 use super::*;
@@ -29,8 +29,10 @@ pub(super) fn modulo_rc(device: &crate::Placa<'_>, cfg: &Config) -> wgpu::Shader
 }
 
 pub(super) struct Momento {
-    c0: wgpu::ComputePipeline,
-    c0_grupo: wgpu::BindGroup,
+    /// A c0 de `M` pelas cascatas clássicas; `None` com a holográfica (a c0 de `M` nasce no [`MomentoHrc`]).
+    c0: Option<(wgpu::ComputePipeline, wgpu::BindGroup)>,
+    /// ⭐ P14c-placa 5 — a c0 de `M` no laço dos quadrantes da holográfica.
+    pub(super) hrc: Option<MomentoHrc>,
     /// A fina sem e com os distantes.
     fina: [Option<wgpu::ComputePipeline>; 2],
     fina_grupo: wgpu::BindGroup,
@@ -38,6 +40,8 @@ pub(super) struct Momento {
     vistas: [wgpu::TextureView; 4],
     /// A lista do solver com o momento ([`PassList::com_momento`]): as quatro texturas nascem dela.
     lista: PassList,
+    /// O que a lista declara a mais que a do solver (texturas e, na holográfica, os buffers).
+    bytes: u64,
 }
 
 /// Uma textura do momento, como a lista a declara.
@@ -66,10 +70,11 @@ fn vista(binding: u32, v: &wgpu::TextureView) -> wgpu::BindGroupEntry<'_> {
 }
 
 impl Momento {
-    /// `None` onde o momento ainda não corre (a holográfica e o entorno `so_a_c0`).
+    /// `None` no entorno `so_a_c0` (ninguém lê a fluência dele; com a borda do bug 6 a luz dele chega à vista
+    /// pelos R, e o `M` da vista já a tem).
     pub(super) fn novo(s: &Solver, gpu: &GpuContext) -> Option<Self> {
         let cfg = &s.cfg;
-        if s.hrc.is_some() || cfg.so_a_c0 {
+        if cfg.so_a_c0 {
             return None;
         }
         let device = crate::Placa {
@@ -90,11 +95,6 @@ impl Momento {
         let g2_c0 = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("luz2d momento c0"),
             entries: &[entrada_escrita(34, FORMATO), entrada_escrita(35, FORMATO)],
-        });
-        let c0_grupo = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("luz2d momento c0"),
-            layout: &g2_c0,
-            entries: &[vista(34, &vistas[0]), vista(35, &vistas[1])],
         });
         let rc_layout = s.rc.get_bind_group_layout(0);
         let pipeline = |rotulo: &str,
@@ -118,12 +118,26 @@ impl Momento {
                 cache: None,
             })
         };
-        let c0 = pipeline(
-            "luz2d momento c0",
-            &[Some(&rc_layout), Some(&s.lampadas_layout), Some(&g2_c0)],
-            "cascata_momento",
-            &c2::constantes(cfg),
-        );
+        let (c0, hrc) = match &s.hrc {
+            Some(h) => (
+                None,
+                Some(MomentoHrc::novo(&device, gpu, h, &modulo, cfg, &vistas)),
+            ),
+            None => {
+                let c0_grupo = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("luz2d momento c0"),
+                    layout: &g2_c0,
+                    entries: &[vista(34, &vistas[0]), vista(35, &vistas[1])],
+                });
+                let c0 = pipeline(
+                    "luz2d momento c0",
+                    &[Some(&rc_layout), Some(&s.lampadas_layout), Some(&g2_c0)],
+                    "cascata_momento",
+                    &c2::constantes(cfg),
+                );
+                (Some((c0, c0_grupo)), None)
+            }
+        };
 
         // ── a fina de M: as leituras da fina de hoje (0, 1, 2, 5) e o momento (30–33) ──
         let op = Opcionais::de(cfg);
@@ -195,8 +209,9 @@ impl Momento {
         };
         let fina_p = [Some(fina_com(0.0)), cfg.distantes.then(|| fina_com(1.0))];
         Some(Self {
+            bytes: lista.bytes_alocados() - s.lista.bytes_alocados(),
             c0,
-            c0_grupo,
+            hrc,
             fina: fina_p,
             fina_grupo,
             texturas,
@@ -212,11 +227,13 @@ impl Momento {
             timestamp_writes: None,
         });
         let [w, h] = [s.cfg.grade.largura, s.cfg.grade.altura];
-        p.set_pipeline(&self.c0);
-        p.set_bind_group(0, &s.rc_grupos[0], &[]);
         p.set_bind_group(1, &s.lampadas_grupo, &[]);
-        p.set_bind_group(2, &self.c0_grupo, &[]);
-        p.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
+        if let Some((c0, grupo)) = &self.c0 {
+            p.set_pipeline(c0);
+            p.set_bind_group(0, &s.rc_grupos[0], &[]);
+            p.set_bind_group(2, grupo, &[]);
+            p.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
+        }
         let fina = if distantes { &self.fina[1] } else { &None };
         let fina = fina.as_ref().or(self.fina[0].as_ref()).expect("a fina");
         // Só a região da fina de `F` (o `c3_momento` desloca por `fina.inicio`, como a `c3_fina`).
@@ -237,10 +254,9 @@ impl Momento {
         [&self.texturas[2], &self.texturas[3]]
     }
 
-    /// Os bytes das quatro texturas, como a lista os declara (a conta da memória).
+    /// O que a lista do momento declara a mais (as quatro texturas e, na holográfica, o acumulado e a grade).
     pub(super) fn bytes(&self) -> u64 {
-        let base = self.lista.texturas.len() - self.texturas.len();
-        self.lista.texturas[base..].iter().map(Textura::bytes).sum()
+        self.bytes
     }
 
     /// As texturas do momento com o rótulo de cada uma (as da lista que o solver não guarda).
@@ -286,5 +302,148 @@ impl Solver {
         } else if self.momento.is_none() {
             self.momento = Momento::novo(self, gpu);
         }
+    }
+}
+
+/// ⭐ P14c-placa 5 — `M` na holográfica (`hrc_momento.wgsl`): a `hrc_soma_momento` logo depois de cada
+/// `hrc_soma` (os R do quadrante ainda lá) e a `hrc_saida_momento` depois da `hrc_saida`. Pipelines PRÓPRIAS
+/// com o grupo 1 (as da holográfica não o têm: nenhuma ligação nova nelas); os grupos 0, 2 e 3 são os dela.
+pub(super) struct MomentoHrc {
+    soma: (wgpu::ComputePipeline, wgpu::BindGroup),
+    saida: (wgpu::ComputePipeline, wgpu::BindGroup),
+    _acumulado: wgpu::Buffer,
+    _grade: wgpu::Buffer,
+}
+
+impl MomentoHrc {
+    fn novo(
+        device: &crate::Placa<'_>,
+        gpu: &GpuContext,
+        h: &holo::Holografica,
+        modulo: &wgpu::ShaderModule,
+        cfg: &Config,
+        vistas: &[wgpu::TextureView; 4],
+    ) -> Self {
+        let acumulado_entrada = || wgpu::BindGroupLayoutEntry {
+            binding: 40,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        };
+        let g1_soma = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("luz2d momento hrc soma"),
+            entries: &[acumulado_entrada()],
+        });
+        let g1_saida = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("luz2d momento hrc saída"),
+            entries: &[
+                acumulado_entrada(),
+                entrada_escrita(44, FORMATO),
+                entrada_escrita(45, FORMATO),
+                entrada_uniforme(46, wgpu::ShaderStages::COMPUTE),
+            ],
+        });
+        let base = &h.pipelines[0];
+        let [g0, g2, g3] = [0, 2, 3].map(|i| base.get_bind_group_layout(i));
+        let pipeline = |entrada: &str, grupos: &[Option<&wgpu::BindGroupLayout>]| {
+            let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some(entrada),
+                bind_group_layouts: grupos,
+                immediate_size: 0,
+            });
+            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some(entrada),
+                layout: Some(&pl),
+                module: modulo,
+                entry_point: Some(entrada),
+                compilation_options: wgpu::PipelineCompilationOptions {
+                    constants: &h.constantes,
+                    zero_initialize_workgroup_memory: true,
+                },
+                cache: None,
+            })
+        };
+        let acumulado = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some(crate::passlist_momento::NOME_ACUMULADO_DO_MOMENTO),
+            size: 2 * 16 * u64::from(cfg.grade.largura) * u64::from(cfg.grade.altura),
+            usage: wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        });
+        let grade = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some(crate::passlist_momento::NOME_GRADE_DO_MOMENTO),
+            size: 16,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        gpu.queue.write_buffer(
+            &grade,
+            0,
+            bytemuck::bytes_of(&[cfg.grade.largura, cfg.grade.altura, 0, 0]),
+        );
+        let acumulado_ligado = || wgpu::BindGroupEntry {
+            binding: 40,
+            resource: acumulado.as_entire_binding(),
+        };
+        let grupo_soma = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("luz2d momento hrc soma"),
+            layout: &g1_soma,
+            entries: &[acumulado_ligado()],
+        });
+        let grupo_saida = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("luz2d momento hrc saída"),
+            layout: &g1_saida,
+            entries: &[
+                acumulado_ligado(),
+                vista(44, &vistas[0]),
+                vista(45, &vistas[1]),
+                wgpu::BindGroupEntry {
+                    binding: 46,
+                    resource: grade.as_entire_binding(),
+                },
+            ],
+        });
+        Self {
+            soma: (
+                pipeline(
+                    "hrc_soma_momento",
+                    &[Some(&g0), Some(&g1_soma), Some(&g2), Some(&g3)],
+                ),
+                grupo_soma,
+            ),
+            saida: (
+                pipeline("hrc_saida_momento", &[Some(&g0), Some(&g1_saida)]),
+                grupo_saida,
+            ),
+            _acumulado: acumulado,
+            _grade: grade,
+        }
+    }
+
+    /// Depois do passo `etapa` da holográfica (com os grupos 0, 2 e 3 dele ligados): o do momento, se houver.
+    pub(super) fn depois(&self, p: &mut wgpu::ComputePass<'_>, etapa: usize, [x, y, z]: [u32; 3]) {
+        let (pipeline, grupo) = match etapa {
+            3 => &self.soma,
+            4 => &self.saida,
+            _ => return,
+        };
+        p.set_pipeline(pipeline);
+        p.set_bind_group(1, grupo, &[]);
+        p.dispatch_workgroups(x, y, z);
+    }
+}
+
+/// [`MomentoHrc::depois`] quando há momento.
+pub(super) fn depois(
+    m: Option<&MomentoHrc>,
+    p: &mut wgpu::ComputePass<'_>,
+    etapa: usize,
+    grupos: [u32; 3],
+) {
+    if let Some(m) = m {
+        m.depois(p, etapa, grupos);
     }
 }

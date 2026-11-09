@@ -346,13 +346,34 @@ fn g5_o_mundo_fora_da_grade_e_contado() {
 /// outra vez, a lista volta a ser a de antes.
 #[test]
 fn g5_o_momento_e_o_que_a_pass_list_declara() {
-    use ph2d_light2d_ecs::CenaDeLuz;
     let Some(gpu) = gpu() else { return };
     if alocacoes(&gpu).is_none() {
         eprintln!("G5: o backend não dá relatório do alocador — saltado");
         return;
     }
-    let mut s = Solver::novo(&gpu, Config::padrao(grade(128, 0.04))).expect("solver");
+    let c = Config::padrao(grade(128, 0.04));
+    o_momento_declarado(
+        &gpu,
+        c.clone(),
+        &["luz2d momento c0", "luz2d momento fina"],
+        4,
+    );
+    // ⭐ P14c-placa 5 — a holográfica: a c0 de `M` no laço dos quadrantes (o acumulado e a grade, buffers).
+    let holo = Config {
+        holografica: Some(ph2d_light2d_gpu::HOLOGRAFICA_PADRAO),
+        ..c
+    };
+    let passes = [
+        "luz2d momento hrc soma",
+        "luz2d momento hrc saída",
+        "luz2d momento fina",
+    ];
+    o_momento_declarado(&gpu, holo, &passes, 6);
+}
+
+fn o_momento_declarado(gpu: &ph2d_gpu::GpuContext, cfg: Config, passes: &[&str], n: usize) {
+    use ph2d_light2d_ecs::CenaDeLuz;
+    let mut s = Solver::novo(gpu, cfg).expect("solver");
     let sem = ceu_e_vidro();
     let com = CenaDeLuz {
         com_normal: true,
@@ -377,9 +398,14 @@ fn g5_o_momento_e_o_que_a_pass_list_declara() {
     let do_momento: BTreeMap<&str, u64> = lista.texturas[base.texturas.len()..]
         .iter()
         .map(|t| (t.nome, t.bytes()))
+        .chain(
+            lista.buffers[base.buffers.len()..]
+                .iter()
+                .map(|b| (b.nome, b.bytes)),
+        )
         .collect();
     eprintln!("G5 momento: declarado {do_momento:?} · alocado {novo:?}");
-    assert_eq!(do_momento.len(), 4, "G5 momento: {do_momento:?}");
+    assert_eq!(do_momento.len(), n, "G5 momento: {do_momento:?}");
     for (nome, &(n, bytes)) in &novo {
         let d = decl
             .get(nome)
@@ -405,7 +431,7 @@ fn g5_o_momento_e_o_que_a_pass_list_declara() {
         lista.bytes_alocados(),
         base.bytes_alocados() + s.bytes_do_momento()
     );
-    for passe in ["luz2d momento c0", "luz2d momento fina"] {
+    for &passe in passes {
         assert!(
             lista.passes.iter().any(|p| p.nome == passe),
             "G5 momento: o passe «{passe}» fora da lista"

@@ -3,7 +3,7 @@
 //! contra `ph2d_light2d_ref::Gabarito::luz_em_n` no centro de cada texel.
 
 use ph2d_light2d_ecs::{CenaDeLuz, Emissor};
-use ph2d_light2d_gpu::{Config, Solver};
+use ph2d_light2d_gpu::{Config, HOLOGRAFICA_PADRAO, Solver};
 use ph2d_light2d_ref::Gabarito;
 
 use crate::comum::{disco, gabarito_por, gpu, grade, ler_bytes, ler_fluencia, oclusor, rmse_rel};
@@ -45,8 +45,30 @@ fn f16s(b: &[u8]) -> Vec<[f32; 3]> {
 
 /// `(F, Mx, My)` do quadro, texel a texel.
 fn rodar(gpu: &ph2d_gpu::GpuContext, cena: &CenaDeLuz) -> Lido {
-    let mut s = Solver::novo(gpu, Config::padrao(grade(128, 0.04))).expect("solver");
-    s.quadro(gpu, cena);
+    rodar_com(gpu, cena, Config::padrao(grade(128, 0.04)), 1)
+}
+
+/// ⭐ P14c-placa 5 — os modos: as cascatas clássicas e a holográfica (a do produto).
+fn modos() -> [(&'static str, Config); 2] {
+    let c = Config::padrao(grade(128, 0.04));
+    [
+        ("clássica", c.clone()),
+        (
+            "holográfica",
+            Config {
+                holografica: Some(HOLOGRAFICA_PADRAO),
+                ..c
+            },
+        ),
+    ]
+}
+
+/// [`rodar`] com `cfg`, `quadros` quadros (o rebote assenta).
+fn rodar_com(gpu: &ph2d_gpu::GpuContext, cena: &CenaDeLuz, cfg: Config, quadros: u32) -> Lido {
+    let mut s = Solver::novo(gpu, cfg).expect("solver");
+    for _ in 0..quadros {
+        s.quadro(gpu, cena);
+    }
     let f = ler_fluencia(gpu, &s);
     let m = s
         .momento_texturas()
@@ -86,13 +108,33 @@ impl Lido {
 /// O MEDIDO + folga (09/11, RADV, rmse relativo): `n = 0` (o F de hoje) 0,0151 · `(1, 0)` 0,0336 ·
 /// `(0, 1)` 0,0164 · `(−0,6, −0,8)` 0,0225. Visto vermelho com `ω̂ → −ω̂`.
 const TETO: f64 = 0.045;
+/// ⭐ P14c-placa 5 — a holográfica (09/11, RADV): `n = 0` 0,0148 · `(1, 0)` 0,0331 · `(0, 1)` 0,0168 ·
+/// `(−0,6, −0,8)` 0,0215.
+const TETO_HOLO: f64 = 0.045;
 
 #[test]
 fn a_placa_e_o_gabarito_concordam_com_normal() {
     let Some(gpu) = gpu() else { return };
     let cena = cena();
-    let l = rodar(&gpu, &cena);
     let gab = Gabarito::novo(&cena);
+    let mut falhas = Vec::new();
+    for ((modo, cfg), teto) in modos().into_iter().zip([TETO, TETO_HOLO]) {
+        let l = rodar_com(&gpu, &cena, cfg, 1);
+        for (n, e) in concordam(&l, |p, n| gab.luz_em_n(p, n), modo) {
+            if e > teto {
+                falhas.push(format!("{modo} n = {n:?}: {e:.4} > {teto}"));
+            }
+        }
+    }
+    assert!(falhas.is_empty(), "placa × gabarito: {falhas:#?}");
+}
+
+/// O rmse relativo de `luz_em_n` contra o gabarito `r` em cada normal (fora do miolo do disco e do 1/r).
+fn concordam(
+    l: &Lido,
+    r: impl Fn([f64; 2], [f64; 2]) -> [f64; 3] + Sync,
+    modo: &str,
+) -> Vec<([f64; 2], f64)> {
     let g = l.g;
     // Fora: o miolo do disco e 3 texels em volta da lâmpada pontual (o 1/r).
     let longe = |k: usize| {
@@ -100,8 +142,9 @@ fn a_placa_e_o_gabarito_concordam_com_normal() {
         let d = |c: [f32; 2]| (p[0] - f64::from(c[0])).hypot(p[1] - f64::from(c[1]));
         d(LAMPADA) > 3.0 * g.texel_m && d([1.0, 1.0]) > 0.15 + g.texel_m
     };
+    let mut erros = Vec::new();
     for n in [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [-0.6, -0.8]] {
-        let r = gabarito_por(&g, |p| gab.luz_em_n(p, n));
+        let r = gabarito_por(&g, |p| r(p, n));
         let e = rmse_rel(&l.luz_em_n(n), &r, longe);
         let pior = l
             .luz_em_n(n)
@@ -115,9 +158,10 @@ fn a_placa_e_o_gabarito_concordam_com_normal() {
                     .fold(0.0, f64::max)
             })
             .fold(0.0, f64::max);
-        eprintln!("n = {n:?}: rmse relativo {e:.4} · erro máximo absoluto {pior:.4}");
-        assert!(e <= TETO, "n = {n:?}: placa × gabarito {e:.4} > {TETO}");
+        eprintln!("{modo} n = {n:?}: rmse relativo {e:.4} · erro máximo absoluto {pior:.4}");
+        erros.push((n, e));
     }
+    erros
 }
 
 /// Só a lâmpada à direita, sem céu: num ponto à esquerda dela `n = (1, 0)` dá ~2× o plano e `n = (−1, 0)` ~0.
@@ -164,11 +208,19 @@ fn sem_normal_nao_aloca_o_momento() {
         com_normal: false,
         ..com.clone()
     };
-    let (a, b) = (rodar(&gpu, &sem), rodar(&gpu, &com));
-    eprintln!("bytes do momento: sem {} · com {}", a.bytes, b.bytes);
-    assert!(a.m.is_none() && a.bytes == 0);
-    assert!(b.m.is_some() && b.bytes > 0);
-    assert!(a.f == b.f, "o momento mexeu no F");
+    for (modo, cfg) in modos() {
+        let (a, b) = (
+            rodar_com(&gpu, &sem, cfg.clone(), 1),
+            rodar_com(&gpu, &com, cfg, 1),
+        );
+        eprintln!(
+            "{modo} · bytes do momento: sem {} · com {}",
+            a.bytes, b.bytes
+        );
+        assert!(a.m.is_none() && a.bytes == 0, "{modo}");
+        assert!(b.m.is_some() && b.bytes > 0, "{modo}");
+        assert!(a.f == b.f, "{modo}: o momento mexeu no F");
+    }
 }
 
 /// ⭐ P14c-placa 4 — JUNTO A UM OPACO, só com o céu (toda a luz é a c0): o `M` dos texels de fora a ≤ 4 texels
@@ -192,8 +244,23 @@ fn junto_ao_opaco_o_momento_e_o_do_gabarito() {
         com_normal: true,
         ..Default::default()
     };
-    let l = rodar(&gpu, &cena);
     let gab = Gabarito::novo(&cena);
+    for ((modo, cfg), teto) in modos().into_iter().zip([TETO_JUNTO, TETO_JUNTO_HOLO]) {
+        let pior = junto(
+            &rodar_com(&gpu, &cena, cfg, 1),
+            &gab,
+            [x0, x1, y0, y1],
+            modo,
+        );
+        assert!(
+            pior <= teto,
+            "{modo} junto ao opaco: placa × gabarito {pior:.4} > {teto}"
+        );
+    }
+}
+
+/// O pior rmse relativo nos texels de fora a ≤ 4 texels da parede `[x0, x1, y0, y1]`.
+fn junto(l: &Lido, gab: &Gabarito, [x0, x1, y0, y1]: [f64; 4], modo: &str) -> f64 {
     let g = l.g;
     let colado = |k: usize| {
         let p = g.centro(k as u32 % g.largura, k as u32 / g.largura);
@@ -206,15 +273,16 @@ fn junto_ao_opaco_o_momento_e_o_do_gabarito() {
     for n in [[0.0, 0.0], [1.0, 0.0], [-1.0, 0.0], [0.0, 1.0], [0.0, -1.0]] {
         let r = gabarito_por(&g, |p| gab.luz_em_n(p, n));
         let e = rmse_rel(&l.luz_em_n(n), &r, colado);
-        eprintln!("junto ao opaco, n = {n:?}: rmse relativo {e:.4}");
+        eprintln!("{modo} junto ao opaco, n = {n:?}: rmse relativo {e:.4}");
         pior = pior.max(e);
     }
-    assert!(
-        pior <= TETO_JUNTO,
-        "junto ao opaco: placa × gabarito {pior:.4} > {TETO_JUNTO}"
-    );
+    pior
 }
 
 /// O MEDIDO + folga (09/11, RADV, rmse relativo): `n = 0` 0,0489 · `(1, 0)` 0,0616 · `(−1, 0)` 0,0877 ·
 /// `(0, 1)` 0,0554 · `(0, −1)` 0,0629. Visto vermelho sem a c0 de `Mx` (0,4123 · 0,5276).
 const TETO_JUNTO: f64 = 0.10;
+/// ⭐ P14c-placa 5 — a holográfica (09/11, RADV): `n = 0` 0,0285 · `(1, 0)` 0,1298 · `(−1, 0)` 0,1551 · `(0, 1)`
+/// 0,0515 · `(0, −1)` 0,0585. O `±x` (a parede é vertical) é o cone de 90° do nível 0: a metade tapada do cone
+/// de `±y` fica com `ω̂_q` (o plano §11 «P14c-placa 5»: as metades da descida do nível 0).
+const TETO_JUNTO_HOLO: f64 = 0.17;

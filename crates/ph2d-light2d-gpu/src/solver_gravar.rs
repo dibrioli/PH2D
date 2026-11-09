@@ -329,7 +329,7 @@ impl Solver {
         // ⭐ W5c: a holográfica escreve a c0 num passe só (os carimbos da cascata 0); os das outras
         // cascatas ficam em passes vazios.
         if let Some(h) = &self.hrc {
-            if h.gravar_por_fase(enc, 0) {
+            if self.momento.is_none() && h.gravar_por_fase(enc, 0) {
                 rebote::carimbos_vazios(enc, self.tempos.as_ref(), tempos::da_cascata(0));
             } else {
                 let mut p = enc.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -339,7 +339,11 @@ impl Solver {
                         .as_ref()
                         .map(|t| t.escrita_compute(tempos::da_cascata(0))),
                 });
-                h.gravar(&mut p, 0);
+                h.gravar(
+                    &mut p,
+                    0,
+                    self.momento.as_ref().and_then(|m| m.hrc.as_ref()),
+                );
             }
         }
         // ⭐ W5d: os rebotes a mais do quadro — a fonte com esta cascata, a emissão de base de novo com a
@@ -360,7 +364,7 @@ impl Solver {
                     self.texturas[EMISSAO].size(),
                 );
                 r.gravar_na_mesma(enc, &self.alvos_c0[0]);
-                if h.gravar_por_fase(enc, k) {
+                if self.momento.is_none() && h.gravar_por_fase(enc, k) {
                     rebote::carimbos_vazios(enc, self.tempos.as_ref(), tempos::da_cascata(k));
                     continue;
                 }
@@ -371,7 +375,11 @@ impl Solver {
                         .as_ref()
                         .map(|t| t.escrita_compute(tempos::da_cascata(k))),
                 });
-                h.gravar(&mut p, k);
+                h.gravar(
+                    &mut p,
+                    k,
+                    self.momento.as_ref().and_then(|m| m.hrc.as_ref()),
+                );
             }
         }
         if let Some(h) = &self.hrc {

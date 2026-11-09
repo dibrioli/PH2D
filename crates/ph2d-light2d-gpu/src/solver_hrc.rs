@@ -98,7 +98,7 @@ pub(super) struct Entradas<'a> {
 
 pub(super) struct Holografica {
     cena: wgpu::BindGroup,
-    pipelines: Vec<wgpu::ComputePipeline>,
+    pub(super) pipelines: Vec<wgpu::ComputePipeline>,
     /// As constantes com que as `pipelines` nasceram (a régua de registos lê-as).
     pub(super) constantes: [(&'static str, f64); 14],
     /// `(etapa, grupo 3, grupos de trabalho, a 1.ª fatia do uniforme)`, na ordem.
@@ -619,7 +619,12 @@ impl Holografica {
 
     /// Grava a cascata holográfica inteira no passe `p` (a c0 sai dela); a gravação `k` do quadro (⭐ W5s:
     /// a máscara do vazio só na 1.ª — a cobertura não muda entre os rebotes).
-    pub(super) fn gravar(&self, p: &mut wgpu::ComputePass<'_>, k: u32) {
+    pub(super) fn gravar(
+        &self,
+        p: &mut wgpu::ComputePass<'_>,
+        k: u32,
+        m: Option<&super::momento::MomentoHrc>,
+    ) {
         p.set_bind_group(0, &self.cena, &[]);
         for (etapa, grupo, [x, y, z], _) in &self.passos {
             if k > 0 && matches!(etapa, Etapa::Ladrilhos) {
@@ -629,6 +634,7 @@ impl Holografica {
             p.set_bind_group(2, &self.g2, &[]);
             p.set_bind_group(3, grupo, &[]);
             p.dispatch_workgroups(*x, *y, *z);
+            super::momento::depois(m, p, *etapa as usize, [*x, *y, *z]);
         }
     }
 }

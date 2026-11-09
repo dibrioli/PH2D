@@ -4,7 +4,12 @@
 //! acrescenta-as por [`PassList::com_momento`] quando a cena as pede. Ficheiro irmão pelo tecto de 700 LOC.
 
 use crate::config::Config;
-use crate::passlist::{CASCATAS, Opcionais, PassList, Passe, SEMENTES, Textura};
+use crate::passlist::{Buffer, CASCATAS, Opcionais, PassList, Passe, SEMENTES, Textura};
+
+/// ⭐ P14c-placa 5 — o acumulado de `M` na holográfica (`Mx` e `My` de cada texel da grade, `vec4<f32>`).
+pub(crate) const NOME_ACUMULADO_DO_MOMENTO: &str = "luz2d/buf/hrc_acumulado_momento";
+/// ⭐ P14c-placa 5 — a grade das cascatas para a `hrc_saida_momento` (um `vec4<u32>`).
+pub(crate) const NOME_GRADE_DO_MOMENTO: &str = "luz2d/buf/hrc_momento_grade";
 
 /// Os rótulos, por ordem: `[c0 x, c0 y, fina x, fina y]`.
 pub(crate) const NOMES_DO_MOMENTO: [&str; 4] = [
@@ -41,12 +46,36 @@ impl PassList {
         let op = Opcionais::de(cfg);
         let sementes = SEMENTES[cfg.saltos_jfa().len() % 2];
         let c0 = Self::indice_da_c0(cfg);
-        let nivel1 = CASCATAS[usize::from(c0 == CASCATAS[0])];
-        l.passes.push(Passe {
-            nome: "luz2d momento c0".into(),
-            le: vec![nivel1],
-            escreve: vec![base, base + 1],
-        });
+        if cfg.holografica.is_some() {
+            // ⭐ P14c-placa 5: na holográfica a c0 de `M` nasce no laço dos quadrantes (os R, buffers).
+            l.buffers.push(Buffer {
+                nome: NOME_ACUMULADO_DO_MOMENTO,
+                bytes: 2 * 16 * u64::from(grossa[0]) * u64::from(grossa[1]),
+                usos: wgpu::BufferUsages::STORAGE,
+            });
+            l.buffers.push(Buffer {
+                nome: NOME_GRADE_DO_MOMENTO,
+                bytes: 16,
+                usos: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
+            l.passes.push(Passe {
+                nome: "luz2d momento hrc soma".into(),
+                le: vec![],
+                escreve: vec![],
+            });
+            l.passes.push(Passe {
+                nome: "luz2d momento hrc saída".into(),
+                le: vec![],
+                escreve: vec![base, base + 1],
+            });
+        } else {
+            let nivel1 = CASCATAS[usize::from(c0 == CASCATAS[0])];
+            l.passes.push(Passe {
+                nome: "luz2d momento c0".into(),
+                le: vec![nivel1],
+                escreve: vec![base, base + 1],
+            });
+        }
         let mut le = vec![c0, op.visibilidade.unwrap_or(sementes)];
         le.push(op.preenche_final(cfg).unwrap_or(sementes));
         le.extend([base, base + 1]);

@@ -791,12 +791,32 @@ fn r0_na_sonda(u: u32, v: u32) -> vec3<f32> {
     return de_fora(u, i32(v), 0u, 0u);
 }
 
+// A parcela do quadrante num texel da grade (`i`): a da `hrc_soma` e a da `hrc_soma_momento` (P14 «L»).
+struct ParcelaHrc {
+    i: u32,
+    f: vec3<f32>,
+    ok: bool,
+}
+
 // ── A fluência do quadrante: L(u, v) += R0((u + 1, v), 0) ──
 @compute @workgroup_size(64)
 fn hrc_soma(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgroups) nw: vec3<u32>) {
+    let p = parcela_da_soma(gid, nw);
+    if !p.ok {
+        return;
+    }
+    if hrcs[iq()].quadrante == 0u {
+        acumulado[p.i] = vec4<f32>(p.f, 0.0);
+    } else {
+        acumulado[p.i] += vec4<f32>(p.f, 0.0);
+    }
+}
+
+fn parcela_da_soma(gid: vec3<u32>, nw: vec3<u32>) -> ParcelaHrc {
+    let nada = ParcelaHrc(0u, vec3<f32>(0.0), false);
     let e = entrada(gid, nw);
     if e >= hrcs[iq()].total {
-        return;
+        return nada;
     }
     var u = e % hrcs[iq()].eixo.x;
     var v = e / hrcs[iq()].eixo.x;
@@ -809,7 +829,7 @@ fn hrc_soma(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
         u = (ladrilho % lu) * 8u + l / 8u;
         v = (ladrilho / lu) * 8u + l % 8u;
         if u >= hrcs[iq()].eixo.x || v >= hrcs[iq()].eixo.y {
-            return;
+            return nada;
         }
     }
     // ⭐ W5m: o «+1» só no mesmo meio ou para um mais claro; para DENTRO de um corpo (translúcido
@@ -829,12 +849,7 @@ fn hrc_soma(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
         f *= tau;
     }
     let t = texel_da_grade(u, v);
-    let i = t.y * hrcs[iq()].grade.x + t.x;
-    if hrcs[iq()].quadrante == 0u {
-        acumulado[i] = vec4<f32>(f, 0.0);
-    } else {
-        acumulado[i] += vec4<f32>(f, 0.0);
-    }
+    return ParcelaHrc(t.y * hrcs[iq()].grade.x + t.x, f, true);
 }
 
 // ── A c0: o acumulado (com o filtro em cruz da Eq. 21) e a máscara do preenchimento ──

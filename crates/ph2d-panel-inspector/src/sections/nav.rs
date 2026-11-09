@@ -126,26 +126,17 @@ pub(crate) fn paint_nav_region_section(
             ColorToken::Warn,
         );
     }
-    // (dono 09/11) Os corpos de olho fechado em todas as formas não barram o caminho.
-    if let Some((n, nomes, mais)) = info.aviso_desligados() {
-        let mut lista = nomes.join(", ");
-        if mais {
-            lista.push_str(", \u{2026}");
-        }
-        cur_y = super::rows::aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            &tr_with(
-                "panel.inspector.nav.bodies_with_every_shape_off",
-                &[("n", &n), ("names", &lista)],
-            ),
-            ColorToken::Warn,
-        );
-    }
+    cur_y = super::nav_desligados::paint(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        &info.corpos_desligados,
+    );
     let seccao = Seccao::medida(
         text_system,
         2,

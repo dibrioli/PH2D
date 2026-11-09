@@ -68,6 +68,7 @@ pub(crate) fn populate_nav(store: &mut WidgetStore) {
         .into_iter()
         .chain(ids::INSP_NAV_TARGET_MODE)
         .chain(ids::INSP_NAV_TAG_OPT)
+        .chain(ids::INSP_NAV_OFF_BODY)
     {
         store.register(
             id,
@@ -75,6 +76,10 @@ pub(crate) fn populate_nav(store: &mut WidgetStore) {
                 state: Default::default(),
             },
         );
+    }
+    // (dono 09/11) Os botões dos corpos que não barram o caminho: o balão diz o que o clique faz.
+    for id in ids::INSP_NAV_OFF_BODY {
+        store.set_tooltip(id, ph2d_i18n::tr("panel.inspector.nav.select_this_body"));
     }
     for id in [
         ids::INSP_NAV_TARGET_NAME,

@@ -1241,10 +1241,15 @@ fn arma_o_top20() {
         }),
         clock_playing: false,
         selected_count: selecionados(),
-        // (dono 09/11) O aviso dos corpos de olho fechado, com nomes a ELIDIR (a frase mais longa).
+        // (dono 09/11) O aviso dos corpos de olho fechado: a frase e um botão por corpo.
         corpos_desligados: ["Door", "Gate", "Left Wall", "Right Wall"]
-            .map(String::from)
-            .to_vec(),
+            .into_iter()
+            .zip(1u64..)
+            .map(|(n, b)| ph2d_editor_core::nav_edits::CorpoDesligado {
+                entity_bits: b,
+                name: n.into(),
+            })
+            .collect(),
     }));
     // O MOTION INPUT (ciclo 19) — no estado que pinta MAIS linhas: a queixa do nome que o grafo
     // não lê, os chips dos nomes do grafo e a linha do número.

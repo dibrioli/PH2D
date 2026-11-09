@@ -146,3 +146,12 @@ pub const INSP_NAV_LINK_TELEPORT: NodeId = hash_node_id("insp_nav_link_teleport"
 pub const INSP_NAV_LINK_COST: NodeId = hash_node_id("insp_nav_link_cost");
 /// (W7) O sinal quando um agente o atravessa — vazio = calado.
 pub const INSP_NAV_LINK_ON_CROSSED: NodeId = hash_node_id("insp_nav_link_on_crossed");
+
+/// (dono 09/11) **Quantos corpos de formas todas desligadas ganham botão** no aviso da NAV REGION. O
+/// recurso é a tabela compilada de ids (o censo de colisões só vê ids fixos), não o motor; `32` é o tecto
+/// das outras filas de chips do Inspector (`INSP_PHYS_LAYERS`, os chips de enum do script). O resto vira
+/// «+N more», sem clique.
+pub const MAX_NAV_OFF_BODIES: usize = 32;
+/// O botão do corpo `k` da lista (`InspectorNavInfo::corpos_desligados`): seleciona-o na cena e no Inspector.
+pub const INSP_NAV_OFF_BODY: [NodeId; MAX_NAV_OFF_BODIES] =
+    super::inspector_audio::tabela_de_linha(hash_node_id("insp_nav_off_body"));

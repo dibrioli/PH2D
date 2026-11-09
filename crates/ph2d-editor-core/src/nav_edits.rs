@@ -50,25 +50,17 @@ pub struct InspectorNavInfo {
     pub link: Option<InspectorNavLink>,
     pub clock_playing: bool,
     pub selected_count: usize,
-    /// Os corpos da cena com TODAS as formas desligadas (olho fechado na Hierarquia), por nome e
-    /// ordenados: não recortam a malha nem barram o caminho (dono 09/11). O aviso da NAV REGION.
-    pub corpos_desligados: Vec<String>,
+    /// Os corpos da cena com TODAS as formas desligadas (olho fechado na Hierarquia), ordenados
+    /// pelo nome: não recortam a malha nem barram o caminho (dono 09/11). O aviso da NAV REGION,
+    /// com um botão por corpo que o seleciona.
+    pub corpos_desligados: Vec<CorpoDesligado>,
 }
 
-/// Quantos nomes o aviso dos corpos desligados mostra antes de elidir.
-pub const NOMES_NO_AVISO: usize = 3;
-
-impl InspectorNavInfo {
-    /// O aviso dos corpos desligados: quantos são e os primeiros [`NOMES_NO_AVISO`] nomes (`true` =
-    /// há mais). `None` sem nenhum.
-    #[must_use]
-    pub fn aviso_desligados(&self) -> Option<(usize, &[String], bool)> {
-        let n = self.corpos_desligados.len();
-        (n > 0).then(|| {
-            let k = n.min(NOMES_NO_AVISO);
-            (n, &self.corpos_desligados[..k], n > k)
-        })
-    }
+/// Um corpo de formas todas desligadas: o NOME é o rótulo do botão, os BITS o que ele seleciona.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CorpoDesligado {
+    pub entity_bits: u64,
+    pub name: String,
 }
 
 /// Os campos da região.

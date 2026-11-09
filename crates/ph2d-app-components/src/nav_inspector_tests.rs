@@ -619,11 +619,13 @@ fn o_painel_le_a_ordem_que_a_ponte_guarda() {
 
 /// ⭐ (dono 09/11) **O aviso da NAV REGION nomeia os corpos de formas TODAS desligadas** — a mesma
 /// pergunta da ponte (`main_shape`): uma forma de olho fechado conta; um corpo com outra forma ligada,
-/// ou sem forma nenhuma, não; sem nenhum, nada. Só a região leva o aviso.
+/// ou sem forma nenhuma, não; sem nenhum, nada. Só a região leva o aviso. Cada um leva os BITS do
+/// CORPO (não os da forma): é o que o botão dele seleciona.
 #[test]
 fn o_aviso_da_regiao_nomeia_os_corpos_de_formas_todas_desligadas() {
     use ph2d_ecs::ChildOf;
     use ph2d_ecs::row_flag::{RowFlag, flip};
+    use ph2d_editor_core::nav_edits::CorpoDesligado;
     use ph2d_physics_ecs::Collider;
     let mut sim = SimWorld::new();
     let (quem_anda, regiao) = cena(&mut sim);
@@ -631,36 +633,37 @@ fn o_aviso_da_regiao_nomeia_os_corpos_de_formas_todas_desligadas() {
     let estatico = RigidBody {
         kind: BodyKind::Static,
     };
-    let corpo = |w: &mut World, nome: &str, formas: usize| -> Vec<Entity> {
+    let corpo = |w: &mut World, nome: &str, formas: usize| -> (Entity, Vec<Entity>) {
         let c = w.spawn((Name::new(nome), estatico)).id();
-        (0..formas)
+        let f = (0..formas)
             .map(|_| w.spawn((Collider::default(), ChildOf(c))).id())
-            .collect()
+            .collect();
+        (c, f)
     };
-    let porta = corpo(w, "Door", 1);
-    let muro = corpo(w, "Wall", 2);
+    let (porta, porta_f) = corpo(w, "Door", 1);
+    let (muro, muro_f) = corpo(w, "Wall", 2);
     corpo(w, "No Shape Body", 0);
+    let de = |e: Entity, n: &str| CorpoDesligado {
+        entity_bits: e.to_bits(),
+        name: n.to_owned(),
+    };
     let info = |sim: &SimWorld| build_info(sim.world(), regiao.to_bits(), 1, false).expect("info");
     assert!(
         info(&sim).corpos_desligados.is_empty(),
         "nenhum olho fechado"
     );
-    assert_eq!(info(&sim).aviso_desligados(), None);
-    flip(sim.world_mut(), porta[0], RowFlag::Visible);
-    flip(sim.world_mut(), muro[0], RowFlag::Visible);
+    flip(sim.world_mut(), porta_f[0], RowFlag::Visible);
+    flip(sim.world_mut(), muro_f[0], RowFlag::Visible);
     assert_eq!(
         info(&sim).corpos_desligados,
-        vec!["Door".to_owned()],
+        vec![de(porta, "Door")],
         "o muro tem outra forma ligada"
     );
-    flip(sim.world_mut(), muro[1], RowFlag::Visible);
-    let i = info(&sim);
+    flip(sim.world_mut(), muro_f[1], RowFlag::Visible);
     assert_eq!(
-        i.corpos_desligados,
-        vec!["Door".to_owned(), "Wall".to_owned()]
+        info(&sim).corpos_desligados,
+        vec![de(porta, "Door"), de(muro, "Wall")]
     );
-    let (n, nomes, mais) = i.aviso_desligados().expect("o aviso");
-    assert_eq!((n, nomes.len(), mais), (2, 2, false));
     let agente = build_info(sim.world(), quem_anda.to_bits(), 1, false).expect("info");
     assert!(
         agente.corpos_desligados.is_empty(),

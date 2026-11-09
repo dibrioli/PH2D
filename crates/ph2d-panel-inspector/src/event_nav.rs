@@ -37,6 +37,18 @@ pub(crate) fn apply_nav_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
             push(host, bits, NavFieldEdit::AlvoModo(NavAlvoModo::ALL[i]));
             return true;
         }
+        // (dono 09/11) O botão de um corpo que não barra o caminho seleciona-o — o mesmo pedido do
+        // «Objects on this layer»; a ordem é a da lista pintada.
+        if let Some(k) = crate::ids::INSP_NAV_OFF_BODY.iter().position(|&b| b == id) {
+            if let Some(c) = info.corpos_desligados.get(k) {
+                use ph2d_editor_core::action_bus::SelectModifier;
+                host.bus_mut().push(EditorAction::SelectSprite {
+                    entity_bits: c.entity_bits,
+                    modifier: SelectModifier::Replace,
+                });
+            }
+            return true;
+        }
         // (W6) Uma opção da TAG — a lista é a MESMA que o pintor derivou.
         if let Some(i) = crate::ids::INSP_NAV_TAG_OPT.iter().position(|&o| o == id) {
             if let Some(o) = crate::sections::nav_tag_row::nav_tag_options().get(i) {

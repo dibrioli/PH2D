@@ -117,6 +117,8 @@ pub(crate) mod nav;
 /// ⭐ (W7) As secções NAV COST AREA e NAV LINK e os interruptores do agente — irmão do `nav` pelo
 /// tecto de LOC do painel.
 pub(crate) mod nav_custo;
+/// (dono 09/11) O aviso dos corpos de formas todas desligadas e o botão de cada um.
+mod nav_desligados;
 pub(crate) mod nav_tag_row;
 pub(crate) mod ordering;
 /// ⭐⭐⭐ A secção RAY SENSOR (suplente #21).

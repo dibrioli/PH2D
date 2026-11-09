@@ -20,7 +20,7 @@
 
 use ph2d_ecs::{Entity, SimWorld, World, stable_name_id, world_transform};
 use ph2d_editor_core::nav_edits::{
-    InspectorNavAgent, InspectorNavCostArea, InspectorNavInfo, InspectorNavLink,
+    CorpoDesligado, InspectorNavAgent, InspectorNavCostArea, InspectorNavInfo, InspectorNavLink,
     InspectorNavRegion, NAV_AREA_COST_MIN, NavAgora, NavAlvoModo, NavEstado, NavFieldEdit,
 };
 use ph2d_physics_ecs::{
@@ -202,24 +202,26 @@ pub fn build_info(
 
 /// ⭐ (dono 09/11) **Os corpos de formas TODAS desligadas** — têm forma, nenhuma ligada: a ponte
 /// descreve-os `shape_off`, e a malha e o desvio saltam-nos. A MESMA pergunta (`main_shape`).
-/// Ordenados pelo nome (um corpo sem `Name`, que o editor não cria, fica de fora).
-fn corpos_desligados(world: &World) -> Vec<String> {
+/// Ordenados pelo nome, com os bits que o botão do aviso seleciona (um corpo sem `Name`, que o
+/// editor não cria, fica de fora).
+fn corpos_desligados(world: &World) -> Vec<CorpoDesligado> {
     let Some(mut q) = world.try_query::<(Entity, &RigidBody)>() else {
         return Vec::new();
     };
-    let mut out: Vec<String> = q
+    let mut out: Vec<CorpoDesligado> = q
         .iter(world)
         .filter(|&(e, _)| {
             ph2d_physics_ecs::tem_forma(world, e)
                 && ph2d_physics_ecs::main_shape(world, e).is_none()
         })
         .filter_map(|(e, _)| {
-            world
-                .get::<ph2d_ecs::Name>(e)
-                .map(|n| n.as_str().to_owned())
+            world.get::<ph2d_ecs::Name>(e).map(|n| CorpoDesligado {
+                entity_bits: e.to_bits(),
+                name: n.as_str().to_owned(),
+            })
         })
         .collect();
-    out.sort();
+    out.sort_by(|a, b| a.name.cmp(&b.name).then(a.entity_bits.cmp(&b.entity_bits)));
     out
 }
 

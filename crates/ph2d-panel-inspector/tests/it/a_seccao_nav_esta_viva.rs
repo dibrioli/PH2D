@@ -442,3 +442,91 @@ fn escolher_uma_tag_com_o_ponteiro_pede_essa_tag() {
     set_current_inspector_nav(None);
     ph2d_panel_inspector::set_current_tag_tree(Vec::new());
 }
+
+/// ⭐⭐⭐ (dono 09/11: *«a mensagem deve ser menor e botões para seleção dos objetos sem collision»*)
+/// **O aviso da NAV REGION é a frase CURTA e um BOTÃO por corpo de formas todas desligadas, vivo sob o
+/// dedo, que seleciona ESSE corpo** — o clique real no meio do botão `k`, até ao barramento. Sem corpo
+/// nenhum, nem frase nem botão; passados os ids, «+N more».
+///
+/// **Mutações que devem sangrar:** tirar o registo do `populate_nav` · o despacho ler os bits do corpo
+/// ao lado · tirar a pintura dos botões.
+#[test]
+fn o_aviso_da_regiao_tem_um_botao_por_corpo_que_o_seleciona() {
+    use ph2d_editor_core::action_bus::SelectModifier;
+    use ph2d_editor_core::nav_edits::CorpoDesligado;
+    use ph2d_panel_inspector::censo_dos_avisos;
+    let frase = ph2d_i18n::tr("panel.inspector.nav.bodies_with_every_shape_off");
+    let corpos: Vec<CorpoDesligado> = [
+        (0x0A_0001, "Door"),
+        (0x0B_0002, "Left Wall"),
+        (0x0C_0003, "Gate"),
+    ]
+    .map(|(entity_bits, n)| CorpoDesligado {
+        entity_bits,
+        name: n.into(),
+    })
+    .to_vec();
+    for (k, c) in corpos.iter().enumerate() {
+        let mut i = info(Some(regiao()), None);
+        i.corpos_desligados = corpos.clone();
+        let (mut h, mut st) = host(i);
+        let (rects, avisos) =
+            censo_dos_avisos::medindo(|| h.paint::<InspectorPanel>(&mut st, VIEWPORT));
+        assert!(
+            avisos.iter().any(|a| a.texto == frase),
+            "a frase curta não foi pintada"
+        );
+        let botoes = &ids::INSP_NAV_OFF_BODY;
+        assert!(
+            botoes[..corpos.len()].iter().all(|&id| pintado(&rects, id))
+                && !pintado(&rects, botoes[corpos.len()]),
+            "um botão por corpo, nem mais nem menos"
+        );
+        let r = rects
+            .iter()
+            .find(|(n, _)| *n == botoes[k])
+            .map(|(_, r)| *r)
+            .expect("o botão do corpo");
+        for ev in h.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
+            let _ = h.apply_panel_event::<InspectorPanel>(&mut st, ev);
+        }
+        let pedidos: Vec<(u64, SelectModifier)> = h
+            .drained_actions()
+            .into_iter()
+            .filter_map(|a| match a {
+                EditorAction::SelectSprite {
+                    entity_bits,
+                    modifier,
+                } => Some((entity_bits, modifier)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            pedidos,
+            vec![(c.entity_bits, SelectModifier::Replace)],
+            "o botão {k} («{}») seleciona ESSE corpo — sem registo no `populate_nav` o clique morre",
+            c.name
+        );
+        set_current_inspector_nav(None);
+    }
+    // Mais corpos que ids: todos os botões, e o resto numa frase sem clique.
+    let mut i = info(Some(regiao()), None);
+    let n = ids::MAX_NAV_OFF_BODIES + 2;
+    i.corpos_desligados = (0..n as u64)
+        .map(|b| CorpoDesligado {
+            entity_bits: b + 1,
+            name: format!("B{b}"),
+        })
+        .collect();
+    let (mut h, mut st) = host(i);
+    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    assert!(ids::INSP_NAV_OFF_BODY.iter().all(|&id| pintado(&rects, id)));
+    set_current_inspector_nav(None);
+    // Sem corpo nenhum: nem frase nem botão.
+    let (mut h, mut st) = host(info(Some(regiao()), None));
+    let (rects, avisos) =
+        censo_dos_avisos::medindo(|| h.paint::<InspectorPanel>(&mut st, VIEWPORT));
+    assert!(!avisos.iter().any(|a| a.texto == frase));
+    assert!(!ids::INSP_NAV_OFF_BODY.iter().any(|&id| pintado(&rects, id)));
+    set_current_inspector_nav(None);
+}

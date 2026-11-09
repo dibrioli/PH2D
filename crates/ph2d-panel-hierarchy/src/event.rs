@@ -229,6 +229,15 @@ pub(crate) fn apply_event(
             )));
         return EventOutcome::Consumed;
     }
+    // O «×» do cabeçalho (dono 09/11) esconde-a pelo mesmo `set_panel_visible` do menu *Window*.
+    if ph2d_editor_core::panel::cards::borda::fechou(
+        host,
+        &ev,
+        ids::HIER_PANEL,
+        <crate::HierarchyPanel as ph2d_editor_core::panel::Panel>::ID,
+    ) {
+        return EventOutcome::Consumed;
+    }
     if let WidgetEvent::Click(id) = ev {
         // ⭐ **O botão `Add` do cabeçalho** (ADR-0166 / F3) — um objeto VAZIO na raiz.
         //

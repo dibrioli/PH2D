@@ -75,6 +75,8 @@ mod staleness;
 mod switching_layout_rearranges_the_screen;
 mod the_app_frame_is_reachable_by_the_hit_index;
 mod the_area_hands_its_commands_to_the_bar_and_the_app_menu;
+#[cfg(feature = "panel-pixel-slices")]
+mod the_hierarchy_and_inspector_close_by_their_x;
 mod the_mode_selector_answers_a_real_click;
 mod the_name_of_a_panel_has_one_source;
 #[cfg(feature = "panel-vector")]
@@ -98,7 +100,6 @@ mod the_pixel_slices_answers_a_real_pointer;
 mod the_pixel_sprite_properties_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-tiles")]
 mod the_pixel_tiles_answers_a_real_pointer;
-#[cfg(feature = "panel-pixel-slices")]
 mod the_pixel_windows_close_and_live_in_the_window_menu;
 mod the_pixel_windows_open_clear_of_each_other;
 mod the_properties_fold_into_an_icon_strip_on_small_tablets;

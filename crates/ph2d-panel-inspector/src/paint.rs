@@ -90,6 +90,10 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             cards.push(crate::cards_objeto::vazio(ctx.host.selection().is_some()));
         }
         let presos = crate::cards_presos::cards(&presos, ctx.host.store(), &abertas);
+        // O «×» do cabeçalho (dono 09/11): o mesmo `INSP_CLOSE` da moldura antiga (`event.rs`).
+        ctx.host
+            .store_mut()
+            .mark_card_list_close(ids::INSP_PANEL, ids::INSP_CLOSE);
         ph2d_editor_core::panel::cards::paint_card_list_pinned(
             ctx,
             ids::INSP_PANEL,

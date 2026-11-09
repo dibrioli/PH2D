@@ -528,6 +528,8 @@ pub(crate) fn paint(st: &mut state::HierarchyState, ctx: &mut PaintCtx) {
         c.text_box(busca, ids::HIER_SEARCH, tr("panel.hierarchy.search"));
         caixa_do_filtro(c, f, &filtro_texto);
     };
+    // O «×» do cabeçalho (dono 09/11): o clique esconde-a como o menu *Window* (`event.rs`).
+    ph2d_editor_core::panel::cards::borda::declara_fecho(ctx.host.store_mut(), PAINEL);
     let lista = paint_card_list_top(
         ctx,
         PAINEL,

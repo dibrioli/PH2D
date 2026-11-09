@@ -2,9 +2,7 @@
 //! teclado pela área sob o cursor; mudadas VERBATIM do irmão dos picks e arrastos pelo tecto de 600.
 
 impl crate::App {
-    /// Motion Nodes M1: is the cursor over the docked graph panel? Drives the
-    /// cursor-gated graph keyboard focus + middle-pan routing (Blender-style F
-    /// acts on the hovered area, graph vs scene).
+    /// Motion Nodes M1: cursor over the graph panel (its keys and middle-pan, Blender-style).
     pub(crate) fn cursor_over_motion_graph(&self) -> bool {
         self.gfx
             .as_ref()
@@ -13,10 +11,7 @@ impl crate::App {
             .is_some_and(|r| r.contains(self.last_pointer.0, self.last_pointer.1))
     }
 
-    /// W2.E6: is the cursor over the general timeline dock? Mirrors
-    /// [`Self::cursor_over_motion_graph`] — a middle-drag there pans the
-    /// dope-sheet (via its `TimelineSurface` gesture), not the camera behind it.
-    /// Blender-style: the hovered component owns the zoom/pan.
+    /// W2.E6: cursor over the timeline dock (dope-sheet pan, and the Pixel cedes its keys).
     pub(crate) fn cursor_over_timeline(&self) -> bool {
         self.gfx
             .as_ref()

@@ -1,5 +1,4 @@
-//! **O Pixel Sprite ▸ Draw** (ADR-0196) — composição só: o ponteiro, a roda e o teclado chegam à
-//! `ph2d_app_pixel::compose`, que decide. `true` = consumido.
+//! **O Pixel Sprite ▸ Draw** (ADR-0196): composição só; decide `ph2d_app_pixel::compose`.
 
 use super::*;
 use ph2d_app_pixel::compose::{Mods, Pointer, View};
@@ -55,17 +54,23 @@ impl crate::App {
         eaten
     }
 
-    /// As teclas do Draw; com um campo de texto a escrever a família cede-as (`View::typing`).
+    /// As teclas do Draw; cede-as a um campo de texto (`View::typing`) e ao painel sob o ponteiro.
     pub(crate) fn pixel_owns_the_keyboard(
         &mut self,
         key: PhysicalKey,
         s: ElementState,
         t: Option<&str>,
     ) -> bool {
-        if self.surface_owns_the_keyboard() {
+        let (m, pressed) = (Mods::of(self.modifiers), s == ElementState::Pressed);
+        let sob = ph2d_pixel_keys::PanelUnderPointer {
+            hierarchy: self.cursor_over_hierarchy(),
+            dope_sheet: self.cursor_over_timeline(),
+        };
+        if self.surface_owns_the_keyboard()
+            || matches!(key, PhysicalKey::Code(c) if sob.keeps(c, m.ctrl, m.alt))
+        {
             return false;
         }
-        let (m, pressed) = (Mods::of(self.modifiers), s == ElementState::Pressed);
         (self.pixel_view()).is_some_and(|(app, mut v)| app.keyboard(&mut v, key, pressed, m, t))
     }
 }

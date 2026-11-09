@@ -453,13 +453,14 @@ pub const OWNER_EXCEPTIONS: &[(A, Chord, &str)] = &[
 ];
 
 /// Teclas de CONTEXTO do editor de cena que a aba do Pixel sombreia (o Pixel tem o teclado antes,
-/// `pixel_owns_the_keyboard`): `(tecla, onde no app, porquê)`. O censo que as deriva da shell é
+/// `pixel_owns_the_keyboard`, salvo as do painel sob o ponteiro: [`crate::PanelUnderPointer`]):
+/// `(tecla, onde no app, porquê)`. O censo que as deriva da shell é
 /// `tests/the_app_keys_census.rs` (`P12_teclas.md` §4).
 pub const SHADOWED: &[(Chord, &str, &str)] = &[
     (
         k(K::KeyM),
         "input_handlers.rs:148 theme · input_dispatch/keyboard_timeline.rs:103 marker",
-        "scene letter; the Pixel timeline has its own markers",
+        "scene letter; over the dope-sheet it is the marker (PanelUnderPointer)",
     ),
     (
         k(K::KeyM).shift(),
@@ -529,47 +530,47 @@ pub const SHADOWED: &[(Chord, &str, &str)] = &[
     (
         k(K::KeyX).ctrl().shift(),
         "input_dispatch/handlers_teclas_editor.rs:172 audio cut · input_dispatch/keyboard_timeline.rs:130 keys cut",
-        "the arms ignore Shift; Ctrl+X is same-meaning",
+        "the arms ignore Shift; over the dope-sheet the panel keeps it",
     ),
     (
         k(K::KeyC).ctrl().shift(),
         "input_dispatch/handlers_teclas_editor.rs:172 audio copy · input_dispatch/keyboard_timeline.rs:129 keys copy",
-        "the arms ignore Shift; Ctrl+C is same-meaning",
+        "the arms ignore Shift; over the dope-sheet the panel keeps it",
     ),
     (
         k(K::KeyV).ctrl().shift(),
         "input_dispatch/handlers_teclas_editor.rs:172 audio paste · input_dispatch/keyboard_timeline.rs:131 keys paste",
-        "the arms ignore Shift; Ctrl+V is same-meaning",
+        "the arms ignore Shift; over the dope-sheet the panel keeps it",
     ),
     (
         k(K::KeyD).ctrl(),
         "input_dispatch/keyboard_hierarchy.rs:141 duplicate row · input_dispatch/keyboard_timeline.rs:136 duplicate keys",
-        "panel verbs (pointer over Hierarchy / dope-sheet selection); Deselect in the canvas",
+        "the panel under the pointer keeps it (Hierarchy, dope-sheet: PanelUnderPointer); Deselect elsewhere",
     ),
     (
         k(K::KeyD).ctrl().shift(),
         "input_dispatch/keyboard_hierarchy.rs:141 · input_dispatch/keyboard_timeline.rs:136",
-        "the Ctrl+D arms ignore Shift",
+        "the Ctrl+D arms ignore Shift; the panel under the pointer keeps it",
     ),
     (
         k(K::KeyR).ctrl(),
         "input_dispatch/keyboard_timeline.rs:140 reverse keys",
-        "dope-sheet selection only",
+        "pointer over the dope-sheet keeps it (PanelUnderPointer)",
     ),
     (
         k(K::KeyE).ctrl(),
         "input_dispatch/keyboard_timeline.rs:145 distribute keys",
-        "dope-sheet selection only",
+        "pointer over the dope-sheet keeps it (PanelUnderPointer)",
     ),
     (
         k(K::Backspace),
         "input_dispatch/keyboard_hierarchy.rs:140 delete row · input_dispatch/keyboard_timeline.rs:78 delete keys",
-        "panel verbs; Delete is same-meaning",
+        "the panel under the pointer keeps it; elsewhere Delete is same-meaning",
     ),
     (
         k(K::Delete).shift(),
         "input_dispatch/keyboard_hierarchy.rs:140 · input_dispatch/keyboard_timeline.rs:78",
-        "the Delete arms ignore Shift",
+        "the Delete arms ignore Shift; the panel under the pointer keeps it",
     ),
     (
         k(K::KeyK).ctrl().alt().shift(),

@@ -7,6 +7,7 @@ mod action;
 mod chord;
 mod factory;
 mod keymap;
+mod panel_keys;
 mod search;
 mod tool_keys;
 pub mod user_file;
@@ -17,6 +18,7 @@ pub use factory::{
     ASEPRITE, Context, FACTORY, OWNER_EXCEPTIONS, RESERVED_GLOBAL, SAME_MEANING, SHADOWED, reserved,
 };
 pub use keymap::{Conflict, Keymap, TextReport};
+pub use panel_keys::PanelUnderPointer;
 pub use search::{score, search};
 pub use tool_keys::tool_keys;
 

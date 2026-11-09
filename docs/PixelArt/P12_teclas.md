@@ -111,8 +111,7 @@ está em `RESERVED_GLOBAL`, `SAME_MEANING`, `SHADOWED` ou `OWNER_EXCEPTIONS`; to
 **`SHADOWED`** (a tabela, com onde e porquê) junta às letras de cena acima o que o censo achou sem
 lista: `Ctrl+D`/`Ctrl+Shift+D` (duplicar a linha da Hierarquia, `keyboard_hierarchy.rs:141`, só com
 o cursor sobre ela; duplicar chaves do dope-sheet, `keyboard_timeline.rs:136`) — no canvas do Pixel
-é Deselect/Reselect, como no Aseprite; ⚠️ hoje o Pixel toma-o mesmo com o cursor sobre a Hierarquia
-(o Pixel tem o teclado antes da cadeia) · `,`/`.` (`handlers_teclas_editor.rs:91`): o MESMO verbo
+é Deselect/Reselect, como no Aseprite · `,`/`.` (`handlers_teclas_editor.rs:91`): o MESMO verbo
 (um quadro), no relógio do sprite, dentro da tag · `Ctrl+R`/`Ctrl+E` (inverter/distribuir chaves,
 `keyboard_timeline.rs:140`/`:145`) · `Backspace`/`Shift+Del` (apagar linha/chaves, `:140`/`:78`) ·
 `Ctrl+Shift+C/X/V` (o editor de áudio e o dope-sheet ignoram o Shift, `handlers_teclas_editor.rs:172`,
@@ -120,6 +119,17 @@ o cursor sobre ela; duplicar chaves do dope-sheet, `keyboard_timeline.rs:136`) �
 continua reservado) · `Space+Tab` (o braço do `Tab` ignora o Espaço preso; o `Tab` continua
 reservado). Nenhuma é acção GLOBAL do app: todas são de painel, de selecção ou letra de cena, por
 isso nenhuma tecla do Pixel mudou.
+
+⭐ **O painel sob o ponteiro fica com as teclas dele** (dono: «nenhuma tecla do Pixel rouba uma
+tecla do app»; F2 do fecho P12). O Pixel tem o teclado antes da cadeia da shell, mas
+`pixel_owns_the_keyboard` (`input_dispatch/despacho_pixel.rs`) cede primeiro as teclas que o painel
+sob o ponteiro reclama — `ph2d_pixel_keys::PanelUnderPointer::keeps`, com as mesmas perguntas de
+área da shell (`cursor_over_hierarchy`, `cursor_over_timeline`): sobre a **Hierarquia**
+`Delete`/`Backspace` e `Ctrl+D` (com ou sem Shift); sobre o **dope-sheet** da timeline da cena
+`Delete`/`Backspace`, `M` e `Ctrl+C/X/V/D/R/E`. Fora deles (o canvas, a timeline do sprite) as
+teclas continuam do Pixel: `Ctrl+D` é o Deselect. Prova:
+`every_shadowed_panel_chord_goes_to_the_panel_under_the_pointer` (toda linha de `SHADOWED` cujo dono
+é a Hierarquia ou o dope-sheet cede ao painel e só a ele).
 
 ## 5. O ficheiro do utilizador
 

@@ -103,6 +103,7 @@ pub mod sink_style;
 pub mod sprite;
 mod sprite_collect;
 mod sprite_mesh;
+mod sprite_normal;
 mod sprite_mesh_fit;
 /// ⭐⭐⭐ **A PELE de uma malha** — o que a PLACA lê para posar (F9 W2). Ver o cabeçalho dele.
 pub mod sprite_mesh_skin;

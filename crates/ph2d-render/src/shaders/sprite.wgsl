@@ -17,6 +17,11 @@ var<uniform> camera: CameraUniform;
 var atlas_tex: texture_2d<f32>;
 @group(1) @binding(1)
 var atlas_sampler: sampler;
+// ⭐ P14 — a NORMAL do sprite (rgb = n·½+½, Y para cima na imagem), com o MESMO tamanho e portanto o
+// MESMO recorte da cor. Só o `fs_main_n` a lê; a pipeline dele tem o layout de material com 3 entradas
+// (`sprite_normal.rs`), a de sempre continua com 2.
+@group(1) @binding(2)
+var normal_tex: texture_2d<f32>;
 
 // ⭐⭐⭐ **A PELE (F9 W2)** — o que faz a PLACA posar o que a CPU posava vértice a vértice, todo
 // quadro. Medido na arte do dono: a CPU custava `35,9 %` de um quadro a 8 imagens presas
@@ -210,6 +215,9 @@ struct VertexOutput {
     // `luz_em`, e o `NaoRecebeLuz` (bit 31 do `flip_uv`, posto pela coleta).
     @location(9) mundo: vec2<f32>,
     @location(10) @interpolate(flat) sem_luz: u32,
+    // ⭐ P14: o linear LOCAL → MUNDO da instância (`basis · diag(size)`, com os espelhos do `flip_uv`),
+    // coluna-maior — o que leva a normal da imagem aos eixos do mundo. Só o `fs_main_n` o lê.
+    @location(11) @interpolate(flat) lin_n: vec4<f32>,
 };
 
 // Wrap `t` into [0,1] per the resolved RepeatMode (W3.T3.11): 2 Enabled
@@ -320,11 +328,14 @@ fn vs_main(@builtin(vertex_index) vi: u32, v: VertexInput, i: InstanceInput) -> 
     out.repeat_mode = (i.flip_uv >> 3u) & 3u;
     out.mundo = world;
     out.sem_luz = (i.flip_uv >> 31u) & 1u;
+    let ex = select(1.0, -1.0, flip_x) * i.size.x;
+    let ey = select(1.0, -1.0, flip_y) * i.size.y;
+    out.lin_n = vec4<f32>(i.basis.xy * ex, i.basis.zw * ey);
     return out;
 }
 
-@fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+// A cor PRÉ-MULTIPLICADA do sprite, antes da luz — a mesma para `fs_main` e `fs_main_n`.
+fn cor_do_sprite(in: VertexOutput) -> vec4<f32> {
     // W3.T3.11 tiling + scroll (inside the sprite's own sub-rect — never
     // bleeds into atlas neighbours):
     //  1. TILE by `scale`; the RepeatMode governs how the tiling wraps at
@@ -373,13 +384,52 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         // the authored alpha factors are not (§4.4 amended; audit H-1/E-2).
         // extra_alpha defaults 1.0 (opacity/tint.a/corner.a all 1) → the
         // BG-Removal fringe fix is preserved byte-for-byte.
-        return luz_receber(vec4<f32>(rgb * extra_alpha, alpha), in.mundo, in.sem_luz);
+        return vec4<f32>(rgb * extra_alpha, alpha);
     }
     // Straight (non-premultiplied) sRGB atlas + premultiplied blend:
     // premultiply here so overlap composites linearly without the
     // dark-fringe artifact. `alpha` already carries opacity + every alpha
     // factor, so rgb is dimmed correctly through this multiply.
-    return luz_receber(vec4<f32>(rgb * alpha, alpha), in.mundo, in.sem_luz);
+    return vec4<f32>(rgb * alpha, alpha);
+}
+
+@fragment
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    return luz_receber(cor_do_sprite(in), in.mundo, in.sem_luz);
+}
+
+// ⭐ P14 — a normal da imagem levada ao MUNDO pelo linear da instância `L` (`lin_n`): a lei de
+// `ph2d_pixel_luz::normal_no_mundo`, `n_xy ← L⁻ᵀ·n_xy·√|det L|`, renormalizada com o `n_z`. Rodar
+// leva `+x` com ela; espelhar (`det < 0`) vira-a; a escala uniforme não a inclina.
+fn normal_no_mundo(rgb: vec3<f32>, l: vec4<f32>) -> vec2<f32> {
+    let n = rgb * 2.0 - vec3<f32>(1.0);
+    let det = l.x * l.w - l.y * l.z;
+    if (abs(det) < 1e-12) {
+        return n.xy;
+    }
+    let k = sqrt(abs(det)) / det;
+    let m = vec2<f32>(k * (l.w * n.x - l.y * n.y), k * (-l.z * n.x + l.x * n.y));
+    let len = max(length(vec3<f32>(m, n.z)), 1e-9);
+    return m / len;
+}
+
+// O sprite COM normal map: a cor de sempre, e a normal lida no MESMO `uv` (o mesmo recorte, célula
+// ou quadro) e à mesma regra de borda do nível 0, entregue ao receptor `luz_receber_n`.
+@fragment
+fn fs_main_n(in: VertexOutput) -> @location(0) vec4<f32> {
+    let cor = cor_do_sprite(in);
+    let tiled = wrap_uv(in.quv * in.uv_xform.xy, in.repeat_mode);
+    let scrolled = tiled + in.uv_xform.zw;
+    let local = select(scrolled, fract(scrolled), in.uv_xform.zw != vec2<f32>(0.0));
+    let uv = vec2<f32>(
+        mix(in.atlas_uv.x, in.atlas_uv.z, local.x),
+        mix(in.atlas_uv.y, in.atlas_uv.w, local.y),
+    );
+    let dim = vec2<f32>(textureDimensions(normal_tex));
+    let wraps = in.repeat_mode == 2u || in.repeat_mode == 3u || any(in.uv_xform.zw != vec2<f32>(0.0));
+    let onde = select(recorte_uv(uv, in.atlas_uv, dim, vec2<f32>(1.0), 0.0), uv, wraps);
+    let nb = textureSampleLevel(normal_tex, atlas_sampler, onde, 0.0);
+    return luz_receber_n(cor, in.mundo, normal_no_mundo(nb.rgb, in.lin_n), in.sem_luz);
 }
 
 // ─── ClipChildren stencil-mark pass (W3 §8; ADR-0070/0074-amendment) ───

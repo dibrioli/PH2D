@@ -94,9 +94,11 @@ fn the_sprite_fragment_does_not_clamp_its_colour_output() {
     // As duas linhas de retorno do fragmento principal — o ramo premultiplicado e o reto.
     // ⭐ Desde a luz 2D (W3) os dois passam por `luz_receber`, que multiplica e NUNCA satura — a
     //    segunda metade deste gate lê o corpo dela.
+    // ⭐ P14: a cor saiu para `cor_do_sprite` (partilhada com o `fs_main_n` do normal map).
     for needle in [
-        "return luz_receber(vec4<f32>(rgb * extra_alpha, alpha), in.mundo, in.sem_luz);",
-        "return luz_receber(vec4<f32>(rgb * alpha, alpha), in.mundo, in.sem_luz);",
+        "return vec4<f32>(rgb * extra_alpha, alpha);",
+        "return vec4<f32>(rgb * alpha, alpha);",
+        "return luz_receber(cor_do_sprite(in), in.mundo, in.sem_luz);",
     ] {
         assert!(
             SPRITE_WGSL.contains(needle),

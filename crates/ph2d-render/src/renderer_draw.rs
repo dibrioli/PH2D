@@ -23,6 +23,8 @@ impl SpriteRenderer {
             let bgl = &self.pipeline.material_bgl;
             self.individual
                 .ensure_sampler_bg(&self.gpu, bgl, texture_id, sampling);
+            self.normais
+                .garantir(&self.gpu, &self.individual, texture_id, sampling);
         }
     }
 
@@ -422,14 +424,23 @@ impl SpriteRenderer {
                     .iter()
                     .filter(|r| r.clip_group == 0 && r.mask_role == 0)
                 {
-                    let Some(bg) = material_bg(run.texture_id, run.sampling) else {
-                        continue;
-                    };
-                    if bound_blend != Some(run.blend) {
-                        pass.set_pipeline(self.pipeline.blend_pipeline(run.blend));
-                        bound_blend = Some(run.blend);
+                    // ⭐ P14: um run cuja textura tem normal vai pela pipeline `fs_main_n`.
+                    if let Some((pl, bg)) =
+                        self.normais.do_run(run.texture_id, run.sampling, run.blend)
+                    {
+                        pass.set_pipeline(pl);
+                        bound_blend = None;
+                        pass.set_bind_group(1, bg, &[]);
+                    } else {
+                        let Some(bg) = material_bg(run.texture_id, run.sampling) else {
+                            continue;
+                        };
+                        if bound_blend != Some(run.blend) {
+                            pass.set_pipeline(self.pipeline.blend_pipeline(run.blend));
+                            bound_blend = Some(run.blend);
+                        }
+                        pass.set_bind_group(1, bg, &[]);
                     }
-                    pass.set_bind_group(1, bg, &[]);
                     crate::sprite_mesh::draw_run(
                         &mut pass,
                         run,

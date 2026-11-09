@@ -205,24 +205,7 @@ impl SpritePipeline {
             .device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("ph2d-render material bgl"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                ],
+                entries: &entradas_do_material(),
             });
 
         // ⭐⭐⭐ **O GRUPO DA PELE (F9 W2)** — três *storage buffers* que o `vs_main` e o
@@ -506,6 +489,79 @@ impl SpritePipeline {
         self.blend_pipelines
             .get(tag as usize)
             .unwrap_or(&self.blend_pipelines[0])
+    }
+}
+
+/// As duas entradas do `@group(1)` de sempre: a textura da cor e a amostragem.
+pub(crate) fn entradas_do_material() -> [wgpu::BindGroupLayoutEntry; 2] {
+    [
+        wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Texture {
+                sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                view_dimension: wgpu::TextureViewDimension::D2,
+                multisampled: false,
+            },
+            count: None,
+        },
+        wgpu::BindGroupLayoutEntry {
+            binding: 1,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+            count: None,
+        },
+    ]
+}
+
+impl SpritePipeline {
+    /// ⭐ P14 — uma pipeline `fs_main_n` por mistura, com o material de 3 entradas `material_n_bgl`
+    /// (`crate::sprite_normal`). Só nasce quando a 1.ª normal é registada.
+    pub(crate) fn pipelines_com_normal(
+        &self,
+        gpu: &GpuContext,
+        material_n_bgl: &wgpu::BindGroupLayout,
+        color_format: wgpu::TextureFormat,
+    ) -> [wgpu::RenderPipeline; BLEND_PIPELINE_COUNT] {
+        let layout = gpu
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("ph2d-render sprite com normal layout"),
+                bind_group_layouts: &[
+                    Some(&self.frame_bgl),
+                    Some(material_n_bgl),
+                    Some(&self.skin_bgl),
+                    Some(&self.luz_bgl),
+                ],
+                immediate_size: 0,
+            });
+        let shader = gpu
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("ph2d-render sprite shader (normal)"),
+                source: wgpu::ShaderSource::Wgsl(SPRITE_WGSL.into()),
+            });
+        let buffers = [
+            Some(QuadVertex::buffer_layout()),
+            Some(RenderInstance::buffer_layout()),
+        ];
+        std::array::from_fn(|tag| {
+            build_variant(
+                &gpu.device,
+                &layout,
+                &shader,
+                color_format,
+                Variant {
+                    label: "ph2d-render sprite com normal pipeline",
+                    vs_entry: "vs_main",
+                    fs_entry: "fs_main_n",
+                    buffers: &buffers,
+                    color_write: wgpu::ColorWrites::ALL,
+                    blend: Some(blend_state_for(tag as u8)),
+                    depth_stencil: None,
+                },
+            )
+        })
     }
 }
 

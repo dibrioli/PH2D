@@ -120,6 +120,8 @@ pub struct SpriteRenderer {
     sem_luz: std::collections::BTreeSet<ph2d_ecs::Entity>,
     /// A geração de memória da placa já tratada (F36, `renderer_renasce.rs`).
     geracao_vista: u64,
+    /// ⭐ P14: as normais dos sprites (vazias = nada alocado, o desenho de sempre).
+    normais: crate::sprite_normal::NormaisDosSprites,
 }
 
 /// The `Stencil8` texture + its view + the size it was allocated for.
@@ -222,7 +224,37 @@ impl SpriteRenderer {
             sem_luz: std::collections::BTreeSet::new(),
             // `MAX`: o 1.º quadro confere (o átlas pode ter nascido recusado antes do renderer).
             geracao_vista: u64::MAX,
+            normais: crate::sprite_normal::NormaisDosSprites::nova(color_format),
         }
+    }
+
+    /// ⭐ P14 — regista (`Some((w, h, rgba))`) ou tira (`None`) o NORMAL MAP da textura individual
+    /// `texture_id` (rgb = n·½+½, Y para cima). Tem de ter o tamanho da cor: o mesmo `atlas_uv` lê
+    /// então a mesma célula / o mesmo quadro nas duas. `Err` para outro tamanho ou id desconhecido.
+    pub fn definir_normal(
+        &mut self,
+        texture_id: u32,
+        normal: Option<(u32, u32, &[u8])>,
+    ) -> Result<(), String> {
+        let cor = self
+            .individual
+            .entries
+            .get(&texture_id)
+            .map(|e| (&e.texture, (e.width, e.height)));
+        self.normais
+            .definir(&self.gpu, &self.pipeline, cor, texture_id, normal)
+    }
+
+    /// Quantas texturas têm normal registada (0 = nada alocado para normais).
+    #[must_use]
+    pub fn normais_alocadas(&self) -> usize {
+        self.normais.len()
+    }
+
+    /// A textura `texture_id` tem normal registada?
+    #[must_use]
+    pub fn tem_normal(&self, texture_id: u32) -> bool {
+        self.normais.tem(texture_id)
     }
 
     /// ⭐ **Acende (`Some`) ou apaga (`None`) a luz 2D** para os desenhos da CENA que se seguem

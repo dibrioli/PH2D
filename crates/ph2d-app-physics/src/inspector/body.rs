@@ -1,8 +1,4 @@
-//! §11 Physics Body — the shell half of the Inspector section (ADR-0131 D8):
-//! the snapshot the panel reads. The ECS WRITE half (`apply_physics_edit`) lives
-//! in the sibling `inspector_physics_apply` and is re-exported below, so every
-//! caller keeps its `inspector_physics::apply_physics_edit` path (the file hit
-//! the HR-18 600-LOC cap when the material-combine arm landed).
+//! §11 Physics Body — the snapshot the Inspector reads (ADR-0131 D8); the write is `physics_apply`.
 
 use bevy_ecs::world::World;
 use ph2d_ecs::Entity;
@@ -12,16 +8,8 @@ use ph2d_physics_ecs::excecao::estado_da_selecao;
 /// The WRITE half, in the sibling module. Re-exported so callers are unchanged.
 pub use crate::physics_apply::apply_physics_edit;
 
-/// **O nome do corpo ancestral mais próximo** — o dono que adotaria uma peça, ou
-/// que já é dono dela (W-Compound / W-PartFace); vazio se não há nenhum.
-///
-/// ⚠️ Só faz sentido para uma entidade que NÃO é corpo: um objeto que já é corpo
-/// não vira peça de ninguém.
-///
-/// ⚠️ **O WALK delega** a `ph2d_physics_ecs::owner_body` — a MESMA função que a
-/// ponte usa para decidir onde pendurar a forma. Este nome aparece no rótulo de
-/// *Add Shape to X* e no cabeçalho da face de peça, então nomear um dono
-/// diferente daquele que o solver escolheu seria o painel mentindo com convicção.
+/// **O nome do corpo ancestral mais próximo** (vazio sem nenhum), pelo MESMO walk da ponte
+/// (`owner_body`): *Add Shape to X* e a face de peça nunca nomeiam outro dono.
 fn nearest_body_name(world: &World, e: ph2d_ecs::Entity) -> String {
     ph2d_physics_ecs::owner_body(world, e).map_or_else(String::new, |p| {
         world.get::<ph2d_ecs::Name>(p).map_or_else(
@@ -31,18 +19,6 @@ fn nearest_body_name(world: &World, e: ph2d_ecs::Entity) -> String {
     })
 }
 
-/// Build the §11 Physics Body snapshot (ADR-0131 D8).
-///
-/// **Returns `Some` for a Transform-bearing entity even when it has NO
-/// body** — `has_body: false` é o que deixa a seção oferecer o botão *Add*, e
-/// (desde a W-PartFace) `has_collider` sem `has_body` é o que a manda pintar a
-/// face de **PEÇA**. Sem isso, física seria autorável só onde já há física, ou
-/// seja em lugar nenhum.
-///
-/// ⚠️ **Cada argumento é um fato que só a SHELL enxerga** (a seleção, o gesto
-/// armado, o alcance do bake, a árvore). Empacotá-los num struct só moveria a
-/// mesma lista para outro arquivo, com um sítio de construção a mais para alguém
-/// esquecer de preencher.
 /// O «Collides with» diante da seleção `sel` (bits): misto e «Differs».
 pub fn com_a_selecao(w: &World, mut i: InspectorPhysicsInfo, sel: &[u64]) -> InspectorPhysicsInfo {
     let sel: Vec<Entity> = sel.iter().copied().map(Entity::from_bits).collect();
@@ -51,6 +27,7 @@ pub fn com_a_selecao(w: &World, mut i: InspectorPhysicsInfo, sel: &[u64]) -> Ins
     i
 }
 
+/// The §11 snapshot: `Some` even without a body (the *Add* face); each argument is a shell-only fact.
 #[allow(clippy::too_many_arguments)]
 pub fn build_physics_info(
     world: &World,

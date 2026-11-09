@@ -179,3 +179,40 @@ fn b4_o_corpo_antigo_oferece_mover_a_forma_para_a_filha() {
     );
     sai();
 }
+
+/// (W4 a, c) **A forma «Outline» pinta as três linhas do traço, e o aviso só quando o tecto subiu o
+/// Detail.** *Mutação: `aviso` sem o guarda do `raised` ⇒ a frase aparece sem subir, vermelho.*
+#[test]
+fn w4_o_outline_pinta_as_linhas_e_o_aviso_so_quando_subiu() {
+    use ph2d_editor_core::screens::hero::InspectorOutlineInfo;
+    let frase = ph2d_i18n::tr_with(
+        "card.insp.phys.outline_raised",
+        &[("x", &"3"), ("n", &256u32)],
+    );
+    for raised in [None, Some((3.0, 256))] {
+        let info = InspectorPhysicsInfo {
+            shape_tag: 3,
+            outline: Some(InspectorOutlineInfo {
+                detail_px: 2.0,
+                alpha_cutoff: 0.5,
+                specks_px: 0.0,
+                raised,
+            }),
+            ..da_filha()
+        };
+        let (mut host, mut st) = cena(info, [1.0, 1.0]);
+        let (r, avisos) =
+            ph2d_panel_inspector::censo_dos_avisos::medindo(|| pinta(&mut host, &mut st));
+        for id in [
+            INSP_PHYS_OUTLINE_DETAIL,
+            INSP_PHYS_OUTLINE_ALPHA,
+            INSP_PHYS_OUTLINE_SPECKS,
+        ] {
+            assert!(achado(&r, id).is_some(), "a linha {id:?}");
+        }
+        assert!(achado(&r, INSP_PHYS_HALF_X).is_none(), "sem Width");
+        let tem = avisos.iter().any(|a| a.texto == frase);
+        assert_eq!(tem, raised.is_some(), "{frase:?} em {avisos:?}");
+        sai();
+    }
+}

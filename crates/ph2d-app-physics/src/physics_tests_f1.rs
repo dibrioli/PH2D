@@ -254,3 +254,41 @@ fn escolher_outline_guarda_a_caixa() {
     let outline = ph2d_physics_ecs::ColliderShape::Outline { half_x, half_y };
     assert_eq!(c(&sim).shape, outline);
 }
+
+/// (W4 a, c) **O cartão lê o «Outline»**: tag `3` (não a caixa) e o aviso só quando o tecto subiu o
+/// Detail. *Mutações: `caixa(1, …)` no braço Outline ⇒ tag 1; `raised` sem o guarda ⇒ `Some`.*
+#[test]
+fn o_cartao_mostra_o_outline_e_o_aviso_so_quando_subiu() {
+    use ph2d_physics_ecs::{Collider, ColliderOutline, ColliderShape};
+    let (mut sim, e) = sprite_scene();
+    apply(&mut sim, e, PhysicsFieldEdit::Add);
+    let forma = super::shape_of(&sim, e);
+    let c = Collider {
+        shape: ColliderShape::Outline {
+            half_x: 1.0,
+            half_y: 0.5,
+        },
+        ..Collider::default()
+    };
+    let pedido = ColliderOutline {
+        detail_q4: 32,
+        ..ColliderOutline::default()
+    };
+    sim.world_mut()
+        .entity_mut(forma)
+        .insert((c, pedido.clone()));
+    let i = info_de(&sim, e, 0);
+    assert_eq!(i.shape_tag, 3, "o seletor mostra Outline");
+    assert_eq!(
+        i.outline.map(|o| o.raised),
+        Some(None),
+        "não subiu: sem aviso"
+    );
+    let subiu = ColliderOutline {
+        raised_q4: 48,
+        ..pedido
+    };
+    sim.world_mut().entity_mut(forma).insert(subiu);
+    let o = info_de(&sim, e, 0).outline.expect("o cartão do Outline");
+    assert_eq!(o.raised, Some((3.0, 256)), "subiu a 3 px");
+}

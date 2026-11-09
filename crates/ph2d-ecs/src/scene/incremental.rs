@@ -77,6 +77,15 @@ pub struct CaptureReport {
     pub delta_bytes: usize,
 }
 
+impl CaptureReport {
+    /// O mundo mudou desde a captura anterior (bytes de uma linha, nascimento ou morte), seja quem
+    /// for que o mudou: o sinal da cópia de recuperação para quem escreve sem entrada local.
+    #[must_use]
+    pub fn changed(&self) -> bool {
+        self.reserialized + self.spawned + self.despawned > 0
+    }
+}
+
 /// Uma linha cacheada: a linha em si + o que decide se ela está suja.
 #[derive(Clone)]
 struct CachedRow {

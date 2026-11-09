@@ -506,28 +506,9 @@ impl crate::App {
             }
             return;
         }
-        // ⭐⭐⭐ **A REDE DOS ESCRITORES TARDIOS CORRE AQUI, e a posição é a lei** (2026-09-08).
-        //
-        // Ela reconcilia a árvore com o documento para que a fotografia seja **ponto fixo dos
-        // sistemas** (ver [`crate::vec_tree_settle`]). Estava no `render_frame`, a correr em TODO
-        // quadro — e medida, custa `0,3 ms` a 1 000 formas, `1,6` a 5 000 e **`7,0 ms` a 20 000,
-        // que são `42 %` de um quadro** (linear em toda a faixa: não há teto a curar, o custo É a
-        // varredura).
-        //
-        // ⚠️ **Colá-la à captura não é uma optimização condicional — é a definição dela.** *A rede
-        // existe para a fotografia; ela corre exactamente quando a fotografia corre.* Nos quadros
-        // suprimidos (botão em baixo · colorize a recalcular · transição de estado de UI ·
-        // **sem entrada**) não há fotografia para proteger, e o passe do desenho do
-        // quadro seguinte reconcilia na mesma. ⛔ **Não é uma bandeira que um verbo novo tem de
-        // lembrar de levantar**: é a MESMA condição, já escrita e já nomeada acima.
-        //
-        // ⚠️ **Um verbo tardio da Hierarquia nunca cai num quadro suprimido**: ele vem de um
-        // clique, logo `had_input` é verdade, e nenhum dos outros três motivos está de pé quando
-        // o menu de contexto entrega o pedido.
-        //
-        // ⚠️ **O `capture_project` do LOG de supressão acima corre SEM a rede**, de propósito: ali
-        // não há passo a proteger, e pagá-la seria trocar um diagnóstico por relógio. Com
-        // `PH2D_UNDO_LOG=1` isso pode nomear `partes` que a rede fecharia no quadro do passo.
+        // ⭐ A rede dos escritores tardios corre AQUI, colada à captura (que é a definição dela):
+        // medida, `7 ms` a 20 000 formas num quadro; nos suprimidos não há fotografia a proteger.
+        // História e medições: `git log -S "ESCRITORES TARDIOS" -- shells/desktop/src/undo_app.rs`.
         self.settle_tree_before_capture();
         let Some(current) = self.capture_project() else {
             return;

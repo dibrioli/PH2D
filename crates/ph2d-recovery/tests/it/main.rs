@@ -451,3 +451,43 @@ fn a_copia_sai_sem_quadros_so_com_as_voltas_do_laco() {
     assert_eq!(found[0].meta.name, "Hero.ph2dproj");
     let _ = std::fs::remove_dir_all(&root);
 }
+
+/// ⭐ R8 F3: uma mudança SEM entrada local (o quadro ao vivo pela rede, um script, uma macro) é
+/// copiada à hora pelos sinais baratos (`pulse`); sem mudança a hora adia-se e nada se serializa.
+#[test]
+fn a_mudanca_sem_entrada_local_e_copiada_a_hora() {
+    let root = tmpdir("pulse");
+    let mut r = ph2d_recovery::Recovery::start(Some(&root), Period::from_secs(10));
+    r.opened(Some(b"v1"), false);
+    let t0 = Instant::now();
+    let hora = |n: u64| t0 + Duration::from_secs(11 * n);
+    let copia = |r: &mut ph2d_recovery::Recovery, n: u64, print: u64, bytes: &'static [u8]| {
+        if r.wants_pulse(10, hora(n)) {
+            r.pulse(print, false, hora(n));
+        }
+        r.tick(10, hora(n), || Some((move || Some(bytes.to_vec()), None)));
+        r.autosave.finish()
+    };
+    // A 1.ª hora não conhece a impressão anterior: confere (os bytes iguais não se escrevem).
+    assert_eq!(copia(&mut r, 1, 7, b"v1"), Some(Offer::Unchanged));
+    assert_eq!(
+        copia(&mut r, 2, 7, b"v1"),
+        None,
+        "nada mudou: não serializa"
+    );
+    // A rede mudou o quadro, sem nenhum `input`: a hora seguinte copia.
+    assert_eq!(copia(&mut r, 3, 8, b"v2"), Some(Offer::Written));
+    let dir = r.session.as_ref().expect("sessão").dir().to_path_buf();
+    assert_eq!(
+        std::fs::read(dir.join("project.ph2dproj")).ok(),
+        Some(b"v2".to_vec())
+    );
+    // Um sinal que já diz «mudou» (o mundo) basta, com a mesma impressão.
+    if r.wants_pulse(10, hora(4)) {
+        r.pulse(8, true, hora(4));
+    }
+    r.tick(10, hora(4), || Some((|| Some(b"v3".to_vec()), None)));
+    assert_eq!(r.autosave.finish(), Some(Offer::Written));
+    r.close();
+    let _ = std::fs::remove_dir_all(&root);
+}

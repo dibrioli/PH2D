@@ -82,9 +82,26 @@ impl crate::App {
     }
 
     /// ⭐ A cópia de recuperação (P12 S): os MESMOS bytes do Save, serializados no fio da escrita.
+    /// À hora, os sinais de quem muda SEM entrada local (`Recovery::pulse`, auditoria R8 F3).
     pub(crate) fn recovery_tick(&mut self) {
         let now = std::time::Instant::now();
-        if (self.recovery).ready(ph2d_editor_core::recovery_pref::secs(), now)
+        let secs = ph2d_editor_core::recovery_pref::secs();
+        if self.recovery.wants_pulse(secs, now) {
+            let cap = self.capture_project().and(self.gfx.as_ref());
+            let world = cap.is_some_and(|g| g.undo_capture_cache.last_report().changed());
+            let g = self.gfx.as_ref();
+            let docs = g.and_then(|g| g.hero_screen.as_ref()).map(|h| &h.documents);
+            let boards = docs.into_iter().flat_map(|d| d.boards().boards().iter());
+            let kanbans = ph2d_app_kanban::project::to_bytes(docs).unwrap_or_default();
+            let scripts = g.map(|g| ph2d_app_components::script_project::save(g.sim.world()));
+            let print = ph2d_recovery::fold(boards.map(|b| b.doc.rev()).chain([
+                ph2d_recovery::print_of(&kanbans),
+                ph2d_recovery::print_of(&scripts.unwrap_or_default()),
+                ph2d_app_pixel::persist::print(&self.pixel),
+            ]));
+            self.recovery.pulse(print, world, now);
+        }
+        if (self.recovery).ready(secs, now)
             && let Some((file, pixel)) = self.project_file()
         {
             let make = move || serialize(file, &pixel);

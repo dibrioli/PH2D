@@ -56,6 +56,8 @@ pub struct Recovery {
     failing: bool,
     /// Avisos para a shell mostrar (toasts, já traduzidos): [`Self::take_notices`].
     notices: Vec<String>,
+    /// A impressão dos sinais baratos na última hora ([`Self::pulse`]); `None` = ainda não vista.
+    print: Option<u64>,
 }
 
 /// O fecho da janela do app com alterações por gravar.
@@ -91,6 +93,7 @@ impl Recovery {
             clean: false,
             failing: false,
             notices: Vec::new(),
+            print: None,
         }
     }
 
@@ -175,6 +178,27 @@ impl Recovery {
         }
     }
 
+    /// A hora chegou (e o artista está em pausa)? A shell junta então os sinais baratos de quem muda
+    /// o projecto SEM entrada local (rede, scripts, macros) e responde em [`Self::pulse`]: uma vez
+    /// por intervalo, nunca por quadro.
+    pub fn wants_pulse(&mut self, secs: u64, now: Instant) -> bool {
+        self.follow(secs, now);
+        self.session.is_some()
+            && self.autosave.due(now)
+            && (self.idle(now) || self.autosave.overdue(now))
+    }
+
+    /// `print` = a impressão dos sinais baratos; `changed` = um sinal que já diz «mudou» (o mundo).
+    /// Mudou (ou é a primeira vez: sem impressão anterior o estado é desconhecido) ⇒ há trabalho por
+    /// copiar; senão a hora adia-se um intervalo e nada se serializa.
+    pub fn pulse(&mut self, print: u64, changed: bool, now: Instant) {
+        if changed || self.print.replace(print) != Some(print) {
+            self.touched = true;
+        } else if !self.touched {
+            self.autosave.postpone(now);
+        }
+    }
+
     /// [`Self::follow`] e [`Self::due`] juntos: a pergunta barata (~µs) de cada volta do laço.
     pub fn ready(&mut self, secs: u64, now: Instant) -> bool {
         self.follow(secs, now);
@@ -248,6 +272,7 @@ impl Recovery {
     pub fn opened(&mut self, bytes: Option<&[u8]>, restored: bool) {
         let Some(bytes) = bytes else { return };
         self.touched = false;
+        self.print = None;
         self.autosave.opened(bytes, restored, Instant::now());
         if !restored && let Some(s) = self.session.as_ref() {
             s.clear_copy();

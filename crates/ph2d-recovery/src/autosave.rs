@@ -117,6 +117,14 @@ pub enum Offer {
 /// O que o fio devolve: a impressão dos bytes e se os escreveu.
 type Job = JoinHandle<std::io::Result<(u64, bool)>>;
 
+/// Uma impressão de vários sinais baratos ([`crate::Recovery::pulse`]).
+#[must_use]
+pub fn fold(parts: impl IntoIterator<Item = u64>) -> u64 {
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    parts.into_iter().for_each(|p| p.hash(&mut h));
+    h.finish()
+}
+
 /// A impressão dos bytes (o «mudou?» do relógio e do fecho).
 #[must_use]
 pub fn print_of(bytes: &[u8]) -> u64 {
@@ -162,6 +170,11 @@ impl Autosave {
     #[must_use]
     pub fn overdue(&self, now: Instant) -> bool {
         now >= self.next + self.period.duration()
+    }
+
+    /// A hora passou sem nada por copiar: a próxima é daqui a um intervalo.
+    pub fn postpone(&mut self, now: Instant) {
+        self.next = now + self.period.duration();
     }
 
     /// Muda o intervalo agora (Settings ▸ Recovery): a próxima hora conta a partir de `now`.

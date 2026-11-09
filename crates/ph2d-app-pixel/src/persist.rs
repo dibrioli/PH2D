@@ -43,6 +43,16 @@ pub fn entries(app: &mut PixelApp, world: &ph2d_ecs::World) -> Entries {
     Entries(out)
 }
 
+/// A impressão barata dos documentos (chave e revisão de cada um): muda com toda edição.
+#[must_use]
+pub fn print(app: &PixelApp) -> u64 {
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    for (k, d) in &app.docs {
+        std::hash::Hash::hash(&(k, d.history.revision()), &mut h);
+    }
+    std::hash::Hasher::finish(&h)
+}
+
 /// Os documentos lidos, ainda por instalar — ler e instalar são dois passos para o load recusar o
 /// projecto inteiro ANTES de tocar em qualquer coisa.
 pub struct Loaded(BTreeMap<u32, ph2d_pixel_core::Sprite>);

@@ -23,7 +23,7 @@ mod session;
 
 pub use app::{IDLE, Quit, Recovery, meta_of};
 pub use ask::{ago, body, size};
-pub use autosave::{Autosave, Offer, Period, print_of};
+pub use autosave::{Autosave, Offer, Period, fold, print_of};
 pub use prompt::{Choice, Prompt};
 pub use session::{Meta, Orphan, Session, is_held, scan};
 

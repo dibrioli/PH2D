@@ -438,3 +438,67 @@ fn o_cabecalho_do_objeto_tem_fundo_e_icones_proprios() {
     crate::hier::publica_icone(424_242, IconId::Sprite);
     assert_eq!(crate::hier::icone_do_objeto(424_242), IconId::Sprite);
 }
+
+/// ⭐ Dono 09/11: o Summary tem cor PRÓPRIA — longe do cabeçalho do objecto, das duas da zebra e do
+/// fundo, em todo tema; o texto e o losango âmbar continuam legíveis por cima. Régua OKLab (a das
+/// barras); barra 0,04 = o dobro do menor degrau que já separa cabeçalho e zebra (0,020).
+#[test]
+fn o_summary_tem_cor_propria_nos_oito_temas() {
+    use ph2d_tokens::{Theme, srgb_to_oklch};
+    const BARRA: f64 = 0.04;
+    const LEGIVEL: f64 = 0.15;
+    let lab = |c: ph2d_vector::Color| {
+        let [r, g, b, _] = c.to_rgba8().to_u8_array();
+        let (l, ch, h) = srgb_to_oklch(r, g, b);
+        (l, ch * h.to_radians().cos(), ch * h.to_radians().sin())
+    };
+    let d = |x: (f64, f64, f64), y: (f64, f64, f64)| {
+        ((x.0 - y.0).powi(2) + (x.1 - y.1).powi(2) + (x.2 - y.2).powi(2)).sqrt()
+    };
+    // As camadas compostas como o pintor as põe (fonte sobre fundo, sRGB).
+    let compoe = |camadas: &[ph2d_vector::Color]| {
+        let mut acc = [0.0_f32; 3];
+        for c in camadas {
+            let [r, g, b, a] = c.to_rgba8().to_u8_array();
+            let a = f32::from(a) / 255.0;
+            for (k, v) in [r, g, b].into_iter().enumerate() {
+                acc[k] = f32::from(v) * a + acc[k] * (1.0 - a);
+            }
+        }
+        ph2d_vector::Color::from_rgba8(
+            acc[0].round() as u8,
+            acc[1].round() as u8,
+            acc[2].round() as u8,
+            255,
+        )
+    };
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(true));
+    for t in [
+        Theme::Forge,
+        Theme::Workshop,
+        Theme::Sunstone,
+        Theme::Blueprint,
+        Theme::Dark,
+        Theme::Gray,
+        Theme::Light,
+        Theme::Oled,
+    ] {
+        let s = lab(compoe(&crate::summary_paint::fundo(t)));
+        for o in [
+            ColorToken::TimelineObjectRow,
+            ColorToken::TimelineRowAlt,
+            ColorToken::PanelBg,
+        ] {
+            let x = d(s, lab(resolve(o, t)));
+            assert!(
+                x >= BARRA,
+                "{t:?}: Summary a {x:.3} de {o:?} (barra {BARRA})"
+            );
+        }
+        for o in [ColorToken::Text2, ColorToken::TimelineSummaryKey] {
+            let x = d(s, lab(resolve(o, t)));
+            assert!(x >= LEGIVEL, "{t:?}: {o:?} a {x:.3} do fundo do Summary");
+        }
+    }
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(None);
+}

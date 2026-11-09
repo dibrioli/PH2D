@@ -88,6 +88,11 @@ pub const DRAG_GHOST_SCALE: f32 = 0.75; // LITERAL-PX-OK: escala adimensional do
 /// do cartão em 5 a 8 pontos de cor). `color_tests` mede o contraste em todo tema.
 pub const ROW_SELECTED_ALPHA: f32 = 0.35; // LITERAL-PX-OK: opacidade do realce
 
+/// **A linha «Summary» da Timeline: `timeline-summary-row` a esta opacidade sobre o cabeçalho do
+/// objecto** (dono, 09/11). Medida nos 8 temas (OKLab): pior 0,049 contra cabeçalho, zebra e fundo
+/// (os degraus entre eles: 0,020–0,112); o âmbar a 0,20 dava 0,045 e apagava o losango no Light.
+pub const TIMELINE_SUMMARY_TINT_ALPHA: f32 = 0.15; // LITERAL-PX-OK: opacidade da tinta do Summary
+
 /// ⭐ **O FANTASMA de um cartão arrastado — a opacidade dele.** Meio transparente: a marca da
 /// queda (a barra de acento entre dois cartões) tem de se ver através dele.
 pub const DRAG_GHOST_ALPHA: f32 = 0.55; // LITERAL-PX-OK: opacidade do fantasma

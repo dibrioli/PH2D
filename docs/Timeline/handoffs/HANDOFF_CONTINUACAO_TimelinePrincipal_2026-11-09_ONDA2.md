@@ -83,6 +83,8 @@ Testes por nome desta rodada: `linhas` 16 ✓ · `tracks_value` 6 ✓ · `scroll
 
 - **2c (dono 09/11, cabeçalho do objecto):** fundo próprio de ponta a ponta (token `TimelineObjectRow` → `Bg3`, via `linhas::fundo_da_linha`), fio `BorderStrong` antes de cada objecto, ▾ SÓ PINTADO (não há id/evento de recolher objecto), ícone do tipo lido do `entry.icon` da Hierarquia em `hier::declare_in_row` (mapa `hier::publica_icone`/`icone_do_objeto`, sem linha nova na shell; `Cube` até a Hierarquia declarar), ícone por propriedade (`Move`/`Rotate`/`Scale`/`CardOpacity`), piso da coluna nos cartões `geom::min_arvore_label_w` (nomes inteiros); teste `o_cabecalho_do_objeto_tem_fundo_e_icones_proprios`; crate 301 + 162 ✓; `color.rs` 699/700.
 
+- **2d (dono 09/11, Summary com cor própria):** `summary_paint::fundo` = `TimelineObjectRow` + `TimelineSummaryRow` (→ `Accent`) a `TIMELINE_SUMMARY_TINT_ALPHA` 0,15 (`ph2d-tokens/src/chrome.rs`); medido nos 8 temas: pior 0,049 contra cabeçalho/zebra/fundo (degraus existentes 0,020–0,112; âmbar a 0,20 dava 0,045 e o losango a 0,14 no Light); gate `o_summary_tem_cor_propria_nos_oito_temas` (≥ 0,04; texto e losango ≥ 0,15). Clássico continua `Bg3`. `color.rs` 700/700.
+
 ## Superfície de colisão
 
 `ph2d-panel-timeline`: `linhas.rs`, `tracks.rs`, `tracks_label.rs`, `tracks_value.rs`, `paint.rs`, `ruler.rs`, `state.rs`,

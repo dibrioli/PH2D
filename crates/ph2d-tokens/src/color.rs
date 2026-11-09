@@ -459,6 +459,7 @@ color_tokens! {
     #[doc = "`timeline-interp-hold` — dashed dope-sheet bar after a hold key."] TimelineInterpHold => "timeline-interp-hold",
     #[doc = "`timeline-record` — the sheet's border while Auto Key records."] TimelineRecord => "timeline-record",
     #[doc = "`timeline-object-row` — an object's header row across names and lanes."] TimelineObjectRow => "timeline-object-row",
+    #[doc = "`timeline-summary-row` — the Summary row's tint (`TIMELINE_SUMMARY_TINT_ALPHA`)."] TimelineSummaryRow => "timeline-summary-row",
 
     // ── Esqueleto ──────────────────────────────────────────────────
     /// ⭐⭐⭐ `bone-handle` — **as alças de curvatura do osso que dobra**, e a razão de ele existir

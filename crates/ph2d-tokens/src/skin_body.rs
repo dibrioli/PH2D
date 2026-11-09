@@ -265,6 +265,7 @@ impl ColorToken {
             | T::TimelineInterpHold
             | T::TimelineRecord
             | T::TimelineObjectRow
+            | T::TimelineSummaryRow
             | T::BoneHandle
             | T::ShapeHandle
             | T::Person0

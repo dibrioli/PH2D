@@ -36,6 +36,21 @@ const RULE_H: f32 = 1.0; // LITERAL-PX-OK: summary row bottom rule
 /// Side of the square padlock button at the right of the Summary label.
 const LOCK_SIZE: f32 = 14.0; // LITERAL-PX-OK: summary column-lock padlock button side
 
+/// ⭐ **O fundo do Summary, em camadas** (dono 09/11): nos cartões, a cor do cabeçalho do objecto com
+/// a tinta `TimelineSummaryRow` por cima — identidade própria, diferente de cabeçalho, zebra e fundo
+/// em todo tema (gate `o_summary_tem_cor_propria_nos_oito_temas`); no clássico, o `Bg3` de sempre.
+pub(crate) fn fundo(theme: Theme) -> Vec<ph2d_vector::Color> {
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        vec![
+            resolve(ColorToken::TimelineObjectRow, theme),
+            resolve(ColorToken::TimelineSummaryRow, theme)
+                .multiply_alpha(ph2d_tokens::TIMELINE_SUMMARY_TINT_ALPHA),
+        ]
+    } else {
+        vec![resolve(ColorToken::Bg3, theme)]
+    }
+}
+
 /// Paint the Summary channel and register one grab target per column, plus the
 /// column-lock padlock. A no-op when nothing is bound — an empty timeline shows
 /// no master row.
@@ -57,12 +72,9 @@ pub(crate) fn paint(
         return;
     }
     let row = Rect::new(region.x, y, region.w, h);
-    fill_rounded_rect(
-        ctx.scene,
-        row,
-        Radius::Xs.px(),
-        resolve(ColorToken::Bg3, theme),
-    );
+    for cor in fundo(theme) {
+        fill_rounded_rect(ctx.scene, row, Radius::Xs.px(), cor);
+    }
     fill_rounded_rect(
         ctx.scene,
         Rect::new(region.x, y + h - RULE_H, region.w, RULE_H),

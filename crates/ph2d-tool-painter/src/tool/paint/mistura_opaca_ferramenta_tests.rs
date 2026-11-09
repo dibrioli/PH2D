@@ -90,10 +90,8 @@ fn a_mistura_opaca_pigmento_mistura_a_cor_do_traco() {
         (40..=235).contains(&p[0]) && p != [255, 0, 0, 255],
         "Amount 0,3 tem de misturar o verde no vermelho: {p:?}"
     );
-    let mut cheio = vermelho_azul(MisturaOpaca {
-        pigmento: 0.0,
-        ..modo(ModoMisturaOpaca::WetBlend, 1.0)
-    });
+    let mut cheio = vermelho_azul(modo(ModoMisturaOpaca::WetBlend, 1.0));
+    cheio.paint.brush.pigment = false;
     cheio.on_canvas_pointer(cp([470.0, Y], PointerPhase::Down));
     cheio.on_canvas_pointer(cp([470.0, Y], PointerPhase::Up));
     let q = px(&cheio, 470);

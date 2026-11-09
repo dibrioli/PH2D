@@ -15,7 +15,7 @@ use crate::paint_wetpaint::Numero;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::panel::cards::{CardCtx, Seg, Widget};
+use ph2d_editor_core::panel::cards::{CardCtx, Cell, Seg, Widget};
 use ph2d_i18n::tr;
 use ph2d_tool_painter::ids as pids;
 use ph2d_tool_painter::{
@@ -139,15 +139,16 @@ pub(crate) fn titulo() -> &'static str {
     tr("panel.painter_layers.brush.paint_mixing")
 }
 
-/// O corpo do cartão Paint Mixing: o Pigment primeiro (age sempre), depois o Color mixing e o que depende dele.
+/// O corpo do cartão Paint Mixing: o Pigment primeiro (age sempre), à esquerda do Color mixing — dois irmãos curtos
+/// dividem a linha (05 §4) —, depois o Sample e os números que dependem dele.
 pub(crate) fn corpo(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
-    let y = if pigmento_oferecido(b) {
-        crate::cards_nativos::linha_do_pigmento(c, y)
-    } else {
-        y
-    };
+    let pigmento = pigmento_oferecido(b);
     if !oferecida(b) {
-        return y;
+        return if pigmento {
+            crate::cards_nativos::linha_do_pigmento(c, y)
+        } else {
+            y
+        };
     }
     let atual = indice(b);
     let segs: Vec<Seg<'_>> = OPCOES
@@ -161,7 +162,12 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
             on: i == atual,
         })
         .collect();
-    let y = c.full(Some(tr(MODO)), Widget::Choice(&segs), y);
+    let y = if pigmento {
+        let modo = Cell::new(Widget::Choice(&segs)).label(tr(MODO));
+        c.pair(crate::cards_nativos::celula_do_pigmento(), modo, y)
+    } else {
+        c.full(Some(tr(MODO)), Widget::Choice(&segs), y)
+    };
     let atual = indice_da_amostra(b);
     let segs: Vec<Seg<'_>> = AMOSTRAS
         .iter()
@@ -259,7 +265,11 @@ mod tests {
         b.mistura_opaca.density_pressure = 0.75;
         b.mistura_opaca.paint_density = 0.5;
         let n = numeros(&b);
-        assert_eq!(n.len(), 5, "o Pigment não é número da mistura opaca: é o do cartão, um só");
+        assert_eq!(
+            n.len(),
+            5,
+            "o Pigment não é número da mistura opaca: é o do cartão, um só"
+        );
         assert_eq!(n[1].valor, 0.5, "Density logo depois do Amount");
         assert_eq!(n[2].valor, 0.25);
         assert_eq!(n[4].valor, 0.75);

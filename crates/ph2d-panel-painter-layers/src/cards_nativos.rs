@@ -105,12 +105,14 @@ fn campo(id: NodeId, rotulo: &str) -> Cell<'_> {
 
 /// A linha Pigment do cartão Paint Mixing (`cards_mistura`).
 pub(crate) fn linha_do_pigmento(c: &mut CardCtx<'_>, y: f32) -> f32 {
-    c.row(
-        &[campo(
-            pids::PAINTER_WATERCOLOR_MIX,
-            tr("panel.painter_layers.watercolor.pigment"),
-        )],
-        y,
+    c.row(&[celula_do_pigmento()], y)
+}
+
+/// A célula Pigment, para o cartão a pôr ao lado do seletor Color mixing (irmãos curtos, lei 1).
+pub(crate) fn celula_do_pigmento() -> Cell<'static> {
+    campo(
+        pids::PAINTER_WATERCOLOR_MIX,
+        tr("panel.painter_layers.watercolor.pigment"),
     )
 }
 

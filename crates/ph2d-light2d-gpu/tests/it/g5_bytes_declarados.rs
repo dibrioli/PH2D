@@ -339,3 +339,79 @@ fn g5_o_mundo_fora_da_grade_e_contado() {
         s.bytes_da_geometria_residente()
     );
 }
+
+/// ⭐ P14 «L» — o momento `M` é o que a lista declara: sem normal à vista a lista é a de [`PassList::de`] e nada
+/// do momento existe; com ela, as quatro texturas de [`PassList::com_momento`] nascem UMA vez cada, nenhuma
+/// alocação fica fora da lista, `bytes_do_momento` é a soma declarada e os dois passes estão nela; sem normal
+/// outra vez, a lista volta a ser a de antes.
+#[test]
+fn g5_o_momento_e_o_que_a_pass_list_declara() {
+    use ph2d_light2d_ecs::CenaDeLuz;
+    let Some(gpu) = gpu() else { return };
+    if alocacoes(&gpu).is_none() {
+        eprintln!("G5: o backend não dá relatório do alocador — saltado");
+        return;
+    }
+    let mut s = Solver::novo(&gpu, Config::padrao(grade(128, 0.04))).expect("solver");
+    let sem = ceu_e_vidro();
+    let com = CenaDeLuz {
+        com_normal: true,
+        ..ceu_e_vidro()
+    };
+    s.quadro(&gpu, &sem);
+    let base = s.pass_list().clone();
+    let e_do_momento =
+        |n: &str| n.starts_with("luz2d/tex/momento") || n.starts_with("luz2d momento");
+    assert!(
+        base.texturas.iter().all(|t| !e_do_momento(t.nome))
+            && base.passes.iter().all(|p| !e_do_momento(&p.nome)),
+        "G5 momento: sem normal a lista já o tem"
+    );
+    assert_eq!(s.bytes_do_momento(), 0);
+
+    let antes = alocacoes(&gpu).expect("relatório");
+    s.quadro(&gpu, &com);
+    let novo = novas(&antes, &alocacoes(&gpu).expect("relatório"));
+    let lista = s.pass_list();
+    let decl = declarado(lista);
+    let do_momento: BTreeMap<&str, u64> = lista.texturas[base.texturas.len()..]
+        .iter()
+        .map(|t| (t.nome, t.bytes()))
+        .collect();
+    eprintln!("G5 momento: declarado {do_momento:?} · alocado {novo:?}");
+    assert_eq!(do_momento.len(), 4, "G5 momento: {do_momento:?}");
+    for (nome, &(n, bytes)) in &novo {
+        let d = decl
+            .get(nome)
+            .unwrap_or_else(|| panic!("G5 momento: «{nome}» alocado e não declarado"));
+        assert_eq!(n, 1, "G5 momento: «{nome}» alocado {n} vezes");
+        assert!(
+            bytes >= *d && bytes <= 2 * d + 65_536,
+            "G5 momento: «{nome}» declarado {d} B, alocado {bytes} B"
+        );
+    }
+    for nome in do_momento.keys() {
+        assert!(
+            novo.contains_key(*nome),
+            "G5 momento: «{nome}» declarado e nunca alocado"
+        );
+    }
+    assert_eq!(
+        s.bytes_do_momento(),
+        do_momento.values().sum::<u64>(),
+        "G5 momento: bytes_do_momento × a lista"
+    );
+    assert_eq!(
+        lista.bytes_alocados(),
+        base.bytes_alocados() + s.bytes_do_momento()
+    );
+    for passe in ["luz2d momento c0", "luz2d momento fina"] {
+        assert!(
+            lista.passes.iter().any(|p| p.nome == passe),
+            "G5 momento: o passe «{passe}» fora da lista"
+        );
+    }
+    s.quadro(&gpu, &sem);
+    assert_eq!(s.pass_list(), &base, "G5 momento: sem normal a lista volta");
+    assert_eq!(s.bytes_do_momento(), 0);
+}

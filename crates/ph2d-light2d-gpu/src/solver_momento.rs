@@ -9,12 +9,6 @@ use super::*;
 use crate::passlist::Opcionais;
 
 const FORMATO: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-const NOMES: [&str; 4] = [
-    "luz2d/tex/momento_c0_x",
-    "luz2d/tex/momento_c0_y",
-    "luz2d/tex/momento_x",
-    "luz2d/tex/momento_y",
-];
 
 /// O módulo das cascatas (C2, C3 e o momento): a fábrica devolve o MESMO de cada descrição.
 pub(super) fn modulo_rc(device: &crate::Placa<'_>, cfg: &Config) -> wgpu::ShaderModule {
@@ -42,23 +36,24 @@ pub(super) struct Momento {
     fina_grupo: wgpu::BindGroup,
     texturas: [wgpu::Texture; 4],
     vistas: [wgpu::TextureView; 4],
+    /// A lista do solver com o momento ([`PassList::com_momento`]): as quatro texturas nascem dela.
+    lista: PassList,
 }
 
-fn textura(device: &wgpu::Device, nome: &'static str, [w, h]: [u32; 2]) -> wgpu::Texture {
+/// Uma textura do momento, como a lista a declara.
+fn textura(device: &wgpu::Device, t: &Textura) -> wgpu::Texture {
     device.create_texture(&wgpu::TextureDescriptor {
-        label: Some(nome),
+        label: Some(t.nome),
         size: wgpu::Extent3d {
-            width: w,
-            height: h,
+            width: t.tamanho[0],
+            height: t.tamanho[1],
             depth_or_array_layers: 1,
         },
-        mip_level_count: 1,
+        mip_level_count: t.mips,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: FORMATO,
-        usage: wgpu::TextureUsages::STORAGE_BINDING
-            | wgpu::TextureUsages::TEXTURE_BINDING
-            | wgpu::TextureUsages::COPY_SRC,
+        format: t.formato,
+        usage: t.usos,
         view_formats: &[],
     })
 }
@@ -83,12 +78,10 @@ impl Momento {
             conta: None,
         };
         let modulo = modulo_rc(&device, cfg);
-        let grossa = [cfg.grade.largura, cfg.grade.altura];
-        let gf = cfg.grade_da_fluencia();
-        let fina = [gf.largura, gf.altura];
-        let texturas: [wgpu::Texture; 4] = std::array::from_fn(|k| {
-            textura(&gpu.device, NOMES[k], if k < 2 { grossa } else { fina })
-        });
+        let lista = s.lista.com_momento(cfg);
+        let base = s.lista.texturas.len();
+        let texturas: [wgpu::Texture; 4] =
+            std::array::from_fn(|k| textura(&gpu.device, &lista.texturas[base + k]));
         let vistas = texturas
             .each_ref()
             .map(|t| t.create_view(&wgpu::TextureViewDescriptor::default()));
@@ -208,6 +201,7 @@ impl Momento {
             fina_grupo,
             texturas,
             vistas,
+            lista,
         })
     }
 
@@ -242,16 +236,30 @@ impl Momento {
         [&self.texturas[2], &self.texturas[3]]
     }
 
-    /// Os bytes das quatro texturas (a conta da memória).
+    /// Os bytes das quatro texturas, como a lista os declara (a conta da memória).
     pub(super) fn bytes(&self) -> u64 {
-        self.texturas
+        let base = self.lista.texturas.len() - self.texturas.len();
+        self.lista.texturas[base..].iter().map(Textura::bytes).sum()
+    }
+
+    /// As texturas do momento com o rótulo de cada uma (as da lista que o solver não guarda).
+    pub(super) fn recursos(&self) -> impl Iterator<Item = (&'static str, &wgpu::Texture)> {
+        let base = self.lista.texturas.len() - self.texturas.len();
+        self.lista.texturas[base..]
             .iter()
-            .map(|t| u64::from(t.width()) * u64::from(t.height()) * 8)
-            .sum()
+            .map(|t| t.nome)
+            .zip(&self.texturas)
     }
 }
 
 impl Solver {
+    /// A lista declarada: a de [`PassList::de`], e com o momento ([`PassList::com_momento`]) enquanto a
+    /// cena tem normal à vista.
+    #[must_use]
+    pub fn pass_list(&self) -> &PassList {
+        self.momento.as_ref().map_or(&self.lista, |m| &m.lista)
+    }
+
     /// ⭐ P14 «L» — `[Mx, My]` do último quadro, na grade da [`Self::fluencia`]; `None` sem normal.
     #[must_use]
     pub fn momento(&self) -> Option<[&wgpu::TextureView; 2]> {

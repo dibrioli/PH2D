@@ -119,7 +119,8 @@ pub(super) fn relatar_custo(
     }
     let (cfg, fluencia, (i, f), alvo) = onde;
     eprintln!(
-        "[luz2d] onde · janela {}×{} · grade {}×{} · fina ×{} captura ×{} · fluência {}×{} região {}×{} · {:?}",
+        "[luz2d] onde · janela {}×{} · grade {}×{} · fina ×{} captura ×{} · fluência {}×{} região {}×{} · {:?} · \
+         momento {} B (vista) {} B (entorno)",
         alvo.0,
         alvo.1,
         cfg.grade.largura,
@@ -131,6 +132,8 @@ pub(super) fn relatar_custo(
         f[0] - i[0],
         f[1] - i[1],
         cfg.aritmetica,
+        solvers.0.bytes_do_momento(),
+        solvers.1.map_or(0, Solver::bytes_do_momento),
     );
     let grade = (cfg.grade.largura, cfg.grade.altura);
     eprintln!(

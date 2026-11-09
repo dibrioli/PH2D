@@ -24,6 +24,7 @@ mod hrc;
 mod ladrilhos;
 mod oclusao;
 mod passlist;
+mod passlist_momento;
 mod shaders;
 mod solver;
 mod solver_sprite;

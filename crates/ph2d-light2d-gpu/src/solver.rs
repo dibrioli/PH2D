@@ -610,7 +610,8 @@ impl Solver {
             .texturas
             .iter()
             .map(|t| t.nome)
-            .zip(&self.texturas);
+            .zip(&self.texturas)
+            .chain(self.momento.iter().flat_map(momento::Momento::recursos));
         let ladrilhos = self.ladrilhos.as_ref().map(|l| (NOME_LADRILHOS, &l.buffer));
         (texturas, ladrilhos)
     }
@@ -619,11 +620,6 @@ impl Solver {
     #[must_use]
     pub fn config(&self) -> &Config {
         &self.cfg
-    }
-
-    #[must_use]
-    pub fn pass_list(&self) -> &PassList {
-        &self.lista
     }
 
     #[must_use]

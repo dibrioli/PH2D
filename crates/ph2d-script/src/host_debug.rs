@@ -140,6 +140,7 @@ impl ScriptHost {
         let mut r = self
             .scene
             .resume_held(self.runtime.lua(), &self.deadline, sim, doors, step);
+        self.debug_end_run();
         self.scene.absorb_error_stop(&mut r);
         self.forget_the_dead(&r);
         Some(r)
@@ -183,6 +184,13 @@ impl ScriptHost {
         }
         if let Some(d) = self.debugger() {
             d.set_pause_on_error(self.debug.pause_on_error);
+            if self
+                .debug
+                .target
+                .is_some_and(|(s, _)| self.scene.reloaded_ok(s))
+            {
+                d.forget_lines();
+            }
         }
     }
 

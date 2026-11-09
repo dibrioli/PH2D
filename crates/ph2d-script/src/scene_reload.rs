@@ -98,6 +98,13 @@ impl SceneScripts {
         }
     }
 
+    /// O script `id` recarregou com texto novo desde a última drenagem (as linhas são outras).
+    pub(crate) fn reloaded_ok(&self, id: ScriptId) -> bool {
+        self.reloads
+            .get(&id)
+            .is_some_and(|r| matches!(r.outcome, ReloadOutcome::Reloaded))
+    }
+
     /// ⭐ As recargas desde a última drenagem — uma por script (a mais recente), por `ScriptId`.
     pub fn drain_reloads(&mut self) -> Vec<ScriptReload> {
         std::mem::take(&mut self.reloads).into_values().collect()

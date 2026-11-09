@@ -210,6 +210,9 @@ impl Debugger {
         s.stop_pending = None;
         s.watched = 0;
         s.frames.clear();
+        s.ran.clear();
+        s.live.clear();
+        s.shown.clear();
     }
 
     /// `th` acabou de ceder para uma paragem? Consome-a.
@@ -287,6 +290,14 @@ impl Debugger {
         s.frames.clear();
         s.live.clear();
         s.ran.clear();
+        s.shown.clear();
+    }
+
+    /// O texto do vigiado mudou (recarregou): os valores por linha são de outro texto.
+    pub fn forget_lines(&self) {
+        let mut s = self.state.borrow_mut();
+        s.ran.clear();
+        s.live.clear();
         s.shown.clear();
     }
 

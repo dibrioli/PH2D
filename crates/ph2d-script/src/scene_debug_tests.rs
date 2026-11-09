@@ -365,6 +365,25 @@ fn depurador_o_vezes_e_de_uma_corrida_e_a_linha_que_nao_correu_nao_some() {
     m.frame();
     assert_eq!(hits(&m, "odd"), Some(1), "a linha que não correu não some");
     assert_eq!(hits(&m, "x"), Some(1));
+    // O texto muda e recarrega: as linhas do texto velho saem (as novas voltam a correr).
+    let novo = LOOPS.replace("self.t = 1", "self.t = 2");
+    m.sim
+        .world_mut()
+        .resource_mut::<ProjectScripts>()
+        .set_text(m.id, &novo);
+    m.host.scene_sync(m.sim.world_mut());
+    assert_eq!(
+        hits(&m, "odd"),
+        None,
+        "recarregar limpa os valores do texto velho"
+    );
+    let _ = m.host.drain_reloads();
+    // Rebobinar é renascer: os valores da corrida velha saem.
+    m.host.scene_rewind();
+    assert!(
+        m.host.live_values(m.id).is_empty(),
+        "rebobinar limpa os valores"
+    );
 }
 
 const TWO_HOOKS: &str = r#"

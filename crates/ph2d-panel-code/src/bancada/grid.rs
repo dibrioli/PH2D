@@ -41,7 +41,7 @@ impl Cols {
             .fold(0.0f32, f32::max)
             + dot
             + pad * 2.0;
-        let name_w = name_w.clamp(ROW_H_PX * 2.0, (w * 0.5).max(ROW_H_PX * 2.0));
+        let name_w = ph2d_editor_core::math::safe_clamp(name_w, ROW_H_PX * 2.0, w * 0.5);
         let n = who.columns.len().max(1);
         let share = ((w - name_w) / n as f32).max(0.0);
         let widths = who

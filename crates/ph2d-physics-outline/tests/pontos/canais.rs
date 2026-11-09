@@ -251,3 +251,37 @@ fn sample_em(doc: &ph2d_timeline::TimelineDoc, t: f64, n: u16) -> Vec<(FieldKey,
     }
     v
 }
+
+/// ⭐ Regra B (dono 09/11): «Delete animation» apaga TODAS as trilhas dos pontos da forma (só as dela) e deixa
+/// o Detail; `travadas` dá as formas com pontos animados só com o Auto Key desligado.
+/// *Mutação: `apagar_pontos` sem `unbind` ⇒ vermelho; `travadas` a ignorar o Auto Key ⇒ vermelho.*
+#[test]
+fn delete_animation_apaga_as_trilhas_dos_pontos_e_so_com_auto_key_off_trava() {
+    use ph2d_physics_outline::canais_pontos::{animados, apagar_pontos, travadas};
+    use ph2d_timeline::PropKind;
+    let mut doc = duas_chaves(&quadrado(), &quadrado());
+    let detalhe = FieldKey::new(ph2d_ecs::canal::familia::FISICA, f::CONTORNO_DETALHE, 0, 0);
+    doc.upsert_key(
+        7,
+        PropKind::Field(detalhe),
+        ph2d_anim::RationalTime::ZERO,
+        ph2d_anim::AnimValue::Float(2.0),
+        ph2d_anim::Interp::Linear,
+    );
+    assert!(animados(&doc, 7) && !animados(&doc, 8));
+    assert_eq!(travadas(&doc, false), [7].into_iter().collect());
+    assert!(
+        travadas(&doc, true).is_empty(),
+        "Auto Key ligado: nada trava"
+    );
+    assert!(apagar_pontos(&mut doc, 7), "apagou");
+    assert!(!animados(&doc, 7), "nenhuma trilha de ponto fica");
+    assert!(
+        doc.binding_for(7, PropKind::Field(detalhe)).is_some(),
+        "o Detail fica"
+    );
+    assert!(
+        !apagar_pontos(&mut doc, 7),
+        "a segunda vez não tem o que apagar"
+    );
+}

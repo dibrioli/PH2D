@@ -149,11 +149,43 @@ pub fn apagar_do_fit(
     antes: &std::collections::BTreeMap<FieldKey, f32>,
     agora: &[(FieldKey, f32)],
 ) -> bool {
-    if !e_fit(antes, agora) {
-        return false;
+    e_fit(antes, agora) && apagar_pontos(doc, e)
+}
+
+/// `true` ⇒ `e` tem alguma trilha de ponto (51/52) na timeline.
+#[must_use]
+pub fn animados(doc: &TimelineDoc, e: u64) -> bool {
+    doc.bindings()
+        .iter()
+        .any(|b| b.entity == e && matches!(b.prop, PropKind::Field(kk) if ponto(&kk)))
+}
+
+/// As formas com pontos animados que o Auto Key não grava (regra B): vazio com o Auto Key ligado.
+#[must_use]
+pub fn travadas(doc: &TimelineDoc, auto_key: bool) -> std::collections::BTreeSet<u64> {
+    if auto_key {
+        return Default::default();
     }
-    let props = antes.keys().filter(|kk| ponto(kk));
-    props.fold(false, |n, &kk| doc.unbind(e, PropKind::Field(kk)) | n)
+    doc.bindings()
+        .iter()
+        .filter(|b| matches!(b.prop, PropKind::Field(kk) if ponto(&kk)))
+        .map(|b| b.entity)
+        .collect()
+}
+
+/// ⭐ **Apaga todas as trilhas dos pontos de `e`** — o «Delete animation» do modal (regra B) e o Fit
+/// ([`apagar_do_fit`]). `true` se apagou alguma.
+pub fn apagar_pontos(doc: &mut TimelineDoc, e: u64) -> bool {
+    let props: Vec<PropKind> = doc
+        .bindings()
+        .iter()
+        .filter(|b| b.entity == e)
+        .filter_map(|b| match b.prop {
+            PropKind::Field(kk) if ponto(&kk) => Some(b.prop),
+            _ => None,
+        })
+        .collect();
+    props.into_iter().fold(false, |n, p| doc.unbind(e, p) | n)
 }
 
 type Pt = [f32; 2];

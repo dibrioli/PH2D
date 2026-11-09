@@ -12,6 +12,7 @@ pub mod pontos;
 mod roteiro;
 pub mod tinta;
 pub mod tinta_pontos;
+pub mod travados;
 
 pub use cursor_pontos::{TeclasNoCanvas, cursor_dos_pontos};
 pub use ph2d_cursor_art::Figura;

@@ -706,3 +706,93 @@ fn clicar_na_aresta_e_arrastar_leva_o_ponto_novo() {
     assert_eq!(n(&sim), n0 + 1, "soltar o novo sobre o vizinho fundiu-o");
     assert_eq!(perto(&sim, shape, 0, [2.0, 2.0]), canto);
 }
+
+/// Trava os pontos de `shape` (regra B: trilha 51/52 e Auto Key desligado), como a shell publica por quadro.
+fn trava(sim: &mut SimWorld, shape: ph2d_ecs::Entity) {
+    ph2d_shape_handles::travados::publica(sim.world_mut(), [shape.to_bits()].into_iter().collect());
+}
+
+fn pedido(sim: &mut SimWorld) -> Option<u64> {
+    ph2d_shape_handles::travados::pedido(sim.world_mut())
+}
+
+/// ⭐ Regra B (dono 09/11): com os pontos travados, ARRASTAR não muda os anéis e pede o modal; sem trava, o
+/// mesmo arrasto muda. *Mutação: o `move_ponto` sem `recusa` ⇒ os anéis mudam, vermelho.*
+#[test]
+fn pontos_animados_com_auto_key_off_o_arrasto_nao_muda_e_pede_o_modal() {
+    let (_reg, mut sim, _body, shape, _db) = followed_ring();
+    alterna(sim.world_mut(), shape.to_bits());
+    let inicio = outline(&sim, shape);
+    trava(&mut sim, shape);
+    let de = perto(&sim, shape, 0, [-2.0, 2.0]);
+    {
+        let mut bus = ActionBus::default();
+        let mut p = porta(&mut sim, &mut bus);
+        assert!(p.desce_com(ecra(de), Teclas::default()), "agarrou");
+        assert!(p.move_(ecra([de[0], de[1] + 1.0]), Teclas::default()));
+        assert!(p.move_(ecra([de[0], de[1] + 1.5]), Teclas::default()));
+        assert!(p.sobe());
+    }
+    assert_eq!(outline(&sim, shape), inicio, "travado: nada muda");
+    assert_eq!(pedido(&mut sim), Some(shape.to_bits()), "pede o modal");
+    assert_eq!(pedido(&mut sim), None, "abre uma vez");
+    ph2d_shape_handles::travados::publica(sim.world_mut(), Default::default());
+    arrasta(&mut sim, de, [de[0], de[1] + 1.0]);
+    assert_ne!(outline(&sim, shape), inicio, "sem trilha: o arrasto muda");
+    assert_eq!(pedido(&mut sim), None);
+}
+
+/// ⭐ Regra B: acrescentar na aresta, Alt+clique e Delete não mudam nada e pedem o modal.
+/// *Mutação: cada `recusa` tirada (aresta · Alt · Delete) ⇒ os anéis mudam, vermelho.*
+#[test]
+fn pontos_animados_acrescentar_tirar_e_delete_nao_mudam_e_pedem_o_modal() {
+    let (_reg, mut sim, _body, shape, _db) = followed_ring();
+    alterna(sim.world_mut(), shape.to_bits());
+    let inicio = outline(&sim, shape);
+    trava(&mut sim, shape);
+    let (pose, m, o) = do_alvo(sim.world(), shape.to_bits()).expect("pontos");
+    let r = &locais(&pose, &m, &o)[0];
+    let (a, b) = (r[0], r[1]);
+    let meio = [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5];
+    let alt = Teclas {
+        alt: true,
+        ..Teclas::default()
+    };
+    for (s, t) in [(meio, Teclas::default()), (a, alt)] {
+        let mut bus = ActionBus::default();
+        assert!(porta(&mut sim, &mut bus).desce_com(ecra(s), t), "consumido");
+        assert_eq!(outline(&sim, shape), inicio, "travado: nada muda ({s:?})");
+        assert_eq!(pedido(&mut sim), Some(shape.to_bits()), "pede o modal");
+    }
+    sim.world_mut().insert_resource(PontosNoCanvas {
+        arrasto: None,
+        selecionados: vec![ph2d_shape_handles::pontos::Ponto { anel: 0, i: 0 }],
+    });
+    let mut bus = ActionBus::default();
+    assert!(porta(&mut sim, &mut bus).apaga(), "a tecla é do canvas");
+    assert_eq!(outline(&sim, shape), inicio, "Delete travado: nada muda");
+    assert_eq!(pedido(&mut sim), Some(shape.to_bits()));
+}
+
+/// ⭐ Regra B: «Merge» e o retraço (Detail dentro da edição) não mudam nada e pedem o modal.
+/// *Mutação: `outline_edited` sem a trava ⇒ devolve o contorno novo, vermelho.*
+#[test]
+fn pontos_animados_merge_e_detail_nao_mudam_e_pedem_o_modal() {
+    use ph2d_editor_core::OutlineEdit;
+    let (_reg, mut sim, _body, shape, _db) = followed_ring();
+    trava(&mut sim, shape);
+    for e in [OutlineEdit::Merge(64.0), OutlineEdit::Detail(8.0)] {
+        assert_eq!(
+            ph2d_physics_outline::outline_edited(sim.world_mut(), shape, e),
+            None,
+            "travado: nada a gravar ({e:?})"
+        );
+        assert_eq!(pedido(&mut sim), Some(shape.to_bits()), "pede o modal");
+    }
+    ph2d_shape_handles::travados::publica(sim.world_mut(), Default::default());
+    assert!(
+        ph2d_physics_outline::outline_edited(sim.world_mut(), shape, OutlineEdit::Detail(8.0))
+            .is_some(),
+        "sem trilha: o pedido grava-se"
+    );
+}

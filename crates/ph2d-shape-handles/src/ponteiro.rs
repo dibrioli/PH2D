@@ -228,8 +228,10 @@ impl Porta<'_> {
             .map(|x| x.selecionados.clone())
             .unwrap_or_default();
         let mut arrasto = None;
+        let travado = |w: &mut World| crate::travados::recusa(w, alvo);
         let consumido = if let Some(pt) = p::ponto_em(&ecra, s) {
-            if teclas.alt {
+            if teclas.alt && travado(self.world) {
+            } else if teclas.alt {
                 if let Some(v) = p::tirado(&o.rings, pt) {
                     p::escreve(self.world, alvo, v, true);
                     sel.clear();
@@ -258,7 +260,8 @@ impl Porta<'_> {
             }
             true
         } else if let Some((pt, _)) = p::aresta_em(&ecra, s) {
-            if let Some(v) = p::acrescentado(&o.rings, pt, p::para_q4(&pose, &m, &o, q)) {
+            if travado(self.world) {
+            } else if let Some(v) = p::acrescentado(&o.rings, pt, p::para_q4(&pose, &m, &o, q)) {
                 p::escreve(self.world, alvo, v, true);
                 let novo = p::Ponto {
                     anel: pt.anel,
@@ -304,6 +307,12 @@ impl Porta<'_> {
         if sel.is_empty() {
             return false;
         }
+        if crate::travados::recusa(self.world, alvo) {
+            if let Some(mut x) = self.world.get_resource_mut::<p::PontosNoCanvas>() {
+                x.selecionados = sel;
+            }
+            return true;
+        }
         if let Some((_, _, o)) = p::do_alvo(self.world, alvo)
             && let Some(v) = p::tirados(&o.rings, &sel)
         {
@@ -323,6 +332,17 @@ impl Porta<'_> {
             return false;
         };
         if !a.armado && (s.0 - a.ecra0.0).hypot(s.1 - a.ecra0.1) < ARMA_PX {
+            return true;
+        }
+        // Travado (regra B): o gesto segue consumido até soltar, sem escrever; o modal pede-se ao armar.
+        if crate::travados::travado(self.world, alvo) {
+            if !a.armado {
+                crate::travados::recusa(self.world, alvo);
+                a.armado = true;
+                if let Some(mut x) = self.world.get_resource_mut::<p::PontosNoCanvas>() {
+                    x.arrasto = Some(a);
+                }
+            }
             return true;
         }
         a.armado = true;
@@ -408,7 +428,8 @@ impl Porta<'_> {
             return;
         };
         let ecra = p::no_ecra(&pose, &m, &o, &self.camera, self.window);
-        if p::alvo_da_fusao(&ecra, a.ponto, a.ecra).is_some()
+        if !crate::travados::travado(self.world, alvo)
+            && p::alvo_da_fusao(&ecra, a.ponto, a.ecra).is_some()
             && let Some(v) = p::tirado(&o.rings, a.ponto)
         {
             p::escreve(self.world, alvo, v, true);

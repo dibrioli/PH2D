@@ -69,7 +69,7 @@ fn a_argola_tem_buraco_e_a_bola_atravessa() {
         Some(Picture {
             w: 32,
             h: 32,
-            rgba: &px,
+            rgba: (&px[..]).into(),
         })
     };
     let t = retrace(sim.world(), shape, pic, &q, &reg).expect("traça");
@@ -156,7 +156,7 @@ fn o_animated_sprite_traca_a_uniao_das_celulas_das_tags() {
             Some(Picture {
                 w: 64,
                 h: 16,
-                rgba: &px,
+                rgba: (&px[..]).into(),
             })
         };
         let m = frames_mask(w, e, frames, pic, asked.alpha_cutoff).expect("máscara");
@@ -226,4 +226,38 @@ fn acima_do_tecto_o_detail_sobe_e_diz() {
     let t = trace(&m, &asked);
     assert!(t.raised, "o tecto tinha de subir o Detail");
     assert!(t.outline.detail_q4 > 1 || t.outline.min_island_px > 0);
+}
+
+/// A entrada da app: `Shape(3)` pedido no CORPO retraça a 1.ª forma pelos pixels do `AssetDb` (átlas);
+/// «Fit to picture» numa caixa não traça. *Mutação: `retrace_edited` sem o `Shape(3)` ⇒ 0, vermelho.*
+#[test]
+fn a_escolha_do_outline_no_corpo_traca_pelo_asset_db() {
+    use ph2d_editor_core::PhysicsFieldEdit as P;
+    let reg = registry();
+    let mut sim = SimWorld::new();
+    let (body, shape) = ring_scene(&mut sim);
+    let db = ph2d_asset::AssetDb::new();
+    let atlas = std::collections::BTreeMap::from([(0, db.insert_image_rgba8(32, 32, ring_px()))]);
+    let q = EditorCommandQueue::new();
+    let fit = [(body.to_bits(), P::FitToPicture)];
+    assert_eq!(
+        ph2d_physics_outline::retrace_edited(sim.world(), &fit, &db, &atlas, &q, &reg),
+        0
+    );
+    let c = Collider {
+        shape: ColliderShape::Outline {
+            half_x: 1.0,
+            half_y: 1.0,
+        },
+        ..Collider::default()
+    };
+    sim.world_mut().entity_mut(shape).insert(c);
+    let pick = [(body.to_bits(), P::Shape(3))];
+    assert_eq!(
+        ph2d_physics_outline::retrace_edited(sim.world(), &pick, &db, &atlas, &q, &reg),
+        1
+    );
+    apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
+    let o = sim.world().get::<ColliderOutline>(shape).expect("traçado");
+    assert_eq!((o.rings.len(), o.picture_px), (2, [32, 32]));
 }

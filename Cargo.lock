@@ -6146,6 +6146,7 @@ dependencies = [
  "ph2d-panel-inspector",
  "ph2d-panel-physics",
  "ph2d-physics-ecs",
+ "ph2d-physics-outline",
  "ph2d-physics-scene",
  "ph2d-preview-drive",
  "ph2d-render",
@@ -7641,6 +7642,7 @@ dependencies = [
  "ph2d-panel-wet-tuning",
  "ph2d-pen",
  "ph2d-physics-ecs",
+ "ph2d-physics-outline",
  "ph2d-physics-scene",
  "ph2d-pick-order",
  "ph2d-pixel-keys",
@@ -10731,8 +10733,10 @@ dependencies = [
 name = "ph2d-physics-outline"
 version = "0.0.0"
 dependencies = [
+ "ph2d-asset",
  "ph2d-core",
  "ph2d-ecs",
+ "ph2d-editor-core",
  "ph2d-inspector-ordering",
  "ph2d-outline-trace",
  "ph2d-physics-ecs",

@@ -464,6 +464,11 @@ pub fn apply_physics_edit(
                 radius: radius.max(1e-3),
             };
         }
+        // O contorno nasce na caixa de agora; os anéis vêm do traço (`ph2d_physics_outline::retrace_edited`).
+        PhysicsFieldEdit::Shape(3) => {
+            let [half_x, half_y] = cur.local_aabb().1.map(|h| h.max(1e-3));
+            next.shape = ColliderShape::Outline { half_x, half_y };
+        }
         // A tag no shape claims is DROPPED, never folded onto a plausible neighbour (as `Kind`):
         // a catch-all would be a chip that quietly selects a different shape.
         PhysicsFieldEdit::Shape(_) => {}
@@ -581,19 +586,7 @@ pub fn apply_physics_edit(
     }
 }
 
-/// A imagem que a forma `e` cobre (opção B): a dela, ou a do antepassado mais próximo até ao corpo.
+/// A imagem que a forma `e` cobre (opção B) — a lei mora no produtor do «Outline».
 pub(crate) fn imagem_da_forma(world: &ph2d_ecs::World, e: Entity) -> Option<&ph2d_render::Sprite> {
-    let mut cur = Some(e);
-    while let Some(x) = cur {
-        if let Some(s) = world.get::<ph2d_render::Sprite>(x) {
-            return Some(s);
-        }
-        if world.get::<ph2d_physics_ecs::RigidBody>(x).is_some() {
-            return None;
-        }
-        cur = world
-            .get::<ph2d_ecs::ChildOf>(x)
-            .map(ph2d_ecs::ChildOf::parent);
-    }
-    None
+    ph2d_physics_outline::picture_owner(world, e).and_then(|o| world.get(o))
 }

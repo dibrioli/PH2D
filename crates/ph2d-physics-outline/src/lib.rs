@@ -11,11 +11,11 @@ use ph2d_physics_ecs::{Collider, ColliderOutline, ColliderShape, RigidBody};
 use ph2d_render::Sprite;
 
 /// Os pixels RGBA8 de uma folha, linha a linha.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Picture<'a> {
     pub w: u32,
     pub h: u32,
-    pub rgba: &'a [u8],
+    pub rgba: std::borrow::Cow<'a, [u8]>,
 }
 
 /// O resultado de um traço: o componente a gravar e se o tecto subiu o Detail (o aviso da W4).
@@ -178,4 +178,50 @@ pub fn retrace<'a>(
         &traced.outline,
     );
     Some(traced)
+}
+
+/// **As entradas da app**: depois de aplicadas as edições do cartão, «Outline» escolhido (`Shape(3)`)
+/// ou «Fit to picture» numa forma `Outline` retraça-a pelos pixels do `AssetDb` (folha `0` pelo
+/// átlas ou `SpritePixels`, folhas extra pelo `SpriteSheets`). Devolve quantas retraçou.
+pub fn retrace_edited(
+    world: &World,
+    edits: &[(u64, ph2d_editor_core::PhysicsFieldEdit)],
+    db: &ph2d_asset::AssetDb,
+    atlas: &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
+    queue: &EditorCommandQueue,
+    registry: &ComponentRegistry,
+) -> usize {
+    use ph2d_editor_core::PhysicsFieldEdit as P;
+    let picture = |owner: Entity, k: u8| {
+        let id = match k {
+            0 => ph2d_render::texture_of_entity(world, owner, atlas)?,
+            k => world.get::<SpriteSheets>(owner)?.sheet(k)?.asset,
+        };
+        let asset = db.get(&id)?;
+        let (w, h, px) = asset.image_rgba8()?;
+        Some(Picture {
+            w,
+            h,
+            rgba: px.into_owned().into(),
+        })
+    };
+    let mut n = 0;
+    for &(bits, edit) in edits {
+        if !matches!(edit, P::Shape(3) | P::FitToPicture) {
+            continue;
+        }
+        let pedido = Entity::from_bits(bits);
+        // Num corpo, a edição da forma vai à 1.ª forma (a mesma lei do `apply_physics_edit`).
+        let shape = match world.get::<RigidBody>(pedido) {
+            Some(_) => ph2d_physics_ecs::forma_para_editar(world, pedido).unwrap_or(pedido),
+            None => pedido,
+        };
+        let outline = world
+            .get::<Collider>(shape)
+            .is_some_and(|c| matches!(c.shape, ColliderShape::Outline { .. }));
+        if outline && retrace(world, shape, picture, queue, registry).is_some() {
+            n += 1;
+        }
+    }
+    n
 }

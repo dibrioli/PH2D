@@ -17,6 +17,9 @@ ph2d-render = { path = "../ph2d-render" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 ph2d-outline-trace = { path = "../ph2d-outline-trace" }
 ph2d-inspector-ordering = { path = "../ph2d-inspector-ordering" }
+# The pixels (`AssetDb::image_rgba8`) and the card edit that asks for a retrace.
+ph2d-asset = { path = "../ph2d-asset" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
 
 [dev-dependencies]
 ph2d-core = { path = "../ph2d-core" }

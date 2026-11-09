@@ -215,6 +215,21 @@ pub(super) fn dispatch(
         component_registry,
         toasts,
     );
+    // «Outline» escolhido ou «Fit to picture» num Outline: o traço da imagem, na mesma leva (W2c).
+    let w = sim.world();
+    let traced = ph2d_physics_outline::retrace_edited(
+        w,
+        physics_edits,
+        asset_db,
+        atlas_asset_map,
+        editor_queue,
+        component_registry,
+    );
+    if traced > 0
+        && let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry)
+    {
+        toasts.push(failed("shell.inspector_commits.physics_commit_failed", &e));
+    }
 
     // M14.E: drain Inspector Name commit → push a
     // `Name(string)` postcard via `EditorCommand::SetComponent`.

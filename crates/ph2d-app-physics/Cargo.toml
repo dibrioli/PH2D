@@ -40,6 +40,8 @@ ph2d-render = { path = "../ph2d-render" }
 # resposta é que ela é uma crate IRMÃ, não a shell: a família pode depender dela.
 ph2d-anim = { path = "../ph2d-anim" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+# O produtor do «Outline» (W2c): a imagem da forma e o traço moram lá, fora do tecto desta crate.
+ph2d-physics-outline = { path = "../ph2d-physics-outline" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-input = { path = "../ph2d-input" }
 ph2d-panel-physics = { path = "../ph2d-panel-physics" }

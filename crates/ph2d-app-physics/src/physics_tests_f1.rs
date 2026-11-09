@@ -242,3 +242,15 @@ fn apagar_a_forma_filha_na_hierarchy_e_um_passo_de_undo() {
     let de_volta = sim.world().get::<Collider>(shape_of(&sim, corpo)).copied();
     assert_eq!(de_volta, forma, "a filha volta com a forma");
 }
+
+/// «Outline» (`Shape(3)`) nasce na caixa de agora; os anéis são do traço (W2c). *Mutação: o braço tirado ⇒ Cuboid.*
+#[test]
+fn escolher_outline_guarda_a_caixa() {
+    let (mut sim, e) = sprite_scene();
+    apply(&mut sim, e, PhysicsFieldEdit::Add);
+    let c = |sim: &SimWorld| *sim.world().get::<Collider>(shape_of(sim, e)).expect("c");
+    let [half_x, half_y] = c(&sim).local_aabb().1;
+    apply(&mut sim, e, PhysicsFieldEdit::Shape(3));
+    let outline = ph2d_physics_ecs::ColliderShape::Outline { half_x, half_y };
+    assert_eq!(c(&sim).shape, outline);
+}

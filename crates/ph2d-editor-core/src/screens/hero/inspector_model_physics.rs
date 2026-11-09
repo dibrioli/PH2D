@@ -380,7 +380,7 @@ pub enum PhysicsFieldEdit {
     },
     /// `BodyKind` tag: `0` Dynamic · `1` Static · `2` Kinematic.
     Kind(u8),
-    /// `ColliderShape` tag: `0` Ball · `1` Box · `2` Capsule. Switching
+    /// `ColliderShape` tag: `0` Ball · `1` Box · `2` Capsule · `3` Outline (traced). Switching
     /// preserves the footprint (a box becomes the ball that fits it, and back;
     /// a capsule keeps the box's width as its radius).
     Shape(u8),

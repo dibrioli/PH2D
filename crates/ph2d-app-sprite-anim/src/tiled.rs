@@ -72,9 +72,7 @@ pub(crate) fn follow_auto_collider(
         && c.follows_picture(antes)
         && antes != depois
     {
-        c.shape = ColliderShape::Cuboid {
-            half_x: depois[0] * 0.5,
-            half_y: depois[1] * 0.5,
-        };
+        // A caixa ou o contorno (W2c: os anéis mapeiam a imagem, não se refazem por tamanho).
+        c.shape = c.shape_fitted_to(depois);
     }
 }

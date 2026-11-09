@@ -13,8 +13,19 @@
 //! em que um dos lados o pediu: sem exceção, o mundo é byte-idêntico. A camada e as duas máscaras
 //! viajam no `user_data` do colisor ([`OVERRIDE_BIT`]), como o `one_way` — o checkpoint leva-as.
 //!
-//! ⚠️ Os grupos abertos ainda passam pelo teste da rapier: uma camada cuja linha da matriz é ZERO
-//! (não colide com nada) não chega ao gancho, e um `include` dela não vale.
+//! ⭐ **A camada de linha VAZIA** (não colide com nada): com `filter = 0` o par nem chegava ao
+//! gancho e um `include` dela não valia. O [`super::layers::groups_for`] dá-lhe então o filtro
+//! «todas as camadas que NÃO têm linha vazia» — prova de que nada muda sem exceção: a matriz é
+//! simétrica, logo nenhuma outra linha tem o bit dela (o teste `And` cai do outro lado), e duas
+//! camadas vazias não se aceitam (o bit de cada uma falta no filtro da outra). Só o lado ABERTO
+//! de uma forma com exceção passa, e o gancho decide. (Limite: se as 32 linhas forem vazias não
+//! há bit livre — a matriz inteira desligada fica como está.)
+//!
+//! ## As consultas perguntam em nome de quem
+//!
+//! Um raio/varredura/personagem do PRÓPRIO corpo (player, top-down, projéctil) leva a exceção da
+//! forma dele ([`asker_of`]): grupos abertos e a [`pair_collides`] decide com os DOIS lados. Um
+//! Ray Sensor tem a sua própria linha («Sees») e pergunta sem exceção.
 
 use rapier2d::geometry::{Collider, ColliderHandle, Group, InteractionGroups, InteractionTestMode};
 
@@ -104,16 +115,47 @@ pub(crate) fn pair_of(c1: &Collider, c2: &Collider, m: LayerMatrix) -> bool {
     pair_collides(side_of(c1), side_of(c2), m)
 }
 
-/// O predicado das consultas feitas «a partir da camada `layer`»: um colisor sem exceção já foi
-/// decidido pelos grupos; um com exceção responde pela [`pair_collides`].
-pub(crate) fn query_sees(layer: u8, m: LayerMatrix) -> impl Fn(ColliderHandle, &Collider) -> bool {
-    let asker = Side {
-        layer: usize::from(layer),
-        include: 0,
-        exclude: 0,
+/// O lado de quem pergunta: a `layer` pedida e a exceção do colisor dele (se tiver).
+#[must_use]
+pub(crate) fn asker_of(layer: u8, c: Option<&Collider>) -> Side {
+    let (include, exclude) = match c {
+        Some(c) if has_override(c) => {
+            let s = side_of(c);
+            (s.include, s.exclude)
+        }
+        _ => (0, 0),
     };
-    move |_, c| !has_override(c) || pair_collides(asker, side_of(c), m)
+    Side {
+        layer: usize::from(layer).min(MAX_LAYERS - 1),
+        include,
+        exclude,
+    }
 }
+
+/// Os grupos de uma consulta: os da camada sem exceção (byte-idêntico), abertos com ela.
+#[must_use]
+pub(crate) fn query_groups(asker: Side, m: LayerMatrix) -> InteractionGroups {
+    if asker.include == 0 && asker.exclude == 0 {
+        super::layers::groups_for(asker.layer, m)
+    } else {
+        open_groups()
+    }
+}
+
+/// O predicado das consultas feitas por `asker`. Sem exceção dele, um colisor sem exceção já foi
+/// decidido pelos grupos; com ela, os grupos são abertos e TODO colisor responde pela
+/// [`pair_collides`].
+pub(crate) fn query_sees(
+    asker: Side,
+    m: LayerMatrix,
+) -> impl Fn(ColliderHandle, &Collider) -> bool {
+    let open = asker.include != 0 || asker.exclude != 0;
+    move |_, c| (!open && !has_override(c)) || pair_collides(asker, side_of(c), m)
+}
+
+#[cfg(test)]
+#[path = "layer_override_query_tests.rs"]
+mod query_tests;
 
 #[cfg(test)]
 mod tests {

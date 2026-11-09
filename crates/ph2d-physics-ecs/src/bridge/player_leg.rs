@@ -90,8 +90,7 @@ pub(super) fn cast_leg(
     // que ele é castado primeiro.
     let mut centre: Option<f32> = None;
     for (i, (leg, slot)) in legs.iter().zip(per_foot.iter_mut()).enumerate().take(n) {
-        let Some(h) =
-            world.cast_ray_skipping(leg.origin, leg.dir, reach, Some(body), passing, layer)
+        let Some(h) = world.cast_ray_for_body(leg.origin, leg.dir, reach, body, passing, layer)
         else {
             continue;
         };

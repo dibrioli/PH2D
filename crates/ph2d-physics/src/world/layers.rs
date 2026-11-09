@@ -158,9 +158,22 @@ impl Default for LayerMatrix {
 /// linha nossa mudar**. O terceiro argumento é a nossa resposta, não a herança da deles.
 pub(crate) fn groups_for(layer: usize, matrix: LayerMatrix) -> InteractionGroups {
     let layer = layer.min(MAX_LAYERS - 1);
+    let row = matrix.row(layer);
+    // Linha vazia: «as camadas não vazias», para que só o lado ABERTO de uma forma com exceção
+    // chegue ao gancho (prova em `layer_override`). Sem exceção nenhum par muda.
+    let filter = if row == 0 {
+        !matrix.rows().iter().enumerate().fold(
+            0u32,
+            |e, (i, r)| {
+                if *r == 0 { e | (1 << i) } else { e }
+            },
+        )
+    } else {
+        row
+    };
     InteractionGroups::new(
         Group::from_bits_truncate(1 << layer),
-        Group::from_bits_truncate(matrix.row(layer)),
+        Group::from_bits_truncate(filter),
         InteractionTestMode::And,
     )
 }

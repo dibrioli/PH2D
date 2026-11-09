@@ -37,7 +37,7 @@ use rapier2d::geometry::{ColliderHandle, Ray};
 use rapier2d::parry::query::DefaultQueryDispatcher;
 use rapier2d::pipeline::{QueryFilter, QueryFilterFlags, QueryPipeline};
 
-use super::{PhysicsWorld, groups_for};
+use super::PhysicsWorld;
 use rapier2d::dynamics::RigidBodyHandle;
 
 /// **O que um cast encontrou.** Tudo em MUNDO (metros, a fronteira 1:1 do
@@ -138,6 +138,53 @@ impl PhysicsWorld {
         exclude_collider: Option<ColliderHandle>,
         layer: u8,
     ) -> Option<CastHit> {
+        let asker = super::layer_override::asker_of(layer, None);
+        self.cast_ray_as(origin, dir, max_dist, exclude_body, exclude_collider, asker)
+    }
+
+    /// **O raio do PRÓPRIO corpo** (os sensores do player): pergunta com a exceção de camadas da
+    /// forma de `body` ([`Self::query_asker`]), para o raio concordar com os contactos. Um Ray
+    /// Sensor, que tem a sua própria linha «Sees», usa o [`Self::cast_ray`].
+    #[must_use]
+    pub fn cast_ray_for_body(
+        &self,
+        origin: [f32; 2],
+        dir: [f32; 2],
+        max_dist: f32,
+        body: RigidBodyHandle,
+        exclude_collider: Option<ColliderHandle>,
+        layer: u8,
+    ) -> Option<CastHit> {
+        let asker = self.query_asker(body, layer);
+        self.cast_ray_as(origin, dir, max_dist, Some(body), exclude_collider, asker)
+    }
+
+    /// O lado de quem pergunta em nome de `body`: a `layer` e a exceção da PRIMEIRA forma sólida
+    /// dele (a principal; ordem de inserção, determinista).
+    #[must_use]
+    pub(crate) fn query_asker(
+        &self,
+        body: RigidBodyHandle,
+        layer: u8,
+    ) -> super::layer_override::Side {
+        let main = self.bodies.get(body).and_then(|b| {
+            b.colliders()
+                .iter()
+                .filter_map(|h| self.colliders.get(*h))
+                .find(|c| !c.is_sensor())
+        });
+        super::layer_override::asker_of(layer, main)
+    }
+
+    fn cast_ray_as(
+        &self,
+        origin: [f32; 2],
+        dir: [f32; 2],
+        max_dist: f32,
+        exclude_body: Option<RigidBodyHandle>,
+        exclude_collider: Option<ColliderHandle>,
+        asker: super::layer_override::Side,
+    ) -> Option<CastHit> {
         let d = Vector::new(dir[0], dir[1]);
         let n = d.length();
         if !n.is_finite() || n <= f32::EPSILON || !max_dist.is_finite() || max_dist < 0.0 {
@@ -149,9 +196,12 @@ impl PhysicsWorld {
         let ray = Ray::new(Vector::new(origin[0], origin[1]), unit);
 
         let dispatcher = DefaultQueryDispatcher;
-        let sees = super::layer_override::query_sees(layer, self.layer_matrix);
+        let sees = super::layer_override::query_sees(asker, self.layer_matrix);
         let filter = QueryFilter {
-            groups: Some(groups_for(layer as usize, self.layer_matrix)),
+            groups: Some(super::layer_override::query_groups(
+                asker,
+                self.layer_matrix,
+            )),
             predicate: Some(&sees),
             exclude_rigid_body: exclude_body,
             exclude_collider,

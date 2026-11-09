@@ -52,8 +52,8 @@ use rapier2d::dynamics::RigidBodyHandle;
 use rapier2d::parry::query::{DefaultQueryDispatcher, ShapeCastOptions};
 use rapier2d::pipeline::{QueryFilter, QueryFilterFlags, QueryPipeline};
 
+use super::PhysicsWorld;
 use super::cast::CastHit;
-use super::{PhysicsWorld, groups_for};
 
 impl PhysicsWorld {
     /// **Varrer o corpo** de onde ele está, ao longo de `dir`, por até
@@ -99,17 +99,6 @@ impl PhysicsWorld {
         let rb = self.bodies.get(handle)?;
 
         let dispatcher = DefaultQueryDispatcher;
-        let sees = super::layer_override::query_sees(layer, self.layer_matrix);
-        let filter = QueryFilter {
-            groups: Some(groups_for(layer as usize, self.layer_matrix)),
-            predicate: Some(&sees),
-            exclude_rigid_body: Some(handle),
-            flags: QueryFilterFlags::EXCLUDE_SENSORS,
-            ..QueryFilter::default()
-        };
-        let pipeline: QueryPipeline<'_> =
-            self.broad_phase
-                .as_query_pipeline(&dispatcher, &self.bodies, &self.colliders, filter);
         let options = ShapeCastOptions::with_max_time_of_impact(max_dist);
 
         let mut best: Option<CastHit> = None;
@@ -117,6 +106,25 @@ impl PhysicsWorld {
             let Some(c) = self.colliders.get(ch) else {
                 continue;
             };
+            // Cada forma varre com a SUA exceção de camadas (a mesma regra dos contactos).
+            let asker = super::layer_override::asker_of(layer, Some(c));
+            let sees = super::layer_override::query_sees(asker, self.layer_matrix);
+            let filter = QueryFilter {
+                groups: Some(super::layer_override::query_groups(
+                    asker,
+                    self.layer_matrix,
+                )),
+                predicate: Some(&sees),
+                exclude_rigid_body: Some(handle),
+                flags: QueryFilterFlags::EXCLUDE_SENSORS,
+                ..QueryFilter::default()
+            };
+            let pipeline: QueryPipeline<'_> = self.broad_phase.as_query_pipeline(
+                &dispatcher,
+                &self.bodies,
+                &self.colliders,
+                filter,
+            );
             let Some((other, hit)) = pipeline.cast_shape(c.position(), unit, c.shape(), options)
             else {
                 continue;

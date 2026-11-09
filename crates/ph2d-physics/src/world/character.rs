@@ -38,7 +38,7 @@ use rapier2d::parry::query::DefaultQueryDispatcher;
 use rapier2d::parry::shape::Compound;
 use rapier2d::pipeline::{QueryFilter, QueryFilterFlags, QueryPipeline};
 
-use super::{PhysicsWorld, groups_for};
+use super::PhysicsWorld;
 
 /// **O que o mundo deixou acontecer.**
 ///
@@ -341,9 +341,14 @@ impl PhysicsWorld {
         };
 
         let dispatcher = DefaultQueryDispatcher;
-        let sees = super::layer_override::query_sees(layer, self.layer_matrix);
+        // Quem pergunta é o próprio corpo: leva a exceção de camadas da forma dele.
+        let asker = self.query_asker(handle, layer);
+        let sees = super::layer_override::query_sees(asker, self.layer_matrix);
         let filter = QueryFilter {
-            groups: Some(groups_for(layer as usize, self.layer_matrix)),
+            groups: Some(super::layer_override::query_groups(
+                asker,
+                self.layer_matrix,
+            )),
             predicate: Some(&sees),
             exclude_rigid_body: Some(handle),
             exclude_collider,

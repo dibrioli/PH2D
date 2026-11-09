@@ -298,7 +298,8 @@ pub(super) fn probe_ledge(
     };
     let mut won: Option<(f32, f32)> = None;
     for (i, r) in rays.iter().enumerate().take(n) {
-        let Some(hit) = world.cast_ray(r.origin, r.dir, r.reach, Some(handle), layer) else {
+        let Some(hit) = world.cast_ray_for_body(r.origin, r.dir, r.reach, handle, None, layer)
+        else {
             continue;
         };
         if hit.distance <= 0.0 {
@@ -490,11 +491,12 @@ pub(super) fn probe_ceiling(
         .take(n)
     {
         *slot = world
-            .cast_ray(
+            .cast_ray_for_body(
                 [g.top[0] + off, g.top[1]],
                 [0.0, 1.0],
                 g.rise,
-                Some(handle),
+                handle,
+                None,
                 layer,
             )
             .is_some();
@@ -502,11 +504,12 @@ pub(super) fn probe_ceiling(
 
     let free = |dir: f32| {
         world
-            .cast_ray(
+            .cast_ray_for_body(
                 [g.top[0], g.mid_y],
                 [dir, 0.0],
                 g.half_width + g.reach,
-                Some(handle),
+                handle,
+                None,
                 layer,
             )
             .map_or(g.reach, |h| (h.distance - g.half_width).clamp(0.0, g.reach))
@@ -617,7 +620,7 @@ pub(super) fn probe_wall(
     let mut hits = [None; MAX_WALL_SAMPLES];
     for (slot, r) in hits.iter_mut().zip(rays.iter()).take(n) {
         *slot = world
-            .cast_ray(r.origin, r.dir, r.reach, Some(handle), layer)
+            .cast_ray_for_body(r.origin, r.dir, r.reach, handle, None, layer)
             .filter(|hit| surfaces.clings_at(hit))
             .map(|hit| WallHit {
                 distance: hit.distance,

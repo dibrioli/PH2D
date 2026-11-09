@@ -33,6 +33,7 @@ pub use registry::{
     ComponentRegistry, ComponentTypeEntry, ComponentTypeId, RegistryError, register_ecs_components,
     stable_type_id,
 };
+pub use registry_derivado::CamposDerivados;
 pub use save::{EntitySnapshotRow, SaveError, WorldSnapshot, snapshot_to_world, world_to_snapshot};
 pub use snapshot::{
     ComponentEntry, ComponentSnapshot, HierarchyEntry, HierarchySnapshot, HierarchyWalkState,

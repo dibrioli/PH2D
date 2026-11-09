@@ -302,6 +302,8 @@ pub struct Sprite {
     pub(crate) tilesets: Vec<crate::tiles::Tileset>,
     pub(crate) tags: Vec<Tag>,
     pub(crate) slices: Vec<crate::slice::Slice>,
+    /// P14: a slice cujo pivô é a origem do objecto; `None` = o centro do sprite.
+    pub(crate) pivot_slice: Option<crate::slice::SliceId>,
     pub(crate) next_id: u32,
     /// A selecção (Aseprite: estado do DOCUMENTO, desfaz-se; não se grava no `PH2DPIXEL`).
     pub(crate) mask: Option<Mask>,
@@ -362,6 +364,7 @@ impl Sprite {
             tilesets: Vec::new(),
             tags: Vec::new(),
             slices: Vec::new(),
+            pivot_slice: None,
             next_id: 1,
             mask: None,
             last_mask: None,

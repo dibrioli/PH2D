@@ -12,8 +12,10 @@ use ph2d_pixel_core::{FrameId, Sprite};
 mod deriva;
 #[doc(hidden)]
 pub mod fixture;
+mod forma;
 
 pub use deriva::{CLIP_SEM_TAGS, DerivadoDe, animador_de_nascenca, deriva, grelha};
+pub use forma::{SEGUE_SLICE, SegueSlice, adiciona_collider_da_slice, deriva_formas, pivo_px};
 
 /// As tags do documento como clips do motor, pela porta única [`tag_do_aseprite`] (a mesma do
 /// import de `.ase`). Sem tags ⇒ uma que cobre todos os quadros, chamada `nome_sem_tags`.
@@ -104,8 +106,16 @@ pub fn quadro_a_desenhar(
     }
 }
 
-/// O registo sabe que, no Pixel Sprite, os clips e a grelha são derivados das tags: não se gravam.
+/// O registo sabe que, no Pixel Sprite, os clips e a grelha são derivados das tags: não se gravam;
+/// e que a forma e o offset de uma «Collision Shape» com [`SegueSlice`] são derivados da slice (o
+/// offset vive no `Collider`, não no `Transform` da filha, que fica identidade). Sem o `Collider`
+/// no registo (um registo só do `ph2d-ecs`), regista primeiro os da física: a lei nunca se salta.
 pub fn registar(reg: &mut ComponentRegistry) {
+    if reg.get_by_name("ph2d::physics::Collider").is_none() {
+        ph2d_physics_ecs::register_physics_components(reg);
+    }
     reg.derivado_quando::<SpriteAnimations, PixelSprite>();
     reg.derivado_quando::<SpriteGrid, PixelSprite>();
+    reg.register_default::<SegueSlice>(SEGUE_SLICE);
+    reg.campos_derivados_quando::<ph2d_physics_ecs::Collider, SegueSlice>();
 }

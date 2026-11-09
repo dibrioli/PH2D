@@ -210,6 +210,8 @@ pub const PORTAS: &[(&str, Porta)] = &[
     ("ph2d::physics::TopDownPlayer", Gravado),
     ("ph2d::physics::WalkSurface", Gravado),
     ("ph2d::physics::WestonAxle", Gravado),
+    // P14b: a forma que segue uma slice do Pixel Sprite pai (o id cru da slice, do documento dele).
+    ("ph2d::pixel::SegueSlice", Gravado),
     ("ph2d::render::Sprite", DaFamilia(Painter)),
     ("ph2d::script::LuauScript", Recusado(DO_PROJECTO)),
     ("ph2d::skeleton::Bone", Recusado(SEM_REMAP)),

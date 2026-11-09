@@ -30,9 +30,9 @@ mod layer_names;
 mod migra_formas;
 mod outline;
 pub use migra_formas::{
-    LADO_FORMA, Migracao, NOME_DA_FORMA, NOME_DO_CORPO, migra_formas_no_retrato,
-    migra_formas_para_filhos, migra_formas_para_filhos_com_pares, move_forma_para_filha,
-    nasce_com_forma, tira_corpo, torna_corpo,
+    LADO_FORMA, Migracao, NOME_DA_FORMA, NOME_DO_CORPO, forma_de_retangulo,
+    migra_formas_no_retrato, migra_formas_para_filhos, migra_formas_para_filhos_com_pares,
+    move_forma_para_filha, nasce_com_forma, tira_corpo, torna_corpo,
 };
 pub use outline::{ColliderOutline, Ring as OutlineRing, outline_rings_world};
 pub mod player_input;

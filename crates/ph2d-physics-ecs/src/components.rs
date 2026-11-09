@@ -195,6 +195,18 @@ pub struct Collider {
     pub offset: [f32; 2],
 }
 
+/// A forma de uma «Collision Shape» que SEGUE uma fonte (a slice do Pixel Sprite, P14 §4 C):
+/// `shape` e `offset` são derivados e gravam-se no ponto neutro; o resto é do artista.
+impl ph2d_ecs::scene::CamposDerivados for Collider {
+    fn sem_derivados(&self) -> Self {
+        Self {
+            shape: ColliderShape::default(),
+            offset: [0.0, 0.0],
+            ..*self
+        }
+    }
+}
+
 impl Collider {
     /// rapier's defaults, restated so the neutral point is one named place
     /// rather than a number repeated at each call site.

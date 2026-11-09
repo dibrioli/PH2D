@@ -87,6 +87,12 @@ impl Sprite {
         self.slices.iter().find(|s| s.id == id)
     }
 
+    /// P14: a slice cujo pivô é a origem do objecto; `None` = o centro do sprite.
+    #[must_use]
+    pub fn pivot_slice(&self) -> Option<SliceId> {
+        self.pivot_slice
+    }
+
     /// As slices por nome, sem distinguir maiúsculas; as gémeas ficam todas, pela ordem de criação (T1, F4).
     #[must_use]
     pub fn slices_by_name(&self) -> Vec<&Slice> {
@@ -201,6 +207,38 @@ pub fn set_info(s: &Sprite, id: SliceId, name: &str, color: [u8; 4], data: &str)
     c.user.color = color;
     data.clone_into(&mut c.user.text);
     set(s, slices)
+}
+
+/// **Escolher a slice do pivô** (`None` = o centro); `None` se nada muda ou a slice não existe.
+#[must_use]
+pub fn set_pivot(s: &Sprite, id: Option<SliceId>) -> Option<Op> {
+    if id == s.pivot_slice || id.is_some_and(|id| s.slice(id).is_none()) {
+        return None;
+    }
+    Some(Op::PivotSlice(id))
+}
+
+/// O pivô da slice do pivô no quadro `frame` (posição), em píxeis do sprite: `bounds + pivot`, ou
+/// o centro da caixa se a key não tem pivô. Sem slice do pivô, slice escondida nesse quadro ou
+/// slice inexistente ⇒ o CENTRO do sprite (`w/2, h/2`).
+#[must_use]
+pub fn pivot_px(s: &Sprite, frame: u32) -> (f64, f64) {
+    let centro = (f64::from(s.width) / 2.0, f64::from(s.height) / 2.0);
+    let Some(k) = s
+        .pivot_slice
+        .and_then(|id| s.slice(id))
+        .and_then(|c| c.visible_at(frame))
+    else {
+        return centro;
+    };
+    let b = k.bounds;
+    match k.pivot {
+        Some((px, py)) => (f64::from(b.x + px), f64::from(b.y + py)),
+        None => (
+            f64::from(b.x) + f64::from(b.w) / 2.0,
+            f64::from(b.y) + f64::from(b.h) / 2.0,
+        ),
+    }
 }
 
 /// **Apagar** as slices inteiras.

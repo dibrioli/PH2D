@@ -43,6 +43,8 @@ fn full_registry() -> ComponentRegistry {
     ph2d_skeleton_ecs::register_skeleton_components(&mut reg);
     ph2d_light2d_ecs::register_light2d_components(&mut reg);
     ph2d_constraints_ecs::register_constraint_components(&mut reg);
+    // O Pixel Sprite (P14): a `SegueSlice` e os derivados — o 7.º registador do `init.rs`.
+    ph2d_app_pixel::registar(&mut reg);
     reg
 }
 

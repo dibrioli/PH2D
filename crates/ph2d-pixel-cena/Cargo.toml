@@ -15,6 +15,8 @@ authors.workspace = true
 [dependencies]
 ph2d-pixel-core = { path = "../ph2d-pixel-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+serde = { version = "1", features = ["derive"] }
 # O `#[derive(Component)]` do `DerivadoDe` expande para caminhos `bevy_ecs::`.
 bevy_ecs = "0.20"
 

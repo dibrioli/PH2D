@@ -41,7 +41,11 @@ pub enum Op {
     /// `Cel.data` deriva e não entra nele.
     Tiles(Box<crate::tiles::TilesSet>),
     /// A lista de slices inteira (criar, editar uma key, apagar). O inverso é a lista de antes.
+    /// Se a lista nova perde a slice do pivô, o pivô volta a `None` no MESMO passo, e o inverso
+    /// é `Batch([Slices(antes), PivotSlice(antes)])`.
     Slices(Vec<Slice>),
+    /// P14: a slice do pivô ([`Sprite::pivot_slice`]); `Some` tem de existir. O inverso é a de antes.
+    PivotSlice(Option<crate::slice::SliceId>),
     /// O user data de um dono (P12). O inverso é o de antes.
     UserData {
         owner: crate::user::Owner,
@@ -227,6 +231,7 @@ impl Op {
             }
             Op::Tiles(t) => t.bytes(),
             Op::Slices(v) => slices_bytes(v),
+            Op::PivotSlice(_) => std::mem::size_of::<Op>(),
             Op::UserData { data, .. } => {
                 data.text.len()
                     + data
@@ -293,7 +298,23 @@ pub fn apply(sprite: &mut Sprite, op: Op) -> Result<Op, OpError> {
         Op::Tiles(t) => crate::tiles::apply_tiles(sprite, *t).map(|t| Op::Tiles(Box::new(t))),
         Op::Slices(v) => {
             check_slices(&v, sprite.next_id)?;
-            Ok(Op::Slices(std::mem::replace(&mut sprite.slices, v)))
+            let pivo = sprite.pivot_slice;
+            let perde = pivo.is_some_and(|id| !v.iter().any(|c| c.id == id));
+            let antes = Op::Slices(std::mem::replace(&mut sprite.slices, v));
+            if perde {
+                sprite.pivot_slice = None;
+                return Ok(Op::Batch(vec![antes, Op::PivotSlice(pivo)]));
+            }
+            Ok(antes)
+        }
+        Op::PivotSlice(id) => {
+            if id.is_some_and(|id| sprite.slice(id).is_none()) {
+                return Err(OpError::BadSlices("pivot_slice"));
+            }
+            Ok(Op::PivotSlice(std::mem::replace(
+                &mut sprite.pivot_slice,
+                id,
+            )))
         }
         Op::UserData { owner, data } => {
             let slot = user_slot(sprite, owner)?;

@@ -393,4 +393,12 @@
 /// `AnimationTag.acaba_na_ponta_de_chegada: bool` no FIM: `repeat` N do Aseprite conta passadas, o motor ciclos; N
 /// ímpar ⇒ o último ciclo é meio (`ph2d_ecs::tag_do_aseprite`). SEM leitura dos anteriores (§0.11). Registos: `0`.
 /// ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 228;
+///
+/// # `228 → 229` — **a forma que segue a slice** (`line/PixelArt`, P14b-1)
+///
+/// O componente `ph2d::pixel::SegueSlice { slice: u32 }` entra no registo (`+1`): um `ComponentBlob` de `type_id`
+/// desconhecido recusa o load inteiro num binário anterior, e o degrau diz «outra versão». O `Collider` de quem o
+/// tem grava a forma e o offset no ponto neutro (derivados da slice). O blob Pixel sobe `MINOR 6 → 7`
+/// (`Sprite.pivot_slice`; versão própria, campo desconhecido saltado). SEM leitura dos anteriores (§0.11).
+/// ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 229;

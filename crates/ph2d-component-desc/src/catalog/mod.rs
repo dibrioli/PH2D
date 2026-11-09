@@ -42,6 +42,7 @@ pub mod logic;
 pub mod particles;
 pub mod physics;
 mod physics_fields;
+pub mod pixel;
 pub mod script;
 pub mod skeleton;
 pub mod vector;
@@ -62,6 +63,7 @@ const FAMILIES: &[&[ComponentDesc]] = &[
     logic::DESCS,
     particles::DESCS,
     physics::DESCS,
+    pixel::DESCS,
     script::DESCS,
     skeleton::DESCS,
     vector::DESCS,

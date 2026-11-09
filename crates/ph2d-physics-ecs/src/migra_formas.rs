@@ -284,3 +284,28 @@ pub fn migra_formas_no_retrato(
     }
     Ok(m)
 }
+
+/// ⭐ **Retângulo de píxeis → forma de colisão** (P14 §4): a porta única do Pixel Sprite e do import do
+/// Sprite Inspector. `rect_px = [x, y, w, h]` em píxeis da imagem (Y para BAIXO), `pivo_px` a origem
+/// do objecto na imagem, `m_por_px` = `1 / ppm` do projecto. Devolve o `Cuboid` (meias-medidas em
+/// metros) e o `offset` do centro do retângulo relativo ao pivô, em metros no eixo LOCAL do corpo
+/// com **Y para CIMA** (a convenção do mundo: `image_to_world` vira o Y).
+#[must_use]
+pub fn forma_de_retangulo(
+    rect_px: [f64; 4],
+    pivo_px: (f64, f64),
+    m_por_px: f64,
+) -> (crate::ColliderShape, [f64; 2]) {
+    let [x, y, w, h] = rect_px;
+    #[allow(clippy::cast_possible_truncation)]
+    let forma = crate::ColliderShape::Cuboid {
+        half_x: (w * 0.5 * m_por_px) as f32,
+        half_y: (h * 0.5 * m_por_px) as f32,
+    };
+    let centro = (x + w * 0.5, y + h * 0.5);
+    let offset = [
+        (centro.0 - pivo_px.0) * m_por_px,
+        -(centro.1 - pivo_px.1) * m_por_px,
+    ];
+    (forma, offset)
+}

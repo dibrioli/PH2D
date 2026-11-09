@@ -9,6 +9,7 @@
 //!            · 7 Frame* · 8 Cel* · 9 próximo id · 10 Tag*                (inteiros em varint)
 //!            · 13 Slice* (`codec/slices.rs`)                                         [1.5]
 //!            · 14 UserData · 15 Prefs (`codec/user.rs`)                              [1.6]
+//!            · 16 slice do pivô (id; sem = o centro)                                 [1.7]
 //!            Layer 8 · Cel 12 · Tag 7 · Tileset 8 = UserData; sem = o de omissão     [1.6]
 //! Layer    : 1 id · 2 nome (utf8) · 3 bandeiras (bit0 visível, bit1 background, bit2 trancada,
 //!            bit3 referência, bit4 grupo, bit5 grupo recolhido, bit6 continuous [1.2]) · 4 opacidade (sem = 255)
@@ -34,7 +35,7 @@ use crate::tiles::{Terrain, Tileset, TilesetId};
 
 pub const MAGIC: &[u8; 9] = b"PH2DPIXEL";
 pub const MAJOR: u16 = 1;
-pub const MINOR: u16 = 6;
+pub const MINOR: u16 = 7;
 
 /// Ficheiro recusado; nunca um documento meio lido.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -274,6 +275,10 @@ fn sprite_record_with(s: &Sprite, pixels: bool) -> Vec<u8> {
         put_field(&mut r, 11, &b);
     }
     user::put_user(&mut r, 14, &s.user);
+    // MINOR 7: a slice do pivô (P14).
+    if let Some(id) = s.pivot_slice {
+        put_uint(&mut r, 16, u64::from(id.0));
+    }
     if let Some(p) = user::prefs_record(&s.prefs) {
         put_field(&mut r, 15, &p);
     }
@@ -294,6 +299,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
         tilesets: Vec::new(),
         tags: Vec::new(),
         slices: Vec::new(),
+        pivot_slice: None,
         next_id: 0,
         mask: None,
         last_mask: None,
@@ -449,6 +455,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
             13 => s.slices.push(slices::read_slice(b)?),
             14 => s.user = user::read_user(b)?,
             15 => s.prefs = user::read_prefs(b)?,
+            16 => s.pivot_slice = Some(crate::slice::SliceId(u32_of(b, "sprite.pivot_slice")?)),
             12 => {
                 let mut t = Tileset::new(TilesetId(0), "", 0, 0, Vec::new());
                 for (tag, v) in Fields::new(b)? {
@@ -559,6 +566,7 @@ impl Sprite {
             cels: BTreeMap::new(),
             tags: p.tags,
             slices: p.slices,
+            pivot_slice: None,
             tilesets: p.tilesets,
             next_id: last.map_or(1, |n| n + 1),
             mask: None,
@@ -595,6 +603,9 @@ fn validate(s: &mut Sprite, raw_cels: Vec<((LayerId, FrameId), Cel)>) -> Result<
     crate::op::check_frames(&s.frames, &s.tags, s.next_id)
         .map_err(|_| CodecError::Invalid("frames/tags"))?;
     crate::slice::check_slices(&s.slices, s.next_id).map_err(|_| CodecError::Invalid("slices"))?;
+    if s.pivot_slice.is_some_and(|id| s.slice(id).is_none()) {
+        return Err(CodecError::Invalid("sprite.pivot_slice"));
+    }
     let all: Vec<_> = raw_cels.into_iter().map(|(k, c)| (k, Some(c))).collect();
     crate::op::check_cels(s, &s.layers, &s.frames, &all, true, s.mode.bpp())
         .map_err(|_| CodecError::Invalid("cel"))?;

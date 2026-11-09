@@ -3,7 +3,11 @@
 //! as partes que as leem (P14b, P14c).
 
 use ph2d_pixel_core::frames::{self, NewFrame};
-use ph2d_pixel_core::{Direction, FrameSet, NewSprite, Op, Sprite, Tag, UserData, apply};
+use ph2d_pixel_core::slice;
+use ph2d_pixel_core::{
+    Direction, FrameSet, NewSprite, Op, Rect, SliceId, SliceKey, SliceShape, Sprite, Tag, UserData,
+    apply,
+};
 
 /// As durações dos 6 quadros, em ms.
 pub const DURACOES_MS: [u32; 6] = [80, 80, 120, 120, 60, 200];
@@ -55,5 +59,47 @@ pub fn heroi_p14() -> Sprite {
         })),
     )
     .expect("quadros e tags");
+    com_slice_body(&mut s);
     s
+}
+
+/// A caixa da slice `body` nos quadros 0–2: 8×14, pivô nos pés (8, 15).
+pub const BODY_0: Rect = Rect::new(4, 2, 8, 14);
+/// A key MENOR do quadro 3 (o herói agacha): 6×10, pivô nos pés (8, 15).
+pub const BODY_3: Rect = Rect::new(5, 6, 6, 10);
+
+/// A slice `body` (P14b): key no quadro 0, key menor no 3, o pivô muda no 4 (de (8,15) para
+/// (6,15)); é a `pivot_slice` do sprite.
+fn com_slice_body(s: &mut Sprite) {
+    let (op, id) = slice::create(s, 0, BODY_0).expect("slice");
+    apply(s, op).expect("slice");
+    let mut lista = s.slices().to_vec();
+    let body = lista.iter_mut().find(|c| c.id == id).expect("body");
+    body.name = "body".into();
+    let key = |frame, bounds: Rect, pivot| SliceKey {
+        frame,
+        shape: SliceShape {
+            bounds,
+            center: None,
+            pivot: Some(pivot),
+        },
+    };
+    body.keys = vec![
+        key(0, BODY_0, (4, 13)),
+        key(3, BODY_3, (3, 9)),
+        key(4, BODY_3, (1, 9)),
+    ];
+    apply(s, Op::Slices(lista)).expect("keys");
+    let op = slice::set_pivot(s, Some(id)).expect("pivô");
+    apply(s, op).expect("pivô");
+}
+
+/// O id da slice `body`.
+#[must_use]
+pub fn body(s: &Sprite) -> SliceId {
+    s.slices()
+        .iter()
+        .find(|c| c.name == "body")
+        .expect("body")
+        .id
 }

@@ -10834,8 +10834,10 @@ dependencies = [
  "bevy_ecs",
  "ph2d-aseprite",
  "ph2d-ecs",
+ "ph2d-physics-ecs",
  "ph2d-pixel-core",
  "ph2d-pixel-io",
+ "serde",
 ]
 
 [[package]]

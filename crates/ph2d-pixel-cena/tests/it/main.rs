@@ -2,5 +2,6 @@
 
 mod censo_da_porta;
 mod derivado;
+mod forma;
 mod porta_da_tag;
 mod quadro_mostrado;

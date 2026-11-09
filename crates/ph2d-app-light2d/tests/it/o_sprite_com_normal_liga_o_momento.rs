@@ -89,3 +89,98 @@ fn uma_normal_fora_da_vista_nao_liga_o_momento() {
     assert_eq!(longe, 0, "a normal fora da vista alocou {longe} B de M");
     assert!(perto > 0, "o controlo: a normal à vista não alocou M");
 }
+
+/// O lado da textura do sprite (1 m ⇒ 16 texels a 16 px/m).
+const LADO: u32 = 16;
+
+/// O hemisfério (y para cima): `n_xy` = a posição no disco, `n_z` o resto; fora do disco, o equador.
+fn hemisferio() -> Vec<u8> {
+    let mut d = Vec::new();
+    for y in 0..LADO {
+        for x in 0..LADO {
+            let c = f64::from(LADO) / 2.0;
+            let (mut nx, mut ny) = ((f64::from(x) + 0.5 - c) / c, -(f64::from(y) + 0.5 - c) / c);
+            let r = nx.hypot(ny);
+            if r > 1.0 {
+                (nx, ny) = (nx / r, ny / r);
+            }
+            let nz = (1.0 - nx * nx - ny * ny).max(0.0).sqrt();
+            for v in [nx, ny, nz] {
+                d.push(((v * 0.5 + 0.5) * 255.0).round() as u8);
+            }
+            d.push(255);
+        }
+    }
+    d
+}
+
+/// ⭐ **O solver REAL** (não `F`/`M` sintéticos): uma lâmpada à esquerda, o sprite do motor com o
+/// hemisfério no meio. A razão claro/escuro (luma a ±0,3 m do centro) com a normal é maior que a do
+/// MESMO sprite sem ela (só a distância à lâmpada); sem normal, 0 B de `M`.
+#[test]
+fn o_sprite_com_normal_acende_com_o_solver_real() {
+    use crate::comum::{Cadeia, quad};
+    let Some(gpu) = gpu() else {
+        eprintln!("solver real: sem placa — saltado");
+        return;
+    };
+    let mut w = World::new();
+    let mut t = Transform::IDENTITY;
+    t.translation.x = -1.5;
+    w.spawn((Luz::default(), t, GlobalTransform::from_transform(t)));
+    let px = |p: [f64; 2]| {
+        (
+            (f64::from(W) / 2.0 + p[0] * 16.0) as u32,
+            (f64::from(H) / 2.0 - p[1] * 16.0) as u32,
+        )
+    };
+    let luma = |b: &[u8], (x, y): (u32, u32)| {
+        let i = ((y * W + x) * 4) as usize;
+        (f64::from(b[i]) + f64::from(b[i + 1]) + f64::from(b[i + 2])) / 3.0
+    };
+    let medir = |com_normal: bool| {
+        let mut c = Cadeia::nova(&gpu);
+        let cor: Vec<u8> = (0..LADO * LADO)
+            .flat_map(|_| [160, 160, 160, 255])
+            .collect();
+        let tex = c
+            .renderer
+            .acquire_individual(LADO, LADO, &cor)
+            .expect("cor");
+        if com_normal {
+            c.renderer
+                .definir_normal(tex, Some((LADO, LADO, &hemisferio())))
+                .expect("normal");
+        }
+        let mut present = PresentWorld::new();
+        present.world_mut().spawn(quad(tex, [0.0, 0.0]));
+        let mut l = LuzDoQuadro::com_degrau(ph2d_app_light2d::DEGRAU_PADRAO);
+        for _ in 0..30 {
+            l.com_sprites_de_normal(&c.renderer.caixas_com_normal(&mut present));
+            assert!(l.preparar(&w, afim(), (W, H)));
+            l.recolher(&w);
+            l.gravar(&gpu, &mut present, &c.renderer);
+        }
+        let m = l.solver().map_or(0, |s| s.bytes_do_momento());
+        l.ligar(&gpu, &mut c.renderer, &mut c.colagem, &c.tonemap);
+        let b = c.quadro(
+            &gpu,
+            &mut present,
+            &ph2d_render::LiftedInstances::default(),
+            &vello::Scene::new(),
+        );
+        (luma(&b, px([-0.3, 0.0])), luma(&b, px([0.3, 0.0])), m)
+    };
+    let (c0, e0, m0) = medir(false);
+    let (c1, e1, m1) = medir(true);
+    let (r0, r1) = (c0 / e0.max(1.0), c1 / e1.max(1.0));
+    eprintln!(
+        "solver real: sem normal {c0:.1}/{e0:.1} = {r0:.3} (M {m0} B) · com o hemisfério {c1:.1}/{e1:.1} = {r1:.3} (M {m1} B)"
+    );
+    assert_eq!(m0, 0, "sem normal o momento não é alocado (G6)");
+    assert!(m1 > 0, "o sprite com normal à vista liga o momento");
+    assert!(
+        r1 > 1.5 * r0,
+        "a normal do sprite tem de sombrear com o solver real: {r1:.3} contra {r0:.3}"
+    );
+}

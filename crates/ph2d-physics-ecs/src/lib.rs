@@ -102,8 +102,9 @@ pub use components::{
     NavRegion, NavRoute, NavTarget, NoWallCling, OnHit, OneWayPlatform, PlatformLift,
     PlatformPlayer, PlayerMode, PlayerSignals, ProjectileMotion, PulleyWheel, RESISTANCES_MAX,
     RayHit, RaySensor, RaySignals, Resistance, RigidBody, RopeStops, SignalOnHit, SignalOnLeave,
-    SignalTagFilter, TopDownPlayer, WalkSurface, WestonAxle, WrapSide, anim_target, kind_key,
-    reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
+    SignalTagFilter, TopDownPlayer, WalkSurface, WestonAxle, WrapSide, anim_target,
+    clip_de_entrada, kind_key, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
+    segura_regra,
 };
 pub use components::{MIN_EXTENT, collider_box_or};
 pub use interaction::{

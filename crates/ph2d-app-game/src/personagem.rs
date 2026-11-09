@@ -78,6 +78,7 @@ pub(crate) struct Segura {
 #[derive(Resource, Default)]
 pub struct RegrasEmCurso {
     seguras: BTreeMap<Entity, Segura>,
+    seguradas: BTreeMap<Entity, String>,
     ouvido: Option<SignalReader>,
     /// A regra que manda neste quadro, por objecto: só o cartão a lê (a regra acesa, ficha 02 E5).
     acesas: BTreeMap<Entity, u8>,
@@ -187,6 +188,7 @@ pub fn anima_personagens(
         .collect();
     let vivos: BTreeSet<Entity> = objectos.iter().map(|(e, ..)| *e).collect();
     em_curso.seguras.retain(|e, _| vivos.contains(e));
+    em_curso.seguradas.retain(|e, _| vivos.contains(e));
     em_curso.acesas.clear();
     for (e, rules, character) in objectos {
         let view = physics.player_view(e);
@@ -203,6 +205,7 @@ pub fn anima_personagens(
             ouvidos: &ouvidos,
         };
         let mut seguro = em_curso.seguras.remove(&e);
+        let entrada = ph2d_physics_ecs::clip_de_entrada(world, alvo);
         if let Some(mut a) = world.get_mut::<SpriteAnimator>(alvo) {
             match decide(&rules.0, &f, &mut seguro, &a) {
                 Passo::Fica => {}
@@ -216,6 +219,12 @@ pub fn anima_personagens(
                 .or_else(|| rules.0.iter().position(|r| vale(&r.when, &f)));
             if let Some(i) = manda.and_then(|i| u8::try_from(i).ok()) {
                 em_curso.acesas.insert(e, i);
+            }
+            let antes = em_curso.seguradas.remove(&e);
+            let entrada = entrada.as_deref();
+            if let Some(t) = ph2d_physics_ecs::segura_regra(&rules.0, manda, antes, &mut a, entrada)
+            {
+                em_curso.seguradas.insert(e, t);
             }
         }
         if let Some(s) = seguro {

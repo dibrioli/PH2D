@@ -151,6 +151,46 @@ pub fn anim_target(world: &World, e: Entity) -> Option<Entity> {
         .find(|c| world.get::<SpriteAnimator>(*c).is_some())
 }
 
+/// O clip de entrada do animador de `alvo`: o «Starts with», ou o 1.º clip (o Autoplay).
+#[must_use]
+pub fn clip_de_entrada(world: &World, alvo: Entity) -> Option<String> {
+    let a = world.get::<SpriteAnimator>(alvo)?;
+    a.start.clone().filter(|s| !s.is_empty()).or_else(|| {
+        let l = world.get::<SpriteAnimations>(alvo)?;
+        l.0.first().map(|t| t.name.clone())
+    })
+}
+
+/// ⭐ **«Key held» vale ENQUANTO a tecla está segura** (coordenador 09/11): com a regra `manda` uma
+/// `Action`, o clip dela repete em laço (a repetição N da tag é do Aseprite, não do estado segurado);
+/// sem ela, a tag segurada no quadro anterior (`antes`) volta ao clip de `entrada` no mesmo quadro.
+/// Devolve a tag segurada neste quadro.
+pub fn segura_regra(
+    rules: &[AnimRule],
+    manda: Option<usize>,
+    antes: Option<String>,
+    a: &mut SpriteAnimator,
+    entrada: Option<&str>,
+) -> Option<String> {
+    let held = manda
+        .and_then(|i| rules.get(i))
+        .filter(|r| matches!(r.when, AnimWhen::Action(_)))
+        .map(|r| r.play.clone());
+    let volta = match (&held, antes, entrada) {
+        (Some(t), _, _) => (a.current == *t && !a.playing).then(|| t.clone()),
+        (None, Some(t), Some(ent)) => (a.current == t && ent != t).then(|| ent.to_owned()),
+        _ => None,
+    };
+    if let Some(tag) = volta {
+        a.current = tag;
+        a.elapsed_ticks = 0;
+        a.pingpong_reverse = false;
+        a.repeat_count = 0;
+        a.playing = true;
+    }
+    held
+}
+
 #[cfg(test)]
 #[path = "anim_rules_tests.rs"]
 mod tests;

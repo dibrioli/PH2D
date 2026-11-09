@@ -98,3 +98,35 @@ fn as_regras_voltam_iguais_do_postcard() {
     let bytes = postcard::to_allocvec(&r).unwrap();
     assert_eq!(postcard::from_bytes::<AnimRules>(&bytes).unwrap(), r);
 }
+
+/// ⭐ **«Key held» vale enquanto segura**: 2 s a 60 Hz com a regra a mandar ⇒ o `run` (que o motor
+/// deixa parado a cada volta de 540 ms) recomeça em laço; soltar ⇒ o clip de entrada no mesmo quadro.
+#[test]
+fn segurar_da_run_em_laco_e_soltar_da_o_clip_de_entrada() {
+    let rules = vec![AnimRule {
+        when: AnimWhen::Action("move_right".into()),
+        play: "run".into(),
+    }];
+    let mut a = SpriteAnimator::new("run");
+    a.playing = true;
+    let (mut antes, mut recomecos) = (None, 0);
+    for q in 0..120 {
+        if q % 33 == 32 {
+            a.playing = false;
+        }
+        let parado = !a.playing;
+        antes = super::segura_regra(&rules, Some(0), antes, &mut a, Some("idle"));
+        assert!(
+            a.current == "run" && a.playing,
+            "quadro {q}: o run segue em laço"
+        );
+        recomecos += usize::from(parado);
+    }
+    assert_eq!(recomecos, 3, "três voltas recomeçadas em 2 s");
+    antes = super::segura_regra(&rules, None, antes, &mut a, Some("idle"));
+    assert_eq!(
+        a.current, "idle",
+        "soltar dá o clip de entrada no quadro seguinte"
+    );
+    assert!(a.playing && antes.is_none());
+}

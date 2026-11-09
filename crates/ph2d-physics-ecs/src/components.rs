@@ -377,7 +377,9 @@ mod surface;
 /// ⭐⭐⭐ **O mover de VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dele.
 mod topdown;
 
-pub use anim_rules::{AnimRule, AnimRules, AnimWhen, LifeEvent, anim_target};
+pub use anim_rules::{
+    AnimRule, AnimRules, AnimWhen, LifeEvent, anim_target, clip_de_entrada, segura_regra,
+};
 pub use area::{
     AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff, AreaForceWorldAxes, AreaFormDrag, AreaTorque,
 };

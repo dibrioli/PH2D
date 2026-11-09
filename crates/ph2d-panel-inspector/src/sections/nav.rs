@@ -1,17 +1,8 @@
-//! ⭐⭐⭐ **O que o Inspector mostra da NAVEGAÇÃO** (plano 30, W4) — a REGIÃO onde se anda e o
-//! AGENTE que acha o caminho sozinho.
+//! ⭐⭐⭐ **O que o Inspector mostra da NAVEGAÇÃO** (plano 30, W4): a REGIÃO onde se anda e o AGENTE.
 //!
-//! # ⭐⭐ A QUEIXA vem antes dos números
-//!
-//! O agente **PEDE** e o mover **ANDA**: a ponte salta quem não tem um mover que a ouça, e *«pus o
-//! agente e ele não anda»* tem oito causas com oito curas. A ordem delas NÃO vive aqui — é a porta
-//! [`InspectorNavAgent::queixa`], cujo gate corre sem um device; este ficheiro só lhe dá a língua
-//! ([`chave_do_agente`]) e a cor.
-//!
-//! # ⭐⭐ E a leitura VIVA
-//!
-//! *«Moving · 3,20 m to go»* e o raio DERIVADO do colisor (o caso comum, que o `0` do campo não
-//! diz) saem do `NavNow` que a ponte publica — não de campo nenhum.
+//! A queixa vem antes dos números: a ordem das causas de *«o agente não anda»* é a porta
+//! [`InspectorNavAgent::queixa`]; aqui só a língua ([`chave_do_agente`]) e a cor. A leitura VIVA
+//! (*«Moving · 3,20 m to go»*, o raio derivado do colisor) sai do `NavNow` que a ponte publica.
 
 use super::*;
 use ph2d_editor_core::nav_edits::{

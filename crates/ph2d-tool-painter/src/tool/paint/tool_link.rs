@@ -93,6 +93,13 @@ impl PainterTool {
         );
     }
 
+    /// O slot do pincel na mão: duas gavetas de presets com o MESMO slot partilham um pincel (o Digital, a Watercolor
+    /// e o Impasto no Pincel; todas, com «Sync with other tools»). A ponte dos presets lê-o (Bug #83).
+    #[must_use]
+    pub fn slot_do_pincel(&self) -> usize {
+        self.slot_atual()
+    }
+
     /// O slot da ferramenta na mão ([`super::slot_da_ferramenta`]).
     pub(crate) fn slot_atual(&self) -> usize {
         super::slot_da_ferramenta(

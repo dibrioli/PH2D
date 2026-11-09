@@ -971,6 +971,23 @@ intacto (0,123 · 0,349); miniaturas: 1–2 px de arredondamento em 3. Teste `we
 **Brinde:** `os_pinceis_que_espalham_enchem_com_a_mistura` estava VERMELHO desde a K1 do Pastel (`3d8d15e0eb`: já não
 sorteia a pegada, cobre 1,0 no Off) — o Pastel saiu da lista.
 
+## Bug #83 (CURADO 10/11) — o menu dizia Pastel e o pincel na mão era outro (o preview mostrava o esbatedor)
+
+**Smoke do dono 10/11:** «nem sempre o preview corresponde ao pincel escolhido». **Pista errada:** o `paint_mode`
+lembrado pela política (no Pincel do Digital só pode ser `Paint`) e a porta `preset_aplicar` (100 presets → Pastel dão o
+preview do Pastel limpo ao pixel). **Mecanismo:** o «aplicado» da ponte é por GAVETA (ferramenta × meio,
+`painter_bridge_presets.rs` `aplicado`), o pincel do tool é por SLOT (`slot_da_ferramenta`): o Digital, a Watercolor e
+o Impasto do Pincel partilham um slot, e com «Sync with other tools» todas as ferramentas partilham um só. Reproduzido:
+Pastel → Paint Mode Watercolor → Watercolor Basic → Digital (o menu diz Pastel, o pincel é o Watercolor Basic);
+Finger Tip → Watercolor → volta (o mesmo, com o dedo); Sync ligado → Smear → Smear Basic → Brush (menu Pastel, pincel
+do Smear). **Cura (`painter_bridge_presets_espelho.rs` + `PainterTool::slot_do_pincel`):** a ponte lembra que gaveta pôs o
+preset em cada slot; ao voltar a uma gaveta cujo pincel outra substituiu, o preset dela volta (com o que a política
+lembrou ao sair); com o Sync ligado o menu deixa de nomear o preset (um só pincel é a escolha do artista).
+**O gate que estava verde:** os testes da ponte trocavam de gaveta pelo pedido do painel e mediam o activo, nunca o
+pincel depois de uma VOLTA por outra gaveta. Teste `o_menu_nomeia_o_pincel_que_esta_na_mao` (9 voltas, compara o preview
+ao pixel; sangra por mutação). **Lição:** duas tabelas com chaves diferentes (gaveta × slot) sobre o mesmo estado mentem
+onde as chaves não coincidem — o portão compara o que o rótulo nomeia com o que o estado É, depois de cada caminho.
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

@@ -62,6 +62,8 @@ struct Presets {
     gaveta: Option<Gaveta>,
     vista: Arc<VistaPresets>,
     seletor: Seletor,
+    /// Que gaveta pôs o preset em cada slot do pincel (Bug #83: [`espelho`]).
+    pincel: espelho::DonoDoPincel,
 }
 
 thread_local! {
@@ -101,6 +103,7 @@ impl Presets {
             gaveta: painter.gaveta_de_presets(),
             vista: Arc::default(),
             seletor: Seletor::default(),
+            pincel: espelho::DonoDoPincel::default(),
         };
         p.dizer_ilegiveis(toasts);
         p.abrir_meio(painter, toasts);
@@ -233,6 +236,9 @@ impl Presets {
             }
         }
         self.usar(painter, rel);
+        if let Some(g) = painter.gaveta_de_presets() {
+            self.pincel.pos(painter, g);
+        }
     }
 
     /// Antes de deixar o preset aplicado: guarda o que a política manda.
@@ -429,26 +435,35 @@ pub(crate) fn drive(painter: &mut PainterTool, toasts: &mut ToastQueue) {
     PRESETS.with(|c| {
         let mut c = c.borrow_mut();
         let p = c.get_or_insert_with(|| Presets::abrir(painter, toasts));
-        let mut mudou = false;
-        if let Some(pedido) = painter.take_wet_preset_request() {
-            p.atender(painter, pedido, toasts);
-            mudou = true;
-        }
-        if painter.gaveta_de_presets() != p.gaveta {
-            p.abrir_meio(painter, toasts);
-            p.gaveta = painter.gaveta_de_presets();
-            p.gravar_estado(toasts);
-            p.publicar();
-            mudou = true;
-        }
-        if mudou {
-            p.lembrar_a_mao_do_ativo(painter);
-        }
+        p.quadro(painter, toasts);
         set_current_wet_presets(Some(p.vista.clone()));
     });
 }
 
 impl Presets {
+    /// Um quadro da ponte: o pedido do painel, depois a gaveta que mudou.
+    fn quadro(&mut self, painter: &mut PainterTool, toasts: &mut ToastQueue) {
+        let mut mudou = false;
+        self.seguir_o_sync(painter);
+        if let Some(pedido) = painter.take_wet_preset_request() {
+            self.atender(painter, pedido, toasts);
+            mudou = true;
+        }
+        if painter.gaveta_de_presets() != self.gaveta {
+            self.deixar_a_gaveta(painter, self.gaveta);
+            self.abrir_meio(painter, toasts);
+            self.conferir_o_pincel(painter, toasts);
+            self.gaveta = painter.gaveta_de_presets();
+            self.gravar_estado(toasts);
+            self.publicar();
+            mudou = true;
+        }
+        if mudou {
+            self.lembrar_a_mao_do_ativo(painter);
+        }
+        self.ver_o_slot(painter);
+    }
+
     /// **A mão do preset activo vai para o tool** — o alvo do «Reset to brush preset» do cartão Pen. Aplicar já a
     /// lembra; isto cobre o activo que muda SEM ser aplicado (gravado por cima, apagado, outra gaveta).
     fn lembrar_a_mao_do_ativo(&self, painter: &mut PainterTool) {
@@ -463,6 +478,11 @@ mod biblioteca;
 #[cfg(test)]
 #[path = "painter_bridge_presets_biblioteca_tests.rs"]
 mod biblioteca_tests;
+#[path = "painter_bridge_presets_espelho.rs"]
+mod espelho;
+#[cfg(test)]
+#[path = "painter_bridge_presets_espelho_tests.rs"]
+mod espelho_tests;
 #[cfg(test)]
 #[path = "painter_bridge_presets_foto_tests.rs"]
 mod foto_tests;

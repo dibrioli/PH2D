@@ -27,7 +27,7 @@ use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_tool_registry::hash_node_id;
 use ph2d_vector::VectorScene;
 
-const POPOVER_ID: NodeId = hash_node_id("code_context_menu_popover");
+const CONTEXT_MENU_POPOVER_ID: NodeId = hash_node_id("code_context_menu_popover");
 const DIVIDER_ID: NodeId = hash_node_id("code_context_menu_divider");
 
 /// O que uma linha do menu faz.
@@ -147,7 +147,7 @@ impl ContextMenu {
             y = (y - h).max(area.y);
         }
         let popup = Rect::new(x, y, w, h);
-        paint_popover(&Popover::new(POPOVER_ID), popup, scene, *theme);
+        paint_popover(&Popover::new(CONTEXT_MENU_POPOVER_ID), popup, scene, *theme);
         push_popover_clip(popup, scene);
         self.rows.clear();
         self.painted.rows.clear();

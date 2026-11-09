@@ -19,7 +19,7 @@ use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_tool_registry::hash_node_id;
 use ph2d_vector::VectorScene;
 
-const POPOVER_ID: NodeId = hash_node_id("code_tab_menu_popover");
+const TAB_MENU_POPOVER_ID: NodeId = hash_node_id("code_tab_menu_popover");
 
 /// O que a barra pintou no último quadro (o rato e os testes lêem-no).
 #[derive(Clone, Debug, Default)]
@@ -234,7 +234,7 @@ impl Bar {
         let rh = height();
         let n = rows.len() + usize::from(hint.is_some());
         let popup = Rect::new(title.x, title.y + title.h, w, rh * n as f32 + pad);
-        paint_popover(&Popover::new(POPOVER_ID), popup, scene, *theme);
+        paint_popover(&Popover::new(TAB_MENU_POPOVER_ID), popup, scene, *theme);
         push_popover_clip(popup, scene);
         let mut y = popup.y + pad * 0.5;
         for (id, name, keys) in rows {
@@ -301,7 +301,7 @@ impl Bar {
         let w = width_of(ts, msg) + Spacing::Sm.px() * 2.0;
         let x = r.x.min(r.x + r.w - w);
         let rect = Rect::new(x, r.y + r.h, w, height());
-        let tip = ph2d_editor_core::widget::Tooltip::new(POPOVER_ID, msg.clone());
+        let tip = ph2d_editor_core::widget::Tooltip::new(TAB_MENU_POPOVER_ID, msg.clone());
         ph2d_editor_core::widget::paint_tooltip(&tip, rect, scene, ts, *theme);
     }
 

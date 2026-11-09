@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-pixel-rampa"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# P13 (`docs/PixelArt/P13_plano.md` §4): a conta de cor das rampas do Pixel Art, em OKLab/OKLCH.
+# O núcleo (`ph2d-pixel-core`) guarda as rampas como DADO e não tem dependências (ADR-0196); toda a
+# matemática de cor vem da `ph2d-color` (uma verdade de OKLab).
+[dependencies]
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+ph2d-color = { path = "../ph2d-color" }
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints]
+workspace = true

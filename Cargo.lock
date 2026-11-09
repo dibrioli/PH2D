@@ -10960,6 +10960,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-pixel-rampa"
+version = "0.0.0"
+dependencies = [
+ "ph2d-color",
+ "ph2d-pixel-core",
+ "serde_json",
+]
+
+[[package]]
 name = "ph2d-pixel-render"
 version = "0.0.0"
 dependencies = [

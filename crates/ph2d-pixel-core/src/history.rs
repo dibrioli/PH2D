@@ -64,6 +64,7 @@ impl Label {
             Op::Slices(_) => "pixel.history.slices",
             Op::PivotSlice(_) => "pixel.history.pivot",
             Op::LayerNormal { .. } => "pixel.history.layer_normal",
+            Op::Doc(_) => "pixel.history.palette_data",
             Op::UserData { .. } => "pixel.history.user_data",
             Op::Batch(_) => "pixel.history.transform",
         })

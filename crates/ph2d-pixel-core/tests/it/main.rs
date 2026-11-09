@@ -31,6 +31,7 @@ mod normal_map;
 mod normal_map_fusao;
 mod play_oracle;
 mod pure_core;
+mod rampas;
 mod rotation_oracle;
 mod selection_laws;
 mod selection_oracle;

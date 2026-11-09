@@ -10,6 +10,8 @@
 //!            · 13 Slice* (`codec/slices.rs`)                                         [1.5]
 //!            · 14 UserData · 15 Prefs (`codec/user.rs`)                              [1.6]
 //!            · 16 slice do pivô (id; sem = o centro)                                 [1.7]
+//!            · 17 Ramp* · 18 Cycle* · 19 Guias · 20 Audio* (`codec/doc.rs`)           [1.9]
+//!            Layer 9 = Efeito* (`codec/doc.rs`)                                      [1.9]
 //!            Layer 8 · Cel 12 · Tag 7 · Tileset 8 = UserData; sem = o de omissão     [1.6]
 //! Layer    : 1 id · 2 nome (utf8) · 3 bandeiras (bit0 visível, bit1 background, bit2 trancada,
 //!            bit3 referência, bit4 grupo, bit5 grupo recolhido, bit6 continuous [1.2]) · 4 opacidade (sem = 255)
@@ -35,7 +37,7 @@ use crate::tiles::{Terrain, Tileset, TilesetId};
 
 pub const MAGIC: &[u8; 9] = b"PH2DPIXEL";
 pub const MAJOR: u16 = 1;
-pub const MINOR: u16 = 8;
+pub const MINOR: u16 = 9;
 
 /// Ficheiro recusado; nunca um documento meio lido.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -188,6 +190,7 @@ fn sprite_record_with(s: &Sprite, pixels: bool) -> Vec<u8> {
             put_uint(&mut b, 7, u64::from(t.0));
         }
         user::put_user(&mut b, 8, &l.user);
+        doc::put_effects(&mut b, &l.efeitos);
         b.push(0);
         put_field(&mut r, 6, &b);
     }
@@ -283,6 +286,7 @@ fn sprite_record_with(s: &Sprite, pixels: bool) -> Vec<u8> {
     if let Some(p) = user::prefs_record(&s.prefs) {
         put_field(&mut r, 15, &p);
     }
+    doc::put_sprite(&mut r, s);
     r.push(0);
     r
 }
@@ -307,6 +311,9 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
         export_preset: None,
         user: crate::user::UserData::default(),
         prefs: crate::prefs::PixelPrefs::default(),
+        ramps: crate::ramp::PaletteRamps::default(),
+        guias: crate::guia::Guias::default(),
+        audio: Vec::new(),
     };
     let mut raw_cels = Vec::new();
     for (tag, b) in Fields::new(bytes)? {
@@ -367,6 +374,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                             };
                         }
                         8 => l.user = user::read_user(v)?,
+                        9 => l.efeitos.push(doc::read_effect(v)?),
                         _ => {}
                     }
                 }
@@ -458,6 +466,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
             14 => s.user = user::read_user(b)?,
             15 => s.prefs = user::read_prefs(b)?,
             16 => s.pivot_slice = Some(crate::slice::SliceId(u32_of(b, "sprite.pivot_slice")?)),
+            17..=20 => _ = doc::read_sprite_field(&mut s, tag, b)?,
             12 => {
                 let mut t = Tileset::new(TilesetId(0), "", 0, 0, Vec::new());
                 for (tag, v) in Fields::new(b)? {
@@ -576,6 +585,9 @@ impl Sprite {
             export_preset: None,
             user: p.user,
             prefs: crate::prefs::PixelPrefs::default(),
+            ramps: crate::ramp::PaletteRamps::default(),
+            guias: crate::guia::Guias::default(),
+            audio: Vec::new(),
         };
         validate(&mut s, p.cels)?;
         Ok(s)
@@ -608,6 +620,7 @@ fn validate(s: &mut Sprite, raw_cels: Vec<((LayerId, FrameId), Cel)>) -> Result<
     if s.pivot_slice.is_some_and(|id| s.slice(id).is_none()) {
         return Err(CodecError::Invalid("sprite.pivot_slice"));
     }
+    crate::ramp::check_ramps(&s.ramps, s.palette.len(), s.next_id).map_err(CodecError::Invalid)?;
     let all: Vec<_> = raw_cels.into_iter().map(|(k, c)| (k, Some(c))).collect();
     crate::op::check_cels(s, &s.layers, &s.frames, &all, true, s.mode.bpp())
         .map_err(|_| CodecError::Invalid("cel"))?;
@@ -643,6 +656,7 @@ fn split_tilesets(s: &mut Sprite) -> Result<(), CodecError> {
 }
 
 mod cache;
+mod doc;
 mod grade;
 pub use cache::{Entries, EntryCache};
 mod slices;

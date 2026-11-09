@@ -48,6 +48,8 @@ pub enum Op {
     PivotSlice(Option<crate::slice::SliceId>),
     /// P14 (`SetLayerNormal`): a camada é Normal Map ou não. O inverso é o valor de antes.
     LayerNormal { layer: LayerId, normal: bool },
+    /// P13: rampas, ciclos, guias, som e efeitos de camada ([`DocOp`]).
+    Doc(Box<DocOp>),
     /// O user data de um dono (P12). O inverso é o de antes.
     UserData {
         owner: crate::user::Owner,
@@ -60,6 +62,8 @@ pub enum Op {
 
 mod camadas;
 pub(crate) use camadas::check_layers;
+mod doc;
+pub use doc::DocOp;
 
 fn user_slot(
     s: &mut Sprite,
@@ -189,6 +193,8 @@ pub enum OpError {
     BadTiles(&'static str),
     /// As leis das slices (a etiqueta diz qual).
     BadSlices(&'static str),
+    /// As leis das rampas e dos ciclos (P13).
+    BadRamps(&'static str),
     /// Pintar píxeis direto numa camada de tilemap: o traço passa por [`Op::Tiles`].
     TilemapLayer(LayerId),
 }
@@ -235,6 +241,7 @@ impl Op {
                     + std::mem::size_of::<CanvasSet>()
             }
             Op::Tiles(t) => t.bytes(),
+            Op::Doc(d) => d.bytes(),
             Op::Slices(v) => slices_bytes(v),
             Op::PivotSlice(_) | Op::LayerNormal { .. } => std::mem::size_of::<Op>(),
             Op::UserData { data, .. } => {
@@ -282,6 +289,7 @@ pub fn apply(sprite: &mut Sprite, op: Op) -> Result<Op, OpError> {
             if colors.is_empty()
                 || colors.len() > MAX_COLORS
                 || usize::from(transparent) >= colors.len()
+                || crate::ramp::check_ramps(&sprite.ramps, colors.len(), sprite.next_id).is_err()
             {
                 return Err(OpError::BadPalette);
             }
@@ -292,8 +300,11 @@ pub fn apply(sprite: &mut Sprite, op: Op) -> Result<Op, OpError> {
                 transparent,
             })
         }
-        Op::Remap { perm } => apply_remap(sprite, &perm).map(|()| Op::Remap {
-            perm: invert_permutation(&perm),
+        Op::Remap { perm } => apply_remap(sprite, &perm).map(|()| {
+            crate::ramp::remap(&mut sprite.ramps, &perm);
+            Op::Remap {
+                perm: invert_permutation(&perm),
+            }
         }),
         Op::Whole(w) => apply_whole(sprite, *w).map(|w| Op::Whole(Box::new(w))),
         Op::Layers(l) => apply_layers(sprite, *l).map(|l| Op::Layers(Box::new(l))),
@@ -322,6 +333,7 @@ pub fn apply(sprite: &mut Sprite, op: Op) -> Result<Op, OpError> {
             )))
         }
         Op::LayerNormal { layer, normal } => camadas::apply_normal(sprite, layer, normal),
+        Op::Doc(d) => doc::apply_doc(sprite, *d),
         Op::UserData { owner, data } => {
             let slot = user_slot(sprite, owner)?;
             let before = std::mem::replace(slot, *data);
@@ -588,6 +600,7 @@ fn apply_whole(s: &mut Sprite, w: Whole) -> Result<Whole, OpError> {
     if w.palette.is_empty()
         || w.palette.len() > MAX_COLORS
         || usize::from(w.transparent) >= w.palette.len()
+        || crate::ramp::check_ramps(&s.ramps, w.palette.len(), s.next_id).is_err()
     {
         return Err(OpError::BadPalette);
     }

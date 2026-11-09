@@ -8,6 +8,7 @@
 //! formato gravado ([`codec`]) é byte-determinístico.
 
 pub mod affine;
+pub mod audio;
 pub mod blend;
 pub mod brush;
 pub mod canvas;
@@ -15,14 +16,17 @@ pub mod codec;
 pub mod color;
 mod compose;
 pub mod convert;
+pub mod cycle;
 pub mod dither;
 pub mod dynamics;
 pub mod edit;
+pub mod efeito;
 pub mod fill;
 pub mod filter;
 pub mod forma;
 pub mod frames;
 pub mod gradient;
+pub mod guia;
 mod history;
 pub mod ink;
 pub mod layers;
@@ -31,6 +35,7 @@ pub mod palette;
 pub mod pattern;
 pub mod play;
 pub mod prefs;
+pub mod ramp;
 pub mod raster;
 mod rect;
 pub mod selection;
@@ -42,16 +47,21 @@ pub mod tiles;
 pub mod transform;
 pub mod user;
 
+pub use audio::FaixaDeAudio;
 pub use codec::{CodecError, MAJOR, MINOR};
 pub use compose::{
     Ghost, NORMAL_FLAT, Onion, Purpose, Sample, compose_normal, compose_picked, compose_region,
     compose_rgba, compose_window, compose_with_onion, compose_with_onion_of, ghosts, onion_tint,
     pick,
 };
+pub use cycle::{Cycle, CycleDirection, ciclo_em};
+pub use efeito::{EfeitoDeCamada, OutlineParams};
 pub use forma::Forma;
+pub use guia::{Guias, Iso2x1};
 pub use history::{DEFAULT_CAP_BYTES, History, Label, PrettySize, StepState, Touched};
-pub use op::{CanvasSet, FrameSet, LayerSet, MaskSet, Op, OpError, Patch, Whole, apply};
+pub use op::{CanvasSet, DocOp, FrameSet, LayerSet, MaskSet, Op, OpError, Patch, Whole, apply};
 pub use prefs::{Checker, Grid, PixelGrid, PixelPrefs};
+pub use ramp::{PaletteRamps, Ramp, RampId, rampa_de};
 pub use slice::{DEFAULT_SLICE_COLOR, Slice, SliceId, SliceKey, SliceShape};
 pub use sprite::{
     Background, Cel, CelKey, ColorMode, DEFAULT_FRAME_MS, Direction, ExportPreset, Frame, FrameId,

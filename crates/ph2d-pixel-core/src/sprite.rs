@@ -124,6 +124,7 @@ pub struct Layer {
     pub parent: Option<LayerId>,
     /// P12: o user data (Layer Properties).
     pub user: crate::user::UserData,
+    pub efeitos: Vec<crate::efeito::EfeitoDeCamada>,
 }
 
 impl Layer {
@@ -144,6 +145,7 @@ impl Layer {
             kind: LayerKind::Image,
             parent: None,
             user: crate::user::UserData::default(),
+            efeitos: Vec::new(),
         }
     }
 
@@ -318,6 +320,9 @@ pub struct Sprite {
     pub(crate) user: crate::user::UserData,
     /// P12: grade, grade de píxel, xadrez e onion DESTE documento.
     pub(crate) prefs: crate::prefs::PixelPrefs,
+    pub(crate) ramps: crate::ramp::PaletteRamps,
+    pub(crate) guias: crate::guia::Guias,
+    pub(crate) audio: Vec<crate::audio::FaixaDeAudio>,
 }
 
 /// O último export deste sprite: o caminho e as opções em texto (quem as lê é `ph2d-pixel-io`).
@@ -374,6 +379,9 @@ impl Sprite {
             export_preset: None,
             user: crate::user::UserData::default(),
             prefs: crate::prefs::PixelPrefs::default(),
+            ramps: crate::ramp::PaletteRamps::default(),
+            guias: crate::guia::Guias::default(),
+            audio: Vec::new(),
         };
         let opaque = background != Background::Transparent;
         let layer = s.alloc_id();

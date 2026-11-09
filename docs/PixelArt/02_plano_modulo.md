@@ -57,16 +57,19 @@ o 1.º passo de cada onda é extraí-los para JSON lido pelos dois lados. É o o
 
 | Oráculo | Licença | Serve para | Limite |
 |---|---|---|---|
-| **Aseprite Trial 1.3.18.6** | EULA | **observar** comportamento, menus, diálogos, atalhos (Xvfb + fotos) | ⛔ não salva, não exporta, sem `--script` (medido) |
-| **Aseprite licenciado** (US$ 19,99) | EULA | `-b` CLI: folha+JSON, GIF, conversão de modo com dither, `--scale`; **`.ase` escritos pelo próprio Aseprite como fixturas** | ⚠️ **decisão do dono** (compra) |
+| **Aseprite Trial 1.3.18.6** | EULA | **comparar na tela**: comportamento, menus, diálogos, atalhos (Xvfb + fotos) | ⛔ não salva, não exporta, sem `--script` (medido) — nunca oráculo que se corre |
+| ~~Aseprite licenciado~~ | EULA | — | ⛔ **dono 09/11: não se compra.** Não propor de novo |
 | Vetores de teste do MVP | nosso | kernels, paleta, dither, transform, tiles | só o que o MVP tem |
-| LibreSprite 1.3 (instalado) | GPL | correr por CLI, comparar saída do comportamento herdado de 2016 | ⛔ só correr, nunca ler |
-| Pixelorama 1.2.3 (instalado) | MIT | tilemaps iso/hex, keyframes de efeito, export | — |
-| Pillow / ffmpeg / FreeType | livres | GIF/APNG/PNG/fontes (já usados no MVP) | — |
+| LibreSprite 1.3 (pacman, GPL-2.0-only) | GPL | correr por CLI, comparar saída do comportamento herdado de 2016 (lê/escreve `.ase`) | ⛔ só correr, nunca ler |
+| Pixelorama (`~/.local/opt/pixelorama`) | MIT | tilemaps iso/hex, tags, keyframes de efeito, export | — |
+| GIMP 3.2.6 (pacman, GPL-3.0-or-later) | GPL | correr por `gimp -i` em lote: conversão indexada com dither, escala, `.gpl` | ⛔ só correr, nunca ler |
+| ImageMagick 7.1.2 (pacman, licença ImageMagick) | permissiva | `magick`: escala, quantização, dither ordenado, montagem de folha, GIF | — |
+| Godot 4.7.2 (pacman, MIT) | MIT | importar a nossa folha+JSON / `SpriteFrames` e fotografar o resultado (P14) | — |
+| Pillow 13 / ffmpeg / FreeType | livres | GIF/APNG/PNG/fontes (já usados no MVP) | — |
 
-⚠️ **Sem a licença, a escrita de `.ase` (P9) só se verifica pela spec e pela leitura de volta no
-Trial** (abrir o nosso ficheiro no Trial e fotografar) — mais fraco que comparar byte a byte com
-um `.ase` escrito pelo Aseprite.
+**Dono 09/11 (§7):** o oráculo que se **corre** é sempre um app gratuito desta tabela (triagem de
+licença por artefacto, CLAUDE §0.9); o Trial do Aseprite só para comparar o que se vê. A escrita de
+`.ase` (P9) verifica-se pela spec, pela leitura de volta no LibreSprite (corrida) e no Trial (foto).
 
 ## §4 — O que se reusa da casa (sem Painter)
 
@@ -105,7 +108,7 @@ por uso, seletores Tint/Shade/Tone, espectro, rodas RGB/RYB e **roda de normal m
 Load/Save (`.gpl .pal .hex .act`, `.ase`), New Palette from Sprite, **Replace Color**, **Color Mode**
 RGB↔Gray↔Indexed com dither (none/Bayer 2/4/8/matriz). **Inks:** Simple, Alpha Compositing, Copy
 Alpha+Color, Lock Alpha, **Shading** (rampa = cores selecionadas). **Gates:** reordenar paleta ⇒
-RGBA byte-igual; conversão com dither contra o oráculo (licença) ou o golden do MVP. **Smoke 3.**
+RGBA byte-igual; conversão com dither contra o golden do MVP ou um oráculo gratuito (GIMP/ImageMagick, §3). **Smoke 3.**
 
 ### P3 — Camadas (estudo §3)
 Background, normal, **grupo** (colapsar, blend e opacidade de grupo), **referência** (e *from file*),
@@ -135,8 +138,8 @@ Frame Rate, Reverse Frames. **Gates:** cel linkado editado muda todos; playback 
 ### P5 — Tags e playback avançado (estudo §3 Tags)
 Tags com nome/cor/intervalo, direção **Forward/Reverse/Ping-pong/Ping-pong Reverse**, **repeat**,
 subtags e grupos de tags, Play Subtags & Repetitions, Jump to First/Last in Tag, Set Loop Section.
-**Gates:** a sequência de frames tocada por tag = tabela-fixtura (do oráculo com licença:
-`--play-subtags` + `--data`). **Smoke 6.**
+**Gates:** a sequência de frames tocada por tag = tabela-fixtura (medida na tela do Trial e, onde
+houver, corrida no Pixelorama — sem licença, dono 09/11). **Smoke 6.**
 
 ### P6 — Seleção e transformação (estudo §1 Edit/Select, §2 grupo 1)
 Marquee retangular/elíptico, Lasso, Polygonal Lasso, **Magic Wand**; modos replace/add/sub/

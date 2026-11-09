@@ -493,8 +493,9 @@ pub fn stamp_dab_ramped(
 
 #[allow(clippy::too_many_arguments)]
 #[must_use]
-fn stamp_dab_inner(
+fn stamp_dab_inner_com(
     buf: &mut [u8],
+    liso: Option<&mut [u8]>,
     width: u32,
     height: u32,
     center: [f32; 2],
@@ -525,10 +526,10 @@ fn stamp_dab_inner(
     min_area: usize,
     // The dab-capsule (Continuous Spacing, [`crate::capsula`]); `None` ⇒ the plain dab, unchanged.
     capsula: Option<crate::capsula::Capsula>,
-) -> Option<DirtyRect> {
+) -> (Option<DirtyRect>, Option<DirtyRect>) {
     // Contract guard (sweep 2026-07-12): was `debug_assert!`, i.e. absent from the build the artist runs.
     if buf.len() < (width as usize) * (height as usize) * 4 {
-        return None;
+        return (None, None);
     }
     // Per-dab opacity = the dab's coverage (which already carries the Strength, ONCE —
     // `stroke/dab_build.rs`) × the brush's Flow (per-dab build-up). With `mask` set this is the
@@ -539,7 +540,7 @@ fn stamp_dab_inner(
     let flow = spec.flow.clamp(0.0, 1.0);
     let coverage = tecto * flow;
     if coverage <= 0.0 || width == 0 || height == 0 {
-        return None;
+        return (None, None);
     }
     let radius = spec.clamped_radius();
     let (cx, cy) = (center[0], center[1]);
@@ -598,7 +599,7 @@ fn stamp_dab_inner(
     let x1 = ((cx + hi[0] + reach_x).ceil() as i64 + 1).min(width as i64);
     let y1 = ((cy + hi[1] + reach_y).ceil() as i64 + 1).min(height as i64);
     if x0 >= x1 || y0 >= y1 {
-        return None;
+        return (None, None);
     }
 
     let stride = (width as usize) * 4;
@@ -648,8 +649,9 @@ fn stamp_dab_inner(
     // `strength < 1`, e o **AA do filme** do impasto (`film_aa_wanted`) passou a ligá-lo para TODO
     // pincel de impasto — inclusive os maiores do app, que são justamente os que cruzam o piso.
     // Medido: com o dab ABAIXO do piso o cap custa 0,99× (grátis); ACIMA dele, 4,15×.
-    let touched = parallel_band_stamp_masked(
+    let (touched, liso_tocou) = liso::parallel_band_stamp_com_liso(
         buf,
+        liso,
         mask,
         forca,
         y0,
@@ -658,28 +660,28 @@ fn stamp_dab_inner(
         x1,
         stride,
         min_area,
-        |dst, mband, fband, band_y0| stamp_band(&ctx, dst, mband, fband, band_y0),
+        |dst, lband, mband, fband, band_y0| stamp_band(&ctx, dst, lband, mband, fband, band_y0),
     );
 
-    if !touched {
-        return None;
-    }
-    Some(DirtyRect {
+    let caixa = DirtyRect {
         x: x0 as u32,
         y: y0 as u32,
         w: (x1 - x0) as u32,
         h: (y1 - y0) as u32,
-    })
+    };
+    (touched.then_some(caixa), liso_tocou.then_some(caixa))
 }
 
 mod bands;
 mod cor_capsula;
-
+mod liso;
 pub(crate) use bands::parallel_band_stamp_masked;
 use bands::{DabCtx, stamp_band};
 pub use bands::{PARALLEL_MIN_AREA, band_count};
 pub(crate) use bands::{encode, ramp_sample, stamp_rgba};
 pub(crate) use bands::{parallel_band_cached, parallel_band_stamp};
+use liso::stamp_dab_inner;
+pub use liso::stamp_dab_textured_masked_po_com_liso;
 
 #[cfg(test)]
 mod tests;

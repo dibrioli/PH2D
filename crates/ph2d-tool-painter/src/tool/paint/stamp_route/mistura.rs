@@ -406,6 +406,8 @@ impl PainterTool {
             if salta {
                 continue;
             }
+            // Só o Grain (sem Shape, sem rampa, sem camadas): a pegada lisa sai na MESMA visita do kernel.
+            let mut liso_junto = None;
             let r = if pixel {
                 // A ponta de píxel: a pegada binária na grelha (a textura não a carimba; a rampa pela queda sim).
                 let d1 = Dab {
@@ -517,6 +519,24 @@ impl PainterTool {
                     d.capsula(&branco),
                     po,
                 )
+            } else if shape_in.is_none() && basis.is_some() {
+                let (r, r2) = ph2d_painter_brush::stamp_dab_textured_masked_po_com_liso(
+                    &mut mascara,
+                    &mut liso,
+                    w,
+                    h,
+                    d.center,
+                    &branco,
+                    1.0,
+                    false,
+                    basis.as_ref(),
+                    image.as_ref(),
+                    spec.dab_rotor(d),
+                    d.capsula(&branco),
+                    po,
+                );
+                liso_junto = Some(r2);
+                r
             } else {
                 ph2d_painter_brush::stamp_dab_textured_masked_po(
                     &mut mascara,
@@ -537,14 +557,22 @@ impl PainterTool {
                 )
             };
             let Some(r) = r else {
+                // O grão comeu o dab inteiro e a pegada lisa já saiu: ela volta a ser vazia.
+                if let Some(Some(r2)) = liso_junto {
+                    for y in r2.y..r2.y + r2.h {
+                        let a = ((y * w + r2.x) * 4) as usize;
+                        liso[a..a + (r2.w * 4) as usize].fill(0);
+                    }
+                }
                 continue;
             };
             let mut caixa = (r.x, r.y, r.x + r.w, r.y + r.h);
             // Com o Grain ou a Shape, a mesma pegada sem eles (o grão e a silhueta vão ao tecto, como no Off —
             // `Pegada::Mascara::sem_grao`; na taxa as cerdas saíam ralas e translúcidas, lote A 08/11).
             let com_grao = !pixel && (basis.is_some() || shape_in.is_some());
-            if com_grao
-                && let Some(r2) = ph2d_painter_brush::stamp_dab_textured_masked(
+            let r2 = match liso_junto {
+                Some(r2) => r2,
+                None if com_grao => ph2d_painter_brush::stamp_dab_textured_masked(
                     &mut liso,
                     w,
                     h,
@@ -563,8 +591,10 @@ impl PainterTool {
                     None,
                     spec.dab_rotor(d),
                     d.capsula(&branco),
-                )
-            {
+                ),
+                None => None,
+            };
+            if let Some(r2) = r2 {
                 caixa = (
                     caixa.0.min(r2.x),
                     caixa.1.min(r2.y),

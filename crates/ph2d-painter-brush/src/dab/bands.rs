@@ -144,14 +144,16 @@ where
         buf,
         None,
         None,
+        None,
         y0,
         y1,
         x0,
         x1,
         stride,
         PARALLEL_MIN_AREA,
-        |dst, _m, _f, by0| stamp(dst, by0),
+        |dst, _l, _m, _f, by0| (stamp(dst, by0), false),
     )
+    .0
 }
 
 /// [`parallel_band_stamp`] carregando a **máscara por-traço** (o cap de Accumulate) fatiada nas MESMAS
@@ -193,13 +195,27 @@ pub(crate) fn parallel_band_stamp_masked<F>(
 where
     F: Fn(&mut [u8], Option<&mut [u8]>, Option<&mut [u16]>, i64) -> bool + Sync,
 {
-    band_split(buf, mask, forca, y0, y1, x0, x1, stride, min_area, stamp)
+    band_split(
+        buf,
+        None,
+        mask,
+        forca,
+        y0,
+        y1,
+        x0,
+        x1,
+        stride,
+        min_area,
+        |dst, _l, m, f, by0| (stamp(dst, m, f, by0), false),
+    )
+    .0
 }
 
 /// A divisão por linhas — **uma** resposta a *"vale dividir, e onde cada banda começa?"*.
 #[allow(clippy::too_many_arguments)]
-fn band_split<F>(
+pub(super) fn band_split<F>(
     buf: &mut [u8],
+    liso: Option<&mut [u8]>,
     mask: Option<&mut [u8]>,
     forca: Option<&mut [u16]>,
     y0: i64,
@@ -209,39 +225,51 @@ fn band_split<F>(
     stride: usize,
     min_area: usize,
     stamp: F,
-) -> bool
+) -> (bool, bool)
 where
-    F: Fn(&mut [u8], Option<&mut [u8]>, Option<&mut [u16]>, i64) -> bool + Sync,
+    F: Fn(&mut [u8], Option<&mut [u8]>, Option<&mut [u8]>, Option<&mut [u16]>, i64) -> (bool, bool)
+        + Sync,
 {
     let mrow = stride / 4;
     let region = &mut buf[(y0 as usize) * stride..(y1 as usize) * stride];
+    let liso_region = liso.map(|l| &mut l[(y0 as usize) * stride..(y1 as usize) * stride]);
     let mask_region = mask.map(|m| &mut m[(y0 as usize) * mrow..(y1 as usize) * mrow]);
     let forca_region = forca.map(|f| &mut f[(y0 as usize) * mrow..(y1 as usize) * mrow]);
     let rows = (y1 - y0) as usize;
     let area = rows * ((x1 - x0).max(0) as usize);
     let threads = faixas_no_pool(area, rows, min_area);
     if threads <= 1 {
-        return stamp(region, mask_region, forca_region, y0);
+        return stamp(region, liso_region, mask_region, forca_region, y0);
     }
     let rows_per_band = rows.div_ceil(threads);
     // As duas fatias saem da MESMA contagem de linhas; um `zip` as manteria alinhadas só enquanto os
     // dois iteradores tivessem o mesmo comprimento, e é justamente isso que um erro de stride quebra.
     let mut mask_bands = mask_region.map(|m| m.chunks_mut(rows_per_band * mrow));
     let mut forca_bands = forca_region.map(|f| f.chunks_mut(rows_per_band * mrow));
+    let mut liso_bands = liso_region.map(|l| l.chunks_mut(rows_per_band * stride));
     let bands: Vec<_> = region
         .chunks_mut(rows_per_band * stride)
         .enumerate()
         .map(|(bi, chunk)| {
+            let lchunk = liso_bands.as_mut().and_then(Iterator::next);
             let mchunk = mask_bands.as_mut().and_then(Iterator::next);
             let fchunk = forca_bands.as_mut().and_then(Iterator::next);
-            (chunk, mchunk, fchunk, y0 + (bi * rows_per_band) as i64)
+            (
+                chunk,
+                lchunk,
+                mchunk,
+                fchunk,
+                y0 + (bi * rows_per_band) as i64,
+            )
         })
         .collect();
     // Todas as faixas correm (`map` + `reduce`, sem curto-circuito).
     bands
         .into_par_iter()
-        .map(|(chunk, mchunk, fchunk, band_y0)| stamp(chunk, mchunk, fchunk, band_y0))
-        .reduce(|| false, |a, b| a | b)
+        .map(|(chunk, lchunk, mchunk, fchunk, band_y0)| {
+            stamp(chunk, lchunk, mchunk, fchunk, band_y0)
+        })
+        .reduce(|| (false, false), |a, b| (a.0 | b.0, a.1 | b.1))
 }
 
 /// Like [`parallel_band_stamp`] but splits THREE row-aligned buffers across the bands: the RGBA
@@ -341,15 +369,22 @@ pub(super) struct DabCtx<'a> {
 /// Stamp the dab's pixels for the full-width row band `dst` whose first row is `band_y0` (so global
 /// row `py` lives at local offset `(py - band_y0) * stride`). Returns whether any pixel was written.
 /// Pure over disjoint bands — no shared mutable state — so bands run in parallel deterministically.
+///
+/// `liso` (o mesmo `stride` do `dst`): a pegada SEM o grão, escrita da silhueta `w` antes do Grain, do dente e do
+/// stencil — ao bit o que o MESMO kernel escreveria com a textura desligada e sem dente (cobertura `w·coverage`,
+/// cor do pincel, o blend dele). Só sem `mask`/`forca`/rampa/Shape ([`crate::stamp_dab_textured_masked_po_com_liso`]).
+/// Devolve `(tocou o dst, tocou o liso)`.
 pub(super) fn stamp_band(
     ctx: &DabCtx,
     dst: &mut [u8],
+    mut liso: Option<&mut [u8]>,
     mut mask: Option<&mut [u8]>,
     mut forca: Option<&mut [u16]>,
     band_y0: i64,
-) -> bool {
+) -> (bool, bool) {
     let blend = ctx.spec.blend;
     let mut touched = false;
+    let mut liso_tocou = false;
     for r in 0..dst.len() / ctx.stride {
         let py = band_y0 + r as i64;
         let dy = (py as f32 + 0.5) - ctx.cy;
@@ -461,6 +496,9 @@ pub(super) fn stamp_band(
             // modulates where the dab paints, so sampling it there is pure waste (large Anchored).
             if w <= 0.0 {
                 continue;
+            }
+            if let Some(l) = liso.as_deref_mut() {
+                liso_tocou |= super::liso::escreve(ctx, l, row + (px as usize) * 4, w, blend);
             }
             // `w` = dab PROFILE (falloff × silhouette, the build factor); `g` = texture COVERAGE factor
             // (Grain / Strength-ramp) kept SEPARATE so it CAPS the pixel — a 0.3 grain texel tops at
@@ -608,7 +646,7 @@ pub(super) fn stamp_band(
             touched = true;
         }
     }
-    touched
+    (touched, liso_tocou)
 }
 
 #[inline]

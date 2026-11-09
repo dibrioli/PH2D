@@ -1021,6 +1021,12 @@ pendentes com as mesmas contagens; o Δ da sonda idêntico). Grão 75 → 27 ns 
 0,585 → 0,349 s, 80 px 0,855 → 0,510 s; o `Off` 0,697 → 0,230 s. ⚠️ O gate da razão fica VERMELHO (1,55) porque o `Off`
 ganhou mais: a rota da mistura (~120 ms: a passagem lisa + a película) é agora a maior parte e é o próximo corte.
 
+**Cura 4 (09/11, a pegada lisa na MESMA visita, `stamp_dab_textured_masked_po_com_liso`):** com só o Grain (sem Shape,
+rampa nem camadas) o kernel escreve a pegada sem grão no `liso` da silhueta `w`, antes do grão/dente/stencil — o que a
+segunda passagem escrevia, ao bit (Δ da sonda 0,991/89 787 px e 0,795/60 048 px; as 7 miniaturas pendentes iguais). Produto
+30 px 0,360 → ~0,31 s, 80 px 0,501 → ~0,46 s (load 10–15); gate da razão VERDE de novo. **Aberto:** pegada ~55 % e
+película ~45 % do que resta da rota (sonda de `Instant`); a Shape e a rampa ainda pagam a segunda passagem.
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

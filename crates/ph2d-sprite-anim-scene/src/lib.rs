@@ -19,6 +19,14 @@ pub const PLAYER: &str = "Player";
 pub const DUAS: &str = "Two Sheets";
 /// As MESMAS duas folhas com a `run` escalada pelo Align (GEF 28 A): o boneco tem o mesmo tamanho em todo quadro.
 pub const ALINHADAS: &str = "Aligned Sheets";
+/// As MESMAS duas folhas DESALINHADAS de propósito (GEF 28 D), para o dono alinhar do zero: a `run` 1,5× maior,
+/// deslocada ([`DESLOCA_A_RUN`]) e com dois quadros tortos ([`TORTOS`]).
+pub const DESALINHADAS: &str = "Misaligned Sheets";
+/// O deslocamento da folha `run` em «Misaligned Sheets», em metros locais (6 px para a direita e 10 para cima).
+pub const DESLOCA_A_RUN: [f32; 2] = [0.06, 0.10];
+/// Os quadros tortos da `run` em «Misaligned Sheets»: `(célula, metros)` — o 2.º 3 px para a esquerda, o 3.º 4 px
+/// para cima.
+pub const TORTOS: [(u32, [f32; 2]); 2] = [(1, [-0.03, 0.0]), (2, [0.0, 0.04])];
 /// A `run` foi desenhada 1,5× maior que a `idle` (48 px contra 32 por célula, o boneco 42 contra 28 px de altura):
 /// o Align leva-a a 2/3, e os pés ficam no pivô.
 pub const ESCALA_DA_RUN: f32 = 2.0 / 3.0;
@@ -33,7 +41,7 @@ const ROW_1: u8 = 1;
 const QUADRO_DO_GRITO: u32 = 2;
 
 /// Em fila acima das moedas do chão da esquerda, à direita do Player.
-pub const OBJETOS: [(&str, [f32; 2]); 7] = [
+pub const OBJETOS: [(&str, [f32; 2]); 8] = [
     (VAZIO, [-5.5, 1.8]),
     (FOLHA, [-3.5, 1.8]),
     (OUVE, [-1.5, 1.8]),
@@ -41,6 +49,7 @@ pub const OBJETOS: [(&str, [f32; 2]); 7] = [
     (TROCADA, [-3.5, 4.2]),
     (DUAS, [-1.0, 4.2]),
     (ALINHADAS, [1.5, 4.2]),
+    (DESALINHADAS, [-6.0, 4.2]),
 ];
 /// Onde a vista abre: a fila de objectos e o Player.
 pub const VISTA: ([f32; 2], f32) = ([-3.5, 2.5], 9.0);
@@ -49,7 +58,8 @@ pub const MENSAGEM: &str = "[game-smoke] =5 o Animated Sprite peça a peça: «E
     Split by rows com um marcador «footstep»; «Hears Step» salta quando o marcador grita; «Starts With» com outra animação \
     em prévia; «Swapped Image» com o aviso; «Two Sheets» com as folhas idle e run e a animação «attack» que as mistura; \
     «Aligned Sheets», as mesmas folhas com a run escalada pelo Align: o boneco não cresce ao trocar de folha; \
-    e o Player com regras, a que ganha acesa no Play.";
+    «Misaligned Sheets», as mesmas folhas com a run maior, deslocada e com dois quadros tortos, para alinhar do zero \
+    no Align; e o Player com regras, a que ganha acesa no Play.";
 
 /// O instante que a foto do item quer (`PH2D_GAME_SMOKE_FOTO`), ou a prova que o guião corre e relata.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -102,6 +112,10 @@ pub enum Foto {
     AlinharPes,
     /// …e um Ctrl+Z depois: todos os acertos desfazem-se num passo.
     AlinharPesDesfaz,
+    /// «Misaligned Sheets» no Align, na «attack», como a cena a deixa (GEF 28 D)…
+    Desalinhadas,
+    /// …e alinhada: a `run` reduzida a 2/3 e o «By feet» pelo rato real.
+    DesalinhadasAcertadas,
 }
 
 #[must_use]
@@ -136,6 +150,8 @@ pub fn foto() -> Option<Foto> {
         "animado_align_desfaz" => Some(Foto::AlinharDesfaz),
         "animado_align_pes" => Some(Foto::AlinharPes),
         "animado_align_pes_desfaz" => Some(Foto::AlinharPesDesfaz),
+        "animado_desalinhadas" => Some(Foto::Desalinhadas),
+        "animado_desalinhadas_acertadas" => Some(Foto::DesalinhadasAcertadas),
         _ => None,
     }
 }
@@ -175,6 +191,7 @@ impl Foto {
             | Self::AlinharPesDesfaz
             | Self::IdleQuadro(_) => DUAS,
             Self::AlinhadasIdle | Self::AlinhadasRun => ALINHADAS,
+            Self::Desalinhadas | Self::DesalinhadasAcertadas => DESALINHADAS,
         }
     }
 }
@@ -248,6 +265,7 @@ pub fn passos(q: u32, foto: Option<Foto>) -> Vec<Passo> {
             P::Imagem(TROCADA, 1),
             P::Imagem(DUAS, IDLE),
             P::Imagem(ALINHADAS, IDLE),
+            P::Imagem(DESALINHADAS, IDLE),
             P::Ouve(OUVE),
         ],
         2 if !desfaz => vec![
@@ -268,6 +286,8 @@ pub fn passos(q: u32, foto: Option<Foto>) -> Vec<Passo> {
         _ => {
             let mut v = duas_folhas(DUAS, q, foto);
             v.extend(duas_folhas(ALINHADAS, q, None));
+            v.extend(duas_folhas(DESALINHADAS, q, None));
+            v.extend(desalinhadas(q, foto));
             v.extend(alinha(q, foto));
             v.extend(previa_align(q, foto));
             v
@@ -376,6 +396,32 @@ fn previa_align(q: u32, foto: Option<Foto>) -> Vec<Passo> {
         40 if gesto => vec![P::Relata("align escalada".into(), DUAS)],
         50 if f == Foto::AlinharDesfaz => vec![P::Desfaz],
         60 if f == Foto::AlinharDesfaz => vec![P::Relata("align 1 Ctrl+Z".into(), DUAS)],
+        _ => Vec::new(),
+    }
+}
+
+/// ⭐ «Misaligned Sheets» (GEF 28 D): a `run` (visível desde o quadro 9) anda e dois quadros entortam; nas fotos, o
+/// Align abre na «attack» e (na acertada) a `run` reduz a 2/3 e o «By feet» é clicado pelo rato real.
+fn desalinhadas(q: u32, foto: Option<Foto>) -> Vec<Passo> {
+    use Passo as P;
+    let acerta = foto == Some(Foto::DesalinhadasAcertadas);
+    match q {
+        10 => vec![P::Verbo(DESALINHADAS, Verbo::MoveSheet(DESLOCA_A_RUN))],
+        11 => TORTOS
+            .iter()
+            .map(|&(cell, by)| P::Verbo(DESALINHADAS, Verbo::NudgeCell { sheet: 1, cell, by }))
+            .collect(),
+        _ if !matches!(foto, Some(Foto::Desalinhadas | Foto::DesalinhadasAcertadas)) => Vec::new(),
+        20 => vec![
+            P::Anim(DESALINHADAS, Ed::SetCurrent("attack".into())),
+            P::Anim(DESALINHADAS, Ed::Playing(false)),
+            P::Anim(DESALINHADAS, Ed::SetStep(1)),
+        ],
+        24 | 25 => vec![P::Alinha(DESALINHADAS, (q - 24) as u8)],
+        30 => vec![P::Relata("desalinhadas".into(), DESALINHADAS)],
+        32 if acerta => vec![P::Verbo(DESALINHADAS, Verbo::ScaleSheet(ESCALA_DA_RUN))],
+        34 | 35 if acerta => vec![P::Alinha(DESALINHADAS, (q - 26) as u8)],
+        40 if acerta => vec![P::Relata("acertadas".into(), DESALINHADAS)],
         _ => Vec::new(),
     }
 }
@@ -495,6 +541,26 @@ pub fn relato(sim: &SimWorld, nome: &str, e: Entity) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⭐ «Misaligned Sheets» nasce torta em toda corrida (sem foto também): a `run` anda e os dois quadros entortam,
+    /// depois de a `run` estar visível (quadro 9). *Mutação: os verbos só com a foto · antes do quadro 9 (agiriam na
+    /// folha 0) ⇒ vermelho.*
+    #[test]
+    fn misaligned_sheets_nasce_torta() {
+        let em = |q| passos(q, None);
+        let mostra = (0..20)
+            .find(|q| em(*q).contains(&Passo::Verbo(DESALINHADAS, Verbo::ShowSheet(1))))
+            .expect("a run visível");
+        let anda = (0..20)
+            .find(|q| em(*q).contains(&Passo::Verbo(DESALINHADAS, Verbo::MoveSheet(DESLOCA_A_RUN))))
+            .expect("a run deslocada");
+        assert!(anda > mostra);
+        for (cell, by) in TORTOS {
+            let torto = Passo::Verbo(DESALINHADAS, Verbo::NudgeCell { sheet: 1, cell, by });
+            assert!((mostra + 1..20).any(|q| em(q).contains(&torto)), "{cell}");
+        }
+        assert!(OBJETOS.iter().any(|(n, _)| *n == DESALINHADAS));
+    }
 
     /// ⭐ «Two Sheets»: Load sheet com a `run` e a «attack» misturada como na maquete (run, run, idle, idle, run); Delete
     /// sheet só na foto do alerta. *Mutação: a tira toda numa folha ⇒ reprova.*

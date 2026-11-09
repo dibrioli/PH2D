@@ -282,7 +282,9 @@ impl crate::App {
                     | a::Foto::AlinharEscala
                     | a::Foto::AlinharDesfaz
                     | a::Foto::AlinharPes
-                    | a::Foto::AlinharPesDesfaz,
+                    | a::Foto::AlinharPesDesfaz
+                    | a::Foto::Desalinhadas
+                    | a::Foto::DesalinhadasAcertadas,
                 ),
                 Some(entity_bits),
             ) => h.bus.push(EditorAction::InspectorAnimEdit {

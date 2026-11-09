@@ -57,6 +57,8 @@ ph2d-light2d-ecs = { path = "../../crates/ph2d-light2d-ecs" }
 ph2d-light2d-gpu = { path = "../../crates/ph2d-light2d-gpu" }
 ph2d-pixel-cena = { path = "../../crates/ph2d-pixel-cena" }
 ph2d-pixel-luz = { path = "../../crates/ph2d-pixel-luz" }
+# A sonda da cena 26 (`cena26.rs`): a física e a regra de animação.
+ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
 bevy_ecs = "0.20"
 half = "2"
 vello = "0.11.0"

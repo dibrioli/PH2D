@@ -9,11 +9,16 @@ authors.workspace = true
 
 [lib]
 
-# Os números e a arte das cenas de smoke do Pixel Art. Sem ECS; o ph2d-pixel-keys só para a
+# Os números e a arte das cenas de smoke do Pixel Art (a 26 monta o mundo); o ph2d-pixel-keys só para a
 # tabela de teclas da cena 25.
 [dependencies]
 ph2d-pixel-core = { path = "../ph2d-pixel-core" }
 ph2d-pixel-keys = { path = "../ph2d-pixel-keys" }
+# A cena 26 (P14 §8): o herói no mundo — corpo, forma da slice, luz e regra de animação.
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-light2d-ecs = { path = "../ph2d-light2d-ecs" }
+ph2d-pixel-cena = { path = "../ph2d-pixel-cena" }
 winit = "0.30"
 
 [lints]

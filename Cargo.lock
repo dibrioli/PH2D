@@ -7807,6 +7807,7 @@ dependencies = [
  "ph2d-panel-pixel-tiles",
  "ph2d-panel-pixel-tools",
  "ph2d-pen",
+ "ph2d-physics-ecs",
  "ph2d-pixel-cena",
  "ph2d-pixel-cenas",
  "ph2d-pixel-core",
@@ -10866,6 +10867,10 @@ dependencies = [
 name = "ph2d-pixel-cenas"
 version = "0.0.0"
 dependencies = [
+ "ph2d-ecs",
+ "ph2d-light2d-ecs",
+ "ph2d-physics-ecs",
+ "ph2d-pixel-cena",
  "ph2d-pixel-core",
  "ph2d-pixel-keys",
  "winit",

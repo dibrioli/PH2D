@@ -167,7 +167,7 @@ mod tests {
         }
         // Size stays — it is the mask-brush footprint.
         assert!(
-            inpaint.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_SLIDER),
+            inpaint.contains(&ph2d_tool_painter::ids::PAINTER_WETPAINT_VOL_SIZE),
             "Size must stay visible in Inpaint mode"
         );
     }

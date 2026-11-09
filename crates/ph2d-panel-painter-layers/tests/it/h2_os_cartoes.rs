@@ -74,7 +74,8 @@ const IDS_DA_FATIA: [NodeId; 20] = [
     p::PAINTER_BRUSH_BLEND,
     p::PAINTER_BRUSH_BLEND_ON_EMPTY,
     core_ids::PAINTER_COLOR_THUMB,
-    p::PAINTER_BRUSH_SIZE_CHIP,
+    // O Size é a caixa «Size (px)» em todo meio (dono 08/11).
+    p::PAINTER_WETPAINT_VOL_SIZE,
     p::PAINTER_BRUSH_STRENGTH_CHIP,
     p::PAINTER_BRUSH_FLOW_CHIP,
     p::PAINTER_BRUSH_ACCUMULATE,
@@ -200,20 +201,15 @@ fn each_list_opens_under_its_box_and_its_option_sends_the_same() {
     }
 }
 
-/// Size, Strength e Flow: o scrub chega pela barra de sempre, só ao seu campo, e o Esc devolve.
+/// Strength e Flow: o scrub chega pela barra de sempre, só ao seu campo, e o Esc devolve. (O Size é a caixa
+/// «Size (px)» desde 08/11, sem barra: `size_px_e_dab_fixo`.)
 #[test]
 fn scrubbing_a_basic_number_reaches_its_own_bar_and_escape_gives_it_back() {
     let (digital, _) = pincel(PaintMedia::Digital, "brush");
     let mut base: BrushSettings = digital;
-    base.size_norm = 0.3;
     base.strength = 0.4;
     base.flow = 0.5;
     let trio = [
-        (
-            p::PAINTER_BRUSH_SIZE_SLIDER,
-            p::PAINTER_BRUSH_SIZE_CHIP,
-            0.3,
-        ),
         (
             p::PAINTER_BRUSH_STRENGTH_SLIDER,
             p::PAINTER_BRUSH_STRENGTH_CHIP,
@@ -282,13 +278,14 @@ fn typing_a_basic_number_sends_the_same_action_as_the_old_panel() {
 #[test]
 fn the_boxes_follow_the_brush() {
     let (mut b, _) = pincel(PaintMedia::Digital, "brush");
-    b.size_norm = 0.25;
+    b.size_px = 12.5;
     b.strength = 0.35;
     b.flow = 0.45;
     b.blend_sobre_vazio = true;
     let mut mesa = Mesa::nova(true, b, false);
     let le = |m: &Mesa, id| m.host.store().number_value(id).expect("semeado");
-    assert!((le(&mesa, p::PAINTER_BRUSH_SIZE_CHIP) - 0.25).abs() < 1e-3);
+    // O «Size (px)» mostra o diâmetro: raio 12,5 → 25 px.
+    assert!((le(&mesa, p::PAINTER_WETPAINT_VOL_SIZE) - 25.0).abs() < 1e-3);
     assert!((le(&mesa, p::PAINTER_BRUSH_STRENGTH_CHIP) - 0.35).abs() < 1e-3);
     assert!((le(&mesa, p::PAINTER_BRUSH_FLOW_CHIP) - 0.45).abs() < 1e-3);
     assert!((le(&mesa, p::PAINTER_BRUSH_BLEND_ON_EMPTY) - 1.0).abs() < 1e-3);

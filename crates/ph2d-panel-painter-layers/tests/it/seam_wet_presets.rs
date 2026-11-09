@@ -306,10 +306,12 @@ fn fora_do_wet_paint_o_navegador_aparece_sem_os_volumes() {
             rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_POLICY).is_some(),
             "{meio:?}"
         );
-        for vol in [
-            ids::PAINTER_WETPAINT_VOL_SIZE,
-            ids::PAINTER_WETPAINT_VOL_OPACITY,
-        ] {
+        // O «Size (px)» é o Size de todo meio desde 08/11 (dono): fora do Wet só ele fica.
+        assert!(
+            rect_of(&rects, ids::PAINTER_WETPAINT_VOL_SIZE).is_some(),
+            "{meio:?}: sem o Size (px)"
+        );
+        for vol in [ids::PAINTER_WETPAINT_VOL_OPACITY] {
             assert!(
                 rect_of(&rects, vol).is_none(),
                 "{meio:?}: volume do Wet fora dele"

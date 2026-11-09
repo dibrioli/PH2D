@@ -486,8 +486,8 @@ fn sculpt_keeps_the_brush_controls_and_drops_the_colour_ones() {
     // …AND the brush is still there. This is the assertion that separates Sculpt from Deform, and the
     // one that would fail if someone "fixed" the panel to be mode-exclusive like its neighbour.
     assert!(
-        ids.contains(&ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_SLIDER),
-        "the brush Size slider is gone in Sculpt mode. The sculpt rides the brush's dab list — Size IS \
+        ids.contains(&ph2d_tool_painter::ids::PAINTER_WETPAINT_VOL_SIZE),
+        "the brush Size (px) box is gone in Sculpt mode. The sculpt rides the brush's dab list — Size IS \
          the spatula's width, and without it the tool cannot be aimed (doc 18 §10.1)."
     );
 }

@@ -443,6 +443,8 @@ pub struct PixelPanelInfo {
     pub live_shape: bool,
     /// O cursor está sobre um eixo da simetria (ou arrasta-o): a dica ensina a arrastá-lo.
     pub on_axis: bool,
+    /// As teclas das ferramentas no mapa VIVO (`ph2d_pixel_keys::tool_keys`): o tooltip e o título.
+    pub tool_keys: PixelToolKeys,
     /// O padrão na mão (`w × h`), se o pincel é um Ctrl+B.
     pub pattern: Option<(u32, u32)>,
     /// Os pincéis guardados (Alt+1…), na ordem.

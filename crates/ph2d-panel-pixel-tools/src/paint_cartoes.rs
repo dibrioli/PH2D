@@ -197,7 +197,7 @@ pub(super) fn pinta(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx, renaming:
     st.pincel.trilhas = [None; 2];
     let info = with_current(Clone::clone);
     let titulo = if info.editing {
-        info.tool.named()
+        info.tool.named(&info.tool_keys)
     } else {
         PixelToolsPanel::TITLE.tr().to_string()
     };

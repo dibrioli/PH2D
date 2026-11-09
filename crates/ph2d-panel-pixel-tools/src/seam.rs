@@ -35,10 +35,6 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         let state = ButtonState::Normal;
         store.register(id, InteractiveState::Button { state });
     }
-    // O tooltip diz o atalho: «Pencil (B)».
-    for &(t, id) in ids::TOOLS.iter() {
-        store.set_tooltip(id, t.named());
-    }
     store.set_tooltip(ids::PIXEL_SWAP, tr("panel.pixel.swap_tip"));
     store.set_tooltip(ids::TEXT_FONT_DD, tr("panel.pixel.text.font_tip"));
     store.set_tooltip(ids::TEXT_SIZE, tr("panel.pixel.text.size_tip"));
@@ -326,6 +322,15 @@ fn pedido(id: ph2d_a11y::NodeId, how: PixelSelect) -> Option<PixelRequest> {
     })
 }
 
+/// Uma linha de um menu da barra da paleta fecha-o (os dois: só um abre de cada vez).
+fn fecha_menus_da_paleta(host: &mut dyn PanelHostInternal) {
+    for m in [ids::PALETTE_MENU, ids::PRESETS_MENU] {
+        if let Some(InteractiveState::Dropdown { open, .. }) = host.store_mut().get_mut(m) {
+            *open = false;
+        }
+    }
+}
+
 pub(crate) fn apply_event(
     st: &mut crate::PixelToolsPanelState,
     host: &mut dyn PanelHostInternal,
@@ -447,15 +452,8 @@ pub(crate) fn apply_event(
             return empurra(host, pedido_camada(id));
         }
         WidgetEvent::Click(id) => {
-            // Uma linha de um menu da barra da paleta fecha-o (os dois: só um abre de cada vez).
             if crate::paint::paleta_menu::e_linha(id) {
-                for m in [ids::PALETTE_MENU, ids::PRESETS_MENU] {
-                    if let Some(InteractiveState::Dropdown { open, .. }) =
-                        host.store_mut().get_mut(m)
-                    {
-                        *open = false;
-                    }
-                }
+                fecha_menus_da_paleta(host);
             }
             id
         }

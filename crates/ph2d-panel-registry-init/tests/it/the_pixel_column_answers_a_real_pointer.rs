@@ -198,7 +198,7 @@ fn the_pixel_shapes_are_named_as_in_the_vector_flyout() {
         .flyout
         .and_then(|(_, b)| b.into_iter().find(|b| b.on))
         .expect("a forma na mão está acesa no flyout");
-        assert_eq!(botao.label, t.named(), "{:?}", d.kind);
+        assert_eq!(botao.label, t.named(&Default::default()), "{:?}", d.kind);
         assert!(
             botao.label.starts_with(quer),
             "{:?}: {}",

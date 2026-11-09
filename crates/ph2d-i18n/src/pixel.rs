@@ -11,7 +11,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.tool.hand" => "Hand",
         "pixel.tool.slice" => "Slice Tool",
         "pixel.hint.slice" => {
-            "{tool}: drag on empty to create · drag a slice to move · drag its edges, center lines or pivot · Shift+drag selects · Delete removes"
+            "{tool}: drag on empty to create · drag a slice to move · drag its edges, center lines or pivot · Shift+drag selects"
         }
         "pixel.tool.spray" => "Spray",
         "pixel.tool.bucket" => "Paint Bucket",
@@ -37,7 +37,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.tool.contour" => "Contour",
         "pixel.tool.polygon" => "Polygon",
         "pixel.tool_switched" => "{tool} ({key})",
-        "pixel.shortcut_shift" => "Shift+{key}",
         "pixel.zoom" => "Zoom {n}00 %",
         "pixel.grid_on" => "Pixel grid on",
         "pixel.grid_off" => "Pixel grid off",

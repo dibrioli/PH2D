@@ -128,58 +128,6 @@ impl PixelTool {
         }
     }
 
-    /// A tecla do atalho por omissão (a do Aseprite; o `V` do Move dele escolhe o Transform; o balde
-    /// é `P`, não o `G` dele: o `G` é da grade do canvas, dono 07/11).
-    #[must_use]
-    pub const fn shortcut(self) -> &'static str {
-        match self {
-            Self::RectMarquee | Self::EllipseMarquee => "M",
-            Self::Lasso | Self::PolygonLasso => "Q",
-            Self::MagicWand => "W",
-            Self::Transform => "V",
-            Self::Slice => "C",
-            Self::Pencil | Self::Spray => "B",
-            Self::Eraser => "E",
-            Self::Eyedropper => "I",
-            Self::Bucket | Self::Gradient => "P",
-            // O `R` do Aseprite: escolhe o Blur e, de novo, alterna para o Jumble.
-            Self::Blur | Self::Jumble => "R",
-            Self::Line | Self::Curve => "L",
-            Self::RECTANGLE | Self::ELLIPSE => "U",
-            Self::Contour | Self::Polygon => "D",
-            Self::Hand => "H",
-            Self::Text => "T",
-            // O Aseprite não as tem: sem atalho.
-            Self::Shape(_) => "",
-        }
-    }
-
-    /// O atalho leva `Shift` (a sub-ferramenta do Aseprite).
-    #[must_use]
-    pub const fn shifted(self) -> bool {
-        matches!(
-            self,
-            Self::Spray
-                | Self::Curve
-                | Self::ELLIPSE
-                | Self::Polygon
-                | Self::EllipseMarquee
-                | Self::PolygonLasso
-                | Self::Gradient
-                | Self::Slice
-        )
-    }
-
-    /// O atalho como o artista o lê: «B», «Shift+B».
-    #[must_use]
-    pub fn shortcut_label(self) -> String {
-        if self.shifted() {
-            ph2d_i18n::tr_with("pixel.shortcut_shift", &[("key", &self.shortcut())])
-        } else {
-            self.shortcut().to_owned()
-        }
-    }
-
     /// O nome: o do Aseprite, ou o do Vector para uma forma.
     #[must_use]
     pub fn name(self) -> &'static str {
@@ -189,17 +137,16 @@ impl PixelTool {
         }
     }
 
-    /// O nome com o atalho, «Pencil (B)»; a que não tem atalho, só o nome.
+    /// O nome com o atalho do mapa VIVO, «Pencil (B)»; a que não tem tecla, só o nome.
     #[must_use]
-    pub fn named(self) -> String {
+    pub fn named(self, keys: &PixelToolKeys) -> String {
         let nome = self.name();
-        if self.shortcut().is_empty() {
-            return nome.to_owned();
+        match keys.of(self) {
+            Some(key) => {
+                ph2d_i18n::tr_with("pixel.tool_switched", &[("tool", &nome), ("key", &key)])
+            }
+            None => nome.to_owned(),
         }
-        ph2d_i18n::tr_with(
-            "pixel.tool_switched",
-            &[("tool", &nome), ("key", &self.shortcut_label())],
-        )
     }
 
     /// Deposita com o pincel (tamanho/forma/ângulo valem para ela).
@@ -316,5 +263,22 @@ impl PixelGroups {
             self.last[g.index()] = t;
         }
         self.open = None;
+    }
+}
+
+/// **As teclas das ferramentas no mapa VIVO do artista**, como ele as lê («B», «Shift+C»). A família
+/// deriva-as do `Keymap` de `ph2d-pixel-keys` a cada quadro (`ph2d_pixel_keys::tool_keys`): não há
+/// segunda tabela de teclas aqui.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PixelToolKeys(pub Vec<(PixelTool, String)>);
+
+impl PixelToolKeys {
+    /// A primeira tecla da ferramenta, se o mapa lhe dá alguma.
+    #[must_use]
+    pub fn of(&self, t: PixelTool) -> Option<&str> {
+        self.0
+            .iter()
+            .find(|(x, _)| *x == t)
+            .map(|(_, k)| k.as_str())
     }
 }

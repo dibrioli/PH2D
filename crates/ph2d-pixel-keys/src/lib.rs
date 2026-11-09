@@ -8,6 +8,7 @@ mod chord;
 mod factory;
 mod keymap;
 mod search;
+mod tool_keys;
 pub mod user_file;
 
 pub use action::{PixelAction, Section, ZoomKey};
@@ -17,6 +18,7 @@ pub use factory::{
 };
 pub use keymap::{Conflict, Keymap, TextReport};
 pub use search::{score, search};
+pub use tool_keys::tool_keys;
 
 #[cfg(test)]
 mod tests;

@@ -89,7 +89,7 @@ pub(crate) fn acao(app: &mut PixelApp, key: u32, a: A) -> Option<KeyAnswer> {
         ),
         A::ToolTransform => {
             app.pede(PixelRequest::Tool(Tool::Transform));
-            KeyAnswer::Toast(Tool::Transform.named())
+            KeyAnswer::Toast(Tool::Transform.named(&ph2d_pixel_keys::tool_keys(&app.keys)))
         }
         A::FinishStroke if app.laco.is_some() => {
             crate::selecao::fecha_poligono(app);
@@ -264,5 +264,5 @@ pub(crate) fn troca_de_teclas() {
 
 fn ferramenta(app: &mut PixelApp, t: Tool) -> KeyAnswer {
     set_tool(app, t);
-    KeyAnswer::Toast(t.named())
+    KeyAnswer::Toast(t.named(&ph2d_pixel_keys::tool_keys(&app.keys)))
 }

@@ -316,6 +316,7 @@ pub fn frame(
             }),
         can_reselect: doc.is_some_and(|d| d.sprite.last_mask().is_some()),
         presets: app.predefinicoes().to_vec(),
+        tool_keys: ph2d_pixel_keys::tool_keys(&app.keys),
         groups: app.groups,
         live_shape: app.live_shape().is_some(),
         pattern: app.pincel.as_ref().map(|p| p.size()),

@@ -64,11 +64,6 @@ pub fn members(g: PixelToolGroup) -> impl Iterator<Item = (PixelTool, ph2d_a11y:
         .filter(move |(t, _)| t.group() == Some(g))
 }
 
-/// O nome com o atalho: «Pencil (B)».
-fn nome(t: PixelTool) -> String {
-    t.named()
-}
-
 /// Uma amostra cheia (o anel é o «traço» do vetor; aqui frente e fundo são duas cores iguais em
 /// espécie, a de cima é a frente).
 fn amostra(id: ph2d_a11y::NodeId, rgba: [u8; 4], key: &str) -> BarButton {
@@ -85,12 +80,24 @@ fn amostra(id: ph2d_a11y::NodeId, rgba: [u8; 4], key: &str) -> BarButton {
     }
 }
 
+/// Por quadro: as linhas das camadas e o tooltip de cada ferramenta com a tecla do mapa VIVO,
+/// «Pencil (B)» — o artista pode trocá-la a meio da sessão.
+pub(crate) fn por_quadro(
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+    i: &PixelPanelInfo,
+) {
+    crate::seam::register_layers(store, &i.layers);
+    for &(t, id) in ids::TOOLS.iter() {
+        store.set_tooltip(id, t.named(&i.tool_keys));
+    }
+}
+
 /// O botão de uma ferramenta.
 fn botao(info: &PixelPanelInfo, t: PixelTool, id: ph2d_a11y::NodeId) -> BarButton {
     BarButton {
         id,
         face: face(t),
-        label: nome(t),
+        label: t.named(&info.tool_keys),
         on: t == info.tool,
         family: BarFamily::Draw,
     }
@@ -201,5 +208,5 @@ pub fn hint(info: &PixelPanelInfo) -> String {
         PixelTool::Text => "pixel.hint.text",
         PixelTool::Hand => "pixel.hint.hand",
     };
-    tr_with(key, &[("tool", &nome(info.tool))])
+    tr_with(key, &[("tool", &info.tool.named(&info.tool_keys))])
 }

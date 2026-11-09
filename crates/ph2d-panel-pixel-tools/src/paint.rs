@@ -77,7 +77,7 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     crate::seam_pincel::arrasta_limiar(st, ctx.host);
     let trancados: Vec<bool> = with_current(|i| i.brushes.iter().map(|b| b.locked).collect());
     crate::seam_pincel::register_brushes(ctx.host.store_mut(), &trancados);
-    with_current(|i| seam::register_layers(ctx.host.store_mut(), &i.layers));
+    with_current(|i| crate::column::por_quadro(ctx.host.store_mut(), i));
     seam::seed_rename(st, ctx.host.store_mut());
     crate::seam_user::quadro(ctx.host);
     let renaming = st.rename.map(|(id, _)| id);

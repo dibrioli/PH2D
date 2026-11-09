@@ -89,6 +89,8 @@ fn release_everything_a_hidden_panel_must_not_hold(
         .store_mut()
         .clear_panel_rect(ph2d_editor_core::ids::TIMELINE_PANEL);
     ctx.host.store_mut().clear_timeline_canvas();
+    // Reabrir enquadra outra vez (doc 15 onda 2).
+    state.enquadrado = None;
     // Drop any in-flight gesture: hiding the panel mid-drag must not leave a
     // marquee to resolve (or repaint) when it comes back — nor an undo
     // bracket open, which would swallow the next atomic edit.
@@ -233,10 +235,13 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     // `F` fits the time axis to the keys; it needs the time area's pixel width,
     // known only now. Runs before the view is read, so the fit lands this frame.
-    let troca = cartoes && state.enquadrado.is_some_and(|c| c != snapshot.active_clip);
+    // Nos cartões, abrir a Timeline (1.º quadro visível) ou trocar de clipe enquadra o clipe: o `F` sozinho.
+    let troca = cartoes && state.enquadrado != Some(snapshot.active_clip);
     state.enquadrado = Some(snapshot.active_clip);
-    if state::take_fit_request() || troca {
+    if state::take_fit_request() {
         crate::view::apply_fit(state, g.time_area.w, &snapshot);
+    } else if troca {
+        crate::view::apply_fit_clip(state, g.time_area.w, &snapshot);
     }
     // A transport jump (go-to-start/end, frame step, typed time) pans the view
     // after it, so the playhead never lands off-screen while paused.
@@ -251,8 +256,14 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     let mut view_start = state.view_start_s;
     // Page-follow ONLY while playing: the view chases the playhead during
     // playback, but a manual pan/zoom while paused is never yanked back.
+    // Nos cartões (doc 15 onda 2) não persegue o cursor DEPOIS do fim do clipe: lá a fita é a zona morta
+    // listrada, e a vista enquadrada ao abrir ficava trocada por uma fita vazia.
+    let alem_do_fim = cartoes
+        && snapshot.view_length_seconds > 0.0
+        && snapshot.time_seconds > snapshot.view_length_seconds;
     if snapshot.playing
         && span > 0.0
+        && !alem_do_fim
         && (snapshot.time_seconds < view_start || snapshot.time_seconds >= view_start + span)
     {
         view_start = snapshot.time_seconds.max(0.0);
@@ -322,6 +333,10 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         clock,
     );
 
+    // A legenda das barras, no pé da fita (só na aba que tem chaves).
+    if cartoes && state.tab.shows_keys() && !snapshot.tracks.is_empty() {
+        crate::legenda::paint(ctx, theme, crate::tracks::lane_rect(&g, view));
+    }
     // Auto Key a gravar acende a borda da folha (doc 15 onda 2): o aviso mora onde a chave nasce.
     if cartoes && snapshot.auto_key {
         ph2d_editor_core::paint::stroke_rounded_rect(

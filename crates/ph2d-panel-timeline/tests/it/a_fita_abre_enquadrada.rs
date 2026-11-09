@@ -1,0 +1,81 @@
+//! ⭐ Doc 15 onda 2: nos cartões a fita ABRE enquadrada no clipe (o `F` sozinho), e a reprodução que
+//! passou do fim do clipe não a arrasta para a zona morta. A cena do `PH2D_ANIMACAO_SMOKE=1` é
+//! exactamente esta: chaves em 1–1,5 s (como o «andar»), clipe de 2 s, relógio a tocar em 9 s.
+
+use ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread;
+use ph2d_editor_core::zones::Rect;
+use ph2d_panel_timeline::TimelinePanel;
+use ph2d_panel_timeline::state::{TimelinePanelState, set_current_timeline};
+use ph2d_timeline::{
+    AnimTarget, Extrap, Interp, KeyId, KeyView, PropKind, TimelineViewSnapshot, TrackView,
+};
+use ph2d_ui_testkit::MockPanelHost;
+
+const VIEWPORT: Rect = Rect::new(0.0, 0.0, 1600.0, 900.0);
+
+fn cena(t: f64) -> TimelineViewSnapshot {
+    let chave = |n: u64, t: f64| KeyView {
+        id: KeyId::new(n),
+        t_seconds: t,
+        value: 0.0,
+        interp: Interp::Linear,
+        selected: false,
+        roving: false,
+    };
+    TimelineViewSnapshot {
+        fps: 24.0,
+        time_seconds: t,
+        playing: true,
+        view_length_seconds: 2.0,
+        keys_mode: true,
+        tracks: vec![TrackView {
+            target: AnimTarget::new(1),
+            prop: PropKind::TranslationX,
+            entity: 7,
+            missing: false,
+            keys: vec![chave(1, 1.0), chave(2, 1.5)],
+            buffer_ghost: None,
+            pre: Extrap::Hold,
+            post: Extrap::Hold,
+            expr: None,
+        }],
+        ..TimelineViewSnapshot::default()
+    }
+}
+
+/// A vista mostra o instante `t`?
+fn mostra(st: &TimelinePanelState, t: f64) -> bool {
+    t >= st.view_start_s && t <= st.view_start_s + st.view_span_s
+}
+
+#[test]
+fn nos_cartoes_a_fita_abre_no_clipe_mesmo_a_tocar_depois_do_fim() {
+    for cartoes in [true, false] {
+        force_cards_on_this_thread(Some(cartoes));
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut st = TimelinePanelState {
+            view_start_s: 8.0,
+            ..TimelinePanelState::default()
+        };
+        set_current_timeline(Some(cena(9.0)));
+        host.paint::<TimelinePanel>(&mut st, VIEWPORT);
+        host.paint::<TimelinePanel>(&mut st, VIEWPORT);
+        set_current_timeline(None);
+        force_cards_on_this_thread(None);
+        if cartoes {
+            assert!(
+                mostra(&st, 0.0) && mostra(&st, 2.0),
+                "o clipe inteiro, 0 → 2 s, à vista: {} + {}",
+                st.view_start_s,
+                st.view_span_s
+            );
+        } else {
+            // O clássico continua a seguir o cursor como sempre (a saída de referência).
+            assert!(
+                mostra(&st, 9.0),
+                "clássico segue o cursor: {}",
+                st.view_start_s
+            );
+        }
+    }
+}

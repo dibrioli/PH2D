@@ -95,19 +95,15 @@ impl Unidades {
 /// ⭐ **O valor de um canal com grandeza** ([`ph2d_ecs::canal::unidade`]), na unidade do projecto e com o sufixo:
 /// o canal guarda metros num comprimento e graus num ângulo. `None` = número nu (quem chama formata como sempre).
 pub(crate) fn com_unidade(prop: PropKind, v: f64, u: Unidades) -> Option<String> {
-    use ph2d_ecs::canal::{Unidade, unidade};
-    let PropKind::Field(k) = prop else {
-        return None;
-    };
     // O grau cola-se ao número e o radiano já traz o espaço; o comprimento leva-o.
-    let (n, espaco, sufixo) = match unidade(k) {
-        Unidade::Nenhuma => return None,
-        Unidade::Comprimento => (u.comprimento.value(v), " ", u.comprimento.suffix()),
-        Unidade::Angulo => (
+    let (n, espaco, sufixo) = match grandeza(prop)? {
+        Grandeza::Comprimento => (u.comprimento.value(v), " ", u.comprimento.suffix()),
+        Grandeza::AnguloEmGraus => (
             u.angulo.from_radians_f64(v.to_radians()),
             "",
             u.angulo.suffix(),
         ),
+        Grandeza::AnguloEmRadianos => (u.angulo.from_radians_f64(v), "", u.angulo.suffix()),
     };
     // A unidade divide a MESMA fatia: a precisão cede primeiro, depois o espaço (`1234px`, nunca `1234 p…`).
     #[expect(clippy::cast_possible_truncation, reason = "a fatia mostra f32")]
@@ -120,17 +116,38 @@ pub(crate) fn com_unidade(prop: PropKind, v: f64, u: Unidades) -> Option<String>
     Some(format!("{num}{e}{sufixo}"))
 }
 
+/// Que grandeza um canal guarda, e em que unidade de mundo.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Grandeza {
+    Comprimento,
+    AnguloEmGraus,
+    AnguloEmRadianos,
+}
+
+/// A grandeza de um canal: a do vocabulário para um campo; para o `Transform` embutido (translação
+/// em metros, rotação em radianos — `ph2d_ecs::Transform`) só nos cartões (doc 15 onda 2), para o
+/// caminho clássico continuar a escrever o número nu de sempre.
+fn grandeza(prop: PropKind) -> Option<Grandeza> {
+    use ph2d_ecs::canal::{Unidade, unidade};
+    let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on;
+    match prop {
+        PropKind::Field(k) => match unidade(k) {
+            Unidade::Nenhuma => None,
+            Unidade::Comprimento => Some(Grandeza::Comprimento),
+            Unidade::Angulo => Some(Grandeza::AnguloEmGraus),
+        },
+        PropKind::TranslationX | PropKind::TranslationY if cartoes() => Some(Grandeza::Comprimento),
+        PropKind::Rotation if cartoes() => Some(Grandeza::AnguloEmRadianos),
+        _ => None,
+    }
+}
+
 /// O sufixo da unidade do projecto para um canal com grandeza (o mesmo de [`com_unidade`]).
 pub(crate) fn sufixo_da_unidade(prop: PropKind, u: Unidades) -> Option<&'static str> {
-    use ph2d_ecs::canal::{Unidade, unidade};
-    let PropKind::Field(k) = prop else {
-        return None;
-    };
-    match unidade(k) {
-        Unidade::Nenhuma => None,
-        Unidade::Comprimento => Some(u.comprimento.suffix()),
-        Unidade::Angulo => Some(u.angulo.suffix()),
-    }
+    Some(match grandeza(prop)? {
+        Grandeza::Comprimento => u.comprimento.suffix(),
+        Grandeza::AnguloEmGraus | Grandeza::AnguloEmRadianos => u.angulo.suffix(),
+    })
 }
 
 /// O número com até duas casas que cabe em `largura` caracteres, sem zeros à direita.

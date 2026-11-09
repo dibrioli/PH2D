@@ -288,10 +288,29 @@ fn a_faixa_diz_so_a_propriedade_e_o_cabecalho_o_objeto() {
     s.object_names.insert(9, "Hero".to_owned());
     let u =
         crate::tracks_value::Unidades::of(&ph2d_editor_core::project::ProjectSettings::default());
+    let cartoes = ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread;
+    cartoes(Some(true));
     let p = crate::tracks::propriedade_snap(&s, PropKind::TranslationX, u);
-    assert_eq!(p, ph2d_i18n::tr("panel.timeline.prop.translate_x"));
+    let r = crate::tracks::propriedade_snap(&s, PropKind::Rotation, u);
+    cartoes(Some(false));
+    let classica = crate::tracks::propriedade_snap(&s, PropKind::TranslationX, u);
+    cartoes(None);
+    let tx = ph2d_i18n::tr("panel.timeline.prop.translate_x");
+    // O `Transform` guarda metros e radianos: nos cartões a faixa diz a unidade do projecto, como o
+    // Inspector; o caminho clássico fica como era.
+    assert_eq!(p, format!("{tx} ({})", u_px(u)));
+    assert!(r.ends_with("(°)") || r.ends_with("(rad)"), "{r}");
+    assert_eq!(classica, tx);
     assert!(!p.contains("Hero"));
     assert_eq!(crate::tracks::objeto_snap(&s, 9), "Hero");
+}
+
+fn u_px(u: crate::tracks_value::Unidades) -> &'static str {
+    crate::tracks_value::sufixo_da_unidade(
+        PropKind::Field(FieldKey::new(VETOR, v::TRACO_LARGURA, 0, 0)),
+        u,
+    )
+    .map_or("", str::trim)
 }
 
 /// ⭐ A barra entre duas chaves veste a interpolação da chave de SAÍDA: curva, reta ou segura.
@@ -326,4 +345,46 @@ fn a_barra_veste_a_interpolacao_da_chave_de_saida() {
         ColorToken::TimelineInterpLinear.alias_parent(),
         "curva e reta leem-se diferentes"
     );
+}
+
+/// ⭐ **As três barras leem-se diferentes em todo tema** (doc 15 onda 2: curva ciano, reta violeta,
+/// segura cinza, como a maquete B1). A régua é a distância OKLab (a do `BoneHandle`). Medido em
+/// 09/11 sobre os slots gerais: `Info` 236–264°, `CodeKeyword` 305° em todos, `Text3` quase sem croma;
+/// o `Accent` foi recusado porque muda de matiz por tema (340°, 206°, 42°…) e caía no do `Info`.
+#[test]
+fn as_tres_barras_leem_se_diferentes_nos_oito_temas() {
+    use ph2d_tokens::{Theme, srgb_to_oklch};
+    const BARRA: f64 = 0.10;
+    let lab = |c: ColorToken, t: Theme| {
+        let [r, g, b, _] = resolve(c, t).to_rgba8().to_u8_array();
+        let (l, ch, h) = srgb_to_oklch(r, g, b);
+        (l, ch * h.to_radians().cos(), ch * h.to_radians().sin())
+    };
+    let temas = [
+        Theme::Forge,
+        Theme::Workshop,
+        Theme::Sunstone,
+        Theme::Blueprint,
+        Theme::Dark,
+        Theme::Gray,
+        Theme::Light,
+        Theme::Oled,
+    ];
+    let barras = [
+        ColorToken::TimelineInterpCurve,
+        ColorToken::TimelineInterpLinear,
+        ColorToken::TimelineInterpHold,
+    ];
+    let mut pior = f64::MAX;
+    for t in temas {
+        for (n, &a) in barras.iter().enumerate() {
+            for &b in &barras[n + 1..] {
+                let (x, y) = (lab(a, t), lab(b, t));
+                let d = ((x.0 - y.0).powi(2) + (x.1 - y.1).powi(2) + (x.2 - y.2).powi(2)).sqrt();
+                pior = pior.min(d);
+                assert!(d >= BARRA, "{t:?}: {a:?} e {b:?} a {d:.3} (barra {BARRA})");
+            }
+        }
+    }
+    eprintln!("pior distancia entre barras: {pior:.3}");
 }

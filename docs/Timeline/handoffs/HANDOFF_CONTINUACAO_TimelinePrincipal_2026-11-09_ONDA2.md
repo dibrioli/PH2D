@@ -4,8 +4,9 @@
 - Plano: [`15_plano_redesenho_molde_rive.md`](../15_plano_redesenho_molde_rive.md) (versão B; «Keys | Curves» FORA; sem função nova).
   Onda anterior: [`..._ONDA1.md`](HANDOFF_CONTINUACAO_TimelinePrincipal_2026-11-09_ONDA1.md).
 - Fotos: [`15_onda2_depois.png`](../fotos/15_onda2_depois.png) (app, `PH2D_ANIMACAO_SMOKE=1`, 1930×1040) ·
-  [`15_onda2_lado_a_lado_maquete_B1.png`](../fotos/15_onda2_lado_a_lado_maquete_B1.png) (em cima o recorte da maquete B1 da onda 1b,
-  em baixo o app; a captura headless nova da maquete não foi refeita).
+  [`15_onda2_lado_a_lado_maquete_B1.png`](../fotos/15_onda2_lado_a_lado_maquete_B1.png) (em cima a maquete B1 capturada de novo
+  em chrome headless — a variante com Auto Key ligado —, em baixo o app com chaves e barras à vista). Pendências fechadas na
+  2.ª rodada: secção **2b** abaixo.
 
 ## O que a onda 2 fez (só cartões; `PH2D_CARDS=0` intacto)
 
@@ -42,18 +43,49 @@
 
 - As propriedades dizem a palavra da Timeline («Translate X»), não a do Inspector («Position X»); a unidade só aparece em
   canais `Field` com grandeza — para `TranslationX/Y`/`Rotation` embutidos não confirmei a unidade do valor mostrado.
-- Cores: curva `Info`, reta `Accent` (no tema escuro ambos azuis próximos; a maquete usa ciano × violeta). Medir a distância
-  OKLab nos 8 temas como no `BoneHandle` se o dono pedir mais contraste.
-- **Sem legenda no pé** (o plano pede); fica para a próxima.
-- **Enquadrar ao ABRIR** não feito: só ao trocar de clipe. Fazê-lo no 1.º quadro mexe na vista de dezenas de testes que fixam
-  `px_per_s`/`view_start` — precisa de medir o estrago primeiro.
-- No smoke a régua está em 10–17 s (o relógio da cena anda, T≈9,3) e o clipe tem 2 s: a fita aparece toda listrada e as
-  barras ficam fora da vista até o dono trocar de clipe ou carregar `F`. A foto por isso não mostra as barras.
+- (Cores, legenda, enquadrar ao abrir e a fita vazia do smoke: fechados na secção 2b.)
+- O smoke só tem chaves lineares: a barra de curva e a segura aparecem na legenda, não na cena.
+
+## 2b — pendências fechadas (coordenador, mesma onda)
+
+1. **Abrir enquadrado**: `state.enquadrado` começa `None` e volta a `None` quando o painel se esconde
+   (`release_everything_a_hidden_panel_must_not_hold`) ⇒ o 1.º quadro visível e cada troca de clipe chamam
+   `view::apply_fit_clip`: o clipe inteiro `0 → view_length_seconds` unido às chaves (o `F` continua a enquadrar só as
+   chaves). E nos cartões o seguir-o-cursor durante o Play **não persegue o cursor depois do fim do clipe** (`alem_do_fim`
+   em `paint.rs`): a cena do smoke toca com o relógio em 9 s sobre um clipe de 2 s e arrastava a vista para a zona morta.
+   Estrago medido (crate inteira, `PH2D_SUITE=motivo`): **0** testes por causa da vista; 12 de `duration_chip_gesture`
+   estavam vermelhos desde a onda 1 (o «Length» foi para a janelinha) — curados abrindo `opcoes_abertas` antes de pintar;
+   1 (`the_short_id_is_formatted_in_exactly_one_place`) era meu (`objeto_snap` montava `#nnnn`) — passa pela porta `compoe`.
+   Teste novo `tests/it/a_fita_abre_enquadrada.rs` (cartões: 0 e 2 s à vista a tocar em 9 s; clássico: segue o cursor);
+   duas mutações sangram (tirar `!alem_do_fim`; trocar `apply_fit_clip` por `apply_fit`).
+2. **Cores medidas** (OKLCH dos slots gerais nos 8 temas): nenhum é ciano constante; `Info` 236–264° (o mais perto do ciano
+   da maquete), `CodeKeyword` 305° em todos (violeta, claridade por tema), `Text3` quase sem croma. `Accent` recusado: muda
+   de matiz por tema (340/206/42/257…). ⇒ curva `Info`, **reta `CodeKeyword`**, segura `Text3` tracejada. Gate
+   `as_tres_barras_leem_se_diferentes_nos_oito_temas` (distância OKLab ≥ 0,10, a barra do `BoneHandle`): pior caso **0,107**.
+3. **Legenda no pé** (`src/legenda.rs`): pílula `BgElev` no canto de baixo à direita da área das faixas, «Curve · Linear ·
+   Hold» com a amostra de cada barra (`linhas::pinta_barra`, partilhada); i18n `panel.timeline.card.legend_{curve,linear,hold}`.
+   Só pintura, sem alvo.
+4. **Coluna de nomes**: os ▶ das propriedades FICAM — são o `timeline_twirl_id` (`TimelineHitKind::Twirl`, abre a curva).
+   Unidades conferidas no código: `ph2d_ecs::Transform` guarda translação em **metros** e rotação em **radianos** ⇒ nos
+   cartões `Translate X (px)` mostra `-300px` (o mesmo do Inspector; antes `-3.00`) e `Rotation (°)` converte de radianos
+   (`tracks_value::grandeza`). O clássico continua com o número nu.
+5. **A barra azul vertical** era o polegar da barra de rolagem das faixas (aparece porque a árvore alongou a lista). Nos
+   cartões passou a fio de meia largura, sem trilho pintado; o alvo é o trilho inteiro como antes (`scrollbar.rs`).
+6. **Maquete capturada** (chrome headless, `--virtual-time-budget=30000`, o elemento isolado por script): linha 22 px (o app
+   usa `ROW_H_PX` = 22), coluna de nomes ~170 px (app ~186), losango de propriedade ~6 px de meia diagonal (app
+   `DIAMOND_H` 4,5), do cabeçalho ~4 px (app `OBJ_DIAMOND_H` 2,7). Diferenças que ficam: a maquete pinta ícone por
+   propriedade e o losango com contorno; a palavra é «Translate X» (a da Timeline), não «Position X».
+
+Testes por nome desta rodada: `linhas` 16 ✓ · `tracks_value` 6 ✓ · `scrollbar` 6 ✓ · `scroll` 19 ✓ · `view::` 20 ✓ ·
+`a_fita_abre` 1 ✓ · `os_cartoes` 22 ✓ · `_seam` 81 ✓ · `duration_chip_gesture` 15 ✓ · `every_word` 3 ✓ · `one_door` 2 ✓ ·
+`ph2d-tokens color` 17 ✓ · i18n `ordenad`/`known_keys`/`a_text_key`/`honesto` ✓; crate inteira 300 + 161 ✓. Clippy
+`-D warnings` limpo em `ph2d-panel-timeline`, `ph2d-editor-core`, `ph2d-tokens`, `ph2d-i18n`; fmt; smoke compilado.
 
 ## Superfície de colisão
 
 `ph2d-panel-timeline`: `linhas.rs`, `tracks.rs`, `tracks_label.rs`, `tracks_value.rs`, `paint.rs`, `ruler.rs`, `state.rs`,
-testes `linhas_tests.rs`, `geom_tests.rs`, `box_select.rs`. `ph2d-tokens`: `color.rs` (698/700), `color_alias.rs`, `skin_body.rs`
+`view.rs`, `scrollbar.rs`, `legenda.rs` (novo), `lib.rs`; testes `linhas_tests.rs`, `geom_tests.rs`, `box_select.rs`,
+`tests/it/a_fita_abre_enquadrada.rs` (novo), `tests/it/duration_chip_gesture.rs`, `tests/it/main.rs`. `ph2d-i18n/src/timeline.rs` (+3 chaves). `ph2d-tokens`: `color.rs` (698/700), `color_alias.rs`, `skin_body.rs`
 (+4 tokens no `ColorToken::ALL`). `ph2d-editor-core`: `cards_banda.rs` (append). Sem `PROJECT_SCHEMA`, contrato §6 nem formato gravado.
 Campo de estado +1 (`enquadrado`).
 
@@ -62,15 +94,15 @@ Campo de estado +1 (`enquadrado`).
 1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TimelinePrincipal && PH2D_ANIMACAO_SMOKE=1 ./target/smoke/ph2d-host-desktop`
 2. Na Timeline em baixo, coluna da esquerda: «Herói» em negrito e por baixo «Translate X» e «Translate Y» com o número à
    direita; depois «Espada» e «Rotation». Nada cortado com «…».
-3. Clicar no chip «pular» (ou passar o rato na fita e carregar `F`): a vista encaixa no clipe e entre as chaves aparecem
-   barras coloridas (reta, curva; a «segura» tracejada). À direita do fim do clipe a fita fica listrada.
+3. Ao abrir, a régua já mostra o clipe inteiro (0 → 2 s) com as chaves e, entre elas, barras violetas (reta); no canto de baixo
+   a legenda Curve · Linear · Hold. À direita do fim do clipe a fita fica listrada. Clicar «pular» enquadra o outro clipe.
 4. Ligar «Auto Key»: a borda da folha fica vermelha; desligar: some.
 5. Errado se: um nome aparece cortado, um objecto aparece duas vezes, clicar numa chave já não a seleciona, ou nada encaixa
    ao trocar de clipe.
 
 ## Próximo
 
-- Pendências desta onda: legenda das cores no pé; enquadrar ao abrir; palavra/unidade do Inspector nos canais embutidos.
+- Pendências desta onda: nenhuma aberta; a palavra do Inspector («Position X») nos canais embutidos fica por decidir com o dono.
 - **Onda 3 do plano**: Containers e Arrange — chips das peças («used 2×» / «not placed»), lanes com peso e olho na coluna,
   o mesmo desenho de strips; sem gesto novo.
 - Smoke do dono NÃO feito; sem push nem integração.

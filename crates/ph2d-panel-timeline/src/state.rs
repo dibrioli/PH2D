@@ -98,8 +98,8 @@ pub struct TimelinePanelState {
     pub opcoes_abertas: bool,
     /// O menu do «⋯» do clipe ativo (barra em cartões, doc 15 onda 1).
     pub menu_do_clip: bool,
-    /// O clipe que a vista enquadrou da última vez (cartões, doc 15 onda 2): trocar de clipe faz o `F`
-    /// sozinho. `None` até o primeiro quadro, que só o anota.
+    /// O clipe que a vista enquadrou da última vez (cartões, doc 15 onda 2): abrir o painel ou trocar de
+    /// clipe faz o `F` sozinho. `None` = fechado ou nunca pintado.
     pub enquadrado: Option<usize>,
     /// In-progress key-diamond drag (dope-sheet), while the pointer is down on a
     /// key: the pointer x at Begin and the latest x, so `paint` can draw the

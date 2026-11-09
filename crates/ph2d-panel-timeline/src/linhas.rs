@@ -335,9 +335,9 @@ pub(crate) fn paint_grupo(
 /// O losango do cabeçalho do objecto: metade do da faixa (a maquete B1 pinta-o como um ponto).
 const OBJ_DIAMOND_H: f32 = DIAMOND_H * 0.6; // LITERAL-PX-OK: fraction of the row diamond
 /// A espessura da barra entre duas chaves (maquete B1: 3 px numa linha de 22).
-const BARRA_TH: f32 = 3.0; // LITERAL-PX-OK: interpolation bar thickness
+pub(crate) const BARRA_TH: f32 = 3.0; // LITERAL-PX-OK: interpolation bar thickness
 /// O traço e o vão da barra de uma chave segura (Hold), tracejada.
-const BARRA_DASH: f32 = 3.0; // LITERAL-PX-OK: hold bar dash length
+pub(crate) const BARRA_DASH: f32 = 3.0; // LITERAL-PX-OK: hold bar dash length
 const BARRA_GAP: f32 = 3.0; // LITERAL-PX-OK: hold bar dash gap
 
 /// ⭐ **O cabeçalho do objecto nos cartões** (doc 15 onda 2, maquete B1): o nome em negrito e um
@@ -415,27 +415,37 @@ pub(crate) fn paint_barras(
             continue;
         }
         let tok = cor_da_barra(par[0].interp);
-        let cor = resolve(tok, theme);
-        if tok == ColorToken::TimelineInterpHold {
-            let mut x = x0;
-            while x < x1 {
-                let w = BARRA_DASH.min(x1 - x);
-                ph2d_editor_core::paint::fill_rounded_rect(
-                    ctx.scene,
-                    Rect::new(x, top, w, BARRA_TH),
-                    0.0,
-                    cor,
-                );
-                x += BARRA_DASH + BARRA_GAP;
-            }
-        } else {
+        pinta_barra(ctx, resolve(tok, theme), tok, (x0, x1), top);
+    }
+}
+
+/// Uma barra de `x0` a `x1` com o topo em `top`: cheia, ou tracejada quando é a segura (`tok`).
+pub(crate) fn pinta_barra(
+    ctx: &mut PaintCtx,
+    cor: ph2d_vector::Color,
+    tok: ColorToken,
+    (x0, x1): (f32, f32),
+    top: f32,
+) {
+    if tok == ColorToken::TimelineInterpHold {
+        let mut x = x0;
+        while x < x1 {
+            let w = BARRA_DASH.min(x1 - x);
             ph2d_editor_core::paint::fill_rounded_rect(
                 ctx.scene,
-                Rect::new(x0, top, x1 - x0, BARRA_TH),
-                BARRA_TH * 0.5,
+                Rect::new(x, top, w, BARRA_TH),
+                0.0,
                 cor,
             );
+            x += BARRA_DASH + BARRA_GAP;
         }
+    } else {
+        ph2d_editor_core::paint::fill_rounded_rect(
+            ctx.scene,
+            Rect::new(x0, top, x1 - x0, BARRA_TH),
+            BARRA_TH * 0.5,
+            cor,
+        );
     }
 }
 

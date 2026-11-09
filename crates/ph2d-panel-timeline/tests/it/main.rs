@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod a_coluna_do_toggle_mede_a_lista;
+mod a_fita_abre_enquadrada;
 mod add_clip_full_seam;
 mod animation_chip_seam;
 mod arrange_sources_seam;

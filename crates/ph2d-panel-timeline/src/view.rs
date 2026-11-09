@@ -70,8 +70,27 @@ pub(crate) fn apply_fit(
     time_area_w: f32,
     snap: &TimelineViewSnapshot,
 ) {
+    fit_to(state, time_area_w, content_extent(state, snap));
+}
+
+/// ⭐ **Abrir a fita ou trocar de clipe** (cartões, doc 15 onda 2): o mesmo enquadrar do `F`, mas sobre
+/// o CLIPE inteiro, `0 → fim`, unido às chaves que passem dele — o `F` enquadra só as chaves, e um
+/// clipe com chaves em 1–2 s abria sem o começo.
+pub(crate) fn apply_fit_clip(
+    state: &mut TimelinePanelState,
+    time_area_w: f32,
+    snap: &TimelineViewSnapshot,
+) {
+    let clipe = (snap.view_length_seconds > 0.0).then_some((0.0_f64, snap.view_length_seconds));
+    let extent = match (clipe, content_extent(state, snap)) {
+        (Some((a, b)), Some((c, d))) => Some((a.min(c), b.max(d))),
+        (x, y) => x.or(y),
+    };
+    fit_to(state, time_area_w, extent);
+}
+
+fn fit_to(state: &mut TimelinePanelState, time_area_w: f32, extent: Option<(f64, f64)>) {
     let w = f64::from(time_area_w);
-    let extent = content_extent(state, snap);
     let Some((first, last)) = extent.filter(|_| w > 0.0) else {
         state.view_start_s = 0.0;
         state.px_per_s = DEFAULT_PX_PER_S;

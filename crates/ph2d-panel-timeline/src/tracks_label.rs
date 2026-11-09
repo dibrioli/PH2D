@@ -102,7 +102,8 @@ pub(crate) fn objeto_snap(snap: &ph2d_timeline::TimelineViewSnapshot, entity: u6
         .map(|t| t.prop);
     match prop.and_then(|p| dono(snap.object_name(entity), p)) {
         Some(n) => n.to_owned(),
-        None => format!("#{}", entity % 10_000),
+        // O id curto sai da porta única: o rótulo vazio deixa só «  #nnnn».
+        None => compoe(None, entity, String::new()).trim().to_owned(),
     }
 }
 

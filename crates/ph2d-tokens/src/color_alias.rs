@@ -51,7 +51,8 @@ pub(crate) const fn parent_of(t: ColorToken) -> Option<ColorToken> {
         ColorToken::TimelineKeyActive => ColorToken::AccentPress,
         ColorToken::TimelineMissing | ColorToken::TimelineRecord => ColorToken::Danger,
         ColorToken::TimelineInterpCurve => ColorToken::Info,
-        ColorToken::TimelineInterpLinear => ColorToken::Accent,
+        // Reta violeta: o único slot geral a 305° em todo tema (medido 09/11, gate na Timeline).
+        ColorToken::TimelineInterpLinear => ColorToken::CodeKeyword,
         ColorToken::TimelineInterpHold => ColorToken::Text3,
         ColorToken::TimelineKey => ColorToken::Text1,
         ColorToken::TimelineRulerTick => ColorToken::Text3,

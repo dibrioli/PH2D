@@ -85,13 +85,24 @@ pub(crate) fn paint(
             *value = v;
         }
     }
-    fill_rounded_rect(
-        ctx.scene,
-        track,
-        Radius::Xs.px(),
-        crate::folha_tinta::cor(ColorToken::Bg2, theme),
-    );
+    // Nos cartões (doc 15 onda 2) o polegar é um fio de meia largura sem trilho pintado: o de 10 px
+    // cheio lia-se como uma barra azul a mais na fita. O alvo continua o trilho inteiro.
+    let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
+    if !cartoes {
+        fill_rounded_rect(
+            ctx.scene,
+            track,
+            Radius::Xs.px(),
+            crate::folha_tinta::cor(ColorToken::Bg2, theme),
+        );
+    }
     let thumb = thumb_rect(track, state.scroll_y, state.scroll_max, content_h);
+    let thumb = if cartoes {
+        let w = thumb.w * 0.5;
+        Rect::new(thumb.x + (thumb.w - w) * 0.5, thumb.y, w, thumb.h)
+    } else {
+        thumb
+    };
     // ⚠️ **A cor sai da porta do app, nao de uma tabela local.** Esta barra e pintada a mao
     // (geometria propria, dentro do corpo do painel) e por isso NAO passa pelo `paint_scrollbar` —
     // mas *que cor tem um polegar* e uma pergunta so, e o `scrollbar_thumb_color` e quem a
@@ -109,7 +120,11 @@ pub(crate) fn paint(
     fill_rounded_rect(
         ctx.scene,
         thumb,
-        Radius::Xs.px(),
+        if cartoes {
+            thumb.w * 0.5
+        } else {
+            Radius::Xs.px()
+        },
         scrollbar_thumb_color(visual, theme),
     );
     ctx.host

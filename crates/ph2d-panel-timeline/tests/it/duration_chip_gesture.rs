@@ -60,6 +60,8 @@ fn painted_dur_rect(host: &mut MockPanelHost, state: &mut TimelinePanelState, se
         keys_mode: true,
         ..TimelineViewSnapshot::default()
     }));
+    // O «Length» mora na janelinha «Timeline options» (doc 15 onda 1): abre-a antes de pintar.
+    state.opcoes_abertas = true;
     let regs = host.paint::<TimelinePanel>(state, VIEWPORT);
     regs.iter()
         .find(|(w, _)| *w == ph2d_panel_timeline::ids::TIMELINE_LENGTH_NUM)
@@ -221,6 +223,8 @@ fn pinta_a_duracao(host: &mut MockPanelHost, state: &mut TimelinePanelState, sec
         keys_mode: true,
         ..TimelineViewSnapshot::default()
     }));
+    // O «Length» mora na janelinha «Timeline options» (doc 15 onda 1): abre-a antes de pintar.
+    state.opcoes_abertas = true;
     host.paint::<TimelinePanel>(state, VIEWPORT)
         .iter()
         .find(|(w, _)| *w == LEN)

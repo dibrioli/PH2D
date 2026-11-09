@@ -6173,8 +6173,10 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-game-dicas",
+ "ph2d-gpu",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-light2d-gpu",
  "ph2d-panel-pixel-export",
  "ph2d-panel-pixel-history",
  "ph2d-panel-pixel-keys",
@@ -6201,6 +6203,7 @@ dependencies = [
  "ph2d-vec-scene",
  "ph2d-vector",
  "rfd",
+ "wgpu",
  "winit",
 ]
 

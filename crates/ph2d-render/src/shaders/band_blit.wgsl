@@ -84,13 +84,18 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     var c = textureSample(src, src_sampler, in.uv);
     if (flags.recebe_luz == 1u && luz.ligada == 1u) {
         var n_xy = vec2<f32>(0.0);
+        var fora = false;
         if (flags.com_normal == 1u) {
             let nb = textureSample(banda_normal, src_sampler, in.uv);
             if (nb.a > 0.0) {
                 n_xy = nb.xy * 2.0 - vec2<f32>(1.0);
+                // P14c-pixel 2: b < ¼ (z < −½) nunca é normal da frente — a sentinela do `NaoRecebeLuz`.
+                fora = nb.b < 0.25;
             }
         }
-        return acender(c, in.pos.xy, n_xy);
+        if (!fora) {
+            return acender(c, in.pos.xy, n_xy);
+        }
     }
     // ⚠️ A des-pré-multiplicação vem PRIMEIRO: a conversão de espaço é por-canal sobre a cor
     // DIRECTA. Re-codificar uma cor já escalada pelo alfa daria uma curva errada nas bordas.

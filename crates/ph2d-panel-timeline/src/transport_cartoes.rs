@@ -1,10 +1,10 @@
 //! ⭐ **A barra do transporte em cartões, no molde do Rive** (`docs/Timeline/15_plano_redesenho_molde_rive.md`,
-//! onda 1): três fileiras curtas, cada uma com um assunto — título (abas · migalha · dono · opções), clipes
-//! (um chip por clipe) e tocar. Os ids e os eventos são os de sempre; o que não é de todo o dia mora no
+//! onda 1b): duas fileiras — título (abas · migalha · tocar · Time · Frame · fps · dono · opções) e
+//! gravar + clipes (Auto Key · Record · Marker · um chip por clipe). Os ids e os eventos são os de sempre; o que não é de todo o dia mora no
 //! «⋯» do clipe e na engrenagem (`crate::barra_menus`). `PH2D_CARDS=0` pinta a barra de [`super::paint_bar`].
 
 use super::*;
-use ph2d_editor_core::panel::cards::banda::{self, Icone, metrics as m};
+use ph2d_editor_core::panel::cards::banda::{self, Emoldurada, Icone, Sinal, metrics as m};
 use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
 use ph2d_editor_core::panel::cards::{CardCtx, Seg};
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
@@ -238,6 +238,13 @@ impl Fluxo {
         self.lim.0 + self.lim.1 - self.x
     }
 
+    /// Um grupo de largura `w` que não cabe no resto da fileira mas cabe numa inteira desce inteiro.
+    pub(crate) fn guarda_para(&mut self, w: f32) {
+        if self.x > self.lim.0 && w > self.resta() && w <= self.body.w {
+            self.quebra();
+        }
+    }
+
     /// Uma peça encostada à DIREITA da fileira de agora (ou da seguinte, se não cabe).
     fn a_direita(&mut self, w: f32) -> (f32, f32) {
         if self.x > self.lim.0 && self.x + w > self.lim.0 + self.lim.1 {
@@ -273,14 +280,14 @@ fn cartao<'a>(ctx: &'a mut PaintCtx, ink: CardInk, body: Rect) -> CardCtx<'a> {
     CardCtx::flutuante(ctx.scene, ctx.text_system, store, hit, ink, body.x, body.w)
 }
 
-/// 1.ª fileira: abas · migalha · e, à direita, o dono e a engrenagem (o «×» é da moldura).
-fn fileira_do_titulo(
+/// 1.ª fileira, à esquerda: abas · migalha (o tocar vem a seguir, [`grupo_de_tocar`]).
+fn abas_e_migalha(
     ctx: &mut PaintCtx,
     theme: Theme,
     f: &mut Fluxo,
     (snap, view): (&TimelineViewSnapshot, BarView),
     body: Rect,
-) -> (ClipChip, Rect) {
+) {
     let ink = CardInk::of_list(theme);
     let celulas = crate::transport_tabs::items(snap);
     {
@@ -292,8 +299,19 @@ fn fileira_do_titulo(
     let w = crate::breadcrumb::width(snap);
     if w > 0.0 {
         let (x, y) = f.poe(w);
-        crate::breadcrumb::paint(ctx, theme, x, y + (m::FIELD_H - ROW_H_PX) * 0.5, snap);
+        crate::breadcrumb::paint_selo(ctx, theme, Rect::new(x, y, w, m::FIELD_H), snap);
     }
+}
+
+/// 1.ª fileira, à direita: o dono e a engrenagem (o «×» é da moldura).
+fn dono_e_opcoes(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    f: &mut Fluxo,
+    snap: &TimelineViewSnapshot,
+    body: Rect,
+) -> (ClipChip, Rect) {
+    let ink = CardInk::of_list(theme);
     let (x, y) = f.a_direita(ANIM_W + m::FIELD_GAP + banda::icones_w(1));
     let mut c = cartao(ctx, ink, body);
     let rect = Rect::new(x, y, ANIM_W, m::FIELD_H);
@@ -331,8 +349,8 @@ fn campo(c: &mut CardCtx<'_>, item: Item, id: ph2d_a11y::NodeId, at: (f32, f32))
     c.campo_em_fila(id, nome, Glyph::Text(letra_da_grandeza(nome)), col, at);
 }
 
-/// 3.ª fileira: tocar · Time · Frame · fps · Auto Key · Record while playing · marcador.
-fn fileira_de_tocar(
+/// 1.ª fileira, depois das abas: tocar · Time · Frame · fps.
+fn grupo_de_tocar(
     ctx: &mut PaintCtx,
     theme: Theme,
     f: &mut Fluxo,
@@ -355,41 +373,63 @@ fn fileira_de_tocar(
         (x + wt + m::FIELD_GAP, y),
     );
     let fps = texto_do_fps(snap);
-    let w = c.text_system.prefix_width(&fps, m::VALUE_PX).ceil();
-    let (x, y) = f.poe(w);
-    ph2d_editor_core::paint::paint_text(
-        c.text_system,
-        c.scene,
-        &fps,
-        x,
-        y + ph2d_editor_core::paint::folga_do_texto(m::FIELD_H, m::VALUE_PX),
-        m::VALUE_PX,
-        w,
-        ink.color(ColorToken::CardLabel),
-    );
-    for (id, chave, on) in [
-        (
-            TIMELINE_AUTOKEY,
-            "panel.timeline.card.autokey",
-            snap.auto_key,
-        ),
-        (
-            TIMELINE_RECORD,
-            "panel.timeline.card.record",
-            snap.performing,
-        ),
-    ] {
-        let nome = ph2d_i18n::tr(chave);
-        let (x, y) = f.poe(c.marca_em_fila_w(nome));
-        c.marca_em_fila(id, nome, on, x, y);
-    }
-    let nome = ph2d_i18n::tr("panel.timeline.card.add_marker");
-    let w = c.botao_w(nome);
-    let (x, y) = f.poe(w);
-    c.botao_em(TIMELINE_ADD_MARKER, nome, Rect::new(x, y, w, m::FIELD_H));
+    let (x, y) = f.poe(c.rotulo_com_sinal_w(&fps));
+    c.rotulo_com_sinal(Sinal::Icone(IconId::Fps, ColorToken::CardLabel), &fps, x, y);
 }
 
-/// A barra: o título na tira do cabeçalho `strip`, os clipes e o tocar em fileiras a partir de `body`.
+/// As duas caixas de gravar: Auto Key (o ponto acende-se vermelho quando liga) e Record while playing
+/// (o anel vermelho de gravação). A cor mora no sinal, nunca no quadradinho.
+fn caixas_de_gravar(snap: &TimelineViewSnapshot) -> [Emoldurada<'static>; 2] {
+    let ponto = if snap.auto_key {
+        ColorToken::Danger
+    } else {
+        ColorToken::Text3
+    };
+    [
+        Emoldurada {
+            id: TIMELINE_AUTOKEY,
+            nome: ph2d_i18n::tr("panel.timeline.card.autokey"),
+            on: snap.auto_key,
+            antes: None,
+            fim: Some(Sinal::Ponto(ponto)),
+        },
+        Emoldurada {
+            id: TIMELINE_RECORD,
+            nome: ph2d_i18n::tr("panel.timeline.card.record"),
+            on: snap.performing,
+            antes: Some(Sinal::Icone(IconId::Circle, ColorToken::Danger)),
+            fim: None,
+        },
+    ]
+}
+
+/// 2.ª fileira, no início: Auto Key · Record while playing · Marker (os clipes vêm a seguir).
+fn grupo_de_gravar(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    f: &mut Fluxo,
+    snap: &TimelineViewSnapshot,
+    body: Rect,
+) {
+    let ink = CardInk::of_list(theme);
+    let mut c = cartao(ctx, ink, body);
+    for caixa in caixas_de_gravar(snap) {
+        let (x, y) = f.poe(c.emoldurada_w(&caixa));
+        c.emoldurada_em(&caixa, x, y);
+    }
+    let nome = ph2d_i18n::tr("panel.timeline.card.add_marker");
+    let w = c.botao_com_icone_w(nome);
+    let (x, y) = f.poe(w);
+    c.botao_com_icone_em(
+        TIMELINE_ADD_MARKER,
+        IconId::Plus,
+        nome,
+        Rect::new(x, y, w, m::FIELD_H),
+    );
+}
+
+/// A barra (doc 15, onda 1b, dono 09/11): DUAS fileiras. Na tira do cabeçalho `strip`: abas · migalha ·
+/// tocar · Time · Frame · fps … dono · engrenagem; a partir de `body`: gravar · marcador · clipes.
 pub(crate) fn paint_bar(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -400,11 +440,12 @@ pub(crate) fn paint_bar(
 ) -> Barra {
     prepara(ctx.host.store_mut(), snap, view);
     let mut f = Fluxo::novo(strip, body);
-    let (anim, opcoes) = fileira_do_titulo(ctx, theme, &mut f, (snap, view), body);
+    abas_e_migalha(ctx, theme, &mut f, (snap, view), body);
+    grupo_de_tocar(ctx, theme, &mut f, (snap, view), body);
+    let (anim, opcoes) = dono_e_opcoes(ctx, theme, &mut f, snap, body);
     f.quebra();
+    grupo_de_gravar(ctx, theme, &mut f, snap, body);
     let clips = crate::barra_clips::paint(ctx, theme, &mut f, (snap, view), body);
-    f.quebra();
-    fileira_de_tocar(ctx, theme, &mut f, (snap, view), body);
     Barra {
         depois: f.depois(),
         clip: clips.chip,

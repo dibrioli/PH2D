@@ -216,6 +216,157 @@ pub fn icones_w(n: usize) -> f32 {
 /// A largura da caixa de um campo em fileira: pega + valor.
 const CAMPO_W: f32 = m::ICON_CELL + m::FIELD_VALUE_MIN_W;
 
+/// O glifo de um sinal de fileira (o anel do Record, a onda do fps, o «+» de um botão).
+const SINAL: f32 = m::KEY_MARK_BOX;
+/// O ponto cheio de um sinal: dois terços do glifo, como o ponto da maquete B1 da Timeline.
+const PONTO: f32 = m::KEY_MARK_BOX - m::SEG_RADIUS;
+
+/// Um sinal de cor numa fileira de banda: um ícone, ou um ponto cheio, na tinta `ColorToken`.
+#[derive(Copy, Clone, Debug)]
+pub enum Sinal {
+    Icone(IconId, ColorToken),
+    Ponto(ColorToken),
+}
+
+/// ⭐ Uma caixa de marcar EMOLDURADA (a maquete B1 da Timeline, 09/11): moldura arredondada, o
+/// quadradinho, um sinal antes do nome e/ou no fim; a moldura inteira é o alvo do `Toggle` `id`.
+#[derive(Copy, Clone, Debug)]
+pub struct Emoldurada<'a> {
+    pub id: NodeId,
+    pub nome: &'a str,
+    pub on: bool,
+    pub antes: Option<Sinal>,
+    pub fim: Option<Sinal>,
+}
+
+impl CardCtx<'_> {
+    fn pinta_sinal(&mut self, s: Sinal, x: f32, meio: f32) {
+        match s {
+            Sinal::Icone(icon, cor) => paint_icon(
+                self.scene,
+                icon,
+                Rect::new(x, meio - SINAL * 0.5, SINAL, SINAL),
+                self.ink.color(cor),
+                StrokeToken::Default.px(),
+            ),
+            Sinal::Ponto(cor) => fill_rounded_rect(
+                self.scene,
+                Rect::new(x + (SINAL - PONTO) * 0.5, meio - PONTO * 0.5, PONTO, PONTO),
+                PONTO * 0.5,
+                self.ink.color(cor),
+            ),
+        }
+    }
+
+    /// A largura natural de [`Self::emoldurada_em`].
+    pub fn emoldurada_w(&mut self, c: &Emoldurada<'_>) -> f32 {
+        let sinais = [c.antes, c.fim].iter().flatten().count() as f32;
+        m::FIELD_PAD_R * 2.0
+            + m::CHECK_BOX
+            + m::CHECK_GAP
+            + self.largura_do_texto(c.nome, m::VALUE_PX)
+            + sinais * (SINAL + m::SEG_ICON_GAP)
+    }
+
+    /// Pinta a caixa emoldurada em `(x, y)`, à altura do campo.
+    pub fn emoldurada_em(&mut self, c: &Emoldurada<'_>, x: f32, y: f32) {
+        let r = Rect::new(x, y, self.emoldurada_w(c), m::FIELD_H);
+        self.hit_index.register(c.id, r);
+        dicas::rotulo(c.id, c.nome);
+        let hover = self.store.hover_live(c.id) > 0.0;
+        let fundo = if hover {
+            ColorToken::CardFieldHover
+        } else {
+            ColorToken::CardField
+        };
+        fill_rounded_rect(self.scene, r, m::FIELD_RADIUS, self.ink.color(fundo));
+        let valor = if c.on {
+            crate::widget::CheckboxValue::Checked
+        } else {
+            crate::widget::CheckboxValue::Unchecked
+        };
+        let mut cx = x + m::FIELD_PAD_R;
+        let caixa = crate::widget::card_check_rect(cx, y, m::FIELD_H);
+        crate::widget::paint_card_check_value(self.scene, self.ink, caixa, valor, hover);
+        cx += m::CHECK_BOX + m::CHECK_GAP;
+        let meio = y + m::FIELD_H * 0.5;
+        if let Some(s) = c.antes {
+            self.pinta_sinal(s, cx, meio);
+            cx += SINAL + m::SEG_ICON_GAP;
+        }
+        let tw = self.largura_do_texto(c.nome, m::VALUE_PX);
+        crate::paint::paint_text_elided(
+            self.text_system,
+            self.scene,
+            c.nome,
+            cx,
+            y + crate::paint::folga_do_texto(m::FIELD_H, m::VALUE_PX),
+            m::VALUE_PX,
+            tw,
+            self.ink.color(ColorToken::KanbanCardFg),
+        );
+        if let Some(s) = c.fim {
+            self.pinta_sinal(s, cx + tw + m::SEG_ICON_GAP, meio);
+        }
+    }
+
+    /// A largura natural de [`Self::rotulo_com_sinal`].
+    pub fn rotulo_com_sinal_w(&mut self, texto: &str) -> f32 {
+        SINAL + m::SEG_ICON_GAP + self.largura_do_texto(texto, m::VALUE_PX)
+    }
+
+    /// Um rótulo só de leitura com um sinal à esquerda (a onda do «24 fps · project»).
+    pub fn rotulo_com_sinal(&mut self, sinal: Sinal, texto: &str, x: f32, y: f32) {
+        self.pinta_sinal(sinal, x, y + m::FIELD_H * 0.5);
+        let tx = x + SINAL + m::SEG_ICON_GAP;
+        let tw = self.largura_do_texto(texto, m::VALUE_PX);
+        crate::paint::paint_text(
+            self.text_system,
+            self.scene,
+            texto,
+            tx,
+            y + crate::paint::folga_do_texto(m::FIELD_H, m::VALUE_PX),
+            m::VALUE_PX,
+            tw,
+            self.ink.color(ColorToken::CardLabel),
+        );
+    }
+
+    /// A largura natural de [`Self::botao_com_icone_em`].
+    pub fn botao_com_icone_w(&mut self, texto: &str) -> f32 {
+        self.botao_w(texto) + SINAL + m::SEG_ICON_GAP
+    }
+
+    /// [`Self::botao_em`] com um ícone antes do texto, na tinta do texto.
+    pub fn botao_com_icone_em(&mut self, id: NodeId, icon: IconId, texto: &str, r: Rect) {
+        self.hit_index.register(id, r);
+        dicas::rotulo(id, texto);
+        let fundo = if self.store.hover_live(id) > 0.0 {
+            ColorToken::CardFieldHover
+        } else {
+            ColorToken::CardField
+        };
+        fill_rounded_rect(self.scene, r, m::FIELD_RADIUS, self.ink.color(fundo));
+        let x = r.x + m::FIELD_PAD_R;
+        self.pinta_sinal(
+            Sinal::Icone(icon, ColorToken::KanbanCardFg),
+            x,
+            r.y + r.h * 0.5,
+        );
+        let tx = x + SINAL + m::SEG_ICON_GAP;
+        crate::paint::paint_text_elided(
+            self.text_system,
+            self.scene,
+            texto,
+            tx,
+            r.y + crate::paint::folga_do_texto(r.h, m::VALUE_PX),
+            m::VALUE_PX,
+            (r.x + r.w - tx).max(0.0),
+            self.ink.color(ColorToken::KanbanCardFg),
+        );
+    }
+}
+
 impl CardCtx<'_> {
     fn largura_do_texto(&mut self, texto: &str, px: f32) -> f32 {
         self.text_system.prefix_width(texto, px).ceil()

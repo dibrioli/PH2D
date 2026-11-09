@@ -94,3 +94,31 @@ i18n em `ph2d-i18n/src/timeline.rs` (NÃO no `lib.rs`, que está em 700/700): ch
   borda vermelha do Auto Key; fita listrada depois do fim; enquadrar ao abrir.
 - Avaliar: botão direito no chip como atalho do menu do clipe; ícone antes do «fps»; a marca do Auto Key / Record como na maquete.
 - Smoke do dono ainda NÃO feito; integrar não é aprovar. Não há push nem integração desta linha por conta própria.
+
+## 1b — duas fileiras e acabamento (dono 09/11, depois do smoke da onda 1)
+
+- **Duas fileiras** (`transport_cartoes::paint_bar`): fileira 1 (tira do cabeçalho) = abas · migalha · tocar · Time · Frame ·
+  «24 fps · project» … dono · engrenagem · ×; fileira 2 = Auto Key · Record while playing · Marker · «Clips» · chips · «+».
+  Em largura estreita o `Fluxo` quebra; `Fluxo::guarda_para` faz o grupo dos clipes descer INTEIRO quando não cabe no resto
+  e cabe numa fileira (sem ele, a 900 px os chips iam para o «+N» e o `⋯` sumia).
+- **Peças genéricas novas** em `ph2d-editor-core/src/panel/cards_banda.rs` (append-only): `Sinal` (ícone ou ponto, por
+  token), `Emoldurada` + `emoldurada_w/emoldurada_em` (caixa de marcar com moldura, sinal antes e/ou no fim, a moldura é o
+  alvo), `rotulo_com_sinal{,_w}`, `botao_com_icone{_w,_em}`. Medidas: as do cartão (campo 28 px; a maquete B1, medida em
+  chrome headless, usa 22–26 px a 11 px de letra — a mesma proporção).
+- **Acabamento**: Auto Key com ponto no fim (`Text3`, `Danger` quando liga); Record com anel `Danger` antes do nome; fps com
+  `IconId::Fps`; Marker = `IconId::Plus` + «Marker» (a chave `panel.timeline.card.add_marker` perdeu o «+», só a barra em
+  cartões a usa); chips com ícone por tipo (`Film` clipe, `Cube` container — só nos chips, a lista suspensa guarda os
+  dela); o ▶ do clipe de entrada em `Warn` (âmbar, como a estrela da maquete); «plays a - b» vira selo âmbar
+  (`breadcrumb::paint_selo`, `WarnSoft`/`Warn`) — o dado já existia (`Status::Plays`); `breadcrumb::paint` clássico intacto.
+- **Gate de altura de volta a estrito** (`depois >= antes`): 1930 px → 116 antes, **126** agora (92 na onda 1); 1600 px →
+  91 → 92; 1100 px → 0/0 (banda de 423 px, folha nula nos dois). Teste `a_barra_tem_tres_fileiras_…` →
+  `a_barra_tem_duas_fileiras_no_molde_do_rive` (fileira e ORDEM: tocar na do título; Auto Key · Record · Marker antes do 1.º chip).
+- Provas por nome: `os_cartoes` 20 ✓, `_seam` 78 ✓, `breadcrumb` 10 ✓, `barra_menus` 2 ✓, `o_fps` 1 ✓, `banda` (editor-core) 3 ✓;
+  clippy `-D warnings` limpo em `ph2d-panel-timeline`, `ph2d-editor-core`, `ph2d-i18n`; fmt.
+- Fotos: [`15_onda1b_depois_animacao_smoke_1.png`](../fotos/15_onda1b_depois_animacao_smoke_1.png) ·
+  [`15_onda1b_lado_a_lado_maquete_B1.png`](../fotos/15_onda1b_lado_a_lado_maquete_B1.png) (a metade de cima é a mesma
+  maquete da onda 1; a captura headless nova saiu em branco).
+- Divergências: «Clips» fica como rótulo do grupo; o selo não tem «in Scene» (a frase de hoje é «plays a - b»; sem string
+  nova); dono + engrenagem continuam na fileira do título; a moldura das caixas é preenchimento `CardField` sem traço (é o
+  que a maquete faz: fundo a 4 %).
+- Superfície de colisão nova: `cards_banda.rs` (editor-core), `breadcrumb.rs`.

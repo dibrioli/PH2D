@@ -60,7 +60,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.card.fps" => "{fps} fps · project",
         "panel.timeline.card.autokey" => "Auto Key",
         "panel.timeline.card.record" => "Record while playing",
-        "panel.timeline.card.add_marker" => "+ Marker",
+        "panel.timeline.card.add_marker" => "Marker",
         "panel.timeline.card.length_long" => "Length (s)",
         "panel.timeline.card.when_ends" => "When the clip ends",
         "panel.timeline.card.end_stop" => "Stop",

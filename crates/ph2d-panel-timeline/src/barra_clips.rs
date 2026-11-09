@@ -52,6 +52,16 @@ fn tem_menu(on: bool, opcao: &DropdownOption<usize>) -> bool {
     on && !matches!(crate::transport_clips::source_at(opcao.id), Some(Ok(_)))
 }
 
+/// O glifo do TIPO no chip (onda 1b, maquete B1): clipe = filme, container = cubo. A lista suspensa
+/// de sempre (e `PH2D_CARDS=0`) guarda os glifos dela; uma opção sem tipo fica com o seu.
+fn glifo_do_tipo(opcao: &DropdownOption<usize>) -> Option<IconId> {
+    match crate::transport_clips::source_at(opcao.id) {
+        Some(Ok(_)) => Some(IconId::Cube),
+        Some(Err(_)) => Some(IconId::Film),
+        None => opcao.icon,
+    }
+}
+
 /// A largura do texto do chip, já cortada.
 fn texto_w(ctx: &mut PaintCtx, nome: &str) -> f32 {
     ctx.text_system
@@ -117,7 +127,7 @@ fn pinta_chip(ctx: &mut PaintCtx, ink: CardInk, r: Rect, ch: &Chip<'_>) -> Optio
         ColorToken::Text2
     });
     let mut x = r.x + m::SEG_INSET;
-    if let Some(icon) = ch.opcao.icon {
+    if let Some(icon) = glifo_do_tipo(ch.opcao) {
         let g = Rect::new(x, r.y + (r.h - GLIFO) * 0.5, GLIFO, GLIFO);
         paint_icon(ctx.scene, icon, g, tinta, StrokeToken::Default.px());
     }
@@ -141,7 +151,7 @@ fn pinta_chip(ctx: &mut PaintCtx, ink: CardInk, r: Rect, ch: &Chip<'_>) -> Optio
             ctx.scene,
             IconId::Play,
             e,
-            ink.color(ColorToken::Accent),
+            ink.color(ColorToken::Warn),
             StrokeToken::Default.px(),
         );
     }
@@ -199,7 +209,6 @@ pub(crate) fn paint(
     } else {
         "panel.timeline.card.sources"
     };
-    rotulo(ctx, ink, f, ph2d_i18n::tr(chave));
     let opcoes = crate::transport_clips::source_options(snap, view.tab);
     let escolhida = crate::transport_clips::selected_source(snap, view);
     let mut out = Clips {
@@ -233,6 +242,11 @@ pub(crate) fn paint(
         .collect();
     let mais = banda::icones_w(1) + m::FIELD_GAP;
     let tudo: f32 = pecas.iter().map(|p| p.2 + m::FIELD_GAP).sum::<f32>() + mais;
+    // Depois do gravar (onda 1b) o grupo inteiro desce se não cabe no resto e cabe numa fileira.
+    let nome = ph2d_i18n::tr(chave);
+    let nome_w = ctx.text_system.prefix_width(nome, m::LABEL_PX).ceil();
+    f.guarda_para(nome_w + m::FIELD_GAP + tudo);
+    rotulo(ctx, ink, f, nome);
     let resta = f.resta();
     let texto_mais = |n: usize| ph2d_i18n::tr_with("panel.timeline.card.more", &[("n", &n)]);
     let mais_w = |ctx: &mut PaintCtx, n: usize| {

@@ -175,12 +175,11 @@ fn efeito(mesa: &mut Mesa<TimelinePanel>, id: NodeId) -> String {
 }
 
 /// ⭐⭐ **A altura é o recurso deste painel.** As linhas de faixa à vista, antes e depois, a três larguras.
-/// O molde do Rive (doc 15, onda 1, versão B do dono 09/11) troca as duas fileiras da barra por TRÊS
-/// curtas, uma por assunto: a folha paga no máximo UMA fileira de barra, nunca mais.
-/// *Mutação: `area_da_folha` devolver o rect da banda ⇒ a folha sai da moldura.*
+/// O molde do Rive em DUAS fileiras (doc 15, onda 1b, dono 09/11): a folha nunca fica mais baixa que no
+/// painel de antes. *Mutações: `area_da_folha` devolver o rect da banda ⇒ a folha sai da moldura; uma
+/// 3.ª fileira ⇒ vermelho a 1930.*
 #[test]
 fn a_folha_nao_perde_linhas_para_o_cromo() {
-    let uma_fileira = m::FIELD_H + m::FIELD_ROW_GAP;
     let mut medidas = Vec::new();
     for w in [1930.0, 1600.0, 1100.0] {
         let janela = Rect { w, ..JANELA };
@@ -195,8 +194,8 @@ fn a_folha_nao_perde_linhas_para_o_cromo() {
     assert!(medidas[0].2 > 0.0, "vácuo: nada medido");
     for (w, _, antes, depois) in medidas {
         assert!(
-            depois + uma_fileira >= antes,
-            "a folha encolheu a {w} mais que uma fileira: {antes} px antes, {depois} px em cartões"
+            depois >= antes,
+            "a folha encolheu a {w}: {antes} px antes, {depois} px em cartões"
         );
     }
 }
@@ -483,53 +482,88 @@ fn sem_cartoes_e_o_painel_de_antes() {
     let _ = PointerKind::Move;
 }
 
-/// ⭐⭐ **Três fileiras, cada uma com um assunto** (doc 15, onda 1, maquete B1): título (abas · dono ·
-/// engrenagem), clipes (um chip por clipe · «+») e tocar. *Mutação: tirar um `f.quebra()` ⇒ duas
-/// fileiras na mesma altura.*
+/// ⭐⭐ **Duas fileiras** (doc 15, onda 1b, dono 09/11 depois do smoke da onda 1): na do título, abas ·
+/// tocar · Time · Frame · fps … dono · engrenagem; na 2.ª, Auto Key · Record · Marker ANTES do 1.º chip,
+/// depois os chips e o «+». *Mutações: `f.quebra()` antes do tocar ⇒ o Play desce; os chips antes do
+/// gravar ⇒ o Auto Key passa à direita do chip.*
 #[test]
-fn a_barra_tem_tres_fileiras_no_molde_do_rive() {
+fn a_barra_tem_duas_fileiras_no_molde_do_rive() {
     let m0 = mesa(true);
+    let r = |id: NodeId| m0.rect(id).unwrap_or_else(|| panic!("{id:?} não pintado"));
     // Pelo CENTRO: a célula de uma aba é o segmento, recolhido dentro da caixa.
     let y = |id: NodeId| {
-        let r = m0.rect(id).unwrap_or_else(|| panic!("{id:?} não pintado"));
+        let r = r(id);
         r.y + r.h * 0.5
     };
     let titulo = y(ids::TIMELINE_TAB_KEYS);
-    for id in [ids::TIMELINE_ANIM_DD, ids::TIMELINE_OPTIONS] {
+    for id in [
+        ids::TIMELINE_GO_START,
+        ids::TIMELINE_PLAY,
+        ids::TIMELINE_GO_END,
+        ids::TIMELINE_TIME_NUM,
+        ids::TIMELINE_FRAME_NUM,
+        ids::TIMELINE_ANIM_DD,
+        ids::TIMELINE_OPTIONS,
+    ] {
         assert!(
             (y(id) - titulo).abs() < 0.5,
             "{id:?} fora da fileira do título"
         );
     }
-    let clipes = y(ids::TIMELINE_CLIP_OPT[0]);
+    // A ordem da 1.ª: abas, tocar, Time, Frame e, encostados à direita, o dono e a engrenagem.
+    let ordem = [
+        ids::TIMELINE_TAB_ARRANGE,
+        ids::TIMELINE_GO_START,
+        ids::TIMELINE_GO_END,
+        ids::TIMELINE_TIME_NUM,
+        ids::TIMELINE_FRAME_NUM,
+        ids::TIMELINE_ANIM_DD,
+        ids::TIMELINE_OPTIONS,
+    ];
+    for par in ordem.windows(2) {
+        assert!(
+            r(par[0]).x + r(par[0]).w <= r(par[1]).x + 0.5,
+            "{:?} não vem antes de {:?}",
+            par[0],
+            par[1]
+        );
+    }
+    let segunda = y(ids::TIMELINE_AUTOKEY);
     assert!(
-        clipes > titulo + m::FIELD_H * 0.5,
-        "os clipes sobem ao título"
+        segunda > titulo + m::FIELD_H * 0.5,
+        "o gravar sobe ao título"
     );
     for id in [
+        ids::TIMELINE_RECORD,
+        ids::TIMELINE_ADD_MARKER,
+        ids::TIMELINE_CLIP_OPT[0],
         ids::TIMELINE_CLIP_OPT[1],
         ids::TIMELINE_ADD_CLIP,
         ids::TIMELINE_CLIP_MENU,
     ] {
-        assert!(
-            (y(id) - clipes).abs() < 0.5,
-            "{id:?} fora da fileira dos clipes"
-        );
+        assert!((y(id) - segunda).abs() < 0.5, "{id:?} fora da 2.ª fileira");
     }
-    let tocar = y(ids::TIMELINE_PLAY);
-    assert!(tocar > clipes + m::FIELD_H * 0.5, "o tocar sobe aos clipes");
-    for id in [
-        ids::TIMELINE_TIME_NUM,
-        ids::TIMELINE_FRAME_NUM,
+    let ordem = [
         ids::TIMELINE_AUTOKEY,
         ids::TIMELINE_RECORD,
         ids::TIMELINE_ADD_MARKER,
-    ] {
+        ids::TIMELINE_CLIP_OPT[0],
+    ];
+    for par in ordem.windows(2) {
         assert!(
-            (y(id) - tocar).abs() < 0.5,
-            "{id:?} fora da fileira de tocar"
+            r(par[0]).x + r(par[0]).w <= r(par[1]).x + 0.5,
+            "{:?} não vem antes de {:?}",
+            par[0],
+            par[1]
         );
     }
+    // Nada abaixo da 2.ª fileira: a barra tem DUAS.
+    let add = r(ids::TIMELINE_ADD_TRACK);
+    assert!(
+        add.y < segunda + m::FIELD_H * 1.5,
+        "há uma 3.ª fileira: a folha começa a {}",
+        add.y
+    );
     // O que saiu da barra não está à vista enquanto a janelinha dele está fechada.
     for id in NAS_OPCOES.iter().chain(NO_MENU.iter()).chain([
         &ids::TIMELINE_LOOP,

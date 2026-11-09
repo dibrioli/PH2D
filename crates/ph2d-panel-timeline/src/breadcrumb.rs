@@ -214,6 +214,44 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, x: f32, y: f32, snap: &Tim
     );
 }
 
+/// [`paint`] na barra em cartões (doc 15, onda 1b, maquete B1): «plays 4.00 - 6.00» é um SELO âmbar
+/// na altura do campo; os outros estados ficam o texto discreto de sempre. Não pinta além de [`width`].
+pub(crate) fn paint_selo(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    r: ph2d_editor_core::zones::Rect,
+    snap: &TimelineViewSnapshot,
+) {
+    use ph2d_editor_core::panel::cards::banda::metrics as m;
+    let Some(st) = status(snap) else {
+        return;
+    };
+    if !matches!(st, Status::Plays(..)) {
+        paint(ctx, theme, r.x, r.y + (r.h - ROW_H_PX) * 0.5, snap);
+        return;
+    }
+    let text = st.text();
+    let tw = ctx.text_system.prefix_width(&text, m::LABEL_PX).ceil();
+    let w = (tw + m::SEG_INSET * 2.0).min(r.w);
+    let selo = ph2d_editor_core::zones::Rect::new(r.x, r.y + m::SEG_PAD, w, r.h - m::SEG_PAD * 2.0);
+    ph2d_editor_core::paint::fill_rounded_rect(
+        ctx.scene,
+        selo,
+        selo.h * 0.5,
+        resolve(ColorToken::WarnSoft, theme),
+    );
+    ph2d_editor_core::paint::paint_text_elided(
+        ctx.text_system,
+        ctx.scene,
+        &text,
+        selo.x + m::SEG_INSET,
+        selo.y + ph2d_editor_core::paint::folga_do_texto(selo.h, m::LABEL_PX),
+        m::LABEL_PX,
+        (w - m::SEG_INSET * 2.0).max(0.0),
+        resolve(ColorToken::Warn, theme),
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

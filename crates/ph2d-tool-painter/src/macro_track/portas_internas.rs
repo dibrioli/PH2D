@@ -53,6 +53,7 @@ pub const INTERNAS: &[&str] = &[
     "new_brush_texture",
     "pick_wet_tool",
     // A mistura opaca do Digital (Color mixing): o cartão Basics chega-lhe pelo `handle_panel_event`.
+    "set_brush_mistura_amostra",
     "set_brush_mistura_modo",
     "set_brush_mistura_numero",
     // A mão do pincel (L2): o cartão Pen chega-lhe pelo `handle_panel_event`.

@@ -186,12 +186,11 @@ impl PixelApp {
         let Some(answer) = crate::input_teclas::key_with(self, v.world, v.editing, code, m) else {
             return false;
         };
-        match answer {
-            KeyAnswer::Toast(t) => {
-                let _ = v.toasts.push(ph2d_editor_core::Toast::info(t));
-            }
-            KeyAnswer::Zoom(z) => self.zoom_da_tecla(v, z),
-            KeyAnswer::Quiet => {}
+        // `if let` e não `match`: o censo dos avisos segue o `t` até ao `key_with` que o liga.
+        if let KeyAnswer::Zoom(z) = answer {
+            self.zoom_da_tecla(v, z);
+        } else if let KeyAnswer::Toast(t) = answer {
+            let _ = v.toasts.push(ph2d_editor_core::Toast::info(t));
         }
         true
     }

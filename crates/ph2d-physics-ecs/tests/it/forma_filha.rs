@@ -321,3 +321,57 @@ fn as_formas_novas_nascem_com_nomes_unicos() {
         ]
     );
 }
+
+/// Smoke 09/11 (forma neta): uma porta que pendura numa entidade NASCIDA RAIZ (`RootOrder`) deixa-a filha só com
+/// ordem de irmã — `RootOrder` só vale numa raiz — e com o seu lugar escrito como dado (`SiblingOrder`) no MESMO
+/// gesto; o *Make Independent Body* de uma forma solta na raiz põe o corpo no lugar dela entre as raízes.
+#[test]
+fn quem_as_portas_penduram_fica_filha_sem_ordem_de_raiz() {
+    use ph2d_ecs::{RootOrder, SiblingOrder};
+    let mut sim = SimWorld::new();
+    let w = sim.world_mut();
+    let corpo = w.spawn((rb(BodyKind::Static), RootOrder(0))).id();
+    let s1 = ph2d_physics_ecs::nasce_com_forma(w, corpo, ColliderShape::Ball { radius: 0.5 });
+    let raiz =
+        |w: &mut bevy_ecs::world::World, o| w.spawn((Transform::IDENTITY, RootOrder(o))).id();
+    let (r1, r2) = (raiz(w, 1), raiz(w, 2));
+    let neta = ph2d_physics_ecs::pendura_forma(w, r1, Some(s1));
+    let irma = ph2d_physics_ecs::pendura_forma(w, r2, Some(corpo));
+    let ordem = |w: &bevy_ecs::world::World, e| {
+        (
+            w.get::<RootOrder>(e).copied(),
+            w.get::<SiblingOrder>(e).copied(),
+        )
+    };
+    assert_eq!(
+        ordem(w, neta),
+        (None, Some(SiblingOrder(0))),
+        "a neta pendurada na forma"
+    );
+    assert_eq!(
+        ordem(w, s1),
+        (None, Some(SiblingOrder(0))),
+        "a forma principal fica a primeira"
+    );
+    assert_eq!(
+        ordem(w, irma),
+        (None, Some(SiblingOrder(1))),
+        "a forma nova vai para o fim das irmãs"
+    );
+
+    let solta = w.spawn((caixa(0.5, 0.5), RootOrder(3))).id();
+    let fim = w.spawn((Transform::IDENTITY, RootOrder(4))).id();
+    let novo = ph2d_physics_ecs::torna_corpo(w, solta, BodyKind::Dynamic, [0.5, 0.5], false);
+    assert_eq!(w.get::<ChildOf>(solta).map(ChildOf::parent), Some(novo));
+    assert_eq!(
+        ordem(w, solta),
+        (None, Some(SiblingOrder(0))),
+        "a forma solta dentro do corpo novo"
+    );
+    assert_eq!(
+        ordem(w, novo),
+        (Some(RootOrder(3)), None),
+        "o corpo novo no lugar da forma entre as raízes"
+    );
+    assert_eq!(ordem(w, fim).0, Some(RootOrder(4)));
+}

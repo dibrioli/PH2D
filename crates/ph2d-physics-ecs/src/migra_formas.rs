@@ -14,7 +14,7 @@
 
 use bevy_ecs::prelude::{Entity, World};
 use ph2d_ecs::{
-    ChildOf, InstanceOf, Name, ObjectInstance, StableId, Transform, ordered_children,
+    ChildOf, InstanceOf, Name, ObjectInstance, RootOrder, StableId, Transform, ordered_children,
     set_sibling_order,
 };
 
@@ -71,14 +71,26 @@ pub fn nome_livre(world: &mut World, base: &str) -> String {
 /// A filha «Collision Shape» vazia de `corpo` (nome único): olho aberto (ligada), `Transform` identidade, PRIMEIRA
 /// entre as irmãs (logo a forma principal de [`crate::main_shape`]). A fonte única da migração e das portas.
 fn filha_vazia(world: &mut World, corpo: Entity) -> Entity {
-    let irmas = ordered_children(world, corpo);
     let nome = nome_livre(world, NOME_DA_FORMA);
-    let filha = world
-        .spawn((Name::new(nome), Transform::IDENTITY, ChildOf(corpo)))
-        .id();
-    let ordem: Vec<Entity> = std::iter::once(filha).chain(irmas).collect();
-    set_sibling_order(world, corpo, &ordem);
+    let filha = world.spawn((Name::new(nome), Transform::IDENTITY)).id();
+    pendura(world, filha, corpo, Some(0));
     filha
+}
+
+/// ⭐ **A porta única com que esta crate pendura `filha` em `pai`**, na posição `em` entre as irmãs (o fim
+/// com `None`): `ChildOf`, o lugar escrito como dado (`SiblingOrder` de todas) no mesmo gesto, e SEM
+/// `RootOrder` — ele só vale numa raiz, e quem nasceu raiz (`spawn_empty_root`) levava-o para dentro.
+pub(crate) fn pendura(world: &mut World, filha: Entity, pai: Entity, em: Option<usize>) {
+    let mut irmas: Vec<Entity> = ordered_children(world, pai)
+        .into_iter()
+        .filter(|&x| x != filha)
+        .collect();
+    world
+        .entity_mut(filha)
+        .remove::<RootOrder>()
+        .insert(ChildOf(pai));
+    irmas.insert(em.unwrap_or(irmas.len()).min(irmas.len()), filha);
+    set_sibling_order(world, pai, &irmas);
 }
 
 /// ⭐ **O corpo nasce com a sua forma** (opção B, B3a): a filha «Collision Shape» de `body` com um
@@ -155,17 +167,13 @@ pub fn torna_corpo(
     let nome = nome_livre(world, NOME_DO_CORPO);
     let corpo = world.spawn((Name::new(nome), pose, corpo_de)).id();
     if let Some(p) = pai {
-        let irmas = ordered_children(world, p);
-        world.entity_mut(corpo).insert(ChildOf(p));
-        let ordem: Vec<Entity> = irmas
-            .into_iter()
-            .map(|x| if x == e { corpo } else { x })
-            .collect();
-        set_sibling_order(world, p, &ordem);
+        let em = ordered_children(world, p).iter().position(|&x| x == e);
+        pendura(world, corpo, p, em);
+    } else if let Some(r) = world.get::<RootOrder>(e).copied() {
+        world.entity_mut(corpo).insert(r);
     }
-    world
-        .entity_mut(e)
-        .insert((Transform::IDENTITY, ChildOf(corpo)));
+    world.entity_mut(e).insert(Transform::IDENTITY);
+    pendura(world, e, corpo, None);
     ph2d_ecs::assign_missing_stable_ids(world);
     corpo
 }

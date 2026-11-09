@@ -101,13 +101,11 @@ pub fn pendura_forma(world: &mut World, e: Entity, pai: Option<Entity>) -> Entit
         return crate::nasce_com_forma(world, e, FORMA_DO_MENU);
     };
     if world.get::<RigidBody>(p).is_some() || owner_body(world, p).is_some() {
-        world.entity_mut(e).insert((
-            ChildOf(p),
-            Collider {
-                shape: FORMA_DO_MENU,
-                ..Collider::default()
-            },
-        ));
+        world.entity_mut(e).insert(Collider {
+            shape: FORMA_DO_MENU,
+            ..Collider::default()
+        });
+        crate::migra_formas::pendura(world, e, p, None);
         return e;
     }
     world.despawn(e);

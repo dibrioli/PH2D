@@ -85,9 +85,11 @@ Treze itens em **sete blocos** (CLAUDE §0.10: a mesma família resolve-se de um
 
 ## 4. O desenho — uma porta por pergunta
 
-**Dependência nova:** `ph2d-pixel-core → ph2d-color` (folha leve, determinista CPU = WGSL). Uma verdade de OKLab no repo; recusa de copiar a matriz para o Pixel (§10). Confere-se `architecture_no_dependency_climbs_a_layer` no passo 0b.
+**Dependências (revisto pelo passo 0b, §12):** o núcleo **continua sem dependências** (`the_pixel_core_declares_no_dependency`, ADR-0196). As rampas como DADO (`Palette.ramps`, `rampa_de`, `shade` na rampa, `ciclo_em`) não fazem conta de cor e ficam no núcleo, em ficheiros novos (`ramp.rs`, `cycle.rs`; `sprite.rs` tem folga 10 do tecto de 700, `op.rs` 16 ⇒ Ops novas num ficheiro irmão). Toda a conta OKLab mora na crate nova **`ph2d-pixel-rampa`** (`ph2d-pixel-core` + `ph2d-color`): `gera_rampa`, a métrica OKLab do `Mapper` (o núcleo recebe a métrica por porta), `PreservaRampas`, a LUT da luz. Uma verdade de OKLab, sem ADR de dependência.
 
-**Crates novas** (drop-crate; a família compõe; a shell e a `ph2d-app-pixel` não crescem): `ph2d-pixel-rampa` (gerador, quantização, ciclo — se o núcleo passar do tecto próprio, senão módulos do núcleo), `ph2d-pixel-lint`, `ph2d-pixel-guia`, `ph2d-pixel-crt`, `ph2d-pixel-audio` (ponte para `ph2d-audio-*`; a família Pixel nunca vê `ph2d-app-audio`, regra `cbfdd16f28`).
+**Crates novas** (drop-crate; a família compõe; a shell e a `ph2d-app-pixel` não crescem): `ph2d-pixel-rampa`, `ph2d-pixel-lint`, `ph2d-pixel-guia`, `ph2d-pixel-crt` (lei em WGSL na prévia e no jogo; `crt()` CPU = gabarito e export — medido: 1 fio 25,7 ms em 2048², não cabe no quadro), `ph2d-pixel-audio` (ponte para `ph2d-audio-*`, que ganha `StreamPlayhead` append-only; a família Pixel nunca vê `ph2d-app-audio`, regra `cbfdd16f28`).
+
+**Luz na rampa — onde liga (passo 0b):** banda irmã `banda_rampa` em `ph2d-pixel-luz` ao lado de `banda_normal`; `faixa_rampa` em `fase_vector_bands_doc.rs:45-49`; `band_blit` grupo 0 binding 4 (banda) e 5 (LUT), neutras 1×1 como a `normal_neutra`, `Flags::com_rampa`. Só se lê o id com `a == 1` (o antialias da borda mistura o id).
 
 | Pergunta | A porta ÚNICA | Quem lê |
 |---|---|---|
@@ -211,6 +213,8 @@ Cada agente: 45 min, escreve o relatório na §12 deste plano, testes por nome, 
 | Recusado | Porquê |
 |---|---|
 | Copiar a matriz OKLab para o `ph2d-pixel-core` | duas verdades da mesma conversão; o `ph2d-color` já é determinista CPU = WGSL |
+| `ph2d-pixel-core → ph2d-color` | o núcleo é sem dependências por lei (ADR-0196, `pure_core.rs:44`); a conta vai para `ph2d-pixel-rampa` (passo 0b) |
+| CRT na CPU por quadro | 25,7 ms a 1 fio em 2048² (passo 0b); com rayon cabe mas rouba 4–8 fios ao jogo ⇒ WGSL |
 | A rampa como estado da seleção (Aseprite) | perde-se ao clicar outra cor e não serve aos outros quatro leitores |
 | Color cycling em RGB | o ciclo é rotação de índices; em RGB seria reescrever píxeis por quadro (DPaint, GrafX2, Pro Motion: só indexado) |
 | Luz na rampa por posterize por canal (Painter) | sai da paleta; a promessa é ficar na paleta |
@@ -234,4 +238,51 @@ Decididos tecnicamente (delegados): color cycling só no modo Indexed; «Light: 
 
 ## 12. Estado (relatórios dos agentes entram aqui)
 
-_vazio — nada construído._
+### Passo 0b (09/11, agente)
+
+Só medições; nada de produto editado. Os oráculos (§11) não foram instalados aqui: o pngquant, o GrafX2 e o RetroArch pedem `sudo`.
+
+**1. `ph2d-pixel-core → ph2d-color`: a camada deixa, mas outra regra BARRA.**
+| Regra | Veredito |
+|---|---|
+| `architecture_no_dependency_climbs_a_layer` (`ph2d-editor-core/tests/it/…:59-98`) | as duas crates são **folha** (`especie`, :59-86); `permitido` (:89-97) só restringe quem depende de família, painel ou ferramenta ⇒ folha → folha **pode**. `ph2d-color` só depende de `ph2d-det-math` (`libm`), `ph2d-ease` (zero deps), `bytemuck` e `serde`, e nenhuma delas chega ao Pixel ⇒ sem ciclo |
+| `the_pixel_core_declares_no_dependency` (`ph2d-pixel-core/tests/it/pure_core.rs:44-61`) + ADR-0196 §1 (`0196-…md:23`: «`ph2d-pixel-core` … **sem dependências**») | **REPROVA** qualquer linha em `[dependencies]`. Mudar isto pede ADR |
+⇒ **Proposta:** as rampas como DADO (`Palette.ramps`, `Ramp{id,name,indices}`, `rampa_de`, `shade` na rampa, `ciclo_em`) não precisam de cor e ficam no núcleo, sem deps. Tudo o que faz conta em OKLab (`gera_rampa`, `Mapper` Oklab/`PreservaRampas`, a LUT da luz) vai para a crate nova **`ph2d-pixel-rampa`** (deps: `ph2d-pixel-core` + `ph2d-color`). O `Mapper` do núcleo recebe a métrica por porta (`fn(&[u8;4], &[u8;4]) -> u32` ou um trait), e a OKLab entra pela `rampa`. Assim fica uma só verdade de OKLab, sem ADR e sem tocar o gate.
+
+**2. Tectos de LOC.** Nenhum gate tem tecto por crate para `ph2d-pixel-*`: o `the_shell_only_shrinks` só lista `ph2d-app-pixel` (`:222`, 11 278). O que limita o núcleo é o **tecto de 700 linhas por ficheiro** (`architecture_workspace_file_loc_cap.rs:39`, nenhum ficheiro do Pixel na lista de exceções).
+| Ficheiro do núcleo | LOC | Folga até 700 |
+|---|---|---|
+| `sprite.rs` (onde mora a `Palette`, :300) | 690 | **10** |
+| `op.rs` | 684 | 16 |
+| `affine.rs` / `tiles.rs` | 669 | 31 |
+| `codec.rs` (MINOR 9) | 653 | 47 |
+| `palette.rs` · `convert.rs` · `compose.rs` · `ink.rs` | 324 · 381 · 503 · 83 | ≥ 197 |
+Núcleo hoje: 13 134 LOC (io 5 400, text 2 552, keys 2 162, tiles 1 737, render 1 571, ponte 1 509). ⇒ `Ramp`/`Cycle` entram em ficheiros NOVOS (`ramp.rs`, `cycle.rs`); a `Palette` só ganha os dois campos (≈ 4 linhas, cabe nos 10). As Ops novas vão para um ficheiro irmão, porque o `op.rs` não aguenta um bloco. A matemática OKLab vai para a `ph2d-pixel-rampa` (item 1).
+
+**3. CRT na CPU** (bench descartável: 256² RGBA → 2048², scanline na linha ímpar do sub-pixel, máscara RGB por coluna, barril com amostra mais próxima, brilho; `--release`; mínimo de 20 rodadas intercaladas; load ≈ 5,2 durante a corrida, por isso o número é limite superior).
+| Variante | Mínimo (ms) | Cabe em 16,6 ms? |
+|---|---|---|
+| 1 fio | **25,7** | **não** (1,55×) |
+| rayon 4 fios | 8,6 | sim |
+| rayon 8 fios | 4,3 | sim |
+| rayon 16 fios | 2,65 | sim |
+⇒ Com 1 fio não cabe. Com rayon cabe, mas leva 4 a 8 fios a cada quadro (só a saída tem 16 MB) e disputa a CPU com o jogo. **Decisão: WGSL na janela do jogo e na prévia**, com o `crt()` da CPU como gabarito e para o export (lei, não tempo real). O gate CPU × placa sai daqui.
+
+**4. Onde a banda de rampa se liga** (o caminho da P14, verificado):
+| Ponto | arquivo:linha |
+|---|---|
+| a composição pede a banda por faixa Pixel | `shells/desktop/src/render_loop/fase_vector_bands_doc.rs:45-49` (`faixa_normal` → `normais.cenas.push`); as faixas que não são Pixel recebem `None` em `:51`. **A terceira banda entra aqui**: `ph2d_app_pixel::luz::faixa_rampa(…)` → `rampas.cenas.push` |
+| o produtor | `ph2d-app-pixel/src/luz.rs:44-55` → `ph2d-pixel-luz/src/lib.rs:126` `banda_normal` (Vello, `ImageQuality::Low` = vizinho mais próximo) ⇒ o irmão `banda_rampa` (r = id, g = posição, a = 255 só para texel em rampa) |
+| a textura da banda | `ph2d-app-light2d/src/normais.rs:11-14` `NormaisDasFaixas` guarda **uma** textura; `colar` (:36-83) faz Vello → intermediário → `copy_texture_to_texture` (:55). A rampa precisa de uma **segunda textura** (cópia desse tipo ou um campo irmão) e de mais um render do Vello por faixa, só com «Light: Palette» ligado (G6, `bytes()` :26) |
+| a colagem | `ph2d-render/src/band_blit.rs:391` `blit_com_normal` → `colar` :404; bind group :419-437 |
+| o shader | `ph2d-render/src/shaders/band_blit.wgsl:83-103` `fs_main`; a lei entra em `acender` (:71): com o texel em rampa, `L_alvo = L·lum(luz_em_n)` e o degrau vem da LUT, e não do `rgb * luz` |
+| **ranhuras livres** | o layout é `[Some(bgl), None, None, Some(luz_bgl)]` (`band_blit.rs:247`) ⇒ **os grupos 1 e 2 estão VAZIOS**. No grupo 0 ocupam-se os bindings 0-3 (`:180-215`); o 4 em diante está livre. Sugestão: grupo 0 binding 4 = banda de rampa, 5 = LUT `rampas[id][pos]` (2D, `Rgba32Float`/OKLab), com 1×1 neutras como a `normal_neutra` (:168, :268) e um flag `com_rampa` no `Flags` (:20-29). `band_blit.rs` tem 596 LOC (folga de 104) |
+| o sprite direto (não a banda) | `sprite.wgsl:466-486` `fs_main_n` → `receber.wgsl:70` `luz_receber_n`. O Pixel Sprite passa pela banda Vello, não por aqui; só é preciso mexer se o Sprite do motor também ganhar luz na rampa |
+⚠️ Na borda do quadrado do sprite, o Vello pode misturar o id com o transparente por antialias. Por isso a banda só se lê com `a == 1`; o resto cai na lei de hoje.
+
+**5. Posição do stream em ms.** O voice de stream já tem o cursor em quadros da fonte e enrola no loop (`ph2d-audio/src/voice.rs:375-449`, `render_streamed`; `cursor_frame` :180 é `pub(crate)` e só o preview o publica, `engine.rs:560` → `meter.store_preview`). O `StreamHandle` (`stream.rs:128`) **é movido** para a thread de áudio por `Engine::play_stream` (`engine.rs:213`) depois de sair de `ph2d_audio_stream::play_file` (`ph2d-audio-stream/src/lib.rs:148`). Mudança mínima, só acrescentando:
+1. `stream.rs:110` `Shared` ganha `played: AtomicU64`;
+2. `StreamHandle` ganha `pub(crate) fn publicar(&self, f: u64)` (store `Relaxed`) e `pub fn playhead(&self) -> StreamPlayhead`, que guarda um `Arc<Shared>` e o `rate`;
+3. o novo `pub struct StreamPlayhead { shared, rate }` (Clone) tem `frame()` e `ms() = frame·1000/rate`;
+4. `voice.rs:447`: antes de `self.source = Some(Source::Streamed(h))`, `h.publicar(self.cursor.max(0.0) as u64)`, uma vez por bloco, sem alocar;
+5. em `ph2d-audio-stream`, nada muda (o chamador faz `handle.playhead()` antes de `play_stream`). Precisão: um bloco do mixer, sem a latência de saída.

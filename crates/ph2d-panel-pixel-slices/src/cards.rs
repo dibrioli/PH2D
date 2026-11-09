@@ -36,7 +36,16 @@ fn botao(id: NodeId, chave: &'static str) -> Cell<'static> {
     })
 }
 
-fn cartao_lista(linhas: Vec<Linha>, transform: bool, na_mao: bool) -> CardDef<'static> {
+/// O texto da lista vazia: sem Pixel Sprite em Draw não há Slice Tool a pegar (foto `P12_fecho_05`).
+pub(crate) fn vazio(x: &Contexto) -> &'static str {
+    match (x.com_sprite, x.na_mao) {
+        (false, _) => "panel.pixel.slices.no_document",
+        (true, true) => "panel.pixel.slices.empty",
+        (true, false) => "panel.pixel.slices.empty_tool",
+    }
+}
+
+fn cartao_lista(linhas: Vec<Linha>, transform: bool, vazio: &'static str) -> CardDef<'static> {
     cartao(
         ids::SLICES_SEC_LIST,
         tr("panel.pixel.slices.sec_list"),
@@ -50,11 +59,6 @@ fn cartao_lista(linhas: Vec<Linha>, transform: bool, na_mao: bool) -> CardDef<'s
                 y = c.full(None, Widget::Choice(&o), y);
             }
             if linhas.is_empty() {
-                let vazio = if na_mao {
-                    "panel.pixel.slices.empty"
-                } else {
-                    "panel.pixel.slices.empty_tool"
-                };
                 y = c.hint(tr(vazio), y);
             } else {
                 y = c.row(
@@ -237,7 +241,7 @@ pub(crate) fn cartoes(x: &Contexto, user_aberto: bool) -> Vec<CardDef<'static>> 
         .as_ref()
         .map(|(_, u)| (ph2d_pixel_ponte::user::vista(u), user_aberto));
     vec![
-        cartao_lista(x.linhas.clone(), x.transform, x.na_mao),
+        cartao_lista(x.linhas.clone(), x.transform, vazio(x)),
         cartao(
             ids::SEC_PROPS,
             tr("panel.pixel.slices.sec_props"),
@@ -248,4 +252,34 @@ pub(crate) fn cartoes(x: &Contexto, user_aberto: bool) -> Vec<CardDef<'static>> 
             },
         ),
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::vazio;
+    use crate::canal::Contexto;
+
+    /// ⭐ Foto `P12_fecho_05`: sem Pixel Sprite em Draw a lista vazia mandava pegar a Slice Tool, que
+    /// fora do Draw não existe. Cada estado tem o seu texto, e todos estão na tabela.
+    #[test]
+    fn a_lista_vazia_diz_o_que_fazer_em_cada_estado() {
+        let com = |na_mao| Contexto {
+            com_sprite: true,
+            na_mao,
+            ..Contexto::default()
+        };
+        let sem = Contexto::default();
+        let sem_na_mao = Contexto {
+            na_mao: true,
+            ..Contexto::default()
+        };
+        assert_eq!(vazio(&sem), "panel.pixel.slices.no_document");
+        assert_eq!(vazio(&sem_na_mao), "panel.pixel.slices.no_document");
+        assert_eq!(vazio(&com(false)), "panel.pixel.slices.empty_tool");
+        assert_eq!(vazio(&com(true)), "panel.pixel.slices.empty");
+        for x in [sem, com(false), com(true)] {
+            let k = vazio(&x);
+            assert_ne!(ph2d_i18n::tr(k), k, "{k} sem texto");
+        }
+    }
 }

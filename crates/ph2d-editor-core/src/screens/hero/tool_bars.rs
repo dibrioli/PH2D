@@ -166,15 +166,17 @@ pub fn blocks(bars: &ToolBars, n_placed: usize) -> [std::ops::Range<usize>; 3] {
 /// Pinta as barras do módulo dentro de `area` (a área de desenho sem as réguas).
 pub fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene) {
     let Some(bars) = hero.store.tool_bars().cloned() else {
+        hero.store.set_tool_column(None);
         return;
     };
     let theme = hero.theme;
     let pinned = hero.store.selection_actions_pinned();
     let all = placed(&bars, area, pinned, hero.view.ui_mirrored);
+    let coluna = blocks(&bars, all.len())[0].clone();
+    let coluna = super::panel_of(all.get(coluna).unwrap_or_default().iter().map(|(_, r)| *r));
+    hero.store.set_tool_column(coluna);
     if crate::widget::lista_flutuante::cromo_em_cartoes() {
-        let coluna = blocks(&bars, all.len())[0].clone();
-        let rects = all.get(coluna).unwrap_or_default().iter().map(|(_, r)| *r);
-        super::super::bottom_hud::publica_coluna_do_modulo(super::panel_of(rects));
+        super::super::bottom_hud::publica_coluna_do_modulo(coluna);
     }
     // Os fundos primeiro, por bloco (a coluna, o flyout, a ④): cada um é um painel.
     for b in blocks(&bars, all.len()) {

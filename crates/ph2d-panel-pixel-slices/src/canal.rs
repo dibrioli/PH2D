@@ -16,6 +16,8 @@ pub struct Linha {
 /// O que o painel mostra.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Contexto {
+    /// Há um Pixel Sprite em Draw: sem ele a lista vazia diz como abrir um (foto `P12_fecho_05`).
+    pub com_sprite: bool,
     /// A Slice Tool está na mão, com um sprite em edição.
     pub na_mao: bool,
     pub linhas: Vec<Linha>,

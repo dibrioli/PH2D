@@ -36,6 +36,25 @@ pub fn fundo(ctx: &PaintCtx) -> f32 {
     (area.y + area.h).min(ctx.layout.bottom_hud.y) - Spacing::Sm.px()
 }
 
+/// ⭐ **A faixa `x` de uma janela acessória** `(esquerda, direita)`: à direita da lista docada da
+/// esquerda e da coluna ① de ferramentas, à esquerda da coluna do encaixe. A coluna ① nunca se tapa
+/// (a regra da ④, dono 02/11, F50; foto `P12_fecho_04`: em 1 024 px a Slices tapava-a inteira); no
+/// canhoto ela está à direita da área e a faixa acaba antes dela.
+#[must_use]
+pub fn faixa_x(ctx: &PaintCtx) -> (f32, f32) {
+    let area = ctx.layout.draw_area;
+    let mut esquerda = ctx.layout.clear_of_left_list(area).x.max(area.x);
+    let mut direita = ctx.slot.x - Spacing::Lg.px();
+    if let Some(c) = ctx.host.store().tool_column() {
+        if c.x + c.w * 0.5 < (esquerda + direita) * 0.5 {
+            esquerda = esquerda.max(c.x + c.w + Spacing::Lg.px());
+        } else {
+            direita = direita.min(c.x - Spacing::Lg.px());
+        }
+    }
+    (esquerda, direita.max(esquerda))
+}
+
 /// A largura da janela `panel` neste quadro — a escolha do artista limitada ao piso e ao tecto; o
 /// limitado volta ao store, para o próximo arrasto partir do que se vê (sem borracha).
 pub fn largura(store: &mut WidgetStore, panel: NodeId, area: Rect, coluna_x: f32) -> f32 {
@@ -119,14 +138,20 @@ pub fn coloca(
 /// quadro em que ela abre (ainda sem rect publicado): fora dele quem manda é o arrasto do artista.
 /// Os obstáculos são TODOS os rects publicados neste ecrã. Os candidatos são o próprio sítio, os
 /// colados a cada obstáculo e a CASCATA (um cabeçalho abaixo e à direita de cada um), todos dentro
-/// de `dentro` — nunca fora do ecrã. Ganha, por esta ordem: (1) o menor número de cabeçalhos tapados
-/// — o dela debaixo de outra, ou o de outra debaixo do topo dela (F1, ecrã de 1 024 × 768: sem sítio
-/// livre a Undo History ia para debaixo da Preview e a marca do menu mentia); (2) a menor área
-/// sobreposta; (3) o mais perto do sítio de omissão. O desvio escolhido vai para o arrasto.
+/// de `dentro` — nunca fora do ecrã. A que abre pinta por cima de todas (`slot_tabs::reconcile_z`: a
+/// última a aparecer fica no topo). Ganha, por esta ordem: (1) o menor número de cabeçalhos de OUTRAS
+/// debaixo do topo dela — é o «×» delas que se perde (F1, 1 024 × 768; com a coluna ① de fora, a
+/// Tilemap tapava o dos atalhos); (2) o menor número de outras debaixo do cabeçalho dela — não o
+/// escondem, mas um clique numa delas trá-la à frente; (3) a menor área sobreposta; (4) o mais perto
+/// do sítio de omissão. O desvio escolhido vai para o arrasto.
 pub fn assenta_ao_abrir(store: &mut WidgetStore, panel: NodeId, r: Rect, dentro: Rect) -> Rect {
     if store.panel_rect(panel).is_some() {
         return r;
     }
+    // A ordem z segue a de assentar: aberta pelo PEDIDO (Edit ▸ …, cena 25) ela fica visível dentro
+    // do próprio pintor, e o `reconcile_z` do quadro seguinte punha-a na ordem do registo — por baixo
+    // da que assentou depois dela e com o «×» tapado (foto `c25_1024`, 09/11).
+    store.bump_panel_z(panel);
     let fundo = (r.y + r.h).max(dentro.y + dentro.h);
     // Cada obstáculo vai até ao fundo: a janela cresce com o conteúdo (a Undo History com cada passo,
     // e no quadro em que abre ainda não o mediu), logo o que está por baixo dela é dela (smoke 09/11).
@@ -145,11 +170,15 @@ pub fn assenta_ao_abrir(store: &mut WidgetStore, panel: NodeId, r: Rect, dentro:
     // O topo que se vê ao abrir: o cabeçalho e um cartão — o resto da coluna pode ficar por baixo.
     let topo = |a: Rect| Rect::new(a.x, a.y, a.w, (m::LIST_HEAD_H * 3.0).min(a.h));
     let tapa = |p: (f32, f32)| -> usize {
-        let a = em(p);
+        let a = topo(em(p));
         outras
             .iter()
-            .filter(|&&o| corta(cabeca(a), o) > 0.0 || corta(topo(a), cabeca(o)) > 0.0)
+            .filter(|&&o| corta(a, cabeca(o)) > 0.0)
             .count()
+    };
+    let sob = |p: (f32, f32)| -> usize {
+        let a = cabeca(em(p));
+        outras.iter().filter(|&&o| corta(a, o) > 0.0).count()
     };
     let sobra = |p: (f32, f32)| -> f32 { outras.iter().map(|&o| corta(em(p), o)).sum() };
     let folga = Spacing::Lg.px();
@@ -173,13 +202,14 @@ pub fn assenta_ao_abrir(store: &mut WidgetStore, panel: NodeId, r: Rect, dentro:
         .iter()
         .flat_map(|&x| ys.iter().map(move |&y| (x, y)))
         .filter(cabe)
-        .map(|p| (tapa(p), sobra(p), longe(p), p))
+        .map(|p| (tapa(p), sob(p), sobra(p), longe(p), p))
         .min_by(|a, b| {
-            a.0.cmp(&b.0)
-                .then(a.1.total_cmp(&b.1))
+            (a.0.cmp(&b.0))
+                .then(a.1.cmp(&b.1))
                 .then(a.2.total_cmp(&b.2))
+                .then(a.3.total_cmp(&b.3))
         })
-        .map_or((r.x, r.y), |(_, _, _, p)| p);
+        .map_or((r.x, r.y), |(_, _, _, _, p)| p);
     if p != (r.x, r.y) {
         let (dx, dy) = store.blender_picker_offset(panel);
         store.set_blender_picker_offset(panel, dx + p.0 - r.x, dy + p.1 - r.y);

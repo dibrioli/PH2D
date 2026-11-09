@@ -90,6 +90,7 @@ fn publica_conteudo() {
     });
     use ph2d_panel_pixel_slices::canal::{self, Contexto, Linha, Vista};
     canal::publish_contexto(Contexto {
+        com_sprite: true,
         na_mao: true,
         linhas: vec![Linha {
             id: SliceId(1),

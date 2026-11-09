@@ -19,20 +19,18 @@ use ph2d_pixel_render::prefs_canal::{self as fio, Scope};
 
 fn solta(ctx: &mut PaintCtx) -> Rect {
     let area = ctx.layout.draw_area;
-    let livre = ctx.layout.clear_of_left_list(area);
     let teto = {
         let r = ph2d_editor_core::ruler::top_band(area);
         r.y + r.h + Spacing::Sm.px()
     };
     let fundo = borda::fundo(ctx);
+    let (esquerda, direita) = borda::faixa_x(ctx);
     // Ao abrir, foge das janelas já abertas (`borda::assenta_ao_abrir`); depois fica onde está.
     let coluna = ctx.slot.x;
     let store = ctx.host.store_mut();
     let node = PixelPrefsPanel::NODE_ID;
-    let esquerda = livre.x.max(area.x);
-    let w = borda::largura(store, node, area, coluna)
-        .min((coluna - Spacing::Lg.px() - esquerda).max(0.0));
-    let base = (coluna - Spacing::Lg.px() - w).max(esquerda);
+    let w = borda::largura(store, node, area, coluna).min(direita - esquerda);
+    let base = (direita - w).max(esquerda);
     borda::coloca(store, node, w, (esquerda, base), (teto, fundo))
 }
 

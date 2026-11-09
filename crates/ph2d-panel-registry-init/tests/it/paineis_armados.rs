@@ -489,6 +489,7 @@ fn arma_a_historia() {
 fn arma_as_slices() {
     use ph2d_panel_pixel_slices::canal;
     canal::publish_contexto(canal::Contexto {
+        com_sprite: true,
         na_mao: true,
         linhas: vec![canal::Linha {
             id: ph2d_pixel_core::SliceId(1),

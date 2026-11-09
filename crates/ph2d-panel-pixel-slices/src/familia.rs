@@ -85,6 +85,7 @@ pub fn contexto(s: &Sprite, frame: u32, sel: &[SliceId], transform: bool) -> Con
         })
         .collect();
     Contexto {
+        com_sprite: true,
         na_mao: true,
         linhas,
         vista: campos::vista(s, frame, sel),

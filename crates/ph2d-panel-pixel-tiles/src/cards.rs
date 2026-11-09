@@ -335,11 +335,21 @@ fn cartao_terreno(m: Mao, x: &Contexto) -> CardDef<'static> {
     )
 }
 
+/// O texto sem camada tilemap: sem Pixel Sprite em Draw não há menu Layers a usar (foto `P12_fecho_05`).
+pub(crate) fn vazio(x: &Contexto) -> &'static str {
+    if x.com_sprite {
+        "panel.pixel.tiles.empty"
+    } else {
+        "panel.pixel.tiles.no_document"
+    }
+}
+
 /// Os cartões do painel, com a camada de tilemap activa.
 pub(crate) fn tileset(st: &PixelTilesPanelState, x: &Contexto) -> Vec<CardDef<'static>> {
     let Some(m) = x.mao else {
         // Aberta pelo menu *Window* sem camada tilemap: diz como fazer uma (a marca é a janela).
-        let vazio = |c: &mut CardCtx<'_>, y| c.hint(tr("panel.pixel.tiles.empty"), y);
+        let chave = vazio(x);
+        let vazio = move |c: &mut CardCtx<'_>, y| c.hint(tr(chave), y);
         return vec![cartao(
             ids::SEC_TILESET,
             PixelTilesPanel::TITLE.tr(),
@@ -353,4 +363,26 @@ pub(crate) fn tileset(st: &PixelTilesPanelState, x: &Contexto) -> Vec<CardDef<'s
     }
     v.push(cartao_tileset(m, st, x));
     v
+}
+
+#[cfg(test)]
+mod tests {
+    use super::vazio;
+    use crate::canal::Contexto;
+
+    /// ⭐ Foto `P12_fecho_05`: sem Pixel Sprite em Draw a janela mandava usar o menu Layers, que fora
+    /// do Draw não está à vista. Cada estado tem o seu texto, e os dois estão na tabela.
+    #[test]
+    fn sem_camada_tilemap_diz_o_que_fazer_em_cada_estado() {
+        let com = Contexto {
+            com_sprite: true,
+            ..Contexto::default()
+        };
+        assert_eq!(vazio(&Contexto::default()), "panel.pixel.tiles.no_document");
+        assert_eq!(vazio(&com), "panel.pixel.tiles.empty");
+        for x in [Contexto::default(), com] {
+            let k = vazio(&x);
+            assert_ne!(ph2d_i18n::tr(k), k, "{k} sem texto");
+        }
+    }
 }

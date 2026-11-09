@@ -93,6 +93,7 @@ fn publica_conteudo() {
     });
     use ph2d_panel_pixel_slices::canal::{self, Contexto, Linha, Vista};
     canal::publish_contexto(Contexto {
+        com_sprite: true,
         na_mao: true,
         linhas: vec![Linha {
             id: SliceId(1),
@@ -400,4 +401,72 @@ fn a_borda_da_coluna_pixel_e_chrome_e_estreita_o_painel() {
         depois.w + 40.0 < antes.w,
         "o PIXEL não estreitou: {antes:?} → {depois:?}"
     );
+}
+
+/// ⭐ A coluna ① de ferramentas nunca fica tapada (foto `P12_fecho_04`, ecrã de 1 024 × 768: a Undo
+/// History tapava metade dela, a Slices a coluna inteira). As janelas acessórias ficam à direita dela
+/// como ficam à direita da lista docada — a regra da ④ (dono 02/11, F50) — e o «×» de cada uma
+/// continua a clicar (F1): a cena 25 (Undo History e Keyboard Shortcuts no mesmo quadro) e todas.
+#[test]
+fn nenhuma_janela_tapa_a_coluna_de_ferramentas() {
+    use ph2d_editor_core::icons::IconId;
+    use ph2d_editor_core::interaction::{BarButton, BarFace, BarFamily, ToolBars};
+    use ph2d_editor_core::screens::hero::{PANEL_PIXEL, PANEL_PIXEL_TILES};
+    let b = |i: u64| BarButton {
+        id: NodeId(0x7001_0000 + i),
+        face: BarFace::Icon(IconId::Select),
+        label: String::new(),
+        on: false,
+        family: BarFamily::Neutral,
+    };
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    publica_conteudo();
+    let todas: Vec<(&str, NodeId)> = (TODAS.iter().copied())
+        .chain([(PANEL_PIXEL_TILES, ids::PIXEL_TILES_PANEL)])
+        .collect();
+    let cena_25 = [JANELAS[1], JANELAS[2]];
+    // A cena 25 e o menu Edit abrem pelo PEDIDO: a janela fica visível dentro do próprio pintor,
+    // depois de a ordem z do quadro estar feita — o caminho que a foto `c25_1024` apanhou.
+    for ecra in [ECRA_PEQUENO, ECRA_DO_DONO] {
+        for (janelas, pelo_pedido) in [
+            (&cena_25[..], true),
+            (&cena_25[..], false),
+            (&todas[..], false),
+        ] {
+            let mut hero = HeroScreen::new(NodeId(1));
+            hero.panel_visibility.insert(PANEL_PIXEL, true);
+            hero.store.set_tool_bars(Some(ToolBars {
+                column: vec![(0..11).map(b).collect(), (11..19).map(b).collect()],
+                ..ToolBars::default()
+            }));
+            quadros(&mut hero, &mut ts, ecra, 30);
+            let coluna = hero
+                .store
+                .tool_column()
+                .expect("a coluna ① não foi pintada");
+            if pelo_pedido {
+                ph2d_panel_pixel_history::canal::pede_abrir();
+                ph2d_panel_pixel_keys::pede_abrir();
+            } else {
+                for &(p, _) in janelas {
+                    hero.panel_visibility.insert(p, true);
+                }
+            }
+            for (quando, n) in [("1.º quadro", 1), ("assente", 30)] {
+                quadros(&mut hero, &mut ts, ecra, n);
+                let quando = format!(
+                    "ecrã {ecra:?}, {} janelas, pedido {pelo_pedido}, {quando}",
+                    janelas.len()
+                );
+                for &(p, n) in janelas {
+                    let r = no_ecra(&hero, p, n, ecra, &quando);
+                    assert!(
+                        !sobrepoe(r, coluna),
+                        "{quando}: {p} {r:?} tapa a coluna ① {coluna:?}"
+                    );
+                }
+            }
+        }
+    }
 }

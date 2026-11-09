@@ -279,12 +279,12 @@ fn cartao_topo(modo: Modo, aviso: Option<String>, vazio: bool) -> CardDef<'stati
 /// O rect da janela: à esquerda da coluna, como a SLICES; o arrasto do título desloca-a.
 fn solta(ctx: &mut PaintCtx) -> Rect {
     let area = ctx.layout.draw_area;
-    let livre = ctx.layout.clear_of_left_list(area);
     let teto = {
         let r = ph2d_editor_core::ruler::top_band(area);
         r.y + r.h + Spacing::Sm.px()
     };
     let fundo = borda::fundo(ctx);
+    let (esquerda, direita) = borda::faixa_x(ctx);
     let coluna = ctx.slot.x;
     if ctx
         .host
@@ -298,10 +298,8 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
             .set_accessory_width(PixelKeysPanel::NODE_ID, w);
     }
     let store = ctx.host.store_mut();
-    let mut w = borda::largura(store, PixelKeysPanel::NODE_ID, area, coluna);
-    let esquerda = livre.x.max(area.x);
-    w = w.min((coluna - Spacing::Lg.px() - esquerda).max(0.0));
-    let base = (coluna - Spacing::Lg.px() - w).max(esquerda);
+    let w = borda::largura(store, PixelKeysPanel::NODE_ID, area, coluna).min(direita - esquerda);
+    let base = (direita - w).max(esquerda);
     borda::coloca(
         store,
         PixelKeysPanel::NODE_ID,

@@ -139,6 +139,7 @@ fn linha(id: u32, nome: String, selecionada: bool) -> Linha {
 /// `button` selecionada, `hero` não.
 fn uma_selecionada() -> Contexto {
     Contexto {
+        com_sprite: true,
         na_mao: true,
         linhas: vec![
             linha(1, "button".to_owned(), true),

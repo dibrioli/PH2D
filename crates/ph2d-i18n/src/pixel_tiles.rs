@@ -6,6 +6,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel_tiles.title" => "Tilemap",
         "panel.pixel.tiles.title_new" => "New Tilemap Layer",
         "panel.pixel.tiles.title_convert" => "Convert to Tilemap",
+        "panel.pixel.tiles.no_document" => "Open a Pixel Sprite in Draw to see its tilemap.",
         "panel.pixel.tiles.empty" => {
             "No tilemap layer. Choose New Tilemap Layer in the Layers menu to make one."
         }

@@ -26,18 +26,15 @@ pub(crate) const SLICES_EDGE: NodeId = hash_node_id("pixel_slices.edge");
 /// docada nunca a tapa nem lhe rouba o ponteiro. O desvio limitado volta ao store (sem borracha).
 fn solta(ctx: &mut PaintCtx) -> Rect {
     let area = ctx.layout.draw_area;
-    let livre = ctx.layout.clear_of_left_list(area);
     let teto = {
         let r = ph2d_editor_core::ruler::top_band(area);
         r.y + r.h + Spacing::Sm.px()
     };
     let fundo = borda::fundo(ctx);
+    let (esquerda, direita) = borda::faixa_x(ctx);
     let coluna = ctx.slot.x;
     let store = ctx.host.store_mut();
-    let mut w = borda::largura(store, PixelSlicesPanel::NODE_ID, area, coluna);
-    let direita = coluna - Spacing::Lg.px();
-    let esquerda = livre.x.max(area.x);
-    w = w.min((coluna - Spacing::Lg.px() - esquerda).max(0.0));
+    let w = borda::largura(store, PixelSlicesPanel::NODE_ID, area, coluna).min(direita - esquerda);
     let base = (direita - w).max(esquerda);
     borda::coloca(
         store,

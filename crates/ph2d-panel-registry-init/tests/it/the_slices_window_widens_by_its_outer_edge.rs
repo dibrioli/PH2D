@@ -44,6 +44,7 @@ fn assenta(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem) {
 fn hero(ts: &mut ph2d_text::TextSystem) -> HeroScreen {
     let _ = ph2d_panel_registry_init::register_all_panels();
     canal::publish_contexto(Contexto {
+        com_sprite: true,
         na_mao: true,
         linhas: vec![Linha {
             id: SliceId(1),

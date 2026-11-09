@@ -7,18 +7,22 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use ph2d_pixel_keys::{Chord, Keymap, user_file};
 
-static ABRIR: AtomicBool = AtomicBool::new(false);
 static A_CAPTURAR: AtomicBool = AtomicBool::new(false);
 static TECLA: Mutex<Option<Chord>> = Mutex::new(None);
 static NOVO: Mutex<Option<Keymap>> = Mutex::new(None);
 
+thread_local! {
+    /// Por fio, como o da Undo History: um teste em paralelo que pinta a janela não come o pedido.
+    static ABRIR: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 /// Abre a janela no próximo quadro (menu Edit ▸ Keyboard Shortcuts, `Ctrl+Alt+Shift+K`).
 pub fn pede_abrir() {
-    ABRIR.store(true, Ordering::Relaxed);
+    ABRIR.set(true);
 }
 
 pub(crate) fn take_abrir() -> bool {
-    ABRIR.swap(false, Ordering::Relaxed)
+    ABRIR.replace(false)
 }
 
 /// A janela espera uma tecla: o acorde é dela, não dos atalhos.

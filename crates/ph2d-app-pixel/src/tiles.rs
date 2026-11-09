@@ -245,6 +245,7 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
     let t = &mut app.tiles;
     let mut x = Contexto::default();
     if let Some((_, d)) = doc {
+        x.com_sprite = true;
         (x.conjuntos, x.padrao) = conjuntos(&d.sprite, d.layer);
     }
     if let Some((k, d, set)) = set {

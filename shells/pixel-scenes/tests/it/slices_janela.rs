@@ -284,6 +284,10 @@ fn a_janela_segue_a_ferramenta() {
     t.quadro();
     assert_eq!(aberta(&t), Some(false));
     assert!(!canal::contexto().na_mao);
+    assert!(
+        canal::contexto().com_sprite,
+        "com o sprite em Draw a lista vazia não manda abrir um"
+    );
     let id = t.com_uma((4, 4), (24, 14));
     t.quadro();
     assert_eq!(aberta(&t), Some(true));

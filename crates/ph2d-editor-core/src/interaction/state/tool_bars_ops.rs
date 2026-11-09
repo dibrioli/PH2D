@@ -7,7 +7,21 @@ impl WidgetStore {
     /// ⭐ Publica as barras deste quadro. ⚠️ Em TODO quadro, `None` incluído: um módulo que larga a
     /// mão não pode deixar a coluna dele pintada (e clicável) por cima de outro.
     pub fn set_tool_bars(&mut self, bars: Option<ToolBars>) {
+        if bars.is_none() {
+            self.tool_bars.column = None;
+        }
         self.tool_bars.bars = bars;
+    }
+
+    /// ① Publica onde a coluna do módulo caiu neste quadro (`None` = sem coluna).
+    pub fn set_tool_column(&mut self, r: Option<crate::zones::Rect>) {
+        self.tool_bars.column = r;
+    }
+
+    /// ① A coluna do módulo como ficou no último quadro pintado.
+    #[must_use]
+    pub fn tool_column(&self) -> Option<crate::zones::Rect> {
+        self.tool_bars.column
     }
 
     /// ⭐ O objecto activo é de uma família que não usa a ferramenta da mão (o Pixel Sprite,

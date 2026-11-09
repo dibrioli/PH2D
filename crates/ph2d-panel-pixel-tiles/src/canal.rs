@@ -10,6 +10,8 @@ pub use ph2d_pixel_tiles::mao::{Alvo, Conjunto, Mao};
 /// O que o painel mostra do tileset da camada activa.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Contexto {
+    /// Há um Pixel Sprite em Draw: sem ele a janela diz como abrir um.
+    pub com_sprite: bool,
     pub mao: Option<Mao>,
     pub tile_w: u16,
     pub tile_h: u16,

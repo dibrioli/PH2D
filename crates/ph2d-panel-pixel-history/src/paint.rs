@@ -18,20 +18,18 @@ use crate::{PixelHistoryPanel, event, ids};
 /// docada da esquerda (a mesma régua da janela SLICES).
 fn solta(ctx: &mut PaintCtx, piso: f32) -> Rect {
     let area = ctx.layout.draw_area;
-    let livre = ctx.layout.clear_of_left_list(area);
     let teto = {
         let r = ph2d_editor_core::ruler::top_band(area);
         r.y + r.h + Spacing::Sm.px()
     };
     let fundo = borda::fundo(ctx);
+    let (esquerda, direita) = borda::faixa_x(ctx);
     // Ao abrir, foge das janelas já abertas (`borda::assenta_ao_abrir`); depois fica onde está.
     let coluna = ctx.slot.x;
     let store = ctx.host.store_mut();
     let node = PixelHistoryPanel::NODE_ID;
-    let esquerda = livre.x.max(area.x);
-    let w = borda::largura_com_piso(store, node, area, coluna, piso)
-        .min((coluna - Spacing::Lg.px() - esquerda).max(0.0));
-    let base = (coluna - Spacing::Lg.px() - w).max(esquerda);
+    let w = borda::largura_com_piso(store, node, area, coluna, piso).min(direita - esquerda);
+    let base = (direita - w).max(esquerda);
     borda::coloca(store, node, w, (esquerda, base), (teto, fundo))
 }
 
@@ -42,8 +40,8 @@ fn cartao_lista(v: HistoryView) -> CardDef<'static> {
         None,
         move |c, mut y| {
             if v.rows.is_empty() {
-                // Aberta pelo menu *Window* sem documento: a marca do menu é a janela no ecrã.
-                y = c.hint(tr("panel.pixel.history.empty"), y);
+                // Sem Pixel Sprite em Draw (com um, há sempre o `Initial State`): diz como abrir um.
+                y = c.hint(tr("panel.pixel.history.no_document"), y);
             }
             for (i, r) in v.rows.iter().enumerate() {
                 y = c.list_row(

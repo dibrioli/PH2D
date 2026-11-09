@@ -32,6 +32,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.user.type.vector" => "Vector",
         "pixel.user.type.map" => "Map",
         "pixel.user.type.uuid" => "UUID",
+        "panel.pixel.slices.no_document" => "Open a Pixel Sprite in Draw to see its slices.",
         "panel.pixel.slices.empty" => "No slices yet. Drag on the canvas to make one.",
         "panel.pixel.slices.empty_tool" => {
             "No slices yet. Pick the Slice tool, then drag on the canvas."

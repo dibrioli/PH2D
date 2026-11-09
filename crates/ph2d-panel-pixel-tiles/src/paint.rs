@@ -130,10 +130,17 @@ pub(crate) fn paint(st: &mut PixelTilesPanelState, ctx: &mut PaintCtx) {
     // Ao lado do encaixe do painel PIXEL, como a Preview: a área do desenho passa por baixo da coluna.
     let coluna = ctx.slot.x;
     let area = ctx.layout.draw_area;
-    let w = borda::largura(ctx.host.store_mut(), node, area, coluna);
+    let (esquerda, direita) = borda::faixa_x(ctx);
+    let w = borda::largura(ctx.host.store_mut(), node, area, coluna).min(direita - esquerda);
     let (teto, fundo) = (teto(ctx), borda::fundo(ctx));
-    let base = coluna - w - Spacing::Lg.px();
-    let slot = borda::coloca(ctx.host.store_mut(), node, w, (area.x, base), (teto, fundo));
+    let base = (direita - w).max(esquerda);
+    let slot = borda::coloca(
+        ctx.host.store_mut(),
+        node,
+        w,
+        (esquerda, base),
+        (teto, fundo),
+    );
     let encaixe = ctx.slot;
     ctx.slot = slot;
     borda::declara_fecho(ctx.host.store_mut(), node);

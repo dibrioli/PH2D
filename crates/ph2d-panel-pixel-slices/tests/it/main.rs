@@ -13,6 +13,7 @@ const JANELA: Rect = Rect::new(0.0, 0.0, 1600.0, 1400.0);
 
 fn contexto() -> Contexto {
     Contexto {
+        com_sprite: true,
         na_mao: true,
         linhas: vec![Linha {
             id: SliceId(3),
@@ -76,6 +77,7 @@ fn sem_a_ferramenta_a_janela_aberta_fica() {
 #[test]
 fn sem_slices_so_o_transform_responde() {
     let x = Contexto {
+        com_sprite: true,
         na_mao: true,
         ..Contexto::default()
     };

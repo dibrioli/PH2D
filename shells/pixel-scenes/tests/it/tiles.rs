@@ -208,6 +208,10 @@ fn a_cena_21_abre_com_o_mapa_desenhado_e_o_painel_aberto() {
     assert_eq!(p.tile_em(0, 0), TileRef::EMPTY);
     assert_eq!(p.hero.panel_visibility.get(PANEL_PIXEL_TILES), Some(&true));
     assert_eq!(p.mao().modo, Modo::Auto, "o modo inicial é o Auto");
+    assert!(
+        canal::contexto().com_sprite,
+        "com o sprite em Draw a janela não manda abrir um"
+    );
     assert!(derived_is_consistent(p.s()));
     assert_eq!(MAPA.len(), 4);
 }

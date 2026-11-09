@@ -560,7 +560,8 @@ pub(crate) fn set_last_inspector_visible_h(h: f32) {
 /// daria duas respostas a *«de quem é este cartão?»*, e a que o artista vê é a que envelhece.
 #[must_use]
 pub fn texture_slot_pick(id: ph2d_a11y::NodeId) -> Option<u64> {
-    if id != crate::ids::INSP_RENDER_TEXTURE_SLOT {
+    // Com duas folhas a miniatura é o seletor de folha — e recebe a imagem, que troca a folha à vista.
+    if id != crate::ids::INSP_RENDER_TEXTURE_SLOT && id != crate::ids::INSP_IMAGE_SHEET_PICK {
         return None;
     }
     current_inspector_sprite().map(|s| s.entity_bits)

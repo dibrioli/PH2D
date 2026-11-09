@@ -5569,6 +5569,7 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-render",
  "ph2d-sprite-edit",
+ "ph2d-sprite-screen",
  "ph2d-sprite-sheet",
  "ph2d-text",
  "ph2d-tokens",

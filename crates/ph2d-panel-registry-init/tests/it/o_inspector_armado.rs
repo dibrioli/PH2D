@@ -286,7 +286,7 @@ pub fn arma_tudo() {
             signal_on_finish: "idle_done".to_string(),
             signal_on_loop: "idle_loop".to_string(),
             per_frame_ms: vec![100, 120, 100, 80],
-            frames: Vec::new(),
+            frames: None,
             markers: Vec::new(),
             steps: 4,
             color: 0,

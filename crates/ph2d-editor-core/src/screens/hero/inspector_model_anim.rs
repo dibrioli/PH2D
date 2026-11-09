@@ -47,8 +47,9 @@ pub struct InspectorAnimRow {
     /// para cada quadro, crie»*), e um campo que EDITA precisa de ler o valor. O predicado passou a
     /// ser derivado ([`Self::has_per_frame_timing`]) — *uma fonte, e a pergunta calcula-se dela*.
     pub per_frame_ms: Vec<u32>,
-    /// A lista de quadros (`SpriteAnimFrames`), na ordem tocada, cada um com a sua folha. Vazia = o intervalo `from..=to`.
-    pub frames: Vec<AnimFrameRef>,
+    /// A lista de quadros (`SpriteAnimFrames`), na ordem tocada, cada um com a sua folha. `None` = o intervalo
+    /// `from..=to`; `Some(vazia)` = a animação ainda sem quadros (não toca).
+    pub frames: Option<Vec<AnimFrameRef>>,
     /// Os marcadores em quadro desta animação (`SpriteAnimMarkers`), na ordem da lista.
     pub markers: Vec<InspectorAnimMarker>,
     /// Quantos quadros a animação toca (`0` = não resolve na grelha de hoje). Teto do «Frame».
@@ -93,12 +94,10 @@ impl InspectorAnimRow {
     #[must_use]
     pub fn plays_on(&self, sheets: &[u32]) -> bool {
         let cells_of = |k: u8| sheets.get(usize::from(k)).copied().unwrap_or(0);
-        if self.frames.is_empty() {
-            self.fits(cells_of(self.sheet))
-        } else {
-            self.frames
-                .iter()
-                .all(|f| f.is_empty() || f.cell < cells_of(f.sheet))
+        match &self.frames {
+            None => self.fits(cells_of(self.sheet)),
+            // Sem quadros não está fora da grelha: o resumo diz «0 frames», não um alarme.
+            Some(l) => l.iter().all(|f| f.is_empty() || f.cell < cells_of(f.sheet)),
         }
     }
 
@@ -219,7 +218,7 @@ impl InspectorAnimInfo {
         let row = self.rows.get(self.current_index()?)?;
         let seq = self.playing_cells(row)?;
         let step = self.scrub_step(v, seq.len());
-        Some(if row.frames.is_empty() {
+        Some(if row.frames.is_none() {
             AnimFieldEdit::SetFrame(seq[step].cell)
         } else {
             AnimFieldEdit::SetStep(u32::try_from(step).ok()?)
@@ -237,7 +236,7 @@ impl InspectorAnimInfo {
     /// para a célula visível; num intervalo, `frame - from`. `None` fora da animação.
     fn current_step(&self, row: &InspectorAnimRow) -> Option<usize> {
         let seq = self.playing_cells(row)?;
-        if row.frames.is_empty() {
+        if row.frames.is_none() {
             let lo = row.from.min(row.to);
             let f = self.frame;
             return (f.sheet == row.sheet && f.cell >= lo && ((f.cell - lo) as usize) < seq.len())
@@ -335,7 +334,7 @@ impl InspectorAnimInfo {
         // ainda não correu um tique). Saturar é honesto: a barra mostra o princípio (ou o fim).
         let step = match self.current_step(row) {
             Some(s) => u32::try_from(s).ok()?,
-            None if row.frames.is_empty() => self
+            None if row.frames.is_none() => self
                 .frame
                 .cell
                 .saturating_sub(row.from.min(row.to))
@@ -473,7 +472,7 @@ mod tests {
             signal_on_finish: String::new(),
             signal_on_loop: String::new(),
             per_frame_ms: Vec::new(),
-            frames: Vec::new(),
+            frames: None,
             markers: Vec::new(),
             steps: 4,
             color: 0,
@@ -648,12 +647,12 @@ mod tests {
     #[test]
     fn a_frame_list_is_walked_by_step_not_by_cell() {
         let mut i = info(8, "walk");
-        i.rows[1].frames = vec![
+        i.rows[1].frames = Some(vec![
             AnimFrameRef::cell(6),
             AnimFrameRef::cell(2),
             AnimFrameRef::cell(6),
             AnimFrameRef::cell(7),
-        ];
+        ]);
         i.frame = AnimFrameRef::cell(6);
         i.card.step = 2;
         assert_eq!(i.progress(), Some((2, 4)), "o SEGUNDO 6, pelo cursor");
@@ -663,7 +662,7 @@ mod tests {
         assert_eq!(i.scrub_cell(1.0 / 3.0), Some(2));
         i.card.step = 9; // um cursor velho: a célula visível decide
         assert_eq!(i.this_frame_index(), Some(0));
-        i.rows[1].frames = vec![AnimFrameRef::cell(6), AnimFrameRef::cell(9)];
+        i.rows[1].frames = Some(vec![AnimFrameRef::cell(6), AnimFrameRef::cell(9)]);
         assert!(
             i.current_dangling(),
             "uma célula fora da grelha cala a lista inteira"

@@ -154,12 +154,14 @@ pub(crate) fn verbos_das_folhas(c: &mut CardCtx<'_>, y: f32, card: Option<&Sheet
 /// Quantos quadros vazios (de uma folha apagada) a animação tem.
 #[must_use]
 pub(crate) fn vazios(row: &InspectorAnimRow) -> usize {
-    row.frames.iter().filter(|f| f.is_empty()).count()
+    row.frames.iter().flatten().filter(|f| f.is_empty()).count()
 }
 
 /// A animação é TODA vazia (nenhum quadro de verdade)?
 fn toda_vazia(row: &InspectorAnimRow) -> bool {
-    !row.frames.is_empty() && row.frames.iter().all(|f| f.is_empty())
+    row.frames
+        .as_ref()
+        .is_some_and(|l| !l.is_empty() && l.iter().all(|f| f.is_empty()))
 }
 
 /// No cartão Animation, com vazios em alguma animação: **Remove empty frames**, e **Delete empty animations** só

@@ -96,6 +96,8 @@ pub struct DragPaint {
     pub ghost: Option<Rect>,
     /// O quadro com o fio da prévia (`[0]`) e o com a moldura de escolhido (`[1]`).
     pub outlined: [Option<usize>; 2],
+    /// O quadro que está a TOCAR (a barra da cabeça de leitura): anda com o tocador.
+    pub playing: Option<usize>,
 }
 
 /// A posição final de um quadro tirado de `from` e largado no intervalo `gap` (`0..=n`).
@@ -200,25 +202,6 @@ impl AnimDoc {
             .get(self.selected)
             .map(|r| row_cells(r, &info.sheets))
             .unwrap_or_default()
-    }
-
-    /// A base a que um clique na folha junta células. ⚠️ Uma animação SEM lista cujo intervalo é a
-    /// folha inteira é a que o «+» acabou de criar (o default `0..=células-1`): ninguém a escolheu,
-    /// então o primeiro clique começa uma lista nova em vez de juntar a célula a todas as outras.
-    fn click_base(&self) -> Vec<AnimFrameRef> {
-        let Some(info) = self.snap.info.as_ref() else {
-            return Vec::new();
-        };
-        let Some(row) = info.rows.get(self.selected) else {
-            return Vec::new();
-        };
-        // A folha inteira DA ANIMAÇÃO (o «+» faz a 0), mostre o editor qual folha mostrar (plano GEF 26 §3.4).
-        let sheets = &info.sheets;
-        let all = sheets.get(usize::from(row.sheet)).copied().unwrap_or(0);
-        if row.frames.is_empty() && row.span(all) == all {
-            return Vec::new();
-        }
-        row_cells(row, &info.sheets)
     }
 
     /// Os quadros que a faixa mostra agora (com o arrasto na folha, ou a reordenação, em curso).
@@ -448,7 +431,7 @@ impl AnimDoc {
                 self.pending.push(AnimFieldEdit::Remove(row));
             }
         } else if let Some(i) = l.frames.iter().position(|f| hit(f.1, x, y))
-            && self.authored_frames().len() > 1
+            && i < self.authored_frames().len()
         {
             let mut frames = self.authored_frames();
             frames.remove(i);
@@ -472,7 +455,7 @@ impl AnimDoc {
         } else if let Some(cell) = self.cell_at(x, y)
             && self.row().is_some()
         {
-            let base = self.click_base();
+            let base = self.authored_frames();
             self.drag = Drag::Cells {
                 at: self.insert_at.unwrap_or(base.len()).min(base.len()),
                 base,
@@ -626,7 +609,8 @@ impl AnimDoc {
             return false;
         };
         let mut frames = self.authored_frames();
-        if frames.len() <= 1 || i >= frames.len() {
+        // O último também sai: a animação fica sem quadros (smoke do dono 09/11), nunca volta ao intervalo.
+        if i >= frames.len() {
             return false;
         }
         frames.remove(i);

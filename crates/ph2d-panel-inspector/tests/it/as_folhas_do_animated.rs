@@ -181,13 +181,13 @@ fn delete_sheet_so_aparece_com_duas() {
 
 fn com_vazios(toda_vazia: bool) -> InspectorAnimInfo {
     let mut a = anim(true, true);
-    a.rows[0].frames = vec![
+    a.rows[0].frames = Some(vec![
         AnimFrameRef::cell(0),
         AnimFrameRef::EMPTY,
         AnimFrameRef::EMPTY,
-    ];
+    ]);
     if toda_vazia {
-        a.rows[1].frames = vec![AnimFrameRef::EMPTY; 2];
+        a.rows[1].frames = Some(vec![AnimFrameRef::EMPTY; 2]);
     }
     a
 }

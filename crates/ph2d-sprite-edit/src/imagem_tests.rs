@@ -183,3 +183,36 @@ fn o_painter_devolve_a_imagem_a_folha_certa() {
         );
     }
 }
+
+/// ⭐ Uma ferramenta de imagem na folha extra (Trim na `run`, smoke do dono 09/11): a edição herda o nome da imagem de antes,
+/// em vez de cair em «Sheet 2».
+#[test]
+fn a_folha_extra_editada_herda_o_nome_da_de_antes() {
+    let db = AssetDb::new();
+    let antigo = db.insert_image_rgba8(1, 1, px(30));
+    let novo = db.insert_image_rgba8(1, 1, px(40));
+    let mut w = World::new();
+    let folha = ph2d_ecs::ExtraSheet {
+        asset: antigo,
+        size: [1.0, 1.0],
+        anchor: [0.0, 0.0],
+        hframes: 1,
+        vframes: 1,
+    };
+    let e = w
+        .spawn((
+            Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], [1.0; 4]),
+            ph2d_ecs::SpriteSheets(std::iter::once(folha).collect()),
+        ))
+        .id();
+    let antes = da_folha(&w, e, 1);
+    assert_eq!(antes, Some(antigo));
+    w.get_mut::<ph2d_ecs::SpriteSheets>(e).unwrap().0[0].asset = novo;
+    editada(&w, e, 1, antes);
+    let mut ids = BTreeMap::new();
+    let live = BTreeSet::from([novo]);
+    herda_o_nome(&mut ids, &live, |id| {
+        (*id == antigo).then(|| "run".to_owned())
+    });
+    assert_eq!(ids.get(&novo), Some(&Some("run".to_owned())));
+}

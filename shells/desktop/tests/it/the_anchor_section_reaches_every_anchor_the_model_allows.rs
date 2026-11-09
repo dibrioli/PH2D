@@ -287,7 +287,7 @@ fn the_panel_names_the_directions_the_engine_names() {
                 signal_on_finish: String::new(),
                 signal_on_loop: String::new(),
                 per_frame_ms: Vec::new(),
-                frames: Vec::new(),
+                frames: None,
                 markers: Vec::new(),
                 steps: 2,
                 color: 0,

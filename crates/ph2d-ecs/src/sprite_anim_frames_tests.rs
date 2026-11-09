@@ -146,12 +146,33 @@ fn renomear_leva_a_lista_e_o_tocador() {
     );
 }
 
+/// ⭐ Uma lista VAZIA é uma animação sem quadros (o «+», smoke do dono 09/11), não o intervalo: não toca, a imagem
+/// fica, nada entra em pânico; só o `remove` a devolve ao intervalo. *Mutação: `set` com vazio apagar a entrada ⇒
+/// `get` dá `None` e a tag toca a folha inteira.*
 #[test]
-fn por_uma_lista_vazia_apaga_a_entrada() {
+fn uma_animacao_sem_quadros_nao_toca_e_segura_a_imagem() {
     let mut f = SpriteAnimFrames::default();
-    f.set("a", vec![FrameRef::cell(1)]);
-    f.set("a", vec![]);
+    f.set("walk", vec![FrameRef::cell(1)]);
+    f.set("walk", vec![]);
+    assert_eq!(f.get("walk"), Some(&[][..]), "a entrada vazia fica");
+    let t = tag(0, 7, AnimDirection::PingPong, None);
+    let list = f.get("walk");
+    assert_eq!(tag_cells(&t, list, &[8]), None);
+    let mut a = playing(&t);
+    assert_eq!(entry_cell(&a, &t, list, &[8]), None);
+    let (mut frame, mut step) = (FrameRef::cell(5), 2);
+    for _ in 0..20 {
+        let out = advance_frames(&mut a, &t, list, &mut frame, &mut step, &[8], TICK);
+        assert!(!out.frame_changed);
+    }
+    assert_eq!(
+        (frame, step),
+        (FrameRef::cell(5), 2),
+        "a imagem fica a que estava"
+    );
+    f.remove("walk");
     assert!(f.is_empty());
+    assert_eq!(tag_cells(&t, f.get("walk"), &[8]).map(|s| s.len()), Some(8));
 }
 
 #[test]

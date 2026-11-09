@@ -490,16 +490,23 @@ fn paint_strip(
                 tom(ColorToken::BgScrim, theme),
             );
         }
-        // Escolhido = moldura de acento; o que a prévia toca = fio neutro (auditoria 07/11: eram iguais).
+        // Escolhido = moldura de acento; o que a prévia toca = fio da cabeça de leitura (auditoria 07/11: eram iguais).
         let chosen = doc.frame_selected == Some(i);
-        if chosen || (on_screen && step == Some(i)) {
-            let radius = frame_radius(theme, m::FIELD_RADIUS);
+        let playing = on_screen && step == Some(i);
+        let radius = frame_radius(theme, m::FIELD_RADIUS);
+        if chosen || playing {
             let (w, c) = [
-                (StrokeToken::Thin, ColorToken::Text2),
+                (StrokeToken::Thin, ColorToken::TimelinePlayhead),
                 (StrokeToken::Thick, ColorToken::Accent),
             ][usize::from(chosen)];
             stroke_rounded_rect(scene, *thumb, radius, w.px(), tom(c, theme));
             painted.outlined[usize::from(chosen)] = Some(i);
+        }
+        if playing {
+            // ⭐ A cabeça de leitura (smoke do dono 09/11): uma barra no topo do quadro que toca, a andar com ele.
+            let bar = Rect::new(thumb.x, thumb.y, thumb.w, Spacing::Xs.px());
+            fill_rounded_rect(scene, bar, radius, tom(ColorToken::TimelinePlayhead, theme));
+            painted.playing = Some(i);
         }
         paint_text(
             text,
@@ -514,7 +521,7 @@ fn paint_strip(
         let hovered = doc.hover.is_some_and(|(x, y)| {
             x >= thumb.x && x < thumb.x + thumb.w && y >= thumb.y && y < thumb.y + thumb.h
         });
-        if frames.len() > 1 && hovered {
+        if hovered {
             // Margem mínima: o × ocupa quase toda a caixa (dono 08/11: «um pouco maior»).
             let d = Spacing::Xxs.px();
             let icon = Rect::new(

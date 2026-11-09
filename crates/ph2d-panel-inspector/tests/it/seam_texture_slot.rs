@@ -124,6 +124,11 @@ fn the_panel_translates_the_slot_id_back_to_its_sprite() {
         texture_slot_pick(ph2d_panel_inspector::ids::INSP_RENDER_TEXTURE_SLOT),
         Some(ENTITY)
     );
+    // Com duas folhas a miniatura é o seletor de folha — e recebe a imagem solta (smoke 09/11 #8).
+    assert_eq!(
+        texture_slot_pick(ph2d_panel_inspector::ids::INSP_IMAGE_SHEET_PICK),
+        Some(ENTITY)
+    );
     // ⛔ E um id qualquer não é a ranhura.
     assert_eq!(texture_slot_pick(ids::INSP_ENTITY_NAME), None);
     clear();

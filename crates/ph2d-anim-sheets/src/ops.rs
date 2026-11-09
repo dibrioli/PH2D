@@ -121,7 +121,10 @@ pub fn delete_sheet(
                     list.into_iter().map(|f| after_deleting(f, k)).collect(),
                 );
             }
-            _ if t.sheet == k => {
+            // Sem quadros continua sem quadros: só a folha dela sai.
+            Some(_) if t.sheet == k => t.sheet = 0,
+            Some(_) => {}
+            None if t.sheet == k => {
                 let n = t
                     .resolve(sheet_cells(sheets, k))
                     .map_or(1, |(lo, hi)| hi - lo + 1);

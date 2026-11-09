@@ -163,18 +163,17 @@ fn extra_sheets(
         .unwrap_or_default()
 }
 
-/// A lista de quadros de cada linha da biblioteca (vazia = intervalo), na ordem da biblioteca.
+/// A lista de quadros da animação `name` (`None` = o intervalo; vazia = sem quadros).
 #[must_use]
 pub fn row_frames(
     world: &World,
     entity: Entity,
     name: &str,
-) -> Vec<ph2d_editor_core::AnimFrameRef> {
+) -> Option<Vec<ph2d_editor_core::AnimFrameRef>> {
     world
         .get::<SpriteAnimFrames>(entity)
         .and_then(|f| f.get(name))
         .map(|l| l.iter().map(|f| crate::panel_frame::to_panel(*f)).collect())
-        .unwrap_or_default()
 }
 
 /// Aplica uma edição do cartão. `None` = não é uma edição do cartão (a §11 de sempre trata-a).
@@ -196,32 +195,8 @@ pub fn apply_card_edit(
         AnimFieldEdit::Frames(row, cells) => {
             let lib = world.get::<SpriteAnimations>(entity)?;
             let name = lib.iter().nth(usize::from(*row))?.name.clone();
-            let mut frames = world
-                .get::<SpriteAnimFrames>(entity)
-                .cloned()
-                .unwrap_or_default();
-            frames.set(
-                &name,
-                cells
-                    .iter()
-                    .map(|f| crate::panel_frame::from_panel(*f))
-                    .collect(),
-            );
-            if frames.is_empty() {
-                queue_remove(queue, registry, entity_bits, FRAMES);
-                queue_remove(queue, registry, entity_bits, CURSOR);
-            } else {
-                queue_set(queue, registry, entity_bits, FRAMES, &frames);
-                if world.get::<SpriteAnimCursor>(entity).is_none() {
-                    queue_set(
-                        queue,
-                        registry,
-                        entity_bits,
-                        CURSOR,
-                        &SpriteAnimCursor::default(),
-                    );
-                }
-            }
+            let cells = cells.iter().map(|f| crate::panel_frame::from_panel(*f));
+            set_frames(world, entity_bits, &name, cells.collect(), queue, registry);
         }
         AnimFieldEdit::CycleMode(row, mode) => {
             let mut lib = world.get::<SpriteAnimations>(entity)?.clone();
@@ -417,6 +392,28 @@ pub(crate) fn follow_character_rename(
     }
     if moved {
         queue_set(queue, registry, entity_bits, CHARACTER, &a);
+    }
+}
+
+/// Escreve a lista da animação `name` — vazia = sem quadros (tirar o último quadro não a devolve ao intervalo).
+pub(crate) fn set_frames(
+    world: &World,
+    entity_bits: u64,
+    name: &str,
+    cells: Vec<ph2d_ecs::FrameRef>,
+    queue: &EditorCommandQueue,
+    registry: &ComponentRegistry,
+) {
+    let entity = Entity::from_bits(entity_bits);
+    let mut frames = world
+        .get::<SpriteAnimFrames>(entity)
+        .cloned()
+        .unwrap_or_default();
+    frames.set(name, cells);
+    queue_set(queue, registry, entity_bits, FRAMES, &frames);
+    if world.get::<SpriteAnimCursor>(entity).is_none() {
+        let c = SpriteAnimCursor::default();
+        queue_set(queue, registry, entity_bits, CURSOR, &c);
     }
 }
 

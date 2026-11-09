@@ -63,8 +63,8 @@ fn only_a_sprite_gets_the_animation_section() {
 
 /// **O caminho inteiro: anexar o tocador, criar uma animação, escolhê-la, tocá-la.**
 ///
-/// ⚠️ A animação nova cobre a **grelha inteira** — um intervalo de uma célula não mostraria nada,
-/// e o artista teria de adivinhar que o botão funcionou.
+/// ⚠️ A animação nova nasce **sem quadros** (smoke do dono 09/11: a folha inteira entrava sem ele pedir): o
+/// artista clica as células no editor. Escolhida e a tocar, não toca nada e não é alarme («fora da grelha»).
 #[test]
 fn the_whole_authoring_path_lands_in_the_scene() {
     let mut sim = SimWorld::new();
@@ -87,10 +87,11 @@ fn the_whole_authoring_path_lands_in_the_scene() {
     let i = info(&sim, e);
     assert_eq!(i.rows.len(), 1);
     assert_eq!(
-        (i.rows[0].from, i.rows[0].to),
-        (0, 7),
-        "a animacao nova cobre a grelha inteira"
+        i.rows[0].frames,
+        Some(Vec::new()),
+        "a animacao nova nasce vazia"
     );
+    assert_eq!(i.rows[0].steps, 0);
 
     let name = i.rows[0].name.clone();
     edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent(name.clone()));
@@ -100,6 +101,7 @@ fn the_whole_authoring_path_lands_in_the_scene() {
     assert!(i.playing);
     assert_eq!(i.current_index(), Some(0));
     assert!(!i.current_dangling());
+    assert_eq!(i.progress(), None, "sem quadros nao ha barra");
 }
 
 /// **A velocidade fecha o círculo: o que o artista escreve é o que ele volta a ler.**
@@ -294,6 +296,7 @@ fn the_tick_writes_the_frame_and_only_when_it_changes() {
     let e = sprite(&mut sim, 4);
     edit(&mut sim, e, &reg, AnimFieldEdit::AddPlayer);
     edit(&mut sim, e, &reg, AnimFieldEdit::Add);
+    edit(&mut sim, e, &reg, AnimFieldEdit::Frames(0, celulas(0..=3)));
     let name = info(&sim, e).rows[0].name.clone();
     edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent(name));
     edit(&mut sim, e, &reg, AnimFieldEdit::FrameMs(0, 100));
@@ -347,6 +350,11 @@ fn autoplay_starts_only_at_load_time() {
     assert!(info(&sim, e).playing, "o load tem de comecar");
 }
 
+/// As células `r` da folha `0`, por ordem (o «+» cria a animação sem quadros; o artista clica-as).
+fn celulas(r: std::ops::RangeInclusive<u32>) -> Vec<ph2d_editor_core::AnimFrameRef> {
+    r.map(ph2d_editor_core::AnimFrameRef::cell).collect()
+}
+
 /// `idle` e `run` numa sprite «Auto», como o Add ▸ Animated Sprite deixa um projeto antigo.
 fn auto(sim: &mut SimWorld, reg: &ComponentRegistry) -> Entity {
     let e = sprite(sim, 8);
@@ -355,8 +363,7 @@ fn auto(sim: &mut SimWorld, reg: &ComponentRegistry) -> Entity {
         edit(sim, e, reg, AnimFieldEdit::Add);
         let i = (info(sim, e).rows.len() - 1) as u8;
         edit(sim, e, reg, AnimFieldEdit::Rename(i, nome.into()));
-        edit(sim, e, reg, AnimFieldEdit::From(i, de));
-        edit(sim, e, reg, AnimFieldEdit::To(i, ate));
+        edit(sim, e, reg, AnimFieldEdit::Frames(i, celulas(de..=ate)));
     }
     let mut a = sim.world().get::<SpriteAnimator>(e).unwrap().clone();
     a.current = "idle".into();

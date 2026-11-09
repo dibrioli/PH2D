@@ -244,6 +244,8 @@ fn duas_folhas(q: u32, foto: Option<Foto>) -> Vec<Passo> {
         10 if foto == Some(Foto::FolhasTrim) => vec![P::Ferramenta(DUAS, "trim_transparency")],
         10 if foto == Some(Foto::FolhasTrim0) => vec![P::Verbo(DUAS, Verbo::ShowSheet(0))],
         11 if foto == Some(Foto::FolhasTrim0) => vec![P::Ferramenta(DUAS, "trim_transparency")],
+        // Como o dono no smoke 09/11: a ferramenta Pivot ativa antes do Edit.
+        11 | 12 if foto == Some(Foto::FolhasEdit) => vec![P::Pivo(DUAS, (q - 11) as u8)],
         13 if foto == Some(Foto::FolhasEdit) => vec![P::Edita(DUAS)],
         15..=19 if foto == Some(Foto::FolhasPivo) => vec![P::Pivo(DUAS, (q - 15) as u8)],
         14 => vec![P::Relata("as folhas".into(), DUAS)],

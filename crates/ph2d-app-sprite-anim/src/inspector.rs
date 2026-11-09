@@ -294,15 +294,18 @@ pub fn apply_anim_edit(
         .unwrap_or_default();
     match edit {
         AnimFieldEdit::Add => {
+            // A animação nova nasce SEM quadros, na folha visível: o artista clica as células que quer (smoke do
+            // dono 09/11: a folha inteira entrava sem ele pedir).
             let name = lib.next_free_name();
-            // A animação nova cobre a grelha inteira (uma célula só não mostraria nada).
-            let cells = cells_of(world, entity);
-            if let Err(e) = lib.insert(AnimationTag::new(name, 0, cells.saturating_sub(1))) {
+            let mut tag = AnimationTag::new(name.clone(), 0, 0);
+            tag.sheet = ph2d_ecs::shown_sheet(world, entity);
+            if let Err(e) = lib.insert(tag) {
                 return Some(Toast::error(tr_with(
                     "shell.inspector_anim.animation_not_added",
                     &[("e", &(describe(e)))],
                 )));
             }
+            crate::card::set_frames(world, entity_bits, &name, Vec::new(), queue, registry);
         }
         AnimFieldEdit::SplitByRows(rows) => {
             // As fileiras são da folha VISÍVEL (a do editor e do cartão Image; plano GEF 26 §3.4).

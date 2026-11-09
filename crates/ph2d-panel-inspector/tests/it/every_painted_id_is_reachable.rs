@@ -218,7 +218,7 @@ pub(crate) fn publish_the_whole_sprite_scene() {
             signal_on_finish: String::new(),
             signal_on_loop: String::new(),
             per_frame_ms: Vec::new(),
-            frames: Vec::new(),
+            frames: None,
             markers: Vec::new(),
             steps: 4,
             color: 0,

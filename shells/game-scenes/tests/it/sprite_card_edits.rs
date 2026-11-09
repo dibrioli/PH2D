@@ -81,14 +81,14 @@ fn a_lista_clicada_chega_a_cena_e_volta_ao_snapshot() {
         w.get::<SpriteAnimCursor>(e).is_some(),
         "a lista traz o seu passo"
     );
-    assert_eq!(info(&sim, e).rows[1].frames, fr(&[9, 8, 9, 31]));
+    assert_eq!(info(&sim, e).rows[1].frames, Some(fr(&[9, 8, 9, 31])));
+    // Tirar todos os quadros deixa a animação SEM quadros (smoke do dono 09/11), não a devolve ao intervalo.
     edit(&mut sim, e, &reg, AnimFieldEdit::Frames(1, fr(&[])));
     let w = sim.world();
-    assert!(w.get::<SpriteAnimFrames>(e).is_none() && w.get::<SpriteAnimCursor>(e).is_none());
-    assert!(
-        info(&sim, e).rows[1].frames.is_empty(),
-        "vazia = o intervalo"
-    );
+    let lista = w.get::<SpriteAnimFrames>(e).and_then(|f| f.get("run"));
+    assert_eq!(lista, Some(&[][..]));
+    assert_eq!(info(&sim, e).rows[1].frames, Some(Vec::new()));
+    assert_eq!(info(&sim, e).rows[1].steps, 0, "sem quadros não toca");
 }
 
 #[test]

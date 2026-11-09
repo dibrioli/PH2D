@@ -366,8 +366,8 @@ fn clicar_um_quadro_mostra_o_e_o_x_e_o_delete_tiram_no() {
     m.click(x);
     assert_eq!(
         m.pending(),
-        [AnimFieldEdit::SetStep(0)],
-        "o último quadro não sai (vazio = o intervalo): o clique só o escolhe"
+        [AnimFieldEdit::Frames(0, Vec::new())],
+        "o último também sai: a animação fica sem quadros (smoke do dono 09/11)"
     );
 }
 
@@ -781,8 +781,8 @@ fn o_cabecalho_da_hierarquia_conta_so_o_jogo_e_nao_cresce_com_os_gestos() {
     m.frame();
     assert_eq!(
         m.sim.component_count(),
-        6,
-        "o início é campo do tocador: o «+» não junta nada"
+        8,
+        "o «+» junta a lista (vazia) e o cursor, uma vez"
     );
     let mut after_first = None;
     for c in [3u32, 4, 5, 9, 10] {

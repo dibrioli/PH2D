@@ -381,9 +381,7 @@ pub(crate) fn commit_edited_texture(
     let texture_id = renderer
         .acquire_individual(img.width, img.height, &img.pixels)
         .map_err(|e| e.to_string())?;
-    // The durable name of these exact bytes. `insert_image_rgba8` takes `&self` (interior
-    // mutability) and hashes dims + content, so re-committing an identical edit is idempotent
-    // and two sprites that end up with the same pixels share one entry in the project file.
+    // Endereçada pelo conteúdo: a mesma edição de novo é idempotente.
     let pixels_id = asset_db.insert_image_rgba8(img.width, img.height, img.pixels.clone());
     rebind_to_individual(
         entity,
@@ -402,11 +400,7 @@ pub(crate) fn commit_edited_texture(
 /// **A porta ÚNICA das ferramentas geométricas** — commita em 16 bits quando há 16 bits para
 /// commitar, e em 8 quando não há. Plano `docs/Sprite_projeto/18` W4-bis.
 ///
-/// ⚠️ **Existe para as três caudas não se duplicarem.** A primeira tentativa deu ao Trim uma
-/// função-irmã com o corpo inteiro repetido — recentrar, empurrar o undo, dizer o toast — e só a
-/// chamada de commit diferente. Três dessas seriam três sítios a ter de concordar para sempre
-/// sobre coisas que nada têm a ver com precisão. *Quando duas metades só diferem numa chamada, o
-/// que se extrai é a chamada, não a metade.*
+/// ⚠️ Existe para as três caudas não se duplicarem; a edição herda o nome da imagem de antes.
 ///
 /// `halves` a `None` ⇒ caminho de 8 bits, idêntico ao de sempre (incluindo o aviso de perda).
 #[allow(clippy::too_many_arguments)]
@@ -420,7 +414,8 @@ pub(crate) fn commit_geometric_edit(
     new_size_world: [f32; 2],
     toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> Result<u32, String> {
-    match halves.filter(|_| sheet == 0) {
+    let antes = ph2d_sprite_edit::imagem::da_folha(sim.world(), entity, sheet);
+    let feito = match halves.filter(|_| sheet == 0) {
         Some(h) => commit_edited_texture_16(
             entity,
             sim,
@@ -441,7 +436,9 @@ pub(crate) fn commit_geometric_edit(
             new_size_world,
             toasts,
         ),
-    }
+    };
+    ph2d_sprite_edit::imagem::editada(sim.world(), entity, sheet, antes);
+    feito
 }
 
 /// **Irmã do [`commit_edited_texture`] para os resultados que continuam em 16 bits** — plano

@@ -24,6 +24,8 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-render = { path = "../ph2d-render" }
 ph2d-sprite-edit = { path = "../ph2d-sprite-edit" }
 ph2d-sprite-sheet = { path = "../ph2d-sprite-sheet" }
+# A moldura do uso em Edit: a grelha da folha desdobrada (`use_frame`).
+ph2d-sprite-screen = { path = "../ph2d-sprite-screen" }
 # O editor de animações (V4): o dropdown das folhas, a tira com a folha de cada quadro e a limpeza dos vazios.
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }

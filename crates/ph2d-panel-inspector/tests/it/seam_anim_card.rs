@@ -38,12 +38,12 @@ pub(crate) fn edits(actions: &[EditorAction]) -> Vec<AnimFieldEdit> {
 
 /// A fixtura com a animação a tocar (`walk`, a 1.ª) feita LISTA de quadros: 2 · 0 · 2 · 3.
 pub(crate) fn with_frame_list(mut info: InspectorAnimInfo) -> InspectorAnimInfo {
-    info.rows[0].frames = vec![
+    info.rows[0].frames = Some(vec![
         ph2d_editor_core::AnimFrameRef::cell(2),
         ph2d_editor_core::AnimFrameRef::cell(0),
         ph2d_editor_core::AnimFrameRef::cell(2),
         ph2d_editor_core::AnimFrameRef::cell(3),
-    ];
+    ]);
     info.frame = ph2d_editor_core::AnimFrameRef::cell(2);
     info.card.step = 2;
     info

@@ -131,13 +131,15 @@ pub fn mixes_sheets(frames: &[AnimFrameRef]) -> bool {
 /// Quantos quadros vazios (de uma folha apagada) a animação tem.
 #[must_use]
 pub fn empty_frames(row: &InspectorAnimRow) -> usize {
-    row.frames.iter().filter(|f| f.is_empty()).count()
+    row.frames.iter().flatten().filter(|f| f.is_empty()).count()
 }
 
 /// A animação é TODA vazia (nenhum quadro de verdade)?
 #[must_use]
 pub fn all_empty(row: &InspectorAnimRow) -> bool {
-    !row.frames.is_empty() && row.frames.iter().all(|f| f.is_empty())
+    row.frames
+        .as_ref()
+        .is_some_and(|l| !l.is_empty() && l.iter().all(|f| f.is_empty()))
 }
 
 /// Os botões de limpeza ao pé da lista: `0` sem vazios, `1` só Remove empty frames, `2` com uma animação toda vazia.

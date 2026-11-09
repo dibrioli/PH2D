@@ -249,34 +249,42 @@ fn clicar_num_quadro_poe_a_marca_a_direita_dele() {
     );
 }
 
-/// Auditoria 08/11: na animação que o «+» acabou de criar, a tira mostra a folha inteira, mas o primeiro clique
-/// começa uma lista nova — então a marca está no COMEÇO, mesmo que se clique num vão do meio. *Mutação: medir a
-/// marca pela lista mostrada ⇒ ela aparece no fim (ou no meio) e a célula entra no 0.*
+/// ⭐ Smoke do dono 09/11: o «+» punha a folha inteira na tira e a marca ficava presa no começo. A animação nova
+/// nasce SEM quadros (a tira vazia, a marca no 0); cada célula clicada entra e a marca anda para depois dela.
+/// *Mutações: o «+» com o intervalo da folha ⇒ a tira nasce cheia; a marca presa a outra conta ⇒ fica no 0.*
 #[test]
-fn na_animacao_nova_a_marca_esta_onde_a_celula_entra() {
+fn na_animacao_nova_a_tira_nasce_vazia_e_a_marca_anda_com_os_cliques() {
     let mut m = Mesa::new();
     let add = centre(m.doc().layout.add);
     m.click(add);
     m.frame();
     m.paint();
+    assert_eq!(m.doc().selected, 2);
+    assert!(m.doc().layout.frames.is_empty(), "nenhum quadro sem pedir");
+    assert_eq!(m.world_frames("anim_0"), Some(Vec::new()));
     assert_eq!(m.doc().playhead_gap(), 0, "começo");
+    for c in [7, 3] {
+        let at = m.cell(c);
+        m.click(at);
+        m.frame();
+    }
+    m.paint();
+    assert_eq!(m.world_frames("anim_0"), Some(vec![7, 3]));
+    assert_eq!(m.doc().playhead_gap(), 2, "depois das duas");
     let l = m.doc().layout.clone();
+    // O 2.º ainda abre o vão (o voo não andou): a marca fica depois da ponta direita dele.
+    let fim = l.frames[1].0.x + l.frames[1].0.w;
     assert!(
-        l.playhead.x < l.frames[0].0.x,
-        "pintada antes do 1.º quadro"
+        l.playhead.x >= fim && fim > l.frames[0].0.x,
+        "pintada depois do 2.º quadro"
     );
-    m.click((
-        l.frames[2].0.x + l.frames[2].0.w + 1.0,
-        centre(l.frames[2].0).1,
-    )); // LITERAL-PX-OK: um vão
-    assert_eq!(m.doc().playhead_gap(), 0, "o vão do meio não engana");
-    let at = m.cell(7);
-    m.click(at);
-    assert_eq!(
-        m.pending(),
-        [
-            AnimFieldEdit::Frames(2, fr(&[7])),
-            AnimFieldEdit::SetStep(0)
-        ]
-    );
+    // Tirar os dois deixa-a sem quadros, nunca a folha inteira.
+    for _ in 0..2 {
+        let x = centre(m.doc().layout.frames[0].1);
+        m.click(x);
+        m.frame();
+        m.paint();
+    }
+    assert_eq!(m.world_frames("anim_0"), Some(Vec::new()));
+    assert!(m.doc().layout.frames.is_empty());
 }

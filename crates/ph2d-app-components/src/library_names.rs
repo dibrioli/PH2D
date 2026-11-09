@@ -93,7 +93,14 @@ pub(crate) fn library(
             .collect()
     };
     users.sort_by_key(|(order, _, _)| *order);
-    let live: BTreeSet<AssetId> = users.iter().map(|(_, id, _)| *id).collect();
+    let mut live: BTreeSet<AssetId> = users.iter().map(|(_, id, _)| *id).collect();
+    // As folhas extra também usam imagens: a editada herda o nome da de antes (smoke 09/11).
+    let mut folhas = sim.world_mut().query::<&ph2d_ecs::SpriteSheets>();
+    live.extend(
+        folhas
+            .iter(sim.world())
+            .flat_map(|s| s.0.iter().map(|x| x.asset)),
+    );
     let mut ids: BTreeMap<AssetId, Option<String>> = BTreeMap::new();
     for (_, id, name) in users {
         ids.entry(id).or_insert(name);

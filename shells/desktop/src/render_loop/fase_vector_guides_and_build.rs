@@ -110,19 +110,22 @@ impl crate::App {
                 paint_ctx.text,
                 vector_scene,
             );
-            // **AS LINHAS DA GRELHA** sobre a folha aberta de uma sprite (Enio, 2026-08-23).
-            // ⚠️ Vizinha da decoração da folha-OBJETO de propósito: as duas dizem *«isto está
-            // cortado assim»*, uma para a folha empacotada e outra para a grelha de um sprite,
-            // e ler as duas seguidas é o que impede a próxima de nascer num terceiro sítio.
+            // A grelha da folha aberta e a moldura do USO (Animated · Repeated · Region) do selecionado.
+            ph2d_app_sprite_anim::use_frame::draw(
+                sim.world(),
+                hero.gizmo.iter_selected(),
+                hero.project.pixels_per_meter,
+                cam_affine,
+                px_per_world,
+                hero.theme,
+                paint_ctx.text,
+                vector_scene,
+            );
             if let Some(e) = super::render_loop::sim_extract_sheet::previewed(hero) {
                 super::render_loop::sheet_grid_overlay::draw(
                     sim,
                     e,
-                    // ⚠️ **As linhas seguem o quad que foi de facto DESENHADO.** Sob pintura o
-                    // quad desdobra-se e centra-se no pivô; fora dela ele é uma célula e a
-                    // folha dispõe-se à volta dela. Desenhar sempre a segunda disposição
-                    // deslocava as linhas **meia célula** sobre a arte pintada (report do
-                    // Enio, 2026-08-23, com foto).
+                    // As linhas seguem o quad DESENHADO (desdobrado sob pintura).
                     super::render_loop::sim_extract_sheet::is_tool_previewed(&tool_preview_bits, e),
                     hero.project.pixels_per_meter,
                     cam_affine,

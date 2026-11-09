@@ -189,3 +189,24 @@ fn os_botoes_de_limpeza_do_editor() {
     );
     assert!(abertos(&mut m).iter().all(|f| !f.is_empty()));
 }
+
+/// ⭐ Smoke do dono 09/11 (Two Sheets): com a folha «run» à vista, o «+» cria a animação NA run e sem quadros; a
+/// primeira célula clicada é da run. *Mutação: o «+» na folha 0 ⇒ `sheet == 0`.*
+#[test]
+fn o_mais_cria_vazia_na_folha_a_vista() {
+    let mut m = duas_folhas();
+    mostra(&mut m, 1);
+    let add = centre(m.doc().layout.add);
+    m.click(add);
+    m.frame();
+    let row = {
+        let d = m.doc();
+        d.snap.info.as_ref().expect("animações").rows[d.selected].clone()
+    };
+    assert_eq!((row.sheet, row.frames), (1, Some(Vec::new())));
+    assert!(abertos(&mut m).is_empty());
+    let c = m.cell(1);
+    m.click(c);
+    m.frame();
+    assert_eq!(abertos(&mut m), [AnimFrameRef { sheet: 1, cell: 1 }]);
+}

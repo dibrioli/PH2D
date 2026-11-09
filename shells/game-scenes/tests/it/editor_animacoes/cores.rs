@@ -189,3 +189,34 @@ fn o_quadro_tocado_nao_parece_escolhido() {
         "a moldura é do escolhido"
     );
 }
+
+/// ⭐ Smoke do dono 09/11 («a cabeça de leitura fica presa no começo»): a tira marca o quadro que está a TOCAR, e a
+/// marca anda com o tocador. *Mutação: pintar a barra pelo `frame_selected` ⇒ fica `None`; pelo passo 0 ⇒ não anda.*
+#[test]
+fn a_cabeca_de_leitura_anda_na_tira_com_o_tocador() {
+    let mut m = Mesa::new();
+    let e = Entity::from_bits(m.e);
+    m.sim
+        .world_mut()
+        .get_mut::<SpriteAnimator>(e)
+        .expect("o tocador")
+        .playing = true;
+    m.frame();
+    assert_eq!(m.doc().painted.playing, Some(0));
+    let mut vistos = vec![0];
+    for _ in 0..4 {
+        // 150 ms a 100 ms por quadro: anda pelo menos um.
+        ph2d_app_sprite_anim::tick::tick_sprite_animations(
+            &mut m.sim,
+            9,
+            1.0 / 60.0, // LITERAL-PX-OK: o passo fixo do jogo
+            &[],
+            &mut ph2d_preview_drive::PreviewDrive::default(),
+        );
+        m.frame();
+        let p = m.doc().painted.playing.expect("a marca pintada");
+        assert_ne!(Some(&p), vistos.last(), "a marca andou");
+        vistos.push(p);
+    }
+    assert!(vistos.iter().all(|p| *p < 6), "dentro da idle: {vistos:?}");
+}

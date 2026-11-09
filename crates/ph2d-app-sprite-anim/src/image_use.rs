@@ -7,51 +7,15 @@ use crate::image_choice::{ImageFacts, Slicing, library_facts};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{
     AnimationTag, Entity, ImageRegion, ImageUseLook, ImageUseMemory, ImageUseState, RegionLook,
-    RepeatMode, Resource, ScrollRepeat, SpriteAnimCursor, SpriteAnimFrames, SpriteAnimations,
-    SpriteAnimator, SpriteGrid, SpritePixels, SpriteRegion, TextureRepeat, TiledDraw, UvTransform,
-    World,
+    Resource, ScrollRepeat, SpriteAnimCursor, SpriteAnimFrames, SpriteAnimations, SpriteAnimator,
+    SpriteGrid, SpritePixels, SpriteRegion, TextureRepeat, TiledDraw, UvTransform, World,
 };
 use ph2d_editor_core::{ImageUseEdit, InspectorDraw, InspectorImageUse};
 use ph2d_render::Sprite;
 use ph2d_render::texture_of;
 use std::collections::BTreeMap;
 
-/// Para que serve a imagem neste objecto.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ImageUse {
-    /// Uma imagem (ou uma célula dela) parada.
-    Still,
-    /// A imagem repete-se: um bloco (*Repeat*, Tiled) ou uma camada de fundo (`ScrollRepeat`).
-    Repeated,
-    /// As células da imagem tocam como animação.
-    Animated,
-    /// Só uma área da imagem ([`ImageRegion`] + a área no [`SpriteRegion`]).
-    Region,
-}
-
-/// O uso de `e`; `None` se não é uma sprite. Animada ganha (as animações mandam no que se desenha), e um
-/// animador sem animações já é animada: é o que a secção Animation mostra.
-#[must_use]
-pub fn image_use(world: &World, e: Entity) -> Option<ImageUse> {
-    world.get::<Sprite>(e)?;
-    if world.get::<SpriteAnimations>(e).is_some() || world.get::<SpriteAnimator>(e).is_some() {
-        return Some(ImageUse::Animated);
-    }
-    if world.get::<ImageRegion>(e).is_some() {
-        return Some(ImageUse::Region);
-    }
-    let repete = world.get::<ScrollRepeat>(e).is_some()
-        || world.get::<TiledDraw>(e).is_some()
-        || matches!(
-            world.get::<TextureRepeat>(e),
-            Some(TextureRepeat(RepeatMode::Enabled | RepeatMode::Mirror))
-        );
-    Some(if repete {
-        ImageUse::Repeated
-    } else {
-        ImageUse::Still
-    })
-}
+pub use ph2d_anim_sheets::uso::{ImageUse, image_use};
 
 /// Quantas células tem a imagem.
 #[must_use]

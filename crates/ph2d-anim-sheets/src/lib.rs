@@ -13,3 +13,5 @@ pub mod sheet_cache;
 pub mod shown_edit;
 pub mod shown_image;
 pub mod split;
+pub mod use_frame;
+pub mod uso;

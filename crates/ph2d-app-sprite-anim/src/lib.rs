@@ -13,6 +13,7 @@ pub use ph2d_anim_sheets::sheet_cache as sheet;
 pub mod sprite_card;
 pub mod tick;
 pub mod tiled;
+pub use ph2d_anim_sheets::use_frame;
 
 /// A declaração da família à shell. Sem roteador: as cenas dela (usos da imagem, Region, a animação
 /// do Player) monta-as a `game` (`PH2D_GAME_SMOKE`) — quem possui a cena é quem a constrói.

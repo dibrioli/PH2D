@@ -41,11 +41,14 @@ fn edit(
     t
 }
 
-/// Uma sprite de 4 células com `walk` e `run`.
-fn palco(sim: &mut SimWorld, reg: &ComponentRegistry) -> Entity {
+/// Uma sprite de 4 células com duas animações da grelha inteira (o «+» cria-as SEM quadros desde 09/11).
+fn palco(sim: &mut SimWorld, _reg: &ComponentRegistry) -> Entity {
     let e = sprite(sim, 4);
-    assert!(edit(sim, e, reg, AnimFieldEdit::Add).is_none());
-    assert!(edit(sim, e, reg, AnimFieldEdit::Add).is_none());
+    let mut lib = SpriteAnimations::new();
+    for n in ["anim_0", "anim_1"] {
+        lib.insert(ph2d_ecs::AnimationTag::new(n, 0, 3)).unwrap();
+    }
+    sim.world_mut().entity_mut(e).insert(lib);
     e
 }
 

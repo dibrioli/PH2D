@@ -160,8 +160,8 @@ fn range_and_timing_rows(
             .placeholder(tr("panel.inspector.animation.animation_name")),
         seccao,
     );
-    if !row.frames.is_empty() {
-        let n = row.frames.len();
+    if let Some(l) = &row.frames {
+        let n = l.len();
         cur_y = super::rows::aviso(
             scene,
             text_system,
@@ -312,7 +312,7 @@ fn editor(
     let sec_texto = seccao_da_animacao(text_system);
     let mut cur_y = y;
     // No cartão o intervalo edita-se na folha do editor (ficha 02, decisão 1).
-    let range: &[_] = if row.frames.is_empty() && !crate::cards::active() {
+    let range: &[_] = if row.frames.is_none() && !crate::cards::active() {
         &RANGE
     } else {
         &[]

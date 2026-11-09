@@ -81,7 +81,8 @@ pub struct TagFrames {
     pub cells: Vec<FrameRef>,
 }
 
-/// **As listas de quadros de uma sprite.** Componente opcional: uma tag sem entrada toca o intervalo.
+/// **As listas de quadros de uma sprite.** Componente opcional: uma tag sem entrada toca o intervalo; uma entrada
+/// VAZIA é uma animação sem quadros (o «+» cria-a assim, e tirar o último quadro deixa-a assim): não toca nada.
 #[derive(Component, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpriteAnimFrames(pub SmallVec<[TagFrames; 4]>);
 
@@ -97,13 +98,10 @@ impl SpriteAnimFrames {
             .map(|f| f.cells.as_slice())
     }
 
-    /// Põe (ou tira, com `cells` vazio) a lista da tag `name`. Corta em [`ANIM_FRAMES_MAX`].
+    /// Põe a lista da tag `name` — vazia = animação sem quadros; voltar ao intervalo é [`Self::remove`].
+    /// Corta em [`ANIM_FRAMES_MAX`].
     pub fn set(&mut self, name: &str, mut cells: Vec<FrameRef>) {
         cells.truncate(ANIM_FRAMES_MAX);
-        if cells.is_empty() {
-            self.0.retain(|f| f.tag != name);
-            return;
-        }
         match self.0.iter_mut().find(|f| f.tag == name) {
             Some(f) => f.cells = cells,
             None => self.0.push(TagFrames {
@@ -113,7 +111,7 @@ impl SpriteAnimFrames {
         }
     }
 
-    /// Esquece a lista da tag `name` (a tag saiu da biblioteca).
+    /// Esquece a lista da tag `name`: a tag volta ao intervalo (ou saiu da biblioteca).
     pub fn remove(&mut self, name: &str) {
         self.0.retain(|f| f.tag != name);
     }
@@ -133,7 +131,7 @@ pub struct SpriteAnimCursor {
 impl SimComponent for SpriteAnimCursor {}
 
 /// **Os quadros que a tag toca hoje**: a lista, se existe e cabe toda nas folhas, senão o intervalo na folha da tag.
-/// `sheets[k]` = células da folha `k`.
+/// `sheets[k]` = células da folha `k`. A lista vazia (animação sem quadros) não toca: `None`.
 ///
 /// ⚠️ Uma lista com UMA célula fora da folha dela não toca (a tag fica pendurada), e não se apara: aparar
 /// tocaria outra animação que ninguém autorou. O editor mostra essas células a vermelho. O vazio cabe.
@@ -144,8 +142,8 @@ pub fn tag_cells(
     sheets: &[u32],
 ) -> Option<Vec<FrameRef>> {
     match list {
-        Some(l) if !l.is_empty() => l.iter().all(|f| f.fits(sheets)).then(|| l.to_vec()),
-        _ => tag.resolve(sheet_cells(sheets, tag.sheet)).map(|(lo, hi)| {
+        Some(l) => (!l.is_empty() && l.iter().all(|f| f.fits(sheets))).then(|| l.to_vec()),
+        None => tag.resolve(sheet_cells(sheets, tag.sheet)).map(|(lo, hi)| {
             (lo..=hi)
                 .map(|cell| FrameRef::Cell {
                     sheet: tag.sheet,
@@ -191,7 +189,7 @@ pub(crate) fn advance_frames_visiting(
     dt_ticks: u64,
     visit: &mut dyn FnMut(u32),
 ) -> AnimOutcome {
-    let Some(l) = list.filter(|l| !l.is_empty()) else {
+    let Some(l) = list else {
         let Some((lo, hi)) = tag.resolve(sheet_cells(sheets, tag.sheet)) else {
             return AnimOutcome::default();
         };
@@ -213,7 +211,8 @@ pub(crate) fn advance_frames_visiting(
             ..out
         };
     };
-    if !l.iter().all(|f| f.fits(sheets)) {
+    // Sem quadros, ou com um fora da folha: não toca, e a imagem fica a que estava.
+    if l.is_empty() || !l.iter().all(|f| f.fits(sheets)) {
         return AnimOutcome::default();
     }
     let n = l.len() as u32;
@@ -252,7 +251,7 @@ pub fn entry_cell(
     } else {
         0
     };
-    match list.filter(|l| !l.is_empty()) {
+    match list {
         Some(_) => Some((seq[step], step as u32)),
         None => crate::entry_frame(animator, tag, sheet_cells(sheets, tag.sheet)).map(|cell| {
             (

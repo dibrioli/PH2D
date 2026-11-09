@@ -217,12 +217,13 @@ impl super::InspectorAnimRow {
     }
 }
 
-/// Os quadros que a linha `row` toca, na ordem: a lista, ou o intervalo `from..=to` cortado na folha dele.
+/// Os quadros que a linha `row` toca, na ordem: a lista (vazia = sem quadros), ou o intervalo `from..=to` cortado na
+/// folha dele.
 /// `sheets[k]` = células da folha `k`.
 #[must_use]
 pub fn row_cells(row: &super::InspectorAnimRow, sheets: &[u32]) -> Vec<super::AnimFrameRef> {
-    if !row.frames.is_empty() {
-        return row.frames.clone();
+    if let Some(l) = &row.frames {
+        return l.clone();
     }
     let cells = sheets.get(usize::from(row.sheet)).copied().unwrap_or(0);
     let span = row.span(cells);
@@ -321,7 +322,7 @@ mod tests {
             signal_on_finish: String::new(),
             signal_on_loop: String::new(),
             per_frame_ms: Vec::new(),
-            frames: Vec::new(),
+            frames: None,
             markers: Vec::new(),
             steps: 4,
             color: 0,

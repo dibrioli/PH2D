@@ -58,6 +58,26 @@ fn veio_de(novo: AssetId, antigo: AssetId) {
     }
 }
 
+/// A imagem da folha `sheet` de `e`, sem o atlas: uma imagem empacotada não tem nome a herdar.
+#[must_use]
+pub fn da_folha(world: &World, e: Entity, sheet: u8) -> Option<AssetId> {
+    match sheet {
+        0 => world.get::<SpritePixels>(e).map(|p| p.0),
+        k => world
+            .get::<ph2d_ecs::SpriteSheets>(e)?
+            .sheet(k)
+            .map(|s| s.asset),
+    }
+}
+
+/// ⭐ Uma ferramenta de imagem acabou de trocar os píxeis da folha `sheet` de `e` (smoke 09/11): a edição herda o nome
+/// de `antes`, como a pintura do Painter — senão a folha `run` aparecia «Sheet 2» depois de um Trim.
+pub fn editada(world: &World, e: Entity, sheet: u8, antes: Option<AssetId>) {
+    if let (Some(antigo), Some(novo)) = (antes, da_folha(world, e, sheet)) {
+        veio_de(novo, antigo);
+    }
+}
+
 /// A imagem da biblioteca que `e` mostra.
 #[must_use]
 pub fn shown_id(world: &World, e: Entity, atlas: &BTreeMap<u32, AssetId>) -> Option<AssetId> {

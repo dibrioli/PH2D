@@ -8,11 +8,13 @@ Dynamic escondidos para Static/Kinematic (`physics_cartao.rs:148-186`); colisor 
 cartão da forma, `Touch: Solid | Sensor` (`physics_cartao_forma.rs:210-227`); aviso de corpo sem forma.
 
 ## Onda 0 — espaço
+✅ feita — commits `9029969369`, `6cfd80dddf`.
 `ph2d-app-physics` no tecto exato (55 515). Cenas de smoke puras saem para `ph2d-physics-smoke-scenes`
 (re-exportadas; nenhum chamador muda); `SceneCtx`/`SceneSetup` vão com elas. Cena nova desta linha
 nasce lá.
 
 ## Onda 1 — quem ouve o sinal
+✅ feita — commits `007650926b`, `d00414503a`, `0f66f436f8`, `6d37f1b32a`, `a6afdcd621` ([handoff](../handoffs/HANDOFF_CONTINUACAO_GEF02_F3_ONDAS_0_1_2026-11-09.md)).
 - Crate pura `ph2d-signal-census`: `census(&World, scripts) -> SignalCensus` =
   `BTreeMap<nome, {emitem, ouvem}>` + «há script com nome dinâmico» por direcção. Tabela única
   `CAMPOS: &[(componente, campo, Papel)]` das 31 caixas (25 emitem, 6 ouvem — censo de 09/11) + os

@@ -55,7 +55,8 @@ pub fn desenhar(
 ) {
     let [x, y, w, h] = caixa.map(f64::from);
     if !sob_o_ponteiro(caixa, ponteiro) {
-        cena.draw_stable_image(retrato, (x, y, x + w, y + h), ImageQuality::Medium);
+        let q = ph2d_editor_core::ui_image_quality();
+        cena.draw_stable_image(retrato, (x, y, x + w, y + h), q);
     }
     let cor = ph2d_editor_core::paint::resolve(ColorToken::Selection, theme);
     let meio = BORDA_PX / 2.0;

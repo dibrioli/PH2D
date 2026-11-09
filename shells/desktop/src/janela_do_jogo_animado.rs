@@ -257,6 +257,10 @@ impl crate::App {
             return;
         };
         h.gizmo.replace_selection(bits);
+        // `PH2D_GAME_SMOKE_FILTRO=pixel`: as fotos do filtro do app (Preferences ▸ Image Filter ▸ Pixel Art).
+        if std::env::var("PH2D_GAME_SMOKE_FILTRO").is_ok_and(|v| v.trim() == "pixel") {
+            h.project.image_filter = ph2d_render::ImageFilterMode::PixelArt;
+        }
         match (foto, bits) {
             (Some(a::Foto::More), _) => {
                 h.store

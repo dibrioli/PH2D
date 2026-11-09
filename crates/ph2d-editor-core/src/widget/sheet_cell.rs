@@ -137,7 +137,7 @@ pub fn paint_sheet_cell(
         sheet,
         (hframes, vframes, cell),
         dest,
-        ImageQuality::Medium,
+        crate::ui_image_quality(),
     );
 }
 

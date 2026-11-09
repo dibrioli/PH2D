@@ -252,7 +252,8 @@ pub use ph2d_color::Precision;
 pub use progress::{Job, JobQueue, Progress};
 pub use project::{
     DEFAULT_PIXELS_PER_METER, DisplayAngle, DisplayUnit, ImageFilterMode, MAX_PIXELS_PER_METER,
-    MIN_PIXELS_PER_METER, ProjectSettings, image_quality_for,
+    MIN_PIXELS_PER_METER, ProjectSettings, image_quality_for, set_ui_image_filter,
+    ui_image_quality,
 };
 pub use screens::{
     ActionFieldEdit, AnchorFieldEdit, AnimCardInfo, AnimCharacterInfo, AnimChooser, AnimCycleMode,

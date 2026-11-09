@@ -79,6 +79,7 @@ mod architecture_the_foundation_modules_form_a_dag;
 mod architecture_the_ik_chain_is_drawn;
 mod architecture_the_onion_speaks_the_clip_clock;
 mod architecture_the_pose_motors_run_before_the_mesh;
+mod architecture_a_arte_do_jogo_segue_o_filtro;
 mod architecture_the_shell_only_shrinks;
 mod architecture_toda_flake_de_carga_corre_na_faixa_isolada;
 mod architecture_tool_contract_surface;

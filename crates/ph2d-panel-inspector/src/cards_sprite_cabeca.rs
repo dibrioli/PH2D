@@ -198,7 +198,7 @@ pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) ->
             verbos: &verbos,
             trocavel: true,
             folhas: crate::cards_sprite_folhas::varias(folhas.as_ref()),
-            qualidade: ImageQuality::Medium,
+            qualidade: ph2d_editor_core::ui_image_quality(),
         },
     );
     crate::cards_sprite_folhas::verbos_das_folhas(c, fundo, folhas.as_ref())

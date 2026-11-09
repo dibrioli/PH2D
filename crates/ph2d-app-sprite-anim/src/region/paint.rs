@@ -83,10 +83,11 @@ pub fn paint_doc(
                 f64::from(img.x + img.w),
                 f64::from(img.y + img.h),
             ),
+            // Ampliado, o píxel vê-se para se escolher a área; reduzido, o filtro do app.
             if doc.zoom >= 1.0 {
                 ImageQuality::Low
             } else {
-                ImageQuality::Medium
+                ph2d_editor_core::ui_image_quality()
             },
         ),
         None => rotulo(scene, text, c, "region_editor.no_pixels"),

@@ -43,7 +43,7 @@ fn layer(
     let vr = rect_to_vello(r);
     scene.push_object_layer(&vr, VelloBlend::default(), alpha);
     let cut = (sheet.hframes, sheet.vframes, f.cell);
-    paint_sheet_cell_with(scene, img, cut, r, ImageQuality::Low);
+    paint_sheet_cell_with(scene, img, cut, r, ph2d_editor_core::ui_image_quality());
     if let Some(c) = tint {
         scene.push_object_layer(
             &vr,
@@ -288,12 +288,7 @@ fn paint_frame(doc: &AnimDoc, scene: &mut VectorScene, text: &mut TextSystem, th
 pub(super) fn paint_nudge_mark(scene: &mut VectorScene, theme: Theme, thumb: Rect) {
     let side = TypeToken::Base.px();
     let pad = Spacing::Xs.px();
-    let r = Rect::new(
-        thumb.x + thumb.w - side - pad,
-        thumb.y + pad,
-        side,
-        side,
-    );
+    let r = Rect::new(thumb.x + thumb.w - side - pad, thumb.y + pad, side, side);
     paint_icon(
         scene,
         IconId::Move,

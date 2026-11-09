@@ -258,6 +258,30 @@ pub fn image_quality_for(mode: ImageFilterMode) -> ImageQuality {
     }
 }
 
+/// O filtro de imagem do app (Edit ▸ Preferences ▸ Image Filter) visto pela UI: o shell escreve-o a cada quadro
+/// ([`set_ui_image_filter`]) e todo painel que pinta a arte do jogo (miniaturas, cartões, editor de animações, Region)
+/// lê-o por [`ui_image_quality`]. Global como o idioma do `tr`: é uma preferência do app, e passá-la por cada painel
+/// deixava os painéis suavizados com o canvas em Pixel Art (smoke do dono 09/11).
+static UI_IMAGE_FILTER: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(1);
+
+/// O shell diz qual é o filtro do projeto aberto.
+pub fn set_ui_image_filter(mode: ImageFilterMode) {
+    let v = u8::from(mode == ImageFilterMode::Smooth);
+    UI_IMAGE_FILTER.store(v, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// ⭐ O filtro com que um painel pinta uma imagem do jogo: o mesmo do canvas ([`image_quality_for`]).
+#[must_use]
+pub fn ui_image_quality() -> ImageQuality {
+    image_quality_for(
+        if UI_IMAGE_FILTER.load(std::sync::atomic::Ordering::Relaxed) == 0 {
+            ImageFilterMode::PixelArt
+        } else {
+            ImageFilterMode::Smooth
+        },
+    )
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ProjectSettings {
     /// Source-image pixels per world meter. Default `100.0` matches

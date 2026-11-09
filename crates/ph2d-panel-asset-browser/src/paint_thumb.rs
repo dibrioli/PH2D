@@ -68,8 +68,7 @@ pub(crate) fn paint_thumb(
     scene.draw_stable_image(
         &img,
         (x0, y0, x0 + f64::from(dw), y0 + f64::from(dh)),
-        // Bilinear: uma miniatura é um render encolhido, e suavizar entre texels lê-se melhor que
-        // o `Nearest` que uma MEDIÇÃO (um espectrograma) quereria.
-        ph2d_vector::ImageQuality::Medium,
+        // O filtro do app (Preferences ▸ Image Filter), como o canvas.
+        ph2d_editor_core::ui_image_quality(),
     );
 }

@@ -426,7 +426,7 @@ fn moldura_inteira(scene: &mut VectorScene, theme: Theme, r: Rect, img: &SlotIma
         scene.draw_stable_image(
             &s,
             (x0, y0, x0 + f64::from(dw), y0 + f64::from(dh)),
-            ImageQuality::Medium,
+            ph2d_editor_core::ui_image_quality(),
         );
     }
     scene.pop_layer();

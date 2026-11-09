@@ -221,11 +221,10 @@ impl crate::App {
         // W3.T3.11: project-default sampling for all-Inherit sprites, from the
         // project image filter (PixelArt → Nearest, Smooth → Linear); repeat
         // defaults to clamp (Disabled).
-        let default_filter = match hero_screen
-            .as_ref()
-            .map(|h| h.project.image_filter)
-            .unwrap_or(ph2d_render::ImageFilterMode::Smooth)
-        {
+        let filtro = hero_screen.as_ref().map(|h| h.project.image_filter);
+        let filtro = filtro.unwrap_or(ph2d_render::ImageFilterMode::Smooth);
+        ph2d_editor_core::set_ui_image_filter(filtro); // os painéis pintam com o mesmo
+        let default_filter = match filtro {
             ph2d_render::ImageFilterMode::PixelArt => ph2d_ecs::FilterMode::Nearest,
             ph2d_render::ImageFilterMode::Smooth => ph2d_ecs::FilterMode::Linear,
         };

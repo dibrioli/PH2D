@@ -66,7 +66,7 @@ pub(super) fn paint_sheet(
             f64::from(l.sheet.x + l.sheet.w),
             f64::from(l.sheet.y + l.sheet.h),
         ),
-        ImageQuality::Medium,
+        ph2d_editor_core::ui_image_quality(),
     );
     let rows = doc.snap.info.as_ref().map_or(&[][..], |i| &i.rows);
     let color_of = |i: usize| anim_color(rows.get(i).map_or(0, |r| r.color));

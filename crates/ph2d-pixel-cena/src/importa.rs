@@ -11,7 +11,7 @@ use ph2d_pixel_core::user::PropValue;
 use ph2d_pixel_core::{Purpose, Slice, SliceId, Sprite, compose_normal, compose_window};
 
 /// A propriedade do mapa do artista (chave `""`) da slice que diz «esta slice é um collider».
-pub const COLLIDER_PROP: &str = "ph2d.collider";
+pub use ph2d_pixel_io::ase::COLLIDER_PROP;
 
 /// A slice está marcada como collider (`ph2d.collider = true` no user data)?
 #[must_use]
@@ -120,11 +120,33 @@ pub fn importa_ase(
     nome_sem_tags: &str,
     m_por_px: f64,
 ) -> Result<SpriteImportado, String> {
-    let (s, avisos) = ph2d_pixel_io::ase::ler(bytes).map_err(|e| e.to_string())?;
+    let (s, avisos, colliders) =
+        ph2d_pixel_io::ase::ler_com_colliders(bytes).map_err(|e| e.to_string())?;
     Ok(SpriteImportado {
         avisos,
-        ..importa(&s, nome_sem_tags, m_por_px)
+        ..importa(&com_colliders(&s, &colliders), nome_sem_tags, m_por_px)
     })
+}
+
+/// P14e-2: a folha que o Pixel exporta (`png` + `json` + `_n.png`) importa-se pelo MESMO caminho
+/// do `.ase` (o documento reconstruído pelo `ph2d_pixel_io::folha_json`, depois [`importa`]).
+///
+/// # Errors
+/// O texto do erro do leitor.
+pub fn importa_folha(
+    png: &[u8],
+    json: &str,
+    normal_png: Option<&[u8]>,
+    nome_sem_tags: &str,
+    m_por_px: f64,
+) -> Result<SpriteImportado, String> {
+    let (s, colliders) = ph2d_pixel_io::folha_json::abrir_folha_json(png, json, normal_png)
+        .map_err(|e| e.to_string())?;
+    Ok(importa(
+        &com_colliders(&s, &colliders),
+        nome_sem_tags,
+        m_por_px,
+    ))
 }
 
 /// O pivô e as formas por célula da folha `0` (a folha do import é uma célula por quadro, na

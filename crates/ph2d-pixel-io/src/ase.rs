@@ -106,7 +106,8 @@ fn posicao(b: Rect) -> Result<(i16, i16), AseErro> {
 }
 
 mod slices;
-use slices::{slices_de, slices_saida, tira_pivo};
+pub use slices::{COLLIDER_PROP, Colliders, PIVOT_PROP};
+use slices::{slices_de, slices_saida, tira_collider, tira_pivo};
 mod saida_tiles;
 mod user;
 use saida_tiles::{mapa_saida, tilesets_saida, vai_em_tiles};
@@ -374,6 +375,15 @@ fn modo_de(depth: u16) -> ColorMode {
 /// # Errors
 /// [`AseErro`]: o ficheiro não se lê ou não forma um documento válido.
 pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
+    ler_com_colliders(bytes).map(|(s, a, _)| (s, a))
+}
+
+/// [`ler`], e as slices que o ficheiro marca `ph2d.collider` (a marca sai do user data: o collider
+/// é do mundo, P14e D2).
+///
+/// # Errors
+/// [`AseErro`].
+pub fn ler_com_colliders(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>, Colliders), AseErro> {
     let file = ph2d_aseprite::parse_file(bytes).map_err(AseErro::Ler)?;
     let mut avisos = Vec::new();
     if file.frames.iter().any(|f| f.palette.is_some()) {
@@ -501,6 +511,7 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
         .map_or(1, |n| n + 1);
     let mut slices = slices_de(&file, proximo_id);
     let pivo = tira_pivo(&mut slices);
+    let colliders = tira_collider(&mut slices);
     let sprite = Sprite::from_parts(SpriteParts {
         width: u32::from(file.width),
         height: u32::from(file.height),
@@ -521,7 +532,7 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
     if pivo.is_some() {
         let _ = ph2d_pixel_core::apply(&mut sprite, ph2d_pixel_core::Op::PivotSlice(pivo));
     }
-    Ok((sprite, avisos))
+    Ok((sprite, avisos, colliders))
 }
 
 /// A imagem própria de um cel: a sua, ou a do tilemap expandido.

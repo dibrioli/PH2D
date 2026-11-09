@@ -25,6 +25,12 @@ pub(super) fn json_slices(s: &Sprite) -> Vec<ph2d_sprite_sheet::aseprite::JsonSl
                     pivot: k.shape.pivot,
                 })
                 .collect(),
+            collider: c
+                .user
+                .props
+                .get("")
+                .and_then(|m| m.get(crate::ase::COLLIDER_PROP))
+                == Some(&ph2d_pixel_core::user::PropValue::Bool(true)),
         })
         .collect()
 }

@@ -10,6 +10,7 @@ pub mod abrir;
 pub mod ase;
 pub mod brush_file;
 pub mod exporta;
+pub mod folha_json;
 pub mod gif_cores;
 pub mod godot;
 pub mod msk;

@@ -96,3 +96,27 @@ pub(super) fn tira_pivo(slices: &mut [Slice]) -> Option<SliceId> {
     }
     pivo
 }
+
+/// P14e: a propriedade do mapa do artista que diz «esta slice é um collider». Ao ler sai do user data
+/// (o collider é do mundo); ao gravar entra pela cópia que o app passa (`com_colliders`).
+pub const COLLIDER_PROP: &str = "ph2d.collider";
+
+/// Os ids das slices marcadas collider.
+pub type Colliders = std::collections::BTreeSet<u32>;
+
+/// Tira `ph2d.collider` das slices lidas e devolve as que o tinham a `true`.
+pub(super) fn tira_collider(slices: &mut [Slice]) -> Colliders {
+    let mut ids = Colliders::new();
+    for c in slices {
+        let Some(m) = c.user.props.get_mut("") else {
+            continue;
+        };
+        if m.remove(COLLIDER_PROP) == Some(ph2d_pixel_core::user::PropValue::Bool(true)) {
+            ids.insert(c.id.0);
+        }
+        if m.is_empty() {
+            c.user.props.remove("");
+        }
+    }
+    ids
+}

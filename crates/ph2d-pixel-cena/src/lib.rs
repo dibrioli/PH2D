@@ -17,7 +17,7 @@ mod importa;
 
 pub use importa::{
     COLLIDER_PROP, ColliderImportado, SpriteImportado, com_colliders, importa, importa_ase,
-    liga_celulas, marca_collider, slice_e_collider, slices_com_collider,
+    importa_folha, liga_celulas, marca_collider, slice_e_collider, slices_com_collider,
 };
 
 pub use deriva::{CLIP_SEM_TAGS, DerivadoDe, animador_de_nascenca, deriva, grelha};

@@ -3,6 +3,7 @@
 mod censo_da_porta;
 mod corpo;
 mod derivado;
+mod folha_importa;
 mod forma;
 mod inspector_abre;
 mod normal_da_fixture;

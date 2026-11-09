@@ -41,8 +41,14 @@ fn o_add_collider_marca_a_slice_ao_gravar() {
     let id = body(&s);
     let (mut sim, e) = pixel_sprite();
     let reaberta = |b: &[u8]| {
-        let (r, _) = ph2d_pixel_io::ase::ler(b).expect("reabre");
-        slice_e_collider(r.slices().iter().find(|c| c.name == "body").expect("body"))
+        let (r, _, c) = ph2d_pixel_io::ase::ler_com_colliders(b).expect("reabre");
+        let corpo = r.slices().iter().find(|c| c.name == "body").expect("body");
+        // A marca sai do user data ao ler: volta à parte, no conjunto.
+        assert!(
+            !slice_e_collider(corpo),
+            "a marca não fica no documento lido"
+        );
+        c.contains(&corpo.id.0)
     };
     assert!(
         !reaberta(&grava_do_mundo(&s, sim.world_mut())),

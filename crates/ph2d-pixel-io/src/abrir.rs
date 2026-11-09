@@ -38,7 +38,7 @@ impl std::fmt::Display for ErroAbrir {
 type QuadrosRgba = (u32, u32, Vec<(Vec<u8>, u32)>);
 
 /// A caixa mínima de uma imagem no modo do documento, e os bytes nela; `None` = só transparente.
-fn apertada(
+pub(crate) fn apertada(
     px: &[u8],
     w: u32,
     h: u32,
@@ -372,7 +372,7 @@ pub fn importar_folha_com(
 }
 
 /// Os quadros do JSON, em `array` ou em `hash`.
-fn quadros_do_json(j: &serde_json::Value) -> Vec<&serde_json::Value> {
+pub(crate) fn quadros_do_json(j: &serde_json::Value) -> Vec<&serde_json::Value> {
     match &j["frames"] {
         serde_json::Value::Array(a) => a.iter().collect(),
         serde_json::Value::Object(o) => o.values().collect(),
@@ -396,7 +396,7 @@ fn duracao_da_celula(j: &serde_json::Value, (x, y, w, h): (u32, u32, u32, u32)) 
 }
 
 /// As tags do JSON; só se a grelha tem um quadro para cada um dos dele, senão apontariam para outros.
-fn poe_tags(s: &mut Sprite, j: &serde_json::Value, celulas: usize) {
+pub(crate) fn poe_tags(s: &mut Sprite, j: &serde_json::Value, celulas: usize) {
     use ph2d_pixel_core::{Direction, apply, frames};
     if quadros_do_json(j).len() != celulas {
         return;

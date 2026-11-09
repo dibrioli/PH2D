@@ -205,6 +205,51 @@ pub struct JsonSlice {
     pub color: Option<[u8; 4]>,
     pub data: String,
     pub keys: Vec<JsonSliceKey>,
+    /// `"ph2d.collider": true` — a slice é um collider do PH2D (P14e); `false` não sai.
+    pub collider: bool,
+}
+
+impl JsonSlice {
+    /// Lê uma entrada de `meta.slices` (a forma que [`sheet_json`] escreve); `None` sem `name`.
+    #[must_use]
+    pub fn ler(v: &serde_json::Value) -> Option<Self> {
+        let caixa = |b: &serde_json::Value| -> Option<(i32, i32, u32, u32)> {
+            let n = |k: &str| b[k].as_i64();
+            Some((
+                i32::try_from(n("x")?).ok()?,
+                i32::try_from(n("y")?).ok()?,
+                u32::try_from(n("w")?).ok()?,
+                u32::try_from(n("h")?).ok()?,
+            ))
+        };
+        let cor = |t: &str| -> Option<[u8; 4]> {
+            let h = t.strip_prefix('#').filter(|h| h.len() == 8)?;
+            let b = |i: usize| u8::from_str_radix(h.get(i..i + 2)?, 16).ok();
+            Some([b(0)?, b(2)?, b(4)?, b(6)?])
+        };
+        let keys = v["keys"].as_array().map_or_else(Vec::new, |ks| {
+            ks.iter()
+                .filter_map(|k| {
+                    let p = &k["pivot"];
+                    Some(JsonSliceKey {
+                        frame: u32::try_from(k["frame"].as_u64()?).ok()?,
+                        bounds: caixa(&k["bounds"])?,
+                        center: caixa(&k["center"]),
+                        pivot: p["x"].as_i64().zip(p["y"].as_i64()).and_then(|(x, y)| {
+                            Some((i32::try_from(x).ok()?, i32::try_from(y).ok()?))
+                        }),
+                    })
+                })
+                .collect()
+        });
+        Some(Self {
+            name: v["name"].as_str()?.to_owned(),
+            color: v["color"].as_str().and_then(cor),
+            data: v["data"].as_str().unwrap_or_default().to_owned(),
+            keys,
+            collider: v["ph2d.collider"].as_bool() == Some(true),
+        })
+    }
 }
 
 /// `(x, y, w, h)` em `bounds` e `center`.
@@ -250,6 +295,9 @@ fn json_slice(o: &mut String, s: &JsonSlice) {
             o.push_str(" }");
         }
         o.push(']');
+    }
+    if s.collider {
+        o.push_str(", \"ph2d.collider\": true");
     }
     o.push_str(" }");
 }

@@ -2,6 +2,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod a_lista_de_sons;
+mod ase_import_normal;
 mod comp;
 // O arnês do quadro com luz da família da luz (uma cópia seria a 2.ª cadeia); este binário usa uma parte.
 #[allow(

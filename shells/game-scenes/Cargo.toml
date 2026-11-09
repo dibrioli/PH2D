@@ -29,6 +29,10 @@ ph2d-sfx-recipe = { path = "../../crates/ph2d-sfx-recipe", features = ["componen
 ph2d-sfx-scene = { path = "../../crates/ph2d-sfx-scene" }
 ph2d-app-physics = { path = "../../crates/ph2d-app-physics" }
 ph2d-app-sprite-anim = { path = "../../crates/ph2d-app-sprite-anim" }
+ph2d-sprite-ase-import = { path = "../../crates/ph2d-sprite-ase-import" }
+ph2d-pixel-cena = { path = "../../crates/ph2d-pixel-cena" }
+ph2d-pixel-io = { path = "../../crates/ph2d-pixel-io" }
+ph2d-pixel-core = { path = "../../crates/ph2d-pixel-core" }
 # ⭐ P14 — a costura do Normal Map na placa (`sprite_normal_costura`): a luz real e a cadeia do quadro dela.
 ph2d-app-light2d = { path = "../../crates/ph2d-app-light2d" }
 ph2d-light2d-ecs = { path = "../../crates/ph2d-light2d-ecs" }

@@ -85,6 +85,30 @@ impl App {
                 .filter_map(|j| crate::sheet_import::referenced_image(j))
                 .collect();
             for json in &sheet_metas {
+                if std::fs::read(json).is_ok_and(|b| ph2d_sprite_ase_import::e_folha_animada(&b)) {
+                    let porta = ph2d_sprite_ase_import::Porta {
+                        sim: &mut gfx.sim,
+                        renderer: &mut gfx.renderer,
+                        asset_db: &gfx.asset_db,
+                        next_cell: &mut gfx.next_import_cell,
+                        atlas_asset_map: &mut gfx.atlas_asset_map,
+                        anchor_world: drop_world,
+                        pixels_per_meter,
+                        escolher_normal: ph2d_app_sprite_anim::normal_map::escolher_normal,
+                    };
+                    let r = ph2d_sprite_ase_import::import_folha(porta, json);
+                    let (toast, bits) = ph2d_sprite_ase_import::frases_do_import(r);
+                    for (erro, t) in toast {
+                        gfx.toasts.push(if erro {
+                            Toast::error(t)
+                        } else {
+                            Toast::success(t)
+                        });
+                    }
+                    sheet_bits.extend(bits);
+                    self.title_dirty = true;
+                    continue;
+                }
                 match crate::sheet_import::import_sheet(
                     &mut gfx.sim,
                     &mut gfx.renderer,

@@ -167,6 +167,53 @@ pub fn import_ase(
         Ok(i) => i,
         Err(e) => return fail(e),
     };
+    let porta = Porta {
+        sim,
+        renderer,
+        asset_db,
+        next_cell,
+        atlas_asset_map,
+        anchor_world,
+        pixels_per_meter,
+        escolher_normal,
+    };
+    nasce(porta, name, &imp)
+}
+
+/// O que o import precisa do app para nascer a sprite.
+pub struct Porta<'a> {
+    pub sim: &'a mut SimWorld,
+    pub renderer: &'a mut SpriteRenderer,
+    pub asset_db: &'a ph2d_asset::AssetDb,
+    pub next_cell: &'a mut u32,
+    pub atlas_asset_map: &'a mut std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
+    pub anchor_world: [f32; 2],
+    pub pixels_per_meter: f32,
+    pub escolher_normal: EscolherNormal,
+}
+
+/// Nasce **uma** sprite do import (de um `.ase` ou de uma folha): a folha empacotada numa textura,
+/// a grelha, a biblioteca, o pivô e as formas por célula e a normal.
+pub fn nasce(
+    p: Porta<'_>,
+    name: String,
+    imp: &ph2d_pixel_cena::SpriteImportado,
+) -> AseImportResult {
+    let Porta {
+        sim,
+        renderer,
+        asset_db,
+        next_cell,
+        atlas_asset_map,
+        anchor_world,
+        pixels_per_meter,
+        escolher_normal,
+    } = p;
+    let fail = |error: String| AseImportResult::Err {
+        name: name.clone(),
+        error,
+    };
+    let m_por_px = 1.0 / f64::from(pixels_per_meter.max(f32::MIN_POSITIVE));
     let (w, h) = (imp.largura, imp.altura);
     let (cols, rows) = grid_for(imp.cor.len(), w, h);
     let (sheet_w, sheet_h) = (cols * w, rows * h);
@@ -206,7 +253,7 @@ pub fn import_ase(
     let mut notes: Vec<String> = imp
         .avisos
         .iter()
-        .map(|&a| ph2d_panel_pixel_export::textos::aviso_ase(a))
+        .map(|&a| ph2d_pixel_io::frases::aviso_ase(a))
         .collect();
     notes.extend(notas(
         &imp.clips,
@@ -215,7 +262,7 @@ pub fn import_ase(
         &name,
         imp.cor.len(),
     ));
-    liga(sim, entity, &imp, cols, rows, m_por_px);
+    liga(sim, entity, imp, cols, rows, m_por_px);
     if let Some(n) = &imp.normal {
         let id = asset_db.insert_image_rgba8(sheet_w, sheet_h, pack(n, w, h, cols, rows));
         if let Err(e) = escolher_normal(sim.world(), asset_db, atlas_asset_map, entity, Some(id)) {
@@ -228,6 +275,103 @@ pub fn import_ase(
         animations: imp.clips.iter().count(),
         bits,
         notes,
+    }
+}
+
+/// O `.json` é de uma folha ANIMADA (a do Pixel/Aseprite: os quadros têm `duration`)? Os atlas
+/// hand-packed (TexturePacker) não têm, e continuam o import de N sprites.
+#[must_use]
+pub fn e_folha_animada(json: &[u8]) -> bool {
+    let Ok(v) = serde_json::from_slice::<serde_json::Value>(json) else {
+        return false;
+    };
+    let tem = |q: &serde_json::Value| q.get("duration").is_some();
+    match &v["frames"] {
+        serde_json::Value::Array(a) => a.first().is_some_and(tem),
+        serde_json::Value::Object(o) => o.values().next().is_some_and(tem),
+        _ => false,
+    }
+}
+
+/// **Importa a folha que o Pixel exporta** (`folha.json` + a imagem dele + `<imagem>_n.png` ao
+/// lado): o MESMO Sprite do `.ase` ([`ph2d_pixel_cena::importa_folha`] + [`nasce`]).
+pub fn import_folha(p: Porta<'_>, json_path: &Path) -> AseImportResult {
+    let m_por_px = 1.0 / f64::from(p.pixels_per_meter.max(f32::MIN_POSITIVE));
+    match le_folha(json_path, m_por_px) {
+        Ok((name, imp)) => nasce(p, name, &imp),
+        Err((name, error)) => AseImportResult::Err { name, error },
+    }
+}
+
+/// Lê a folha largada: o nome e o import; o erro é a frase ao artista (inglês, por chave).
+///
+/// # Errors
+/// `(nome, frase)`: um ficheiro que não se lê, ou a folha recusada (Split).
+pub fn le_folha(
+    json_path: &Path,
+    m_por_px: f64,
+) -> Result<(String, ph2d_pixel_cena::SpriteImportado), (String, String)> {
+    let name = json_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("sheet")
+        .to_owned();
+    let ler =
+        |c: &Path| std::fs::read(c).map_err(|e| tr_with("shell.ase_import.read", &[("e", &e)]));
+    let json = ler(json_path)
+        .and_then(|b| {
+            String::from_utf8(b).map_err(|e| tr_with("shell.ase_import.read", &[("e", &e)]))
+        })
+        .map_err(|e| (name.clone(), e))?;
+    let imagem = serde_json::from_str::<serde_json::Value>(&json)
+        .ok()
+        .and_then(|v| v["meta"]["image"].as_str().map(str::to_owned))
+        .unwrap_or_else(|| format!("{name}.png"));
+    let pasta = json_path.parent().unwrap_or_else(|| Path::new("."));
+    let png = ler(&pasta.join(&imagem)).map_err(|e| (name.clone(), e))?;
+    let raiz = Path::new(&imagem)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(&name);
+    let normal = std::fs::read(pasta.join(format!("{raiz}_n.png"))).ok();
+    ph2d_pixel_cena::importa_folha(&png, &json, normal.as_deref(), &name, m_por_px)
+        .map(|imp| (name.clone(), imp))
+        .map_err(|e| (name.clone(), ph2d_pixel_io::frases::erro_abrir(&e)))
+}
+
+/// As frases `(é erro, texto)` de um import e os bits da sprite nascida: a linha do nome (quadros,
+/// animações) e as notas, ou o erro com o nome.
+#[must_use]
+pub fn frases_do_import(r: AseImportResult) -> (Vec<(bool, String)>, Option<u64>) {
+    match r {
+        AseImportResult::Ok {
+            name,
+            frames,
+            animations,
+            bits,
+            notes,
+        } => {
+            let linha = tr_with(
+                "shell.import_router.frames_animations",
+                &[
+                    ("name", &name),
+                    ("frames", &frames),
+                    ("animations", &animations),
+                ],
+            );
+            let todas = std::iter::once(linha).chain(notes).map(|t| (false, t));
+            (todas.collect(), Some(bits))
+        }
+        AseImportResult::Err { name, error } => (
+            vec![(
+                true,
+                tr_with(
+                    "shell.input_drop.sheet",
+                    &[("name", &name), ("error", &error)],
+                ),
+            )],
+            None,
+        ),
     }
 }
 

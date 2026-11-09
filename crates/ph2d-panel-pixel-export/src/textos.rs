@@ -10,18 +10,8 @@ use ph2d_pixel_io::ase::{AseErro, Aviso};
 use ph2d_pixel_io::exporta::{ErroGravar, Export, Gravado};
 use ph2d_pixel_io::saida::{AvisoSaida, ErroSaida, Formato};
 
-#[must_use]
-pub fn aviso_ase(a: Aviso) -> String {
-    match a {
-        Aviso::Tilemap => tr("pixel.io.warn.tilemap").to_owned(),
-        Aviso::TerrenosFicam => tr("pixel.io.warn.terrains").to_owned(),
-        Aviso::FormaVaiComoImagem => tr("pixel.io.warn.grid_shape").to_owned(),
-        Aviso::PaletaPorQuadro => tr("pixel.io.warn.palette_per_frame").to_owned(),
-        Aviso::ModoDesconhecido => tr("pixel.io.warn.unknown_blend").to_owned(),
-        Aviso::DuracaoCortada => tr("pixel.io.warn.duration_cut").to_owned(),
-        Aviso::CelCorrompido => tr("pixel.io.warn.bad_cel").to_owned(),
-    }
-}
+/// As frases do leitor moram com ele (o import do Sprite Inspector, uma folha, também as lê).
+pub use ph2d_pixel_io::frases::{aviso_ase, erro_abrir};
 
 #[must_use]
 pub fn aviso_saida(a: AvisoSaida) -> String {
@@ -59,18 +49,6 @@ pub fn erro_gravar(e: &ErroGravar) -> String {
         ErroGravar::AlvoSumiu => tr("pixel.io.err.target_gone").to_owned(),
         ErroGravar::Preset => tr("pixel.io.err.preset").to_owned(),
         ErroGravar::GodotSemQuadros => tr("pixel.io.err.godot_frames").to_owned(),
-    }
-}
-
-#[must_use]
-pub fn erro_abrir(e: &ErroAbrir) -> String {
-    match e {
-        ErroAbrir::Formato(x) => tr_with("pixel.io.err.type", &[("e", x)]),
-        ErroAbrir::Vazio => tr("pixel.io.err.empty").to_owned(),
-        ErroAbrir::TamanhosDiferentes => tr("pixel.io.err.sizes").to_owned(),
-        ErroAbrir::FolhaPartida => tr("pixel.io.err.split_sheet").to_owned(),
-        ErroAbrir::Ler(d) => tr_with("pixel.io.err.detail", &[("e", d)]),
-        ErroAbrir::Documento(_) => tr("pixel.io.err.invalid").to_owned(),
     }
 }
 

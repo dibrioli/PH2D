@@ -326,40 +326,82 @@ pub fn heroi_importado(sim: &mut SimWorld) -> (ph2d_ecs::Entity, ph2d_pixel_cena
     (e, imp)
 }
 
-/// ⭐ P14e: a normal da camada Normal Map da `heroi_p14` ENTRA na imagem do Sprite importado e é a
-/// do Pixel (`compose_normal`, na grelha da cor). *Mutação: `liga_normal` não chamada ⇒ sem normal.*
-#[test]
-fn a_normal_do_ase_entra_na_imagem_importada() {
-    use crate::{grid_for, pack};
-    use ph2d_pixel_cena::fixture::heroi_p14;
+/// Exporta a `heroi_p14` (com Add Collider em `body`) como a folha do Pixel na pasta `d`.
+fn folha_do_pixel(d: &std::path::Path, opcoes: ph2d_pixel_io::sheet::OpcoesFolha) {
+    use ph2d_pixel_cena::fixture::{body, heroi_p14};
+    use ph2d_pixel_io::exporta::{Export, ExportFolha, gravar};
     let s = heroi_p14();
-    let (bytes, _) = ph2d_pixel_io::ase::escrever(&s).expect("grava");
-    let imp = ph2d_pixel_cena::importa_ase(&bytes, "heroi", 1.0 / 16.0).expect("import");
-    let (cols, rows) = grid_for(imp.cor.len(), 16, 16);
-    ph2d_app_sprite_anim::normal_map::set_normais(&[]);
-    let db = ph2d_asset::AssetDb::new();
-    let cor = db.insert_image_rgba8(96, 16, pack(&imp.cor, 16, 16, cols, rows));
-    let atlas = [(7, cor)].into_iter().collect();
-    let mut w = ph2d_ecs::World::new();
-    let e = w
-        .spawn(ph2d_render::Sprite::atlas(7, [1.0; 2], [1.0; 4]))
+    let s = ph2d_pixel_cena::com_colliders(&s, &std::collections::BTreeSet::from([body(&s).0]));
+    std::fs::create_dir_all(d).expect("pasta");
+    let e = Export::Folha(ExportFolha {
+        opcoes,
+        json: Some(ph2d_pixel_io::sheet::OpcoesJson {
+            tags: true,
+            slices: true,
+            ..Default::default()
+        }),
+    });
+    gravar(&s, &e, &d.join("heroi.png")).expect("export");
+}
+
+/// ⭐ P14e-2 (c): largar o `.json` da folha do Pixel dá UM Sprite do Inspector com as tags, os
+/// pivôs, a forma por célula e a normal — não N sprites soltos; com Split, a frase do porquê.
+#[test]
+fn a_folha_do_pixel_largada_e_um_sprite_so() {
+    let d = std::env::temp_dir().join(format!("ph2d_p14e2_drop_{}", std::process::id()));
+    folha_do_pixel(
+        &d,
+        ph2d_pixel_io::sheet::OpcoesFolha {
+            normal: true,
+            ..Default::default()
+        },
+    );
+    let json = d.join("heroi.json");
+    assert!(crate::e_folha_animada(&std::fs::read(&json).expect("json")));
+    assert!(!crate::e_folha_animada(
+        br#"{"frames":{"a":{"frame":{"x":0,"y":0,"w":8,"h":8}}},"meta":{}}"#
+    ));
+    let m = 1.0 / 16.0;
+    let (nome, imp) = crate::le_folha(&json, m).expect("lê a folha");
+    assert_eq!(nome, "heroi");
+    assert_eq!(imp.cor.len(), 6);
+    assert!(imp.normal.is_some(), "a normal do _n.png");
+    let mut sim = SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn((
+            ph2d_render::Sprite::atlas(7, [6.0, 1.0], [1.0; 4]),
+            ph2d_ecs::Transform::IDENTITY,
+        ))
         .id();
-    let n = imp.normal.as_ref().expect("a fixture tem Normal Map");
-    let id = db.insert_image_rgba8(96, 16, pack(n, 16, 16, cols, rows));
-    let porta: crate::EscolherNormal = ph2d_app_sprite_anim::normal_map::escolher_normal;
-    porta(&w, &db, &atlas, e, Some(id)).expect("liga");
-    let id = ph2d_app_sprite_anim::normal_map::normal_de(cor).expect("a imagem tem normal");
-    let pixel: Vec<Vec<u8>> = s
-        .frames()
-        .iter()
-        .map(|f| ph2d_pixel_core::compose_normal(&s, f.id))
-        .collect();
-    let px = db
-        .get(&id)
-        .and_then(|a| a.image_rgba8().map(|(_, _, p)| p.into_owned()));
+    let (cols, rows) = grid_for(imp.cor.len(), imp.largura, imp.altura);
+    liga(&mut sim, e, &imp, cols, rows, m);
+    let w = sim.world();
+    let cells = w.get::<ph2d_ecs::SpriteCells>(e).expect("células");
+    assert_ne!(
+        cells.folhas[0].pivos_px[3], cells.folhas[0].pivos_px[4],
+        "pivô por quadro"
+    );
+    assert_eq!(cells.folhas[0].formas.len(), 1, "a forma de body");
     assert_eq!(
-        px,
-        Some(pack(&pixel, 16, 16, cols, rows)),
-        "a normal é a do Pixel"
+        w.get::<SpriteAnimations>(e).map(|l| l.iter().count()),
+        Some(3)
+    );
+    // Split: recusada com a frase em inglês.
+    let p = d.join("split");
+    folha_do_pixel(
+        &p,
+        ph2d_pixel_io::sheet::OpcoesFolha {
+            split_tags: true,
+            ..Default::default()
+        },
+    );
+    let (_, frase) = crate::le_folha(&p.join("heroi.json"), m)
+        .err()
+        .expect("recusada");
+    let _ = std::fs::remove_dir_all(&d);
+    assert!(
+        frase.contains("Split") && frase.contains("Export it again"),
+        "{frase}"
     );
 }

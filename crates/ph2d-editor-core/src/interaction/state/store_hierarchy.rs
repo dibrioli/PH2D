@@ -61,13 +61,7 @@ impl WidgetStore {
         self.hierarchy_drag
     }
 
-    pub fn begin_hierarchy_drag(
-        &mut self,
-        dragged: NodeId,
-        down_x: f32,
-        down_y: f32,
-        timestamp_ns: u128,
-    ) {
+    pub fn begin_hierarchy_drag(&mut self, dragged: NodeId, down_x: f32, down_y: f32) {
         self.hierarchy_drag = Some(HierarchyDragState {
             dragged,
             down_x,
@@ -75,7 +69,6 @@ impl WidgetStore {
             cursor_x: down_x,
             cursor_y: down_y,
             active: false,
-            down_timestamp_ns: timestamp_ns,
         });
     }
 
@@ -268,7 +261,6 @@ impl WidgetStore {
         dragged: NodeId,
         down_x: f32,
         down_y: f32,
-        timestamp_ns: u128,
     ) {
         self.panel_row_drag = Some((
             family,
@@ -279,7 +271,6 @@ impl WidgetStore {
                 cursor_x: down_x,
                 cursor_y: down_y,
                 active: false,
-                down_timestamp_ns: timestamp_ns,
             },
         ));
     }

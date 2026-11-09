@@ -103,45 +103,13 @@ pub(super) fn dispatch_up<'frame>(
         events.push(WidgetEvent::Blur(hold.id));
     }
     store.end_number_stepper_hold();
-    // Hierarchy drag ends on Up. If the drag was active
-    // (cursor moved past the threshold), find the drop
-    // target by cursor y vs each row rect and reorder.
-    // Otherwise treat as a regular click (selection,
-    // handled by the Click event from `apply_click`), or,
-    // when the Down→Up hold exceeded `LONG_PRESS_THRESHOLD_NS`
-    // without movement, emit `LongPress` so the hierarchy
-    // row enters inline rename.
+    // Hierarchy drag ends on Up. If the drag was active (cursor moved past the threshold), find
+    // the drop target by cursor y vs each row rect and reorder; otherwise the Up is a click
+    // (selection, from `apply_click`). ⛔ No long-press: it had no consumer since rename moved to
+    // the double click, and the shell stamps events when it PROCESSES them, so a slow frame turned
+    // a quick click into a «long press» that swallowed the selection (smoke 09/11, GEF 28).
     let drag_end = store.end_hierarchy_drag();
-    // Long-press detection: still pointer-Down (`!active`) for
-    // ≥ 600 ms emits LongPress. The Click that `apply_click`
-    // would otherwise also emit on this same Up is suppressed
-    // below (`suppress_click`) so the long-press doesn't
-    // silently mutate hierarchy selection on top of the rename
-    // mode it just opened.
-    let mut suppress_click = false;
-    // ⭐⭐ **O arrasto de uma aba fecha-se aqui, e ele NÃO suprime o clique.**
-    //
-    // ⛔⛔ **Eu escrevi a supressão com um comentário confiante, e a medição refutou-a.** O
-    // argumento era *«uma aba arrastada não é uma aba clicada»* — e o caso que ele imaginava já
-    // estava coberto: o `apply_click` só dispara com o `still_hot`, ou seja com a largada DENTRO
-    // do rect da aba onde o dedo desceu. Arrastar para outra coluna nunca produziu clique nenhum.
-    //
-    // ⚠️ O que a supressão de facto fazia era matar o **empurrão**: o limiar são poucos pixels e um
-    // dedo que carrega mexe-se sempre um pouco ⇒ trocar de aba passava a depender da firmeza da
-    // mão, que é a pior espécie de defeito de interface. Medido pelo gate
-    // `a_five_pixel_nudge_on_a_tab_still_switches_it`, que nasceu VERMELHO com ela.
-    //
-    // ⚠️ **E a mutação que a apagava SOBREVIVEU** — foi ela que mandou olhar. *Código inerte com um
-    // comentário confiante é pior que código ausente.*
     store.end_tab_drag();
-    if let Some(drag) = drag_end
-        && !drag.active
-        && event.timestamp_ns.saturating_sub(drag.down_timestamp_ns)
-            >= drag::LONG_PRESS_THRESHOLD_NS
-    {
-        events.push(WidgetEvent::LongPress(drag.dragged));
-        suppress_click = true;
-    }
     // ⭐ **Estações 2 e 3: ACTIVAR e RESOLVER.** Um arrasto que nunca activa e um que activa e cai
     // no `over_self` leem-se igual do lado de fora — e as curas são opostas.
     if super::hierarchy::diag_on()
@@ -168,86 +136,88 @@ pub(super) fn dispatch_up<'frame>(
                 event.y >= r.y && event.y < r.y + r.h && event.x >= r.x && event.x < r.x + r.w
             })
             .unwrap_or(false);
+        // ⭐ Back on its own row: no reparent, and the Up falls through to the click below (a hand
+        // that wobbles > 5 px is still a click — the panel-row drag already reads it so).
         if over_self {
             if super::hierarchy::diag_on() {
-                eprintln!("[hier] up: RECUSADO — o cursor voltou para dentro da propria linha");
+                eprintln!("[hier] up: o cursor voltou para dentro da propria linha — e' um clique");
             }
-            return;
-        }
-        // ⛔ Fora do painel onde começou não é reparentar: é a queda entre painéis (item 8 do
-        // CodeEditor — largar sobre o script não pode mudar o objecto de pai).
-        if !store.hierarchy_drop_in_own_panel(drag, event.x, event.y) {
-            if super::hierarchy::diag_on() {
-                eprintln!("[hier] up: fora do painel da hierarquia — nao e' reparentar");
-            }
-            return;
-        }
-        let drop = find_hierarchy_drop(hit_index, store, event.y, drag.dragged);
-        if super::hierarchy::diag_on() {
-            eprintln!("[hier] up: destino resolvido = {drop:?}");
-        }
-        match drop {
-            HierDrop::Before(t) => {
-                store.hierarchy_move(drag.dragged, Some(t));
-                // Inherit the target's parent so siblings
-                // stay siblings after a reorder.
-                let new_parent = store.hierarchy_parent_of(t);
-                let _ = store.hierarchy_set_parent(drag.dragged, new_parent);
-                events.push(WidgetEvent::HierReparent {
-                    dragged: drag.dragged,
-                    new_parent,
-                    before: Some(t),
-                    after: None,
-                });
-            }
-            HierDrop::After(t) => {
-                // Fixture-mode store move: insert just after
-                // target. Live mode delegates to the host
-                // which resolves the after target into the
-                // matching parent + before-next-sibling slot.
-                let order = store.hierarchy_order();
-                let next_id = order
-                    .iter()
-                    .position(|i| *i == t)
-                    .and_then(|idx| order.get(idx + 1).copied());
-                store.hierarchy_move(drag.dragged, next_id);
-                let new_parent = store.hierarchy_parent_of(t);
-                let _ = store.hierarchy_set_parent(drag.dragged, new_parent);
-                events.push(WidgetEvent::HierReparent {
-                    dragged: drag.dragged,
-                    new_parent,
-                    before: None,
-                    after: Some(t),
-                });
-            }
-            HierDrop::Inside(t) => {
-                if store.hierarchy_set_parent(drag.dragged, Some(t)) {
-                    // Move dragged immediately after target
-                    // in the order list so the child sits
-                    // visually next to its new parent.
-                    let order = store.hierarchy_order();
-                    let after_idx = order.iter().position(|i| *i == t);
-                    if let Some(idx) = after_idx {
-                        let next_id = order.get(idx + 1).copied();
-                        store.hierarchy_move(drag.dragged, next_id);
-                    }
+        } else {
+            // ⛔ Fora do painel onde começou não é reparentar: é a queda entre painéis (item 8 do
+            // CodeEditor — largar sobre o script não pode mudar o objecto de pai).
+            if !store.hierarchy_drop_in_own_panel(drag, event.x, event.y) {
+                if super::hierarchy::diag_on() {
+                    eprintln!("[hier] up: fora do painel da hierarquia — nao e' reparentar");
                 }
-                events.push(WidgetEvent::HierReparent {
-                    dragged: drag.dragged,
-                    new_parent: Some(t),
-                    before: None,
-                    after: None,
-                });
+                return;
             }
-            HierDrop::End => {
-                store.hierarchy_move(drag.dragged, None);
-                let _ = store.hierarchy_set_parent(drag.dragged, None);
-                events.push(WidgetEvent::HierReparent {
-                    dragged: drag.dragged,
-                    new_parent: None,
-                    before: None,
-                    after: None,
-                });
+            let drop = find_hierarchy_drop(hit_index, store, event.y, drag.dragged);
+            if super::hierarchy::diag_on() {
+                eprintln!("[hier] up: destino resolvido = {drop:?}");
+            }
+            match drop {
+                HierDrop::Before(t) => {
+                    store.hierarchy_move(drag.dragged, Some(t));
+                    // Inherit the target's parent so siblings
+                    // stay siblings after a reorder.
+                    let new_parent = store.hierarchy_parent_of(t);
+                    let _ = store.hierarchy_set_parent(drag.dragged, new_parent);
+                    events.push(WidgetEvent::HierReparent {
+                        dragged: drag.dragged,
+                        new_parent,
+                        before: Some(t),
+                        after: None,
+                    });
+                }
+                HierDrop::After(t) => {
+                    // Fixture-mode store move: insert just after
+                    // target. Live mode delegates to the host
+                    // which resolves the after target into the
+                    // matching parent + before-next-sibling slot.
+                    let order = store.hierarchy_order();
+                    let next_id = order
+                        .iter()
+                        .position(|i| *i == t)
+                        .and_then(|idx| order.get(idx + 1).copied());
+                    store.hierarchy_move(drag.dragged, next_id);
+                    let new_parent = store.hierarchy_parent_of(t);
+                    let _ = store.hierarchy_set_parent(drag.dragged, new_parent);
+                    events.push(WidgetEvent::HierReparent {
+                        dragged: drag.dragged,
+                        new_parent,
+                        before: None,
+                        after: Some(t),
+                    });
+                }
+                HierDrop::Inside(t) => {
+                    if store.hierarchy_set_parent(drag.dragged, Some(t)) {
+                        // Move dragged immediately after target
+                        // in the order list so the child sits
+                        // visually next to its new parent.
+                        let order = store.hierarchy_order();
+                        let after_idx = order.iter().position(|i| *i == t);
+                        if let Some(idx) = after_idx {
+                            let next_id = order.get(idx + 1).copied();
+                            store.hierarchy_move(drag.dragged, next_id);
+                        }
+                    }
+                    events.push(WidgetEvent::HierReparent {
+                        dragged: drag.dragged,
+                        new_parent: Some(t),
+                        before: None,
+                        after: None,
+                    });
+                }
+                HierDrop::End => {
+                    store.hierarchy_move(drag.dragged, None);
+                    let _ = store.hierarchy_set_parent(drag.dragged, None);
+                    events.push(WidgetEvent::HierReparent {
+                        dragged: drag.dragged,
+                        new_parent: None,
+                        before: None,
+                        after: None,
+                    });
+                }
             }
         }
     }
@@ -402,11 +372,7 @@ pub(super) fn dispatch_up<'frame>(
         // them would, e.g., toggle section collapse on
         // right-click, which is exactly the bug the user
         // reported.
-        if still_hot
-            && !is_drag_widget
-            && !suppress_click
-            && event.button == ph2d_host::PointerButton::Primary
-        {
+        if still_hot && !is_drag_widget && event.button == ph2d_host::PointerButton::Primary {
             apply_click(store, active, events);
         }
         set_widget_released(store, active, still_hot);

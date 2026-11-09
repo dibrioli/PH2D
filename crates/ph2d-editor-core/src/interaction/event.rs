@@ -34,13 +34,6 @@ pub enum WidgetEvent {
     /// M14.7 polish: Esc pressed on a "cancel-on-escape" TextInput.
     /// Same id semantics as `Submit` — caller drops the buffer.
     Cancel(NodeId),
-    /// M14.7 polish: pointer held down on a hierarchy row for
-    /// `LONG_PRESS_THRESHOLD_NS` (600 ms) without the drag threshold
-    /// being exceeded. Hero apply_event interprets this as
-    /// "enter inline rename mode for this row" — mirrors the
-    /// right-click → "Rename…" path so touch / pen users get a
-    /// modeless rename gesture without needing a context menu.
-    LongPress(NodeId),
     /// Toggle / Checkbox / Switch — caller reads the new state from
     /// `store.get(id)`.
     Toggled(NodeId),

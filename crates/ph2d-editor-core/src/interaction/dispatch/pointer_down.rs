@@ -651,13 +651,13 @@ pub(super) fn dispatch_down<'frame>(
         // Now we ask the store, which the hierarchy painter
         // updates per-frame in both modes.
         if store.is_hierarchy_row(id) {
-            store.begin_hierarchy_drag(id, event.x, event.y, event.timestamp_ns);
+            store.begin_hierarchy_drag(id, event.x, event.y);
         }
         // ⭐⭐ **O arrasto de uma linha de PAINEL** — a mesma âncora da hierarquia; o Up resolve a
         // queda num `PanelRowReparent` para o dono da estrutura aplicar. A família vem do store, e
         // é ela que diz de QUEM a linha é (camadas do Painter · tags do projecto).
         if let Some(family) = store.panel_row_family(id) {
-            store.begin_panel_row_drag(family, id, event.x, event.y, event.timestamp_ns);
+            store.begin_panel_row_drag(family, id, event.x, event.y);
         }
         // BlenderColorPicker sub-control hits route into the
         // parent's stored state mutation. Right-click on a

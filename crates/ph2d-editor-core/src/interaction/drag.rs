@@ -187,16 +187,9 @@ pub struct HierarchyDragState {
     /// `true` once the cursor has moved past the threshold; until
     /// then the gesture is "maybe-click, maybe-drag".
     pub active: bool,
-    /// Wall-clock timestamp the Down event landed at (ns). Used by
-    /// the Up handler to detect long-press (Up - Down >= 600 ms with
-    /// `!active`) → emits `WidgetEvent::LongPress` for inline rename.
-    pub down_timestamp_ns: u128,
 }
 
-/// Hold duration that turns a still pointer-Down on a hierarchy row
-/// into a `WidgetEvent::LongPress`. 400 ms — Enio 2026-05-26 pediu
-/// pra reduzir um pouco do 600 ms anterior (macOS Finder padrão).
-/// Continua longo o suficiente pra não disparar em click normal.
+/// A pressão longa (400 ms, Enio 2026-05-26) — hoje só do vídeo do Quadro (`board_video::HOLD_NS`).
 pub const LONG_PRESS_THRESHOLD_NS: u128 = 400_000_000;
 
 /// ⭐⭐⭐ **A âncora do ARRASTO NO CORPO de um painel** — o gesto que uma tela táctil precisa.

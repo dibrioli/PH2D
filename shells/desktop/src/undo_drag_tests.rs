@@ -201,6 +201,33 @@ fn cada_gesto_dos_pontos_do_outline_e_um_passo_de_desfazer() {
     );
     fotos.push(d);
     assert_eq!((pts(&sim).len(), n7), (4, 7), "a fusão é UM passo");
+    let v = pts(&sim);
+    let ao = |t: f32| ecra([0, 1].map(|k| v[2][k] + t * (v[3][k] - v[2][k])));
+    let (d, n8) = gesto(
+        &mut sim,
+        &|po, i| match i {
+            0 => po.desce_com(ao(0.5), t),
+            _ => po.move_(ao(0.5 - 0.1 * i as f32), t),
+        },
+        3,
+    );
+    fotos.push(d);
+    assert_eq!(
+        (pts(&sim).len(), n8),
+        (5, 8),
+        "acrescentar e arrastar é UM passo"
+    );
+    let mut bus = ph2d_editor_core::action_bus::ActionBus::default();
+    let mut po = Porta {
+        world: sim.world_mut(),
+        camera,
+        window,
+        bus: &mut bus,
+    };
+    assert!(
+        !po.desce_com(ecra([30.0, 30.0]), t),
+        "o vazio limpa a seleção"
+    );
     // «Merge by distance» (dono 09/11): o cacho num passo, o Merge do cartão noutro, um só.
     let (bits, q) = (e.to_bits(), ph2d_ecs::scene::EditorCommandQueue::new());
     p::escreve(
@@ -219,7 +246,7 @@ fn cada_gesto_dos_pontos_do_outline_e_um_passo_de_desfazer() {
     }
     assert_eq!(
         (pts(&sim).len(), fila.depth()),
-        (4, 9),
+        (4, 10),
         "o Merge é UM passo"
     );
     let mut agora = fotos.pop().expect("foto");

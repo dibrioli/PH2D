@@ -213,8 +213,8 @@ impl Porta<'_> {
         true
     }
 
-    /// Alt+clique tira; Shift+clique alterna na seleção; clique seleciona e agarra; clique na aresta acrescenta e
-    /// seleciona o novo; no vazio a seleção limpa.
+    /// Alt+clique tira; Shift+clique alterna na seleção; clique seleciona e agarra; clique na aresta acrescenta,
+    /// seleciona e agarra o novo; no vazio a seleção limpa.
     fn desce_no_ponto(&mut self, alvo: u64, s: (f32, f32), teclas: Teclas) -> bool {
         use crate::pontos as p;
         let Some((pose, m, o)) = p::do_alvo(self.world, alvo) else {
@@ -260,10 +260,21 @@ impl Porta<'_> {
         } else if let Some((pt, _)) = p::aresta_em(&ecra, s) {
             if let Some(v) = p::acrescentado(&o.rings, pt, p::para_q4(&pose, &m, &o, q)) {
                 p::escreve(self.world, alvo, v, true);
-                sel = vec![p::Ponto {
+                let novo = p::Ponto {
                     anel: pt.anel,
                     i: pt.i + 1,
-                }];
+                };
+                sel = vec![novo];
+                // O mesmo gesto arrasta o ponto novo; o `Esc` devolve o anel de antes (sem ele).
+                arrasto = Some(p::ArrastoDoPonto {
+                    ponto: novo,
+                    inicio: o.rings.clone(),
+                    custom: o.custom,
+                    folga: [0.0, 0.0],
+                    ecra0: s,
+                    ecra: s,
+                    armado: false,
+                });
             }
             true
         } else {

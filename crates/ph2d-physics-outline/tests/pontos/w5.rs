@@ -635,3 +635,74 @@ fn o_merge_pendente_espera_o_traco_e_funde_uma_vez() {
             .is_none()
     );
 }
+
+/// ⭐ **Clicar na aresta e arrastar no mesmo movimento** (dono 09/11): o ponto nasce no `Down` e segue o ponteiro
+/// até soltar (cursor de mão fechada só a mexer); o `Esc` a meio devolve o anel SEM o ponto; soltar o novo sobre o
+/// vizinho funde-o (o anel volta ao tamanho de antes). *Mutação: o ponto acrescentado não ficar agarrado ⇒ o
+/// `move_` não o leva, vermelho.*
+#[test]
+fn clicar_na_aresta_e_arrastar_leva_o_ponto_novo() {
+    use ph2d_shape_handles::{Figura as F, cursor_dos_pontos};
+    let (_reg, mut sim, _body, shape, _db) = followed_ring();
+    alterna(sim.world_mut(), shape.to_bits());
+    let n = |sim: &SimWorld| outline(sim, shape).rings[0].len();
+    let (n0, inicio) = (n(&sim), outline(&sim, shape));
+    let (clique, para) = ([0.5, 2.0], [0.5, 2.8]);
+    let cur = |sim: &SimWorld, w: [f32; 2]| {
+        cursor_dos_pontos(sim.world(), &cam(), WIN, ecra(w), Teclas::default())
+    };
+    let mut bus = ActionBus::default();
+    {
+        let mut p = porta(&mut sim, &mut bus);
+        assert!(p.desce_com(ecra(clique), Teclas::default()));
+        assert!(
+            p.move_(ecra(para), Teclas::default()),
+            "o arrasto é dos pontos"
+        );
+        assert!(p.esc());
+    }
+    assert_eq!(
+        outline(&sim, shape),
+        inicio,
+        "o Esc devolve o anel sem o ponto"
+    );
+    {
+        let mut p = porta(&mut sim, &mut bus);
+        assert!(p.desce_com(ecra(clique), Teclas::default()));
+    }
+    assert_ne!(
+        cur(&sim, clique),
+        Some(F::Agarrando),
+        "antes de mexer não é mão"
+    );
+    {
+        let mut p = porta(&mut sim, &mut bus);
+        assert!(p.move_(ecra(para), Teclas::default()));
+    }
+    assert_eq!(
+        cur(&sim, para),
+        Some(F::Agarrando),
+        "a mexer é a mão fechada"
+    );
+    assert!(porta(&mut sim, &mut bus).sobe());
+    assert_eq!(n(&sim), n0 + 1, "um ponto a mais");
+    let novo = perto(&sim, shape, 0, para);
+    assert!(
+        (novo[0] - para[0]).hypot(novo[1] - para[1]) < 0.01,
+        "o ponto novo foi ao ponteiro: {novo:?}"
+    );
+    assert!(outline(&sim, shape).custom);
+    let canto = perto(&sim, shape, 0, [2.0, 2.0]);
+    let clique = [-2.0, 0.5];
+    {
+        let mut p = porta(&mut sim, &mut bus);
+        assert!(p.desce_com(ecra(clique), Teclas::default()));
+        assert!(p.move_(ecra([-2.0, 1.5]), Teclas::default()));
+        let viz = perto(&sim, shape, 0, [-2.0, 2.0]);
+        let mut p = porta(&mut sim, &mut bus);
+        assert!(p.move_(ecra(viz), Teclas::default()));
+        assert!(p.sobe());
+    }
+    assert_eq!(n(&sim), n0 + 1, "soltar o novo sobre o vizinho fundiu-o");
+    assert_eq!(perto(&sim, shape, 0, [2.0, 2.0]), canto);
+}

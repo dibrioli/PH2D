@@ -1,5 +1,5 @@
-//! (GEF02 09/11) **Auto Key dos pontos do Outline pelo histórico real**: o passe do quadro (`propagar_topologia`
-//! + `apply_samples`), o passo global ligado à chave (`push_linked` + `liga_gesto_da_cena`) e o Ctrl+Z de
+//! (GEF02 09/11) **Auto Key dos pontos do Outline pelo histórico real**: o passe do quadro
+//! (`propagar_topologia` e `apply_samples`), o passo global ligado à chave (`push_linked` + `liga_gesto_da_cena`) e o Ctrl+Z de
 //! `apply_undo` (a fila global e, se a transação casa, a da timeline): cada gesto é UM Ctrl+Z que devolve os
 //! pontos E as chaves.
 

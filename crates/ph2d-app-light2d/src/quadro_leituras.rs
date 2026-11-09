@@ -1,8 +1,12 @@
-//! As LEITURAS da luz do quadro (o custo, o nível, a fina engrossada) — ficheiro irmão do `quadro.rs`
-//! pelo tecto de 700 LOC (W5j).
+//! As LEITURAS da luz do quadro (o custo, o nível, a fina engrossada, a cena, a grade, o solver) —
+//! ficheiro irmão do `quadro.rs` pelo tecto de 700 LOC (W5j; as leituras da cena, P14).
 
+use bevy_ecs::entity::Entity;
 use ph2d_editor_core::luz_edits::NivelDaLuz;
-use ph2d_light2d_gpu::{Config, Grade, Medida, Solver, SondaDeMemoria, TemposMs};
+use ph2d_light2d_ecs::CenaDeLuz;
+use ph2d_light2d_gpu::{
+    Config, ErroSolver, Grade, Medida, RelatorioC0, Solver, SondaDeMemoria, TemposMs,
+};
 
 /// A configuração da vista, a grade da fluência, a região da janela nela e a janela.
 type Onde<'a> = (&'a Config, Grade, ([u32; 2], [u32; 2]), (u32, u32));
@@ -379,5 +383,51 @@ impl super::LuzDoQuadro {
             },
             p.automatica,
         ))
+    }
+
+    /// As bandas normais das faixas deste quadro (a família enche-as; a colagem lê-as).
+    pub fn normais_mut(&mut self) -> &mut crate::NormaisDasFaixas {
+        &mut self.normais
+    }
+
+    /// As bandas a encher neste quadro (esvaziadas) e quem não recebe luz; `None` = apagada (nenhuma
+    /// banda nasce).
+    pub fn normais_do_quadro(&mut self) -> (&mut crate::NormaisDasFaixas, Option<&[Entity]>) {
+        let acesa = self.acesa();
+        self.normais.cenas.clear();
+        (
+            &mut self.normais,
+            acesa.then_some(&self.cena.nao_recebem[..]),
+        )
+    }
+
+    /// A cena coletada neste quadro.
+    #[must_use]
+    pub fn cena(&self) -> &CenaDeLuz {
+        &self.cena
+    }
+
+    /// A grade deste quadro (`None` = apagada).
+    #[must_use]
+    pub fn grade(&self) -> Option<Grade> {
+        self.grade
+    }
+
+    /// O que a C0 deixou de fora no último quadro (a W4 leva-o à UI).
+    #[must_use]
+    pub fn relatorio(&self) -> Option<&RelatorioC0> {
+        self.relatorio.as_ref()
+    }
+
+    /// A recusa do solver no último quadro, se houve.
+    #[must_use]
+    pub fn erro(&self) -> Option<&ErroSolver> {
+        self.erro.as_ref()
+    }
+
+    /// O solver vivo (a sonda lê os tempos dele).
+    #[must_use]
+    pub fn solver(&self) -> Option<&Solver> {
+        self.resolvido.as_ref().map(|r| &r.solver)
     }
 }

@@ -11,7 +11,7 @@ use ph2d_vector::{Affine, BezPath, Brush, Circle, Color, Fill, Point, Stroke, Ve
 
 const PONTO_PX: f64 = 3.0; // LITERAL-PX-OK: raio do ponto
 const SOB_PX: f64 = 5.0; // LITERAL-PX-OK: raio do ponto sob o ponteiro
-const SELECIONADO_PX: f64 = 5.5; // LITERAL-PX-OK: raio do ponto selecionado
+const SELECIONADO_PX: f64 = 6.5; // LITERAL-PX-OK: raio do ponto selecionado
 const FUSAO_PX: f64 = 9.0; // LITERAL-PX-OK: o anel do alvo da fusão
 const MAIS_PX: f64 = 6.0; // LITERAL-PX-OK: raio do «+» fantasma
 const MAIS_BRACO_PX: f64 = 3.0; // LITERAL-PX-OK: meio braço do «+»
@@ -90,9 +90,10 @@ pub(crate) fn desenhar(
         resolve(ColorToken::Selection, theme),
         resolve(ColorToken::Bg0, theme),
     );
-    let (realce, perigo) = (
+    let (realce, perigo, claro) = (
         resolve(ColorToken::Accent, theme),
         resolve(ColorToken::Danger, theme),
+        resolve(ColorToken::Text1, theme),
     );
     let ecra = p::no_ecra(&pose, &m, &o, cam, win);
     let est = estados(world, &ecra, ponteiro);
@@ -118,7 +119,7 @@ pub(crate) fn desenhar(
         for (i, &c) in r.iter().enumerate() {
             let pt = Ponto { anel, i };
             if sel.binary_search(&pt).is_ok() {
-                bola(s, c, SELECIONADO_PX, cor, fundo);
+                bola(s, c, SELECIONADO_PX, cor, claro);
             } else if est.sob == Some(pt) {
                 bola(s, c, SOB_PX, fundo, realce);
             } else {

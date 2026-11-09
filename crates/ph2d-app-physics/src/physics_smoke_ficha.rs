@@ -24,8 +24,16 @@ pub fn physics_smoke_ficha(ctx: &mut crate::SceneCtx<'_>) {
     if let Some((forma, centro)) = outline {
         ctx.want.camera_center = Some(centro);
         // A foto dos pontos (`PH2D_PHYSICS_SMOKE_OUTLINE_PONTOS=1`): a forma já nasce em edição no canvas.
-        if std::env::var_os("PH2D_PHYSICS_SMOKE_OUTLINE_PONTOS").is_some() {
+        if let Some(v) = std::env::var_os("PH2D_PHYSICS_SMOKE_OUTLINE_PONTOS") {
             ph2d_shape_handles::alterna(ctx.world, forma.to_bits());
+            // `=2`: três pontos de cada anel já selecionados.
+            let i = (0..4)
+                .flat_map(|anel| [0, 4, 8].map(|i| ph2d_shape_handles::pontos::Ponto { anel, i }));
+            ctx.world
+                .insert_resource(ph2d_shape_handles::pontos::PontosNoCanvas {
+                    selecionados: if v == "2" { i.collect() } else { Vec::new() },
+                    ..Default::default()
+                });
         }
     }
     ctx.want.select = excecao.or(outline.map(|o| o.0)).map(Entity::to_bits);

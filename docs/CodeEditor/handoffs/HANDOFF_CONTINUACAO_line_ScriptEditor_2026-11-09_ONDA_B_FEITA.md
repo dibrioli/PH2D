@@ -100,3 +100,17 @@ cartão some». Cura (`ph2d-panel-code/src/bancada/popover.rs`, `mod.rs`):
   código) com o rato fora dos dois; `tick` fecha-o sem o rato se mexer.
 - Testes: `o_balao_encosta_na_marca_e_o_caminho_ate_ele_nao_o_fecha` (novo) e os dois de fecho com a espera;
   `ph2d-panel-code bancada` 19 ✓, `ph2d-app-code onda_b` 2 ✓, clippy das duas ✓. Foto nova: `cena13/passo_1.png`.
+
+## Smoke do dono 09/11 — resto OK; ABERTOS: passo 5 (Ctrl+Z) e os valores ao vivo a piscar
+
+- **Passo 5, «Undo não funciona».** Causa 1 (curada, `surface.rs` `fn key`, ramo `undo_key`): com a aba activa o
+  Ctrl+Z ia ao texto; com a grelha em foco a aba agora NÃO o consome (teste `onda_b`). Mas o Ctrl+Z real ainda
+  não desfez na foto. **Hipótese forte, por provar:** a cena 13 corre em Play, e `motivo_da_supressao`
+  (`shells/desktop/src/undo_app_macros.rs:50-64`, «jogo a correr») não regista passos com o jogo a correr — a
+  edição da grelha (e a do Inspector) durante o Play não entra na fila. Provar: `PH2D_UNDO_LOG=1` com a cena
+  PARADA vs a correr. Rumo provável: a cena 13 nasce parada; se o dono quiser desfazer durante o Play, é
+  decisão dele (a casa trata o Play como prévia). ⚠️ Na foto o `xdotool` (agora XTEST, gancho `FOTO_TECLAS`
+  em `docs/Components/ferramentas/fotografa_cena.sh`) não mostrou `[undo] Ctrl+Z RECEBIDA` no log: confirmar
+  primeiro que a tecla chega à janela virtual.
+- **«Os números piscando rápido como ×2 no fim das linhas»** — os valores ao vivo da Onda D (D18) mudam a cada
+  quadro: ilegíveis. Cura: amostrar poucas vezes por segundo (medir o ritmo; um token de duração da casa).

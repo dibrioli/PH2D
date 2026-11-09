@@ -86,11 +86,28 @@ fn a_celula_escrita_vai_ao_bus_como_a_edicao_do_inspector() {
         m.docs().undo_is_the_projects(),
         "depois do Enter, a grelha fica com ele"
     );
+    // Smoke do dono 09/11 (passo 5): a TECLA também — o Ctrl+Z não é da aba (segue para a shell,
+    // que desfaz o projecto) e o texto não muda.
+    let antes = m.docs().text_of(id);
+    let z = |m: &mut Mesa| {
+        let mut ts = ph2d_text::TextSystem::without_system_fonts();
+        let input = ph2d_editor_core::doc_surface::KeyInput {
+            key: Key::Char('z'),
+            mods: ctrl(),
+            pressed: true,
+            text: None,
+            paste: None,
+        };
+        m.docs().key(id.0, &mut ts, input).consumed
+    };
+    assert!(!z(&mut m), "com a grelha em foco o Ctrl+Z é do projecto");
+    assert_eq!(m.docs().text_of(id), antes, "o texto não se desfez");
     clica_em(&mut m, id, byte_de("print") + 2, Modifiers::default());
     assert!(
         !m.docs().undo_is_the_projects(),
         "um clique no texto devolve o desfazer ao código"
     );
+    assert!(z(&mut m), "e o Ctrl+Z volta a ser da aba (o texto)");
 }
 
 /// ⭐ O rato parado no nome de Bia a pausa do balão: a aba cede à cena e pede Bia contornada na cor

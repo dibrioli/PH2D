@@ -306,9 +306,6 @@ impl DocumentSurface for CodeDocs {
                 copy: None,
             };
         }
-        if pressed && let Some(out) = self.family_key(id, key, mods) {
-            return out;
-        }
         let k = crate::edit::FieldKey {
             key,
             mods,
@@ -316,6 +313,15 @@ impl DocumentSurface for CodeDocs {
             paste: paste.as_deref(),
         };
         if pressed && let Some(out) = self.bench.key(k) {
+            return out;
+        }
+        // A grelha da Bancada em foco (smoke do dono 09/11, passo 5): o Ctrl+Z/Ctrl+Y não é do texto
+        // — a tecla segue para a shell, que desfaz o projecto (`undo_is_the_projects`).
+        let undo_key = matches!(key, Key::Char(c) if matches!(c.to_ascii_lowercase(), 'z' | 'y'));
+        if self.bench.has_focus() && (mods.ctrl || mods.meta) && undo_key {
+            return KeyOutcome::default();
+        }
+        if pressed && let Some(out) = self.family_key(id, key, mods) {
             return out;
         }
         let in_field = self.list.focus.is_some()

@@ -47,6 +47,10 @@ ESPERA="${5:-9}"
 # 1.a e' <saida.png>, as seguintes <saida>_02.png, … — dois instantes de uma cena que corre sem
 # que o arranque (que varia com a carga) mude a distancia entre eles.
 RAJADA="${FOTO_RAJADA:-1}"
+# FOTO_TECLAS="ctrl+z" (xdotool): teclas REAIS mandadas à janela antes da 2.ª foto da rajada — o caminho
+# inteiro do teclado (a janela, a shell, a aba), que um roteiro de smoke não percorre. CodeEditor 13
+# Onda B, smoke do dono 09/11 (passo 5: o Ctrl+Z da grelha).
+TECLAS="${FOTO_TECLAS:-}"
 # FOTO_ESCOLHA=head: fotografa a 1.ª janela do app (o editor atrás da janela do jogo), não a última.
 # FOTO_JANELA_A_CADA=1: cada foto da rajada reescolhe a janela (a ÚLTIMA do app) — para um app que
 # abre uma 2.ª janela a meio (a janela do jogo, GameEngineFuncional R0c).
@@ -229,6 +233,11 @@ if ! aceso "$SAIDA"; then
   rm -f "$SAIDA"
 fi
 for i in \$(seq 2 $RAJADA); do
+  if [ "\$i" = 2 ] && [ -n "$TECLAS" ]; then
+    # XTEST à janela activa (um key --window é XSendEvent, que o winit ignora: medido 09/11).
+    xdotool windowactivate --sync "\$WIN" 2>>"$TMP/log"; xdotool key $TECLAS 2>>"$TMP/log"
+    echo "[foto] teclas: $TECLAS" >> "$TMP/log"
+  fi
   sleep $INTERVALO
   [ "${FOTO_JANELA_A_CADA:-0}" = 1 ] && WIN=\$(janela)
   import -display "\$DISPLAY" -window "\$WIN" "${SAIDA%.png}_\$(printf %02d \$i).png" >> "$TMP/log" 2>&1

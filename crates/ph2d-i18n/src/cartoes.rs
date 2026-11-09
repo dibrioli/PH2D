@@ -38,8 +38,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.outline_detail_tip" => {
             "How far the outline may move out from the picture to stay simple. Bigger means fewer points."
         }
-        "card.insp.phys.outline_detail_locked_tip" => {
-            "Detail is locked while you edit the points on the canvas. Click \u{201c}Edit shape on canvas\u{201d} again to unlock it."
+        "card.insp.phys.outline_locked_tip" => {
+            "Locked because you moved points by hand. Turn on \u{201c}Edit shape on canvas\u{201d} to change it."
         }
         "card.insp.phys.outline_alpha_tip" => {
             "How solid a pixel must be to count as part of the shape. 0.5 means half see-through."

@@ -404,7 +404,9 @@ pub fn paint_key_mark(
             }
         }
     }
+    // O campo PARADO (travado) também não grava pela marca: sem alvo.
     if marca.is_some()
+        && !fields.iter().all(|&f| valor::parado(f))
         && let Some(alvo) = register_key_mark_target(fields)
     {
         hit_index.register(alvo, caixa);

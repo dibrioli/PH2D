@@ -63,8 +63,9 @@ pub const INSP_PHYS_SHAPE: [NodeId; 4] = [
 pub const INSP_PHYS_OUTLINE_DETAIL: NodeId = hash_node_id("insp_phys_outline_detail");
 pub const INSP_PHYS_OUTLINE_ALPHA: NodeId = hash_node_id("insp_phys_outline_alpha");
 pub const INSP_PHYS_OUTLINE_SPECKS: NodeId = hash_node_id("insp_phys_outline_specks");
-/// O Detail TRAVADO (dono 09/11): a linha apagada enquanto os pontos se editam no canvas; só dá a dica.
-pub const INSP_PHYS_OUTLINE_DETAIL_LOCKED: NodeId = hash_node_id("insp_phys_outline_detail_locked");
+/// Detail · Alpha cutoff · Ignore specks under TRAVADOS (dono 09/11): o bloco apagado de um Outline à mão fora
+/// de «Edit shape on canvas»; só dá a dica.
+pub const INSP_PHYS_OUTLINE_LOCKED: NodeId = hash_node_id("insp_phys_outline_locked");
 /// «Merge by distance»: a distância (px da imagem, só do painel) e o botão que funde.
 pub const INSP_PHYS_OUTLINE_MERGE_DIST: NodeId = hash_node_id("insp_phys_outline_merge_dist");
 pub const INSP_PHYS_OUTLINE_MERGE: NodeId = hash_node_id("insp_phys_outline_merge");

@@ -23,10 +23,19 @@ Leitor: a próxima LLM desta linha. Aprovado pelo dono em 08/11/2026 («faça co
   tipo, tamanho, offset, rotação; clicar seleciona o filho; «+ Add shape» = o spawn acima; «Remove shape» = apagar o filho,
   um passo de undo). Canvas: «Edit shape on canvas» mostra as alças de TODAS as formas do corpo.
   ⛔ Recusado: `Collider.shapes: Vec<…>` (segunda verdade ao lado dos filhos, perde `Copy`, degrau de schema).
-- **Dono 09/11:** enquanto «Edit shape on canvas» está ligado, o **Detail TRAVA** (apagado, sem arrasto/escrita, dica
-  `card.insp.phys.outline_detail_locked_tip`) e destrava ao sair — retraçar apagaria os pontos editados à mão. Só o
-  Detail; Alpha cutoff e Ignore specks também retraçam (`retrace_edited`), por decidir. E a **forma solta** perde
-  «Remove Shape» (como a filha): apaga-se na Hierarchy. Provas: `o_detail_trava_e_a_solta_sem_remove.rs`.
+- **Dono 09/11 (A, substitui a de `13902fc1ec`):** Outline que segue a imagem (`custom` falso): Detail, Alpha cutoff e
+  Ignore specks under livres sempre. Depois da 1.ª edição de pontos à mão (`custom`): os três TRAVAM fora de «Edit shape
+  on canvas» (só inativos — esmaecidos, sem arrasto/escrita/foco, sem losango que grave; o bloco dá a dica
+  `card.insp.phys.outline_locked_tip`); dentro da edição destravam e mudar um deles RETRAÇA da imagem (os pontos à mão
+  dão lugar aos traçados, um passo de undo, `custom` volta a falso). Lei: `physics_cartao_contorno::travado`. Provas:
+  `o_traco_trava_fora_da_edicao_depois_dos_pontos_a_mao`, `o_detail_dentro_da_edicao_retraca_um_outline_a_mao`.
+  A **forma solta** perde «Remove Shape» (como a filha): apaga-se na Hierarchy (`o_detail_trava_e_a_solta_sem_remove.rs`).
+- **Dono 09/11 (B, pontos animados):** forma com trilha de pontos (51/52) e Auto Key DESLIGADO: todo gesto de pontos
+  (arrastar, acrescentar na aresta, Alt+clique, Delete, fundir ao soltar, «Merge», e o retraço de A) não muda nada e
+  abre um modal «This shape's points are animated» / «Editing them now would be undone by the animation. Delete the
+  points animation to edit them freely?» [Delete animation] [Cancel]; aceitar apaga as trilhas 51/52 num passo de undo
+  (a mesma função de `canais_pontos::apagar_do_fit`) e a edição volta; o gesto recusado não se reaplica. Auto Key
+  LIGADO: inalterado (grava chave). **Estado: por construir** (ver o handoff da onda).
 
 ## Desenho técnico (padrão-ouro)
 

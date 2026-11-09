@@ -71,7 +71,6 @@ fn b4_a_filha_tem_shape_e_camadas_e_diz_de_quem_e() {
 #[test]
 fn b4_a_filha_nao_oferece_remove_shape_e_o_corpo_guarda_o_remove() {
     use ph2d_editor_core::interaction::WidgetEvent;
-    use ph2d_editor_core::panel::PanelHostInternal;
     let (mut host, mut st) = cena(da_filha(), [1.0, 1.0]);
     let r = pinta(&mut host, &mut st);
     assert!(achado(&r, CARD_PHYS_SHAPE).is_some(), "o cartão pintou");
@@ -199,6 +198,7 @@ fn w4_o_outline_pinta_as_linhas_e_o_aviso_so_quando_subiu() {
                 raised,
                 traced: true,
                 merged: raised.map(|_| (5, 1)),
+                custom: false,
             }),
             ..da_filha()
         };

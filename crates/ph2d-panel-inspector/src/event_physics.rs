@@ -189,6 +189,7 @@ fn value_edit(
         info.shape_tag == 3,
     );
     use ph2d_editor_core::{OutlineEdit as E, PhysicsFieldEdit as P};
+    let traco = contorno && !crate::sections::physics_cartao_contorno::travado(info);
     match id {
         crate::ids::INSP_PHYS_RADIUS if bola || capsula => Some(PhysicsFieldEdit::Radius(v)),
         // O ecrã fala Width e Height; o `Collider` guarda metades (ficha f1), e o ficheiro não muda.
@@ -200,12 +201,10 @@ fn value_edit(
         // Collider offset — a collider property, honoured for any body (not
         // Dynamic-gated like velocity/gravity).
         crate::ids::INSP_PHYS_OFFSET_X => Some(PhysicsFieldEdit::OffsetX(v)),
-        // Dono 09/11: com os pontos a editar no canvas o Detail trava (o retraço apagá-los-ia).
-        crate::ids::INSP_PHYS_OUTLINE_DETAIL if contorno && !info.shape_edit_on => {
-            Some(P::Outline(E::Detail(v)))
-        }
-        crate::ids::INSP_PHYS_OUTLINE_ALPHA if contorno => Some(P::Outline(E::AlphaCutoff(v))),
-        crate::ids::INSP_PHYS_OUTLINE_SPECKS if contorno => Some(P::Outline(E::Specks(v))),
+        // Dono 09/11: num Outline à mão os três só mudam dentro de «Edit shape on canvas» (onde retraçam).
+        crate::ids::INSP_PHYS_OUTLINE_DETAIL if traco => Some(P::Outline(E::Detail(v))),
+        crate::ids::INSP_PHYS_OUTLINE_ALPHA if traco => Some(P::Outline(E::AlphaCutoff(v))),
+        crate::ids::INSP_PHYS_OUTLINE_SPECKS if traco => Some(P::Outline(E::Specks(v))),
         crate::ids::INSP_PHYS_WALK_GRIP => Some(PhysicsFieldEdit::WalkGrip(v)),
         crate::ids::INSP_PHYS_WALK_BELT => Some(PhysicsFieldEdit::WalkBelt(v)),
         crate::ids::INSP_PHYS_OFFSET_Y => Some(PhysicsFieldEdit::OffsetY(v)),

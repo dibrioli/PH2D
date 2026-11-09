@@ -1,17 +1,19 @@
-//! Duas ordens do dono (09/11) no cartão Shape da forma de colisão: o Detail trava enquanto os pontos do
-//! Outline se editam no canvas, e a forma SOLTA (sem corpo acima) perde «Remove Shape» — apaga-se na Hierarchy.
+//! Duas ordens do dono (09/11) no cartão Shape da forma de colisão: depois da 1.ª edição de pontos à mão
+//! (`custom`), Detail, Alpha cutoff e Ignore specks under só mudam DENTRO de «Edit shape on canvas»; e a forma
+//! SOLTA (sem corpo acima) perde «Remove Shape» — apaga-se na Hierarchy.
 
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::screens::hero::{
     InspectorOutlineInfo, InspectorPhysicsInfo, PhysicsFieldEdit as E,
 };
+use ph2d_editor_core::widget::key_mark::{KeyMark, key_mark_id, set_key_marks};
 use ph2d_panel_inspector::ids::*;
 
 use crate::o_cartao_da_fisica::{achado, cena, pinta, sai};
 use crate::seam_physics::{as_part, with_body};
 
-fn contorno(editando: bool) -> InspectorPhysicsInfo {
+fn contorno(editando: bool, custom: bool) -> InspectorPhysicsInfo {
     InspectorPhysicsInfo {
         has_body: false,
         has_collider: true,
@@ -26,63 +28,90 @@ fn contorno(editando: bool) -> InspectorPhysicsInfo {
             raised: None,
             traced: true,
             merged: None,
+            custom,
         }),
         ..with_body()
     }
 }
 
-fn pediu_detail(a: &[EditorAction]) -> bool {
+const TRES: [ph2d_a11y::NodeId; 3] = [
+    INSP_PHYS_OUTLINE_DETAIL,
+    INSP_PHYS_OUTLINE_ALPHA,
+    INSP_PHYS_OUTLINE_SPECKS,
+];
+
+fn pediu_o_traco(a: &[EditorAction]) -> bool {
     a.iter().any(|a| {
         matches!(
             a,
             EditorAction::InspectorPhysicsEdit {
-                edit: E::Outline(ph2d_editor_core::OutlineEdit::Detail(_)),
+                edit: E::Outline(
+                    ph2d_editor_core::OutlineEdit::Detail(_)
+                        | ph2d_editor_core::OutlineEdit::AlphaCutoff(_)
+                        | ph2d_editor_core::OutlineEdit::Specks(_)
+                ),
                 ..
             }
         )
     })
 }
 
-/// **Com «Edit shape on canvas» ligado o Detail não tem alvo nem despacha** (o retraço apagaria os pontos
-/// editados à mão); a linha apagada dá a dica do porquê. Alpha cutoff e Ignore specks ficam (o dono só nomeou
-/// o Detail). Desligado, tudo volta. *Mutações: o pintor sem o `travado` ⇒ o alvo volta, vermelho; o handler
-/// sem `!shape_edit_on` ⇒ a escrita despacha, vermelho.*
+/// **Outline à mão (`custom`) fora de «Edit shape on canvas»: os três TRAVAM** — sem alvo, sem despacho, sem
+/// losango clicável, e o bloco dá a dica. Dentro da edição destravam (e o retraço é da cola, um passo de undo).
+/// Sem `custom` os três são livres sempre. *Mutações: o pintor sem o `travado` ⇒ o alvo volta, vermelho; o
+/// handler sem a trava ⇒ a escrita despacha, vermelho; a marca sem `parado` ⇒ o losango clica, vermelho.*
 #[test]
-fn o_detail_trava_enquanto_os_pontos_se_editam_no_canvas() {
-    for editando in [false, true] {
-        let (mut host, mut st) = cena(contorno(editando), [1.0, 1.0]);
-        let r = pinta(&mut host, &mut st);
-        assert_eq!(
-            achado(&r, INSP_PHYS_OUTLINE_DETAIL).is_some(),
-            !editando,
-            "editando={editando}: o alvo do Detail"
-        );
-        assert_eq!(
-            achado(&r, INSP_PHYS_OUTLINE_DETAIL_LOCKED).is_some(),
-            editando,
-            "editando={editando}: a linha travada com a dica"
-        );
-        for id in [INSP_PHYS_OUTLINE_ALPHA, INSP_PHYS_OUTLINE_SPECKS] {
-            assert!(achado(&r, id).is_some(), "{id:?} continua vivo");
+fn o_traco_trava_fora_da_edicao_depois_dos_pontos_a_mao() {
+    for custom in [false, true] {
+        for editando in [false, true] {
+            let travado = custom && !editando;
+            let caso = format!("custom={custom} editando={editando}");
+            set_key_marks(TRES.iter().map(|&id| (id, KeyMark::Livre)).collect());
+            let (mut host, mut st) = cena(contorno(editando, custom), [1.0, 1.0]);
+            let r = pinta(&mut host, &mut st);
+            set_key_marks(Default::default());
+            for id in TRES {
+                assert_eq!(
+                    achado(&r, id).is_some(),
+                    !travado,
+                    "{caso}: o alvo de {id:?}"
+                );
+                assert_eq!(
+                    achado(&r, key_mark_id(id)).is_some(),
+                    !travado,
+                    "{caso}: o losango de {id:?}"
+                );
+            }
+            assert_eq!(
+                achado(&r, INSP_PHYS_OUTLINE_LOCKED).is_some(),
+                travado,
+                "{caso}: o bloco travado com a dica"
+            );
+            for (id, v) in [
+                (INSP_PHYS_OUTLINE_DETAIL, 6.0),
+                (INSP_PHYS_OUTLINE_ALPHA, 0.25),
+                (INSP_PHYS_OUTLINE_SPECKS, 4.0),
+            ] {
+                let _ = host.drained_actions();
+                host.set_number_value(id, v);
+                let _ = host.apply_panel_event::<ph2d_panel_inspector::InspectorPanel>(
+                    &mut st,
+                    WidgetEvent::ValueChanged(id),
+                );
+                let a = host.drained_actions();
+                assert_eq!(pediu_o_traco(&a), !travado, "{caso} {id:?}: {a:?}");
+            }
+            sai();
         }
-        let _ = host.drained_actions();
-        host.set_number_value(INSP_PHYS_OUTLINE_DETAIL, 6.0);
-        let _ = host.apply_panel_event::<ph2d_panel_inspector::InspectorPanel>(
-            &mut st,
-            WidgetEvent::ValueChanged(INSP_PHYS_OUTLINE_DETAIL),
-        );
-        let a = host.drained_actions();
-        assert_eq!(pediu_detail(&a), !editando, "editando={editando}: {a:?}");
-        sai();
     }
-    let dica = ph2d_i18n::tr("card.insp.phys.outline_detail_locked_tip");
+    let dica = ph2d_i18n::tr("card.insp.phys.outline_locked_tip");
     assert_eq!(
         dica,
-        "Detail is locked while you edit the points on the canvas. Click \u{201c}Edit shape on canvas\u{201d} again to unlock it."
+        "Locked because you moved points by hand. Turn on \u{201c}Edit shape on canvas\u{201d} to change it."
     );
-    let (host, _) = cena(contorno(true), [1.0, 1.0]);
+    let (host, _) = cena(contorno(false, true), [1.0, 1.0]);
     assert_eq!(
-        host.store().tooltip_for(INSP_PHYS_OUTLINE_DETAIL_LOCKED),
+        host.store().tooltip_for(INSP_PHYS_OUTLINE_LOCKED),
         Some(dica)
     );
     sai();

@@ -78,6 +78,6 @@ pub fn parados(ids: &[super::NodeId]) {
     PARADOS.with(|s| *s.borrow_mut() = ids.to_vec());
 }
 
-pub(super) fn parado(id: super::NodeId) -> bool {
+pub(crate) fn parado(id: super::NodeId) -> bool {
     PARADOS.with(|s| s.borrow().contains(&id))
 }

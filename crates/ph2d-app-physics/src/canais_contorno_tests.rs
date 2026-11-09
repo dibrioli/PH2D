@@ -242,3 +242,31 @@ fn a_tocar_os_pontos_andam_e_o_rapier_segue_sem_passo() {
     );
     conducao.repor(&mut sim, &reg, vivo);
 }
+
+/// ⭐ Dono 09/11: dentro de «Edit shape on canvas» o Detail de um Outline à mão RETRAÇA da imagem — os pontos
+/// à mão dão lugar aos traçados, `custom` volta a falso, e o pedido e o traço vão na MESMA fila (um passo de
+/// undo). *Mutação: `retrace_edited` a saltar o `custom` ⇒ os pontos à mão ficam, vermelho.*
+#[test]
+fn o_detail_dentro_da_edicao_retraca_um_outline_a_mao() {
+    use ph2d_editor_core::{OutlineEdit, PhysicsFieldEdit as P};
+    let (reg, mut sim, body, db) = pente();
+    let (forma, mut mao) = a_mao(&mut sim, body);
+    mao[0][0][0] += 16;
+    ph2d_shape_handles::pontos::escreve(sim.world_mut(), forma, mao.clone(), true);
+    assert!(par(&sim, Entity::from_bits(forma)).1.custom);
+    let b = body.to_bits();
+    let edit = P::Outline(OutlineEdit::Detail(6.0));
+    let q = EditorCommandQueue::new();
+    crate::physics_apply::apply_physics_edit(&mut sim, b, edit, &q, &reg);
+    let none = std::collections::BTreeMap::new();
+    ph2d_physics_outline::retrace_edited(sim.world(), &[(b, edit)], &db, &none, PPM, &q, &reg);
+    apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
+    let o = par(&sim, Entity::from_bits(forma)).1;
+    assert!(!o.custom, "retraçado: já não é à mão");
+    assert_ne!(
+        o.rings[..],
+        mao[..],
+        "os pontos à mão deram lugar aos traçados"
+    );
+    assert_eq!(o.detail_q4, 96, "com o Detail novo");
+}

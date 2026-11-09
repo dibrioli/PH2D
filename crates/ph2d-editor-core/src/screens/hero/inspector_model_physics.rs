@@ -582,6 +582,9 @@ pub struct InspectorOutlineInfo {
     pub traced: bool,
     /// O último «Merge» destes anéis: `(pontos fundidos, grupos retidos para o anel ficar válido)`.
     pub merged: Option<(u32, u32)>,
+    /// Os pontos já foram editados à mão (`ColliderOutline::custom`): Detail, Alpha cutoff e Ignore specks
+    /// under só mudam dentro de «Edit shape on canvas» (dono 09/11), onde retraçam.
+    pub custom: bool,
 }
 
 impl PhysicsFieldEdit {

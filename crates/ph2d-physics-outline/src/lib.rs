@@ -284,6 +284,7 @@ pub fn card_info(world: &World, shape: Entity) -> Option<ph2d_editor_core::Inspe
         raised: (o.raised_q4 > o.detail_q4).then(|| (f32::from(o.raised_q4) / 16.0, max)),
         traced: picture_owner(world, shape).is_some(),
         merged: merged(world, shape, &o),
+        custom: o.custom,
     })
 }
 

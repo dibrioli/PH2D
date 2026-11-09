@@ -8,8 +8,9 @@ use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
 use ph2d_editor_core::widget::Unit;
 use ph2d_i18n::{tr, tr_with};
 
-/// As três linhas do traço, cada uma com o ponto de chave das outras linhas do cartão. Com os pontos a editar
-/// no canvas o Detail TRAVA (dono 09/11: o retraço apagá-los-ia): apagado, sem alvo, e a linha dá a razão.
+/// As três linhas do traço, cada uma com o ponto de chave das outras linhas do cartão. Num Outline à mão
+/// ([`travado`]) os três TRAVAM fora de «Edit shape on canvas» (dono 09/11): apagados, sem alvo nem losango,
+/// e o bloco dá a razão; dentro da edição destravam e retraçam.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn controlos(
     scene: &mut VectorScene,
@@ -21,33 +22,31 @@ pub(super) fn controlos(
     w: f32,
     y: f32,
 ) -> f32 {
+    let topo = y;
     let mut y = y;
-    let travado = crate::state::current_inspector_physics().is_some_and(|i| i.shape_edit_on);
-    let detail = ids::INSP_PHYS_OUTLINE_DETAIL;
-    let parados: &[_] = if travado { &[detail] } else { &[] };
-    ph2d_editor_core::widget::card_field::parados(parados);
-    for (rotulo, id, unidade) in [
-        ("card.insp.phys.outline_detail", detail, Some(Unit::Px)),
-        (
-            "card.insp.phys.outline_alpha",
-            ids::INSP_PHYS_OUTLINE_ALPHA,
-            None,
-        ),
-        (
-            "card.insp.phys.outline_specks",
-            ids::INSP_PHYS_OUTLINE_SPECKS,
-            Some(Unit::Px),
-        ),
-    ] {
+    let parado = crate::state::current_inspector_physics().is_some_and(|i| travado(&i));
+    let tres = [
+        ids::INSP_PHYS_OUTLINE_DETAIL,
+        ids::INSP_PHYS_OUTLINE_ALPHA,
+        ids::INSP_PHYS_OUTLINE_SPECKS,
+    ];
+    ph2d_editor_core::widget::card_field::parados(if parado { &tres } else { &[] });
+    for ((rotulo, unidade), id) in [
+        ("card.insp.phys.outline_detail", Some(Unit::Px)),
+        ("card.insp.phys.outline_alpha", None),
+        ("card.insp.phys.outline_specks", Some(Unit::Px)),
+    ]
+    .into_iter()
+    .zip(tres)
+    {
         // Nos cartões o campo parado não regista alvo; a face de referência pinta já, num índice que se deita fora.
-        let parado = travado && id == detail;
         let mut sem_alvo = HitIndex::default();
         let alvos = if parado && ph2d_editor_core::widget::card_ink::card_body().is_none() {
             &mut sem_alvo
         } else {
             &mut *hit
         };
-        let fim = num_row_unit(
+        y = num_row_unit(
             scene,
             text,
             theme,
@@ -61,13 +60,19 @@ pub(super) fn controlos(
             unidade,
             None,
         );
-        if parado {
-            let linha = ph2d_editor_core::zones::Rect::new(x, y, w, fim - y);
-            hit.register(ids::INSP_PHYS_OUTLINE_DETAIL_LOCKED, linha);
-        }
-        y = fim;
+    }
+    if parado {
+        let bloco = ph2d_editor_core::zones::Rect::new(x, topo, w, y - topo);
+        hit.register(ids::INSP_PHYS_OUTLINE_LOCKED, bloco);
     }
     y
+}
+
+/// ⭐ **Detail · Alpha cutoff · Ignore specks under travados** (dono 09/11): o Outline tem pontos à mão
+/// (`custom`) e «Edit shape on canvas» está desligado. O pintor e o handler leem isto.
+#[must_use]
+pub(crate) fn travado(info: &InspectorPhysicsInfo) -> bool {
+    info.outline.is_some_and(|o| o.custom) && !info.shape_edit_on
 }
 
 /// «Too detailed — Detail raised to {x} px to stay under {n} pieces», só quando o tecto subiu.

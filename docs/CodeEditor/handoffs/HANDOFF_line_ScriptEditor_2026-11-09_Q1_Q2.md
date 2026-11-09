@@ -184,3 +184,20 @@ O dono: «a referência ficou mais bela que o nosso app». Três rodadas foto ×
 mexer é lei do `ph2d-editor-core`, para todo o app); o raio da pílula é o `frame_radius` do tema (quinas quase rectas
 no `dark`); a Type diz `number` onde a maquete escreveu `object · Circle` (§3); o chão dos Cards é mais escuro que o
 `--a-head` da maquete (é o chão real dos cartões da casa).
+
+### 8.1 Segunda rodada (revisão do lado a lado)
+
+- **Linha cortada por baixo do cabeçalho** (passo 2: «4294967290 number» lia-se dentro de Name/Value/Type): o recorte
+  funcionava; a causa era a rolagem contínua deixar meia linha no topo do corpo. Cura na raiz, `ph2d-ui-table`:
+  `layout` arredonda a rolagem a LINHAS INTEIRAS (roda, revelar, fim do arrasto da barra) e o máximo arredonda para
+  cima (`max_scroll_rows`: a última linha fica inteira); só se pintam/recebem linhas inteiras (nem meia no topo, nem
+  cortada no pé); a roda anda pelo menos uma linha; o cabeçalho pinta-se opaco (`base` + `head`) DEPOIS do corpo; a
+  barra mede `max_scroll + body.h`. Abrir um ▸ rola até as filhas caberem (`reveal_children`) — sem isto a filha
+  aberta podia ficar fora (o seam `o_card_style_troca_o_stopped…` lia-a na meia linha do pé). Teste:
+  `a_rolagem_anda_em_linhas_inteiras_e_nada_fica_por_cima_do_cabecalho`.
+- **Números**: medido na foto, TODOS os `Number/Vector` (Sheet, Cards, Strip) já saem `168,208,253` (`value_ink`) —
+  o «1» parecia branco por ser um glifo fino e claro. `N fields` (`Ink::Muted`) deixou o tom de comentário do realce
+  e passou ao `Text3` da casa.
+- **Lado a lado**: cada cartão recortado pelos próprios limites (a linha do Continue → a faixa de chão de ≥4 linhas
+  acima e abaixo), topos alinhados, escala 1:1; Sheet = passo 3 (âmbar em `self.pos.x`).
+- A Sheet mostra 5 linhas no tecto de ⅓ a 1930×1040; não se arrastou o puxador na cena (custaria linhas na cola).

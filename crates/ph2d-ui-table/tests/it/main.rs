@@ -269,3 +269,32 @@ fn a_barra_do_corpo_arrasta_pelo_polegar_e_salta_pela_trilha() {
     assert!((st.scroll - max).abs() < 1e-3, "a trilha salta");
     assert!(st.release());
 }
+
+/// A rolagem anda em linhas inteiras (roda e um valor solto, como o revelar), e nenhuma linha
+/// pintada começa acima do corpo (nada a meio por baixo do cabeçalho).
+#[test]
+fn a_rolagem_anda_em_linhas_inteiras_e_nada_fica_por_cima_do_cabecalho() {
+    let m = Metrics::standard();
+    let area = Rect::new(0.0, 0.0, m.min_col * 6.0, m.header_h + m.row_h * 3.5);
+    let mut st = TableState::default();
+    let (l, _) = lay(&mut st, area);
+    let whole = |s: f32| (s / m.row_h - (s / m.row_h).round()).abs() < 1e-3;
+    for dy in [-1.0, -m.row_h * 0.4, -m.row_h * 1.3, m.row_h * 0.2] {
+        st.wheel(&l, l.body.x + 1.0, l.body.y + 1.0, dy);
+        let (l2, _) = lay(&mut st, area);
+        assert!(whole(st.scroll), "roda {dy}: {}", st.scroll);
+        assert!(l2.rows.iter().all(|r| r.rect.y >= l2.body.y - 1e-3));
+    }
+    st.scroll = m.row_h * 1.6;
+    let (l3, _) = lay(&mut st, area);
+    assert!(whole(st.scroll), "revelar: {}", st.scroll);
+    assert!(l3.rows.iter().all(|r| r.rect.y >= l3.body.y - 1e-3));
+    st.scroll = f32::MAX;
+    let (l4, _) = lay(&mut st, area);
+    assert!(whole(st.scroll) && st.scroll > 0.0);
+    let last = l4.rows.last().map(|r| r.rect.y + r.rect.h).unwrap_or(0.0);
+    assert!(
+        last <= l4.body.y + l4.body.h + 1e-3,
+        "a última fica inteira"
+    );
+}

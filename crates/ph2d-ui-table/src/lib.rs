@@ -284,10 +284,33 @@ impl TableState {
                 if let Some(r) = rows.get(*i) {
                     let k = r.key.clone();
                     self.toggle_row(&k);
+                    if self.is_open(r) {
+                        self.reveal_children(*i, lay, rows);
+                    }
                 }
                 true
             }
             _ => false,
+        }
+    }
+
+    /// Abrir uma dobra rola (em linhas inteiras) até as filhas caberem à vista, sem esconder a mãe.
+    fn reveal_children(&mut self, i: usize, lay: &Layout, rows: &[Row]) {
+        let Some(m) = lay.m else { return };
+        let shown = self.visible_rows(rows);
+        let Some(order) = shown.iter().position(|&k| k == i) else {
+            return;
+        };
+        let depth = rows[i].depth;
+        let kids = shown[order + 1..]
+            .iter()
+            .take_while(|&&k| rows[k].depth > depth)
+            .count();
+        let fits = (lay.body.h / m.row_h).floor().max(1.0);
+        let last = (order + kids) as f32;
+        let first = (last + 1.0 - fits).min(order as f32).max(0.0);
+        if first * m.row_h > self.scroll {
+            self.scroll = first * m.row_h;
         }
     }
 
@@ -324,7 +347,10 @@ impl TableState {
             return false;
         }
         let before = self.scroll;
-        self.scroll = ph2d_editor_core::math::safe_clamp(self.scroll - dy, 0.0, lay.max_scroll());
+        // Linhas inteiras: um toque da roda anda pelo menos uma linha (o `layout` arredonda).
+        let rh = lay.m.map_or(1.0, |m| m.row_h.max(1.0));
+        let step = (dy.abs() / rh).ceil().max(1.0) * rh * dy.signum();
+        self.scroll = ph2d_editor_core::math::safe_clamp(self.scroll - step, 0.0, lay.max_scroll());
         (self.scroll - before).abs() > f32::EPSILON
     }
 
@@ -375,7 +401,7 @@ pub struct Layout {
 impl Layout {
     #[must_use]
     pub fn max_scroll(&self) -> f32 {
-        (self.content_h - self.body.h).max(0.0)
+        max_scroll_rows(self.content_h, self.body.h, self.m.map_or(0.0, |m| m.row_h))
     }
 
     /// A barra de rolagem do corpo (a da casa: a mesma geometria pinta e agarra).
@@ -383,7 +409,7 @@ impl Layout {
     pub fn bar(&self) -> ph2d_editor_core::widget::scroll_area::OwnBar {
         ph2d_editor_core::widget::scroll_area::OwnBar {
             body: self.body,
-            content_h: self.content_h,
+            content_h: self.max_scroll() + self.body.h,
             visible_h: self.body.h,
         }
     }
@@ -545,13 +571,24 @@ pub fn layout(
     );
     let visible = st.visible_rows(rows);
     let content_h = visible.len() as f32 * m.row_h;
-    st.scroll = ph2d_editor_core::math::safe_clamp(st.scroll, 0.0, (content_h - body.h).max(0.0));
+    // ⭐ A rolagem anda em LINHAS INTEIRAS (roda, revelar, barra): nenhuma linha a meio por baixo
+    // do cabeçalho (foto da cena 14: a linha cortada lia-se dentro dele). O fim arredonda para
+    // cima: a última linha fica inteira à vista.
+    let max = max_scroll_rows(content_h, body.h, m.row_h);
+    let snapped = if m.row_h > 0.0 {
+        (st.scroll / m.row_h).round() * m.row_h
+    } else {
+        st.scroll
+    };
+    st.scroll = ph2d_editor_core::math::safe_clamp(snapped, 0.0, max);
     let row_spans = visible
         .into_iter()
         .enumerate()
         .filter_map(|(order, index)| {
             let y = body.y - st.scroll + order as f32 * m.row_h;
-            (y + m.row_h > body.y && y < body.y + body.h).then_some(RowSpan {
+            // Só linhas INTEIRAS: nem a meio por baixo do cabeçalho, nem cortadas no pé.
+            let eps = 0.01; // LITERAL-PX-OK: folga de arredondamento em píxeis, não medida de UI
+            (y >= body.y - eps && y + m.row_h <= body.y + body.h + eps).then_some(RowSpan {
                 index,
                 order,
                 rect: Rect::new(area.x, y, area.w, m.row_h),
@@ -567,6 +604,16 @@ pub fn layout(
         content_h,
         scroll: st.scroll,
         m: Some(*m),
+    }
+}
+
+/// A rolagem máxima em linhas inteiras (a parte que não cabe, arredondada para cima à linha).
+fn max_scroll_rows(content_h: f32, body_h: f32, row_h: f32) -> f32 {
+    let over = (content_h - body_h).max(0.0);
+    if row_h > 0.0 {
+        (over / row_h).ceil() * row_h
+    } else {
+        over
     }
 }
 

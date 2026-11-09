@@ -268,6 +268,8 @@ pub fn paint(
     // O cabeçalho.
     let h = lay.header;
     scene.push_clip(&rect_to_vello(h));
+    // Opaco e DEPOIS do corpo: nada do corpo se lê por baixo do cabeçalho.
+    fill_rounded_rect(scene, h, 0.0, ink(base));
     fill_rounded_rect(scene, h, 0.0, ink(head));
     for c in &lay.cols {
         let col = &cols[c.index];

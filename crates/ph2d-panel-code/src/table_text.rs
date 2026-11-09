@@ -20,14 +20,16 @@ pub struct CodeCells<'a> {
 fn code_ink(ink: Ink) -> Option<CodeInk> {
     Some(match ink {
         Ink::Plain => CodeInk::Plain,
-        Ink::Muted => CodeInk::Comment,
         Ink::Name => CodeInk::Hint,
         Ink::Text => CodeInk::String,
         Ink::Boolean | Ink::Nil => CodeInk::Constant,
         Ink::Table => CodeInk::Type,
         Ink::Function => CodeInk::Function,
         // O número no azul frio da maquete 14 (o `Info`), não no laranja do realce.
-        Ink::Number | Ink::Changed | Ink::Warn | Ink::Danger | Ink::Accent => return None,
+        // `N fields` apagado no `Text3` da casa, como o resto do que é nota.
+        Ink::Number | Ink::Muted | Ink::Changed | Ink::Warn | Ink::Danger | Ink::Accent => {
+            return None;
+        }
     })
 }
 

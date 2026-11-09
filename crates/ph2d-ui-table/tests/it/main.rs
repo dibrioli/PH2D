@@ -298,3 +298,30 @@ fn a_rolagem_anda_em_linhas_inteiras_e_nada_fica_por_cima_do_cabecalho() {
         "a última fica inteira"
     );
 }
+
+/// Corpo que transborda: as colunas + a calha da barra enchem a área, a barra não pisa coluna
+/// nenhuma, e a Type fica com a largura natural (é o Name que encolhe).
+#[test]
+fn o_corpo_que_transborda_da_a_barra_uma_calha_so_dela() {
+    let m = Metrics::standard();
+    let area = Rect::new(0.0, 0.0, m.min_col * 6.0, m.header_h + m.row_h * 3.0);
+    let mut st = TableState::default();
+    let (l, _) = lay(&mut st, area);
+    assert!(l.max_scroll() > 0.0);
+    let sum: f32 = l.cols.iter().map(|c| c.w).sum();
+    let gutter = ph2d_ui_table::bar_gutter();
+    assert!(
+        (sum + gutter - area.w).abs() < 1e-3,
+        "{sum} + {gutter} != {}",
+        area.w
+    );
+    let track = ph2d_editor_core::widget::scrollbar_track_rect(l.body);
+    assert!(l.cols.iter().all(|c| c.x + c.w <= track.x + 1e-3));
+    let ty = l.col("type").expect("Type");
+    assert!(ty.w >= natural(&m)[2] - 1e-3);
+    let mut big = TableState::default();
+    let tall = Rect::new(0.0, 0.0, area.w, m.header_h + m.row_h * 30.0);
+    let (l2, _) = lay(&mut big, tall);
+    let sum2: f32 = l2.cols.iter().map(|c| c.w).sum();
+    assert!((sum2 - area.w).abs() < 1e-3, "sem transbordo, sem calha");
+}

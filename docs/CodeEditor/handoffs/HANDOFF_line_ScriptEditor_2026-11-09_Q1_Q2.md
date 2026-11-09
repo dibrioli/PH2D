@@ -201,3 +201,15 @@ no `dark`); a Type diz `number` onde a maquete escreveu `object · Circle` (§3)
 - **Lado a lado**: cada cartão recortado pelos próprios limites (a linha do Continue → a faixa de chão de ≥4 linhas
   acima e abaixo), topos alinhados, escala 1:1; Sheet = passo 3 (âmbar em `self.pos.x`).
 - A Sheet mostra 5 linhas no tecto de ⅓ a 1930×1040; não se arrastou o puxador na cena (custaria linhas na cola).
+
+### 8.2 A barra da Sheet tem calha própria (smoke do dono 09/11)
+
+O dono: a coluna Type cortada («numbe», «boolea») — a barra de 10 px pintava-se POR CIMA da última coluna, e o Name
+(`flex`) nunca descia abaixo da largura natural, empurrando a Type para fora. Cura em `ph2d-ui-table::layout`:
+corpo que transborda ⇒ calha à direita `bar_gutter() = SCROLLBAR_W + Spacing::Sm` (a trilha da casa, `track_rect`, vive
+nos últimos `SCROLLBAR_W + 2` px do corpo, dentro da calha); sem transbordo, sem calha. A `flex` toma
+`room − outras` e encolhe primeiro (até `min_col`); as outras nunca abaixo da natural (título e célula mais longa + recuo
+dos dois lados) — o recuo da última coluna é o mesmo das outras. Teste
+`o_corpo_que_transborda_da_a_barra_uma_calha_so_dela` (Σ larguras + calha = área; a trilha não toca coluna; Type ≥
+natural; sem transbordo Σ = área). Foto `passo_1` a 1:1: «number», «boolean», «number · changed» inteiros com recuo,
+a barra sozinha na calha; Cards: as caixas param antes da barra do self; o código não passa por baixo da barra dele.

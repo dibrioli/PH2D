@@ -536,6 +536,12 @@ pub fn layout(
                 .max(m.min_col)
         })
         .collect();
+    // O corpo transborda ⇒ a barra da casa tem uma calha SÓ dela à direita; as colunas cabem no resto.
+    let body_h = (area.h - m.header_h.min(area.h)).max(0.0);
+    let overflows = st.visible_rows(rows).len() as f32 * m.row_h > body_h + 0.01; // LITERAL-PX-OK: folga de arredondamento
+    let room = (area.w - if overflows { bar_gutter() } else { 0.0 }).max(0.0);
+    // A `flex` (Name) toma o que sobra — e é ELA que encolhe primeiro, até `min_col`; as outras
+    // nunca descem abaixo da natural (o texto delas nunca se corta enquanto o Name tiver folga).
     if let Some(f) = shown.iter().position(|&i| cols[i].flex)
         && !st.widths.contains_key(cols[shown[f]].key)
     {
@@ -545,7 +551,7 @@ pub fn layout(
             .filter(|&(k, _)| k != f)
             .map(|(_, w)| *w)
             .sum();
-        widths[f] = widths[f].max(area.w - others);
+        widths[f] = (room - others).max(m.min_col);
     }
     let mut x = area.x;
     let spans: Vec<ColSpan> = shown
@@ -605,6 +611,12 @@ pub fn layout(
         scroll: st.scroll,
         m: Some(*m),
     }
+}
+
+/// A calha da barra do corpo quando ele transborda: a trilha da casa e um recuo.
+#[must_use]
+pub fn bar_gutter() -> f32 {
+    ph2d_editor_core::widget::SCROLLBAR_W + Spacing::Sm.px()
 }
 
 /// A rolagem máxima em linhas inteiras (a parte que não cabe, arredondada para cima à linha).

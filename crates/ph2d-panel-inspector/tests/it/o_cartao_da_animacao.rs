@@ -365,7 +365,7 @@ fn o_censo_dos_campos_do_animated_em_uso() {
     for id in [core_ids::INSP_LIVE_RENDER_SECTION, CARD_ORDERING] {
         host.store_mut().set_collapsed(id, true);
     }
-    assert_eq!(conta(&pinta(&mut host, &mut st)), (18, 22), "à vista");
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (18, 23), "à vista");
     for id in [
         core_ids::INSP_LIVE_RENDER_SECTION,
         CARD_ORDERING,
@@ -375,7 +375,7 @@ fn o_censo_dos_campos_do_animated_em_uso() {
     ] {
         host.store_mut().set_collapsed(id, false);
     }
-    assert_eq!(conta(&pinta(&mut host, &mut st)), (49, 22), "no total");
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (49, 23), "no total");
     set_current_sheets(None);
     limpa();
 }

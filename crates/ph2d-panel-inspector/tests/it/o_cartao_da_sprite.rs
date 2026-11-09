@@ -883,7 +883,7 @@ fn o_censo_dos_campos_da_sprite_em_uso() {
     for id in [core_ids::INSP_LIVE_RENDER_SECTION, CARD_ORDERING] {
         host.store_mut().set_collapsed(id, true);
     }
-    assert_eq!(conta(&pinta(&mut host, &mut st)), (13, 18), "à vista");
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (13, 19), "à vista");
     for id in [
         core_ids::INSP_LIVE_RENDER_SECTION,
         CARD_ORDERING,
@@ -891,7 +891,7 @@ fn o_censo_dos_campos_da_sprite_em_uso() {
     ] {
         host.store_mut().set_collapsed(id, false);
     }
-    assert_eq!(conta(&pinta(&mut host, &mut st)), (31, 18), "no total");
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (31, 19), "no total");
 }
 
 /// Na Sprite o `Mirror object` mora no Look, e clicá-lo troca o sinal da escala (dono 06/11).

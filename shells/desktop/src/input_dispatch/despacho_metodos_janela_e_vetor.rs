@@ -238,7 +238,8 @@ impl crate::App {
                     // ⭐ A borda de uma coluna docada — a MESMA porta que o arrasto pergunta.
                     icon
                 } else if let Some(icon) =
-                    self.forma_cursor().or_else(|| self.camera_frame_cursor()) {
+                    self.forma_cursor().or_else(|| self.camera_frame_cursor())
+                {
                     icon
                 } else if let Some((icon, ..)) = self.pixel.slice_cursor(h, self.last_pointer) {
                     icon

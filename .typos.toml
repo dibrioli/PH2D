@@ -456,6 +456,10 @@ percentagens = "percentagens"  # pt-PT «percentagens» no diálogo Sprite Size 
 anual = "anual"  # pt «anual» (yearly) — a recorrência do Planner e do Butler
 exporte = "exporte"  # pt imperativo («exporte um quadro seu») no tutorial do Kanban
 familys = "familys"  # dentro de nomes de teste (`…its_familys_channel`): um nome de teste não leva apóstrofo
+clen = "clen"  # «comprimento do centro» da slice (alcas.rs do Pixel Art), par de `blen`
+hipoteses = "hipoteses"  # pt «hipóteses» sem acento, nos nomes das fotos do material do Painter (08/11)
+dominantes = "dominantes"  # pt «dominantes» em comentário dos testes dos esbatedores
+TBE = "TBE"  # código de variante da sonda do Wet (T·B·E = combinação de flags), sonda_lote_tests.rs
 # ─────────────────────────────────────────────────────────────────────────────
 # ⚠️ Ship de 2026-10-11 (oito linhas juntas). Critério de sempre — *allowlistar isto pode esconder um
 # typo real?* — NÃO em todas: três palavras portuguesas e um nome próprio.

@@ -1,10 +1,6 @@
 //! §12 Physics Joint — the shell half of the Inspector section (W3): the
 //! snapshot the panel reads, the ECS write an edit turns into, and the gesture
 //! that creates a joint in the first place.
-//!
-//! Its own module rather than more of `inspector_physics.rs`, for the same
-//! reason that one is not more of `inspector_ordering.rs`: a joint is not a
-//! body, and this is the whole answer to what the §12 controls do.
 
 use bevy_ecs::world::World;
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
@@ -14,10 +10,7 @@ use ph2d_physics_ecs::{JointKind, MotorMode, PhysicsJoint};
 
 use ph2d_inspector_ordering::queue_set;
 
-/// O gesto que CRIA um joint mora no irmão `inspector_joint_create` (extraído
-/// no cap de 600 LOC do shell) e é re-exportado aqui, para que todo chamador
-/// mantenha o caminho `inspector_joint::create_joint*` que já usava. O corte é o
-/// que a UI faz: criar é da §11, editar é da §12.
+/// O gesto que CRIA um joint mora em `inspector_joint_create` (criar é da §11, editar é da §12).
 pub(crate) use crate::joint_create::{create_joint, create_joint_at, ensure_named};
 
 const JOINT: &str = "ph2d::physics::PhysicsJoint";
@@ -65,16 +58,8 @@ fn limit_in(kind: JointKind, v: f32) -> f32 {
 
 /// A motor quantity **out** of the component, in the unit the Inspector shows.
 ///
-/// The twin door of [`limit_out`], and deliberately a SEPARATE one: the question
-/// is `JointKind::motor_in_metres`, not `limits_in_metres`. A Rope has no limit
-/// range at all and still has a linear motor (the winch), so one door for both
-/// would show a winch's target in degrees.
-///
-/// ⚠️ **Toma o JOINT e não o `kind`, desde que o `Custom` chegou:** ali o eixo
-/// do motor é AUTORADO, então metro-ou-radiano é escolhido junto — a porta é
-/// `PhysicsJoint::motor_in_metres` (a da INSTÂNCIA), e usar a do tipo rotularia
-/// em graus um número que o solver lê em metros. O artista digitaria 90 e a peça
-/// andaria 1,57 m.
+/// Separate from [`limit_out`] (a Rope has a linear motor and no limits); it takes the
+/// JOINT, not the kind — in `Custom` the motor axis is authored (`PhysicsJoint::motor_in_metres`).
 fn motor_out(j: &PhysicsJoint, v: f32) -> f32 {
     if j.motor_in_metres() {
         v
@@ -121,15 +106,8 @@ pub(crate) fn tag_of(kind: JointKind) -> u8 {
     }
 }
 
-/// The name of whichever entity hashes to `id`, or empty when none does.
-///
-/// A linear scan, on purpose: it runs for the ONE selected joint, twice, and
-/// only while §12 is on screen. A cached index would be a second copy of a
-/// fact the `Name`s already hold — and one that goes stale on every rename,
-/// which is precisely the event this has to report correctly.
-/// O NOME do objeto de identidade `id` — o documento guarda id, o painel mostra nome
-/// (ADR-0164 F1). Era o contrário: guardava o hash do nome e comparava-o, e por isso renomear
-/// um corpo esvaziava a linha do joint que o citava.
+/// O NOME do objeto de identidade `id`, ou vazio — o documento guarda id, o painel mostra nome
+/// (ADR-0164 F1). Varredura linear de propósito: corre para o ÚNICO joint selecionado.
 fn name_for(
     world: &World,
     id: u64,
@@ -159,10 +137,7 @@ pub fn build_joint_info(
 ) -> Option<InspectorJointInfo> {
     let entity = Entity::from_bits(entity_bits);
     let joint = *sim.world().get::<PhysicsJoint>(entity)?;
-    // Quantas roldanas esta corda tem — contadas no estado AUTORADO, não na arena
-    // do solver: é o número que o artista gerencia (ele acabou de criar uma), e
-    // uma corda cujo joint ainda não foi construído mostraria zero se a pergunta
-    // fosse ao solver.
+    // Roldanas contadas no estado AUTORADO, não na arena do solver.
     let wheel_count = crate::joint_wheel::rope_wheel_count(sim, entity);
     let mut q = sim.world_mut().query::<(&Name, &ph2d_ecs::StableId)>();
     let world = sim.world();
@@ -199,14 +174,7 @@ pub fn build_joint_info(
         soft: joint.soft,
         wheel_count,
         paste_targets,
-        // `bound` is about the NAMES resolving, which is the thing the artist
-        // can act on. Whether the solver also built it depends on those bodies
-        // having colliders, and saying "not connected" for a body that is
-        // merely not physical yet would point at the wrong problem.
-        // ⚠️ **Um pino de MUNDO é `bound` com UM corpo só** — o cenário não é um
-        // objeto que possa estar ausente, então exigir os dois nomes chamaria de
-        // quebrado um joint que está segurando. A pergunta vai à porta única
-        // (`is_anchored`), que é a mesma que o reconcile faz.
+        // `bound` = os NOMES resolvem (um pino de MUNDO com um corpo só), pela porta do reconcile.
         bound: joint.is_anchored(world_anchored)
             && !a.is_empty()
             && (world_anchored || !b.is_empty()),
@@ -229,14 +197,7 @@ pub fn build_joint_info(
         break_enabled: joint.break_enabled,
         break_force: joint.break_force,
         break_torque: joint.break_torque,
-        // The panel does not know `ph2d-physics-ecs` (loose-coupled, like every
-        // sibling section), so the ENGINE's answer travels in the snapshot rather
-        // than being re-derived from `kind_tag` on the far side — a second copy of
-        // "which kinds can report a torque" would be a second thing to keep true.
-        // ⚠️ À INSTÂNCIA, não ao tipo: uma solda MOLE motoriza o eixo angular
-        // que a rígida trava, e rapier só publica reação de eixo motorizado ou
-        // limitado (medido: 0,9619 N·m contra 0,0000). A ponte pergunta à MESMA
-        // porta antes de entregar o limiar ao solver.
+        // A resposta do MOTOR viaja no snapshot, perguntada à INSTÂNCIA (uma solda mole motoriza o eixo).
         breaks_on_torque: joint.breaks_on_torque(),
         active: joint.active,
         collide_connected: joint.collide_connected,
@@ -248,17 +209,8 @@ pub fn build_joint_info(
 /// when the armed pick's next canvas click lands on a body. Returns whether the
 /// bind took (so the caller clears the armed pick only on success).
 ///
-/// The target is NAMED if it lacks one (a joint refers to bodies by name hash,
-/// the requirement `create_joint` also has), then the hash is written **in
-/// place** — not through the editor queue like the field edits, because the pick
-/// resolves mid-frame in the pointer handler, and the global diff-based undo
-/// captures a direct write the same as a queued one. The value still goes
-/// through `clamped()`, the one door before the solver.
-///
-/// ⚠️ **Refuses a self-joint.** Picking the body already in the OTHER slot would
-/// name both ends the same body — a joint that can never bind — so it returns
-/// `false` and the pick stays armed for another click, rather than writing a
-/// silently-dormant joint.
+/// Written in place (the diff undo sees it), through `clamped()`. ⚠️ Refuses a self-joint:
+/// `false`, and the pick stays armed.
 #[must_use]
 pub fn set_joint_body(sim: &mut SimWorld, joint_bits: u64, slot_b: bool, target: Entity) -> bool {
     let joint_e = Entity::from_bits(joint_bits);
@@ -282,10 +234,7 @@ pub fn set_joint_body(sim: &mut SimWorld, joint_bits: u64, slot_b: bool, target:
     if next.body_a == next.body_b {
         return false; // a self-joint is dormant — keep the pick armed instead
     }
-    // Re-picking a body changes which frame the stored local anchor belongs to,
-    // so it is meaningless for the new body: mark the joint un-anchored. The next
-    // reconcile re-derives both body-local anchors from the joint's current
-    // display pivot against the NEW bodies, re-gluing the pin where it visibly is.
+    // Outro corpo: a âncora local perde o sentido; o reconcile re-deriva-a do pivô visível.
     next.anchored = false;
     let next = next.clamped();
     if next != current

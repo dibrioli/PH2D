@@ -535,9 +535,10 @@ pub fn retrace_followed(
                 && (near([half_x, half_y], &b.layout)
                     || near([half_x, half_y], &lay)
                     || size.is_some_and(|s| c.follows_picture(s)));
-            // O pedido mudado retraça sempre; o «Custom size» guarda a caixa.
+            // O pedido mudado retraça, salvo os pontos à mão (a trilha deles é a 51/52); o «Custom
+            // size» guarda a caixa.
             let keep = !follows;
-            if (follows || b.asked != asked)
+            if (follows || (b.asked != asked && !o.custom))
                 && retrace_sized(w, shape, &o, &picture, ppm, queue, registry, keep).is_some()
             {
                 n += 1;

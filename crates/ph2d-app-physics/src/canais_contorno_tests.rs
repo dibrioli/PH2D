@@ -144,3 +144,28 @@ fn o_detail_do_cartao_publica_o_canal_que_o_auto_key_grava() {
     publicar(&mut sim, &[b]);
     assert_eq!(lido(&sim), Some(6.0), "o Auto Key vê o Detail novo");
 }
+
+/// Uma curva do Detail sobre um Outline à mão (`custom`) NÃO retraça: os pontos têm a trilha própria
+/// (51/52). *Mutação: `retrace_followed` retraçar o pedido mudado com `custom` ⇒ vermelho.*
+#[test]
+fn a_curva_do_detail_nao_apaga_os_pontos_a_mao() {
+    let (reg, mut sim, body, db) = pente();
+    let dono = ph2d_physics_ecs::dono_do_campo(sim.world(), body.to_bits(), f::CONTORNO_DETALHE);
+    let mut mao = par(&sim, Entity::from_bits(dono)).1.rings.to_vec();
+    mao[0][0][0] += 16;
+    ph2d_shape_handles::pontos::escreve(sim.world_mut(), dono, mao.clone(), true);
+    let mut conducao = ConducaoFisica::default();
+    conducao.a_tocar(true);
+    for detalhe in [3.0, 6.0] {
+        sim.world_mut()
+            .get_resource_or_insert_with(CanaisEscritos::default)
+            .escrever(dono, k(f::CONTORNO_DETALHE), detalhe);
+        aplicar(&mut sim, &reg, &mut conducao);
+        segue(&mut sim, &db, &reg);
+        let o = par(&sim, Entity::from_bits(dono)).1;
+        assert!(
+            o.custom && o.rings[..] == mao[..],
+            "Detail {detalhe}: os pontos ficam"
+        );
+    }
+}

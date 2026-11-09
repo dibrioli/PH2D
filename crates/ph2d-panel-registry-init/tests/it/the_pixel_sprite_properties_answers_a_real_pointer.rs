@@ -35,9 +35,15 @@ fn ptr(kind: PointerKind, x: f32, y: f32) -> PointerEvent {
 
 fn pinta(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem) {
     let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
-    for _ in 0..3 {
-        let mut scene = ph2d_vector::VectorScene::new();
-        paint_hero_screen(hero, vp, &mut scene, ts);
+    // Passo fixo: a mola do cartão assenta em quadros, não no relógio da máquina (cura de 66fbea4d7e).
+    for _ in 0..30 {
+        ph2d_editor_core::aquecimento::com_passo_fixo(
+            ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+            || {
+                let mut scene = ph2d_vector::VectorScene::new();
+                paint_hero_screen(hero, vp, &mut scene, ts);
+            },
+        );
     }
 }
 

@@ -99,7 +99,7 @@ mod tests {
     /// *Mutação: voltar uma frase a `{n} objects` ⇒ vermelho a dizer qual.*
     #[test]
     fn no_sentence_counts_a_noun_without_its_singular() {
-        const NOMES: [&str; 18] = [
+        const NOMES: [&str; 20] = [
             "entities",
             "components",
             "objects",
@@ -118,10 +118,14 @@ mod tests {
             "steps",
             "bodies",
             "tags",
+            "points",
+            "groups",
         ];
         // Só com dois ou mais, por construção: o caso de 1 tem outra frase ou outra chave.
-        const SEMPRE_VARIOS: [&str; 5] = [
+        const SEMPRE_VARIOS: [&str; 6] = [
             "panel.vector.bar.name.many",
+            // `{n}` é o tecto de peças do traço (`MAX_PIECES`, centenas).
+            "stay under {n} pieces",
             "keeps the value of {count} objects",
             "{count} objects are named",
             "{n} objects selected",

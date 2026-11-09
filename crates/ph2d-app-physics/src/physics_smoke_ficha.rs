@@ -23,6 +23,14 @@ pub fn physics_smoke_ficha(ctx: &mut crate::SceneCtx<'_>) {
     let outline = ph2d_physics_scene::ficha::outline_para_as_fotos(ctx.world);
     if let Some((forma, centro)) = outline {
         ctx.want.camera_center = Some(centro);
+        // A foto do «Merge» (`PH2D_PHYSICS_SMOKE_OUTLINE_MERGE=<px>`): funde todos os pontos logo depois do 1.º traço.
+        if let Some(px) = std::env::var("PH2D_PHYSICS_SMOKE_OUTLINE_MERGE")
+            .ok()
+            .and_then(|v| v.trim().parse().ok())
+        {
+            ctx.world
+                .insert_resource(ph2d_physics_outline::PendingMerge { shape: forma, px });
+        }
         // A foto dos pontos (`PH2D_PHYSICS_SMOKE_OUTLINE_PONTOS=1`): a forma já nasce em edição no canvas.
         if let Some(v) = std::env::var_os("PH2D_PHYSICS_SMOKE_OUTLINE_PONTOS") {
             ph2d_shape_handles::alterna(ctx.world, forma.to_bits());

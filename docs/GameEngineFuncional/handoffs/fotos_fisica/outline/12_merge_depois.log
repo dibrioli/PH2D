@@ -1,0 +1,17 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   274ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   295ms] physics smoke: empty scene (only the physics bodies)
+[   295ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   303ms] M11: VelloPass initialized (1024×768 intermediate)
+[   306ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   320ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   347ms] ADR-0054 W0.T6: imageio registries broteiro: /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02/docs/GameEngineFuncional/handoffs/fotos_fisica/outline/12_merge_depois.log
+Space plays: the Crate falls through the Loose Shape and lands on the Floor; the Stretched Ball falls into the Updraft Zone and the zone pushes it up. Left/Right walk, Up jumps: the Player goes up through the One-way Platform from below and lands on top; he passes through the Crate because his layer only hits Ground. The Rock's shape is an Outline traced from its picture: Detail, Alpha cutoff and Ignore specks under each reshape it. It lands on the Floor. The Marble falls inside the Ring's hole and rests on its bottom. The Table stands on its two legs: one body, three shapes. Stop puts everything back.
+[ph2d-gpu] surface present mode → Immediate
+[   366ms] resize: 1600x972 @ 1.00x scale
+warn: dropped 0.217s of sim time (max_substeps cap)
+[ph2d-gpu] surface present mode → Fifo

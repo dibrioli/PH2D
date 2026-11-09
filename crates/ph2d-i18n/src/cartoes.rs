@@ -49,9 +49,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.outline_merge_tip" => {
             "Join points closer than this many pixels into one. Works on the selected points, or on all of them."
         }
-        "card.insp.phys.outline_merged" => "Merged {n} points",
+        "card.insp.phys.outline_merged" => "Merged {n} {n?point|points}",
         "card.insp.phys.outline_merge_kept" => {
-            "{k} groups were left as they are so the outline does not cross itself"
+            "{k} {k?group was|groups were} left as {k?it is|they are} so the outline does not cross itself"
         }
         "card.insp.phys.outline_raised" => {
             "Too detailed — Detail raised to {x} px to stay under {n} pieces"

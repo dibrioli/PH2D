@@ -70,3 +70,36 @@ pub fn merged(world: &World, shape: Entity, o: &ColliderOutline) -> Option<(u32,
         .filter(|r| r.shape == shape && r.rings == o.rings)
         .map(|r| (r.merged, r.kept))
 }
+
+/// Um «Merge» pedido antes de a forma ter traço (a foto `PH2D_PHYSICS_SMOKE_OUTLINE_MERGE`): corre-se no 1.º
+/// [`crate::retrace_followed`] com anéis.
+#[derive(Resource, Clone, Copy, Debug, PartialEq)]
+pub struct PendingMerge {
+    pub shape: Entity,
+    pub px: f32,
+}
+
+/// O [`PendingMerge`] cujos anéis já existem: funde, grava pela fila e sai. Devolve `1` se gravou.
+pub(crate) fn pending(
+    world: &mut World,
+    queue: &ph2d_ecs::scene::EditorCommandQueue,
+    registry: &ph2d_ecs::scene::ComponentRegistry,
+) -> usize {
+    let Some(p) = world.get_resource::<PendingMerge>().copied() else {
+        return 0;
+    };
+    if world
+        .get::<ColliderOutline>(p.shape)
+        .is_none_or(|o| o.rings.is_empty())
+    {
+        return 0;
+    }
+    world.remove_resource::<PendingMerge>();
+    let Some(next) = outline_edited(world, p.shape, OutlineEdit::Merge(p.px)) else {
+        return 0;
+    };
+    let bits = p.shape.to_bits();
+    let tipo = "ph2d::physics::ColliderOutline";
+    ph2d_inspector_ordering::queue_set(queue, registry, bits, tipo, &next);
+    1
+}

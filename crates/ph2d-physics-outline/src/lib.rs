@@ -11,7 +11,7 @@ use ph2d_physics_ecs::{Collider, ColliderOutline, ColliderShape, RigidBody};
 use ph2d_render::Sprite;
 
 mod merge;
-pub use merge::{MergeReport, merged, outline_edited};
+pub use merge::{MergeReport, PendingMerge, merged, outline_edited};
 
 /// Os pixels RGBA8 de uma folha, linha a linha.
 #[derive(Clone, Debug)]
@@ -506,7 +506,7 @@ pub fn retrace_followed(
         .map(|(e, c)| (e, *c))
         .collect();
     let mut seen = Vec::with_capacity(shapes.len());
-    let mut n = 0;
+    let mut n = merge::pending(world, queue, registry);
     let w: &World = world;
     let picture = db_picture(w, db, atlas);
     for (shape, c) in shapes {

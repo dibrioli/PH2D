@@ -217,7 +217,13 @@ fn w4_o_outline_pinta_as_linhas_e_o_aviso_so_quando_subiu() {
         assert!(achado(&r, INSP_PHYS_HALF_X).is_none(), "sem Width");
         let tem = avisos.iter().any(|a| a.texto == frase);
         assert_eq!(tem, raised.is_some(), "{frase:?} em {avisos:?}");
-        // «Merge by distance»: o que o último Merge fez, e o aviso dos grupos retidos.
+        // «Merge by distance»: o que o último Merge fez, e o aviso dos grupos retidos (singular no 1).
+        let um = |k: &str, a: &str| ph2d_i18n::tr_with(k, &[(a, &1u32)]);
+        assert_eq!(um("card.insp.phys.outline_merged", "n"), "Merged 1 point");
+        assert_eq!(
+            um("card.insp.phys.outline_merge_kept", "k"),
+            "1 group was left as it is so the outline does not cross itself"
+        );
         let fundiu = ph2d_i18n::tr_with("card.insp.phys.outline_merged", &[("n", &5u32)]);
         let reteve = ph2d_i18n::tr_with("card.insp.phys.outline_merge_kept", &[("k", &1u32)]);
         for f in [&fundiu, &reteve] {

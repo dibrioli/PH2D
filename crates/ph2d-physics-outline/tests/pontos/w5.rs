@@ -593,3 +593,45 @@ fn o_ponto_sob_o_ponteiro_cresce_suave_pelo_relogio() {
         "o relógio nasce na chegada, não a cada quadro"
     );
 }
+
+/// **O «Merge» pedido antes do traço** (a foto `PH2D_PHYSICS_SMOKE_OUTLINE_MERGE`): sem anéis espera; com anéis, o
+/// 1.º `retrace_followed` funde todos pela fila e o pedido sai. *Mutação: `pending` sem a espera dos anéis ⇒ o pedido
+/// gasta-se no vazio e a 2.ª passagem não funde, vermelho.*
+#[test]
+fn o_merge_pendente_espera_o_traco_e_funde_uma_vez() {
+    let (reg, mut sim, _body, shape, db) = followed_ring();
+    let mut cheio = outline(&sim, shape);
+    // Um ponto a meio px do ponto 0, na aresta: o cacho que o Merge tira.
+    let mut r: Vec<Vec<[i32; 2]>> = cheio.rings.to_vec();
+    let (a, b) = (r[0][0], r[0][1]);
+    let t = 8.0 / f64::from(b[0] - a[0]).hypot(f64::from(b[1] - a[1]));
+    let meio = |i: usize| a[i] + (f64::from([b[0] - a[0], b[1] - a[1]][i]) * t).round() as i32;
+    r[0].insert(1, [meio(0), meio(1)]);
+    cheio.rings = r.into();
+    let mut vazio = cheio.clone();
+    vazio.rings = Vec::new().into();
+    sim.world_mut().entity_mut(shape).insert(vazio);
+    let q = EditorCommandQueue::new();
+    let px = 3.0;
+    sim.world_mut()
+        .insert_resource(ph2d_physics_outline::PendingMerge { shape, px });
+    let _ = follow(&mut sim, &db, &q, &reg);
+    assert!(
+        sim.world()
+            .get_resource::<ph2d_physics_outline::PendingMerge>()
+            .is_some(),
+        "sem anéis, o pedido espera"
+    );
+    let _ = q.drain();
+    sim.world_mut().entity_mut(shape).insert(cheio.clone());
+    assert!(follow(&mut sim, &db, &q, &reg) >= 1, "com anéis, funde");
+    apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
+    let n = |o: &ColliderOutline| o.rings.iter().map(Vec::len).sum::<usize>();
+    assert!(n(&outline(&sim, shape)) < n(&cheio), "fundiu");
+    assert!(outline(&sim, shape).custom);
+    assert!(
+        sim.world()
+            .get_resource::<ph2d_physics_outline::PendingMerge>()
+            .is_none()
+    );
+}

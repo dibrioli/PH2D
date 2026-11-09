@@ -1,0 +1,20 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   265ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   286ms] physics smoke: empty scene (only the physics bodies)
+[   286ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   294ms] M11: VelloPass initialized (1024×768 intermediate)
+[   297ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   310ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   338ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   345ms] lifecycle: Foreground
+[   345ms] resize: 1024x768 @ 1.00x scale
+[physics-smoke 120] The whole item, PAUSED. Space plays: the Crate falls through the Loose Shape and lands on the Floor; the Stretched Ball falls into the Updraft Zone and the zone pushes it up. Left/Right walk, Up jumps: the Player goes up through the One-way Platform from below and lands on top; he passes through the Crate because his layer only hits Ground. The roteiro: /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02/docs/GameEngineFuncional/handoffs/fotos_fisica/outline/11_merge_antes.log
+side the Ring's hole and rests on its bottom. The Table stands on its two legs: one body, three shapes. Stop puts everything back.
+[ph2d-gpu] surface present mode → Immediate
+[   354ms] resize: 1600x972 @ 1.00x scale
+warn: dropped 0.217s of sim time (max_substeps cap)
+[ph2d-gpu] surface present mode → Fifo

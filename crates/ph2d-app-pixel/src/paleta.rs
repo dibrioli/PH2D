@@ -498,6 +498,10 @@ impl PixelApp {
             return;
         };
         let (mode, opt) = conversao(c);
+        if ph2d_pixel_core::convert::normal_needs_rgb(&doc.sprite, mode) {
+            self.aviso(true, ph2d_i18n::tr("panel.pixel.layer.normal_needs_rgb"));
+            return;
+        }
         let Some(w) = convert(&doc.sprite, mode, opt) else {
             return;
         };

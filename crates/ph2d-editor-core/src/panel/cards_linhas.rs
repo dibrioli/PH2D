@@ -593,7 +593,13 @@ impl<'s> CardCtx<'s> {
         self.anota_botao(text, r.w);
         self.hit_index.register(id, r);
         let hover = self.store.hover_live(id) > 0.0;
-        let (fundo, tinta) = if primary {
+        // Desligado no store (o dispatch já recusa o clique): pinta-se como o `ButtonOff`, mas o
+        // rect fica, para a dica de porquê chegar ao ponteiro.
+        let desligado =
+            self.store.button_state(id) == Some(crate::widget::ButtonState::Disabled);
+        let (fundo, tinta) = if desligado {
+            (ColorToken::CardField, ColorToken::CardLabel)
+        } else if primary {
             (ColorToken::KanbanBlueBold, ColorToken::KanbanBtnOnFg)
         } else if hover {
             (ColorToken::CardFieldHover, ColorToken::Text1)

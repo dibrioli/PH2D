@@ -90,6 +90,7 @@ mod the_pixel_export_answers_a_real_pointer;
 mod the_pixel_keys_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-tools")]
 mod the_pixel_layer_normal_map_answers_a_real_pointer;
+mod the_pixel_normal_map_refusals_answer_a_real_pointer;
 mod the_pixel_layer_user_data_answers_a_real_pointer;
 #[cfg(all(feature = "panel-pixel-prefs", feature = "panel-pixel-timeline"))]
 mod the_pixel_onion_range_answers_a_real_pointer;

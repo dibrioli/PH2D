@@ -76,10 +76,18 @@ pub struct Convert {
     pub to_gray: ToGray,
 }
 
-/// O sprite convertido para `mode` (a paleta fica; o transparente fica). `None` se já está nele.
+/// P14: converter para `mode` recusa-se porque o sprite tem uma camada Normal Map e as cels guardam
+/// o modo do sprite (a normal só existe em RGB).
+#[must_use]
+pub fn normal_needs_rgb(sprite: &Sprite, mode: ColorMode) -> bool {
+    mode != ColorMode::Rgba && sprite.layers.iter().any(|l| l.normal)
+}
+
+/// O sprite convertido para `mode` (a paleta fica; o transparente fica). `None` se já está nele ou
+/// se [`normal_needs_rgb`].
 #[must_use]
 pub fn convert(sprite: &Sprite, mode: ColorMode, opt: Convert) -> Option<Whole> {
-    if sprite.mode == mode {
+    if sprite.mode == mode || normal_needs_rgb(sprite, mode) {
         return None;
     }
     let tilesets: Vec<Tileset> = sprite

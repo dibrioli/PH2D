@@ -28,6 +28,7 @@ mod layer_parity;
 mod line_parity;
 mod mede_compose;
 mod normal_map;
+mod normal_map_fusao;
 mod play_oracle;
 mod pure_core;
 mod rotation_oracle;

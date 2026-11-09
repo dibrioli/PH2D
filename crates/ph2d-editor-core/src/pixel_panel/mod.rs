@@ -458,6 +458,8 @@ pub struct PixelPanelInfo {
     pub brushes: Vec<PixelBrushSlotInfo>,
     /// P12 U: o user data dos donos activos (o cartão User Data de cada janela).
     pub user: PixelUserInfo,
+    /// P14: o Merge Down da camada activa juntaria uma Normal Map a uma de cor (o botão desliga-se).
+    pub merge_down_mixes_normal: bool,
 }
 
 /// Um dono de user data no vocabulário do chrome (`Tag` = índice na lista de tags).

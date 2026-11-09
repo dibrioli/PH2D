@@ -87,6 +87,7 @@ pub(crate) fn por_quadro(
     i: &PixelPanelInfo,
 ) {
     crate::seam::register_layers(store, &i.layers);
+    crate::seam::desliga_o_que_a_normal_recusa(store, i);
     for &(t, id) in ids::TOOLS.iter() {
         store.set_tooltip(id, t.named(&i.tool_keys));
     }

@@ -81,12 +81,14 @@ fn apagar_a_slice_do_pivo_desfaz_num_passo() {
 }
 
 #[test]
-fn o_pixel_formato_7_le_o_que_grava() {
+fn o_pixel_formato_le_o_que_grava() {
     let s = heroi_p14();
     assert!(s.pivot_slice().is_some());
+    assert!(s.layers().iter().any(|l| l.normal), "a fixture leva a Normal Map");
     let lib = std::collections::BTreeMap::from([(1_u64, s.clone())]);
     let bytes = write_library(&lib);
-    assert_eq!(&bytes[11..13], &7_u16.to_le_bytes(), "MINOR 7");
+    let minor = ph2d_pixel_core::codec::MINOR;
+    assert_eq!(&bytes[11..13], &minor.to_le_bytes(), "MINOR");
     let back = read_library(&bytes).expect("lê");
     assert_eq!(back[&1], s);
     assert_eq!(back[&1].pivot_slice(), s.pivot_slice());

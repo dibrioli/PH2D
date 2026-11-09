@@ -1,7 +1,7 @@
 //! As leis da árvore de camadas e o `SetLayerNormal` (P14), partidos de `op.rs`.
 
 use super::{Op, OpError};
-use crate::sprite::{Layer, LayerId, Sprite};
+use crate::sprite::{ColorMode, Layer, LayerId, Sprite};
 
 /// As leis da árvore de camadas: ids únicos e já emitidos; pai existe, é grupo e vem de uma
 /// cadeia sem ciclo; a Background é no máximo uma, na raiz, a primeira e de imagem; há pelo
@@ -40,6 +40,7 @@ pub(crate) fn check_layers(layers: &[Layer], next_id: u32) -> Result<(), OpError
 
 /// `Op::LayerNormal`: troca a bandeira e devolve a de antes; o grupo não tem pixels.
 pub(super) fn apply_normal(s: &mut Sprite, layer: LayerId, normal: bool) -> Result<Op, OpError> {
+    let mode = s.mode();
     let l = s
         .layers
         .iter_mut()
@@ -47,6 +48,10 @@ pub(super) fn apply_normal(s: &mut Sprite, layer: LayerId, normal: bool) -> Resu
         .ok_or(OpError::UnknownLayer(layer))?;
     if l.is_group() {
         return Err(OpError::BadLayers("normal_group"));
+    }
+    // A cel guarda o modo do SPRITE (`ColorMode::bpp`): fora de RGBA a normal passaria pela paleta.
+    if normal && !l.normal && mode != ColorMode::Rgba {
+        return Err(OpError::BadLayers("normal_needs_rgb"));
     }
     Ok(Op::LayerNormal {
         layer,

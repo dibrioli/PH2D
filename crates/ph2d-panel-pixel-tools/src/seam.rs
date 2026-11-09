@@ -168,6 +168,49 @@ pub(crate) fn register_layers(
     }
 }
 
+/// P14c-pixel 1b, por quadro: o que a camada Normal Map recusa fica DESLIGADO e a dica diz porquê —
+/// o Merge Down entre normal e cor, e a caixa Normal Map fora de um sprite RGB (a cel guarda o modo
+/// do sprite). Desligado não aceita o clique (`is_focusable`); a dica chega ao ponteiro pelo rect.
+pub(crate) fn desliga_o_que_a_normal_recusa(
+    store: &mut WidgetStore,
+    i: &ph2d_editor_core::pixel_panel::PixelPanelInfo,
+) {
+    use ph2d_editor_core::pixel_panel::{NewSpriteMode, PixelLayerAction};
+    let merge = ids::LAYER_ACTIONS
+        .iter()
+        .find(|(_, a, _)| *a == PixelLayerAction::MergeDown)
+        .map(|(id, ..)| *id);
+    if let Some(id) = merge
+        && let Some(InteractiveState::Button { state }) = store.get_mut(id)
+    {
+        if i.merge_down_mixes_normal {
+            *state = ButtonState::Disabled;
+        } else if *state == ButtonState::Disabled {
+            *state = ButtonState::Normal;
+        }
+        let dica = if i.merge_down_mixes_normal {
+            tr("panel.pixel.layer.merge_normal_tip")
+        } else {
+            ""
+        };
+        store.set_tooltip(id, dica);
+    }
+    let rgb = i.mode == NewSpriteMode::Rgba;
+    if let Some(InteractiveState::Checkbox { state, .. }) = store.get_mut(ids::LAYER_NORMAL) {
+        if !rgb {
+            *state = CheckboxState::Disabled;
+        } else if *state == CheckboxState::Disabled {
+            *state = CheckboxState::Normal;
+        }
+    }
+    let dica = if rgb {
+        tr("panel.pixel.layer.normal_tip")
+    } else {
+        tr("panel.pixel.layer.normal_needs_rgb")
+    };
+    store.set_tooltip(ids::LAYER_NORMAL, dica);
+}
+
 /// Semeia e foca o campo do renomear UMA vez quando ele abre (semear a cada quadro apagaria o que
 /// o artista escreve); se a camada sumiu, o renomear fecha.
 pub(crate) fn seed_rename(st: &mut crate::PixelToolsPanelState, store: &mut WidgetStore) {

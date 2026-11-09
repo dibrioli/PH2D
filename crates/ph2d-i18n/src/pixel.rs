@@ -319,6 +319,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.layer.normal_tip" => {
             "Normal Map: this layer is not color. It tells the light which way each pixel faces"
         }
+        "panel.pixel.layer.normal_needs_rgb" => "Normal maps need RGB color mode",
+        "panel.pixel.layer.merge_normal_tip" => {
+            "Can't merge a Normal Map layer with a color layer"
+        }
         "panel.pixel.layer.new" => "New Layer",
         "panel.pixel.layer.new_group" => "New Group",
         "panel.pixel.layer.delete" => "Delete",

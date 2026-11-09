@@ -252,6 +252,20 @@ fn cel_from_rgba(s: &Sprite, r: Rect, rgba: &[u8]) -> Cel {
     Cel::image(r, data)
 }
 
+/// P14: o Merge Down de `id` juntaria uma Normal Map a uma de cor (o menu desliga-se e diz porquê).
+#[must_use]
+pub fn merge_down_mixes_normal(s: &Sprite, id: LayerId) -> bool {
+    let Some(i) = index(s.layers(), id) else {
+        return false;
+    };
+    let top = &s.layers()[i];
+    s.layers()[..i]
+        .iter()
+        .rev()
+        .find(|l| l.parent == top.parent)
+        .is_some_and(|b| !b.is_group() && !top.is_group() && b.normal != top.normal)
+}
+
 /// Layer ▸ Merge Down: a camada mistura-se (com o seu modo e opacidade) sobre a vizinha de baixo,
 /// em cada frame; a de baixo fica com o nome e as propriedades dela.
 #[must_use]
@@ -267,6 +281,10 @@ pub fn merge_down(s: &Sprite, id: LayerId) -> Option<Op> {
     }
     // Como o cinza do Trial: fundir escreveria píxeis soltos num mapa.
     if top.tileset().is_some() || below.tileset().is_some() {
+        return None;
+    }
+    // P14: normal e cor não se misturam; duas Normal Map fundem-se e a de baixo continua Normal Map.
+    if top.normal != below.normal {
         return None;
     }
     let mut cels = cels_of(s, &[top.id]);
@@ -331,7 +349,7 @@ pub fn merge_down(s: &Sprite, id: LayerId) -> Option<Op> {
 }
 
 /// Layer ▸ Flatten (`visible_only = false`) / Flatten Visible: as camadas (visíveis) compõem-se
-/// numa só; com Background ela fica Background. As referências ficam de fora e mantêm-se.
+/// numa só (as Normal Map, P14, noutra Normal Map logo acima); com Background ela fica Background. As referências ficam de fora e mantêm-se.
 pub fn flatten(s: &mut Sprite, visible_only: bool) -> Option<Op> {
     let merged: Vec<LayerId> = s
         .layers()
@@ -353,6 +371,17 @@ pub fn flatten(s: &mut Sprite, visible_only: bool) -> Option<Op> {
     flat.opacity = 255;
     flat.blend = BlendMode::Normal;
     flat.visible = true;
+    flat.normal = false;
+    // P14: as Normal Map achatam-se numa Normal Map à parte, por cima da de cor (nada se deita fora).
+    let normal = s
+        .layers()
+        .iter()
+        .any(|l| l.normal && !l.is_group() && merged.contains(&l.id))
+        .then(|| {
+            let mut n = Layer::image(LayerId(s.reserve_id()), "Flattened Normal Map");
+            n.normal = true;
+            n
+        });
     // Flatten (todas) compõe também as escondidas, como se se vissem.
     let mut view = s.clone();
     for l in &mut view.layers {
@@ -361,10 +390,14 @@ pub fn flatten(s: &mut Sprite, visible_only: bool) -> Option<Op> {
         }
     }
     let mut cels = cels_of(s, &merged);
-    for f in s.frames() {
-        let rgba = compose_window(&view, f.id, None, s.bounds(), Purpose::Export);
-        if rgba.as_chunks::<4>().0.iter().any(|p| p[3] != 0) {
-            cels.push(((flat.id, f.id), Some(cel_from_rgba(s, s.bounds(), &rgba))));
+    let alvos = std::iter::once((flat.id, Purpose::Export))
+        .chain(normal.as_ref().map(|n| (n.id, Purpose::Normal)));
+    for (alvo, purpose) in alvos {
+        for f in s.frames() {
+            let rgba = compose_window(&view, f.id, None, s.bounds(), purpose);
+            if rgba.as_chunks::<4>().0.iter().any(|p| p[3] != 0) {
+                cels.push(((alvo, f.id), Some(cel_from_rgba(s, s.bounds(), &rgba))));
+            }
         }
     }
     let mut layers: Vec<Layer> = s
@@ -382,6 +415,9 @@ pub fn flatten(s: &mut Sprite, visible_only: bool) -> Option<Op> {
     // no fundo; acima de uma Background escondida que o Flatten Visible deixou
     let at = usize::from(layers.first().is_some_and(|l| l.background));
     layers.insert(at, flat);
+    if let Some(n) = normal {
+        layers.insert(at + 1, n);
+    }
     Some(set(layers, cels))
 }
 

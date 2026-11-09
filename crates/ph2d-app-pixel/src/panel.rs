@@ -303,6 +303,9 @@ pub fn frame(
         }),
         has_clip: app.clip.is_some(),
         has_selection: doc.is_some_and(|d| d.sprite.mask().is_some()),
+        merge_down_mixes_normal: doc.is_some_and(|d| {
+            ph2d_pixel_core::layers::merge_down_mixes_normal(&d.sprite, d.layer)
+        }),
         text_font_name: if app.tool == Tool::Text {
             crate::texto::nome_da_fonte(app.options.text_font)
         } else {

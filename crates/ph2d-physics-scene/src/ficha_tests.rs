@@ -242,11 +242,9 @@ fn a_rock_e_um_outline_tracado_da_imagem_e_pousa_no_floor() {
     traca_como_a_shell(&mut c);
     let o = contorno(&c, "Rock");
     assert!(!o.rings.is_empty() && !o.custom, "traçado da imagem: {o:?}");
-    assert!(
-        o.rings[0].len() > 4,
-        "o traço segue a moeda, não a caixa: {}",
-        o.rings[0].len()
-    );
+    // O maior anel (a pedra; as pedrinhas, a Detail 2, podem ser triângulos desde a lei para fora, 09/11).
+    let maior = o.rings.iter().map(Vec::len).max().unwrap_or(0);
+    assert!(maior > 4, "o traço segue a pedra, não a caixa: {maior}");
     c.corre(240);
     let [x, y] = c.at("Rock");
     assert!((x - ROCK_AT[0]).abs() < 1.0, "cai na sua coluna: {x}");

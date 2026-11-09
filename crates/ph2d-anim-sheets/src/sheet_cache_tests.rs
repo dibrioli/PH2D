@@ -46,6 +46,61 @@ fn a_folha_pintada_mostra_a_tinta_quando_o_traco_acaba() {
     assert!(w.resource::<SheetCache>().of_sheet(e, 0).is_none());
 }
 
+/// ⭐ **O selo da prévia** (dono 09/11): gira enquanto a tinta anda — também com a água do Wet, que pára 2 de cada 3
+/// quadros e não pode fazê-lo piscar para «encher» —, enche de verdade pelos [`QUADROS_PARADOS`] quando ela pára, vira
+/// o check verde na leitura e some; outro objeto não o vê; ao assar some sem check. *Mutações: `QUADROS_A_GIRAR` 1 ⇒
+/// enche com a água a andar; `feito` não armado na leitura ⇒ sem check; check ao assar ⇒ `Done` depois do `None`.*
+#[test]
+fn o_selo_gira_com_a_tinta_a_andar_enche_parada_e_acaba_no_check() {
+    let mut w = World::new();
+    let e = w.spawn_empty().id().to_bits();
+    let sync = |w: &World, b| w.resource::<SheetCache>().sync(b);
+    for q in 0..120u64 {
+        follow_live(&mut w, Some((e, (0, 100 + q / 3))), || px(5));
+        assert_eq!(
+            sync(&w, e),
+            Some(ProgressPhase::Indeterminate),
+            "quadro {q} com a água a andar"
+        );
+    }
+    assert_eq!(sync(&w, e + 1), None, "outro objeto");
+    // O quadro em que ela muda pela última vez e os parados que se seguem, até à véspera da leitura.
+    let (mut antes, mut enchendo) = (-1.0, 0);
+    for q in 0..QUADROS_PARADOS {
+        follow_live(&mut w, Some((e, (0, 999))), || px(5));
+        match sync(&w, e) {
+            Some(ProgressPhase::Indeterminate) => assert!(q < QUADROS_A_GIRAR, "parada há {q}"),
+            Some(ProgressPhase::Filling(f)) => {
+                assert!(f > antes && f < 1.0, "parada há {q}: {f}");
+                (antes, enchendo) = (f, enchendo + 1);
+            }
+            outro => panic!("parada há {q}: {outro:?}"),
+        }
+    }
+    assert_eq!(
+        enchendo,
+        QUADROS_PARADOS - QUADROS_A_GIRAR,
+        "encheu em todos os quadros parados depois de girar"
+    );
+    follow_live(&mut w, Some((e, (0, 999))), || px(5));
+    assert_eq!(
+        sync(&w, e),
+        Some(ProgressPhase::Done(0.0)),
+        "a folha atualizou-se"
+    );
+    for _ in 1..QUADROS_DO_CHECK {
+        follow_live(&mut w, Some((e, (0, 999))), || px(5));
+        assert!(matches!(sync(&w, e), Some(ProgressPhase::Done(t)) if t > 0.0 && t < 1.0));
+    }
+    follow_live(&mut w, Some((e, (0, 999))), || px(5));
+    assert_eq!(sync(&w, e), None, "o check some");
+    // Outro traço e assar antes de assentar: some sem check (nada se leu).
+    follow_live(&mut w, Some((e, (0, 1000))), || px(6));
+    assert_eq!(sync(&w, e), Some(ProgressPhase::Indeterminate));
+    follow_live(&mut w, None, || px(6));
+    assert_eq!(sync(&w, e), None, "assado: sem selo nem check");
+}
+
 /// ⭐ **A água do Wet não dispara a leitura** (dono 09/11: «pintar com wet paint ficou lentíssimo», raw 170 → 14). Depois do
 /// traço a água re-revisa a tinta a ~24 Hz — a 60 Hz, um passo a cada 2–3 quadros, com quadros parados entre eles. Cada
 /// leitura compõe e acende a tela inteira (61 ms a 1024² Textured Paper), por isso nenhuma pode correr enquanto a água

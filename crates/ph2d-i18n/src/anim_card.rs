@@ -27,6 +27,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anim_card.remove_empty_frames_tip" => {
             "Take the empty frames out of every animation that still has real frames. Empty frames come from a deleted sheet; in the game they show nothing."
         }
+        "panel.inspector.anim_card.preview_sync_tip" => {
+            "The animation updates when the paint settles"
+        }
         "panel.inspector.anim_card.delete_empty_anims" => "Delete empty animations",
         "panel.inspector.anim_card.delete_empty_anims_tip" => {
             "Delete every animation whose frames are all empty."

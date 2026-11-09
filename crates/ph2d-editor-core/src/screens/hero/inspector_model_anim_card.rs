@@ -129,6 +129,9 @@ pub struct AnimCardInfo {
     pub sheet: Option<SheetImage>,
     /// As folhas extra `1..` (plano GEF 26): a imagem e o corte de cada uma, `[k - 1]` = a folha `k`.
     pub extra_sheets: Vec<(Option<SheetImage>, u32, u32)>,
+    /// ⭐ **A tinta do Painter a caminho da prévia** (dono 09/11): o selo no canto dela. `None` = a prévia já mostra a
+    /// tinta de agora.
+    pub sync: Option<crate::widget::ProgressPhase>,
 }
 
 impl Default for AnimCardInfo {
@@ -149,6 +152,7 @@ impl Default for AnimCardInfo {
             step: 0,
             sheet: None,
             extra_sheets: Vec::new(),
+            sync: None,
         }
     }
 }

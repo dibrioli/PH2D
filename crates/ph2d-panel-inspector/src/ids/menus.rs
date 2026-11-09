@@ -106,3 +106,5 @@ pub const INSP_IMAGE_SHEET_ITEM: [NodeId; MAX_SHEET_ITEMS] =
 pub const INSP_ANIM_REMOVE_EMPTY_FRAMES: NodeId = hash_node_id("insp_anim_remove_empty_frames");
 /// **Delete empty animations** no cartão Animation.
 pub const INSP_ANIM_DELETE_EMPTY_ANIMS: NodeId = hash_node_id("insp_anim_delete_empty_anims");
+/// O selo da tinta do Painter a caminho da prévia do cartão Animation (só a dica: não se clica).
+pub const INSP_ANIM_PREVIEW_SYNC: NodeId = hash_node_id("insp_anim_preview_sync");

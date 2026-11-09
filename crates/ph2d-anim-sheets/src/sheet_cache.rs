@@ -13,6 +13,7 @@ use std::sync::Arc;
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{Entity, Resource, SpritePixels, SpriteSheets, World};
 use ph2d_editor_core::SheetImage;
+use ph2d_editor_core::widget::ProgressPhase;
 use ph2d_sprite_sheet::GridGuess;
 
 /// Quantas folhas ficam descodificadas: o recurso é a RAM — a do herói são 4,7 MB, e o editor e o
@@ -47,6 +48,10 @@ pub struct SheetCache {
     seen: Option<(u64, (u64, u64))>,
     /// Há quantos quadros seguidos a revisão vista não muda ([`QUADROS_PARADOS`]).
     parado: u32,
+    /// A folha visível ainda NÃO mostra a tinta vista (há uma leitura por fazer).
+    devida: bool,
+    /// A última leitura da tinta: `(objeto, quadros desde ela)` — o check do [`SheetCache::sync`].
+    feito: Option<(u64, u32)>,
 }
 
 /// ⭐ **Quantos quadros a tinta tem de ficar PARADA antes de se ler** ([`follow_live`]): meio segundo a 60 Hz. A água do
@@ -55,7 +60,36 @@ pub struct SheetCache {
 /// corria a cada passo dela — o dono viu o raw cair de 170 para 14 ao pintar. Parada meio segundo, a água assentou.
 pub const QUADROS_PARADOS: u32 = 30;
 
+/// Parada há menos quadros do que isto, a tinta ainda conta como a ANDAR e o selo gira em vez de encher: a água do Wet
+/// re-revisa a ~24 Hz (log do dono 09/11), até 7 quadros parados entre dois passos a 170 quadros/s (o raw do dono ao
+/// pintar) — com menos, o selo piscava entre girar e encher enquanto a água anda.
+pub const QUADROS_A_GIRAR: u32 = 10;
+
+/// Quantos quadros o check verde vive depois de a folha se atualizar (um segundo a 60 Hz).
+pub const QUADROS_DO_CHECK: u32 = 60;
+
+#[expect(clippy::cast_precision_loss, reason = "contagens de quadros, pequenas")]
+fn fracao(n: u32, de: u32) -> f32 {
+    n as f32 / de.max(1) as f32
+}
+
 impl SheetCache {
+    /// ⭐ **O selo no canto da prévia de `bits`** (dono 09/11): GIRA enquanto a tinta do Painter anda (o traço, a água
+    /// do Wet — não se sabe quando assenta), ENCHE pelos [`QUADROS_PARADOS`] quando ela pára, e a folha atualizada vira
+    /// um check verde que some. `None`: a prévia mostra a tinta de agora, ou o Painter não pinta `bits`.
+    #[must_use]
+    pub fn sync(&self, bits: u64) -> Option<ProgressPhase> {
+        if self.devida && self.seen.is_some_and(|(b, _)| b == bits) {
+            return Some(match self.parado.checked_sub(QUADROS_A_GIRAR) {
+                None => ProgressPhase::Indeterminate,
+                Some(n) => ProgressPhase::Filling(fracao(n, QUADROS_PARADOS - QUADROS_A_GIRAR)),
+            });
+        }
+        let (b, n) = self.feito?;
+        (b == bits && n < QUADROS_DO_CHECK)
+            .then(|| ProgressPhase::Done(fracao(n, QUADROS_DO_CHECK)))
+    }
+
     /// A folha `0` da entidade, se [`refresh`] a resolveu.
     #[must_use]
     pub fn of_entity(&self, bits: u64) -> Option<&SheetEntry> {
@@ -182,24 +216,23 @@ pub fn follow_live(
 ) {
     let k = vivo.map(|(b, _)| ph2d_ecs::shown_sheet(world, Entity::from_bits(b)));
     let mut cache = world.get_resource_or_init::<SheetCache>();
+    cache.feito = cache.feito.map(|(b, n)| (b, n.saturating_add(1)));
     let (Some((bits, rev)), Some(k)) = (vivo, k) else {
-        (cache.live, cache.seen, cache.parado) = (None, None, 0);
+        // Assou (ou saiu do Painter): a imagem gravada é a verdade — sem check, nada se leu.
+        (cache.live, cache.seen, cache.parado, cache.devida) = (None, None, 0, false);
         return;
     };
+    cache.devida = !cache
+        .live
+        .as_ref()
+        .is_some_and(|l| (l.0, l.1, l.2) == (bits, k, rev));
     if cache.seen.replace((bits, rev)) != Some((bits, rev)) {
         cache.parado = 0;
         return; // ainda a mudar
     }
     cache.parado = cache.parado.saturating_add(1);
-    if cache.parado < QUADROS_PARADOS {
-        return; // parada há pouco: a água do Wet ainda pode andar
-    }
-    if cache
-        .live
-        .as_ref()
-        .is_some_and(|l| (l.0, l.1, l.2) == (bits, k, rev))
-    {
-        return;
+    if cache.parado < QUADROS_PARADOS || !cache.devida {
+        return; // parada há pouco (a água do Wet ainda pode andar), ou já lida
     }
     let guess = cache.of_sheet(bits, k).and_then(|e| e.guess);
     cache.live = read()
@@ -212,6 +245,9 @@ pub fn follow_live(
             };
             (bits, k, rev, entry)
         });
+    if cache.live.is_some() {
+        (cache.devida, cache.feito) = (false, Some((bits, 0)));
+    }
 }
 
 #[cfg(test)]

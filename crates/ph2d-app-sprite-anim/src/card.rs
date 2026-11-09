@@ -137,6 +137,9 @@ pub fn build_card_info(world: &World, entity: Entity) -> AnimCardInfo {
             .and_then(|c| c.of_entity(entity.to_bits()))
             .map(|e| e.sheet.clone()),
         extra_sheets: extra_sheets(world, entity),
+        sync: world
+            .get_resource::<crate::sheet::SheetCache>()
+            .and_then(|c| c.sync(entity.to_bits())),
     }
 }
 

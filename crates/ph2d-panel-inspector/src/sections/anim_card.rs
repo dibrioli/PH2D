@@ -19,12 +19,13 @@ const BAR_H: f32 = 10.0; // LITERAL-PX-OK: altura de trilha de slider, é o alvo
 /// A parte da largura da lista que o resumo de uma linha pode ocupar, no máximo (1 menos isto).
 const SUMMARY_COL_FRAC: f32 = 0.55; // LITERAL-PX-OK: fração de layout
 
-/// A pré-visualização da célula no ecrã — só quando a sprite tem pixels em memória.
+/// A pré-visualização da célula no ecrã — só quando a sprite tem pixels em memória — com o selo da tinta do
+/// Painter a caminho dela no canto de cima à direita (dono 09/11; `clock_ns` roda-o).
 pub(crate) fn paint_preview(
     scene: &mut VectorScene,
-    x: f32,
-    w: f32,
-    y: f32,
+    hit_index: &mut HitIndex,
+    (theme, clock_ns): (Theme, u128),
+    (x, w, y): (f32, f32, f32),
     info: &InspectorAnimInfo,
 ) -> f32 {
     if !info.card.any_sheet() {
@@ -41,6 +42,14 @@ pub(crate) fn paint_preview(
             info.frame.cell,
             Rect::new(x, y, w, h),
         );
+    }
+    if let Some(phase) = info.card.sync {
+        // Discreto: uma linha da lista, ¼ da prévia.
+        let side = ROW_H;
+        let inset = ph2d_tokens::Spacing::Sm.px();
+        let badge = Rect::new(x + w - inset - side, y + inset, side, side);
+        ph2d_editor_core::widget::paint_progress_badge(scene, badge, theme, phase, clock_ns);
+        hit_index.register(ids::INSP_ANIM_PREVIEW_SYNC, badge);
     }
     y + h + ph2d_tokens::control_gap_px()
 }

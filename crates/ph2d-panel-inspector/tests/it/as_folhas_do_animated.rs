@@ -228,3 +228,33 @@ fn delete_empty_animations_so_aparece_com_uma_toda_vazia() {
     assert_eq!(edicoes(&a), [ImageUseEdit::DeleteEmptyAnimations]);
     fim();
 }
+
+/// ⭐ **O selo da tinta do Painter a caminho da prévia** (dono 09/11): com `sync`, o canto de cima à direita da prévia
+/// pinta o selo e ele tem a dica em inglês; sem `sync`, nada. *Mutações: não registar o selo ⇒ não pintou; sem a dica
+/// em `prepara` ⇒ `None`; o selo fora do canto ⇒ a borda direita dele foge da do cartão.*
+#[test]
+fn a_previa_mostra_o_selo_da_tinta_a_caminho_com_a_dica() {
+    let mut a = anim(true, true);
+    a.card.sheet = ph2d_editor_core::SheetImage::new(Arc::new(vec![255; 4 * 4 * 4]), 4, 4);
+    a.card.sync = Some(ph2d_editor_core::widget::ProgressPhase::Filling(0.5));
+    let (mut host, mut st) = cena_com(a.clone(), Some(folhas(1, 0)));
+    let r = pinta(&mut host, &mut st);
+    let selo = rect_de(&r, INSP_ANIM_PREVIEW_SYNC);
+    let lista = rect_de(&r, INSP_ANIM_ROW[0]);
+    // A linha da lista pára antes do ▶; o selo vai até à borda da prévia, à direita dela.
+    assert!(
+        selo.y + selo.h <= lista.y
+            && selo.x + selo.w > lista.x + lista.w
+            && selo.h <= ph2d_tokens::ROW_H_PX,
+        "o selo pequeno no canto de cima à direita da prévia, acima da lista: {selo:?} × {lista:?}"
+    );
+    assert_eq!(
+        host.store().tooltip_for(INSP_ANIM_PREVIEW_SYNC),
+        Some("The animation updates when the paint settles")
+    );
+    fim();
+    a.card.sync = None;
+    let (mut host, mut st) = cena_com(a, Some(folhas(1, 0)));
+    assert!(!pintou(&pinta(&mut host, &mut st), INSP_ANIM_PREVIEW_SYNC));
+    fim();
+}

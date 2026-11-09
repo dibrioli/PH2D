@@ -263,7 +263,7 @@ pub use slider_with_chip::{
     slider_with_chip_height, slider_with_chip_is_stacked, slider_with_chip_label_rect,
     slider_with_chip_min_w,
 };
-pub use spinner::{Spinner, paint_spinner};
+pub use spinner::{ProgressPhase, Spinner, paint_progress_badge, paint_spinner};
 pub use status_bar::{SegmentTone, StatusBar, StatusSegment, paint_status_bar};
 pub use tabs::{TabItem, Tabs, TabsVariant, paint_tabs, paint_tabs_with_hover};
 pub use tag::{Tag, TagState, TagTone, paint_tag, paint_tag_with_radius};

@@ -228,6 +228,11 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
         ids::INSP_ANIM_DELETE_EMPTY_ANIMS,
         Some("panel.inspector.anim_card.delete_empty_anims_tip"),
     );
+    botao(
+        store,
+        ids::INSP_ANIM_PREVIEW_SYNC,
+        Some("panel.inspector.anim_card.preview_sync_tip"),
+    );
     ALERTAS.with(|a| a.borrow_mut().clear());
     // O dropdown de um objecto que saiu de vista fecha-se.
     let selecionada = crate::state::current_inspector_sprite().map(|s| s.entity_bits);

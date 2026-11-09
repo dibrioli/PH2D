@@ -452,7 +452,8 @@ pub(crate) fn paint_anim_section(
     // ⭐ O CARTÃO (planos 07 e 22), de cima para baixo: ver · a lista e os verbos dela · «Playback» ·
     // a animação escolhida · «Who Picks» · «Advanced» (nasce FECHADO). A folha e o corte vivem acima,
     // sob o seletor «Use» (plano 15).
-    cur_y = super::anim_card::paint_preview(scene, x, w, cur_y, info);
+    let tela = (theme, store.clock_ns());
+    cur_y = super::anim_card::paint_preview(scene, hit_index, tela, (x, w, cur_y), info);
     cur_y = super::anim_card::paint_list(
         scene,
         text_system,

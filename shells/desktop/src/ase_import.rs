@@ -35,7 +35,7 @@
 //! editor de timeline futuro), e um valor que se importa e não se vê é o mesmo defeito de sempre.
 
 use ph2d_aseprite::{AseDoc, AseFrame, AseTag};
-use ph2d_ecs::{AnimDirection, AnimationTag, SimWorld, SpriteAnimations, SpriteAnimator};
+use ph2d_ecs::{AnimationTag, SimWorld, SpriteAnimations, SpriteAnimator, tag_do_aseprite};
 use ph2d_i18n::tr_with;
 use ph2d_render::SpriteRenderer;
 use std::path::Path;
@@ -120,61 +120,41 @@ pub(crate) fn pack(frames: &[AseFrame], fw: u16, fh: u16, cols: u32, rows: u32) 
     out
 }
 
-/// **Uma tag do Aseprite vira uma da §11.** Devolve também a linha a dizer ao artista quando a
-/// conversão perdeu alguma coisa.
-///
-/// ⚠️ **A direcção passa pelo construtor, e não pelo número.** As duas ordens coincidem hoje
-/// (`Forward`/`Reverse`/`PingPong`/`PingPongReverse`), e essa coincidência é do formato — escrever
-/// `direction: unsafe_cast(t.direction)` faria uma reordenação futura de um dos dois lados trocar
-/// animações em silêncio.
+/// **Uma tag do Aseprite vira uma da §11**, pela porta única [`tag_do_aseprite`] (a mesma do
+/// Pixel Sprite, P14). Devolve também a linha a dizer ao artista quando há ritmo por quadro.
 #[must_use]
 pub(crate) fn tag_from_ase(t: &AseTag, frames: &[AseFrame]) -> (AnimationTag, Option<String>) {
-    let uniform = t.uniform_duration_ms(frames);
-    let ms = uniform.unwrap_or_else(|| t.dominant_duration_ms(frames));
-    // ⚠️ **A duração por-QUADRO passa inteira** (§8.12, a recusa que este importador reabriu e que
-    // o modelo passou a saber exprimir). Ela só é preenchida quando o artista de facto variou o
-    // ritmo dentro da tag — uniforme fica vazio, que é o comportamento de sempre e o estado normal.
-    let per_frame_ms = if uniform.is_some() {
-        Vec::new()
-    } else {
-        let lo = usize::from(t.from.min(t.to));
-        let hi = usize::from(t.from.max(t.to)).min(frames.len().saturating_sub(1));
-        frames
-            .get(lo..=hi)
-            .map(|s| s.iter().map(|f| u32::from(f.duration_ms).max(1)).collect())
-            .unwrap_or_default()
-    };
-    // ⚠️ A nota deixou de dizer «foi aproximado» e passa a dizer **o que entrou** — o artista tem
-    // de saber que aquela tag tem ritmo próprio, porque nenhum campo do Inspector o edita ainda
-    // (a §8.8 põe essa edição no editor de timeline futuro, e não aqui).
-    let note = (!per_frame_ms.is_empty()).then(|| {
+    let duracoes = duracoes_ms(frames);
+    let tag = tag_do_aseprite(
+        &t.name,
+        u32::from(t.from),
+        u32::from(t.to),
+        t.direction,
+        t.repeat,
+        &duracoes,
+    );
+    // ⚠️ A nota diz **o que entrou**: nenhum campo do Inspector edita o ritmo por quadro ainda.
+    let per = &tag.per_frame_ms;
+    let note = (!per.is_empty()).then(|| {
         tr_with(
             "shell.ase_import.has_per_frame_timing",
             &[
                 ("t", &(t.name)),
-                ("per_frame_ms", &(per_frame_ms.len())),
-                (
-                    "into",
-                    &(per_frame_ms.iter().copied().min().unwrap_or(ms.into())),
-                ),
+                ("per_frame_ms", &(per.len())),
+                ("into", &(per.iter().copied().min().unwrap_or(tag.frame_ms))),
                 (
                     "into2",
-                    &(per_frame_ms.iter().copied().max().unwrap_or(ms.into())),
+                    &(per.iter().copied().max().unwrap_or(tag.frame_ms)),
                 ),
             ],
         )
     });
-    (
-        AnimationTag {
-            frame_ms: u32::from(ms).max(1),
-            direction: AnimDirection::from_tag(t.direction),
-            // Aseprite: `0` = para sempre. A §11 diz o mesmo com `None`.
-            repeat: (t.repeat > 0).then(|| u32::from(t.repeat)),
-            per_frame_ms,
-            ..AnimationTag::new(t.name.clone(), u32::from(t.from), u32::from(t.to))
-        },
-        note,
-    )
+    (tag, note)
+}
+
+/// A duração de cada quadro do ficheiro, no idioma da porta.
+fn duracoes_ms(frames: &[AseFrame]) -> Vec<u32> {
+    frames.iter().map(|f| u32::from(f.duration_ms)).collect()
 }
 
 /// **A biblioteca inteira**, com as notas que a conversão produziu.
@@ -188,13 +168,14 @@ pub(crate) fn library(doc: &AseDoc, stem: &str) -> (SpriteAnimations, Vec<String
     let mut notes = Vec::new();
     let last = doc.frames.len().saturating_sub(1) as u32;
     if doc.tags.is_empty() {
-        let mut all = AnimationTag::new(stem, 0, last);
-        all.frame_ms = doc
-            .frames
-            .first()
-            .map_or(100, |f| u32::from(f.duration_ms))
-            .max(1);
-        let _ = lib.insert(all);
+        let _ = lib.insert(tag_do_aseprite(
+            stem,
+            0,
+            last,
+            0,
+            0,
+            &duracoes_ms(&doc.frames),
+        ));
         notes.push(tr_with(
             "shell.ase_import.the_file_has_no_tags",
             &[("stem", &stem), ("frames", &(doc.frames.len()))],

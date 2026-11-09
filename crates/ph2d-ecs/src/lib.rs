@@ -286,7 +286,8 @@ pub use sorting::{
 pub use sprite_anim::{
     ANIM_COLORS, ANIM_NAME_MAX_BYTES, ANIM_TAGS_MAX, AnimDirection, AnimOutcome, AnimTagError,
     AnimationTag, AnimatorState, FRAME_MS_MAX, FRAME_MS_MIN, SPEED_MAX_Q16, SPEED_ONE_Q16,
-    SpriteAnimations, SpriteAnimator, advance, animator_state, entry_frame, validate_tag_name,
+    SpriteAnimations, SpriteAnimator, advance, animator_state, entry_frame, tag_do_aseprite,
+    validate_tag_name,
 };
 pub use sprite_anim_frames::{
     ANIM_FRAMES_MAX, FrameRef, SpriteAnimCursor, SpriteAnimFrames, TagFrames, advance_frames,

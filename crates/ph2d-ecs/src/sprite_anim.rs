@@ -309,6 +309,53 @@ impl SpriteAnimations {
 
 impl SimComponent for SpriteAnimations {}
 
+/// **A porta ÚNICA: uma tag no idioma do Aseprite vira uma [`AnimationTag`]** — o `.ase` importado
+/// e o Pixel Sprite passam ambos aqui ([P14 §4](../../../docs/PixelArt/P14_plano.md)).
+///
+/// `duracoes_ms` é a duração de CADA quadro do documento inteiro. Uniforme no intervalo ⇒
+/// `frame_ms` dessa duração e `per_frame_ms` vazio; senão `frame_ms` = a dominante (empate ⇒ a
+/// menor; intervalo fora ⇒ 100) e `per_frame_ms` o do intervalo. `repeat 0` ⇒ para sempre.
+/// A direcção passa por [`AnimDirection::from_tag`], nunca por cast.
+#[must_use]
+pub fn tag_do_aseprite(
+    nome: &str,
+    from: u32,
+    to: u32,
+    direcao: u8,
+    repeat: u16,
+    duracoes_ms: &[u32],
+) -> AnimationTag {
+    let lo = from.min(to) as usize;
+    let hi = (from.max(to) as usize).min(duracoes_ms.len().saturating_sub(1));
+    let span = duracoes_ms.get(lo..=hi).unwrap_or(&[]);
+    let uniforme = span
+        .first()
+        .filter(|d| span.iter().all(|g| g == *d))
+        .copied();
+    let ms = uniforme.unwrap_or_else(|| {
+        let mut best = (0_usize, u32::MAX);
+        for d in span {
+            let n = span.iter().filter(|g| *g == d).count();
+            if n > best.0 || (n == best.0 && *d < best.1) {
+                best = (n, *d);
+            }
+        }
+        if best.0 == 0 { 100 } else { best.1 }
+    });
+    let per_frame_ms = if uniforme.is_some() {
+        Vec::new()
+    } else {
+        span.iter().map(|d| (*d).max(1)).collect()
+    };
+    AnimationTag {
+        frame_ms: ms.max(1),
+        direction: AnimDirection::from_tag(direcao),
+        repeat: (repeat > 0).then_some(u32::from(repeat)),
+        per_frame_ms,
+        ..AnimationTag::new(nome, from, to)
+    }
+}
+
 /// **O estado de reprodução.** `SimComponent` — o replay tem de reproduzir o frame avançado.
 #[derive(Component, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct SpriteAnimator {

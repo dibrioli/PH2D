@@ -21,6 +21,7 @@ mod named_anchor_caps;
 mod nesting_sorts_as_a_block;
 mod no_untracked_writes_in_the_sim_crates;
 mod o_arranjo_do_hud;
+mod o_derivado_nao_se_grava;
 mod only_the_door_reads_tags;
 mod rewind_runtime;
 mod sim_present_flow;

@@ -8,6 +8,7 @@
 //! pelo smoke.
 
 use super::*;
+use ph2d_ecs::AnimDirection;
 
 fn frame(ms: u16, w: u16, h: u16, fill: u8) -> AseFrame {
     AseFrame {

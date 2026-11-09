@@ -24,7 +24,7 @@ use std::fs;
 /// rows de ZONA (*o que esta ÁREA faz a outros corpos*) do resto (*o que ESTE corpo é*),
 /// e o gate nasceu VERMELHO nomeando os seis componentes de área — o corte moveu os
 /// escritores para fora da lista. Foi a falha ALTA que a lista existe para produzir.
-const WRITERS: [&str; 15] = [
+const WRITERS: [&str; 16] = [
     "../../crates/ph2d-app-physics/src/physics_apply.rs",
     "../../crates/ph2d-app-physics/src/physics_area.rs",
     // ⚠️ **O nono chegou pelo mesmo caminho do quarto** (W-Surface): o cap de
@@ -85,6 +85,8 @@ const WRITERS: [&str; 15] = [
     // MESMO commit que ela, pela lição da vida (um registo sem secção é um órfão; uma secção sem
     // registo é uma cópia de fábrica que nasce sem o componente).
     "../../crates/ph2d-app-components/src/nav_inspector.rs",
+    // ⭐ A EXCEÇÃO da forma (GEF02 B9): «Collides with» do cartão da forma escreve o `CollisionOverride`.
+    "../../crates/ph2d-app-physics/src/physics_colide.rs",
 ];
 
 #[test]

@@ -41,7 +41,7 @@ fn a_tecla_pergunta_a_posse_antes_de_todo_atalho() {
 fn o_clique_pergunta_a_posse_antes_do_primeiro_ramo_do_editor() {
     // O `on_mouse_input` traduz o winit e entra na porta ÚNICA do clique (`pointer_button`).
     let rato = corpo(
-        "src/input_dispatch/rato.rs",
+        "src/input_dispatch/despacho_rato.rs",
         "pub(crate) fn on_mouse_input(",
     );
     assert!(rato[..em(&rato, "\n    }\n")].contains("self.pointer_button("));

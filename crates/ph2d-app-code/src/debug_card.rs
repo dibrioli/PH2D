@@ -4,7 +4,9 @@
 use crate::commands::{CMD_CONTINUE, CMD_NEXT_LINE};
 use crate::debug::{Ask, DebugCard};
 use crate::doc::CodeDoc;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_title, resolve};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, frame_radius, paint_text, paint_text_title, resolve,
+};
 use ph2d_editor_core::widget::{Button, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -153,7 +155,7 @@ impl CodeDoc {
             fill_rounded_rect(
                 scene,
                 cr,
-                Radius::Full.px().min(bh * 0.5),
+                frame_radius(*theme, Radius::Full.px().min(bh * 0.5)),
                 ink(ColorToken::Bg3),
             );
             paint_text(

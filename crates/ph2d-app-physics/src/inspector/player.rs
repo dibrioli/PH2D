@@ -32,7 +32,7 @@ fn min_float_for(shape: ColliderShape, max_slope_deg: f32) -> Option<f32> {
             radius,
         } => Some(RideConfig::min_float_height(half_height, radius, cos)),
         ColliderShape::Ball { radius } => Some(RideConfig::min_float_height(0.0, radius, cos)),
-        ColliderShape::Cuboid { .. } => None,
+        ColliderShape::Cuboid { .. } | ColliderShape::Outline { .. } => None,
     }
 }
 

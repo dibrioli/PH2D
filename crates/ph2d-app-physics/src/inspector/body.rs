@@ -250,7 +250,8 @@ pub fn build_physics_info(
     // display seeds, and `apply_physics_edit` owns the real conversion.
     let (shape_tag, radius, half_x, half_y, cap_half_height) = match col.shape {
         ColliderShape::Ball { radius } => (0u8, radius, radius, radius, 0.0),
-        ColliderShape::Cuboid { half_x, half_y } => (
+        // O Outline lê-se como a caixa da imagem até o cartão ganhar o tipo (W4).
+        ColliderShape::Cuboid { half_x, half_y } | ColliderShape::Outline { half_x, half_y } => (
             1u8,
             half_x.max(half_y),
             half_x,

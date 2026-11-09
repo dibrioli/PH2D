@@ -415,14 +415,13 @@ pub fn apply_physics_edit(
         | PhysicsFieldEdit::JoinDraw
         | PhysicsFieldEdit::Rig
         | PhysicsFieldEdit::EditShapeOnCanvas => {}
-        // Switching shape PRESERVES the footprint: a box becomes the ball
-        // that fits inside it and back, so the object does not jump size.
+        // Switching shape PRESERVES the footprint (box ↔ the ball inside it): no size jump.
         PhysicsFieldEdit::Shape(0) => {
             let r = match cur.shape {
                 ColliderShape::Ball { radius } => radius,
-                ColliderShape::Cuboid { half_x, half_y } => half_x.min(half_y),
-                // The cap already IS a ball of this radius.
-                ColliderShape::Capsule { radius, .. } => radius,
+                ColliderShape::Cuboid { half_x, half_y }
+                | ColliderShape::Outline { half_x, half_y } => half_x.min(half_y),
+                ColliderShape::Capsule { radius, .. } => radius, // the cap IS this ball
             };
             next.shape = ColliderShape::Ball {
                 radius: r.max(1e-3),
@@ -431,9 +430,9 @@ pub fn apply_physics_edit(
         PhysicsFieldEdit::Shape(1) => {
             let (hx, hy) = match cur.shape {
                 ColliderShape::Ball { radius } => (radius, radius),
-                ColliderShape::Cuboid { half_x, half_y } => (half_x, half_y),
-                // The box that covers the capsule's silhouette: as wide as the
-                // caps, as tall as the TOTAL half-extent.
+                ColliderShape::Cuboid { half_x, half_y }
+                | ColliderShape::Outline { half_x, half_y } => (half_x, half_y),
+                // The box covering the capsule: caps wide, TOTAL half-extent tall.
                 ColliderShape::Capsule {
                     half_height,
                     radius,
@@ -446,13 +445,12 @@ pub fn apply_physics_edit(
         }
         PhysicsFieldEdit::Shape(2) => {
             let (half_height, radius) = match cur.shape {
-                // A zero-segment capsule is exactly that ball, so the silhouette
-                // does not move at all on the switch.
+                // A zero-segment capsule is exactly that ball: the silhouette stays.
                 ColliderShape::Ball { radius } => (0.0, radius),
-                // Radius from the SMALLER half-extent so the capsule never grows
-                // wider than the box, and the segment takes up the rest — total
-                // half-extent lands back on `half_y` exactly.
-                ColliderShape::Cuboid { half_x, half_y } => {
+                // Radius from the SMALLER half-extent (never wider than the box), the segment
+                // takes the rest: the total half-extent lands back on `half_y` exactly.
+                ColliderShape::Cuboid { half_x, half_y }
+                | ColliderShape::Outline { half_x, half_y } => {
                     let r = half_x.min(half_y);
                     ((half_y - r).max(0.0), r)
                 }
@@ -466,10 +464,8 @@ pub fn apply_physics_edit(
                 radius: radius.max(1e-3),
             };
         }
-        // A tag no shape claims is DROPPED rather than folded onto a plausible
-        // neighbour — the same discipline `Kind` follows. With two shapes the
-        // old catch-all was merely redundant; with three it would be a chip that
-        // quietly selects a different shape.
+        // A tag no shape claims is DROPPED, never folded onto a plausible neighbour (as `Kind`):
+        // a catch-all would be a chip that quietly selects a different shape.
         PhysicsFieldEdit::Shape(_) => {}
         // ⚠️ Radius must not FORCE a ball: a capsule's cap radius is the same
         // quantity under the same name, so on a capsule this edits the caps and
@@ -511,12 +507,15 @@ pub fn apply_physics_edit(
                 };
             }
         }
-        // Collider offset — a signed position, so no clamp (either direction is
-        // legal). Writes the ONE axis the edit names; the other is left as it was.
+        // Collider offset — a signed position, no clamp; writes the ONE axis the edit names.
         PhysicsFieldEdit::ShapeDrag { medidas, offset } => {
             next.offset = offset;
             next.shape = match cur.shape {
                 ColliderShape::Cuboid { .. } => ColliderShape::Cuboid {
+                    half_x: medidas[0],
+                    half_y: medidas[1],
+                },
+                ColliderShape::Outline { .. } => ColliderShape::Outline {
                     half_x: medidas[0],
                     half_y: medidas[1],
                 },

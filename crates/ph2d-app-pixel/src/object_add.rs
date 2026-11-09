@@ -159,8 +159,8 @@ fn spawn_doc(
 }
 
 /// P14e-2: as slices que o `.ase` aberto marcava `ph2d.collider` ganham a filha que as segue, no
-/// MESMO quadro do nascimento (um passo do desfazer do mundo). A régua de partida é a de omissão: o
-/// `deriva_formas` reescreve a forma com a do projecto no quadro seguinte.
+/// MESMO quadro do nascimento (um passo do desfazer do mundo), na régua do projecto (`m_por_px`, que o
+/// `deriva` escreve).
 fn nasce_colliders(
     sim: &mut SimWorld,
     app: &PixelApp,
@@ -171,7 +171,7 @@ fn nasce_colliders(
     let (Some(e), Some(d)) = (ph2d_ecs::Entity::try_from_bits(bits), app.docs.get(&key)) else {
         return;
     };
-    let m_por_px = 1.0 / f64::from(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER);
+    let m_por_px = app.m_por_px.get();
     for &id in colliders {
         let id = ph2d_pixel_core::SliceId(id);
         if ph2d_pixel_cena::collider_da_slice(sim.world(), e, id).is_none() {

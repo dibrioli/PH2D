@@ -202,6 +202,9 @@ pub struct PixelApp {
     /// quadro); a gravação marca-as `ph2d.collider` numa cópia, o documento nunca.
     pub(crate) colliders_no_mundo:
         std::cell::RefCell<BTreeMap<u32, std::collections::BTreeSet<u32>>>,
+    /// Os metros por píxel do projecto (o `deriva` escreve-os a cada quadro): a régua das filhas que
+    /// nascem com o Open de um `.ase` com collider.
+    pub(crate) m_por_px: std::cell::Cell<f64>,
     /// O gesto de selecção em curso (marquee, laços).
     pub(crate) laco: Option<crate::selecao::Laco>,
     /// Os atalhos: a fábrica com o delta de `~/.ph2d/pixel-keys.txt` (P12a).
@@ -302,6 +305,9 @@ impl Default for PixelApp {
             tiles: Default::default(),
             slices: Default::default(),
             colliders_no_mundo: Default::default(),
+            m_por_px: std::cell::Cell::new(
+                1.0 / f64::from(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER),
+            ),
             laco: None,
             solta: None,
             largada: None,

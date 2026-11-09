@@ -78,6 +78,7 @@ pub fn deriva(
         h.project.pixels_per_meter
     });
     let m_por_px = 1.0 / f64::from(ppm.max(f32::MIN_POSITIVE));
+    app.m_por_px.set(m_por_px);
     ph2d_pixel_cena::deriva_formas(
         world,
         |k| app.docs.get(&k).map(|d| (&d.sprite, d.frame)),

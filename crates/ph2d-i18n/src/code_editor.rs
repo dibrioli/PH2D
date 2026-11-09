@@ -186,6 +186,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.debug.live_state" => "Live",
         "code.debug.call" => "{function}()",
         "code.debug.place" => "line {line} \u{00b7} {function}",
+        "code.debug.line_word" => "line",
+        "code.debug.sep" => "\u{00b7}",
         "code.debug.fields" => "{count} {count?field|fields}",
         "code.debug.group.locals" => "Locals",
         "code.debug.group.self" => "self",
@@ -199,7 +201,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.debug.type_changed" => "{type} \u{00b7} changed",
         "code.debug.waiting_here" => "Waiting here \u{00b7} {count}",
         "code.debug.stack_line" => "ln {line}",
-        "code.debug.foot" => "Click a call to go to its line \u{00b7} Changed since the last step: amber",
+        "code.debug.foot" => {
+            "Click a call to go to its line \u{00b7} Changed since the last step: amber"
+        }
         "code.debug.no_vars" => "No variables here",
         "code.debug.waiting_names" => "+ {names}",
         "code.debug.local_name" => "{name} \u{00b7} local",

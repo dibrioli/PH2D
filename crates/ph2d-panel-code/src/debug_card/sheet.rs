@@ -15,7 +15,8 @@ use ph2d_vector::VectorScene;
 /// A parte da largura que a coluna do lado (Call stack, Waiting here) pode tomar.
 const SIDE_SHARE: f32 = 0.4; // LITERAL-PX-OK: fração da largura do quadro, não píxeis
 
-/// Um texto pequeno numa linha `rh` a começar em `(x, y)`.
+/// Um texto numa linha `rh` a começar em `(x, y)`: `Text1`/`Text2` no corpo, o resto (títulos,
+/// notas, `ln N`) um degrau abaixo, como a maquete 14.
 #[allow(clippy::too_many_arguments)]
 fn line(
     ts: &mut TextSystem,
@@ -25,7 +26,10 @@ fn line(
     tone: ColorToken,
     theme: Theme,
 ) {
-    let font = TypeToken::Sm.px();
+    let font = match tone {
+        ColorToken::Text1 | ColorToken::Text2 => TypeToken::Sm.px(),
+        _ => TypeToken::Xs.px(),
+    };
     let rh = ph2d_tokens::row_pitch_px();
     paint_text(
         ts,
@@ -63,9 +67,9 @@ pub(super) fn paint(
     let natural = natural_widths(&cols, &rows, &m, ts, &mut text);
     reveal_changed(st, c, &rows, table_r.h - m.header_h, &m);
     let lay = ph2d_ui_table::layout(&cols, &rows, &natural, &mut st.table, table_r, &m);
-    let base = crate::cards::card_tone();
+    let tones = (crate::cards::card_tone(), crate::cards::ground_tone());
     ph2d_ui_table::paint(
-        &lay, &cols, &rows, &st.table, base, scene, ts, &mut text, theme,
+        &lay, &cols, &rows, &st.table, tones, scene, ts, &mut text, theme,
     );
     if rows.is_empty() {
         let at = (table_r.x + pad * 2.0, lay.body.y, table_r.w);
@@ -137,7 +141,6 @@ fn side(
 ) {
     let rh = ph2d_tokens::row_pitch_px();
     let pad = Spacing::Sm.px();
-    let font = TypeToken::Sm.px();
     let x = r.x + super::inset();
     let w = (r.w - super::inset() - pad).max(0.0);
     let mut y = r.y + pad;
@@ -162,7 +165,7 @@ fn side(
             s.function.clone()
         };
         let ln = tr_with("code.debug.stack_line", &[("line", &s.line)]);
-        let lw = ts.layout(&ln, font, f32::INFINITY).width();
+        let lw = ts.layout(&ln, TypeToken::Xs.px(), f32::INFINITY).width();
         line(
             ts,
             scene,
@@ -175,7 +178,7 @@ fn side(
             ts,
             scene,
             &ln,
-            (x + w - lw - pad, y, lw + pad),
+            (x + w - lw, y, lw + pad),
             ColorToken::Text3,
             theme,
         );
@@ -190,7 +193,8 @@ fn side(
     line(ts, scene, &title, (x, y, w), ColorToken::Text3, theme);
     y += rh;
     for who in &c.waiting {
-        super::head::who_plain(who, Rect::new(x, y, w, rh), scene, ts, theme);
+        let at = Rect::new(x, y, w, rh);
+        super::head::who_plain(who, at, ColorToken::Text2, scene, ts, theme);
         y += rh;
     }
 }

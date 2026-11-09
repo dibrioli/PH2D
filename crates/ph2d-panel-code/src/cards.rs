@@ -35,6 +35,12 @@ fn tones() -> (ColorToken, ColorToken) {
     }
 }
 
+/// O tom do chão debaixo dos cartões (o degrau abaixo do cartão: cabeçalhos e caixas fundas).
+#[must_use]
+pub fn ground_tone() -> ColorToken {
+    tones().0
+}
+
 /// O tom de um cartão (a base da listra de uma tabela dentro dele).
 #[must_use]
 pub fn card_tone() -> ColorToken {

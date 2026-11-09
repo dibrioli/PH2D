@@ -8,6 +8,7 @@ use crate::view::CodeView;
 use ph2d_code_debugcard::{DebugCard, VarGroup, VarRow, shown_value, value_ink};
 use ph2d_editor_core::paint::{
     fill_rounded_rect, frame_radius, paint_text, paint_text_title, resolve, stroke_rounded_rect,
+    token_to_vello,
 };
 use ph2d_editor_core::widget::scroll_area::OwnBar;
 use ph2d_editor_core::widget::{ScrollbarState, paint_scrollbar, scrollbar_track_rect};
@@ -32,12 +33,13 @@ fn card_head(
 ) -> f32 {
     let rh = ph2d_tokens::row_pitch_px();
     let pad = Spacing::Sm.px();
-    let font = TypeToken::Sm.px();
-    let radius = frame_radius(theme, Radius::Sm.px());
-    fill_rounded_rect(scene, card, radius, resolve(ColorToken::Bg2, theme));
+    let font = TypeToken::Xs.px();
+    let radius = frame_radius(theme, Radius::Md.px());
+    let ground = resolve(crate::cards::ground_tone(), theme);
+    fill_rounded_rect(scene, card, radius, ground);
     let ty = card.y + (rh - font) * 0.5;
     let tw = ts.layout(count, font, f32::INFINITY).width();
-    let ink = resolve(ColorToken::Text1, theme);
+    let ink = resolve(ColorToken::Text2, theme);
     paint_text_title(ts, scene, title, card.x + pad, ty, font, card.w, ink);
     let cx = card.x + card.w - pad - tw;
     paint_text(
@@ -86,11 +88,14 @@ fn field_row(
         (card.w - name_w - super::inset() - pad).max(0.0),
         rh - gap,
     );
-    fill_rounded_rect(scene, field, radius, resolve(ColorToken::Bg1, theme));
-    if v.old.is_some() {
-        let warn = resolve(ColorToken::Warn, theme);
-        stroke_rounded_rect(scene, field, radius, StrokeToken::Thin.px(), warn);
-    }
+    let fill = resolve(crate::cards::card_tone(), theme);
+    fill_rounded_rect(scene, field, radius, fill);
+    let edge = if v.old.is_some() {
+        token_to_vello(ph2d_tokens::changed_ink(theme))
+    } else {
+        resolve(ColorToken::Border, theme)
+    };
+    stroke_rounded_rect(scene, field, radius, StrokeToken::Thin.px(), edge);
     let text = shown_value(v);
     let right = field.x + field.w - pad;
     let mut cells = CodeCells { view, theme };
@@ -261,13 +266,13 @@ pub(super) fn paint_strip(
             fill_rounded_rect(scene, hair, 0.0, ink(ColorToken::Border));
         }
         let tone = if v.old.is_some() {
-            ColorToken::Warn
+            token_to_vello(ph2d_tokens::changed_ink(theme))
         } else {
-            ColorToken::Text3
+            ink(ColorToken::Text3)
         };
         let kx = x + pad * 2.0;
         let room = (cell.w - super::inset() - pad).max(0.0);
-        paint_text(ts, scene, &key, kx, body.y + pad, small, room, ink(tone));
+        paint_text(ts, scene, &key, kx, body.y + pad, small, room, tone);
         let right = cell.x + cell.w - pad;
         let mut text = CodeCells { view, theme };
         let row = (body.y + pad + small, rh);

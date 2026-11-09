@@ -49,6 +49,7 @@
 
 mod alias_walk;
 mod camadas_de_colisao;
+mod changed;
 pub mod chrome;
 pub mod color;
 mod color_alias;
@@ -97,6 +98,7 @@ pub(crate) mod generated {
 }
 
 pub use camadas_de_colisao::LAYER_OUTLINE_OFF_ALPHA;
+pub use changed::{changed_band, changed_ink, value_ink};
 pub use chrome::{
     CHECKBOX_BOX_PX, DIVIDER_GAP_PX, DRAG_GHOST_ALPHA, DRAG_GHOST_SCALE, EDGE_PAD_PX,
     HERO_VIEWPORT_H_PX, HERO_VIEWPORT_W_PX, HIERARCHY_W_PX, HUD_BOTTOM_PAD_PX, HUD_H_PX,

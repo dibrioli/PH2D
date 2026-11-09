@@ -17,7 +17,9 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing};
 
-pub use paint::{CellText, UiText, changed_tint, paint, paint_spark, spark_points};
+pub use paint::{
+    CellText, UiText, changed_tint, ink_color, paint, paint_spark, spark_points, ui_font,
+};
 
 /// Onde o texto encosta na célula (os números à direita, para os dígitos se compararem).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

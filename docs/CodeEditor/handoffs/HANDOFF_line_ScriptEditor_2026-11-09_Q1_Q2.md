@@ -154,3 +154,33 @@ O dono (smoke 09/11): «não consigo arrastar o novo scroll com o mouse». As tr
   panel_wiring_parity` verdes.
 - **Fotos** `ferramentas/smoke/cena14/passo_1|4.png` refeitas (a barra da Sheet é agora a da casa). O arrasto não se
   fotografa (a tela virtual ignora eventos sintéticos): prova-se pelo teste de costura.
+
+## 8. Acabamento ao nível da maquete (09/11)
+
+O dono: «a referência ficou mais bela que o nosso app». Três rodadas foto × maquete (Firefox headless a 1×,
+`ferramentas/smoke/cena14/maquete_lado_a_lado.png`: A/B/C da maquete à esquerda, Sheet/Cards/Strip à direita).
+
+- **Âmbar** — o `warn` do tema `dark` é o `warning` do Godot `(0,83 0,78 0,62)` = `212,199,158` (caqui; a 0,35 sobre
+  o cartão dava `99,100,96`, cinzento). Novo `ph2d_tokens::changed` (`changed_ink`, `changed_band`): **matiz e croma
+  do âmbar canónico do `tokens.json` (fábrica `forge`: `warn` 0,795/0,125/80, `warn-soft` 0,310/0,036/80) à
+  luminosidade do tema activo** — no `forge` é a identidade; no `dark` dá `≈242,190,98` (maquete `#e6b04c`) e a
+  banda opaca `≈ forge warn-soft` (maquete `#3d3422`). `ph2d_ui_table::changed_tint` passou a ser a banda opaca.
+  Usado: ■ Paused, valor novo, borda da caixa nos Cards, rótulo e célula da Strip.
+- **Números** — `ph2d_tokens::value_ink`: luminosidade e croma do `info` do tema no **matiz do acento** → `168,208,253`
+  no `dark` (maquete `#9fd0ff`). `Ink::Number` deixa o laranja do realce do código (`table_text::code_ink` → `None`,
+  pintado por `ph2d_ui_table::ink_color`). Texto continua verde do realce, booleano/nil a constante.
+- **Faixa** — ■ de quina 2 px; «line» e «·» em `Text2`, número e função em título (`code.debug.line_word`, `code.debug.sep`);
+  pílula mais baixa; chip em `Xs`; **a tecla DENTRO do botão** (Continue cheio no acento, tecla `AccentFg`; Next line
+  `Bg3` + moldura `Border`, tecla `Text3` `Xs`) — pintura própria em `head::buttons` (deixa o `paint_button`).
+- **Tabela** (`ph2d-ui-table::paint`, assinatura `(base, head)`): cabeçalho e linhas de grupo no tom do chão
+  (`cards::ground_tone`, novo), títulos do cabeçalho `Xs` `Text3`, grupos «▾ Locals · 1» em `Xs` (título `Text2`,
+  contagem `Text3`), fio por baixo de cada linha, coluna Type (`Ink::Muted`) em `Xs` centrada pela altura real
+  (`ui_font`). Coluna lateral: títulos e `ln N` em `Xs`, Waiting em `Text2`; pé em `Xs`.
+- **Cards** — cada cartão no tom do chão (`Radius::Md`), título `Xs` `Text2`, contagem `Text3`; caixa de valor no tom
+  do cartão com moldura `Border` (âmbar quando mudou).
+- `ph2d-app-code`: zero linhas.
+
+**Diferenças que ficam:** o peso do texto (o `paint_text` é MEDIUM com o reforço de nitidez da casa; a maquete é 400 —
+mexer é lei do `ph2d-editor-core`, para todo o app); o raio da pílula é o `frame_radius` do tema (quinas quase rectas
+no `dark`); a Type diz `number` onde a maquete escreveu `object · Circle` (§3); o chão dos Cards é mais escuro que o
+`--a-head` da maquete (é o chão real dos cartões da casa).

@@ -5,7 +5,7 @@ use crate::{Align, Column, Ink, Layout, Row, TableState};
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, paint_icon, paint_text, paint_text_title, rect_to_vello,
-    resolve, stroke_polyline,
+    resolve, stroke_polyline, token_to_vello,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -43,12 +43,33 @@ impl UiText {
             Ink::Plain | Ink::Function => ColorToken::Text1,
             Ink::Muted | Ink::Nil => ColorToken::Text3,
             Ink::Name | Ink::Table => ColorToken::Text2,
-            Ink::Number | Ink::Accent => ColorToken::Accent,
+            Ink::Number => ColorToken::Info,
+            Ink::Accent => ColorToken::Accent,
             Ink::Text => ColorToken::Success,
             Ink::Boolean => ColorToken::Info,
             Ink::Changed | Ink::Warn => ColorToken::Warn,
             Ink::Danger => ColorToken::Danger,
         }
+    }
+}
+
+/// A tinta de um tom: o «mudou» é o âmbar canónico ([`ph2d_tokens::changed_ink`]); o resto, o
+/// token de [`UiText::token`].
+#[must_use]
+pub fn ink_color(ink: Ink, theme: Theme) -> ph2d_vector::Color {
+    match ink {
+        Ink::Changed => token_to_vello(ph2d_tokens::changed_ink(theme)),
+        Ink::Number => token_to_vello(ph2d_tokens::value_ink(theme)),
+        _ => resolve(UiText::token(ink), theme),
+    }
+}
+
+/// O corpo do texto da interface numa célula: o secundário (tipo, notas) desce um degrau.
+#[must_use]
+pub fn ui_font(ink: Ink) -> f32 {
+    match ink {
+        Ink::Muted | Ink::Nil => TypeToken::Xs.px(),
+        _ => TypeToken::Sm.px(),
     }
 }
 
@@ -68,28 +89,31 @@ impl CellText for UiText {
         (y, h): (f32, f32),
         right: f32,
     ) {
-        let font = TypeToken::Sm.px();
+        let font = ui_font(ink);
+        // Centrado pela caixa que o texto OCUPA (a linha da letra), como a mono ao lado.
+        let th = ts.layout(text, font, f32::INFINITY).height();
         paint_text(
             ts,
             scene,
             text,
             x,
-            y + (h - font) * 0.5,
+            y + (h - th) * 0.5,
             font,
             (right - x).max(0.0),
-            resolve(Self::token(ink), self.theme),
+            ink_color(ink, self.theme),
         );
     }
 }
 
-/// ⭐ Pinta a tabela. `base` = o tom da superfície por baixo (a listra move-o de leve).
+/// ⭐ Pinta a tabela. `base` = o tom da superfície por baixo (a listra move-o de leve); `head` = o
+/// tom do cabeçalho e das linhas de grupo (um degrau abaixo, como a maquete 14).
 #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 pub fn paint(
     lay: &Layout,
     cols: &[Column],
     rows: &[Row],
     st: &TableState,
-    base: ColorToken,
+    (base, head): (ColorToken, ColorToken),
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     text: &mut dyn CellText,
@@ -98,8 +122,8 @@ pub fn paint(
     let Some(m) = lay.m else { return };
     let ink = |t: ColorToken| resolve(t, theme);
     let hair = StrokeToken::Thin.px();
-    let font = TypeToken::Sm.px();
-    let ty = |y: f32, h: f32| y + (h - font) * 0.5;
+    let small = TypeToken::Xs.px();
+    let ty_small = |y: f32, h: f32| y + (h - small) * 0.5;
 
     // O corpo, recortado.
     scene.push_clip(&rect_to_vello(lay.body));
@@ -108,7 +132,14 @@ pub fn paint(
             continue;
         };
         let r = span.rect;
-        ph2d_editor_core::widget::paint_row_stripe(scene, r, theme, base, span.order);
+        if row.group.is_some() {
+            fill_rounded_rect(scene, r, 0.0, ink(head));
+        } else {
+            ph2d_editor_core::widget::paint_row_stripe(scene, r, theme, base, span.order);
+        }
+        // O fio de baixo de cada linha (a grelha da maquete: subtil, as colunas mais fortes).
+        let floor = Rect::new(r.x, r.y + r.h - hair, r.w, hair);
+        fill_rounded_rect(scene, floor, 0.0, ink(head));
         if row.changed {
             fill_rounded_rect(scene, r, 0.0, changed_tint(theme));
         } else if st.hover.as_deref() == Some(row.key.as_str()) {
@@ -133,30 +164,30 @@ pub fn paint(
         };
         if let Some(count) = &row.group {
             // Um grupo: ▾ Título · contagem, a linha inteira.
-            let x = first + m.pad + indent;
+            let x = first + m.pad * 0.5 + indent;
             chev(scene, x);
             let tx = x + m.chevron();
             let title = row.cells.first().map_or("", |c| c.text.as_str());
-            let tw = ts.layout(title, font, f32::INFINITY).width();
+            let tw = ts.layout(title, small, f32::INFINITY).width();
             let right = r.x + r.w - m.pad;
             paint_text_title(
                 ts,
                 scene,
                 title,
                 tx,
-                ty(r.y, r.h),
-                font,
+                ty_small(r.y, r.h),
+                small,
                 (right - tx).max(0.0),
-                ink(ColorToken::Text1),
+                ink(ColorToken::Text2),
             );
-            let cx = tx + tw + m.pad;
+            let cx = tx + tw + m.pad * 0.5;
             paint_text(
                 ts,
                 scene,
                 count,
                 cx,
-                ty(r.y, r.h),
-                font,
+                ty_small(r.y, r.h),
+                small,
                 (right - cx).max(0.0),
                 ink(ColorToken::Text3),
             );
@@ -237,10 +268,11 @@ pub fn paint(
     // O cabeçalho.
     let h = lay.header;
     scene.push_clip(&rect_to_vello(h));
+    fill_rounded_rect(scene, h, 0.0, ink(head));
     for c in &lay.cols {
         let col = &cols[c.index];
         let right = c.x + c.w - m.pad;
-        let tw = ts.layout(&col.title, font, f32::INFINITY).width();
+        let tw = ts.layout(&col.title, small, f32::INFINITY).width();
         let x = match col.align {
             Align::Start => c.x + m.pad,
             Align::End => (right - tw).max(c.x + m.pad),
@@ -250,8 +282,8 @@ pub fn paint(
             scene,
             &col.title,
             x,
-            ty(h.y, h.h),
-            font,
+            ty_small(h.y, h.h),
+            small,
             (c.x + c.w - x).max(0.0),
             ink(ColorToken::Text3),
         );
@@ -286,11 +318,11 @@ pub fn paint(
     );
 }
 
-/// O fundo de uma linha que mudou: o âmbar do tema à opacidade do realce de linha (o `WarnSoft`
-/// é uma superfície neutra nalguns temas — medido na foto da cena 14: cinzento).
+/// O fundo de uma linha que mudou: a banda âmbar opaca ([`ph2d_tokens::changed_band`]; o `WarnSoft`
+/// dos temas do Godot é uma superfície neutra — medido na foto da cena 14: cinzento).
 #[must_use]
 pub fn changed_tint(theme: Theme) -> ph2d_vector::Color {
-    resolve(ColorToken::Warn, theme).with_alpha(ph2d_tokens::ROW_SELECTED_ALPHA)
+    token_to_vello(ph2d_tokens::changed_band(theme))
 }
 
 /// O traço de `samples` em `r`: a escala é a do próprio traço (mín → fundo, máx → topo), o último

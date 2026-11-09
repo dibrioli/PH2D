@@ -5,44 +5,44 @@ use super::{ButtonIds, DebugCardView};
 use ph2d_code_debugcard::{Ask, CardState, CardStyle, DebugCard, WhoTag};
 use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, frame_radius, paint_text, paint_text_title, resolve,
+    stroke_rounded_rect, token_to_vello,
 };
-use ph2d_editor_core::widget::{Button, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 fn text_w(ts: &mut TextSystem, s: &str) -> f32 {
     ts.layout(s, TypeToken::Sm.px(), f32::INFINITY).width()
 }
 
-/// Os botões à direita; devolve o x onde começam.
+/// Os botões à direita, a tecla DENTRO de cada um (maquete 14): Continue cheio no acento, Next
+/// line neutro com moldura. Devolve o x onde começam.
 fn buttons(
     st: &mut DebugCardView,
     c: &DebugCard,
-    ids: ButtonIds,
     r: Rect,
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     theme: Theme,
 ) -> f32 {
-    let pad = Spacing::Sm.px();
-    let gap = Spacing::Md.px();
+    let pad = Spacing::Md.px();
+    let gap = Spacing::Sm.px();
     let font = TypeToken::Sm.px();
+    let small = TypeToken::Xs.px();
     let bh = r.h - ph2d_tokens::control_gap_px();
+    let ink = |t: ColorToken| resolve(t, theme);
     let mut list = Vec::new();
     if c.stopped() {
         list.push((
             Ask::Continue,
-            ids[0],
             tr("code.debug.continue"),
             tr("code.debug.continue_key"),
         ));
         if c.can_step {
             list.push((
                 Ask::NextLine,
-                ids[1],
                 tr("code.debug.next_line"),
                 tr("code.debug.next_line_key"),
             ));
@@ -50,42 +50,96 @@ fn buttons(
     }
     let sized: Vec<_> = list
         .into_iter()
-        .map(|(ask, id, label, key)| {
-            let bw = text_w(ts, label) + super::inset() * 2.0;
-            let kw = text_w(ts, key) + Spacing::Xs.px();
-            (ask, id, label, key, bw, kw)
+        .map(|(ask, label, key)| {
+            let lw = text_w(ts, label);
+            let kw = ts.layout(key, small, f32::INFINITY).width();
+            (ask, label, key, lw, kw, lw + kw + gap + pad * 2.0)
         })
         .collect();
-    let total: f32 = sized.iter().map(|b| b.4 + pad + b.5 + gap).sum();
+    let total: f32 = sized.iter().map(|b| b.5 + gap).sum();
     let start = (r.x + r.w - total + gap).max(r.x);
     let mut bx = start;
-    for (i, (ask, id, label, key, bw, kw)) in sized.into_iter().enumerate() {
+    let radius = frame_radius(theme, Radius::Sm.px());
+    for (i, (ask, label, key, lw, kw, bw)) in sized.into_iter().enumerate() {
         let br = Rect::new(bx, r.y + (r.h - bh) * 0.5, bw, bh);
-        let b = Button::new(id, label);
-        let b = if i == 0 { b.accent() } else { b };
-        paint_button(&b, br, scene, ts, theme);
+        let (fill, fg, key_ink) = if i == 0 {
+            (
+                ColorToken::Accent,
+                ColorToken::AccentFg,
+                ColorToken::AccentFg,
+            )
+        } else {
+            (ColorToken::Bg3, ColorToken::Text1, ColorToken::Text3)
+        };
+        fill_rounded_rect(scene, br, radius, ink(fill));
+        if i > 0 {
+            let line = StrokeToken::Thin.px();
+            stroke_rounded_rect(scene, br, radius, line, ink(ColorToken::Border));
+        }
+        let ty = br.y + (br.h - font) * 0.5;
+        paint_text(ts, scene, label, br.x + pad, ty, font, lw + gap, ink(fg));
+        let kx = br.x + pad + lw + gap;
+        let ky = br.y + (br.h - small) * 0.5;
+        paint_text(ts, scene, key, kx, ky, small, kw + gap, ink(key_ink));
         st.painted.buttons.push((ask, br));
-        bx += bw + pad;
-        paint_text(
-            ts,
-            scene,
-            key,
-            bx,
-            r.y + (r.h - font) * 0.5,
-            font,
-            kw,
-            resolve(ColorToken::Text3, theme),
-        );
-        bx += kw + gap;
+        bx += bw + gap;
     }
     start
+}
+
+/// `line 14 · update()`: a palavra e o ponto apagados, o número e a função em destaque.
+fn place(
+    c: &DebugCard,
+    x: f32,
+    ty: f32,
+    limit: f32,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+) -> f32 {
+    let font = TypeToken::Sm.px();
+    let space = Spacing::Xs.px();
+    let f = if c.function.is_empty() {
+        tr("code.debug.top_level").to_owned()
+    } else {
+        tr_with("code.debug.call", &[("function", &c.function)])
+    };
+    let parts = [
+        (tr("code.debug.line_word").to_owned(), false),
+        (c.line.to_string(), true),
+        (tr("code.debug.sep").to_owned(), false),
+        (f, true),
+    ];
+    let mut x = x;
+    for (s, strong) in parts {
+        let room = (limit - x).max(0.0);
+        if strong {
+            let tone = resolve(ColorToken::Text1, theme);
+            paint_text_title(ts, scene, &s, x, ty, font, room, tone);
+            x += ts.layout(&s, font, f32::INFINITY).width();
+        } else {
+            paint_text(
+                ts,
+                scene,
+                &s,
+                x,
+                ty,
+                font,
+                room,
+                resolve(ColorToken::Text2, theme),
+            );
+            x += text_w(ts, &s);
+        }
+        x += space;
+    }
+    x
 }
 
 /// ⭐ A faixa de cima em `r`.
 pub(super) fn paint(
     st: &mut DebugCardView,
     c: &DebugCard,
-    ids: ButtonIds,
+    _ids: ButtonIds,
     r: Rect,
     scene: &mut VectorScene,
     ts: &mut TextSystem,
@@ -97,39 +151,29 @@ pub(super) fn paint(
     let ink = |t: ColorToken| resolve(t, theme);
     let ty = r.y + (r.h - font) * 0.5;
     let bh = r.h - ph2d_tokens::control_gap_px();
-    let limit = (buttons(st, c, ids, r, scene, ts, theme) - gap).max(r.x);
+    let limit = (buttons(st, c, r, scene, ts, theme) - gap).max(r.x);
     let (word, tone) = match c.state {
-        CardState::Paused => (tr("code.debug.paused"), ColorToken::Warn),
-        CardState::Error => (tr("code.debug.error"), ColorToken::Danger),
-        CardState::Live => (tr("code.debug.live_state"), ColorToken::Success),
+        CardState::Paused => (
+            tr("code.debug.paused"),
+            token_to_vello(ph2d_tokens::changed_ink(theme)),
+        ),
+        CardState::Error => (tr("code.debug.error"), ink(ColorToken::Danger)),
+        CardState::Live => (tr("code.debug.live_state"), ink(ColorToken::Success)),
     };
     let sq = font * super::MARK_SHARE;
     let mut x = r.x;
     fill_rounded_rect(
         scene,
         Rect::new(x, r.y + (r.h - sq) * 0.5, sq, sq),
-        frame_radius(theme, Radius::Xs.px()),
-        ink(tone),
+        StrokeToken::Thick.px(),
+        tone,
     );
     x += sq + Spacing::Xs.px() * 2.0;
     let ww = text_w(ts, word);
-    paint_text_title(
-        ts,
-        scene,
-        word,
-        x,
-        ty,
-        font,
-        (limit - x).max(0.0),
-        ink(tone),
-    );
+    paint_text_title(ts, scene, word, x, ty, font, (limit - x).max(0.0), tone);
     x += ww + gap;
     if c.stopped() {
-        let place = c.place();
-        let pw = text_w(ts, &place);
-        let room = (limit - x).max(0.0);
-        paint_text(ts, scene, &place, x, ty, font, room, ink(ColorToken::Text2));
-        x += pw + gap;
+        x = place(c, x, ty, limit, scene, ts, theme) + pad;
     }
     x = who_pill(&c.who, x, r, limit, scene, ts, theme) + gap;
     // Quem espera: um chip nos Cards e na Strip (a Sheet lista-os ao lado).
@@ -144,7 +188,9 @@ pub(super) fn paint(
     if let Some(chip) = chip
         && x < limit
     {
-        let cw = (text_w(ts, &chip) + pad * 2.0).min(limit - x);
+        let small = TypeToken::Xs.px();
+        let chip_w = ts.layout(&chip, small, f32::INFINITY).width();
+        let cw = (chip_w + pad * 2.0).min(limit - x);
         let cr = Rect::new(x, r.y + (r.h - bh) * 0.5, cw, bh);
         fill_rounded_rect(
             scene,
@@ -153,16 +199,9 @@ pub(super) fn paint(
             ink(ColorToken::Bg3),
         );
         let room = (cr.w - pad).max(0.0);
-        paint_text(
-            ts,
-            scene,
-            &chip,
-            cr.x + pad,
-            ty,
-            font,
-            room,
-            ink(ColorToken::Text2),
-        );
+        let cy = r.y + (r.h - small) * 0.5;
+        let tone = ink(ColorToken::Text2);
+        paint_text(ts, scene, &chip, cr.x + pad, cy, small, room, tone);
     }
 }
 
@@ -180,7 +219,7 @@ fn who_pill(
         return x;
     }
     let pad = Spacing::Sm.px();
-    let bh = r.h - ph2d_tokens::control_gap_px();
+    let bh = r.h - ph2d_tokens::control_gap_px() * 2.0;
     let dot = TypeToken::Sm.px() * 0.5;
     let pw = (dot + super::inset() + pad + text_w(ts, &who.name)).min(limit - x);
     let pill = Rect::new(x, r.y + (r.h - bh) * 0.5, pw, bh);
@@ -191,7 +230,7 @@ fn who_pill(
         resolve(ColorToken::Bg3, theme),
     );
     let inner = Rect::new(x + pad, r.y, (pw - pad).max(0.0), r.h);
-    who_plain(who, inner, scene, ts, theme);
+    who_plain(who, inner, ColorToken::Text1, scene, ts, theme);
     x + pw
 }
 
@@ -199,6 +238,7 @@ fn who_pill(
 pub(super) fn who_plain(
     who: &WhoTag,
     r: Rect,
+    ink: ColorToken,
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     theme: Theme,
@@ -216,6 +256,6 @@ pub(super) fn who_plain(
         r.y + (r.h - font) * 0.5,
         font,
         (r.x + r.w - tx).max(0.0),
-        resolve(ColorToken::Text1, theme),
+        resolve(ink, theme),
     );
 }

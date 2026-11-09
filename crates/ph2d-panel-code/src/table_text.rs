@@ -5,7 +5,6 @@
 use crate::palette::Palette;
 use crate::style::Ink as CodeInk;
 use crate::view::CodeView;
-use ph2d_editor_core::paint::resolve;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_ui_table::{CellText, Ink, UiText};
@@ -23,12 +22,12 @@ fn code_ink(ink: Ink) -> Option<CodeInk> {
         Ink::Plain => CodeInk::Plain,
         Ink::Muted => CodeInk::Comment,
         Ink::Name => CodeInk::Hint,
-        Ink::Number => CodeInk::Number,
         Ink::Text => CodeInk::String,
         Ink::Boolean | Ink::Nil => CodeInk::Constant,
         Ink::Table => CodeInk::Type,
         Ink::Function => CodeInk::Function,
-        Ink::Changed | Ink::Warn | Ink::Danger | Ink::Accent => return None,
+        // O número no azul frio da maquete 14 (o `Info`), não no laranja do realce.
+        Ink::Number | Ink::Changed | Ink::Warn | Ink::Danger | Ink::Accent => return None,
     })
 }
 
@@ -58,7 +57,7 @@ impl CellText for CodeCells<'_> {
         }
         let mut pal = Palette::new(self.theme);
         let code = code_ink(ink).unwrap_or_else(|| {
-            pal.tint(CodeInk::Plain, resolve(UiText::token(ink), self.theme));
+            pal.tint(CodeInk::Plain, ph2d_ui_table::ink_color(ink, self.theme));
             CodeInk::Plain
         });
         let row_y = y + (h - self.view.metrics().line_h) * 0.5;

@@ -112,7 +112,10 @@ fn fora_do_formato(texto: &str) -> Option<String> {
     let t = texto.replace("\\u{00b0}", "°");
     let t = t.trim_end();
     let palavras: Vec<&str> = t.split_whitespace().collect();
-    if palavras.len() > 1 {
+    // Um VALOR (`10 seconds`, uma escolha do menu Recovery do Pixel, P12) não é um rótulo: não há
+    // nome nem campo, a unidade aparece uma vez — o formato `Nome (unidade)` não se lhe aplica.
+    let e_valor = palavras.len() == 2 && palavras[0].parse::<f64>().is_ok();
+    if palavras.len() > 1 && !e_valor {
         let ultima = palavras[palavras.len() - 1];
         // ⚠️ À letra, sem ignorar a caixa: «Minimap — press M» é uma TECLA, não metros (medido).
         if SUFIXOS.contains(&ultima) {

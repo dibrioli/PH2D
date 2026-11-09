@@ -200,7 +200,10 @@ fn value_edit(
         // Collider offset — a collider property, honoured for any body (not
         // Dynamic-gated like velocity/gravity).
         crate::ids::INSP_PHYS_OFFSET_X => Some(PhysicsFieldEdit::OffsetX(v)),
-        crate::ids::INSP_PHYS_OUTLINE_DETAIL if contorno => Some(P::Outline(E::Detail(v))),
+        // Dono 09/11: com os pontos a editar no canvas o Detail trava (o retraço apagá-los-ia).
+        crate::ids::INSP_PHYS_OUTLINE_DETAIL if contorno && !info.shape_edit_on => {
+            Some(P::Outline(E::Detail(v)))
+        }
         crate::ids::INSP_PHYS_OUTLINE_ALPHA if contorno => Some(P::Outline(E::AlphaCutoff(v))),
         crate::ids::INSP_PHYS_OUTLINE_SPECKS if contorno => Some(P::Outline(E::Specks(v))),
         crate::ids::INSP_PHYS_WALK_GRIP => Some(PhysicsFieldEdit::WalkGrip(v)),

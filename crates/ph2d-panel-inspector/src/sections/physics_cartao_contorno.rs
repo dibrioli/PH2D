@@ -8,7 +8,8 @@ use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
 use ph2d_editor_core::widget::Unit;
 use ph2d_i18n::{tr, tr_with};
 
-/// As três linhas do traço, cada uma com o ponto de chave das outras linhas do cartão.
+/// As três linhas do traço, cada uma com o ponto de chave das outras linhas do cartão. Com os pontos a editar
+/// no canvas o Detail TRAVA (dono 09/11: o retraço apagá-los-ia): apagado, sem alvo, e a linha dá a razão.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn controlos(
     scene: &mut VectorScene,
@@ -21,12 +22,12 @@ pub(super) fn controlos(
     y: f32,
 ) -> f32 {
     let mut y = y;
+    let travado = crate::state::current_inspector_physics().is_some_and(|i| i.shape_edit_on);
+    let detail = ids::INSP_PHYS_OUTLINE_DETAIL;
+    let parados: &[_] = if travado { &[detail] } else { &[] };
+    ph2d_editor_core::widget::card_field::parados(parados);
     for (rotulo, id, unidade) in [
-        (
-            "card.insp.phys.outline_detail",
-            ids::INSP_PHYS_OUTLINE_DETAIL,
-            Some(Unit::Px),
-        ),
+        ("card.insp.phys.outline_detail", detail, Some(Unit::Px)),
         (
             "card.insp.phys.outline_alpha",
             ids::INSP_PHYS_OUTLINE_ALPHA,
@@ -38,11 +39,19 @@ pub(super) fn controlos(
             Some(Unit::Px),
         ),
     ] {
-        y = num_row_unit(
+        // Nos cartões o campo parado não regista alvo; a face de referência pinta já, num índice que se deita fora.
+        let parado = travado && id == detail;
+        let mut sem_alvo = HitIndex::default();
+        let alvos = if parado && ph2d_editor_core::widget::card_ink::card_body().is_none() {
+            &mut sem_alvo
+        } else {
+            &mut *hit
+        };
+        let fim = num_row_unit(
             scene,
             text,
             theme,
-            hit,
+            alvos,
             store,
             x,
             w,
@@ -52,6 +61,11 @@ pub(super) fn controlos(
             unidade,
             None,
         );
+        if parado {
+            let linha = ph2d_editor_core::zones::Rect::new(x, y, w, fim - y);
+            hit.register(ids::INSP_PHYS_OUTLINE_DETAIL_LOCKED, linha);
+        }
+        y = fim;
     }
     y
 }

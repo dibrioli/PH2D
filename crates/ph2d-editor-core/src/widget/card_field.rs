@@ -133,19 +133,25 @@ pub fn paint_field(
     id: NodeId,
     glyph: Glyph<'_>,
 ) {
-    hit_index.register(id, rect);
+    let parado = valor::parado(id);
+    if !parado {
+        hit_index.register(id, rect);
+    }
     regista_letra(id, glyph);
     let (st, value, buffer, caret, anchor) = read_number_input(store, id);
     let value = sobreposto(id).unwrap_or(value);
-    let focused = st == TextInputState::Focused;
-    let scrubbing = store
-        .number_input_drag()
-        .is_some_and(|d| d.id == id && d.crossed_threshold);
-    let hover = store.hover_live(id) > 0.0 || st == TextInputState::Hovered;
+    let focused = !parado && st == TextInputState::Focused;
+    let scrubbing = !parado
+        && store
+            .number_input_drag()
+            .is_some_and(|d| d.id == id && d.crossed_threshold);
+    let hover = !parado && (store.hover_live(id) > 0.0 || st == TextInputState::Hovered);
     paint_field_frame(scene, ink, rect, hover, focused || scrubbing);
 
     let tinta = ink.color(if scrubbing {
         ColorToken::KanbanBlueBold
+    } else if parado {
+        ColorToken::Text3
     } else {
         ColorToken::CardLabel
     });
@@ -163,7 +169,12 @@ pub fn paint_field(
     } else {
         // T29: um passo inteiro não esconde a fração do valor (Friction 0.5 não se lê «0»).
         owned = texto_do_valor(value, step);
-        (owned.as_str(), ColorToken::Text1)
+        let cor = if parado {
+            ColorToken::Text3
+        } else {
+            ColorToken::Text1
+        };
+        (owned.as_str(), cor)
     };
     let y = area.y + crate::paint::folga_do_texto(area.h, m::VALUE_PX);
     let clip = ph2d_vector::Rect::new(
@@ -491,8 +502,8 @@ impl Expr<'_> {
 
 #[path = "card_field/valor.rs"]
 mod valor;
-pub use valor::paint_amostra;
 use valor::texto_do_valor;
+pub use valor::{paint_amostra, parados};
 
 #[cfg(test)]
 #[path = "card_field/tests.rs"]

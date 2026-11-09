@@ -22,7 +22,11 @@ pub(super) fn peca(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f3
     y = dobra_material(t, y, info);
     y = dobra_superficie(t, y, info, !info.is_sensor);
     y = dobra_sinais(t, y, info);
-    remover(t, y)
+    if super::physics_cartao::oferece_remove(info) {
+        remover(t, y)
+    } else {
+        y + SECTION_BOTTOM_PAD_PX
+    }
 }
 
 /// A forma de um corpo (opção B, B4): diz de quem é; as linhas dela vêm no cartão Shape ao lado.

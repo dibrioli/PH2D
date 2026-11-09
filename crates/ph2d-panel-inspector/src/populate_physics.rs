@@ -271,6 +271,15 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
     ] {
         store.set_tooltip(id, ph2d_i18n::tr(dica));
     }
+    // O Detail travado só dá a dica: sem clique, sem escrita (dono 09/11).
+    store.register(
+        ids::INSP_PHYS_OUTLINE_DETAIL_LOCKED,
+        InteractiveState::Plain,
+    );
+    store.set_tooltip(
+        ids::INSP_PHYS_OUTLINE_DETAIL_LOCKED,
+        ph2d_i18n::tr("card.insp.phys.outline_detail_locked_tip"),
+    );
     store.set_tooltip(
         ids::INSP_PHYS_COLLIDES_ADD,
         ph2d_i18n::tr("card.insp.phys.collides_add_tip"),

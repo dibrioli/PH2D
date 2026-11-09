@@ -66,3 +66,18 @@ fn um_valor_infinito_le_se_infinito() {
     assert_eq!(texto_do_valor(-0.004, 0.1), "0.00");
     assert_eq!(texto_do_valor(-0.04, 0.01), "-0.04");
 }
+
+thread_local! {
+    static PARADOS: std::cell::RefCell<Vec<super::NodeId>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Os campos PARADOS daqui em diante (substitui os de antes): apagados, sem alvo (nem arrasto, nem escrita,
+/// nem foco). Não é um escopo: o fluxo compacto pinta um campo curto só quando pede o vizinho. Quem trava
+/// regista a razão por cima (o Detail do Outline enquanto os pontos se editam no canvas, dono 09/11).
+pub fn parados(ids: &[super::NodeId]) {
+    PARADOS.with(|s| *s.borrow_mut() = ids.to_vec());
+}
+
+pub(super) fn parado(id: super::NodeId) -> bool {
+    PARADOS.with(|s| s.borrow().contains(&id))
+}

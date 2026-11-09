@@ -23,6 +23,10 @@ Leitor: a próxima LLM desta linha. Aprovado pelo dono em 08/11/2026 («faça co
   tipo, tamanho, offset, rotação; clicar seleciona o filho; «+ Add shape» = o spawn acima; «Remove shape» = apagar o filho,
   um passo de undo). Canvas: «Edit shape on canvas» mostra as alças de TODAS as formas do corpo.
   ⛔ Recusado: `Collider.shapes: Vec<…>` (segunda verdade ao lado dos filhos, perde `Copy`, degrau de schema).
+- **Dono 09/11:** enquanto «Edit shape on canvas» está ligado, o **Detail TRAVA** (apagado, sem arrasto/escrita, dica
+  `card.insp.phys.outline_detail_locked_tip`) e destrava ao sair — retraçar apagaria os pontos editados à mão. Só o
+  Detail; Alpha cutoff e Ignore specks também retraçam (`retrace_edited`), por decidir. E a **forma solta** perde
+  «Remove Shape» (como a filha): apaga-se na Hierarchy. Provas: `o_detail_trava_e_a_solta_sem_remove.rs`.
 
 ## Desenho técnico (padrão-ouro)
 

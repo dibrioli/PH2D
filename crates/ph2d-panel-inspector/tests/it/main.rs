@@ -74,6 +74,7 @@ mod o_cartao_do_pixel_sprite;
 mod o_chip_da_vigia_mostra_um_sinal;
 mod o_chip_de_uma_tag_cabe_na_pilula;
 mod o_corpo_fisico_em_pares;
+mod o_detail_trava_e_a_solta_sem_remove;
 mod o_icone_da_hierarquia_traz_o_cartao;
 mod o_inspector_em_cartoes_por_tipo;
 mod o_losango_do_transform;

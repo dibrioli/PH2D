@@ -145,7 +145,11 @@ fn spawn_doc(
         app.docs.remove(&key);
         return Err(ph2d_i18n::tr("object_add.not_born"));
     };
+    // O animador é do artista (gravado); os clips e a grelha derivam das tags (`lib::deriva`).
     ent.insert(ph2d_ecs::PixelSprite(key));
+    if let Some(d) = app.docs.get(&key) {
+        ent.insert(ph2d_pixel_cena::animador_de_nascenca(&d.sprite));
+    }
     app.wants_edit = Some(bits);
     Ok(bits)
 }

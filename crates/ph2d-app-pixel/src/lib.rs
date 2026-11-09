@@ -61,7 +61,13 @@ pub mod texto;
 mod tiles;
 pub mod viva;
 
+pub use ph2d_pixel_cena::registar;
 pub use state::{Doc, Options, PixelApp, Tool};
+
+/// Os derivados do Pixel Sprite na cena (P14 §4 A): uma vez por quadro, ANTES do tique da animação.
+pub fn deriva(app: &PixelApp, world: &mut ph2d_ecs::World) {
+    ph2d_pixel_cena::deriva(world, |k| app.docs.get(&k).map(|d| (&d.sprite, d.stamp)));
+}
 
 /// A família declarada à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {

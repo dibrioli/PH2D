@@ -9,8 +9,11 @@ use ph2d_ecs::{
 };
 use ph2d_pixel_core::{FrameId, Sprite};
 
+mod deriva;
 #[doc(hidden)]
 pub mod fixture;
+
+pub use deriva::{CLIP_SEM_TAGS, DerivadoDe, animador_de_nascenca, deriva, grelha};
 
 /// As tags do documento como clips do motor, pela porta única [`tag_do_aseprite`] (a mesma do
 /// import de `.ase`). Sem tags ⇒ uma que cobre todos os quadros, chamada `nome_sem_tags`.
@@ -84,7 +87,25 @@ pub fn quadro_mostrado(
     }
 }
 
-/// O registo sabe que, no Pixel Sprite, os clips são derivados das tags: não se gravam.
+/// **O quadro que o desenho do Pixel Sprite pinta**: em Draw (`em_edicao`) o do editor, que o
+/// artista está a pintar; fora dele, [`quadro_mostrado`] (o do animador em Play).
+#[must_use]
+pub fn quadro_a_desenhar(
+    world: &World,
+    e: Entity,
+    sprite: &Sprite,
+    quadro_do_editor: FrameId,
+    em_edicao: bool,
+) -> FrameId {
+    if em_edicao {
+        quadro_do_editor
+    } else {
+        quadro_mostrado(world, e, sprite, quadro_do_editor)
+    }
+}
+
+/// O registo sabe que, no Pixel Sprite, os clips e a grelha são derivados das tags: não se gravam.
 pub fn registar(reg: &mut ComponentRegistry) {
     reg.derivado_quando::<SpriteAnimations, PixelSprite>();
+    reg.derivado_quando::<SpriteGrid, PixelSprite>();
 }

@@ -130,12 +130,14 @@ fn art_of(
         };
         let (w, h) = (doc.sprite.width(), doc.sprite.height());
         let edit = editing == Some(bits);
+        let quadro =
+            ph2d_pixel_cena::quadro_a_desenhar(world, entity, &doc.sprite, doc.frame, edit);
         let onion = app.onion_view(key, edit);
         if let Some(d) = app.docs.get_mut(&key) {
             let only = onion.is_some_and(|o| o.current_layer_only);
             d.view.set_ghost_layer(only.then_some(d.layer));
         }
-        crate::tiles::compoe(app, key, pending.as_ref(), onion.as_ref());
+        crate::tiles::compoe(app, key, quadro, pending.as_ref(), onion.as_ref());
         let Some(doc) = app.docs.get_mut(&key) else {
             continue;
         };

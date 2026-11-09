@@ -7,7 +7,7 @@ use ph2d_editor_core::pixel_panel::{PixelLayerAction as A, PixelRequest};
 use ph2d_editor_core::screens::hero::{HeroScreen, JanelaDaMao, PANEL_PIXEL_TILES};
 use ph2d_panel_pixel_tiles::canal::{self, Alvo, Contexto, Mao, Pedido, Tela};
 use ph2d_panel_pixel_tiles::familia;
-use ph2d_pixel_core::{Onion, Op, Sprite, Stroke, Tileset, TilesetId, apply};
+use ph2d_pixel_core::{FrameId, Onion, Op, Sprite, Stroke, Tileset, TilesetId, apply};
 use ph2d_pixel_tiles::converte;
 use ph2d_pixel_tiles::mao::{self, Carimbo, conjuntos, imagens, op_do_traco, tileset_de};
 use ph2d_pixel_tiles::mapa::Mapa;
@@ -201,19 +201,25 @@ fn pedido(app: &mut PixelApp, key: u32, p: Pedido) {
 
 /// Compõe a imagem do canvas. O traço em curso numa camada de tilemap mostra-se como o RESULTADO:
 /// o mesmo op que largar grava, aplicado só enquanto compõe; o cartão acompanha.
-pub(crate) fn compoe(app: &mut PixelApp, key: u32, st: Option<&Stroke>, onion: Option<&Onion>) {
+pub(crate) fn compoe(
+    app: &mut PixelApp,
+    key: u32,
+    quadro: FrameId,
+    st: Option<&Stroke>,
+    onion: Option<&Onion>,
+) {
     let modo = app.tiles.mao.modo;
     let Some(d) = app.docs.get_mut(&key) else {
         return;
     };
     let em_tile = st.is_some_and(|st| tileset_de(&d.sprite, st.layer).is_some());
     let inverso = st
-        .filter(|_| em_tile && !d.view.is_current(d.frame, d.stamp, onion))
+        .filter(|_| em_tile && !d.view.is_current(quadro, d.stamp, onion))
         .and_then(|st| op_do_traco(st, &d.sprite, modo))
         .and_then(|op| apply(&mut d.sprite, op).ok());
     let por_cima = st.filter(|_| !em_tile);
     d.view
-        .refresh_with(&d.sprite, d.frame, por_cima, d.stamp, onion);
+        .refresh_with(&d.sprite, quadro, por_cima, d.stamp, onion);
     let Some(inverso) = inverso else { return };
     if let Some(set) = activo(d) {
         let img = Arc::new(imagens(&d.sprite, set));

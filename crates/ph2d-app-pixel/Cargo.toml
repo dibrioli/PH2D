@@ -15,6 +15,8 @@ authors.workspace = true
 [dependencies]
 ph2d-pixel-formas = { path = "../ph2d-pixel-formas" }
 ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+# P14: o Pixel Sprite na cena (clips derivados, o quadro mostrado).
+ph2d-pixel-cena = { path = "../ph2d-pixel-cena" }
 # P8: a ferramenta Text (o rasterizador de fontes de pixel e do sistema).
 ph2d-pixel-text = { path = "../ph2d-pixel-text" }
 # P7: a pressão e o relógio do evento (a porta da caneta) e a corda do Stabilizer.

@@ -71,6 +71,8 @@ pub(crate) fn build_component_registry() -> ComponentRegistry {
     ph2d_script::register_script_components(&mut reg);
     // A pilha de CONSTRAINTS (ADR-0192) — sem esta linha o objecto perde-a ao desfazer.
     ph2d_constraints_ecs::register_constraint_components(&mut reg);
+    // O Pixel Sprite: clips e grelha derivados das tags, nunca gravados (P14 §4 A).
+    ph2d_app_pixel::registar(&mut reg);
     reg
 }
 

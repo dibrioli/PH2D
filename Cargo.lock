@@ -6182,6 +6182,7 @@ dependencies = [
  "ph2d-panel-pixel-slices",
  "ph2d-panel-pixel-tiles",
  "ph2d-panel-pixel-timeline",
+ "ph2d-pixel-cena",
  "ph2d-pixel-cenas",
  "ph2d-pixel-core",
  "ph2d-pixel-formas",
@@ -10828,6 +10829,7 @@ dependencies = [
 name = "ph2d-pixel-cena"
 version = "0.0.0"
 dependencies = [
+ "bevy_ecs",
  "ph2d-aseprite",
  "ph2d-ecs",
  "ph2d-pixel-core",

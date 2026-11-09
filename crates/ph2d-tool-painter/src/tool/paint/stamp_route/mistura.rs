@@ -25,7 +25,6 @@ use ph2d_painter_brush::mistura_opaca::{
     Carimbo, Pegada, ReservatorioOpaco, Sombra, Tela, mistura_opaca_carimbo,
 };
 use ph2d_painter_brush::{BrushSpec, Dab};
-use rayon::prelude::*;
 use std::sync::Arc;
 
 mod lote;

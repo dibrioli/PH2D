@@ -17,7 +17,8 @@ struct LuzUniforme {
     tela_x: vec4<f32>,
     tela_y: vec4<f32>,
     ligada: u32,
-    _p0: u32,
+    // P14 «L»: 1 = as texturas do momento `M` (bindings 5–6) estão ligadas e o receptor com normal as lê.
+    com_momento: u32,
     _p1: u32,
     _p2: u32,
 };
@@ -25,6 +26,9 @@ struct LuzUniforme {
 @group(3) @binding(0) var<uniform> luz: LuzUniforme;
 @group(3) @binding(1) var luz_fluencia: texture_2d<f32>;
 @group(3) @binding(2) var luz_amostra: sampler;
+// O primeiro momento angular `M = ∫L(θ)(cos θ, sin θ)dθ` por canal (`Mx`, `My`), na grade da `F`.
+@group(3) @binding(5) var luz_momento_x: texture_2d<f32>;
+@group(3) @binding(6) var luz_momento_y: texture_2d<f32>;
 
 const LUZ_INV_TAU: f32 = 0.15915494309189535;
 
@@ -47,4 +51,25 @@ fn luz_receber(cor: vec4<f32>, mundo: vec2<f32>, sem_luz: u32) -> vec4<f32> {
         return cor;
     }
     return vec4<f32>(cor.rgb * luz_em(mundo), cor.a);
+}
+
+// ⭐ P14 «L» — a luz numa superfície de normal `n_xy` (o núcleo cardioide `(1 + n_xy·ω̂)/2π`,
+// `docs/PixelArt/P14_plano.md` §4): `(F + n_xy·M)/2π`. `n_xy == 0` (ou sem momento) ⇒ `luz_em` por ramo.
+fn luz_em_n(mundo: vec2<f32>, n_xy: vec2<f32>) -> vec3<f32> {
+    if (luz.com_momento == 0u || all(n_xy == vec2<f32>(0.0))) {
+        return luz_em(mundo);
+    }
+    let uv = (mundo - luz.origem) * luz.escala;
+    let f = textureSampleLevel(luz_fluencia, luz_amostra, uv, 0.0).rgb;
+    let mx = textureSampleLevel(luz_momento_x, luz_amostra, uv, 0.0).rgb;
+    let my = textureSampleLevel(luz_momento_y, luz_amostra, uv, 0.0).rgb;
+    return max(f + n_xy.x * mx + n_xy.y * my, vec3<f32>(0.0)) * LUZ_INV_TAU;
+}
+
+// O [`luz_receber`] com a normal da superfície (Y para cima, no plano do mundo).
+fn luz_receber_n(cor: vec4<f32>, mundo: vec2<f32>, n_xy: vec2<f32>, sem_luz: u32) -> vec4<f32> {
+    if (luz.ligada == 0u || sem_luz != 0u) {
+        return cor;
+    }
+    return vec4<f32>(cor.rgb * luz_em_n(mundo, n_xy), cor.a);
 }

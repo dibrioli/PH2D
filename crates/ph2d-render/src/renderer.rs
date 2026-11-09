@@ -235,10 +235,10 @@ impl SpriteRenderer {
             self.sem_luz.extend(l.sem_luz.iter().copied());
         }
         let bgl = &self.pipeline.luz_bgl;
-        self.luz.definir(
+        self.luz.definir_com_momento(
             &self.gpu,
             bgl,
-            luz.map(|l| (l.fluencia, l.uniforme(None))),
+            luz.map(|l| (l.fluencia, l.momento, l.uniforme(None))),
             &[],
         );
     }

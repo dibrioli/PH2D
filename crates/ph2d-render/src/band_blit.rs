@@ -31,6 +31,14 @@ pub enum BandSource {
 }
 
 impl BandSource {
+    /// As quatro fontes, na ordem do discriminante (o índice dos uniformes).
+    pub const TODAS: [BandSource; 4] = [
+        BandSource::Sprites,
+        BandSource::Vector,
+        BandSource::Formas,
+        BandSource::Grade,
+    ];
+
     /// `(decode_srgb, premultiplied)` — o par que o shader consome.
     #[must_use]
     pub fn flags(self) -> (u32, u32) {
@@ -154,6 +162,10 @@ pub struct BandBlit {
     bgl: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
     uniforms: [wgpu::Buffer; 4],
+    /// Os mesmos com `com_normal = 1` (P14 «L»: a banda normal ligada).
+    uniforms_normal: [wgpu::Buffer; 4],
+    /// A banda normal 1×1 de alfa 0 («sem normal») das colagens sem ela.
+    normal_neutra: wgpu::TextureView,
     /// ⭐ O `@group(3)` da luz 2D (+ o LUT do tonemap nos bindings 3–4).
     luz_bgl: wgpu::BindGroupLayout,
     luz: crate::luz_recebida::GrupoDeLuz,
@@ -191,15 +203,27 @@ impl BandBlit {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
-        let [l0, l1, l2] = crate::luz_recebida::entradas_do_layout();
+        let [l0, l1, l2, l5, l6] = crate::luz_recebida::entradas_do_layout();
         let luz_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ph2d-render band blit luz bgl"),
             entries: &[
                 l0,
                 l1,
                 l2,
+                l5,
+                l6,
                 wgpu::BindGroupLayoutEntry {
                     binding: 3,
                     visibility: wgpu::ShaderStages::FRAGMENT,
@@ -239,12 +263,24 @@ impl BandBlit {
             ..Default::default()
         });
         // Um uniforme por fonte, construído uma vez: os quatro valores são constantes.
-        let uniforms = [
-            uniform_for(device, BandSource::Sprites),
-            uniform_for(device, BandSource::Vector),
-            uniform_for(device, BandSource::Formas),
-            uniform_for(device, BandSource::Grade),
-        ];
+        let uniforms = BandSource::TODAS.map(|s| uniform_for(device, s, false));
+        let uniforms_normal = BandSource::TODAS.map(|s| uniform_for(device, s, true));
+        let normal_neutra = device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("ph2d-render band blit normal neutra"),
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            })
+            .create_view(&wgpu::TextureViewDescriptor::default());
         // O grupo NEUTRO precisa de um LUT ligado (o layout o pede) — nunca amostrado: `ligada = 0`.
         let lut_neutro = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("ph2d-render band blit lut neutro"),
@@ -274,6 +310,8 @@ impl BandBlit {
             bgl,
             sampler,
             uniforms,
+            uniforms_normal,
+            normal_neutra,
             luz_bgl,
             luz,
         }
@@ -299,8 +337,12 @@ impl BandBlit {
         let (lut, lut_amostra) = tonemap.lut();
         let extra = lut_entradas(lut, lut_amostra);
         let uniforme = l.uniforme(Some(tela_para_mundo));
-        self.luz
-            .definir(gpu, &self.luz_bgl, Some((l.fluencia, uniforme)), &extra);
+        self.luz.definir_com_momento(
+            gpu,
+            &self.luz_bgl,
+            Some((l.fluencia, l.momento, uniforme)),
+            &extra,
+        );
     }
 
     /// Cola `src` sobre `target`, com a convenção de `source`.
@@ -341,6 +383,38 @@ impl BandBlit {
         rect: Option<[u32; 4]>,
         pousa: Pousa,
     ) {
+        self.colar(gpu, target, src, None, source, rect, pousa);
+    }
+
+    /// ⭐ P14 «L» — o [`Self::blit_rect`] com a BANDA NORMAL `normal` (do tamanho da banda; rgb =
+    /// `n·½+½`, Y para cima; alfa 0 = sem normal): a luz recebida usa `(F + n_xy·M)/2π` por píxel.
+    pub fn blit_com_normal(
+        &self,
+        gpu: &GpuContext,
+        target: &wgpu::TextureView,
+        src: &wgpu::TextureView,
+        normal: &wgpu::TextureView,
+        source: BandSource,
+        rect: Option<[u32; 4]>,
+    ) {
+        self.colar(gpu, target, src, Some(normal), source, rect, Pousa::Normal);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn colar(
+        &self,
+        gpu: &GpuContext,
+        target: &wgpu::TextureView,
+        src: &wgpu::TextureView,
+        normal: Option<&wgpu::TextureView>,
+        source: BandSource,
+        rect: Option<[u32; 4]>,
+        pousa: Pousa,
+    ) {
+        let flags = match normal {
+            Some(_) => &self.uniforms_normal[source as usize],
+            None => &self.uniforms[source as usize],
+        };
         let bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("ph2d-render band blit bg"),
             layout: &self.bgl,
@@ -355,7 +429,13 @@ impl BandBlit {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: self.uniforms[source as usize].as_entire_binding(),
+                    resource: flags.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(
+                        normal.unwrap_or(&self.normal_neutra),
+                    ),
                 },
             ],
         });
@@ -471,10 +551,15 @@ fn lut_entradas<'a>(
     ]
 }
 
-fn uniform_for(device: &wgpu::Device, source: BandSource) -> wgpu::Buffer {
+fn uniform_for(device: &wgpu::Device, source: BandSource, com_normal: bool) -> wgpu::Buffer {
     use wgpu::util::DeviceExt as _;
     let (decode, premul) = source.flags();
-    let data: [u32; 4] = [decode, premul, u32::from(source.recebe_luz()), 0];
+    let data: [u32; 4] = [
+        decode,
+        premul,
+        u32::from(source.recebe_luz()),
+        u32::from(com_normal),
+    ];
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("ph2d-render band blit flags"),
         contents: bytemuck::cast_slice(&data),

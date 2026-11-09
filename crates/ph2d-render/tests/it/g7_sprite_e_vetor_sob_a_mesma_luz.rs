@@ -167,6 +167,7 @@ fn quadro(gpu: &GpuContext, gradiente: bool, vetor_recebe: bool) -> Vec<u8> {
         texel_m: TEXEL,
         tamanho: TAM,
         sem_luz: &ninguem,
+        momento: None,
     };
 
     // O sprite, pelo passe da CENA (`render_with_streams`), no HDR.
@@ -348,6 +349,7 @@ fn o_passe_isolado_do_brilho_nao_recebe_a_luz() {
         texel_m: TEXEL,
         tamanho: TAM,
         sem_luz: &ninguem,
+        momento: None,
     };
     let desenhar = |acesa: bool, com_luz: bool| {
         let game = GameRt::new(&gpu, (W, H));

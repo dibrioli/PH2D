@@ -292,6 +292,7 @@ fn quem_nao_recebe_a_luz_no_flip_fica_na_cor_de_sempre() {
         texel_m: 4.0,
         tamanho: [2, 2],
         sem_luz: &sem_luz,
+        momento: None,
     };
     let mapa = [[1.0 / 80.0, 0.0, MUNDO[0]], [0.0, -1.0 / 80.0, MUNDO[3]]];
     let camera = Camera2d {

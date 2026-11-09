@@ -603,6 +603,7 @@ impl LuzDoQuadro {
             texel_m: g.texel_m,
             tamanho: [g.largura, g.altura],
             sem_luz: &self.sem_luz,
+            momento: None,
         })
     }
 

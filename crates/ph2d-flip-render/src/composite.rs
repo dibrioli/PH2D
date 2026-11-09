@@ -414,8 +414,9 @@ impl FlipCompose {
         gpu: &ph2d_gpu::GpuContext,
         luz: Option<(&ph2d_render::LuzRecebida<'_>, [[f64; 3]; 2])>,
     ) {
-        let acesa = luz.map(|(l, tela_para_mundo)| (l.fluencia, l.uniforme(Some(tela_para_mundo))));
-        self.luz.definir(gpu, &self.luz_bgl, acesa, &[]);
+        let acesa = luz
+            .map(|(l, tela_para_mundo)| (l.fluencia, l.momento, l.uniforme(Some(tela_para_mundo))));
+        self.luz.definir_com_momento(gpu, &self.luz_bgl, acesa, &[]);
     }
 
     /// ⭐ W5j — os objetos Flip (`FlipObjectId.0`) que NÃO recebem a luz (`NaoRecebeLuz`).

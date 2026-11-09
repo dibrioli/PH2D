@@ -22,7 +22,9 @@ pub struct LuzUniforme {
     pub tela_x: [f32; 4],
     pub tela_y: [f32; 4],
     pub ligada: u32,
-    pub _p: [u32; 3],
+    /// P14 «L»: 1 = o momento `M` ligado (bindings 5–6).
+    pub com_momento: u32,
+    pub _p: [u32; 2],
 }
 
 /// A luz deste quadro, como o receptor a vê.
@@ -35,6 +37,9 @@ pub struct LuzRecebida<'a> {
     pub tamanho: [u32; 2],
     /// As entidades da SIMULAÇÃO com `NaoRecebeLuz` (casadas pelo `SimRef` na coleta).
     pub sem_luz: &'a BTreeSet<ph2d_ecs::Entity>,
+    /// ⭐ P14 «L» — o primeiro momento `[Mx, My]` (rgb por canal) na MESMA grade da `fluencia`;
+    /// `None` = a cena não pede normal (o receptor com normal cai no de frente).
+    pub momento: Option<[&'a wgpu::TextureView; 2]>,
 }
 
 impl LuzRecebida<'_> {
@@ -53,15 +58,16 @@ impl LuzRecebida<'_> {
             tela_x: [tx[0] as f32, tx[1] as f32, tx[2] as f32, 0.0],
             tela_y: [ty[0] as f32, ty[1] as f32, ty[2] as f32, 0.0],
             ligada: 1,
-            _p: [0; 3],
+            com_momento: u32::from(self.momento.is_some()),
+            _p: [0; 2],
         }
     }
 }
 
-/// As três entradas do `@group(3)` que o `receber.wgsl` declara (bindings 0–2). ⭐ W5e: pública — o
-/// blit do Flip também recebe a luz.
+/// As entradas do `@group(3)` que o `receber.wgsl` declara (bindings 0–2 e o momento 5–6; 3–4 ficam
+/// para quem acrescenta, como o LUT da colagem). ⭐ W5e: pública — o blit do Flip também recebe a luz.
 #[must_use]
-pub fn entradas_do_layout() -> [wgpu::BindGroupLayoutEntry; 3] {
+pub fn entradas_do_layout() -> [wgpu::BindGroupLayoutEntry; 5] {
     let frag = wgpu::ShaderStages::FRAGMENT;
     [
         wgpu::BindGroupLayoutEntry {
@@ -90,7 +96,22 @@ pub fn entradas_do_layout() -> [wgpu::BindGroupLayoutEntry; 3] {
             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
             count: None,
         },
+        textura_do_momento(5),
+        textura_do_momento(6),
     ]
+}
+
+fn textura_do_momento(binding: u32) -> wgpu::BindGroupLayoutEntry {
+    wgpu::BindGroupLayoutEntry {
+        binding,
+        visibility: wgpu::ShaderStages::FRAGMENT,
+        ty: wgpu::BindingType::Texture {
+            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+            view_dimension: wgpu::TextureViewDimension::D2,
+            multisampled: false,
+        },
+        count: None,
+    }
 }
 
 /// O `@group(3)` de um receptor: o grupo NEUTRO, construído uma vez, e o ACESO do quadro.
@@ -99,6 +120,8 @@ pub struct GrupoDeLuz {
     amostra: wgpu::Sampler,
     neutro: wgpu::BindGroup,
     aceso: Option<wgpu::BindGroup>,
+    /// A textura 1×1 do grupo neutro, ligada também no lugar do momento quando a cena não o pede.
+    vazia: wgpu::TextureView,
 }
 
 impl GrupoDeLuz {
@@ -144,12 +167,13 @@ impl GrupoDeLuz {
             view_formats: &[],
         });
         let vista = vazia.create_view(&wgpu::TextureViewDescriptor::default());
-        let neutro = grupo(device, bgl, &desligada, &vista, &amostra, extra);
+        let neutro = grupo(device, bgl, &desligada, [&vista; 3], &amostra, extra);
         Self {
             uniforme,
             amostra,
             neutro,
             aceso: None,
+            vazia: vista,
         }
     }
 
@@ -161,14 +185,31 @@ impl GrupoDeLuz {
         luz: Option<(&wgpu::TextureView, LuzUniforme)>,
         extra: &[wgpu::BindGroupEntry<'_>],
     ) {
-        self.aceso = luz.map(|(vista, u)| {
+        self.definir_com_momento(gpu, bgl, luz.map(|(v, u)| (v, None, u)), extra);
+    }
+
+    /// O [`Self::definir`] com o momento `[Mx, My]` (P14 «L»); `None` liga a 1×1 neutra no lugar.
+    pub fn definir_com_momento(
+        &mut self,
+        gpu: &GpuContext,
+        bgl: &wgpu::BindGroupLayout,
+        luz: Option<(
+            &wgpu::TextureView,
+            Option<[&wgpu::TextureView; 2]>,
+            LuzUniforme,
+        )>,
+        extra: &[wgpu::BindGroupEntry<'_>],
+    ) {
+        let vazia = &self.vazia;
+        self.aceso = luz.map(|(vista, momento, u)| {
+            let [mx, my] = momento.unwrap_or([vazia, vazia]);
             gpu.queue
                 .write_buffer(&self.uniforme, 0, bytemuck::bytes_of(&u));
             grupo(
                 &gpu.device,
                 bgl,
                 &self.uniforme,
-                vista,
+                [vista, mx, my],
                 &self.amostra,
                 extra,
             )
@@ -194,7 +235,7 @@ fn grupo(
     device: &wgpu::Device,
     bgl: &wgpu::BindGroupLayout,
     uniforme: &wgpu::Buffer,
-    vista: &wgpu::TextureView,
+    [vista, mx, my]: [&wgpu::TextureView; 3],
     amostra: &wgpu::Sampler,
     extra: &[wgpu::BindGroupEntry<'_>],
 ) -> wgpu::BindGroup {
@@ -210,6 +251,14 @@ fn grupo(
         wgpu::BindGroupEntry {
             binding: 2,
             resource: wgpu::BindingResource::Sampler(amostra),
+        },
+        wgpu::BindGroupEntry {
+            binding: 5,
+            resource: wgpu::BindingResource::TextureView(mx),
+        },
+        wgpu::BindGroupEntry {
+            binding: 6,
+            resource: wgpu::BindingResource::TextureView(my),
         },
     ];
     entradas.extend_from_slice(extra);

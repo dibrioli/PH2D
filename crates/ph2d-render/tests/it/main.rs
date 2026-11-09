@@ -54,6 +54,7 @@ mod layer_compositor_gpu;
 mod layer_compositor_papel_gpu;
 mod layers_no_alloc;
 mod lens_gpu;
+mod luz_com_normal_no_receptor;
 mod mask_interaction_regression;
 mod measure_first_stroke_pipelines;
 mod o_compositor_e_meia_cobertura;

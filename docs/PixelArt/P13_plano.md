@@ -286,3 +286,27 @@ Núcleo hoje: 13 134 LOC (io 5 400, text 2 552, keys 2 162, tiles 1 737, render 
 3. o novo `pub struct StreamPlayhead { shared, rate }` (Clone) tem `frame()` e `ms() = frame·1000/rate`;
 4. `voice.rs:447`: antes de `self.source = Some(Source::Streamed(h))`, `h.publicar(self.cursor.max(0.0) as u64)`, uma vez por bloco, sem alocar;
 5. em `ph2d-audio-stream`, nada muda (o chamador faz `handle.playhead()` antes de `play_stream`). Precisão: um bloco do mixer, sem a latência de saída.
+
+### R1 (09/11, agente)
+
+Commit `c4188778e9` (código + fixture + script do oráculo). Sem UI (R2+). `ph2d-app-pixel`: zero linhas.
+
+**Núcleo (`ph2d-pixel-core`, continua sem dependências — `pure_core` verde).** Ficheiros novos: `ramp.rs` (`RampId`, `Ramp {id,name,indices}`, `PaletteRamps {ramps, cycles}`, `rampa_de(&PaletteRamps, idx) -> Option<(RampId, pos)>`, `check_ramps`, `remap`, getters `Sprite::ramps/guias/audio`), `cycle.rs` (`Cycle {ramp, periodo_ms, direcao}`, `CycleDirection::{Forward,Reverse,PingPong}`, `ciclo_em(&PaletteRamps, t_ms) -> [u8;256]`; `periodo_ms` = a volta INTEIRA), `guia.rs` (`Guias {pontos_de_fuga:[Option<[f32;2]>;3], horizonte, iso: Option<Iso2x1{origem}>}`), `audio.rs` (`FaixaDeAudio {asset, inicio_ms, ganho, mudo}`), `efeito.rs` (`EfeitoDeCamada::Outline(OutlineParams)`, `OutlineParams = filter::outline::Outline`). Os `f32` comparam por bits (o `Sprite` é `Eq`). A `Palette` é um `Vec` plano, por isso os campos entraram no `Sprite` (`ramps`, `guias`, `audio`) e na `Layer` (`efeitos`). Ops em `op/doc.rs`: `Op::Doc(Box<DocOp>)` com `AddRamp` (o id sai do `next_id`) · `SetRamp` · `RemoveRamp` (leva o ciclo) · `SetCycle` · `SetRamps` (o inverso das quatro) · `SetGuias` · `SetAudio` · `SetLayerEffects`; `OpError::BadRamps`. Leis: índice dentro da paleta e em no máximo UMA rampa, rampa não vazia, um ciclo por rampa, período > 0. `Op::Palette`/`Whole` recusam paleta que parte uma rampa; `Op::Remap` leva as rampas (inverso exacto). Rótulo do histórico `pixel.history.palette_data` («Ramps, Guides and Sound»).
+LOC: `sprite.rs` 698 · `op.rs` 697 · `codec.rs` 667 (tecto 700) ⇒ **o próximo campo no `Sprite` ou variante no `Op` não cabe**: vai para ficheiros irmãos.
+
+**Codec MINOR 8 → 9** (`codec/doc.rs`): Sprite 17 Ramp* · 18 Cycle* · 19 Guias · 20 Audio* · Layer 9 Efeito*; o `validate` corre `check_ramps`. Sem leitor velho (§0.11). `forma.rs:93` lê a constante `MINOR` ⇒ não precisou de edição (verde).
+
+**`ph2d-pixel-rampa`** (crate nova, `ph2d-pixel-core` + `ph2d-color`): `planeada` → `na_gama_pelo_croma` (bissecção só no croma, resolução 1e-6, L e h intactos) → `gera_rampa_oklch` → `gera_rampa([u8;4], ConfigRampa{passos, desvio_matiz_graus, curva_croma, faixa_l}) -> Vec<[u8;4]>`; `op_rampa_nova(sprite, nome, cores)` = um passo (Palette + AddRamp). Lei: `L` linear na faixa; `C = C_base·max(0, 1−curva·u²)`, `u = 2t−1`; `h = h_base + sentido·desvio·u`, com `sentido` = a volta mais curta até à matiz OKLCH do amarelo sRGB (109,77°, calculada pela `ph2d-color`, sem constante). Só usa `ph2d_color::perceptual::{to_oklab, from_oklab, oklab_to_oklch, oklch_to_oklab}` e `srgb::*_unit`. ⚠️ O `perceptual::gamut_map` existente NÃO serve: é o MINDE do CSS com JND 0,02, que corta canal e mexe no L.
+
+**Oráculo:** `docs/PixelArt/ferramentas/oraculo_rampas_coloraide.py` (coloraide 8.14.1 MIT, `fit('srgb', method='minde-chroma', pspace='oklch', jnd=0)`) → `crates/ph2d-pixel-rampa/tests/fixtures/coloraide_rampas.json`, com cabeçalho; 3 bases DB32 (pele `d9a066`, água `5b6ee1`, folha `6abe30`) × 2 configurações (5 degraus/20°/0,6/[0,25;0,92] e 8/35°/0,9/[0,12;0,97]); **12 degraus cortados pelo croma**.
+
+| Gate | Vermelho visto | Verde |
+|---|---|---|
+| `o_blob_pixel_volta_igual` (rampas, ciclo, guias, 2 faixas de som, Outline) | sim, antes do codec: MINOR 8; com MINOR 9 e sem os registos, «grava ⇒ lê ⇒ igual» falha | sim, e os mesmos bytes ao regravar |
+| `a_rampa_gerada_e_a_do_coloraide` | só por mutação (o código veio antes do gate): sinal do desvio trocado, corte em L e sem corte, todos vermelhos | **pior ΔE OKLab 5,4e-5** (< 1e-3), comparado antes dos 8 bits; os 8 bits ficam a ±1 por canal |
+| `a_rampa_gerada_e_monotona_em_l` | por mutação: o corte em L sangra (`water_5b6ee1_a5[3]: o corte mexeu no L`) | L e h por bits iguais ao plano; C ≤ plano; L dos 8 bits a subir |
+| também: `cada_op_do_dado_tem_inverso_exacto`, `o_remap_da_paleta_leva_as_rampas`, `o_ciclo_roda_so_a_rampa_e_volta_no_periodo`, `a_rampa_nova_entra_na_paleta_num_passo` | — | sim |
+
+Mutações (restauradas, árvore conferida): o sinal do desvio sangra no coloraide e sobrevive na monotonia, como esperado; corte em L sangra nos dois; sem corte sangra no coloraide. Por nome e verdes: core `rampas`, `codec`, `history`, `pure_core`, `user_data`, `tiles`; cena `o_pixel_formato_le_o_que_grava`; `check` da `ph2d-app-pixel` verde.
+
+**Falta / para os próximos:** (1) o `Op::Whole` (Color Mode, New Palette from Sprite) passa a RECUSAR quando a paleta nova parte uma rampa: o R3 (`PreservaRampas`) tem de remapear as rampas no mesmo passo. (2) Rampa de um degrau é aceite; o `shade` do R2 decide se ela conta. (3) O `.ase` (user data `ph2d.ramps`/`ph2d.cycles`, efeito assado) e a folha JSON `meta.audio` não foram feitos (§5, são do R4/C/T). (4) A gravação de `Guias` com coordenada não finita não é recusada.

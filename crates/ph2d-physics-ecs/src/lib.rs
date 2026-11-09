@@ -96,14 +96,14 @@ pub use components::{
     AnimRule, AnimRules, AnimWhen, AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff,
     AreaForceWorldAxes, AreaFormDrag, AreaTorque, BodyKind, Ccd, CharacterAnimations,
     CharacterPose, Collider, ColliderShape, CollisionOverride, CombineRule, ComprimentoDaRota,
-    Damage, DampMode, DampingOverride, Dominance, GravityScale, Health, HealthBar, HealthNow,
-    InitialVelocity, LifeEvent, LockPositionX, LockPositionY, LockRotation, MassOverride,
-    MaterialCombine, NavAgent, NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion, NavRoute,
-    NavTarget, NoWallCling, OnHit, OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode,
-    PlayerSignals, ProjectileMotion, PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor, RaySignals,
-    Resistance, RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer,
-    WalkSurface, WestonAxle, WrapSide, anim_target, kind_key, reseat_mounted_axle,
-    reseat_wheel_geometry, rope_joint_of,
+    Damage, DampMode, DampingOverride, Dominance, FormaDesligada, GravityScale, Health, HealthBar,
+    HealthNow, InitialVelocity, LifeEvent, LockPositionX, LockPositionY, LockRotation,
+    MassOverride, MaterialCombine, NavAgent, NavCostArea, NavCostAreaNow, NavLink, NavNow,
+    NavRegion, NavRoute, NavTarget, NoWallCling, OnHit, OneWayPlatform, PlatformLift,
+    PlatformPlayer, PlayerMode, PlayerSignals, ProjectileMotion, PulleyWheel, RESISTANCES_MAX,
+    RayHit, RaySensor, RaySignals, Resistance, RigidBody, RopeStops, SignalOnHit, SignalOnLeave,
+    SignalTagFilter, TopDownPlayer, WalkSurface, WestonAxle, WrapSide, anim_target, kind_key,
+    reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
 };
 pub use components::{MIN_EXTENT, collider_box_or};
 pub use interaction::{

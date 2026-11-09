@@ -6,7 +6,9 @@
 //! passo de undo nem muda o ficheiro; [`deriva_formas`] reescreve-os a cada quadro.
 
 use ph2d_ecs::{ChildOf, Component, Entity, Name, PixelSprite, World};
-use ph2d_physics_ecs::{BodyKind, Collider, RigidBody, forma_de_retangulo, nasce_com_forma};
+use ph2d_physics_ecs::{
+    BodyKind, Collider, FormaDesligada, RigidBody, forma_de_retangulo, nasce_com_forma,
+};
 use ph2d_pixel_core::{FrameId, SliceId, SliceShape, Sprite};
 use serde::{Deserialize, Serialize};
 
@@ -94,8 +96,9 @@ pub fn adiciona_collider_da_slice(
 /// a ponte). `doc_de(chave)` dá o documento e o quadro do editor. A ponte do rapier refaz o collider
 /// pelo `BodyDesc` (em repouso respawn; a meio do Play `retune_body` troca a forma no lugar).
 ///
-/// ⚠️ Slice ESCONDIDA no quadro: a forma fica a da última key visível (sem «desligar»: P14b-1
-/// reporta — o único interruptor do motor é o olho `Visibility`, que é do artista e gravado).
+/// Slice ESCONDIDA no quadro (key vazia): a forma fica a da última key visível e ganha
+/// [`FormaDesligada`] (derivado, não gravado) — a ponte desliga o colisor; o `Visibility` do
+/// artista não se toca. A key visível de novo tira-o.
 pub fn deriva_formas<'a>(
     world: &mut World,
     doc_de: impl Fn(u32) -> Option<(&'a Sprite, FrameId)>,
@@ -103,6 +106,7 @@ pub fn deriva_formas<'a>(
 ) {
     let mut q = world.query::<(Entity, &SegueSlice, &ChildOf, &Collider)>();
     let mut fazer = Vec::new();
+    let mut ligar = Vec::new();
     for (e, segue, pai, col) in q.iter(world) {
         let p = pai.parent();
         let Some(ps) = world.get::<PixelSprite>(p) else {
@@ -118,12 +122,19 @@ pub fn deriva_formas<'a>(
         else {
             continue;
         };
+        let desligada = world.get::<FormaDesligada>(e).is_some();
         let Some(k) = sprite
             .slice(SliceId(segue.slice))
             .and_then(|s| s.visible_at(pos))
         else {
+            if !desligada {
+                ligar.push((e, false));
+            }
             continue;
         };
+        if desligada {
+            ligar.push((e, true));
+        }
         let novo = collider_da_key(sprite, quadro, k, m_por_px);
         if novo.shape != col.shape || novo.offset != col.offset {
             fazer.push((e, novo.shape, novo.offset));
@@ -133,6 +144,13 @@ pub fn deriva_formas<'a>(
         if let Some(mut c) = world.get_mut::<Collider>(e) {
             c.shape = shape;
             c.offset = offset;
+        }
+    }
+    for (e, on) in ligar {
+        if on {
+            world.entity_mut(e).remove::<FormaDesligada>();
+        } else {
+            world.entity_mut(e).insert(FormaDesligada);
         }
     }
 }

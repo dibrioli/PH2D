@@ -7,7 +7,9 @@
 //! carrega velocidade**. Ver o comentário dentro de [`PhysicsWorld::spawn_body`] — ele é o registo
 //! de por que essa lei passou a valer também para a ROTAÇÃO na subida para a rapier 0.31.
 
-use rapier2d::prelude::{LockedAxes, RigidBodyBuilder, RigidBodyHandle};
+use rapier2d::prelude::{
+    ColliderHandle, InteractionGroups, LockedAxes, RigidBodyBuilder, RigidBodyHandle,
+};
 
 use crate::rmath::Vector;
 
@@ -122,6 +124,36 @@ impl PhysicsWorld {
         // in a fixed order.
         effector::register(&mut self.effectors, collider_handle, handle, &desc);
         handle
+    }
+
+    /// **Emudece ou devolve os colisores do corpo** (a forma «desligada»: P14 §4 C). Mudo = grupos
+    /// de colisão vazios: nem contacto nem evento de sensor, mas a MASSA fica (um colisor
+    /// `set_enabled(false)` tira-a, e o corpo sem massa nem cai — medido no gate
+    /// `a_slice_escondida_nao_colide`). Devolver re-carimba a camada `layer` (a lei de
+    /// `stamp_layer`). Só escreve quando muda: o `get_mut` marca o colisor como modificado.
+    pub fn set_colliders_muted(&mut self, handle: RigidBodyHandle, muted: bool, layer: u8) {
+        let Some(b) = self.bodies.get(handle) else {
+            return;
+        };
+        let mudar: Vec<ColliderHandle> = b
+            .colliders()
+            .iter()
+            .copied()
+            .filter(|&ch| {
+                self.colliders
+                    .get(ch)
+                    .is_some_and(|c| (c.collision_groups() == InteractionGroups::none()) != muted)
+            })
+            .collect();
+        for ch in mudar {
+            if muted {
+                if let Some(c) = self.colliders.get_mut(ch) {
+                    c.set_collision_groups(InteractionGroups::none());
+                }
+            } else {
+                self.stamp_layer(ch, layer as usize);
+            }
+        }
     }
 
     /// **Reafina um corpo VIVO no lugar** — gémeo de [`PhysicsWorld::retune_joint`]: a curva muda

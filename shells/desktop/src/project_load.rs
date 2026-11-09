@@ -437,7 +437,7 @@ impl crate::App {
         // ⚠️ E fica ACIMA do `undo_baseline = None` de propósito: o baseline é armado pelo
         // `post_frame_undo` com o mundo já assente, e este passo é parte de o assentar.
         if let Some(gfx) = self.gfx.as_mut() {
-            ph2d_app_pixel::deriva(&self.pixel, gfx.sim.world_mut()); // os clips do Pixel Sprite
+            ph2d_app_pixel::deriva(&self.pixel, gfx.sim.world_mut(), gfx.hero_screen.as_ref());
             crate::render_loop::start_autoplay_animations(&mut gfx.sim);
             // ⭐⭐⭐ **E os TIMERS** (TOP-20 #2), no mesmo sítio e pela mesma razão: «começar a
             // correr» é uma ARESTA, e o tique só vê estados. ⚠️ Esta chamada também é quem

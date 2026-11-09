@@ -195,6 +195,14 @@ pub struct Collider {
     pub offset: [f32; 2],
 }
 
+/// **A forma está desligada em execução** (P14 §4 C: a slice que ela segue está escondida no quadro
+/// mostrado). DERIVADO, nunca gravado (fora do registo); quem segue a fonte põe-no e tira-o. A ponte
+/// desliga o colisor do rapier enquanto ele estiver na forma — sem tocar no `Visibility` do artista.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct FormaDesligada;
+
+impl SimComponent for FormaDesligada {}
+
 /// A forma de uma «Collision Shape» que SEGUE uma fonte (a slice do Pixel Sprite, P14 §4 C):
 /// `shape` e `offset` são derivados e gravam-se no ponto neutro; o resto é do artista.
 impl ph2d_ecs::scene::CamposDerivados for Collider {

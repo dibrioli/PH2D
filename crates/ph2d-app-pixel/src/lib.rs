@@ -64,9 +64,24 @@ pub mod viva;
 pub use ph2d_pixel_cena::registar;
 pub use state::{Doc, Options, PixelApp, Tool};
 
-/// Os derivados do Pixel Sprite na cena (P14 §4 A): uma vez por quadro, ANTES do tique da animação.
-pub fn deriva(app: &PixelApp, world: &mut ph2d_ecs::World) {
+/// Os derivados do Pixel Sprite na cena (P14 §4 A e C): os clips e a forma que segue a slice; uma
+/// vez por quadro, ANTES do tique da animação e da física. A régua (píxeis por metro) é a do
+/// projecto do `hero`; sem ele, a de omissão.
+pub fn deriva(
+    app: &PixelApp,
+    world: &mut ph2d_ecs::World,
+    hero: Option<&ph2d_editor_core::screens::hero::HeroScreen>,
+) {
     ph2d_pixel_cena::deriva(world, |k| app.docs.get(&k).map(|d| (&d.sprite, d.stamp)));
+    let ppm = hero.map_or(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER, |h| {
+        h.project.pixels_per_meter
+    });
+    let m_por_px = 1.0 / f64::from(ppm.max(f32::MIN_POSITIVE));
+    ph2d_pixel_cena::deriva_formas(
+        world,
+        |k| app.docs.get(&k).map(|d| (&d.sprite, d.frame)),
+        m_por_px,
+    );
 }
 
 /// A família declarada à shell.

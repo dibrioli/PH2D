@@ -231,6 +231,14 @@ impl PhysicsBridge {
             );
         }
         self.to_spawn.clear();
+
+        // A forma desligada (P14 §4 C: a slice escondida no quadro) — o colisor sai do solver e o
+        // corpo fica; só escreve quando muda.
+        for (e, b) in &self.bodies {
+            let mudo = world.get::<crate::FormaDesligada>(b.shape).is_some()
+                || world.get::<crate::FormaDesligada>(*e).is_some();
+            self.world.set_colliders_muted(b.handle, mudo, b.rest.layer);
+        }
     }
 }
 

@@ -34,7 +34,7 @@ impl crate::App {
         if let Some(gfx) = self.gfx.as_mut() {
             ph2d_app_game::marca_a_copia(gfx.sim.world_mut(), self.undo.jogo.foto().is_some());
             // Depois do Stop/undo (respawn) e ANTES do tique da animação: os clips do Pixel Sprite.
-            ph2d_app_pixel::deriva(&self.pixel, gfx.sim.world_mut());
+            ph2d_app_pixel::deriva(&self.pixel, gfx.sim.world_mut(), gfx.hero_screen.as_ref());
         }
         let fase_fixed_step_clocks::FrameClocks {
             report,

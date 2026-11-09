@@ -154,6 +154,8 @@ pub struct ChaveDoPreview {
     /// A Shape Color: ligada, B&W e a versão da rampa (cada setter da secção e das camadas a sobe).
     shape_color: (bool, bool, u64),
     borracha: bool,
+    /// A ferramenta do trilho: o Blur e o Smear desenham-se sobre as faixas, o Pincel não (dono 08/11).
+    modo: PaintMode,
     fora: ChaveForaDoSpec,
     oleo_real: Option<ph2d_wet_paint::oleo_real::OleoReal>,
     oleo_real_valores: ph2d_wet_paint::oleo_real::OleoReal,
@@ -244,6 +246,7 @@ impl PainterTool {
                 self.paint.shape_ramp_version,
             ),
             borracha: super::preview_borracha::e_a_borracha(self),
+            modo: self.paint.paint_mode,
             fora: ChaveForaDoSpec {
                 rampa_do_grao: (
                     self.paint.texture_ramp.clone(),
@@ -557,6 +560,8 @@ fn faixas(t: &mut PainterTool, cena: &CenaDoPreview, lista: &[(f32, f32, f32, f3
     t.paint.wetpaint.knobs = knobs_da_faixa(f64::from(super::OPACIDADE_DE_FABRICA));
     t.paint.brush.blend = ph2d_painter_brush::BrushBlend::Mix;
     t.paint.wetpaint.tool = WetTool::Paint;
+    // E sem o Composite: as camadas dele (cor, força, borrão próprios) tingiam as faixas de rosa (smoke 08/11).
+    let composite = std::mem::take(&mut t.paint.composite_enabled);
     for &(x0, x1, cy, r, c) in lista {
         t.paint.brush.radius_px = r;
         t.set_brush_color_srgb8(c);
@@ -580,6 +585,7 @@ fn faixas(t: &mut PainterTool, cena: &CenaDoPreview, lista: &[(f32, f32, f32, f3
     t.paint.wetpaint.knobs = knobs;
     t.paint.brush.blend = blend;
     t.paint.wetpaint.tool = cena.ferramenta;
+    t.paint.composite_enabled = composite;
     t.set_brush_color_srgb8(cor);
 }
 
@@ -603,12 +609,16 @@ pub fn pintar_preview(
         t.set_paint_media(cena.meio);
         t.instalar_cena(cena, true);
         if so_mexe_tinta(cena) {
-            let (x0, x1, cy, amp) = trajeto(&t, lw, lh);
+            // As tintas e o S no enquadramento da miniatura (centradas, a amplitude pela tela): pelo pincel, a 20 px
+            // as faixas tinham 5 px numa tela de 512 e o painel mostrava um borrão (dono 08/11).
+            let rota = trajeto_das_tintas(lw, lh);
+            let (x0, x1, cy, amp) = rota;
             tintas_por_baixo(&mut t, cena, x0, x1, cy, amp);
             if let Some(fio) = fio_do_trilho(cena) {
                 t.set_paint_tool_mode(fio);
                 t.instalar_cena(cena, true);
             }
+            return gesto_no_trajeto(&mut t, rota, deve_parar, emite);
         }
         return gesto_do_preview(&mut t, lw, lh, deve_parar, emite);
     }
@@ -627,6 +637,13 @@ pub fn pintar_preview(
     gesto_do_preview(&mut t, lw, lh, deve_parar, &mut |px, w, h| {
         emite(&b_::sobre_o_branco(px), w, h);
     })
+}
+
+/// `(x0, x1, cy, amplitude)` das tintas por baixo e do S de quem só as mexe, na tela `lw × lh`: centrado, como a
+/// miniatura (sem água a escorrer não há terço de baixo a guardar).
+fn trajeto_das_tintas(lw: u32, lh: u32) -> (f32, f32, f32, f32) {
+    let (l, a) = (lw as f32, lh as f32);
+    (0.08 * l, 0.92 * l, 0.5 * a, 0.22 * a)
 }
 
 /// `(x0, x1, cy, amplitude)` do S do gesto em `t`, na tela `lw × lh`.
@@ -661,7 +678,17 @@ pub(super) fn gesto_do_preview(
     deve_parar: &dyn Fn() -> bool,
     emite: &mut dyn FnMut(&[u8], u32, u32),
 ) -> bool {
-    let (x0, x1, cy, amp) = trajeto(t, lw, lh);
+    let rota = trajeto(t, lw, lh);
+    gesto_no_trajeto(t, rota, deve_parar, emite)
+}
+
+/// [`gesto_do_preview`] no trajeto `(x0, x1, cy, amplitude)` dado.
+fn gesto_no_trajeto(
+    t: &mut PainterTool,
+    (x0, x1, cy, amp): (f32, f32, f32, f32),
+    deve_parar: &dyn Fn() -> bool,
+    emite: &mut dyn FnMut(&[u8], u32, u32),
+) -> bool {
     let n = ((x1 - x0) / PASSO_PX).ceil() as u32;
     let cada = n.div_ceil(QUADROS_DO_TRACO).max(1);
     let em = |f: f32| {

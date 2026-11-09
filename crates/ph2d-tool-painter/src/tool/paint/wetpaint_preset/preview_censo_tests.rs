@@ -38,7 +38,7 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ),
     (
         "paint_mode",
-        "levado como `borracha` (só o modo Paint com a borracha); as outras ferramentas não têm preview (`LinhaDaFerramenta::Preview`) — a cena leva-o como `modo` só para a MINIATURA (o Blur, o Smear e o Clone sobre a faixa)",
+        "levado como `borracha` (só o modo Paint com a borracha); a cena leva-o como `modo`: o Blur e o Smear sobre as faixas (miniatura e preview vivo, dono 08/11), o Clone só na MINIATURA (`LinhaDaFerramenta::Preview`)",
     ),
     ("brush_by_mode", "os pincéis dos OUTROS modos"),
     (
@@ -187,6 +187,8 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("wet_substrate", CACHE),
     ("wet_mix", TRACO),
     ("mistura_opaca", TRACO),
+    ("mistura_camada", TRACO),
+    ("mistura_visivel", TRACO),
     ("wet_smear_pos", TRACO),
     ("wet_level_smear_pos", TRACO),
     ("wet_frame_dirty", TRACO),

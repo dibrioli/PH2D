@@ -233,8 +233,8 @@ fn o_pino_e_um_botao_de_alternar() {
     }
 }
 
-/// ⭐ (v) **A preview só aparece onde a ferramenta a lê** (dono 24/10: o Blur, o Smear, o Clone e a Máscara não a
-/// têm; `LinhaDaFerramenta::Preview`). Escolhida pelo trilho (o `PAINTER_PAINT_MODE`), com um quadro publicado: no
+/// ⭐ (v) **A preview só aparece onde a ferramenta a lê** (dono 24/10: o Clone e a Máscara não a têm; o Blur e o
+/// Smear voltaram a tê-la a 08/11; `LinhaDaFerramenta::Preview`). Escolhida pelo trilho (o `PAINTER_PAINT_MODE`), com um quadro publicado: no
 /// Pincel e na Borracha a preview e o pino pintam-se (o controlo), nas outras nem a preview nem o pino — desafixada
 /// e fixada — e a área rolável começa onde começaria sem preview (sem vão).
 #[test]
@@ -251,8 +251,8 @@ fn a_preview_so_aparece_onde_a_ferramenta_a_le() {
             ("brush", true),
             ("eraser", true),
             ("clone", false),
-            ("blur", false),
-            ("smear", false),
+            ("blur", true),
+            ("smear", true),
             ("mask", false),
         ] {
             b.tool.handle_panel_event(PanelEvent::SelectOption(

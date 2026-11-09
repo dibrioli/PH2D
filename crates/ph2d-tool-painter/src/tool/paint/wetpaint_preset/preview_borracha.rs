@@ -2,7 +2,8 @@
 //! traço similar ao Brush normal»*): a tela cheia de [`COR_DO_FUNDO_DA_BORRACHA`] e a borracha faz o S do Pincel,
 //! pelo mesmo `PainterTool` e o mesmo gesto da tela — o que ela apaga mostra a folha.
 //!
-//! O Blur, o Smear (e a Faca), o Clone e a Máscara não têm preview (dono 24/10; `LinhaDaFerramenta::Preview`).
+//! O Clone e a Máscara não têm preview (dono 24/10; `LinhaDaFerramenta::Preview`); o Blur e o Smear voltaram a ter,
+//! sobre as faixas de tinta (dono 08/11).
 
 use crate::PainterTool;
 

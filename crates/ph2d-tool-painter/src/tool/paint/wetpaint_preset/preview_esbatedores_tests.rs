@@ -137,3 +137,44 @@ fn o_preview_vivo_do_esbatedor_mostra_as_tintas_mexidas() {
     );
     assert!(tem(|p| p[0] < 60 && p[2] > 150), "sem o azul");
 }
+
+/// ⭐ **No painel, o Smear e o Blur mostram as três tintas** (dono 08/11): o preview vivo, com o pincel de 20 px de
+/// fábrica, tem cada uma das três cores em faixa legível (antes do enquadramento da miniatura: um borrão de 5 px).
+#[test]
+fn o_preview_vivo_do_smear_e_do_blur_mostra_as_tres_tintas() {
+    for (modo, composite) in [
+        ("smear", false),
+        ("blur", false),
+        ("smear", true),
+        ("blur", true),
+    ] {
+        let mut t = PainterTool::default();
+        if composite {
+            // O pincel armado com um Composite de camada tingida (a cena do smoke): as faixas não o levam.
+            t.acrescenta_camada(0);
+            t.set_composite_layer_color(0, [1.0, 1.0, 1.0]);
+            t.set_composite_layer_strength(0, 0.2);
+            t.toggle_composite();
+            assert!(t.composite_enabled());
+        }
+        t.set_paint_tool_mode(modo);
+        let mut ultimo = None;
+        assert!(super::pintar_preview(
+            &t.wet_preview_cena(),
+            &|| false,
+            &mut |px, w, h| {
+                ultimo = Some((px.to_vec(), w, h));
+            }
+        ));
+        let (px, w, h) = ultimo.expect("um quadro");
+        let perto = |p: &[u8], c: [u8; 3]| (0..3).all(|i| p[i].abs_diff(c[i]) < 40);
+        for c in super::TINTAS_POR_BAIXO {
+            let n = px.chunks(4).filter(|p| perto(p, c)).count();
+            assert!(
+                n * 40 > (w * h) as usize,
+                "{modo} (Composite {composite}): a tinta {c:?} ocupa {n} de {} px",
+                w * h
+            );
+        }
+    }
+}

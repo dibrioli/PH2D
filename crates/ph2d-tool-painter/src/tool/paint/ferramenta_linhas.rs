@@ -205,6 +205,7 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 14] = [
             L::AguaDoVolume,
         ],
     ),
+    // Dono 08/11: o Blur e o Smear voltam a ter preview — as três faixas de tinta que eles mexem (`so_mexe_tinta`).
     (
         F::Blur,
         &[
@@ -216,7 +217,6 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 14] = [
             L::CorPorCamada,
             L::TracoComoCamada,
             L::Continuo,
-            L::Preview,
             L::Flow,
         ],
     ),
@@ -231,7 +231,6 @@ pub const NAO_LE: [(FerramentaDoPincel, &[LinhaDaFerramenta]); 14] = [
             L::CorPorCamada,
             L::TracoComoCamada,
             L::Continuo,
-            L::Preview,
             L::Flow,
         ],
     ),

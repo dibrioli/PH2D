@@ -146,7 +146,7 @@ fn a_thread_pinta_e_o_painel_recebe_a_faixa() {
     assert_ne!(p.apresentacao.quadros.last().unwrap(), &antes);
 }
 
-/// ⭐ **Uma ferramenta sem preview não gasta trabalho nem deixa um quadro velho** (dono 24/10): no Blur a ponte não
+/// ⭐ **Uma ferramenta sem preview não gasta trabalho nem deixa um quadro velho** (dono 24/10): no Clone a ponte não
 /// pede cena nenhuma e apaga o quadro publicado; ao voltar ao Pincel, até chegar o quadro novo não há quadro
 /// (nunca pisca o de antes). O controlo: no Pincel ela pede.
 #[test]
@@ -159,9 +159,9 @@ fn uma_ferramenta_sem_preview_nao_pede_nem_publica() {
     p.apresentacao.chegou(p.apresentacao.geracao, q(3));
     p.quadro(&t, ms(t0, 1));
     assert!(p.publicado.is_some(), "controlo: o quadro publicou-se");
-    t.set_paint_tool_mode("blur");
+    t.set_paint_tool_mode("clone");
     p.quadro(&t, ms(t0, 2));
-    assert!(p.chave.is_none(), "o Blur pediu uma cena");
+    assert!(p.chave.is_none(), "o Clone pediu uma cena");
     assert!(p.publicado.is_none(), "o quadro velho ficou publicado");
     t.set_paint_tool_mode("brush");
     let g = p.apresentacao.geracao;

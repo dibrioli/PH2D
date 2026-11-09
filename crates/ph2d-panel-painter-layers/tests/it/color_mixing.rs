@@ -9,7 +9,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tool_painter::ids as p;
 use ph2d_tool_painter::{ModoMisturaOpaca, PaintMedia};
 
-/// Os ids de controlo da mistura: o seletor, o Sample e os seis números.
+/// Os ids de controlo da mistura: o seletor, o Sample e os cinco números.
 fn controlos() -> impl Iterator<Item = &'static ph2d_a11y::NodeId> {
     p::PAINTER_BRUSH_MIX_MODES
         .iter()
@@ -125,12 +125,18 @@ fn a_mistura_aparece_no_digital_e_o_clique_chega() {
             "cartões={cartoes}: o Blend não chegou: {saida:?}"
         );
         if cartoes {
-            let eventos = m.arrasta_a_pega(p::PAINTER_BRUSH_MIX_FIELDS[2], 40.0);
-            let saida = m.aplica(eventos);
-            assert!(
-                saida.iter().any(|s| s.contains("SetValue")),
-                "o Color stretch não chegou: {saida:?}"
-            );
+            // Os CINCO números (Amount, Density, Color stretch e as duas pressões): cada arrasto chega com o id DELE.
+            for id in p::PAINTER_BRUSH_MIX_FIELDS {
+                let eventos = m.arrasta_a_pega(id, 40.0);
+                let saida = m.aplica(eventos);
+                let alvo = format!("{id:?}");
+                assert!(
+                    saida
+                        .iter()
+                        .any(|s| s.contains("SetValue") && s.contains(&alvo)),
+                    "o número {alvo} não chegou: {saida:?}"
+                );
+            }
         }
     }
 }
@@ -242,9 +248,21 @@ fn color_mixing_foto() {
     let gpu = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None)
         .expect("a foto precisa da placa");
     for (nome, modo, meio) in [
-        ("painel_mistura_off", ModoMisturaOpaca::Off, PaintMedia::Digital),
-        ("painel_pigment_mix", ModoMisturaOpaca::WetBlend, PaintMedia::Digital),
-        ("painel_paint_mixing_watercolor", ModoMisturaOpaca::Off, PaintMedia::Watercolor),
+        (
+            "painel_mistura_off",
+            ModoMisturaOpaca::Off,
+            PaintMedia::Digital,
+        ),
+        (
+            "painel_pigment_mix",
+            ModoMisturaOpaca::WetBlend,
+            PaintMedia::Digital,
+        ),
+        (
+            "painel_paint_mixing_watercolor",
+            ModoMisturaOpaca::Off,
+            PaintMedia::Watercolor,
+        ),
     ] {
         let (mut b, _) = pincel(meio, "brush");
         b.mistura_opaca.modo = modo;

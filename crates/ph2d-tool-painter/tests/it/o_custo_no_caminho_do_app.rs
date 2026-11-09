@@ -82,3 +82,60 @@ fn o_deposito_de_um_pincel_pesado_de_fabrica_vai_pela_rota_que_paga() {
         );
     }
 }
+
+/// A mediana dos ms por quadro à velocidade da caneta do DONO (Bug #84, `PH2D_PAINT_PERF` 10/11): 9 eventos de 40 px por
+/// quadro (~4 000 px/s) e a drenagem da prévia uma vez por quadro, como a ponte do app (o plano do traço compõe aí).
+fn ms_por_quadro_do_dono(t: &mut PainterTool, y: f32, quadros: usize) -> f64 {
+    let mut x = 40.0f32;
+    t.on_canvas_pointer(cp([x, y], PointerPhase::Down));
+    let mut ms = Vec::with_capacity(quadros);
+    for _ in 0..quadros {
+        let t0 = Instant::now();
+        for _ in 0..9 {
+            x += 40.0;
+            t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+        }
+        let _ = t.take_preview_dirty();
+        ms.push(t0.elapsed().as_secs_f64() * 1e3);
+    }
+    t.on_canvas_pointer(cp([x, y], PointerPhase::Up));
+    ms.sort_by(f64::total_cmp);
+    ms[ms.len() / 2]
+}
+
+/// ⭐ **O Wet Wash Mix de fábrica à velocidade do dono vai pela meia definição** (Bug #84, cura 6): o pincel de mistura
+/// que o gate acima não tinha na população (o app a 6 fps com ele verde). O preset de fábrica × o mesmo com a película
+/// à definição inteira, intercalados no MESMO processo, o mínimo das medianas — uma RAZÃO, que a carga não move.
+/// Medido 10/11 (`sonda_custo_no_app`, 360 px/quadro): 24,1 × 43,5 ms (0,55).
+#[test]
+fn o_wet_wash_mix_a_velocidade_do_dono_vai_pela_meia_definicao() {
+    for p in pinceis("Wet Wash Mix") {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; 3800 * 700 * 4], 3800, 700);
+        p.aplica(&mut t, false);
+        t.set_brush_size_px(30.0);
+        t.set_compor_por_quadro(true);
+        let _ = ms_por_quadro_do_dono(&mut t, 60.0, 2);
+        // [fábrica, inteira]
+        let mut ms = [f64::INFINITY; 2];
+        for r in 0..3 {
+            for k in 0..2 {
+                let v = (k + r) % 2;
+                t.set_mistura_meia_definicao(v == 0);
+                let y = 160.0 + 90.0 * (2 * r + k) as f32;
+                ms[v] = ms[v].min(ms_por_quadro_do_dono(&mut t, y, 8));
+            }
+        }
+        let [fabrica, inteira] = ms;
+        println!(
+            "[custo] {}: fábrica {fabrica:.2} · inteira {inteira:.2} ms/quadro (9 × 40 px)",
+            p.nome
+        );
+        assert!(
+            fabrica < 0.8 * inteira,
+            "{}: à velocidade do dono o preset de fábrica custa {fabrica:.2} ms por quadro e a película inteira \
+             {inteira:.2} — a mistura deixou de correr a meia definição (`MisturaOpaca::meia_definicao`, Bug #84)",
+            p.nome
+        );
+    }
+}

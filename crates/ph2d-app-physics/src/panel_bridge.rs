@@ -42,10 +42,12 @@ pub struct RunTapes<'a> {
 }
 
 /// Os nomes das camadas do projeto e a matriz do mundo, para os painéis que mostram uma camada.
-pub fn publica_as_camadas(world: &ph2d_ecs::World, physics: &PhysicsBridge) {
+pub fn publica_as_camadas(world: &mut ph2d_ecs::World, physics: &PhysicsBridge) {
     let nomes = ph2d_physics_ecs::LayerNames::of(world);
     ph2d_panel_physics::set_layer_names(nomes.clone());
     let vivo = physics.settings_vivos().layer_matrix;
+    // A régua do «Collides with» de cada forma (`CollisionOverride::with_bit`).
+    ph2d_physics_ecs::excecao::LiveLayerRows::install(world, vivo);
     // O autorado e o que a curva conduz: nada configurado se esconde, em nenhum dos dois.
     let visiveis = nomes.visible(
         ph2d_physics_ecs::layers_in_use(world),

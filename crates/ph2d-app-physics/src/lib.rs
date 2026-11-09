@@ -285,6 +285,7 @@ pub mod joint_world;
 // A §11 do Inspector aplicada ao ECS, e os seus vizinhos por assunto.
 pub mod physics_apply;
 pub mod physics_area;
+mod physics_colide;
 pub mod physics_markers;
 pub mod physics_seed;
 pub mod physics_state;

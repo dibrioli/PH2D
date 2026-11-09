@@ -21,7 +21,7 @@ use ph2d_panel_inspector::{
     InspectorPanel, InspectorState, set_current_inspector_physics, set_current_inspector_transform,
 };
 
-const ENTITY: u64 = 0xABCD_1234;
+pub(crate) const ENTITY: u64 = 0xABCD_1234;
 
 /// An entity that already carries a body — a Box, because that is what the
 /// Add button produces and therefore the state an artist is actually in.
@@ -60,6 +60,9 @@ pub(crate) fn with_body() -> InspectorPhysicsInfo {
         restitution: 0.0,
         friction: 0.5,
         layer: 0,
+        collides_override: [0; 2],
+        collides_mixed: 0,
+        collides_differs: false,
         join_kind_tag: 0,
         bake_seconds: 5.0,
         // A full-range bake starts at 0; W-BakeRange's partial start is exercised

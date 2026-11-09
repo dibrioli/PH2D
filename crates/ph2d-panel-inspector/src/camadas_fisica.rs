@@ -94,7 +94,13 @@ pub(crate) fn rotulo_padrao(i: usize) -> String {
 /// A linha de `a` da matriz do mundo inclui `b`?
 #[must_use]
 pub(crate) fn colide(a: usize, b: usize) -> bool {
-    AGORA.with(|c| c.borrow().linhas.get(a).copied().unwrap_or(0)) & (1 << b) != 0
+    linha(a) & (1 << b) != 0
+}
+
+/// A linha `a` da matriz viva.
+#[must_use]
+pub(crate) fn linha(a: usize) -> u32 {
+    AGORA.with(|c| c.borrow().linhas.get(a).copied().unwrap_or(0))
 }
 
 /// A próxima camada por mostrar, a mesma conta de `LayerNames::next_free`; `None` nas 32.

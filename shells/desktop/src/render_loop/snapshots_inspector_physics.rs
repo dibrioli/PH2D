@@ -107,9 +107,9 @@ pub(super) fn physics(
             join_kind_tag,
             bake_range,
             bake_channels_tag,
-            // ⭐ A árvore — a row *Only for tag* mostra o CAMINHO do filtro (TOP-20 #9, W3c).
             tags,
         )
+        .map(|i| ph2d_app_physics::inspector::body::com_a_selecao(sim.world(), i, sel))
     });
     let inspector_joint = alvo.bits.and_then(|b| {
         // The eyedropper of the slot with an armed pick FOR THIS joint paints

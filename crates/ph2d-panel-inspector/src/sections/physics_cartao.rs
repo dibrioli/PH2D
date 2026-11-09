@@ -113,8 +113,13 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
         *DOBRADAS.get_or_init(|| std::env::var_os("PH2D_FISICA_CAMADAS_DOBRADAS").is_some());
     store.set_collapsed_if_unchosen(ids::CARD_PHYS_LAYERS, dobradas);
     semeia_o_nome_da_camada(store);
-    let camada = crate::state::current_inspector_physics().map_or(0, |f| usize::from(f.layer));
-    super::physics_colide::prepara_as_dicas(store, camada);
+    let (camada, linha) = crate::state::current_inspector_physics().map_or((0, 0), |f| {
+        (
+            usize::from(f.layer),
+            super::physics_colide_fila::linha(&f) & !f.collides_mixed,
+        )
+    });
+    super::physics_colide::prepara_as_dicas(store, camada, linha);
     // O cartão Body nasce aberto como o Shape (maquete: travar a rotação é um clique), uma vez: depois
     // manda o que o artista dobrou. As secções de componente nascem dobradas no `populate`, daí a marca.
     if store.collapsed_choice(ids::INSP_PHYS_BODY_OPENED).is_none() {

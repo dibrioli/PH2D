@@ -197,14 +197,24 @@ fn o_ray_sensor_escolhe_a_camada_pela_lista_e_ve_pela_matriz() {
         {
             let mut corpo = with_body();
             corpo.layer = 2;
-            // O «Collides with» vive no cartão Collision Layers.
+            // O «Collides with» da FORMA edita a exceção dela (GEF02 B9), nunca a célula da matriz.
             use crate::o_cartao_da_fisica::{achado, cena, clica, pinta, sai};
             let (mut host, mut st) = cena(corpo, [1.0, 1.0]);
             let r = pinta(&mut host, &mut st);
             let caixa = achado(&r, INSP_PHYS_COLLIDES[1]).expect("o quadro do collider");
             let collider = clica(&mut host, &mut st, caixa);
             sai();
-            assert_eq!(collider, raio, "a mesma célula que o collider");
+            let edit = ph2d_editor_core::PhysicsFieldEdit::CollidesWith {
+                layer: 1,
+                on: false,
+            };
+            assert_eq!(
+                collider,
+                [EditorAction::InspectorPhysicsEdit {
+                    entity_bits: crate::seam_physics::ENTITY,
+                    edit
+                }]
+            );
         }
         fim();
     }

@@ -68,6 +68,11 @@ pub struct InspectorPhysicsInfo {
     /// Splitting it this way is the whole point: the rule is authored once,
     /// and a body only says where it belongs.
     pub layer: u8,
+    /// «Collides with» da forma (GEF02 B9): a exceção da primária (`CollisionOverride`; o painel compõe-na com a
+    /// matriz viva), os bits em que a seleção diverge (`Indeterminate`) e se alguma forma tem exceção («Differs…»).
+    pub collides_override: [u32; 2],
+    pub collides_mixed: u32,
+    pub collides_differs: bool,
     /// Collider offset (meters, local axes) — the collider's centre relative to
     /// the sprite. `[0, 0]` is centred; a non-zero value places the collider off
     /// the sprite centre (a character's feet, an off-centre hitbox). Mirrors
@@ -398,6 +403,14 @@ pub enum PhysicsFieldEdit {
     Friction(f32),
     /// Move this body to a collision layer (`0..MAX_LAYERS`).
     Layer(u8),
+    /// «Collides with» desta FORMA (GEF02 B9): o bit `layer` da linha efetiva passa a `on` (absoluto, para a
+    /// multisseleção dar o mesmo a todas); igual à matriz, a exceção desse bit sai.
+    CollidesWith {
+        layer: u8,
+        on: bool,
+    },
+    /// «Use layer default»: a forma perde a exceção e volta à linha da matriz.
+    UseLayerDefault,
     /// The "Solid | Sensor" toggle (W7): make this collider a sensor or solid.
     Sensor(bool),
     /// Per-body gravity multiplier (W8). Attaches/updates the optional
@@ -561,6 +574,8 @@ impl PhysicsFieldEdit {
                 | P::Restitution(_)
                 | P::Friction(_)
                 | P::Layer(_)
+                | P::CollidesWith { .. }
+                | P::UseLayerDefault
                 | P::Sensor(_)
                 | P::RestitutionCombine(_)
                 | P::FrictionCombine(_)

@@ -316,7 +316,7 @@ pub(crate) fn paint_ray_section(
 fn botoes_do_raio(t: &mut super::physics_cartao::Tinta<'_>, y: f32, camada: usize) -> f32 {
     let sees = tr("panel.inspector.ray.sees");
     if !crate::cards::active() {
-        return super::physics_colide::fila_da_matriz(
+        return super::physics_colide_fila::fila_da_matriz(
             t,
             y,
             &super::physics_colide::DO_RAIO,
@@ -342,7 +342,7 @@ fn botoes_do_raio(t: &mut super::physics_cartao::Tinta<'_>, y: f32, camada: usiz
             tr("card.insp.phys.edit_matrix"),
         ),
     );
-    super::physics_colide::fila_da_matriz(t, y, &super::physics_colide::DO_RAIO, camada, sees)
+    super::physics_colide_fila::fila_da_matriz(t, y, &super::physics_colide::DO_RAIO, camada, sees)
 }
 
 /// O Ray está no modo Rename (só por escolha: o estado nunca semeado é «fechado»).

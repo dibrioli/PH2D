@@ -135,6 +135,7 @@ pub(crate) mod physics_cartao;
 pub(crate) mod physics_cartao_forma;
 mod physics_cartao_peca;
 pub(crate) mod physics_colide;
+pub(crate) mod physics_colide_fila;
 /// As portas da face VAZIA do §11 (docs dele) — irmão pelo cap de 600 LOC.
 mod physics_doors;
 mod physics_join_rows;

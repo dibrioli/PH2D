@@ -36,6 +36,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.editing_shape" => "Editing shape · Esc to finish",
         "card.insp.phys.collides_with" => "Collides with",
         "card.insp.phys.collides_applies" => "Applies to everything on {layer}",
+        "card.insp.phys.collides_differs" => "Differs from layer {layer}",
+        "card.insp.phys.use_layer_default" => "Use layer default",
         "card.insp.phys.collides_on" => {
             "Things on {this} bump into things on {other}. Click to let them pass through."
         }

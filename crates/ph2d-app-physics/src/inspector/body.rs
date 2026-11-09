@@ -7,6 +7,7 @@
 use bevy_ecs::world::World;
 use ph2d_ecs::Entity;
 use ph2d_editor_core::InspectorPhysicsInfo;
+use ph2d_physics_ecs::excecao::estado_da_selecao;
 
 /// The WRITE half, in the sibling module. Re-exported so callers are unchanged.
 pub use crate::physics_apply::apply_physics_edit;
@@ -42,6 +43,14 @@ fn nearest_body_name(world: &World, e: ph2d_ecs::Entity) -> String {
 /// armado, o alcance do bake, a árvore). Empacotá-los num struct só moveria a
 /// mesma lista para outro arquivo, com um sítio de construção a mais para alguém
 /// esquecer de preencher.
+/// O «Collides with» diante da seleção `sel` (bits): misto e «Differs».
+pub fn com_a_selecao(w: &World, mut i: InspectorPhysicsInfo, sel: &[u64]) -> InspectorPhysicsInfo {
+    let sel: Vec<Entity> = sel.iter().copied().map(Entity::from_bits).collect();
+    (_, i.collides_mixed, i.collides_differs) =
+        estado_da_selecao(w, Entity::from_bits(i.entity_bits), &sel);
+    i
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn build_physics_info(
     world: &World,
@@ -184,6 +193,9 @@ pub fn build_physics_info(
             restitution: Collider::DEFAULT_RESTITUTION,
             friction: Collider::DEFAULT_FRICTION,
             layer: 0,
+            collides_override: [0; 2],
+            collides_mixed: 0,
+            collides_differs: false,
             // Sem corpo não há joint; o rig (abaixo) CRIA os corpos, por isso fica.
             join_count: 0,
             rig_parts,
@@ -272,6 +284,10 @@ pub fn build_physics_info(
         restitution: col.restitution,
         friction: col.friction,
         layer: col.layer,
+        collides_override: ph2d_physics_ecs::excecao::mascaras(world, forma),
+        collides_mixed: 0,
+        // A seleção (`com_a_selecao`) diz se alguma forma difere.
+        collides_differs: false,
         // ⚠️ Uma entidade SEM corpo não pode ser metade de um joint, seja qual
         // for a seleção — a mesma razão pela qual a face vazia zera este número.
         join_count: if rb.is_some() { join_count } else { 0 },

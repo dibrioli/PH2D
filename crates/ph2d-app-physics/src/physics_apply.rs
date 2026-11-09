@@ -18,11 +18,8 @@ use crate::physics_seed::sprite_half_extents;
 
 /// Apply one [`PhysicsFieldEdit`] (§11).
 ///
-/// **`Add` derives the collider from the sprite's own bounds** — the one
-/// starting shape that can never disagree with what is drawn. (A default ball
-/// under a square sprite is exactly the mismatch Enio caught on 2026-07-18;
-/// Unity and Godot both fit the box to the renderer for the same reason.)
-/// A sprite-less entity falls back to a half-metre box.
+/// **`Add` derives the collider from the sprite's own bounds** (Unity/Godot fit the box to the renderer too);
+/// a sprite-less entity falls back to a half-metre box.
 pub fn apply_physics_edit(
     sim: &mut SimWorld,
     entity_bits: u64,
@@ -60,6 +57,9 @@ pub fn apply_physics_edit(
     if matches!(edit, PhysicsFieldEdit::AddShape) && sim.world().get::<RigidBody>(entity).is_some()
     {
         crate::physics_seed::forma_que_falta(sim.world_mut(), entity);
+        return;
+    }
+    if crate::physics_colide::apply_collides_edit(sim.world(), entity, edit, queue, registry) {
         return;
     }
     if matches!(edit, PhysicsFieldEdit::MoveShapeToChild) {
@@ -119,10 +119,7 @@ pub fn apply_physics_edit(
         return;
     }
     if let PhysicsFieldEdit::Kind(tag) = edit {
-        // A tag no variant claims is DROPPED, not folded onto a plausible
-        // neighbour: the chip that sent it is the only thing that mints one,
-        // so an unknown value means the chip list and the enum have drifted,
-        // and silently applying `Dynamic` would hide exactly that.
+        // An unknown tag means the chip list and the enum drifted: dropped, never folded onto `Dynamic`.
         let Some(kind) = BodyKind::from_tag(tag) else {
             debug_assert!(
                 false,
@@ -130,13 +127,7 @@ pub fn apply_physics_edit(
             );
             return;
         };
-        // ⚠️ Only a body can change KIND. Without this, `Kind` was the one §11
-        // arm that would ATTACH a `RigidBody` to an entity that had none — an
-        // orphan with no `Collider`, which `build_physics_info` cannot show
-        // (it needs both), so §11 offers Add rather than Remove and no gesture
-        // anywhere takes it off again. It saves into the project file all the
-        // same. The other arms are safe by accident rather than by check: they
-        // read the live `Collider` and return early when it is missing.
+        // ⚠️ Only a body can change KIND: otherwise this arm would attach an orphan `RigidBody` no gesture removes.
         if world.get::<RigidBody>(entity).is_none() {
             return;
         }
@@ -532,6 +523,7 @@ pub fn apply_physics_edit(
         // would silently fold an overflow onto the last layer.
         PhysicsFieldEdit::Layer(n) => next.layer = n,
         PhysicsFieldEdit::Sensor(s) => next.is_sensor = s,
+        PhysicsFieldEdit::CollidesWith { .. } | PhysicsFieldEdit::UseLayerDefault => unreachable!("above"),
         PhysicsFieldEdit::Add
         | PhysicsFieldEdit::AddShape
         | PhysicsFieldEdit::MoveShapeToChild

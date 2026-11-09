@@ -229,6 +229,8 @@ pub const INSP_PHYS_COLLIDES_ADD: NodeId = hash_node_id("insp_phys_collides_add"
 /// A frase «Applies to everything on X» debaixo da fila: só a dica, com o nome inteiro.
 pub const INSP_PHYS_COLLIDES_APPLIES: NodeId = hash_node_id("insp_phys_collides_applies");
 pub const INSP_PHYS_EDIT_MATRIX: NodeId = hash_node_id("insp_phys_edit_matrix");
+/// «Use layer default» (GEF02 B9): a forma perde a exceção dela à matriz.
+pub const INSP_PHYS_LAYER_DEFAULT: NodeId = hash_node_id("insp_phys_layer_default");
 
 /// §11 Sensor (trigger) toggle — group id + the two options. A sensor passes
 /// through but reports its overlaps (W7); the overlay lights it up. Modelled as

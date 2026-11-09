@@ -39,11 +39,19 @@ fn o_clique_real_no_quadro_pede_o_par_com_a_camada_do_objecto() {
     for info in [with_body(), as_part()] {
         let (mut host, mut st) = cena(na_camada_3(info), [1.0, 1.0]);
         let r = pinta(&mut host, &mut st);
-        for (quadro, b) in [(INSP_PHYS_COLLIDES[1], 1), (INSP_PHYS_COLLIDES[3], 3)] {
+        // GEF02 B9: a exceção DA FORMA, absoluta — o contrário do que se vê (a 3 toca a 1, não a si).
+        for (quadro, layer, on) in [
+            (INSP_PHYS_COLLIDES[1], 1, false),
+            (INSP_PHYS_COLLIDES[3], 3, true),
+        ] {
             let caixa = achado(&r, quadro).expect("o quadro está pintado");
+            let edit = ph2d_editor_core::PhysicsFieldEdit::CollidesWith { layer, on };
             assert_eq!(
                 clica(&mut host, &mut st, caixa),
-                [EditorAction::LayerPairToggle { a: 3, b }],
+                [EditorAction::InspectorPhysicsEdit {
+                    entity_bits: crate::seam_physics::ENTITY,
+                    edit
+                }],
                 "um clique, uma edição"
             );
         }
@@ -388,5 +396,45 @@ fn o_nome_comprido_volta_inteiro_ao_passar_a_mao() {
     let _ = pinta(&mut host, &mut st);
     ph2d_panel_inspector::set_current_inspector_ray(None);
     assert_eq!(dica(&host, INSP_RAY_SEES_APPLIES), esperada);
+    fim();
+}
+
+/// GEF02 B9: o cartão da forma mostra a linha EFETIVA (a exceção por cima da matriz), o quadro misto acende para
+/// todas ao clique, e com exceção aparece «Use layer default».
+#[test]
+fn o_cartao_da_forma_mostra_a_excecao_o_misto_e_o_default() {
+    mundo();
+    let mut info = na_camada_3(with_body());
+    // A 3 toca a 1 pela matriz; a exceção tira-a e junta a 0. A 3 diverge na seleção.
+    info.collides_override = [1, 1 << 1];
+    info.collides_mixed = 1 << 3;
+    info.collides_differs = true;
+    let (mut host, mut st) = cena(info, [1.0, 1.0]);
+    let r = pinta(&mut host, &mut st);
+    let edit = |layer, on| ph2d_editor_core::PhysicsFieldEdit::CollidesWith { layer, on };
+    let pede = |edit| {
+        [EditorAction::InspectorPhysicsEdit {
+            entity_bits: crate::seam_physics::ENTITY,
+            edit,
+        }]
+    };
+    for (layer, on) in [(0, false), (1, true), (3, true)] {
+        let caixa = achado(&r, INSP_PHYS_COLLIDES[usize::from(layer)]).expect("o quadro");
+        assert_eq!(
+            clica(&mut host, &mut st, caixa),
+            pede(edit(layer, on)),
+            "camada {layer}"
+        );
+    }
+    let botao = achado(&r, INSP_PHYS_LAYER_DEFAULT).expect("«Use layer default» com exceção");
+    let reset = ph2d_editor_core::PhysicsFieldEdit::UseLayerDefault;
+    assert_eq!(clica(&mut host, &mut st, botao), pede(reset));
+    sai();
+    let (mut host, mut st) = cena(na_camada_3(with_body()), [1.0, 1.0]);
+    let r = pinta(&mut host, &mut st);
+    assert!(
+        achado(&r, INSP_PHYS_LAYER_DEFAULT).is_none(),
+        "sem exceção, sem botão"
+    );
     fim();
 }

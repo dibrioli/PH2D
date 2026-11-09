@@ -69,7 +69,12 @@ pub(crate) fn sync(
             "panel.inspector.ray.sees_off",
         ];
         let quem = &crate::sections::physics_colide::DO_RAIO;
-        crate::sections::physics_colide::dicas_dos_quadros(host.store_mut(), quem, camada, chaves);
+        crate::sections::physics_colide::dicas_dos_quadros(
+            host.store_mut(),
+            quem,
+            (camada, crate::camadas_fisica::linha(camada)),
+            chaves,
+        );
     }
     let sig = assinatura(&info);
     if !entity_changed && inspector_state.last_ray_sig == Some(sig) {

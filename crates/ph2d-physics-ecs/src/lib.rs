@@ -18,6 +18,7 @@
 pub mod bake;
 mod bridge;
 mod components;
+pub mod excecao;
 pub mod interaction;
 mod joint;
 mod joint_group;

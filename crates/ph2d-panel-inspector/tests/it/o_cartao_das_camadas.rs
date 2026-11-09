@@ -325,7 +325,10 @@ fn os_quadros_e_o_edit_matrix_chegam_pelo_clique_com_o_shape_dobrado() {
             &mut st,
             achado(&r, INSP_PHYS_COLLIDES[1]).unwrap()
         ),
-        [EditorAction::LayerPairToggle { a: 2, b: 1 }]
+        [EditorAction::InspectorPhysicsEdit {
+            entity_bits: crate::seam_physics::ENTITY,
+            edit: ph2d_editor_core::PhysicsFieldEdit::CollidesWith { layer: 1, on: true },
+        }]
     );
     assert_eq!(
         clica(

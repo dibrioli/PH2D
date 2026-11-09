@@ -243,6 +243,7 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
             ids::INSP_PHYS_LAYER_RENAME_DONE,
             ids::INSP_PHYS_COLLIDES_ADD,
             ids::INSP_PHYS_EDIT_MATRIX,
+            ids::INSP_PHYS_LAYER_DEFAULT,
         ],
     );
     store.set_tooltip(

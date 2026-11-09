@@ -54,7 +54,7 @@ impl crate::App {
         //
         // ⚠️ Distinct from `ph2d_app_physics::bridge::dispatch::dispatch` far above, which steps
         // the SIMULATION at the Playhead tick. Two bridges, two phases.
-        ph2d_app_physics::panel_bridge::publica_as_camadas(sim.world(), physics);
+        ph2d_app_physics::panel_bridge::publica_as_camadas(sim.world_mut(), physics);
         self.show_colliders = ph2d_app_physics::panel_bridge::dispatch(
             hero,
             physics,

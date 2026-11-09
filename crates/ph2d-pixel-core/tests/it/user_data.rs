@@ -245,3 +245,30 @@ fn a_slice_e_dona_de_user_data_com_inverso_e_formato() {
     apply(&mut s, inv).expect("desfaz");
     assert_eq!(s, antes);
 }
+
+/// O peso de um `Op::UserData` (o que o histórico conta contra o tecto) segue os textos e os
+/// vectores de verdade, também dentro de mapas aninhados.
+#[test]
+fn user_data_op_bytes_count_strings_and_nested_values() {
+    let peso = |v: PropValue| {
+        let mut m = PropMap::new();
+        m.insert("k".into(), v);
+        ph2d_pixel_core::Op::UserData {
+            owner: Owner::Sprite,
+            data: Box::new(UserData {
+                props: BTreeMap::from([(String::new(), m)]),
+                ..UserData::default()
+            }),
+        }
+        .bytes()
+    };
+    let mega = 1 << 20;
+    let pouco = peso(PropValue::Bool(true));
+    assert!(peso(PropValue::Str("x".repeat(mega))) >= pouco + mega);
+    let mut dentro = PropMap::new();
+    dentro.insert("s".into(), PropValue::Str("y".repeat(mega)));
+    let fundo = PropValue::Vector(vec![PropValue::Map(dentro); 3]);
+    assert!(peso(fundo) >= pouco + 3 * mega);
+    let largo = PropValue::Vector(vec![PropValue::U8(1); 100_000]);
+    assert!(peso(largo) >= pouco + 100_000);
+}

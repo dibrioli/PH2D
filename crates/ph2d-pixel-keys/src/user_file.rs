@@ -63,7 +63,10 @@ impl Keymap {
                 rep.unknown_ids.push(id.trim().to_owned());
                 continue;
             };
-            for part in rhs.split(',').map(str::trim).filter(|p| *p != "-") {
+            for part in crate::keymap::split_keys(rhs)
+                .into_iter()
+                .filter(|p| *p != "-")
+            {
                 let (tecla, ctx) = match part.split_once('@') {
                     Some((t, c)) => (t, Context::from_id(c.trim())),
                     None => (part, Some(Context::Normal)),
@@ -85,6 +88,166 @@ impl Keymap {
 mod tests {
     use super::*;
     use winit::keyboard::KeyCode as K;
+
+    /// As teclas da tabela `NAMES` de `chord.rs` (todas, na mesma ordem).
+    const NAMED: &[K] = &[
+        K::KeyA,
+        K::KeyB,
+        K::KeyC,
+        K::KeyD,
+        K::KeyE,
+        K::KeyF,
+        K::KeyG,
+        K::KeyH,
+        K::KeyI,
+        K::KeyJ,
+        K::KeyK,
+        K::KeyL,
+        K::KeyM,
+        K::KeyN,
+        K::KeyO,
+        K::KeyP,
+        K::KeyQ,
+        K::KeyR,
+        K::KeyS,
+        K::KeyT,
+        K::KeyU,
+        K::KeyV,
+        K::KeyW,
+        K::KeyX,
+        K::KeyY,
+        K::KeyZ,
+        K::Digit0,
+        K::Digit1,
+        K::Digit2,
+        K::Digit3,
+        K::Digit4,
+        K::Digit5,
+        K::Digit6,
+        K::Digit7,
+        K::Digit8,
+        K::Digit9,
+        K::F1,
+        K::F2,
+        K::F3,
+        K::F4,
+        K::F5,
+        K::F6,
+        K::F7,
+        K::F8,
+        K::F9,
+        K::F10,
+        K::F11,
+        K::F12,
+        K::Enter,
+        K::NumpadEnter,
+        K::Escape,
+        K::Tab,
+        K::Space,
+        K::Delete,
+        K::Backspace,
+        K::Insert,
+        K::Home,
+        K::End,
+        K::PageUp,
+        K::PageDown,
+        K::ArrowLeft,
+        K::ArrowRight,
+        K::ArrowUp,
+        K::ArrowDown,
+        K::Quote,
+        K::Minus,
+        K::Equal,
+        K::BracketLeft,
+        K::BracketRight,
+        K::Comma,
+        K::Period,
+        K::Backquote,
+        K::Slash,
+        K::Semicolon,
+        K::Backslash,
+        K::NumpadSubtract,
+        K::NumpadAdd,
+    ];
+
+    fn sorted_keys(k: &Keymap, a: PixelAction) -> Vec<String> {
+        let mut v: Vec<String> = k
+            .keys_of(a)
+            .into_iter()
+            .map(|(c, x)| format!("{c}|{}", x.id()))
+            .collect();
+        v.sort();
+        v
+    }
+
+    fn only(a: PixelAction, keys: &[(Chord, Context)]) -> Option<Keymap> {
+        let mut k = Keymap::factory();
+        for (c, _) in k.keys_of(a) {
+            k.remove(a, c);
+        }
+        for &(c, x) in keys {
+            k.assign_replacing(a, c, x).ok()?;
+        }
+        Some(k)
+    }
+
+    #[test]
+    fn every_named_key_survives_the_user_file_round_trip() {
+        let a = PixelAction::Outline;
+        let mut tested = 0;
+        for &key in NAMED {
+            assert!(crate::key_name(key).is_some(), "{key:?} sem nome");
+            let bare = Chord::new(key);
+            let all = bare.ctrl().alt().shift();
+            for set in [
+                vec![(bare, Context::Normal)],
+                vec![(all, Context::Normal)],
+                vec![(bare, Context::Selection)],
+                vec![
+                    (all, Context::Normal),
+                    (bare, Context::Selection),
+                    (Chord::new(K::KeyQ).ctrl().alt(), Context::Normal),
+                ],
+            ] {
+                let Some(k) = only(a, &set) else {
+                    continue;
+                };
+                let (lido, rep) = Keymap::from_text(&k.to_text());
+                assert_eq!(rep, TextReport::default(), "{key:?}: {}", k.to_text());
+                assert_eq!(sorted_keys(&lido, a), sorted_keys(&k, a), "{}", k.to_text());
+                let mut imp = only(a, &[]).expect("vazio");
+                assert_eq!(imp.import_text(&k.to_text()), TextReport::default());
+                assert_eq!(sorted_keys(&imp, a), sorted_keys(&k, a), "import {key:?}");
+                tested += 1;
+            }
+        }
+        assert!(tested >= NAMED.len() * 3, "{tested}");
+    }
+
+    #[test]
+    fn files_written_with_the_old_comma_format_still_read() {
+        let a = PixelAction::Outline;
+        let comma = Chord::new(K::Comma);
+        let old = "edit.outline = A, ,, Ctrl+,, , @Selection, B\nedit.fill = -\n";
+        let (k, rep) = Keymap::from_text(old);
+        assert_eq!(rep, TextReport::default());
+        let want = only(
+            a,
+            &[
+                (Chord::new(K::KeyA), Context::Normal),
+                (comma, Context::Normal),
+                (comma.ctrl(), Context::Normal),
+                (comma, Context::Selection),
+                (Chord::new(K::KeyB), Context::Normal),
+            ],
+        )
+        .expect("livres");
+        assert_eq!(sorted_keys(&k, a), sorted_keys(&want, a));
+        assert!(k.keys_of(PixelAction::Fill).is_empty(), "`-` = nenhuma");
+        let (hand, rep) = Keymap::from_text("edit.outline = A,B,Ctrl+,");
+        assert_eq!(rep, TextReport::default());
+        assert_eq!(hand.keys_of(a).len(), 3);
+    }
 
     #[test]
     fn import_adds_and_the_atomic_write_round_trips() {

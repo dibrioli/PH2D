@@ -229,12 +229,36 @@ impl Op {
             Op::Slices(v) => slices_bytes(v),
             Op::UserData { data, .. } => {
                 data.text.len()
-                    + 64 * data.props.values().map(|m| m.len() + 1).sum::<usize>()
+                    + data
+                        .props
+                        .iter()
+                        .map(|(k, m)| k.len() + prop_map_bytes(m))
+                        .sum::<usize>()
+                    + std::mem::size_of::<crate::user::UserData>()
                     + std::mem::size_of::<Op>()
             }
             Op::Batch(v) => v.iter().map(Op::bytes).sum::<usize>(),
         }
     }
+}
+
+/// Os bytes de um mapa de propriedades: chaves, valores e o que eles levam dentro (recursivo).
+fn prop_map_bytes(m: &crate::user::PropMap) -> usize {
+    m.iter()
+        .map(|(k, v)| std::mem::size_of::<String>() + k.len() + prop_bytes(v))
+        .sum::<usize>()
+        + std::mem::size_of::<crate::user::PropMap>()
+}
+
+fn prop_bytes(v: &crate::user::PropValue) -> usize {
+    use crate::user::PropValue as V;
+    std::mem::size_of::<V>()
+        + match v {
+            V::Str(s) => s.len(),
+            V::Vector(v) => v.iter().map(prop_bytes).sum(),
+            V::Map(m) => prop_map_bytes(m),
+            _ => 0,
+        }
 }
 
 /// Aplica `op` e devolve o inverso. Falha sem mudar nada.

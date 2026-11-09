@@ -128,3 +128,74 @@ fn o_user_data_de_cada_dono_vai_e_volta_no_ase() {
     assert_eq!(back, file);
     assert_eq!(write_file(&back).expect("regrava"), bytes);
 }
+
+/// Mete um chunk `0x2006` (cel extra, 36 bytes de corpo) logo a seguir ao 1.º cel do 1.º quadro.
+fn insert_cel_extra(bytes: &[u8]) -> Vec<u8> {
+    let u32_at = |b: &[u8], o: usize| u32::from_le_bytes(b[o..o + 4].try_into().expect("4"));
+    let frame = 128;
+    let frame_len = u32_at(bytes, frame) as usize;
+    let mut at = frame + 16;
+    let cel_end = loop {
+        assert!(at < frame + frame_len, "o quadro não tem cel");
+        let len = u32_at(bytes, at) as usize;
+        let kind = u16::from_le_bytes([bytes[at + 4], bytes[at + 5]]);
+        at += len;
+        if kind == 0x2005 {
+            break at;
+        }
+    };
+    let mut extra = 42u32.to_le_bytes().to_vec();
+    extra.extend_from_slice(&0x2006u16.to_le_bytes());
+    extra.extend_from_slice(&1u32.to_le_bytes());
+    extra.extend_from_slice(&[0; 32]);
+    let mut out = [&bytes[..cel_end], &extra, &bytes[cel_end..]].concat();
+    let bump32 = |b: &mut Vec<u8>, o: usize, d: u32| {
+        let v = u32::from_le_bytes(b[o..o + 4].try_into().expect("4")) + d;
+        b[o..o + 4].copy_from_slice(&v.to_le_bytes());
+    };
+    bump32(&mut out, 0, 42);
+    bump32(&mut out, frame, 42);
+    let old = u16::from_le_bytes([out[frame + 6], out[frame + 7]]) + 1;
+    out[frame + 6..frame + 8].copy_from_slice(&old.to_le_bytes());
+    bump32(&mut out, frame + 12, 1);
+    out
+}
+
+#[test]
+fn a_cel_extra_between_the_cel_and_its_user_data_keeps_the_user_data_on_the_cel() {
+    let file = AseFile {
+        width: 4,
+        height: 4,
+        depth: 32,
+        layers: vec![AseLayer {
+            name: "L".into(),
+            flags: 3,
+            opacity: 255,
+            ..AseLayer::default()
+        }],
+        frames: vec![AseFileFrame {
+            duration_ms: 100,
+            cels: vec![AseCel {
+                layer: 0,
+                opacity: 255,
+                body: AseCelBody::Image {
+                    w: 1,
+                    h: 1,
+                    pixels: vec![1, 2, 3, 255],
+                },
+                user_data: ud("cel", Some([4, 3, 2, 1])),
+                x: 0,
+                y: 0,
+                z: 0,
+            }],
+            palette: None,
+        }],
+        ..AseFile::default()
+    };
+    let bytes = insert_cel_extra(&write_file(&file).expect("escreve"));
+    let back = parse_file(&bytes).expect("lê");
+    assert_eq!(
+        back.frames[0].cels[0].user_data,
+        file.frames[0].cels[0].user_data
+    );
+}

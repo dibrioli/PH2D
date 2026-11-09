@@ -15,6 +15,7 @@ const CHUNK_OLD_PALETTE_8: u16 = 0x0004;
 const CHUNK_OLD_PALETTE_6: u16 = 0x0011;
 const CHUNK_LAYER: u16 = 0x2004;
 const CHUNK_CEL: u16 = 0x2005;
+const CHUNK_CEL_EXTRA: u16 = 0x2006;
 const CHUNK_TAGS: u16 = 0x2018;
 const CHUNK_PALETTE: u16 = 0x2019;
 const CHUNK_SLICE: u16 = 0x2022;
@@ -367,6 +368,8 @@ impl Build {
         self.last = match ctype {
             CHUNK_LAYER => Last::Layer,
             CHUNK_CEL => Last::Cel,
+            // O cel extra fica entre o cel e o user data dele (spec): não muda o dono.
+            CHUNK_CEL_EXTRA if matches!(self.last, Last::Cel) => Last::Cel,
             CHUNK_PALETTE if frame == 0 => Last::Sprite,
             // Os chunks velhos de paleta que um 1.3 grava a seguir não roubam o user data do sprite.
             CHUNK_OLD_PALETTE_8 | CHUNK_OLD_PALETTE_6 if matches!(self.last, Last::Sprite) => {

@@ -27,7 +27,17 @@ pub(crate) fn tr(k: &str) -> Option<&'static str> {
         .or_else(|| kanban_share::tr(k))
         .or_else(|| kanban_import::tr(k))
         .or_else(|| kanban_hooks::tr(k))
+        .or_else(|| sfxlab::tr(k))
+        .or_else(|| recovery::tr(k))
 }
+
+/// O que o SFX LAB diz (W3) — declarado aqui pelo tecto de LOC do `lib.rs`.
+#[path = "sfxlab.rs"]
+mod sfxlab;
+
+/// A recuperação do projecto (`ph2d-recovery`): os diálogos e as falhas da cópia.
+#[path = "recovery.rs"]
+mod recovery;
 
 /// O que a porta do gesto diz (J3): a cascata do Butler/scripts que parou num tecto.
 #[path = "kanban_hooks.rs"]

@@ -206,7 +206,7 @@ impl Keymap {
             if rhs == "-" {
                 continue;
             }
-            for part in rhs.split(',') {
+            for part in split_keys(rhs) {
                 match parse_key(part) {
                     Some((k, c)) => {
                         if map.assign_replacing(action, k, c).is_err() {
@@ -221,12 +221,38 @@ impl Keymap {
     }
 }
 
+/// Uma tecla no texto. O `-` sozinho é «nenhuma tecla», por isso a tecla Minus sem modificadores
+/// e sem contexto escreve-se `- @Normal` (o leitor já a entende assim).
 fn fmt_key(k: Chord, c: Context) -> String {
-    if c == Context::Normal {
-        k.to_string()
+    let t = k.to_string();
+    if c != Context::Normal || t == "-" {
+        format!("{t} @{}", c.id())
     } else {
-        format!("{k} @{}", c.id())
+        t
     }
+}
+
+/// As teclas do lado direito de uma linha. A vírgula separa, salvo quando é a própria tecla Comma
+/// (`,`): no começo de uma tecla ou logo depois de um `+` (`,` · `Ctrl+,` · `, @Selection`). Lê os
+/// ficheiros antigos (separador `, `) e os escritos à mão (`A,B`).
+pub(crate) fn split_keys(rhs: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut start = 0;
+    for (i, ch) in rhs.char_indices() {
+        if ch != ',' {
+            continue;
+        }
+        let tok = rhs[start..i].trim();
+        if !(tok.is_empty() || tok.ends_with('+')) {
+            out.push(tok);
+            start = i + 1;
+        }
+    }
+    let tail = rhs[start..].trim();
+    if !tail.is_empty() {
+        out.push(tail);
+    }
+    out
 }
 
 fn parse_key(s: &str) -> Option<(Chord, Context)> {

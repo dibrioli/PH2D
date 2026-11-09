@@ -1,7 +1,9 @@
 //! O user data entre o documento e o `.ase` (P12): cor, texto e os mapas de propriedades.
 //!
 //! O mapa do artista é a chave `0` do ficheiro e `""` no documento; os outros vão pelo nome da
-//! extensão, que o `0x2008` liga a um id (tipo 3). Um id sem entrada lê-se como `#<id>`.
+//! extensão, que o `0x2008` liga a um id (tipo 3). Um id sem entrada lê-se como `#<id>` e volta
+//! ao ficheiro com o MESMO id e sem extensão inventada; um nome que se leria assim (`#5`, `#`,
+//! `##x`, ou o nome vazio) ganha um `#` à frente. A chave do documento e o id/nome são uma bijecção.
 
 use std::collections::BTreeSet;
 
@@ -10,6 +12,43 @@ use ph2d_pixel_core::{PropMap, PropValue, Sprite, UserData};
 
 /// O tipo de entrada do `0x2008` que dá nome às chaves dos mapas.
 const KIND_EXTENSION: u8 = 3;
+
+/// O que uma chave do documento diz do ficheiro.
+#[derive(Debug, PartialEq, Eq)]
+enum Chave<'a> {
+    /// Um id sem extensão (o `0` é o mapa do artista).
+    Id(u32),
+    /// O nome de uma extensão.
+    Nome(&'a str),
+}
+
+fn chave(k: &str) -> Chave<'_> {
+    if k.is_empty() {
+        return Chave::Id(0);
+    }
+    let Some(resto) = k.strip_prefix('#') else {
+        return Chave::Nome(k);
+    };
+    if resto.is_empty() {
+        return Chave::Nome("");
+    }
+    if resto.starts_with('#') {
+        return Chave::Nome(resto);
+    }
+    match resto.parse::<u32>() {
+        Ok(n) if n != 0 && n.to_string() == resto => Chave::Id(n),
+        _ => Chave::Nome(k),
+    }
+}
+
+/// A chave do documento de uma extensão chamada `nome` (o inverso de [`chave`]).
+fn chave_do_nome(nome: &str) -> String {
+    if chave(nome) == Chave::Nome(nome) {
+        nome.to_owned()
+    } else {
+        format!("#{nome}")
+    }
+}
 
 fn valor_de(p: &AseProp) -> PropValue {
     match p {
@@ -72,40 +111,62 @@ pub(super) fn de(u: Option<&AseUserData>, ext: &[AseExternalFile]) -> UserData {
     let Some(u) = u else {
         return UserData::default();
     };
-    let nome = |key: u32| {
-        if key == 0 {
-            return String::new();
-        }
-        ext.iter()
-            .find(|e| e.id == key && e.kind == KIND_EXTENSION)
-            .map_or_else(|| format!("#{key}"), |e| e.name.clone())
-    };
+    let mut props = ph2d_pixel_core::Properties::new();
+    for m in &u.maps {
+        let bruto = || {
+            if m.key == 0 {
+                String::new()
+            } else {
+                format!("#{}", m.key)
+            }
+        };
+        // Dois ids com o mesmo nome: o segundo fica pelo id (não se fundem).
+        let k = ext
+            .iter()
+            .find(|e| e.id == m.key && e.kind == KIND_EXTENSION && m.key != 0)
+            .map(|e| chave_do_nome(&e.name))
+            .filter(|k| !props.contains_key(k))
+            .unwrap_or_else(bruto);
+        props.entry(k).or_default().extend(mapa_de(&m.props));
+    }
     UserData {
         color: u.color.unwrap_or_default(),
         text: u.text.clone().unwrap_or_default(),
-        props: u
-            .maps
-            .iter()
-            .map(|m| (nome(m.key), mapa_de(&m.props)))
-            .collect(),
+        props,
     }
 }
 
-/// As extensões que os mapas do documento nomeiam, com ids `1..` em ordem de nome.
+/// As extensões que os mapas do documento nomeiam, com ids `1..` em ordem de nome, saltando os
+/// ids que o documento guarda sem extensão (`#<id>`).
 pub(super) fn extensoes(s: &Sprite) -> Vec<AseExternalFile> {
+    let mut todos = vec![s.user()];
+    todos.extend(s.layers().iter().map(|l| &l.user));
+    todos.extend(s.entries().map(|(_, c)| &c.user));
+    todos.extend(s.tags().iter().map(|t| &t.user));
+    todos.extend(s.tilesets().iter().map(|t| &t.user));
+    todos.extend(s.slices().iter().map(|c| &c.user));
+    extensoes_de(todos)
+}
+
+fn extensoes_de<'a>(todos: impl IntoIterator<Item = &'a UserData>) -> Vec<AseExternalFile> {
     let mut nomes = BTreeSet::new();
+    let mut brutos = BTreeSet::new();
     let mut junta = |u: &UserData| {
-        nomes.extend(u.props.keys().filter(|k| !k.is_empty()).cloned());
+        for k in u.props.keys() {
+            match chave(k) {
+                Chave::Id(n) => {
+                    brutos.insert(n);
+                }
+                Chave::Nome(n) => {
+                    nomes.insert(n.to_owned());
+                }
+            }
+        }
     };
-    junta(s.user());
-    s.layers().iter().for_each(|l| junta(&l.user));
-    s.entries().for_each(|(_, c)| junta(&c.user));
-    s.tags().iter().for_each(|t| junta(&t.user));
-    s.tilesets().iter().for_each(|t| junta(&t.user));
-    s.slices().iter().for_each(|c| junta(&c.user));
+    todos.into_iter().for_each(&mut junta);
     nomes
         .into_iter()
-        .zip(1..)
+        .zip((1..).filter(|id| !brutos.contains(id)))
         .map(|(name, id)| AseExternalFile {
             id,
             kind: KIND_EXTENSION,
@@ -119,12 +180,9 @@ pub(super) fn saida(u: &UserData, ext: &[AseExternalFile]) -> Option<AseUserData
     if u.is_empty() {
         return None;
     }
-    let key = |nome: &str| {
-        if nome.is_empty() {
-            0
-        } else {
-            ext.iter().find(|e| e.name == nome).map_or(0, |e| e.id)
-        }
+    let key = |k: &str| match chave(k) {
+        Chave::Id(n) => n,
+        Chave::Nome(nome) => ext.iter().find(|e| e.name == nome).map_or(0, |e| e.id),
     };
     Some(AseUserData {
         text: (!u.text.is_empty()).then(|| u.text.clone()),
@@ -138,4 +196,61 @@ pub(super) fn saida(u: &UserData, ext: &[AseExternalFile]) -> Option<AseUserData
             })
             .collect(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ext(id: u32, kind: u8, name: &str) -> AseExternalFile {
+        AseExternalFile {
+            id,
+            kind,
+            name: name.into(),
+        }
+    }
+
+    fn mapa(key: u32) -> AsePropMap {
+        AsePropMap {
+            key,
+            props: vec![(format!("v{key}"), AseProp::U32(key))],
+        }
+    }
+
+    #[test]
+    fn unknown_map_ids_round_trip_with_the_same_id_and_nothing_merges() {
+        let file = AseUserData {
+            text: None,
+            color: None,
+            maps: [0, 3, 4, 5, 6, 7, 9].into_iter().map(mapa).collect(),
+        };
+        let lidas = [
+            ext(3, KIND_EXTENSION, "#7"),
+            ext(4, KIND_EXTENSION, "dup"),
+            ext(5, KIND_EXTENSION, "dup"),
+            ext(6, KIND_EXTENSION, ""),
+            ext(7, 0, "palette.aseprite"),
+            ext(9, KIND_EXTENSION, "x"),
+        ];
+        let doc = de(Some(&file), &lidas);
+        let chaves: Vec<&str> = doc.props.keys().map(String::as_str).collect();
+        assert_eq!(chaves, ["", "#", "##7", "#5", "#7", "dup", "x"]);
+        let novas = extensoes_de([&doc]);
+        let ids: BTreeSet<u32> = novas.iter().map(|e| e.id).collect();
+        assert!(!ids.contains(&5) && !ids.contains(&7), "{novas:?}");
+        let nomes: Vec<&str> = novas.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(nomes, ["", "#7", "dup", "x"]);
+        let saiu = saida(&doc, &novas).expect("tem mapas");
+        assert_eq!(saiu.maps.len(), file.maps.len());
+        let por_valor = |u: &AseUserData, v: u32| {
+            u.maps
+                .iter()
+                .find(|m| m.props == mapa(v).props)
+                .map(|m| m.key)
+        };
+        assert_eq!(por_valor(&saiu, 5), Some(5));
+        assert_eq!(por_valor(&saiu, 7), Some(7));
+        assert_eq!(por_valor(&saiu, 0), Some(0));
+        assert_eq!(de(Some(&saiu), &novas), doc);
+    }
 }

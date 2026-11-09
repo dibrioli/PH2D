@@ -236,6 +236,7 @@ pub(crate) fn spawn_if_enabled(
         &path,
         [0.0, 0.0],
         pixels_per_meter,
+        ph2d_app_sprite_anim::normal_map::escolher_normal,
     ) {
         crate::ase_import::AseImportResult::Ok {
             name,

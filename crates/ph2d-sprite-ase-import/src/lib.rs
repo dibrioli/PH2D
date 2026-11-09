@@ -3,8 +3,8 @@
 //!
 //! O ficheiro lê-se pelo MESMO leitor do Pixel e deriva-se pelas portas do Pixel Sprite
 //! ([`ph2d_pixel_cena::importa_ase`]): tags (`tag_do_aseprite`), pivô e formas por célula
-//! ([`ph2d_ecs::SpriteCells`], P14e D1), a cor sem as camadas Normal Map e a normal (que a família liga
-//! à imagem pela porta `normal_map`). Daí nasce **uma** sprite com grelha e biblioteca.
+//! ([`ph2d_ecs::SpriteCells`], P14e D1), a cor sem as camadas Normal Map e a normal, ligada à
+//! imagem pela porta [`EscolherNormal`] (`normal_map` da família). Daí nasce **uma** sprite com grelha e biblioteca.
 //!
 //! ⚠️ **A ORDEM DOS QUADROS É O CONTRATO**: uma `AnimationTag` é um intervalo sobre as CÉLULAS, e
 //! a folha empacota-se em linha, da esquerda para a direita e de cima para baixo ([`pack`]).
@@ -127,9 +127,6 @@ pub enum AseImportResult {
         bits: u64,
         /// O que ficou por trás, em linguagem de artista. Uma linha por assunto.
         notes: Vec<String>,
-        /// A folha da normal (camada Normal Map), com a grelha da cor: `(w, h, rgba)`. Quem a liga à
-        /// imagem é a família (`ph2d_app_sprite_anim::ase_import`, porta `normal_map`).
-        normal: Option<(u32, u32, Vec<u8>)>,
     },
     Err {
         name: String,
@@ -150,6 +147,7 @@ pub fn import_ase(
     path: &Path,
     anchor_world: [f32; 2],
     pixels_per_meter: f32,
+    escolher_normal: EscolherNormal,
 ) -> AseImportResult {
     let name = path
         .file_stem()
@@ -218,18 +216,30 @@ pub fn import_ase(
         imp.cor.len(),
     ));
     liga(sim, entity, &imp, cols, rows, m_por_px);
+    if let Some(n) = &imp.normal {
+        let id = asset_db.insert_image_rgba8(sheet_w, sheet_h, pack(n, w, h, cols, rows));
+        if let Err(e) = escolher_normal(sim.world(), asset_db, atlas_asset_map, entity, Some(id)) {
+            notes.push(e);
+        }
+    }
     AseImportResult::Ok {
         name,
         frames: imp.cor.len(),
         animations: imp.clips.iter().count(),
         bits,
         notes,
-        normal: imp
-            .normal
-            .as_ref()
-            .map(|n| (sheet_w, sheet_h, pack(n, w, h, cols, rows))),
     }
 }
+
+/// A porta da normal da IMAGEM (`ph2d_app_sprite_anim::normal_map::escolher_normal`): a família
+/// passa-a, porque ela mora na crate que depende desta.
+pub type EscolherNormal = fn(
+    &ph2d_ecs::World,
+    &ph2d_asset::AssetDb,
+    &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
+    ph2d_ecs::Entity,
+    Option<ph2d_asset::AssetId>,
+) -> Result<(), String>;
 
 /// O que o import liga à sprite já nascida: a grelha (o tamanho de UMA célula), a biblioteca a
 /// tocar a primeira, o filtro de pixel art, o pivô da célula 0 como o da folha, e o pivô e as

@@ -472,6 +472,8 @@ ph2d-vec-entities = { path = "../../crates/ph2d-vec-entities" }
 ph2d-app-audio = { path = "../../crates/ph2d-app-audio" }
 # A porta de ABRIR ficheiros de áudio (os filtros do diálogo) — desceu para a crate que descodifica.
 ph2d-audio-decode = { path = "../../crates/ph2d-audio-decode" }
+# P14e: o import do `.ase` (a drop-crate; a normal pela porta `normal_map` da família).
+ph2d-sprite-ase-import = { path = "../../crates/ph2d-sprite-ase-import" }
 
 [dev-dependencies]
 # O «Add Collider» do Pixel Sprite contra o undo real (`undo_pixel_collider_tests.rs`): o gesto e a fixture.

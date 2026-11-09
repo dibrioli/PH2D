@@ -345,14 +345,9 @@ fn a_normal_do_ase_entra_na_imagem_importada() {
         .spawn(ph2d_render::Sprite::atlas(7, [1.0; 2], [1.0; 4]))
         .id();
     let n = imp.normal.as_ref().expect("a fixture tem Normal Map");
-    ph2d_app_sprite_anim::ase_import::liga_normal(
-        &w,
-        &db,
-        &atlas,
-        e.to_bits(),
-        (96, 16, pack(n, 16, 16, cols, rows)),
-    )
-    .expect("liga");
+    let id = db.insert_image_rgba8(96, 16, pack(n, 16, 16, cols, rows));
+    let porta: crate::EscolherNormal = ph2d_app_sprite_anim::normal_map::escolher_normal;
+    porta(&w, &db, &atlas, e, Some(id)).expect("liga");
     let id = ph2d_app_sprite_anim::normal_map::normal_de(cor).expect("a imagem tem normal");
     let pixel: Vec<Vec<u8>> = s
         .frames()

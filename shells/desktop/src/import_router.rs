@@ -164,6 +164,7 @@ pub(crate) fn import_paths_grid(
             path,
             [cursor_x, anchor_world[1]],
             pixels_per_meter,
+            ph2d_app_sprite_anim::normal_map::escolher_normal,
         ) {
             crate::ase_import::AseImportResult::Ok {
                 name,

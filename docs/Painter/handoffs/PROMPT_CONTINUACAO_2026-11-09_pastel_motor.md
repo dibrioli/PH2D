@@ -7,8 +7,8 @@ Estado (09/11, tarde): linha `line/PainterWatercolor`, base `main` `f254e42bf1`,
   `ProgressPhase`/`paint_progress_badge` em `ph2d-editor-core/src/widget/spinner.rs`; estado `SheetCache::sync` em
   `ph2d-anim-sheets/src/sheet_cache.rs` (`follow_live` recebe `agora_ns`); pintor `ph2d-panel-inspector/src/sections/anim_card.rs`.
   Fotos em `docs/Painter/handoffs/material_2026-11-09_selo/` (tira `8_…depois_zoom.png` = as 4 curas). ⚠️ Com o Painter
-  ligado o painel direito vira Brush: o cartão Animation vê-se clicando **Inspector** (topo direito). **Smoke do dono: PENDENTE**
-  (passos na conversa: `PH2D_GAME_SMOKE=5`, Two Sheets ▸ Painter ▸ Inspector ▸ pintar). Se ele reprovou algo, comece por aí.
+  ligado o painel direito vira Brush: o cartão Animation vê-se clicando **Inspector** (topo direito). **Smoke do dono 09/11: OK**
+  (`PH2D_GAME_SMOKE=5`, Two Sheets ▸ Painter ▸ Inspector ▸ pintar).
 - **Pastel, fase 1 e 2** (dono: «com os três e veja o mais realista»; depois «siga como achar melhor, buscando o estado da
   arte»). LEIA `docs/Painter/handoffs/material_2026-11-09_pastel/README.md` (as duas rodadas, tabelas) e veja
   `resumo_para_o_dono.png` e `folha_variantes.png`. Oráculo mais realista: **Krita h) Chalk Soft**. O nosso = spray

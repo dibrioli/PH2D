@@ -10,9 +10,9 @@ use ph2d_ecs::{GlobalTransform, PresentWorld, Transform};
 use ph2d_light2d_ecs::{BloqueiaLuz, Luz, NaoRecebeLuz};
 use ph2d_pixel_core::Sprite;
 use ph2d_pixel_luz::{ObjetoPixel, OclusaoDoPixel, banda_normal, base_da_instancia};
-use ph2d_vector::{ImageQuality, Point, StableImage, VectorScene};
+use ph2d_vector::{ImageQuality, StableImage, VectorScene};
 
-use crate::comum::{Cadeia, FUNDO, H, W, afim, gpu, ler, ler_bgra};
+use crate::cadeia::{Cadeia, FUNDO, H, W, afim, gpu, ler, ler_bgra};
 
 /// 16 px/m: a célula do sprite = 1 px da janela de `comum` (16 px/m).
 const PPM: f64 = 16.0;
@@ -191,9 +191,9 @@ fn o_pixel_sprite_faz_sombra() {
     let c = Cadeia::nova(&gpu);
     let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
     assentar(&gpu, &c, &mut l, &w, &objetos, false);
-    let sem = crate::comum::fluencia_lida(&gpu, l.solver().unwrap());
+    let sem = crate::cadeia::fluencia_lida(&gpu, l.solver().unwrap());
     assentar(&gpu, &c, &mut l, &w, &objetos, true);
-    let com = crate::comum::fluencia_lida(&gpu, l.solver().unwrap());
+    let com = crate::cadeia::fluencia_lida(&gpu, l.solver().unwrap());
     let (atras, frente) = ([0.85, 0.0], [-0.85, 0.0]);
     let (a0, a1) = (sem.amostra(atras), com.amostra(atras));
     let (f0, f1) = (sem.amostra(frente), com.amostra(frente));
@@ -224,7 +224,7 @@ fn a_normal_map_sombreia_e_nao_muda_a_cor() {
     ph2d_pixel_core::compose_rgba(&com_n, q, None, &mut a);
     ph2d_pixel_core::compose_rgba(&plano, q, None, &mut b);
     assert_eq!(a, b, "a Normal Map não muda a cor composta");
-    let mut razao = |s: &Sprite| {
+    let razao = |s: &Sprite| {
         let mut w = World::new();
         lampada(&mut w, None);
         let t = translacao_para(s, [0.0, 0.0]);

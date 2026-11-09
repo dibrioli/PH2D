@@ -5945,10 +5945,6 @@ dependencies = [
  "ph2d-light2d-gpu",
  "ph2d-light2d-ref",
  "ph2d-panel-inspector",
- "ph2d-pixel-cena",
- "ph2d-pixel-core",
- "ph2d-pixel-luz",
- "ph2d-pixel-render",
  "ph2d-render",
  "ph2d-tokens",
  "ph2d-ui-testkit",
@@ -10903,13 +10899,20 @@ dependencies = [
 name = "ph2d-pixel-luz"
 version = "0.0.0"
 dependencies = [
+ "bevy_ecs",
+ "half",
+ "ph2d-app-light2d",
  "ph2d-ecs",
  "ph2d-gpu",
+ "ph2d-host",
+ "ph2d-light2d-ecs",
  "ph2d-light2d-gpu",
  "ph2d-pixel-cena",
  "ph2d-pixel-core",
  "ph2d-pixel-render",
+ "ph2d-render",
  "ph2d-vector",
+ "vello",
  "wgpu",
 ]
 

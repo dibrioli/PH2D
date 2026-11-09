@@ -199,6 +199,9 @@ impl crate::App {
     /// O condutor do smoke (`PH2D_GAME_SMOKE_DRIVE`): os gestos pelas portas do produto.
     pub(crate) fn game_smoke_drive(&mut self) {
         use ph2d_app_game::smoke::{self as s, Gesto};
+        if let Some((seta, desce)) = ph2d_app_host::smoke_drive::seta_pedida() {
+            return self.aperta_seta(seta, desce); // a seta de uma cena de outra família
+        }
         let (Some(stage), Some(nivel)) = (s::conducao(), s::armed_level()) else {
             return;
         };
@@ -212,21 +215,22 @@ impl crate::App {
             }
             Some(Gesto::Para) => self.jogo_para(),
             Some(g) => {
-                use winit::keyboard::KeyCode;
-                let Some((seta, desce)) = g.seta() else {
-                    return;
-                };
-                #[rustfmt::skip] // pela ordem das variantes de `Seta`
-                let tecla = [KeyCode::ArrowRight, KeyCode::ArrowUp, KeyCode::ArrowLeft, KeyCode::ArrowDown][seta as usize];
-                if let Some(k) = crate::keymap::winit_to_input_keycode(tecla).map(ph2d_input::Key) {
-                    self.input.apply_event(if desce {
-                        ph2d_input::Event::KeyDown(k)
-                    } else {
-                        ph2d_input::Event::KeyUp(k)
-                    });
+                if let Some((seta, desce)) = g.seta() {
+                    self.aperta_seta(seta as u8, desce);
                 }
             }
             None => {}
+        }
+    }
+
+    /// A seta `seta` (→ ↑ ← ↓) desce ou sobe pela porta da tecla real (`InputState`).
+    fn aperta_seta(&mut self, seta: u8, desce: bool) {
+        use ph2d_input::Event::{KeyDown, KeyUp};
+        use winit::keyboard::KeyCode::{ArrowDown, ArrowLeft, ArrowRight, ArrowUp};
+        let tecla = [ArrowRight, ArrowUp, ArrowLeft, ArrowDown][usize::from(seta.min(3))];
+        if let Some(k) = crate::keymap::winit_to_input_keycode(tecla).map(ph2d_input::Key) {
+            self.input
+                .apply_event(if desce { KeyDown(k) } else { KeyUp(k) });
         }
     }
 

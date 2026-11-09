@@ -459,13 +459,6 @@ pub(crate) fn escolha(c: &mut CardCtx<'_>, rotulo: &str, segs: &[Seg<'_>], y: f3
     fim
 }
 
-/// A escolha cujo nome é o título por cima dela (o grupo que dobra): sem rótulo próprio.
-pub(crate) fn escolha_sem_rotulo(c: &mut CardCtx<'_>, segs: &[Seg<'_>], y: f32) -> f32 {
-    let fim = c.full(None, Widget::Choice(segs), y);
-    opcoes_inertes(c, segs);
-    fim
-}
-
 /// Um número e a cor irmã na mesma linha (Wax + Wax Color, Intensity + Color).
 pub(crate) fn numero_e_cor(
     c: &mut CardCtx<'_>,

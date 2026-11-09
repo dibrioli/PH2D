@@ -526,9 +526,11 @@ fn stamp_dab_inner_com(
     min_area: usize,
     // The dab-capsule (Continuous Spacing, [`crate::capsula`]); `None` ⇒ the plain dab, unchanged.
     capsula: Option<crate::capsula::Capsula>,
+    // `Some` ⇒ a pegada vai para buffers PRÓPRIOS do tamanho da caixa do dab ([`PegadaLocal`]); `buf`/`liso` não se tocam.
+    local: Option<&mut Option<PegadaLocal>>,
 ) -> (Option<DirtyRect>, Option<DirtyRect>) {
     // Contract guard (sweep 2026-07-12): was `debug_assert!`, i.e. absent from the build the artist runs.
-    if buf.len() < (width as usize) * (height as usize) * 4 {
+    if local.is_none() && buf.len() < (width as usize) * (height as usize) * 4 {
         return (None, None);
     }
     // Per-dab opacity = the dab's coverage (which already carries the Strength, ONCE —
@@ -630,7 +632,8 @@ fn stamp_dab_inner_com(
         preserve_alpha,
         x0,
         x1,
-        stride,
+        stride: local.as_ref().map_or(stride, |_| ((x1 - x0) as usize) * 4),
+        ox: if local.is_some() { x0 } else { 0 },
         film_aa,
         lut,
         capsula,
@@ -649,6 +652,37 @@ fn stamp_dab_inner_com(
     // `strength < 1`, e o **AA do filme** do impasto (`film_aa_wanted`) passou a ligá-lo para TODO
     // pincel de impasto — inclusive os maiores do app, que são justamente os que cruzam o piso.
     // Medido: com o dab ABAIXO do piso o cap custa 0,99× (grátis); ACIMA dele, 4,15×.
+    let caixa = DirtyRect {
+        x: x0 as u32,
+        y: y0 as u32,
+        w: (x1 - x0) as u32,
+        h: (y1 - y0) as u32,
+    };
+    if let Some(saida) = local {
+        let n = (caixa.w as usize) * (caixa.h as usize) * 4;
+        let (mut m, mut l) = (vec![0u8; n], liso.map(|_| vec![0u8; n]));
+        let (touched, liso_tocou) = liso::parallel_band_stamp_com_liso(
+            &mut m,
+            l.as_deref_mut(),
+            None,
+            None,
+            0,
+            y1 - y0,
+            x0,
+            x1,
+            ctx.stride,
+            min_area,
+            |dst, lband, mband, fband, band_y0| {
+                stamp_band(&ctx, dst, lband, mband, fband, band_y0 + y0)
+            },
+        );
+        *saida = Some(PegadaLocal {
+            caixa,
+            mascara: m,
+            liso: l.unwrap_or_default(),
+        });
+        return (touched.then_some(caixa), liso_tocou.then_some(caixa));
+    }
     let (touched, liso_tocou) = liso::parallel_band_stamp_com_liso(
         buf,
         liso,
@@ -662,14 +696,16 @@ fn stamp_dab_inner_com(
         min_area,
         |dst, lband, mband, fband, band_y0| stamp_band(&ctx, dst, lband, mband, fband, band_y0),
     );
-
-    let caixa = DirtyRect {
-        x: x0 as u32,
-        y: y0 as u32,
-        w: (x1 - x0) as u32,
-        h: (y1 - y0) as u32,
-    };
     (touched.then_some(caixa), liso_tocou.then_some(caixa))
+}
+
+/// ⭐ **A pegada de um dab num buffer PRÓPRIO** (Bug #84): a máscara RGBA e a pegada lisa só da caixa do dab, para a
+/// rota da mistura calcular as pegadas de um lote em paralelo ENTRE os dabs (a pegada de um dab não depende da tela,
+/// só a película). Os mesmos bytes que o kernel pinta na tela vazia, à mesma caixa.
+pub struct PegadaLocal {
+    pub caixa: DirtyRect,
+    pub mascara: Vec<u8>,
+    pub liso: Vec<u8>,
 }
 
 mod bands;
@@ -681,7 +717,7 @@ pub use bands::{PARALLEL_MIN_AREA, band_count};
 pub(crate) use bands::{encode, ramp_sample, stamp_rgba};
 pub(crate) use bands::{parallel_band_cached, parallel_band_stamp};
 use liso::stamp_dab_inner;
-pub use liso::stamp_dab_textured_masked_po_com_liso;
+pub use liso::{pegada_textured_masked_po_com_liso, stamp_dab_textured_masked_po_com_liso};
 
 #[cfg(test)]
 mod tests;

@@ -1027,6 +1027,24 @@ segunda passagem escrevia, ao bit (Δ da sonda 0,991/89 787 px e 0,795/60 048 px
 30 px 0,360 → ~0,31 s, 80 px 0,501 → ~0,46 s (load 10–15); gate da razão VERDE de novo. **Aberto:** pegada ~55 % e
 película ~45 % do que resta da rota (sonda de `Instant`); a Shape e a rampa ainda pagam a segunda passagem.
 
+**Smoke do dono (10/11, depois da cura 4): «bem melhor mas inaceitável em traços rápidos (30 px = 6 fps)».** `PH2D_PAINT_PERF`
+no app (tela 1024², papel + camada transparente): **8,74 ms por entrega** de ponteiro, 9,4 entregas por quadro, período
+96,5 ms; a prévia, os painéis, o chrome e o upload ~0 (o quadro do app fora do ponteiro custa ~1–2 ms, medido também com o
+`app_frame` e a placa). A sonda `sonda_custo_no_app` com 9 eventos de 40 px (360 px/quadro) dá os mesmos 65–67 ms: a caneta
+do dono entrega ~4 000 px/s e o custo é ~0,18 ms por px de traço. O papel não muda nada (com × sem: ±1 ms). Por ablação
+(`PH2D_SONDA_ABLA`): sem o véu (`spray_count 1`) 11 ms — **o véu é ~83 %**. Por carimbo de véu (~10 k texels): kernel 107
+µs (32 ns/visita em série, só 3× com as faixas), película 76–86 µs (17 em série, só 2×) — **o tecto é o fork-join por
+carimbo**: faixas mais finas (512/256 visitas, ou um pedaço por ladrilho 64×16 na película) não passam de ~60 µs de kernel
+e ~48 de pintura. ⛔ **Recusa MEDIDA:** a pintura da película por ladrilho (≈ 3× as tarefas) — o mesmo tempo, ao bit.
+**Cura 5 (10/11, as pegadas do lote em paralelo ENTRE os dabs):** a pegada de um dab não lê a tela (só a película lê), logo
+com só o Grain as pegadas do lote calculam-se de uma vez (`pegada_textured_masked_po_com_liso` → `PegadaLocal`, a caixa do
+dab; a película lê-a por `Pegada::Mascara::{org, largura}`), e a cópia no centro da anterior do grupo (a que a cura 1 salta)
+não se calcula — se não saltar, calcula-se na hora. Ao bit (gate `a_pegada_na_caixa_e_a_da_tela_ao_bit`, vermelho por
+mutação da origem; as `.ppm` da `sonda_custo_do_veu` iguais em `cmp`; os dois alarmes de pincel verdes). 360 px/quadro
+**67 → 41 ms**, 90 px/quadro 17,8 → **12,7 ms**; `sonda_custo_do_veu` 30 px 0,29 → 0,255 s. **Aberto:** a película é agora
+~60 % e sequencial entre carimbos; o próximo corte é o véu a MEIA definição (pegada e película a ¼ dos texels; o dono
+aprovou tentar, 10/11), que o fork-join não come.
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

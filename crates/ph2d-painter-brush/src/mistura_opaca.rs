@@ -405,6 +405,10 @@ pub enum Pegada<'a> {
     Mascara {
         mascara: &'a [u8],
         caixa: (u32, u32, u32, u32),
+        /// O texel da tela que é o 1.º da máscara e a largura dela em texels: `[0, 0]` e a largura da tela numa
+        /// máscara do tamanho da tela; a caixa do dab numa pegada própria ([`crate::PegadaLocal`]).
+        org: [u32; 2],
+        largura: u32,
         /// A mesma pegada SEM o Grain (só com o Grain ativo): o grão é o TECTO da cobertura e o resto a TAXA, como
         /// no pincel sem a mistura (`stroke_cover::cover_add`); sem isto o lápis enchia os furos do papel.
         sem_grao: Option<&'a [u8]>,
@@ -469,11 +473,18 @@ pub fn mistura_opaca_carimbo(
     if x1 <= x0 || y1 <= y0 || x1 > w || y1 > h {
         return None;
     }
+    // O texel `(x, y)` da tela na máscara da pegada.
+    let na_mascara = |x: u32, y: u32| -> usize {
+        match pegada {
+            Pegada::Mascara { org, largura, .. } => {
+                (((y - org[1]) * largura + (x - org[0])) * 4) as usize
+            }
+            Pegada::Disco { .. } => 0,
+        }
+    };
     let peso = |x: u32, y: u32| -> f32 {
         match pegada {
-            Pegada::Mascara { mascara, .. } => {
-                f32::from(mascara[((y * w + x) * 4 + 3) as usize]) / 255.0
-            }
+            Pegada::Mascara { mascara, .. } => f32::from(mascara[na_mascara(x, y) + 3]) / 255.0,
             Pegada::Disco { centro, raio } => {
                 let dx = x as f32 + 0.5 - centro[0];
                 let dy = y as f32 + 0.5 - centro[1];
@@ -706,7 +717,7 @@ pub fn mistura_opaca_carimbo(
             for x in x0..x1 {
                 let (wt, byte) = match pegada {
                     Pegada::Mascara { mascara, .. } => {
-                        let b = mascara[((y * w + x) * 4 + 3) as usize];
+                        let b = mascara[na_mascara(x, y) + 3];
                         (f32::from(b) / 255.0, Some(b))
                     }
                     Pegada::Disco { .. } => (peso(x, y), None),
@@ -719,7 +730,7 @@ pub fn mistura_opaca_carimbo(
                     Pegada::Mascara {
                         sem_grao: Some(sg), ..
                     } => {
-                        let b = sg[((y * w + x) * 4 + 3) as usize];
+                        let b = sg[na_mascara(x, y) + 3];
                         let liso = f32::from(b) / 255.0;
                         if liso > 0.0 {
                             (liso, (wt / liso).min(1.0), Some(b))
@@ -750,11 +761,10 @@ pub fn mistura_opaca_carimbo(
                 }
                 let estado = estado_em(x, y);
                 let tinta = match cor_da_mascara {
-                    Some(mc) => tinta_de(
-                        estado.cor,
-                        estado.a_eff,
-                        [mc[i], mc[i + 1], mc[i + 2]].map(|v| f32::from(v) / 255.0),
-                    ),
+                    Some(mc) => tinta_de(estado.cor, estado.a_eff, {
+                        let mi = na_mascara(x, y);
+                        [mc[mi], mc[mi + 1], mc[mi + 2]].map(|v| f32::from(v) / 255.0)
+                    }),
                     None => estado.tinta,
                 };
                 let s0 = px[3];

@@ -25,6 +25,7 @@ use ph2d_painter_brush::mistura_opaca::{
     Carimbo, Pegada, ReservatorioOpaco, Sombra, Tela, mistura_opaca_carimbo,
 };
 use ph2d_painter_brush::{BrushSpec, Dab};
+use rayon::prelude::*;
 use std::sync::Arc;
 
 /// O lado de um ladrilho da tela de antes (texels): 64² × 4 = 16 KiB por ladrilho tocado.
@@ -336,8 +337,6 @@ impl PainterTool {
             w,
             super::super::region::dabs_bounds(dabs, w, h, brush.tip_reach()),
         );
-        let mut touched: Option<Region> = None;
-        let mut grupo_ant: Option<(usize, ReservatorioOpaco)> = None;
         // O véu sai em todo ponto do caminho a 4,5× o raio, e a cópia do spray no mesmo centro: ela salta-se. Com o
         // spray parado (Space) o pincel parado acumula: aí não.
         let afina = self.paint.mistura_opaca.salta_a_copia_do_veu
@@ -345,6 +344,43 @@ impl PainterTool {
             && brush.dab_jitter.veu > 0.0
             && brush.spray_count > 1
             && brush.stroke_method.allows_jitter();
+        // ⭐ Só o Grain (o Wet Wash Mix, Bug #84): a pegada de um dab não lê a tela, só a película lê — as pegadas do
+        // lote calculam-se de uma vez, em paralelo ENTRE os dabs, cada uma num buffer da caixa dela; a película corre
+        // depois, em ordem. As bases do Grain sorteiam-se antes, na ordem do lote (o mesmo stream de RNG). A cópia que
+        // cai no centro da anterior do grupo salta-se quase sempre: a pegada dela só se calcula se não saltar.
+        let mut pegadas: Option<(Vec<_>, Vec<_>)> =
+            (!pixel && camadas_do_shape.is_none() && rampa.is_none() && !shape_active && textured)
+                .then(|| {
+                    let bases: Vec<_> = dabs
+                        .iter()
+                        .enumerate()
+                        .map(|(i, d)| {
+                            let spec = brush.at_dab(d);
+                            let basis = ph2d_painter_brush::texture::dab_basis(
+                                &spec.texture,
+                                dab_rng.enter(&groups, i),
+                                [w as f32, h as f32],
+                                spec.dab_footprint_of(d),
+                            );
+                            (spec, basis)
+                        })
+                        .collect();
+                    let pegadas = (0..dabs.len())
+                        .into_par_iter()
+                        .map(|i| {
+                            let copia = afina
+                                && i > 0
+                                && dabs[i - 1].center == dabs[i].center
+                                && groups.get(i - 1) == groups.get(i);
+                            (!copia).then(|| {
+                                pegada_do_dab(&bases[i], &dabs[i], w, h, image.as_ref(), po)
+                            })
+                        })
+                        .collect();
+                    (bases, pegadas)
+                });
+        let mut touched: Option<Region> = None;
+        let mut grupo_ant: Option<(usize, ReservatorioOpaco)> = None;
         let mut salta_o_grupo = None;
         for (i, d) in dabs.iter().enumerate() {
             let g = groups.get(i).map_or(i, |&g| g as usize);
@@ -366,6 +402,62 @@ impl PainterTool {
             // As cópias do Tiling seguem a decisão da primeira (a costura casa).
             let salta =
                 afina && *salta_o_grupo.get_or_insert_with(|| alvo.repete_o_centro(d.center));
+            if let Some((bases, pre)) = pegadas.as_mut() {
+                if salta {
+                    continue;
+                }
+                let pre = pre[i]
+                    .take()
+                    .unwrap_or_else(|| pegada_do_dab(&bases[i], d, w, h, image.as_ref(), po));
+                let Some((local, Some(r), r2)) = pre else {
+                    continue;
+                };
+                let caixa = (r.x, r.y, r.x + r.w, r.y + r.h);
+                debug_assert!(
+                    r2.is_none_or(|r2| r2 == r),
+                    "a pegada lisa tem a caixa do kernel"
+                );
+                let carimbo = Carimbo {
+                    center: d.center,
+                    radius_px: d.radius_px,
+                    cor: d.color,
+                    coverage: d.coverage,
+                    pressao,
+                };
+                let pegada = Pegada::Mascara {
+                    mascara: &local.mascara,
+                    caixa,
+                    org: [local.caixa.x, local.caixa.y],
+                    largura: local.caixa.w,
+                    sem_grao: r2.map(|_| local.liso.as_slice()),
+                    com_cor,
+                };
+                let r = pelicula(
+                    &mut *buf,
+                    &mut sombra,
+                    &mut ladrilhos,
+                    w,
+                    h,
+                    alpha_locked,
+                    base.as_deref().map(Vec::as_slice),
+                    visivel.as_deref().map(Vec::as_slice),
+                    &spec,
+                    carimbo,
+                    pegada,
+                    alvo,
+                    caixa,
+                );
+                if let Some(r) = r {
+                    let r = Region {
+                        x: r.x,
+                        y: r.y,
+                        w: r.w,
+                        h: r.h,
+                    };
+                    touched = Some(touched.map_or(r, |t| super::super::union_region(t, r)));
+                }
+                continue;
+            }
             let tex_rng = dab_rng.enter(&groups, i);
             // A pegada: o kernel da rota normal (`stamp_dabs_per_pixel`), a branco, força 1, Flow 1, sobre o vazio.
             let fp = spec.dab_footprint_of(d);
@@ -612,46 +704,26 @@ impl PainterTool {
             let pegada = Pegada::Mascara {
                 mascara: &mascara,
                 caixa,
+                org: [0, 0],
+                largura: w,
                 sem_grao: com_grao.then_some(liso.as_slice()),
                 com_cor,
             };
-            let mut tela = Tela {
-                buf: &mut *buf,
-                width: w,
-                height: h,
-                sombra: &mut sombra,
-                trava_alfa: alpha_locked,
-                plano: base.is_some(),
-            };
-            let r = if let Some(b) = base.as_deref() {
-                let antes = |i: usize| [b[i], b[i + 1], b[i + 2], b[i + 3]];
-                match visivel.as_deref() {
-                    Some(v) => {
-                        let amostra = |i: usize| [v[i], v[i + 1], v[i + 2], v[i + 3]];
-                        mistura_opaca_carimbo(
-                            &mut tela, antes, amostra, &spec, carimbo, pegada, alvo,
-                        )
-                    }
-                    None => {
-                        mistura_opaca_carimbo(&mut tela, antes, antes, &spec, carimbo, pegada, alvo)
-                    }
-                }
-            } else {
-                // Os ladrilhos do dab guardam-se ANTES de ele escrever: nenhum é lido depois de escrito.
-                ladrilhos.guarda(tela.buf, w, h, caixa);
-                let antes = |i: usize| ladrilhos.le(i);
-                match visivel.as_deref() {
-                    Some(v) => {
-                        let amostra = |i: usize| [v[i], v[i + 1], v[i + 2], v[i + 3]];
-                        mistura_opaca_carimbo(
-                            &mut tela, antes, amostra, &spec, carimbo, pegada, alvo,
-                        )
-                    }
-                    None => {
-                        mistura_opaca_carimbo(&mut tela, antes, antes, &spec, carimbo, pegada, alvo)
-                    }
-                }
-            };
+            let r = pelicula(
+                &mut *buf,
+                &mut sombra,
+                &mut ladrilhos,
+                w,
+                h,
+                alpha_locked,
+                base.as_deref().map(Vec::as_slice),
+                visivel.as_deref().map(Vec::as_slice),
+                &spec,
+                carimbo,
+                pegada,
+                alvo,
+                caixa,
+            );
             // A máscara volta a ser vazia (só a caixa que o kernel pintou).
             let (x0, y0, x1, y1) = caixa;
             for y in y0..y1 {
@@ -684,4 +756,85 @@ impl PainterTool {
             self.mark_dirty(rect);
         }
     }
+}
+
+/// A PELÍCULA de um carimbo da mistura sobre a tela viva: no plano do traço a tela de antes é a base dele; noutro plano
+/// os ladrilhos do dab, guardados ANTES de ele escrever (nenhum é lido depois de escrito).
+#[allow(clippy::too_many_arguments)]
+fn pelicula(
+    buf: &mut [u8],
+    sombra: &mut Sombra,
+    ladrilhos: &mut Ladrilhos,
+    w: u32,
+    h: u32,
+    alpha_locked: bool,
+    base: Option<&[u8]>,
+    visivel: Option<&[u8]>,
+    spec: &BrushSpec,
+    carimbo: Carimbo,
+    pegada: Pegada<'_>,
+    alvo: &mut ReservatorioOpaco,
+    caixa: (u32, u32, u32, u32),
+) -> Option<ph2d_painter_brush::DirtyRect> {
+    let mut tela = Tela {
+        buf,
+        width: w,
+        height: h,
+        sombra,
+        trava_alfa: alpha_locked,
+        plano: base.is_some(),
+    };
+    if let Some(b) = base {
+        let antes = |i: usize| [b[i], b[i + 1], b[i + 2], b[i + 3]];
+        match visivel {
+            Some(v) => {
+                let amostra = |i: usize| [v[i], v[i + 1], v[i + 2], v[i + 3]];
+                mistura_opaca_carimbo(&mut tela, antes, amostra, spec, carimbo, pegada, alvo)
+            }
+            None => mistura_opaca_carimbo(&mut tela, antes, antes, spec, carimbo, pegada, alvo),
+        }
+    } else {
+        ladrilhos.guarda(tela.buf, w, h, caixa);
+        let antes = |i: usize| ladrilhos.le(i);
+        match visivel {
+            Some(v) => {
+                let amostra = |i: usize| [v[i], v[i + 1], v[i + 2], v[i + 3]];
+                mistura_opaca_carimbo(&mut tela, antes, amostra, spec, carimbo, pegada, alvo)
+            }
+            None => mistura_opaca_carimbo(&mut tela, antes, antes, spec, carimbo, pegada, alvo),
+        }
+    }
+}
+
+/// A pegada do dab `d` (só o Grain) num buffer da caixa dele: o kernel da rota normal, a branco, força 1, Flow 1.
+fn pegada_do_dab(
+    (spec, basis): &(BrushSpec, ph2d_painter_brush::texture::TexDabBasis),
+    d: &Dab,
+    w: u32,
+    h: u32,
+    image: Option<&ph2d_painter_brush::texture::ImageMask>,
+    po: Option<ph2d_painter_brush::texture::PoDoPapel<'_>>,
+) -> Option<(
+    ph2d_painter_brush::PegadaLocal,
+    Option<ph2d_painter_brush::DirtyRect>,
+    Option<ph2d_painter_brush::DirtyRect>,
+)> {
+    let branco = BrushSpec {
+        color: [1.0; 3],
+        flow: 1.0,
+        blend: ph2d_painter_brush::BrushBlend::default(),
+        ..*spec
+    };
+    ph2d_painter_brush::pegada_textured_masked_po_com_liso(
+        w,
+        h,
+        d.center,
+        &branco,
+        1.0,
+        Some(basis),
+        image,
+        spec.dab_rotor(d),
+        d.capsula(&branco),
+        po,
+    )
 }

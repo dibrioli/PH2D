@@ -351,6 +351,8 @@ pub(super) struct DabCtx<'a> {
     pub(super) x0: i64,
     pub(super) x1: i64,
     pub(super) stride: usize,
+    /// A coluna da tela que é a 1.ª do buffer (`0` na tela; a caixa do dab numa [`crate::PegadaLocal`]).
+    pub(super) ox: i64,
     /// Screen-space AA of the film silhouette (BUGS #16) — `None` = single-sample `film_of`,
     /// byte-identical. Hoisted per dab in [`stamp_dab_pixels`].
     pub(super) film_aa: Option<crate::height_film::FilmAa>,
@@ -498,7 +500,8 @@ pub(super) fn stamp_band(
                 continue;
             }
             if let Some(l) = liso.as_deref_mut() {
-                liso_tocou |= super::liso::escreve(ctx, l, row + (px as usize) * 4, w, blend);
+                liso_tocou |=
+                    super::liso::escreve(ctx, l, row + ((px - ctx.ox) as usize) * 4, w, blend);
             }
             // `w` = dab PROFILE (falloff × silhouette, the build factor); `g` = texture COVERAGE factor
             // (Grain / Strength-ramp) kept SEPARATE so it CAPS the pixel — a 0.3 grain texel tops at
@@ -557,7 +560,7 @@ pub(super) fn stamp_band(
                     continue;
                 }
             }
-            let i = row + (px as usize) * 4;
+            let i = row + ((px - ctx.ox) as usize) * 4;
             let prev = [
                 f32::from(dst[i]) / 255.0,
                 f32::from(dst[i + 1]) / 255.0,
@@ -588,7 +591,7 @@ pub(super) fn stamp_band(
                     // At `cap = 1` this reduces to the EXACT maskless alpha sequence, so a full-strength
                     // interior is byte-identical whether the buffer is threaded or not.
                     Some(m_buf) => {
-                        let mi = r * (ctx.stride / 4) + px as usize;
+                        let mi = r * (ctx.stride / 4) + (px - ctx.ox) as usize;
                         let m = f32::from(m_buf[mi]) / 255.0;
                         // The capsule's union already carries its sub-dabs' rate (`c_cap` above):
                         // `w·c_cap = 1 − Π(1 − c_cap·x_k)`.
@@ -626,7 +629,7 @@ pub(super) fn stamp_band(
                 }
                 if let Some(f) = forca.as_deref_mut() {
                     crate::stroke_cover::compoe_forca(
-                        &mut f[r * (ctx.stride / 4) + px as usize],
+                        &mut f[r * (ctx.stride / 4) + (px - ctx.ox) as usize],
                         a,
                     );
                 }

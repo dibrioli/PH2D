@@ -796,3 +796,94 @@ fn shape_angle_rotates_the_silhouette() {
         c[idx(36, 24)]
     );
 }
+
+/// ⭐ **A pegada num buffer da caixa é a da tela, ao bit** (Bug #84): a rota da mistura calcula as pegadas do lote em
+/// paralelo, cada uma no seu buffer ([`PegadaLocal`]); a película lê-as pela origem e largura da caixa. Grão Clouds
+/// Tiled (o do Wet Wash Mix), queda macia, um dab no meio e um cortado pela borda da tela.
+#[test]
+fn a_pegada_na_caixa_e_a_da_tela_ao_bit() {
+    use crate::texture::{TextureKind, TextureMapping, TextureSettings};
+    let (w, h) = (160u32, 120u32);
+    let spec = BrushSpec {
+        radius_px: 37.0,
+        color: [1.0; 3],
+        hardness: 0.7,
+        falloff: Falloff::Sharp,
+        texture: TextureSettings {
+            kind: TextureKind::Clouds,
+            mapping: TextureMapping::Tiled,
+            size: [40.0, 40.0],
+            ..Default::default()
+        },
+        grain_depth: 0.15,
+        ..Default::default()
+    };
+    for centro in [[80.3f32, 60.7], [7.5, 113.2]] {
+        let basis = crate::texture::dab_basis(
+            &spec.texture,
+            &mut 7,
+            [w as f32, h as f32],
+            spec.dab_footprint([1.0, 0.0]),
+        );
+        let (mut tela, mut liso) = (
+            vec![0u8; (w * h * 4) as usize],
+            vec![0u8; (w * h * 4) as usize],
+        );
+        let (r, r2) = stamp_dab_textured_masked_po_com_liso(
+            &mut tela,
+            &mut liso,
+            w,
+            h,
+            centro,
+            &spec,
+            1.0,
+            false,
+            Some(&basis),
+            None,
+            [1.0, 0.0],
+            None,
+            None,
+        );
+        let (local, lr, lr2) = pegada_textured_masked_po_com_liso(
+            w,
+            h,
+            centro,
+            &spec,
+            1.0,
+            Some(&basis),
+            None,
+            [1.0, 0.0],
+            None,
+            None,
+        )
+        .expect("o dab toca a tela");
+        assert_eq!((r, r2), (lr, lr2), "as caixas em {centro:?}");
+        let c = local.caixa;
+        assert!(c.x + c.w <= w && c.y + c.h <= h, "a caixa cabe na tela");
+        let mut tocou = 0;
+        for y in 0..h {
+            for x in 0..w {
+                let i = ((y * w + x) * 4) as usize;
+                let dentro = x >= c.x && x < c.x + c.w && y >= c.y && y < c.y + c.h;
+                let (m, l) = if dentro {
+                    let j = (((y - c.y) * c.w + (x - c.x)) * 4) as usize;
+                    (&local.mascara[j..j + 4], &local.liso[j..j + 4])
+                } else {
+                    (&[0u8; 4][..], &[0u8; 4][..])
+                };
+                assert_eq!(
+                    &tela[i..i + 4],
+                    m,
+                    "a máscara em ({x}, {y}), dab {centro:?}"
+                );
+                assert_eq!(
+                    &liso[i..i + 4],
+                    l,
+                    "a pegada lisa em ({x}, {y}), dab {centro:?}"
+                );
+                tocou += usize::from(tela[i + 3] > 0);
+            }
+        }
+        assert!(tocou > 500, "controlo: o dab pintou ({tocou} texels)");
+    }
+}

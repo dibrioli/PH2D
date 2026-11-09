@@ -47,7 +47,50 @@ pub fn stamp_dab_textured_masked_po_com_liso(
         dab_rotation,
         PARALLEL_MIN_AREA,
         capsula,
+        None,
     )
+}
+
+/// [`stamp_dab_textured_masked_po_com_liso`] sobre o VAZIO, numa [`super::PegadaLocal`] do tamanho da caixa do dab: os
+/// mesmos bytes, numa banda só (o paralelismo é entre os dabs do lote). `None` = o dab não toca a tela.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn pegada_textured_masked_po_com_liso(
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    spec: &BrushSpec,
+    coverage: f32,
+    tex: Option<&TexDabBasis>,
+    image: Option<&ImageMask>,
+    dab_rotation: [f32; 2],
+    capsula: Option<crate::capsula::Capsula>,
+    po: Option<crate::texture::PoDoPapel<'_>>,
+) -> Option<(super::PegadaLocal, Option<DirtyRect>, Option<DirtyRect>)> {
+    let mut saida = None;
+    let mut liso_vazio: [u8; 0] = [];
+    let (r, r2) = stamp_dab_inner_com(
+        &mut [],
+        Some(&mut liso_vazio),
+        width,
+        height,
+        center,
+        spec,
+        coverage,
+        false,
+        tex,
+        image,
+        None,
+        None,
+        None,
+        None,
+        po,
+        dab_rotation,
+        PARALLEL_MIN_AREA,
+        capsula,
+        Some(&mut saida),
+    );
+    saida.map(|p| (p, r, r2))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -90,6 +133,7 @@ pub(super) fn stamp_dab_inner(
         dab_rotation,
         min_area,
         capsula,
+        None,
     )
     .0
 }

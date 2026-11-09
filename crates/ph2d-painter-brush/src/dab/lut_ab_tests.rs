@@ -44,6 +44,7 @@ fn stamp_once(spec: &BrushSpec, with_lut: bool) -> Vec<u8> {
         x0: 0,
         x1: i64::from(SIDE),
         stride,
+        ox: 0,
         film_aa,
         lut,
         capsula: None,

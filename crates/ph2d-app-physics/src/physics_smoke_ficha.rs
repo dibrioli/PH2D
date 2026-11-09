@@ -21,7 +21,10 @@ pub fn physics_smoke_ficha(ctx: &mut crate::SceneCtx<'_>) {
     ph2d_physics_scene::ficha::olho_para_as_fotos(ctx.world);
     let excecao = ph2d_physics_scene::ficha::excecao_para_as_fotos(ctx.world);
     let outline = ph2d_physics_scene::ficha::outline_para_as_fotos(ctx.world);
-    ctx.want.select = excecao.or(outline).map(Entity::to_bits);
+    if let Some((_, centro)) = outline {
+        ctx.want.camera_center = Some(centro);
+    }
+    ctx.want.select = excecao.or(outline.map(|o| o.0)).map(Entity::to_bits);
     if let Ok(nome) = std::env::var("PH2D_PHYSICS_SMOKE_SELECT") {
         let mut q = ctx.world.query::<(Entity, &Name)>();
         ctx.want.select = q
@@ -30,10 +33,12 @@ pub fn physics_smoke_ficha(ctx: &mut crate::SceneCtx<'_>) {
             .map(|(e, _)| e.to_bits());
     }
     println!(
-        "[physics-smoke 120] O item inteiro, PARADO. Espaço dá Play: o Crate atravessa a Loose Shape e \
-         pousa no Floor; a Stretched Ball cai na Updraft Zone e a zona empurra-a para cima. ←/→ andam, ↑ salta: o \
-         Player sobe pela One-way Platform por baixo e pousa em cima; ele atravessa o Crate porque a camada dele só \
-         toca Ground. O Stop devolve tudo."
+        "[physics-smoke 120] The whole item, PAUSED. Space plays: the Crate falls through the Loose Shape and \
+         lands on the Floor; the Stretched Ball falls into the Updraft Zone and the zone pushes it up. Left/Right \
+         walk, Up jumps: the Player goes up through the One-way Platform from below and lands on top; he passes \
+         through the Crate because his layer only hits Ground. The Coin's shape is an Outline traced from its \
+         picture; it lands on the Floor. The Marble falls inside the Ring's hole and rests on its bottom. The Table \
+         stands on its two legs: one body, three shapes. Stop puts everything back."
     );
 }
 

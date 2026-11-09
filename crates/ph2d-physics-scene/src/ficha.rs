@@ -1,6 +1,7 @@
 //! **O ITEM INTEIRO NUMA TELA** (`PH2D_PHYSICS_SMOKE=120`, ficha `f1_physics_static_shape.md`, onda 4): chão em
 //! Repeated, plataforma One-way, Crate, bola esticada, zona que empurra para cima, forma solta, forma dentro de um
-//! corpo, Player de cápsula e quatro camadas com nome. Nasce PARADA; cada afirmação da mensagem tem gate ao lado.
+//! corpo, Player de cápsula, quatro camadas com nome e
+//! (W6) a Coin «Outline» traçada da imagem, a Ring com buraco e a Marble dentro, e a Table de três formas. Nasce PARADA; cada afirmação da mensagem tem gate ao lado.
 //!
 //! `PH2D_PHYSICS_SMOKE_SELECT=<nome>` nasce com esse objecto selecionado, `PH2D_PHYSICS_SMOKE_TOCA=1` nasce a tocar e
 //! `PH2D_PHYSICS_SMOKE_VISTA=<m>` escolhe a altura da vista; `PH2D_PHYSICS_SMOKE_PAINEL=1` abre o painel Physics no
@@ -11,8 +12,9 @@ use ph2d_ecs::{
     ChildOf, Entity, ImageRegion, Name, SpriteRegion, TiledDraw, Transform, World, ZIndexOverride,
 };
 use ph2d_physics_ecs::{
-    AreaEffector, BodyKind, CharacterAnimations, Collider, ColliderShape, LayerNames, LockRotation,
-    MaterialCombine, OneWayPlatform, PhysicsSettings, PlatformPlayer, RigidBody,
+    AreaEffector, BodyKind, CharacterAnimations, Collider, ColliderOutline, ColliderShape,
+    LayerNames, LockRotation, MaterialCombine, OneWayPlatform, PhysicsSettings, PlatformPlayer,
+    RigidBody,
 };
 use ph2d_render::{
     CLOUDS_TILE, COIN_SHEET, DIRT_TILE, FactoryArt, GROUND_TILE, HERO_SHEET_SOLE_BELOW_CENTRE,
@@ -57,6 +59,14 @@ pub const ZONE_FORCE: f32 = 40.0;
 const ZONE_TILE: [f32; 2] = [3.0, 1.0];
 /// A primeira moeda da folha, em Region: uma imagem parada, sem o aviso de folha do uso Still.
 const COIN_CELL: [f32; 4] = [0.0, 0.0, 128.0, 128.0];
+/// W6: a moeda com a forma «Outline» traçada da imagem; a argola com buraco e a bolinha dentro; a mesa de 3 formas.
+pub const COIN_AT: [f32; 2] = [-0.9, 6.0];
+pub const RING_AT: [f32; 2] = [-5.5, 6.0];
+pub const MARBLE_AT: [f32; 2] = [-5.5, 6.2];
+pub const MARBLE_RADIUS: f32 = 0.2;
+/// A argola: 2 m de lado, buraco de 1 m no meio (Q4 de uma imagem de 4 px).
+pub const RING_HALF: f32 = 1.0;
+pub const TABLE_AT: [f32; 2] = [6.3, 3.0];
 pub const VISTA: [f32; 2] = [0.5, 2.4];
 pub const VISTA_ALTURA: f32 = 13.6;
 
@@ -253,6 +263,7 @@ fn monta_com(world: &mut World, na_filha: bool) {
         corpo(BodyKind::Static),
     ));
     corpos.push(player(world));
+    corpos.extend(outline_argola_e_mesa(world));
     ph2d_ecs::assign_missing_stable_ids(world);
     if na_filha {
         for c in corpos {
@@ -260,6 +271,99 @@ fn monta_com(world: &mut World, na_filha: bool) {
         }
     }
     ph2d_ecs::assign_missing_root_order(world);
+}
+
+fn com_layer(shape: ColliderShape, layer: u8, offset: [f32; 2]) -> Collider {
+    Collider {
+        shape,
+        layer,
+        offset,
+        ..Collider::default()
+    }
+}
+
+fn moeda(lado: f32) -> (Sprite, SpriteRegion, ImageRegion) {
+    (
+        Sprite::atlas(COIN_SHEET.key, [lado, lado], [1.0; 4]),
+        SpriteRegion::for_atlas(COIN_CELL),
+        ImageRegion {
+            grid: COIN_SHEET.grid,
+        },
+    )
+}
+
+/// W6: «Coin» (a forma Outline sem anéis: a cola traça-a da imagem no 1.º quadro), «Ring» (dois anéis à mão, a
+/// bolinha «Marble» nasce no buraco) e «Table» (um corpo, três formas: o tampo nele e as pernas filhas).
+fn outline_argola_e_mesa(world: &mut World) -> [Entity; 4] {
+    let outline = |h: f32| ColliderShape::Outline {
+        half_x: h,
+        half_y: h,
+    };
+    let coin = world
+        .spawn((
+            Name::new("Coin"),
+            pose(COIN_AT),
+            moeda(1.0),
+            corpo(BodyKind::Dynamic),
+            com_layer(outline(0.5), PROPS, [0.0; 2]),
+        ))
+        .id();
+    let anel = ColliderOutline {
+        rings: vec![
+            vec![[0, 0], [64, 0], [64, 64], [0, 64]],
+            vec![[16, 16], [16, 48], [48, 48], [48, 16]],
+        ]
+        .into(),
+        picture_px: [4, 4],
+        custom: true,
+        ..ColliderOutline::default()
+    };
+    let ring = world
+        .spawn((
+            Name::new("Ring"),
+            pose(RING_AT),
+            corpo(BodyKind::Static),
+            com_layer(outline(RING_HALF), GROUND, [0.0; 2]),
+            anel,
+        ))
+        .id();
+    let marble = world
+        .spawn((
+            Name::new("Marble"),
+            pose(MARBLE_AT),
+            moeda(2.0 * MARBLE_RADIUS),
+            corpo(BodyKind::Dynamic),
+            com_layer(
+                ColliderShape::Ball {
+                    radius: MARBLE_RADIUS,
+                },
+                PROPS,
+                [0.0; 2],
+            ),
+        ))
+        .id();
+    let caixa = |x, y| ColliderShape::Cuboid {
+        half_x: x,
+        half_y: y,
+    };
+    let table = world
+        .spawn((
+            Name::new("Table"),
+            pose(TABLE_AT),
+            azulejo(PLATFORM_TILE, [0.6, 0.1], [1.0; 4]),
+            corpo(BodyKind::Dynamic),
+            com_layer(caixa(0.6, 0.1), PROPS, [0.0; 2]),
+        ))
+        .id();
+    for (nome, x) in [("Left Leg", -0.5), ("Right Leg", 0.5)] {
+        world.spawn((
+            Name::new(nome),
+            Transform::default(),
+            com_layer(caixa(0.1, 0.4), PROPS, [x, -0.5]),
+            ChildOf(table),
+        ));
+    }
+    [coin, ring, marble, table]
 }
 
 /// As fotos da matriz: `PH2D_PHYSICS_SMOKE_CAMADAS=<n>` camadas nomeadas, além das quatro da cena.
@@ -272,19 +376,14 @@ pub fn nomeia_para_as_fotos(world: &mut World) {
     }
 }
 
-/// A foto do Outline (`PH2D_PHYSICS_SMOKE_OUTLINE=1`): a forma da Stretched Ball passa a «Outline» (a
-/// moeda), e o traço vem da cola `ph2d_physics_outline::retrace_followed` no 1.º quadro. Devolve-a.
-pub fn outline_para_as_fotos(world: &mut World) -> Option<Entity> {
-    std::env::var_os("PH2D_PHYSICS_SMOKE_OUTLINE")?;
-    let mut q = world.query::<(Entity, &Name)>();
-    let bola = q.iter(world).find(|(_, n)| n.0 == "Stretched Ball")?.0;
-    let forma = ph2d_physics_ecs::main_shape(world, bola).unwrap_or(bola);
-    let mut c = world.get_mut::<Collider>(forma)?;
-    c.shape = ColliderShape::Outline {
-        half_x: 0.5,
-        half_y: 0.5,
-    };
-    Some(forma)
+/// As fotos do Outline (`PH2D_PHYSICS_SMOKE_OUTLINE=<corpo>`, W6: `Coin`, `Ring`, `Table`): a forma principal desse
+/// corpo nasce selecionada e a vista centra-se nele. Devolve a forma e o centro.
+pub fn outline_para_as_fotos(world: &mut World) -> Option<(Entity, [f32; 2])> {
+    let nome = std::env::var("PH2D_PHYSICS_SMOKE_OUTLINE").ok()?;
+    let mut q = world.query::<(Entity, &Name, &Transform)>();
+    let (corpo, _, t) = q.iter(world).find(|(_, n, _)| n.0 == nome.trim())?;
+    let centro = [t.translation.x, t.translation.y];
+    Some((ph2d_physics_ecs::main_shape(world, corpo)?, centro))
 }
 
 /// A foto da exceção (`PH2D_PHYSICS_SMOKE_EXCECAO=1`, dono 09/11): o Crate ganha mais duas formas e uma delas desliga

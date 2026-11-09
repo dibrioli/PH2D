@@ -10752,9 +10752,11 @@ name = "ph2d-physics-scene"
 version = "0.0.0"
 dependencies = [
  "bevy_ecs",
+ "ph2d-asset",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-physics-ecs",
+ "ph2d-physics-outline",
  "ph2d-render",
  "ph2d-shape-handles",
 ]

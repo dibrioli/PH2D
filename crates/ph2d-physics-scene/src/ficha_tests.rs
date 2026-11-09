@@ -204,3 +204,103 @@ fn probe_cena_120() {
         println!("{q} player {:?}", c.at("Player"));
     }
 }
+
+/// O 1.º quadro da shell (`inspector_commits`): a cola traça cada «Outline» sem anéis pela arte de fábrica.
+fn traca_como_a_shell(c: &mut Corrida) {
+    use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue, apply_editor_commands};
+    let mut reg = ComponentRegistry::new();
+    ph2d_ecs::scene::register_ecs_components(&mut reg);
+    ph2d_physics_ecs::register_physics_components(&mut reg);
+    let db = ph2d_asset::AssetDb::new();
+    let mut atlas = std::collections::BTreeMap::new();
+    ph2d_render::factory_images::register(&db, &mut atlas);
+    let q = EditorCommandQueue::new();
+    let w = c.sim.world_mut();
+    let n = ph2d_physics_outline::retrace_followed(w, &db, &atlas, 100.0, &q, &reg);
+    assert_eq!(n, 1, "só a Coin nasce Outline sem anéis");
+    apply_editor_commands(c.sim.world_mut(), &q, &reg).expect("aplica");
+}
+
+fn contorno(c: &Corrida, nome: &str) -> ColliderOutline {
+    let f = ph2d_physics_ecs::main_shape(c.sim.world(), c.por_nome(nome)).expect("forma");
+    c.sim
+        .world()
+        .get::<ColliderOutline>(f)
+        .cloned()
+        .unwrap_or_default()
+}
+
+/// «The Coin's shape is an Outline traced from its picture; it lands on the Floor.» Controlo: sem a cola não há
+/// anéis (a frase é da cola, não da cena).
+#[test]
+fn a_coin_e_um_outline_tracado_da_imagem_e_pousa_no_floor() {
+    let mut c = Corrida::nova();
+    assert!(
+        contorno(&c, "Coin").rings.is_empty(),
+        "controlo: a cena não traz anéis"
+    );
+    traca_como_a_shell(&mut c);
+    let o = contorno(&c, "Coin");
+    assert!(!o.rings.is_empty() && !o.custom, "traçado da imagem: {o:?}");
+    assert!(
+        o.rings[0].len() > 4,
+        "o traço segue a moeda, não a caixa: {}",
+        o.rings[0].len()
+    );
+    c.corre(240);
+    let [x, y] = c.at("Coin");
+    assert!(
+        (x - COIN_AT[0]).abs() < 1.0,
+        "cai na sua coluna (rola um pouco: é redonda): {x}"
+    );
+    assert!(y > 0.0 && y < 1.0, "pousa no Floor: {y}");
+}
+
+/// «The Marble falls inside the Ring's hole and rests on its bottom.» Controlo: a argola sem o buraco cospe-a.
+#[test]
+fn a_marble_cai_dentro_do_buraco_da_ring() {
+    let fundo = RING_AT[1] - RING_HALF / 2.0 + MARBLE_RADIUS;
+    for com_buraco in [true, false] {
+        let mut c = Corrida::nova();
+        if !com_buraco {
+            let f = ph2d_physics_ecs::main_shape(c.sim.world(), c.por_nome("Ring")).expect("forma");
+            let mut o = c
+                .sim
+                .world_mut()
+                .get_mut::<ColliderOutline>(f)
+                .expect("anéis");
+            o.rings = o.rings[..1].to_vec().into();
+        }
+        assert_eq!(
+            contorno(&c, "Ring").rings.len(),
+            if com_buraco { 2 } else { 1 }
+        );
+        c.corre(180);
+        let [x, y] = c.at("Marble");
+        let dentro = (x - RING_AT[0]).abs() < RING_HALF / 2.0 && (y - fundo).abs() < 0.05;
+        assert_eq!(
+            dentro, com_buraco,
+            "buraco={com_buraco}: a Marble em ({x}, {y}), fundo {fundo}"
+        );
+    }
+}
+
+/// «The Table stands on its two legs: one body, three shapes.» As pernas tocam o Floor: sem elas o tampo cairia ao
+/// chão (y = 0,1).
+#[test]
+fn a_table_e_um_corpo_de_tres_formas_e_fica_de_pe() {
+    let mut c = Corrida::nova();
+    let t = c.por_nome("Table");
+    let w = c.sim.world_mut();
+    let formas = w
+        .query::<(&Collider, &ChildOf)>()
+        .iter(w)
+        .filter(|(_, p)| p.parent() == t)
+        .count();
+    assert_eq!(formas, 3, "três formas filhas do corpo");
+    c.corre(240);
+    let y = c.at("Table")[1];
+    assert!((y - 0.9).abs() < 0.05, "de pé nas pernas: {y}");
+    let r = c.sim.world().get::<Transform>(t).expect("pose").rotation;
+    assert!(r.abs() < 0.02, "direita: {r}");
+}

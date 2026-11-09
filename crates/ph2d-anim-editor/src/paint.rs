@@ -544,8 +544,12 @@ fn paint_strip(
                 StrokeToken::Default.px(),
             );
         }
-        if doc.frame_nudged(frames[i]) && !hovered {
-            super::paint_align::paint_nudge_mark(scene, theme, *thumb);
+        if doc.frame_nudged(frames[i]) {
+            let numero = text
+                .layout(&(i + 1).to_string(), font, f32::INFINITY)
+                .width();
+            let x = thumb.x + Spacing::Sm.px() + numero + Spacing::Xs.px();
+            super::paint_align::paint_nudge_mark(scene, theme, *thumb, x);
         }
         if doc.marker_at(i).is_some() {
             let cor = if doc.marker_past_end(i).is_some() {

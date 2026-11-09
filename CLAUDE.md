@@ -42,6 +42,8 @@
    comando completo com o `cd` · (2) onde clicar, com o nome que aparece na tela · (3) o que tem de
    acontecer · (4) como saber que deu errado. ⛔ **No Motion, a cena do smoke usa FORMAS (`shapes`) e
    SIMULAÇÃO com campos** — fotografe-a antes de mandar (`docs/Components/ferramentas/fotografa_cena.sh`).
+   ⛔ **Imagem ao dono = link markdown clicável, caminho relativo à RAIZ do repo principal** (numa worktree:
+   `[foto](Worktrees/line-<x>/docs/…png)`), nunca relativo à worktree, nunca em crases: senão não abre (dono 09/11).
    ⚠️ Handoff, ADR, doc-comment e commit continuam técnicos — o leitor deles é a próxima LLM.
 9. **Outro app JÁ FAZ isto? É um ORÁCULO que se CORRE, nunca um fonte que se lê.** Corra-o por script
    sobre entradas NOSSAS, grave a saída como fixture com cabeçalho, cada corrida vira gate, e compare

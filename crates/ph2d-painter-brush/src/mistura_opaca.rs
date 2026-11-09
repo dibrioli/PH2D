@@ -21,6 +21,7 @@
 
 use crate::dab::DirtyRect;
 use crate::spec::BrushSpec;
+use rayon::prelude::*;
 
 /// O passo dos carimbos com a mistura ligada, em diâmetros: o «intervalo 3 %» medido nos pincéis de mistura do CSP
 /// (Round mixing, Gouache, Oil paint). Acima disto a amostra por carimbo volta a fazer manchas.
@@ -289,6 +290,8 @@ impl ReservatorioOpaco {
 
 /// O lado de um ladrilho da [`Sombra`] (texels).
 const LADO: u32 = 64;
+/// A altura de um ladrilho da [`Sombra`] (linhas): a FAIXA que o carimbo pinta num núcleo (`mistura_opaca_carimbo`).
+const ALTO: u32 = 16;
 /// `f32` por texel da [`Sombra`]: RGB recto, a cobertura e o `arco` do 1.º depósito.
 const POR_TEXEL: usize = 5;
 /// O `arco` de um texel sem tinta deste traço.
@@ -307,7 +310,7 @@ const SEM_TINTA: f32 = f32::INFINITY;
 /// 122 · 1,5 → 0,179 · 0,455 · 157 · 2,0 → 0,204 · 0,498 · 166. 1,25 guarda o patamar afinado pelo dono (08/11).
 const DESFASAGEM: f32 = 1.25;
 
-/// A PELÍCULA do traço em `f32` (RGB recto `0..1` + a cobertura), por ladrilhos de [`LADO`]², criados no 1.º toque
+/// A PELÍCULA do traço em `f32` (RGB recto `0..1` + a cobertura), por ladrilhos de [`LADO`] × [`ALTO`], criados no 1.º toque
 /// (vazios na tela directa; lidos do plano do traço, que já é a película). Vive do pen-down ao pen-up; quem repõe a tela por baixo dela (re-carimbo de figura, a cauda)
 /// chama [`Sombra::recomeca`].
 #[derive(Clone, Debug, Default)]
@@ -349,16 +352,16 @@ impl Sombra {
             self.colunas = w.div_ceil(LADO);
             self.ladrilhos.clear();
             self.ladrilhos
-                .resize((self.colunas * h.div_ceil(LADO)) as usize, None);
+                .resize((self.colunas * h.div_ceil(ALTO)) as usize, None);
         }
-        for ty in y0 / LADO..=(y1 - 1) / LADO {
+        for ty in y0 / ALTO..=(y1 - 1) / ALTO {
             for tx in x0 / LADO..=(x1 - 1) / LADO {
                 let slot = &mut self.ladrilhos[(ty * self.colunas + tx) as usize];
                 if slot.is_some() {
                     continue;
                 }
-                let (lx, ly) = (tx * LADO, ty * LADO);
-                let (lw, lh) = (LADO.min(w - lx), LADO.min(h - ly));
+                let (lx, ly) = (tx * LADO, ty * ALTO);
+                let (lw, lh) = (LADO.min(w - lx), ALTO.min(h - ly));
                 let mut b = Vec::with_capacity((lw * lh * POR_TEXEL as u32) as usize);
                 for y in ly..ly + lh {
                     for x in lx..lx + lw {
@@ -382,26 +385,15 @@ impl Sombra {
         }
     }
 
-    /// O texel `(x, y)` (o ladrilho tem de estar garantido).
-    fn texel(&mut self, x: u32, y: u32) -> &mut [f32] {
-        let (tx, ty) = (x / LADO, y / LADO);
-        let lw = LADO.min(self.w - tx * LADO);
-        let t = self.ladrilhos[(ty * self.colunas + tx) as usize]
-            .as_deref_mut()
-            .expect("ladrilho da sombra garantido antes do toque");
-        let j = ((y - ty * LADO) * lw + (x - tx * LADO)) as usize * POR_TEXEL;
-        &mut t[j..j + POR_TEXEL]
-    }
-
     /// O texel `(x, y)` se o ladrilho dele existe (`None` = a película ainda não passou ali).
     fn le(&self, x: u32, y: u32) -> Option<[f32; POR_TEXEL]> {
-        let (tx, ty) = (x / LADO, y / LADO);
+        let (tx, ty) = (x / LADO, y / ALTO);
         let lw = LADO.min(self.w - tx * LADO);
         let t = self
             .ladrilhos
             .get((ty * self.colunas + tx) as usize)?
             .as_deref()?;
-        let j = ((y - ty * LADO) * lw + (x - tx * LADO)) as usize * POR_TEXEL;
+        let j = ((y - ty * ALTO) * lw + (x - tx * LADO)) as usize * POR_TEXEL;
         t[j..j + POR_TEXEL].try_into().ok()
     }
 }
@@ -458,8 +450,8 @@ pub struct Carimbo {
 /// e nesses casos a tela e o reservatório ficam intactos.
 pub fn mistura_opaca_carimbo(
     tela: &mut Tela<'_>,
-    antes: impl Fn(usize) -> [u8; 4],
-    amostra_de: impl Fn(usize) -> [u8; 4],
+    antes: impl Fn(usize) -> [u8; 4] + Sync,
+    amostra_de: impl Fn(usize) -> [u8; 4] + Sync,
     spec: &BrushSpec,
     c: Carimbo,
     pegada: Pegada<'_>,
@@ -523,39 +515,61 @@ pub fn mistura_opaca_carimbo(
     };
     // 1. A amostra: a média sob a pegada da tela de antes com a película VELHA deste traço por cima, pesada pelo
     // alfa; a carga = quanto ali é tinta. Em movimento, só a metade de TRÁS: o pincel leva o que já atravessou.
-    let (mut soma, mut soma_a, mut soma_w) = ([0.0f32; 3], 0.0f32, 0.0f32);
-    let mut soma_carga = 0.0f32;
-    for y in y0..y1 {
-        for x in x0..x1 {
-            let wt = peso(x, y);
-            if wt <= 0.0 || atras(x, y) < 0.0 {
-                continue;
-            }
-            let i = ((y * w + x) * 4) as usize;
-            let fundo = amostra_de(i).map(|v| f32::from(v) / 255.0);
-            let (px, carga_px) = match sombra_valida.then(|| tela.sombra.le(x, y)).flatten() {
-                Some(f) if f[4] <= velha_desde && f[3] > 0.0 => {
-                    let px = sobre([f[0], f[1], f[2], f[3]], fundo);
-                    (
-                        px,
-                        if f[4] <= carrega_desde {
-                            px[3]
-                        } else {
-                            fundo[3]
-                        },
-                    )
+    // As FAIXAS de `ALTO` linhas (as linhas de ladrilhos da película): a amostra soma-se por faixa e as faixas em
+    // ordem (o mesmo byte com qualquer número de núcleos); a película pinta-se por faixa (cada texel lê e escreve só o
+    // seu). Um carimbo pequeno corre as mesmas faixas num núcleo.
+    let (ty0, ty1) = (y0 / ALTO, (y1 - 1) / ALTO);
+    let paralelo = ((x1 - x0) * (y1 - y0)) as usize >= crate::PARALLEL_MIN_AREA;
+    let sombra_le: &Sombra = tela.sombra;
+    let soma_da_faixa = |ty: u32| -> [f32; 6] {
+        // `[r, g, b]` pesados pelo alfa · o alfa · a carga · o peso.
+        let mut s = [0.0f32; 6];
+        for y in (ty * ALTO).max(y0)..((ty + 1) * ALTO).min(y1) {
+            for x in x0..x1 {
+                let wt = peso(x, y);
+                if wt <= 0.0 || atras(x, y) < 0.0 {
+                    continue;
                 }
-                _ => (fundo, fundo[3]),
-            };
-            let t = wt * px[3];
-            for k in 0..3 {
-                soma[k] += t * px[k];
+                let i = ((y * w + x) * 4) as usize;
+                let fundo = amostra_de(i).map(|v| f32::from(v) / 255.0);
+                let (px, carga_px) = match sombra_valida.then(|| sombra_le.le(x, y)).flatten() {
+                    Some(f) if f[4] <= velha_desde && f[3] > 0.0 => {
+                        let px = sobre([f[0], f[1], f[2], f[3]], fundo);
+                        (
+                            px,
+                            if f[4] <= carrega_desde {
+                                px[3]
+                            } else {
+                                fundo[3]
+                            },
+                        )
+                    }
+                    _ => (fundo, fundo[3]),
+                };
+                let t = wt * px[3];
+                for k in 0..3 {
+                    s[k] += t * px[k];
+                }
+                s[3] += t;
+                s[4] += wt * carga_px;
+                s[5] += wt;
             }
-            soma_a += t;
-            soma_carga += wt * carga_px;
-            soma_w += wt;
+        }
+        s
+    };
+    let parciais: Vec<[f32; 6]> = if paralelo {
+        (ty0..=ty1).into_par_iter().map(soma_da_faixa).collect()
+    } else {
+        (ty0..=ty1).map(soma_da_faixa).collect()
+    };
+    let mut total = [0.0f32; 6];
+    for p in &parciais {
+        for (t, v) in total.iter_mut().zip(p) {
+            *t += v;
         }
     }
+    let (soma, soma_a, soma_carga, soma_w) =
+        ([total[0], total[1], total[2]], total[3], total[4], total[5]);
     if soma_w <= 0.0 {
         return None;
     }
@@ -680,86 +694,127 @@ pub fn mistura_opaca_carimbo(
     // No plano do traço a tela É a película (relê-se dela); na tela directa a película nasce vazia no pen-down.
     tela.sombra
         .garante(tela.buf, w, h, (x0, y0, x1, y1), tela.plano);
-    for y in y0..y1 {
-        for x in x0..x1 {
-            let wt = peso(x, y);
-            if wt <= 0.0 {
-                continue;
-            }
-            // O grão: a razão entre a pegada e a pegada sem ele vai ao tecto; a pegada sem ele é a taxa.
-            let (wt, grao) = match pegada {
-                Pegada::Mascara {
-                    sem_grao: Some(sg), ..
-                } => {
-                    let liso = f32::from(sg[((y * w + x) * 4 + 3) as usize]) / 255.0;
-                    if liso > 0.0 {
-                        (liso, (wt / liso).min(1.0))
-                    } else {
-                        (wt, 1.0)
+    let alfa_de = |wt: f32| 1.0 - potencia(1.0 - (wt * taxa).min(1.0), k_passo);
+    // A pegada da máscara é um BYTE: a taxa de cada texel é uma de 256 por carimbo (a potência por texel era o maior
+    // custo do carimbo de véu).
+    let tabela_alfa: Option<[f32; 256]> = matches!(pegada, Pegada::Mascara { .. })
+        .then(|| std::array::from_fn(|b| alfa_de(f32::from(b as u8) / 255.0)));
+    let (plano, trava_alfa) = (tela.plano, tela.trava_alfa);
+    let pinta_faixa = |(ty, linhas, ladrilhos): (u32, &mut [u8], &mut [Option<Box<[f32]>>])| {
+        let base = ty * ALTO;
+        for y in base.max(y0)..(base + ALTO).min(y1) {
+            for x in x0..x1 {
+                let (wt, byte) = match pegada {
+                    Pegada::Mascara { mascara, .. } => {
+                        let b = mascara[((y * w + x) * 4 + 3) as usize];
+                        (f32::from(b) / 255.0, Some(b))
+                    }
+                    Pegada::Disco { .. } => (peso(x, y), None),
+                };
+                if wt <= 0.0 {
+                    continue;
+                }
+                // O grão: a razão entre a pegada e a pegada sem ele vai ao tecto; a pegada sem ele é a taxa.
+                let (wt, grao, byte) = match pegada {
+                    Pegada::Mascara {
+                        sem_grao: Some(sg), ..
+                    } => {
+                        let b = sg[((y * w + x) * 4 + 3) as usize];
+                        let liso = f32::from(b) / 255.0;
+                        if liso > 0.0 {
+                            (liso, (wt / liso).min(1.0), Some(b))
+                        } else {
+                            (wt, 1.0, byte)
+                        }
+                    }
+                    _ => (wt, 1.0, byte),
+                };
+                let tecto = tecto * grao;
+                let alfa = match (&tabela_alfa, byte) {
+                    (Some(t), Some(b)) => t[usize::from(b)],
+                    _ => alfa_de(wt),
+                };
+                if alfa <= 0.0 {
+                    continue;
+                }
+                let i = ((y * w + x) * 4) as usize;
+                let tx = x / LADO;
+                let lw = LADO.min(w - tx * LADO);
+                let ladrilho = ladrilhos[tx as usize]
+                    .as_deref_mut()
+                    .expect("ladrilho da sombra garantido antes do toque");
+                let j = ((y - base) * lw + (x - tx * LADO)) as usize * POR_TEXEL;
+                let px = &mut ladrilho[j..j + POR_TEXEL];
+                if px[4] == SEM_TINTA {
+                    px[4] = arco;
+                }
+                let estado = estado_em(x, y);
+                let tinta = match cor_da_mascara {
+                    Some(mc) => tinta_de(
+                        estado.cor,
+                        estado.a_eff,
+                        [mc[i], mc[i + 1], mc[i + 2]].map(|v| f32::from(v) / 255.0),
+                    ),
+                    None => estado.tinta,
+                };
+                let s0 = px[3];
+                let s_livre = s0 * (1.0 - alfa) + corpo * alfa;
+                if s_livre > 0.0 {
+                    for k in 0..3 {
+                        px[k] = (px[k] * s0 * (1.0 - alfa) + tinta[k] * corpo * alfa) / s_livre;
                     }
                 }
-                _ => (wt, 1.0),
-            };
-            let tecto = tecto * grao;
-            let alfa = 1.0 - potencia(1.0 - (wt * taxa).min(1.0), k_passo);
-            if alfa <= 0.0 {
-                continue;
-            }
-            let i = ((y * w + x) * 4) as usize;
-            let px = tela.sombra.texel(x, y);
-            if px[4] == SEM_TINTA {
-                px[4] = arco;
-            }
-            let estado = estado_em(x, y);
-            let tinta = match cor_da_mascara {
-                Some(mc) => tinta_de(
-                    estado.cor,
-                    estado.a_eff,
-                    [mc[i], mc[i + 1], mc[i + 2]].map(|v| f32::from(v) / 255.0),
-                ),
-                None => estado.tinta,
-            };
-            let s0 = px[3];
-            let s_livre = s0 * (1.0 - alfa) + corpo * alfa;
-            if s_livre > 0.0 {
-                for k in 0..3 {
-                    px[k] = (px[k] * s0 * (1.0 - alfa) + tinta[k] * corpo * alfa) / s_livre;
-                }
-            }
-            px[3] = s_livre.max(s0).min(tecto.max(s0));
-            let pel = [px[0], px[1], px[2], px[3]];
-            let out = if tela.plano {
-                pel
-            } else {
-                let ant = antes(i).map(|v| f32::from(v) / 255.0);
-                let sc = pel[3];
-                if tela.trava_alfa {
-                    let sc = if ant[3] > 0.0 { sc } else { 0.0 };
-                    [
-                        ant[0] + (pel[0] - ant[0]) * sc,
-                        ant[1] + (pel[1] - ant[1]) * sc,
-                        ant[2] + (pel[2] - ant[2]) * sc,
-                        ant[3],
-                    ]
+                px[3] = s_livre.max(s0).min(tecto.max(s0));
+                let pel = [px[0], px[1], px[2], px[3]];
+                let out = if plano {
+                    pel
                 } else {
-                    let a = sc + ant[3] * (1.0 - sc);
-                    if a > 0.0 {
-                        let f = ant[3] * (1.0 - sc);
+                    let ant = antes(i).map(|v| f32::from(v) / 255.0);
+                    let sc = pel[3];
+                    if trava_alfa {
+                        let sc = if ant[3] > 0.0 { sc } else { 0.0 };
                         [
-                            (pel[0] * sc + ant[0] * f) / a,
-                            (pel[1] * sc + ant[1] * f) / a,
-                            (pel[2] * sc + ant[2] * f) / a,
-                            a,
+                            ant[0] + (pel[0] - ant[0]) * sc,
+                            ant[1] + (pel[1] - ant[1]) * sc,
+                            ant[2] + (pel[2] - ant[2]) * sc,
+                            ant[3],
                         ]
                     } else {
-                        [0.0; 4]
+                        let a = sc + ant[3] * (1.0 - sc);
+                        if a > 0.0 {
+                            let f = ant[3] * (1.0 - sc);
+                            [
+                                (pel[0] * sc + ant[0] * f) / a,
+                                (pel[1] * sc + ant[1] * f) / a,
+                                (pel[2] * sc + ant[2] * f) / a,
+                                a,
+                            ]
+                        } else {
+                            [0.0; 4]
+                        }
                     }
+                };
+                let li = (((y - base) * w + x) * 4) as usize;
+                for (dst, v) in linhas[li..li + 4].iter_mut().zip(out.iter()) {
+                    *dst = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
                 }
-            };
-            for (dst, v) in tela.buf[i..i + 4].iter_mut().zip(out.iter()) {
-                *dst = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
             }
         }
+    };
+    let colunas = tela.sombra.colunas as usize;
+    let faixas: Vec<_> = tela
+        .buf
+        .chunks_mut((ALTO * w * 4) as usize)
+        .zip(tela.sombra.ladrilhos.chunks_mut(colunas))
+        .enumerate()
+        .skip(ty0 as usize)
+        .take((ty1 - ty0 + 1) as usize)
+        .map(|(ty, (linhas, ladrilhos))| (ty as u32, linhas, ladrilhos))
+        .collect();
+    if paralelo {
+        faixas.into_par_iter().for_each(pinta_faixa);
+    } else {
+        faixas.into_iter().for_each(pinta_faixa);
     }
     Some(DirtyRect {
         x: x0,

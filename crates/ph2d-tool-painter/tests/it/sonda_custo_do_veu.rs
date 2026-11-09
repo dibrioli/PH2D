@@ -122,3 +122,42 @@ fn sonda_custo_do_veu() {
         }
     }
 }
+
+/// Só o traço do produto (30 px, a mistura ligada), 4 vezes — o alvo do perfilador (`samply record`).
+#[test]
+#[ignore = "sonda de custo"]
+fn sonda_perfil_do_veu() {
+    let tam: f32 = std::env::var("PH2D_SONDA_TAM")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(30.0);
+    for _ in 0..4 {
+        let mut t = cena("Wet Wash Mix", tam, Variante::SoACopia);
+        eprintln!("[perfil] {tam} px: {:.3} s", traco(&mut t));
+    }
+}
+
+/// ⭐ **A mistura não custa mais que o pincel sem ela** (auditoria 10/11: o Wet Wash Mix a 7–10 FPS no app, e o
+/// portão de custo do app só media o Filbert e o Express Oil). O traço do Wet Wash Mix com o Wet blend × o mesmo com
+/// `Off`, intercalados no MESMO processo, o mínimo de 3 — uma RAZÃO, que a carga da máquina não move. Antes da cura
+/// (a cópia do véu, a película em faixas, o pool no kernel) a razão era 2,5–3,8; depois ~0,9.
+#[test]
+fn a_mistura_do_wet_wash_mix_nao_custa_mais_que_sem_ela() {
+    let mut min = [f64::INFINITY; 2];
+    for volta in 0..3 {
+        for j in 0..2 {
+            let vi = (j + volta) % 2;
+            let v = [Variante::SoACopia, Variante::Off][vi];
+            let mut t = cena("Wet Wash Mix", 30.0, v);
+            min[vi] = min[vi].min(traco(&mut t));
+        }
+    }
+    let razao = min[0] / min[1];
+    assert!(
+        razao <= 1.3,
+        "o Wet blend do Wet Wash Mix custa {razao:.2}× o pincel sem ele ({:.3} s × {:.3} s): a rota da mistura \
+         voltou a pagar por carimbo o que o kernel não paga (`docs/Painter/BUGS_painter.md` #84)",
+        min[0],
+        min[1]
+    );
+}

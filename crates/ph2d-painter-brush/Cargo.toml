@@ -46,6 +46,10 @@ ph2d-pen-law = { path = "../ph2d-pen-law" }
 # accumulate_dab_smear`), sob a **emenda (b) de 2026-10-01 do ADR-0172**. Os texels de um pingo leem só
 # a janela CONGELADA do campo e escrevem o seu próprio `disp` ⇒ linhas disjuntas e exactas, com gate
 # AO BIT contra a rota em série; ⛔ entre pingos a ordem fica (o seguinte lê o que este escreveu).
+#
+# ⭐ **O QUARTO e o QUINTO usos (ADR-0200):** as FAIXAS de um carimbo da mistura Wet blend (`mistura_opaca`: a
+# película por linha de ladrilhos de 16 linhas, a amostra somada por faixa e em ordem — a partição é fixa, não o
+# número de núcleos) e as faixas do kernel (`dab::bands`, que abriam uma `std::thread` por faixa e passam ao pool).
 rayon = "1"
 # A LEI da mistura de tintas (K–M), partilhada com o Wet Paint e a Aquarela — ordem do dono
 # (2026-09-20): os três meios misturam igual, logo leem a MESMA porta e não três cópias.

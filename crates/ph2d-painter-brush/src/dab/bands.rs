@@ -9,6 +9,7 @@ use crate::ramp_alpha::{RampAlphaMode, RampIndex};
 use crate::spec::BrushSpec;
 use crate::texture::{ImageMask, TexDabBasis};
 use ph2d_det_math::DetMath as _;
+use rayon::prelude::*;
 
 /// **Quantas visitas de texel uma thread precisa RECEBER para se pagar** — a razão medida entre o
 /// custo de ABRIR uma thread e o custo de VISITAR um texel.
@@ -96,6 +97,21 @@ fn cores() -> usize {
 
 /// [`band_count`] com o número de núcleos **injetado** — a face pura, que é a que um gate consegue
 /// interrogar (a outra pergunta à máquina, e uma máquina não é uma fixture).
+/// As faixas de um carimbo no POOL do `rayon` (ADR-0200): a tarefa custa ~1–3 µs contra os 10,5 µs de abrir uma
+/// thread ([`SPAWN_EQUIV_VISITS`]), logo a faixa paga-se com [`VISITAS_POR_FAIXA_NO_POOL`] visitas e o carimbo
+/// grande usa os núcleos todos. O véu do Wet Wash Mix (~38 mil visitas, ~107 ns cada) abria 6 threads; abre até 18.
+/// Cada faixa tem linhas disjuntas: o byte é o mesmo com qualquer contagem.
+pub(crate) fn faixas_no_pool(area: usize, rows: usize, min_area: usize) -> usize {
+    if area < min_area || rows <= 1 {
+        return 1;
+    }
+    (area / VISITAS_POR_FAIXA_NO_POOL).clamp(1, cores().min(rows))
+}
+
+/// Visitas de texel que pagam uma tarefa do pool: 2 048 × ~13 ns (a visita mais barata) ≈ 27 µs, ≥ 10× o custo da
+/// tarefa.
+pub(crate) const VISITAS_POR_FAIXA_NO_POOL: usize = 2048;
+
 pub(crate) fn band_count_with(area: usize, rows: usize, min_area: usize, cores: usize) -> usize {
     if area < min_area || rows <= 1 {
         return 1;
@@ -203,7 +219,7 @@ where
     let forca_region = forca.map(|f| &mut f[(y0 as usize) * mrow..(y1 as usize) * mrow]);
     let rows = (y1 - y0) as usize;
     let area = rows * ((x1 - x0).max(0) as usize);
-    let threads = band_count(area, rows, min_area);
+    let threads = faixas_no_pool(area, rows, min_area);
     if threads <= 1 {
         return stamp(region, mask_region, forca_region, y0);
     }
@@ -221,18 +237,11 @@ where
             (chunk, mchunk, fchunk, y0 + (bi * rows_per_band) as i64)
         })
         .collect();
-    let stamp = &stamp;
-    std::thread::scope(|s| {
-        bands
-            .into_iter()
-            .map(|(chunk, mchunk, fchunk, band_y0)| {
-                s.spawn(move || stamp(chunk, mchunk, fchunk, band_y0))
-            })
-            // Collect first so EVERY band is joined (no short-circuit leaving a thread unjoined).
-            .collect::<Vec<_>>()
-            .into_iter()
-            .fold(false, |acc, h| acc | h.join().unwrap_or(false))
-    })
+    // Todas as faixas correm (`map` + `reduce`, sem curto-circuito).
+    bands
+        .into_par_iter()
+        .map(|(chunk, mchunk, fchunk, band_y0)| stamp(chunk, mchunk, fchunk, band_y0))
+        .reduce(|| false, |a, b| a | b)
 }
 
 /// Like [`parallel_band_stamp`] but splits THREE row-aligned buffers across the bands: the RGBA
@@ -264,28 +273,26 @@ where
     let area = rows * ((x1 - x0).max(0) as usize);
     // A MESMA porta do [`band_split`]: *"vale dividir, e em quantas?"* é uma pergunta só, e uma
     // segunda cópia da regra é como este arquivo passou a ter dois pisos escritos à mão.
-    let threads = band_count(area, rows, PARALLEL_MIN_AREA);
+    let threads = faixas_no_pool(area, rows, PARALLEL_MIN_AREA);
     if threads <= 1 {
         return stamp(canvas, tex, ready, forca, y0);
     }
     let rpb = rows.div_ceil(threads);
-    let stamp = &stamp;
     let mut forca_bands = forca.map(|f| f.chunks_mut(rpb * mstride));
-    std::thread::scope(|s| {
-        canvas
-            .chunks_mut(rpb * cstride)
-            .zip(tex.chunks_mut(rpb * mstride))
-            .zip(ready.chunks_mut(rpb * mstride))
-            .enumerate()
-            .map(|(bi, ((cb, tb), rb))| {
-                let band_y0 = y0 + (bi * rpb) as i64;
-                let fb = forca_bands.as_mut().and_then(Iterator::next);
-                s.spawn(move || stamp(cb, tb, rb, fb, band_y0))
-            })
-            .collect::<Vec<_>>()
-            .into_iter()
-            .fold(false, |acc, h| acc | h.join().unwrap_or(false))
-    })
+    let bands: Vec<_> = canvas
+        .chunks_mut(rpb * cstride)
+        .zip(tex.chunks_mut(rpb * mstride))
+        .zip(ready.chunks_mut(rpb * mstride))
+        .enumerate()
+        .map(|(bi, ((cb, tb), rb))| {
+            let fb = forca_bands.as_mut().and_then(Iterator::next);
+            (cb, tb, rb, fb, y0 + (bi * rpb) as i64)
+        })
+        .collect();
+    bands
+        .into_par_iter()
+        .map(|(cb, tb, rb, fb, band_y0)| stamp(cb, tb, rb, fb, band_y0))
+        .reduce(|| false, |a, b| a | b)
 }
 
 /// Read-only per-dab context shared by every row band of a [`stamp_dab_textured`] stamp. `Sync`

@@ -1000,8 +1000,15 @@ carimbo no centro do anterior salta-se (depois de o RNG da pegada andar). 30 px 
 1,94 s (1,88×); tela Δ médio 0,8–1,0, máx 8–10; os outros 99 pincéis ao bit (alarme de miniatura: só o Wet Wash Mix, 25
 352 px). ⛔ **Recusa MEDIDA:** afinar o véu ao próprio diâmetro (saltar o que anda menos de ¼ ou ½ passo da mistura; a
 lei integra a distância) dava 3,3× e 5,6× mas listras verticais e borda ondulada (Δ máx 48 e 73): o liso do véu é a
-MÉDIA de muitos carimbos de raio e grão sorteados, e menos carimbos é menos média. Para ir além: as linhas do carimbo em
-paralelo (ao bit, ADR novo para o `rayon` da crate).
+MÉDIA de muitos carimbos de raio e grão sorteados, e menos carimbos é menos média.
+**Smoke do dono (10/11): «muito mais lento que o aceitável».** Auditoria: no app a caneta anda 30–135 px por quadro ⇒
+~97 ms/quadro a 30 px (1,07 ms por px de traço) e ~145 a 80 px; o `Off` também ~74. Por fase (30 px): a película 43 % (serial,
+uma potência por texel), o kernel 38 % (6 threads abertas por carimbo), o liso 11 %, a amostra 7 %. **O gate que estava
+verde:** `o_custo_no_caminho_do_app` só mede o Filbert e o Express Oil — a população não tinha pincel de mistura.
+**Cura 2 ([ADR-0200](../architecture/decisions/0200-o-carimbo-de-mistura-e-o-kernel-em-faixas-no-pool-do-rayon.md)):** a
+película em faixas de 16 linhas no pool, a taxa por tabela de 256, o kernel no pool. 30 px 1,29 → 0,66 s, 80 px 1,94 → ~1,0
+(o `Off` 0,76 · 1,2). Gate `a_mistura_do_wet_wash_mix_nao_custa_mais_que_sem_ela` (razão ≤ 1,3, vermelho por mutação).
+**Aberto:** a composição do plano por evento (100–255 ms por traço) e o kernel a ~107 ns por visita.
 
 ## Como adicionar um bug aqui
 

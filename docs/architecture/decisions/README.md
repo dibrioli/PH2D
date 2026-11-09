@@ -213,10 +213,11 @@
 | [0197](0197-o-painter-e-uma-lei-de-pigmento-em-volumes-e-os-meios-sao-pontos-dela.md) | Proposed — o desenho técnico é delegado (padrão-ouro); … | O Painter é uma lei de pigmento em VOLUMES; os meios são pontos dela, não ramos |
 | [0198](0198-o-motor-do-sfx-lab-e-kernels-proprios-sobre-det-math.md) | Accepted — desenho técnico delegado (padrão-ouro); … | O motor do SFX Lab é de kernels próprios sobre `ph2d-det-math`; o FunDSP fica fora do render canônico |
 | [0199](0199-a-forma-de-colisao-e-um-objeto-filho-do-corpo.md) | Accepted — produto do dono (08/11, smoke da W3-B); … | A forma de colisão é um objeto filho do corpo |
+| [0200](0200-o-carimbo-de-mistura-e-o-kernel-em-faixas-no-pool-do-rayon.md) | Accepted — desempenho pedido pelo dono (10/11, «muito mais lento que o aceitável…… | O carimbo de mistura e o kernel correm em faixas no pool do `rayon` |
 
 ---
 
-**204 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**205 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

@@ -191,7 +191,8 @@ pub fn deriva_formas<'a>(
 }
 
 /// P14e D1: a «Collision Shape» filha de um Sprite do motor que segue a forma `forma` das
-/// [`ph2d_ecs::SpriteCells`] do pai, na célula mostrada. Gravado; a forma e o offset do `Collider`
+/// [`ph2d_ecs::SpriteCells`] do pai, na célula mostrada; numa folha extra, a forma com o MESMO nome
+/// (a slice `body` do `idle.ase` e a do `run.ase`, P14e-2). Gravado; a forma e o offset do `Collider`
 /// são derivados (`campos_derivados_quando`), como no [`SegueSlice`].
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SegueCelula {
@@ -219,6 +220,27 @@ pub fn collider_da_celula(
     ))
 }
 
+/// A forma `forma` (índice na folha `0`) na célula `cell` da folha `folha`: numa folha extra, a forma
+/// com o mesmo nome. `None` = escondida, ou a folha não a tem.
+#[must_use]
+pub fn collider_na_folha(
+    cells: &ph2d_ecs::SpriteCells,
+    forma: u32,
+    folha: u8,
+    cell: u32,
+    m_por_px: f64,
+) -> Option<Collider> {
+    let nome = &cells.folha(0)?.formas.get(forma as usize)?.nome;
+    let f = cells.folha(folha)?;
+    let r = f.formas.iter().find(|x| &x.nome == nome)?;
+    let [x, y, w, h] = (*r.rects_px.get(cell as usize)?)?;
+    Some(collider_de_rect(
+        [f64::from(x), f64::from(y), f64::from(w), f64::from(h)],
+        f.pivo_px(cell),
+        m_por_px,
+    ))
+}
+
 type Fazer = Vec<(Entity, ph2d_physics_ecs::ColliderShape, [f32; 2])>;
 
 fn formas_das_celulas(
@@ -230,14 +252,14 @@ fn formas_das_celulas(
     let mut q = world.query::<(Entity, &SegueCelula, &ChildOf, &Collider)>();
     for (e, segue, pai, col) in q.iter(world) {
         let p = pai.parent();
-        let (Some(cells), Some(cell)) = (
+        let (Some(cells), Some((folha, cell))) = (
             world.get::<ph2d_ecs::SpriteCells>(p),
-            ph2d_ecs::celula_mostrada(world, p),
+            ph2d_ecs::celula_e_folha_mostradas(world, p),
         ) else {
             continue;
         };
         let desligada = world.get::<FormaDesligada>(e).is_some();
-        let Some(novo) = collider_da_celula(cells, segue.forma, cell, m_por_px) else {
+        let Some(novo) = collider_na_folha(cells, segue.forma, folha, cell, m_por_px) else {
             if !desligada {
                 ligar.push((e, false));
             }

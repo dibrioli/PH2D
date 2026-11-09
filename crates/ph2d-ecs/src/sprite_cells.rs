@@ -85,8 +85,17 @@ pub fn anchor_da_celula(
 /// A célula da folha `0` que o objecto mostra (`None` = vazio ou outra folha).
 #[must_use]
 pub fn celula_mostrada(world: &World, e: Entity) -> Option<u32> {
-    match world.get::<SpriteGrid>(e)?.shown() {
-        FrameRef::Cell { sheet: 0, cell } => Some(cell),
+    match celula_e_folha_mostradas(world, e)? {
+        (0, cell) => Some(cell),
         _ => None,
+    }
+}
+
+/// A folha e a célula que o objecto mostra (`None` = vazio).
+#[must_use]
+pub fn celula_e_folha_mostradas(world: &World, e: Entity) -> Option<(u8, u32)> {
+    match world.get::<SpriteGrid>(e)?.shown() {
+        FrameRef::Cell { sheet, cell } => Some((sheet, cell)),
+        FrameRef::Empty => None,
     }
 }

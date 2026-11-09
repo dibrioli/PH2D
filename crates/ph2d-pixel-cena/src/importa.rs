@@ -255,3 +255,53 @@ pub fn com_colliders(sprite: &Sprite, colliders: &std::collections::BTreeSet<u32
     }
     s
 }
+
+/// P14e-2 (3): as células da folha EXTRA `k` (Animated Sprite com várias folhas) — o pivô e as formas
+/// por célula dela. Uma forma de nome novo ganha a sua filha (e uma entrada vazia na folha `0`, onde
+/// fica escondida); as de nome já seguido continuam com a mesma filha.
+pub fn liga_celulas_da_folha(
+    world: &mut ph2d_ecs::World,
+    e: ph2d_ecs::Entity,
+    k: u8,
+    celulas: ph2d_ecs::CelulasDaFolha,
+    m_por_px: f64,
+) -> Vec<ph2d_ecs::Entity> {
+    let mut cells = world
+        .get::<ph2d_ecs::SpriteCells>(e)
+        .cloned()
+        .unwrap_or_default();
+    let k = usize::from(k);
+    if cells.folhas.len() <= k {
+        cells
+            .folhas
+            .resize_with(k + 1, ph2d_ecs::CelulasDaFolha::default);
+    }
+    let novas: Vec<String> = celulas
+        .formas
+        .iter()
+        .map(|f| f.nome.clone())
+        .filter(|n| !cells.folhas[0].formas.iter().any(|x| &x.nome == n))
+        .collect();
+    cells.folhas[k] = celulas;
+    let mut filhas = Vec::new();
+    for nome in novas {
+        let i = cells.folhas[0].formas.len() as u32;
+        cells.folhas[0].formas.push(ph2d_ecs::FormaPorCelula {
+            nome: nome.clone(),
+            rects_px: Vec::new(),
+        });
+        if world.get::<ph2d_physics_ecs::RigidBody>(e).is_none() {
+            world.entity_mut(e).insert(ph2d_physics_ecs::RigidBody {
+                kind: ph2d_physics_ecs::BodyKind::Dynamic,
+            });
+        }
+        let c = crate::collider_na_folha(&cells, i, k as u8, 0, m_por_px).unwrap_or_default();
+        let filha = ph2d_physics_ecs::nasce_com_forma(world, e, c.shape);
+        world
+            .entity_mut(filha)
+            .insert((crate::SegueCelula { forma: i }, ph2d_ecs::Name::new(nome)));
+        filhas.push(filha);
+    }
+    world.entity_mut(e).insert(cells);
+    filhas
+}

@@ -17,13 +17,14 @@ mod importa;
 
 pub use importa::{
     COLLIDER_PROP, ColliderImportado, SpriteImportado, com_colliders, importa, importa_ase,
-    importa_folha, liga_celulas, marca_collider, slice_e_collider, slices_com_collider,
+    importa_folha, liga_celulas, liga_celulas_da_folha, marca_collider, slice_e_collider,
+    slices_com_collider,
 };
 
 pub use deriva::{CLIP_SEM_TAGS, DerivadoDe, animador_de_nascenca, deriva, grelha};
 pub use forma::{
     SEGUE_CELULA, SEGUE_SLICE, SegueCelula, SegueSlice, adiciona_collider_da_slice,
-    collider_da_celula, collider_da_slice, deriva_formas, pivo_px,
+    collider_da_celula, collider_da_slice, collider_na_folha, deriva_formas, pivo_px,
 };
 
 /// As tags do documento como clips do motor, pela porta única [`tag_do_aseprite`] (a mesma do

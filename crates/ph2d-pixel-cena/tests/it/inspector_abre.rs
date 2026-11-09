@@ -308,3 +308,79 @@ fn a_forma_da_celula_nao_entra_no_undo() {
         "só a grelha do pai; a filha derivada não"
     );
 }
+
+/// P14e-2 (3): a folha EXTRA tem as suas células. Mostrada a folha 1, a filha de `body` segue o
+/// retângulo e o pivô da folha 1 (a forma de MESMO nome); uma forma nova da folha 1 (`sword`) ganha
+/// filha própria, escondida na folha 0. *Mutação: o derivado lê sempre a folha 0 ⇒ vermelho.*
+#[test]
+fn a_folha_extra_tem_as_suas_celulas() {
+    use ph2d_ecs::{Children, FormaPorCelula};
+    let s = heroi_p14();
+    let mut sim = SimWorld::new();
+    let e = sprite_importado(&s, sim.world_mut(), 0.0);
+    let mut extra = sim
+        .world()
+        .get::<ph2d_ecs::SpriteCells>(e)
+        .expect("células")
+        .folhas[0]
+        .clone();
+    extra.pivos_px = vec![Some([4.0, 12.0]); 6];
+    extra.formas[0].rects_px = vec![Some([1.0, 2.0, 6.0, 8.0]); 6];
+    extra.formas.push(FormaPorCelula {
+        nome: "sword".to_owned(),
+        rects_px: vec![Some([8.0, 4.0, 4.0, 2.0]); 6],
+    });
+    let novas = ph2d_pixel_cena::liga_celulas_da_folha(sim.world_mut(), e, 1, extra, M);
+    assert_eq!(novas.len(), 1, "só `sword` é nova");
+    let filhas: Vec<_> = sim.world().get::<Children>(e).expect("filhas").to_vec();
+    assert_eq!(filhas.len(), 2);
+    let mostra = |sim: &mut SimWorld, folha: u8, cell: u32| {
+        let mut g = sim.world_mut().get_mut::<SpriteGrid>(e).expect("grelha");
+        g.sheet = folha;
+        g.frame = cell;
+        drop(g);
+        deriva_formas(sim.world_mut(), |_| None, M);
+    };
+    let caixa = |sim: &SimWorld, f| {
+        let c = sim.world().get::<Collider>(f).expect("collider");
+        (
+            c.shape,
+            c.offset,
+            sim.world().get::<FormaDesligada>(f).is_some(),
+        )
+    };
+    mostra(&mut sim, 1, 3);
+    let cells = sim
+        .world()
+        .get::<ph2d_ecs::SpriteCells>(e)
+        .expect("células")
+        .clone();
+    // A folha 1 sozinha, pela regra da folha 0 (independente do derivado por nome).
+    let so_a_1 = ph2d_ecs::SpriteCells {
+        folhas: vec![cells.folhas[1].clone()],
+    };
+    let esperada =
+        |forma| ph2d_pixel_cena::collider_da_celula(&so_a_1, forma, 3, M).expect("forma");
+    let b = esperada(0);
+    assert_eq!(
+        caixa(&sim, filhas[0]),
+        (b.shape, b.offset, false),
+        "body na folha 1"
+    );
+    let w = esperada(1);
+    assert_eq!(
+        caixa(&sim, filhas[1]),
+        (w.shape, w.offset, false),
+        "sword na folha 1"
+    );
+    // Na folha 0, `body` volta à sua forma e `sword` emudece.
+    mostra(&mut sim, 0, 3);
+    let b0 = ph2d_pixel_cena::collider_da_celula(&cells, 0, 3, M).expect("body 0");
+    assert_eq!(
+        caixa(&sim, filhas[0]),
+        (b0.shape, b0.offset, false),
+        "body na folha 0"
+    );
+    assert!(caixa(&sim, filhas[1]).2, "sword escondida na folha 0");
+    assert_ne!(b0.shape, b.shape, "as folhas diferem");
+}

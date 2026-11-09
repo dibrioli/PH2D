@@ -150,6 +150,7 @@ pub mod sprite_anim_frames;
 mod sprite_anim_markers;
 /// O tempo de uma `AnimationTag` (ritmo, tempos próprios por passo) — `impl` irmão.
 mod sprite_anim_timing;
+pub mod sprite_cells;
 /// **ADR-0164 F1 passo 6 / ADR-0166** — os três grupos que saíram do `Sprite`, cada um um
 /// componente que pode estar AUSENTE (é isso que os deixa fora do Inspector até o artista os
 /// pedir). Módulos irmãos, append-only.
@@ -160,7 +161,6 @@ pub mod sprite_region;
 pub mod sprite_sheet_frame;
 pub mod sprite_sheet_ref;
 pub mod sprite_sheets;
-pub mod sprite_cells;
 pub mod stable_id;
 /// ⭐⭐⭐ **O cérebro autorável** (TOP-20 #15) — ver o cabeçalho do módulo.
 pub mod state_machine;
@@ -295,15 +295,16 @@ pub use sprite_anim_frames::{
     entry_cell, fps_of_ms, ms_of_fps, rename_tag, sheet_cells, tag_cells,
 };
 pub use sprite_anim_markers::{FrameMarker, SpriteAnimMarkers, advance_frames_marked, anim_steps};
+pub use sprite_cells::{
+    CelulasDaFolha, FormaPorCelula, SpriteCells, anchor_da_celula, celula_e_folha_mostradas,
+    celula_mostrada,
+};
 pub use sprite_corner_tint::{BOTTOM_LEFT, BOTTOM_RIGHT, SpriteCornerTint, TOP_LEFT, TOP_RIGHT};
 pub use sprite_grid::SpriteGrid;
 pub use sprite_pixels::SpritePixels;
 pub use sprite_region::SpriteRegion;
 pub use sprite_sheet_frame::SpriteSheetFrame;
 pub use sprite_sheet_ref::SpriteSheetRef;
-pub use sprite_cells::{
-    CelulasDaFolha, FormaPorCelula, SpriteCells, anchor_da_celula, celula_mostrada,
-};
 pub use sprite_sheets::{
     CellOffsets, ExtraSheet, SHEETS_MAX, SheetNames, ShownSheet, SpriteSheets, cell_offset,
     cells_per_sheet, sheet_assets, sheet_cells_of, sheet_name, shown_sheet,

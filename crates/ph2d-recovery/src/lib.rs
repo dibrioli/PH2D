@@ -6,7 +6,7 @@
 //!   última ([`Autosave`]); os bytes são os do Save, byte a byte, e quem os produz é a shell;
 //! - a cópia mora fora do projecto, em `<dados>/ph2d/recovery/<sessão>/` ([`data_dir`]), e é escrita
 //!   de forma atómica ([`atomic::write_atomic`]: temporário + `fsync` + `rename` + `fsync` da pasta);
-//! - a sessão tem uma tranca com o `pid` ([`Session`]); o fecho normal e o Save apagam as cópias;
+//! - a sessão segura uma tranca do SO enquanto vive ([`Session`]); o fecho normal e o Save apagam as cópias;
 //! - ao arrancar, [`scan`] poda o que tem mais de uma semana e devolve as cópias de sessões mortas,
 //!   que a janela em cartões ([`card`], estado [`Prompt`]) oferece: `Restore` · `Discard` · `Later`.
 //!
@@ -25,7 +25,7 @@ pub use app::{IDLE, Quit, Recovery, meta_of};
 pub use ask::{ago, body, size};
 pub use autosave::{Autosave, Offer, Period, print_of};
 pub use prompt::{Choice, Prompt};
-pub use session::{Meta, Orphan, Session, is_alive, scan};
+pub use session::{Meta, Orphan, Session, is_held, scan};
 
 use std::path::PathBuf;
 

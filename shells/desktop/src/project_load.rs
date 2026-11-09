@@ -29,9 +29,9 @@ impl crate::App {
     /// para no-op. Os gates em `tests` dirigem ESTA função — o corpo inteiro que o Ctrl+O
     /// executa (o `project_load` acima só resolve o caminho) — e não uma cópia da decisão
     /// posta num helper que ninguém chama.
-    pub(crate) fn project_load_from(&mut self, path: &str) {
+    pub(crate) fn project_load_from(&mut self, path: &str) -> bool {
         let Some((mut file, migrated_counter)) = self.read_project_file(path) else {
-            return;
+            return false;
         };
         // A ANIMAÇÃO É PARTE DO ARQUIVO, e um documento que este binário não sabe ler faz o
         // load inteiro ser RECUSADO — não "abre sem a animação".
@@ -46,7 +46,7 @@ impl crate::App {
             Err(e) => {
                 eprintln!("[proj] timeline ilegivel — load RECUSADO: {e}");
                 self.toast_refused("shell.project_load.project_refused_its", &e);
-                return;
+                return false;
             }
         };
         // **E A ARTE DOS PADRÕES, pela MESMA lei** (plano 33, 2026-08-30). Era o **único** blob com
@@ -66,7 +66,7 @@ impl crate::App {
                 Err(e) => {
                     eprintln!("[proj] arte de padrao ilegivel — load RECUSADO: {e}");
                     self.toast_refused("shell.project_load.project_refused_its_2", &e);
-                    return;
+                    return false;
                 }
             };
         // **E OS PIXELS PRÓPRIOS DOS SPRITES, pela MESMÍSSIMA lei** (plano
@@ -80,7 +80,7 @@ impl crate::App {
             Err(e) => {
                 eprintln!("[proj] pixels de sprite ilegiveis — load RECUSADO: {e}");
                 self.toast_refused("shell.project_load.project_refused_its_4", &e);
-                return;
+                return false;
             }
         };
         // **E OS QUADROS, pela mesma lei** (MiroClone): um blob que este binário não lê recusa o load,
@@ -90,14 +90,14 @@ impl crate::App {
             Err(e) => {
                 eprintln!("[proj] quadros ilegiveis — load RECUSADO: {e}");
                 self.toast_refused("shell.project_load.project_refused_its_boards", &e);
-                return;
+                return false;
             }
         };
         let Some(kanbans) = ph2d_app_kanban::project::from_bytes(&file.kanbans)
             .map_err(|e| self.toast_refused("shell.project_load.project_refused_its_kanbans", &e))
             .ok()
         else {
-            return;
+            return false;
         };
         // **E OS PIXEL SPRITES, pela mesma lei** (ADR-0196).
         let pixel_sprites = match ph2d_app_pixel::persist::read(&file.pixel_sprites) {
@@ -105,14 +105,14 @@ impl crate::App {
             Err(e) => {
                 eprintln!("[proj] pixel sprites ilegiveis — load RECUSADO: {e}");
                 self.toast_refused("pixel.load_failed", &e);
-                return;
+                return false;
             }
         };
         // **E AS RECEITAS DE SOM, pela mesma lei** (SFX Lab W2).
         let Ok(sfx_lab) = ph2d_sfx_recipe::project::open(&file.sfx_lab).inspect_err(|e| {
             self.toast_refused("shell.project_load.project_refused_its_recipes", e);
         }) else {
-            return;
+            return false;
         };
         // **E OS NOMES DAS CAMADAS, pela mesma lei** (v218).
         let Ok(camadas) = ph2d_physics_ecs::LayerNames::from_bytes(&file.physics_layers)
@@ -130,7 +130,7 @@ impl crate::App {
         let Ok(scripts) = abertos.inspect_err(|e| {
             self.toast_refused("shell.project_load.project_refused_its_scripts", e);
         }) else {
-            return;
+            return false;
         };
         let sons =
             ph2d_app_components::sound_project::open(&mut file.state.world, &file.sounds, path)
@@ -138,7 +138,7 @@ impl crate::App {
                     self.toast_refused("shell.project_load.project_refused_its_sounds", e)
                 });
         let Ok(sons) = sons else {
-            return;
+            return false;
         };
         self.project_forget_previous(&file);
         if let Some(gfx) = self.gfx.as_mut() {
@@ -171,6 +171,7 @@ impl crate::App {
         {
             self.toast(ph2d_i18n::tr("shell.project_load.macro_marks_unreadable").to_owned());
         }
+        true
     }
 
     /// **A sessão ESQUECE o documento anterior** — o relógio, o undo, o mundo rígido e as settings

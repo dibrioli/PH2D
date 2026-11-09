@@ -1,5 +1,4 @@
-//! **O lado da ESCRITA** do projecto: no pai (`project.rs`) *o que um arquivo É*, aqui *como é
-//! ESCRITO* (e a cópia de recuperação, `ph2d_recovery`), no `project_load.rs` *como é lido*.
+//! **A ESCRITA** do projecto e a cópia de recuperação (`ph2d_recovery`); a leitura: `project_load.rs`.
 
 use super::{PROJECT_SCHEMA, ProjectFile};
 use ph2d_i18n::tr_with;
@@ -35,13 +34,13 @@ impl crate::App {
     pub(crate) fn recovery_start(&mut self, root: Option<&std::path::Path>) {
         let period = ph2d_recovery::Period::from_secs(ph2d_editor_core::recovery_pref::secs());
         self.recovery = ph2d_recovery::Recovery::start(root, period);
-        self.recovery_opened(false);
+        self.recovery_opened();
     }
 
     /// Abriu-se um projecto: a linha de base da cópia e do «por gravar» são os bytes de agora.
-    pub(crate) fn recovery_opened(&mut self, restored: bool) {
+    pub(crate) fn recovery_opened(&mut self) {
         let bytes = self.project_bytes();
-        self.recovery.opened(bytes.as_deref(), restored);
+        self.recovery.opened(bytes.as_deref(), false);
     }
 
     /// A janela da recuperação é modal: o clique é dela. `Restore` abre a cópia por gravar com o
@@ -56,11 +55,11 @@ impl crate::App {
         match hit {
             Hit::Answer(i, choice) if down => {
                 if let Some((copy, original)) = self.recovery.answer(i, choice) {
-                    self.recovery.prompt.later_all();
-                    self.project_load_from(&copy.to_string_lossy());
-                    self.project_path = original;
-                    self.title_dirty = true;
-                    self.recovery_opened(true);
+                    let ok = self.project_load_from(&copy.to_string_lossy());
+                    let bytes = ok.then(|| self.project_bytes()).flatten();
+                    if self.recovery.restored(ok, bytes.as_deref()) {
+                        (self.project_path, self.title_dirty) = (original, true);
+                    }
                 }
             }
             Hit::Save if down => {
@@ -78,8 +77,7 @@ impl crate::App {
         if self.recovery.quit == ph2d_recovery::Quit::Go {
             return false;
         }
-        let bytes = self.project_bytes();
-        let path = self.project_path.clone();
+        let (bytes, path) = (self.project_bytes(), self.project_path.clone());
         self.recovery.ask_quit(bytes.as_deref(), path.as_deref())
     }
 
@@ -92,6 +90,7 @@ impl crate::App {
             let make = move || serialize(file, &pixel);
             (self.recovery).offer_with(make, self.project_path.as_deref(), now);
         }
+        (self.recovery.take_notices().into_iter()).for_each(|n| self.toast(n));
     }
 
     /// Os bytes do projecto inteiro, como o Save os grava (`None` = recusado, e já se disse porquê).

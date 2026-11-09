@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use std::time::Duration;
 
-use crate::{Autosave, Choice, Meta, Period, Prompt, Session, now_secs, scan};
+use crate::{Autosave, Choice, Meta, Offer, Orphan, Period, Prompt, Session, now_secs, scan};
 
 /// A pausa que conta como «o artista parou» (sem entrada nem botão premido).
 pub const IDLE: Duration = Duration::from_secs(1);
@@ -47,6 +47,15 @@ pub struct Recovery {
     /// A altura do corpo da pergunta do fecho, medida (já quebrado) no último quadro pintado: a
     /// janela cresce com o texto e o [`crate::card::click`] lê a MESMA disposição.
     pub quit_body_h: Option<f32>,
+    /// O `Restore` respondido, à espera de o projecto abrir ([`Self::restored`]).
+    pending: Option<Orphan>,
+    /// O fecho é limpo (nada por gravar, ou o artista respondeu Save / Don't Save): só então a
+    /// pasta sai; senão fica para o próximo arranque ([`Self::close`]).
+    clean: bool,
+    /// A última cópia falhou (o aviso ao artista sai uma vez por série de falhas).
+    failing: bool,
+    /// Avisos para a shell mostrar (toasts, já traduzidos): [`Self::take_notices`].
+    notices: Vec<String>,
 }
 
 /// O fecho da janela do app com alterações por gravar.
@@ -78,6 +87,10 @@ impl Recovery {
             cursor: None,
             screen: None,
             quit_body_h: None,
+            pending: None,
+            clean: false,
+            failing: false,
+            notices: Vec::new(),
         }
     }
 
@@ -92,7 +105,7 @@ impl Recovery {
         };
         match Session::start(root, now_secs(), std::process::id()) {
             Ok(s) => {
-                r.prompt.entries = scan(root, now_secs(), Some(s.dir()), &crate::is_alive);
+                r.prompt.entries = scan(root, now_secs(), Some(s.dir()));
                 r.session = Some(s);
             }
             Err(e) => eprintln!("[recovery] a sessão não abriu em {}: {e}", root.display()),
@@ -165,11 +178,38 @@ impl Recovery {
     /// [`Self::follow`] e [`Self::due`] juntos: a pergunta barata (~µs) de cada volta do laço.
     pub fn ready(&mut self, secs: u64, now: Instant) -> bool {
         self.follow(secs, now);
+        self.reap(false);
         self.due(now)
+    }
+
+    /// Colhe o fio da escrita (`block` = espera-o). Falhou: o trabalho fica por copiar (a próxima
+    /// hora tenta de novo) e o artista é avisado uma vez por série de falhas.
+    fn reap(&mut self, block: bool) {
+        if !block && !self.autosave.finished() {
+            return;
+        }
+        match self.autosave.finish() {
+            Some(Offer::Failed(e)) => {
+                self.touched = true;
+                if !std::mem::replace(&mut self.failing, true) {
+                    let msg = ph2d_i18n::tr_with("recovery.copy_failed", &[("err", &e)]);
+                    self.notices.push(msg);
+                }
+            }
+            Some(_) => self.failing = false,
+            None => {}
+        }
+    }
+
+    /// Os avisos por mostrar (toasts), uma vez cada.
+    pub fn take_notices(&mut self) -> Vec<String> {
+        self.reap(false);
+        std::mem::take(&mut self.notices)
     }
 
     /// Os bytes do Save, à hora: o fio grava a cópia se mudaram.
     pub fn offer(&mut self, bytes: Vec<u8>, project: Option<&str>, now: Instant) {
+        self.reap(true);
         let Some(s) = self.session.as_ref() else {
             return;
         };
@@ -184,6 +224,7 @@ impl Recovery {
     where
         F: FnOnce() -> Option<Vec<u8>> + Send + 'static,
     {
+        self.reap(true);
         let Some(s) = self.session.as_ref() else {
             return;
         };
@@ -219,13 +260,15 @@ impl Recovery {
         self.autosave.is_unsaved(bytes)
     }
 
-    /// O pedido de fecho, com os bytes de agora (`None` = não serializou): `true` = há trabalho por
-    /// gravar e a pergunta abriu-se; não fecha ainda.
+    /// O pedido de fecho, com os bytes de agora (`None` = não serializou, e o estado desconhecido
+    /// conta como por gravar): `true` = a pergunta abriu-se; não fecha ainda. `false` = nada por
+    /// gravar: o fecho é limpo.
     pub fn ask_quit(&mut self, bytes: Option<&[u8]>, project: Option<&str>) -> bool {
-        let unsaved = bytes.is_some_and(|b| self.unsaved(b));
+        let unsaved = bytes.is_none_or(|b| self.unsaved(b));
         if unsaved {
             self.quit = Quit::Asking(meta_of(project).name);
         }
+        self.clean = !unsaved;
         unsaved
     }
 
@@ -242,33 +285,55 @@ impl Recovery {
         self.prompt.is_open() || matches!(self.quit, Quit::Asking(_))
     }
 
-    /// Responde à linha `i` da janela. `Restore` devolve `(cópia a abrir, caminho original)`: a
-    /// cópia já é desta sessão e a impressão foi esquecida (o projecto fica por gravar).
+    /// Responde à linha `i` da janela. `Restore` devolve `(cópia a abrir, caminho original)` e
+    /// NADA apaga: a shell abre a cópia e responde em [`Self::restored`].
     pub fn answer(&mut self, i: usize, choice: Choice) -> Option<(PathBuf, Option<String>)> {
         let (orphan, choice) = self.prompt.answer(i, choice)?;
-        if choice != Choice::Restore {
+        if choice != Choice::Restore || self.session.is_none() {
             return None;
         }
-        let s = self.session.as_ref()?;
-        self.autosave.finish();
-        match s.adopt(&orphan) {
-            Ok(_) => {
-                self.autosave.forget();
-                let path = Some(orphan.meta.path.clone()).filter(|p| !p.is_empty());
-                Some((s.copy_path(), path))
-            }
-            Err(e) => {
-                eprintln!("[recovery] Restore falhou: {e}");
-                None
-            }
-        }
+        let path = Some(orphan.meta.path.clone()).filter(|p| !p.is_empty());
+        let copy = orphan.copy.clone();
+        self.pending = Some(orphan);
+        Some((copy, path))
     }
 
-    /// O fecho normal: espera a escrita e apaga a sessão.
+    /// O `Restore` abriu (`ok`, com os `bytes` de agora) ou foi recusado. Aberto: a cópia passa a
+    /// ser desta sessão, a pasta morta sai e o projecto fica por gravar. Recusado: a cópia fica no
+    /// disco e volta à janela, e o artista é avisado. `true` = a shell adopta o caminho original.
+    pub fn restored(&mut self, ok: bool, bytes: Option<&[u8]>) -> bool {
+        let Some(orphan) = self.pending.take() else {
+            return false;
+        };
+        let adopted = ok
+            && self.session.as_ref().is_some_and(|s| {
+                self.autosave.finish();
+                s.adopt(&orphan, now_secs())
+                    .inspect_err(|e| eprintln!("[recovery] Restore falhou: {e}"))
+                    .is_ok()
+            });
+        if !adopted {
+            self.prompt.entries.insert(0, orphan);
+            let msg = ph2d_i18n::tr("recovery.restore_failed").to_owned();
+            self.notices.push(msg);
+            return false;
+        }
+        self.prompt.later_all();
+        self.opened(bytes, true);
+        self.autosave.forget();
+        true
+    }
+
+    /// O fecho: espera a escrita; limpo (o artista decidiu ou nada estava por gravar) apaga a
+    /// sessão, senão solta a tranca e deixa a cópia para o próximo arranque.
     pub fn close(&mut self) {
         self.autosave.finish();
         if let Some(s) = self.session.take() {
-            s.close();
+            if self.clean || self.quit == Quit::Go {
+                s.close();
+            } else {
+                s.leave();
+            }
         }
     }
 }

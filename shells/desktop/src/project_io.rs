@@ -169,10 +169,10 @@ impl crate::App {
         let Some(path) = Self::ask_what_to_open() else {
             return;
         };
-        self.project_load_from(&path);
-        self.project_path = Some(path);
-        self.title_dirty = true;
-        self.recovery_opened(false);
+        if self.project_load_from(&path) {
+            (self.project_path, self.title_dirty) = (Some(path), true);
+            self.recovery_opened();
+        }
     }
 
     /// **Drena os itens do menu Ficheiro**, uma vez por quadro, com `self` livre do borrow do

@@ -25,10 +25,6 @@ fn meta(saved: u64) -> Meta {
     }
 }
 
-fn dead(_: u32) -> bool {
-    false
-}
-
 /// ⛔ Morte em cada ponto da escrita: reabrir dá a cópia anterior inteira ou a nova, nunca meia.
 #[test]
 fn matar_a_escrita_em_cada_passo_deixa_a_anterior_ou_a_nova() {
@@ -98,19 +94,19 @@ fn a_sessao_morta_e_oferecida_e_a_viva_nao() {
     let now = 1_000_000;
     let morta = Session::start(&root, 10, 111).expect("a");
     morta.write_copy(b"morta", &meta(now)).expect("w");
+    morta.leave();
     let viva = Session::start(&root, 11, 222).expect("b");
     viva.write_copy(b"viva", &meta(now)).expect("w");
     let limpa = Session::start(&root, 12, 333).expect("c");
     limpa.write_copy(b"limpa", &meta(now)).expect("w");
     limpa.close();
     let eu = Session::start(&root, 13, 444).expect("d");
-    let found = scan(&root, now, Some(eu.dir()), &|pid| pid == 222);
+    let found = scan(&root, now, Some(eu.dir()));
     assert_eq!(found.len(), 1, "{found:?}");
     assert_eq!(std::fs::read(&found[0].copy).expect("r"), b"morta");
     assert_eq!(found[0].size, 5);
     assert_eq!(found[0].meta, meta(now));
-    // O pid deste processo vive de verdade.
-    assert!(ph2d_recovery::is_alive(std::process::id()));
+    assert!(ph2d_recovery::is_held(viva.dir()), "a viva segura a tranca");
     let _ = std::fs::remove_dir_all(root);
 }
 
@@ -123,13 +119,16 @@ fn a_copia_de_mais_de_uma_semana_e_podada() {
     velha
         .write_copy(b"v", &meta(now - ph2d_recovery::KEEP_SECS - 1))
         .expect("w");
+    velha.leave();
     let quase = Session::start(&root, 2, 2).expect("q");
     quase
         .write_copy(b"q", &meta(now - ph2d_recovery::KEEP_SECS))
         .expect("w");
+    quase.leave();
     let vazia = Session::start(&root, 3, 3).expect("e");
-    let (vd, vz) = (velha.dir().to_path_buf(), vazia.dir().to_path_buf());
-    let found = scan(&root, now, None, &dead);
+    let (vd, vz) = (root.join("1-1"), vazia.dir().to_path_buf());
+    vazia.leave();
+    let found = scan(&root, now, None);
     assert_eq!(found.len(), 1);
     assert_eq!(std::fs::read(&found[0].copy).expect("r"), b"q");
     assert!(!vd.exists() && !vz.exists(), "a velha e a vazia saíram");
@@ -145,10 +144,11 @@ fn restaurar_devolve_os_bytes_da_copia() {
     for (i, b) in [&bytes[..], b"discard", b"later"].iter().enumerate() {
         let s = Session::start(&root, i as u64, 900 + i as u32).expect("s");
         s.write_copy(b, &meta(100 + i as u64)).expect("w");
+        s.leave();
     }
     let eu = Session::start(&root, 99, 999).expect("eu");
     let mut p = Prompt {
-        entries: scan(&root, 200, Some(eu.dir()), &dead),
+        entries: scan(&root, 200, Some(eu.dir())),
     };
     assert!(p.is_open());
     assert_eq!(p.entries.len(), 3);
@@ -158,13 +158,13 @@ fn restaurar_devolve_os_bytes_da_copia() {
     let (rest, c) = p.answer(0, Choice::Restore).expect("restore");
     assert_eq!(c, Choice::Restore);
     assert!(!p.is_open());
-    assert_eq!(eu.adopt(&rest).expect("adopt"), bytes);
+    assert_eq!(eu.adopt(&rest, 300).expect("adopt"), bytes);
     assert_eq!(
         std::fs::read(eu.dir().join("project.ph2dproj")).expect("r"),
         bytes
     );
     assert!(!rest.dir.exists() && !disc.dir.exists() && later.dir.exists());
-    let again = scan(&root, 200, Some(eu.dir()), &dead);
+    let again = scan(&root, 200, Some(eu.dir()));
     assert_eq!(again.len(), 1, "só a do Later volta");
     assert_eq!(rest.meta.path, "/home/x/Hero.ph2dproj");
     let _ = std::fs::remove_dir_all(root);
@@ -280,6 +280,7 @@ fn a_janela_diz_nome_hora_e_tamanho() {
 }
 
 mod card;
+mod seguranca;
 
 /// ⭐ Sem soluço a meio do gesto: com a hora vencida, um traço em curso (mesmo parado) e a entrada a
 /// chegar ADIAM a serialização; o quadro calmo depois do fim do traço ou 1 s sem entrada liberta-a;
@@ -391,7 +392,10 @@ fn a_serializacao_corre_no_fio_da_escrita() {
     let copia = s.dir().join("project.ph2dproj");
     assert_eq!(std::fs::read(&copia).expect("copy"), b"AB");
     a.offer_with(|| None, meta(2), &s, t1);
-    assert_eq!(a.finish(), None, "recusado: nada gravado");
+    assert!(
+        matches!(a.finish(), Some(Offer::Failed(_))),
+        "recusado: nada gravado, e diz-se"
+    );
     assert_eq!(
         std::fs::read(&copia).expect("copy"),
         b"AB",
@@ -437,7 +441,8 @@ fn a_copia_sai_sem_quadros_so_com_as_voltas_do_laco() {
         std::fs::read(dir.join("project.ph2dproj")).ok(),
         Some(b"drawn".to_vec())
     );
-    let found = scan(&root, ph2d_recovery::now_secs(), None, &dead);
+    r.close(); // um sinal: ninguém decidiu, a cópia fica
+    let found = scan(&root, ph2d_recovery::now_secs(), None);
     assert_eq!(
         found.len(),
         1,

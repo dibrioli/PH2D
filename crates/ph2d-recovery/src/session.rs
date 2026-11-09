@@ -1,8 +1,10 @@
 //! A sessão: uma pasta `<raiz>/<início>-<pid>/` com a tranca `session.lock` (o `pid`), a cópia
 //! `project.ph2dproj` (os bytes do Save, nada mais) e o `project.meta` (`name=`, `path=`, `saved=`).
 //!
-//! Uma sessão está **morta** quando a tranca existe e o `pid` dela já não vive ([`is_alive`]); o
-//! fecho normal apaga a pasta inteira, então «pasta sem dono vivo» é exactamente «fecho à força».
+//! Uma sessão está **viva** enquanto o processo dela segura a tranca do SO (`File::try_lock`) em
+//! `session.lock` ([`is_held`]): o SO solta-a quando o processo morre, então não há `pid` reciclado
+//! que esconda uma morta nem outro SO onde uma viva pareça morta. O fecho limpo apaga a pasta; o
+//! fecho sem decisão do artista ([`Session::leave`]) e o fecho à força deixam-na para o arranque.
 
 use std::path::{Path, PathBuf};
 
@@ -16,6 +18,8 @@ const META: &str = "project.meta";
 #[derive(Debug)]
 pub struct Session {
     dir: PathBuf,
+    /// A tranca do SO, segura enquanto a sessão vive (solta-se ao cair o `File`).
+    _lock: std::fs::File,
 }
 
 impl Session {
@@ -26,8 +30,10 @@ impl Session {
     pub fn start(root: &Path, started: u64, pid: u32) -> std::io::Result<Self> {
         let dir = root.join(format!("{started}-{pid}"));
         std::fs::create_dir_all(&dir)?;
-        write_atomic(&dir.join(LOCK), format!("pid={pid}\n").as_bytes())?;
-        Ok(Self { dir })
+        let mut lock = std::fs::File::create(dir.join(LOCK))?;
+        lock.try_lock().map_err(std::io::Error::other)?;
+        std::io::Write::write_all(&mut lock, format!("pid={pid}\n").as_bytes())?;
+        Ok(Self { dir, _lock: lock })
     }
 
     /// A pasta da sessão.
@@ -66,19 +72,27 @@ impl Session {
         let _ = std::fs::remove_file(self.dir.join(META));
     }
 
-    /// O fecho normal: apaga a pasta inteira (a tranca incluída).
+    /// O fecho limpo (o artista decidiu, ou não havia nada por gravar): apaga a pasta inteira.
     pub fn close(self) {
         let _ = std::fs::remove_dir_all(&self.dir);
     }
 
-    /// `Restore`: a cópia órfã passa a ser desta sessão (o próximo intervalo grava por cima dela, e
-    /// ela já não é oferecida de novo) e a pasta morta sai.
+    /// O fecho sem decisão do artista: solta a tranca e DEIXA a cópia (o próximo arranque oferece-a).
+    pub fn leave(self) {}
+
+    /// `Restore` (só DEPOIS de o projecto abrir): a cópia órfã passa a ser desta sessão, com a hora
+    /// de agora (o próximo intervalo grava por cima dela, e ela já não é oferecida de novo), e a
+    /// pasta morta sai.
     ///
     /// # Errors
     /// O erro do sistema de ficheiros (a órfã fica onde estava).
-    pub fn adopt(&self, orphan: &Orphan) -> std::io::Result<Vec<u8>> {
+    pub fn adopt(&self, orphan: &Orphan, now: u64) -> std::io::Result<Vec<u8>> {
         let bytes = std::fs::read(&orphan.copy)?;
-        self.write_copy(&bytes, &orphan.meta)?;
+        let meta = Meta {
+            saved: now,
+            ..orphan.meta.clone()
+        };
+        self.write_copy(&bytes, &meta)?;
         let _ = std::fs::remove_dir_all(&orphan.dir);
         Ok(bytes)
     }
@@ -145,38 +159,37 @@ impl Orphan {
     }
 }
 
-/// O `pid` vive? Linux: `/proc/<pid>`. Noutro SO não há resposta barata sem dependências, e
-/// responder «vivo» esconderia para sempre a cópia; responde-se «morto» salvo o próprio processo
-/// (o pior caso é oferecer a cópia de uma segunda janela aberta, que o `Later` deixa estar).
+/// A sessão da pasta `dir` vive? = alguém segura a tranca dela. Sem tranca (pasta antiga ou meia
+/// criada) = morta; erro que não seja «ocupada» = viva (na dúvida nada se apaga).
 #[must_use]
-pub fn is_alive(pid: u32) -> bool {
-    if pid == std::process::id() {
-        return true;
-    }
-    if cfg!(target_os = "linux") {
-        Path::new("/proc").join(pid.to_string()).exists()
-    } else {
-        false
+pub fn is_held(dir: &Path) -> bool {
+    let Ok(f) = std::fs::File::open(dir.join(LOCK)) else {
+        return false;
+    };
+    match f.try_lock() {
+        Ok(()) => false,
+        Err(std::fs::TryLockError::WouldBlock) => true,
+        Err(std::fs::TryLockError::Error(_)) => true,
     }
 }
 
-fn lock_pid(dir: &Path) -> Option<u32> {
-    let text = std::fs::read_to_string(dir.join(LOCK)).ok()?;
-    text.lines()
-        .find_map(|l| l.strip_prefix("pid="))
-        .and_then(|v| v.trim().parse().ok())
+/// A hora da cópia: o `saved=` do meta, ou (meta ausente/ilegível) o `mtime` da cópia; `None` = não
+/// se sabe (e então ela nunca se poda).
+fn copy_time(meta: &Meta, copy: &Path) -> Option<u64> {
+    if meta.saved > 0 {
+        return Some(meta.saved);
+    }
+    let m = std::fs::metadata(copy).and_then(|m| m.modified()).ok()?;
+    m.duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .map(|d| d.as_secs())
 }
 
 /// A varredura ao arrancar: poda as sessões mortas com mais de [`crate::KEEP_SECS`] (e as mortas
 /// sem cópia, e os `.tmp` de escritas mortas) e devolve as cópias que se oferecem, a mais nova
-/// primeiro. `except` é a pasta da sessão viva deste processo.
+/// primeiro. `except` é a pasta da sessão viva deste processo; as vivas ([`is_held`]) não se tocam.
 #[must_use]
-pub fn scan(
-    root: &Path,
-    now: u64,
-    except: Option<&Path>,
-    alive: &dyn Fn(u32) -> bool,
-) -> Vec<Orphan> {
+pub fn scan(root: &Path, now: u64, except: Option<&Path>) -> Vec<Orphan> {
     let Ok(entries) = std::fs::read_dir(root) else {
         return Vec::new();
     };
@@ -186,14 +199,16 @@ pub fn scan(
         if !dir.is_dir() || except.is_some_and(|x| x == dir) {
             continue;
         }
-        if lock_pid(&dir).is_some_and(alive) {
+        if is_held(&dir) {
             continue;
         }
         let copy = dir.join(COPY);
-        let meta = std::fs::read_to_string(dir.join(META))
+        let mut meta = std::fs::read_to_string(dir.join(META))
             .map_or_else(|_| Meta::default(), |t| Meta::parse(&t));
         let size = std::fs::metadata(&copy).map_or(0, |m| m.len());
-        let old = now.saturating_sub(meta.saved) > crate::KEEP_SECS;
+        let time = copy_time(&meta, &copy);
+        meta.saved = time.unwrap_or(0);
+        let old = time.is_some_and(|t| now.saturating_sub(t) > crate::KEEP_SECS);
         if !copy.is_file() || old {
             let _ = std::fs::remove_dir_all(&dir);
             continue;

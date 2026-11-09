@@ -110,6 +110,8 @@ pub enum Offer {
     Unchanged,
     /// A cópia nova está no disco.
     Written,
+    /// A escrita (ou a serialização) falhou: o trabalho continua por copiar.
+    Failed(String),
 }
 
 /// O que o fio devolve: a impressão dos bytes e se os escreveu.
@@ -227,6 +229,12 @@ impl Autosave {
         }));
     }
 
+    /// O fio da escrita acabou (há um resultado por colher sem esperar)?
+    #[must_use]
+    pub fn finished(&self) -> bool {
+        self.writing.as_ref().is_some_and(JoinHandle::is_finished)
+    }
+
     /// Espera o fio em curso (antes de apagar a cópia, e no fecho) e diz o que ele fez.
     pub fn finish(&mut self) -> Option<Offer> {
         let h = self.writing.take()?;
@@ -243,12 +251,12 @@ impl Autosave {
             Ok(Err(e)) => {
                 eprintln!("[recovery] a cópia não se gravou: {e}");
                 self.last = None;
-                None
+                Some(Offer::Failed(e.to_string()))
             }
             Err(_) => {
                 eprintln!("[recovery] o fio da cópia caiu");
                 self.last = None;
-                None
+                Some(Offer::Failed("the writer thread panicked".to_owned()))
             }
         }
     }

@@ -153,7 +153,13 @@ pub fn spawn_if_enabled(
         cell_idx,
         LADO,
         LADO,
-        imagem(LADO),
+        // `PH2D_COMPOSITE_PAPEL=1`: a tela do *New Image ▸ Textured Paper* (o bind reconhece-a e serve o papel).
+        std::env::var_os("PH2D_COMPOSITE_PAPEL")
+            .and_then(|_| {
+                let papel = ph2d_editor_core::ids::NEW_IMAGE_BG_PAPER;
+                crate::paint_mode::pixeis_da_imagem_nova([LADO, LADO], papel)
+            })
+            .unwrap_or_else(|| imagem(LADO)),
         Vec2::new(0.0, 0.0),
         pixels_per_meter,
         atlas_asset_map,

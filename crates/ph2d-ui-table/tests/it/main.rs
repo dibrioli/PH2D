@@ -325,3 +325,39 @@ fn o_corpo_que_transborda_da_a_barra_uma_calha_so_dela() {
     let sum2: f32 = l2.cols.iter().map(|c| c.w).sum();
     assert!((sum2 - area.w).abs() < 1e-3, "sem transbordo, sem calha");
 }
+
+/// Smoke do dono 09/11 (cena 14): no app cada movimento do rato vem com um quadro pintado no meio
+/// (o `layout` arredonda a rolagem à linha inteira). O polegar agarrado segue o RATO, não a sua
+/// própria rolagem arredondada: a cada passo a rolagem é a proporcional à distância desde o Down,
+/// à linha inteira, e o arredondamento nunca se acumula.
+#[test]
+fn o_polegar_agarrado_segue_o_rato_atraves_dos_quadros() {
+    use ph2d_editor_core::widget::{scrollbar_thumb_rect, scrollbar_track_rect};
+    let mut st = TableState::default();
+    st.toggle_row("pos");
+    let r = rows();
+    let m = Metrics::standard();
+    let small = Rect::new(0.0, 0.0, m.min_col * 8.0, m.header_h + m.row_h * 3.0);
+    let (l, _) = lay(&mut st, small);
+    let (b, max) = (l.bar(), l.max_scroll());
+    let thumb = scrollbar_thumb_rect(scrollbar_track_rect(b.body), 0.0, b.content_h, b.visible_h);
+    let range = b.body.h - thumb.h;
+    let (x, y0) = (l.body.x + l.body.w - 1.0, thumb.y + thumb.h * 0.5);
+    assert!(st.press(&Hit::Bar, (x, y0), &l, &r));
+    let mut last = 0.0;
+    for k in 1..=8 {
+        let f = k as f32 / 8.0;
+        st.drag_to((x, y0 + range * f), &m);
+        let (l, _) = lay(&mut st, small);
+        // À linha mais próxima da proporcional (num empate, qualquer das duas).
+        let want = max * f;
+        assert!(
+            (l.scroll - want).abs() <= m.row_h * 0.5 + 1e-3,
+            "passo {k}: {} vs {want}",
+            l.scroll
+        );
+        assert!(l.scroll >= last, "nunca volta para trás a descer");
+        last = l.scroll;
+    }
+    assert!((last - max).abs() < 1e-3, "o fim do curso é o fim");
+}

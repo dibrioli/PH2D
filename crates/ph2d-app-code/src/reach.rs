@@ -238,7 +238,7 @@ impl CodeDoc {
                 PointerLook::Arrow
             });
         }
-        if let Some(look) = self.debug.view.look(x, y) {
+        if let Some(look) = self.debug.view.look(x, y).or(self.view.bar_look(x, y)) {
             return Some(look);
         }
         if self.view.counter_contains(x, y) {

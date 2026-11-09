@@ -141,6 +141,8 @@ pub enum PointerLook {
     Grabbing,
     /// Sobre uma ponta que estica de lado: ↔.
     ResizeEw,
+    /// Sobre o que se arrasta na vertical (uma barra de rolagem, ou a arrastá-la): ↕.
+    ResizeNs,
     /// O próximo clique escolhe algo fora da aba (o conta-gotas): a cruz, em qualquer ponto da janela.
     Pick,
 }

@@ -353,6 +353,14 @@ impl CodeView {
         true
     }
 
+    /// O ponteiro sobre a barra do texto, ou a arrastá-la (fora dela também): ↕.
+    #[must_use]
+    pub fn bar_look(&self, x: f32, y: f32) -> Option<ph2d_editor_core::doc_surface::PointerLook> {
+        let over = self.bar().hit().is_some_and(|b| b.contains(x, y));
+        (over || self.bar_drag.is_some())
+            .then_some(ph2d_editor_core::doc_surface::PointerLook::ResizeNs)
+    }
+
     /// Largar a barra do texto. `true` = havia arrasto.
     pub fn bar_release(&mut self) -> bool {
         self.bar_drag.take().is_some()

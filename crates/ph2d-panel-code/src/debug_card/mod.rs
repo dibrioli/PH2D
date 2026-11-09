@@ -254,16 +254,23 @@ impl DebugCardView {
         )
     }
 
-    /// O ponteiro sobre o puxador de cima: a mão aberta (a mão fechada a arrastar).
+    /// O ponteiro: o puxador de cima é a mão aberta (fechada a arrastar); a barra da Sheet ou de um
+    /// cartão é ↕ por cima dela e durante todo o arrasto (smoke do dono 09/11, cena 14).
     #[must_use]
     pub fn look(&self, x: f32, y: f32) -> Option<ph2d_editor_core::doc_surface::PointerLook> {
-        use ph2d_editor_core::doc_surface::PointerLook::{Grab, Grabbing};
-        let over = self.painted.grip.is_some_and(|g| g.contains(x, y));
-        (self.resizing.is_some() || over).then_some(if self.resizing.is_some() {
-            Grabbing
-        } else {
-            Grab
-        })
+        use ph2d_editor_core::doc_surface::PointerLook::{Grab, Grabbing, ResizeNs};
+        let p = &self.painted;
+        if self.resizing.is_some() {
+            return Some(Grabbing);
+        }
+        if p.grip.is_some_and(|g| g.contains(x, y)) {
+            return Some(Grab);
+        }
+        let sheet = p.table.as_ref().and_then(|(lay, ..)| lay.bar().hit());
+        let mut bars = sheet
+            .into_iter()
+            .chain(p.cards.iter().filter_map(|b| b.track.hit()));
+        (self.bar_dragging() || bars.any(|b| b.contains(x, y))).then_some(ResizeNs)
     }
 
     /// O arrasto do puxador de cima (a altura) ou do de uma coluna. `true` = tomado.

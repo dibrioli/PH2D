@@ -309,9 +309,12 @@ fn o_card_style_troca_o_stopped_e_o_cabecalho_esconde_a_coluna_type() {
 
 /// Smoke do dono 09/11 (cena 14): parado, o código ROLA pela roda (e fica rolado nos quadros
 /// seguintes); o Stopped fica num terço da aba, rola por dentro (a Sheet, e cada cartão dos Cards por si) e o puxador de
-/// cima muda-lhe a altura entre o mínimo e o tecto; as barras (código, Sheet, cartão) arrastam.
+/// cima muda-lhe a altura entre o mínimo e o tecto; as barras (código, Sheet, cartão) arrastam e pedem ↕.
 #[test]
 fn parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador() {
+    use ph2d_app_code::commands::CMD_CARD_CARDS;
+    use ph2d_editor_core::doc_surface::PointerLook::ResizeNs;
+    use ph2d_editor_core::widget::{scrollbar_thumb_rect, scrollbar_track_rect};
     use ph2d_host::PointerButton::Primary;
     let locais: String = (0..30)
         .map(|i| format!("  local v{i} = {i}; self.f{i} = {i}\n"))
@@ -330,29 +333,32 @@ fn parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador() {
     (passo(&mut m), m.cena());
     let card = passo(&mut m).painted.card.expect("o Stopped");
     assert!(card.h <= crate::AREA.h / 3.0 + 1.0, "um terço: {card:?}");
+    let sy = |m: &mut Mesa| m.docs().scroll_of(id).expect("vista").1;
     let roda = |m: &mut Mesa, (x, y): (f32, f32)| {
         assert!(m.docs().wheel(id.0, x, y, -200.0, false));
         (passo(m), m.cena(), passo(m)).2
     };
     let v = roda(&mut m, (card.x + card.w * 0.5, crate::AREA.y + 40.0));
-    assert!(
-        m.docs().scroll_of(id).expect("vista").1 > 0.0,
-        "o código rolou"
-    );
+    assert!(sy(&mut m) > 0.0, "o código rolou");
     let v = roda(&mut m, centro(v.painted.table.expect("Sheet").0.body));
     assert!(v.table.scroll > 0.0, "a Sheet rolou");
     let arrasta = |m: &mut Mesa, x, ys| m.arrasta_com(id, x, ys, Modifiers::default(), Primary);
-    let lay = v.painted.table.clone().expect("Sheet").0;
-    let bar = lay.bar().hit().expect("a Sheet transborda");
-    arrasta(&mut m, centro(bar).0, (bar.y + 1.0, bar.y + bar.h * 9.0));
-    let v = passo(&mut m);
-    assert!((v.table.scroll - lay.max_scroll()).abs() < 1e-3 && v.table.widths.is_empty());
+    // A barra da Sheet: ↕ por cima; o POLEGAR desce um quarto do curso e a rolagem segue o rato.
+    let (lay, s0) = (v.painted.table.clone().expect("Sheet").0, v.table.scroll);
+    let (b, row) = (lay.bar(), lay.m.expect("métricas").row_h);
+    let th = scrollbar_thumb_rect(scrollbar_track_rect(b.body), s0, b.content_h, b.visible_h);
+    let (bx, ty) = (centro(b.hit().expect("transborda")).0, centro(th).1);
+    let olha = |m: &mut Mesa, x, y| m.docs().pointer_look(id.0, x, y);
+    assert_eq!(olha(&mut m, bx, ty), Some(ResizeNs), "Sheet: ↕");
+    arrasta(&mut m, bx, (ty, ty + (b.body.h - th.h) * 0.25));
+    let (quer, s) = (s0 + (b.content_h - b.visible_h) * 0.25, passo(&mut m).table);
+    let d = (s.scroll - quer).abs();
+    assert!(d <= row * 0.5 + 1e-3 && s.widths.is_empty(), "{d}");
     // A barra do código: na borda direita do texto, dentro do recuo do cartão.
     let code = m.docs().card_rects(id).expect("cartões")[1];
-    let (sel, sy) = (m.docs().selection_of(id), |m: &mut Mesa| {
-        m.docs().scroll_of(id).unwrap().1
-    });
+    let sel = m.docs().selection_of(id);
     let (bx, top) = (code.x + code.w - 14.0, code.y + 14.0); // LITERAL-PX-OK: meio passo de linha
+    assert_eq!(olha(&mut m, bx, top), Some(ResizeNs), "código: ↕");
     arrasta(&mut m, bx, (top, top));
     let topo = sy(&mut m);
     arrasta(&mut m, bx, (top, top + 80.0));
@@ -363,19 +369,13 @@ fn parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador() {
     arrasta(&mut m, gx, (gy, gy - 150.0));
     let alto = passo(&mut m).painted.card.expect("o quadro").h;
     assert!(alto > card.h + 100.0, "cresceu: {} → {alto}", card.h);
-    assert!(
-        m.docs()
-            .command(id.0, ph2d_app_code::commands::CMD_CARD_CARDS)
-    );
+    assert!(m.docs().command(id.0, CMD_CARD_CARDS));
     // Cards: a roda sobre o cartão do self rola só esse (os Locals ficam), com o indicador.
     let v = passo(&mut m);
     assert!(v.painted.cards[1].bar.is_some(), "o self transborda");
     let v = roda(&mut m, centro(v.painted.cards[1].rect));
-    assert!(
-        v.cards_scroll[1] > 0.0 && v.cards_scroll[0] == 0.0,
-        "{:?}",
-        v.cards_scroll
-    );
+    let cs = v.cards_scroll;
+    assert!(cs[1] > 0.0 && cs[0] == 0.0, "{cs:?}");
     let bar = v.painted.cards[1].track.hit().expect("o self transborda");
     arrasta(&mut m, centro(bar).0, (bar.y + 1.0, bar.y + bar.h * 9.0));
     let v = passo(&mut m);

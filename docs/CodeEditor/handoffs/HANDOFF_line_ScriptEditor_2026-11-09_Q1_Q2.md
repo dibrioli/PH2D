@@ -213,3 +213,32 @@ dos dois lados) — o recuo da última coluna é o mesmo das outras. Teste
 `o_corpo_que_transborda_da_a_barra_uma_calha_so_dela` (Σ larguras + calha = área; a trilha não toca coluna; Type ≥
 natural; sem transbordo Σ = área). Foto `passo_1` a 1:1: «number», «boolean», «number · changed» inteiros com recuo,
 a barra sozinha na calha; Cards: as caixas param antes da barra do self; o código não passa por baixo da barra dele.
+
+### 8.3 A barra arrasta e pede ↕ (smoke do dono 09/11)
+
+O dono: «quero a capacidade de arrastar com o mouse, mostrando a seta do cursor aqui na vertical» (a barra da Sheet).
+
+- **Reprodução PRIMEIRO, com o rato real**: binário `target/smoke` do HEAD `e018da94bd` numa Xvfb (onde o XTest chega,
+  como `ferramentas/conduz_posse/corre.sh`), `PH2D_CODE_SMOKE=14`, `xdotool mousedown` no polegar da Sheet + 10
+  movimentos + `mouseup`, a 1024×768 e a 1900×1050: **a tabela rola e segue o rato nas duas** (fotos antes/durante/
+  depois). O carregar chega à tabela (`on_canvas` verdadeiro, `chrome_press` vazio), a zona de toque é a da calha do
+  `e018da94bd` (`OwnBar::hit` = a pintada), o `drag_to` está encaminhado (`surface.rs::pointer_move` → `CodeDoc::drag_to`
+  → `DebugCardView::drag_to` → `TableState::drag_to`). A Xwayland/KWin do dono não se reproduz aqui; se no smoke dele
+  o arrasto continuar morto com o binário novo, o próximo suspeito é o caminho Wayland, não a tabela.
+- **O que faltava de facto: o ponteiro.** Nenhuma barra da aba pedia cursor: por cima da da Sheet o `pointer_look`
+  dava `Arrow`, por cima da do código o I de texto (a barra fica dentro do `text_rect`) — nada dizia «isto arrasta».
+- **Cura**: `PointerLook::ResizeNs` (novo, `ph2d-editor-core::doc_surface`, append) → `CursorIcon::NsResize` na única
+  `set_cursor` da shell (`update_eyedropper_cursor`, +1 linha). `DebugCardView::look`: ↕ sobre a barra da Sheet
+  (`Layout::bar().hit()`) e a de cada cartão dos Cards (`CardBox::track.hit()`) e durante TODO o arrasto de uma delas
+  (`bar_dragging`, mesmo com o rato fora); o puxador de cima continua Grab/Grabbing. `CodeView::bar_look`: o mesmo
+  para a barra do código. `ph2d-app-code` só encadeia (`reach.rs::overlay_look`, 1 linha reescrita). A Strip não tem
+  barra vertical (uma fila de células): nada a fazer.
+- **Provas** (vermelho com a cura mutada → verde): `ph2d-panel-code`
+  `a_barra_da_sheet_e_a_de_um_cartao_pedem_o_ponteiro_vertical` (vermelho: `None` sobre a barra); `ph2d-app-code`
+  `parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador` agora agarra o POLEGAR da Sheet (já não a trilha),
+  desce ¼ do curso e confere a rolagem proporcional à linha inteira, e pergunta o ponteiro sobre as barras da Sheet e
+  do código (vermelho: `Some(Arrow)`). `ph2d-ui-table` `o_polegar_agarrado_segue_o_rato_atraves_dos_quadros` (o
+  `layout` arredonda entre cada movimento, como no app; o arredondamento não se acumula) — verde já sem a cura (o
+  mecanismo estava certo). Catraca `ph2d-app-code` 26 628 / 26 628 (o teste pagou-se compactando o próprio teste).
+- O cursor está provado até ao `pointer_look` da aba; o `PointerLook → CursorIcon` da shell é código (uma linha no
+  `match`), sem teste — a Xvfb não fotografa o cursor.

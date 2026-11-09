@@ -24,6 +24,7 @@ ph2d-shape-handles = { path = "../ph2d-shape-handles" }
 # W6: a «Coin» traça-se pela cola real, com a arte de fábrica no `AssetDb`.
 ph2d-physics-outline = { path = "../ph2d-physics-outline" }
 ph2d-asset = { path = "../ph2d-asset" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
 
 [lints]
 workspace = true

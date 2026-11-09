@@ -258,11 +258,12 @@ pub fn follows(world: &World, shape: Entity) -> Option<bool> {
     })
 }
 
-/// O que o cartão mostra de um «Outline» (`None` noutra forma).
+/// O que o cartão mostra de um «Outline» (`None` noutra forma, ou sem imagem a traçar: aí Detail,
+/// Alpha cutoff e Ignore specks under não mudariam nada — controlos mortos).
 #[must_use]
 pub fn card_info(world: &World, shape: Entity) -> Option<ph2d_editor_core::InspectorOutlineInfo> {
     let c = world.get::<Collider>(shape)?;
-    if !matches!(c.shape, ColliderShape::Outline { .. }) {
+    if !matches!(c.shape, ColliderShape::Outline { .. }) || picture_owner(world, shape).is_none() {
         return None;
     }
     let o = world

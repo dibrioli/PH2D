@@ -153,7 +153,7 @@ pub(super) fn medidas_e_estado(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysic
         t.x,
         t.w,
         y,
-        info.shape_tag,
+        super::physics::dims_tag(info),
     );
     let y = super::physics_cartao_contorno::aviso(t, y, info);
     let y = estado_da_forma(t, y, info);

@@ -21,7 +21,7 @@ use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
 
-use super::physics::{SHAPE_LABELS, bake_label, paint_shape_dims};
+use super::physics::{SHAPE_LABELS, bake_label, dims_tag, paint_shape_dims};
 
 /// Body-kind labels, indexed by `BodyKind` tag. Hardcoded (not read from
 /// `ph2d-physics-ecs`) so the panel stays loose-coupled — the snapshot
@@ -119,7 +119,7 @@ pub(super) fn paint_body_face(
         x,
         w,
         yy,
-        info.shape_tag,
+        dims_tag(info),
     );
 
     // **Este corpo é COMPOSTO?** (W-PartFace) — uma linha de leitura, logo abaixo

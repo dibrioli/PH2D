@@ -304,3 +304,19 @@ fn a_table_e_um_corpo_de_tres_formas_e_fica_de_pe() {
     let r = c.sim.world().get::<Transform>(t).expect("pose").rotation;
     assert!(r.abs() < 0.02, "direita: {r}");
 }
+
+
+/// (dono 09/11, «mudar os parâmetros não atualiza a shape do seu desenho») **Detail, Alpha cutoff e Ignore specks
+/// under só aparecem onde há imagem a traçar**: a Ring (anéis à mão, sem imagem) não os mostra — eram três controlos
+/// mortos; a Coin (traçada da imagem) mostra. *Mutação: `card_info` sem a guarda da imagem ⇒ vermelho.*
+#[test]
+fn os_controlos_do_traco_so_aparecem_com_imagem_a_tracar() {
+    let mut c = Corrida::nova();
+    traca_como_a_shell(&mut c);
+    let card = |nome: &str| {
+        let f = ph2d_physics_ecs::main_shape(c.sim.world(), c.por_nome(nome)).expect("forma");
+        ph2d_physics_outline::card_info(c.sim.world(), f)
+    };
+    assert!(card("Coin").is_some(), "controlo: a Coin traça-se da imagem");
+    assert_eq!(card("Ring"), None, "a Ring não tem imagem: nada a traçar");
+}

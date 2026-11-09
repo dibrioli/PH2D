@@ -477,7 +477,11 @@ fn project_file_round_trips_through_postcard() {
         vec![10, 20, 30, 40],
         "pixels preservados"
     );
-    assert_eq!(back.assets[0].normal, vec![255, 128, 128, 255], "o normal map da célula (v228)");
+    assert_eq!(
+        back.assets[0].normal,
+        vec![255, 128, 128, 255],
+        "o normal map da célula (v228)"
+    );
     assert_eq!(back.motion, motion, "o grafo de Motion preservado");
     assert!(
         ph2d_motion_doc::MotionDoc::from_text(&back.motion).is_ok(),

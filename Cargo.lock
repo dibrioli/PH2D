@@ -10733,6 +10733,7 @@ dependencies = [
 name = "ph2d-physics-outline"
 version = "0.0.0"
 dependencies = [
+ "bevy_ecs",
  "ph2d-asset",
  "ph2d-core",
  "ph2d-ecs",

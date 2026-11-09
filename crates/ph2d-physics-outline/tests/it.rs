@@ -5,7 +5,10 @@ use ph2d_core::Vec2;
 use ph2d_ecs::scene::{
     ComponentRegistry, EditorCommandQueue, apply_editor_commands, register_ecs_components,
 };
-use ph2d_ecs::{AnimationTag, ChildOf, SimWorld, SpriteAnimations, SpriteGrid, Transform};
+use ph2d_ecs::{
+    AnimationTag, ChildOf, ExtraSheet, SimWorld, SpriteAnimations, SpriteGrid, SpritePixels,
+    SpriteSheets, Transform,
+};
 use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderOutline, ColliderShape, PhysicsBridge, RigidBody,
     register_physics_components,
@@ -20,6 +23,9 @@ fn img(w: u32, h: u32, on: impl Fn(u32, u32) -> bool) -> Vec<u8> {
         .flat_map(|(x, y)| [255, 255, 255, if on(x, y) { 255 } else { 0 }])
         .collect()
 }
+
+/// Pixels por metro do projeto (o Pivot resolvido da folha `0`).
+const PPM: f32 = 8.0;
 
 fn registry() -> ComponentRegistry {
     let mut reg = ComponentRegistry::new();
@@ -72,7 +78,7 @@ fn a_argola_tem_buraco_e_a_bola_atravessa() {
             rgba: (&px[..]).into(),
         })
     };
-    let t = retrace(sim.world(), shape, pic, &q, &reg).expect("traça");
+    let t = retrace(sim.world(), shape, pic, PPM, &q, &reg).expect("traça");
     assert_eq!(t.outline.rings.len(), 2, "anel de fora + buraco");
     assert!(!t.raised);
     assert_eq!(q.len(), 2, "Collider + ColliderOutline numa só leva");
@@ -159,7 +165,7 @@ fn o_animated_sprite_traca_a_uniao_das_celulas_das_tags() {
                 rgba: (&px[..]).into(),
             })
         };
-        let m = frames_mask(w, e, frames, pic, asked.alpha_cutoff).expect("máscara");
+        let (m, _) = frames_mask(w, e, frames, pic, asked.alpha_cutoff, PPM).expect("máscara");
         let o = ph2d_outline_trace::Outline {
             rings: trace(&m, &asked).outline.rings.to_vec(),
         };
@@ -241,7 +247,7 @@ fn a_escolha_do_outline_no_corpo_traca_pelo_asset_db() {
     let q = EditorCommandQueue::new();
     let fit = [(body.to_bits(), P::FitToPicture)];
     assert_eq!(
-        ph2d_physics_outline::retrace_edited(sim.world(), &fit, &db, &atlas, &q, &reg),
+        ph2d_physics_outline::retrace_edited(sim.world(), &fit, &db, &atlas, PPM, &q, &reg),
         0
     );
     let c = Collider {
@@ -254,7 +260,7 @@ fn a_escolha_do_outline_no_corpo_traca_pelo_asset_db() {
     sim.world_mut().entity_mut(shape).insert(c);
     let pick = [(body.to_bits(), P::Shape(3))];
     assert_eq!(
-        ph2d_physics_outline::retrace_edited(sim.world(), &pick, &db, &atlas, &q, &reg),
+        ph2d_physics_outline::retrace_edited(sim.world(), &pick, &db, &atlas, PPM, &q, &reg),
         1
     );
     apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
@@ -287,7 +293,7 @@ fn a_folha_que_nao_divide_certo_traca_a_ultima_coluna() {
         })
     };
     let frames = traced_frames(sim.world(), e);
-    let m = frames_mask(sim.world(), e, &frames, pic, 128).expect("máscara");
+    let (m, _) = frames_mask(sim.world(), e, &frames, pic, 128, PPM).expect("máscara");
     assert_eq!([m.w, m.h], [4, 4], "a célula do motor: ceil(10/3) × 4");
     assert!((0..4).all(|y| m.get(3, y)), "a coluna 9 da folha");
     let asked = ColliderOutline {
@@ -301,4 +307,160 @@ fn a_folha_que_nao_divide_certo_traca_a_ultima_coluna() {
         o.contains_q4([3 * 16 + 8, 2 * 16 + 8]),
         "o contorno cobre-a"
     );
+}
+
+/// Argola num corpo cujo contorno nasceu pelo «Outline» do cartão; a 1.ª passagem só anota.
+fn followed_ring() -> (
+    ComponentRegistry,
+    SimWorld,
+    ph2d_ecs::Entity,
+    ph2d_ecs::Entity,
+    ph2d_asset::AssetDb,
+) {
+    use ph2d_editor_core::PhysicsFieldEdit as P;
+    let reg = registry();
+    let mut sim = SimWorld::new();
+    let (body, shape) = ring_scene(&mut sim);
+    let db = ph2d_asset::AssetDb::new();
+    let ring = db.insert_image_rgba8(32, 32, ring_px());
+    sim.world_mut().entity_mut(body).insert(SpritePixels(ring));
+    let c = Collider {
+        shape: ColliderShape::Outline {
+            half_x: 2.0,
+            half_y: 2.0,
+        },
+        ..Collider::default()
+    };
+    sim.world_mut().entity_mut(shape).insert(c);
+    let q = EditorCommandQueue::new();
+    let none = std::collections::BTreeMap::new();
+    let pick = [(body.to_bits(), P::Shape(3))];
+    ph2d_physics_outline::retrace_edited(sim.world(), &pick, &db, &none, PPM, &q, &reg);
+    apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
+    assert_eq!(follow(&mut sim, &db, &q, &reg), 0, "a 1.ª vista só anota");
+    assert!(q.is_empty());
+    (reg, sim, body, shape, db)
+}
+
+fn follow(
+    sim: &mut SimWorld,
+    db: &ph2d_asset::AssetDb,
+    q: &EditorCommandQueue,
+    reg: &ComponentRegistry,
+) -> usize {
+    let none = std::collections::BTreeMap::new();
+    ph2d_physics_outline::retrace_followed(sim.world_mut(), db, &none, PPM, q, reg)
+}
+
+fn rings(sim: &SimWorld, shape: ph2d_ecs::Entity) -> usize {
+    sim.world()
+        .get::<ColliderOutline>(shape)
+        .map_or(0, |o| o.rings.len())
+}
+
+/// (2) **O contorno que SEGUE a imagem retraça quando ela muda**: trocar a imagem (argola → disco sem
+/// buraco) e editar os pixels (o buraco volta) retraçam na MESMA passagem; o «Undo» (imagem e contorno
+/// de antes, juntos) não põe nada na fila — nenhum passo novo. O «Custom size» não retraça.
+/// *Mutações: `retrace_followed` sem retraçar ⇒ o disco fica com buraco; sem o filtro do «segue» ⇒ o
+/// Custom retraça; sem o guarda «já é o gravado» ⇒ o Undo enche a fila.*
+#[test]
+fn o_contorno_que_segue_retraca_quando_a_imagem_muda() {
+    let (reg, mut sim, body, shape, db) = followed_ring();
+    let q = EditorCommandQueue::new();
+    assert_eq!(rings(&sim, shape), 2, "argola: fora + buraco");
+    let disc = db.insert_image_rgba8(32, 32, img(32, 32, |_, _| true));
+    sim.world_mut().entity_mut(body).insert(SpritePixels(disc));
+    assert_eq!(follow(&mut sim, &db, &q, &reg), 1, "trocou a imagem");
+    apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
+    assert_eq!(rings(&sim, shape), 1, "o disco não tem buraco");
+    let w = sim.world();
+    let disc_state = (
+        w.get::<Collider>(shape).copied().expect("c"),
+        w.get::<ColliderOutline>(shape).cloned().expect("o"),
+    );
+    let edited = db.insert_image_rgba8(32, 32, ring_px());
+    sim.world_mut()
+        .entity_mut(body)
+        .insert(SpritePixels(edited));
+    assert_eq!(follow(&mut sim, &db, &q, &reg), 1, "pixels editados");
+    apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
+    assert_eq!(rings(&sim, shape), 2, "o buraco voltou");
+    // O Undo da edição: imagem e contorno de antes, num só passo; nada a retraçar de novo.
+    sim.world_mut().entity_mut(body).insert(SpritePixels(disc));
+    sim.world_mut().entity_mut(shape).insert(disc_state.clone());
+    let _ = follow(&mut sim, &db, &q, &reg);
+    assert!(
+        q.is_empty(),
+        "o Undo não enche a fila: o traço já é o gravado"
+    );
+    // Custom size: a forma deixa de medir a imagem e a troca não lhe toca.
+    let custom = Collider {
+        shape: ColliderShape::Outline {
+            half_x: 1.5,
+            half_y: 2.5,
+        },
+        ..disc_state.0
+    };
+    sim.world_mut().entity_mut(shape).insert(custom);
+    sim.world_mut()
+        .entity_mut(body)
+        .insert(SpritePixels(edited));
+    assert_eq!(follow(&mut sim, &db, &q, &reg), 0, "Custom não segue");
+    assert!(q.is_empty());
+    assert_eq!(rings(&sim, shape), 1, "o Custom guarda o traço que tinha");
+}
+
+/// (3) **Folhas com células de tamanhos diferentes**: folha 0 com 16×16 px num quad de 2×2 m (bolha à
+/// esquerda), folha 1 com 8×8 px num quad de 1×1 m posto 2 m à direita (bolha cheia). UM contorno, nos
+/// pixels da folha 0 (8 px/m), cobre as duas onde se DESENHAM; a caixa estende-se à arte da folha 1.
+/// *Mutações: a folha extra no centro da 0 (sem o Pivot dela) ⇒ a bolha da direita fica de fora; os
+/// limites só da folha 0 ⇒ idem.*
+#[test]
+fn folhas_de_celulas_diferentes_dao_um_contorno_onde_se_desenham() {
+    let mut sim = SimWorld::new();
+    let px0 = img(16, 16, |x, y| x < 6 && (4..12).contains(&y));
+    let px1 = img(8, 8, |_, _| true);
+    let grid = SpriteGrid::SINGLE;
+    let mut tags = SpriteAnimations::new();
+    tags.insert(AnimationTag::new("idle", 0, 0)).expect("tag");
+    let mut run = AnimationTag::new("run", 0, 0);
+    run.sheet = 1;
+    tags.insert(run).expect("tag");
+    let sheets = SpriteSheets(
+        [ExtraSheet {
+            asset: ph2d_asset::AssetId::from_bytes(b"run"),
+            size: [1.0, 1.0],
+            anchor: [2.0, 0.0],
+            hframes: 1,
+            vframes: 1,
+            offsets: Default::default(),
+        }]
+        .into_iter()
+        .collect(),
+    );
+    let e = sim
+        .world_mut()
+        .spawn((Sprite::atlas(0, [2.0, 2.0], [1.0; 4]), grid, tags, sheets))
+        .id();
+    let frames = traced_frames(sim.world(), e);
+    assert_eq!(frames, vec![(0, 0), (1, 0)]);
+    let pic = |k: u8| {
+        let (w, px) = if k == 0 { (16, &px0) } else { (8, &px1) };
+        Some(Picture {
+            w,
+            h: w,
+            rgba: (&px[..]).into(),
+        })
+    };
+    let (m, lay) = frames_mask(sim.world(), e, &frames, pic, 128, PPM).expect("máscara");
+    assert_eq!(lay.half, [1.75, 1.0], "de −1 m a 2,5 m × de −1 m a 1 m");
+    assert_eq!(lay.centre, [0.75, 0.0]);
+    assert_eq!([m.w, m.h], [28, 16], "3,5 m × 2 m a 8 px/m");
+    assert!(m.get(2, 8), "a bolha da folha 0");
+    assert!(!m.get(10, 8), "o vazio da folha 0");
+    assert!(
+        (20..28).all(|x| (4..12).all(|y| m.get(x, y))),
+        "a folha 1 em 2 m ± 0,5 m"
+    );
+    assert!(!m.get(18, 8) && !m.get(20, 2), "fora do quad da folha 1");
 }

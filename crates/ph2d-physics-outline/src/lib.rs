@@ -81,46 +81,121 @@ fn grid_of(world: &World, owner: Entity, k: u8) -> Option<[u32; 2]> {
     Some([s.hframes.max(1), s.vframes.max(1)])
 }
 
-/// **A máscara do contorno**: o OR das células `frames`, cada uma recortada da imagem da sua folha
-/// (`picture(k)`) e cortada no `cutoff`. `None` sem pixels ou com células de tamanhos diferentes.
+/// **Onde o contorno mora no dono** (metros locais, y para cima): a meia-extensão e o centro da UNIÃO
+/// dos quads onde as folhas dos quadros se desenham (folha `0` no Pivot resolvido, as extra no delas).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Layout {
+    pub half: [f32; 2],
+    pub centre: [f32; 2],
+}
+
+/// O quad da folha `k` de `owner`: centro e lado, como o renderer o põe.
+fn quad_of(world: &World, owner: Entity, k: u8, ppm: f32) -> Option<([f32; 2], [f32; 2])> {
+    if k == 0 {
+        let s = world.get::<Sprite>(owner)?;
+        return Some((s.resolve_anchor(ppm), s.size));
+    }
+    let s = world.get::<SpriteSheets>(owner)?.sheet(k)?;
+    Some((s.anchor, s.size))
+}
+
+/// O [`Layout`] dos `frames` de `owner`; `None` sem quad com área.
+#[must_use]
+pub fn layout(world: &World, owner: Entity, frames: &[(u8, u32)], ppm: f32) -> Option<Layout> {
+    let (mut lo, mut hi) = ([f32::INFINITY; 2], [f32::NEG_INFINITY; 2]);
+    for &(k, _) in frames {
+        let Some((c, s)) = quad_of(world, owner, k, ppm) else {
+            continue;
+        };
+        for a in 0..2 {
+            lo[a] = lo[a].min(c[a] - s[a] * 0.5);
+            hi[a] = hi[a].max(c[a] + s[a] * 0.5);
+        }
+    }
+    (lo[0] < hi[0] && lo[1] < hi[1]).then(|| Layout {
+        half: [0, 1].map(|a| (hi[a] - lo[a]) * 0.5),
+        centre: [0, 1].map(|a| (hi[a] + lo[a]) * 0.5),
+    })
+}
+
+/// A régua das células da folha `k` sobre a imagem `p` (a do motor: região só na folha `0`).
+fn cells_of(
+    world: &World,
+    owner: Entity,
+    k: u8,
+    p: &Picture<'_>,
+) -> Option<ph2d_render::SourceCells> {
+    let [cols, rows] = grid_of(world, owner, k)?;
+    let region = (k == 0)
+        .then(|| world.get::<ph2d_ecs::SpriteRegion>(owner).map(|r| r.rect))
+        .flatten();
+    ph2d_render::SourceCells::of([p.w, p.h], region, cols, rows)
+}
+
+/// **A máscara do contorno**: o OR das células `frames` cortadas no `cutoff`, cada uma reamostrada
+/// (vizinho mais próximo) para o quad onde se DESENHA, nos pixels da folha `0`. Os limites são os do
+/// [`Layout`], que cobrem a arte de todas as folhas — nada se corta. `None` sem pixels.
 pub fn frames_mask<'a>(
     world: &World,
     owner: Entity,
     frames: &[(u8, u32)],
     picture: impl Fn(u8) -> Option<Picture<'a>>,
     cutoff: u8,
-) -> Option<Mask> {
-    let mut masks = Vec::with_capacity(frames.len());
+    ppm: f32,
+) -> Option<(Mask, Layout)> {
+    let lay = layout(world, owner, frames, ppm)?;
+    // A resolução: px por metro da célula da folha `0` (sem imagem na `0`, a da 1.ª folha usada).
+    let res_of = |k: u8| {
+        let p = picture(k)?;
+        let r = cells_of(world, owner, k, &p)?.cell_rect_px(0);
+        let (_, s) = quad_of(world, owner, k, ppm)?;
+        Some([
+            f64::from(r[2]) / f64::from(s[0]),
+            f64::from(r[3]) / f64::from(s[1]),
+        ])
+    };
+    let res = res_of(0).or_else(|| frames.first().and_then(|&(k, _)| res_of(k)))?;
+    let n = |m: f32, r: f64| (f64::from(m) * 2.0 * r - 1e-3).ceil().max(1.0) as u32;
+    let (w, h) = (n(lay.half[0], res[0]), n(lay.half[1], res[1]));
+    let left = f64::from(lay.centre[0] - lay.half[0]);
+    let top = f64::from(lay.centre[1] + lay.half[1]);
+    let span = |o: f64, d: f64, n: u32| (o.floor().max(0.0) as u32)..((o + d).ceil() as u32).min(n);
+    let mut bits = vec![0u8; (w as usize) * (h as usize)];
+    let mut any = false;
     for &(k, cell) in frames {
-        let (Some(p), Some([cols, rows])) = (picture(k), grid_of(world, owner, k)) else {
+        let (Some(p), Some((c, s))) = (picture(k), quad_of(world, owner, k, ppm)) else {
             continue;
         };
         if p.rgba.len() < (p.w as usize) * (p.h as usize) * 4 {
             continue;
         }
-        // A célula que o quad desenha: a régua do motor (região na folha 0, `floor`/`ceil`).
-        let region = (k == 0)
-            .then(|| world.get::<ph2d_ecs::SpriteRegion>(owner).map(|r| r.rect))
-            .flatten();
-        let Some(cells) = ph2d_render::SourceCells::of([p.w, p.h], region, cols, rows) else {
+        let Some(r) = cells_of(world, owner, k, &p).map(|cs| cs.cell_rect_px(cell)) else {
             continue;
         };
-        let r = cells.cell_rect_px(cell);
-        masks.push(Mask::from_rgba8(r[2], r[3], &crop(&p, r), cutoff));
+        any = true;
+        let x0 = (f64::from(c[0] - s[0] * 0.5) - left) * res[0];
+        let y0 = (top - f64::from(c[1] + s[1] * 0.5)) * res[1];
+        let (dw, dh) = (f64::from(s[0]) * res[0], f64::from(s[1]) * res[1]);
+        for my in span(y0, dh, h) {
+            let v = (f64::from(my) + 0.5 - y0) / dh;
+            if !(0.0..1.0).contains(&v) {
+                continue;
+            }
+            let sy = r[1] + ((v * f64::from(r[3])) as u32).min(r[3] - 1);
+            for mx in span(x0, dw, w) {
+                let u = (f64::from(mx) + 0.5 - x0) / dw;
+                if !(0.0..1.0).contains(&u) {
+                    continue;
+                }
+                let sx = r[0] + ((u * f64::from(r[2])) as u32).min(r[2] - 1);
+                let a = ((sy as usize) * (p.w as usize) + sx as usize) * 4 + 3;
+                if sx < p.w && sy < p.h && p.rgba[a] >= cutoff {
+                    bits[(my * w + mx) as usize] = 1;
+                }
+            }
+        }
     }
-    Mask::union(&masks)
-}
-
-/// Os pixels `[x, y, w, h]` de `p`; o que cai fora da imagem é transparente.
-fn crop(p: &Picture<'_>, [x0, y0, w, h]: [u32; 4]) -> Vec<u8> {
-    let mut out = vec![0u8; (w as usize) * (h as usize) * 4];
-    for y in 0..h.min(p.h.saturating_sub(y0)) {
-        let n = w.min(p.w.saturating_sub(x0)) as usize * 4;
-        let at = (((y0 + y) * p.w + x0) * 4) as usize;
-        let to = (y * w * 4) as usize;
-        out[to..to + n].copy_from_slice(&p.rgba[at..at + n]);
-    }
-    out
+    any.then_some((Mask { w, h, bits }, lay))
 }
 
 /// **O traço**: `trace_fitted` com o Detail e o Ignore specks under de `asked`; os anéis e os
@@ -145,41 +220,45 @@ pub fn trace(mask: &Mask, asked: &ColliderOutline) -> Traced {
 }
 
 /// **Retraça a forma `shape`** pela imagem do dono ([`picture_owner`]); `picture(owner, k)` dá os
-/// pixels da folha `k`. Escreve o `Collider` (forma `Outline` do tamanho da imagem em metros) e o
-/// `ColliderOutline` pela fila do editor — um passo de undo. `None` = nada a traçar (sem imagem,
-/// sem `Collider`, sem pixels).
+/// pixels da folha `k`. Escreve o `Collider` (forma `Outline` do [`Layout`]: meia-extensão e desvio)
+/// e o `ColliderOutline` pela fila do editor — um passo de undo; nada se o traço já é o gravado.
+/// `None` = nada a traçar (sem imagem, sem `Collider`, sem pixels).
 pub fn retrace<'a>(
     world: &World,
     shape: Entity,
     picture: impl Fn(Entity, u8) -> Option<Picture<'a>>,
+    ppm: f32,
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
 ) -> Option<Traced> {
     let collider = world.get::<Collider>(shape).copied()?;
     let owner = picture_owner(world, shape)?;
-    let size = world.get::<Sprite>(owner)?.size;
     let asked = world
         .get::<ColliderOutline>(shape)
         .cloned()
         .unwrap_or_default();
     let frames = traced_frames(world, owner);
-    let mask = frames_mask(
+    let (mask, lay) = frames_mask(
         world,
         owner,
         &frames,
         |k| picture(owner, k),
         asked.alpha_cutoff,
+        ppm,
     )?;
     let traced = trace(&mask, &asked);
     let mut next = Collider {
         shape: ColliderShape::Outline {
-            half_x: size[0] * 0.5,
-            half_y: size[1] * 0.5,
+            half_x: lay.half[0],
+            half_y: lay.half[1],
         },
-        offset: [0.0, 0.0],
+        offset: lay.centre,
         ..collider
     };
     next.sanitize();
+    if next == collider && world.get::<ColliderOutline>(shape) == Some(&traced.outline) {
+        return Some(traced);
+    }
     let bits = shape.to_bits();
     use ph2d_inspector_ordering::queue_set;
     queue_set(queue, registry, bits, "ph2d::physics::Collider", &next);
@@ -193,19 +272,13 @@ pub fn retrace<'a>(
     Some(traced)
 }
 
-/// **As entradas da app**: depois de aplicadas as edições do cartão, «Outline» escolhido (`Shape(3)`)
-/// ou «Fit to picture» numa forma `Outline` retraça-a pelos pixels do `AssetDb` (folha `0` pelo
-/// átlas ou `SpritePixels`, folhas extra pelo `SpriteSheets`). Devolve quantas retraçou.
-pub fn retrace_edited(
-    world: &World,
-    edits: &[(u64, ph2d_editor_core::PhysicsFieldEdit)],
-    db: &ph2d_asset::AssetDb,
-    atlas: &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
-    queue: &EditorCommandQueue,
-    registry: &ComponentRegistry,
-) -> usize {
-    use ph2d_editor_core::PhysicsFieldEdit as P;
-    let picture = |owner: Entity, k: u8| {
+/// Os pixels da folha `k` de `owner` no `AssetDb` (folha `0` pelo átlas ou `SpritePixels`).
+fn db_picture<'w>(
+    world: &'w World,
+    db: &'w ph2d_asset::AssetDb,
+    atlas: &'w std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
+) -> impl Fn(Entity, u8) -> Option<Picture<'static>> + 'w {
+    move |owner, k| {
         let id = match k {
             0 => ph2d_render::texture_of_entity(world, owner, atlas)?,
             k => world.get::<SpriteSheets>(owner)?.sheet(k)?.asset,
@@ -217,7 +290,22 @@ pub fn retrace_edited(
             h,
             rgba: px.into_owned().into(),
         })
-    };
+    }
+}
+
+/// **As entradas da app**: depois de aplicadas as edições do cartão, «Outline» escolhido (`Shape(3)`)
+/// ou «Fit to picture» numa forma `Outline` retraça-a pelos pixels do `AssetDb`. Devolve quantas.
+pub fn retrace_edited(
+    world: &World,
+    edits: &[(u64, ph2d_editor_core::PhysicsFieldEdit)],
+    db: &ph2d_asset::AssetDb,
+    atlas: &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
+    ppm: f32,
+    queue: &EditorCommandQueue,
+    registry: &ComponentRegistry,
+) -> usize {
+    use ph2d_editor_core::PhysicsFieldEdit as P;
+    let picture = db_picture(world, db, atlas);
     let mut n = 0;
     for &(bits, edit) in edits {
         if !matches!(edit, P::Shape(3) | P::FitToPicture) {
@@ -232,9 +320,105 @@ pub fn retrace_edited(
         let outline = world
             .get::<Collider>(shape)
             .is_some_and(|c| matches!(c.shape, ColliderShape::Outline { .. }));
-        if outline && retrace(world, shape, picture, queue, registry).is_some() {
+        if outline && retrace(world, shape, &picture, ppm, queue, registry).is_some() {
             n += 1;
         }
+    }
+    n
+}
+
+/// **O que o contorno viu da imagem** da última vez: a impressão digital ([`picture_key`]) e o
+/// [`Layout`] dela. Estado de sessão, como o `ShownSheet`: NÃO registado — fora do gravar e do undo.
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, PartialEq)]
+pub struct OutlineSeen {
+    pub key: u64,
+    pub layout: Layout,
+}
+
+/// **A impressão digital da imagem** que o contorno de `owner` cobre: as imagens (o `AssetId` é o
+/// hash do conteúdo: pixels editados mudam-no), grelhas, região, quadros das tags, lados e Pivots.
+#[must_use]
+pub fn picture_key(
+    world: &World,
+    owner: Entity,
+    atlas: &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
+    ppm: f32,
+) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::hash::DefaultHasher::new();
+    let bits = |v: &[f32], h: &mut std::hash::DefaultHasher| {
+        v.iter().for_each(|x| x.to_bits().hash(h));
+    };
+    ph2d_render::texture_of_entity(world, owner, atlas).hash(&mut h);
+    traced_frames(world, owner).hash(&mut h);
+    if let Some(s) = world.get::<Sprite>(owner) {
+        bits(&s.size, &mut h);
+        bits(&s.resolve_anchor(ppm), &mut h);
+    }
+    grid_of(world, owner, 0).hash(&mut h);
+    if let Some(r) = world.get::<ph2d_ecs::SpriteRegion>(owner) {
+        bits(&r.rect, &mut h);
+    }
+    for s in world
+        .get::<SpriteSheets>(owner)
+        .map_or(&[][..], |s| &s.0[..])
+    {
+        s.asset.hash(&mut h);
+        bits(&s.size, &mut h);
+        bits(&s.anchor, &mut h);
+        [s.hframes, s.vframes].hash(&mut h);
+    }
+    h.finish()
+}
+
+/// **Retraça os contornos que SEGUEM a imagem quando ela muda** (troca, folhas, grelha, tags,
+/// pixels): chamar depois das edições do quadro, para o traço cair no MESMO passo de undo. Segue = a
+/// forma ainda é a do [`Layout`] visto, ou a que o `follow_auto_collider` já ajustou; o «Custom
+/// size» não segue e fica. A 1.ª vista só anota. Devolve quantos retraçou.
+pub fn retrace_followed(
+    world: &mut World,
+    db: &ph2d_asset::AssetDb,
+    atlas: &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
+    ppm: f32,
+    queue: &EditorCommandQueue,
+    registry: &ComponentRegistry,
+) -> usize {
+    let same = |a: f32, b: f32| (a - b).abs() <= 1e-4 * b.abs().max(1.0);
+    let near = |h: [f32; 2], l: &Layout| same(h[0], l.half[0]) && same(h[1], l.half[1]);
+    let mut q = world.query::<(Entity, &Collider)>();
+    let shapes: Vec<(Entity, Collider)> = q
+        .iter(world)
+        .filter(|(_, c)| matches!(c.shape, ColliderShape::Outline { .. }))
+        .map(|(e, c)| (e, *c))
+        .collect();
+    let mut seen = Vec::with_capacity(shapes.len());
+    let mut n = 0;
+    let w: &World = world;
+    let picture = db_picture(w, db, atlas);
+    for (shape, c) in shapes {
+        let Some(owner) = picture_owner(w, shape) else {
+            continue;
+        };
+        let key = picture_key(w, owner, atlas, ppm);
+        let lay = layout(w, owner, &traced_frames(w, owner), ppm).unwrap_or_default();
+        let before = w.get::<OutlineSeen>(shape).copied();
+        if before.is_some_and(|b| b.key == key) {
+            continue;
+        }
+        if let (Some(b), ColliderShape::Outline { half_x, half_y }) = (before, c.shape) {
+            let size = w.get::<Sprite>(owner).map(|s| s.size);
+            let follows = near([half_x, half_y], &b.layout)
+                || near([half_x, half_y], &lay)
+                || size.is_some_and(|s| c.follows_picture(s));
+            if follows && retrace(w, shape, &picture, ppm, queue, registry).is_some() {
+                n += 1;
+            }
+        }
+        seen.push((shape, OutlineSeen { key, layout: lay }));
+    }
+    drop(picture);
+    for (shape, s) in seen {
+        world.entity_mut(shape).insert(s);
     }
     n
 }

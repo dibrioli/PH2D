@@ -215,16 +215,12 @@ pub(super) fn dispatch(
         component_registry,
         toasts,
     );
-    // «Outline» escolhido ou «Fit to picture» num Outline: o traço da imagem, na mesma leva (W2c).
-    let w = sim.world();
-    let traced = ph2d_physics_outline::retrace_edited(
-        w,
-        physics_edits,
-        asset_db,
-        atlas_asset_map,
-        editor_queue,
-        component_registry,
-    );
+    // «Outline», «Fit to picture» ou a imagem que um Outline segue mudou: o traço nesta leva (W2c).
+    use ph2d_physics_outline::{retrace_edited, retrace_followed};
+    let (ppm, db, atlas) = (hero.project.pixels_per_meter, asset_db, atlas_asset_map);
+    let (q, reg) = (&*editor_queue, &*component_registry);
+    let traced = retrace_edited(sim.world(), physics_edits, db, atlas, ppm, q, reg)
+        + retrace_followed(sim.world_mut(), db, atlas, ppm, q, reg);
     if traced > 0
         && let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry)
     {

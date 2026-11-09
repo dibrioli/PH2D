@@ -274,7 +274,10 @@ fn the_duplicate_and_reverse_buttons_are_painted_and_click() {
         ),
     ] {
         let mut host = MockPanelHost::with_panel::<TimelinePanel>();
-        let mut state = TimelinePanelState::default();
+        let mut state = TimelinePanelState {
+            menu_do_clip: true,
+            ..TimelinePanelState::default()
+        };
         let regs = paint(&mut host, &mut state, keys_and_a_stack(Some(1.0), 3.0));
         let r = rect_of(&regs, id)
             .unwrap_or_else(|| panic!("{what} was painted but never hit-registered"));
@@ -332,7 +335,10 @@ fn the_clip_rename_field_opens_over_the_dropdown_it_renames() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
     let regs = paint(&mut host, &mut state, keys_and_a_stack(Some(1.0), 3.0));
-    let chip = rect_of(&regs, ph2d_panel_timeline::ids::TIMELINE_CLIP_DD).expect("the clip chip");
+    // Em cartões, o chip do clipe ativo (a linha 1 desta fixture); no modo antigo, o ▾.
+    let chip = rect_of(&regs, ph2d_panel_timeline::ids::TIMELINE_CLIP_DD)
+        .or_else(|| rect_of(&regs, ph2d_panel_timeline::ids::TIMELINE_CLIP_OPT[1]))
+        .expect("the clip chip");
 
     host.apply_panel_event::<TimelinePanel>(
         &mut state,

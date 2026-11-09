@@ -84,6 +84,10 @@ pub(crate) fn apply_event(
     if let Some(out) = stack_event(state, ev, host) {
         return out;
     }
+    // As portas da barra em cartões (engrenagem, «⋯», o fim do clipe); uma linha do menu fecha-o e segue.
+    if let Some(out) = crate::barra_menus::apply_event(state, host, ev) {
+        return out;
+    }
     match ev {
         // Close (X) — hide the panel (mirror of the other docked panels).
         WidgetEvent::Click(id) if id == TIMELINE_CLOSE => {

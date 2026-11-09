@@ -55,7 +55,10 @@ fn paint(
 #[test]
 fn the_motion_path_toggle_is_painted_and_clicks_through_to_the_shell() {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
-    let mut state = TimelinePanelState::default();
+    let mut state = TimelinePanelState {
+        opcoes_abertas: true,
+        ..TimelinePanelState::default()
+    };
 
     // Object in Separate (off); clicking must ask for Path (on).
     let regs = paint(&mut host, &mut state, transport(false));
@@ -99,7 +102,10 @@ fn the_motion_path_toggle_is_painted_and_clicks_through_to_the_shell() {
 fn the_painted_switch_reflects_the_selected_objects_mode() {
     for is_path in [false, true] {
         let mut host = MockPanelHost::with_panel::<TimelinePanel>();
-        let mut state = TimelinePanelState::default();
+        let mut state = TimelinePanelState {
+            opcoes_abertas: true,
+            ..TimelinePanelState::default()
+        };
         paint(&mut host, &mut state, transport(is_path));
 
         let (_, on) = host

@@ -101,8 +101,11 @@ fn o_arrange_da_cena_lista_os_dois_grupos_e_poe_o_clip_do_heroi() {
         tab: Tab::Arrange,
         ..TimelinePanelState::default()
     };
-    clica(&mut host, &mut panel, ids::TIMELINE_CLIP_DD);
-    assert!(aberto(&host), "o ▾ não abriu");
+    // Em cartões a lista virou chips à vista (doc 15, onda 1): só o modo antigo abre o ▾.
+    if !ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        clica(&mut host, &mut panel, ids::TIMELINE_CLIP_DD);
+        assert!(aberto(&host), "o ▾ não abriu");
+    }
     let regs = host.paint::<TimelinePanel>(&mut panel, VIEWPORT);
     // Linhas: 0 «Cena» · 1 Main · 2 «Herói» · 3 andar · 4 c0.1 — os cabeçalhos não se clicam.
     for (i, clicavel) in [(0, false), (1, true), (2, false), (3, true), (4, true)] {
@@ -200,7 +203,10 @@ fn fora_do_arrange_da_cena_o_seletor_e_o_de_sempre() {
         tab: Tab::Keys,
         ..TimelinePanelState::default()
     };
-    clica(&mut host, &mut panel, ids::TIMELINE_CLIP_DD);
+    // Em cartões a lista virou chips à vista (doc 15, onda 1): só o modo antigo abre o ▾.
+    if !ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        clica(&mut host, &mut panel, ids::TIMELINE_CLIP_DD);
+    }
     let regs = host.paint::<TimelinePanel>(&mut panel, VIEWPORT);
     assert!(rect_of(&regs, ids::TIMELINE_CLIP_OPT[0]).is_some());
     assert!(rect_of(&regs, timeline_source_opt(1)).is_none());

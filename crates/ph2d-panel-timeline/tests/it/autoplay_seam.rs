@@ -33,7 +33,10 @@ fn pinta(st: &mut TimelineState) -> (MockPanelHost, TimelinePanelState, Option<R
     snap.rebuild(st, &playhead(), false);
     set_current_timeline(Some(snap));
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
-    let mut panel = TimelinePanelState::default();
+    let mut panel = TimelinePanelState {
+        menu_do_clip: true,
+        ..TimelinePanelState::default()
+    };
     let regs = host.paint::<TimelinePanel>(&mut panel, VIEWPORT);
     let r = regs
         .iter()

@@ -1,19 +1,19 @@
-//! ⭐ **A barra do transporte em cartões** (`docs/CartoesUI/14_CHROME_TIMELINE_MOTION.md`): a mesma lista
-//! de `ITEMS`, os mesmos ids e o mesmo despacho, com os controlos da lista flutuante: segmentos, chips,
-//! campo com pega, caixas T64. `PH2D_CARDS=0` pinta a barra de [`super::paint_bar`].
+//! ⭐ **A barra do transporte em cartões, no molde do Rive** (`docs/Timeline/15_plano_redesenho_molde_rive.md`,
+//! onda 1): três fileiras curtas, cada uma com um assunto — título (abas · migalha · dono · opções), clipes
+//! (um chip por clipe) e tocar. Os ids e os eventos são os de sempre; o que não é de todo o dia mora no
+//! «⋯» do clipe e na engrenagem (`crate::barra_menus`). `PH2D_CARDS=0` pinta a barra de [`super::paint_bar`].
 
 use super::*;
 use ph2d_editor_core::panel::cards::banda::{self, Icone, metrics as m};
 use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
 use ph2d_editor_core::panel::cards::{CardCtx, Seg};
-use ph2d_editor_core::widget::card_field::{self, CardFieldSpec, Glyph};
+use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_editor_core::widget::card_ink::CardInk;
 
-/// O passo da Dur (ver [`chips`]) e a largura do chip da animação e do clip.
+/// A largura do chip do dono.
 const ANIM_W: f32 = 168.0; // LITERAL-PX-OK: «Animation: Scene» + seta, medido na foto; nomes longos cortam
-const CLIP_W: f32 = 108.0; // LITERAL-PX-OK: a mesma largura do chip de antes
 
-const DICAS: [(ph2d_a11y::NodeId, &str); 13] = [
+const DICAS: [(ph2d_a11y::NodeId, &str); 16] = [
     (TIMELINE_GO_START, "panel.timeline.tip.go_start"),
     (TIMELINE_PREV_FRAME, "panel.timeline.tip.prev_frame"),
     (TIMELINE_PLAY, "panel.timeline.tip.play"),
@@ -30,7 +30,22 @@ const DICAS: [(ph2d_a11y::NodeId, &str); 13] = [
         "panel.timeline.tip.onion_settings",
     ),
     (ids::TIMELINE_ONION_MODE, "panel.timeline.tip.onion_keys"),
+    (ids::TIMELINE_OPTIONS, "panel.timeline.tip.options"),
+    (ids::TIMELINE_CLIP_MENU, "panel.timeline.tip.clip_menu"),
+    (
+        ids::TIMELINE_CLIP_AUTOPLAY,
+        "panel.timeline.tip.starts_with",
+    ),
 ];
+
+/// O valor da caixa `id`, pela mesma tabela que o store espelha.
+pub(crate) fn valor_da_caixa(
+    snap: &TimelineViewSnapshot,
+    view: BarView,
+    id: ph2d_a11y::NodeId,
+) -> bool {
+    caixas(snap, view).iter().any(|(_, i, on)| *i == id && *on)
+}
 
 /// O estado de cada caixa: id, nome (`Item`) e valor. Um valor de TAB não mora no documento.
 fn caixas(snap: &TimelineViewSnapshot, view: BarView) -> [(Item, ph2d_a11y::NodeId, bool); 10] {
@@ -125,38 +140,6 @@ fn segs_das_abas<'a>(celulas: &'a [(ph2d_a11y::NodeId, String)], escolhida: usiz
         .collect()
 }
 
-fn rotulo_do_campo(item: Item) -> &'static str {
-    match item {
-        Item::TimeChip => ph2d_i18n::tr("panel.timeline.card.time"),
-        Item::LengthChip => ph2d_i18n::tr("panel.timeline.card.length"),
-        _ => chip_rotulo(item),
-    }
-}
-
-fn botoes_do_clip(snap: &TimelineViewSnapshot) -> Vec<Icone> {
-    let mut v: Vec<Icone> = [
-        (ids::TIMELINE_ADD_CLIP, IconId::Plus),
-        (ids::TIMELINE_DUP_CLIP, IconId::Duplicate),
-        (ids::TIMELINE_RENAME_CLIP, IconId::Text),
-    ]
-    .into_iter()
-    .map(|(id, icon)| Icone {
-        id: Some(id),
-        icon,
-        on: false,
-    })
-    .collect();
-    // O lixo só existe acima de um clip: um documento tem sempre um para editar.
-    if snap.clips.len() > 1 {
-        v.push(Icone {
-            id: Some(ids::TIMELINE_DELETE_CLIP),
-            icon: IconId::Trash,
-            on: false,
-        });
-    }
-    v
-}
-
 fn fileira_do_transporte(snap: &TimelineViewSnapshot, view: BarView) -> [Icone; 5] {
     let vivo = |id, icon| Icone {
         id: Some(id),
@@ -187,152 +170,226 @@ fn fileira_do_transporte(snap: &TimelineViewSnapshot, view: BarView) -> [Icone; 
     ]
 }
 
-fn clips_w(snap: &TimelineViewSnapshot) -> f32 {
-    CLIP_W + m::FIELD_GAP + banda::icones_w(botoes_do_clip(snap).len())
-}
-
-fn largura(c: &mut CardCtx<'_>, item: Item, snap: &TimelineViewSnapshot) -> f32 {
+/// O rótulo do Time e do Frame, cada um à largura dele (o Length mora nas opções).
+fn rotulo_do_campo(item: Item) -> &'static str {
     match item {
-        Item::Tabs => {
-            let celulas = crate::transport_tabs::items(snap);
-            c.segmentos_em_fila_w(&segs_das_abas(&celulas, 0))
-        }
-        Item::Crumbs => crate::breadcrumb::width(snap),
-        Item::Animation => ANIM_W,
-        Item::Clips => clips_w(snap),
-        Item::Transport => banda::icones_w(TRANSPORT_BTNS),
-        Item::ReverseKeys | Item::OnionSettings => banda::icones_w(1),
-        Item::AddMarker => c.botao_w(ph2d_i18n::tr("panel.timeline.add_marker")),
-        Item::TimeChip | Item::FrameChip | Item::LengthChip => {
-            CardCtx::campo_em_fila_w(coluna_dos_numeros(c))
-        }
-        _ => c.marca_em_fila_w(rotulo(item)),
+        Item::TimeChip => ph2d_i18n::tr("panel.timeline.card.time"),
+        _ => chip_rotulo(item),
     }
 }
 
-/// A coluna partilhada dos três rótulos numéricos.
-fn coluna_dos_numeros(c: &mut CardCtx<'_>) -> f32 {
-    c.coluna_de_rotulos(&[
-        rotulo_do_campo(Item::TimeChip),
-        rotulo_do_campo(Item::FrameChip),
-        rotulo_do_campo(Item::LengthChip),
-    ])
+/// «24 fps · project»: só leitura — os quadros por segundo são do projeto.
+fn texto_do_fps(snap: &TimelineViewSnapshot) -> String {
+    let fps = if snap.fps > 0.0 {
+        snap.fps
+    } else {
+        DEFAULT_FPS
+    };
+    let n = if (fps - fps.round()).abs() < 1e-6 {
+        format!("{fps:.0}")
+    } else {
+        format!("{fps:.2}")
+    };
+    ph2d_i18n::tr_with("panel.timeline.card.fps", &[("fps", &n)])
 }
 
-fn numero(c: &mut CardCtx<'_>, item: Item, id: ph2d_a11y::NodeId, x: f32, y: f32) {
-    let nome = rotulo_do_campo(item);
-    let col = coluna_dos_numeros(c);
-    c.campo_em_fila(id, nome, Glyph::Text(letra_da_grandeza(nome)), col, (x, y));
-}
-
-fn pinta_clips(
-    c: &mut CardCtx<'_>,
+/// A fila das fileiras: cada peça pede a largura dela e recebe onde pintar; o que não cabe desce.
+/// A 1.ª fileira mora na tira do cabeçalho; as outras, a partir de `body`.
+pub(crate) struct Fluxo {
+    body: Rect,
+    lim: (f32, f32),
     x: f32,
     y: f32,
-    snap: &TimelineViewSnapshot,
-    view: BarView,
-) -> ClipChip {
-    let chip = Rect::new(x, y, CLIP_W, m::FIELD_H);
+    fileiras: usize,
+}
+
+impl Fluxo {
+    fn novo(strip: Rect, body: Rect) -> Self {
+        Self {
+            body,
+            lim: (strip.x, strip.w),
+            x: strip.x,
+            y: strip.y,
+            fileiras: 0,
+        }
+    }
+
+    /// Começa uma fileira nova no interior.
+    pub(crate) fn quebra(&mut self) {
+        self.fileiras += 1;
+        self.lim = (self.body.x, self.body.w);
+        let passo = m::FIELD_H + m::FIELD_ROW_GAP;
+        self.y = self.body.y + (self.fileiras - 1) as f32 * passo - banda::SOBRA_DO_CABECALHO;
+        self.x = self.lim.0;
+    }
+
+    /// Onde vai uma peça de largura `w`, na fileira de agora ou na seguinte.
+    pub(crate) fn poe(&mut self, w: f32) -> (f32, f32) {
+        if self.x > self.lim.0 && self.x + w > self.lim.0 + self.lim.1 {
+            self.quebra();
+        }
+        let at = (self.x, self.y);
+        self.x += w + m::FIELD_GAP;
+        at
+    }
+
+    /// O que sobra da fileira de agora.
+    pub(crate) fn resta(&self) -> f32 {
+        self.lim.0 + self.lim.1 - self.x
+    }
+
+    /// Uma peça encostada à DIREITA da fileira de agora (ou da seguinte, se não cabe).
+    fn a_direita(&mut self, w: f32) -> (f32, f32) {
+        if self.x > self.lim.0 && self.x + w > self.lim.0 + self.lim.1 {
+            self.quebra();
+        }
+        let fim = self.lim.0 + self.lim.1;
+        let at = ((fim - w).max(self.x), self.y);
+        self.x = fim + m::FIELD_GAP;
+        at
+    }
+
+    fn depois(&self) -> f32 {
+        if self.fileiras > 0 {
+            self.y + m::FIELD_H + banda::VAO_ATE_A_FOLHA
+        } else {
+            self.body.y
+        }
+    }
+}
+
+/// O que a barra devolve: onde a folha começa, os chips de que pendem as listas e o campo de
+/// renomear, e as âncoras das duas janelinhas.
+pub(crate) struct Barra {
+    pub(crate) depois: f32,
+    pub(crate) clip: Option<ClipChip>,
+    pub(crate) anim: Option<ClipChip>,
+    pub(crate) opcoes: Option<Rect>,
+    pub(crate) menu_do_clip: Option<Rect>,
+}
+
+fn cartao<'a>(ctx: &'a mut PaintCtx, ink: CardInk, body: Rect) -> CardCtx<'a> {
+    let (store, hit) = ctx.host.store_and_hit_index_mut();
+    CardCtx::flutuante(ctx.scene, ctx.text_system, store, hit, ink, body.x, body.w)
+}
+
+/// 1.ª fileira: abas · migalha · e, à direita, o dono e a engrenagem (o «×» é da moldura).
+fn fileira_do_titulo(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    f: &mut Fluxo,
+    (snap, view): (&TimelineViewSnapshot, BarView),
+    body: Rect,
+) -> (ClipChip, Rect) {
+    let ink = CardInk::of_list(theme);
+    let celulas = crate::transport_tabs::items(snap);
+    {
+        let mut c = cartao(ctx, ink, body);
+        let segs = segs_das_abas(&celulas, crate::transport_tabs::selected(view.tab, snap));
+        let at = f.poe(c.segmentos_em_fila_w(&segs));
+        c.segmentos_em_fila(&segs, at.0, at.1);
+    }
+    let w = crate::breadcrumb::width(snap);
+    if w > 0.0 {
+        let (x, y) = f.poe(w);
+        crate::breadcrumb::paint(ctx, theme, x, y + (m::FIELD_H - ROW_H_PX) * 0.5, snap);
+    }
+    let (x, y) = f.a_direita(ANIM_W + m::FIELD_GAP + banda::icones_w(1));
+    let mut c = cartao(ctx, ink, body);
+    let rect = Rect::new(x, y, ANIM_W, m::FIELD_H);
     let open = matches!(
-        c.store.get(ids::TIMELINE_CLIP_DD),
+        c.store.get(ids::TIMELINE_ANIM_DD),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
-    let texto = crate::transport_clips::source_options(snap, view.tab)
-        .into_iter()
-        .nth(crate::transport_clips::selected_source(snap, view))
-        .map(|o| o.label)
-        .unwrap_or_default();
-    c.lista_em(ids::TIMELINE_CLIP_DD, &texto, open, chip);
-    let botoes = botoes_do_clip(snap);
-    let bx = x + CLIP_W + m::FIELD_GAP;
-    c.icones_em_fila(&botoes, bx, y);
-    ClipChip {
-        id: ids::TIMELINE_CLIP_DD,
-        rect: chip,
+    c.lista_em(
+        ids::TIMELINE_ANIM_DD,
+        &crate::transport_animation::chip_text(snap),
         open,
-    }
+        rect,
+    );
+    let gx = x + ANIM_W + m::FIELD_GAP;
+    c.icones_em_fila(
+        &[Icone {
+            id: Some(ids::TIMELINE_OPTIONS),
+            icon: IconId::Settings,
+            on: false,
+        }],
+        gx,
+        y,
+    );
+    let chip = ClipChip {
+        id: ids::TIMELINE_ANIM_DD,
+        rect,
+        open,
+    };
+    (chip, Rect::new(gx, y, banda::icones_w(1), m::FIELD_H))
 }
 
-/// O que a caixa da Dur lê, se não é o do store: sem duração autorada, ∞; o store fica com o finito, que é o
-/// que se edita.
-fn valor_lido_da_dur(snap: &TimelineViewSnapshot) -> Option<f64> {
-    (!snap.view_length_explicit).then_some(f64::INFINITY)
+fn campo(c: &mut CardCtx<'_>, item: Item, id: ph2d_a11y::NodeId, at: (f32, f32)) {
+    let nome = rotulo_do_campo(item);
+    let col = c.coluna_de_rotulos(&[nome]);
+    c.campo_em_fila(id, nome, Glyph::Text(letra_da_grandeza(nome)), col, at);
 }
 
-fn pinta(
-    c: &mut CardCtx<'_>,
-    item: Item,
-    (x, y): (f32, f32),
-    snap: &TimelineViewSnapshot,
-    view: BarView,
-) -> Option<ClipChip> {
-    match item {
-        Item::Tabs => {
-            let celulas = crate::transport_tabs::items(snap);
-            let segs = segs_das_abas(&celulas, crate::transport_tabs::selected(view.tab, snap));
-            c.segmentos_em_fila(&segs, x, y);
-        }
-        Item::Crumbs => {}
-        Item::Animation => {
-            let rect = Rect::new(x, y, ANIM_W, m::FIELD_H);
-            let open = matches!(
-                c.store.get(ids::TIMELINE_ANIM_DD),
-                Some(InteractiveState::Dropdown { open: true, .. })
-            );
-            let texto = crate::transport_animation::chip_text(snap);
-            c.lista_em(ids::TIMELINE_ANIM_DD, &texto, open, rect);
-            return Some(ClipChip {
-                id: ids::TIMELINE_ANIM_DD,
-                rect,
-                open,
-            });
-        }
-        Item::Clips => return Some(pinta_clips(c, x, y, snap, view)),
-        Item::Transport => c.icones_em_fila(&fileira_do_transporte(snap, view), x, y),
-        Item::ReverseKeys => c.icones_em_fila(
-            &[Icone {
-                id: Some(ids::TIMELINE_REVERSE_CLIP),
-                icon: IconId::LetterI,
-                on: false,
-            }],
-            x,
-            y,
+/// 3.ª fileira: tocar · Time · Frame · fps · Auto Key · Record while playing · marcador.
+fn fileira_de_tocar(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    f: &mut Fluxo,
+    (snap, view): (&TimelineViewSnapshot, BarView),
+    body: Rect,
+) {
+    let ink = CardInk::of_list(theme);
+    let mut c = cartao(ctx, ink, body);
+    let at = f.poe(banda::icones_w(TRANSPORT_BTNS));
+    c.icones_em_fila(&fileira_do_transporte(snap, view), at.0, at.1);
+    // Time e Frame são um grupo: não se partem entre fileiras.
+    let wt = CardCtx::campo_em_fila_w(c.coluna_de_rotulos(&[rotulo_do_campo(Item::TimeChip)]));
+    let wf = CardCtx::campo_em_fila_w(c.coluna_de_rotulos(&[rotulo_do_campo(Item::FrameChip)]));
+    let (x, y) = f.poe(wt + m::FIELD_GAP + wf);
+    campo(&mut c, Item::TimeChip, TIMELINE_TIME_NUM, (x, y));
+    campo(
+        &mut c,
+        Item::FrameChip,
+        TIMELINE_FRAME_NUM,
+        (x + wt + m::FIELD_GAP, y),
+    );
+    let fps = texto_do_fps(snap);
+    let w = c.text_system.prefix_width(&fps, m::VALUE_PX).ceil();
+    let (x, y) = f.poe(w);
+    ph2d_editor_core::paint::paint_text(
+        c.text_system,
+        c.scene,
+        &fps,
+        x,
+        y + ph2d_editor_core::paint::folga_do_texto(m::FIELD_H, m::VALUE_PX),
+        m::VALUE_PX,
+        w,
+        ink.color(ColorToken::CardLabel),
+    );
+    for (id, chave, on) in [
+        (
+            TIMELINE_AUTOKEY,
+            "panel.timeline.card.autokey",
+            snap.auto_key,
         ),
-        Item::OnionSettings => c.icones_em_fila(
-            &[Icone {
-                id: Some(ids::TIMELINE_ONION_SETTINGS),
-                icon: IconId::Settings,
-                on: false,
-            }],
-            x,
-            y,
+        (
+            TIMELINE_RECORD,
+            "panel.timeline.card.record",
+            snap.performing,
         ),
-        Item::AddMarker => {
-            let nome = ph2d_i18n::tr("panel.timeline.add_marker");
-            let w = c.botao_w(nome);
-            c.botao_em(TIMELINE_ADD_MARKER, nome, Rect::new(x, y, w, m::FIELD_H));
-        }
-        Item::TimeChip => numero(c, item, TIMELINE_TIME_NUM, x, y),
-        Item::FrameChip => numero(c, item, TIMELINE_FRAME_NUM, x, y),
-        Item::LengthChip => {
-            let id = ids::TIMELINE_LENGTH_NUM;
-            match valor_lido_da_dur(snap) {
-                Some(lido) => card_field::com_valores(&[(id, lido)], || numero(c, item, id, x, y)),
-                None => numero(c, item, id, x, y),
-            }
-        }
-        _ => {
-            let par = caixas(snap, view).into_iter().find(|(i, _, _)| *i == item);
-            if let Some((_, id, on)) = par {
-                c.marca_em_fila(id, rotulo(item), on, x, y);
-            }
-        }
+    ] {
+        let nome = ph2d_i18n::tr(chave);
+        let (x, y) = f.poe(c.marca_em_fila_w(nome));
+        c.marca_em_fila(id, nome, on, x, y);
     }
-    None
+    let nome = ph2d_i18n::tr("panel.timeline.card.add_marker");
+    let w = c.botao_w(nome);
+    let (x, y) = f.poe(w);
+    c.botao_em(TIMELINE_ADD_MARKER, nome, Rect::new(x, y, w, m::FIELD_H));
 }
 
-/// A barra na tira do cabeçalho `strip` e, o que não couber, em fileiras a partir de `body`. Devolve o
-/// mesmo que [`super::paint_bar`]: onde a folha começa e os dois chips.
+/// A barra: o título na tira do cabeçalho `strip`, os clipes e o tocar em fileiras a partir de `body`.
 pub(crate) fn paint_bar(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -340,90 +397,43 @@ pub(crate) fn paint_bar(
     body: Rect,
     snap: &TimelineViewSnapshot,
     view: BarView,
-) -> (f32, Option<ClipChip>, Option<ClipChip>) {
+) -> Barra {
     prepara(ctx.host.store_mut(), snap, view);
-    let ink = CardInk::of_list(theme);
-    let passo = m::FIELD_H + m::FIELD_ROW_GAP;
-    let (mut clip_chip, mut anim_chip) = (None, None);
-    let (mut lim_x, mut lim_w, mut y) = (strip.x, strip.w, strip.y);
-    let mut fileiras = 0usize;
-    let mut x = lim_x;
-    // O Autoplay vem logo a seguir aos clips, mas pode descer sozinho numa barra estreita.
-    let autoplay = ph2d_i18n::tr(crate::transport_entry::LABEL_KEY);
-    let pecas = ITEMS.into_iter().flat_map(|i| {
-        let extra = (i == Item::Clips).then_some(Peca::Autoplay);
-        std::iter::once(Peca::Item(i)).chain(extra)
-    });
-    for peca in pecas {
-        let (store, hit) = ctx.host.store_and_hit_index_mut();
-        let mut c = CardCtx::flutuante(ctx.scene, ctx.text_system, store, hit, ink, body.x, body.w);
-        let w = match peca {
-            Peca::Item(item) => largura(&mut c, item, snap),
-            Peca::Autoplay => c.marca_em_fila_w(autoplay),
-        };
-        // Os três números são um grupo: não se partem entre fileiras.
-        let precisa = if matches!(peca, Peca::Item(Item::TimeChip)) {
-            [Item::TimeChip, Item::FrameChip, Item::LengthChip]
-                .into_iter()
-                .map(|i| largura(&mut c, i, snap) + m::FIELD_GAP)
-                .sum::<f32>()
-                - m::FIELD_GAP
-        } else {
-            w
-        };
-        if x > lim_x && x + precisa > lim_x + lim_w {
-            fileiras += 1;
-            (lim_x, lim_w) = (body.x, body.w);
-            y = body.y + (fileiras - 1) as f32 * passo - banda::SOBRA_DO_CABECALHO;
-            x = lim_x;
-        }
-        match peca {
-            Peca::Autoplay => {
-                let on = crate::transport_entry::ligado(snap);
-                c.marca_em_fila(ids::TIMELINE_CLIP_AUTOPLAY, autoplay, on, x, y);
-            }
-            Peca::Item(item) => {
-                match pinta(&mut c, item, (x, y), snap, view) {
-                    Some(chip) if chip.id == ids::TIMELINE_ANIM_DD => anim_chip = Some(chip),
-                    Some(chip) => clip_chip = Some(chip),
-                    None => {}
-                }
-                if item == Item::Crumbs && w > 0.0 {
-                    let meio = y + (m::FIELD_H - ROW_H_PX) * 0.5;
-                    crate::breadcrumb::paint(ctx, theme, x, meio, snap);
-                }
-            }
-        }
-        x += w + m::FIELD_GAP;
+    let mut f = Fluxo::novo(strip, body);
+    let (anim, opcoes) = fileira_do_titulo(ctx, theme, &mut f, (snap, view), body);
+    f.quebra();
+    let clips = crate::barra_clips::paint(ctx, theme, &mut f, (snap, view), body);
+    f.quebra();
+    fileira_de_tocar(ctx, theme, &mut f, (snap, view), body);
+    Barra {
+        depois: f.depois(),
+        clip: clips.chip,
+        anim: Some(anim),
+        opcoes: Some(opcoes),
+        menu_do_clip: clips.menu,
     }
-    let depois = if fileiras > 0 {
-        y + m::FIELD_H + banda::VAO_ATE_A_FOLHA
-    } else {
-        body.y
-    };
-    (depois, clip_chip, anim_chip)
-}
-
-/// O que anda na fila: os itens da barra e o Autoplay, que no painel de antes ia colado aos clips.
-#[derive(Copy, Clone, PartialEq)]
-enum Peca {
-    Item(Item),
-    Autoplay,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// ⭐ Sem duração autorada a Dur lê ∞; com ela, o número. *Mutação: devolver sempre `None` ⇒ vermelho.*
+    /// ⭐ O fps lê-se inteiro quando é inteiro. *Mutação: sempre duas casas ⇒ «24.00 fps».*
     #[test]
-    fn a_dur_le_infinito_so_sem_duracao_autorada() {
-        let mut snap = TimelineViewSnapshot {
-            view_length_explicit: false,
+    fn o_fps_le_se_inteiro_quando_e_inteiro() {
+        let snap = TimelineViewSnapshot {
+            fps: 24.0,
             ..TimelineViewSnapshot::default()
         };
-        assert_eq!(valor_lido_da_dur(&snap), Some(f64::INFINITY));
-        snap.view_length_explicit = true;
-        assert_eq!(valor_lido_da_dur(&snap), None);
+        assert!(
+            texto_do_fps(&snap).starts_with("24 fps"),
+            "{}",
+            texto_do_fps(&snap)
+        );
+        let snap = TimelineViewSnapshot {
+            fps: 29.97,
+            ..TimelineViewSnapshot::default()
+        };
+        assert!(texto_do_fps(&snap).starts_with("29.97 fps"));
     }
 }

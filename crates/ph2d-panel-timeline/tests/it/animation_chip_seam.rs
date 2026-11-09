@@ -107,7 +107,10 @@ fn escolher_um_clip_da_lista_fala_no_indice_do_documento() {
 
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut panel = TimelinePanelState::default();
-    clica(&mut host, &mut panel, ids::TIMELINE_CLIP_DD);
+    // Em cartões a lista virou chips à vista (doc 15, onda 1): só o modo antigo abre o ▾.
+    if !ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        clica(&mut host, &mut panel, ids::TIMELINE_CLIP_DD);
+    }
     let pedidos = clica(&mut host, &mut panel, ids::TIMELINE_CLIP_OPT[1]);
     let pular = st
         .doc

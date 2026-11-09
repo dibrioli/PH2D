@@ -40,7 +40,10 @@ fn paint(
 /// Clica o toggle e devolve o único `SetOnion` que ele empurrou.
 fn click_onion(id: ph2d_editor_core::NodeId, snap: TimelineViewSnapshot) -> OnionSettings {
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
-    let mut state = TimelinePanelState::default();
+    let mut state = TimelinePanelState {
+        opcoes_abertas: true,
+        ..TimelinePanelState::default()
+    };
     let regs = paint(&mut host, &mut state, snap);
     let r = regs
         .iter()
@@ -116,7 +119,10 @@ fn the_onion_settings_gear_paints_clicks_and_forwards_a_panel_click() {
     // so the same three omissions the toggle test guards against are caught here too: painted-without-
     // register, registered-outside-`populate` (dead under the mouse), and routed-to-nowhere.
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
-    let mut state = TimelinePanelState::default();
+    let mut state = TimelinePanelState {
+        opcoes_abertas: true,
+        ..TimelinePanelState::default()
+    };
     let regs = paint(&mut host, &mut state, transport(OnionSettings::default()));
     let r = regs
         .iter()
@@ -153,7 +159,10 @@ fn the_painted_onion_switches_show_the_snapshot() {
     for enabled in [false, true] {
         for mode in [OnionMode::Frames, OnionMode::Keys] {
             let mut host = MockPanelHost::with_panel::<TimelinePanel>();
-            let mut state = TimelinePanelState::default();
+            let mut state = TimelinePanelState {
+                opcoes_abertas: true,
+                ..TimelinePanelState::default()
+            };
             let onion = OnionSettings {
                 enabled,
                 mode,

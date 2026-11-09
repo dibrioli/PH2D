@@ -195,4 +195,14 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     button(store, ids::TIMELINE_ADD_CLIP);
     button(store, ids::TIMELINE_RENAME_CLIP);
     button(store, ids::TIMELINE_DELETE_CLIP);
+    // A barra no molde do Rive (doc 15, onda 1): as duas portas e as três células do fim do clipe.
+    for id in [
+        ids::TIMELINE_OPTIONS,
+        ids::TIMELINE_CLIP_MENU,
+        ids::TIMELINE_END_STOP,
+        ids::TIMELINE_END_LOOP,
+        ids::TIMELINE_END_PINGPONG,
+    ] {
+        button(store, id);
+    }
 }

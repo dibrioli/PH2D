@@ -110,8 +110,16 @@ fn release_everything_a_hidden_panel_must_not_hold(
     set_last_visible_h(0.0);
 }
 
-/// A moldura e a barra do transporte, nos cartões ou na cara de antes: onde a folha começa, os dois chips
-/// e o interior.
+/// Onde a folha começa, os dois chips, o interior e as âncoras das duas janelinhas (engrenagem, «⋯»).
+type Barra = (
+    f32,
+    Option<transport::ClipChip>,
+    Option<transport::ClipChip>,
+    Rect,
+    (Option<Rect>, Option<Rect>),
+);
+
+/// A moldura e a barra do transporte, nos cartões ou na cara de antes.
 fn paint_barra(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -119,12 +127,7 @@ fn paint_barra(
     cartoes: bool,
     state: &TimelinePanelState,
     snapshot: &ph2d_timeline::TimelineViewSnapshot,
-) -> (
-    f32,
-    Option<transport::ClipChip>,
-    Option<transport::ClipChip>,
-    Rect,
-) {
+) -> Barra {
     if cartoes {
         let barra = crate::transport_sources::bar_view(state, snapshot);
         ctx.host.store_mut().mark_card_list_close(
@@ -137,9 +140,14 @@ fn paint_barra(
             TimelinePanel::TITLE.tr(),
             rect,
         );
-        let (y, clip, anim) =
-            transport::cartoes::paint_bar(ctx, theme, mol.cab, mol.corpo, snapshot, barra);
-        return (y, clip, anim, mol.corpo);
+        let b = transport::cartoes::paint_bar(ctx, theme, mol.cab, mol.corpo, snapshot, barra);
+        return (
+            b.depois,
+            b.clip,
+            b.anim,
+            mol.corpo,
+            (b.opcoes, b.menu_do_clip),
+        );
     }
     let title_size = paint_chrome(ctx, theme, rect);
     let body = geom::body(rect, title_size);
@@ -154,7 +162,7 @@ fn paint_barra(
         snapshot,
         crate::transport_sources::bar_view(state, snapshot),
     );
-    (y, clip, anim, body)
+    (y, clip, anim, body, (None, None))
 }
 
 pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
@@ -197,7 +205,8 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // over the border strips where they overlap.
     register_resize_grips(ctx, rect);
 
-    let (after_transport, clip_dd_chip, anim_dd_chip, body) =
+    crate::barra_menus::fecha_pelo_clique_de_fora(state, ctx);
+    let (after_transport, clip_dd_chip, anim_dd_chip, body, janelinhas) =
         paint_barra(ctx, theme, rect, cartoes, state, &snapshot);
     let g = geom::resolve(folha, after_transport, state.label_w, min_label);
     // Write the clamped width back, so a drag that ran past the bounds does not
@@ -341,6 +350,8 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
             px_per_s,
         },
     );
+    let barra = crate::transport_sources::bar_view(state, &snapshot);
+    crate::barra_menus::paint(ctx, theme, state, (&snapshot, barra), janelinhas);
 
     set_last_content_h(content_h);
     set_last_visible_h(g.rows.h);

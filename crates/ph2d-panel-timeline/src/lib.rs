@@ -41,6 +41,8 @@ pub fn breadcrumb_width_for_tests(snap: &ph2d_timeline::TimelineViewSnapshot) ->
     breadcrumb::width(snap)
 }
 mod anchor_drag;
+mod barra_clips;
+mod barra_menus;
 mod box_select;
 mod clip_rename;
 mod container_list;

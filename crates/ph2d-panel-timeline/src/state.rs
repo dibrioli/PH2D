@@ -94,6 +94,10 @@ pub struct TimelinePanelState {
     /// Whether the "+Track" property dropdown is open (panel-local; toggled by
     /// the +Track button, closed on picking a property).
     pub add_track_open: bool,
+    /// A janelinha «Timeline options» da engrenagem (barra em cartões, doc 15 onda 1).
+    pub opcoes_abertas: bool,
+    /// O menu do «⋯» do clipe ativo (barra em cartões, doc 15 onda 1).
+    pub menu_do_clip: bool,
     /// In-progress key-diamond drag (dope-sheet), while the pointer is down on a
     /// key: the pointer x at Begin and the latest x, so `paint` can draw the
     /// selected diamonds shifted by the live delta and `event`/`interact` can
@@ -283,6 +287,8 @@ impl Default for TimelinePanelState {
             px_per_s: DEFAULT_PX_PER_S,
             view_span_s: 0.0,
             add_track_open: false,
+            opcoes_abertas: false,
+            menu_do_clip: false,
             key_drag: None,
             macro_drag: None,
             macro_largada: None,

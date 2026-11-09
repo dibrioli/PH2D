@@ -7825,6 +7825,7 @@ dependencies = [
  "ph2d-pixel-text",
  "ph2d-pixel-tiles",
  "ph2d-render",
+ "ph2d-sprite-ase-import",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-vector",
@@ -10878,7 +10879,9 @@ dependencies = [
  "ph2d-physics-ecs",
  "ph2d-pixel-cena",
  "ph2d-pixel-core",
+ "ph2d-pixel-io",
  "ph2d-pixel-keys",
+ "ph2d-render",
  "winit",
 ]
 

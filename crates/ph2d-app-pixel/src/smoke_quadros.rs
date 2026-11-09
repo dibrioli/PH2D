@@ -13,7 +13,7 @@
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::frames::{self, NewFrame};
-use ph2d_pixel_core::{ColorMode, FrameId, LayerId, NewSprite, Op, Patch, Rect, layers};
+use ph2d_pixel_core::{ColorMode, FrameId, LayerId, NewSprite, Op, Rect, layers};
 
 use crate::PixelApp;
 
@@ -27,23 +27,8 @@ pub(crate) fn patch(
     r: Rect,
     f: impl Fn(i32, i32) -> [u8; 4],
 ) -> Option<()> {
-    let mut pixels = Vec::with_capacity(r.area() * 4);
-    for y in r.y..r.y + r.h as i32 {
-        for x in r.x..r.x + r.w as i32 {
-            pixels.extend_from_slice(&f(x, y));
-        }
-    }
-    app.commit(
-        key,
-        Op::Patch(Patch {
-            layer,
-            frame,
-            bbox: Some(r),
-            rect: r,
-            pixels,
-        }),
-    )
-    .ok()
+    app.commit(key, ph2d_pixel_cenas::patch::op(layer, frame, r, r, f))
+        .ok()
 }
 
 /// Um passo construído sobre o sprite de agora (`None` do construtor = nada a fazer).

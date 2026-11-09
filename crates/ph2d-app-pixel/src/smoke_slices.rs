@@ -51,11 +51,12 @@ pub fn stage_historia(
     Some(bits)
 }
 
-/// A cena 26 (P14 §8): o `heroi_p14` no mundo, pelas peças de `ph2d_pixel_cenas::heroi`.
+/// As cenas 26 e 27 (P14 §8): o `heroi_p14` no mundo no arranjo `a` (`ph2d_pixel_cenas::heroi`).
 pub fn stage_heroi(
     app: &mut PixelApp,
     sim: &mut SimWorld,
     spawn_root: impl FnOnce(&mut SimWorld, &str) -> u64,
+    a: &ph2d_pixel_cenas::heroi::Arranjo,
 ) -> Option<u64> {
     use ph2d_pixel_cenas::heroi as h;
     let bits = crate::object_add::spawn(sim, app, NewSprite::default(), spawn_root).ok()?;
@@ -68,26 +69,34 @@ pub fn stage_heroi(
         Some(())
     };
     doc_de(app, key, s.clone())?;
-    let chao = h::bloco(h::CHAO.0, h::CHAO.1, h::COR_CHAO, Some("ground"))?;
-    let parede = h::bloco(h::PAREDE.0, h::PAREDE.1, h::COR_PAREDE, None)?;
+    let chao = h::bloco(a.chao.0, a.chao.1, h::COR_CHAO, Some("ground"))?;
+    let parede = h::bloco(a.parede.0, a.parede.1, h::COR_PAREDE, None)?;
     let nova = |app: &mut PixelApp, s: Sprite| {
         let k = app.create(NewSprite::default()).ok()?;
         doc_de(app, k, s).map(|()| k)
     };
     let k = h::Chaves {
         chao: nova(app, chao.clone())?,
-        parede: nova(app, parede)?,
+        parede: nova(app, parede.clone())?,
     };
     let e = ph2d_ecs::Entity::from_bits(bits);
-    h::monta(sim.world_mut(), e, &s, &k, &chao)?;
+    h::monta(sim.world_mut(), e, &s, &k, &chao, a)?;
+    if a.segunda_parede {
+        let p2 = nova(app, parede)?;
+        ph2d_pixel_cenas::heroi27::monta(sim.world_mut(), p2, &s, key)?;
+    }
     app.wants_edit = None;
     Some(bits)
 }
 
-/// A cena 26 abre enquadrada; `PH2D_PIXEL_SMOKE_PLAY=1` entra em Play (`ph2d_app_host::smoke_drive`).
+/// As cenas 26 e 27 abrem enquadradas; `PH2D_PIXEL_SMOKE_PLAY=1` entra em Play
+/// (`ph2d_app_host::smoke_drive`). Na 27, o `.ase` do herói vai ao File ▸ Import respondido «Sprite».
 pub(crate) fn conduz_o_heroi(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
     static Q: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-    if crate::smoke::armed_level() == Some(26) {
+    if let Some(p) = ph2d_pixel_cenas::heroi27::pendente() {
+        hero.store.import_as_image(vec![p]);
+    }
+    if matches!(crate::smoke::armed_level(), Some(26 | 27)) {
         let q = Q.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let fisica = ph2d_panel_timeline::ids::TIMELINE_PHYSICS;
         ph2d_app_host::smoke_drive::enquadra_e_joga(hero, q, "PH2D_PIXEL_SMOKE_PLAY", fisica);

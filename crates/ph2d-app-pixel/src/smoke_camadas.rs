@@ -16,7 +16,7 @@
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::blend::BlendMode;
 use ph2d_pixel_core::layers::{self, Place};
-use ph2d_pixel_core::{ColorMode, LayerId, LayerKind, NewSprite, Op, Patch, Rect, Sprite};
+use ph2d_pixel_core::{ColorMode, LayerId, LayerKind, NewSprite, Rect, Sprite};
 
 use crate::PixelApp;
 
@@ -30,26 +30,12 @@ fn put(
     r: Rect,
     f: impl Fn(i32, i32) -> [u8; 4],
 ) -> Option<()> {
-    let mut pixels = Vec::with_capacity(r.area() * 4);
-    for y in r.y..r.y + r.h as i32 {
-        for x in r.x..r.x + r.w as i32 {
-            pixels.extend_from_slice(&s.value_of_rgba(f(x, y)).to_le_bytes());
-        }
-    }
     let frame = s.frames()[0].id;
     // a caixa do cel cresce: pintar a banda de cima NÃO corta o resto da Background
     let bbox = s.cel((layer, frame)).map_or(r, |c| c.bbox.union(r));
-    app.commit(
-        key,
-        Op::Patch(Patch {
-            layer,
-            frame,
-            bbox: Some(bbox),
-            rect: r,
-            pixels,
-        }),
-    )
-    .ok()?;
+    let v = |x, y| s.value_of_rgba(f(x, y)).to_le_bytes();
+    app.commit(key, ph2d_pixel_cenas::patch::op(layer, frame, bbox, r, v))
+        .ok()?;
     *s = app.docs.get(&key)?.sprite.clone();
     Some(())
 }

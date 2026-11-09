@@ -58,6 +58,7 @@ impl PixelApp {
         }
         self.reconcile(sim);
         crate::slices::adiciona_collider(self, sim, ppm);
+        ph2d_pixel_cenas::heroi27::veste(sim.world_mut(), crate::smoke::armed_level());
         let prefs = self
             .chave
             .and_then(|k| Some(*self.docs.get(&k)?.sprite.prefs()));

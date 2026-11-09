@@ -8,10 +8,11 @@ use ph2d_editor_core::pixel_panel::{
     ColorModeChoice, NewSpriteMode, PixelDither, PixelShape, PixelToGray,
 };
 pub use ph2d_pixel_cenas::basicas::*;
+use ph2d_pixel_cenas::heroi::{CENA_26, CENA_27};
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 26,
+    max_level: 27,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -114,7 +115,8 @@ pub fn stage(
         }),
         24 => crate::smoke_slices::stage(app, sim, spawn_root).is_some(),
         25 => crate::smoke_slices::stage_historia(app, sim, spawn_root).is_some(),
-        26 => crate::smoke_slices::stage_heroi(app, sim, spawn_root).is_some(),
+        26 => crate::smoke_slices::stage_heroi(app, sim, spawn_root, &CENA_26).is_some(),
+        27 => crate::smoke_slices::stage_heroi(app, sim, spawn_root, &CENA_27).is_some(),
         _ => false,
     }
 }

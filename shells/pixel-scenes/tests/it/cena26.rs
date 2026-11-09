@@ -107,7 +107,22 @@ fn toca(c: &mut Cena, prime: Option<u32>, solta: u32, ate: u32) -> Vec<usize> {
     let s = sprite_de(&c.app, c.sim.world(), c.heroi);
     let w = c.sim.world_mut();
     ph2d_pixel_cena::deriva(w, |_| Some((&s, 1)));
-    let e = c.heroi;
+    let a = w.get::<SpriteAnimator>(c.heroi).expect("animador");
+    assert!(
+        a.current.is_empty(),
+        "o Pixel Sprite nasce sem clip (o Autoplay põe o 1.º)"
+    );
+    toca_em(w, c.heroi, prime, solta, ate)
+}
+
+/// O [`toca`] sobre um objecto já derivado (o Pixel Sprite ou o Sprite do motor da cena 27).
+pub(crate) fn toca_em(
+    w: &mut World,
+    e: Entity,
+    prime: Option<u32>,
+    solta: u32,
+    ate: u32,
+) -> Vec<usize> {
     let clips = w.get::<SpriteAnimations>(e).expect("clips").clone();
     let regra = AnimRules::of_entity(w, e).expect("regras");
     let run = match &regra.0[0].when {
@@ -116,7 +131,7 @@ fn toca(c: &mut Cena, prime: Option<u32>, solta: u32, ate: u32) -> Vec<usize> {
     };
     {
         let mut a = w.get_mut::<SpriteAnimator>(e).expect("animador");
-        assert!(a.autoplay && a.current.is_empty(), "nasce com Autoplay");
+        assert!(a.autoplay, "nasce com Autoplay");
         a.current = clips.0.first().expect("1.º clip").name.clone();
         a.playing = true;
     }

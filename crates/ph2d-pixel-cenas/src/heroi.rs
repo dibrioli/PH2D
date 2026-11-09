@@ -36,6 +36,67 @@ pub const ACAO: &str = "move_right";
 /// O nome da tag que a regra toca.
 pub const RUN: &str = "run";
 
+/// Onde ficam as peças de uma cena do herói.
+#[derive(Clone, Copy, Debug)]
+pub struct Arranjo {
+    pub heroi: [f32; 2],
+    pub lampada: [f32; 2],
+    pub chao: (u32, u32, [f32; 2]),
+    pub parede: (u32, u32, [f32; 2]),
+    /// A cena 27: uma «Wall 2» espelhada e o `.ase` do herói à espera do import (`heroi27`).
+    pub segunda_parede: bool,
+}
+
+/// A cena 26: a lâmpada à esquerda do herói, a parede à direita.
+pub const CENA_26: Arranjo = Arranjo {
+    heroi: HEROI,
+    lampada: LAMPADA,
+    chao: CHAO,
+    parede: PAREDE,
+    segunda_parede: false,
+};
+
+/// A cena 27: a lâmpada a MEIO, o herói do Pixel à esquerda dela e o Sprite do motor à direita,
+/// cada um com a sua parede atrás — o arranjo é simétrico em x, logo cada um recebe a luz do lado
+/// de dentro e faz sombra na sua parede.
+pub const CENA_27: Arranjo = Arranjo {
+    heroi: [-HEROI_27_X, HEROI[1]],
+    lampada: [0.0, LAMPADA[1]],
+    chao: (72, 10, [0.0, -0.4]),
+    parede: (8, 25, [-PAREDE_27_X, PAREDE.2[1]]),
+    segunda_parede: true,
+};
+/// |x| de cada herói da cena 27 (m): a borda de dentro fica fora do disco da lâmpada.
+pub const HEROI_27_X: f32 = 0.13;
+/// |x| do centro de cada parede da cena 27 (m): a face de dentro a 0,23 m.
+pub const PAREDE_27_X: f32 = 0.27;
+/// O nome do `.ase` que a cena 27 grava e importa (o import dá ao Sprite o nome do ficheiro).
+pub const NOME_DO_SPRITE: &str = "Hero Sprite";
+
+/// O Sprite do motor que o import nasceu (`e`), vestido como o herói do Pixel: no sítio `at`, com
+/// corpo dinâmico, `LockRotation`, Blocks Light e a mesma regra do cartão Animation. A forma de
+/// colisão já é a filha que o import ligou (a slice `body`, marcada pelo Add Collider).
+pub fn veste_o_do_motor(world: &mut World, e: Entity, at: [f32; 2]) {
+    let mut t = world
+        .get::<Transform>(e)
+        .copied()
+        .unwrap_or(Transform::IDENTITY);
+    t.translation.x = at[0];
+    t.translation.y = at[1];
+    world.entity_mut(e).insert((
+        t,
+        RigidBody {
+            kind: BodyKind::Dynamic,
+        },
+        LockRotation,
+        BloqueiaLuz { opacidade: 1.0 },
+        AnimRules(vec![AnimRule {
+            when: AnimWhen::Action(ACAO.into()),
+            play: RUN.into(),
+        }]),
+    ));
+}
+
 /// O topo do chão (m).
 #[must_use]
 pub fn topo_do_chao() -> f64 {
@@ -92,6 +153,13 @@ fn peca(world: &mut World, nome: &str, chave: u32, at: [f32; 2]) -> Entity {
         .id()
 }
 
+/// Uma parede: a peça com Blocks Light (só luz, sem corpo).
+pub fn parede(world: &mut World, nome: &str, chave: u32, at: [f32; 2]) -> Entity {
+    let w = peca(world, nome, chave, at);
+    world.entity_mut(w).insert(BloqueiaLuz { opacidade: 1.0 });
+    w
+}
+
 /// As chaves dos documentos das peças: o herói (já nascido), o chão e a parede.
 pub struct Chaves {
     pub chao: u32,
@@ -105,10 +173,11 @@ pub fn monta(
     s: &Sprite,
     k: &Chaves,
     chao: &Sprite,
+    a: &Arranjo,
 ) -> Option<[Entity; 4]> {
     let m = 1.0 / PPM;
     world.entity_mut(heroi).insert((
-        em(HEROI[0], HEROI[1]),
+        em(a.heroi[0], a.heroi[1]),
         Name::new("Hero"),
         LockRotation,
         BloqueiaLuz { opacidade: 1.0 },
@@ -126,17 +195,16 @@ pub fn monta(
         q,
         m,
     )?;
-    let e = peca(world, "Floor", k.chao, CHAO.2);
+    let e = peca(world, "Floor", k.chao, a.chao.2);
     world.entity_mut(e).insert(RigidBody {
         kind: BodyKind::Static,
     });
     let id = chao.slices().first()?.id;
     ph2d_pixel_cena::adiciona_collider_da_slice(world, e, id, chao, chao.frames()[0].id, m)?;
-    let w = peca(world, "Wall", k.parede, PAREDE.2);
-    world.entity_mut(w).insert(BloqueiaLuz { opacidade: 1.0 });
+    let w = parede(world, "Wall", k.parede, a.parede.2);
     let l = world
         .spawn((
-            em(LAMPADA[0], LAMPADA[1]),
+            em(a.lampada[0], a.lampada[1]),
             Name::new("Light"),
             Luz {
                 tamanho_m: LAMPADA_RAIO_M,

@@ -12,6 +12,8 @@ pub mod efeitos;
 pub mod formas;
 pub mod gradiente;
 pub mod heroi;
+pub mod heroi27;
+pub mod patch;
 pub mod historia;
 pub mod intervalo;
 pub mod pincel;

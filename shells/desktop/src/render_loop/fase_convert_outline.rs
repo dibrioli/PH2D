@@ -15,7 +15,11 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let Some(bits) = gfx.hero_live.as_ref().and_then(|l| l.bridge.entity_for(row)) else {
+        let Some(bits) = gfx
+            .hero_live
+            .as_ref()
+            .and_then(|l| l.bridge.entity_for(row))
+        else {
             return;
         };
         let e = ph2d_ecs::Entity::from_bits(bits);

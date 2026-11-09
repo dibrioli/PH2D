@@ -16,7 +16,9 @@ impl crate::App {
         let mut want = std::mem::take(&mut ctx.want);
         drop(ctx);
         // `PH2D_PHYSICS_SMOKE_VETOR=1`: o desenho Vector do «Convert to Collision Outline», escolhido.
-        if let Some(s) = ph2d_physics_outline_vec::smoke::seed(gfx.sim.world_mut(), &mut gfx.vec_scene) {
+        if let Some(s) =
+            ph2d_physics_outline_vec::smoke::seed(gfx.sim.world_mut(), &mut gfx.vec_scene)
+        {
             if let Some(p) = s.path {
                 self.vec.entities.insert(p, s.drawing.to_bits());
             }

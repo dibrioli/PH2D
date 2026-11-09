@@ -306,6 +306,8 @@ mod fase_pointer_subjects;
 /// Fase do quadro: os verbos de receita e de assets.
 mod fase_recipe_and_asset_verbs;
 pub(crate) use fase_recipe_and_asset_verbs::abre_o_seletor;
+/// Fase do quadro: «Convert to Collision Outline» da Hierarquia (dono 09/11).
+mod fase_convert_outline;
 /// Fase do quadro: o som de cena (as vozes dos objectos).
 mod fase_scene_audio;
 /// Fase do quadro: o passo do GC do Luau (M7).
@@ -332,8 +334,6 @@ mod fase_selection_mirror_path_links;
 mod fase_selection_mirror_skin;
 /// Fase do quadro: «Send to board…» da Hierarquia (MiroClone W15).
 mod fase_send_to_board;
-/// Fase do quadro: «Convert to Collision Outline» da Hierarquia (dono 09/11).
-mod fase_convert_outline;
 mod fase_sequences;
 /// Fase do quadro: a manutenção de sessão (Shape Builder, tween, Colorize, Gap Closure).
 mod fase_session_upkeep;

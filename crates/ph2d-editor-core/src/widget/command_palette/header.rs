@@ -109,8 +109,7 @@ pub(super) fn paint_header(
         hit_index,
         model.toggle.as_ref(),
         count_x - Spacing::Sm.px(),
-        header_y,
-        header_h,
+        [header_y, header_h],
     );
 
     // ── Search box: a Bg3 rounded field showing the typed query (or a "Search" placeholder), the app's
@@ -245,8 +244,7 @@ fn paint_toggle(
     hit_index: &mut HitIndex,
     toggle: Option<&PaletteToggle>,
     right_x: f32,
-    header_y: f32,
-    header_h: f32,
+    [header_y, header_h]: [f32; 2],
 ) -> f32 {
     let Some(t) = toggle else {
         return 0.0;

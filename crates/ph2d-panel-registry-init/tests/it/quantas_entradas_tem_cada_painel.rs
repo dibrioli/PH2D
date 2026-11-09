@@ -1239,13 +1239,27 @@ const PAINEIS_COM_ID_DERIVADO: &[(&str, &str)] = &[
         "authored.opt.{key}.{index} · authored.row.{key}",
     ),
     (
+        "pixel_history",
+        "ph2d_panel_pixel_history::ids::row(i) — `pixel_history.row.{i}`, uma por passo da Undo History",
+    ),
+    (
         "pixel_keys",
         "ph2d_panel_pixel_keys::ids — `add`/`reset` por acção e `ficha` por tecla de cada acção",
+    ),
+    (
+        "pixel_tiles",
+        "panel::cards_user_data::UserDataIds::row — `{prefix}.user_data.{part}.{i}`, uma por linha \
+         de propriedade do cartão User Data do tileset (P11)",
     ),
     (
         "pixel_timeline",
         "ph2d_panel_pixel_timeline::ids — um cabeçalho por frame, uma célula por cel, uma barra por \
          tag, as partes de cada camada e as opções da direcção",
+    ),
+    (
+        "pixel_tools",
+        "panel::cards_user_data::UserDataIds::row — `{prefix}.user_data.{part}.{i}`, uma por linha \
+         de propriedade dos cartões User Data da camada e Sprite Properties (P11/P12)",
     ),
     (
         "tokens",
@@ -2259,7 +2273,10 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    Mixing e Tiling sem corpo antigo. Medido e recusado: nascer dobrado (esconde o que o dono pôs à vista); Method + Adjust
     //    Strength (separa Adjust do Spacing que ele corrige). Os `46 px` contra os 1 637 são o rótulo em cima do Stroke.
     // ⬇️ `1 683 → 1 670` em 2026-11-04 (fim da H9): os títulos que dobram são linha de grupo, sem o corpo antigo.
-    ("painter_layers", 1670.0),
+    // ⬆️ `1 670 → 1 694` na integração de 09/11 (PainterWatercolor, Color mixing «Wet blend» no Basics): o grupo chegou
+    //    ABERTO e abria com `1 884` (seletor, Sample e seis números); a cura foi semeá-lo recolhido
+    //    (`PAINTER_BRUSH_MIX_SECTION`). Os `24 px` que ficam são o título que dobra (`HEAD_ICON_BOX`), o nome do grupo.
+    ("painter_layers", 1694.0),
     // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):

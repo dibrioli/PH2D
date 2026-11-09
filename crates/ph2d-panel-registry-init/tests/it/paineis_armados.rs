@@ -115,6 +115,13 @@ pub const TABELA: &[Armacao] = &[
         arma: |_| arma_as_slices(),
         desarma: || ph2d_panel_pixel_slices::canal::publish_contexto(Default::default()),
     },
+    // A Undo History do Pixel (P12a) com quatro passos, o último desfeito: sem passos ela não se pinta.
+    #[cfg(feature = "panel-pixel-history")]
+    Armacao {
+        painel: "pixel_history",
+        arma: |_| arma_a_historia(),
+        desarma: || ph2d_panel_pixel_history::canal::publish_view(Default::default()),
+    },
     // A linha do tempo do Pixel (P4) com duas camadas × três frames, um par ligado e uma tag.
     #[cfg(feature = "panel-pixel-timeline")]
     Armacao {
@@ -454,6 +461,27 @@ fn arma_os_tiles() {
         &ph2d_panel_pixel_tiles::ids::user_data(),
         true,
     );
+}
+
+/// Quatro passos com nome, o último desfeito.
+#[cfg(feature = "panel-pixel-history")]
+fn arma_a_historia() {
+    use ph2d_panel_pixel_history::canal::{HistoryView, Row, publish_view};
+    use ph2d_pixel_core::{Label, StepState};
+    let passo = |label: Label, state| Row {
+        label: label.key(),
+        state,
+    };
+    publish_view(HistoryView {
+        rows: vec![
+            passo(Label::INITIAL, StepState::Done),
+            passo(Label::new("pixel.history.draw"), StepState::Done),
+            passo(Label::new("pixel.history.layers"), StepState::Done),
+            passo(Label::new("pixel.history.palette"), StepState::Undone),
+        ],
+        current: 2,
+        bytes: 5_400,
+    });
 }
 
 /// A Slice Tool na mão, com uma slice selecionada.

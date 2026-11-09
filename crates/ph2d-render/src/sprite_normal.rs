@@ -6,13 +6,66 @@
 //!
 //! ⛔ Sem normal registada NADA é alocado: nem layout, nem pipelines, nem textura — o desenho segue
 //! pela pipeline de sempre, byte a byte (gate `sem_normal_o_sprite_e_o_de_hoje_byte_a_byte`).
-//! A normal é `Rgba8Unorm` LINEAR, sem mips (uma média de normais não é uma normal).
+//! A normal é `Rgba8Unorm` LINEAR, sem mips (uma média de normais não é uma normal); a de FONTE de
+//! 16 bits sobe em `Rgba16Float` ([`TexeisDaNormal::Rgba16F`]): 8 bits deram até 2 níveis no quadro
+//! (`docs/PixelArt/ferramentas/mede_normal_16_bits.py`). O layout é `Float { filterable }`, serve aos dois.
 
 use std::collections::BTreeMap;
 
 use ph2d_gpu::GpuContext;
 
 use crate::pipeline::SpritePipeline;
+
+/// Os texels de uma normal, já CODIFICADOS (`rgb = n·½+½`, Y para cima).
+#[derive(Clone, Copy, Debug)]
+pub enum TexeisDaNormal<'a> {
+    /// `u8`×4 por texel ⇒ `Rgba8Unorm` (sem custo novo).
+    Rgba8(&'a [u8]),
+    /// Bits de meio-float ×4 por texel ⇒ `Rgba16Float` (a fonte de 16 bits, sem degraus).
+    Rgba16F(&'a [u16]),
+}
+
+impl<'a> TexeisDaNormal<'a> {
+    fn componentes(self) -> usize {
+        match self {
+            Self::Rgba8(b) => b.len(),
+            Self::Rgba16F(h) => h.len(),
+        }
+    }
+
+    fn formato(self) -> (wgpu::TextureFormat, u32) {
+        match self {
+            Self::Rgba8(_) => (wgpu::TextureFormat::Rgba8Unorm, 4),
+            Self::Rgba16F(_) => (wgpu::TextureFormat::Rgba16Float, 8),
+        }
+    }
+
+    fn bytes(self) -> std::borrow::Cow<'a, [u8]> {
+        match self {
+            Self::Rgba8(b) => b.into(),
+            Self::Rgba16F(h) => h
+                .iter()
+                .flat_map(|x| x.to_le_bytes())
+                .collect::<Vec<_>>()
+                .into(),
+        }
+    }
+}
+
+/// ⭐ Os meios-floats LINEARES de uma imagem de 16 bits (`Asset::ImageRgba16`) como a normal os lê:
+/// o rgb codificado em sRGB EM FLOAT (o mesmo valor que o byte de 8 bits arredonda), o alfa direto.
+#[must_use]
+pub fn normal_de_meio_float_linear(px: &[u16]) -> Vec<u16> {
+    use ph2d_color::{f32_to_half, half_to_f32};
+    px.as_chunks::<4>()
+        .0
+        .iter()
+        .flat_map(|t| {
+            let c = |h: u16| f32_to_half(ph2d_color::srgb::linear_to_srgb_unit(half_to_f32(h)));
+            [c(t[0]), c(t[1]), c(t[2]), t[3]]
+        })
+        .collect()
+}
 
 /// Uma normal: a textura, a cor contra a qual o grupo foi feito, e os grupos por amostragem.
 struct Entrada {
@@ -238,22 +291,23 @@ impl NormaisDosSprites {
         p: &SpritePipeline,
         cor: Option<(&wgpu::Texture, (u32, u32))>,
         cor_id: u32,
-        normal: Option<(u32, u32, &[u8])>,
+        normal: Option<(u32, u32, TexeisDaNormal<'_>)>,
     ) -> Result<(), String> {
-        let Some((w, h, rgba)) = normal else {
+        let Some((w, h, texeis)) = normal else {
             self.mapa.remove(&cor_id);
             return Ok(());
         };
         let Some((tex_cor, dims)) = cor else {
             return Err(format!("textura {cor_id} desconhecida"));
         };
-        if dims != (w, h) || rgba.len() != (w * h * 4) as usize {
+        if dims != (w, h) || texeis.componentes() != (w * h * 4) as usize {
             return Err(format!(
                 "a normal {w}×{h} não tem o tamanho da cor {}×{} (o recorte seria outro)",
                 dims.0, dims.1
             ));
         }
         self.placa(gpu, p);
+        let (format, bpp) = texeis.formato();
         let t = gpu.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("ph2d-render sprite normal"),
             size: wgpu::Extent3d {
@@ -264,16 +318,16 @@ impl NormaisDosSprites {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
+            format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         });
         gpu.queue.write_texture(
             t.as_image_copy(),
-            rgba,
+            &texeis.bytes(),
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(w * 4),
+                bytes_per_row: Some(w * bpp),
                 rows_per_image: Some(h),
             },
             t.size(),

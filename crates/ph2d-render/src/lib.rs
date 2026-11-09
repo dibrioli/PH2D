@@ -111,6 +111,7 @@ mod sprite_mesh_skin_gpu;
 mod sprite_mesh_warp;
 mod sprite_normal;
 pub use sprite_mesh_warp::MeshWarp;
+pub use sprite_normal::{TexeisDaNormal, normal_de_meio_float_linear};
 /// Repor no presente os donos movidos depois do extract — ver o cabeçalho.
 mod sprite_repoe;
 pub use sprite_repoe::repoe_no_presente;

@@ -15,11 +15,11 @@ use ph2d_render::{
     SpriteMeshSkin, SpriteRenderer, TextureAtlas,
 };
 
-const W: u32 = 64;
-const H: u32 = 32;
-const ORIGEM: [f64; 2] = [-2.0, -1.0];
-const TEXEL: f64 = 0.5;
-const TAM: [u32; 2] = [8, 4];
+pub(crate) const W: u32 = 64;
+pub(crate) const H: u32 = 32;
+pub(crate) const ORIGEM: [f64; 2] = [-2.0, -1.0];
+pub(crate) const TEXEL: f64 = 0.5;
+pub(crate) const TAM: [u32; 2] = [8, 4];
 const DE_FRENTE: f64 = 0.5;
 const MOMENTO: f64 = 0.4;
 /// A folha: duas células 4×4 lado a lado. Cor: as duas cinzentas (a da direita mais clara, para o
@@ -30,7 +30,7 @@ const COR_B: [u8; 4] = [220, 220, 220, 255];
 const N_MAIS_X: [u8; 4] = [255, 128, 128, 255];
 const N_MENOS_X: [u8; 4] = [0, 128, 128, 255];
 
-fn gpu() -> Option<GpuContext> {
+pub(crate) fn gpu() -> Option<GpuContext> {
     GpuContext::new(GpuContext::default_instance(), None).ok()
 }
 
@@ -44,7 +44,7 @@ fn folha(esq: [u8; 4], dir: [u8; 4]) -> Vec<u8> {
     d
 }
 
-fn campo(gpu: &GpuContext, valor: f64) -> wgpu::Texture {
+pub(crate) fn campo(gpu: &GpuContext, valor: f64) -> wgpu::Texture {
     let mut d = Vec::new();
     for _ in 0..TAM[0] * TAM[1] {
         for c in [valor, valor, valor, 1.0] {
@@ -78,7 +78,7 @@ fn campo(gpu: &GpuContext, valor: f64) -> wgpu::Texture {
     t
 }
 
-fn ler(gpu: &GpuContext, t: &wgpu::Texture) -> Vec<u8> {
+pub(crate) fn ler(gpu: &GpuContext, t: &wgpu::Texture) -> Vec<u8> {
     let padded =
         (W * 4).div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
     let buf = gpu.device.create_buffer(&wgpu::BufferDescriptor {

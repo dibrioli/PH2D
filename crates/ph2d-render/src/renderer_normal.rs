@@ -16,6 +16,17 @@ impl SpriteRenderer {
         texture_id: u32,
         normal: Option<(u32, u32, &[u8])>,
     ) -> Result<(), String> {
+        let normal = normal.map(|(w, h, b)| (w, h, crate::TexeisDaNormal::Rgba8(b)));
+        self.definir_normal_texeis(texture_id, normal)
+    }
+
+    /// ⭐ P14 — o [`Self::definir_normal`] em 8 OU 16 bits ([`crate::TexeisDaNormal`]): a fonte de 16
+    /// bits sobe em `Rgba16Float`, sem os degraus do byte.
+    pub fn definir_normal_texeis(
+        &mut self,
+        texture_id: u32,
+        normal: Option<(u32, u32, crate::TexeisDaNormal<'_>)>,
+    ) -> Result<(), String> {
         let cor = self
             .individual
             .entries

@@ -84,6 +84,10 @@ fn lista_aberta() -> Mesa {
     mesa.assenta();
     mesa.clica(CHIP);
     mesa.assenta();
+    // Abrir foca a busca (08/11), e o anel do foco é Accent; agarrar uma linha tira-lhe o foco. A régua conta
+    // a marca de largada em Accent: o campo sem foco desde já, para o anel não entrar na conta.
+    mesa.host.store_mut().set_focus(None);
+    mesa.assenta();
     mesa
 }
 
@@ -261,16 +265,23 @@ fn the_gap_is_list_background_over_the_control_below() {
     let mut fechada = Mesa::na_janela(true, b, false, JANELA);
     fechada.so_abertos(&[p::PAINTER_CARD_TOPO]);
     fechada.assenta();
-    let controlo = fechada
-        .rect(p::PAINTER_WETPAINT_PRESET_EXPORT)
-        .expect("Export");
 
     let mut mesa = lista_aberta();
     // Largada antes da linha 3: o vão fica no lugar da linha 2.
     let vao = mesa.rect(linha(2)).expect("o lugar do vão");
+    // O controlo que a lista fechada tem por baixo do vão (a faixa da busca, 08/11, desceu as linhas: já não
+    // é o Export — escolhe-se pela geometria, não pelo nome).
+    let controlo = fechada
+        .ids()
+        .into_iter()
+        .filter(|&id| id != CHIP)
+        .filter_map(|id| fechada.rect(id))
+        .find(|c| {
+            vao.y < c.y + c.h && c.y < vao.y + vao.h && vao.x < c.x + c.w && c.x < vao.x + vao.w
+        });
     assert!(
-        vao.y < controlo.y + controlo.h && controlo.y < vao.y + vao.h,
-        "o vão {vao:?} não passa por cima do controlo {controlo:?}"
+        controlo.is_some(),
+        "nenhum controlo da lista fechada por baixo do vão {vao:?}"
     );
     let (x, y) = arrasta(&mut mesa, 1, 3, false);
     let ev = mesa.ponteiro(PointerKind::Move, x - AO_LADO, y);

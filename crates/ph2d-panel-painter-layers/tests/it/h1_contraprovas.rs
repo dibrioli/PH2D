@@ -172,8 +172,9 @@ fn a_body_keeps_the_column_under_a_scrollbar() {
     let lista = mesa.host.store().panel_rect(core_ids::PAINTER_LAYERS_PANEL);
     let n = mesa.rect(nativo).expect("o nativo");
     let lista = lista.expect("a lista");
-    // Rola até ao capturado, e a borda direita dele é a da coluna.
-    for _ in 0..4 {
+    // Rola até ao capturado, e a borda direita dele é a da coluna. (O Basics cresceu a 08/11 — Size (px),
+    // Fixed dab size: o laço rola até o achar, não um número fixo de vezes.)
+    for _ in 0..16 {
         let ev = mesa
             .host
             .wheel_at(lista.x + lista.w * 0.5, lista.y + 100.0, -200.0);

@@ -307,6 +307,17 @@ const A11Y_OPT_OUT: &[(&str, &str)] = &[
         "command_palette/layout.rs",
         "layout only; paints nothing, registers nothing — parent owns a11y",
     ),
+    // O ACABAMENTO da paleta (GEF 07/11, Add Object compacto): medidas e pesos, sem cena nem índice.
+    (
+        "command_palette/look.rs",
+        "metrics table only (sizes and weights of a finish); paints nothing — parent owns a11y",
+    ),
+    // O pintor do campo de texto; o nó AccessKit mora no `model.rs` (`TextInput::build_a11y`)
+    // desde o corte do tecto de 500 LOC (cards, 1fa2c49aa1).
+    (
+        "text_input/mod.rs",
+        "paint half of the text input; its a11y node is built by `model.rs::build_a11y`",
+    ),
     // Unit tests for `command_palette` (moved into the widget folder so the mod-sync scan stops
     // seeing them as a widget of their own) — no user-facing widget.
     // Gates do `slider` — na pasta pelo MESMO motivo (um `*_tests.rs` solto no topo de

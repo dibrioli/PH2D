@@ -232,6 +232,7 @@ pub fn paint_text_input_with_buffer(
             (rect.h - w).max(0.0),
         );
         let cor = crate::widget::card_ink::tinta(ColorToken::Accent, theme);
+        // FRAME-RAW-OK: o anel de FOCO fino é a mensagem (o campo tem o foco), não a moldura do tema
         stroke_rounded_rect(scene, anel, (radius - w * 0.5).max(0.0), w, cor);
     } else if chrome.field_border.is_visible() {
         let stroke_w = if input.state == TextInputState::Focused {

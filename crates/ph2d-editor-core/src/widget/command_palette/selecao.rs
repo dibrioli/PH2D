@@ -89,9 +89,9 @@ pub(super) fn dock_height(ts: &mut TextSystem, model: &PaletteModel, content_w: 
 
 /// A largura do texto e a altura do desenho na faixa.
 fn dock_split(content_w: f32, pad: f32) -> (f32, f32) {
-    let picture_w = DOCK_PICTURE_W.min(content_w * 0.4);
+    let picture_w = DOCK_PICTURE_W.min(content_w * 0.4); // LITERAL-PX-OK: fracção da largura (2/5), não um px
     (
-        (content_w - picture_w - pad * 3.0).max(0.0),
+        (content_w - picture_w - pad * 3.0).max(0.0), // LITERAL-PX-OK: contagem de vãos (esquerda, meio, direita)
         picture_w * 0.5,
     )
 }
@@ -104,7 +104,7 @@ fn text_height(ts: &mut TextSystem, scene: &mut VectorScene, tip: &PaletteTip, w
         0.0,
         0.0,
         w,
-        [ph2d_vector::Color::TRANSPARENT; 2],
+        [ph2d_vector::Color::TRANSPARENT; 2], // LITERAL-COLOR-OK: passe só de MEDIDA, nada se vê
     )
 }
 

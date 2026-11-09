@@ -67,12 +67,16 @@ fn folga_do_separador() -> f32 {
     Spacing::Md.px()
 }
 
+/// A espessura do traço: `Thin` (1 px) inteiro no pixel; o `Hairline` (0,5 px) misturava-se ao fundo
+/// (medido 09/11: `#2B3242` sobre `#22293A`).
+const TRACO: StrokeToken = StrokeToken::Thin;
+
 /// O traço entre duas unidades da fila, centrado no vão e recolhido `Xs` em cima e em baixo (a língua das
 /// divisórias das abas, `tab_dividers`).
 fn separador_entre(a: Rect, vao: f32) -> Rect {
-    let (w, recolhe) = (StrokeToken::Hairline.px(), Spacing::Xs.px());
+    let (w, recolhe) = (TRACO.px(), Spacing::Xs.px());
     Rect::new(
-        a.x + a.w + (vao - w) * 0.5,
+        (a.x + a.w + (vao - w) * 0.5).round(),
         a.y + recolhe,
         w,
         (a.h - recolhe * 2.0).max(0.0),
@@ -184,7 +188,7 @@ impl Camada {
             .zip(&botoes)
             .map(|((_, difere), &b)| (b + Spacing::Sm.px() + largura(difere, false)).min(dentro))
             .collect();
-        let vao = folga_do_separador() * 2.0 + StrokeToken::Hairline.px();
+        let vao = folga_do_separador() * 2.0 + TRACO.px();
         let (rs, linhas) = fila(pad, y, dentro, &unidades, (bh, vao, bv));
         y += linhas as f32 * (bh + bv);
         let separadores = rs
@@ -410,7 +414,7 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro) {
                 tom!(ColorToken::Warn, theme),
             );
         }
-        let traco = tom!(ColorToken::Border, theme);
+        let traco = tom!(ColorToken::BorderStrong, theme);
         for &s in &c.separadores {
             cena.fill_rect(ph2d_editor_core::paint::rect_to_vello(s), traco);
         }
@@ -477,7 +481,7 @@ mod testes {
     fn o_traco_das_formas_que_diferem_fica_so_entre_vizinhas_da_mesma_linha() {
         let r = ROW_H_PX;
         let (b, t) = (r * 2.0, r * 3.0);
-        let vao = folga_do_separador() * 2.0 + StrokeToken::Hairline.px();
+        let vao = folga_do_separador() * 2.0 + TRACO.px();
         let unidade = b + Spacing::Sm.px() + t;
         let w = MARGEM_DO_CARTAO * 2.0 + unidade * 2.0 + vao + r;
         let ex: Vec<(String, String)> = ["A", "B", "C"]

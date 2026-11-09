@@ -13,6 +13,8 @@ mod paint_align;
 mod paint_pivot;
 pub mod paint_sheet;
 mod silhueta;
+/// O documento de uma aba do editor de Region (plano GEF 16 D2); a família `ph2d_app_sprite_anim::region` aplica-o.
+pub mod region_doc;
 pub mod strip_bar;
 pub use ph2d_anim_sheets::split;
 

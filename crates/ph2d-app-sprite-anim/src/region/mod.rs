@@ -4,7 +4,7 @@
 //! (`ImageUseEdit::SetRegion`, pela porta do Inspector); **Cancel** / `Esc` não muda nada. A shell instala
 //! [`RegionDocs`] uma vez e chama [`frame`] uma vez por quadro, ANTES dos snapshots.
 
-pub mod doc;
+pub use ph2d_anim_editor::region_doc as doc;
 pub mod paint;
 
 use std::collections::BTreeMap;

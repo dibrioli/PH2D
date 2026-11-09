@@ -1,6 +1,6 @@
 //! **Uma aba do editor de Region** ([plano GEF 16](../../../../docs/GameEngineFuncional/16_uso_region_plano.md) D2):
 //! a área escolhida em píxeis da imagem, a grelha de snap, a vista (zoom e arrasto) e os gestos. Nada aqui
-//! pinta nem toca o mundo: o OK deixa um [`Outcome`] que o [`super::frame`] aplica pela porta do Inspector.
+//! pinta nem toca o mundo: o OK deixa um [`Outcome`] que o `ph2d_app_sprite_anim::region::frame` aplica pela porta do Inspector.
 
 use ph2d_editor_core::SheetImage;
 use ph2d_editor_core::zones::Rect;

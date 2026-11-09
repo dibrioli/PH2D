@@ -90,13 +90,14 @@ pub(super) const DOS_KNOBS: &str = "a caneta deitada: no Wet Paint são os knobs
 const NAO_LIDO: &str = "o Wet Paint não o lê (deposita pela lei do fluido)";
 
 /// Os campos do `BrushSpec` que o preset NÃO leva, e porquê.
-pub const CAMPOS_FORA: [(&str, &str); 81] = [
+pub const CAMPOS_FORA: [(&str, &str); 82] = [
     ("radius_px", VOLUME),
     ("strength", VOLUME),
     ("color", DA_OBRA),
     ("paper", DA_OBRA),
     // O dente do papel é da TELA (dono 27/10, W3b): o pincel não o grava, e o de um preset antigo é ignorado.
     ("paper_depth", DA_OBRA),
+    ("dente", DA_OBRA), // o dente do papel, enchido no dab por `poe_o_papel_como_grain`
     ("symmetry", DA_OBRA),
     ("stroke_method", DO_GESTO),
     ("grid_cell_px", DO_GESTO),

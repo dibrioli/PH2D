@@ -50,6 +50,12 @@ pub enum Gesture {
     ClickGear,
     /// Um clique no botão `k` do cartão «Stopped» (0 = Continue, 1 = Next line).
     ClickDebug(usize),
+    /// Um clique na linha `k` do menu aberto da barra.
+    ClickTabMenuRow(usize),
+    /// Um clique no ▸ da linha `key` da tabela do Stopped (`self.pos`).
+    ClickDebugRow(&'static str),
+    /// O botão direito no cabeçalho da tabela do Stopped (o menu das colunas).
+    RightClickDebugHeader,
     /// Um clique na coluna das marcas (o ponto de parada) da linha da 1.ª `needle`.
     ClickMark {
         needle: &'static str,
@@ -122,6 +128,8 @@ pub enum Until {
     Found,
     /// O jogo parado neste script, com o título do cartão a conter o texto («on Star»).
     Stopped(&'static str),
+    /// O Stopped mostra a variável `key` (`self.t`) como mudada desde o passo anterior.
+    Changed(&'static str),
     /// Valores ao vivo pintados no fim de alguma linha, e o jogo a correr.
     Live,
     /// Nada sublinhado e o ponteiro sobre o carácter `ahead` depois de `needle` não é a mão.
@@ -134,7 +142,7 @@ pub enum Until {
 
 pub mod steps;
 pub use steps::NONE;
-pub use steps::{STEPS, STEPS_4, STEPS_5, STEPS_10, STEPS_11, STEPS_12, STEPS_13};
+pub use steps::{STEPS, STEPS_4, STEPS_5, STEPS_10, STEPS_11, STEPS_12, STEPS_13, STEPS_14};
 
 /// O roteiro da cena `level` (`None` = a cena não tem fotos conduzidas).
 #[must_use]
@@ -147,6 +155,7 @@ pub fn steps(level: u32) -> Option<&'static [&'static [Gesture]]> {
         11 => Some(STEPS_11),
         12 => Some(STEPS_12),
         13 => Some(STEPS_13),
+        14 => Some(STEPS_14),
         _ => None,
     }
 }

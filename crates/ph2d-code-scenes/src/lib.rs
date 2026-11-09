@@ -13,7 +13,7 @@ pub mod bancada;
 pub mod inspector;
 
 /// Quantas cenas este roteador serve — o `max_level` do roteador da família (conferido em teste).
-pub const CENAS: u32 = 13;
+pub const CENAS: u32 = 14;
 
 /// O nome do script das formas nos scripts do projeto.
 pub const BOB_NAME: &str = "bob.luau";
@@ -115,20 +115,25 @@ pub const DEPURA_BREAK: &str = "local swing = ";
 
 /// ⭐ **O script do nível 12** (comentários em inglês: o app é só inglês).
 pub const DEPURA_LUAU: &str = r#"-- depura.luau: Circle, Star and Hexagon all run THIS script.
--- The red dot left of "local swing" is a breakpoint: the game stops there,
--- and the Stopped card below shows the values. Continue (F8) goes to the next
--- shape; Next line (F10) walks one line. Click the red dot (or F9) to remove it:
--- then the values show at the end of each line while the game runs.
+-- The red dot is a breakpoint: the game stops there, and the Stopped card below
+-- shows the values (View > Card Style: Sheet, Cards or Strip). Continue (F8) goes
+-- to the next shape; Next line (F10) walks one line, and what changed turns amber.
+-- Click the red dot (or F9) to remove it: the values show at the end of each line.
 function init(self)
   self.base_x = ph2d.get(self.id, "x")
   self.t = 0
   self.step = 1
+  self.pos = { x = self.base_x, y = 0 }
+  self.trail = { 1, 2, 3 }
+  self.label = "shape"
+  self.alive = true
 end
 
 function update(self, dt)
   self.t = self.t + dt
   local swing = math.sin(self.t * 2) * self.step
-  ph2d.set(self.id, "x", self.base_x + swing)
+  self.pos.x = self.base_x + swing
+  ph2d.set(self.id, "x", self.pos.x)
 end
 "#;
 

@@ -112,7 +112,7 @@ fn parado_o_cartao_diz_onde_e_o_continue_do_botao_chega_ao_host() {
     );
     let h = m.host.as_ref().expect("vm");
     let stop = h.debug_stop().expect("o 2.º objecto parou no mesmo ponto");
-    assert_eq!(stop.queued, 0);
+    assert!(stop.waiting.is_empty());
 }
 
 #[test]
@@ -232,4 +232,77 @@ fn a_engrenagem_e_a_funcao_do_caminho_tem_dica() {
     let tips = m.docs().bar_painted().tips.clone();
     assert!(tips.iter().any(|t| t.1 == "Script options"), "{tips:?}");
     assert!(tips.iter().any(|t| t.1 == "Go to update"), "{tips:?}");
+}
+
+/// Plano 14 (decisão do dono 13): `View ▸ Card Style` troca a aparência do Stopped (Sheet por
+/// omissão → Cards → Strip → Sheet), o ▸ de uma tabela abre-a, e o botão direito no cabeçalho da
+/// Sheet esconde a coluna Type — tudo por cliques reais nas caixas pintadas.
+#[test]
+fn o_card_style_troca_o_stopped_e_o_cabecalho_esconde_a_coluna_type() {
+    use ph2d_app_code::commands::{CMD_CARD_CARDS, CMD_CARD_SHEET, CMD_CARD_STRIP};
+    use ph2d_code_debugcard::CardStyle::{Cards, Sheet, Strip};
+    const T: &str = "function update(self, dt)\n  self.pos = { x = 1 }\n  local s = 2 -- @\nend\n";
+    let (m, id) = aberto(T);
+    let mut m = m.com_cena(id, 1);
+    m.cena();
+    vai(&mut m, id, 2);
+    m.tecla(id, Key::F(9), Modifiers::default(), None);
+    let passo = |m: &mut Mesa| {
+        m.quadro();
+        m.pinta(id);
+        m.docs().debug_view_of(id).expect("o quadro").clone()
+    };
+    passo(&mut m);
+    m.cena();
+    let v = passo(&mut m);
+    assert_eq!(v.style, Sheet, "Sheet por omissão");
+    let keys = |v: &ph2d_panel_code::debug_card::DebugCardView| {
+        let (lay, rows, _) = v.painted.table.clone().expect("a Sheet pinta a tabela");
+        let at: Vec<String> = lay.rows.iter().map(|s| rows[s.index].key.clone()).collect();
+        (lay, at)
+    };
+    let (lay, at) = keys(&v);
+    assert!(
+        lay.col("type").is_some() && at.contains(&"#self".into()),
+        "{at:?}"
+    );
+    assert!(!at.contains(&"self.pos.x".into()), "a tabela dobrada");
+    let (x, y) = centro(v.chevron_of("self.pos").expect("o ▸"));
+    m.clica(id, x, y, Modifiers::default());
+    let (lay, at) = keys(&passo(&mut m));
+    assert!(at.contains(&"self.pos.x".into()), "o ▸ abriu-a");
+    // O botão direito no cabeçalho (o do último quadro: a tabela aberta fê-lo crescer) abre o
+    // menu das colunas; «Type» esconde-a.
+    let (x, y) = centro(lay.header);
+    m.clica_com(
+        id,
+        x,
+        y,
+        Modifiers::default(),
+        ph2d_host::PointerButton::Secondary,
+    );
+    m.pinta(id);
+    let menu = m
+        .docs()
+        .context_painted()
+        .expect("o menu das colunas")
+        .clone();
+    let (x, y) = centro(menu.rows.iter().find(|r| r.0 == "Type").expect("Type").1);
+    m.clica(id, x, y, Modifiers::default());
+    assert!(
+        keys(&passo(&mut m)).0.col("type").is_none(),
+        "Type escondida"
+    );
+    // Cards e Strip pintam caixas de valor (clicar copia), sem tabela; e de volta à Sheet.
+    for (cmd, style) in [
+        (CMD_CARD_CARDS, Cards),
+        (CMD_CARD_STRIP, Strip),
+        (CMD_CARD_SHEET, Sheet),
+    ] {
+        assert!(m.docs().command(id.0, cmd));
+        let v = passo(&mut m);
+        assert_eq!(v.style, style);
+        assert_eq!(v.painted.table.is_none(), style != Sheet);
+        assert_eq!(v.painted.values.is_empty(), style == Sheet, "{style:?}");
+    }
 }

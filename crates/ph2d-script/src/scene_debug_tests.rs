@@ -130,10 +130,10 @@ fn depurador_os_que_batem_no_mesmo_ponto_ficam_em_fila() {
     m.host.set_breakpoints(m.id, vec![at(MOVE, "write")]);
     m.frame();
     let s = m.host.debug_stop().expect("paragem");
-    assert_eq!((s.entity, s.queued), (m.actors[0], 2));
+    assert_eq!((s.entity, s.waiting.len()), (m.actors[0], 2));
     m.resume(false);
     let s = m.host.debug_stop().expect("o 2.º");
-    assert_eq!((s.entity, s.queued), (m.actors[1], 1));
+    assert_eq!((s.entity, s.waiting.len()), (m.actors[1], 1));
     m.resume(false);
     m.resume(false);
     assert!(!m.host.is_held());
@@ -145,11 +145,11 @@ fn depurador_tirar_o_ponto_com_tres_em_fila_um_continue_solta_todos() {
     let mut m = Mesa::new(MOVE, 3);
     m.host.set_breakpoints(m.id, vec![at(MOVE, "write")]);
     m.frame();
-    assert_eq!(m.host.debug_stop().expect("paragem").queued, 2);
+    assert_eq!(m.host.debug_stop().expect("paragem").waiting.len(), 2);
     m.host.set_breakpoints(m.id, vec![]);
     // O mostrado continua o mesmo; os da fila já não contam.
     let s = m.host.debug_stop().expect("ainda parado");
-    assert_eq!((s.entity, s.queued), (m.actors[0], 0));
+    assert_eq!((s.entity, s.waiting.len()), (m.actors[0], 0));
     assert!(m.host.is_held(), "só o Continue os solta");
     m.resume(false);
     assert!(!m.host.is_held(), "os da fila seguiram sozinhos");
@@ -168,7 +168,7 @@ fn depurador_paragem_de_next_line_nao_se_solta_sozinha() {
     m.host.set_breakpoints(m.id, vec![]);
     let s = m.host.debug_stop().expect("ainda o passo");
     assert_eq!(
-        (s.why, s.entity, s.queued),
+        (s.why, s.entity, s.waiting.len()),
         (StopKind::Step, m.actors[0], 0)
     );
     // Mais um Next line: o 2.º (ponto tirado) segue sozinho; a paragem do passo fica.
@@ -264,6 +264,12 @@ fn depurador_pause_on_error_para_no_erro_com_as_variaveis() {
     assert_eq!(f.line, at(BOOM, "boom"));
     assert!(
         f.locals.iter().any(|v| v.name == "hp" && v.value == "3"),
+        "{:?}",
+        f.locals
+    );
+    // Plano 14: descer ao `self` (a 1.ª local) não pisa as seguintes no fio parado pelo erro.
+    assert!(
+        f.locals.iter().any(|v| v.name == "dt" && v.value == "0.5"),
         "{:?}",
         f.locals
     );
@@ -455,3 +461,47 @@ fn depurador_rebobinar_larga_quem_estava_parado() {
 
 #[path = "scene_debug_tests_fecho.rs"]
 mod fecho;
+
+/// Plano 14: a paragem dá o TIPO de cada valor e desce às tabelas (nomes por ordem, depois `[i]`),
+/// até `Var::MAX_DEPTH` níveis; quem espera vem pelo nome (a entidade), não só a contagem.
+#[test]
+fn depurador_a_paragem_da_o_tipo_e_os_campos_das_tabelas_aninhadas() {
+    use crate::ValueKind;
+    const SRC: &str = r#"
+function update(self, dt)
+  self.pos = { x = 3, y = 4, deep = { a = { b = { c = 1 } } } }
+  self.trail = { 10, 20 }
+  self.label = "hi"
+  self.alive = true
+  local none = nil -- @stop
+end
+"#;
+    let mut m = Mesa::new(SRC, 2);
+    m.host.set_breakpoints(m.id, vec![at(SRC, "stop")]);
+    m.frame();
+    let stop = m.host.debug_stop().expect("paragem");
+    assert_eq!(stop.waiting, vec![m.actors[1]], "o 2.º espera, pelo nome");
+    let f = stop.frame.expect("pilha");
+    let field = |n: &str| f.this.iter().find(|v| v.name == n).expect(n).clone();
+    let pos = field("pos");
+    assert_eq!((pos.kind, pos.field_count), (ValueKind::Table, 3));
+    let names: Vec<&str> = pos.fields.iter().map(|v| v.name.as_str()).collect();
+    assert_eq!(names, ["deep", "x", "y"]);
+    assert_eq!(pos.fields[1].kind, ValueKind::Number);
+    // self.pos é o nível 1; deep 2; a 3; b já não desce (só a contagem).
+    let a = &pos.fields[0].fields[0];
+    assert_eq!(a.name, "a");
+    let b = &a.fields[0];
+    assert_eq!((b.kind, b.fields.len(), b.field_count), (ValueKind::Table, 0, 1));
+    let trail = field("trail");
+    let idx: Vec<(&str, &str)> = trail
+        .fields
+        .iter()
+        .map(|v| (v.name.as_str(), v.value.as_str()))
+        .collect();
+    assert_eq!(idx, [("[1]", "10"), ("[2]", "20")]);
+    assert_eq!(field("label").kind, ValueKind::String);
+    assert_eq!(field("alive").kind, ValueKind::Boolean);
+    let dt = f.locals.iter().find(|v| v.name == "dt").expect("dt");
+    assert_eq!(dt.kind, ValueKind::Number);
+}

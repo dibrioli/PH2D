@@ -5,6 +5,7 @@
 use crate::doc::CodeDoc;
 use crate::docs::SaveKind;
 use ph2d_a11y::NodeId;
+use ph2d_code_debugcard::CardStyle;
 use ph2d_editor_core::doc_surface::{DocCommand, DocMenu};
 use ph2d_i18n::tr;
 use ph2d_tool_registry::hash_node_id;
@@ -50,6 +51,10 @@ pub const CMD_REMOVE_BREAKPOINTS: NodeId = hash_node_id("code_cmd_remove_breakpo
 /// A Bancada (Onda B; dono 09/11): espiar a cena e o mapa, ligados por omissão.
 pub const CMD_PEEK: NodeId = hash_node_id("code_cmd_peek_at_scene");
 pub const CMD_MAP: NodeId = hash_node_id("code_cmd_scene_map");
+/// A aparência dos quadros acessórios (decisão 13 do dono, plano 14): uma linha por aparência.
+pub const CMD_CARD_SHEET: NodeId = hash_node_id("code_cmd_card_style_sheet");
+pub const CMD_CARD_CARDS: NodeId = hash_node_id("code_cmd_card_style_cards");
+pub const CMD_CARD_STRIP: NodeId = hash_node_id("code_cmd_card_style_strip");
 
 /// Os cinco menus da aba (os do Godot, enxutos).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -93,11 +98,12 @@ pub struct CommandState {
     pub type_hints: bool,
     pub strict: bool,
     pub format_on_save: bool,
+    pub card_style: CardStyle,
 }
 
 /// `(id, chave do rótulo, menu da aba)` — `None` = só na paleta (as três caixas do cartão). Um
 /// comando de ligar/desligar tem aqui a chave do estado DESLIGADO (a do ligado, em [`commands`]).
-const TABLE: [(NodeId, &str, Option<TabMenu>); 31] = [
+const TABLE: [(NodeId, &str, Option<TabMenu>); 34] = [
     (CMD_NEW_SCRIPT, "code.cmd.new_script", Some(TabMenu::File)),
     (CMD_SAVE, "code.cmd.save", Some(TabMenu::File)),
     (CMD_SAVE_AS, "code.cmd.save_as", Some(TabMenu::File)),
@@ -154,6 +160,9 @@ const TABLE: [(NodeId, &str, Option<TabMenu>); 31] = [
     ),
     (CMD_PEEK, "code.cmd.peek", Some(TabMenu::View)),
     (CMD_MAP, "code.cmd.map", Some(TabMenu::View)),
+    (CMD_CARD_SHEET, "code.cmd.card_sheet", Some(TabMenu::View)),
+    (CMD_CARD_CARDS, "code.cmd.card_cards", Some(TabMenu::View)),
+    (CMD_CARD_STRIP, "code.cmd.card_strip", Some(TabMenu::View)),
     (CMD_STRICT, "code.cmd.strict", None),
     (CMD_FORMAT_ON_SAVE, "code.cmd.format_on_save", None),
     (CMD_TYPE_HINTS, "code.cmd.type_hints", None),
@@ -203,6 +212,9 @@ fn shown(id: NodeId, key: &'static str, state: CommandState) -> &'static str {
         CMD_FORMAT_ON_SAVE if state.format_on_save => "code.cmd.format_on_save_off",
         CMD_PEEK if state.peek => "code.cmd.peek_off",
         CMD_MAP if state.map => "code.cmd.map_off",
+        CMD_CARD_SHEET if state.card_style == CardStyle::Sheet => "code.cmd.card_sheet_on",
+        CMD_CARD_CARDS if state.card_style == CardStyle::Cards => "code.cmd.card_cards_on",
+        CMD_CARD_STRIP if state.card_style == CardStyle::Strip => "code.cmd.card_strip_on",
         _ => stateful(id, key),
     }
 }
@@ -246,6 +258,7 @@ impl crate::docs::CodeDocs {
             type_hints: self.intel.inlays_on,
             strict: crate::strict::is_strict(d.buffer.text()),
             format_on_save: self.format.on,
+            card_style: self.card_style,
         }
     }
 
@@ -264,6 +277,9 @@ impl crate::docs::CodeDocs {
             CMD_OPTIONS => self.options.toggle(),
             CMD_PEEK => self.bench.peek_on = !self.bench.peek_on,
             CMD_MAP => self.bench.map_on = !self.bench.map_on,
+            CMD_CARD_SHEET => self.card_style = CardStyle::Sheet,
+            CMD_CARD_CARDS => self.card_style = CardStyle::Cards,
+            CMD_CARD_STRIP => self.card_style = CardStyle::Strip,
             _ => return self.debug_command(cmd),
         }
         true

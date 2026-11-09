@@ -33,11 +33,54 @@ pub enum StopKind {
     Error(String),
 }
 
-/// Uma variável no sítio onde parou, já em texto (`412`, `"Bob"`, `table`).
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// O tipo Luau de um valor (plano 14 §3: a coluna Type e a cor do valor, à Visual Studio/DevTools).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ValueKind {
+    #[default]
+    Nil,
+    Boolean,
+    Number,
+    Vector,
+    String,
+    Table,
+    Function,
+    Coroutine,
+    Buffer,
+    Userdata,
+}
+
+/// Uma variável no sítio onde parou, já em texto (`412`, `"Bob"`, `table`), com o tipo e, numa
+/// tabela, os campos (até [`Var::MAX_DEPTH`] níveis abaixo da variável; só na paragem — os valores
+/// ao vivo não descem).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Var {
     pub name: String,
     pub value: String,
+    pub kind: ValueKind,
+    /// Os campos de uma tabela: os de nome pela ordem do nome, depois `[1]`, `[2]`… — no máximo
+    /// [`Var::MAX_FIELDS`]; `field_count` diz quantos tinha.
+    pub fields: Vec<Var>,
+    /// Quantas entradas a tabela tem (o `{N fields}` da coluna Value), mesmo as não descidas.
+    pub field_count: u32,
+}
+
+impl Var {
+    /// Os níveis de tabela que a paragem desce abaixo da variável. O recurso é o tempo do gancho
+    /// com o jogo parado: `MAX_FIELDS^MAX_DEPTH` = 13 824 leituras no pior caso, uma vez por paragem.
+    pub const MAX_DEPTH: u8 = 3;
+    /// Os campos lidos de uma tabela (o resto conta-se em `field_count`).
+    pub const MAX_FIELDS: usize = 24;
+
+    /// Uma variável sem campos (`kind` dita a cor).
+    #[must_use]
+    pub fn leaf(name: impl Into<String>, value: impl Into<String>, kind: ValueKind) -> Self {
+        Self {
+            name: name.into(),
+            value: value.into(),
+            kind,
+            ..Self::default()
+        }
+    }
 }
 
 /// Onde parou e com que valores (a função Luau do topo da pilha).

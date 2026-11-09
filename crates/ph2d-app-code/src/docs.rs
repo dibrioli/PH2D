@@ -92,6 +92,8 @@ pub struct CodeDocs {
     /// A Bancada (plano 13 Onda B): o que a cena diz do script activo, e a vista dela.
     pub(crate) bancada: ph2d_code_bancada::Bancada,
     pub bench: ph2d_panel_code::bancada::BancadaView,
+    /// `View ▸ Card Style` (decisão 13): a aparência dos quadros acessórios, a mesma em todas as abas.
+    pub card_style: ph2d_code_debugcard::CardStyle,
 }
 
 /// O que a gramática de uma aba fez (a sonda do gate da tecla).
@@ -143,6 +145,7 @@ impl Default for CodeDocs {
             ctx: None,
             bancada: ph2d_code_bancada::Bancada::default(),
             bench: ph2d_panel_code::bancada::BancadaView::default(),
+            card_style: ph2d_code_debugcard::CardStyle::default(),
         }
     }
 }

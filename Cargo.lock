@@ -5667,6 +5667,7 @@ dependencies = [
  "ph2d-code-assist",
  "ph2d-code-bancada",
  "ph2d-code-buffer",
+ "ph2d-code-debugcard",
  "ph2d-code-explain",
  "ph2d-code-format",
  "ph2d-code-help",
@@ -6919,6 +6920,16 @@ dependencies = [
  "crop",
  "fastrand",
  "unicode-segmentation",
+]
+
+[[package]]
+name = "ph2d-code-debugcard"
+version = "0.0.0"
+dependencies = [
+ "ph2d-ecs",
+ "ph2d-i18n",
+ "ph2d-script",
+ "ph2d-ui-table",
 ]
 
 [[package]]
@@ -9947,12 +9958,14 @@ dependencies = [
  "parley",
  "ph2d-a11y",
  "ph2d-code-buffer",
+ "ph2d-code-debugcard",
  "ph2d-code-viewmodel",
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-text",
  "ph2d-tokens",
+ "ph2d-ui-table",
  "ph2d-vector",
  "unicode-segmentation",
 ]
@@ -11731,6 +11744,16 @@ dependencies = [
  "ph2d-vec-scene",
  "postcard",
  "serde",
+]
+
+[[package]]
+name = "ph2d-ui-table"
+version = "0.0.0"
+dependencies = [
+ "ph2d-editor-core",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
 ]
 
 [[package]]

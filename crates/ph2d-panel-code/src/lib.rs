@@ -8,6 +8,7 @@ pub mod bancada;
 pub mod cards;
 mod chrome;
 pub mod console;
+pub mod debug_card;
 mod debug_marks;
 mod display;
 mod drop_mark;
@@ -28,6 +29,7 @@ mod rename_box;
 pub mod script_list;
 mod status;
 pub mod style;
+pub mod table_text;
 mod view;
 
 pub use a11y::RUN_CHARS;

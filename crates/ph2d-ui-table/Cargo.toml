@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-ui-table"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ A tabela da casa (plano 14 do editor de scripts, `docs/CodeEditor/14_plano_quadros.md` Onda Q1):
+# cabeçalho, grupos dobráveis, colunas arrastáveis e ocultáveis, números à direita, listras, rolagem,
+# a linha «mudou» em âmbar com o valor antigo riscado e o traço dos últimos segundos. Folha: geometria
+# pura + pintura por tokens; o texto mono (código) chega pelo `CellText` do anfitrião.
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-tokens      = { path = "../ph2d-tokens" }
+ph2d-text        = { path = "../ph2d-text" }
+ph2d-vector      = { path = "../ph2d-vector" }
+
+[lints]
+workspace = true

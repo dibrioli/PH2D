@@ -411,3 +411,41 @@ pub const STEPS_13: &[&[Gesture]] = &[
         Gesture::Frame,
     ],
 ];
+
+/// Cena 14: o ponto de parada no `DEPURA_LUAU` (os passos: Sheet, `self.t` e `self.pos.x` em âmbar
+/// pelo Next line, Cards, Strip, e o menu das colunas).
+pub const QUADROS_BREAK: &str = "self.t = self.t + dt";
+
+/// ⭐ **Cena 14 — os quadros do depurador** (plano 14).
+pub const STEPS_14: &[&[Gesture]] = &[
+    &[Gesture::Wait(Until::Stopped("Circle")), Gesture::Frame],
+    &[
+        Gesture::ClickDebug(1),
+        Gesture::Frame,
+        Gesture::Wait(Until::Changed("self.t")),
+    ],
+    &[
+        Gesture::ClickDebug(1),
+        Gesture::Frame,
+        Gesture::ClickDebug(1),
+        Gesture::Frame,
+        Gesture::Wait(Until::Changed("self.pos.x")),
+    ],
+    &[
+        Gesture::ClickTabMenu(4),
+        Gesture::Frame,
+        Gesture::ClickTabMenuRow(3),
+    ],
+    &[
+        Gesture::ClickTabMenu(4),
+        Gesture::Frame,
+        Gesture::ClickTabMenuRow(4),
+    ],
+    &[
+        Gesture::ClickTabMenu(4),
+        Gesture::Frame,
+        Gesture::ClickTabMenuRow(2),
+        Gesture::Frame,
+        Gesture::RightClickDebugHeader,
+    ],
+];

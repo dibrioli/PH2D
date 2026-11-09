@@ -11,13 +11,12 @@ use std::rc::{Rc, Weak};
 
 use mlua::{Function, Lua, Thread, ffi};
 
-use crate::{LiveFrame, State, StopFrame, StopKind, Var};
+use crate::{LiveFrame, State, StopFrame, StopKind, ValueKind, Var};
 
 /// Um gancho do Luau (`debugbreak` / `debugstep`): corre no fio do script, com a pilha dele.
 pub type RawHook = unsafe extern "C-unwind" fn(*mut ffi::lua_State, *mut ffi::lua_Debug);
 
 const MAX_TEXT: usize = 32;
-const MAX_THIS: usize = 24;
 const MAX_STACK: usize = 8;
 
 thread_local! {
@@ -142,7 +141,7 @@ unsafe fn frame_raw(t: *mut ffi::lua_State) -> Option<StopFrame> {
         }
         let depth = ffi::lua_stackdepth(t);
         let (level, ar) = first_lua_level(t, depth)?;
-        let locals = locals_at(t, level);
+        let locals = locals_at(t, level, Var::MAX_DEPTH);
         let mut this = Vec::new();
         let mut n = 1;
         loop {
@@ -152,7 +151,7 @@ unsafe fn frame_raw(t: *mut ffi::lua_State) -> Option<StopFrame> {
             }
             if CStr::from_ptr(name).to_bytes() == b"self" && ffi::lua_type(t, -1) == ffi::LUA_TTABLE
             {
-                this = fields(t, -1);
+                (this, _) = on_aux(t, -1, |a| fields(a, -1, Var::MAX_DEPTH));
             }
             ffi::lua_settop(t, -2);
             n += 1;
@@ -224,8 +223,9 @@ fn text_of(p: *const c_char) -> String {
     unsafe { CStr::from_ptr(p) }.to_string_lossy().into_owned()
 }
 
-/// As locais visíveis no `level`, sem as temporárias do Luau (`(for index)`).
-unsafe fn locals_at(t: *mut ffi::lua_State, level: i32) -> Vec<Var> {
+/// As locais visíveis no `level`, sem as temporárias do Luau (`(for index)`); as tabelas descem
+/// `depth` níveis.
+unsafe fn locals_at(t: *mut ffi::lua_State, level: i32, depth: u8) -> Vec<Var> {
     let mut out = Vec::new();
     let mut n = 1;
     loop {
@@ -238,10 +238,7 @@ unsafe fn locals_at(t: *mut ffi::lua_State, level: i32) -> Vec<Var> {
         unsafe {
             let name = CStr::from_ptr(name).to_string_lossy();
             if !name.starts_with('(') {
-                out.push(Var {
-                    name: name.into_owned(),
-                    value: value_text(t, -1),
-                });
+                out.push(var_at(t, -1, name.into_owned(), depth));
             }
             ffi::lua_settop(t, -2);
         }
@@ -250,44 +247,153 @@ unsafe fn locals_at(t: *mut ffi::lua_State, level: i32) -> Vec<Var> {
     out
 }
 
-/// Os campos de texto da tabela em `idx` (um nível, sem metamétodos), por nome.
-unsafe fn fields(t: *mut ffi::lua_State, idx: i32) -> Vec<Var> {
-    let mut out = Vec::new();
-    // SAFETY: `lua_next` cru sobre a tabela em `idx`; a chave e o valor saem a cada volta.
+/// A chave de um campo: os nomes primeiro (por ordem), depois os índices (por número).
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+enum Key {
+    Name(String),
+    Index(f64),
+}
+
+/// Os campos da tabela em `idx` (sem metamétodos): no máximo [`Var::MAX_FIELDS`], cada um a descer
+/// `depth` níveis; e quantas entradas a tabela tem.
+unsafe fn fields(t: *mut ffi::lua_State, idx: i32, depth: u8) -> (Vec<Var>, u32) {
+    let mut keys = Vec::new();
+    let mut count = 0u32;
+    // SAFETY: `lua_next` cru sobre a tabela em `idx`; a chave e o valor saem a cada volta. A
+    // 2.ª passagem empurra a chave, troca-a pelo valor (`lua_rawget`) e tira-o.
     unsafe {
         let table = ffi::lua_absindex(t, idx);
+        if ffi::lua_checkstack(t, 3) == 0 {
+            return (Vec::new(), 0);
+        }
         ffi::lua_pushnil(t);
         while ffi::lua_next(t, table) != 0 {
-            if ffi::lua_type(t, -2) == ffi::LUA_TSTRING && out.len() < MAX_THIS * 4 {
-                let mut len = 0;
-                let k = ffi::lua_tolstring(t, -2, &raw mut len);
-                let k = String::from_utf8_lossy(std::slice::from_raw_parts(k.cast::<u8>(), len));
-                out.push(Var {
-                    name: k.into_owned(),
-                    value: value_text(t, -1),
-                });
+            count = count.saturating_add(1);
+            match ffi::lua_type(t, -2) {
+                ffi::LUA_TSTRING => {
+                    let mut len = 0;
+                    let k = ffi::lua_tolstring(t, -2, &raw mut len);
+                    let k =
+                        String::from_utf8_lossy(std::slice::from_raw_parts(k.cast::<u8>(), len));
+                    keys.push(Key::Name(k.into_owned()));
+                }
+                ffi::LUA_TNUMBER => {
+                    keys.push(Key::Index(ffi::lua_tonumberx(t, -2, std::ptr::null_mut())));
+                }
+                _ => {}
             }
             ffi::lua_settop(t, -2);
         }
+        keys.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        keys.truncate(Var::MAX_FIELDS);
+        let out = keys
+            .into_iter()
+            .map(|k| {
+                let name = match &k {
+                    Key::Name(n) => {
+                        ffi::lua_pushlstring(t, n.as_ptr().cast::<c_char>(), n.len());
+                        n.clone()
+                    }
+                    Key::Index(x) => {
+                        ffi::lua_pushnumber(t, *x);
+                        format!("[{}]", number_text(*x))
+                    }
+                };
+                ffi::lua_rawget(t, table);
+                let v = var_at(t, -1, name, depth);
+                ffi::lua_settop(t, -2);
+                v
+            })
+            .collect();
+        (out, count)
     }
-    out.sort_by(|a, b| a.name.cmp(&b.name));
-    out.truncate(MAX_THIS);
-    out
 }
 
-/// O valor em `idx` em texto curto, sem chamar Lua.
-unsafe fn value_text(t: *mut ffi::lua_State, idx: i32) -> String {
+/// A variável `name` com o valor em `idx`: texto, tipo e, numa tabela com `depth > 0`, os campos.
+unsafe fn var_at(t: *mut ffi::lua_State, idx: i32, name: String, depth: u8) -> Var {
+    // SAFETY: `idx` é um índice válido de `t`.
+    unsafe {
+        let (value, kind) = value_text(t, idx);
+        let (fields, field_count) = if kind == ValueKind::Table && depth > 0 {
+            on_aux(t, idx, |a| fields(a, -1, depth - 1))
+        } else if kind == ValueKind::Table {
+            let n = on_aux(t, idx, |a| table_len(a, -1));
+            (Vec::new(), u32::try_from(n).unwrap_or(u32::MAX))
+        } else {
+            (Vec::new(), 0)
+        };
+        Var {
+            name,
+            value,
+            kind,
+            fields,
+            field_count,
+        }
+    }
+}
+
+/// ⚠️ Corre `f` com uma cópia do valor de `t` em `idx` no topo do fio PRINCIPAL. O fio parado por
+/// um erro tem o topo da pilha dentro dos registos da função (o Luau não a desenrola): ler uma local
+/// empurra um valor e tira-o, mas descer a uma tabela empurra vários e pisava as locais seguintes
+/// (medido: `depurador_pause_on_error_para_no_erro_com_as_variaveis`, `hp` lia-se como o `self.id`).
+unsafe fn on_aux<R: Default>(
+    t: *mut ffi::lua_State,
+    idx: i32,
+    f: impl FnOnce(*mut ffi::lua_State) -> R,
+) -> R {
+    // SAFETY: o principal está fora de qualquer chamada nossa, ou é o próprio `t` (o gancho, com
+    // `LUA_MINSTACK` livre); a cópia sai antes de voltar.
+    unsafe {
+        let aux = ffi::lua_mainthread(t);
+        if ffi::lua_checkstack(aux, 4) == 0 {
+            return R::default();
+        }
+        if aux == t {
+            ffi::lua_pushvalue(t, idx);
+        } else {
+            ffi::lua_xpush(t, aux, idx);
+        }
+        let r = f(aux);
+        ffi::lua_settop(aux, -2);
+        r
+    }
+}
+
+/// Quantas entradas tem a tabela em `idx` (sem descer).
+unsafe fn table_len(t: *mut ffi::lua_State, idx: i32) -> usize {
+    let mut n = 0;
+    // SAFETY: como em [`fields`].
+    unsafe {
+        let table = ffi::lua_absindex(t, idx);
+        if ffi::lua_checkstack(t, 2) == 0 {
+            return 0;
+        }
+        ffi::lua_pushnil(t);
+        while ffi::lua_next(t, table) != 0 {
+            n += 1;
+            ffi::lua_settop(t, -2);
+        }
+    }
+    n
+}
+
+/// O valor em `idx` em texto curto e o tipo, sem chamar Lua.
+unsafe fn value_text(t: *mut ffi::lua_State, idx: i32) -> (String, ValueKind) {
     // SAFETY: `idx` é um índice válido de `t`; só leituras.
     unsafe {
         match ffi::lua_type(t, idx) {
-            ffi::LUA_TNIL => "nil".into(),
-            ffi::LUA_TBOOLEAN => (ffi::lua_toboolean(t, idx) != 0).to_string(),
-            ffi::LUA_TNUMBER | ffi::LUA_TINTEGER => {
-                number_text(ffi::lua_tonumberx(t, idx, std::ptr::null_mut()))
-            }
+            ffi::LUA_TNIL => ("nil".into(), ValueKind::Nil),
+            ffi::LUA_TBOOLEAN => (
+                (ffi::lua_toboolean(t, idx) != 0).to_string(),
+                ValueKind::Boolean,
+            ),
+            ffi::LUA_TNUMBER | ffi::LUA_TINTEGER => (
+                number_text(ffi::lua_tonumberx(t, idx, std::ptr::null_mut())),
+                ValueKind::Number,
+            ),
             ffi::LUA_TVECTOR => {
                 let v = ffi::lua_tovector(t, idx);
-                if v.is_null() {
+                let text = if v.is_null() {
                     "vector".into()
                 } else {
                     let v = std::slice::from_raw_parts(v, 3);
@@ -297,7 +403,8 @@ unsafe fn value_text(t: *mut ffi::lua_State, idx: i32) -> String {
                         number_text(f64::from(v[1])),
                         number_text(f64::from(v[2]))
                     )
-                }
+                };
+                (text, ValueKind::Vector)
             }
             ffi::LUA_TSTRING => {
                 let mut len = 0;
@@ -307,13 +414,13 @@ unsafe fn value_text(t: *mut ffi::lua_State, idx: i32) -> String {
                 if s.chars().count() > MAX_TEXT {
                     out.push('…');
                 }
-                format!("\"{out}\"")
+                (format!("\"{out}\""), ValueKind::String)
             }
-            ffi::LUA_TTABLE => "table".into(),
-            ffi::LUA_TFUNCTION => "function".into(),
-            ffi::LUA_TTHREAD => "coroutine".into(),
-            ffi::LUA_TBUFFER => "buffer".into(),
-            _ => "userdata".into(),
+            ffi::LUA_TTABLE => ("table".into(), ValueKind::Table),
+            ffi::LUA_TFUNCTION => ("function".into(), ValueKind::Function),
+            ffi::LUA_TTHREAD => ("coroutine".into(), ValueKind::Coroutine),
+            ffi::LUA_TBUFFER => ("buffer".into(), ValueKind::Buffer),
+            _ => ("userdata".into(), ValueKind::Userdata),
         }
     }
 }
@@ -436,7 +543,7 @@ unsafe fn live_step(l: *mut ffi::lua_State, s: &mut State, line: i32) {
         return;
     }
     // SAFETY: o gancho tem `LUA_MINSTACK` livre; cada valor sai a seguir.
-    let now = unsafe { locals_at(l, 0) };
+    let now = unsafe { locals_at(l, 0, 0) };
     let at = u32::try_from(line).unwrap_or(0);
     match s.frames.last_mut() {
         Some(top) if top.depth == depth => {

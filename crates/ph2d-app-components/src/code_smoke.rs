@@ -45,6 +45,9 @@
 //! - **12** — o depurador (Onda D, doc 13 §4): as três formas correm o [`DEPURA_LUAU`], aberto numa
 //!   aba com um ponto de parada já posto (o condutor põe-no); o jogo pára no Circle, o Continue passa
 //!   à Star; tirado o ponto, os valores ao vivo aparecem no fim das linhas.
+//! - **14** — os quadros do depurador (plano 14): as três formas correm o [`DEPURA_LUAU`], parado em
+//!   `self.t = …`; o Stopped em planilha (Sheet), o Next line acende `self.t` e `self.pos.x` em âmbar,
+//!   e `View ▸ Card Style` troca para Cards e Strip.
 
 pub use ph2d_code_scenes::*;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
@@ -83,7 +86,7 @@ pub fn monta_em(
             4 => lib.insert(PROBLEMAS_NAME, PROBLEMAS_LUAU),
             5 => lib.insert(AJUDA_NAME, AJUDA_LUAU),
             11 => lib.insert(ONDA_A_NAME, ONDA_A_LUAU),
-            12 => lib.insert(DEPURA_NAME, DEPURA_LUAU),
+            12 | 14 => lib.insert(DEPURA_NAME, DEPURA_LUAU),
             _ => lib.insert(BOB_NAME, BOB_LUAU),
         };
         let broken = (nivel == 2).then(|| lib.insert(BROKEN_NAME, BROKEN_LUAU));
@@ -198,6 +201,14 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
              o cartão «Stopped» mostra as variáveis; Continue passa à Star; clique no ponto para o \
              tirar e Continue: os valores aparecem no fim das linhas.",
             formas.len()
+        );
+        return None;
+    }
+    if nivel == 14 {
+        println!(
+            "[code-smoke] =14 os quadros do depurador: as três formas correm o depura.luau, parado no \
+             Circle na linha «self.t = …». O quadro Stopped é uma planilha (Name · Value · Type); Next \
+             line acende em âmbar o que mudou; View ▸ Card Style troca para Cards e Strip."
         );
         return None;
     }

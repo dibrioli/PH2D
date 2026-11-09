@@ -15,7 +15,7 @@ use ph2d_code_buffer::TextEdit;
 use ph2d_ecs::{Entity, World};
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{Toast, ToastQueue};
-use ph2d_i18n::{tr, tr_with};
+use ph2d_i18n::tr;
 use ph2d_panel_code::{Breakpoint, DebugMarks, Ghost};
 use ph2d_script::{DebugStop, LineLive, ProjectScripts, ScriptHost, ScriptId, StopKind};
 use std::collections::BTreeMap;
@@ -24,7 +24,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 /// O espelho do Pause on Error do `ScriptHost` (o rótulo do menu lê-o; o host é a verdade).
 pub(crate) static PAUSE_ON_ERROR: AtomicBool = AtomicBool::new(true);
 
-pub(crate) use ph2d_code_assist::debug_view::{Ask, DebugCard, ghost_text, stop_card};
+pub(crate) use ph2d_code_debugcard::{
+    Ask, DebugCard, StepMemory, WhoTag, ghost_text, live_card, stop_card,
+};
 
 /// Se o jogo está parado, e porquê: a linha (Continue e Next Line) ou um erro (só Continue).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -62,11 +64,12 @@ pub(crate) struct DocDebug {
     /// Quando os valores ao vivo foram amostrados (ns do relógio da aba).
     sampled: Option<u128>,
     pub(crate) card: Option<DebugCard>,
-    /// Os botões que o último quadro pintou, e o cartão.
-    pub(crate) painted: Vec<(Ask, Rect)>,
-    pub(crate) card_rect: Option<Rect>,
     pub(crate) ask: Option<Ask>,
     marks_view: Vec<Breakpoint>,
+    /// O quadro pintado (a aparência, a tabela, o que o rato lê — `ph2d_panel_code::debug_card`).
+    pub(crate) view: ph2d_panel_code::debug_card::DebugCardView,
+    /// O valor que um clique copiou, à espera do quadro da família.
+    pub(crate) copy: Option<String>,
 }
 
 /// O depurador da família.
@@ -80,6 +83,8 @@ pub(crate) struct DebugState {
     last_stop: Option<(Entity, ScriptId, u32, bool)>,
     /// A corrida do Play em que o aviso das paragens bloqueadas já saiu.
     blocked_told: Option<u64>,
+    /// Os valores do passo anterior do objecto parado (o «mudou» em âmbar).
+    pub(crate) steps: StepMemory,
 }
 
 impl DocDebug {
@@ -162,17 +167,6 @@ impl CodeDoc {
             .collect();
     }
 
-    /// Um clique no cartão: o botão pede; o resto do cartão engole o clique. `true` = tomado.
-    pub(crate) fn debug_press(&mut self, x: f32, y: f32) -> bool {
-        if !self.debug.card_rect.is_some_and(|r| r.contains(x, y)) {
-            return false;
-        }
-        if let Some(&(ask, _)) = self.debug.painted.iter().find(|(_, r)| r.contains(x, y)) {
-            self.debug.ask = Some(ask);
-        }
-        true
-    }
-
     /// ⚠️ SONDA (o condutor das fotos): a coluna das marcas na linha da 1.ª `needle`.
     pub(crate) fn mark_rect_of(&self, needle: &str) -> Option<Rect> {
         let at = self.buffer.text().to_string().find(needle)?;
@@ -184,7 +178,7 @@ impl CodeDoc {
 
     /// F8 com este script parado: Continue.
     pub(crate) fn is_stopped_here(&self) -> bool {
-        self.debug.card.as_ref().is_some_and(|c| c.stopped)
+        self.debug.card.as_ref().is_some_and(DebugCard::stopped)
     }
 }
 
@@ -274,9 +268,33 @@ pub(crate) fn frame(
     let stop = h.debug_stop();
     let game_stop = GameStop::of(stop.as_ref());
     docs.debug.game_stop = game_stop;
-    let live_who = h.live_object().map(|e| crate::frame::object_name(world, e));
+    let holders = &docs.bancada.who.holders;
+    let tag = |e: Entity| WhoTag {
+        name: crate::frame::object_name(world, e),
+        color: holders
+            .iter()
+            .find(|h| h.bits == e.to_bits())
+            .map(|h| h.color),
+    };
+    let live_who = h.live_object().map(tag);
+    let stopped_card = stop.as_ref().map(|s| {
+        let before = docs.debug.steps.observe(
+            (s.entity.to_bits(), s.script.0),
+            stop_card(s, WhoTag::default(), Vec::new(), &BTreeMap::new()).values(),
+        );
+        stop_card(
+            s,
+            tag(s.entity),
+            s.waiting.iter().map(|&e| tag(e)).collect(),
+            before,
+        )
+    });
     for d in &mut docs.docs {
         d.debug.game_stop = game_stop;
+        d.debug.view.style = docs.card_style;
+        if let Some(v) = d.debug.copy.take() {
+            docs.copy_out = Some(v);
+        }
         let here = stop.as_ref().filter(|s| s.script == d.script);
         d.debug.stopped = here
             .and_then(|s| s.frame.as_ref())
@@ -289,11 +307,8 @@ pub(crate) fn frame(
             d.debug.sampled = Some(now_ns);
         }
         d.debug.card = match here {
-            Some(s) => Some(stop_card(s, &crate::frame::object_name(world, s.entity))),
-            None if !d.debug.ghosts.is_empty() => live_who.as_ref().map(|who| DebugCard {
-                title: tr_with("code.debug.live", &[("who", who)]),
-                ..DebugCard::default()
-            }),
+            Some(_) => stopped_card.clone(),
+            None if !d.debug.ghosts.is_empty() => live_who.clone().map(live_card),
             None => None,
         };
         if let Some(a) = d.debug.ask.take() {
@@ -403,16 +418,33 @@ impl CodeDocs {
             .debug
             .card
             .clone()?;
-        let mut rows: Vec<String> = c.waiting.into_iter().collect();
-        rows.extend(c.vars.iter().map(|(n, v)| {
-            if v.is_empty() {
-                n.clone()
-            } else {
-                format!("{n} = {v}")
+        let mut rows: Vec<String> = c.waiting_text().into_iter().collect();
+        rows.extend(c.locals.iter().chain(&c.this).map(|r| {
+            let v = ph2d_code_debugcard::shown_value(r);
+            match &r.old {
+                Some(old) => format!("{} = {v} (was {old})", r.key),
+                None => format!("{} = {v}", r.key),
             }
         }));
-        rows.extend(c.stack.map(|s| format!("{}  {s}", tr("code.debug.stack"))));
+        rows.extend(
+            c.stack
+                .iter()
+                .map(|s| format!("{}  {} {}", tr("code.debug.stack"), s.function, s.line)),
+        );
+        rows.extend(c.waiting.iter().map(|w| format!("waiting {}", w.name)));
         Some((c.title, c.error, rows))
+    }
+
+    /// O quadro do depurador da aba `id` como o último quadro o pintou (plano 14).
+    #[must_use]
+    pub fn debug_view_of(
+        &self,
+        id: ScriptId,
+    ) -> Option<&ph2d_panel_code::debug_card::DebugCardView> {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)
+            .map(|d| &d.debug.view)
     }
 
     /// Os botões do cartão pintados no último quadro (0 = Continue, 1 = Next line).
@@ -421,7 +453,7 @@ impl CodeDocs {
         self.docs
             .iter()
             .find(|d| d.script == id)
-            .map(|d| d.debug.painted.iter().map(|b| b.1).collect())
+            .map(|d| d.debug.view.painted.buttons.iter().map(|b| b.1).collect())
             .unwrap_or_default()
     }
 

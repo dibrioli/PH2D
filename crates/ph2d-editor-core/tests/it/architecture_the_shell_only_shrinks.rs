@@ -235,6 +235,7 @@ const TETOS_DAS_CRATES_APP: &[(&str, usize)] = &[
 const TETOS_DAS_CRATES_DA_FAMILIA: &[(&str, usize)] = &[
     ("ph2d-code-assist", 3_925),  // 3_825
     ("ph2d-code-bancada", 1_028), // 928 (Onda B, a Bancada; os nomes da cena saíram da `ph2d-app-code`)
+    ("ph2d-code-debugcard", 663), // 563 (plano 14: o modelo do quadro saiu da `ph2d-code-assist`; a pintura foi para o `ph2d-panel-code`)
     ("ph2d-code-scenes", 666),    // 566
     ("ph2d-code-smoke", 614),     // 514
     ("ph2d-code-viewmodel", 304), // 204

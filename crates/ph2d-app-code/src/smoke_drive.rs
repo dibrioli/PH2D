@@ -254,6 +254,15 @@ fn holds(docs: &mut CodeDocs, id: ScriptId, until: Until) -> bool {
                 && d.is_stopped_here()
                 && d.debug.card.as_ref().is_some_and(|c| c.title.contains(s))
         }),
+        Until::Changed(key) => docs.docs.iter().any(|d| {
+            d.script == id
+                && d.debug.card.as_ref().is_some_and(|c| {
+                    c.locals
+                        .iter()
+                        .chain(&c.this)
+                        .any(|r| r.key == key && r.old.is_some())
+                })
+        }),
         Until::Peeking => docs.bench.peeking().is_some(),
         Until::CellIs(h, c, v) => docs.bancada.who.cell(h, c).is_some_and(|x| x.text == v),
         Until::Live => docs
@@ -377,13 +386,19 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
         | Gesture::ClickTabMenu(_)
         | Gesture::ClickGear
         | Gesture::ClickDebug(_)
+        | Gesture::ClickTabMenuRow(_)
+        | Gesture::ClickDebugRow(_)
         | Gesture::ClickAim(_)
         | Gesture::ClickMark { .. } => {
             let band = docs.band_of(id);
             let bar = docs.bar_painted();
             let doc = docs.docs.iter().find(|d| d.script == id);
             let r = match g {
-                Gesture::ClickDebug(k) => doc.and_then(|d| d.debug.painted.get(k).map(|b| b.1)),
+                Gesture::ClickDebug(k) => {
+                    doc.and_then(|d| d.debug.view.painted.buttons.get(k).map(|b| b.1))
+                }
+                Gesture::ClickTabMenuRow(k) => bar.rows.get(k).map(|r| r.1),
+                Gesture::ClickDebugRow(key) => doc.and_then(|d| d.debug.view.chevron_of(key)),
                 Gesture::ClickMark { needle } => doc.and_then(|d| d.mark_rect_of(needle)),
                 Gesture::ClickProblem(k) => band.and_then(|b| b.problems.get(k).map(|p| p.rect)),
                 Gesture::ClickBandTab(k) => band.and_then(|b| b.tabs.get(k).map(|t| t.1)),
@@ -422,6 +437,14 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
                 return false;
             };
             click(docs, id.0, p, mods);
+        }
+        Gesture::RightClickDebugHeader => {
+            let doc = docs.docs.iter().find(|d| d.script == id);
+            let header = doc.and_then(|d| d.debug.view.painted.table.as_ref().map(|t| t.0.header));
+            let Some(r) = header else { return false };
+            if !docs.context_open(id.0, r.x + r.w * 0.5, r.y + r.h * 0.5) {
+                return false;
+            }
         }
         Gesture::RightClick { needle, ahead } => {
             let at = docs
@@ -484,10 +507,14 @@ fn key(docs: &mut CodeDocs, tab: u64, key: Key, mods: Modifiers, text: Option<&s
 /// (a cena mora na `ph2d-app-components`, que não chega ao `ScriptHost`).
 fn preset_breakpoint(docs: &mut CodeDocs) {
     static DONE: AtomicBool = AtomicBool::new(false);
-    if crate::smoke::armed_level() != Some(12) || DONE.load(Ordering::Relaxed) {
+    let needle = match crate::smoke::armed_level() {
+        Some(12) => ph2d_code_smoke::steps::DEPURA_BREAK,
+        Some(14) => ph2d_code_smoke::steps::QUADROS_BREAK,
+        _ => return,
+    };
+    if DONE.load(Ordering::Relaxed) {
         return;
     }
-    let needle = ph2d_code_smoke::steps::DEPURA_BREAK;
     let Some(d) = docs
         .docs
         .iter_mut()

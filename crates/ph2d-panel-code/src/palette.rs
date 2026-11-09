@@ -88,6 +88,11 @@ impl Palette {
     pub fn ink(&self, ink: Ink) -> Color {
         self.inks[ink as usize]
     }
+
+    /// Troca a cor de `ink` (o «mudou» em âmbar na mono, [`crate::table_text`]).
+    pub(crate) fn tint(&mut self, ink: Ink, color: Color) {
+        self.inks[ink as usize] = color;
+    }
 }
 
 /// O marcador de dobra na calha: ▸ fechada, ▾ aberta, centrado em `(cx, cy)`.

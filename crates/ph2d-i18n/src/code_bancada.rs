@@ -70,6 +70,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.cmd.peek_off" => "Peek at Scene: On",
         "code.cmd.map" => "Scene Map: Off",
         "code.cmd.map_off" => "Scene Map: On",
+        "code.cmd.card_sheet" => "Card Style: Sheet",
+        "code.cmd.card_sheet_on" => "Card Style: Sheet \u{2713}",
+        "code.cmd.card_cards" => "Card Style: Cards",
+        "code.cmd.card_cards_on" => "Card Style: Cards \u{2713}",
+        "code.cmd.card_strip" => "Card Style: Strip",
+        "code.cmd.card_strip_on" => "Card Style: Strip \u{2713}",
         _ => return None,
     })
 }

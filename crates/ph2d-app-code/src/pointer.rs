@@ -147,6 +147,9 @@ impl CodeDoc {
 
     /// O rato mexeu com o botão em baixo: a seleção vai do início do arrasto ao byte sob o rato.
     pub fn drag_to(&mut self, x: f32, y: f32) -> bool {
+        if self.debug.view.drag_to(x) {
+            return true;
+        }
         let Some(anchor) = self.drag else {
             return false;
         };
@@ -163,7 +166,8 @@ impl CodeDoc {
     }
 
     pub fn release(&mut self) -> bool {
-        self.drag.take().is_some()
+        let resized = self.debug.view.table.release();
+        self.drag.take().is_some() || resized
     }
 
     fn find_click(&mut self, h: FindHit) {
@@ -187,7 +191,15 @@ impl CodeDoc {
     /// A roda: sobre o console rola-o, senão rola o texto — na horizontal com o Shift.
     pub fn wheel(&mut self, x: f32, y: f32, dy: f32, shift: bool, console: &Store) {
         self.hints.hover = None;
-        if self.view.completion_hit(x, y).is_some() && self.refs.is_some() {
+        if self
+            .debug
+            .view
+            .painted
+            .card
+            .is_some_and(|r| r.contains(x, y))
+        {
+            let _ = self.debug.view.wheel(x, y, dy);
+        } else if self.view.completion_hit(x, y).is_some() && self.refs.is_some() {
             self.refs_scroll(-(dy / self.view.metrics().line_h).round() as isize);
         } else if self.view.completion_hit(x, y).is_some() && self.actions.is_some() {
             let lines = -dy / self.view.metrics().line_h;

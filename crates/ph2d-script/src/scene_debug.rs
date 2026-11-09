@@ -44,8 +44,8 @@ pub struct DebugStop {
     pub why: StopKind,
     /// A linha, as variáveis e a pilha (`None` se a pilha já não se lê).
     pub frame: Option<StopFrame>,
-    /// Quantos objectos esperam a vez depois deste.
-    pub queued: usize,
+    /// Os objectos que esperam a vez depois deste, pela ordem em que vão parar.
+    pub waiting: Vec<Entity>,
 }
 
 impl HeldError {
@@ -132,17 +132,17 @@ impl SceneScripts {
     #[must_use]
     pub fn debug_stop(&self, lua: &Lua) -> Option<DebugStop> {
         let live = |p: &&Parked| p.is_held() && !self.stale(lua, p);
-        let queued = self.parked.iter().filter(live).count();
         if let Some(e) = &self.held_error {
             return Some(DebugStop {
                 entity: e.entity,
                 script: e.script,
                 why: StopKind::Error(e.message.clone()),
                 frame: Some(e.frame.clone()),
-                queued,
+                waiting: self.parked.iter().filter(live).map(|p| p.entity).collect(),
             });
         }
-        let p = &self.parked[self.head(lua)?];
+        let head = self.head(lua)?;
+        let p = &self.parked[head];
         let Park::Held { why, .. } = &p.kind else {
             return None;
         };
@@ -152,7 +152,13 @@ impl SceneScripts {
             script: p.script,
             why: why.clone(),
             frame,
-            queued: queued.saturating_sub(usize::from(!self.stale(lua, p))),
+            waiting: self
+                .parked
+                .iter()
+                .enumerate()
+                .filter(|(i, q)| *i != head && live(q))
+                .map(|(_, q)| q.entity)
+                .collect(),
         })
     }
 

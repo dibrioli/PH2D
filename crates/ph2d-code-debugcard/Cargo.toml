@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-code-debugcard"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O quadro do depurador do editor de scripts (plano 14, `docs/CodeEditor/14_plano_quadros.md`): o
+# modelo do Stopped e dos valores ao vivo a partir do que a VM relata, o «mudou» entre passos, a
+# aparência (Sheet · Cards · Strip) e as linhas da planilha. Folha: a pintura é do `ph2d-panel-code`
+# e a cola do `ph2d-app-code` (que está no tecto de linhas).
+[dependencies]
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-script = { path = "../ph2d-script" }
+ph2d-ui-table = { path = "../ph2d-ui-table" }
+
+[dev-dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+
+[lints]
+workspace = true

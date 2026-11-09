@@ -53,4 +53,8 @@ linha/coluna, célula alterada) — sem cabeçalho fixo nem colunas redimension�
 | Q3 | Live values em tabela + traço (anel de histórico, mín/máx, gráfico grande) | teste do anel; foto em rajada |
 | Q4 | Balão ◆, Script options e Problems na mesma família | fotos; a grelha da Bancada migra para a tabela |
 
+**Estado (09/11):** Q1 e Q2 construídas juntas (a tabela sem um quadro que a use não se fotografa) — ver
+[handoff de continuação](handoffs/HANDOFF_line_ScriptEditor_2026-11-09_Q1_Q2.md); fotos e lado a lado em
+`ferramentas/smoke/cena14/`. Q3 e Q4 por fazer.
+
 Cada onda: foto e maquete lado a lado ANTES do smoke do dono (`project-memory/feedback_a_mockup_is_compared_side_by_side_before_the_smoke.md`).

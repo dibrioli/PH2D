@@ -258,8 +258,20 @@ impl Mesa {
 
     /// Um clique real (carregar + largar) na aba `id`.
     pub fn clica(&mut self, id: ScriptId, x: f32, y: f32, mods: Modifiers) {
+        self.clica_com(id, x, y, mods, ph2d_host::PointerButton::Primary);
+    }
+
+    /// [`Self::clica`] com o botão `button` (o direito abre os menus).
+    pub fn clica_com(
+        &mut self,
+        id: ScriptId,
+        x: f32,
+        y: f32,
+        mods: Modifiers,
+        button: ph2d_host::PointerButton,
+    ) {
         use ph2d_editor_core::doc_surface::PointerInput;
-        use ph2d_host::{PointerButton, PointerKind};
+        use ph2d_host::PointerKind;
         let mut ts = std::mem::replace(&mut self.ts, TextSystem::without_system_fonts());
         for kind in [PointerKind::Down, PointerKind::Up] {
             let input = PointerInput {
@@ -268,8 +280,7 @@ impl Mesa {
                 now_ns: 1,
             };
             assert!(
-                self.docs()
-                    .pointer(id.0, input, kind, PointerButton::Primary, x, y),
+                self.docs().pointer(id.0, input, kind, button, x, y),
                 "o clique em ({x}, {y}) não foi tomado"
             );
         }

@@ -35,6 +35,12 @@ fn tones() -> (ColorToken, ColorToken) {
     }
 }
 
+/// O tom de um cartão (a base da listra de uma tabela dentro dele).
+#[must_use]
+pub fn card_tone() -> ColorToken {
+    tones().1
+}
+
 /// O recuo do poço do código dentro do seu cartão.
 #[must_use]
 pub fn well_pad() -> f32 {

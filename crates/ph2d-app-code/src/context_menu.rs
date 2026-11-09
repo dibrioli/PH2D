@@ -37,6 +37,8 @@ enum Row {
     Fix(usize),
     Cmd(NodeId),
     Help,
+    /// Mostrar/esconder uma coluna da tabela do quadro do depurador (o cabeçalho, plano 14).
+    Column(&'static str),
 }
 
 /// O que o menu pintou no último quadro (o rato e os testes lêem-no).
@@ -56,6 +58,8 @@ pub(crate) struct ContextMenu {
     help: Option<(String, Anchor)>,
     /// A linha acesa (rato ou setas).
     hot: Option<usize>,
+    /// Aberto no cabeçalho da tabela do depurador: as colunas `(chave, título, à vista)`.
+    columns: Vec<(&'static str, String, bool)>,
     rows: Vec<Row>,
     painted: ContextPainted,
 }
@@ -84,6 +88,18 @@ fn qualified(doc: &CodeDoc, word: &std::ops::Range<usize>) -> String {
 impl ContextMenu {
     /// As secções do menu, pela ordem: `(linha, rótulo, atalho)`.
     fn sections(&self, doc: &CodeDoc) -> Vec<Vec<(Row, String, String)>> {
+        if !self.columns.is_empty() {
+            let check = ph2d_i18n::tr("code.ctx.column_on");
+            return vec![
+                self.columns
+                    .iter()
+                    .map(|(k, t, on)| {
+                        let keys = if *on { check.to_owned() } else { String::new() };
+                        (Row::Column(k), t.clone(), keys)
+                    })
+                    .collect(),
+            ];
+        }
         let fixes = doc.menu_fixes.as_ref().map_or_else(Vec::new, |a| {
             a.list()
                 .enumerate()
@@ -199,6 +215,23 @@ impl CodeDocs {
     /// O botão direito em `(x, y)` do código da aba `id`: o cursor vai para lá (salvo dentro da
     /// selecção) e o menu abre. `false` = não era no texto.
     pub(crate) fn context_open(&mut self, id: u64, x: f32, y: f32) -> bool {
+        if let Some(columns) = self
+            .doc(id)
+            .filter(|d| d.debug.view.header_at(x, y))
+            .map(|d| d.debug.view.column_menu())
+        {
+            self.bar.open = None;
+            self.ctx = Some(ContextMenu {
+                tab: id,
+                at: (x, y),
+                help: None,
+                hot: None,
+                columns,
+                rows: Vec::new(),
+                painted: ContextPainted::default(),
+            });
+            return true;
+        }
         let area = self.code_body(id, self.split_area(self.area).1);
         if !area.contains(x, y) {
             return false;
@@ -236,6 +269,7 @@ impl CodeDocs {
             at: (x, y),
             help,
             hot: None,
+            columns: Vec::new(),
             rows: Vec::new(),
             painted: ContextPainted::default(),
         });
@@ -345,6 +379,13 @@ impl CodeDocs {
             }
             Some(Row::Cmd(cmd)) => {
                 let _ = ph2d_editor_core::doc_surface::DocumentSurface::command(self, tab, cmd);
+            }
+            Some(Row::Column(key)) => {
+                if let Some(d) = self.doc(tab) {
+                    let t = &mut d.debug.view.table;
+                    let shown = !t.hidden.contains(key);
+                    t.set_hidden(key, shown);
+                }
             }
             Some(Row::Help) => {
                 if let (Some(d), Some((_, a))) = (self.doc(tab), m.help) {

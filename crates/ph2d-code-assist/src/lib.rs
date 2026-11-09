@@ -4,7 +4,6 @@
 
 pub mod actions;
 pub mod complete;
-pub mod debug_view;
 pub mod help_doc;
 pub mod lint;
 pub mod nav;

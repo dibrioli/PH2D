@@ -33,6 +33,8 @@ ph2d-code-intel = { path = "../ph2d-code-intel" }
 # O `luau-lsp` fixado que a sessão liga (`resolve_binary`, `ServerConfig`).
 ph2d-code-lsp = { path = "../ph2d-code-lsp" }
 ph2d-code-syntax = { path = "../ph2d-code-syntax" }
+# O modelo do quadro do depurador (plano 14).
+ph2d-code-debugcard = { path = "../ph2d-code-debugcard" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 # J3 do Kanban — o script que usa `ph2d.kanban` corre sobre o projecto ao Ctrl+S (a porta única do
 # gesto: os handlers `ph2d.kanban.on` ficam activos) e o que ele diz vem para o console dele.

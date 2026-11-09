@@ -22,6 +22,8 @@ use ph2d_ecs::{CanaisEscritos, CanaisLidos, FieldKey, SimWorld};
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::screens::hero::{InspectorPhysicsInfo, PhysicsFieldEdit};
 use ph2d_panel_inspector::ids as insp;
+use ph2d_physics_ecs::{Collider, ColliderOutline};
+use std::collections::BTreeMap;
 
 /// O controlo da §11 que mostra um campo.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -325,8 +327,14 @@ pub fn aplicar(
         if kk.i != 0 || kk.j != 0 {
             continue;
         }
+        let foto = do_contorno(kk.campo).then(|| contorno(sim, e)).flatten();
         if let Some((antes, ficou)) = escrever(sim, registry, e, kk.campo, v) {
             mudou |= conducao.escreveu(e, kk, antes, ficou);
+            if let Some(foto) = foto
+                && conducao.campos().any(|c| c == (e, kk))
+            {
+                conducao.1.entry(e).or_insert(foto);
+            }
             ecos.push((e, kk, v, ficou));
         }
     }
@@ -342,8 +350,38 @@ pub fn aplicar(
 /// **A condução dos corpos pela curva** — guarda o valor AUTORADO de cada campo que a curva está a
 /// mover, para que o undo e o save o fotografem em vez do instante da reprodução. O livro e a lei
 /// de esquecer são os de [`ConducaoDosCanais`].
+/// O traço do «Outline» é DERIVADO do pedido: a fotografia vê também o par AUTORADO
+/// (`Collider`, `ColliderOutline`) da forma cujo pedido a curva move.
 #[derive(Debug, Default, Clone, PartialEq)]
-pub struct ConducaoFisica(ConducaoDosCanais);
+pub struct ConducaoFisica(ConducaoDosCanais, BTreeMap<u64, Contorno>);
+
+type Contorno = (Collider, ColliderOutline);
+
+/// O vivo que [`ConducaoFisica::substituir`] tirou.
+pub struct VivoFisica(Vec<(u64, FieldKey, f32)>, Vec<(u64, Contorno)>);
+
+const fn do_contorno(campo: u16) -> bool {
+    matches!(
+        campo,
+        f::CONTORNO_DETALHE | f::CONTORNO_ALFA | f::CONTORNO_MANCHAS
+    )
+}
+
+fn contorno(sim: &SimWorld, bits: u64) -> Option<Contorno> {
+    let w = sim
+        .world()
+        .get_entity(ph2d_ecs::Entity::try_from_bits(bits)?)
+        .ok()?;
+    Some((*w.get::<Collider>()?, w.get::<ColliderOutline>()?.clone()))
+}
+
+fn pousar(sim: &mut SimWorld, bits: u64, (c, o): Contorno) {
+    if let Some(e) = ph2d_ecs::Entity::try_from_bits(bits)
+        && let Ok(mut w) = sim.world_mut().get_entity_mut(e)
+    {
+        w.insert((c, o));
+    }
+}
 
 impl std::ops::Deref for ConducaoFisica {
     type Target = ConducaoDosCanais;
@@ -359,20 +397,34 @@ impl std::ops::DerefMut for ConducaoFisica {
 }
 
 impl ConducaoFisica {
-    /// Repõe o AUTORADO para a fotografia; devolve o vivo para [`Self::repor`]. As escolhas antes
-    /// dos números, como no [`aplicar`].
-    pub fn substituir(
-        &self,
-        sim: &mut SimWorld,
-        registry: &ComponentRegistry,
-    ) -> Vec<(u64, FieldKey, f32)> {
+    /// Esquece quem não foi conduzido neste quadro, e o contorno de quem deixou de o ser.
+    pub fn settle(&mut self) {
+        self.0.settle();
+        let vivos: std::collections::BTreeSet<u64> = self
+            .0
+            .campos()
+            .filter_map(|(e, kk)| do_contorno(kk.campo).then_some(e))
+            .collect();
+        self.1.retain(|e, _| vivos.contains(e));
+    }
+
+    /// Repõe o AUTORADO para a fotografia; devolve o vivo para [`Self::repor`]. O contorno
+    /// autorado primeiro; as escolhas antes dos números, como no [`aplicar`].
+    pub fn substituir(&self, sim: &mut SimWorld, registry: &ComponentRegistry) -> VivoFisica {
+        let mut tracos = Vec::with_capacity(self.1.len());
+        for (&e, autorado) in &self.1 {
+            if let Some(v) = contorno(sim, e) {
+                tracos.push((e, v));
+                pousar(sim, e, autorado.clone());
+            }
+        }
         let mut vivo = Vec::with_capacity(self.len());
         for (e, kk, v) in ordenar(self.autorado()) {
             if let Some((antes, _)) = escrever(sim, registry, e, kk.campo, v) {
                 vivo.push((e, kk, antes));
             }
         }
-        vivo
+        VivoFisica(vivo, tracos)
     }
 
     /// Devolve o vivo que [`Self::substituir`] tirou.
@@ -380,10 +432,13 @@ impl ConducaoFisica {
         &self,
         sim: &mut SimWorld,
         registry: &ComponentRegistry,
-        vivo: Vec<(u64, FieldKey, f32)>,
+        VivoFisica(vivo, tracos): VivoFisica,
     ) {
         for (e, kk, v) in ordenar(vivo.into_iter()) {
             let _ = escrever(sim, registry, e, kk.campo, v);
+        }
+        for (e, v) in tracos {
+            pousar(sim, e, v);
         }
     }
 }
@@ -401,3 +456,7 @@ mod tests;
 #[cfg(test)]
 #[path = "canais_donos_tests.rs"]
 mod donos;
+
+#[cfg(test)]
+#[path = "canais_contorno_tests.rs"]
+mod contorno;

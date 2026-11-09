@@ -1,55 +1,6 @@
 //! **POSAR ARRASTANDO A PONTA** (W-IK) — o gesto de cinemática inversa.
 //!
-//! Irmão do [`crate::body_grab`], e a diferença entre os dois é o RELÓGIO:
-//!
-//! | | a MÃO (W-Grab) | a POSE (W-IK) |
-//! |---|---|---|
-//! | relógio | ANDANDO | **PARADO** |
-//! | o que o gesto escreve | velocidade, pelo solver | o **`Transform` AUTORADO** |
-//! | o que sobra | nada (é cutucar) | a pose, no documento e no undo |
-//!
-//! As duas metades são irmãs de propósito, exatamente como o `body_grab` e o
-//! `joint_rig_drag`: tocando, a pose é do SOLVER e autorar não faria sentido (o
-//! readback sobrescreve no mesmo frame); parado, a pose é do DOCUMENTO e uma
-//! mola não faria sentido (nada a integra). O predicado é UM
-//! (`JointTool::gesture`) e mora ao lado do que decide o alcance do arrasto,
-//! para as duas metades do Alt não poderem discordar.
-//!
-//! # As condições, e a que NÃO está aqui
-//!
-//! 1. **O modo de joint em mãos é o IK** — `JointTool::gesture()`, a porta
-//!    única (e é ela que faz o **Alt** suprimir o gesto: Alt significa *leve o
-//!    rig inteiro*, que é um arrasto).
-//! 2. **O relógio está PARADO.** Ver acima.
-//! 3. **O corpo é dinâmico e pertence a uma cadeia rígida** — respondido pelo
-//!    `ik_plan` da ponte, não por uma cópia da regra aqui.
-//! 4. **A trava é honrada** (`Locked`), como em todo gesto de autoria.
-//!
-//! ⚠️ **O toggle `Physics` do transporte NÃO é condição, e isso é decisão.** As
-//! três ferramentas do W-Hand precisam dele porque empurram o SOLVER, e sem
-//! passo nada se move. Posar não dá passo nenhum: a árvore é resolvida e o
-//! resultado é escrito no `Transform`. Exigi-lo aqui obrigaria o artista a armar
-//! a simulação para *não* simular — e o `hold` da ponte reconcilia os joints de
-//! qualquer forma, então a árvore existe com o toggle desmarcado.
-//!
-//! # O que o gesto escreve, e onde a conversão mora
-//!
-//! O solver devolve pose de **MUNDO** e o `Transform` é **LOCAL** (W5). A
-//! conversão é `Transform::inverse_compose` contra o mundo do PAI — a mesma que
-//! o `readback` da ponte usa —, e recusar quando ela não é finita não é higiene:
-//! um `NaN` num `Transform` envenena o `GlobalTransform` da subárvore inteira.
-//!
-//! A **escala não é tocada.** A IK resolve ângulos e posições; esticar um elo
-//! não é uma coisa que uma junta faça, e escrever a escala aqui apagaria o que o
-//! artista autorou por um número que o solver nem produziu.
-//!
-//! # O undo é o global, e é UM passo
-//!
-//! Nada aqui grava história: o `post_frame_undo` compara o estado no fim do
-//! frame e é suprimido enquanto o botão está preso, então o gesto inteiro —
-//! quantos Moves tiver — vira um passo só. É a mesma máquina do dot de âncora do
-//! joint (W-JointAnchor), e é por isso que este arquivo não tem uma linha sobre
-//! undo.
+//! História e porquê: `git log` deste ficheiro.
 
 use ph2d_ecs::{Entity, SimWorld, Transform, parent_world_transform};
 use ph2d_physics_ecs::PhysicsBridge;

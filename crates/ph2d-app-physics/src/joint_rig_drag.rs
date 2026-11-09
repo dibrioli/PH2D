@@ -1,76 +1,7 @@
 //! **O grupo carrega o rig** (W-JG) — arrastar um corpo em repouso move o
 //! conjunto articulado a que ele pertence.
 //!
-//! A W-AnchorFollow tornou a âncora de um joint **body-local**: ela segue o
-//! corpo por construção. Isso fechou o *slide* do pivô e abriu, no mesmo
-//! movimento, o item seguinte do padrão-ouro — se o corpo carrega a âncora,
-//! mover **um** corpo de um par jointado separa as duas âncoras e deixa a pose
-//! de repouso **violada**: o joint nasce esticado e o Play o resolve com um
-//! puxão que o artista não autorou. Um rig é uma coisa só; arrastar um elo
-//! dele arrasta o rig.
-//!
-//! # A lei é a do [`ph2d_physics_ecs::jointed_rig`] — o componente conexo INTEIRO
-//!
-//! A W-BakeJoint já tinha um `jointed_group`, e a pergunta dele é **outra**:
-//! *quem CONGELA quando a física é desligada?* — só corpo Dynamic, com Static e
-//! Kinematic como fronteiras. Um arrasto pergunta *quem tem de andar junto para
-//! a pose ficar coerente?*, e aí **nada é fronteira**: um joint tem DUAS âncoras
-//! body-local, então um gancho Static ou uma plataforma Kinematic deixados atrás
-//! esticam o joint exactamente como um elo Dynamic esticaria (decisão do Enio,
-//! 2026-07-26: *"faça arrastar a cadeia inteira independente do tipo"*).
-//!
-//! ⚠️ **As duas portas moram na MESMA travessia** (`joint_group::walk`) e
-//! divergem só na política de tipo — *que aresta existe* é a pergunta que não
-//! pode ter duas respostas. Há gate no crate provando que elas **discordam**
-//! sobre um vizinho estático, para ninguém as unificar de volta.
-//!
-//! Consequências, todas gateadas:
-//!
-//! - Uma **corrente** anda inteira, pegada por qualquer elo — **com o gancho**.
-//! - Dois pêndulos no **MESMO gancho** são **um** rig (o gancho conduz). Pelo
-//!   `jointed_group` do bake eles são dois; as duas respostas estão certas para
-//!   as suas perguntas.
-//! - Mover um **Static** em repouso é autoria legítima (você está mudando a
-//!   parede de lugar), e é por isso que ele não é uma exceção.
-//!
-//! # Quando o rig é carregado (as três condições)
-//!
-//! Decididas pelo chamador e passadas como `reach` (`None` = só o corpo pego):
-//!
-//! 1. **É um Translate.** *Mover* um corpo é o que a wave trata. Girar/escalar
-//!    um rig precisaria decidir um pivô (o joint? a bbox do grupo?), e a
-//!    semântica de multi-seleção local hoje gira cada membro em torno do
-//!    PRÓPRIO centro — o que num rig não é rotação de rig nenhuma. Ficou
-//!    **nomeado, não contrabandeado**.
-//! 2. **O relógio está parado** (`!playhead.is_playing()`) — exatamente o gate
-//!    de `sync_joint_pivots`, ou seja: o rig é carregado precisamente quando as
-//!    âncoras seguem os corpos. Tocando, a pose é do SOLVER, o `settle`
-//!    teleporta e a restrição é reimposta no tick seguinte de qualquer forma.
-//! 3. **O modo pede** — o rádio da seção Joints, ou o **Alt**, que sempre
-//!    significa o rig inteiro (W-JointTools; `JointTool::drag_reach` é a porta
-//!    onde essa lei mora, e ela responde às duas coisas de uma vez). O default
-//!    segue sendo *anda só o corpo que você pegou*. ⚠️ O preço honesto
-//!    dessa escolha: a cura que a wave existe para dar — a pose de repouso não
-//!    ficar violada — passa a valer só **quando o artista pede**; sem Alt, um
-//!    arrasto ainda deixa o joint esticado (o que se VÊ, pelo segmento âmbar).
-//!    Alt é o modificador certo para carregar isto porque é **inerte** no
-//!    Translate do `compute_gizmo_transform`, então não há segundo significado a
-//!    disputar — e agora há gate pinando essa inércia.
-//!
-//! # A regra de PARENTESCO, e por que ela é conservadora
-//!
-//! O translate de grupo aplica o delta de MUNDO ao `Transform` **local** de
-//! cada extra. Se um membro é descendente de outro, o de baixo anda duas vezes
-//! (o pai já o carrega por herança) — o rig *explodiria*. Então: **o rig só
-//! acrescenta um corpo quando nenhum OUTRO candidato lhe é parente** (nem
-//! ancestral, nem descendente). O teste é simétrico e independente de ordem, e
-//! erra para o lado honesto: quem não é carregado deixa o joint esticado — que
-//! se vê —, em vez de andar em dobro, que lê como coisa quebrada.
-//!
-//! ⚠️ A regra vale só para o que **o rig acrescenta**. A multi-seleção
-//! explícita segue como sempre (o artista escolheu aqueles objetos), e o
-//! duplo-movimento pai+filho que ela permite é anterior a esta wave — nomeado
-//! no handoff, não corrigido de contrabando.
+//! História e porquê: `git log` deste ficheiro.
 
 use ph2d_ecs::{ChildOf, Entity, SimWorld, Transform};
 

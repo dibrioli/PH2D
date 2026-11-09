@@ -1,50 +1,6 @@
 //! **Cena 113 — A SAÍDA** (`PH2D_PHYSICS_SMOKE=113`, `W-PlayerOut` A5).
 //!
-//! O personagem corre, salta, aterra, arranca e agarra uma beirada — e a cena
-//! existe para julgar **duas superfícies que até esta wave não existiam**: o
-//! readout da §14 e os sinais que ele publica.
-//!
-//! ⚠️ **`Emit Signals` nasce LIGADO aqui, e em lugar nenhum mais.** O default do
-//! app é desligado (senão toda cena de smoke com um personagem cuspiria toasts,
-//! e a conta cairia sobre waves que nada têm com esta); esta é a única cena cuja
-//! razão de existir é ouvi-lo, então ela o arma — e o passo 5 manda desligá-lo,
-//! porque um opt-in que não se desfaz não é um opt-in.
-//!
-//! ⚠️ **O número 113, e a §5 do `CLAUDE.md` anuncia 105 como livre — as duas
-//! coisas estão certas.** Aquela nota descreve o `main`, cujo roteador para no
-//! **104**; esta LINHA está 74 commits à frente e a jornada da ÁGUA já tomou o
-//! 105 (`physics_smoke_swim`) até ao 112. *Um número de cena escolhido numa
-//! linha paralela é PROVISÓRIO*, exatamente como um número de ADR ou um degrau
-//! de schema — quem integra CONTA contra o `main` do dia.
-//!
-//! ⚠️ E o que pegou a colisão foi o **compilador**: um braço duplicado num
-//! `match` de strings é `unreachable_patterns`, que este repo trata como erro no
-//! fecho. (O gate `no_two_smoke_scenes_claim_the_same_level` cobre a família do
-//! `build_smoke_router`, que é uma cadeia de `if` e não tem quem a avise.)
-//!
-//! ⚠️ **A cena imprime o readout a cada meio segundo** (`[player] …`). *Se essa
-//! linha não aparecer, pare*: sem ela o resto do smoke não diz nada — não há
-//! como distinguir *"a lei publicou Ground"* de *"ninguém publicou nada"*.
-//!
-//! # O percurso, e o que cada peça pergunta
-//!
-//! ```text
-//!    x=0        x=6         x=16..20      x=20.8
-//!    início     vão         degrau        parede colada à ponta
-//! ```
-//!
-//! ⚠️ **A ordem das peças é MEDIDA, não escolhida** — ver [`WALL_X`]: dois
-//! arranjos anteriores não produziam pulo de parede nenhum, e a sonda foi quem
-//! disse.
-//!
-//! * o **VÃO** força um salto e um pouso — os dois eventos que um ciclo de
-//!   animação consome (`player.jumped.ground`, `player.landed`);
-//! * a **PAREDE** dá o pulo de parede, que é o caso em que um palpite de fora
-//!   erra (*"ele estava no chão?"* responde **não** para o do ar e para o de
-//!   parede, e não os distingue) ⇒ `player.jumped.wall`;
-//! * o **DEGRAU ALTO** tem uma beirada ao alcance do braço ⇒
-//!   `player.ledge_grabbed`;
-//! * e o **ARRANQUE** está armado, então `Shift` dá `player.dashed`.
+//! História e porquê: `git log` deste ficheiro.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform, World};

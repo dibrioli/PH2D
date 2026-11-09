@@ -73,6 +73,7 @@ serde = { version = "1", features = ["rc"] }
 # fixtura em **4 direcções** — e escrever o valor de fio `2` à mão aqui seria um literal a envelhecer
 # no dia em que alguém reordenasse o enum.
 [dev-dependencies]
+ph2d-asset = { path = "../ph2d-asset" }
 ph2d-topdown = { path = "../ph2d-topdown" }
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }

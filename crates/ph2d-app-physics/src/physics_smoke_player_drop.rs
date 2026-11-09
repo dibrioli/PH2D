@@ -1,56 +1,7 @@
 //! **A cena 91 — A ESCADA DE PRANCHAS** (W12), irmã de
 //! `physics_smoke_player_carry.rs`.
 //!
-//! A plataforma jump-through existe desde a W-OneWay (cena `=23`) e ali ela é
-//! julgada por BAIXO: a caixa sobe através dela e pousa em cima. O que faltava
-//! era a outra metade do idioma — **sair dela por baixo de propósito** —, e é
-//! isso que esta cena põe na mão do artista.
-//!
-//! # ⚠️ Uma ESCADA, e não uma prancha só
-//!
-//! Com uma prancha apenas, *"o personagem atravessou"* e *"o personagem caiu"*
-//! são a mesma imagem. Com três, o gesto ganha a propriedade que o torna útil e
-//! que um defeito não reproduz: **ele desce UM andar por aperto**, porque a
-//! descida mira a prancha de baixo dos pés e acaba quando ele a passou. Um bug
-//! que simplesmente desligasse a solidez o levaria ao chão de uma vez, e a cena
-//! mostra a diferença sem nenhum número.
-//!
-//! # ⚠️ O vão de 2,0 m é ESCOLHIDO por duas leis, não desenhado de cabeça
-//!
-//! *Para BAIXO:* a descida acaba quando a caixa do personagem está inteiramente
-//! abaixo da prancha (`bridge::player::retire_drops`). Em repouso sobre uma
-//! prancha ele ocupa até `topo + 1,4`; a prancha de cima começa em `+2,0 −
-//! 0,15`, ou seja **0,3 m de margem** — a descida se retira, e a prancha volta a
-//! ser sólida.
-//!
-//! *Para CIMA:* um pulo de altura cheia sobe ~2,1 m, então subir um andar de 2,0
-//! é possível **por pouco**, que é o que faz a escada ser subida E descida com o
-//! mesmo par de botões. Um vão de 2,5 tornaria a subida impossível e a cena
-//! mediria só metade do idioma.
-//!
-//! # ⚠️ E os 2,0 m estão DEZ CENTÍMETROS acima de um penhasco
-//!
-//! Os `0,3 m de margem` acima são a folga que a lei de aposentadoria EXIGE, e
-//! a medição (`ph2d-physics-ecs/tests/it/measure_drop_retire.rs`) mostra que ela é
-//! mais apertada do que parece. Nesta geometria exacta — pranchas de
-//! meia-espessura `0,15`, um aperto e uma tentativa de voltar:
-//!
-//! | `RISE` | antes (W19) | **hoje** |
-//! |---|---|---|
-//! | 1,60 – 1,70 | fantasma para sempre — e ele ficava **PRESO** lá | **funciona** (W27) |
-//! | **1,75 – 1,85** | **arremessado de volta** | **funciona** (W20) |
-//! | 1,90 + | funciona | funciona |
-//!
-//! ⚠️ **As duas bordas fecharam, e a de baixo custou uma medição para se
-//! entender:** ela estava registada como *"as pranchas ficam fantasma"*, que é o
-//! sintoma; o preço era o personagem descer um degrau e **ficar lá para sempre**
-//! (`−0,598 → −0,598` a 1,60, em toda célula da janela). A cura é uma cláusula
-//! de intenção — **subir aposenta a descida** —, e o porquê está no aviso de
-//! `bridge::player::retire_drops`.
-//!
-//! ⚠️ **O `RISE` continua em 2,0**, e não porque seja apertado: a cena existe
-//! para o artista julgar o GESTO, e um vão folgado é o que a torna legível. O
-//! que mudou é que apertá-lo já não a transforma num defeito.
+//! História e porquê: `git log` deste ficheiro.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};

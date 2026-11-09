@@ -179,46 +179,19 @@ pub fn build_player_info(
     })
 }
 
-/// **A §14 vale para este corpo?** — a porta ÚNICA, e ela tem DOIS consumidores.
+/// **A §14 vale para este corpo?** — a porta ÚNICA, com DOIS consumidores: o `build_player_info`
+/// pergunta para OFERECER a secção, o `apply_player_edit` para HONRAR um clique (e o `Add` passa).
+/// ⛔ Duas cópias já divergiram: o artista ficava preso no `Kinematic`, sem secção e com o clique de
+/// volta recusado.
 ///
-/// O `build_player_info` a pergunta para OFERECER a seção; o `apply_player_edit`
-/// a pergunta para HONRAR um clique. ⚠️ **Duas cópias divergiram e o preço foi
-/// medido:** a versão anterior era `kind == Dynamic`, escrita duas vezes, e sob
-/// o modo cinemático da `W-KinMove` isso significa que clicar `Kinematic` fazia
-/// a seção DESAPARECER — e, pior, o clique de volta era recusado pela outra
-/// cópia. O artista escolhia o modo e ficava preso nele, sem controle nenhum na
-/// tela a dizer por quê.
+/// A regra (ADR-0166 F3, poda revertida pelo dono em 2026-09-14) é um `||` de duas perguntas:
+/// - `has_player` — a **VERDADE**: o componente está lá, a secção mostra-o (um player que ficou
+///   `Static`, ou `Kinematic` por um bake, não fica presente e invisível);
+/// - `Dynamic` — a **OFERTA**: o botão que CRIA o player só onde a física o honra (a mola é um
+///   impulso; num `Static` a cura é mudar o tipo na §11). Um cinemático SEM o componente fica fora:
+///   quem o dirige é a CENA (`pose_owner` = `Scene`).
 ///
-/// ⚠️ **`Dynamic`, ou um player que JÁ é cinemático.** Um corpo cinemático SEM o
-/// componente continua fora, e por física: ele é dirigido pela CENA (um bake,
-/// uma curva), e criar um player ali daria um personagem que a ponte não dirige
-/// (o `pose_owner` responderia `Scene`).
-/// ⭐ **A §14 aparece se, e só se, o componente estiver lá** (ADR-0166 / F3).
-///
-/// ⚠️ **Isto MUDOU na F3, e a mudança é a fase inteira em miniatura.** Até aqui a resposta era
-/// *"`true` para todo corpo Dynamic, COM OU SEM o componente"* — a *face vazia*, cujo botão «+ Add
-/// Platform Player» era a **única** rota para a feature. Apagá-la antes de a porta nova existir
-/// tornaria o player inalcançável; por isso a ordem da F3 é **porta primeiro, poda depois**, com o
-/// censo (`component_reach_tests`) verde entre as duas.
-///
-/// ⭐⭐ **E em 2026-09-14 o dono REVERTEU a poda:** *«um objeto de física (Physics Body) e todas as
-/// opções aparecem com ele (inclusive Collision Shape e Platform Player)»*. A face vazia volta, e
-/// com ela a regra original — **o componente presente, OU um corpo `Dynamic`**.
-///
-/// ⚠️ **As duas metades respondem a perguntas diferentes, e é por isso que são um `||`:**
-///
-/// - `has_player` é a metade da **VERDADE**: o componente está lá, logo a secção tem de o mostrar.
-///   Sem ela, um player que ficou `Static` (ou `Kinematic` por um bake) desapareceria do Inspector
-///   com o componente ainda na entidade — *um componente presente e invisível lê-se como defeito*,
-///   e foi essa a razão que a F3 escreveu ao apagar o `BodyKind`.
-/// - `Dynamic` é a metade da **OFERTA**: o botão que CRIA o comportamento só faz sentido onde a
-///   física o honra — a mola do player é um impulso, e um impulso não move massa infinita. ⛔ Num
-///   `Static` o botão não aparece, e a cura é mudar o tipo do corpo na §11, que é onde ele se muda.
-///
-/// ⚠️ **A mesma porta guarda a EDIÇÃO** (`apply_player_edit`), e isso é o que torna a reversão
-/// segura: quando a regra era só `has_player`, ela fechava-se sobre o gesto que a abre — a lição
-/// que a F3 pagou e escreveu (*«a pergunta "a secção aparece?" e a pergunta "esta edição é legal?"
-/// deixaram de ser a mesma»*). Com o `||` voltam a ser a mesma, e o `Add` passa.
+/// História: `git show ecca0421ac:crates/ph2d-app-physics/src/inspector/player.rs`.
 pub fn player_section_applies(kind: BodyKind, has_player: bool) -> bool {
     has_player || kind == BodyKind::Dynamic
 }

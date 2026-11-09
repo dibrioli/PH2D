@@ -1,32 +1,13 @@
-//! **The collider outline** — what shape is this thing, *physically*?
+//! **The collider outline** — what shape is this thing, *physically*? A collider is invisible, so
+//! a ball under a square sprite looks like a box until it rolls (*"os colliders parecem redondos
+//! mas os desenhos são box"*, Enio 2026-07-18). Like Unity, Godot and Box2D's debug draw, the
+//! collider is painted as a wireframe over the art.
 //!
-//! A sprite is a textured QUAD. A collider is a circle, or a box, or (later)
-//! a capsule, and it is **invisible**. So a ball collider under a square
-//! sprite looks exactly like a box collider under a square sprite, right up
-//! until it rolls — which is precisely the report that produced this module
-//! (*"os colliders parecem redondos mas os desenhos são box"*, Enio
-//! 2026-07-18).
-//!
-//! Every physics editor answers this the same way — Unity, Godot and Box2D's
-//! own debug draw all paint the collider as a wireframe on top of the art.
-//!
-//! ## Screen space, deliberately
-//!
-//! The geometry is built in world units and every POINT is pushed through the
-//! camera, but the resulting path is in screen pixels and is stroked under
-//! `Affine::IDENTITY`. In Vello the stroke transform **multiplies the
-//! width**, so handing the world→screen affine to `stroke` turns a 1.5 px
-//! outline into `1.5 × pixels-per-world-unit` — hundreds of pixels of paint.
-//! That is a scar, not a hypothesis: it is what happened to the Flip
-//! selection halo (smoke, 2026-07-13), and `flip_cursor` has always drawn
-//! this way for the same reason.
-//!
-//! ## Free when there is no physics
-//!
-//! Nothing is drawn for a scene with no colliders, so a painter or vector user
-//! never sees physics chrome and never pays for it. The toggle (`B`) exists
-//! for the case where the outlines are in the way; W2 moves it into the
-//! physics panel, reading this same flag.
+//! - **Screen space, deliberately.** Points go through the camera, but the path is stroked under
+//!   `Affine::IDENTITY`: in Vello the stroke transform MULTIPLIES the width (the Flip selection-halo
+//!   scar, 2026-07-13; `flip_cursor` draws the same way).
+//! - **Free when there is no physics.** A scene with no colliders draws nothing; the toggle (`B`)
+//!   hides the outlines when they are in the way.
 
 use ph2d_ecs::SimWorld;
 use ph2d_host::WindowSize;

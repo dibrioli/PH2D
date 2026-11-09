@@ -1,75 +1,20 @@
 //! **Bake — the simulated pose becomes editable keys** (ADR-0131 D11, W4).
 //!
-//! `ph2d_physics_ecs::bake` reads the trajectory out of the simulation. This is
-//! the other half: turning those numbers into tracks, in ONE undo step.
+//! `ph2d_physics_ecs::bake` reads the trajectory out of the simulation; this turns those numbers
+//! into tracks, in ONE undo step. The measured history (the fit that was rejected, the two-queue
+//! gap) is verbatim in `git show ecca0421ac:crates/ph2d-app-physics/src/bake.rs`.
 //!
-//! # The curve IS the simulation, tick for tick — no fit (Enio: "sem
-//! # simplificação; busque o padrão ouro, a perfeição")
-//!
-//! The bake used to run the samples through the record's curve-fit, the same
-//! one a hand-dragged gesture uses. That was wrong for a solver, and the smokes
-//! said so: any fit RESAMPLES the motion, and a resampled bounce is a rounded
-//! one — the fit drops a small bounce or smooths its cusp. Tightening the
-//! tolerance made it worse in the other direction (a smooth-tangent cubic packed
-//! tightly around a sharp bounce OVERSHOOTS between its keys), so there was a
-//! narrow sweet spot and it still "não ficou bom".
-//!
-//! The gold standard for reproducing a DISCRETE simulation is to not resample it
-//! at all. So the bake writes **one key per tick, linear between them**:
-//!
-//! - **Exact at 60 fps.** The playhead advances one tick per frame, so it lands
-//!   on the times the keys are at — sampling returns the key value verbatim, and
-//!   playback is byte-for-byte the simulation. A fit can only approximate that.
-//! - **No overshoot, ever.** Linear interpolation stays between its endpoints by
-//!   construction; the 6.6%-under-a-Time-Remap failure the tight fit had cannot
-//!   happen.
-//! - **A bounce is a sharp corner**, a key where the velocity reverses, not a
-//!   tangent a fit rounded off. That is what the smokes were missing.
-//!
-//! The cost is honest: a channel that moves is one key per tick (~60/s), which
-//! is many to hand-edit. That is the trade "sem simplificação" asks for —
-//! fidelity over editability — and it is why a channel the sim never moved still
-//! writes no track at all (`BakedTrajectory::channel`) rather than a dense flat
-//! one. (A future refinement could capture the solver's per-tick velocity and
-//! write value-space tangents, making even sub-frame sampling exact for a
-//! ballistic arc; it buys nothing at 60 fps, adds overshoot risk at contacts,
-//! and is deliberately not built.)
-//!
-//! # Baking flips the body to Kinematic, and that IS the bake
-//!
-//! Frame order decides this, not preference. The timeline apply writes
-//! `Transform` and the physics readback writes it *after*, so a dynamic body
-//! that has just been baked is overwritten by the solver every frame: the
-//! artist clicks Bake, watches nothing change, and concludes the button is
-//! broken. Two authors of one fact, and the later one wins in silence.
-//!
-//! So the bake hands the pose over. `BodyKind::Kinematic` is precisely the
-//! state "the scene drives this, and the solver is told" — the body stays in
-//! the world, still shoves what it passes, but its motion now comes from the
-//! curve. That is what *runtime-truth becomes animation* means, and it is why
-//! the kind landed in this wave.
-//!
-//! It is flipped through `apply_physics_edit`, the same door the §11 chip uses,
-//! so "what does becoming Kinematic do" has one answer.
-//!
-//! ⚠️ **Two undo queues, and the artist sees two steps.** The keys are the
-//! timeline's (one bracket, gated below); the kind is an object edit and lands
-//! in the global object queue. That is the editor's existing shape — Ctrl+Z in
-//! the audio editor does not undo a sprite move either — but it means one
-//! Ctrl+Z leaves a half-undone bake, and it leaves a DIFFERENT half depending
-//! on which queue answers:
-//!
-//! - the object queue answers → the body is `Dynamic` again with the curves
-//!   still there, so the solver overwrites them (the case the hand-over exists
-//!   to prevent, restored by undoing it);
-//! - the timeline answers → the keys go and the body stays `Kinematic`, frozen
-//!   at wherever its `Transform` last was, with nothing driving it. Recovering
-//!   means picking Dynamic in §11 by hand.
-//!
-//! Neither is silent — the toast says what the bake did and the §11 chip shows
-//! the kind — but neither is nice, and the honest name for it is a gap: one
-//! gesture that undoes as two. Closing it means one queue owning both halves,
-//! which is a change to the editor's undo architecture and not to the bake.
+//! - **One key per tick, linear between them — never a curve-fit.** A fit resamples the motion and
+//!   rounds a bounce (tightened, it overshoots it). Linear is exact at 60 fps, cannot overshoot,
+//!   and a bounce stays a sharp corner. A channel the sim never moved writes no track
+//!   (`BakedTrajectory::channel`). ⛔ Solver-velocity tangents buy nothing at 60 fps and risk
+//!   overshoot at contacts — deliberately not built.
+//! - **Baking flips the body to `Kinematic`, and that IS the bake.** The physics readback writes
+//!   `Transform` after the timeline apply, so a baked `Dynamic` body is overwritten every frame.
+//!   The flip goes through `apply_physics_edit`, the same door the §11 chip uses.
+//! - ⚠️ **Known gap: one gesture undoes as two.** The keys are in the timeline queue, the kind in
+//!   the object queue; one Ctrl+Z leaves a half-undone bake. Closing it is a change to the editor's
+//!   undo architecture, not to the bake.
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};

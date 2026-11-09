@@ -36,19 +36,29 @@ impl DocDasFaixas<'_> {
         skins: &WidgetSkins,
         cam: Affine,
         cenas: &mut Vec<VectorScene>,
-        editor: bool,
+        (editor, luz): (bool, &mut ph2d_app_light2d::LuzDoQuadro),
     ) {
+        let (normais, sem_luz) = luz.normais_do_quadro();
         for band in bands {
             let mut target = VectorScene::new();
+            let (w, ppm, ed) = (self.world, self.ppm, self.editing);
             if band.family == Family::Pixel {
                 let ids = if self.sem_pixel {
                     Vec::new()
                 } else {
                     self.order.pixel_ids_in(*band)
                 };
-                let (w, ppm, ed) = (self.world, self.ppm, self.editing);
                 ph2d_app_pixel::draw::art(pixel, w, cam, ppm, ed, &ids, editor, &mut target);
+                let luz = (&mut *normais, sem_luz);
+                ph2d_app_pixel::luz::faixa_normal(pixel, w, (cam, ppm), Some(&ids), luz);
             } else {
+                ph2d_app_pixel::luz::faixa_normal(
+                    pixel,
+                    w,
+                    (cam, ppm),
+                    None,
+                    (&mut *normais, None),
+                );
                 let keep = self.order.vector_ids_in(*band);
                 let mut band_view = self.view.clone();
                 for path in self.scene.paths() {

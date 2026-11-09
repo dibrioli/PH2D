@@ -19,46 +19,6 @@ use crate::PixelApp;
 
 pub use ph2d_pixel_cenas::selecao::*;
 
-/// A matriz de uma cópia girada `ANGLE` com o centro na caixa da figura em `at`.
-#[must_use]
-pub fn rotation_at(at: (i32, i32)) -> Affine {
-    Affine::around_center(
-        Linear::from_screen_ccw(ANGLE, 1.0, 1.0, 0.0),
-        Rect::new(at.0, at.1, FIGURE, FIGURE),
-    )
-}
-
-/// A figura girada pela amostragem `r`, como a cena a assenta.
-#[must_use]
-pub fn rotated(at: (i32, i32), r: Resample) -> Option<Floating> {
-    edit::transform(&solta(0, 0, figure()), &rotation_at(at), r, 0)
-}
-
-/// O losango da varinha.
-#[must_use]
-pub fn in_wand_blob(x: i32, y: i32) -> bool {
-    let ((cx, cy), r) = WAND;
-    (x - cx).abs() + (y - cy).abs() <= r
-}
-
-fn solta(x: i32, y: i32, image: Image) -> Floating {
-    let keep = vec![true; (image.w * image.h) as usize];
-    Floating { x, y, image, keep }
-}
-
-/// A selecção que a cena deixa activa: as quatro peças somadas.
-#[must_use]
-pub fn mask(s: &ph2d_pixel_core::Sprite, key: ph2d_pixel_core::CelKey) -> Mask {
-    let (w, h) = SIZE;
-    let r = Mask::from_rect(w, h, RECT);
-    let e = Mask::ellipse(w, h, ELLIPSE.0, ELLIPSE.1);
-    let l = Mask::polygon(w, h, &STAR);
-    let v = selection::wand(s, key, WAND.0, Wand::default());
-    r.combine(&e, SelectMode::Add)
-        .combine(&l, SelectMode::Add)
-        .combine(&v, SelectMode::Add)
-}
-
 fn assenta(app: &mut PixelApp, key: u32, f: &Floating) -> Option<()> {
     let doc = app.docs.get(&key)?;
     let op = edit::paste(&doc.sprite, (doc.layer, doc.frame), f, 0)?;

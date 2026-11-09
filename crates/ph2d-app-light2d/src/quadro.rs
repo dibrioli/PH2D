@@ -82,6 +82,8 @@ pub struct LuzDoQuadro {
     vetores: crate::vetor::CamadaVetorial,
     /// ⭐ W5e: os OUTROS que bloqueiam (o Flip, o Motion), desenhados pela família dona.
     outros: crate::outras::CamadaDeOutros,
+    /// ⭐ P14c-pixel 2: a banda normal de cada faixa (com alguma, a cena liga `com_normal`).
+    normais: crate::NormaisDasFaixas,
     /// ⭐ A fábrica das pipelines, partilhada pelos solvers de cada grade: a janela redimensionada (o
     /// maximizar muda o tamanho a cada quadro) só realoca — recompilar custava ~2 s por quadro.
     fabrica: ph2d_light2d_gpu::Fabrica,
@@ -156,6 +158,7 @@ impl LuzDoQuadro {
             cantos_por_blocos: ph2d_light2d_gpu::CANTOS_POR_BLOCOS_PADRAO,
             vetores: crate::vetor::CamadaVetorial::default(),
             outros: crate::outras::CamadaDeOutros::default(),
+            normais: crate::NormaisDasFaixas::default(),
             fabrica: ph2d_light2d_gpu::Fabrica::default(),
             smoke_encenado: false,
             semeadas: Vec::new(),
@@ -226,6 +229,7 @@ impl LuzDoQuadro {
         alvo_px: (u32, u32),
     ) -> bool {
         self.cena = cena_de_luz(world);
+        self.cena.com_normal = self.normais.alguma();
         self.sem_luz_no_quadro = false;
         self.mundo_para_tela = mundo_para_tela;
         self.alvo_px = alvo_px;
@@ -332,6 +336,7 @@ impl LuzDoQuadro {
             return;
         }
         self.cena = cena_de_luz(world);
+        self.cena.com_normal = self.normais.alguma();
         self.sem_luz_no_quadro = self.cena.luzes == 0;
         self.sem_luz.clear();
         self.sem_luz.extend(self.cena.nao_recebem.iter().copied());
@@ -626,6 +631,22 @@ impl LuzDoQuadro {
         renderer.receber_luz(r.as_ref());
         let mapa = tela_para_mundo(self.mundo_para_tela);
         colagem.receber_luz(gpu, r.as_ref().map(|l| (l, mapa, tonemap)));
+    }
+
+    /// As bandas normais das faixas deste quadro (a família enche-as; a colagem lê-as).
+    pub fn normais_mut(&mut self) -> &mut crate::NormaisDasFaixas {
+        &mut self.normais
+    }
+
+    /// As bandas a encher neste quadro (esvaziadas) e quem não recebe luz; `None` = apagada (nenhuma
+    /// banda nasce).
+    pub fn normais_do_quadro(&mut self) -> (&mut crate::NormaisDasFaixas, Option<&[Entity]>) {
+        let acesa = self.acesa();
+        self.normais.cenas.clear();
+        (
+            &mut self.normais,
+            acesa.then_some(&self.cena.nao_recebem[..]),
+        )
     }
 
     /// A cena coletada neste quadro.

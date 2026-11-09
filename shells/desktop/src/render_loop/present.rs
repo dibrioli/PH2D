@@ -314,6 +314,7 @@ impl crate::App {
                     band_blit,
                     vello_pass,
                     band_doc_scenes,
+                    normais: luz2d.normais_mut(),
                     held_back: held.as_ref(),
                     grid_behind: grid_behind.then_some(&*grid_behind_scene),
                     motion: &mut cola,

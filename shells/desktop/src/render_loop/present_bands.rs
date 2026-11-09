@@ -51,6 +51,8 @@ pub(super) struct BandGear<'a> {
     pub band_blit: &'a mut ph2d_render::BandBlit,
     pub vello_pass: &'a mut ph2d_render::VelloPass,
     pub band_doc_scenes: &'a [ph2d_vector::VectorScene],
+    /// A banda normal de cada faixa de cena (P14c-pixel 2), da luz da vista.
+    pub normais: &'a mut ph2d_app_light2d::NormaisDasFaixas,
     /// As peças da receita aberta — retidas em toda faixa do fundo. `None` sem vidro.
     pub held_back: Option<&'a std::collections::BTreeSet<ph2d_ecs::Entity>>,
     /// ⭐ A grade ATRÁS dos objectos — a primeira camada depois do fundo. `None` = à frente
@@ -187,19 +189,13 @@ pub(super) fn draw_lower_bands(
             }
             Cola::Cena(i) => {
                 if let Some(scene) = g.band_doc_scenes.get(i) {
-                    if let Err(e) = g.vello_pass.render_to_intermediate(
+                    g.normais.colar(
                         gpu,
-                        scene.inner(),
-                        (g.window_size.width, g.window_size.height),
-                        VelloColor::TRANSPARENT,
-                    ) {
-                        eprintln!("[zorder] faixa de vetor falhou: {e}");
-                    }
-                    g.band_blit.blit(
-                        gpu,
+                        g.vello_pass,
+                        g.band_blit,
                         g.world_rt.blend_view(),
-                        g.vello_pass.intermediate_view(),
-                        ph2d_render::BandSource::Vector,
+                        (i, scene),
+                        (g.window_size.width, g.window_size.height),
                     );
                 }
             }
@@ -262,6 +258,7 @@ pub(super) struct UpperGear<'a> {
     pub band_blit: &'a mut ph2d_render::BandBlit,
     pub vello_pass: &'a mut ph2d_render::VelloPass,
     pub band_doc_scenes: &'a [ph2d_vector::VectorScene],
+    pub normais: &'a mut ph2d_app_light2d::NormaisDasFaixas,
     pub motion: ColaMotion<'a>,
     pub flip: DesenhaFlip<'a>,
 }
@@ -310,19 +307,13 @@ pub(super) fn draw_upper_bands(gpu: &ph2d_gpu::GpuContext, plan: &FramePlan, g: 
             continue;
         }
         if let Some(scene) = g.band_doc_scenes.get(doc_i) {
-            if let Err(e) = g.vello_pass.render_to_intermediate(
+            g.normais.colar(
                 gpu,
-                scene.inner(),
-                (g.window_size.width, g.window_size.height),
-                VelloColor::TRANSPARENT,
-            ) {
-                eprintln!("[zorder] faixa de vetor falhou: {e}");
-            }
-            g.band_blit.blit(
-                gpu,
+                g.vello_pass,
+                g.band_blit,
                 g.world_rt.blend_view(),
-                g.vello_pass.intermediate_view(),
-                ph2d_render::BandSource::Vector,
+                (doc_i, scene),
+                (g.window_size.width, g.window_size.height),
             );
         }
         doc_i += 1;

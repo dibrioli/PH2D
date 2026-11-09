@@ -153,7 +153,7 @@ impl crate::App {
             &vec_skins,
             cam_affine,
             band_doc_scenes,
-            true,
+            (true, luz2d),
         );
         // Com faixas o documento já foi codificado nelas — a cena do chrome fica só com o chrome.
         if doc_bands.is_empty() {
@@ -202,7 +202,8 @@ impl crate::App {
             );
             v.band_doc_scenes.clear();
             let bands = ph2d_render::draw_bands::doc_bands_of(frame_order, true);
-            doc.faixas(pixel, &bands, &skins, cam, &mut v.band_doc_scenes, false);
+            let vista = (false, &mut v.luz2d);
+            doc.faixas(pixel, &bands, &skins, cam, &mut v.band_doc_scenes, vista);
             if let Some(topo) = v.band_doc_scenes.last_mut() {
                 doc.isolada(&skins, cam, topo);
             }

@@ -1,0 +1,27 @@
+[package]
+name = "ph2d-pixel-luz"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+
+# O Pixel Sprite na luz 2D (`docs/PixelArt/P14_plano.md` §4 L): a banda normal rodada pela
+# instância, a sentinela do `NaoRecebeLuz` e a camada de oclusão. Sem `PixelApp`: a família
+# (`ph2d-app-pixel`) entrega cada objecto já posto pela porta imagem → mundo.
+[dependencies]
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+ph2d-pixel-render = { path = "../ph2d-pixel-render" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-vector = { path = "../ph2d-vector" }
+ph2d-gpu = { path = "../ph2d-gpu" }
+ph2d-light2d-gpu = { path = "../ph2d-light2d-gpu" }
+wgpu = "30.0.1"
+
+[dev-dependencies]
+ph2d-pixel-cena = { path = "../ph2d-pixel-cena" }
+
+[lints]
+workspace = true

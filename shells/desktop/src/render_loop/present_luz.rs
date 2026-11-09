@@ -23,6 +23,7 @@ impl crate::App {
             flip,
             flip_composite,
             flip_compose,
+            hero_screen,
             ..
         } = gfx;
         if luz2d.soltar_se_renasce(surface.gpu(), renderer, band_blit) {
@@ -41,11 +42,14 @@ impl crate::App {
         let mut motion_luz =
             ph2d_app_motion::motion_shape_placa::luz::OclusaoDoMotion::do_quadro(placa, motion);
         // ⭐ E as formas de cada palco de uma macro em cena (ADR-0186), pela MESMA porta.
-        self.motion_shell
-            .palcos
-            .com_oclusoes(&mut [&mut flip_luz, &mut motion_luz], |familias| {
-                luz2d.gravar_com(surface.gpu(), present, renderer, familias)
-            });
+        let ppm = hero_screen
+            .as_ref()
+            .map_or(1.0, |h| h.project.pixels_per_meter);
+        let mut pixel_luz = ph2d_app_pixel::luz::oclusao(&self.pixel, sim.world(), ppm);
+        self.motion_shell.palcos.com_oclusoes(
+            &mut [&mut flip_luz, &mut motion_luz, &mut pixel_luz],
+            |familias| luz2d.gravar_com(surface.gpu(), present, renderer, familias),
+        );
         luz2d.ligar(surface.gpu(), renderer, band_blit, tonemap);
         let na_tela = luz2d.na_tela();
         flip_compose.receber_luz(surface.gpu(), na_tela.as_ref().map(|(l, m)| (l, *m)));

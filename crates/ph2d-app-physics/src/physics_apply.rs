@@ -412,15 +412,15 @@ pub fn apply_physics_edit(
         // brings us here. Reaching this arm would mean the interception was
         // removed — and the fan-out would then create one joint per selected
         // body instead of one joint.
-        // Not field edits: gestures over the SELECTION or app-state options, intercepted
-        // before the per-entity fan-out (fanned out, Join/Bake/Rig would run once per body).
+        // Not field edits: SELECTION gestures or app options, intercepted before the per-entity fan-out.
         PhysicsFieldEdit::Join
         | PhysicsFieldEdit::Bake
         | PhysicsFieldEdit::BakeChannels(_)
         | PhysicsFieldEdit::JoinKind(_)
         | PhysicsFieldEdit::JoinDraw
         | PhysicsFieldEdit::Rig
-        | PhysicsFieldEdit::EditShapeOnCanvas => {}
+        | PhysicsFieldEdit::EditShapeOnCanvas
+        | PhysicsFieldEdit::DeletePointsAnimation => {}
         // Switching shape PRESERVES the footprint (box ↔ the ball inside it): no size jump.
         PhysicsFieldEdit::Shape(0) => {
             let r = match cur.shape {

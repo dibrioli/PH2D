@@ -52,6 +52,8 @@ impl crate::App {
             self.flip_state.active && self.flip_state.strip.tween_correct.is_some();
         let jogando = self.playhead.is_playing() || hero.view.palco_do_jogo;
         let forma = ph2d_shape_handles::quadro(sim.world_mut(), hero.gizmo.selection, jogando);
+        let (w, loja) = (sim.world_mut(), &mut hero.store); // Regra B: trava e abre a pergunta.
+        ph2d_physics_outline::canais_pontos::regra_b(w, &self.timeline, loja);
         let suppress_gizmo = forma
             || painter_deform_transform
             || flip_pairs_active

@@ -188,6 +188,32 @@ pub fn apagar_pontos(doc: &mut TimelineDoc, e: u64) -> bool {
     props.into_iter().fold(false, |n, p| doc.unbind(e, p) | n)
 }
 
+/// ⭐ Regra B, uma vez por quadro (a shell, antes dos gestos de pontos): publica as formas travadas no
+/// mundo e, se um gesto foi recusado, abre a pergunta *«This shape's points are animated»*.
+pub fn regra_b(
+    world: &mut bevy_ecs::world::World,
+    tl: &ph2d_timeline::TimelineState,
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
+) {
+    let formas = travadas(&tl.doc, tl.flags.auto_key);
+    ph2d_shape_handles::travados::publica(world, formas);
+    if let Some(e) = ph2d_shape_handles::travados::pedido(world) {
+        ph2d_editor_core::screens::hero::document_tabs_menu::pede_pontos_animados(store, e);
+    }
+}
+
+/// ⭐ O «Delete animation» do modal: [`apagar_pontos`] num passo de undo da timeline à espera do passo
+/// global (`commit_da_cena` ⇒ `liga_gesto_da_cena`, como o Fit). `true` ⇒ a shell empurra o passo global.
+pub fn apagar_num_passo(tl: &mut ph2d_timeline::TimelineState, e: u64) -> bool {
+    tl.history.begin(&tl.doc);
+    if !apagar_pontos(&mut tl.doc, e) {
+        tl.history.cancel();
+        return false;
+    }
+    let doc = tl.doc.clone();
+    tl.history.commit_da_cena(&doc)
+}
+
 type Pt = [f32; 2];
 
 fn aneis(lidos: impl IntoIterator<Item = (FieldKey, f32)>) -> BTreeMap<u16, Vec<Pt>> {

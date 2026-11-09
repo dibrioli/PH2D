@@ -165,6 +165,7 @@ pub fn paint_context_menu_overlay(
         req.kind,
         ContextMenuKind::ConfirmDeleteBoard { .. }
             | ContextMenuKind::ConfirmDeleteKanban { .. }
+            | ContextMenuKind::ConfirmDeletePointsAnimation { .. }
             | ContextMenuKind::SendToBoard { .. }
             | ContextMenuKind::SendSelection { .. }
             | ContextMenuKind::KanbanBackground { .. }

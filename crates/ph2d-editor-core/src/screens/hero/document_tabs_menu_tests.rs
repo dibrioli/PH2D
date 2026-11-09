@@ -399,3 +399,58 @@ fn pressing_delete_and_sliding_off_neither_deletes_nor_closes_the_question() {
         "a pergunta fechou no Down"
     );
 }
+
+/// ⭐ Regra B (GEF02 09/11): a pergunta dos pontos animados pintada pelo caminho real — os textos do dono, os dois
+/// botões; «Cancel» não pede nada, «Delete animation» pede `DeletePointsAnimation` para a forma.
+/// *Mutações: o `apply_event` sem o `push` ⇒ vermelho; o rótulo do Kanban no botão ⇒ vermelho.*
+#[test]
+fn a_pergunta_dos_pontos_animados_pinta_o_texto_do_dono_e_so_o_delete_pede() {
+    let (mut hero, mut text, _) = with_boards(1);
+    let pede = |hero: &mut HeroScreen| {
+        document_tabs_menu::pede_pontos_animados(&mut hero.store, 42);
+    };
+    assert_eq!(
+        ph2d_i18n::tr("card.insp.phys.points_animated_title"),
+        "This shape's points are animated"
+    );
+    assert_eq!(
+        ph2d_i18n::tr("card.insp.phys.points_animated_hint"),
+        "Editing them now would be undone by the animation. Delete the points animation to edit them freely?"
+    );
+    assert_eq!(
+        ph2d_i18n::tr("card.insp.phys.points_animated_delete"),
+        "Delete animation"
+    );
+    assert_eq!(ph2d_i18n::tr("board.dialog.cancel"), "Cancel");
+    pede(&mut hero);
+    repaint(&mut hero, &mut text);
+    let rotulos = document_tabs_menu::rotulos_da_pergunta(&hero.store);
+    assert_eq!(
+        rotulos,
+        Some((
+            "This shape's points are animated".to_owned(),
+            "Editing them now would be undone by the animation. Delete the points animation to edit them freely?"
+                .to_owned(),
+            "Delete animation"
+        ))
+    );
+    let _ = hero.bus.drain().count();
+    click_anywhere(&mut hero, ids::CTX_MENU_BOARD_DELETE_CANCEL);
+    assert!(hero.store.context_menu().is_none(), "Cancel fecha");
+    assert!(hero.bus.is_empty(), "Cancel não pede nada");
+    pede(&mut hero);
+    repaint(&mut hero, &mut text);
+    click_anywhere(&mut hero, ids::CTX_MENU_BOARD_DELETE_CONFIRM);
+    assert!(hero.store.context_menu().is_none());
+    let pedidos: Vec<_> = hero.bus.drain().collect();
+    assert!(
+        matches!(
+            pedidos.as_slice(),
+            [crate::action_bus::EditorAction::InspectorPhysicsEdit {
+                entity_bits: 42,
+                edit: crate::PhysicsFieldEdit::DeletePointsAnimation
+            }]
+        ),
+        "{pedidos:?}"
+    );
+}

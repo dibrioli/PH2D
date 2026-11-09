@@ -42,6 +42,11 @@ impl crate::App {
                     if let Some(g) = self.gfx.as_mut() {
                         ph2d_shape_handles::alterna(g.sim.world_mut(), entity_bits);
                     }
+                } else if edit == ph2d_editor_core::PhysicsFieldEdit::DeletePointsAnimation {
+                    let t = &mut self.timeline; // Regra B: o passo global leva o da timeline.
+                    let feito =
+                        ph2d_physics_outline::canais_pontos::apagar_num_passo(t, entity_bits);
+                    feito.then(|| self.capture_project().map(|a| self.empurra(a)));
                 } else if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::ShapeDrag { .. })
                     || pd.inspector_selection.is_empty()
                 {

@@ -396,6 +396,11 @@ pub enum ContextMenuKind {
     ConfirmDeleteKanban {
         kanban: u64,
     },
+    /// Regra B (GEF02 09/11) — *«os pontos desta forma estão animados»*: o mesmo pintor; «Delete
+    /// animation» pede `PhysicsFieldEdit::DeletePointsAnimation` para a forma `shape`.
+    ConfirmDeletePointsAnimation {
+        shape: u64,
+    },
     /// ⭐ O modal *«Send to board»* (W15): escolhe o quadro que recebe o conteúdo da linha `row` da
     /// Hierarquia — desenha o próprio corpo (`send_to_board::paint`, que conhece os quadros).
     SendToBoard {
@@ -536,6 +541,7 @@ impl ContextMenuKind {
         Self::NotesToCard,
         Self::ConfirmDeleteBoard { board: 0 },
         Self::ConfirmDeleteKanban { kanban: 0 },
+        Self::ConfirmDeletePointsAnimation { shape: 0 },
         Self::SendToBoard { row: NodeId(1) },
         Self::SendSelection {
             from: 0,

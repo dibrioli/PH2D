@@ -373,6 +373,9 @@ pub enum PhysicsFieldEdit {
     FitToPicture,
     /// O botão «Edit shape on canvas»: acende ou apaga as alças da forma. Não é escrita de componente.
     EditShapeOnCanvas,
+    /// Regra B: o «Delete animation» do modal dos pontos animados — apaga as trilhas 51/52 da forma
+    /// num passo de undo (`canais_pontos::apagar_num_passo`). Não é escrita de componente.
+    DeletePointsAnimation,
     /// **Um passo do arrasto das alças:** medidas e Offset juntos, UM valor, porque dois campos no mesmo quadro
     /// perderiam o primeiro (a fila é diferida, doc 17b A3). `medidas`: caixa `[half_x, half_y]`, bola `[radius, _]`,
     /// cápsula `[radius, half_height]`. Só para o objecto agarrado: não se espalha pela seleção.

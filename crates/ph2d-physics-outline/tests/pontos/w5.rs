@@ -796,3 +796,78 @@ fn pontos_animados_merge_e_detail_nao_mudam_e_pedem_o_modal() {
         "sem trilha: o pedido grava-se"
     );
 }
+
+/// Uma trilha do ponto 0 da forma (FISICA 51), como a timeline a guarda.
+fn trilha(tl: &mut ph2d_timeline::TimelineState, shape: ph2d_ecs::Entity) {
+    let kk = ph2d_ecs::FieldKey::new(
+        ph2d_ecs::canal::familia::FISICA,
+        ph2d_ecs::canal_fisica::CONTORNO_PONTO_X,
+        0,
+        0,
+    );
+    tl.doc.upsert_key(
+        shape.to_bits(),
+        ph2d_timeline::PropKind::Field(kk),
+        ph2d_anim::RationalTime::ZERO,
+        ph2d_anim::AnimValue::Float(0.0),
+        ph2d_anim::Interp::Linear,
+    );
+}
+
+/// ⭐ Regra B pelo caminho da shell (`regra_b` por quadro, o modal, `apagar_num_passo`): com trilha e Auto Key
+/// off o arrasto não muda e o quadro seguinte abre a pergunta; «Delete animation» apaga a trilha num passo
+/// ligado ao passo global (um Ctrl+Z devolve-a) e o arrasto seguinte muda; «Cancel» (nada) deixa tudo travado.
+/// Com o Auto Key ligado nada trava. *Mutações: `regra_b` sem publicar ⇒ o arrasto muda, vermelho;
+/// `apagar_num_passo` sem `apagar_pontos` ⇒ a trilha fica, vermelho.*
+#[test]
+fn regra_b_pelo_quadro_da_shell_trava_pergunta_e_delete_animation_desfaz_num_ctrl_z() {
+    use ph2d_editor_core::interaction::{ContextMenuKind, WidgetStore};
+    use ph2d_physics_outline::canais_pontos::{animados, apagar_num_passo, regra_b};
+    let (_reg, mut sim, _body, shape, _db) = followed_ring();
+    alterna(sim.world_mut(), shape.to_bits());
+    let inicio = outline(&sim, shape);
+    let mut tl = ph2d_timeline::TimelineState::new();
+    tl.flags.auto_key = false;
+    trilha(&mut tl, shape);
+    let mut loja = WidgetStore::default();
+    let de = perto(&sim, shape, 0, [-2.0, 2.0]);
+    let pergunta = |l: &WidgetStore| l.context_menu().map(|r| r.kind);
+    // Cancel = fechar sem nada: o quadro seguinte continua travado.
+    for _ in 0..2 {
+        regra_b(sim.world_mut(), &tl, &mut loja);
+        arrasta(&mut sim, de, [de[0], de[1] + 1.0]);
+        assert_eq!(outline(&sim, shape), inicio, "travado: nada muda");
+        regra_b(sim.world_mut(), &tl, &mut loja);
+        assert_eq!(
+            pergunta(&loja),
+            Some(ContextMenuKind::ConfirmDeletePointsAnimation {
+                shape: shape.to_bits()
+            }),
+            "o quadro seguinte abre a pergunta"
+        );
+        loja.close_context_menu();
+    }
+    assert!(animados(&tl.doc, shape.to_bits()), "Cancel deixa a trilha");
+    // Auto Key ligado: não trava.
+    tl.flags.auto_key = true;
+    regra_b(sim.world_mut(), &tl, &mut loja);
+    assert!(!ph2d_shape_handles::travados::travado(
+        sim.world(),
+        shape.to_bits()
+    ));
+    tl.flags.auto_key = false;
+    // Delete animation: um passo da timeline à espera do global.
+    let antes = tl.doc.clone();
+    assert!(apagar_num_passo(&mut tl, shape.to_bits()), "apagou");
+    assert!(!animados(&tl.doc, shape.to_bits()));
+    assert!(
+        tl.history.liga_gesto_da_cena().is_some(),
+        "o passo global da shell (`empurra`) liga-se a ele"
+    );
+    regra_b(sim.world_mut(), &tl, &mut loja);
+    arrasta(&mut sim, de, [de[0], de[1] + 1.0]);
+    assert_ne!(outline(&sim, shape), inicio, "sem trilha: o arrasto muda");
+    assert!(tl.undo(), "o Ctrl+Z leva a timeline junto");
+    assert_eq!(tl.doc, antes, "a trilha volta");
+    assert!(!apagar_num_passo(&mut tl, 999), "sem trilha: nenhum passo");
+}

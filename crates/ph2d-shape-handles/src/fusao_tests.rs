@@ -87,10 +87,10 @@ fn o_grupo_nao_cresce_em_cadeia() {
 fn o_anel_que_ficaria_invalido_fica_o_mais_perto_possivel() {
     // Um triângulo com um par perto: fundir deixaria 2 pontos — recusado e contado.
     let r: Ring = vec![[0, 0], [1, 0], [64, 0], [0, 64]];
-    let f = fundidos(&[r.clone()], &[], 2.0).expect("o par é candidato");
+    let f = fundidos(std::slice::from_ref(&r), &[], 2.0).expect("o par é candidato");
     assert_eq!(f.rings[0].len(), 3, "{:?}", f.rings);
     let t: Ring = vec![[0, 0], [1, 0], [0, 1]];
-    let f = fundidos(&[t.clone()], &[], 2.0).expect("candidato");
+    let f = fundidos(std::slice::from_ref(&t), &[], 2.0).expect("candidato");
     assert_eq!((f.rings[0].clone(), f.fundidos, f.retidos), (t, 0, 1));
 }
 

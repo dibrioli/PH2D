@@ -38,7 +38,15 @@ Leitor: a próxima LLM desta linha. Aprovado pelo dono em 08/11/2026 («faça co
   abre um modal «This shape's points are animated» / «Editing them now would be undone by the animation. Delete the
   points animation to edit them freely?» [Delete animation] [Cancel]; aceitar apaga as trilhas 51/52 num passo de undo
   (a mesma função de `canais_pontos::apagar_do_fit`) e a edição volta; o gesto recusado não se reaplica. Auto Key
-  LIGADO: inalterado (grava chave). **Estado: núcleo FEITO 09/11 (`677f1cf7f5`); a shell POR FAZER.** Feito: o
+  LIGADO: inalterado (grava chave). **Estado: FEITA 09/11** — núcleo `677f1cf7f5`; a shell e o modal no commit
+  seguinte («feat(GEF02 09/11): regra B — a shell publica…»): `canais_pontos::regra_b` por quadro na
+  `fase_gizmo_suppression` (publica + abre `ContextMenuKind::ConfirmDeletePointsAnimation`), o pintor/`apply_event` da
+  pergunta de apagar (`document_tabs_menu`, rótulos em `rotulos_da_pergunta`), «Delete animation» =
+  `PhysicsFieldEdit::DeletePointsAnimation` → `canais_pontos::apagar_num_passo` + `empurra` (um Ctrl+Z). Provas:
+  `regra_b_pelo_quadro_da_shell_trava_pergunta_e_delete_animation_desfaz_num_ctrl_z`,
+  `a_pergunta_dos_pontos_animados_pinta_o_texto_do_dono_e_so_o_delete_pede` (mutações sem publicar · sem apagar ·
+  sem o push: 3/3 sangram). ⚠️ ABERTO: a trava no `retrace_edited` SOBREVIVE à mutação (nenhum teste a chama com
+  trava) — falta um teste que chame `retrace_edited` com a forma travada. Histórico: o
   recurso `ph2d_shape_handles::travados::PontosAnimados` (formas travadas + pedido do modal; `publica`/`recusa`/
   `pedido`), as recusas no ponteiro (arrasto ao armar, aresta, Alt+clique, Delete, fusão), no `outline_edited`
   (Merge, Detail/Alpha/Specks) e no `retrace_edited`; `canais_pontos::{animados, travadas, apagar_pontos}` —
@@ -50,8 +58,7 @@ Leitor: a próxima LLM desta linha. Aprovado pelo dono em 08/11/2026 («faça co
   quadro `travadas(&timeline.doc, tl.flags.auto_key)` no mundo da sim; ler `travados::pedido` e abrir o modal
   reusando a pergunta de apagar do editor-core (`ContextMenuKind::ConfirmDelete*` + `paint_confirm_delete`, uma
   variante nova com a entidade e as chaves i18n do título/texto/botões); «Delete animation» = `apagar_pontos` num
-  passo de undo; o teste pelo caminho real em `render_loop/autokey_pontos_tests.rs` (aceitar ⇒ o arrasto volta;
-  cancelar ⇒ nada; Auto Key on inalterado); prova de mutação da trava no `retrace_edited`.
+  passo de undo; o teste pelo caminho real; prova de mutação da trava no `retrace_edited` (ver ABERTO acima).
 
 ## Desenho técnico (padrão-ouro)
 

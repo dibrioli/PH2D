@@ -234,10 +234,38 @@ fn menu_kanban(store: &WidgetStore) -> Option<u64> {
     }
 }
 
+/// Regra B — a forma da pergunta dos pontos animados aberta (ou que o Down acabou de fechar).
+fn menu_pontos(store: &WidgetStore) -> Option<u64> {
+    match store
+        .context_menu()
+        .or_else(|| store.last_context_menu())?
+        .kind
+    {
+        ContextMenuKind::ConfirmDeletePointsAnimation { shape } => Some(shape),
+        _ => None,
+    }
+}
+
+/// ⭐ Regra B (GEF02 09/11): abre a pergunta *«This shape's points are animated»* para `shape` — a shell
+/// chama-a com o `travados::pedido` do quadro.
+pub fn pede_pontos_animados(store: &mut WidgetStore, shape: u64) {
+    store.open_context_menu(ContextMenuRequest {
+        x: 0.0,
+        y: 0.0,
+        kind: ContextMenuKind::ConfirmDeletePointsAnimation { shape },
+    });
+}
+
 /// O título e o aviso da pergunta de apagar aberta: um quadro, ou um Kanban (com os quadros que o
 /// mostram e que o perdem com ele).
 fn confirm_text(docs: &Documents, kind: Option<ContextMenuKind>) -> Option<(String, String)> {
     let (name, hint) = match kind? {
+        ContextMenuKind::ConfirmDeletePointsAnimation { .. } => {
+            return Some((
+                tr("card.insp.phys.points_animated_title").to_owned(),
+                tr("card.insp.phys.points_animated_hint").to_owned(),
+            ));
+        }
         ContextMenuKind::ConfirmDeleteBoard { board } => {
             let name = docs.boards().get(BoardId(board))?.name.clone();
             (name, tr("board.dialog.delete_hint").to_owned())
@@ -259,6 +287,23 @@ fn confirm_text(docs: &Documents, kind: Option<ContextMenuKind>) -> Option<(Stri
         tr_with("board.dialog.delete_title", &[("name", &name)]),
         hint,
     ))
+}
+
+/// O título, o aviso e o rótulo do botão de apagar da pergunta aberta — o que [`paint_confirm_delete`] pinta.
+pub fn rotulos_da_pergunta(store: &WidgetStore) -> Option<(String, String, &'static str)> {
+    let kind = store.context_menu().map(|r| r.kind);
+    let (titulo, aviso) = confirm_text(&Documents::default(), kind)?;
+    Some((titulo, aviso, rotulo_de_apagar(kind)))
+}
+
+fn rotulo_de_apagar(kind: Option<ContextMenuKind>) -> &'static str {
+    tr(match kind {
+        Some(ContextMenuKind::ConfirmDeletePointsAnimation { .. }) => {
+            "card.insp.phys.points_animated_delete"
+        }
+        Some(ContextMenuKind::ConfirmDeleteKanban { .. }) => "board.dialog.delete_kanban",
+        _ => "board.dialog.delete",
+    })
 }
 
 /// O campo de renomear, as linhas do menu e os botões da pergunta. Corre no pré-despacho.
@@ -289,6 +334,19 @@ pub(super) fn apply_event(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     ];
     if !rows.contains(&id) {
         return false;
+    }
+    if let Some(shape) = menu_pontos(&hero.store) {
+        hero.store.close_context_menu();
+        hero.store.consume_last_context_menu();
+        if id == ids::CTX_MENU_BOARD_DELETE_CONFIRM {
+            let edit = crate::PhysicsFieldEdit::DeletePointsAnimation;
+            hero.bus
+                .push(crate::action_bus::EditorAction::InspectorPhysicsEdit {
+                    entity_bits: shape,
+                    edit,
+                });
+        }
+        return true;
     }
     if let Some(k) = menu_kanban(&hero.store) {
         hero.store.close_context_menu();
@@ -374,30 +432,19 @@ pub fn paint_confirm_delete(
     let Some((title, hint)) = confirm_text(docs, store.context_menu().map(|r| r.kind)) else {
         return;
     };
-    let kanban = matches!(
-        store.context_menu().map(|r| r.kind),
-        Some(ContextMenuKind::ConfirmDeleteKanban { .. })
-    );
+    let apagar = rotulo_de_apagar(store.context_menu().map(|r| r.kind));
     // O aviso é uma linha por `\n` (o do Kanban com quadros tem duas): uma linha só cortava-se.
     let lines: Vec<(&str, ColorToken)> = std::iter::once((title.as_str(), ColorToken::Text1))
         .chain(hint.lines().map(|l| (l, ColorToken::Text3)))
         .collect();
-    let botoes = |kanban: bool| {
+    let botoes = || {
         [
             (
                 ids::CTX_MENU_BOARD_DELETE_CANCEL,
                 tr("board.dialog.cancel"),
                 false,
             ),
-            (
-                ids::CTX_MENU_BOARD_DELETE_CONFIRM,
-                tr(if kanban {
-                    "board.dialog.delete_kanban"
-                } else {
-                    "board.dialog.delete"
-                }),
-                true,
-            ),
+            (ids::CTX_MENU_BOARD_DELETE_CONFIRM, apagar, true),
         ]
     };
     let gap = Spacing::Xs.px();
@@ -417,7 +464,7 @@ pub fn paint_confirm_delete(
     if super::caixa_cartao::centrada(molde, cartao, &mut alvo, |c, y| {
         let y = hint.lines().fold(y, |y, l| c.hint(l, y)) + m::FIELD_ROW_GAP;
         let meia = (c.w - m::FIELD_GAP) * 0.5;
-        for (i, (id, label, danger)) in botoes(kanban).into_iter().enumerate() {
+        for (i, (id, label, danger)) in botoes().into_iter().enumerate() {
             #[expect(clippy::cast_precision_loss, reason = "dois botões")]
             let x = c.x + i as f32 * (meia + m::FIELD_GAP);
             let r = Rect::new(x, y, meia, m::FIELD_H);
@@ -463,7 +510,7 @@ pub fn paint_confirm_delete(
     let bw = (inner_w - gap) * 0.5;
     let cancel = Rect::new(x, y, bw, ROW_H);
     let delete = Rect::new(x + bw + gap, y, bw, ROW_H);
-    for ((id, label, danger), r) in botoes(kanban).into_iter().zip([cancel, delete]) {
+    for ((id, label, danger), r) in botoes().into_iter().zip([cancel, delete]) {
         hit_index.register(id, r);
         let b = Button::new(id, label).visual(store.button_visual(id));
         let b = if danger { b.danger() } else { b };

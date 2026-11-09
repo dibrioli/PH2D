@@ -163,7 +163,8 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [crate::ids::MenuRow] {
         // O modal «Convert to card» desenha o próprio corpo (`board_note_card::paint`).
         ContextMenuKind::NotesToCard => &[],
         ContextMenuKind::ConfirmDeleteBoard { .. }
-        | ContextMenuKind::ConfirmDeleteKanban { .. } => &[],
+        | ContextMenuKind::ConfirmDeleteKanban { .. }
+        | ContextMenuKind::ConfirmDeletePointsAnimation { .. } => &[],
         // O modal «Send to board» desenha o próprio corpo (`send_to_board::paint`).
         ContextMenuKind::SendToBoard { .. }
         | ContextMenuKind::SendSelection { .. }

@@ -38,6 +38,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.outline_detail_tip" => {
             "How far the outline may move out from the picture to stay simple. Bigger means fewer points."
         }
+        "card.insp.phys.points_animated_title" => "This shape's points are animated",
+        "card.insp.phys.points_animated_hint" => {
+            "Editing them now would be undone by the animation. Delete the points animation to edit them freely?"
+        }
+        "card.insp.phys.points_animated_delete" => "Delete animation",
         "card.insp.phys.outline_locked_tip" => {
             "Locked because you moved points by hand. Turn on \u{201c}Edit shape on canvas\u{201d} to change it."
         }

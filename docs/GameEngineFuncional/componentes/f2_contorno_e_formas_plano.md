@@ -38,7 +38,20 @@ Leitor: a próxima LLM desta linha. Aprovado pelo dono em 08/11/2026 («faça co
   abre um modal «This shape's points are animated» / «Editing them now would be undone by the animation. Delete the
   points animation to edit them freely?» [Delete animation] [Cancel]; aceitar apaga as trilhas 51/52 num passo de undo
   (a mesma função de `canais_pontos::apagar_do_fit`) e a edição volta; o gesto recusado não se reaplica. Auto Key
-  LIGADO: inalterado (grava chave). **Estado: por construir** (ver o handoff da onda).
+  LIGADO: inalterado (grava chave). **Estado: núcleo FEITO 09/11 (`677f1cf7f5`); a shell POR FAZER.** Feito: o
+  recurso `ph2d_shape_handles::travados::PontosAnimados` (formas travadas + pedido do modal; `publica`/`recusa`/
+  `pedido`), as recusas no ponteiro (arrasto ao armar, aresta, Alt+clique, Delete, fusão), no `outline_edited`
+  (Merge, Detail/Alpha/Specks) e no `retrace_edited`; `canais_pontos::{animados, travadas, apagar_pontos}` —
+  `apagar_pontos` é o «Delete animation» e o Fit (`apagar_do_fit` chama-a). Provas (RED antes, 7/7 mutações
+  sangram): `pontos_animados_com_auto_key_off_o_arrasto_nao_muda_e_pede_o_modal`,
+  `pontos_animados_acrescentar_tirar_e_delete_nao_mudam_e_pedem_o_modal`,
+  `pontos_animados_merge_e_detail_nao_mudam_e_pedem_o_modal`,
+  `delete_animation_apaga_as_trilhas_dos_pontos_e_so_com_auto_key_off_trava`. **Falta:** a shell publicar por
+  quadro `travadas(&timeline.doc, tl.flags.auto_key)` no mundo da sim; ler `travados::pedido` e abrir o modal
+  reusando a pergunta de apagar do editor-core (`ContextMenuKind::ConfirmDelete*` + `paint_confirm_delete`, uma
+  variante nova com a entidade e as chaves i18n do título/texto/botões); «Delete animation» = `apagar_pontos` num
+  passo de undo; o teste pelo caminho real em `render_loop/autokey_pontos_tests.rs` (aceitar ⇒ o arrasto volta;
+  cancelar ⇒ nada; Auto Key on inalterado); prova de mutação da trava no `retrace_edited`.
 
 ## Desenho técnico (padrão-ouro)
 

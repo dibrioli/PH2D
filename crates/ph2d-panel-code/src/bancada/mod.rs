@@ -36,11 +36,20 @@ pub(crate) fn chip_r() -> f32 {
     (crate::chrome::font() - Spacing::Xs.px()) * 0.5
 }
 
-/// O balão «em quem» aberto: a linha da marca e se um clique o prendeu.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Quanto o balão espera pelo rato que saiu da marca a caminho dele (ou dele para fora) antes de
+/// fechar: o `editor.hover.hidingDelay` do VS Code 1.142 (300 ms) — o mesmo do balão do código
+/// (`ph2d-app-code` `hint.rs` `HOVER_HIDE_NS`; smoke do dono 09/11: «ao levar o mouse pro cartão
+/// o cartão some»).
+pub const POP_HIDE_NS: u128 = 300_000_000;
+
+/// O balão «em quem» aberto: a linha da marca, se um clique o prendeu, a marca que o abriu (ele
+/// encosta-se por baixo dela) e desde quando o rato está fora dos dois.
+#[derive(Clone, Copy, Debug, PartialEq)]
 struct Pop {
     line: usize,
     pinned: bool,
+    anchor: Rect,
+    left: Option<u128>,
 }
 
 /// A célula a ser escrita: o objecto, a propriedade e o campo.
@@ -69,8 +78,6 @@ pub struct BancadaView {
     pointer: (f32, f32),
     /// As marcas da margem pintadas pelo código no último quadro (a linha e a caixa).
     marks: Vec<(usize, Rect)>,
-    /// Onde começa o texto do código (o balão encosta-se aí, por baixo da marca).
-    text_x: Option<f32>,
     /// Os alvos de cada peça no último quadro, por ordem de pintura.
     outline_hits: Vec<(Aim, Rect)>,
     grid_hits: Vec<(Aim, Rect)>,
@@ -100,7 +107,6 @@ impl Default for BancadaView {
             focus: false,
             pointer: (0.0, 0.0),
             marks: Vec::new(),
-            text_x: None,
             outline_hits: Vec::new(),
             grid_hits: Vec::new(),
             map_hits: Vec::new(),
@@ -218,11 +224,6 @@ impl BancadaView {
     }
 
     /// As marcas que o código pintou neste quadro ([`crate::CodeView::bancada_marks`]).
-    /// Onde começa o texto do código neste quadro ([`crate::CodeView::text_rect`]).
-    pub fn set_text_x(&mut self, x: f32) {
-        self.text_x = Some(x);
-    }
-
     pub fn set_marks(&mut self, marks: &[(usize, Rect)]) {
         self.marks.clear();
         self.marks.extend_from_slice(marks);
@@ -254,6 +255,7 @@ impl BancadaView {
 
     /// O relógio do quadro: o rato parado num nome tempo bastante faz a cena aparecer.
     pub fn tick(&mut self, now: u128) {
+        self.tick_pop(now);
         if self.peeking.is_some() {
             return;
         }
@@ -285,17 +287,40 @@ impl BancadaView {
         self.aim_rect = rect;
         match aim {
             Aim::Mark(line) if self.pop.is_none_or(|p| !p.pinned || p.line == line) => {
-                let pinned = self.pop.is_some_and(|p| p.pinned && p.line == line);
-                self.pop = Some(Pop { line, pinned });
+                let same = self.pop.filter(|p| p.line == line);
+                let on_mark = self.marks.iter().any(|(l, r)| *l == line && *r == rect);
+                self.pop = Some(Pop {
+                    line,
+                    pinned: same.is_some_and(|p| p.pinned),
+                    anchor: match same {
+                        Some(p) if !on_mark => p.anchor,
+                        _ => rect,
+                    },
+                    left: None,
+                });
             }
             _ => {
                 let inside = self.pop_rect.is_some_and(|r| r.contains(x, y));
-                if self.pop.is_some_and(|p| !p.pinned) && !inside {
-                    self.pop = None;
+                if let Some(p) = self.pop.as_mut().filter(|p| !p.pinned) {
+                    if inside {
+                        p.left = None;
+                    } else if p.left.is_none() {
+                        p.left = Some(now);
+                    }
                 }
+                self.tick_pop(now);
             }
         }
         aim != Aim::Nothing || self.fold_rect.contains(x, y)
+    }
+
+    /// O balão solto fecha quando o rato está fora dele e da marca há [`POP_HIDE_NS`].
+    fn tick_pop(&mut self, now: u128) {
+        if self.pop.is_some_and(|p| {
+            !p.pinned && p.left.is_some_and(|t| now.saturating_sub(t) >= POP_HIDE_NS)
+        }) {
+            self.pop = None;
+        }
     }
 
     /// Um carregar do botão principal. `true` = foi na Bancada (tomado).
@@ -305,7 +330,7 @@ impl BancadaView {
             self.folded = !self.folded;
             return true;
         }
-        let Some((aim, _)) = self.hit(x, y) else {
+        let Some((aim, rect)) = self.hit(x, y) else {
             self.blur();
             return false;
         };
@@ -331,11 +356,18 @@ impl BancadaView {
                     .iter()
                     .any(|(l, r)| *l == line && r.contains(x, y)) =>
             {
-                self.pop = Some(Pop { line, pinned: true });
+                if let Some(p) = self.pop.as_mut() {
+                    (p.pinned, p.left) = (true, None);
+                }
             }
             Aim::Mark(line) => {
                 let pinned = self.pop.is_some_and(|p| p.pinned && p.line == line);
-                self.pop = (!pinned).then_some(Pop { line, pinned: true });
+                self.pop = (!pinned).then_some(Pop {
+                    line,
+                    pinned: true,
+                    anchor: rect,
+                    left: None,
+                });
             }
             Aim::Cell(h, c) if !editing_here => self.click_cell(who, h, c),
             Aim::Cell(..) => {}

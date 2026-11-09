@@ -113,7 +113,7 @@ impl DocumentSurface for CodeDocs {
             let lit = typing && blink_on(now, doc.last_input_ns, steady);
             doc.paint(body, scene, text, theme, store, (lit, assist, Some(&who)));
             let caret = bancada::caret_column(&doc.buffer, &who);
-            let marks = (doc.view.bancada_marks().to_vec(), doc.view.text_rect().x);
+            let marks = doc.view.bancada_marks().to_vec();
             bench = Some((
                 doc.bench_rect(body, store.open),
                 caret,
@@ -122,8 +122,7 @@ impl DocumentSurface for CodeDocs {
             ));
         }
         if let Some((r, caret, marks, title)) = bench {
-            self.bench.set_marks(&marks.0);
-            self.bench.set_text_x(marks.1);
+            self.bench.set_marks(&marks);
             if let Some(r) = r {
                 self.bench.paint_bench(&who, r, caret, scene, text, theme);
             }

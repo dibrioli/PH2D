@@ -86,3 +86,17 @@ Na lista, com a frase de recusa (`notice`) o «In this script» cede a coluna (`
 
 No [plano 13](../13_plano_bancada.md) as Ondas A, C e D estão no `main` e a B está feita aqui: **não falta nenhuma onda**.
 Depois do smoke do dono, a linha está pronta para `/pd-linha-fechar` (handoff de integração, §5.1 do `CLAUDE.md`). Não integre, não pushe.
+
+## Smoke do dono 09/11 — passo 3 (o balão «em quem»): três defeitos, curados
+
+O dono: «o cartão tem pouco contraste com o fundo, fica longe do losango e ao tentar levar o mouse pro cartão o
+cartão some». Cura (`ph2d-panel-code/src/bancada/popover.rs`, `mod.rs`):
+- **Contraste:** a moldura e o botão passam a ser os PADRÃO da casa (`paint_popover`, `Button::on_elevated` +
+  `paint_button` — os do balão do código, `hint.rs`), com tinta `Text1/2/3`; antes era a tinta do cartão
+  (`CardField` sobre `CardField`: o fio da borda sumia).
+- **Longe:** o balão encosta-se ao canto de baixo à direita da marca que o ABRIU (`Pop::anchor`; a marca ◆ ou os
+  pontos), em vez do início do texto; a coluna das marcas das linhas de baixo fica à vista.
+- **Some no caminho:** espera `POP_HIDE_NS` = 300 ms (o `editor.hover.hidingDelay` do VS Code, o mesmo do balão do
+  código) com o rato fora dos dois; `tick` fecha-o sem o rato se mexer.
+- Testes: `o_balao_encosta_na_marca_e_o_caminho_ate_ele_nao_o_fecha` (novo) e os dois de fecho com a espera;
+  `ph2d-panel-code bancada` 19 ✓, `ph2d-app-code onda_b` 2 ✓, clippy das duas ✓. Foto nova: `cena13/passo_1.png`.

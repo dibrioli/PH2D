@@ -364,10 +364,38 @@ fn o_balao_da_marca_abre_ao_pairar_e_o_select_e_do_primeiro_que_mudou() {
 
 #[test]
 fn o_balao_solto_fecha_ao_afastar_o_rato() {
+    use ph2d_panel_code::bancada::POP_HIDE_NS;
     let (who, mut ts) = (quem(), ts());
     let mut v = balao_aberto(&who, &mut ts);
     assert!(!v.hover(LONGE.0, LONGE.1, 1));
-    assert_eq!(v.popover_line(), None);
+    assert_eq!(v.popover_line(), Some(0), "a caminho, o balão espera");
+    v.tick(POP_HIDE_NS);
+    assert_eq!(v.popover_line(), Some(0), "ainda dentro da espera");
+    v.tick(1 + POP_HIDE_NS);
+    assert_eq!(v.popover_line(), None, "passada a espera, fecha sozinho");
+}
+
+/// Smoke do dono 09/11: o balão encosta-se ao canto da marca (na margem), e o rato que vai da
+/// marca até ele — mesmo cruzando o que não é nem um nem outro — não o fecha.
+#[test]
+fn o_balao_encosta_na_marca_e_o_caminho_ate_ele_nao_o_fecha() {
+    use ph2d_panel_code::bancada::POP_HIDE_NS;
+    let (who, mut ts) = (quem(), ts());
+    let mut v = balao_aberto(&who, &mut ts);
+    let caixa = v.target(Aim::Mark(0)).expect("o corpo do balão");
+    assert!(
+        (caixa.x - (MARCA.x + MARCA.w)).abs() < 0.5 && (caixa.y - (MARCA.y + MARCA.h)).abs() < 0.5,
+        "no canto de baixo à direita da marca, encostado: {caixa:?} × {MARCA:?}"
+    );
+    // Um píxel fora dos dois (o vão), e depois dentro do balão antes da espera acabar.
+    v.hover(MARCA.x + MARCA.w + 1.0, MARCA.y - 1.0, 10);
+    v.hover(
+        caixa.x + caixa.w * 0.5,
+        caixa.y + caixa.h * 0.5,
+        9 + POP_HIDE_NS,
+    );
+    v.tick(10 + POP_HIDE_NS * 2);
+    assert_eq!(v.popover_line(), Some(0), "o rato chegou ao balão: fica");
 }
 
 #[test]
@@ -399,6 +427,7 @@ fn o_clique_na_marca_prende_o_balao_e_o_esc_fecha_o() {
     v.hover(x + 1.0, y, 5);
     assert_eq!(v.popover_line(), Some(0), "o rato na marca reabre-o");
     v.hover(LONGE.0, LONGE.1, 6);
+    v.tick(6 + ph2d_panel_code::bancada::POP_HIDE_NS);
     assert_eq!(v.popover_line(), None, "reaberto solto, fecha ao afastar");
 }
 

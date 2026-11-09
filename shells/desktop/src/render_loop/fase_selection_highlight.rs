@@ -126,34 +126,15 @@ impl crate::App {
                 crate::scene_mapping::janela(hero.view.center_split, surface.size()),
                 vector_scene,
             );
-            // ⭐ **A CÂMERA no canvas** (plano GEF 17): o ícone, a moldura do jogo, o rótulo, os cantos e os limites.
-            ph2d_camera_frame::tinta::desenhar(
-                &self.undo.camera_no_canvas.molduras,
-                ph2d_camera_frame::tinta::Pintura {
-                    mostrar: hero.project.camera_frame,
-                    unidade: hero.project.display_unit,
-                    pixels_per_meter: hero.project.pixels_per_meter,
-                    icone_px: hero.project.camera_icon_px,
-                    em_edicao: self.undo.camera_no_canvas.em_edicao,
-                    canvas: ph2d_camera_frame::tinta::canvas_util(
-                        [viewport.x, viewport.y, viewport.w, viewport.h],
-                        hero.view.rulers_visible,
-                    ),
-                    ponteiro: self.last_pointer,
-                    escurecer: hero.view.camera_canvas.dim_outside,
-                    agarrada: self
-                        .undo
-                        .camera_no_canvas
-                        .arrasto
-                        .as_ref()
-                        .filter(|a| !a.era_um_clique())
-                        .map(|a| a.alca),
-                },
-                hero.theme,
+            // ⭐ A CÂMERA no canvas (GEF 17) — ver `tinta_da_camera`.
+            tinta_da_camera(
+                &self.undo.camera_no_canvas,
+                hero,
+                viewport,
+                self.last_pointer,
                 camera,
                 crate::scene_mapping::janela(hero.view.center_split, surface.size()),
-                vector_scene,
-                paint_ctx.text,
+                (&mut *vector_scene, &mut *paint_ctx.text),
             );
             ph2d_shape_handles::tinta::desenhar(
                 sim.world(),
@@ -218,4 +199,42 @@ impl crate::App {
             );
         }
     }
+}
+
+/// ⭐ **A CÂMERA no canvas** (plano GEF 17): o ícone, a moldura do jogo, o rótulo, os cantos e os limites.
+fn tinta_da_camera(
+    cnc: &ph2d_camera_frame::CameraNoCanvas,
+    hero: &ph2d_editor_core::HeroScreen,
+    viewport: EditorRect,
+    ponteiro: (f32, f32),
+    camera: &ph2d_render::Camera2d,
+    window: ph2d_host::WindowSize,
+    (cena, texto): (&mut ph2d_vector::VectorScene, &mut ph2d_text::TextSystem),
+) {
+    ph2d_camera_frame::tinta::desenhar(
+        &cnc.molduras,
+        ph2d_camera_frame::tinta::Pintura {
+            mostrar: hero.project.camera_frame,
+            unidade: hero.project.display_unit,
+            pixels_per_meter: hero.project.pixels_per_meter,
+            icone_px: hero.project.camera_icon_px,
+            em_edicao: cnc.em_edicao,
+            canvas: ph2d_camera_frame::tinta::canvas_util(
+                [viewport.x, viewport.y, viewport.w, viewport.h],
+                hero.view.rulers_visible,
+            ),
+            ponteiro,
+            escurecer: hero.view.camera_canvas.dim_outside,
+            agarrada: cnc
+                .arrasto
+                .as_ref()
+                .filter(|a| !a.era_um_clique())
+                .map(|a| a.alca),
+        },
+        hero.theme,
+        camera,
+        window,
+        cena,
+        texto,
+    );
 }

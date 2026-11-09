@@ -10,7 +10,8 @@ bit; nenhum pincel de fábrica usa o Height). Rodadas 3–5 contra o Krita Chalk
 `folha_motor.png`. Dados crus: scratch da sessão (cena/cena_volta + krita_* em
 `/tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/4295e5e0-a183-452a-b0e5-03297d83bace/scratchpad`).
 
-ESPERA O DONO: a triagem da folha (K1 serve / quase / não) e se quer o enchimento do dente além do Krita.
+DONO 09/11 (triagem da folha): **K1 SERVE.** E **o enchimento do dente ENTRA**: «enche o papel paulatinamente em
+várias repassadas» — cada repasse cobre mais vales, aos poucos (não de uma vez), além do Krita.
 
 PRÓXIMO, num bloco, depois do «serve» do dono:
 1. Receita K1 no Pastel de `ph2d-tool-painter/tests/it/familias/csp_secos.rs` (ver README FASE 3; o Crayon fica com o
@@ -23,7 +24,14 @@ PRÓXIMO, num bloco, depois do «serve» do dono:
    `event/option_route.rs`, `ph2d-i18n/src/painter_ponta.rs`; teste de costura em `tests/it/seam_ponta.rs`.
 3. Alarmes de pincel por nome (`a_largura_de_fabrica_e_a_aprovada`, `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`):
    vão reprovar no Pastel — relatório ao smoke, regravar SÓ com `PH2D_PINCEIS_APROVA=1` depois do sim do dono.
-4. Mostrar ao dono se o Chalk/Crayon herdam a lei (decisão dele).
+4. **Enchimento do dente** (ordem do dono): plano de «pó pousado» por camada — candidato o `covers` do relevo
+   (`ph2d-tool-painter/src/tool/mod.rs:163`, já no desfazer e no `.ph2dproj`; fundo opaco não o escreve). Durante o
+   traço o Height lê `t + k·desfoque(covers de ANTES do traço, ~1,5 px)` (imutável no traço = determinístico, sem corrida
+   entre bandas); no fim do traço soma a cobertura dele ao `covers`. Plumbar até o `DabCtx` (`dab/bands.rs:293`, rota
+   da mistura via `ramp_texel`) e a rota sem mistura (`stamp.rs` ~638, cache `tex[mi]`). «Paulatino»: k pequeno o
+   bastante para 3–5 passadas encherem (medir na sonda com `PH2D_V3_PASSADAS=1..5`). ⚠️ Conferir que a luz do relevo
+   ignora `covers` sem `heights` na camada. Desfoque: medir o custo a 4K antes de limitar (por ladrilho, preguiçoso).
+5. Mostrar ao dono se o Chalk/Crayon herdam a lei (decisão dele).
 Aberto: curva da pressão do K1 a p 0,5–0,65 abaixo da do Krita; o pálido no branco/blocos é a `mistura_opaca`.
 
 Fila depois (do prompt anterior): memória do 1.º traço · marca do Wet por camada · Wet Wash Mix · Splash ·

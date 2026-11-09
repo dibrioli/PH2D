@@ -270,3 +270,52 @@ fn o_detail_dentro_da_edicao_retraca_um_outline_a_mao() {
     );
     assert_eq!(o.detail_q4, 96, "com o Detail novo");
 }
+
+/// ⭐ Regra B no retraço: o mesmo Detail dentro da edição, mas com trilha de pontos (FISICA 51) e o Auto Key
+/// desligado — o cartão (`apply_physics_edit` ⇒ `outline_edited` recusa) e a cola (`retrace_edited`) não mexem
+/// nos anéis à mão, e o quadro seguinte (`regra_b`) abre a pergunta. *Mutação: `retrace_edited` sem a trava ⇒
+/// os pontos à mão dão lugar aos traçados, vermelho.*
+#[test]
+fn com_pontos_animados_o_detail_dentro_da_edicao_nao_retraca_e_pede_o_modal() {
+    use ph2d_editor_core::interaction::{ContextMenuKind, WidgetStore};
+    use ph2d_editor_core::{OutlineEdit, PhysicsFieldEdit as P};
+    let (reg, mut sim, body, db) = pente();
+    let (forma, mut mao) = a_mao(&mut sim, body);
+    mao[0][0][0] += 16;
+    ph2d_shape_handles::pontos::escreve(sim.world_mut(), forma, mao.clone(), true);
+    let mut tl = ph2d_timeline::TimelineState::new();
+    tl.flags.auto_key = false;
+    let kk = ph2d_ecs::FieldKey::new(
+        ph2d_ecs::canal::familia::FISICA,
+        f::CONTORNO_PONTO_X,
+        0,
+        0,
+    );
+    tl.doc.upsert_key(
+        forma,
+        ph2d_timeline::PropKind::Field(kk),
+        ph2d_anim::RationalTime::ZERO,
+        ph2d_anim::AnimValue::Float(0.0),
+        ph2d_anim::Interp::Linear,
+    );
+    let mut loja = WidgetStore::default();
+    ph2d_physics_outline::canais_pontos::regra_b(sim.world_mut(), &tl, &mut loja);
+    let b = body.to_bits();
+    let edit = P::Outline(OutlineEdit::Detail(6.0));
+    let q = EditorCommandQueue::new();
+    crate::physics_apply::apply_physics_edit(&mut sim, b, edit, &q, &reg);
+    let none = std::collections::BTreeMap::new();
+    let n =
+        ph2d_physics_outline::retrace_edited(sim.world(), &[(b, edit)], &db, &none, PPM, &q, &reg);
+    apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
+    let o = par(&sim, Entity::from_bits(forma)).1;
+    assert_eq!(n, 0, "travado: nada retraçado");
+    assert!(o.custom, "continua à mão");
+    assert_eq!(o.rings[..], mao[..], "os anéis à mão intactos");
+    ph2d_physics_outline::canais_pontos::regra_b(sim.world_mut(), &tl, &mut loja);
+    assert_eq!(
+        loja.context_menu().map(|r| r.kind),
+        Some(ContextMenuKind::ConfirmDeletePointsAnimation { shape: forma }),
+        "o quadro seguinte abre a pergunta"
+    );
+}

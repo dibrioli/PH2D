@@ -128,16 +128,44 @@ pub fn layer_objects(n: usize) -> Vec<(u64, String)> {
     })
 }
 
-/// As formas da camada `n` com exceção («Differ from this layer»): (bits, nome a mostrar, `[include, exclude]`).
+/// Uma linha de «Differ from this layer».
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExcecaoDaCamada {
+    pub bits: u64,
+    /// O nome a mostrar («Crate › Collision Shape»).
+    pub nome: String,
+    /// A camada da forma: a aberta, ou outra cuja exceção fixa a aberta.
+    pub camada: usize,
+    /// `[include, exclude]` da forma.
+    pub excecao: [u32; 2],
+}
+
+/// As formas com exceção que tocam a camada `n` («Differ from this layer»), nos dois sentidos de
+/// [`exceptions_on_pair`] (o ponto da grade): primeiro as da camada `n` com exceção, depois as de outra camada
+/// que fixam `n`; cada grupo pelo nome.
 #[must_use]
-pub fn layer_exceptions(n: usize) -> Vec<(u64, String, [u32; 2])> {
-    OBJETOS.with(|o| {
+pub fn layer_exceptions(n: usize) -> Vec<ExcecaoDaCamada> {
+    let bit = 1u32 << n.min(31);
+    let mut v: Vec<(bool, ExcecaoDaCamada)> = OBJETOS.with(|o| {
         o.borrow()
             .iter()
-            .filter(|x| x.layer == n && x.excecao != [0; 2])
-            .map(|x| (x.bits, rotulo(x), x.excecao))
+            .filter(|x| {
+                let fixos = x.excecao[0] | x.excecao[1];
+                (x.layer == n && fixos != 0) || (x.layer != n && fixos & bit != 0)
+            })
+            .map(|x| {
+                let e = ExcecaoDaCamada {
+                    bits: x.bits,
+                    nome: rotulo(x),
+                    camada: x.layer,
+                    excecao: x.excecao,
+                };
+                (x.layer != n, e)
+            })
             .collect()
-    })
+    });
+    v.sort_by(|(a, x), (b, y)| (a, &x.nome, x.bits).cmp(&(b, &y.nome, y.bits)));
+    v.into_iter().map(|(_, e)| e).collect()
 }
 
 /// Por camada, os bits que alguma forma dela fixa: o par `(a, b)` tem exceção se `[a]` tem `b` ou `[b]` tem `a`.

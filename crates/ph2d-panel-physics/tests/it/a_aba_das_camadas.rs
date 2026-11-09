@@ -65,6 +65,11 @@ impl Mesa {
         }
     }
 
+    /// UM quadro, como o app pinta a cada volta do laço (sem aquecimento).
+    fn pinta_uma(&mut self) {
+        self.rects = self.host.paint::<PhysicsPanel>(&mut self.st, JANELA);
+    }
+
     fn rect(&self, id: NodeId) -> Option<Rect> {
         self.rects
             .iter()
@@ -1106,7 +1111,7 @@ fn a_forma_com_excecao_aparece_sob_a_camada_e_o_botao_seleciona_a() {
     aba::poe_area_fixa(AREA);
     mesa.pinta();
     assert_eq!(state::layer_objects(1)[0].1, "Crate › Collision Shape");
-    let so: Vec<u64> = state::layer_exceptions(1).iter().map(|e| e.0).collect();
+    let so: Vec<u64> = state::layer_exceptions(1).iter().map(|e| e.bits).collect();
     assert_eq!(so, [0xC2], "só a que tem exceção");
     assert!(mesa.rect(ids::PHYSICS_LAYER_EXCEPTION[0]).is_some());
     assert!(mesa.rect(ids::PHYSICS_LAYER_EXCEPTION[1]).is_none());
@@ -1128,6 +1133,148 @@ fn a_forma_com_excecao_aparece_sob_a_camada_e_o_botao_seleciona_a() {
     assert!(
         mesa.rect(ids::PHYSICS_LAYER_EXCEPTION[0]).is_none(),
         "sem exceção, a secção sai"
+    );
+    ph2d_panel_physics::set_layer_objects(Vec::new());
+    aba::fecha();
+}
+
+/// Uma forma publicada para a aba: `(camada, bits, nome, [include, exclude])`, sem corpo dono.
+fn forma_em(
+    layer: usize,
+    bits: u64,
+    nome: &str,
+    excecao: [u32; 2],
+) -> ph2d_physics_ecs::ObjetoDaCamada {
+    ph2d_physics_ecs::ObjetoDaCamada {
+        layer,
+        bits,
+        nome: nome.into(),
+        dono: None,
+        excecao,
+    }
+}
+
+/// ⭐ Dono 09/11 («não mostra todos os objetos que diferem»): a forma de OUTRA camada que fixa a aberta aparece sob
+/// ela com a camada dela e o que fixa sobre a aberta («on Enemy: Player off»), e o botão seleciona-a — o mesmo par
+/// que o ponto da grade já contava nos dois sentidos.
+#[test]
+fn a_forma_de_outra_camada_que_fixa_a_aberta_aparece_sob_ela_e_seleciona_se() {
+    use ph2d_editor_core::action_bus::SelectModifier;
+    let mut mesa = Mesa::nova(nomes_b(), false);
+    ph2d_panel_physics::set_layer_objects(vec![
+        forma_em(1, 0xA1, "Hero", [0, 0]),
+        forma_em(2, 0xE2, "Spike", [0, 1 << 1]),
+    ]);
+    aba::abre(Some(1));
+    aba::poe_area_fixa(AREA);
+    mesa.pinta();
+    assert_eq!(
+        aba::lente().excecoes,
+        [("Spike".to_owned(), "on Enemy: Player off".to_owned())],
+        "a forma da Enemy que desliga a Player aparece sob a Player"
+    );
+    assert_eq!(ph2d_panel_physics::state::exceptions_on_pair(1, 2), 1);
+    let _ = mesa.host.drained_actions();
+    let _ = mesa.clica(ids::PHYSICS_LAYER_EXCEPTION[0]);
+    assert_eq!(
+        mesa.host.drained_actions(),
+        [EditorAction::SelectSprite {
+            entity_bits: 0xE2,
+            modifier: SelectModifier::Replace
+        }],
+        "o botão seleciona a forma da outra camada"
+    );
+    ph2d_panel_physics::set_layer_objects(Vec::new());
+    aba::fecha();
+}
+
+/// ⭐ Duas formas da camada aberta com exceção aparecem as duas (por nome), depois as de outras camadas que a fixam;
+/// e cada ponto da linha/coluna da aberta tem pelo menos uma forma na lista, e vice-versa.
+#[test]
+fn duas_formas_com_excecao_aparecem_e_cada_ponto_da_aberta_tem_a_sua_forma() {
+    use ph2d_panel_physics::state;
+    let mut mesa = Mesa::nova(nomes_b(), false);
+    ph2d_panel_physics::set_layer_objects(vec![
+        forma_em(0, 0x01, "Floor", [0, 0]),
+        forma_em(1, 0xB1, "Wall", [0, 1]),
+        forma_em(1, 0xB2, "Box", [1 << 3, 0]),
+        forma_em(2, 0xB3, "Spike", [1 << 1, 0]),
+        forma_em(3, 0xB4, "Coin", [0, 1 << 2]),
+    ]);
+    aba::abre(Some(1));
+    aba::poe_area_fixa(AREA);
+    mesa.pinta();
+    let par = |a: &str, b: &str| (a.to_owned(), b.to_owned());
+    assert_eq!(
+        aba::lente().excecoes,
+        [
+            par("Box", "Pickup on"),
+            par("Wall", "Ground off"),
+            par("Spike", "on Enemy: Player on"),
+        ],
+        "as da camada por nome, depois as que a fixam; a Coin (Pickup × Enemy) não é da Player"
+    );
+    for k in 0..3 {
+        assert!(
+            mesa.rect(ids::PHYSICS_LAYER_EXCEPTION[k]).is_some(),
+            "botão {k}"
+        );
+    }
+    assert!(mesa.rect(ids::PHYSICS_LAYER_EXCEPTION[3]).is_none());
+    let lista = state::layer_exceptions(1);
+    let fixos = state::pinned_rows();
+    for j in 0..5 {
+        // A regra do ponto (`aba::pinta`): o par (1, j) tem exceção num dos dois sentidos.
+        let ponto = fixos[1] & (1 << j) != 0 || fixos[j] & (1 << 1) != 0;
+        let na_lista = lista.iter().any(|e| {
+            (e.camada == 1 && (e.excecao[0] | e.excecao[1]) & (1 << j) != 0)
+                || (e.camada == j && j != 1)
+        });
+        assert_eq!(
+            ponto, na_lista,
+            "camada {j}: ponto {ponto}, lista {na_lista}"
+        );
+    }
+    ph2d_panel_physics::set_layer_objects(Vec::new());
+    aba::fecha();
+}
+
+/// ⭐ Dono 09/11 («não atualiza em tempo real»): a lista é publicada a cada quadro sem gesto nenhum; o quadro
+/// SEGUINTE mostra a exceção nova — da outra camada e da própria — e a que saiu.
+#[test]
+fn uma_excecao_publicada_sem_gesto_aparece_no_quadro_seguinte() {
+    let mut mesa = Mesa::nova(nomes_b(), false);
+    ph2d_panel_physics::set_layer_objects(vec![forma_em(3, 0xC3, "Coin", [0, 0])]);
+    aba::abre(Some(1));
+    aba::poe_area_fixa(AREA);
+    mesa.pinta();
+    assert!(aba::lente().excecoes.is_empty());
+    assert!(mesa.rect(ids::PHYSICS_LAYER_EXCEPTION[0]).is_none());
+    let par = |a: &str, b: &str| (a.to_owned(), b.to_owned());
+    ph2d_panel_physics::set_layer_objects(vec![forma_em(3, 0xC3, "Coin", [0, 1 << 1])]);
+    mesa.pinta_uma();
+    assert_eq!(
+        aba::lente().excecoes,
+        [par("Coin", "on Pickup: Player off")]
+    );
+    assert!(mesa.rect(ids::PHYSICS_LAYER_EXCEPTION[0]).is_some());
+    ph2d_panel_physics::set_layer_objects(vec![
+        forma_em(1, 0xC1, "Hero", [1, 0]),
+        forma_em(3, 0xC3, "Coin", [0, 1 << 1]),
+    ]);
+    mesa.pinta_uma();
+    assert_eq!(
+        aba::lente().excecoes,
+        [
+            par("Hero", "Ground on"),
+            par("Coin", "on Pickup: Player off")
+        ]
+    );
+    ph2d_panel_physics::set_layer_objects(vec![forma_em(3, 0xC3, "Coin", [0, 0])]);
+    mesa.pinta_uma();
+    assert!(
+        aba::lente().excecoes.is_empty(),
+        "a que saiu sai no quadro seguinte"
     );
     ph2d_panel_physics::set_layer_objects(Vec::new());
     aba::fecha();

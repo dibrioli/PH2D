@@ -240,6 +240,8 @@ pub struct Lente {
     pub titulo: (String, String),
     /// Projeto novo: a frase que o cartão de baixo mostra no lugar de «Bumps into» (onda 9e).
     pub frase_da_camada: Option<String>,
+    /// «Differ from this layer»: (nome, o que difere) de cada botão pintado, pela ordem de `PHYSICS_LAYER_EXCEPTION`.
+    pub excecoes: Vec<(String, String)>,
 }
 
 /// A lente do último `paint`.

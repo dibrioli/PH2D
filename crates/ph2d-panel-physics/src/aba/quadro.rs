@@ -45,9 +45,10 @@ pub(super) fn fotos(ctx: &mut PaintCtx) {
         return;
     }
     FEITO.set(true);
-    // `excecao` (dono 09/11, com `PH2D_PHYSICS_SMOKE_EXCECAO=1` na cena 120): a Props aberta, com os nomes da cena.
-    if caso == "excecao" {
-        abre(Some(2));
+    // `excecao` (dono 09/11, com `PH2D_PHYSICS_SMOKE_EXCECAO=1` na cena 120): a Props aberta, com os nomes da cena;
+    // `excecao_ground`: a Ground aberta (a forma da Props que a desliga aparece sob ela).
+    if caso.starts_with("excecao") {
+        abre(Some(if caso == "excecao_ground" { 0 } else { 2 }));
         return;
     }
     abre(Some(1));
@@ -412,30 +413,51 @@ impl Quadro {
                 titulo: (titulo.clone(), pares_da_camada.clone()),
                 frase_da_camada: (visiveis.len() <= 1)
                     .then(|| tr("card.physics.tab_only_default").to_owned()),
+                excecoes: if self.pergunta.is_none() {
+                    self.camada
+                        .excecoes
+                        .iter()
+                        .map(|e| (e.1.clone(), e.2.clone()))
+                        .collect()
+                } else {
+                    Vec::new()
+                },
             };
         });
     }
 }
 
-/// «Differ from this layer» da camada `n`: (nome, o que difere — «Ground off · Props on»), pela ordem das camadas.
+/// «Differ from this layer» da camada `n`: (nome, o que difere). A forma da `n` diz todos os seus pinos
+/// («Ground off · Props on»); a de outra camada diz a dela e o pino sobre `n` («on Props: Ground off»).
 fn excecoes_da_camada(n: usize, rotulos: &[String]) -> Vec<(String, String)> {
+    let pino = |[include, exclude]: [u32; 2], j: usize| {
+        let bit = 1u32 << j;
+        let chave = if include & bit != 0 {
+            "card.physics.tab_pin_on"
+        } else if exclude & bit != 0 {
+            "card.physics.tab_pin_off"
+        } else {
+            return None;
+        };
+        Some(tr_with(chave, &[("layer", &rotulos[j])]))
+    };
     crate::state::layer_exceptions(n)
         .into_iter()
-        .map(|(_, nome, [include, exclude])| {
-            let difere: Vec<String> = (0..rotulos.len().min(32))
-                .filter_map(|j| {
-                    let bit = 1u32 << j;
-                    let chave = if include & bit != 0 {
-                        "card.physics.tab_pin_on"
-                    } else if exclude & bit != 0 {
-                        "card.physics.tab_pin_off"
-                    } else {
-                        return None;
-                    };
-                    Some(tr_with(chave, &[("layer", &rotulos[j])]))
-                })
-                .collect();
-            (nome, difere.join(tr("card.physics.tab_pins_sep")))
+        .map(|e| {
+            let difere = if e.camada == n {
+                let pinos: Vec<String> = (0..rotulos.len().min(32))
+                    .filter_map(|j| pino(e.excecao, j))
+                    .collect();
+                pinos.join(tr("card.physics.tab_pins_sep"))
+            } else {
+                let sobre_n = pino(e.excecao, n).unwrap_or_default();
+                let dela = rotulos.get(e.camada).map_or("", String::as_str);
+                tr_with(
+                    "card.physics.tab_pin_from",
+                    &[("layer", &dela), ("pins", &sobre_n)],
+                )
+            };
+            (e.nome, difere)
         })
         .collect()
 }

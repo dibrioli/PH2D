@@ -417,6 +417,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.physics.tab_pin_on" => "{layer} on",
         "card.physics.tab_pin_off" => "{layer} off",
         "card.physics.tab_pins_sep" => " · ",
+        "card.physics.tab_pin_from" => "on {layer}: {pins}",
         "card.physics.tab_pair_differs" => {
             " {n} {n?shape has its|shapes have their} own rule here (the dot)."
         }

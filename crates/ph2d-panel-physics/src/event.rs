@@ -199,8 +199,9 @@ fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<b
                 .iter()
                 .position(|&c| c == id)
                 .expect("guard matched");
-            if let Some(&(entity_bits, ..)) =
-                state::layer_exceptions(crate::aba::camada_aberta()).get(k)
+            if let Some(entity_bits) = state::layer_exceptions(crate::aba::camada_aberta())
+                .get(k)
+                .map(|e| e.bits)
             {
                 use ph2d_editor_core::action_bus::{EditorAction, SelectModifier};
                 host.bus_mut().push(EditorAction::SelectSprite {

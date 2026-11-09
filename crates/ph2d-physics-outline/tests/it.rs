@@ -465,3 +465,100 @@ fn folhas_de_celulas_diferentes_dao_um_contorno_onde_se_desenham() {
     );
     assert!(!m.get(18, 8) && !m.get(20, 2), "fora do quad da folha 1");
 }
+
+/// (W4 d) **«Follows the picture» das duas folhas**: a caixa do traço é a UNIÃO (1,75 × 1 m), não a
+/// folha 0 (1 × 1 m) — `follows` lê o `OutlineSeen`. *Mutação: comparar à folha 0 ⇒ `false`.*
+#[test]
+fn o_outline_de_duas_folhas_segue_a_uniao() {
+    let mut sim = SimWorld::new();
+    let px0 = img(16, 16, |x, y| x < 6 && (4..12).contains(&y));
+    let mut tags = SpriteAnimations::new();
+    tags.insert(AnimationTag::new("idle", 0, 0)).expect("tag");
+    let mut run = AnimationTag::new("run", 0, 0);
+    run.sheet = 1;
+    tags.insert(run).expect("tag");
+    let extra = ExtraSheet {
+        asset: ph2d_asset::AssetId::from_bytes(b"run"),
+        size: [1.0, 1.0],
+        anchor: [2.0, 0.0],
+        hframes: 1,
+        vframes: 1,
+        offsets: Default::default(),
+    };
+    let sheets = SpriteSheets([extra].into_iter().collect());
+    let sprite = Sprite::atlas(0, [2.0, 2.0], [1.0; 4]);
+    let e = sim
+        .world_mut()
+        .spawn((sprite, SpriteGrid::SINGLE, tags, sheets))
+        .id();
+    let frames = traced_frames(sim.world(), e);
+    let px1 = img(8, 8, |_, _| true);
+    let pic = |k: u8| {
+        let (w, px) = if k == 0 { (16, &px0) } else { (8, &px1) };
+        Some(Picture {
+            w,
+            h: w,
+            rgba: (&px[..]).into(),
+        })
+    };
+    let (_, layout) = frames_mask(sim.world(), e, &frames, pic, 128, PPM).expect("máscara");
+    let [half_x, half_y] = layout.half;
+    let c = Collider {
+        shape: ColliderShape::Outline { half_x, half_y },
+        ..Collider::default()
+    };
+    let seen = ph2d_physics_outline::OutlineSeen {
+        key: 0,
+        layout,
+        asked: [32, 128, 0],
+    };
+    sim.world_mut().entity_mut(e).insert((c, seen));
+    assert!(
+        !c.follows_picture([2.0, 2.0]),
+        "a folha 0 sozinha diria que não"
+    );
+    assert_eq!(ph2d_physics_outline::follows(sim.world(), e), Some(true));
+}
+
+/// (W4 b, e) **A curva do Detail retraça**: o canal grava só o PEDIDO (`asked_with`, a escrita de
+/// `apply_physics_edit`); a passagem seguinte retraça com MENOS pontos; o Undo (pedido e anéis de
+/// antes) não enche a fila. *Mutação: `retrace_followed` sem o «pedido mudou» ⇒ 0, vermelho.*
+#[test]
+fn a_curva_do_detail_retraca_com_menos_pontos() {
+    let (reg, mut sim, body, shape, db) = followed_ring();
+    let q = EditorCommandQueue::new();
+    // Um pente: dentes de 4 px de fundo, que o Detail de 2 px guarda e o de 6 px fecha.
+    let comb = img(32, 32, |x, y| {
+        (4..28).contains(&x) && (4..28).contains(&y) && (y >= 8 || (x / 3) % 2 == 0)
+    });
+    let comb = db.insert_image_rgba8(32, 32, comb);
+    sim.world_mut().entity_mut(body).insert(SpritePixels(comb));
+    assert_eq!(follow(&mut sim, &db, &q, &reg), 1, "o pente");
+    apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
+    let pontos = |sim: &SimWorld| {
+        let o = sim.world().get::<ColliderOutline>(shape).expect("o");
+        o.rings.iter().map(Vec::len).sum::<usize>()
+    };
+    let antes = sim
+        .world()
+        .get::<ColliderOutline>(shape)
+        .cloned()
+        .expect("o");
+    let n0 = pontos(&sim);
+    let pedido =
+        ph2d_physics_outline::asked_with(&antes, ph2d_editor_core::OutlineEdit::Detail(6.0));
+    assert_eq!(pedido.rings, antes.rings, "o canal só grava o pedido");
+    sim.world_mut().entity_mut(shape).insert(pedido);
+    assert_eq!(follow(&mut sim, &db, &q, &reg), 1, "o pedido mudou");
+    apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
+    let o = sim.world().get::<ColliderOutline>(shape).expect("o");
+    assert_eq!(o.detail_q4, 6 * 16);
+    assert!(
+        pontos(&sim) < n0,
+        "Detail maior, menos pontos: {} ≥ {n0}",
+        pontos(&sim)
+    );
+    sim.world_mut().entity_mut(shape).insert(antes);
+    let _ = follow(&mut sim, &db, &q, &reg);
+    assert!(q.is_empty(), "o Undo já é o traço gravado");
+}

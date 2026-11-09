@@ -117,6 +117,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "canal.fisica.zona_arrasto_forma" => "Form Drag",
         "canal.fisica.zona_torque" => "Zone Torque",
         "canal.fisica.zona_queda" => "Zone Falloff",
+        "canal.fisica.contorno_detalhe" => "Outline Detail",
+        "canal.fisica.contorno_alfa" => "Outline Alpha Cutoff",
+        "canal.fisica.contorno_manchas" => "Outline Ignore Specks",
         "canal.fisica.x" => "X",
         "canal.fisica.y" => "Y",
         // O mundo da física sobre a Cena (`ph2d_ecs::canal_mundo`, F30 §B).

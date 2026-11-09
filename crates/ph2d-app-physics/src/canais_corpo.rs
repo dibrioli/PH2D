@@ -9,10 +9,7 @@
 //! ([`crate::physics_apply::apply_physics_edit`] + `apply_editor_commands`) — as conversões de
 //! forma, os pisos, a presença dos opcionais.
 //!
-//! ⚠️ **Runtime-truth (ADR-0131 D2)**: daí ao rapier o caminho é o da edição do painel — o
-//! `reconcile_structure` da ponte re-descreve um corpo cujo `BodyDesc` mudou **em repouso**
-//! (antes do 1.º passo, depois de rebobinar) e, com a simulação a correr, REAFINA-o no lugar
-//! (`PhysicsWorld::retune_body`, F30 §C): a curva muda o material do corpo vivo, como a da junta.
+//! ⚠️ Daí ao rapier, o caminho da edição do painel (ADR-0131 D2; `retune_body`, F30 §C).
 //!
 //! ⭐ **A escrita da curva é pré-visualização**: o valor AUTORADO de cada campo que a curva move
 //! fica em [`ConducaoFisica`] (a irmã da `ConducaoVetor`), e a fotografia do undo e do save vê-o.
@@ -79,6 +76,9 @@ fn porta(campo: u16) -> Option<Porta> {
         f::ZONA_ARRASTO_FORMA => Numero(insp::INSP_PHYS_AREA_FORM_DRAG),
         f::ZONA_TORQUE => Numero(insp::INSP_PHYS_AREA_TORQUE),
         f::ZONA_QUEDA => Numero(insp::INSP_PHYS_AREA_FALLOFF),
+        f::CONTORNO_DETALHE => Numero(insp::INSP_PHYS_OUTLINE_DETAIL),
+        f::CONTORNO_ALFA => Numero(insp::INSP_PHYS_OUTLINE_ALPHA),
+        f::CONTORNO_MANCHAS => Numero(insp::INSP_PHYS_OUTLINE_SPECKS),
         _ => return None,
     })
 }
@@ -136,6 +136,9 @@ pub fn ler(info: &InspectorPhysicsInfo, campo: u16) -> Option<f32> {
         f::ZONA_ARRASTO_FORMA => info.area_form_drag,
         f::ZONA_TORQUE => info.area_torque,
         f::ZONA_QUEDA => info.area_falloff,
+        f::CONTORNO_DETALHE => info.outline.unwrap_or_default().detail_px,
+        f::CONTORNO_ALFA => info.outline.unwrap_or_default().alpha_cutoff,
+        f::CONTORNO_MANCHAS => info.outline.unwrap_or_default().specks_px,
         _ => return None,
     })
 }

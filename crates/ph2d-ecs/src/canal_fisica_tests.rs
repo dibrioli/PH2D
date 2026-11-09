@@ -51,6 +51,9 @@ fn o_vocabulario_da_fisica_nao_renumera() {
         (ZONA_ARRASTO_FORMA, 45),
         (ZONA_TORQUE, 46),
         (ZONA_QUEDA, 47),
+        (CONTORNO_DETALHE, 48),
+        (CONTORNO_ALFA, 49),
+        (CONTORNO_MANCHAS, 50),
     ];
     assert_eq!(fixos.len(), CAMPOS.len(), "um campo sem número fixado");
     for (n, (atual, gravado)) in fixos.iter().enumerate() {
@@ -92,7 +95,14 @@ fn cada_campo_do_corpo_diz_o_que_e() {
             "{discreto}"
         );
     }
-    for continuo in [RAIO, DENSIDADE, ESCALA_GRAVIDADE, VEL_ANGULAR, ZONA_QUEDA] {
+    for continuo in [
+        RAIO,
+        DENSIDADE,
+        ESCALA_GRAVIDADE,
+        VEL_ANGULAR,
+        ZONA_QUEDA,
+        CONTORNO_DETALHE,
+    ] {
         assert!(
             k(continuo).info().is_some_and(|i| !i.discreto()),
             "{continuo}"

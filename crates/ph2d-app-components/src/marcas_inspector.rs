@@ -1,9 +1,5 @@
-//! ⭐⭐ **O losango de cada campo do Inspector** (plano 35 §5; plano 34 §9 metade B) — o irmão do
-//! `ph2d_app_vec::marcas`: os `PropKind` de sempre (o Transform, o motor e os comprimentos das
-//! juntas) e os campos das famílias OBJETO (`ph2d_ecs::canal_objeto`: skew, cores, emissão),
-//! JUNTA (`ph2d_ecs::canal_junta`) e FISICA (`ph2d_ecs::canal_fisica`: a §11 Physics Body). O
-//! estado e o clique passam pela porta única
-//! [`ph2d_timeline::estado_do_grupo`] / [`ph2d_timeline::clique_no_grupo`].
+//! ⭐⭐ **O losango de cada campo do Inspector** (plano 35 §5): os `PropKind` de sempre e as famílias
+//! OBJETO, JUNTA e FISICA; estado e clique por [`ph2d_timeline::estado_do_grupo`] / `clique_no_grupo`.
 //!
 //! ⚠️ A swatch do Tint mostra o RGB (OBJETO) E o alfa, que é o `PropKind::Opacity` (`tint[3]`); o
 //! slider Opacity é a opacidade FINAL (`Sprite::opacity`), um campo OBJETO à parte.
@@ -142,14 +138,17 @@ const CAMPOS: &[(NodeId, &[PropKind])] = &[
     (insp::INSP_WHEEL_BREAK[0], &[ju(j::RODA_QUEBRA_LIGADA)]),
     (insp::INSP_WHEEL_BREAK[1], &[ju(j::RODA_QUEBRA_LIGADA)]),
     (insp::INSP_WHEEL_BREAK_FORCE, &[ju(j::RODA_QUEBRA_FORCA)]),
-    // A §11 Physics Body (família FISICA): o corpo, o colisor, a zona de um sensor. Um par de
-    // eixos é UM grupo (o deslocamento, a caixa, a velocidade, a força), como a posição.
+    // A §11 Physics Body (FISICA); um par de eixos é UM grupo, como a posição.
     (insp::INSP_PHYS_KIND[0], &[fi(fs::TIPO)]),
     (insp::INSP_PHYS_KIND[1], &[fi(fs::TIPO)]),
     (insp::INSP_PHYS_KIND[2], &[fi(fs::TIPO)]),
     (insp::INSP_PHYS_SHAPE[0], &[fi(fs::FORMA)]),
     (insp::INSP_PHYS_SHAPE[1], &[fi(fs::FORMA)]),
     (insp::INSP_PHYS_SHAPE[2], &[fi(fs::FORMA)]),
+    (insp::INSP_PHYS_SHAPE[3], &[fi(fs::FORMA)]),
+    (insp::INSP_PHYS_OUTLINE_DETAIL, &[fi(fs::CONTORNO_DETALHE)]),
+    (insp::INSP_PHYS_OUTLINE_ALPHA, &[fi(fs::CONTORNO_ALFA)]),
+    (insp::INSP_PHYS_OUTLINE_SPECKS, &[fi(fs::CONTORNO_MANCHAS)]),
     (insp::INSP_PHYS_RADIUS, &[fi(fs::RAIO)]),
     (insp::INSP_PHYS_HALF_X, &[fi(fs::MEIO_X)]),
     (insp::INSP_PHYS_HALF_Y, &[fi(fs::MEIO_X)]),

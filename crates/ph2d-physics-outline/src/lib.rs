@@ -404,6 +404,8 @@ pub fn retrace_edited(
 pub struct OutlineSeen {
     pub key: u64,
     pub layout: Layout,
+    /// O pedido (Detail, Alpha cutoff, Ignore specks under) visto: a curva que o muda retraça.
+    pub asked: [u16; 3],
 }
 
 /// **A impressão digital da imagem** que o contorno de `owner` cobre: as imagens (o `AssetId` é o
@@ -445,7 +447,8 @@ pub fn picture_key(
 /// **Retraça os contornos que SEGUEM a imagem quando ela muda** (troca, folhas, grelha, tags,
 /// pixels): chamar depois das edições do quadro, para o traço cair no MESMO passo de undo. Segue = a
 /// forma ainda é a do [`Layout`] visto, ou a que o `follow_auto_collider` já ajustou; o «Custom
-/// size» não segue e fica. A 1.ª vista só anota. Devolve quantos retraçou.
+/// size» não segue e fica. O PEDIDO mudado (a curva do Detail, o Undo) retraça sempre. A 1.ª vista só
+/// anota. Devolve quantos retraçou.
 pub fn retrace_followed(
     world: &mut World,
     db: &ph2d_asset::AssetDb,
@@ -473,19 +476,29 @@ pub fn retrace_followed(
         let key = picture_key(w, owner, atlas, ppm);
         let lay = layout(w, owner, &traced_frames(w, owner), ppm).unwrap_or_default();
         let before = w.get::<OutlineSeen>(shape).copied();
-        if before.is_some_and(|b| b.key == key) {
+        let o = w.get::<ColliderOutline>(shape).cloned().unwrap_or_default();
+        let asked = [o.detail_q4, u16::from(o.alpha_cutoff), o.min_island_px];
+        if before.is_some_and(|b| b.key == key && b.asked == asked) {
             continue;
         }
         if let (Some(b), ColliderShape::Outline { half_x, half_y }) = (before, c.shape) {
             let size = w.get::<Sprite>(owner).map(|s| s.size);
             let follows = near([half_x, half_y], &b.layout)
                 || near([half_x, half_y], &lay)
-                || size.is_some_and(|s| c.follows_picture(s));
+                || size.is_some_and(|s| c.follows_picture(s))
+                || b.asked != asked;
             if follows && retrace(w, shape, &picture, ppm, queue, registry).is_some() {
                 n += 1;
             }
         }
-        seen.push((shape, OutlineSeen { key, layout: lay }));
+        seen.push((
+            shape,
+            OutlineSeen {
+                key,
+                layout: lay,
+                asked,
+            },
+        ));
     }
     drop(picture);
     for (shape, s) in seen {

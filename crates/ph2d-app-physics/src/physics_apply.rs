@@ -1,20 +1,13 @@
-//! §11 Physics Body — the ECS write an edit turns into (ADR-0131 D8).
-//!
-//! Split from the sibling `inspector_physics` (the snapshot BUILDER) when the
-//! material-combine arm (W-Material) pushed that file past the shell's 600-LOC
-//! cap. `inspector_physics` re-exports [`apply_physics_edit`], so every caller
-//! keeps its `inspector_physics::apply_physics_edit` path. Build reads; this
-//! writes — the two halves of the section, one question each.
+//! §11 Physics Body — the ECS write an edit turns into (ADR-0131 D8); `body.rs` builds the snapshot.
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_editor_core::PhysicsFieldEdit;
 
 use crate::physics_area::apply_area_edit;
+use crate::physics_seed::sprite_half_extents;
 use crate::physics_surface::apply_surface_edit;
 use ph2d_inspector_ordering::{queue_remove, queue_set};
-// A caixa que casa com o desenho — a porta vive no irmão `_seed`, com quem a semeia.
-use crate::physics_seed::sprite_half_extents;
 
 /// Apply one [`PhysicsFieldEdit`] (§11).
 ///
@@ -92,8 +85,18 @@ pub fn apply_physics_edit(
         );
         return;
     }
-    if matches!(edit, PhysicsFieldEdit::Outline(_)) {
-        return; // o traço é da cola `ph2d_physics_outline::retrace_edited`
+    // O PEDIDO grava-se aqui (o canal lê-o); o traço é da cola (`retrace_edited`/`retrace_followed`).
+    if let PhysicsFieldEdit::Outline(e) = edit {
+        let cur = world.get::<ph2d_physics_ecs::ColliderOutline>(entity);
+        let next = ph2d_physics_outline::asked_with(&cur.cloned().unwrap_or_default(), e);
+        queue_set(
+            queue,
+            registry,
+            entity_bits,
+            "ph2d::physics::ColliderOutline",
+            &next,
+        );
+        return;
     }
     if matches!(edit, PhysicsFieldEdit::FitToPicture) {
         if let Some(cur) = world.get::<Collider>(entity).copied()

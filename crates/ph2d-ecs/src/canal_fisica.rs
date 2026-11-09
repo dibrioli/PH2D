@@ -40,7 +40,7 @@ pub const AMORT_MODO: u16 = 15;
 /// `MassOverride`: a fonte (0 auto · 1 manual) e a massa em kg.
 pub const MASSA_MANUAL: u16 = 16;
 pub const MASSA: u16 = 17;
-/// `Collider::shape` (Ball 0 · Box 1 · Capsule 2) e as medidas da forma (m).
+/// `Collider::shape` (Ball 0 · Box 1 · Capsule 2 · Outline 3) e as medidas da forma (m).
 pub const FORMA: u16 = 20;
 pub const RAIO: u16 = 21;
 pub const MEIO_X: u16 = 22;
@@ -74,9 +74,14 @@ pub const ZONA_DENSIDADE: u16 = 44;
 pub const ZONA_ARRASTO_FORMA: u16 = 45;
 pub const ZONA_TORQUE: u16 = 46;
 pub const ZONA_QUEDA: u16 = 47;
+/// O pedido do traço do «Outline» (`ColliderOutline`): Detail (px), Alpha cutoff (`0..=1`), Ignore
+/// specks under (px); mudá-lo retraça.
+pub const CONTORNO_DETALHE: u16 = 48;
+pub const CONTORNO_ALFA: u16 = 49;
+pub const CONTORNO_MANCHAS: u16 = 50;
 
 /// Todos os campos, na ordem do vocabulário.
-pub const CAMPOS: [u16; 41] = [
+pub const CAMPOS: [u16; 44] = [
     TIPO,
     CCD,
     TRAVA_ROTACAO,
@@ -118,6 +123,9 @@ pub const CAMPOS: [u16; 41] = [
     ZONA_ARRASTO_FORMA,
     ZONA_TORQUE,
     ZONA_QUEDA,
+    CONTORNO_DETALHE,
+    CONTORNO_ALFA,
+    CONTORNO_MANCHAS,
 ];
 
 const fn c(rotulo: &'static str, grupo: u16) -> CampoInfo {
@@ -154,7 +162,7 @@ const COMBINA: &[&str] = &[
 /// Shape» (`ph2d_physics_ecs::LADO_FORMA`). O resto (tipo, travas, massa, `SEM_PAREDE`) é do corpo.
 #[must_use]
 pub const fn e_da_forma(campo: u16) -> bool {
-    matches!(campo, FORMA..=UMA_VIA | ADERENCIA | ESTEIRA | FORCA_X..=ZONA_QUEDA)
+    matches!(campo, FORMA..=UMA_VIA | ADERENCIA | ESTEIRA | FORCA_X..=CONTORNO_MANCHAS)
 }
 
 /// O que o campo `campo` do corpo é.
@@ -211,6 +219,7 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
                 "panel.inspector.physics.ball",
                 "panel.inspector.physics.box",
                 "panel.inspector.physics.capsule",
+                "panel.inspector.physics.outline",
             ]),
         ),
         RAIO => c("canal.fisica.raio", campo),
@@ -253,6 +262,9 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         ZONA_ARRASTO_FORMA => c("canal.fisica.zona_arrasto_forma", campo),
         ZONA_TORQUE => c("canal.fisica.zona_torque", campo),
         ZONA_QUEDA => c("canal.fisica.zona_queda", campo),
+        CONTORNO_DETALHE => c("canal.fisica.contorno_detalhe", campo),
+        CONTORNO_ALFA => c("canal.fisica.contorno_alfa", campo),
+        CONTORNO_MANCHAS => c("canal.fisica.contorno_manchas", campo),
         _ => return None,
     })
 }

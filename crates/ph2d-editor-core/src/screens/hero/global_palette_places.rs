@@ -86,6 +86,7 @@ pub fn scopes(hero: &mut crate::HeroScreen) -> PaletteScopes {
                 label: ph2d_i18n::tr_with(key, &[("name", &s.name), ("line", &(s.line + 1))]),
                 id: symbol_id(i),
                 keywords: "",
+                badge: None,
             }
         })
         .collect();

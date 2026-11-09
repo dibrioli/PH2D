@@ -286,15 +286,25 @@ fn paint_frame(doc: &AnimDoc, scene: &mut VectorScene, text: &mut TextSystem, th
 /// ⭐ A marca na tira de um quadro com acerto próprio (onda C): o ícone de mover, no canto de cima à direita (o de baixo
 /// é o nome da folha), na tinta do Align. Sob o rato o canto é do ×, e a marca cede-lhe o lugar.
 pub(super) fn paint_nudge_mark(scene: &mut VectorScene, theme: Theme, thumb: Rect) {
-    let side = TypeToken::Base.px();
+    // Um selo cheio na cor de acento (smoke do dono 09/11: o ícone sozinho, fino e em Info, não se via).
+    let side = ROW_H_PX * 0.8; // LITERAL-PX-OK: fração da linha
     let pad = Spacing::Xs.px();
     let r = Rect::new(thumb.x + thumb.w - side - pad, thumb.y + pad, side, side);
+    let (cx, cy) = (r.x + side / 2.0, r.y + side / 2.0);
+    fill_circle(scene, cx, cy, side / 2.0, tom(ColorToken::Accent, theme));
+    let inset = side * 0.2; // LITERAL-PX-OK: a margem do ícone no selo
+    let icon = Rect::new(
+        r.x + inset,
+        r.y + inset,
+        side - 2.0 * inset,
+        side - 2.0 * inset,
+    ); // LITERAL-PX-OK: as duas margens
     paint_icon(
         scene,
         IconId::Move,
-        r,
-        tom(ColorToken::Info, theme),
-        StrokeToken::Default.px(),
+        icon,
+        tom(ColorToken::Bg0, theme),
+        StrokeToken::Thick.px(),
     );
 }
 

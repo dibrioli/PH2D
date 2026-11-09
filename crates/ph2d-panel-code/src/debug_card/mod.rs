@@ -12,6 +12,7 @@
 mod boxes;
 mod head;
 mod sheet;
+pub mod split;
 
 use crate::view::CodeView;
 use ph2d_a11y::NodeId;
@@ -68,6 +69,8 @@ pub struct CardPainted {
     pub grip: Option<Rect>,
     /// Os Cards, na ordem Locals · self · Call stack: cada um rola por si.
     pub cards: Vec<CardBox>,
+    /// O separador da Sheet entre a tabela e a coluna do lado.
+    pub split: Option<split::Split>,
 }
 
 /// Um cartão dos Cards: a caixa, a rolagem máxima dele e o indicador (só se transborda).
@@ -98,6 +101,12 @@ pub struct DebugCardView {
     resizing: Option<(f32, f32)>,
     /// O arrasto da barra de um cartão dos Cards: `(cartão, arrasto)`.
     cards_drag: Option<(usize, BarDrag)>,
+    /// A largura que o artista deu à coluna do lado da Sheet pelo separador (`None` = a de omissão).
+    pub side_w: Option<f32>,
+    /// O arrasto do separador: `(x onde começou, largura do lado de então)`.
+    splitting: Option<(f32, f32)>,
+    /// O rato sobre o separador (o `look` lembra-o; a pintura acende-o).
+    split_hover: std::cell::Cell<bool>,
 }
 
 /// Os ids dos dois botões (os comandos da aba: Continue, Next line).
@@ -213,6 +222,9 @@ impl DebugCardView {
             self.resizing = Some((y, r.h));
             return Some(CardClick::Taken);
         }
+        if self.split_press(x, y) {
+            return Some(CardClick::Taken);
+        }
         let p = &self.painted;
         if !p.card.is_some_and(|r| r.contains(x, y)) {
             return None;
@@ -254,17 +266,20 @@ impl DebugCardView {
         )
     }
 
-    /// O ponteiro: o puxador de cima é a mão aberta (fechada a arrastar); a barra da Sheet ou de um
-    /// cartão é ↕ por cima dela e durante todo o arrasto (smoke do dono 09/11, cena 14).
+    /// O ponteiro: o puxador de cima é a mão aberta (fechada a arrastar); o separador da Sheet é ↔ e
+    /// a barra da Sheet ou de um cartão é ↕, por cima e durante todo o arrasto (smoke 09/11, cena 14).
     #[must_use]
     pub fn look(&self, x: f32, y: f32) -> Option<ph2d_editor_core::doc_surface::PointerLook> {
-        use ph2d_editor_core::doc_surface::PointerLook::{Grab, Grabbing, ResizeNs};
+        use ph2d_editor_core::doc_surface::PointerLook::{Grab, Grabbing, ResizeEw, ResizeNs};
         let p = &self.painted;
         if self.resizing.is_some() {
             return Some(Grabbing);
         }
         if p.grip.is_some_and(|g| g.contains(x, y)) {
             return Some(Grab);
+        }
+        if self.split_look(x, y) {
+            return Some(ResizeEw);
         }
         let sheet = p.table.as_ref().and_then(|(lay, ..)| lay.bar().hit());
         let mut bars = sheet
@@ -279,6 +294,9 @@ impl DebugCardView {
             self.user_h = Some((h0 + y0 - y).max(0.0));
             return true;
         }
+        if self.split_drag_to(x) {
+            return true;
+        }
         if let Some((i, d)) = self.cards_drag {
             self.cards_scroll[i] = d.scroll_at(y);
             return true;
@@ -291,7 +309,9 @@ impl DebugCardView {
 
     /// Largar o botão (o puxador de cima, o de uma coluna ou uma barra). `true` = havia arrasto.
     pub fn release(&mut self) -> bool {
-        let resized = self.resizing.take().is_some() | self.cards_drag.take().is_some();
+        let resized = self.resizing.take().is_some()
+            | self.cards_drag.take().is_some()
+            | self.splitting.take().is_some();
         self.table.release() || resized
     }
 

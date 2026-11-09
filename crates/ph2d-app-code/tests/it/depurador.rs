@@ -313,7 +313,7 @@ fn o_card_style_troca_o_stopped_e_o_cabecalho_esconde_a_coluna_type() {
 #[test]
 fn parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador() {
     use ph2d_app_code::commands::CMD_CARD_CARDS;
-    use ph2d_editor_core::doc_surface::PointerLook::ResizeNs;
+    use ph2d_editor_core::doc_surface::PointerLook::{ResizeEw, ResizeNs};
     use ph2d_editor_core::widget::{scrollbar_thumb_rect, scrollbar_track_rect};
     use ph2d_host::PointerButton::Primary;
     let locais: String = (0..30)
@@ -342,7 +342,8 @@ fn parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador() {
     assert!(sy(&mut m) > 0.0, "o código rolou");
     let v = roda(&mut m, centro(v.painted.table.expect("Sheet").0.body));
     assert!(v.table.scroll > 0.0, "a Sheet rolou");
-    let arrasta = |m: &mut Mesa, x, ys| m.arrasta_com(id, x, ys, Modifiers::default(), Primary);
+    let arrasta_de = |m: &mut Mesa, a, b| m.arrasta_com(id, a, b, Modifiers::default(), Primary);
+    let arrasta = |m: &mut Mesa, x, (y0, y1)| arrasta_de(m, (x, y0), (x, y1));
     // A barra da Sheet: ↕ por cima; o POLEGAR desce um quarto do curso e a rolagem segue o rato.
     let (lay, s0) = (v.painted.table.clone().expect("Sheet").0, v.table.scroll);
     let (b, row) = (lay.bar(), lay.m.expect("métricas").row_h);
@@ -354,6 +355,12 @@ fn parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador() {
     let (quer, s) = (s0 + (b.content_h - b.visible_h) * 0.25, passo(&mut m).table);
     let d = (s.scroll - quer).abs();
     assert!(d <= row * 0.5 + 1e-3 && s.widths.is_empty(), "{d}");
+    // O separador da Sheet: ↔ por cima; arrastado para a esquerda, a coluna do lado cresce.
+    let sp = passo(&mut m).painted.split.expect("o separador");
+    let (px, py) = centro(sp.hit);
+    assert_eq!(olha(&mut m, px, py), Some(ResizeEw), "separador: ↔");
+    arrasta_de(&mut m, (px, py), (px - 60.0, py));
+    assert_eq!(passo(&mut m).side_w, Some(sp.side_w + 60.0));
     // A barra do código: na borda direita do texto, dentro do recuo do cartão.
     let code = m.docs().card_rects(id).expect("cartões")[1];
     let sel = m.docs().selection_of(id);

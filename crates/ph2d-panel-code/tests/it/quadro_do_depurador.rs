@@ -223,3 +223,84 @@ fn a_barra_da_sheet_e_a_de_um_cartao_pedem_o_ponteiro_vertical() {
         Some(PointerLook::ResizeNs)
     );
 }
+
+/// Smoke do dono 09/11 (cena 14): «coloque um separador vertical onde o cursor vai pegar». Entre a
+/// tabela e a coluna do lado há uma faixa à direita da calha da barra (as zonas não se tocam): por
+/// cima e a arrastar o ponteiro é ↔; para a esquerda a coluna do lado cresce e a tabela encolhe,
+/// presas aos mínimos (a tabela guarda Value e Type inteiros); a largura fica no `DebugCardView`.
+#[test]
+fn o_separador_da_sheet_arrasta_de_lado_e_pede_o_ponteiro_horizontal() {
+    let c = parado(40);
+    let mut v = DebugCardView::default();
+    let _ = pinta(&mut v, &c);
+    let (lay, s) = (
+        v.painted.table.clone().expect("Sheet").0,
+        v.painted.split.expect("o separador"),
+    );
+    let bar = lay.bar().hit().expect("a Sheet transborda");
+    assert!(
+        bar.x + bar.w < s.hit.x,
+        "a barra e o separador não se tocam: {bar:?} {:?}",
+        s.hit
+    );
+    assert!(
+        s.hit.w > ph2d_tokens::StrokeToken::Thin.px() * 2.0,
+        "agarra mais largo que a linha"
+    );
+    let (x, y) = (s.hit.x + s.hit.w * 0.5, s.hit.y + s.hit.h * 0.5);
+    assert_eq!(
+        v.look(x, y),
+        Some(PointerLook::ResizeEw),
+        "sobre o separador"
+    );
+    assert_eq!(
+        v.look(bar.x + 1.0, y),
+        Some(PointerLook::ResizeNs),
+        "a barra continua ↕"
+    );
+    let (table_w, side_w) = (lay.area.w, s.side_w);
+    assert!(v.press(x, y).is_some());
+    assert!(v.drag_to(x - 100.0, y + 30.0));
+    assert_eq!(
+        v.look(x - 100.0, y),
+        Some(PointerLook::ResizeEw),
+        "a arrastar, fora dele"
+    );
+    assert!(v.release());
+    assert_eq!(v.side_w, Some(side_w + 100.0));
+    let _ = pinta(&mut v, &c);
+    let lay = v.painted.table.clone().expect("Sheet").0;
+    assert!(
+        (lay.area.w - (table_w - 100.0)).abs() < 1e-3,
+        "a tabela fica com o resto"
+    );
+    // Presos: a tabela nunca abaixo do mínimo (Value e Type inteiros), o lado nunca abaixo do título.
+    for dx in [-5000.0, 5000.0] {
+        let s = v.painted.split.expect("o separador");
+        let (x, y) = (s.hit.x + 1.0, s.hit.y + 1.0);
+        assert!(v.press(x, y).is_some() && v.drag_to(x + dx, y) && v.release());
+        let _ = pinta(&mut v, &c);
+        let (lay, s) = (
+            v.painted.table.clone().expect("Sheet").0,
+            v.painted.split.expect("sep"),
+        );
+        let w = |k: &str| lay.col(k).map_or(0.0, |c| c.w);
+        assert!(
+            s.side_w >= s.min - 1e-3 && s.side_w <= s.max + 1e-3,
+            "{s:?}"
+        );
+        assert!(
+            w("name") >= ph2d_ui_table::Metrics::standard().min_col - 1e-3,
+            "{dx}: {:?}",
+            lay.cols
+        );
+        assert!(
+            lay.cols.iter().map(|c| c.w).sum::<f32>() <= lay.area.w + 1e-3,
+            "{dx}: Type cortada"
+        );
+    }
+    // Os Cards não têm a divisão tabela | lado: nenhum separador.
+    v.style = ph2d_code_debugcard::CardStyle::Cards;
+    let _ = pinta(&mut v, &c);
+    assert!(v.painted.split.is_none());
+}

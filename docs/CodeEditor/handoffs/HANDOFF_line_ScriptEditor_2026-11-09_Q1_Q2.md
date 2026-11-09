@@ -242,3 +242,24 @@ O dono: «quero a capacidade de arrastar com o mouse, mostrando a seta do cursor
   mecanismo estava certo). Catraca `ph2d-app-code` 26 628 / 26 628 (o teste pagou-se compactando o próprio teste).
 - O cursor está provado até ao `pointer_look` da aba; o `PointerLook → CursorIcon` da shell é código (uma linha no
   `match`), sem teste — a Xvfb não fotografa o cursor.
+
+### 8.4 O separador entre a tabela e a coluna do lado (smoke do dono 09/11)
+
+O §8.3 leu mal o dono. A linha verde dele (à direita da barra da Sheet, setas para os dois lados) e «não funciona.
+Coloque um separador vertical onde o cursor vai pegar» pedem um SEPARADOR que se arrasta de lado, não a barra.
+
+- **`ph2d-panel-code::debug_card::split`** (ficheiro novo): a faixa `band() = PANEL_RESIZE_HANDLE_SIZE_PX` entre a
+  tabela e a coluna do lado; a linha pinta-se ao meio (`Border`, `Thin`) com uma pega curta (`Text3`, `Thick` ×
+  `Xl4`); acesa (`Accent`, `Thick`) com o rato por cima ou a arrastar. A zona de agarrar começa um `Thin` à direita
+  da calha da barra (as zonas não se tocam: o `Rect::contains` é inclusivo). `Split::measure` prende a coluna do
+  lado entre o título «Call stack» + recuos e o que deixa à tabela `ph2d_ui_table::min_width` (novo: a `flex` no
+  `min_col`, as outras na natural, a calha). A largura do artista fica em `DebugCardView::side_w` (como `user_h`);
+  o arrasto em `splitting`; o «por cima» em `split_hover: Cell<bool>` que o `look` escreve (a pintura acende-o sem
+  nenhuma linha nova na `ph2d-app-code`). Ponteiro ↔ = o `PointerLook::ResizeEw` que já existia (→ `EwResize`).
+- **Só a Sheet**: os Cards são três cartões lado a lado e a Strip uma fila de células; nenhuma tem a divisão
+  tabela | lado (o teste confirma `painted.split == None` nos Cards). A barra ↕ do §8.3 fica como estava.
+- **Provas** (vermelho com `split_look`/`split_drag_to` mutados → verde): `ph2d-panel-code`
+  `o_separador_da_sheet_arrasta_de_lado_e_pede_o_ponteiro_horizontal` (zonas separadas, ↔ por cima e a arrastar,
+  −100 px ⇒ lado +100 e tabela −100, presos nos dois fins com Name ≥ `min_col` e Type inteira); `ph2d-app-code`
+  `parado_o_codigo_rola_…` arrasta o separador 60 px à esquerda pelo `Mesa::arrasta_com` (agora de ponto a ponto)
+  e confere ↔ e `side_w`. Catraca 26 628 / 26 628: o cabeçalho de `goto.rs` encolheu (o porquê mora no I0b).

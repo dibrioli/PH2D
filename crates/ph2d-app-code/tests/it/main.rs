@@ -270,24 +270,27 @@ impl Mesa {
         mods: Modifiers,
         button: ph2d_host::PointerButton,
     ) {
-        self.arrasta_com(id, x, (y, y), mods, button);
+        self.arrasta_com(id, (x, y), (x, y), mods, button);
     }
 
-    /// Carregar em `(x, y0)`, mover até `y1` e largar lá, com o botão `button`.
+    /// Carregar em `(x0, y0)`, mover até `(x1, y1)` e largar lá, com o botão `button`.
     pub fn arrasta_com(
         &mut self,
         id: ScriptId,
-        x: f32,
-        (y0, y1): (f32, f32),
+        (x0, y0): (f32, f32),
+        (x1, y1): (f32, f32),
         mods: Modifiers,
         button: ph2d_host::PointerButton,
     ) {
         use ph2d_editor_core::doc_surface::PointerInput;
         use ph2d_host::PointerKind;
         let mut ts = std::mem::replace(&mut self.ts, TextSystem::without_system_fonts());
-        let mv = (y0 != y1).then_some((None, y1));
-        let (down, up) = ((Some(PointerKind::Down), y0), (Some(PointerKind::Up), y1));
-        for (kind, y) in [down].into_iter().chain(mv).chain([up]) {
+        let mv = ((x0, y0) != (x1, y1)).then_some((None, x1, y1));
+        let (down, up) = (
+            (Some(PointerKind::Down), x0, y0),
+            (Some(PointerKind::Up), x1, y1),
+        );
+        for (kind, x, y) in [down].into_iter().chain(mv).chain([up]) {
             let input = PointerInput {
                 text: &mut ts,
                 mods,

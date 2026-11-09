@@ -473,6 +473,19 @@ impl Layout {
     }
 }
 
+/// A largura mais estreita em que a tabela ainda se lê inteira: a `flex` no `min_col`, as outras à
+/// vista na natural (como o [`layout`] as deixa) e a calha da barra (o pior caso: o corpo transborda).
+#[must_use]
+pub fn min_width(cols: &[Column], natural: &[f32], st: &TableState, m: &Metrics) -> f32 {
+    let cells: f32 = cols
+        .iter()
+        .zip(natural)
+        .filter(|(c, _)| !st.hidden.contains(c.key))
+        .map(|(c, w)| if c.flex { m.min_col } else { w.max(m.min_col) })
+        .sum();
+    cells + bar_gutter()
+}
+
 /// A largura natural de cada coluna (o título e a célula mais larga), medida por `text`.
 pub fn natural_widths(
     cols: &[Column],

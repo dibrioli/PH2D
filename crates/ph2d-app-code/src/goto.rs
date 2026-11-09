@@ -1,18 +1,8 @@
-//! ⭐ **I6 — ir para a definição** (Ctrl+clique / F12; decisão 5 do dono, `docs/CodeEditor/03_onda2.md`)
-//! e, na API, **a página de ajuda** (`docs/CodeEditor/04_pagina_de_ajuda.md` §3.1).
-//!
-//! O que o `luau-lsp` 1.70.1 responde (I0b §5 e `I6_I11_bruto.json`): num local, num parâmetro e numa
-//! `local function`, a declaração; em `self.t`, a escrita `self.t = …`; na API (`ph2d.set`, `print`,
-//! `math.sin`) e em `self.<propriedade>`, `[]`. Então, por esta ordem:
-//! - há um sítio neste script ⇒ o cursor vai para lá (um `local print` sombreia a global);
-//! - `self.<nome>` de uma `ph2d.property("<nome>", …)` ⇒ a declaração dela (NOSSA: o servidor não liga
-//!   o literal ao campo do `self`, I0b §1);
-//! - a porta ÚNICA [`ph2d_code_help::resolve::resolve`] (com o balão do assistente para o sítio: só
-//!   ele sabe o `m.cos` de um `local m = math`) ⇒ a página, aberta numa aba e rolada ao membro;
-//! - senão nada. Palavras reservadas e números nem se perguntam.
-//!
-//! A definição e o balão perguntam-se JUNTOS; uma edição, um clique ou uma tecla antes das respostas
-//! largam o pedido.
+//! ⭐ **I6 — ir para a definição** (Ctrl+clique / F12; `docs/CodeEditor/03_onda2.md`) e, na API, a página de
+//! ajuda (`04_pagina_de_ajuda.md` §3.1). Por esta ordem (o que o `luau-lsp` responde: I0b §5): um sítio neste script
+//! ⇒ lá; `self.<nome>` de uma `ph2d.property` ⇒ a declaração (NOSSA, I0b §1); a porta ÚNICA
+//! [`ph2d_code_help::resolve::resolve`] ⇒ a página, rolada ao membro; senão nada (reservadas e números nem se
+//! perguntam). Definição e balão perguntam-se JUNTOS; uma edição, clique ou tecla antes das respostas largam o pedido.
 
 use crate::doc::CodeDoc;
 use ph2d_code_buffer::{Range, Selection, word_at};

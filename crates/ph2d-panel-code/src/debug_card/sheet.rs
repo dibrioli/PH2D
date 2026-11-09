@@ -1,6 +1,7 @@
 //! A Sheet (padrão): a tabela da casa à esquerda; Call stack e Waiting here à direita; a frase do pé.
 
 use super::DebugCardView;
+use super::split::{self, Split};
 use crate::table_text::CodeCells;
 use crate::view::CodeView;
 use ph2d_code_debugcard::{DebugCard, columns, sheet_rows};
@@ -8,12 +9,9 @@ use ph2d_editor_core::paint::{fill_rounded_rect, frame_radius, paint_text, resol
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, PANEL_MIN_W_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_ui_table::{Metrics, Row, natural_widths};
 use ph2d_vector::VectorScene;
-
-/// A parte da largura que a coluna do lado (Call stack, Waiting here) pode tomar.
-const SIDE_SHARE: f32 = 0.4; // LITERAL-PX-OK: fração da largura do quadro, não píxeis
 
 /// Um texto numa linha `rh` a começar em `(x, y)`: `Text1`/`Text2` no corpo, o resto (títulos,
 /// notas, `ln N`) um degrau abaixo, como a maquete 14.
@@ -55,16 +53,22 @@ pub(super) fn paint(
 ) {
     let rh = ph2d_tokens::row_pitch_px();
     let pad = Spacing::Sm.px();
-    let side_w = PANEL_MIN_W_PX.min(body.w * SIDE_SHARE);
-    let table_r = Rect::new(
-        body.x,
-        body.y,
-        (body.w - side_w).max(0.0),
-        (body.h - rh).max(0.0),
-    );
     let (cols, rows, m) = (columns(), sheet_rows(c), Metrics::standard());
     let mut text = CodeCells { view, theme };
     let natural = natural_widths(&cols, &rows, &m, ts, &mut text);
+    // A coluna do lado nunca esconde o título «Call stack»; a tabela nunca corta Value nem Type.
+    let title_w = ts
+        .layout(tr("code.debug.stack"), TypeToken::Xs.px(), f32::INFINITY)
+        .width();
+    let table_min = ph2d_ui_table::min_width(&cols, &natural, &st.table, &m);
+    let s = Split::measure(
+        st.side_w,
+        body.w,
+        table_min,
+        title_w + super::inset() * 2.0 + pad,
+    );
+    let tw = (body.w - s.side_w - split::band()).max(0.0);
+    let table_r = Rect::new(body.x, body.y, tw, (body.h - rh).max(0.0));
     reveal_changed(st, c, &rows, table_r.h - m.header_h, &m);
     let lay = ph2d_ui_table::layout(&cols, &rows, &natural, &mut st.table, table_r, &m);
     let tones = (crate::cards::card_tone(), crate::cards::ground_tone());
@@ -85,11 +89,12 @@ pub(super) fn paint(
     let sx = table_r.x + table_r.w;
     let hair = StrokeToken::Thin.px();
     let border = resolve(ColorToken::Border, theme);
-    fill_rounded_rect(scene, Rect::new(sx, body.y, hair, table_r.h), 0.0, border);
+    split::paint(st, s, (sx, body.y, table_r.h), scene, theme);
+    let side_x = sx + split::band();
     side(
         st,
         c,
-        Rect::new(sx, body.y, side_w, table_r.h),
+        Rect::new(side_x, body.y, s.side_w, table_r.h),
         scene,
         ts,
         theme,

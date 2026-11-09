@@ -105,6 +105,7 @@ Novas crates: **`ph2d-painter-brush`** (engine pura) + **`ph2d-panel-painter-bru
 
 | Doc | O que tem |
 |---|---|
+| **[Pinceis/COMO_ACELERAR_UM_PINCEL.md](Pinceis/COMO_ACELERAR_UM_PINCEL.md)** | **Guia: medir no app, reproduzir com a velocidade do dono, achar a peça por ablação, curas ao bit e recusas medidas (10/11, caso Wet Wash Mix, Bug #84)** |
 | **[Arquitetura/J13_fps_do_real_oil.md](Arquitetura/J13_fps_do_real_oil.md)** | **O FPS do Real Oil (02/11, no `main`):** quadro parado com a água sobre o óleo de **72–82 ms → 16,5–17,0 ms**: a óptica do óleo saiu do fio da tela ([plano](Arquitetura/J13b_plano_otica_fora.md); `PH2D_WET_OTICA_FORA=0` volta atrás). Cena de medição: `PH2D_WETPAINT_SMOKE=3`. §5 = ⛔ recusas medidas (a cache da luz foi mais lenta que nenhuma cache). **Aberto:** o `max` de 35–78 ms nas fases de traço ([P8](Arquitetura/J13b_P8_pen_down.md)) |
 | **[49_realshader/R3_PINTAR_RELATORIO.md](49_realshader/R3_PINTAR_RELATORIO.md)** | A velocidade de pintar, antes × depois (31/10) |
 | **[49_realshader/PLACA_degrau6.md](49_realshader/PLACA_degrau6.md)** | A água na placa: submissões fatiadas (maior **93,3 → 22,6 ms** na Radeon, 31/10). ⛔ Nada corrido na NVIDIA: travou o PC do dono 2× |

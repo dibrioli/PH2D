@@ -1044,6 +1044,7 @@ mutação da origem; as `.ppm` da `sonda_custo_do_veu` iguais em `cmp`; os dois 
 **67 → 41 ms**, 90 px/quadro 17,8 → **12,7 ms**; `sonda_custo_do_veu` 30 px 0,29 → 0,255 s. **Aberto:** a película é agora
 ~60 % e sequencial entre carimbos; o próximo corte é o véu a MEIA definição (pegada e película a ¼ dos texels; o dono
 aprovou tentar, 10/11), que o fork-join não come.
+**Guia geral (método, curas, recusas):** [Pinceis/COMO_ACELERAR_UM_PINCEL.md](Pinceis/COMO_ACELERAR_UM_PINCEL.md).
 
 ## Como adicionar um bug aqui
 

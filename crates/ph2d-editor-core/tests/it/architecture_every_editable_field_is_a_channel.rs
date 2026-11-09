@@ -345,6 +345,17 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
         "o marcador é parâmetro da própria animação (`SpriteAnimMarkers`, `D::machinery`)",
     ),
     (
+        "ph2d-panel-inspector",
+        "sections/physics_cartao_contorno.rs::controlos",
+        Canal,
+        &[
+            "INSP_PHYS_OUTLINE_DETAIL",
+            "INSP_PHYS_OUTLINE_ALPHA",
+            "INSP_PHYS_OUTLINE_SPECKS",
+        ],
+        "as três linhas do «Outline»: canais FISICA 48..50 (`marcas_inspector`)",
+    ),
+    (
         "ph2d-panel-skeleton",
         "section_campos.rs::linha_com_losango",
         Canal,

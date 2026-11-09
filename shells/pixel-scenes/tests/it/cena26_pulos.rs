@@ -41,7 +41,7 @@ fn forma(w: &mut World, pai: ph2d_ecs::Entity) -> Collider {
     let mut q = w.query::<(&SegueSlice, &ChildOf, &Collider)>();
     q.iter(w)
         .find(|(_, c, _)| c.parent() == pai)
-        .map(|(_, _, c)| c.clone())
+        .map(|(_, _, c)| *c)
         .expect("a forma da slice")
 }
 

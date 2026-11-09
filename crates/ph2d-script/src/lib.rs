@@ -58,6 +58,7 @@ mod valores;
 
 pub use component::{
     LibraryEpoch, LuauScript, ProjectScripts, ScriptDrafts, ScriptEditRequests, ScriptSource,
+    decls_shown,
 };
 pub use console::{
     CONSOLE_BYTES_MAX, CONSOLE_LINE_BYTES_MAX, CONSOLE_LINES_MAX, Console, ConsoleKind,

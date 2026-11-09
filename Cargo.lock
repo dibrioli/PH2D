@@ -5665,6 +5665,7 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-app-host",
  "ph2d-code-assist",
+ "ph2d-code-bancada",
  "ph2d-code-buffer",
  "ph2d-code-explain",
  "ph2d-code-format",
@@ -5705,10 +5706,13 @@ dependencies = [
  "ph2d-audio-card-facts",
  "ph2d-audio-decode",
  "ph2d-audio-encode",
+ "ph2d-code-bancada",
+ "ph2d-code-buffer",
  "ph2d-code-explain",
  "ph2d-code-format",
  "ph2d-code-scenes",
  "ph2d-code-syntax",
+ "ph2d-code-viewmodel",
  "ph2d-component-desc",
  "ph2d-constraints-ecs",
  "ph2d-core",
@@ -6894,6 +6898,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-code-bancada"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-code-assist",
+ "ph2d-code-buffer",
+ "ph2d-code-syntax",
+ "ph2d-code-viewmodel",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-script",
+]
+
+[[package]]
 name = "ph2d-code-buffer"
 version = "0.0.0"
 dependencies = [
@@ -6962,6 +6981,7 @@ dependencies = [
 name = "ph2d-code-smoke"
 version = "0.0.0"
 dependencies = [
+ "ph2d-code-viewmodel",
  "ph2d-editor-core",
  "ph2d-host",
 ]
@@ -7542,6 +7562,7 @@ dependencies = [
  "ph2d-camera-frame",
  "ph2d-card-rope",
  "ph2d-card-stack",
+ "ph2d-code-bancada",
  "ph2d-color",
  "ph2d-component-desc",
  "ph2d-constraints-ecs",
@@ -9928,6 +9949,7 @@ dependencies = [
  "ph2d-code-buffer",
  "ph2d-code-viewmodel",
  "ph2d-editor-core",
+ "ph2d-host",
  "ph2d-i18n",
  "ph2d-text",
  "ph2d-tokens",

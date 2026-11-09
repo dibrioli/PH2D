@@ -312,6 +312,70 @@ impl Syntax {
         Some(text.byte_of_line(line + 1))
     }
 
+    /// ⭐ Os sinais que o `on_signal` do topo OUVE (plano 13 Onda B, «Hears»): cada string comparada
+    /// por `==` ou `~=` com o 2.º parâmetro dele (`if signal == "coin"`, o idioma das cenas e da
+    /// ajuda, qualquer que seja o nome do parâmetro), pela ordem do texto e um por nome. O nome e os
+    /// bytes dele (dentro das aspas).
+    #[must_use]
+    pub fn heard_signals(&self, text: &Text) -> Vec<(String, std::ops::Range<usize>)> {
+        fn walk(n: tree_sitter::Node, p: &str, t: &Text, out: &mut Vec<(String, Range<usize>)>) {
+            let side = |f| n.child_by_field_name(f);
+            let op = || {
+                let mut cc = n.walk();
+                n.children(&mut cc).any(|c| matches!(c.kind(), "==" | "~="))
+            };
+            if n.kind() == "binary_expression"
+                && op()
+                && let (Some(l), Some(r)) = (side("left"), side("right"))
+            {
+                let is_p =
+                    |x: tree_sitter::Node| x.kind() == "identifier" && t.slice(x.byte_range()) == p;
+                let lit = if is_p(l) {
+                    Some(r)
+                } else if is_p(r) {
+                    Some(l)
+                } else {
+                    None
+                };
+                if let Some(c) = lit
+                    .filter(|s| s.kind() == "string")
+                    .and_then(|s| s.child_by_field_name("content"))
+                {
+                    let name = t.slice(c.byte_range());
+                    if !out.iter().any(|(n, _)| *n == name) {
+                        out.push((name, c.byte_range()));
+                    }
+                }
+            }
+            let mut c = n.walk();
+            for ch in n.named_children(&mut c) {
+                walk(ch, p, t, out);
+            }
+        }
+        use std::ops::Range;
+        let root = self.tree().root_node();
+        let mut c = root.walk();
+        let Some(f) = root.named_children(&mut c).find(|n| {
+            n.kind() == "function_declaration"
+                && n.child(0).is_none_or(|k| k.kind() != "local")
+                && n.child_by_field_name("name")
+                    .is_some_and(|m| text.slice(m.byte_range()) == "on_signal")
+        }) else {
+            return Vec::new();
+        };
+        let param = f.child_by_field_name("parameters").and_then(|ps| {
+            let mut pc = ps.walk();
+            let p = ps.named_children(&mut pc).nth(1)?.named_child(0)?;
+            Some(text.slice(p.byte_range()))
+        });
+        let (Some(p), Some(body)) = (param, f.child_by_field_name("body")) else {
+            return Vec::new();
+        };
+        let mut out = Vec::new();
+        walk(body, &p, text, &mut out);
+        out
+    }
+
     /// O início da linha da instrução do TOPO que contém `byte` (a função onde ele está) — por cima
     /// dela vai o que só corre no topo (uma `ph2d.property`). Fora de qualquer instrução, a linha dele.
     #[must_use]

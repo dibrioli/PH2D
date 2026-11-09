@@ -23,6 +23,15 @@ impl Documents {
         self.surface_active
     }
 
+    /// Um documento (quadro ou família) tapa a cena com o chão dele — menos a aba de família que
+    /// cede a área à cena neste quadro ([`crate::doc_surface::DocumentSurface::yields_to_scene`]).
+    pub fn paints_document_ground(&mut self) -> bool {
+        let cede = self
+            .active_surface_mut()
+            .is_some_and(|(f, _)| f.yields_to_scene());
+        (self.surface_active.is_some() && !cede) || self.active.is_some()
+    }
+
     /// ⭐ A `Cena` é a aba activa (nem quadro, nem documento de família).
     #[must_use]
     pub fn scene_active(&self) -> bool {

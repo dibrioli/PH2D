@@ -85,6 +85,8 @@ pub struct CodeView {
     /// de ecrã diz dele.
     pub(crate) counter: Rect,
     pub(crate) counter_label: String,
+    /// As marcas da Bancada do último quadro (a linha e a caixa da marca e dos pontos).
+    pub(crate) bancada_marks: Vec<(usize, Rect)>,
 }
 
 /// ⛔ **Os bytes de uma linha que a pintura mostra** — o resto acaba num «…». ⚠️ **De que recurso
@@ -128,6 +130,7 @@ impl Default for CodeView {
                 h: 0.0,
             },
             counter_label: String::new(),
+            bancada_marks: Vec::new(),
         }
     }
 }

@@ -2,6 +2,7 @@
 //! por tecto de LOC (fecho da Onda 2, 20/10); a porta que os conduz continua lá.
 
 use crate::{Gesture, Until};
+use ph2d_code_viewmodel::Aim;
 use ph2d_editor_core::doc_surface::Key;
 use ph2d_host::Modifiers;
 
@@ -369,5 +370,36 @@ pub const STEPS_12: &[&[Gesture]] = &[
         Gesture::ClickDebug(0),
         Gesture::Frame,
         Gesture::Wait(Until::Live),
+    ],
+];
+
+/// ⭐ **Cena 13 — a Bancada** (Onda B): o balão «em quem» de `speed`, a célula alterada do Hero 2,
+/// a célula do Hero escrita à mão (a MESMA edição do Inspector), e o espiar da cena.
+pub const STEPS_13: &[&[Gesture]] = &[
+    // 1 — o rato na marca ◆ de `speed` (linha 1): o balão diz Hero 220 · default, Hero 2 180 · changed.
+    &[
+        Gesture::Wait(Until::Script),
+        Gesture::Frame,
+        Gesture::PointAim(Aim::Mark(0)),
+        Gesture::Frame,
+    ],
+    // 2 — o rato na célula do Hero 2 em `speed`: a linha e a coluna acesas, e a frase diz o que é.
+    &[Gesture::PointAim(Aim::Cell(1, 0)), Gesture::Frame],
+    // 3 — um clique na célula do Hero, `300` e Enter: a grelha (e o Inspector) dizem 300.
+    &[
+        Gesture::ClickAim(Aim::Cell(0, 0)),
+        Gesture::Frame,
+        Gesture::TabKey(Key::Char('a'), CTRL),
+        Gesture::TabType("300"),
+        Gesture::TabKey(Key::Enter, NONE),
+        Gesture::Wait(Until::CellIs(0, 0, "300")),
+        Gesture::PointAim(Aim::Cell(0, 0)),
+        Gesture::Frame,
+    ],
+    // 4 — o rato parado no nome «Hero 2» da grelha: a cena aparece com ele contornado na cor dele.
+    &[
+        Gesture::PointAim(Aim::Holder(1)),
+        Gesture::Wait(Until::Peeking),
+        Gesture::Frame,
     ],
 ];

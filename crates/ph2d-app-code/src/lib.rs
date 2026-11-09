@@ -10,7 +10,8 @@
 //! [`ScriptId`]: ph2d_script::ScriptId
 
 mod actions;
-mod cards;
+mod bancada;
+use ph2d_panel_code::cards;
 pub mod commands;
 pub use ph2d_code_assist::complete;
 mod complete_doc;

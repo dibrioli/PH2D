@@ -86,7 +86,7 @@ impl ListState {
     }
 
     /// As linhas que passam o filtro (sem maiúsculas).
-    fn visible(&self) -> Vec<(ScriptId, &str)> {
+    pub(crate) fn visible(&self) -> Vec<(ScriptId, &str)> {
         let f = self.filter.text().to_string().to_lowercase();
         self.entries
             .iter()

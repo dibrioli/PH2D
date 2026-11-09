@@ -158,6 +158,8 @@ pub struct CodeFrame<'a> {
     pub dropping: Option<crate::DropView<'a>>,
     /// O depurador (Onda D): pontos de parada, a linha parada, os valores ao vivo.
     pub debug: crate::DebugMarks<'a>,
+    /// A Bancada (Onda B): as propriedades, os sinais ouvidos e quem os mudou — as marcas da margem.
+    pub who: Option<&'a ph2d_code_viewmodel::Who>,
 }
 
 /// Uma dica de tipo (I9): o rótulo (`: number`) mostrado em `at` sem ocupar bytes.

@@ -166,6 +166,11 @@ ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support
 ph2d-label-census = { path = "../ph2d-label-census" }
 # O StyLua fixado: os scripts das cenas já saem limpos do formatar-ao-salvar (CodeEditor I13).
 ph2d-code-format = { path = "../ph2d-code-format" }
+# A grelha da Bancada (CodeEditor 13, Onda B) e o cartão Script são a MESMA edição: o teste de costura
+# leva o `act` da folha ao `apply` daqui (`script_inspector_tests.rs`). Folhas, nunca a família.
+ph2d-code-bancada = { path = "../ph2d-code-bancada" }
+ph2d-code-buffer = { path = "../ph2d-code-buffer" }
+ph2d-code-viewmodel = { path = "../ph2d-code-viewmodel" }
 # A lei da soltura do editor de scripts: a cena 7 corre o que o arrasto escreve (CodeEditor item 8).
 # É a folha da gramática, nunca a família `ph2d-app-code` (família → família reprova as camadas).
 ph2d-code-syntax = { path = "../ph2d-code-syntax" }

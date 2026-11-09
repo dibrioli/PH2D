@@ -47,6 +47,9 @@ pub const CMD_CONTINUE: NodeId = hash_node_id("code_cmd_continue");
 pub const CMD_NEXT_LINE: NodeId = hash_node_id("code_cmd_next_line");
 pub const CMD_PAUSE_ON_ERROR: NodeId = hash_node_id("code_cmd_pause_on_error");
 pub const CMD_REMOVE_BREAKPOINTS: NodeId = hash_node_id("code_cmd_remove_breakpoints");
+/// A Bancada (Onda B; dono 09/11): espiar a cena e o mapa, ligados por omissão.
+pub const CMD_PEEK: NodeId = hash_node_id("code_cmd_peek_at_scene");
+pub const CMD_MAP: NodeId = hash_node_id("code_cmd_scene_map");
 
 /// Os cinco menus da aba (os do Godot, enxutos).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -55,11 +58,19 @@ pub enum TabMenu {
     Edit,
     Find,
     GoTo,
+    View,
     Run,
 }
 
 impl TabMenu {
-    pub const ALL: [Self; 5] = [Self::File, Self::Edit, Self::Find, Self::GoTo, Self::Run];
+    pub const ALL: [Self; 6] = [
+        Self::File,
+        Self::Edit,
+        Self::Find,
+        Self::GoTo,
+        Self::View,
+        Self::Run,
+    ];
 
     #[must_use]
     pub fn title(self) -> &'static str {
@@ -68,6 +79,7 @@ impl TabMenu {
             Self::Edit => "code.menu.edit",
             Self::Find => "code.menu.find",
             Self::GoTo => "code.menu.go_to",
+            Self::View => "code.menu.view",
             Self::Run => "code.menu.run",
         })
     }
@@ -76,6 +88,8 @@ impl TabMenu {
 /// O estado que os comandos de ligar/desligar mostram no rótulo.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CommandState {
+    pub peek: bool,
+    pub map: bool,
     pub type_hints: bool,
     pub strict: bool,
     pub format_on_save: bool,
@@ -83,7 +97,7 @@ pub struct CommandState {
 
 /// `(id, chave do rótulo, menu da aba)` — `None` = só na paleta (as três caixas do cartão). Um
 /// comando de ligar/desligar tem aqui a chave do estado DESLIGADO (a do ligado, em [`commands`]).
-const TABLE: [(NodeId, &str, Option<TabMenu>); 29] = [
+const TABLE: [(NodeId, &str, Option<TabMenu>); 31] = [
     (CMD_NEW_SCRIPT, "code.cmd.new_script", Some(TabMenu::File)),
     (CMD_SAVE, "code.cmd.save", Some(TabMenu::File)),
     (CMD_SAVE_AS, "code.cmd.save_as", Some(TabMenu::File)),
@@ -138,6 +152,8 @@ const TABLE: [(NodeId, &str, Option<TabMenu>); 29] = [
         "code.cmd.remove_breakpoints",
         Some(TabMenu::Run),
     ),
+    (CMD_PEEK, "code.cmd.peek", Some(TabMenu::View)),
+    (CMD_MAP, "code.cmd.map", Some(TabMenu::View)),
     (CMD_STRICT, "code.cmd.strict", None),
     (CMD_FORMAT_ON_SAVE, "code.cmd.format_on_save", None),
     (CMD_TYPE_HINTS, "code.cmd.type_hints", None),
@@ -147,11 +163,17 @@ const TABLE: [(NodeId, &str, Option<TabMenu>); 29] = [
 /// depois do « · », e pinta-se à direita).
 #[must_use]
 pub fn menu_rows(menu: TabMenu) -> Vec<(NodeId, String, String)> {
+    menu_rows_in(menu, CommandState::default())
+}
+
+/// [`menu_rows`] com o estado dos interruptores (o rótulo diz se está ligado).
+#[must_use]
+pub fn menu_rows_in(menu: TabMenu, state: CommandState) -> Vec<(NodeId, String, String)> {
     TABLE
         .iter()
         .filter(|r| r.2 == Some(menu))
         .map(|&(id, key, _)| {
-            let full = tr(stateful(id, key));
+            let full = tr(shown(id, key, state));
             match full.split_once(" \u{00b7} ") {
                 Some((name, keys)) => (id, name.to_owned(), keys.to_owned()),
                 None => (id, full.to_owned(), String::new()),
@@ -173,6 +195,18 @@ pub fn row_state(id: NodeId, stop: crate::debug::GameStop) -> (bool, bool) {
     }
 }
 
+/// O rótulo de `id` com o estado dos interruptores: o que diz «On» quando ligado.
+fn shown(id: NodeId, key: &'static str, state: CommandState) -> &'static str {
+    match id {
+        CMD_TYPE_HINTS if state.type_hints => "code.cmd.type_hints_off",
+        CMD_STRICT if state.strict => "code.cmd.strict_off",
+        CMD_FORMAT_ON_SAVE if state.format_on_save => "code.cmd.format_on_save_off",
+        CMD_PEEK if state.peek => "code.cmd.peek_off",
+        CMD_MAP if state.map => "code.cmd.map_off",
+        _ => stateful(id, key),
+    }
+}
+
 /// O rótulo de `id` com o estado que só o host sabe (Pause on Error: o espelho do quadro).
 fn stateful(id: NodeId, key: &'static str) -> &'static str {
     let on = crate::debug::PAUSE_ON_ERROR.load(std::sync::atomic::Ordering::Relaxed);
@@ -188,18 +222,10 @@ fn stateful(id: NodeId, key: &'static str) -> &'static str {
 pub fn commands(state: CommandState) -> Vec<DocCommand> {
     TABLE
         .iter()
-        .map(|&(id, key, _)| {
-            let shown = match id {
-                CMD_TYPE_HINTS if state.type_hints => "code.cmd.type_hints_off",
-                CMD_STRICT if state.strict => "code.cmd.strict_off",
-                CMD_FORMAT_ON_SAVE if state.format_on_save => "code.cmd.format_on_save_off",
-                _ => stateful(id, key),
-            };
-            DocCommand {
-                id,
-                label: tr(shown).to_owned(),
-                menu: DocMenu::Tab,
-            }
+        .map(|&(id, key, _)| DocCommand {
+            id,
+            label: tr(shown(id, key, state)).to_owned(),
+            menu: DocMenu::Tab,
         })
         .collect()
 }
@@ -215,6 +241,8 @@ impl crate::docs::CodeDocs {
 
     pub(crate) fn command_state(&self, d: &CodeDoc) -> CommandState {
         CommandState {
+            peek: self.bench.peek_on,
+            map: self.bench.map_on,
             type_hints: self.intel.inlays_on,
             strict: crate::strict::is_strict(d.buffer.text()),
             format_on_save: self.format.on,
@@ -234,6 +262,8 @@ impl crate::docs::CodeDocs {
             }
             CMD_NEW_SCRIPT => self.list.asks.push(crate::list::Ask::New),
             CMD_OPTIONS => self.options.toggle(),
+            CMD_PEEK => self.bench.peek_on = !self.bench.peek_on,
+            CMD_MAP => self.bench.map_on = !self.bench.map_on,
             _ => return self.debug_command(cmd),
         }
         true

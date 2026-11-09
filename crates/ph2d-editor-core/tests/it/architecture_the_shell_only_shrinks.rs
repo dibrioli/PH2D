@@ -234,6 +234,7 @@ const TETOS_DAS_CRATES_APP: &[(&str, usize)] = &[
 /// a mesma régua. Medido 2026-11-08 na `line/ScriptEditor` (o medido no comentário).
 const TETOS_DAS_CRATES_DA_FAMILIA: &[(&str, usize)] = &[
     ("ph2d-code-assist", 3_925),  // 3_825
+    ("ph2d-code-bancada", 1_028), // 928 (Onda B, a Bancada; os nomes da cena saíram da `ph2d-app-code`)
     ("ph2d-code-scenes", 666),    // 566
     ("ph2d-code-smoke", 614),     // 514
     ("ph2d-code-viewmodel", 304), // 204

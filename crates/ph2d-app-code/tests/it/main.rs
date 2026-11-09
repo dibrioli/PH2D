@@ -33,6 +33,7 @@ mod linha_longa;
 mod lista;
 mod onda1;
 mod onda_a;
+mod onda_b;
 mod oraculo_lsp;
 mod paleta;
 mod problemas_lista;

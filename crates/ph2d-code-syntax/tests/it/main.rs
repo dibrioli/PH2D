@@ -7,6 +7,7 @@ mod erros;
 mod incremental;
 mod indentacao;
 mod nao_ascii;
+mod ouvidos;
 mod pares;
 mod queries;
 mod realce;

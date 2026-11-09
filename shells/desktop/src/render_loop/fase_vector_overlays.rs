@@ -185,10 +185,17 @@ impl crate::App {
         // 2026-08-23): o realce segue o CLIQUE, e o clique pega objecto em qualquer modo.
         if let Some(bits) = self.hovered_object
             && !self.hover_outline.is_empty()
-            && !hero.gizmo.iter_selected().any(|s| s == bits)
         {
             let o = &self.hover_outline;
-            ph2d_vec_render::draw_hover_outline(o, cam_affine, hero.theme, vector_scene);
+            let peek = sim.world().get_resource::<ph2d_code_bancada::ScenePeek>();
+            if let Some((_, c)) = peek.and_then(|p| p.0).filter(|p| p.0 == bits) {
+                // O espiar da Bancada: na cor do objecto, mesmo seleccionado.
+                let tinta =
+                    ph2d_editor_core::paint::resolve(ph2d_tokens::ColorToken::layer(c), hero.theme);
+                ph2d_vec_render::draw_peek_outline(o, cam_affine, tinta, vector_scene);
+            } else if !hero.gizmo.iter_selected().any(|s| s == bits) {
+                ph2d_vec_render::draw_hover_outline(o, cam_affine, hero.theme, vector_scene);
+            }
         }
         // O gizmo das CONSTRAINTS (alvos, arcos, raios) por cima das formas: as pegas são do dedo.
         ph2d_app_constraints::gizmo::desenhar(

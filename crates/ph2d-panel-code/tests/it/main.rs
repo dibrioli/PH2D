@@ -3,6 +3,7 @@
 
 mod a11y;
 mod a_caixa_fica_por_cima;
+mod bancada;
 mod clique;
 mod cronometro;
 mod estado;
@@ -127,6 +128,7 @@ pub fn frame<'a>(
         link: None,
         dropping: None,
         debug: ph2d_panel_code::DebugMarks::default(),
+        who: None,
     }
 }
 

@@ -23,8 +23,8 @@ use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 pub use ph2d_code_smoke::{
-    Gesture, NONE, STEP_ENV, STEPS, STEPS_4, STEPS_5, STEPS_10, STEPS_11, STEPS_12, Until,
-    VIEW_ENV, steps,
+    Gesture, NONE, STEP_ENV, STEPS, STEPS_4, STEPS_5, STEPS_10, STEPS_11, STEPS_12, STEPS_13,
+    Until, VIEW_ENV, steps,
 };
 
 /// Quanto um passo espera pelo editor (o assistente, a pausa do aviso) antes de desistir e dizê-lo.
@@ -232,6 +232,8 @@ fn holds(docs: &mut CodeDocs, id: ScriptId, until: Until) -> bool {
                 && d.is_stopped_here()
                 && d.debug.card.as_ref().is_some_and(|c| c.title.contains(s))
         }),
+        Until::Peeking => docs.bench.peeking().is_some(),
+        Until::CellIs(h, c, v) => docs.bancada.who.cell(h, c).is_some_and(|x| x.text == v),
         Until::Live => docs
             .docs
             .iter()
@@ -331,8 +333,13 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
             };
             let _ = docs.pointer_move(id.0, input, x, y);
         }
-        Gesture::PointTabMenuRow(k) => {
-            let Some(r) = docs.bar_painted().rows.get(k).map(|r| r.1) else {
+        Gesture::PointTabMenuRow(_) | Gesture::PointAim(_) => {
+            let r = match g {
+                Gesture::PointAim(aim) => docs.bench.target(aim),
+                Gesture::PointTabMenuRow(k) => docs.bar_painted().rows.get(k).map(|r| r.1),
+                _ => None,
+            };
+            let Some(r) = r else {
                 return false;
             };
             let mut ts = TextSystem::without_system_fonts();
@@ -348,6 +355,7 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
         | Gesture::ClickTabMenu(_)
         | Gesture::ClickGear
         | Gesture::ClickDebug(_)
+        | Gesture::ClickAim(_)
         | Gesture::ClickMark { .. } => {
             let band = docs.band_of(id);
             let bar = docs.bar_painted();
@@ -359,6 +367,7 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
                 Gesture::ClickBandTab(k) => band.and_then(|b| b.tabs.get(k).map(|t| t.1)),
                 Gesture::ClickTabMenu(k) => bar.titles.get(k).map(|t| t.1),
                 Gesture::ClickGear => bar.gear,
+                Gesture::ClickAim(aim) => docs.bench.target(aim),
                 _ => None,
             };
             let Some(r) = r else {

@@ -109,6 +109,52 @@ pub fn draw_bucket_face(world: &VecPath, tinta: [u8; 4], camera: Affine, target:
 }
 
 /// O traçado partilhado dos dois realces — px de TELA sob `Affine::IDENTITY` (a lei do cabeçalho).
+/// ⭐ **O contorno do ESPIAR** (editor de scripts, plano 13 Onda B; dono 09/11): o mesmo traço, na
+/// cor do objecto (`ColorToken::layer`) e grosso — a cena aparece no lugar da aba só enquanto o rato
+/// pára no nome, e tem de se ler de relance, por cima da selecção.
+pub fn draw_peek_outline(
+    world: &[VecPath],
+    camera: Affine,
+    tinta: Color,
+    target: &mut VectorScene,
+) {
+    let px = f64::from(ph2d_tokens::StrokeToken::Thick.px());
+    stroke_all(world, camera, target, tinta, px);
+}
+
+/// Quantos segmentos cabem na maior medida de um contorno achatado: o mapa da Bancada é uma
+/// miniatura (≤ 128 px de lado), e mais pontos que píxeis não se vêem.
+const RING_STEPS: f64 = 128.0;
+
+/// ⭐ Os contornos de `world` achatados em anéis de pontos de MUNDO (o mapa da Bancada).
+#[must_use]
+pub fn outline_rings(world: &[VecPath]) -> Vec<Vec<[f32; 2]>> {
+    use ph2d_vector::{PathEl, Shape};
+    let mut out = Vec::new();
+    for path in world {
+        let bez = super::build::build_bezpath(path);
+        let b = bez.bounding_box();
+        let tol = (b.width().max(b.height()) / RING_STEPS).max(f64::EPSILON);
+        let mut ring: Vec<[f32; 2]> = Vec::new();
+        #[allow(clippy::cast_possible_truncation)]
+        ph2d_vector::flatten(&bez, tol, |el| match el {
+            PathEl::MoveTo(p) => {
+                if ring.len() > 1 {
+                    out.push(std::mem::take(&mut ring));
+                }
+                ring.clear();
+                ring.push([p.x as f32, p.y as f32]);
+            }
+            PathEl::LineTo(p) => ring.push([p.x as f32, p.y as f32]),
+            _ => {}
+        });
+        if ring.len() > 1 {
+            out.push(ring);
+        }
+    }
+    out
+}
+
 fn stroke_all(world: &[VecPath], camera: Affine, target: &mut VectorScene, tinta: Color, px: f64) {
     for path in world {
         super::stroke_screen(

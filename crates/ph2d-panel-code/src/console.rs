@@ -120,6 +120,8 @@ pub struct ConsoleView {
     top: usize,
     /// A linha realçada no último quadro (uma nova rola-se para a vista).
     last_current: Option<usize>,
+    /// «Hero · 0:12» de cada linha pintada: o índice e a caixa (o pairar acende o objecto).
+    tags: Vec<(usize, Rect)>,
 }
 
 impl Default for ConsoleView {
@@ -133,6 +135,7 @@ impl Default for ConsoleView {
             open: false,
             tab: BandTab::Console,
             rows: Vec::new(),
+            tags: Vec::new(),
             problems: Vec::new(),
             empty: None,
             problem_total: 0,
@@ -169,6 +172,12 @@ fn bounds(r: Rect) -> (f64, f64, f64, f64) {
 }
 
 impl ConsoleView {
+    /// O «quem · quando» sob `(x, y)`: o índice da linha e a caixa do nome.
+    #[must_use]
+    pub fn tag_at(&self, x: f32, y: f32) -> Option<(usize, Rect)> {
+        self.tags.iter().find(|(_, r)| r.contains(x, y)).copied()
+    }
+
     /// A altura da faixa numa área de altura `area_h`: só o cabeçalho, ou um terço da área.
     #[must_use]
     pub fn height(open: bool, area_h: f32) -> f32 {
@@ -337,6 +346,7 @@ impl ConsoleView {
                 ui.text3,
             );
         }
+        self.tags.clear();
         for (k, i) in (start..end).enumerate() {
             let r = Rect::new(body.x, body.y + k as f32 * h, body.w, h);
             let row = rows.row(i);
@@ -354,6 +364,7 @@ impl ConsoleView {
                 let tw = chrome::label_w(ts, tag).min(text_w);
                 let tx = r.x + r.w - pad - tw;
                 chrome::label_in(scene, ts, tag, Rect::new(tx, r.y, tw, r.h), ui.text3);
+                self.tags.push((i, Rect::new(tx, r.y, tw, r.h)));
                 text_w = (tx - r.x - pad * 2.0).max(0.0);
             }
             chrome::label_in(

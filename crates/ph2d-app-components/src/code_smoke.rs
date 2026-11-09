@@ -41,6 +41,7 @@
 //!   [`ONDA_A_LUAU`]: cada segundo cada uma imprime as moedas (o Console diz «Circle · 0:01»); aos 3 s
 //!   o `self.sped` pára as três e os Problems mostram UMA linha com os três nomes e «×3», fundida com
 //!   o aviso do texto da mesma linha.
+//! - **13** — a Bancada (Onda B, doc 13 §4 itens 6–10): [`ph2d_code_scenes::bancada`].
 //! - **12** — o depurador (Onda D, doc 13 §4): as três formas correm o [`DEPURA_LUAU`], aberto numa
 //!   aba com um ponto de parada já posto (o condutor põe-no); o jogo pára no Circle, o Continue passa
 //!   à Star; tirado o ponto, os valores ao vivo aparecem no fim das linhas.
@@ -71,6 +72,9 @@ pub fn monta_em(
     }
     if nivel == 10 {
         return kanban::monta(sim);
+    }
+    if nivel == 13 {
+        return bancada::monta(sim, cena, mapa);
     }
     let (bob, broken) = {
         let mut lib = sim.world_mut().get_resource_or_init::<ProjectScripts>();
@@ -196,6 +200,14 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
             formas.len()
         );
         return None;
+    }
+    if nivel == 13 {
+        println!(
+            "[code-smoke] =13 a Bancada: Hero e Hero 2 correm o player.luau (o Hero 2 com speed 180), \
+             cinco moedas o coin.luau, e o door.luau não é de ninguém. A aba do player.luau abre: In \
+             this script, as marcas da margem, a grelha Who has what com o mapa, e a frase do pé."
+        );
+        return formas.get(1).map(|e| e.to_bits());
     }
     if nivel == 5 {
         println!(

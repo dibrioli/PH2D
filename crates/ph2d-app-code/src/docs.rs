@@ -89,6 +89,9 @@ pub struct CodeDocs {
     pub(crate) debug: crate::debug::DebugState,
     /// O menu do botão direito (item 14, [`crate::context_menu`]).
     pub(crate) ctx: Option<crate::context_menu::ContextMenu>,
+    /// A Bancada (plano 13 Onda B): o que a cena diz do script activo, e a vista dela.
+    pub(crate) bancada: ph2d_code_bancada::Bancada,
+    pub bench: ph2d_panel_code::bancada::BancadaView,
 }
 
 /// O que a gramática de uma aba fez (a sonda do gate da tecla).
@@ -138,6 +141,8 @@ impl Default for CodeDocs {
             options: crate::options_card::OptionsCard::default(),
             debug: crate::debug::DebugState::default(),
             ctx: None,
+            bancada: ph2d_code_bancada::Bancada::default(),
+            bench: ph2d_panel_code::bancada::BancadaView::default(),
         }
     }
 }

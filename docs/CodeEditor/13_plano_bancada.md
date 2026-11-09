@@ -3,7 +3,7 @@
 > Origem: pedido do dono 08/11 — *«estude a crítica (`GameEngineSamples/critica_ph2d.html#editor_scripts`),
 > trabalhe a ideia, melhore; funcional como o Godot, mas belo e original como o editor de Collision
 > Layers da linha GameEngineFuncional02. Planeje.»* Linha: `line/ScriptEditor` (continua o CodeEditor).
-> Estado: **PLANO APROVADO 08/11** (as quatro decisões do §6, todas na recomendação). Próximo: Onda A.
+> Estado: **PLANO APROVADO 08/11** (as quatro decisões do §6, todas na recomendação). Onda B construída 09/11, smoke do dono pendente.
 
 ## 1. A tese
 
@@ -95,6 +95,18 @@ Cada onda fecha com smoke do dono (`/pd-onda-fechar`), cena nova no roteador (`p
    cartão Script do Inspector, logo o mesmo undo); a coluna da propriedade sob o cursor acende.
 9. **A frase do pé**, fixa, em negrito: descreve o que está sob o rato e o que o clique faz.
 10. **Pairar um objecto** (na grelha, no popover ou no Console) acende o contorno dele no canvas.
+
+#### Onda B — construída (09/11): as decisões técnicas
+Decisão 12 do dono ([00_decisoes_do_dono.md](00_decisoes_do_dono.md)): a aba e o canvas são exclusivos, logo o item 10 virou «Espiar a cena» + «Mapa na Bancada» (menu View da aba, ambos ligados).
+- **Cor por objecto (D2):** `ColorToken::layer(i)`, `i` = posição na ordem do PRÓPRIO motor (`ph2d-script` `scene.rs` `actors`: todo `LuauScript` do script, por `StableId` e depois bits) — o mesmo conjunto que a contagem da lista (`list.rs` `users_of`), logo a grelha e o «2» nunca discordam. Estável entre sessões (a `StableId` grava-se); distinta dentro do script até 32 objectos.
+- **Hears:** as strings comparadas por `==`/`~=` com o 2.º parâmetro do `on_signal` GLOBAL do topo, qualquer nome (idioma medido: a ajuda `api_help.rs` e os smokes das componentes, `if signal == "coin" then`); uma por nome, na 1.ª linha — `ph2d-code-syntax` `facts.rs` `heard_signals`. O ⚡ vai em cada linha ouvida (maquete B), não na linha da função.
+- **Alterado** = valor ≠ o default do script (um `own` igual ao default lê-se «default»).
+- **Edição pela grelha** = a MESMA `EditorAction::InspectorComponentEdit { ComponentEdit::Script(ScriptFieldEdit::Set*) }` que o cartão Script empurra no `hero.bus` → o mesmo `script_inspector::apply` → o desfazer do projecto (por diff). Enquanto a Bancada tem o foco, o Ctrl+Z da aba é o do projecto (`DocumentSurface::undo_is_the_projects`). Número/Texto/Vec2/Objecto: campo na célula (Enter guarda, Esc larga); Bool alterna; Choice passa à opção seguinte; Color selecciona o objecto (edita-se no Inspector).
+- **Declarações:** porta única `ph2d_script::decls_shown` (o texto por salvar manda, senão a versão em uso) — o Inspector passou a usá-la também.
+- **Espiar e mapa:** recursos ECS `ph2d_code_bancada::{ScenePeek, SceneOutlines}`; a shell (`shells/desktop/src/bancada_scene.rs`) responde pela MESMA porta do contorno de proveniência (`hover_outline_of`: vetor, Flip, caixa de sprite). Espiar desenha `ph2d_vec_render::draw_peek_outline` na cor do objecto, por cima da selecção; o mapa recebe anéis de MUNDO (`outline_rings`) e vira o y (o mundo sobe). Contrato novo da aba: `DocumentSurface::yields_to_scene` (o hero não pinta o chão do documento).
+- **Arrumação:** coluna da esquerda = lista (`ScriptListView::height_for`, até metade) + «In this script»; coluna do código = barra / código / cartão do depurador / cartão da Bancada (grelha + «Where») / faixa Console·Problems / frase do pé (fixa, negrito, no fundo).
+- **Crates:** nova `ph2d-code-bancada` (Folha: o que o editor sabe da cena — nomes, quem corre o script, `act`, recursos); tipos em `ph2d-code-viewmodel` `bancada.rs`; pintura em `ph2d-panel-code` `bancada/` + `marks.rs`. Movidos para abrir espaço na `ph2d-app-code` (tecto): `scene_names.rs` → `ph2d-code-bancada::names` (+ `object_name`), `cards.rs` → `ph2d-panel-code::cards`, o campo de uma linha (`FieldKey`/`field_key`/`printable`) → `ph2d-panel-code::field`.
+- **Smoke:** `PH2D_CODE_SMOKE=13` (Hero e Hero 2 no `player.luau`, o Hero 2 com `speed` 180; cinco moedas no `coin.luau` que emitem `coin`; `door.luau` sem ninguém), roteiro `STEPS_13` (1 balão de `speed`, 2 célula do Hero 2, 3 Hero → 300 pela grelha, 4 espiar).
 
 ### Onda C — comandos e ensino
 11. **Menu da própria aba**: File · Edit · Find · Go To · Run (~24 entradas, contra 58 do Godot); os comandos do

@@ -4,11 +4,14 @@
 //! ([`CodeFrame`]) e guarda um [`CodeView`] por documento.
 
 mod a11y;
+pub mod bancada;
+pub mod cards;
 mod chrome;
 pub mod console;
 mod debug_marks;
 mod display;
 mod drop_mark;
+pub mod field;
 pub mod find_bar;
 pub mod frame;
 mod geom;
@@ -16,6 +19,7 @@ mod glyphs;
 pub mod help;
 mod hint;
 pub mod line_cache;
+mod marks;
 mod metrics;
 mod paint;
 mod palette;

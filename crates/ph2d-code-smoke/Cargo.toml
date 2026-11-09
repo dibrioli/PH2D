@@ -12,6 +12,7 @@ authors.workspace = true
 # Os roteiros do smoke conduzido do editor de scripts (os gestos e as esperas de cada passo); saíram
 # do `ph2d-app-code/src/smoke_drive.rs` no fecho da Onda D. Folha: só teclas e modificadores.
 [dependencies]
+ph2d-code-viewmodel = { path = "../ph2d-code-viewmodel" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-host = { path = "../ph2d-host" }
 

@@ -209,6 +209,9 @@ pub(crate) use ph2d_app_vec::group_gizmo_view;
 // cena com componentes de OUTRA família (`ph2d_app_components`), e uma família a depender de outra
 // família é o que o `architecture_no_dependency_climbs_a_layer` proíbe. *O sujeito é do vector; a
 // pergunta que os testes fazem é de COMPOSIÇÃO, e composição mora na shell.*
+/// ⭐⭐⭐ **AGRUPAR / DESAGRUPAR pela Hierarquia** — o alcance de um verbo que já existia em `Ctrl+G`
+/// e que nenhum menu, botão ou rótulo do app nomeava.
+mod bancada_scene;
 mod camera_no_canvas;
 mod forma_no_canvas;
 #[cfg(test)]
@@ -220,8 +223,6 @@ mod guide_smoke;
 mod harmony_smoke;
 mod hero_bridge;
 mod hero_intents;
-/// ⭐⭐⭐ **AGRUPAR / DESAGRUPAR pela Hierarquia** — o alcance de um verbo que já existia em `Ctrl+G`
-/// e que nenhum menu, botão ou rótulo do app nomeava.
 mod hover_highlight;
 mod hud_label_live;
 mod hud_smoke;

@@ -130,6 +130,8 @@ pub(crate) struct CodeDoc {
     pub(crate) scene: crate::scene_names::Shared,
     /// O Ctrl+clique num nome de objecto: seleccioná-lo na cena (a família fá-lo no quadro).
     pub(crate) select_object: Option<String>,
+    /// A altura do cartão da Bancada por cima da faixa de baixo (a do último quadro pintado).
+    pub(crate) bench_h: f32,
     /// A função do caminho até o cursor, por `(geração da árvore, linha)` (`tab_menu::crumb`).
     pub(crate) crumb_func: Option<(u64, usize, crate::tab_menu::CrumbFunc)>,
     /// O depurador (Onda D): os pontos de parada, a paragem, os valores ao vivo.
@@ -195,6 +197,7 @@ impl CodeDoc {
             dropping: None,
             scene: crate::scene_names::Shared::default(),
             select_object: None,
+            bench_h: 0.0,
             crumb_func: None,
             debug: crate::debug::DocDebug::default(),
             derived: Derived::default(),
@@ -432,7 +435,12 @@ impl CodeDoc {
         let console_h =
             ConsoleView::height(console_open, area.h).min((area.h - find_h - g).max(0.0));
         let card_h = self.debug_card_h(area.w);
-        let card = if card_h > 0.0 { card_h + g } else { 0.0 };
+        let card = if card_h > 0.0 { card_h + g } else { 0.0 }
+            + if self.bench_h > 0.0 {
+                self.bench_h + g
+            } else {
+                0.0
+            };
         let code = Rect::new(
             area.x,
             area.y,
@@ -441,6 +449,13 @@ impl CodeDoc {
         );
         let console = Rect::new(area.x, area.y + area.h - console_h, area.w, console_h);
         (code, console)
+    }
+
+    /// O cartão da Bancada (a grelha e o mapa), por cima da faixa de baixo (`None` = nenhum).
+    pub(crate) fn bench_rect(&self, area: Rect, console_open: bool) -> Option<Rect> {
+        let (_, band) = self.cards(area, console_open);
+        let y = band.y - crate::cards::gap() - self.bench_h;
+        (self.bench_h > 0.0).then(|| Rect::new(area.x, y, area.w, self.bench_h))
     }
 
     /// O cartão do depurador, entre o código e a faixa de baixo (`None` = nenhum).
@@ -466,7 +481,11 @@ impl CodeDoc {
         ts: &mut TextSystem,
         theme: &Theme,
         console: &crate::console::Store,
-        (blink_on, assist): (bool, Option<ph2d_panel_code::Assist>),
+        (blink_on, assist, who): (
+            bool,
+            Option<ph2d_panel_code::Assist>,
+            Option<&ph2d_panel_code::bancada::Who>,
+        ),
     ) {
         let (find_r, code_r, console_r) = self.layout(area, console.open);
         let (code_card, _) = self.cards(area, console.open);
@@ -607,6 +626,7 @@ impl CodeDoc {
                 hint: &d.hint,
             }),
             debug: debug.view(),
+            who,
         };
         crate::cards::open(scene, code_card, theme);
         view.paint(frame, code_r, scene, ts, theme);

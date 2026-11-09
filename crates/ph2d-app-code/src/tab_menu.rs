@@ -4,7 +4,7 @@
 //! options» no fim. As linhas de cada menu saem da tabela única de [`crate::commands`]; um clique
 //! corre o comando pelo MESMO caminho do `Ctrl+K` e da tecla.
 
-use crate::commands::{CMD_RESTART_ASSIST, TabMenu, menu_rows, row_state};
+use crate::commands::{CMD_RESTART_ASSIST, CommandState, TabMenu, menu_rows_in, row_state};
 use crate::docs::CodeDocs;
 use crate::help::page_of;
 use ph2d_a11y::NodeId;
@@ -46,6 +46,8 @@ pub struct Bar {
     pub stop: crate::debug::GameStop,
     /// A dica sob o rato (índice em `painted.tips`) e desde quando.
     pub tip: Option<(usize, u128)>,
+    /// Os interruptores da aba activa (o rótulo do menu diz se estão ligados).
+    pub state: CommandState,
 }
 
 fn font() -> f32 {
@@ -223,7 +225,7 @@ impl Bar {
         let Some(&(_, title)) = self.painted.titles.iter().find(|t| t.0 == m) else {
             return;
         };
-        let rows = menu_rows(m);
+        let rows = menu_rows_in(m, self.state);
         let hint = (m == TabMenu::Run).then(|| ph2d_i18n::tr("code.menu.restart_hint"));
         let pad = Spacing::Sm.px();
         let gap = Spacing::Lg.px();
@@ -336,8 +338,13 @@ impl CodeDocs {
         if page_of(id).is_some() {
             doc_r
         } else {
-            split(doc_r).1
+            ph2d_panel_code::bancada::phrase_split(split(doc_r).1).0
         }
+    }
+
+    /// A faixa da frase do pé da Bancada, no fundo do cartão do código (uma ajuda não a tem).
+    pub(crate) fn phrase_rect(&self, id: u64, doc_r: Rect) -> Option<Rect> {
+        (page_of(id).is_none()).then(|| ph2d_panel_code::bancada::phrase_split(split(doc_r).1).1)
     }
 
     /// O caminho até o cursor da aba `id`. É chrome de cada quadro: nunca reparsa (com a árvore
@@ -387,6 +394,9 @@ impl CodeDocs {
         theme: &Theme,
     ) {
         let Some(crumb) = self.crumb(id) else { return };
+        if let Some(d) = self.docs.iter().find(|d| d.script.0 == id) {
+            self.bar.state = self.command_state(d);
+        }
         let (head, _) = split(doc_r);
         let back = Rect::new(
             head.x,

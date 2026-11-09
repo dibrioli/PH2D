@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-code-bancada"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O que o editor de scripts sabe da CENA (plano 13 Onda B, a Bancada): os nomes dos objectos, quem
+# corre o script aberto e com que valores, e o clique da grelha virado na MESMA edição do cartão
+# Script do Inspector. Folha: lê a cena e devolve os tipos de `ph2d-code-viewmodel`; a pintura é do
+# `ph2d-panel-code` e a cola do `ph2d-app-code`.
+[dependencies]
+bevy_ecs = "0.20"
+ph2d-code-assist = { path = "../ph2d-code-assist" }
+ph2d-code-buffer = { path = "../ph2d-code-buffer" }
+ph2d-code-syntax = { path = "../ph2d-code-syntax" }
+ph2d-code-viewmodel = { path = "../ph2d-code-viewmodel" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-script = { path = "../ph2d-script" }
+
+[lints]
+workspace = true

@@ -142,6 +142,22 @@ pub struct ScriptEditRequests(pub Vec<ScriptId>);
 #[derive(Resource, Clone, Debug, Default, PartialEq)]
 pub struct ScriptDrafts(pub std::collections::BTreeMap<ScriptId, Vec<crate::props::PropDecl>>);
 
+/// ⭐ **As declarações que um painel mostra do script `id`** — a porta ÚNICA do cartão Script e da
+/// Bancada (oráculo Godot, 1b): o texto por salvar da aba manda; senão a versão que os objectos
+/// correm — com o texto salvo partido, a anterior boa, nunca a lista vazia.
+#[must_use]
+pub fn decls_shown<'a>(
+    world: &'a bevy_ecs::world::World,
+    host: Option<&'a crate::ScriptHost>,
+    id: ScriptId,
+) -> Option<&'a [crate::props::PropDecl]> {
+    world
+        .get_resource::<ScriptDrafts>()
+        .and_then(|d| d.0.get(&id))
+        .map(Vec::as_slice)
+        .or_else(|| host.and_then(|h| h.scene().decls_in_use(id)))
+}
+
 impl std::ops::Deref for ProjectScripts {
     type Target = ScriptLibrary;
     fn deref(&self) -> &ScriptLibrary {

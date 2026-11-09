@@ -71,7 +71,9 @@ pub use path_wire::{
 mod standalone;
 mod stroke_uniform;
 pub use cut_line::draw_cut_line;
-pub use hover_outline::{draw_bucket_face, draw_hover_outline, draw_trim_piece};
+pub use hover_outline::{
+    draw_bucket_face, draw_hover_outline, draw_peek_outline, draw_trim_piece, outline_rings,
+};
 pub use marquee::{draw_lasso, draw_marquee};
 pub use standalone::{draw_path_for_effects, draw_path_isolated, draw_path_standalone};
 

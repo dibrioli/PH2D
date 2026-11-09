@@ -109,6 +109,8 @@ pub fn frame(
         toasts,
     );
     docs.drafts(world, host.as_deref());
+    let (bench_edits, bench_pick) =
+        crate::bancada::frame(docs, world, host.as_deref(), our_active, clock.0);
     let mut new_stop = false;
     if let Some(h) = host {
         hear(docs, h, world);
@@ -141,6 +143,12 @@ pub fn frame(
     if new_stop {
         (hero.view.palco_do_jogo, hero.view.palco_largado) = (false, true);
     }
+    for a in bench_edits {
+        hero.bus.push(a);
+    }
+    if let Some(bits) = bench_pick {
+        hero.gizmo.replace_selection(Some(bits));
+    }
     if let Some(e) = picks
         .last()
         .and_then(|n| crate::scene_names::SceneNames::entity_named(sim.world_mut(), n))
@@ -149,13 +157,7 @@ pub fn frame(
     }
 }
 
-/// O nome de um objecto como a Hierarchy o mostra (sem `Name`, «Object N»).
-pub(crate) fn object_name(world: &ph2d_ecs::World, e: ph2d_ecs::Entity) -> String {
-    world.get::<ph2d_ecs::Name>(e).map_or_else(
-        || ph2d_i18n::tr_with("code.console.object", &[("id", &e.index())]),
-        |n| n.as_str().to_owned(),
-    )
-}
+pub(crate) use ph2d_code_bancada::names::object_name;
 
 /// A biblioteca manda no que a aba não mexeu: um script que sumiu (outro projeto) fecha a aba; um
 /// nome novo muda o título; um texto mudado por fora entra numa aba SEM alterações por salvar. Uma

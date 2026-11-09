@@ -18,8 +18,9 @@ struct Entry {
     text: String,
     tone: Tone,
     line: Option<u32>,
-    /// «Hero · 0:12» (quem e quando), ou só a hora no topo do script.
+    /// «Hero · 0:12» (quem e quando), ou só a hora no topo do script; e de quem (os bits).
     tag: Option<String>,
+    who: Option<u64>,
 }
 
 /// De onde vem um problema do Play.
@@ -97,7 +98,8 @@ impl Store {
                     Some(w) => tr_with("code.console.tag", &[("who", &w), ("time", &time)]),
                     None => time,
                 };
-                self.put(l.text.clone(), Tone::Plain, None, Some(tag));
+                let bits = l.entity.map(ph2d_ecs::Entity::to_bits);
+                self.put(l.text.clone(), Tone::Plain, None, Some((tag, bits)));
                 return false;
             }
             ConsoleKind::RuntimeError(d) => (PlayKind::Runtime, d),
@@ -172,7 +174,14 @@ impl Store {
         self.put(text, tone, None, None);
     }
 
-    fn put(&mut self, text: String, tone: Tone, line: Option<u32>, tag: Option<String>) {
+    fn put(
+        &mut self,
+        text: String,
+        tone: Tone,
+        line: Option<u32>,
+        tag: Option<(String, Option<u64>)>,
+    ) {
+        let (tag, who) = tag.map_or((None, None), |(t, w)| (Some(t), w));
         while !self.entries.is_empty()
             && (self.entries.len() >= CONSOLE_LINES_MAX
                 || self.bytes + text.len() > CONSOLE_BYTES_MAX)
@@ -185,6 +194,7 @@ impl Store {
             tone,
             line,
             tag,
+            who,
         });
     }
 
@@ -225,6 +235,13 @@ impl Store {
     /// O «quem · quando» de cada linha (os testes leem o que a aba mostra à direita).
     pub fn tags(&self) -> Vec<Option<String>> {
         self.entries.iter().map(|e| e.tag.clone()).collect()
+    }
+}
+
+impl Store {
+    /// De quem é a linha `i` do console (os bits do objecto que falou).
+    pub(crate) fn who_of(&self, i: usize) -> Option<u64> {
+        self.entries.get(i)?.who
     }
 }
 

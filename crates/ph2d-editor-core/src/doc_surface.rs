@@ -295,6 +295,12 @@ pub trait DocumentSurface: Any {
     fn wants_frame(&self) -> bool {
         false
     }
+    /// ⭐ **A aba cede a área à cena neste quadro** (o espiar da Bancada do editor de scripts, plano
+    /// 13 Onda B): o chão do documento não se pinta e a cena por baixo fica à vista; a aba ainda se
+    /// pinta por cima (o que deixar).
+    fn yields_to_scene(&self) -> bool {
+        false
+    }
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }

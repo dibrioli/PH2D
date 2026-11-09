@@ -642,3 +642,41 @@ fn a_lista_do_texto_por_salvar_manda_sobre_a_da_cena() {
         info.status
     );
 }
+
+/// ⭐ Bancada (CodeEditor 13, Onda B, item 8): a célula da grelha escrita é a MESMA edição do cartão
+/// — o que o `act` da folha devolve, este `apply` põe no objecto.
+#[test]
+fn a_celula_da_grelha_e_a_mesma_edicao_que_o_inspector_aplica() {
+    use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
+    const VELOZ: &str = "ph2d.property(\"speed\", 220, { min = 0, max = 1000 })\n";
+    let (mut sim, bits) = cena_com(VELOZ, &[]);
+    let h = pronto(&mut sim);
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    let Some(ScriptSource::Library(id)) =
+        sim.world().get::<LuauScript>(e).map(|s| s.source.clone())
+    else {
+        panic!("o objecto corre um script da biblioteca");
+    };
+    let decls = ph2d_script::decls_shown(sim.world(), Some(&h), id)
+        .expect("a cena conhece o script")
+        .to_vec();
+    let text = ph2d_code_buffer::Text::new(VELOZ);
+    let facts = ph2d_code_bancada::TextFacts::read(&ph2d_code_syntax::Syntax::new(&text), &text);
+    let who = ph2d_code_bancada::read(sim.world_mut(), id, Some(&decls), &facts);
+    let pedido = ph2d_code_viewmodel::Intent::Edit(0, 0, "300".into());
+    let Some(EditorAction::InspectorComponentEdit {
+        entity_bits,
+        edit: ComponentEdit::Script(edit),
+    }) = ph2d_code_bancada::act(&who, Some(&decls), &pedido)
+    else {
+        panic!("a célula do número é uma edição do Inspector");
+    };
+    assert_eq!(entity_bits, bits, "o objecto da linha");
+    assert!(apply(&mut sim, entity_bits, &edit), "o Inspector aplica-a");
+    assert_eq!(
+        sim.world()
+            .get::<LuauScript>(e)
+            .and_then(|s| s.own.get("speed")),
+        Some(&ScriptValue::Number(300.0))
+    );
+}

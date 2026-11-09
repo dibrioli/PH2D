@@ -69,6 +69,9 @@ pub enum Gesture {
     },
     /// Uma tecla na aba ACTIVA da família (a página de ajuda, ou o script).
     TabKey(Key, Modifiers),
+    /// O rato (sem botão) sobre / um clique no alvo da Bancada pintado no último quadro (Onda B).
+    PointAim(ph2d_code_viewmodel::Aim),
+    ClickAim(ph2d_code_viewmodel::Aim),
     /// Uma letra por quadro na aba activa (o campo da busca da página).
     TabType(&'static str),
     /// Um clique no link pintado da página `page` que leva a `to` no membro `member`.
@@ -121,11 +124,15 @@ pub enum Until {
     Live,
     /// Nada sublinhado e o ponteiro sobre o carácter `ahead` depois de `needle` não é a mão.
     Plain { needle: &'static str, ahead: usize },
+    /// A cena aparece no lugar da aba (o espiar da Bancada).
+    Peeking,
+    /// A célula `(objecto, propriedade)` da grelha diz este valor.
+    CellIs(usize, usize, &'static str),
 }
 
 pub mod steps;
 pub use steps::NONE;
-pub use steps::{STEPS, STEPS_4, STEPS_5, STEPS_10, STEPS_11, STEPS_12};
+pub use steps::{STEPS, STEPS_4, STEPS_5, STEPS_10, STEPS_11, STEPS_12, STEPS_13};
 
 /// O roteiro da cena `level` (`None` = a cena não tem fotos conduzidas).
 #[must_use]
@@ -137,6 +144,7 @@ pub fn steps(level: u32) -> Option<&'static [&'static [Gesture]]> {
         10 => Some(STEPS_10),
         11 => Some(STEPS_11),
         12 => Some(STEPS_12),
+        13 => Some(STEPS_13),
         _ => None,
     }
 }

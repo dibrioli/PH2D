@@ -119,6 +119,14 @@ impl ScriptListView {
         }
     }
 
+    /// A altura que a lista aberta pede para `rows` linhas: os vãos, o título, o filtro e as linhas
+    /// (a mesma conta do [`Self::paint`]).
+    #[must_use]
+    pub fn height_for(rows: usize) -> f32 {
+        let g = Spacing::Sm.px();
+        g + ROW_H_PX + g + ROW_H_PX + g + ROW_H_PX * rows.max(1) as f32 + g
+    }
+
     /// A área do último quadro.
     #[must_use]
     pub fn area(&self) -> Rect {

@@ -15,7 +15,7 @@ use ph2d_editor_core::interaction::drag::DRAG_THRESHOLD_PX;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::Modifiers;
 use ph2d_host::{PointerButton, PointerKind};
-use ph2d_panel_code::ListHit;
+use ph2d_panel_code::{ListHit, bancada};
 use ph2d_script::ScriptId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -67,12 +67,24 @@ impl DocumentSurface for CodeDocs {
         let area = acima_do_chrome(area, self.over);
         self.area = area;
         let (list_r, doc_r) = self.split_area(area);
+        let phrase = self.phrase_rect(id, doc_r);
+        let who = std::mem::take(&mut self.bancada.who);
+        // O espiar (dono 09/11): a aba cede a área à cena; só o nome sob o rato e a frase ficam.
+        if let (Some(_), Some(ph)) = (self.bench.peeking(), phrase) {
+            self.bench.paint_peek(&who, ph, scene, text, theme);
+            self.bancada.who = who;
+            return;
+        }
         let dirty: Vec<ScriptId> = self
             .buffers()
             .filter(|d| d.2.is_dirty())
             .map(|d| d.0)
             .collect();
         crate::cards::floor(scene, area, theme);
+        let rows = self.list.visible().len();
+        // A frase de uma recusa ocupa a lista inteira até sair (o «In this script» cede-lhe).
+        let open = self.list.open && self.list.notice.is_none();
+        let (list_r, outline_r) = bancada::left_split(list_r, rows, open);
         crate::cards::open(scene, list_r, theme);
         self.list
             .paint(list_r, id, &|s| dirty.contains(&s), scene, text, theme);
@@ -81,19 +93,49 @@ impl DocumentSurface for CodeDocs {
             crate::cards::open(scene, doc_r, theme);
             self.paint_help(page, doc_r, scene, text, theme);
             crate::cards::close(scene);
+            self.bancada.who = who;
             return;
+        }
+        if let Some(r) = outline_r {
+            crate::cards::open(scene, r, theme);
+            self.bench.paint_outline(&who, r, scene, text, theme);
+            crate::cards::close(scene);
         }
         let (now, steady) = self.clock;
         let typing = self.list.focus.is_none();
         let assist = self.intel.assist();
         let body = self.code_body(id, doc_r);
+        let bench_h = self.bench.bench_height(&who, body.h);
         self.paint_bar(id, doc_r, scene, text, theme);
+        let mut bench = None;
         if let Some((doc, store)) = self.split(id) {
+            doc.bench_h = bench_h;
             let lit = typing && blink_on(now, doc.last_input_ns, steady);
-            doc.paint(body, scene, text, theme, store, (lit, assist));
+            doc.paint(body, scene, text, theme, store, (lit, assist, Some(&who)));
+            let caret = bancada::caret_column(&doc.buffer, &who);
+            let marks = (doc.view.bancada_marks().to_vec(), doc.view.text_rect().x);
+            bench = Some((
+                doc.bench_rect(body, store.open),
+                caret,
+                marks,
+                doc.title.clone(),
+            ));
+        }
+        if let Some((r, caret, marks, title)) = bench {
+            self.bench.set_marks(&marks.0);
+            self.bench.set_text_x(marks.1);
+            if let Some(r) = r {
+                self.bench.paint_bench(&who, r, caret, scene, text, theme);
+            }
+            if let Some(ph) = phrase {
+                self.bench
+                    .paint_phrase(&who, &title, ph, scene, text, theme);
+            }
         }
         self.paint_over(id, doc_r, scene, text, theme);
+        self.bench.paint_popover(&who, doc_r, scene, text, theme);
         self.context_paint(id, scene, text, theme);
+        self.bancada.who = who;
     }
 
     fn chrome_over(&mut self, _id: u64, over: Option<Rect>) {
@@ -131,6 +173,13 @@ impl DocumentSurface for CodeDocs {
         {
             self.pressed = taken;
             return taken;
+        }
+        if matches!((kind, button), (PointerKind::Down, PointerButton::Primary))
+            && page_of(id).is_none()
+            && self.bench.press(&self.bancada.who, x, y)
+        {
+            self.pressed = true;
+            return true;
         }
         if matches!((kind, button), (PointerKind::Down, PointerButton::Primary))
             && let Some(h) = self.list.view.hit(input.text, x, y)
@@ -199,6 +248,11 @@ impl DocumentSurface for CodeDocs {
             return true;
         }
         self.list.hover_count = self.list.view.count_at(x, y);
+        let tag = self.console_holder(id, x, y);
+        self.bench.set_console_aim(tag);
+        if self.bench.hover(x, y, self.clock.0) {
+            return true;
+        }
         if let Some(page) = page_of(id) {
             return self.help_pointer_move(page, input, x, y);
         }
@@ -226,7 +280,7 @@ impl DocumentSurface for CodeDocs {
         if !self.area.contains(x, y) {
             return false;
         }
-        if self.list.view.wheel(x, y, dy) {
+        if self.list.view.wheel(x, y, dy) || self.bench.wheel(x, y, dy) {
             return true;
         }
         if let Some(page) = page_of(id) {
@@ -254,6 +308,15 @@ impl DocumentSurface for CodeDocs {
             };
         }
         if pressed && let Some(out) = self.family_key(id, key, mods) {
+            return out;
+        }
+        let k = crate::edit::FieldKey {
+            key,
+            mods,
+            text,
+            paste: paste.as_deref(),
+        };
+        if pressed && let Some(out) = self.bench.key(k) {
             return out;
         }
         let in_field = self.list.focus.is_some()
@@ -357,6 +420,16 @@ impl DocumentSurface for CodeDocs {
         if doc.buffer.is_dirty() {
             self.parked.insert(doc.script, doc.park());
         }
+    }
+
+    /// O último clique foi na grelha da Bancada: o Ctrl+Z desfaz a edição dela (a do projecto).
+    fn undo_is_the_projects(&self) -> bool {
+        self.bench.has_focus()
+    }
+
+    /// O espiar: a aba cede a área à cena (o chão do documento não se pinta).
+    fn yields_to_scene(&self) -> bool {
+        self.bench.peeking().is_some()
     }
 
     fn undo(&mut self, id: u64, redo: bool) -> bool {

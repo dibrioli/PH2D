@@ -15,6 +15,7 @@ pub(crate) fn tr(k: &str) -> Option<&'static str> {
         .or_else(|| app_motion::tr(k))
         .or_else(|| app_vec::tr(k))
         .or_else(|| code_editor::tr(k))
+        .or_else(|| code_bancada::tr(k))
         .or_else(|| code_explain::tr(k))
         .or_else(|| code_help::tr(k))
         .or_else(|| kanban::tr(k))
@@ -30,6 +31,10 @@ pub(crate) fn tr(k: &str) -> Option<&'static str> {
         .or_else(|| sfxlab::tr(k))
         .or_else(|| recovery::tr(k))
 }
+
+/// A Bancada do editor de scripts (plano 13 Onda B) — declarada aqui pelo tecto de LOC do `lib.rs`.
+#[path = "code_bancada.rs"]
+mod code_bancada;
 
 /// O que o SFX LAB diz (W3) — declarado aqui pelo tecto de LOC do `lib.rs`.
 #[path = "sfxlab.rs"]

@@ -68,6 +68,7 @@ impl crate::App {
             Some(bits) => self.resolve_hover_outline(bits),
             None => Vec::new(),
         };
+        self.serve_bancada();
         // ⭐⭐⭐ **O pedaço que o Trim aponta** (plano 38) — ao lado do realce de proveniência, que
         // responde à mesma pergunta noutra tinta. Fora do modo Trim ele LIMPA-SE.
         self.refresh_trim_hover(pointer);

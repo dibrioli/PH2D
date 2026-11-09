@@ -3,9 +3,11 @@
 //! e o `ph2d-code-assist` produ-los, sem que a lógica dependa do painel (a camada `Painel` só se lê de
 //! uma família, `architecture_no_dependency_climbs_a_layer`).
 
+pub mod bancada;
 pub mod help;
 mod ink;
 mod marks;
 
+pub use bancada::{Aim, Cell, CellKind, Column, Entry, Holder, Intent, Outline, Who};
 pub use ink::Ink;
 pub use marks::{Explanation, PreviewLine, Problem, Severity};

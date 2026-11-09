@@ -211,6 +211,12 @@ pub(super) fn populate_wheel(store: &mut WidgetStore) {
 }
 
 pub(super) fn populate_physics(store: &mut WidgetStore) {
+    populate_physics_buttons(store);
+    populate_physics_numbers(store);
+}
+
+/// Os botões, dicas, menus, nomes de camada e dobras do cartão de física.
+fn populate_physics_buttons(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_PHYS_KIND);
     register_button_ids(store, &ids::INSP_PHYS_SHAPE);
     register_button_ids(store, &ids::INSP_PHYS_LAYER);
@@ -308,6 +314,10 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
     for id in ids::INSP_PHYS_FOLDS {
         store.mark_collapsible_section(id);
     }
+}
+
+/// Os campos numéricos do cartão de física: valor de fábrica, faixa e passo de cada um.
+fn populate_physics_numbers(store: &mut WidgetStore) {
     // Every literal below is a PHYSICAL quantity — meters, kg/m², or a
     // dimensionless coefficient — not a design measurement, so none of them
     // has a token to come from.

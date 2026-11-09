@@ -22,8 +22,8 @@ pub(super) struct DocDasFaixas<'a> {
     pub(super) world: &'a ph2d_ecs::World,
     pub(super) ppm: f32,
     pub(super) editing: Option<u64>,
-    /// No palco do jogo a faixa Pixel fica vazia (GEF 19 E2).
-    pub(super) sem_pixel: bool,
+    /// O palco do jogo: sem faixas, o documento leva a arte do Pixel (o realce que a desenha não corre).
+    pub(super) palco: bool,
 }
 
 impl DocDasFaixas<'_> {
@@ -43,11 +43,7 @@ impl DocDasFaixas<'_> {
             let mut target = VectorScene::new();
             let (w, ppm, ed) = (self.world, self.ppm, self.editing);
             if band.family == Family::Pixel {
-                let ids = if self.sem_pixel {
-                    Vec::new()
-                } else {
-                    self.order.pixel_ids_in(*band)
-                };
+                let ids = self.order.pixel_ids_in(*band);
                 ph2d_app_pixel::draw::art(pixel, w, cam, ppm, ed, &ids, editor, &mut target);
                 let luz = (&mut *normais, sem_luz);
                 ph2d_app_pixel::luz::faixa_normal(pixel, w, (cam, ppm), Some(&ids), luz);
@@ -72,9 +68,19 @@ impl DocDasFaixas<'_> {
         }
     }
 
-    /// O documento inteiro numa cena (sem faixas).
-    pub(super) fn inteiro(&self, skins: &WidgetSkins, cam: Affine, target: &mut VectorScene) {
+    /// O documento inteiro numa cena (sem faixas); no palco, com a arte do Pixel por cima (P14, 09/11).
+    pub(super) fn inteiro(
+        &self,
+        pixel: &mut ph2d_app_pixel::PixelApp,
+        (skins, cam): (&WidgetSkins, Affine),
+        target: &mut VectorScene,
+    ) {
         self.dispatch(self.view, skins, cam, target);
+        let ids = self
+            .palco
+            .then(|| self.order.pixel_ids())
+            .unwrap_or_default();
+        ph2d_app_pixel::draw::art(pixel, self.world, cam, self.ppm, None, &ids, false, target);
     }
 
     /// Só a receita aberta, na cena ACIMA do vidro (faixas e `dispatch` saltam-na).

@@ -25,6 +25,7 @@ mod formas;
 mod historia;
 mod intervalo;
 mod painel_e_dialogo;
+mod palco_do_jogo;
 mod paleta;
 mod pincel;
 mod pivo;

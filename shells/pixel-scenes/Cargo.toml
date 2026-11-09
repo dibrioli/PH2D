@@ -44,6 +44,8 @@ ph2d-pixel-tiles = { path = "../../crates/ph2d-pixel-tiles" }
 ph2d-text = { path = "../../crates/ph2d-text" }
 ph2d-imageio-png = { path = "../../crates/ph2d-imageio-png" }
 ph2d-render = { path = "../../crates/ph2d-render" }
+# O gate do palco do jogo lê os píxeis da arte pela placa (`tests/it/palco_do_jogo.rs`).
+ph2d-gpu = { path = "../../crates/ph2d-gpu" }
 ph2d-tokens = { path = "../../crates/ph2d-tokens" }
 ph2d-tool-vector = { path = "../../crates/ph2d-tool-vector" }
 ph2d-vec-scene = { path = "../../crates/ph2d-vec-scene" }

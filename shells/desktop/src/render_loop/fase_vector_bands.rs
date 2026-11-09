@@ -1,6 +1,5 @@
-//! **Fase do quadro: AS FAIXAS DO DOCUMENTO** (ADR-0154 Fase 2) — o despacho da cena vectorial para o Vello
-//! por FAIXA de z, com as imagens de FX, os ladrilhos de padrão, as peles e as artes de pincel, e o vidro
-//! jateado da receita aberta (OBRA 2 da `line/render-loop`, 2026-09-12).
+//! **Fase do quadro: AS FAIXAS DO DOCUMENTO** (ADR-0154 Fase 2) — a cena vectorial ao Vello por FAIXA de z,
+//! com FX, padrões, peles, pincéis e o vidro da receita aberta (OBRA 2 da `line/render-loop`, 12/09).
 //!
 //! ⚠️ **As faixas numa fase só, e o motivo é o borrow checker:** `vec_fx`, `vec_patterns` e
 //! `brush_arts` são `&BTreeMap` emprestados de `self.fx_live`/`self.texture_pattern_live`/`self.brush_live`
@@ -9,8 +8,7 @@
 
 use super::*;
 
-/// O painel autorado (a moldura, o retorno do picker e as rows vivas) — fase-filha, num ficheiro irmão (por
-/// `#[path]`, para o `render_loop/mod.rs` não crescer acima do tecto dele).
+/// O painel autorado (moldura, retorno do picker, rows vivas) — fase-filha num ficheiro irmão (`#[path]`).
 #[path = "fase_authored_panel_rows.rs"]
 mod authored_panel_rows;
 
@@ -63,8 +61,7 @@ impl crate::App {
         };
         let vec_fx = self.fx_live.images();
         let vec_patterns = self.texture_pattern_live.tiles();
-        // As PELES de widget deste frame (W6.2), depois do `sync` (uma forma recém-marcada já
-        // tem entidade) e com a câmera na mão: quem sabe onde a forma está é quem tem a projeção.
+        // As PELES de widget (W6.2), depois do `sync` e com a câmera: quem sabe onde a forma está é quem projeta.
         let vec_skins = crate::widget_live::build(
             vec_scene,
             sim,
@@ -77,8 +74,7 @@ impl crate::App {
             // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
             hero_screen.as_ref()?.theme,
         );
-        // ⭐ AS FAIXAS DO DOCUMENTO (ADR-0154 Fase 2): com intercalação o documento vai, por faixa, a cenas próprias;
-        // a faixa exprime-se ESCONDENDO o resto (o push/pop do recorte vive fora do filtro). Sem intercalação: o chrome.
+        // ⭐ AS FAIXAS (ADR-0154 F2): com intercalação, cada faixa ESCONDE o resto (o recorte vive fora do filtro).
         // A arte dos PINCÉIS, memoizada e resolvida UMA vez fora do laço das faixas (14,28 ms sem memo, 04/09).
         let brush_arts = self.brush_live.resolve(
             vec_scene,
@@ -97,8 +93,7 @@ impl crate::App {
         *frosting = ph2d_app_components::master_editing::any_open(sim);
         frost_doc_scene.reset();
         frost_front_scene.reset();
-        // ⭐⭐⭐ **AS FORMAS DO MOTION NA PLACA?** (doc 121 W2/W3, B5) — decidido antes de o documento
-        // ser codificado (com elas na placa ele vai às FAIXAS); no DISPOSITIVO o buffer é o dele.
+        // ⭐ AS FORMAS DO MOTION NA PLACA? (doc 121 W2/W3, B5) — antes do documento (com elas ele vai às FAIXAS).
         let por_ordem = ph2d_app_motion::motion_shape_placa::por_ordem();
         let ligadas_do_motion = (
             motion_tool_active && por_ordem,
@@ -127,8 +122,7 @@ impl crate::App {
         frame_order.adormece_palcos(|m| palcos_da_ordem.toca_o_de(m));
         let doc_bands =
             ph2d_render::draw_bands::doc_bands_of(frame_order, placa || palcos || luz_acesa);
-        // O documento por faixa, com a câmera e as peles de QUEM o vê (o editor e a vista da câmera, A6);
-        // a faixa Pixel leva a arte dos Pixel Sprites dela (GEF 19 E2) — fora do palco do jogo, como antes.
+        // O documento por faixa, com a câmera e as peles de QUEM o vê (A6); no palco, sem o objecto em Draw.
         let hero = hero_screen.as_ref()?;
         ph2d_app_pixel::draw::begin_frame();
         let doc = doc::DocDasFaixas {
@@ -143,8 +137,9 @@ impl crate::App {
             order: frame_order,
             world: sim.world(),
             ppm: hero.project.pixels_per_meter,
-            editing: ph2d_app_pixel::mode::editing(sim.world(), hero),
-            sem_pixel: hero.view.palco_do_jogo,
+            editing: ph2d_app_pixel::mode::editing(sim.world(), hero)
+                .filter(|_| !hero.view.palco_do_jogo),
+            palco: hero.view.palco_do_jogo,
         };
         let pixel = &mut self.pixel;
         doc.faixas(
@@ -163,12 +158,11 @@ impl crate::App {
             } else {
                 vector_scene
             };
-            doc.inteiro(&vec_skins, cam_affine, target);
+            doc.inteiro(pixel, (&vec_skins, cam_affine), target);
         }
         // A receita aberta, sozinha, na cena ACIMA do vidro — em todos os casos.
         doc.isolada(&vec_skins, cam_affine, frost_front_scene);
-        // ⭐ A VISTA DA CÂMERA (A6): o mesmo documento, a luz e as placas do Motion com a câmera dela, nas cenas dela —
-        // sempre em faixas (o mundo dela acaba no acumulador). A receita aberta vai por cima, na última faixa.
+        // ⭐ A VISTA DA CÂMERA (A6): o documento, a luz e o Motion com a câmera dela, sempre em faixas (receita no topo).
         let t0 = std::time::Instant::now();
         if let Some(v) = miniatura.pedida() {
             let (cam, janela) = (v.afim(), v.janela());

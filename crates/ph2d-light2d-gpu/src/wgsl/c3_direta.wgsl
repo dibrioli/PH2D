@@ -1307,6 +1307,9 @@ fn luz_das_lampadas(P: vec2<f32>, P0: vec2<f32>, modo: u32, inicial: vec3<f32>) 
             v = select(x, v + x, somar);
         }
         soma += s * v;
+        if MOMENTO {
+            momento_da_lampada(P, L, s * v);
+        }
     }
     return soma;
 }
@@ -1384,9 +1387,19 @@ fn luz_do_texel(alvo: vec2<u32>, onde: Onde, tau: f32, exata: bool, transmitida:
         if !longo || exata {
             c0e = c0_em(P);
         }
+        if MOMENTO {
+            c0_momento_em(P);
+        }
         var x = luz_das_lampadas(P, pf, modo, select(c0e, c0l, longo && !exata));
         if longo && exata {
             x += c0l - c0e;
+        }
+        if MOMENTO && passo == 0u {
+            momento_fina_x = momento_x;
+            momento_fina_y = momento_y;
+        } else if MOMENTO && passo == 1u {
+            momento_fina_x = mix(momento_fina_x, momento_x, onde.f2);
+            momento_fina_y = mix(momento_fina_y, momento_y, onde.f2);
         }
         if passo == 0u {
             l = x;

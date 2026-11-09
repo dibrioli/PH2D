@@ -311,12 +311,10 @@ fn fora_do_wet_paint_o_navegador_aparece_sem_os_volumes() {
             rect_of(&rects, ids::PAINTER_WETPAINT_VOL_SIZE).is_some(),
             "{meio:?}: sem o Size (px)"
         );
-        for vol in [ids::PAINTER_WETPAINT_VOL_OPACITY] {
-            assert!(
-                rect_of(&rects, vol).is_none(),
-                "{meio:?}: volume do Wet fora dele"
-            );
-        }
+        assert!(
+            rect_of(&rects, ids::PAINTER_WETPAINT_VOL_OPACITY).is_none(),
+            "{meio:?}: volume do Wet fora dele"
+        );
     }
 }
 

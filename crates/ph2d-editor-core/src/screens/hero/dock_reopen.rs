@@ -89,8 +89,6 @@ fn paint_float_seams(
     }
 }
 
-/// A marca da alça: uma barra vertical a meia altura de uma faixa de agarre `r`.
-
 /// ⭐ F5: **a FAIXA de ícones do ③ recolhido** (iPad 11" e mini — mais estreito que a janela de
 /// referência): um ícone por painel que reabrir devolve, numa coluna FLUTUANTE na borda da área do
 /// lado da coluna — como a ① (0 px de layout; a alça de 6 px continua). ⚠️ Reservá-la custava o piso

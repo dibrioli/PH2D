@@ -36,7 +36,8 @@ fn the_save_writes_the_live_input_map() {
         body.len()
     );
     assert!(
-        body.contains("input_map: self") && body.contains("h.input_map.clone()"),
+        (body.contains("input_map: self") || body.contains("input_map: (self.gfx"))
+            && body.contains("h.input_map.clone()"),
         "o save nao grava o Input Map VIVO da sessao -- o artista autora as accoes e elas nao \
          chegam ao ficheiro. Construcao:\n{body}"
     );

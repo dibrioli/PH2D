@@ -35,17 +35,27 @@ fn a_tecla_pergunta_a_posse_antes_de_todo_atalho() {
     );
 }
 
-/// Depois do blur (um campo com o foco não rouba o 1.º clique na cena), antes do primeiro ramo que devolve.
+/// Depois do blur (um campo com o foco não rouba o 1.º clique na cena), antes do primeiro ramo do editor que devolve.
+/// O único `return` antes dela é o da janela modal da recuperação, que toma o clique como a paleta toma a tecla.
 #[test]
 fn o_clique_pergunta_a_posse_antes_do_primeiro_ramo_do_editor() {
-    let c = corpo("src/input_dispatch.rs", "pub(crate) fn on_mouse_input(");
+    // O `on_mouse_input` traduz o winit e entra na porta ÚNICA do clique (`pointer_button`).
+    let rato = corpo(
+        "src/input_dispatch/rato.rs",
+        "pub(crate) fn on_mouse_input(",
+    );
+    assert!(rato[..em(&rato, "\n    }\n")].contains("self.pointer_button("));
+    let c = corpo("src/input_dispatch.rs", "pub(crate) fn pointer_button(");
+    let modal = "if self.ramo_aperto_solta_teclado(state, evt) {\n            return;\n        }";
+    let apos_modal = em(&c, modal) + modal.len();
     let porta = em(&c, "self.rato_do_jogo(");
-    assert!(em(&c, "self.ramo_aperto_solta_teclado(") < porta);
+    assert!(apos_modal < porta, "o modal da recuperação primeiro");
+    let editor = apos_modal + em(&c[apos_modal..], "return;");
     assert!(
-        porta < em(&c, "return;"),
+        porta < editor,
         "um ramo do editor devolve antes de o jogo ter o clique"
     );
-    assert!(em(&c, "self.clique_so_do_jogo(") < em(&c, "return;"));
+    assert!(em(&c, "self.clique_so_do_jogo(") < editor);
 }
 
 /// Uma vez por quadro, antes do jogador (`fase_pointer_subjects`) e dos scripts (`fase_input_and_drops`).

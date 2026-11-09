@@ -28,8 +28,8 @@ fn o_vocabulario_do_mundo_nao_renumera() {
     }
     assert_eq!(
         (CAMADAS, CELULAS),
-        (12, 36),
-        "a matriz de camadas foi renumerada"
+        (12, 528),
+        "a matriz de camadas foi renumerada (528 = o triângulo de 32 camadas; as 36 de 8 ficam nos mesmos `i`)"
     );
 }
 

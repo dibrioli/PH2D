@@ -24,7 +24,7 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
         let r = ph2d_editor_core::ruler::top_band(area);
         r.y + r.h + Spacing::Sm.px()
     };
-    let fundo = borda::fundo(ctx.layout);
+    let fundo = borda::fundo(ctx);
     // Ao abrir, foge das janelas já abertas (`borda::assenta_ao_abrir`); depois fica onde está.
     let coluna = ctx.slot.x;
     let store = ctx.host.store_mut();

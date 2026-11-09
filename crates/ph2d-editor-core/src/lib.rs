@@ -100,6 +100,8 @@ mod published;
 pub mod readout;
 pub mod ruler;
 pub mod screens;
+/// A alça de uma borda que se puxa (faixa + marca), abaixo de `screens` e de `panel`.
+pub mod seam_mark;
 pub mod tether;
 pub mod text_elide;
 pub mod toast;

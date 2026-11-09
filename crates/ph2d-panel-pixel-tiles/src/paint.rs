@@ -58,7 +58,7 @@ fn solta(ctx: &PaintCtx, w: f32, x_de: impl FnOnce(Rect, f32) -> f32) -> Rect {
         x_de(area, w) + dx,
         teto + dy,
         w,
-        (ph2d_editor_core::panel::cards::borda::fundo(ctx.layout) - teto).max(0.0),
+        (ph2d_editor_core::panel::cards::borda::fundo(ctx) - teto).max(0.0),
     )
 }
 
@@ -131,7 +131,7 @@ pub(crate) fn paint(st: &mut PixelTilesPanelState, ctx: &mut PaintCtx) {
     let coluna = ctx.slot.x;
     let area = ctx.layout.draw_area;
     let w = borda::largura(ctx.host.store_mut(), node, area, coluna);
-    let (teto, fundo) = (teto(ctx), borda::fundo(ctx.layout));
+    let (teto, fundo) = (teto(ctx), borda::fundo(ctx));
     let base = coluna - w - Spacing::Lg.px();
     let slot = borda::coloca(ctx.host.store_mut(), node, w, (area.x, base), (teto, fundo));
     let encaixe = ctx.slot;

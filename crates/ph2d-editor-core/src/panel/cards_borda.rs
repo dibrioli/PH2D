@@ -11,8 +11,7 @@ use crate::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
 use crate::math::safe_clamp;
 use crate::panel::PaintCtx;
 use crate::panel::cards::banda::metrics as m;
-use crate::screens::hero::dock_reopen::paint_seam_mark;
-use crate::screens::layout::DOCK_SEAM_PX;
+use crate::seam_mark::{DOCK_SEAM_PX, paint_seam_mark};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_tokens::{PANEL_MIN_W_PX, Spacing};
@@ -32,9 +31,9 @@ pub fn tecto(area: Rect, coluna_x: f32) -> f32 {
 /// ⭐ **O fundo de uma janela acessória**: acima da faixa da pílula do rodapé (a dica da ferramenta),
 /// que senão se pinta por cima da última linha (foto `P12_smoke_07`, dono 08/11).
 #[must_use]
-pub fn fundo(layout: &crate::screens::layout::HeroLayout) -> f32 {
-    let area = layout.draw_area;
-    (area.y + area.h).min(layout.bottom_hud.y) - Spacing::Sm.px()
+pub fn fundo(ctx: &PaintCtx) -> f32 {
+    let area = ctx.layout.draw_area;
+    (area.y + area.h).min(ctx.layout.bottom_hud.y) - Spacing::Sm.px()
 }
 
 /// A largura da janela `panel` neste quadro — a escolha do artista limitada ao piso e ao tecto; o

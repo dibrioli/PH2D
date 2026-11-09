@@ -55,6 +55,7 @@ pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
         rect.y = teto;
     }
     // Escreve de volta o LIMITADO: o próximo arrasto parte do que se vê (sem borracha).
+    let fundo = ph2d_editor_core::panel::cards::borda::fundo(ctx);
     {
         let store = ctx.host.store_mut();
         if off2 != off {
@@ -66,7 +67,7 @@ pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
         // F1: ao abrir, foge das janelas já no ecrã como as outras janelas do Pixel.
         let area = ctx.layout.draw_area;
         let esquerda = ctx.layout.clear_of_left_list(area).x.max(area.x);
-        let fundo = ph2d_editor_core::panel::cards::borda::fundo(ctx.layout).max(teto + rect.h);
+        let fundo = fundo.max(teto + rect.h);
         let dentro = Rect::new(
             esquerda,
             teto,

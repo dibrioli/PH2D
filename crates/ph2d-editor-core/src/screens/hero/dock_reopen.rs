@@ -18,13 +18,11 @@
 use super::HeroScreen;
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::screens::layout::{DockSide, HeroLayout};
+use crate::seam_mark::{ARROW_W, paint_seam_mark, seam_mark};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_tokens::{ColorToken, Theme};
 use ph2d_vector::VectorScene;
-
-/// A largura do chevron desenhado dentro da faixa.
-const ARROW_W: f32 = 2.0; // LITERAL-PX-OK: traço do chevron da alça, dentro de uma faixa de 6
 
 /// **Pinta as alças das colunas fechadas** — nenhuma, uma, ou as duas.
 ///
@@ -92,27 +90,6 @@ fn paint_float_seams(
 }
 
 /// A marca da alça: uma barra vertical a meia altura de uma faixa de agarre `r`.
-fn seam_mark(r: Rect) -> Rect {
-    let mark_h = ph2d_tokens::ROW_H_PX.min(r.h);
-    Rect::new(
-        r.x + (r.w - ARROW_W) * 0.5,
-        r.y + (r.h - mark_h) * 0.5,
-        ARROW_W,
-        mark_h,
-    )
-}
-
-/// Pinta a marca da alça sobre a faixa `r` — a da coluna do Inspector e a das janelas acessórias
-/// (`panel::cards::borda`): a mesma alça, o mesmo desenho.
-pub fn paint_seam_mark(scene: &mut VectorScene, r: Rect, theme: Theme) {
-    let mark = seam_mark(r);
-    fill_rounded_rect(
-        scene,
-        mark,
-        ARROW_W * 0.5,
-        resolve(ColorToken::Text3, theme),
-    );
-}
 
 /// ⭐ F5: **a FAIXA de ícones do ③ recolhido** (iPad 11" e mini — mais estreito que a janela de
 /// referência): um ícone por painel que reabrir devolve, numa coluna FLUTUANTE na borda da área do

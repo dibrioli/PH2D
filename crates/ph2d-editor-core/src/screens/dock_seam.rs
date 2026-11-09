@@ -177,17 +177,7 @@ impl ChromeBands {
     }
 }
 
-/// **A faixa de agarre que redimensiona uma coluna** — a borda INTERIOR dela.
-///
-/// ⭐ Enio, 2026-08-30: *«os painéis devem ser redimensionáveis para esquerda e para direita e com
-/// setas bidirecionais no cursor; os pontinhos de redimensionamento podem ser retirados. A borda
-/// inteira serve para redimensionar»*.
-///
-/// ⚠️ **Ela vive DENTRO da coluna**, nos últimos [`DOCK_SEAM_PX`] px antes da área de desenho — e
-/// não a cavalo da fronteira, como uma costura de divisória costuma ser. A razão é medida: desde
-/// que a régua ficou **colada** à coluna, a faixa dela começa exactamente onde a coluna acaba, e
-/// uma costura centrada roubaria metade do agarre à régua. *A borda é do painel.*
-pub const DOCK_SEAM_PX: f32 = 6.0; // LITERAL-PX-OK: largura de agarre, irmã do GRAB_HALF_PX do 3D
+pub use crate::seam_mark::DOCK_SEAM_PX;
 
 /// Qual coluna, quando o ponteiro está sobre uma costura de largura.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

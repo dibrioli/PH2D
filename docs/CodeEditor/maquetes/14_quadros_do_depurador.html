@@ -1,0 +1,330 @@
+<title>Quadros do Depurador</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
+<style>
+/* Layout: uma coluna de leitura; cada proposta é uma «bancada» escura que imita o app, com a nota ao lado/abaixo. */
+:root {
+  --bg: #f3f4f7; --fg: #1b2030; --muted: #5b6377; --rule: #d9dce5; --panel: #ffffff; --accent: #2f6fd6; --pick: #1f8a5b;
+  /* o app (tema escuro medido na captura do dono) — igual nos dois temas da página */
+  --a-outer: #141824; --a-card: #22293a; --a-row: #262e40; --a-head: #1b2131; --a-line: #323b50;
+  --a-t1: #e8ebf2; --a-t2: #b0b8c9; --a-t3: #7e879b; --a-accent: #3a8ef0; --a-accent-soft: #23385c;
+  --a-warn: #e6b04c; --a-warn-soft: #3d3422; --a-danger: #e5645c; --a-ok: #5cc28f;
+  --f-ui: "IBM Plex Sans", system-ui, sans-serif; --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --f-head: "Newsreader", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1218; --fg: #e7e9ef; --muted: #9aa2b4; --rule: #262c38; --panel: #171b24; --accent: #6ea2f5; --pick: #4fc28a; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #0f1218; --fg: #e7e9ef; --muted: #9aa2b4; --rule: #262c38; --panel: #171b24; --accent: #6ea2f5; --pick: #4fc28a; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-ui); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 40px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-family: var(--f-head); font-weight: 600; font-size: clamp(30px, 4vw, 42px); line-height: 1.1; margin: 0 0 10px; text-wrap: balance; }
+h2 { font-family: var(--f-head); font-weight: 600; font-size: 25px; margin: 0; text-wrap: balance; }
+h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+.lead { color: var(--muted); font-size: 17px; }
+section { margin-top: 48px; display: grid; gap: 16px; }
+.tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; letter-spacing: .04em; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--rule); color: var(--muted); }
+.tag.pick { color: var(--pick); border-color: var(--pick); }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start; }
+@media (max-width: 900px) { .row { grid-template-columns: minmax(0, 1fr); } }
+.notes { display: grid; gap: 10px; font-size: 14px; color: var(--muted); }
+.notes b { color: var(--fg); font-weight: 600; }
+.notes ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.bench { background: var(--a-outer); border-radius: 10px; padding: 18px; overflow-x: auto; }
+.shot { background: var(--a-outer); border-radius: 10px; padding: 14px; overflow-x: auto; }
+.shot img { display: block; max-width: none; width: 900px; }
+
+/* ===== peças do app (só dentro de .bench) ===== */
+.card { background: var(--a-card); border-radius: 8px; color: var(--a-t1); font: 400 12px/1.4 var(--f-ui); min-width: 760px; }
+.hd { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--a-line); }
+.status { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--a-warn); }
+.status i { width: 8px; height: 8px; border-radius: 2px; background: var(--a-warn); display: inline-block; }
+.where { color: var(--a-t2); }
+.where b { color: var(--a-t1); font-weight: 600; }
+.obj { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px 1px 6px; border-radius: 999px; background: var(--a-row); color: var(--a-t1); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.chip { padding: 1px 8px; border-radius: 999px; background: #37405a; color: var(--a-t2); font-size: 11px; }
+.sp { flex: 1; }
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 5px; background: var(--a-row); color: var(--a-t1); font-weight: 500; border: 1px solid var(--a-line); }
+.btn.pri { background: var(--a-accent); border-color: var(--a-accent); color: #fff; }
+kbd { font: 500 10px var(--f-mono); color: var(--a-t3); }
+.btn.pri kbd { color: #dbe8ff; }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+/* A — planilha */
+.sheet { display: grid; grid-template-columns: minmax(0, 1fr) 210px; }
+table { border-collapse: collapse; width: 100%; }
+.tbl th { text-align: left; font-weight: 500; font-size: 11px; color: var(--a-t3); background: var(--a-head); padding: 5px 10px; border-bottom: 1px solid var(--a-line); border-right: 1px solid var(--a-line); }
+.tbl th:last-child, .tbl td:last-child { border-right: 0; }
+.tbl td { padding: 4px 10px; border-bottom: 1px solid #2a3245; border-right: 1px solid #2a3245; white-space: nowrap; }
+.tbl tr.grp td { background: var(--a-head); color: var(--a-t2); font-weight: 600; font-size: 11px; padding: 4px 8px; }
+.tbl tr.grp .tw { color: var(--a-t3); margin-right: 4px; }
+.tbl td.n { padding-left: 24px; }
+.tbl td.v { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; color: #9fd0ff; }
+.tbl td.t { color: var(--a-t3); font-size: 11px; }
+.tbl tr.chg td { background: var(--a-warn-soft); }
+.tbl tr.chg td.v { color: var(--a-warn); }
+.was { color: var(--a-t3); font-size: 10px; margin-right: 6px; text-decoration: line-through; }
+.tbl tr:nth-child(even):not(.grp):not(.chg) td { background: #252c3d; }
+.side { border-left: 1px solid var(--a-line); padding: 8px 12px; display: grid; gap: 12px; align-content: start; }
+.side h4 { margin: 0 0 4px; font-size: 11px; font-weight: 500; color: var(--a-t3); }
+.stack div { display: flex; justify-content: space-between; padding: 3px 6px; border-radius: 4px; }
+.stack .cur { background: var(--a-accent-soft); color: var(--a-t1); }
+.stack span:last-child { color: var(--a-t3); font-family: var(--f-mono); font-size: 11px; }
+.queue div { display: flex; align-items: center; gap: 6px; padding: 2px 6px; color: var(--a-t2); }
+.ft { display: flex; gap: 16px; padding: 6px 12px; border-top: 1px solid var(--a-line); color: var(--a-t3); font-size: 11px; }
+
+/* B — cartões da casa */
+.cols { display: grid; grid-template-columns: 1fr 1.6fr 0.9fr; gap: 10px; padding: 10px 12px; }
+.box { background: var(--a-head); border-radius: 6px; padding: 8px 10px; display: grid; gap: 6px; align-content: start; }
+.box h5 { margin: 0; font-size: 11px; font-weight: 600; color: var(--a-t2); display: flex; justify-content: space-between; }
+.box h5 span { color: var(--a-t3); font-weight: 400; }
+.fld { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 8px; }
+.fld label { color: var(--a-t2); }
+.fld .in { background: var(--a-row); border: 1px solid var(--a-line); border-radius: 4px; padding: 2px 8px; text-align: right; }
+.fld.chg .in { border-color: var(--a-warn); color: var(--a-warn); }
+
+/* C — faixa compacta */
+.strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--a-line); }
+.cell { padding: 6px 12px; border-right: 1px solid var(--a-line); display: grid; gap: 1px; }
+.cell:last-child { border-right: 0; }
+.cell small { color: var(--a-t3); font-size: 10px; }
+.cell small em { font-style: normal; color: var(--a-t3); opacity: .7; }
+.cell .mono { font-size: 13px; color: #9fd0ff; }
+.cell.chg { background: var(--a-warn-soft); }
+.cell.chg .mono { color: var(--a-warn); }
+
+/* família: outros quadros */
+.fam { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; }
+.fam .bench { padding: 14px; }
+.fam .card { min-width: 300px; }
+.spark { width: 64px; height: 16px; display: block; }
+.live { display: inline-flex; align-items: center; gap: 6px; color: var(--a-ok); font-weight: 600; }
+.live i { width: 7px; height: 7px; border-radius: 50%; background: var(--a-ok); display: inline-block; }
+.opt { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 8px 12px; border-bottom: 1px solid #2a3245; align-items: center; }
+.opt:last-child { border-bottom: 0; }
+.opt small { color: var(--a-t3); grid-column: 1; }
+.tog { width: 26px; height: 14px; border-radius: 999px; background: #3b4560; position: relative; grid-row: 1 / span 2; grid-column: 2; }
+.tog::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--a-t2); }
+.tog.on { background: var(--a-accent); }
+.tog.on::after { left: 14px; background: #fff; }
+.sev { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.decide { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 20px; display: grid; gap: 10px; }
+.decide ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 72ch; }
+</style>
+
+<div class="wrap">
+  <header style="display:grid; gap:10px">
+    <span class="tag">Editor de scripts · estudo para decidir</span>
+    <h1>Os quadros do depurador, redesenhados</h1>
+    <p class="lead">O quadro «Stopped» de hoje põe tudo numa linha corrida: nomes e valores misturados, sem dizer o que mudou, sem tipo, sem lugar para crescer. Abaixo, o de hoje e três caminhos, com os mesmos dados da sua captura (o Circle parado na linha 14 do <span class="mono">depura.luau</span>).</p>
+  </header>
+
+  <section>
+    <h2>Hoje</h2>
+    <div class="shot"><img alt="Captura do quadro Stopped de hoje" src="data:image/png;base64,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NFSpWd0bZUqXwPkLV1I1XRmQv0nDOtryJ2OHnTlzUf8uLZFWlhaoV6eqDuCf1OPI4PWXLvmidKniGirZ2tmYbpMw7OHDR9h3wAcFC+TVgekzAwnypHrL1dUZA/q+isNHTiAy0lAVZnT16g20adEELi5OWhV2+7YfAoOCMXveYtjZ2aBJo7rYu/+w6f579h3SkKp713Zo1KC2aVB/IdVzMkZbo/q10bJ5Q9y99wCTfv0L4eERGNivG/r3eRWuLs5pek7Synnxsq/pIttHUFBwmkI3IiIiIiIiIqK0MHN284hXKmVtYwcHx7QFIfR8znC5ZPkaHWuMiIiIiIiIiIgSFxTgj9CQp2OqZ1gFGT1/L74RlIiIiIiIiIgoa2NARkRERERERERE2RpbLImIiIiIiIiI6KXHFksiIiIiIiIiIqJEsMWSiIiIiIiIiIiyNQZkRERERERERESUrTEgIyIiIiIiIiKibI0BGRERERERERERZWsJBmSREeHPf06IiIiIiIiIiIgySER4eCoDssgIRISHZtT8EBERERERERERPTcR4WGIjExlQCYCH/sjJDgA0VFRGTVvREREREREREREGUZyLcm3Ah8/SPJ+Zs5uHtEZNxtERERERERERESZGwfpJyIiIiIiIiKibI0BGRERERERERERZWsMyIiIiIiIiIiIKFtjQEZERERERERERNkaAzIiIiIiIiIiIsrWGJAREREREREREVG2xoCMiIiIiIiIiIiQnf0/BcJglYi1cncAAAAASUVORK5CYII="></div>
+    <div class="notes"><ul>
+      <li><b>Leitura em zigue-zague:</b> «dt 0.017 self.base_x -5 self.id …» — o olho não sabe onde acaba um valor e começa o próximo nome.</li>
+      <li><b>Não diz o que mudou</b> desde o passo anterior — que é a pergunta principal de quem anda linha a linha.</li>
+      <li><b>«2 more waiting»</b> não diz quem espera; a pilha é texto sem clique.</li>
+      <li><b>Números à esquerda</b> e em larguras diferentes: não se comparam.</li>
+    </ul></div>
+  </section>
+
+  <section>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap"><h2>A · Planilha</h2><span class="tag pick">recomendado</span></div>
+    <div class="row">
+      <div class="bench">
+        <div class="card">
+          <div class="hd">
+            <span class="status"><i></i>Paused</span>
+            <span class="where">line <b>14</b> · <b>update()</b></span>
+            <span class="obj"><span class="dot" style="background:#4aa3ff"></span>Circle</span>
+            <span class="sp"></span>
+            <span class="btn pri">Continue <kbd>F8</kbd></span>
+            <span class="btn">Next line <kbd>F10</kbd></span>
+          </div>
+          <div class="sheet">
+            <table class="tbl">
+              <thead><tr><th style="width:38%">Name</th><th style="width:32%; text-align:right">Value</th><th>Type</th></tr></thead>
+              <tbody>
+                <tr class="grp"><td colspan="3"><span class="tw">▾</span>Locals <span style="color:var(--a-t3); font-weight:400">· 1</span></td></tr>
+                <tr><td class="n mono">dt</td><td class="v">0.017</td><td class="t">number</td></tr>
+                <tr class="grp"><td colspan="3"><span class="tw">▾</span>self <span style="color:var(--a-t3); font-weight:400">· 4 fields</span></td></tr>
+                <tr><td class="n mono">base_x</td><td class="v">-5</td><td class="t">number</td></tr>
+                <tr><td class="n mono">id</td><td class="v">4294967290</td><td class="t">object · Circle</td></tr>
+                <tr><td class="n mono">step</td><td class="v">1</td><td class="t">number</td></tr>
+                <tr class="chg"><td class="n mono">t</td><td class="v"><span class="was">0.133</span>0.15</td><td class="t">number · changed</td></tr>
+              </tbody>
+            </table>
+            <div class="side">
+              <div class="stack"><h4>Call stack</h4>
+                <div class="cur"><span>update</span><span>ln 14</span></div>
+              </div>
+              <div class="queue"><h4>Waiting here · 2</h4>
+                <div><span class="dot" style="background:#f0c24a"></span>Star</div>
+                <div><span class="dot" style="background:#5cc28f"></span>Hexagon</div>
+              </div>
+            </div>
+          </div>
+          <div class="ft"><span>Click a value to copy</span><span>Changed since last step: amber</span></div>
+        </div>
+      </div>
+      <div class="notes">
+        <p><b>A sua ideia, levada a sério.</b> Colunas Nome · Valor · Tipo, números à direita em fonte de código com dígitos alinhados, linhas listradas.</p>
+        <ul>
+          <li>Grupos dobráveis: <b>Locals</b> e <b>self</b> (depois: tabelas dentro de tabelas, com ▸).</li>
+          <li>O que <b>mudou</b> no último passo fica âmbar, com o valor antigo riscado ao lado.</li>
+          <li>Quem espera tem <b>nome e cor</b>; a pilha é uma lista onde se clica para ir à linha.</li>
+          <li>Cresce para baixo sem perder a ordem; com muitas variáveis rola por dentro.</li>
+          <li>É a mesma família da grelha <b>Who has what</b> que você já aprovou.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>B · Cartões como o Inspector</h2>
+    <div class="row">
+      <div class="bench">
+        <div class="card">
+          <div class="hd">
+            <span class="status"><i></i>Paused</span>
+            <span class="where">line <b>14</b> · <b>update()</b></span>
+            <span class="obj"><span class="dot" style="background:#4aa3ff"></span>Circle</span>
+            <span class="chip">2 more waiting</span>
+            <span class="sp"></span>
+            <span class="btn pri">Continue <kbd>F8</kbd></span>
+            <span class="btn">Next line <kbd>F10</kbd></span>
+          </div>
+          <div class="cols">
+            <div class="box"><h5>Locals <span>1</span></h5>
+              <div class="fld"><label class="mono">dt</label><span class="in mono">0.017</span></div>
+            </div>
+            <div class="box"><h5>self <span>4</span></h5>
+              <div class="fld"><label class="mono">base_x</label><span class="in mono">-5</span></div>
+              <div class="fld"><label class="mono">id</label><span class="in mono">4294967290</span></div>
+              <div class="fld"><label class="mono">step</label><span class="in mono">1</span></div>
+              <div class="fld chg"><label class="mono">t</label><span class="in mono">0.15</span></div>
+            </div>
+            <div class="box"><h5>Call stack</h5>
+              <div class="where"><b>update</b> · ln 14</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <p><b>Fala a língua do Inspector:</b> cada valor numa caixa de campo, grupos em cartões.</p>
+        <ul>
+          <li>Bom se um dia quiser <b>editar valores</b> parado no depurador.</li>
+          <li>Ocupa mais altura e larguras desiguais por grupo; com 20 variáveis vira uma parede de caixas.</li>
+          <li>Comparar números de cima para baixo é pior que na planilha.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>C · Faixa compacta</h2>
+    <div class="row">
+      <div class="bench">
+        <div class="card">
+          <div class="hd">
+            <span class="status"><i></i>Paused</span>
+            <span class="where">line <b>14</b> · <b>update()</b></span>
+            <span class="obj"><span class="dot" style="background:#4aa3ff"></span>Circle</span>
+            <span class="chip">+ Star, Hexagon</span>
+            <span class="sp"></span>
+            <span class="btn pri">Continue <kbd>F8</kbd></span>
+            <span class="btn">Next line <kbd>F10</kbd></span>
+          </div>
+          <div class="strip">
+            <div class="cell"><small>dt <em>local</em></small><span class="mono">0.017</span></div>
+            <div class="cell"><small>self.base_x</small><span class="mono">-5</span></div>
+            <div class="cell"><small>self.id</small><span class="mono">4294967290</span></div>
+            <div class="cell"><small>self.step</small><span class="mono">1</span></div>
+            <div class="cell chg"><small>self.t · changed</small><span class="mono">0.15</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="notes">
+        <p><b>A mesma altura de hoje</b>, mas cada variável na sua célula: nome pequeno em cima, valor grande em baixo.</p>
+        <ul>
+          <li>Melhor quando o painel é baixo e há poucas variáveis.</li>
+          <li>Com muitas, quebra em várias faixas e perde a ordem; sem lugar para tipo nem pilha.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>A mesma família nos outros quadros</h2>
+    <p class="lead">Se escolher a planilha, os outros quadros acessórios seguem a mesma gramática: faixa de cima com estado e ações à direita, corpo em tabela, números alinhados.</p>
+    <div class="fam">
+      <div>
+        <h3>Live values</h3>
+        <div class="bench"><div class="card">
+          <div class="hd"><span class="live"><i></i>Live</span><span class="obj"><span class="dot" style="background:#4aa3ff"></span>Circle</span><span class="sp"></span><span class="where">2.5×/s</span></div>
+          <table class="tbl">
+            <thead><tr><th>Line</th><th>Name</th><th style="text-align:right">Value</th><th>Last 4 s</th></tr></thead>
+            <tbody>
+              <tr><td class="mono" style="color:var(--a-t3)">13</td><td class="mono">self.t</td><td class="v">3.42</td><td><svg class="spark" viewBox="0 0 64 16"><polyline fill="none" stroke="#9fd0ff" stroke-width="1.5" points="0,15 16,12 32,8 48,5 64,1"/></svg></td></tr>
+              <tr><td class="mono" style="color:var(--a-t3)">14</td><td class="mono">swing</td><td class="v">0.74</td><td><svg class="spark" viewBox="0 0 64 16"><polyline fill="none" stroke="#9fd0ff" stroke-width="1.5" points="0,8 8,2 16,1 24,6 32,13 40,15 48,10 56,3 64,2"/></svg></td></tr>
+            </tbody>
+          </table>
+        </div></div>
+        <p class="notes" style="margin-top:8px">Hoje diz só «Live values: Circle». Passa a listar o que corre, com um traço dos últimos segundos para ver o movimento sem ler cada número.</p>
+      </div>
+      <div>
+        <h3>Who runs it (o balão da marca ◆)</h3>
+        <div class="bench"><div class="card">
+          <div class="hd"><span class="where"><b class="mono">speed</b> · line 1</span><span class="sp"></span><span class="where">default 220</span></div>
+          <table class="tbl">
+            <tbody>
+              <tr><td><span class="dot" style="background:#5cc28f"></span> Hero</td><td class="v">220</td><td class="t">default</td></tr>
+              <tr class="chg"><td><span class="dot" style="background:#9a8cff"></span> Hero 2</td><td class="v">180</td><td class="t">changed</td></tr>
+            </tbody>
+          </table>
+        </div></div>
+        <p class="notes" style="margin-top:8px">Mesmo desenho da grelha: valores alinhados, o que difere do padrão em âmbar.</p>
+      </div>
+      <div>
+        <h3>Script options</h3>
+        <div class="bench"><div class="card">
+          <div class="hd"><span class="where"><b>Script options</b></span><span class="sp"></span><span class="where">player.luau</span></div>
+          <div class="opt"><span>Strict checking</span><span class="tog on"></span><small>Warn about names the script never declared</small></div>
+          <div class="opt"><span>Format on save</span><span class="tog"></span><small>Tidy spacing and indents when you press Ctrl+S</small></div>
+          <div class="opt"><span>Type hints</span><span class="tog on"></span><small>Show the kind of each value in grey</small></div>
+        </div></div>
+        <p class="notes" style="margin-top:8px">Interruptores com uma frase que diz o que cada opção faz, em vez de caixas soltas.</p>
+      </div>
+      <div>
+        <h3>Problems</h3>
+        <div class="bench"><div class="card">
+          <table class="tbl">
+            <thead><tr><th></th><th>Problem</th><th>On</th><th style="text-align:right">Line</th></tr></thead>
+            <tbody>
+              <tr><td><span class="sev" style="background:var(--a-danger)"></span></td><td>Unknown global «math.sinn»</td><td style="color:var(--a-t3)">3 objects</td><td class="v">8</td></tr>
+              <tr><td><span class="sev" style="background:var(--a-warn)"></span></td><td>«speed» is never used</td><td style="color:var(--a-t3)">—</td><td class="v">2</td></tr>
+            </tbody>
+          </table>
+        </div></div>
+        <p class="notes" style="margin-top:8px">Colunas fixas: o número da linha alinhado à direita, quem é afectado numa coluna própria.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="decide">
+      <h2>O que preciso de você</h2>
+      <ol>
+        <li><b>Qual caminho:</b> A (planilha), B (cartões) ou C (faixa)? Recomendo A.</li>
+        <li><b>Coluna «Type»:</b> mostrar sempre, ou só quando não é número?</li>
+        <li><b>O traço dos últimos segundos</b> no Live values: quer, ou só o número?</li>
+        <li><b>Âmbar para «mudou»:</b> serve, ou prefere outra cor?</li>
+      </ol>
+      <p style="color:var(--muted); font-size:14px">As maquetes usam as cores medidas na sua captura; os textos dentro dos quadros ficam em inglês, como o app.</p>
+    </div>
+  </section>
+</div>

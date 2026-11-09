@@ -111,6 +111,8 @@ pub(in crate::tool::paint) struct MisturaDoTraco {
     pub sombra: Sombra,
     /// Os mapas pré-multiplicados de cada camada do Shape de cor (Per-Layer Color) para a pegada de UM carimbo.
     pub camadas: Vec<Vec<u8>>,
+    /// Salta a cópia do véu no mesmo centro ([`ReservatorioOpaco::repete_o_centro`]); `false` só na sonda de custo.
+    pub salta_a_copia_do_veu: bool,
 }
 
 impl Default for MisturaDoTraco {
@@ -124,6 +126,7 @@ impl Default for MisturaDoTraco {
             pegada_lisa: Vec::new(),
             sombra: Sombra::default(),
             camadas: Vec::new(),
+            salta_a_copia_do_veu: true,
         }
     }
 }
@@ -172,6 +175,15 @@ impl PainterTool {
         let v = Arc::new(crate::compositor::composite(&self.layers, &src, w, h));
         self.paint.mistura_visivel = Some(Arc::clone(&v));
         Some(v)
+    }
+
+    /// A sonda de custo compara com o véu de antes no MESMO processo (`MEDIR_VELOCIDADE.md`).
+    #[doc(hidden)]
+    pub fn set_mistura_salta_a_copia_do_veu(&mut self, sim: bool) {
+        let paint = &mut self.paint;
+        for m in std::iter::once(&mut paint.mistura_opaca).chain(paint.mistura_camada.iter_mut()) {
+            m.salta_a_copia_do_veu = sim;
+        }
     }
 
     /// A pressão do evento que vai gerar o próximo lote.
@@ -326,6 +338,14 @@ impl PainterTool {
         );
         let mut touched: Option<Region> = None;
         let mut grupo_ant: Option<(usize, ReservatorioOpaco)> = None;
+        // O véu sai em todo ponto do caminho a 4,5× o raio, e a cópia do spray no mesmo centro: ela salta-se. Com o
+        // spray parado (Space) o pincel parado acumula: aí não.
+        let afina = self.paint.mistura_opaca.salta_a_copia_do_veu
+            && brush.parado_s <= 0.0
+            && brush.dab_jitter.veu > 0.0
+            && brush.spray_count > 1
+            && brush.stroke_method.allows_jitter();
+        let mut salta_o_grupo = None;
         for (i, d) in dabs.iter().enumerate() {
             let g = groups.get(i).map_or(i, |&g| g as usize);
             let k = g % copias;
@@ -338,10 +358,14 @@ impl PainterTool {
                 }
                 _ => {
                     grupo_ant = Some((g, res[k]));
+                    salta_o_grupo = None;
                     &mut res[k]
                 }
             };
             let spec = brush.at_dab(d);
+            // As cópias do Tiling seguem a decisão da primeira (a costura casa).
+            let salta =
+                afina && *salta_o_grupo.get_or_insert_with(|| alvo.repete_o_centro(d.center));
             let tex_rng = dab_rng.enter(&groups, i);
             // A pegada: o kernel da rota normal (`stamp_dabs_per_pixel`), a branco, força 1, Flow 1, sobre o vazio.
             let fp = spec.dab_footprint_of(d);
@@ -378,6 +402,10 @@ impl PainterTool {
                 blend: ph2d_painter_brush::BrushBlend::default(),
                 ..spec
             };
+            // O stream de RNG já andou (as bases acima): saltar não muda a pegada dos seguintes.
+            if salta {
+                continue;
+            }
             let r = if pixel {
                 // A ponta de píxel: a pegada binária na grelha (a textura não a carimba; a rampa pela queda sim).
                 let d1 = Dab {

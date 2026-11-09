@@ -275,6 +275,16 @@ impl ReservatorioOpaco {
     pub fn cor(&self) -> Option<([f32; 3], f32)> {
         self.cheio.then_some((self.cor, self.carga))
     }
+
+    /// O carimbo cai no MESMO centro do anterior: não move o reservatório (`passo 0` ⇒ `retem 1`) e a película recebe
+    /// só o `k_passo` mínimo. É a cópia do spray do Wet Wash Mix (véu 4,5×, `jitter 0`): metade dos carimbos, ~3 % da
+    /// tinta. Saltá-la custa Δ médio 0,8–1,0 / máx 8–10 à tela e corta o traço 1,9×; afinar o véu ao próprio diâmetro
+    /// (¼–½ passo) dava 3,3–5,6× mas listras e borda ondulada — o liso é a MÉDIA de muitos carimbos sorteados
+    /// (`sonda_custo_do_veu`, recusa em `docs/Painter/BUGS_painter.md` #84).
+    #[must_use]
+    pub fn repete_o_centro(&self, centro: [f32; 2]) -> bool {
+        self.cheio && centro == self.ultimo
+    }
 }
 
 /// O lado de um ladrilho da [`Sombra`] (texels).

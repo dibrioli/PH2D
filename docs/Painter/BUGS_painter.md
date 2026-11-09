@@ -988,6 +988,21 @@ pincel depois de uma VOLTA por outra gaveta. Teste `o_menu_nomeia_o_pincel_que_e
 ao pixel; sangra por mutação). **Lição:** duas tabelas com chaves diferentes (gaveta × slot) sobre o mesmo estado mentem
 onde as chaves não coincidem — o portão compara o que o rótulo nomeia com o que o estado É, depois de cada caminho.
 
+## Bug #84 (CURADO 10/11, a miniatura do Wet Wash Mix à espera do dono) — o Wet Wash Mix derrubava o fps
+
+**Smoke do dono:** queda de fps com o Wet Wash Mix. **Medido** (`sonda_custo_do_veu`, traço 1 200 px em 200 eventos,
+`--profile smoke`, mín. de 3 intercalados): 30 px 2,50 s com a mistura × 0,98 s `Off`; 80 px 3,64 × 0,97; Round Mixing 80
+px 0,27. **Mecanismo:** o véu (`veu 1.0`, 4,5× o raio) sai em TODO ponto do caminho, ao passo de 3 % do diâmetro
+NOMINAL (0,7 % do dele), e a cópia do spray (`spray_count 2`, `jitter 0`) cai no MESMO centro: metade dos carimbos tem
+`dist = 0`, não move o reservatório e põe só o `k_passo` mínimo (0,0075, ~3 % da tinta) — pagando a pegada inteira.
+**Cura (`ReservatorioOpaco::repete_o_centro`, rota `stamp_route/mistura.rs`):** com o véu ligado e sem spray parado, o
+carimbo no centro do anterior salta-se (depois de o RNG da pegada andar). 30 px 2,50 → 1,29 s (1,94×), 80 px 3,64 →
+1,94 s (1,88×); tela Δ médio 0,8–1,0, máx 8–10; os outros 99 pincéis ao bit (alarme de miniatura: só o Wet Wash Mix, 25
+352 px). ⛔ **Recusa MEDIDA:** afinar o véu ao próprio diâmetro (saltar o que anda menos de ¼ ou ½ passo da mistura; a
+lei integra a distância) dava 3,3× e 5,6× mas listras verticais e borda ondulada (Δ máx 48 e 73): o liso do véu é a
+MÉDIA de muitos carimbos de raio e grão sorteados, e menos carimbos é menos média. Para ir além: as linhas do carimbo em
+paralelo (ao bit, ADR novo para o `rayon` da crate).
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

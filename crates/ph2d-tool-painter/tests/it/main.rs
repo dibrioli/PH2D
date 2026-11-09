@@ -69,6 +69,7 @@ mod sonda_csp_comparacao; // os mesmos traços do Clip Studio nos nossos pincéi
 mod sonda_csp_secos; // o lote B CSP (secos, aguadas, Pointillism) pela receita (08/11, sonda)
 mod sonda_csp_tinta_grossa; // o lote A CSP (tinta grossa, Wet blend) pela receita (08/11, sonda)
 mod sonda_csp_v3_revisao; // a cena v3 partilhada com o CSP, 22 pincéis no tamanho de fábrica (08/11, sonda)
+mod sonda_custo_do_veu; // o custo do véu do Wet Wash Mix: afinado × antigo × Off (10/11, sonda)
 mod sonda_custo_no_app;
 mod sonda_etapas;
 mod sonda_falloff_do_traco; // o falloff do traço × o de um dab, e o Accumulate do Glaze Round (24/10)

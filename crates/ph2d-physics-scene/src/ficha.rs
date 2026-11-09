@@ -272,6 +272,21 @@ pub fn nomeia_para_as_fotos(world: &mut World) {
     }
 }
 
+/// A foto do Outline (`PH2D_PHYSICS_SMOKE_OUTLINE=1`): a forma da Stretched Ball passa a «Outline» (a
+/// moeda), e o traço vem da cola `ph2d_physics_outline::retrace_followed` no 1.º quadro. Devolve-a.
+pub fn outline_para_as_fotos(world: &mut World) -> Option<Entity> {
+    std::env::var_os("PH2D_PHYSICS_SMOKE_OUTLINE")?;
+    let mut q = world.query::<(Entity, &Name)>();
+    let bola = q.iter(world).find(|(_, n)| n.0 == "Stretched Ball")?.0;
+    let forma = ph2d_physics_ecs::main_shape(world, bola).unwrap_or(bola);
+    let mut c = world.get_mut::<Collider>(forma)?;
+    c.shape = ColliderShape::Outline {
+        half_x: 0.5,
+        half_y: 0.5,
+    };
+    Some(forma)
+}
+
 /// A foto da exceção (`PH2D_PHYSICS_SMOKE_EXCECAO=1`, dono 09/11): o Crate ganha mais duas formas e uma delas desliga
 /// Ground e Props, o exemplo do dono. Devolve essa forma, que nasce selecionada.
 pub fn excecao_para_as_fotos(world: &mut World) -> Option<Entity> {

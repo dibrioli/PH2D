@@ -504,6 +504,13 @@ pub fn retrace_followed(
         if before.is_some_and(|b| b.key == key && b.asked == asked) {
             continue;
         }
+        // Um «Outline» ainda sem traço (cena montada à mão) traça-se à 1.ª vista.
+        if before.is_none()
+            && o.rings.is_empty()
+            && retrace(w, shape, &picture, ppm, queue, registry).is_some()
+        {
+            n += 1;
+        }
         if let (Some(b), ColliderShape::Outline { half_x, half_y }) = (before, c.shape) {
             let size = w.get::<Sprite>(owner).map(|s| s.size);
             let follows = near([half_x, half_y], &b.layout)

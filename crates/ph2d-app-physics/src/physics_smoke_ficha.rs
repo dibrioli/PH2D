@@ -20,7 +20,8 @@ pub fn physics_smoke_ficha(ctx: &mut crate::SceneCtx<'_>) {
     ph2d_physics_scene::ficha::nomeia_para_as_fotos(ctx.world);
     ph2d_physics_scene::ficha::olho_para_as_fotos(ctx.world);
     let excecao = ph2d_physics_scene::ficha::excecao_para_as_fotos(ctx.world);
-    ctx.want.select = excecao.map(Entity::to_bits);
+    let outline = ph2d_physics_scene::ficha::outline_para_as_fotos(ctx.world);
+    ctx.want.select = excecao.or(outline).map(Entity::to_bits);
     if let Ok(nome) = std::env::var("PH2D_PHYSICS_SMOKE_SELECT") {
         let mut q = ctx.world.query::<(Entity, &Name)>();
         ctx.want.select = q

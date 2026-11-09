@@ -98,35 +98,28 @@ pub fn build_physics_info(
     // Optional Freeze Position markers (W-LockPos); each presence is a flag.
     let lock_x = world.get::<LockPositionX>(entity).is_some();
     let lock_y = world.get::<LockPositionY>(entity).is_some();
-    // A superfície de caminhada (W-Surface); ausente = o neutro, que é
-    // exatamente o que toda cena fazia antes de ela existir.
+    // A superfície de caminhada (W-Surface); ausente = o neutro.
     let surface = world
         .get::<WalkSurface>(forma)
         .copied()
         .unwrap_or(WalkSurface::NEUTRAL);
-    // Optional mass override (W-Mass); presence = Manual mode, value = the kg. Absent
-    // = Auto (density-derived), and the Mass row is not shown.
+    // Optional mass override (W-Mass): presence = Manual (kg); absent = Auto (density).
     let mass_ov = world.get::<MassOverride>(entity).map(|m| m.0);
     // Optional dominance (W-Dominance); absent = neutral 0.
     let dominance = world.get::<Dominance>(entity).map_or(0, |d| d.0);
-    // Optional material combine (W-Material); absent = both Average (tags 0, 0). A
-    // collider material property, so it is read for any body kind (not Dynamic-only).
+    // Optional material combine (W-Material); absent = both Average; any body kind.
     let material = world
         .get::<MaterialCombine>(forma)
         .copied()
         .unwrap_or_default();
-    // Optional damping override (W-Damping); absent = the world default drag, shown as
-    // 0/0/Combine (tags). Read for any kind here; the rows are Dynamic-only in paint.
+    // Optional damping override (W-Damping); absent = world drag; rows Dynamic-only in paint.
     let damping = world
         .get::<DampingOverride>(entity)
         .copied()
         .unwrap_or_default();
-    // Optional OneWayPlatform marker (W-OneWay); its presence is the flag. A collider
-    // property, so it is read for any body kind (a platform is usually Static).
+    // Optional OneWayPlatform marker (W-OneWay); presence is the flag, any body kind.
     let one_way = world.get::<OneWayPlatform>(forma).is_some();
-    // Optional NoWallCling marker (W-WallMaterial); its presence says the surface is
-    // not wall material. Read for any kind, and from the SAME entity as the collider —
-    // a part carries its own, which is what lets one face of a body be unclimbable.
+    // Optional NoWallCling marker (W-WallMaterial), from the SAME entity as the collider.
     let no_wall_cling = world.get::<ph2d_physics_ecs::NoWallCling>(entity).is_some();
     // Optional AreaForceWorldAxes marker (W-AreaFrame): the zone's force on world axes.
     let force_world_axes = world
@@ -136,11 +129,9 @@ pub fn build_physics_info(
     let force = world
         .get::<AreaEffector>(forma)
         .map_or([0.0, 0.0], |a| a.force);
-    // Optional AreaDrag (W-AreaDrag) — the medium half, its own component so that
-    // adding it costs no `PROJECT_SCHEMA` bump. Same Sensor-only condition in paint.
+    // Optional AreaDrag (W-AreaDrag) — the medium half; Sensor-only in paint.
     let area_drag = world.get::<AreaDrag>(forma).map_or(0.0, |d| d.0);
-    // Optional AreaBuoyancy (W-Buoyancy) — a densidade do fluido, terceiro componente
-    // da mesma área e pela mesma razão: um campo novo seria bump de schema.
+    // Optional AreaBuoyancy (W-Buoyancy) — a densidade do fluido.
     let area_density = world.get::<AreaBuoyancy>(forma).map_or(0.0, |b| b.0);
     let area_form_drag = world.get::<AreaFormDrag>(forma).map_or(0.0, |f| f.0);
     // Optional AreaTorque (W-AreaTorque) — o giro que a área imprime; mesma condição de Sensor.
@@ -149,8 +140,7 @@ pub fn build_physics_info(
     let area_falloff = world.get::<AreaFalloff>(forma).map_or(0.0, |f| f.0);
     // ⚠️ A pergunta é pelo COLLIDER, não pelo par (W-PartFace): uma peça é simulada.
     let Some(col) = col else {
-        // The empty face. The dimensions are the values the Add button would
-        // seed if the sprite had no bounds — the panel never shows them.
+        // The empty face; the dimensions are display seeds the panel never shows.
         return Some(InspectorPhysicsInfo {
             entity_bits,
             has_body: false,
@@ -178,8 +168,7 @@ pub fn build_physics_info(
             // Sem corpo não há joint; o rig (abaixo) CRIA os corpos, por isso fica.
             join_count: 0,
             rig_parts,
-            // W-Compound: a face VAZIA é a única em que a pergunta faz sentido —
-            // um objeto que já é corpo não vira peça de ninguém.
+            // W-Compound: só a face VAZIA vira peça.
             part_owner,
             join_draw_armed,
             join_kind_tag,
@@ -245,9 +234,7 @@ pub fn build_physics_info(
         body_without_shape: false,
         shape_on_child,
         shape_of,
-        // ⚠️ Só um CORPO tem peças penduradas nele; numa peça o número é dela
-        // mesma, e uma peça não hospeda peças (o walk sobe até o corpo, e ele é
-        // o dono de todas).
+        // ⚠️ Só um CORPO tem peças penduradas nele; uma peça não hospeda peças.
         part_count: if rb.is_some() { part_count } else { 0 },
         // O tipo que governa a forma: o cartão Shape da filha esconde o One-way num Dynamic.
         kind_tag: ph2d_physics_ecs::governing_kind(world, entity).map_or(0, |k| k.tag()),
@@ -264,22 +251,17 @@ pub fn build_physics_info(
         // A seleção (`com_a_selecao`) diz se alguma forma difere.
         collides_differs: false,
         collides_pinned: 0,
-        // ⚠️ Uma entidade SEM corpo não pode ser metade de um joint, seja qual
-        // for a seleção — a mesma razão pela qual a face vazia zera este número.
+        // ⚠️ Sem corpo não há metade de joint, seja qual for a seleção.
         join_count: if rb.is_some() { join_count } else { 0 },
         rig_parts,
-        // Um corpo não é peça de ninguém (docs do `nearest_body_name`); uma peça
-        // NOMEIA o dono no cabeçalho da própria face.
+        // Uma peça NOMEIA o dono no cabeçalho da própria face; um corpo não é peça.
         part_owner,
         join_draw_armed,
         join_kind_tag,
         bake_seconds,
         bake_start_seconds,
         is_sensor: col.is_sensor,
-        // Os dois nomes AUTORADOS. Sem eles as rows são write-only — o defeito
-        // que o W-Signal shipou e que as rows de área (W-AreaTorque) e as de
-        // ruptura (W-J7) já tinham shipado antes, cada vez pela mesma causa: o
-        // snapshot não carregava o valor, então não havia o que espelhar.
+        // Os dois nomes AUTORADOS: sem eles as rows seriam write-only.
         signal: world
             .get::<ph2d_physics_ecs::SignalOnHit>(forma)
             .and_then(ph2d_physics_ecs::SignalOnHit::name)

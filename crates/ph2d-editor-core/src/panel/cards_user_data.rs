@@ -181,7 +181,7 @@ fn so_leitura(c: &mut CardCtx<'_>, r: &PropRow, remove: Option<NodeId>, y: f32) 
     let mut cells = vec![
         Cell::new(Widget::Readout { text: &r.name }),
         Cell::new(Widget::Readout { text: &r.value }),
-        Cell::new(Widget::Readout { text: r.kind }),
+        Cell::new(Widget::Readout { text: tr(r.kind) }),
     ];
     if let Some(id) = remove {
         cells.push(Cell::new(Widget::Button {
@@ -251,7 +251,7 @@ pub fn paint_body(
         };
         let tipo = Cell::new(Widget::Button {
             id: ids.kind(i),
-            text: r.kind,
+            text: tr(r.kind),
             primary: false,
         });
         y = c.row(&[nome, valor, tipo, remove], y);

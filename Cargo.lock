@@ -7660,6 +7660,7 @@ dependencies = [
  "ph2d-physics-outline-vec",
  "ph2d-physics-scene",
  "ph2d-pick-order",
+ "ph2d-pixel-cena",
  "ph2d-pixel-keys",
  "ph2d-poly2d",
  "ph2d-preview-drive",

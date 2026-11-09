@@ -69,6 +69,14 @@ impl PhysicsBridge {
             .map_or(0.0, |b| self.world.buoyed(b.handle))
     }
 
+    /// A caixa `(mínimos, máximos)` em metros de MUNDO de todas as formas do corpo de `entity`, lida
+    /// do rapier (não do `Collider`): o que o solver colide de facto. `None` sem corpo.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn body_aabb(&self, entity: Entity) -> Option<([f32; 2], [f32; 2])> {
+        self.world.body_aabb(self.bodies.get(&entity)?.handle)
+    }
+
     /// Number of live rapier bodies (for tests / diagnostics).
     ///
     /// ⚠️ **Conta o mapa entidade→corpo da PONTE**, não a arena: um corpo sem

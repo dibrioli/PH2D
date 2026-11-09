@@ -591,5 +591,9 @@ mod sharing_tests;
 mod selection_tests;
 
 #[cfg(test)]
+#[path = "undo_pixel_collider_tests.rs"]
+mod pixel_collider_tests;
+
+#[cfg(test)]
 #[path = "undo_drag_tests.rs"]
 mod drag_tests;

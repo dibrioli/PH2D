@@ -157,3 +157,97 @@ fn a_chave_anterior_e_a_de_antes_do_instante() {
     assert_eq!(na_chave_anterior(&doc, 7, x, 1.0), Some(3.0));
     assert_eq!(na_chave_anterior(&doc, 7, x, -0.5), None);
 }
+
+/// Uma forma com os pontos chaveados em 0 s (`a`) e 1 s (`b`).
+fn duas_chaves(a: &[Vec<[i32; 2]>], b: &[Vec<[i32; 2]>]) -> ph2d_timeline::TimelineDoc {
+    use ph2d_anim::{AnimValue, Interp, RationalTime};
+    let mut doc = ph2d_timeline::TimelineDoc::new();
+    for (t, r) in [(0.0, a), (1.0, b)] {
+        for (kk, v) in publicados(&contorno(r.to_vec(), true)) {
+            let (p, t) = (
+                ph2d_timeline::PropKind::Field(kk),
+                RationalTime::from_seconds(t),
+            );
+            doc.upsert_key(7, p, t, AnimValue::Float(v), Interp::Linear);
+        }
+    }
+    doc
+}
+
+/// Os anéis de `doc` na chave `t` (a forma 7, `n` pontos no anel 0).
+fn na_chave(doc: &ph2d_timeline::TimelineDoc, t: f64, n: usize) -> Vec<[i32; 2]> {
+    let v = |c, j| {
+        let kk = FieldKey::new(ph2d_ecs::canal::familia::FISICA, c, 0, j);
+        ph2d_physics_outline::canais_pontos::na_chave_anterior(doc, 7, kk, t).expect("chave") as i32
+    };
+    (0..n as u16)
+        .map(|j| [v(f::CONTORNO_PONTO_X, j), v(f::CONTORNO_PONTO_Y, j)])
+        .collect()
+}
+
+/// ⭐ Acrescentar um ponto (duplo clique na aresta) numa forma com DUAS chaves: as duas ganham o ponto,
+/// no mesmo lugar do segmento (na chave de 1 s, o meio da aresta deslocada); apagar um ponto sai das
+/// duas, e a trilha dele também; tocar entre as chaves continua válido. Lei do dono 19/10.
+/// *Mutação: propagar só à chave do instante ⇒ vermelho.*
+#[test]
+fn acrescentar_e_apagar_um_ponto_vale_nas_duas_chaves() {
+    use ph2d_physics_outline::canais_pontos::{mudou, propagar};
+    let q = quadrado();
+    let longe: Vec<Vec<[i32; 2]>> = vec![q[0].iter().map(|p| [p[0] + 32, p[1]]).collect()];
+    let mut doc = duas_chaves(&q, &longe);
+    let antes: std::collections::BTreeMap<_, _> =
+        publicados(&contorno(q.clone(), true)).into_iter().collect();
+    let mais = vec![vec![[0, 0], [80, 0], [160, 0], [160, 160], [0, 160]]];
+    let agora = publicados(&contorno(mais.clone(), true));
+    assert!(mudou(&antes, &agora));
+    assert!(propagar(&mut doc, 7, &antes, &agora));
+    assert_eq!(
+        na_chave(&doc, 0.0, 5),
+        mais[0],
+        "a chave de 0 s ganha o ponto"
+    );
+    assert_eq!(
+        na_chave(&doc, 1.0, 5),
+        vec![[32, 0], [112, 0], [192, 0], [192, 160], [32, 160]],
+        "a de 1 s também, no meio da aresta dela"
+    );
+    let meio = sample_em(&doc, 0.5, 5);
+    assert!(
+        escritos(&mais, &meio, |_| None).is_some(),
+        "tocar a meio: um anel válido"
+    );
+
+    let antes: std::collections::BTreeMap<_, _> = agora.into_iter().collect();
+    let menos = vec![vec![[0, 0], [80, 0], [160, 160], [0, 160]]];
+    let agora = publicados(&contorno(menos.clone(), true));
+    assert!(propagar(&mut doc, 7, &antes, &agora), "apagar");
+    assert_eq!(na_chave(&doc, 0.0, 4), menos[0]);
+    assert_eq!(
+        na_chave(&doc, 1.0, 4),
+        vec![[32, 0], [112, 0], [192, 160], [32, 160]]
+    );
+    let x4 = FieldKey::new(ph2d_ecs::canal::familia::FISICA, f::CONTORNO_PONTO_X, 0, 4);
+    assert!(
+        doc.binding_for(7, ph2d_timeline::PropKind::Field(x4))
+            .is_none(),
+        "a trilha do 5.º sai"
+    );
+}
+
+/// Os canais dos pontos de `doc` amostrados em `t` (a curva a tocar).
+fn sample_em(doc: &ph2d_timeline::TimelineDoc, t: f64, n: u16) -> Vec<(FieldKey, f32)> {
+    let mut v = Vec::new();
+    for j in 0..n {
+        for c in [f::CONTORNO_PONTO_X, f::CONTORNO_PONTO_Y] {
+            let kk = FieldKey::new(ph2d_ecs::canal::familia::FISICA, c, 0, j);
+            let b = doc
+                .binding_for(7, ph2d_timeline::PropKind::Field(kk))
+                .expect("trilha");
+            let tr = doc.active_clip().track(b.target).expect("trilha");
+            if let ph2d_anim::AnimValue::Float(x) = ph2d_anim::AttributeEvaluator::sample(tr, t) {
+                v.push((kk, x));
+            }
+        }
+    }
+    v
+}

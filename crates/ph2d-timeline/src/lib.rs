@@ -81,6 +81,7 @@ mod stack_hold;
 mod stack_weight;
 pub mod state;
 mod strip_edge_edit;
+pub mod topologia;
 pub mod track_values;
 mod view_clock;
 

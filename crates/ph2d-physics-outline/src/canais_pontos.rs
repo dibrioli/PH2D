@@ -2,6 +2,8 @@
 //! em `f32`, exacto até 2^24): o leitor e o escritor puros que `ph2d-app-physics::canais_corpo` chama.
 //! Desenho: `f2_contorno_e_formas_plano.md`, «Auto Key dos pontos do Outline».
 
+use std::collections::BTreeMap;
+
 use ph2d_ecs::FieldKey;
 use ph2d_ecs::canal::familia::FISICA;
 use ph2d_ecs::canal_fisica as f;
@@ -152,4 +154,163 @@ pub fn apagar_do_fit(
     }
     let props = antes.keys().filter(|kk| ponto(kk));
     props.fold(false, |n, &kk| doc.unbind(e, PropKind::Field(kk)) | n)
+}
+
+type Pt = [f32; 2];
+
+fn aneis(lidos: impl IntoIterator<Item = (FieldKey, f32)>) -> BTreeMap<u16, Vec<Pt>> {
+    ph2d_timeline::topologia::contornos(lidos, FISICA, f::CONTORNO_PONTO_X)
+}
+
+/// `true` se os anéis mudaram de nº, ou algum de nº de pontos (acrescentar/apagar um ponto).
+#[must_use]
+pub fn mudou(antes: &BTreeMap<FieldKey, f32>, agora: &[(FieldKey, f32)]) -> bool {
+    let (o, h) = (
+        aneis(antes.iter().map(|(&k, &v)| (k, v))),
+        aneis(agora.iter().copied()),
+    );
+    !o.is_empty()
+        && !h.is_empty()
+        && (o.len() != h.len()
+            || h.iter()
+                .any(|(i, r)| o.get(i).is_some_and(|x| x.len() != r.len())))
+}
+
+/// `true` ⇒ a topologia do Auto Key tem trabalho em `e`: o Fit, ou um ponto acrescentado/apagado.
+#[must_use]
+pub fn pede_topologia(antes: &BTreeMap<FieldKey, f32>, agora: &[(FieldKey, f32)]) -> bool {
+    e_fit(antes, agora) || mudou(antes, agora)
+}
+
+/// O parâmetro do ponto `x` projectado no segmento `a→b` (`0..=1`).
+fn projectar(a: Pt, b: Pt, x: Pt) -> f32 {
+    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+    let l2 = dx * dx + dy * dy;
+    if l2 == 0.0 {
+        return 0.0;
+    }
+    (((x[0] - a[0]) * dx + (x[1] - a[1]) * dy) / l2).clamp(0.0, 1.0)
+}
+
+/// O anel de UMA chave (`na_chave`, na topologia de ontem) refeito na de hoje: os pontos alinhados
+/// levam o valor da chave; cada ponto novo entre dois alinhados cai no mesmo lugar do segmento deles.
+fn refazer(ontem: &[Pt], hoje: &[Pt], na_chave: &[Pt]) -> Vec<Pt> {
+    let pares = ph2d_timeline::topologia::alinhar(ontem, hoje);
+    let de_hoje: BTreeMap<usize, usize> = pares.iter().map(|&(a, b)| (b, a)).collect();
+    let n = hoje.len();
+    let alinhado = |b: usize| de_hoje.get(&b).copied();
+    (0..n)
+        .map(|b| {
+            if let Some(a) = alinhado(b) {
+                return na_chave[a];
+            }
+            let ante = (1..n)
+                .map(|d| (b + n - d) % n)
+                .find(|&x| alinhado(x).is_some());
+            let depois = (1..n).map(|d| (b + d) % n).find(|&x| alinhado(x).is_some());
+            match (ante.and_then(alinhado), depois.and_then(alinhado)) {
+                (Some(oa), Some(ob)) if oa != ob => {
+                    let u = projectar(ontem[oa], ontem[ob], hoje[b]);
+                    let (p, q) = (na_chave[oa], na_chave[ob]);
+                    [
+                        (p[0] + (q[0] - p[0]) * u).round(),
+                        (p[1] + (q[1] - p[1]) * u).round(),
+                    ]
+                }
+                _ => hoje[b],
+            }
+        })
+        .collect()
+}
+
+/// ⭐ **Acrescentar/apagar um ponto vale em TODAS as chaves** (lei do dono 19/10; a mesma de
+/// `ph2d-app-vec::canais_topologia`, o alinhamento é o partilhado de `ph2d_timeline::topologia`):
+/// cada chave dos pontos de `e` é refeita na topologia de hoje; as trilhas dos `(i, j)` que deixaram
+/// de existir saem. Também o Fit ([`apagar_do_fit`]). `true` se mexeu na timeline.
+pub fn propagar(
+    doc: &mut TimelineDoc,
+    e: u64,
+    antes: &BTreeMap<FieldKey, f32>,
+    agora: &[(FieldKey, f32)],
+) -> bool {
+    if apagar_do_fit(doc, e, antes, agora) {
+        return true;
+    }
+    if !mudou(antes, agora) {
+        return false;
+    }
+    let trilhas: Vec<(FieldKey, ph2d_anim::AnimTarget)> = doc
+        .bindings()
+        .iter()
+        .filter(|b| b.entity == e)
+        .filter_map(|b| match b.prop {
+            PropKind::Field(kk) if ponto(&kk) => Some((kk, b.target)),
+            _ => None,
+        })
+        .collect();
+    let mut tempos: BTreeMap<ph2d_anim::RationalTime, ph2d_anim::Interp> = BTreeMap::new();
+    for &(_, tg) in &trilhas {
+        for key in doc.active_clip().track(tg).map_or(&[][..], |t| t.keys()) {
+            tempos.entry(key.t).or_insert(key.interp);
+        }
+    }
+    if tempos.is_empty() {
+        return false;
+    }
+    let (ontem, hoje) = (
+        aneis(antes.iter().map(|(&k, &v)| (k, v))),
+        aneis(agora.iter().copied()),
+    );
+    let amostra = |kk: FieldKey, t: ph2d_anim::RationalTime| {
+        let tr = doc
+            .active_clip()
+            .track(doc.binding_for(e, PropKind::Field(kk))?.target)?;
+        match ph2d_anim::AttributeEvaluator::sample(tr, t.to_seconds()) {
+            ph2d_anim::AnimValue::Float(x) => Some(x),
+            _ => None,
+        }
+    };
+    let mut escritas = Vec::new();
+    for (&t, &interp) in &tempos {
+        for (&i, h) in &hoje {
+            let novo = match ontem.get(&i) {
+                Some(o) => {
+                    let na: Vec<Pt> = (0..o.len())
+                        .map(|j| {
+                            let c = |campo| {
+                                chave(campo, usize::from(i), j).and_then(|kk| amostra(kk, t))
+                            };
+                            [
+                                c(f::CONTORNO_PONTO_X).unwrap_or(o[j][0]),
+                                c(f::CONTORNO_PONTO_Y).unwrap_or(o[j][1]),
+                            ]
+                        })
+                        .collect();
+                    refazer(o, h, &na)
+                }
+                None => h.clone(),
+            };
+            for (j, p) in novo.iter().enumerate() {
+                for (campo, v) in [(f::CONTORNO_PONTO_X, p[0]), (f::CONTORNO_PONTO_Y, p[1])] {
+                    escritas.extend(chave(campo, usize::from(i), j).map(|kk| (t, interp, kk, v)));
+                }
+            }
+        }
+    }
+    for (t, interp, kk, v) in escritas {
+        doc.upsert_key(
+            e,
+            PropKind::Field(kk),
+            t,
+            ph2d_anim::AnimValue::Float(v),
+            interp,
+        );
+    }
+    let sobra = trilhas
+        .iter()
+        .filter(|(kk, _)| hoje.get(&kk.i).is_none_or(|h| usize::from(kk.j) >= h.len()));
+    for &(_, tg) in sobra {
+        doc.purge_binding(tg);
+    }
+    true
 }

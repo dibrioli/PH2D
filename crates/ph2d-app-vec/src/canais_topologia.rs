@@ -25,46 +25,11 @@ fn n16(n: usize) -> u16 {
 
 /// Os contornos que uma leitura da família tem: `i` → os vértices, em ordem.
 fn contornos(lidos: impl IntoIterator<Item = (FieldKey, f32)>) -> BTreeMap<u16, Vec<Vert>> {
-    let mut out: BTreeMap<u16, BTreeMap<u16, Vert>> = BTreeMap::new();
-    for (kk, v) in lidos {
-        if kk.familia == VETOR && (c::ANCORA_X..=c::TIPO_VERTICE).contains(&kk.campo) {
-            out.entry(kk.i).or_default().entry(kk.j).or_insert([0.0; 8])
-                [usize::from(kk.campo - c::ANCORA_X)] = v;
-        }
-    }
-    out.into_iter()
-        .map(|(i, vs)| (i, vs.into_values().collect()))
-        .collect()
+    ph2d_timeline::topologia::contornos(lidos, VETOR, c::ANCORA_X)
 }
 
-/// A maior subsequência comum de âncoras EXACTAS: os pares `(índice de ontem, índice de hoje)`.
-fn alinhar(antes: &[Vert], agora: &[Vert]) -> Vec<(usize, usize)> {
-    let (n, m) = (antes.len(), agora.len());
-    let igual = |a: usize, b: usize| antes[a][0] == agora[b][0] && antes[a][1] == agora[b][1];
-    let mut t = vec![vec![0u32; m + 1]; n + 1];
-    for a in (0..n).rev() {
-        for b in (0..m).rev() {
-            t[a][b] = if igual(a, b) {
-                t[a + 1][b + 1] + 1
-            } else {
-                t[a + 1][b].max(t[a][b + 1])
-            };
-        }
-    }
-    let (mut a, mut b, mut pares) = (0, 0, Vec::new());
-    while a < n && b < m {
-        if igual(a, b) {
-            pares.push((a, b));
-            a += 1;
-            b += 1;
-        } else if t[a + 1][b] >= t[a][b + 1] {
-            a += 1;
-        } else {
-            b += 1;
-        }
-    }
-    pares
-}
+/// A maior subsequência comum de âncoras EXACTAS (a função partilhada com os pontos do Outline).
+use ph2d_timeline::topologia::alinhar;
 
 type P = [f32; 2];
 fn lerp(a: P, b: P, u: f32) -> P {

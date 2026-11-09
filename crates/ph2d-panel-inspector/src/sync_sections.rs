@@ -109,6 +109,7 @@ pub(crate) fn sync_new_sections(
     // shipou com o editor a mostrar os valores de fábrica do `populate` sobre uma regra escolhida,
     // e quem a apanhou foi uma FOTO (o cabeçalho do irmão tem o mecanismo).
     crate::sync_counter_watch::sync(host, inspector_state, semeia);
+    crate::sync_action::sync(host, inspector_state, semeia);
     crate::sync_action_trigger::sync(host, inspector_state, semeia);
     crate::sync_shake::sync_camera(host, inspector_state, semeia);
     crate::sync_shake::sync_emitter(host, inspector_state, semeia);

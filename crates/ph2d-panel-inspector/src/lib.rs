@@ -214,6 +214,7 @@ mod state_tint;
 mod sync;
 /// ⭐ A semente da secção COUNTER WATCH — irmã do `sync_sections` por CAP de ficheiro.
 /// ⛔ Ela **não existia** até 17/09, e o editor mostrava os valores de fábrica do `populate`.
+mod sync_action;
 mod sync_action_trigger;
 mod sync_constraint;
 mod sync_counter_watch;

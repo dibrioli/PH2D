@@ -562,8 +562,8 @@ impl App {
 }
 
 /// O botão do rato do winit vira o evento único do ponteiro.
-#[path = "input_dispatch/rato.rs"]
-mod rato;
+#[path = "input_dispatch/despacho_rato.rs"]
+mod despacho_rato;
 
 #[cfg(test)]
 #[path = "input_dispatch/despacho_testes.rs"]

@@ -101,6 +101,15 @@ fn textura_para_json(t: &TextureSettings) -> Value {
         {
             l.insert("area".to_owned(), json!(true));
         }
+        // A maciez e a ponta na profundidade do Height (pastel, 09/11) só quando ligadas: a lei de antes fica ao byte.
+        if let Some(l) = o.get_mut("lei").and_then(Value::as_object_mut) {
+            if t.lei.softness > 0.0 {
+                l.insert("softness".to_owned(), json!(num(t.lei.softness)));
+            }
+            if t.lei.tip_depth {
+                l.insert("tip_depth".to_owned(), json!(true));
+            }
+        }
     }
     v
 }
@@ -134,6 +143,8 @@ fn lei_de_json(v: Option<&Value>) -> GrainLaw {
         depth_pressure: booleano(o.get("depth_pressure"), n.depth_pressure),
         area: booleano(o.get("area"), n.area),
         contraste: n.contraste,
+        softness: f(o.get("softness"), n.softness).clamp(0.0, 1.0),
+        tip_depth: booleano(o.get("tip_depth"), n.tip_depth),
     }
 }
 

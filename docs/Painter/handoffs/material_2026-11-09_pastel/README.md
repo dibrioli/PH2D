@@ -197,3 +197,46 @@ Tirar `jitter`, `spray_count`, `dab_jitter`; `hardness` 1,0 → **0,85**; `fallo
   branco; o Krita não mistura.
 - A simulação corre só na reta (onde a altura foi medida); na linha da simulação o «detalhe» é a reta NA RAMPA.
 - Nenhum papel com grão de verdade (o «Textured Paper») — o papel é o `Noise` do próprio preset.
+
+## FASE 3 — rodadas 3–5 (09/11): as peças de MOTOR, medidas contra o Krita Chalk Soft
+
+> Motor novo em [`lei.rs`](../../../../crates/ph2d-painter-brush/src/texture/lei.rs) (`GrainLaw`), gravado no JSON do
+> pincel (`lei.softness`, `lei.tip_depth`; só quando ligados — os 100 de fábrica não mudam, nenhum usa o Height):
+> - **`softness` W** — no Height a tinta sobe de 0 a 1 ao longo de W acima do ponto onde o papel encontra a ponta,
+>   `clamp((t − (1 − d))/W)`. W 0 = o degrau de sempre (ao bit); W = d = o Linear Height.
+> - **`tip_depth`** — no Height a ponta afunda `d·w` e a cobertura é a do PAPEL alcançado (o factor devolve
+>   `alcança / w`): a borda do traço quebra-se pelo papel. Desligado = o Height de sempre (ao bit).
+> Testes: `a_maciez_do_height_vai_do_degrau_ao_linear_height`, `a_ponta_na_profundidade_quebra_a_borda_pelo_papel`.
+>
+> Ferramentas: `gera_var_motor.py <3|4|5>` → `var_pastel_motor{,4,5}.tsv`; `T=<tsv> bash corre_lei.sh <s>`;
+> `TSV=<tsv> python3 -I lei_motor.py <s>` (a altura de cada variante é a do SEU papel, `papel_<tex>`);
+> `folha_motor.py <s> <png> <var>=<rótulo>…`. Réguas novas: **parciais** (fracção de píxeis com tinta abaixo de 85 %
+> do alfa máximo local: o grão de borda macia), **grão a meia pressão** (autocorrelação 1/e na rampa), **quebra** (desvio
+> da borda do traço à pressão 1, sem tendência). Folha: [`folha_motor.png`](folha_motor.png).
+
+| [M] | larg | borda | quebra | cob p1 | cv | parciais .35/.5 | grão ½p | rampa p .2 · .35 · .5 · .65 · .8 · .95 |
+|---|---|---|---|---|---|---|---|---|
+| **Krita Chalk Soft** | 37 | 3,0 | 0,39 | 0,97 | 0,07 | 0,86 · 0,86 | 4 px | 0,06 · 0,19 · 0,45 · 0,88 · 0,99 · 1,00 |
+| nosso hoje (spray) | 35 | 12,5 | 3,32 | 0,26 | 0,91 | 0,74 · 0,69 | 1 px | 0,06 · 0,10 · 0,15 · 0,18 · 0,24 · 0,26 |
+| H_d08_j07 (receita r2) | 38 | 2,0 | 0,05 | 0,98 | 0,08 | 0,01 · 0,01 | 3–4 | 0,05 · 0,14 · 0,30 · 0,58 · 0,81 · 0,97 |
+| ⭐ **K1** | 34 | 3,0 | **0,42** | **0,98** | 0,02 | **0,83 · 0,86** | **4 px** | 0,05 · 0,17 · 0,32 · 0,60 · 0,91 · 0,98 |
+
+**K1** = sem spray/jitter/dab_jitter; papel `Noise` 32 px com Contrast 0,4 e Detail 0,3 (3 oitavas: params
+`[0.4, 0.5, 0.3, 0.5, 0.5, 0.5]`); lei `{mode 4 Height, depth_jitter 0.8, depth_min 0, depth_pressure, softness 0.3,
+tip_depth}`; `grain_depth 1.0`; `hardness 0.75` `Smooth`; `opacity 1.0`; `mao.pressureOpacity 0.3`; o resto da receita igual.
+
+Recusas MEDIDAS (não repetir):
+- **Grain (o tipo)** a 32–96 px, mesmo com Detail 0,3: sal de 1 px (o limiar do Height revela as oitavas sub-píxel).
+- **Noise 16**: cobertura cai quando a pressão sobe (0,15 → 0,04): papel periódico demais. Noise 24: grão 8 px a ½p.
+- **Contraste 0,3–0,35** (K2/K3): a correlação com a altura vai a ≈ 0 e a cobertura a p 0,2 a zero.
+- Sem `softness` o grão é binário (parciais 0,01, J_G96s0); sem `tip_depth` a borda é lisa (quebra 0,0, H_G96semT);
+  ponta 0,6 quebra demais (0,6–0,8), 0,75 ≈ o Krita, 0,85 quebra pouco (0,17).
+- **pressureOpacity 0,85** empalidece o traço inteiro a meia pressão; no pastel quem cobre é o papel (0,3).
+
+[D] **Enchimento do dente (peça 4) NÃO construído:** a 2.ª passada já ganha como a do Krita (K1 p 0,5: +~40 %; Krita
++47 %) e o Krita só ganha tinta nova em vazios a p 0,35. Ir além do Krita pede um plano de «pó pousado» por camada —
+o candidato é o `covers` do relevo (já gravado no projeto e no desfazer; um fundo opaco não o escreve), plumbado
+por ~20 chamadas do motor até o `DabCtx`. Decisão do dono.
+
+Aberto: a curva de pressão do K1 a 0,5–0,65 fica abaixo da do Krita (0,32/0,60 × 0,45/0,88); no branco e nos blocos
+o nosso sai mais pálido (a `mistura_opaca` Amount 0,5 apanha a cor de baixo; o Krita não mistura).

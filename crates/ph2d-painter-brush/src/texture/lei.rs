@@ -91,6 +91,14 @@ pub struct GrainLaw {
     /// ⭐ O CONTRASTE do valor amostrado em torno do meio ([`super::contrasta`]; `1` = o de sempre, ao bit). Não se
     /// grava: é o que o «Same as Paper» copia do papel visível (a Roughness do cartão Paper, dono 28/10).
     pub contraste: f32,
+    /// ⭐ A MACIEZ do Height (`0..1`, em altura do papel): a tinta sobe de 0 a 1 ao longo de `softness` acima do ponto
+    /// onde o papel encontra a ponta, `(t − (1 − d)) / softness` — o grão de borda macia do pastel a meia pressão
+    /// (Rudolf, Mould & Neufeld 2003). `0` = o degrau de sempre, ao bit; `= d` é o Linear Height.
+    pub softness: f32,
+    /// ⭐ A PONTA afunda menos onde é mais fraca: no Height a profundidade é `d·w` e a cobertura é a do papel, não
+    /// `w ×` ela — a borda do traço quebra-se pelo papel (o bastão redondo só toca os picos na orla). Desligado = o
+    /// Height de sempre, ao bit.
+    pub tip_depth: bool,
 }
 
 impl Default for GrainLaw {
@@ -108,6 +116,8 @@ impl GrainLaw {
         depth_pressure: false,
         area: false,
         contraste: 1.0,
+        softness: 0.0,
+        tip_depth: false,
     };
 
     /// A profundidade varia por dab (o dab leva o multiplicador na pegada, [`crate::DabTilt::grao`]).
@@ -134,7 +144,19 @@ impl GrainLaw {
         let (t, d) = (t.clamp(0.0, 1.0), depth.clamp(0.0, 1.0));
         let r = match self.mode {
             GrainMode::Height => {
-                return f32::from(u8::from(t > 1.0 - d)) * super::granulation_gate(t, granulation);
+                let ponta = w.clamp(0.0, 1.0);
+                if self.tip_depth && ponta <= 0.0 {
+                    return 0.0;
+                }
+                let d = if self.tip_depth { d * ponta } else { d };
+                let alcanca = if self.softness > 0.0 {
+                    ((t - (1.0 - d)) / self.softness).clamp(0.0, 1.0)
+                } else {
+                    f32::from(u8::from(t > 1.0 - d))
+                };
+                // Com a ponta na profundidade, a cobertura É o papel alcançado: o factor sobre `w` é `alcanca / w`.
+                let r = if self.tip_depth { alcanca / ponta } else { alcanca };
+                return r * super::granulation_gate(t, granulation);
             }
             GrainMode::LinearHeight => {
                 let f = if d > 0.0 {
@@ -220,6 +242,65 @@ mod tests {
             area(0.5),
             area(0.95)
         );
+    }
+
+    /// ⭐ A maciez do Height: `0` é o degrau de sempre ao bit; `softness = d` é o Linear Height; entre os dois a
+    /// tinta sobe de 0 a 1 ao longo de `softness` acima do limiar (o grão de borda macia do pastel).
+    #[test]
+    fn a_maciez_do_height_vai_do_degrau_ao_linear_height() {
+        let h = |softness| GrainLaw {
+            mode: GrainMode::Height,
+            softness,
+            ..GrainLaw::NEUTRA
+        };
+        let lh = GrainLaw {
+            mode: GrainMode::LinearHeight,
+            ..GrainLaw::NEUTRA
+        };
+        for i in 0..=40 {
+            for j in 1..=10 {
+                let (t, d) = (i as f32 / 40.0, j as f32 / 10.0);
+                let degrau = f32::from(u8::from(t > 1.0 - d));
+                assert_eq!(h(0.0).factor(0.7, t, d, 0.0).to_bits(), degrau.to_bits(), "t {t} d {d}");
+                assert!((h(d).factor(0.7, t, d, 0.0) - lh.factor(0.7, t, d, 0.0)).abs() < 1e-6, "t {t} d {d}");
+                let m = h(0.1).factor(0.7, t, d, 0.0);
+                let esperado = ((t - (1.0 - d)) / 0.1).clamp(0.0, 1.0);
+                assert!((m - esperado).abs() < 1e-6, "t {t} d {d}: {m} × {esperado}");
+            }
+        }
+        // a meio da faixa, a tinta é parcial (o grão de borda macia), nunca 0 ou 1
+        assert!((h(0.1).factor(1.0, 0.55, 0.5, 0.0) - 0.5).abs() < 1e-5);
+    }
+
+    /// ⭐ A ponta na profundidade: com a ponta cheia é o Height de sempre; na orla (`w` < 1) o bastão afunda `d·w` e a
+    /// cobertura `w × factor` é a do PAPEL alcançado (0 ou 1 no degrau), nunca acima de 1 — a borda quebra-se pelo papel.
+    #[test]
+    fn a_ponta_na_profundidade_quebra_a_borda_pelo_papel() {
+        let base = GrainLaw {
+            mode: GrainMode::Height,
+            ..GrainLaw::NEUTRA
+        };
+        let ponta = GrainLaw {
+            tip_depth: true,
+            ..base
+        };
+        let (mut orla_base, mut orla_ponta) = (0, 0);
+        for i in 0..=99 {
+            let t = i as f32 / 99.0;
+            assert_eq!(ponta.factor(1.0, t, 0.8, 0.0).to_bits(), base.factor(1.0, t, 0.8, 0.0).to_bits());
+            assert_eq!(ponta.factor(0.0, t, 0.8, 0.0), 0.0);
+            for w in [0.1_f32, 0.4, 0.7] {
+                let r = w * ponta.factor(w, t, 0.8, 0.0);
+                assert!(r == 0.0 || (r - 1.0).abs() < 1e-6, "w {w} t {t}: {r}");
+                orla_ponta += usize::from(r > 0.0);
+                orla_base += usize::from(w * base.factor(w, t, 0.8, 0.0) > 0.0);
+            }
+        }
+        // a orla com a ponta na profundidade toca MENOS píxeis (só os picos), mas os que toca pintam cheio
+        assert!(orla_ponta < orla_base, "{orla_ponta} × {orla_base}");
+        // e a orla mais fraca toca menos que a mais forte
+        let toca = |w: f32| (0..=99).filter(|i| ponta.factor(w, *i as f32 / 99.0, 0.8, 0.0) > 0.0).count();
+        assert!(toca(0.1) < toca(0.4) && toca(0.4) < toca(0.7), "{} {} {}", toca(0.1), toca(0.4), toca(0.7));
     }
 
     #[test]

@@ -145,3 +145,4 @@ torna a morte visível depois. ⭐ Aqui o defeito foi apanhado por uma régua no
 - ⛔⛔ [Lei de ORDEM do 1.º consumidor não viaja para o 2.º](feedback_a_law_written_for_one_medium_does_not_travel_to_the_second.md)
 - ⛔⛔ [Consumidor que escolhe o relógio à mão escreve um 4.º palpite](feedback_a_consumer_that_picks_among_clocks_by_hand_is_the_answer_that_ages.md)
 - ⛔⛔ [Duas guardas que se EXCLUEM desligam um recurso sem o dizer](feedback_two_guards_that_exclude_each_other_disable_a_feature_silently.md)
+- ⛔⛔ [A CATEGORIA de um campo no censo `CAMPOS_FORA` decide o que a MACRO grava — `dente` como DA_OBRA derrubou 188 testes (09/11)](feedback_a_field_census_category_decides_what_the_macro_records.md)

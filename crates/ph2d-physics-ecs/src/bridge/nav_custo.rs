@@ -51,7 +51,8 @@ impl PhysicsBridge {
         for (&e, b) in &self.bodies {
             let area = world.get::<NavCostArea>(e);
             let dano = world.get::<Damage>(e).filter(|_| !movers.contains(&e));
-            if area.is_none() && dano.is_none() {
+            // Sem forma ligada (dono 09/11) a área não tem forma e a zona não toca ninguém.
+            if (area.is_none() && dano.is_none()) || b.rest.shape_off {
                 continue;
             }
             let Some((d, rot)) = self.pose_de_obstaculo(b.kind, b.handle, &b.rest) else {
@@ -160,7 +161,7 @@ impl PhysicsBridge {
             let Some(a) = world.get::<NavCostArea>(e) else {
                 continue;
             };
-            if a.forbidden || a.cost >= 1.0 {
+            if a.forbidden || a.cost >= 1.0 || b.rest.shape_off {
                 continue;
             }
             let Some((d, rot)) = self.pose_de_obstaculo(b.kind, b.handle, &b.rest) else {

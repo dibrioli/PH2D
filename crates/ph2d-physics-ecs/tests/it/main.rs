@@ -134,6 +134,7 @@ mod nav_desvio_largo;
 mod nav_fatias;
 mod nav_mundo;
 mod nav_nascer;
+mod nav_olho;
 mod nav_ordens;
 mod no_std_transcendental_on_the_hash_path;
 mod olho_da_forma;

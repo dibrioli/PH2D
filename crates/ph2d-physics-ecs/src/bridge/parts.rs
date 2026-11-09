@@ -82,9 +82,8 @@ impl PhysicsBridge {
 
     /// O corpo ancestral mais próximo de `e` que a ponte de fato construiu.
     ///
-    /// ⚠️ **Pergunta ao `self.bodies` e não só ao componente**: uma entidade com
-    /// `RigidBody` mas sem `Collider` não é um corpo para o solver (a `BodyQuery`
-    /// exige os dois), e pendurar uma peça nela seria pendurá-la em nada.
+    /// ⚠️ **Pergunta ao `self.bodies` e não só ao componente**: é ele que diz que corpo a
+    /// ponte de fato construiu (um sem forma também, de colisor desligado — dono 09/11).
     fn owner_body(&self, sim: &SimWorld, e: Entity) -> Option<(Entity, RigidBodyHandle)> {
         let world = sim.world();
         let mut cur = world

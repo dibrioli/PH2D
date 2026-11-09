@@ -109,6 +109,7 @@ impl PhysicsBridge {
             // `um_tiro_mata_um_morcego` sangrou quando o corpo deles cresceu para o quadrado desenhado).
             if b.kind == BodyKind::Static
                 || b.rest.is_sensor
+                || b.rest.shape_off
                 || indice.contains_key(&e)
                 || self.projectile_state.contains_key(&e)
             {
@@ -352,7 +353,7 @@ pub(super) fn saida_livre(
     r: f64,
 ) -> bool {
     corpos.iter().all(|(&e, b)| {
-        if e == quem || b.kind == BodyKind::Static || b.rest.is_sensor {
+        if e == quem || b.kind == BodyKind::Static || b.rest.is_sensor || b.rest.shape_off {
             return true;
         }
         let Some(pose) = mundo.body_pose(b.handle) else {

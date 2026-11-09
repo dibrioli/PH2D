@@ -118,7 +118,8 @@ impl PhysicsBridge {
     fn obstaculos(&self, movers: &BTreeSet<Entity>) -> Vec<(u8, Shape)> {
         let mut out = Vec::new();
         for (&e, b) in &self.bodies {
-            if b.rest.is_sensor || movers.contains(&e) {
+            // Formas todas desligadas (ou nenhuma, dono 09/11): o corpo não toca nada, não recorta.
+            if b.rest.is_sensor || b.rest.shape_off || movers.contains(&e) {
                 continue;
             }
             if let Some((d, rot)) = self.pose_de_obstaculo(b.kind, b.handle, &b.rest) {

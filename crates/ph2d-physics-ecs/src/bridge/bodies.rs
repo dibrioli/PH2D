@@ -29,16 +29,13 @@ impl PhysicsBridge {
         for (e, rb, _local) in q.iter(world) {
             // **A forma PRINCIPAL** (opção B): a do corpo, ou a 1.ª filha LIGADA da ordem da árvore.
             // Todas desligadas (dono 09/11): o corpo FICA no solver com a 1.ª, de colisor desligado.
-            // Sem forma nenhuma não é um corpo para o solver (fica fora do `seen` e sai).
-            let Some((shape, shape_off)) = crate::main_shape(world, e)
+            // Sem forma NENHUMA também fica (dono 09/11): o colisor nasce desligado, logo a geometria
+            // não conta — a `Collider::default()` NEUTRA, lida no próprio corpo. Cai com 1 kg.
+            let (shape, shape_off) = crate::main_shape(world, e)
                 .map(|s| (s, false))
                 .or_else(|| crate::forma_para_editar(world, e).map(|s| (s, true)))
-            else {
-                continue;
-            };
-            let Some(col) = world.get::<Collider>(shape) else {
-                continue;
-            };
+                .unwrap_or((e, true));
+            let col = &world.get::<Collider>(shape).copied().unwrap_or_default();
             self.seen.push(e);
             // ⚠️ WORLD, not the local `Transform` the query just handed us. The
             // solver has no hierarchy: a body authored under a parent must be

@@ -324,3 +324,50 @@ fn a_excecao_de_um_corpo_de_formas_desligadas_mora_na_forma() {
     assert!(difere, "a exceção da forma desligada não aparece");
     assert_eq!(linha & 1, 0, "a camada 0 devia estar fora da linha");
 }
+
+/// **Um corpo SEM forma nenhuma também fica no solver** (dono 09/11): o dinâmico cai com a massa de um
+/// corpo sem forma (`MASS_WITHOUT_SHAPE_KG`, ou o `MassOverride`), o estático e o cinemático ficam
+/// onde estão — o «No Shape Body» da cena 120 não se mexe.
+#[test]
+fn um_corpo_sem_forma_fica_no_solver_e_so_o_dinamico_cai() {
+    for (kind, manual) in [
+        (BodyKind::Dynamic, None),
+        (BodyKind::Dynamic, Some(5.0)),
+        (BodyKind::Static, None),
+        (BodyKind::Kinematic, None),
+    ] {
+        let mut sim = SimWorld::new();
+        let w = sim.world_mut();
+        let nu = w
+            .spawn((
+                Name::new("No Shape Body"),
+                RigidBody { kind },
+                Transform::from_translation(Vec2::new(0.0, 3.0)),
+            ))
+            .id();
+        if let Some(m) = manual {
+            w.entity_mut(nu).insert(ph2d_physics_ecs::MassOverride(m));
+        }
+        let mut bridge = PhysicsBridge::new();
+        corre(&mut sim, &mut bridge, 0, 60);
+        assert!(
+            bridge.body_pose(nu).is_some(),
+            "{kind:?}: o corpo sem forma ficou fora do solver"
+        );
+        if kind == BodyKind::Dynamic {
+            let massa = bridge.body_mass(nu).expect("o corpo está no solver");
+            let esperada = manual.unwrap_or(ph2d_physics::MASS_WITHOUT_SHAPE_KG);
+            assert!(
+                (massa - esperada).abs() < 1e-5,
+                "massa {massa} contra {esperada}"
+            );
+            assert!(y(&sim, nu) < 0.0, "um segundo de queda: {}", y(&sim, nu));
+        } else {
+            let parado = y(&sim, nu);
+            assert!(
+                (parado - 3.0).abs() < 1e-6,
+                "{kind:?}: o corpo sem forma mexeu-se para {parado}"
+            );
+        }
+    }
+}

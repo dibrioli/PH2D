@@ -58,6 +58,18 @@ impl AnimDoc {
         true
     }
 
+    /// A roda sobre a tira ou a barra: rola, até ao último quadro, e larga o voo em curso (a tira é do artista).
+    pub fn wheel_strip(&mut self, x: f32, y: f32, dy: f32) -> bool {
+        let (s, b) = (self.layout.strip, self.layout.strip_bar);
+        if !(x >= s.x && x < s.x + s.w && y >= s.y && y < b.y + b.h) {
+            return false;
+        }
+        self.flight = None;
+        let max = (self.layout.strip_content - s.w).max(0.0);
+        self.strip_scroll = (self.strip_scroll - dy).clamp(0.0, max);
+        true
+    }
+
     /// O arrasto do polegar; `false` = não se arrastava a barra.
     pub(super) fn bar_motion(&mut self, x: f32) -> bool {
         let Some(grab) = self.bar_grab else {

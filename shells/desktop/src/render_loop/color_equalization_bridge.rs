@@ -64,6 +64,8 @@ struct CachedOriginal {
     height: u32,
     size_world: [f32; 2],
     alpha: AlphaMode,
+    /// A folha lida (a visível, dono 08/11): a prévia e o Cancel gravam na mesma.
+    sheet: u8,
 }
 
 thread_local! {
@@ -73,10 +75,10 @@ thread_local! {
 
 /// Cache drain tuple — opaque alias to suppress `type_complexity` lint
 /// for the 6-field tuple used in revert/drain paths.
-type CachedDrain = (u64, Vec<u8>, u32, u32, [f32; 2], AlphaMode);
+type CachedDrain = (u64, Vec<u8>, u32, u32, [f32; 2], AlphaMode, u8);
 
 /// Tuple used by the active-tool drain path (5 fields — no AlphaMode).
-type DrainTuple = (u64, Vec<u8>, u32, u32, [f32; 2]);
+type DrainTuple = (u64, Vec<u8>, u32, u32, [f32; 2], u8);
 
 /// Returns `Some(entity_bits_list)` iff Apply fired this frame.
 #[allow(clippy::too_many_arguments)]
@@ -208,12 +210,12 @@ pub(super) fn dispatch(
     // params; commit the result back into the ECS sprite.
     if dirty_should_rebake && !selected.is_empty() {
         let bakes = collect_live_bakes(tools, &selected);
-        for (entity_bits, pixels, w, h, size_world) in bakes {
+        for (entity_bits, pixels, w, h, size_world, sheet) in bakes {
             let entity = Entity::from_bits(entity_bits);
             let image =
                 SpriteImage::from_bytes(w, h, pixels, AlphaMode::Straight).into_premultiplied();
             if let Err(e) = texture_edit::commit_edited_texture(
-                entity, sim, renderer, asset_db, &image, size_world, toasts,
+                entity, sheet, sim, renderer, asset_db, &image, size_world, toasts,
             ) {
                 toasts.push(Toast::error(tr_with(
                     "shell.color_equalization_bridge.color_equalization_gpu",
@@ -259,11 +261,11 @@ fn ensure_cached(
     }
     let entity = Entity::from_bits(entity_bits);
     let Some(src) =
-        texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
+        texture_edit::read_shown_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
         return;
     };
-    let size_world = src.old_size_world;
+    let (size_world, sheet) = (src.old_size_world, src.sheet);
     let SpriteImage {
         pixels,
         width,
@@ -279,6 +281,7 @@ fn ensure_cached(
                 height,
                 size_world,
                 alpha,
+                sheet,
             },
         );
     });
@@ -308,10 +311,11 @@ fn collect_live_bakes(tools: &mut ToolRegistry, selected: &[u64]) -> Vec<DrainTu
                     cs.height,
                     cs.size_world,
                     cs.alpha,
+                    cs.sheet,
                 )
             })
         });
-        let Some((pixels, w, h, size_world, alpha)) = cached else {
+        let Some((pixels, w, h, size_world, alpha, sheet)) = cached else {
             continue;
         };
         // CE pipeline always works on straight RGBA; convert on demand
@@ -319,7 +323,7 @@ fn collect_live_bakes(tools: &mut ToolRegistry, selected: &[u64]) -> Vec<DrainTu
         let straight = SpriteImage::from_bytes(w, h, pixels, alpha).into_straight();
         RasterEditTool::set_source(raster, straight.pixels, w, h);
         let (out, ow, oh) = RasterEditTool::run_full(raster);
-        bakes.push((entity_bits, out, ow, oh, size_world));
+        bakes.push((entity_bits, out, ow, oh, size_world, sheet));
     }
     bakes
 }
@@ -349,17 +353,18 @@ fn revert_all_and_clear(
                     v.height,
                     v.size_world,
                     v.alpha,
+                    v.sheet,
                 )
             })
             .collect();
         cache.clear();
         drained
     });
-    for (entity_bits, pixels, w, h, size_world, alpha) in entries {
+    for (entity_bits, pixels, w, h, size_world, alpha, sheet) in entries {
         let entity = Entity::from_bits(entity_bits);
         let image = SpriteImage::from_bytes(w, h, pixels, alpha);
         if let Err(e) = texture_edit::commit_edited_texture(
-            entity, sim, renderer, asset_db, &image, size_world, toasts,
+            entity, sheet, sim, renderer, asset_db, &image, size_world, toasts,
         ) {
             toasts.push(Toast::error(tr_with(
                 "shell.color_equalization_bridge.color_equalization_gpu_3",
@@ -392,17 +397,18 @@ fn prune_and_revert_unselected(
                     v.height,
                     v.size_world,
                     v.alpha,
+                    v.sheet,
                 )
             })
             .collect::<Vec<_>>();
         cache.retain(|k, _| live.contains(k));
         stale
     });
-    for (entity_bits, pixels, w, h, size_world, alpha) in stale {
+    for (entity_bits, pixels, w, h, size_world, alpha, sheet) in stale {
         let entity = Entity::from_bits(entity_bits);
         let image = SpriteImage::from_bytes(w, h, pixels, alpha);
         if let Err(e) = texture_edit::commit_edited_texture(
-            entity, sim, renderer, asset_db, &image, size_world, toasts,
+            entity, sheet, sim, renderer, asset_db, &image, size_world, toasts,
         ) {
             toasts.push(Toast::error(tr_with(
                 "shell.color_equalization_bridge.color_equalization_gpu_2",

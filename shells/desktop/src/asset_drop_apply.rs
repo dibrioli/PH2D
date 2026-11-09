@@ -123,10 +123,22 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        if edit == ph2d_editor_core::ImageUseEdit::LoadSheet
-            && let Some(hero) = gfx.hero_screen.as_mut()
-        {
-            crate::render_loop::abre_o_seletor(hero, &gfx.sim, entity_bits, true);
+        if edit == ph2d_editor_core::ImageUseEdit::LoadSheet {
+            let e = ph2d_ecs::Entity::from_bits(entity_bits);
+            let nao = ph2d_anim_sheets::apply::load_sheet_refusal(
+                gfx.sim.world(),
+                e,
+                gfx.hero_screen.is_some(),
+            );
+            match (nao, gfx.hero_screen.as_mut()) {
+                (None, Some(hero)) => {
+                    crate::render_loop::abre_o_seletor(hero, &gfx.sim, entity_bits, true);
+                }
+                (k, _) => {
+                    let k = k.unwrap_or("card.insp.sheet_load_no_assets");
+                    let _ = gfx.toasts.push(ph2d_editor_core::Toast::warning(tr(k)));
+                }
+            }
             return;
         }
         let ppm = gfx

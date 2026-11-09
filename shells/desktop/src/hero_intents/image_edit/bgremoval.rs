@@ -46,7 +46,7 @@ pub(crate) fn drain_bgremoval(
     let entity = ph2d_ecs::Entity::from_bits(entity_bits);
     let px_per_m = project_pixels_per_meter.max(EPS_PIXELS_PER_METER);
     let Some(src) =
-        texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
+        texture_edit::read_shown_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
         toasts.push(Toast::error(tr("shell.bgremoval.bg_removal_source")));
         return true;
@@ -56,6 +56,7 @@ pub(crate) fn drain_bgremoval(
     let old_translation = src.old_translation;
     let old_premultiplied = src.old_premultiplied;
     let old_anchor = src.old_anchor;
+    let sheet = src.sheet;
     // **O BG-Removal é uma operação de ALFA** — auditoria `docs/Sprite_projeto/19` §3.2: o
     // compositor copia R, G e B **verbatim** e só calcula o quarto canal. Logo a cor de 16 bits
     // pode atravessá-lo **exacta**.
@@ -111,6 +112,7 @@ pub(crate) fn drain_bgremoval(
         .into_premultiplied();
         return match texture_edit::commit_geometric_edit(
             entity,
+            sheet,
             sim,
             renderer,
             asset_db,
@@ -127,16 +129,18 @@ pub(crate) fn drain_bgremoval(
                 true
             }
             Ok(texture_id) => {
-                pending_undo_entries.push(ImageEditSnapshot {
-                    entity_bits,
-                    pre_source: old_source,
-                    pre_size: old_size_world,
-                    pre_translation: old_translation,
-                    pre_premultiplied: old_premultiplied,
-                    pre_anchor: old_anchor,
-                    post_individual_id: texture_id,
-                    label: tr("shell.bgremoval.bg_removal"),
-                });
+                if sheet == 0 {
+                    pending_undo_entries.push(ImageEditSnapshot {
+                        entity_bits,
+                        pre_source: old_source,
+                        pre_size: old_size_world,
+                        pre_translation: old_translation,
+                        pre_premultiplied: old_premultiplied,
+                        pre_anchor: old_anchor,
+                        post_individual_id: texture_id,
+                        label: tr("shell.bgremoval.bg_removal"),
+                    });
+                }
                 toasts.push(Toast::success(tr("shell.bgremoval.bg_removal_applied_cmd")));
                 *last_bgremoval_pushed_entity = None;
                 true
@@ -184,6 +188,7 @@ pub(crate) fn drain_bgremoval(
     let edited = bake_premul(largest.w, largest.h, largest.rgba.clone());
     match texture_edit::commit_edited_texture(
         entity,
+        sheet,
         sim,
         renderer,
         asset_db,
@@ -199,20 +204,20 @@ pub(crate) fn drain_bgremoval(
             return true;
         }
         Ok(texture_id) => {
-            if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(entity) {
-                t.translation.x = largest_centre[0];
-                t.translation.y = largest_centre[1];
+            let ts = [old_translation, largest_centre];
+            ph2d_anim_sheets::shown_edit::place(sim.world_mut(), entity, sheet, ts, None);
+            if sheet == 0 {
+                pending_undo_entries.push(ImageEditSnapshot {
+                    entity_bits,
+                    pre_source: old_source,
+                    pre_size: old_size_world,
+                    pre_translation: old_translation,
+                    pre_premultiplied: old_premultiplied,
+                    pre_anchor: old_anchor,
+                    post_individual_id: texture_id,
+                    label: tr("shell.bgremoval.bg_removal_separate"),
+                });
             }
-            pending_undo_entries.push(ImageEditSnapshot {
-                entity_bits,
-                pre_source: old_source,
-                pre_size: old_size_world,
-                pre_translation: old_translation,
-                pre_premultiplied: old_premultiplied,
-                pre_anchor: old_anchor,
-                post_individual_id: texture_id,
-                label: tr("shell.bgremoval.bg_removal_separate"),
-            });
         }
     }
 

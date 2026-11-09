@@ -27,7 +27,7 @@ pub(crate) fn paint_preview(
     y: f32,
     info: &InspectorAnimInfo,
 ) -> f32 {
-    if info.card.sheet.is_none() {
+    if !info.card.any_sheet() {
         return y;
     }
     let h = ROW_H * PREVIEW_ROWS;
@@ -158,7 +158,7 @@ pub(crate) fn paint_list(
         }
         let cells = row_cells(row, &info.sheets);
         let mut text_x = x + Spacing::Sm.px();
-        if info.card.sheet.is_some() {
+        if info.card.any_sheet() {
             // A miniatura é um quadrado do lado da linha; o texto anda na HORIZONTAL, não é um passo.
             let thumb = Rect::new(x, cur_y, ROW_H, ROW_H);
             if let Some(first) = cells.first()

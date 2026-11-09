@@ -71,7 +71,7 @@ impl crate::App {
                     // das imagens do quadro); a sprite da cena nunca é escrita de volta. A tinta por
                     // assar de uma sprite a ser pintada é a imagem dela (#53).
                     let src = por.ou(e.to_bits(), || {
-                        crate::hero_intents::texture_edit::read_sprite_source(
+                        crate::hero_intents::texture_edit::read_shown_source(
                             e,
                             &gfx.sim,
                             &mut gfx.renderer,

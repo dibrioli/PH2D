@@ -132,6 +132,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.sprite_merge_warp.merge_sprites" => "Merge Sprites: degenerate union bounding box",
         "shell.texture_edit.image_tools_work_in_8" => "image tools work in 8-bit",
         "shell.texture_edit.converted_to_rgba8" => "Converted to RGBA8 — {because}",
+        "shell.texture_edit.sheet_upload_failed" => "the graphics card did not accept the new image; the sheet was not changed",
+        "shell.texture_edit.sheet_gone" => "the sheet was deleted while the tool was working",
         "shell.image_export.export_failed" => "Export failed: {e}",
         "shell.image_export.exported_bytes" => "Exported: {picked} ({n} {n?byte|bytes})",
         "shell.image_export.could_not_write" => "could not write {path}: {e}",

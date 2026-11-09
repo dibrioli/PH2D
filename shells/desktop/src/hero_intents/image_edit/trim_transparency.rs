@@ -41,7 +41,7 @@ pub(crate) fn drain_trim_transparency(
     let entity = ph2d_ecs::Entity::from_bits(entity_bits);
     let px_per_m = project_pixels_per_meter.max(EPS_PIXELS_PER_METER);
     let Some(src) =
-        texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
+        texture_edit::read_shown_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
         toasts.push(Toast::error(tr("tool.trim_transparency.toast.unavailable")));
         return true;
@@ -103,6 +103,7 @@ pub(crate) fn drain_trim_transparency(
     );
     match texture_edit::commit_geometric_edit(
         entity,
+        src.sheet,
         sim,
         renderer,
         asset_db,
@@ -119,20 +120,20 @@ pub(crate) fn drain_trim_transparency(
             true
         }
         Ok(texture_id) => {
-            if let Some(mut transform) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(entity) {
-                transform.translation.x = new_translation[0];
-                transform.translation.y = new_translation[1];
+            let ts = [src.old_translation, new_translation];
+            ph2d_anim_sheets::shown_edit::place(sim.world_mut(), entity, src.sheet, ts, None);
+            if src.sheet == 0 {
+                pending_undo_entries.push(ImageEditSnapshot {
+                    entity_bits,
+                    pre_source: src.old_source,
+                    pre_size: src.old_size_world,
+                    pre_translation: src.old_translation,
+                    pre_premultiplied: src.old_premultiplied,
+                    pre_anchor: src.old_anchor,
+                    post_individual_id: texture_id,
+                    label: tr("shell.trim_transparency.trim"),
+                });
             }
-            pending_undo_entries.push(ImageEditSnapshot {
-                entity_bits,
-                pre_source: src.old_source,
-                pre_size: src.old_size_world,
-                pre_translation: src.old_translation,
-                pre_premultiplied: src.old_premultiplied,
-                pre_anchor: src.old_anchor,
-                post_individual_id: texture_id,
-                label: tr("shell.trim_transparency.trim"),
-            });
             toasts.push(Toast::success(tr_with(
                 "shell.trim_transparency.trimmed_px_cmd_z_to",
                 &[("width", &(result.width)), ("height", &(result.height))],

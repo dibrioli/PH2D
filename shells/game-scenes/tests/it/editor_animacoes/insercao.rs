@@ -186,6 +186,26 @@ fn com_a_marca_fora_da_vista_a_tira_anda_ate_ela() {
     assert!(l.playhead.x + l.playhead.w <= fim + 0.5 && l.playhead.x >= l.strip.x);
 }
 
+/// Achado da auditoria 08/11: a roda a meio do voo era sobrescrita (a disposição recalculava a rolagem do ponto de
+/// partida do voo a cada quadro). A roda é do artista: o voo cai, como no clique. *Mutação: não largar o voo na roda
+/// ⇒ a tira volta para onde o voo a levava.*
+#[test]
+fn a_roda_a_meio_do_voo_manda_na_tira() {
+    let mut m = Mesa::new();
+    tira_comprida(&mut m);
+    let at = m.cell(20);
+    m.click(at);
+    m.paint();
+    let law = m.hero.motion.law(ph2d_editor_core::motion::Role::Travel);
+    m.doc().tick(0.05, law);
+    m.paint();
+    assert!(m.doc().flight.is_some() && m.doc().strip_scroll > 0.0);
+    rola(&mut m, 100_000.0);
+    m.paint();
+    assert_eq!(m.doc().strip_scroll, 0.0, "a tira fica onde a roda a pôs");
+    assert!(m.doc().flight.is_none(), "a roda larga o voo");
+}
+
 /// Outra edição muda a animação a meio do voo (o undo, apagar a folha): o voo cai, e o cartão não tapa um quadro que
 /// já é outro. *Mutação: não largar o voo em `follow_flight` ⇒ ele continua e o lugar 2 fica fechado.*
 #[test]

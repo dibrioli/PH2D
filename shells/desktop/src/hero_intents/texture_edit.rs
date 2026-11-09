@@ -49,6 +49,8 @@ pub(crate) struct SourceRead {
     ///
     /// `None` para toda sprite de 8 bits — que é quase todas.
     pub pixels_16: Option<Vec<u16>>,
+    /// A folha lida (`0` = o `Sprite`); o commit grava na MESMA.
+    pub sheet: u8,
 }
 
 /// [`read_sprite_source`] em RGBA8 straight, o que as famílias pedem (o bind do Painter, o palco das
@@ -165,7 +167,55 @@ pub(crate) fn read_sprite_source(
         old_premultiplied,
         old_anchor,
         pixels_16,
+        sheet: 0,
     })
+}
+
+/// ⭐ **O leitor das ferramentas de imagem: a folha VISÍVEL** (dono 08/11). A folha `k ≥ 1` chega como uma sprite
+/// de 8 bits com a imagem inteira; a `0` pelo [`read_sprite_source`] de sempre.
+pub(crate) fn read_shown_source(
+    entity: Entity,
+    sim: &SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    atlas_asset_map: &BTreeMap<u32, AssetId>,
+) -> Option<SourceRead> {
+    let Some(x) = ph2d_anim_sheets::shown_edit::read_extra(sim.world(), entity, asset_db) else {
+        return read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map);
+    };
+    let world = sim.world();
+    let t = world.get::<Transform>(entity)?.translation;
+    Some(SourceRead {
+        image: SpriteImage::from_bytes(x.w, x.h, x.rgba, AlphaMode::Straight),
+        old_size_world: x.whole,
+        old_translation: [t.x, t.y],
+        old_source: world.get::<Sprite>(entity)?.source,
+        old_premultiplied: false,
+        old_anchor: x.anchor,
+        pixels_16: None,
+        sheet: x.sheet,
+    })
+}
+
+/// A folha `sheet ≥ 1` passa à imagem `img`: sobe-a à placa ANTES, e só então troca a folha.
+fn commit_extra_sheet(
+    entity: Entity,
+    sheet: u8,
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    img: &SpriteImage,
+    whole: [f32; 2],
+) -> Result<u32, String> {
+    let reta = img.clone().into_straight();
+    let novo = asset_db.insert_image_rgba8(reta.width, reta.height, reta.pixels);
+    let t = ph2d_render::upload_sheet_image(renderer, asset_db, novo)
+        .ok_or_else(|| tr("shell.texture_edit.sheet_upload_failed").to_owned())?;
+    if ph2d_anim_sheets::shown_edit::set_image(sim.world_mut(), entity, sheet, novo, whole) {
+        Ok(t)
+    } else {
+        Err(tr("shell.texture_edit.sheet_gone").to_owned())
+    }
 }
 
 /// O [`crop_region`] do buffer de 16 bits — a MESMA janela, dita para elementos em vez de bytes.
@@ -292,6 +342,7 @@ pub(crate) fn warn_precision_loss(
 
 pub(crate) fn commit_edited_texture(
     entity: Entity,
+    sheet: u8,
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
@@ -299,6 +350,9 @@ pub(crate) fn commit_edited_texture(
     new_size_world: [f32; 2],
     toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> Result<u32, String> {
+    if sheet != 0 {
+        return commit_extra_sheet(entity, sheet, sim, renderer, asset_db, img, new_size_world);
+    }
     // **A PERDA DE PRECISÃO tem de ser dita** (plano `docs/Sprite_projeto/18` W4).
     //
     // O aviso é DEPOIS e não antes de propósito: antes exigiria interceptar a activação de cada
@@ -344,6 +398,7 @@ pub(crate) fn commit_edited_texture(
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn commit_geometric_edit(
     entity: Entity,
+    sheet: u8,
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
@@ -352,7 +407,7 @@ pub(crate) fn commit_geometric_edit(
     new_size_world: [f32; 2],
     toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> Result<u32, String> {
-    match halves {
+    match halves.filter(|_| sheet == 0) {
         Some(h) => commit_edited_texture_16(
             entity,
             sim,
@@ -366,6 +421,7 @@ pub(crate) fn commit_geometric_edit(
         ),
         None => commit_edited_texture(
             entity,
+            sheet,
             sim,
             renderer,
             asset_db,

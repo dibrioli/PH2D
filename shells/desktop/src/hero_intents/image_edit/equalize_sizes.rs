@@ -139,7 +139,7 @@ pub(crate) fn drain_equalize_sizes(
             continue;
         };
         let Some(src) =
-            texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
+            texture_edit::read_shown_source(entity, sim, renderer, asset_db, atlas_asset_map)
         else {
             skipped += 1;
             continue;
@@ -179,6 +179,7 @@ pub(crate) fn drain_equalize_sizes(
             // `docs/Sprite_projeto/18` W4-bis). Carregar aqui os 16 bits originais seria oferecer
             // uma precisão que este caminho não pode honrar.
             pixels_16: None,
+            sheet: src.sheet,
         };
         entries.push(EqsEntry {
             bits,
@@ -309,6 +310,7 @@ fn commit_per_entity(
             let new_size_world = [out.width as f32 / px_per_m, out.height as f32 / px_per_m];
             match texture_edit::commit_edited_texture(
                 entity,
+                entry.src.sheet,
                 sim,
                 renderer,
                 asset_db,
@@ -342,16 +344,18 @@ fn commit_per_entity(
         // Append THIS sprite to the transaction. `produced_individual`
         // None ⇒ fit-by-scale path (no texture acquired); we record `0`
         // as the sentinel the undo drainer already tolerates.
-        pending_undo_entries.push(ImageEditSnapshot {
-            entity_bits: entry.bits,
-            pre_source: entry.src.old_source,
-            pre_size: entry.src.old_size_world,
-            pre_translation: entry.src.old_translation,
-            pre_premultiplied: entry.src.old_premultiplied,
-            pre_anchor: entry.src.old_anchor,
-            post_individual_id: produced_individual.unwrap_or(0),
-            label: tr("shell.equalize_sizes.equalize_sizes"),
-        });
+        if entry.src.sheet == 0 {
+            pending_undo_entries.push(ImageEditSnapshot {
+                entity_bits: entry.bits,
+                pre_source: entry.src.old_source,
+                pre_size: entry.src.old_size_world,
+                pre_translation: entry.src.old_translation,
+                pre_premultiplied: entry.src.old_premultiplied,
+                pre_anchor: entry.src.old_anchor,
+                post_individual_id: produced_individual.unwrap_or(0),
+                label: tr("shell.equalize_sizes.equalize_sizes"),
+            });
+        }
     }
     applied
 }

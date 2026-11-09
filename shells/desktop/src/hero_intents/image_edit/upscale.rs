@@ -55,7 +55,7 @@ pub(crate) fn drain_upscale(
     let entity = ph2d_ecs::Entity::from_bits(entity_bits);
     let px_per_m = project_pixels_per_meter.max(EPS_PIXELS_PER_METER);
     let Some(src) =
-        texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
+        texture_edit::read_shown_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
         toasts.push(Toast::error(tr("shell.upscale.upscale_source")));
         return true;
@@ -127,6 +127,7 @@ pub(crate) fn drain_upscale(
     let new_size_world = [out_w as f32 / px_per_m, out_h as f32 / px_per_m];
     match texture_edit::commit_geometric_edit(
         entity,
+        src.sheet,
         sim,
         renderer,
         asset_db,
@@ -151,16 +152,18 @@ pub(crate) fn drain_upscale(
                 t.scale.x = if scale_sign_x < 0.0 { -1.0 } else { 1.0 };
                 t.scale.y = if scale_sign_y < 0.0 { -1.0 } else { 1.0 };
             }
-            pending_undo_entries.push(ImageEditSnapshot {
-                entity_bits,
-                pre_source: old_source,
-                pre_size: old_size_world,
-                pre_translation: old_translation,
-                pre_premultiplied: old_premultiplied,
-                pre_anchor: old_anchor,
-                post_individual_id: texture_id,
-                label: tr("shell.upscale.upscale"),
-            });
+            if src.sheet == 0 {
+                pending_undo_entries.push(ImageEditSnapshot {
+                    entity_bits,
+                    pre_source: old_source,
+                    pre_size: old_size_world,
+                    pre_translation: old_translation,
+                    pre_premultiplied: old_premultiplied,
+                    pre_anchor: old_anchor,
+                    post_individual_id: texture_id,
+                    label: tr("shell.upscale.upscale"),
+                });
+            }
             toasts.push(Toast::success(tr_with(
                 "shell.upscale.upscaled_px_cmd_z_to",
                 &[("out_w", &out_w), ("out_h", &out_h)],

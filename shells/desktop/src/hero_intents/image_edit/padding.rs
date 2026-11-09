@@ -50,7 +50,7 @@ pub(crate) fn drain_padding(
         return true;
     }
     let Some(src) =
-        texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
+        texture_edit::read_shown_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
         toasts.push(Toast::error(tr("shell.padding.padding_unavailable")));
         return true;
@@ -156,6 +156,7 @@ pub(crate) fn drain_padding(
     );
     match texture_edit::commit_geometric_edit(
         entity,
+        src.sheet,
         sim,
         renderer,
         asset_db,
@@ -172,26 +173,21 @@ pub(crate) fn drain_padding(
             true
         }
         Ok(texture_id) => {
-            if let Some(mut transform) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(entity) {
-                transform.translation.x = new_translation[0];
-                transform.translation.y = new_translation[1];
+            // Keep mode pushes the resize offset into the pivot anchor (Recenter resets it to centered).
+            let ts = [src.old_translation, new_translation];
+            ph2d_anim_sheets::shown_edit::place(sim.world_mut(), entity, src.sheet, ts, Some(new_anchor));
+            if src.sheet == 0 {
+                pending_undo_entries.push(ImageEditSnapshot {
+                    entity_bits,
+                    pre_source: src.old_source,
+                    pre_size: src.old_size_world,
+                    pre_translation: src.old_translation,
+                    pre_premultiplied: src.old_premultiplied,
+                    pre_anchor: src.old_anchor,
+                    post_individual_id: texture_id,
+                    label: tr("shell.padding.padding"),
+                });
             }
-            // Keep mode pushes the resize offset into the pivot anchor
-            // (Recenter resets it to centered). `commit_edited_texture`
-            // doesn't touch `anchor`, so set it here.
-            if let Some(mut sprite) = sim.world_mut().get_mut::<Sprite>(entity) {
-                sprite.anchor = new_anchor;
-            }
-            pending_undo_entries.push(ImageEditSnapshot {
-                entity_bits,
-                pre_source: src.old_source,
-                pre_size: src.old_size_world,
-                pre_translation: src.old_translation,
-                pre_premultiplied: src.old_premultiplied,
-                pre_anchor: src.old_anchor,
-                post_individual_id: texture_id,
-                label: tr("shell.padding.padding"),
-            });
             toasts.push(Toast::success(tr_with(
                 "shell.padding.padded_px_cmd_z_to",
                 &[("width", &(result.width)), ("height", &(result.height))],

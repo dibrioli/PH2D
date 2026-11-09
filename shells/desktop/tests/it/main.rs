@@ -57,6 +57,8 @@ mod fn_loc_caps;
 mod fonte_da_shell;
 mod frame_text;
 mod geometric_tools_keep_their_precision;
+mod image_tools_act_on_the_shown_sheet;
+mod a_frame_request_has_a_listener;
 mod handle_scenes_start_paused;
 mod i18n_view;
 mod input_text;

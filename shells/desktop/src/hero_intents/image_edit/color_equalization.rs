@@ -38,7 +38,7 @@ pub(crate) fn drain_color_equalization(
 ) -> bool {
     let entity = ph2d_ecs::Entity::from_bits(entity_bits);
     let Some(src) =
-        texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
+        texture_edit::read_shown_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
         toasts.push(Toast::error(tr("shell.color_equalization.color_eq_source")));
         return true;
@@ -69,6 +69,7 @@ pub(crate) fn drain_color_equalization(
             .into_premultiplied();
     match texture_edit::commit_edited_texture(
         entity,
+        src.sheet,
         sim,
         renderer,
         asset_db,
@@ -84,16 +85,18 @@ pub(crate) fn drain_color_equalization(
             true
         }
         Ok(texture_id) => {
-            pending_undo_entries.push(ImageEditSnapshot {
-                entity_bits,
-                pre_source: old_source,
-                pre_size: old_size_world,
-                pre_translation: old_translation,
-                pre_premultiplied: old_premultiplied,
-                pre_anchor: old_anchor,
-                post_individual_id: texture_id,
-                label: tr("shell.color_equalization.color_eq"),
-            });
+            if src.sheet == 0 {
+                pending_undo_entries.push(ImageEditSnapshot {
+                    entity_bits,
+                    pre_source: old_source,
+                    pre_size: old_size_world,
+                    pre_translation: old_translation,
+                    pre_premultiplied: old_premultiplied,
+                    pre_anchor: old_anchor,
+                    post_individual_id: texture_id,
+                    label: tr("shell.color_equalization.color_eq"),
+                });
+            }
             toasts.push(Toast::success(tr(
                 "shell.color_equalization.color_eq_applied_cmd_z",
             )));

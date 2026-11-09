@@ -766,3 +766,30 @@ fn os_botoes_novos_nao_cortam_no_piso_do_painel() {
         }
     }
 }
+
+/// Achado da auditoria 08/11: com a folha 0 ainda por ler e uma folha extra já lida, o cartão escondia a prévia e as
+/// miniaturas também dos quadros da folha extra (o portão olhava só para a folha 0). *Mutação: voltar a
+/// `card.sheet.is_some()` ⇒ a 1.ª linha sobe para onde estaria sem prévia.*
+#[test]
+fn a_previa_aparece_com_so_uma_folha_extra_lida() {
+    use ph2d_editor_core::AnimFrameRef;
+    use ph2d_editor_core::widget::sheet_cell::SheetImage;
+    let img = || SheetImage::new(std::sync::Arc::new(vec![255; 2 * 2 * 4]), 2, 2).unwrap();
+    let y_da_linha = |a: InspectorAnimInfo| {
+        let (mut host, mut st) = cena_com(a);
+        let r = pinta_a_largura(&mut host, &mut st, 320.0);
+        rect_de(&r, INSP_ANIM_ROW[0]).y
+    };
+    let mut so_a_zero = fixa();
+    so_a_zero.card.sheet = Some(img());
+    let mut so_a_extra = fixa();
+    so_a_extra.card.sheet = None;
+    so_a_extra.card.extra_sheets = vec![(Some(img()), 2, 1)];
+    so_a_extra.frame = AnimFrameRef { sheet: 1, cell: 1 };
+    let mut nenhuma = fixa();
+    nenhuma.card.sheet = None;
+    let (com, extra, sem) = (y_da_linha(so_a_zero), y_da_linha(so_a_extra), y_da_linha(nenhuma));
+    limpa();
+    assert!(com > sem, "controlo: a prévia ocupa lugar ({com} × {sem})");
+    assert_eq!(extra, com, "com só a folha extra lida há prévia");
+}

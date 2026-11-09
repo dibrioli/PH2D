@@ -23,7 +23,8 @@ pub fn apply(
 ) -> Option<bool> {
     Some(match edit {
         ImageUseEdit::ShowSheet(k) => show_sheet(world, e, k),
-        // O painel de Assets abre-se no shell; a resposta volta como `AddSheet`.
+        // O painel de Assets abre-se no shell (ou ele diz porque não, [`load_sheet_refusal`]); a resposta volta como
+        // `AddSheet`.
         ImageUseEdit::LoadSheet => false,
         ImageUseEdit::AddSheet(id) => add_sheet(world, e, db, atlas, ppm, AssetId::from_digest(id)),
         ImageUseEdit::DeleteSheet => delete_shown_sheet(world, e, atlas),
@@ -31,6 +32,21 @@ pub fn apply(
         ImageUseEdit::DeleteEmptyAnimations => delete_empty_animations(world, e),
         _ => return None,
     })
+}
+
+/// ⭐ **Porque o Load sheet não abre** o painel de Assets para `e` (auditoria 08/11: ele calava-se), como chave da
+/// tabela de textos; `None` = abre. `has_assets_panel` = há janela do editor para o abrir.
+#[must_use]
+pub fn load_sheet_refusal(world: &World, e: Entity, has_assets_panel: bool) -> Option<&'static str> {
+    if !has_assets_panel {
+        Some("card.insp.sheet_load_no_assets")
+    } else if ph2d_sprite_edit::vazio::sem_imagem(world, e) {
+        Some("card.insp.sheet_load_no_image")
+    } else if sheet_count(world, e) >= SHEETS_MAX {
+        Some("card.insp.sheet_load_full")
+    } else {
+        None
+    }
 }
 
 /// Quantas folhas `e` tem, a `0` incluída.

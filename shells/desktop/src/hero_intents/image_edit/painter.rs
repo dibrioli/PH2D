@@ -38,16 +38,8 @@ pub(crate) fn auto_commit_painter(
     toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> bool {
     let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-    if let Some(feito) = pinta_folha_extra(entity, sim, renderer, asset_db, painter) {
-        if let Some(t) = feito {
-            segue(sim, atlas_asset_map, entity, t, painter, toasts);
-            ph2d_sprite_edit::imagem::fim_da_edicao();
-            painter.mark_baked();
-        }
-        return feito.is_some();
-    }
     let Some(src) =
-        texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
+        texture_edit::read_shown_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
         return false;
     };
@@ -61,6 +53,7 @@ pub(crate) fn auto_commit_painter(
             .into_premultiplied();
     if let Ok(texture_id) = texture_edit::commit_edited_texture(
         entity,
+        src.sheet,
         sim,
         renderer,
         asset_db,
@@ -75,26 +68,6 @@ pub(crate) fn auto_commit_painter(
     } else {
         false
     }
-}
-
-/// ⭐ **A folha extra VISÍVEL** (plano GEF 26 F13): a pintura vai para a imagem DELA, sem a entrada de imagem (o
-/// desfazer é o do documento). `None` = a folha `0` à vista; `Some(None)` = tela vazia; senão, a textura da imagem nova.
-fn pinta_folha_extra(
-    entity: ph2d_ecs::Entity,
-    sim: &mut SimWorld,
-    renderer: &mut SpriteRenderer,
-    asset_db: &AssetDb,
-    painter: &mut PainterTool,
-) -> Option<Option<u32>> {
-    ph2d_anim_sheets::shown_image::shown_extra(sim.world(), entity)?;
-    let (canvas, w, h) = (painter as &mut dyn RasterEditTool).run_full();
-    if canvas.is_empty() || w == 0 || h == 0 {
-        return Some(None);
-    }
-    let world = sim.world_mut();
-    let (_, novo) =
-        ph2d_anim_sheets::shown_image::commit_shown_extra(world, entity, asset_db, canvas, w, h)?;
-    Some(ph2d_render::upload_sheet_image(renderer, asset_db, novo))
 }
 
 /// A pintura de `entity` vale para quem usa a imagem dela (Edit in Painter); nos outros, os píxeis vencem as camadas.
@@ -169,21 +142,8 @@ pub(crate) fn drain_painter(
     last_painter_pushed_entity: &mut Option<u64>,
 ) -> bool {
     let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-    if let Some(feito) = pinta_folha_extra(entity, sim, renderer, asset_db, painter) {
-        match feito {
-            Some(t) => {
-                segue(sim, atlas_asset_map, entity, t, painter, toasts);
-                toasts.push(Toast::success(tr("shell.painter.painter_applied_cmd_z")));
-                *last_painter_pushed_entity = None;
-            }
-            None => {
-                toasts.push(Toast::error(tr("shell.painter.painter_empty_canvas")));
-            }
-        }
-        return true;
-    }
     let Some(src) =
-        texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
+        texture_edit::read_shown_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
         toasts.push(Toast::error(tr("shell.painter.painter_source")));
         return true;
@@ -207,6 +167,7 @@ pub(crate) fn drain_painter(
             .into_premultiplied();
     match texture_edit::commit_edited_texture(
         entity,
+        src.sheet,
         sim,
         renderer,
         asset_db,
@@ -223,16 +184,18 @@ pub(crate) fn drain_painter(
         }
         Ok(texture_id) => {
             segue(sim, atlas_asset_map, entity, texture_id, painter, toasts);
-            pending_undo_entries.push(ImageEditSnapshot {
-                entity_bits,
-                pre_source: old_source,
-                pre_size: old_size_world,
-                pre_translation: old_translation,
-                pre_premultiplied: old_premultiplied,
-                pre_anchor: old_anchor,
-                post_individual_id: texture_id,
-                label: tr("shell.painter.painter"),
-            });
+            if src.sheet == 0 {
+                pending_undo_entries.push(ImageEditSnapshot {
+                    entity_bits,
+                    pre_source: old_source,
+                    pre_size: old_size_world,
+                    pre_translation: old_translation,
+                    pre_premultiplied: old_premultiplied,
+                    pre_anchor: old_anchor,
+                    post_individual_id: texture_id,
+                    label: tr("shell.painter.painter"),
+                });
+            }
             toasts.push(Toast::success(tr("shell.painter.painter_applied_cmd_z")));
             *last_painter_pushed_entity = None;
             true

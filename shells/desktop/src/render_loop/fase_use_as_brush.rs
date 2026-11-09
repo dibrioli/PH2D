@@ -72,7 +72,7 @@ impl crate::App {
                 // A different (flat) sprite in the hierarchy — read its baked texture (no layers to
                 // lose), mirror of the file-load path.
                 let entity = ph2d_ecs::Entity::from_bits(bits);
-                match crate::hero_intents::texture_edit::read_sprite_source(
+                match crate::hero_intents::texture_edit::read_shown_source(
                     entity,
                     sim,
                     renderer,

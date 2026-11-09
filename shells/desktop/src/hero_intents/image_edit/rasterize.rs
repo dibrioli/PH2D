@@ -47,7 +47,7 @@ pub(crate) fn drain_rasterize(
         return true;
     };
     let Some(src) =
-        texture_edit::read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map)
+        texture_edit::read_shown_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
         toasts.push(Toast::error(tr("shell.rasterize.rasterize_source")));
         return true;
@@ -102,6 +102,7 @@ pub(crate) fn drain_rasterize(
     ];
     match texture_edit::commit_edited_texture(
         entity,
+        src.sheet,
         sim,
         renderer,
         asset_db,
@@ -127,16 +128,18 @@ pub(crate) fn drain_rasterize(
                 t.scale.y = if scale_y < 0.0 { -1.0 } else { 1.0 };
                 t.rotation = 0.0;
             }
-            pending_undo_entries.push(ImageEditSnapshot {
-                entity_bits,
-                pre_source: src.old_source,
-                pre_size: src.old_size_world,
-                pre_translation: src.old_translation,
-                pre_premultiplied: src.old_premultiplied,
-                pre_anchor: src.old_anchor,
-                post_individual_id: texture_id,
-                label: tr("shell.rasterize.rasterize"),
-            });
+            if src.sheet == 0 {
+                pending_undo_entries.push(ImageEditSnapshot {
+                    entity_bits,
+                    pre_source: src.old_source,
+                    pre_size: src.old_size_world,
+                    pre_translation: src.old_translation,
+                    pre_premultiplied: src.old_premultiplied,
+                    pre_anchor: src.old_anchor,
+                    post_individual_id: texture_id,
+                    label: tr("shell.rasterize.rasterize"),
+                });
+            }
             toasts.push(Toast::success(tr_with(
                 "shell.rasterize.rasterized_px_cmd_z_to",
                 &[("width", &(result.width)), ("height", &(result.height))],

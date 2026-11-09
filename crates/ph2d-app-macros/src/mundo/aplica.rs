@@ -202,11 +202,10 @@ fn folhas_no_destino(
     let mut s: ph2d_ecs::SpriteSheets = postcard::from_bytes(b).map_err(|e| falha(&e))?;
     for x in &mut s.0 {
         let r = recursos.get(x.asset.as_bytes()).ok_or_else(|| falha(&"∅"))?;
-        let (mut rgba, w, h) = de_png(&r.bytes).ok_or_else(|| falha(&"png"))?;
-        if r.premultiplicado {
-            ph2d_render::unpremultiply_rgba8(&mut rgba);
-        }
-        x.asset = ph2d_asset_id::AssetId::from_digest(poe((rgba, w, h)));
+        // Sem desfazer a pré-multiplicação: a folha extra desenha-se em alfa recto, e o `premultiplicado` do recurso é
+        // o da sprite que o partilha pelo id (auditoria 08/11).
+        let px = de_png(&r.bytes).ok_or_else(|| falha(&"png"))?;
+        x.asset = ph2d_asset_id::AssetId::from_digest(poe(px));
     }
     postcard::to_allocvec(&s).map_err(|e| falha(&e))
 }
@@ -420,5 +419,36 @@ mod tests {
         // CONTROLO: outro componente passa como veio, sem tocar na porta.
         assert_eq!(no_destino("ph2d::ecs::Name", vec![1, 2], &recursos, &poe).unwrap(), [1, 2]);
         assert_eq!(postos.borrow().len(), 1);
+    }
+
+    /// ⭐ Achado da auditoria 08/11: uma folha extra desenha-se SEMPRE em alfa recto (`ph2d_render::SheetTextures`), mas
+    /// o recurso dela é partilhado pelo id com a sprite pré-multiplicada que mostre a mesma imagem (o BG removal), e a
+    /// chegada desfazia-lhe a pré-multiplicação: a cor da folha mudava no outro projeto. Os bytes chegam como foram.
+    /// *Mutação: voltar a desfazer quando `premultiplicado` ⇒ os bytes da meia-transparência mudam.*
+    #[test]
+    fn a_folha_extra_chega_com_a_mesma_cor_mesmo_partilhada_com_uma_premultiplicada() {
+        let rgba = [200u8, 100, 50, 128, 1, 2, 3, 255];
+        let gravado = [5u8; 32];
+        let r = Recurso {
+            id: gravado,
+            bytes: png(&rgba, 2, 1),
+            premultiplicado: true,
+        };
+        let recursos: BTreeMap<[u8; 32], &Recurso> = [(gravado, &r)].into();
+        let folha = ph2d_ecs::ExtraSheet {
+            asset: ph2d_asset_id::AssetId::from_digest(gravado),
+            size: [1.0, 1.0],
+            anchor: [0.0, 0.0],
+            hframes: 2,
+            vframes: 1,
+        };
+        let b = postcard::to_allocvec(&ph2d_ecs::SpriteSheets([folha].into_iter().collect())).unwrap();
+        let postos = std::cell::RefCell::new(Vec::new());
+        let poe = |px: crate::aplicar::Rgba| {
+            postos.borrow_mut().push(px);
+            [6u8; 32]
+        };
+        folhas_no_destino(&b, &recursos, &poe).expect("nasce");
+        assert_eq!(*postos.borrow(), [(rgba.to_vec(), 2, 1)], "ao bit");
     }
 }

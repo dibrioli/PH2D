@@ -240,3 +240,38 @@ fn show_sheet_so_aceita_folhas_que_existem() {
     show_sheet(&mut w, e, 5);
     assert_eq!(w.get::<ShownSheet>(e), Some(&ShownSheet(0)));
 }
+
+/// ⭐ Achado da auditoria 08/11: sem janela do editor o Load sheet não fazia nada e calava-se; cada recusa tem agora
+/// uma frase. *Mutações: devolver `None` sem painel ⇒ vermelho; tirar a verificação da imagem ⇒ o vazio passa.*
+#[test]
+fn o_load_sheet_diz_porque_nao_abre() {
+    let db = AssetDb::default();
+    let (mut w, e) = animado(&db);
+    assert_eq!(load_sheet_refusal(&w, e, true), None);
+    assert_eq!(
+        load_sheet_refusal(&w, e, false),
+        Some("card.insp.sheet_load_no_assets")
+    );
+    let branco = Sprite::atlas(ph2d_render::WHITE_TILE_KEY, [1.0, 1.0], [1.0; 4]);
+    let vazio = w.spawn(branco).id();
+    assert_eq!(
+        load_sheet_refusal(&w, vazio, true),
+        Some("card.insp.sheet_load_no_image")
+    );
+    for _ in 1..SHEETS_MAX {
+        let k = db.insert_image_rgba8(4, 4, opaca(4, 4));
+        let mut s = w.get::<SpriteSheets>(e).cloned().unwrap_or_default();
+        s.0.push(ph2d_ecs::ExtraSheet {
+            asset: k,
+            size: [1.0, 1.0],
+            anchor: [0.0, 0.0],
+            hframes: 1,
+            vframes: 1,
+        });
+        w.entity_mut(e).insert(s);
+    }
+    assert_eq!(
+        load_sheet_refusal(&w, e, true),
+        Some("card.insp.sheet_load_full")
+    );
+}

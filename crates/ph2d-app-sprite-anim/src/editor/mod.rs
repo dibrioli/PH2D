@@ -153,17 +153,7 @@ impl DocumentSurface for AnimDocs {
     }
 
     fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, _shift: bool) -> bool {
-        let Some(d) = self.doc_mut(id) else {
-            return false;
-        };
-        let (s, b) = (d.layout.strip, d.layout.strip_bar);
-        if !(x >= s.x && x < s.x + s.w && y >= s.y && y < b.y + b.h) {
-            return false;
-        }
-        // A mesma largura que a disposição mediu (com o vão da marca): a roda chega ao último quadro.
-        let max = (d.layout.strip_content - s.w).max(0.0);
-        d.strip_scroll = (d.strip_scroll - dy).clamp(0.0, max);
-        true
+        self.doc_mut(id).is_some_and(|d| d.wheel_strip(x, y, dy))
     }
 
     fn key(&mut self, id: u64, _ts: &mut TextSystem, input: KeyInput<'_>) -> KeyOutcome {

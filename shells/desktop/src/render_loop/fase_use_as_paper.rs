@@ -49,7 +49,7 @@ impl crate::App {
                     .and_then(|p| p.composite_to_lum())
             } else {
                 let entity = ph2d_ecs::Entity::from_bits(bits);
-                crate::hero_intents::texture_edit::read_sprite_source(
+                crate::hero_intents::texture_edit::read_shown_source(
                     entity,
                     sim,
                     renderer,

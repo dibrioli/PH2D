@@ -102,7 +102,7 @@ pub(super) fn dispatch(
                 // os pixels de volta é o `hero_intents::image_edit::bgremoval`, que relê a fonte e
                 // passa por `commit_geometric_edit` — o funil que preserva 16 bits quando pode e
                 // avisa quando não pode.
-                let src = crate::hero_intents::texture_edit::read_sprite_source(
+                let src = crate::hero_intents::texture_edit::read_shown_source(
                     entity,
                     sim,
                     renderer,

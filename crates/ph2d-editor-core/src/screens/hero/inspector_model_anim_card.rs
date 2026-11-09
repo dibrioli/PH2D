@@ -166,6 +166,12 @@ impl AnimCardInfo {
         }
     }
 
+    /// Alguma folha tem pixels em memória (a prévia e as miniaturas têm onde pintar).
+    #[must_use]
+    pub fn any_sheet(&self) -> bool {
+        self.sheet.is_some() || self.extra_sheets.iter().any(|(s, _, _)| s.is_some())
+    }
+
     /// **As opções do menu «When»**, pela ordem do menu: as poses (só com Platform Player), as teclas,
     /// os factos de vida e os sinais.
     #[must_use]

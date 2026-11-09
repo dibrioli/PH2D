@@ -4,7 +4,7 @@
 
 use ph2d_ecs::{Entity, ScrollRepeat, SpriteAnimations, TiledDraw, World};
 use ph2d_editor_core::InspectorDraw;
-use ph2d_physics_ecs::{Collider, ColliderShape};
+use ph2d_physics_ecs::Collider;
 use ph2d_render::Sprite;
 
 /// O menor lado (m) que a Largura/Altura aceita: um bloco de tamanho nulo não se desenha nem colide.

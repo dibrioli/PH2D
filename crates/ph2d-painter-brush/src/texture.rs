@@ -18,6 +18,7 @@
 
 use ph2d_det_math::DetMath as _;
 mod bristles;
+pub(crate) mod grao_cache;
 mod kind;
 mod lei;
 pub(crate) mod patterns;

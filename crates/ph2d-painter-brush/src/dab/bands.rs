@@ -334,6 +334,8 @@ pub(super) struct DabCtx<'a> {
     pub(super) lei: crate::capsula::Lei,
     /// O pó pousado antes do traço: o Height lê o papel com o dente cheio ([`crate::GrainLaw::papel_com_po`]).
     pub(super) po: Option<crate::texture::PoDoPapel<'a>>,
+    /// A memória do grão Tiled ([`crate::texture::grao_cache`]): o mesmo `sample`, lido uma vez por píxel do traço.
+    pub(super) grao: Option<std::sync::Arc<crate::texture::grao_cache::GraoCache>>,
 }
 
 /// Stamp the dab's pixels for the full-width row band `dst` whose first row is `band_y0` (so global
@@ -467,15 +469,21 @@ pub(super) fn stamp_band(
             // the ramp is indexed by its OWNER's value (the Grain, or the Shape's layers: its texture
             // value and the coverage `w`), and the Grain bites unless it is the one indexing the ramp.
             let grain = ctx.tex.map(|b| {
-                crate::texture::sample(
-                    &ctx.spec.texture,
-                    b,
-                    px,
-                    py,
-                    ctx.center,
-                    ctx.radius,
-                    ctx.image.as_ref(),
-                )
+                let amostra = || {
+                    crate::texture::sample(
+                        &ctx.spec.texture,
+                        b,
+                        px,
+                        py,
+                        ctx.center,
+                        ctx.radius,
+                        ctx.image.as_ref(),
+                    )
+                };
+                match ctx.grao.as_deref() {
+                    Some(c) => c.em(px, py, amostra),
+                    None => amostra(),
+                }
             });
             let lei = &ctx.spec.texture.lei;
             let grain = grain.map(|t| lei.papel_com_po(t, ctx.po.as_ref(), px, py));

@@ -1012,6 +1012,15 @@ E o plano do traço compõe uma vez por quadro (gate `o_plano_compoe_uma_vez_por
 80 px 0,85 s (traço drenado a cada 3 eventos). **Aberto:** o kernel a ~107 ns por visita (55 % do traço); ~45–64 ms por
 quadro a 90 px/quadro.
 
+**Cura 3 (09/11, a memória do grão Tiled, `texture/grao_cache.rs`):** a divisão por visita (sonda de `Instant`, 30 px,
+56,6 M visitas por traço nas duas passagens, 23 % fora do disco — essas pagam só a silhueta, ~10 ns): silhueta ~10 ns ·
+**grão (o `sample` do Clouds, fbm com warp) ~55 ns** · rampa/dente/blend ~20 ns (sem cápsula: o véu não a tem). Com o
+mapeamento Tiled o `sample` é função só do píxel e de invariantes do dab, e cada píxel recebe ~90 dabs: guarda-se a
+primeira amostra (blocos de 64², nasce quando a chave se repete em dois dabs) — o mesmo `f32`, ao bit (as 7 miniaturas
+pendentes com as mesmas contagens; o Δ da sonda idêntico). Grão 75 → 27 ns por visita (com a régua). Produto 30 px
+0,585 → 0,349 s, 80 px 0,855 → 0,510 s; o `Off` 0,697 → 0,230 s. ⚠️ O gate da razão fica VERMELHO (1,55) porque o `Off`
+ganhou mais: a rota da mistura (~120 ms: a passagem lisa + a película) é agora a maior parte e é o próximo corte.
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

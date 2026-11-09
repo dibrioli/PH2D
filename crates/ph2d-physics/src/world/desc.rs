@@ -485,7 +485,17 @@ pub struct BodyDesc {
     /// **A exceção da forma à matriz** (GEF02 B9): `[include, exclude]`, máscaras de camadas.
     /// `[0, 0]` = a linha da matriz, byte-idêntico a antes. Regra: [`super::layer_override`].
     pub collide: [u32; 2],
+    /// **Todas as formas do corpo DESLIGADAS** (dono 09/11: o olho de cada forma fechado). O corpo
+    /// fica no solver (tipo, pose, velocidade, gravidade, travas), mas o colisor nasce DESLIGADO: não
+    /// toca nada — sem contacto, sobreposição, sinal ou zona. A massa é [`MASS_WITHOUT_SHAPE_KG`], ou
+    /// o `mass_override`. `false` = byte-idêntico a antes deste campo.
+    pub shape_off: bool,
 }
+
+/// **A massa de um corpo dinâmico sem forma ligada**, em kg: a que o Box2D impõe a um dinâmico de
+/// massa zero (`b2Body::ResetMassData`) e a de omissão do `RigidBody2D` do Godot e do `Rigidbody2D`
+/// do Unity. Sem ela a rapier não o deixa cair: a gravidade aplicada é `g · massa · gravity_scale`.
+pub const MASS_WITHOUT_SHAPE_KG: f32 = 1.0;
 
 impl BodyDesc {
     /// A posição do collider principal relativa ao corpo: `shape_pose ∘ offset`. Com a pose zero é

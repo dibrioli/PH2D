@@ -279,7 +279,8 @@ pub(crate) fn zone_effect(desc: &BodyDesc) -> Option<AreaEffect> {
         && e.drag <= 0.0
         && e.density <= 0.0
         && e.form_drag <= 0.0;
-    if !desc.is_sensor || inert {
+    // Uma zona de forma desligada (olho fechado) não empurra ninguém.
+    if !desc.is_sensor || inert || desc.shape_off {
         return None;
     }
     Some(e)

@@ -27,9 +27,13 @@ impl PhysicsBridge {
         let at_rest = self.last_stepped == 0;
         self.main_of.clear();
         for (e, rb, _local) in q.iter(world) {
-            // **A forma PRINCIPAL** (opção B): a do corpo, ou a 1.ª filha da ordem da árvore. Sem
-            // forma nenhuma não é um corpo para o solver (fica fora do `seen` e sai).
-            let Some(shape) = crate::main_shape(world, e) else {
+            // **A forma PRINCIPAL** (opção B): a do corpo, ou a 1.ª filha LIGADA da ordem da árvore.
+            // Todas desligadas (dono 09/11): o corpo FICA no solver com a 1.ª, de colisor desligado.
+            // Sem forma nenhuma não é um corpo para o solver (fica fora do `seen` e sai).
+            let Some((shape, shape_off)) = crate::main_shape(world, e)
+                .map(|s| (s, false))
+                .or_else(|| crate::forma_para_editar(world, e).map(|s| (s, true)))
+            else {
                 continue;
             };
             let Some(col) = world.get::<Collider>(shape) else {
@@ -130,6 +134,7 @@ impl PhysicsBridge {
             let desc = BodyDesc {
                 shape_pose,
                 collide,
+                shape_off,
                 ..desc
             };
             match self.bodies.get(&e) {

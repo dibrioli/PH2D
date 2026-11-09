@@ -76,6 +76,7 @@ fn final_x_after_launch(ccd: bool, speed: f32) -> f32 {
         effector: None,
         shape_pose: [0.0; 3],
         collide: [0; 2],
+        shape_off: false,
         offset: [0.0, 0.0],
     });
 
@@ -109,6 +110,7 @@ fn final_x_after_launch(ccd: bool, speed: f32) -> f32 {
         effector: None,
         shape_pose: [0.0; 3],
         collide: [0; 2],
+        shape_off: false,
         offset: [0.0, 0.0],
     });
 
@@ -199,6 +201,7 @@ fn the_ccd_flag_is_what_stops_a_bullet_through_a_moving_wall() {
             effector: None,
             shape_pose: [0.0; 3],
             collide: [0; 2],
+            shape_off: false,
             offset: [0.0, 0.0],
         });
         let ball = w.spawn_body(BodyDesc {
@@ -227,6 +230,7 @@ fn the_ccd_flag_is_what_stops_a_bullet_through_a_moving_wall() {
             effector: None,
             shape_pose: [0.0; 3],
             collide: [0; 2],
+            shape_off: false,
             offset: [0.0, 0.0],
         });
         for _ in 0..30 {

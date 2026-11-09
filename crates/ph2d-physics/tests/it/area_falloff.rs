@@ -45,6 +45,7 @@ fn desc(body_type: RigidBodyType, x: f32, y: f32, shape: ShapeDesc) -> BodyDesc 
         effector: None,
         shape_pose: [0.0; 3],
         collide: [0; 2],
+        shape_off: false,
     }
 }
 
@@ -55,6 +56,7 @@ fn zone(half_x: f32, half_y: f32, effect: AreaEffect) -> BodyDesc {
         effector: Some(effect),
         shape_pose: [0.0; 3],
         collide: [0; 2],
+        shape_off: false,
         ..desc(
             RigidBodyType::Fixed,
             0.0,

@@ -135,6 +135,7 @@ fn measure_where_damping_stops_meaning_anything() {
             effector: None,
             shape_pose: [0.0; 3],
             collide: [0; 2],
+            shape_off: false,
             offset: [0.0, 0.0],
         });
         for _ in 0..60 {

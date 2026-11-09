@@ -42,6 +42,7 @@ fn desc(
         effector: None,
         shape_pose: [0.0; 3],
         collide,
+        shape_off: false,
         offset: [0.0, 0.0],
     }
 }

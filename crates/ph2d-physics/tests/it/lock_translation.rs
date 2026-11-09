@@ -51,6 +51,7 @@ fn pose_after(lock_x: bool, lock_y: bool, linvel: [f32; 2], gravity: [f32; 2]) -
         effector: None,
         shape_pose: [0.0; 3],
         collide: [0; 2],
+        shape_off: false,
     });
     for _ in 0..30 {
         w.step();

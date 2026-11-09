@@ -93,8 +93,13 @@ impl PhysicsWorld {
                     axes |= LockedAxes::TRANSLATION_LOCKED_Y;
                 }
                 axes
-            })
-            .build();
+            });
+        // Sem forma ligada o colisor desligado não pesa: a massa vem do corpo (dono 09/11).
+        let body = match shape_off_mass(&desc) {
+            Some(m) => body.additional_mass(m),
+            None => body,
+        }
+        .build();
         let handle = self.bodies.insert(body);
         self.stamp_defaults(handle);
         // Per-body damping override (if any), stamped AFTER the global defaults so it
@@ -158,12 +163,23 @@ impl PhysicsWorld {
             shape_pose: _,
             // Vai no `user_data` do colisor fresco, copiado abaixo; o `stamp_layer` lê-o.
             collide: _,
+            shape_off,
         } = *desc;
         let Some(&collider_handle) = self.bodies.get(handle).and_then(|b| b.colliders().first())
         else {
             return false;
         };
+        let was_off = self
+            .colliders
+            .get(collider_handle)
+            .is_some_and(|c| !c.is_enabled());
         if let Some(b) = self.bodies.get_mut(handle) {
+            // O olho abre ou fecha a meio do play: a massa do corpo sem forma entra ou sai.
+            match shape_off_mass(desc) {
+                Some(m) => b.set_additional_mass(m, true),
+                None if was_off => b.set_additional_mass_properties(Default::default(), true),
+                None => {}
+            }
             b.set_body_type(body_type, true);
             b.set_gravity_scale(gravity_scale, true);
             b.set_dominance_group(dominance);
@@ -213,9 +229,24 @@ impl PhysicsWorld {
             c.set_position_wrt_parent(*fresh.position());
             c.user_data = fresh.user_data;
             c.set_active_hooks(fresh.active_hooks());
+            c.set_enabled(!shape_off);
+        }
+        if (shape_off || was_off)
+            && let Some(b) = self.bodies.get_mut(handle)
+        {
+            b.recompute_mass_properties_from_colliders(&self.colliders);
         }
         self.stamp_layer(collider_handle, layer as usize);
         effector::register(&mut self.effectors, collider_handle, handle, desc);
         true
     }
+}
+
+/// A massa que o CORPO leva quando as formas estão todas desligadas: a manual, senão
+/// [`super::desc::MASS_WITHOUT_SHAPE_KG`]. `None` = a massa é a das formas, como sempre foi.
+fn shape_off_mass(desc: &BodyDesc) -> Option<f32> {
+    desc.shape_off.then(|| {
+        desc.mass_override
+            .unwrap_or(super::desc::MASS_WITHOUT_SHAPE_KG)
+    })
 }

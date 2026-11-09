@@ -340,6 +340,7 @@ fn the_new_collider_defaults_are_the_ones_rapier_already_used() {
         effector: None,
         shape_pose: [0.0; 3],
         collide: [0; 2],
+        shape_off: false,
         offset: [0.0, 0.0],
     });
     for i in 0..12 {
@@ -369,6 +370,7 @@ fn the_new_collider_defaults_are_the_ones_rapier_already_used() {
             effector: None,
             shape_pose: [0.0; 3],
             collide: [0; 2],
+            shape_off: false,
             offset: [0.0, 0.0],
         });
     }
@@ -613,6 +615,7 @@ fn uma_zona_tirada_depois_do_checkpoint_volta_com_o_restore() {
         }),
         shape_pose: [0.0; 3],
         collide: [0; 2],
+        shape_off: false,
         offset: [0.0, 0.0],
     };
     let peca = w

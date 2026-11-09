@@ -117,8 +117,11 @@ fn desligar_uma_forma_nao_desliga_a_outra() {
             olho(&mut sim, off);
             assert!(forma_desligada(sim.world(), off));
             corre(&mut sim, &mut bridge, inicio, inicio + 240);
-            let parada = bridge.part_handle(on).is_some() || bridge.body_pose(_duo).is_some();
-            assert!(parada, "a ligada continua no solver");
+            // A ligada é a PRINCIPAL nos dois casos (a A desligada passa-lhe o papel; a B desligada
+            // deixa a A onde estava): viaja no corpo, nunca como peça.
+            assert_eq!(main_shape(sim.world(), _duo), Some(on));
+            assert!(bridge.body_pose(_duo).is_some(), "o corpo saiu do solver");
+            assert!(bridge.part_handle(on).is_none(), "a principal virou peça");
             assert!(bridge.part_handle(off).is_none(), "a desligada não é peça");
             // A caixa do corpo NO SOLVER cobre só a ligada (cada uma tem meia largura 0,3).
             let (mins, maxs) = bridge.body_extent(_duo).expect("o corpo está no solver");
@@ -176,15 +179,82 @@ fn o_olho_da_forma_desliga_e_liga_o_collider() {
         bridge.part_handle(b).is_some(),
         "com A de volta, B volta a ser peça"
     );
-    // As duas desligadas: o corpo fica sem forma — fora do solver.
+    // As duas desligadas (dono 09/11): o corpo FICA no solver, não toca nada e cai com a gravidade.
     olho(&mut sim, a);
     olho(&mut sim, b);
     assert_eq!(main_shape(sim.world(), duo), None);
-    corre(&mut sim, &mut bridge, 0, 0);
+    corre(&mut sim, &mut bridge, 0, 30);
     assert!(
-        bridge.body_pose(duo).is_none(),
-        "sem forma ligada não há corpo"
+        bridge.body_pose(duo).is_some(),
+        "sem forma ligada o corpo saiu do solver"
     );
+    let caindo = y(&sim, duo);
+    assert!(
+        caindo < 2.9 && caindo > 1.0,
+        "meio segundo de queda livre: {caindo:.3}"
+    );
+    // O olho de A reabre-se A MEIO da queda: a forma volta e o corpo pousa no chão.
+    olho(&mut sim, a);
+    corre(&mut sim, &mut bridge, 31, 300);
+    let pousado = y(&sim, duo);
+    assert!(
+        (pousado - 0.8).abs() < 0.05,
+        "com A de volta o corpo pousa no topo do chão: {pousado:.3}"
+    );
+}
+
+/// **Sem forma ligada nenhuma, atravessa o chão** — a outra metade: de olhos fechados desde o
+/// repouso, o corpo passa pelo topo do chão (`0,5`) e segue a cair.
+#[test]
+fn as_formas_todas_desligadas_atravessam_o_chao() {
+    let (mut sim, duo, a, b) = cena();
+    let mut bridge = PhysicsBridge::new();
+    olho(&mut sim, a);
+    olho(&mut sim, b);
+    corre(&mut sim, &mut bridge, 0, 120);
+    assert!(bridge.body_pose(duo).is_some(), "o corpo saiu do solver");
+    let fundo = y(&sim, duo);
+    assert!(fundo < -2.0, "o corpo não atravessou o chão: {fundo:.3}");
+}
+
+/// Um corpo dinâmico de UMA forma filha, de olho fechado: cai, e a massa é a de um corpo sem
+/// forma — `MASS_WITHOUT_SHAPE_KG` (1 kg, Box2D/Godot/Unity) — salvo um `MassOverride`, que manda.
+#[test]
+fn a_unica_forma_desligada_cai_com_a_massa_de_um_corpo_sem_forma() {
+    for manual in [None, Some(5.0)] {
+        let mut sim = SimWorld::new();
+        let w = sim.world_mut();
+        let rb = RigidBody {
+            kind: BodyKind::Dynamic,
+        };
+        let solo = w
+            .spawn((
+                Name::new("Solo"),
+                rb,
+                Transform::from_translation(Vec2::new(0.0, 3.0)),
+            ))
+            .id();
+        if let Some(m) = manual {
+            w.entity_mut(solo).insert(ph2d_physics_ecs::MassOverride(m));
+        }
+        let f = w
+            .spawn((caixa(0.3), Transform::IDENTITY, ChildOf(solo)))
+            .id();
+        olho(&mut sim, f);
+        let mut bridge = PhysicsBridge::new();
+        corre(&mut sim, &mut bridge, 0, 60);
+        let massa = bridge.body_mass(solo).expect("o corpo está no solver");
+        let esperada = manual.unwrap_or(ph2d_physics::MASS_WITHOUT_SHAPE_KG);
+        assert!(
+            (massa - esperada).abs() < 1e-5,
+            "massa {massa} contra {esperada}"
+        );
+        assert!(
+            y(&sim, solo) < 0.0,
+            "um segundo de queda: {}",
+            y(&sim, solo)
+        );
+    }
 }
 
 /// **O olho de um ANCESTRAL abaixo do corpo desliga as formas debaixo dele** (GEF02 fecho): um grupo

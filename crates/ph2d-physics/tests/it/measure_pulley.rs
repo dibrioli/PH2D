@@ -263,6 +263,7 @@ fn what_a_frozen_axis_looks_like_to_the_rope() {
             effector: None,
             shape_pose: [0.0; 3],
             collide: [0; 2],
+            shape_off: false,
             offset: [0.0, 0.0],
         };
         d0.lock_y = lock;
@@ -340,6 +341,7 @@ fn what_the_rate_term_of_a_non_dynamic_body_buys() {
             effector: None,
             shape_pose: [0.0; 3],
             collide: [0; 2],
+            shape_off: false,
             offset: [0.0, 0.0],
         };
         let a = w.spawn_body(drum);

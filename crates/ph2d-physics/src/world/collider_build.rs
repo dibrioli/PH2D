@@ -87,6 +87,8 @@ fn collider_from(shape: ColliderBuilder, desc: &BodyDesc) -> Collider {
         // A sensor passes through (no contact forces) but the narrow phase
         // still records its overlaps — read back by `intersecting_body_pairs`.
         .sensor(desc.is_sensor)
+        // Formas todas desligadas (dono 09/11): o colisor existe mas não toca nada nem pesa.
+        .enabled(!desc.shape_off)
         // ⚠️ **E um sensor VÊ um corpo cinemático** (W-KinFluid). O default do
         // rapier é `DYNAMIC_DYNAMIC | DYNAMIC_FIXED | DYNAMIC_KINEMATIC` — nenhum
         // par que comece em KINEMATIC está lá —, então uma poça ESTÁTICA e um

@@ -47,6 +47,7 @@ fn body(
         effector: None,
         shape_pose: [0.0; 3],
         collide: [0; 2],
+        shape_off: false,
         offset: [0.0, 0.0],
     })
 }
@@ -430,6 +431,7 @@ fn a_motor_that_is_too_weak_cannot_lift_its_own_arm() {
             effector: None,
             shape_pose: [0.0; 3],
             collide: [0; 2],
+            shape_off: false,
             offset: [0.0, 0.0],
         });
         join(

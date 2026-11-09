@@ -63,7 +63,9 @@ use layers::LayerMatrix;
 pub(super) use layers::groups_for;
 // The descriptors and the shape vocabulary live in sibling modules (LOC),
 // re-exported so callers still see `ph2d_physics::{BodyDesc, ShapeDesc, …}`.
-pub use desc::{AreaEffect, BodyDesc, BodySnapshot, CombineRules, DampingDesc};
+pub use desc::{
+    AreaEffect, BodyDesc, BodySnapshot, CombineRules, DampingDesc, MASS_WITHOUT_SHAPE_KG,
+};
 pub use shape::{CAPSULE_CAP_SEGS, ELLIPSE_SEGS, ShapeDesc, capsule_vertices, ellipse_vertices};
 
 use crate::rmath::{Pose, Vector};

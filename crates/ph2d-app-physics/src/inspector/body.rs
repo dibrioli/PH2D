@@ -78,9 +78,10 @@ pub fn build_physics_info(
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
     let rb = world.get::<RigidBody>(entity);
-    // Opção B: o lado-forma de um corpo lê-se da forma principal (a filha «Collision Shape»).
+    // Opção B: o lado-forma de um corpo lê-se da 1.ª forma (a filha «Collision Shape»), ligada ou
+    // não — o olho fechado nunca esconde o cartão do corpo (dono 09/11).
     let forma = rb
-        .and(ph2d_physics_ecs::main_shape(world, entity))
+        .and(ph2d_physics_ecs::forma_para_editar(world, entity))
         .unwrap_or(entity);
     let col = world.get::<Collider>(forma);
     // ⭐ A §11 aparece com um dos seus componentes ou com um gesto que só ela oferece (ADR-0166 /

@@ -141,9 +141,9 @@ impl PhysicsBridge {
             // Perguntadas em dois lugares elas poderiam discordar, e a lei de
             // Snap num corpo dinâmico deixa o personagem cair através do mundo.
             let owner = super::pose_owner::pose_owner(world, entity, b.kind);
-            if owner.driven_by_scene() {
-                // A cena manda nele (um corpo estático, um bake, uma curva) — e
-                // um impulso não move massa infinita de qualquer forma.
+            if owner.driven_by_scene() || b.rest.shape_off {
+                // A cena manda nele (estático, bake, curva); ou o olho desligou as formas todas e a
+                // perna, que é o toque da forma no chão, não segura nada (dono 09/11): ele cai.
                 continue;
             }
             let Some(cfg) = world.get::<PlatformPlayer>(entity) else {

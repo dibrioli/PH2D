@@ -50,6 +50,12 @@ impl PhysicsBridge {
         ))
     }
 
+    /// **A massa que o solver tem para o corpo desta entidade**, em kg; `None` sem corpo.
+    #[must_use]
+    pub fn body_mass(&self, entity: Entity) -> Option<f32> {
+        Some(self.world.body_mass(self.bodies.get(&entity)?.handle))
+    }
+
     /// **Quanto do peso deste corpo o fluido carrega**, em `[0, 1]` — a MESMA
     /// pergunta que a ponte faz ao chamar a lei do player, pela mesma porta.
     ///

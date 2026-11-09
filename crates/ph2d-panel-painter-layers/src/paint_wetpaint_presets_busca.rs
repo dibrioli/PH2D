@@ -25,6 +25,10 @@ use ph2d_tool_painter::ids;
 use std::cell::{Cell, RefCell};
 
 const CAMPO: NodeId = ids::PAINTER_WETPAINT_PRESET_SEARCH;
+/// O «×» que esvazia o campo (dono 09/11: «faltou o x de limpar») — a peça das buscas dos cartões.
+fn limpa() -> NodeId {
+    ph2d_editor_core::panel::cards::busca::limpa_de(CAMPO)
+}
 /// O valor das linhas do campo: nenhum preset o tem, nem o vão do arrasto nem o «sem preset».
 const VALOR_DO_CAMPO: usize = usize::MAX - 2;
 /// Quantas linhas da lista a faixa do campo cobre: o campo do cartão (`FIELD_H` 28) com folga não cabe numa (28).
@@ -138,6 +142,13 @@ pub(crate) fn abre(ctx: &mut PaintCtx) -> String {
     );
     store.mark_cancel_on_escape(CAMPO);
     store.arm_list_nav(Some(CAMPO));
+    if store.get(limpa()).is_none() {
+        let botao = InteractiveState::Button {
+            state: ph2d_editor_core::widget::ButtonState::Normal,
+        };
+        store.register(limpa(), botao);
+        store.set_tooltip(limpa(), tr("card.search.clear"));
+    }
     if !ABERTO.with(|c| c.replace(true)) {
         foca(store, true);
         REALCE.with(|c| c.set(None));
@@ -276,10 +287,20 @@ pub(crate) fn pinta_campo(
         }) => (*state, text.clone(), *caret, *selection_anchor),
         _ => (TextInputState::Normal, String::new(), 0, None),
     };
+    use ph2d_editor_core::panel::cards::busca;
+    let borda = ph2d_tokens::StrokeToken::Thin.px(); // a largura do anel fino do foco
+    let com_texto = !texto.is_empty();
+    let ponta = busca::ponta(r, borda);
+    let sobre_o_x = store.hover_live(limpa()) > 0.0;
     let campo = TextInput::new(CAMPO, "")
         .placeholder(tr("panel.painter_layers.wetpaint.preset_search"))
         .visual((estado, store.hover_live(CAMPO)))
-        .anel_fino();
+        .anel_fino()
+        .reserva_direita(if com_texto {
+            busca::reserva(r, borda)
+        } else {
+            0.0
+        });
     let focado = store.focus_id() == Some(CAMPO);
     let texto_sistema = &mut *ctx.text_system;
     let mut pinta = |cena: &mut ph2d_vector::VectorScene| {
@@ -294,6 +315,9 @@ pub(crate) fn pinta_campo(
             texto_sistema,
             theme,
         );
+        if com_texto {
+            pinta_o_x(cena, ponta, sobre_o_x, theme);
+        }
     };
     camada_das_listas::por_cima(ctx.scene, |cena| match tinta {
         Some(ink) => ph2d_editor_core::widget::card_ink::com(ink, || pinta(cena)),
@@ -304,6 +328,43 @@ pub(crate) fn pinta_campo(
     });
     let hit = ctx.host.hit_index_mut();
     camada_das_listas::alvo(hit, CAMPO, faixa);
+    if com_texto {
+        camada_das_listas::alvo(hit, limpa(), ponta); // depois da faixa: o «×» ganha o clique
+    }
+}
+
+/// O «×» na ponta direita do campo, como o das buscas dos cartões (`Widget::Search`).
+fn pinta_o_x(
+    cena: &mut ph2d_vector::VectorScene,
+    ponta: Rect,
+    sobre: bool,
+    theme: ph2d_tokens::Theme,
+) {
+    use ph2d_editor_core::widget::card_ink::tinta;
+    use ph2d_tokens::ColorToken;
+    let fundo = if sobre {
+        ColorToken::CardFieldHover
+    } else {
+        ColorToken::CardField
+    };
+    let raio = ph2d_card_stack::metrics::FIELD_RADIUS;
+    ph2d_editor_core::paint::fill_rounded_rect(cena, ponta, raio, tinta(fundo, theme));
+    let g = ph2d_card_stack::metrics::HEAD_ICON_GLYPH;
+    let icone = Rect::new(
+        ponta.x + (ponta.w - g) * 0.5,
+        ponta.y + (ponta.h - g) * 0.5,
+        g,
+        g,
+    );
+    let cor = tinta(ColorToken::Text2, theme);
+    let traco = ph2d_tokens::StrokeToken::Default.px();
+    ph2d_editor_core::paint::paint_icon(
+        cena,
+        ph2d_editor_core::icons::IconId::Close,
+        icone,
+        cor,
+        traco,
+    );
 }
 
 /// O fundo da faixa (o da lista, cantos de cima redondos como os dela) e, com a lista rolada, o filete que a separa
@@ -351,6 +412,10 @@ fn pinta_faixa(
 /// Os eventos do campo. `None` = não é daqui.
 pub(crate) fn try_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<bool> {
     match ev {
+        WidgetEvent::Click(id) if id == limpa() => {
+            foca(host.store_mut(), true); // esvazia e o campo continua com o teclado
+            Some(true)
+        }
         WidgetEvent::Submit(id) if id == ids::PAINTER_WETPAINT_PRESET_SEARCH => {
             match REALCE_ID.with(Cell::get).and_then(preset_escolhido) {
                 Some(rel) => escolher_preset(host, rel),

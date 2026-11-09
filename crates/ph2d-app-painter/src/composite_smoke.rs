@@ -200,13 +200,16 @@ pub fn spawn_if_enabled(
 
 /// Armar a pilha da foto e o pincel na primeira vez que o Painter liga um documento sob a cena.
 /// UMA vez: depois disso tudo o que o artista mexer é dele.
+static ARMADO: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// `PH2D_COMPOSITE_PILHA=0` deixa o pincel sozinho, sem a pilha (o rabisco mede o pincel puro).
 pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
-    use std::sync::atomic::{AtomicBool, Ordering};
-    static ARMADO: AtomicBool = AtomicBool::new(false);
-    if !enabled() || ARMADO.swap(true, Ordering::Relaxed) {
+    if !enabled() || ARMADO.swap(true, std::sync::atomic::Ordering::Relaxed) {
         return;
     }
-    arma_a_pilha_do_dono(painter);
+    if std::env::var_os("PH2D_COMPOSITE_PILHA").is_none_or(|v| v != "0") {
+        arma_a_pilha_do_dono(painter);
+    }
     use ph2d_tool_painter::PaintMedia as Meio;
     match std::env::var("PH2D_COMPOSITE_PAINEL").as_deref() {
         Ok("water") => painter.set_paint_media(Meio::Watercolor),
@@ -214,6 +217,12 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
         Ok("wet") => painter.set_paint_media(Meio::WetPaint),
         Ok("layers") => painter.set_dock_shows_layers(true),
         _ => {}
+    }
+    if let Some(v) = std::env::var("PH2D_COMPOSITE_RELEVO")
+        .ok()
+        .and_then(|v| v.parse().ok())
+    {
+        painter.set_substrate_depth(v); // o papel com Relief (arma o papel de reserva)
     }
     // A foto da prévia de um pincel de fábrica (08/11, os esbatedores): `PH2D_COMPOSITE_PRESET=<nome>`.
     #[cfg(feature = "panel-painter-layers")]
@@ -268,7 +277,7 @@ pub fn rabisca(painter: &mut ph2d_tool_painter::PainterTool) {
         return;
     };
     // Só depois de a cena armar a pilha (o documento ligado).
-    if painter.composite_len() == 0 {
+    if !ARMADO.load(Ordering::Relaxed) {
         return;
     }
     const POR_QUADRO: u32 = 16;

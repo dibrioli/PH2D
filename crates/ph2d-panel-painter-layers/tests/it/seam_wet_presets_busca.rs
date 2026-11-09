@@ -240,3 +240,46 @@ fn o_campo_fica_no_topo_quando_a_lista_rola_e_a_faixa_tapa_as_linhas() {
         );
     }
 }
+
+/// **O «×» limpa a busca** (dono 09/11: «faltou o x de limpar o campo de busca»): com texto, o campo mostra o «×» na
+/// ponta direita; o clique nele esvazia o campo, o teclado fica no campo, a lista continua aberta inteira e o «×» some.
+#[test]
+fn o_x_do_campo_limpa_a_busca_e_o_teclado_fica_nele() {
+    let mut t = PainterTool::default();
+    t.set_paint_media(PaintMedia::WetPaint);
+    let (mut host, mut st, rects) = abre(&t);
+    let x = ph2d_editor_core::panel::cards::busca::limpa_de(ids::PAINTER_WETPAINT_PRESET_SEARCH);
+    assert!(
+        rect_of(&rects, x).is_none(),
+        "o campo vazio já mostra o «×»"
+    );
+
+    escreve(&mut host, &mut st, "gou");
+    let rects = pinta(&t, &mut host, &mut st);
+    let ponta = rect_of(&rects, x).expect("com texto, o «×» não está pintado");
+    let faixa = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_SEARCH).expect("a faixa do campo");
+    assert!(
+        ponta.x + ponta.w <= faixa.x + faixa.w && ponta.x > faixa.x + faixa.w * 0.5,
+        "o «×» não está na ponta direita do campo: {ponta:?} em {faixa:?}"
+    );
+    for ev in host.click_at(ponta.x + ponta.w * 0.5, ponta.y + ponta.h * 0.5) {
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+    }
+    assert_eq!(campo(&host), "", "o «×» não esvaziou o campo");
+    assert_eq!(
+        host.store().focus_id(),
+        Some(ids::PAINTER_WETPAINT_PRESET_SEARCH),
+        "depois do «×» o teclado saiu do campo"
+    );
+    let rects = pinta(&t, &mut host, &mut st);
+    assert!(
+        rect_of(&rects, x).is_none(),
+        "o campo vazio continua com o «×»"
+    );
+    for rel in [GOUACHE, ROUND, WASH] {
+        assert!(
+            rect_of(&rects, ids::painter_wetpaint_preset_option_id(2, rel)).is_some(),
+            "depois do «×» a lista não voltou inteira (falta {rel})"
+        );
+    }
+}

@@ -132,16 +132,15 @@ pub fn importa_ase(
 /// do `.ase` (o documento reconstruído pelo `ph2d_pixel_io::folha_json`, depois [`importa`]).
 ///
 /// # Errors
-/// O texto do erro do leitor.
+/// O erro do leitor ([`ph2d_pixel_io::abrir::ErroAbrir::FolhaPartida`]: exportada com Split).
 pub fn importa_folha(
     png: &[u8],
     json: &str,
     normal_png: Option<&[u8]>,
     nome_sem_tags: &str,
     m_por_px: f64,
-) -> Result<SpriteImportado, String> {
-    let (s, colliders) = ph2d_pixel_io::folha_json::abrir_folha_json(png, json, normal_png)
-        .map_err(|e| e.to_string())?;
+) -> Result<SpriteImportado, ph2d_pixel_io::abrir::ErroAbrir> {
+    let (s, colliders) = ph2d_pixel_io::folha_json::abrir_folha_json(png, json, normal_png)?;
     Ok(importa(
         &com_colliders(&s, &colliders),
         nome_sem_tags,

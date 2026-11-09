@@ -20,6 +20,8 @@ pub enum ErroAbrir {
     Vazio,
     /// Os quadros da sequência não têm todos o mesmo tamanho.
     TamanhosDiferentes,
+    /// A folha foi exportada com Split (camadas, tags ou slices): mais de uma sequência numa imagem.
+    FolhaPartida,
 }
 
 impl std::fmt::Display for ErroAbrir {
@@ -30,6 +32,7 @@ impl std::fmt::Display for ErroAbrir {
             Self::Documento(e) => write!(f, "{e:?}"),
             Self::Vazio => write!(f, "the file has no image"),
             Self::TamanhosDiferentes => write!(f, "the frames of the sequence differ in size"),
+            Self::FolhaPartida => write!(f, "the sheet was exported with Split"),
         }
     }
 }
@@ -375,9 +378,23 @@ pub fn importar_folha_com(
 pub(crate) fn quadros_do_json(j: &serde_json::Value) -> Vec<&serde_json::Value> {
     match &j["frames"] {
         serde_json::Value::Array(a) => a.iter().collect(),
-        serde_json::Value::Object(o) => o.values().collect(),
+        serde_json::Value::Object(o) => {
+            // Sem o `preserve_order` do serde_json o mapa vem por NOME: a ordem do ficheiro volta pelo
+            // índice do quadro que o nome traz (`heroi 10.png` depois de `heroi 2.png`).
+            let mut v: Vec<_> = o.iter().collect();
+            v.sort_by_key(|(n, _)| indice_do_nome(n));
+            v.into_iter().map(|(_, q)| q).collect()
+        }
         _ => Vec::new(),
     }
+}
+
+/// O último número do nome sem a extensão (`heroi 12.png` ⇒ 12); sem número, depois de todos.
+pub(crate) fn indice_do_nome(n: &str) -> u64 {
+    let raiz = n.rsplit_once('.').map_or(n, |(r, _)| r);
+    let fim = raiz.trim_end_matches(|c: char| !c.is_ascii_digit());
+    let digitos = fim.len() - fim.trim_end_matches(|c: char| c.is_ascii_digit()).len();
+    fim[fim.len() - digitos..].parse().unwrap_or(u64::MAX)
 }
 
 /// A duração do quadro cujo retângulo tem o centro nesta célula.

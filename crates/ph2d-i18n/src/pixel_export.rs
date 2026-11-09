@@ -191,6 +191,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "These images have different sizes, so they cannot be frames of one sprite."
         }
         "pixel.io.err.invalid" => "This file does not make a valid sprite.",
+        "pixel.io.err.split_sheet" => {
+            "This sheet was exported with Split layers, Split tags or Split slices, so it holds more than one animation. Export it again with the Split options off."
+        }
         "pixel.io.err.gif_size" => "This image is too large for a GIF (65,535 px at most).",
         "pixel.io.err.too_large" => "This scale is too large (65,535 px per side at most).",
         "pixel.io.err.ase_frames" => "Too many frames for an .ase file: {n} (65,535 at most).",

@@ -68,6 +68,7 @@ pub fn erro_abrir(e: &ErroAbrir) -> String {
         ErroAbrir::Formato(x) => tr_with("pixel.io.err.type", &[("e", x)]),
         ErroAbrir::Vazio => tr("pixel.io.err.empty").to_owned(),
         ErroAbrir::TamanhosDiferentes => tr("pixel.io.err.sizes").to_owned(),
+        ErroAbrir::FolhaPartida => tr("pixel.io.err.split_sheet").to_owned(),
         ErroAbrir::Ler(d) => tr_with("pixel.io.err.detail", &[("e", d)]),
         ErroAbrir::Documento(_) => tr("pixel.io.err.invalid").to_owned(),
     }

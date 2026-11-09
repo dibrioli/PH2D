@@ -184,7 +184,12 @@ pub fn gravar_com(
             };
             if let Some(j) = x.json {
                 let t = sheet::json_da_folha(s, &f, &imagem, saida::formato_json(&modo), j);
-                let t = if x.opcoes.godot { com_pivos(s, &t) } else { t };
+                // O pivô por quadro sai sempre que o artista escolheu um (o import o lê de volta).
+                let t = if x.opcoes.godot || s.pivot_slice().is_some() {
+                    com_pivos(s, &t)
+                } else {
+                    t
+                };
                 let c = caminho.with_extension("json");
                 escreve(&c, t.as_bytes())?;
                 ficheiros.push(c);

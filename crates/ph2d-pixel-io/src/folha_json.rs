@@ -67,6 +67,9 @@ pub fn abrir_folha_json(
     if quadros.is_empty() {
         return Err(ErroAbrir::Vazio);
     }
+    if partida(&j) {
+        return Err(ErroAbrir::FolhaPartida);
+    }
     let (cor, nor) = (LayerId(1), LayerId(2));
     let mut frames = Vec::with_capacity(quadros.len());
     let mut cels = Vec::new();
@@ -74,7 +77,7 @@ pub fn abrir_folha_json(
     for (i, q) in quadros.iter().enumerate() {
         let (w, h, px) = quadro_de(q, &folha).ok_or_else(mal)?;
         if *lados.get_or_insert((w, h)) != (w, h) {
-            return Err(mal());
+            return Err(ErroAbrir::FolhaPartida);
         }
         let id = FrameId(3 + i as u32);
         let ms = q["duration"].as_u64().and_then(|m| u32::try_from(m).ok());
@@ -179,4 +182,18 @@ fn poe_pivo(s: &mut Sprite, j: &serde_json::Value) {
             return;
         }
     }
+}
+
+/// A folha leva mais de uma sequência (Split): o índice que o nome de cada quadro traz repete-se
+/// (`heroi (Layer 1) 0` e `heroi (Normal Map) 0`; `heroi #idle 0` e `heroi #run 0`).
+fn partida(j: &serde_json::Value) -> bool {
+    let nomes: Vec<&str> = match &j["frames"] {
+        serde_json::Value::Array(a) => a.iter().filter_map(|q| q["filename"].as_str()).collect(),
+        serde_json::Value::Object(o) => o.keys().map(String::as_str).collect(),
+        _ => Vec::new(),
+    };
+    let mut vistos = std::collections::BTreeSet::new();
+    nomes
+        .iter()
+        .any(|n| !vistos.insert(crate::abrir::indice_do_nome(n)))
 }

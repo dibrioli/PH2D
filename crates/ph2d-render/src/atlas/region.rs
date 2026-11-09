@@ -42,6 +42,20 @@ impl AtlasRegion {
             (self.y as f32 + self.h as f32 - inset) / s,
         ]
     }
+
+    /// The region's EXACT UV rect, no inset. A sprite sheet divides THIS rect into cells: dividing the inset one
+    /// shifts every cell by a different fraction of a texel (−0,25 per frame on a 128×32 4×1 idle). The sprite
+    /// shader's `recorte_uv` keeps each cell from reading its neighbour.
+    /// Doc: docs/GameEngineFuncional/handoffs/HANDOFF_CONTINUACAO_2026-11-09_ALIGN_ONDA_B.md
+    pub fn uv_exact(self, atlas_size: u32) -> [f32; 4] {
+        let s = atlas_size.max(1) as f32;
+        [
+            self.x as f32 / s,
+            self.y as f32 / s,
+            (self.x + self.w) as f32 / s,
+            (self.y + self.h) as f32 / s,
+        ]
+    }
 }
 
 /// Returned by [`TextureAtlas::insert`] when the source can't be

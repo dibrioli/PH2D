@@ -68,29 +68,35 @@ pub fn region_subrect(
     let du = u1 - u0;
     let dv = v1 - v0;
     // Region beyond the source edges is clamped to the base rect.
-    let mut nu0 = (u0 + du * (rx / src_w)).clamp(u0, u1);
-    let mut nv0 = (v0 + dv * (ry / src_h)).clamp(v0, v1);
-    let mut nu1 = (u0 + du * ((rx + rw) / src_w)).clamp(u0, u1);
-    let mut nv1 = (v0 + dv * ((ry + rh) / src_h)).clamp(v0, v1);
-    if let Some((htu, htv)) = filter_clip_half_texel {
-        nu0 += htu;
-        nv0 += htv;
-        nu1 -= htu;
-        nv1 -= htv;
-        // A region thinner than one texel would invert under the inset;
-        // collapse it to its center so the sample stays inside.
-        if nu1 < nu0 {
-            let m = 0.5 * (nu0 + nu1);
-            nu0 = m;
-            nu1 = m;
-        }
-        if nv1 < nv0 {
-            let m = 0.5 * (nv0 + nv1);
-            nv0 = m;
-            nv1 = m;
-        }
+    let window = [
+        (u0 + du * (rx / src_w)).clamp(u0, u1),
+        (v0 + dv * (ry / src_h)).clamp(v0, v1),
+        (u0 + du * ((rx + rw) / src_w)).clamp(u0, u1),
+        (v0 + dv * ((ry + rh) / src_h)).clamp(v0, v1),
+    ];
+    filter_clip_half_texel.map_or(window, |ht| inset_half_texel(window, ht))
+}
+
+/// Move each edge of `uv` half a texel `(htu, htv)` inward (Godot `region_filter_clip`). A rect thinner than one
+/// texel collapses to its centre instead of inverting. ⚠️ Apply it to the FINAL rect (after the sheet cell is
+/// chosen): insetting before the grid divides a shrunk rect and every cell lands at a different sub-texel offset.
+pub fn inset_half_texel(uv: [f32; 4], (htu, htv): (f32, f32)) -> [f32; 4] {
+    let [mut nu0, mut nv0, mut nu1, mut nv1] = [uv[0] + htu, uv[1] + htv, uv[2] - htu, uv[3] - htv];
+    if nu1 < nu0 {
+        (nu0, nu1) = (0.5 * (nu0 + nu1), 0.5 * (nu0 + nu1));
+    }
+    if nv1 < nv0 {
+        (nv0, nv1) = (0.5 * (nv0 + nv1), 0.5 * (nv0 + nv1));
     }
     [nu0, nv0, nu1, nv1]
+}
+
+/// Does the sprite shader wrap this instance's UV (`sample_tiled`'s `wraps`: repeat Enabled/Mirror, or a UV
+/// offset)? A wrapping sprite skips the shader's in-rect clamp, so an atlas sprite that wraps keeps the half-texel
+/// inset on its final rect.
+pub fn sprite_wraps(flip_uv: u32, uv_xform: [f32; 4]) -> bool {
+    let mode = (flip_uv >> super::RenderInstance::REPEAT_SHIFT) & 0b11;
+    mode >= 2 || uv_xform[2] != 0.0 || uv_xform[3] != 0.0
 }
 
 #[cfg(test)]

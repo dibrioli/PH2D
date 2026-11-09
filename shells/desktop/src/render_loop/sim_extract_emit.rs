@@ -8,7 +8,7 @@ use bevy_ecs::world::EntityWorldMut;
 use ph2d_app_components::script_image;
 use ph2d_ecs::GlobalTransform;
 use ph2d_render::TextureAtlas;
-use ph2d_render::sprite::{region_subrect, sprite_sheet_subrect};
+use ph2d_render::sprite::{inset_half_texel, region_subrect, sprite_sheet_subrect, sprite_wraps};
 
 /// A sprite `spr` desta entidade: resolve a instância e põe os quads dela no `present`. Sai cedo, sem emitir nada,
 /// quando a textura cozida ainda não subiu — como o `return` do closure fazia.
@@ -56,7 +56,7 @@ pub(super) fn sprite(
     // can pick the right bind group at draw time.
     let (atlas_uv, texture_id) = match spr.source {
         ph2d_render::SpriteSource::Atlas { key } => (
-            atlas.region_uv(key),
+            atlas.region_uv_exact(key),
             ph2d_render::RenderInstance::ATLAS_TEXTURE_ID,
         ),
         ph2d_render::SpriteSource::Individual { texture_id } => ([0.0, 0.0, 1.0, 1.0], texture_id),
@@ -91,7 +91,7 @@ pub(super) fn sprite(
         ([0.0, 0.0, 1.0, 1.0], ov.texture_id, ov.premultiplied)
     } else if let Some(key) = law.and_then(|l| l.atlas_key) {
         (
-            atlas.region_uv(key),
+            atlas.region_uv_exact(key),
             ph2d_render::RenderInstance::ATLAS_TEXTURE_ID,
             false,
         )
@@ -150,7 +150,7 @@ pub(super) fn sprite(
     // ADR-0164 F1 passo 6: janela e grelha são componentes; ausentes = a
     // textura inteira e uma célula, que é o que os campos v4 significavam.
     let (region, grid) = (cut.region.filter(|_| aberta.is_none()), cut.grid);
-    let atlas_uv = region_uv(atlas_uv, region, override_for_entity, src_dims, spr, atlas);
+    let (atlas_uv, clip) = region_uv(atlas_uv, region, override_for_entity, src_dims, spr, atlas);
     // Sprite-sheet sub-UV (anatomia §03 §3.4): divide the
     // (possibly region-narrowed) atlas_uv rect into an
     // hframes×vframes grid and select `frame`'s cell. The
@@ -163,11 +163,17 @@ pub(super) fn sprite(
     // é ela que a folha aberta percorre. Derivá-la de volta a partir da célula
     // seria multiplicar por `hframes` uma conta que este sítio já tem exacta.
     let sheet_uv = atlas_uv;
-    let atlas_uv = if inteira {
+    let cell = if inteira {
         atlas_uv
     } else {
         sprite_sheet_subrect(atlas_uv, grid.hframes, grid.vframes, grid.frame)
     };
+    // The cell is cut from the EXACT rect; a half-texel inset (filter_clip, or an atlas sprite that wraps and so
+    // skips the shader's in-rect clamp) moves only the FINAL rect, the same for every frame.
+    let wraps_atlas = texture_id == RenderInstance::ATLAS_TEXTURE_ID && sprite_wraps(flip_uv, uv_xform);
+    let atlas_ht = 0.5 / atlas.size_px.max(1) as f32;
+    let clip = clip.or(wraps_atlas.then_some((atlas_ht, atlas_ht)));
+    let atlas_uv = clip.map_or(cell, |ht| inset_half_texel(cell, ht));
     let base = RenderInstance {
         world_pos,
         // LOCAL size — the basis applies world scale. ⚠️ Numa folha sob
@@ -367,8 +373,8 @@ fn spawn(
     }
 }
 
-/// A janela da região estreitada na UV da fonte (com o meio-texel do filtro) — fora de uma pré-visualização de
-/// ferramenta, cuja textura é o bake inteiro.
+/// A janela da região estreitada na UV da fonte, e o meio-texel do `filter_clip` (que o chamador aplica à célula
+/// final) — fora de uma pré-visualização de ferramenta, cuja textura é o bake inteiro.
 fn region_uv(
     atlas_uv: [f32; 4],
     region: Option<ph2d_ecs::SpriteRegion>,
@@ -376,7 +382,7 @@ fn region_uv(
     src_dims: Option<(u32, u32)>,
     spr: &Sprite,
     atlas: &TextureAtlas,
-) -> [f32; 4] {
+) -> ([f32; 4], Option<(f32, f32)>) {
     if let Some(region) = region.filter(|_| override_for_entity.is_none()) {
         match src_dims {
             Some((sw, sh)) => {
@@ -402,12 +408,12 @@ fn region_uv(
                 } else {
                     None
                 };
-                region_subrect(atlas_uv, region.rect, sw as f32, sh as f32, half_texel)
+                (region_subrect(atlas_uv, region.rect, sw as f32, sh as f32, None), half_texel)
             }
-            None => atlas_uv,
+            None => (atlas_uv, None),
         }
     } else {
-        atlas_uv
+        (atlas_uv, None)
     }
 }
 

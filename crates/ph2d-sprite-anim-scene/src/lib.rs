@@ -88,6 +88,9 @@ pub enum Foto {
     AlinhadasIdle,
     /// …e num quadro da `run`: a de cima cresce, a alinhada não.
     AlinhadasRun,
+    /// «Two Sheets» na `idle`, parada no quadro `k` e de perto (`animado_idle_q<k>`): cada quadro cai nos mesmos
+    /// pixels do canvas, como no editor (defeito do meio texel do átlas, 09/11).
+    IdleQuadro(u32),
     /// A prévia Align (GEF 28 B) no editor de «Two Sheets», num quadro da `run`, ligada pelo botão real.
     Alinhar,
     /// …e a pega do canto arrastada com o rato real até `2/3`: a `run` encolhe para o tamanho da `idle`.
@@ -98,7 +101,11 @@ pub enum Foto {
 
 #[must_use]
 pub fn foto() -> Option<Foto> {
-    match std::env::var("PH2D_GAME_SMOKE_FOTO").ok()?.trim() {
+    let nome = std::env::var("PH2D_GAME_SMOKE_FOTO").ok()?;
+    if let Some(k) = nome.trim().strip_prefix("animado_idle_q") {
+        return k.parse().ok().map(Foto::IdleQuadro);
+    }
+    match nome.trim() {
         "animado_vazio" => Some(Foto::Vazio),
         "animado_uso" => Some(Foto::EmUso),
         "animado_more" => Some(Foto::More),
@@ -132,6 +139,7 @@ impl Foto {
     pub fn vista(self) -> ([f32; 2], f32) {
         match self {
             Self::AlinhadasIdle | Self::AlinhadasRun => ([0.25, 4.3], 4.0),
+            Self::IdleQuadro(_) => (OBJETOS[5].1, 1.4),
             _ => VISTA,
         }
     }
@@ -155,7 +163,8 @@ impl Foto {
             | Self::FolhasTroca
             | Self::Alinhar
             | Self::AlinharEscala
-            | Self::AlinharDesfaz => DUAS,
+            | Self::AlinharDesfaz
+            | Self::IdleQuadro(_) => DUAS,
             Self::AlinhadasIdle | Self::AlinhadasRun => ALINHADAS,
         }
     }
@@ -322,6 +331,11 @@ fn alinha(q: u32, foto: Option<Foto>) -> Vec<Passo> {
         (10, _) => vec![P::Verbo(ALINHADAS, Verbo::ScaleSheet(ESCALA_DA_RUN))],
         (11, Some(Foto::AlinhadasIdle)) => quadro("idle"),
         (11, Some(Foto::AlinhadasRun)) => quadro("run"),
+        (11, Some(Foto::IdleQuadro(k))) => vec![
+            P::Anim(DUAS, Ed::SetCurrent("idle".into())),
+            P::Anim(DUAS, Ed::Playing(false)),
+            P::Anim(DUAS, Ed::SetStep(k)),
+        ],
         (15, _) => vec![P::Relata("alinhadas".into(), ALINHADAS)],
         _ => Vec::new(),
     }

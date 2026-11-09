@@ -38,5 +38,5 @@ pub use sheets::{
     sheet_geometry, sheet_sprite, sheet_view, upload_sheet_image,
 };
 pub use source_cells::SourceCells;
-pub use subrect::{region_subrect, sprite_sheet_subrect};
+pub use subrect::{inset_half_texel, region_subrect, sprite_sheet_subrect, sprite_wraps};
 pub use vertex::QuadVertex;

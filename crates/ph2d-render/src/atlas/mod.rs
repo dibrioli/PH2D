@@ -584,6 +584,13 @@ impl TextureAtlas {
         }
     }
 
+    /// [`Self::region_uv`] without the half-texel inset ([`AtlasRegion::uv_exact`]): what a sprite's cell and region
+    /// are cut from.
+    pub fn region_uv_exact(&self, key: u32) -> [f32; 4] {
+        self.region(key)
+            .map_or([0.0; 4], |r| r.uv_exact(self.size_px))
+    }
+
     /// Source pixel dimensions `(w, h)` of `key`'s packed region — i.e.
     /// the original image size (the atlas packs at native resolution, no
     /// scaling). `None` for an unknown key. Used by the extract to convert

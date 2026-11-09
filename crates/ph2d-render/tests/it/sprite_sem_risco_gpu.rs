@@ -228,7 +228,7 @@ fn fontes(gpu: &GpuContext) -> (SpriteRenderer, Vec<Fonte>) {
     let reg = |uv, ht| region_subrect(uv, [c, c, c, c], f, f, ht);
     let atlas_id = RenderInstance::ATLAS_TEXTURE_ID;
     let um = |id, rect| vec![instancia(id, rect, [c, c], 0)];
-    let ruv = r.atlas().region_uv(1);
+    let ruv = r.atlas().region_uv_exact(1); // the EXACT rect, as the extract cuts it (09/11)
     let meia = 0.5 / r.atlas().size_px as f32;
     let nove = SliceNine {
         draw_mode: SliceDrawMode::Sliced,
@@ -312,7 +312,7 @@ fn fontes(gpu: &GpuContext) -> (SpriteRenderer, Vec<Fonte>) {
         Fonte {
             nome: "Atlas · imagem inteira colada às vizinhas",
             id: atlas_id,
-            quads: um(atlas_id, r.atlas().region_uv(14)),
+            quads: um(atlas_id, r.atlas().region_uv_exact(14)),
         },
     ];
     (r, v)

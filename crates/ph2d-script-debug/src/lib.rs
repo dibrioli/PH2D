@@ -58,7 +58,7 @@ pub struct StopFrame {
 /// O que uma linha fez no último quadro (do objecto vigiado).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct LineLive {
-    /// Quantas vezes correu.
+    /// Quantas vezes correu numa só corrida (o laço; nunca os passos fixos do quadro).
     pub hits: u32,
     /// As locais que esta linha mudou ou criou (o último valor).
     pub values: Vec<Var>,
@@ -99,6 +99,8 @@ pub struct State {
     pub(crate) watched_chunk: String,
     pub(crate) frames: Vec<LiveFrame>,
     pub(crate) live: BTreeMap<u32, LineLive>,
+    /// As vezes que cada linha correu na corrida em curso (um `update`, um `on_signal`).
+    pub(crate) ran: BTreeMap<u32, u32>,
     pub(crate) shown: BTreeMap<u32, LineLive>,
     /// Paragens que não puderam ceder (dentro de uma função C ou de uma corrotina do script).
     pub(crate) blocked: u32,
@@ -270,6 +272,7 @@ impl Debugger {
                 s.watched_chunk = chunk;
                 s.shown.clear();
                 s.live.clear();
+                s.ran.clear();
             }
             s.frames.clear();
         }
@@ -283,6 +286,7 @@ impl Debugger {
         s.watched_chunk.clear();
         s.frames.clear();
         s.live.clear();
+        s.ran.clear();
         s.shown.clear();
     }
 
@@ -298,11 +302,27 @@ impl Debugger {
         s.watched != 0 && s.watched == s.current
     }
 
-    /// Fecha o quadro: o que o vigiado fez nele passa a ser o mostrado (se fez alguma coisa).
-    pub fn end_frame(&self) {
+    /// Fecha uma corrida (um passo fixo, os sinais, o `process`): `hits` guarda o máximo de uma só.
+    pub fn end_run(&self) {
         let mut s = self.state.borrow_mut();
-        if !s.live.is_empty() {
-            s.shown = std::mem::take(&mut s.live);
+        for (line, n) in std::mem::take(&mut s.ran) {
+            let l = s.live.entry(line).or_default();
+            l.hits = l.hits.max(n);
+        }
+    }
+
+    /// Fecha o quadro: cada linha que o vigiado correu nele troca o mostrado DELA; as outras guardam o
+    /// último valor (com dois passos fixos ou nenhum num quadro, uma linha não pisca).
+    pub fn end_frame(&self) {
+        self.end_run();
+        let mut s = self.state.borrow_mut();
+        for (line, mut l) in std::mem::take(&mut s.live) {
+            if l.values.is_empty()
+                && let Some(old) = s.shown.get_mut(&line)
+            {
+                l.values = std::mem::take(&mut old.values);
+            }
+            s.shown.insert(line, l);
         }
     }
 

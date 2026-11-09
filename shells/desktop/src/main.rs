@@ -885,6 +885,7 @@ impl App {
         if let Some(g) = self.gfx.as_mut() {
             ph2d_app_vec::ids_da_pilha::passe(&mut g.sim, &mut g.vec_scene);
         }
+        self.serve_code_smoke_hand();
         // A rede dos escritores tardios da árvore vive DENTRO do [`crate::undo_app`].
         self.post_frame_undo();
         if let Some(g) = self.gfx.as_mut() {

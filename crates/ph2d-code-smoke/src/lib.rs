@@ -80,6 +80,8 @@ pub enum Gesture {
         to: &'static str,
         member: &'static str,
     },
+    /// O Ctrl+Z pela JANELA (a shell recebe-o como do teclado; a tela virtual ignora teclas reais).
+    WindowUndo,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

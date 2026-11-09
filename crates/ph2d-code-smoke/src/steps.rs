@@ -402,4 +402,12 @@ pub const STEPS_13: &[&[Gesture]] = &[
         Gesture::Wait(Until::Peeking),
         Gesture::Frame,
     ],
+    // 5 — o rato volta à grelha e o Ctrl+Z da JANELA: o speed do Hero volta a 220.
+    &[
+        Gesture::PointAim(Aim::Cell(0, 0)),
+        Gesture::Frame,
+        Gesture::WindowUndo,
+        Gesture::Wait(Until::CellIs(0, 0, "220")),
+        Gesture::Frame,
+    ],
 ];

@@ -127,6 +127,20 @@ pub(crate) fn frame(docs: &mut CodeDocs) -> (bool, Option<bool>) {
     (show, c.ctrl)
 }
 
+/// A mão do roteiro neste quadro: um gesto entrou (a shell conta-o como entrada, como a do artista).
+static ACTED: AtomicBool = AtomicBool::new(false);
+/// Um [`Gesture::WindowUndo`] à espera de a shell o mandar pelo teclado da janela.
+static WINDOW_UNDO: AtomicBool = AtomicBool::new(false);
+
+/// A shell, antes do desfazer do quadro: `(houve gesto, Ctrl+Z da janela pedido)`, e esquece-os.
+#[must_use]
+pub fn take_hand() -> (bool, bool) {
+    (
+        ACTED.swap(false, Ordering::Relaxed),
+        WINDOW_UNDO.swap(false, Ordering::Relaxed),
+    )
+}
+
 /// Um quadro do condutor: os gestos até à próxima espera ou ao fim do passo entram já, na aba do
 /// 1.º script aberto.
 pub fn drive(docs: &mut CodeDocs, c: &mut Conductor) {
@@ -152,6 +166,7 @@ pub fn drive(docs: &mut CodeDocs, c: &mut Conductor) {
                 };
                 if let Some(ch) = s.chars().nth(c.typed) {
                     key(docs, tab, Key::Other, NONE, Some(&ch.to_string()));
+                    ACTED.store(true, Ordering::Relaxed);
                     c.typed += 1;
                     return;
                 }
@@ -165,6 +180,10 @@ pub fn drive(docs: &mut CodeDocs, c: &mut Conductor) {
             Gesture::Frame => {
                 c.gesture += 1;
                 return;
+            }
+            Gesture::WindowUndo => {
+                WINDOW_UNDO.store(true, Ordering::Relaxed);
+                true
             }
             _ => act(docs, id, g),
         };
@@ -181,6 +200,9 @@ pub fn drive(docs: &mut CodeDocs, c: &mut Conductor) {
         }
         c.since = None;
         c.gesture += 1;
+        if !matches!(g, Gesture::Wait(_)) {
+            ACTED.store(true, Ordering::Relaxed);
+        }
     }
 }
 
@@ -439,6 +461,7 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
         | Gesture::TabType(_)
         | Gesture::Wait(_)
         | Gesture::Ctrl(_)
+        | Gesture::WindowUndo
         | Gesture::Frame => {}
     }
     true

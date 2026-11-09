@@ -153,6 +153,13 @@ impl ScriptHost {
             .extend(signals.iter().map(|(n, de)| ((*n).to_owned(), *de)));
     }
 
+    /// Fecha uma corrida do vigiado (um passo fixo, os sinais, o `process`): o `×N` é de UMA.
+    pub(crate) fn debug_end_run(&mut self) {
+        if let Some(d) = self.debugger() {
+            d.end_run();
+        }
+    }
+
     /// Fecha o quadro desenhado: o que o vigiado fez nele passa a ser o mostrado.
     pub fn debug_end_frame(&mut self) {
         if let Some(d) = self.debugger() {

@@ -240,6 +240,7 @@ impl ScriptHost {
         let mut r = self
             .scene
             .tick(self.runtime.lua(), &self.deadline, sim, dt, doors);
+        self.debug_end_run();
         self.scene.absorb_error_stop(&mut r);
         self.console.advance(dt);
         self.devices.edges_seen();
@@ -268,6 +269,7 @@ impl ScriptHost {
         let mut r = self
             .scene
             .hear(self.runtime.lua(), &self.deadline, sim, &all, doors);
+        self.debug_end_run();
         self.scene.absorb_error_stop(&mut r);
         self.forget_the_dead(&r);
         r
@@ -289,6 +291,7 @@ impl ScriptHost {
         let mut r = self
             .scene
             .process(self.runtime.lua(), &self.deadline, sim, dt, doors);
+        self.debug_end_run();
         self.scene.absorb_error_stop(&mut r);
         self.forget_the_dead(&r);
         r

@@ -59,6 +59,8 @@ pub(crate) struct DocDebug {
     answered: bool,
     pub(crate) stopped: Option<usize>,
     pub(crate) ghosts: Vec<Ghost>,
+    /// Quando os valores ao vivo foram amostrados (ns do relógio da aba).
+    sampled: Option<u128>,
     pub(crate) card: Option<DebugCard>,
     /// Os botões que o último quadro pintou, e o cartão.
     pub(crate) painted: Vec<(Ask, Rect)>,
@@ -186,6 +188,15 @@ impl CodeDoc {
     }
 }
 
+/// ⭐ **O ritmo dos valores ao vivo** (smoke do dono 09/11: «piscam e não se leem»): o token `Slow`,
+/// 2,5 amostras por segundo — o ritmo do mostrador de um multímetro, abaixo dos 3 Hz da WCAG 2.3.1.
+/// Antes era a cada quadro (60 Hz). Sem nada mostrado, a 1.ª amostra é já (sem 400 ms de atraso).
+pub(crate) fn ghosts_due(sampled: Option<u128>, now_ns: u128) -> bool {
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let period = (f64::from(ph2d_tokens::Duration::Slow.ms()) * 1e6) as u128;
+    sampled.is_none_or(|t| now_ns.saturating_sub(t) >= period)
+}
+
 /// Os valores ao vivo de um script, por linha (0-based).
 pub(crate) fn ghosts(live: &BTreeMap<u32, LineLive>) -> Vec<Ghost> {
     live.iter()
@@ -208,6 +219,7 @@ pub(crate) fn frame(
     (watched, selected): (Option<ScriptId>, Option<Entity>),
     toasts: &mut ToastQueue,
 ) -> bool {
+    let now_ns = docs.clock.0;
     if std::mem::take(&mut docs.debug.toggle_pause) {
         h.set_pause_on_error(!h.pause_on_error());
     }
@@ -269,11 +281,13 @@ pub(crate) fn frame(
         d.debug.stopped = here
             .and_then(|s| s.frame.as_ref())
             .map(|f| (f.line as usize).saturating_sub(1));
-        d.debug.ghosts = if Some(d.script) == watched {
-            ghosts(&h.live_values(d.script))
-        } else {
-            Vec::new()
-        };
+        if Some(d.script) != watched {
+            d.debug.ghosts.clear();
+            d.debug.sampled = None;
+        } else if d.debug.ghosts.is_empty() || ghosts_due(d.debug.sampled, now_ns) {
+            d.debug.ghosts = ghosts(&h.live_values(d.script));
+            d.debug.sampled = Some(now_ns);
+        }
         d.debug.card = match here {
             Some(s) => Some(stop_card(s, &crate::frame::object_name(world, s.entity))),
             None if !d.debug.ghosts.is_empty() => live_who.as_ref().map(|who| DebugCard {
@@ -440,5 +454,24 @@ impl CodeDocs {
             .iter()
             .find(|d| d.script == id)?
             .mark_rect_of(needle)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// Um segundo a 60 quadros: os valores ao vivo mudam 3 vezes (0, 400 e 800 ms), não 60.
+    #[test]
+    fn os_valores_ao_vivo_amostram_duas_vezes_e_meia_por_segundo() {
+        let quadro_ns: u128 = 1_000_000_000 / 60;
+        let mut sampled = None;
+        let mut vezes = 0;
+        for i in 0..60 {
+            let now = 5_000_000_000 + i * quadro_ns;
+            if super::ghosts_due(sampled, now) {
+                sampled = Some(now);
+                vezes += 1;
+            }
+        }
+        assert_eq!(vezes, 3);
     }
 }

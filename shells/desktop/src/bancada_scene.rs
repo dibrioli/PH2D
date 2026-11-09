@@ -34,4 +34,15 @@ impl crate::App {
             o.got = got;
         }
     }
+
+    /// A mão do roteiro de smoke do editor de scripts: o gesto dele é entrada (o desfazer regista-o
+    /// como o do artista) e o `WindowUndo` entra pelo teclado da janela, Down e Up.
+    pub(crate) fn serve_code_smoke_hand(&mut self) {
+        let (acted, undo) = ph2d_app_code::smoke_drive::take_hand();
+        self.any_input_this_frame |= acted;
+        if undo {
+            self.smoke_key_z(false, true);
+            self.smoke_key_z(false, false);
+        }
+    }
 }

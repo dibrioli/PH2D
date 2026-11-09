@@ -458,5 +458,6 @@ unsafe fn live_step(l: *mut ffi::lua_State, s: &mut State, line: i32) {
             snapshot: now,
         }),
     }
-    s.live.entry(at).or_default().hits += 1;
+    s.live.entry(at).or_default();
+    *s.ran.entry(at).or_default() += 1;
 }

@@ -332,6 +332,41 @@ fn depurador_valores_ao_vivo_so_do_script_vigiado_e_de_um_objecto() {
     assert!(m.host.live_values(m.id).is_empty());
 }
 
+const LOOPS: &str = r#"
+function update(self, dt)
+  local x = ph2d.get(self.id, "x") -- @x
+  self.odd = not self.odd
+  if self.odd then
+    self.t = 1 -- @odd
+  end
+  for i = 1, 3 do
+    self.n = i -- @loop
+  end
+end
+"#;
+
+/// Smoke do dono 09/11: «×2» piscava no fim das linhas — era o quadro com DOIS passos fixos. O `×N` é
+/// de uma corrida (o laço), e uma linha que não correu num quadro guarda o último valor.
+#[test]
+fn depurador_o_vezes_e_de_uma_corrida_e_a_linha_que_nao_correu_nao_some() {
+    let mut m = Mesa::new(LOOPS, 1);
+    m.host.set_live_watch(Some(m.id), None);
+    m.frame();
+    let hits = |m: &Mesa, k| m.host.live_values(m.id).get(&at(LOOPS, k)).map(|x| x.hits);
+    // Um quadro com dois passos fixos: o `odd` corre num deles.
+    m.host.scene_sync(m.sim.world_mut());
+    m.host.scene_tick(&mut m.sim, DT);
+    m.host.scene_tick(&mut m.sim, DT);
+    m.host.debug_end_frame();
+    assert_eq!(hits(&m, "x"), Some(1), "dois passos não são «×2»");
+    assert_eq!(hits(&m, "loop"), Some(3), "o laço de uma corrida é «×3»");
+    assert_eq!(hits(&m, "odd"), Some(1));
+    // O quadro seguinte (um passo) não entra no `if`: a linha dele fica com o último valor.
+    m.frame();
+    assert_eq!(hits(&m, "odd"), Some(1), "a linha que não correu não some");
+    assert_eq!(hits(&m, "x"), Some(1));
+}
+
 const TWO_HOOKS: &str = r#"
 function physics(self, dt)
   local a = 1 -- @phys

@@ -114,3 +114,47 @@ cartão some». Cura (`ph2d-panel-code/src/bancada/popover.rs`, `mod.rs`):
   primeiro que a tecla chega à janela virtual.
 - **«Os números piscando rápido como ×2 no fim das linhas»** — os valores ao vivo da Onda D (D18) mudam a cada
   quadro: ilegíveis. Cura: amostrar poucas vezes por segundo (medir o ritmo; um token de duração da casa).
+
+## Fecho dos dois abertos (09/11, tarde) — CURADOS; falta só o smoke do dono
+
+### Passo 5 (Ctrl+Z da grelha): a hipótese do «jogo a correr» era FALSA
+
+- **Medido** (`PH2D_UNDO_LOG=1`): a cena 13 está em `EDIT` (`timeline.runtime = false`; o `playhead.play()` das cenas de
+  código anda o relógio, não o Play) — `motivo_da_supressao` nunca disse «jogo a correr». A cena 13 continua como estava;
+  não há pergunta ao dono sobre desfazer no Play.
+- **A tecla da foto nunca chegou:** com `FOTO_TECLAS="ctrl+z"` o log não tem `RECEBIDA` — o XTEST na Xwayland do
+  `kwin --virtual` é ignorado para teclas também (como já era para o rato). O `FOTO_TECLAS` fica, mas não prova nada.
+- **Prova pelo caminho real do teclado:** gesto novo `Gesture::WindowUndo` (`ph2d-code-smoke`); o condutor
+  (`smoke_drive::take_hand`) pede-o e a shell (`bancada_scene.rs` `serve_code_smoke_hand`, chamada em `main.rs` antes do
+  `post_frame_undo`) manda-o por `smoke_key_z` → `key_input`. O mesmo `take_hand` faz cada gesto do roteiro contar como
+  entrada (`any_input_this_frame`) — sem isso o `UndoLinks::tira_a_base(quieto)` re-tirava a base em todo quadro sem
+  entrada e engolia a edição do roteiro (só nas cenas conduzidas; a mão do artista é entrada).
+- `STEPS_13` passo 5 novo: rato na célula, `WindowUndo`, espera `CellIs(0,0,"220")`. Log: `passo registrado (fila
+  undo=1)` → `RECEBIDA pela janela` → `SOBREVIVEU A CADEIA` → `respondido por Global` → `undo aplicado` → passo 5 feito.
+  Foto `cena13/passo_5.png` (a célula do Hero volta a 220, cinzenta = valor do script).
+- A cura de fundo é a de `afa6ebdf9d` (com a grelha em foco a aba não consome o Ctrl+Z).
+- ⚠️ Observado na foto, fora do âmbito: depois do desfazer o separador da Timeline passou de «Arrange» a «Keys».
+
+### Valores ao vivo a piscar: três causas, curadas
+
+1. **O `×2` era o número de passos fixos do quadro** (1 ou 2 conforme o relógio): o `hits` contava o quadro inteiro.
+   Agora conta UMA corrida — `Debugger::end_run` (`ph2d-script-debug`) guarda o máximo por corrida, chamado pelo host
+   depois de cada `tick`/`hear`/`process` (`host.rs`, `host_debug.rs::debug_end_run`). Um laço de 3 continua `×3`.
+2. **Uma linha que não correu num quadro sumia** (o `end_frame` trocava o mapa inteiro): agora cada linha que correu troca
+   a DELA; as outras guardam o último valor (e as `values` antigas, se a nova corrida não mudou locais).
+3. **A pintura relia a cada quadro (60 Hz):** `debug.rs::ghosts_due` amostra com o token `Duration::Slow` (400 ms ⇒
+   **2,5 Hz**, o ritmo de um multímetro e abaixo dos 3 Hz da WCAG 2.3.1); sem nada mostrado, a 1.ª amostra é já.
+- Testes: `ph2d-script` `depurador_o_vezes_e_de_uma_corrida_e_a_linha_que_nao_correu_nao_some` (mutações: `+= n` em vez
+  do máximo ⇒ vermelho «dois passos não são ×2»; `shown.clear()` ⇒ vermelho «a linha que não correu não some»);
+  `ph2d-app-code` `os_valores_ao_vivo_amostram_duas_vezes_e_meia_por_segundo` (60 quadros ⇒ 3 amostras).
+- Fotos: `cena12/passo_3.png` e `cena12/valores_ao_vivo_3_fotos_0_3s.png` (três fotos a 0,3 s: `swing` legível, sem `×2`).
+
+### Provas desta rodada
+
+`ph2d-script depurador_` 23 ✓ · `ph2d-app-code depurador` 10 ✓ · `onda_b` 2 ✓ · `os_valores_ao_vivo` 2 ✓ · portões por
+nome ✓: `the_shell_only_shrinks`, `workspace_src_files_under_loc_cap`, `no_magic_numeric`, `hr15_no_hardcoded_ui_strings`,
+`no_literal_color`, `the_app_does_not_grow_past_its_numbered_ceiling`. Clippy `-D warnings` + fmt de `ph2d-script-debug`,
+`ph2d-script`, `ph2d-code-smoke`, `ph2d-app-code`, `ph2d-host-desktop` ✓. Binário `--profile smoke` 2×: a 2.ª zero
+`Compiling`. Shell: +13 linhas (`bancada_scene.rs` +11, `main.rs` +1), dentro do tecto (188 039 ≤ 189 041).
+
+**Próximo:** smoke do dono dos passos 5 e dos valores ao vivo; depois `/pd-linha-fechar`. Não integre, não pushe.

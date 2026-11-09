@@ -9,12 +9,15 @@ use super::prelude::*;
 
 pub const WET: &[Receita] = &[];
 
-/// O papel áspero NOSSO dos secos (o «Rough textured» do CSP não foi copiado): `Noise` procedural preso à tela.
-const PAPEL_ASPERO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.5, "depth_min": 0.0, "depth_pressure": true, "mode": 0}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [48.0, 48.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
-/// O papel do Pastel (K1): `Noise` 32 px de 3 oitavas, contraste 0,4, lido pelo Height com maciez e ponta afundada.
-const PAPEL_DO_PASTEL: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.8, "depth_min": 0.0, "depth_pressure": true, "mode": 4, "softness": 0.3, "tip_depth": true, "fill": 0.5}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.4, 0.5, 0.3, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
-/// O papel de desenho do Chalk (mais grosso).
-const PAPEL_DE_DESENHO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.3, "depth_min": 0.0, "depth_pressure": true, "mode": 0}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [80.0, 80.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+/// O papel áspero NOSSO do Crayon (o «Rough textured» do CSP não foi copiado): `Noise` 48 px preso à tela. Dono
+/// 10/11 (variante `Cr_H10`): enche o dente — lido pelo Height com maciez, ponta afundada e `fill` 0,5.
+const PAPEL_DO_CRAYON: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.5, "depth_min": 0.0, "depth_pressure": true, "mode": 4, "softness": 0.3, "tip_depth": true, "fill": 0.5}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [48.0, 48.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+/// O papel do Pastel — o grão do dono 10/11 (variante `P_dono`): `Noise` 120 px, contraste e brilho 0,55, detalhe 0,3,
+/// lido pelo Height com maciez, ponta afundada e `fill` 0,5.
+const PAPEL_DO_PASTEL: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.8, "depth_min": 0.0, "depth_pressure": true, "mode": 4, "softness": 0.3, "tip_depth": true, "fill": 0.5}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.55, 0.55, 0.3, 0.5, 0.5, 0.5], "rake": false, "size": [120.0, 120.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+/// O papel de desenho do Chalk (mais grosso, 80 px). Dono 10/11 (variante `Ch_H10`): enche o dente — Height com
+/// maciez, ponta afundada e `fill` 0,5.
+const PAPEL_DO_GIZ: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.3, "depth_min": 0.0, "depth_pressure": true, "mode": 4, "softness": 0.3, "tip_depth": true, "fill": 0.5}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [80.0, 80.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 /// A nuvem manchada das aguadas (o «Dappled cloud» do CSP não foi copiado): `Clouds` procedural.
 const NUVEM: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Clouds", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [160.0, 160.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
@@ -22,7 +25,8 @@ const NUVEM: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Clouds", "mappin
 // espalhamento da Splash, o tubo do Wet wash (véu 4,5×), a Brush Pen sem 2.ª ponta e o Finger tip curto.
 pub const MEIOS: &[ReceitaMeio] = &[
     // Crayon (CSP: 30 px, dureza 100, intervalo 20 contínuo, espessura 80, «Rough textured» dens 90, mistura
-    // 60/100/15, HSV por dab 10/−10/−3, Size P·T(30), Flow P): a cera que apanha um pouco de cor e deixa o papel.
+    // 60/100/15, HSV por dab 10/−10/−3, Size P·T(30), Flow P): a cera que apanha um pouco de cor. Dono 10/11: enche o
+    // dente (Height + fill, `Cr_H10`).
     ReceitaMeio {
         pincel: &[
             ("hardness", "0.9"),
@@ -30,8 +34,8 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("spacing", "0.1"),
             ("continuous_spacing", "true"),
             ("dab_flatten", "0.2"),
-            ("texture", PAPEL_ASPERO),
-            ("grain_depth", "0.3"),
+            ("texture", PAPEL_DO_CRAYON),
+            ("grain_depth", "1.0"),
             ("color_jitter_hue", "0.02"),
             ("color_jitter_val", "0.02"),
             (
@@ -50,7 +54,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
     },
     // Pastel — receita K1 (09/11, medida contra o Krita Chalk Soft; aprovada pelo dono): sem spray, o papel
     // decide a cobertura pelo Height com borda macia e ponta que afunda
-    // (`docs/Painter/handoffs/material_2026-11-09_pastel/README.md` FASE 3).
+    // (`docs/Painter/handoffs/material_2026-11-09_pastel/README.md` FASE 3); o grão é o do dono 10/11 (`P_dono`).
     ReceitaMeio {
         pincel: &[
             ("hardness", "0.75"),
@@ -74,7 +78,8 @@ pub const MEIOS: &[ReceitaMeio] = &[
         ..ReceitaMeio::digital("Pastel", "Pastel", "Pastel")
     },
     // Chalk (CSP: 30 px, dureza 81, intervalo 10, espessura 50, «Drawing paper C» dens 80, mistura 41/100/15, HSV
-    // 0/5/−10, Size P·T(50), Flow P·T(50)): o giz achatado e granulado.
+    // 0/5/−10, Size P·T(50), Flow P·T(50)): o giz achatado e granulado. Dono 10/11: enche o dente (Height + fill,
+    // `Ch_H10`).
     ReceitaMeio {
         pincel: &[
             ("hardness", "0.9"),
@@ -82,8 +87,8 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("spacing", "0.1"),
             ("dab_flatten", "0.2"),
             ("jitter", "0.02"),
-            ("texture", PAPEL_DE_DESENHO),
-            ("grain_depth", "0.3"),
+            ("texture", PAPEL_DO_GIZ),
+            ("grain_depth", "1.0"),
             ("color_jitter_sat", "0.02"),
             ("color_jitter_val", "0.04"),
             (

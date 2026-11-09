@@ -1466,7 +1466,7 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "sections/physics_colide.rs::fila_da_matriz",
+        "sections/physics_colide_fila.rs::fila",
         Canal,
         &["INSP_PHYS_COLLIDES", "INSP_RAY_SEES"],
         "os quadros de «Collides with» (collider) e «Sees» (Ray Sensor) são a matriz de camadas: o mesmo losango (`marcas_mundo::QUADROS`)",

@@ -181,3 +181,43 @@ pub fn liga_celulas(
     world.entity_mut(e).insert(cells);
     filhas
 }
+
+/// P14e D2: as slices do documento `doc` que têm collider NO MUNDO — uma filha com [`crate::SegueSlice`]
+/// num objecto que mostra esse documento. A marca é derivada daqui, nunca guardada no documento.
+#[must_use]
+pub fn slices_com_collider(
+    world: &mut ph2d_ecs::World,
+    doc: u32,
+) -> std::collections::BTreeSet<u32> {
+    let mut q = world.query::<(&crate::SegueSlice, &ph2d_ecs::ChildOf)>();
+    q.iter(world)
+        .filter(|(_, pai)| {
+            world
+                .get::<ph2d_ecs::PixelSprite>(pai.parent())
+                .is_some_and(|p| p.0 == doc)
+        })
+        .map(|(s, _)| s.slice)
+        .collect()
+}
+
+/// A CÓPIA a gravar: `ph2d.collider` nas slices de `colliders`, e em nenhuma outra. O documento
+/// não muda (nenhum passo de undo); a gravação recebe o conjunto por esta cópia e o
+/// `ph2d-pixel-io` continua sem conhecer o mundo.
+#[must_use]
+pub fn com_colliders(sprite: &Sprite, colliders: &std::collections::BTreeSet<u32>) -> Sprite {
+    let mut s = sprite.clone();
+    let mut lista = s.slices().to_vec();
+    let mut mudou = false;
+    for c in &mut lista {
+        let quer = colliders.contains(&c.id.0);
+        if slice_e_collider(c) != quer {
+            marca_collider(c, quer);
+            mudou = true;
+        }
+    }
+    if mudou {
+        // `Op::Slices` só troca a lista (as mesmas slices e ids): não tem como recusar.
+        let _ = ph2d_pixel_core::apply(&mut s, ph2d_pixel_core::Op::Slices(lista));
+    }
+    s
+}

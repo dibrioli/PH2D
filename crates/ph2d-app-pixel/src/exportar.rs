@@ -38,8 +38,8 @@ impl PixelApp {
             A::ExportSheet => self.abre_janela(Tela::Folha),
             A::ExportTileset => self.abre_janela(Tela::Tileset),
             A::RepeatExport => {
-                if let Some(d) = self.chave.and_then(|k| self.docs.get(&k))
-                    && let Some(t) = self.exporta.gravacoes.repete(&d.sprite)
+                if let Some((k, d)) = self.chave.and_then(|k| Some((k, self.docs.get(&k)?)))
+                    && let Some(t) = self.exporta.gravacoes.repete(&self.a_gravar(k, &d.sprite))
                 {
                     self.avisos.push((true, t));
                 }
@@ -75,7 +75,7 @@ impl PixelApp {
         if c.extension().is_none() {
             c.set_extension(ext);
         }
-        let s = doc.sprite.clone();
+        let s = self.a_gravar(key, &doc.sprite);
         self.exporta.gravacoes.comeca(s, e.clone(), c.clone());
         // Lembra já: o Repeat acende, e uma falha repete a mesma frase em vez de calar.
         if let Some(d) = self.docs.get_mut(&key) {

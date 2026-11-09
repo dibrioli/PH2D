@@ -198,6 +198,10 @@ pub struct PixelApp {
     /// A tela dos tilemaps ([`crate::tiles`]).
     pub(crate) tiles: crate::tiles::Estado,
     pub(crate) slices: crate::slices::Estado,
+    /// P14e D2: as slices com collider NO MUNDO, por documento (o `deriva` reescreve-as a cada
+    /// quadro); a gravação marca-as `ph2d.collider` numa cópia, o documento nunca.
+    pub(crate) colliders_no_mundo:
+        std::cell::RefCell<BTreeMap<u32, std::collections::BTreeSet<u32>>>,
     /// O gesto de selecção em curso (marquee, laços).
     pub(crate) laco: Option<crate::selecao::Laco>,
     /// Os atalhos: a fábrica com o delta de `~/.ph2d/pixel-keys.txt` (P12a).
@@ -297,6 +301,7 @@ impl Default for PixelApp {
             exporta: Default::default(),
             tiles: Default::default(),
             slices: Default::default(),
+            colliders_no_mundo: Default::default(),
             laco: None,
             solta: None,
             largada: None,

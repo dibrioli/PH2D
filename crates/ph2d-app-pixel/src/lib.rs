@@ -83,6 +83,23 @@ pub fn deriva(
         |k| app.docs.get(&k).map(|d| (&d.sprite, d.frame)),
         m_por_px,
     );
+    let marcas = app
+        .docs
+        .keys()
+        .map(|&k| (k, ph2d_pixel_cena::slices_com_collider(world, k)))
+        .filter(|(_, s)| !s.is_empty())
+        .collect();
+    *app.colliders_no_mundo.borrow_mut() = marcas;
+}
+
+impl PixelApp {
+    /// A cópia do documento `k` que se grava: `ph2d.collider` nas slices com collider no mundo.
+    pub(crate) fn a_gravar(&self, k: u32, s: &ph2d_pixel_core::Sprite) -> ph2d_pixel_core::Sprite {
+        match self.colliders_no_mundo.borrow().get(&k) {
+            Some(m) => ph2d_pixel_cena::com_colliders(s, m),
+            None => s.clone(),
+        }
+    }
 }
 
 /// A família declarada à shell.

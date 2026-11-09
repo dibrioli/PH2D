@@ -25,21 +25,52 @@ fn pixel_sprite() -> (SimWorld, Entity) {
     (sim, e)
 }
 
+/// O `.ase` que o Pixel grava deste documento: a marca de collider vem do MUNDO (D2).
+fn grava_do_mundo(s: &ph2d_pixel_core::Sprite, w: &mut ph2d_ecs::World) -> Vec<u8> {
+    let marcadas = ph2d_pixel_cena::slices_com_collider(w, 1);
+    ph2d_pixel_io::ase::escrever(&ph2d_pixel_cena::com_colliders(s, &marcadas))
+        .expect("grava")
+        .0
+}
+
+/// D2: Add Collider ⇒ gravar ⇒ reabrir dá a slice marcada; sem collider, não marca; o documento
+/// nunca leva a marca (nenhum passo de undo). *Mutação: `slices_com_collider` vazio ⇒ vermelho.*
+#[test]
+fn o_add_collider_marca_a_slice_ao_gravar() {
+    let s = heroi_p14();
+    let id = body(&s);
+    let (mut sim, e) = pixel_sprite();
+    let reaberta = |b: &[u8]| {
+        let (r, _) = ph2d_pixel_io::ase::ler(b).expect("reabre");
+        slice_e_collider(r.slices().iter().find(|c| c.name == "body").expect("body"))
+    };
+    assert!(
+        !reaberta(&grava_do_mundo(&s, sim.world_mut())),
+        "sem collider não marca"
+    );
+    adiciona_collider_da_slice(sim.world_mut(), e, id, &s, s.frames()[0].id, M)
+        .expect("Add Collider");
+    assert!(
+        reaberta(&grava_do_mundo(&s, sim.world_mut())),
+        "com collider marca"
+    );
+    assert!(
+        !slice_e_collider(s.slice(id).expect("body")),
+        "o documento não leva a marca"
+    );
+    // Outro documento no mesmo mundo não herda a marca.
+    assert!(ph2d_pixel_cena::slices_com_collider(sim.world_mut(), 2).is_empty());
+}
+
 #[test]
 fn o_inspector_abre_o_que_o_pixel_grava() {
     let s = heroi_p14();
-    assert!(
-        slice_e_collider(s.slice(body(&s)).expect("body")),
-        "a fixture marca body"
-    );
-    let (bytes, _) = ph2d_pixel_io::ase::escrever(&s).expect("grava");
-    let imp = importa_ase(&bytes, "heroi_p14", M).expect("import");
-
     // O Pixel Sprite da MESMA fixture, pelas portas do mundo.
     let (mut sim, e) = pixel_sprite();
     deriva(sim.world_mut(), |_| Some((&s, 1)));
     let f = adiciona_collider_da_slice(sim.world_mut(), e, body(&s), &s, s.frames()[0].id, M)
         .expect("Add Collider");
+    let imp = importa_ase(&grava_do_mundo(&s, sim.world_mut()), "heroi_p14", M).expect("import");
 
     // Tags.
     let clips_pixel = sim
@@ -94,7 +125,10 @@ fn o_inspector_abre_o_que_o_pixel_grava() {
 
 /// O Sprite do motor importado da `heroi_p14`: grelha 6×1, pivô e formas por célula ligados.
 fn sprite_importado(s: &ph2d_pixel_core::Sprite, w: &mut ph2d_ecs::World, y: f32) -> Entity {
-    let (bytes, _) = ph2d_pixel_io::ase::escrever(s).expect("grava");
+    // O `.ase` que o Pixel grava com o Add Collider em `body` (o conjunto vem do mundo, D2).
+    let um = std::collections::BTreeSet::from([body(s).0]);
+    let (bytes, _) =
+        ph2d_pixel_io::ase::escrever(&ph2d_pixel_cena::com_colliders(s, &um)).expect("grava");
     let imp = importa_ase(&bytes, "heroi_p14", M).expect("import");
     let mut t = Transform::IDENTITY;
     t.translation.y = y;

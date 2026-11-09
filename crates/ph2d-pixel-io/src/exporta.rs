@@ -190,11 +190,22 @@ pub fn gravar_com(
                 ficheiros.push(c);
             }
             if x.opcoes.godot {
-                let t = crate::godot::tres(s, &f, &imagem, normal.as_deref())
-                    .ok_or(ErroGravar::GodotSemQuadros)?;
-                let c = caminho.with_extension("tres");
-                escreve(&c, t.as_bytes())?;
-                ficheiros.push(c);
+                let tres = caminho.with_extension("tres");
+                let lista = if f.de_onde.iter().any(|d| d.1.is_some()) {
+                    crate::godot::tres_por_slice(s, &f, &imagem, normal.as_deref()).map(|v| {
+                        v.into_iter()
+                            .map(|(r, t)| (format!("_{}", r.replace(['/', '\\'], "_")), t))
+                            .collect()
+                    })
+                } else {
+                    crate::godot::tres(s, &f, &imagem, normal.as_deref())
+                        .map(|t| vec![(String::new(), t)])
+                };
+                for (sufixo, t) in lista.ok_or(ErroGravar::GodotSemQuadros)? {
+                    let c = com_sufixo(&tres, &sufixo);
+                    escreve(&c, t.as_bytes())?;
+                    ficheiros.push(c);
+                }
             }
             Ok(Gravado {
                 ficheiros,

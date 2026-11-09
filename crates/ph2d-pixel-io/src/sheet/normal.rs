@@ -55,6 +55,7 @@ impl<'a> Normais<'a> {
             dono: None,
             quadro: p.quadro,
             de: p.de,
+            fatia: p.fatia,
         };
         carimba(rgba, fw, l, &peca, o);
     }

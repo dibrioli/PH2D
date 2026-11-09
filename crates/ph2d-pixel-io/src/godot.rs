@@ -4,7 +4,7 @@
 //! ciclo com `loop = true`). `speed` = 1000 / mdc das durações da tag, cada quadro com `duration` =
 //! múltiplo EXATO. Oráculo: o Godot corrido (`a_sequencia_e_a_do_godot`, `o_tres_abre_no_godot`).
 
-use ph2d_pixel_core::{Direction, Sprite};
+use ph2d_pixel_core::{Direction, SliceId, Sprite};
 
 use crate::sheet::Folha;
 
@@ -87,12 +87,39 @@ pub fn animacoes(s: &Sprite, nome_sem_tags: &str) -> Vec<Animacao> {
         .collect()
 }
 
-/// O pivô do quadro 0 em píxeis do sprite: a origem de um `AnimatedSprite2D` com `centered = false`
-/// é `offset = -pivô` (o Godot não muda o offset por quadro; o pivô de cada quadro vai no JSON).
-#[must_use]
-pub fn offset(s: &Sprite) -> (f64, f64) {
-    let (x, y) = ph2d_pixel_core::slice::pivot_px(s, 0);
-    (-x, -y)
+/// **O pivô ASSADO** (P14d-2): o `offset` de um `AnimatedSprite2D` é do nó, não do quadro. Cada
+/// célula ganha, na `margin` do seu AtlasTexture, o deslocamento inteiro `P − ⌊pivô(q)⌋` (`P` = o
+/// maior `⌊pivô⌋` de todos os quadros), e todas crescem ao mesmo tamanho: o pivô de cada quadro cai
+/// no MESMO ponto da célula, e `offset = −(P + fração do pivô 0)` o põe no nó (`centered = false`).
+/// Pivô fixo ⇒ deslocamento zero e os bytes de antes.
+struct Ancora {
+    desloca: Vec<(u32, u32)>,
+    tamanho: (u32, u32),
+    offset: (f64, f64),
+}
+
+fn ancora(s: &Sprite) -> Ancora {
+    let p = pivos(s);
+    let chao: Vec<(i64, i64)> = p
+        .iter()
+        .map(|&(x, y)| (x.floor() as i64, y.floor() as i64))
+        .collect();
+    let mx = chao.iter().map(|c| c.0).max().unwrap_or(0);
+    let my = chao.iter().map(|c| c.1).max().unwrap_or(0);
+    let (w, h) = (i64::from(s.width()), i64::from(s.height()));
+    let ex = chao.iter().map(|c| w - c.0).max().unwrap_or(w);
+    let ey = chao.iter().map(|c| h - c.1).max().unwrap_or(h);
+    let (f0x, f0y) = p
+        .first()
+        .map_or((0.0, 0.0), |&(x, y)| (x - x.floor(), y - y.floor()));
+    Ancora {
+        desloca: chao
+            .iter()
+            .map(|c| ((mx - c.0) as u32, (my - c.1) as u32))
+            .collect(),
+        tamanho: ((mx + ex) as u32, (my + ey) as u32),
+        offset: (-(mx as f64 + f0x), -(my as f64 + f0y)),
+    }
 }
 
 /// O pivô de cada quadro (`meta.pivots` do JSON).
@@ -108,13 +135,67 @@ fn esc(t: &str) -> String {
 }
 
 /// **O texto do `.tres`.** `imagem` e `normal` são caminhos relativos ao `.tres`. `None` se a folha
-/// não tem uma peça por quadro (split de camadas/tags/slices/grelha: o Godot não tem onde as pôr).
+/// não tem uma peça por quadro (split de camadas/tags/grelha: o Godot não tem onde as pôr; Split
+/// slices é [`tres_por_slice`]).
 #[must_use]
 pub fn tres(s: &Sprite, f: &Folha, imagem: &str, normal: Option<&str>) -> Option<String> {
-    if f.entradas.len() != s.frames().len() {
+    if f.entradas.len() != s.frames().len() || f.de_onde.iter().any(|d| d.1.is_some()) {
         return None;
     }
+    let celulas = celulas(s, f, None)?;
+    celulas
+        .iter()
+        .all(Option::is_some)
+        .then(|| texto(s, f, &celulas, imagem, normal))
+}
+
+/// **Split slices** (P14d-2): um `.tres` por slice — `(rótulo, texto)`, na ordem do JSON —, cada um
+/// com as tags sobre as peças DESSA slice (o quadro em que ela se esconde fica fora da animação).
+/// `None` se a folha não é de Split slices só (com camadas/tags/grelha: várias peças por quadro).
+#[must_use]
+pub fn tres_por_slice(
+    s: &Sprite,
+    f: &Folha,
+    imagem: &str,
+    normal: Option<&str>,
+) -> Option<Vec<(String, String)>> {
+    if f.de_onde.iter().all(|d| d.1.is_none()) {
+        return None;
+    }
+    crate::sheet::rotulos_das_slices(s)
+        .into_iter()
+        .filter(|(id, _)| f.de_onde.iter().any(|d| d.1 == Some(*id)))
+        .map(|(id, rotulo)| {
+            let c = celulas(s, f, Some(id))?;
+            Some((rotulo, texto(s, f, &c, imagem, normal)))
+        })
+        .collect()
+}
+
+/// A entrada de cada quadro (da slice `fatia`); `None` se algum quadro tem duas.
+fn celulas(s: &Sprite, f: &Folha, fatia: Option<SliceId>) -> Option<Vec<Option<usize>>> {
+    let mut c = vec![None; s.frames().len()];
+    for (i, &(quadro, sl)) in f.de_onde.iter().enumerate() {
+        if sl != fatia {
+            continue;
+        }
+        let q = s.frames().iter().position(|fr| fr.id == quadro)?;
+        if c[q].replace(i).is_some() {
+            return None;
+        }
+    }
+    Some(c)
+}
+
+fn texto(
+    s: &Sprite,
+    f: &Folha,
+    celulas: &[Option<usize>],
+    imagem: &str,
+    normal: Option<&str>,
+) -> String {
     let anims = animacoes(s, "default");
+    let a = ancora(s);
     let mut o = String::new();
     o.push_str("[gd_resource type=\"SpriteFrames\" format=3]\n\n");
     o.push_str(&format!(
@@ -133,8 +214,11 @@ pub fn tres(s: &Sprite, f: &Folha, imagem: &str, normal: Option<&str>) -> Option
         "ExtResource(\"1\")"
     };
     o.push('\n');
-    for (i, e) in f.entradas.iter().enumerate() {
+    for (q, i) in celulas.iter().enumerate() {
+        let Some(i) = *i else { continue };
+        let e = &f.entradas[i];
         let pad = (e.frame[2] - e.origem[2]) / 2;
+        let (dx, dy) = a.desloca[q];
         o.push_str(&format!(
             "[sub_resource type=\"AtlasTexture\" id=\"q{i}\"]\natlas = {atlas}\n\
              region = Rect2({}, {}, {}, {})\nmargin = Rect2({}, {}, {}, {})\n\n",
@@ -142,28 +226,39 @@ pub fn tres(s: &Sprite, f: &Folha, imagem: &str, normal: Option<&str>) -> Option
             e.frame[1] + pad,
             e.origem[2],
             e.origem[3],
-            e.origem[0],
-            e.origem[1],
-            e.tamanho[0] - e.origem[2],
-            e.tamanho[1] - e.origem[3],
+            e.origem[0] + dx,
+            e.origem[1] + dy,
+            a.tamanho.0 - e.origem[2],
+            a.tamanho.1 - e.origem[3],
         ));
     }
-    let (ox, oy) = offset(s);
+    let (ox, oy) = a.offset;
     o.push_str("[resource]\n");
     o.push_str(&format!("metadata/ph2d_offset = Vector2({ox:?}, {oy:?})\n"));
     o.push_str("animations = [");
-    for (k, a) in anims.iter().enumerate() {
+    let mut k = 0;
+    for a in &anims {
+        let quadros: Vec<(usize, u32)> = a
+            .quadros
+            .iter()
+            .zip(&a.duracoes)
+            .filter_map(|(&q, &d)| celulas[q].map(|i| (i, d)))
+            .collect();
+        if quadros.is_empty() {
+            continue;
+        }
         if k > 0 {
             o.push_str(", ");
         }
+        k += 1;
         o.push_str("{\n\"frames\": [");
-        for (j, (&q, &d)) in a.quadros.iter().zip(&a.duracoes).enumerate() {
+        for (j, (i, d)) in quadros.iter().enumerate() {
             if j > 0 {
                 o.push_str(", ");
             }
             o.push_str(&format!(
-                "{{\n\"duration\": {:?},\n\"texture\": SubResource(\"q{q}\")\n}}",
-                f64::from(d)
+                "{{\n\"duration\": {:?},\n\"texture\": SubResource(\"q{i}\")\n}}",
+                f64::from(*d)
             ));
         }
         o.push_str(&format!(
@@ -174,5 +269,5 @@ pub fn tres(s: &Sprite, f: &Folha, imagem: &str, normal: Option<&str>) -> Option
         ));
     }
     o.push_str("]\n");
-    Some(o)
+    o
 }

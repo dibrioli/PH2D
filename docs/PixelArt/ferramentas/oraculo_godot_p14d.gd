@@ -26,7 +26,27 @@ class Gravador extends Node:
 			print("APOS_PLAY ", JSON.stringify(logo_apos_play))
 			get_tree().quit(0)
 
+# P14d-2: Split slices ⇒ um .tres por slice em res://split/; cada um abre e lista as tags.
+func abre_os_do_split():
+	var r = {}
+	var d = DirAccess.open("res://split")
+	if d == null:
+		return r
+	for n in d.get_files():
+		if not n.ends_with(".tres"):
+			continue
+		var s = load("res://split/" + n)
+		if s == null:
+			r[n] = {"erro": "load"}
+			continue
+		var an = {}
+		for a in s.get_animation_names():
+			an[String(a)] = s.get_frame_count(a)
+		r[n] = {"erro": null, "animacoes": an}
+	return r
+
 func _init():
+	print("SPLIT ", JSON.stringify(abre_os_do_split()))
 	var sf = load("res://heroi.tres")
 	if sf == null:
 		print("ABRE ", JSON.stringify({"erro": "load"}))
@@ -64,7 +84,8 @@ func _init():
 		var dif = 0
 		var comp = 0
 		var r = at.region
-		var m = at.margin.position
+		# A origem é a do NOSSO JSON: a margin leva também o pivô assado (P14d-2).
+		var m = Vector2(int(j["frames"][q]["spriteSourceSize"]["x"]), int(j["frames"][q]["spriteSourceSize"]["y"]))
 		for dy in range(int(r.size.y)):
 			for dx in range(int(r.size.x)):
 				var o = ((int(m.y) + dy) * 16 + int(m.x) + dx) * 4

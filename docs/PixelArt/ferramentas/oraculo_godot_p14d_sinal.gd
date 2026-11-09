@@ -16,6 +16,10 @@ func _init():
 	spr = Sprite2D.new()
 	spr.texture = sf.get_frame_texture("idle", 0)
 	spr.scale = Vector2(8, 8)
+	# O disco (centro em (8, 8) do sprite) no nó; o quadro 0 não leva deslocamento do pivô assado
+	# (P14d-2), e a célula cresceu: centered mudaria o centro.
+	spr.centered = false
+	spr.offset = Vector2(-8, -8)
 	spr.position = Vector2(128, 128)
 	spr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	root.add_child(spr)

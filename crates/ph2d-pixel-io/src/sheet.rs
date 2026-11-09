@@ -10,9 +10,15 @@ pub use nomes::nome_do_quadro;
 use nomes::padrao;
 pub use normal::tem_normal;
 
+/// O rótulo de cada slice na saída (o `{slice}` dos nomes e o `_<slice>` do `.tres`).
+#[must_use]
+pub fn rotulos_das_slices(s: &Sprite) -> Vec<(SliceId, String)> {
+    fatias::rotulos(s)
+}
+
 use std::collections::BTreeMap;
 
-use ph2d_pixel_core::{FrameId, Layer, LayerId, LayerKind, Sprite};
+use ph2d_pixel_core::{FrameId, Layer, LayerId, LayerKind, SliceId, Sprite};
 use ph2d_sprite_sheet::pack::{LayoutItem, PackOptions, layout};
 
 use crate::render::{Camadas, Direcao, Quadros, composto, entra, ordem};
@@ -98,6 +104,8 @@ pub struct Folha {
     /// P14d: a folha das normais, `w * h * 4`, peça a peça no lugar da de cor; `None` sem pedido ou
     /// sem camada Normal Map.
     pub normal: Option<Vec<u8>>,
+    /// De onde veio cada entrada: o quadro e, em Split slices, a slice (P14d-2: o `.tres` por slice).
+    pub de_onde: Vec<(FrameId, Option<SliceId>)>,
 }
 
 /// Uma peça antes de ter lugar.
@@ -112,6 +120,8 @@ struct Peca {
     /// O quadro e o canto de `px` no canvas (pode sair dele, na grelha): a normal corta-se igual.
     quadro: FrameId,
     de: [i32; 2],
+    /// A slice desta peça, em Split slices.
+    fatia: Option<SliceId>,
 }
 
 /// A grelha de `--split-grid` e `--trim-by-grid`. O Trial usa a do sprite, que abre com a do tile numa
@@ -288,6 +298,7 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str, feito: &dyn Fn(f3
                             dono: None,
                             quadro: fr.id,
                             de: [x, y],
+                            fatia: None,
                         });
                         item += 1;
                     }
@@ -316,6 +327,7 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str, feito: &dyn Fn(f3
                             dono: None,
                             quadro: fr.id,
                             de: [r.x, r.y],
+                            fatia: Some(*id),
                         });
                         itens_da_slice[k] += 1;
                     }
@@ -338,6 +350,7 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str, feito: &dyn Fn(f3
                     dono,
                     quadro: fr.id,
                     de: [0, 0],
+                    fatia: None,
                 });
             }
             grupo += 1;
@@ -566,6 +579,7 @@ pub fn montar_com(
         rgba,
         entradas,
         normal: normal.folha(),
+        de_onde: v.iter().map(|p| (p.quadro, p.fatia)).collect(),
     }
 }
 

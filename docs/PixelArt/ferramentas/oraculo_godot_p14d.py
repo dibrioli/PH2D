@@ -32,13 +32,20 @@ def main():
     s = subprocess.run(["xvfb-run", "-a", "godot", "--rendering-driver", "opengl3", "--path", str(d),
                         "--script", str(AQUI / "oraculo_godot_p14d_sinal.gd")],
                        capture_output=True, text=True, timeout=120)
+    v = subprocess.run(["xvfb-run", "-a", "godot", "--rendering-driver", "opengl3", "--path", str(d),
+                        "--script", str(AQUI / "oraculo_godot_p14d_pivo.gd")],
+                       capture_output=True, text=True, timeout=120)
     SAIDA.write_text(json.dumps({
         "_cabecalho": {
             "oraculo": "Godot 4.7.2 (MIT, pacote godot 4.7.2-2.1); sequencia/abre/recorte --headless "
                        "--fixed-fps 1000; sinal xvfb opengl3 (render real)",
             "comando": "PH2D_GPU=1 bash scripts/ph2d-run.sh python3 -I docs/PixelArt/ferramentas/oraculo_godot_p14d.py <pasta>",
             "data": "2026-11-09",
-            "entrada": "heroi_p14 exportada (trim, border 2, shape 1, inner 1, Normal map sheet, Godot .tres)",
+            "entrada": "heroi_p14 + tags walk3 (0-2 Forward repeat 3) e back2 (3-5 Reverse repeat 2), exportada "
+                       "(trim, border 2, shape 1, inner 1, Normal map sheet, Godot .tres); split/ = a mesma com "
+                       "Split slices (um .tres por slice)",
+            "pivo": "AnimatedSprite2D centered=false, offset = metadata/ph2d_offset, no em (64,64), xvfb opengl3; "
+                    "T = caixa dos pixeis acesos do render - caixa do nosso cor<q>; desvio = T + pivo(q) - no",
             "regra": "sequencia[tag][t] = quadro do sprite em t ms (t = 0..2000), lido pela regiao da AtlasTexture",
             "diferenca": "o Godot mostra o quadro seguinte 1 passo DEPOIS da fronteira (convencao: exato mostra "
                          "a troca no passo 65 com 64 passos de 1/64; e o frame_progress e float32: 0.9999994 em "
@@ -53,6 +60,8 @@ def main():
         "apos_play": linha(r.stdout, "APOS_PLAY"),
         "progresso_idle": linha(r.stdout, "PROGRESSO"),
         "exato": linha(x.stdout, "EXATO"),
+        "pivo": linha(v.stdout, "PIVO"),
+        "split": linha(r.stdout, "SPLIT"),
     }, indent=1))
     print("gravado", SAIDA)
 

@@ -60,7 +60,7 @@ impl PixelApp {
         let prefs = self
             .chave
             .and_then(|k| Some(*self.docs.get(&k)?.sprite.prefs()));
-        if let (Some(k), Some(p)) = (self.chave, ph2d_panel_pixel_prefs::canal::troca(prefs)) {
+        if let (Some(k), Some(p)) = (self.chave, ph2d_pixel_render::prefs_canal::troca(prefs)) {
             self.muda_prefs(k, |x| *x = p);
         }
         if editing.is_none() {

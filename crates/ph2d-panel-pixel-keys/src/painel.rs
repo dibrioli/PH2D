@@ -32,10 +32,10 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         botao(store, id);
     }
     store.set_tooltip(ids::IMPORT, tr("panel.pixel_keys.import_tip"));
-    store.set_tooltip(ids::EXPORT, tr("panel.pixel_keys.export_tip"));
+    store.set_tooltip(ids::KEYS_EXPORT, tr("panel.pixel_keys.export_tip"));
     ph2d_editor_core::panel::cards::busca::regista(store, ids::SEARCH);
     store.register(
-        ids::DRAG,
+        ids::KEYS_DRAG,
         InteractiveState::BlenderHit {
             parent: PixelKeysPanel::NODE_ID,
             kind: BlenderHitKind::DragHandle,
@@ -236,7 +236,7 @@ fn cartao_topo(modo: Modo, aviso: Option<String>, vazio: bool) -> CardDef<'stati
                 y = c.row(
                     &[
                         b(ids::CONFIRM, "panel.pixel_keys.reset_all", true),
-                        b(ids::CANCEL, "panel.pixel_keys.cancel", false),
+                        b(ids::KEYS_CANCEL, "panel.pixel_keys.cancel", false),
                     ],
                     y,
                 );
@@ -250,7 +250,7 @@ fn cartao_topo(modo: Modo, aviso: Option<String>, vazio: bool) -> CardDef<'stati
                         on: false,
                     },
                     Seg {
-                        id: ids::EXPORT,
+                        id: ids::KEYS_EXPORT,
                         icon: Some(IconId::Export),
                         text: "",
                         on: false,
@@ -370,11 +370,11 @@ pub(crate) fn paint(st: &mut PixelKeysPanelState, ctx: &mut PaintCtx) {
     ctx.host.store_mut().set_panel_rect(node, lista);
     let reserva = borda::reserva_do_titulo();
     ctx.host.hit_index_mut().register(
-        ids::DRAG,
+        ids::KEYS_DRAG,
         panel_drag_handle_rect(lista, m::LIST_HEAD_H, reserva),
     );
-    borda::regista(ctx.host.store_mut(), ids::EDGE, node);
-    borda::pega(ctx, ids::EDGE, lista);
+    borda::regista(ctx.host.store_mut(), ids::KEYS_EDGE, node);
+    borda::pega(ctx, ids::KEYS_EDGE, lista);
 }
 
 /// Aplica o gesto; se o mapa mudou, grava o delta e entrega-o à família.
@@ -412,7 +412,7 @@ fn importa(st: &mut PixelKeysPanelState, p: &std::path::Path) {
 fn gesto_de(st: &mut PixelKeysPanelState, id: ph2d_a11y::NodeId) -> Option<Gesto> {
     Some(match id {
         i if i == ids::CONFIRM => Gesto::Confirma,
-        i if i == ids::CANCEL => Gesto::Cancela,
+        i if i == ids::KEYS_CANCEL => Gesto::Cancela,
         i if i == ids::REPLACE => Gesto::Replace,
         i if i == ids::RESET_ALL => Gesto::ResetAll,
         _ => {
@@ -450,8 +450,8 @@ pub(crate) fn apply_event(
         janela(st).aplica(Gesto::Cancela);
         canal::publica_captura(false);
     }
-    if id == ids::EXPORT || id == ids::IMPORT {
-        let t = if id == ids::EXPORT {
+    if id == ids::KEYS_EXPORT || id == ids::IMPORT {
+        let t = if id == ids::KEYS_EXPORT {
             canal::Troca::Export
         } else {
             canal::Troca::Import

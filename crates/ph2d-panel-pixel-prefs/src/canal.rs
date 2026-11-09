@@ -1,16 +1,7 @@
-//! O canal entre a família e a janela, e a lei pura de cada controlo sobre [`PixelPrefs`].
-
-use std::cell::RefCell;
+//! A lei pura de cada controlo da janela sobre [`PixelPrefs`]. O canal entre a família, a janela e a
+//! linha do tempo mora em `ph2d_pixel_render::prefs_canal` (dois painéis não se vêem).
 
 use ph2d_pixel_core::PixelPrefs;
-
-/// A quem a janela escreve (Aseprite O18: `Active Document` / `New Documents`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Scope {
-    #[default]
-    Document,
-    New,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Numero {
@@ -71,14 +62,19 @@ pub fn numero(p: &PixelPrefs, n: Numero) -> i64 {
     }
 }
 
+/// O topo de uma opacidade em bytes (0–255).
+pub(crate) const BYTE_MAX: f64 = u8::MAX as f64;
+/// O topo de uma percentagem.
+pub(crate) const PCT_MAX: f64 = 100.0; // LITERAL-PX-OK: os 100 % de uma percentagem, não uma medida de UI
+
 /// 0–255 → % (o Trial mostra 27 % para 68 e 11 % para 28).
 fn pct(v: u8) -> i64 {
-    (f64::from(v) * 100.0 / 255.0).round() as i64
+    (f64::from(v) * PCT_MAX / BYTE_MAX).round() as i64
 }
 
 /// % → 0–255, o inverso exacto de [`pct`] (`floor`: 27 % → 68, 11 % → 28).
 fn de_pct(p: f64) -> u8 {
-    (p.clamp(0.0, 100.0) * 255.0 / 100.0).floor() as u8
+    (p.clamp(0.0, PCT_MAX) * BYTE_MAX / PCT_MAX).floor() as u8
 }
 
 /// Escreve um número (cortado à faixa do campo: tamanhos ≥ 1, opacidade 0–255).
@@ -86,7 +82,7 @@ pub fn poe_numero(p: &mut PixelPrefs, n: Numero, v: f64) {
     let r = v.round();
     let faixa = |lo: f64, hi: f64| ph2d_editor_core::math::safe_clamp_f64(r, lo, hi);
     let lado = faixa(1.0, f64::from(u16::MAX)) as u32;
-    let op = faixa(0.0, 255.0) as u8;
+    let op = faixa(0.0, BYTE_MAX) as u8;
     let pos = faixa(f64::from(i16::MIN), f64::from(i16::MAX)) as i32;
     let alcance = faixa(0.0, f64::from(u16::MAX)) as u32;
     match n {
@@ -147,113 +143,4 @@ pub fn cor(p: &PixelPrefs, c: Cor) -> [u8; 4] {
 
 pub fn poe_cor(p: &mut PixelPrefs, c: Cor, rgba: [u8; 4]) {
     *cor_mut(p, c) = rgba;
-}
-
-/// O que a janela mostra: o documento activo (`None` = nenhum Pixel Sprite em Draw) e os valores
-/// para documentos novos.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct PrefsView {
-    pub doc: Option<PixelPrefs>,
-    pub new: PixelPrefs,
-}
-
-impl PrefsView {
-    /// As preferências que o âmbito `s` edita.
-    #[must_use]
-    pub fn of(&self, s: Scope) -> Option<PixelPrefs> {
-        match s {
-            Scope::Document => self.doc,
-            Scope::New => Some(self.new),
-        }
-    }
-}
-
-/// Um gesto da janela.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PrefsRequest {
-    /// As preferências inteiras do âmbito, já mudadas.
-    Set(Scope, PixelPrefs),
-    /// `Set as Defaults`: as do documento passam a ser as dos novos.
-    SetAsDefaults,
-    /// `Reset`: o âmbito volta aos valores de fábrica.
-    Reset(Scope),
-}
-
-#[derive(Default)]
-struct Canal {
-    view: PrefsView,
-    requests: Vec<PrefsRequest>,
-    abrir: bool,
-    onion: bool,
-    carregado: bool,
-}
-
-thread_local! {
-    static CANAL: RefCell<Canal> = RefCell::new(Canal::default());
-}
-
-fn com<R>(f: impl FnOnce(&mut Canal) -> R) -> R {
-    CANAL.with(|c| f(&mut c.borrow_mut()))
-}
-
-/// Abre a janela no próximo quadro (Edit ▸ Grid & Background… ou o Run Command).
-pub fn pede_abrir() {
-    com(|c| c.abrir = true);
-}
-
-/// Abre a janela no cartão Onion Skin, sobre o documento (o botão direito no botão do onion, R4).
-pub fn pede_abrir_onion() {
-    com(|c| (c.abrir, c.onion) = (true, true));
-}
-
-pub(crate) fn take_abrir() -> (bool, bool) {
-    com(|c| (std::mem::take(&mut c.abrir), std::mem::take(&mut c.onion)))
-}
-
-#[must_use]
-pub fn view() -> PrefsView {
-    com(|c| c.view)
-}
-
-pub fn request(r: PrefsRequest) {
-    com(|c| c.requests.push(r));
-}
-
-/// O laço da família, uma vez por quadro: publica as preferências do documento activo, resolve os
-/// pedidos dos documentos novos (gravados em `ph2d_pixel_render::prefs_view::defaults_path`) e
-/// devolve as novas preferências do documento, se mudaram — a família grava-as sem passo de desfazer.
-pub fn troca(doc: Option<PixelPrefs>) -> Option<PixelPrefs> {
-    troca_em(
-        doc,
-        ph2d_pixel_render::prefs_view::defaults_path().as_deref(),
-    )
-}
-
-/// O [`troca`] com o ficheiro dos novos em `file` (`None` = sem ficheiro, só na memória).
-pub fn troca_em(doc: Option<PixelPrefs>, file: Option<&std::path::Path>) -> Option<PixelPrefs> {
-    use ph2d_pixel_render::prefs_view::{load_defaults_from, save_defaults_to};
-    let (requests, mut new) = com(|c| {
-        if !c.carregado {
-            c.carregado = true;
-            c.view.new = file.map_or_else(PixelPrefs::default, load_defaults_from);
-        }
-        (std::mem::take(&mut c.requests), c.view.new)
-    });
-    let (mut out, antes) = (doc, new);
-    for r in requests {
-        match r {
-            PrefsRequest::Set(Scope::Document, p) => out = out.map(|_| p),
-            PrefsRequest::Set(Scope::New, p) => new = p,
-            PrefsRequest::SetAsDefaults => new = out.unwrap_or(new),
-            PrefsRequest::Reset(Scope::Document) => out = out.map(|_| PixelPrefs::default()),
-            PrefsRequest::Reset(Scope::New) => new = PixelPrefs::default(),
-        }
-    }
-    if new != antes
-        && let Some(f) = file
-    {
-        let _ = save_defaults_to(f, &new);
-    }
-    com(|c| c.view = PrefsView { doc: out, new });
-    out.filter(|p| Some(*p) != doc)
 }

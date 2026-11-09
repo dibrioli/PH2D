@@ -15,6 +15,7 @@ use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_pixel_prefs::canal;
 use ph2d_panel_pixel_timeline::ids;
 use ph2d_pixel_core::PixelPrefs;
+use ph2d_pixel_render::prefs_canal as fio;
 
 fn ptr(kind: PointerKind, x: f32, y: f32, button: PointerButton) -> PointerEvent {
     PointerEvent {
@@ -42,7 +43,7 @@ fn pinta(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem, n: usize) {
 /// Oito quadros (ids 1..=8), o actual é o 3.º, o onion ligado.
 fn palco(ts: &mut ph2d_text::TextSystem) -> HeroScreen {
     let _ = ph2d_panel_registry_init::register_all_panels();
-    let _ = canal::troca_em(Some(PixelPrefs::default()), None);
+    let _ = fio::troca_em(Some(PixelPrefs::default()), None);
     ph2d_panel_pixel_timeline::set_current_pixel(PixelPanelInfo {
         editing: true,
         onion: true,
@@ -121,7 +122,7 @@ fn dragging_the_right_onion_bracket_two_frames_right_sets_next_to_three() {
         hero.apply_event(e);
     }
     pinta(&mut hero, &mut ts, 1);
-    let p = canal::troca_em(Some(PixelPrefs::default()), None).expect("o alcance mudou");
+    let p = fio::troca_em(Some(PixelPrefs::default()), None).expect("o alcance mudou");
     assert_eq!((p.onion.prev, p.onion.next), (1, 3));
     assert_eq!(
         PixelPrefs {

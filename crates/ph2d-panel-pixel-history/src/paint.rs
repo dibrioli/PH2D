@@ -37,7 +37,7 @@ fn solta(ctx: &mut PaintCtx, piso: f32) -> Rect {
 
 fn cartao_lista(v: HistoryView) -> CardDef<'static> {
     cartao(
-        ids::SEC_LIST,
+        ids::HISTORY_SEC_LIST,
         tr("panel.pixel.history.sec_list"),
         None,
         move |c, mut y| {
@@ -85,9 +85,9 @@ pub(crate) fn paint(ctx: &mut PaintCtx) {
     ctx.host.store_mut().set_panel_rect(node, lista);
     let reserva = borda::reserva_do_titulo();
     ctx.host.hit_index_mut().register(
-        ids::DRAG,
+        ids::HISTORY_DRAG,
         panel_drag_handle_rect(lista, m::LIST_HEAD_H, reserva),
     );
-    borda::regista(ctx.host.store_mut(), ids::EDGE, node);
-    borda::pega(ctx, ids::EDGE, lista);
+    borda::regista(ctx.host.store_mut(), ids::HISTORY_EDGE, node);
+    borda::pega(ctx, ids::HISTORY_EDGE, lista);
 }

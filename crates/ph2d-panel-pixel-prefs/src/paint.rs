@@ -13,8 +13,9 @@ use ph2d_i18n::tr;
 use ph2d_pixel_core::PixelPrefs;
 use ph2d_tokens::Spacing;
 
-use crate::canal::{Caixa, Cor, Numero, Scope};
+use crate::canal::{Caixa, Cor, Numero};
 use crate::{PixelPrefsPanel, PixelPrefsPanelState, canal, event, ids};
+use ph2d_pixel_render::prefs_canal::{self as fio, Scope};
 
 fn solta(ctx: &mut PaintCtx) -> Rect {
     let area = ctx.layout.draw_area;
@@ -108,7 +109,7 @@ fn cartao_ambito(scope: Scope, tem: bool) -> CardDef<'static> {
             if !tem {
                 return c.hint(tr("panel.pixel_prefs.no_document"), y);
             }
-            let mut linha = vec![botao(ids::RESET, "panel.pixel_prefs.reset")];
+            let mut linha = vec![botao(ids::PREFS_RESET, "panel.pixel_prefs.reset")];
             if scope == Scope::Document {
                 linha.insert(
                     0,
@@ -122,7 +123,7 @@ fn cartao_ambito(scope: Scope, tem: bool) -> CardDef<'static> {
 
 fn cartao_grade(p: PixelPrefs) -> CardDef<'static> {
     cartao(
-        ids::SEC_GRID,
+        ids::PREFS_SEC_GRID,
         tr("panel.pixel_prefs.sec_grid"),
         None,
         move |c, y| {
@@ -258,14 +259,14 @@ fn cartao_onion(p: PixelPrefs) -> CardDef<'static> {
 
 pub(crate) fn paint(st: &mut PixelPrefsPanelState, ctx: &mut PaintCtx) {
     let node = PixelPrefsPanel::NODE_ID;
-    let (abrir, onion) = canal::take_abrir();
+    let (abrir, onion) = fio::take_abrir();
     if abrir {
         ctx.host.set_panel_visible(PixelPrefsPanel::ID, true);
     }
     if onion {
         st.scope = Scope::Document;
         let store = ctx.host.store_mut();
-        for s in [ids::SEC_GRID, ids::SEC_PIXEL_GRID, ids::SEC_CHECKER] {
+        for s in [ids::PREFS_SEC_GRID, ids::SEC_PIXEL_GRID, ids::SEC_CHECKER] {
             store.set_collapsed(s, true);
         }
         store.set_collapsed(ids::SEC_ONION, false);
@@ -275,7 +276,7 @@ pub(crate) fn paint(st: &mut PixelPrefsPanelState, ctx: &mut PaintCtx) {
         return;
     }
     event::semeia(st, ctx.host.store_mut());
-    let p = canal::view().of(st.scope);
+    let p = fio::view().of(st.scope);
     let mut cartoes = vec![cartao_ambito(st.scope, p.is_some())];
     if let Some(p) = p {
         cartoes.extend([
@@ -295,9 +296,9 @@ pub(crate) fn paint(st: &mut PixelPrefsPanelState, ctx: &mut PaintCtx) {
     ctx.host.store_mut().set_panel_rect(node, lista);
     let reserva = borda::reserva_do_titulo();
     ctx.host.hit_index_mut().register(
-        ids::DRAG,
+        ids::PREFS_DRAG,
         panel_drag_handle_rect(lista, m::LIST_HEAD_H, reserva),
     );
-    borda::regista(ctx.host.store_mut(), ids::EDGE, node);
-    borda::pega(ctx, ids::EDGE, lista);
+    borda::regista(ctx.host.store_mut(), ids::PREFS_EDGE, node);
+    borda::pega(ctx, ids::PREFS_EDGE, lista);
 }

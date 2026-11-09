@@ -9,7 +9,7 @@ use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::pixel_panel::PixelPanelInfo;
 use ph2d_editor_core::zones::Rect;
-use ph2d_panel_pixel_prefs::canal::{self, PrefsRequest, Scope};
+use ph2d_pixel_render::prefs_canal::{self as canal, PrefsRequest, Scope};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken};
 
 /// As colunas `(de, até)` da faixa: `None` sem onion, sem documento ou sem quadro actual.

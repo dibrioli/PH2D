@@ -146,7 +146,7 @@ pub(crate) fn pinta(c: &mut CardCtx<'_>, l: &Linha, y: f32) -> f32 {
                 primary: true,
             }),
             Cell::new(Widget::Button {
-                id: ids::CANCEL,
+                id: ids::KEYS_CANCEL,
                 text: tr("panel.pixel_keys.cancel"),
                 primary: false,
             }),

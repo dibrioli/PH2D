@@ -112,7 +112,7 @@ fn o_clique_no_campo_captura_e_a_tecla_entra_ja_e_a_tomada_pergunta() {
         "o ficheiro é o delta"
     );
     assenta(&mut hero, &mut ts, 2);
-    clica(&mut hero, ids::EXPORT, "Export");
+    clica(&mut hero, ids::KEYS_EXPORT, "Export");
     // A família abre o diálogo do app e devolve o caminho; a janela grava no quadro seguinte.
     let troca = pasta.join("pixel-keys-export.txt");
     assert_eq!(

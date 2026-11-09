@@ -221,7 +221,7 @@ pub(crate) fn acao(app: &mut PixelApp, key: u32, a: A) -> Option<KeyAnswer> {
             KeyAnswer::Quiet
         }
         A::GridSettings => {
-            ph2d_panel_pixel_prefs::canal::pede_abrir();
+            ph2d_pixel_render::prefs_canal::pede_abrir();
             KeyAnswer::Quiet
         }
         A::SwapColors => {

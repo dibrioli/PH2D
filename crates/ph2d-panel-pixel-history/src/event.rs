@@ -8,8 +8,10 @@ use crate::canal::{self, HistoryRequest};
 use crate::{PixelHistoryPanel, ids};
 
 pub(crate) fn populate(store: &mut WidgetStore) {
+    // O cabeçalho do cartão dobra: é uma secção dobrável, o cânone do Pixel Tools e do Inspector.
+    store.mark_collapsible_section(ids::HISTORY_SEC_LIST);
     store.register(
-        ids::DRAG,
+        ids::HISTORY_DRAG,
         InteractiveState::BlenderHit {
             parent: PixelHistoryPanel::NODE_ID,
             kind: BlenderHitKind::DragHandle,

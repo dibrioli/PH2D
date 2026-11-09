@@ -13,12 +13,12 @@ authors.workspace = true
 # Aseprite. Não vê a família (`ph2d-app-pixel`): o instantâneo e os pedidos são o vocabulário
 # `ph2d_editor_core::pixel_panel`, o mesmo do painel PIXEL.
 [dependencies]
-ph2d-panel-pixel-prefs = { path = "../ph2d-panel-pixel-prefs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-a11y        = { path = "../ph2d-a11y" }
 ph2d-tokens      = { path = "../ph2d-tokens" }
 ph2d-i18n        = { path = "../ph2d-i18n" }
 ph2d-pixel-core  = { path = "../ph2d-pixel-core" }
+ph2d-pixel-render = { path = "../ph2d-pixel-render" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-vector      = { path = "../ph2d-vector" }
 

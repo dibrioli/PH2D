@@ -301,7 +301,7 @@ pub(crate) fn apply_event(
         return o;
     }
     if ev == WidgetEvent::Click(ids::ONION_SETTINGS) {
-        ph2d_panel_pixel_prefs::canal::pede_abrir_onion();
+        ph2d_pixel_render::prefs_canal::pede_abrir_onion();
         return EventOutcome::Consumed;
     }
     match ev {

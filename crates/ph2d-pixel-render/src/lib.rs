@@ -7,6 +7,7 @@
 //! transform de um `stroke` do Vello multiplica a espessura).
 
 mod overlay;
+pub mod prefs_canal;
 pub mod prefs_view;
 mod view;
 pub mod zoom;

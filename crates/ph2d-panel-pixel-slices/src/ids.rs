@@ -5,7 +5,7 @@ use ph2d_pixel_slices::campos::Campo;
 use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 
 pub const SLICES_DRAG: NodeId = hash_node_id("pixel_slices.drag");
-pub const SEC_LIST: NodeId = hash_node_id("pixel_slices.sec.list");
+pub const SLICES_SEC_LIST: NodeId = hash_node_id("pixel_slices.sec.list");
 pub const SEC_PROPS: NodeId = hash_node_id("pixel_slices.sec.props");
 
 pub const ALL: NodeId = hash_node_id("pixel_slices.all");

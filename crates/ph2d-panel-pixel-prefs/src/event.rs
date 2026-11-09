@@ -7,8 +7,9 @@ use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::card_field::CardFieldSpec;
 use ph2d_editor_core::widget::{ButtonState, TextInputState};
 
-use crate::canal::{self, Caixa, Numero, PrefsRequest, Scope};
+use crate::canal::{self, Caixa, Numero};
 use crate::{PixelPrefsPanel, PixelPrefsPanelState, ids};
+use ph2d_pixel_render::prefs_canal::{self as fio, PrefsRequest, Scope};
 
 fn botao(store: &mut WidgetStore, id: NodeId) {
     store.register(
@@ -20,11 +21,17 @@ fn botao(store: &mut WidgetStore, id: NodeId) {
 }
 
 pub(crate) fn populate(store: &mut WidgetStore) {
+    // O cabeçalho de cada cartão dobra: é uma secção dobrável, o cânone do Pixel Tools e do Inspector.
+    store.mark_collapsible_section(ids::SEC_SCOPE);
+    store.mark_collapsible_section(ids::PREFS_SEC_GRID);
+    store.mark_collapsible_section(ids::SEC_PIXEL_GRID);
+    store.mark_collapsible_section(ids::SEC_CHECKER);
+    store.mark_collapsible_section(ids::SEC_ONION);
     for id in [
         ids::SCOPE_DOC,
         ids::SCOPE_NEW,
         ids::SET_DEFAULTS,
-        ids::RESET,
+        ids::PREFS_RESET,
         ids::ONION_BEHIND,
         ids::ONION_MERGE,
     ] {
@@ -63,8 +70,8 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         );
         let (lo, hi) = match n {
             Numero::GridX | Numero::GridY => (f64::from(i16::MIN), f64::from(i16::MAX)),
-            Numero::GridOpacity | Numero::PixelOpacity => (0.0, 255.0),
-            Numero::OnionOpacity | Numero::OnionStep => (0.0, 100.0),
+            Numero::GridOpacity | Numero::PixelOpacity => (0.0, canal::BYTE_MAX),
+            Numero::OnionOpacity | Numero::OnionStep => (0.0, canal::PCT_MAX),
             Numero::OnionPrev | Numero::OnionNext => (0.0, f64::from(u16::MAX)),
             _ => (1.0, f64::from(u16::MAX)),
         };
@@ -76,7 +83,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         store.register(id, InteractiveState::Plain);
     }
     store.register(
-        ids::DRAG,
+        ids::PREFS_DRAG,
         InteractiveState::BlenderHit {
             parent: PixelPrefsPanel::NODE_ID,
             kind: BlenderHitKind::DragHandle,
@@ -87,7 +94,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
 /// Os campos e as amostras mostram o âmbito, salvo o que tem o cursor, a mão ou o seletor aberto; o
 /// seletor aberto numa amostra manda a cor nova.
 pub(crate) fn semeia(st: &mut PixelPrefsPanelState, store: &mut WidgetStore) {
-    let Some(mut p) = canal::view().of(st.scope) else {
+    let Some(mut p) = fio::view().of(st.scope) else {
         return;
     };
     let foco = store.focus_id();
@@ -110,7 +117,7 @@ pub(crate) fn semeia(st: &mut PixelPrefsPanelState, store: &mut WidgetStore) {
     }
     st.a_escolher = aberto.filter(|a| ids::CORES.iter().any(|(id, _)| id == a));
     if p != antes {
-        canal::request(PrefsRequest::Set(st.scope, p));
+        fio::request(PrefsRequest::Set(st.scope, p));
     }
 }
 
@@ -131,7 +138,9 @@ pub fn pedido(
         WidgetEvent::Click(id) if id == ids::SET_DEFAULTS => {
             return Some(PrefsRequest::SetAsDefaults);
         }
-        WidgetEvent::Click(id) if id == ids::RESET => return Some(PrefsRequest::Reset(scope)),
+        WidgetEvent::Click(id) if id == ids::PREFS_RESET => {
+            return Some(PrefsRequest::Reset(scope));
+        }
         // Os pares de segmentos: `Behind`/`In Front` e `Merge`/`Red/Blue Tint` escolhem, não alternam.
         WidgetEvent::Click(id) if id == ids::ONION_BEHIND => p.onion.front = false,
         WidgetEvent::Click(id) if id == ids::ONION_MERGE => p.onion.tint = false,
@@ -164,7 +173,7 @@ pub(crate) fn apply_event(
         }
         _ => {}
     }
-    let Some(p) = canal::view().of(st.scope) else {
+    let Some(p) = fio::view().of(st.scope) else {
         return EventOutcome::Ignored;
     };
     let store = host.store();
@@ -172,7 +181,7 @@ pub(crate) fn apply_event(
         store.number_value(id).filter(|n| n.is_finite())
     }) {
         Some(r) => {
-            canal::request(r);
+            fio::request(r);
             EventOutcome::Consumed
         }
         None => EventOutcome::Ignored,

@@ -4,20 +4,28 @@ use ph2d_a11y::NodeId;
 use ph2d_pixel_keys::{Chord, PixelAction, Section};
 use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 
-pub const DRAG: NodeId = hash_node_id("pixel_keys.drag");
-pub const EDGE: NodeId = hash_node_id("pixel_keys.edge");
+pub const KEYS_DRAG: NodeId = hash_node_id("pixel_keys.drag");
+pub const KEYS_EDGE: NodeId = hash_node_id("pixel_keys.edge");
 pub const SEC_TOP: NodeId = hash_node_id("pixel_keys.sec.top");
 pub const SEARCH: NodeId = hash_node_id("pixel_keys.search");
 pub const CONFIRM: NodeId = hash_node_id("pixel_keys.confirm");
-pub const CANCEL: NodeId = hash_node_id("pixel_keys.cancel");
+pub const KEYS_CANCEL: NodeId = hash_node_id("pixel_keys.cancel");
 pub const REPLACE: NodeId = hash_node_id("pixel_keys.replace");
 pub const RESET_ALL: NodeId = hash_node_id("pixel_keys.reset_all");
 pub const IMPORT: NodeId = hash_node_id("pixel_keys.import");
-pub const EXPORT: NodeId = hash_node_id("pixel_keys.export");
-pub const CLOSE: NodeId = hash_node_id("pixel_keys.close");
+pub const KEYS_EXPORT: NodeId = hash_node_id("pixel_keys.export");
+pub const KEYS_CLOSE: NodeId = hash_node_id("pixel_keys.close");
 
-/// O `CLOSE` saiu da janela (P12: fecha-se pelo menu, como a SLICES); o id fica (append-only).
-pub const BOTOES: [NodeId; 7] = [CONFIRM, CANCEL, REPLACE, RESET_ALL, IMPORT, EXPORT, DRAG];
+/// O `KEYS_CLOSE` saiu da janela (P12: fecha-se pelo menu, como a SLICES); o id fica (append-only).
+pub const BOTOES: [NodeId; 7] = [
+    CONFIRM,
+    KEYS_CANCEL,
+    REPLACE,
+    RESET_ALL,
+    IMPORT,
+    KEYS_EXPORT,
+    KEYS_DRAG,
+];
 
 #[must_use]
 pub fn secao(s: Section) -> NodeId {

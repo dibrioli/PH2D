@@ -6,10 +6,10 @@ use ph2d_tool_registry::hash_node_id;
 use crate::canal::{Caixa, Cor, Numero};
 
 pub const PANEL: NodeId = ph2d_editor_core::ids::PIXEL_PREFS_PANEL;
-pub const DRAG: NodeId = hash_node_id("pixel_prefs.drag");
-pub const EDGE: NodeId = hash_node_id("pixel_prefs.edge");
+pub const PREFS_DRAG: NodeId = hash_node_id("pixel_prefs.drag");
+pub const PREFS_EDGE: NodeId = hash_node_id("pixel_prefs.edge");
 pub const SEC_SCOPE: NodeId = hash_node_id("pixel_prefs.sec.scope");
-pub const SEC_GRID: NodeId = hash_node_id("pixel_prefs.sec.grid");
+pub const PREFS_SEC_GRID: NodeId = hash_node_id("pixel_prefs.sec.grid");
 pub const SEC_PIXEL_GRID: NodeId = hash_node_id("pixel_prefs.sec.pixel_grid");
 pub const SEC_CHECKER: NodeId = hash_node_id("pixel_prefs.sec.checker");
 pub const SEC_ONION: NodeId = hash_node_id("pixel_prefs.sec.onion");
@@ -19,7 +19,7 @@ pub const ONION_MERGE: NodeId = hash_node_id("pixel_prefs.onion.merge");
 pub const SCOPE_DOC: NodeId = hash_node_id("pixel_prefs.scope.doc");
 pub const SCOPE_NEW: NodeId = hash_node_id("pixel_prefs.scope.new");
 pub const SET_DEFAULTS: NodeId = hash_node_id("pixel_prefs.set_defaults");
-pub const RESET: NodeId = hash_node_id("pixel_prefs.reset");
+pub const PREFS_RESET: NodeId = hash_node_id("pixel_prefs.reset");
 
 /// Os números, cada um com o seu campo.
 pub const NUMEROS: [(NodeId, Numero); 12] = [

@@ -13,6 +13,7 @@ use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_pixel_prefs::canal::{self, Caixa};
 use ph2d_panel_pixel_prefs::ids;
 use ph2d_pixel_core::PixelPrefs;
+use ph2d_pixel_render::prefs_canal as fio;
 
 fn ptr(kind: PointerKind, x: f32, y: f32) -> PointerEvent {
     PointerEvent {
@@ -65,7 +66,7 @@ fn visible_muda_a_grade_do_documento_e_set_as_defaults_grava_os_novos() {
     let pasta = std::env::temp_dir().join(format!("ph2d-pixel-prefs-seam-{}", std::process::id()));
     let ficheiro = pasta.join("pixel-prefs.txt");
     let doc = PixelPrefs::default();
-    assert_eq!(canal::troca_em(Some(doc), Some(&ficheiro)), None);
+    assert_eq!(fio::troca_em(Some(doc), Some(&ficheiro)), None);
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     let mut hero = HeroScreen::new(NodeId(1));
     hero.panel_visibility.insert(PANEL_PIXEL_PREFS, true);
@@ -75,7 +76,7 @@ fn visible_muda_a_grade_do_documento_e_set_as_defaults_grava_os_novos() {
         ids::caixa(Caixa::GridVisible),
         "Visible da grade",
     );
-    let p = canal::troca_em(Some(doc), Some(&ficheiro)).expect("a grade mudou");
+    let p = fio::troca_em(Some(doc), Some(&ficheiro)).expect("a grade mudou");
     assert!(p.grid.visible);
     assert_eq!(
         PixelPrefs {
@@ -87,7 +88,7 @@ fn visible_muda_a_grade_do_documento_e_set_as_defaults_grava_os_novos() {
     );
     assenta(&mut hero, &mut ts, 2);
     clica(&mut hero, ids::SET_DEFAULTS, "Set as Defaults");
-    assert_eq!(canal::troca_em(Some(p), Some(&ficheiro)), None);
+    assert_eq!(fio::troca_em(Some(p), Some(&ficheiro)), None);
     assert_eq!(
         ph2d_pixel_render::prefs_view::load_defaults_from(&ficheiro),
         p
@@ -101,22 +102,22 @@ fn o_cartao_onion_skin_abre_pelo_pedido_do_onion_e_muda_o_documento() {
     let pasta = std::env::temp_dir().join(format!("ph2d-pixel-prefs-onion-{}", std::process::id()));
     let ficheiro = pasta.join("pixel-prefs.txt");
     let doc = PixelPrefs::default();
-    let _ = canal::troca_em(Some(doc), Some(&ficheiro));
+    let _ = fio::troca_em(Some(doc), Some(&ficheiro));
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     let mut hero = HeroScreen::new(NodeId(1));
     // O botão direito no botão do onion da linha do tempo pede isto (`ONION_SETTINGS`).
-    canal::pede_abrir_onion();
+    fio::pede_abrir_onion();
     assenta(&mut hero, &mut ts, 60);
     assert!(hero.is_panel_visible(PANEL_PIXEL_PREFS), "a janela abriu");
     clica(&mut hero, ids::caixa(Caixa::OnionFront), "In Front");
-    let p = canal::troca_em(Some(doc), Some(&ficheiro)).expect("mudou");
+    let p = fio::troca_em(Some(doc), Some(&ficheiro)).expect("mudou");
     assenta(&mut hero, &mut ts, 2);
     clica(
         &mut hero,
         ids::caixa(Caixa::OnionCurrentLayer),
         "Current layer only",
     );
-    let q = canal::troca_em(Some(p), Some(&ficheiro)).expect("mudou");
+    let q = fio::troca_em(Some(p), Some(&ficheiro)).expect("mudou");
     assert!(q.onion.front && q.onion.current_layer_only);
     assert_eq!(
         PixelPrefs {
@@ -135,7 +136,7 @@ fn o_cartao_onion_skin_abre_pelo_pedido_do_onion_e_muda_o_documento() {
 fn the_grid_colour_swatch_opens_the_picker_and_the_pick_changes_the_documents_grid_once() {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let doc = PixelPrefs::default();
-    assert_eq!(canal::troca_em(Some(doc), None), None);
+    assert_eq!(fio::troca_em(Some(doc), None), None);
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     let mut hero = HeroScreen::new(NodeId(1));
     hero.panel_visibility.insert(PANEL_PIXEL_PREFS, true);
@@ -156,11 +157,7 @@ fn the_grid_colour_swatch_opens_the_picker_and_the_pick_changes_the_documents_gr
     }
     assenta(&mut hero, &mut ts, 2);
     assert_eq!(hero.store.picker_target(), Some(amostra), "o seletor abriu");
-    assert_eq!(
-        canal::troca_em(Some(doc), None),
-        None,
-        "abrir não muda nada"
-    );
+    assert_eq!(fio::troca_em(Some(doc), None), None, "abrir não muda nada");
     let quer = [10, 200, 30, 255];
     hero.store.set_blender_value(
         ph2d_editor_core::ids::INSP_BLENDER_PICKER,
@@ -169,7 +166,7 @@ fn the_grid_colour_swatch_opens_the_picker_and_the_pick_changes_the_documents_gr
     hero.store
         .note_colour_pick(ph2d_editor_core::ids::INSP_BLENDER_PICKER);
     assenta(&mut hero, &mut ts, 3);
-    let p = canal::troca_em(Some(doc), None).expect("a cor mudou");
+    let p = fio::troca_em(Some(doc), None).expect("a cor mudou");
     assert_eq!(p.grid.color, quer);
     assert_eq!(
         PixelPrefs {
@@ -182,5 +179,5 @@ fn the_grid_colour_swatch_opens_the_picker_and_the_pick_changes_the_documents_gr
     assenta(&mut hero, &mut ts, 2);
     hero.store.set_picker_target(None);
     assenta(&mut hero, &mut ts, 2);
-    assert_eq!(canal::troca_em(Some(p), None), None, "fechar não muda mais");
+    assert_eq!(fio::troca_em(Some(p), None), None, "fechar não muda mais");
 }

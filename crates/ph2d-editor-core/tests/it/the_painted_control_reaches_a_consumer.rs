@@ -247,6 +247,10 @@ const SELF_CALLS: &[&str] = &[
     "mark_collapsible",
     "register_picker_swatch",
 ];
+/// As PORTAS que registam um `InteractiveState` de [`SELF_KINDS`] por quem as chama — a régua lê o
+/// caminho (`borda::regista` = `BlenderHit { kind: WidthEdge }`, `panel::cards_borda`), nunca o nome
+/// solto (o `busca::regista` regista um `TextInput`, que tem de ter leitor).
+const SELF_DOORS: &[&str] = &["borda::regista"];
 const DECOR_CALLS: &[&str] = &[
     "Card::new",
     "SegmentedAdaptive::new",
@@ -867,6 +871,9 @@ fn classify(
         return Kind::Panel;
     }
     if h.bracket == b'(' && SELF_CALLS.contains(&seg) {
+        return Kind::Self_;
+    }
+    if h.bracket == b'(' && SELF_DOORS.iter().any(|d| h.callee.ends_with(d)) {
         return Kind::Self_;
     }
     if h.bracket == b'(' && seg == "register" && h.open != usize::MAX {

@@ -1,7 +1,7 @@
 //! **`ph2d-panel-pixel-prefs`**: a janela GRID & BACKGROUND do Pixel Art (`docs/PixelArt/P12_plano.md`
 //! §9.6, Aseprite O18/O19): a grade, a grade de píxel e o xadrez do documento activo ou dos novos,
-//! `Set as Defaults` e `Reset`. O painel lê uma [`canal::PrefsView`] e devolve
-//! [`canal::PrefsRequest`]; quem grava é a família ([`canal::troca`]).
+//! `Set as Defaults` e `Reset`. O painel lê uma [`ph2d_pixel_render::prefs_canal::PrefsView`] e devolve
+//! [`ph2d_pixel_render::prefs_canal::PrefsRequest`]; quem grava é a família ([`ph2d_pixel_render::prefs_canal::troca`]).
 
 #![forbid(unsafe_code)]
 
@@ -20,7 +20,7 @@ pub use ph2d_editor_core::screens::hero::PANEL_PIXEL_PREFS;
 /// O estado da janela: o âmbito e a amostra cujo seletor está aberto.
 #[derive(Default)]
 pub struct PixelPrefsPanelState {
-    pub scope: canal::Scope,
+    pub scope: ph2d_pixel_render::prefs_canal::Scope,
     pub(crate) a_escolher: Option<NodeId>,
 }
 

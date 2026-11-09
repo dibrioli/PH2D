@@ -199,21 +199,27 @@ fn vai_para_o_inicio(world: &mut ph2d_ecs::World, e: ph2d_ecs::Entity, nome: &st
     let Some(mut a) = world.get::<SpriteAnimator>(e).cloned() else {
         return;
     };
-    let Some(tag) = world
-        .get::<SpriteAnimations>(e)
-        .and_then(|l| l.get(nome))
-        .cloned()
-    else {
-        return;
-    };
-    if regras || !a.autoplay {
+    if !a.autoplay {
         return;
     }
-    a.current = nome.to_owned();
+    // Rules escolhem a animação (fica a `current`), mas a FASE começa no Play como a de todos: um
+    // relógio que já tocava no editor (o import liga `playing`) não adianta o jogo
+    // (gate `os_dois_herois_comecam_no_mesmo_quadro_ao_entrar_em_play`).
+    let lib = world.get::<SpriteAnimations>(e);
+    let nome = if regras && lib.is_some_and(|l| l.get(&a.current).is_some()) {
+        a.current.as_str()
+    } else {
+        nome
+    };
+    let Some(tag) = lib.and_then(|l| l.get(nome)).cloned() else {
+        return;
+    };
+    let nome = nome.to_owned();
+    a.current.clone_from(&nome);
     a.rewind(Some(&tag));
     let list = world
         .get::<ph2d_ecs::SpriteAnimFrames>(e)
-        .and_then(|f| f.get(nome))
+        .and_then(|f| f.get(&nome))
         .map(<[ph2d_ecs::FrameRef]>::to_vec);
     let cells = ph2d_ecs::sheet_cells_of(world, e);
     let entrada = ph2d_ecs::entry_cell(&a, &tag, list.as_deref(), &cells);

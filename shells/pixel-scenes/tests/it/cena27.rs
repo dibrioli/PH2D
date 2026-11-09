@@ -173,6 +173,12 @@ fn diferenca(c: &Cena, s: &Sprite, normal: bool, desvio: usize) -> Vec<usize> {
 }
 
 /// *Mutações vistas VERMELHAS: ver `docs/PixelArt/P14_plano.md`, bloco «Cenas 26–27 finais».*
+///
+/// ⚠️ **O passo 1 IMITA o Play** (`toca_em`: põe o 1.º clip, liga `playing` e rebobina os dois à mão, e
+/// avança pela `advance_frames_marked`): mede que a LEI dos quadros é a mesma nos dois, nunca a fase
+/// que o app lhes dá. A fase pelos relógios reais é a de
+/// [`os_dois_herois_comecam_no_mesmo_quadro_ao_entrar_em_play`] — esta dizia 0 ms de diferença enquanto
+/// o app mostrava o motor no quadro 1 e o Pixel no 0.
 #[test]
 fn a_cena_27_os_dois_herois_sao_iguais() {
     // 1. O quadro mostrado, ms a ms (Autoplay ⇒ idle; → premida de 1000 a 2600 ⇒ run e volta).
@@ -245,4 +251,75 @@ fn a_cena_27_os_dois_herois_sao_iguais() {
         normal.iter().all(|&n| n == 0),
         "a normal é a mesma: {normal:?}"
     );
+}
+
+/// O quadro que cada herói MOSTRA (índice do quadro do Pixel; célula da grelha do motor).
+fn mostrados(c: &Cena, s: &Sprite) -> (usize, usize) {
+    let w = c.sim.world();
+    let id = ph2d_pixel_cena::quadro_mostrado(w, c.pixel, s, s.frames()[0].id);
+    let p = s.frames().iter().position(|f| f.id == id).expect("quadro");
+    let m = match w
+        .get::<ph2d_ecs::SpriteGrid>(c.motor)
+        .expect("grelha")
+        .shown()
+    {
+        ph2d_ecs::FrameRef::Cell { cell, .. } => cell as usize,
+        ph2d_ecs::FrameRef::Empty => usize::MAX,
+    };
+    (p, m)
+}
+
+/// ⭐ **Os relógios REAIS** (smoke do dono 1, fase da cena 27): o import liga `playing` (`liga`), o passo
+/// fixo corre no editor e no Play pela `tick_sprite_animations` (a da shell, `fase_fixed_step_clocks`,
+/// 1 ms por tique), e a aresta do Play é a `start_autoplay_animations` (a do `undo_jogo::jogo_entra`).
+/// Lei do dono (09/11): ao entrar em Play todo Autoplay começa do quadro 0 no MESMO tique, seja quanto
+/// for o tempo que o editor correu antes. *Visto VERMELHO com o código de 09/11: o motor, que tocava
+/// no editor desde o import e tem Rules, não rebobinava.*
+#[test]
+fn os_dois_herois_comecam_no_mesmo_quadro_ao_entrar_em_play() {
+    use ph2d_app_sprite_anim::tick as t;
+    const DT: f64 = 0.001;
+    for editor_ms in [0_u32, 450, 530, 1234] {
+        let mut c = montada();
+        let s = doc(&c);
+        ph2d_pixel_cena::deriva(c.sim.world_mut(), |_| Some((&s, 1)));
+        let mut drive = ph2d_preview_drive::PreviewDrive::default();
+        let mut no_editor = Vec::new();
+        for _ in 0..editor_ms {
+            t::tick_sprite_animations(&mut c.sim, 1, DT, &[], &mut drive);
+            no_editor.push(mostrados(&c, &s));
+        }
+        t::start_autoplay_animations(&mut c.sim);
+        let mut fita = vec![mostrados(&c, &s)];
+        for _ in 0..1500 {
+            t::tick_sprite_animations(&mut c.sim, 1, DT, &[], &mut drive);
+            fita.push(mostrados(&c, &s));
+        }
+        let mudou_no_editor = |k: fn(&(usize, usize)) -> usize| {
+            no_editor
+                .windows(2)
+                .filter(|w| k(&w[0]) != k(&w[1]))
+                .count()
+        };
+        let difere: Vec<usize> = (0..fita.len())
+            .filter(|&i| fita[i].0 != fita[i].1)
+            .collect();
+        eprintln!(
+            "editor {editor_ms} ms: trocas de quadro no editor Pixel {} · motor {} · no Play t=0/500/580/1000: {:?} · ms diferentes {} (1.º {:?})",
+            mudou_no_editor(|q| q.0),
+            mudou_no_editor(|q| q.1),
+            [0, 500, 580, 1000].map(|i| fita[i]),
+            difere.len(),
+            difere.first()
+        );
+        assert_eq!(
+            fita[0],
+            (0, 0),
+            "o Play começa no quadro 0 (editor {editor_ms} ms)"
+        );
+        assert!(
+            difere.is_empty(),
+            "os dois no mesmo quadro a cada ms do Play (editor {editor_ms} ms)"
+        );
+    }
 }

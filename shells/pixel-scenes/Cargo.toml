@@ -61,6 +61,9 @@ ph2d-pixel-luz = { path = "../../crates/ph2d-pixel-luz" }
 ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
 # A sonda da cena 27 (`cena27.rs`): o import do `.ase` como Sprite do motor (`liga`, `grid_for`, `pack`).
 ph2d-sprite-ase-import = { path = "../../crates/ph2d-sprite-ase-import" }
+# Os relógios REAIS da animação (`cena27::os_dois_herois_comecam_no_mesmo_quadro_ao_entrar_em_play`).
+ph2d-app-sprite-anim = { path = "../../crates/ph2d-app-sprite-anim" }
+ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive" }
 # Frame All / Frame Selected sobre a cena 26 (`enquadrar.rs`): a lei do pedido do botão VIEW.
 ph2d-app-vec = { path = "../../crates/ph2d-app-vec" }
 bevy_ecs = "0.20"

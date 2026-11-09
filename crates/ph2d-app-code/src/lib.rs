@@ -64,6 +64,7 @@ mod strict;
 mod surface;
 pub mod tab_menu;
 
+pub use debug::GameStop;
 pub use docs::{CodeDocs, GrammarProbe, ParkedFootprint, SaveKind};
 pub use format::FormatServer;
 pub use frame::frame;

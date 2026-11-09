@@ -172,12 +172,9 @@ impl CodeView {
                 &mut plain
             };
             self.number_glyphs(out, row.line + 1, right, row.y);
-            let from = frame.problems.partition_point(|p| p.line < row.line);
-            let worst = frame.problems[from..]
-                .iter()
-                .take_while(|p| p.line == row.line)
-                .map(|p| p.severity)
-                .max();
+            // Com ponto de parada, o problema vai num selo no canto dele (`paint_debug_gutter`).
+            let worst = crate::debug_marks::worst_problem(frame.problems, row.line)
+                .filter(|_| !frame.debug.breakpoints.iter().any(|b| b.line == row.line));
             if let Some(sev) = worst {
                 let (cx, cy) = (a.x + self.m.mark_w * 0.5, row.y + self.m.line_h * 0.5);
                 fill_circle(scene, cx, cy, dot * 0.5, pal.severity(sev));

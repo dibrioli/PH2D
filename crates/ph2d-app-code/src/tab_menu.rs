@@ -4,7 +4,7 @@
 //! options» no fim. As linhas de cada menu saem da tabela única de [`crate::commands`]; um clique
 //! corre o comando pelo MESMO caminho do `Ctrl+K` e da tecla.
 
-use crate::commands::{TabMenu, menu_rows};
+use crate::commands::{CMD_RESTART_ASSIST, TabMenu, menu_rows, row_state};
 use crate::docs::CodeDocs;
 use crate::help::page_of;
 use ph2d_a11y::NodeId;
@@ -32,6 +32,8 @@ pub struct BarPainted {
     /// A parte «função» do caminho: a caixa, a linha e a coluna (0-based) da definição.
     pub crumb_fn: Option<(Rect, usize, usize)>,
     pub gear: Option<Rect>,
+    /// As dicas do rato: a engrenagem, a função do caminho e o alfinete do cartão das opções.
+    pub tips: Vec<(Rect, String)>,
 }
 
 /// O estado da barra: o menu aberto e a linha sob o rato.
@@ -40,6 +42,10 @@ pub struct Bar {
     pub open: Option<TabMenu>,
     pub hover: Option<NodeId>,
     pub painted: BarPainted,
+    /// O jogo parado: o menu Run apaga o que não vale e o F8 aparece numa linha só.
+    pub stop: crate::debug::GameStop,
+    /// A dica sob o rato (índice em `painted.tips`) e desde quando.
+    pub tip: Option<(usize, u128)>,
 }
 
 fn font() -> f32 {
@@ -155,6 +161,8 @@ impl Bar {
             StrokeToken::Default.px(),
         );
         self.painted.gear = Some(gear);
+        let gear_tip = ph2d_i18n::tr("code.menu.options_tip").to_owned();
+        self.painted.tips.push((gear, gear_tip));
         let sep = "\u{203a}";
         let line = ph2d_i18n::tr_with("code.crumb.line", &[("line", &crumb.line.to_string())]);
         let parts: Vec<(String, bool)> = [
@@ -192,16 +200,26 @@ impl Bar {
             label(ts, scene, s, pr, ink, theme);
             if *is_fn && let Some(f) = &crumb.func {
                 self.painted.crumb_fn = Some((pr, f.1, f.2));
+                let tip = ph2d_i18n::tr_with("code.crumb.go_tip", &[("name", &f.0)]);
+                self.painted.tips.push((pr, tip));
             }
             cx += w;
         }
     }
 
     /// Pinta o menu aberto por baixo do título dele (por cima de tudo: chame-a por último).
-    pub fn paint_popup(&mut self, scene: &mut VectorScene, ts: &mut TextSystem, theme: &Theme) {
+    pub fn paint_popup(
+        &mut self,
+        scene: &mut VectorScene,
+        ts: &mut TextSystem,
+        theme: &Theme,
+        now: u128,
+    ) {
         self.painted.rows.clear();
         self.painted.popup = None;
-        let Some(m) = self.open else { return };
+        let Some(m) = self.open else {
+            return self.paint_tip(scene, ts, theme, now);
+        };
         let Some(&(_, title)) = self.painted.titles.iter().find(|t| t.0 == m) else {
             return;
         };
@@ -220,18 +238,22 @@ impl Bar {
         push_popover_clip(popup, scene);
         let mut y = popup.y + pad * 0.5;
         for (id, name, keys) in rows {
+            let (live, show_keys) = row_state(id, self.stop);
+            let keys = if show_keys { keys } else { String::new() };
             let rr = Rect::new(
                 popup.x + Spacing::Xs.px(),
                 y,
                 popup.w - Spacing::Xs.px() * 2.0,
                 rh,
             );
-            let hot = self.hover == Some(id);
+            let hot = live && self.hover == Some(id);
             if hot {
                 paint_popover_row_highlight(scene, rr, *theme);
             }
             let (ink, dim) = if hot {
                 (ColorToken::AccentFg, ColorToken::AccentFg)
+            } else if !live {
+                (ColorToken::Text3, ColorToken::Text3)
             } else {
                 (ColorToken::Text1, ColorToken::Text3)
             };
@@ -252,21 +274,35 @@ impl Bar {
                 dim,
                 theme,
             );
-            self.painted.rows.push((id, rr));
+            if live {
+                self.painted.rows.push((id, rr));
+            }
             y += rh;
-        }
-        if let Some(h) = hint {
-            label(
-                ts,
-                scene,
-                h,
-                Rect::new(popup.x + pad, y, hint_w, rh),
-                ColorToken::Text3,
-                theme,
-            );
+            // A nota do Restart Code Assistant fica debaixo dele.
+            if let Some(h) = hint.filter(|_| id == CMD_RESTART_ASSIST) {
+                let hr = Rect::new(popup.x + pad, y, hint_w, rh);
+                label(ts, scene, h, hr, ColorToken::Text3, theme);
+                y += rh;
+            }
         }
         pop_popover_clip(scene);
         self.painted.popup = Some(popup);
+    }
+
+    /// A dica sob o rato, depois da pausa do balão (a do `hint`), por baixo da caixa dela.
+    fn paint_tip(&self, scene: &mut VectorScene, ts: &mut TextSystem, theme: &Theme, now: u128) {
+        let Some((i, since)) = self.tip else { return };
+        let Some((r, msg)) = self.painted.tips.get(i) else {
+            return;
+        };
+        if now.saturating_sub(since) < crate::hint::HOVER_PAUSE_NS {
+            return;
+        }
+        let w = width_of(ts, msg) + Spacing::Sm.px() * 2.0;
+        let x = r.x.min(r.x + r.w - w);
+        let rect = Rect::new(x, r.y + r.h, w, height());
+        let tip = ph2d_editor_core::widget::Tooltip::new(POPOVER_ID, msg.clone());
+        ph2d_editor_core::widget::paint_tooltip(&tip, rect, scene, ts, *theme);
     }
 
     fn title_at(&self, x: f32, y: f32) -> Option<TabMenu> {
@@ -385,7 +421,14 @@ impl CodeDocs {
             let under = self.code_body(id, doc_r);
             self.options.paint(under, state, assist, scene, ts, theme);
         }
-        self.bar.paint_popup(scene, ts, theme);
+        if self.options.open
+            && let Some(pin) = self.options.painted.pin
+        {
+            let tip = ph2d_i18n::tr("code.options.pin").to_owned();
+            self.bar.painted.tips.push((pin, tip));
+        }
+        self.bar.stop = self.debug.game_stop;
+        self.bar.paint_popup(scene, ts, theme, self.clock.0);
     }
 
     /// Um carregar primário: o menu aberto, a barra, o cartão das opções. `Some(true)` = tomado.
@@ -439,6 +482,16 @@ impl CodeDocs {
 
     /// O rato sem botão: a linha sob ele no menu aberto; passar a outro título troca de menu.
     pub(crate) fn bar_move(&mut self, x: f32, y: f32) -> bool {
+        let at = self
+            .bar
+            .painted
+            .tips
+            .iter()
+            .position(|t| t.0.contains(x, y));
+        self.bar.tip = at.map(|i| match self.bar.tip {
+            Some((j, since)) if j == i => (i, since),
+            _ => (i, self.clock.0),
+        });
         if self.bar.open.is_none() {
             return false;
         }

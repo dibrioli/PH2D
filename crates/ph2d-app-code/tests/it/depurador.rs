@@ -139,3 +139,97 @@ fn os_valores_ao_vivo_sao_so_os_da_aba_aberta() {
     let (title, _, _) = m.docs().debug_card_of(ids[0]).expect("de quem são");
     assert!(title.starts_with("Live values: "), "{title}");
 }
+
+// ── Auditoria do fecho (08/11) ────────────────────────────────────────────────────────────────
+
+#[test]
+fn o_clique_abaixo_da_ultima_linha_nao_poe_ponto_de_parada() {
+    let (mut m, id) = aberto(MOVE);
+    let r = m
+        .docs()
+        .mark_rect(id, "  self.x = self.x")
+        .expect("a marca");
+    let (x, _) = centro(r);
+    // Três linhas abaixo desta acaba o texto («end» e a vazia); seis abaixo já não é linha.
+    m.clica(id, x, r.y + r.h * 6.5, Modifiers::default());
+    assert!(
+        m.docs().breakpoints_of(id).is_empty(),
+        "abaixo do fim não há linha"
+    );
+    m.clica(id, x, r.y + r.h * 2.5, Modifiers::default());
+    assert_eq!(
+        m.docs().breakpoints_of(id),
+        vec![8],
+        "a última linha (vazia) é linha"
+    );
+}
+
+/// O motor respondeu pelo script e não armou NADA (aqui: o módulo não carrega): a marca é oca,
+/// mesmo com a lista do que armou vazia (antes, «vazia» lia-se «ainda não sei» e pintava cheio).
+#[test]
+fn o_ponto_que_o_motor_nao_armou_e_oco_mesmo_sem_nada_armado() {
+    let (m, id) = aberto("function update(self, dt)\n  local step = 2\nend\n\nlocal x = = 1\n");
+    let mut m = m.com_cena(id, 1);
+    m.cena();
+    vai(&mut m, id, 3);
+    m.tecla(id, Key::F(9), Modifiers::default(), None);
+    m.quadro();
+    let armed = m.host.as_ref().expect("vm").armed_lines(id).to_vec();
+    assert!(armed.is_empty(), "{armed:?}");
+    assert_eq!(
+        m.docs().breakpoint_marks_of(id),
+        vec![(3, false)],
+        "o motor respondeu e não armou: oco"
+    );
+}
+
+#[test]
+fn parado_em_ecra_cheio_o_palco_cede_ao_editor_e_o_f8_continua() {
+    let (m, id) = aberto(MOVE);
+    let mut m = m.com_cena(id, 2);
+    m.hero.view.palco_do_jogo = true;
+    m.cena();
+    vai(&mut m, id, 6);
+    m.tecla(id, Key::F(9), Modifiers::default(), None);
+    m.quadro();
+    m.cena();
+    assert!(m.host.as_ref().expect("vm").is_held());
+    m.quadro();
+    assert!(!m.hero.view.palco_do_jogo, "o editor volta a pintar-se");
+    assert!(m.hero.view.palco_largado, "a janela do jogo fecha");
+    m.tecla(id, Key::F(8), Modifiers::default(), None);
+    m.quadro();
+    let h = m.host.as_mut().expect("vm");
+    assert!(
+        h.debug_frame_with(&mut m.sim, &mut NoDoors).is_some(),
+        "o F8 parado é o Continue"
+    );
+}
+
+#[test]
+fn o_menu_run_so_deixa_continuar_parado_e_o_f8_e_de_uma_linha_so() {
+    use ph2d_app_code::GameStop;
+    use ph2d_app_code::commands::{CMD_CONTINUE, CMD_NEXT_LINE, CMD_NEXT_PROBLEM, row_state};
+    assert_eq!(row_state(CMD_CONTINUE, GameStop::Running), (false, false));
+    assert_eq!(row_state(CMD_NEXT_LINE, GameStop::Running), (false, false));
+    assert_eq!(row_state(CMD_NEXT_PROBLEM, GameStop::Running), (true, true));
+    assert_eq!(row_state(CMD_CONTINUE, GameStop::Line), (true, true));
+    assert_eq!(row_state(CMD_NEXT_LINE, GameStop::Line), (true, true));
+    assert_eq!(row_state(CMD_NEXT_PROBLEM, GameStop::Line), (true, false));
+    assert_eq!(row_state(CMD_CONTINUE, GameStop::Error), (true, true));
+    assert_eq!(
+        row_state(CMD_NEXT_LINE, GameStop::Error),
+        (false, false),
+        "num erro não"
+    );
+}
+
+#[test]
+fn a_engrenagem_e_a_funcao_do_caminho_tem_dica() {
+    let (mut m, id) = aberto(MOVE);
+    vai(&mut m, id, 6);
+    m.pinta(id);
+    let tips = m.docs().bar_painted().tips.clone();
+    assert!(tips.iter().any(|t| t.1 == "Script options"), "{tips:?}");
+    assert!(tips.iter().any(|t| t.1 == "Go to update"), "{tips:?}");
+}

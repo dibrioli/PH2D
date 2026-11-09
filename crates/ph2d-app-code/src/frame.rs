@@ -109,12 +109,13 @@ pub fn frame(
         toasts,
     );
     docs.drafts(world, host.as_deref());
+    let mut new_stop = false;
     if let Some(h) = host {
         hear(docs, h, world);
         let watched = our_active
             .map(ScriptId)
             .filter(|id| docs.docs.iter().any(|d| d.script == *id));
-        crate::debug::frame(docs, h, world, (watched, selected), toasts);
+        new_stop = crate::debug::frame(docs, h, world, (watched, selected), toasts);
     }
     crate::kanban::hear(docs);
     for d in &mut docs.docs {
@@ -135,6 +136,10 @@ pub fn frame(
     }
     if show_scene {
         hero.documents.activate(None);
+    }
+    // Parado em ecrã cheio ou na janela, o editor não se pintava: o palco cede-lhe a vez.
+    if new_stop {
+        (hero.view.palco_do_jogo, hero.view.palco_largado) = (false, true);
     }
     if let Some(e) = picks
         .last()

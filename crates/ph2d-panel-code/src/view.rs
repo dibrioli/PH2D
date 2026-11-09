@@ -405,7 +405,8 @@ impl CodeView {
         if y >= tr.y + tr.h {
             return Hit::Status;
         }
-        let row = (((y - tr.y + self.sy()) / self.m.line_h) as usize).min(self.total_rows() - 1);
+        let raw = ((y - tr.y + self.sy()) / self.m.line_h) as usize;
+        let row = raw.min(self.total_rows() - 1);
         let line = self.line_of_row(row).min(buffer.text().line_count() - 1);
         if x < tr.x {
             let fold_x0 = a.x + self.m.gutter_w - self.m.fold_w;
@@ -413,7 +414,8 @@ impl CodeView {
                 .folds
                 .iter()
                 .any(|f| f.start == line && f.end > f.start);
-            return if x < a.x + self.m.mark_w {
+            // Abaixo da última linha não há linha para marcar.
+            return if x < a.x + self.m.mark_w && raw == row {
                 Hit::Mark(line)
             } else if is_fold && x >= fold_x0 {
                 Hit::Fold(line)

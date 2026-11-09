@@ -22,13 +22,7 @@ impl App {
     }
 
     /// O evento de teclado do winit. **Só desembrulha** — a política toda mora no
-    /// [`Self::key_input`], que é dirigível sem winit.
-    ///
-    /// A separação não é arrumação: o `winit::KeyEvent` tem campo privado e **não pode ser
-    /// construído** fora do winit, então enquanto o corpo morava aqui **nenhum teste
-    /// conseguia apertar uma tecla**. O roteamento do Ctrl+Z (quem consome antes de quem) era
-    /// exatamente o que o Enio disse estar quebrado, e era a única parte do input que nenhum
-    /// gate alcançava.
+    /// [`Self::key_input`], dirigível sem winit (o `winit::KeyEvent` não se constrói fora dele).
     pub(crate) fn on_keyboard_input(&mut self, event: WinitKeyEvent) {
         let WinitKeyEvent {
             physical_key,
@@ -38,6 +32,13 @@ impl App {
             text,
             ..
         } = event;
+        // Acorde com `/` segue o CARÁCTER (ABNT2: `/`=IntlRo, `;`=Slash; US: Ctrl+Shift+/ = `?`).
+        let chord = self.modifiers.control_key() || self.modifiers.super_key();
+        let physical_key = match (chord, logical_key.to_text() == Some("/"), physical_key) {
+            (true, true, _) => PhysicalKey::Code(KeyCode::Slash),
+            (true, false, PhysicalKey::Code(KeyCode::Slash)) => PhysicalKey::Code(KeyCode::Abort),
+            (_, _, k) => k,
+        };
         // A tecla morta sem IME (o xkb compõe): o acento pendente mostra-se no campo focado.
         if state == ElementState::Pressed
             && let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())

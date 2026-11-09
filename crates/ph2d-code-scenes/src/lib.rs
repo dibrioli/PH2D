@@ -216,10 +216,18 @@ ph2d.property("speed", 4, { min = 0, max = 10 }) -- quão depressa anda
 function update(self, dt)
   local x = ph2d.get(self.id, "x") or 0
   local y = ph2d.get(self.id, "y") or 0
-  if ph2d.key_down("left") then x = x - self.speed * dt end
-  if ph2d.key_down("right") then x = x + self.speed * dt end
-  if ph2d.key_down("up") then y = y + self.speed * dt end
-  if ph2d.key_down("down") then y = y - self.speed * dt end
+  if ph2d.key_down("left") then
+    x = x - self.speed * dt
+  end
+  if ph2d.key_down("right") then
+    x = x + self.speed * dt
+  end
+  if ph2d.key_down("up") then
+    y = y + self.speed * dt
+  end
+  if ph2d.key_down("down") then
+    y = y - self.speed * dt
+  end
   ph2d.set(self.id, "x", x)
   ph2d.set(self.id, "y", y)
 

@@ -229,6 +229,16 @@ const TETOS_DAS_CRATES_APP: &[(&str, usize)] = &[
     ("ph2d-app-vec", 93_637), // 91_801
 ];
 
+/// ⭐ As crates PURAS para onde a família saiu da `ph2d-app-*` (CodeEditor fecho, 08/11): a isenção
+/// viaja com o código (CLAUDE.md §5.0) — o que sai da catraca da `ph2d-app-code` entra nesta, com
+/// a mesma régua. Medido 2026-11-08 na `line/ScriptEditor` (o medido no comentário).
+const TETOS_DAS_CRATES_DA_FAMILIA: &[(&str, usize)] = &[
+    ("ph2d-code-assist", 3_925),  // 3_825
+    ("ph2d-code-scenes", 666),    // 566
+    ("ph2d-code-smoke", 614),     // 514
+    ("ph2d-code-viewmodel", 304), // 204
+];
+
 /// A folga de uma crate: **2 %** do medido, piso de 100 linhas. É a razão da shell
 /// (`FOLGA_DE_COMPOSICAO` 4 000 sobre 185 041 medidas = 2,2 %): o bastante para compor, longe do
 /// bastante para uma família caber. O piso existe porque 2 % de 699 linhas são 13 — uma
@@ -277,8 +287,11 @@ fn the_shell_only_shrinks_and_every_app_crate_too() {
             ));
         }
     }
-    for &(nome, teto) in TETOS_DAS_CRATES_APP {
-        if !no_disco.iter().any(|n| n == nome) {
+    for &(nome, teto) in TETOS_DAS_CRATES_APP
+        .iter()
+        .chain(TETOS_DAS_CRATES_DA_FAMILIA)
+    {
+        if !crates_dir.join(nome).is_dir() {
             erros.push(format!(
                 "`{nome}` tem linha em `TETOS_DAS_CRATES_APP` e a crate já não existe — apague a \
                  linha (e conte a crate para onde o código foi)"

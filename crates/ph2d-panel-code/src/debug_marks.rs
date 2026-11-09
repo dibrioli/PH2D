@@ -19,6 +19,19 @@ pub struct Breakpoint {
     pub armed: bool,
 }
 
+/// O pior problema da linha 0-based `line` (`problems` vem ordenado por linha).
+pub(crate) fn worst_problem(
+    problems: &[crate::frame::Problem],
+    line: usize,
+) -> Option<crate::frame::Severity> {
+    let from = problems.partition_point(|p| p.line < line);
+    problems[from..]
+        .iter()
+        .take_while(|p| p.line == line)
+        .map(|p| p.severity)
+        .max()
+}
+
 /// O que uma linha fez no último quadro, já escrito (`x = 412, step = 1  ×3`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Ghost {
@@ -132,6 +145,13 @@ impl CodeView {
             fill_circle(scene, cx, cy, r, pal.error);
             if !b.armed {
                 fill_circle(scene, cx, cy, r - ring, pal.gutter);
+            }
+            // O problema da mesma linha: um selo no canto do ponto, contornado do fundo.
+            if let Some(sev) = worst_problem(frame.problems, b.line) {
+                let d = Spacing::Sm.px() * 0.5;
+                let (bx, by) = (cx + r - d, cy + r - d);
+                fill_circle(scene, bx, by, d + ring, pal.gutter);
+                fill_circle(scene, bx, by, d, pal.severity(sev));
             }
             if frame.debug.stopped == Some(b.line) {
                 dot_on = true;

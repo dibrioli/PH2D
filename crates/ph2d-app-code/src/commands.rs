@@ -160,6 +160,19 @@ pub fn menu_rows(menu: TabMenu) -> Vec<(NodeId, String, String)> {
         .collect()
 }
 
+/// A linha `id` do menu com o jogo em `stop`: `(vale, mostra o atalho)`. Continue e Next Line só
+/// com o jogo parado (Next Line nunca num erro); o F8 é de UM só: Continue parado, Next Problem não.
+#[must_use]
+pub fn row_state(id: NodeId, stop: crate::debug::GameStop) -> (bool, bool) {
+    use crate::debug::GameStop::{Line, Running};
+    match id {
+        CMD_CONTINUE => (stop != Running, stop != Running),
+        CMD_NEXT_LINE => (stop == Line, stop == Line),
+        CMD_NEXT_PROBLEM => (true, stop == Running),
+        _ => (true, true),
+    }
+}
+
 /// O rótulo de `id` com o estado que só o host sabe (Pause on Error: o espelho do quadro).
 fn stateful(id: NodeId, key: &'static str) -> &'static str {
     let on = crate::debug::PAUSE_ON_ERROR.load(std::sync::atomic::Ordering::Relaxed);

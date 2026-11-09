@@ -26,6 +26,25 @@ pub(crate) static PAUSE_ON_ERROR: AtomicBool = AtomicBool::new(true);
 
 pub(crate) use ph2d_code_assist::debug_view::{Ask, DebugCard, ghost_text, stop_card};
 
+/// Se o jogo está parado, e porquê: a linha (Continue e Next Line) ou um erro (só Continue).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum GameStop {
+    #[default]
+    Running,
+    Line,
+    Error,
+}
+
+impl GameStop {
+    fn of(stop: Option<&DebugStop>) -> Self {
+        match stop.map(|s| &s.why) {
+            None => Self::Running,
+            Some(StopKind::Error(_)) => Self::Error,
+            Some(_) => Self::Line,
+        }
+    }
+}
+
 /// O depurador de UM documento.
 #[derive(Debug, Default)]
 pub(crate) struct DocDebug {
@@ -34,6 +53,10 @@ pub(crate) struct DocDebug {
     /// As linhas (1-based) que o host recebeu; `None` = ainda não falou com ele.
     sent: Option<Vec<u32>>,
     pub(crate) armed: Vec<u32>,
+    /// O jogo parado (em qualquer aba): o F8 e o F10 lêem-no.
+    pub(crate) game_stop: GameStop,
+    /// O motor carregou este script (respondeu por ele): só então o que não armou é oco.
+    answered: bool,
     pub(crate) stopped: Option<usize>,
     pub(crate) ghosts: Vec<Ghost>,
     pub(crate) card: Option<DebugCard>,
@@ -50,6 +73,7 @@ pub(crate) struct DebugState {
     pub(crate) ask: Option<Ask>,
     pub(crate) toggle_pause: bool,
     pub(crate) remove_all: bool,
+    pub(crate) game_stop: GameStop,
     /// A paragem já mostrada (só uma nova abre a aba e rola).
     last_stop: Option<(Entity, ScriptId, u32, bool)>,
     /// A corrida do Play em que o aviso das paragens bloqueadas já saiu.
@@ -126,7 +150,7 @@ impl CodeDoc {
     pub(crate) fn refresh_marks(&mut self) {
         let lines = self.breakpoint_lines();
         let armed = &self.debug.armed;
-        let known = self.debug.sent.is_some() && !armed.is_empty();
+        let known = self.debug.sent.is_some() && self.debug.answered;
         self.debug.marks_view = lines
             .into_iter()
             .map(|line| Breakpoint {
@@ -183,7 +207,7 @@ pub(crate) fn frame(
     world: &World,
     (watched, selected): (Option<ScriptId>, Option<Entity>),
     toasts: &mut ToastQueue,
-) {
+) -> bool {
     if std::mem::take(&mut docs.debug.toggle_pause) {
         h.set_pause_on_error(!h.pause_on_error());
     }
@@ -231,12 +255,16 @@ pub(crate) fn frame(
             }
         }
         d.debug.armed = h.armed_lines(d.script).to_vec();
+        d.debug.answered = h.scene_info(d.script).is_some();
         d.refresh_marks();
     }
     h.set_live_watch(watched, selected);
     let stop = h.debug_stop();
+    let game_stop = GameStop::of(stop.as_ref());
+    docs.debug.game_stop = game_stop;
     let live_who = h.live_object().map(|e| crate::frame::object_name(world, e));
     for d in &mut docs.docs {
+        d.debug.game_stop = game_stop;
         let here = stop.as_ref().filter(|s| s.script == d.script);
         d.debug.stopped = here
             .and_then(|s| s.frame.as_ref())
@@ -259,21 +287,22 @@ pub(crate) fn frame(
         }
     }
     match docs.debug.ask.take() {
-        Some(Ask::Continue) => h.request_continue(),
-        Some(Ask::NextLine) => h.request_next_line(),
-        None => {}
+        Some(Ask::Continue) if game_stop != GameStop::Running => h.request_continue(),
+        Some(Ask::NextLine) if game_stop == GameStop::Line => h.request_next_line(),
+        _ => {}
     }
-    follow_stop(docs, world, stop.as_ref());
+    let new_stop = follow_stop(docs, world, stop.as_ref());
     let blocked = h.take_blocked_stops();
     let run = h.play_run();
     if blocked > 0 && docs.debug.blocked_told != Some(run) {
         docs.debug.blocked_told = Some(run);
         toasts.push(Toast::warning(tr("code.debug.blocked")));
     }
+    new_stop
 }
 
-/// Uma paragem NOVA abre (ou activa) a aba do script e leva o cursor à linha.
-fn follow_stop(docs: &mut CodeDocs, world: &World, stop: Option<&DebugStop>) {
+/// Uma paragem NOVA abre (ou activa) a aba do script e leva o cursor à linha. `true` = nova.
+fn follow_stop(docs: &mut CodeDocs, world: &World, stop: Option<&DebugStop>) -> bool {
     let key = stop.map(|s| {
         (
             s.entity,
@@ -283,15 +312,17 @@ fn follow_stop(docs: &mut CodeDocs, world: &World, stop: Option<&DebugStop>) {
         )
     });
     if key == docs.debug.last_stop {
-        return;
+        return false;
     }
     docs.debug.last_stop = key;
-    let Some(s) = stop else { return };
+    let Some(s) = stop else { return false };
     if !docs.docs.iter().any(|d| d.script == s.script) {
         let Some(lib) = world.get_resource::<ProjectScripts>() else {
-            return;
+            return true;
         };
-        let Some(src) = lib.get(s.script) else { return };
+        let Some(src) = lib.get(s.script) else {
+            return true;
+        };
         let (name, text) = (src.name.clone(), src.text.clone());
         docs.open(s.script, &name, &text);
     }
@@ -301,6 +332,7 @@ fn follow_stop(docs: &mut CodeDocs, world: &World, stop: Option<&DebugStop>) {
         ph2d_code_buffer::goto_line(&mut d.buffer, line);
         d.reveal();
     }
+    true
 }
 
 impl CodeDocs {

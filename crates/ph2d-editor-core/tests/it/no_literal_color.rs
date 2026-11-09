@@ -308,7 +308,7 @@ fn path_is_allowlisted(path: &Path) -> bool {
     false
 }
 
-/// Wave 10 / Etapa 5.1 — discover all `crates/ph2d-panel-*/src/` roots
+/// Wave 10 / Etapa 5.1 — discover all `crates/ph2d-panel-*/src/` (and `ph2d-code-*`) roots
 /// dynamically so the gate auto-includes future panel crates without
 /// hand-edits. Excludes the registry-init aggregator (no UI code).
 fn discover_panel_src_roots(crates_root: &Path) -> Vec<PathBuf> {
@@ -324,7 +324,13 @@ fn discover_panel_src_roots(crates_root: &Path) -> Vec<PathBuf> {
         let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
             continue;
         };
-        if name.starts_with("ph2d-panel-") && name != "ph2d-panel-registry-init" {
+        // CodeEditor fecho (08/11): a família do código saiu da `ph2d-app-code` para `ph2d-code-*`
+        // (o modelo da vista, o assistente, as cenas): a cor dela viaja com ela para o censo. Fora:
+        // a ajuda (o `0xFF8800` do `bit32` é texto da página) e o formatador (flags de processo).
+        let panel = name.starts_with("ph2d-panel-") && name != "ph2d-panel-registry-init";
+        let code = name.starts_with("ph2d-code-")
+            && !matches!(name, "ph2d-code-help" | "ph2d-code-format");
+        if panel || code {
             let src = path.join("src");
             if src.is_dir() {
                 out.push(src);

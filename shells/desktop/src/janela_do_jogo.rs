@@ -33,9 +33,9 @@ impl crate::App {
         let gfx = self.gfx.as_mut()?;
         let hero = gfx.hero_screen.as_mut()?;
         let stage = hero.view.game_stage;
-        // A janela liga o palco quando ABRIR (`abre_a_janela_do_jogo`): este quadro ainda é desenhado
-        // no editor, e é a imagem com que ele fica parado atrás do jogo.
-        hero.view.palco_do_jogo = stage == GameStage::Fullscreen;
+        // A janela liga o palco quando ABRIR: este quadro ainda é desenhado no editor.
+        (hero.view.palco_do_jogo, hero.view.palco_largado) =
+            (stage == GameStage::Fullscreen, false);
         let antes = VistaAntes {
             camara_do_jogo: self.game_camera_preview,
             camara: gfx.camera,
@@ -62,15 +62,16 @@ impl crate::App {
         self.game_camera_preview = antes.camara_do_jogo;
     }
 
-    /// Depois de cada quadro, com o event loop na mão: abre a janela que o palco pede e fecha-a quando
-    /// o jogo pára.
+    /// Depois de cada quadro: abre a janela do palco; fecha-a se o jogo pára ou o depurador o largou.
     pub(crate) fn palco_janela(&mut self, event_loop: &ActiveEventLoop) {
+        let largado = (self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()))
+            .is_some_and(|h| h.view.palco_largado);
         let stage = self.undo.jogo.foto().and_then(|f| f.vista).map(|v| v.stage);
         let playing = self.playhead.is_playing();
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             hero.view.game_run = ph2d_editor_core::game_stage::GameRun { stage, playing };
         }
-        let quer = stage == Some(GameStage::Window);
+        let quer = stage == Some(GameStage::Window) && !largado;
         match (quer, self.undo.janela_do_jogo.is_some()) {
             (true, false) => self.abre_a_janela_do_jogo(event_loop),
             (false, true) => self.fecha_a_janela_do_jogo(),

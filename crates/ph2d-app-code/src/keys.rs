@@ -1,6 +1,7 @@
 //! ⭐ **E5 — o teclado da aba**: com a aba de código activa, TODA tecla é do editor (nenhum atalho da
 //! cena a vê). Escrever passa pelo `AutoEdit`; cada tecla deixa o cursor à vista.
 
+use crate::debug::GameStop;
 use crate::doc::{CodeDoc, TAB};
 use crate::docs::SaveKind;
 use crate::edit::FieldKey;
@@ -134,15 +135,17 @@ impl CodeDoc {
             // F2: renomear o nome no cursor; Shift+F12: a lista dos sítios dele (I10).
             Key::F(2) if !cmd && !shift => self.start_rename(),
             Key::F(12) if !cmd && shift => self.open_refs(),
-            // F8 / Shift+F8: o problema seguinte/anterior pela ordem da lista (acabamento).
-            // Onda D: F8 com o jogo parado nesta aba = Continue (o do DevTools); F9 = ponto de parada;
-            // F10 = Next line.
-            Key::F(8) if !cmd && !shift && self.is_stopped_here() => {
+            // F8 / Shift+F8: o problema seguinte/anterior. Com o jogo parado (em qualquer aba) o F8 é
+            // o Continue (o do DevTools); F9 = ponto de parada; F10 = Next line (só parado na linha).
+            Key::F(8) if !cmd && !shift && self.debug.game_stop != GameStop::Running => {
                 self.debug.ask = Some(crate::debug::Ask::Continue);
             }
             Key::F(8) if !cmd => self.problem_step(!shift),
             Key::F(9) if !cmd && !shift => self.toggle_breakpoint_at_caret(),
-            Key::F(10) if !cmd && !shift => self.debug.ask = Some(crate::debug::Ask::NextLine),
+            Key::F(10) if !cmd && !shift && self.debug.game_stop == GameStop::Line => {
+                self.debug.ask = Some(crate::debug::Ask::NextLine);
+            }
+            Key::F(10) if !cmd && !shift => {}
             Key::Space if cmd => self.complete.open_now(
                 self.buffer.text(),
                 self.buffer.selection().primary().head,
@@ -254,7 +257,7 @@ impl CodeDoc {
                     SaveKind::Save
                 })
             }
-            '/' => self.toggle_comment(),
+            '/' if !shift => self.toggle_comment(),
             '[' | '{' if shift => self.fold_at_cursor(true),
             ']' | '}' if shift => self.fold_at_cursor(false),
             _ => {}

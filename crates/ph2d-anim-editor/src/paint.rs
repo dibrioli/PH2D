@@ -549,7 +549,7 @@ fn paint_strip(
                 .layout(&(i + 1).to_string(), font, f32::INFINITY)
                 .width();
             let x = thumb.x + Spacing::Sm.px() + numero + Spacing::Xs.px();
-            super::paint_align::paint_nudge_mark(scene, theme, *thumb, x);
+            super::paint_align::paint_nudge_mark(scene, text, theme, *thumb, x);
         }
         if doc.marker_at(i).is_some() {
             let cor = if doc.marker_past_end(i).is_some() {

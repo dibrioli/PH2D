@@ -283,27 +283,28 @@ fn paint_frame(doc: &AnimDoc, scene: &mut VectorScene, text: &mut TextSystem, th
     );
 }
 
-/// ⭐ A marca na tira de um quadro acertado (onda C): um selo de acento com o ícone do Align, logo à direita do número
-/// do quadro, a partir de `x` (smoke do dono 09/11: no canto de cima à direita pisava o × e o ícone de mover era
-/// estranho).
-pub(super) fn paint_nudge_mark(scene: &mut VectorScene, theme: Theme, thumb: Rect, x: f32) {
-    let side = ROW_H_PX * 0.8; // LITERAL-PX-OK: fração da linha
-    let r = Rect::new(x, thumb.y + Spacing::Xs.px(), side, side);
-    let (cx, cy) = (r.x + side / 2.0, r.y + side / 2.0);
-    fill_circle(scene, cx, cy, side / 2.0, tom(ColorToken::Accent, theme));
-    let inset = side * 0.2; // LITERAL-PX-OK: a margem do ícone no selo
-    let icon = Rect::new(
-        r.x + inset,
-        r.y + inset,
-        side - 2.0 * inset,
-        side - 2.0 * inset,
-    ); // LITERAL-PX-OK: as duas margens
-    paint_icon(
+/// ⭐ A marca na tira de um quadro acertado (onda C): a palavra «aligned», pequena e na tinta do Align, logo à direita
+/// do número do quadro, a partir de `x` (smoke do dono 09/11: o selo com ícone pisava o × e era estranho).
+pub(super) fn paint_nudge_mark(
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+    thumb: Rect,
+    x: f32,
+) {
+    let font = TypeToken::Xs.px();
+    let y = thumb.y + (TypeToken::Base.px() - font) / 2.0; // a linha do número
+    let w = (thumb.x + thumb.w - x).max(0.0);
+    let cor = tom(ColorToken::Info, theme);
+    paint_text(
+        text,
         scene,
-        IconId::AlignBottom,
-        icon,
-        tom(ColorToken::Bg0, theme),
-        StrokeToken::Thick.px(),
+        tr("anim_editor.frame_aligned"),
+        x,
+        y,
+        font,
+        w,
+        cor,
     );
 }
 

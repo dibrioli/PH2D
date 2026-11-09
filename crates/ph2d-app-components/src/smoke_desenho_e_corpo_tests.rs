@@ -275,7 +275,10 @@ struct Varredura {
 
 /// A forma de `e` e a pose dela no referencial de `e`: o `Collider` no próprio (corpo antigo) ou, na
 /// opção B (ADR-0199), o da filha «Collision Shape» ([`ph2d_physics_ecs::main_shape`]).
-fn forma_de(world: &World, e: ph2d_ecs::Entity) -> Option<(ph2d_physics_ecs::ColliderShape, Transform)> {
+fn forma_de(
+    world: &World,
+    e: ph2d_ecs::Entity,
+) -> Option<(ph2d_physics_ecs::ColliderShape, Transform)> {
     if let Some(col) = world.get::<Collider>(e) {
         return Some((col.shape, Transform::IDENTITY));
     }

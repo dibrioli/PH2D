@@ -79,7 +79,10 @@ fn toda_dependencia_tem_o_seu_porque() {
     }
     for (a, b) in NASCE_EM_FILHA {
         arestas += 1;
-        assert!(porque(a, b).is_some_and(resolve), "{a} → {b} (filha) sem porquê");
+        assert!(
+            porque(a, b).is_some_and(resolve),
+            "{a} → {b} (filha) sem porquê"
+        );
     }
     for (a, b, _) in PORQUE {
         assert!(

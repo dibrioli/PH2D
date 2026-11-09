@@ -292,7 +292,10 @@ fn resetting_the_body_puts_body_shape_and_zones_back_as_attached() {
     crate::component_attach::attach_by_name(&mut sim, &reg, SEMENTES, bits, BODY).expect("anexa");
     let e = ph2d_ecs::Entity::from_bits(bits);
     let corpo = bytes(&sim, &reg, bits, BODY);
-    assert!(sim.world().get::<Collider>(e).is_none(), "a forma não vai no corpo");
+    assert!(
+        sim.world().get::<Collider>(e).is_none(),
+        "a forma não vai no corpo"
+    );
     let forma = ph2d_physics_ecs::main_shape(sim.world(), e).expect("a forma nasce na filha");
     assert_ne!(forma, e);
     sim.world_mut().get_mut::<RigidBody>(e).expect("corpo").kind = BodyKind::Static;
@@ -308,7 +311,10 @@ fn resetting_the_body_puts_body_shape_and_zones_back_as_attached() {
         corpo,
         "o corpo volta ao de fábrica"
     );
-    assert!(sim.world().get::<Collider>(e).is_none(), "nem o Reset põe a forma no corpo");
+    assert!(
+        sim.world().get::<Collider>(e).is_none(),
+        "nem o Reset põe a forma no corpo"
+    );
     assert_eq!(
         ph2d_physics_ecs::main_shape(sim.world(), e),
         Some(forma),
@@ -342,10 +348,7 @@ fn resetting_the_player_leaves_the_body_it_needs() {
         .get_mut::<PlatformPlayer>(e)
         .expect("player")
         .float_height = 7.0;
-    sim.world_mut()
-        .get_mut::<RigidBody>(e)
-        .expect("corpo")
-        .kind = BodyKind::Static;
+    sim.world_mut().get_mut::<RigidBody>(e).expect("corpo").kind = BodyKind::Static;
     crate::component_attach::reset_by_name(&mut sim, &reg, SEMENTES, bits, PLAYER).expect("repõe");
     assert_eq!(
         bytes(&sim, &reg, bits, PLAYER),

@@ -566,7 +566,8 @@ pub const PORQUE: &[(&str, &str, TextKey)] = &[
 
 /// ⭐ **O que a SEMENTE faz nascer numa filha** (opção B, ADR-0199): `(quem, o componente da filha)`. Não é
 /// aresta `requires` — nenhuma porta põe a forma no corpo —, mas vem junto, e o artista lê-o no «+N» e no recibo.
-pub const NASCE_EM_FILHA: &[(&str, &str)] = &[("ph2d::physics::RigidBody", "ph2d::physics::Collider")];
+pub const NASCE_EM_FILHA: &[(&str, &str)] =
+    &[("ph2d::physics::RigidBody", "ph2d::physics::Collider")];
 
 /// O porquê de `needs` trazer `needed`.
 #[must_use]

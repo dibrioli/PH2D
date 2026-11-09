@@ -213,7 +213,9 @@ Cada onda fecha com handoff; smoke é do dono.
 
 ## §7 — Perguntas ao dono
 
-1. **Comprar a licença do Aseprite (US$ 19,99)?** Recomendo **sim**: é o único jeito de ter o
-   Aseprite como oráculo que se corre (folha, GIF, conversão de cor, `.ase` de referência). Sem ela,
-   o Trial só serve para olhar.
-2. O nome que aparece no menu Add: «Pixel Sprite»? (proposta)
+1. ~~Comprar a licença do Aseprite (US$ 19,99)?~~ **Respondida 09/11: não.** *«vamos usar o trial. o
+   que não for possível comparar, use outros apps gratuitos como referência»* — o Trial só para olhar;
+   o oráculo que se corre é um app gratuito com licença triada por artefacto (LibreSprite, Pixelorama,
+   GIMP, ImageMagick, Pillow, Godot).
+2. ~~O nome no menu Add~~ **Respondida 09/11** («como vc achar melhor»): fica **«Pixel Sprite»**, o nome
+   que o tipo de objeto já tem no app.

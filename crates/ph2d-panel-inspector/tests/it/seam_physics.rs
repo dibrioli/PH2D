@@ -63,6 +63,7 @@ pub(crate) fn with_body() -> InspectorPhysicsInfo {
         collides_override: [0; 2],
         collides_mixed: 0,
         collides_differs: false,
+        collides_pinned: 0,
         join_kind_tag: 0,
         bake_seconds: 5.0,
         // A full-range bake starts at 0; W-BakeRange's partial start is exercised

@@ -35,7 +35,7 @@ pub use migra_formas::{
 };
 pub mod player_input;
 pub use layer_names::{
-    LayerNames, layers_in_use, objects_on_layers, objects_per_layer, visible_layers,
+    LayerNames, ObjetoDaCamada, layers_in_use, objects_on_layers, objects_per_layer, visible_layers,
 };
 pub mod name_refs;
 mod parts;

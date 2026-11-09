@@ -642,3 +642,33 @@ fn duplicating_a_hud_canvas_brings_its_arrangement_bound_to_its_own_children() {
         "o original mudou"
     );
 }
+
+/// Dono 09/11: duplicar um corpo dá nome único à forma copiada, como à raiz; a original fica como estava.
+#[test]
+fn duplicar_um_corpo_da_nome_unico_a_forma_copiada() {
+    use ph2d_physics_ecs::{BodyKind, ColliderShape, RigidBody};
+    let mut sim = SimWorld::new();
+    let r = reg();
+    let corpo = sim
+        .world_mut()
+        .spawn((
+            Name::new("Crate"),
+            Transform::default(),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+        ))
+        .id();
+    let bola = ColliderShape::Ball { radius: 0.5 };
+    let forma = ph2d_physics_ecs::nasce_com_forma(sim.world_mut(), corpo, bola);
+    let copia = duplicate(&mut sim, &r, corpo).expect("a cópia");
+    let w = sim.world();
+    let nome = |e| w.get::<Name>(e).map(|n| n.0.clone()).unwrap_or_default();
+    let filhas: Vec<String> = ph2d_ecs::ordered_children(w, copia)
+        .into_iter()
+        .map(nome)
+        .collect();
+    assert_eq!(nome(copia), "Crate (1)");
+    assert_eq!(filhas, ["Collision Shape (1)"]);
+    assert_eq!(nome(forma), "Collision Shape", "a original não muda");
+}

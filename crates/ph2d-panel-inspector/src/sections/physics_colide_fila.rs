@@ -49,7 +49,19 @@ pub(super) fn colide_com(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo)
     };
     let frase = tr_with(chave, &[("layer", &camadas::rotulo(camada))]);
     let estado = |j| valor(linha(info), info.collides_mixed, j);
-    let y = fila(t, y, (&DO_COLLIDER, camada), rotulo, &estado, &frase);
+    // Dono 09/11: a frase e o nome dos quadros fixados pela exceção vão em destaque (a mesma cor).
+    let destaque = Destaque {
+        fixos: info.collides_pinned,
+        frase: info.collides_differs,
+    };
+    let y = fila(
+        t,
+        y,
+        (&DO_COLLIDER, camada),
+        rotulo,
+        &estado,
+        (&frase, destaque),
+    );
     if !info.collides_differs {
         return y;
     }
@@ -75,7 +87,21 @@ pub(super) fn fila_da_matriz(
         &[("layer", &camadas::rotulo(camada))],
     );
     let estado = |j| valor(camadas::linha(camada), 0, j);
-    fila(t, y, (quem, camada), rotulo, &estado, &frase)
+    fila(
+        t,
+        y,
+        (quem, camada),
+        rotulo,
+        &estado,
+        (&frase, Destaque::default()),
+    )
+}
+
+/// O que a fila pinta em destaque: os quadros `fixos` (bits) e a `frase`.
+#[derive(Clone, Copy, Default)]
+struct Destaque {
+    fixos: u32,
+    frase: bool,
 }
 
 /// O clique num quadro da forma: o bit vira o contrário do que se vê (misto ⇒ aceso para todas), para a seleção
@@ -149,12 +175,14 @@ fn pinta(
     r: Rect,
     texto: &str,
     (id, quem): (ph2d_a11y::NodeId, &Quem),
-    aceso: Option<CheckboxValue>,
+    (aceso, destaque): (Option<CheckboxValue>, bool),
 ) {
     let (fonte, folga) = (TypeToken::Sm.px(), Spacing::Xs.px());
     let raio = frame_radius(t.theme, Radius::Sm.px());
     let fundo = if t.store.hover_live(id) > 0.0 {
         ColorToken::CardFieldHover
+    } else if destaque {
+        ColorToken::WarnSoft
     } else {
         ColorToken::CardField
     };
@@ -165,7 +193,9 @@ fn pinta(
         x += fonte + folga;
     }
     let apagado = aceso == Some(CheckboxValue::Unchecked);
-    let cor = if apagado {
+    let cor = if destaque {
+        ColorToken::Warn
+    } else if apagado {
         ColorToken::CardLabel
     } else {
         ColorToken::KanbanCardFg
@@ -199,7 +229,7 @@ fn fila(
     (quem, camada): (&Quem, usize),
     rotulo: &str,
     estado: &dyn Fn(usize) -> CheckboxValue,
-    frase: &str,
+    (frase, destaque): (&str, Destaque),
 ) -> f32 {
     let seccao = ph2d_editor_core::property_row::Seccao::medida(t.text, 1, &[rotulo]);
     let linha = ph2d_editor_core::property_row::paint_label_row(
@@ -239,7 +269,14 @@ fn fila(
         let cw = largura(t, &nome, true);
         let (r, ultima) = assenta(cw);
         fundo = ultima;
-        pinta(t, r, &nome, (quem.quadros[j], quem), Some(estado(j)));
+        let fixo = destaque.fixos & (1 << j) != 0;
+        pinta(
+            t,
+            r,
+            &nome,
+            (quem.quadros[j], quem),
+            (Some(estado(j)), fixo),
+        );
     }
     // Nas 32 não há mais camada para mostrar: o «+» sai.
     if camadas::proxima_livre().is_some() {
@@ -253,13 +290,18 @@ fn fila(
             assenta(cw)
         };
         fundo = ultima;
-        pinta(t, r, mais, (quem.mais, quem), None);
+        pinta(t, r, mais, (quem.mais, quem), (None, false));
     }
     // O «+» é o fim da mesma fila: um composto, uma capacidade.
     let fila = quem.quadros.iter().copied().chain([quem.mais]);
     ph2d_editor_core::widget::composto::grupo(fila);
     let y = linha.fim(ph2d_tokens::row_pitch_px()) + (fundo - c.y);
-    let fim = t.frase(y, frase, ColorToken::Text3);
+    let tom = if destaque.frase {
+        ColorToken::Warn
+    } else {
+        ColorToken::Text3
+    };
+    let fim = t.frase(y, frase, tom);
     t.hit.register(quem.frase, Rect::new(t.x, y, t.w, fim - y));
     fim
 }

@@ -149,6 +149,7 @@ pub fn populate(store: &mut WidgetStore) {
         .chain(&crate::ids::PHYSICS_LAYER_BUMPS)
         .chain(&crate::ids::PHYSICS_LAYER_MOVE_TO)
         .chain(&crate::ids::PHYSICS_LAYER_OBJECT)
+        .chain(&crate::ids::PHYSICS_LAYER_EXCEPTION)
     {
         button(store, id);
     }

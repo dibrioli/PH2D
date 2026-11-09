@@ -81,8 +81,13 @@ pub fn unique_name_excluding(world: &mut SimWorld, base: &str, exclude: Entity) 
 /// mesmo formato ` (n)`, a mesma resposta para `n = 1`. Há gate a atar as duas.
 #[must_use]
 pub fn unique_names(world: &mut SimWorld, base: &str, n: usize) -> Vec<String> {
+    unique_names_in(world.world_mut(), base, n)
+}
+
+/// [`unique_names`] sobre o `World` cru — a porta de quem não tem o `SimWorld` (a física cria a forma filha).
+#[must_use]
+pub fn unique_names_in(w: &mut ph2d_ecs::World, base: &str, n: usize) -> Vec<String> {
     let mut usados: std::collections::BTreeSet<String> = {
-        let w = world.world_mut();
         let mut q = w.query::<&Name>();
         q.iter(w).map(|x: &Name| x.as_str().to_owned()).collect()
     };

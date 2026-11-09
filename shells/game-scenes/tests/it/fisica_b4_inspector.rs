@@ -135,8 +135,17 @@ fn colide_a_selecao_recebe_a_mesma_excecao_e_o_reset_a_tira() {
         },
     );
     let ver = |sim: &SimWorld, e| sim.world().get::<O>(shape_of(sim, e)).copied();
-    let (_, misto, difere) = estado_da_selecao(sim.world(), sel[0], sel);
-    assert_eq!((misto, difere), (1 << 1, true), "a 1 diverge entre as 3");
+    let s = estado_da_selecao(sim.world(), sel[0], sel);
+    assert_eq!(
+        (s.misto, s.difere),
+        (1 << 1, true),
+        "a 1 diverge entre as 3"
+    );
+    assert_eq!(
+        s.fixos,
+        1 << 1,
+        "o quadro fixado por UMA das 3 vai em destaque"
+    );
     for &e in sel {
         apply(
             &mut sim,
@@ -154,7 +163,8 @@ fn colide_a_selecao_recebe_a_mesma_excecao_e_o_reset_a_tira() {
     });
     assert!(sel.iter().all(|&e| ver(&sim, e) == quer), "as 3 iguais");
     assert_eq!(ver(&sim, irma), None, "a irmã fora da seleção não muda");
-    assert_eq!(estado_da_selecao(sim.world(), sel[0], sel).1, 0);
+    let s = estado_da_selecao(sim.world(), sel[0], sel);
+    assert_eq!((s.misto, s.fixos), (0, (1 << 1) | (1 << 2)));
     apply(&mut sim, sel[1], P::UseLayerDefault);
     assert_eq!(ver(&sim, sel[1]), None, "o reset tira o componente");
     apply(

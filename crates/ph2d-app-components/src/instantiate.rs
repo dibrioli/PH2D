@@ -352,6 +352,22 @@ pub fn duplicate_subtree(
     sim.world_mut()
         .entity_mut(copy.root)
         .insert(Name::new(unique));
+    // Dono 09/11: cada forma de colisão copiada ganha nome único, como a raiz; a peça de uma receita fica com o do mestre.
+    for e in copy.copies() {
+        let w = sim.world();
+        if e == copy.root
+            || w.get::<ph2d_physics_ecs::Collider>(e).is_none()
+            || w.get::<InstanceOf>(e).is_some()
+        {
+            continue;
+        }
+        let atual = w.get::<Name>(e).map_or_else(
+            || ph2d_physics_ecs::NOME_DA_FORMA.to_owned(),
+            |n| n.0.clone(),
+        );
+        let nome = ph2d_unique_name::unique_name(sim, &atual);
+        sim.world_mut().entity_mut(e).insert(Name::new(nome));
+    }
     // ⭐ **Sai de cima da fonte** — ver o doc: sem isto o gesto inteiro é um toast.
     if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(copy.root) {
         t.translation.x += step[0];

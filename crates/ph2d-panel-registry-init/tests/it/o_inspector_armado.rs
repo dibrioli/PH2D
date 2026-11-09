@@ -430,6 +430,7 @@ pub fn fisica_armada() -> InspectorPhysicsInfo {
         collides_override: [0; 2],
         collides_mixed: 0,
         collides_differs: false,
+        collides_pinned: 0,
         offset: [0.0, 0.0],
         walk_grip: 1.0,
         walk_belt: 0.0,

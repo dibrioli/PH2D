@@ -69,10 +69,12 @@ pub struct InspectorPhysicsInfo {
     /// and a body only says where it belongs.
     pub layer: u8,
     /// «Collides with» da forma (GEF02 B9): a exceção da primária (`CollisionOverride`; o painel compõe-na com a
-    /// matriz viva), os bits em que a seleção diverge (`Indeterminate`) e se alguma forma tem exceção («Differs…»).
+    /// matriz viva), os bits em que a seleção diverge (`Indeterminate`) e se alguma forma tem exceção («Differs…»);
+    /// `collides_pinned` = os bits que alguma forma da seleção fixa (o nome desses quadros vai em destaque).
     pub collides_override: [u32; 2],
     pub collides_mixed: u32,
     pub collides_differs: bool,
+    pub collides_pinned: u32,
     /// Collider offset (meters, local axes) — the collider's centre relative to
     /// the sprite. `[0, 0]` is centred; a non-zero value places the collider off
     /// the sprite centre (a character's feet, an off-centre hitbox). Mirrors

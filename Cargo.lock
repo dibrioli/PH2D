@@ -10719,6 +10719,7 @@ dependencies = [
  "ph2d-shake",
  "ph2d-tags",
  "ph2d-topdown",
+ "ph2d-unique-name",
  "postcard",
  "rayon",
  "serde",

@@ -222,6 +222,7 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
     let texto = &mut *ctx.text_system;
     let pad = Geometria::MARGEM_DO_CARTAO;
     let gf = g.fonte_da_grade(font);
+    let fixos = crate::state::pinned_rows();
     camada_das_listas::por_cima(ctx.scene, |cena| {
         // A grade «Who bumps into whom · N pairs».
         let ty = g.grade.y + pad;
@@ -318,6 +319,7 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
                 let cel = g.celula(p, q);
                 let liga = matriz.collides(a, b);
                 let pairada = sob == Some((a, b));
+                let excecao = fixos[a] & (1 << b) != 0 || fixos[b] & (1 << a) != 0;
                 if liga {
                     fill_rounded_rect(cena, cel, raio, resolve(ColorToken::Accent, theme));
                 } else if a != b {
@@ -350,6 +352,12 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
                         StrokeToken::Default.px(),
                         tom!(contorno, theme),
                     );
+                }
+                if excecao {
+                    // Dono 09/11: alguma forma tem regra própria neste par — o ponto no destaque das exceções.
+                    let (lado, folga) = (Spacing::Sm.px(), Spacing::Xs.px());
+                    let ponto = Rect::new(cel.x + cel.w - lado - folga, cel.y + folga, lado, lado);
+                    fill_rounded_rect(cena, ponto, lado * 0.5, tom!(ColorToken::Warn, theme));
                 }
             }
         }

@@ -60,16 +60,20 @@ lado_forma!(
     AreaFalloff,
 );
 
-/// A filha «Collision Shape» vazia de `corpo`: olho aberto (ligada), `Transform` identidade, PRIMEIRA entre as
-/// irmãs (logo a forma principal de [`crate::main_shape`]). A fonte única da migração e das portas.
+/// `base`, ou `base (n)` se já houver um objeto com esse nome no mundo (dono 09/11: nomes únicos).
+pub fn nome_livre(world: &mut World, base: &str) -> String {
+    ph2d_unique_name::unique_names_in(world, base, 1)
+        .pop()
+        .unwrap_or_else(|| base.to_owned())
+}
+
+/// A filha «Collision Shape» vazia de `corpo` (nome único): olho aberto (ligada), `Transform` identidade, PRIMEIRA
+/// entre as irmãs (logo a forma principal de [`crate::main_shape`]). A fonte única da migração e das portas.
 fn filha_vazia(world: &mut World, corpo: Entity) -> Entity {
     let irmas = ordered_children(world, corpo);
+    let nome = nome_livre(world, NOME_DA_FORMA);
     let filha = world
-        .spawn((
-            Name::new(NOME_DA_FORMA),
-            Transform::IDENTITY,
-            ChildOf(corpo),
-        ))
+        .spawn((Name::new(nome), Transform::IDENTITY, ChildOf(corpo)))
         .id();
     let ordem: Vec<Entity> = std::iter::once(filha).chain(irmas).collect();
     set_sibling_order(world, corpo, &ordem);
@@ -147,7 +151,8 @@ pub fn torna_corpo(
         .copied()
         .unwrap_or(Transform::IDENTITY);
     let pai = world.get::<ChildOf>(e).map(ChildOf::parent);
-    let corpo = world.spawn((Name::new(NOME_DO_CORPO), pose, corpo_de)).id();
+    let nome = nome_livre(world, NOME_DO_CORPO);
+    let corpo = world.spawn((Name::new(nome), pose, corpo_de)).id();
     if let Some(p) = pai {
         let irmas = ordered_children(world, p);
         world.entity_mut(corpo).insert(ChildOf(p));

@@ -409,6 +409,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.physics.tab_object_tip" => "Select this object in the scene and the Inspector",
         "card.physics.tab_select_all" => "Select all",
         "card.physics.tab_select_all_tip" => "Select every object on this layer",
+        "card.physics.tab_object_of" => "{body} › {shape}",
+        "card.physics.tab_differs" => "Differ from this layer",
+        "card.physics.tab_differs_tip" => {
+            "Select this shape. Its own Collides with differs from this layer; Use layer default on its card puts it back."
+        }
+        "card.physics.tab_pin_on" => "{layer} on",
+        "card.physics.tab_pin_off" => "{layer} off",
+        "card.physics.tab_pins_sep" => " · ",
+        "card.physics.tab_pair_differs" => {
+            " {n} {n?shape has its|shapes have their} own rule here (the dot)."
+        }
         "card.physics.tab_more" => "+{n} more",
         "card.physics.tab_more_tip" => "Show every object on this layer",
         "card.physics.tab_remove" => "Remove",

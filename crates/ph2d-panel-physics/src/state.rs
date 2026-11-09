@@ -89,29 +89,80 @@ pub fn set_layer_counts(n: [u32; ph2d_physics_ecs::MAX_LAYERS]) {
 }
 
 thread_local! {
-    static OBJETOS: RefCell<Vec<(usize, u64, String)>> = const { RefCell::new(Vec::new()) };
+    static OBJETOS: RefCell<Vec<ph2d_physics_ecs::ObjetoDaCamada>> = const { RefCell::new(Vec::new()) };
 }
 
-/// Uma vez por quadro: (camada, bits, nome) de cada objeto (`ph2d_physics_ecs::objects_on_layers`, a
-/// regra de `objects_per_layer`); as contagens da lista saem daqui.
-pub fn set_layer_objects(v: Vec<(usize, u64, String)>) {
+/// Uma vez por quadro: os objetos de cada camada (`ph2d_physics_ecs::objects_on_layers`, a regra de
+/// `objects_per_layer`); as contagens da lista saem daqui.
+pub fn set_layer_objects(v: Vec<ph2d_physics_ecs::ObjetoDaCamada>) {
     let mut n = [0u32; ph2d_physics_ecs::MAX_LAYERS];
     for o in &v {
-        n[o.0.min(ph2d_physics_ecs::MAX_LAYERS - 1)] += 1;
+        n[o.layer.min(ph2d_physics_ecs::MAX_LAYERS - 1)] += 1;
     }
     set_layer_counts(n);
     OBJETOS.with(|o| *o.borrow_mut() = v);
 }
 
-/// Os objetos da camada `n`: (bits, nome).
+/// O nome que a aba mostra: «Crate › Collision Shape» para a forma filha de um corpo (dono 09/11).
+fn rotulo(o: &ph2d_physics_ecs::ObjetoDaCamada) -> String {
+    o.dono.as_ref().map_or_else(
+        || o.nome.clone(),
+        |d| {
+            ph2d_i18n::tr_with(
+                "card.physics.tab_object_of",
+                &[("body", d), ("shape", &o.nome)],
+            )
+        },
+    )
+}
+
+/// Os objetos da camada `n`: (bits, nome a mostrar).
 #[must_use]
 pub fn layer_objects(n: usize) -> Vec<(u64, String)> {
     OBJETOS.with(|o| {
         o.borrow()
             .iter()
-            .filter(|x| x.0 == n)
-            .map(|x| (x.1, x.2.clone()))
+            .filter(|x| x.layer == n)
+            .map(|x| (x.bits, rotulo(x)))
             .collect()
+    })
+}
+
+/// As formas da camada `n` com exceção («Differ from this layer»): (bits, nome a mostrar, `[include, exclude]`).
+#[must_use]
+pub fn layer_exceptions(n: usize) -> Vec<(u64, String, [u32; 2])> {
+    OBJETOS.with(|o| {
+        o.borrow()
+            .iter()
+            .filter(|x| x.layer == n && x.excecao != [0; 2])
+            .map(|x| (x.bits, rotulo(x), x.excecao))
+            .collect()
+    })
+}
+
+/// Por camada, os bits que alguma forma dela fixa: o par `(a, b)` tem exceção se `[a]` tem `b` ou `[b]` tem `a`.
+#[must_use]
+pub fn pinned_rows() -> [u32; ph2d_physics_ecs::MAX_LAYERS] {
+    let mut rows = [0u32; ph2d_physics_ecs::MAX_LAYERS];
+    OBJETOS.with(|o| {
+        for x in o.borrow().iter() {
+            rows[x.layer.min(ph2d_physics_ecs::MAX_LAYERS - 1)] |= x.excecao[0] | x.excecao[1];
+        }
+    });
+    rows
+}
+
+/// Quantas formas fogem da matriz no par `(a, b)`: as da camada `a` que fixam `b`, e as de `b` que fixam `a`.
+#[must_use]
+pub fn exceptions_on_pair(a: usize, b: usize) -> usize {
+    let fixa = |x: &ph2d_physics_ecs::ObjetoDaCamada, outra: usize| {
+        (x.excecao[0] | x.excecao[1]) & (1u32 << outra.min(31)) != 0
+    };
+    OBJETOS.with(|o| {
+        o.borrow()
+            .iter()
+            .filter(|x| (x.layer == a && fixa(x, b)) || (a != b && x.layer == b && fixa(x, a)))
+            .count()
     })
 }
 

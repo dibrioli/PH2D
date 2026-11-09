@@ -298,3 +298,26 @@ fn o_sinal_do_sensor_filho_tem_o_corpo_por_fonte() {
         );
     }
 }
+
+/// Dono 09/11: cada forma nova nasce com nome único (a lei do Duplicate, `ph2d-unique-name`), em qualquer corpo.
+#[test]
+fn as_formas_novas_nascem_com_nomes_unicos() {
+    let mut sim = SimWorld::new();
+    let w = sim.world_mut();
+    let a = w.spawn(rb(BodyKind::Static)).id();
+    let b = w.spawn(rb(BodyKind::Dynamic)).id();
+    let bola = ColliderShape::Ball { radius: 0.5 };
+    let formas = [a, b, a].map(|c| ph2d_physics_ecs::nasce_com_forma(w, c, bola));
+    let nomes: Vec<String> = formas
+        .iter()
+        .map(|&f| w.get::<Name>(f).map(|n| n.0.clone()).unwrap_or_default())
+        .collect();
+    assert_eq!(
+        nomes,
+        [
+            "Collision Shape",
+            "Collision Shape (1)",
+            "Collision Shape (2)"
+        ]
+    );
+}

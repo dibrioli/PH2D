@@ -195,36 +195,65 @@ pub fn objects_per_layer(world: &World) -> [u32; MAX_LAYERS] {
     n
 }
 
-/// ⭐ **Os objetos de cada camada** (a camada aberta da aba, onda 9b): (camada, bits da entidade, nome),
-/// pela MESMA regra de [`objects_per_layer`] (o `Collider` manda; o sensor sozinho conta), em ordem de
-/// nome e depois de bits, para a fila de botões não saltar entre quadros.
+/// Um objeto numa camada (a aba Collision Layers, onda 9b).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ObjetoDaCamada {
+    pub layer: usize,
+    pub bits: u64,
+    pub nome: String,
+    /// O nome do corpo dono quando o objeto é uma forma filha dele (opção B): a aba mostra «Crate › Collision Shape».
+    pub dono: Option<String>,
+    /// `[include, exclude]` da exceção da forma (`CollisionOverride`); `[0, 0]` sem ela.
+    pub excecao: [u32; 2],
+}
+
+impl From<(usize, u64, String)> for ObjetoDaCamada {
+    fn from((layer, bits, nome): (usize, u64, String)) -> Self {
+        Self {
+            layer,
+            bits,
+            nome,
+            ..Self::default()
+        }
+    }
+}
+
+/// ⭐ **Os objetos de cada camada** (a camada aberta da aba, onda 9b), pela MESMA regra de [`objects_per_layer`]
+/// (o `Collider` manda; o sensor sozinho conta), em ordem de nome e depois de bits, para a fila de botões não saltar
+/// entre quadros.
 #[must_use]
-pub fn objects_on_layers(world: &World) -> Vec<(usize, u64, String)> {
+pub fn objects_on_layers(world: &World) -> Vec<ObjetoDaCamada> {
+    use bevy_ecs::entity::Entity;
     let at = |l: u8| usize::from(l).min(MAX_LAYERS - 1);
-    let nome = |world: &World, e: bevy_ecs::entity::Entity| {
+    let nome = |e: Entity| {
         world
             .get::<ph2d_ecs::Name>(e)
             .map(|n| n.0.clone())
             .unwrap_or_default()
     };
+    let objeto = |e: Entity, layer: u8| {
+        let dono = (world.get::<crate::RigidBody>(e).is_none())
+            .then(|| crate::owner_body(world, e))
+            .flatten()
+            .map(nome);
+        ObjetoDaCamada {
+            layer: at(layer),
+            bits: e.to_bits(),
+            nome: nome(e),
+            dono,
+            excecao: crate::excecao::mascaras(world, e),
+        }
+    };
     let mut v = Vec::new();
-    if let Some(mut q) = world.try_query::<(bevy_ecs::entity::Entity, &Collider)>() {
-        for (e, c) in q.iter(world) {
-            v.push((at(c.layer), e.to_bits(), String::new()));
-        }
+    if let Some(mut q) = world.try_query::<(Entity, &Collider)>() {
+        v.extend(q.iter(world).map(|(e, c)| objeto(e, c.layer)));
     }
-    if let Some(mut q) = world.try_query_filtered::<
-        (bevy_ecs::entity::Entity, &RaySensor),
-        bevy_ecs::query::Without<Collider>,
-    >() {
-        for (e, r) in q.iter(world) {
-            v.push((at(r.layer), e.to_bits(), String::new()));
-        }
+    if let Some(mut q) =
+        world.try_query_filtered::<(Entity, &RaySensor), bevy_ecs::query::Without<Collider>>()
+    {
+        v.extend(q.iter(world).map(|(e, r)| objeto(e, r.layer)));
     }
-    for o in &mut v {
-        o.2 = nome(world, bevy_ecs::entity::Entity::from_bits(o.1));
-    }
-    v.sort_by(|a, b| (a.0, &a.2, a.1).cmp(&(b.0, &b.2, b.1)));
+    v.sort_by(|a, b| (a.layer, &a.dono, &a.nome, a.bits).cmp(&(b.layer, &b.dono, &b.nome, b.bits)));
     v
 }
 

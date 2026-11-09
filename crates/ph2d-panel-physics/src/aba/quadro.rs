@@ -45,6 +45,11 @@ pub(super) fn fotos(ctx: &mut PaintCtx) {
         return;
     }
     FEITO.set(true);
+    // `excecao` (dono 09/11, com `PH2D_PHYSICS_SMOKE_EXCECAO=1` na cena 120): a Props aberta, com os nomes da cena.
+    if caso == "excecao" {
+        abre(Some(2));
+        return;
+    }
     abre(Some(1));
     // `remove`: a Enemy (2) aberta, com a pergunta do «Remove» (destino Ground).
     // `remove_lista`: a mesma, com a lista suspensa do destino aberta.
@@ -245,11 +250,13 @@ impl Quadro {
             .into_iter()
             .map(|(_, n)| n)
             .collect();
+        let excecoes = excecoes_da_camada(aberta_n, &rotulos);
         let camada = super::camada::Camada::monta(
             Geometria::largura_direita(area, lista_w),
             &visiveis,
             &rotulos,
             &nomes_dos_objetos,
+            &excecoes,
             super::MAIS.get(),
             &mut |s, botao| {
                 if botao {
@@ -293,7 +300,16 @@ impl Quadro {
         let editando = EDITANDO.get();
         let raio = frame_radius(theme, Radius::Sm.px());
         let par = super::par_do_pe(sob, &nomes);
-        let pe = frase_do_pe(sob, &nomes, &matriz, &visiveis, NOVA.get());
+        let mut pe = frase_do_pe(sob, &nomes, &matriz, &visiveis, NOVA.get());
+        if let Some(n) = sob
+            .map(|(a, b)| crate::state::exceptions_on_pair(a, b))
+            .filter(|&n| n > 0)
+        {
+            pe.push_str(&tr_with(
+                "card.physics.tab_pair_differs",
+                &[("n", &n.to_string())],
+            ));
+        }
         let (titulo, pares_da_camada) = titulo_da_camada(
             aberta_n,
             &nomes,
@@ -399,4 +415,27 @@ impl Quadro {
             };
         });
     }
+}
+
+/// «Differ from this layer» da camada `n`: (nome, o que difere — «Ground off · Props on»), pela ordem das camadas.
+fn excecoes_da_camada(n: usize, rotulos: &[String]) -> Vec<(String, String)> {
+    crate::state::layer_exceptions(n)
+        .into_iter()
+        .map(|(_, nome, [include, exclude])| {
+            let difere: Vec<String> = (0..rotulos.len().min(32))
+                .filter_map(|j| {
+                    let bit = 1u32 << j;
+                    let chave = if include & bit != 0 {
+                        "card.physics.tab_pin_on"
+                    } else if exclude & bit != 0 {
+                        "card.physics.tab_pin_off"
+                    } else {
+                        return None;
+                    };
+                    Some(tr_with(chave, &[("layer", &rotulos[j])]))
+                })
+                .collect();
+            (nome, difere.join(tr("card.physics.tab_pins_sep")))
+        })
+        .collect()
 }

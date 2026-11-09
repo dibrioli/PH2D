@@ -33,6 +33,10 @@ pub(super) struct Camada {
     pub(super) mais: Option<(Rect, String)>,
     pub(super) todos: Option<Rect>,
     pub(super) vazio_y: Option<f32>,
+    /// «Differ from this layer» (dono 09/11): a linha de título, se há formas com exceção.
+    pub(super) excecoes_y: Option<f32>,
+    /// (índice, nome, o que difere, botão, onde o texto do que difere começa).
+    pub(super) excecoes: Vec<(usize, String, String, Rect, f32)>,
     pub(super) altura: f32,
 }
 
@@ -43,6 +47,8 @@ impl Camada {
         visiveis: &[usize],
         rotulos: &[String],
         nomes: &[String],
+        // As formas com exceção: (nome, o que difere).
+        excecoes: &[(String, String)],
         mais_aberto: bool,
         // `(texto, botão)`: a largura do texto na letra do painel, ou a do botão inteiro (onda 9g).
         largura: &mut dyn FnMut(&str, bool) -> f32,
@@ -122,6 +128,28 @@ impl Camada {
         let linhas = if nomes.is_empty() { 1 } else { linhas };
         let (bh, _, bv) = Geometria::fila_de_botoes();
         y += linhas as f32 * (bh + bv);
+        let excecoes_y = (!excecoes.is_empty()).then(|| {
+            y += ph2d_tokens::control_gap_px();
+            let titulo = y;
+            y += row;
+            titulo
+        });
+        let excecoes = excecoes
+            .iter()
+            .take(i::PHYSICS_LAYER_OBJECTS)
+            .enumerate()
+            .map(|(k, (nome, difere))| {
+                let r = Rect::new(pad, y, largura(nome, true).min(dentro), bh);
+                y += bh + bv;
+                (
+                    k,
+                    nome.clone(),
+                    difere.clone(),
+                    r,
+                    r.x + r.w + Spacing::Sm.px(),
+                )
+            })
+            .collect();
         Self {
             bumps_y,
             so_default,
@@ -131,6 +159,8 @@ impl Camada {
             mais,
             todos,
             vazio_y,
+            excecoes_y,
+            excecoes,
             altura: y + pad,
         }
     }
@@ -144,6 +174,11 @@ impl Camada {
         self.bumps_y += y;
         self.objetos_y += y;
         self.vazio_y = self.vazio_y.map(|v| v + y);
+        self.excecoes_y = self.excecoes_y.map(|v| v + y);
+        for e in &mut self.excecoes {
+            m(&mut e.3);
+            e.4 += x;
+        }
         self.caixas.iter_mut().for_each(|c| m(&mut c.1));
         self.objetos.iter_mut().for_each(|o| m(&mut o.2));
         if let Some((r, _)) = self.mais.as_mut() {
@@ -170,6 +205,11 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro) {
         .objetos
         .iter()
         .map(|o| aceso(i::PHYSICS_LAYER_OBJECT[o.0]))
+        .collect();
+    let excecoes_acesas: Vec<bool> = c
+        .excecoes
+        .iter()
+        .map(|e| aceso(i::PHYSICS_LAYER_EXCEPTION[e.0]))
         .collect();
     let (mais_aceso, todos_aceso) = (
         aceso(i::PHYSICS_LAYER_MORE),
@@ -256,21 +296,24 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro) {
         if let Some(y) = c.vazio_y {
             rotulo(texto, cena, tr("card.physics.tab_no_objects"), y);
         }
-        let botao = |texto: &mut _, cena: &mut _, r: Rect, s: &str, hover: bool| {
-            let fundo = if hover {
-                ColorToken::Bg3
-            } else {
-                ColorToken::Bg2
+        let botao =
+            |texto: &mut _, cena: &mut _, r: Rect, s: &str, (hover, destaque): (bool, bool)| {
+                let fundo = if hover {
+                    ColorToken::Bg3
+                } else if destaque {
+                    ColorToken::WarnSoft
+                } else {
+                    ColorToken::Bg2
+                };
+                fill_rounded_rect(cena, r, raio, tom!(fundo, theme));
+                let base = TypeToken::Base.px();
+                paint_text_centered(texto, cena, s, r, base, tom!(ColorToken::Text1, theme));
             };
-            fill_rounded_rect(cena, r, raio, tom!(fundo, theme));
-            let base = TypeToken::Base.px();
-            paint_text_centered(texto, cena, s, r, base, tom!(ColorToken::Text1, theme));
-        };
         for (o, &hover) in c.objetos.iter().zip(&objetos_acesos) {
-            botao(texto, cena, o.2, &o.1, hover);
+            botao(texto, cena, o.2, &o.1, (hover, false));
         }
         if let Some((r, s)) = &c.mais {
-            botao(texto, cena, *r, s, mais_aceso);
+            botao(texto, cena, *r, s, (mais_aceso, false));
         }
         if let Some(r) = c.todos {
             botao(
@@ -278,7 +321,37 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro) {
                 cena,
                 r,
                 tr("card.physics.tab_select_all"),
-                todos_aceso,
+                (todos_aceso, false),
+            );
+        }
+        // Dono 09/11: as formas com exceção, no destaque do «Differs from layer» do Inspector.
+        if let Some(y) = c.excecoes_y {
+            let s = tr("card.physics.tab_differs");
+            let topo = y + (ROW_H_PX - font) * 0.5;
+            paint_text(
+                texto,
+                cena,
+                s,
+                x,
+                topo,
+                font,
+                w,
+                tom!(ColorToken::Warn, theme),
+            );
+        }
+        for (e, &hover) in c.excecoes.iter().zip(&excecoes_acesas) {
+            botao(texto, cena, e.3, &e.1, (hover, true));
+            let topo = e.3.y + (e.3.h - font) * 0.5;
+            let cabe = (x + w - e.4).max(0.0);
+            ph2d_editor_core::paint::paint_text_elided(
+                texto,
+                cena,
+                &e.2,
+                e.4,
+                topo,
+                font,
+                cabe,
+                tom!(ColorToken::Warn, theme),
             );
         }
     });
@@ -297,6 +370,12 @@ pub(super) fn alvos(ctx: &mut PaintCtx, c: &Camada) {
                     .iter()
                     .map(|o| (i::PHYSICS_LAYER_OBJECT[o.0], "card.physics.tab_object_tip")),
             )
+            .chain(c.excecoes.iter().map(|e| {
+                (
+                    i::PHYSICS_LAYER_EXCEPTION[e.0],
+                    "card.physics.tab_differs_tip",
+                )
+            }))
             .chain([
                 (i::PHYSICS_LAYER_MORE, "card.physics.tab_more_tip"),
                 (
@@ -319,6 +398,9 @@ pub(super) fn alvos(ctx: &mut PaintCtx, c: &Camada) {
     }
     if let Some((r, _)) = &c.mais {
         camada_das_listas::alvo(hit, i::PHYSICS_LAYER_MORE, *r);
+    }
+    for e in &c.excecoes {
+        camada_das_listas::alvo(hit, i::PHYSICS_LAYER_EXCEPTION[e.0], e.3);
     }
     if let Some(r) = c.todos {
         camada_das_listas::alvo(hit, i::PHYSICS_LAYER_SELECT_ALL, r);

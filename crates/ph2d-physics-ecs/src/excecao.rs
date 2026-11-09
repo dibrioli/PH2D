@@ -57,17 +57,39 @@ pub fn linha_efetiva(world: &World, e: Entity) -> Option<(u32, bool)> {
     Some((CollisionOverride::effective_row(row, o), o.is_some()))
 }
 
-/// **A seleção diante do «Collides with»**: `(linha da primária, misto, difere)`. `misto` = os bits em que alguma
-/// forma da seleção discorda da primária; `difere` = alguma tem exceção. Quem não tem `Collider` não conta.
+/// **A seleção diante do «Collides with»**.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct EstadoDaSelecao {
+    /// A linha efetiva da primária.
+    pub linha: u32,
+    /// Os bits em que alguma forma da seleção discorda da primária.
+    pub misto: u32,
+    /// Alguma forma da seleção tem exceção.
+    pub difere: bool,
+    /// Os bits que alguma forma da seleção fixa na exceção (`include | exclude`): os quadros a destacar.
+    pub fixos: u32,
+}
+
+/// O [`EstadoDaSelecao`] de `primaria` com `selecao`. Quem não tem `Collider` não conta.
 #[must_use]
-pub fn estado_da_selecao(world: &World, primaria: Entity, selecao: &[Entity]) -> (u32, u32, bool) {
-    let (row, mut difere) = linha_efetiva(world, primaria).unwrap_or_default();
-    let mut misto = 0;
+pub fn estado_da_selecao(world: &World, primaria: Entity, selecao: &[Entity]) -> EstadoDaSelecao {
+    let fixos_de = |e| {
+        let [i, x] = mascaras(world, forma_da_excecao(world, e));
+        i | x
+    };
+    let (linha, difere) = linha_efetiva(world, primaria).unwrap_or_default();
+    let mut s = EstadoDaSelecao {
+        linha,
+        difere,
+        fixos: fixos_de(primaria),
+        ..EstadoDaSelecao::default()
+    };
     for &e in selecao {
         if let Some((r, d)) = linha_efetiva(world, e) {
-            misto |= r ^ row;
-            difere |= d;
+            s.misto |= r ^ linha;
+            s.difere |= d;
+            s.fixos |= fixos_de(e);
         }
     }
-    (row, misto, difere)
+    s
 }

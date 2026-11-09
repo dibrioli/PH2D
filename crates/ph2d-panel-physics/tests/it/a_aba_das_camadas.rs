@@ -171,7 +171,7 @@ fn remove_pergunta_para_onde_vao_os_objetos_e_a_default_fica() {
         ["Slime", "Slime 2", "Bat"]
             .iter()
             .enumerate()
-            .map(|(k, n)| (2, k as u64 + 1, (*n).into()))
+            .map(|(k, n)| (2, k as u64 + 1, (*n).to_string()).into())
             .collect(),
     );
     // Default: desligado.
@@ -316,9 +316,9 @@ fn a_camada_aberta_marca_o_par_e_seleciona_os_objetos() {
     use ph2d_editor_core::action_bus::SelectModifier;
     let mut mesa = Mesa::nova(nomes_b(), false);
     ph2d_panel_physics::set_layer_objects(vec![
-        (1, 0xA1, "Hero".into()),
-        (1, 0xA2, "Hero 2".into()),
-        (2, 0xB1, "Slime".into()),
+        (1, 0xA1, "Hero".to_string()).into(),
+        (1, 0xA2, "Hero 2".to_string()).into(),
+        (2, 0xB1, "Slime".to_string()).into(),
     ]);
     aba::abre(Some(1));
     aba::poe_area_fixa(AREA);
@@ -369,8 +369,8 @@ fn a_camada_aberta_marca_o_par_e_seleciona_os_objetos() {
         "Select all seleciona todos"
     );
     // Muitos objetos: «+N more» depois de três linhas, e o clique mostra a fila inteira.
-    let muitos: Vec<(usize, u64, String)> = (0..60)
-        .map(|k| (1, 0x1000 + k as u64, format!("Coin {k:02}")))
+    let muitos: Vec<ph2d_physics_ecs::ObjetoDaCamada> = (0..60)
+        .map(|k| (1, 0x1000 + k as u64, format!("Coin {k:02}")).into())
         .collect();
     ph2d_panel_physics::set_layer_objects(muitos);
     mesa.pinta();
@@ -1084,5 +1084,51 @@ fn abrir_a_aba_noutra_camada_desiste_da_pergunta_do_remove() {
         "sem «Move and remove»"
     );
     assert!(mesa.host.drained_actions().is_empty(), "nada removido");
+    aba::fecha();
+}
+
+/// ⭐ Dono 09/11: a forma com exceção aparece em «Differ from this layer» (o nome leva o dono); o botão seleciona-a; os
+/// pares que ela fixa contam-se nos dois sentidos (o ponto da grade e a frase do pé); sem exceção a secção sai.
+#[test]
+fn a_forma_com_excecao_aparece_sob_a_camada_e_o_botao_seleciona_a() {
+    use ph2d_editor_core::action_bus::SelectModifier;
+    use ph2d_panel_physics::state;
+    let mut mesa = Mesa::nova(nomes_b(), false);
+    let forma = |bits, excecao| ph2d_physics_ecs::ObjetoDaCamada {
+        layer: 1,
+        bits,
+        nome: "Collision Shape".into(),
+        dono: Some("Crate".into()),
+        excecao,
+    };
+    ph2d_panel_physics::set_layer_objects(vec![forma(0xC1, [0, 0]), forma(0xC2, [1 << 2, 1])]);
+    aba::abre(Some(1));
+    aba::poe_area_fixa(AREA);
+    mesa.pinta();
+    assert_eq!(state::layer_objects(1)[0].1, "Crate › Collision Shape");
+    let so: Vec<u64> = state::layer_exceptions(1).iter().map(|e| e.0).collect();
+    assert_eq!(so, [0xC2], "só a que tem exceção");
+    assert!(mesa.rect(ids::PHYSICS_LAYER_EXCEPTION[0]).is_some());
+    assert!(mesa.rect(ids::PHYSICS_LAYER_EXCEPTION[1]).is_none());
+    let _ = mesa.host.drained_actions();
+    let _ = mesa.clica(ids::PHYSICS_LAYER_EXCEPTION[0]);
+    assert_eq!(
+        mesa.host.drained_actions(),
+        [EditorAction::SelectSprite {
+            entity_bits: 0xC2,
+            modifier: SelectModifier::Replace
+        }],
+        "o botão seleciona a forma"
+    );
+    let pares = [(1, 2), (2, 1), (0, 1), (1, 3)].map(|(a, b)| state::exceptions_on_pair(a, b));
+    assert_eq!(pares, [1, 1, 1, 0]);
+    assert_eq!(state::pinned_rows()[1], (1 << 2) | 1);
+    ph2d_panel_physics::set_layer_objects(vec![forma(0xC1, [0, 0])]);
+    mesa.pinta();
+    assert!(
+        mesa.rect(ids::PHYSICS_LAYER_EXCEPTION[0]).is_none(),
+        "sem exceção, a secção sai"
+    );
+    ph2d_panel_physics::set_layer_objects(Vec::new());
     aba::fecha();
 }

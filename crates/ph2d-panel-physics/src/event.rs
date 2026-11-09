@@ -192,6 +192,24 @@ fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<b
             }
             Some(true)
         }
+        // «Differ from this layer» (dono 09/11): o botão seleciona a forma com exceção.
+        WidgetEvent::Click(id) if crate::ids::PHYSICS_LAYER_EXCEPTION.contains(&id) => {
+            seam_reset_button(host, id);
+            let k = crate::ids::PHYSICS_LAYER_EXCEPTION
+                .iter()
+                .position(|&c| c == id)
+                .expect("guard matched");
+            if let Some(&(entity_bits, ..)) =
+                state::layer_exceptions(crate::aba::camada_aberta()).get(k)
+            {
+                use ph2d_editor_core::action_bus::{EditorAction, SelectModifier};
+                host.bus_mut().push(EditorAction::SelectSprite {
+                    entity_bits,
+                    modifier: SelectModifier::Replace,
+                });
+            }
+            Some(true)
+        }
         // «Remove»: a Default não sai; sem objetos sai logo; com objetos, pergunta para onde vão.
         WidgetEvent::Click(id) if id == crate::ids::PHYSICS_LAYER_REMOVE => {
             seam_reset_button(host, id);

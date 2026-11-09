@@ -272,6 +272,34 @@ pub fn nomeia_para_as_fotos(world: &mut World) {
     }
 }
 
+/// A foto da exceção (`PH2D_PHYSICS_SMOKE_EXCECAO=1`, dono 09/11): o Crate ganha mais duas formas e uma delas desliga
+/// Ground e Props, o exemplo do dono. Devolve essa forma, que nasce selecionada.
+pub fn excecao_para_as_fotos(world: &mut World) -> Option<Entity> {
+    std::env::var_os("PH2D_PHYSICS_SMOKE_EXCECAO")?;
+    let crate_ = {
+        let mut q = world.query::<(Entity, &Name)>();
+        q.iter(world)
+            .find(|(_, n)| n.0 == "Crate")
+            .map(|(e, _)| e)?
+    };
+    let formas = [[-0.25, 0.25], [0.25, 0.25]].map(|offset| {
+        let f = ph2d_physics_ecs::nasce_com_forma(world, crate_, caixa([0.2, 0.2], PROPS).shape);
+        if let Some(mut c) = world.get_mut::<Collider>(f) {
+            c.layer = PROPS;
+            c.offset = offset;
+        }
+        f
+    });
+    let excecao = formas[0];
+    world
+        .entity_mut(excecao)
+        .insert(ph2d_physics_ecs::CollisionOverride {
+            include: 0,
+            exclude: (1 << GROUND) | (1 << PROPS),
+        });
+    Some(excecao)
+}
+
 /// As regras do mundo da cena: a matriz das quatro camadas.
 #[must_use]
 pub fn regras(base: PhysicsSettings) -> PhysicsSettings {

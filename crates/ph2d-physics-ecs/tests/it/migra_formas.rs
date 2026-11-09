@@ -21,14 +21,18 @@ fn a_cena_migrada_simula_igual_e_a_segunda_corrida_nao_move_nada() {
         "idempotente"
     );
     let w = depois.sim.world();
+    let mut nomes = std::collections::BTreeSet::new();
     for (i, &corpo) in depois.corpos.iter().enumerate() {
         let filha = main_shape(w, corpo).expect("forma");
         assert_ne!(filha, corpo, "a forma saiu do corpo");
         assert_eq!(w.get::<ChildOf>(filha).map(ChildOf::parent), Some(corpo));
-        assert_eq!(
-            w.get::<Name>(filha).map(|n| n.0.as_str()),
-            Some(NOME_DA_FORMA)
-        );
+        // Dono 09/11: nomes únicos — «Collision Shape», «Collision Shape (1)»…
+        let nome = w
+            .get::<Name>(filha)
+            .map(|n| n.0.clone())
+            .unwrap_or_default();
+        assert!(nome.starts_with(NOME_DA_FORMA), "{nome}");
+        assert!(nomes.insert(nome), "cada forma migrada tem nome próprio");
         assert_eq!(w.get::<Transform>(filha), Some(&Transform::IDENTITY));
         assert!(
             !w.get::<ph2d_ecs::Visibility>(filha)

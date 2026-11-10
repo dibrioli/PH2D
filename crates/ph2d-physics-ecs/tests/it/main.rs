@@ -46,6 +46,7 @@ mod ik_lead;
 mod ik_plan;
 mod impacto;
 mod initial_velocity;
+mod input_map_reads;
 mod interaction;
 mod joint_anchor_authoring;
 mod joint_anchor_follows;

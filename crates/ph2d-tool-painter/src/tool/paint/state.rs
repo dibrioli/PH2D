@@ -564,6 +564,9 @@ pub(crate) struct PaintState {
     /// A caixa que o memo acima preencheu desde o último reset, com a largura da tela em que foi
     /// medida: fora dela tudo é `NaN`, então o pen-down só a repõe (B16.9). `None` = tudo `NaN`.
     pub(super) wet_substrate_caixa: Option<(Region, u32)>,
+    /// O chão uniforme da cor do papel que a janela da aguada usa quando falta o `wet_backdrop`
+    /// (B16.A2): feito uma vez por (cor, tamanho), não a cada quadro.
+    pub(super) wet_chao_uniforme: Option<([u8; 3], Arc<Vec<u8>>)>,
     /// **Watercolor mixer** (Wet Mix — `wet_charge`/`wet_pull`/`wet_dilution`, `docs/Painter/07` §4)
     /// per-stroke state: the picked-up colour reservoir (unpremultiplied rgb + a presence-weighted
     /// confidence `w`) and its `recentness` (the Pull-gated resample clock). The brush deposits

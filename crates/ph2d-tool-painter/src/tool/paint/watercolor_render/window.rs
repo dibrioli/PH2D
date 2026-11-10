@@ -71,14 +71,7 @@ impl PainterTool {
         // A missing/mis-sized one (defensive) degrades to a uniform paper-colour ground.
         let backdrop_arc = match self.paint.wet_backdrop.as_ref() {
             Some(b) if b.len() == n * 4 => Arc::clone(b),
-            _ => {
-                let p = self.cor_do_chao();
-                let mut g = vec![0u8; n * 4];
-                for px in g.as_chunks_mut::<4>().0 {
-                    px.copy_from_slice(&[p[0], p[1], p[2], 255]);
-                }
-                Arc::new(g)
-            }
+            _ => self.chao_uniforme(n),
         };
 
         // Pick the recomposite rect and CONSUME the frame one (wet_edges `resetFrame`): live =
@@ -283,6 +276,25 @@ pub(in crate::tool::paint) struct Alcance {
 #[inline]
 pub(in crate::tool::paint) fn ponto_na_janela(g: usize, o: f32, d: f32, origem: usize) -> f32 {
     (g as f32 + o + d) - origem as f32
+}
+
+impl PainterTool {
+    /// O chão uniforme (cor do papel, opaco) de `n` texels, guardado por (cor, tamanho) (B16.A2).
+    pub(in crate::tool::paint) fn chao_uniforme(&mut self, n: usize) -> Arc<Vec<u8>> {
+        let p = self.cor_do_chao();
+        match &self.paint.wet_chao_uniforme {
+            Some((c, g)) if *c == p && g.len() == n * 4 => Arc::clone(g),
+            _ => {
+                let mut g = vec![0u8; n * 4];
+                for px in g.as_chunks_mut::<4>().0 {
+                    px.copy_from_slice(&[p[0], p[1], p[2], 255]);
+                }
+                let g = Arc::new(g);
+                self.paint.wet_chao_uniforme = Some((p, Arc::clone(&g)));
+                g
+            }
+        }
+    }
 }
 
 /// Soma à caixa do memo do substrato a janela que o composite acabou de preencher (B16.9: o

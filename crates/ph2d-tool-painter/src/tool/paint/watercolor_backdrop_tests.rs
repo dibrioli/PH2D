@@ -241,3 +241,27 @@ fn mede_o_pen_down_da_aguada_4k() {
         );
     }
 }
+
+/// **B16.A2: o chão uniforme da aguada (falta o `wet_backdrop`) nasce uma vez por (cor, tamanho)**,
+/// com o byte do laço de antes (copiado à letra) — antes eram 33 MB novos a cada quadro a 4K.
+#[test]
+fn o_chao_uniforme_da_aguada_nasce_uma_vez() {
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 64 * 32 * 4], 64, 32);
+    let n = 64 * 32;
+    let de_antes = |t: &PainterTool, n: usize| {
+        let p = t.cor_do_chao();
+        let mut g = vec![0u8; n * 4];
+        for px in g.as_chunks_mut::<4>().0 {
+            px.copy_from_slice(&[p[0], p[1], p[2], 255]);
+        }
+        g
+    };
+    let a = t.chao_uniforme(n);
+    let b = t.chao_uniforme(n);
+    assert!(Arc::ptr_eq(&a, &b), "o 2.º quadro alocou outro chão");
+    assert_eq!(*a, de_antes(&t, n), "o chão guardado não é o byte do de antes");
+    let c = t.chao_uniforme(n / 2);
+    assert_eq!(c.len(), n / 2 * 4, "tamanho novo ⇒ chão novo");
+    assert_eq!(*c, de_antes(&t, n / 2));
+}

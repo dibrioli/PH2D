@@ -222,6 +222,7 @@ pub(crate) const PARTILHADO: &[&str] = &[
     "wet_shape_norm",
     "wet_substrate",
     "wet_substrate_caixa",
+    "wet_chao_uniforme",
     "wet_frame_dirty",
     "wet_frame_linhas",
     "wet_cum_dirty",

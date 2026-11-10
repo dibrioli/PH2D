@@ -807,11 +807,9 @@ fn the_eyedropper_hover_sample_is_what_the_pick_sets() {
                 (pos[1].max(0.0) as usize).min(n - 1),
             );
             let i = (y * n + x) * 4;
-            let esperado = if com_camadas {
-                &composto[i..i + 4]
-            } else {
-                &t.canvas_rgba[i..i + 4]
-            };
+            // B10.7: a imagem aplicada de agora, nunca a cache (aqui uma composição que a tela não tem).
+            let aplicada = t.imagem_aplicada_inteira().expect("há tela").0;
+            let esperado = &aplicada[i..i + 4];
             assert_eq!(
                 &amostra[..],
                 esperado,

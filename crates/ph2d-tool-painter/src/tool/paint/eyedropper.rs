@@ -16,10 +16,10 @@ impl PainterTool {
         self.paint.eyedropper_armed
     }
 
-    /// **A amostra do conta-gotas** no ponto `pos` (px de imagem): o pixel da composição achatada que o
-    /// artista VÊ (a de cache; sem ela, a tela de trabalho — pilha trivial), straight-sRGB8. É o MESMO
-    /// leitor do clique ([`Self::eyedropper_pointer`]) e do cursor que mostra a cor antes do clique, por
-    /// isso os dois nunca discordam. Um índice num buffer: O(1), sem compor (medido 24/10: 5,1 ns por chamada, perfil debug, `load 18`).
+    /// **A amostra do conta-gotas** no ponto `pos` (px de imagem): o pixel da imagem aplicada (camadas,
+    /// papel e luz do relevo) de AGORA, straight-sRGB8 — compõe só esse píxel (B10.7), também no meio do
+    /// traço. É o MESMO leitor do clique ([`Self::eyedropper_pointer`]) e do cursor que mostra a cor antes
+    /// do clique, por isso os dois nunca discordam.
     /// Fora da tela o ponto encosta na borda, como o clique sempre fez; `None` sem tela.
     #[must_use]
     pub fn eyedropper_amostra(&self, pos: [f32; 2]) -> Option<[u8; 4]> {
@@ -30,14 +30,9 @@ impl PainterTool {
         // Clamp the sample to the canvas without `.clamp` (swap-free): floor, floor-to-0, cap at edge.
         let x = (pos[0].max(0.0) as usize).min(w as usize - 1);
         let y = (pos[1].max(0.0) as usize).min(h as usize - 1);
-        let idx = (y * (w as usize) + x) * 4;
-        let buf = self
-            .composited
-            .as_deref()
-            .map(|c| c.as_slice())
-            .filter(|c| c.len() >= idx + 4)
-            .or_else(|| (self.canvas_rgba.len() >= idx + 4).then(|| self.canvas_rgba.as_slice()))?;
-        Some([buf[idx], buf[idx + 1], buf[idx + 2], buf[idx + 3]])
+        // A imagem aplicada de AGORA nesse píxel (B10.7): o `composited` é a do último dreno, velha no meio do traço.
+        let px = self.imagem_aplicada_na_caixa((x as u32, y as u32, 1, 1))?;
+        Some([px[0], px[1], px[2], px[3]])
     }
 
     /// Consume a canvas event while the Eyedropper is armed: the Down samples the composited pixel under

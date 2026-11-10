@@ -78,3 +78,32 @@ fn a_porta_generica_mostra_o_mesmo_que_o_dreno_do_editor() {
         ambos(&|_| {}, "parado");
     }
 }
+
+/// B10.7 — o conta-gotas no MEIO do traço (dabs pintados, nenhum dreno ainda) amostra a imagem de hoje.
+#[test]
+fn o_conta_gotas_no_meio_do_traco_amostra_a_tela_de_agora() {
+    use PaintMedia::{Digital, Impasto, Watercolor, WetPaint};
+    for meio in [Impasto, Digital, Watercolor, WetPaint] {
+        let mut t = novo(meio);
+        let _ = t.take_preview_arc();
+        let p = |pos, phase| CanvasPointer {
+            pos,
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        t.on_canvas_pointer(p([10.0, 20.0], PointerPhase::Down));
+        t.on_canvas_pointer(p([50.0, 20.0], PointerPhase::Move));
+        let (img, w, _) = t.imagem_aplicada_inteira().expect("documento");
+        for x in [12u32, 30, 48] {
+            let i = ((20 * w + x) * 4) as usize;
+            let a = t.eyedropper_amostra([x as f32 + 0.5, 20.5]).expect("tela");
+            assert_eq!(
+                a[..],
+                img[i..i + 4],
+                "{meio:?}: a amostra em x={x} é a velha"
+            );
+        }
+        t.on_canvas_pointer(p([50.0, 20.0], PointerPhase::Up));
+    }
+}

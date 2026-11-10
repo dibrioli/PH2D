@@ -59,15 +59,14 @@ pub fn build_info(
             action: r.action.clone(),
             edge: u8_de_edge(r.edge),
             signal: r.signal.clone(),
-            // ⚠️ **Um nome VAZIO não é «desconhecido»** — o painel tem uma frase própria para ele
-            // (*«ainda não ouve nada»*), e contá-lo como órfão poria o título a dizer «1 broken»
-            // num gatilho acabado de acrescentar, que é o estado normal de quem está a escrever.
-            // ⇒ ele lê-se como **`Ligada`**, que é o estado que não acusa nada.
+            // ⚠️ **Um nome VAZIO não é «desconhecido»**: o painel tem frase própria para ele, e como
+            // órfão poria «1 broken» num gatilho acabado de acrescentar ⇒ lê-se **`Ligada`**.
             no_mapa: if r.action.trim().is_empty() {
                 NoMapa::Ligada
             } else {
                 no_mapa(r.action.trim())
             },
+            tecla: Default::default(),
         })
         .collect();
     Some(InspectorActionTriggerInfo {

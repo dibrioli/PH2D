@@ -579,6 +579,10 @@ fn list_state(store: &WidgetStore, id: ph2d_a11y::NodeId) -> ListItemState {
 mod apply;
 pub use apply::apply;
 
+/// Os pedidos que o cartão do Trigger faz ao mapa; ver [`pedidos`].
+mod pedidos;
+pub use pedidos::{PedidoDoMapa, aplica_pedidos_do_mapa};
+
 /// **ONDE AS COISAS FICAM** — a terceira irmã; ver [`layout`].
 mod layout;
 pub use layout::input_map_window_size;

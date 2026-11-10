@@ -337,6 +337,9 @@ pub struct WidgetStore {
     /// no mesmo quadro. Guardá-la sem drenar faria a mesma tecla ligar-se outra vez ao gesto
     /// seguinte — a família do canal que se lê com `take`, que este repo já pinou noutro sítio.
     pub(in crate::interaction) input_map_captured: Option<ph2d_input::Key>,
+    /// A escuta armada pelo cartão do Trigger **troca** as teclas de teclado da acção (dono 09/11);
+    /// a da janela do mapa acrescenta.
+    pub(in crate::interaction) input_map_listen_replaces: bool,
     // ⚠️ A rolagem da lista da janela NÃO mora aqui desde 2026-09-29: ela passou às tabelas de
     // rolagem de todo painel, com a chave `ids::INPUT_MAP_SURFACE` (a porta `widget::scroll_area`).
     /// Onion settings floating modal (ADR-0142 W3b): `Some((x, y))` = the card's top-left in screen

@@ -834,6 +834,7 @@ fn arma_o_top20() {
             edge: 0,
             signal: "jumped".to_string(),
             no_mapa: NoMapa::Ligada,
+            tecla: Default::default(),
         }],
         clock_playing: true,
         selected_count: selecionados(),

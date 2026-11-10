@@ -47,6 +47,58 @@ pub struct InspectorTriggerRow {
     pub no_mapa: NoMapa,
     /// O `ItemId` do item (F30 §A1): a chave de animação dos campos da fileira (`0` = por atribuir).
     pub item: u32,
+    /// As teclas da acção, para a linha Key — preenchida por [`le_teclas`] depois do snapshot.
+    pub tecla: TeclaDaAccao,
+}
+
+/// ⭐ **O que a linha Key do cartão mostra** (onda 4 do F3, dono 09/11).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct TeclaDaAccao {
+    /// O id da acção no mapa — `None` quando o mapa não a conhece. O painel compara-o com a escuta
+    /// armada para saber se ESTA linha está à espera da tecla.
+    pub id: Option<ph2d_input::ActionId>,
+    /// Os rótulos das teclas de TECLADO da acção, pela ordem do mapa (os comandos não entram: o botão
+    /// troca só as de teclado).
+    pub teclas: Vec<String>,
+    /// `(tecla, outra acção)` — a primeira tecla desta acção que outra acção também usa. O dono
+    /// (09/11) aceita a repetição e quer o aviso.
+    pub tambem: Option<(String, String)>,
+}
+
+/// **Preenche a linha Key de cada fileira** a partir do Input Map.
+pub fn le_teclas(info: &mut InspectorActionTriggerInfo, mapa: &ph2d_input::InputMap) {
+    use ph2d_input::Binding;
+    for row in &mut info.rows {
+        let nome = row.action.trim();
+        let Some(accao) = mapa.actions().iter().find(|a| a.name == nome) else {
+            row.tecla = TeclaDaAccao::default();
+            continue;
+        };
+        let teclas: Vec<_> = accao
+            .bindings
+            .iter()
+            .filter(|b| matches!(b, Binding::Key(_)))
+            .copied()
+            .collect();
+        let tambem = teclas.iter().find_map(|b| {
+            mapa.actions()
+                .iter()
+                .find(|o| o.id != accao.id && o.bindings.contains(b))
+                .map(|o| (key_label(*b), o.name.clone()))
+        });
+        row.tecla = TeclaDaAccao {
+            id: Some(accao.id),
+            teclas: teclas.into_iter().map(key_label).collect(),
+            tambem,
+        };
+    }
+}
+
+fn key_label(b: ph2d_input::Binding) -> String {
+    match b {
+        ph2d_input::Binding::Key(k) => k.label(),
+        _ => String::new(),
+    }
 }
 
 /// ⭐⭐⭐ **O que o Input Map sabe de uma acção — TRÊS estados, e não dois** (2026-09-18).

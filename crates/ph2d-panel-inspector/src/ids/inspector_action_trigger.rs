@@ -37,6 +37,9 @@ pub const INSP_TRIGGER_SIGNAL: NodeId = hash_node_id("insp_trigger_signal");
 /// afirma as duas metades.
 pub const INSP_TRIGGER_CREATE_ACTION: NodeId = hash_node_id("insp_trigger_create_action");
 
+/// ⭐ **O botão da linha Key** — cria a acção se faltar e espera a tecla (onda 4 do F3, dono 09/11).
+pub const INSP_TRIGGER_SET_KEY: NodeId = hash_node_id("insp_trigger_set_key");
+
 pub const INSP_TRIGGER_EDGE_PICK: NodeId = hash_node_id("insp_trigger_edge_pick");
 
 /// As três opções da aresta — premir, largar, segurar.

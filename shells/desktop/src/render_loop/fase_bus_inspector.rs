@@ -4,6 +4,7 @@
 
 use super::*;
 use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
+use ph2d_editor_core::screens::hero::chrome::PedidoDoMapa;
 use ph2d_i18n::{tr, tr_with};
 
 impl crate::App {
@@ -244,7 +245,11 @@ impl crate::App {
             // meia queixa*. ⛔ Ela NÃO é uma `ComponentEdit`: o que nasce é uma linha do Input Map,
             // que é estado do EDITOR.
             EditorAction::CreateInputAction { name } => {
-                pd.create_input_actions.push(name);
+                pd.create_input_actions.push(PedidoDoMapa::Criar(name));
+            }
+            EditorAction::ListenForTriggerKey { name } => {
+                pd.create_input_actions
+                    .push(PedidoDoMapa::CriarEEscutar(name));
             }
             other => return Some(other),
         }

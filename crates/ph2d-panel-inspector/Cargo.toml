@@ -71,6 +71,8 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 postcard = { version = "1", features = ["alloc"] }
+# Só o `ActionId` da escuta, no gate da linha Key do Trigger (`a_linha_key_do_gatilho`).
+ph2d-input = { path = "../ph2d-input" }
 
 [lints]
 workspace = true

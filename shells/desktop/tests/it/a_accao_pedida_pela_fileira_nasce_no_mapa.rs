@@ -26,23 +26,19 @@ fn frame_src() -> String {
 
 /// **A corrente inteira, pela ordem em que ela corre.**
 ///
-/// ⚠️ **A ordem é a afirmação:** drenar depois de criar deixaria o pedido deste quadro a ser
-/// atendido no seguinte, e a fase a correr sobre uma lista vazia.
+/// ⚠️ **A ordem é a afirmação:** drenar depois de aplicar deixaria o pedido deste quadro a ser
+/// atendido no seguinte. Criar, armar a escuta e re-sincronizar o painel do mapa é a lei de
+/// `aplica_pedidos_do_mapa` (editor-core), provada por comportamento em
+/// `o_cartao_do_trigger_escolhe_a_tecla`; aqui afirma-se que o quadro a CHAMA com o que drenou.
 #[test]
 fn o_quadro_drena_o_pedido_cria_a_accao_e_re_sincroniza_o_painel() {
     let s = frame_src();
     let dreno = s
         .find("create_input_actions")
         .expect("o quadro drena os pedidos de acção que a fileira do gatilho empurrou");
-    let cria = s[dreno..]
-        .find("input_map.create(")
-        .expect("e o pedido vira uma acção NOVA no mapa do editor");
-    let sincroniza = s[dreno + cria..]
-        .find("sync_input_map_rows(")
-        .expect("e as linhas do painel do mapa são re-sincronizadas DEPOIS de ela nascer");
     assert!(
-        sincroniza > 0,
-        "a ordem é drenar → criar → re-sincronizar; ela é o caminho inteiro"
+        s[dreno..].contains("aplica_pedidos_do_mapa("),
+        "e entrega-os à lei do mapa DEPOIS de os drenar"
     );
 }
 

@@ -18,3 +18,5 @@ Técnico (delegado): nome da camada no campo Layer, recibo «Removed — Undo» 
 **How to apply:** ondas 0 (mover código: app-physics no tecto exato, shell com 2 linhas) → 1 etiqueta de sinal → 2 Width/Height + nome da camada → 3 More/Undo/escala → 4 tecla no Trigger. Ver [[project_physics_cards_owner_decisions_2026_11_07]].
 
 Dono 09/11 (smoke das ondas 2–3 OK): a dobra dos campos raros chama-se **More**; a curva da Timeline mostra o MESMO número do cartão (Width/Height inteiros, altura inteira da cápsula, °/s) — "resolva agora".
+
+Dono 09/11 (onda 4, tecla no cartão do Trigger): linha **Key** no cartão com a tecla atual + botão que espera a próxima tecla (Esc cancela). **Troca**: a tecla nova SUBSTITUI as teclas de teclado da acção (botões de comando ficam; duas teclas = janela Input Map). **Tecla repetida noutra acção: aceita e avisa** em cinza («Space is also used by jump»). **Nome por criar: um clique cria a acção e já espera a tecla**; campo vazio = botão apagado.

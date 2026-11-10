@@ -58,6 +58,7 @@ mod event_physics;
 pub mod recibo_fisica;
 pub mod unidade_mundo;
 pub use event_physics::physics_edit_for;
+pub use sections::action_trigger_tecla::rotulo_do_botao as rotulo_da_tecla_do_gatilho;
 mod cards;
 /// Os cartões que levam a lista de estilos de cor (D28) — os testes do hero montado nomeiam-nos.
 pub use cards::CARD_TRANSFORM_IMAGE;

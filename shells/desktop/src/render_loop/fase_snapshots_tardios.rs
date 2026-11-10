@@ -135,8 +135,14 @@ pub(super) fn publica(
         })
     }));
     ph2d_panel_inspector::set_current_inspector_action_trigger(escolhido.and_then(|b| {
-        ph2d_app_components::action_trigger_inspector::build_info(sim, b, a_correr, quantos, &|n| {
-            ph2d_app_components::trigger_bridge::no_mapa(mapa, n)
-        })
+        let mut i = ph2d_app_components::action_trigger_inspector::build_info(
+            sim,
+            b,
+            a_correr,
+            quantos,
+            &|n| ph2d_app_components::trigger_bridge::no_mapa(mapa, n),
+        )?;
+        ph2d_editor_core::action_trigger_edits::le_teclas(&mut i, mapa);
+        Some(i)
     }));
 }

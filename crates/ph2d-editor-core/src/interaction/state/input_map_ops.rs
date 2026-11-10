@@ -79,11 +79,26 @@ impl WidgetStore {
     /// ao mesmo tempo tornariam *"para quem é esta tecla?"* uma pergunta sem resposta.
     pub fn listen_for_binding(&mut self, id: ph2d_input::ActionId) {
         self.input_map_listening = Some(id);
+        self.input_map_listen_replaces = false;
+    }
+
+    /// **Arma a escuta que TROCA** — a do cartão do Trigger: a tecla apanhada substitui as teclas de
+    /// teclado da acção; as ligações de comando ficam (dono 09/11).
+    pub fn listen_for_binding_replacing(&mut self, id: ph2d_input::ActionId) {
+        self.input_map_listening = Some(id);
+        self.input_map_listen_replaces = true;
+    }
+
+    /// A escuta armada troca (`true`) ou acrescenta (`false`).
+    #[must_use]
+    pub fn input_map_listen_replaces(&self) -> bool {
+        self.input_map_listen_replaces
     }
 
     /// Desarma a escuta sem fechar a janela (o `Esc`, ou a tecla já capturada).
     pub fn stop_listening(&mut self) {
         self.input_map_listening = None;
+        self.input_map_listen_replaces = false;
     }
 
     /// **Guarda a tecla apanhada** — chamado pelo despacho de teclado, drenado pelo chrome.

@@ -54,6 +54,7 @@ fn linha(action: &str, no_mapa: NoMapa) -> InspectorTriggerRow {
         edge: 0,
         signal: "shoot".into(),
         no_mapa,
+        tecla: Default::default(),
     }
 }
 
@@ -256,6 +257,7 @@ fn o_aviso_da_accao_sem_tecla_chega_a_pixel() {
                 edge: 0,
                 signal: "shoot".into(),
                 no_mapa,
+                tecla: Default::default(),
             }],
             clock_playing: true,
             selected_count: 1,

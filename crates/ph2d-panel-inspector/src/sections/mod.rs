@@ -53,6 +53,7 @@ pub(crate) use ph2d_vector::{Color as VelloColor, VectorScene};
 
 /// ⭐ A secção COUNTER WATCH — a vigia do contador.
 pub(crate) mod action_trigger;
+pub(crate) mod action_trigger_tecla;
 /// ⭐⭐⭐ **A secção SIGNAL ACTIONS** (TOP-20 #5, W3) — a tabela nome → acção.
 pub(crate) mod actions;
 /// **§12 Sockets / Named Anchors** (ADR-0072) — a seção nascida em 2026-08-21.

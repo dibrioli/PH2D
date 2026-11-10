@@ -541,7 +541,8 @@ pub(in crate::render_loop) struct DrainOut {
     //
     // ⚠️ **Um `Vec` e não um `Option`:** o painel tem N fileiras e o artista pode carregar em duas
     // no mesmo quadro — *um `Option` guardaria a última e comeria a primeira em silêncio*.
-    pub(in crate::render_loop) create_input_actions: Vec<String>,
+    pub(in crate::render_loop) create_input_actions:
+        Vec<ph2d_editor_core::screens::hero::chrome::PedidoDoMapa>,
     // ⭐ A troca de variante pedida neste quadro: `(raiz da instância, StableId do mestre)`.
     pub(in crate::render_loop) swap_variant: Option<(u64, u64)>,
     // O `StableId` da peça acrescentada que o cartão mandou aplicar.

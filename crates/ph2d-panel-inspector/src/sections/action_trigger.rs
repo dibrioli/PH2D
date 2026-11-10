@@ -303,6 +303,17 @@ fn editor(
             .placeholder(tr("panel.inspector.trigger.action_name")),
         seccao,
     );
+    cur_y = super::action_trigger_tecla::linha_da_tecla(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        row,
+    );
     cur_y = linha_da_aresta(
         scene,
         text_system,

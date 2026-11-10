@@ -384,6 +384,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // esse silêncio como «o gatilho não funciona».
         // ⭐ A CURA ao lado da queixa — o botao so' aparece no estado `Desconhecida`.
         "panel.inspector.trigger.create_this_action" => "Create this action",
+        "panel.inspector.trigger.key_label" => "Key",
+        "panel.inspector.trigger.set_key" => "Set key",
+        "panel.inspector.trigger.create_and_set_key" => "Create and set key",
+        "panel.inspector.trigger.press_a_key" => "Press a key\u{2026} (Esc cancels)",
+        "panel.inspector.trigger.key_also_used_by" => "{key} is also used by {action}",
         "panel.inspector.trigger.there_is_no_action_called" => {
             "There is no action called \u{201c}{name}\u{201d} \u{2014} add it in Settings \u{203a} Input Map."
         }
@@ -392,7 +397,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // nome errado — e sem esta linha o painel dizia que estava tudo bem. *Duas causas, o mesmo
         // silêncio; um aviso só mandaria metade dos artistas ao sítio errado.*
         "panel.inspector.trigger.the_action_has_no_key" => {
-            "\u{201c}{name}\u{201d} has no key yet \u{2014} bind one in Settings \u{203a} Input Map."
+            "\u{201c}{name}\u{201d} has no key yet \u{2014} press Set key."
         }
         "panel.inspector.trigger.this_trigger_says_nothing" => {
             "This trigger says nothing \u{2014} give it a signal name."

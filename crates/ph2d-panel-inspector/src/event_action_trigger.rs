@@ -52,6 +52,22 @@ pub(crate) fn apply_action_trigger_event(
             demote(host, id);
             return true;
         }
+        // ⭐ **A linha Key** (dono 09/11): à escuta → cancela; senão pede ao mapa que crie a acção se
+        // faltar e espere a tecla. O nome vem da FILEIRA aberta, como o irmão acima.
+        if id == crate::ids::INSP_TRIGGER_SET_KEY
+            && let Some(row) = info.rows.get(panel.trigger_selected)
+            && !row.action.trim().is_empty()
+        {
+            if crate::sections::action_trigger_tecla::a_escuta(host.store(), row) {
+                host.store_mut().stop_listening();
+            } else {
+                host.bus_mut().push(EditorAction::ListenForTriggerKey {
+                    name: row.action.trim().to_owned(),
+                });
+            }
+            demote(host, id);
+            return true;
+        }
         if id == crate::ids::INSP_TRIGGER_ADD {
             push(host, bits, E::Add);
             // ⚠️ **Abre o que acabou de nascer** — senão o `+` parece não ter feito nada.

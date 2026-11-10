@@ -119,11 +119,15 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     if id == ids::INPUT_MAP_BIND_CAPTURED {
         let key = hero.store.take_captured_key();
         let armed = hero.store.input_map_listening();
+        let troca = hero.store.input_map_listen_replaces();
         hero.store.stop_listening();
         if let (Some(k), Some(aid)) = (key, armed)
             && let Some(a) = hero.input_map.get_mut(aid)
         {
             let b = Binding::Key(k);
+            if troca {
+                a.bindings.retain(|o| !matches!(o, Binding::Key(_)));
+            }
             // ⚠️ **Ligar duas vezes a mesma tecla não a duplica.** A lista é um conjunto de
             // caminhos até a acção, e dois caminhos idênticos não são dois caminhos — seriam duas
             // linhas iguais no painel, uma delas impossível de distinguir da outra ao apagar.

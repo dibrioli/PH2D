@@ -62,7 +62,7 @@ Armadilha das fotos: `docs/Components/ferramentas/fotografa_cena.sh` — env var
 
 ## 7. ONDA 8 (por ordem; o dono já decidiu, §2)
 
-1. **Secção Look completa na forma de colisão.** Dar ao objeto-filho Collision Shape ([ADR-0199](../../architecture/decisions/0199-a-forma-de-colisao-e-um-objeto-filho-do-corpo.md)) a secção Look COMPLETA que a Sprite tem no Inspector (inclui Pivot e Align; ver [ALIGN_E_PIVOT](HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-09_ALIGN_E_PIVOT.md)); o tamanho animado da forma cresce em volta do PIVOT dela (objeto transformado: cresce como filho do objeto, já é assim). **Primeiro passo:** inventariar a secção Look da Sprite no código (cartão, campos, canais/Auto Key, gates) antes de desenhar.
+1. **Secção Look completa na forma de colisão.** Dar ao objeto-filho Collision Shape ([ADR-0199](../../architecture/decisions/0199-a-forma-de-colisao-e-um-objeto-filho-do-corpo.md)) a secção Look COMPLETA que a Sprite tem no Inspector (inclui Pivot e Align; ver [ALIGN_E_PIVOT](HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-09_ALIGN_E_PIVOT.md)); o tamanho animado da forma cresce em volta do PIVOT dela (objeto transformado: cresce como filho do objeto, já é assim). **Também (dono 10/11):** «implemente também a possibilidade de usar a ferramenta pivot na canvas para o collision shape» ⇒ a ferramenta Pivot da barra do canvas (a mesma que move o pivot da Sprite) funciona sobre a forma de colisão selecionada: arrastar o pivot dela no canvas, com Undo e Auto Key, coerente com o campo Pivot da secção Look. **Primeiro passo:** inventariar a secção Look da Sprite no código (cartão, campos, canais/Auto Key, gates) e a ferramenta Pivot do canvas antes de desenhar.
 2. **Penetração de ~0,5–1 cm numa rampa de altura/escala:** melhorar além de Godot/Box2D sem perder desempenho nem precisão. Medir antes; tabela de medição ao lado.
 3. **Medir** se Width/Height pelo cartão (canais FISICA) chegarem só 1×/quadro ao componente (o `TimelineScene.put` por tique escreve `CanaisEscritos`, mas `canais_corpo::aplicar` só corre no quadro) fazem diferença visível/medível; curar só se medir.
 4. **Graus:** `PropKind::JointMotorTarget/Speed` em graus e no referencial do objeto na Timeline (`ph2d-timeline` `apply_prop` `JointField` + `shells/desktop/src/timeline_bridge_keys.rs`; coordenar com a linha Timeline viva — se o rebase conflitar fora dos ficheiros da linha, PARAR e reportar ao Enio).
@@ -90,7 +90,9 @@ do ABERTO (estão na §2/§7 do handoff). Nada integrado, nada com push. PROJECT
 Missão (onda 8), os 5 itens da §7 por ordem, sem pedir de novo a decisão ao Enio:
 (1) começando pelo INVENTÁRIO da secção Look da Sprite no código (cartão, campos, canais/Auto Key,
 gates), depois dar à forma de colisão a secção Look completa (Pivot e Align incluídos), com o tamanho
-animado a crescer em volta do pivot dela; (2) penetração na rampa: melhorar além de Godot sem perder
+animado a crescer em volta do pivot dela, e a ferramenta Pivot do canvas a funcionar sobre a forma de
+colisão selecionada (dono: «implemente também a possibilidade de usar a ferramenta pivot na canvas para
+o collision shape»; arrastar, com Undo e Auto Key, coerente com o campo Pivot do Look); (2) penetração na rampa: melhorar além de Godot sem perder
 desempenho nem precisão; (3) medir se Width/Height por tique fazem diferença, curar só se medir;
 (4) motor da junta (JointMotorTarget/Speed) em graus e no referencial do objeto na Timeline;
 (5) herdados do OUTLINE_E_F3 §11.5, cada um com teste nascido vermelho. Medir antes de curar; o fecho

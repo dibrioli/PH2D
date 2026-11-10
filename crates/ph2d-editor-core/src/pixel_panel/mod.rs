@@ -8,6 +8,7 @@ mod filters;
 pub mod font_preview;
 mod layers;
 mod new_sprite;
+mod ramps;
 mod selection;
 mod shapes;
 pub mod sprite_props;
@@ -25,6 +26,7 @@ pub use dynamics::*;
 pub use filters::*;
 pub use layers::*;
 pub use new_sprite::*;
+pub use ramps::*;
 pub use selection::*;
 pub use timeline::*;
 pub use tools::*;
@@ -338,6 +340,8 @@ pub struct PixelSpriteCard {
     pub pivots: Vec<(u32, String)>,
     /// A slice do pivô escolhida; `None` = *Center*.
     pub pivot: Option<u32>,
+    /// P13 L: *Light* = *Palette* (a luz 2D escolhe o degrau da rampa); `false` = *Smooth*.
+    pub luz_na_paleta: bool,
 }
 
 /// Os diálogos do Pixel Art no `WidgetStore`.
@@ -474,6 +478,8 @@ pub struct PixelPanelInfo {
     pub user: PixelUserInfo,
     /// P14: o Merge Down da camada activa juntaria uma Normal Map a uma de cor (o botão desliga-se).
     pub merge_down_mixes_normal: bool,
+    /// P13: as rampas da paleta (a faixa sob a grelha) e o ciclo de cada uma.
+    pub ramps: Vec<PixelRampInfo>,
 }
 
 /// Um dono de user data no vocabulário do chrome (`Tag` = índice na lista de tags).
@@ -505,6 +511,11 @@ pub enum PixelRequest {
     PivotSlice {
         doc: u32,
         slice: Option<u32>,
+    },
+    /// P13 L: *Light: Smooth · Palette* do cartão Pixel Sprite, no documento `doc` (um passo).
+    LuzNaPaleta {
+        doc: u32,
+        on: bool,
     },
     /// P12 U: um gesto do cartão User Data sobre um dono (um passo «User Data»).
     UserData(PixelOwner, user_data::CardEdit),
@@ -648,6 +659,8 @@ pub enum PixelRequest {
     Brush(PixelBrushAction),
     /// P9b: o menu File e os atalhos do Export e Import.
     File(PixelFileAction),
+    /// P13: New Ramp…, Make Ramp, Remove Ramp e o Cycle da rampa.
+    Ramp(PixelRampAction),
 }
 
 /// Os comandos do Pixel no menu File.

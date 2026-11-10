@@ -50,6 +50,9 @@ impl PixelApp {
             return;
         };
         p.advance(&doc.sprite, dt_ms);
+        if !doc.sprite.ramps().cycles.is_empty() {
+            doc.view.avanca_ciclo(&doc.sprite, dt_ms);
+        }
         if let Some(f) = doc.sprite.frames().get(p.index) {
             doc.frame = f.id;
         }
@@ -244,6 +247,10 @@ impl PixelApp {
     }
 
     fn acao(&mut self, key: u32, a: A) {
+        if a == A::Tween {
+            self.abre_dialogo = Some(ph2d_editor_core::pixel_panel::PixelDialogKind::Tween);
+            return;
+        }
         let Some(doc) = self.docs.get_mut(&key) else {
             return;
         };

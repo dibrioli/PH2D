@@ -8,6 +8,7 @@ use ph2d_editor_core::interaction::{ToolBars, WidgetStore};
 use ph2d_editor_core::pixel_panel::{NewSpriteMode, PixelPanelInfo, PixelRequest};
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::{Toast, ToastQueue};
+use ph2d_pixel_core::ramp::set_luz_na_paleta as luz_op;
 
 use crate::{PixelApp, Tool};
 
@@ -43,6 +44,11 @@ impl PixelApp {
                 .get(&doc)
                 .and_then(|d| ph2d_pixel_core::slice::set_pivot(&d.sprite, id));
             self.passo_nomeado(doc, op, "pixel.history.pivot");
+            return;
+        }
+        if let PixelRequest::LuzNaPaleta { doc, on } = r {
+            let op = self.docs.get(&doc).and_then(|d| luz_op(&d.sprite, on));
+            self.passo_nomeado(doc, op, "pixel.history.light");
             return;
         }
         if let (PixelRequest::UserData(o, e), Some(k)) = (&r, self.chave) {
@@ -309,6 +315,7 @@ pub fn frame(
         has_selection: doc.is_some_and(|d| d.sprite.mask().is_some()),
         merge_down_mixes_normal: doc
             .is_some_and(|d| ph2d_pixel_core::layers::merge_down_mixes_normal(&d.sprite, d.layer)),
+        ramps: doc.map_or_else(Vec::new, |d| ph2d_pixel_ponte::rampas::info(&d.sprite)),
         text_font_name: if app.tool == Tool::Text {
             crate::texto::nome_da_fonte(app.options.text_font)
         } else {

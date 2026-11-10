@@ -19,13 +19,25 @@ mod pixel_export;
 /// P13: View ▸ Guides (perspectiva e iso 2:1).
 #[path = "pixel_guias.rs"]
 mod pixel_guias;
+/// P13 L: a linha *Light* (Smooth · Palette) do cartão Pixel Sprite.
+#[path = "pixel_luz_rampa.rs"]
+mod pixel_luz_rampa;
 /// P6: a selecção, a moldura solta e os menus Select/Edit/Sprite do painel.
 #[path = "pixel_pincel.rs"]
 mod pixel_pincel;
+/// P13 U-Paleta: as rampas sob a paleta, New Ramp… e o Cycle.
+#[path = "pixel_rampas.rs"]
+mod pixel_rampas;
 #[path = "pixel_selecao.rs"]
 mod pixel_selecao;
+/// P13 T: as linhas de som da Timeline.
+#[path = "pixel_som.rs"]
+mod pixel_som;
 #[path = "pixel_tiles.rs"]
 mod pixel_tiles;
+/// P13 T: Cel ▸ Tween… (os quadros do meio).
+#[path = "pixel_tween.rs"]
+mod pixel_tween;
 
 /// A tradução de uma chave destas tabelas, ou `None` — a mesma ordem que a `lib.rs` tinha.
 pub(crate) fn tr(k: &str) -> Option<&'static str> {
@@ -38,4 +50,8 @@ pub(crate) fn tr(k: &str) -> Option<&'static str> {
         .or_else(|| pixel_crt::tr(k))
         .or_else(|| pixel_tiles::tr(k))
         .or_else(|| pixel_guias::tr(k))
+        .or_else(|| pixel_rampas::tr(k))
+        .or_else(|| pixel_luz_rampa::tr(k))
+        .or_else(|| pixel_som::tr(k))
+        .or_else(|| pixel_tween::tr(k))
 }

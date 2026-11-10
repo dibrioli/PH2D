@@ -3,12 +3,12 @@
 //! *Edit color* pelo seletor partilhado, o *Replace Color* e o diálogo *Color Mode*. Tudo o que muda
 //! o documento é UM passo do desfazer do sprite; reordenar nunca muda a imagem.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::pixel_panel::{ColorModeChoice, PixelRequest, PixelSelect};
 use ph2d_pixel_core::palette::{self};
-use ph2d_pixel_core::{Cel, ColorMode, Op, Patch, Rect, Sprite, Whole, compose_rgba};
+use ph2d_pixel_core::{ColorMode, Op, Patch, Rect, Sprite, compose_rgba};
 use ph2d_pixel_io::palette_file::{self, PaletteFormat};
 
 use crate::PixelApp;
@@ -26,13 +26,6 @@ pub use ph2d_pixel_core::palette::drag_permutation;
 
 /// A cor com que *Palette Size* estende a paleta (Aseprite: preto).
 const PRETO: [u8; 4] = [0, 0, 0, 255];
-
-/// Os cels guardados do sprite (um ligado não tem bytes: a imagem é a do dono).
-fn cels(
-    s: &Sprite,
-) -> impl Iterator<Item = ((ph2d_pixel_core::LayerId, ph2d_pixel_core::FrameId), &Cel)> {
-    s.entries().map(|(k, c)| (*k, c))
-}
 
 impl PixelApp {
     /// A selecção, em ordem de paleta.
@@ -120,6 +113,10 @@ impl PixelApp {
             PixelRequest::SaveDefault => self.grava_omissao(key),
             PixelRequest::LoadPreset(nome) => self.carrega_predefinicao(key, &nome),
             PixelRequest::ReplaceColor => self.substitui(key),
+            PixelRequest::Ramp(a) => {
+                let op = ph2d_pixel_ponte::rampas::op(&self.docs[&key].sprite, self.fg, &a);
+                self.passo_nomeado(key, op, "pixel.history.palette_data");
+            }
             _ => {}
         }
         true
@@ -275,38 +272,8 @@ impl PixelApp {
     fn do_sprite(&mut self, key: u32) {
         let s = &self.docs[&key].sprite;
         if s.mode() == ColorMode::Indexed {
-            let t = usize::from(s.transparent_index());
-            let transparente = s.palette().get(t).copied().unwrap_or([0; 4]);
-            let mut colors = vec![transparente];
-            let mut por_cor: BTreeMap<[u8; 4], u8> = BTreeMap::new();
-            let mut mapa = [0u8; palette::MAX_COLORS];
-            for i in usados(s).into_iter().filter(|&i| i != t) {
-                let c = s.palette().get(i).copied().unwrap_or([0; 4]);
-                let novo = *por_cor.entry(c).or_insert_with(|| {
-                    colors.push(c);
-                    u8::try_from(colors.len() - 1).unwrap_or(u8::MAX)
-                });
-                mapa[i] = novo;
-            }
-            let cels = cels(s)
-                .map(|(k, c)| {
-                    let data = c.data.iter().map(|&v| mapa[usize::from(v)]).collect();
-                    (k, Cel { data, ..c.clone() })
-                })
-                .collect();
-            let mut tilesets = s.tilesets().to_vec();
-            for v in tilesets.iter_mut().flat_map(|t| &mut t.tiles).flatten() {
-                *v = mapa[usize::from(*v)];
-            }
-            let w = Whole {
-                mode: ColorMode::Indexed,
-                palette: colors,
-                transparent: 0,
-                cels,
-                tilesets,
-            };
-            let n = w.palette.len();
-            self.passo_nomeado(key, Some(Op::Whole(Box::new(w))), DO_SPRITE);
+            let (op, n) = ph2d_pixel_ponte::rampas::paleta_do_sprite(s, &usados(s));
+            self.passo_nomeado(key, Some(op), DO_SPRITE);
             self.prende_selecao(n);
             return;
         }
@@ -329,7 +296,9 @@ impl PixelApp {
             );
             colors.truncate(palette::MAX_COLORS);
         }
-        self.poe_paleta(key, colors, Some(0), DO_SPRITE);
+        let (op, n) = ph2d_pixel_ponte::rampas::paleta_rgb(&self.docs[&key].sprite, colors);
+        self.passo_nomeado(key, Some(op), DO_SPRITE);
+        self.prende_selecao(n);
     }
 
     fn le(&mut self, key: u32) {

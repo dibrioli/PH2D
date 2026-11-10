@@ -38,18 +38,19 @@ pub fn objetos<'a>(
         .collect()
 }
 
-/// ⭐ A banda normal de uma faixa Pixel (`ids` = os Pixel Sprites dela); `sem_luz` = `None` com a luz
-/// apagada. A composição a põe nas normais da luz, ao lado da cena da faixa (família não vê família).
+/// ⭐ As bandas normal e de rampa de uma faixa Pixel (`ids` = os Pixel Sprites dela); `sem_luz` = `None`
+/// com a luz apagada. A composição põe-nas na luz, ao lado da cena da faixa (família não vê família).
 #[must_use]
-pub fn faixa_normal(
+pub fn faixa_de_luz(
     app: &PixelApp,
     world: &ph2d_ecs::World,
     (cam, ppm): (Affine, f32),
     ids: &[u64],
     sem_luz: Option<&[Entity]>,
-) -> Option<ph2d_vector::VectorScene> {
-    let sem = sem_luz?;
-    ph2d_pixel_luz::banda_normal(&objetos(app, world, ppm, ids, sem), cam)
+) -> Option<ph2d_render::luz_rampa_faixas::BandasDaFaixa> {
+    let o = objetos(app, world, ppm, ids, sem_luz?);
+    let rampa = ph2d_pixel_luz::banda_rampa_da_faixa(&o, cam).map(Into::into);
+    Some((ph2d_pixel_luz::banda_normal(&o, cam), rampa))
 }
 
 /// A camada de oclusão de TODOS os Pixel Sprites (a luz pede os que bloqueiam, por `quem`).

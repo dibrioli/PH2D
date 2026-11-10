@@ -84,6 +84,7 @@ fn cartao(app: &mut PixelApp, key: u32, bits: u64, em_draw: bool) -> Option<Pixe
             .map(|c| (c.id.0, c.name.clone()))
             .collect(),
         pivot: doc.sprite.pivot_slice().map(|s| s.0),
+        luz_na_paleta: doc.sprite.ramps().luz_na_paleta,
     })
 }
 

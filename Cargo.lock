@@ -6184,6 +6184,7 @@ dependencies = [
  "ph2d-panel-pixel-tiles",
  "ph2d-panel-pixel-timeline",
  "ph2d-panel-timeline",
+ "ph2d-pixel-audio",
  "ph2d-pixel-cena",
  "ph2d-pixel-cenas",
  "ph2d-pixel-core",
@@ -7664,6 +7665,7 @@ dependencies = [
  "ph2d-physics-scene",
  "ph2d-pick-order",
  "ph2d-pixel-cena",
+ "ph2d-pixel-crt",
  "ph2d-pixel-keys",
  "ph2d-poly2d",
  "ph2d-preview-drive",
@@ -7813,9 +7815,11 @@ dependencies = [
  "ph2d-panel-pixel-preview",
  "ph2d-panel-pixel-slices",
  "ph2d-panel-pixel-tiles",
+ "ph2d-panel-pixel-timeline",
  "ph2d-panel-pixel-tools",
  "ph2d-pen",
  "ph2d-physics-ecs",
+ "ph2d-pixel-audio",
  "ph2d-pixel-cena",
  "ph2d-pixel-cenas",
  "ph2d-pixel-core",
@@ -10391,6 +10395,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-label-census",
+ "ph2d-pixel-audio",
  "ph2d-pixel-core",
  "ph2d-pixel-render",
  "ph2d-tokens",
@@ -10878,6 +10883,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-pixel-audio"
+version = "0.0.0"
+dependencies = [
+ "ph2d-audio",
+ "ph2d-audio-decode",
+ "ph2d-pixel-core",
+]
+
+[[package]]
 name = "ph2d-pixel-cena"
 version = "0.0.0"
 dependencies = [
@@ -11000,6 +11014,7 @@ dependencies = [
  "ph2d-pixel-guia",
  "ph2d-pixel-io",
  "ph2d-pixel-rampa",
+ "ph2d-pixel-tween",
  "ph2d-vector",
  "winit",
 ]
@@ -11050,6 +11065,14 @@ dependencies = [
  "ph2d-pixel-render",
  "ph2d-vector",
  "serde_json",
+]
+
+[[package]]
+name = "ph2d-pixel-tween"
+version = "0.0.0"
+dependencies = [
+ "ph2d-ease",
+ "ph2d-pixel-core",
 ]
 
 [[package]]

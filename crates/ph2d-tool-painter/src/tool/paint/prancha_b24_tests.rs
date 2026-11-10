@@ -36,8 +36,9 @@ fn fundo(w: u32, h: u32, blocos: bool) -> Vec<u8> {
     v
 }
 
-/// A imagem achatada inteira depois de UMA onda do Composite (Brush amarelo + Blur) na camada nova.
-fn cena(w: u32, h: u32, qual: u8) -> Vec<u8> {
+/// A imagem achatada inteira depois de UMA onda do Composite (Brush amarelo + Blur `tam_blur`× o
+/// pincel de raio `raio`·h/1080), na camada nova transparente ou (`!nova`) no próprio fundo.
+fn cena(w: u32, h: u32, qual: u8, raio: f32, tam_blur: f32, nova: bool) -> Vec<u8> {
     let mut t = PainterTool::default();
     if qual == 2 {
         t.agenda_papel_texturizado(7);
@@ -45,9 +46,11 @@ fn cena(w: u32, h: u32, qual: u8) -> Vec<u8> {
     } else {
         t.set_source(fundo(w, h, qual == 1), w, h);
     }
-    t.add_raster_layer("tinta").expect("a camada transparente");
+    if nova {
+        t.add_raster_layer("tinta").expect("a camada transparente");
+    }
     let s = h as f32 / 1080.0;
-    t.paint.brush.radius_px = 28.0 * s;
+    t.paint.brush.radius_px = raio * s;
     t.paint.composite_enabled = true;
     for pos in 0..N_CAMADAS {
         t.paint.composite[pos] = CompositeLayer::default();
@@ -57,7 +60,7 @@ fn cena(w: u32, h: u32, qual: u8) -> Vec<u8> {
     t.paint.composite[1] = CompositeLayer {
         op: CompositeOp::Blur,
         strength: 1.0,
-        size: 2.0,
+        size: tam_blur,
         ..CompositeLayer::default()
     };
     t.paint.composite[2] = CompositeLayer {
@@ -95,6 +98,35 @@ fn recorte(img: &[u8], w: u32, x0: u32, y0: u32, lado: u32, z: u32) -> Vec<[u8; 
     out
 }
 
+/// Antes | depois | o que muda (vermelho ∝ a diferença): o recorte central `h/2` e, embaixo, a lupa
+/// 4× de lado `h/8` centrada em `lupa_c`.
+fn monta(a: &[u8], d: &[u8], w: u32, h: u32, lupa_c: (u32, u32)) -> image::RgbaImage {
+    let lado = h / 2;
+    let (x0, y0) = ((w - lado) / 2, (h - lado) / 2);
+    let lupa = lado / 4;
+    let (lx, ly) = (lupa_c.0 - lupa / 2, lupa_c.1 - lupa / 2);
+    let gap = 8u32;
+    let larg = 3 * lado + 2 * gap;
+    let mut par =
+        image::RgbaImage::from_pixel(larg, 2 * lado + gap, image::Rgba([40, 40, 40, 255]));
+    for (linha, (ox, oy, l, z)) in [(x0, y0, lado, 1u32), (lx, ly, lupa, 4)]
+        .into_iter()
+        .enumerate()
+    {
+        let (ra, rd) = (recorte(a, w, ox, oy, l, z), recorte(d, w, ox, oy, l, z));
+        let top = linha as u32 * (lado + gap);
+        for (i, (pa, pd)) in ra.iter().zip(&rd).enumerate() {
+            let (x, y) = (i as u32 % lado, top + i as u32 / lado);
+            let m = (0..4).map(|c| pa[c].abs_diff(pd[c])).max().unwrap_or(0);
+            let k = 255 - (u16::from(m) * 32).min(255) as u8;
+            par.put_pixel(x, y, image::Rgba([pa[0], pa[1], pa[2], 255]));
+            par.put_pixel(x + lado + gap, y, image::Rgba([pd[0], pd[1], pd[2], 255]));
+            par.put_pixel(x + 2 * (lado + gap), y, image::Rgba([255, k, k, 255]));
+        }
+    }
+    par
+}
+
 #[test]
 #[ignore = "prancha B24: grava píxeis crus; com PH2D_PRANCHA_B24_ANTES monta as PNG"]
 fn prancha_b24_o_blur_do_composite_na_camada_transparente() {
@@ -107,7 +139,7 @@ fn prancha_b24_o_blur_do_composite_na_camada_transparente() {
     );
     for (w, h, res) in [(1920u32, 1080u32, "1080p"), (3840, 2160, "4k")] {
         for (qual, nome) in [(0u8, "branco"), (1, "blocos"), (2, "papel")] {
-            let d = cena(w, h, qual);
+            let d = cena(w, h, qual, 28.0, 2.0, true);
             std::fs::write(format!("{saida}/{res}_{nome}.rgba"), &d).expect("cru");
             let Some(pasta) = &antes else { continue };
             let a = std::fs::read(format!("{pasta}/{res}_{nome}.rgba")).expect("o antes");
@@ -124,32 +156,48 @@ fn prancha_b24_o_blur_do_composite_na_camada_transparente() {
                 .max()
                 .unwrap_or(0);
             eprintln!("PRANCHA {res} {nome}: {difs} píxeis diferentes, pior {pior}");
-            let lado = h / 2;
-            let (x0, y0) = ((w - lado) / 2, (h - lado) / 2);
             // A lupa (4×): o corte da onda no 1.º quarto (o vale), as duas bordas onde a tinta encontra o vazio.
-            let lupa = lado / 4;
-            let (lx, ly) = (w / 2 - h / 8 - lupa / 2, h / 2 + h * 35 / 400 - lupa / 2);
-            let gap = 8u32;
-            let larg = 3 * lado + 2 * gap;
-            let mut par =
-                image::RgbaImage::from_pixel(larg, 2 * lado + gap, image::Rgba([40, 40, 40, 255]));
-            for (linha, (ox, oy, l, z)) in [(x0, y0, lado, 1u32), (lx, ly, lupa, 4)]
-                .into_iter()
-                .enumerate()
-            {
-                let (ra, rd) = (recorte(&a, w, ox, oy, l, z), recorte(&d, w, ox, oy, l, z));
-                let top = linha as u32 * (lado + gap);
-                for (i, (pa, pd)) in ra.iter().zip(&rd).enumerate() {
-                    let (x, y) = (i as u32 % lado, top + i as u32 / lado);
-                    let m = (0..4).map(|c| pa[c].abs_diff(pd[c])).max().unwrap_or(0);
-                    let k = 255 - (u16::from(m) * 32).min(255) as u8;
-                    par.put_pixel(x, y, image::Rgba([pa[0], pa[1], pa[2], 255]));
-                    par.put_pixel(x + lado + gap, y, image::Rgba([pd[0], pd[1], pd[2], 255]));
-                    par.put_pixel(x + 2 * (lado + gap), y, image::Rgba([255, k, k, 255]));
-                }
-            }
+            let par = monta(&a, &d, w, h, (w / 2 - h / 8, h / 2 + h * 35 / 400));
             std::fs::create_dir_all(dir).expect("pasta");
             par.save(format!("{dir}/{res}_{nome}_antes_depois.png"))
+                .expect("png");
+        }
+    }
+}
+
+/// **Prancha B24.5**: o Composite de pincel GRANDE (raio 120·h/1080, Blur do mesmo tamanho) no
+/// próprio fundo: «antes» = o `k` da pilha no tecto do binomial (32), «depois» = `0,34·r`. Oráculo
+/// no mesmo processo ([`super::COM_O_TECTO_DO_NUCLEO`]).
+#[test]
+#[ignore = "prancha B24.5: escreve PNGs em docs/Painter/missao_4k/pranchas/B24/"]
+fn prancha_b24_5_o_borrao_do_pincel_grande() {
+    let dir = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../docs/Painter/missao_4k/pranchas/B24"
+    );
+    std::fs::create_dir_all(dir).expect("pasta");
+    for (w, h, res) in [(1920u32, 1080u32, "1080p"), (3840, 2160, "4k")] {
+        for (qual, nome) in [(0u8, "branco"), (1, "blocos"), (2, "papel")] {
+            super::COM_O_TECTO_DO_NUCLEO.set(true);
+            let a = cena(w, h, qual, 120.0, 1.0, false);
+            super::COM_O_TECTO_DO_NUCLEO.set(false);
+            let d = cena(w, h, qual, 120.0, 1.0, false);
+            let difs = a
+                .chunks_exact(4)
+                .zip(d.chunks_exact(4))
+                .filter(|(x, y)| x != y)
+                .count();
+            let pior = a
+                .iter()
+                .zip(&d)
+                .map(|(x, y)| x.abs_diff(*y))
+                .max()
+                .unwrap_or(0);
+            eprintln!("PRANCHA B24.5 {res} {nome}: {difs} píxeis diferentes, pior {pior}");
+            // A lupa na borda de baixo da onda, no vale (y = centro + 0,0875·h + o raio).
+            let centro = (w / 2 - h / 8, h / 2 + h * 35 / 400 + h * 120 / 1080);
+            monta(&a, &d, w, h, centro)
+                .save(format!("{dir}/b24_5_{res}_{nome}_antes_depois.png"))
                 .expect("png");
         }
     }

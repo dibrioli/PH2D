@@ -24,14 +24,34 @@ use crate::stamp::{StampMask, sample_mask};
 
 /// Kernel radius as a fraction of the dab radius (community consensus for a size-proportional blur).
 const BLUR_KERNEL_FRAC: f32 = 0.34;
-/// Hard cap on the kernel radius (px) — bounds the per-dab convolution cost for huge brushes; the blur
-/// still builds up over repeated dabs. A perf follow-up (SAT / cached region) can lift it.
+/// Cap on the **binomial** kernel radius (px). Resource: CPU time per dab, `∝ k` (`2·(2k+1)` taps per
+/// pixel). Measured 10/11 (B24.5, `diag_o_preco_do_tecto_do_nucleo`, 4K canvas, one dab `(2r+1)²`,
+/// min of 5 interleaved rounds, load ~39), ms per dab, capped → uncapped:
+///
+/// | brush r | k | Binomial | Box (Composite stack) |
+/// |---|---|---|---|
+/// | 94 | 32 → 32 | 3,6 → 3,5 | 0,97 → 0,95 |
+/// | 192 | 32 → 65 | 12,9 → 27,8 | 1,7 → 1,8 |
+/// | 256 | 32 → 87 | 23,0 → 67,1 | 2,5 → 2,3 |
+/// | 512 | 32 → 174 | 89,9 → 498,3 | 9,0 → 9,9 |
+///
+/// ⇒ it binds the binomial (the Blur tool, the mask, the grain) and NOT the box: the Composite stack
+/// reads [`kernel_radius_caixa`], whose only bound is the exact integer sum of the box.
 pub(crate) const BLUR_KERNEL_MAX: usize = 32;
 
 /// The blur kernel radius (px) for a dab of `radius`: `round(FRAC · radius)`, clamped to `1..=MAX`.
 #[must_use]
 pub fn kernel_radius(radius: f32) -> usize {
     ((radius * BLUR_KERNEL_FRAC).round() as i64).clamp(1, BLUR_KERNEL_MAX as i64) as usize
+}
+
+/// The **box** kernel radius for a dab of `radius` (B24.5): the same `round(FRAC · radius)` with no
+/// time cap (the box costs the same at any `k`, table above) — only
+/// [`crate::blur_caixa::K_MAXIMO_EXACTO`], where its integer sums stop being exact in `f32`.
+#[must_use]
+pub fn kernel_radius_caixa(radius: f32) -> usize {
+    ((radius * BLUR_KERNEL_FRAC).round() as i64).clamp(1, crate::blur_caixa::K_MAXIMO_EXACTO as i64)
+        as usize
 }
 
 /// Normalized 1D **binomial** weights for kernel radius `k` (side `2k+1`) — the transcendental-free

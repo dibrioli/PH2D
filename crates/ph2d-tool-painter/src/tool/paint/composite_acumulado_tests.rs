@@ -551,3 +551,60 @@ fn a_mistura_do_borrao_em_paralelo_da_o_byte_da_serie() {
         "CONTROLO: a mistura não mudou um byte — fixtura inerte"
     );
 }
+
+/// ⭐ **B24.5 (PA-67 K5): o borrão da pilha cresce com o pincel acima de `BLUR_KERNEL_MAX`.** Um pingo
+/// de raio `200` (Blur por cima, um Brush minúsculo no centro) sobre uma aresta preto | branco: a
+/// largura da transição numa linha fora do ponto do Brush. O controlo é o caminho de antes (o `k`
+/// no tecto do binomial), na mesma corrida: com a cura a aresta borra mais.
+#[test]
+fn o_borrao_da_pilha_cresce_com_o_pincel_acima_do_tecto_do_binomial() {
+    let largura = |com_o_tecto: bool| -> usize {
+        super::composite::COM_O_TECTO_DO_NUCLEO.with(|c| c.set(com_o_tecto));
+        let mut t = PainterTool::default();
+        let mut px = vec![255u8; (SIZE * SIZE * 4) as usize];
+        for (i, p) in px.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+            if (i as u32 % SIZE) < SIZE / 2 {
+                p[..3].copy_from_slice(&[0, 0, 0]);
+            }
+        }
+        t.set_source(px, SIZE, SIZE);
+        t.paint.brush.radius_px = 200.0;
+        t.paint.brush.hardness = 1.0;
+        t.paint.brush.falloff = ph2d_painter_brush::Falloff::Constant;
+        t.paint.brush.space_attenuation = false;
+        t.paint.composite_enabled = true;
+        for pos in 0..N_CAMADAS {
+            t.paint.composite[pos] = CompositeLayer::default();
+        }
+        t.paint.composite[1] = CompositeLayer {
+            op: CompositeOp::Blur,
+            strength: 1.0,
+            ..CompositeLayer::default()
+        };
+        t.paint.composite[2] = CompositeLayer {
+            op: CompositeOp::Brush,
+            strength: 1.0,
+            size: 0.05,
+            ..CompositeLayer::default()
+        };
+        let c = SIZE as f32 / 2.0;
+        t.on_canvas_pointer(cp([c, c], PointerPhase::Down));
+        t.on_canvas_pointer(cp([c + 1.0, c], PointerPhase::Move));
+        t.on_canvas_pointer(cp([c + 1.0, c], PointerPhase::Up));
+        super::composite::COM_O_TECTO_DO_NUCLEO.with(|c| c.set(false));
+        let y = SIZE / 2 + 80;
+        (0..SIZE)
+            .filter(|&x| (11..=244).contains(&t.canvas_rgba[((y * SIZE + x) * 4) as usize]))
+            .count()
+    };
+    let antes = largura(true);
+    let depois = largura(false);
+    assert!(
+        antes > 4,
+        "CONTROLO: o borrão de antes não tocou a aresta ({antes} colunas)"
+    );
+    assert!(
+        depois * 10 >= antes * 13,
+        "o borrão a r=200 tem de crescer além do tecto: {antes} → {depois} colunas de transição"
+    );
+}

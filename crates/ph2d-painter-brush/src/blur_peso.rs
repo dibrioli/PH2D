@@ -141,7 +141,13 @@ mod tests {
             let mut nova = tela.clone();
             blur_region_por_peso(&mut nova, W, H, 0, 0, bw, bh, 6, &peso, [false; 2], nucleo);
             let mut recta = tela.clone();
-            for ((px, src), &p) in recta.as_chunks_mut::<4>().0.iter_mut().zip(&borrada).zip(&peso) {
+            for ((px, src), &p) in recta
+                .as_chunks_mut::<4>()
+                .0
+                .iter_mut()
+                .zip(&borrada)
+                .zip(&peso)
+            {
                 let w = f32::from(p) / 255.0;
                 for c in 0..4 {
                     let d = f32::from(px[c]);
@@ -150,9 +156,49 @@ mod tests {
             }
             let (tocados, escuros) = escurecidos(&nova);
             let (_, escuros_recta) = escurecidos(&recta);
-            assert!(tocados > bh * 20, "{nucleo:?}: CONTROLO — o borrão não chegou ao vazio");
-            assert!(escuros_recta > bh, "{nucleo:?}: CONTROLO — a recta já não escurece ({escuros_recta})");
-            assert_eq!(escuros, 0, "{nucleo:?}: {escuros} de {tocados} texels mais escuros que a tinta");
+            assert!(
+                tocados > bh * 20,
+                "{nucleo:?}: CONTROLO — o borrão não chegou ao vazio"
+            );
+            assert!(
+                escuros_recta > bh,
+                "{nucleo:?}: CONTROLO — a recta já não escurece ({escuros_recta})"
+            );
+            assert_eq!(
+                escuros, 0,
+                "{nucleo:?}: {escuros} de {tocados} texels mais escuros que a tinta"
+            );
         }
+    }
+
+    /// ⭐ **B24.5 (PA-67 K5): o núcleo de CAIXA cresce com o pincel acima de `BLUR_KERNEL_MAX`**, e o
+    /// seu tecto é o da soma exacta (as três caixas abaixo de `LADO_MAXIMO_EXACTO`), nunca o tempo.
+    /// O controlo: o binomial continua no tecto medido.
+    #[test]
+    fn o_nucleo_de_caixa_cresce_com_o_pincel_ate_a_soma_exacta() {
+        use crate::blur::{BLUR_KERNEL_MAX, kernel_radius, kernel_radius_caixa};
+        use crate::blur_caixa::{K_MAXIMO_EXACTO, LADO_MAXIMO_EXACTO, box_radii};
+        assert_eq!(
+            kernel_radius(256.0),
+            BLUR_KERNEL_MAX,
+            "CONTROLO: o binomial fica no tecto"
+        );
+        assert_eq!(
+            kernel_radius_caixa(94.0),
+            kernel_radius(94.0),
+            "abaixo do tecto é a mesma lei"
+        );
+        assert_eq!(
+            kernel_radius_caixa(256.0),
+            87,
+            "a caixa a r=256 tem de seguir 0,34·r"
+        );
+        assert!(kernel_radius_caixa(512.0) > kernel_radius_caixa(256.0));
+        assert!(
+            box_radii(K_MAXIMO_EXACTO)
+                .iter()
+                .all(|r| 2 * r < LADO_MAXIMO_EXACTO)
+        );
+        assert_eq!(kernel_radius_caixa(1.0e9), K_MAXIMO_EXACTO);
     }
 }

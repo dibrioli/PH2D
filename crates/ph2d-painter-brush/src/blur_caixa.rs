@@ -75,6 +75,10 @@ pub(crate) fn inteiro(x: f32) -> f32 {
 /// O maior lado de caixa cuja soma de inteiros `≤ 65 025` ainda é exacta em `f32` (`< 2²⁴`).
 pub(crate) const LADO_MAXIMO_EXACTO: usize = (1 << 24) / 65_025;
 
+/// O maior `k` cujas três caixas ([`box_radii`]) ficam abaixo de [`LADO_MAXIMO_EXACTO`]
+/// (`√(1+2k) < 257`): o único tecto do núcleo de caixa (B24.5; o tempo não depende de `k`).
+pub const K_MAXIMO_EXACTO: usize = (LADO_MAXIMO_EXACTO - 1) * (LADO_MAXIMO_EXACTO - 1) / 2 - 1;
+
 /// Uma passagem de caixa HORIZONTAL por soma corrente: a saída perde `r` de cada lado.
 ///
 /// ⚠️ **Ela é o ORÁCULO da [`caixa_h3`] E o caminho da porta de bissecção** (ver [`sem_fusao`]):
@@ -530,7 +534,10 @@ pub(crate) fn blur_region_caixa_com(
     paralelo: bool,
 ) -> Vec<[f32; 4]> {
     let raios = box_radii(k);
-    debug_assert!(raios.iter().all(|r| 2 * r < LADO_MAXIMO_EXACTO), "k={k}: soma inexacta");
+    debug_assert!(
+        raios.iter().all(|r| 2 * r < LADO_MAXIMO_EXACTO),
+        "k={k}: soma inexacta"
+    );
     let r_total: usize = raios.iter().sum();
     let ap_w = bw + 2 * r_total;
     let ap_h = bh + 2 * r_total;

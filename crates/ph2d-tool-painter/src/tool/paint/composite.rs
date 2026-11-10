@@ -576,6 +576,25 @@ impl PainterTool {
     }
 }
 
+/// O `k` de um borrão da pilha: o raio da camada e as `passagens` compostas numa só (B24.5). O
+/// núcleo de CAIXA custa o mesmo em qualquer `k` (tabela no `BLUR_KERNEL_MAX`), logo não leva o
+/// tecto de tempo da ferramenta Blur, só o da soma exacta. A prancha liga o caminho antigo.
+pub(super) fn k_do_borrao_da_pilha(raio: f32, passagens: usize) -> usize {
+    #[cfg(test)]
+    if COM_O_TECTO_DO_NUCLEO.get() {
+        return ph2d_painter_brush::kernel_radius(raio) * passagens;
+    }
+    (ph2d_painter_brush::blur::kernel_radius_caixa(raio) * passagens)
+        .min(ph2d_painter_brush::blur_caixa::K_MAXIMO_EXACTO)
+}
+
+#[cfg(test)]
+thread_local! {
+    /// O caminho de antes do B24.5 (o `k` da pilha no tecto do binomial): o «antes» da prancha e o
+    /// controlo do gate.
+    pub(super) static COM_O_TECTO_DO_NUCLEO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 // A prancha de B24.1/B24.2 (o Blur da pilha numa camada transparente, nos 3 fundos).
 #[cfg(test)]
 #[path = "prancha_b24_tests.rs"]

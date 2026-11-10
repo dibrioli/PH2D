@@ -457,3 +457,66 @@ fn diag_a_rota_fundida_de_ponta_a_ponta() {
     let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("  (load ao fim: {})", carga.trim());
 }
+
+/// **B24.5 (PA-67 K5): o preço de um pingo do Blur acima do tecto [`crate::blur::BLUR_KERNEL_MAX`].**
+/// Numa tela 4K, por raio de pincel: a região de um pingo `(2r+1)²` e `k = round(0,34·r)` com e sem
+/// o tecto, pelas duas portas (Caixa = a pilha do Composite, Binomial = a ferramenta Blur e a
+/// máscara), as quatro variantes intercaladas em rodadas giradas, o MÍNIMO.
+///
+/// ```text
+/// bash scripts/cargo-test-narrow.sh ph2d-painter-brush diag_o_preco_do_tecto_do_nucleo \
+///   -- --ignored --nocapture --test-threads=1
+/// ```
+#[test]
+#[ignore = "sonda de relógio B24.5: corre à mão"]
+fn diag_o_preco_do_tecto_do_nucleo() {
+    use crate::{BlurKernel, blur_region_por_peso};
+    let (fw, fh) = (3840u32, 2160u32);
+    let mut tela: Vec<u8> = (0..(fw * fh * 4) as usize)
+        .map(|i| ((i * 37) % 256) as u8)
+        .collect();
+    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    println!(
+        "\n  O PREÇO DO TECTO DO NÚCLEO, 4K, ms por pingo (load {})",
+        carga.trim()
+    );
+    println!(
+        "   raio | k tecto | k livre | Caixa tecto | Caixa livre | Binom. tecto | Binom. livre"
+    );
+    for r in [32usize, 64, 94, 128, 192, 256, 384, 512] {
+        let lado = 2 * r + 1;
+        let peso = vec![200u8; lado * lado];
+        #[allow(
+            clippy::cast_precision_loss,
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss
+        )]
+        let livre = (r as f32 * 0.34).round() as usize;
+        let tecto = livre.min(crate::blur::BLUR_KERNEL_MAX);
+        let (x0, y0) = (i64::from(fw / 2) - r as i64, i64::from(fh / 2) - r as i64);
+        let variantes = [
+            (tecto, BlurKernel::Caixa),
+            (livre, BlurKernel::Caixa),
+            (tecto, BlurKernel::Binomial),
+            (livre, BlurKernel::Binomial),
+        ];
+        let mut melhor = [f64::MAX; 4];
+        for rodada in 0..5 {
+            for j in 0..4 {
+                let v = (j + rodada) % 4;
+                let (k, nucleo) = variantes[v];
+                let t0 = std::time::Instant::now();
+                blur_region_por_peso(
+                    &mut tela, fw, fh, x0, y0, lado, lado, k, &peso, [false; 2], nucleo,
+                );
+                melhor[v] = melhor[v].min(t0.elapsed().as_secs_f64() * 1e3);
+            }
+        }
+        println!(
+            "  {r:>5} | {tecto:>7} | {livre:>7} | {:>11.2} | {:>11.2} | {:>12.2} | {:>12.2}",
+            melhor[0], melhor[1], melhor[2], melhor[3]
+        );
+    }
+    let carga = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    println!("  (load ao fim: {})", carga.trim());
+}

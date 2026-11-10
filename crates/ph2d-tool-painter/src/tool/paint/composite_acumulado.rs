@@ -501,8 +501,10 @@ impl PainterTool {
                 //    do núcleo é LINEAR no raio (`σ² = k/2`, ver `blur_caixa`), logo `P` passagens
                 //    compõem-se numa de raio `P·k` — e o núcleo de CAIXA custa o mesmo em qualquer
                 //    raio (três somas correntes). ⇒ o espalhamento é o mesmo e o trabalho é `1/P`.
-                let k = ph2d_painter_brush::kernel_radius(raio)
-                    * passagens_do_borrao(self.paint.brush.spacing) as usize;
+                let k = super::composite::k_do_borrao_da_pilha(
+                    raio,
+                    passagens_do_borrao(self.paint.brush.spacing) as usize,
+                );
                 let tiling = self.paint.tiling;
                 let buf = super::plane_fork::fork_canvas(
                     &mut self.canvas_rgba,
@@ -618,9 +620,10 @@ impl PainterTool {
         let soma: usize = borroes
             .iter()
             .map(|&p| {
-                let k = ph2d_painter_brush::kernel_radius(
+                let k = super::composite::k_do_borrao_da_pilha(
                     self.raio_do_pincel() * self.tamanho_da_camada(p),
-                ) * passagens;
+                    passagens,
+                );
                 if largo {
                     k
                 } else {

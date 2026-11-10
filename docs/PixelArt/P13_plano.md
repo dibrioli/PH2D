@@ -696,3 +696,15 @@ Fotos 1600×900 olhadas: `docs/PixelArt/handoffs/smoke_P13_cena<n>_2026-11-09.pn
 
 **Fica:** a 31 (rampas para o herói ou outra base com rampas + lâmpada); a 28 abrir o cartão Palette já rolado nas
 rampas; a 34 entrar em Draw no Hero para a Preview mostrar a CRT; na 32, aliviar a grade para a linha e o bloco se lerem.
+
+**Curas das cenas 28, 31, 32, 34 (09/11, agente).** 28: o painel PIXEL abre rolado (`ROLAGEM_28` = 700 px nos
+primeiros 120 quadros) no cartão Palette com as 3 faixas de rampa; o ciclo prova-se em 2 fotos a 0,2 s sob Play
+(`smoke_P13_cena28_2026-11-09{,_02}.png`): 47 988 de 79 800 px do sprite mudam, o painel igual byte a byte; a sonda:
+1 349 px da água. 31: base 26 com o herói trocado por uma bola 16×16 toda no degrau 2 da rampa Skin (5, gerada de
+(196,120,84)), Light: Palette; sonda pela lei `luz_na_rampa`: claro (1,5) ⇒ degrau 3, escuro (0,35) ⇒ degrau 1, aceso
+sempre na paleta, Smooth 2/2 fora dela; a foto mostra os degraus concêntricos a partir da lâmpada. 32: fundo liso e
+só a perspectiva (iso desenhado à mão, sem grade): a linha guiada e o bloco leem-se. 34: o Hero entra em Draw
+(`Cena::draw`, `app.wants_edit`) e a janela Preview estica (`set_panel_resize_delta`, `ESTICA_34`): a imagem do herói
+aparece com a CRT. ⚠️ Defeito achado: com o cartão CRT, a Preview de fábrica (altura fixa) fica SEM lugar para a
+imagem — a cena estica-a como o dono faria; a cura do tamanho da janela fica para o produto. Contador de passes CRT
+sem sonda (só a foto).

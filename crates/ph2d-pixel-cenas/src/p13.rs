@@ -7,7 +7,7 @@ use ph2d_editor_core::screens::hero::{HeroScreen, PANEL_PIXEL_LINT, PANEL_PIXEL_
 use ph2d_pixel_core::audio::FaixaDeAudio;
 use ph2d_pixel_core::cycle::{Cycle, CycleDirection};
 use ph2d_pixel_core::dither::{Dither, PincelDither};
-use ph2d_pixel_core::guia::{Guias, Iso2x1};
+use ph2d_pixel_core::guia::Guias;
 use ph2d_pixel_core::palette::DEFAULT as DB32;
 use ph2d_pixel_core::{DocOp, NewSprite, Op, Patch, Sprite, apply};
 
@@ -18,6 +18,8 @@ pub type Pedidos = Vec<PixelRequest>;
 pub struct Cena {
     pub base: u32,
     pub monta: fn(&mut Sprite) -> Option<Pedidos>,
+    /// A cena abre o objecto em Draw (a 34: a Preview só mostra um Pixel Sprite em Draw).
+    pub draw: bool,
 }
 
 /// A cena `n` (28..=36).
@@ -27,7 +29,7 @@ pub fn cena(n: u32) -> Option<Cena> {
         28 => (3, rampas),
         29 => (4, foto),
         30 => (4, dither),
-        // 31 (Light: Palette) fica de fora: o herói da 26 não tem rampas, e a cena mostraria o contrário.
+        31 => (26, luz),
         32 => (4, guias),
         33 => (4, lint),
         34 => (26, |_| Some(Vec::new())),
@@ -35,7 +37,11 @@ pub fn cena(n: u32) -> Option<Cena> {
         36 => (4, fala),
         _ => return None,
     };
-    Some(Cena { base, monta })
+    Some(Cena {
+        base,
+        monta,
+        draw: n == 34,
+    })
 }
 
 fn op(s: &mut Sprite, d: DocOp) -> Option<()> {
@@ -69,6 +75,12 @@ pub const RAMPAS_28: [(&str, &[u8]); 3] = [
     ("Water", &[16, 17, 18, 19]),
     ("Leaf", &[9, 10, 11, 12, 13, 14]),
 ];
+/// A rolagem do painel PIXEL na cena 28 (px lógicos): o cartão Palette e a faixa das rampas à vista.
+pub const ROLAGEM_28: f32 = 700.0;
+/// Os quadros em que a cena ainda arruma a vista (rolagem, tamanho da janela).
+pub const QUADROS_DA_CENA: u32 = 120;
+/// Quanto a janela Preview da 34 cresce (px lógicos: largura, altura).
+pub const ESTICA_34: [f32; 2] = [60.0, 300.0];
 /// O período do ciclo da água.
 pub const CICLO_28_MS: u32 = 400;
 
@@ -145,31 +157,85 @@ fn dither(s: &mut Sprite) -> Option<Pedidos> {
     Some(vec![PixelRequest::Tool(PixelTool::Push)])
 }
 
+/// A cor do meio da rampa Skin da cena 31 (a rampa nasce dela, 5 degraus).
+pub const PELE_31: [u8; 4] = [196, 120, 84, 255];
+/// O lado da bola da cena 31.
+pub const BOLA_31: u32 = 16;
+
+/// A rampa Skin da cena 31, do escuro para o claro (o degrau do meio é [`PELE_31`]).
+#[must_use]
+pub fn rampa_31() -> Vec<[u8; 4]> {
+    let cfg = ph2d_pixel_ponte::rampas::config(ph2d_editor_core::pixel_panel::PixelRampConfig {
+        steps: 5,
+        ..Default::default()
+    });
+    let mut r = ph2d_pixel_rampa::gera_rampa(PELE_31, cfg);
+    r[2] = PELE_31;
+    r
+}
+
+/// O herói da 31: uma bola 16 × 16 pintada TODA no degrau do meio da rampa Skin, com «Light:
+/// Palette» ligado — a lâmpada da 26 à esquerda escolhe o degrau de cada lado.
 fn luz(s: &mut Sprite) -> Option<Pedidos> {
-    let o = ph2d_pixel_core::ramp::set_luz_na_paleta(s, true)?;
-    apply(s, o).ok()?;
+    let pal = rampa_31();
+    let n = BOLA_31 as i32;
+    let px = (0..n * n)
+        .flat_map(|k| {
+            let (x, y) = (k % n - n / 2, k / n - n / 2);
+            if x * x + y * y <= (n / 2 - 1).pow(2) {
+                PELE_31
+            } else {
+                [0; 4]
+            }
+        })
+        .collect();
+    let spec = NewSprite {
+        width: BOLA_31,
+        height: BOLA_31,
+        ..NewSprite::default()
+    };
+    let mut b = Sprite::with_palette(spec, &pal).ok()?;
+    let r = b.bounds();
+    let (layer, frame) = (b.layers()[0].id, b.frames()[0].id);
+    let p = Patch {
+        layer,
+        frame,
+        bbox: Some(r),
+        rect: r,
+        pixels: px,
+    };
+    apply(&mut b, Op::Patch(p)).ok()?;
+    let add = DocOp::AddRamp {
+        name: "Skin".into(),
+        indices: (0..5).collect(),
+    };
+    op(&mut b, add)?;
+    let o = ph2d_pixel_core::ramp::set_luz_na_paleta(&b, true)?;
+    apply(&mut b, o).ok()?;
+    *s = b;
     Some(Vec::new())
 }
 
 /// Os pontos de fuga e a grade iso da cena 32 (células).
 pub const FUGA_32: [[f32; 2]; 2] = [[-8.0, 12.0], [72.0, 12.0]];
-pub const ISO_32: Iso2x1 = Iso2x1 {
-    origem: [40.0, 30.0],
-    passo: 4,
-};
+/// O fundo liso da cena 32 (um cinza claro da DB32).
+pub const FUNDO_32: [u8; 4] = DB32[21];
 
 fn guias(s: &mut Sprite) -> Option<Pedidos> {
+    // Fundo liso (o gradiente da base competia com os raios) e só a perspectiva: o bloco iso
+    // desenha-se à mão em 2:1, longe da linha guiada.
+    *s = tela(64, 48, (0..64 * 48).flat_map(|_| FUNDO_32).collect())?;
     let g = Guias {
         pontos_de_fuga: [Some(FUGA_32[0]), Some(FUGA_32[1]), None],
         horizonte: Some(FUGA_32[0][1]),
-        iso: Some(ISO_32),
+        iso: None,
     };
     op(s, DocOp::SetGuias(g))?;
     // Uma linha guiada: do canto (20, 40) para o ponto de fuga da esquerda; e o bloco iso.
     pinta(s, |p| {
         let (a, f) = ([20.0f32, 40.0], FUGA_32[0]);
-        for k in 0..=20 {
-            let t = k as f32 / 32.0;
+        for k in 0..=26 {
+            let t = k as f32 / 40.0;
             let (x, y) = (a[0] + (f[0] - a[0]) * t, a[1] + (f[1] - a[1]) * t);
             p(x.round() as i32, y.round() as i32, DB32[27]);
         }
@@ -455,7 +521,16 @@ fn fala(s: &mut Sprite) -> Option<Pedidos> {
 
 /// Uma vez por quadro, com o nível armado: abre a janela que a cena mostra.
 pub fn conduz(hero: &mut HeroScreen, nivel: Option<u32>) {
+    // Os primeiros quadros (o painel nasce rolado a 0 quando a cena entra em Draw): depois, a roda é do dono.
+    static Q: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    let cedo = Q.fetch_add(1, std::sync::atomic::Ordering::Relaxed) < QUADROS_DA_CENA;
     let painel = match nivel {
+        // A 28 abre o painel PIXEL rolado até ao cartão Palette e à faixa das rampas.
+        Some(28) if cedo => {
+            let id = ph2d_editor_core::ids::PIXEL_PANEL;
+            hero.store.set_panel_scroll(id, ROLAGEM_28);
+            return;
+        }
         Some(33) => PANEL_PIXEL_LINT,
         Some(34) => {
             let v = ph2d_pixel_crt::vista::vista();
@@ -464,6 +539,13 @@ pub fn conduz(hero: &mut HeroScreen, nivel: Option<u32>) {
                     ligada: true,
                     ..v
                 });
+            }
+            // A janela Preview esticada para baixo, como o dono a arrastaria pelo canto: o cartão
+            // CRT come a altura de fábrica e a imagem ficava sem lugar.
+            if cedo {
+                let id = ph2d_editor_core::ids::PIXEL_PREVIEW_PANEL;
+                hero.store
+                    .set_panel_resize_delta(id, ESTICA_34[0], ESTICA_34[1]);
             }
             PANEL_PIXEL_PREVIEW
         }

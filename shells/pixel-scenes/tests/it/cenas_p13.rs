@@ -75,6 +75,17 @@ fn a_sonda_das_cenas_28_a_36() {
         r.cycles[0].periodo_ms
     );
     assert_eq!(mexem, 4);
+    let cor_agua: BTreeSet<[u8; 4]> = p13::RAMPAS_28[1]
+        .1
+        .iter()
+        .map(|&i| s.palette()[usize::from(i)])
+        .collect();
+    let agua = rgba(s, 0)
+        .chunks_exact(4)
+        .filter(|c| cor_agua.contains(&[c[0], c[1], c[2], c[3]]))
+        .count();
+    println!("28: px da água (mudam de cor a cada passo do ciclo): {agua}");
+    assert!(agua > 0);
 
     // 29: Exact RGB × Keep ramps, lado a lado.
     let (a, b, pal) = p13::foto_lado_a_lado().expect("foto");
@@ -118,13 +129,46 @@ fn a_sonda_das_cenas_28_a_36() {
     assert!(fr[0] < fr[1] && fr[1] < fr[2]);
     assert_eq!(app.tool, ph2d_app_pixel::Tool::Push);
 
-    assert!(p13::cena(31).is_none(), "a 31 espera rampas no herói");
+    // 31: a bola da rampa Skin com Light: Palette. A lei da luz na rampa (a mesma da placa,
+    // `luz_rampa_placa`) a dois níveis de luz: o lado da lâmpada e o lado de lá.
+    let (app, _sim, k) = monta(31);
+    let s = sprite(&app, k);
+    assert!(s.ramps().ramps.len() == 1 && s.ramps().luz_na_paleta);
+    let pal: BTreeSet<[u8; 4]> = s.palette().iter().copied().collect();
+    let lut = ph2d_pixel_rampa::luz::LutDaLuz::da_paleta(s.palette(), s.ramps());
+    let usadas = cores(&rgba(s, 0));
+    let (claro, escuro) = ([1.5f32; 3], [0.35f32; 3]);
+    let mut degraus = Vec::new();
+    let mut fora_suave = 0;
+    for c in &usadas {
+        let (slot, pos) = lut.degrau_de(*c).expect("a cor está na rampa");
+        let r = &lut.rampas[slot];
+        for l in [claro, escuro] {
+            let aceso = ph2d_pixel_rampa::luz::luz_na_rampa(*c, r, pos, l);
+            assert!(pal.contains(&aceso), "aceso na paleta");
+            let suave = [0, 1, 2].map(|i| (f32::from(c[i]) * l[i]).min(255.0) as u8);
+            fora_suave += usize::from(!pal.contains(&[suave[0], suave[1], suave[2], 255]));
+        }
+        degraus.push((
+            pos,
+            ph2d_pixel_rampa::luz::degrau_aceso(r, pos, claro),
+            ph2d_pixel_rampa::luz::degrau_aceso(r, pos, escuro),
+        ));
+    }
+    println!(
+        "31: rampa Skin {} degraus; cores da bola {}; (degrau, aceso claro, aceso escuro) {degraus:?}; Smooth fora da paleta {fora_suave} de {}",
+        s.ramps().ramps[0].indices.len(),
+        usadas.len(),
+        2 * usadas.len()
+    );
+    assert!(degraus.iter().all(|(_, c, e)| c >= &(e + 1)));
+    assert!(fora_suave > 0);
 
     // 32: as guias no documento.
     let (app, _sim, k) = monta(32);
     let g = sprite(&app, k).guias();
     println!("32: guias {g:?}");
-    assert!(g.pontos_de_fuga[0].is_some() && g.pontos_de_fuga[1].is_some() && g.iso.is_some());
+    assert!(g.pontos_de_fuga[0].is_some() && g.pontos_de_fuga[1].is_some() && g.iso.is_none());
 
     // 33: os vícios que o lint acha.
     let (app, _sim, k) = monta(33);

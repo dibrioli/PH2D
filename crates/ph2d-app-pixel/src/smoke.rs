@@ -127,12 +127,12 @@ impl<F: FnOnce(&mut SimWorld, &str) -> u64> Raiz for F {}
 fn p13(app: &mut PixelApp, sim: &mut SimWorld, n: u32, r: impl Raiz) -> Option<()> {
     let c = ph2d_pixel_cenas::p13::cena(n)?;
     stage(app, sim, c.base, r).then_some(())?;
-    let d = app
-        .docs
-        .get_mut(&crate::mode::sprites(sim.world()).first()?.1)?;
+    let (bits, key) = *crate::mode::sprites(sim.world()).first()?;
+    let d = app.docs.get_mut(&key)?;
     let pedidos = (c.monta)(&mut d.sprite)?;
     (d.frame, d.layer) = (d.sprite.frames()[0].id, d.sprite.layers()[0].id);
     pedidos.into_iter().for_each(|r| app.pede(r));
+    app.wants_edit = app.wants_edit.or(c.draw.then_some(bits));
     Some(())
 }
 

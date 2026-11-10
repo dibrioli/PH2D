@@ -519,3 +519,38 @@ tecto: Tilted Shade traça a 242 ms/quadro (4 fps), Knife Oily 114, e o Ctrl+Z c
 load 28). A 1080p o traço p50 dos Real Oil fica 22–50 ms (Scratch 114, Metallic Flat 80 sob carga). Parado a CPU fica
 em 60–70 % em todos (o Wet a correr). A régua: o controlo de 250 ms lê 258–284 com trava, 14–37 sem (distingue).
 **Oil Wash:** não existe na fábrica (`assets/brushes` sem ele): o «antes» é do B36.
+
+### B08.2 (continuação 4) — os 10 lentos nos 3 fundos que faltavam: a matriz 10 × 6 fica completa (60/60)
+
+O mesmo binário limpo e o mesmo comando (`mede_pen_up_4k.sh matriz <WxH> branco|blocos $B "Filbert:wet" …`), Radeon nos
+32 lançamentos (`.placa` = `libvulkan_radeon` + gallium, sem `nvidia`). ⚠️ **Carga** (`carga.txt`): 1080p branco 13:42 load
+**26** · 4K blocos 13:50 load **35** · 1080p blocos 13:57 load **44** (outros agentes a compilar) — TECTO; as duas
+repetições correram com load **2–3**: Filbert 1080p papel e Express Oil 4K branco (as que tinham falhado sem janela).
+Não se esperou calma (`MEDIR_VELOCIDADE.md`). [`tabela_matriz.md`](antes/b08b/continuacao3/tabela_matriz.md) e
+`matriz.jsonl` refeitos com os 60.
+
+| fase (ms; mín–máx dos 10) | 1080p branco | 4K blocos | 1080p blocos |
+|---|---|---|---|
+| toque | 37–200 | 38–126 | 21–76 |
+| traço p50 / p95 | 17–60 / 22–120 | 13–116 / 24–223 | 12–30 / 15–53 |
+| soltar / +1 s máx | 17–81 / 23–81 | 20–100 / 22–100 | 16–50 / 16–50 |
+| Ctrl+Z | 47–109 | 83–147 | 41–64 |
+| + camada · trocar | 30–88 · 26–44 | 72–212 · 44–85 | 32–66 · 17–22 |
+| grupo | 23–78 | 46–113 | 18–31 |
+| parado CPU % | 62–73 | 62–73 | 55–69 |
+| água img/s | 21–40 | 20–40 | 40 |
+
+Repetidas com load 2–3: **Filbert 1080p papel** toque 34 · traço 21/24 · Ctrl+Z 42 · + camada 52 (sob load 10–18 na cont. 3
+o par do papel 1080p ia a 205 no Ctrl+Z do Express Oil); **Express Oil 4K branco** toque 103 · traço 13/15 · Ctrl+Z 105 ·
++ camada 107.
+
+Leitura:
+1. **Nenhum dos 10 passa em fundo nenhum**: mesmo a 1080p sobre os blocos (o caso mais barato) o Ctrl+Z fica em 41–64 ms e
+   a CPU parada em 55–69 % (a água a correr a 40 img/s). O que separa os fundos é a tela: 4K blocos ≈ 2× 1080p blocos no
+   Ctrl+Z (83–147) e no + camada (72–212).
+2. Os piores traços vêm dos Real Oil de cerda larga sob carga: Flat Bristle 4K blocos p50 116 / p95 223 (a água cai a 22
+   img/s), Metallic Flat 1080p branco 60/120 (toque 200). A 1080p blocos todos traçam p50 ≤ 30.
+3. Com load 2–3 o Express Oil 4K branco traça dentro do quadro (13/15) mas o toque e o Ctrl+Z continuam ~100–105 ms: o
+   piso fixo da tela 4K (§B08b), não o pincel.
+4. Régua: o controlo de 250 ms lê 256–302 com trava nos 60; sem trava 11–92 (o 92 é o Thick Impasto 1080p papel da
+   cont. 3, sob load 10–18).

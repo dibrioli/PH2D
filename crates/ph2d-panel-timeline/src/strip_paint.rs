@@ -18,13 +18,14 @@ use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, BezPath, Color, Fill, Stroke};
 
 use crate::graph::TimeView;
+use crate::pecas_cartoes::fator_str;
 use crate::stack_ease_grip::{
     BAND_IN, BAND_OUT, EASE_BAR_W, EASE_IN, EASE_OUT, blend_px, strip_grips,
 };
 use crate::stack_lane_paint::EDGE_W;
 
 /// Below this, a rate is real time and the strip says nothing about it.
-const SPEED_EPS: f64 = 1e-6; // LITERAL-PX-OK: not a length — a "is it exactly 1" epsilon
+pub(crate) const SPEED_EPS: f64 = 1e-6; // LITERAL-PX-OK: not a length — a "is it exactly 1" epsilon
 /// How far each arm of a corner bracket runs along its edge — the grab region's own width
 /// (`hit_plan` registers `EDGE_W`), so the quina traces what is actually clickable.
 const CORNER_ARM: f32 = EDGE_W;
@@ -111,7 +112,8 @@ pub(crate) fn mark_bar(
 ///
 /// `lane` is here only so the painter can ask **which grip the pointer is on** — the hit
 /// ids are keyed by `(lane, strip, edge)`, so a handle cannot light up without being the
-/// very target that would receive the click.
+/// very target that would receive the click. `tinta` is the piece's colour in cards (doc 16).
+#[allow(clippy::too_many_arguments)] // one strip's worth of per-frame context, like `paint_lane`
 pub(crate) fn paint_strip(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -120,6 +122,7 @@ pub(crate) fn paint_strip(
     s: &ph2d_timeline::StripView,
     dim: bool,
     lane: usize,
+    tinta: ph2d_tokens::TimelineTinta,
 ) {
     // **The hot grip** — read ONCE, before the scene borrows start. `hot_id` is the store's
     // own answer to "what is under the pointer", the same one the click will use, so the
@@ -128,27 +131,32 @@ pub(crate) fn paint_strip(
     let is_hot = |edge: u8| -> bool {
         !dim && hot == Some(crate::ids::timeline_strip_hit_id(lane as u64, s.id.0, edge))
     };
-    fill_rounded_rect(
-        ctx.scene,
-        body,
-        Radius::Sm.px(),
-        resolve(
-            if dim {
-                ColorToken::Bg3
-            } else {
-                ColorToken::TimelineKey
-            },
-            theme,
-        ),
-    );
-    // FRAME-RAW-OK: o contorno de uma STRIP: duas adjacentes com a mesma tinta so' se separam por ele
-    stroke_rounded_rect(
-        ctx.scene,
-        body,
-        Radius::Sm.px(),
-        StrokeToken::Thin.px(),
-        resolve(ColorToken::BorderStrong, theme),
-    );
+    let peca = crate::pecas_cartoes::peca_do_strip(s, tinta, dim, theme);
+    if let Some(p) = &peca {
+        crate::pecas_cartoes::pinta_fundo(ctx, body, p);
+    } else {
+        fill_rounded_rect(
+            ctx.scene,
+            body,
+            Radius::Sm.px(),
+            resolve(
+                if dim {
+                    ColorToken::Bg3
+                } else {
+                    ColorToken::TimelineKey
+                },
+                theme,
+            ),
+        );
+        // FRAME-RAW-OK: o contorno de uma STRIP: duas adjacentes com a mesma tinta so' se separam por ele
+        stroke_rounded_rect(
+            ctx.scene,
+            body,
+            Radius::Sm.px(),
+            StrokeToken::Thin.px(),
+            resolve(ColorToken::BorderStrong, theme),
+        );
+    }
 
     // **The fade areas are LISTRADAS (gray-striped)** so the crossfade reads at a glance
     // (Enio, 2026-07-16). A window at an end means the strip is fading there — into its
@@ -156,7 +164,7 @@ pub(crate) fn paint_strip(
     // bands live in the gap BESIDE the box, where the object travels while the clip holds a
     // frozen frame. All four come from [`fade_bands`], the same door the hit index reads.
     for (_, rect, fade) in fade_bands(s, view, body) {
-        paint_fade_region(ctx, theme, rect, fade);
+        paint_fade_region(ctx, theme, rect, fade, peca.is_some().then_some(dim));
     }
 
     // **The change bars** — what each corner's last edit DID, still on screen long
@@ -223,9 +231,13 @@ pub(crate) fn paint_strip(
     // The clip name, centred. A STRETCHED strip does not change how it looks, so the only
     // sign it was retimed is its factor in parentheses — `Main (2x)` / `Main (0.5x)` (Enio,
     // 2026-07-16). The middle is the only band the corner gizmos and fade handles do not
-    // contest, which is why the label lives there.
+    // contest, which is why the label lives there. In cards: the piece's label, from the left.
+    if let Some(p) = peca {
+        crate::pecas_cartoes::rotulo_do_strip(ctx, body, s, view, p);
+        return;
+    }
     let label: Cow<'_, str> = if (s.speed - 1.0).abs() > SPEED_EPS {
-        Cow::Owned(format!("{} ({})", s.clip_name, factor_str(s.speed)))
+        Cow::Owned(format!("{} ({})", s.clip_name, fator_str(s.speed)))
     } else {
         Cow::Borrowed(s.clip_name.as_str())
     };
@@ -285,15 +297,25 @@ fn paint_corner(ctx: &mut PaintCtx, body: Rect, left: bool, top: bool, color: Co
 }
 
 /// Paint a fade area: a faint darkening + gray diagonal STRIPES, so it reads as "a fade
-/// lives here" at a glance.
-fn paint_fade_region(ctx: &mut PaintCtx, theme: Theme, rect: Rect, curve: FadeCurve) {
-    fill_rounded_rect(
-        ctx.scene,
-        rect,
-        Radius::Xs.px(),
-        resolve(ColorToken::Bg3, theme),
-    );
-    paint_hatch(ctx, rect, resolve(ColorToken::Border, theme), false);
+/// lives here" at a glance. `cartoes = Some(muda)`: the mock-up's blend (`pecas_cartoes`).
+fn paint_fade_region(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    rect: Rect,
+    curve: FadeCurve,
+    cartoes: Option<bool>,
+) {
+    if let Some(muda) = cartoes {
+        crate::pecas_cartoes::pinta_mistura(ctx, theme, rect, muda);
+    } else {
+        fill_rounded_rect(
+            ctx.scene,
+            rect,
+            Radius::Xs.px(),
+            resolve(ColorToken::Bg3, theme),
+        );
+        paint_hatch(ctx, rect, resolve(ColorToken::Border, theme), false);
+    }
     paint_fade_curve(ctx, theme, rect, curve);
 }
 
@@ -562,13 +584,6 @@ fn fill_tri(ctx: &mut PaintCtx, pts: [(f32, f32); 3], color: Color) {
     ctx.scene
         .inner_mut()
         .fill(Fill::NonZero, Affine::IDENTITY, color, None, &p);
-}
-
-/// `2x`, `0.5x`, `1.5x` — the stretch factor, trailing zeros trimmed.
-fn factor_str(speed: f64) -> String {
-    let s = format!("{speed:.2}");
-    let s = s.trim_end_matches('0').trim_end_matches('.');
-    format!("{s}x")
 }
 
 #[cfg(test)]

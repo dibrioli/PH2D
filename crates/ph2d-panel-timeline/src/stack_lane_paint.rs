@@ -9,14 +9,12 @@
 //! Nothing here knows what an overlap is either. Two strips whose rectangles touch
 //! simply have a blend window at that end, because the lane says so.
 
-use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
-use ph2d_editor_core::paint::paint_text_elided;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, rect_to_vello, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, rect_to_vello, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Theme};
 
 use crate::graph::TimeView;
 use crate::stack_ease_grip::{EASE_IN, EASE_OUT, blend_px, overlaps, strip_grips};
@@ -28,14 +26,6 @@ use crate::{geom, ids};
 pub(crate) const STRIP_PAD_Y: f32 = 3.0; // LITERAL-PX-OK: a strip must not touch its row's edge
 /// Grab width of a strip's trim edges.
 pub(crate) const EDGE_W: f32 = 12.0; // LITERAL-PX-OK: a comfortable pointer target — 6 px was too thin to click (Enio, 2026-07-19)
-/// The lane weight field's width.
-const WEIGHT_W: f32 = 38.0; // LITERAL-PX-OK: "1.00" at TypeToken::Sm, plus the field's padding
-/// How much of the label column the lane's controls take (weight + two buttons).
-const CONTROLS_W: f32 = WEIGHT_W + (ROW_H_PX - STRIP_PAD_Y * 2.0) * 2.0 + 12.0; // LITERAL-PX-OK: three Xs gaps
-/// A lane's weight step per drag notch, and the decimals it shows.
-const WEIGHT_STEP: f64 = 0.01; // LITERAL-PX-OK: 1% of the [0, 1] range
-/// Decimals shown in the weight field.
-const WEIGHT_DECIMALS: usize = 2; // LITERAL-PX-OK: 1% resolution needs two
 
 /// Paint every lane of the clip stack, above the Summary channel and the tracks.
 /// A no-op when the document has no stack — which is the norm.
@@ -89,117 +79,9 @@ fn paint_lane(
     row: Rect,
 ) {
     let lane = &snap.lanes[index];
-    fill_rounded_rect(
-        ctx.scene,
-        row,
-        Radius::Xs.px(),
-        resolve(ColorToken::BgElev, theme),
-    );
-
-    // ── the label column: name, and what the lane DOES ──
-    let font = TypeToken::Sm.px();
-    let text_y = row.y + (row.h - font) * 0.5;
     let dim = lane.muted || lane.weight <= 0.0;
-    // The name's budget stops at the controls, not at the column's edge — text that
-    // elides UNDER a button looks like a button with a word behind it.
-    let name_w = (g.label_w - CONTROLS_W - Spacing::Sm.px() * 2.0).max(0.0);
-    paint_text_elided(
-        ctx.text_system,
-        ctx.scene,
-        &lane.name,
-        row.x + Spacing::Sm.px(),
-        text_y,
-        font,
-        name_w,
-        resolve(
-            if dim {
-                ColorToken::Text3
-            } else {
-                ColorToken::Text1
-            },
-            theme,
-        ),
-    );
-
-    // ── the lane's controls, right-aligned in the label column ──
-    //
-    // The WEIGHT is here and the MODE is in the right-click menu, and that split is
-    // the point: weight is a number you nudge and re-nudge while watching the
-    // canvas, so it belongs under the pointer; mode is set once per lane. Delete
-    // Lane is in the menu too — not because deleting is rare, but because a row
-    // this narrow has no room for a third button, and a control that only appears
-    // when the column is wide enough is worse than one that is always one click in.
-    let btn_w = ROW_H_PX - STRIP_PAD_Y * 2.0;
-    let btn_y = row.y + STRIP_PAD_Y;
-    let add = Rect::new(
-        row.x + g.label_w - btn_w - Spacing::Xs.px(),
-        btn_y,
-        btn_w,
-        btn_w,
-    );
-    let mute = Rect::new(add.x - btn_w - Spacing::Xs.px(), btn_y, btn_w, btn_w);
-    let weight = Rect::new(
-        mute.x - WEIGHT_W - Spacing::Xs.px(),
-        row.y + STRIP_PAD_Y,
-        WEIGHT_W,
-        (row.h - STRIP_PAD_Y * 2.0).max(0.0),
-    );
-    // Every hit in the label column is clipped to the visible band: a lane scrolled
-    // half under the ruler must not register its mute where "+ Lane" is painted.
-    let band = Rect::new(g.rows.x, g.rows.y, g.label_w, g.rows.h);
-    paint_weight(
-        ctx,
-        theme,
-        ids::TIMELINE_LANE_WEIGHT[index],
-        weight,
-        band,
-        lane,
-    );
-    // Os dois botões CARREGAM ÍCONE. Sem ele são dois quadrados vazios idênticos, e o artista
-    // tem de descobrir por eliminação qual silencia a faixa e qual acrescenta um clipe (o Enio
-    // achou isso no smoke). Um botão sem rótulo nem ícone não é um botão, é um enigma.
-    paint_lane_button(
-        ctx,
-        theme,
-        ids::TIMELINE_LANE_MUTE[index],
-        mute,
-        band,
-        lane.muted,
-        // Mudo = a faixa não contribui NADA (não é peso zero — é estar fora da pilha). O olho
-        // fechado é o mesmo verbo que a hierarquia já usa para "isto não conta".
-        if lane.muted {
-            IconId::EyeClosed
-        } else {
-            IconId::Eye
-        },
-    );
-    paint_lane_button(
-        ctx,
-        theme,
-        ids::TIMELINE_LANE_ADD_STRIP[index],
-        add,
-        band,
-        false,
-        IconId::Add,
-    );
-
-    // The label itself is the right-click surface (mode, Delete Lane). Its rect
-    // STOPS where the controls start, so it cannot steal their clicks — the hit
-    // index does not need a z-order rule it would only have to remember.
-    let label = Rect::new(row.x, row.y, (weight.x - row.x).max(0.0), row.h);
-    if let Some(r) = clipped(label, band) {
-        ctx.host.store_mut().register(
-            ids::TIMELINE_LANE_ROW[index],
-            InteractiveState::TimelineSurface {
-                parent: ph2d_editor_core::ids::TIMELINE_PANEL,
-                kind: TimelineHitKind::LaneHeader { lane: index },
-                canvas: row,
-            },
-        );
-        ctx.host
-            .hit_index_mut()
-            .register(ids::TIMELINE_LANE_ROW[index], r);
-    }
+    // The label column — name, weight, mute, "+ strip" and the menu surface (`faixas_coluna`).
+    crate::faixas_coluna::paint(ctx, theme, g, lane, index, row);
 
     // ── the strips ──
     //
@@ -231,13 +113,15 @@ fn paint_lane(
         if x1 <= view.time_x || x0 >= view.right || x1 - x0 < 1.0 {
             continue;
         }
+        let pad = geom::peca_margem();
         let body = Rect::new(
             x0,
-            row.y + STRIP_PAD_Y,
+            row.y + pad,
             (x1 - x0).max(0.0),
-            (row.h - STRIP_PAD_Y * 2.0).max(0.0),
+            (row.h - pad * 2.0).max(0.0),
         );
-        paint_strip(ctx, theme, view, body, s, dim, index);
+        let tinta = crate::pecas_cartoes::tinta_do_strip(s, snap);
+        paint_strip(ctx, theme, view, body, s, dim, index, tinta);
         boxes.push((s, body));
     }
     ctx.scene.pop_layer();
@@ -460,115 +344,13 @@ fn hit_plan(
 /// mute where "+ Lane" is painted, and a strip that starts left of the view would
 /// register its body across the whole label column, on top of every control there.
 /// Both are the same bug, and this is the one place it dies.
-fn clipped(r: Rect, band: Rect) -> Option<Rect> {
+pub(crate) fn clipped(r: Rect, band: Rect) -> Option<Rect> {
     let (x0, y0) = (r.x.max(band.x), r.y.max(band.y));
     let (x1, y1) = (
         (r.x + r.w).min(band.x + band.w),
         (r.y + r.h).min(band.y + band.h),
     );
     (x1 > x0 && y1 > y0).then(|| Rect::new(x0, y0, x1 - x0, y1 - y0))
-}
-
-/// The lane's weight, as a bounded number field: drag it, or type into it.
-///
-/// The range is REGISTERED (`set_number_range`), not merely clamped afterwards —
-/// dispatch scales a body-drag by the field's range, so a field that never
-/// declared one drags at the default scale and a lane's `[0, 1]` weight would fly
-/// past both ends in a few pixels ([[reference_number_input_register_range]]).
-fn paint_weight(
-    ctx: &mut PaintCtx,
-    theme: Theme,
-    id: ph2d_editor_core::NodeId,
-    r: Rect,
-    band: Rect,
-    lane: &ph2d_timeline::LaneView,
-) {
-    use ph2d_editor_core::widget::{NumberInput, paint_number_input_with_buffer, showcase};
-    {
-        let store = ctx.host.store_mut();
-        crate::transport::mirror_number(store, id, lane.weight, WEIGHT_DECIMALS);
-        store.set_number_range(id, 0.0, 1.0, WEIGHT_STEP);
-    }
-    let (state, _v, buf, caret, anchor) = showcase::read_number_input(ctx.host.store(), id);
-    let buf = buf.to_string();
-    let input = NumberInput::new(id, "", lane.weight)
-        .step(WEIGHT_STEP)
-        .visual((state, ctx.host.store().hover_live(id)));
-    paint_number_input_with_buffer(
-        &input,
-        Some(&buf),
-        ctx.host.store().number_input_mixed(id),
-        caret,
-        anchor,
-        r,
-        ctx.scene,
-        ctx.text_system,
-        theme,
-    );
-    if let Some(hit) = clipped(r, band) {
-        ctx.host.hit_index_mut().register(id, hit);
-    }
-}
-
-/// One of a lane's header controls. Square, and `on` fills it — the mute reads as
-/// pressed, and a lane that is muted is dimmed everywhere else too.
-fn paint_lane_button(
-    ctx: &mut PaintCtx,
-    theme: Theme,
-    id: ph2d_editor_core::NodeId,
-    r: Rect,
-    band: Rect,
-    on: bool,
-    icon: IconId,
-) {
-    fill_rounded_rect(
-        ctx.scene,
-        r,
-        Radius::Xs.px(),
-        resolve(
-            if on {
-                ColorToken::Accent
-            } else {
-                ColorToken::Bg3
-            },
-            theme,
-        ),
-    );
-    // ⭐ Pela porta do TEMA: o botão é plano num tema moderno.
-    ph2d_editor_core::paint::stroke_frame(
-        ctx.scene,
-        r,
-        ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px()),
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        StrokeToken::Thin.px(),
-        resolve(ColorToken::Border, theme),
-    );
-    // O glifo, com folga para não encostar na borda do botão.
-    let pad = Spacing::Xs.px();
-    paint_icon(
-        ctx.scene,
-        icon,
-        Rect::new(
-            r.x + pad,
-            r.y + pad,
-            (r.w - pad * 2.0).max(0.0),
-            (r.h - pad * 2.0).max(0.0),
-        ),
-        resolve(
-            if on {
-                ColorToken::Text1
-            } else {
-                ColorToken::Text3
-            },
-            theme,
-        ),
-        StrokeToken::Default.px(),
-    );
-    ctx.host.store_mut().register(id, InteractiveState::Plain);
-    if let Some(hit) = clipped(r, band) {
-        ctx.host.hit_index_mut().register(id, hit);
-    }
 }
 
 /// One strip hit target. `edge`: `0` = start, `1` = end, `2` = body.

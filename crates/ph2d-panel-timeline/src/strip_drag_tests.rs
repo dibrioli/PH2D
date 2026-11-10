@@ -94,7 +94,7 @@ fn moved_to(out: &[TimelineIntent]) -> Option<usize> {
 #[test]
 fn the_body_drags_across_lanes_a_row_at_a_time() {
     let s = snap_3_lanes();
-    let row = ph2d_tokens::ROW_H_PX;
+    let row = crate::geom::faixa_h();
     assert_eq!(
         moved_to(&drag_xy(&s, 2, 100.0, 0.0)),
         Some(0),
@@ -121,7 +121,7 @@ fn the_body_drags_across_lanes_a_row_at_a_time() {
 /// intent carrega os dois numa edição só.
 #[test]
 fn crossing_a_lane_still_slides_in_time() {
-    let out = drag_xy(&snap_3_lanes(), 2, 200.0, ph2d_tokens::ROW_H_PX);
+    let out = drag_xy(&snap_3_lanes(), 2, 200.0, crate::geom::faixa_h());
     assert!(
         out.iter().any(|i| matches!(
             i,
@@ -136,7 +136,7 @@ fn crossing_a_lane_still_slides_in_time() {
 #[test]
 fn a_drag_past_the_last_lane_clamps_instead_of_vanishing() {
     let s = snap_3_lanes();
-    let row = ph2d_tokens::ROW_H_PX;
+    let row = crate::geom::faixa_h();
     assert_eq!(
         moved_to(&drag_xy(&s, 2, 100.0, row * 99.0)),
         Some(2),
@@ -157,7 +157,7 @@ fn a_drag_past_the_last_lane_clamps_instead_of_vanishing() {
 #[test]
 fn only_the_body_crosses_lanes() {
     let s = snap_3_lanes();
-    let row = ph2d_tokens::ROW_H_PX;
+    let row = crate::geom::faixa_h();
     for edge in [0u8, 1, 3, 4, 5, 6] {
         let out = drag_xy(&s, edge, 150.0, row * 2.0);
         assert!(

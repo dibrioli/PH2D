@@ -343,3 +343,41 @@ fn the_published_curve_follows_the_clocks_direction() {
         "andando para trás o desenho mostra o espelho — o que a pose faz"
     );
 }
+
+/// O uso de um container é CONTADO onde ele está colocado — na cena e dentro de outro container,
+/// cada colocação uma vez; a lane muda conta. É o «used 2×» / «not placed» da lista.
+#[test]
+fn o_container_conta_onde_esta_colocado() {
+    use crate::{StackHost, StripSource};
+    let mut st = crate::TimelineState::new();
+    let doc = &mut st.doc;
+    let twice = doc.add_container("Twice".into());
+    let nowhere = doc.add_container("Holder".into());
+    let once = doc.add_container("Once".into());
+    let src = |i: usize| StripSource::Container(u16::try_from(i).unwrap());
+    let base = doc.add_lane("Base".into()).unwrap();
+    let fx = doc.add_lane("FX".into()).unwrap();
+    doc.add_strip_to(StackHost::Document, base, src(twice), 0.0, 2.0)
+        .unwrap();
+    doc.add_strip_to(StackHost::Document, fx, src(twice), 4.0, 6.0)
+        .unwrap();
+    doc.host_stack_mut(StackHost::Document).unwrap()[fx].muted = true;
+    let holder = StackHost::Container(nowhere);
+    let inner = doc.add_lane_in(holder, "In".into()).unwrap();
+    doc.add_strip_to(holder, inner, src(once), 0.0, 1.0)
+        .unwrap();
+
+    let counted = [twice, nowhere, once].map(|i| st.doc.container_uses(i));
+    assert_eq!(
+        counted,
+        [2, 0, 1],
+        "2x na cena (lane muda conta), 0x, 1x dentro do Holder"
+    );
+    assert_eq!(st.doc.container_uses(99), 0, "fora da lista: 0");
+
+    let ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    let mut snap = crate::TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &ph, false);
+    let published: Vec<usize> = snap.containers.iter().map(|c| c.uses).collect();
+    assert_eq!(published, [2, 0, 1], "o snapshot publica a mesma contagem");
+}

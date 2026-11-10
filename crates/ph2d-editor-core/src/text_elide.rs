@@ -352,6 +352,13 @@ fn corte(text: &str, ate: usize) -> String {
     format!("{}{ELLIPSIS}", text[..ate].trim_end())
 }
 
+/// A largura de `text` no peso dos TÍTULOS (`SemiBold`, o de [`crate::paint::paint_text_title_elided`]):
+/// quem põe algo DEPOIS de um título cortado mede-o no peso em que ele é pintado.
+#[must_use]
+pub fn largura_do_titulo(text_system: &mut TextSystem, text: &str, font_size: f32) -> f32 {
+    text_system.prefix_width_weighted(text, font_size, FontWeight::SEMI_BOLD)
+}
+
 /// ⭐⭐ **O texto que cabe em `max_width`** — ele próprio quando cabe, `<prefixo>…` quando não.
 ///
 /// É o [`crate::paint::paint_text_elided`] sem o pincel: quem faz a própria centragem (um `Button`) precisa da

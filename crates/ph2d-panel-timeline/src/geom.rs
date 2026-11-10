@@ -140,6 +140,29 @@ pub(crate) fn min_label_w(_snap: &TimelineViewSnapshot, tab: Tab) -> f32 {
         MIN_LABEL_W
     }
 }
+
+/// ⭐ O piso de [`min_label_w`] com o que a coluna MOSTRA medido (doc 16 onda 3): nos cartões, numa aba
+/// de faixas, a coluna não desce abaixo do nome mais largo inteiro com o ícone e os controlos — o
+/// dono viu «Upper bo…»; é o mesmo porquê de [`min_arvore_label_w`]. O clássico fica o de sempre.
+pub(crate) fn min_label_w_medido(
+    snap: &TimelineViewSnapshot,
+    tab: Tab,
+    largura: &mut dyn FnMut(&str, f32) -> f32,
+) -> f32 {
+    let base = min_label_w(snap, tab);
+    if !ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        return base;
+    }
+    let medido = match crate::tab::rows(tab, snap) {
+        crate::tab::Rows::Lanes => {
+            crate::faixas_coluna::piso(snap.lanes.iter().map(|l| l.name.as_str()), largura)
+        }
+        crate::tab::Rows::Containers => crate::lista_coluna::piso(&snap.containers, largura),
+        crate::tab::Rows::Keys => 0.0,
+    };
+    base.max(medido)
+}
+
 /// Narrowest the time area may be squeezed to by widening the names.
 const MIN_TIME_W: f32 = 120.0; // LITERAL-PX-OK: min time-area width
 /// Half-width of the splitter's grab strip.
@@ -215,13 +238,35 @@ pub(crate) fn row_h(expanded: bool, graph_h: f32) -> f32 {
 /// [`summary_h`], so a tab showing the wrong half is not expressible: the rows
 /// cannot disagree with the heights they are stacked from.
 pub(crate) fn stack_h(snap: &TimelineViewSnapshot, tab: Tab) -> f32 {
-    ROW_H_PX * stack_rows(snap, tab) as f32
+    faixa_h() * stack_rows(snap, tab) as f32
+}
+
+/// ⭐ **A altura de UMA linha da faixa do stack** — uma faixa (lane) ou uma linha da lista de
+/// containers; a porta única (doc 16 onda 3). Nos cartões a da maquete B
+/// ([`ph2d_tokens::TIMELINE_FAIXA_H_PX`]), no clássico [`ROW_H_PX`]. As linhas da aba Keys não
+/// passam por aqui.
+pub(crate) fn faixa_h() -> f32 {
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        ph2d_tokens::TIMELINE_FAIXA_H_PX
+    } else {
+        ROW_H_PX
+    }
+}
+
+/// A margem de cima e de baixo de uma peça (strip, barra do container) e dos controlos da coluna
+/// dentro de uma faixa de [`faixa_h`].
+pub(crate) fn peca_margem() -> f32 {
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        ph2d_tokens::TIMELINE_PECA_MARGEM_PX
+    } else {
+        crate::stack_lane_paint::STRIP_PAD_Y
+    }
 }
 
 /// **How many rows the stack band holds, and of what** — lanes, or the container LIST.
 ///
 /// One function so the height, the bands and both painters count the same thing. A row is a
-/// row is [`ROW_H_PX`]: a container's bar and a lane occupy the same box, which is why the
+/// row is [`faixa_h`]: a container's bar and a lane occupy the same box, which is why the
 /// list needed no geometry of its own.
 fn stack_rows(snap: &TimelineViewSnapshot, tab: Tab) -> usize {
     match crate::tab::rows(tab, snap) {
@@ -242,7 +287,8 @@ pub(crate) fn stack_bands(
 ) -> impl Iterator<Item = (usize, f32, f32)> + '_ {
     let top = rows_top - scroll_y;
     let n = stack_rows(snap, tab);
-    (0..n).map(move |i| (i, top + ROW_H_PX * i as f32, ROW_H_PX))
+    let h = faixa_h();
+    (0..n).map(move |i| (i, top + h * i as f32, h))
 }
 
 /// Height the Summary channel occupies above the tracks. Zero in the Arrange tab

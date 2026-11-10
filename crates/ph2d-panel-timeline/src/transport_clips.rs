@@ -374,6 +374,7 @@ mod tests {
             containers: vec![ContainerView {
                 name: "Walk".into(),
                 length: 2.0,
+                uses: 0,
             }],
             active_clip: 1,
             ..TimelineViewSnapshot::default()

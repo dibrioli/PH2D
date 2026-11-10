@@ -47,6 +47,11 @@ fn publish_view(state: &mut TimelinePanelState, snapshot: &ph2d_timeline::Timeli
     if state::take_arrange_tab_request() {
         state::set_tab(state, crate::tab::Tab::Arrange);
     }
+    // A LISTA: a trilha cai antes, como no toque na aba em que se está (`event.rs`).
+    if state::take_containers_tab_request() {
+        state::pop_to_depth(0);
+        state::set_tab(state, crate::tab::Tab::Containers);
+    }
     // **`keys_mode` follows the TAB, not `&& stacked()`** (Enio, 2026-07-27): the Keys tab
     // is the CLIP's scope and Arrange is the SCENE's, INDEPENDENT — each edits its own
     // duration, each plays its own thing. The old `&& stacked()` collapsed them without a
@@ -108,6 +113,7 @@ fn release_everything_a_hidden_panel_must_not_hold(
     // whenever it reopens — drop the request instead of banking it.
     let _ = state::take_keys_tab_request();
     let _ = state::take_arrange_tab_request();
+    let _ = state::take_containers_tab_request();
     // ...nor is it inside a container. The trail survives (it comes back where it was),
     // but a hidden panel must not leave the shell driving a container's interior.
     state::publish_scene_root(true);
@@ -195,7 +201,10 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     let rect0 = geom::clamp_to(docked, viewport);
     // The label column's floor depends on what it HOLDS — which is what the TAB
     // shows: a lane row carries controls a track row does not (`geom::min_label_w`).
-    let min_label = geom::min_label_w(&snapshot, state.tab);
+    let min_label = {
+        let ts = &mut *ctx.text_system;
+        geom::min_label_w_medido(&snapshot, state.tab, &mut |t, px| ts.prefix_width(t, px))
+    };
     let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
     // Nos cartões a folha mora no interior da moldura; as contas de `geom` servem-se dele.
     let folha = if cartoes { area_da_folha(rect0) } else { rect0 };

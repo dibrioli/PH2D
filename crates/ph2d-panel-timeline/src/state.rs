@@ -72,10 +72,12 @@ pub(crate) use state_nav::{
     publish_scene_root, set_tab, trail_len,
 };
 pub use state_requests::{
-    request_arrange_tab, request_fit, request_keys_tab, request_reveal_playhead,
+    request_arrange_tab, request_containers_tab, request_fit, request_keys_tab,
+    request_reveal_playhead,
 };
 pub(crate) use state_requests::{
-    take_arrange_tab_request, take_fit_request, take_keys_tab_request, take_reveal_request,
+    take_arrange_tab_request, take_containers_tab_request, take_fit_request, take_keys_tab_request,
+    take_reveal_request,
 };
 
 /// Retained per-instance state for `TimelinePanel`: the horizontal view of the

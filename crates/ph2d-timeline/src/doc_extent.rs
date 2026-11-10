@@ -178,6 +178,23 @@ impl TimelineDoc {
         })
     }
 
+    /// **How many strips place container `index`** — in the scene's stack and inside every
+    /// container, each placement once (not multiplied by nesting); a muted lane still counts.
+    /// `0` = not placed. Derived on read, never saved.
+    #[must_use]
+    pub fn container_uses(&self, index: usize) -> usize {
+        let Ok(ix) = u16::try_from(index) else {
+            return 0;
+        };
+        let target = crate::StripSource::Container(ix);
+        std::iter::once(self.stack())
+            .chain(self.containers().iter().map(|c| &c.stack[..]))
+            .flatten()
+            .flat_map(|l| l.strips.iter())
+            .filter(|s| s.source == target)
+            .count()
+    }
+
     /// **The cut**: the latest instant of `source`'s own clock that PLAYS, given
     /// its authored duration — or `t` untouched when none is authored. This is
     /// what "an explicit duration cuts the excess" means at the evaluator: every

@@ -21,6 +21,32 @@ pub fn listras_em(scene: &mut VectorScene, r: Rect, cor: ph2d_vector::Color) {
     scene.pop_layer();
 }
 
+/// ⭐ **Um degradê VERTICAL `[topo, pé]` dentro do rect de quinas `raio`** — a peça da Timeline
+/// (doc 16 onda 3, `.c13st` da maquete: a cor a 58 % em cima, a 34 % em baixo). O raio passa pela
+/// mesma escala do [`crate::paint::fill_rounded_rect`] (o recorte é o [`crate::paint::push_rounded_clip`]).
+pub fn degrade_vertical_em(
+    scene: &mut VectorScene,
+    r: Rect,
+    raio: f32,
+    [topo, pe]: [ph2d_vector::Color; 2],
+) {
+    use ph2d_vector::{Affine, Brush, Fill, Gradient, Point};
+    if r.w <= 0.0 || r.h <= 0.0 {
+        return;
+    }
+    let (x, y0, y1) = (f64::from(r.x), f64::from(r.y), f64::from(r.y + r.h));
+    let g = Gradient::new_linear(Point::new(x, y0), Point::new(x, y1))
+        .with_stops([topo, pe].as_slice());
+    crate::paint::push_rounded_clip(scene, r, raio);
+    scene.fill_shape(
+        Fill::NonZero,
+        Affine::IDENTITY,
+        &Brush::Gradient(g),
+        &crate::paint::rect_to_vello(r),
+    );
+    scene.pop_layer();
+}
+
 /// As tintas de [`CardCtx::abas_em`] e das peças discretas — o painel dá-as (a Timeline, das suas
 /// tintas da maquete B1); a geometria é a do cartão.
 #[derive(Copy, Clone, Debug)]

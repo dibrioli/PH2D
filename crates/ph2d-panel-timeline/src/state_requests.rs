@@ -27,6 +27,8 @@ thread_local! {
     /// A pending "switch to the Arrange tab" request — the SYMMETRIC sibling of
     /// [`KEYS_TAB_REQUESTED`]. See [`request_arrange_tab`].
     static ARRANGE_TAB_REQUESTED: Cell<bool> = const { Cell::new(false) };
+    /// A pending "the Containers LIST" request. See [`request_containers_tab`].
+    static CONTAINERS_TAB_REQUESTED: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Ask the panel to fit its time view to the extent of the keys on the next
@@ -94,4 +96,16 @@ pub fn request_arrange_tab() {
 /// Consume a pending Arrange-tab request.
 pub(crate) fn take_arrange_tab_request() -> bool {
     ARRANGE_TAB_REQUESTED.with(|c| c.replace(false))
+}
+
+/// **Ask the panel for the Containers tab at its ROOT** — the list of containers, the open
+/// trail dropped (what tapping the tab you are on does). Same law as [`request_arrange_tab`]:
+/// honoured by the next paint, after it (so it wins over both siblings), dropped by a hidden one.
+pub fn request_containers_tab() {
+    CONTAINERS_TAB_REQUESTED.with(|c| c.set(true));
+}
+
+/// Consume a pending Containers-tab request.
+pub(crate) fn take_containers_tab_request() -> bool {
+    CONTAINERS_TAB_REQUESTED.with(|c| c.replace(false))
 }

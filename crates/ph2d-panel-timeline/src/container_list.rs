@@ -35,10 +35,9 @@ use ph2d_editor_core::paint::{fill_rounded_rect, rect_to_vello, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 use crate::graph::TimeView;
-use crate::stack_lane_paint::STRIP_PAD_Y;
 use crate::state::TimelinePanelState;
 use crate::{geom, ids};
 
@@ -67,7 +66,7 @@ pub(crate) fn paint(
             g,
             view,
             snap,
-            i,
+            (i, state.source_container == Some(i)),
             Rect::new(region.x, y, region.w, h),
         );
     }
@@ -102,65 +101,15 @@ fn paint_row(
     g: &geom::Geom,
     view: TimeView,
     snap: &TimelineViewSnapshot,
-    index: usize,
+    (index, escolhido): (usize, bool),
     row: Rect,
 ) {
     let Some(c) = snap.containers.get(index) else {
         return;
     };
-    fill_rounded_rect(
-        ctx.scene,
-        row,
-        Radius::Xs.px(),
-        resolve(ColorToken::BgElev, theme),
-    );
-
-    // ── the label column: the name, then the pencil and the trash ──
-    //
-    // Right-aligned like the lane row's controls, and the trash takes the far edge — the
-    // clip cluster's `[✎][🗑]` order, one bar down.
-    let btn_w = ROW_H_PX - STRIP_PAD_Y * 2.0;
-    let btn_y = row.y + STRIP_PAD_Y;
-    let trash = Rect::new(
-        row.x + g.label_w - btn_w - Spacing::Xs.px(),
-        btn_y,
-        btn_w,
-        btn_w,
-    );
-    let pencil = Rect::new(trash.x - btn_w - Spacing::Xs.px(), btn_y, btn_w, btn_w);
+    // The row's background and its label column — name, pencil, trash (`lista_coluna`).
+    crate::lista_coluna::paint(ctx, theme, g, c, (index, escolhido), row);
     let font = TypeToken::Sm.px();
-    // The name's budget stops where the buttons start: text that elides UNDER a button reads
-    // as a button with a word behind it (the lane row learned this first).
-    let name_w = (pencil.x - row.x - Spacing::Sm.px() * 2.0).max(0.0);
-    paint_text_elided(
-        ctx.text_system,
-        ctx.scene,
-        &c.name,
-        row.x + Spacing::Sm.px(),
-        row.y + (row.h - font) * 0.5,
-        font,
-        name_w,
-        resolve(ColorToken::Text1, theme),
-    );
-    // The band every hit is clipped to: a row scrolled half under the ruler must not register
-    // its buttons where "+ Container" is painted.
-    let band = Rect::new(g.rows.x, g.rows.y, g.label_w, g.rows.h);
-    paint_row_button(
-        ctx,
-        theme,
-        ids::TIMELINE_CONT_RENAME[index],
-        pencil,
-        band,
-        IconId::Text,
-    );
-    paint_row_button(
-        ctx,
-        theme,
-        ids::TIMELINE_CONT_DELETE[index],
-        trash,
-        band,
-        IconId::Trash,
-    );
 
     // ── the bar: a STRIP-SIZED box, the container's own length from 0 ──
     //
@@ -181,16 +130,48 @@ fn paint_row(
         g.rows.h,
     );
     let (x0, x1) = (view.x(0.0), view.x(c.length));
+    let pad = geom::peca_margem();
     let bar = Rect::new(
         x0,
-        row.y + STRIP_PAD_Y,
+        row.y + pad,
         (x1 - x0).max(0.0),
-        (row.h - STRIP_PAD_Y * 2.0).max(0.0),
+        (row.h - pad * 2.0).max(0.0),
     );
     let Some(hit) = clipped(bar, time_band) else {
         return; // panned fully out of view: no ink, no hit
     };
     ctx.scene.push_clip(&rect_to_vello(time_band));
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        // ⭐ Nos cartões, a PEÇA de container (doc 16): o mesmo desenho das strips.
+        let peca = crate::pecas_cartoes::PecaDesenho {
+            tinta: ph2d_tokens::TimelineTinta::PecaContainer,
+            icon: IconId::Cube,
+            nome: &c.name,
+            extra: None,
+            muda: false,
+            escolhida: false,
+            theme,
+        };
+        crate::pecas_cartoes::pinta_peca(ctx, bar, &peca);
+    } else {
+        paint_bar_classic(ctx, theme, bar, &c.name, font);
+    }
+    ctx.scene.pop_layer();
+    ctx.host.store_mut().register(
+        ids::TIMELINE_CONT_ROW[index],
+        InteractiveState::TimelineSurface {
+            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
+            kind: TimelineHitKind::ContainerRow { index },
+            canvas: row,
+        },
+    );
+    ctx.host
+        .hit_index_mut()
+        .register(ids::TIMELINE_CONT_ROW[index], hit);
+}
+
+/// The classic bar (`PH2D_CARDS=0`): the strip's fill, the theme's frame, the name centred.
+fn paint_bar_classic(ctx: &mut PaintCtx, theme: Theme, bar: Rect, name: &str, font: f32) {
     // ⭐ Raio e moldura pela porta do TEMA: a barra é plana num tema moderno.
     let bar_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(
@@ -211,29 +192,17 @@ fn paint_row(
     // The name inside, centred — the strip's own idiom, in ACCENT for the strip's own reason
     // (`TimelineKey` is `Text1` in every theme: `Text1` here would be white on white).
     let budget = (bar.w - Spacing::Xs.px() * 2.0).max(0.0);
-    let text_w = ctx.text_system.prefix_width(&c.name, font).min(budget);
+    let text_w = ctx.text_system.prefix_width(name, font).min(budget);
     paint_text_elided(
         ctx.text_system,
         ctx.scene,
-        &c.name,
+        name,
         bar.x + (bar.w - text_w) * 0.5,
         bar.y + (bar.h - font) * 0.5,
         font,
         budget,
         resolve(ColorToken::Accent, theme),
     );
-    ctx.scene.pop_layer();
-    ctx.host.store_mut().register(
-        ids::TIMELINE_CONT_ROW[index],
-        InteractiveState::TimelineSurface {
-            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
-            kind: TimelineHitKind::ContainerRow { index },
-            canvas: row,
-        },
-    );
-    ctx.host
-        .hit_index_mut()
-        .register(ids::TIMELINE_CONT_ROW[index], hit);
 }
 
 /// The part of `r` inside `band`, or `None` — the lane row's rule, for the same reason: a
@@ -245,48 +214,6 @@ fn clipped(r: Rect, band: Rect) -> Option<Rect> {
         (r.y + r.h).min(band.y + band.h),
     );
     (x1 > x0 && y1 > y0).then(|| Rect::new(x0, y0, x1 - x0, y1 - y0))
-}
-
-/// One of the row's two buttons (pencil / trash) — the transport chip's pair, one bar down.
-fn paint_row_button(
-    ctx: &mut PaintCtx,
-    theme: Theme,
-    id: ph2d_editor_core::NodeId,
-    r: Rect,
-    band: Rect,
-    icon: IconId,
-) {
-    use ph2d_editor_core::paint::paint_icon;
-    // ⭐ Raio e moldura pela porta do TEMA: o botão é plano num tema moderno.
-    let btn_radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px());
-    fill_rounded_rect(ctx.scene, r, btn_radius, resolve(ColorToken::Bg3, theme));
-    ph2d_editor_core::paint::stroke_frame(
-        ctx.scene,
-        r,
-        btn_radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        StrokeToken::Thin.px(),
-        resolve(ColorToken::Border, theme),
-    );
-    let pad = Spacing::Xs.px();
-    paint_icon(
-        ctx.scene,
-        icon,
-        Rect::new(
-            r.x + pad,
-            r.y + pad,
-            (r.w - pad * 2.0).max(0.0),
-            (r.h - pad * 2.0).max(0.0),
-        ),
-        resolve(ColorToken::Text3, theme),
-        StrokeToken::Default.px(),
-    );
-    ctx.host.store_mut().register(id, InteractiveState::Plain);
-    // Clipped to the visible band, like every other control in this column.
-    if let Some(hit) = clipped(r, band) {
-        ctx.host.hit_index_mut().register(id, hit);
-    }
 }
 
 /// **One gesture on a container's bar** — and the list of what it answers is the whole

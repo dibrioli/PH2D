@@ -248,11 +248,11 @@ fn a_tab_gives_height_to_its_own_half_and_none_to_the_other() {
     assert_eq!(content_h(&snap, K, &[], &[], GH), ROW_H_PX * 4.0);
 
     // Arrange: two lanes, and no Summary and no track rows.
-    assert_eq!(stack_h(&snap, A), ROW_H_PX * 2.0);
+    assert_eq!(stack_h(&snap, A), faixa_h() * 2.0);
     assert_eq!(summary_h(&snap, A), 0.0);
     assert_eq!(row_bands(&snap, A, &[], GH, 0.0, 0.0).count(), 0);
     assert_eq!(stack_bands(&snap, A, 0.0, 0.0).count(), 2);
-    assert_eq!(content_h(&snap, A, &[], &[], GH), ROW_H_PX * 2.0);
+    assert_eq!(content_h(&snap, A, &[], &[], GH), faixa_h() * 2.0);
     assert_eq!(summary_band(&snap, A, 0.0, 0.0), None);
 }
 
@@ -282,4 +282,35 @@ fn the_keys_tab_starts_at_the_top_however_many_lanes_the_document_has() {
         40.0 + ROW_H_PX,
         "the Summary, and nothing else"
     );
+}
+
+/// ⭐ Doc 16 onda 3: a faixa do stack (lanes e lista de containers) mede a porta — nos cartões a da
+/// maquete B (30), no clássico a linha de sempre —, e a pilha, as bandas e a peça leem-na. *Mutação:
+/// `stack_bands` voltar a `ROW_H_PX` ⇒ vermelho nos cartões.*
+#[test]
+fn a_faixa_do_stack_mede_a_porta_nos_cartoes_e_a_linha_no_classico() {
+    use ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread;
+    let mut snap = snap_with(0);
+    snap.lanes.push(lane());
+    snap.lanes.push(lane());
+    for (cartoes, h, margem) in [
+        (
+            true,
+            ph2d_tokens::TIMELINE_FAIXA_H_PX,
+            ph2d_tokens::TIMELINE_PECA_MARGEM_PX,
+        ),
+        (false, ROW_H_PX, crate::stack_lane_paint::STRIP_PAD_Y),
+    ] {
+        force_cards_on_this_thread(Some(cartoes));
+        assert_eq!(faixa_h(), h);
+        assert_eq!(peca_margem(), margem);
+        assert_eq!(stack_h(&snap, A), h * 2.0);
+        let bands: Vec<_> = stack_bands(&snap, A, 10.0, 0.0).collect();
+        assert_eq!(
+            bands,
+            vec![(0, 10.0, h), (1, 10.0 + h, h)],
+            "cartões {cartoes}"
+        );
+    }
+    force_cards_on_this_thread(None);
 }

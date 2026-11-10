@@ -65,7 +65,32 @@ pub enum TimelineTinta {
     Gravando,
     /// A moldura da área das trilhas em repouso: o traço da régua da maquete, neutro e sutil.
     Moldura,
+    /// A cor de uma peça (strip) de clipe no Arrange/Containers, pela ordem do clipe: [`PECAS`].
+    PecaA,
+    /// Segunda cor de peça de clipe (o «walk» da maquete).
+    PecaB,
+    /// Terceira cor de peça de clipe (o «jump»).
+    PecaC,
+    /// Quarta cor de peça de clipe (o «swing»).
+    PecaD,
+    /// Quinta cor de peça de clipe (o «shake»).
+    PecaE,
+    /// A peça de um container, a barra dele na lista e o seu destaque (o laranja da maquete).
+    PecaContainer,
+    /// A pílula do peso de uma faixa (o «1.0» da coluna de nomes).
+    PesoPilula,
+    /// O olho de uma faixa muda (fechado, avermelhado e meio apagado).
+    OlhoMudo,
 }
+
+/// As cores das peças de clipe, na ordem da maquete; o clipe `i` veste `PECAS[i % PECAS.len()]`.
+pub const PECAS: [TimelineTinta; 5] = [
+    TimelineTinta::PecaA,
+    TimelineTinta::PecaB,
+    TimelineTinta::PecaC,
+    TimelineTinta::PecaD,
+    TimelineTinta::PecaE,
+];
 
 impl TimelineTinta {
     /// `(base na paleta do cartão, a cor amostrada na maquete)`.
@@ -93,6 +118,15 @@ impl TimelineTinta {
             Self::Listra => (T::KanbanList, [9, 12, 24]),
             Self::Gravando => (T::KanbanList, [196, 116, 114]),
             Self::Moldura => (T::KanbanList, [37, 41, 56]),
+            // As cinco `--c13-*` e o `--c13-cont` do CSS da maquete (onda 3), ao bit.
+            Self::PecaA => (T::KanbanBlueBold, [73, 224, 174]),
+            Self::PecaB => (T::KanbanBlueBold, [255, 207, 77]),
+            Self::PecaC => (T::KanbanBlueBold, [183, 156, 255]),
+            Self::PecaD => (T::KanbanBlueBold, [108, 203, 250]),
+            Self::PecaE => (T::KanbanBlueBold, [255, 122, 168]),
+            Self::PecaContainer => (T::KanbanBlueBold, [255, 159, 90]),
+            Self::PesoPilula => (T::KanbanList, [33, 37, 52]),
+            Self::OlhoMudo => (T::KanbanList, [137, 83, 87]),
         }
     }
 
@@ -155,5 +189,34 @@ mod tests {
         assert_eq!((t.r, t.g, t.b), (7, 9, 19));
         let t = TimelineTinta::BarraReta.resolve(REFERENCIA);
         assert_eq!((t.r, t.g, t.b), (131, 113, 222));
+        let t = TimelineTinta::PecaContainer.resolve(REFERENCIA);
+        assert_eq!((t.r, t.g, t.b), (255, 159, 90));
+    }
+
+    /// As seis cores de peça (cinco de clipe + a do container) leem-se diferentes em TODO tema: uma peça
+    /// de `walk` não pode passar pela de `jump`. Piso medido na maquete (Forge): o par mais perto, swing ×
+    /// idle, a 0,14 em OKLab.
+    #[test]
+    fn as_cores_das_pecas_leem_se_diferentes_em_todo_tema() {
+        let lab = |c: Color| {
+            let (l, ch, h) = srgb_to_oklch(c.r, c.g, c.b);
+            let h = h.to_radians();
+            (l, ch * h.cos(), ch * h.sin())
+        };
+        let mut todas: Vec<TimelineTinta> = PECAS.to_vec();
+        todas.push(TimelineTinta::PecaContainer);
+        let mut pior = f64::MAX;
+        for theme in Theme::ALL {
+            for (i, a) in todas.iter().enumerate() {
+                for b in &todas[i + 1..] {
+                    let (p, q) = (lab(a.resolve(theme)), lab(b.resolve(theme)));
+                    let d =
+                        ((p.0 - q.0).powi(2) + (p.1 - q.1).powi(2) + (p.2 - q.2).powi(2)).sqrt();
+                    pior = pior.min(d);
+                    assert!(d >= 0.10, "{theme:?}: {a:?} × {b:?} a {d:.3}");
+                }
+            }
+        }
+        assert!(pior < 1.0, "a régua mediu alguma coisa: {pior}");
     }
 }

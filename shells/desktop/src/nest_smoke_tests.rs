@@ -1,11 +1,7 @@
-//! Gates da cena `PH2D_NEST_SMOKE=3` — **a cena afirma seis números; aqui eles são medidos.**
-//!
-//! Uma cena de smoke que monta menos do que anuncia é indistinguível de uma feature quebrada:
-//! o Colorize pagou isso (a cena dizia montar 3 chaves marcadas e marcava zero, e o smoke
-//! inteiro virou ruído). Estes testes dirigem a **mesma** [`super::build_library`] que o app
-//! chama — não um espelho dela.
+//! Gates das cenas `PH2D_NEST_SMOKE=3..5`: o que o `eprintln` afirma, medido sobre as MESMAS
+//! [`super::build_library`] e [`super::build_montagem`] que o app chama (não um espelho).
 
-use super::{LIBRARY_END, build_library};
+use super::{LIBRARY_END, build_library, build_montagem};
 use ph2d_timeline::{StackHost, StripSource, TimelineDoc, container_bar_seconds};
 
 /// Um doc montado como a cena `=3` monta.
@@ -25,11 +21,8 @@ fn count_of(doc: &TimelineDoc, host: StackHost, source: StripSource) -> usize {
         .count()
 }
 
-/// A lista tem TRÊS barras, e cada uma mede o que o `eprintln` diz.
-///
-/// A do Pause é a que importa: um container VAZIO responde
-/// [`ph2d_timeline::EMPTY_CONTAINER_SECONDS`] pela porta única, e é isso que dá à instância
-/// dele uma janela real em vez de uma que fica presa em zero para sempre.
+/// A lista tem TRÊS barras; a do Pause (VAZIO) mede [`ph2d_timeline::EMPTY_CONTAINER_SECONDS`]
+/// pela porta única, o que dá à instância dele uma janela real.
 #[test]
 fn the_library_holds_three_containers_sized_one_three_and_two() {
     let doc = library();
@@ -76,11 +69,8 @@ fn the_walk_contains_the_step_three_times() {
     );
 }
 
-/// A cena põe os três assets, nas janelas anunciadas, e **em velocidade 1**.
-///
-/// A velocidade não é decoração: `add_strip_to` deriva `speed = slice/span`, então uma janela
-/// que eu tivesse escrito torta viraria câmera lenta silenciosa — a `=2` usa isso de propósito,
-/// e esta cena não.
+/// A cena põe os três assets nas janelas anunciadas e **em velocidade 1** (`add_strip_to` deriva
+/// `speed = slice/span`: uma janela torta viraria câmera lenta silenciosa).
 #[test]
 fn the_scene_places_each_asset_at_its_own_rate() {
     let doc = library();
@@ -101,11 +91,8 @@ fn the_scene_places_each_asset_at_its_own_rate() {
     }
 }
 
-/// **A CASCATA** — o gesto que só esta cena expõe, e o que a cena promete que ele faz.
-///
-/// Apagar o Step tem de matar as instâncias nos DOIS lugares (a solta na cena e as três de
-/// dentro do Walk) e re-indexar o que sobra: o Walk era 1, passa a 0, e a instância dele na
-/// cena continua apontando para o WALK — não para o vizinho que escorregou para o slot.
+/// **A CASCATA**: apagar o Step mata as instâncias nos DOIS lugares e re-indexa o resto — a do
+/// Walk (1 → 0) continua a apontar para o WALK, não para o vizinho que escorregou para o slot.
 #[test]
 fn deleting_the_leaf_asset_cascades_and_renumbers() {
     let mut doc = library();
@@ -143,15 +130,13 @@ fn deleting_the_leaf_asset_cascades_and_renumbers() {
     );
 }
 
-/// Os dois clips keyam canais **disjuntos**, que é o que faz as duas lanes do Walk somarem em
-/// vez de brigarem. Se o Step keyasse X, as três repetições voltariam ao mesmo lugar — o passo
-/// não atravessaria a tela, e a cena leria como quebrada.
+/// Os dois clips keyam canais **disjuntos**: as lanes do Walk somam (com X no Step, as três
+/// repetições voltariam ao mesmo lugar e a cena leria como quebrada).
 #[test]
 fn the_two_clips_key_disjoint_channels() {
     use ph2d_timeline::PropKind;
     let doc = library();
-    // O `target` de cada (objeto, propriedade) vem da tabela de bindings do documento — a
-    // mesma que o `upsert_key` consultou ao escrever.
+    // O `target` de cada (objeto, propriedade): a tabela de bindings que o `upsert_key` usou.
     let target_of = |prop: PropKind| {
         doc.bindings()
             .iter()
@@ -169,4 +154,22 @@ fn the_two_clips_key_disjoint_channels() {
     assert!(!keyed(0, PropKind::TranslationX), "Step NAO keya X");
     assert!(keyed(1, PropKind::TranslationX), "Glide keya X");
     assert!(!keyed(1, PropKind::TranslationY), "Glide NAO keya Y");
+}
+
+/// A cena `=4`/`=5` afirma: Run & jump 2×, Idle pack não posto, Step 1×; faixas Base 1.0, Upper
+/// body 0.6, FX muda; e cada peça a velocidade 1.
+#[test]
+fn a_montagem_poe_cada_container_onde_o_eprintln_diz() {
+    let mut doc = TimelineDoc::default();
+    build_montagem(&mut doc, 1);
+    let clips: Vec<_> = doc.clips().iter().map(|c| c.name.clone()).collect();
+    assert_eq!(clips.join(" "), "idle walk jump swing shake");
+    let nomes: Vec<_> = doc.containers().iter().map(|c| c.name.clone()).collect();
+    assert_eq!(nomes.join(", "), "Run & jump, Idle pack, Step");
+    assert_eq!([0, 1, 2].map(|i| doc.container_uses(i)), [2, 0, 1]);
+    let cena = doc.host_stack(StackHost::Document).expect("a cena");
+    let faixas: Vec<_> = cena.iter().map(|l| (l.weight, l.muted)).collect();
+    assert_eq!(faixas, [(1.0, false), (0.6, false), (1.0, true)]);
+    let mut pecas = cena.iter().flat_map(|l| &l.strips);
+    assert!(pecas.all(|s| (s.speed - 1.0).abs() < 1e-9), "velocidade 1");
 }

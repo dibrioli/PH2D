@@ -17,7 +17,6 @@
 
 use ph2d_editor_core::interaction::{GesturePhase, TimelineGesture};
 use ph2d_timeline::{StripId, TimelineIntent, TimelineViewSnapshot};
-use ph2d_tokens::ROW_H_PX;
 
 use crate::state::{self, StripDrag, TimelinePanelState};
 
@@ -204,8 +203,8 @@ fn emit(
 /// **Which lane the pointer has carried the strip to** — a whole number of rows from where the
 /// drag began.
 ///
-/// Every lane row is exactly one [`ROW_H_PX`] tall (`geom::stack_bands` lays them out from
-/// that constant), so crossing rows is arithmetic on the pointer's travel and needs no
+/// Every lane row is exactly one [`crate::geom::faixa_h`] tall (`geom::stack_bands` lays them out
+/// from that door), so crossing rows is arithmetic on the pointer's travel and needs no
 /// geometry threaded down here. Rounding means the strip changes lane at the halfway point,
 /// which is where the pointer visually enters the next row.
 ///
@@ -215,7 +214,7 @@ fn lane_at(d: StripDrag, y: f32, lanes: usize) -> usize {
     if lanes == 0 {
         return d.lane;
     }
-    let rows = ((y - d.start_y) / ROW_H_PX).round();
+    let rows = ((y - d.start_y) / crate::geom::faixa_h()).round();
     #[expect(
         clippy::cast_possible_truncation,
         reason = "rows is a small round number of lane heights"

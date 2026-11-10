@@ -55,8 +55,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.card.time" => "Time (s)",
         // A barra no molde do Rive (docs/Timeline/15, onda 1): os nomes dizem o que o controlo FAZ.
         "panel.timeline.card.clips" => "Clips",
-        "panel.timeline.card.sources" => "Clips & Containers",
         "panel.timeline.card.more" => "+{n} more",
+        // Onda 3 (docs/Timeline/16): onde um container é usado, no chip e na lista.
+        "panel.timeline.card.used_times" => "used {n}×",
+        "panel.timeline.card.not_placed" => "not placed",
+        "panel.timeline.card.containers" => "Containers",
         "panel.timeline.card.fps" => "{fps} fps · project",
         "panel.timeline.card.autokey" => "Auto Key",
         "panel.timeline.card.record" => "Record while playing",

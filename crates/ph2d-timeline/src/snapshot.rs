@@ -180,6 +180,8 @@ pub struct ContainerView {
     pub name: String,
     /// Its interior's end, in its own seconds. `0.0` for an empty container.
     pub length: f64,
+    /// How many strips place it: scene and every container, muted lanes too; `0` = not placed.
+    pub uses: usize,
 }
 
 /// **Uma etapa da macro na linha «Macro steps»** (W5d): o endereço que o arrasto edita e o fim
@@ -480,12 +482,9 @@ impl TimelineViewSnapshot {
             .extend(doc.containers().iter().enumerate().map(|(i, c)| {
                 ContainerView {
                     name: c.name.clone(),
-                    // Its length through THE door (`container_length_seconds`) — what a
-                    // strip placed on it is sized to and what the Containers list draws
-                    // its bar with, so the bar on screen, the span the `+` places and
-                    // the slice the strip windows are one number. An EMPTY container
-                    // publishes its born length (2 s); an authored duration (v11) wins.
+                    // THE door: the bar, the span the `+` places and the slice are one number.
                     length: doc.container_length_seconds(i),
+                    uses: doc.container_uses(i),
                 }
             }));
         self.crumbs.clear();

@@ -50,11 +50,13 @@ mod duration_drag;
 mod event;
 mod event_stack_menus;
 mod event_track_menu;
+mod faixas_coluna;
 mod geom;
 mod graph;
 mod graph_paint;
 pub mod hier;
 mod history_band;
+mod lista_coluna;
 pub use history_band::{recorded_history, set_recorded_history};
 pub mod ids;
 mod interact;
@@ -68,6 +70,7 @@ mod marker_drag;
 mod marker_menu;
 mod marker_rename;
 mod paint;
+mod pecas_cartoes;
 pub mod populate;
 /// ⭐ **Veio da shell na integração de 2026-09-16** — a catraca `the_shell_only_shrinks` ficou
 /// vermelha por ACUMULAÇÃO das seis linhas da rodada, e a cura é MOVER. ⚠️ O sítio é ESTE
@@ -106,6 +109,7 @@ mod transport_clips;
 mod transport_entry;
 mod transport_sources;
 mod transport_tabs;
+mod uso;
 mod view;
 
 pub use state::{

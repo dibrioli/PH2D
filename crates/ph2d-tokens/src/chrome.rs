@@ -109,6 +109,30 @@ pub const TIMELINE_KEY_HIT_HALF_PX: f32 = 8.0; // LITERAL-PX-OK: meia-largura do
 pub const TIMELINE_FRAME_PX: f32 = 1.5; // LITERAL-PX-OK: espessura da moldura medida na maquete
 /// O ponto do cabeçalho do objecto (maquete: ~7 px).
 pub const TIMELINE_OBJECT_DOT_HALF_PX: f32 = 4.0; // LITERAL-PX-OK: meia-diagonal do ponto do objecto
+/// A peça (strip) no Arrange/Containers, medida no CSS da maquete B (onda 3): o fundo é a cor da peça
+/// misturada à fita de 58 % (em cima) a 34 % (em baixo); o contorno, a cor a 80 %.
+pub const TIMELINE_PECA_TOPO_ALPHA: f32 = 0.58; // LITERAL-PX-OK: opacidade do topo da peça
+/// O pé do gradiente da peça.
+pub const TIMELINE_PECA_PE_ALPHA: f32 = 0.34; // LITERAL-PX-OK: opacidade do pé da peça
+/// O contorno da peça.
+pub const TIMELINE_PECA_BORDA_ALPHA: f32 = 0.8; // LITERAL-PX-OK: opacidade do contorno da peça
+/// A peça de uma faixa muda (`.c13st.mu`).
+pub const TIMELINE_PECA_MUDA_ALPHA: f32 = 0.4; // LITERAL-PX-OK: opacidade da peça muda
+/// A sobreposição de duas peças (a mistura): listras claras e o contorno claro.
+pub const TIMELINE_MISTURA_ALPHA: f32 = 0.34; // LITERAL-PX-OK: opacidade das listras da mistura
+/// O contorno da mistura.
+pub const TIMELINE_MISTURA_BORDA_ALPHA: f32 = 0.55; // LITERAL-PX-OK: opacidade do contorno da mistura
+/// O raio da peça e da pílula do peso (`border-radius` 5 e 4 da maquete).
+pub const TIMELINE_PECA_RAIO_PX: f32 = 5.0; // LITERAL-PX-OK: raio da peça
+/// O raio da pílula do peso.
+pub const TIMELINE_PESO_RAIO_PX: f32 = 4.0; // LITERAL-PX-OK: raio da pílula do peso
+/// A altura de uma faixa (lane) e de uma linha da lista de containers nos cartões (a maquete B: 30 px, a
+/// peça de 21 px dentro dela). As linhas da aba Keys continuam em [`crate::ROW_H_PX`].
+pub const TIMELINE_FAIXA_H_PX: f32 = 30.0; // LITERAL-PX-OK: altura da faixa medida na maquete
+/// A margem de cima e de baixo da peça dentro da faixa (`top:4px; bottom:4px`).
+pub const TIMELINE_PECA_MARGEM_PX: f32 = 4.0; // LITERAL-PX-OK: margem vertical da peça na faixa
+/// A barra do tamanho de um container na lista (3 px, raio 2).
+pub const TIMELINE_LISTA_BARRA_PX: f32 = 3.0; // LITERAL-PX-OK: altura da barra do container na lista
 
 /// ⭐ **O FANTASMA de um cartão arrastado — a opacidade dele.** Meio transparente: a marca da
 /// queda (a barra de acento entre dois cartões) tem de se ver através dele.

@@ -175,7 +175,7 @@ impl DocumentSurface for CodeDocs {
             return true;
         }
         if matches!((kind, button), (PointerKind::Down, PointerButton::Primary))
-            && self.left.press(x, y)
+            && self.left.press_at(x, y, input.now_ns)
         {
             self.pressed = true;
             return true;

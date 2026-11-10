@@ -137,3 +137,45 @@ fn o_clique_no_in_this_script_segue_a_largura_nova() {
         "saltou a on_update"
     );
 }
+
+#[test]
+fn o_duplo_clique_no_vao_devolve_a_largura_de_fabrica() {
+    let (mut m, id) = aberta();
+    let (col, ..) = rects(&mut m, id);
+    assert_eq!(
+        col.w,
+        ScriptListView::width(true),
+        "controlo: nasce na de fábrica"
+    );
+    arrasta(&mut m, id, vao(col), 60.0);
+    let (largo, ..) = rects(&mut m, id);
+    assert_eq!(largo.w, col.w + 60.0, "controlo: o arrasto alargou");
+    // Um clique só no vão não mexe na largura.
+    let (x, y) = vao(largo);
+    m.clica(id, x, y, Modifiers::default());
+    m.pinta(id);
+    assert_eq!(rects(&mut m, id).0.w, largo.w, "um clique só");
+    // O segundo clique, sem arrasto, faz o duplo: volta a de fábrica.
+    m.clica(id, x, y, Modifiers::default());
+    m.pinta(id);
+    assert_eq!(rects(&mut m, id).0.w, col.w, "o duplo-clique");
+}
+
+#[test]
+fn o_duplo_clique_num_cartao_nao_mexe_no_divisor() {
+    let (mut m, id) = aberta();
+    let (col, ..) = rects(&mut m, id);
+    arrasta(&mut m, id, vao(col), 60.0);
+    let (largo, code, _) = rects(&mut m, id);
+    let (cx, cy) = centro(code);
+    // Um clique no vão e o segundo no cartão também não é duplo.
+    let (x, y) = vao(largo);
+    m.clica(id, x, y, Modifiers::default());
+    for _ in 0..2 {
+        m.clica(id, cx, cy, Modifiers::default());
+        m.pinta(id);
+    }
+    m.clica(id, x, y, Modifiers::default());
+    m.pinta(id);
+    assert_eq!(rects(&mut m, id).0.w, largo.w, "o cartão não reinicia");
+}

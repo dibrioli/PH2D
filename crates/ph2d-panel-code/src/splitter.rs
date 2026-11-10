@@ -3,6 +3,7 @@
 //! da coluna do lado e a tabela fica com o resto, cada uma presa ao seu mínimo. Moram cá a medida, a
 //! pintura e o arrasto; a Sheet do depurador (Call stack) e a grelha da Bancada (o mapa «Where») usam-nos.
 
+use ph2d_editor_core::interaction::DOUBLE_CLICK_WINDOW_NS;
 use ph2d_editor_core::math::safe_clamp;
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::zones::Rect;
@@ -77,13 +78,17 @@ pub fn paint_band(
 }
 
 /// O separador de uma vista: a largura que o artista escolheu, o arrasto em curso, o «por cima»
-/// (vale um quadro: o `look` volta a escrevê-lo) e o pintado no último quadro.
+/// (vale um quadro: o `look` volta a escrevê-lo), o pintado no último quadro e o último clique
+/// sem arrasto (o duplo-clique devolve a largura de fábrica, como o sash do VS Code).
 #[derive(Debug, Default)]
 pub struct Splitter {
     pub side_w: Option<f32>,
     pub dragging: Option<(f32, f32)>,
     pub hover: std::cell::Cell<bool>,
     pub painted: Option<Split>,
+    press_ns: u128,
+    moved: bool,
+    last_click: Option<u128>,
 }
 
 impl Splitter {
@@ -102,10 +107,35 @@ impl Splitter {
 
     /// Carregar no separador começa o arrasto. `true` = tomado.
     pub fn press(&mut self, x: f32, y: f32) -> bool {
+        self.press_at(x, y, 0)
+    }
+
+    /// [`Self::press`] no instante `now_ns` (o relógio do duplo-clique, ver [`Self::release`]).
+    pub fn press_at(&mut self, x: f32, y: f32, now_ns: u128) -> bool {
         let Some(s) = self.painted.filter(|s| s.hit.contains(x, y)) else {
+            self.last_click = None;
             return false;
         };
         self.dragging = Some((x, s.side_w));
+        (self.press_ns, self.moved) = (now_ns, false);
+        true
+    }
+
+    /// O largar acaba o arrasto. Dois cliques sem arrasto dentro de [`DOUBLE_CLICK_WINDOW_NS`]
+    /// esquecem a largura do artista (volta a de fábrica). `true` = havia arrasto.
+    pub fn release(&mut self) -> bool {
+        if self.dragging.take().is_none() {
+            return false;
+        }
+        let t = self.press_ns;
+        let double = !self.moved
+            && self
+                .last_click
+                .is_some_and(|t0| t.saturating_sub(t0) <= DOUBLE_CLICK_WINDOW_NS);
+        if double {
+            self.side_w = None;
+        }
+        self.last_click = (!self.moved && !double).then_some(t);
         true
     }
 
@@ -124,6 +154,7 @@ impl Splitter {
             return false;
         };
         let s = self.painted.unwrap_or_default();
+        self.moved |= x != x0;
         self.side_w = Some(safe_clamp(w0 + sign * (x - x0), s.min, s.max));
         true
     }

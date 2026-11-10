@@ -70,8 +70,9 @@ impl CodeDocs {
         }
     }
 
-    /// O largar acaba o arrasto do divisor. `true` = havia um.
+    /// O largar acaba o arrasto do divisor (o duplo-clique no vão volta à largura de fábrica).
+    /// `true` = havia um.
     pub(crate) fn left_release(&mut self) -> bool {
-        self.left.dragging.take().is_some()
+        self.left.release()
     }
 }

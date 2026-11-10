@@ -20,6 +20,11 @@ use ph2d_ecs::Entity;
 impl crate::App {
     /// Rola a moldura sob o cursor. Devolve `true` se consumiu a roda — e o chamador conta com
     /// isso para deixar o zoom acontecer quando não há nada a rolar.
+    ///
+    /// ⚠️ Não rouba o zoom, e é isso que a torna aceitável sem modo nem modificador: moldura que RECORTA e
+    /// conteúdo que NÃO CABE só valem numa lista que o artista fez transbordar de propósito; no resto da tela a
+    /// roda continua a ser o zoom (o precedente do Gap Closure: *a roda crua é load-bearing*). O chamador
+    /// pergunta-a ANTES do zoom: quem consome decide primeiro, senão a câmera já se mexeu.
     pub(crate) fn wheel_scrolls_a_frame(&mut self, dx: f32, dy: f32) -> bool {
         let Some(gfx) = self.gfx.as_ref() else {
             return false;

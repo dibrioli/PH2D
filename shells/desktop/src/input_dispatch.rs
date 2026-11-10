@@ -158,11 +158,8 @@ impl App {
         if self.recovery.is_modal() {
             return; // a janela da recuperação é modal: nem o hover passa por baixo.
         }
-        let prev = self.last_pointer;
         self.last_pointer = (evt.x, evt.y);
-        // M14.4e: cache the latest cursor for DroppedFile — winit's
-        // DroppedFile carries no position, so we project the most-
-        // recently-seen cursor to world.
+        // M14.4e: o `DroppedFile` do winit não traz posição — projecta-se o último cursor visto.
         self.last_cursor = self.last_pointer;
         // No palco só os botões do jogo reagem ao ponteiro.
         if self.no_palco() {
@@ -224,7 +221,6 @@ impl App {
                 });
             ph2d_app_motion::field_gizmo::pan_scene_camera(&mut gfx.camera, split, size, dx, dy);
             self.pan_anchor = Some(self.last_pointer);
-            let _ = prev; // silence unused warning when feature shifts
         }
         // Fase 0f: extend the active rubber-band rect, if any.
         if let Some(rb) = self.rubber_band.as_mut() {
@@ -319,48 +315,20 @@ impl App {
             self.any_input_this_frame = true;
             return;
         }
-        // **O ajuste modal do Gap Closure** (doc 06 §8): em modo Fill, Ctrl+roda sobre o
-        // canvas ajusta o alcance — e os helpers no canvas mostram, ao vivo, quais vãos
-        // o valor atual fecha (`flip_gap_live`). A roda CRUA continua sendo zoom
-        // (inspecionar o line-art é load-bearing); o GP toma a roda inteira durante o
-        // fill, e esta é a divergência deliberada, documentada em vez de silenciosa.
+        // O ajuste modal do Gap Closure (Ctrl+roda em modo Fill): a lei em `ph2d_app_flip::gap_live::gap_wheel`.
         if !over_panel
             && (self.modifiers.control_key() || self.modifiers.super_key())
-            && let Some(track) = ph2d_app_flip::gap_live::gap_wheel_track(
+            && let Some(mexeu) = ph2d_app_flip::gap_live::gap_wheel(
                 self.flip_state.active,
                 self.flip_state.style,
                 dy / 16.0,
+                self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()),
             )
         {
-            if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-                // As DUAS metades do que o próprio slider faz num arrasto (ver
-                // `panel-flip/event.rs`): o valor do widget no store (o knob que o
-                // artista vê — sem isto ele pinta o valor velho por cima do novo) e o
-                // `SetValue` pro tool (o valor autorado, clampado pelo MESMO braço).
-                hero.store
-                    .set_slider_value(ph2d_tool_flip::ids::FLIP_GAP, track as f32);
-                hero.bus
-                    .push(ph2d_editor_core::action_bus::EditorAction::ToolPanelEvent(
-                        ph2d_editor_core::tool::PanelEvent::SetValue(
-                            ph2d_tool_flip::ids::FLIP_GAP,
-                            track,
-                        ),
-                    ));
-                self.any_input_this_frame = true;
-            }
+            self.any_input_this_frame |= mexeu;
             return;
         }
-        // **A ROLAGEM de uma moldura** (o item 3 do estudo dos contêineres): a roda sobre uma
-        // moldura que RECORTA e cujo conteúdo NÃO CABE rola essa moldura, em vez de dar zoom.
-        //
-        // ⚠️ **Ela não rouba o zoom, e é isso que a torna aceitável sem modo nem modificador:** as
-        // duas condições juntas só valem numa lista que o artista fez deliberadamente transbordar,
-        // e ali rolar é a única coisa que a roda pode querer dizer. Em todo o resto da tela — que é
-        // 99% dela — a roda continua a ser o zoom, que é o gesto do dia inteiro. É o precedente do
-        // Gap Closure, uma dúzia de linhas acima, com a mesma frase: *a roda crua é load-bearing*.
-        //
-        // ⚠️ E ela vem **antes** do zoom pela razão de sempre: quem consome tem de decidir primeiro,
-        // senão a câmera já se mexeu quando a moldura for perguntada.
+        // A rolagem de uma moldura que recorta e transborda, ANTES do zoom (o porquê no `wheel_scrolls_a_frame`).
         if !over_panel && self.wheel_scrolls_a_frame(dx, dy) {
             return;
         }

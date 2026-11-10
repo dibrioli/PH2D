@@ -58,6 +58,33 @@ pub fn gap_wheel_track(
     Some(new.clamp(0.0, ph2d_tool_flip::GAP_MAX_WORLD) / ph2d_tool_flip::GAP_MAX_WORLD)
 }
 
+/// **O ajuste modal do Gap Closure pela roda** (doc 06 §8) — Ctrl+roda sobre o canvas em modo Fill; a shell só
+/// decide o modificador e o «fora de painel». A roda CRUA continua a ser zoom (inspecionar o line-art é
+/// load-bearing): o GP toma a roda inteira durante o fill, e esta é a divergência deliberada, documentada.
+/// Escreve as DUAS metades do que o próprio slider faz num arrasto (`panel-flip/event.rs`): o valor do widget no
+/// store (sem ele o knob pinta o valor velho por cima) e o `SetValue` pro tool (clampado pelo MESMO braço).
+/// `None` = a roda não é do Gap; `Some(mexeu)` = consumida (`mexeu` = havia aba para escrever).
+#[must_use]
+pub fn gap_wheel(
+    active: bool,
+    style: Option<FlipStyleSnapshot>,
+    notches: f32,
+    hero: Option<&mut ph2d_editor_core::HeroScreen>,
+) -> Option<bool> {
+    use ph2d_editor_core::{action_bus::EditorAction, tool::PanelEvent};
+    let track = gap_wheel_track(active, style, notches)?;
+    let Some(hero) = hero else {
+        return Some(false);
+    };
+    let id = ph2d_tool_flip::ids::FLIP_GAP;
+    hero.store.set_slider_value(id, track as f32);
+    hero.bus
+        .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+            id, track,
+        )));
+    Some(true)
+}
+
 /// Unidades de MUNDO de Gap por tique da roda — 0,05 doc (20 tiques no alcance de 0 a 1,0),
 /// a mesma ordem de granularidade dos ~40 tiques que o antigo 1 px/tique dava em 0..40.
 pub const GAP_WHEEL_STEP: f64 = 0.05;

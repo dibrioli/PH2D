@@ -409,3 +409,51 @@ fn cada_cor_pintada_vem_de_um_token() {
         );
     }
 }
+
+/// O texto da ajuda leva o tamanho da letra da interface UMA vez (530b9e7fbd: o `face()` passava o
+/// tamanho já mostrado ao `TextSystem`, que o escalava de novo): em Small · Normal · Large cada
+/// letra da página sai em `displayed_font_px` do nominal do seu papel.
+#[test]
+fn o_texto_da_ajuda_aplica_o_tamanho_da_letra_uma_vez() {
+    use ph2d_tokens::{TypeToken, UiTextSize, UiTextStyle};
+    let doc = HelpDoc {
+        blocks: vec![
+            Block::Title("math".into()),
+            Block::Heading("Functions".into()),
+            Block::Body(vec![prosa("Gives the floor back.")]),
+        ],
+        key: 2,
+        title: "math".into(),
+        sections: vec!["Functions".into()],
+    };
+    let antes = ph2d_text::active_text_style();
+    let mut falhas = Vec::new();
+    for size in [UiTextSize::Small, UiTextSize::Normal, UiTextSize::Large] {
+        ph2d_text::set_active_text_style(UiTextStyle { size, ..antes });
+        let quer: Vec<f32> = [TypeToken::Xl, TypeToken::Lg, TypeToken::Base]
+            .map(|t| ph2d_text::displayed_font_px(t.px()))
+            .to_vec();
+        let mut ts = TextSystem::without_system_fonts();
+        let mut v = HelpView::new();
+        let scene = pinta(&mut v, &quadro(&doc), &mut ts, LARGA);
+        let tem: Vec<f32> = crate::linhas_de_base(&scene)
+            .into_iter()
+            .map(|r| r.0)
+            .collect();
+        let perto = |a: f32, b: f32| (a - b).abs() < 1e-3;
+        for q in &quer {
+            if !tem.iter().any(|p| perto(*p, *q)) {
+                falhas.push(format!("{size:?}: falta {q} px em {tem:?}"));
+            }
+        }
+        // O resto é a barra (botões no `Sm` do painel), também escalada uma vez só.
+        let barra = ph2d_text::displayed_font_px(TypeToken::Sm.px());
+        for p in &tem {
+            if !quer.iter().chain([&barra]).any(|q| perto(*p, *q)) {
+                falhas.push(format!("{size:?}: {p} px fora de {quer:?} + {barra}"));
+            }
+        }
+    }
+    ph2d_text::set_active_text_style(antes);
+    assert!(falhas.is_empty(), "{falhas:#?}");
+}

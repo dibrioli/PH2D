@@ -73,6 +73,9 @@ A shell só COMPÕE (~3 linhas por ponto). `the_shell_only_shrinks`: a janela qu
   NOME, o contrato de quem lê); `set`, `clear`, `apply_over(&InputMap) -> InputMap` (só troca as
   ligações de acções que existem), `changed(&InputMap) -> usize`, `to_text()/from_text()` (linha
   `jump = key:up, key:z, pad:south, axis:left_x-`; linha inválida salta-se), teste de ida e volta.
+- `resolve.rs` expõe a lei: `pub fn strength_of(raw, dead) -> f32` e `pub fn pressed_of(raw, press) ->
+  bool`, que o `resolve_action` chama (a UI usa ESTAS, nunca uma cópia). `InputAction::is_analog()` =
+  tem `PadAxis` ou gatilho — é a lei «Dead/Press só com manche».
 - Corrigir o comentário velho de `map.rs` («as SETAS, e não o WASD» — o código põe W/S; o W do editor
   abre a Física, mas com a aba ou o jogo com o teclado não briga).
 
@@ -179,3 +182,28 @@ PH2D_GAME_SMOKE=<n> 1600 1000 <saida.png>` e a 1280×720. Montagens finais em `d
 | R4 | C · Try it + receitas + círculo + C·4 ‖ cenas de smoke |
 | R5 | fotos + revisor lado a lado + correções (repetir até a lista vir vazia) |
 | Fecho | fmt/clippy, mutação (4 leis), auditoria ≥2 lentes, rebase, censos, handoff, binário |
+
+## 10 · Contratos como ficaram depois da R1 (fonte: o código; isto é o mapa)
+
+- **ph2d-input:** `Recipe::actions() -> Vec<RecipeAction { name, bindings, dead_zone }>`; `RECIPE_FIRE`,
+  `RECIPE_RELOAD` (Shooter: fire = J, reload = R); chaves `input_map_try.recipe.<r>` e `.blurb`;
+  `Reader::label_key() -> Option<&str>` (`input_map_tab.reader.{platform_player,top_down_player}`),
+  `Reader::is_mover()`; `PlayerKeys::{new,get,set,clear(action),clear_all,is_empty,apply_over,changed,
+  to_text,from_text}`, `binding_text(Binding)`, `PLAYER_KEYS_HEADER`; eixo em texto com o nome real
+  (`axis:left_stick_x-`); tecla sem nome de script = `key:0x<hex>`; `PlayerControls::{shown_in_game,
+  set_shown_in_game}`; `shared_bindings` devolve por ordem de tecla; `is_analog` cobre gatilho como
+  botão e como eixo.
+- **Tokens:** `Categorical01..12` (`tokens.json`), `ph2d_tokens::{CATEGORICAL, categorical(i)}`.
+- **Luau:** `ph2d.action_{down,pressed,released,strength}` (`ph2d-script/src/action_api.rs`), feed
+  `Devices::feed_actions(Option<(&InputMap, &ActionState)>)`. ⚠️ O mapa do Play é lido em QUATRO sítios
+  com `input_actions`: `fase_pointer_subjects.rs:53` (resolve), `app_state_devices.rs:116` (Luau),
+  `fase_vector_view_and_drives.rs:90`, `fase_signal_outbox.rs:30`. O mapa efectivo (§4) entra por UM
+  acessor do shell usado pelos quatro.
+- **Aba:** `ph2d_app_input_map::{FAMILY ("input-map"), install(hero, View), frame(world, hero,
+  gamepad_connected), view(&hero), surface_raw_key(hero, code, pressed, text), InputMapTab, TAB_ID}`;
+  `ph2d_input_map_editor::{View, InputMapDoc{snap, pending, press, motion, hover, segment_rect},
+  Snapshot{map, gamepad_connected, play_running}, layout::lay_out, paint::paint_doc,
+  view_*::paint, ids::VIEW_*}`; menu → `hero.store.request_input_map_tab()`; prefs
+  `input_map_view` gravado pelo detector de `forwarding_persist.rs`; o seletor pinta com
+  `Widget::Choice` via `CardCtx::flutuante`. Arnês: `shells/game-scenes/tests/it/input_map/mod.rs`
+  (`Mesa`).

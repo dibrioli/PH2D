@@ -50,6 +50,8 @@ pub struct SheetCache {
     parado: u32,
     /// A folha visível ainda NÃO mostra a tinta vista (há uma leitura por fazer).
     devida: bool,
+    /// A leitura que NÃO deu imagem `(objeto, folha, revisão)`: não se repete a cada quadro, e o selo apaga-se sem check.
+    falhou: Option<(u64, u8, (u64, u64))>,
     /// A última leitura da tinta: `(objeto, relógio dela)` — o check do [`SheetCache::sync`].
     feito: Option<(u64, u128)>,
     /// O relógio do quadro (ns), o da interface.
@@ -229,12 +231,14 @@ pub fn follow_live(
     let (Some((bits, rev)), Some(k)) = (vivo, k) else {
         // Assou (ou saiu do Painter): a imagem gravada é a verdade — sem check, nada se leu.
         (cache.live, cache.seen, cache.parado, cache.devida) = (None, None, 0, false);
+        cache.falhou = None;
         return;
     };
     cache.devida = !cache
         .live
         .as_ref()
-        .is_some_and(|l| (l.0, l.1, l.2) == (bits, k, rev));
+        .is_some_and(|l| (l.0, l.1, l.2) == (bits, k, rev))
+        && cache.falhou != Some((bits, k, rev));
     if cache.seen.replace((bits, rev)) != Some((bits, rev)) {
         cache.parado = 0;
         return; // ainda a mudar
@@ -256,6 +260,8 @@ pub fn follow_live(
         });
     if cache.live.is_some() {
         (cache.devida, cache.feito) = (false, Some((bits, agora_ns)));
+    } else {
+        (cache.devida, cache.falhou) = (false, Some((bits, k, rev)));
     }
 }
 

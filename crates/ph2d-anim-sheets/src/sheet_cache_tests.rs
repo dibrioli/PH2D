@@ -138,3 +138,39 @@ fn a_agua_do_wet_a_andar_nao_le_a_tela_a_cada_passo() {
         "assentada, a tinta não se leu (ou leu-se mais de uma vez)"
     );
 }
+
+/// ⭐ **A leitura que não deu imagem não se repete nem prende o selo** (auditoria 10/11): sem tela por ler (`read` dá
+/// `None`), a tinta parada lia a tela inteira a CADA quadro (a 4K, 1,6–7 ms cada) e o selo ficava no anel cheio para
+/// sempre. Uma tentativa por revisão; o selo apaga-se sem check; a revisão seguinte tenta outra vez.
+#[test]
+fn a_leitura_vazia_nao_se_repete_nem_prende_o_selo() {
+    let mut w = World::new();
+    let e = w.spawn_empty().id().to_bits();
+    let mut leu = 0;
+    for _ in 0..QUADROS_PARADOS * 4 {
+        follow_live(&mut w, Some((e, (0, 7))), 0, || {
+            leu += 1;
+            None
+        });
+    }
+    assert_eq!(leu, 1, "a leitura vazia repetiu-se {leu} vezes");
+    assert_eq!(
+        w.resource::<SheetCache>().sync(e),
+        None,
+        "o selo ficou preso sem imagem"
+    );
+    // Outra revisão: tenta de novo, e agora lê.
+    for _ in 0..=QUADROS_PARADOS + 1 {
+        follow_live(&mut w, Some((e, (0, 8))), 0, || {
+            leu += 1;
+            px(3)
+        });
+    }
+    assert_eq!(leu, 2, "a revisão seguinte não tentou de novo");
+    assert_eq!(
+        w.resource::<SheetCache>()
+            .of_sheet(e, 0)
+            .map(|x| x.sheet.rgba[0]),
+        Some(3)
+    );
+}

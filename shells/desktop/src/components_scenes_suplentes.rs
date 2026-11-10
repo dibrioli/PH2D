@@ -87,6 +87,9 @@ impl crate::App {
             // Hierarchy»*. ⚠️ O `clear()` anda colado ao `selection` (a lei da cena de física).
             hero.gizmo.selection = Some(montada.escolhido);
             hero.gizmo.extra_selection.clear();
+            // E a secção ABERTA, com a linha Key à vista (onda 4 do F3; a lei da cena de navegação).
+            hero.store
+                .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_TRIGGER_SECTION, false);
         }
         self.playhead.rewind();
         self.playhead.play();

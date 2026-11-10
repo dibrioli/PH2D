@@ -3,7 +3,9 @@
 //! pintura e o ponteiro da aba activa. As ondas seguintes (A · List, B · Keyboard, C · Try it) usam-no.
 
 mod abrir;
+mod cenas_do_smoke;
 mod lista;
+mod lista_acabamento;
 mod lista_censo;
 mod teclado;
 mod teclado_censo;

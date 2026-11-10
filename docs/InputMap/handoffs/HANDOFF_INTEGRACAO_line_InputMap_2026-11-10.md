@@ -35,7 +35,7 @@ Leitor: o agente integrador. Branch `line/InputMap`, HEAD `b72e9f9945` (+ 3 acab
 
 ## 4. Valores literais que colidem (de `docs/design/tokens.json`)
 
-- `categorical-01..12`, escuro (forge/workshop): `oklch(0.8019 0.1119 231.99)`, `(0.8148 0.1459 166.7513)`, `(0.8741 0.1520 88.1114)`, `(0.7874 0.1422 54.6487)`, `(0.7461 0.1677 0.1613)`, `(0.7554 0.1412 295.3652)`, `(0.8423 0.1704 134.2379)`, `(0.8253 0.1512 322.5515)`, `(0.7116 0.1812 22.8389)`, `(0.7805 0.1114 261.0572)`, `(0.8054 0.0819 185.8111)`, `(0.7792 0.0401 359.821)`. Claro (sunstone/blueprint): mesmo matiz e croma, L descido a ≥ 3,2:1 sobre bg-1..3 (0.5669 … 0.5792).
+- `categorical-01..12`: valores em `docs/design/tokens.json` (escuro forge/workshop `oklch(0.8019 0.1119 231.99)` … `(0.7792 0.0401 359.821)`; claro sunstone/blueprint mesmo matiz/croma, L 0.5598–0.5966, ≥ 3,2:1 sobre bg-1..3).
 - `preview-sky` `oklch(0.94 0.025 205)` e `preview-ground` `oklch(0.76 0.13 143)` — iguais em todo tema.
 - `input-map-highlight`: escuro `oklch(0.8741 0.152 88.1114)` (#FFCF4D) · claro `oklch(0.84 0.16 85)`. `input-map-warning`: `oklch(0.8238 0.1408 70.1707)` · claro `oklch(0.58 0.15 62)`. `input-map-warning-bg`: `oklch(0.3654 0.0071 3.7044)` · claro `oklch(0.935 0.035 75)`. Todos papel `Graphic`; emprestados nos derivados (`derive.rs`).
 - Smoke: `PH2D_GAME_SMOKE` **6..18** (`CENAS = 18`): 6 A1 · 7 A2 · 8 A3 · 9 A4 · 10 B1 · 11 B2 · 12 B3 · 13 B4 · 14 C1 · 15 C2 · 16 C3 · 17 C4 · 18 P1 (P1 pede `PH2D_GAME_SMOKE_DRIVE=editor`). **Se outra linha tomou cenas após 5, renumere pelo `main` do dia** (conte, não escolha).
@@ -58,7 +58,6 @@ SUPERFÍCIE DE COLISÃO — line/InputMap contra main
 ▸ ADR   último 0200, próximo livre 0201 — esta linha não cria ADR
 ▸ Cargo.lock — 4 '+name' novos, todos internos:
     ph2d-app-input-map · ph2d-input-map-editor · ph2d-input-map-scene · ph2d-player-controls
-▸ MARCADORES DE CONFLITO — nenhum
 ▸ TETOS DE LOC
   ✗  1030 / 600   shells/desktop/src/main.rs   (já estava assim: a linha NÃO o fez crescer; a catraca é a `the_shell_only_shrinks`)
 ```
@@ -76,8 +75,7 @@ SUPERFÍCIE DE COLISÃO — line/InputMap contra main
 - **Um mapa efetivo (`play_map`, `controles_do_jogador.rs`) para CINCO leitores do Play**: resolve do jogador (`fase_pointer_subjects.rs`), Luau (`app_state_devices.rs`), morph/vector (`fase_vector_view_and_drives.rs`), sinais (`fase_signal_outbox.rs`) e `acoes_premidas` no passo da física. Gate de ordem na crate e na Mesa recusa `|h| &h.input_map`.
 - **Frase do hover da B SUBSTITUI a legenda** (R7b; o §12 do plano diz «sempre reservada» — está desatualizado: sem salto de layout, sem linha de repouso).
 - LB/RB/Back/Start/cruz no comando desenhado (ligáveis). **Sem ◆ em Dead/Press** (o ◆ é a marca do Auto Key; aqui seria controlo morto).
-- Texto de escuta depende de haver comando ligado. Censo de textos (0 cortados, 0 números mortos) em `Default` e `CrispHeavyPlus` com o registo de elisão do próprio pintor, a 1600×1000 e 1280×720.
-- Leitores no Snapshot: Triggers da cena (ordenados por objeto) e scripts Luau por nome.
+Censo de textos (0 cortados, 0 números mortos) em `Default` e `CrispHeavyPlus` com o registo de elisão do próprio pintor, a 1600×1000 e 1280×720.
 
 ## 7. O que um merge pode partir
 
@@ -92,9 +90,7 @@ SUPERFÍCIE DE COLISÃO — line/InputMap contra main
 ## 8. Prova de fecho (feita na linha)
 
 - Bateria de fecho **verde**: `cargo clippy --workspace --all-targets -D warnings`, `cargo fmt`, `cargo machete` (saiu `tracing` do app-input-map), `check-standalone-optional.sh`, `check-workflow-packages.sh`. **Nenhum `#[cfg(target_os` escrito ou movido** (sem cruzamento macOS).
-- Código morto removido no fecho: `view_list::text::wrap`, `view_try::cards::footer`.
 - **Auditoria por duas lentes independentes** (correção e wiring · determinismo e persistência) **+ três revisões visuais independentes** (lado a lado com a maquete). Defeitos confirmados e curados com teste visto VERMELHO→verde: escuta armada após trocar de vista/fechar a aba; Keyboard engolindo Ctrl/F5; busca da List apagando texto com Shift; Forget durante o Play; número digitado atravessando a troca de mapa; ordem dos leitores por arquétipo; quinto leitor do Play; smoke lendo o `~/.ph2d` real; `game_id` 0 partilhando ficheiro.
-- Testes por nome: crate `game-scenes` módulo `input_map` (lista, teclado, try_it, censos, `auditoria_*`, `acabamento_*`, `try_it_r*`), `ph2d-player-controls` (`r9d_tests`, `r10a_tests`), `ph2d-input` (`recipes/readers/player_keys`), `ph2d-script` `scene_action_tests`, `project_schema`, `project_input_map_tests`, `undo`. Rode `cargo-test-narrow.sh` por nome; a crate inteira só com `motivo:` (crates NOVAS).
 - **Impactados e suíte completa ficam para a integração.**
 
 ### Provas de mutação
@@ -109,24 +105,21 @@ SUPERFÍCIE DE COLISÃO — line/InputMap contra main
 
 ```
 ✗ paralelismo de ferramenta        1.20/passo   alvo >= 1,5  (11% dos passos com 2+ chamadas)
-✓ respostas por sessao (mediana)   116          alvo <= 800
 ✗ cargo test : cargo check         219 : 72     razao 3.0x (alvo <= 1,0; baseline 4,3x)
-✓ edicoes SEM conferir que casaram 1.2%         alvo <= 2%
-✓ contexto relido por passo        228 mil      alvo <= 250 mil
-✓ contexto no inicio da sessao     67 mil       alvo <= 80 mil
+✓ edições conferidas 1.2% · ✓ contexto/passo 228 mil · ✓ início 67 mil · ✓ respostas/sessão 116
 ```
 
 ## 9. Smoke (do dono; o que NÃO foi smokado: tudo que é clique real e o gamepad físico)
 
-Comando (a worktree, **mesmo perfil e árvore do build do §8**): `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-InputMap && PH2D_GAME_SMOKE=<6..18> bash scripts/ph2d-run.sh cargo run -p ph2d-host-desktop --profile smoke`. Cena 18 junta `PH2D_GAME_SMOKE_DRIVE=editor`. Uma variável de ambiente NÃO é um build novo. Menu: abrir o Input Map pelo menu (abre a aba no meio, seletor List · Keyboard · Try it no topo). Fotos e 13 montagens nossa|maquete em `docs/InputMap/fotos/` (40 ficheiros; 1600×1000 e 1280×720). Passos para o dono: o relatório do coordenador (§0.8) carrega os links clicáveis relativos à raiz do repo principal.
+Comando (a worktree, **mesmo perfil e árvore do build do §8**): `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-InputMap && PH2D_GAME_SMOKE=<6..18> bash scripts/ph2d-run.sh cargo run -p ph2d-host-desktop --profile smoke`. Cena 18 junta `PH2D_GAME_SMOKE_DRIVE=editor`. Uma variável de ambiente NÃO é um build novo. Menu: abrir o Input Map pelo menu (abre a aba no meio, seletor List · Keyboard · Try it no topo). Fotos e 13 montagens nossa|maquete em `docs/InputMap/fotos/` (40 ficheiros; 1600×1000 e 1280×720).
 Não smokado por humano: troca de tecla pelo jogador no Play com F1 (provado por gates e Mesa), comando real (gilrs → `deliver_pad`), `Forget them` com disco real.
 
 ## 10. ABERTO e achados FORA da linha (para outras linhas)
 
 - Sem jogo exportado no app: a tela herda no dia em que o export existir.
 - **Fora da linha, não tocado:** o editor do Animated Sprite e a aba de região, o Planner e a aba da física NÃO implementam `chrome_over` (o rodapé pinta sob o HUD de baixo); o modo de texto de fábrica `CrispHeavyPlus` faz sumir os pingos de i/j a ~13 px em negrito (app inteiro, ex. «33 entitles»); a Hierarquia trunca «Collision Shap…».
-- `main.rs` da shell em 1 030 LOC contra o teto 600 do script (pré-existente; catraca própria).
-- `reconcilie` o `[01_plano.md §12]`: «linha do hover sempre reservada» foi superada pela R7b (§6).
+- Marcadores de conflito: nenhum. `main.rs` 1 030/600 é pré-existente.
+- `01_plano.md` §12 («hover sempre reservado») foi superado pela R7b (§6).
 
 ## 11. Proposta para o `CLAUDE.md §5.1` (só na integração — DIRETRIZ §1.5.9 item 8; a linha NÃO a escreve)
 
@@ -134,8 +127,4 @@ Frase (≤ 300 caracteres) e entrada ≤ 700 bytes, a trocar o link ao integrar:
 
 > - **Input Map** — aba central com três vistas (List · Keyboard · Try it), mapa no undo do projeto, tela «Controls» do jogador (F1 no Play), Luau pela ação (`ph2d-input-map-editor`, `ph2d-app-input-map`, `ph2d-player-controls`). Smoke `PH2D_GAME_SMOKE=6..18`. Último: [aba e tela do jogador, 10/11](docs/InputMap/handoffs/HANDOFF_INTEGRACAO_line_InputMap_2026-11-10.md) · [plano](docs/InputMap/01_plano.md)
 
-(`CLAUDE.md` hoje 33 878 B contra o teto de 40 KB; a entrada acima tem ~480 B.) **Memória:** `project_inputmap_three_versions_2026_11_10.md` ganhou o parágrafo «Entregue 10/11»; a linha do `MEMORY.md` não muda.
-
-## 12. Fecho da máquina
-
-Reclamar `incremental/` e varrer processos são passos do coordenador (§8, binário do smoke) — ordem importa: `rm -rf …/target/*/incremental` ANTES do build do smoke.
+(`CLAUDE.md` 33 878 B de 40 KB.) **Memória:** `project_inputmap_three_versions_2026_11_10.md` ganhou o parágrafo «Entregue 10/11»; a linha do `MEMORY.md` não muda.

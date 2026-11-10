@@ -13,7 +13,9 @@ S=${SAIDA:-$R/target/mede-pen-up}; mkdir -p "$S"
 #      «Composite Brush:digital» = a pilha da cena, PH2D_COMPOSITE_PILHA=1)
 # Um lançamento por pincel, SEM perf; cada quadro com PH2D_QUADRO_LENTO_MS=0 (relógio de parede). Roteiro por fases:
 # parado 3 s (CPU de /proc/<pid>/stat) · toque (mousedown parado 0,4 s) · traço (125 eventos × 8 ms ≈ 1 s, 400 px) ·
-# soltar · 3 s (Wet: imagens/s) · Ctrl+Z · parado 3 s. `blocos` = a imagem da cena (degradê, grelha, discos) a WxH;
+# soltar · 3 s (Wet: imagens/s) · Ctrl+Z · parado 3 s · CONTROLO (SIGSTOP 250 ms: a régua tem de o ver) · trocar de
+# camada (aba Layers · «+» · a de baixo · a de cima; CAMADA_ABA/MAIS/OUTRA/VOLTA="x y", fotos por passo com PNG=1;
+# as coordenadas de omissão são as da janela 1600x1000, ver ANTES.md §B08b). `blocos` = a imagem da cena (degradê, grelha, discos) a WxH;
 # `branco` = tela branca sem papel (PH2D_COMPOSITE_FUNDO, B08.2). `papel` = Textured Paper,
 # relief 0,5 do papel do dono. Saída: $S/matriz/<rotulo>.{log,marcas,meta}; resumo: mede_pen_up_4k.py --matriz $S/matriz.
 if [ "$1" = matriz ]; then
@@ -72,7 +74,20 @@ if [ "$1" = matriz ]; then
       marca up; DISPLAY=$D xdotool mouseup 1; sleep 3; marca wet_fim
       marca ctrlz; DISPLAY=$D xdotool key ctrl+z; sleep 1.5; marca ctrlz_fim
       marca parado1_ini; sleep 3; marca parado1_fim
+      # B08.1, o CONTROLO da régua: o app parado 250 ms por SIGSTOP (o processo é nosso). O intervalo de quadro desse
+      # segundo tem de ler ≥ 250 ms; se não lê, a régua não vê uma trava e a matriz vale zero (mede_pen_up_4k.py ✗).
+      marca controlo; kill -STOP $APP; sleep 0.25; kill -CONT $APP; sleep 1; marca controlo_fim
       [ -n "$PNG" ] && DISPLAY=$D import -window root "$M/$TAG.png" 2>/dev/null
+      # B08.1, trocar de camada: cliques no cartão BRUSH (janela 1600x1000 em 0,0): aba Layers · «+» (camada nova, que
+      # fica a ativa) · a camada de baixo · a de cima. Uma foto por passo (PNG=1) confere que o clique caiu no sítio.
+      foto() { [ -n "$PNG" ] && DISPLAY=$D import -window root "$M/$TAG.$1.png" 2>/dev/null; }
+      marca camada_aba; DISPLAY=$D xdotool mousemove ${CAMADA_ABA:-1510 159} click 1; sleep 1.5; foto camada1_aba
+      marca camada_mais; DISPLAY=$D xdotool mousemove ${CAMADA_MAIS:-1332 233} click 1; sleep 1.5; foto camada2_mais
+      marca camada_troca; DISPLAY=$D xdotool mousemove ${CAMADA_OUTRA:-1430 397} click 1; sleep 1.5; foto camada3_troca
+      marca camada_volta; DISPLAY=$D xdotool mousemove ${CAMADA_VOLTA:-1430 306} click 1; sleep 1.5; foto camada4_volta
+      marca camada_dup; DISPLAY=$D xdotool mousemove ${CAMADA_DUP:-1389 233} click 1; sleep 1.5; foto camada5_dup
+      marca camada_apaga; DISPLAY=$D xdotool mousemove ${CAMADA_APAGA:-1417 233} click 1; sleep 1.5; foto camada6_apaga
+      marca camada_fim
     fi
     kill -INT $APP 2>/dev/null
     for _ in $(seq 1 40); do kill -0 $APP 2>/dev/null || break; sleep 0.25; done

@@ -27,6 +27,13 @@ PNG=1 SAIDA=$S bash $W/scripts/ph2d-run.sh bash $T matriz 3840x2160 branco $B
 PNG=1 SAIDA=$S bash $W/scripts/ph2d-run.sh bash $T matriz 3840x2160 blocos $B
 SAIDA=$S bash $W/scripts/ph2d-run.sh bash $T matriz 1920x1080 branco $B "omissão:digital" "omissão:water" \
   "omissão:impasto" "omissão:wet" "Watercolor Basic:water" "Filbert:wet" "Express Oil:wet"
+# B08b continuação (o roteiro já traz o CONTROLO e trocar de camada; as coordenadas de omissão são as da janela 1600x1000)
+PNG=1 SAIDA=$S bash $W/scripts/ph2d-run.sh bash $T matriz 3840x2160 papel $B "omissão:digital" "omissão:water" \
+  "omissão:impasto" "omissão:wet"
+SAIDA=$S bash $W/scripts/ph2d-run.sh bash $T matriz 1920x1080 branco $B "Round Mixing:digital" "Wet Wash Mix:digital" \
+  "Wet Liner:wet" "Pastel:digital" "Chalk:digital" "Crayon:digital" "Finger Tip:digital" "Composite Brush:digital"
+PNG=1 SAIDA=$S bash $W/scripts/ph2d-run.sh bash $T matriz 1920x1080 blocos $B
+PNG=1 SAIDA=$S bash $W/scripts/ph2d-run.sh bash $T matriz 3840x2160 blocos $B
 ```
 
 ⚠️ O «depois» só compara com o B08b num binário que TENHA o `PH2D_COMPOSITE_FUNDO` (o `cd02ac77ef` puro não o tem:
@@ -157,8 +164,7 @@ cru em [`antes/oleo_2880_fps.txt`](antes/oleo_2880_fps.txt). O lado 1440 não co
 - **Carga (⚠️ outros agentes a compilar; acima de `load ~5` o relógio vale pouco — ler como TECTO, não como base):**
   4K branco 08:18–08:25, load 1 min por lançamento mín 3,0 · mediana 5,6 · máx 9,0 · 4K blocos 08:25–08:32, 6,8 · 11,1 · 16,2 · Real Oil 1440 08:32–08:33, 14–18 · 1080p branco (7 pincéis, o prazo) 08:33–08:37, 2,5 · 5,5 · 17,7. A carga de cada lançamento está no `.meta` (campo `carga` do jsonl).
 - Cru: [`antes/b08b/`](antes/b08b/) (`matriz.jsonl`, `quadros/`, `oleo_1440_fps.txt`, `carga.txt`, `foto_4k_branco.png`, `foto_4k_blocos.png`).
-- **Trocar de camada: continua fora** (B08.1): o XTEST não tem tecla para isso; exige cliques por coordenadas no cartão
-  Layers (aba `Layers` do cartão BRUSH, ver a foto) — uma ronda própria com a foto de cada passo.
+- ~~**Trocar de camada: continua fora**~~ — feito na continuação (abaixo): cliques XTEST no cartão Layers, foto por passo.
 
 | pincel | painel | tela | fundo | base ms | toque ms | traço p50/p95 ms | soltar ms | +1 s máx ms | Ctrl+Z ms | parado CPU % (antes/depois) | Wet img/s |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -231,3 +237,132 @@ O mesmo desabamento da 2880, mais lento: 7,2 → 1,0 img/s, a óptica 95 → 642
    está sujo. Mesmo assim o Wet paga o Ctrl+Z (187–194 ms) e o Impasto o toque (162 ms).
 7. **Parado: 33–69 % de um núcleo em TODOS os fundos e tamanhos** — não depende do papel nem da tela (B23).
 8. **Real Oil a 1440 desaba como a 2880:** 7,2 → 1,0 img/s (óptica 95 → 642 ms por imagem).
+
+## B08b continuação — controlo da régua, trocar de camada, 1080p blocos, 1080p branco completo, 4K blocos repetido
+
+- **Binário:** o mesmo de árvore LIMPA, reconstruído (o do B08b fora apagado): `git archive cd02ac77ef` + só o
+  `composite_smoke.rs` de `cf80f3574d`, `CARGO_TARGET_DIR=target/b08b-limpo`, `--profile smoke`, `STRIP=none` (08:42,
+  2 min 26 s). Placa: a Radeon 610M (RADV, WSI sw); nenhuma `.placa` com `nvidia`.
+- **Roteiro novo** (no fim de cada lançamento, depois do parado 3 s):
+  - **CONTROLO da régua:** o app parado 250 ms por `SIGSTOP`/`SIGCONT` (o processo é do roteiro). O maior intervalo
+    de quadro do segundo seguinte TEM de ler 250 a 250 + 2 quadros (283 ms); se não, a régua não vê uma trava e a linha
+    vale zero (`mede_pen_up_4k.py` escreve `✗ régua`).
+  - **Trocar de camada** (cartão BRUSH, janela 1600×1000 em 0,0; coordenadas por `CAMADA_*`): aba `Layers` (1510,159) ·
+    `+` New layer (1332,233; a nova fica ativa) · a de baixo, `Layer 1` (1430,397) · a de cima, `Layer 2` (1430,306) ·
+    Duplicate layer (1389,233) · Delete layer (1417,233). Cada coluna = o maior intervalo de quadro no segundo depois do
+    clique. Foto por passo conferida (as de `omissão` Digital 4K papel e 1080p blocos em `antes/b08b/continuacao/`):
+    o `+` cria `Layer 2`, o clique ativa a camada certa, Duplicate cria `Layer 2 copy`, Delete apaga-a.
+    (Duplicar/apagar entraram a meio do bloco: o grupo 4K papel não os tem.)
+- **Carga** (`carga.txt`; a de cada lançamento no jsonl): 4K papel 08:44–08:47, load 1 min 8,5–47 ⚠️ · 1080p branco
+  08:47–08:52, 9–50 ⚠️ · 1080p blocos 08:52–09:02, mediana 1,6 (0,8–9,5) · 4K blocos 09:02–09:12, mediana 1,0 (0,7–1,8) — a base LIMPA.
+  Acima de `load ~5` leia como TECTO.
+- Cru: [`antes/b08b/continuacao/`](antes/b08b/continuacao/) (`matriz.jsonl`, `quadros/`, `carga.txt`, fotos dos passos).
+
+| pincel | painel | tela | fundo | base ms | toque ms | traço p50/p95 ms | soltar ms | +1 s máx ms | Ctrl+Z ms | parado CPU % (antes/depois) | Wet img/s |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Chalk | digital | 1920x1080 | blocos | 11.0 | 17.2 | 11.3 / 11.9 | 11.5 | 12.2 | 12.0 | **51.6 ✗** / **51.3 ✗** | — |
+| Chalk | digital | 1920x1080 | branco | 11.2 | 21.9 | 11.4 / 12.1 | 12.7 | 21.1 | 18.9 | **56.6 ✗** / **53.3 ✗** | — |
+| Chalk | digital | 3840x2160 | blocos | 11.0 | 29.0 | 11.3 / 12.8 | 11.9 | 17.0 | 13.9 | **51.6 ✗** / **51.6 ✗** | — |
+| Composite Brush | digital | 1920x1080 | blocos | 10.1 | 23.9 | 11.3 / 14.7 | 14.1 | 14.1 | 13.0 | **50.6 ✗** / **50.3 ✗** | — |
+| Composite Brush | digital | 1920x1080 | branco | 13.9 | **33.9 ✗** | 18.2 / **34.8 ✗** | 26.9 | 28.9 | 30.1 | **58.6 ✗** / **58.0 ✗** | — |
+| Composite Brush | digital | 3840x2160 | blocos | 10.0 | **41.8 ✗** | 11.2 / 14.7 | 15.0 | 15.0 | 17.9 | **50.3 ✗** / **50.3 ✗** | — |
+| Crayon | digital | 1920x1080 | blocos | 11.0 | 18.0 | 11.2 / 11.7 | 11.7 | 12.2 | 12.0 | **51.3 ✗** / **51.3 ✗** | — |
+| Crayon | digital | 1920x1080 | branco | 12.0 | 23.0 | 13.0 / 15.2 | 12.9 | 23.0 | 22.0 | **61.6 ✗** / **60.0 ✗** | — |
+| Crayon | digital | 3840x2160 | blocos | 11.0 | 29.0 | 10.9 / 11.8 | 12.4 | 13.9 | 17.9 | **52.6 ✗** / **51.0 ✗** | — |
+| Express Oil | wet | 1920x1080 | blocos | 10.9 | 22.9 | 13.1 / 14.8 | 16.0 | 16.0 | **40.8 ✗** | **50.6 ✗** / **50.6 ✗** | 39.7 |
+| Express Oil | wet | 3840x2160 | blocos | 11.0 | **46.0 ✗** | 13.4 / 14.9 | 15.7 | 20.8 | **69.8 ✗** | **51.3 ✗** / **51.3 ✗** | 39.3 |
+| Filbert | wet | 1920x1080 | blocos | 11.0 | 27.0 | 20.0 / **23.1 ✗** | 23.1 | 23.1 | **40.9 ✗** | **52.3 ✗** / **51.6 ✗** | 40.1 |
+| Filbert | wet | 3840x2160 | blocos | 11.0 | **53.0 ✗** | 20.8 / **23.2 ✗** | 23.2 | 23.2 | **70.2 ✗** | **54.9 ✗** / **53.6 ✗** | 39.9 |
+| Finger Tip | digital | 1920x1080 | blocos | 11.1 | 13.1 | 10.0 / 11.1 | 10.8 | 11.9 | 12.1 | **58.6 ✗** / **51.3 ✗** | — |
+| Finger Tip | digital | 1920x1080 | branco | 10.0 | 22.0 | 11.9 / 13.1 | 12.1 | 21.0 | 20.0 | **51.3 ✗** / **58.3 ✗** | — |
+| Finger Tip | digital | 3840x2160 | blocos | 10.0 | 18.7 | 10.2 / 10.7 | 10.8 | 16.9 | 12.4 | **49.6 ✗** / **52.3 ✗** | — |
+| Pastel | digital | 1920x1080 | blocos | 11.0 | 18.1 | 11.2 / 12.0 | 11.9 | 12.1 | 12.0 | **50.9 ✗** / **51.3 ✗** | — |
+| Pastel | digital | 1920x1080 | branco | 15.1 | 21.9 | 12.3 / **19.8 ✗** | 13.1 | 23.0 | 22.0 | **67.6 ✗** / **58.0 ✗** | — |
+| Pastel | digital | 3840x2160 | blocos | 10.9 | 29.1 | 11.0 / 12.1 | 11.5 | 13.2 | 17.8 | **50.6 ✗** / **50.3 ✗** | — |
+| Round Mixing | digital | 1920x1080 | blocos | 11.0 | 14.9 | 10.4 / 11.2 | 10.8 | 12.1 | 12.2 | **53.6 ✗** / **54.9 ✗** | — |
+| Round Mixing | digital | 1920x1080 | branco | 18.6 | **36.3 ✗** | 18.8 / **84.1 ✗** | **177.4 ✗** | **177.4 ✗** | 31.4 | **59.8 ✗** / **59.5 ✗** | — |
+| Round Mixing | digital | 3840x2160 | blocos | 11.0 | 20.9 | 10.3 / 10.9 | 10.9 | 17.0 | 14.1 | **54.9 ✗** / **54.6 ✗** | — |
+| Watercolor Basic | water | 1920x1080 | blocos | 10.4 | 25.8 | 13.9 / 14.3 | 20.5 | 20.5 | 17.8 | **51.0 ✗** / **50.3 ✗** | — |
+| Watercolor Basic | water | 3840x2160 | blocos | 10.2 | **41.2 ✗** | 19.8 / **21.0 ✗** | 26.1 | 26.1 | **38.0 ✗** | **51.0 ✗** / **50.6 ✗** | — |
+| Wet Liner | wet | 1920x1080 | blocos | 11.0 | 23.1 | 11.0 / 12.1 | 14.9 | 14.9 | **40.0 ✗** | **51.0 ✗** / **50.3 ✗** | 39.9 |
+| Wet Liner | wet | 1920x1080 | branco | 12.0 | **35.0 ✗** | 13.0 / 14.1 | 15.2 | 21.2 | **78.2 ✗** | **59.3 ✗** / **59.3 ✗** | 39.4 |
+| Wet Liner | wet | 3840x2160 | blocos | 10.9 | **47.1 ✗** | 11.8 / 12.5 | 13.2 | 19.9 | **63.7 ✗** | **50.6 ✗** / **50.3 ✗** | 39.4 |
+| Wet Wash Mix | digital | 1920x1080 | blocos | 11.0 | 15.0 | 12.1 / 12.8 | 12.9 | 12.9 | 12.1 | **51.3 ✗** / **50.6 ✗** | — |
+| Wet Wash Mix | digital | 1920x1080 | branco | 22.1 | **85.9 ✗** | 36.1 / **48.1 ✗** | **39.0 ✗** | **55.3 ✗** | 24.9 | **59.1 ✗** / **66.0 ✗** | — |
+| Wet Wash Mix | digital | 3840x2160 | blocos | 11.0 | 20.8 | 12.0 / 12.9 | 12.2 | 13.0 | 14.0 | **50.9 ✗** / **50.9 ✗** | — |
+| omissão | digital | 1920x1080 | blocos | 12.0 | 19.1 | 13.2 / 14.9 | 13.9 | 15.3 | 18.0 | **57.6 ✗** / **58.3 ✗** | — |
+| omissão | digital | 3840x2160 | blocos | 11.0 | 18.2 | 10.1 / 10.4 | 10.8 | 17.7 | 14.9 | **54.6 ✗** / **50.3 ✗** | — |
+| omissão | digital | 3840x2160 | papel | 10.9 | **98.7 ✗** | 23.1 / **24.1 ✗** | 23.5 | **100.1 ✗** | **109.4 ✗** | **52.6 ✗** / **51.9 ✗** | — |
+| omissão | impasto | 1920x1080 | blocos | 11.0 | 24.9 | 11.6 / 12.0 | 15.7 | 19.9 | 19.8 | **56.9 ✗** / **63.6 ✗** | — |
+| omissão | impasto | 3840x2160 | blocos | 11.1 | **62.4 ✗** | 18.0 / **18.5 ✗** | 24.3 | **43.0 ✗** | **33.5 ✗** | **56.6 ✗** / **49.3 ✗** | — |
+| omissão | impasto | 3840x2160 | papel | 10.8 | **101.3 ✗** | 23.0 / **23.9 ✗** | 30.1 | **103.9 ✗** | **99.1 ✗** | **51.0 ✗** / **59.6 ✗** | — |
+| omissão | water | 1920x1080 | blocos | 11.8 | 26.9 | 14.1 / 14.9 | 21.2 | 21.2 | 20.0 | **56.9 ✗** / **59.3 ✗** | — |
+| omissão | water | 3840x2160 | blocos | 10.8 | **41.9 ✗** | 20.2 / **21.9 ✗** | 28.0 | 28.0 | **38.4 ✗** | **54.3 ✗** / **57.0 ✗** | — |
+| omissão | water | 3840x2160 | papel | 15.0 | **321.4 ✗** | 28.1 / **56.7 ✗** | **47.2 ✗** | **197.6 ✗** | **193.4 ✗** | **55.9 ✗** / **51.3 ✗** | — |
+| omissão | wet | 1920x1080 | blocos | 12.0 | 19.0 | 14.0 / 15.0 | 15.7 | 15.7 | **37.9 ✗** | **57.6 ✗** / **65.9 ✗** | 39.6 |
+| omissão | wet | 3840x2160 | blocos | 10.9 | 26.3 | 10.9 / 12.3 | 17.9 | 17.9 | **64.1 ✗** | **50.6 ✗** / **50.6 ✗** | 38.9 |
+| omissão | wet | 3840x2160 | papel | 19.1 | **55.4 ✗** | 36.2 / **54.8 ✗** | **38.2 ✗** | **46.3 ✗** | **352.0 ✗** | **67.7 ✗** / **84.7 ✗** | 25.9 |
+
+| pincel | painel | tela | fundo | controlo sem/com trava de 250 ms | aba Layers ms | + camada ms | trocar ms | voltar ms | duplicar ms | apagar ms |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Chalk | digital | 1920x1080 | blocos | **11.2 ✗ régua** / 262.5 | 11.0 | 18.7 | 17.1 | 17.8 | 16.1 | 15.9 |
+| Chalk | digital | 1920x1080 | branco | **13.0 ✗ régua** / 258.2 | 11.1 | 18.0 | 19.8 | 20.9 | 21.2 | 19.0 |
+| Chalk | digital | 3840x2160 | blocos | **11.1 ✗ régua** / 265.4 | 10.6 | **44.0 ✗** | **41.9 ✗** | **41.2 ✗** | **49.9 ✗** | **42.9 ✗** |
+| Composite Brush | digital | 1920x1080 | blocos | **10.9 ✗ régua** / 257.4 | 10.1 | 18.8 | 17.0 | 16.9 | 19.9 | 15.0 |
+| Composite Brush | digital | 1920x1080 | branco | **13.0 ✗ régua** / 257.1 | 10.8 | 17.1 | 20.0 | 19.2 | 19.9 | 17.9 |
+| Composite Brush | digital | 3840x2160 | blocos | **12.0 ✗ régua** / 265.1 | 10.9 | **45.2 ✗** | **47.0 ✗** | **46.0 ✗** | **53.1 ✗** | **46.0 ✗** |
+| Crayon | digital | 1920x1080 | blocos | **13.0 ✗ régua** / 263.3 | 11.2 | 18.0 | 17.8 | 17.1 | 17.8 | 16.0 |
+| Crayon | digital | 1920x1080 | branco | **13.7 ✗ régua** / 263.1 | 23.1 | 21.0 | 24.5 | 20.8 | 20.8 | 28.6 |
+| Crayon | digital | 3840x2160 | blocos | **11.9 ✗ régua** / 259.3 | 12.0 | **43.9 ✗** | **47.0 ✗** | **43.9 ✗** | **50.0 ✗** | **44.2 ✗** |
+| Express Oil | wet | 1920x1080 | blocos | **11.2 ✗ régua** / 259.4 | 11.1 | **37.7 ✗** | 18.4 | 23.5 | 17.8 | 15.9 |
+| Express Oil | wet | 3840x2160 | blocos | **11.9 ✗ régua** / 265.5 | 12.0 | **85.8 ✗** | **44.8 ✗** | **50.1 ✗** | **47.9 ✗** | **43.2 ✗** |
+| Filbert | wet | 1920x1080 | blocos | **11.9 ✗ régua** / 259.3 | 12.1 | **35.3 ✗** | 16.3 | 23.3 | 16.9 | 16.0 |
+| Filbert | wet | 3840x2160 | blocos | **12.9 ✗ régua** / 261.4 | 12.7 | **93.7 ✗** | **43.8 ✗** | **52.3 ✗** | **48.0 ✗** | **46.0 ✗** |
+| Finger Tip | digital | 1920x1080 | blocos | **12.1 ✗ régua** / 259.7 | 11.0 | 18.0 | 17.2 | 17.9 | 16.1 | 16.8 |
+| Finger Tip | digital | 1920x1080 | branco | **49.8 ✗ régua** / 266.3 | 14.0 | 26.8 | 26.0 | **154.0 ✗** | **40.0 ✗** | 23.1 |
+| Finger Tip | digital | 3840x2160 | blocos | **11.9 ✗ régua** / 257.4 | 11.0 | **45.9 ✗** | **44.0 ✗** | **43.9 ✗** | **46.8 ✗** | **43.8 ✗** |
+| Pastel | digital | 1920x1080 | blocos | **11.1 ✗ régua** / 264.4 | 11.0 | 18.0 | 17.0 | 17.1 | 16.9 | 15.8 |
+| Pastel | digital | 1920x1080 | branco | **13.0 ✗ régua** / 263.4 | 13.1 | 19.4 | 21.0 | 20.0 | 23.1 | 20.2 |
+| Pastel | digital | 3840x2160 | blocos | **12.0 ✗ régua** / 265.4 | 10.7 | **44.0 ✗** | **43.0 ✗** | **43.9 ✗** | **51.9 ✗** | **44.0 ✗** |
+| Round Mixing | digital | 1920x1080 | blocos | **11.7 ✗ régua** / 265.5 | 10.0 | 18.9 | 18.0 | 17.1 | 17.9 | 15.9 |
+| Round Mixing | digital | 1920x1080 | branco | **32.0 ✗ régua** / 272.1 | 24.8 | **36.8 ✗** | **57.6 ✗** | **63.9 ✗** | **48.5 ✗** | **37.9 ✗** |
+| Round Mixing | digital | 3840x2160 | blocos | **11.1 ✗ régua** / 264.3 | 10.8 | **44.8 ✗** | **42.9 ✗** | **43.0 ✗** | **49.2 ✗** | **45.9 ✗** |
+| Watercolor Basic | water | 1920x1080 | blocos | **11.1 ✗ régua** / 260.5 | 10.9 | 18.9 | 18.0 | 15.0 | 17.0 | 16.0 |
+| Watercolor Basic | water | 3840x2160 | blocos | **11.0 ✗ régua** / 263.2 | 11.2 | **43.1 ✗** | **45.9 ✗** | **44.0 ✗** | **47.9 ✗** | **44.9 ✗** |
+| Wet Liner | wet | 1920x1080 | blocos | **11.1 ✗ régua** / 258.9 | 10.8 | 32.1 | 17.9 | 22.6 | 21.8 | 18.0 |
+| Wet Liner | wet | 1920x1080 | branco | **14.9 ✗ régua** / 261.9 | 11.2 | 32.0 | 22.1 | 23.9 | 23.1 | 19.9 |
+| Wet Liner | wet | 3840x2160 | blocos | **11.1 ✗ régua** / 265.4 | 11.0 | **83.6 ✗** | **44.0 ✗** | **56.4 ✗** | **46.9 ✗** | **42.8 ✗** |
+| Wet Wash Mix | digital | 1920x1080 | blocos | **11.1 ✗ régua** / 260.5 | 12.0 | 18.7 | 18.1 | 17.9 | 17.0 | 14.9 |
+| Wet Wash Mix | digital | 1920x1080 | branco | **15.0 ✗ régua** / 259.5 | 14.1 | **42.8 ✗** | 19.9 | 18.1 | 22.9 | **36.5 ✗** |
+| Wet Wash Mix | digital | 3840x2160 | blocos | **11.2 ✗ régua** / 264.5 | 11.0 | **42.2 ✗** | **43.9 ✗** | **42.9 ✗** | **47.1 ✗** | **42.1 ✗** |
+| omissão | digital | 1920x1080 | blocos | **33.8 ✗ régua** / 264.6 | 32.0 | **35.9 ✗** | **43.1 ✗** | 23.9 | 30.8 | 31.3 |
+| omissão | digital | 3840x2160 | blocos | **10.1 ✗ régua** / 257.2 | 11.0 | **44.9 ✗** | **41.0 ✗** | **42.3 ✗** | **49.8 ✗** | **44.0 ✗** |
+| omissão | digital | 3840x2160 | papel | **13.0 ✗ régua** / 259.4 | 13.1 | **104.2 ✗** | **108.9 ✗** | **102.2 ✗** | — | — |
+| omissão | impasto | 1920x1080 | blocos | **23.9 ✗ régua** / 267.9 | 12.0 | 18.8 | 18.0 | 17.1 | 16.9 | 14.9 |
+| omissão | impasto | 3840x2160 | blocos | **11.0 ✗ régua** / 257.3 | 11.0 | **44.9 ✗** | **44.0 ✗** | **44.1 ✗** | **51.0 ✗** | **45.9 ✗** |
+| omissão | impasto | 3840x2160 | papel | **14.8 ✗ régua** / 265.5 | 13.0 | **173.4 ✗** | **212.0 ✗** | **220.8 ✗** | — | — |
+| omissão | water | 1920x1080 | blocos | **14.2 ✗ régua** / 260.2 | 13.0 | **45.9 ✗** | **52.9 ✗** | 17.9 | 23.0 | 26.2 |
+| omissão | water | 3840x2160 | blocos | **11.9 ✗ régua** / 258.0 | 11.1 | **45.0 ✗** | **49.0 ✗** | **47.8 ✗** | **54.9 ✗** | **47.0 ✗** |
+| omissão | water | 3840x2160 | papel | **66.0 ✗ régua** / 270.4 | **49.7 ✗** | **209.9 ✗** | **203.2 ✗** | **213.2 ✗** | — | — |
+| omissão | wet | 1920x1080 | blocos | **24.5 ✗ régua** / 261.8 | 26.8 | **33.6 ✗** | 17.3 | 24.0 | 18.0 | 16.0 |
+| omissão | wet | 3840x2160 | blocos | **11.1 ✗ régua** / 261.5 | 12.1 | **65.0 ✗** | **45.9 ✗** | **44.6 ✗** | **34.9 ✗** | 27.0 |
+| omissão | wet | 3840x2160 | papel | **24.3 ✗ régua** / 267.1 | 21.0 | **241.0 ✗** | **422.5 ✗** | **207.8 ✗** | — | — |
+
+### Leitura (o que a continuação acrescenta)
+
+1. **A régua vê uma trava conhecida:** os 250 ms de `SIGSTOP` leem 257–272 ms em TODOS os 42 lançamentos (≤ 283);
+   o mesmo critério no segundo antes, sem trava, lê 10–66 ms e reprova (`✗ régua`): a régua distingue.
+2. **Trocar de camada a 4K paga o mesmo quadro fixo do toque/+1 s/Ctrl+Z:** com papel ~100–110 ms (Digital, load
+   8–13; `+`, trocar, voltar); sem papel (4K blocos, load ~1) **41–50 ms** em todos os pincéis e em todos os cliques
+   (`+`, trocar, voltar, duplicar, apagar) — a metade «tela» do B08b, sem a do papel. O Wet paga mais no `+` (65–94).
+   A 1080p (branco ou blocos) 15–27 ms: passa. Impasto 4K papel 173–221 e Water/Wet 200–420 com load 30–47: TECTO.
+3. **4K blocos repetido com load ~1 (contra 11 no B08b):** traço Digital passa (p95 10–15 ms); toque 18–29 ms nos
+   Digital; Composite 41,8, Express Oil 46, Wet Liner 47, Filbert 53, Water 41–42 e Impasto **62** reprovam; o
+   **Ctrl+Z do Wet 64–70 ms** (o 187–194 do B08b era a carga); o do Water 38 e o do Impasto 33,5. Os 100+ ms do B08b
+   4K blocos eram carga.
+4. **1080p blocos (load ~1,6): só o Wet reprova** — Ctrl+Z 38–41 ms (Express Oil, Filbert, Wet Liner, Wet omissão) e o
+   traço do Filbert (p95 23,1). O resto passa em toque, traço, soltar e +1 s.
+5. **1080p branco, os 8 restantes:** Chalk, Crayon, Finger Tip, Pastel passam (toque 22–23); Round Mixing (traço p95
+   84, soltar 177), Wet Wash Mix (toque 86) e Composite reprovam, mas com load 9–50: TECTO, por repetir.
+6. **Parado: 50–67 % de um núcleo** em todos os 42 — o mesmo do B08b (B23).
+7. Fora ainda: slider de luz, abrir doc 4K, grupo de camadas, os 10 mais lentos (dependem do B08.3) e o Oil Wash (B36).

@@ -6,6 +6,8 @@ import collections
 import subprocess
 import sys
 
+CAMADA = ("camada_aba", "camada_mais", "camada_troca", "camada_volta", "camada_dup", "camada_apaga")
+
 
 def matriz(pasta, saida=None):
     """`--matriz <pasta> [saida]`: a tabela da matriz do .sh (uma linha por lançamento) e, com `saida`, o jsonl e os
@@ -81,6 +83,12 @@ def matriz(pasta, saida=None):
         if perto:
             a = min(perto, key=lambda a: abs(a[0] - up - 3_000_000_000))
             r["agua_hz"], r["agua_janela_s"] = a[1], a[2]
+        # B08.1: o controlo (SIGSTOP de 250 ms) e trocar de camada (o maior intervalo no segundo depois de cada clique).
+        for k in ("controlo",) + CAMADA:
+            if k in marcas:
+                r[k] = round(max(janela(marcas[k][0], marcas[k][0] + 1_000_000_000), default=0), 1)
+        if "controlo" in marcas:  # o mesmo critério no segundo ANTES (sem trava): tem de reprovar, senão não distingue
+            r["controlo_sem"] = round(max(janela(marcas["controlo"][0] - 1_000_000_000, marcas["controlo"][0]), default=0), 1)
         linhas.append(r)
         if saida:
             os.makedirs(os.path.join(saida, "quadros"), exist_ok=True)
@@ -114,6 +122,26 @@ def matriz(pasta, saida=None):
             f"| {marca(r['parado_cpu'], r['parado_cpu'] <= 5)} / {marca(r['parado_cpu_depois'], r['parado_cpu_depois'] <= 5)} "
             f"| {'—' if wet is None else marca(wet, wet >= 10)} |"
         )
+    # A régua só vale se viu o controlo: 250 ms de SIGSTOP têm de aparecer como um intervalo de 250 ms a 250 + 2 quadros.
+    com = [r for r in linhas if "controlo" in r]
+    if com:
+        print("\n| pincel | painel | tela | fundo | controlo sem/com trava de 250 ms | aba Layers ms | + camada ms "
+              "| trocar ms | voltar ms | duplicar ms | apagar ms |")
+        print("|---|---|---|---|---|---|---|---|---|---|---|")
+
+        def regua(c):
+            return c if 250 <= c <= 250 + 2 * lim_extra else f"**{c} ✗ régua**"
+
+        for r in com:
+            print(
+                f"| {r['pincel']} | {r['painel']} | {r['tela']} | {r['fundo']} "
+                f"| {regua(r['controlo_sem'])} / {regua(r['controlo'])} "
+                + " ".join(
+                    f"| {marca(r[k], r[k] <= lim_extra) if k in r else '—'}"
+                    for k in CAMADA
+                )
+                + " |"
+            )
 
 
 def perfil(base, top=15):

@@ -20,6 +20,17 @@ use ph2d_input::{ActionId, Binding};
 const DASHES: usize = 24;
 const SIDES: usize = 64;
 
+/// As tintas do círculo (maquete C3): o curso todo escuro, o disco Dead num cinza MAIS CLARO, o ponto ao vivo e o
+/// raio até ele no destaque da aba.
+pub const OUTER_INK: ColorToken = ColorToken::KanbanCard;
+pub const DEAD_INK: ColorToken = ColorToken::KanbanCardRaised;
+pub const DOT_INK: ColorToken = ColorToken::InputMapHighlight;
+
+/// A altura do bloco de texto ao lado do círculo: o título, os números Dead/Press e a leitura.
+fn block_h() -> f32 {
+    line_h(m::LABEL_PX) + line_h(m::LABEL_PX) + ROW + GAP + line_h(m::VALUE_PX)
+}
+
 /// A acção da manche: a aberta na vista B se usa manche, senão a primeira que usa.
 pub(crate) fn stick_action(doc: &InputMapDoc) -> Option<ActionId> {
     let map = doc.snap.read_map();
@@ -38,7 +49,7 @@ fn disc(w: f32) -> f32 {
 pub(super) fn stick_h(doc: &mut InputMapDoc, ts: &mut TextSystem, w: f32) -> f32 {
     let iw = inner_w(w) - m::SEG_INSET * 2.0;
     let body = if stick_action(doc).is_some() {
-        disc(w) + GAP + para_h(ts, tr("input_map_try.stick_caption"), m::LABEL_PX, iw)
+        disc(w).max(block_h()) + GAP + para_h(ts, tr("input_map_try.stick_caption"), m::LABEL_PX, iw)
     } else {
         para_h(ts, tr("input_map_try.no_stick"), m::VALUE_PX, inner_w(w))
     };
@@ -91,20 +102,14 @@ pub(super) fn stick(
             })
             .collect()
     };
-    fill_circle(scene, cx, cy, rad, ink.color(ColorToken::KanbanCard));
+    fill_circle(scene, cx, cy, rad, ink.color(OUTER_INK));
     stroke_polyline(
         scene,
         &ring(1.0),
         m::FIELD_BORDER,
         ink.color(ColorToken::Text2),
     );
-    fill_circle(
-        scene,
-        cx,
-        cy,
-        rad * a.dead_zone,
-        ink.color(ColorToken::CardField),
-    );
+    fill_circle(scene, cx, cy, rad * a.dead_zone, ink.color(DEAD_INK));
     let pr = ring(a.press_point);
     for seg in pr.chunks(SIDES / DASHES).step_by(2) {
         stroke_polyline(
@@ -116,7 +121,7 @@ pub(super) fn stick(
     }
     let (px, py) = stick_xy(doc, &a);
     let raw = super::pad_raw(&doc.tryit.live_pad, &a);
-    let color = ink.color(crate::palette::of_action(a.id));
+    let color = ink.color(DOT_INK);
     stroke_polyline(
         scene,
         &[(cx, cy), (cx + px * rad, cy + py * rad)],
@@ -126,6 +131,9 @@ pub(super) fn stick(
     fill_circle(scene, cx + px * rad, cy + py * rad, m::SEG_PAD * 2.0, color);
     let rx = x + d + m::CARD_GAP;
     let rw = (x + w - rx).max(0.0);
+    // O bloco de texto ao centro da altura do círculo (maquete C3).
+    let disc_top = y;
+    let y = disc_top + ((d - block_h()) * 0.5).max(0.0);
     let half = a
         .bindings
         .iter()
@@ -216,7 +224,7 @@ pub(super) fn stick(
         doc.census.runs.push((t.clone(), *tok, *bold));
         cx += w;
     }
-    let cy2 = y + d + GAP;
+    let cy2 = disc_top + d.max(block_h()) + GAP;
     let cap = tr("input_map_try.stick_caption");
     let ch = para_h(ts, cap, m::LABEL_PX, w - m::SEG_INSET * 2.0);
     fill_rounded_rect(

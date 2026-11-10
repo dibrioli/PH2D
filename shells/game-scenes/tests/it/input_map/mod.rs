@@ -19,6 +19,7 @@ mod teclado_r9b;
 mod try_it;
 mod try_it_censo;
 mod try_it_r9c;
+mod try_it_r10b;
 
 use ph2d_a11y::NodeId;
 use ph2d_app_input_map::{InputMapTab, TAB_ID, View};

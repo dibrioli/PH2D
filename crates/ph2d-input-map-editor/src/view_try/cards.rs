@@ -47,8 +47,16 @@ pub(super) fn inner_w(w: f32) -> f32 {
     (w - PAD * 2.0).max(0.0)
 }
 
+/// O ladrilho da receita (maquete C1): compacto, ~160 px, encostado à esquerda; a fila parte-se no estreito.
+const RECIPE_TILE_W: f32 = ROW * 5.75;
+
 fn recipe_cols(w: f32) -> usize {
-    if inner_w(w) / 4.0 >= ROW * 6.0 { 4 } else { 2 }
+    let fit = ((inner_w(w) + m::FIELD_GAP) / (RECIPE_TILE_W + m::FIELD_GAP)) as usize;
+    fit.clamp(1, Recipe::ALL.len())
+}
+
+fn recipe_rows(w: f32) -> usize {
+    Recipe::ALL.len().div_ceil(recipe_cols(w))
 }
 
 fn names_of(r: Recipe) -> String {
@@ -61,8 +69,7 @@ fn names_of(r: Recipe) -> String {
 }
 
 fn tile_w(w: f32) -> f32 {
-    let n = recipe_cols(w) as f32;
-    (inner_w(w) - m::FIELD_GAP * (n - 1.0)) / n
+    RECIPE_TILE_W.min(inner_w(w))
 }
 
 fn tile_h(ts: &mut TextSystem, w: f32) -> f32 {
@@ -88,7 +95,7 @@ fn confirm_text(doc: &InputMapDoc, r: Recipe) -> String {
 }
 
 pub(super) fn recipes_h(doc: &mut InputMapDoc, ts: &mut TextSystem, w: f32) -> f32 {
-    let rows = (Recipe::ALL.len() / recipe_cols(w)) as f32;
+    let rows = recipe_rows(w) as f32;
     let iw = inner_w(w) - m::SEG_INSET * 2.0;
     let cap = para_h(ts, tr("input_map_try.recipe_caption"), m::LABEL_PX, iw);
     let confirm = doc.tryit.confirm.map_or(0.0, |r| {
@@ -154,11 +161,11 @@ pub(super) fn recipes(
             &names_of(*rc),
             (ix, ty + line_h(m::VALUE_PX), iw),
             m::LABEL_PX,
-            ink.color(ColorToken::Text2),
+            ink.color(ColorToken::CardLabel),
         );
         target(doc, TryHit::Recipe(*rc), tile);
     }
-    y += (th + GAP) * (Recipe::ALL.len() / cols) as f32;
+    y += (th + GAP) * recipe_rows(r.w) as f32;
     if let Some(rc) = doc.tryit.confirm {
         let q = confirm_text(doc, rc);
         y = para(
@@ -347,8 +354,9 @@ pub(super) fn live(
         ink.color(ColorToken::KanbanCard),
     );
     let held = doc.tryit.held_keys();
-    let fill = crate::view_keyboard::keys::Lit::Fill;
-    crate::view_keyboard::keys::paint_keys(doc, draw, scene, ts, ink, fill, &|k| held.contains(&k));
+    use crate::view_keyboard::keys::{KeysAlign, Lit, paint_keys};
+    let style = (Lit::Fill, KeysAlign::Left);
+    paint_keys(doc, draw, scene, ts, ink, style, &|k| held.contains(&k));
     y += dh + GAP;
     let cols = bar_cols(r.w);
     let cw = (w - m::FIELD_GAP * (cols as f32 - 1.0)) / cols as f32;

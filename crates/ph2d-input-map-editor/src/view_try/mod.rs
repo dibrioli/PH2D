@@ -4,7 +4,7 @@
 mod cards;
 mod controls;
 pub mod state;
-mod stick;
+pub mod stick;
 
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::doc_surface::KeyInput;
@@ -370,14 +370,15 @@ fn scrollbar(doc: &InputMapDoc, view: Rect, total: f32, scene: &mut VectorScene,
 impl InputMapDoc {
     /// ⭐ O «Forget them» com o Play a correr chega à SESSÃO: o mapa que o jogo lê volta ao do projecto e a próxima
     /// troca do jogador já não regrava as esquecidas. A shell chama-a depois do `frame` da família (ela só vê a
-    /// sessão por `&`). Fora do Play, nada: o ficheiro já saiu.
+    /// sessão por `&`). A tela do jogo aberta continua aberta e o relógio parado. Fora do Play, nada: o ficheiro
+    /// já saiu.
     pub fn forget_reaches(
         &mut self,
         session: &mut ph2d_player_controls::PlaySession,
         project: &ph2d_input::InputMap,
     ) {
-        if std::mem::take(&mut self.tryit.forget_session) && session.running() {
-            session.start_with(project, ph2d_input::PlayerKeys::new(), self.player_file());
+        if std::mem::take(&mut self.tryit.forget_session) {
+            session.forget(project);
         }
     }
 }

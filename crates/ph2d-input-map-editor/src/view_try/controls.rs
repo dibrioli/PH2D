@@ -1,4 +1,6 @@
-//! Controls (C4): a prévia da tela do jogador pela MESMA pintura do Play, as caixas e o «Forget them».
+//! Controls (maquete C4): a tela do jogo emoldurada ao centro no TOPO, pintada pela prévia do painel do Play; por
+//! baixo «Players can change keys», as caixas do «Shown in the game» em pílulas e, discretos, o «Opens with» e o
+//! «Forget them».
 
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::widget::card_ink::CardInk;
@@ -16,7 +18,7 @@ use ph2d_editor_core::paint::{fill_rounded_rect, fill_rounded_rect_radii, stroke
 use ph2d_editor_core::panel::cards::{CardCtx, Widget};
 use ph2d_editor_core::widget::CheckboxValue;
 use ph2d_editor_core::widget::key_mark::Rotulo;
-use ph2d_input::ActionId;
+use ph2d_input::{ActionId, PlayerControls};
 
 use super::state::TryHit;
 use super::target;
@@ -24,20 +26,16 @@ use super::target;
 /// A tela do jogo da prévia (maquete C4): 16:9, o painel ao centro do céu, a faixa do chão por baixo.
 const SCREEN_W: f32 = ROW * 16.0;
 const SCREEN_H: f32 = SCREEN_W * 9.0 / 16.0;
-/// A coluna dos controlos só fica AO LADO da tela com esta largura; abaixo dela, empilha.
-const SIDE_MIN: f32 = ROW * 14.0;
+/// O texto discreto do pé do cartão («Opens with», a frase do jogador e o «Forget them»).
+const SUBTLE_PX: f32 = m::LABEL_PX;
 
-/// A tela (relativa ao conteúdo) e a coluna dos controlos `(dx, w)`: lado a lado no largo (o cartão inteiro cabe a
-/// 1600×1000), empilhadas no estreito com a tela ao centro.
-fn split(w: f32) -> (Rect, f32, f32) {
+/// O palco (relativo ao conteúdo, largura inteira) e a tela do jogo ao centro dele.
+fn stage(w: f32) -> (Rect, Rect) {
     let iw = inner_w(w);
-    let sw = SCREEN_W.min(iw);
+    let sw = SCREEN_W.min((iw - PAD * 2.0).max(0.0));
     let sh = sw * SCREEN_H / SCREEN_W;
-    if iw >= SCREEN_W + PAD + SIDE_MIN {
-        (Rect::new(0.0, 0.0, sw, sh), sw + PAD, iw - sw - PAD)
-    } else {
-        (Rect::new((iw - sw) * 0.5, 0.0, sw, sh), 0.0, iw)
-    }
+    let st = Rect::new(0.0, 0.0, iw, sh + PAD * 2.0);
+    (st, Rect::new((iw - sw) * 0.5, PAD, sw, sh))
 }
 
 fn chips_rows(doc: &InputMapDoc, ts: &mut TextSystem, col_w: f32) -> usize {
@@ -54,8 +52,9 @@ fn chips_rows(doc: &InputMapDoc, ts: &mut TextSystem, col_w: f32) -> usize {
     rows
 }
 
+/// A pílula de uma caixa: a caixa, o nome e o recuo dos dois lados.
 fn chip_w(ts: &mut TextSystem, name: &str) -> f32 {
-    ts.prefix_width(name, m::VALUE_PX) + ROW + m::SEG_INSET * 2.0
+    ts.prefix_width(name, m::VALUE_PX) + ROW + m::SEG_INSET * 4.0
 }
 
 fn changed_text(n: usize) -> String {
@@ -70,19 +69,14 @@ fn changed_text(n: usize) -> String {
 pub(super) fn controls_h(doc: &mut InputMapDoc, ts: &mut TextSystem, w: f32) -> f32 {
     let refuse = doc.tryit.refused.map_or(0.0, |_| line_h(m::LABEL_PX));
     let forget = if doc.tryit.player_changed > 0 {
-        ROW + GAP
+        ROW
     } else {
         0.0
     };
-    let (screen, dx, col_w) = split(w);
-    let chips = chips_rows(doc, ts, col_w) as f32 * (ROW + GAP);
-    let column = (ROW + GAP) * 2.0 + refuse + line_h(m::LABEL_PX) + chips + forget;
-    let body = if dx > 0.0 {
-        screen.h.max(column)
-    } else {
-        screen.h + GAP + column
-    };
-    m::CARD_PAD_TOP + line_h(m::LABEL_PX) + body + m::CARD_PAD_BOTTOM
+    let (st, _) = stage(w);
+    let chips = chips_rows(doc, ts, inner_w(w)) as f32 * (ROW + GAP);
+    let below = (ROW + GAP) + refuse + line_h(m::LABEL_PX) + chips + ROW + forget;
+    m::CARD_PAD_TOP + line_h(m::LABEL_PX) + st.h + GAP + below + m::CARD_PAD_BOTTOM
 }
 
 /// C·4: a prévia pela MESMA pintura da tela do jogador, as caixas e o «Forget them».
@@ -95,7 +89,7 @@ pub(super) fn controls(
 ) {
     let (x, w) = (r.x + PAD, inner_w(r.w));
     let mut y = r.y + m::CARD_PAD_TOP;
-    let (screen, dx, col_w) = split(r.w);
+    let (st, screen) = stage(r.w);
     let label = Rect::new(x, y, w, line_h(m::LABEL_PX));
     line(
         &mut doc.census,
@@ -107,43 +101,9 @@ pub(super) fn controls(
         ink.color(ColorToken::CardLabel),
     );
     y += line_h(m::LABEL_PX);
-    let back = Rect::new(x + screen.x, y, screen.w, screen.h);
-    // A prévia é uma TELA DE JOGO emoldurada (maquete C4): céu claro, a faixa do chão, o painel ao centro do céu.
-    fill_rounded_rect(
-        scene,
-        back,
-        m::FIELD_RADIUS,
-        ink.color(ColorToken::PreviewSky),
-    );
-    let ground = Rect::new(back.x, back.y + back.h - ROW, back.w, ROW);
-    let rad = m::FIELD_RADIUS;
-    fill_rounded_rect_radii(
-        scene,
-        ground,
-        (0.0, 0.0, rad, rad),
-        ink.color(ColorToken::PreviewGround),
-    );
-    stroke_rounded_rect(
-        scene,
-        back,
-        rad,
-        StrokeToken::Hairline.px(),
-        ink.color(ColorToken::Border),
-    );
-    let rows = ph2d_player_controls::rows(doc.snap.read_map());
-    let shown = ph2d_player_controls::ControlsScreen::default();
-    let sky = Rect::new(back.x, back.y, back.w, back.h - ROW);
-    ph2d_player_controls::paint(sky, &rows, &shown, scene, ts, doc.tryit.theme);
-    y += if dx > 0.0 { 0.0 } else { screen.h + GAP };
-    let (x, w) = (x + dx, col_w);
+    preview(doc, (x, y), (st, screen), scene, ts, ink);
+    y += st.h + GAP;
     let controls = doc.snap.map.controls().clone();
-    let check = |on: bool| {
-        if on {
-            CheckboxValue::Checked
-        } else {
-            CheckboxValue::Unchecked
-        }
-    };
     {
         let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, x, w);
         let id = TryHit::PlayersCanChange.id();
@@ -160,40 +120,6 @@ pub(super) fn controls(
         ) + GAP;
     }
     doc.tryit.targets.push(TryHit::PlayersCanChange);
-    let lead = tr("input_map_try.opens_with");
-    let lw = word(
-        doc,
-        ts,
-        scene,
-        lead,
-        (x, y, w),
-        m::VALUE_PX,
-        ink.color(ColorToken::Text1),
-    );
-    let key_text = if doc.tryit.listening_open_key {
-        tr("input_map_try.press_open_key").to_owned()
-    } else {
-        controls.open_key.label()
-    };
-    let tw = ts.prefix_width(&key_text, m::VALUE_PX);
-    let chip = Rect::new(x + lw + m::SEG_ICON_GAP, y, tw + m::SEG_INSET * 2.0, ROW);
-    let bg = if doc.tryit.listening_open_key {
-        ColorToken::Accent
-    } else {
-        ColorToken::CardField
-    };
-    fill_rounded_rect(scene, chip, m::FIELD_RADIUS, ink.color(bg));
-    line(
-        &mut doc.census,
-        ts,
-        scene,
-        &key_text,
-        Rect::new(chip.x + m::SEG_INSET, y, tw, ROW),
-        m::VALUE_PX,
-        ink.color(ColorToken::Text1),
-    );
-    target(doc, TryHit::OpenKey, chip);
-    y += ROW + GAP;
     if let Some(k) = doc.tryit.refused {
         let esc = ph2d_input::Key::named_in_script("escape").unwrap_or_default();
         let why = tr(if esc.contains(&k) {
@@ -211,6 +137,64 @@ pub(super) fn controls(
             ink.color(ColorToken::Warn),
         );
     }
+    y = shown(doc, (x, y, w), &controls, scene, ts, ink);
+    y = open_key(doc, (x, y, w), &controls, scene, ts, ink);
+    if doc.tryit.player_changed > 0 {
+        forget(doc, (x, y, w), scene, ts, ink);
+    }
+}
+
+fn check(on: bool) -> CheckboxValue {
+    if on {
+        CheckboxValue::Checked
+    } else {
+        CheckboxValue::Unchecked
+    }
+}
+
+/// O palco e a tela do jogo emoldurada, com o painel do Play pela prévia (sem linha escolhida, sem anel de foco).
+fn preview(
+    doc: &InputMapDoc,
+    (x, y): (f32, f32),
+    (st, screen): (Rect, Rect),
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    ink: CardInk,
+) {
+    let rad = m::FIELD_RADIUS;
+    let bed = Rect::new(x + st.x, y + st.y, st.w, st.h);
+    fill_rounded_rect(scene, bed, rad, ink.color(ColorToken::CardField));
+    let back = Rect::new(x + screen.x, y + screen.y, screen.w, screen.h);
+    fill_rounded_rect(scene, back, rad, ink.color(ColorToken::PreviewSky));
+    let ground = Rect::new(back.x, back.y + back.h - ROW, back.w, ROW);
+    fill_rounded_rect_radii(
+        scene,
+        ground,
+        (0.0, 0.0, rad, rad),
+        ink.color(ColorToken::PreviewGround),
+    );
+    stroke_rounded_rect(
+        scene,
+        back,
+        rad,
+        StrokeToken::Hairline.px(),
+        ink.color(ColorToken::Border),
+    );
+    let rows = ph2d_player_controls::rows(doc.snap.read_map());
+    let sky = Rect::new(back.x, back.y, back.w, back.h - ROW);
+    let _ = ph2d_player_controls::paint_preview(sky, &rows, scene, ts, doc.tryit.theme);
+}
+
+/// «Shown in the game» e uma caixa por acção, cada uma numa pílula; devolve o fundo.
+fn shown(
+    doc: &mut InputMapDoc,
+    (x, y, w): (f32, f32, f32),
+    controls: &PlayerControls,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    ink: CardInk,
+) -> f32 {
+    let mut y = y;
     let sl = Rect::new(x, y, w, line_h(m::LABEL_PX));
     line(
         &mut doc.census,
@@ -236,7 +220,11 @@ pub(super) fn controls(
             cx = x;
             y += ROW + GAP;
         }
-        let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, cx, cw);
+        let pill = Rect::new(cx, y, cw, ROW);
+        let bg = ink.color(ColorToken::CardField);
+        fill_rounded_rect(scene, pill, m::FIELD_RADIUS, bg);
+        let (px, pw) = (cx + m::SEG_INSET, cw - m::SEG_INSET * 2.0);
+        let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, px, pw);
         let hid = TryHit::Shown(id).id();
         c.full(
             None,
@@ -251,30 +239,68 @@ pub(super) fn controls(
         doc.tryit.targets.push(TryHit::Shown(id));
         cx += cw + m::FIELD_GAP;
     }
-    y += ROW + GAP;
-    if doc.tryit.player_changed > 0 {
-        let msg = changed_text(doc.tryit.player_changed);
-        let mw = word(
-            doc,
-            ts,
-            scene,
-            &msg,
-            (x, y, w),
-            m::VALUE_PX,
-            ink.color(ColorToken::Text1),
-        );
-        let fx = x + mw + m::SEG_ICON_GAP;
-        let fw = (x + w - fx).max(0.0);
-        let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, fx, fw);
-        c.full(
-            None,
-            Widget::Button {
-                id: TryHit::Forget.id(),
-                text: tr("input_map_try.forget"),
-                primary: false,
-            },
-            y,
-        );
-        doc.tryit.targets.push(TryHit::Forget);
-    }
+    y + ROW + GAP
+}
+
+/// «Opens with F1», discreto; devolve o fundo da linha.
+fn open_key(
+    doc: &mut InputMapDoc,
+    (x, y, w): (f32, f32, f32),
+    controls: &PlayerControls,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    ink: CardInk,
+) -> f32 {
+    let dim = ink.color(ColorToken::CardLabel);
+    let lead = tr("input_map_try.opens_with");
+    let lw = word(doc, ts, scene, lead, (x, y, w), SUBTLE_PX, dim);
+    let key_text = if doc.tryit.listening_open_key {
+        tr("input_map_try.press_open_key").to_owned()
+    } else {
+        controls.open_key.label()
+    };
+    let tw = ts.prefix_width(&key_text, SUBTLE_PX);
+    let ch = line_h(SUBTLE_PX);
+    let chip = Rect::new(
+        x + lw + m::SEG_ICON_GAP,
+        y + (ROW - ch) * 0.5,
+        tw + m::SEG_INSET * 2.0,
+        ch,
+    );
+    let (bg, fg) = if doc.tryit.listening_open_key {
+        (ColorToken::Accent, ColorToken::Text1)
+    } else {
+        (ColorToken::CardField, ColorToken::Text2)
+    };
+    fill_rounded_rect(scene, chip, m::FIELD_RADIUS, ink.color(bg));
+    line(
+        &mut doc.census,
+        ts,
+        scene,
+        &key_text,
+        Rect::new(chip.x + m::SEG_INSET, y, tw, ROW),
+        SUBTLE_PX,
+        ink.color(fg),
+    );
+    target(doc, TryHit::OpenKey, chip);
+    y + ROW
+}
+
+/// «On this computer, a player changed N keys. · Forget them», discreto; o «Forget them» é uma ligação no acento.
+fn forget(
+    doc: &mut InputMapDoc,
+    (x, y, w): (f32, f32, f32),
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    ink: CardInk,
+) {
+    let dim = ink.color(ColorToken::CardLabel);
+    let msg = format!("{} \u{00B7}", changed_text(doc.tryit.player_changed));
+    let mw = word(doc, ts, scene, &msg, (x, y, w), SUBTLE_PX, dim);
+    let text = tr("input_map_try.forget");
+    let fx = x + mw + m::SEG_ICON_GAP;
+    let fw = ts.prefix_width(text, SUBTLE_PX).min((x + w - fx).max(0.0));
+    let link = ink.color(ColorToken::Accent);
+    word(doc, ts, scene, text, (fx, y, fw), SUBTLE_PX, link);
+    target(doc, TryHit::Forget, Rect::new(fx, y, fw, ROW));
 }

@@ -106,6 +106,19 @@ impl PlaySession {
         true
     }
 
+    /// ⭐ O «Forget them» da aba chega à corrida: as trocas do jogador saem e o efectivo volta ao mapa do projecto.
+    /// A tela e o relógio ficam como estão (aberta continua aberta, com o jogo parado). Fora da corrida, nada.
+    pub fn forget(&mut self, project: &InputMap) {
+        if !self.running() {
+            return;
+        }
+        self.keys = PlayerKeys::new();
+        self.base = project.clone();
+        self.effective = Some(self.keys.apply_over(project));
+        let rows = self.rows(project);
+        self.screen.fit(&rows);
+    }
+
     /// Uma tecla física no Play. Fora da corrida, nada.
     pub fn key(&mut self, key: Key, pressed: bool, game: &InputMap) -> Outcome {
         if !self.running() {

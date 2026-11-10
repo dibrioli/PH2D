@@ -263,7 +263,8 @@ fn paint_keyboard(
         .and_then(|a| doc.snap.map.get(a))
         .map(|a| a.bindings.clone())
         .unwrap_or_default();
-    paint_keys(doc, draw, scene, ts, ink, Lit::Outline, &|k| {
+    let style = (Lit::Outline, KeysAlign::Center);
+    paint_keys(doc, draw, scene, ts, ink, style, &|k| {
         open.contains(&Binding::Key(k))
     });
 }
@@ -276,6 +277,14 @@ pub(crate) enum Lit {
     Fill,
 }
 
+/// Onde o teclado assenta na caixa quando ela é mais larga que ele: a B ao centro, o Try it encostado à esquerda
+/// (maquete C2).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum KeysAlign {
+    Center,
+    Left,
+}
+
 /// O teclado desenhado: UM pintor para B (acesas = as da acção aberta) e C (acesas = as premidas no Try it).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_keys(
@@ -284,7 +293,7 @@ pub(crate) fn paint_keys(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     ink: CardInk,
-    style: Lit,
+    (style, align): (Lit, KeysAlign),
     lit_of: &dyn Fn(ph2d_input::Key) -> bool,
 ) {
     let inner = Rect::new(
@@ -296,7 +305,10 @@ pub(crate) fn paint_keys(
     // O passo sai da caixa recebida (largura e altura): a B e a C pedem alturas diferentes ao mesmo pintor.
     let p = (inner.w / g::WIDTH).min(pitch_for_rows(inner.h));
     let (kh, step) = (key_height(p), key_height(p) + p * (g::ROW_PITCH - g::KEY_H));
-    let ox = inner.x + (inner.w - g::WIDTH * p).max(0.0) * 0.5;
+    let ox = match align {
+        KeysAlign::Center => inner.x + (inner.w - g::WIDTH * p).max(0.0) * 0.5,
+        KeysAlign::Left => inner.x,
+    };
     for KeyCap {
         key,
         col,

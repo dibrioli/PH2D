@@ -531,3 +531,19 @@ fn reduced_motion_takes_the_rise_and_leaves_the_arrival() {
     );
     assert_eq!(cascade_rise(1.0, true), 0.0, "assente e assente");
 }
+
+/// O relógio do substrato soma o `dt` de parede (a fase do caret e do pulso da aba Input Map), não conta
+/// quadros, e o `forget` não o zera. Mutação que sangra: tirar o `self.elapsed += dt` do `advance`.
+#[test]
+fn elapsed_sums_the_wall_dt_and_survives_forget() {
+    let mut m = UiMotion::default();
+    assert_eq!(m.elapsed(), 0.0, "nasce no zero");
+    m.advance(0.5);
+    m.advance(0.25);
+    assert!((m.elapsed() - 0.75).abs() < 1e-9, "{}", m.elapsed());
+    m.forget();
+    assert!(
+        (m.elapsed() - 0.75).abs() < 1e-9,
+        "o forget não salta a fase"
+    );
+}

@@ -191,7 +191,7 @@ fn arrastar_a_zona_morta_muda_a_accao_e_e_um_gesto_vivo_ate_soltar() {
     let ml = id(&m, "move_left");
     let dead = ListHit::Dead(ml).id();
     let r = m.tab().doc.rect_of(dead).expect("o campo pintado");
-    m.click((r.x + 1.0, r.y + r.h * 0.5));
+    m.down((r.x + 1.0, r.y + r.h * 0.5));
     assert!(ph2d_app_input_map::gesture_in_progress(&m.hero));
     m.hover((r.x + 1.0 + r.w * 0.25, r.y + r.h * 0.5));
     let a = m.hero.input_map.get(ml).expect("move_left");

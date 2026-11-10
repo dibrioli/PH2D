@@ -6,6 +6,7 @@ pub mod census;
 pub mod doc;
 pub mod edit;
 pub mod ids;
+pub mod interact;
 pub mod layout;
 pub mod paint;
 pub mod palette;

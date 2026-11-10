@@ -19,8 +19,8 @@ mod teclado;
 mod teclado_censo;
 mod teclado_r7b;
 mod teclado_r9b;
-mod teclas_w1;
 mod teclado_w2;
+mod teclas_w1;
 mod try_it;
 mod try_it_censo;
 mod try_it_r10b;
@@ -214,8 +214,30 @@ impl Mesa {
         }) && self.tab().is_open()
     }
 
-    /// Um clique primário em `(x, y)` pela porta da aba activa. Devolve se a aba o tomou.
-    pub fn click(&mut self, (x, y): (f32, f32)) -> bool {
+    /// Um clique primário INTEIRO em `(x, y)` (Down, quadro, Up no mesmo ponto, quadro): o controlo do registo dispara
+    /// no Up dentro (plano §13.3). Devolve se a aba tomou o Down.
+    pub fn click(&mut self, at: (f32, f32)) -> bool {
+        let took = self.down(at);
+        self.button(PointerKind::Up, at);
+        self.frame();
+        took
+    }
+
+    /// Só o Down em `(x, y)`, seguido do quadro: começa um arrasto (`hover` move, `release` larga).
+    pub fn down(&mut self, at: (f32, f32)) -> bool {
+        let took = self.button(PointerKind::Down, at);
+        self.frame();
+        took
+    }
+
+    /// O Up em `(x, y)`, seguido do quadro (fora do controlo premido = cancela).
+    pub fn up(&mut self, at: (f32, f32)) -> bool {
+        let took = self.button(PointerKind::Up, at);
+        self.frame();
+        took
+    }
+
+    fn button(&mut self, kind: PointerKind, (x, y): (f32, f32)) -> bool {
         let ts = &mut self.ts;
         let Some((f, id)) = self.hero.documents.active_surface_mut() else {
             return false;
@@ -225,9 +247,7 @@ impl Mesa {
             mods: Modifiers::default(),
             now_ns: 0,
         };
-        let took = f.pointer(id, input, PointerKind::Down, PointerButton::Primary, x, y);
-        self.frame();
-        took
+        f.pointer(id, input, kind, PointerButton::Primary, x, y)
     }
 
     /// O centro do segmento da vista `v` (da última pintura).

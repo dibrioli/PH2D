@@ -48,3 +48,14 @@ pub fn lay_out(area: Rect, text: &mut TextSystem, play_running: bool) -> Layout 
         body,
     }
 }
+
+/// A área sem a faixa do HUD que o hero pinta por cima (a 1280×720 tapava a última linha do pé, foto A1):
+/// a aba pára no topo dele, como o SFX Lab e o Kanban.
+#[must_use]
+pub fn above_the_hud(area: Rect, over: Option<Rect>) -> Rect {
+    let Some(o) = over.filter(|o| o.x < area.x + area.w && o.x + o.w > area.x) else {
+        return area;
+    };
+    let bottom = o.y.clamp(area.y, area.y + area.h);
+    Rect::new(area.x, area.y, area.w, bottom - area.y)
+}

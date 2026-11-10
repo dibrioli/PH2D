@@ -99,6 +99,10 @@ pub struct InputMapDoc {
     pub tryit: crate::view_try::state::TryState,
     /// O que a última pintura pôs na tela (textos e campos numéricos).
     pub census: Census,
+    /// O registo de controlos, o premido, o foco e os valores do movimento (`crate::interact`).
+    pub(crate) ui: crate::interact::Ui,
+    /// A cena da pintura (repintada quando o hover instantâneo de um alvo novo muda).
+    pub(crate) scratch: ph2d_vector::VectorScene,
 }
 
 impl InputMapDoc {
@@ -118,6 +122,8 @@ impl InputMapDoc {
             kb: crate::view_keyboard::state::KbState::default(),
             tryit: crate::view_try::state::TryState::new(),
             census: Census::default(),
+            ui: crate::interact::Ui::default(),
+            scratch: ph2d_vector::VectorScene::default(),
         }
     }
 
@@ -220,8 +226,17 @@ impl InputMapDoc {
         ph2d_player_controls::player_file_of(self.tryit.base.as_deref(), self.snap.game_id)
     }
 
-    /// Carregar em `(x, y)`: um segmento troca a vista. `true` = dentro da aba (tomado).
+    /// Carregar em `(x, y)`: um controlo do registo captura (dispara no Up dentro); o resto vai à vista. `true` =
+    /// dentro da aba (tomado).
     pub fn press(&mut self, x: f32, y: f32) -> bool {
+        if let Some(took) = self.press_control(x, y) {
+            return took;
+        }
+        self.press_legacy(x, y)
+    }
+
+    /// O carregar de antes do registo: o alvo dispara no Down.
+    pub(crate) fn press_legacy(&mut self, x: f32, y: f32) -> bool {
         if let Some(v) = self.hits.hit(x, y).and_then(View::of_id) {
             self.set_view(v);
             return true;
@@ -240,10 +255,20 @@ impl InputMapDoc {
 
     /// O ponteiro passou: guarda o segmento para a dica. `true` = mudou (pede quadro).
     pub fn motion(&mut self, x: f32, y: f32) -> bool {
+        let was = (
+            self.hot_control(),
+            self.ui.pressed.map(|p| self.is_pressed(p)),
+        );
+        self.ui.pointer = Some((x, y));
+        let moved = was
+            != (
+                self.hot_control(),
+                self.ui.pressed.map(|p| self.is_pressed(p)),
+            );
         let banner = self.layout.banner.is_some_and(|r| r.contains(x, y));
         let banner_changed = banner != self.banner_hover;
         self.banner_hover = banner;
-        self.motion_in_view(x, y) || banner_changed
+        self.motion_in_view(x, y) || banner_changed || moved
     }
 
     fn motion_in_view(&mut self, x: f32, y: f32) -> bool {
@@ -269,9 +294,16 @@ impl InputMapDoc {
         changed
     }
 
-    /// O botão soltou: acaba o arrasto de um número.
+    /// O botão soltou em `(x, y)`: o controlo capturado dispara se o Up é DENTRO dele; acaba o arrasto de um número.
+    /// O Up no último ponto do ponteiro.
     pub fn release(&mut self) -> bool {
-        crate::view_list::release(self)
+        let (x, y) = self.ui.pointer.unwrap_or((f32::NAN, f32::NAN));
+        self.release_at(x, y)
+    }
+
+    pub fn release_at(&mut self, x: f32, y: f32) -> bool {
+        let fired = self.release_control(x, y).unwrap_or(false);
+        crate::view_list::release(self) || fired
     }
 
     /// A roda: rola a lista.
@@ -285,6 +317,9 @@ impl InputMapDoc {
 
     /// Uma tecla para o campo focado da aba. `true` = tomada.
     pub fn key(&mut self, input: &KeyInput<'_>) -> bool {
+        if self.focus_text_key(input) {
+            return true;
+        }
         match self.view {
             View::List => crate::view_list::key(self, input),
             View::Keyboard => crate::view_keyboard::key(self, input),
@@ -294,6 +329,9 @@ impl InputMapDoc {
 
     /// A tecla física (`DocumentSurface::raw_key`): a busca por tecla. `true` = tomada.
     pub fn raw_key(&mut self, key: Key, pressed: bool, writes_text: bool) -> bool {
+        if self.focus_raw_key(key, pressed) {
+            return true;
+        }
         match self.view {
             View::List => crate::view_list::raw_key(self, key, pressed, writes_text),
             View::Keyboard => crate::view_keyboard::raw_key(self, key, pressed, writes_text),

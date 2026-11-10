@@ -179,7 +179,7 @@ fn arrastar_a_marca_da_zona_morta_muda_o_numero_num_gesto() {
         .rect_of(ph2d_app_input_map::ids::ListHit::Dead(id(&m, "move_left")).id())
         .map(|r| r.w)
         .expect("o campo");
-    m.click((x, y));
+    m.down((x, y));
     assert!(m.tab().doc.gesture_in_progress(), "o arrasto é um gesto");
     m.hover((x + w * 0.2, y));
     m.release();

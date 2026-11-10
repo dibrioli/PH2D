@@ -5,6 +5,7 @@ use ph2d_editor_core::doc_surface::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerKind};
+pub use ph2d_input_map_editor::layout::above_the_hud;
 use ph2d_input_map_editor::{InputMapDoc, View};
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -83,7 +84,7 @@ impl DocumentSurface for InputMapTab {
     ) -> bool {
         match (kind, button) {
             (PointerKind::Down, PointerButton::Primary) => self.doc.press(x, y),
-            (PointerKind::Up, _) => self.doc.release(),
+            (PointerKind::Up, _) => self.doc.release_at(x, y),
             (PointerKind::Move, _) => self.doc.motion(x, y),
             _ => false,
         }
@@ -93,8 +94,16 @@ impl DocumentSurface for InputMapTab {
         self.doc.motion(x, y)
     }
 
-    fn pointer_look(&self, _id: u64, _x: f32, _y: f32) -> Option<PointerLook> {
-        self.doc.hover().map(|_| PointerLook::Hand)
+    fn pointer_look(&self, _id: u64, x: f32, y: f32) -> Option<PointerLook> {
+        self.doc.look_at(x, y)
+    }
+
+    fn a11y(&self, _id: u64) -> ph2d_input_map_editor::interact::A11yNodes {
+        self.doc.a11y()
+    }
+
+    fn wants_frame(&self) -> bool {
+        self.open && self.doc.wants_frame()
     }
 
     fn wheel(&mut self, _id: u64, _x: f32, _y: f32, dy: f32, _shift: bool) -> bool {
@@ -147,15 +156,4 @@ impl DocumentSurface for InputMapTab {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
-}
-
-/// A área sem a faixa do HUD que o hero pinta por cima (a 1280×720 tapava a última linha do pé, foto A1):
-/// a aba pára no topo dele, como o SFX Lab e o Kanban.
-#[must_use]
-pub fn above_the_hud(area: Rect, over: Option<Rect>) -> Rect {
-    let Some(o) = over.filter(|o| o.x < area.x + area.w && o.x + o.w > area.x) else {
-        return area;
-    };
-    let bottom = o.y.clamp(area.y, area.y + area.h);
-    Rect::new(area.x, area.y, area.w, bottom - area.y)
 }

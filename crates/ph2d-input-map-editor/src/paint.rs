@@ -13,9 +13,31 @@ use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 use crate::doc::{InputMapDoc, View};
+use crate::interact::{Control, ControlRole, paint_focus_ring};
 use crate::layout::lay_out;
 
+/// Pinta a aba. Um alvo que nasce nesta pintura (ou se mexeu sob o ponteiro) lia o hover de antes — o `SETTLED`
+/// pairado de um id nunca visto —, e a pintura repete-se com o hover desta (D32: o fundo acende NO QUADRO).
 pub fn paint_doc(
+    doc: &mut InputMapDoc,
+    area: Rect,
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+) {
+    let mut local = std::mem::take(&mut doc.scratch);
+    local.reset();
+    paint_pass(doc, area, &mut local, text, theme);
+    if doc.settle_hover() {
+        local.reset();
+        paint_pass(doc, area, &mut local, text, theme);
+        doc.settle_hover();
+    }
+    scene.append_scene(&local);
+    doc.scratch = local;
+}
+
+fn paint_pass(
     doc: &mut InputMapDoc,
     area: Rect,
     scene: &mut VectorScene,
@@ -28,6 +50,7 @@ pub fn paint_doc(
     fill_rounded_rect(scene, area, 0.0, ink.color(ColorToken::KanbanList));
     doc.hits = HitIndex::default();
     doc.census = crate::census::Census::default();
+    doc.begin_paint();
     let labels = View::ALL.map(|v| tr(v.label_key()));
     let segs: Vec<Seg<'_>> = View::ALL
         .iter()
@@ -36,7 +59,8 @@ pub fn paint_doc(
             id: v.id(),
             icon: None,
             text,
-            on: v == doc.view(),
+            // Premido = a pré-vista do escolhido (o segmentado nativo acende no Down).
+            on: v == doc.view() || doc.is_pressed(v.id()),
         })
         .collect();
     let mut c = CardCtx::flutuante(
@@ -49,6 +73,11 @@ pub fn paint_doc(
         l.selector.w,
     );
     c.full(None, Widget::Choice(&segs), l.selector.y);
+    for (v, label) in View::ALL.into_iter().zip(labels) {
+        if let Some(r) = doc.hits.rect_for(v.id()) {
+            doc.control(Control::new(v.id(), r, ControlRole::Segment, label));
+        }
+    }
     if let Some(r) = l.banner {
         paint_play_banner(doc, r, scene, text, ink);
     }
@@ -63,6 +92,17 @@ pub fn paint_doc(
         View::List => crate::view_list::paint(doc, l.body, scene, text, theme),
         View::Keyboard => crate::view_keyboard::paint(doc, l.body, scene, text, theme),
         View::TryIt => crate::view_try::paint(doc, l.body, scene, text, theme),
+    }
+    if let Some(c) = doc
+        .focused()
+        .and_then(|id| doc.ui.controls.iter().find(|c| c.id == id))
+    {
+        let radius = if c.role == ControlRole::Segment {
+            m::SEG_RADIUS
+        } else {
+            m::FIELD_RADIUS
+        };
+        paint_focus_ring(scene, ink, c.rect, radius);
     }
     paint_hover_tip(doc, scene, text, theme);
 }
@@ -101,7 +141,8 @@ fn paint_play_banner(
         m::VALUE_PX,
         ink.color(ColorToken::InputMapWarning),
     );
-    doc.hits.register(PLAY_BANNER, r);
+    let label = tr("input_map_tab.play_banner");
+    doc.control(Control::new(PLAY_BANNER, r, ControlRole::Note, label));
 }
 
 /// A dica do segmento sob o ponteiro, por baixo dele.
@@ -111,16 +152,18 @@ fn paint_hover_tip(
     text: &mut TextSystem,
     theme: Theme,
 ) {
-    let (id, msg) = match doc.hover {
-        Some(v) => (v.id(), tr(v.tip_key())),
-        None if doc.banner_hover => (PLAY_BANNER, tr("input_map_tab.play_banner_tip")),
-        None if doc.view() == View::Keyboard => {
+    let why = doc.disabled_why_here();
+    let (id, msg) = match (why, doc.hover) {
+        (Some((id, k)), _) => (id, tr(k)),
+        (None, Some(v)) => (v.id(), tr(v.tip_key())),
+        (None, None) if doc.banner_hover => (PLAY_BANNER, tr("input_map_tab.play_banner_tip")),
+        (None, None) if doc.view() == View::Keyboard => {
             let Some(t) = crate::view_keyboard::tip_here(doc) else {
                 return;
             };
             t
         }
-        None => {
+        (None, None) => {
             let Some(id) = doc
                 .list
                 .hover_target

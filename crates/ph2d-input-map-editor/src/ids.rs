@@ -54,3 +54,6 @@ impl ListHit {
 }
 
 pub const SEARCH_CLEAR: NodeId = hash_node_id("input_map_list.search_clear");
+
+/// O nó de acessibilidade do documento da aba (os controlos são filhos dele).
+pub const DOCUMENT: NodeId = hash_node_id("input_map_tab.document");

@@ -3,7 +3,8 @@
 //! Settings ▸ Input Map… chega como o pedido do `WidgetStore`, e o `frame` abre (ou traz à frente) a aba.
 
 pub use ph2d_input_map_editor::{
-    InputMapDoc, InputMapEdit, Snapshot, View, ids, palette, view_keyboard, view_list, view_try,
+    InputMapDoc, InputMapEdit, Snapshot, View, ids, interact, palette, view_keyboard, view_list,
+    view_try,
 };
 
 pub mod listen;
@@ -87,6 +88,7 @@ pub fn frame(
     if let Some(tab) = hero.documents.surfaces_mut().find_mut::<InputMapTab>() {
         tab.doc.set_snapshot(snap);
         tab.doc.tick_try(live);
+        tab.doc.tick_motion(&mut hero.motion);
     }
 }
 

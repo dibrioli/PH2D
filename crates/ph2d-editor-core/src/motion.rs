@@ -435,6 +435,7 @@ pub struct UiMotion {
     tracks: BTreeMap<NodeId, Track>,
     character: UiCharacter,
     reduced: bool,
+    elapsed: f64,
 }
 
 impl UiMotion {
@@ -591,6 +592,7 @@ impl UiMotion {
         //    colectava um `Vec` do tamanho do mapa por quadro só para poder chamar `self.law`. Ver
         //    [`Self::law_of`] para o número que mediu isto.
         let (character, reduced) = (self.character, self.reduced);
+        self.elapsed += dt.max(0.0);
         for t in self.tracks.values_mut() {
             #[allow(clippy::cast_possible_truncation)]
             {
@@ -631,6 +633,13 @@ impl UiMotion {
     /// Esquece tudo — troca de documento, de tela, ou o fim de um smoke.
     pub fn forget(&mut self) {
         self.tracks.clear();
+    }
+
+    /// Os segundos de PAREDE que o [`Self::advance`] já andou: a fase de um caret que pisca ou de um pulso.
+    /// O `forget` não a zera (uma fase não salta por trocar de documento).
+    #[must_use]
+    pub fn elapsed(&self) -> f64 {
+        self.elapsed
     }
 }
 

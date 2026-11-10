@@ -22,12 +22,12 @@ impl Engine {
         self.layers[idx].agua_nova = None;
         if ran || had_fluid {
             if let Some((x0, y0, x1, y1)) = pre {
-                self.merge_dirty(x0, y0, x1, y1);
+                self.merge_dirty_do_passo(x0, y0, x1, y1);
             }
             let g = &self.layers[idx].grid;
             if g.has_fluid {
                 let (x0, y0, x1, y1) = (g.bx0, g.by0, g.bx1, g.by1);
-                self.merge_dirty(x0, y0, x1, y1);
+                self.merge_dirty_do_passo(x0, y0, x1, y1);
             }
         }
         ran
@@ -71,12 +71,12 @@ impl Engine {
         // passo completa — mas a bbox pode ter crescido em qualquer um deles.
         if done.is_some_and(|ran| ran) || had_fluid {
             if let Some((x0, y0, x1, y1)) = pre {
-                self.merge_dirty(x0, y0, x1, y1);
+                self.merge_dirty_do_passo(x0, y0, x1, y1);
             }
             let g = &self.layers[idx].grid;
             if g.has_fluid {
                 let (x0, y0, x1, y1) = (g.bx0, g.by0, g.bx1, g.by1);
-                self.merge_dirty(x0, y0, x1, y1);
+                self.merge_dirty_do_passo(x0, y0, x1, y1);
             }
         }
         done

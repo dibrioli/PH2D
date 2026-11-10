@@ -149,6 +149,8 @@ pub struct Engine {
     revisao: u64,
     /// O sujo do ESPELHO da óptica ([`espelho`]): as mesmas portas da [`Self::revisao`], à parte do `dirty`.
     espelho_sujo: Dirty,
+    /// O sujo do `dirty` partido para a óptica fora ([`caixa_do_passo`], B14.1): o do passo da sim × o das outras portas.
+    sujo_da_otica: caixa_do_passo::SujoDaOtica,
     /// A razao da grade de FLUXO desta engine (plano 30). `1` = a grade de
     /// fluxo E a fina, que e o motor que sempre shipou.
     pub flow_ratio: usize,
@@ -199,6 +201,7 @@ impl Engine {
             dirty: Dirty::Clean,
             revisao: nova_revisao(),
             espelho_sujo: Dirty::Full,
+            sujo_da_otica: caixa_do_passo::SujoDaOtica::default(),
         };
         engine.layers.push(Layer {
             grid: Grid::with_flow_ratio(width, height, engine.flow_ratio),
@@ -605,6 +608,9 @@ impl Engine {
     pub fn merge_dirty_otica(&mut self, x0: i32, y0: i32, x1: i32, y1: i32) {
         conta_sujo::regista((i64::from(x1 - x0 + 1).max(0) * i64::from(y1 - y0 + 1).max(0)) as u64);
         self.dirty.une((x0, y0, x1, y1), self.width, self.height);
+        self.sujo_da_otica
+            .alheio
+            .une((x0, y0, x1, y1), self.width, self.height);
     }
 
     #[track_caller]
@@ -613,6 +619,7 @@ impl Engine {
         self.revisao = nova_revisao();
         self.espelho_sujo = Dirty::Full;
         self.dirty = Dirty::Full;
+        self.sujo_da_otica.alheio = Dirty::Full;
     }
 
     /// A revisão do conteúdo das grades (ver o campo).
@@ -623,10 +630,12 @@ impl Engine {
 
     /// Take and clear the pending dirty region.
     pub fn take_dirty(&mut self) -> Dirty {
+        self.sujo_da_otica = caixa_do_passo::SujoDaOtica::default();
         std::mem::replace(&mut self.dirty, Dirty::Clean)
     }
 }
 
+mod caixa_do_passo; // B14.1: a caixa da óptica fora é a que o passo MUDOU
 pub mod conta_sujo; // J11: medição — quem marca o sujo
 mod doors; // the product-facing LANE doors (host-driven strokes) — LOC-cap split
 pub mod espelho; // J13b P2: o espelho da óptica para a thread de composição

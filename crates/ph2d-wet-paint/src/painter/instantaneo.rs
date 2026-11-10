@@ -41,6 +41,7 @@ impl Clone for Engine {
             dirty,
             revisao: _,
             espelho_sujo: _,
+            sujo_da_otica,
             flow_ratio,
         } = self;
         Engine {
@@ -79,6 +80,7 @@ impl Clone for Engine {
             revisao: super::nova_revisao(),
             // O espelho da cópia é outro: começa inteiro.
             espelho_sujo: super::Dirty::Full,
+            sujo_da_otica: *sujo_da_otica,
             flow_ratio: *flow_ratio,
         }
     }

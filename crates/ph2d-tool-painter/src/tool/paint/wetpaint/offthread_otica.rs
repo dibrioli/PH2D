@@ -322,7 +322,12 @@ impl DoWorker {
             engine.merge_dirty_otica(i(x0), i(y0), i(x1), i(y1));
         }
         let marca = MarcaDaAgua::de(engine);
-        let Some(caixa) = caixa_da_grade(engine.take_dirty(), p.forma.grade) else {
+        // B14.1: o sujo do passo da sim reduz-se às células que diferem do espelho (a entrada da imagem anterior).
+        let sujo = match self.espelho.as_deref() {
+            Some(e) => engine.take_dirty_pela_otica(e),
+            None => engine.take_dirty(),
+        };
+        let Some(caixa) = caixa_da_grade(sujo, p.forma.grade) else {
             let _ = self.ui.send(RespostaDaOtica::Nada {
                 epoca: p.epoca,
                 passos,

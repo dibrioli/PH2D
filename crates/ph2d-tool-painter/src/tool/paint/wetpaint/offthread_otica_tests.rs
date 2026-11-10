@@ -124,8 +124,10 @@ fn sobe() -> SimWorker {
     w
 }
 
-/// **A imagem do compositor, aplicada, é a óptica síncrona sobre o mesmo motor — ao byte.** Quatro rondas na
-/// thread real: o sujo inteiro, um dab (a cópia INCREMENTAL do espelho), só a dívida, e o motor limpo («nada»).
+/// **A imagem do compositor, aplicada, é a óptica síncrona sobre o mesmo motor — ao byte.** Cinco rondas na
+/// thread real: o sujo inteiro, um dab (a cópia INCREMENTAL do espelho), só a dívida, a água a correr (B14.1: o
+/// compositor recompõe só as células que o passo MUDOU, a síncrona a caixa do fluido inteira — os planos ao byte) e
+/// o motor limpo («nada»).
 #[test]
 fn a_imagem_do_compositor_e_a_otica_sincrona_ao_byte() {
     let w = sobe();
@@ -135,7 +137,7 @@ fn a_imagem_do_compositor_e_a_otica_sincrona_ao_byte() {
         PlanosDaOtica::da_grade(FORMA.grade),
     );
     type Prepara = fn(&mut Engine);
-    let rondas: [(&str, Prepara, Option<CaixaCel>); 4] = [
+    let rondas: [(&str, Prepara, Option<CaixaCel>); 5] = [
         ("sujo inteiro", Engine::mark_dirty_full, None),
         (
             "um dab",
@@ -147,6 +149,17 @@ fn a_imagem_do_compositor_e_a_otica_sincrona_ao_byte() {
             None,
         ),
         ("so a divida", |_| {}, Some((10, 12, 30, 28))),
+        (
+            "a agua corre",
+            |e| {
+                e.pointer_up();
+                for _ in 0..3 {
+                    while e.step_stage().is_none() {}
+                }
+                e.pointer_down(40.0, 40.0, None);
+            },
+            None,
+        ),
         ("limpo", |_| {}, None),
     ];
     let mut imagens = 0;
@@ -171,7 +184,15 @@ fn a_imagem_do_compositor_e_a_otica_sincrona_ao_byte() {
                 assert_eq!(img.epoca, epoca, "{nome}");
                 assert!(img.oleo.is_some(), "{nome}: sem Real Oil");
                 let c = img.caixas.as_ref().expect("caixas");
-                assert_eq!(c.caixa_cel, caixa, "{nome}: a caixa composta");
+                if nome == "a agua corre" {
+                    let (a, b) = (c.caixa_cel, caixa);
+                    assert!(
+                        a.0 >= b.0 && a.1 >= b.1 && a.2 <= b.2 && a.3 <= b.3,
+                        "{nome}: a caixa {a:?} sai da do fluido {b:?}"
+                    );
+                } else {
+                    assert_eq!(c.caixa_cel, caixa, "{nome}: a caixa composta");
+                }
                 assert!(
                     c.sombra.is_some() && c.veu.is_some(),
                     "{nome}: sombra e veu"
@@ -191,7 +212,7 @@ fn a_imagem_do_compositor_e_a_otica_sincrona_ao_byte() {
         );
         assert!(controlo.grao == referencia.grao, "{nome}: o grao difere");
     }
-    assert_eq!(imagens, 3, "tres imagens e um «nada»");
+    assert_eq!(imagens, 4, "quatro imagens e um «nada»");
     assert!(
         referencia.pigment.iter().any(|&b| b > 0) && referencia.sombra.iter().any(|&b| b > 0),
         "a comparacao foi sobre planos vazios"

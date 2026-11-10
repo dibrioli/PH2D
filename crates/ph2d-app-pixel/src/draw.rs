@@ -15,53 +15,8 @@ use ph2d_vector::VectorScene;
 use crate::PixelApp;
 use crate::input::to_view;
 
-/// Um Pixel Sprite como o último quadro o desenhou: o clique e a caixa do gizmo perguntam AQUI, à
-/// mesma geometria que a tinta usou (nunca uma segunda conta).
-#[derive(Debug, Clone, Copy)]
-struct Drawn {
-    bits: u64,
-    to_screen: ph2d_vector::Affine,
-    size: (u32, u32),
-    /// A origem (o pivô, píxeis do sprite) com que `to_screen` foi feito.
-    pivo: (f64, f64),
-}
-
-thread_local! {
-    static DRAWN: std::cell::RefCell<Vec<Drawn>> = const { std::cell::RefCell::new(Vec::new()) };
-}
-
-/// Os Pixel Sprites sob o ponto de ecrã `p` (dentro do canvas), do de cima para o de baixo.
-#[must_use]
-pub fn pick_at(p: (f32, f32)) -> Vec<u64> {
-    DRAWN.with(|d| {
-        d.borrow()
-            .iter()
-            .rev()
-            .filter(|s| {
-                ph2d_pixel_render::cell_at(s.to_screen, (f64::from(p.0), f64::from(p.1)))
-                    .is_some_and(|(x, y)| {
-                        x >= 0 && y >= 0 && (x as u32) < s.size.0 && (y as u32) < s.size.1
-                    })
-            })
-            .map(|s| s.bits)
-            .collect()
-    })
-}
-
-/// A caixa do gizmo de objecto do Pixel Sprite `bits` no espaço LOCAL (metros, antes da escala,
-/// Y para cima): `(centro relativo à origem = o pivô, meia-extensão)`. `None` = não foi desenhado
-/// no último quadro.
-#[must_use]
-pub fn caixa_local(bits: u64, ppm: f32) -> Option<([f32; 2], [f32; 2])> {
-    let ppm = ppm.max(f32::MIN_POSITIVE);
-    DRAWN.with(|d| {
-        d.borrow().iter().find(|s| s.bits == bits).map(|s| {
-            let (hw, hh) = (s.size.0 as f32 * 0.5, s.size.1 as f32 * 0.5);
-            let (px, py) = (s.pivo.0 as f32, s.pivo.1 as f32);
-            ([(hw - px) / ppm, (py - hh) / ppm], [hw / ppm, hh / ppm])
-        })
-    })
-}
+use ph2d_pixel_render::desenhados::{self as registo, Drawn};
+pub use ph2d_pixel_render::desenhados::{begin_frame, caixa_local, pick_at};
 
 /// ⭐ A caixa de MUNDO do Pixel Sprite `e` (*Frame All / Selected*): a do gizmo sob o `Transform`.
 #[must_use]
@@ -74,8 +29,9 @@ pub fn caixa_mundo(w: &ph2d_ecs::World, e: ph2d_ecs::Entity, ppm: f32) -> Option
 /// As caixas de mundo de todo Pixel Sprite desenhado no último quadro (o escondido não entra).
 #[must_use]
 pub fn caixas_desenhadas(w: &ph2d_ecs::World, ppm: f32) -> Vec<WorldBbox> {
-    let es: Vec<_> = DRAWN.with(|d| d.borrow().iter().map(|s| s.bits).collect());
-    let es = es.into_iter().filter_map(ph2d_ecs::Entity::try_from_bits);
+    let es = registo::desenhados()
+        .into_iter()
+        .filter_map(ph2d_ecs::Entity::try_from_bits);
     es.filter_map(|e| caixa_mundo(w, e, ppm)).collect()
 }
 
@@ -83,16 +39,6 @@ pub fn caixas_desenhadas(w: &ph2d_ecs::World, ppm: f32) -> Vec<WorldBbox> {
 const LINE_PX: f64 = 1.0; // LITERAL-PX-OK: chrome de sobreposição, espessura de ecrã
 /// Abaixo disto a grelha de pixels vira um borrão cinzento (uma linha por célula de 1–3 px).
 const GRID_MIN_PX_PER_CELL: f64 = 4.0; // LITERAL-PX-OK: legibilidade da grelha, em píxeis de ecrã
-
-thread_local! {
-    /// A arte do EDITOR já desenhada nas faixas deste quadro (`Some`) — o [`draw`] não a repete.
-    static PENDING: std::cell::RefCell<Option<Vec<Drawn>>> = const { std::cell::RefCell::new(None) };
-}
-
-/// Início do quadro: nenhuma arte nas faixas ainda (chamado antes de codificar as faixas).
-pub fn begin_frame() {
-    PENDING.with(|p| *p.borrow_mut() = None);
-}
 
 /// ⭐ **A ARTE** (GEF 19 E2) dos Pixel Sprites `ids`, de trás para a frente, com a câmera `cam`
 /// (mundo → ecrã) — numa faixa da ordem total ou, sem intercalação, na cena do chrome. `editor` =
@@ -110,7 +56,7 @@ pub fn art(
 ) {
     let drawn = art_of(app, world, cam, ppm, editing, ids, scene);
     if editor {
-        PENDING.with(|p| p.borrow_mut().get_or_insert_with(Vec::new).extend(drawn));
+        registo::junta_pendentes(drawn);
     }
 }
 
@@ -205,12 +151,12 @@ pub fn draw(
     theme: Theme,
     scene: &mut VectorScene,
 ) {
-    let drawn = PENDING.with(|p| p.borrow_mut().take()).unwrap_or_else(|| {
+    let drawn = registo::tira_pendentes().unwrap_or_else(|| {
         let cam = camera.world_to_screen_affine(window);
         art_of(app, world, cam, ppm, editing, ids, scene)
     });
     let edited = drawn.iter().find(|d| Some(d.bits) == editing).copied();
-    DRAWN.with(|d| *d.borrow_mut() = drawn);
+    registo::regista(drawn);
     let Some(Drawn {
         bits,
         to_screen: m,

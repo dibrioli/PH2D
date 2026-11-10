@@ -3,7 +3,6 @@
 //! com uma chamada por evento.
 
 use ph2d_editor_core::ToastQueue;
-use ph2d_editor_core::interaction::{ContextMenuKind, WidgetStore};
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_host::{PointerButton, PointerKind, WindowSize};
 use ph2d_render::Camera2d;
@@ -285,25 +284,4 @@ fn diag() -> bool {
     *ON.get_or_init(|| std::env::var_os("PH2D_PIXEL_DIAG").is_some())
 }
 
-/// Um diálogo do Pixel Art (*New Sprite*, *Color Mode*) está aberto — MODAL: toda tecla vai só para
-/// ele.
-#[must_use]
-pub fn dialog_open(store: &WidgetStore) -> bool {
-    store.context_menu().is_some_and(|r| {
-        matches!(
-            r.kind,
-            ContextMenuKind::NewSpriteDialog
-                | ContextMenuKind::NewImageDialog
-                | ContextMenuKind::PixelColorModeDialog
-                | ContextMenuKind::PixelEditDialog
-        )
-    })
-}
-
-/// Os caracteres do texto digitado que vão para o campo do diálogo (sem controlo, sem os atalhos
-/// `Cmd`/`Ctrl` + letra).
-pub fn dialog_text(text: Option<&str>, cmd: bool) -> impl Iterator<Item = char> + '_ {
-    text.unwrap_or_default()
-        .chars()
-        .filter(move |ch| !ch.is_control() && !(cmd && ch.is_ascii_alphabetic()))
-}
+pub use ph2d_pixel_ponte::dialogo::{dialog_open, dialog_text};

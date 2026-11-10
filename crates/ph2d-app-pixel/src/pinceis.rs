@@ -3,8 +3,6 @@
 //! destrancado com *Brush Type* + *Image Color*; *Save Brush Here* cria um trancado com o pincel
 //! actual inteiro; recuperar um espaço aplica só os parâmetros que ele guarda (Trial, §3 do handoff P7a).
 
-use std::path::{Path, PathBuf};
-
 use ph2d_editor_core::pixel_panel::{
     PixelBrushAction, PixelBrushShape, PixelBrushSlotInfo, PixelBrushSlotKind, PixelPatternTurn,
     PixelRequest,
@@ -16,44 +14,8 @@ use ph2d_pixel_io::brush_file::{self, BrushKind, BrushParams, BrushSlot};
 use crate::PixelApp;
 use ph2d_pixel_ponte::leis::{funde, miniatura};
 
-/// O ficheiro da lista, dentro da pasta.
-pub const FILE: &str = "brushes.txt";
-
-/// A pasta dos pincéis do artista (`PH2D_PIXEL_BRUSHES_DIR` manda; senão a dos dados do utilizador).
-#[must_use]
-pub fn pasta_do_utilizador() -> Option<PathBuf> {
-    if let Some(d) = std::env::var_os("PH2D_PIXEL_BRUSHES_DIR") {
-        return Some(PathBuf::from(d));
-    }
-    if let Some(d) = std::env::var_os("XDG_DATA_HOME").filter(|d| !d.is_empty()) {
-        return Some(PathBuf::from(d).join("ph2d").join("pixel_brushes"));
-    }
-    std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local/share/ph2d/pixel_brushes"))
-}
-
-fn le(pasta: &Path) -> Result<Vec<BrushSlot>, String> {
-    match std::fs::read_to_string(pasta.join(FILE)) {
-        Ok(t) => brush_file::read(&t).map_err(|e| format!("{FILE}:{} {}", e.line, e.what)),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
-        Err(e) => Err(e.to_string()),
-    }
-}
-
-fn shape_in(s: PixelBrushShape) -> BrushShape {
-    match s {
-        PixelBrushShape::Circle => BrushShape::Circle,
-        PixelBrushShape::Square => BrushShape::Square,
-        PixelBrushShape::Line => BrushShape::Line,
-    }
-}
-
-fn shape_out(s: BrushShape) -> PixelBrushShape {
-    match s {
-        BrushShape::Circle => PixelBrushShape::Circle,
-        BrushShape::Square => PixelBrushShape::Square,
-        BrushShape::Line => PixelBrushShape::Line,
-    }
-}
+pub use ph2d_pixel_ponte::pinceis::{FILE, pasta_do_utilizador};
+use ph2d_pixel_ponte::pinceis::{le, shape_in, shape_out};
 
 impl PixelApp {
     /// A lista (lida da pasta na 1.ª pergunta; um ficheiro estragado avisa e começa vazia, sem o

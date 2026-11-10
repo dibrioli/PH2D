@@ -6,6 +6,7 @@
 //! do canvas e o cursor de célula. As linhas saem em coordenadas de ECRÃ com `Affine::IDENTITY` (o
 //! transform de um `stroke` do Vello multiplica a espessura).
 
+pub mod desenhados;
 mod overlay;
 pub mod prefs_canal;
 pub mod prefs_view;

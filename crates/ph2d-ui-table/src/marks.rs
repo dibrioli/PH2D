@@ -32,13 +32,6 @@ impl Layout {
         let r = Rect::new(a.x, span.rect.y, b.x + b.w - a.x, span.rect.h);
         Some(inset(r, Spacing::Xxs.px()))
     }
-
-    /// A coluna `col` no corpo inteiro (a banda da coluna acesa).
-    #[must_use]
-    pub fn col_band(&self, col: &str) -> Option<Rect> {
-        let c = self.col(col)?;
-        Some(Rect::new(c.x, self.body.y, c.w, self.body.h))
-    }
 }
 
 pub(crate) fn inset(r: Rect, d: f32) -> Rect {

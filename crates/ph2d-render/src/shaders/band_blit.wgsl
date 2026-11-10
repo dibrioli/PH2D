@@ -26,12 +26,17 @@ struct Flags {
     recebe_luz: u32,
     // P14 «L»: 1 = a banda NORMAL (binding 3) está ligada (rgb = n·½+½, Y para cima; alfa 0 = sem normal).
     com_normal: u32,
+    // P13 L: 1 = a banda de RAMPA (binding 4: r = rampa, g = degrau, a = 1 só em rampa) e a LUT
+    // (binding 5, `luz_rampa.wgsl`) estão ligadas: o texel em rampa troca de degrau, não multiplica.
+    com_rampa: u32,
 };
 
 @group(0) @binding(0) var src: texture_2d<f32>;
 @group(0) @binding(1) var src_sampler: sampler;
 @group(0) @binding(2) var<uniform> flags: Flags;
 @group(0) @binding(3) var banda_normal: texture_2d<f32>;
+@group(0) @binding(4) var banda_rampa: texture_2d<f32>;
+@group(0) @binding(5) var lut_rampa: texture_2d<f32>;
 // O LUT do tonemap — o MESMO que o passe de tonemap liga (o grupo da luz o carrega).
 @group(3) @binding(3) var luz_lut: texture_3d<f32>;
 @group(3) @binding(4) var luz_lut_amostra: sampler;
@@ -91,6 +96,17 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
                 n_xy = nb.xy * 2.0 - vec2<f32>(1.0);
                 // P14c-pixel 2: b < ¼ (z < −½) nunca é normal da frente — a sentinela do `NaoRecebeLuz`.
                 fora = nb.b < 0.25;
+            }
+        }
+        if (!fora && flags.com_rampa == 1u) {
+            // O antialias da borda mistura o id: só o texel com a = 1 é de rampa.
+            let dim = vec2<f32>(textureDimensions(banda_rampa));
+            let rb = textureLoad(banda_rampa, vec2<u32>(min(in.uv * dim, dim - 1.0)), 0);
+            if (rb.a == 1.0 && c.a > 0.0) {
+                let id = vec2<u32>(round(rb.rg * 255.0));
+                let luz_n = luz_em_n(luz_tela_para_mundo(in.pos.xy), n_xy);
+                let d = luz_receber_rampa(lut_rampa, id.x, id.y, luz_n);
+                return vec4<f32>(d.yzw * c.a, c.a);
             }
         }
         if (!fora) {

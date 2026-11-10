@@ -1,6 +1,6 @@
 # HANDOFF de integração — `line/InputMap`, ONDA 2, 10/11 (teclado de notebook inteiro como na foto do dono + camada de polimento pro)
 
-Leitor: o agente integrador. Branch `line/InputMap`, código até `c1688d3a24` (+ este handoff): **48 commits** de onda 2 (`git log --oneline 8f5c9d81b3..HEAD`; 150 files, +8 515 −974); a linha inteira, **136 commits**, 298 files, `+25 109 −3 061` (`git diff --stat main...HEAD`), sobre `bc4a6ce930` = merge-base = ponta do `main` (**não andou: sem rebase, `--ff-only` serve**). Nada integrado, nenhum push. **Suíte completa, `nextest-impacted` e `ship.sh` NÃO correram** (são do integrador). Este handoff COMPLETA o da onda 1 (superfície, crates, schema 232, `play_map`, F1 continuam valendo): [onda 1](HANDOFF_INTEGRACAO_line_InputMap_2026-11-10.md) · [plano §13](../01_plano.md) · [prompt da onda 2](PROMPT_MISSAO_InputMap_ONDA2_2026-11-10.md).
+Leitor: o agente integrador. Branch `line/InputMap`, código até `8ab6cf4070` (+ este handoff): onda 2 = `8f5c9d81b3..HEAD` (inclui as 2 ordens pós-smoke do §2b, `89b620c88c..HEAD`: 5 commits, 24 files, +923 −213); a linha inteira, **144 commits**, 302 files, `+25 958 −3 061` (`git diff --stat main...HEAD`; contagem com este handoff), sobre `bc4a6ce930` = merge-base = ponta do `main` (**não andou: sem rebase, `--ff-only` serve**). Nada integrado, nenhum push. **Suíte completa, `nextest-impacted` e `ship.sh` NÃO correram** (são do integrador). Este handoff COMPLETA o da onda 1 (superfície, crates, schema 232, `play_map`, F1 continuam valendo): [onda 1](HANDOFF_INTEGRACAO_line_InputMap_2026-11-10.md) · [plano §13](../01_plano.md) · [prompt da onda 2](PROMPT_MISSAO_InputMap_ONDA2_2026-11-10.md).
 
 ## 1. Ordem do dono (10/11) — cumprida
 
@@ -16,17 +16,24 @@ Teclado B/C COMPLETO como na foto do notebook dele (`docs/InputMap/maquetes/06_t
 
 **W6 — acabamento.** 3 passagens de fotos + 2 revisões visuais (27 + 22 itens, triados). **NÃO feito, por decisão:** frase do hover da B continua a substituir o cabeçalho (R7b da onda 1); sem ◆ em Dead/Press; fila F em meia altura; lupa de busca do app; Inspector. Auditoria de correção: 4 defeitos curados vermelho→verde (Tab em linha recortada agora rola/revela; Numpad Enter na busca vazia; aviso de clamp nomeava 1,00 com 0,99 guardado; foco morto).
 
+## 2b. Depois do smoke do dono (10/11) — duas ordens
+
+**Smoke do dono OK 10/11** para a onda 2 e para estas duas ordens.
+
+1. **Legenda num adesivo** (`3de41af070`, `2c0c36ce04` memória, `8ab6cf4070`). A legenda fica PARADA no centro da tecla (`legend_box`) com qualquer número de barras, numa plaquinha opaca da face (`keys_fit::plate_of`); as barras das acções passam POR TRÁS. `keys_fit::bar_stack`: espessura cheia até `bars_full(kh)` = ⌊(banda+1)/4⌋, depois listra e vão encolhem juntos (3:1) — nunca saem da tecla; cada barra espreita `BAR_PEEK` (5,3 px a 1280, 6,5–9 a 1600). Saem `reserved_bars`/`bars_top`. Testes `adesivo` e `a_legenda_fica_parada_na_plaquinha_com_qualquer_numero_de_barras`. Close-up `docs/InputMap/fotos/adesivo_b1_1600.png`; B1, B5, C2 e montagens refeitas.
+2. **Hover/premido da List** (`b223f0ee6a`, `74d1bb71cd`; `view_list/looks.rs`, censo aditivo `census.looks`). Defeito curado: o hover lia os rects da pintura EM CURSO ⇒ chip e × um quadro tarde (nunca pairados); agora `begin_hot` lê a anterior e `hot_moved` repete no mesmo quadro. O × mora DENTRO do chip; ×, «+», lixo com alvo de 24 px. **Clicar na linha (ou Enter) só FOCA**; escuta só no «+» e no «No key». Testes: `shells/game-scenes/tests/it/input_map/polimento_w3_lista.rs`.
+
 ## 3. Foundational/compartilhado tocado nesta onda
 
 Tudo aditivo salvo o movimento indicado: `ph2d-input` (`Key` 50 + numérico + sistema, `cap*`, `is_enter_like`, `system_owned`, `editor_keys.rs`, `MAX_DEAD_ZONE` pub) · **crate folha NOVA `ph2d-input-winit`** (`Cargo.lock` +1 interno; shell −94) · `ph2d-editor-core` (escuta partilhada recusa sistema/F5/Ctrl em `input_map_ops.rs`; caret visível aditivo em `WidgetStore`/`TextInput` — resto do app byte-idêntico; `UiMotion::elapsed()`; 7 ícones `kbd-*`; **MOVIMENTO:** `paint_text_elided*` de `paint_text.rs` para `paint_text_elided.rs`, reexportado do mesmo caminho, 701 → 526) · `ph2d-script` (`KeyName` 101 nomes) · `ph2d-i18n` (frases `input_map_*`) · `ph2d-app-game` (`CENAS` 18 → 19).
 
-**Mesmo-símbolo a grepar numa fusão:** `CENAS` (`ph2d-app-game/src/smoke.rs`), a lista de ícones e `enum_order_matches_svgs`, `paint_text.rs`/`paint_text_elided.rs` e seus `mod`/`pub use`, o `NAMED`/`script_names` e `KeyName`, o `mod` de `ph2d-i18n/src/lib.rs`.
+**Mesmo-símbolo a grepar numa fusão:** a lista do §7.
 
-## 4. Superfície de colisão (colada de `bash /home/enio/Documentos/Projetos/PH2D/Worktrees/line-InputMap/scripts/collision-surface.sh`, 10/11, linha inteira)
+## 4. Superfície de colisão (colada de `bash /home/enio/Documentos/Projetos/PH2D/Worktrees/line-InputMap/scripts/collision-surface.sh`, 10/11, linha inteira, em `8ab6cf4070`)
 
 ```
 SUPERFÍCIE DE COLISÃO — line/InputMap contra main
-  merge-base bc4a6ce930   ·   136 commit(s)   ·   298 arquivo(s)
+  merge-base bc4a6ce930   ·   143 commit(s)   ·   302 arquivo(s)
 ───────────────────────────────────────────────────────────────────────────────
 ▸ SCHEMAS — ⚠️ o valor se CONTA contra o main do dia; confira nos TRÊS sítios
   ⚠ PROJECT_SCHEMA                        232   (base: 231)
@@ -70,7 +77,7 @@ SUPERFÍCIE DE COLISÃO — line/InputMap contra main
      o que exige julgamento (mesmo-símbolo, decisão de produto) continua leitura humana.
 ```
 
-**Contadores como DELTA:** `PROJECT_SCHEMA` — a onda 2 NÃO o mexeu (o +1, 231 → 232, é da onda 1; reconte com `python3 scripts/schema-recount.py`, nos três sítios). Componentes DELTA 0 (`ph2d-ecs` 121; sonda cega do render/script: a linha não toca o registo). §6 intocado. ADR: nenhum. `Cargo.lock`: **+1** interno nesta onda (`ph2d-input-winit`), nenhum externo. `CENAS` **+1** (18 → 19). Shell **−94** (189 034 → 188 940; tecto da catraca 189 041 da onda 1: **re-meça** contra o `main` do dia). `main.rs` 1 030/600 é pré-existente (a linha não o fez crescer).
+**Contadores como DELTA:** `PROJECT_SCHEMA` — a onda 2 NÃO o mexeu (231 → 232 é da onda 1; `python3 scripts/schema-recount.py`). Componentes DELTA 0 (sonda cega: a linha não toca o registo). §6 intocado. ADR nenhum. `Cargo.lock` **+1** interno nesta onda, nenhum externo. `CENAS` **+1** (18 → 19). Shell **−94** (189 034 → 188 940; tecto da catraca 189 041 da onda 1: **re-meça** contra o `main` do dia). `main.rs` 1 030/600 é pré-existente (a linha não o fez crescer).
 
 ## 5. Valores literais que colidem
 
@@ -78,7 +85,7 @@ Nenhum token novo nesta onda (os 5 + `categorical-*` são da onda 1). Smoke: `PH
 
 ## 6. Decisões técnicas e o porquê
 
-Legenda por **GRUPO** e `Wide/Narrow` por função pura (`keys_fit`): teste e desenho decidem pelo mesmo número. Numpad Enter com código próprio; sem luz de Num Lock (winit não a dá); teclas do sistema nunca ligam (`warn!`, nunca no-op calado). O resto: §2.
+No §2 e §2b; `keys_fit` = funções puras que teste e desenho partilham; teclas do sistema nunca ligam (`warn!`).
 
 ## 7. O que um merge pode partir
 
@@ -93,40 +100,24 @@ Legenda por **GRUPO** e `Wide/Narrow` por função pura (`keys_fit`): teste e de
 
 ## 8. Prova de fecho (feita na linha)
 
-- Bateria verde: `cargo fmt`, `cargo clippy --workspace --all-targets -D warnings`, `cargo machete`, `check-standalone-optional.sh`, `check-workflow-packages.sh`; crate nova `ph2d-input-winit` inteira; testes por nome: `input_map::` **193 passed**, `ph2d-player-controls` 39, `ph2d-input` `keyboard` 13, gates do `ph2d-editor-core` (`file_loc_cap`, `the_shell_only_shrinks`, `enum_order_matches_svgs`, `hr12_widgets_a11y`, `no_magic_numeric`), `ph2d-i18n` `a_tabela_inglesa_fala_ingles`, `ph2d-host-desktop` `the_two_normalizers_never_disagree`. **Censos combinados 133/133 e 12 de 12.** Nenhum `#[cfg(target_os` escrito ou movido.
+- Bateria verde: `cargo fmt`, `cargo clippy --workspace --all-targets -D warnings`, `cargo machete`, `check-standalone-optional.sh`, `check-workflow-packages.sh`; crate nova `ph2d-input-winit` inteira; testes por nome: `input_map::` **200 passed** (pós-§2b, 10/11; fmt e clippy `--workspace --all-targets -D warnings` refeitos limpos em `8ab6cf4070`), `ph2d-player-controls` 39, `ph2d-input` `keyboard` 13, gates do `ph2d-editor-core` (`file_loc_cap`, `the_shell_only_shrinks`, `enum_order_matches_svgs`, `hr12_widgets_a11y`, `no_magic_numeric`), `ph2d-i18n` `a_tabela_inglesa_fala_ingles`, `ph2d-host-desktop` `the_two_normalizers_never_disagree`. **Censos combinados 133/133 e 12 de 12.** Nenhum `#[cfg(target_os` escrito ou movido.
 - **Provas de mutação: 40 mutações, 37 sangraram na 1.ª rodada; as sobreviventes mortas** (`mutacao_w2.rs`, `doc_tests.rs`); as **4 leis da onda 1 continuam a sangrar**; o **buraco do F5** fechado (F5 em «press one» nunca liga; sob a escuta do ladrilho Listen o F5 liga-se/segue ao Play). **L4d equivalente por desenho** (o Esc larga a escrita); **L6f inalcançável pelas portas públicas** — ambas assumidas, não escondidas. ⚠️ `mut.py` restaura com `git checkout HEAD -- <file>`: comite antes de mutar.
-- Auditoria de correção: §2/W6.
-
-### Binário do smoke (2.ª corrida, zero `Compiling`)
-
-```
-
-▸ linha line_inputmap · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.33s
-```
 
 Perfil do loop (`agent-loop-profile.sh`): paralelismo 1.29/passo ✗ · `cargo test : cargo check` 3.1x ✗ · contexto 240 mil/passo ✓.
 
-## 9. Smoke (do dono)
+## 9. Smoke (do dono) — **feito, OK 10/11** (onda 2 + §2b)
 
-Fotos em `docs/InputMap/fotos/` (14 cenas, 1600×1000 e 1280×720; montagens, incl. `montagem_teclado_dono`).
-
-1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-InputMap && PH2D_GAME_SMOKE=19 bash scripts/ph2d-run.sh cargo run -p ph2d-host-desktop --profile smoke` (cenas 6..19; a 18 junta `PH2D_GAME_SMOKE_DRIVE=editor`).
-2. Na aba Input Map, versão **Keyboard**: o teclado é o da foto (fila F, pontuação, setas em T, numérico). Passe o mouse por uma tecla: acende na hora, sem fade. Clique no Numpad 0: liga à ação aberta; Numpad Enter ≠ Enter. Windows/Fn/Print Screen aparecem apagadas e dizem porquê.
-3. Reduza a janela para 1280×720: a Keyboard empilha (teclado em cima, lista rolando embaixo).
-4. Campo Dead zone: clique (seleciona tudo), ↑/↓, Shift, Enter, Esc. Digite 5: a frase diz que ficou em 0.99.
-5. Errado se: tecla do sistema liga, hover com atraso/sempre aceso, Tab pousa em linha escondida, Num Lock vira cadeado.
-
-**Não smokado por humano:** clique real e gamepad físico; a única fotografia confirma desenho, não gesto.
+Fotos em `docs/InputMap/fotos/` (1600×1000 e 1280×720; montagens, incl. `montagem_teclado_dono`, close-up `adesivo_b1_1600.png`). Comando: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-InputMap && PH2D_GAME_SMOKE=19 bash scripts/ph2d-run.sh cargo run -p ph2d-host-desktop --profile smoke` (cenas 6..19; a 18 junta `PH2D_GAME_SMOKE_DRIVE=editor`). Gamepad físico não smokado.
 
 ## 10. ABERTO e achados FORA da linha
 
+- **Fila F continua a altura inteira** (não meia altura, como na foto): recusado na W6.
+- **Comando (pad) e chips do «Also:»** mantêm as barras POR BAIXO (o adesivo é só da tecla).
 - **Acordes com Alt ligam sob a escuta partilhada** (o store não guarda estado de Alt): fica para a linha que dona o store.
 - Segundas legendas do numérico (End/PgDn/setas sob o 1/3/…) não desenhadas: o binding é físico.
 - Tela «Controls» do jogo **sem hover**: não há caminho de ponteiro em `host.rs` (custo de shell).
 - Campos numéricos da C (se vierem) arrastam ao premir.
 - Fora da linha (herdado): aba de região/Animated Sprite, Planner e física sem `chrome_over`; `CrispHeavyPlus` perde pingos de i/j a ~13 px negrito.
-- Marcadores de conflito: nenhum. Nada visual em aberto, salvo os recusados do §2/W6.
 
 ## 11. Proposta para o `CLAUDE.md §5.1` (só na integração — DIRETRIZ §1.5.9 item 8; a linha NÃO a escreve)
 

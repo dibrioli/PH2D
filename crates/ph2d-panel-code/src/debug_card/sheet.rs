@@ -2,14 +2,13 @@
 
 use super::DebugCardView;
 use super::split::{self, Split};
-use crate::peso::paint_text;
 use crate::table_text::CodeCells;
 use crate::view::CodeView;
 use ph2d_code_debugcard::{DebugCard, columns, sheet_rows};
-use ph2d_editor_core::paint::{fill_rounded_rect, frame_radius, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, frame_radius, paint_text_in_weight, resolve};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
-use ph2d_text::TextSystem;
+use ph2d_text::{FontWeight, TextSystem};
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_ui_table::{Metrics, Row, natural_widths};
 use ph2d_vector::VectorScene;
@@ -25,21 +24,26 @@ fn line(
     tone: ColorToken,
     theme: Theme,
 ) {
+    line_in(ts, scene, s, (x, y, w), (tone, crate::peso::CORPO), theme);
+}
+
+/// O [`line`] num peso dado: os títulos do lado (`h4`) são `500`, medidos no mesmo peso.
+fn line_in(
+    ts: &mut TextSystem,
+    scene: &mut VectorScene,
+    s: &str,
+    (x, y, w): (f32, f32, f32),
+    (tone, weight): (ColorToken, FontWeight),
+    theme: Theme,
+) {
     let font = match tone {
         ColorToken::Text1 | ColorToken::Text2 => TypeToken::Sm.px(),
         _ => TypeToken::Xs.px(),
     };
     let rh = ph2d_tokens::row_pitch_px();
-    paint_text(
-        ts,
-        scene,
-        s,
-        x,
-        y + (rh - font) * 0.5,
-        font,
-        w.max(0.0),
-        resolve(tone, theme),
-    );
+    let at = [x, y + (rh - font) * 0.5];
+    let ink = resolve(tone, theme);
+    paint_text_in_weight(ts, scene, s, at, font, w.max(0.0), ink, weight);
 }
 
 /// ⭐ A Sheet de `c` em `body`.
@@ -61,7 +65,7 @@ pub(super) fn paint(
     let title_w = ts.prefix_width_weighted(
         tr("code.debug.stack"),
         TypeToken::Xs.px(),
-        crate::peso::CORPO,
+        crate::peso::BOTAO,
     );
     let table_min = ph2d_ui_table::min_width(&cols, &natural, &st.table, &m);
     let s = Split::measure(
@@ -152,14 +156,8 @@ fn side(
     let x = r.x + super::inset();
     let w = (r.w - super::inset() - pad).max(0.0);
     let mut y = r.y + pad;
-    line(
-        ts,
-        scene,
-        tr("code.debug.stack"),
-        (x, y, w),
-        ColorToken::Text3,
-        theme,
-    );
+    let h4 = (ColorToken::Text3, crate::peso::BOTAO);
+    line_in(ts, scene, tr("code.debug.stack"), (x, y, w), h4, theme);
     y += rh;
     for (i, s) in c.stack.iter().enumerate() {
         let rr = Rect::new(x - pad, y, w + pad, rh);
@@ -198,7 +196,7 @@ fn side(
     }
     y += pad;
     let title = tr_with("code.debug.waiting_here", &[("count", &c.waiting.len())]);
-    line(ts, scene, &title, (x, y, w), ColorToken::Text3, theme);
+    line_in(ts, scene, &title, (x, y, w), h4, theme);
     y += rh;
     for who in &c.waiting {
         let at = Rect::new(x, y, w, rh);

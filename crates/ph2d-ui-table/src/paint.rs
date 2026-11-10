@@ -4,12 +4,12 @@
 use crate::{Align, Cell, ColSpan, Column, Ink, Layout, Row, TableState};
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, frame_radius, paint_icon, paint_text, paint_text_title,
-    rect_to_vello, resolve, stroke_polyline, token_to_vello,
+    fill_circle, fill_rounded_rect, frame_radius, paint_icon, paint_text, paint_text_in_weight,
+    paint_text_title, rect_to_vello, resolve, stroke_polyline, token_to_vello,
 };
 use ph2d_editor_core::widget::{RowHighlight, paint_row_highlight};
 use ph2d_editor_core::zones::Rect;
-use ph2d_text::TextSystem;
+use ph2d_text::{FontWeight, TextSystem};
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
@@ -31,6 +31,10 @@ pub trait CellText {
         right: f32,
     );
 }
+
+/// O peso do corpo da tabela (`td`, a contagem do grupo: `400`, maquete 14); o cabeçalho (`th`)
+/// fica no `500` da casa e o título do grupo no `600`.
+pub const BODY: FontWeight = FontWeight::NORMAL;
 
 /// O texto da interface (sem mono própria): os tons dos tokens.
 pub struct UiText {
@@ -76,7 +80,8 @@ pub fn ui_font(ink: Ink) -> f32 {
 
 impl CellText for UiText {
     fn width(&mut self, ts: &mut TextSystem, text: &str, _mono: bool) -> f32 {
-        ts.layout(text, TypeToken::Sm.px(), f32::INFINITY).width()
+        ts.layout_with_weight(text, TypeToken::Sm.px(), f32::INFINITY, BODY)
+            .width()
     }
 
     fn paint(
@@ -92,17 +97,12 @@ impl CellText for UiText {
     ) {
         let font = ui_font(ink);
         // Centrado pela caixa que o texto OCUPA (a linha da letra), como a mono ao lado.
-        let th = ts.layout(text, font, f32::INFINITY).height();
-        paint_text(
-            ts,
-            scene,
-            text,
-            x,
-            y + (h - th) * 0.5,
-            font,
-            (right - x).max(0.0),
-            ink_color(ink, self.theme),
-        );
+        let th = ts
+            .layout_with_weight(text, font, f32::INFINITY, BODY)
+            .height();
+        let at = [x, y + (h - th) * 0.5];
+        let ink = ink_color(ink, self.theme);
+        paint_text_in_weight(ts, scene, text, at, font, (right - x).max(0.0), ink, BODY);
     }
 }
 
@@ -173,7 +173,7 @@ pub fn paint(
             chev(scene, x);
             let tx = x + m.chevron();
             let title = row.cells.first().map_or("", |c| c.text.as_str());
-            let tw = ts.layout(title, small, f32::INFINITY).width();
+            let tw = ts.prefix_width_weighted(title, small, FontWeight::SEMI_BOLD);
             let right = r.x + r.w - m.pad;
             paint_text_title(
                 ts,
@@ -186,15 +186,17 @@ pub fn paint(
                 ink(ColorToken::Text2),
             );
             let cx = tx + tw + m.pad * 0.5;
-            paint_text(
+            let at = [cx, ty_small(r.y, r.h)];
+            let room = (right - cx).max(0.0);
+            paint_text_in_weight(
                 ts,
                 scene,
                 count,
-                cx,
-                ty_small(r.y, r.h),
+                at,
                 small,
-                (right - cx).max(0.0),
+                room,
                 ink(ColorToken::Text3),
+                BODY,
             );
             continue;
         }

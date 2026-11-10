@@ -285,11 +285,12 @@ pub(super) fn paint(
                 ink.color(ColorToken::Text2),
                 StrokeToken::Default.px(),
             );
-            doc.kb.targets.push(KbHit::TileX(n));
-            let name = binding_label(*b);
-            let label = tr("input_map_keyboard.tile_x").replace("{key}", &name);
-            doc.control(Control::new(xid, xr, ControlRole::Button, label));
         }
+        // Registado sempre (o Tab chega-lhe e desenha-o); só se vê com o ponteiro no ladrilho ou com o foco.
+        doc.kb.targets.push(KbHit::TileX(n));
+        let name = binding_label(*b);
+        let label = tr("input_map_keyboard.tile_x").replace("{key}", &name);
+        doc.control(Control::new(xid, xr, ControlRole::Button, label));
         tx += tile.w + m::FIELD_GAP;
     }
     let listening = doc.snap.listening == Some(a.id);

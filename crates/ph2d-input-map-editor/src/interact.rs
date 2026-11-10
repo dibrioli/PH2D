@@ -295,7 +295,10 @@ impl InputMapDoc {
             if !c.enabled() {
                 node.set_disabled();
             }
-            if c.role == ControlRole::Segment && View::of_id(c.id) == Some(self.view()) {
+            let sub = crate::view_keyboard::state::KbHit::Sub(self.kb.sub).id();
+            if c.role == ControlRole::Segment
+                && (View::of_id(c.id) == Some(self.view()) || c.id == sub)
+            {
                 node.set_selected(true);
             }
             out.push((c.id, node));

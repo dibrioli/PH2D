@@ -278,3 +278,54 @@ fn o_tab_abre_o_numero_da_b() {
     assert_eq!(t.action, a);
     let _ = ListHit::Dead(a);
 }
+
+#[test]
+fn o_tab_chega_ao_x_do_ladrilho_e_enter_tira_a_ligacao() {
+    let mut m = mesa_b();
+    let open = m.tab().doc.kb.open.expect("aberta");
+    let n = m.hero.input_map.get(open).expect("a").bindings.len();
+    assert!(n > 0, "a aberta tem ligações");
+    let want = KbHit::TileX(0).id();
+    let mut reached = false;
+    for _ in 0..400 {
+        m.key(DocKey::Tab, None);
+        if m.tab().doc.is_focused(want) {
+            reached = true;
+            break;
+        }
+    }
+    assert!(reached, "o Tab chega ao × do 1.º ladrilho");
+    let node = m.tab().doc.a11y().into_iter().find(|(i, _)| *i == want).expect("nó").1;
+    assert_eq!(node.role(), ph2d_a11y::Role::Button);
+    m.key(DocKey::Enter, None);
+    assert_eq!(m.hero.input_map.get(open).expect("a").bindings.len(), n - 1, "Enter tira a ligação");
+}
+
+#[test]
+fn o_segmento_gamepad_escolhido_diz_se_seleccionado() {
+    let mut m = mesa_b();
+    m.click(m.at(KbHit::Sub(Sub::Gamepad).id()));
+    let sel = |m: &Mesa, s: Sub| {
+        let id = KbHit::Sub(s).id();
+        m.tab().doc.a11y().into_iter().find(|(i, _)| *i == id).expect("nó").1.is_selected()
+    };
+    assert_eq!(sel(&m, Sub::Gamepad), Some(true), "Gamepad seleccionado");
+    assert_ne!(sel(&m, Sub::Keyboard), Some(true), "Keyboard não");
+}
+
+#[test]
+fn a_accao_recem_aberta_rola_para_a_vista_a_1280() {
+    let area = AREAS[1];
+    let mut m = mesa_b();
+    m.paint_in(area);
+    m.tab_mut().doc.wheel(f32::MIN);
+    m.paint_in(area);
+    let first = m.hero.input_map.actions()[0].clone();
+    assert!(m.tab().doc.kb.scroll > 0.0, "a região rolou para o fundo");
+    m.tab_mut().doc.kb.select_name = Some(first.name.clone());
+    m.paint_in(area);
+    let doc = &m.tab().doc;
+    let view = doc.census.clip.expect("a região rola");
+    let r = doc.rect_of(KbHit::Row(first.id).id()).expect("linha");
+    assert!(inside(r, view), "a linha aberta {r:?} à vista em {view:?}");
+}

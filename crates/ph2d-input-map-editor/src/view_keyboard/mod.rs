@@ -112,7 +112,6 @@ pub fn paint(
     doc.kb.targets.clear();
     doc.kb.bars.clear();
     doc.kb.live_dot = None;
-    doc.kb.rows.clear();
     doc.kb.bar = None;
     if let Some(n) = doc.kb.select_name.clone()
         && let Some(id) = doc.snap.map.id(&n)
@@ -162,6 +161,7 @@ pub fn paint(
         doc.kb.scroll = doc.kb.scroll.clamp((y0 + h - region.h).max(0.0), y0.max(0.0));
         doc.kb.scroll = doc.kb.scroll.clamp(0.0, (doc.kb.list_total - region.h).max(0.0));
     }
+    doc.kb.rows.clear();
     let y0 = region.y - doc.kb.scroll;
     let tall = f32::MAX * 0.25; // LITERAL-PX-OK: a região rolada não tem fundo — o recorte corta
     doc.hits.push_clip(region);

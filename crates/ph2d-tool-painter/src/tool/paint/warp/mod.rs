@@ -30,6 +30,8 @@ pub(crate) mod relief;
 #[cfg(test)]
 mod relief_tests;
 pub(crate) mod session;
+#[cfg(test)]
+mod prancha_b06b_tests;
 mod transform;
 mod transform_float;
 mod transform_geom;

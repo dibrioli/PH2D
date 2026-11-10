@@ -159,10 +159,33 @@ fn entering_warp_after_moving_the_box_keeps_the_paint_where_it_was() {
 /// eixos (rodada, escala e posição não inteiras), patch opaco sobre transparente: a malha seguida pelo
 /// afim do mesmo box tem de dar os MESMOS bytes (±1 do arredondamento das homografias por célula).
 ///
-/// **Mutação que tem de sangrar:** voltar o teste de cobertura a `[x+0,5; y+0,5]` ou tirar a margem de
-/// um texel de origem nas arestas de fora.
+/// Dois casos: rodado ~14° com escala 1,13 × 0,91, e rodado ~30° ENCOLHIDO a 0,41 × 0,47 (aí meio texel
+/// de ecrã passa de um texel de origem, e a margem já não esconde um teste feito fora do ponto amostrado).
+///
+/// **Mutações que têm de sangrar:** voltar o teste de cobertura a `[x+0,5; y+0,5]` (o caso encolhido) ou
+/// tirar a margem de um texel de origem nas arestas de fora (os dois).
 #[test]
 fn a_malha_de_quatro_cantos_e_o_afim_na_borda() {
+    // (rotação cos, sin · escala x, y · deslocamento do centro)
+    let casos = [
+        ("rodado", [0.970_296f32, 0.241_922], [1.13f32, 0.91], [3.37f32, -2.61]),
+        ("encolhido", [0.866_025, 0.5], [0.41, 0.47], [-1.73, 2.29]),
+    ];
+    let mut falhas = Vec::new();
+    for (nome, rot, esc, desl) in casos {
+        let (diff, worst) = malha_contra_afim(rot, esc, desl);
+        if diff != 0 {
+            falhas.push(format!("[{nome}] {diff} texels (pior {worst})"));
+        }
+    }
+    assert!(
+        falhas.is_empty(),
+        "a malha de 4 cantos difere do afim — a borda da malha não é a do afim: {falhas:?}"
+    );
+}
+
+/// Pinta o mesmo box pelo afim e pela malha de 4 cantos; devolve `(texels com diferença > 1, pior)`.
+fn malha_contra_afim(rot: [f32; 2], esc: [f32; 2], desl: [f32; 2]) -> (usize, u8) {
     const N: u32 = 96;
     let mut src = vec![0u8; (N * N * 4) as usize];
     for y in 30..62u32 {
@@ -177,13 +200,11 @@ fn a_malha_de_quatro_cantos_e_o_afim_na_borda() {
     t.set_deform_temperament(super::super::DEFORM_TEMPERAMENT_TRANSFORM);
     t.set_deform_transform_mode(1);
     let x = t.paint.deform.xform.expect("o levante");
-    // Rodada de ~14°, escala 1,13 × 0,91, centro deslocado de (3,37; −2,61).
-    let (c, s) = (0.970_296f32, 0.241_922f32);
     let cur = TransformFrame {
-        center: [x.pristine.center[0] + 3.37, x.pristine.center[1] - 2.61],
-        u: [c, s],
-        hx: x.pristine.hx * 1.13,
-        hy: x.pristine.hy * 0.91,
+        center: [x.pristine.center[0] + desl[0], x.pristine.center[1] + desl[1]],
+        u: rot,
+        hx: x.pristine.hx * esc[0],
+        hy: x.pristine.hy * esc[1],
     };
     t.paint.deform.xform = Some(super::transform::Xform { current: cur, ..x });
     t.recomposite_transform();
@@ -216,13 +237,10 @@ fn a_malha_de_quatro_cantos_e_o_afim_na_borda() {
         }
         worst = worst.max(d);
     }
-    println!("[malha × afim] texels > 1: {diff} · pior {worst} · borda parcial do afim {parcial}");
+    println!("[malha × afim {esc:?}] texels > 1: {diff} · pior {worst} · borda parcial do afim {parcial}");
     assert!(
-        parcial > 50,
+        parcial > 20,
         "fixture: o afim não tem borda antialiasada ({parcial})"
     );
-    assert_eq!(
-        diff, 0,
-        "a malha de 4 cantos difere do afim em {diff} texels (pior {worst}) — a borda da malha não é a do afim"
-    );
+    (diff, worst)
 }

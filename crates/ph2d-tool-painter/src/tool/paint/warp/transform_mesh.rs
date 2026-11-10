@@ -225,7 +225,13 @@ impl PainterTool {
             }
         });
         // …e o CORPO pela mesma malha, sobre a mesma janela, com a mesma posse por célula.
-        self.composite_mesh_relief(&cells, dirty);
+        #[cfg(test)]
+        let corpo = !super::prancha_b06b_tests::antes();
+        #[cfg(not(test))]
+        let corpo = true;
+        if corpo {
+            self.composite_mesh_relief(&cells, dirty);
+        }
         self.paint.deform.xform_last_bbox = Some(affected);
         self.mark_dirty(dirty);
     }
@@ -246,6 +252,11 @@ impl MeshCell {
     /// the edge (the bilinear's support), so the patch alpha draws the antialiased rim, as the affine does.
     pub(super) fn locate(&self, x: u32, y: u32) -> Option<[f32; 2]> {
         let sp = self.hinv.apply([x as f32, y as f32]);
+        #[cfg(test)]
+        if super::prancha_b06b_tests::antes() {
+            let centro = self.hinv.apply([x as f32 + 0.5, y as f32 + 0.5]);
+            return in_cell(&self.src, centro, [false; 4]).then_some(sp);
+        }
         in_cell(&self.src, sp, self.outer).then_some(sp)
     }
 

@@ -518,6 +518,7 @@ fn sample_color_mask(stamp: &ColorStampMask, u: f32, v: f32) -> ([f32; 3], f32) 
 mod accumulate;
 mod accumulate_batch;
 mod accumulate_rgba_batch;
+mod bandas;
 pub use accumulate::{
     accumulate_color_stamp_coverage, accumulate_color_stamps_fused, accumulate_shape_layer_rgba,
 };
@@ -527,6 +528,14 @@ pub use accumulate_batch::{
 pub use accumulate_rgba_batch::accumulate_color_stamps_rgba_batch;
 
 #[cfg(test)]
+mod bandas_tests;
+#[cfg(test)]
 mod estrela_tests;
+#[cfg(test)]
+mod oraculo_accumulate;
+#[cfg(test)]
+mod oraculo_batch;
+#[cfg(test)]
+mod oraculo_rgba_batch;
 #[cfg(test)]
 mod tests;

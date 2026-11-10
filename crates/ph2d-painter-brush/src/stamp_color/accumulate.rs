@@ -75,8 +75,8 @@ pub fn accumulate_color_stamp_coverage(
 /// **Fused** per-layer coverage accumulate — the hot path of the cached per-layer-colour stroke. Byte-for-byte
 /// equivalent to calling [`accumulate_color_stamp_coverage`] once per layer (`covs[i]` ⊕ `stamps[i]`), but it
 /// is the bottleneck (96.5% of a per-layer-colour Move — `HANDOFF_per_layer_color_perf_artifacts` §1.R), so it
-/// removes the per-layer redundant work: all `stamps` share `size`, so the bilinear sample coordinates +
-/// the four texel offsets are computed ONCE per canvas pixel and reused across the N layers, and only the
+/// removes the per-layer redundant work: the layers whose pyramid level has the same side share the bilinear
+/// sample coordinates + the four texel offsets, computed ONCE per canvas pixel ([`pinta_alfa`]), and only the
 /// ALPHA channel is sampled (the per-layer-colour path discards the stamp RGB — colour is re-applied at
 /// recomposite). The per-texel arithmetic per layer is identical to [`accumulate_color_stamp_coverage`]'s
 /// alpha lerp + `over` accumulate, so the result is bit-identical (HR-5 + the correctness tests hold — gate:
@@ -92,78 +92,81 @@ pub fn accumulate_color_stamps_fused(
     stamps: &[ColorStampMask],
     coverage: f32,
 ) -> Option<DirtyRect> {
-    let coverage = coverage.clamp(0.0, 1.0);
-    let n = stamps.len();
-    if coverage <= 0.0 || width == 0 || height == 0 || radius <= 0.0 || n == 0 {
+    if width == 0 || height == 0 || stamps.is_empty() {
         return None;
     }
-    debug_assert_eq!(covs.len(), n, "one coverage map per layer");
-    debug_assert!(
-        stamps.iter().all(|s| s.size == stamps[0].size),
-        "fused accumulate requires all stamps baked at the same size"
-    );
-    // Todas as camadas assam com o MESMO pincel ⇒ o mesmo domínio ([`crate::tip::stamp_domain`]).
-    let radius = radius * stamps[0].reach;
-    // O nível da pirâmide do tamanho DESTE dab, uma vez (as camadas do mesmo tamanho partilham-no).
-    let k = stamps[0].indice_do_nivel(2.0 * radius);
-    let size = stamps[0].nivel(k).size;
-    let (cx, cy) = (center[0], center[1]);
-    let x0 = (cx - radius).floor().max(0.0) as i64;
-    let y0 = (cy - radius).floor().max(0.0) as i64;
-    let x1 = ((cx + radius).ceil() as i64 + 1).min(width as i64);
-    let y1 = ((cy + radius).ceil() as i64 + 1).min(height as i64);
-    if x0 >= x1 || y0 >= y1 {
-        return None;
-    }
-    let inv_radius = 1.0 / radius;
-    let sz = size as usize;
-    let mut touched = false;
-    for py in y0..y1 {
-        let v = ((py as f32 + 0.5) - cy) * inv_radius;
-        // Fora da ponta não há dab, e a linha inteira sai de uma vez ([`crate::tip::axis_taps`]).
-        let Some((ty0, ty1, ty)) = crate::tip::axis_taps(v, size) else {
-            continue;
-        };
-        let (yr0, yr1) = (ty0 * sz, ty1 * sz);
-        let row = (py as usize) * (width as usize);
-        for px in x0..x1 {
-            let u = ((px as f32 + 0.5) - cx) * inv_radius;
-            let Some((xc0, xc1, tx)) = crate::tip::axis_taps(u, size) else {
-                continue;
-            };
-            // The four alpha-texel byte offsets, shared by every layer (all stamps share `size`).
-            let o00 = (yr0 + xc0) * 4 + 3;
-            let o10 = (yr0 + xc1) * 4 + 3;
-            let o01 = (yr1 + xc0) * 4 + 3;
-            let o11 = (yr1 + xc1) * 4 + 3;
-            let idx = row + px as usize;
-            for (i, stamp) in stamps.iter().enumerate() {
-                let d = &stamp.nivel(k).data;
-                // Alpha-only bilinear — identical arithmetic to `sample_color_mask`'s `lerp2(3)`.
-                let c = |o: usize| f32::from(d[o]) / 255.0;
-                let top = c(o00) + (c(o10) - c(o00)) * tx;
-                let bot = c(o01) + (c(o11) - c(o01)) * tx;
-                let a_tex = top + (bot - top) * ty;
-                let a = a_tex * coverage;
-                if a <= 0.0 {
-                    continue;
-                }
-                let cov = &mut covs[i];
-                let prev = f32::from(cov[idx]) / 255.0;
-                cov[idx] = encode(a + prev * (1.0 - a)); // over-accumulate
-                touched = true;
-            }
-        }
-    }
-    if !touched {
+    debug_assert_eq!(covs.len(), stamps.len(), "one coverage map per layer");
+    let dab = [super::FusedDab {
+        center,
+        radius,
+        coverage,
+    }];
+    let boxes = super::bandas::caixas_do_carimbo(&dab, stamps, width, height);
+    let b = boxes.first()?;
+    if !pinta_alfa(covs, width as usize, 0, b, b.y0, b.y1) {
         return None;
     }
     Some(DirtyRect {
-        x: x0 as u32,
-        y: y0 as u32,
-        w: (x1 - x0) as u32,
-        h: (y1 - y0) as u32,
+        x: b.x0 as u32,
+        y: b.y0 as u32,
+        w: (b.x1 - b.x0) as u32,
+        h: (b.y1 - b.y0) as u32,
     })
+}
+
+/// O corpo por píxel do acumulado de COBERTURA das camadas assadas, sobre as linhas `[y0, y1)` da caixa `b`
+/// (`maps` começam na linha `band_y0`, `wus` píxeis por linha): as coordenadas bilineares e os quatro texels
+/// calculam-se UMA vez por píxel para cada grupo de camadas do mesmo lado (B29.A2). Diz se tocou.
+pub(super) fn pinta_alfa<M: AsMut<[u8]>>(
+    maps: &mut [M],
+    wus: usize,
+    band_y0: i64,
+    b: &super::bandas::CaixaCarimbo<'_>,
+    y0: i64,
+    y1: i64,
+) -> bool {
+    let mut touched = false;
+    for grupo in &b.grupos {
+        let size = grupo[0].1.size;
+        let sz = size as usize;
+        for py in y0..y1 {
+            let v = ((py as f32 + 0.5) - b.cy) * b.inv_radius;
+            // Fora da ponta não há dab, e a linha inteira sai de uma vez ([`crate::tip::axis_taps`]).
+            let Some((ty0, ty1, ty)) = crate::tip::axis_taps(v, size) else {
+                continue;
+            };
+            let (yr0, yr1) = (ty0 * sz, ty1 * sz);
+            let row = ((py - band_y0) as usize) * wus;
+            for px in b.x0..b.x1 {
+                let u = ((px as f32 + 0.5) - b.cx) * b.inv_radius;
+                let Some((xc0, xc1, tx)) = crate::tip::axis_taps(u, size) else {
+                    continue;
+                };
+                let o00 = (yr0 + xc0) * 4 + 3;
+                let o10 = (yr0 + xc1) * 4 + 3;
+                let o01 = (yr1 + xc0) * 4 + 3;
+                let o11 = (yr1 + xc1) * 4 + 3;
+                let idx = row + px as usize;
+                for &(i, nivel) in grupo {
+                    let d = &nivel.data;
+                    // Alpha-only bilinear — identical arithmetic to `sample_color_mask`'s `lerp2(3)`.
+                    let c = |o: usize| f32::from(d[o]) / 255.0;
+                    let top = c(o00) + (c(o10) - c(o00)) * tx;
+                    let bot = c(o01) + (c(o11) - c(o01)) * tx;
+                    let a_tex = top + (bot - top) * ty;
+                    let a = a_tex * b.coverage;
+                    if a <= 0.0 {
+                        continue;
+                    }
+                    let cov = maps[i].as_mut();
+                    let prev = f32::from(cov[idx]) / 255.0;
+                    cov[idx] = encode(a + prev * (1.0 - a)); // over-accumulate
+                    touched = true;
+                }
+            }
+        }
+    }
+    touched
 }
 
 /// Over-accumulate ONE dab of ONE Shape layer — tinted by the dab's `color` — into that layer's per-stroke
@@ -212,6 +215,10 @@ pub fn accumulate_shape_layer_rgba(
         return None;
     }
     let inv_radius = 1.0 / radius;
+    // A memória do grão Tiled ([`crate::texture::grao_cache`], B29.A3): o mesmo `sample`, uma vez por píxel.
+    let grao = grain.and_then(|(gb, _)| {
+        crate::texture::grao_cache::para_o_dab(&spec.texture, gb, width, height)
+    });
     let mut touched = false;
     for py in y0..y1 {
         let v = ((py as f32 + 0.5) - cy) * inv_radius;
@@ -248,7 +255,15 @@ pub fn accumulate_shape_layer_rgba(
                 // Stencil rect mask applies; the dab-local `sample_unit` has no rect → colour leaked
                 // outside the Stencil (Enio 2026-06-27). View grain keeps the scale-invariant unit form.
                 let g = if spec.texture.mapping.is_canvas_fixed() {
-                    crate::texture::sample(&spec.texture, gb, px, py, center, radius, gi)
+                    let amostra = || {
+                        #[cfg(test)]
+                        super::bandas::sonda::conta(width);
+                        crate::texture::sample(&spec.texture, gb, px, py, center, radius, gi)
+                    };
+                    match grao.as_deref() {
+                        Some(c) => c.em(px, py, amostra),
+                        None => amostra(),
+                    }
                 } else {
                     crate::texture::sample_unit_px(&spec.texture, gb, u, v, inv_radius, gi)
                 };

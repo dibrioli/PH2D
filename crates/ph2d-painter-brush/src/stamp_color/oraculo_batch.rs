@@ -1,0 +1,440 @@
+//! ORÁCULO `#[cfg(test)]` (B29a, B52.R26): `accumulate_batch.rs` VERBATIM do HEAD 937a504585 (só os comentários tirados e os
+//! caminhos apontados para os irmãos-oráculo). A paridade ao bit do esqueleto de bandas mede-se contra isto.
+#![allow(dead_code, clippy::all)]
+
+use super::accumulate_batch::{DynDab, FusedDab};
+use super::oraculo_accumulate::{accumulate_color_stamps_fused, accumulate_shape_layer_rgba};
+use super::{ColorStampMask, grain_modulation};
+use crate::dab::{DirtyRect, encode};
+use crate::texture::{ImageMask, ImageRgb, sample_shape_rgb_unit};
+
+pub(super) fn union_rect(a: DirtyRect, b: DirtyRect) -> DirtyRect {
+    let x0 = a.x.min(b.x);
+    let y0 = a.y.min(b.y);
+    let x1 = (a.x + a.w).max(b.x + b.w);
+    let y1 = (a.y + a.h).max(b.y + b.h);
+    DirtyRect {
+        x: x0,
+        y: y0,
+        w: x1 - x0,
+        h: y1 - y0,
+    }
+}
+
+#[must_use]
+pub fn accumulate_color_stamps_fused_batch(
+    covs: &mut [Vec<u8>],
+    width: u32,
+    height: u32,
+    dabs: &[FusedDab],
+    stamps: &[ColorStampMask],
+) -> Option<DirtyRect> {
+    let n = stamps.len();
+    if width == 0 || height == 0 || n == 0 || dabs.is_empty() {
+        return None;
+    }
+    let len = (width as usize) * (height as usize);
+    if covs.len() != n || covs.iter().any(|c| c.len() != len) {
+        return None;
+    }
+    struct Box_ {
+        di: usize,
+        x0: i64,
+        y0: i64,
+        x1: i64,
+        y1: i64,
+        cx: f32,
+        cy: f32,
+        inv_radius: f32,
+        coverage: f32,
+        k: usize,
+        size: u32,
+    }
+    let reach = stamps[0].reach;
+    let mut boxes: Vec<Box_> = Vec::with_capacity(dabs.len());
+    for (di, d) in dabs.iter().enumerate() {
+        let coverage = d.coverage.clamp(0.0, 1.0);
+        if coverage <= 0.0 || d.radius <= 0.0 {
+            continue;
+        }
+        let (cx, cy) = (d.center[0], d.center[1]);
+        let r = d.radius * reach;
+        let x0 = (cx - r).floor().max(0.0) as i64;
+        let y0 = (cy - r).floor().max(0.0) as i64;
+        let x1 = ((cx + r).ceil() as i64 + 1).min(width as i64);
+        let y1 = ((cy + r).ceil() as i64 + 1).min(height as i64);
+        if x0 >= x1 || y0 >= y1 {
+            continue;
+        }
+        boxes.push(Box_ {
+            di,
+            x0,
+            y0,
+            x1,
+            y1,
+            cx,
+            cy,
+            inv_radius: 1.0 / r,
+            coverage,
+            k: stamps[0].indice_do_nivel(2.0 * r),
+            size: stamps[0].nivel_para(2.0 * r).size,
+        });
+    }
+    if boxes.is_empty() {
+        return None;
+    }
+    let gy0 = boxes.iter().map(|b| b.y0).min().expect("non-empty") as usize;
+    let gy1 = boxes.iter().map(|b| b.y1).max().expect("non-empty") as usize;
+    let area: usize = boxes
+        .iter()
+        .map(|b| ((b.x1 - b.x0) * (b.y1 - b.y0)) as usize)
+        .sum();
+    let rows = gy1 - gy0;
+    let threads = crate::dab::band_count(area, rows, crate::dab::PARALLEL_MIN_AREA);
+    if threads <= 1 {
+        let mut union: Option<DirtyRect> = None;
+        for b in &boxes {
+            let d = &dabs[b.di];
+            if let Some(r) = accumulate_color_stamps_fused(
+                covs, width, height, d.center, d.radius, stamps, d.coverage,
+            ) {
+                union = Some(union.map_or(r, |u| union_rect(u, r)));
+            }
+        }
+        return union;
+    }
+    let wus = width as usize;
+    let rpb = rows.div_ceil(threads);
+    let nbands = rows.div_ceil(rpb);
+    let mut bands: Vec<Vec<&mut [u8]>> = (0..nbands).map(|_| Vec::with_capacity(n)).collect();
+    for map in covs.iter_mut() {
+        let mut rest = &mut map[gy0 * wus..gy1 * wus];
+        for band in bands.iter_mut() {
+            let take = (rpb * wus).min(rest.len());
+            let (head, tail) = rest.split_at_mut(take);
+            band.push(head);
+            rest = tail;
+        }
+    }
+    let size = stamps[0].size;
+    if size == 0 || stamps.iter().any(|s| s.size != size) {
+        return None; // a mixed-size batch would index `stamps[i].data` with stamps[0]'s stride
+    }
+    let boxes = &boxes;
+    let touched_by_band: Vec<Vec<bool>> = std::thread::scope(|scope| {
+        let handles: Vec<_> = bands
+            .into_iter()
+            .enumerate()
+            .map(|(bi, mut maps)| {
+                scope.spawn(move || {
+                    let band_y0 = (gy0 + bi * rpb) as i64;
+                    let band_y1 = band_y0 + (maps[0].len() / wus) as i64;
+                    let mut touched = vec![false; dabs.len()];
+                    for b in boxes {
+                        let y0 = b.y0.max(band_y0);
+                        let y1 = b.y1.min(band_y1);
+                        for py in y0..y1 {
+                            let v = ((py as f32 + 0.5) - b.cy) * b.inv_radius;
+                            let Some((ty0, ty1, ty)) = crate::tip::axis_taps(v, b.size) else {
+                                continue;
+                            };
+                            let sz = b.size as usize;
+                            let (yr0, yr1) = (ty0 * sz, ty1 * sz);
+                            let row = ((py - band_y0) as usize) * wus;
+                            for px in b.x0..b.x1 {
+                                let u = ((px as f32 + 0.5) - b.cx) * b.inv_radius;
+                                let Some((xc0, xc1, tx)) = crate::tip::axis_taps(u, b.size) else {
+                                    continue;
+                                };
+                                let o00 = (yr0 + xc0) * 4 + 3;
+                                let o10 = (yr0 + xc1) * 4 + 3;
+                                let o01 = (yr1 + xc0) * 4 + 3;
+                                let o11 = (yr1 + xc1) * 4 + 3;
+                                let idx = row + px as usize;
+                                for (i, stamp) in stamps.iter().enumerate() {
+                                    let d = &stamp.nivel(b.k).data;
+                                    let c = |o: usize| f32::from(d[o]) / 255.0;
+                                    let top = c(o00) + (c(o10) - c(o00)) * tx;
+                                    let bot = c(o01) + (c(o11) - c(o01)) * tx;
+                                    let a_tex = top + (bot - top) * ty;
+                                    let a = a_tex * b.coverage;
+                                    if a <= 0.0 {
+                                        continue;
+                                    }
+                                    let cov = &mut maps[i];
+                                    let prev = f32::from(cov[idx]) / 255.0;
+                                    cov[idx] = encode(a + prev * (1.0 - a)); // over-accumulate
+                                    touched[b.di] = true;
+                                }
+                            }
+                        }
+                    }
+                    touched
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .map(|h| h.join().expect("fused accumulate band panicked"))
+            .collect()
+    });
+    let mut union: Option<DirtyRect> = None;
+    for b in boxes {
+        if touched_by_band.iter().any(|t| t[b.di]) {
+            let r = DirtyRect {
+                x: b.x0 as u32,
+                y: b.y0 as u32,
+                w: (b.x1 - b.x0) as u32,
+                h: (b.y1 - b.y0) as u32,
+            };
+            union = Some(union.map_or(r, |u| union_rect(u, r)));
+        }
+    }
+    union
+}
+
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn accumulate_shape_layers_rgba_batch(
+    accs: &mut [Vec<u8>],
+    width: u32,
+    height: u32,
+    dabs: &[DynDab],
+    layers: &[ImageMask<'_>],
+    layer_rgb: &[Option<ImageRgb<'_>>],
+    grain_image: Option<&ImageMask<'_>>,
+    grain_ramp: Option<&[[f32; 4]]>,
+) -> Option<DirtyRect> {
+    let n = layers.len();
+    if width == 0 || height == 0 || n == 0 || dabs.is_empty() {
+        return None;
+    }
+    let len4 = (width as usize) * (height as usize) * 4;
+    if accs.len() != n || accs.iter().any(|a| a.len() != len4) {
+        return None;
+    }
+    struct Box_ {
+        di: usize,
+        x0: i64,
+        y0: i64,
+        x1: i64,
+        y1: i64,
+        cx: f32,
+        cy: f32,
+        inv_radius: f32,
+        coverage: f32,
+    }
+    let mut boxes: Vec<Box_> = Vec::with_capacity(dabs.len());
+    for (di, d) in dabs.iter().enumerate() {
+        let coverage = d.coverage.clamp(0.0, 1.0);
+        if coverage <= 0.0 || d.radius <= 0.0 {
+            continue;
+        }
+        let (cx, cy) = (d.center[0], d.center[1]);
+        let [ex, ey] = crate::tip::dab_extent([1.0, 1.0], &d.spec.shape, Some(&d.shape_basis));
+        let (rx, ry) = (d.radius * ex, d.radius * ey);
+        let x0 = (cx - rx).floor().max(0.0) as i64;
+        let y0 = (cy - ry).floor().max(0.0) as i64;
+        let x1 = ((cx + rx).ceil() as i64 + 1).min(width as i64);
+        let y1 = ((cy + ry).ceil() as i64 + 1).min(height as i64);
+        if x0 >= x1 || y0 >= y1 {
+            continue;
+        }
+        boxes.push(Box_ {
+            di,
+            x0,
+            y0,
+            x1,
+            y1,
+            cx,
+            cy,
+            inv_radius: 1.0 / d.radius,
+            coverage,
+        });
+    }
+    if boxes.is_empty() {
+        return None;
+    }
+    let area: usize = boxes
+        .iter()
+        .map(|b| ((b.x1 - b.x0) * (b.y1 - b.y0)) as usize)
+        .sum();
+    let gy0b = boxes.iter().map(|b| b.y0).min().expect("non-empty") as usize;
+    let gy1b = boxes.iter().map(|b| b.y1).max().expect("non-empty") as usize;
+    if crate::dab::band_count(area, gy1b - gy0b, crate::dab::PARALLEL_MIN_AREA) <= 1 {
+        let mut union: Option<DirtyRect> = None;
+        for b in &boxes {
+            let d = &dabs[b.di];
+            for (i, layer) in layers.iter().enumerate() {
+                let grain = d.grain_basis.as_ref().map(|gb| (gb, grain_image));
+                if let Some(r) = accumulate_shape_layer_rgba(
+                    &mut accs[i],
+                    width,
+                    height,
+                    d.center,
+                    d.radius,
+                    &d.spec,
+                    &d.shape_basis,
+                    layer,
+                    grain,
+                    grain_ramp,
+                    d.colors[i],
+                    layer_rgb.get(i).and_then(|o| o.as_ref()),
+                    d.color_shift,
+                    d.coverage,
+                ) {
+                    union = Some(union.map_or(r, |u| union_rect(u, r)));
+                }
+            }
+        }
+        return union;
+    }
+    let gy0 = boxes.iter().map(|b| b.y0).min().expect("non-empty") as usize;
+    let gy1 = boxes.iter().map(|b| b.y1).max().expect("non-empty") as usize;
+    let rows = gy1 - gy0;
+    let threads = crate::dab::band_count(area, rows, crate::dab::PARALLEL_MIN_AREA);
+    let wus = width as usize;
+    let rpb = rows.div_ceil(threads);
+    let nbands = rows.div_ceil(rpb);
+    let mut bands: Vec<Vec<&mut [u8]>> = (0..nbands).map(|_| Vec::with_capacity(n)).collect();
+    for map in accs.iter_mut() {
+        let mut rest = &mut map[gy0 * wus * 4..gy1 * wus * 4];
+        for band in bands.iter_mut() {
+            let take = (rpb * wus * 4).min(rest.len());
+            let (head, tail) = rest.split_at_mut(take);
+            band.push(head);
+            rest = tail;
+        }
+    }
+    let boxes = &boxes;
+    let touched_by_band: Vec<Vec<bool>> = std::thread::scope(|scope| {
+        let handles: Vec<_> = bands
+            .into_iter()
+            .enumerate()
+            .map(|(bi, mut maps)| {
+                scope.spawn(move || {
+                    let band_y0 = (gy0 + bi * rpb) as i64;
+                    let band_y1 = band_y0 + (maps[0].len() / (wus * 4)) as i64;
+                    let mut touched = vec![false; dabs.len()];
+                    for b in boxes {
+                        let d = &dabs[b.di];
+                        let depth = d.spec.grain_depth();
+                        let y0 = b.y0.max(band_y0);
+                        let y1 = b.y1.min(band_y1);
+                        for py in y0..y1 {
+                            let v = ((py as f32 + 0.5) - b.cy) * b.inv_radius;
+                            let row = ((py - band_y0) as usize) * wus;
+                            for px in b.x0..b.x1 {
+                                let u = ((px as f32 + 0.5) - b.cx) * b.inv_radius;
+                                let mut grain_mg: Option<([f32; 4], f32)> = None;
+                                for (i, layer) in layers.iter().enumerate() {
+                                    let mut a = crate::texture::sample_shape_silhouette_unit_px(
+                                        &d.spec.shape,
+                                        &d.shape_basis,
+                                        u,
+                                        v,
+                                        b.inv_radius,
+                                        Some(layer),
+                                    );
+                                    if a <= 0.0 {
+                                        continue;
+                                    }
+                                    let base = match layer_rgb.get(i).and_then(|o| o.as_ref()) {
+                                        Some(img) => super::texture_times_tint(
+                                            sample_shape_rgb_unit(
+                                                &d.spec.shape,
+                                                &d.shape_basis,
+                                                u,
+                                                v,
+                                                img,
+                                            ),
+                                            d.colors[i],
+                                            d.color_shift,
+                                        ),
+                                        None => d.colors[i],
+                                    };
+                                    let mut tint = base;
+                                    if let Some(gb) = d.grain_basis.as_ref() {
+                                        let (m, gate) = *grain_mg.get_or_insert_with(|| {
+                                            let g = if d.spec.texture.mapping.is_canvas_fixed() {
+                                                crate::texture::sample(
+                                                    &d.spec.texture,
+                                                    gb,
+                                                    px,
+                                                    py,
+                                                    d.center,
+                                                    d.radius,
+                                                    grain_image,
+                                                )
+                                            } else {
+                                                crate::texture::sample_unit_px(
+                                                    &d.spec.texture,
+                                                    gb,
+                                                    u,
+                                                    v,
+                                                    b.inv_radius,
+                                                    grain_image,
+                                                )
+                                            };
+                                            (
+                                                grain_modulation(
+                                                    g,
+                                                    depth,
+                                                    d.spec.effective_granulation(),
+                                                    grain_ramp,
+                                                    &d.spec.texture.lei,
+                                                ),
+                                                crate::texture::stencil_gate(
+                                                    &d.spec.texture,
+                                                    gb,
+                                                    px,
+                                                    py,
+                                                ),
+                                            )
+                                        });
+                                        tint = [base[0] * m[0], base[1] * m[1], base[2] * m[2]];
+                                        a *= m[3];
+                                        a *= gate;
+                                    }
+                                    a *= crate::dente::dente_at(&d.spec, a, px, py);
+                                    a *= b.coverage;
+                                    if a <= 0.0 {
+                                        continue;
+                                    }
+                                    let acc = &mut maps[i];
+                                    let o = (row + px as usize) * 4;
+                                    let inv = 1.0 - a;
+                                    acc[o] = encode(tint[0] * a + f32::from(acc[o]) / 255.0 * inv);
+                                    acc[o + 1] =
+                                        encode(tint[1] * a + f32::from(acc[o + 1]) / 255.0 * inv);
+                                    acc[o + 2] =
+                                        encode(tint[2] * a + f32::from(acc[o + 2]) / 255.0 * inv);
+                                    acc[o + 3] = encode(a + f32::from(acc[o + 3]) / 255.0 * inv);
+                                    touched[b.di] = true;
+                                }
+                            }
+                        }
+                    }
+                    touched
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .map(|h| h.join().expect("dynamic accumulate band panicked"))
+            .collect()
+    });
+    let mut union: Option<DirtyRect> = None;
+    for b in boxes {
+        if touched_by_band.iter().any(|t| t[b.di]) {
+            let r = DirtyRect {
+                x: b.x0 as u32,
+                y: b.y0 as u32,
+                w: (b.x1 - b.x0) as u32,
+                h: (b.y1 - b.y0) as u32,
+            };
+            union = Some(union.map_or(r, |u| union_rect(u, r)));
+        }
+    }
+    union
+}

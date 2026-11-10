@@ -37,6 +37,7 @@
 
 use super::PainterTool;
 use super::Region;
+use super::relief_state::StrokePlanes;
 use ph2d_painter_brush::height::{NO_GRAIN, derive_height};
 use std::sync::Arc;
 
@@ -58,24 +59,27 @@ impl PainterTool {
     /// sobre o RAIO do pincel a partir da fronteira para dentro.
     #[must_use]
     pub(super) fn fill_selection_keep(&self) -> Arc<Vec<u8>> {
-        self.fill_selection_keep_na(None)
+        match self.fill_selection_keep_na(None) {
+            Keep::Mascara(m) => m,
+            Keep::Caixa(_, v) => Arc::new(v),
+        }
     }
 
-    /// [`Self::fill_selection_keep`] só dentro de `janela` (B48.2: o tique do balde), `0` fora dela.
-    /// Ao bit dentro da janela crescida pela rampa: a EDT só perde sementes além de `ramp`, onde o
-    /// perfil já satura.
-    pub(super) fn fill_selection_keep_na(&self, janela: Option<Region>) -> Arc<Vec<u8>> {
+    /// [`Self::fill_selection_keep`] só dentro de `janela` crescida pela rampa (B48.2: o tique do
+    /// balde), num buffer do tamanho dessa caixa; `0` fora dela. Ao bit dentro da janela: a EDT só perde
+    /// sementes além de `ramp`, onde o perfil já satura.
+    pub(super) fn fill_selection_keep_na(&self, janela: Option<Region>) -> Keep {
         let mask = Arc::clone(&self.paint.selection_mask);
         if !self.paint.brush.deposits_height() || !self.paint.selection_active {
-            return mask;
+            return Keep::Mascara(mask);
         }
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
         if w == 0 || h == 0 || mask.len() != w * h {
-            return mask;
+            return Keep::Mascara(mask);
         }
         let ramp = self.paint.brush.clamped_radius();
         if ramp <= 0.5 {
-            return mask; // um pincel de meio texel não tem perfil que caiba numa borda
+            return Keep::Mascara(mask); // um pincel de meio texel não tem perfil que caiba numa borda
         }
         let full = Region {
             x: 0,
@@ -98,34 +102,19 @@ impl PainterTool {
         let (rx, ry, rw, rh) = (r.x as usize, r.y as usize, r.w as usize, r.h as usize);
         let dist = super::sculpt_close::distance_inside(&mask, w, r, INSIDE_THRESHOLD);
         if dist.len() != rw * rh {
-            return mask;
-        }
-        if r != full {
-            let mut out = vec![0u8; w * h];
-            for yy in 0..rh {
-                let g = (ry + yy) * w + rx;
-                for xx in 0..rw {
-                    let m = mask[g + xx];
-                    out[g + xx] = self.keep_texel(dist[yy * rw + xx], m, ramp);
-                }
-            }
-            return Arc::new(out);
+            return Keep::Mascara(mask);
         }
         // ⚠️ **`falloff_weight` recebe `t = distância / raio` a partir do CENTRO do dab** (0 no miolo, 1
-        // no aro) — não a profundidade. A grandeza que temos é a distância à BORDA, que é o complemento
-        // dela, então a conversão acontece aqui, na entrada, e uma vez. Passar a profundidade crua
-        // inverte o perfil inteiro: o miolo sai transparente e o aro sai sólido — foi exatamente o que a
-        // primeira versão fez, e o fill não pintava nada.
-        //
-        // E a `hardness` entra junto porque a porta a compõe: ela é a outra metade de *como esta tinta
-        // termina*, e um pincel de borda dura (`hardness >= 1`) devolve um disco — a borda da seleção
-        // fica reta, que é o que aquele pincel significa.
-        let out: Vec<u8> = dist
-            .iter()
-            .zip(mask.iter())
-            .map(|(&d, &m)| self.keep_texel(d, m, ramp))
-            .collect();
-        Arc::new(out)
+        // no aro) — não a profundidade; a conversão é no `keep_texel`. A `hardness` entra junto porque
+        // a porta a compõe: um pincel de borda dura devolve um disco e a borda da seleção fica reta.
+        let mut out = vec![0u8; rw * rh];
+        for yy in 0..rh {
+            let g = (ry + yy) * w + rx;
+            for xx in 0..rw {
+                out[yy * rw + xx] = self.keep_texel(dist[yy * rw + xx], mask[g + xx], ramp);
+            }
+        }
+        Keep::Caixa(r, out)
     }
 
     #[inline]
@@ -221,8 +210,14 @@ impl PainterTool {
 
 impl PainterTool {
     /// [`Self::arm_fill_body`] com `cov` só na `janela` (B48.2: `cov` é `janela.w × janela.h`); os planos
-    /// continuam do tamanho da tela, com os mesmos valores fora dela.
-    pub(super) fn arm_fill_body_na(&mut self, cov: &[u8], janela: Region) -> bool {
+    /// continuam do tamanho da tela, com os mesmos valores fora dela. `planos` (do tique anterior, já de
+    /// volta aos valores de fábrica do balde) evita alocar `w·h`.
+    pub(super) fn arm_fill_body_na(
+        &mut self,
+        cov: &[u8],
+        janela: Region,
+        planos: Option<StrokePlanes>,
+    ) -> bool {
         if !self.paint.brush.deposits_height() {
             return false;
         }
@@ -240,10 +235,29 @@ impl PainterTool {
         let radius = self.paint.brush.clamped_radius();
         let spec = self.paint.brush;
         let ng = f32::from(NO_GRAIN) / 255.0;
-        let mut paint = vec![0.0f32; n];
-        let mut film = vec![0u8; n];
-        let mut rad = vec![0.0f32; n];
-        let mut height = vec![derive_height(&spec, 0.0, ng); n];
+        let StrokePlanes {
+            mut height,
+            mut paint,
+            grain,
+            mut film,
+            radius: mut rad,
+        } = planos.unwrap_or_else(|| StrokePlanes {
+            height: vec![derive_height(&spec, 0.0, ng); n],
+            paint: vec![0.0f32; n],
+            grain: vec![NO_GRAIN; n],
+            film: vec![0u8; n],
+            radius: vec![0.0f32; n],
+        });
+        if [
+            paint.len(),
+            film.len(),
+            rad.len(),
+            height.len(),
+            grain.len(),
+        ] != [n; 5]
+        {
+            return false;
+        }
         let (mut minx, mut miny, mut maxx, mut maxy) = (usize::MAX, usize::MAX, 0usize, 0usize);
         for yy in 0..jh {
             let y = jy + yy;
@@ -269,7 +283,7 @@ impl PainterTool {
             return false; // nada coberto
         }
         self.paint.relief.stroke_paint = paint;
-        self.paint.relief.stroke_grain = vec![NO_GRAIN; n];
+        self.paint.relief.stroke_grain = grain;
         self.paint.relief.stroke_film = film;
         self.paint.relief.stroke_radius = rad;
         self.paint.relief.stroke_height = height;
@@ -280,6 +294,29 @@ impl PainterTool {
             h: (maxy - miny + 1) as u32,
         });
         true
+    }
+}
+
+/// A cobertura que a seleção concede a um fill: a máscara verbatim, ou o perfil numa CAIXA (`0` fora).
+pub(super) enum Keep {
+    Mascara(Arc<Vec<u8>>),
+    Caixa(Region, Vec<u8>),
+}
+
+impl Keep {
+    /// O valor no texel `(x, y)` de uma tela de largura `w`.
+    #[inline]
+    pub(super) fn at(&self, x: usize, y: usize, w: usize) -> u8 {
+        match self {
+            Self::Mascara(m) => m.get(y * w + x).copied().unwrap_or(255),
+            Self::Caixa(r, v) => {
+                let (rx, ry) = (r.x as usize, r.y as usize);
+                if x < rx || y < ry || x >= rx + r.w as usize || y >= ry + r.h as usize {
+                    return 0;
+                }
+                v[(y - ry) * r.w as usize + (x - rx)]
+            }
+        }
     }
 }
 

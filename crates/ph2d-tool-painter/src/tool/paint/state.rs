@@ -619,6 +619,8 @@ pub(crate) struct PaintState {
     /// The mode id to RESTORE after a momentary **ColorDrop** (C&F drag) finalizes (`None` = deliberate Fill).
     /// Set by the shell's C&F drag, consumed by `fill_commit` / `fill_cancel` ([`fill`], Enio 2026-07-03).
     pub(super) fill_return_mode: Option<String>,
+    /// O rascunho do tique do balde (B48.2) — scratch, não estado: um `clone` devolve-o vazio.
+    pub(super) fill_rascunho: super::fill::Rascunho,
     /// **Inpaint** Patch Size (`0..1` track → patch radius `2..=6`); the reconstruction's patch footprint.
     pub(super) inpaint_patch_norm: f32,
     /// **Inpaint** Quality (`0..1` track → EM iterations `3..=12`); more iterations = better fit, slower.

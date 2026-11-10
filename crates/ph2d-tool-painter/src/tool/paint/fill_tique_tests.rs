@@ -229,6 +229,7 @@ fn mesmo_estado(a: &PainterTool, b: &PainterTool, ctx: &str) {
 #[test]
 fn o_tique_do_balde_e_o_antigo_ao_bit() {
     let (w, h, c, r) = (97u32, 83u32, [48.5, 40.0], 22.0);
+    let mut circulou = 0;
     for (impasto, sel) in [(false, false), (false, true), (true, false), (true, true)] {
         for semente in [c, [5.0, 5.0], [90.0, 41.0]] {
             let mut a = tela(w, h, c, r, impasto, sel);
@@ -238,9 +239,19 @@ fn o_tique_do_balde_e_o_antigo_ao_bit() {
             let ctx = format!("impasto={impasto} sel={sel} semente={semente:?}");
             mesmo_estado(&a, &b, &format!("{ctx} drop"));
             for thr in [0.0, 0.08, 0.3, 0.6, 1.0, 0.15] {
+                let antes = a.paint.relief.stroke_paint.as_ptr();
+                let armado = !a.paint.relief.stroke_paint.is_empty();
                 tique(&mut a, thr, false);
                 tique(&mut b, thr, true);
                 mesmo_estado(&a, &b, &format!("{ctx} thr={thr}"));
+                if armado && !a.paint.relief.stroke_paint.is_empty() {
+                    assert_eq!(
+                        antes,
+                        a.paint.relief.stroke_paint.as_ptr(),
+                        "{ctx}: os planos não circularam"
+                    );
+                    circulou += 1;
+                }
             }
             a.fill_commit();
             b.fill_commit();
@@ -253,33 +264,39 @@ fn o_tique_do_balde_e_o_antigo_ao_bit() {
             );
         }
     }
+    assert!(
+        circulou >= 10,
+        "os planos do corpo quase nunca circularam: {circulou}"
+    );
 }
 
 /// O tique do slider, por variante, à tela `s²` com um disco de 300 px e a seleção (Impasto): o MÍNIMO
-/// de 5 tiques intercalados (novo, antigo).
+/// de 7 tiques intercalados, cada variante na SUA ferramenta (o antigo troca os planos a cada tique, o
+/// que desligaria a circulação do novo).
 fn tempos(s: u32) -> (Duration, Duration) {
     let c = [s as f32 * 0.5, s as f32 * 0.5];
-    let mut t = tela(s, s, c, 150.0, true, true);
-    solta(&mut t, c, false);
+    let mut novo_t = tela(s, s, c, 150.0, true, true);
+    let mut antigo_t = tela(s, s, c, 150.0, true, true);
+    solta(&mut novo_t, c, false);
+    solta(&mut antigo_t, c, true);
     let (mut novo, mut antigo) = (Duration::MAX, Duration::MAX);
-    for k in 0..5 {
+    for k in 0..7 {
         let thr = if k % 2 == 0 { 0.1 } else { 0.2 };
         let t0 = Instant::now();
-        tique(&mut t, thr, false);
+        tique(&mut novo_t, thr, false);
         novo = novo.min(t0.elapsed());
         let t0 = Instant::now();
-        tique(&mut t, thr, true);
+        tique(&mut antigo_t, thr, true);
         antigo = antigo.min(t0.elapsed());
     }
     (novo, antigo)
 }
 
-/// **O tique a 4K é ≥ 10× o antigo** (B48.2, medido 6,1 → 11,3 ms contra 58 → 305 ms em 2048² → 4096²).
-/// O antigo, no MESMO processo, mostra o fenómeno (cresce ≥ 1,5× com a tela). ⚠️ O alvo do B48.2
-/// (`t(4096)/t(2048) < 1,5`) ainda NÃO: o novo cresce ×1,87 pelas alocações `w·h` que restam
-/// (`visited`, `fill_mask`, componente, `keep`, planos) — o próximo passo do BACKLOG.
+/// **O tique custa pela REGIÃO, não pela tela** (B48.2): `t(4096)/t(2048) < 1,5` com o mesmo disco de
+/// 300 px. O antigo, no MESMO processo, mostra o fenómeno (cresce ≥ 1,5× com a tela), e o novo a 4K é
+/// ≥ 10× o antigo.
 #[test]
-fn o_tique_do_balde_a_4k_e_dez_vezes_o_antigo() {
+fn o_tique_do_balde_custa_pela_regiao_nao_pela_tela() {
     let (n2, a2) = tempos(2048);
     let (n4, a4) = tempos(4096);
     let rn = n4.as_secs_f64() / n2.as_secs_f64();
@@ -288,6 +305,7 @@ fn o_tique_do_balde_a_4k_e_dez_vezes_o_antigo() {
         "B48.2 tique: novo 2048 {n2:?} 4096 {n4:?} (×{rn:.2}) · antigo 2048 {a2:?} 4096 {a4:?} (×{ra:.2})"
     );
     assert!(ra >= 1.5, "a régua não vê o fenómeno no antigo: ×{ra:.2}");
+    assert!(rn < 1.5, "o tique ainda cresce com a tela: ×{rn:.2}");
     assert!(
         n4 * 10 <= a4,
         "o tique a 4K não é 10× o antigo: {n4:?} × {a4:?}"

@@ -4,7 +4,11 @@
 
 #[path = "fill_nucleo.rs"]
 mod nucleo;
+#[cfg(test)]
 pub(super) use nucleo::flood_fill;
+#[path = "fill_rascunho.rs"]
+mod rascunho;
+pub(super) use rascunho::Rascunho;
 
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
@@ -60,11 +64,12 @@ impl PainterTool {
         ];
         // The ColorDrop clips to the ONE selection region the colour was dropped on — the connected
         // component of the selection mask under the seed (Enio 2026-07-04). `None` without a selection.
-        let clip = (self.paint.selection_active && self.paint.selection_mask.len() == w * h)
-            .then(|| nucleo::componente_da_selecao(&self.paint.selection_mask, sx, sy, w, h));
+        // B48.2: o `visited`, a componente e os planos do corpo circulam no rascunho entre tiques.
+        let n = w * h;
+        let clip = self.paint.selection_active && self.paint.selection_mask.len() == n;
         // O corpo do Impasto precisa do conjunto preenchido; o digital nem aloca o plano. A pergunta é do
         // PINCEL (`deposits_height`), não do MODO: um balde nunca está em `PaintMode::Paint`.
-        let mut fill_mask = self.paint.brush.deposits_height().then(|| vec![0u8; w * h]);
+        let corpo = self.paint.brush.deposits_height();
         let prev = self.paint.fill_last_rect;
         let buf = crate::tool::paint::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
@@ -72,7 +77,7 @@ impl PainterTool {
             self.source_size.0,
             None,
         );
-        if buf.len() != w * h * 4 {
+        if buf.len() != n * 4 {
             return;
         }
         // B48.2: o buffer só difere do snapshot dentro do fill anterior — restaurar só essas linhas.
@@ -81,27 +86,32 @@ impl PainterTool {
         {
             copia_caixa(buf, &self.paint.fill_snapshot, r, w);
         }
-        let (filled, caixa) =
-            nucleo::flood_fill_caixa(buf, w, h, (sx, sy), color, tol, fill_mask.as_deref_mut());
+        let rascunho = &mut self.paint.fill_rascunho;
+        let visited = rascunho.visitado(n, w);
+        let (filled, caixa) = nucleo::flood_fill_caixa(buf, w, h, (sx, sy), color, tol, visited);
+        rascunho.visitou(caixa);
         let Some(caixa) = caixa else {
             return;
         };
+        if clip {
+            let mask = std::sync::Arc::clone(&self.paint.selection_mask);
+            self.paint.fill_rascunho.componente(&mask, sx, sy, w, h);
+        }
         // A cobertura que a SELEÇÃO concede (a mesma porta do Color Fill), só na caixa do flood.
-        let keep_mask = clip
-            .as_ref()
-            .map(|_| self.fill_selection_keep_na(Some(caixa)));
+        let keep_mask = clip.then(|| self.fill_selection_keep_na(Some(caixa)));
         // Clip to the drop's selection region — the flood writes `canvas_rgba` directly, bypassing the
         // per-dab stamp gate (ADR-0103). Fora do que o flood MUDOU o pixel é o snapshot e a mistura é a
         // identidade, então só a caixa `filled` é percorrida.
-        if let (Some(comp), Some(mask), Some(fr)) = (&clip, &keep_mask, filled) {
+        if let (Some(mask), Some(fr)) = (&keep_mask, filled) {
             let buf = crate::tool::paint::plane_fork::fork_canvas(
                 &mut self.canvas_rgba,
                 &self.undo.write_state,
                 self.source_size.0,
                 None,
             );
+            let comp = self.paint.fill_rascunho.comp();
             let snap = &self.paint.fill_snapshot;
-            let n = (w * h).min(snap.len() / 4);
+            let n = n.min(snap.len() / 4);
             for y in fr.y as usize..(fr.y + fr.h) as usize {
                 for x in fr.x as usize..(fr.x + fr.w) as usize {
                     let i = y * w + x;
@@ -109,7 +119,7 @@ impl PainterTool {
                         continue;
                     }
                     let keep = if comp[i] >= 128 {
-                        f32::from(mask[i]) / 255.0
+                        f32::from(mask.at(x, y, w)) / 255.0
                     } else {
                         0.0
                     };
@@ -130,8 +140,9 @@ impl PainterTool {
         // **O CORPO**: o mesmo conjunto que a cor pintou, pela mesma cobertura, re-armado a cada tique (o
         // `reset` antes); o commit é o `close_stroke` do Done. O que o `reset` apaga entra no sujo.
         let mut body = None;
-        if let Some(fm) = fill_mask {
+        if corpo {
             body = self.paint.relief.stroke_relief_bbox;
+            let planos = self.toma_planos_do_balde();
             self.reset_stroke_height();
             let (cx, cy, cw, ch) = (
                 caixa.x as usize,
@@ -139,21 +150,24 @@ impl PainterTool {
                 caixa.w as usize,
                 caixa.h as usize,
             );
+            let rascunho = &self.paint.fill_rascunho;
+            let comp = clip.then(|| rascunho.comp());
             let mut cov = vec![0u8; cw * ch];
             for yy in 0..ch {
                 for xx in 0..cw {
-                    let i = (cy + yy) * w + cx + xx;
-                    let inside = clip.as_ref().is_none_or(|c| c[i] >= 128);
-                    if !inside || fm[i] == 0 {
+                    let (x, y) = (cx + xx, cy + yy);
+                    let i = y * w + x;
+                    let inside = comp.is_none_or(|c| c[i] >= 128);
+                    if !inside || !rascunho.foi_visitado(i) {
                         continue;
                     }
-                    let k = keep_mask
-                        .as_ref()
-                        .map_or(255, |keep| keep.get(i).copied().unwrap_or(255));
-                    cov[yy * cw + xx] = (u32::from(fm[i]) * u32::from(k) / 255) as u8;
+                    // O conjunto do flood vale 255, e `255·k/255 = k`.
+                    cov[yy * cw + xx] = keep_mask.as_ref().map_or(255, |keep| keep.at(x, y, w));
                 }
             }
-            self.arm_fill_body_na(&cov, caixa);
+            if self.arm_fill_body_na(&cov, caixa, planos) {
+                self.guarda_planos_do_balde();
+            }
             body = match (body, self.paint.relief.stroke_relief_bbox) {
                 (Some(gone), Some(armed)) => Some(super::union_region(gone, armed)),
                 (a, b) => a.or(b),
@@ -277,6 +291,7 @@ impl PainterTool {
             self.paint.fill_seed = None;
             self.paint.fill_snapshot = Vec::new();
             self.paint.fill_last_rect = None;
+            self.paint.fill_rascunho = Rascunho::default();
             self.restore_after_colordrop();
         })
     }
@@ -318,6 +333,7 @@ impl PainterTool {
         self.paint.fill_seed = None;
         self.paint.fill_snapshot = Vec::new();
         self.paint.fill_last_rect = None;
+        self.paint.fill_rascunho = Rascunho::default();
         self.restore_after_colordrop();
     }
 
@@ -329,6 +345,7 @@ impl PainterTool {
         self.paint.fill_seed = None;
         self.paint.fill_snapshot = Vec::new();
         self.paint.fill_last_rect = None;
+        self.paint.fill_rascunho = Rascunho::default();
         self.paint.stroke_undo = None;
         self.paint.fill_return_mode = None; // drop the momentary-fill return (the doc is being replaced)
     }

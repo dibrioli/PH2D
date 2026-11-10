@@ -21,6 +21,7 @@ fn color_match(px: &[u8], i: usize, seed: [u8; 4], tol: u8) -> bool {
 /// ⚠️ **`mask` é o CONJUNTO preenchido, não um segundo desenho.** O balde escreve pixels duros e o
 /// clip da seleção os compõe depois; o corpo do Impasto precisa saber *onde* o flood chegou, e a
 /// varredura já mantém exatamente esse conjunto no `visited`.
+#[cfg(test)]
 pub(in crate::tool::paint) fn flood_fill(
     px: &mut [u8],
     w: usize,
@@ -33,7 +34,8 @@ pub(in crate::tool::paint) fn flood_fill(
     flood_fill_medido(px, w, h, seed, fill, tol, mask).0
 }
 
-/// [`flood_fill`] mais a CAIXA do que o flood visitou (mudado ou não) — a janela do tique (B48.2).
+/// [`flood_fill`] sobre um `visited` do chamador (todo `false` à entrada; à saída `true` no conjunto
+/// preenchido, dentro da CAIXA devolvida) — o tique do balde (B48.2) não aloca `w·h`.
 pub(in crate::tool::paint) fn flood_fill_caixa(
     px: &mut [u8],
     w: usize,
@@ -41,13 +43,14 @@ pub(in crate::tool::paint) fn flood_fill_caixa(
     seed: (usize, usize),
     fill: [u8; 3],
     tol: u8,
-    mask: Option<&mut [u8]>,
+    visited: &mut [bool],
 ) -> (Option<Region>, Option<Region>) {
-    let (r, _, caixa) = flood_fill_medido(px, w, h, seed, fill, tol, mask);
+    let (r, _, caixa) = flood_fill_em(px, w, h, seed, fill, tol, None, visited);
     (r, caixa)
 }
 
 /// [`flood_fill`] mais o PICO da pilha (entradas) — a régua do B48.1.
+#[cfg(test)]
 fn flood_fill_medido(
     px: &mut [u8],
     w: usize,
@@ -55,9 +58,26 @@ fn flood_fill_medido(
     seed: (usize, usize),
     fill: [u8; 3],
     tol: u8,
-    mut mask: Option<&mut [u8]>,
+    mask: Option<&mut [u8]>,
 ) -> (Option<Region>, usize, Option<Region>) {
     if w == 0 || h == 0 || px.len() != w * h * 4 {
+        return (None, 0, None);
+    }
+    flood_fill_em(px, w, h, seed, fill, tol, mask, &mut vec![false; w * h])
+}
+
+#[expect(clippy::too_many_arguments, reason = "o flood + o seu visited")]
+fn flood_fill_em(
+    px: &mut [u8],
+    w: usize,
+    h: usize,
+    seed: (usize, usize),
+    fill: [u8; 3],
+    tol: u8,
+    mut mask: Option<&mut [u8]>,
+    visited: &mut [bool],
+) -> (Option<Region>, usize, Option<Region>) {
+    if w == 0 || h == 0 || px.len() != w * h * 4 || visited.len() != w * h {
         return (None, 0, None);
     }
     let (sx, sy) = seed;
@@ -67,7 +87,6 @@ fn flood_fill_medido(
     let si = (sy * w + sx) * 4;
     let seed_c = [px[si], px[si + 1], px[si + 2], px[si + 3]];
     let fillpx = [fill[0], fill[1], fill[2], 255];
-    let mut visited = vec![false; w * h];
     let mut stack: Vec<(usize, usize)> = vec![seed];
     let mut pico = 1usize;
     let (mut minx, mut miny, mut maxx, mut maxy) = (sx, sy, sx, sy);
@@ -140,7 +159,8 @@ fn flood_fill_medido(
 /// The connected COMPONENT (4-connected, `≥128` inside) of the selection `mask` that contains texel
 /// `(sx, sy)` — `255` inside that one region, `0` elsewhere. Lets a ColorDrop fill only the selection
 /// area the colour was dropped on, not every disjoint area (Enio 2026-07-04). All-`0` when the drop is
-/// outside the selection.
+/// outside the selection. O tique usa [`componente_da_selecao_em`]; esta fica para o oráculo.
+#[cfg(test)]
 pub(in crate::tool::paint) fn componente_da_selecao(
     mask: &[u8],
     sx: usize,
@@ -149,12 +169,27 @@ pub(in crate::tool::paint) fn componente_da_selecao(
     h: usize,
 ) -> Vec<u8> {
     let mut comp = vec![0u8; w * h];
-    if mask.len() != w * h || sx >= w || sy >= h || mask[sy * w + sx] < 128 {
-        return comp; // drop outside the selection → fills nothing
+    componente_da_selecao_em(mask, sx, sy, w, h, &mut comp);
+    comp
+}
+
+/// [`componente_da_selecao`] escrita em `comp` (todo `0` à entrada); devolve a caixa da componente.
+pub(in crate::tool::paint) fn componente_da_selecao_em(
+    mask: &[u8],
+    sx: usize,
+    sy: usize,
+    w: usize,
+    h: usize,
+    comp: &mut [u8],
+) -> Option<Region> {
+    if mask.len() != w * h || comp.len() != w * h || sx >= w || sy >= h || mask[sy * w + sx] < 128 {
+        return None; // drop outside the selection → fills nothing
     }
     let mut stack = vec![(sx, sy)];
     comp[sy * w + sx] = 255;
+    let (mut x0, mut y0, mut x1, mut y1) = (sx, sy, sx, sy);
     while let Some((x, y)) = stack.pop() {
+        (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x), y1.max(y));
         for (dx, dy) in [(-1i32, 0), (1, 0), (0, -1), (0, 1)] {
             let (nx, ny) = (x as i32 + dx, y as i32 + dy);
             if nx < 0 || ny < 0 || nx >= w as i32 || ny >= h as i32 {
@@ -167,7 +202,12 @@ pub(in crate::tool::paint) fn componente_da_selecao(
             }
         }
     }
-    comp
+    Some(Region {
+        x: x0 as u32,
+        y: y0 as u32,
+        w: (x1 - x0 + 1) as u32,
+        h: (y1 - y0 + 1) as u32,
+    })
 }
 
 #[cfg(test)]

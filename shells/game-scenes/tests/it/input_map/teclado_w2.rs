@@ -463,7 +463,11 @@ fn k2_a_face_cheia_nao_engole_as_barras() {
         assert!(c.physical(up));
         c.paint_in(area);
         let l = olhar_de(&c, up);
-        assert_eq!(l.body, ColorToken::KanbanCardRaised, "a tecla fica neutra");
+        assert_eq!(
+            l.body,
+            ph2d_app_input_map::view_keyboard::keys_fit::PRESS_BODY,
+            "a tecla no neutro de premido"
+        );
         let strip = l.rect;
         let r = c.tab().doc.rect_of(KbHit::Key(up).id()).expect("alvo");
         let bars: Vec<Rect> = (c.tab().doc.census.bars.iter())

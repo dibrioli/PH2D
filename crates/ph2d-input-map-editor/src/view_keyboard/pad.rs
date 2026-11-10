@@ -5,6 +5,7 @@
 //! no desenho porque são botões que se ligam — sem eles, uma ligação a um deles não teria onde se clicar.
 
 use ph2d_card_stack::metrics as m;
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon};
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
@@ -15,7 +16,7 @@ use ph2d_vector::{Affine, BezPath, Circle, Stroke, VectorScene};
 
 use super::geometry::{self as g, BodySeg, PadShape};
 use super::keys::{face_of, open_outline, paint_sticker};
-use super::keys_fit::LEGEND_MARGIN;
+use super::keys_fit::{self as fit, LEGEND_MARGIN};
 use super::state::KbHit;
 use super::users;
 use crate::doc::InputMapDoc;
@@ -170,8 +171,20 @@ pub(super) fn paint(
         );
     }
     for p in &parts {
-        let (cx, cy) = at(p.cx, p.cy);
+        let (mut cx, cy) = at(p.cx, p.cy);
         let (mut hw, hh) = (p.hw * bh, p.hh * bh);
+        if let PadShape::Half(icon, _) = p.shape {
+            // R1: a seta da manche tem a largura de uma tecla de letra — o glifo das setas e as barras à vista dos
+            // dois lados como na tecla (`BAR_PEEK`); a ← e a → afastam-se do anel o que alargaram.
+            let wide = super::keys::ARROW_BOX * 0.5 + fit::BAR_INSET_X + fit::BAR_PEEK;
+            let extra = (wide - hw).max(0.0);
+            hw += extra;
+            match icon {
+                IconId::ArrowLeft => cx -= extra,
+                IconId::ArrowRight => cx += extra,
+                _ => {}
+            }
+        }
         if matches!(p.shape, PadShape::Pill) {
             // O nome e as barras de cada lado dele cabem dentro das pontas redondas.
             let ends = hh * (1.0 - std::f32::consts::FRAC_1_SQRT_2);
@@ -194,19 +207,21 @@ pub(super) fn paint(
         let half = matches!(p.shape, PadShape::Half(..));
         // Com barras, a premida acende a plaquinha e a face fica neutra (a lei da tecla, onda 3 D1).
         let body_pressed = pressed && who.is_empty();
-        let face = (!half || pressed || hover).then(|| face_of(body_pressed, None, hover));
+        // R1: a seta LIGADA lê-se como as outras partes ligadas (face, nome claro, contorno da aberta).
+        let loose = half && who.is_empty();
+        let face = (!loose || pressed || hover).then(|| face_of(body_pressed, None, hover));
         if let Some(f) = face {
             super::keys::fill_face(scene, ink, r, radius, f);
         }
-        let fg = ink.color(if pressed {
+        let fg_tok = if pressed {
             ColorToken::Bg0
-        } else if lit && half {
-            ColorToken::Accent
         } else if who.is_empty() {
             ColorToken::Text3
         } else {
             ColorToken::Text1
-        });
+        };
+        let fg = ink.color(fg_tok);
+        doc.census.parts.push((r, face, fg_tok));
         // As barras por TRÁS do nome, numa plaquinha (a lei da tecla); o nome no centro com 0 ou N barras.
         let plate_face = face_of(pressed, None, hover);
         let sticker = (r, radius, plate_face);
@@ -236,7 +251,7 @@ pub(super) fn paint(
             }
         }
         // O contorno da aberta por cima de tudo (as pontas das barras não o tapam).
-        if lit && !half {
+        if lit {
             open_outline(scene, ink, r, radius);
         }
         doc.kb.bars.push((KbHit::Pad(p.binding), who));

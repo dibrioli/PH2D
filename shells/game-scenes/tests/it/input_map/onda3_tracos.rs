@@ -269,6 +269,7 @@ fn o_chip_do_also_poe_o_nome_numa_plaquinha_e_as_barras_por_tras() {
 // ── Rodada 2 da onda 3 (revisão visual): D1 tecla apertada, D2 plaquinha sem acção, D3 seta da manche ──
 
 use ph2d_app_input_map::census::KeyLook;
+use ph2d_app_input_map::view_keyboard::keys_fit::{LIT_GAP, PRESS_BODY, lit_plate};
 use ph2d_tokens::{ColorToken, Theme};
 
 fn olhar(m: &Mesa, k: Key) -> KeyLook {
@@ -310,6 +311,30 @@ fn contraste_das_barras(m: &Mesa, k: Key, at: &str) -> (f64, f64) {
     pior
 }
 
+/// R2: entre as barras e a parte ACESA da plaquinha fica um vão do corpo da tecla (≥ `LIT_GAP`), e a legenda inteira
+/// dentro da parte acesa.
+fn vao(m: &Mesa, k: Key, at: &str) {
+    let doc = &m.tab().doc;
+    let l = olhar(m, k);
+    let lg = legenda(doc, l.rect).expect("a legenda");
+    let (halo, aceso) = lit_plate(l.plate, lg);
+    assert!(dentro(lg, aceso), "{at}: a legenda sai da parte acesa");
+    for b in barras(doc, l.rect) {
+        // A barra só se vê fora do halo: o vão é do halo à parte acesa, e a barra continua à vista.
+        let (esq, dir) = (aceso.x - halo.x, halo.x + halo.w - aceso.x - aceso.w);
+        let visivel = (halo.x - b.x).min(b.x + b.w - halo.x - halo.w);
+        assert!(
+            visivel >= BAR_VISIBLE_MIN - 0.01,
+            "{at}: a barra some atrás do halo ({visivel:.1})"
+        );
+        eprintln!("{at}: vão {esq:.1}/{dir:.1} (barra {b:?})");
+        assert!(
+            esq >= LIT_GAP - 0.01 && dir >= LIT_GAP - 0.01,
+            "{at}: a barra cola-se à acesa ({esq:.1}/{dir:.1})"
+        );
+    }
+}
+
 /// ⭐ D1: a ↑ apertada no Try it (jump + move_up) acende a PLAQUINHA na cor da acção; a tecla fica neutra e toda
 /// barra continua distinguível do que está por trás dela (≥ o contraste em repouso, ou ≥ 3:1). O premido do rato
 /// na B segue a mesma lei.
@@ -328,11 +353,16 @@ fn a_tecla_apertada_acende_a_plaquinha_e_nunca_engole_as_barras() {
             "{at}: aceso na cor do jump"
         );
         assert_eq!(
+            l.body, PRESS_BODY,
+            "{at}: o corpo no neutro de premido (R3)"
+        );
+        assert_ne!(
             l.body,
             ColorToken::KanbanCardRaised,
-            "{at}: a tecla fica neutra"
+            "{at}: a apertada não passa despercebida"
         );
         assert_eq!(l.plate_face, Some(l.face), "{at}: a plaquinha acende");
+        vao(&m, UP, &at);
         assert_eq!(
             l.ink,
             ColorToken::Bg0,
@@ -350,7 +380,8 @@ fn a_tecla_apertada_acende_a_plaquinha_e_nunca_engole_as_barras() {
         let at = format!("B {}", a.w);
         let l = olhar(&b, q);
         assert_eq!(l.face, ColorToken::AccentPress, "{at}: premida");
-        assert_ne!(l.body, ColorToken::AccentPress, "{at}: a tecla fica neutra");
+        assert_eq!(l.body, PRESS_BODY, "{at}: o corpo no neutro de premido");
+        vao(&b, q, &at);
         assert_eq!(
             l.plate_face,
             Some(ColorToken::AccentPress),
@@ -397,91 +428,140 @@ fn sem_accao_a_plaquinha_nao_se_ve() {
     }
 }
 
-/// ⭐ D3: a seta da manche ligada (o ← do LS com move_left) lê-se como as outras partes ligadas: o glifo do tamanho
-/// do braço da cruz, as barras à vista dos dois lados (≥ 2 px), sem tocar o anel da manche nem sair do corpo, e
-/// nenhuma parte do comando sobre outra — nas duas larguras.
+/// ⭐ D3 (rodada 3: a CENA 12 do smoke, B3, nas áreas reais): toda seta de manche LIGADA (o ← do LS do move_left, e
+/// as do RS e do LS noutras direcções) lê-se como as outras partes ligadas — face pintada, nome claro (nunca o
+/// acento), o glifo do braço da cruz, as barras à vista dos dois lados como na tecla (`BAR_PEEK`) —, sem tocar o
+/// anel da manche nem sair do corpo, e nenhuma parte do comando sobre outra.
 #[test]
 fn a_seta_da_manche_ligada_le_se_como_as_outras_partes() {
-    let ls_left = Binding::PadAxis {
-        axis: GamepadAxis::LeftStickX,
-        positive: false,
-    };
-    let dpad_up = Binding::PadButton(GamepadButton::DPadUp);
+    use ph2d_app_input_map::view_keyboard::keys_fit::BAR_PEEK;
+    let eixo = |axis, positive| Binding::PadAxis { axis, positive };
+    let outras = liga(
+        liga(
+            liga(onze(), eixo(GamepadAxis::RightStickX, true), 2),
+            eixo(GamepadAxis::RightStickY, true),
+            1,
+        ),
+        eixo(GamepadAxis::LeftStickY, false),
+        3,
+    );
     for a in &AREAS[..2] {
-        let at = format!("{}", a.w);
-        let map = liga(liga(onze(), dpad_up, 1), ls_left, 2);
-        let m = pinta(View::Keyboard, Sub::Gamepad, map, *a);
-        let doc = &m.tab().doc;
-        let caixa = doc.kb.pad_box.expect("o comando pintado");
-        let icone = |b: Binding| {
-            let r = doc.rect_of(KbHit::Pad(b).id()).expect("a parte");
-            let i = (doc.census.icons.iter())
-                .find(|i| r.contains(i.0.x + i.0.w * 0.5, i.0.y + i.0.h * 0.5))
-                .expect("a seta")
-                .0;
-            (r, i)
-        };
-        let (r, ir) = icone(ls_left);
-        let (_, braco) = icone(dpad_up);
-        eprintln!("{at}: seta do LS {ir:?} na parte {r:?}; braço da cruz {braco:?}");
-        assert!(
-            ir.w >= braco.w - 0.01,
-            "{at}: o glifo {} < o do braço {}",
-            ir.w,
-            braco.w
-        );
-        let bs = barras(doc, r);
-        assert_eq!(bs.len(), 2, "{at}: move_left e a outra por trás da seta");
-        for b in bs {
-            assert!(dentro(b, r), "{at}: a barra {b:?} sai da parte");
-            let lado = (ir.x - b.x).min(b.x + b.w - ir.x - ir.w);
-            eprintln!("{at}: barra à vista {lado:.2}");
-            assert!(lado >= BAR_VISIBLE_MIN - 0.01, "{at}: espreita {lado:.2}");
-        }
-        // O anel do LS: a legenda «LS» pinta-se na altura do anel (2 r) com o centro nele.
-        let ls = (doc.census.texts.iter())
-            .find(|t| t.1 == "LS")
-            .expect("o LS")
-            .0;
-        let (cx, cy, raio) = (ls.x + ls.w * 0.5, ls.y + ls.h * 0.5, ls.h * 0.5);
-        let partes: Vec<Rect> = (doc.kb.bars.iter())
-            .filter_map(|(h, _)| doc.rect_of(h.id()))
-            .collect();
-        for (i, p) in partes.iter().enumerate() {
-            for q in &partes[i + 1..] {
-                let separadas =
-                    p.x + p.w <= q.x || q.x + q.w <= p.x || p.y + p.h <= q.y || q.y + q.h <= p.y;
-                assert!(separadas, "{at}: {p:?} sobre {q:?}");
-            }
-            for (x, y) in [
-                (p.x, p.y),
-                (p.x + p.w, p.y),
-                (p.x, p.y + p.h),
-                (p.x + p.w, p.y + p.h),
-            ] {
-                let fora_do_topo = p.y + p.h <= caixa.y + caixa.h * 0.2; // LITERAL-PX-OK: os gatilhos na aresta
-                assert!(
-                    fora_do_topo || ph2d_app_input_map::view_keyboard::body_contains(caixa, x, y),
-                    "{at}: {p:?} sai do corpo"
-                );
-            }
-        }
-        // As quatro setas do LS não tocam o anel (o traço do anel aceso tem 3 px: metade para fora).
-        for (h, _) in &doc.kb.bars {
-            let KbHit::Pad(Binding::PadAxis { axis, .. }) = h else {
-                continue;
+        for cena in ["B3", "outras"] {
+            let at = format!("{cena} {}", a.w);
+            let mut m = if cena == "B3" {
+                super::try_it_censo::cena("B3")
+            } else {
+                pinta(View::Keyboard, Sub::Gamepad, outras.clone(), *a)
             };
-            if !matches!(axis, GamepadAxis::LeftStickX | GamepadAxis::LeftStickY) {
-                continue;
+            m.paint_in(*a);
+            let doc = &m.tab().doc;
+            let caixa = doc.kb.pad_box.expect("o comando pintado");
+            let icone = |r: Rect| {
+                (doc.census.icons.iter())
+                    .find(|i| r.contains(i.0.x + i.0.w * 0.5, i.0.y + i.0.h * 0.5))
+                    .expect("a seta")
+                    .0
+            };
+            let braco = icone(
+                doc.rect_of(KbHit::Pad(Binding::PadButton(GamepadButton::DPadUp)).id())
+                    .expect("o braço"),
+            );
+            let mut ligadas = 0;
+            for (h, who) in &doc.kb.bars {
+                let KbHit::Pad(b @ Binding::PadAxis { .. }) = h else {
+                    continue;
+                };
+                if who.is_empty() {
+                    continue;
+                }
+                ligadas += 1;
+                let r = doc.rect_of(h.id()).expect("a seta");
+                let ir = icone(r);
+                let look = (doc.census.parts.iter())
+                    .find(|p| p.0 == r)
+                    .expect("o olhar da parte");
+                eprintln!(
+                    "{at}: {b:?} parte {r:?} glifo {ir:?} face {:?} tinta {:?}",
+                    look.1, look.2
+                );
+                assert!(
+                    look.1.is_some(),
+                    "{at}: {b:?} ligada sem face (uma seta solta)"
+                );
+                assert_eq!(
+                    look.2,
+                    ColorToken::Text1,
+                    "{at}: {b:?} o nome claro, nunca o acento"
+                );
+                assert!(
+                    ir.w >= braco.w - 0.01,
+                    "{at}: o glifo {} < o do braço {}",
+                    ir.w,
+                    braco.w
+                );
+                let bs = barras(doc, r);
+                assert_eq!(bs.len(), who.len(), "{at}: {b:?} as barras por trás");
+                for bar in bs {
+                    assert!(dentro(bar, r), "{at}: a barra {bar:?} sai da parte");
+                    let lado = (ir.x - bar.x).min(bar.x + bar.w - ir.x - ir.w);
+                    eprintln!("{at}: {b:?} barra à vista {lado:.2}");
+                    assert!(lado >= BAR_PEEK - 0.01, "{at}: {b:?} espreita {lado:.2}");
+                }
             }
-            let p = doc.rect_of(h.id()).expect("a seta");
-            let nx = cx.clamp(p.x, p.x + p.w);
-            let ny = cy.clamp(p.y, p.y + p.h);
-            let d = ((nx - cx).powi(2) + (ny - cy).powi(2)).sqrt();
-            assert!(
-                d > raio + 1.5,
-                "{at}: {p:?} toca o anel ({d:.1} ≤ {raio:.1})"
-            ); // LITERAL-PX-OK: meio traço
+            assert!(ligadas >= 1, "{at}: alguma seta ligada");
+            let partes: Vec<Rect> = (doc.kb.bars.iter())
+                .filter_map(|(h, _)| doc.rect_of(h.id()))
+                .collect();
+            for (i, p) in partes.iter().enumerate() {
+                for q in &partes[i + 1..] {
+                    let separadas = p.x + p.w <= q.x
+                        || q.x + q.w <= p.x
+                        || p.y + p.h <= q.y
+                        || q.y + q.h <= p.y;
+                    assert!(separadas, "{at}: {p:?} sobre {q:?}");
+                }
+                for (x, y) in [
+                    (p.x, p.y),
+                    (p.x + p.w, p.y),
+                    (p.x, p.y + p.h),
+                    (p.x + p.w, p.y + p.h),
+                ] {
+                    let fora_do_topo = p.y + p.h <= caixa.y + caixa.h * 0.2; // LITERAL-PX-OK: os gatilhos na aresta
+                    assert!(
+                        fora_do_topo
+                            || ph2d_app_input_map::view_keyboard::body_contains(caixa, x, y),
+                        "{at}: {p:?} sai do corpo"
+                    );
+                }
+            }
+            // As setas não tocam o anel da sua manche (o traço do anel aceso tem 3 px: metade para fora).
+            for (nome, eixos) in [
+                ("LS", [GamepadAxis::LeftStickX, GamepadAxis::LeftStickY]),
+                ("RS", [GamepadAxis::RightStickX, GamepadAxis::RightStickY]),
+            ] {
+                let anel = (doc.census.texts.iter())
+                    .find(|t| t.1 == nome)
+                    .expect("o anel")
+                    .0;
+                let (cx, cy, raio) = (anel.x + anel.w * 0.5, anel.y + anel.h * 0.5, anel.h * 0.5);
+                for (h, _) in &doc.kb.bars {
+                    let KbHit::Pad(Binding::PadAxis { axis, .. }) = h else {
+                        continue;
+                    };
+                    if !eixos.contains(axis) {
+                        continue;
+                    }
+                    let p = doc.rect_of(h.id()).expect("a seta");
+                    let nx = cx.clamp(p.x, p.x + p.w);
+                    let ny = cy.clamp(p.y, p.y + p.h);
+                    let d = ((nx - cx).powi(2) + (ny - cy).powi(2)).sqrt();
+                    eprintln!("{at}: {nome} {axis:?} a {:.1} px do anel", d - raio);
+                    assert!(
+                        d > raio + 1.5,
+                        "{at}: {p:?} toca o anel ({d:.1} ≤ {raio:.1})"
+                    ); // LITERAL-PX-OK: meio traço
+                }
+            }
         }
     }
 }

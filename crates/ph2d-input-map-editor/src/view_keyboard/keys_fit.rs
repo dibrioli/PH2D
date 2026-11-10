@@ -15,6 +15,26 @@ use super::keys::{ARROW_BOX, BAR_GAP, BAR_H};
 /// repouso no tema escuro, mais funda no claro: sempre MAIS ênfase que o repouso, nunca um contorno.
 pub const HOVER_FACE: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::KanbanShadowHover;
 
+/// O corpo da tecla APERTADA (premida ou acesa no Try it): um neutro mais fundo que o repouso, nunca a cor de uma
+/// acção. Medido nos 12 temas × 12 cores de acção (`onda3_tracos`): toda barra ≥ 3:1 contra ele (pior 4,37:1);
+/// `CardField`, `Bg0`, `Bg1` e os véus de sombra ficaram atrás (1,04–1,05 contra o repouso, ou barras abaixo de 3:1).
+pub const PRESS_BODY: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::KanbanCard;
+
+/// O vão do corpo da tecla entre as barras e a plaquinha ACESA (a mesma folga da plaquinha em repouso).
+pub const LIT_GAP: f32 = m::SEG_PAD;
+
+/// A plaquinha ACESA `plate` (a da legenda `l`): `(halo, aceso)` — a parte acesa recua dos lados até [`LIT_GAP`] sem
+/// entrar na legenda, e o que faltar o halo (do corpo da tecla, por cima das barras) cresce para fora: entre as barras
+/// da mesma cor e a acesa fica sempre o vão.
+#[must_use]
+pub fn lit_plate(plate: Rect, l: Rect) -> (Rect, Rect) {
+    let x0 = (plate.x + LIT_GAP).min(l.x);
+    let x1 = (plate.x + plate.w - LIT_GAP).max(l.x + l.w);
+    let (out0, out1) = (LIT_GAP - (x0 - plate.x), LIT_GAP - (plate.x + plate.w - x1));
+    let halo = Rect::new(plate.x - out0, plate.y, plate.w + out0 + out1, plate.h);
+    (halo, Rect::new(x0, plate.y, (x1 - x0).max(0.0), plate.h))
+}
+
 /// A tecla mais baixa: a letra na plaquinha com folga para a pilha de barras (o valor de antes, que a 1280 já cabia).
 pub const KEY_MIN_H: f32 = m::VALUE_PX + m::SEG_PAD + (BAR_H + BAR_GAP) * 2.0 + m::SEG_INSET * 0.5;
 
@@ -30,7 +50,7 @@ pub(crate) const PLATE_RADIUS: f32 = m::SEG_RADIUS - m::FIELD_BORDER;
 /// entram nos cantos redondos).
 pub(crate) const BAR_INSET_X: f32 = m::FIELD_BORDER * 2.0;
 /// Quanto de cada barra se quer à vista de cada lado da plaquinha.
-pub(crate) const BAR_PEEK: f32 = m::SEG_INSET;
+pub const BAR_PEEK: f32 = m::SEG_INSET;
 
 /// Quanto de cada barra tem de ficar à vista de cada lado da plaquinha: duas arestas (2 px) — abaixo disso a cor da
 /// acção some atrás do adesivo (as capturas do dono, 10/11). Com 3 px o piso medido subia a 33,5 e a área real a 1280

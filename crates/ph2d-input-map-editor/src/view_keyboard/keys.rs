@@ -452,7 +452,12 @@ fn paint_key(
     // ⭐ Onda 3, D1: a TECLA nunca se enche da cor de uma acção (engolia a barra dela): fica no repouso ou no hover,
     // e a premida/acesa acende a PLAQUINHA. As barras ficam sempre sobre a face neutra.
     let lit_plate = !system && (pressed || filled.is_some());
-    let body = face_of(false, None, hover && !system);
+    // R3: a apertada desce ao neutro de premido (barras ≥ 3:1 contra ele, medido).
+    let body = if lit_plate {
+        fit::PRESS_BODY
+    } else {
+        face_of(false, None, hover && !system)
+    };
     if system {
         let c = ink.color(bg).multiply_alpha(SYSTEM_FACE_ALPHA);
         fill_rounded_rect(scene, kr, m::SEG_RADIUS, c);
@@ -488,15 +493,19 @@ fn paint_key(
         (!who.is_empty()).then_some(body)
     };
     if let Some(pf) = plate_face {
-        fill_face(scene, ink, plate, fit::PLATE_RADIUS, pf);
-        let rim = if lit_plate {
-            ColorToken::CardField
+        // Acesa, a plaquinha tapa as barras no corpo da tecla e acende só por dentro: um vão do corpo entre as barras
+        // e a cor (R2: a barra da mesma cor colava-se a ela).
+        let (face_r, tone, rim) = if lit_plate {
+            let (halo, aceso) = fit::lit_plate(plate, lb);
+            fill_face(scene, ink, halo, fit::PLATE_RADIUS, body);
+            (aceso, pf, ColorToken::CardField)
         } else {
-            ColorToken::Border
+            (plate, pf, ColorToken::Border)
         };
+        fill_face(scene, ink, face_r, fit::PLATE_RADIUS, tone);
         stroke_rounded_rect(
             scene,
-            plate,
+            face_r,
             fit::PLATE_RADIUS,
             m::FIELD_BORDER,
             ink.color(rim),

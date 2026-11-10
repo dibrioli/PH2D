@@ -47,6 +47,12 @@ pub struct Census {
     pub looks: Vec<ControlLook>,
     /// A A: cada emblema redondo que apaga (o × do chip), à vista: o id e a face pintada.
     pub badges: Vec<(ph2d_a11y::NodeId, Rect)>,
+    /// Cada parte do comando: o alvo, a face pintada (`None` = a seta solta da manche) e a tinta do nome.
+    pub parts: Vec<(
+        Rect,
+        Option<ph2d_tokens::ColorToken>,
+        ph2d_tokens::ColorToken,
+    )>,
 }
 
 /// Como um controlo da A se pintou: o fundo, a aresta (e se é tracejada), a tinta e a marca do acento à esquerda.

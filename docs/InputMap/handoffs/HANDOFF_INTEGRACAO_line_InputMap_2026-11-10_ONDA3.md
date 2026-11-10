@@ -1,10 +1,10 @@
 # HANDOFF de integração — `line/InputMap`, ONDA 3, 10/11 (tudo o que ficou aberto, de uma vez)
 
-Leitor: o integrador. Branch `line/InputMap`, código até `15b796a68c` (pós-smoke: §2b), fotos `c0fe8a64d9` (+ este handoff): a linha inteira, **188 commits** (`git rev-list --count main..HEAD`, antes deste commit; +1 com ele), 366 files, `+29 705 −3 286` (`git diff --shortstat main...HEAD`), sobre `bc4a6ce930` = merge-base = ponta do `main` (**não andou: sem rebase, `--ff-only` serve**). Nada integrado, nenhum push. **Suíte completa, `nextest-impacted` e `ship.sh` NÃO correram** (são do integrador). Este handoff COMPLETA o da onda 2 (superfície, crates, schema 232, `play_map`, F1 continuam valendo): [onda 2](HANDOFF_INTEGRACAO_line_InputMap_2026-11-10_ONDA2.md) · [onda 1](HANDOFF_INTEGRACAO_line_InputMap_2026-11-10.md) · [plano §14](../01_plano.md) · [prompt da onda 3](PROMPT_MISSAO_InputMap_ONDA3_2026-11-10.md).
+Leitor: o integrador. Branch `line/InputMap`, código até `15b796a68c` (pós-smoke: §2b), fotos `c0fe8a64d9` (+ este handoff): a linha inteira, **188 commits** (`rev-list --count main..HEAD`, +1 com este), 366 files, `+29 705 −3 286` (`git diff --shortstat main...HEAD`), sobre `bc4a6ce930` = merge-base = ponta do `main` (**não andou: sem rebase, `--ff-only` serve**). Nada integrado, nenhum push. **Suíte completa, `nextest-impacted` e `ship.sh` NÃO correram** (são do integrador). Este handoff COMPLETA o da onda 2 (superfície, crates, schema 232, `play_map`, F1 continuam valendo): [onda 2](HANDOFF_INTEGRACAO_line_InputMap_2026-11-10_ONDA2.md) · [onda 1](HANDOFF_INTEGRACAO_line_InputMap_2026-11-10.md) · [plano §14](../01_plano.md) · [prompt da onda 3](PROMPT_MISSAO_InputMap_ONDA3_2026-11-10.md).
 
 ## 1. Ordem do dono (10/11) — cumprida
 
-«Corrigir tudo que for necessário de uma vez» — prompt [PROMPT_MISSAO_InputMap_ONDA3_2026-11-10.md](PROMPT_MISSAO_InputMap_ONDA3_2026-11-10.md): itens 1–8 cumpridos (§2). Medições e contratos: plano §14.
+«Corrigir tudo que for necessário de uma vez» — prompt [PROMPT_MISSAO_InputMap_ONDA3_2026-11-10.md](PROMPT_MISSAO_InputMap_ONDA3_2026-11-10.md): itens 1–8 cumpridos (§2).
 
 ## 2. O que entrou, por item
 
@@ -71,10 +71,7 @@ SUPERFÍCIE DE COLISÃO — line/InputMap contra main
 ▸ TETOS DE LOC nos arquivos que a linha tocou (700 workspace · 600 painel/shell · 500 widget · 650 tool-runtime)
   ✗  1023 / 600   shells/desktop/src/main.rs
 ───────────────────────────────────────────────────────────────────────────────
-  ✗ SONDA CEGA em: ph2d-render (espelho = ecs + K), ph2d-script (espelho = ecs + K) — a const mudou de ficheiro e nenhum candidato a tem.
-    Corrija o caminho NESTE script: um «—» dos dois lados lia-se «ninguém mexeu» (13/09).
-  ⚠️ Isto é o MAPA, não o gate. O gate mecânico é scripts/foundational-integrate.sh;
-     o que exige julgamento (mesmo-símbolo, decisão de produto) continua leitura humana.
+  (SONDA CEGA ph2d-render/ph2d-script e «isto é o MAPA, não o gate»: cortados; ver o texto abaixo)
 ```
 
 **Contadores como DELTA:** `PROJECT_SCHEMA` — a onda 3 NÃO o mexeu (231 → 232 é da onda 1; `python3 scripts/schema-recount.py`). Componentes DELTA 0 (a SONDA CEGA `ph2d-render`/`ph2d-script` é a mesma das ondas 1–2: a linha não toca o registo). §6 intocado. ADR nenhum. `Cargo.lock` sem pacote novo nesta onda. `CENAS` **19 → 22** (pós-smoke). Shell **−26** (188 940 → 188 914; `janela_do_jogo.rs` líquido 0; re-meça contra o `main` do dia). `main.rs` 1 023/600 é pré-existente. Tecto de tokens do painel +62 (2012 → 2074: `danger-press` +31, `row-hover` +31). A tabela da §4 foi colada antes do pós-smoke (180 commits, 357 arquivos): releia-a no dia.
@@ -101,7 +98,7 @@ Dois tokens novos: `danger-press` (`ColorToken::DangerPress`, 4 temas) e `row-ho
 - Testes por nome: `input_map::` **227**; `ph2d-player-controls` tests 47 / `onda3_hover` 8 / `onda3_hover_r2` 5 / `r10a` 7 / `r11a` 4 / `f3` 3 / `play` 13; `ph2d-input` `keyboard` 13 + `alt_em_baixo` 1; `ph2d-editor-core` `file_loc_cap` 2, `the_shell_only_shrinks` 2, `the_shell_only_shrinks_and_every_app_crate_too` 1, `enum_order_matches_svgs` 1, `hr12_widgets_a11y` 3, `no_magic_numeric` 3, `board_view` 7; `ph2d-tokens` 196; `ph2d-tokens-dtcg` 26; `ph2d-panel-tokens` `familia` 1 / `os_cartoes` 11 / `seam_tokens` 30; `a_altura_de_abertura` 1; `a_tabela_inglesa_fala_ingles` 4; `ph2d-app-flip` `gap` 11; `ph2d-host-desktop` `the_two_normalizers` 1 + `perder_o_foco` 1; `swipe_lateral`: code 1 (após fusão), physics 1, kanban 1, planner 1, sfxlab 1, sprite-anim 1; `ph2d-kanban-views` `table` 10 / `wheel` 1; kanban `canvas_entrada` 6 / `d16` 5.
 - **Mutação: 54 mutações, 48 sangraram na 1.ª; 6 sobreviventes mortas** por testes novos (`0199210908`: `mutacao_onda3.rs`, `completar.rs`, `onda3_hover_r2_tests.rs`); a onda 2 e as 4 leis da onda 1 continuam a sangrar. **NÃO mutada:** a ordem `dock_seam_move` antes da aba em `input_dispatch.rs:173` (lei da shell; só W2a/W2b na aba a protegem) — o integrador pode mutá-la com um teste de App. ⚠️ `mut.py` restaura com `git checkout HEAD -- <file>`: comite antes de mutar.
 
-- **Re-corrida pós-smoke, verde em `15b796a68c`:** `cargo fmt`; `clippy --workspace --all-targets --keep-going -D warnings`; `input_map::` **234**; `onda3_hover` 11; `ph2d-tokens` 196; `ph2d-tokens-dtcg` 26; `a_altura_de_abertura` 1; `familia` 1; `file_loc_cap` 1; `the_shell_only_shrinks` 2; `the_shell_only_shrinks_and_every_app_crate_too` 1; `no_magic_numeric` 3; `a_tabela_inglesa_fala_ingles` 4. (Os números acima, de antes do smoke, ficam como história.)
+- **Re-corrida pós-smoke, verde em `15b796a68c`:** `cargo fmt`; `clippy --workspace --all-targets --keep-going -D warnings`; `input_map::` **234**; `onda3_hover` 11; `ph2d-tokens` 196; `ph2d-tokens-dtcg` 26; `a_altura_de_abertura` 1; `familia` 1; `file_loc_cap` 1; `the_shell_only_shrinks` 2; `the_shell_only_shrinks_and_every_app_crate_too` 1; `no_magic_numeric` 3; `a_tabela_inglesa_fala_ingles` 4.
 
 ## 9. Smoke (do dono) — **OK para a onda 3 (10/11), salvo o passo da tela Controls: PENDENTE de confirmação**
 

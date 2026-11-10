@@ -71,7 +71,7 @@ pub(super) fn builder(
 impl PhysicsWorld {
     /// **Regista as peças convexas de uma forma** (metros locais do collider, y para cima) e
     /// devolve a chave que um `ShapeDesc::Outline` leva. A mesma lista dá a mesma chave em
-    /// qualquer mundo; registar de novo não troca nada (a tabela só cresce).
+    /// qualquer mundo; registar de novo não troca nada. Quem a poda é o dono das chaves ([`Self::retain_outlines`]).
     pub fn register_outline(&mut self, pieces: Vec<Vec<[f32; 2]>>) -> OutlineKey {
         let key = key_of(&pieces);
         self.outlines.entry(key).or_insert_with(|| {
@@ -87,6 +87,18 @@ impl PhysicsWorld {
     #[must_use]
     pub fn has_outline(&self, key: OutlineKey) -> bool {
         self.outlines.contains_key(&key)
+    }
+
+    /// Quantos conjuntos de peças estão registados.
+    #[must_use]
+    pub fn outline_count(&self) -> usize {
+        self.outlines.len()
+    }
+
+    /// **Larga as peças que nenhum collider usa** — `live` são as chaves dos corpos e peças vivos.
+    /// Sem isto, cada Detail e cada escala por que um arrasto passa ficava registado para sempre.
+    pub fn retain_outlines(&mut self, live: &std::collections::BTreeSet<OutlineKey>) {
+        self.outlines.retain(|k, _| live.contains(k));
     }
 
     /// Leva a tabela de peças de `old` para este mundo — o rewind do ECS troca o `PhysicsWorld`

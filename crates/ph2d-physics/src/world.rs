@@ -284,7 +284,7 @@ pub struct PhysicsWorld {
     /// então nenhum replay o reproduz e um `restore` que o trouxesse de volta
     /// descreveria uma corrida que já acabou.
     attract: Option<blast::Attract>,
-    /// As peças das formas `Outline`, por chave de conteúdo — config que só cresce (ver [`outline`]).
+    /// As peças das formas `Outline`, por chave de conteúdo — podada pela ponte às chaves vivas (ver [`outline`]).
     outlines: outline::Outlines,
 }
 

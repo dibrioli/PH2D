@@ -62,6 +62,7 @@ impl PhysicsBridge {
         }
         self.reconcile_structure(sim);
         self.reconcile_parts(sim);
+        self.sweep_outlines();
         // ⚠️ **DEPOIS das peças**, e a ordem é a lei: uma superfície autorada
         // numa peça é indexada pelo COLLIDER dela, que só existe depois de a
         // peça ter sido pendurada.

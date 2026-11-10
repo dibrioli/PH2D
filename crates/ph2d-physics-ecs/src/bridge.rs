@@ -42,6 +42,7 @@ mod kinematic;
 mod mortes;
 /// ⭐⭐⭐ **A NAVEGAÇÃO** (plano 30, W3) — ver o cabeçalho dele.
 pub mod nav;
+mod outlines;
 /// A TRADUÇÃO `PhysicsJoint` → `JointDesc` — irmão do `joints` pelo cap de 700
 /// LOC, cortado por responsabilidade (docs dele).
 /// A metade PEÇA do reconcile — os colliders extra de um corpo composto.

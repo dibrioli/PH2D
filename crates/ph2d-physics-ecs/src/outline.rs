@@ -3,7 +3,7 @@
 //! peças em metros que o motor regista. As peças são DERIVADAS (`ph2d_outline_trace::convex_pieces`),
 //! nunca gravadas; o cache da ponte ([`OutlineCache`]) deriva-as uma vez por `(anéis, detail)`.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use bevy_ecs::component::Component;
@@ -122,11 +122,16 @@ pub fn outline_rings_world(
     Some(rings)
 }
 
-/// Peças em Q4 por `(hash dos anéis, detail)`, e a chave do motor por conversão.
+/// Uma conversão: `(hash dos anéis, detail, px da imagem, [half_x, half_y, sinal x, sinal y])`.
+type Conversao = (u64, u16, [u32; 2], [u32; 4]);
+
+/// Peças em Q4 por `(hash dos anéis, detail)`, e a chave do motor por conversão, com a geração da
+/// poda em que a conversão foi pedida pela última vez.
 #[derive(Default)]
 pub(crate) struct OutlineCache {
     pieces: BTreeMap<(u64, u16), Arc<[Ring]>>,
-    keys: BTreeMap<(u64, u16, [u32; 2], [u32; 4]), OutlineKey>,
+    keys: BTreeMap<Conversao, (OutlineKey, u64)>,
+    geracao: u64,
 }
 
 impl OutlineCache {
@@ -172,8 +177,12 @@ impl OutlineCache {
                 sign.y.to_bits(),
             ],
         );
-        let key = match self.keys.get(&memo) {
-            Some(&k) if world.has_outline(k) => k,
+        let geracao = self.geracao;
+        let key = match self.keys.get_mut(&memo) {
+            Some((k, g)) if world.has_outline(*k) => {
+                *g = geracao;
+                *k
+            }
             _ => {
                 let pieces = self.pieces_q4(o, hash);
                 let m = pieces
@@ -185,7 +194,7 @@ impl OutlineCache {
                     })
                     .collect();
                 let k = world.register_outline(m);
-                self.keys.insert(memo, k);
+                self.keys.insert(memo, (k, geracao));
                 k
             }
         };
@@ -194,6 +203,32 @@ impl OutlineCache {
             half_y,
             key,
         }
+    }
+}
+
+impl OutlineCache {
+    /// Os tamanhos das três tabelas: peças Q4, conversões, e as peças registadas no mundo.
+    pub(crate) fn tables(&self, world: &PhysicsWorld) -> [usize; 3] {
+        [self.pieces.len(), self.keys.len(), world.outline_count()]
+    }
+
+    /// Há mais entradas do que as `n` formas Outline vivas podem usar? Sem alocar: a cena parada
+    /// responde `false` e não paga a poda.
+    pub(crate) fn needs_sweep(&self, world: &PhysicsWorld, n: usize) -> bool {
+        world.outline_count() > n || self.keys.len() > n
+    }
+
+    /// **Poda as três tabelas**: o mundo às chaves `live` (as dos `BodyDesc` de repouso vivos), as
+    /// conversões às pedidas desde a poda anterior (dois Detail que dão as mesmas peças são duas
+    /// conversões e uma chave), as peças Q4 às dessas conversões.
+    pub(crate) fn sweep(&mut self, world: &mut PhysicsWorld, live: &BTreeSet<OutlineKey>) {
+        world.retain_outlines(live);
+        let geracao = self.geracao;
+        self.keys
+            .retain(|_, (k, g)| *g == geracao && live.contains(k));
+        self.geracao += 1;
+        let usadas: BTreeSet<(u64, u16)> = self.keys.keys().map(|m| (m.0, m.1)).collect();
+        self.pieces.retain(|p, _| usadas.contains(p));
     }
 }
 

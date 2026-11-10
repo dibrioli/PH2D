@@ -235,3 +235,76 @@ fn o_l_pequeno_espelhado_nao_tem_buraco_onde_a_arte_e_solida() {
         }
     }
 }
+
+/// ⭐ **As tabelas do Outline não crescem numa sessão longa** (o ABERTO 2 do 10/11, MEDIDO): arrastar
+/// o Detail e a escala por 40 valores cada um registava 40 + 40 conjuntos de peças que ninguém lia
+/// mais. Em repouso, só o que um corpo vivo usa fica: uma forma = uma entrada em cada tabela.
+#[test]
+fn arrastar_detail_e_escala_nao_acumula_pecas() {
+    let mut sim = SimWorld::new();
+    static_outline(&mut sim, u_ring(), Vec2::new(1.0, 1.0));
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    assert_eq!(bridge.outline_tables(), [1, 1, 1], "uma forma");
+    let forma = {
+        let mut q = sim
+            .world_mut()
+            .query::<(ph2d_ecs::Entity, &ColliderOutline)>();
+        q.iter(sim.world()).next().expect("a forma").0
+    };
+    for i in 0..40u16 {
+        sim.world_mut()
+            .get_mut::<ColliderOutline>(forma)
+            .expect("contorno")
+            .detail_q4 = 16 + i * 4;
+        bridge.dispatch(&mut sim, false, 0);
+    }
+    for i in 0..40u16 {
+        sim.world_mut()
+            .get_mut::<Transform>(forma)
+            .expect("pose")
+            .scale = Vec2::splat(1.0 + f32::from(i) * 0.05);
+        bridge.dispatch(&mut sim, false, 0);
+    }
+    assert_eq!(bridge.outline_tables(), [1, 1, 1], "só o que um corpo usa");
+}
+
+/// O mesmo para a SEGUNDA forma de um corpo (uma peça, sem `RigidBody`): a poda guarda também a
+/// chave das peças, e uma peça arrastada não acumula.
+#[test]
+fn a_peca_arrastada_nao_acumula_e_a_forma_principal_fica() {
+    let mut sim = SimWorld::new();
+    static_outline(&mut sim, u_ring(), Vec2::new(1.0, 1.0));
+    let corpo = {
+        let mut q = sim
+            .world_mut()
+            .query_filtered::<ph2d_ecs::Entity, bevy_ecs::query::With<RigidBody>>();
+        q.iter(sim.world()).next().expect("o corpo")
+    };
+    let peca = sim
+        .world_mut()
+        .spawn((
+            Collider {
+                shape: ColliderShape::Outline {
+                    half_x: 2.0,
+                    half_y: 2.0,
+                },
+                ..Collider::default()
+            },
+            outline(l_ring()),
+            scaled(3.0, 0.0, Vec2::new(1.0, 1.0)),
+            ChildOf(corpo),
+        ))
+        .id();
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    assert_eq!(bridge.outline_tables(), [2, 2, 2], "duas formas");
+    for i in 0..40u16 {
+        sim.world_mut()
+            .get_mut::<ColliderOutline>(peca)
+            .expect("contorno")
+            .detail_q4 = 16 + i * 4;
+        bridge.dispatch(&mut sim, false, 0);
+    }
+    assert_eq!(bridge.outline_tables(), [2, 2, 2], "a principal e a peça");
+}

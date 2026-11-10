@@ -47,7 +47,7 @@ const NAMED: &[(u32, &str, &str)] = &[
 ];
 
 /// F1..F12, contíguas a partir daqui.
-const F1: u32 = 0xF704;
+pub(crate) const F1: u32 = 0xF704;
 
 /// Os nomes de script que valem os DOIS lados (o `KEY_SHIFT` do Godot).
 pub const SCRIPT_ALIASES: &[(&str, [Key; 2])] = &[

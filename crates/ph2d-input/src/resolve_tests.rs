@@ -382,3 +382,35 @@ fn a_non_finite_axis_reads_as_rest() {
 
     assert_eq!(st.sample(id).strength, 0.0);
 }
+
+/// ⛔ A lei exposta à UI é a MESMA que o resolvedor usa, ao bit.
+#[test]
+fn the_public_law_is_the_resolver_law_bit_for_bit() {
+    let mut m = InputMap::new();
+    let id = m.create("move_right");
+    let a = m.get_mut(id).expect("existe");
+    a.bindings.push(Binding::PadAxis {
+        axis: STICK,
+        positive: true,
+    });
+    a.set_zone(0.15, 0.5);
+    let mut dev = InputState::new();
+    let mut st = ActionState::new();
+    tick(
+        &m,
+        &mut dev,
+        &mut st,
+        &[Event::GamepadAxis {
+            axis: STICK,
+            value: 0.62,
+        }],
+    );
+    let s = st.sample(id);
+    let law = strength_of(0.62, 0.15);
+    assert_eq!(law.to_bits(), s.strength.to_bits());
+    assert_eq!(law.to_bits(), ((0.62_f32 - 0.15) / (1.0 - 0.15)).to_bits());
+    assert_eq!(pressed_of(0.62, 0.5), s.pressed);
+    assert!(s.pressed);
+    assert_eq!(strength_of(0.1, 0.15).to_bits(), 0.0_f32.to_bits());
+    assert!(!pressed_of(0.49, 0.5));
+}

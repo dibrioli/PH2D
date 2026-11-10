@@ -85,3 +85,23 @@ fn one_action_carries_many_bindings() {
         .with(Binding::Key(Key(0x5A)));
     assert_eq!(a.bindings.len(), 3);
 }
+
+#[test]
+fn an_action_is_analog_when_it_has_an_axis_or_a_trigger() {
+    use crate::gamepad::GamepadAxis;
+    assert!(!act().with(Binding::Key(Key(0x41))).is_analog());
+    assert!(!act().with(Binding::PadButton(GamepadButton::South)).is_analog());
+    assert!(
+        act()
+            .with(Binding::PadButton(GamepadButton::RightTrigger))
+            .is_analog()
+    );
+    assert!(
+        act()
+            .with(Binding::PadAxis {
+                axis: GamepadAxis::LeftTrigger,
+                positive: true
+            })
+            .is_analog()
+    );
+}

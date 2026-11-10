@@ -22,12 +22,16 @@
 //! plumb without breaking ph2d-input's API in M9+. No real handler.
 
 pub mod action;
+pub mod controls;
 pub mod event;
 pub mod gamepad;
 pub mod keyboard;
 pub mod map;
 pub mod mouse;
 pub mod pencil;
+pub mod player_keys;
+pub mod readers;
+pub mod recipes;
 pub mod resolve;
 pub mod state;
 
@@ -43,4 +47,11 @@ pub use map::{
     InputMap, PLAYER_DASH, PLAYER_DOWN, PLAYER_GRAB, PLAYER_JUMP, PLAYER_MOVE_DOWN,
     PLAYER_MOVE_LEFT, PLAYER_MOVE_RIGHT, PLAYER_MOVE_UP,
 };
-pub use resolve::{ActionState, Input, Sample};
+pub use controls::PlayerControls;
+pub use player_keys::{PLAYER_KEYS_HEADER, PlayerKeys, binding_text};
+pub use readers::{
+    PLATFORM_PLAYER_READS, Reader, ReaderFacts, SharedBinding, TOP_DOWN_PLAYER_READS,
+    action_names_in_script, readers, shared_bindings,
+};
+pub use recipes::{RECIPE_FIRE, RECIPE_RELOAD, Recipe, RecipeAction};
+pub use resolve::{ActionState, Input, Sample, pressed_of, strength_of};

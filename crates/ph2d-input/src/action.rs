@@ -89,6 +89,18 @@ impl InputAction {
         self
     }
 
+    /// Alguma ligação é analógica: um eixo, ou um gatilho (que também chega como botão).
+    #[must_use]
+    pub fn is_analog(&self) -> bool {
+        self.bindings.iter().any(|b| {
+            matches!(
+                b,
+                Binding::PadAxis { .. }
+                    | Binding::PadButton(GamepadButton::LeftTrigger | GamepadButton::RightTrigger)
+            )
+        })
+    }
+
     /// Define os dois números, **já coagidos ao invariante** — ver [`InputAction::set_zone`].
     #[must_use]
     pub fn with_zone(mut self, dead_zone: f32, press_point: f32) -> Self {

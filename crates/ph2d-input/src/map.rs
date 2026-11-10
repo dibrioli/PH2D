@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::action::{ActionId, InputAction};
+use crate::controls::PlayerControls;
+use crate::recipes::Recipe;
 
 /// **OS NOMES DAS ACÇÕES DO JOGADOR** — o contrato entre o mapa e quem o lê.
 ///
@@ -43,6 +45,8 @@ pub struct InputMap {
     actions: Vec<InputAction>,
     /// O próximo id a atribuir. ⛔ **Viaja com o mapa** — ver [`ActionId`].
     next_id: u32,
+    /// A tela de controles do jogador (plano InputMap §2).
+    controls: PlayerControls,
 }
 
 impl InputMap {
@@ -80,10 +84,8 @@ impl InputMap {
             (PLAYER_DOWN, [DOWN, 0x53].as_slice()),
             (PLAYER_DASH, [0x51].as_slice()),
             (PLAYER_GRAB, [0x52].as_slice()),
-            // ⭐ **As SETAS, e não o WASD** (TOP-20 #13): o `W` desta shell abre o
-            // painel de mundo, e um default que briga com um atalho que já existe
-            // é uma armadilha que só o artista descobre. O WASD fica a dois
-            // cliques no painel de Input Map — decisão do dono, com o número ao lado.
+            // Setas + W/S. O `W` do editor abre o painel de Física, mas não briga:
+            // no Play a tecla nua é do jogo, e com a aba focada a aba é dona do teclado.
             //
             // ⚠️ **Elas PARTILHAM tecla com `jump` e `down`, e isso é medido e
             // deliberado:** as duas leis nunca correm na mesma cena (um objecto tem
@@ -156,7 +158,34 @@ impl InputMap {
     /// alguém criasse.
     pub fn remove(&mut self, id: ActionId) -> Option<InputAction> {
         let at = self.actions.iter().position(|a| a.id == id)?;
+        self.controls.hidden_in_game.remove(&id);
         Some(self.actions.remove(at))
+    }
+
+    /// **Troca as acções pelas da receita.** Os ids novos continuam a subir (nunca reutilizados) e
+    /// os `controls` ficam, sem os ids das acções que saíram.
+    pub fn start_from(&mut self, recipe: Recipe) {
+        let old: Vec<ActionId> = self.actions.iter().map(|a| a.id).collect();
+        for id in old {
+            self.remove(id);
+        }
+        for ra in recipe.actions() {
+            let id = self.create(ra.name);
+            let a = self.get_mut(id).expect("acabou de nascer");
+            a.bindings = ra.bindings;
+            a.set_zone(ra.dead_zone, a.press_point);
+        }
+    }
+
+    /// A tela de controles do jogador.
+    #[must_use]
+    pub fn controls(&self) -> &PlayerControls {
+        &self.controls
+    }
+
+    /// A tela de controles do jogador, para editar.
+    pub fn controls_mut(&mut self) -> &mut PlayerControls {
+        &mut self.controls
     }
 
     /// As acções, na ordem em que o painel as mostra.

@@ -107,15 +107,27 @@ fn resolve_action(a: &InputAction, dev: &InputState) -> Sample {
         .iter()
         .map(|b| raw(*b, dev))
         .fold(0.0_f32, f32::max);
-    let strength = if cru < a.dead_zone {
+    Sample {
+        strength: strength_of(cru, a.dead_zone),
+        pressed: pressed_of(cru, a.press_point),
+    }
+}
+
+/// **A força** de um valor cru: `0` abaixo da `dead_zone`, o resto renormalizado para `0..1`.
+/// ⛔ A UI desenha com ESTA função, nunca com uma cópia.
+#[must_use]
+pub fn strength_of(raw: f32, dead_zone: f32) -> f32 {
+    if raw < dead_zone {
         0.0
     } else {
-        ((cru - a.dead_zone) / (1.0 - a.dead_zone)).clamp(0.0, 1.0)
-    };
-    Sample {
-        strength,
-        pressed: cru >= a.press_point,
+        ((raw - dead_zone) / (1.0 - dead_zone)).clamp(0.0, 1.0)
     }
+}
+
+/// **Premida**: o cru cruzou o `press_point`.
+#[must_use]
+pub fn pressed_of(raw: f32, press_point: f32) -> bool {
+    raw >= press_point
 }
 
 /// **A VISTA DE LEITURA** — o mapa e o estado juntos, que é o que faz a leitura caber numa linha.

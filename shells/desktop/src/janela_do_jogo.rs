@@ -8,6 +8,7 @@
 
 use ph2d_editor_core::game_stage::GameStage;
 use ph2d_host::PlatformHost;
+use ph2d_pixel_crt::palco;
 use std::sync::Arc;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::Window;
@@ -49,6 +50,14 @@ impl crate::App {
     pub(crate) fn no_palco(&self) -> bool {
         let hero = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref());
         hero.is_some_and(|h| h.view.palco_do_jogo)
+    }
+
+    /// A CRT da vista no palco (P13 §11), na grade do projecto: `None` fora dele ou desligada.
+    pub(crate) fn crt_do_palco(&self, j: ph2d_host::WindowSize) -> Option<palco::Pedido> {
+        let g = self.gfx.as_ref()?;
+        let ppm = g.hero_screen.as_ref()?.project.pixels_per_meter;
+        let h = g.camera.height_world;
+        palco::da_vista(self.no_palco(), (j.width, j.height), h, ppm)
     }
 
     /// A saída: a vista do editor volta como estava. A janela fecha em [`Self::palco_janela`].

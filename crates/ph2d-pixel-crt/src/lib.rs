@@ -24,6 +24,8 @@
 //! Neutro ([`CrtParams::default`]) ⇒ a saída é a ampliação nearest, byte a byte.
 
 pub mod gpu;
+pub mod palco;
+pub mod vista;
 
 /// Bits da fracção do ponto fixo da curvatura. É também o tecto da lei: `W, H < 2^Q` (a
 /// truncatura da identidade e o `i32` da placa — ver o doc do módulo).
@@ -169,3 +171,6 @@ pub fn amplia_nearest(rgba: &[u8], w: u32, h: u32, escala: u32) -> Vec<u8> {
 
 #[cfg(test)]
 mod testes;
+
+#[cfg(test)]
+mod palco_testes;

@@ -148,6 +148,7 @@ impl crate::App {
         b: f64,
     ) {
         self.present_mundo_por_cima(window_size, scene_viewport, &plan, banded);
+        let crt = self.crt_do_palco(window_size);
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -172,12 +173,9 @@ impl crate::App {
             ..
         } = gfx;
         let tamanho = (window_size.width, window_size.height);
-        // Pass 3: Vello chrome — `vello_pass.intermediate_view()`, TRANSPARENT clear (o compositor revela o mundo
-        // por baixo). ⛔ O shell NÃO escolhe o anti-aliasing deste passe: é `AaConfig::Area` dentro do `ph2d-render`
-        // (o chrome e a arte do documento partilham o `Scene`; `docs/Atualizar Stack/04_registro.md` §22.2).
-        // ⭐⭐⭐ **O VIDRO** — entre o mundo e a receita, e ANTES da cena de chrome de
-        // propósito: os painéis entram pelo compositor, acima de tudo, e é isso que os
-        // deixa nítidos sem uma máscara os nomear. Ver [`crate::render_loop::present_frost`].
+        // Pass 3: Vello chrome, TRANSPARENT clear (o compositor revela o mundo). ⛔ O AA não é da shell:
+        // `AaConfig::Area` no `ph2d-render` (partilham o `Scene`; `docs/Atualizar Stack/04_registro.md` §22.2).
+        // O VIDRO vem ANTES da cena de chrome de propósito (os painéis por cima, nítidos): `present_frost`.
         if frosting {
             crate::render_loop::present_frost::glass(
                 surface.gpu(),
@@ -200,12 +198,10 @@ impl crate::App {
                 },
             );
         }
-        // ⭐⭐⭐ **Uma cena que mistura com o CENÁRIO leva o mundo por baixo** (doc 118 W2): o
-        // mundo é o que o compositor poria por baixo do intermédio — o acumulador quando ele o lê,
-        // o tonemap no quadro de sempre. ⛔ Sem a marca, o render de sempre, byte a byte.
-        // GPU pass profiler: Vello submits internally, so bracket the render with marker submits.
-        // ⚠️ Só o render: aberto antes da camada filtrada, o `render.vello` contava o filtro inteiro
-        // (a `=138`: 8,9 ms «de Vello» contra 0,7 sem filtro, doc 132 §7). No-op when off.
+        // ⭐⭐⭐ Uma cena que mistura com o CENÁRIO leva por baixo o mundo do compositor (o acumulador ou o
+        // tonemap; doc 118 W2). ⛔ Sem a marca, o render de sempre, byte a byte.
+        // GPU pass profiler: só o render, entre marker submits (com o filtro dentro, o `render.vello`
+        // contava-o inteiro: 8,9 ms contra 0,7, doc 132 §7). No-op when off.
         let vello_span = {
             let g = surface.gpu();
             ph2d_gpu::pass_profiler::span_begin(&g.device, &g.queue, "render.vello")
@@ -237,12 +233,7 @@ impl crate::App {
             let g = surface.gpu();
             ph2d_gpu::pass_profiler::span_end(&g.device, &g.queue, t);
         }
-        // Pass 4: compositor
-        //   reads: tonemap output + vello intermediate
-        //   target: swap chain
-        // ⚠️ **O compositor troca de FONTE, e só na mudança de modo.** Ele guarda o
-        // `game_view` num bind group construído uma vez; re-ligá-lo por quadro seria uma
-        // alocação por quadro para um valor que quase nunca muda.
+        // Pass 4: compositor (tonemap + vello) → ecrã; no palco com a CRT, por `ph2d_pixel_crt::palco`.
         crate::render_loop::present_bands::rebind_compositor_if_mode_changed(
             surface.gpu(),
             // ⚠️ **O vidro também põe o compositor a ler o acumulador**: com ele, o mundo
@@ -255,11 +246,11 @@ impl crate::App {
             tonemap,
             vello_pass,
         );
-        compositor.run(surface.gpu(), frame.view());
-        // GPU pass profiler frame tail: resolve this frame's timestamp
-        // queries + kick the pipelined readback (prints every 120 frames).
-        // After the LAST instrumented submit; the resolve submit ordering
-        // vs the present is irrelevant (same queue). No-op when off.
+        let (gpu, fmt) = (surface.gpu(), surface.format());
+        ph2d_pixel_crt::palco::compoe(gpu, fmt, frame.view(), tamanho, crt, |v| {
+            compositor.run(gpu, v);
+        });
+        // GPU pass profiler frame tail, after the LAST instrumented submit (same queue). No-op when off.
         {
             let g = surface.gpu();
             ph2d_gpu::pass_profiler::end_frame(&g.device, &g.queue);

@@ -224,6 +224,8 @@ ph2d-app-light2d = { path = "../../crates/ph2d-app-light2d" }
 # A FAMÍLIA Pixel Art (ADR-0196): o objecto Pixel Sprite, as ferramentas e o blob do projecto.
 ph2d-app-pixel = { path = "../../crates/ph2d-app-pixel" }
 ph2d-pixel-keys = { path = "../../crates/ph2d-pixel-keys" }
+# A CRT da vista na janela do jogo (P13 §11): a preferência e o passe pós-compositor moram na folha.
+ph2d-pixel-crt = { path = "../../crates/ph2d-pixel-crt" }
 ph2d-tool-vector = { path = "../../crates/ph2d-tool-vector" }
 # ⭐ O verbo do osso e o pincel de peso (A14: sairam da ferramenta Vector).
 ph2d-tool-bone = { path = "../../crates/ph2d-tool-bone" }

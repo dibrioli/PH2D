@@ -19,56 +19,12 @@ use ph2d_pixel_crt::{CURVATURA_MAXIMA, CrtParams, LADO_MAXIMO, crt_cpu};
 
 use crate::{PixelPreviewPanelState, canal::PreviewFrame, ids};
 
-/// A preferência da vista: ligada e os cinco números.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct VistaCrt {
-    pub ligada: bool,
-    pub params: CrtParams,
-}
+/// A preferência mora na folha (`ph2d_pixel_crt::vista`): a janela do jogo lê-a lá, sem o painel.
+pub use ph2d_pixel_crt::vista::{VistaCrt, define, params_ligados, vista};
 
-/// Os params ao ligar (Scanlines, Mask, Curvature, Brightness, Bloom) e os passos do campo
-/// (seta, arrasto por píxel, faixa) — dados da lei CRT, não medidas de UI.
-#[rustfmt::skip]
-const FABRICA: [f32; 5] = [0.5, 0.25, 0.1, 1.2, 0.15]; // LITERAL-PX-OK: params da lei CRT, não UI
+/// Os passos do campo (seta, arrasto por píxel, faixa) — de um campo de fracção, não medidas de UI.
 #[rustfmt::skip]
 const PASSOS: [f64; 3] = [0.05, 0.005, 0.01]; // LITERAL-PX-OK: passos de um campo de fracção, não UI
-
-impl Default for VistaCrt {
-    /// Desligada; ao ligar, um ecrã de TV que se lê (dado da lei, não medida de UI).
-    fn default() -> Self {
-        Self {
-            ligada: false,
-            params: CrtParams {
-                scanline: FABRICA[0],
-                mascara: FABRICA[1],
-                curvatura: FABRICA[2],
-                brilho: FABRICA[3],
-                bloom: FABRICA[4],
-            },
-        }
-    }
-}
-
-thread_local! {
-    static VISTA: std::cell::Cell<VistaCrt> = std::cell::Cell::new(VistaCrt::default());
-}
-
-/// A CRT da vista agora (a Preview e a janela do jogo).
-#[must_use]
-pub fn vista() -> VistaCrt {
-    VISTA.with(std::cell::Cell::get)
-}
-
-/// Os params que um leitor aplica: `None` = desligada (o leitor salta a chamada).
-#[must_use]
-pub fn params_ligados() -> Option<CrtParams> {
-    let v = vista();
-    v.ligada.then_some(v.params)
-}
-
-pub fn define(v: VistaCrt) {
-    VISTA.with(|c| c.set(v));
-}
 
 const CHAVES: [&str; 5] = [
     "panel.pixel.preview.crt.scanlines",

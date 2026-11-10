@@ -193,6 +193,14 @@ um teste de 1100 px (curado com `textos_em`); a contagem `pintados + n == total`
 - Régua nova `ph2d_ui_testkit::caixas_pintadas` (caixa visível de cada primitivo Vello, recortes aplicados) + `MockPanelHost::paint_vector_scene`. Testes `o_cartao_estreito::*` (3) e `ruler::veil::tests::nos_cartoes_a_seta_*`. Mutações: sem pino e sem reserva → vermelho; sem o recorte → verde (defesa em profundidade: o pino já mantém tudo dentro).
 - Foto `22_cartao_estreito.png` POR TIRAR: esperou a vez da placa (a app aberta de `line-InputMap` tinha-a) e o prazo acabou. Tirar: `docked.w = 400` temporário em `cartao_solto::lugar`, `fotografa_cena.sh PH2D_NEST_SMOKE=4 1930 1040 docs/Timeline/fotos/22_cartao_estreito.png 9`, reverter.
 
+## Rodada 3i (10/11): nada da Timeline se pinta fora do cartão estreito
+
+- Dono (foto, cartão a ~400 px): a ⟷ da duração pintava-se à direita da borda. Causa: `ruler_veil` punha a ⟷ SEMPRE `DUR_ARROW_OFFSET` (40) + 18 px à direita do fim, e `ruler::paint` desenha DEPOIS do `pop_layer` das faixas, sem recorte; o enquadrar deixava só 5 % de folga (15 px a 300 px).
+- Cura (só cartões; clássico byte a byte): `ruler_fim::{abre,fecha}_recorte` recorta tudo o que a régua pinta (véu, fim, laço, playhead, ⟷, marcadores) na área de tempo; as leituras de arrasto viram de lado na borda (`alca_estado::poe_faixa`). `ruler_veil::onde_a_seta`: a ⟷ encosta na borda; com o fim além (vista à mão) fica PRESA com um ▸, o alvo = o de antes + o ▸, o arrasto relativo continua a mudar a duração; presa, a leitura vai à esquerda.
+- `view::apply_fit_clip` reserva `DUR_ARROW_ROOM` (58 px, ≤ meia área) à direita com fim autorado: a vista enquadrada re-enquadra ao estreitar (regra 3f) com a ⟷ inteira e solta.
+- Régua nova `ph2d_ui_testkit::caixas_pintadas` (caixa visível de cada primitivo Vello, recortes aplicados) + `MockPanelHost::paint_vector_scene`. Testes `o_cartao_estreito::*` (3) e `ruler::veil::tests::nos_cartoes_a_seta_*`. Mutações: sem pino e sem reserva → vermelho; sem o recorte → verde (defesa em profundidade: o pino já mantém tudo dentro).
+- Foto `22_cartao_estreito.png` POR TIRAR: esperou a vez da placa (a app aberta de `line-InputMap` tinha-a) e o prazo acabou. Tirar: `docked.w = 400` temporário em `cartao_solto::lugar`, `fotografa_cena.sh PH2D_NEST_SMOKE=4 1930 1040 docs/Timeline/fotos/22_cartao_estreito.png 9`, reverter.
+
 ## Rodada 3j (10/11): o olho da faixa, de ponta a ponta
 
 - Dono: «veja se o olhinho está fazendo o trabalho dele». Controlo morto conferido elo a elo: clique `TIMELINE_LANE_MUTE[i]` → `event.rs:416` (`SetLaneMuted{muted: !snap}`) → `fase_timeline_view.rs:43` → `intent_apply.rs:511` (`edit_at` no host aberto, um passo de undo) → `stack_frames.rs:310` e `stack_eval.rs:240` saltam a faixa muda (e `nest.rs:232`, `nest_map.rs:360`) → `snapshot.rs:610` → olho `faixas_coluna` (`Eye`/`EyeClosed`, `OlhoMudo`) e peças a `TIMELINE_PECA_MUDA_ALPHA`. **Nada partido.**

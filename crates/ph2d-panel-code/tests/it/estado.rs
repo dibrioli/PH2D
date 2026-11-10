@@ -183,3 +183,53 @@ fn o_texto_da_barra_fica_no_meio_com_outro_tamanho_de_letra() {
         );
     }
 }
+
+/// A ajuda da caixinha do rename fica no meio da linha dela em Small e Large: as maiúsculas a
+/// menos de 1 px do meio da caixa (sem o campo, a caixa é só essa linha).
+#[test]
+fn a_ajuda_do_rename_fica_no_meio_da_caixa() {
+    use ph2d_tokens::{UiTextSize, UiTextStyle};
+    let antes = ph2d_text::active_text_style();
+    let mut falhas = Vec::new();
+    for size in [UiTextSize::Small, UiTextSize::Large] {
+        ph2d_text::set_active_text_style(UiTextStyle { size, ..antes });
+        let buf = Buffer::new("local speed = 1\n");
+        let mut ts = crate::ts();
+        let mut v = ph2d_panel_code::CodeView::default();
+        let area = crate::area_para(&mut v, &buf, &mut ts, 4);
+        let d = Deco::default();
+        let mut f = |r: std::ops::Range<usize>| spans_de(&buf, r);
+        let mut m = crate::marcas(&d);
+        let mut fr = frame(&buf, &d, &mut f, &mut m);
+        let hint = "Enter to rename";
+        fr.rename = Some(ph2d_panel_code::RenameView {
+            word: 6..11,
+            field: None,
+            hint,
+            error: None,
+        });
+        let mut scene = ph2d_vector::VectorScene::new();
+        v.paint(
+            fr,
+            area,
+            &mut scene,
+            &mut ts,
+            &ph2d_tokens::Theme::default(),
+        );
+        let caixa = v.rename_rect().expect("a caixinha pintou-se");
+        let Some((px, _, base)) = crate::linhas_de_base(&scene)
+            .into_iter()
+            .find(|r| caixa.contains(r.1, r.2))
+        else {
+            falhas.push(format!("{size:?}: a ajuda não pintou"));
+            continue;
+        };
+        let meio = crate::meio_das_maiusculas(&mut ts, hint, px / size.scale(), base);
+        let alvo = caixa.y + caixa.h * 0.5;
+        if (meio - alvo).abs() > 1.0 {
+            falhas.push(format!("{size:?}: meio {meio} contra {alvo}"));
+        }
+    }
+    ph2d_text::set_active_text_style(antes);
+    assert!(falhas.is_empty(), "{falhas:#?}");
+}

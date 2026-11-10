@@ -457,3 +457,44 @@ fn o_texto_da_ajuda_aplica_o_tamanho_da_letra_uma_vez() {
     ph2d_text::set_active_text_style(antes);
     assert!(falhas.is_empty(), "{falhas:#?}");
 }
+
+/// O nome de cada secção do índice da ajuda fica no meio da linha dela em Small e Large.
+#[test]
+fn o_indice_da_ajuda_centra_as_seccoes() {
+    use ph2d_panel_code::help::HelpHit;
+    use ph2d_tokens::{UiTextSize, UiTextStyle};
+    let doc = HelpDoc {
+        blocks: vec![
+            Block::Title("math".into()),
+            Block::Heading("Functions".into()),
+        ],
+        key: 2,
+        title: "math".into(),
+        sections: vec!["Functions".into()],
+    };
+    let antes = ph2d_text::active_text_style();
+    let mut falhas = Vec::new();
+    for size in [UiTextSize::Small, UiTextSize::Large] {
+        ph2d_text::set_active_text_style(UiTextStyle { size, ..antes });
+        let mut ts = TextSystem::without_system_fonts();
+        let mut v = HelpView::new();
+        let scene = pinta(&mut v, &quadro(&doc), &mut ts, LARGA);
+        let r = v
+            .target_rect(HelpHit::Section(0))
+            .expect("a secção pintou-se");
+        let Some((px, _, base)) = crate::linhas_de_base(&scene)
+            .into_iter()
+            .find(|g| r.contains(g.1, g.2))
+        else {
+            falhas.push(format!("{size:?}: o nome não pintou"));
+            continue;
+        };
+        let meio = crate::meio_das_maiusculas(&mut ts, "Functions", px / size.scale(), base);
+        let alvo = r.y + r.h * 0.5;
+        if (meio - alvo).abs() > 1.0 {
+            falhas.push(format!("{size:?}: meio {meio} contra {alvo}"));
+        }
+    }
+    ph2d_text::set_active_text_style(antes);
+    assert!(falhas.is_empty(), "{falhas:#?}");
+}

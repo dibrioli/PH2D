@@ -80,7 +80,7 @@ impl CodeView {
             scene,
             note,
             x + pad,
-            y0 + (line - f) * 0.5,
+            y0 + ph2d_editor_core::paint::folga_do_texto(line, f),
             f,
             w - 2.0 * pad,
             ink,

@@ -252,7 +252,7 @@ pub(crate) fn text_field(
     );
     let pad = Spacing::Sm.px();
     let x0 = r.x + pad;
-    let f = font();
+    let (f, fs) = (font(), font_shown());
     let ty = r.y + folga_do_texto(r.h, f);
     let text = buf.text().to_string();
     scene.push_clip(&rect_to_vello(r));
@@ -271,14 +271,17 @@ pub(crate) fn text_field(
         let p = buf.selection().primary();
         if focused && !p.is_empty() {
             let (a, b) = (x_of(ts, &text, p.from()), x_of(ts, &text, p.to()));
-            scene.fill_rect(rect_to_vello(Rect::new(x0 + a, ty, b - a, f)), ui.selection);
+            scene.fill_rect(
+                rect_to_vello(Rect::new(x0 + a, ty, b - a, fs)),
+                ui.selection,
+            );
         }
         paint_text(ts, scene, &text, x0, ty, f, f32::INFINITY, ui.text1);
     }
     if focused {
         let cx = x0 + x_of(ts, &text, buf.selection().primary().head);
         scene.fill_rect(
-            rect_to_vello(Rect::new(cx, ty, StrokeToken::Thick.px(), f)),
+            rect_to_vello(Rect::new(cx, ty, StrokeToken::Thick.px(), fs)),
             ui.caret,
         );
     }
@@ -311,5 +314,48 @@ mod cromo_tests {
         assert_eq!(novo.error, antes.error);
         assert_eq!(novo.focus, antes.focus);
         assert_eq!(novo.selection, antes.selection);
+    }
+
+    /// O cursor e a seleção do campo têm a altura da letra desenhada (Small, Large), não a nominal.
+    #[test]
+    fn o_cursor_do_campo_tem_a_altura_da_letra_mostrada() {
+        use ph2d_tokens::{UiTextSize, UiTextStyle};
+        use ph2d_vector::DrawOp;
+        let antes = ph2d_text::active_text_style();
+        let mut falhas = Vec::new();
+        for size in [UiTextSize::Small, UiTextSize::Large] {
+            ph2d_text::set_active_text_style(UiTextStyle { size, ..antes });
+            let ui = Ui::new(Theme::Dark);
+            let mut buf = Buffer::new("speed");
+            buf.set_selection(ph2d_code_buffer::Selection::single(
+                ph2d_code_buffer::Range::new(0, 2),
+            ));
+            let mut ts = TextSystem::without_system_fonts();
+            let mut scene = VectorScene::new();
+            scene.record();
+            let r = Rect::new(0.0, 0.0, 200.0, ph2d_tokens::ROW_H_PX);
+            let _ = text_field(&mut scene, &mut ts, &buf, "", r, true, &ui);
+            let quer = font_shown();
+            let alturas: Vec<_> = scene
+                .take_record()
+                .into_iter()
+                .filter_map(|op| match op {
+                    DrawOp::Fill { brush, path, .. }
+                        if brush == ui.caret.into() || brush == ui.selection.into() =>
+                    {
+                        let ys = path.elements().iter().filter_map(|e| e.end_point());
+                        let (lo, hi) =
+                            ys.fold((f64::MAX, f64::MIN), |(a, b), p| (a.min(p.y), b.max(p.y)));
+                        Some((hi - lo) as f32)
+                    }
+                    _ => None,
+                })
+                .collect();
+            if alturas.len() != 2 || alturas.iter().any(|h| (h - quer).abs() > 0.5) {
+                falhas.push(format!("{size:?}: {alturas:?} contra {quer}"));
+            }
+        }
+        ph2d_text::set_active_text_style(antes);
+        assert!(falhas.is_empty(), "{falhas:#?}");
     }
 }

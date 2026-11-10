@@ -381,7 +381,7 @@ impl HelpView {
                 scene,
                 label,
                 r.x + gap,
-                r.y + (r.h - f) * 0.5,
+                r.y + ph2d_editor_core::paint::folga_do_texto(r.h, f),
                 f,
                 w,
                 color,

@@ -14,6 +14,33 @@ const FOLGA_DAB: f64 = 130.0;
 /// rebuild alarga a caixa por poucas; 64 é um tile inteiro.
 const FOLGA_PASSO: i64 = 64;
 
+/// Um retângulo por banda de [`crate::grid::TILE`] linhas: a união das janelas da faixa viva das linhas a `f` dela,
+/// com `f` de folga em x (meio-aberto, células finas com o pad). Banda sem linha viva a `f` não entra.
+fn faixas_do_passo(g: &Grid, f: i64) -> Vec<[i64; 4]> {
+    let t = crate::grid::TILE as i64;
+    let rows = g.row_lo.len() as i64;
+    let janela: Vec<(i64, i64)> = (0..rows)
+        .map(|y| {
+            let (a, b) = g.span_window(y as i32);
+            (i64::from(a), i64::from(b))
+        })
+        .collect();
+    let mut out = Vec::new();
+    for b0 in (0..rows).step_by(t as usize) {
+        let (lo, hi) = ((b0 - f).max(0), (b0 + t + f).min(rows));
+        let (x0, x1) = janela[lo as usize..hi as usize]
+            .iter()
+            .filter(|(a, b)| a <= b)
+            .fold((i64::MAX, i64::MIN), |(x0, x1), &(a, b)| {
+                (x0.min(a), x1.max(b))
+            });
+        if x0 <= x1 {
+            out.push([x0 - f, b0, x1 + 1 + f, b0 + t]);
+        }
+    }
+    out
+}
+
 impl Engine {
     // -----------------------------------------------------------------------
     // History (SPEC §15): per-layer undo/redo ring, depth 6.
@@ -95,14 +122,26 @@ impl Engine {
                 i64::from(g.by1) + 1,
             ]
         });
+        let f = FOLGA_PASSO;
         let r = match (caixa, l.agua_nova) {
-            (Some([a0, b0, a1, b1]), Some([c0, d0, c1, d1])) => {
+            (Some([a0, b0, a1, b1]), Some([c0, d0, c1, d1])) if !g.spans_enabled => {
                 [a0.min(c0), b0.min(d0), a1.max(c1), b1.max(d1)]
             }
-            (Some(r), None) | (None, Some(r)) => r,
+            (Some(r), None) if !g.spans_enabled => r,
+            (None, Some(r)) => r,
             (None, None) => return self.marca_tudo(),
+            (Some(_), dabs) => {
+                // B12.1: a faixa viva (`{film, susp, vel ≠ 0} ⊆ faixa`, `verify_spans`) por banda de tiles; o casco
+                // levava as linhas paradas entre pinceladas afastadas.
+                for [x0, y0, x1, y1] in faixas_do_passo(g, f) {
+                    self.marca_ret(x0, y0, x1, y1);
+                }
+                match dabs {
+                    Some(r) => r,
+                    None => return,
+                }
+            }
         };
-        let f = FOLGA_PASSO;
         self.marca_ret(r[0] - f, r[1] - f, r[2] + f, r[3] + f);
     }
 

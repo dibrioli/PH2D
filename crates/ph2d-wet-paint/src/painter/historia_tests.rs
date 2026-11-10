@@ -498,3 +498,39 @@ fn historia_a_caixa_do_restauro_cobre_o_que_muda() {
     assert_eq!(fora(&e, &agora, c), 0, "refazer");
     let _ = antes;
 }
+
+/// **B12.1 — o passo marca a FAIXA viva, não o casco** (Z4: `bytes_retidos` da porta do passo): duas pinceladas
+/// molhadas longe uma da outra (topo e fundo), a de cima ainda a correr; o registo da de baixo guarda só os tiles
+/// das duas faixas, nunca as linhas paradas entre elas. Desfazer e refazer ao byte (o `Full` do `hash_grid`).
+#[test]
+fn historia_o_passo_marca_a_faixa_viva_e_nao_o_casco() {
+    let mut e = Engine::new(320, 900);
+    e.sliders.water = 1.0;
+    traco(&mut e, 40.0, 40.0, 6);
+    corre(&mut e, 2);
+    assert!(
+        e.active_grid().has_fluid,
+        "a água de cima secou antes do 2.º traço"
+    );
+    let antes = hash_grid(e.active_grid());
+    traco(&mut e, 40.0, 820.0, 6);
+    corre(&mut e, 4);
+    assert!(e.active_grid().has_fluid);
+    let fim = hash_grid(e.active_grid());
+    let g = e.active_grid();
+    let reg = e.layers[0].undo.last().expect("o registo do 2.º traço");
+    let retido = reg.bytes_retidos();
+    let [x0, y0, x1, y1] = reg.caixa(g).expect("o registo guardou tiles");
+    let mut casco = Registo::abre(g);
+    casco.marca(g, x0 as i64, y0 as i64, x1 as i64, y1 as i64);
+    let do_casco = casco.bytes_retidos();
+    eprintln!("Z4 passo: retido {retido} B · casco {do_casco} B (caixa {x0}..{x1} × {y0}..{y1})");
+    assert!(
+        retido * 2 <= do_casco,
+        "o registo reteve {retido} B, mais de metade do casco ({do_casco} B): as linhas paradas entre as faixas entraram"
+    );
+    assert!(e.undo());
+    assert_eq!(hash_grid(e.active_grid()), antes, "undo do 2.º traço");
+    assert!(e.redo());
+    assert_eq!(hash_grid(e.active_grid()), fim, "redo do 2.º traço");
+}

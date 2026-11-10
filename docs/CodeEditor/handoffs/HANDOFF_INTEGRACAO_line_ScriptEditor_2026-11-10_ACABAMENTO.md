@@ -116,19 +116,42 @@ vale depois da integração; nesta linha os subagentes foram recusados com `-p p
 
 ## 7. Aberto
 
-**Decisão do dono:** apagar `backup/line-ScriptEditor-2026-11-08` — **aguarda o sim dele; NÃO apague.**
+**Ramo `backup/line-ScriptEditor-2026-11-08`:** apagado com o sim do dono (10/11); os 29 commits dele estavam no main por título.
 
 **Memória** (primário, `project-memory/`): `feedback_the_app_standard_is_a_checkbox_not_a_toggle.md` + ponteiro no `MEMORY.md`,
 **não comitados no primário** — o integrador funde-os com a rodada.
 
-**Plausíveis, não provados (deixados em aberto pela auditoria):**
+**Plausíveis da auditoria:** os 7 fechados depois do fecho, a pedido do dono («corrigir tudo antes de integrar») — §8.
+**Fica de propósito:** o peso da letra e a altura das linhas da maquete 14 (padrão da casa no app inteiro, regra do dono);
+o hook só vale depois da integração (corre o do primário). Os abertos de desenho da Onda B/Q3_Q4 continuam nos handoffs deles.
 
-1. `cards::value_outline` é `pub` e esconde os chamadores do portão de molduras (5 chamadores, todos contornos de valor).
-2. A tinta da caixa de marcar das opções é a do cartão em volta (`card_body()`), não a do popover.
-3. O hover usa `resolve(Text1)`; o pressionado usa a tinta do cartão.
-4. `status.rs` passa um px de fonte já escalado à `folga_do_texto` (só importa se o tamanho do texto ≠ Normal).
-5. `surface.rs` pinta bancada/popover só se algum doc casa o id (hit rects velhos possíveis se nenhum casar; não se mostrou alcançável).
-6. O limiar de `left_split` ainda assume `ROW_H` para as 3 linhas do outline.
-7. `col_band` em `ph2d-ui-table` (`marks.rs`) não tem chamador e ainda cobre o corpo inteiro.
+## 8. Depois do fecho — os abertos fechados (10/11)
 
-Os abertos de desenho da Onda B/Q3_Q4 que esta linha **não** tocou continuam valendo nos handoffs respectivos.
+Commits `603be29c52..e082d45b6d` (9). Cada lei nova com teste por nome, vermelho por mutação e verde.
+
+- **Alvos velhos** (`603be29c52`): era alcançável — a aba de ajuda e a aba cujo documento fechou deixavam vivos os alvos da
+  grelha, mapa, balão e marcas (hover punha `aim` num holder e podia ligar o espiar; clique enfileirava `Intent::Select`).
+  `BancadaView::forget_frame()` no início de cada quadro. Teste `onda_b::sem_grelha_pintada_nenhum_alvo_do_quadro_anterior_responde`.
+- **ph2d-ui-table** (`f8add9d725`, `cf96ac5a22`): `lib.rs` 692 → 578 (Metrics e medidas para `measure.rs`, `pub use`); sai
+  `Layout::col_band`; `Column::snug()` aditivo (sem o piso `min_col`), a coluna do ponto do Problems 44 → 18,6 px. Debugcard
+  inalterado (testes por nome verdes). Testes `a_coluna_justa_do_ponto_mede_o_ponto_e_as_folgas`, `a_coluna_do_ponto_e_o_ponto_e_as_folgas_como_na_maquete`.
+- **Tinta das opções** (`9ff531a0f0`): caixa, hover e pressionado pela superfície do popover (`Superficie::de(theme).tinta()`).
+  Teste `a_caixa_e_o_realce_tomam_a_tinta_da_superficie_do_popover`.
+- **Tamanho da letra aplicado 2×** (`9ff531a0f0`, `530b9e7fbd`): o `TextSystem` já escala; `chrome::font()` passa a nominal,
+  `chrome::font_shown()` só para alturas; barra de estado, «…» da dobra, valores ao vivo e ajuda pela mesma lei. Medido Sm:
+  Small 10,22 → 11,08 px, Normal 12 = 12 (byte-idêntico), Large 15,98 → 13,85. Testes
+  `o_texto_da_barra_fica_no_meio_com_outro_tamanho_de_letra`, `o_texto_das_pecas_aplica_o_tamanho_da_letra_uma_vez` (a `face()` da ajuda sem teste próprio).
+- **Limiar do «In this script»** = o que pinta (`outline_min_h`). Teste `o_in_this_script_aparece_quando_cabem_o_titulo_e_tres_entradas`.
+- **`value_outline` `pub(crate)`**; cobertura nos Cards do Live e do Stopped (`o_contorno_do_valor_ao_vivo_nos_cards_pinta_em_todos_os_temas`,
+  `o_contorno_do_valor_do_stopped_nos_cards_pinta_em_todos_os_temas`).
+- **«Name»** na 1.ª coluna da grelha, a chave `code.debug.col.name` da folha do Stopped (a maquete não desenha a grelha).
+  Teste `a_primeira_coluna_da_grelha_chama_se_name_como_na_folha_do_stopped`.
+- Portões por nome verdes (every_frame_goes_through_the_theme_door, no_magic_numeric, no_literal_color, hr15, workspace_file_loc_cap,
+  arch_safe_clamp_only, file_loc_caps, fn_loc_caps); fmt; clippy `-D warnings` nas cinco crates tocadas.
+- Fotos `smoke/ae_options.png`, `ae_options_claro.png`, `ae_problemas.png`, `cena13/ae_passo_1.png`, `ae_lado_a_lado.png` (maquete × app).
+- Binário de smoke, 2.ª construção depois de `rm -rf target/*/incremental`:
+
+```
+▸ linha line_scripteditor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.32s
+```

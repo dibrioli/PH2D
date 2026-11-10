@@ -52,6 +52,68 @@ fn sonda_o_campo_custa_pela_janela() {
     }
 }
 
+#[test]
+#[ignore = "sonda de custo (smoke): o campo de UMA faixa viva do app × um quadrado da mesma área"]
+fn sonda_o_campo_custa_pela_faixa() {
+    // B14-cont2: a faixa composta do app (2880², 6 traços Wet Drip) é ~2 354 × 66 células; a margem do campo vai à
+    // volta dela. O quadrado da mesma área diz quanto dessa margem é da FORMA da janela.
+    let (gw, gh) = (2420, 420);
+    let mut g = Grid::new(gw, gh);
+    for y in 1..=gh {
+        for x in 1..=gw {
+            g.sett[x + y * g.s] = 2000.0 + 37.0 * ((x * 7 + y * 13) % 11) as f32;
+        }
+    }
+    g.sett_rgb.fill([200.0, 110.0, 50.0]);
+    let o = OleoReal::default();
+    // O Smooth Edges do cartão (o Dabber do app): a silhueta amacia-se no campo.
+    let o_se = OleoReal {
+        suave_px: 8.0,
+        ..OleoReal::default()
+    };
+    let camadas = [(&g, true)];
+    let (mut ras_s, mut ras_f) = (RascunhoCampo::default(), RascunhoCampo::default());
+    let lado = 394; // 394² ≈ 2 354 × 66
+    let formas = [
+        ("faixa 2354x66", (34, 177, 34 + 2353, 177 + 65)),
+        ("faixa 2354x8", (34, 206, 34 + 2353, 206 + 7)),
+        ("quadrado 394²", (1013, 13, 1013 + lado - 1, 13 + lado - 1)),
+    ];
+    let mut min = [[f64::INFINITY; 4]; 3];
+    let mut texels = [0usize; 3];
+    for volta in 0..30 {
+        let f = volta % 3;
+        let janela = formas[f].1;
+        for v in 0..4 {
+            let oo = if v < 2 { &o } else { &o_se };
+            let t = std::time::Instant::now();
+            let c = if v % 2 == 0 {
+                CampoAltura::de_com_em(&mut ras_s, &EmSerie, &camadas, oo, 1, janela)
+            } else {
+                CampoAltura::de_com_em(&mut ras_f, &Faixas, &camadas, oo, 1, janela)
+            };
+            min[f][v] = min[f][v].min(t.elapsed().as_secs_f64() * 1e3);
+            if v == 0 {
+                texels[f] = c.w * c.h;
+            }
+        }
+    }
+    for (f, (nome, (x0, y0, x1, y1))) in formas.iter().enumerate() {
+        let celulas = (x1 + 1 - x0) * (y1 + 1 - y0);
+        eprintln!(
+            "{nome} · células {celulas} · texels do campo {} ({:.2}×) · série {:.1} ms ({:.1} ns/texel) · faixas {:.1} ms \
+             · com Smooth Edges: série {:.1} · faixas {:.1} ms",
+            texels[f],
+            texels[f] as f64 / celulas as f64,
+            min[f][0],
+            min[f][0] * 1e6 / texels[f] as f64,
+            min[f][1],
+            min[f][2],
+            min[f][3]
+        );
+    }
+}
+
 /// As faixas do composite (`ph2d-tool-painter` `oleo_plano::EmFaixas`): uma linha por tarefa do rayon.
 pub(super) struct Faixas;
 

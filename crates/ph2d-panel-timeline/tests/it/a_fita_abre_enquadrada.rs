@@ -113,3 +113,33 @@ fn o_alvo_da_chave_cobre_o_losango_com_contorno() {
         }
     }
 }
+
+/// ⭐ Dono 10/11 (onda 3f): a fita abre com o FIM do clipe e um pouco de «além do fim» à vista, mesmo
+/// quando a área de tempo muda de largura nos primeiros quadros (o cartão flutuante a assentar). O
+/// clássico não enquadra ao abrir.
+#[test]
+fn a_fita_abre_com_o_fim_e_a_folga_a_vista_mesmo_se_a_area_muda() {
+    force_cards_on_this_thread(Some(true));
+    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+    let mut st = TimelinePanelState::default();
+    let mut snap = cena(0.0);
+    (
+        snap.playing,
+        snap.view_length_seconds,
+        snap.view_length_explicit,
+    ) = (false, 6.0, true);
+    set_current_timeline(Some(snap));
+    host.paint::<TimelinePanel>(&mut st, VIEWPORT);
+    let estreito = Rect::new(0.0, 0.0, 1290.0, 900.0);
+    host.paint::<TimelinePanel>(&mut st, estreito);
+    host.paint::<TimelinePanel>(&mut st, estreito);
+    set_current_timeline(None);
+    force_cards_on_this_thread(None);
+    let folga = 6.0 * f64::from(ph2d_tokens::chrome::TIMELINE_ENQUADRE_MARGEM);
+    let fim_da_vista = st.view_start_s + st.view_span_s;
+    assert!(
+        st.view_start_s <= 0.0 && fim_da_vista >= 6.0 + folga,
+        "0 → 6 s e a folga de {folga} à vista: {} → {fim_da_vista}",
+        st.view_start_s
+    );
+}

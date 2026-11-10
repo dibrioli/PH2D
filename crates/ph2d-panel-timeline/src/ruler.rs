@@ -228,12 +228,28 @@ fn paint_loop_band(
     let x0 = safe_clamp(time_to_x(a), region.x, right);
     let x1 = safe_clamp(time_to_x(b), region.x, right);
     if x1 > x0 {
+        let (h, cor) = faixa_do_laco(theme);
         fill_rounded_rect(
             ctx.scene,
-            Rect::new(x0, region.y, x1 - x0, RULER_H),
+            Rect::new(x0, region.y, x1 - x0, h),
             Radius::Xs.px(),
-            resolve(ColorToken::TimelineLoopRegion, theme),
+            cor,
         );
+    }
+}
+
+/// `(altura, cor)` da faixa do laço: nos cartões a faixa FINA da maquete B no topo da régua
+/// (`TimelineTinta::LacoDaRegua`); no clássico a régua inteira em `TimelineLoopRegion`, como sempre.
+pub(crate) fn faixa_do_laco(theme: Theme) -> (f32, ph2d_vector::Color) {
+    use ph2d_tokens::chrome::{TIMELINE_LACO_REGUA_ALPHA, TIMELINE_LACO_REGUA_PX};
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        let cor = crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::LacoDaRegua, theme);
+        (
+            TIMELINE_LACO_REGUA_PX,
+            cor.multiply_alpha(TIMELINE_LACO_REGUA_ALPHA),
+        )
+    } else {
+        (RULER_H, resolve(ColorToken::TimelineLoopRegion, theme))
     }
 }
 
@@ -300,10 +316,22 @@ fn paint_loop_braces(
         // The visible move-handle line at the very top, so the grab reads as a handle
         // to drag rather than dead space. Drawn only where the grab exists — an
         // affordance you can see but not use is a lie.
-        let linha = Rect::new(x0, region.y, x1 - x0, LOOP_MOVE_LINE_H);
+        // Nos cartões a própria faixa fina É a linha de mover: em repouso ela já está pintada por
+        // baixo dos números; só os estados (hover, aperto, arrasto) pintam por cima, na altura dela.
         let e = EstadoAlca::nos_cartoes(ctx, ids::timeline_loop_brace_id(2));
-        let cor = resolve(ColorToken::TimelineLoopBrace, theme);
-        crate::alca_estado::pinta(ctx, theme, e, cor, &[linha], &[]);
+        let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
+        let (h, cor) = if cartoes {
+            faixa_do_laco(theme)
+        } else {
+            (
+                LOOP_MOVE_LINE_H,
+                resolve(ColorToken::TimelineLoopBrace, theme),
+            )
+        };
+        if !cartoes || e != EstadoAlca::Repouso {
+            let linha = Rect::new(x0, region.y, x1 - x0, h);
+            crate::alca_estado::pinta(ctx, theme, e, cor, &[linha], &[]);
+        }
         let cy = region.y + RULER_H * 0.5;
         crate::alca_estado::pinta_leitura(ctx, theme, e, a, x0, cy, false);
     }

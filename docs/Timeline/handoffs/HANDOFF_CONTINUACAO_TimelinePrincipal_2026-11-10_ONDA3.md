@@ -158,3 +158,12 @@ um teste de 1100 px (curado com `textos_em`); a contagem `pintados + n == total`
 - Pisos medidos (12 temas × 6 peças + fita): listra × véu 0,262 (Sunstone `PecaB`, piso 0,25 ≥ 0,17 da mistura); peça velada × viva 0,166 (Sunstone `PecaC`, piso 0,16). Portões: `alem_do_fim_le_se_sobre_toda_peca_e_apaga_a_peca`, `nos_cartoes_a_linha_do_fim_sai_depois_das_pecas`.
 - Semântica igual (o fim autorado da vista). ⚠️ A cena 4 autora o fim em 6 s e abre enquadrada em ~0–5,7 s: nada passa do fim nela. A foto `18_fim_e_alem.png` foi tirada com um patch LOCAL não comitado (fim 5 s, 150 px/s) para mostrar a peça a cruzar o fim; zoom `18_fim_e_alem_zoom.png`.
 - ABERTO: o enquadrar ao abrir o Arrange não mostra o fim inteiro (corta ~5,7 de 6 s) — verificar `apply_fit_clip` com o Arrange.
+
+## Rodada 3f (10/11): laço fino na régua, enquadrar ao abrir, chips
+
+- **Laço na régua** (maquete B `.c13lp`, cartões): `ruler::faixa_do_laco` = faixa de `TIMELINE_LACO_REGUA_PX` (5) no topo, `TimelineTinta::LacoDaRegua` (= `PecaA`, [73,224,174]) × `TIMELINE_LACO_REGUA_ALPHA` (0,7). Nos cartões a faixa É a linha de mover: em repouso não se repinta; hover/aperto/arrasto pintam-na na altura dela por `alca_estado::pinta`. Chavetas, ⟷, hits e sombras intactos; clássico = régua inteira em `TimelineLoopRegion`.
+- Pisos medidos (`Theme::ALL`, OKLab): laço × régua pior 0,367 (Sunstone) → piso 0,33; números × régua 0,332 (inalterado, os números ficam abaixo da faixa — conferido na foto). A moldura de 1 px da área cobre a 1.ª linha da faixa.
+- **Enquadrar ao abrir**: causa = a área de tempo muda de largura nos primeiros quadros (cartão flutuante a assentar) e o fit do 1.º quadro ficava. `view::enquadra_ao_abrir` reenquadra enquanto a vista é a que o fit deixou (`state.enquadre`). Folga = `TIMELINE_ENQUADRE_MARGEM` (0,05/lado; ancorado em 0 sobra ~9 % à direita). Cena 4 abre com o fim (6 s) e «além do fim» à vista; Keys idem.
+- **Chips a 1290 px**: fileira inteira precisa 897 px, há 857 (−40). Não há regra de compactar «used 2×»; o único ganho seria apertar os vãos de 6 px dos chips para ~2 px (desenho pior) — não feito; a dobra única «+2 more» fica.
+- Testes: `nos_cartoes_o_laco_e_uma_faixa_fina_no_topo_da_regua`, `a_faixa_do_laco_le_se_sobre_a_regua_em_todo_tema`, `a_fita_abre_com_o_fim_e_a_folga_a_vista_mesmo_se_a_area_muda` (mutações: altura `RULER_H`/sem o reenquadrar ⇒ vermelho).
+- §5 do CLAUDE.md: `PH2D_NEST_SMOKE=1..5`. Fotos `docs/Timeline/fotos/19_regua_e_chips.png`, `19_keys.png`.

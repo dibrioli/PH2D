@@ -95,7 +95,7 @@ fn release_everything_a_hidden_panel_must_not_hold(
         .clear_panel_rect(ph2d_editor_core::ids::TIMELINE_PANEL);
     ctx.host.store_mut().clear_timeline_canvas();
     // Reabrir enquadra outra vez (doc 15 onda 2).
-    state.enquadrado = None;
+    (state.enquadrado, state.enquadre) = (None, None);
     // As janelinhas da barra não voltam abertas com o painel.
     state.opcoes_abertas = false;
     state.menu_do_clip = false;
@@ -260,12 +260,10 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // `F` fits the time axis to the keys; it needs the time area's pixel width,
     // known only now. Runs before the view is read, so the fit lands this frame.
     // Nos cartões, abrir a Timeline (1.º quadro visível) ou trocar de clipe enquadra o clipe: o `F` sozinho.
-    let troca = cartoes && state.enquadrado != Some(snapshot.active_clip);
-    state.enquadrado = Some(snapshot.active_clip);
     if state::take_fit_request() {
         crate::view::apply_fit(state, g.time_area.w, &snapshot);
-    } else if troca {
-        crate::view::apply_fit_clip(state, g.time_area.w, &snapshot);
+    } else if cartoes {
+        crate::view::enquadra_ao_abrir(state, g.time_area.w, &snapshot);
     }
     // A transport jump (go-to-start/end, frame step, typed time) pans the view
     // after it, so the playhead never lands off-screen while paused.

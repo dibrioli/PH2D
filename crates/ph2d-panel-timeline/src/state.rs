@@ -103,6 +103,9 @@ pub struct TimelinePanelState {
     /// O clipe que a vista enquadrou da última vez (cartões, doc 15 onda 2): abrir o painel ou trocar de
     /// clipe faz o `F` sozinho. `None` = fechado ou nunca pintado.
     pub enquadrado: Option<usize>,
+    /// A vista que o enquadrar ao abrir deixou, `(largura da área de tempo, início, px/s)`: enquanto o
+    /// artista não mexer nela, a área mudar de largura (o cartão a assentar) enquadra outra vez.
+    pub enquadre: Option<(f32, f64, f64)>,
     /// In-progress key-diamond drag (dope-sheet), while the pointer is down on a
     /// key: the pointer x at Begin and the latest x, so `paint` can draw the
     /// selected diamonds shifted by the live delta and `event`/`interact` can
@@ -295,6 +298,7 @@ impl Default for TimelinePanelState {
             opcoes_abertas: false,
             menu_do_clip: false,
             enquadrado: None,
+            enquadre: None,
             key_drag: None,
             macro_drag: None,
             macro_largada: None,

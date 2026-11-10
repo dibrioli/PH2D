@@ -152,6 +152,14 @@ pub const TIMELINE_ALEM_LISTRA_PX: f32 = 2.0; // LITERAL-PX-OK: espessura da lis
 pub const TIMELINE_ALEM_PASSO_PX: f32 = 12.0; // LITERAL-PX-OK: passo das listras além do fim
 /// A linha do fim da animação (a da ⟷ da duração), régua e faixas inteiras.
 pub const TIMELINE_FIM_LINHA_PX: f32 = 2.0; // LITERAL-PX-OK: espessura da linha do fim
+/// ⭐ **O laço na régua** (maquete B, `.c13lp`): uma faixa FINA no topo da régua, não a régua inteira —
+/// os números ficam na régua sem tinta por baixo. Altura e opacidade da maquete.
+pub const TIMELINE_LACO_REGUA_PX: f32 = 5.0; // LITERAL-PX-OK: altura da faixa do laço na régua
+/// A opacidade da faixa do laço na régua.
+pub const TIMELINE_LACO_REGUA_ALPHA: f32 = 0.7; // LITERAL-PX-OK: opacidade da faixa do laço
+/// A folga de cada lado do enquadrar da Timeline (`F` e o abrir), em fracção do que se enquadra: o fim
+/// do clipe e um pouco de «além do fim» ficam à vista (estado da arte, ~5–8 %).
+pub const TIMELINE_ENQUADRE_MARGEM: f32 = 0.05; // LITERAL-PX-OK: folga do enquadrar, fracção do vão
 
 /// ⭐ **O FANTASMA de um cartão arrastado — a opacidade dele.** Meio transparente: a marca da
 /// queda (a barra de acento entre dois cartões) tem de se ver através dele.

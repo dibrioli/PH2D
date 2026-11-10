@@ -24,7 +24,7 @@ const ZOOM_WHEEL_DIV: f64 = 240.0; // LITERAL-PX-OK: wheel px → zoom-factor se
 
 /// Fraction of the fitted span left as breathing room on each side, so the first
 /// and last diamonds never sit exactly on the panel border.
-const FIT_PAD: f64 = 0.05; // LITERAL-PX-OK: fit margin as a fraction of the span
+const FIT_PAD: f64 = ph2d_tokens::chrome::TIMELINE_ENQUADRE_MARGEM as f64;
 /// The span a fit falls back to when every key sits at the same instant (or the
 /// clip has a single key): one second centred on it, so the zoom stays sane.
 const FIT_DEGENERATE_SPAN_S: f64 = 1.0; // LITERAL-PX-OK: fallback span for a zero-width key extent
@@ -87,6 +87,25 @@ pub(crate) fn apply_fit_clip(
         (x, y) => x.or(y),
     };
     fit_to(state, time_area_w, extent);
+}
+
+/// ⭐ **O enquadrar ao abrir** (cartões): abrir a fita ou trocar de clipe faz o [`apply_fit_clip`]; e
+/// enquanto a vista é a que ele deixou, a área de tempo mudar de largura (o cartão flutuante a assentar
+/// nos primeiros quadros) enquadra outra vez — senão o fim do clipe ficava fora da tela.
+pub(crate) fn enquadra_ao_abrir(
+    state: &mut TimelinePanelState,
+    time_area_w: f32,
+    snap: &TimelineViewSnapshot,
+) {
+    let troca = state.enquadrado != Some(snap.active_clip);
+    let largura = state.enquadre.is_some_and(|(w, s, p)| {
+        w != time_area_w && s == state.view_start_s && p == state.px_per_s // FLOAT-EQ-OK: a vista que o enquadrar escreveu, ao bit
+    });
+    state.enquadrado = Some(snap.active_clip);
+    if troca || largura {
+        apply_fit_clip(state, time_area_w, snap);
+        state.enquadre = Some((time_area_w, state.view_start_s, state.px_per_s));
+    }
 }
 
 fn fit_to(state: &mut TimelinePanelState, time_area_w: f32, extent: Option<(f64, f64)>) {

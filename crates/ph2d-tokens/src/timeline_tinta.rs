@@ -79,6 +79,8 @@ pub enum TimelineTinta {
     PesoPilula,
     /// O olho de uma faixa muda (fechado, avermelhado e meio apagado).
     OlhoMudo,
+    /// A faixa fina do laço no topo da régua (o `.c13lp` da maquete B: o verde da [`Self::PecaA`]).
+    LacoDaRegua,
 }
 
 /// As cores das peças de clipe, na ordem da maquete; o clipe `i` veste `PECAS[i % PECAS.len()]`.
@@ -116,7 +118,7 @@ impl TimelineTinta {
             Self::Gravando => (T::KanbanList, [196, 116, 114]),
             Self::Moldura => (T::KanbanList, [37, 41, 56]),
             // As cinco `--c13-*` e o `--c13-cont` do CSS da maquete (onda 3), ao bit.
-            Self::PecaA => (T::KanbanBlueBold, [73, 224, 174]),
+            Self::PecaA | Self::LacoDaRegua => (T::KanbanBlueBold, [73, 224, 174]),
             Self::PecaB => (T::KanbanBlueBold, [255, 207, 77]),
             Self::PecaC => (T::KanbanBlueBold, [183, 156, 255]),
             Self::PecaD => (T::KanbanBlueBold, [108, 203, 250]),

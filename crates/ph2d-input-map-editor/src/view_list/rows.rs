@@ -10,7 +10,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_input::{ActionId, Binding, GamepadAxis, InputAction};
+use ph2d_input::{ActionId, Binding, InputAction};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
@@ -163,21 +163,6 @@ pub(super) fn paint_rows(
     }
 }
 
-/// O ícone da direcção de uma metade de manche. ⚠️ Irmã de `view_keyboard::geometry::half_icon` (privada à
-/// vista B): a rodada seguinte funde as duas numa só porta.
-fn half_icon(b: Binding) -> Option<IconId> {
-    let Binding::PadAxis { axis, positive } = b else {
-        return None;
-    };
-    Some(match (axis, positive) {
-        (GamepadAxis::LeftStickX | GamepadAxis::RightStickX, false) => IconId::ChevronLeft,
-        (GamepadAxis::LeftStickX | GamepadAxis::RightStickX, true) => IconId::ChevronRight,
-        (GamepadAxis::LeftStickY | GamepadAxis::RightStickY, true) => IconId::ChevronUp,
-        (GamepadAxis::LeftStickY | GamepadAxis::RightStickY, false) => IconId::ChevronDown,
-        _ => return None,
-    })
-}
-
 fn foot(doc: &InputMapDoc) -> Vec<footer::Phrase> {
     if let Some(id) = doc.snap.listening {
         return vec![footer::listening(&doc.snap, id)];
@@ -239,7 +224,7 @@ fn paint_row(
         let label = footer::binding_label(*b);
         let tw = ts.prefix_width(&label, m::VALUE_PX);
         // A metade da manche leva a direcção desenhada («Left Stick ←»), nunca um glifo.
-        let arrow = half_icon(*b);
+        let arrow = crate::view_keyboard::half_icon(*b);
         let aw = if arrow.is_some() {
             g + m::SEG_ICON_GAP
         } else {

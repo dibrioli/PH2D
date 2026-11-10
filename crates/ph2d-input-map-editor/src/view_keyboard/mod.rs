@@ -3,6 +3,7 @@
 //! baixo a acção aberta com as ligações em ladrilhos, a escuta no lugar e — com manche — a barra do curso.
 
 mod geometry;
+pub use geometry::half_icon;
 pub(crate) mod input;
 pub(crate) mod keys;
 mod list;

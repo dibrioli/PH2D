@@ -301,8 +301,9 @@ pub(crate) const STICKS: [((f32, f32), &str); 2] = [
 /// O raio do círculo da manche, em fracções da altura da caixa.
 pub(crate) const STICK_R: f32 = 0.1; // LITERAL-PX-OK: maquete B3
 
-/// O ícone da direcção de uma metade de manche (o ladrilho «LS ←»).
-pub(crate) fn half_icon(b: Binding) -> Option<ph2d_editor_core::icons::IconId> {
+/// O ícone da direcção de uma metade de manche — o ladrilho «LS ←» da B e o chip da A (uma porta só).
+#[must_use]
+pub fn half_icon(b: Binding) -> Option<ph2d_editor_core::icons::IconId> {
     use ph2d_editor_core::icons::IconId as I;
     let Binding::PadAxis { axis, positive } = b else {
         return None;

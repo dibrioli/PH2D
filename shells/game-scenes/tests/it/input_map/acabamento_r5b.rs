@@ -6,7 +6,6 @@ use super::lista::onze;
 use ph2d_app_input_map::ids::ListHit;
 use ph2d_app_input_map::view_keyboard::state::KbHit;
 use ph2d_app_input_map::{TAB_ID, View};
-use ph2d_editor_core::doc_surface::DocumentSurface;
 use ph2d_editor_core::screens::HeroLayout;
 use ph2d_editor_core::screens::hero::board_view;
 use ph2d_editor_core::zones::Rect;
@@ -250,4 +249,22 @@ fn arrastar_o_polegar_da_a_rola_a_lista() {
         "solto, o ponteiro já não rola"
     );
     assert_eq!(m.tab().doc.list.scroll, m.tab().doc.list.scroll_max);
+}
+
+#[test]
+fn a_metade_da_manche_tem_um_icone_so_para_a_a_e_a_b() {
+    use ph2d_app_input_map::view_keyboard::half_icon;
+    use ph2d_editor_core::icons::IconId as I;
+    use ph2d_input::GamepadAxis as A;
+    let half = |axis, positive| half_icon(Binding::PadAxis { axis, positive });
+    assert_eq!(half(A::LeftStickX, false), Some(I::ChevronLeft));
+    assert_eq!(half(A::RightStickX, true), Some(I::ChevronRight));
+    assert_eq!(half(A::LeftStickY, true), Some(I::ChevronUp));
+    assert_eq!(half(A::RightStickY, false), Some(I::ChevronDown));
+    assert_eq!(
+        half(A::LeftTrigger, true),
+        None,
+        "o gatilho não tem direcção"
+    );
+    assert_eq!(half_icon(Binding::Key(key("a"))), None);
 }

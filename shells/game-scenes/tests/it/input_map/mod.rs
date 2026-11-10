@@ -19,6 +19,7 @@ mod teclado;
 mod teclado_censo;
 mod teclado_r7b;
 mod teclado_r9b;
+mod teclas_w1;
 mod teclado_w2;
 mod try_it;
 mod try_it_censo;

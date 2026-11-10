@@ -116,6 +116,10 @@ pub fn capture_if_listening(
     /// O `Esc` no espaço de keycode normalizado do app.
     const ESCAPE: u32 = 0x1B;
     store.input_map_listening()?;
+    // ⛔ Uma tecla do SISTEMA (Windows, Fn, Print Screen) não é capturada: segue, e a aba recusa-a (InputMap W1).
+    if ph2d_input::Key(keycode).system_owned().is_some() {
+        return None;
+    }
     if keycode == ESCAPE {
         store.stop_listening();
         return Some(crate::interaction::WidgetEvent::Click(

@@ -8192,9 +8192,11 @@ dependencies = [
 name = "ph2d-input-map-editor"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "ph2d-a11y",
  "ph2d-card-stack",
  "ph2d-editor-core",
+ "ph2d-host",
  "ph2d-i18n",
  "ph2d-input",
  "ph2d-text",

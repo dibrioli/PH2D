@@ -1,2 +1,10 @@
-//! A cor por acção (plano §3): `Categorical01..12` de `ph2d-tokens`, escolhida por `ActionId` (`id.0 % 12`),
-//! nunca pela posição. Entra quando os tokens da paleta chegarem (R1, `ph2d-tokens`).
+//! A cor por acção (plano §3): `Categorical01..12` de `ph2d-tokens`, por `ActionId` (`id.0 % 12`), nunca pela
+//! posição — reordenar ou apagar não troca a cor de quem fica.
+
+use ph2d_input::ActionId;
+use ph2d_tokens::ColorToken;
+
+#[must_use]
+pub const fn of_action(id: ActionId) -> ColorToken {
+    ph2d_tokens::categorical(id.0)
+}

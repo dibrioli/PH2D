@@ -1,6 +1,9 @@
 //! O que a aba lê, publicado pela família a cada `frame` (plano §3).
 
-use ph2d_input::InputMap;
+use std::collections::BTreeMap;
+
+use ph2d_input::readers::Reader;
+use ph2d_input::{ActionId, InputMap};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Snapshot {
@@ -10,4 +13,8 @@ pub struct Snapshot {
     pub gamepad_connected: bool,
     /// O Play corre: o Try it lê o estado do jogo e não toma teclas.
     pub play_running: bool,
+    /// Quem lê cada acção, por nome (`ph2d_input::readers::readers`).
+    pub readers: BTreeMap<String, Vec<Reader>>,
+    /// A acção à escuta pela escuta partilhada (`WidgetStore::input_map_listening`), se é desta aba.
+    pub listening: Option<ActionId>,
 }

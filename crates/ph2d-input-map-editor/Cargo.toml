@@ -15,6 +15,8 @@ authors.workspace = true
 
 [dependencies]
 ph2d-a11y = { path = "../ph2d-a11y" }
+bumpalo = { version = "3", features = ["collections"] }
+ph2d-host = { path = "../ph2d-host" }
 ph2d-card-stack = { path = "../ph2d-card-stack" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-i18n = { path = "../ph2d-i18n" }

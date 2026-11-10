@@ -27,6 +27,7 @@ pub fn paint_doc(
     let ink = CardInk::of_list(theme);
     fill_rounded_rect(scene, area, 0.0, ink.color(ColorToken::KanbanList));
     doc.hits = HitIndex::default();
+    doc.census = crate::census::Census::default();
     let labels = View::ALL.map(|v| tr(v.label_key()));
     let segs: Vec<Seg<'_>> = View::ALL
         .iter()

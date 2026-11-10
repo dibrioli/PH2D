@@ -75,6 +75,7 @@ impl DocumentSurface for InputMapTab {
     ) -> bool {
         match (kind, button) {
             (PointerKind::Down, PointerButton::Primary) => self.doc.press(x, y),
+            (PointerKind::Up, _) => self.doc.release(),
             (PointerKind::Move, _) => self.doc.motion(x, y),
             _ => false,
         }
@@ -88,12 +89,19 @@ impl DocumentSurface for InputMapTab {
         self.doc.hover().map(|_| PointerLook::Hand)
     }
 
-    fn wheel(&mut self, _id: u64, _x: f32, _y: f32, _dy: f32, _shift: bool) -> bool {
-        false
+    fn wheel(&mut self, _id: u64, _x: f32, _y: f32, dy: f32, _shift: bool) -> bool {
+        self.doc.wheel(dy)
     }
 
-    fn key(&mut self, _id: u64, _ts: &mut TextSystem, _input: KeyInput<'_>) -> KeyOutcome {
-        KeyOutcome::default()
+    fn key(&mut self, _id: u64, _ts: &mut TextSystem, input: KeyInput<'_>) -> KeyOutcome {
+        KeyOutcome {
+            consumed: self.doc.key(&input),
+            copy: None,
+        }
+    }
+
+    fn raw_key(&mut self, _id: u64, key: ph2d_input::Key, pressed: bool, writes_text: bool) -> bool {
+        self.doc.raw_key(key, pressed, writes_text)
     }
 
     fn compose(&mut self, _id: u64, _c: Compose<'_>) -> bool {

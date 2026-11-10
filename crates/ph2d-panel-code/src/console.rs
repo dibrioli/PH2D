@@ -290,20 +290,31 @@ impl ConsoleView {
         {
             // ⚠️ O texto pinta-se na largura MEDIDA, nunca em `(lw + 2·pad) − 2·pad`: a volta da
             // aritmética perde um ULP e a elisão (`<=`) cortava «Problems (1)» em «Problems (…».
-            let lw = chrome::label_w(ts, label);
+            // A letra da faixa do «Paused» (dono 10/11): o activo no peso da palavra, o outro no
+            // do corpo da faixa.
+            let active = tab == band.tab;
+            let f = chrome::font();
+            let peso = if active {
+                crate::peso::TITULO
+            } else {
+                crate::peso::CORPO
+            };
+            let lw = crate::peso::largura_em(ts, label, f, peso);
             let w = lw + pad * 2.0;
             let r = Rect::new(x, self.header.y, w, self.header.h);
-            let active = tab == band.tab;
-            let color = match tab {
-                _ if active => ui.text1,
-                _ => ui.text2,
-            };
-            chrome::label_in(
-                scene,
+            let color = if active { ui.text1 } else { ui.text2 };
+            ph2d_editor_core::paint::paint_text_in_weight(
                 ts,
+                scene,
                 label,
-                Rect::new(r.x + pad, r.y, lw.next_up(), r.h),
+                [
+                    r.x + pad,
+                    r.y + ph2d_editor_core::paint::folga_do_texto(r.h, f),
+                ],
+                f,
+                lw.next_up(),
                 color,
+                peso,
             );
             if active && band.open {
                 let t = StrokeToken::Thick.px();

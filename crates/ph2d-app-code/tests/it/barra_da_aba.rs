@@ -242,8 +242,8 @@ fn o_menu_edit_tem_uma_linha_toggle_fold_que_faz_o_que_o_alt_f_faz() {
     assert_eq!(m.docs().closed_folds(id), Vec::<(usize, usize)>::new());
 }
 
-/// No preset de fábrica, a caixa de cada título do menu é a largura em que ele se PINTA (o corpo
-/// `400` no peso exacto) e o recuo dos dois lados.
+/// No preset de fábrica, a caixa de cada título do menu é a largura em que ele se PINTA (a mono do
+/// código, dono 10/11) e o recuo dos dois lados.
 #[test]
 fn a_caixa_de_cada_titulo_do_menu_e_a_largura_pintada() {
     use ph2d_tokens::{Spacing, TextRendering, TypeToken};
@@ -252,16 +252,9 @@ fn a_caixa_de_cada_titulo_do_menu_e_a_largura_pintada() {
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     for menu in TabMenu::ALL {
         let caixa = titulo(&mut m, menu);
-        let tinta = ph2d_text::com_peso_exato(|| {
-            ts.layout_for_rendering(
-                menu.title(),
-                TypeToken::Sm.px(),
-                f32::INFINITY,
-                ph2d_text::FontWeight::NORMAL,
-                TextRendering::CrispHeavyPlus,
-            )
-        })
-        .width();
+        let px = ph2d_text::displayed_font_px(TypeToken::Base.px());
+        let mut cache = ph2d_panel_code::LineCache::default();
+        let tinta = cache.get(&mut ts, menu.title(), &[], px).width();
         let quer = tinta + Spacing::Sm.px() * 2.0;
         assert!(
             (caixa.w - quer).abs() <= 1.0,
@@ -270,4 +263,90 @@ fn a_caixa_de_cada_titulo_do_menu_e_a_largura_pintada() {
         );
     }
     ph2d_editor_core::paint::set_text_rendering(TextRendering::Default);
+}
+
+/// Dono 10/11: os títulos da barra («File Edit Find…») e as linhas do menu aberto pintam-se na
+/// letra exacta do código (a de «alive»: a fonte, o corpo e o eixo do peso da mono moldada pela
+/// cache das linhas), e os alvos dos títulos cobrem o texto pintado.
+#[test]
+fn os_menus_da_barra_tem_a_letra_do_codigo() {
+    use ph2d_app_code::tab_menu::{Bar, Crumb};
+    use ph2d_text::{PositionedLayoutItem, TextSystem};
+    use ph2d_vector::VectorScene;
+    let mut ts = TextSystem::without_system_fonts();
+    // A letra de cada texto na mono do código: (blob, índice, corpo, eixos) e os ids.
+    let mono = |ts: &mut TextSystem, text: &str| {
+        let mut cache = ph2d_panel_code::LineCache::default();
+        let px = ph2d_text::displayed_font_px(ph2d_tokens::TypeToken::Base.px());
+        let layout = cache.get(ts, text, &[], px);
+        let mut out = None;
+        for line in layout.lines() {
+            for item in line.items() {
+                if let PositionedLayoutItem::GlyphRun(g) = item {
+                    let r = g.run();
+                    let ids: Vec<u32> = g.glyphs().map(|x| x.id).collect();
+                    let f = r.font();
+                    let k = (
+                        f.data.id(),
+                        f.index,
+                        r.font_size(),
+                        ph2d_text::run_coord_bits(&r),
+                    );
+                    out = Some((k, ids));
+                }
+            }
+        }
+        out.expect("moldado")
+    };
+    let mut bar = Bar::default();
+    let crumb = Crumb {
+        script: "bob.luau".into(),
+        func: None,
+        line: 1,
+    };
+    let r = Rect::new(0.0, 0.0, 900.0, ph2d_app_code::tab_menu::height());
+    let theme = ph2d_tokens::Theme::default();
+    let mut scene = VectorScene::new();
+    bar.paint(r, &crumb, &mut scene, &mut ts, &theme);
+    bar.open = Some(TabMenu::Edit);
+    bar.paint_popup(&mut scene, &mut ts, &theme, 0);
+    let res = &scene.inner().encoding().resources;
+    let cena: Vec<_> = res
+        .glyph_runs
+        .iter()
+        .map(|g| {
+            let gl = &res.glyphs[g.glyphs.clone()];
+            let k = (
+                g.font.data.id(),
+                g.font.index,
+                g.font_size,
+                res.normalized_coords[g.normalized_coords.clone()].to_vec(),
+            );
+            let x0 = g.transform.translation[0];
+            (
+                k,
+                gl.iter().map(|x| x.id).collect::<Vec<u32>>(),
+                x0 + gl[0].x,
+            )
+        })
+        .collect();
+    let rows = ph2d_app_code::commands::menu_rows_in(TabMenu::Edit, bar.state);
+    let mut textos: Vec<String> = TabMenu::ALL.iter().map(|m| m.title().to_owned()).collect();
+    textos.extend(rows.iter().map(|r| r.1.clone()));
+    for t in &textos {
+        let (k, ids) = mono(&mut ts, t);
+        let achada = cena.iter().find(|c| c.1 == ids);
+        let achada = achada.unwrap_or_else(|| panic!("«{t}»: não está na mono do código"));
+        assert_eq!(achada.0, k, "«{t}»: não é a letra de «alive»");
+    }
+    for (m, tr) in &bar.painted.titles {
+        let (_, ids) = mono(&mut ts, m.title());
+        let x = cena.iter().find(|c| c.1 == ids).expect("pintado").2;
+        let w = ph2d_panel_code::mono_label::width(&mut ts, m.title());
+        assert!(
+            x >= tr.x && x + w <= tr.x + tr.w,
+            "«{}»: o alvo {tr:?} não cobre",
+            m.title()
+        );
+    }
 }

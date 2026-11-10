@@ -6,6 +6,7 @@
 mod acabamento;
 mod balao;
 mod grelha;
+mod letras;
 mod puras;
 
 use crate::ts;

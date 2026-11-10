@@ -4,7 +4,7 @@
 //! responde «onde caiu o clique»; a lei (nome único, recusa de apagar um script em uso) é da família.
 
 use crate::chrome::{self, Ui};
-use crate::peso::{paint_text_block, paint_text_elided};
+use crate::peso::paint_text_block;
 use ph2d_code_buffer::Buffer;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{fill_rounded_rect, rect_to_vello};
@@ -148,7 +148,8 @@ impl ScriptListView {
             };
             let lixo = if row.current { trash } else { 0.0 };
             let folgas = gap * 4.0; // LITERAL-PX-OK: fora · nome · contagem · fim
-            let need = folgas + chrome::label_w(ts, &name) + chrome::label_w(ts, &count) + lixo;
+            let need =
+                folgas + crate::mono_label::width(ts, &name) + chrome::label_w(ts, &count) + lixo;
             w.max(need)
         })
     }
@@ -344,19 +345,11 @@ impl ScriptListView {
         } else {
             row.name.to_owned()
         };
-        let f = chrome::font();
+        // O nome na letra de «alive» (dono 10/11), centrado na linha.
         let color = if row.current { ui.text1 } else { ui.text2 };
         let w = (text_right - r.x - gap).max(0.0);
-        paint_text_elided(
-            ts,
-            scene,
-            &name,
-            r.x + gap,
-            r.y + ph2d_editor_core::paint::folga_do_texto(r.h, f),
-            f,
-            w,
-            color,
-        );
+        let name_r = Rect::new(r.x + gap, r.y, w, r.h);
+        crate::mono_label::paint(ts, scene, theme, &name, color, name_r);
         // A linha inteira é alvo — depois do lixo, que ganha por vir primeiro.
         self.targets.push((ListHit::Row(row.id), r));
     }

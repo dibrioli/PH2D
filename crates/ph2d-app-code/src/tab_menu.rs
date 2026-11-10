@@ -14,6 +14,7 @@ use ph2d_editor_core::widget::{
     Popover, paint_popover, paint_popover_row_highlight, pop_popover_clip, push_popover_clip,
 };
 use ph2d_editor_core::zones::Rect;
+use ph2d_panel_code::mono_label;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_tool_registry::hash_node_id;
@@ -129,7 +130,7 @@ impl Bar {
         };
         let mut x = r.x + pad;
         for m in TabMenu::ALL {
-            let w = width_of(ts, m.title()) + sm * 2.0;
+            let w = mono_label::width(ts, m.title()) + sm * 2.0;
             let tr = Rect::new(x, r.y, w, r.h);
             if self.open == Some(m) {
                 paint_popover_row_highlight(scene, tr, *theme);
@@ -139,14 +140,8 @@ impl Bar {
             } else {
                 ColorToken::Text1
             };
-            label(
-                ts,
-                scene,
-                m.title(),
-                Rect::new(x + sm, r.y, w - sm * 2.0, r.h),
-                ink,
-                theme,
-            );
+            let lr = Rect::new(x + sm, r.y, f32::INFINITY, r.h);
+            mono_label::paint(ts, scene, *theme, m.title(), resolve(ink, *theme), lr);
             self.painted.titles.push((m, tr));
             x += w;
         }
@@ -235,7 +230,10 @@ impl Bar {
         let hint = (m == TabMenu::Run).then(|| ph2d_i18n::tr("code.menu.restart_hint"));
         let pad = Spacing::Sm.px();
         let gap = Spacing::Lg.px();
-        let name_w = rows.iter().map(|r| width_of(ts, &r.1)).fold(0.0, f32::max);
+        let name_w = rows
+            .iter()
+            .map(|r| mono_label::width(ts, &r.1))
+            .fold(0.0, f32::max);
         let keys_w = rows.iter().map(|r| width_of(ts, &r.2)).fold(0.0, f32::max);
         let hint_w = hint.map_or(0.0, |h| width_of(ts, h));
         let w = (name_w + gap + keys_w).max(hint_w) + pad * 4.0;
@@ -265,14 +263,8 @@ impl Bar {
             } else {
                 (ColorToken::Text1, ColorToken::Text3)
             };
-            label(
-                ts,
-                scene,
-                &name,
-                Rect::new(popup.x + pad, y, name_w, rh),
-                ink,
-                theme,
-            );
+            let nr = Rect::new(popup.x + pad, y, f32::INFINITY, rh);
+            mono_label::paint(ts, scene, *theme, &name, resolve(ink, *theme), nr);
             let kw = width_of(ts, &keys);
             label(
                 ts,

@@ -7,7 +7,6 @@
 
 use super::{Aim, BancadaView, Who};
 use crate::chrome::{self, Ui};
-use crate::peso::paint_text_title;
 use crate::splitter::{Split, band};
 use crate::table_text::CodeCells;
 use crate::view::CodeView;
@@ -18,7 +17,7 @@ use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme};
 use ph2d_ui_table::{Cell, Column, Hit, Ink, Key, Layout, Row, natural_widths};
 use ph2d_vector::VectorScene;
 
@@ -167,10 +166,9 @@ impl BancadaView {
         // O título, a contagem e a dobra (a linha inteira dobra, como o cabeçalho de um cartão).
         let title_r = Rect::new(x, area.y + s, w, ROW_H_PX);
         self.fold_rect = title_r;
-        let font = TypeToken::Base.px();
+        // O título no idioma dos cartões da coluna, «SCRIPTS» e «IN THIS SCRIPT» (dono 10/11).
         let title = tr("code.bancada.grid.title");
-        let fy = title_r.y + ph2d_editor_core::paint::folga_do_texto(ROW_H_PX, font);
-        paint_text_title(ts, scene, title, x, fy, font, w, ui.text1);
+        super::outline::card_title(scene, ts, title, title_r, *theme);
         let count = tr_with(
             "code.bancada.grid.count",
             &[
@@ -178,7 +176,7 @@ impl BancadaView {
                 ("props", &who.columns.len()),
             ],
         );
-        let tw = crate::peso::largura_em(ts, title, font, crate::peso::TITULO) + Spacing::Md.px();
+        let tw = chrome::card_title_w(ts, title) + Spacing::Md.px();
         chrome::label_in(
             scene,
             ts,

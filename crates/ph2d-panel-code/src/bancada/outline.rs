@@ -148,7 +148,8 @@ impl BancadaView {
             fit = fit.max(chrome::label_w(ts, tr(k)) + g * 2.0);
             for Entry(n, l) in es.iter() {
                 let ln = tr_with("code.bancada.outline.line", &[("line", &(l + 1))]);
-                fit = fit.max(chrome::label_w(ts, n) + chrome::label_w(ts, &ln) + folgas);
+                let nw = crate::mono_label::width(ts, n);
+                fit = fit.max(nw + chrome::label_w(ts, &ln) + folgas);
             }
         }
         self.outline_fit = fit;
@@ -171,7 +172,7 @@ impl BancadaView {
                 let rx = r.x + r.w - g * 0.5 - lw;
                 chrome::label_in(scene, ts, &ln, Rect::new(rx, y, lw, eh), ui.text3);
                 let name_r = Rect::new(r.x + g, y, (rx - g - r.x - g).max(0.0), eh);
-                chrome::label_in(scene, ts, name, name_r, ui.text1);
+                crate::mono_label::paint(ts, scene, *theme, name, ui.text1, name_r);
                 if r.y + r.h > self.outline.rows.y
                     && r.y < self.outline.rows.y + self.outline.rows.h
                 {

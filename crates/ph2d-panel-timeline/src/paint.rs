@@ -344,7 +344,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
             g.region,
             ph2d_tokens::Radius::Xs.px(),
             ph2d_editor_core::panel::cards::banda::metrics::FIELD_BORDER * 2.0,
-            resolve(ColorToken::TimelineRecord, theme),
+            crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::Gravando, theme),
         );
     }
     // The label/time splitter sits over the lanes AND the ruler, so it is

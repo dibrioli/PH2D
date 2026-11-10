@@ -294,7 +294,11 @@ pub(crate) fn paint_grupo(
         y + (ROW_H_PX - font) * 0.5,
         font,
         (geo.label_w - TWIRL_W - Spacing::Xs.px()).max(0.0),
-        resolve(ColorToken::Text1, theme),
+        if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+            crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::TextoPropriedade, theme)
+        } else {
+            resolve(ColorToken::Text1, theme)
+        },
     );
     let lane = crate::tracks::lane_rect(geo, view);
     let cy = y + ROW_H_PX * 0.5;
@@ -372,16 +376,15 @@ pub(crate) fn icone_w(i: Option<IconId>) -> f32 {
 /// Um ícone da coluna de nomes, a começar em `x`, centrado na altura da linha `y`.
 pub(crate) fn paint_icone(
     ctx: &mut PaintCtx,
-    theme: Theme,
     ic: IconId,
     (x, y): (f32, f32),
-    tok: ColorToken,
+    cor: ph2d_vector::Color,
 ) {
     ph2d_editor_core::paint::paint_icon(
         ctx.scene,
         ic,
         Rect::new(x, y + (ROW_H_PX - ICONE_PX) * 0.5, ICONE_PX, ICONE_PX),
-        resolve(tok, theme),
+        cor,
         ph2d_tokens::StrokeToken::Default.px(),
     );
 }
@@ -405,25 +408,12 @@ pub(crate) fn paint_objeto(
 ) {
     let (entity, y) = linha;
     let x = geo.rows.x;
-    // O fio que separa um objecto do de cima (não no primeiro, que encosta no Summary).
-    if y > geo.rows.y + ROW_H_PX {
-        ph2d_editor_core::paint::fill_rounded_rect(
-            ctx.scene,
-            Rect::new(x, y, geo.rows.w, DIVISORIA_H),
-            0.0,
-            resolve(ColorToken::BorderStrong, theme),
-        );
-    }
     // ▾ só marca o grupo: não há gesto de recolher um objecto (nenhum id/evento), então é pintura.
-    paint_icone(ctx, theme, IconId::ChevronDown, (x, y), ColorToken::Text3);
+    let tenue = crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::TextoValor, theme);
+    paint_icone(ctx, IconId::ChevronDown, (x, y), tenue);
     let ic = crate::hier::icone_do_objeto(entity);
-    paint_icone(
-        ctx,
-        theme,
-        ic,
-        (x + TWIRL_W * 0.5 + ICONE_PX * 0.5, y),
-        ColorToken::Text2,
-    );
+    let cor_ic = crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::TextoPropriedade, theme);
+    paint_icone(ctx, ic, (x + TWIRL_W * 0.5 + ICONE_PX * 0.5, y), cor_ic);
     let tx = x + TWIRL_W * 0.5 + icone_w(Some(ic)) + ICONE_PX * 0.5;
     let font = TypeToken::Sm.px();
     ph2d_editor_core::paint::paint_text_title_elided(
@@ -434,7 +424,7 @@ pub(crate) fn paint_objeto(
         y + (ROW_H_PX - font) * 0.5,
         font,
         (x + geo.label_w - tx - Spacing::Xs.px()).max(0.0),
-        resolve(ColorToken::Text1, theme),
+        crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::TextoCabecalho, theme),
     );
     let cy = y + ROW_H_PX * 0.5;
     for c in columns_of(snap.tracks.iter().filter(|t| t.entity == entity)) {
@@ -452,18 +442,79 @@ pub(crate) fn paint_objeto(
             kx,
             cy,
             ph2d_tokens::TIMELINE_OBJECT_DOT_HALF_PX,
-            resolve(ColorToken::Text2, theme),
+            crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::Ponto, theme),
         );
     }
 }
 
-/// A cor da barra que SAI de uma chave: a da interpolação dela (curva · reta · segura).
-pub(crate) fn cor_da_barra(i: ph2d_anim::Interp) -> ColorToken {
+/// A tinta da barra que SAI de uma chave: a da interpolação dela (curva ciano · reta violeta · segura
+/// tracejada), as da maquete B1.
+pub(crate) fn cor_da_barra(i: ph2d_anim::Interp) -> ph2d_tokens::TimelineTinta {
     match i {
-        ph2d_anim::Interp::Hold => ColorToken::TimelineInterpHold,
-        ph2d_anim::Interp::Linear => ColorToken::TimelineInterpLinear,
-        _ => ColorToken::TimelineInterpCurve,
+        ph2d_anim::Interp::Hold => ph2d_tokens::TimelineTinta::Ponto,
+        ph2d_anim::Interp::Linear => ph2d_tokens::TimelineTinta::BarraReta,
+        _ => ph2d_tokens::TimelineTinta::BarraCurva,
     }
+}
+
+/// ⭐ **O fundo da folha nos cartões** (maquete B1, onda 2g): a coluna de nomes e a fita com os
+/// tons das propriedades, também onde não há linha.
+pub(crate) fn pinta_folha_maquete(ctx: &mut PaintCtx, theme: Theme, geo: &geom::Geom) {
+    let r = geo.rows;
+    let (nomes, fita) = (
+        crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::NomesPropriedade, theme),
+        crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::FitaPropriedade, theme),
+    );
+    let fill = |ctx: &mut PaintCtx, rr, c| {
+        ph2d_editor_core::paint::fill_rounded_rect(ctx.scene, rr, 0.0, c)
+    };
+    fill(ctx, Rect::new(r.x, r.y, geo.label_w, r.h), nomes);
+    fill(
+        ctx,
+        Rect::new(r.x + geo.label_w, r.y, (r.w - geo.label_w).max(0.0), r.h),
+        fita,
+    );
+}
+
+/// As tintas `(coluna de nomes, fita)` de uma linha nos cartões: o cabeçalho do objecto um degrau
+/// acima das propriedades, como a maquete.
+pub(crate) fn tinta_da_linha(l: Linha) -> (ph2d_tokens::TimelineTinta, ph2d_tokens::TimelineTinta) {
+    use ph2d_tokens::TimelineTinta as T;
+    match l {
+        Linha::Objeto(_) => (T::NomesCabecalho, T::FitaCabecalho),
+        _ => (T::NomesPropriedade, T::FitaPropriedade),
+    }
+}
+
+/// Uma linha da maquete: a célula da coluna, a fita e o fio de baixo (coluna e fita, cada um o seu).
+pub(crate) fn pinta_linha_maquete(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    geo: &geom::Geom,
+    l: Linha,
+    (y, h): (f32, f32),
+) {
+    use ph2d_tokens::TimelineTinta as T;
+    let r = geo.rows;
+    let t = |x| crate::folha_tinta::tinta(x, theme);
+    let (nomes, fita) = tinta_da_linha(l);
+    let lane_w = (r.w - geo.label_w).max(0.0);
+    let fill = |ctx: &mut PaintCtx, rr, c| {
+        ph2d_editor_core::paint::fill_rounded_rect(ctx.scene, rr, 0.0, c)
+    };
+    fill(ctx, Rect::new(r.x, y, geo.label_w, h), t(nomes));
+    fill(ctx, Rect::new(r.x + geo.label_w, y, lane_w, h), t(fita));
+    let fy = y + h - DIVISORIA_H;
+    fill(
+        ctx,
+        Rect::new(r.x, fy, geo.label_w, DIVISORIA_H),
+        t(T::NomesFio),
+    );
+    fill(
+        ctx,
+        Rect::new(r.x + geo.label_w, fy, lane_w, DIVISORIA_H),
+        t(T::FitaFio),
+    );
 }
 
 /// ⭐ **A barra entre duas chaves** (doc 15 onda 2, maquete B1): pintada por baixo dos losangos, na
@@ -487,8 +538,15 @@ pub(crate) fn paint_barras(
         if x1 <= x0 {
             continue;
         }
-        let tok = cor_da_barra(par[0].interp);
-        pinta_barra(ctx, resolve(tok, theme), tok, (x0, x1), top);
+        let t = cor_da_barra(par[0].interp);
+        let tracejada = matches!(par[0].interp, ph2d_anim::Interp::Hold);
+        pinta_barra(
+            ctx,
+            crate::folha_tinta::tinta(t, theme),
+            tracejada,
+            (x0, x1),
+            top,
+        );
     }
 }
 
@@ -496,11 +554,11 @@ pub(crate) fn paint_barras(
 pub(crate) fn pinta_barra(
     ctx: &mut PaintCtx,
     cor: ph2d_vector::Color,
-    tok: ColorToken,
+    tracejada: bool,
     (x0, x1): (f32, f32),
     top: f32,
 ) {
-    if tok == ColorToken::TimelineInterpHold {
+    if tracejada {
         let mut x = x0;
         while x < x1 {
             let w = BARRA_DASH.min(x1 - x);

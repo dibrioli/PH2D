@@ -212,7 +212,7 @@ pub(crate) fn paint_name_and_value(
     theme: Theme,
     snap: &TimelineViewSnapshot,
     track: &TrackView,
-    nome: (&str, ColorToken),
+    nome: (&str, ph2d_vector::Color),
     geo: (f32, f32, f32),
 ) {
     let (texto, cor) = nome;
@@ -233,7 +233,7 @@ pub(crate) fn paint_name_and_value(
         y + (ROW_H_PX - font) * 0.5,
         font,
         name_w,
-        resolve(cor, theme),
+        cor,
     );
     let Some(v) = snap.values.get(track.target.get()).filter(|_| mostra) else {
         return;
@@ -250,7 +250,11 @@ pub(crate) fn paint_name_and_value(
         VALUE_W,
         // ⚠️ `Text3` de propósito: o nome é que identifica a row, e um número em `Text1` ao lado
         // dele passaria a ser a primeira coisa que o olho lê.
-        resolve(ColorToken::Text3, theme),
+        if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+            crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::TextoValor, theme)
+        } else {
+            resolve(ColorToken::Text3, theme)
+        },
     );
 }
 

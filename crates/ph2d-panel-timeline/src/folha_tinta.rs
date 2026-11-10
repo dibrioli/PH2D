@@ -22,10 +22,30 @@ const fn papel(token: ColorToken) -> ColorToken {
     }
 }
 
+/// ⭐ Uma tinta da harmonia da maquete B1 (`ph2d_tokens::TimelineTinta`, doc 15 onda 2g).
+#[must_use]
+pub(crate) fn tinta(t: ph2d_tokens::TimelineTinta, theme: Theme) -> Color {
+    ph2d_editor_core::paint::token_to_vello(t.resolve(theme))
+}
+
+/// A régua da maquete B1: fundo, traço e números saem das tintas da Timeline.
+const fn da_maquete(token: ColorToken) -> Option<ph2d_tokens::TimelineTinta> {
+    use ph2d_tokens::TimelineTinta as T;
+    match token {
+        ColorToken::TimelineRulerBg => Some(T::FitaRegua),
+        ColorToken::TimelineRulerTick => Some(T::ReguaTraco),
+        ColorToken::Text2 => Some(T::TextoValor),
+        _ => None,
+    }
+}
+
 /// A cor de `token` na folha.
 #[must_use]
 pub(crate) fn cor(token: ColorToken, theme: Theme) -> Color {
     if cards_on() {
+        if let Some(t) = da_maquete(token) {
+            return tinta(t, theme);
+        }
         CardInk::of_list(theme).color(papel(token))
     } else {
         resolve(token, theme)
@@ -69,14 +89,20 @@ mod tests {
         }
         force_cards_on_this_thread(Some(true));
         for (t, papel) in [
-            (ColorToken::TimelineRulerBg, ColorToken::KanbanCard),
             (ColorToken::TimelineRowAlt, ColorToken::KanbanSlot),
             (ColorToken::Border, ColorToken::KanbanSlot),
             (ColorToken::Bg2, ColorToken::CardField),
-            (ColorToken::TimelineRulerTick, ColorToken::CardLabel),
-            (ColorToken::Text2, ColorToken::CardLabel),
         ] {
             assert_eq!(cor(t, tema), resolve(papel, tema), "{t:?} nos cartões");
+        }
+        // A régua é a da maquete B1 (onda 2g): fundo, traço e números nas tintas da Timeline.
+        use ph2d_tokens::TimelineTinta as T;
+        for (t, tinta_) in [
+            (ColorToken::TimelineRulerBg, T::FitaRegua),
+            (ColorToken::TimelineRulerTick, T::ReguaTraco),
+            (ColorToken::Text2, T::TextoValor),
+        ] {
+            assert_eq!(cor(t, tema), tinta(tinta_, tema), "{t:?} nos cartões");
         }
         for t in [
             ColorToken::TimelineKey,

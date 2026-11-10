@@ -3,10 +3,10 @@
 //! uma pílula no canto de baixo à direita da área das faixas, sem alvo (o clique passa às faixas).
 
 use ph2d_anim::Interp;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_elided, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_elided};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
+use ph2d_tokens::{Radius, Spacing, Theme, TypeToken};
 
 use crate::linhas::{BARRA_TH, cor_da_barra, pinta_barra};
 
@@ -17,9 +17,9 @@ const AMOSTRA_W: f32 = crate::linhas::BARRA_DASH * 5.0; // LITERAL-PX-OK: three 
 const ENTRADAS: [(Interp, &str); 3] = [
     (
         Interp::Bezier {
-            x1: 0.4,
+            x1: 0.4, // LITERAL-PX-OK: ease control point (unit square), not a UI measure
             y1: 0.0,
-            x2: 0.6,
+            x2: 0.6, // LITERAL-PX-OK: ease control point (unit square), not a UI measure
             y2: 1.0,
         },
         "panel.timeline.card.legend_curve",
@@ -53,18 +53,14 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, lanes: Rect) {
         ctx.scene,
         pilula,
         Radius::Xs.px(),
-        resolve(ColorToken::BgElev, theme),
+        crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::FitaCabecalho, theme),
     );
     let cy = pilula.y + h * 0.5;
     let mut x = pilula.x + pad;
     for ((interp, chave), tw) in ENTRADAS.iter().zip(larguras) {
-        pinta_barra(
-            ctx,
-            resolve(cor_da_barra(*interp), theme),
-            cor_da_barra(*interp),
-            (x, x + AMOSTRA_W),
-            cy - BARRA_TH * 0.5,
-        );
+        let tracejada = matches!(interp, Interp::Hold);
+        let cor = crate::folha_tinta::tinta(cor_da_barra(*interp), theme);
+        pinta_barra(ctx, cor, tracejada, (x, x + AMOSTRA_W), cy - BARRA_TH * 0.5);
         x += AMOSTRA_W + gap;
         paint_text_elided(
             ctx.text_system,
@@ -74,7 +70,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, lanes: Rect) {
             cy - font * 0.5,
             font,
             tw,
-            resolve(ColorToken::Text2, theme),
+            crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::TextoPropriedade, theme),
         );
         x += tw + pad;
     }

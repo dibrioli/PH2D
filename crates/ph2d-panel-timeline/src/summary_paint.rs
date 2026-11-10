@@ -54,13 +54,11 @@ pub(crate) fn fundo(theme: Theme) -> Fundo {
             celula: Vec::new(),
         };
     }
-    let tinta = |base, a| vec![r(base), r(ColorToken::TimelineSummaryRow).multiply_alpha(a)];
+    // Forma C do dono; as cores, as da maquete B1 (onda 2g): o azul do chip escolhido na célula.
+    let t = |x| crate::folha_tinta::tinta(x, theme);
     Fundo {
-        fita: tinta(ColorToken::Bg0, ph2d_tokens::TIMELINE_SUMMARY_TINT_ALPHA),
-        celula: tinta(
-            ColorToken::PanelBg,
-            ph2d_tokens::TIMELINE_SUMMARY_CELL_ALPHA,
-        ),
+        fita: vec![t(ph2d_tokens::TimelineTinta::SummaryFita)],
+        celula: vec![t(ph2d_tokens::TimelineTinta::SummaryCelula)],
     }
 }
 
@@ -117,7 +115,11 @@ pub(crate) fn paint(
         y + (ROW_H_PX - font) * 0.5,
         font,
         label_budget,
-        resolve(ColorToken::Text2, theme),
+        if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+            crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::TextoCabecalho, theme)
+        } else {
+            resolve(ColorToken::Text2, theme)
+        },
     );
     paint_lock(ctx, theme, lock, state.column_lock);
 

@@ -78,8 +78,13 @@ pub(crate) fn paint_chave(ctx: &mut PaintCtx, theme: Theme, cx: f32, cy: f32, to
     if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
         let h = ph2d_tokens::TIMELINE_KEY_HALF_PX;
         let anel = h + ph2d_tokens::TIMELINE_KEY_RING_PX;
-        paint_diamond(ctx, cx, cy, anel, resolve(ColorToken::Bg0, theme));
-        paint_diamond(ctx, cx, cy, h, resolve(tok, theme));
+        let t = match tok {
+            ColorToken::TimelineKeySelected => ph2d_tokens::TimelineTinta::ChaveEscolhida,
+            _ => ph2d_tokens::TimelineTinta::Chave,
+        };
+        let fundo = crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::FitaPropriedade, theme);
+        paint_diamond(ctx, cx, cy, anel, fundo);
+        paint_diamond(ctx, cx, cy, h, crate::folha_tinta::tinta(t, theme));
     } else {
         paint_diamond(ctx, cx, cy, DIAMOND_H, resolve(tok, theme));
     }
@@ -162,6 +167,9 @@ pub(crate) fn paint_rows(
     // Rows overflow the band while scrolling and an expanded one is tall; clip
     // so a half-visible graph never bleeds over the ruler or the scrollbar.
     ctx.scene.push_clip(&rect_to_vello(region));
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        crate::linhas::pinta_folha_maquete(ctx, theme, g);
+    }
     // The stack band, above everything, scrolling with it. Two painters over ONE band, each
     // refusing on the same question (`tab::rows`): lanes on Arrange and inside a container,
     // the container LIST at the Containers tab's root.
@@ -194,8 +202,11 @@ pub(crate) fn paint_rows(
         if y + h <= region.y || y >= bottom {
             continue;
         }
-        // Zebra so lanes read as discrete rows; o cabeçalho do objecto tem o fundo dele.
-        if let Some(tok) = crate::linhas::fundo_da_linha(b.linha, n) {
+        // Zebra so lanes read as discrete rows; o cabeçalho do objecto tem o fundo dele. Nos
+        // cartões, a maquete B1: coluna e fita com tons próprios e um fio em vez da zebra.
+        if arvore {
+            crate::linhas::pinta_linha_maquete(ctx, theme, g, b.linha, (y, ROW_H_PX));
+        } else if let Some(tok) = crate::linhas::fundo_da_linha(b.linha, n) {
             fill_row(ctx, theme, Rect::new(region.x, y, region.w, ROW_H_PX), tok);
         }
         let (i, grupo) = match b.linha {
@@ -263,9 +274,11 @@ pub(crate) fn paint_rows(
             None => track_label_snap(snap, track.entity, track.prop),
         };
         let color = if track.missing {
-            ColorToken::TimelineMissing
+            resolve(ColorToken::TimelineMissing, theme)
+        } else if arvore {
+            crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::TextoPropriedade, theme)
         } else {
-            ColorToken::Text1
+            resolve(ColorToken::Text1, theme)
         };
         // O nome (elidido, nunca quebrado) e o VALOR VIVO da propriedade — os dois no irmão
         // `tracks_value`, porque a fatia de um é o que sobra do outro.
@@ -282,7 +295,8 @@ pub(crate) fn paint_rows(
             ),
         );
         if let Some(ic) = icone {
-            crate::linhas::paint_icone(ctx, theme, ic, (x0 + TWIRL_W, y), ColorToken::Text3);
+            let cor = crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::TextoValor, theme);
+            crate::linhas::paint_icone(ctx, ic, (x0 + TWIRL_W, y), cor);
         }
         if arvore {
             crate::linhas::paint_barras(ctx, theme, track, view, preview_dx, y);

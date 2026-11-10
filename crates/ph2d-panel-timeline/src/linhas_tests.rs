@@ -313,14 +313,51 @@ fn u_px(u: crate::tracks_value::Unidades) -> &'static str {
     .map_or("", str::trim)
 }
 
-/// ⭐ A barra entre duas chaves veste a interpolação da chave de SAÍDA: curva, reta ou segura.
+/// Os 8 temas.
+const TEMAS: [ph2d_tokens::Theme; 8] = [
+    ph2d_tokens::Theme::Forge,
+    ph2d_tokens::Theme::Workshop,
+    ph2d_tokens::Theme::Sunstone,
+    ph2d_tokens::Theme::Blueprint,
+    ph2d_tokens::Theme::Dark,
+    ph2d_tokens::Theme::Gray,
+    ph2d_tokens::Theme::Light,
+    ph2d_tokens::Theme::Oled,
+];
+
+/// Uma cor no plano OKLab, e a distância — a régua do `BoneHandle`.
+fn lab_de(c: ph2d_tokens::Color) -> (f64, f64, f64) {
+    let (l, ch, h) = ph2d_tokens::srgb_to_oklch(c.r, c.g, c.b);
+    (l, ch * h.to_radians().cos(), ch * h.to_radians().sin())
+}
+
+fn dist(x: (f64, f64, f64), y: (f64, f64, f64)) -> f64 {
+    ((x.0 - y.0).powi(2) + (x.1 - y.1).powi(2) + (x.2 - y.2).powi(2)).sqrt()
+}
+
+/// O pior caso, nos 8 temas, da distância entre cada `a` e cada `b`.
+fn pior(a: &[TimelineTinta], b: &[TimelineTinta]) -> f64 {
+    let mut p = f64::MAX;
+    for t in TEMAS {
+        for &x in a {
+            for &y in b {
+                if x != y {
+                    p = p.min(dist(lab_de(x.resolve(t)), lab_de(y.resolve(t))));
+                }
+            }
+        }
+    }
+    p
+}
+
+use ph2d_tokens::TimelineTinta;
+
+/// ⭐ A barra entre duas chaves veste a interpolação da chave de SAÍDA: curva ciano, reta violeta,
+/// segura tracejada — as da maquete B1.
 #[test]
 fn a_barra_veste_a_interpolacao_da_chave_de_saida() {
-    assert_eq!(cor_da_barra(Interp::Hold), ColorToken::TimelineInterpHold);
-    assert_eq!(
-        cor_da_barra(Interp::Linear),
-        ColorToken::TimelineInterpLinear
-    );
+    assert_eq!(cor_da_barra(Interp::Hold), TimelineTinta::Ponto);
+    assert_eq!(cor_da_barra(Interp::Linear), TimelineTinta::BarraReta);
     assert_eq!(
         cor_da_barra(Interp::Bezier {
             x1: 0.4,
@@ -328,98 +365,49 @@ fn a_barra_veste_a_interpolacao_da_chave_de_saida() {
             x2: 0.6,
             y2: 1.0
         }),
-        ColorToken::TimelineInterpCurve
-    );
-    for t in [
-        ColorToken::TimelineInterpHold,
-        ColorToken::TimelineInterpLinear,
-        ColorToken::TimelineInterpCurve,
-    ] {
-        assert!(
-            t.alias_parent().is_some(),
-            "{t:?} é apelido de um slot geral"
-        );
-    }
-    assert_ne!(
-        ColorToken::TimelineInterpCurve.alias_parent(),
-        ColorToken::TimelineInterpLinear.alias_parent(),
-        "curva e reta leem-se diferentes"
+        TimelineTinta::BarraCurva
     );
 }
 
-/// ⭐ **As três barras leem-se diferentes em todo tema** (doc 15 onda 2: curva ciano, reta violeta,
-/// segura cinza, como a maquete B1). A régua é a distância OKLab (a do `BoneHandle`). Medido em
-/// 09/11 sobre os slots gerais: `Info` 236–264°, `CodeKeyword` 305° em todos, `Text3` quase sem croma;
-/// o `Accent` foi recusado porque muda de matiz por tema (340°, 206°, 42°…) e caía no do `Info`.
+/// ⭐ **As três barras leem-se diferentes em todo tema** (as cores da maquete B1, onda 2g). Medido:
+/// o pior par nos 8 temas é 0,107; a barra fica em 0,10, a de antes.
 #[test]
 fn as_tres_barras_leem_se_diferentes_nos_oito_temas() {
-    use ph2d_tokens::{Theme, srgb_to_oklch};
-    const BARRA: f64 = 0.10;
-    let lab = |c: ColorToken, t: Theme| {
-        let [r, g, b, _] = resolve(c, t).to_rgba8().to_u8_array();
-        let (l, ch, h) = srgb_to_oklch(r, g, b);
-        (l, ch * h.to_radians().cos(), ch * h.to_radians().sin())
-    };
-    let temas = [
-        Theme::Forge,
-        Theme::Workshop,
-        Theme::Sunstone,
-        Theme::Blueprint,
-        Theme::Dark,
-        Theme::Gray,
-        Theme::Light,
-        Theme::Oled,
-    ];
     let barras = [
-        ColorToken::TimelineInterpCurve,
-        ColorToken::TimelineInterpLinear,
-        ColorToken::TimelineInterpHold,
+        TimelineTinta::BarraCurva,
+        TimelineTinta::BarraReta,
+        TimelineTinta::Ponto,
     ];
-    let mut pior = f64::MAX;
-    for t in temas {
-        for (n, &a) in barras.iter().enumerate() {
-            for &b in &barras[n + 1..] {
-                let (x, y) = (lab(a, t), lab(b, t));
-                let d = ((x.0 - y.0).powi(2) + (x.1 - y.1).powi(2) + (x.2 - y.2).powi(2)).sqrt();
-                pior = pior.min(d);
-                assert!(d >= BARRA, "{t:?}: {a:?} e {b:?} a {d:.3} (barra {BARRA})");
-            }
-        }
-    }
-    eprintln!("pior distancia entre barras: {pior:.3}");
+    let p = pior(&barras, &barras);
+    eprintln!("pior distancia entre barras: {p:.3}");
+    assert!(p >= 0.10, "duas barras a {p:.3}");
 }
 
-/// ⭐ Dono 09/11 (smoke da onda 2): a linha do OBJECTO tem cara própria — fundo de ponta a ponta
-/// diferente das duas cores da zebra das propriedades, em todo tema; ícone do tipo vindo da
-/// Hierarquia; propriedades com o ícone do gizmo.
+/// ⭐ Dono 09/11: a linha do OBJECTO tem cara própria — na coluna e na fita, um degrau acima das
+/// propriedades em todo tema (os tons da maquete B1); ícone do tipo vindo da Hierarquia;
+/// propriedades com o ícone do gizmo. O caminho clássico guarda o `fundo_da_linha` de antes.
 #[test]
 fn o_cabecalho_do_objeto_tem_fundo_e_icones_proprios() {
+    use TimelineTinta as T;
     use ph2d_editor_core::icons::IconId;
-    use ph2d_tokens::Theme;
-    let cab = |n| fundo_da_linha(Linha::Objeto(9), n);
-    let faixa = |n| fundo_da_linha(Linha::Faixa { i: 0, grupo: None }, n);
+    assert_eq!(
+        tinta_da_linha(Linha::Objeto(9)),
+        (T::NomesCabecalho, T::FitaCabecalho)
+    );
+    assert_eq!(
+        tinta_da_linha(Linha::Faixa { i: 0, grupo: None }),
+        (T::NomesPropriedade, T::FitaPropriedade)
+    );
+    let p = pior(&[T::NomesCabecalho], &[T::NomesPropriedade])
+        .min(pior(&[T::FitaCabecalho], &[T::FitaPropriedade]));
+    eprintln!("cabecalho x propriedade: {p:.3}");
+    // A maquete B1 separa-os por 0,015 (o degrau dela; o negrito e o ícone fazem o resto).
+    assert!(p >= 0.014, "cabeçalho a {p:.3} das propriedades");
     for n in [0, 1] {
-        assert_eq!(cab(n), Some(ColorToken::TimelineObjectRow));
-        assert_ne!(cab(n), faixa(n));
-    }
-    for t in [
-        Theme::Forge,
-        Theme::Workshop,
-        Theme::Sunstone,
-        Theme::Blueprint,
-        Theme::Dark,
-        Theme::Gray,
-        Theme::Light,
-        Theme::Oled,
-    ] {
-        let c = resolve(ColorToken::TimelineObjectRow, t).to_rgba8();
-        for outro in [ColorToken::TimelineRowAlt, ColorToken::PanelBg] {
-            assert_ne!(
-                c,
-                resolve(outro, t).to_rgba8(),
-                "{t:?}: cabeçalho igual a {outro:?}"
-            );
-        }
+        assert_eq!(
+            fundo_da_linha(Linha::Objeto(9), n),
+            Some(ColorToken::TimelineObjectRow)
+        );
     }
     assert_eq!(
         icone_da_propriedade(PropKind::TranslationX),
@@ -439,72 +427,37 @@ fn o_cabecalho_do_objeto_tem_fundo_e_icones_proprios() {
     assert_eq!(crate::hier::icone_do_objeto(424_242), IconId::Sprite);
 }
 
-/// ⭐ Dono 09/11: o Summary tem cor PRÓPRIA — a fita E a célula do nome longe do cabeçalho do
-/// objecto, das duas da zebra e do fundo, em todo tema; o texto e o losango âmbar legíveis por cima.
-/// Régua OKLab (a das barras). Os três candidatos medidos e a escolha do dono (C) no handoff (2e, 2f).
+/// ⭐ Dono 09/11: o Summary tem cor PRÓPRIA — forma C (célula do nome em destaque, fita tingida), cores
+/// da maquete B1 (o azul do chip escolhido): célula e fita longe de todo fundo vizinho em todo tema,
+/// o texto e o losango âmbar legíveis por cima. Números medidos no handoff (2g).
 #[test]
 fn o_summary_tem_cor_propria_nos_oito_temas() {
-    use ph2d_tokens::{Theme, srgb_to_oklch};
-    let lab = |c: ph2d_vector::Color| {
-        let [r, g, b, _] = c.to_rgba8().to_u8_array();
-        let (l, ch, h) = srgb_to_oklch(r, g, b);
-        (l, ch * h.to_radians().cos(), ch * h.to_radians().sin())
-    };
-    let d = |x: (f64, f64, f64), y: (f64, f64, f64)| {
-        ((x.0 - y.0).powi(2) + (x.1 - y.1).powi(2) + (x.2 - y.2).powi(2)).sqrt()
-    };
-    let compoe = |camadas: &[ph2d_vector::Color]| {
-        let mut acc = [0.0_f32; 3];
-        for c in camadas {
-            let [r, g, b, a] = c.to_rgba8().to_u8_array();
-            let a = f32::from(a) / 255.0;
-            for (k, v) in [r, g, b].into_iter().enumerate() {
-                acc[k] = f32::from(v) * a + acc[k] * (1.0 - a);
+    use TimelineTinta as T;
+    let summary = [T::SummaryCelula, T::SummaryFita];
+    // A célula encosta na coluna de nomes; a fita, na fita (cabeçalho, propriedades, régua).
+    let fundo = pior(
+        &[T::SummaryCelula],
+        &[T::NomesCabecalho, T::NomesPropriedade],
+    )
+    .min(pior(
+        &[T::SummaryFita],
+        &[T::FitaCabecalho, T::FitaPropriedade, T::FitaRegua],
+    ));
+    let mut leg = f64::MAX;
+    for t in TEMAS {
+        for s in summary {
+            for c in [
+                T::TextoCabecalho.resolve(t),
+                ColorToken::TimelineSummaryKey.resolve(t),
+            ] {
+                leg = leg.min(dist(lab_de(s.resolve(t)), lab_de(c)));
             }
         }
-        ph2d_vector::Color::from_rgba8(
-            acc[0].round() as u8,
-            acc[1].round() as u8,
-            acc[2].round() as u8,
-            255,
-        )
-    };
-    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(true));
-    let temas = [
-        Theme::Forge,
-        Theme::Workshop,
-        Theme::Sunstone,
-        Theme::Blueprint,
-        Theme::Dark,
-        Theme::Gray,
-        Theme::Light,
-        Theme::Oled,
-    ];
-    let mede = || {
-        let (mut fundo, mut leg) = (f64::MAX, f64::MAX);
-        for t in temas {
-            let f = crate::summary_paint::fundo(t);
-            for camadas in [&f.fita, &f.celula] {
-                let s = lab(compoe(camadas));
-                for o in [
-                    ColorToken::TimelineObjectRow,
-                    ColorToken::TimelineRowAlt,
-                    ColorToken::PanelBg,
-                ] {
-                    fundo = fundo.min(d(s, lab(resolve(o, t))));
-                }
-                for o in [ColorToken::Text2, ColorToken::TimelineSummaryKey] {
-                    leg = leg.min(d(s, lab(resolve(o, t))));
-                }
-            }
-        }
-        (fundo, leg)
-    };
-    let (fundo, leg) = mede();
-    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(None);
+    }
+    eprintln!("summary: fundo {fundo:.3} legivel {leg:.3}");
     assert!(
         fundo >= BARRA_SUMMARY,
-        "o Summary a {fundo:.3} de um fundo vizinho (barra {BARRA_SUMMARY})"
+        "o Summary a {fundo:.3} de um fundo vizinho"
     );
     assert!(
         leg >= LEGIVEL_SUMMARY,
@@ -512,6 +465,6 @@ fn o_summary_tem_cor_propria_nos_oito_temas() {
     );
 }
 
-/// O mínimo medido da C (a do dono) é 0,045 (fundo) e 0,189 (texto/losango); as barras ficam logo abaixo.
+/// Medido (onda 2g, cores da maquete): fundo 0,045 · texto/losango 0,249; as barras logo abaixo.
 const BARRA_SUMMARY: f64 = 0.044;
-const LEGIVEL_SUMMARY: f64 = 0.188;
+const LEGIVEL_SUMMARY: f64 = 0.24;

@@ -83,18 +83,19 @@ pub(crate) fn paint(
     if clock.loop_band
         && let Some(shade) = beyond_end_shade(region, view_start, px_per_s, snap)
     {
-        fill_rounded_rect(
-            ctx.scene,
-            shade,
-            Radius::Xs.px(),
-            resolve(ColorToken::BgScrim, theme),
-        );
-        // Nos cartões a zona morta é LISTRADA (doc 15 onda 2, maquete B1), não só escura.
+        // Nos cartões a zona morta é só LISTRADA sobre a fita funda (maquete B1, doc 15 onda 2g).
         if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
             ph2d_editor_core::panel::cards::banda::listras_em(
                 ctx.scene,
                 shade,
-                resolve(ColorToken::Border, theme),
+                crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::Listra, theme),
+            );
+        } else {
+            fill_rounded_rect(
+                ctx.scene,
+                shade,
+                Radius::Xs.px(),
+                resolve(ColorToken::BgScrim, theme),
             );
         }
     }
@@ -150,7 +151,11 @@ pub(crate) fn paint(
                 ctx.scene,
                 line,
                 Radius::Xs.px(),
-                resolve(ColorToken::TimelinePlayhead, theme),
+                if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+                    crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::Cursor, theme)
+                } else {
+                    resolve(ColorToken::TimelinePlayhead, theme)
+                },
             );
         }
     }

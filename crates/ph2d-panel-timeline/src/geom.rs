@@ -114,7 +114,7 @@ fn min_arvore_label_w() -> f32 {
         + crate::linhas::ICONE_PX
         + NOME_ARVORE_W
         + crate::tracks_value::VALUE_W
-        + ph2d_tokens::Spacing::Xs.px() * 3.0
+        + ph2d_tokens::Spacing::Xs.px() * 3.0 // LITERAL-PX-OK: three gaps (twirl·icon·name·value)
 }
 
 /// What the label column may not go below, given what it currently holds.

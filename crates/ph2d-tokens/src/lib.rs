@@ -82,6 +82,7 @@ pub mod spacing;
 pub mod stroke;
 pub mod text_style;
 pub mod theme;
+pub mod timeline_tinta;
 pub mod type_colour;
 pub mod typography;
 pub mod ui_scale;
@@ -121,6 +122,7 @@ pub use spacing::{
 pub use stroke::StrokeToken;
 pub use text_style::{UiFont, UiTextSize, UiTextStyle, UiWeight};
 pub use theme::{PanelLayout, Theme};
+pub use timeline_tinta::TimelineTinta;
 pub use typography::{
     FONT_DISPLAY, FONT_MONO, FONT_SANS, FontWeight, LetterSpacing, LineHeight, SnapX,
     TextRendering, TextRenderingParams, TypeToken, crisp_weight_boost_for,

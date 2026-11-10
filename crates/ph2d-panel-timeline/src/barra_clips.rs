@@ -102,7 +102,13 @@ fn pinta_chip(ctx: &mut PaintCtx, ink: CardInk, r: Rect, ch: &Chip<'_>) -> Optio
     };
     // Uma pílula, como a maquete B1; a escolhida leva o contorno do acento.
     let raio = r.h * 0.5;
-    fill_rounded_rect(ctx.scene, r, raio, ink.color(fundo));
+    // O chip escolhido no azul da maquete B1 (onda 2g).
+    let cor_fundo = if ch.on {
+        crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::ChipEscolhido, ctx.host.theme())
+    } else {
+        ink.color(fundo)
+    };
+    fill_rounded_rect(ctx.scene, r, raio, cor_fundo);
     if ch.on {
         ph2d_editor_core::paint::stroke_rounded_rect(
             ctx.scene,

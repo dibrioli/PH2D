@@ -297,8 +297,9 @@ impl PainterTool {
     /// **O que o pen-up recompõe além do quadro: o TRAÇO** (B16.2). Fora de `traço ⊕ pad` nenhuma
     /// entrada do composite mudou desde o pen-up que a escreveu (os quadros só escrevem ali), e a
     /// união da sessão dava os mesmos bytes ao preço de todos os traços anteriores.
-    /// Só com o estilo da sessão UNIFORME: um traço com outro raio/Spread/Rewet muda os máximos da
-    /// sessão, e a união dava outros bytes longe dele (medido: 90 texels no 3.º traço, raio 3→5).
+    /// Só com o estilo da sessão UNIFORME: com outro raio, a união dava outros bytes longe do traço
+    /// (90 texels no 3.º traço, raio 3→5) porque o texel SEM dono (o halo de um traço velho, e a
+    /// amostra deslocada que cai nele) resolve-se pelo pincel VIVO (`style_at` → `cur`).
     fn pegada_do_commit(&self) -> Option<Region> {
         #[cfg(test)]
         if COMMIT_PELA_UNIAO.get() {

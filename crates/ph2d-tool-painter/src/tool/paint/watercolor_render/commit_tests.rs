@@ -133,12 +133,18 @@ fn sessao(c: Cenario, uniao: bool) -> (Vec<Vec<u8>>, Vec<u64>) {
 #[test]
 fn o_decimo_traco_da_sessao_nao_paga_os_nove_anteriores() {
     let mut falhas = Vec::new();
+    let mut ultima = Vec::new();
     for c in CENARIOS {
         let (novo, px_novo) = sessao(c, false);
         let (velho, px_velho) = sessao(c, true);
+        ultima.push(novo[TRACOS - 1].clone());
         eprintln!(
             "{:<28} pen-up (texels)  traço: 1.º {:>7} 10.º {:>7}  união: 1.º {:>7} 10.º {:>7}",
-            c.nome, px_novo[0], px_novo[TRACOS - 1], px_velho[0], px_velho[TRACOS - 1]
+            c.nome,
+            px_novo[0],
+            px_novo[TRACOS - 1],
+            px_velho[0],
+            px_velho[TRACOS - 1]
         );
         if let Some(k) = (0..TRACOS).find(|&k| novo[k] != velho[k]) {
             let n = novo[k]
@@ -146,7 +152,10 @@ fn o_decimo_traco_da_sessao_nao_paga_os_nove_anteriores() {
                 .zip(velho[k].chunks(4))
                 .filter(|(a, b)| a != b)
                 .count();
-            falhas.push(format!("{}: pen-up {k} difere da união em {n} texels", c.nome));
+            falhas.push(format!(
+                "{}: pen-up {k} difere da união em {n} texels",
+                c.nome
+            ));
         }
         if c.raio_varia {
             continue; // estilo não uniforme: o pen-up fica na união (só a paridade conta)
@@ -168,5 +177,56 @@ fn o_decimo_traco_da_sessao_nao_paga_os_nove_anteriores() {
             ));
         }
     }
+    // A régua: o Basic de antes pega (Edge 3, papel cold-press) — a janela é a do neutro (o `pad` não
+    // lê o ganho nem o papel), a tinta não.
+    if ultima[0] == ultima[1] {
+        falhas.push("a régua: «Watercolor Basic» pintou os bytes do neutro".into());
+    }
     assert!(falhas.is_empty(), "{falhas:#?}");
+}
+
+/// Sonda B16.2 (`--ignored`, `--profile smoke`): o pen-up da aguada a 3840×2160 numa sessão de 16
+/// traços (Basic de antes, raio 30), pelo traço (A) contra pela união (B) no MESMO processo, ABBA; o
+/// mínimo dos 8 últimos de cada (a união só cresce: o viés ABBA cancela).
+#[test]
+#[ignore]
+fn mede_o_pen_up_da_aguada_4k() {
+    let (fw, fh) = (3840u32, 2160u32);
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (fw * fh * 4) as usize], fw, fh);
+    t.set_paint_media(PaintMedia::Watercolor);
+    crate::tool::paint::tests::aquarela_neutra(&mut t);
+    t.set_brush_size_px(30.0);
+    crate::tool::paint::tests::watercolor_basic_de_antes(&mut t);
+    t.set_brush_color_srgb8([30, 60, 220]);
+    t.set_dry_time_s(60.0);
+    let (mut best, mut px, mut sessao) = ([f64::MAX; 2], [0u64; 2], 0);
+    for k in 0..16usize {
+        let v = [0usize, 1, 1, 0][k % 4];
+        #[allow(clippy::cast_precision_loss)]
+        let (x, y) = (200.0 + 220.0 * k as f32, 300.0 + 400.0 * (k % 4) as f32);
+        sessao += usize::from(k > 0 && t.wet_session_continues());
+        t.on_canvas_pointer(cp([x, y], PointerPhase::Down));
+        for j in 1..=10 {
+            #[allow(clippy::cast_precision_loss)]
+            let j = j as f32;
+            t.on_canvas_pointer(cp([x + 12.0 * j, y + 8.0 * j], PointerPhase::Move));
+            t.paint_tick(1.0 / 60.0);
+        }
+        COMMIT_PELA_UNIAO.set(v == 1);
+        let px0 = t.wash.window_px;
+        let t0 = std::time::Instant::now();
+        t.on_canvas_pointer(cp([x + 120.0, y + 80.0], PointerPhase::Up));
+        let ms = t0.elapsed().as_secs_f64() * 1e3;
+        COMMIT_PELA_UNIAO.set(false);
+        if k >= 8 {
+            best[v] = best[v].min(ms);
+            px[v] = t.wash.window_px - px0;
+        }
+    }
+    println!(
+        "[B16.2] 3840x2160, 16 traços ({sessao} continuam a sessão): pen-up pelo traço {:.2} ms \
+         ({} texels) | pela união {:.2} ms ({} texels)",
+        best[0], px[0], best[1], px[1]
+    );
 }

@@ -62,6 +62,8 @@ ph2d-pixel-cena = { path = "../../crates/ph2d-pixel-cena" }
 ph2d-pixel-luz = { path = "../../crates/ph2d-pixel-luz" }
 # A luz na rampa: placa × gabarito (`luz_rampa_placa.rs`).
 ph2d-pixel-rampa = { path = "../../crates/ph2d-pixel-rampa" }
+# A sonda das cenas 28–36 (`cenas_p13`): o lint da 33.
+ph2d-pixel-lint = { path = "../../crates/ph2d-pixel-lint" }
 # A sonda da cena 26 (`cena26.rs`): a física e a regra de animação.
 ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
 # A sonda da cena 27 (`cena27.rs`): o import do `.ase` como Sprite do motor (`liga`, `grid_for`, `pack`).

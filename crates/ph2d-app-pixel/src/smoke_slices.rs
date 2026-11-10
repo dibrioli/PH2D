@@ -96,7 +96,8 @@ pub(crate) fn conduz_o_heroi(hero: &mut ph2d_editor_core::screens::hero::HeroScr
     if let Some(p) = ph2d_pixel_cenas::heroi27::pendente() {
         hero.store.import_as_image(vec![p]);
     }
-    if matches!(crate::smoke::armed_level(), Some(26 | 27)) {
+    ph2d_pixel_cenas::p13::conduz(hero, crate::smoke::armed_level());
+    if matches!(crate::smoke::armed_level(), Some(26 | 27 | 31 | 34)) {
         let q = Q.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let fisica = ph2d_panel_timeline::ids::TIMELINE_PHYSICS;
         ph2d_app_host::smoke_drive::enquadra_e_joga(hero, q, "PH2D_PIXEL_SMOKE_PLAY", fisica);

@@ -15,6 +15,7 @@ pub mod heroi;
 pub mod heroi27;
 pub mod historia;
 pub mod intervalo;
+pub mod p13;
 pub mod patch;
 pub mod pincel;
 pub mod pontas;

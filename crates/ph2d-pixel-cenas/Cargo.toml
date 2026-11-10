@@ -23,6 +23,12 @@ ph2d-pixel-cena = { path = "../ph2d-pixel-cena" }
 ph2d-pixel-io = { path = "../ph2d-pixel-io" }
 ph2d-render = { path = "../ph2d-render" }
 winit = "0.30"
+# As cenas 28–36 (P13 §8): os pedidos do painel, o Tween da ponte e a vista CRT.
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-pixel-ponte = { path = "../ph2d-pixel-ponte" }
+ph2d-pixel-crt = { path = "../ph2d-pixel-crt" }
+# A 29: a conversão com «Keep ramps».
+ph2d-pixel-rampa = { path = "../ph2d-pixel-rampa" }
 
 [lints]
 workspace = true

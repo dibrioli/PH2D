@@ -12,7 +12,7 @@ use ph2d_pixel_cenas::heroi::{CENA_26, CENA_27};
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 27,
+    max_level: 36,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -117,8 +117,23 @@ pub fn stage(
         25 => crate::smoke_slices::stage_historia(app, sim, spawn_root).is_some(),
         26 => crate::smoke_slices::stage_heroi(app, sim, spawn_root, &CENA_26).is_some(),
         27 => crate::smoke_slices::stage_heroi(app, sim, spawn_root, &CENA_27).is_some(),
+        n @ 28..=36 => p13(app, sim, n, spawn_root).is_some(),
         _ => false,
     }
+}
+
+trait Raiz: FnOnce(&mut SimWorld, &str) -> u64 {}
+impl<F: FnOnce(&mut SimWorld, &str) -> u64> Raiz for F {}
+fn p13(app: &mut PixelApp, sim: &mut SimWorld, n: u32, r: impl Raiz) -> Option<()> {
+    let c = ph2d_pixel_cenas::p13::cena(n)?;
+    stage(app, sim, c.base, r).then_some(())?;
+    let d = app
+        .docs
+        .get_mut(&crate::mode::sprites(sim.world()).first()?.1)?;
+    let pedidos = (c.monta)(&mut d.sprite)?;
+    (d.frame, d.layer) = (d.sprite.frames()[0].id, d.sprite.layers()[0].id);
+    pedidos.into_iter().for_each(|r| app.pede(r));
+    Some(())
 }
 
 /// As formas da casa da cena 2: a ferramenta, as células que a definem, a cor (índice da DB32) e

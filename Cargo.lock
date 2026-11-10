@@ -7825,6 +7825,7 @@ dependencies = [
  "ph2d-pixel-core",
  "ph2d-pixel-io",
  "ph2d-pixel-keys",
+ "ph2d-pixel-lint",
  "ph2d-pixel-luz",
  "ph2d-pixel-rampa",
  "ph2d-pixel-render",
@@ -10911,12 +10912,16 @@ name = "ph2d-pixel-cenas"
 version = "0.0.0"
 dependencies = [
  "ph2d-ecs",
+ "ph2d-editor-core",
  "ph2d-light2d-ecs",
  "ph2d-physics-ecs",
  "ph2d-pixel-cena",
  "ph2d-pixel-core",
+ "ph2d-pixel-crt",
  "ph2d-pixel-io",
  "ph2d-pixel-keys",
+ "ph2d-pixel-ponte",
+ "ph2d-pixel-rampa",
  "ph2d-render",
  "winit",
 ]

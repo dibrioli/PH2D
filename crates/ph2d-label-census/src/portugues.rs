@@ -158,6 +158,13 @@ pub fn portuguese_tokens(text: &str) -> Vec<String> {
             .filter(|&(k, c)| c == '\'' && !(colado && k == 0))
             .count();
         aspa_aberta ^= abre % 2 == 1;
+        // Uma EXTENSÃO de ficheiro (`(.tres)`, `.ase`): o ponto abre-a e antes dele não há letra.
+        let lacuna = &resto[..i];
+        let extensao = lacuna.ends_with('.')
+            && lacuna[..lacuna.len() - 1]
+                .chars()
+                .next_back()
+                .map_or(!colado, |c| !c.is_alphanumeric());
         colado = true;
         resto = &resto[i..];
         let fim = resto
@@ -175,7 +182,7 @@ pub fn portuguese_tokens(text: &str) -> Vec<String> {
             aspa_aberta = false;
             resto = &resto[1..];
         }
-        if w.chars().count() < 2 && !apostrofo {
+        if (w.chars().count() < 2 && !apostrofo) || extensao {
             continue;
         }
         let e_pt = apostrofo
@@ -215,6 +222,9 @@ mod tests {
             "the 'Shape' e' red",
             // e a contracção (`don't`) não abre aspa que desarme o acento a seguir (M6, 14/10).
             "don't go, e' red",
+            // e a regra da extensão não engole o numeral solto nem o que vem depois de uma frase.
+            "tres pinceis",
+            "Done. tres pinceis",
         ] {
             assert!(!is_english(f), "a régua não viu português em {f:?}");
         }
@@ -234,6 +244,9 @@ mod tests {
             "Nobody sees the others' votes. I'm done, don't wait",
             "Custom (B\u{e9}zier)",
             "Canonical widget showcase \u{b7} reference for peripheral agents",
+            // 10/11: a extensão de ficheiro do Godot não é o numeral `três`.
+            "Godot SpriteFrames (.tres)",
+            ".tres",
         ] {
             assert!(
                 is_english(f),

@@ -99,6 +99,12 @@ o mesmo pincel recusar-se noutra lingua.",
 DOCUMENTO da cena, nao rotulo: e' o que o artista escreveria na Hierarchy.",
     ),
     (
+        "ph2d-pixel-cenas",
+        "p13.rs",
+        "⭐ e' `\"Skin\"`, o NOME da rampa que a cena 31 grava no sprite (`DocOp::AddRamp`, PixelArt P13). \
+DOCUMENTO da cena, nao rotulo: e' o que o artista escreveria ao nomear a rampa no cartao Palette.",
+    ),
+    (
         "ph2d-tool-painter",
         "tool/paint/wetpaint_preset/meios.rs",
         "⭐ e' o `media` GRAVADO no `.ph2d-brush.png` (`\"Digital\"`, `\"Watercolor\"`, `\"Impasto\"`, ao lado do \

@@ -11150,6 +11150,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-player-controls"
+version = "0.0.0"
+dependencies = [
+ "ph2d-card-stack",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-input",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-poly2d"
 version = "0.0.0"
 dependencies = [

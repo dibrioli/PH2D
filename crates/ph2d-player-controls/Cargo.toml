@@ -1,0 +1,27 @@
+[package]
+name = "ph2d-player-controls"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ A tela «Controls» do JOGADOR no Play (`docs/InputMap/01_plano.md` §4): o estado, as teclas, o ficheiro do
+# jogador (`~/.ph2d/players/<game_id>.txt`) e a pintura do painel. Folha: não toca no mundo nem no projecto; a shell
+# compõe (abre com a tecla, pausa o relógio, passa o mapa efectivo aos quatro leitores do Play). A aba Input Map
+# reusa o `paint` na prévia.
+
+[dependencies]
+ph2d-card-stack = { path = "../ph2d-card-stack" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-input = { path = "../ph2d-input" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-vector = { path = "../ph2d-vector" }
+
+[lints]
+workspace = true

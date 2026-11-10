@@ -5,9 +5,9 @@ use crate::ids;
 use crate::layout::Layout;
 use crate::snapshot::Snapshot;
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::doc_surface::KeyInput;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::TextInputState;
-use ph2d_editor_core::doc_surface::KeyInput;
 use ph2d_input::Key;
 
 use crate::census::Census;

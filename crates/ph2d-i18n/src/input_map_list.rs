@@ -6,8 +6,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "input_map_list.new_name_tip" => "Type a name for a new action, then press Add or Enter.",
         "input_map_list.add" => "Add",
         "input_map_list.add_tip" => "Create an action with the name you typed.",
-        "input_map_list.empty_name" => "Type a name first: an action needs a name for the game to read it.",
-        "input_map_list.duplicate" => "There is already an action with this name. Pick another name.",
+        "input_map_list.empty_name" => {
+            "Type a name first: an action needs a name for the game to read it."
+        }
+        "input_map_list.duplicate" => {
+            "There is already an action with this name. Pick another name."
+        }
         "input_map_list.search" => "Find an action, or press a key",
         "input_map_list.search_tip" => {
             "Type part of a name, or click here and press a key to see which actions use that key."
@@ -35,7 +39,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "{keys} are in two actions: a Platform Player and a Top-Down Player never run on the same object."
         }
         "input_map_list.shared_warn_lead" => "{key} is in {actions}.",
-        "input_map_list.shared_warn_rest" => "Both react when it is pressed. Check that this is what you want.",
+        "input_map_list.shared_warn_rest" => {
+            "Both react when it is pressed. Check that this is what you want."
+        }
         "input_map_list.search_count" => "{key} is in {n} of {total} actions.",
         "input_map_list.read_by_first" => "{action} is read by {who}",
         "input_map_list.read_by_next" => "{action} by {who}",

@@ -28,7 +28,11 @@ fn and_list(items: &[String]) -> String {
     match items {
         [] => String::new(),
         [one] => one.clone(),
-        [head @ .., last] => format!("{}{}{last}", head.join(tr("input_map_list.comma")), tr("input_map_list.and")),
+        [head @ .., last] => format!(
+            "{}{}{last}",
+            head.join(tr("input_map_list.comma")),
+            tr("input_map_list.and")
+        ),
     }
 }
 
@@ -42,7 +46,9 @@ fn reader_names(rs: &[Reader]) -> String {
         .map(|r| match r {
             Reader::Trigger { object } => object.clone(),
             Reader::Script { name } => name.clone(),
-            other => other.label_key().map_or_else(String::new, |k| tr(k).to_owned()),
+            other => other
+                .label_key()
+                .map_or_else(String::new, |k| tr(k).to_owned()),
         })
         .collect();
     and_list(&names)
@@ -75,7 +81,11 @@ pub(crate) fn summary(snap: &Snapshot) -> Vec<Phrase> {
         1 => tr("input_map_list.shared_one").replace("{keys}", &fine[0]),
         _ => tr("input_map_list.shared_many").replace("{keys}", &and_list(&fine)),
     };
-    let mut out = vec![Phrase { lead, rest, warn: false }];
+    let mut out = vec![Phrase {
+        lead,
+        rest,
+        warn: false,
+    }];
     for s in shared.iter().filter(|s| !s.on_purpose) {
         let names: Vec<String> = s.actions.iter().map(|a| name_of(map, *a)).collect();
         out.push(Phrase {
@@ -104,16 +114,28 @@ pub(crate) fn search(snap: &Snapshot, key: Key, shown: &[ActionId]) -> Phrase {
         })
         .enumerate()
         .map(|(i, (name, who))| {
-            let k = if i == 0 { "input_map_list.read_by_first" } else { "input_map_list.read_by_next" };
+            let k = if i == 0 {
+                "input_map_list.read_by_first"
+            } else {
+                "input_map_list.read_by_next"
+            };
             tr(k).replace("{action}", &name).replace("{who}", &who)
         })
         .collect();
     let rest = if parts.is_empty() {
         String::new()
     } else {
-        format!("{}{}", parts.join(tr("input_map_list.comma")), tr("input_map_list.period"))
+        format!(
+            "{}{}",
+            parts.join(tr("input_map_list.comma")),
+            tr("input_map_list.period")
+        )
     };
-    Phrase { lead, rest, warn: false }
+    Phrase {
+        lead,
+        rest,
+        warn: false,
+    }
 }
 
 /// «Listening for reload. The next key goes to this row.»

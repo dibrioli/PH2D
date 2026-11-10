@@ -100,7 +100,13 @@ impl DocumentSurface for InputMapTab {
         }
     }
 
-    fn raw_key(&mut self, _id: u64, key: ph2d_input::Key, pressed: bool, writes_text: bool) -> bool {
+    fn raw_key(
+        &mut self,
+        _id: u64,
+        key: ph2d_input::Key,
+        pressed: bool,
+        writes_text: bool,
+    ) -> bool {
         self.doc.raw_key(key, pressed, writes_text)
     }
 

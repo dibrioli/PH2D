@@ -3,6 +3,8 @@
 //! pintura e o ponteiro da aba activa. As ondas seguintes (A · List, B · Keyboard, C · Try it) usam-no.
 
 mod abrir;
+mod lista;
+mod lista_censo;
 
 use ph2d_a11y::NodeId;
 use ph2d_app_input_map::{InputMapTab, TAB_ID, View};
@@ -67,11 +69,99 @@ impl Mesa {
     }
 
     pub fn paint(&mut self) {
+        self.paint_in(AREA);
+    }
+
+    /// Pinta a aba activa numa área à escolha (o censo a 1280×720).
+    pub fn paint_in(&mut self, area: Rect) {
         let mut scene = VectorScene::new();
         let ts = &mut self.ts;
         if let Some((f, id)) = self.hero.documents.active_surface_mut() {
-            f.paint(id, AREA, &mut scene, ts, &Theme::default());
+            f.paint(id, area, &mut scene, ts, &Theme::default());
         }
+    }
+
+    pub fn tab_mut(&mut self) -> &mut InputMapTab {
+        self.hero
+            .documents
+            .surfaces_mut()
+            .find_mut::<InputMapTab>()
+            .expect("a família instalada")
+    }
+
+    /// O ponteiro passa em `(x, y)` (sem botão), seguido do quadro.
+    pub fn hover(&mut self, (x, y): (f32, f32)) {
+        let ts = &mut self.ts;
+        if let Some((f, id)) = self.hero.documents.active_surface_mut() {
+            let input = PointerInput {
+                text: ts,
+                mods: Modifiers::default(),
+                now_ns: 0,
+            };
+            f.pointer_move(id, input, x, y);
+        }
+        self.frame();
+    }
+
+    /// O botão solta, seguido do quadro.
+    pub fn release(&mut self) {
+        let ts = &mut self.ts;
+        if let Some((f, id)) = self.hero.documents.active_surface_mut() {
+            let input = PointerInput {
+                text: ts,
+                mods: Modifiers::default(),
+                now_ns: 0,
+            };
+            f.pointer(id, input, PointerKind::Up, PointerButton::Primary, 0.0, 0.0);
+        }
+        self.frame();
+    }
+
+    /// Uma tecla pela porta `key` da aba (o caminho do texto), seguida do quadro.
+    pub fn key(&mut self, key: ph2d_editor_core::doc_surface::Key, text: Option<&str>) -> bool {
+        let input = ph2d_editor_core::doc_surface::KeyInput {
+            key,
+            mods: Modifiers::default(),
+            pressed: true,
+            text,
+            paste: None,
+        };
+        let ts = &mut self.ts;
+        let took = self
+            .hero
+            .documents
+            .active_surface_mut()
+            .is_some_and(|(f, id)| f.key(id, ts, input).consumed);
+        self.frame();
+        took
+    }
+
+    /// Escreve `s` letra a letra no campo focado.
+    pub fn type_text(&mut self, s: &str) {
+        for ch in s.chars() {
+            let t = ch.to_string();
+            self.key(ph2d_editor_core::doc_surface::Key::Char(ch), Some(&t));
+        }
+    }
+
+    /// Uma tecla FÍSICA como a shell a entrega: primeiro a escuta partilhada, depois o `raw_key` da aba.
+    pub fn physical(&mut self, k: ph2d_input::Key) -> bool {
+        let took = if let Some(evt) =
+            ph2d_editor_core::interaction::capture_if_listening(&mut self.hero.store, k.0)
+        {
+            self.hero.apply_event(evt);
+            true
+        } else {
+            ph2d_app_input_map::surface_raw_key(&mut self.hero, k.0, true, None)
+        };
+        self.frame();
+        took
+    }
+
+    /// O centro de um alvo pintado.
+    pub fn at(&self, id: NodeId) -> (f32, f32) {
+        let r = self.tab().doc.rect_of(id).expect("o alvo pintado");
+        (r.x + r.w * 0.5, r.y + r.h * 0.5)
     }
 
     pub fn tab(&self) -> &InputMapTab {

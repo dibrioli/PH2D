@@ -21,6 +21,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         "input_map_tab.title" => "Input Map",
         "input_map_tab.view.list" => "List",
+        "input_map_tab.reader.platform_player" => "Platform Player",
+        "input_map_tab.reader.top_down_player" => "Top-Down Player",
         "input_map_tab.view.keyboard" => "Keyboard",
         "input_map_tab.view.try" => "Try it",
         "input_map_tab.view.list_tip" => "See every action as a list, with its keys and buttons.",

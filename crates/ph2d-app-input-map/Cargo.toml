@@ -21,6 +21,7 @@ ph2d-host = { path = "../ph2d-host" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-input = { path = "../ph2d-input" }
 ph2d-input-map-editor = { path = "../ph2d-input-map-editor" }
+ph2d-script = { path = "../ph2d-script" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }

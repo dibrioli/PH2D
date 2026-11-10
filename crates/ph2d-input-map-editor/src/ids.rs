@@ -21,7 +21,11 @@ const PRESS: NodeId = hash_node_id("input_map_list.press");
 const ROW: NodeId = hash_node_id("input_map_list.row");
 
 const fn per(base: NodeId, a: ph2d_input::ActionId, n: usize) -> NodeId {
-    NodeId(base.0.wrapping_add((a.0 as u64).wrapping_mul(STRIDE)).wrapping_add(n as u64))
+    NodeId(
+        base.0
+            .wrapping_add((a.0 as u64).wrapping_mul(STRIDE))
+            .wrapping_add(n as u64),
+    )
 }
 
 /// O que um alvo da lista é.

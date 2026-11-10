@@ -2,10 +2,11 @@
 //! UMA aba. A shell instala-a com a vista das prefs ([`install`]) e chama [`frame`] uma vez por quadro: o
 //! Settings ▸ Input Map… chega como o pedido do `WidgetStore`, e o `frame` abre (ou traz à frente) a aba.
 
-pub use ph2d_input_map_editor::{InputMapDoc, InputMapEdit, Snapshot, View};
+pub use ph2d_input_map_editor::{InputMapDoc, InputMapEdit, Snapshot, View, ids, view_list};
 
 mod apply;
 pub mod listen;
+pub mod readers;
 mod surface;
 
 pub use surface::{InputMapTab, TAB_ID};
@@ -43,17 +44,39 @@ pub fn frame(world: &ph2d_ecs::World, hero: &mut HeroScreen, gamepad_connected: 
         tab.open();
     }
     let edits = tab.doc.take_pending();
+    let listen = tab.doc.take_listen_request();
     for e in edits {
         apply::apply(&mut hero.input_map, e);
     }
+    match listen {
+        Some(Some(id)) => hero.store.listen_for_binding(id),
+        Some(None) => hero.store.stop_listening(),
+        None => {}
+    }
+    // A tecla (ou o comando) apanhada vira ligação no braço `INPUT_MAP_BIND_CAPTURED` do editor-core.
+    let listening = hero
+        .store
+        .input_map_listening()
+        .filter(|_| !hero.store.input_map_listen_replaces());
     let snap = Snapshot {
         map: hero.input_map.clone(),
         gamepad_connected,
         play_running: ph2d_ecs::run_is_on_copy(world),
+        readers: readers::of_world(world),
+        listening,
     };
     if let Some(tab) = hero.documents.surfaces_mut().find_mut::<InputMapTab>() {
         tab.doc.set_snapshot(snap);
     }
+}
+
+/// O undo do projecto pergunta: há um arrasto de número vivo na aba?
+#[must_use]
+pub fn gesture_in_progress(hero: &HeroScreen) -> bool {
+    hero.documents
+        .surfaces()
+        .find::<InputMapTab>()
+        .is_some_and(|t| t.doc.gesture_in_progress())
 }
 
 /// ⭐ **A tecla física para a aba de família activa** que tem o teclado ([`DocumentSurface::raw_key`]): a shell

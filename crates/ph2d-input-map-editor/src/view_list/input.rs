@@ -13,7 +13,12 @@ use crate::ids::{self, ListHit};
 
 fn hit_of(doc: &InputMapDoc, id: ph2d_a11y::NodeId) -> Option<ListHit> {
     doc.snap.map.actions().iter().find_map(|a| {
-        let mut all = vec![ListHit::Listen(a.id), ListHit::Trash(a.id), ListHit::Dead(a.id), ListHit::Press(a.id)];
+        let mut all = vec![
+            ListHit::Listen(a.id),
+            ListHit::Trash(a.id),
+            ListHit::Dead(a.id),
+            ListHit::Press(a.id),
+        ];
         all.extend((0..a.bindings.len()).map(|n| ListHit::RemoveBinding(a.id, n)));
         all.into_iter().find(|h| h.id() == id)
     })
@@ -25,7 +30,12 @@ fn focus(doc: &mut InputMapDoc, id: Option<ph2d_a11y::NodeId>) {
 
 /// O Add: nome vazio ou repetido é recusado com o porquê à vista.
 fn commit_add(doc: &mut InputMapDoc) {
-    let name = doc.store.text(ids::NEW_NAME).unwrap_or("").trim().to_owned();
+    let name = doc
+        .store
+        .text(ids::NEW_NAME)
+        .unwrap_or("")
+        .trim()
+        .to_owned();
     doc.list.refused = if name.is_empty() {
         Some("input_map_list.empty_name")
     } else if doc.snap.map.id(&name).is_some() {
@@ -35,7 +45,9 @@ fn commit_add(doc: &mut InputMapDoc) {
     };
     if doc.list.refused.is_none() {
         doc.pending.push(InputMapEdit::Add(name));
-        if let Some(InteractiveState::TextInput { text, caret, .. }) = doc.store.get_mut(ids::NEW_NAME) {
+        if let Some(InteractiveState::TextInput { text, caret, .. }) =
+            doc.store.get_mut(ids::NEW_NAME)
+        {
             text.clear();
             *caret = 0;
         }
@@ -58,18 +70,36 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
         _ => {
             focus(doc, None);
             match listen {
-                Some(ListHit::RemoveBinding(a, n)) => doc.pending.push(InputMapEdit::RemoveBinding(a, n)),
+                Some(ListHit::RemoveBinding(a, n)) => {
+                    doc.pending.push(InputMapEdit::RemoveBinding(a, n))
+                }
                 Some(ListHit::Trash(a)) => doc.pending.push(InputMapEdit::Remove(a)),
                 Some(ListHit::Listen(a)) => {
                     let armed = doc.snap.listening == Some(a);
                     doc.list.listen_request = Some((!armed).then_some(a));
                 }
                 Some(h @ (ListHit::Dead(a) | ListHit::Press(a))) => {
-                    let zone = if matches!(h, ListHit::Dead(_)) { Zone::Dead } else { Zone::Press };
+                    let zone = if matches!(h, ListHit::Dead(_)) {
+                        Zone::Dead
+                    } else {
+                        Zone::Press
+                    };
                     let act = doc.snap.map.get(a);
-                    let start = act.map_or(0.0, |v| if zone == Zone::Dead { v.dead_zone } else { v.press_point });
+                    let start = act.map_or(0.0, |v| {
+                        if zone == Zone::Dead {
+                            v.dead_zone
+                        } else {
+                            v.press_point
+                        }
+                    });
                     let width = doc.hits.rect_for(h.id()).map_or(1.0, |r| r.w.max(1.0));
-                    doc.list.scrub = Some(Scrub { action: a, zone, start_x: x, start, width });
+                    doc.list.scrub = Some(Scrub {
+                        action: a,
+                        zone,
+                        start_x: x,
+                        start,
+                        width,
+                    });
                 }
                 _ => {}
             }
@@ -80,14 +110,19 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
 
 /// O ponteiro anda: com um arrasto de número em curso, o valor segue-o (a lei do `set_zone` na família).
 pub(crate) fn drag(doc: &mut InputMapDoc, x: f32) -> bool {
-    let Some(s) = doc.list.scrub else { return false };
-    let Some(a) = doc.snap.map.get(s.action) else { return false };
+    let Some(s) = doc.list.scrub else {
+        return false;
+    };
+    let Some(a) = doc.snap.map.get(s.action) else {
+        return false;
+    };
     let v = (s.start + (x - s.start_x) / s.width).clamp(0.0, 1.0);
     let (dead, press) = match s.zone {
         Zone::Dead => (v, a.press_point.max(v)),
         Zone::Press => (a.dead_zone.min(v), v),
     };
-    doc.pending.push(InputMapEdit::SetZone(s.action, dead, press));
+    doc.pending
+        .push(InputMapEdit::SetZone(s.action, dead, press));
     true
 }
 
@@ -107,7 +142,12 @@ pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool, writes_tex
         return false;
     }
     let editing = ["backspace", "delete", "enter", "escape", "tab"];
-    if editing.iter().filter_map(|n| Key::named_in_script(n)).flatten().any(|k| k == key) {
+    if editing
+        .iter()
+        .filter_map(|n| Key::named_in_script(n))
+        .flatten()
+        .any(|k| k == key)
+    {
         return false;
     }
     doc.list.search_key = Some(key);
@@ -124,7 +164,11 @@ fn code(name: &str) -> Option<u32> {
 
 /// A tecla para o campo focado (nome novo ou busca), pelas portas do `WidgetStore` do cartão.
 pub(crate) fn key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
-    let Some(f) = doc.store.focus_id().filter(|f| *f == ids::NEW_NAME || *f == ids::SEARCH) else {
+    let Some(f) = doc
+        .store
+        .focus_id()
+        .filter(|f| *f == ids::NEW_NAME || *f == ids::SEARCH)
+    else {
         return false;
     };
     if !input.pressed {
@@ -162,7 +206,12 @@ pub(crate) fn key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
         }
     };
     if let Some(keycode) = code(name) {
-        let ev = KeyEvent { keycode, modifiers: input.mods, kind: KeyKind::Down, timestamp_ns: 0 };
+        let ev = KeyEvent {
+            keycode,
+            modifiers: input.mods,
+            kind: KeyKind::Down,
+            timestamp_ns: 0,
+        };
         let _ = dispatch_key(&mut doc.store, ev, &arena);
     }
     true

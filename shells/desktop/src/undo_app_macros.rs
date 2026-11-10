@@ -50,7 +50,13 @@ impl crate::App {
     pub(crate) fn motivo_da_supressao(&self, had_input: bool) -> Option<&'static str> {
         if self.undo.jogo.a_correr() {
             Some(ph2d_i18n::tr("shell.undo_app.o_jogo_esta_a_correr"))
-        } else if self.held_button.is_some() {
+        } else if self.held_button.is_some()
+            || self
+                .gfx
+                .as_ref()
+                .and_then(|g| g.hero_screen.as_ref())
+                .is_some_and(ph2d_app_input_map::gesture_in_progress)
+        {
             Some(ph2d_i18n::tr("shell.undo_app.botao_do_rato_em_baixo"))
         } else if self.flip_state.colorize_busy() {
             Some(ph2d_i18n::tr("shell.undo_app.colorize_a_recalcular"))

@@ -173,6 +173,10 @@ pub fn draw(
     let o = app.options;
     if let Some(d) = app.docs.get(&key) {
         ph2d_pixel_render::prefs_view::draw_doc_grids(scene, (w, h), d.sprite.prefs(), m);
+        let cores = [ColorToken::Accent, ColorToken::BgElev].map(|t| resolve(t, theme));
+        let g = ph2d_pixel_ponte::alcas::vistas(key, d.sprite.guias());
+        let jan = (window.width, window.height);
+        ph2d_pixel_render::guias::desenha(scene, &g, m, jan, cores, LINE_PX);
         ph2d_pixel_tiles::grelha::desenha(
             &d.sprite,
             (d.layer, d.frame),

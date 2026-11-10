@@ -32,6 +32,7 @@ mod exportar;
 mod fecho;
 mod filtros;
 mod formas;
+mod guias;
 mod historia;
 mod intervalo;
 mod painel_e_dialogo;

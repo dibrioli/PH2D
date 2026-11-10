@@ -20,26 +20,6 @@ pub struct PixelPreviewPanelState {
     pub(crate) xadrez_pintado: Option<(u32, u32, f64, f64, f64)>,
     /// As casas desse xadrez (`checker_layout`: colunas, linhas, lado em células do sprite).
     pub(crate) casas: Option<(u32, u32, f64, f64)>,
-    /// A imagem da CRT: chave `(seq, escala, params)`, a imagem da GPU e os bytes dela.
-    #[allow(clippy::type_complexity)]
-    pub(crate) crt: Option<(
-        (u64, u32, [u32; 5]),
-        ph2d_vector::StableImage,
-        std::sync::Arc<Vec<u8>>,
-    )>,
-    /// Quantas vezes o passe CRT correu (para os gates).
-    pub(crate) passes_crt: u64,
-    /// Os bytes da imagem mostrada na última pintura (para os gates).
-    pub(crate) mostrada: Option<std::sync::Arc<Vec<u8>>>,
-}
-
-impl PixelPreviewPanelState {
-    /// `(passes do CRT, bytes mostrados)` da última pintura (para os gates).
-    #[doc(hidden)]
-    #[must_use]
-    pub fn crt_mostrada(&self) -> (u64, Option<std::sync::Arc<Vec<u8>>>) {
-        (self.passes_crt, self.mostrada.clone())
-    }
 }
 
 impl PixelPreviewPanelState {

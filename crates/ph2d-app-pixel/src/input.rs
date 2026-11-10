@@ -4,6 +4,7 @@
 
 use ph2d_host::WindowSize;
 use ph2d_pixel_core::{Paint, Sample, Stroke, pick};
+use ph2d_pixel_ponte::alcas;
 use ph2d_pixel_render::{cell_at, image_to_world, px_per_cell};
 use ph2d_render::Camera2d;
 use ph2d_vector::{Affine, Point};
@@ -165,6 +166,12 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         app.panning = true;
         return Press::Pan;
     }
+    if let Some(d) = app.docs.get(&key)
+        && let Some(m) = to_screen(c.world, bits, d, c.camera, c.window, c.ppm)
+        && alcas::agarra(key, d.sprite.guias(), m, p)
+    {
+        return Press::Done;
+    }
     let Some((x, y)) = cell(app, c, bits, key, p) else {
         return Press::Done;
     };
@@ -310,6 +317,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
             };
             let from = if m.shift { doc.last_point } else { None };
             let (fx, fy) = from.unwrap_or(at);
+            let (x, y) = from.map_or((x, y), |f| alcas::alvo_do_lapis(s.guias(), f, at));
             st.start(s, fx, fy);
             st.to(s, x, y);
             mao = m2;
@@ -400,7 +408,8 @@ pub fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) -> bool
         }
         return true;
     }
-    if crate::slices::moved(app, c, p)
+    if alcas::arrasta(p)
+        || crate::slices::moved(app, c, p)
         || crate::solta::moved(app, c, p, m)
         || crate::viva::moved(app, c, p, m)
     {
@@ -533,6 +542,10 @@ pub fn release_pan(
 /// (passa ao controlo), o polígono (espera o próximo vértice) e as formas (P6d: ficam VIVAS até ao
 /// `Enter`).
 pub fn release(app: &mut PixelApp) -> bool {
+    if let Some((key, op)) = alcas::solta(|k| app.docs.get(&k).map(|d| &d.sprite)) {
+        app.passo_nomeado(key, op, "pixel.history.guides");
+        return true;
+    }
     if app.tiles.carimbo.take().is_some() {
         return true;
     }

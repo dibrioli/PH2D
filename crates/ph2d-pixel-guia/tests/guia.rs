@@ -129,7 +129,10 @@ fn a_linha_guiada_com_um_pf_tambem_vai_ao_horizontal_e_ao_vertical() {
 #[test]
 fn a_iso_e_dois_por_um_exacto() {
     let g = Guias {
-        iso: Some(Iso2x1 { origem: [0.0, 0.0] }),
+        iso: Some(Iso2x1 {
+            origem: [0.0, 0.0],
+            passo: Iso2x1::PASSO,
+        }),
         ..Guias::default()
     };
     let o = (20, 20);
@@ -263,7 +266,10 @@ fn o_overlay_e_o_feixe_e_a_grade_dentro_do_retangulo() {
     assert!(raios.iter().all(|&k| k >= 4), "{raios:?}");
 
     let iso = Guias {
-        iso: Some(Iso2x1 { origem: [3.0, 5.0] }),
+        iso: Some(Iso2x1 {
+            origem: [3.0, 5.0],
+            passo: Iso2x1::PASSO,
+        }),
         ..Guias::default()
     };
     let grade = linhas_da_guia(&iso, r);

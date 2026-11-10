@@ -242,7 +242,19 @@ impl Corpo<'_> {
         let y = self.linha(tr("panel.pixel.edit.fx"), ColorToken::Text3, y);
         let y = self.filas_de_botoes(&[vec![par(e, 21), par(e, 22)], vec![par(e, 26)]], y);
         // P12a: Keyboard Shortcuts… perto do fim (antes das Preferences, no Aseprite).
-        self.filas_de_botoes(&[vec![par(e, 29)], vec![par(e, 30)]], y)
+        let y = self.filas_de_botoes(&[vec![par(e, 29)], vec![par(e, 30)]], y);
+        // P13 U-Guias: View ▸ Guides (secção, como o FX).
+        let g = &ids::GUIDE_ACTIONS;
+        let y = self.linha(tr("pixel.guides"), ColorToken::Text3, y);
+        let filas = [
+            vec![par(g, 0)],
+            vec![par(g, 1)],
+            vec![par(g, 2)],
+            vec![par(g, 3)],
+            vec![par(g, 4)],
+        ];
+        let y = self.filas_de_botoes(&filas, y);
+        self.bloco(tr("pixel.guides.tip"), ColorToken::Text3, y)
     }
 
     /// Os botões do menu Sprite (o Crop pede selecção).

@@ -4,6 +4,7 @@
 //! Sprite 17 Ramp*   : 1 id · 2 nome · 3 índices (n bytes)
 //! Sprite 18 Cycle*  : 1 rampa · 2 período ms · 3 direcção (0 Forward, 1 Reverse, 2 PingPong)
 //! Sprite 19 Guias   : 1|2|3 ponto de fuga (Ponto) · 4 horizonte (bits f32) · 5 iso (Ponto da origem)
+//!                     · 6 passo do losango iso (uint; sem = `Iso2x1::PASSO`)
 //! Sprite 20 Audio*  : 1 asset (utf8) · 2 início ms (zigzag) · 3 ganho (bits f32) · 4 mudo
 //! Layer  9  Efeito* : 1 espécie (1 = Outline) · 2 cor (4 bytes) · 3 cor do fundo (4 bytes; sem =
 //!                     o transparente) · 4 matriz (9 bits, linha a linha) · 5 Inside · 6 Tiled
@@ -79,6 +80,7 @@ pub(super) fn put_sprite(r: &mut Vec<u8>, s: &Sprite) {
         }
         if let Some(iso) = g.iso {
             put_field(&mut b, 5, &ponto(iso.origem));
+            put_uint(&mut b, 6, u64::from(iso.passo));
         }
         b.push(0);
         put_field(r, 19, &b);
@@ -139,10 +141,13 @@ pub(super) fn read_sprite_field(s: &mut Sprite, tag: u64, v: &[u8]) -> Result<bo
                 match t {
                     1..=3 => s.guias.pontos_de_fuga[t as usize - 1] = Some(read_ponto(b)?),
                     4 => s.guias.horizonte = Some(f32_of(b, "guide.horizon")?),
-                    5 => {
-                        s.guias.iso = Some(Iso2x1 {
-                            origem: read_ponto(b)?,
-                        })
+                    5 => s.guias.iso.get_or_insert_with(Iso2x1::default).origem = read_ponto(b)?,
+                    6 => {
+                        s.guias.iso.get_or_insert_with(Iso2x1::default).passo =
+                            u16::try_from(uint(b)?)
+                                .ok()
+                                .filter(|p| *p > 0)
+                                .ok_or(CodecError::Invalid("guide.iso_step"))?;
                     }
                     _ => {}
                 }

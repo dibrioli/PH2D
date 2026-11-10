@@ -17,6 +17,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         .iter()
         .chain(&ids::EDIT_ACTIONS)
         .chain(&ids::SPRITE_ACTIONS)
+        .chain(&ids::GUIDE_ACTIONS)
         .map(|(id, ..)| *id);
     for id in segmentos.chain(botoes) {
         let state = ButtonState::Normal;

@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 
 pub mod ajustes;
+pub mod alcas;
 pub mod camadas;
 pub mod cor;
 pub mod dialogo;

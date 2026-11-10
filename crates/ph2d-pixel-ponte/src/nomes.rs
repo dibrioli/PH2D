@@ -17,6 +17,7 @@ pub const fn nome_edit(a: E) -> &'static str {
         E::Cut => "pixel.keys.edit.cut",
         E::Fill => "pixel.keys.edit.fill",
         E::Stroke => "pixel.keys.edit.stroke",
+        E::Guides(_) => "pixel.history.guides",
         _ => "pixel.keys.edit.clear",
     }
 }

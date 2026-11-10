@@ -3,8 +3,8 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::pixel_panel::{
-    PixelEditAction as E, PixelModify, PixelRequest, PixelResample, PixelSelectAction as S,
-    PixelSelectMode, PixelSpriteAction as Sp, PixelTransformField,
+    PixelEditAction as E, PixelGuides as G, PixelModify, PixelRequest, PixelResample,
+    PixelSelectAction as S, PixelSelectMode, PixelSpriteAction as Sp, PixelTransformField,
 };
 use ph2d_tool_registry::hash_node_id;
 
@@ -294,6 +294,35 @@ pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 31] = [
         hash_node_id("pixel.edit.grid_settings"),
         PixelRequest::Edit(E::GridSettings),
         "panel.pixel.edit.grid_settings",
+    ),
+];
+
+/// P13 U-Guias: View ▸ Guides (as guias do documento; um passo de undo).
+pub const GUIDE_ACTIONS: [(NodeId, PixelRequest, &str); 5] = [
+    (
+        hash_node_id("pixel.view.guides.none"),
+        PixelRequest::Edit(E::Guides(G::None)),
+        "pixel.guides.none",
+    ),
+    (
+        hash_node_id("pixel.view.guides.perspective_1"),
+        PixelRequest::Edit(E::Guides(G::Perspective1)),
+        "pixel.guides.perspective_1",
+    ),
+    (
+        hash_node_id("pixel.view.guides.perspective_2"),
+        PixelRequest::Edit(E::Guides(G::Perspective2)),
+        "pixel.guides.perspective_2",
+    ),
+    (
+        hash_node_id("pixel.view.guides.perspective_3"),
+        PixelRequest::Edit(E::Guides(G::Perspective3)),
+        "pixel.guides.perspective_3",
+    ),
+    (
+        hash_node_id("pixel.view.guides.iso"),
+        PixelRequest::Edit(E::Guides(G::Isometric)),
+        "pixel.guides.iso",
     ),
 ];
 

@@ -13,6 +13,7 @@ authors.workspace = true
 # pixels e o mapa ecrã↔célula. Sem ECS e sem câmera: o afim `pixel → ecrã` chega de quem chama.
 [dependencies]
 ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+ph2d-pixel-guia = { path = "../ph2d-pixel-guia" }
 ph2d-pixel-slices = { path = "../ph2d-pixel-slices" }
 ph2d-vector = { path = "../ph2d-vector" }
 

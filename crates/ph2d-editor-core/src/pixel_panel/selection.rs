@@ -134,6 +134,18 @@ pub enum PixelEditAction {
     KeyboardShortcuts,
     /// P12 P: Edit ▸ Grid & Background… (a janela `ph2d-panel-pixel-prefs`).
     GridSettings,
+    /// P13 U-Guias: View ▸ Guides ▸ … (as guias de perspectiva/iso do documento, um passo).
+    Guides(PixelGuides),
+}
+
+/// As escolhas de View ▸ Guides (P13 §6): o documento ganha as guias de omissão desta espécie.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PixelGuides {
+    None,
+    Perspective1,
+    Perspective2,
+    Perspective3,
+    Isometric,
 }
 
 /// O menu Sprite.

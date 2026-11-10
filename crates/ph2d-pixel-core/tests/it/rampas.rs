@@ -56,7 +56,10 @@ fn com_tudo() -> Sprite {
     let guias = Guias {
         pontos_de_fuga: [Some([-40.5, 7.25]), Some([60.0, 7.25]), None],
         horizonte: Some(7.25),
-        iso: Some(Iso2x1 { origem: [8.0, 0.5] }),
+        iso: Some(Iso2x1 {
+            origem: [8.0, 0.5],
+            passo: 5,
+        }),
     };
     doc(&mut s, DocOp::SetGuias(guias)).unwrap();
     let audio = vec![

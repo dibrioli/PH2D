@@ -182,6 +182,8 @@ mod pixel;
 /// O PIXEL ART, P6: os diálogos Color Range, Modify, Canvas Size e Sprite Size.
 mod pixel_dialogos;
 mod pixel_export;
+/// O PIXEL ART, P13: View ▸ Guides (perspectiva e iso 2:1).
+mod pixel_guias;
 /// O PIXEL ART, P6: a selecção, a moldura solta e os menus Select/Edit/Sprite do painel.
 mod pixel_pincel;
 mod pixel_selecao;
@@ -640,6 +642,7 @@ fn tabela(key: &str) -> &'static str {
             .or_else(|| pixel_dialogos::tr(k))
             .or_else(|| pixel_export::tr(k))
             .or_else(|| pixel_tiles::tr(k))
+            .or_else(|| pixel_guias::tr(k))
             .or_else(|| pixel_slices::tr(k))
             .or_else(|| pixel_teclas::tr(k))
             .or_else(|| inspector_motion_input::tr(k))

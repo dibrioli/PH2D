@@ -5,8 +5,8 @@
 //! Coordenadas das guias: em células, com a célula `(x, y)` a ocupar `[x, x+1) × [y, y+1)` — o seu
 //! centro é `(x+0,5, y+0,5)` ([`centro`]). É o espaço do ponteiro do canvas em células.
 
-use ph2d_pixel_core::Guias;
 use ph2d_pixel_core::raster::{Cell, snap_pixel_angle};
+use ph2d_pixel_core::{Guias, Iso2x1};
 
 /// Os passos da isometria 2:1: os dois eixos do losango e a vertical.
 const PASSOS_ISO: [(i32, i32); 3] = [(2, 1), (2, -1), (0, 1)];
@@ -23,9 +23,6 @@ pub const TOLERANCIA_PF: f64 = 0.5;
 const JANELA: (f64, f64) = (0.5, 3.0);
 /// Raios do feixe de cada ponto de fuga no overlay (densidade de leitura, não limite de recurso).
 pub const RAIOS_POR_PF: usize = 24;
-/// O lado vertical do losango da grade iso, em células (o losango tem `2·PASSO_ISO × PASSO_ISO`).
-/// O `Iso2x1` do núcleo ainda não guarda o tamanho; ver o relatório do bloco G.
-pub const PASSO_ISO: f32 = 8.0;
 
 /// O centro da célula `c`, no espaço das guias.
 #[must_use]
@@ -177,7 +174,7 @@ pub type Segmento = ([f32; 2], [f32; 2]);
 
 /// **As linhas do overlay** dentro de `rect_visivel = [x0, y0, x1, y1]`: o feixe de
 /// [`RAIOS_POR_PF`] raios de cada ponto de fuga (finito), o horizonte, e a grade iso 2:1 (as duas
-/// famílias de inclinação ±½ pela `origem`, espaçadas de [`PASSO_ISO`] na vertical). Cada
+/// famílias de inclinação ±½ pela `origem`, espaçadas do `passo` do losango na vertical). Cada
 /// segmento é cortado ao retângulo; o que não o cruza não sai.
 #[must_use]
 pub fn linhas_da_guia(g: &Guias, rect_visivel: [f32; 4]) -> Vec<Segmento> {
@@ -208,7 +205,7 @@ pub fn linhas_da_guia(g: &Guias, rect_visivel: [f32; 4]) -> Vec<Segmento> {
     if let Some(iso) = g.iso {
         let o = iso.origem.map(f64::from);
         if o.iter().all(|v| v.is_finite()) {
-            let passo = f64::from(PASSO_ISO);
+            let passo = f64::from(iso.passo.max(1));
             for s in [0.5, -0.5] {
                 // As retas y = s·(x − ox) + oy + k·passo; o k cobre o retângulo.
                 let b = |x: f64, y: f64| (y - o[1] - s * (x - o[0])) / passo;
@@ -244,4 +241,84 @@ fn corta_reta(r: [f64; 4], p: [f64; 2], d: [f64; 2]) -> Option<([f64; 2], [f64; 
             [p[0] + t1 * d[0], p[1] + t1 * d[1]],
         )
     })
+}
+
+/// **As guias de omissão** de View ▸ Guides para um sprite `w × h` (células): `pontos` pontos de
+/// fuga (0..=3) ou, com `iso`, a grade 2:1. Horizonte a 1/3 da altura; 1 PF ao meio dele; 2 PF a
+/// 1/3 e 2/3 da largura; o 3.º (o vertical) por baixo do sprite, a `2·h`. A iso ancora no meio da
+/// borda de cima com o losango de omissão. `pontos = 0` e sem iso = sem guias.
+#[must_use]
+pub fn guias_iniciais(pontos: usize, iso: bool, (w, h): (u32, u32)) -> Guias {
+    let (w, h) = (w as f32, h as f32);
+    let hz = h / 3.0;
+    let pfs: [[f32; 2]; 3] = match pontos {
+        1 => [[w / 2.0, hz], [0.0; 2], [0.0; 2]],
+        _ => [[w / 3.0, hz], [2.0 * w / 3.0, hz], [w / 2.0, 2.0 * h]],
+    };
+    let mut g = Guias::default();
+    if iso {
+        g.iso = Some(Iso2x1 {
+            origem: [w / 2.0, 0.0],
+            ..Iso2x1::default()
+        });
+        return g;
+    }
+    for (i, p) in pfs.into_iter().enumerate().take(pontos.min(3)) {
+        g.pontos_de_fuga[i] = Some(p);
+    }
+    g.horizonte = (pontos > 0).then_some(hz);
+    g
+}
+
+/// O destino do **lápis com Shift** (a reta desde o último ponto): com guias, [`direcao_guiada`];
+/// sem guias, o ponteiro tal como está (o Shift do lápis de hoje não estala o ângulo).
+#[must_use]
+pub fn alvo_do_lapis(g: &Guias, ultimo: Cell, ponteiro: Cell) -> Cell {
+    if *g == Guias::default() {
+        ponteiro
+    } else {
+        direcao_guiada(g, ultimo, ponteiro)
+    }
+}
+
+/// Uma alça arrastável das guias: um ponto de fuga (`0..3`) ou a origem da iso.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Alca {
+    PontoDeFuga(usize),
+    OrigemIso,
+}
+
+/// As alças das guias `g`, com a posição em células (só as finitas).
+#[must_use]
+pub fn alcas(g: &Guias) -> Vec<(Alca, [f32; 2])> {
+    let pfs = (0..3).filter_map(|i| g.pontos_de_fuga[i].map(|p| (Alca::PontoDeFuga(i), p)));
+    pfs.chain(g.iso.map(|i| (Alca::OrigemIso, i.origem)))
+        .filter(|(_, p)| p.iter().all(|v| v.is_finite()))
+        .collect()
+}
+
+/// As guias `g` com a alça `a` posta em `p` (células). Mover um PF de 1 ou 2 pontos leva o
+/// horizonte com ele (os PF de perspectiva vivem no horizonte; o 3.º, o vertical, não).
+#[must_use]
+pub fn move_alca(g: &Guias, a: Alca, p: [f32; 2]) -> Guias {
+    let mut n = *g;
+    match a {
+        Alca::PontoDeFuga(i) => {
+            n.pontos_de_fuga[i] = Some(p);
+            if i < 2 && n.horizonte.is_some() {
+                n.horizonte = Some(p[1]);
+                for j in (0..2).filter(|j| *j != i) {
+                    if let Some(q) = n.pontos_de_fuga[j].as_mut() {
+                        q[1] = p[1];
+                    }
+                }
+            }
+        }
+        Alca::OrigemIso => {
+            if let Some(iso) = n.iso.as_mut() {
+                iso.origem = p;
+            }
+        }
+    }
+    n
 }

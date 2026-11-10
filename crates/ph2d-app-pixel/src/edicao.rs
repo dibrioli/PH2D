@@ -178,6 +178,7 @@ impl PixelApp {
             return;
         }
         let op = match a {
+            E::Guides(k) => ph2d_pixel_ponte::alcas::op_do_menu(s, k),
             E::FlipH => edit::flip(s, ck, true, bg),
             E::FlipV => edit::flip(s, ck, false, bg),
             E::Rotate180 => edit::rotate(s, ck, Rotation::R180, bg),

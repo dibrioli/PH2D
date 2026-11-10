@@ -9,7 +9,6 @@
 #![forbid(unsafe_code)]
 
 pub mod canal;
-pub mod crt;
 mod event;
 pub mod ids;
 mod paint;

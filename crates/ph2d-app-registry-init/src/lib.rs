@@ -72,6 +72,8 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     reg.push(ph2d_app_flip::FAMILY);
     #[cfg(feature = "app-game")]
     reg.push(ph2d_app_game::FAMILY);
+    #[cfg(feature = "app-input-map")]
+    reg.push(ph2d_app_input_map::FAMILY);
     #[cfg(feature = "app-kanban")]
     reg.push(ph2d_app_kanban::FAMILY);
     #[cfg(feature = "app-light2d")]

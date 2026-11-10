@@ -48,7 +48,12 @@ pub fn paint_doc(
         l.selector.w,
     );
     c.full(None, Widget::Choice(&segs), l.selector.y);
-    fill_rounded_rect(scene, l.body, m::CARD_RADIUS, ink.color(ColorToken::KanbanCard));
+    fill_rounded_rect(
+        scene,
+        l.body,
+        m::CARD_RADIUS,
+        ink.color(ColorToken::KanbanCard),
+    );
     match doc.view() {
         View::List => crate::view_list::paint(doc, l.body, scene, text, theme),
         View::Keyboard => crate::view_keyboard::paint(doc, l.body, scene, text, theme),
@@ -58,7 +63,12 @@ pub fn paint_doc(
 }
 
 /// A dica do segmento sob o ponteiro, por baixo dele.
-fn paint_hover_tip(doc: &InputMapDoc, scene: &mut VectorScene, text: &mut TextSystem, theme: Theme) {
+fn paint_hover_tip(
+    doc: &InputMapDoc,
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+) {
     let Some(v) = doc.hover else {
         return;
     };

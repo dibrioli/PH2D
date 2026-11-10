@@ -95,6 +95,14 @@ impl App {
         if self.new_sprite_dialog_keys(physical_key, state, kind, text.as_deref()) {
             return;
         }
+        // A tecla física da aba activa (plano InputMap §3): antes do jogo e de todo atalho.
+        if let PhysicalKey::Code(c) = physical_key
+            && let Some(k) = crate::keymap::winit_to_input_keycode(c)
+            && let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
+            && ph2d_app_input_map::surface_raw_key(h, k, state.is_pressed(), text.as_deref())
+        {
+            return;
+        }
 
         self.handler.on_key(KeyEvent {
             keycode,

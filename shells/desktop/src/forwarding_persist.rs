@@ -39,6 +39,7 @@ pub(super) fn prefs_if_changed(hero: &ph2d_editor_core::HeroScreen) {
         left_handed: hero.view.ui_mirrored,
         luz2d: hero.view.luz2d,
         recovery: ph2d_recovery::Period::from_secs(ph2d_editor_core::recovery_pref::secs()),
+        input_map_view: ph2d_app_input_map::view(hero),
     };
     let previous = LAST_PREFS.with(|c| c.replace(Some(now)));
     if crate::prefs::should_save(previous, now) {

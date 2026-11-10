@@ -20,7 +20,9 @@ pub fn lay_out(area: Rect, text: &mut TextSystem) -> Layout {
     let gap = m::CARD_GAP;
     let segs: f32 = View::ALL
         .iter()
-        .map(|v| text.prefix_width(ph2d_i18n::tr(v.label_key()), m::SEG_TEXT_PX) + m::SEG_INSET * 2.0)
+        .map(|v| {
+            text.prefix_width(ph2d_i18n::tr(v.label_key()), m::SEG_TEXT_PX) + m::SEG_INSET * 2.0
+        })
         .sum();
     let n = View::ALL.len() as f32;
     let w = (segs + m::SEG_PAD * (n + 1.0)).min(area.w - gap * 2.0);

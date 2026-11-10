@@ -29,6 +29,9 @@ ph2d-sfx-recipe = { path = "../../crates/ph2d-sfx-recipe", features = ["componen
 ph2d-sfx-scene = { path = "../../crates/ph2d-sfx-scene" }
 ph2d-app-physics = { path = "../../crates/ph2d-app-physics" }
 ph2d-app-sprite-anim = { path = "../../crates/ph2d-app-sprite-anim" }
+# A aba Input Map (`input_map/`): o menu, o seletor das vistas e a vista lembrada.
+ph2d-app-input-map = { path = "../../crates/ph2d-app-input-map" }
+ph2d-input = { path = "../../crates/ph2d-input" }
 ph2d-sprite-ase-import = { path = "../../crates/ph2d-sprite-ase-import" }
 ph2d-pixel-cena = { path = "../../crates/ph2d-pixel-cena" }
 ph2d-pixel-io = { path = "../../crates/ph2d-pixel-io" }

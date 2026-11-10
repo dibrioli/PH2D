@@ -1,0 +1,125 @@
+//! **Os gates da aba Input Map** (plano `docs/InputMap/01_plano.md` §3): o [`Mesa`] liga a família a um
+//! `HeroScreen` de teste e dirige-a pelas portas reais — o clique do menu, o `frame`, o `follow_surfaces`, a
+//! pintura e o ponteiro da aba activa. As ondas seguintes (A · List, B · Keyboard, C · Try it) usam-no.
+
+mod abrir;
+
+use ph2d_a11y::NodeId;
+use ph2d_app_input_map::{InputMapTab, TAB_ID, View};
+use ph2d_ecs::SimWorld;
+use ph2d_editor_core::doc_surface::{DocumentSurface, PointerInput};
+use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::zones::Rect;
+use ph2d_editor_core::{HeroScreen, ids};
+use ph2d_host::{Modifiers, PointerButton, PointerKind};
+use ph2d_text::TextSystem;
+use ph2d_tokens::Theme;
+use ph2d_vector::VectorScene;
+
+/// A janela do teste (a área central da aba).
+pub(super) const AREA: Rect = Rect {
+    x: 0.0,
+    y: 0.0,
+    w: 1600.0, // LITERAL-PX-OK: a janela do teste (plano §8)
+    h: 1000.0, // LITERAL-PX-OK: a janela do teste (plano §8)
+};
+
+pub(super) struct Mesa {
+    pub sim: SimWorld,
+    pub hero: HeroScreen,
+    pub ts: TextSystem,
+    /// Há um comando ligado (o que a shell passa ao `frame`).
+    pub gamepad: bool,
+}
+
+impl Mesa {
+    /// O herói com a família instalada na vista das prefs; a aba fechada.
+    pub fn new(view: View) -> Self {
+        let mut hero = HeroScreen::new(NodeId(1));
+        ph2d_app_input_map::install(&mut hero, view);
+        Self {
+            sim: SimWorld::new(),
+            hero,
+            ts: TextSystem::without_system_fonts(),
+            gamepad: false,
+        }
+    }
+
+    /// A mesa com a aba aberta pelo menu e pintada uma vez.
+    pub fn aberta(view: View) -> Self {
+        let mut m = Self::new(view);
+        m.menu();
+        m
+    }
+
+    /// Settings ▸ Input Map…, seguido do quadro (o `frame` da família e o `follow_surfaces` do hero).
+    pub fn menu(&mut self) {
+        let menu = WidgetEvent::Click(ids::CTX_MENU_SETTINGS_INPUT_MAP);
+        assert!(self.hero.apply_event(menu), "o menu tem de ser tomado");
+        self.frame();
+    }
+
+    /// Um quadro: a família, o hero a seguir as abas, a pintura da aba activa.
+    pub fn frame(&mut self) {
+        ph2d_app_input_map::frame(self.sim.world(), &mut self.hero, self.gamepad);
+        self.hero.documents.follow_surfaces();
+        self.paint();
+    }
+
+    pub fn paint(&mut self) {
+        let mut scene = VectorScene::new();
+        let ts = &mut self.ts;
+        if let Some((f, id)) = self.hero.documents.active_surface_mut() {
+            f.paint(id, AREA, &mut scene, ts, &Theme::default());
+        }
+    }
+
+    pub fn tab(&self) -> &InputMapTab {
+        self.hero
+            .documents
+            .surfaces()
+            .find::<InputMapTab>()
+            .expect("a família instalada")
+    }
+
+    /// A aba Input Map é a activa?
+    pub fn active(&self) -> bool {
+        self.hero.documents.surface_active().is_some_and(|t| {
+            t.id == TAB_ID
+                && self
+                    .hero
+                    .documents
+                    .surfaces()
+                    .tabs()
+                    .iter()
+                    .any(|(s, d)| *s == t && d.id == TAB_ID)
+        }) && self.tab().is_open()
+    }
+
+    /// Um clique primário em `(x, y)` pela porta da aba activa. Devolve se a aba o tomou.
+    pub fn click(&mut self, (x, y): (f32, f32)) -> bool {
+        let ts = &mut self.ts;
+        let Some((f, id)) = self.hero.documents.active_surface_mut() else {
+            return false;
+        };
+        let input = PointerInput {
+            text: ts,
+            mods: Modifiers::default(),
+            now_ns: 0,
+        };
+        let took = f.pointer(id, input, PointerKind::Down, PointerButton::Primary, x, y);
+        self.frame();
+        took
+    }
+
+    /// O centro do segmento da vista `v` (da última pintura).
+    pub fn segment(&self, v: View) -> (f32, f32) {
+        let r = self.tab().doc.segment_rect(v).expect("o segmento pintado");
+        (r.x + r.w * 0.5, r.y + r.h * 0.5)
+    }
+
+    /// O valor que a shell grava em `input_map_view=`.
+    pub fn pref(&self) -> &'static str {
+        ph2d_app_input_map::view(&self.hero).pref_key()
+    }
+}

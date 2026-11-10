@@ -13,6 +13,7 @@ mod comp;
 mod comum_luz;
 mod editor_animacoes;
 mod fisica_b4_inspector;
+mod input_map;
 mod jogo_arte;
 mod jogo_camara;
 mod jogo_camera_intuitiva;

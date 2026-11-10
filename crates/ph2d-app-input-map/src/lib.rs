@@ -17,10 +17,10 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     routers: &[],
 };
 
-/// Instala a família; `view` é a das prefs (`None` = a 1.ª vez: Keyboard).
-pub fn install(hero: &mut HeroScreen, view: Option<View>) {
+/// Instala a família; `view` é a das prefs (a de omissão, a 1.ª vez, é o Keyboard).
+pub fn install(hero: &mut HeroScreen, view: View) {
     hero.documents
-        .install_surface(Box::new(InputMapTab::new(view.unwrap_or_default())));
+        .install_surface(Box::new(InputMapTab::new(view)));
 }
 
 /// A vista escolhida — a que vai para `input_map_view=` nas prefs (a shell deriva-a, como as outras).
@@ -60,7 +60,12 @@ pub fn frame(world: &ph2d_ecs::World, hero: &mut HeroScreen, gamepad_connected: 
 /// `text` é o texto do evento. `true` = consumida.
 ///
 /// [`DocumentSurface::raw_key`]: ph2d_editor_core::doc_surface::DocumentSurface::raw_key
-pub fn surface_raw_key(hero: &mut HeroScreen, code: u32, pressed: bool, text: Option<&str>) -> bool {
+pub fn surface_raw_key(
+    hero: &mut HeroScreen,
+    code: u32,
+    pressed: bool,
+    text: Option<&str>,
+) -> bool {
     if !ph2d_editor_core::screens::hero::surface_input::owns_the_keyboard(Some(hero)) {
         return false;
     }

@@ -56,6 +56,8 @@ ph2d-physics-outline-vec = { path = "../../crates/ph2d-physics-outline-vec" }
 ph2d-app-components = { path = "../../crates/ph2d-app-components" }
 # A animação de sprite (tique, cartão Animation, editor) — GameEngineFuncional plano 07.
 ph2d-app-sprite-anim = { path = "../../crates/ph2d-app-sprite-anim" }
+# A aba Input Map (docs/InputMap/01_plano.md).
+ph2d-app-input-map = { path = "../../crates/ph2d-app-input-map" }
 # O Painter na folha extra visível (plano GEF 26 F13).
 ph2d-anim-sheets = { path = "../../crates/ph2d-anim-sheets" }
 # As MACROS (ADR-0186, W5d): Gravar ▸ Parar, as etapas e as edições delas.

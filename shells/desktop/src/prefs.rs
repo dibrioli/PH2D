@@ -24,6 +24,8 @@ pub struct Prefs {
     pub luz2d: ph2d_editor_core::luz_edits::PreferenciaDaLuz,
     /// O intervalo da cópia de recuperação (`recovery.minutes`, O15) — do artista e da máquina dele.
     pub recovery: ph2d_recovery::Period,
+    /// A última vista da aba Input Map (`input_map_view`); a de omissão (nunca escolhida) é o Keyboard.
+    pub input_map_view: ph2d_app_input_map::View,
 }
 
 /// `~/.ph2d/prefs.txt`, ou `None` com `$HOME` por definir (a persistência é então saltada).
@@ -38,7 +40,8 @@ fn prefs_file() -> Option<PathBuf> {
 pub fn serialize(p: &Prefs) -> String {
     format!(
         "# PH2D prefs\nmotion_character={}\nreduced_motion={}\nui_sound={}\nui_font={}\n\
-         ui_font_weight={}\nui_text_size={}\nui_scale={}\nleft_handed={}\nlight_quality={}\nlight_auto={}\nrecovery.minutes={}\n",
+         ui_font_weight={}\nui_text_size={}\nui_scale={}\nleft_handed={}\nlight_quality={}\nlight_auto={}\nrecovery.minutes={}\n\
+         input_map_view={}\n",
         p.character.wire(),
         u8::from(p.reduced_motion),
         u8::from(p.ui_sound),
@@ -50,6 +53,7 @@ pub fn serialize(p: &Prefs) -> String {
         p.luz2d.nivel.token(),
         u8::from(p.luz2d.automatica),
         p.recovery.to_minutes(),
+        p.input_map_view.pref_key(),
     )
 }
 
@@ -101,6 +105,11 @@ pub fn parse(text: &str) -> Prefs {
                 }
             }
             "light_auto" => p.luz2d.automatica = value.trim() == "1",
+            "input_map_view" => {
+                if let Some(v) = ph2d_app_input_map::View::from_pref_key(value) {
+                    p.input_map_view = v;
+                }
+            }
             "ui_scale" => {
                 if let Some(z) = ph2d_tokens::UiScale::from_wire(value.trim()) {
                     p.ui_scale = z;

@@ -674,3 +674,25 @@ ao soltar, pede `Edicao::Move` ⇒ um `SetAudio`. O px→ms é `som::ms_de`, o i
 
 **Fica:** o smoke do dono (ouvir o Play, arrastar a onda, scrub) e fmt/clippy no fecho. Os assets relativos
 continuam a resolver-se sem a pasta do projeto (`publica(.., None)`, como antes).
+
+### Cenas 28–36 (09/11, agente)
+
+Montagem em `ph2d-pixel-cenas::p13` (cena de base do roteador + `monta` no documento pela lei do núcleo + pedidos do
+painel; `conduz` abre Lint/Preview); na app +15 linhas (`smoke.rs`: `p13` e o braço `28..=36`). Sonda
+`a_sonda_das_cenas_28_a_36` (`shells/pixel-scenes/tests/it/cenas_p13.rs`, números em `target/sonda_p13.txt`), verde.
+Fotos 1600×900 olhadas: `docs/PixelArt/handoffs/smoke_P13_cena<n>_2026-11-09.png`. Commit `600e11afee`.
+
+| Cena | Base | Medido | Na foto |
+|---|---|---|---|
+| 28 Rampas | 3 (bola Indexed, Shading) | rampas Skin 5 · Water 4 · Leaf 6; ciclo 400 ms, 4 índices trocam por passo | bola + céu em faixas, Ink Shading; a faixa de rampas fica abaixo no cartão Palette (rolar) |
+| 29 Foto em paleta | `foto_p13` (hex da fixture R3) | paleta 18; Exact RGB usa 12 cores, Keep ramps 13; 292/4096 px diferem | as duas fotos lado a lado (esq. Exact RGB, dir. Keep ramps) |
+| 30 Dither e Push | 4 (gradiente) | Bayer4 16/32/48 de 64 ⇒ 264/528/792 de 1056 células por faixa; ferramenta Push | três faixas de dither; cartão «Push (R)» com Strength 255 |
+| 31 Luz na paleta | — | **fora** (`cena(31)` = None): o herói da 26 tem 2 cores, 0 rampas e 0 na paleta — a cena ensinaria o contrário | — |
+| 32 Guias | 4 | PF (−8,12) e (72,12), horizonte 12, iso origem (40,30) passo 4 | os raios dos dois PF e a grade iso por cima; a linha guiada e o bloco iso ficam pouco legíveis sob a grade |
+| 33 Lint | `vicios_p13` | 5 avisos em 5 grupos (Orfao, CantoDuplo, Degrau, Faixa, Almofada); o 6.º (Too many colors) só com Color limit ≤ 7 | janela LINT com as 6 regras e Issues |
+| 34 CRT | 26 | — | PIXEL PREVIEW com CRT marcado e os params; a Preview vazia («Select a Pixel Sprite in Draw…») até entrar em Draw no Hero |
+| 35 Contorno vivo | bola 32×32 | 1 efeito na camada; a cor (250,200,0) composta | contorno amarelo; ícone de efeito na linha Layer 1 (Layer Properties abre-se pelo dono) |
+| 36 Fala e tween | A/B a 48×16 | 5 quadros, centro x 5·7·24·40·42 (Ease In-Out); 1 faixa; WAV 26 504 B em `$TMPDIR/ph2d-p13-fala.wav` | 5 quadros na Timeline e a linha «ph2d-p13-fala.wav» com a onda |
+
+**Fica:** a 31 (rampas para o herói ou outra base com rampas + lâmpada); a 28 abrir o cartão Palette já rolado nas
+rampas; a 34 entrar em Draw no Hero para a Preview mostrar a CRT; na 32, aliviar a grade para a linha e o bloco se lerem.

@@ -36,3 +36,5 @@ numéricos e todos os acabamentos. Prompt: `docs/InputMap/handoffs/PROMPT_MISSAO
 Dono 10/11 (depois da onda 2): a letra da tecla fica parada no centro, numa plaquinha tipo adesivo; os traços das acções passam por trás dela.
 
 Dono 10/11: a lista pede hover e clique caprichados (linha, chips, ×, No key) — sem fade (D32).
+
+Dono 10/11: a tecla tem tamanho mínimo; abaixo dele o teclado rola na horizontal; o numérico nunca desce.

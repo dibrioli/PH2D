@@ -293,9 +293,12 @@ Tecla FÍSICA (o `KeyCode` do winit, nunca a lógica): o numérico liga igual co
   ⇲ End, ⇞ PgUp, ⇟ PgDn, ↵ Enter, ⌫ Backspace, ⇥ Tab, ⇪ Caps Lock, ⇧ Shift, ⎙ Print Screen) pintado como ícone
   vectorial (a fonte não tem os glifos). Glifo único a `VALUE_PX`, palavra a `LABEL_PX` (o menor texto do cartão,
   legível no modo de fábrica `CrispHeavyPlus`); ⛔ nada menor, ⛔ nunca elidir.
-- **Arranjo, medido:** `Wide` (a foto: numérico ao lado) se toda tecla tem legenda que cabe; senão `Narrow` (o
-  bloco do numérico, com a sua fila Home…PgDn, desce para baixo do principal, à esquerda das setas). Nunca
-  esconder tecla. A escolha é uma função pura da caixa e do texto (testada).
+- **Um arranjo só, passo mínimo medido (dono 10/11):** o numérico fica SEMPRE ao lado do principal (a foto) —
+  nunca desce. O passo da tecla não passa abaixo de `PITCH_FLOOR` = 31,5 px, medido por `measured_floor` nos dois
+  modos de texto (todo grupo com legenda que cabe e ≥ 2 px de barra à vista de cada lado da plaquinha; a tecla com
+  `KEY_MIN_H` e a proporção dela). Acima, o teclado enche a caixa; abaixo, fica nesse passo, recortado ao campo, e
+  rola na HORIZONTAL (polegar por baixo, Shift+roda, trackpad de lado, o Tab traz a tecla à vista), na B e na C.
+  Nunca esconder tecla. A escolha é uma função pura da caixa e do texto (`teclado_piso.rs`).
 - **Teclas do sistema** (`Key::system_owned`): apagadas, sem alvo de clique que ligue, o hover diz o porquê (a
   frase da B) e o cursor fica a seta. Num Lock desenha-se sem luz.
 - B e C usam o MESMO pintor. «Also:» só para o que não está no desenho.

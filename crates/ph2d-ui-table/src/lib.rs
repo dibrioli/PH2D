@@ -21,7 +21,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing};
 
-pub use marks::{paint_cell_frames, swatch_side};
+pub use marks::{paint_cell_frames, paint_row_frames, swatch_side};
 pub use paint::{
     CellText, UiText, changed_tint, ink_color, paint, paint_spark, spark_points, ui_font,
 };

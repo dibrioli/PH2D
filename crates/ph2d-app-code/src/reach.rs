@@ -218,6 +218,7 @@ impl CodeDoc {
     /// O rato mexeu-se para `(x, y)` (`inside` = dentro da aba): fora dela, ou por cima de algo que
     /// tapa o texto, ele não aponta nenhum nome.
     pub(crate) fn reach_mouse(&mut self, inside: bool, x: f32, y: f32) {
+        self.console_view.hover(x, y);
         self.reach.mouse = (inside && self.overlay_look(x, y).is_none()).then_some((x, y));
     }
 
@@ -231,12 +232,8 @@ impl CodeDoc {
         {
             return Some(PointerLook::Arrow);
         }
-        if let Some(h) = self.console_view.hit(x, y) {
-            return Some(if self.console_view.clickable(h) {
-                PointerLook::Hand
-            } else {
-                PointerLook::Arrow
-            });
+        if let Some(look) = self.console_view.look(x, y) {
+            return Some(look);
         }
         if let Some(look) = self.debug.view.look(x, y).or(self.view.bar_look(x, y)) {
             return Some(look);

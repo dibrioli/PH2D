@@ -146,6 +146,7 @@ impl Lint {
                     severity: Severity::Warning,
                     culprit: Some(l.bytes.clone()),
                     message: e.title(),
+                    on: String::new(),
                     explanation: Some(Explanation {
                         kind: e.kind.id(),
                         title: e.title(),
@@ -162,6 +163,7 @@ impl Lint {
                         severity: Severity::Warning,
                         culprit: Some(l.bytes.clone()),
                         message: l.explained.title(),
+                        on: String::new(),
                         explanation: Some(Explanation {
                             kind: l.explained.kind.id(),
                             title: l.explained.title(),

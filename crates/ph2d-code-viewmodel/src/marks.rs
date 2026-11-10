@@ -20,6 +20,8 @@ pub struct Problem {
     pub culprit: Option<Range<usize>>,
     pub message: String,
     pub explanation: Option<Explanation>,
+    /// Em quem aconteceu (os objectos do Play, «Hero, Hero 2 +1»); vazio = ninguém sabe («—»).
+    pub on: String,
 }
 
 /// A explicação de um problema (I8): o título numa linha e o porquê com o que fazer. `kind` é o nome

@@ -16,6 +16,7 @@ fn p(severity: Severity) -> Problem {
         severity,
         culprit: None,
         message: String::new(),
+        on: String::new(),
         explanation: None,
     }
 }

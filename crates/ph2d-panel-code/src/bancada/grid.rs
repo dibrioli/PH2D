@@ -317,7 +317,9 @@ impl BancadaView {
             return Some(PointerLook::ResizeEw);
         }
         if self.pop_rect.is_some_and(|r| r.contains(x, y)) {
-            return None;
+            // No balão, a mão nas linhas dos objectos e no «Select»; a seta no resto.
+            let over = |(a, r): &(Aim, Rect)| !matches!(a, Aim::Mark(_)) && r.contains(x, y);
+            return self.pop_hits.iter().any(over).then_some(PointerLook::Hand);
         }
         let p = self.painted.as_ref();
         let hit = p.and_then(|p| p.lay.hit(&p.rows, x, y));

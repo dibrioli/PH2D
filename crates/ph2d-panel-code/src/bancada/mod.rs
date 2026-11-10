@@ -86,6 +86,10 @@ pub struct BancadaView {
     console_hit: Option<(Aim, Rect)>,
     fold_rect: Rect,
     pop_rect: Option<Rect>,
+    /// A tabela do balão (o que ela acende) e as larguras dele, por marca (só crescem).
+    pop_table: ph2d_ui_table::TableState,
+    pop_steady: Option<(usize, ph2d_ui_table::StableWidths)>,
+    pop_painted: Option<(ph2d_ui_table::Layout, Vec<ph2d_ui_table::Row>)>,
     outline: outline::Scroll,
     /// A tabela da grelha: a rolagem, as larguras arrastadas e o que ela acende.
     table: ph2d_ui_table::TableState,
@@ -121,6 +125,9 @@ impl Default for BancadaView {
             console_hit: None,
             fold_rect: crate::chrome::NO_RECT,
             pop_rect: None,
+            pop_table: ph2d_ui_table::TableState::default(),
+            pop_steady: None,
+            pop_painted: None,
             outline: outline::Scroll::default(),
             table: ph2d_ui_table::TableState::default(),
             steady: ph2d_ui_table::StableWidths::default(),

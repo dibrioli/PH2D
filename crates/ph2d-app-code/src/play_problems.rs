@@ -4,38 +4,34 @@
 //! tom é o mais grave dos dois. Os outros viram linhas próprias, explicadas pelo `ph2d-code-explain`
 //! como as do texto. A barra de estado e o título dos Problems contam ESTA lista.
 
-use crate::console::{NAMES_SHOWN, PlayProblem};
+use crate::console::PlayProblem;
 use ph2d_i18n::tr_with;
 use ph2d_panel_code::Problem;
 
-/// «Circle, Star, Hexagon» ou «Circle, Star, Hexagon +2 more»; `None` sem objectos (o topo do script).
-fn who(p: &PlayProblem) -> Option<String> {
-    if p.names.is_empty() {
-        return None;
-    }
-    let names = p.names[..p.names.len().min(NAMES_SHOWN)].join(", ");
-    Some(match p.more() {
+/// Os nomes que o «On» mostra; o resto conta-se.
+const ON_SHOWN: usize = 2;
+
+/// O «On»: «Circle», «Circle, Star» ou «Circle, Star +1»; vazio sem objectos (o topo do script).
+fn who(p: &PlayProblem) -> String {
+    let rest = p.names.len().saturating_sub(ON_SHOWN) + p.more();
+    let names = p.names[..p.names.len().min(ON_SHOWN)].join(", ");
+    match rest {
         0 => names,
         n => tr_with("code.problems.more", &[("names", &names), ("count", &n)]),
-    })
+    }
 }
 
-/// `text` com o sufixo do Play: os objectos e o «×N» (só com N > 1); `merged` = funde-se num
-/// problema do texto (o sufixo diz «in Play»).
+/// `text` com o sufixo do Play: o «×N» (só com N > 1); `merged` = funde-se num problema do texto
+/// (o sufixo diz «in Play»). Os objectos vão ao `Problem.on`.
 fn with_play(text: &str, p: &PlayProblem, merged: bool) -> String {
     let n = p.count;
-    let key = match (who(p).is_some(), n > 1, merged) {
-        (true, false, false) => "code.problems.on_objects",
-        (true, true, false) => "code.problems.on_objects_times",
-        (true, false, true) => "code.problems.on_objects_in_play",
-        (true, true, true) => "code.problems.on_objects_times_in_play",
-        (false, true, false) => "code.problems.times",
-        (false, false, true) => "code.problems.in_play",
-        (false, true, true) => "code.problems.times_in_play",
-        (false, false, false) => return text.to_owned(),
+    let key = match (n > 1, merged) {
+        (true, false) => "code.problems.times",
+        (false, true) => "code.problems.in_play",
+        (true, true) => "code.problems.times_in_play",
+        (false, false) => return text.to_owned(),
     };
-    let who = who(p).unwrap_or_default();
-    tr_with(key, &[("text", &text), ("who", &who), ("count", &n)])
+    tr_with(key, &[("text", &text), ("count", &n)])
 }
 
 /// O texto que a lista mostra de um problema (o título da explicação, ou a mensagem crua).
@@ -51,6 +47,7 @@ fn shown(p: &Problem) -> &str {
 /// Põe o sufixo do Play no que a lista mostra de `p`.
 fn suffix(p: &mut Problem, play: &PlayProblem, merged: bool) {
     let text = with_play(shown(p), play, merged);
+    p.on = who(play);
     match &mut p.explanation {
         Some(e) => e.title = text,
         None => p.message = text,
@@ -80,6 +77,7 @@ pub(crate) fn merge(mut stat: Vec<Problem>, play: &[PlayProblem]) -> Vec<Problem
             culprit: None,
             message: g.message.clone(),
             explanation: crate::note::explanation(&g.message),
+            on: String::new(),
         };
         suffix(&mut p, g, false);
         stat.push(p);

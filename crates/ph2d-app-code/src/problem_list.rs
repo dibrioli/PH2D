@@ -59,6 +59,7 @@ pub(crate) fn row(p: &Problem) -> ProblemRow<'_> {
         severity: p.severity,
         text: text(p),
         line: p.line + 1,
+        on: &p.on,
     }
 }
 

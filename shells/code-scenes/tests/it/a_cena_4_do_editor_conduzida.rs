@@ -204,9 +204,8 @@ fn confere(p: &mut Palco, passo: usize, buracos: &[Range<usize>]) {
                     (
                         Severity::Error,
                         // Onda A (`13_plano_bancada.md` §1): o erro do Play na MESMA linha
-                        // funde-se no do texto, e o sufixo diz quem e quantas vezes.
-                        "\u{201c}math\u{201d} has no \u{201c}sinn\u{201d} \u{2014} on Hexagon, \
-                         Star, Circle \u{b7} \u{d7}3 in Play"
+                        // funde-se no do texto, e o sufixo diz quantas vezes (em quem: o «On»).
+                        "\u{201c}math\u{201d} has no \u{201c}sinn\u{201d} \u{2014} \u{d7}3 in Play"
                             .into(),
                         erro
                     ),

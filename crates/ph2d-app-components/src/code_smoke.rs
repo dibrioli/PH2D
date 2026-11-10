@@ -39,8 +39,8 @@
 //! - **10** — um script que mexe no Kanban do projecto (`ph2d.kanban`): [`kanban`].
 //! - **11** — um problema, um lugar (Onda A, doc 13 §4.1–2): as três formas correm o
 //!   [`ONDA_A_LUAU`]: cada segundo cada uma imprime as moedas (o Console diz «Circle · 0:01»); aos 3 s
-//!   o `self.sped` pára as três e os Problems mostram UMA linha com os três nomes e «×3», fundida com
-//!   o aviso do texto da mesma linha.
+//!   o `self.sped` pára as três e os Problems mostram UMA linha com «×3» e, no «On», dois nomes e a
+//!   conta, fundida com o aviso do texto da mesma linha.
 //! - **13** — a Bancada (Onda B, doc 13 §4 itens 6–10): [`ph2d_code_scenes::bancada`].
 //! - **12** — o depurador (Onda D, doc 13 §4): as três formas correm o [`DEPURA_LUAU`], aberto numa
 //!   aba com um ponto de parada já posto (o condutor põe-no); o jogo pára no Circle, o Continue passa
@@ -188,8 +188,8 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
         println!(
             "[code-smoke] =11 {} formas: o círculo, a estrela e o hexágono correm o onda_a.luau, já \
              aberto numa aba. Play: cada segundo o Console mostra «coins: N» com «Circle · 0:01»; aos \
-             3 s as três param e os Problems abrem com UMA linha: «… — on Circle, Star, Hexagon · ×3 \
-             in Play».",
+             3 s as três param e os Problems abrem com UMA linha: «… — ×3 in Play», On «Circle, \
+             Star +1».",
             formas.len()
         );
         return None;

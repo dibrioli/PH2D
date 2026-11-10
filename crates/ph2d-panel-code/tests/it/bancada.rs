@@ -3,6 +3,7 @@
 //! espiar, a dobra — sobre os alvos que a própria pintura deixou. As funções puras e as marcas da
 //! margem do código moram em [`puras`].
 
+mod balao;
 mod grelha;
 mod puras;
 

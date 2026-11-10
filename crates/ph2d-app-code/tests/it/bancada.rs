@@ -1244,6 +1244,7 @@ fn problemas_por_quadro() {
                         severity: ph2d_panel_code::Severity::Warning,
                         culprit: Some(b.clone()),
                         message: e.title(),
+                        on: String::new(),
                         explanation: Some(Explanation {
                             kind: e.kind.id(),
                             title: e.title(),

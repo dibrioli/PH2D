@@ -73,16 +73,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.band.problems" => "Problems",
         "code.band.problems_count" => "Problems ({count})",
         "code.problems.empty" => "No problems in this script.",
-        "code.problems.line" => "Line {line}",
-        // Onda A (doc 13 §4.1): um problema do Play — os objectos onde aconteceu e quantas vezes.
-        "code.problems.on_objects" => "{text} — on {who}",
-        "code.problems.on_objects_times" => "{text} — on {who} · ×{count}",
+        // As colunas da lista (plano 14 Q4 C); «On» = os objectos onde o Play o viu.
+        "code.problems.col.problem" => "Problem",
+        "code.problems.col.on" => "On",
+        "code.problems.col.line" => "Line",
+        "code.problems.on_none" => "\u{2014}",
+        // Onda A (doc 13 §4.1): um problema do Play — quantas vezes, e se se fundiu num do texto.
         "code.problems.times" => "{text} · ×{count}",
-        "code.problems.on_objects_in_play" => "{text} — on {who} in Play",
-        "code.problems.on_objects_times_in_play" => "{text} — on {who} · ×{count} in Play",
         "code.problems.in_play" => "{text} — in Play",
         "code.problems.times_in_play" => "{text} — ×{count} in Play",
-        "code.problems.more" => "{names} +{count} more",
+        "code.problems.more" => "{names} +{count}",
         // Onda A (doc 13 §4.2): quem disse o `print` e quando (o relógio do jogo).
         "code.console.tag" => "{who} · {time}",
         "code.console.time" => "{min}:{sec}",

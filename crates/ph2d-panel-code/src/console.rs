@@ -116,10 +116,8 @@ pub struct ConsoleView {
     problem_total: usize,
     /// Quantas linhas do console acima do fim (0 = a mais recente à vista).
     back: usize,
-    /// A 1.ª linha da lista de problemas à vista.
-    top: usize,
-    /// A linha realçada no último quadro (uma nova rola-se para a vista).
-    last_current: Option<usize>,
+    /// A tabela da lista de problemas.
+    list: problems::Table,
     /// «Hero · 0:12» de cada linha pintada: o índice e a caixa (o pairar acende o objecto).
     tags: Vec<(usize, Rect)>,
 }
@@ -140,8 +138,7 @@ impl Default for ConsoleView {
             empty: None,
             problem_total: 0,
             back: 0,
-            top: 0,
-            last_current: None,
+            list: problems::Table::default(),
         }
     }
 }
@@ -192,11 +189,7 @@ impl ConsoleView {
     pub fn scroll_by(&mut self, dy: f32, total: usize) {
         let n = (dy / row_h()).round() as isize;
         if self.tab == BandTab::Problems {
-            self.top = ph2d_editor_core::math::safe_clamp_ord(
-                self.top as isize - n,
-                0,
-                self.problem_total.saturating_sub(1) as isize,
-            ) as usize;
+            self.list.scroll_by(dy);
             return;
         }
         self.back = ph2d_editor_core::math::safe_clamp_ord(
@@ -226,6 +219,7 @@ impl ConsoleView {
         self.rows.clear();
         self.problems.clear();
         self.empty = None;
+        self.list.painted = None;
         chrome::panel_bg(scene, area, &ui, false);
         let pad = Spacing::Sm.px();
         self.header = Rect::new(area.x, area.y, area.w, ROW_H_PX.min(area.h));

@@ -23,6 +23,16 @@ impl Layout {
         Some(inset(r, Spacing::Xxs.px()))
     }
 
+    /// A linha `row` (chave) das colunas à vista, recuada `Spacing::Xxs`: a moldura da linha.
+    #[must_use]
+    pub fn row_frame(&self, rows: &[Row], row: &str) -> Option<Rect> {
+        let i = rows.iter().position(|r| r.key == row)?;
+        let span = self.rows.iter().find(|s| s.index == i)?;
+        let (a, b) = (self.cols.first()?, self.cols.last()?);
+        let r = Rect::new(a.x, span.rect.y, b.x + b.w - a.x, span.rect.h);
+        Some(inset(r, Spacing::Xxs.px()))
+    }
+
     /// A coluna `col` no corpo inteiro (a banda da coluna acesa).
     #[must_use]
     pub fn col_band(&self, col: &str) -> Option<Rect> {
@@ -52,11 +62,47 @@ pub fn paint_cell_frames(
 ) {
     let radius = frame_radius(theme, Radius::Sm.px());
     let at = |(row, col): (&str, &str)| lay.cell_frame(rows, row, col);
-    if let Some(r) = pressed.and_then(at) {
-        let ink = resolve(ColorToken::Accent, theme);
-        stroke_rounded_rect(scene, r, radius, StrokeToken::Thick.px(), ink);
-    } else if let Some(r) = hover.and_then(at) {
-        let ink = resolve(ColorToken::BorderStrong, theme);
-        stroke_rounded_rect(scene, r, radius, StrokeToken::Thin.px(), ink);
-    }
+    frames(
+        hover.and_then(at),
+        pressed.and_then(at),
+        radius,
+        scene,
+        theme,
+    );
+}
+
+/// A moldura da LINHA debaixo do rato e da premida (chave da linha), como [`paint_cell_frames`]:
+/// das colunas à vista, sem a calha da barra.
+pub fn paint_row_frames(
+    lay: &Layout,
+    rows: &[Row],
+    hover: Option<&str>,
+    pressed: Option<&str>,
+    scene: &mut VectorScene,
+    theme: Theme,
+) {
+    let radius = frame_radius(theme, Radius::Sm.px());
+    let at = |row: &str| lay.row_frame(rows, row);
+    frames(
+        hover.and_then(at),
+        pressed.and_then(at),
+        radius,
+        scene,
+        theme,
+    );
+}
+
+fn frames(
+    hover: Option<Rect>,
+    pressed: Option<Rect>,
+    radius: f32,
+    scene: &mut VectorScene,
+    theme: Theme,
+) {
+    let (r, token, stroke) = match (pressed, hover) {
+        (Some(r), _) => (r, ColorToken::Accent, StrokeToken::Thick),
+        (None, Some(r)) => (r, ColorToken::BorderStrong, StrokeToken::Thin),
+        (None, None) => return,
+    };
+    stroke_rounded_rect(scene, r, radius, stroke.px(), resolve(token, theme));
 }

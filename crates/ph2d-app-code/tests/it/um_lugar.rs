@@ -40,10 +40,12 @@ fn tres_objectos_o_mesmo_erro_uma_linha_com_os_tres_nomes() {
     let shown = p.explanation.as_ref().map_or(&p.message, |e| &e.title);
     assert_eq!(p.line, 2, "{ps:?}");
     assert_eq!(p.severity, Severity::Error);
+    // Plano 14 Q4 C: em quem vai à coluna «On» (dois nomes e a conta); o texto guarda o «×3».
     assert!(
-        shown.ends_with("— on Circle, Star, Hexagon · ×3"),
+        shown.ends_with(" · ×3") && !shown.contains("Circle"),
         "{shown}"
     );
+    assert_eq!(p.on, "Circle, Star +1");
     assert!(
         m.docs().console_texts(id).is_empty(),
         "nenhum erro no console"
@@ -82,7 +84,8 @@ fn o_aviso_do_texto_e_o_erro_do_play_na_mesma_linha_sao_uma() {
         .as_ref()
         .map_or(&antes[0].message, |e| &e.title);
     assert!(shown.starts_with(causa.as_str()), "{shown} ⊄ {causa}");
-    assert!(shown.ends_with("— on Circle, Star · ×2 in Play"), "{shown}");
+    assert!(shown.ends_with("— ×2 in Play"), "{shown}");
+    assert_eq!(p.on, "Circle, Star");
     assert_eq!(p.severity, Severity::Error);
     m.pinta(id);
     assert_eq!(
@@ -253,10 +256,7 @@ fn o_erro_do_play_some_ao_consertar_a_linha_e_volta_ao_desfazer() {
     let ps = mostrados(&mut m, id);
     assert_eq!(ps.len(), 1, "{ps:?}");
     assert_eq!(ps[0].0, 3);
-    assert!(
-        ps[0].1.ends_with("— on Circle, Star · ×2 in Play"),
-        "{ps:?}"
-    );
+    assert!(ps[0].1.ends_with("— ×2 in Play"), "{ps:?}");
 }
 
 /// ⭐ Uma linha nova ACIMA (sem salvar) leva o erro do Play com o texto: segue para a linha 4,
@@ -274,8 +274,5 @@ fn uma_linha_acima_leva_o_erro_do_play_para_baixo() {
     let ps = mostrados(&mut m, id);
     assert_eq!(ps.len(), 1, "{ps:?}");
     assert_eq!(ps[0].0, 4, "seguiu o texto: {ps:?}");
-    assert!(
-        ps[0].1.ends_with("— on Circle, Star · ×2 in Play"),
-        "{ps:?}"
-    );
+    assert!(ps[0].1.ends_with("— ×2 in Play"), "{ps:?}");
 }

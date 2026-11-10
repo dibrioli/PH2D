@@ -11,6 +11,7 @@ mod ligaduras;
 mod medicoes_do_fecho;
 mod opcoes_do_script;
 mod pagina;
+mod problemas;
 mod quadro_do_depurador;
 mod sublinhado;
 mod valores_ao_vivo;

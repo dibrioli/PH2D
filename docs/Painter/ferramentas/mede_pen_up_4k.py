@@ -285,8 +285,94 @@ def lote(pasta):
               f"| {meta['teclas']} | {meta['carga']} | {fmt(pd)} | {fmt(so)} | {fmt(pa)} |")
 
 
+def amostras(perf):
+    """(fio, ns mono, ciclos) de cada amostra cycles:u do `perf record` (CICLOS=1); fio = «principal» (tid = pid),
+    o nome do fio (`ph2d-wet-otica`, `ph2d-wet-sim`, `Vello`…) ou «rayon» (os sem nome herdam o do processo)."""
+    out = subprocess.run(["perf", "script", "-i", perf, "-F", "pid,tid,comm,time,period", "--ns"],
+                         capture_output=True, text=True).stdout
+    r, nomes = [], {}
+    for l in out.splitlines():
+        p = l.split()
+        if len(p) < 4 or not p[-2].endswith(":") or "/" not in p[-3]:
+            continue
+        pid, tid = (int(x) for x in p[-3].split("/"))
+        nome = " ".join(p[:-3])
+        if pid == tid:
+            nomes[pid] = nome
+        r.append((pid, tid, nome, int(round(float(p[-2][:-1]) * 1e9)), int(p[-1])))
+    # O nome do processo é o do BINÁRIO (`antes`, `head_…`): o fio sem nome próprio tem-no também.
+    return [("principal" if pid == tid else ("rayon" if nome == nomes.get(pid) else nome), t, c)
+            for pid, tid, nome, t, c in r]
+
+
+def ciclos(pasta):
+    """`--ciclos <SAIDA>` (o lote com CICLOS=1): o veredito com load > 5. Óleo: G ciclos por fio na cena inteira e
+    M ciclos da principal por quadro. wet6: M ciclos da principal no pen-down (toque → 1.º movimento + 150 ms) e,
+    nos 3 s depois de soltar, G ciclos de todos os fios, do `ph2d-wet-otica` e M ciclos do `ph2d-wet-sim` por passo
+    da água (`TAXA DA AGUA`)."""
+    import glob
+    import json
+    import os
+    import re
+
+    print("| corrida | carga | G ciclos: principal · rayon · otica · sim · todos | M ciclos/quadro principal |")
+    print("|---|---|---|---|")
+    for d in sorted(glob.glob(os.path.join(pasta, "lote", "*_*"))):
+        f = os.path.join(d, "oleo_2880.perf")
+        if not os.path.exists(f):
+            continue
+        a = amostras(f)
+        g = lambda fio: sum(c for x, _, c in a if fio is None or x == fio) / 1e9
+        quadros = sum(int(m[1]) for m in (re.search(r"quadros +(\d+)", l) for l in
+                      open(os.path.join(d, "oleo_2880.log"), errors="replace") if l.startswith("[fps] rodada")) if m)
+        carga = " → ".join(l.split()[0] for l in open(os.path.join(d, "carga_oleo")))
+        print(f"| {os.path.basename(d)} | {carga} | {g('principal'):.1f} · {g('rayon'):.1f} · "
+              f"{g('ph2d-wet-otica'):.1f} · {g('ph2d-wet-sim'):.1f} · {g(None):.1f} | "
+              f"{g('principal') * 1e3 / max(quadros, 1):.1f} ({quadros} q) |")
+    print("\n| corrida | pincel | `]` | carga | pen-down M ciclos principal ×6 | soltar 3 s G todos ×6 "
+          "| soltar 3 s G otica ×6 | M ciclos sim/passo ×6 |\n|---|---|---|---|---|---|---|---|")
+    for meta_f in sorted(glob.glob(os.path.join(pasta, "wet6", "*.meta"))):
+        tag = meta_f[:-5]
+        if not os.path.exists(tag + ".perf"):
+            continue
+        meta = json.loads(open(meta_f).read())
+        linhas = [l.split() for l in open(tag + ".marcas")]
+        rel = next((p for p in linhas if p[0] == "relogio"), None)
+        if not rel:
+            continue
+        off = int(rel[1]) - int(rel[2])
+        m = {p[0]: int(p[1]) - off for p in linhas if len(p) >= 2 and p[0] != "relogio"}
+        a = amostras(tag + ".perf")
+        janela = lambda t0, t1, fio=None: sum(c for x, t, c in a if t0 < t <= t1 and (fio is None or x == fio))
+        passos, ultimo = [], 0
+        for linha in open(tag + ".log", errors="replace"):
+            if linha.startswith("[quadro-lento]"):
+                ultimo = int(dict(kv.split("=") for kv in linha.split()[1:])["parede"]) - off
+            elif "TAXA DA AGUA" in linha and ultimo:
+                q = re.search(r"\((\d+) passos em", linha)
+                if q:
+                    passos.append((ultimo, int(q[1])))
+        pd, so, ot, sp = [], [], [], []
+        for t in range(1, 7):
+            if f"fim{t}" not in m:
+                break
+            pd.append(janela(m[f"down{t}"], m[f"traco{t}"] + 150_000_000, "principal") / 1e6)
+            so.append(janela(m[f"up{t}"], m[f"fim{t}"]) / 1e9)
+            ot.append(janela(m[f"up{t}"], m[f"fim{t}"], "ph2d-wet-otica") / 1e9)
+            n = sum(k for p, k in passos if m[f"up{t}"] < p <= m[f"fim{t}"])
+            sp.append(janela(m[f"up{t}"], m[f"fim{t}"], "ph2d-wet-sim") / 1e6 / n if n else None)
+        fmt = lambda v, k=1: " · ".join("—" if x is None else f"{x:.{k}f}" for x in v)
+        b = os.path.basename(tag).split("_")
+        print(f"| {b[0]}_{b[1]} | {meta['pincel']} | {meta['teclas']} | {meta['carga']} | {fmt(pd, 0)} | {fmt(so, 2)} "
+              f"| {fmt(ot, 2)} | {fmt(sp)} |")
+
+
 if len(sys.argv) > 1 and sys.argv[1] == "--lote":
     lote(sys.argv[2])
+    sys.exit(0)
+
+if len(sys.argv) > 1 and sys.argv[1] == "--ciclos":
+    ciclos(sys.argv[2])
     sys.exit(0)
 
 if len(sys.argv) > 1 and sys.argv[1] == "--perf":

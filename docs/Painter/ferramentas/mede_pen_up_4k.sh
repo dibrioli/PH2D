@@ -394,12 +394,17 @@ if [ "$1" = wet6 ]; then
   printf '{"pincel":"%s","teclas":%s,"tela":"%s","bin":"%s","carga":"%s"}\n' "$PIN" "$TECLAS" "$TELA" "$BIN" \
     "$(cut -d' ' -f1-3 /proc/loadavg)" > "$W6/$TAG.meta"
   : > "$W6/$TAG.marcas"
+  # CICLOS=1 (B14b-cont): o perf ABRE o app e conta cycles:u por fio (o veredito com load > 5); a 1.ª marca é o par
+  # (mono, parede) que passa as marcas ao relógio do perf.
+  PREF=(); [ -n "$CICLOS" ] && PREF=(perf record -e cycles:u -k CLOCK_MONOTONIC -F 997 -o "$W6/$TAG.perf" --)
+  python3 -c 'import time;print("relogio", time.time_ns(), time.monotonic_ns())' >> "$W6/$TAG.marcas"
   env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$W6/home_$TAG PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PAINEL=wet \
-    PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=0 PH2D_EXIT_AFTER_FRAMES=1000000 "${PLACA_ENV[@]}" "${EXTRA[@]}" "$BIN" \
-    > "$W6/$TAG.log" 2>&1 &
-  APP=$!; WIN=
+    PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=0 PH2D_EXIT_AFTER_FRAMES=1000000 "${PLACA_ENV[@]}" "${EXTRA[@]}" \
+    "${PREF[@]}" "$BIN" > "$W6/$TAG.log" 2>&1 &
+  APP=$!; PAI=$APP; WIN=
+  [ -n "$CICLOS" ] && for _ in $(seq 1 40); do F=$(pgrep -P $PAI | head -1); [ -n "$F" ] && APP=$F && break; sleep 0.1; done
   marca() { echo "$1 $(date +%s%N) $(awk '{print $14+$15}' /proc/$APP/stat 2>/dev/null)" >> "$W6/$TAG.marcas"; }
-  for _ in $(seq 1 120); do
+  for _ in $(seq 1 360); do
     grep -q "pilha armada" "$W6/$TAG.log" && WIN=$(DISPLAY=$D xdotool search --pid $APP 2>/dev/null | tail -1)
     [ -n "$WIN" ] && break; sleep 0.5
   done
@@ -421,13 +426,14 @@ if [ "$1" = wet6 ]; then
   fi
   kill -INT $APP 2>/dev/null
   for _ in $(seq 1 40); do kill -0 $APP 2>/dev/null || break; sleep 0.25; done
-  kill -KILL $APP 2>/dev/null; wait $APP 2>/dev/null; kill $XV
+  kill -KILL $APP 2>/dev/null; wait $PAI 2>/dev/null; kill $XV
   exit 0
 fi
 
 # ── LOTE (B14b-cont, 10/11): o único lote de medição da onda, A × B INTERCALADOS (rodada i: A depois B, rodada i+1
 # a mesma ordem; nunca todos os A primeiro): `oleo 2880` (B14.2) · wet6 Wet Round e Wet Wash (B12.5) · wet6 Wet Wash
-# com TECLAS_AGUADA `]` (B11.1). Cada corrida grava o load. uso: … mede_pen_up_4k.sh lote <rodadas> <binA> <binB>
+# com TECLAS_AGUADA `]` (B11.1). Cada corrida grava o load; CICLOS=1 grava também o perf (cycles:u por fio, o
+# veredito com load > 5). uso: … mede_pen_up_4k.sh lote <rodadas> <binA> <binB>
 # Saída: $S/lote/<A|B>_<i>/oleo_2880.log e $S/wet6/<A|B>_<i>_*.{log,marcas,meta}; resumo: mede_pen_up_4k.py --lote $S
 if [ "$1" = lote ]; then
   N=${2:-2}; BA=$3; BB=$4; AG=${TECLAS_AGUADA:-20}
@@ -456,13 +462,15 @@ if [ "$1" = oleo ]; then
   sleep 1
   cd "$R"
   L=$S/oleo_$LADO.log
+  PREF=(); [ -n "$CICLOS" ] && PREF=(perf record -e cycles:u -k CLOCK_MONOTONIC -F 997 -o "$S/oleo_$LADO.perf" --)
   env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$S/home_oleo_$LADO PH2D_WETPAINT_SMOKE=3 PH2D_FPS_OLEO=1 PH2D_FPS_TELA=$LADO \
-    PH2D_EXIT_AFTER_FRAMES=1000000 "${PLACA_ENV[@]}" "$BIN" > "$L" 2>&1 &
-  APP=$!
+    PH2D_EXIT_AFTER_FRAMES=1000000 "${PLACA_ENV[@]}" "${PREF[@]}" "$BIN" > "$L" 2>&1 &
+  APP=$!; PAI=$APP
+  [ -n "$CICLOS" ] && for _ in $(seq 1 40); do F=$(pgrep -P $PAI | head -1); [ -n "$F" ] && APP=$F && break; sleep 0.1; done
   for _ in $(seq 1 360); do grep -q "^\[fps\] ===" "$L" && break; kill -0 $APP 2>/dev/null || break; sleep 0.5; done
   sleep 1; kill -INT $APP 2>/dev/null
   for _ in $(seq 1 40); do kill -0 $APP 2>/dev/null || break; sleep 0.25; done
-  kill -KILL $APP 2>/dev/null; wait $APP 2>/dev/null; kill $XV
+  kill -KILL $APP 2>/dev/null; wait $PAI 2>/dev/null; kill $XV
   grep "^\[fps\]" "$L"
   exit 0
 fi

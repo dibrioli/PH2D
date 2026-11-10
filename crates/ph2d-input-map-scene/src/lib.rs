@@ -4,7 +4,7 @@
 //! o aviso âmbar da B4) e o estado da aba de cada cena, posto pelas portas `InputMapDoc::smoke_*`. A shell compõe:
 //! acha a aba, chama [`arma`], instala o mapa e pede a aba (`request_input_map_tab`, o caminho do menu).
 //!
-//! **Numeração** (contada no roteiro, `CENAS` = 18; uma cena nova conta-o de novo e entra ao fim de [`CODIGOS`]):
+//! **Numeração** (contada no roteiro, `CENAS` = 19; uma cena nova conta-o de novo e entra ao fim de [`CODIGOS`]):
 //!
 //! | `PH2D_GAME_SMOKE` | Cena | Estado |
 //! |---|---|---|
@@ -21,6 +21,7 @@
 //! | 16 | C3 | Try it: a manche esquerda a −0.62 ([`manche`], só no smoke): Pushed 0.62 · Strength 0.55 · Pressed |
 //! | 17 | C4 | Try it: «Players can change keys», só [`NA_TELA`] no jogo, um ficheiro do jogador com 1 troca |
 //! | 18 | P1 | Play (com `PH2D_GAME_SMOKE_DRIVE=editor`): a tela Controls aberta, Fire, 2.ª tecla à escuta ([`tecla_do_p1`]) |
+//! | 19 | B5 | Keyboard: o numérico — fire também no Numpad 0, move_up no Numpad 8; fire aberto, o ponteiro no Numpad 0 |
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{ActionEdge, ActionTriggerRow, Entity, Name, SignalOnAction, SimWorld, Transform};
@@ -34,12 +35,12 @@ use ph2d_script::{LuauScript, ProjectScripts};
 pub const PRIMEIRA: u32 = 6;
 
 /// O código de cada cena, pela ordem do roteiro.
-pub const CODIGOS: [&str; 13] = [
-    "A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4", "C1", "C2", "C3", "C4", "P1",
+pub const CODIGOS: [&str; 14] = [
+    "A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4", "C1", "C2", "C3", "C4", "P1", "B5",
 ];
 
 /// O que cada cena mostra (o terminal do smoke).
-const O_QUE: [&str; 13] = [
+const O_QUE: [&str; 14] = [
     "A · List: as 11 acções do dono (fábrica + fire J, reload sem tecla, laser H)",
     "A · List: a escutar no reload (o chip tracejado espera a próxima tecla)",
     "A · List: busca pela seta ↑ (só jump e move_up; o pé diz quem as lê)",
@@ -53,6 +54,7 @@ const O_QUE: [&str; 13] = [
     "C · Try it: a manche esquerda a 0.62 para a esquerda (Pushed 0.62 · Strength 0.55 · Pressed)",
     "C · Try it: a tela do jogador (Players can change keys; jump, move_left e fire à vista; 1 tecla trocada)",
     "P · Play: a tela Controls aberta no jogo, à escuta na 2.ª tecla do Fire (`PH2D_GAME_SMOKE_DRIVE=editor`)",
+    "B · Keyboard: o numérico (fire também no Numpad 0, move_up no Numpad 8; fire aberto, o ponteiro no Numpad 0)",
 ];
 
 /// A manche esquerda das cenas C3: empurrada a 0.62 para a esquerda (maquete C·3: força (0.62 − 0.15) ÷ 0.85).
@@ -188,6 +190,18 @@ pub fn arma(doc: &mut InputMapDoc, cena: &str) -> Option<InputMap> {
             doc.smoke_sub(Sub::Gamepad);
         }
         "B4" => doc.smoke_open(reload),
+        "B5" => {
+            let kp = |n: &str| Key::named_in_script(n).map(|v| v[0]);
+            for (action, key) in [("fire", kp("kp0")), ("move_up", kp("kp8"))] {
+                if let (Some(a), Some(k)) = (map.id(action), key)
+                    && let Some(act) = map.get_mut(a)
+                {
+                    act.bindings.push(Binding::Key(k));
+                }
+            }
+            doc.smoke_open(map.id("fire"));
+            doc.smoke_hover_key(kp("kp0"));
+        }
         _ => {}
     }
     Some(map)

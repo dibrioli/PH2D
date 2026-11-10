@@ -20,7 +20,7 @@ use ph2d_render::{
 use ph2d_script::{LuauScript, ProjectScripts};
 use std::sync::OnceLock;
 
-pub const CENAS: u32 = 18; // 6..18 = a aba Input Map, A1..C4 e P1 (a tabela: `input_map`)
+pub const CENAS: u32 = 19; // 6..19 = a aba Input Map, A1..C4, P1 e B5 (a tabela: `input_map`)
 pub use ph2d_input_map_scene as input_map;
 
 /// A cena 4 (plano 12): o nível 2 com duas imagens na biblioteca do projecto para trocar pelo Inspector — a

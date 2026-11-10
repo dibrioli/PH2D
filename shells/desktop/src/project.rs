@@ -276,3 +276,8 @@ mod schema_tests;
 #[cfg(test)]
 #[path = "project_input_map_tests.rs"]
 mod input_map_tests;
+
+/// Auditoria (determinismo e persistência): cada pedido da aba, pelo `frame` real, é UM passo e o undo é bit a bit.
+#[cfg(test)]
+#[path = "project_input_map_audit_det_tests.rs"]
+mod input_map_audit_det_tests;

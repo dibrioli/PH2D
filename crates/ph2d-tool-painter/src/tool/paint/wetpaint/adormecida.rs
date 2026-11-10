@@ -149,7 +149,7 @@ impl PainterTool {
             return false;
         }
         sess.bring_home();
-        self.wet_enterra_como_passo(&mut sess, &velha);
+        self.wet_enterra_como_passo(&mut sess, &velha, None);
         sess.canvas = Arc::downgrade(&self.canvas_rgba);
         self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));
         self.paint.wetpaint.session = Some(sess);
@@ -188,10 +188,15 @@ impl PainterTool {
             if tela.len() != self.canvas_rgba.len() {
                 return;
             }
+            let casco =
+                super::undo_vivo::casco_de(&sess, self.undo.chave_do_topo() - usize::from(refaz));
+            if let Some(c) = casco {
+                self.wet_fora_do_casco_fica(&sess, &tela, c);
+            }
             if refaz {
-                self.wet_enterra_como_passo(&mut sess, &tela);
+                self.wet_enterra_como_passo(&mut sess, &tela, casco);
             } else {
-                self.wet_enterra_sem_passo(&mut sess, &tela);
+                self.wet_enterra_sem_passo(&mut sess, &tela, casco);
             }
         }
         sess.canvas = Arc::downgrade(&self.canvas_rgba);
@@ -314,7 +319,7 @@ impl PainterTool {
         sess.blend = modo;
         sess.vazio = self.paint.brush.blend_sobre_vazio;
         if !Arc::ptr_eq(&tela, &self.canvas_rgba) && *tela != *self.canvas_rgba {
-            self.wet_enterra_como_passo(&mut sess, &tela);
+            self.wet_enterra_como_passo(&mut sess, &tela, None);
         }
         sess.canvas = Arc::downgrade(&self.canvas_rgba);
         self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));

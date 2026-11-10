@@ -306,9 +306,22 @@ pub(super) fn para_la_do_tecto_so_o_traco_desfeito_acaba() {
             telas.push(t.canvas_rgba.to_vec());
         }
         for i in (1..6).rev() {
+            let viva = t.canvas_rgba.to_vec();
             assert!(t.undo_last());
             assert!(t.paint.wetpaint.session.is_some(), "{meio}: desfazer {i}");
-            assert!(t.canvas_rgba[..] == telas[i][..], "{meio}: a tela {i}");
+            // Onde o traço estava, a tela do documento; fora do casco dele (B02.5), a tinta viva fica como estava.
+            let faixa = (20 + 60 * i - 10) * 600 * 4..(20 + 60 * i + 10) * 600 * 4;
+            assert!(
+                t.canvas_rgba[faixa.clone()] == telas[i][faixa],
+                "{meio}: a tela {i}"
+            );
+            assert!(
+                t.canvas_rgba
+                    .chunks(4)
+                    .zip(telas[i].chunks(4).zip(viva.chunks(4)))
+                    .all(|(c, (d, v))| c == d || c == v),
+                "{meio}: a tela {i} é a do documento ou a viva"
+            );
             assert_eq!(
                 tinta_viva_na_linha(&mut t, 20 + 60 * i),
                 0.0,

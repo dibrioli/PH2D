@@ -17,6 +17,12 @@ use super::foto_em_tiles::PlanoEmTiles;
 use super::*;
 use ph2d_wet_paint::painter::Engine;
 
+mod casco;
+#[cfg(test)]
+mod casco_tests;
+pub(crate) use casco::Cascos;
+pub(super) use casco::casco_de;
+
 /// O estado do motor fora das grades que a física lê entre dois traços (a cadência da secagem, o nº do traço).
 #[derive(Clone, Copy)]
 pub(crate) struct Relogio {
@@ -135,6 +141,7 @@ fn abre_o_passo(
     alcancavel_desde: usize,
 ) {
     sess.antes_do_passo.retain(|p| p.chave < chave);
+    casco::guarda_o_casco(sess, alcancavel_desde, chave);
     // O registo copy-on-write do passo: daqui em diante toda escrita no grid marca os seus tiles nele.
     sess.engine.capture_history();
     let antes = FotoDoMotor::de(&sess.engine, sess.antes_do_passo.last().map(|p| &p.antes));
@@ -166,6 +173,7 @@ fn abre_o_passo(
 }
 
 fn esquece_os_passos(sess: &mut WetSession) {
+    casco::guarda_o_casco(sess, 0, usize::MAX);
     sess.antes_do_passo.clear();
     sess.engine.esquece_a_historia();
 }
@@ -364,12 +372,18 @@ impl PainterTool {
 
     /// Desfazer um passo que já saiu do histórico: a tinta dele acaba e a que ficou continua viva. As células onde a tela
     /// voltou atrás enterram-se; os passos que restam já não casam com o motor.
-    pub(super) fn wet_enterra_sem_passo(&self, sess: &mut WetSession, velha: &Arc<Vec<u8>>) {
+    /// Só no `casco` do passo, se o houver: a água que correu longe durante o passo não se enterra.
+    pub(super) fn wet_enterra_sem_passo(
+        &self,
+        sess: &mut WetSession,
+        velha: &Arc<Vec<u8>>,
+        casco: Option<CaixaDeCelulas>,
+    ) {
         sess.bring_home();
         esquece_os_passos(sess);
         sess.enterrou = true;
         sess.otica.toca_tudo(sess.grid);
-        let tocada = self.wet_enterra_o_que_mudou(sess, velha);
+        let tocada = self.wet_enterra_no_casco(sess, velha, casco);
         // O passo deixou tinta onde ela não muda nenhum píxel (a orla fina da aguada, alfa 0): voltaria a correr. Só a dele.
         let (gw, gh) = sess.grid;
         let perto = perto_de(&tocada, gw, gh, ALCANCE_DA_ORLA);
@@ -389,7 +403,12 @@ impl PainterTool {
     }
 
     /// O enterro de `velha` × a tela de agora, como o passo do topo do undo: desfazê-lo devolve as células.
-    pub(super) fn wet_enterra_como_passo(&self, sess: &mut WetSession, velha: &Arc<Vec<u8>>) {
+    pub(super) fn wet_enterra_como_passo(
+        &self,
+        sess: &mut WetSession,
+        velha: &Arc<Vec<u8>>,
+        casco: Option<CaixaDeCelulas>,
+    ) {
         // Um registo mais novo que o motor não desfez (a história andou com a sessão parada): as pilhas já não casam.
         let chave = self.undo.chave_do_topo().checked_sub(1).filter(|c| {
             !sess
@@ -410,7 +429,7 @@ impl PainterTool {
         sess.enterrou = true;
         // Uma imagem no ar é de antes do enterro: aplicada, punha a tinta velha de volta.
         sess.otica.toca_tudo(sess.grid);
-        self.wet_enterra_o_que_mudou(sess, velha);
+        self.wet_enterra_no_casco(sess, velha, casco);
     }
 
     /// Antes de um undo (`refaz = false`) ou redo: se a sessão tem a fotografia do passo, sai do caminho do restore
@@ -506,7 +525,7 @@ impl PainterTool {
                 .flatten()
                 .and_then(|p| p.tela_antes.clone());
             if let Some(tela) = antes.filter(|t| **t != *self.canvas_rgba) {
-                self.wet_enterra_como_passo(&mut sess, &tela);
+                self.wet_enterra_como_passo(&mut sess, &tela, None);
             }
             // A tela restaurada já é a verdade. ⛔ Medido: recompor a tela inteira com células enterradas re-ilumina a
             // orla delas (3 862 px); a orla só se recalcula sob o pincel seguinte.

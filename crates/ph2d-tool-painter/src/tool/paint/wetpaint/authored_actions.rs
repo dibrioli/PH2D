@@ -108,6 +108,7 @@ impl PainterTool {
             marca,
             po: super::po::PoDoTraco::default(),
             antes_do_passo: Vec::new(),
+            cascos: Default::default(),
             otica: super::otica_no_tique::OticaDoTique::default(),
             camada: self.layers.active(),
             enterrou: false,

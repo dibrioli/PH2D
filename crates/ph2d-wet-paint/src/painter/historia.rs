@@ -61,12 +61,22 @@ impl Engine {
         let m = r.abs() + FOLGA_DAB;
         let (x0, x1) = ((x - m).floor() as i64, (x + m).ceil() as i64 + 2);
         let (y0, y1) = ((y - m).floor() as i64, (y + m).ceil() as i64 + 2);
-        let l = &mut self.layers[self.active_layer];
-        l.agua_nova = Some(match l.agua_nova {
+        let une = |c: Option<[i64; 4]>| match c {
             Some([a0, b0, a1, b1]) => [a0.min(x0), b0.min(y0), a1.max(x1), b1.max(y1)],
             None => [x0, y0, x1, y1],
-        });
+        };
+        let l = &mut self.layers[self.active_layer];
+        l.agua_nova = Some(une(l.agua_nova));
+        if let Some(r) = l.undo.last_mut() {
+            r.dabs = Some(une(r.dabs));
+        }
         self.marca_ret(x0, y0, x1, y1);
+    }
+
+    /// O casco dos dabs do registo aberto da camada activa (células finas com o pad, meio-aberto). `None`: sem dabs.
+    #[must_use]
+    pub fn casco_dos_dabs_do_aberto(&self) -> Option<[i64; 4]> {
+        self.layers[self.active_layer].undo.last()?.dabs
     }
 
     /// Marca o que um estágio do sim pode escrever: a caixa viva do último rebuild UNIDA aos dabs que

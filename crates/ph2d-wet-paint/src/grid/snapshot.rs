@@ -275,6 +275,8 @@ pub struct Registo {
     fluxo: std::collections::BTreeMap<u32, [Vec<f32>; 2]>,
     /// O passo da água no instante em que abriu (quem o preenche e repõe é o `Engine`).
     pub(crate) passo: PassoEmVoo,
+    /// O casco dos dabs do passo (células finas com o pad, meio-aberto, com a folga do dab): o que o traço escreveu.
+    pub(crate) dabs: Option<[i64; 4]>,
 }
 
 /// O que o passo da água guarda FORA das grades quando um registo abre: o cursor do passo em voo. O undo/redo
@@ -294,6 +296,7 @@ impl Registo {
             finos: std::collections::BTreeMap::new(),
             fluxo: std::collections::BTreeMap::new(),
             passo: PassoEmVoo::default(),
+            dabs: None,
         }
     }
 

@@ -173,6 +173,8 @@ pub(in crate::tool::paint) struct WetSession {
     /// ⭐ **A tinta viva de antes de cada traço** (smoke do dono 30/10, «o undo mata a tinta viva»): as grades do
     /// motor no pen-down de cada passo, pela profundidade do undo. Desfazer o passo devolve-as e a sessão VIVE.
     pub(super) antes_do_passo: Vec<super::undo_vivo::PassoVivo>,
+    /// O casco dos dabs de cada passo, para lá do tecto dos `antes_do_passo` ([`super::undo_vivo::Cascos`]).
+    pub(super) cascos: super::undo_vivo::Cascos,
     /// O pedido de imagem no ar, a `uniao_local` e a dívida do compositor da óptica ([`super::otica_no_tique`]).
     pub(super) otica: super::otica_no_tique::OticaDoTique,
     /// A camada da tinta: uma tela de outra camada não é uma mudança a enterrar ([`super::adormecida`]).
@@ -388,6 +390,7 @@ impl Clone for WetSession {
             marca,
             po,
             antes_do_passo,
+            cascos,
             otica,
             camada,
             enterrou,
@@ -427,6 +430,7 @@ impl Clone for WetSession {
             marca: *marca,
             po: po.clone(),
             antes_do_passo: antes_do_passo.clone(),
+            cascos: cascos.clone(),
             otica: otica.clone(),
             camada: *camada,
             enterrou: *enterrou,

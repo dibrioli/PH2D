@@ -68,17 +68,29 @@ impl PainterTool {
         sess: &mut WetSession,
         velha: &[u8],
     ) -> Vec<bool> {
+        self.wet_enterra_no_casco(sess, velha, None)
+    }
+
+    /// [`Self::wet_enterra_o_que_mudou`] só nas células do `casco` (1-based, inclusivo); `None` = a grade inteira.
+    pub(in crate::tool::paint::wetpaint) fn wet_enterra_no_casco(
+        &self,
+        sess: &mut WetSession,
+        velha: &[u8],
+        casco: Option<(usize, usize, usize, usize)>,
+    ) -> Vec<bool> {
         let nova = &self.canvas_rgba[..];
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
         let q = usize::from(sess.ratio);
         let (gw, gh) = sess.grid;
         let mut tocada = vec![false; gw * gh];
-        for y in 0..h {
+        let (cx0, cy0, cx1, cy1) = casco.unwrap_or((1, 1, gw, gh));
+        let (px0, px1) = (((cx0 - 1) * q).min(w), (cx1 * q).min(w));
+        for y in ((cy0 - 1) * q).min(h)..(cy1 * q).min(h) {
             let o = y * w * 4;
-            if velha[o..o + w * 4] == nova[o..o + w * 4] {
+            if velha[o + px0 * 4..o + px1 * 4] == nova[o + px0 * 4..o + px1 * 4] {
                 continue;
             }
-            for x in 0..w {
+            for x in px0..px1 {
                 let p = o + x * 4;
                 if velha[p..p + 4] != nova[p..p + 4] {
                     tocada[(y / q) * gw + x / q] = true;

@@ -166,6 +166,7 @@ impl PainterTool {
             }
             return;
         }
+        self.wet_luz_cheia_no_repouso();
         // Os dabs dos eventos deste quadro entram na tela ANTES de o motor ir para o worker.
         self.wet_compoe_o_pendente();
         self.wet_varre_oleo();

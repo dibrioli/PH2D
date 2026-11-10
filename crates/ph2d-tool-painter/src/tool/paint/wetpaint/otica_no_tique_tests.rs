@@ -9,6 +9,7 @@ use super::agua_sobre_oleo_tests::preset;
 use super::offthread::otica::{CaixaCel, forca_no_teste};
 use super::*;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
+use ph2d_wet_paint::oleo_real::QualidadeDaLuz;
 use std::time::{Duration, Instant};
 
 pub(super) const LADO: usize = 192;
@@ -499,5 +500,62 @@ fn a_tinta_suave_na_margem_da_caixa_e_a_tela_de_casa_ao_byte() {
             "premissa: a imagem nova traz só a caixa dela ({n} de {inteiro} células)"
         );
         confere_com_casa(&mut t, &format!("a tinta na margem (abaixo {abaixo})"));
+    }
+}
+
+/// B14.2 (decisão 2 do dono): com o pincel na tela a luz do Óleo Real é a Simples (a tela difere da Cheia); fora dele
+/// a tela é a Cheia AO BYTE — o que a Simples compôs, em casa ou pelas imagens (Live Water), volta a compor-se.
+#[test]
+fn a_luz_simples_no_gesto_e_a_cheia_no_repouso() {
+    for (fora, viva) in [(true, false), (true, true), (false, false)] {
+        let onde = format!("fora {fora} agua viva {viva}");
+        let mut t = cena(fora, 0.0, false);
+        assenta(&mut t);
+        confere_com_casa(&mut t, &format!("{onde}: o repouso da cena"));
+        let lado = LADO as f32;
+        t.preset_aplicar(&preset("Oil/Dabber/Dabber.ph2d-brush.png"))
+            .expect("o preset");
+        t.set_wet_oleo_real_ligado(true);
+        t.set_wet_agua_viva(viva);
+        t.set_brush_size_px(16.0);
+        t.set_brush_color_srgb8([200, 40, 40]);
+        let _ = t.on_canvas_pointer(ponto(lado * 0.2, lado * 0.45, PointerPhase::Down));
+        for k in 1..=12 {
+            let x = lado * (0.2 + 0.05 * k as f32);
+            let _ = t.on_canvas_pointer(ponto(x, lado * 0.45, PointerPhase::Move));
+            tique(&mut t);
+            std::thread::sleep(QUADRO);
+        }
+        quadros(&mut t, 10);
+        assert!(t.wet_pincel_na_tela(), "{onde}: premissa: o pincel na tela");
+        assert_eq!(
+            t.factos_da_otica().oleo.qualidade,
+            QualidadeDaLuz::Simples,
+            "{onde}: com o pincel na tela a luz é a Cheia"
+        );
+        assert!(
+            sess(&t).otica.simples.is_some(),
+            "{onde}: o gesto não compôs com a Simples"
+        );
+        if viva {
+            assert!(
+                sess(&t).otica.simples_aplicadas > 0,
+                "{onde}: nenhuma imagem do gesto com a luz Simples"
+            );
+        }
+        let _ = t.on_canvas_pointer(ponto(lado * 0.8, lado * 0.45, PointerPhase::Up));
+        assert_eq!(
+            t.factos_da_otica().oleo.qualidade,
+            QualidadeDaLuz::Cheia,
+            "{onde}: o repouso"
+        );
+        t.set_wet_agua_viva(false);
+        quadros(&mut t, 2);
+        assenta(&mut t);
+        assert!(
+            sess(&t).otica.simples.is_none(),
+            "{onde}: a luz Simples ficou na tela"
+        );
+        confere_com_casa(&mut t, &format!("{onde}: o repouso depois do gesto"));
     }
 }

@@ -23,11 +23,17 @@ pub(super) struct OticaDoTique {
     /// A água do passo herdada no pen-down (B14.1): volta ao worker como sujo do PASSO, que o espelho reduz ao que
     /// mudou; pela `divida` era a caixa do fluido inteira.
     pub(super) agua: Option<CaixaCel>,
+    /// B14.2 (decisão 2 do dono): a união das caixas compostas com a luz `Simples` (o pincel na tela); fora do gesto
+    /// recompõem-se com a `Cheia` ([`PainterTool::wet_luz_cheia_no_repouso`]).
+    pub(super) simples: Option<CaixaCel>,
     #[cfg(test)]
     pub(super) aplicadas: u32,
     /// Imagens cuja caixa tocou a `uniao_local`.
     #[cfg(test)]
     pub(super) tocadas: u32,
+    /// Imagens aplicadas com a luz `Simples`.
+    #[cfg(test)]
+    pub(super) simples_aplicadas: u32,
 }
 
 pub(super) fn une(a: Option<CaixaCel>, b: CaixaCel) -> CaixaCel {
@@ -53,7 +59,15 @@ impl OticaDoTique {
 
     /// Há sujo tirado do motor que a tela ainda não mostra (uma imagem no ar ou a dívida).
     pub(super) fn pendente(&self) -> bool {
-        self.no_ar.is_some() || self.divida.is_some() || self.agua.is_some()
+        self.no_ar.is_some()
+            || self.divida.is_some()
+            || self.agua.is_some()
+            || self.simples.is_some()
+    }
+
+    /// Uma composição (de casa ou imagem) escreveu esta caixa com a luz `Simples`.
+    pub(super) fn luz_simples(&mut self, c: CaixaCel) {
+        self.simples = Some(une(self.simples, c));
     }
 
     fn deve(&mut self, c: CaixaCel) {
@@ -83,7 +97,11 @@ impl WetSession {
             .no_ar
             .map_or(([None, None], None), |e| self.sujo_do_pedido(e));
         let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
-        for (x0, y0, x1, y1) in [divida, servido, self.otica.divida].into_iter().flatten() {
+        let simples = self.otica.simples.take();
+        for (x0, y0, x1, y1) in [divida, servido, self.otica.divida, simples]
+            .into_iter()
+            .flatten()
+        {
             self.engine.merge_dirty_otica(i(x0), i(y0), i(x1), i(y1));
         }
         for (x0, y0, x1, y1) in [agua, self.otica.agua].into_iter().flatten() {
@@ -94,6 +112,37 @@ impl WetSession {
 }
 
 impl PainterTool {
+    /// B14.2 (decisão 2 do dono): com o pincel fora da tela, o que a luz `Simples` compôs volta a compor-se com a
+    /// `Cheia` — pelo compositor (a dívida: uma imagem) ou em casa (o pendente do quadro, com o motor cá).
+    pub(super) fn wet_luz_cheia_no_repouso(&mut self) {
+        if self.wet_pincel_na_tela() {
+            return;
+        }
+        let fora = self.wet_otica_fora();
+        let Some(sess) = self.paint.wetpaint.session.as_mut() else {
+            return;
+        };
+        let Some(c) = sess.otica.simples else {
+            return;
+        };
+        if fora {
+            sess.otica.simples = None;
+            sess.otica.deve(c);
+        } else if matches!(sess.engine, offthread::EngineSlot::Here(_)) {
+            sess.otica.simples = None;
+            let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
+            sess.engine
+                .merge_dirty_otica(i(c.0), i(c.1), i(c.2), i(c.3));
+            self.paint.wetpaint.composite_pendente = true;
+        }
+    }
+
+    /// O gesto está vivo ou o traço do motor aberto (pinceladas sobrepostas, W16) — o `paint.stroke` sai a meio do lote.
+    pub(super) fn wet_pincel_na_tela(&self) -> bool {
+        let w = &self.paint.wetpaint;
+        w.live_gesture || w.session.as_ref().is_some_and(|s| s.stroke_open)
+    }
+
     /// O tique mostra a água pelo compositor? Ligado e de pé; desligado a meio, acaba o que está no ar.
     pub(super) fn wet_otica_fora(&self) -> bool {
         self.paint.wetpaint.session.as_ref().is_some_and(|s| {
@@ -170,6 +219,9 @@ impl PainterTool {
         #[cfg(test)]
         {
             sess.otica.aplicadas += 1;
+            sess.otica.simples_aplicadas += u32::from(im.oleo.is_some_and(|o| {
+                o.qualidade == ph2d_wet_paint::oleo_real::QualidadeDaLuz::Simples
+            }));
         }
         // A imagem não tira o sujo do motor: o pendente do quadro continua de quem o tinha.
         let pendente = self.paint.wetpaint.composite_pendente;

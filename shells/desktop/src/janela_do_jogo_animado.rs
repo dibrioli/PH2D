@@ -199,10 +199,14 @@ impl crate::App {
                 d.layout.align.toggle,
                 d.layout.align.by_feet,
                 d.align.painted,
-                (d.layout.align.pivot_grid, d.layout.align.by_hand),
+                (
+                    d.layout.align.pivot_grid,
+                    d.layout.align.by_hand,
+                    d.layout.align.pivot_follow,
+                ),
             ))
         });
-        let Some((toggle, pes, p, (grade, mao))) = doc else {
+        let Some((toggle, pes, p, (grade, mao, segue))) = doc else {
             return eprintln!("[animado-prova] align: o editor não está aberto");
         };
         let c = |r: ph2d_editor_core::zones::Rect| (r.x + r.w / 2.0, r.y + r.h / 2.0);
@@ -212,7 +216,8 @@ impl crate::App {
         match (fase, *pega) {
             (0, _) => self.smoke_pointer_down(c(toggle).0, c(toggle).1),
             (8, _) => self.smoke_pointer_down(c(pes).0, c(pes).1),
-            (1 | 7 | 9 | 11 | 13 | 17, _) => self.smoke_pointer_up(),
+            (1 | 7 | 9 | 11 | 13 | 17 | 19, _) => self.smoke_pointer_up(),
+            (18, _) => self.smoke_pointer_down(c(segue).0, c(segue).1),
             // O Pivot (GEF 29): «Bottom» é a casa do meio da última fila da grade 5 × 5.
             (10, _) => self.smoke_pointer_down(grade.x + grade.w / 2.0, grade.y + grade.h * 0.9),
             (12, _) => self.smoke_pointer_down(c(mao).0, c(mao).1),

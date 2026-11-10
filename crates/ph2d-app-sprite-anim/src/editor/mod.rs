@@ -19,7 +19,7 @@ use ph2d_editor_core::doc_surface::{
     Compose, DocTab, DocumentSurface, Key, KeyInput, KeyOutcome, PointerInput, PointerLook,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_editor_core::{AnimFieldEdit, HeroScreen, Toast, ToastQueue};
+use ph2d_editor_core::{AnimFieldEdit, HeroScreen, ImageUseEdit, Toast, ToastQueue};
 use ph2d_host::{PointerButton, PointerKind};
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
@@ -371,7 +371,17 @@ pub fn frame(
             continue; // à espera do Stop
         }
         let e = Entity::from_bits(d.entity);
-        for edit in std::mem::take(&mut d.sheet_ui.pending) {
+        let sheet_edits = std::mem::take(&mut d.sheet_ui.pending);
+        // O Follow do Pivot (GEF 29): só o que mexe no desenho conta.
+        let moved = sheet_edits.iter().any(|x| {
+            matches!(
+                x,
+                ImageUseEdit::ScaleSheet(_)
+                    | ImageUseEdit::MoveSheet(_)
+                    | ImageUseEdit::NudgeCell { .. }
+            )
+        });
+        for edit in sheet_edits {
             ph2d_anim_sheets::apply::apply(sim.world_mut(), e, db, atlas, ppm, edit);
         }
         let mut edits: Vec<AnimFieldEdit> = std::mem::take(&mut d.pending);
@@ -418,6 +428,11 @@ pub fn frame(
             edits.extend(added.map(AnimFieldEdit::SetCurrent));
         }
         d.set_snapshot(snapshot(sim, d.entity, ppm));
+        if let Some(p) = d.pivot_follow(moved) {
+            let edit = ImageUseEdit::MovePivot(p);
+            ph2d_anim_sheets::apply::apply(sim.world_mut(), e, db, atlas, ppm, edit);
+            d.set_snapshot(snapshot(sim, d.entity, ppm));
+        }
     }
     // A aba à frente cuja sprite mudou de bits continua à frente.
     if let Some(t) = active

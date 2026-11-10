@@ -73,8 +73,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "An Animated Sprite's pivot is set in the Animation Editor: Edit animations, then Align \u{25b8} Pivot"
         }
         "anim_editor.pivot_by_hand" => "By hand",
-        "anim_editor.pivot_custom" => "Custom",
-        "anim_editor.pivot_at" => "{x}% \u{b7} {y}%",
+        "anim_editor.pivot_follow" => "Follow",
         "anim_editor.pivot_hand_hint" => {
             "Drag the cross to place the pivot \u{b7} it snaps to the 25 points \u{b7} the game object stays put"
         }

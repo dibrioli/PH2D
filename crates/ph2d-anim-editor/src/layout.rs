@@ -279,6 +279,7 @@ impl AnimDoc {
             ph2d_i18n::tr("anim_editor.align_by_feet"),
             ph2d_i18n::tr("anim_editor.align_by_centre"),
             ph2d_i18n::tr("anim_editor.pivot_by_hand"),
+            ph2d_i18n::tr("anim_editor.pivot_follow"),
         ]) + row;
         // A coluna do Pivot (GEF 29): a grade 5 × 5 com a altura das duas filas, e o «By hand» ao lado.
         let pivot_side = row + gap + row;
@@ -439,7 +440,7 @@ impl AnimDoc {
             l.align.pivot_grid = Rect::new(col4, py + line, pivot_side, pivot_side);
             let col5 = col4 + pivot_side + gap;
             l.align.by_hand = Rect::new(col5, py + line, align_button, row);
-            l.align.pivot_name = Rect::new(col5, py + line + row + gap, align_button, row);
+            l.align.pivot_follow = Rect::new(col5, py + line + row + gap, align_button, row);
         } else {
             self.align.on = false;
         }

@@ -26,6 +26,10 @@ pub struct PivotUi {
     pub by_hand: bool,
     /// A cruz a meio do arrasto, em metros locais desde o Pivot de agora.
     pub hand: Option<[f32; 2]>,
+    /// «Follow» ligado (dono 09/11): o Pivot acompanha o desenho quando a folha muda de tamanho ou anda.
+    pub follow: bool,
+    /// Onde o Pivot está na caixa de todos os quadros, em frações dela desde baixo-esquerda (medido fora de gestos).
+    frac: Option<[f32; 2]>,
     boxes: BTreeMap<CellKey, Option<[f32; 4]>>,
 }
 
@@ -133,7 +137,7 @@ impl AnimDoc {
             .unwrap_or(NO_PIXEL_M)
     }
 
-    /// ⭐ O ponto da grade em que o Pivot está agora; `None` = fora dos 25 (Custom), ou sem desenho.
+    /// ⭐ O ponto da grade em que o Pivot está agora; `None` = fora dos 25, ou sem desenho.
     pub fn pivot_on_grid(&mut self) -> Option<[u8; 2]> {
         let caixa = self.all_frames_box()?;
         let tol = self.pivot_pixel() / 2.0;
@@ -154,13 +158,46 @@ impl AnimDoc {
         for g in &mut self.snap.geo {
             g.center = [g.center[0] - p[0], g.center[1] - p[1]];
         }
+        self.pivot_moved(p);
+        true
+    }
+
+    /// A prévia e a linha do chão seguem o Pivot que andou `p`: o desenho não salta no ecrã.
+    fn pivot_moved(&mut self, p: [f32; 2]) {
         if let Some(f) = self.align.floor.as_mut() {
             *f -= p[1];
         }
         if let Some(v) = self.align.view.as_mut() {
             v.origin = v.to_screen(p);
         }
-        true
+    }
+
+    /// ⭐ **Follow** (dono 09/11): chamado pela família depois de aplicar as edições do quadro e refazer a geometria.
+    /// `moved` = alguma delas mexeu no desenho (tamanho, folha, quadro). Com o Follow ligado e o gesto acabado, devolve
+    /// o passo do Pivot que o leva ao mesmo lugar da caixa de todos os quadros onde estava antes do gesto: a família
+    /// aplica-o no mesmo quadro, e o Ctrl+Z desfaz os dois juntos.
+    pub fn pivot_follow(&mut self, moved: bool) -> Option<[f32; 2]> {
+        if self.align_gesture_active() {
+            return None; // a meio do gesto, a fração de antes fica guardada
+        }
+        let (lo, hi) = self.all_frames_box()?;
+        let size = [hi[0] - lo[0], hi[1] - lo[1]];
+        if size[0] <= 0.0 || size[1] <= 0.0 {
+            return None;
+        }
+        if moved
+            && self.align.pivot.follow
+            && let Some(f) = self.align.pivot.frac
+        {
+            let p = [lo[0] + f[0] * size[0], lo[1] + f[1] * size[1]];
+            let tol = self.pivot_pixel() / 2.0;
+            if p[0].abs() > tol || p[1].abs() > tol {
+                self.pivot_moved(p);
+                return Some(p);
+            }
+        }
+        self.align.pivot.frac = Some([-lo[0] / size[0], -lo[1] / size[1]]);
+        None
     }
 
     /// Onde a cruz do «By hand» cai com o rato em `(x, y)`: num dos 25 pontos, se perto; senão no pixel inteiro do
@@ -188,6 +225,10 @@ impl AnimDoc {
         if hit(l.by_hand, x, y) {
             self.align.pivot.by_hand = !self.align.pivot.by_hand;
             self.align.pivot.hand = None;
+            return true;
+        }
+        if hit(l.pivot_follow, x, y) {
+            self.align.pivot.follow = !self.align.pivot.follow;
             return true;
         }
         if hit(l.pivot_grid, x, y) {
@@ -230,29 +271,4 @@ impl AnimDoc {
         }
         true
     }
-}
-
-/// O nome do ponto `q` (`None` = Custom): os nove de sempre pelo nome do Inspector, os outros em percentagem desde o
-/// canto de cima à esquerda.
-#[must_use]
-pub fn point_name(q: Option<[u8; 2]>) -> String {
-    const NOMES: [&str; 9] = [
-        "card.insp.pivot.top_left",
-        "card.insp.pivot.top",
-        "card.insp.pivot.top_right",
-        "card.insp.pivot.left",
-        "card.insp.pivot.center",
-        "card.insp.pivot.right",
-        "card.insp.pivot.bottom_left",
-        "card.insp.pivot.bottom",
-        "card.insp.pivot.bottom_right",
-    ];
-    let Some([c, r]) = q else {
-        return ph2d_i18n::tr("anim_editor.pivot_custom").to_owned();
-    };
-    if c % 2 == 0 && r % 2 == 0 {
-        return ph2d_i18n::tr(NOMES[usize::from(r / 2 * 3 + c / 2)]).to_owned();
-    }
-    let pct = |i: u8| u32::from(i) * 100 / u32::from(SIDE - 1); // LITERAL-PX-OK: percentagem
-    ph2d_i18n::tr_with("anim_editor.pivot_at", &[("x", &pct(c)), ("y", &pct(r))])
 }

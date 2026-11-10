@@ -4,7 +4,7 @@
 
 use super::super::{Mesa, centre};
 use super::desalinhada;
-use ph2d_app_sprite_anim::editor::align_pivot::{SIDE, grid_point, point_name};
+use ph2d_app_sprite_anim::editor::align_pivot::{SIDE, grid_point};
 use ph2d_ecs::{Entity, Transform};
 use ph2d_editor_core::doc_surface::DocumentSurface;
 use ph2d_editor_core::{AnimFieldEdit, ImageUseEdit, row_cells};
@@ -101,9 +101,6 @@ fn os_25_pontos_contam_sobre_todos_os_quadros_e_o_desenho_fica() {
         Some([2, 4]),
         "noutra animação, o mesmo ponto"
     );
-    assert_eq!(point_name(Some([2, 4])), "Bottom");
-    assert_eq!(point_name(Some([1, 4])), "25% \u{b7} 100%");
-    assert_eq!(point_name(None), "Custom");
 }
 
 /// O «By hand»: o arrasto na prévia move a CRUZ (a folha não anda) e só o largar pede a edição; perto de um dos 25
@@ -171,7 +168,7 @@ fn by_hand_arrasta_a_cruz_e_encaixa_nos_pontos() {
     }
     m.frame();
     m.paint();
-    assert_eq!(m.doc().pivot_on_grid(), None, "fora dos 25: Custom");
+    assert_eq!(m.doc().pivot_on_grid(), None, "fora dos 25");
     // Desligado, o arrasto volta a mover a folha.
     let b = m.doc().layout.align.by_hand;
     m.click(centre(b));
@@ -210,4 +207,56 @@ fn o_campo_pivot_abre_o_editor_com_o_align_ligado() {
     ));
     m.frame();
     assert!(m.doc().align.on, "aberto com o Align");
+}
+
+/// ⭐ **Follow** (dono 09/11): com ele ligado, a folha redimensionada pela quina e arrastada leva o Pivot junto — ele volta ao
+/// mesmo lugar da caixa de todos os quadros, no mesmo quadro do gesto (um Ctrl+Z); desligado, o Pivot fica onde
+/// estava e sai do ponto.
+/// *Mutações: o Follow a ler a fração a meio do gesto ⇒ fica no lugar novo · sem o Follow na família ⇒ sai do ponto.*
+#[test]
+fn com_o_follow_o_pivot_acompanha_o_redimensionamento() {
+    for follow in [false, true] {
+        let mut m = Mesa::new();
+        desalinhada(&mut m);
+        m.align_on();
+        m.paint();
+        let at = na_grade(&mut m, [4, 0]);
+        m.click(at);
+        m.frame();
+        m.paint();
+        assert_eq!(m.doc().pivot_on_grid(), Some([4, 0]));
+        if follow {
+            let b = m.doc().layout.align.pivot_follow;
+            assert!(b.w > 0.0, "o botão Follow na moldura");
+            m.click(centre(b));
+            assert!(m.doc().align.pivot.follow);
+        }
+        m.frame();
+        m.paint();
+        // Redimensiona pela quina e depois arrasta a folha para longe: a caixa de todos os quadros muda.
+        let p = m.doc().align.painted;
+        let h = centre(p.handles[2].expect("a pega de baixo à esquerda"));
+        let (ox, oy) = p.pivot.unwrap();
+        let perto = (ox + (h.0 - ox) * 0.6, oy + (h.1 - oy) * 0.6);
+        m.drag(h, perto, Modifiers::default());
+        m.frame();
+        m.paint();
+        let pv = m.doc().layout.align.preview;
+        let c = centre(pv);
+        m.drag(c, (c.0 + pv.w * 0.3, c.1), Modifiers::default());
+        assert!(
+            !m.sheet_edits()
+                .iter()
+                .any(|e| matches!(e, ImageUseEdit::MovePivot(_))),
+            "o Follow não é um gesto à parte"
+        );
+        m.frame();
+        m.paint();
+        let ponto = m.doc().pivot_on_grid();
+        if follow {
+            assert_eq!(ponto, Some([4, 0]), "o Pivot acompanha");
+        } else {
+            assert_ne!(ponto, Some([4, 0]), "sem o Follow ele fica onde estava");
+        }
+    }
 }

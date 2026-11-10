@@ -2,7 +2,7 @@
 //! nome do ponto) e, na prévia, a caixa tracejada de todos os quadros com os 25 pontos. Lê; não decide nada.
 
 use super::align::View;
-use super::align_pivot::{SIDE, grid, grid_point, point_name};
+use super::align_pivot::{SIDE, grid, grid_point};
 use super::doc::AnimDoc;
 use super::paint::tom;
 use super::paint_align::{Look, chip};
@@ -84,14 +84,16 @@ pub(super) fn paint_pivot_column(
         Look::of(on, doc.align.pivot.by_hand),
         fio,
     );
-    if on {
-        let n = l.pivot_name;
-        let name = point_name(here);
-        let y = n.y + (n.h - TypeToken::Sm.px()) / 2.0;
-        let pad = Spacing::Xs.px();
-        let c = tom(ColorToken::Text3, theme);
-        paint_text(text, scene, &name, n.x + pad, y, TypeToken::Sm.px(), n.w, c);
-    }
+    let follow = (IconId::Link, tr("anim_editor.pivot_follow"));
+    chip(
+        scene,
+        text,
+        theme,
+        l.pivot_follow,
+        follow,
+        Look::of(on, doc.align.pivot.follow),
+        fio,
+    );
 }
 
 /// ⭐ Na prévia: a caixa tracejada do desenho de TODOS os quadros e os 25 pontos sobre ela (o escolhido em acento).

@@ -125,6 +125,9 @@ pub enum Foto {
     PivoDesfaz,
     /// …e o «By hand»: a cruz arrastada pelo rato real até o ponto do meio da direita, onde encaixa.
     PivoMao,
+    /// …e o «Follow» (dono 09/11): o Pivot em «Bottom», o Follow ligado e a `run` reduzida a 2/3 pela quina; o Pivot
+    /// acompanha e continua no ponto.
+    PivoSegue,
 }
 
 #[must_use]
@@ -165,6 +168,7 @@ pub fn foto() -> Option<Foto> {
         "animado_pivot_pes" => Some(Foto::PivoPes),
         "animado_pivot_desfaz" => Some(Foto::PivoDesfaz),
         "animado_pivot_mao" => Some(Foto::PivoMao),
+        "animado_pivot_segue" => Some(Foto::PivoSegue),
         _ => None,
     }
 }
@@ -175,7 +179,7 @@ impl Foto {
     pub const fn pivo_no_editor(self) -> bool {
         matches!(
             self,
-            Self::PivoAntes | Self::PivoPes | Self::PivoDesfaz | Self::PivoMao
+            Self::PivoAntes | Self::PivoPes | Self::PivoDesfaz | Self::PivoMao | Self::PivoSegue
         )
     }
 
@@ -215,6 +219,7 @@ impl Foto {
             | Self::PivoPes
             | Self::PivoDesfaz
             | Self::PivoMao
+            | Self::PivoSegue
             | Self::IdleQuadro(_) => DUAS,
             Self::AlinhadasIdle | Self::AlinhadasRun => ALINHADAS,
             Self::Desalinhadas | Self::DesalinhadasAcertadas => DESALINHADAS,
@@ -408,7 +413,7 @@ fn previa_align(q: u32, foto: Option<Foto>) -> Vec<Passo> {
     if let Some(f) = foto.filter(|f| {
         matches!(
             f,
-            Foto::PivoAntes | Foto::PivoPes | Foto::PivoDesfaz | Foto::PivoMao
+            Foto::PivoAntes | Foto::PivoPes | Foto::PivoDesfaz | Foto::PivoMao | Foto::PivoSegue
         )
     }) {
         return pivo_no_editor(q, f);
@@ -485,7 +490,7 @@ fn pes(q: u32, f: Foto) -> Vec<Passo> {
 /// «attack»; o ponto «Bottom» da grade, ou o «By hand» e a cruz arrastada; e (na foto do desfazer) um Ctrl+Z.
 fn pivo_no_editor(q: u32, f: Foto) -> Vec<Passo> {
     use Passo as P;
-    let pes = matches!(f, Foto::PivoPes | Foto::PivoDesfaz);
+    let pes = matches!(f, Foto::PivoPes | Foto::PivoDesfaz | Foto::PivoSegue);
     match q {
         20 => vec![
             P::Anim(DUAS, Ed::SetCurrent("attack".into())),
@@ -495,6 +500,8 @@ fn pivo_no_editor(q: u32, f: Foto) -> Vec<Passo> {
         30 => vec![P::Relata("pivô antes".into(), DUAS)],
         32 | 33 if pes => vec![P::Alinha(DUAS, (q - 22) as u8)],
         32..=37 if f == Foto::PivoMao => vec![P::Alinha(DUAS, (q - 20) as u8)],
+        34 | 35 if f == Foto::PivoSegue => vec![P::Alinha(DUAS, (q - 16) as u8)],
+        36..=41 if f == Foto::PivoSegue => vec![P::Alinha(DUAS, (q - 34) as u8)],
         40 => vec![P::Relata("pivô depois".into(), DUAS)],
         50 if f == Foto::PivoDesfaz => vec![P::Desfaz],
         60 if f == Foto::PivoDesfaz => vec![P::Relata("pivô 1 Ctrl+Z".into(), DUAS)],

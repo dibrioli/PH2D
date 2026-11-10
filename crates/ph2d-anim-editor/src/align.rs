@@ -33,11 +33,11 @@ pub struct AlignLayout {
     /// «By feet» e «By centre» (onda C): cada quadro da animação vai aos pés ou ao centro da referência.
     pub by_feet: Rect,
     pub by_centre: Rect,
-    /// A coluna do Pivot (GEF 29): o rótulo, a grade 5 × 5, o «By hand» e o nome do ponto escolhido.
+    /// A coluna do Pivot (GEF 29): o rótulo, a grade 5 × 5, o «By hand» e o «Follow».
     pub pivot_title: Rect,
     pub pivot_grid: Rect,
     pub by_hand: Rect,
-    pub pivot_name: Rect,
+    pub pivot_follow: Rect,
     /// A prévia.
     pub preview: Rect,
 }
@@ -453,6 +453,12 @@ impl AnimDoc {
             }
         }
         moved
+    }
+
+    /// Um gesto da prévia em curso (arrasto da folha, do quadro, do canto, do chão ou da cruz).
+    #[must_use]
+    pub fn align_gesture_active(&self) -> bool {
+        self.align.drag != AlignDrag::None || self.align.pivot.hand.is_some()
     }
 
     /// O quadro `f` tem acerto próprio (a marca na tira).

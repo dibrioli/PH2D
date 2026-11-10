@@ -1,7 +1,10 @@
 //! **A cena 5 do jogo: o Animated Sprite peça a peça** ([ficha](../../../docs/GameEngineFuncional/componentes/02_animated_sprite.md),
 //! E6). O nível 2 com um objecto do menu Add por assunto: o que o menu dá vazio, uma folha cortada por Split by rows com
-//! um marcador, quem ouve esse marcador, Starts with e a imagem trocada. Aqui mora o guião; a shell executa cada
-//! [`Passo`] pelas portas do produto, e as provas do Play e do Ctrl+Z reais relatam em `[animado-prova]`.
+//! um marcador, quem ouve esse marcador, Starts with e a imagem trocada. Aqui mora o guião e o executor dele ([`mesa`]):
+//! cada [`Passo`] pelas portas do produto que a shell dá, e as provas do Play e do Ctrl+Z reais relatam em
+//! `[animado-prova]`.
+
+pub mod mesa;
 
 use ph2d_ecs::{Entity, SimWorld, SpriteAnimations, SpriteAnimator, SpriteGrid};
 use ph2d_editor_core::{AnimFieldEdit as Ed, ImageUseEdit as Verbo};

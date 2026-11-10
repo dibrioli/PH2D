@@ -104,23 +104,6 @@ const FORA: &[Isento] = &[
 /// Um literal isento, com o mecanismo — nomes que são DADO.
 const NOT_LANGUAGE: &[Excecao] = &[
     (
-        "janela_do_jogo_animado.rs",
-        "o botão Pivot",
-        "o nome do alvo da prova `PH2D_GAME_SMOKE` no terminal (`[animado-prova] pivô: … não está na \
-         tela`) — diagnóstico de consola de quem corre a prova, nunca pintado",
-    ),
-    (
-        "janela_do_jogo_animado.rs",
-        "o ponto do pivô",
-        "o nome do alvo da prova `PH2D_GAME_SMOKE` no terminal, como o `o botão Pivot` acima",
-    ),
-    (
-        "janela_do_jogo_animado.rs",
-        "selecionado={sel} origem={t:?} folha_e_pivo={pivo:?} desenho={c:?}",
-        "o relato `chave=valor` da prova do Pivot no terminal (`relato_do_pivo`) — o diagnóstico \
-         de quem segue a prova, nunca pintado",
-    ),
-    (
         "render_loop/autokey_pass.rs",
         "[autokey] painel={panel_open} armado={armed} populacao={pop:x?}",
         "a sonda `PH2D_AUTOKEY_LOG` (plano 34): pares `chave=valor` no terminal, só com a env \

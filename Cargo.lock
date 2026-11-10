@@ -11504,9 +11504,12 @@ dependencies = [
 name = "ph2d-sprite-anim-scene"
 version = "0.0.0"
 dependencies = [
+ "ph2d-anim-editor",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-physics-ecs",
+ "ph2d-render",
+ "ph2d-sprite-edit",
 ]
 
 [[package]]

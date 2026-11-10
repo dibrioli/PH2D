@@ -22,9 +22,15 @@ use crate::doc::InputMapDoc;
 use crate::interact::{Control, ControlRole};
 use crate::view_list::text::line;
 
-/// A altura do desenho para a largura `w`: o comando enche a largura como na maquete, até ao tecto.
-pub(super) fn height(w: f32) -> f32 {
-    (w * g::PAD_FILL / g::PAD_ASPECT).min(m::FIELD_H * g::PAD_MAX_ROWS) + m::CARD_PAD_X * 2.0
+/// A altura do desenho para a largura `w`: o comando enche a largura como na maquete, até ao tecto (mais baixo
+/// com a B empilhada).
+pub(super) fn height(w: f32, stacked: bool) -> f32 {
+    let rows = if stacked {
+        g::PAD_MAX_ROWS_STACKED
+    } else {
+        g::PAD_MAX_ROWS
+    };
+    (w * g::PAD_FILL / g::PAD_ASPECT).min(m::FIELD_H * rows) + m::CARD_PAD_X * 2.0
 }
 
 /// O contorno do corpo, já em pixels: o lado esquerdo e o espelho dele, de volta ao meio do topo.
@@ -195,7 +201,7 @@ pub(super) fn paint(
         let half = matches!(p.shape, PadShape::Half(..));
         let face = (!half || pressed || hover).then(|| face_of(pressed, None, hover));
         if let Some(f) = face {
-            fill_rounded_rect(scene, r, radius, ink.color(f));
+            super::keys::fill_face(scene, ink, r, radius, f);
         }
         if lit && !half {
             open_outline(scene, ink, r, radius);
@@ -213,7 +219,13 @@ pub(super) fn paint(
             PadShape::Arm(icon) | PadShape::Half(icon, _) => {
                 let s = super::keys::ARROW_BOX.min(r.w).min(r.h);
                 let ir = Rect::new(cx - s * 0.5, cy - s * 0.5, s, s);
-                paint_icon(scene, icon, ir, fg, StrokeToken::Default.px());
+                // A seta é traço fino: nunca mais apagada que `Text2` (a regra dos símbolos das teclas).
+                let tone = if who.is_empty() && !pressed && !lit {
+                    ink.color(ColorToken::Text2)
+                } else {
+                    fg
+                };
+                paint_icon(scene, icon, ir, tone, StrokeToken::Default.px());
             }
             PadShape::Pill | PadShape::Round => {
                 let label = tr(p.short_key);

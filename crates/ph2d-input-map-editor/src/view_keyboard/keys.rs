@@ -13,7 +13,7 @@ use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
 
 use super::geometry::{self as g, Arrangement, KeyCap};
-use super::keys_fit::{self as fit, Legend, Level};
+use super::keys_fit::{self as fit, HOVER_FACE, Legend, Level};
 use super::state::{KbHit, Sub};
 use super::users;
 use crate::census::KeyLook;
@@ -47,7 +47,7 @@ fn keyboard_h_b(ts: &mut TextSystem, w: f32) -> f32 {
 fn drawing_h(doc: &InputMapDoc, ts: &mut TextSystem, w: f32) -> f32 {
     match doc.kb.sub {
         Sub::Keyboard => keyboard_h_b(ts, w),
-        Sub::Gamepad => super::pad::height(w),
+        Sub::Gamepad => super::pad::height(w, doc.kb.stacked),
     }
 }
 
@@ -263,15 +263,44 @@ pub(super) fn face_of(pressed: bool, lit_fill: Option<ColorToken>, hover: bool) 
     } else if let Some(c) = lit_fill {
         c
     } else if hover {
-        ColorToken::CardFieldHover
+        HOVER_FACE
     } else {
         ColorToken::KanbanCardRaised
     }
 }
 
-/// A aresta desligada: a tecla do sistema pinta-se na face do botão desligado do cartão (`CardField`), com esta
-/// aresta para não sumir no fundo do desenho, e a letra em `TextDisabled` — a mesma na B e na C.
-pub(super) const DISABLED_EDGE: ColorToken = ColorToken::TextDisabled;
+/// A opacidade da face da tecla do sistema (a de repouso sobre o fundo do desenho): fica entre o fundo e o repouso
+/// em qualquer tema — menos ênfase que uma tecla em repouso, sem aresta nenhuma.
+pub(crate) const SYSTEM_FACE_ALPHA: f32 = ph2d_tokens::LAYER_OUTLINE_OFF_ALPHA;
+
+/// Pinta a face `tok` (o hover = o repouso + o véu).
+pub(super) fn fill_face(
+    scene: &mut VectorScene,
+    ink: CardInk,
+    r: Rect,
+    radius: f32,
+    tok: ColorToken,
+) {
+    if tok == HOVER_FACE {
+        fill_rounded_rect(scene, r, radius, ink.color(ColorToken::KanbanCardRaised));
+    }
+    fill_rounded_rect(scene, r, radius, ink.color(tok));
+}
+
+/// A faixa por baixo das `n` barras de `r`, no fundo do desenho (`CardField`): as barras mantêm o contraste sobre
+/// uma face cheia (premida ou acesa na cor de uma acção).
+fn paint_bar_strip(scene: &mut VectorScene, ink: CardInk, r: Rect, n: usize) -> Rect {
+    let top = fit::bars_top(r, n) - BAR_GAP;
+    let inset = m::SEG_INSET * 0.25;
+    let s = Rect::new(
+        r.x + inset,
+        top,
+        (r.w - inset * 2.0).max(0.0),
+        (r.y + r.h - inset - top).max(0.0),
+    );
+    fill_rounded_rect(scene, s, BAR_H, ink.color(ColorToken::CardField));
+    s
+}
 
 /// O contorno da acção aberta, recuado de uma aresta para dentro (o anel do foco fica na aresta, os dois lêem-se).
 pub(super) fn open_outline(scene: &mut VectorScene, ink: CardInk, r: Rect, radius: f32) {
@@ -391,27 +420,25 @@ fn paint_key(
     // desligada com o porquê.
     doc.control(Control::new(id, kr, ControlRole::Key, key.label()).disabled(key.system_owned()));
     let pressed = !system && doc.is_pressed(id);
-    // A do sistema: desenhada, nunca ligável (plano §13.2) — a tinta do botão desligado, sem estados.
+    // A do sistema: desenhada, nunca ligável (plano §13.2) — a face de repouso apagada, sem aresta nem estados.
     let bg = if system {
-        ColorToken::CardField
+        ColorToken::KanbanCardRaised
     } else {
         face_of(pressed, filled, hover)
     };
-    fill_rounded_rect(scene, kr, m::SEG_RADIUS, ink.color(bg));
+    if system {
+        let c = ink.color(bg).multiply_alpha(SYSTEM_FACE_ALPHA);
+        fill_rounded_rect(scene, kr, m::SEG_RADIUS, c);
+    } else {
+        fill_face(scene, ink, kr, m::SEG_RADIUS, bg);
+    }
     if let Some(c) = filled.filter(|_| !pressed) {
         doc.census.filled.push((kr, c));
     }
+    let strip = (!who.is_empty() && (pressed || filled.is_some()))
+        .then(|| paint_bar_strip(scene, ink, kr, who.len()));
     let outlined = lit && !system && style == Lit::Outline;
-    let edge = if system {
-        stroke_rounded_rect(
-            scene,
-            kr,
-            m::SEG_RADIUS,
-            m::FIELD_BORDER,
-            ink.color(DISABLED_EDGE),
-        );
-        Some(DISABLED_EDGE)
-    } else if outlined {
+    let edge = if outlined {
         open_outline(scene, ink, kr, m::SEG_RADIUS);
         Some(ColorToken::Accent)
     } else {
@@ -438,7 +465,13 @@ fn paint_key(
                 .min(kr.w - fit::LEGEND_PAD * 2.0)
                 .max(0.0);
             let ir = Rect::new(kr.x + (kr.w - s) * 0.5, kr.y + (label_h - s) * 0.5, s, s);
-            paint_icon(scene, *icon, ir, fg, StrokeToken::Default.px());
+            // O símbolo é traço fino: nunca mais apagado que `Text2` numa tecla do jogo (a ligada fica em `Text1`).
+            let tone = if fg_tok == ColorToken::Text3 {
+                ink.color(ColorToken::Text2)
+            } else {
+                fg
+            };
+            paint_icon(scene, *icon, ir, tone, StrokeToken::Default.px());
             doc.census.icons.push((ir, *icon));
             None
         }
@@ -465,6 +498,8 @@ fn paint_key(
         face: bg,
         ink: fg_tok,
         edge,
+        dimmed: system,
+        strip,
         text,
     });
     paint_bars(&mut doc.census, scene, ink, kr, &who);

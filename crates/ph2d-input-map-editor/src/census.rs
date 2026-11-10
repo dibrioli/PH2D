@@ -50,8 +50,12 @@ pub struct KeyLook {
     pub rect: Rect,
     pub face: ph2d_tokens::ColorToken,
     pub ink: ph2d_tokens::ColorToken,
-    /// O contorno: o acento da acção aberta, ou a aresta desligada da tecla do sistema.
+    /// O contorno: só o acento da acção aberta (a tecla do sistema não tem nenhum).
     pub edge: Option<ph2d_tokens::ColorToken>,
+    /// A face de repouso pintada translúcida sobre o fundo (a tecla do sistema): menos ênfase que o repouso.
+    pub dimmed: bool,
+    /// A faixa escura por baixo das barras (face cheia: premida ou acesa), para as barras não sumirem nela.
+    pub strip: Option<Rect>,
     /// A legenda em texto e o seu tamanho; `None` = ícone.
     pub text: Option<(String, f32)>,
 }

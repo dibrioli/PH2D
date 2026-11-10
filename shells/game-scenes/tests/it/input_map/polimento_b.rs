@@ -352,7 +352,7 @@ fn os_numeros_da_b_editam_como_os_da_a() {
         .map(|t| t.1.clone())
         .collect();
     assert!(
-        all.contains(ph2d_i18n::tr("input_map_list.kept_max")),
+        all.contains(&ph2d_i18n::tr("input_map_list.kept_max").replace("{v}", "1.00")),
         "a frase do limite: {all}"
     );
 }
@@ -559,6 +559,95 @@ fn f1_a_escuta_alinha_e_o_corpo_e_regular() {
                 assert!(
                     doc.census.semibold.iter().any(|s| s.starts_with(name)),
                     "o título SemiBold"
+                );
+            }
+        }
+    });
+}
+
+/// K2 #6 e #7: no Gamepad o comando guarda o tamanho; a 1280 empilhada, a barra do curso e os campos Dead/Press
+/// ALCANÇAM-SE rolando a região de baixo (inteiros na vista); as legendas «Dead …» e «Press …» centram-se nas
+/// suas marcas, presas à calha.
+#[test]
+fn k2_o_comando_a_1280_alcanca_o_curso_rolando_e_as_marcas_centram() {
+    use ph2d_app_input_map::ids::ListHit;
+    super::em_cada_modo_de_texto(|| {
+        for area in AREAS {
+            let (mut m, a) = b_com_manche();
+            m.click(m.at(KbHit::Sub(Sub::Gamepad).id()));
+            m.paint_in(area);
+            // A roda até ao fundo (duas pinturas: a segunda já conhece a altura do cartão).
+            for _ in 0..2 {
+                m.tab_mut().doc.wheel(f32::MIN);
+                m.paint_in(area);
+            }
+            let doc = &m.tab().doc;
+            let view = doc.census.clip.unwrap_or_else(|| doc.body());
+            let vis = view.y.max(area.y);
+            let bot = (view.y + view.h).min(area.y + area.h);
+            for id in [
+                KbHit::BarDead.id(),
+                ListHit::Dead(a).id(),
+                ListHit::Press(a).id(),
+            ] {
+                let r = doc.rect_of(id).unwrap_or_else(|| {
+                    panic!(
+                        "{}: {id:?} sem alvo; vista {view:?}; textos {:?}",
+                        area.w,
+                        (doc.census.texts.iter())
+                            .map(|t| (t.1.clone(), t.0.y))
+                            .collect::<Vec<_>>()
+                    )
+                });
+                assert!(
+                    r.y >= vis - 0.01 && r.y + r.h <= bot + 0.01,
+                    "{}: {r:?} fora da vista {vis}..{bot}",
+                    area.w
+                );
+            }
+            let act = m.hero.input_map.get(a).expect("a");
+            let texts = &doc.census.texts;
+            let row = {
+                let s = ph2d_i18n::tr("input_map_keyboard.travel_dead")
+                    .replace("{v}", &format!("{:.2}", act.dead_zone));
+                texts.iter().find(|t| t.1 == s).expect("Dead").0.y
+            };
+            // Só a fila das legendas do curso (o «0»/«1» de outro sítio não conta).
+            let find = |key: &str, v: f32| {
+                let s = ph2d_i18n::tr(key).replace("{v}", &format!("{v:.2}"));
+                (texts.iter())
+                    .find(|t| t.1 == s && (t.0.y - row).abs() < 0.5)
+                    .expect("legenda")
+                    .0
+            };
+            let zero = find("input_map_keyboard.zero", 0.0);
+            let one = find("input_map_keyboard.one", 0.0);
+            let (lo, hi) = (zero.x, one.x + one.w);
+            for (key, v, hit) in [
+                (
+                    "input_map_keyboard.travel_dead",
+                    act.dead_zone,
+                    KbHit::BarDead,
+                ),
+                (
+                    "input_map_keyboard.travel_press",
+                    act.press_point,
+                    KbHit::BarPress,
+                ),
+            ] {
+                let t = find(key, v);
+                let g = doc.rect_of(hit.id()).expect("marca");
+                let (tc, gc) = (t.x + t.w * 0.5, g.x + g.w * 0.5);
+                let clamped = (t.x - lo).abs() < 0.5 || (t.x + t.w - hi).abs() < 0.5;
+                assert!(
+                    t.x >= lo - 0.01 && t.x + t.w <= hi + 0.01,
+                    "{}: {key} sai da calha",
+                    area.w
+                );
+                assert!(
+                    clamped || (tc - gc).abs() < 0.5,
+                    "{}: {key} {tc} × marca {gc}",
+                    area.w
                 );
             }
         }

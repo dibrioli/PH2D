@@ -97,6 +97,10 @@ pub struct KbState {
     pub scroll: f32,
     pub(crate) list_total: f32,
     pub(crate) list_view_h: f32,
+    /// Empilhada: a altura do cartão da aberta na última pintura (o que passa do fundo rola com a região).
+    pub(crate) card_h: f32,
+    /// Os controlos que a última pintura pôs DENTRO da região que rola (o que o foco pode trazer à vista).
+    pub(crate) scrolled: Vec<NodeId>,
     /// O arrasto do polegar: (y do Down, rolagem no Down).
     pub(crate) thumb_drag: Option<(f32, f32)>,
     /// A acção recém-aberta: a pintura seguinte rola a linha dela para a vista.

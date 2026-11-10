@@ -197,6 +197,7 @@ pub fn paint(
     let y0 = region.y - doc.kb.scroll;
     let tall = f32::MAX * 0.25; // LITERAL-PX-OK: a região rolada não tem fundo — o recorte corta
     doc.hits.push_clip(region);
+    let mark = doc.ui.controls.len();
     let mut over = VectorScene::new();
     over.push_clip(&ph2d_editor_core::paint::rect_to_vello(region));
     let list_r = Rect::new(inner.x, y0, list_w, if stacked { tall } else { region.h });
@@ -207,16 +208,19 @@ pub fn paint(
     let rw = (inner.x + inner.w - rx).max(0.0);
     let (mut end, mut card_end) = (list_end, region.y);
     if stacked {
-        // O cartão da aberta fica no topo da região (não rola com a lista): revelar uma linha do fundo da lista não
-        // o tira da vista.
-        let bottom = Rect::new(rx, region.y, rw, tall);
+        // O cartão da aberta fica no topo da região e só rola o que passa do fundo: revelar uma linha do fundo da
+        // lista não o tira da vista, e rolar alcança o fim dele (o curso e os números do comando a 1280).
+        let shift = doc.kb.scroll.min((doc.kb.card_h - region.h).max(0.0));
+        let bottom = Rect::new(rx, region.y - shift, rw, tall);
         card_end = fitted(&mut over, ink, bottom, region, |s| {
             tiles::paint(doc, bottom, s, ts, ink)
         });
-        end = end.max(card_end - region.y + y0);
+        doc.kb.card_h = card_end - bottom.y;
+        end = end.max(y0 + doc.kb.card_h);
     }
     over.pop_layer();
     doc.hits.pop_clip();
+    doc.kb.scrolled = doc.ui.controls[mark..].iter().map(|c| c.id).collect();
     scene.append_scene(&over);
     let total = end - y0;
     doc.kb.list_total = total;

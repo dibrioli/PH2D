@@ -10,6 +10,10 @@ use ph2d_text::TextSystem;
 use super::geometry::{self as g, Arrangement, KeyCap};
 use super::keys::{BAR_GAP, BAR_H};
 
+/// A face do hover: a de repouso com o véu do hover do cartão por cima (`KanbanShadowHover`) — mais clara que o
+/// repouso no tema escuro, mais funda no claro: sempre MAIS ênfase que o repouso, nunca um contorno.
+pub const HOVER_FACE: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::KanbanShadowHover;
+
 /// A tecla nunca é mais baixa que a letra com duas barras por baixo (a 1280 as barras tapavam a letra).
 pub(super) const KEY_MIN_H: f32 =
     m::VALUE_PX + m::SEG_PAD + (BAR_H + BAR_GAP) * 2.0 + m::SEG_INSET * 0.5;
@@ -161,6 +165,20 @@ fn fits(ts: &mut TextSystem, l: &Legend, w: f32) -> bool {
     }
 }
 
+/// Os tamanhos de uma legenda só de pontuação (`` ` `` `'` `,` `.` `;` `/` `-` `=` `[` `]` `\`), do maior ao menor:
+/// os glifos dela são minúsculos a `VALUE_PX` e a tecla lia-se vazia; o primeiro que cabe, medido, vence.
+pub const PUNCT_PX: [f32; 2] = [
+    ph2d_tokens::TypeToken::Md.px(),
+    ph2d_tokens::TypeToken::Base.px(),
+];
+
+/// A legenda é um só glifo de pontuação?
+#[must_use]
+pub fn is_punct(s: &str) -> bool {
+    let mut c = s.chars();
+    matches!((c.next(), c.next()), (Some(ch), None) if ch.is_ascii_punctuation())
+}
+
 /// A altura que duas linhas de `px` pedem.
 pub(crate) fn two_lines_h(px: f32) -> f32 {
     px * ph2d_tokens::LineHeight::Tight.ratio() * 2.0
@@ -181,6 +199,15 @@ pub(crate) fn choose(
     h: f32,
 ) -> Option<Legend> {
     let one = legend_at(key, level);
+    if let Legend::Text(s, _) = &one
+        && is_punct(s)
+        && let Some(big) = PUNCT_PX.into_iter().find_map(|px| {
+            let l = Legend::Text(s.clone(), px);
+            (px * ph2d_tokens::LineHeight::Tight.ratio() <= h && fits(ts, &l, w)).then_some(l)
+        })
+    {
+        return Some(big);
+    }
     if fits(ts, &one, w) {
         return Some(one);
     }
@@ -236,6 +263,7 @@ fn group_level(ts: &mut TextSystem, a: Arrangement, p: f32, grp: Group) -> Optio
     [false, true].into_iter().find_map(|sys_icon| {
         LEVELS
             .into_iter()
+            // O numérico nunca desce ao símbolo: as irmãs dele são glifos, o cadeado e o ↵ leriam-se como outra coisa.
             .filter(|l| *l != Level::Icon || icons_all)
             .find(|l| {
                 caps.iter().all(|c| {

@@ -253,7 +253,11 @@ impl Key {
     /// A legenda em DUAS linhas, como muitos notebooks a imprimem (`Prt` / `Sc`); `None` = uma linha só.
     #[must_use]
     pub fn cap_lines(self) -> Option<(&'static str, &'static str)> {
-        (self.0 == 0xF72E).then_some(("Prt", "Sc"))
+        match self.0 {
+            0xF72E => Some(("Prt", "Sc")),
+            0xF717 => Some(("Num", "Lock")),
+            _ => None,
+        }
     }
 
     fn caps(self) -> (&'static str, &'static str) {

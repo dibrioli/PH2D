@@ -232,6 +232,7 @@ fn o_numerico_acende_no_try_it() {
 }
 
 use ph2d_app_input_map::census::KeyLook;
+use ph2d_app_input_map::view_keyboard::keys_fit::HOVER_FACE;
 use ph2d_app_input_map::view_keyboard::keys_fit::{Group, group_of};
 use ph2d_tokens::ColorToken;
 
@@ -337,13 +338,15 @@ fn as_teclas_do_sistema_tem_o_mesmo_olhar_desligado_na_b_e_na_c() {
                     .expect("desenhada");
                 (l.face, l.ink, l.edge)
             };
-            let want = (
-                ColorToken::CardField,
-                ColorToken::TextDisabled,
-                Some(ColorToken::TextDisabled),
-            );
+            // K2: sem aresta nenhuma — a face de repouso APAGADA e a letra desligada (menos ênfase que o repouso).
+            let want = (ColorToken::KanbanCardRaised, ColorToken::TextDisabled, None);
             assert_eq!(olhar(&b), want, "B {}: {}", area.w, k.label());
             assert_eq!(olhar(&c), want, "C {}: {}", area.w, k.label());
+            assert!(
+                olhar_de(&b, *k).dimmed && olhar_de(&c, *k).dimmed,
+                "{}: apagada",
+                k.label()
+            );
         }
         // O relatório da PrtSc: duas linhas («PrtSc» no censo) ou o símbolo (`None`).
         let prt = Key(0xF72E);
@@ -416,7 +419,7 @@ fn os_estados_da_tecla_tem_precedencia_premido_aceso_hover() {
         "repouso"
     );
     b.hover(centro(&b, q));
-    assert_eq!(olhar_de(&b, q).face, ColorToken::CardFieldHover, "hover");
+    assert_eq!(olhar_de(&b, q).face, HOVER_FACE, "hover");
     b.down(centro(&b, q));
     assert_eq!(
         olhar_de(&b, q).face,
@@ -437,7 +440,7 @@ fn os_estados_da_tecla_tem_precedencia_premido_aceso_hover() {
     let l = olhar_de(&b, k);
     assert_eq!(
         (l.face, l.edge),
-        (ColorToken::CardFieldHover, Some(ColorToken::Accent)),
+        (HOVER_FACE, Some(ColorToken::Accent)),
         "aberta + hover"
     );
     // O Try it: aceso (a cor da acção) > hover.
@@ -455,6 +458,126 @@ fn os_estados_da_tecla_tem_precedencia_premido_aceso_hover() {
     c.frame();
     c.hover(centro(&c, kp8));
     let l = olhar_de(&c, kp8);
-    assert_ne!(l.face, ColorToken::CardFieldHover, "aceso > hover");
+    assert_ne!(l.face, HOVER_FACE, "aceso > hover");
     assert_ne!(l.face, ColorToken::KanbanCardRaised, "aceso enche-se");
+}
+
+fn tecla(nome: &str) -> Key {
+    Key::named_in_script(nome).expect("tecla")[0]
+}
+
+/// K2 #2: na C, a ↑ premida (jump amarelo + move_up) enche-se — e as barras ficam numa faixa escura própria.
+#[test]
+fn k2_a_face_cheia_nao_engole_as_barras() {
+    for area in AREAS {
+        let mut c = pinta_c(area);
+        let up = tecla("up");
+        assert!(c.physical(up));
+        c.paint_in(area);
+        let l = olhar_de(&c, up);
+        let strip = l.strip.expect("a ↑ premida tem a faixa das barras");
+        let r = c.tab().doc.rect_of(KbHit::Key(up).id()).expect("alvo");
+        let bars: Vec<Rect> = (c.tab().doc.census.bars.iter())
+            .filter(|(b, _)| r.contains(b.x + b.w * 0.5, b.y + b.h * 0.5))
+            .map(|(b, _)| *b)
+            .collect();
+        assert!(bars.len() >= 2, "{}: jump + move_up na ↑: {bars:?}", area.w);
+        for b in bars {
+            assert!(
+                b.x >= strip.x && b.x + b.w <= strip.x + strip.w + 0.01 && b.y >= strip.y,
+                "{}: a barra {b:?} fora da faixa {strip:?}",
+                area.w
+            );
+        }
+        // Uma tecla em repouso não ganha faixa.
+        assert_eq!(olhar_de(&c, tecla("q")).strip, None);
+    }
+}
+
+/// K2 #3 e #4: o Enter do numérico diz «Enter» como o principal; o Num Lock nunca é o cadeado; a pontuação pinta-se
+/// maior que `VALUE_PX` quando cabe (o ` nunca parece vazio).
+#[test]
+fn k2_o_numerico_fala_e_a_pontuacao_pesa() {
+    use ph2d_app_input_map::view_keyboard::keys_fit::{PUNCT_PX, is_punct};
+    super::em_cada_modo_de_texto(|| {
+        for area in AREAS {
+            for (v, m) in [("B", pinta_b(area)), ("C", pinta_c(area))] {
+                let at = format!("{v} {}", area.w);
+                let txt = |k: Key| olhar_de(&m, k).text.map(|t| t.0);
+                // O Enter do numérico diz «Enter» quando cabe; sem lugar, o ↵ (o de muitos numéricos reais).
+                let kp = txt(Key::NUMPAD_ENTER);
+                assert!(
+                    kp.is_none() || kp.as_deref() == Some("Enter"),
+                    "{at}: {kp:?}"
+                );
+                assert_eq!(
+                    m.tab().doc.kb.fit.map(|f| f.arrangement),
+                    Some(Arrangement::Wide),
+                    "{at}: o numérico fica à vista"
+                );
+                // O Num Lock fala SEMPRE em texto: nunca o cadeado.
+                let num = txt(tecla("numlock"))
+                    .unwrap_or_else(|| panic!("{at}: Num Lock em texto, nunca o cadeado"));
+                assert!(num.starts_with("Num"), "{at}: {num}");
+                for l in &m.tab().doc.census.keys {
+                    if let Some((s, px)) = &l.text
+                        && is_punct(s)
+                        && group_of(l.key) != Group::Numpad
+                    {
+                        eprintln!("{at}: «{s}» a {px}");
+                        assert!(*px >= PUNCT_PX[1], "{at}: «{s}» a {px} lê-se vazia");
+                    }
+                }
+            }
+        }
+    });
+}
+
+/// K2 #1, #5 e #8: a do sistema sem aresta; o símbolo de Home/End/PgUp/PgDn (se usado) da altura da letra; o hover
+/// só na tecla pairada, e a aberta é o contorno recuado (a face dela fica a de repouso).
+#[test]
+fn k2_hover_aberta_e_simbolos_lem_se_diferentes() {
+    for area in AREAS {
+        let mut b = pinta_b(area);
+        for l in &b.tab().doc.census.keys {
+            assert!(
+                l.dimmed || l.edge != Some(ColorToken::TextDisabled),
+                "sem aresta desligada"
+            );
+            if group_of(l.key) == Group::Nav && l.text.is_none() {
+                let ir = (b.tab().doc.census.icons.iter())
+                    .find(|(ir, _)| l.rect.contains(ir.x + ir.w * 0.5, ir.y + ir.h * 0.5))
+                    .expect("o símbolo")
+                    .0;
+                // A altura das maiúsculas da fonte do corpo: ~0,7 em (o mínimo do símbolo).
+                assert!(
+                    ir.h >= ph2d_tokens::TypeToken::Xs.px() * 0.7,
+                    "{}: {ir:?}",
+                    area.w
+                );
+            }
+        }
+        let q = tecla("q");
+        b.hover(centro(&b, q));
+        let keys = &b.tab().doc.census.keys;
+        let hovered: Vec<Key> = keys
+            .iter()
+            .filter(|l| l.face == HOVER_FACE)
+            .map(|l| l.key)
+            .collect();
+        assert_eq!(hovered, vec![q], "{}: só a pairada", area.w);
+        let open: Vec<&KeyLook> = keys
+            .iter()
+            .filter(|l| l.edge == Some(ColorToken::Accent))
+            .collect();
+        assert!(!open.is_empty(), "{}: a aberta tem teclas", area.w);
+        for l in open {
+            assert_eq!(
+                l.face,
+                ColorToken::KanbanCardRaised,
+                "{}: a aberta não é hover",
+                area.w
+            );
+        }
+    }
 }

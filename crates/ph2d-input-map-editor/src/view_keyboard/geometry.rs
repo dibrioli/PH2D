@@ -234,6 +234,9 @@ pub(crate) const PAD_ASPECT: f32 = 1.75; // LITERAL-PX-OK: razão adimensional, 
 pub(crate) const PAD_FILL: f32 = 0.76; // LITERAL-PX-OK: fração da largura, maquete B3
 /// O tecto da altura do comando, em alturas de campo.
 pub(crate) const PAD_MAX_ROWS: f32 = 10.0; // LITERAL-PX-OK: múltiplo do token de linha
+/// O tecto com a B empilhada (1280): o curso e os campos Dead/Press da aberta cabem sem rolar (medido em
+/// (297,28,690,604): a 8 alturas o campo acabava 31 px abaixo da vista; a 6,5 sobram 11 px).
+pub(crate) const PAD_MAX_ROWS_STACKED: f32 = 10.0; // LITERAL-PX-OK: múltiplo do token de linha
 
 /// Um troço do contorno: recta até, ou cúbica (dois controlos e o fim), em fracções da caixa.
 #[derive(Clone, Copy)]

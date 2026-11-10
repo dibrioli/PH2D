@@ -469,4 +469,54 @@ mod tests {
         let r = j.to_region(w).expect("escalar mede-se em pixels");
         assert_eq!((r.x, r.y, r.w, r.h), (t, t, 3 * t, 2 * t));
     }
+
+    /// **O NÚMERO do B17.5 que fica por curar: um Ctrl+Z de dois tiles em cantos opostos da tela 4K publica
+    /// a tela INTEIRA.** O sujo é um retângulo só (`Confine` → `mark_dirty` → dreno/placa), então a caixa
+    /// dos dois tiles restaurados é 3840×2160 = 8 294 400 px para 128² + 128×112 = 30 720 px (270×).
+    /// Fica VERMELHO quando o sujo passar a várias caixas: aí inverta-o para «suja só os dois».
+    #[test]
+    fn um_ctrl_z_de_dois_tiles_opostos_publica_a_tela_4k_e_este_e_o_numero() {
+        use super::super::tiles::TileMarks;
+        use super::{Confine, Region, StoredPlane};
+        use crate::undo::journal::TILE;
+        use std::sync::Arc;
+        let (w, h, t) = (3840u32, 2160u32, TILE as u32);
+        let before = Arc::new(vec![7u8; (w * h) as usize]);
+        let mut a = (*before).clone();
+        a[w as usize + 1] = 9; // tile (0, 0)
+        a[(h - 2) as usize * w as usize + (w - 2) as usize] = 9; // o último tile
+        let tudo = Region { x: 0, y: 0, w, h };
+        let mut marks = TileMarks::default();
+        marks.mark(tudo);
+        let px = marks
+            .for_hint(Some(tudo), 1)
+            .expect("os marks viram a janela");
+        let hint = PlaneWindow::from_region(tudo, w, w as usize);
+        let (mut b, mut d) = (Arc::clone(&before), Arc::new(a));
+        let p = StoredPlane::split_tiled(&mut b, &mut d, w as usize, hint, Some((&px, w)));
+        assert_eq!(p.variant(), "tiles");
+        let mut c = Confine::new(w);
+        c.add(p.reach());
+        let r = c.finish().expect("um passo por tiles é confinado");
+        let sujo = u64::from(r.w) * u64::from(r.h);
+        let StoredPlane::Tiles { rects, .. } = &p else {
+            panic!("variant tiles");
+        };
+        let mudou: u64 = rects
+            .iter()
+            .map(|j| {
+                j.to_region(w)
+                    .map_or(0, |q| u64::from(q.w) * u64::from(q.h))
+            })
+            .sum();
+        assert_eq!(
+            (sujo, mudou, rects.len()),
+            (
+                8_294_400,
+                u64::from(t) * u64::from(t) + u64::from(t) * 112,
+                2
+            ),
+            "o sujo publicado é a caixa dos dois tiles — a tela 4K"
+        );
+    }
 }

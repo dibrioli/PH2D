@@ -159,21 +159,43 @@ fn entering_warp_after_moving_the_box_keeps_the_paint_where_it_was() {
 /// eixos (rodada, escala e posição não inteiras), patch opaco sobre transparente: a malha seguida pelo
 /// afim do mesmo box tem de dar os MESMOS bytes (±1 do arredondamento das homografias por célula).
 ///
-/// Dois casos: rodado ~14° com escala 1,13 × 0,91, e rodado ~30° ENCOLHIDO a 0,41 × 0,47 (aí meio texel
-/// de ecrã passa de um texel de origem, e a margem já não esconde um teste feito fora do ponto amostrado).
+/// Três casos: rodado ~14° com escala 1,13 × 0,91; rodado ~30° ENCOLHIDO a 0,41 × 0,47 (aí meio texel
+/// de ecrã passa de um texel de origem, e a margem já não esconde um teste feito fora do ponto amostrado);
+/// e LONGE DA ORIGEM (canvas 2048, traço em x ≈ 1500): as homografias em coordenadas locais da célula
+/// continuam a dar o afim lá (a costura dobrada tem o seu gate, [`a_malha_dobrada_nao_tem_costura_sem_dono`]).
 ///
-/// **Mutações que têm de sangrar:** voltar o teste de cobertura a `[x+0,5; y+0,5]` (o caso encolhido) ou
-/// tirar a margem de um texel de origem nas arestas de fora (os dois).
+/// **Mutações que têm de sangrar:** voltar o teste de cobertura a `[x+0,5; y+0,5]` (o encolhido) ou tirar
+/// a margem de um texel de origem nas arestas de fora (todos).
 #[test]
 fn a_malha_de_quatro_cantos_e_o_afim_na_borda() {
     // (rotação cos, sin · escala x, y · deslocamento do centro)
+    const PEQ: (u32, [u32; 4]) = (96, [24, 30, 70, 62]);
     let casos = [
-        ("rodado", [0.970_296f32, 0.241_922], [1.13f32, 0.91], [3.37f32, -2.61]),
-        ("encolhido", [0.866_025, 0.5], [0.41, 0.47], [-1.73, 2.29]),
+        (
+            "rodado",
+            PEQ,
+            [0.970_296f32, 0.241_922],
+            [1.13f32, 0.91],
+            [3.37f32, -2.61],
+        ),
+        (
+            "encolhido",
+            PEQ,
+            [0.866_025, 0.5],
+            [0.41, 0.47],
+            [-1.73, 2.29],
+        ),
+        (
+            "longe da origem",
+            (2048, [1380, 1410, 1620, 1490]),
+            [0.999_848, 0.017_452],
+            [1.07, 0.96],
+            [37.31, -21.57],
+        ),
     ];
     let mut falhas = Vec::new();
-    for (nome, rot, esc, desl) in casos {
-        let (diff, worst) = malha_contra_afim(rot, esc, desl);
+    for (nome, (n, rect), rot, esc, desl) in casos {
+        let (diff, worst) = malha_contra_afim(n, rect, rot, esc, desl);
         if diff != 0 {
             falhas.push(format!("[{nome}] {diff} texels (pior {worst})"));
         }
@@ -185,23 +207,31 @@ fn a_malha_de_quatro_cantos_e_o_afim_na_borda() {
 }
 
 /// Pinta o mesmo box pelo afim e pela malha de 4 cantos; devolve `(texels com diferença > 1, pior)`.
-fn malha_contra_afim(rot: [f32; 2], esc: [f32; 2], desl: [f32; 2]) -> (usize, u8) {
-    const N: u32 = 96;
-    let mut src = vec![0u8; (N * N * 4) as usize];
-    for y in 30..62u32 {
-        for x in 24..70u32 {
-            let i = ((y * N + x) * 4) as usize;
+fn malha_contra_afim(
+    n: u32,
+    [rx0, ry0, rx1, ry1]: [u32; 4],
+    rot: [f32; 2],
+    esc: [f32; 2],
+    desl: [f32; 2],
+) -> (usize, u8) {
+    let mut src = vec![0u8; (n * n * 4) as usize];
+    for y in ry0..ry1 {
+        for x in rx0..rx1 {
+            let i = ((y * n + x) * 4) as usize;
             src[i..i + 4].copy_from_slice(&[200, 60, (x * 3) as u8, 255]);
         }
     }
     let mut t = PainterTool::default();
-    t.set_source(src, N, N);
+    t.set_source(src, n, n);
     t.set_paint_tool_mode("liquify");
     t.set_deform_temperament(super::super::DEFORM_TEMPERAMENT_TRANSFORM);
     t.set_deform_transform_mode(1);
     let x = t.paint.deform.xform.expect("o levante");
     let cur = TransformFrame {
-        center: [x.pristine.center[0] + desl[0], x.pristine.center[1] + desl[1]],
+        center: [
+            x.pristine.center[0] + desl[0],
+            x.pristine.center[1] + desl[1],
+        ],
         u: rot,
         hx: x.pristine.hx * esc[0],
         hy: x.pristine.hy * esc[1],
@@ -237,10 +267,79 @@ fn malha_contra_afim(rot: [f32; 2], esc: [f32; 2], desl: [f32; 2]) -> (usize, u8
         }
         worst = worst.max(d);
     }
-    println!("[malha × afim {esc:?}] texels > 1: {diff} · pior {worst} · borda parcial do afim {parcial}");
+    println!(
+        "[malha × afim {esc:?}] texels > 1: {diff} · pior {worst} · borda parcial do afim {parcial}"
+    );
     assert!(
         parcial > 20,
         "fixture: o afim não tem borda antialiasada ({parcial})"
     );
     (diff, worst)
+}
+
+/// **B06.A5 — a costura sem dono.** Malha 3×3 DOBRADA (o ponto do meio de cima puxado), patch opaco: dentro
+/// do traço nenhum texel pode ficar com a base (alfa 0) entre dois vizinhos opacos. Longe da origem
+/// (canvas 2048, x ≈ 1500) uma homografia montada em f32 com coordenadas do CANVAS erra mais de um texel na
+/// aresta partilhada, e o texel da costura fica fora das duas células (3 texels nesta fixture).
+///
+/// **Mutação que tem de sangrar:** `MeshCell::new` com a origem local a `[0, 0]` (coordenadas do canvas).
+#[test]
+fn a_malha_dobrada_nao_tem_costura_sem_dono() {
+    let mut falhas = Vec::new();
+    for (nome, n, [rx0, ry0, rx1, ry1]) in [
+        ("perto", 256u32, [40u32, 90, 220, 140]),
+        ("longe", 2048, [1300, 1400, 1700, 1460]),
+    ] {
+        let mut src = vec![0u8; (n * n * 4) as usize];
+        for y in ry0..ry1 {
+            for x in rx0..rx1 {
+                let i = ((y * n + x) * 4) as usize;
+                src[i..i + 4].copy_from_slice(&[200, 60, 50, 255]);
+            }
+        }
+        let mut t = PainterTool::default();
+        t.set_source(src, n, n);
+        t.set_paint_tool_mode("liquify");
+        t.set_deform_temperament(super::super::DEFORM_TEMPERAMENT_TRANSFORM);
+        t.set_deform_transform_mode(1);
+        let x = t.paint.deform.xform.expect("o levante");
+        let h = x.pristine.handles();
+        let m = Mesh::seed([h[0], h[1], h[2], h[3]], 3, 3);
+        let mut current: Vec<[f32; 2]> = m
+            .current
+            .iter()
+            .map(|p| [p[0] + 17.37, p[1] + 9.61])
+            .collect();
+        // A linha de cima NA IMAGEM é a última (o `TL` do frame tem `+hy`, para baixo).
+        current[13][1] -= 23.3;
+        current[14][1] -= 11.9;
+        t.paint.deform.transform_mode = 3;
+        t.paint.deform.xform_mesh = Some(Mesh {
+            cols: 3,
+            rows: 3,
+            pristine: m.pristine,
+            current,
+        });
+        t.recomposite_transform();
+        let a = |x: u32, y: u32| t.canvas_rgba[((y * n + x) * 4 + 3) as usize];
+        let mut buracos = 0usize;
+        for y in 1..n - 1 {
+            for x in 1..n - 1 {
+                if a(x, y) == 0
+                    && ((a(x - 1, y) == 255 && a(x + 1, y) == 255)
+                        || (a(x, y - 1) == 255 && a(x, y + 1) == 255))
+                {
+                    buracos += 1;
+                }
+            }
+        }
+        println!("[costura {nome}] texels sem dono entre opacos: {buracos}");
+        if buracos != 0 {
+            falhas.push(format!("[{nome}] {buracos}"));
+        }
+    }
+    assert!(
+        falhas.is_empty(),
+        "a malha dobrada deixa texels sem dono na costura entre células: {falhas:?}"
+    );
 }

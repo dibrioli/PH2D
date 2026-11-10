@@ -82,7 +82,8 @@ fn cena(w: u32, h: u32, qual: u8, antigo: bool) -> (Vec<u8>, u32) {
     t.set_deform_transform_mode(3);
     let m = t.paint.deform.xform_mesh.clone().expect("a malha");
     // O ponto do meio da linha de cima, puxado para cima.
-    let k = (m.cols / 2) as usize;
+    // A linha de cima NA IMAGEM é a última da malha (o `TL` do frame tem `+hy`, para baixo).
+    let k = (m.rows * (m.cols + 1) + m.cols / 2) as usize;
     let p = m.current[k];
     risca(&mut t, p, [p[0], p[1] - 70.0 * s], 12);
     ANTES.set(false);

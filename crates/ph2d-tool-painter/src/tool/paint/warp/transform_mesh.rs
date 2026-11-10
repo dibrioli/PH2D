@@ -151,21 +151,16 @@ impl PainterTool {
             for c in 0..fc {
                 let src = fine_cell(&fine_src, r, c);
                 let dst = fine_cell(&fine_dst, r, c);
-                let Some(hinv) = homography_from_quads(&src, &dst).and_then(|m| m.inverse()) else {
-                    continue;
-                };
                 let outer = [r == 0, c + 1 == fc, r + 1 == fr, c == 0];
                 let bbox = region_clip(cell_reach(&src, &dst, outer, w, h), w, h);
                 if bbox.w == 0 || bbox.h == 0 {
                     continue;
                 }
+                let Some(cell) = MeshCell::new(src, dst, outer, bbox) else {
+                    continue;
+                };
                 affected = region_union(affected, bbox);
-                cells.push(MeshCell {
-                    hinv,
-                    src,
-                    outer,
-                    bbox,
-                });
+                cells.push(cell);
             }
         }
         let dirty = region_clip(
@@ -237,27 +232,58 @@ impl PainterTool {
     }
 }
 
-/// One fine cell of the Warp mesh, precomputed once per move.
+/// One fine cell of the Warp mesh, precomputed once per move. The homography and the ownership test live
+/// in LOCAL coordinates (each quad relative to its first corner): built from canvas coordinates in f32, two
+/// neighbouring homographies far from the origin disagree by more than a texel on their shared edge.
 pub(super) struct MeshCell {
     hinv: Mat3,
+    /// The source quad relative to `src_o`.
     src: [[f32; 2]; 4],
+    src_o: [f32; 2],
+    dst_o: [f32; 2],
     /// Which edges (`top, right, bottom, left`) are the OUTER border of the whole mesh.
     outer: [bool; 4],
     bbox: Region,
 }
 
 impl MeshCell {
+    fn new(
+        src: [[f32; 2]; 4],
+        dst: [[f32; 2]; 4],
+        outer: [bool; 4],
+        bbox: Region,
+    ) -> Option<MeshCell> {
+        let (mut src_o, mut dst_o) = (src[0], dst[0]);
+        #[cfg(test)]
+        if super::prancha_b06b_tests::antes() {
+            (src_o, dst_o) = ([0.0; 2], [0.0; 2]);
+        }
+        let local = |q: [[f32; 2]; 4], o: [f32; 2]| q.map(|p| [p[0] - o[0], p[1] - o[1]]);
+        let src = local(src, src_o);
+        let hinv = homography_from_quads(&src, &local(dst, dst_o)).and_then(|m| m.inverse())?;
+        Some(MeshCell {
+            hinv,
+            src,
+            src_o,
+            dst_o,
+            outer,
+            bbox,
+        })
+    }
+
     /// The patch-space point texel `(x, y)` samples, when this cell owns it. The test is made in SOURCE
     /// space, at the very point the sampler reads — on the outer border it reaches one source texel past
     /// the edge (the bilinear's support), so the patch alpha draws the antialiased rim, as the affine does.
     pub(super) fn locate(&self, x: u32, y: u32) -> Option<[f32; 2]> {
-        let sp = self.hinv.apply([x as f32, y as f32]);
+        let (px, py) = (x as f32 - self.dst_o[0], y as f32 - self.dst_o[1]);
+        let lp = self.hinv.apply([px, py]);
+        let sp = [lp[0] + self.src_o[0], lp[1] + self.src_o[1]];
         #[cfg(test)]
         if super::prancha_b06b_tests::antes() {
-            let centro = self.hinv.apply([x as f32 + 0.5, y as f32 + 0.5]);
+            let centro = self.hinv.apply([px + 0.5, py + 0.5]);
             return in_cell(&self.src, centro, [false; 4]).then_some(sp);
         }
-        in_cell(&self.src, sp, self.outer).then_some(sp)
+        in_cell(&self.src, lp, self.outer).then_some(sp)
     }
 
     pub(super) fn bbox(&self) -> Region {
@@ -302,8 +328,13 @@ fn cell_reach(
     }
 }
 
-/// Whether `p` is inside the quad `q = [TL, TR, BR, BL]` (all edge cross-products share a sign; a tiny
-/// epsilon lets both neighbours claim a seam texel), with the OUTER edges pushed out by [`SRC_RIM_TEXELS`] (along the quad's orientation).
+/// How far past a shared edge, in SOURCE texels, both neighbours still claim a seam texel: covers the f32
+/// rounding of two neighbouring homographies far from the origin (a double claim is harmless — each cell
+/// writes `over(patch, base)` at ~the same point).
+const SEAM_SLACK_TEXELS: f32 = 1e-3;
+
+/// Whether `p` is inside the quad `q = [TL, TR, BR, BL]` (all edge distances share a sign, up to
+/// [`SEAM_SLACK_TEXELS`]), with the OUTER edges pushed out by [`SRC_RIM_TEXELS`] (along the quad's orientation).
 fn in_cell(q: &[[f32; 2]; 4], p: [f32; 2], outer: [bool; 4]) -> bool {
     let area2: f32 = (0..4)
         .map(|i| {
@@ -323,14 +354,16 @@ fn in_cell(q: &[[f32; 2]; 4], p: [f32; 2], outer: [bool; 4]) -> bool {
     for i in 0..4 {
         let a = q[i];
         let b = q[(i + 1) % 4];
-        let mut cross = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+        let cross = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+        let len = ((b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1])).sqrt();
+        // Signed distance to the edge line, in source texels (the slack must not shrink with the edge).
+        let mut d = if len > 0.0 { cross / len } else { cross };
         if outer[i] {
-            let len = ((b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1])).sqrt();
-            cross += s * len * SRC_RIM_TEXELS;
+            d += s * SRC_RIM_TEXELS;
         }
-        if cross > 1e-3 {
+        if d > SEAM_SLACK_TEXELS {
             pos = true;
-        } else if cross < -1e-3 {
+        } else if d < -SEAM_SLACK_TEXELS {
             neg = true;
         }
     }

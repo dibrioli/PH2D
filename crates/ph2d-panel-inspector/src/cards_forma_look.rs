@@ -1,7 +1,7 @@
 //! **O cartão Look da forma de colisão** (GEF02 onda 8, dono 10/11: «a seção Look completa do sprite para o
 //! collision shape»): a Opacity e o Pivot de nove pontos com os campos X e Y, como o Look da Sprite. O Self Tint e os
 //! cantos não entram (a forma não tem textura nem filhos que herdem), e o Flip da Sprite é da imagem. Escreve o
-//! `ShapeLook` pela física (`PhysicsFieldEdit::Look*`, `ph2d_app_physics::physics_apply_look`).
+//! `ShapeLook` pela física (`PhysicsFieldEdit::Look*`, `ph2d_shape_handles::look`).
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;

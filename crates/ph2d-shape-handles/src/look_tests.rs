@@ -1,6 +1,15 @@
 use super::*;
-use ph2d_ecs::SimWorld;
 use ph2d_physics_ecs::ShapeLook;
+
+/// A edição pela porta [`aplica`] e a fila aplicada ao mundo (o passo que a shell dá no quadro).
+fn aplica_ja(sim: &mut SimWorld, e: Entity, edit: PhysicsFieldEdit) {
+    let mut reg = ComponentRegistry::new();
+    ph2d_ecs::scene::register_ecs_components(&mut reg);
+    ph2d_physics_ecs::register_physics_components(&mut reg);
+    let queue = EditorCommandQueue::default();
+    assert!(aplica(sim, e, edit, &queue, &reg), "é uma edição do Look");
+    ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), &queue, &reg).expect("commit");
+}
 
 /// ⭐ A alça mostra e puxa pelo CENTRO real; com o pivô na borda esquerda, o `offset` cru que volta põe o centro
 /// exatamente onde a alça o deixou, e o pivô continua na borda da forma nova.
@@ -87,7 +96,7 @@ fn cantos(sim: &SimWorld, f: Entity) -> Vec<[f32; 2]> {
 fn o_pivo_novo_deixa_a_forma_no_lugar_e_leva_a_origem_ao_ponto() {
     let (mut sim, f) = corpo_com_forma();
     let antes = cantos(&sim, f);
-    crate::physics_tests::apply(&mut sim, f, PhysicsFieldEdit::LookPivotPoint([0, 2]));
+    aplica_ja(&mut sim, f, PhysicsFieldEdit::LookPivotPoint([0, 2]));
     let depois = cantos(&sim, f);
     for (a, b) in antes.iter().zip(&depois) {
         assert!(
@@ -109,7 +118,7 @@ fn o_pivo_novo_deixa_a_forma_no_lugar_e_leva_a_origem_ao_ponto() {
             .any(|q| (q[0] - o.x).abs() < 1e-5 && (q[1] - o.y).abs() < 1e-5),
         "a origem está num canto: {o:?} {depois:?}"
     );
-    crate::physics_tests::apply(&mut sim, f, PhysicsFieldEdit::LookPivotX(0.25));
+    aplica_ja(&mut sim, f, PhysicsFieldEdit::LookPivotX(0.25));
     let custom = cantos(&sim, f);
     for (a, b) in antes.iter().zip(&custom) {
         assert!(
@@ -128,8 +137,8 @@ fn a_opacidade_e_a_cor_nao_mexem_na_forma() {
     let (mut sim, f) = corpo_com_forma();
     let col = *sim.world().get::<Collider>(f).expect("c");
     let t = *sim.world().get::<ph2d_ecs::Transform>(f).expect("t");
-    crate::physics_tests::apply(&mut sim, f, PhysicsFieldEdit::LookOpacity(0.3));
-    crate::physics_tests::apply(
+    aplica_ja(&mut sim, f, PhysicsFieldEdit::LookOpacity(0.3));
+    aplica_ja(
         &mut sim,
         f,
         PhysicsFieldEdit::LookTint([1.0, 0.0, 0.0, 1.0]),

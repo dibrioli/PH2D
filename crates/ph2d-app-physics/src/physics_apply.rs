@@ -49,7 +49,7 @@ pub fn apply_physics_edit(
         return;
     }
     if crate::physics_colide::apply_collides_edit(sim.world(), entity, edit, queue, registry)
-        || crate::physics_apply_look::aplica(sim, entity, edit, queue, registry)
+        || ph2d_shape_handles::look::aplica(sim, entity, edit, queue, registry)
     {
         return;
     }
@@ -521,7 +521,7 @@ pub fn apply_physics_edit(
         }
         // As alças escrevem pelo CENTRO; o `offset` cru volta pelo pivô (`physics_apply_look`).
         PhysicsFieldEdit::ShapeDrag { medidas, offset } => {
-            next = crate::physics_apply_look::forma_arrastada(sim.world(), entity, &cur, medidas, offset);
+            next = ph2d_shape_handles::look::forma_arrastada(sim.world(), entity, &cur, medidas, offset);
         }
         // Collider offset — a signed position, no clamp; writes the ONE axis the edit names.
         PhysicsFieldEdit::OffsetX(v) => next.offset[0] = v,

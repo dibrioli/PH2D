@@ -7,6 +7,8 @@
 pub mod anima_pontos;
 pub mod cursor_pontos;
 pub mod fusao;
+/// ⭐ O Look da forma de colisão: o cartão lê [`look::fatos`], as edições vão por [`look::aplica`] (GEF02 onda 8).
+pub mod look;
 mod ponteiro;
 pub mod pontos;
 mod roteiro;

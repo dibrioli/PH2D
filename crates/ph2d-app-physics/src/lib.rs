@@ -164,8 +164,6 @@ pub mod jump_arc;
 
 // A §11 do Inspector aplicada ao ECS, e os seus vizinhos por assunto.
 pub mod physics_apply;
-/// O Look da forma de colisão (pivô, cor) e o arrasto das alças pelo centro.
-pub mod physics_apply_look;
 pub mod physics_area;
 mod physics_colide;
 pub mod physics_markers;

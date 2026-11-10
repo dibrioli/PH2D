@@ -11437,11 +11437,13 @@ name = "ph2d-shape-handles"
 version = "0.0.0"
 dependencies = [
  "bevy_ecs",
+ "libm",
  "ph2d-core",
  "ph2d-cursor-art",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-host",
+ "ph2d-inspector-ordering",
  "ph2d-physics-ecs",
  "ph2d-render",
  "ph2d-tokens",

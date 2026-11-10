@@ -71,6 +71,13 @@ fn esc_cancels_listening_then_closes() {
     let (mut s, mut k) = (ControlsScreen::default(), PlayerKeys::new());
     on_jump(&mut s, &g, &mut k);
     s.handle_key(ENTER, true, &g, &mut k);
+    let soltar = s.handle_key(Key(0xF703), false, &g, &mut k);
+    assert_eq!(
+        soltar,
+        Outcome::Ignored,
+        "o soltar passa ao jogo: nada fica preso"
+    );
+    assert!(s.listening(), "e não gasta a escuta");
     assert_eq!(s.handle_key(ESC, true, &g, &mut k), Outcome::Consumed);
     assert!(!s.listening() && s.is_open());
     assert!(k.is_empty(), "cancelar não troca nada");

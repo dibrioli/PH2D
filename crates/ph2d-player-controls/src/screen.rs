@@ -142,8 +142,9 @@ impl ControlsScreen {
             }
             return Outcome::Ignored;
         }
+        // O soltar passa sempre: uma tecla que o jogo tinha em baixo ao abrir não fica presa.
         if !pressed {
-            return Outcome::Consumed;
+            return Outcome::Ignored;
         }
         let rows = rows(&keys.apply_over(game));
         if self.listening {

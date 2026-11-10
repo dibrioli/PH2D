@@ -13,12 +13,6 @@ pub(crate) fn play_map<'a>(jogador: &'a PlaySession, hero: &'a HeroScreen) -> &'
 }
 
 impl crate::App {
-    /// [`play_map`] com a `App` inteira (quem não tem empréstimos a separar).
-    pub(crate) fn play_map(&self) -> Option<&InputMap> {
-        self.hero_ref()
-            .map(|h| play_map(&self.components.jogador, h))
-    }
-
     /// O Play começou: as teclas deste computador para este jogo, por cima do mapa.
     pub(crate) fn jogador_entra(&mut self) {
         let base = if cfg!(test) {

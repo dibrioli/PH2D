@@ -30,12 +30,13 @@
 | `ph2d-ui-table` (8, foundational) | `src/`: **A** `measure.rs`, `look.rs`; M `lib.rs`, `marks.rs`, `paint.rs` · `tests/it/`: **A** `pesos.rs`, `reserva_e_fios.rs`; M `main.rs` |
 | **`Cargo.lock`** | **TOCADO:** `ph2d-panel-code` ganha dev-deps `ph2d-gpu` e `ph2d-render` (teste `peso_na_placa`: tinta medida no píxel). `no_dependency_climbs` e `cycle_prevention` **passaram**. Merge de lockfile: refaça por `cargo` se conflitar. |
 | Hook / scripts / roteador | `.claude/hooks/prazo-do-agente.sh`, `scripts/processo.prova.d/I.sh`, `docs/Components/ferramentas/fotografa_cena.sh`, `CLAUDE.md` (só a linha §5.1 do módulo: o link do handoff) |
+| **`ph2d-code-scene-arena` (crate NOVA, 2)** | **A** `Cargo.toml`, `src/lib.rs` (a cena 15 e o `STEPS_15`, vindos de `ph2d-code-scenes`/`ph2d-code-smoke`); consumidores `ph2d-app-code` (`smoke_drive.rs`, `Cargo.toml`) e `ph2d-app-components` (`code_smoke.rs`, `Cargo.toml`); linha nova em `TETOS_DAS_CRATES_DA_FAMILIA`; `Cargo.lock` tocado |
 | Docs / fotos | 2 handoffs em `docs/CodeEditor/handoffs/`; fotos em `docs/CodeEditor/ferramentas/smoke/` (+`cena13/`); `cena14/fotos_q3.sh` (`ARRASTA=`, `DUPLO=`) |
 
 **Provas de contrato:**
 
 - §6 (Nodes, Tools, Vector): `git diff --stat bc4a6ce930..HEAD -- crates/ph2d-nodegraph crates/ph2d-tool-api crates/ph2d-vector` = **vazio**.
-- `PROJECT_SCHEMA`: `git diff bc4a6ce930..HEAD -- . ':!*.md' | grep -c PROJECT_SCHEMA` = **0**. Nenhum registo, ADR nem crate nova.
+- `PROJECT_SCHEMA`: `git diff bc4a6ce930..HEAD -- . ':!*.md' | grep -c PROJECT_SCHEMA` = **0**. Nenhum registo nem ADR; uma crate nova (`ph2d-code-scene-arena`, §8).
 
 **Foundational tocado — ADITIVO** (consumidores dos removidos = 0 em `crates/` e `shells/`):
 
@@ -181,6 +182,19 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   está no tecto, e os testes contam): ≥ 8 problemas, ≥ 8 linhas, ≥ 2 âmbar; mutação (sem valores próprios) → vermelho.
   `cena14/fotos_q3.sh` ganhou `RODA=n`. Fotos [passo 1](../ferramentas/smoke/cena15/passo_1.png) ·
   [passo 2](../ferramentas/smoke/cena15/passo_2.png) · [passo 3](../ferramentas/smoke/cena15/passo_3.png).
+- **A cena 15 sai para a crate NOVA `ph2d-code-scene-arena` (`7315e9b6b3`):** o `0582e4c755` pôs a catraca vermelha
+  (`ph2d-code-scenes` 755 / 666, `ph2d-code-smoke` 631 / 614). A crate leva `arena.rs` (→ `lib.rs`), o `STEPS_15` e o roteador
+  `steps()` (a 15 aqui, o resto `ph2d_code_smoke::steps`; a code-smoke não a pode ver — o roteiro usa o `Gesture` dela, ciclo).
+  `ph2d_app_code::smoke_drive::steps` reexporta o da crate nova (ph2d-app-code 26 628 / 26 628, sem crescer: a doc do módulo
+  reflui 1 linha); `ph2d_app_components::code_smoke::arena` = reexport. Depois: code-scenes **665**, code-smoke **614**, a nova
+  **123** (tecto 223 = medido + folga 100). Teste `o_roteador_serve_a_15_daqui_e_as_outras_da_code_smoke`; a cena 15
+  (`ph2d-host-code-scenes`), `the_shell_only_shrinks`, `every_member_inherits`, `cycle_prevention`, `no_dependency_climbs` verdes.
+- **Letra de «alive» na frase da grelha vazia e no texto dos problemas (dono 10/11, `916043568c`):** `code.bancada.grid.no_props`
+  por `mono_label::paint` (cor `text3`); a coluna Problem da lista `.mono()` (a `CodeCells` mede, corta e pinta pela mono da
+  `CodeView`; `Plain` = `Text1` como antes; o cabeçalho fica na letra da interface). Teste
+  `letras::a_frase_sem_propriedades_e_o_texto_dos_problemas_tem_a_letra_de_alive`; mutações (grelha de volta a `label_in`; coluna
+  sem `.mono()`) → vermelho as 2. Fotos [cena15/passo_1.png](../ferramentas/smoke/cena15/passo_1.png) (refeita) ·
+  [ak_letras.png](../ferramentas/smoke/ak_letras.png) (cena 12: a frase inteira na mono).
 
 Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,35 s, já construído pelas fotos); a 2.ª:
 

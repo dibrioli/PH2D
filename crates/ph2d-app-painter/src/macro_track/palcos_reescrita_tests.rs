@@ -256,6 +256,16 @@ fn duas_edicoes_seguidas_reescrevem_do_fim_que_a_imagem_tem() {
 /// a espera: reescrevia só o que já tinha assentado, e o resto da água assentava na cor velha.
 #[test]
 fn a_reescrita_espera_a_agua_do_editor_parar() {
+    // O Painter vive na pilha deste teste: a de omissão do fio de teste estoura em debug.
+    std::thread::Builder::new()
+        .stack_size(256 << 20)
+        .spawn(espera_a_agua_parar)
+        .expect("fio")
+        .join()
+        .expect("o teste");
+}
+
+fn espera_a_agua_parar() {
     let mut world = World::new();
     let e = world.spawn(MacroTempo { segundos: 0.0 }).id();
     let (mut t, doc, _) =
@@ -334,7 +344,10 @@ fn o_prazo_da_espera_pela_agua_conta_quadros_e_nao_segundos() {
 
 fn o_prazo_conta_quadros() {
     const N: u32 = 7_200;
-    assert_eq!(N, crate::macro_track::reescrita::QUADROS_DA_ESPERA_PELA_AGUA);
+    assert_eq!(
+        N,
+        crate::macro_track::reescrita::QUADROS_DA_ESPERA_PELA_AGUA
+    );
     let mut world = World::new();
     let e = world.spawn(MacroTempo { segundos: 0.0 }).id();
     let (mut t, doc, _) =

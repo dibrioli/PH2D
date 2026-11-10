@@ -108,3 +108,39 @@ fn um_estado_que_falha_no_trilho_deixa_a_ferramenta_intacta() {
     );
     assert_eq!(u.macro_estado(), antes, "a ferramenta ficou meio-aplicada");
 }
+
+/// B41.5: uma textura que o estado traz e não se lê (o PNG da Shape partido) é erro e deixa a ferramenta
+/// INTACTA. ⛔ Antes, `Texturas` subia depois de o preset já ter escrito o pincel, os knobs e as máscaras.
+#[test]
+fn uma_textura_que_nao_se_le_deixa_a_ferramenta_intacta() {
+    let mut a = PainterTool::default();
+    let img = vec![255u8; 8 * 8 * 4];
+    a.set_brush_shape_image_rgba(&img, 8, 8, None);
+    a.paint.composite_enabled = true;
+    let (cfg, mut texturas) = a.macro_estado();
+    assert!(
+        texturas.contains_key("shape"),
+        "controlo: o estado leva a Shape"
+    );
+    let mut controlo = PainterTool::default();
+    let antes = controlo.macro_estado();
+    controlo
+        .macro_estado_aplica(&cfg, texturas.clone())
+        .expect("controlo: o estado aplica-se");
+    assert_ne!(
+        controlo.macro_estado(),
+        antes,
+        "controlo: o estado muda a ferramenta"
+    );
+
+    texturas.insert("shape".to_owned(), vec![0; 5]);
+    let mut u = PainterTool::default();
+    assert_eq!(
+        u.macro_estado_aplica(&cfg, texturas),
+        Err(super::super::ErroDoEstado::Texturas(vec![
+            "shape".to_owned()
+        ])),
+        "a Shape partida é erro"
+    );
+    assert_eq!(u.macro_estado(), antes, "a ferramenta ficou meio-aplicada");
+}

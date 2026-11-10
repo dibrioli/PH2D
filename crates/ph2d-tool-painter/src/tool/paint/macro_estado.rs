@@ -123,7 +123,16 @@ impl PainterTool {
         let crus = trilho::separa(&mut texturas);
         let mut parametros: Parametros = serde_json::from_value(v["preset"].clone())
             .map_err(|e| ErroDoEstado::Json(e.to_string()))?;
-        // B41.5: o trilho lê-se e confere-se ANTES da 1.ª escrita — um erro dele deixa a ferramenta intacta.
+        // B41.5: as texturas e o trilho lêem-se e conferem-se ANTES da 1.ª escrita — um erro deixa a
+        // ferramenta intacta. Os dois leitores do preset (`ler_textura`/`_rgba`) recusam o mesmo PNG.
+        let ilegiveis: Vec<String> = texturas
+            .iter()
+            .filter(|(_, b)| ph2d_brush_presets::ler_textura(b).is_err())
+            .map(|(k, _)| k.clone())
+            .collect();
+        if !ilegiveis.is_empty() {
+            return Err(ErroDoEstado::Texturas(ilegiveis));
+        }
         let trilho = self.macro_trilho_le(&v["trilho"], crus)?;
         // O estado leva os knobs todos mesmo com a Borracha na mão (o preset dela só escreve os dela, Bug #65 A5).
         if ferramenta_do_preset(&parametros) == crate::FerramentaDoPincel::Borracha {

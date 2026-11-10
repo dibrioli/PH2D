@@ -226,3 +226,7 @@ fn box_blur_f32(src: &[f32], w: usize, h: usize, r: usize) -> Vec<f32> {
 #[cfg(test)]
 #[path = "veu_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "veu_prancha_tests.rs"]
+mod prancha;

@@ -59,7 +59,10 @@ pub(super) fn draw_wetness_overlay(
     // ele reconstruía a região INTEIRA a cada frame. O que está fora da janela não é visto por
     // ninguém: recortar é **livre de mudança de aparência por construção**, e troca um custo que
     // cresce com a PINTURA por um limitado pela TELA.
-    let (rx0, ry0, rx1, ry1) = clip_to_viewport(base, window_size, (rx0, ry0, rx1, ry1));
+    // O passo vem ANTES do recorte: a grelha de blocos é absoluta (B16.A5), o pan não lhe muda a fase.
+    let step = veil_downscale(base);
+    let (rx0, ry0, rx1, ry1) =
+        clip_to_viewport(base, window_size, (rx0, ry0, rx1, ry1), step, (cw, ch));
     let (rw, rh) = ((rx1 - rx0) as usize, (ry1 - ry0) as usize);
     if rw == 0 || rh == 0 {
         return;
@@ -72,7 +75,6 @@ pub(super) fn draw_wetness_overlay(
     // Local moisture → veil alpha, softened (o build mora no tool: `watercolor_backdrop/veu.rs`). O
     // véu é construído na densidade em que vai ser VISTO (`veil_downscale`) e GUARDADO pela revisão da
     // humidade + recorte + passo + força: um quadro parado redesenha o mesmo `StableImage` (B16.10).
-    let step = veil_downscale(base);
     let Some((veil, _, _)) = painter.wetness_veil([rx0, ry0, rx1, ry1], step, max_alpha) else {
         return;
     };
@@ -82,7 +84,7 @@ pub(super) fn draw_wetness_overlay(
     let affine = base
         * ph2d_vector::Affine::translate((f64::from(rx0), f64::from(ry0)))
         * ph2d_vector::Affine::scale(step as f64);
-    vector_scene.draw_stable_image_transformed(&veil, affine, ph2d_vector::ImageQuality::Low);
+    vector_scene.draw_stable_image_transformed(&veil, affine, veil_quality(base, step));
 }
 
 /// **O retângulo de umidade recortado ao que a JANELA de fato mostra.**
@@ -102,12 +104,33 @@ fn clip_to_viewport(
     base: ph2d_vector::Affine,
     window_size: WindowSize,
     (rx0, ry0, rx1, ry1): (u32, u32, u32, u32),
+    step: usize,
+    (cw, ch): (u32, u32),
 ) -> (u32, u32, u32, u32) {
-    /// Folga em px de imagem: o raio do blur mais um, para a borda do véu não depender do pan.
-    const MARGIN: f64 = 8.0; // LITERAL-PX-OK: BLUR_R (4) com folga — geometria de recorte
+    /// O raio do desfoque do véu em texels a passo 1 (o `BLUR_R` de `watercolor_backdrop/veu.rs`).
+    const BLUR_R: usize = 4; // LITERAL-PX-OK: geometria de recorte
+    let step = step.max(1);
+    // Folga em px de imagem: o desfoque do passo (`max(BLUR_R/passo, 1)` texels de `passo` px) e um
+    // bloco, nunca abaixo de 8 — para a borda do véu não depender do pan.
+    #[allow(clippy::cast_precision_loss)]
+    let margin = (step * (BLUR_R / step).max(1) + step).max(2 * BLUR_R) as f64;
+    // B16.A5: o recorte começa e acaba na grelha ABSOLUTA do passo (ou na borda da tela), então a
+    // média de blocos do build não muda de fase quando a vista anda 1 px. A passo 1 é a identidade.
+    #[allow(clippy::cast_possible_truncation)]
+    let s = step as u32;
+    let alinha = |(x0, y0, x1, y1): (u32, u32, u32, u32)| {
+        let (ax0, ay0) = (x0 / s * s, y0 / s * s);
+        let cima = |v: u32, max: u32, lo: u32| v.div_ceil(s).saturating_mul(s).min(max).max(lo);
+        (
+            ax0,
+            ay0,
+            cima(x1, cw.max(x1), ax0),
+            cima(y1, ch.max(y1), ay0),
+        )
+    };
     let inv = base.inverse();
     if !inv.as_coeffs().iter().all(|c| c.is_finite()) {
-        return (rx0, ry0, rx1, ry1);
+        return alinha((rx0, ry0, rx1, ry1));
     }
     let (w, h) = (f64::from(window_size.width), f64::from(window_size.height));
     let mut lo = (f64::INFINITY, f64::INFINITY);
@@ -118,14 +141,14 @@ fn clip_to_viewport(
         hi = (hi.0.max(p.x), hi.1.max(p.y));
     }
     if !lo.0.is_finite() || !hi.0.is_finite() {
-        return (rx0, ry0, rx1, ry1);
+        return alinha((rx0, ry0, rx1, ry1));
     }
     let clamp = |v: f64, max: u32| v.clamp(0.0, f64::from(max)) as u32;
-    let cx0 = clamp((lo.0 - MARGIN).floor(), rx1).max(rx0);
-    let cy0 = clamp((lo.1 - MARGIN).floor(), ry1).max(ry0);
-    let cx1 = clamp((hi.0 + MARGIN).ceil(), rx1).max(cx0);
-    let cy1 = clamp((hi.1 + MARGIN).ceil(), ry1).max(cy0);
-    (cx0, cy0, cx1, cy1)
+    let cx0 = clamp((lo.0 - margin).floor(), rx1).max(rx0);
+    let cy0 = clamp((lo.1 - margin).floor(), ry1).max(ry0);
+    let cx1 = clamp((hi.0 + margin).ceil(), rx1).max(cx0);
+    let cy1 = clamp((hi.1 + margin).ceil(), ry1).max(cy0);
+    alinha((cx0, cy0, cx1, cy1))
 }
 
 /// **Quantos px de IMAGEM cabem num px de TELA** — o passo em que o véu é amostrado.
@@ -155,6 +178,19 @@ fn veil_downscale(base: ph2d_vector::Affine) -> usize {
     step.clamp(1, MAX_STEP)
 }
 
+/// O filtro do véu na tela: aproximado a passo 1 cada texel ocupa vários px e o `Low` (vizinho mais
+/// próximo) mostra-o em ESCADA (B20.12) — aí `Medium`. Afastado ou a 1:1 fica o `Low`.
+fn veil_quality(base: ph2d_vector::Affine, step: usize) -> ph2d_vector::ImageQuality {
+    let [a, b, c, d, _, _] = base.as_coeffs();
+    // `|det| > 1` ⇔ `sqrt(|det|) > 1`: um px de imagem ocupa mais que um px de tela.
+    let det = (a * d - b * c).abs();
+    if step == 1 && det.is_finite() && det > 1.0 {
+        ph2d_vector::ImageQuality::Medium
+    } else {
+        ph2d_vector::ImageQuality::Low
+    }
+}
+
 #[cfg(test)]
 mod clip_tests {
     use super::clip_to_viewport;
@@ -173,7 +209,8 @@ mod clip_tests {
     fn the_veil_is_clipped_to_what_the_window_shows() {
         // Identidade: 1 px de imagem = 1 px de tela, janela de 800×600 sobre uma pintura de 4096².
         let full = (0u32, 0u32, 4096u32, 4096u32);
-        let (x0, y0, x1, y1) = clip_to_viewport(Affine::IDENTITY, win(800, 600), full);
+        let (x0, y0, x1, y1) =
+            clip_to_viewport(Affine::IDENTITY, win(800, 600), full, 1, (4096, 4096));
         let clipped = u64::from(x1 - x0) * u64::from(y1 - y0);
         let whole = 4096u64 * 4096;
         assert!(
@@ -196,7 +233,13 @@ mod clip_tests {
     #[test]
     fn panning_keeps_the_blur_margin_on_both_sides() {
         let full = (0u32, 0u32, 4096u32, 4096u32);
-        let a = clip_to_viewport(Affine::translate((-500.0, -500.0)), win(800, 600), full);
+        let a = clip_to_viewport(
+            Affine::translate((-500.0, -500.0)),
+            win(800, 600),
+            full,
+            1,
+            (4096, 4096),
+        );
         assert!(
             a.0 < 500 && a.1 < 500,
             "o recorte não deixou folga ANTES do que a janela mostra: {a:?}"
@@ -207,20 +250,91 @@ mod clip_tests {
         );
     }
 
+    /// **A grelha de blocos do véu não muda de fase com o pan** (B16.A5): afastado (passo 4) o véu é a
+    /// média de blocos de 4 px contados a partir do recorte; se a origem acompanhasse a câmera px a px,
+    /// a franja «borbulharia» ao arrastar. O recorte começa num múltiplo do passo, acaba noutro (ou na
+    /// borda da tela) e cobre a janela com a folga do desfoque do passo.
+    #[test]
+    fn o_veu_nao_depende_da_fase_do_recorte() {
+        let full = (0u32, 0u32, 4096u32, 4096u32);
+        for step in [2usize, 4, 8] {
+            for pan in 0..8 {
+                let k = 1.0 / step as f64;
+                let base =
+                    Affine::scale(k) * Affine::translate((-(1000.0 + f64::from(pan)), -700.0));
+                let (x0, y0, x1, y1) =
+                    clip_to_viewport(base, win(200, 150), full, step, (4096, 4096));
+                let s = step as u32;
+                assert!(
+                    x0 % s == 0 && y0 % s == 0 && (x1 % s == 0 || x1 == 4096) && y1 % s == 0,
+                    "passo {step}, pan {pan}: o recorte ({x0},{y0})..({x1},{y1}) não está na grelha \
+                     absoluta do passo — a franja do véu muda de fase quando a vista anda"
+                );
+                // A folga cobre o desfoque do passo (raio max(4/passo,1) texels de `passo` px).
+                let margem = (step * (4 / step).max(1)) as u32;
+                let (lo_x, hi_x) = (1000 + pan, 1000 + pan + 200 * s);
+                assert!(
+                    x0 + margem <= lo_x && x1 >= hi_x + margem,
+                    "passo {step}, pan {pan}: a folga não cobre o desfoque: ({x0}..{x1}) para {lo_x}..{hi_x}"
+                );
+            }
+        }
+        // Controle: o recorte alinhado não passa da tela.
+        let longe = Affine::scale(0.25) * Affine::translate((-4000.0, -4000.0));
+        let r = clip_to_viewport(longe, win(400, 300), full, 4, (4096, 4096));
+        assert!(
+            r.2 <= 4096 && r.3 <= 4096,
+            "o recorte passou da tela: {r:?}"
+        );
+    }
+
     /// **Afim degenerada devolve a região inteira** — uma inversa que não existe não é motivo para o
     /// véu sumir. (Controle: o caminho de recusa é alcançável e não é o comum.)
     #[test]
     fn a_degenerate_affine_keeps_the_whole_rect() {
         let full = (10u32, 20u32, 300u32, 400u32);
         let squashed = Affine::new([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
-        assert_eq!(clip_to_viewport(squashed, win(800, 600), full), full);
+        assert_eq!(
+            clip_to_viewport(squashed, win(800, 600), full, 1, (4096, 4096)),
+            full
+        );
     }
 }
 
 #[cfg(test)]
 mod downscale_tests {
-    use super::veil_downscale;
-    use ph2d_vector::Affine;
+    use super::{veil_downscale, veil_quality};
+    use ph2d_vector::{Affine, ImageQuality};
+
+    /// **Aproximado, o véu é filtrado; a 1:1 e afastado, não** (B20.12). Mutação que sangra: `Low`
+    /// sempre — a 400 % cada texel do véu vira um degrau de 4 px.
+    #[test]
+    fn o_veu_aproximado_e_filtrado() {
+        let q = |a: Affine| veil_quality(a, veil_downscale(a));
+        assert!(
+            matches!(q(Affine::scale(4.0)), ImageQuality::Medium),
+            "a 400 % o véu em vizinho-mais-próximo é uma escada"
+        );
+        assert!(
+            matches!(q(Affine::scale(1.5)), ImageQuality::Medium),
+            "a 150 % também"
+        );
+        assert!(
+            matches!(q(Affine::IDENTITY), ImageQuality::Low),
+            "a 1:1 cada texel é um px: nada a filtrar"
+        );
+        assert!(
+            matches!(q(Affine::scale(0.25)), ImageQuality::Low),
+            "afastado o véu já é a média dos blocos"
+        );
+        assert!(
+            matches!(
+                q(Affine::new([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])),
+                ImageQuality::Low
+            ),
+            "afim degenerada não escolhe filtro"
+        );
+    }
 
     /// **Afastado, o véu é amostrado mais grosso; a 1:1 ou aproximado, nunca.**
     ///

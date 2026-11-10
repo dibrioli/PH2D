@@ -189,3 +189,25 @@ pub fn area_para(v: &mut CodeView, buf: &Buffer, ts: &mut TextSystem, rows: usiz
         h: rows as f32 * m.line_h + m.status_h,
     }
 }
+
+/// Cada corrida de glifos da cena: `(tamanho da fonte, x do primeiro glifo, linha de base)`, lida no
+/// que o Vello recebe (a tinta, não um rect).
+pub fn linhas_de_base(scene: &VectorScene) -> Vec<(f32, f32, f32)> {
+    let res = &scene.inner().encoding().resources;
+    res.glyph_runs
+        .iter()
+        .filter_map(|run| {
+            let g = res.glyphs.get(run.glyphs.clone())?.first()?;
+            let [tx, ty] = run.transform.translation;
+            Some((run.font_size, tx + g.x, ty + g.y))
+        })
+        .collect()
+}
+
+/// O meio das maiúsculas de `text` a `px` cuja linha de base caiu em `base` — o que o olho lê como o
+/// meio de um rótulo.
+pub fn meio_das_maiusculas(ts: &mut TextSystem, text: &str, px: f32, base: f32) -> f32 {
+    let l = ts.layout(text, px, f32::INFINITY);
+    let b = l.lines().next().map_or(px, |l| l.metrics().baseline);
+    base - b + ph2d_text::cap_centre_px(px)
+}

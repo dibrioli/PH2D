@@ -196,7 +196,7 @@ pub(crate) fn paint(
     );
     let s = StatusLine::at(frame, view.status_col.map_or(0, |c| c.1));
     let font = ph2d_text::displayed_font_px(TypeToken::Sm.px());
-    let y = bar.y + (h - font) * 0.5;
+    let y = bar.y + ph2d_editor_core::paint::folga_do_texto(h, font);
     let pad = Spacing::Md.px();
     let gap = Spacing::Xl.px();
     let right = bar.x + bar.w - pad;

@@ -12,7 +12,7 @@
 //! numa moldura em pé ele seria **negativo**, com a semântica invertida e o disco fora do corpo.
 
 use super::{Toggle, ToggleState};
-use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect, token_to_vello};
+use crate::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use crate::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
 use ph2d_vector::{Affine, Brush, Circle, Fill, Point, VectorScene};
@@ -88,41 +88,6 @@ pub(super) fn paint_classic_toggle(
         None,
         &thumb,
     );
-}
-
-/// As tintas da pílula: `(trilho, disco)` no estado `on`.
-#[must_use]
-pub fn switch_inks(on: bool, theme: Theme) -> (ph2d_vector::Color, ph2d_vector::Color) {
-    // O disco é o mesmo nos dois estados (macOS): no tema claro o `Text1` dava um disco quase preto.
-    let knob = token_to_vello(ph2d_tokens::switch_knob(theme));
-    let track = if on {
-        ColorToken::Accent
-    } else {
-        ColorToken::BorderStrong
-    };
-    (resolve(track, theme), knob)
-}
-
-/// ⭐ **A PÍLULA de definições** (dono 09/11, cartão «Script options»): o interruptor de efeito
-/// imediato do estado da arte (macOS/iOS, Windows 11, Material 3, VS Code), nos DOIS modos da UI.
-/// Ligado = trilho `Accent`, disco claro nos dois temas ([`ph2d_tokens::switch_knob`], o do macOS) à
-/// direita; desligado = trilho `BorderStrong`, o mesmo disco à esquerda. ⛔ Sem hover nem moldura
-/// própria: quem a usa realça a LINHA inteira. Devolve o disco (centro, raio).
-pub fn paint_switch(
-    on: bool,
-    rect: Rect,
-    scene: &mut VectorScene,
-    theme: Theme,
-) -> (f32, f32, f32) {
-    let (track, knob) = switch_inks(on, theme);
-    fill_rounded_rect(scene, rect, rect.h * 0.5, track);
-    let (cx, cy, r) = thumb_circle(rect, on);
-    let disc = Circle::new(Point::new(f64::from(cx), f64::from(cy)), f64::from(r));
-    let ink = Brush::Solid(knob);
-    scene
-        .inner_mut()
-        .fill(Fill::NonZero, Affine::IDENTITY, &ink, None, &disc);
-    (cx, cy, r)
 }
 
 /// Pill body + circular thumb (left=off, right=on). Focus ring is

@@ -2,10 +2,11 @@
 //! [Next line] F10. E o ● nome de um objecto (a pílula e a lista Waiting here).
 
 use super::{ButtonIds, DebugCardView};
+use crate::metrics::top_on_baseline;
 use ph2d_code_debugcard::{Ask, CardState, CardStyle, DebugCard, WhoTag};
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, frame_radius, paint_text, paint_text_title, resolve,
-    token_to_vello,
+    fill_circle, fill_rounded_rect, folga_do_texto, frame_radius, paint_text, paint_text_title,
+    resolve, token_to_vello,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
@@ -84,10 +85,11 @@ fn buttons(
                 ink(ColorToken::Border),
             );
         }
-        let ty = br.y + (br.h - font) * 0.5;
+        // O rótulo centrado pelas maiúsculas; a tecla na linha de base DELE (dono 10/11).
+        let ty = br.y + folga_do_texto(br.h, font);
         paint_text(ts, scene, label, br.x + pad, ty, font, lw + gap, ink(fg));
         let kx = br.x + pad + lw + gap;
-        let ky = br.y + (br.h - small) * 0.5;
+        let ky = top_on_baseline(ts, ty, (label, font), (key, small));
         paint_text(ts, scene, key, kx, ky, small, kw + gap, ink(key_ink));
         st.painted.buttons.push((ask, br));
         bx += bw + gap;
@@ -157,7 +159,7 @@ pub(super) fn paint(
     let gap = Spacing::Md.px();
     let font = TypeToken::Sm.px();
     let ink = |t: ColorToken| resolve(t, theme);
-    let ty = r.y + (r.h - font) * 0.5;
+    let ty = r.y + folga_do_texto(r.h, font);
     let bh = r.h - ph2d_tokens::control_gap_px();
     let mut limit = (buttons(st, c, r, scene, ts, theme) - gap).max(r.x);
     if c.state == CardState::Live {
@@ -172,7 +174,7 @@ pub(super) fn paint(
             scene,
             &rate,
             rx,
-            r.y + (r.h - small) * 0.5,
+            r.y + folga_do_texto(r.h, small),
             small,
             rw + pad,
             tone,
@@ -228,7 +230,7 @@ pub(super) fn paint(
             ink(ColorToken::Bg3),
         );
         let room = (cr.w - pad).max(0.0);
-        let cy = r.y + (r.h - small) * 0.5;
+        let cy = cr.y + folga_do_texto(cr.h, small);
         let tone = ink(ColorToken::Text2);
         paint_text(ts, scene, &chip, cr.x + pad, cy, small, room, tone);
     }
@@ -282,7 +284,7 @@ pub(super) fn who_plain(
         scene,
         &who.name,
         tx,
-        r.y + (r.h - font) * 0.5,
+        r.y + folga_do_texto(r.h, font),
         font,
         (r.x + r.w - tx).max(0.0),
         resolve(ink, theme),

@@ -108,3 +108,43 @@ pub(crate) fn count_digits(mut n: usize) -> usize {
     }
     d
 }
+
+/// Do topo de `text` pintado a `px` à linha de base dele, medido no layout (a conta do
+/// `debug_marks`).
+pub(crate) fn baseline_px(ts: &mut TextSystem, text: &str, px: f32) -> f32 {
+    let l = ts.layout(text, px, f32::INFINITY);
+    l.lines().next().map_or(px, |l| l.metrics().baseline)
+}
+
+/// O topo de `small` (a `small_px`) posto na MESMA linha de base que `text` (a `px`) com topo em
+/// `top` — a dica de tecla ao lado do rótulo de um botão (macOS, VS Code).
+pub(crate) fn top_on_baseline(
+    ts: &mut TextSystem,
+    top: f32,
+    (text, px): (&str, f32),
+    (small, small_px): (&str, f32),
+) -> f32 {
+    top + baseline_px(ts, text, px) - baseline_px(ts, small, small_px)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// O texto pequeno fica mais abaixo do topo do grande o quanto a base dele é mais curta; com o
+    /// mesmo tamanho, o mesmo topo.
+    #[test]
+    fn a_tecla_pequena_desce_ate_a_linha_de_base_do_rotulo() {
+        let mut ts = TextSystem::without_system_fonts();
+        let (big, small) = (TypeToken::Sm.px(), TypeToken::Xs.px());
+        let top = top_on_baseline(&mut ts, 10.0, ("Continue", big), ("F8", small));
+        let (bb, bs) = (
+            baseline_px(&mut ts, "Continue", big),
+            baseline_px(&mut ts, "F8", small),
+        );
+        assert!(bb > bs, "{bb} {bs}");
+        assert!((top + bs - (10.0 + bb)).abs() < 1e-4);
+        let same = top_on_baseline(&mut ts, 10.0, ("F8", small), ("F8", small));
+        assert!((same - 10.0).abs() < 1e-4);
+    }
+}

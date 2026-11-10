@@ -304,3 +304,53 @@ fn o_separador_da_sheet_arrasta_de_lado_e_pede_o_ponteiro_horizontal() {
     let _ = pinta(&mut v, &c);
     assert!(v.painted.split.is_none());
 }
+
+/// Dono 10/11: em «Continue F8» e «Next line F10» o rótulo fica no meio do botão (pelas maiúsculas)
+/// e a tecla, mais pequena, na MESMA linha de base dele — lido na tinta.
+#[test]
+fn o_rotulo_do_botao_fica_no_meio_e_a_tecla_na_linha_de_base_dele() {
+    let (c, mut v) = (parado(1), DebugCardView::default());
+    let h = v.height(&c, ABA);
+    let r = Rect::new(ABA.x, ABA.y + ABA.h - h, ABA.w, h);
+    let (mut scene, mut ts) = (VectorScene::new(), TextSystem::without_system_fonts());
+    v.paint(
+        &c,
+        [NodeId(1), NodeId(2)],
+        r,
+        &mut CodeView::new(),
+        &mut scene,
+        &mut ts,
+        Theme::default(),
+    );
+    let runs = crate::linhas_de_base(&scene);
+    let (font, small) = (
+        ph2d_tokens::TypeToken::Sm.px(),
+        ph2d_tokens::TypeToken::Xs.px(),
+    );
+    let labels = [
+        (ph2d_i18n::tr("code.debug.continue"), font),
+        (ph2d_i18n::tr("code.debug.next_line"), font),
+    ];
+    assert_eq!(v.painted.buttons.len(), 2, "Continue e Next line");
+    for (i, &(_, br)) in v.painted.buttons.iter().enumerate() {
+        let dentro: Vec<_> = runs
+            .iter()
+            .filter(|(_, x, y)| *x >= br.x && *x <= br.x + br.w && *y >= br.y && *y <= br.y + br.h)
+            .collect();
+        let base_of = |px: f32| {
+            dentro
+                .iter()
+                .find(|(s, ..)| (*s - px).abs() < 1e-3)
+                .map(|t| t.2)
+                .expect("o rótulo e a tecla pintaram")
+        };
+        let (rotulo, tecla) = (base_of(font), base_of(small));
+        assert!(
+            (rotulo - tecla).abs() < 0.25,
+            "botão {i}: rótulo na base {rotulo}, tecla em {tecla}"
+        );
+        let meio = crate::meio_das_maiusculas(&mut ts, labels[i].0, labels[i].1, rotulo);
+        let alvo = br.y + br.h * 0.5;
+        assert!((meio - alvo).abs() < 0.75, "botão {i}: {meio} × {alvo}");
+    }
+}

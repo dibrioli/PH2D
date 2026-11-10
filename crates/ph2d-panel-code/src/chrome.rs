@@ -4,8 +4,8 @@
 use ph2d_code_buffer::Buffer;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, frame_radius, paint_icon, paint_text, paint_text_centered, rect_to_vello,
-    resolve, stroke_frame,
+    fill_rounded_rect, folga_do_texto, frame_radius, paint_icon, paint_text, paint_text_centered,
+    rect_to_vello, resolve, stroke_frame,
 };
 use ph2d_editor_core::widget::section_cards::CardDepth;
 use ph2d_editor_core::zones::Rect;
@@ -119,7 +119,7 @@ pub(crate) fn button_w(ts: &mut TextSystem, text: &str) -> f32 {
     ph2d_editor_core::paint::rect_for_label(label_w(ts, text))
 }
 
-/// Um rótulo centrado na vertical de `r`, na cor `color`.
+/// Um rótulo centrado na vertical de `r` pelas maiúsculas ([`folga_do_texto`]), na cor `color`.
 pub(crate) fn label_in(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
@@ -133,7 +133,7 @@ pub(crate) fn label_in(
         scene,
         text,
         r.x,
-        r.y + (r.h - f) * 0.5,
+        r.y + folga_do_texto(r.h, f),
         f,
         r.w.max(0.0),
         color,

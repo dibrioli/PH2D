@@ -122,7 +122,7 @@ pub use spacing::{
     card_pad_px, control_gap_px, icon_label_gap_px, list_indent_px, list_row_gap_px, row_pitch_px,
     section_gap_px, tree_chevron_col_px,
 };
-pub use state_layer::{HOVER_LAYER_ALPHA, switch_knob};
+pub use state_layer::HOVER_LAYER_ALPHA;
 pub use stroke::StrokeToken;
 pub use text_style::{UiFont, UiTextSize, UiTextStyle, UiWeight};
 pub use theme::{PanelLayout, Theme};

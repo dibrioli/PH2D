@@ -21,6 +21,7 @@ use ph2d_editor_core::doc_surface::KeyOutcome;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
+pub use outline::outline_entry_h;
 pub use phrase::say;
 
 /// Quanto o rato pára num nome antes de a cena aparecer: 1 s (dono 09/11 — os 0,5 s do balão do
@@ -156,10 +157,10 @@ pub fn left_split(col: Rect, list_rows: usize, open: bool) -> (Rect, Option<Rect
     )
 }
 
-/// A altura da faixa da frase do pé.
+/// A altura da faixa da frase do pé: uma linha sem o vão de controlo (dono 10/11: «mais estreita»).
 #[must_use]
 pub fn phrase_height() -> f32 {
-    ph2d_tokens::row_pitch_px()
+    ROW_H_PX
 }
 
 /// A coluna do documento partida: o resto em cima e a faixa da frase em baixo.

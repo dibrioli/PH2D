@@ -1,9 +1,10 @@
 //! ⭐ **O cartão «Script options»** (13 §4 item 12; plano 14 Q4 passo D; dono 09/11): uma lista de
 //! definições à macOS System Settings / VS Code Settings — a faixa de cima (título, o nome do script,
 //! o alfinete), uma linha por opção (título, a frase por baixo que quebra mas nunca se corta, a
-//! pílula à direita), um fio entre as opções, e no pé a frase do assistente com «Restart». A linha
-//! inteira é o alvo (mão e UM fundo de realce, nada no interruptor); sem alfinete fecha-se com um
-//! clique fora. Os comandos e o estado são da família.
+//! caixa de marcar do cartão à direita — dono 10/11: o padrão do app é caixa, não interruptor), um
+//! fio entre as opções, e no pé a frase do assistente com «Restart». A linha inteira é o alvo (mão
+//! e UM fundo de realce); sem alfinete fecha-se com um clique fora. Os comandos e o estado são da
+//! família.
 
 use crate::frame::Assist;
 use ph2d_a11y::NodeId;
@@ -13,10 +14,10 @@ use ph2d_editor_core::paint::{
     fill_rounded_rect, folga_do_texto, paint_icon, paint_text_block, paint_text_title_elided,
     resolve, text_rendering,
 };
-use ph2d_editor_core::widget::card_ink::tinta;
+use ph2d_editor_core::widget::card_ink::{CardInk, card_body, tinta};
 use ph2d_editor_core::widget::{
-    Button, CHECKBOX_BOX_PX, Popover, paint_button, paint_popover, paint_switch, pop_popover_clip,
-    push_popover_clip,
+    Button, Popover, card_check_rect, paint_button, paint_card_check, paint_popover,
+    pop_popover_clip, push_popover_clip,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::{FontWeight, TextSystem};
@@ -49,11 +50,9 @@ pub struct OptionsPainted {
     pub card: Option<Rect>,
     /// A linha inteira de cada opção (o alvo do clique) e o «Restart»: o comando e a caixa.
     pub rows: Vec<(NodeId, Rect)>,
-    /// A pílula de cada opção (a borda direita dela é a do «Restart»), e se mostra «ligado».
+    /// A caixa de marcar de cada opção (a borda direita dela é a do «Restart»), e se está marcada.
     pub marks: Vec<Rect>,
     pub on: Vec<bool>,
-    /// O disco de cada pílula: centro e raio.
-    pub thumbs: Vec<(f32, f32, f32)>,
     /// A frase de cada opção: a caixa onde foi pintada (a altura é a do texto quebrado).
     pub says: Vec<Rect>,
     /// O único realce pintado: o fundo da linha debaixo do rato ou carregada, e a tinta dele.
@@ -77,11 +76,6 @@ fn font() -> f32 {
 
 fn small() -> f32 {
     TypeToken::Xs.px()
-}
-
-/// A pílula: duas caixas de largura por uma de altura.
-fn switch_size() -> (f32, f32) {
-    (CHECKBOX_BOX_PX * 2.0, CHECKBOX_BOX_PX)
 }
 
 /// A largura de `s` numa linha só, e a altura dele quebrado em `w` — a mesma passada de layout que o
@@ -180,11 +174,13 @@ impl OptionsCard {
         if !self.open {
             return;
         }
-        // Uma grelha: os textos começam em `inner`; pílulas, alfinete e «Restart» acabam em
+        // Uma grelha: os textos começam em `inner`; caixas, alfinete e «Restart» acabam em
         // `inner + inner_w`. A largura é a que põe cada frase numa linha; sem ela, quebra.
         let (md, lg) = (Spacing::Md.px(), Spacing::Lg.px());
         let (side, rh) = (lg, ph2d_tokens::row_pitch_px());
-        let (sw, sh) = switch_size();
+        let mark0 = card_check_rect(0.0, 0.0, 0.0);
+        let (sw, sh) = (mark0.w, mark0.h);
+        let check_ink = card_body().unwrap_or(CardInk::of_list(*theme));
         let sentence = assist_sentence(f.assist);
         let restart = ph2d_i18n::tr("code.options.restart");
         let one = |ts: &mut TextSystem, s: &str, px: f32| measure(ts, s, px, f32::INFINITY).0;
@@ -250,10 +246,9 @@ impl OptionsCard {
                 tw,
                 ink(ColorToken::Text3),
             );
-            let mark = Rect::new(inner + inner_w - sw, r.y + (r.h - sh) * 0.5, sw, sh);
-            self.painted
-                .thumbs
-                .push(paint_switch(o.on, mark, scene, *theme));
+            let mark = card_check_rect(inner + inner_w - sw, r.y, r.h);
+            let hover = self.hover == Some(o.cmd);
+            paint_card_check(scene, check_ink, mark, o.on, hover);
             self.painted.marks.push(mark);
             self.painted.on.push(o.on);
             self.painted.says.push(says);
@@ -278,8 +273,8 @@ impl OptionsCard {
         self.painted.card = Some(card);
     }
 
-    /// O fundo da linha debaixo do rato ou carregada (mais forte): o ÚNICO realce — sem moldura, e a
-    /// pílula não muda. O hover é a camada do Material 3: a tinta do título, translúcida
+    /// O fundo da linha debaixo do rato ou carregada (mais forte): o ÚNICO realce da linha — sem
+    /// moldura; a caixa só acende o fundo dela no hover. O hover é a camada do Material 3: a tinta do título, translúcida
     /// ([`ph2d_tokens::HOVER_LAYER_ALPHA`]) — clareia o cartão num tema escuro.
     fn paint_highlight(&mut self, cmd: NodeId, r: Rect, scene: &mut VectorScene, theme: &Theme) {
         let ink = if self.pressed == Some(cmd) {

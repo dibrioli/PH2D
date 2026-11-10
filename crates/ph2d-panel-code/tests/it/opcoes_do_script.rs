@@ -1,5 +1,5 @@
-//! Plano 14 Q4 passo D: o cartão «Script options» — uma linha por opção (título, interruptor, frase),
-//! a linha inteira é o alvo, o interruptor diz o estado, o alfinete troca-se no carregar.
+//! Plano 14 Q4 passo D: o cartão «Script options» — uma linha por opção (título, caixa de marcar, frase),
+//! a linha inteira é o alvo, a caixa diz o estado, o alfinete troca-se no carregar.
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::doc_surface::PointerLook;
@@ -64,14 +64,14 @@ fn dentro(fora: Rect, r: Rect) -> bool {
     r.x >= fora.x && r.y >= fora.y && r.x + r.w <= fora.x + fora.w && r.y + r.h <= fora.y + fora.h
 }
 
-/// Cada opção tem um interruptor que mostra o estado dela e uma frase por baixo, ambos dentro da linha.
+/// Cada opção tem uma caixa que mostra o estado dela e uma frase por baixo, ambos dentro da linha.
 #[test]
-fn cada_opcao_tem_interruptor_com_o_estado_e_frase_por_baixo() {
+fn cada_opcao_tem_caixa_com_o_estado_e_frase_por_baixo() {
     let (_, p) = aberto();
     assert_eq!(
         p.on,
         ROWS.map(|o| o.on).to_vec(),
-        "o interruptor reflecte o estado"
+        "a caixa reflecte o estado"
     );
     assert_eq!((p.marks.len(), p.says.len()), (ROWS.len(), ROWS.len()));
     for i in 0..ROWS.len() {
@@ -82,12 +82,12 @@ fn cada_opcao_tem_interruptor_com_o_estado_e_frase_por_baixo() {
         );
         assert!(
             says.y > mark.y,
-            "a frase fica por baixo do título e do interruptor"
+            "a frase fica por baixo do título e da caixa"
         );
     }
 }
 
-/// A linha INTEIRA é o alvo: carregar na frase, longe do interruptor, dá o comando da opção; a mão
+/// A linha INTEIRA é o alvo: carregar na frase, longe da caixa, dá o comando da opção; a mão
 /// sobre ela; largar apaga a moldura de clique.
 #[test]
 fn a_linha_inteira_da_opcao_e_o_alvo_com_mao_e_moldura() {
@@ -109,17 +109,34 @@ fn a_linha_inteira_da_opcao_e_o_alvo_com_mao_e_moldura() {
     assert_eq!(card.look(card_r.x - 1.0, card_r.y), None);
 }
 
-/// Dono 09/11: a pílula diz o estado — o disco à direita ligada, à esquerda desligada, dentro dela.
+/// Dono 10/11: «o padrão do app é caixa, não interruptor» — cada opção leva a caixa de marcar do
+/// cartão (o tamanho dela, quadrada), dentro da linha, encostada à direita dela e centrada na altura;
+/// `on` espelha o estado.
 #[test]
-fn a_pilula_poe_o_disco_do_lado_do_estado() {
+fn cada_opcao_leva_a_caixa_de_marcar_do_cartao_a_direita_e_centrada() {
     let (_, p) = aberto();
-    assert_eq!(p.thumbs.len(), ROWS.len());
-    for (i, o) in ROWS.iter().enumerate() {
-        let (m, (cx, cy, r)) = (p.marks[i], p.thumbs[i]);
-        let meio = m.x + m.w * 0.5;
-        assert_eq!(cx > meio, o.on, "opção {i}: disco em {cx}, meio {meio}");
-        assert!(cx - r >= m.x && cx + r <= m.x + m.w && (cy - (m.y + m.h * 0.5)).abs() < 0.5);
-        assert!(m.w >= m.h * 1.5, "uma pílula, não uma caixa: {m:?}");
+    let caixa = ph2d_editor_core::widget::card_check_rect(0.0, 0.0, 0.0);
+    assert_eq!(
+        p.on,
+        ROWS.map(|o| o.on).to_vec(),
+        "a caixa espelha o estado"
+    );
+    let restart = p.rows.last().expect("o Restart").1;
+    for (i, &m) in p.marks.iter().enumerate() {
+        let row = p.rows[i].1;
+        assert_eq!(
+            (m.w, m.h),
+            (caixa.w, caixa.h),
+            "opção {i}: a caixa do cartão, {m:?}"
+        );
+        assert!(dentro(row, m), "opção {i}: {m:?} fora de {row:?}");
+        let (fim, meio) = (m.x + m.w, row.y + row.h * 0.5);
+        assert!(
+            (fim - (restart.x + restart.w)).abs() < 0.5,
+            "opção {i}: à direita"
+        );
+        assert!(m.x > row.x + row.w * 0.5, "opção {i}: na metade direita");
+        assert!((m.y + m.h * 0.5 - meio).abs() < 0.5, "opção {i}: centrada");
     }
 }
 
@@ -165,10 +182,10 @@ fn a_frase_da_opcao_quebra_e_nunca_se_corta() {
     }
 }
 
-/// Dono 09/11: o hover é UM fundo na linha inteira — nenhuma moldura, nada no interruptor: pintar o
+/// Dono 09/11: o hover é UM fundo na linha inteira — nenhuma moldura, a caixa não se mexe: pintar o
 /// cartão com o rato numa linha acrescenta um só caminho à cena; carregado, outro só (mais forte).
 #[test]
-fn o_hover_e_um_fundo_unico_na_linha_e_nada_no_interruptor() {
+fn o_hover_e_um_fundo_unico_na_linha_e_a_caixa_nao_se_mexe() {
     let caminhos = |card: &mut OptionsCard| {
         let f = OptionsFrame {
             id: NodeId(9),
@@ -189,7 +206,7 @@ fn o_hover_e_um_fundo_unico_na_linha_e_nada_no_interruptor() {
     assert_eq!(caminhos(&mut card), quieto + 1, "hover = um caminho a mais");
     let (r, ink) = card.painted.highlight.expect("o hover pintou");
     assert_eq!(r, p.rows[1].1, "o fundo é a linha inteira");
-    assert_eq!(card.painted.thumbs, p.thumbs, "a pílula não muda");
+    assert_eq!(card.painted.marks, p.marks, "a caixa não se mexe");
     // A camada do Material 3: translúcida e mais clara que o cartão do Forge (escuro) ⇒ CLAREIA.
     let [r8, g8, b8, _] = ink.to_rgba8().to_u8_array();
     let rgb = ph2d_tokens::Color {
@@ -211,27 +228,6 @@ fn o_hover_e_um_fundo_unico_na_linha_e_nada_no_interruptor() {
         "carregado = um caminho a mais"
     );
     assert_eq!(card.painted.highlight.map(|h| h.0), Some(p.rows[1].1));
-}
-
-/// Smoke 09/11: o disco da pílula LIGADA é claro nos dois temas (o do macOS), nunca o `AccentFg`.
-#[test]
-fn o_disco_da_pilula_ligada_e_claro_no_tema_escuro_e_no_claro() {
-    use ph2d_editor_core::widget::switch_inks;
-    for (theme, on) in [Theme::Forge, Theme::Sunstone, Theme::Light]
-        .into_iter()
-        .flat_map(|t| [(t, true), (t, false)])
-    {
-        let (track, knob) = switch_inks(on, theme);
-        let lum = |c: ph2d_vector::Color| {
-            let [r, g, b, _] = c.to_rgba8().to_u8_array();
-            ph2d_tokens::Color { r, g, b, a: 255 }.relative_luminance()
-        };
-        assert!(lum(knob) > 0.5, "{theme:?} on={on}: o disco lê claro");
-        assert!(
-            lum(knob) > lum(track),
-            "{theme:?} on={on}: mais claro que o trilho"
-        );
-    }
 }
 
 /// O alfinete: carregar nele segura o cartão (um clique fora já não o fecha) e não corre comando.

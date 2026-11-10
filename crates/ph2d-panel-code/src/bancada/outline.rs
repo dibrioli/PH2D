@@ -9,8 +9,16 @@ use ph2d_editor_core::paint::{fill_rounded_rect, frame_radius, rect_to_vello};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ROW_H_PX, Radius, Theme};
+use ph2d_tokens::{LineHeight, ROW_H_PX, Radius, Theme};
 use ph2d_vector::VectorScene;
+
+/// O passo de uma ENTRADA (`speed`, `init`): a linha folgada do texto, sem a caixa de um controlo —
+/// dono 10/11: «os espaços entre as propriedades e as funções podem ser menores». Os títulos das
+/// secções ficam em [`ROW_H_PX`].
+#[must_use]
+pub fn outline_entry_h() -> f32 {
+    ph2d_editor_core::ui_scale::ao_pixel(chrome::font() * LineHeight::Loose.ratio())
+}
 
 /// A rolagem de uma lista da Bancada: a caixa das linhas e a altura do conteúdo.
 #[derive(Clone, Copy, Debug, Default)]
@@ -98,9 +106,13 @@ impl BancadaView {
             ("code.bancada.outline.hears", who.hears.as_slice()),
         ];
         let shown = sections.iter().filter(|s| !s.1.is_empty()).count();
-        let rows: usize = sections.iter().map(|s| s.1.len()).sum::<usize>() + shown;
+        let entries: usize = sections.iter().map(|s| s.1.len()).sum();
         self.outline.rows = Rect::new(area.x, top, area.w, (area.y + area.h - g - top).max(0.0));
-        self.outline.content_h = ROW_H_PX * rows.max(1) as f32;
+        self.outline.content_h = if shown == 0 {
+            ROW_H_PX
+        } else {
+            ROW_H_PX * shown as f32 + outline_entry_h() * entries as f32
+        };
         self.outline.clamp();
         scene.push_clip(&rect_to_vello(self.outline.rows));
         if shown == 0 {
@@ -114,6 +126,7 @@ impl BancadaView {
         }
         let mut y = top - self.outline.y;
         let radius = frame_radius(*theme, Radius::Sm.px());
+        let eh = outline_entry_h();
         for (key, entries) in sections.iter().filter(|s| !s.1.is_empty()) {
             chrome::label_in(
                 scene,
@@ -124,22 +137,22 @@ impl BancadaView {
             );
             y += ROW_H_PX;
             for Entry(name, line) in *entries {
-                let r = Rect::new(area.x + g * 0.5, y, (area.w - g).max(0.0), ROW_H_PX);
+                let r = Rect::new(area.x + g * 0.5, y, (area.w - g).max(0.0), eh);
                 if self.aim == Aim::Entry(*line) {
                     fill_rounded_rect(scene, r, radius, ui.hover);
                 }
                 let ln = tr_with("code.bancada.outline.line", &[("line", &(line + 1))]);
                 let lw = chrome::label_w(ts, &ln);
                 let rx = r.x + r.w - g * 0.5 - lw;
-                chrome::label_in(scene, ts, &ln, Rect::new(rx, y, lw, ROW_H_PX), ui.text3);
-                let name_r = Rect::new(r.x + g, y, (rx - g - r.x - g).max(0.0), ROW_H_PX);
+                chrome::label_in(scene, ts, &ln, Rect::new(rx, y, lw, eh), ui.text3);
+                let name_r = Rect::new(r.x + g, y, (rx - g - r.x - g).max(0.0), eh);
                 chrome::label_in(scene, ts, name, name_r, ui.text1);
                 if r.y + r.h > self.outline.rows.y
                     && r.y < self.outline.rows.y + self.outline.rows.h
                 {
                     self.outline_hits.push((Aim::Entry(*line), r));
                 }
-                y += ROW_H_PX;
+                y += eh;
             }
         }
         scene.pop_layer();

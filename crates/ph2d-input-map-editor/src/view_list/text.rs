@@ -74,6 +74,7 @@ pub(crate) fn title(
 ) -> f32 {
     let w = title_width(ts, s, px);
     census.texts.push((r, s.to_owned(), w > r.w + f32::EPSILON));
+    census.semibold.push(s.to_owned());
     paint_text_title_elided(
         ts,
         scene,

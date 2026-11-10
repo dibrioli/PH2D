@@ -101,6 +101,7 @@ pub fn paint(
     let ink = CardInk::of_list(theme);
     doc.kb.targets.clear();
     doc.kb.bars.clear();
+    doc.kb.live_dot = None;
     doc.kb.bar = None;
     if let Some(n) = doc.kb.select_name.clone()
         && let Some(id) = doc.snap.map.id(&n)

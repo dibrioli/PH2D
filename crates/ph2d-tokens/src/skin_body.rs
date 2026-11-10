@@ -339,7 +339,9 @@ impl ColorToken {
             | T::Categorical09
             | T::Categorical10
             | T::Categorical11
-            | T::Categorical12 => Role::Graphic,
+            | T::Categorical12
+            | T::PreviewSky
+            | T::PreviewGround => Role::Graphic,
         }
     }
 }

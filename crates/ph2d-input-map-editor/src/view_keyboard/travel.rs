@@ -102,6 +102,7 @@ pub(super) fn paint(
         let lx = bar.x + bar.w * live;
         let dot = Rect::new(lx - bar.h * 0.5, bar.y, bar.h, bar.h);
         fill_rounded_rect(scene, dot, bar.h * 0.5, ink.color(ColorToken::Accent));
+        doc.kb.live_dot = Some(dot);
     }
     y += LABEL_H + m::FIELD_ROW_GAP;
     zone_fields(doc, a, Rect::new(r.x, y, r.w, 0.0), scene, ts, ink);

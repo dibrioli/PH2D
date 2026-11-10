@@ -14,6 +14,8 @@ pub struct Census {
     pub dashed: Vec<Rect>,
     /// O recorte da vista que rola (a C): o que sai dele não se pinta nem se clica.
     pub clip: Option<Rect>,
+    /// Cada texto pintado em SemiBold (o nome da acção na A, o título da receita na C).
+    pub semibold: Vec<String>,
 }
 
 impl Census {

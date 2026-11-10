@@ -82,6 +82,8 @@ pub struct KbState {
     pub(crate) pointer: Option<(f32, f32)>,
     /// As barras da última pintura: cada alvo desenhado e as acções que o usam (o censo da lei «uma barra por acção»).
     pub bars: Vec<(KbHit, Vec<ActionId>)>,
+    /// A marca do comando AO VIVO na barra do curso da última pintura (`None` = manche em repouso).
+    pub live_dot: Option<ph2d_editor_core::zones::Rect>,
 }
 
 impl KbState {

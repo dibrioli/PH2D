@@ -138,7 +138,7 @@ pub(super) fn recipes(
         let ix = tx + m::SEG_INSET;
         let iw = tw - m::SEG_INSET * 2.0;
         let title = Rect::new(ix, ty, iw, line_h(m::VALUE_PX));
-        line(
+        crate::view_list::text::title(
             &mut doc.census,
             ts,
             scene,

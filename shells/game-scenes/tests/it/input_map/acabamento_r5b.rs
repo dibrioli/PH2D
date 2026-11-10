@@ -141,3 +141,80 @@ fn com_o_play_a_correr_o_try_it_le_o_mapa_do_jogador() {
         "parado, o mapa do projecto"
     );
 }
+
+#[test]
+fn os_titulos_das_receitas_sao_semibold_como_os_nomes_da_a() {
+    let m = Mesa::aberta(View::TryIt);
+    let semibold = &m.tab().doc.census.semibold;
+    for r in ph2d_input::recipes::Recipe::ALL {
+        let t = ph2d_i18n::tr(r.label_key());
+        assert!(
+            semibold.iter().any(|s| s == t),
+            "«{t}» em SemiBold: {semibold:?}"
+        );
+    }
+    let a = Mesa::aberta(View::List);
+    let jump = "jump".to_owned();
+    assert!(
+        a.tab().doc.census.semibold.contains(&jump),
+        "o mesmo peso dos nomes da A"
+    );
+}
+
+#[test]
+fn a_marca_ao_vivo_da_manche_anda_com_o_comando_na_b() {
+    let mut m = Mesa::aberta(View::Keyboard);
+    m.hero.input_map = onze();
+    m.frame();
+    let left = m.hero.input_map.id("move_left").expect("fábrica");
+    m.click(m.at(KbHit::Row(left).id()));
+    assert_eq!(
+        m.tab().doc.kb.live_dot,
+        None,
+        "manche em repouso: sem marca"
+    );
+    m.live
+        .gamepad
+        .handle_axis(ph2d_input::GamepadAxis::LeftStickX, -0.62);
+    m.frame();
+    let at_062 = m.tab().doc.kb.live_dot.expect("a marca a 0.62");
+    m.live
+        .gamepad
+        .handle_axis(ph2d_input::GamepadAxis::LeftStickX, -0.9);
+    m.frame();
+    let at_09 = m.tab().doc.kb.live_dot.expect("a marca a 0.9");
+    assert!(
+        at_09.x > at_062.x,
+        "a marca anda com a manche: {at_062:?} → {at_09:?}"
+    );
+    m.live
+        .gamepad
+        .handle_axis(ph2d_input::GamepadAxis::LeftStickX, 0.0);
+    m.frame();
+    assert_eq!(m.tab().doc.kb.live_dot, None, "largou: a marca sai");
+}
+
+#[test]
+fn os_controlos_da_c_explicam_se_ao_pairar() {
+    use ph2d_app_input_map::view_try::state::TryHit;
+    let mut m = Mesa::aberta(View::TryIt);
+    let jump = m.hero.input_map.id("jump").expect("fábrica");
+    for (hit, key) in [
+        (
+            TryHit::PlayersCanChange,
+            "input_map_try.players_can_change_tip",
+        ),
+        (TryHit::OpenKey, "input_map_try.opens_with_tip"),
+        (TryHit::Shown(jump), "input_map_try.shown_tip"),
+    ] {
+        m.hover(m.at(hit.id()));
+        let doc = &m.tab().doc;
+        assert_eq!(
+            doc.list.hover_target,
+            Some(hit.id()),
+            "{hit:?} sob o ponteiro"
+        );
+        let tip = ph2d_app_input_map::view_try::tip_of(doc, hit.id());
+        assert_eq!(tip, Some(ph2d_i18n::tr(key)), "{hit:?}: a dica");
+    }
+}

@@ -12,7 +12,7 @@ use super::cards::{GAP, PAD, ROW, inner_w, word};
 use super::{line_h, para};
 use crate::doc::InputMapDoc;
 use crate::view_list::text::line;
-use ph2d_editor_core::paint::fill_rounded_rect;
+use ph2d_editor_core::paint::{fill_rounded_rect, fill_rounded_rect_radii};
 use ph2d_editor_core::panel::cards::{CardCtx, Widget};
 use ph2d_editor_core::widget::CheckboxValue;
 use ph2d_input::ActionId;
@@ -94,18 +94,20 @@ pub(super) fn controls(
     y += line_h(m::LABEL_PX);
     let ph = preview_h(r.w);
     let back = Rect::new(x, y, w, ph);
+    // A prévia é um JOGO (maquete C4): céu claro e a faixa do chão, o mesmo em todo tema.
     fill_rounded_rect(
         scene,
         back,
         m::FIELD_RADIUS,
-        ink.color(ColorToken::KanbanCard),
+        ink.color(ColorToken::PreviewSky),
     );
     let ground = Rect::new(x, y + ph - ROW, w, ROW);
-    fill_rounded_rect(
+    let r = m::FIELD_RADIUS;
+    fill_rounded_rect_radii(
         scene,
         ground,
-        m::FIELD_RADIUS,
-        ink.color(ColorToken::Success),
+        (0.0, 0.0, r, r),
+        ink.color(ColorToken::PreviewGround),
     );
     let rows = ph2d_player_controls::rows(doc.snap.read_map());
     let screen = ph2d_player_controls::ControlsScreen::default();

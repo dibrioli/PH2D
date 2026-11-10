@@ -13,7 +13,7 @@ use ph2d_panel_code::bancada::{Aim, BancadaView};
 use ph2d_panel_code::debug_card::DebugCardView;
 use ph2d_panel_code::{
     Band, BandTab, CodeView, ConsoleRow, ConsoleSource, ConsoleView, Ink, LineCache, ListHit,
-    ListRow, ScriptList, ScriptListView,
+    ListRow, ProblemRow, ScriptList, ScriptListView, Severity,
 };
 use ph2d_text::{FontWeight, TextSystem};
 use ph2d_tokens::{ROW_H_PX, Theme, TypeToken};
@@ -349,4 +349,51 @@ fn os_separadores_tem_a_letra_da_faixa_do_paused() {
             "{tab:?}: o texto no alvo"
         );
     }
+}
+
+/// (4) A frase da grelha sem propriedades e o texto de cada problema saem INTEIROS na letra de
+/// «alive»; o cabeçalho «Problem» fica na letra da interface.
+#[test]
+fn a_frase_sem_propriedades_e_o_texto_dos_problemas_tem_a_letra_de_alive() {
+    let mut ts = TextSystem::without_system_fonts();
+    let quadro = quadro(&mut ts);
+    let alive = letra(achar(&quadro, &ids_mono(&mut ts, "alive"), "«alive»"));
+    let mut who = quem();
+    who.columns.clear();
+    who.cells.clear();
+    let (mut v, mut s) = (BancadaView::default(), VectorScene::new());
+    let mut view = medido(&mut ts);
+    let theme = Theme::default();
+    v.paint_bench(&who, GRADE, None, &mut view, &mut s, &mut ts, &theme);
+    let frase = tr("code.bancada.grid.no_props");
+    let cena = corridas(&s);
+    let f = achar(&cena, &ids_mono(&mut ts, frase), "a frase inteira");
+    assert_eq!(letra(f), alive, "a frase não tem a letra de «alive»");
+    let texto = "Unknown global 'hud'";
+    let problemas = [ProblemRow {
+        severity: Severity::Error,
+        text: texto,
+        line: 7,
+        on: "",
+    }];
+    let band = Band {
+        open: true,
+        tab: BandTab::Problems,
+        console: &Vazia,
+        problem_count: 1,
+        problems: &problemas,
+        current: None,
+        tab_width: 4,
+    };
+    let (mut c, mut s) = (ConsoleView::default(), VectorScene::new());
+    let faixa = Rect::new(0.0, 0.0, 800.0, ROW_H_PX * 6.0);
+    c.paint(band, faixa, &mut view, &mut s, &mut ts, &theme);
+    let cena = corridas(&s);
+    let p = achar(&cena, &ids_mono(&mut ts, texto), "o problema inteiro");
+    assert_eq!(letra(p), alive, "o problema não tem a letra de «alive»");
+    let cab = ids_mono(&mut ts, tr("code.problems.col.problem"));
+    assert!(
+        !cena.iter().any(|c| c.4 == cab),
+        "o cabeçalho «Problem» passou à mono"
+    );
 }

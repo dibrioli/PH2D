@@ -202,7 +202,13 @@ impl BancadaView {
             } else {
                 "code.bancada.grid.no_props"
             };
-            chrome::label_in(scene, ts, tr(key), Rect::new(x, top, w, ROW_H_PX), ui.text3);
+            let r = Rect::new(x, top, w, ROW_H_PX);
+            if who.holders.is_empty() {
+                chrome::label_in(scene, ts, tr(key), r, ui.text3);
+            } else {
+                // Na letra de «alive» (dono 10/11): a frase traz o código a escrever.
+                crate::mono_label::paint(ts, scene, *theme, tr(key), ui.text3, r);
+            }
             return;
         }
         let table_r = Rect::new(x, top, w, (area.y + area.h - s - top).max(0.0));

@@ -26,8 +26,9 @@
 //! fora do retângulo — e nenhum gate de conteúdo pega isso, porque o conteúdo DENTRO do retângulo está
 //! perfeito.
 
-use super::{ModelSnapshot, UndoController, UndoEntry};
+use super::{ModelSnapshot, RtLayerId, UndoController, UndoEntry};
 use crate::compositor::Region;
+use crate::undo_delta::confine::PlaneReach;
 
 impl ModelSnapshot {
     /// **Estes dois endpoints diferem SÓ em pixels de planos canvas-shaped?**
@@ -45,7 +46,6 @@ impl ModelSnapshot {
             offset_norm,
             offset_base_px,
             papel,
-            tintas_molhadas,
             active_op,
             mask_scratch_target,
             selection_active,
@@ -74,6 +74,9 @@ impl ModelSnapshot {
             //   muda um pixel, e exigir igualdade deles recusaria todo passo elidido — que é o comum.
             relief_elided: _,
             writes: _,
+            // — a MARCA do Wet: muda a luz do papel só onde a camada tem alfa; quem a julga é o
+            //   [`UndoEntry::confined_region`], pela janela da tinta —
+            tintas_molhadas: _,
         } = self;
 
         // ⚠️ **Uma sessão VIVA desqualifica o passo, em vez de ser comparada.** O `restore_model`
@@ -101,7 +104,6 @@ impl ModelSnapshot {
             && offset_norm.to_bits() == other.offset_norm.to_bits()
             && offset_base_px.to_bits() == other.offset_base_px.to_bits()
             && *papel == other.papel
-            && *tintas_molhadas == other.tintas_molhadas
             && *active_op == other.active_op
             && *mask_scratch_target == other.mask_scratch_target
             && *selection_active == other.selection_active
@@ -131,12 +133,33 @@ fn mesma_pilha_sem_o_relevo(a: &crate::layers::LayerStack, b: &crate::layers::La
 }
 
 impl UndoEntry {
-    /// A região a que este passo está confinado, ou `None` para *não confinado*.
-    fn confined_region(&self) -> Option<Region> {
+    /// A região a que este passo está confinado, ou `None` para *não confinado*. `marca(id)` diz onde virar
+    /// a marca do Wet da camada `id` muda a figura (lido do estado VIVO: fora da janela dos planos ele é o
+    /// do outro endpoint, então a janela dele ∪ a dos planos cobre os dois).
+    fn confined_region(&self, marca: &dyn Fn(RtLayerId) -> PlaneReach) -> Option<Region> {
         if !self.before.confined_to(&self.after) {
             return None;
         }
-        self.planes.confined_region(self.before.canvas_size.0)
+        let w = self.before.canvas_size.0;
+        let mut r = self.planes.confined_region(w)?;
+        let (a, b) = (&self.before.tintas_molhadas, &self.after.tintas_molhadas);
+        for &id in a.symmetric_difference(b) {
+            match marca(id) {
+                PlaneReach::Untouched => {}
+                PlaneReach::Window(j) => {
+                    r = crate::tool::paint::region::union_region(r, j.to_region(w)?);
+                }
+                PlaneReach::Whole => return None,
+            }
+        }
+        Some(r)
+    }
+
+    /// Quantas camadas viram a marca do Wet neste passo — só para o diagnóstico.
+    #[cfg(test)]
+    fn marcas_que_viram(&self) -> usize {
+        let (a, b) = (&self.before.tintas_molhadas, &self.after.tintas_molhadas);
+        a.symmetric_difference(b).count()
     }
 }
 
@@ -151,7 +174,8 @@ impl UndoEntry {
         let meta = self.before.confined_to(&self.after);
         let planes = self.planes.confined_region(self.before.canvas_size.0);
         format!(
-            "metadados={meta} planos={planes:?} | {}",
+            "metadados={meta} planos={planes:?} marcas={} | {}",
+            self.marcas_que_viram(),
             self.planes.confine_report()
         )
     }
@@ -170,12 +194,18 @@ impl UndoController {
     /// ⚠️ **Uma pergunta, não um stash.** A alternativa — guardar a região num campo ao aplicar e o
     /// chamador a consumir depois — cria um segundo lugar onde *"o que o último passo mudou"* mora, e
     /// um segundo lugar é onde uma resposta obsoleta sobrevive a um caminho que retornou cedo.
-    pub(crate) fn peek_confined_region(&self, redo: bool) -> Option<Region> {
+    ///
+    /// `marca` é a janela da tinta de uma camada cuja marca do Wet vira ([`UndoEntry::confined_region`]).
+    pub(crate) fn peek_confined_region(
+        &self,
+        redo: bool,
+        marca: &dyn Fn(RtLayerId) -> PlaneReach,
+    ) -> Option<Region> {
         #[cfg(test)]
         if !self.confine {
             return None; // a ablação do A/B — ver `UndoController::confine`
         }
         let stack = if redo { &self.redo } else { &self.undo };
-        stack.last()?.confined_region()
+        stack.last()?.confined_region(marca)
     }
 }

@@ -45,6 +45,9 @@ impl PainterTool {
         // visibility / reorder / add / select) can change the composite OUTSIDE
         // the stamped region, so the next drain must do a FULL recompose.
         self.dirty_rect = None;
+        // …e a pista GPU também: um `mark_dirty` antes da drenagem (o 1.º dab do traço que virou a marca do
+        // Wet) re-encheria o `dirty_rect` e ela dobraria só a janela dele (B10c).
+        self.gpu_lane_stale = true;
         self.preview_dirty = true;
         self.edited_since_bind = true; // structural/metadata edit → unbaked composite change
         // W5: a structural edit (add/remove/reorder/visibility/opacity/blend/

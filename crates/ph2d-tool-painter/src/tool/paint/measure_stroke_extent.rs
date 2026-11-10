@@ -31,7 +31,7 @@ fn one_stroke(t: &mut PainterTool, y0: f32, span: f32, diagonal: bool) -> (f64, 
     let t0 = Instant::now();
     t.on_canvas_pointer(cp([60.0 + span, y0 + dy], PointerPhase::Up));
     let ms = t0.elapsed().as_secs_f64() * 1000.0;
-    (ms, t.undo.peek_confined_region(false))
+    (ms, t.regiao_do_proximo_passo(false))
 }
 
 fn median(mut v: Vec<f64>) -> f64 {

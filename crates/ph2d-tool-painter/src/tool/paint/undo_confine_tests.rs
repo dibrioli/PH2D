@@ -143,7 +143,7 @@ fn a_structural_edit_is_not_confined() {
     }
     t.commit_structural_edit(before);
     assert!(
-        t.undo.peek_confined_region(false).is_none(),
+        t.regiao_do_proximo_passo(false).is_none(),
         "uma mudanca de opacidade muda o composite fora de retangulo nenhum"
     );
 }
@@ -165,10 +165,10 @@ fn papel_texturizado(
     t
 }
 
-/// **B10c: o Ctrl+Z do 1.º traço sobre o papel texturizado é confinado no Digital, Watercolor e Impasto** — e
+/// **B10c: o Ctrl+Z do 1.º traço sobre o papel texturizado é confinado nos 4 meios**, à janela do traço — e
 /// a tela da pista parcial é a do repaint inteiro ao bit (undo e redo) nos 4 meios. Era `None` no Watercolor
 /// (o vidro aparece: `v=WHOLE`) e no Impasto (o relevo aparece e o `has_relief` vira), dobra e prévia da
-/// TELA no app. O 1.º traço Wet (`tintas_molhadas`) segue não confinado: só o oráculo o julga.
+/// TELA no app; e no Wet (`tintas_molhadas` vira: agora a janela da tinta da camada).
 #[test]
 fn o_ctrl_z_de_um_traco_no_papel_e_confinado_em_cada_meio() {
     use crate::tool::paint::media::PaintMedia::{Digital, Impasto, Watercolor, WetPaint};
@@ -189,9 +189,12 @@ fn o_ctrl_z_de_um_traco_no_papel_e_confinado_em_cada_meio() {
                 "controlo: o vidro aparece neste passo — {why}"
             );
         }
-        let deve = matches!(meio, Digital | Watercolor | Impasto);
-        if deve && fast.undo.peek_confined_region(false).is_none() {
-            falhas.push(format!("{meio:?}: {why}"));
+        match fast.regiao_do_proximo_passo(false) {
+            None => falhas.push(format!("{meio:?}: {why}")),
+            Some(r) => assert!(
+                r.w * r.h < 256 * 256,
+                "{meio:?}: a janela {r:?} não é a do traço"
+            ),
         }
         assert!(
             fast.undo_last() && slow.undo_last(),
@@ -283,13 +286,83 @@ impl TexturasDaPlaca {
     }
 }
 
+/// **B10c: o 1.º traço Wet numa camada que já tem tinta Digital noutro sítio** vira a marca da camada inteira: o
+/// papel sob a tinta velha muda de lei (`papel_a_vista`). O Ctrl+Z confina à janela da tinta da camada (as duas
+/// faixas), nunca à do traço só, e a tela é a do repaint inteiro ao bit (undo e redo).
+#[test]
+fn o_ctrl_z_do_1o_traco_wet_sobre_tinta_velha_alcanca_a_tinta_velha() {
+    use crate::tool::paint::media::PaintMedia::{Digital, WetPaint};
+    let screen = |t: &mut PainterTool| {
+        t.paint_tick(1.0 / 60.0);
+        t.take_preview_arc().map(|(px, _, _)| px)
+    };
+    let (mut fast, mut slow) = (
+        papel_texturizado(256, Digital, true),
+        papel_texturizado(256, Digital, false),
+    );
+    for t in [&mut fast, &mut slow] {
+        t.set_paint_media(WetPaint);
+        stroke(t, 200.0);
+        let _ = t.take_preview_arc();
+    }
+    let why = fast.undo.peek_confine_diagnosis(false).unwrap_or_default();
+    assert!(why.contains("marcas=1"), "controlo: a marca vira — {why}");
+    let r = fast
+        .regiao_do_proximo_passo(false)
+        .unwrap_or_else(|| panic!("não confinado: {why}"));
+    assert!(
+        r.y <= 120 && r.y + r.h > 200 && r.w * r.h < 256 * 256,
+        "a janela {r:?} tem de cobrir a tinta velha (y=120) e o traço (y=200), não a tela"
+    );
+    for passo in ["undo", "redo"] {
+        let feito = if passo == "undo" {
+            fast.undo_last() && slow.undo_last()
+        } else {
+            fast.redo_last() && slow.redo_last()
+        };
+        assert!(feito, "há o que {passo}");
+        let caixa = caixa_diferente(screen(&mut fast), screen(&mut slow));
+        assert!(
+            caixa.is_none(),
+            "{passo} ≠ repaint inteiro: {caixa:?} região {r:?}"
+        );
+    }
+    // O 2.º traço Wet (a marca já está): a janela do canvas basta (controlo).
+    for t in [&mut fast, &mut slow] {
+        stroke(t, 60.0);
+        let _ = t.take_preview_arc();
+    }
+    let r2 = fast.regiao_do_proximo_passo(false);
+    assert!(fast.undo_last() && slow.undo_last());
+    let caixa = caixa_diferente(screen(&mut fast), screen(&mut slow));
+    assert!(caixa.is_none(), "2.º traço: {caixa:?} região {r2:?}");
+}
+
+/// A caixa `(x0, y0, x1, y1, píxeis)` onde duas telas de 256 px de largura diferem; `None` se iguais.
+fn caixa_diferente(
+    a: Option<std::sync::Arc<Vec<u8>>>,
+    b: Option<std::sync::Arc<Vec<u8>>>,
+) -> Option<(u32, u32, u32, u32, usize)> {
+    let (a, b) = (a.expect("tela"), b.expect("tela"));
+    let mut caixa: Option<(u32, u32, u32, u32, usize)> = None;
+    for (i, (p, q)) in a.chunks(4).zip(b.chunks(4)).enumerate() {
+        if p != q {
+            let (x, y) = ((i % 256) as u32, (i / 256) as u32);
+            let c = caixa.unwrap_or((x, y, x, y, 0));
+            caixa = Some((c.0.min(x), c.1.min(y), c.2.max(x), c.3.max(y), c.4 + 1));
+        }
+    }
+    caixa
+}
+
 /// **B10c: a pista da PLACA no Ctrl+Z do 1.º traço Impasto** (com e sem papel): a janela que ela dobra é a do
 /// traço, não a tela (o quadro de 80 ms), e as texturas persistentes remendadas por ela são a dobra inteira ao
-/// bit, no undo e no redo. Reivindicar de menos (uma linha de relevo fora da janela) reprova aqui.
+/// bit, no undo e no redo. Reivindicar de menos (uma linha de relevo fora da janela) reprova aqui. O 1.º traço
+/// Wet sobre tinta Digital velha (a marca vira) entra pela mesma pista.
 #[test]
 fn a_placa_dobra_so_a_janela_do_ctrl_z_do_1o_traco_impasto() {
-    use crate::tool::paint::media::PaintMedia::Impasto;
-    for papel in [true, false] {
+    use crate::tool::paint::media::PaintMedia::{Digital, Impasto, WetPaint};
+    for (papel, wet) in [(true, false), (false, false), (true, true)] {
         let mut t = if papel {
             let mut t = PainterTool::default();
             t.abre_a_sprite_nova(
@@ -302,8 +375,15 @@ fn a_placa_dobra_so_a_janela_do_ctrl_z_do_1o_traco_impasto() {
         } else {
             armed(512)
         };
-        t.set_paint_media(Impasto);
         t.set_brush_size_px(9.0);
+        if wet {
+            t.set_paint_media(Digital);
+            stroke(&mut t, 60.0);
+            t.set_paint_media(WetPaint);
+        } else {
+            t.set_paint_media(Impasto);
+        }
+        let papel = format!("{papel} wet={wet}");
         let mut placa = TexturasDaPlaca::default();
         placa.quadro(&mut t);
         stroke(&mut t, 120.0);

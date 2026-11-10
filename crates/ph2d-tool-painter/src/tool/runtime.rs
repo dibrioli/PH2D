@@ -87,7 +87,7 @@ impl PainterTool {
         let live = self.snapshot_model();
         // ⚠️ **A região é perguntada ANTES de aplicar o passo** — depois, a entrada já saiu da pilha.
         // `None` = não confinado, e aí o restore é o de sempre (doc 28 §5.62).
-        let confined = self.undo.peek_confined_region(false);
+        let confined = self.regiao_do_proximo_passo(false);
         // A tinta viva sai do caminho do restore (que acaba a sessão) e volta com as grades de antes do passo.
         let viva = self.wet_solta_para_o_undo(false);
         let presa = if viva.is_none() {
@@ -150,7 +150,7 @@ impl PainterTool {
         let live = self.snapshot_model();
         // ⚠️ **A região é perguntada ANTES de aplicar o passo** — depois, a entrada já saiu da pilha.
         // `None` = não confinado, e aí o restore é o de sempre (doc 28 §5.62).
-        let confined = self.undo.peek_confined_region(true);
+        let confined = self.regiao_do_proximo_passo(true);
         let viva = self.wet_solta_para_o_undo(true);
         let presa = if viva.is_none() {
             self.wet_tira_para_o_restauro()

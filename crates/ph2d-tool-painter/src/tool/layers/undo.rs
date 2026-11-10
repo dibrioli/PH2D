@@ -89,6 +89,40 @@ impl PainterTool {
         m
     }
 
+    /// A região a que o próximo undo (ou redo) está confinado ([`crate::undo::UndoController::peek_confined_region`]),
+    /// com a janela da tinta de cada camada cuja marca do Wet vira (o 1.º traço Wet dela, B10c).
+    pub(crate) fn regiao_do_proximo_passo(&self, redo: bool) -> Option<crate::compositor::Region> {
+        self.undo
+            .peek_confined_region(redo, &|id| self.alcance_da_marca_molhada(id))
+    }
+
+    /// Onde virar a marca do Wet da camada `id` muda a luz: os píxeis com alfa dela (`papel_a_vista`). Nada onde
+    /// a luz não a lê — o filtro do `tinta` de `relief_fields_for` (máscara, escondida, não raster, tamanho
+    /// errado); a sprite crua que é o papel fica dentro (a janela maior é só repaint a mais).
+    fn alcance_da_marca_molhada(
+        &self,
+        id: crate::layers::LayerId,
+    ) -> crate::undo_delta::confine::PlaneReach {
+        use crate::undo_delta::confine::{PlaneReach, janela_da_tinta};
+        let lida = self.layers.get(id).is_some_and(|l| {
+            matches!(l.kind, crate::layers::LayerKind::Raster(_))
+                && self.layers.effectively_visible(id)
+                && !self.layers.is_mask(id)
+        });
+        let px: Option<&[u8]> = if self.layers.active() == Some(id) {
+            Some(self.canvas_rgba.as_slice())
+        } else {
+            self.images.get(&id).map(|i| i.rgba8.as_slice())
+        };
+        let (w, h) = self.source_size;
+        match px {
+            Some(px) if lida && px.len() == (w as usize) * (h as usize) * 4 => {
+                janela_da_tinta(px, w as usize)
+            }
+            _ => PlaneReach::Untouched,
+        }
+    }
+
     /// Reinstall a model snapshot (a structural undo/redo). Restores the layer
     /// tree (incl. the active target), the per-layer pixel store, the active
     /// working buffer, and the panel selection, then refreshes every derived

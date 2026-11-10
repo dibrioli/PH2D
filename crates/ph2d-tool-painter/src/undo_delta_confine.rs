@@ -238,6 +238,36 @@ fn janela_dos_selados(p: &[crate::compositor::vidro::Vidro], stride: usize) -> P
     )
 }
 
+/// A janela dos píxeis com alfa de um plano RGBA8 de `w` píxeis por linha; `Untouched` se nenhum. É onde virar
+/// a marca do Wet de uma camada muda a luz do papel: alfa 0 deixa-o inteiro nas duas leis
+/// (`relief_fields::papel_a_vista`), então fora dela a figura é a mesma (B10c). Com 1 texel de moldura: a altura
+/// do papel muda nesses texels e a normal dos vizinhos lê-a (diferença central).
+pub(crate) fn janela_da_tinta(rgba: &[u8], w: usize) -> PlaneReach {
+    let (px, resto) = rgba.as_chunks::<4>();
+    if !resto.is_empty() {
+        return PlaneReach::Whole;
+    }
+    match janela_fora_do_neutro(
+        px,
+        w,
+        |l| l.iter().fold(0u8, |a, p| a | p[3]) == 0,
+        |p| p[3] == 0,
+    ) {
+        PlaneReach::Window(j) => {
+            let linhas = px.len() / w;
+            let (row, col) = (j.row.saturating_sub(1), j.col.saturating_sub(1));
+            PlaneReach::Window(PlaneWindow {
+                row,
+                rows: (j.row + j.rows + 1).min(linhas) - row,
+                col,
+                cols: (j.col + j.cols + 1).min(w) - col,
+                ..j
+            })
+        }
+        outro => outro,
+    }
+}
+
 /// A janela dos texels fora do neutro de um plano de `stride` texels por linha; `Untouched` se nenhum.
 fn janela_fora_do_neutro<T>(
     p: &[T],

@@ -1,0 +1,18 @@
+[quadro-lento] parede=1794307986176573153 intervalo=100.3 quadro=99.5
+[frame] total=11.01ms (~91 fps) | cpu-encode(raw)=4.71ms | acquire(medido)=0.02ms | fora-do-encode=6.28ms | painter-dispatch(cpu)=0.04ms (0.00 M px publicados em 0 quadros) | hero-paint=1.36ms
+[frame] total=11.77ms (~85 fps) | cpu-encode(raw)=5.61ms | acquire(medido)=0.02ms | fora-do-encode=6.14ms | painter-dispatch(cpu)=0.06ms (0.00 M px publicados em 0 quadros) | hero-paint=1.63ms
+[frame] total=11.70ms (~85 fps) | cpu-encode(raw)=5.55ms | acquire(medido)=0.02ms | fora-do-encode=6.13ms | painter-dispatch(cpu)=0.07ms (0.00 M px publicados em 0 quadros) | hero-paint=1.52ms
+[frame] total=11.56ms (~87 fps) | cpu-encode(raw)=5.51ms | acquire(medido)=0.02ms | fora-do-encode=6.03ms | painter-dispatch(cpu)=0.06ms (0.00 M px publicados em 0 quadros) | hero-paint=1.49ms
+[frame] total=11.88ms (~84 fps) | cpu-encode(raw)=5.66ms | acquire(medido)=0.02ms | fora-do-encode=6.20ms | painter-dispatch(cpu)=0.07ms (0.00 M px publicados em 0 quadros) | hero-paint=1.51ms
+[frame] total=11.97ms (~84 fps) | cpu-encode(raw)=5.82ms | acquire(medido)=0.02ms | fora-do-encode=6.12ms | painter-dispatch(cpu)=0.06ms (0.00 M px publicados em 0 quadros) | hero-paint=2.06ms
+[quadro-lento] parede=1794307995095988070 intervalo=161.4 quadro=136.8
+[frame] total=22.70ms (~44 fps) | cpu-encode(raw)=16.19ms | acquire(medido)=0.03ms | fora-do-encode=6.48ms | painter-dispatch(cpu)=1.05ms (0.14 M px publicados em 60 quadros) | hero-paint=2.00ms
+[quadro-lento] parede=1794307996981964013 intervalo=108.4 quadro=107.7
+[frame] total=11.43ms (~87 fps) | cpu-encode(raw)=5.29ms | acquire(medido)=0.02ms | fora-do-encode=6.12ms | painter-dispatch(cpu)=0.21ms (0.02 M px publicados em 5 quadros) | hero-paint=1.41ms
+[frame] total=12.38ms (~81 fps) | cpu-encode(raw)=6.33ms | acquire(medido)=0.02ms | fora-do-encode=6.03ms | painter-dispatch(cpu)=0.23ms (0.00 M px publicados em 0 quadros) | hero-paint=1.49ms
+[quadro-lento] parede=1794307999565162749 intervalo=79.7 quadro=78.5
+[quadro-lento] parede=1794308000009884860 intervalo=104.2 quadro=103.5
+[frame] total=11.35ms (~88 fps) | cpu-encode(raw)=5.41ms | acquire(medido)=0.02ms | fora-do-encode=5.93ms | painter-dispatch(cpu)=0.05ms (0.00 M px publicados em 0 quadros) | hero-paint=1.45ms
+[frame] total=11.91ms (~84 fps) | cpu-encode(raw)=5.82ms | acquire(medido)=0.02ms | fora-do-encode=6.07ms | painter-dispatch(cpu)=0.06ms (0.00 M px publicados em 0 quadros) | hero-paint=1.46ms
+[frame] total=11.07ms (~90 fps) | cpu-encode(raw)=4.81ms | acquire(medido)=0.01ms | fora-do-encode=6.25ms | painter-dispatch(cpu)=0.04ms (0.00 M px publicados em 0 quadros) | hero-paint=1.29ms
+[frame] total=11.30ms (~89 fps) | cpu-encode(raw)=5.18ms | acquire(medido)=0.02ms | fora-do-encode=6.09ms | painter-dispatch(cpu)=0.06ms (0.00 M px publicados em 0 quadros) | hero-paint=1.59ms

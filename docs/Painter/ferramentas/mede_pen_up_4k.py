@@ -116,6 +116,93 @@ def matriz(pasta, saida=None):
         )
 
 
+def perfil(base, top=15):
+    """`--perf <pasta/rotulo>` (o modo `perf` do .sh): cada [quadro-lento] passa ao relógio do perf (mono = parede −
+    deslocamento das marcas) e recebe as funções FOLHA das amostras dentro do seu intervalo, por fio; as fases
+    `parado0`/`parado1` recebem o mesmo, por quadro (amostras ÷ quadros desenhados na janela)."""
+    marcas = {}
+    for linha in open(base + ".marcas"):
+        p = linha.split()
+        marcas[p[0]] = (int(p[1]), int(p[2]), int(p[3]) if len(p) > 3 else None)
+    desl = [w - m for m, w, _ in marcas.values()]
+    d = sorted(desl)[len(desl) // 2]
+    # Com -F 997 o perf ajusta o PERÍODO (ciclos por amostra) quadro a quadro: contar amostras pesa errado entre
+    # janelas; cada amostra pesa os seus ciclos (`period`).
+    out = subprocess.run(
+        ["perf", "script", "-i", base + ".perf", "-F", "comm,tid,time,period,ip,sym,dso"],
+        capture_output=True, text=True, errors="replace",
+    ).stdout
+    am = []  # (t_ns mono, comm, sym, ciclos)
+    for linha in out.splitlines():
+        cab, _, resto = linha.partition(": ")
+        p = cab.split()
+        try:
+            t = int(round(float(p[-1]) * 1e9))
+        except (ValueError, IndexError):
+            continue
+        comm = " ".join(p[:-2]) + "/" + p[-2]
+        r = resto.split(None, 2)
+        if len(r) < 2:
+            continue
+        sym = (r[2] if len(r) > 2 else "").rsplit(" (", 1)
+        nome = sym[0].strip() or "?"
+        dso = sym[1].rstrip(")").rsplit("/", 1)[-1] if len(sym) > 1 else "?"
+        am.append((t, comm, nome if nome not in ("[unknown]", "?") else f"[{dso}]", int(r[0])))
+    lentos = []
+    for linha in open(base + ".log", errors="replace"):
+        if linha.startswith("[quadro-lento]"):
+            q = dict(kv.split("=") for kv in linha.split()[1:])
+            fim = int(q["parede"]) - d
+            lentos.append((fim - int(float(q["intervalo"]) * 1e6), fim, float(q["intervalo"])))
+
+    def tabela(a, b, rot, quadros=None):
+        sel = [x for x in am if a <= x[0] < b]
+        fios, folha = collections.Counter(), collections.Counter()
+        for x in sel:
+            fios[x[1]] += x[3]
+            folha[x[2]] += x[3]
+        n = sum(fios.values()) or 1
+        pq = f" · {n / 1e6 / quadros:.1f} M ciclos/quadro em {quadros} quadros" if quadros else ""
+        print(f"\n### {rot}: {(b - a) / 1e6:.0f} ms · {len(sel)} amostras · {n / 1e6:.0f} M ciclos{pq}")
+        princ = f"{am[0][1]}"
+        print(f"fios: {len(fios)} com amostras · principal {princ} {fios[princ] * 100 / n:.0f} % · "
+              + " · ".join(f"{c} {v * 100 / n:.0f} %" for c, v in fios.most_common(4)))
+        import re
+
+        crate = collections.Counter()
+        for s, v in folha.items():
+            m = re.search(r"\b(ph2d_[a-z0-9_]+)", s) or re.match(r"[<&\s]*([a-z_0-9]+)::", s)
+            crate[m.group(1) if m else s] += v
+        print("por crate (a 1.ª nomeada na folha): "
+              + " · ".join(f"{c} {v * 100 / n:.1f} %" for c, v in crate.most_common(12)))
+        print("| % | função folha |\n|---|---|")
+        for s, v in folha.most_common(top):
+            print(f"| {v * 100 / n:.1f} | `{s[:140]}` |")
+
+    nomes = {"down": "mousedown", "up": "mouse-up", "ctrlz": "Ctrl+Z"}
+    for a, b, iv in lentos:
+        perto = min(nomes, key=lambda k: abs(b - marcas[k][0]))
+        dt = (b - marcas[perto][0]) / 1e6
+        tabela(a, b, f"quadro lento {iv:.0f} ms, acaba {dt:+.0f} ms depois do {nomes[perto]}")
+    paredes = []
+    for linha in open(base + ".log", errors="replace"):
+        if linha.startswith("[frame] total="):
+            paredes.append(float(linha.split("total=")[1].split("ms")[0]))
+    p50 = sorted(paredes)[len(paredes) // 2] if paredes else None
+    for fase in ("parado0", "parado1"):
+        a, b = marcas[fase + "_ini"][0], marcas[fase + "_fim"][0]
+        cpu = marcas[fase + "_fim"][2] - marcas[fase + "_ini"][2]
+        tck = os.sysconf("SC_CLK_TCK")
+        print(f"\n{fase}: CPU do processo {100 * cpu / tck / ((b - a) / 1e9):.0f} % de um núcleo")
+        tabela(a, b, f"{fase} (sem entrada)", int((b - a) / 1e6 / p50) if p50 else None)
+
+
+if len(sys.argv) > 1 and sys.argv[1] == "--perf":
+    import os
+
+    perfil(sys.argv[2])
+    sys.exit(0)
+
 if len(sys.argv) > 1 and sys.argv[1] == "--matriz":
     matriz(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
     sys.exit(0)

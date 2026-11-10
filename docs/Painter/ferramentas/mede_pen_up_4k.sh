@@ -81,6 +81,58 @@ if [ "$1" = matriz ]; then
   exit 0
 fi
 
+# ── PERF (10/11, diagnóstico do quadro de ~100 ms e do parado): o roteiro da matriz para UM pincel, mas o perf ABRE o
+# app (-k CLOCK_MONOTONIC -F 997, sem -g: paranoid 2) e cada marca leva os DOIS relógios (mono = o do perf; parede = o
+# do [quadro-lento]). Fases: parado 5 s · toque · traço · soltar · 3 s · Ctrl+Z · 1,5 s · parado 5 s. Mesma placa.
+# uso: bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/mede_pen_up_4k.sh perf <WxH> <pincel:painel> [binario]
+# Saída: $S/perf/<rotulo>.{perf,log,marcas}; resumo: mede_pen_up_4k.py --perf $S/perf/<rotulo>.
+if [ "$1" = perf ]; then
+  TELA=$2; PP=$3; BIN=${4:-$R/target/smoke/ph2d-host-desktop}; PIN=${PP%%:*}; PAINEL=${PP##*:}
+  P=$S/perf; mkdir -p "$P"; D=${DISPLAY_MATRIZ:-:96}; LENTO=${LENTO_MS:-60}
+  TAG="$(echo "${PIN}_${PAINEL}_${TELA}" | tr ' ' '-' | tr -cd 'A-Za-z0-9_.-')"
+  EXTRA=(PH2D_COMPOSITE_PILHA=0 PH2D_COMPOSITE_PAPEL=1 "PH2D_COMPOSITE_TELA=$TELA")
+  [ "$PIN" != omissão ] && EXTRA+=("PH2D_COMPOSITE_PRESET=$PIN")
+  PLACA_ENV=(VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.json VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
+    MESA_VK_WSI_DEBUG=sw __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
+  Xvfb $D -screen 0 1600x1000x24 >/dev/null 2>&1 & XV=$!
+  sleep 1
+  cd "$R"
+  : > "$P/$TAG.marcas"
+  env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$P/home_$TAG PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PAINEL=$PAINEL \
+    PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=$LENTO PH2D_EXIT_AFTER_FRAMES=1000000 "${PLACA_ENV[@]}" "${EXTRA[@]}" \
+    perf record -k CLOCK_MONOTONIC -F 997 -o "$P/$TAG.perf" -- "$BIN" > "$P/$TAG.log" 2>&1 &
+  PERF=$!
+  APP=; WIN=
+  for _ in $(seq 1 120); do
+    [ -z "$APP" ] && APP=$(pgrep -P $PERF | head -1)
+    grep -q "pilha armada" "$P/$TAG.log" && WIN=$(DISPLAY=$D xdotool search --pid $APP 2>/dev/null | tail -1)
+    [ -n "$WIN" ] && break; sleep 0.5
+  done
+  marca() { echo "$1 $(python3 -c 'import time;print(time.monotonic_ns(), time.time_ns())') $(awk '{print $14+$15}' /proc/$APP/stat 2>/dev/null)" >> "$P/$TAG.marcas"; }
+  echo "[perf] $TAG perf $PERF app $APP win ${WIN:-NENHUMA}"
+  if [ -n "$WIN" ]; then
+    grep -oE '[^/ ]*(nvidia|radeon|swrast|llvmpipe|lvp|gallium|dri)[^/ ]*\.so[^ ]*' /proc/$APP/maps | sort -u \
+      | tr '\n' ' ' > "$P/$TAG.placa"
+    DISPLAY=$D xdotool windowsize $WIN 1600 1000 windowmove $WIN 0 0 2>/dev/null; sleep 4
+    DISPLAY=$D xdotool windowfocus --sync $WIN 2>/dev/null
+    marca parado0_ini; sleep 5; marca parado0_fim
+    DISPLAY=$D xdotool mousemove 560 460; sleep 0.3
+    marca down; DISPLAY=$D xdotool mousedown 1; sleep 0.4
+    cmd=""; for i in $(seq 1 125); do
+      cmd="$cmd mousemove $((560 + i * 32 / 10)) $(awk -v i=$i 'BEGIN{printf "%d", 460+50*sin(i*0.05)}') sleep 0.008"
+    done
+    marca traco_ini; DISPLAY=$D xdotool $cmd; marca traco_fim
+    marca up; DISPLAY=$D xdotool mouseup 1; sleep 3; marca wet_fim
+    marca ctrlz; DISPLAY=$D xdotool key ctrl+z; sleep 1.5; marca ctrlz_fim
+    marca parado1_ini; sleep 5; marca parado1_fim
+  fi
+  kill -INT $APP 2>/dev/null
+  for _ in $(seq 1 40); do kill -0 $APP 2>/dev/null || break; sleep 0.25; done
+  kill -KILL $APP 2>/dev/null; wait $PERF 2>/dev/null; kill $XV
+  echo "[perf] feito: $P/$TAG"
+  exit 0
+fi
+
 # ── ÓLEO (10/11): o Real Oil não tem porta na cena Composite; mede-se pela cena do FPS (PH2D_WETPAINT_SMOKE=3, o app
 # risca sozinho: Dabber com Real Oil, seca, Wet Drip, corre; 6 rodadas; período e imagens da água por segundo).
 # uso: bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/mede_pen_up_4k.sh oleo <lado> [binario]

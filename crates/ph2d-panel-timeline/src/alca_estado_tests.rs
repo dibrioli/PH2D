@@ -32,8 +32,8 @@ fn dist(a: Color, b: Color) -> f64 {
 }
 
 /// As tintas de repouso das alças: canto de esticar (verde), de cortar (vermelho), o fade e a ⟷ (o
-/// playhead), as chaves do loop, e a chave da folha.
-fn repousos(theme: Theme) -> [(&'static str, Color); 5] {
+/// playhead), as chaves do loop, a chave da folha e a alça do marcador.
+fn repousos(theme: Theme) -> [(&'static str, Color); 6] {
     [
         ("canto esticar", resolve(ColorToken::Success, theme)),
         ("canto cortar", resolve(ColorToken::Danger, theme)),
@@ -43,6 +43,7 @@ fn repousos(theme: Theme) -> [(&'static str, Color); 5] {
         ),
         ("loop", resolve(ColorToken::TimelineLoopBrace, theme)),
         ("chave", tinta(TimelineTinta::Chave, theme)),
+        ("marcador", resolve(ColorToken::TimelineMarker, theme)),
     ]
 }
 

@@ -1,8 +1,9 @@
-//! ⭐ **A faixa «Markers»** (doc 17 item 2, maquete B6), no pé da lista, só nos cartões: o chip de cada
-//! marcador (raio ⚡ com sinal, etiqueta só com nome), o nome ao lado (virado para a esquerda quando não
-//! cabe à direita), o trecho armado como caixa entre os dois marcadores e o vão clicável entre vizinhos.
-//! Os gestos do marcador (arrastar, Alt+clique, menu) moram no chip — os mesmos ids e `TimelineHitKind`
-//! da bandeirola da régua do clássico. A régua dos cartões deixa de pintar marcadores.
+//! ⭐ **A faixa «Markers»** (doc 17 item 2, maquete B6), no pé da lista, só nos cartões: cada marcador é
+//! uma LINHA no tempo exato com a alça do fade das strips no topo (dono 10/11: o chip «não mostra a
+//! posição exata»), na tinta dos marcadores; o nome ao lado (com ⚡ quando tem sinal; virado para a
+//! esquerda quando não cabe à direita), o trecho armado como caixa entre as duas linhas e o vão
+//! clicável entre vizinhos. Os gestos do marcador (arrastar, Alt+clique, menu) moram na alça — os mesmos
+//! ids e `TimelineHitKind` da bandeirola da régua do clássico. A régua dos cartões não pinta marcadores.
 
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind};
@@ -14,10 +15,8 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
 use ph2d_tokens::chrome::{
-    TIMELINE_MARCADOR_CHIP_PX as CHIP, TIMELINE_MARCADOR_ICONE_PX as ICONE,
-    TIMELINE_MARCADOR_NOME_DX_PX as DX, TIMELINE_MARCADOR_RAIO_PX as RAIO,
-    TIMELINE_MARCADOR_SO_NOME_FIO_ALPHA, TIMELINE_MARCADOR_SO_NOME_FUNDO_ALPHA,
-    TIMELINE_TRECHO_FOLGA_PX as FOLGA,
+    TIMELINE_MARCADOR_ICONE_PX as ICONE, TIMELINE_MARCADOR_NOME_DX_PX as DX,
+    TIMELINE_MARCADOR_RAIO_PX as RAIO, TIMELINE_TRECHO_FOLGA_PX as FOLGA,
 };
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken, Theme, TypeToken};
 
@@ -37,8 +36,8 @@ pub(crate) fn h(snap: &TimelineViewSnapshot, tab: Tab) -> f32 {
     if mostra(snap, tab) { ROW_H_PX } else { 0.0 }
 }
 
-/// `(nome à direita?, x do texto, largura máxima)`: à direita do chip até ao chip seguinte (ou à borda);
-/// se o nome não cabe aí, à esquerda, até ao chip anterior (a `.c13ml.rl` da maquete).
+/// `(x do texto, largura máxima)`: à direita da linha até à linha seguinte (ou à borda); se o nome não
+/// cabe aí, à esquerda, até à linha anterior (a `.c13ml.rl` da maquete).
 fn lugar_do_nome(xs: &[f32], i: usize, (esq, dir): (f32, f32), w: f32) -> (f32, f32) {
     let x = xs[i];
     let prox = xs
@@ -58,7 +57,19 @@ fn lugar_do_nome(xs: &[f32], i: usize, (esq, dir): (f32, f32), w: f32) -> (f32, 
     }
 }
 
-/// Pinta a faixa em `y` (logo a seguir à última faixa da lista) e regista o vão e os chips.
+/// Meia largura do alvo de um marcador: a da bandeirola do clássico (20 px ao todo, medida em 10/11).
+pub(crate) fn meio_alvo() -> f32 {
+    crate::ruler::MARKER_W * 0.5 + crate::ruler::MARKER_HIT_PAD
+}
+
+/// A alça do marcador no tempo `x`: a linha da altura da faixa e as setas da alça de fade no TOPO,
+/// a `Thin` da borda de cima (a sombra cabe na faixa).
+pub(crate) fn forma(x: f32, y: f32) -> (Rect, [crate::alca_estado::Tri; 2]) {
+    let my = y + crate::strip_paint::ARROW_SZ + StrokeToken::Thin.px();
+    crate::strip_paint::forma_da_alca_de_fade(x, (y, ROW_H_PX), my)
+}
+
+/// Pinta a faixa em `y` (logo a seguir à última faixa da lista) e regista o vão e as alças.
 pub(crate) fn paint(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -106,7 +117,7 @@ pub(crate) fn paint(
     if ruler_trecho::vista(snap, clock) {
         for (a, b) in ruler_trecho::vizinhos(snap) {
             let (xa, xb) = (view.x(snap.markers[a].0), view.x(snap.markers[b].0));
-            let (h0, h1) = (xa + CHIP * 0.5, xb - CHIP * 0.5);
+            let (h0, h1) = (xa + meio_alvo(), xb - meio_alvo());
             if h1 <= h0 {
                 continue;
             }
@@ -118,11 +129,11 @@ pub(crate) fn paint(
             registra(ctx, id, TimelineHitKind::MarkerGap { a, b }, hit);
         }
     }
-    chips(ctx, theme, (view, y), snap, amarelo);
+    alcas(ctx, theme, (view, y), snap, amarelo);
 }
 
-/// O chip, o nome e o alvo de cada marcador (depois do vão: o chip ganha-lhe).
-fn chips(
+/// A alça, o nome e o alvo de cada marcador (depois do vão: a alça ganha-lhe).
+fn alcas(
     ctx: &mut PaintCtx,
     theme: Theme,
     (view, y): (TimeView, f32),
@@ -130,43 +141,39 @@ fn chips(
     amarelo: ph2d_vector::Color,
 ) {
     let xs: Vec<f32> = snap.markers.iter().map(|m| view.x(m.0)).collect();
-    let (texto, cy) = (resolve(ColorToken::Text1, theme), y + ROW_H_PX * 0.5);
     let font = TypeToken::Xs.px();
     let so_nome = crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::TextoValor, theme);
-    let alvo_w = crate::ruler::MARKER_W + crate::ruler::MARKER_HIT_PAD * 2.0;
+    let (gap, meio) = (Spacing::Xs.px(), meio_alvo());
     for (index, (t, nome, sinal)) in snap.markers.iter().enumerate() {
         let x = xs[index];
-        if x < view.time_x - CHIP || x > view.right + CHIP {
+        if x < view.time_x - meio || x > view.right + meio {
             continue;
         }
-        let r = Rect::new(x - CHIP * 0.5, cy - CHIP * 0.5, CHIP, CHIP);
         let id = ids::timeline_marker_hit_id(index);
         let e = EstadoAlca::nos_cartoes(ctx, id);
-        let (cor, icone, tinta) = if sinal.is_some() {
-            (amarelo, IconId::Bolt, resolve(ColorToken::BgElev, theme))
-        } else {
-            let c = texto.multiply_alpha(TIMELINE_MARCADOR_SO_NOME_FUNDO_ALPHA);
-            (c, IconId::Tag, texto)
-        };
-        if e == EstadoAlca::Repouso {
-            fill_rounded_rect(ctx.scene, r, RAIO, cor);
-        } else {
-            crate::alca_estado::pinta(ctx, theme, e, cor, &[r], &[]);
-            crate::alca_estado::pinta_leitura(ctx, theme, e, *t, r.x, cy, true);
-        }
-        if sinal.is_none() {
-            let f = texto.multiply_alpha(TIMELINE_MARCADOR_SO_NOME_FIO_ALPHA);
-            stroke_rounded_rect(ctx.scene, r, RAIO, StrokeToken::Thin.px(), f);
-        }
-        let ic = Rect::new(x - ICONE * 0.5, cy - ICONE * 0.5, ICONE, ICONE);
-        paint_icon(ctx.scene, icone, ic, tinta, StrokeToken::Default.px());
-        let w = label_column_width(ctx.text_system, font, [nome.as_str()]);
+        let (barra, setas) = forma(x, y);
+        crate::alca_estado::pinta(ctx, theme, e, amarelo, &[barra], &setas);
+        crate::alca_estado::pinta_leitura(ctx, theme, e, *t, x + meio, y + ROW_H_PX * 0.5, false);
+        // O nome: com sinal, o ⚡ à frente e a tinta dos marcadores; só nome, a tinta do valor.
+        let raio = if sinal.is_some() { ICONE + gap } else { 0.0 };
+        let w = raio + label_column_width(ctx.text_system, font, [nome.as_str()]);
         let (nx, max) = lugar_do_nome(&xs, index, (view.time_x, view.right), w);
+        if sinal.is_some() && max >= ICONE {
+            let ic = Rect::new(nx, y + (ROW_H_PX - ICONE) * 0.5, ICONE, ICONE);
+            paint_icon(
+                ctx.scene,
+                IconId::Bolt,
+                ic,
+                amarelo,
+                StrokeToken::Default.px(),
+            );
+        }
         let cor_nome = if sinal.is_some() { amarelo } else { so_nome };
         let ny = y + folga_do_texto(ROW_H_PX, font);
         let (ts, sc) = (&mut *ctx.text_system, &mut *ctx.scene);
-        paint_text_elided(ts, sc, nome, nx, ny, font, max, cor_nome);
-        let hit = Rect::new(x - alvo_w * 0.5, y, alvo_w, ROW_H_PX);
+        let m = (max - raio).max(0.0);
+        paint_text_elided(ts, sc, nome, nx + raio, ny, font, m, cor_nome);
+        let hit = Rect::new(x - meio, y, meio * 2.0, ROW_H_PX);
         registra(ctx, id, TimelineHitKind::Marker { index }, hit);
     }
 }

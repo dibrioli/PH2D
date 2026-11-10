@@ -34,7 +34,7 @@ const CORNER_W: f32 = 2.0; // LITERAL-PX-OK: a bracket stroke, like the fade bar
 /// Spacing between hatch lines (the fade stripes / the cut cross-hatch).
 pub(crate) const HATCH_STEP: f32 = 5.0; // LITERAL-PX-OK: hatch line pitch
 /// Half-size of a fade-handle arrowhead.
-const ARROW_SZ: f32 = 3.0; // LITERAL-PX-OK: fade arrowhead half-size
+pub(crate) const ARROW_SZ: f32 = 3.0; // LITERAL-PX-OK: fade arrowhead half-size
 /// Thickness of the easing curve drawn inside a fade band.
 const FADE_CURVE_W: f32 = 1.5; // LITERAL-PX-OK: a hairline over the hatch
 /// The curve's inset from the band's top and bottom, so a stroke centred on the corner
@@ -575,7 +575,7 @@ pub(crate) fn paint_hatch(ctx: &mut PaintCtx, rect: Rect, color: Color, crossed:
 #[path = "strip_paint_alcas.rs"]
 mod alcas;
 use crate::alca_estado::EstadoAlca;
-pub(crate) use alcas::pinta_sombra_de_alca;
+pub(crate) use alcas::{forma_da_alca_de_fade, pinta_sombra_de_alca};
 use alcas::{paint_corner, paint_fade_handle};
 
 #[cfg(test)]

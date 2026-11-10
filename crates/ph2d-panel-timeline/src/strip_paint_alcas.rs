@@ -90,8 +90,18 @@ pub(super) fn paint_fade_handle(
     h: f32,
     color: Color,
 ) {
+    let (barra, setas) = forma_da_alca_de_fade(xc, (y, h), y + h * 0.5);
+    crate::alca_estado::pinta_desbotada(ctx, theme, (estado, k), color, &[barra], &setas);
+}
+
+/// ⭐ A FORMA da alça de fade — a linha de `y` a `y + h` em `xc` e as setas ◀ ▶ à altura `my`. Uma
+/// só lei para a alça das strips e a do marcador (`faixa_marcadores`, setas no topo da linha).
+pub(crate) fn forma_da_alca_de_fade(
+    xc: f32,
+    (y, h): (f32, f32),
+    my: f32,
+) -> (Rect, [crate::alca_estado::Tri; 2]) {
     let barra = Rect::new(xc - EASE_BAR_W * 0.5, y, EASE_BAR_W, h);
-    let my = y + h * 0.5;
     let gap = EASE_BAR_W * 0.5 + 1.0; // LITERAL-PX-OK: clear of the line
     // Left arrow (points left) and right arrow (points right).
     let setas = [
@@ -106,7 +116,7 @@ pub(super) fn paint_fade_handle(
             (xc + gap, my + ARROW_SZ),
         ],
     ];
-    crate::alca_estado::pinta_desbotada(ctx, theme, (estado, k), color, &[barra], &setas);
+    (barra, setas)
 }
 
 fn tri(pts: [(f32, f32); 3]) -> BezPath {

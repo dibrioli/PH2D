@@ -1,5 +1,5 @@
 //! ⭐ **Tocar só um trecho** (doc 17 item 2, maquete B6): o clique no vão PINTADO entre dois marcadores
-//! arma esse trecho no loop vivo e o Play dá a volta nele; o chip «takeoff → top» devolve o loop do
+//! arma esse trecho no loop vivo e o Play dá a volta nele; a pílula «takeoff → top» devolve o loop do
 //! clipe (com e sem loop autorado); nada se grava nem se desfaz; trocar de clipe larga.
 
 use ph2d_anim::RationalTime;
@@ -133,12 +133,14 @@ fn o_clique_entre_dois_marcadores_toca_o_trecho_e_o_chip_devolve_o_clipe() {
     ferramenta::force_cards_on_this_thread(None);
 }
 
-/// ⭐⭐ **A faixa «Markers» é onde o vão e os marcadores moram** (maquete B6): o vão pintado e o chip de
-/// cada marcador estão na MESMA linha, abaixo da régua (nenhum alvo de marcador na régua); e os gestos
-/// de sempre continuam vivos no chip — arrastar move o marcador, o botão direito abre o menu dele
-/// (Rename / Set Signal / Delete). *Mutação: registar o chip na régua ⇒ «abaixo da régua» reprova.*
+/// ⭐⭐ **A faixa «Markers» é onde o vão e os marcadores moram** (maquete B6; dono 10/11: o marcador é a
+/// alça do fade no topo de uma linha): o vão pintado e a alça de cada marcador estão na MESMA linha,
+/// abaixo da régua (nenhum alvo de marcador na régua); o alvo da alça é a faixa inteira (20 × 22, não
+/// encolhe) e o vão começa onde ele acaba; os gestos de sempre continuam vivos na alça — arrastar move
+/// o marcador, o botão direito abre o menu dele (Rename / Set Signal / Delete).
+/// *Mutação: registar a alça na régua ⇒ «abaixo da régua» reprova.*
 #[test]
-fn a_faixa_markers_tem_o_vao_os_chips_e_os_gestos() {
+fn a_faixa_markers_tem_o_vao_as_alcas_e_os_gestos() {
     use ph2d_editor_core::interaction::ContextMenuKind;
     ferramenta::force_cards_on_this_thread(Some(true));
     let mut e = Motor::novo(None);
@@ -150,17 +152,22 @@ fn a_faixa_markers_tem_o_vao_os_chips_e_os_gestos() {
         "o vão na faixa, abaixo da régua: {vao:?} {regua:?}"
     );
     for i in 0..3 {
-        let c = m.rect(ids::timeline_marker_hit_id(i)).expect("o chip");
+        let c = m.rect(ids::timeline_marker_hit_id(i)).expect("a alça");
         assert!(
             (c.y - vao.y).abs() < 0.5,
-            "o chip {i} na linha do vão: {c:?}"
+            "a alça {i} na linha do vão: {c:?}"
         );
         assert!(
-            c.w >= 20.0 && c.h >= 8.0,
+            c.w >= 20.0 && c.h >= 22.0,
             "o alvo do marcador não encolheu: {c:?}"
         );
     }
-    // Arrastar o chip de «top» move «top».
+    let c0 = m.rect(ids::timeline_marker_hit_id(0)).expect("takeoff");
+    assert!(
+        (vao.x - (c0.x + c0.w)).abs() < 0.5,
+        "o vão começa onde a alça acaba: {vao:?} {c0:?}"
+    );
+    // Arrastar a alça de «top» move «top».
     let c = m.rect(ids::timeline_marker_hit_id(1)).expect("top");
     let (cx, cy) = (c.x + c.w * 0.5, c.y + c.h * 0.5);
     let ev = m.host.drag_at(cx, cy, cx + 40.0, cy);
@@ -172,9 +179,9 @@ fn a_faixa_markers_tem_o_vao_os_chips_e_os_gestos() {
             ph2d_timeline::TimelineIntent::MoveMarker { index: 1, .. }
         )
     });
-    assert!(movido, "arrastar o chip move o marcador");
+    assert!(movido, "arrastar a alça move o marcador");
     e.quadro();
-    // O botão direito no chip de «land» abre o menu desse marcador.
+    // O botão direito na alça de «land» abre o menu desse marcador.
     m.assenta_em(JANELA);
     let c = m.rect(ids::timeline_marker_hit_id(2)).expect("land");
     let ev = m.host.right_click_at(c.x + c.w * 0.5, c.y + c.h * 0.5);

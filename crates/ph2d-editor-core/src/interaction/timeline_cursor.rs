@@ -25,6 +25,10 @@ impl TimelineHitKind {
             }
             Self::GraphResize => PointerLook::ResizeNs,
             Self::MarkerGap { .. } => PointerLook::Hand,
+            // Nos cartões o marcador é a alça do fade das strips: o mesmo ↔ (dono 10/11).
+            Self::Marker { .. } if crate::panel::cards::ferramenta::cards_on() => {
+                PointerLook::ResizeEw
+            }
             Self::Strip { edge, .. } | Self::LoopBrace { edge } if edge != CORPO => {
                 PointerLook::ResizeEw
             }
@@ -69,6 +73,22 @@ mod tests {
         let brace = |edge| TimelineHitKind::LoopBrace { edge };
         assert_eq!(brace(0).pointer_look(false), Some(PointerLook::ResizeEw));
         assert_eq!(brace(CORPO).pointer_look(true), Some(PointerLook::Grabbing));
+        let marcador = TimelineHitKind::Marker { index: 0 };
+        crate::panel::cards::ferramenta::force_cards_on_this_thread(Some(true));
+        let nos_cartoes = marcador.pointer_look(false);
+        crate::panel::cards::ferramenta::force_cards_on_this_thread(Some(false));
+        let classico = marcador.pointer_look(false);
+        crate::panel::cards::ferramenta::force_cards_on_this_thread(None);
+        assert_eq!(
+            nos_cartoes,
+            Some(PointerLook::ResizeEw),
+            "a alça do marcador"
+        );
+        assert_eq!(
+            classico,
+            Some(PointerLook::Grab),
+            "a bandeirola do clássico"
+        );
         let key = TimelineHitKind::Key { target: 1, key: 2 };
         assert_eq!(key.pointer_look(false), Some(PointerLook::Grab));
         assert_eq!(TimelineHitKind::Lane.pointer_look(false), None);

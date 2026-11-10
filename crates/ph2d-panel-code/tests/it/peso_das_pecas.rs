@@ -9,8 +9,12 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_panel_code::CodeView;
 use ph2d_panel_code::debug_card::DebugCardView;
-use ph2d_panel_code::peso::{BOTAO, CORPO, TITULO};
 use ph2d_text::{FontWeight, TextSystem};
+
+/// Os pesos do CSS da maquete, escritos À MÃO (nunca as constantes da crate: a régua não é o medido).
+const CSS_400: FontWeight = FontWeight::NORMAL;
+const CSS_500: FontWeight = FontWeight::MEDIUM;
+const CSS_600: FontWeight = FontWeight::SEMI_BOLD;
 use ph2d_tokens::Theme;
 use ph2d_vector::{Color, VectorScene};
 
@@ -105,18 +109,18 @@ fn cada_peca_do_quadro_parado_pinta_no_peso_da_maquete() {
     let waiting = tr_with("code.debug.waiting_here", &[("count", &1)]);
     // (o papel no CSS, o texto, o peso da maquete)
     let pecas: [(&str, &str, FontWeight); 9] = [
-        (".status", tr("code.debug.paused"), TITULO),
-        (".btn", tr("code.debug.continue"), BOTAO),
-        (".btn", tr("code.debug.next_line"), BOTAO),
-        (".side h4", tr("code.debug.stack"), BOTAO),
-        (".side h4", &waiting, BOTAO),
-        (".stack (corpo)", "tick", CORPO),
-        (".tbl th", tr("code.debug.col.name"), BOTAO),
-        (".tbl tr.grp", tr("code.debug.group.locals"), TITULO),
-        (".tbl td.t", tr("code.debug.kind.number"), CORPO),
+        (".status", tr("code.debug.paused"), CSS_600),
+        (".btn", tr("code.debug.continue"), CSS_500),
+        (".btn", tr("code.debug.next_line"), CSS_500),
+        (".side h4", tr("code.debug.stack"), CSS_500),
+        (".side h4", &waiting, CSS_500),
+        (".stack (corpo)", "tick", CSS_400),
+        (".tbl th", tr("code.debug.col.name"), CSS_500),
+        (".tbl tr.grp", tr("code.debug.group.locals"), CSS_600),
+        (".tbl td.t", tr("code.debug.kind.number"), CSS_400),
     ];
     for (papel, text, peso) in pecas {
-        let (ids, _) = referencia(&mut ts, text, 12.0, CORPO);
+        let (ids, _) = referencia(&mut ts, text, 12.0, CSS_400);
         let achada = cena
             .iter()
             .find(|(i, _, _)| *i == ids)

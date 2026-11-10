@@ -210,7 +210,9 @@ impl PainterTool {
                 self.edited_since_bind = true;
                 self.compositor_cache
                     .invalidate_from(crate::layers::LayerId(0), &self.layers);
+                let antes = self.layers_revision;
                 self.bump_layers_revision();
+                self.aplicada.segue_a_revisao(antes, self.layers_revision);
             }
         }
         // Watercolor: the canvas identity just changed under the wet session — its moisture map (+ frozen

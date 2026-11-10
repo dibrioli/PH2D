@@ -36,11 +36,17 @@ impl PainterTool {
         #[cfg(test)]
         self.marks.push(rect);
         self.dirty_rect = Some(self.dirty_rect.map_or(rect, |acc| union_region(acc, rect)));
+        self.aplicada.marca(rect);
         self.undo_writes = self.undo_writes.wrapping_add(1);
         self.preview_dirty = true;
         self.edited_since_bind = true; // unbaked work — the shell auto-persists on leave/deactivate
         let active = self.layers.active();
         self.bump_layer_pixels(active);
+    }
+
+    /// O que a luz do relevo lê além dos campos marcados: a chave da imagem aplicada (`tool/aplicada.rs`).
+    pub(crate) fn chave_da_luz(&self) -> (SubstrateKey, impasto_rig::LightRig, bool) {
+        (self.substrate_key(), self.paint.impasto_rig, self.impasto_visible())
     }
 
     /// Stamp an interactive preview batch (Drag Dot / Anchored = 1 dab, Line = N): restore the

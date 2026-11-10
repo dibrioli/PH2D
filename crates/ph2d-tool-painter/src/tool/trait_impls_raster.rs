@@ -31,6 +31,7 @@ impl RasterEditTool for PainterTool {
         let active = self.layers.active();
         self.bump_layer_pixels(active);
         self.composited = None;
+        self.aplicada.esquece();
         // The compositor's cut-point cache is DOCUMENT-scoped: each entry is the accumulator BELOW an
         // Adjustment layer, a buffer sized for THAT canvas — and `LayerStack::new()` above restarts
         // `next_id` at 1, so the fresh stack's ids COLLIDE with the old document's by construction. The
@@ -198,6 +199,11 @@ impl PainterTool {
     /// traço em voo. `None` = sem documento.
     #[must_use]
     pub fn imagem_aplicada(&self) -> Option<(Vec<u8>, u32, u32)> {
+        self.imagem_aplicada_incremental()
+    }
+
+    /// [`Self::imagem_aplicada`] recomposta inteira (a 1.ª leitura e o oráculo do gate).
+    pub(crate) fn imagem_aplicada_inteira(&self) -> Option<(Vec<u8>, u32, u32)> {
         if self.canvas_rgba.is_empty() {
             return None;
         }

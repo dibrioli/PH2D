@@ -338,6 +338,8 @@ pub struct PainterTool {
     mask_view_grayscale: Option<RtLayerId>,
     /// A máscara cujo cinza o `composited` guarda (a vista quente: [`vista_cinza`]); `None` = outra coisa.
     composited_cinza: Option<RtLayerId>,
+    /// A última imagem aplicada e a caixa marcada desde ela ([`aplicada`], B10.5).
+    aplicada: aplicada::CacheAplicada,
     /// A gravação de uma macro em curso ([`crate::macro_track`]); `None` = nada a gravar.
     pub(crate) macro_gravacao: Option<Box<crate::macro_track::Gravacao>>,
     /// O encaixe de uma reprodução por cima ([`crate::macro_track::encaixe`]); `None` = a tela é a gravada.
@@ -439,6 +441,7 @@ impl Default for PainterTool {
             shape_source_preview_dirty: false,
             mask_view_grayscale: None,
             composited_cinza: None,
+            aplicada: Default::default(),
             macro_gravacao: None,
             macro_por_cima: None,
             desde_o_ultimo_up: None,
@@ -482,6 +485,9 @@ pub(crate) mod papel;
 mod papel_texturizado; // o «Textured Paper» do New Image (dono 30/10)
 mod reescrita_da_gravacao; // editar uma etapa da macro reescreve a imagem (W8 item 2b)
 mod runtime;
+mod aplicada; // a imagem aplicada pela caixa marcada (B10.5)
+#[cfg(test)]
+mod aplicada_tests;
 mod vista_cinza; // o ramo Gray do dreno (B52.R4 + B10.A1)
 #[cfg(test)]
 mod vista_cinza_tests;

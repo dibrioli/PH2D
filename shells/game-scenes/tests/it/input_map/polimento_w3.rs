@@ -647,3 +647,22 @@ fn o_clique_no_campo_rolado_cai_onde_o_texto_esta() {
     assert!(first < long.len(), "e não no fim: {first}");
     m.up((r.x + pad, r.y + r.h * 0.5));
 }
+
+/// F1 (A): o × da busca é um alvo de 24 px (a caixa de ícone do cartão) e o Add desligado tem a aresta do botão
+/// desligado (lê-se como botão, não como campo).
+#[test]
+fn o_x_da_busca_tem_24_px_e_o_add_desligado_tem_aresta() {
+    let mut m = Mesa::aberta(View::List);
+    m.click(m.at(ids::SEARCH));
+    m.type_text("jump");
+    let doc = &m.tab().doc;
+    let x = doc.rect_of(ids::SEARCH_CLEAR).expect("o × da busca");
+    let alvo = 24.0; // LITERAL-PX-OK: o alvo mínimo do × (HEAD_ICON_BOX)
+    assert!(x.w >= alvo - 0.01 && x.h >= alvo - 0.01, "o × tem {x:?}");
+    let add = doc.rect_of(ids::ADD).expect("o Add");
+    assert!(
+        (doc.census.filled.iter())
+            .any(|(r, t)| *r == add && *t == ph2d_tokens::ColorToken::BorderEmph),
+        "o Add desligado com aresta: {add:?}"
+    );
+}

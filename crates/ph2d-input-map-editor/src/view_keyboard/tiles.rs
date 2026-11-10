@@ -12,12 +12,14 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
 
-use super::state::{KbHit, Sub};
 use super::geometry as g;
-use crate::interact::{Control, ControlRole};
+use super::state::{KbHit, Sub};
 use crate::doc::InputMapDoc;
+use crate::interact::{Control, ControlRole};
 use crate::view_list::footer::{and_list, binding_label, reader_names, readers_of};
-use crate::view_list::text::{line, title as semibold, title_width, wrap_after};
+use crate::view_list::text::{
+    body as line, body_width, title as semibold, title_width, wrap_after,
+};
 
 const TITLE_H: f32 = m::FIELD_H;
 const TILE_H: f32 = m::FIELD_H * 2.0;
@@ -174,10 +176,8 @@ pub(super) fn paint(
     };
     let rw = ts.prefix_width(&right, m::LABEL_PX);
     let t = title(&a);
-    let tw = ts
-        .prefix_width(&t, m::CARD_TITLE_PX)
-        .min((w - rw - m::FIELD_GAP).max(0.0));
-    line(
+    let tw = title_width(ts, &t, m::CARD_TITLE_PX).min((w - rw - m::FIELD_GAP).max(0.0));
+    semibold(
         &mut doc.census,
         ts,
         scene,
@@ -208,12 +208,17 @@ pub(super) fn paint(
             (bw.max(cw) + m::CARD_PAD_X * 2.0).max(TILE_H),
             TILE_H,
         );
-        fill_rounded_rect(
-            scene,
-            tile,
-            m::FIELD_RADIUS,
-            ink.color(ColorToken::CardField),
-        );
+        // UM token para todo ladrilho (maquete B5); só o hover e o premido do × mudam o fundo, com os tokens do registo.
+        let xid = KbHit::TileX(n).id();
+        let chip = if doc.is_pressed(xid) {
+            ColorToken::AccentSoft
+        } else if doc.is_hovered(xid) {
+            ColorToken::CardFieldHover
+        } else {
+            ColorToken::CardField
+        };
+        fill_rounded_rect(scene, tile, m::FIELD_RADIUS, ink.color(chip));
+        doc.census.chips.push((tile, chip));
         let kw = bw + m::SEG_INSET * 2.0;
         let key = Rect::new(
             tile.x + (tile.w - kw) * 0.5,
@@ -268,7 +273,6 @@ pub(super) fn paint(
         );
         let s = m::KEY_MARK_BOX;
         let xr = Rect::new(tile.x + tile.w - s - m::SEG_PAD, tile.y + m::SEG_PAD, s, s);
-        let xid = KbHit::TileX(n).id();
         if doc.kb.pointer.is_some_and(|(px, py)| tile.contains(px, py)) || doc.is_focused(xid) {
             if doc.is_pressed(xid) || doc.is_hovered(xid) {
                 let bg = if doc.is_pressed(xid) {
@@ -351,11 +355,13 @@ pub(super) fn paint(
             ink.color(ColorToken::Text2),
         );
     }
-    let mw = ts
-        .prefix_width(msg, m::LABEL_PX)
-        .min(tile.w - m::SEG_INSET * 2.0);
-    // Em baixo, na linha da legenda dos outros ladrilhos (maquete B1/B4).
-    let my = tile.y + m::SEG_INSET + CAP + m::SEG_PAD;
+    let mw = body_width(ts, msg, m::LABEL_PX).min(tile.w - m::SEG_INSET * 2.0);
+    // Ao lado de ladrilhos, na linha da legenda deles (a mesma conta do `cr`); sozinho, ao meio da caixa (maquete B4).
+    let my = if a.bindings.is_empty() {
+        tile.y + (tile.h - CAP) * 0.5
+    } else {
+        tile.y + m::SEG_INSET + (CAP - m::SEG_INSET) + m::SEG_PAD
+    };
     line(
         &mut doc.census,
         ts,
@@ -366,7 +372,12 @@ pub(super) fn paint(
         ink.color(ColorToken::CardLabel),
     );
     doc.kb.targets.push(KbHit::Listen);
-    doc.control(Control::new(lid, tile, ControlRole::Button, tr("input_map_keyboard.listen_label")));
+    doc.control(Control::new(
+        lid,
+        tile,
+        ControlRole::Button,
+        tr("input_map_keyboard.listen_label"),
+    ));
     y = tile.y + tile.h + m::FIELD_ROW_GAP;
     for (s, warn) in phrases(doc, &a) {
         y += phrase(doc, &s, warn, (x, y, w), scene, ts, ink) + m::FIELD_ROW_GAP;

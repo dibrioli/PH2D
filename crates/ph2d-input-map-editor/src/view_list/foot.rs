@@ -93,7 +93,7 @@ pub(super) fn paint(
         let x = if i == 0 { after } else { inner.x };
         let y = inner.y + LINE_STEP * i as f32;
         let w = (inner.x + inner.w - x).max(0.0);
-        text::line(
+        text::body(
             &mut doc.census,
             ts,
             scene,

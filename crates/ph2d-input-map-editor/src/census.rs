@@ -29,6 +29,31 @@ pub struct Census {
     pub outlined: Vec<Rect>,
     /// A A: cada «+» que escuta DESENHADO (sob o ponteiro, ou numa linha sem ligação).
     pub plus: Vec<ActionId>,
+    /// Cada tecla desenhada (B e C): a face, a tinta, o contorno e a legenda — o olhar inteiro de cada estado.
+    pub keys: Vec<KeyLook>,
+    /// Cada barra de acção pintada (teclas, comando, «Also:»): onde e de que acção.
+    pub bars: Vec<(Rect, ActionId)>,
+    /// Cada texto pintado no peso do corpo (Regular, maquetes A e B).
+    pub regular: Vec<String>,
+    /// Cada desvanecer pintado na borda cortada de uma região que rola (A e B).
+    pub fades: Vec<Rect>,
+    /// Cada barra de rolagem pintada: (polegar, região que ela rola, calha reservada).
+    pub scrollbars: Vec<(Rect, Rect, Rect)>,
+    /// Cada ladrilho de ligação da B (o fundo do chip e o token dele).
+    pub chips: Vec<(Rect, ph2d_tokens::ColorToken)>,
+}
+
+/// Como uma tecla desenhada se pintou.
+#[derive(Clone, Debug, PartialEq)]
+pub struct KeyLook {
+    pub key: ph2d_input::Key,
+    pub rect: Rect,
+    pub face: ph2d_tokens::ColorToken,
+    pub ink: ph2d_tokens::ColorToken,
+    /// O contorno: o acento da acção aberta, ou a aresta desligada da tecla do sistema.
+    pub edge: Option<ph2d_tokens::ColorToken>,
+    /// A legenda em texto e o seu tamanho; `None` = ícone.
+    pub text: Option<(String, f32)>,
 }
 
 impl Census {

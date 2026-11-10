@@ -101,6 +101,8 @@ pub struct KbState {
     pub(crate) thumb_drag: Option<(f32, f32)>,
     /// A acção recém-aberta: a pintura seguinte rola a linha dela para a vista.
     pub(crate) reveal: Option<ActionId>,
+    /// A acção aberta que a última pintura mostrou: outra aberta (por qualquer porta) rola-se para a vista.
+    pub(crate) painted_open: Option<ActionId>,
     /// Cada linha da lista: (acção, topo relativo ao conteúdo, altura) — o que o `reveal` lê.
     pub(crate) rows: Vec<(ActionId, f32, f32)>,
 }

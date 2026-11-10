@@ -96,6 +96,11 @@ pub use text::{
     paint_text_rotated_ccw, paint_text_title, paint_text_title_elided,
     paint_text_title_elided_tracked, title_tracked_width,
 };
+pub use text::{
+    folga_do_texto, label_column_width, paint_text, paint_text_block, paint_text_block_spans,
+    paint_text_elided, paint_text_elided_weighted, paint_text_rotated_ccw, paint_text_title,
+    paint_text_title_elided, paint_text_title_elided_tracked,
+};
 pub(crate) use text::{ouve_o_texto, paint_text_weighted};
 
 /// Convert a `ph2d_tokens::Color` (sRGB 8-bit + alpha) to Vello's

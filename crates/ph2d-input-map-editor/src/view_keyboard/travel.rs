@@ -13,10 +13,10 @@ use ph2d_tokens::ColorToken;
 use ph2d_vector::VectorScene;
 
 use super::state::KbHit;
-use crate::interact::{Control, ControlRole};
 use crate::doc::InputMapDoc;
 use crate::ids::ListHit;
-use crate::view_list::text::line;
+use crate::interact::{Control, ControlRole};
+use crate::view_list::text::body as line;
 
 const LABEL_H: f32 = m::LABEL_PX + m::LABEL_BOTTOM;
 /// A barra do curso: meia linha de campo (maquete B3).
@@ -60,8 +60,18 @@ pub(super) fn paint(
     }
     doc.kb.bar = Some((bar.x, bar.w));
     for (hit, v, tok, label) in [
-        (KbHit::BarDead, a.dead_zone, ColorToken::CardLabel, "input_map_keyboard.bar_dead"),
-        (KbHit::BarPress, a.press_point, ColorToken::Accent, "input_map_keyboard.bar_press"),
+        (
+            KbHit::BarDead,
+            a.dead_zone,
+            ColorToken::CardLabel,
+            "input_map_keyboard.bar_dead",
+        ),
+        (
+            KbHit::BarPress,
+            a.press_point,
+            ColorToken::Accent,
+            "input_map_keyboard.bar_press",
+        ),
     ] {
         let mx = bar.x + bar.w * v;
         let mark = Rect::new(
@@ -73,7 +83,12 @@ pub(super) fn paint(
         fill_rounded_rect(scene, mark, m::FIELD_BORDER, ink.color(tok));
         let grab = Rect::new(mx - m::BAR_THUMB * 0.5, bar.y, m::BAR_THUMB, bar.h);
         doc.kb.targets.push(hit);
-        doc.control(Control::new(hit.id(), grab, ControlRole::DragHandle, tr(label)));
+        doc.control(Control::new(
+            hit.id(),
+            grab,
+            ControlRole::DragHandle,
+            tr(label),
+        ));
     }
     y += bar.h + m::SEG_PAD;
     let ticks = [
@@ -210,7 +225,11 @@ pub(crate) fn zone_fields(
         // Na B o campo é o de `field.rs` (como a A): tudo seleccionado ao focar, caret que pisca.
         let b = doc.view() == crate::View::Keyboard;
         if b && typing.is_some() {
-            let mark = tr(if dead { "input_map_try.dead_mark" } else { "input_map_try.press_mark" });
+            let mark = tr(if dead {
+                "input_map_try.dead_mark"
+            } else {
+                "input_map_try.press_mark"
+            });
             let vx = f.x + m::SEG_INSET * 2.0 + ts.prefix_width(mark, m::VALUE_PX);
             let vr = Rect::new(vx, f.y, (f.x + f.w - m::SEG_INSET - vx).max(0.0), f.h);
             let c = doc.list.caret;

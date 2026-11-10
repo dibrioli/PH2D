@@ -200,11 +200,17 @@ pub fn paint(
         if doc.is_pressed(ids::ADD) {
             ring(scene, r, ink);
         }
+        if add_off.is_some() {
+            // Desligado com aresta (o botão desligado dos cartões): a caixa lê-se como botão, não como campo.
+            let edge = ColorToken::BorderEmph;
+            stroke_rounded_rect(scene, r, m::FIELD_RADIUS, m::FIELD_BORDER, ink.color(edge));
+            doc.census.filled.push((r, edge));
+        }
         doc.control(Control::new(ids::ADD, r, ControlRole::Button, add).disabled(add_off));
     }
     if let Some(why) = doc.list.refused {
         let r = Rect::new(x, y + m::FIELD_ROW_GAP, w, m::FIELD_H);
-        text::line(
+        text::body(
             &mut doc.census,
             ts,
             scene,
@@ -271,8 +277,7 @@ fn paint_search(
         doc.control(Control::new(ids::SEARCH, field, ControlRole::TextField, ph));
         // O × só com texto: limpa e o foco fica na busca.
         if !doc.store.text(ids::SEARCH).unwrap_or("").is_empty() {
-            let x_box = Rect::new(r.x + r.w - g - m::SEG_INSET, r.y + (r.h - g) * 0.5, g, g);
-            clear_button(doc, scene, x_box, ink);
+            clear_button(doc, scene, clear_box(r), ink);
         }
         return below;
     };
@@ -280,14 +285,14 @@ fn paint_search(
     doc.control(Control::new(ids::SEARCH, r, ControlRole::TextField, ph));
     // A tecla procurada é o texto do campo, regular (maquete A3): o amarelo fica nas teclas das linhas.
     let label = k.label();
-    let x_box = Rect::new(r.x + r.w - g - m::SEG_INSET, r.y + (r.h - g) * 0.5, g, g);
+    let x_box = clear_box(r);
     let inner = Rect::new(
         r.x + indent + m::SEG_INSET,
         r.y,
         (x_box.x - r.x - indent - m::SEG_INSET * 2.0).max(0.0),
         r.h,
     );
-    text::line(
+    text::body(
         &mut doc.census,
         ts,
         scene,
@@ -301,7 +306,13 @@ fn paint_search(
     r.y + r.h
 }
 
-/// O × da busca: um botão do registo (hover e premido à vista).
+/// O alvo do × da busca: a caixa de ícone do cartão (`HEAD_ICON_BOX`, ≥ 24 px) encostada à direita do campo `r`.
+pub(crate) fn clear_box(r: Rect) -> Rect {
+    let s = m::HEAD_ICON_BOX.min(r.h);
+    Rect::new(r.x + r.w - s - m::SEG_PAD, r.y + (r.h - s) * 0.5, s, s)
+}
+
+/// O × da busca: um botão do registo (hover e premido à vista) com o glifo de ícone do cartão ao meio do alvo.
 fn clear_button(doc: &mut InputMapDoc, scene: &mut VectorScene, x_box: Rect, ink: CardInk) {
     let id = ids::SEARCH_CLEAR;
     if doc.is_pressed(id) || doc.is_hovered(id) {
@@ -311,11 +322,19 @@ fn clear_button(doc: &mut InputMapDoc, scene: &mut VectorScene, x_box: Rect, ink
             ColorToken::CardFieldHover
         };
         fill_rounded_rect(scene, x_box, m::SEG_RADIUS, ink.color(bg));
+        doc.census.filled.push((x_box, bg));
     }
+    let gl = m::HEAD_ICON_GLYPH.min(x_box.w);
+    let glyph = Rect::new(
+        x_box.x + (x_box.w - gl) * 0.5,
+        x_box.y + (x_box.h - gl) * 0.5,
+        gl,
+        gl,
+    );
     paint_icon(
         scene,
         IconId::Close,
-        x_box,
+        glyph,
         ink.color(ColorToken::Text2),
         StrokeToken::Default.px(),
     );

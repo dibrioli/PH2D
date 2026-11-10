@@ -16,7 +16,7 @@ use super::{Group, group_of};
 use crate::doc::InputMapDoc;
 use crate::ids;
 use crate::interact::{Control, ControlRole};
-use crate::view_list::text::line;
+use crate::view_list::text::{body as line, title, title_width};
 
 const ROW_H: f32 = m::FIELD_H - m::SEG_PAD;
 /// O marcador da cor da acção: um quadrado de cantos redondos (maquete B1).
@@ -41,13 +41,14 @@ fn count_text(n: usize) -> String {
 
 /// A largura natural da coluna: o nome mais largo, a contagem, e os dois botões.
 pub(super) fn width(doc: &InputMapDoc, ts: &mut TextSystem) -> f32 {
-    let count_w = ts.prefix_width(tr("input_map_keyboard.none"), m::VALUE_PX);
+    let count_w =
+        crate::view_list::text::body_width(ts, tr("input_map_keyboard.none"), m::VALUE_PX);
     let names = doc
         .snap
         .map
         .actions()
         .iter()
-        .map(|a| ts.prefix_width(&a.name, m::VALUE_PX))
+        .map(|a| title_width(ts, &a.name, m::VALUE_PX))
         .fold(0.0_f32, f32::max);
     let heads = GROUPS
         .iter()
@@ -141,7 +142,7 @@ pub(super) fn paint(
             let cr = Rect::new(row.x + row.w - m::SEG_INSET - cw, row.y, cw, row.h);
             let nx = dr.x + dot + m::SEG_INSET;
             let nr = Rect::new(nx, row.y, (cr.x - nx - m::SEG_INSET).max(0.0), row.h);
-            line(
+            title(
                 &mut doc.census,
                 ts,
                 scene,
@@ -184,7 +185,9 @@ pub(super) fn paint(
     }
     // «+ Add» e «Remove» compactos, na largura do texto (maquete B1), encostados à esquerda.
     let (mut bx, mut end) = (x, y);
-    let remove_off = open.is_none().then_some("input_map_keyboard.remove_off_none");
+    let remove_off = open
+        .is_none()
+        .then_some("input_map_keyboard.remove_off_none");
     if let Some(ph2d_editor_core::interaction::InteractiveState::Button { state }) =
         doc.store.get_mut(KbHit::Remove.id())
     {
@@ -216,6 +219,32 @@ pub(super) fn paint(
     end + m::LIST_PAD_BOTTOM
 }
 
+/// Onde a linha de `id` fica no conteúdo da lista (topo relativo ao início, altura) — a MESMA conta do [`paint`],
+/// sem pintar: a acção aberta por uma porta (cena, smoke) rola-se para a vista já na 1.ª pintura.
+pub(super) fn row_top(doc: &InputMapDoc, id: ph2d_input::ActionId) -> Option<(f32, f32)> {
+    let mut y = m::LIST_PAD_X + ROW_H;
+    for (g, _) in GROUPS {
+        let mut ids = (doc.snap.map.actions().iter())
+            .filter(|a| group_of(doc, &a.name) == g)
+            .map(|a| a.id)
+            .peekable();
+        if ids.peek().is_none() {
+            continue;
+        }
+        y += ROW_H;
+        for a in ids {
+            if a == id {
+                return Some((y, ROW_H));
+            }
+            y += ROW_H;
+        }
+    }
+    None
+}
+
+/// O passo da lista: a rolagem em repouso pára numa fronteira de linha.
+pub(super) const ROW_STEP: f32 = ROW_H;
+
 /// A largura de um botão compacto: o texto e o recuo do cartão dos dois lados.
 #[must_use]
 pub fn button_w(ts: &mut TextSystem, text: &str) -> f32 {
@@ -223,12 +252,30 @@ pub fn button_w(ts: &mut TextSystem, text: &str) -> f32 {
 }
 
 /// O polegar discreto da lista que rola (o da A e da C): sem trilho, na margem direita; desvanece quente.
-pub(super) fn scrollbar(doc: &mut InputMapDoc, view: Rect, total: f32, scene: &mut VectorScene, ink: CardInk) {
+/// Mora na calha reservada `gutter` (nenhum texto entra nela) e corta-se à região `view`.
+pub(super) fn scrollbar(
+    doc: &mut InputMapDoc,
+    (view, gutter): (Rect, Rect),
+    total: f32,
+    scene: &mut VectorScene,
+    ink: CardInk,
+) {
     use ph2d_editor_core::widget::{scrollbar_thumb_rect, scrollbar_track_rect};
-    let lane = Rect::new(view.x, view.y, view.w - m::SEG_INSET, view.h);
-    let thumb = scrollbar_thumb_rect(scrollbar_track_rect(lane), doc.kb.scroll, total, view.h);
-    let pill = Rect::new(thumb.x + thumb.w - m::BAR_TRACK, thumb.y, m::BAR_TRACK, thumb.h);
-    fill_rounded_rect(scene, pill, m::BAR_TRACK * 0.5, ink.color(ColorToken::BorderEmph));
+    let thumb = scrollbar_thumb_rect(scrollbar_track_rect(gutter), doc.kb.scroll, total, view.h);
+    let thumb = Rect::new(gutter.x, thumb.y.max(view.y), gutter.w, thumb.h.min(view.h));
+    let pill = Rect::new(
+        thumb.x + (thumb.w - m::BAR_TRACK) * 0.5,
+        thumb.y,
+        m::BAR_TRACK,
+        thumb.h,
+    );
+    doc.census.scrollbars.push((thumb, view, gutter));
+    fill_rounded_rect(
+        scene,
+        pill,
+        m::BAR_TRACK * 0.5,
+        ink.color(ColorToken::BorderEmph),
+    );
     let fade = doc.thumb_fade(KbHit::Thumb.id());
     if fade > 0.0 {
         let hot = ink.color(ColorToken::Text2).multiply_alpha(fade);
@@ -236,5 +283,10 @@ pub(super) fn scrollbar(doc: &mut InputMapDoc, view: Rect, total: f32, scene: &m
     }
     doc.kb.targets.push(KbHit::Thumb);
     let label = tr("input_map_keyboard.scrollbar");
-    doc.control(Control::new(KbHit::Thumb.id(), thumb, ControlRole::ScrollThumb, label));
+    doc.control(Control::new(
+        KbHit::Thumb.id(),
+        thumb,
+        ControlRole::ScrollThumb,
+        label,
+    ));
 }

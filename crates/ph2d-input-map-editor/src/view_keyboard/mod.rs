@@ -134,11 +134,19 @@ pub fn paint(
     let stacked = !wide_fits(ts, side_w);
     doc.kb.stacked = stacked;
     let (top, below) = if stacked {
-        let top = Rect::new(inner.x, inner.y, inner.w, keys::top_height(doc, ts, inner.w));
+        let top = Rect::new(
+            inner.x,
+            inner.y,
+            inner.w,
+            keys::top_height(doc, ts, inner.w),
+        );
         (top, top.y + top.h + m::CARD_GAP)
     } else {
         let x = inner.x + list_w + m::CARD_GAP;
-        (Rect::new(x, inner.y, side_w, keys::top_height(doc, ts, side_w)), inner.y)
+        (
+            Rect::new(x, inner.y, side_w, keys::top_height(doc, ts, side_w)),
+            inner.y,
+        )
     };
     fill_rounded_rect(
         scene,
@@ -150,16 +158,43 @@ pub fn paint(
     // A região que rola: a lista (lado a lado) ou, empilhada, a lista e a acção aberta como UMA região por baixo do
     // desenho — o teclado nunca rola.
     let region = if stacked {
-        Rect::new(inner.x, below, inner.w, (inner.y + inner.h - below).max(0.0))
+        Rect::new(
+            inner.x,
+            below,
+            inner.w,
+            (inner.y + inner.h - below).max(0.0),
+        )
     } else {
         Rect::new(inner.x, below, list_w, (inner.y + inner.h - below).max(0.0))
     };
-    doc.kb.scroll = doc.kb.scroll.clamp(0.0, (doc.kb.list_total - region.h).max(0.0));
+    // A calha da barra, reservada dentro da região: empilhada, o cartão da acção encolhe para ela; lado a lado, mora
+    // no recuo direito da lista (nenhum texto lá).
+    let gutter_w = ph2d_editor_core::widget::SCROLLBAR_W;
+    let gutter = Rect::new(region.x + region.w - gutter_w, region.y, gutter_w, region.h);
+    // A acção aberta que a pintura anterior não mostrou (clique, cena, porta de smoke) rola para a vista, pela conta
+    // da lista (já na 1.ª pintura), e a rolagem em repouso pára numa fronteira de linha.
+    let opened = doc.kb.open;
+    if opened != doc.kb.painted_open {
+        doc.kb.reveal = doc.kb.reveal.or(opened);
+        doc.kb.painted_open = opened;
+    }
     let reveal = doc.kb.reveal.take();
-    if let Some(&(_, y0, h)) = reveal.and_then(|a| doc.kb.rows.iter().find(|r| r.0 == a)) {
-        // A linha recém-aberta à vista (a posição dela no conteúdo, da pintura anterior).
-        doc.kb.scroll = doc.kb.scroll.clamp((y0 + h - region.h).max(0.0), y0.max(0.0));
-        doc.kb.scroll = doc.kb.scroll.clamp(0.0, (doc.kb.list_total - region.h).max(0.0));
+    if let Some((y0, h)) = reveal.and_then(|a| list::row_top(doc, a)) {
+        let lo = (y0 + h - region.h).max(0.0);
+        let s = doc.kb.scroll.clamp(lo, y0.max(lo));
+        let step = list::ROW_STEP;
+        doc.kb.scroll = if s > lo + f32::EPSILON {
+            (s / step).floor() * step
+        } else {
+            (s / step).ceil() * step
+        };
+        doc.kb.scroll = doc.kb.scroll.min(y0);
+    }
+    if doc.kb.list_total > 0.0 {
+        doc.kb.scroll = doc
+            .kb
+            .scroll
+            .clamp(0.0, (doc.kb.list_total - region.h).max(0.0));
     }
     doc.kb.rows.clear();
     let y0 = region.y - doc.kb.scroll;
@@ -168,12 +203,19 @@ pub fn paint(
     let mut over = VectorScene::new();
     over.push_clip(&ph2d_editor_core::paint::rect_to_vello(region));
     let list_r = Rect::new(inner.x, y0, list_w, if stacked { tall } else { region.h });
-    let mut end = fitted(&mut over, ink, list_r, region, |s| list::paint(doc, list_r, s, ts, ink));
+    let mut end = fitted(&mut over, ink, list_r, region, |s| {
+        list::paint(doc, list_r, s, ts, ink)
+    });
     let rx = list_r.x + list_r.w + m::CARD_GAP;
-    let rw = (inner.x + inner.w - rx).max(0.0);
+    let rw = (inner.x + inner.w - rx - if stacked { gutter_w } else { 0.0 }).max(0.0);
     if stacked {
-        let bottom = Rect::new(rx, y0, rw, tall);
-        end = end.max(fitted(&mut over, ink, bottom, region, |s| tiles::paint(doc, bottom, s, ts, ink)));
+        // O cartão da aberta fica no topo da região (não rola com a lista): revelar uma linha do fundo da lista não
+        // o tira da vista.
+        let bottom = Rect::new(rx, region.y, rw, tall);
+        let card_end = fitted(&mut over, ink, bottom, region, |s| {
+            tiles::paint(doc, bottom, s, ts, ink)
+        });
+        end = end.max(card_end - region.y + y0);
     }
     over.pop_layer();
     doc.hits.pop_clip();
@@ -181,21 +223,79 @@ pub fn paint(
     let total = end - y0;
     doc.kb.list_total = total;
     doc.kb.list_view_h = region.h;
+    doc.kb.scroll = doc.kb.scroll.clamp(0.0, (total - region.h).max(0.0));
     if total > region.h + f32::EPSILON {
         doc.census.clip = Some(region);
-        list::scrollbar(doc, region, total, scene, ink);
+        let cols = [
+            Rect::new(inner.x, region.y, list_w, region.h),
+            Rect::new(rx, region.y, rw, region.h),
+        ];
+        let cols = if stacked { &cols[..] } else { &cols[..1] };
+        let max = total - region.h;
+        fade(
+            doc,
+            scene,
+            ink,
+            cols,
+            (
+                doc.kb.scroll > f32::EPSILON,
+                doc.kb.scroll + f32::EPSILON < max,
+            ),
+        );
+        list::scrollbar(doc, (region, gutter), total, scene, ink);
     }
     if !stacked {
         let by = top.y + top.h + m::CARD_GAP;
         let bottom = Rect::new(rx, by, rw, (inner.y + inner.h - by).max(0.0));
-        fitted(scene, ink, bottom, bottom, |s| tiles::paint(doc, bottom, s, ts, ink));
+        fitted(scene, ink, bottom, bottom, |s| {
+            tiles::paint(doc, bottom, s, ts, ink)
+        });
+    }
+}
+
+/// O desvanecer das bordas cortadas (`top`, `bottom`) da região que rola: bandas da cor do cartão, cada vez mais
+/// leves para dentro, sobre cada coluna de cartão — o conteúdo diz que continua.
+fn fade(
+    doc: &mut InputMapDoc,
+    scene: &mut VectorScene,
+    ink: CardInk,
+    cols: &[Rect],
+    (top, bottom): (bool, bool),
+) {
+    const BANDS: usize = 4;
+    let band = m::FIELD_H / BANDS as f32;
+    let card = ink.color(ColorToken::KanbanCard);
+    for c in cols {
+        for (edge, on) in [(true, top), (false, bottom)] {
+            if !on {
+                continue;
+            }
+            for i in 0..BANDS {
+                let alpha = 1.0 - (i as f32 + 0.5) / BANDS as f32; // LITERAL-PX-OK: alfa da banda, não px
+                let y = if edge {
+                    c.y + band * i as f32
+                } else {
+                    c.y + c.h - band * (i as f32 + 1.0)
+                };
+                let r = Rect::new(c.x, y, c.w, band);
+                fill_rounded_rect(scene, r, 0.0, card.multiply_alpha(alpha)); // LITERAL-PX-OK: banda recta
+            }
+            let h = band * BANDS as f32;
+            let y = if edge { c.y } else { c.y + c.h - h };
+            doc.census.fades.push(Rect::new(c.x, y, c.w, h));
+        }
     }
 }
 
 /// A coluna de largura `w` segura o teclado Wide com toda legenda inteira (a medida do `keys_fit`, com os dois
 /// recuos do cartão e do desenho que o `top_height` desconta).
 fn wide_fits(ts: &mut TextSystem, w: f32) -> bool {
-    let f = keys_fit::fit(ts, w - m::CARD_PAD_X * 4.0, None, geometry::PITCH_MAX_ROWS_B);
+    let f = keys_fit::fit(
+        ts,
+        w - m::CARD_PAD_X * 4.0,
+        None,
+        geometry::PITCH_MAX_ROWS_B,
+    );
     f.arrangement == geometry::Arrangement::Wide && f.legible
 }
 
@@ -218,7 +318,12 @@ fn fitted(
 ) -> f32 {
     let mut over = VectorScene::new();
     let end = f(&mut over);
-    let card = Rect::new(r.x, r.y, r.w, (end - r.y).clamp(0.0, (view.y + view.h - r.y).max(0.0)));
+    let card = Rect::new(
+        r.x,
+        r.y,
+        r.w,
+        (end - r.y).clamp(0.0, (view.y + view.h - r.y).max(0.0)),
+    );
     fill_rounded_rect(
         scene,
         card,

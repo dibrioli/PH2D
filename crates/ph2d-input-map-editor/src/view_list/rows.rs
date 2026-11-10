@@ -319,9 +319,9 @@ fn paint_chip(
 ) -> Rect {
     let g = m::KEY_MARK_BOX;
     let (tag, label) = chip_text(b);
-    let tag_w = tag.map_or(0.0, |t| ts.prefix_width(t, m::LABEL_PX));
+    let tag_w = tag.map_or(0.0, |t| text::body_width(ts, t, m::LABEL_PX));
     let tag_gap = if tag.is_some() { m::SEG_ICON_GAP } else { 0.0 };
-    let tw = ts.prefix_width(&label, m::VALUE_PX);
+    let tw = text::body_width(ts, &label, m::VALUE_PX);
     let arrow = crate::view_keyboard::half_icon(b);
     let aw = if arrow.is_some() {
         m::SEG_ICON_GAP + g
@@ -362,10 +362,10 @@ fn paint_chip(
     let end = chip.x + chip.w;
     if let Some(t) = tag {
         let tr_r = Rect::new(cx, chip.y, tag_w.min((end - cx).max(0.0)), chip.h);
-        cx += text::line(&mut doc.census, ts, scene, t, tr_r, m::LABEL_PX, dim) + tag_gap;
+        cx += text::body(&mut doc.census, ts, scene, t, tr_r, m::LABEL_PX, dim) + tag_gap;
     }
     let lr = Rect::new(cx, chip.y, tw.min((end - cx - aw).max(0.0)), chip.h);
-    cx += text::line(&mut doc.census, ts, scene, &label, lr, m::VALUE_PX, fg);
+    cx += text::body(&mut doc.census, ts, scene, &label, lr, m::VALUE_PX, fg);
     if let Some(icon) = arrow {
         let ar = Rect::new(cx + m::SEG_ICON_GAP, chip.y + (chip.h - g) * 0.5, g, g);
         paint_icon(scene, icon, ar, fg, StrokeToken::Default.px());
@@ -404,7 +404,7 @@ fn paint_plus(
         }
         super::listening_ring(&mut doc.census, scene, r, ink);
         let inner = Rect::new(r.x + m::SEG_INSET, r.y, r.w - m::SEG_INSET * 2.0, r.h);
-        text::line(
+        text::body(
             &mut doc.census,
             ts,
             scene,
@@ -495,7 +495,7 @@ fn paint_zones(
         let (above, tint) = warn.map_or((tr(label), ColorToken::CardLabel), |c| {
             (tr(c.i18n_key()), ColorToken::Warn)
         });
-        text::line(
+        text::body(
             &mut doc.census,
             ts,
             scene,
@@ -530,7 +530,7 @@ fn paint_zones(
         } else {
             ColorToken::CardLabel
         };
-        text::line(
+        text::body(
             &mut doc.census,
             ts,
             scene,
@@ -550,7 +550,7 @@ fn paint_zones(
             let on = doc.caret_on(fid);
             crate::field::paint_edit(scene, ts, ink, vr, vx, &v, c.caret, c.anchor, on);
         }
-        text::line(
+        text::body(
             &mut doc.census,
             ts,
             scene,

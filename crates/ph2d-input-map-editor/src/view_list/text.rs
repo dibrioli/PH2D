@@ -1,6 +1,8 @@
 //! O texto da lista, medido antes de pintar: cada um entra no censo com «coube?».
 
-use ph2d_editor_core::paint::{folga_do_texto, paint_text_elided, paint_text_title_elided};
+use ph2d_editor_core::paint::{
+    folga_do_texto, paint_text_elided, paint_text_elided_weighted, paint_text_title_elided,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::{FontWeight, TextSystem};
 use ph2d_vector::Color;
@@ -37,6 +39,33 @@ pub(crate) fn line(
         r.w,
         color,
     );
+    w.min(r.w)
+}
+
+/// O peso do corpo da A e da B (maquetes 01 e 03): texto, chips, pés e dicas em Regular; o SemiBold fica para o
+/// destaque e os nomes das acções ([`title`]).
+pub(crate) const BODY: FontWeight = FontWeight::NORMAL;
+
+/// A largura de `s` no peso do corpo ([`body`]).
+pub(crate) fn body_width(ts: &mut TextSystem, s: &str, px: f32) -> f32 {
+    ts.prefix_width_weighted(s, px, BODY)
+}
+
+/// [`line`] no peso do corpo (Regular): mede, corta e pinta com o MESMO peso, e entra no censo `regular`.
+pub(crate) fn body(
+    census: &mut Census,
+    ts: &mut TextSystem,
+    scene: &mut VectorScene,
+    s: &str,
+    r: Rect,
+    px: f32,
+    color: Color,
+) -> f32 {
+    let w = body_width(ts, s, px);
+    census.texts.push((r, s.to_owned(), cortado(w, r.w)));
+    census.regular.push(s.to_owned());
+    let at = [r.x, r.y + folga_do_texto(r.h, px)];
+    paint_text_elided_weighted(ts, scene, s, at, px, r.w, (color, BODY));
     w.min(r.w)
 }
 

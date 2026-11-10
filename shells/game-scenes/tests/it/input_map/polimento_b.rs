@@ -461,3 +461,106 @@ fn o_numero_da_b_foca_no_down() {
     m.up(m.at(id));
     assert!(m.tab().doc.list.typing.is_some(), "o Up mantém-no aberto");
 }
+
+fn meets(a: Rect, b: Rect) -> bool {
+    a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+}
+
+/// F1: a acção aberta por uma PORTA (o smoke da B4 abre o reload) rola-se para a vista já na 1.ª pintura; a barra
+/// mora na calha reservada (nenhum texto nela, dentro da região), a borda cortada desvanece e os chips da acção
+/// aberta têm UM token em repouso — nas duas áreas reais, nos dois modos de texto.
+#[test]
+fn f1_a_porta_rola_a_aberta_e_a_barra_nao_tapa_texto() {
+    super::em_cada_modo_de_texto(|| {
+        for area in AREAS {
+            for name in ["reload", "fire", "laser", "move_left"] {
+                let mut m = mesa_b();
+                let id = m.hero.input_map.id(name).expect("a acção da cena");
+                m.tab_mut().doc.smoke_open(Some(id));
+                m.paint_in(area);
+                let doc = &m.tab().doc;
+                let row = doc.rect_of(KbHit::Row(id).id()).expect("a linha pintada");
+                let view = doc.census.clip.unwrap_or(area);
+                assert!(
+                    inside(row, view),
+                    "{}: {name} à vista ({row:?} em {view:?})",
+                    area.w
+                );
+                for (thumb, region, gutter) in &doc.census.scrollbars {
+                    assert!(
+                        inside(*thumb, *region),
+                        "{}: o polegar dentro da região",
+                        area.w
+                    );
+                    assert!(inside(*thumb, *gutter), "{}: o polegar na calha", area.w);
+                    for (r, s, _) in &doc.census.texts {
+                        let shown = inside(*r, *region) || meets(*r, *region);
+                        assert!(
+                            !(shown && meets(*r, *gutter)),
+                            "{}: «{s}» na calha da barra",
+                            area.w
+                        );
+                    }
+                    assert!(
+                        !doc.census.fades.is_empty(),
+                        "{}: a borda cortada desvanece",
+                        area.w
+                    );
+                }
+                let toks: Vec<_> = doc.census.chips.iter().map(|c| c.1).collect();
+                assert!(
+                    toks.windows(2).all(|w| w[0] == w[1]),
+                    "{}: {name} chips {toks:?}",
+                    area.w
+                );
+            }
+        }
+    });
+}
+
+/// F1: a escuta sem ligação centra a frase na caixa; ao lado de ladrilhos, a frase fica na linha das legendas. O
+/// corpo é Regular e o título da acção e os nomes da lista SemiBold.
+#[test]
+fn f1_a_escuta_alinha_e_o_corpo_e_regular() {
+    super::em_cada_modo_de_texto(|| {
+        for area in AREAS {
+            for (name, empty) in [("reload", true), ("fire", false)] {
+                let mut m = mesa_b();
+                let id = m.hero.input_map.id(name).expect("a acção");
+                m.tab_mut().doc.smoke_open(Some(id));
+                m.paint_in(area);
+                let doc = &m.tab().doc;
+                let slot = (doc.rect_of(KbHit::Listen.id()))
+                    .unwrap_or_else(|| panic!("{}: a escuta de {name}", area.w));
+                let msg = (doc.census.texts.iter())
+                    .find(|(r, _, _)| inside(*r, slot))
+                    .expect("a frase da escuta");
+                if empty {
+                    let (a, b) = (msg.0.y - slot.y, slot.y + slot.h - msg.0.y - msg.0.h);
+                    assert!((a - b).abs() < 0.51, "{}: centrada ({a} × {b})", area.w);
+                } else {
+                    let cap = (doc.census.texts.iter())
+                        .find(|(r, s, _)| s == "Keyboard" && r.x < slot.x)
+                        .expect("a legenda do ladrilho");
+                    assert!(
+                        (cap.0.y - msg.0.y).abs() < 0.01,
+                        "{}: a mesma linha",
+                        area.w
+                    );
+                    assert!(
+                        doc.census.regular.iter().any(|s| s == "Keyboard"),
+                        "legenda Regular"
+                    );
+                }
+                assert!(
+                    doc.census.semibold.iter().any(|s| s == name),
+                    "{name}: o nome SemiBold"
+                );
+                assert!(
+                    doc.census.semibold.iter().any(|s| s.starts_with(name)),
+                    "o título SemiBold"
+                );
+            }
+        }
+    });
+}

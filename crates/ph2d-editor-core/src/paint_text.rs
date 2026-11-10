@@ -543,6 +543,32 @@ pub fn paint_text_elided(
     );
 }
 
+/// [`paint_text_elided`] num peso escolhido (o corpo em `NORMAL`, à maquete): mede, corta e pinta com o MESMO
+/// peso — quem mede chama `prefix_width_weighted` com ele.
+#[track_caller]
+pub fn paint_text_elided_weighted(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    [x, y]: [f32; 2],
+    font_size: f32,
+    max_width: f32,
+    (color, weight): (Color, FontWeight),
+) {
+    paint_elided_weighted(
+        text_system,
+        scene,
+        text,
+        x,
+        y,
+        font_size,
+        max_width,
+        color,
+        weight,
+        0.0,
+    );
+}
+
 /// ⭐ [`paint_text_elided`] em **SemiBold** — a irmã de [`paint_text_title`], para o mesmo
 /// motivo pelo qual ela existe.
 ///

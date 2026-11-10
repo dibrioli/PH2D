@@ -122,6 +122,7 @@ pub struct Region {
 }
 
 // ── Submodules (god-module split, 2026-06-04; pure mechanical move) ──
+mod abaixo; // the watercolor backdrop (`composite_below`), split out of `compose` (B52.R3)
 #[cfg(test)]
 mod ajustes_na_fronteira_tests;
 mod cache;
@@ -136,7 +137,8 @@ mod oraculo_vizinhanca_tests;
 #[cfg(test)]
 mod tests;
 pub mod vidro;
+pub use abaixo::composite_below;
 pub use cache::CompositorCache;
-pub use compose::{composite, composite_below, composite_region, composite_with_cache};
+pub use compose::{composite, composite_region, composite_with_cache};
 pub use gpu_ops::flatten_for_gpu;
 pub(crate) use vidro::composite_region_sobre_o_papel;

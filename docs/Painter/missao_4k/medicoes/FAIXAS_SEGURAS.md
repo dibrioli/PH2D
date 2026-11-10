@@ -53,3 +53,39 @@ mixing largo (D1) — são as que custam a 4K na Radeon, todas de CPU. A CPU par
 | W15 Tilt | o XTEST do Xvfb não tem inclinação | — (precisa da caneta) |
 | W12 Bloom edge, D3 Jitter, D4 camadas do Composite, D5 Blur, C1 Rewet, C3 Charge | o preset de fábrica não expõe a chave ao Tuning do Wet | Composite Brush e Round Mixing no `ANTES.md` §B08b |
 | I1 Impasto (4 luzes) | o slider de luz já foi medido | `ANTES.md` §B08b cont. 2 (luz 4K papel pior 118 ms) |
+
+## Continuação (10/11, 19:30–19:50): as linhas Hidden e a repetição dos casos de ruído
+
+- **Binário:** o mesmo de árvore LIMPA (`git archive cd02ac77ef` em `target/b08b-fonte`) + SÓ os dois pedaços do
+  `PH2D_COMPOSITE_KNOBS` (o do `fd49662dbf` e o deste commit) sobre o `composite_smoke.rs` da base, `target/b08b-limpo`,
+  `--profile smoke`, `STRIP=none` (28 s incremental). Radeon em 14/14 `.placa` (zero `nvidia`).
+- **Novo no `PH2D_COMPOSITE_KNOBS`:** `smoothEdges` · `body` · `medium` vão pelo id do cartão Wet Paint
+  (`PAINTER_WETPAINT_*`, a porta do produto); `bristleCount` · `bristleSize` pelo Shape
+  (`set_brush_texture_param_shown`, slot 0 e 2 da `BRISTLE_UNIT_KNOBS`); o resto pelo Tuning como antes.
+  `ESPERA_JANELA` (meios segundos, 120 de omissão) no `mede_pen_up_4k.sh`.
+- **Carga 11–60 (tecto, não veredito).** Régua: controlo 250 ms lê 259–299 em 14/14.
+
+| caso (PA) | A | B | traço p50/p95 A → B ms | +1 s máx A → B | Ctrl+Z A → B | CPU parado A → B % | Wet img/s A → B | leitura (carga) |
+|---|---|---|---|---|---|---|---|---|
+| W4 Max velocity | 1 | 3 | 25/28 → 25/26 | 31 → 30 | 117 → 104 | 61 → 56 | 33 → 39 | **sem custo** a 4K papel (22–32): repetido, a 1.ª rodada também não viu |
+| W11 Subsurface | 0 | 0,5 | 25/27 → 26/27 | 33 → 31 | 117 → 131 | 62 → 62 | 39 → 31 | sem custo no traço; img/s −20 % (14–17) |
+| W16 edgeSoftMass | 0 | 4 | 25/26 → 26/30 | 31 → 32 | 112 → 111 | 58 → 65 | 39 → 36 | sem custo acima do ruído (13–20) |
+| X1 Paper Relief | 0 | 1 | 23/34 → 23/25 | 125 → 105 | 63 → 210 | 64 → 62 | — | traço igual; o Ctrl+Z ×3,3 (25) — o p95 ×2,4 da 1.ª rodada não se repetiu |
+| D2 Size×Spacing | fábrica | `]`×15 | 26/29 → 24/25 | 224 → 102 | 224 → 136 | 59 → 67 | — | sem custo (14–18): o ×2,3 da 1.ª rodada era ruído |
+| W8 Smooth Edges | 0,3 | 1 | 25/28 → 27/33 | 31 → 51 | 185 → 207 | 63 → 50 | 38 → 38 | +1 s ×1,6, p95 +20 % (12–13): custo pequeno a 4K papel |
+| W1 Body | 0 | 0,5 | 66/72 → — | 90 → — | 221 → — | 65 → — | 28 → — | B sem janela (a vez da placa, abaixo) |
+| W1 Medium | 0 | 1 (Oil) | — → 32/71 | — → 73 | — → 189 | — → 45 | — → 37 | A sem janela |
+| W9 Bristle Size×Count | 8 · 2000 | 16 · 4000 | — | — | — | — | — | sem janela nos dois |
+| W17 bristleHeight | 0 | 8 | — | — | — | — | — | sem janela nos dois |
+
+Crua: [`antes/b085/faixas2.md`](antes/b085/faixas2.md) (jsonl ao lado). ⚠️ A 1.ª passagem do W9 corria com os slots das
+cerdas trocados (Strength/Felt): não ficou janela, por isso nenhum número dela entra.
+
+**Porque faltam W1/W9/W17:** a partir das 19:41 o app parava em «shell starting» com 0,6 % de CPU e a
+`libvulkan_radeon` carregada, a dormir: o `ph2d-run.sh` passa a pasta da VEZ DA PLACA (`PH2D_GPU_VEZ`) e o app,
+ao entrar na placa, ficou na fila atrás de outro agente que a segurava desde as 19:46 (`ph2d-gpu.lock`). Não é defeito
+do roteiro nem dos knobs (`W1bA1` correu na 1.ª rodada e parou na 2.ª com o mesmo `body=0`).
+
+**Leitura do bloco inteiro:** as faixas que CUSTAM a 4K na Radeon continuam as quatro da 1.ª rodada (W3, W5, W6, D1)
+mais um custo pequeno do Smooth Edges (W8); Max velocity, Subsurface, edgeSoftMass, Size×Spacing do Digital e o
+Relief do papel no traço não pagam acima do ruído — o PA §E sobrestimava-os para este caminho.

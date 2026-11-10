@@ -60,7 +60,7 @@ if [ "$1" = matriz ]; then
     APP=$!
     marca() { echo "$1 $(date +%s%N) $(awk '{print $14+$15}' /proc/$APP/stat 2>/dev/null)" >> "$M/$TAG.marcas"; }
     WIN=
-    for _ in $(seq 1 120); do
+    for _ in $(seq 1 "${ESPERA_JANELA:-120}"); do  # meios segundos; sob carga o arranque 4K passa de 60 s (10/11)
       grep -q "pilha armada" "$M/$TAG.log" && WIN=$(DISPLAY=$D xdotool search --pid $APP 2>/dev/null | tail -1)
       [ -n "$WIN" ] && break; sleep 0.5
     done
@@ -155,6 +155,12 @@ if [ "$1" = faixas ]; then
     "D2|omissão:digital|TECLAS=0|TECLAS=15"
     "D1|Round Mixing:digital|TECLAS=0|TECLAS=10"
     "C2|Watercolor Basic:water|TECLAS=0|TECLAS=10"
+    # Linhas Hidden pela porta do produto (o cartão Wet Paint e o Shape): composite_smoke `PH2D_COMPOSITE_KNOBS`.
+    "W8|omissão:wet|KNOBS=smoothEdges=0.3|KNOBS=smoothEdges=1"
+    "W1b|omissão:wet|KNOBS=body=0|KNOBS=body=0.5"
+    "W1m|omissão:wet|KNOBS=medium=0|KNOBS=medium=1"
+    "W9|Flat Bristle:wet|KNOBS=bristleSize=8,bristleCount=2000|KNOBS=bristleSize=16,bristleCount=4000"
+    "W17|Flat Bristle:wet|KNOBS=bristleHeight=0|KNOBS=bristleHeight=8"
   )
   [ -n "$SO" ] && mapfile -t CASOS < <(printf '%s\n' "${CASOS[@]}" | grep -E "^($SO)\|")
   for i in $(seq 1 "$N"); do for c in "${CASOS[@]}"; do

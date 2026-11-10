@@ -346,9 +346,23 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
         let (k, v) = kv.split_once('=')?;
         Some((k.trim(), v.trim().parse::<f64>().ok()?))
     }) {
-        let id = ph2d_tool_painter::ids::wet_tuning_slider_id(k);
-        let ev = ph2d_editor_core::tool::PanelEvent::SetValue(id, v);
-        ph2d_editor_core::tool::Tool::handle_panel_event(painter, ev);
+        // As linhas Hidden pela porta do produto: o cartão Wet Paint (Smooth Edges, Body, Paint type) e o Shape (cerdas).
+        use ph2d_tool_painter::ids;
+        let id = match k {
+            "smoothEdges" => Some(ids::PAINTER_WETPAINT_SMOOTH_EDGES),
+            "body" => Some(ids::PAINTER_WETPAINT_BODY),
+            "medium" => Some(ids::PAINTER_WETPAINT_MEDIUM),
+            "bristleCount" | "bristleSize" => None,
+            _ => Some(ids::wet_tuning_slider_id(k)),
+        };
+        match id {
+            Some(id) => {
+                let ev = ph2d_editor_core::tool::PanelEvent::SetValue(id, v);
+                ph2d_editor_core::tool::Tool::handle_panel_event(painter, ev);
+            }
+            // A ordem do `BRISTLE_UNIT_KNOBS` do motor: Count 0 · Strength 1 · Size 2 · Felt 3.
+            None => painter.set_brush_texture_param_shown(usize::from(k == "bristleSize") * 2, v as f32),
+        }
         println!("PH2D_COMPOSITE_KNOBS: {k} = {v}");
     }
     println!(

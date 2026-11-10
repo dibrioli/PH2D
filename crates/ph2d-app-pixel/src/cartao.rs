@@ -8,7 +8,7 @@ use std::sync::Arc;
 use ph2d_editor_core::ids::INSP_PANEL;
 use ph2d_editor_core::pixel_panel::PixelSpriteCard;
 use ph2d_editor_core::screens::hero::HeroScreen;
-use ph2d_pixel_core::{FrameId, compose_rgba};
+use ph2d_pixel_core::FrameId;
 
 use crate::PixelApp;
 
@@ -89,8 +89,7 @@ fn cartao(app: &mut PixelApp, key: u32, bits: u64, em_draw: bool) -> Option<Pixe
 
 /// O quadro `frame` achatado nas camadas visíveis e reduzido por vizinho, com o aspecto, se passa de [`LADO_MAX`].
 fn compoe(sprite: &ph2d_pixel_core::Sprite, frame: FrameId) -> (Vec<u8>, [u32; 2]) {
-    let mut cheio = Vec::new();
-    compose_rgba(sprite, frame, None, &mut cheio);
+    let cheio = ph2d_pixel_io::frame_rgba(sprite, frame);
     let (w, h) = (sprite.width(), sprite.height());
     let maior = w.max(h);
     if maior <= LADO_MAX {

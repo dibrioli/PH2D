@@ -4,7 +4,8 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use ph2d_pixel_core::{
-    FrameId, LayerId, Onion, Purpose, Rect, Sprite, Stroke, compose_window, compose_with_onion_of,
+    FrameId, LayerId, Onion, Purpose, Rect, Sprite, Stroke, compose_window_em,
+    compose_with_onion_em, instante_do_quadro,
 };
 use ph2d_vector::{
     Affine, BezPath, Color, ImageQuality, Point, StableImage, Stroke as Pen, VectorScene,
@@ -210,7 +211,9 @@ impl Checker {
     }
 }
 
-/// A janela `region` composta (com o papel vegetal, se houver).
+/// A janela `region` composta (com o papel vegetal, se houver), com os ciclos de cor no instante do
+/// quadro ([`instante_do_quadro`]): função do documento e do quadro, logo o `key` da imagem e a
+/// cache por quadro continuam a valer. O Pixel Sprite na cena passa por aqui com o quadro que mostra.
 fn window(
     sprite: &Sprite,
     frame: FrameId,
@@ -218,9 +221,12 @@ fn window(
     region: Rect,
     onion: Option<(&Onion, Option<LayerId>)>,
 ) -> Vec<u8> {
+    let t = instante_do_quadro(sprite, frame);
     match onion {
-        Some((o, l)) => compose_with_onion_of(sprite, frame, pending, region, o, None, l),
-        None => compose_window(sprite, frame, pending, region, Purpose::View),
+        Some((o, l)) => {
+            compose_with_onion_em(sprite, frame, pending, region, o, (None, l), Some(t))
+        }
+        None => compose_window_em(sprite, frame, pending, region, Purpose::View, t),
     }
 }
 

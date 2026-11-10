@@ -71,3 +71,16 @@ pub fn ciclo_em(pal: &PaletteRamps, t_ms: u64) -> [u8; 256] {
     }
     perm
 }
+
+/// **O instante do quadro** `frame` na animação: a soma das durações dos quadros antes dele (o
+/// primeiro é `0`; quadro desconhecido = `0`). É o `t_ms` dos ciclos de cor de toda vista que mostra
+/// um quadro — editor, miniatura, Pixel Sprite na cena e export —, por isso o mesmo quadro mostra
+/// o mesmo índice em todos.
+#[must_use]
+pub fn instante_do_quadro(s: &crate::Sprite, frame: crate::FrameId) -> u64 {
+    let fs = s.frames();
+    let Some(k) = fs.iter().position(|f| f.id == frame) else {
+        return 0;
+    };
+    fs[..k].iter().map(|f| u64::from(f.duration_ms)).sum()
+}

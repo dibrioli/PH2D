@@ -121,7 +121,8 @@ pub fn compose_window_em(
 }
 
 /// O quadro inteiro com as camadas de imagem que `pick` escolher, e só elas (a resposta dele manda sobre
-/// visibilidade e referência): a porta do Export com «uma camada» ou «todas» (P9).
+/// visibilidade e referência): a porta do Export com «uma camada» ou «todas» (P9). Os ciclos de cor
+/// rodam no [`crate::instante_do_quadro`] (o export assa o ciclo em quadros).
 #[must_use]
 pub fn compose_picked(sprite: &Sprite, frame: FrameId, pick: &dyn Fn(&Layer) -> bool) -> Vec<u8> {
     let region = sprite.bounds();
@@ -132,7 +133,7 @@ pub fn compose_picked(sprite: &Sprite, frame: FrameId, pick: &dyn Fn(&Layer) -> 
         pending: None,
         region,
         purpose: Purpose::Export,
-        t_ms: None,
+        t_ms: Some(crate::instante_do_quadro(sprite, frame)),
     }
     .draw_picked(pick, &mut buf);
     buf
@@ -268,6 +269,21 @@ pub fn compose_with_onion_of(
     under: Option<&[u8]>,
     layer: Option<LayerId>,
 ) -> Vec<u8> {
+    compose_with_onion_em(sprite, frame, pending, region, onion, (under, layer), None)
+}
+
+/// O [`compose_with_onion_of`] no instante `t_ms` dos ciclos de cor (`None` = sem ciclo): o quadro
+/// e os fantasmas rodam no MESMO instante.
+#[must_use]
+pub fn compose_with_onion_em(
+    sprite: &Sprite,
+    frame: FrameId,
+    pending: Option<&Stroke>,
+    region: Rect,
+    onion: &Onion,
+    (under, layer): (Option<&[u8]>, Option<LayerId>),
+    t_ms: Option<u64>,
+) -> Vec<u8> {
     let only = layer.filter(|_| onion.current_layer_only);
     let mut buf = under.map_or_else(|| vec![0u8; region.area() * 4], <[u8]>::to_vec);
     let ctx = Ctx {
@@ -276,7 +292,7 @@ pub fn compose_with_onion_of(
         pending,
         region,
         purpose: Purpose::View,
-        t_ms: None,
+        t_ms,
     };
     if onion.front {
         ctx.draw(&mut buf);
@@ -292,7 +308,16 @@ pub fn compose_with_onion_of(
                 .draw_only(id, &mut px);
                 px
             }
-            None => compose_window(sprite, g.frame, None, region, Purpose::View),
+            None => {
+                let mut px = vec![0u8; region.area() * 4];
+                Ctx {
+                    frame: g.frame,
+                    pending: None,
+                    ..ctx
+                }
+                .draw(&mut px);
+                px
+            }
         };
         for (d, s) in buf
             .as_chunks_mut::<4>()

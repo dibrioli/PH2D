@@ -54,16 +54,7 @@ fn aliases() -> Vec<C> {
 /// ⭐ **Todo `timeline-*` declara um pai, e resolve para ele em TODO tema.**
 #[test]
 fn every_timeline_slot_resolves_to_its_declared_parent() {
-    let all = [
-        Theme::Forge,
-        Theme::Workshop,
-        Theme::Sunstone,
-        Theme::Blueprint,
-        Theme::Dark,
-        Theme::Gray,
-        Theme::Light,
-        Theme::Oled,
-    ];
+    let all = Theme::ALL;
     let mut pares = 0;
     for t in all {
         for a in aliases() {
@@ -83,8 +74,8 @@ fn every_timeline_slot_resolves_to_its_declared_parent() {
     }
     assert_eq!(
         pares,
-        18 * 8,
-        "esperava 18 apelidos x 8 temas e comparei {pares}: ou a familia mudou de tamanho, ou o \
+        24 * all.len(),
+        "esperava 24 apelidos x todos os temas e comparei {pares}: ou a familia mudou de tamanho, ou o \
          filtro deixou de achar os apelidos"
     );
 }
@@ -154,6 +145,15 @@ fn the_parent_of_each_alias_is_the_one_the_measurement_found() {
         ("timeline-missing", "danger"),
         ("timeline-key", "text-1"),
         ("timeline-ruler-tick", "text-3"),
+        // A fita no molde do Rive (doc 15 onda 2, 09/11): as barras por interpolação medidas em
+        // OKLCH nos temas (`as_tres_barras_leem_se_diferentes_nos_oito_temas`), a gravação, o
+        // cabeçalho do objecto e o Summary (`o_summary_tem_cor_propria_nos_oito_temas`).
+        ("timeline-interp-curve", "info"),
+        ("timeline-interp-linear", "code-keyword"),
+        ("timeline-interp-hold", "text-3"),
+        ("timeline-record", "danger"),
+        ("timeline-object-row", "bg-3"),
+        ("timeline-summary-row", "accent"),
         // ⭐ **O `bone-handle` entra por OUTRA medição** (2026-09-16, report do dono: as alças de
         // curvatura vestiam a cor do osso): ali o oráculo não é o `tokens.json` antigo, é a
         // DISTÂNCIA perceptual ao corpo do osso nos 8 temas, e ela continua a poder ser medida —
@@ -200,7 +200,7 @@ fn the_parent_of_each_alias_is_the_one_the_measurement_found() {
 #[test]
 fn the_alias_family_is_exactly_the_named_slots() {
     /// As famílias que declaram apelidos, e a contagem de cada uma.
-    const FAMILIAS: &[(&str, usize)] = &[("timeline-", 16), ("bone-", 1), ("shape-", 1)];
+    const FAMILIAS: &[(&str, usize)] = &[("timeline-", 22), ("bone-", 1), ("shape-", 1)];
     let declared: Vec<&str> = C::ALL
         .iter()
         .filter(|t| t.alias_parent().is_some())

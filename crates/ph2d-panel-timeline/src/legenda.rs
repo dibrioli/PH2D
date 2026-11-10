@@ -52,7 +52,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, lanes: Rect) {
     fill_rounded_rect(
         ctx.scene,
         pilula,
-        Radius::Xs.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Xs.px()),
         crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::FitaCabecalho, theme),
     );
     let cy = pilula.y + h * 0.5;

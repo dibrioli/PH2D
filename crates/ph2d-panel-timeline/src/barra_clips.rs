@@ -110,6 +110,7 @@ fn pinta_chip(ctx: &mut PaintCtx, ink: CardInk, r: Rect, ch: &Chip<'_>) -> Optio
     };
     fill_rounded_rect(ctx.scene, r, raio, cor_fundo);
     if ch.on {
+        // FRAME-RAW-OK: o contorno do acento É a marca do chip escolhido (como a célula sob a mão).
         ph2d_editor_core::paint::stroke_rounded_rect(
             ctx.scene,
             r,

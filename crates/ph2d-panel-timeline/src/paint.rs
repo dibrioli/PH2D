@@ -91,6 +91,9 @@ fn release_everything_a_hidden_panel_must_not_hold(
     ctx.host.store_mut().clear_timeline_canvas();
     // Reabrir enquadra outra vez (doc 15 onda 2).
     state.enquadrado = None;
+    // As janelinhas da barra não voltam abertas com o painel.
+    state.opcoes_abertas = false;
+    state.menu_do_clip = false;
     // Drop any in-flight gesture: hiding the panel mid-drag must not leave a
     // marquee to resolve (or repaint) when it comes back — nor an undo
     // bracket open, which would swallow the next atomic edit.
@@ -166,6 +169,10 @@ fn paint_barra(
     );
     (y, clip, anim, body, (None, None))
 }
+
+#[path = "paint_passos.rs"]
+mod passos;
+use passos::{fecha_arrastos_sem_linha, pe_da_fita, segue_o_cursor};
 
 pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(TimelinePanel::ID) {
@@ -253,21 +260,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // + lanes so ticks and key diamonds align.
     let px_per_s = state.px_per_s;
     let span = f64::from(g.time_area.w) / px_per_s;
-    let mut view_start = state.view_start_s;
-    // Page-follow ONLY while playing: the view chases the playhead during
-    // playback, but a manual pan/zoom while paused is never yanked back.
-    // Nos cartões (doc 15 onda 2) não persegue o cursor DEPOIS do fim do clipe: lá a fita é a zona morta
-    // listrada, e a vista enquadrada ao abrir ficava trocada por uma fita vazia.
-    let alem_do_fim = cartoes
-        && snapshot.view_length_seconds > 0.0
-        && snapshot.time_seconds > snapshot.view_length_seconds;
-    if snapshot.playing
-        && span > 0.0
-        && !alem_do_fim
-        && (snapshot.time_seconds < view_start || snapshot.time_seconds >= view_start + span)
-    {
-        view_start = snapshot.time_seconds.max(0.0);
-    }
+    let view_start = segue_o_cursor(state.view_start_s, span, cartoes, &snapshot);
     state.view_start_s = view_start;
     state.view_span_s = span;
 
@@ -305,14 +298,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // A handle or anchor drag whose row got culled (scrolled away, or its track
     // unbound) never reached its `resolve_drag`: close the undo bracket here so
     // the next atomic edit is not silently swallowed into it.
-    if state.handle_drag.is_some_and(|d| d.ending) {
-        state.handle_drag = None;
-        state::push_intent(ph2d_timeline::TimelineIntent::EndEdit);
-    }
-    if state.anchor_drag.as_ref().is_some_and(|d| d.ending) {
-        state.anchor_drag = None;
-        state::push_intent(ph2d_timeline::TimelineIntent::EndEdit);
-    }
+    fecha_arrastos_sem_linha(state);
     // The live box-select rubber band rides over the diamonds it is picking.
     if let Some(b) = state.box_drag {
         tracks::paint_marquee(ctx, theme, b.rect());
@@ -333,20 +319,8 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         clock,
     );
 
-    // A legenda das barras, no pé da fita (só na aba que tem chaves).
-    if cartoes && state.tab.shows_keys() && !snapshot.tracks.is_empty() {
-        crate::legenda::paint(ctx, theme, crate::tracks::lane_rect(&g, view));
-    }
-    // A moldura da área das trilhas (maquete B1, sempre); o Auto Key a gravar acende-a a vermelho.
     if cartoes {
-        let (r, cor) = crate::linhas::moldura(&g, snapshot.auto_key);
-        ph2d_editor_core::paint::stroke_rounded_rect(
-            ctx.scene,
-            r,
-            ph2d_editor_core::panel::cards::banda::metrics::CARD_RADIUS,
-            ph2d_tokens::TIMELINE_FRAME_PX,
-            crate::folha_tinta::tinta(cor, theme),
-        );
+        pe_da_fita(ctx, theme, state.tab, &g, view, &snapshot);
     }
     // The label/time splitter sits over the lanes AND the ruler, so it is
     // registered after both — a grab on the seam must not scrub the ruler.

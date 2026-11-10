@@ -313,17 +313,8 @@ fn u_px(u: crate::tracks_value::Unidades) -> &'static str {
     .map_or("", str::trim)
 }
 
-/// Os 8 temas.
-const TEMAS: [ph2d_tokens::Theme; 8] = [
-    ph2d_tokens::Theme::Forge,
-    ph2d_tokens::Theme::Workshop,
-    ph2d_tokens::Theme::Sunstone,
-    ph2d_tokens::Theme::Blueprint,
-    ph2d_tokens::Theme::Dark,
-    ph2d_tokens::Theme::Gray,
-    ph2d_tokens::Theme::Light,
-    ph2d_tokens::Theme::Oled,
-];
+/// Todos os temas do menu — uma lista à mão deixava quatro de fora.
+const TEMAS: [ph2d_tokens::Theme; 12] = ph2d_tokens::Theme::ALL;
 
 /// Uma cor no plano OKLab, e a distância — a régua do `BoneHandle`.
 fn lab_de(c: ph2d_tokens::Color) -> (f64, f64, f64) {
@@ -335,7 +326,7 @@ fn dist(x: (f64, f64, f64), y: (f64, f64, f64)) -> f64 {
     ((x.0 - y.0).powi(2) + (x.1 - y.1).powi(2) + (x.2 - y.2).powi(2)).sqrt()
 }
 
-/// O pior caso, nos 8 temas, da distância entre cada `a` e cada `b`.
+/// O pior caso, em todos os temas, da distância entre cada `a` e cada `b`.
 fn pior(a: &[TimelineTinta], b: &[TimelineTinta]) -> f64 {
     let mut p = f64::MAX;
     for t in TEMAS {
@@ -370,7 +361,7 @@ fn a_barra_veste_a_interpolacao_da_chave_de_saida() {
 }
 
 /// ⭐ **As três barras leem-se diferentes em todo tema** (as cores da maquete B1, onda 2g). Medido:
-/// o pior par nos 8 temas é 0,107; a barra fica em 0,10, a de antes.
+/// o pior par em todos os temas é 0,107; a barra fica em 0,10, a de antes.
 #[test]
 fn as_tres_barras_leem_se_diferentes_nos_oito_temas() {
     let barras = [

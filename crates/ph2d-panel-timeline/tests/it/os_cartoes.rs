@@ -669,6 +669,15 @@ fn as_janelinhas_abrem_e_fecham_pelo_clique_de_fora() {
             .any(|i| matches!(i, TimelineIntent::DuplicateClip { .. })),
         "Duplicate não pediu nada"
     );
+
+    // Esconder o painel com uma janelinha aberta: ela não volta aberta.
+    let _ = onde_mora(&mut m0, ids::TIMELINE_SNAP);
+    assert!(m0.st.opcoes_abertas, "a engrenagem não reabriu");
+    m0.host.paint_hidden::<TimelinePanel>(&mut m0.st, JANELA);
+    assert!(
+        !m0.st.opcoes_abertas && !m0.st.menu_do_clip,
+        "o painel escondido guardou a janelinha aberta"
+    );
 }
 
 /// ⭐⭐ **Os chips ficam numa fileira só**: com dezasseis clipes, o que não cabe vai para o «+N ▾», que abre

@@ -322,3 +322,58 @@ Tecla FÍSICA (o `KeyCode` do winit, nunca a lógica): o numérico liga igual co
   a lei manda); o caret pisca pelo relógio do substrato (`UiMotion::elapsed`) e fica fixo com reduced motion. Os
   medidores do Try it são `Role::Number` (um valor lido não balança).
 
+
+## 14 · Onda 3 — contratos (tudo o que ficou aberto, de uma vez)
+
+Commits: `git log --oneline 6acee19f4e..HEAD`. Fonte é o código; isto é o mapa e as medições.
+
+**14.1 Fila F e Home/End/PgUp/PgDn a meia altura** (`keys_fit.rs`, 618f07e082). `FN_ROW_FACTOR = 0,64` da tecla.
+0,6 não cabe: no piso a tecla mede 25 px, a 0,6 a fila tem 15 px → 11 px úteis; texto de 10 px pede 11,5 px, ícones
+Home/End/PgUp/PgDn 12 px. 0,62 bastaria ao texto; 0,64 é o menor que serve a ambos (igual em Default e
+CrispHeavyPlus). A legenda passa a ter de caber também em ALTURA. `PITCH_FLOOR` re-medido: 30,5 Default / 31,5
+CrispHeavyPlus (inalterado). Tabela (passo / tecla / fila F / legenda / ícone plaquinha→borda):
+
+| Largura | passo | tecla | fila F | legenda | ícone→borda |
+|---|---|---|---|---|---|
+| 988 Keyboard | 39,0–39,2 | 26,5–26,7 | 17,0–17,1 | 11 px | 8,0 |
+| 988 Try it | 44,8 | 30,5 | 19,5 | 11 px; «Home» a 10 px | 8,3 |
+| 690 (1280) | 31,9 | 25,0 | 16,0 | 10 px | 7,5 |
+| 360 (rola) | 31,5 | 25,0 | 16,0 | 10 px | 7,4 |
+
+Barra de rolagem visível 5,4–6,3 px de cada lado (≥ 2).
+
+**14.2 Plaquinha do nome** (`pad.rs` comando, `keys.rs` chips «Also:»). Nome parado numa plaquinha, barras por trás,
+mesmas funções de `keys_fit`; plaquinha só com ≥ 1 acção; em redondos/pílulas as barras ficam na parte reta;
+Back/Start +2 px; setas da cruz/manches até 14 px; contorno da acção aberta por cima. Testes `onda3_tracos.rs` (4).
+
+**14.3 Hover na tela Controls do jogo** (`ph2d-player-controls`, cab8aa7779). `host::pointer_move(s, at) ->
+(dela, repinta)`, `Layout::hover`; linha sob o ponteiro em `CardFieldHover` no quadro (D32); Reset: hover
+`CardFieldHover`, premido `AccentSoft`; Down captura, Up dentro dispara, fora cancela (`ControlsScreen::release`,
+`PlaySession::release`). A shell só traduz (`input_dispatch/controles_do_jogador.rs::movimento_dos_controles`, antes
+do palco). Testes `onda3_hover_tests.rs` (3). Sem cursor de mão (a porta não tem cursor).
+
+**14.4 Alt** (141b4917b7). `ph2d_input::editor_keys::held_from_flags(ctrl, alt)`; `capture_if_listening` lê
+`cmd_held()` e `alt_held()` (o fio da shell já existia). Alt+tecla sob a escuta é recusado e segue para o editor; Alt
+sozinho como Ctrl sozinho. Testes `onda3_alt.rs` (3) + `alt_em_baixo_e_acorde_como_o_ctrl`.
+**Aberto:** AltGr reportado como Alt também é recusado.
+
+**14.5 Token `danger-press`** (2fac6ea5bc). `docs/design/tokens.json`: forge `oklch(0.610 0.170 25)`,
+sunstone/blueprint `oklch(0.510 0.190 25)`, workshop herda; família moderna `error.lerp(BLACK, 0.15)` (o `mono_inv`
+do accent-press clareia no claro). O × premido = `DangerPress` + `AccentFg`. Luminância Y pairado/premido (contraste
+do ícone): Forge 0,2600/0,2056 (5,89→4,85:1); Sunstone 0,1536/0,1146 (4,78→5,91); Blueprint 0,1536/0,1146
+(4,93→6,10); Light/Candy 0,1595/0,1121 (5,01→6,48); Dark/Gray/Oled/Plumber*/Sunset 0,3575/0,2501 (8,15→6,00). Antes:
+`DangerSoft`, Y 0,761 no Sunstone. Painel tokens (a6eb6c8a24): cores de dado `input-map-*`/`preview-*` na família
+recolhida «Input Map», altura 2197→2043; o degrau 2012→2043 é uma fileira de cromo `danger-press` (31 px; sonda
+dobrada = 2012).
+
+**14.6 Shell** (ec4d560a95). O Gap Closure pela roda → `ph2d_app_flip::gap_live::gap_wheel`. `input_dispatch.rs`
+599 → 570 (shell −27, +11 do item 3 = −16 líquido sobre a base da onda).
+
+**14.7 Trackpad** (26d43a035d). `DocumentSurface::wheel_sideways` (default `false`, aditivo, `doc_surface.rs`);
+`board_view`/`surface_input` mandam dy à roda de sempre e dx só a `wheel_sideways` (cada eixo uma vez). Cura a
+regressão da onda 2: Sprite, SFX, Planner, zonas do Code/Kanban que ignoram Shift e a List do Input Map rolavam na
+vertical com o swipe de lado; o diagonal perdia o dy. Só o Input Map (Keyboard, Try it) implementa. Testes
+`onda3_trackpad.rs` (4).
+**Aberto (escolha, não regressão):** Code/Kanban/grelha da física sem swipe lateral.
+
+**Tectos:** `ph2d-app-input-map` 449/449 e `ph2d-tokens/src/color.rs` 700/700, por comentários encurtados (c6bcd5b484).

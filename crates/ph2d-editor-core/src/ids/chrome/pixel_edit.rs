@@ -4,7 +4,7 @@
 //! ⚠️ APPEND-ONLY: um id é o hash de uma STRING.
 
 use super::super::hash_node_id;
-use crate::pixel_panel::{PixelModifyBrush, PixelSizeMethod};
+use crate::pixel_panel::{PixelModifyBrush, PixelSizeMethod, PixelTweenEase};
 use ph2d_a11y::NodeId;
 
 pub const PIXEL_EDIT_OK: NodeId = hash_node_id("pixel.edit_dialog.ok");
@@ -136,6 +136,34 @@ pub const PIXEL_EDIT_METHODS: [(PixelSizeMethod, NodeId, &str); 3] = [
     ),
 ];
 
+/// Tween…: os quadros do meio e a rotação total (°).
+pub const PIXEL_EDIT_TWEEN_FRAMES: NodeId = hash_node_id("pixel.edit_dialog.tween_frames");
+pub const PIXEL_EDIT_TWEEN_ROTATE: NodeId = hash_node_id("pixel.edit_dialog.tween_rotate");
+
+/// Tween…: o Ease.
+pub const PIXEL_EDIT_TWEEN_EASES: [(PixelTweenEase, NodeId, &str); 4] = [
+    (
+        PixelTweenEase::Linear,
+        hash_node_id("pixel.tween.ease.linear"),
+        "pixel.tween.ease.linear",
+    ),
+    (
+        PixelTweenEase::In,
+        hash_node_id("pixel.tween.ease.in"),
+        "pixel.tween.ease.in",
+    ),
+    (
+        PixelTweenEase::Out,
+        hash_node_id("pixel.tween.ease.out"),
+        "pixel.tween.ease.out",
+    ),
+    (
+        PixelTweenEase::InOut,
+        hash_node_id("pixel.tween.ease.in_out"),
+        "pixel.tween.ease.in_out",
+    ),
+];
+
 /// O `id` é um controlo de um dos diálogos do Pixel P6? (Um clique nele não fecha o diálogo.)
 #[must_use]
 pub fn pixel_edit_dialog_owns(id: NodeId) -> bool {
@@ -146,6 +174,9 @@ pub fn pixel_edit_dialog_owns(id: NodeId) -> bool {
         || PIXEL_EDIT_ANCHORS.iter().any(|(_, b, _)| *b == id)
         || PIXEL_EDIT_BRUSHES.iter().any(|(_, b, _)| *b == id)
         || PIXEL_EDIT_METHODS.iter().any(|(_, b, _)| *b == id)
+        || id == PIXEL_EDIT_TWEEN_FRAMES
+        || id == PIXEL_EDIT_TWEEN_ROTATE
+        || PIXEL_EDIT_TWEEN_EASES.iter().any(|(_, b, _)| *b == id)
         || id == super::PIXEL_FILTER_MEDIAN_W
         || id == super::PIXEL_FILTER_MEDIAN_H
         || id == super::PIXEL_FILTER_CURVE

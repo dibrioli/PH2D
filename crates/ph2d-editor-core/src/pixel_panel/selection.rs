@@ -248,6 +248,18 @@ pub enum PixelDialogKind {
     HueSaturation,
     ColorCurve,
     ConvolutionMatrix,
+    /// P13 T: Timeline ▸ cels ▸ Tween… (Frames · Ease · Rotate °).
+    Tween,
+}
+
+/// O Ease do Tween… (`ph2d-pixel-tween::Facilidade`, a família cúbica do `ph2d-ease`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PixelTweenEase {
+    #[default]
+    Linear,
+    In,
+    Out,
+    InOut,
 }
 
 impl PixelDialogKind {
@@ -347,6 +359,12 @@ pub enum PixelDialogChoice {
         /// O alvo «All» (todos os quadros e camadas); `false` = o cel activo.
         all: bool,
     },
+    /// P13 T: `frames` quadros do meio, o Ease e a rotação total em graus (anti-horário).
+    Tween {
+        frames: u32,
+        ease: PixelTweenEase,
+        rotate: i32,
+    },
 }
 
 impl PixelDialogChoice {
@@ -384,6 +402,8 @@ pub struct PixelEditDialog {
     pub modify_n: u32,
     /// P8: as escolhas dos diálogos de filtro.
     pub filter: super::PixelFilterDialog,
+    /// Tween…: o último Ease da sessão.
+    pub tween_ease: PixelTweenEase,
     pub(crate) request: Option<PixelDialogChoice>,
     /// O retângulo do sprite no ecrã `(x, y, w, h)` em px, que a família publica a cada quadro: os
     /// diálogos de filtro encostam-se onde o tapam menos ([`place_dialog`]).
@@ -460,6 +480,7 @@ impl Default for PixelEditDialog {
             tolerance: 0,
             modify_n: 1,
             filter: super::PixelFilterDialog::default(),
+            tween_ease: PixelTweenEase::Linear,
             request: None,
             avoid: None,
         }

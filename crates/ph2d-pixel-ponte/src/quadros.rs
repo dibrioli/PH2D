@@ -114,3 +114,35 @@ pub fn loop_section(s: &Sprite, a: usize, b: usize) -> Option<Op> {
         None => frames::new_tag(s, LOOP_TAG, a, b),
     }
 }
+
+/// **Cel ▸ Tween…** (P13 T): A e B = o primeiro e o último quadro do intervalo; sem intervalo, o
+/// activo e o seguinte. O Ease do chrome vira a [`ph2d_pixel_tween::Facilidade`] (a curva entra
+/// por aqui: a família não depende do `ph2d-ease`).
+#[must_use]
+pub fn tween(
+    s: &mut Sprite,
+    layer: LayerId,
+    range: &[FrameId],
+    active: FrameId,
+    n: u32,
+    ease: ph2d_editor_core::pixel_panel::PixelTweenEase,
+    rotate: i32,
+) -> Option<Op> {
+    use ph2d_editor_core::pixel_panel::PixelTweenEase as E;
+    use ph2d_pixel_tween::Facilidade as F;
+    let idx = |f: &FrameId| s.frame_index(*f);
+    let (a, b) = match (
+        range.iter().min_by_key(|f| idx(f)),
+        range.iter().max_by_key(|f| idx(f)),
+    ) {
+        (Some(&a), Some(&b)) if a != b => (a, b),
+        _ => (active, s.frames().get(s.frame_index(active)? + 1)?.id),
+    };
+    let f = match ease {
+        E::Linear => F::Linear,
+        E::In => F::In,
+        E::Out => F::Out,
+        E::InOut => F::InOut,
+    };
+    ph2d_pixel_tween::tween(s, layer, a, b, n, &|t| f.em(t), f64::from(rotate))
+}

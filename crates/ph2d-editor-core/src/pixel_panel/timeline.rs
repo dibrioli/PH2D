@@ -123,6 +123,8 @@ pub enum PixelFrameAction {
     PlayPreview,
     /// F7 (*View ▸ Preview*): abre / fecha a janela Preview.
     Preview,
+    /// P13 T: Cel ▸ Tween… — abre o diálogo dos quadros do meio entre os dois cels escolhidos.
+    Tween,
 }
 
 /// *Playback Speed* (o menu do botão Play do Aseprite).

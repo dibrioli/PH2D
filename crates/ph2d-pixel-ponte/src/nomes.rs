@@ -2,11 +2,11 @@
 //! chama. A fonte da palavra é a do comando nos atalhos (`pixel.keys.*`) ou o título do diálogo
 //! quando existem; `pixel.history.*` só para o que não tem nome noutro sítio.
 
+use ph2d_editor_core::pixel_panel::PixelLayerEffect;
 use ph2d_editor_core::pixel_panel::{
     PixelDialogChoice, PixelEditAction as E, PixelFrameAction as F, PixelLayerAction, PixelRequest,
     PixelSpriteAction as Sp,
 };
-use ph2d_editor_core::pixel_panel::PixelLayerEffect;
 
 /// O nome de um passo do menu Edit: o do comando nos atalhos (`pixel.keys.*`) quando lá está.
 pub const fn nome_edit(a: E) -> &'static str {
@@ -43,6 +43,7 @@ pub const fn nome_dialogo(c: PixelDialogChoice) -> &'static str {
     match c {
         PixelDialogChoice::CanvasSize { .. } => "pixel.keys.sprite.canvas_size",
         PixelDialogChoice::SpriteSize { .. } => "pixel.keys.sprite.sprite_size",
+        PixelDialogChoice::Tween { .. } => "pixel.tween.title",
         PixelDialogChoice::Invert { .. } => "pixel.filter_dialog.invert.title",
         PixelDialogChoice::Despeckle { .. } => "pixel.history.despeckle",
         PixelDialogChoice::Outline { .. } => "pixel.filter_dialog.outline.title",
@@ -65,7 +66,9 @@ pub const fn nome_camada(r: &PixelRequest) -> &'static str {
         PixelRequest::LayerVisible(_) | PixelRequest::LayerSolo(_) => "pixel.keys.layer.visibility",
         PixelRequest::LayerRename { .. } => "pixel.keys.layer.rename",
         PixelRequest::LayerNormal(_) => "pixel.history.layer_normal",
-        PixelRequest::LayerEffect(_, PixelLayerEffect::Apply) => "pixel.history.layer_effects_apply",
+        PixelRequest::LayerEffect(_, PixelLayerEffect::Apply) => {
+            "pixel.history.layer_effects_apply"
+        }
         PixelRequest::LayerEffect(..) => "pixel.history.layer_effects",
         PixelRequest::LayerAction(a) => match a {
             A::NewLayer => "pixel.keys.layer.new",
@@ -101,6 +104,7 @@ pub const fn nome_quadro(a: F) -> &'static str {
         F::Unlink => "pixel.history.unlink_cels",
         F::NewTag => "pixel.history.new_tag",
         F::LoopSection => "pixel.keys.frame.loop_section",
+        F::Tween => "pixel.tween.title",
         _ => "pixel.history.move_frame",
     }
 }

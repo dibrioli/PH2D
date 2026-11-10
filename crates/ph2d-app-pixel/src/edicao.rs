@@ -293,6 +293,19 @@ impl PixelApp {
         if crate::filtros::aplica(self, key, c) {
             return;
         }
+        if let PixelDialogChoice::Tween {
+            frames,
+            ease,
+            rotate,
+        } = c
+            && let Some(d) = self.docs.get_mut(&key)
+        {
+            let r = d.range_frames();
+            let (s, l, f) = (&mut d.sprite, d.layer, d.frame);
+            let op = ph2d_pixel_ponte::quadros::tween(s, l, &r, f, frames, ease, rotate);
+            self.passo_nomeado(key, op, ph2d_pixel_ponte::nomes::nome_dialogo(c));
+            return;
+        }
         let fg = self.fg;
         let Some(doc) = self.docs.get(&key) else {
             return;
@@ -339,7 +352,8 @@ impl PixelApp {
             | PixelDialogChoice::BrightnessContrast { .. }
             | PixelDialogChoice::HueSaturation { .. }
             | PixelDialogChoice::ColorCurve { .. }
-            | PixelDialogChoice::Convolution { .. } => None,
+            | PixelDialogChoice::Convolution { .. }
+            | PixelDialogChoice::Tween { .. } => None,
         };
         self.passo_nomeado(key, op, ph2d_pixel_ponte::nomes::nome_dialogo(c));
     }

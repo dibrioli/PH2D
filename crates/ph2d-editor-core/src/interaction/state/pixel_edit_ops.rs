@@ -89,6 +89,11 @@ impl WidgetStore {
                 (ids::PIXEL_EDIT_SPRITE_WPCT, 100.0, plo, phi), // LITERAL-PX-OK: 100 % = o tamanho ao abrir
                 (ids::PIXEL_EDIT_SPRITE_HPCT, 100.0, plo, phi), // LITERAL-PX-OK: 100 % = o tamanho ao abrir
             ],
+            // Tween…: 1 quadro do meio; o teto é o WORD de quadros do `.ase`; ±1 volta e meia.
+            PixelDialogKind::Tween => &[
+                (ids::PIXEL_EDIT_TWEEN_FRAMES, 1.0, 1.0, f64::from(u16::MAX)),
+                (ids::PIXEL_EDIT_TWEEN_ROTATE, 0.0, -360.0, 360.0), // LITERAL-PX-OK: graus, domínio do documento
+            ],
         };
         for &(id, v, lo, hi) in fields {
             self.register(
@@ -108,7 +113,8 @@ impl WidgetStore {
         }
         let anchors = ids::PIXEL_EDIT_ANCHORS.iter().map(|(_, id, _)| *id);
         let brushes = ids::PIXEL_EDIT_BRUSHES.iter().map(|(_, id, _)| *id);
-        let methods = ids::PIXEL_EDIT_METHODS.iter().map(|(_, id, _)| *id);
+        let methods = (ids::PIXEL_EDIT_METHODS.iter().map(|(_, id, _)| *id))
+            .chain(ids::PIXEL_EDIT_TWEEN_EASES.iter().map(|(_, id, _)| *id));
         let ends = [
             ids::PIXEL_EDIT_OK,
             ids::PIXEL_EDIT_CANCEL,
@@ -161,6 +167,11 @@ impl WidgetStore {
 
     pub fn set_pixel_edit_method(&mut self, m: PixelSizeMethod) {
         self.pixel.edit.method = m;
+    }
+
+    /// Tween…: o Ease escolhido.
+    pub fn set_pixel_edit_tween_ease(&mut self, e: crate::pixel_panel::PixelTweenEase) {
+        self.pixel.edit.tween_ease = e;
     }
 
     /// Sprite Size: liga/desliga o Lock Ratio; ao ligar, a altura segue a largura (Aseprite).
@@ -278,6 +289,13 @@ impl WidgetStore {
                     method: d.method,
                 }
             }
+            PixelDialogKind::Tween => PixelDialogChoice::Tween {
+                frames: u32::try_from(self.int_field(ids::PIXEL_EDIT_TWEEN_FRAMES, 1, 65_535))
+                    .unwrap_or(1),
+                ease: d.tween_ease,
+                rotate: i32::try_from(self.int_field(ids::PIXEL_EDIT_TWEEN_ROTATE, -360, 360))
+                    .unwrap_or(0),
+            },
         };
         self.pixel.edit.request = Some(choice);
         self.close_context_menu();

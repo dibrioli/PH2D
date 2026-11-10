@@ -68,7 +68,7 @@ pub const TOGGLES: [(A, NodeId, &str); 2] = [
 /// O menu Frame (e o do Cel e das Tags) na barra, em ícones compactos com a dica do nome do
 /// Aseprite: a acção, o id, o ícone e a chave da dica. ⚠️ Ícones e não palavras: a banda de fábrica
 /// tem 240 px, e dez palavras ocupavam duas linhas dela (smoke da cena 8, 25/10).
-pub const ACTIONS: [(A, NodeId, IconId, &str); 13] = [
+pub const ACTIONS: [(A, NodeId, IconId, &str); 14] = [
     (
         A::NewFrame,
         hash_node_id("pixel_timeline.new_frame"),
@@ -147,11 +147,19 @@ pub const ACTIONS: [(A, NodeId, IconId, &str); 13] = [
         IconId::RotateCw,
         "panel.pixel.timeline.loop_section",
     ),
+    // P13 T: Cel ▸ Tween… (os dois cels do intervalo, na camada activa).
+    (
+        A::Tween,
+        hash_node_id("pixel_timeline.tween"),
+        IconId::CardInterpCubic,
+        "panel.pixel.timeline.tween",
+    ),
 ];
 
 /// Os grupos da barra de acções (índices em [`ACTIONS`]): criar · apagar · mover · ligar · tag
 /// (nova, ir ao início / ao fim dela, *Set Loop Section*).
-pub const ACTION_GROUPS: [&[usize]; 5] = [&[0, 1, 2], &[3], &[4, 5, 6], &[7, 8], &[9, 10, 11, 12]];
+pub const ACTION_GROUPS: [&[usize]; 5] =
+    [&[0, 1, 2], &[3], &[4, 5, 6], &[7, 8, 13], &[9, 10, 11, 12]];
 
 /// O cabeçalho do frame `frame` (o id estável do frame; a população é a linha do tempo).
 #[must_use]

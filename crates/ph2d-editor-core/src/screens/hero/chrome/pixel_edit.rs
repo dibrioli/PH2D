@@ -49,6 +49,13 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.store.set_pixel_edit_method(m);
         return true;
     }
+    if let Some(&(e, ..)) = ids::PIXEL_EDIT_TWEEN_EASES
+        .iter()
+        .find(|(_, x, _)| *x == id)
+    {
+        hero.store.set_pixel_edit_tween_ease(e);
+        return true;
+    }
     filter_click(hero, id)
 }
 

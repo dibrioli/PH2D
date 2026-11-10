@@ -50,6 +50,8 @@ const fn rows_of(kind: PixelDialogKind) -> usize {
         PixelDialogKind::ColorCurve => 4 + CURVE_ROWS,
         // Título · Kernel (dropdown) · Tiled · canais · Preview · botões.
         PixelDialogKind::ConvolutionMatrix => 6,
+        // Título · Frames · Rotate · rótulo do Ease · 4 eases · botões.
+        PixelDialogKind::Tween => 9,
     }
 }
 
@@ -176,6 +178,7 @@ fn corpo(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y: f32) 
         PixelDialogKind::HueSaturation => "pixel.filter_dialog.hue_saturation.title",
         PixelDialogKind::ColorCurve => "pixel.filter_dialog.curve.title",
         PixelDialogKind::ConvolutionMatrix => "pixel.filter_dialog.convolution.title",
+        PixelDialogKind::Tween => "pixel.tween.title",
     };
     y = c.label(title, y, ColorToken::Text1);
     match d.kind {
@@ -254,6 +257,19 @@ fn corpo(c: &mut Caixa<'_>, d: crate::pixel_panel::PixelEditDialog, mut y: f32) 
             y = c.label("pixel.edit_dialog.interpolation", y, ColorToken::Text3);
             for (m, id, k) in ids::PIXEL_EDIT_METHODS {
                 y = c.choices(&[(id, tr(k), m == d.method)], y);
+            }
+        }
+        PixelDialogKind::Tween => {
+            y = c.fields(
+                &[
+                    ("pixel.tween.frames", ids::PIXEL_EDIT_TWEEN_FRAMES, None),
+                    ("pixel.tween.rotate", ids::PIXEL_EDIT_TWEEN_ROTATE, None),
+                ],
+                y,
+            );
+            y = c.label("pixel.tween.ease", y, ColorToken::Text3);
+            for (e, id, k) in ids::PIXEL_EDIT_TWEEN_EASES {
+                y = c.choices(&[(id, tr(k), e == d.tween_ease)], y);
             }
         }
         k if k.is_filter() => {

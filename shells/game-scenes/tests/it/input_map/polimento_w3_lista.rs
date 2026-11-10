@@ -273,3 +273,75 @@ fn nenhum_texto_cortado_com_o_x_a_vista_nas_areas_reais() {
         }
     });
 }
+
+/// Dono 10/11 («o botão fechar deve ter mais destaque»): o × é um emblema redondo DENTRO do chip — neutro forte em
+/// repouso, o perigo pairado, o perigo suave premido —, e nenhum estado mexe o alvo nem a face.
+#[test]
+fn o_x_do_chip_e_um_emblema_que_se_acende_no_perigo() {
+    use ph2d_tokens::ColorToken;
+    let (mut m, k, _) = mesa();
+    let x = ListHit::RemoveBinding(k, 0).id();
+    let chip_id = ListHit::Chip(k, 0).id();
+    let chip = m.tab().doc.rect_of(chip_id).expect("o chip");
+    let chip_esq = (chip.x + 2.0, chip.y + chip.h * 0.5); // LITERAL-PX-OK: a borda esquerda do chip
+    let face = |m: &Mesa| {
+        let b = &m.tab().doc.census.badges;
+        let [(id, r)] = b.as_slice() else {
+            panic!("um só emblema à vista: {b:?}");
+        };
+        assert_eq!(*id, x);
+        *r
+    };
+    m.hover(chip_esq);
+    let rest = look(&m, x).expect("o × à vista com o chip pairado");
+    let f = face(&m);
+    assert!(
+        f.x >= chip.x
+            && f.y >= chip.y
+            && f.x + f.w <= chip.x + chip.w
+            && f.y + f.h <= chip.y + chip.h,
+        "o emblema mora dentro do chip: {f:?} em {chip:?}"
+    );
+    assert!(
+        (f.w - f.h).abs() < 0.01 && f.w < rest.rect.w,
+        "redondo e menor que o alvo"
+    );
+    assert!(rest.rect.w >= 24.0 && rest.rect.h >= 24.0); // LITERAL-PX-OK: o alvo mínimo
+    assert_eq!(
+        rest.fill,
+        Some(ColorToken::BorderStrong),
+        "repouso: neutro forte"
+    );
+    assert_eq!(rest.ink, ColorToken::Text1);
+    let at = m.at(x);
+    m.hover(at);
+    let hover = look(&m, x).expect("pairado");
+    assert_eq!(hover.fill, Some(ColorToken::Danger), "pairado: o perigo");
+    assert_eq!(
+        hover.ink,
+        ColorToken::AccentFg,
+        "a tinta clara de quem se enche"
+    );
+    m.down(at);
+    let press = look(&m, x).expect("premido");
+    assert_eq!(
+        press.fill,
+        Some(ColorToken::DangerSoft),
+        "premido: o perigo suave"
+    );
+    assert!(
+        rest.fill != hover.fill && hover.fill != press.fill && rest.fill != press.fill,
+        "três fundos"
+    );
+    assert!(
+        rest.rect == hover.rect && hover.rect == press.rect,
+        "o alvo não mexe"
+    );
+    assert_eq!(face(&m), f, "a face não mexe");
+    assert_eq!(m.tab().doc.rect_of(chip_id), Some(chip), "o chip não mexe");
+    m.up(chip_esq);
+    assert!(
+        m.tab_mut().doc.take_pending().is_empty(),
+        "o Up fora cancela"
+    );
+}

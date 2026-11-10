@@ -72,9 +72,32 @@ pub(super) struct IconButton {
     /// A face redonda que o estado enche.
     pub face: Rect,
     pub icon: IconId,
-    pub hover_fill: ColorToken,
+    pub tone: Tone,
     pub label: String,
     pub shown: bool,
+}
+
+/// Como a face de um botão de ícone se enche por estado.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Tone {
+    /// Sem face em repouso; pairado enche-se deste tom; premido, do acento suave.
+    Plain(ColorToken),
+    /// Um emblema redondo que apaga (o × do chip, dono 10/11: «mais destaque»): em repouso o neutro forte com o
+    /// ícone claro; pairado o perigo com a tinta de quem se enche (a do botão Danger); premido o perigo suave.
+    Destructive,
+}
+
+impl Tone {
+    fn look(self, state: State) -> (Option<ColorToken>, ColorToken) {
+        match (self, state) {
+            (Self::Plain(_), State::Rest) => (None, ColorToken::Text2),
+            (Self::Plain(f), State::Hover) => (Some(f), ColorToken::Text1),
+            (Self::Plain(_), State::Press) => (Some(ColorToken::AccentSoft), ColorToken::Text1),
+            (Self::Destructive, State::Rest) => (Some(ColorToken::BorderStrong), ColorToken::Text1),
+            (Self::Destructive, State::Hover) => (Some(ColorToken::Danger), ColorToken::AccentFg),
+            (Self::Destructive, State::Press) => (Some(ColorToken::DangerSoft), ColorToken::Text1),
+        }
+    }
 }
 
 /// Pinta um botão de ícone: o alvo regista-se sempre — só se chega a ele com o ponteiro na linha, que o mostra, ou
@@ -90,7 +113,7 @@ pub(super) fn icon_button(
         hit,
         face,
         icon,
-        hover_fill,
+        tone,
         label,
         shown,
     } = b;
@@ -98,13 +121,12 @@ pub(super) fn icon_button(
     if !shown {
         return;
     }
-    let (fill, tint) = match doc.state_of(id) {
-        State::Rest => (None, ColorToken::Text2),
-        State::Hover => (Some(hover_fill), ColorToken::Text1),
-        State::Press => (Some(ColorToken::AccentSoft), ColorToken::Text1),
-    };
+    let (fill, tint) = tone.look(doc.state_of(id));
     if let Some(f) = fill {
         fill_rounded_rect(scene, face, face.w.min(face.h) * 0.5, ink.color(f));
+    }
+    if tone == Tone::Destructive {
+        doc.census.badges.push((id, face));
     }
     let g = m::KEY_MARK_BOX;
     let gl = Rect::new(

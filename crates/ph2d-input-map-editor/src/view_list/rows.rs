@@ -15,7 +15,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
 
-use super::looks::{self, ICON_HIT, IconButton, State};
+use super::looks::{self, ICON_HIT, IconButton, State, Tone};
 use super::{foot, footer, text};
 use crate::census::ControlLook;
 use crate::doc::InputMapDoc;
@@ -297,7 +297,7 @@ fn paint_row(
             hit,
             face: looks::face_in(hit, m::KEY_MARK_BOX + m::SEG_PAD * 2.0),
             icon: IconId::Close,
-            hover_fill: ColorToken::Border,
+            tone: Tone::Destructive,
             label,
             shown,
         };
@@ -312,7 +312,7 @@ fn paint_row(
         hit,
         face: hit,
         icon: IconId::Trash,
-        hover_fill: ColorToken::CardFieldHover,
+        tone: Tone::Plain(ColorToken::CardFieldHover),
         label: tr("input_map_list.remove_action_tip").to_owned(),
         shown: active,
     };
@@ -470,7 +470,7 @@ fn paint_plus(
         hit,
         face: hit,
         icon: IconId::Plus,
-        hover_fill: ColorToken::CardFieldHover,
+        tone: Tone::Plain(ColorToken::CardFieldHover),
         label: tr("input_map_list.add_key_tip").to_owned(),
         shown: visible,
     };

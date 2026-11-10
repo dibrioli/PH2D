@@ -38,6 +38,13 @@
 | onda 2 | B14a-cont | parcial (03510a42ef): medido no app (2880²): 12,0→0,8 img/s, óptica 60→953 ms; a caixa mudada é 0,92 da união (faixas anteriores seguem vivas). Falta a óptica por várias caixas (caixa_do_passo.rs, composite_otica.rs). |
 | onda 2 | B16a+B16.9 | parcial (7c4bd3cc7a): B16.9: pen-down repõe o NaN do substrato só na caixa preenchida (4K, 3 camadas 1152,8→1132,4 ms); B16.A2: chão uniforme guardado por cor e tamanho. Gates red→green. Falta partir apply_watercolor_inner e B16.2. |
 | onda 2 | verificação | verde |
+| onda 3 | B02-cont2 | feito (0c4c98f0dd): B02.A3 cont2: o mudou vem só da caixa que a óptica reescreve; wet_congela reusa a congelada; base em par_chunks_mut. Visitas 77 473 → 12 100; paridade ao bit; mutação vermelha. |
+| onda 3 | B23-cont2 | feito (1c8b183d14): régua anterior errada (o salta apresentava). Cura: acorda dá SEM_PRESENT (16,67 ms). Oculta: CPU 97–100 % → 44–46 %, 60 q/s; gate 250 → 60; shell −1. B23.6 aberto: winit sem Occluded no Wayland. |
+| onda 3 | B10c | parcial (e8dc100b53): B10.5: leitura só pela caixa depois do 2.º traço, nos 4 meios; pixel_clock na chave; 2 mutações vermelhas. Falta medir a sonda em ms, o Ctrl+Z do Impasto e partir compoe_a_saida. |
+| onda 3 | B16-cont2 | parcial (3a8b2654c7): B16.2: pen-up da aguada 4K 48,48 → 1,95 ms (−96 %), texels 4 657 444 → 48 884. Falta curar o dono do halo (style_at) com prancha e alarmes, e tirar o guarda de estilo uniforme. |
+| onda 3 | B14-cont2 | parcial (52db80f6cd): só medição: óptica 59 → 457 ms por faixa viva; margem não é a causa (85–88 % das células mudam ao bit, 18 % em u8); limiar recusado. Falta B14.2 (luz simplificada no gesto) e listas de faixas. |
+| onda 3 | B15-cont | feito (38cd706fcd): B15.A1: box_blur do settle com 1 buffer, ladrilhos 64×64, ao bit; sonda 4K r4 30,7–43,5 → 13,8–22,2 ms. Planos 34,7 → 18,7 ms; dobra do Ctrl+Z 12,3 → 9,9 ms. Resta o undo não confinado. |
+| onda 3 | verificação | verde |
 
 ## Fatos medidos que mudam a ordem
 

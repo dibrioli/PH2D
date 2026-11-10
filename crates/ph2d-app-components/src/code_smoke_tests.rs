@@ -134,7 +134,7 @@ fn a_cena_6_e_um_jogo_que_responde_ao_teclado_e_ao_rato() {
     for n in 0..260u64 {
         // O caminho do APP: os eventos no estado de entrada, a porta entrega e limpa.
         let onde = piloto(&mut entrada, n);
-        crate::script_input::frame(Some(&host), &mut entrada, Some(onde));
+        crate::script_input::frame(Some(&host), &mut entrada, Some(onde), None);
         let antes = copias(&mut sim);
         let mut portas = crate::script_bridge::ScriptDoors {
             registry: &reg,

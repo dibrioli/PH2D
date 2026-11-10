@@ -98,9 +98,11 @@ impl App {
     }
 
     /// Os dispositivos dos scripts (CodeEditor item 6) — a porta é a da família; daqui só sai o
-    /// ponto do mundo sob o rato, pela janela da CENA (a mesma do cursor do Motion).
+    /// ponto do mundo sob o rato, pela janela da CENA (a mesma do cursor do Motion). ⚠️ As acções:
+    /// o MESMO mapa e `input_actions` do `resolve_player_input` (`fase_pointer_subjects`, antes).
     pub(crate) fn push_input_to_script(&mut self) {
         let gfx = self.gfx.as_ref();
+        let hero = gfx.and_then(|g| g.hero_screen.as_ref());
         let rato = gfx.and_then(|g| {
             let h = g.hero_screen.as_ref()?;
             let janela = crate::scene_mapping::janela(h.view.center_split, g.surface.size());
@@ -111,6 +113,7 @@ impl App {
             )
         });
         let host = gfx.and_then(|g| g.script.as_ref());
-        ph2d_app_components::script_input::frame(host, &mut self.input, rato);
+        let actions = hero.map(|h| (&h.input_map, &self.input_actions));
+        ph2d_app_components::script_input::frame(host, &mut self.input, rato, actions);
     }
 }

@@ -6,6 +6,104 @@
 # (mede_pen_up_4k.py) olha só o segundo depois de cada Up. Saída: target/mede-pen-up/<rotulo>.{log,perf,ups,png}.
 R="$(cd "$(dirname "$0")/../../.." && pwd)"
 S=${SAIDA:-$R/target/mede-pen-up}; mkdir -p "$S"
+
+# ── MATRIZ (10/11, missão 4K, medição «antes»/«depois») ──────────────────────────────────────────────────────────
+# uso: bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/mede_pen_up_4k.sh matriz <WxH> <papel|blocos> [binario]
+#      [pincel:painel …]   (sem pincéis = a lista PINCEIS abaixo; «omissão:<painel>» = o pincel de fábrica do painel;
+#      «Composite Brush:digital» = a pilha da cena, PH2D_COMPOSITE_PILHA=1)
+# Um lançamento por pincel, SEM perf; cada quadro com PH2D_QUADRO_LENTO_MS=0 (relógio de parede). Roteiro por fases:
+# parado 3 s (CPU de /proc/<pid>/stat) · toque (mousedown parado 0,4 s) · traço (125 eventos × 8 ms ≈ 1 s, 400 px) ·
+# soltar · 3 s (Wet: imagens/s) · Ctrl+Z · parado 3 s. `blocos` = a imagem da cena (degradê, grelha, discos), que o
+# roteador só monta a 1024² (sem PH2D_COMPOSITE_PAPEL a tela ignora PH2D_COMPOSITE_TELA). `papel` = Textured Paper,
+# relief 0,5 do papel do dono. Saída: $S/matriz/<rotulo>.{log,marcas,meta}; resumo: mede_pen_up_4k.py --matriz $S/matriz.
+if [ "$1" = matriz ]; then
+  TELA=$2; FUNDO=$3; BIN=${4:-$R/target/smoke/ph2d-host-desktop}; shift 4 2>/dev/null || shift $#
+  PINCEIS=("omissão:digital" "omissão:water" "omissão:impasto" "omissão:wet" "Round Mixing:digital"
+    "Wet Wash Mix:digital" "Wet Liner:wet" "Watercolor Basic:water" "Pastel:digital" "Chalk:digital" "Crayon:digital"
+    "Finger Tip:digital" "Filbert:wet" "Express Oil:wet" "Composite Brush:digital")
+  [ $# -gt 0 ] && PINCEIS=("$@")
+  M=$S/matriz; mkdir -p "$M"; D=${DISPLAY_MATRIZ:-:97}
+  # A PLACA: o app pede HighPerformance = a RTX (medido 10/11: 959 MiB no nvidia-smi sob Xvfb), PROIBIDA na missão
+  # 4K. Só o Vulkan da Radeon integrada (RADV) e o GL do Mesa ficam visíveis; sem DRI3 no Xvfb, o RADV apresenta pelo
+  # caminho de software do WSI (MESA_VK_WSI_DEBUG=sw). `PLACA=app` devolve a escolha do app (fora da missão).
+  PLACA_ENV=(VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.json VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
+    MESA_VK_WSI_DEBUG=sw __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
+  [ "$PLACA" = app ] && PLACA_ENV=()
+  Xvfb $D -screen 0 1600x1000x24 >/dev/null 2>&1 & XV=$!
+  sleep 1
+  cd "$R"
+  for pp in "${PINCEIS[@]}"; do
+    PIN=${pp%%:*}; PAINEL=${pp##*:}
+    TAG="$(echo "${PIN}_${PAINEL}_${TELA}_${FUNDO}" | tr ' ' '-' | tr -cd 'A-Za-z0-9_.-')"
+    EXTRA=(PH2D_COMPOSITE_PILHA=0)
+    [ "$PIN" = "Composite Brush" ] && EXTRA=(PH2D_COMPOSITE_PILHA=1)
+    [ "$PIN" != omissão ] && [ "$PIN" != "Composite Brush" ] && EXTRA+=("PH2D_COMPOSITE_PRESET=$PIN")
+    if [ "$FUNDO" = papel ]; then EXTRA+=(PH2D_COMPOSITE_PAPEL=1 "PH2D_COMPOSITE_TELA=$TELA"); else TELA_REAL=1024x1024; fi
+    printf '{"pincel":"%s","painel":"%s","tela":"%s","fundo":"%s","carga":"%s"}\n' "$PIN" "$PAINEL" "${TELA_REAL:-$TELA}" \
+      "$FUNDO" "$(cut -d' ' -f1-3 /proc/loadavg)" > "$M/$TAG.meta"
+    : > "$M/$TAG.marcas"
+    env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$M/home_$TAG PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PAINEL=$PAINEL \
+      PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=0 PH2D_EXIT_AFTER_FRAMES=1000000 "${PLACA_ENV[@]}" "${EXTRA[@]}" "$BIN" \
+      > "$M/$TAG.log" 2>&1 &
+    APP=$!
+    marca() { echo "$1 $(date +%s%N) $(awk '{print $14+$15}' /proc/$APP/stat 2>/dev/null)" >> "$M/$TAG.marcas"; }
+    WIN=
+    for _ in $(seq 1 120); do
+      grep -q "pilha armada" "$M/$TAG.log" && WIN=$(DISPLAY=$D xdotool search --pid $APP 2>/dev/null | tail -1)
+      [ -n "$WIN" ] && break; sleep 0.5
+    done
+    echo "[matriz] $TAG app $APP win ${WIN:-NENHUMA}"
+    if [ -n "$WIN" ]; then
+      # A placa que o app abriu (as bibliotecas do driver no mapa do processo): sob Xvfb não há DRI3.
+      grep -oE '[^/ ]*(nvidia|radeon|swrast|llvmpipe|lvp|gallium|dri)[^/ ]*\.so[^ ]*' /proc/$APP/maps | sort -u \
+        | tr '\n' ' ' > "$M/$TAG.placa"
+      DISPLAY=$D xdotool windowsize $WIN 1600 1000 windowmove $WIN 0 0 2>/dev/null; sleep 4
+      # Sem gestor de janelas o teclado não segue o rato: sem o foco, o Ctrl+Z não chega (medido 10/11, a foto).
+      DISPLAY=$D xdotool windowfocus --sync $WIN 2>/dev/null
+      marca parado0_ini; sleep 3; marca parado0_fim
+      DISPLAY=$D xdotool mousemove 560 460; sleep 0.3
+      marca down; DISPLAY=$D xdotool mousedown 1; sleep 0.4
+      cmd=""; for i in $(seq 1 125); do
+        cmd="$cmd mousemove $((560 + i * 32 / 10)) $(awk -v i=$i 'BEGIN{printf "%d", 460+50*sin(i*0.05)}') sleep 0.008"
+      done
+      marca traco_ini; DISPLAY=$D xdotool $cmd; marca traco_fim
+      marca up; DISPLAY=$D xdotool mouseup 1; sleep 3; marca wet_fim
+      marca ctrlz; DISPLAY=$D xdotool key ctrl+z; sleep 1.5; marca ctrlz_fim
+      marca parado1_ini; sleep 3; marca parado1_fim
+      [ -n "$PNG" ] && DISPLAY=$D import -window root "$M/$TAG.png" 2>/dev/null
+    fi
+    kill -INT $APP 2>/dev/null
+    for _ in $(seq 1 40); do kill -0 $APP 2>/dev/null || break; sleep 0.25; done
+    kill -KILL $APP 2>/dev/null; wait $APP 2>/dev/null
+  done
+  kill $XV
+  echo "[matriz] feito: $M"
+  exit 0
+fi
+
+# ── ÓLEO (10/11): o Real Oil não tem porta na cena Composite; mede-se pela cena do FPS (PH2D_WETPAINT_SMOKE=3, o app
+# risca sozinho: Dabber com Real Oil, seca, Wet Drip, corre; 6 rodadas; período e imagens da água por segundo).
+# uso: bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/mede_pen_up_4k.sh oleo <lado> [binario]
+#      (lado 2880 = os píxeis de 3840x2160; 1440 = os de 1920x1080). Mesma placa da matriz. Saída: $S/oleo_<lado>.log
+if [ "$1" = oleo ]; then
+  LADO=$2; BIN=${3:-$R/target/smoke/ph2d-host-desktop}; D=${DISPLAY_MATRIZ:-:97}
+  PLACA_ENV=(VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.json VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
+    MESA_VK_WSI_DEBUG=sw __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
+  Xvfb $D -screen 0 1600x1000x24 >/dev/null 2>&1 & XV=$!
+  sleep 1
+  cd "$R"
+  L=$S/oleo_$LADO.log
+  env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$S/home_oleo_$LADO PH2D_WETPAINT_SMOKE=3 PH2D_FPS_OLEO=1 PH2D_FPS_TELA=$LADO \
+    PH2D_EXIT_AFTER_FRAMES=1000000 "${PLACA_ENV[@]}" "$BIN" > "$L" 2>&1 &
+  APP=$!
+  for _ in $(seq 1 360); do grep -q "^\[fps\] ===" "$L" && break; kill -0 $APP 2>/dev/null || break; sleep 0.5; done
+  sleep 1; kill -INT $APP 2>/dev/null
+  for _ in $(seq 1 40); do kill -0 $APP 2>/dev/null || break; sleep 0.25; done
+  kill -KILL $APP 2>/dev/null; wait $APP 2>/dev/null; kill $XV
+  grep "^\[fps\]" "$L"
+  exit 0
+fi
+
 BIN=${1:-$R/target/smoke/ph2d-host-desktop}; TAG=${2:-x}; TELA=${3:-3840x2160}; PAINEL=${4:-wet}
 D=:94
 mono() { python3 -c 'import time;print(time.monotonic_ns())'; }

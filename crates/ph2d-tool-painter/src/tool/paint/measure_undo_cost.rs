@@ -361,3 +361,54 @@ fn is_it_the_brush_or_the_drain() {
         }
     }
 }
+
+/// **B17.5 — quanto um passo DIAGONAL retém, contra o que os tiles tocados reteriam** (3840×2160).
+///
+/// A janela declarada é a UNIÃO-retângulo do que se escreveu: um traço de canto a canto cobre a tela
+/// inteira e o `from_window` guarda o `Whole` (dois planos de 33 MB). Os tiles de 128² que o traço de
+/// facto toca são poucos; a sonda imprime os dois números — o «antes» do B17.5.
+#[test]
+#[ignore = "medicao — rode com --profile smoke --ignored"]
+fn what_a_diagonal_step_retains_at_4k() {
+    const W: u32 = 3840;
+    const H: u32 = 2160;
+    const T: u32 = crate::undo::journal::TILE as u32;
+    for impasto in [false, true] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (W * H * 4) as usize], W, H);
+        let mut b = t.paint.brush;
+        b.radius_px = 40.0;
+        b.strength = 1.0;
+        b.impasto = impasto;
+        t.paint.brush = b;
+        t.paint.brush_by_mode.fill(b);
+        stroke(&mut t, 40.0); // instala o histórico e o relevo da camada
+        let antes = t.undo.retained_bytes();
+        let n = 64u16;
+        let p = |k: u16| {
+            let f = f32::from(k) / f32::from(n);
+            [60.0 + f * (W as f32 - 120.0), 60.0 + f * (H as f32 - 120.0)]
+        };
+        t.on_canvas_pointer(super::measure_stroke_owners::cp(p(0), PointerPhase::Down));
+        let mut tiles = std::collections::BTreeSet::new();
+        for k in 1..=n {
+            let [x, y] = p(k);
+            t.on_canvas_pointer(super::measure_stroke_owners::cp([x, y], PointerPhase::Move));
+            let r = b.radius_px + 2.0;
+            for ty in ((y - r).max(0.0) as u32 / T)..=((y + r) as u32 / T).min((H - 1) / T) {
+                for tx in ((x - r).max(0.0) as u32 / T)..=((x + r) as u32 / T).min((W - 1) / T) {
+                    tiles.insert((tx, ty));
+                }
+            }
+        }
+        t.on_canvas_pointer(super::measure_stroke_owners::cp(p(n), PointerPhase::Up));
+        let passo = t.undo.retained_bytes() - antes;
+        let por_tiles = tiles.len() * (T * T * 4) as usize * 2;
+        eprintln!(
+            "impasto={impasto} passo retém {:.1} MB · {} tiles de {T}² tocados (canvas) = {:.1} MB nos dois lados",
+            passo as f64 / 1e6,
+            tiles.len(),
+            por_tiles as f64 / 1e6
+        );
+    }
+}

@@ -113,7 +113,7 @@ pub(crate) fn legend(ts: &mut TextSystem, key: Key, w: f32) -> Option<Legend> {
     })
     .or_else(|| {
         iso_icon(key)
-            .filter(|_| super::keys::ARROW_BOX + LEGEND_PAD * 2.0 <= w)
+            .filter(|_| m::VALUE_PX + LEGEND_PAD * 2.0 <= w)
             .map(Legend::Icon)
     })
 }

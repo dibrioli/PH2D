@@ -44,7 +44,7 @@ fn provas(m: &Mesa, at: &str) -> (f32, f32, f32) {
             margin = margin.min(t.0.x - r.x).min(r.x + r.w - t.0.x - t.0.w);
         } else {
             let icon = (c.icons.iter()).find(|(ir, _)| r.contains(ir.x + ir.w * 0.5, ir.y + ir.h * 0.5));
-            let ir = icon.unwrap_or_else(|| panic!("{at}: {} sem legenda", k.label())).0;
+            let ir = icon.unwrap_or_else(|| panic!("{at}: {} sem legenda em {r:?}; fit {:?}; textos perto: {:?}", k.label(), doc.kb.fit, c.texts.iter().filter(|t| (t.0.y - r.y).abs() < 40.0).map(|t| (t.1.clone(), t.0)).collect::<Vec<_>>())).0;
             assert!(ir.y + ir.h <= bars_top + 0.5, "{at}: as barras tapam o ícone de {}", k.label());
             margin = margin.min(ir.x - r.x).min(r.x + r.w - ir.x - ir.w);
         }

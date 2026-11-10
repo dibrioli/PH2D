@@ -361,7 +361,11 @@ fn paint_key(
     let legend = fit::legend(ts, key, kr.w).unwrap_or_else(|| fit::shortest(key));
     match legend {
         Legend::Icon(icon) => {
-            let s = ARROW_BOX.min(label_h);
+            // O ícone fica da altura da letra no mínimo e nunca encosta à aresta da tecla.
+            let s = ARROW_BOX
+                .min(label_h)
+                .min(kr.w - fit::LEGEND_PAD * 2.0)
+                .max(0.0);
             let ir = Rect::new(kr.x + (kr.w - s) * 0.5, kr.y + (label_h - s) * 0.5, s, s);
             paint_icon(scene, icon, ir, fg, StrokeToken::Default.px());
             doc.census.icons.push((ir, icon));

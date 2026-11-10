@@ -16,3 +16,13 @@ pub const DRAG: NodeId = hash_node_id("pixel_preview.drag");
 pub const RESIZE: NodeId = hash_node_id("pixel_preview.resize");
 /// A pega de redimensionar do canto de baixo à esquerda.
 pub const RESIZE_BL: NodeId = hash_node_id("pixel_preview.resize_bl");
+/// A caixa **CRT** (a vista de TV antiga; nunca o documento).
+pub const CRT: NodeId = hash_node_id("pixel_preview.crt");
+/// Os cinco números da CRT, na ordem do cartão: Scanlines, Mask, Curvature, Brightness, Bloom.
+pub const CRT_CAMPOS: [NodeId; 5] = [
+    hash_node_id("pixel_preview.crt.scanlines"),
+    hash_node_id("pixel_preview.crt.mask"),
+    hash_node_id("pixel_preview.crt.curvature"),
+    hash_node_id("pixel_preview.crt.brightness"),
+    hash_node_id("pixel_preview.crt.bloom"),
+];

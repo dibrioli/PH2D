@@ -150,11 +150,18 @@ pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
     hits.register(ids::RESIZE_BL, panel_resize_handle_rect_bl(rect));
 
     let pad = PANEL_HEAD_PAD;
+    // O cartão CRT por cima da imagem: a vista, nunca o documento.
+    let fim = crate::crt::pinta_cartao(
+        ctx,
+        rect.x + pad,
+        (rect.w - pad * 2.0).max(0.0),
+        rect.y + header_h,
+    );
     let body = Rect::new(
         rect.x + pad,
-        rect.y + header_h,
+        fim + pad,
         (rect.w - pad * 2.0).max(0.0),
-        (rect.h - header_h - pad).max(0.0),
+        (rect.y + rect.h - fim - pad * 2.0).max(0.0),
     );
     ctx.host.store_mut().set_graph_canvas(node, body);
     let Some(f) = frame else {
@@ -200,7 +207,7 @@ pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
         f64::from(y + dh),
     );
     st.destino = Some(dest);
-    if let Some((_, img)) = st.imagem.clone() {
+    if let Some(img) = crate::crt::imagem(st, &f, escala.min(caber)) {
         ctx.scene.push_clip(&rect_to_vello(body));
         // O transparente lê-se no xadrez, como no canvas (o do Aseprite: a Preview mostra o fundo).
         let to_screen = ph2d_vector::Affine::translate((f64::from(x), f64::from(y)))

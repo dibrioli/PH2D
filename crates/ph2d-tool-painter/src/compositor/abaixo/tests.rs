@@ -164,7 +164,7 @@ fn o_chao_em_faixas_e_o_da_rota_antiga_ao_bit() {
             "{w}×{h} por omissão"
         );
         for fios in [1usize, 2, 3, 7, 16, 32] {
-            for faixa in [1usize, 1000, FAIXA_PX] {
+            for faixa in [1usize, 1000, FAIXA_PX, usize::MAX] {
                 let novo = composite_below_com(&s, &src, w, h, ancora, chao, Some(fios), faixa);
                 assert!(novo == antigo, "{w}×{h}, {fios} fios, faixa {faixa}");
             }

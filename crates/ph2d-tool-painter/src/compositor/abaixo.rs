@@ -135,7 +135,8 @@ fn abaixo_em_faixas(
     }
     let mut out = vec![0u8; w * (height as usize) * 4];
     let rpb = (height as usize).div_ceil(fios);
-    let linhas = (faixa_px / w).max(1);
+    // A strip never exceeds its band: `faixa_px = usize::MAX` (the whole band) cannot overflow.
+    let linhas = (faixa_px / w).clamp(1, rpb);
     std::thread::scope(|s| {
         let handles: Vec<_> = out
             .chunks_mut(rpb * w * 4)

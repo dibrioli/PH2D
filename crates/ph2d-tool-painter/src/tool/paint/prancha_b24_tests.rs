@@ -1,6 +1,6 @@
 //! **Prancha B24.1 + B24.2**: o Composite Brush (Brush por baixo, Blur por cima) numa camada
 //! TRANSPARENTE sobre 3 fundos × 1080p/4K. O mesmo ficheiro compila na base (`b2bc9e02b0`, o
-//! «antes») e na cura: cada corrida grava os píxeis crus em `PH2D_PRANCHA_B24_SAIDA`; com
+//! «antes») e na cura: cada corrida grava os crus em `PH2D_PRANCHA_B24_SAIDA` (omissão: temp); com
 //! `PH2D_PRANCHA_B24_ANTES` (a pasta da base) monta as PNG em `docs/Painter/missao_4k/pranchas/B24/`.
 
 use super::{CompositeLayer, CompositeOp, N_CAMADAS};
@@ -130,7 +130,13 @@ fn monta(a: &[u8], d: &[u8], w: u32, h: u32, lupa_c: (u32, u32)) -> image::RgbaI
 #[test]
 #[ignore = "prancha B24: grava píxeis crus; com PH2D_PRANCHA_B24_ANTES monta as PNG"]
 fn prancha_b24_o_blur_do_composite_na_camada_transparente() {
-    let saida = std::env::var("PH2D_PRANCHA_B24_SAIDA").expect("PH2D_PRANCHA_B24_SAIDA");
+    // Sem a variável, os crus vão para a pasta temporária: a corrida genérica `--ignored` também grava.
+    let saida = std::env::var("PH2D_PRANCHA_B24_SAIDA").unwrap_or_else(|_| {
+        std::env::temp_dir()
+            .join("ph2d_prancha_b24_crua")
+            .display()
+            .to_string()
+    });
     std::fs::create_dir_all(&saida).expect("pasta crua");
     let antes = std::env::var("PH2D_PRANCHA_B24_ANTES").ok();
     let dir = concat!(

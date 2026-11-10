@@ -124,3 +124,29 @@ fn a_luau_script_sees_the_players_j() {
     let x = sim.world().get::<Transform>(e).expect("pose").translation.x;
     assert_eq!(x, 7.0, "o action_pressed(\"jump\") viu o J do jogador");
 }
+
+/// ⭐ **No Play, o mapa EFECTIVO (as teclas do jogador por cima) ainda resolve o botão do comando**: o jump ligado ao
+/// South salta com o dash trocado pelo jogador, e o mapa que o Play lê é o efectivo, não o do projecto.
+#[test]
+fn the_effective_map_still_resolves_a_pad_button() {
+    use ph2d_input::{Binding, GamepadButton, PLAYER_JUMP};
+    let mut game = InputMap::with_player_defaults();
+    let jump = game.id("jump").expect("de fábrica");
+    if let Some(a) = game.get_mut(jump) {
+        a.bindings.push(Binding::PadButton(GamepadButton::South));
+    }
+    let mut keys = PlayerKeys::new();
+    keys.set("dash", vec![Binding::Key(Key(u32::from('X')))]);
+    let mut s = PlaySession::default();
+    s.start_with(&game, keys, None);
+    assert_ne!(s.map(&game), &game, "o efectivo tem o dash do jogador");
+    let (mut dev, mut st) = (InputState::new(), ActionState::new());
+    st.tick(s.map(&game), &dev);
+    assert!(!Input::new(s.map(&game), &st).pressed(PLAYER_JUMP), "solto");
+    dev.gamepad.handle_button_down(GamepadButton::South);
+    st.tick(s.map(&game), &dev);
+    assert!(
+        Input::new(s.map(&game), &st).pressed(PLAYER_JUMP),
+        "o South salta no Play"
+    );
+}

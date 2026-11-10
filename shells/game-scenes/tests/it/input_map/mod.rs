@@ -13,6 +13,7 @@ mod lista;
 mod lista_acabamento;
 mod lista_censo;
 mod lista_r7a;
+mod mutacao_r13;
 mod teclado;
 mod teclado_censo;
 mod teclado_r7b;

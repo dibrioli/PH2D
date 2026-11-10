@@ -104,6 +104,8 @@ fn phrase(
             m::FIELD_BORDER,
             ink.color(ColorToken::InputMapWarning),
         );
+        doc.census.filled.push((r, ColorToken::InputMapWarningBg));
+        doc.census.filled.push((bar, ColorToken::InputMapWarning));
     }
     let mut ly = y + (m::FIELD_H - PHRASE_LINE_H) * 0.5;
     if !lead.is_empty() {

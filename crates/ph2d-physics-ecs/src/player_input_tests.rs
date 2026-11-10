@@ -155,3 +155,24 @@ fn the_player_resolves_the_map_and_never_a_hardcoded_key() {
         src.len()
     );
 }
+
+/// ⭐ **Um botão do COMANDO ligado ao `jump` arma o pulo** — o `raw` do `PadButton` chega ao dedo do jogador, e não só
+/// aos testes do `ph2d-input`.
+#[test]
+fn a_pad_button_bound_to_jump_arms_the_jump() {
+    use ph2d_input::{Binding, GamepadButton};
+    let mut map = InputMap::with_player_defaults();
+    let jump = map.id("jump").expect("de fábrica");
+    if let Some(a) = map.get_mut(jump) {
+        a.bindings.push(Binding::PadButton(GamepadButton::South));
+    }
+    let (mut dev, mut st) = (InputState::new(), ActionState::new());
+    assert!(
+        !super::resolve_player_input(&mut st, Some(&map), &dev).jump,
+        "solto"
+    );
+    dev.gamepad.handle_button_down(GamepadButton::South);
+    let dedo = super::resolve_player_input(&mut st, Some(&map), &dev);
+    assert!(dedo.jump, "o botão South arma o pulo");
+    assert_eq!(dedo.drive, 0.0, "e só o pulo");
+}

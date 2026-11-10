@@ -14,7 +14,8 @@ pub struct Census {
     pub dashed: Vec<Rect>,
     /// O recorte da vista que rola (a C): o que sai dele não se pinta nem se clica.
     pub clip: Option<Rect>,
-    /// Cada tecla ENCHIDA com a cor de uma acção (a premida do Try it, maquete C2): onde e com que cor.
+    /// Cada tecla ENCHIDA com a cor de uma acção (a premida do Try it, maquete C2): onde e com que cor. E o fundo e a
+    /// faixa de cada frase de AVISO (o pé da A, o cartão aberto da B, a faixa do Play).
     pub filled: Vec<(Rect, ph2d_tokens::ColorToken)>,
     /// Cada ícone pintado ao lado de um texto (a direcção da manche na C3).
     pub icons: Vec<(Rect, ph2d_editor_core::icons::IconId)>,

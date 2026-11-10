@@ -238,3 +238,19 @@ pub(super) fn authored_input_map() -> ph2d_input::InputMap {
     c.set_shown_in_game(right, false);
     m
 }
+
+/// ⭐ O `play_map`: com a sessão a correr, o mapa EFECTIVO (o jump do jogador em X); sem ela, o do projecto.
+#[test]
+fn o_play_le_o_mapa_do_jogador_e_fora_dele_o_do_projecto() {
+    use crate::input_dispatch::controles_do_jogador::play_map;
+    let hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
+    let mut s = ph2d_player_controls::PlaySession::default();
+    let sem = play_map(&s, &hero);
+    assert!(std::ptr::eq(sem, &hero.input_map), "sem Play");
+    let (x, mut keys) = (Binding::Key(Key(88)), ph2d_input::PlayerKeys::new());
+    keys.set("jump", vec![x]);
+    s.start_with(&hero.input_map, keys, None);
+    let m = play_map(&s, &hero);
+    let jump = m.get(m.id("jump").expect("de fábrica"));
+    assert_eq!(jump.map(|a| &a.bindings[..]), Some(&[x][..]), "no Play");
+}

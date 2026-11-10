@@ -64,6 +64,10 @@ pub(super) fn paint(
             m::BAR_TRACK * 0.5,
             ink.color(ColorToken::InputMapWarning),
         );
+        doc.census.filled.push((bg, ColorToken::InputMapWarningBg));
+        doc.census
+            .filled
+            .push((stripe, ColorToken::InputMapWarning));
         (ColorToken::InputMapWarning, ColorToken::Text1)
     } else {
         fill_rounded_rect(scene, bg, m::FIELD_RADIUS, ink.color(ColorToken::CardField));

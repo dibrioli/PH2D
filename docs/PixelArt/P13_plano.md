@@ -587,3 +587,63 @@ Empate `<` × `<=` sobrevive (medida zero). Custo GPU do passe com rampa: NÃO m
 
 **Mutações** (à mão, `grep -c` = 1 antes, `git checkout -- <f>` + `git diff --quiet` depois): M1 Linha ⇒ `snap_pixel_angle` sangra `a_linha_com_shift_segue_a_guia` (+ o do lápis) · M2 `alvo_do_lapis` ⇒ ponteiro sangra `o_lapis_com_shift_segue_a_guia_…` · M3 R sem Push sangra `r_tres_vezes_e_o_push_…` · M4 métrica ignorada (sempre Exact RGB) sangra `o_color_mode_com_keep_ramps_…`. 4/4 vermelhas.
 **Fica:** os «Falta» de cada agente acima (janela do jogo com CRT, dado «Light: Palette» e cartão do L, tooltips do U-Pintura, ícone do Push); fmt/clippy das crates tocadas no fecho; os `smoke_P14_*.log` por rastrear são da onda P14.
+
+### Consolidação 2 (09/11, agente)
+
+Os ficheiros partilhados que as cinco partes deixaram por commitar entraram em `5ecf056d04` (a árvore
+compila: `check --tests` em app-pixel, host-desktop, host-pixel-scenes, registry-init, panel-pixel-tools,
+panel-pixel-timeline, panel-pixel-preview, pixel-ponte, pixel-tween, pixel-crt, pixel-audio, i18n).
+
+**U-Paleta 2.** Faixa de rampas sob a grelha do cartão Palette (Make Ramp, New Ramp… com Create nas linhas
+do cartão, Remove Ramp). Cycle/Period/Direction por rampa; Cycle desligado fora de Indexed. New Palette from
+Sprite leva as rampas no mesmo passo (`ph2d-pixel-ponte::rampas`). Um sprite de UM quadro cicla com as voltas
+do Play (`SpriteImage::avanca_ciclo`). Gates: `seam_pixel_rampas`, `rampas_p13`, `ciclo_relogio`.
+
+**L-UI (luz na paleta).** Dado `luz_na_paleta` (campo 21 do blob); linha *Light: Smooth · Palette* no cartão
+Pixel Sprite, um passo «pixel.history.light». Custo medido: +0,86 ms por quadro com a luz na rampa.
+Gates: `luz_rampa_cartao`, `a_light_do_cartao_pede_a_rampa_ao_documento`, `pixel_na_luz`.
+A banda de luz da shell é `luz::faixa_de_luz` (normal + rampa), `normais.empurra`.
+
+**CRT no jogo.** `ph2d_pixel_crt::palco::compoe` em `present_chrome.rs`: sem pedido, o compositor pinta no
+alvo e zero passes; com pedido, compõe no palco lógico e um passe ao centro. Resolução lógica = altura da
+câmera × `pixels_per_meter`. A vista mora em `ph2d-pixel-crt::vista`. Gates: `crt` (preview), `palco`.
+
+**Tween.** `t = k/(n+1)` para os n quadros do meio; Frame ▸ Tween… abre o diálogo Frames · Ease · Rotate
+(OK = um passo); a lei mora na ponte (`quadros::tween`), a crate `ph2d-pixel-tween` faz a interpolação.
+Gates: `tween` (pixel-scenes), a crate `ph2d-pixel-tween` inteira (crate NOVA).
+
+**Áudio.** `StreamPlayhead`; `ph2d-pixel-audio` com Tocador/Relogio/Sons; Timeline ▸ Add Audio…, linha com a
+onda pelos picos, Mute, Remove; `meta.audio` na folha exportada. **Falta:** ligar o mixer real, arrastar a
+faixa no tempo e o scrub. Gates: `o_som_manda_no_relogio`, `sem_som_o_play_e_o_de_hoje`, `a_folha_leva_o_audio`, `add_audio`.
+
+**Curas desta consolidação.** (1) `26af905849`: o censo do painel Pixel lê também `pixel_crt`, `pixel_efeitos`,
+`pixel_som`, `pixel_tween` (14 chaves usadas e não declaradas); o da linha do tempo lê `pixel_tween`; a chave
+órfã `panel.pixel.ink.shading_hint` sai (a U-Pintura trocou-a por `pixel.ink.shading.tooltip`).
+(2) `305f5d560d`: a barra em cartões a 1000 px tinha CINCO fileiras — o Tween pôs o grupo ligar em 84 px e o
+Add Audio mais um ícone; A·B·C·D davam 298 px numa fileira de 297, a grelha ficou com 50 px (tags + cabeçalho)
+e a 1.ª célula não se pintava. Cura no layout, não no teste: `ACTION_GROUPS` 5 → 4 (Delete junta-se ao grupo
+criar, a ordem do menu Frame) e o Add Audio logo depois do transporte, na tira do cabeçalho (sobram 47 px).
+
+| Gate (por nome) | Crate | Veredito |
+|---|---|---|
+| `every_key_of_this_panel_exists_on_both_sides` · `every_word_…` | panel-pixel-tools, -timeline, -preview | ✓ (era ✗) |
+| `os_cartoes::numa_janela_estreita_a_barra_quebra_e_nada_cobre_a_grelha` + `os_cartoes` (8) · `barra` · `som` · `seam` | panel-pixel-timeline | ✓ (era ✗) |
+| `architecture_workspace_file_loc_cap` · `the_shell_only_shrinks` · `architecture_no_dependency_climbs_a_layer` | editor-core | ✓ |
+| `the_pixel_core_declares_no_dependency` · i18n `lib.rs` 688 · `pixel_tabelas.rs` 57 linhas (≤ 700) | pixel-core | ✓ |
+| `seam_pixel` (49, inclui `seam_pixel_rampas`) | panel-pixel-tools | ✓ |
+| `rampas_p13` (3) · `luz_rampa_cartao` · `pixel_na_luz` (6) · `som::` · `tween` · `guias::` (5) · `pintura_p13` (3) · `quadros` (8) · `tocar` (5) · `painel_e_dialogo` (7) | host-pixel-scenes | ✓ |
+| `ciclo_relogio` | pixel-render | ✓ |
+| `a_light_do_cartao_pede_a_rampa_ao_documento` | panel-inspector | ✓ |
+| `crt` (3) | panel-pixel-preview | ✓ |
+| `palco` (3) | pixel-crt | ✓ |
+| `relogio` (3: `o_som_manda_no_relogio`, `sem_som_o_play_e_o_de_hoje`) · `add_audio` | pixel-audio | ✓ |
+| `a_folha_leva_o_audio` · `o_ase_leva_rampas_ciclos_e_efeitos` | pixel-io | ✓ |
+| `add_audio` | panel-pixel-timeline | ✓ |
+| `efeitos_camada` (5) · `o_blob_pixel_volta_igual` | pixel-core | ✓ |
+| crate `ph2d-pixel-tween` INTEIRA (5; motivo: crate NOVA) | pixel-tween | ✓ |
+
+**Mutação pendente do CRT no jogo:** `compoe` ignora o pedido (`crt.filter(|_| false)`) ⇒
+`a_crt_ligada_no_jogo_corre_um_passe_por_quadro_ao_centro` sangra (as outras duas ficam verdes, como devem);
+restaurada por `git checkout`, `git diff --quiet` limpo, 3/3 verdes de novo.
+**Fica:** o mixer real, arrastar e scrub do áudio; fmt/clippy das crates tocadas e a crate
+`ph2d-panel-registry-init` inteira no fecho; os `smoke_P14_*.log` por rastrear são da onda P14.

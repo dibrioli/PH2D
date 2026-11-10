@@ -8,7 +8,8 @@ use ph2d_wet_paint::render::{PigmentVisual, RenderLayer};
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
-const N: usize = 64;
+/// 256²: o alcance do óleo já não cobre a folha — a caixa do compositor sai MENOR que a do fluido (B14.1).
+const N: usize = 256;
 const FORMA: FormaDaTela = FormaDaTela {
     ratio: 1,
     grade: (N, N),
@@ -187,8 +188,8 @@ fn a_imagem_do_compositor_e_a_otica_sincrona_ao_byte() {
                 if nome == "a agua corre" {
                     let (a, b) = (c.caixa_cel, caixa);
                     assert!(
-                        a.0 >= b.0 && a.1 >= b.1 && a.2 <= b.2 && a.3 <= b.3,
-                        "{nome}: a caixa {a:?} sai da do fluido {b:?}"
+                        a.0 >= b.0 && a.1 >= b.1 && a.2 <= b.2 && a.3 <= b.3 && a != b,
+                        "{nome}: a caixa {a:?} nao e menor que a do fluido {b:?}"
                     );
                 } else {
                     assert_eq!(c.caixa_cel, caixa, "{nome}: a caixa composta");

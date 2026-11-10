@@ -159,7 +159,10 @@ pub(crate) fn keyboard(a: Arrangement) -> Vec<KeyCap> {
 /// As teclas desenhadas (as mesmas nos dois arranjos), pela ordem da tabela.
 #[must_use]
 pub fn drawn_keys() -> Vec<Key> {
-    keyboard(Arrangement::Wide).into_iter().map(|c| c.key).collect()
+    keyboard(Arrangement::Wide)
+        .into_iter()
+        .map(|c| c.key)
+        .collect()
 }
 
 /// As setas pintam-se com ícone (a fonte não tem os glifos ←↑↓→).

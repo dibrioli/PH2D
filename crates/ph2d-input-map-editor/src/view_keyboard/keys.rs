@@ -13,11 +13,12 @@ use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
 
 use super::geometry::{self as g, Arrangement, KeyCap};
-use super::keys_fit::{self as fit, Legend};
+use super::keys_fit::{self as fit, Legend, Level};
 use super::state::{KbHit, Sub};
 use super::users;
-use crate::interact::{Control, ControlRole};
+use crate::census::KeyLook;
 use crate::doc::InputMapDoc;
+use crate::interact::{Control, ControlRole};
 use crate::view_list::footer::{binding_label, reader_names, readers_of};
 use crate::view_list::text::{line, title};
 
@@ -196,7 +197,10 @@ pub(crate) fn hover_text(doc: &InputMapDoc) -> Option<(String, String)> {
     if let Binding::Key(k) = b
         && let Some(why) = k.system_owned()
     {
-        return Some((format!("{label}{}", tr("input_map_keyboard.colon")), tr(why).to_owned()));
+        return Some((
+            format!("{label}{}", tr("input_map_keyboard.colon")),
+            tr(why).to_owned(),
+        ));
     }
     let who = users(doc, b);
     if who.is_empty() {
@@ -223,8 +227,14 @@ pub(crate) fn hover_text(doc: &InputMapDoc) -> Option<(String, String)> {
     Some((lead, format!("{list}{}", tr("input_map_list.period"))))
 }
 
-/// Uma barra por acção que usa `b`, em baixo de `r`, na cor da acção.
-pub(super) fn paint_bars(scene: &mut VectorScene, ink: CardInk, r: Rect, who: &[ActionId]) {
+/// Uma barra por acção que usa `b`, em baixo de `r`, na cor da acção (o censo regista cada uma).
+pub(super) fn paint_bars(
+    census: &mut crate::census::Census,
+    scene: &mut VectorScene,
+    ink: CardInk,
+    r: Rect,
+    who: &[ActionId],
+) {
     let mut by = r.y + r.h - m::SEG_INSET * 0.5 - BAR_H;
     for id in who.iter().rev() {
         let bar = Rect::new(
@@ -239,10 +249,47 @@ pub(super) fn paint_bars(scene: &mut VectorScene, ink: CardInk, r: Rect, who: &[
             BAR_H * 0.5,
             ink.color(crate::palette::of_action(*id)),
         );
+        census.bars.push((bar, *id));
         by -= BAR_H + BAR_GAP;
     }
 }
 
+/// A face de um alvo desenhado (tecla ou botão do comando), por precedência: premido > aceso (a cor da acção, no
+/// Try it) > hover (a face clara do campo) > repouso. O anel do foco (o partilhado, `paint_focus_ring`) e o
+/// contorno da acção aberta não são faces: juntam-se a qualquer uma, o contorno recuado para dentro do anel.
+pub(super) fn face_of(pressed: bool, lit_fill: Option<ColorToken>, hover: bool) -> ColorToken {
+    if pressed {
+        ColorToken::AccentPress
+    } else if let Some(c) = lit_fill {
+        c
+    } else if hover {
+        ColorToken::CardFieldHover
+    } else {
+        ColorToken::KanbanCardRaised
+    }
+}
+
+/// A aresta desligada: a tecla do sistema pinta-se na face do botão desligado do cartão (`CardField`), com esta
+/// aresta para não sumir no fundo do desenho, e a letra em `TextDisabled` — a mesma na B e na C.
+pub(super) const DISABLED_EDGE: ColorToken = ColorToken::TextDisabled;
+
+/// O contorno da acção aberta, recuado de uma aresta para dentro (o anel do foco fica na aresta, os dois lêem-se).
+pub(super) fn open_outline(scene: &mut VectorScene, ink: CardInk, r: Rect, radius: f32) {
+    let d = m::FIELD_BORDER * 2.0;
+    let rr = Rect::new(
+        r.x + d,
+        r.y + d,
+        (r.w - d * 2.0).max(0.0),
+        (r.h - d * 2.0).max(0.0),
+    );
+    stroke_rounded_rect(
+        scene,
+        rr,
+        (radius - d).max(0.0),
+        m::FIELD_BORDER * 2.0,
+        ink.color(ColorToken::Accent),
+    );
+}
 fn paint_keyboard(
     doc: &mut InputMapDoc,
     draw: Rect,
@@ -297,6 +344,8 @@ pub(crate) fn paint_keys(
     );
     // O arranjo e o passo saem da caixa recebida (largura e altura) pela MESMA escolha que pediu a altura.
     let f = fit::fit(ts, inner.w, Some(inner.h), cap);
+    // O degrau da legenda por GRUPO (nunca por tecla): a B e a C, na mesma caixa, dão o mesmo.
+    let levels = fit::levels(ts, f);
     let p = f.pitch;
     let (cols, _) = g::extent(f.arrangement);
     let spare = (inner.w - cols * p).max(0.0);
@@ -312,65 +361,76 @@ pub(crate) fn paint_keys(
     for (KeyCap { key, col, .. }, x, y, w, h) in fit::placed(f) {
         let dx = if col >= g::MAIN_W { pad_dx } else { 0.0 };
         let kr = Rect::new(ox + dx + x, inner.y + y, w, h);
-        paint_key(doc, scene, ts, ink, (style, kr), key, lit_of(key));
+        let level = levels
+            .iter()
+            .find(|(g, _)| *g == fit::group_of(key))
+            .map_or(Level::ShortSmall, |l| l.1);
+        paint_key(doc, scene, ts, ink, (style, kr), (key, lit_of(key), level));
     }
 }
 
-/// Uma tecla: a face, o contorno da aberta ou a cor da premida, o hover, a legenda medida e as barras.
+/// Uma tecla: a face pela precedência de [`face_of`], o contorno da aberta, a legenda no degrau do grupo e as barras.
 fn paint_key(
     doc: &mut InputMapDoc,
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     ink: CardInk,
     (style, kr): (Lit, Rect),
-    key: ph2d_input::Key,
-    lit: bool,
+    (key, lit, level): (ph2d_input::Key, bool, Level),
 ) {
     let system = key.system_owned().is_some();
     let b = Binding::Key(key);
+    let id = KbHit::Key(key).id();
     let who = if system { Vec::new() } else { users(doc, b) };
     let hover = doc.kb.hover == Some(KbHit::Key(key));
     let filled = (lit && !system && style == Lit::Fill).then(|| {
         who.first()
             .map_or(ColorToken::Accent, |a| crate::palette::of_action(*a))
     });
-    // Sem acção a tecla apaga-se (face e letra); com acção a face clareia e a letra acende. A do sistema fica
-    // na tinta desligada: desenhada, nunca ligável (plano §13.2).
-    let bg = match filled {
-        Some(c) => c,
-        None if system => ColorToken::KanbanCard,
-        None if hover => ColorToken::AccentSoft,
-        None => ColorToken::KanbanCardRaised,
+    // O registo de controlos (plano §13.3) ANTES de ler o premido (que pede o rect deste quadro); a do sistema
+    // desligada com o porquê.
+    doc.control(Control::new(id, kr, ControlRole::Key, key.label()).disabled(key.system_owned()));
+    let pressed = !system && doc.is_pressed(id);
+    // A do sistema: desenhada, nunca ligável (plano §13.2) — a tinta do botão desligado, sem estados.
+    let bg = if system {
+        ColorToken::CardField
+    } else {
+        face_of(pressed, filled, hover)
     };
     fill_rounded_rect(scene, kr, m::SEG_RADIUS, ink.color(bg));
-    if let Some(c) = filled {
+    if let Some(c) = filled.filter(|_| !pressed) {
         doc.census.filled.push((kr, c));
     }
     let outlined = lit && !system && style == Lit::Outline;
-    if outlined {
+    let edge = if system {
         stroke_rounded_rect(
             scene,
             kr,
             m::SEG_RADIUS,
-            m::FIELD_BORDER * 2.0,
-            ink.color(ColorToken::Accent),
+            m::FIELD_BORDER,
+            ink.color(DISABLED_EDGE),
         );
-    }
-    if hover {
-        hover_ring(scene, ink, kr, outlined);
-    }
-    let fg = ink.color(if filled.is_some() {
-        ColorToken::Bg0
-    } else if system {
+        Some(DISABLED_EDGE)
+    } else if outlined {
+        open_outline(scene, ink, kr, m::SEG_RADIUS);
+        Some(ColorToken::Accent)
+    } else {
+        None
+    };
+    let fg_tok = if system {
         ColorToken::TextDisabled
+    } else if pressed || filled.is_some() {
+        ColorToken::Bg0
     } else if who.is_empty() {
         ColorToken::Text3
     } else {
         ColorToken::Text1
-    });
-    let label_h = (kr.h - m::SEG_INSET * 0.5 - (BAR_H + BAR_GAP) * who.len().max(1) as f32).max(0.0);
-    let legend = fit::legend(ts, key, kr.w).unwrap_or_else(|| fit::shortest(key));
-    match legend {
+    };
+    let fg = ink.color(fg_tok);
+    let label_h = fit::label_h(kr.h, fit::reserved_bars(key, who.len()));
+    let legend = fit::choose(ts, key, (level, true), kr.w, label_h)
+        .unwrap_or_else(|| fit::legend_at(key, level));
+    let text = match &legend {
         Legend::Icon(icon) => {
             // O ícone fica da altura da letra no mínimo e nunca encosta à aresta da tecla.
             let s = ARROW_BOX
@@ -378,44 +438,39 @@ fn paint_key(
                 .min(kr.w - fit::LEGEND_PAD * 2.0)
                 .max(0.0);
             let ir = Rect::new(kr.x + (kr.w - s) * 0.5, kr.y + (label_h - s) * 0.5, s, s);
-            paint_icon(scene, icon, ir, fg, StrokeToken::Default.px());
-            doc.census.icons.push((ir, icon));
+            paint_icon(scene, *icon, ir, fg, StrokeToken::Default.px());
+            doc.census.icons.push((ir, *icon));
+            None
         }
         Legend::Text(label, px) => {
-            let tw = ts.prefix_width(&label, px).min(kr.w);
+            let tw = ts.prefix_width(label, *px).min(kr.w);
             let lr = Rect::new(kr.x + (kr.w - tw) * 0.5, kr.y, tw, label_h);
-            line(&mut doc.census, ts, scene, &label, lr, px, fg);
+            line(&mut doc.census, ts, scene, label, lr, *px, fg);
+            Some((label.clone(), *px))
         }
-    }
-    paint_bars(scene, ink, kr, &who);
+        Legend::Two(a, b2, px) => {
+            let lh = fit::two_lines_h(*px) * 0.5;
+            let top = kr.y + label_h * 0.5 - lh;
+            for (i, s) in [a, b2].into_iter().enumerate() {
+                let tw = ts.prefix_width(s, *px).min(kr.w);
+                let lr = Rect::new(kr.x + (kr.w - tw) * 0.5, top + lh * i as f32, tw, lh);
+                line(&mut doc.census, ts, scene, s, lr, *px, fg);
+            }
+            Some((format!("{a}{b2}"), *px))
+        }
+    };
+    doc.census.keys.push(KeyLook {
+        key,
+        rect: kr,
+        face: bg,
+        ink: fg_tok,
+        edge,
+        text,
+    });
+    paint_bars(&mut doc.census, scene, ink, kr, &who);
     doc.kb.bars.push((KbHit::Key(key), who));
-    // O registo de controlos (plano §13.3): premido nativo, foco, a11y e cursor; a do sistema desligada com o porquê.
-    doc.control(Control::new(KbHit::Key(key).id(), kr, ControlRole::Key, key.label()).disabled(key.system_owned()));
     doc.kb.targets.push(KbHit::Key(key));
 }
-
-/// O contorno branco do hover, distinto do da acção aberta (POR FORA dele quando os dois se juntam, maquete B1).
-pub(super) fn hover_ring(scene: &mut VectorScene, ink: CardInk, r: Rect, outlined: bool) {
-    let d = if outlined {
-        -m::FIELD_BORDER * 3.0
-    } else {
-        0.0
-    };
-    let rr = Rect::new(
-        r.x + d,
-        r.y + d,
-        (r.w - d * 2.0).max(0.0),
-        (r.h - d * 2.0).max(0.0),
-    );
-    stroke_rounded_rect(
-        scene,
-        rr,
-        m::SEG_RADIUS,
-        m::FIELD_BORDER,
-        ink.color(ColorToken::Text1),
-    );
-}
-
 /// «Also:» e um chip por ligação fora do desenho (clicar acrescenta à aberta, como uma tecla desenhada).
 fn paint_also(
     doc: &mut InputMapDoc,
@@ -461,7 +516,7 @@ fn paint_also(
             m::VALUE_PX,
             ink.color(ColorToken::Text1),
         );
-        paint_bars(scene, ink, chip, &who);
+        paint_bars(&mut doc.census, scene, ink, chip, &who);
         let hit = match b {
             Binding::Key(k) => KbHit::Key(*k),
             other => KbHit::Pad(*other),

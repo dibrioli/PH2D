@@ -250,6 +250,12 @@ impl Key {
         self.caps().1
     }
 
+    /// A legenda em DUAS linhas, como muitos notebooks a imprimem (`Prt` / `Sc`); `None` = uma linha só.
+    #[must_use]
+    pub fn cap_lines(self) -> Option<(&'static str, &'static str)> {
+        (self.0 == 0xF72E).then_some(("Prt", "Sc"))
+    }
+
     fn caps(self) -> (&'static str, &'static str) {
         let at = |s: &'static str, i: u32| {
             let i = i as usize;

@@ -38,14 +38,44 @@ fn provas(m: &Mesa, at: &str) -> (f32, f32, f32) {
             let (cx, cy) = (t.0.x + t.0.w * 0.5, t.0.y + t.0.h * 0.5);
             r.contains(cx, cy)
         }) {
-            assert!(t.0.x >= r.x && t.0.x + t.0.w <= r.x + r.w, "{at}: legenda de {} sai da tecla", k.label());
-            assert!(t.0.y + t.0.h <= bars_top + 0.5, "{at}: as barras tapam {}", k.label());
-            assert!(t.0.h >= MIN_LEGEND_PX, "{at}: a legenda de {} não tem altura", k.label());
+            assert!(
+                t.0.x >= r.x && t.0.x + t.0.w <= r.x + r.w,
+                "{at}: legenda de {} sai da tecla",
+                k.label()
+            );
+            assert!(
+                t.0.y + t.0.h <= bars_top + 0.5,
+                "{at}: as barras tapam {}",
+                k.label()
+            );
+            assert!(
+                t.0.h >= MIN_LEGEND_PX,
+                "{at}: a legenda de {} não tem altura",
+                k.label()
+            );
             margin = margin.min(t.0.x - r.x).min(r.x + r.w - t.0.x - t.0.w);
         } else {
-            let icon = (c.icons.iter()).find(|(ir, _)| r.contains(ir.x + ir.w * 0.5, ir.y + ir.h * 0.5));
-            let ir = icon.unwrap_or_else(|| panic!("{at}: {} sem legenda em {r:?}; fit {:?}; textos perto: {:?}", k.label(), doc.kb.fit, c.texts.iter().filter(|t| (t.0.y - r.y).abs() < 40.0).map(|t| (t.1.clone(), t.0)).collect::<Vec<_>>())).0;
-            assert!(ir.y + ir.h <= bars_top + 0.5, "{at}: as barras tapam o ícone de {}", k.label());
+            let icon =
+                (c.icons.iter()).find(|(ir, _)| r.contains(ir.x + ir.w * 0.5, ir.y + ir.h * 0.5));
+            let ir = icon
+                .unwrap_or_else(|| {
+                    panic!(
+                        "{at}: {} sem legenda em {r:?}; fit {:?}; textos perto: {:?}",
+                        k.label(),
+                        doc.kb.fit,
+                        c.texts
+                            .iter()
+                            .filter(|t| (t.0.y - r.y).abs() < 40.0)
+                            .map(|t| (t.1.clone(), t.0))
+                            .collect::<Vec<_>>()
+                    )
+                })
+                .0;
+            assert!(
+                ir.y + ir.h <= bars_top + 0.5,
+                "{at}: as barras tapam o ícone de {}",
+                k.label()
+            );
             margin = margin.min(ir.x - r.x).min(r.x + r.w - ir.x - ir.w);
         }
         rects.push((k.label(), r));
@@ -58,7 +88,12 @@ fn provas(m: &Mesa, at: &str) -> (f32, f32, f32) {
     let fit = doc.kb.fit.expect("o arranjo da pintura");
     let top = rects.iter().map(|r| r.1.y).fold(f32::MAX, f32::min);
     let low = rects.iter().map(|r| r.1.y + r.1.h).fold(0.0, f32::max);
-    eprintln!("{at}: {:?} passo {:.1} margem {margin:.1} altura {:.0}", fit.arrangement, fit.pitch, low - top);
+    eprintln!(
+        "{at}: {:?} passo {:.1} margem {margin:.1} altura {:.0}",
+        fit.arrangement,
+        fit.pitch,
+        low - top
+    );
     (fit.pitch, margin, low - top)
 }
 
@@ -86,7 +121,10 @@ fn mede_as_teclas_que_nao_cabem() {
     use ph2d_app_input_map::view_keyboard::keys_fit::misfits;
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     for w in [600.0, 614.0, 640.0] {
-        eprintln!("C w={w}: {:?}", misfits(&mut ts, w, Arrangement::Wide, false));
+        eprintln!(
+            "C w={w}: {:?}",
+            misfits(&mut ts, w, Arrangement::Wide, false)
+        );
     }
 }
 
@@ -98,7 +136,11 @@ fn o_arranjo_e_funcao_pura_da_largura_e_do_texto() {
     assert!(largo.legible);
     let estreito = fit_for_width(&mut ts, 300.0, true); // LITERAL-PX-OK: caixa de teste
     assert_eq!(estreito.arrangement, Arrangement::Narrow);
-    assert_eq!(fit_for_width(&mut ts, 300.0, true), estreito, "a mesma caixa, a mesma escolha");
+    assert_eq!(
+        fit_for_width(&mut ts, 300.0, true),
+        estreito,
+        "a mesma caixa, a mesma escolha"
+    );
 }
 
 #[test]
@@ -122,13 +164,19 @@ fn clicar_cada_tecla_liga_exactamente_essa_e_a_do_sistema_nada() {
             m.up(at);
             let pend = m.tab().doc.pending.clone();
             let want: Vec<InputMapEdit> = if k.system_owned().is_some()
-                || m.hero.input_map.get(open).is_some_and(|a| a.bindings.contains(&Binding::Key(k)))
+                || m.hero
+                    .input_map
+                    .get(open)
+                    .is_some_and(|a| a.bindings.contains(&Binding::Key(k)))
             {
                 Vec::new()
             } else {
                 vec![InputMapEdit::AddBinding(open, Binding::Key(k))]
             };
-            let pend: Vec<_> = pend.into_iter().filter(|e| matches!(e, InputMapEdit::AddBinding(..))).collect();
+            let pend: Vec<_> = pend
+                .into_iter()
+                .filter(|e| matches!(e, InputMapEdit::AddBinding(..)))
+                .collect();
             assert_eq!(pend, want, "{}×{}: {}", area.w, area.h, k.label());
         }
     }
@@ -139,10 +187,19 @@ fn a_tecla_do_sistema_diz_o_porque_no_hover() {
     let mut m = Mesa::aberta(View::Keyboard);
     m.click(m.at(KbHit::Sub(Sub::Keyboard).id()));
     let win = Key(0xF718);
-    let r = m.tab().doc.rect_of(KbHit::Key(win).id()).expect("a Windows desenhada");
+    let r = m
+        .tab()
+        .doc
+        .rect_of(KbHit::Key(win).id())
+        .expect("a Windows desenhada");
     m.hover((r.x + r.w * 0.5, r.y + r.h * 0.5));
-    let all: String = (m.tab().doc.census.texts.iter()).map(|t| t.1.clone()).collect();
-    assert!(all.contains(ph2d_i18n::tr("input_map_keyboard.system.windows")), "{all}");
+    let all: String = (m.tab().doc.census.texts.iter())
+        .map(|t| t.1.clone())
+        .collect();
+    assert!(
+        all.contains(ph2d_i18n::tr("input_map_keyboard.system.windows")),
+        "{all}"
+    );
 }
 
 #[test]
@@ -151,17 +208,249 @@ fn o_numerico_acende_no_try_it() {
     let kp8 = Key::named_in_script("kp8").expect("kp8")[0];
     let mut map = onze();
     let up = map.id("move_up").expect("move_up");
-    map.get_mut(up).expect("move_up").bindings.push(Binding::Key(kp8));
+    map.get_mut(up)
+        .expect("move_up")
+        .bindings
+        .push(Binding::Key(kp8));
     m.hero.input_map = map;
     m.frame();
     assert!(m.physical(kp8), "o bench toma o Numpad 8");
     m.frame();
-    let r = m.tab().doc.rect_of(KbHit::Key(kp8).id()).expect("Numpad 8 pintado");
+    let r = m
+        .tab()
+        .doc
+        .rect_of(KbHit::Key(kp8).id())
+        .expect("Numpad 8 pintado");
     assert!(
-        (m.tab().doc.census.filled.iter())
-            .any(|(f, _)| (f.x - r.x).abs() < 0.01 && (f.y - r.y).abs() < 0.01 && (f.w - r.w).abs() < 0.01),
+        (m.tab().doc.census.filled.iter()).any(|(f, _)| (f.x - r.x).abs() < 0.01
+            && (f.y - r.y).abs() < 0.01
+            && (f.w - r.w).abs() < 0.01),
         "o Numpad 8 premido enche-se: {r:?} × {:?} held {:?}",
         m.tab().doc.census.filled,
         m.tab().doc.tryit.held_keys()
     );
+}
+
+use ph2d_app_input_map::census::KeyLook;
+use ph2d_app_input_map::view_keyboard::keys_fit::{Group, group_of};
+use ph2d_tokens::ColorToken;
+
+/// O olhar da legenda de um grupo: `None` = ícone; senão o tamanho e se é a palavra da foto (`true`) ou a curta.
+type Olhar = Option<(u32, bool)>;
+
+/// Por grupo, os olhares das teclas de PALAVRA (os glifos únicos não são palavra) — tem de haver UM só.
+fn degraus(keys: &[KeyLook], at: &str) -> Vec<(Group, Olhar)> {
+    let mut out: Vec<(Group, Vec<Olhar>)> = Vec::new();
+    for k in keys {
+        let palavra = k.key.cap_short().chars().count() > 1 || k.key.cap().is_empty();
+        // O símbolo da PrtSc (do sistema) quando as duas linhas «Prt»/«Sc» não cabem: a única excepção.
+        let simbolo_do_sistema = k.text.is_none() && k.key.system_owned().is_some();
+        if !palavra || group_of(k.key) == Group::Arrows || simbolo_do_sistema {
+            continue;
+        }
+        let o = k.text.as_ref().map(|(s, px)| {
+            (
+                (px * 10.0).round() as u32,
+                s == k.key.cap() && s != k.key.cap_short(),
+            )
+        });
+        let g = group_of(k.key);
+        match out.iter_mut().find(|(h, _)| *h == g) {
+            Some((_, v)) => v.push(o),
+            None => out.push((g, vec![o])),
+        }
+    }
+    out.into_iter()
+        .map(|(g, v)| {
+            let icones = v.iter().filter(|o| o.is_none()).count();
+            assert!(
+                icones == 0 || icones == v.len(),
+                "{at}: {g:?} mistura palavra e ícone: {v:?}"
+            );
+            let px: Vec<u32> = v.iter().flatten().map(|o| o.0).collect();
+            assert!(
+                px.windows(2).all(|w| w[0] == w[1]),
+                "{at}: {g:?} mistura tamanhos: {v:?}"
+            );
+            let foto = v.iter().flatten().any(|o| o.1);
+            (g, v.first().copied().flatten().map(|o| (o.0, foto)))
+        })
+        .collect()
+}
+
+fn pinta_b(area: Rect) -> Mesa {
+    let mut b = Mesa::aberta(View::Keyboard);
+    b.hero.input_map = onze();
+    b.frame();
+    b.click(b.at(KbHit::Sub(Sub::Keyboard).id()));
+    b.paint_in(area);
+    b
+}
+
+fn pinta_c(area: Rect) -> Mesa {
+    let mut c = Mesa::aberta(View::TryIt);
+    c.hero.input_map = onze();
+    c.frame();
+    c.paint_in(area);
+    c
+}
+
+#[test]
+fn cada_grupo_tem_um_so_degrau_e_a_b_e_a_c_concordam_na_mesma_caixa() {
+    super::em_cada_modo_de_texto(|| {
+        for area in AREAS {
+            let (b, c) = (pinta_b(area), pinta_c(area));
+            let db = degraus(&b.tab().doc.census.keys, &format!("B {}", area.w));
+            let dc = degraus(&c.tab().doc.census.keys, &format!("C {}", area.w));
+            eprintln!("B {}: {:?} {db:?}", area.w, b.tab().doc.kb.fit);
+            eprintln!("C {}: {:?} {dc:?}", area.w, c.tab().doc.kb.fit);
+            if b.tab().doc.kb.fit == c.tab().doc.kb.fit {
+                assert_eq!(db, dc, "{}: a mesma caixa, o mesmo degrau", area.w);
+            }
+        }
+    });
+    // A mesma caixa pela função pura: B e C só diferem se a caixa difere.
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    for w in [600.0, 900.0] {
+        let f = fit_for_width(&mut ts, w, false);
+        assert_eq!(
+            ph2d_app_input_map::view_keyboard::keys_fit::levels(&mut ts, f),
+            ph2d_app_input_map::view_keyboard::keys_fit::levels(&mut ts, f)
+        );
+    }
+}
+
+#[test]
+fn as_teclas_do_sistema_tem_o_mesmo_olhar_desligado_na_b_e_na_c() {
+    let sistema: Vec<Key> = drawn_keys()
+        .into_iter()
+        .filter(|k| k.system_owned().is_some())
+        .collect();
+    assert!(sistema.len() >= 3, "Fn, Windows e PrtSc: {sistema:?}");
+    for area in AREAS {
+        let (b, c) = (pinta_b(area), pinta_c(area));
+        for k in &sistema {
+            let olhar = |m: &Mesa| {
+                let l = (m.tab().doc.census.keys.iter())
+                    .find(|l| l.key == *k)
+                    .cloned()
+                    .expect("desenhada");
+                (l.face, l.ink, l.edge)
+            };
+            let want = (
+                ColorToken::CardField,
+                ColorToken::TextDisabled,
+                Some(ColorToken::TextDisabled),
+            );
+            assert_eq!(olhar(&b), want, "B {}: {}", area.w, k.label());
+            assert_eq!(olhar(&c), want, "C {}: {}", area.w, k.label());
+        }
+    }
+}
+
+#[test]
+fn cada_accao_ligada_ao_comando_mostra_a_barra_nessa_parte() {
+    use ph2d_input::GamepadButton as P;
+    for area in AREAS {
+        let mut m = Mesa::aberta(View::Keyboard);
+        let mut map = onze();
+        let ids: Vec<_> = map.actions().iter().map(|a| a.id).collect();
+        for (i, p) in [P::RightTrigger, P::West, P::South, P::East, P::DPadLeft]
+            .into_iter()
+            .enumerate()
+        {
+            map.get_mut(ids[i % ids.len()])
+                .expect("acção")
+                .bindings
+                .push(Binding::PadButton(p));
+        }
+        m.hero.input_map = map;
+        m.frame();
+        m.click(m.at(KbHit::Sub(Sub::Gamepad).id()));
+        m.paint_in(area);
+        let doc = &m.tab().doc;
+        let mut ligadas = 0;
+        for (h, who) in doc.kb.bars.iter().filter(|(_, w)| !w.is_empty()) {
+            let KbHit::Pad(b) = h else { continue };
+            let r = doc.rect_of(h.id()).expect("alvo da parte");
+            ligadas += 1;
+            for id in who {
+                let ok = (doc.census.bars.iter()).any(|(br, a)| {
+                    a == id
+                        && br.x >= r.x - 0.5
+                        && br.x + br.w <= r.x + r.w + 0.5
+                        && br.y >= r.y + r.h - 0.5
+                        && br.y <= r.y + r.h + r.h
+                });
+                assert!(ok, "{}: a barra de {id:?} falta em {b:?} {r:?}", area.w);
+            }
+        }
+        assert!(ligadas >= 6, "{}: só {ligadas} partes ligadas", area.w);
+    }
+}
+
+fn olhar_de(m: &Mesa, k: Key) -> KeyLook {
+    (m.tab().doc.census.keys.iter())
+        .find(|l| l.key == k)
+        .cloned()
+        .expect("tecla desenhada")
+}
+
+fn centro(m: &Mesa, k: Key) -> (f32, f32) {
+    let r = m.tab().doc.rect_of(KbHit::Key(k).id()).expect("alvo");
+    (r.x + r.w * 0.5, r.y + r.h * 0.5)
+}
+
+#[test]
+fn os_estados_da_tecla_tem_precedencia_premido_aceso_hover() {
+    let area = AREAS[0];
+    let mut b = pinta_b(area);
+    let q = Key(u32::from('Q'));
+    assert_eq!(
+        olhar_de(&b, q).face,
+        ColorToken::KanbanCardRaised,
+        "repouso"
+    );
+    b.hover(centro(&b, q));
+    assert_eq!(olhar_de(&b, q).face, ColorToken::CardFieldHover, "hover");
+    b.down(centro(&b, q));
+    assert_eq!(
+        olhar_de(&b, q).face,
+        ColorToken::AccentPress,
+        "premido > hover"
+    );
+    b.up(centro(&b, q));
+    // A da acção aberta: o contorno do acento junta-se ao hover (a face continua a do hover).
+    let open = b.tab().doc.kb.open.expect("aberta");
+    let drawn = drawn_keys();
+    let k = (b.hero.input_map.get(open).expect("acção").bindings.iter())
+        .find_map(|x| match x {
+            Binding::Key(k) if drawn.contains(k) => Some(*k),
+            _ => None,
+        })
+        .expect("uma tecla desenhada da aberta");
+    b.hover(centro(&b, k));
+    let l = olhar_de(&b, k);
+    assert_eq!(
+        (l.face, l.edge),
+        (ColorToken::CardFieldHover, Some(ColorToken::Accent)),
+        "aberta + hover"
+    );
+    // O Try it: aceso (a cor da acção) > hover.
+    let mut c = Mesa::aberta(View::TryIt);
+    let kp8 = Key::named_in_script("kp8").expect("kp8")[0];
+    let mut map = onze();
+    let up = map.id("move_up").expect("move_up");
+    map.get_mut(up)
+        .expect("move_up")
+        .bindings
+        .push(Binding::Key(kp8));
+    c.hero.input_map = map;
+    c.frame();
+    assert!(c.physical(kp8));
+    c.frame();
+    c.hover(centro(&c, kp8));
+    let l = olhar_de(&c, kp8);
+    assert_ne!(l.face, ColorToken::CardFieldHover, "aceso > hover");
+    assert_ne!(l.face, ColorToken::KanbanCardRaised, "aceso enche-se");
 }

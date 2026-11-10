@@ -97,7 +97,7 @@ fn paint_pass(
         .focused()
         .and_then(|id| doc.ui.controls.iter().find(|c| c.id == id))
     {
-        let radius = if c.role == ControlRole::Segment {
+        let radius = if matches!(c.role, ControlRole::Segment | ControlRole::Key) {
             m::SEG_RADIUS
         } else {
             m::FIELD_RADIUS

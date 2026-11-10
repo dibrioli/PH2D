@@ -11,13 +11,14 @@ use super::geometry::{self as g, Arrangement, KeyCap};
 use super::keys::{BAR_GAP, BAR_H};
 
 /// A tecla nunca é mais baixa que a letra com duas barras por baixo (a 1280 as barras tapavam a letra).
-pub(super) const KEY_MIN_H: f32 = m::VALUE_PX + m::SEG_PAD + (BAR_H + BAR_GAP) * 2.0 + m::SEG_INSET * 0.5;
+pub(super) const KEY_MIN_H: f32 =
+    m::VALUE_PX + m::SEG_PAD + (BAR_H + BAR_GAP) * 2.0 + m::SEG_INSET * 0.5;
 
 /// A margem mínima de cada lado da legenda, dentro da tecla.
 pub(crate) const LEGEND_PAD: f32 = m::SEG_INSET * 0.5;
 
-/// O menor tamanho de legenda (o `LABEL_PX`): nada menor (a porta dos testes).
-pub const MIN_LEGEND_PX: f32 = m::LABEL_PX;
+/// O menor tamanho de legenda: o menor texto que a app já tem (`TypeToken::Xxs`), nada menor (a porta dos testes).
+pub const MIN_LEGEND_PX: f32 = ph2d_tokens::TypeToken::Xxs.px();
 
 /// O topo da pilha de `n` barras dentro da tecla `r` (a legenda fica por cima dele).
 #[must_use]
@@ -64,29 +65,144 @@ pub(super) fn key_h(rows: f32, p: f32) -> f32 {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Legend {
     Text(String, f32),
+    /// Duas linhas ao mesmo tamanho (a PrtSc dos notebooks: «Prt» / «Sc»).
+    Two(String, String, f32),
     Icon(IconId),
 }
 
-/// O tamanho de uma legenda: glifo único a `VALUE_PX`, palavra a `LABEL_PX` (o menor texto do cartão).
-pub(crate) fn legend_px(s: &str) -> f32 {
-    if s.chars().count() == 1 {
-        m::VALUE_PX
-    } else {
-        m::LABEL_PX
+/// O menor tamanho de texto que a app já tem (`TypeToken::Xxs`), o segundo degrau da palavra.
+pub(crate) const fn small_px() -> f32 {
+    MIN_LEGEND_PX
+}
+
+/// Os grupos que partilham UM degrau de legenda: um grupo nunca mistura palavra e ícone, nem dois tamanhos.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Group {
+    /// A fila de cima: Esc, F1–F12, Insert, PrtSc, Delete.
+    FnRow,
+    /// O resto do bloco principal (os modificadores e as teclas da borda; as letras são glifos).
+    Edge,
+    /// As quatro setas (sempre ícone).
+    Arrows,
+    /// Home End PgUp PgDn, por cima do numérico.
+    Nav,
+    /// O numérico.
+    Numpad,
+}
+
+/// O grupo de uma tecla desenhada.
+#[must_use]
+pub fn group_of(key: Key) -> Group {
+    const F1: u32 = 0xF704;
+    match key.0 {
+        0x1B | 0xF727 | 0xF72E | 0xF728 => Group::FnRow,
+        c if (F1..F1 + 12).contains(&c) => Group::FnRow,
+        0xF729 | 0xF72B | 0xF72C | 0xF72D => Group::Nav,
+        0xF717 | 0xF740..=0xF74F => Group::Numpad,
+        _ if g::arrow_icon(key).is_some() => Group::Arrows,
+        _ => Group::Edge,
     }
 }
 
-/// As legendas por ordem de preferência: a da foto, a curta (o rótulo se o código não tem tecla conhecida).
-fn candidates(key: Key) -> Vec<String> {
+/// Os degraus da legenda, pela ordem: a palavra da foto a `LABEL_PX`, a mesma ao menor tamanho da app, a curta
+/// (a `LABEL_PX` e depois ao menor), o símbolo ISO.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Level {
+    Cap,
+    CapSmall,
+    Short,
+    ShortSmall,
+    Icon,
+}
+
+const LEVELS: [Level; 5] = [
+    Level::Cap,
+    Level::CapSmall,
+    Level::Short,
+    Level::ShortSmall,
+    Level::Icon,
+];
+
+fn word(key: Key, short: bool) -> String {
     let cap = key.cap();
     if cap.is_empty() {
-        return vec![key.label()];
+        key.label()
+    } else if short {
+        key.cap_short().to_owned()
+    } else {
+        cap.to_owned()
     }
-    let mut v = vec![cap.to_owned()];
-    if key.cap_short() != cap {
-        v.push(key.cap_short().to_owned());
+}
+
+/// A legenda da tecla no degrau `level`. Um glifo único fica sempre a `VALUE_PX` (não é palavra).
+pub(crate) fn legend_at(key: Key, level: Level) -> Legend {
+    if let Some(icon) = g::arrow_icon(key) {
+        return Legend::Icon(icon);
     }
-    v
+    let short = level >= Level::Short;
+    let s = word(key, short);
+    if s.chars().count() == 1 {
+        return Legend::Text(s, m::VALUE_PX);
+    }
+    match level {
+        Level::Cap | Level::Short => Legend::Text(s, m::LABEL_PX),
+        Level::CapSmall | Level::ShortSmall => Legend::Text(s, small_px()),
+        Level::Icon => iso_icon(key).map_or(Legend::Text(s, small_px()), Legend::Icon),
+    }
+}
+
+fn fits(ts: &mut TextSystem, l: &Legend, w: f32) -> bool {
+    match l {
+        Legend::Icon(_) => m::VALUE_PX + LEGEND_PAD * 2.0 <= w,
+        Legend::Text(s, px) => ts.prefix_width(s, *px) + LEGEND_PAD * 2.0 <= w,
+        Legend::Two(a, b, px) => {
+            ts.prefix_width(a, *px).max(ts.prefix_width(b, *px)) + LEGEND_PAD * 2.0 <= w
+        }
+    }
+}
+
+/// A altura que duas linhas de `px` pedem.
+pub(crate) fn two_lines_h(px: f32) -> f32 {
+    px * ph2d_tokens::LineHeight::Tight.ratio() * 2.0
+}
+
+/// A altura livre para a legenda numa tecla de altura `kh` com `bars` barras (a do sistema não tem nenhuma).
+pub(crate) fn label_h(kh: f32, bars: usize) -> f32 {
+    (kh - m::SEG_INSET * 0.5 - (BAR_H + BAR_GAP) * bars as f32).max(0.0)
+}
+
+/// A legenda da tecla no degrau `level` que cabe em `w` × `h`: a de uma linha; senão, se a tecla se imprime em
+/// duas linhas (a PrtSc), as duas ao mesmo tamanho; senão, só para uma tecla do SISTEMA, o símbolo ISO dela.
+pub(crate) fn choose(
+    ts: &mut TextSystem,
+    key: Key,
+    (level, sys_icon): (Level, bool),
+    w: f32,
+    h: f32,
+) -> Option<Legend> {
+    let one = legend_at(key, level);
+    if fits(ts, &one, w) {
+        return Some(one);
+    }
+    if let (Some((a, b)), Legend::Text(_, px)) = (key.cap_lines(), &one) {
+        let two = Legend::Two(a.to_owned(), b.to_owned(), *px);
+        if two_lines_h(*px) <= h && fits(ts, &two, w) {
+            return Some(two);
+        }
+    }
+    let icon = (iso_icon(key))
+        .filter(|_| sys_icon && key.system_owned().is_some())
+        .map(Legend::Icon);
+    icon.filter(|l| fits(ts, l, w))
+}
+
+/// As barras que a legenda reserva: nenhuma na tecla do sistema (nunca ligável), pelo menos uma nas outras.
+pub(crate) fn reserved_bars(key: Key, who: usize) -> usize {
+    if key.system_owned().is_some() {
+        0
+    } else {
+        who.max(1)
+    }
 }
 
 /// O símbolo ISO/IEC 9995-7 de uma tecla, o último degrau da legenda (a fonte não tem os glifos ⇱ ⇲ ⇞ ⇟ ↵ ⎙).
@@ -103,27 +219,52 @@ pub(crate) fn iso_icon(key: Key) -> Option<IconId> {
     })
 }
 
-/// A legenda que cabe na largura `w`, ou `None` (nenhuma cabe sem elidir).
-pub(crate) fn legend(ts: &mut TextSystem, key: Key, w: f32) -> Option<Legend> {
-    if let Some(icon) = g::arrow_icon(key) {
-        return Some(Legend::Icon(icon));
-    }
-    candidates(key).into_iter().find_map(|s| {
-        let px = legend_px(&s);
-        (ts.prefix_width(&s, px) + LEGEND_PAD * 2.0 <= w).then_some(Legend::Text(s, px))
-    })
-    .or_else(|| {
-        iso_icon(key)
-            .filter(|_| m::VALUE_PX + LEGEND_PAD * 2.0 <= w)
-            .map(Legend::Icon)
+/// O degrau do grupo `grp` no arranjo `a` ao passo `p`: o primeiro em que TODA tecla do grupo cabe. O ícone só
+/// conta se toda palavra do grupo tem símbolo (senão o grupo misturaria palavra e ícone); `None` = nenhum cabe.
+fn group_level(ts: &mut TextSystem, a: Arrangement, p: f32, grp: Group) -> Option<Level> {
+    let caps: Vec<KeyCap> = g::keyboard(a)
+        .into_iter()
+        .filter(|c| group_of(c.key) == grp)
+        .collect();
+    let words =
+        |c: &KeyCap| word(c.key, true).chars().count() > 1 && g::arrow_icon(c.key).is_none();
+    let icons_all = caps
+        .iter()
+        .filter(|c| words(c))
+        .all(|c| iso_icon(c.key).is_some());
+    // Primeiro sem o símbolo da tecla do sistema (palavras em todo o grupo); só se nenhum degrau serve, com ele.
+    [false, true].into_iter().find_map(|sys_icon| {
+        LEVELS
+            .into_iter()
+            .filter(|l| *l != Level::Icon || icons_all)
+            .find(|l| {
+                caps.iter().all(|c| {
+                    let h = label_h(key_h(c.rows, p), reserved_bars(c.key, 1));
+                    choose(ts, c.key, (*l, sys_icon), key_w(c.span, p), h).is_some()
+                })
+            })
     })
 }
 
-/// A legenda a pintar quando nenhuma cabe: a mais curta (o censo regista-a como cortada — nunca se esconde).
-pub(crate) fn shortest(key: Key) -> Legend {
-    let s = candidates(key).pop().unwrap_or_default();
-    let px = legend_px(&s);
-    Legend::Text(s, px)
+const GROUPS: [Group; 5] = [
+    Group::FnRow,
+    Group::Edge,
+    Group::Arrows,
+    Group::Nav,
+    Group::Numpad,
+];
+
+/// O degrau de cada grupo para a escolha `f` (o que não cabe em nenhum fica no último degrau de texto, e o censo
+/// regista-o como cortado — nunca se esconde).
+#[must_use]
+pub fn levels(ts: &mut TextSystem, f: Fit) -> Vec<(Group, Level)> {
+    GROUPS
+        .into_iter()
+        .map(|grp| {
+            let l = group_level(ts, f.arrangement, f.pitch, grp).unwrap_or(Level::ShortSmall);
+            (grp, l)
+        })
+        .collect()
 }
 
 /// O arranjo escolhido e o passo, para uma caixa de largura `w` (e altura `h`, se a caixa já foi dada).
@@ -142,9 +283,9 @@ fn pitch_of(a: Arrangement, w: f32, h: Option<f32>, cap: f32) -> f32 {
 }
 
 fn legible(ts: &mut TextSystem, a: Arrangement, p: f32) -> bool {
-    g::keyboard(a)
-        .iter()
-        .all(|c| legend(ts, c.key, key_w(c.span, p)).is_some())
+    GROUPS
+        .into_iter()
+        .all(|grp| group_level(ts, a, p, grp).is_some())
 }
 
 /// ⭐ A escolha (plano §13.2): `Wide` se toda tecla tem legenda que cabe; senão `Narrow`.
@@ -191,9 +332,23 @@ pub fn misfits(ts: &mut TextSystem, w: f32, a: Arrangement, cap_b: bool) -> Vec<
         g::PITCH_MAX_ROWS
     };
     let p = pitch_of(a, w, None, cap);
+    let lost: Vec<Group> = GROUPS
+        .into_iter()
+        .filter(|grp| group_level(ts, a, p, *grp).is_none())
+        .collect();
     g::keyboard(a)
         .into_iter()
-        .filter(|c| legend(ts, c.key, key_w(c.span, p)).is_none())
+        .filter(|c| {
+            lost.contains(&group_of(c.key))
+                && choose(
+                    ts,
+                    c.key,
+                    (Level::ShortSmall, true),
+                    key_w(c.span, p),
+                    key_h(c.rows, p),
+                )
+                .is_none()
+        })
         .map(|c| (c.key.label(), key_w(c.span, p)))
         .collect()
 }

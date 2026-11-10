@@ -5,7 +5,7 @@
 //! no desenho porque são botões que se ligam — sem eles, uma ligação a um deles não teria onde se clicar.
 
 use ph2d_card_stack::metrics as m;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon};
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -15,11 +15,11 @@ use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::{Affine, BezPath, Circle, Stroke, VectorScene};
 
 use super::geometry::{self as g, BodySeg, PadShape};
-use super::keys::{BAR_GAP, BAR_H, hover_ring, paint_bars};
+use super::keys::{BAR_GAP, BAR_H, face_of, open_outline, paint_bars};
 use super::state::KbHit;
 use super::users;
-use crate::interact::{Control, ControlRole};
 use crate::doc::InputMapDoc;
+use crate::interact::{Control, ControlRole};
 use crate::view_list::text::line;
 
 /// A altura do desenho para a largura `w`: o comando enche a largura como na maquete, até ao tecto.
@@ -58,9 +58,21 @@ fn body(at: &dyn Fn(f32, f32) -> (f64, f64)) -> BezPath {
 }
 
 /// As barras por baixo de `r` (uma por acção, na cor dela).
-fn bars_under(scene: &mut VectorScene, ink: CardInk, r: Rect, who: &[ActionId]) {
+fn bars_under(
+    doc: &mut InputMapDoc,
+    scene: &mut VectorScene,
+    ink: CardInk,
+    r: Rect,
+    who: &[ActionId],
+) {
     let h = (BAR_H + BAR_GAP) * who.len() as f32 + m::SEG_INSET * 0.5;
-    paint_bars(scene, ink, Rect::new(r.x, r.y + r.h, r.w, h), who);
+    paint_bars(
+        &mut doc.census,
+        scene,
+        ink,
+        Rect::new(r.x, r.y + r.h, r.w, h),
+        who,
+    );
 }
 
 pub(super) fn paint(
@@ -110,7 +122,7 @@ pub(super) fn paint(
             ink.color(ColorToken::KanbanCardRaised),
         );
     }
-    // Os anéis das manches: aceso inteiro quando a aberta usa uma metade dele; as barras por baixo da seta de baixo.
+    // Os anéis das manches: aceso inteiro quando a aberta usa uma metade dele; as barras ficam em cada metade.
     for (i, ((fx, fy), key, fr)) in g::STICKS.into_iter().enumerate() {
         let (cx, cy) = at(fx, fy);
         let r = fr * bh;
@@ -121,14 +133,7 @@ pub(super) fn paint(
         let lit = halves
             .iter()
             .any(|p| open.iter().any(|b| super::same_input(p.binding, *b)));
-        let mut who: Vec<ActionId> = Vec::new();
-        for p in &halves {
-            for a in users(doc, p.binding) {
-                if !who.contains(&a) {
-                    who.push(a);
-                }
-            }
-        }
+        let used = halves.iter().any(|p| !users(doc, p.binding).is_empty());
         let ring = Circle::new((f64::from(cx), f64::from(cy)), f64::from(r));
         let face = ColorToken::KanbanCardRaised;
         scene.inner_mut().fill(
@@ -152,7 +157,7 @@ pub(super) fn paint(
         );
         let label = tr(key);
         let tw = ts.prefix_width(label, m::VALUE_PX);
-        let fg = if who.is_empty() {
+        let fg = if !used {
             ColorToken::Text3
         } else {
             ColorToken::Text1
@@ -166,8 +171,6 @@ pub(super) fn paint(
             m::VALUE_PX,
             ink.color(fg),
         );
-        let down = (g::tip_reach(fr) + g::pad_tip_h()) * bh;
-        bars_under(scene, ink, Rect::new(cx - r, cy, r * 2.0, down), &who);
     }
     for p in &parts {
         let (cx, cy) = at(p.cx, p.cy);
@@ -183,28 +186,23 @@ pub(super) fn paint(
             PadShape::Round | PadShape::Pill => hh,
             PadShape::Arm(_) | PadShape::Half(..) => m::SEG_RADIUS,
         };
-        let face = match p.shape {
-            PadShape::Arm(_) | PadShape::Half(..) if lit => Some(ColorToken::AccentSoft),
-            PadShape::Arm(_) | PadShape::Half(..) => None,
-            _ if hover => Some(ColorToken::AccentSoft),
-            _ => Some(ColorToken::KanbanCardRaised),
-        };
+        let id = KbHit::Pad(p.binding).id();
+        let label = crate::view_list::footer::binding_label(p.binding);
+        doc.control(Control::new(id, r, ControlRole::Key, label));
+        let pressed = doc.is_pressed(id);
+        // A mesma precedência das teclas (`face_of`); a seta de uma metade só ganha face quando premida ou sob o
+        // ponteiro (em repouso é uma seta solta à volta do anel, maquete B3).
+        let half = matches!(p.shape, PadShape::Half(..));
+        let face = (!half || pressed || hover).then(|| face_of(pressed, None, hover));
         if let Some(f) = face {
             fill_rounded_rect(scene, r, radius, ink.color(f));
         }
-        if lit && !matches!(p.shape, PadShape::Half(..)) {
-            stroke_rounded_rect(
-                scene,
-                r,
-                radius,
-                m::FIELD_BORDER * 2.0,
-                ink.color(ColorToken::Accent),
-            );
+        if lit && !half {
+            open_outline(scene, ink, r, radius);
         }
-        if hover {
-            hover_ring(scene, ink, r, lit);
-        }
-        let fg = ink.color(if lit && matches!(p.shape, PadShape::Half(..)) {
+        let fg = ink.color(if pressed {
+            ColorToken::Bg0
+        } else if lit && half {
             ColorToken::Accent
         } else if who.is_empty() {
             ColorToken::Text3
@@ -224,16 +222,8 @@ pub(super) fn paint(
                 line(&mut doc.census, ts, scene, label, lr, m::LABEL_PX, fg);
             }
         }
-        if !matches!(p.shape, PadShape::Half(..)) {
-            bars_under(scene, ink, r, &who);
-        }
+        bars_under(doc, scene, ink, r, &who);
         doc.kb.bars.push((KbHit::Pad(p.binding), who));
-        let id = KbHit::Pad(p.binding).id();
-        if doc.is_pressed(id) {
-            crate::view_list::ring(scene, r, ink);
-        }
         doc.kb.targets.push(KbHit::Pad(p.binding));
-        let label = crate::view_list::footer::binding_label(p.binding);
-        doc.control(Control::new(id, r, ControlRole::Key, label));
     }
 }

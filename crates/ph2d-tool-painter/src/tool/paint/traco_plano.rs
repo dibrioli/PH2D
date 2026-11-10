@@ -25,6 +25,8 @@ use rayon::prelude::*;
 use std::sync::Arc;
 
 mod cauda; // planear e re-pintar a cauda — filho por LOC
+#[cfg(test)]
+pub(crate) use cauda::COPIA_DA_CAUDA;
 
 /// A janela (texels) a partir da qual a composição de um lote vai ao pool (ADR-0173), em blocos de
 /// [`LINHAS_POR_TAREFA`]. Medido intercalado (`o_dual_brush::mede_o_custo_do_dual`): a pegada de 40 px (~1,8 k
@@ -554,8 +556,42 @@ fn limpa_regiao(p: &mut [u8], w: usize, r: Region, canais: usize) {
     }
 }
 
-/// Repõe, em `tocados` menos `limpa`, os texels de `antes`.
+/// Os texels de `r` num plano de `canais` canais e `w` de largura, linha a linha (`r.w·canais` por linha).
+fn guarda(p: &[u8], w: usize, r: Region, canais: usize) -> Vec<u8> {
+    let mut out = Vec::with_capacity(r.w as usize * r.h as usize * canais);
+    for y in r.y as usize..(r.y + r.h) as usize {
+        let a = (y * w + r.x as usize) * canais;
+        out.extend_from_slice(&p[a..a + r.w as usize * canais]);
+    }
+    out
+}
+
+/// Repõe, em `tocados` menos `limpa`, os texels de `antes` (o que [`guarda`] tirou de `tocados`).
 fn repoe_fora(p: &mut [u8], antes: &[u8], w: usize, tocados: Region, limpa: Region, canais: usize) {
+    let linha = tocados.w as usize * canais;
+    for y in tocados.y as usize..(tocados.y + tocados.h) as usize {
+        let dentro_y = y >= limpa.y as usize && y < (limpa.y + limpa.h) as usize;
+        let g = (y - tocados.y as usize) * linha;
+        for x in tocados.x as usize..(tocados.x + tocados.w) as usize {
+            if dentro_y && x >= limpa.x as usize && x < (limpa.x + limpa.w) as usize {
+                continue;
+            }
+            let (i, j) = ((y * w + x) * canais, g + (x - tocados.x as usize) * canais);
+            p[i..i + canais].copy_from_slice(&antes[j..j + canais]);
+        }
+    }
+}
+
+/// O `repoe_fora` de antes do B17.A1, verbatim: `antes` é o plano INTEIRO. Oráculo da paridade ao bit.
+#[cfg(test)]
+pub(crate) fn repoe_fora_plano_inteiro(
+    p: &mut [u8],
+    antes: &[u8],
+    w: usize,
+    tocados: Region,
+    limpa: Region,
+    canais: usize,
+) {
     for y in tocados.y as usize..(tocados.y + tocados.h) as usize {
         let dentro_y = y >= limpa.y as usize && y < (limpa.y + limpa.h) as usize;
         for x in tocados.x as usize..(tocados.x + tocados.w) as usize {
@@ -566,4 +602,18 @@ fn repoe_fora(p: &mut [u8], antes: &[u8], w: usize, tocados: Region, limpa: Regi
             p[i..i + canais].copy_from_slice(&antes[i..i + canais]);
         }
     }
+}
+
+/// O par novo (`guarda` + `repoe_fora`), para a paridade contra [`repoe_fora_plano_inteiro`].
+#[cfg(test)]
+pub(crate) fn repoe_fora_guardado(
+    p: &mut [u8],
+    antes: &[u8],
+    w: usize,
+    tocados: Region,
+    limpa: Region,
+    canais: usize,
+) {
+    let g = guarda(antes, w, tocados, canais);
+    repoe_fora(p, &g, w, tocados, limpa, canais);
 }

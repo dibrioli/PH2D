@@ -127,6 +127,12 @@ thread_local! {
     static PAR_CLONES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
+/// Quantas cópias o [`par_clone`] fez em blocos **nesta thread** (o gate de quem tem de nascer por ele).
+#[cfg(test)]
+pub(crate) fn par_clones_nesta_thread() -> usize {
+    PAR_CLONES.with(std::cell::Cell::get)
+}
+
 /// **Materializa um plano de `n` elementos no valor `value`** — e o caso do ZERO é de graça.
 ///
 /// ⚠️ **`Vec::resize` num vetor VAZIO escreve elemento a elemento**, mesmo quando o valor é zero;

@@ -601,3 +601,53 @@ fn o_plano_compoe_uma_vez_por_quadro_e_da_a_mesma_tela() {
         );
     }
 }
+
+/// **B17.A1: o pen-up da cauda guarda só o que repõe** — as linhas de `tocados` do plano e da máscara, nunca o
+/// plano inteiro (33 MB a 4K) nem a máscara inteira (8 MB). A régua: bytes guardados ≤ 2·área(tocados)·4.
+#[test]
+fn a_cauda_nao_copia_o_plano_inteiro() {
+    let mut b = pincel(10.0);
+    b.blend = ph2d_painter_brush::BrushBlend::Multiply;
+    b.taper.end = 3.0;
+    let mut t = tool(1200, 600, [200, 120, 60, 255], b);
+    let pts: Vec<[f32; 2]> = (0..=40).map(|k| [500.0 + 4.0 * k as f32, 300.0]).collect();
+    super::traco_plano::COPIA_DA_CAUDA.with(|c| c.set((0, 0)));
+    traco(&mut t, &pts, true);
+    let (bytes, area) = super::traco_plano::COPIA_DA_CAUDA.with(std::cell::Cell::get);
+    assert!(area > 0, "fixtura: a cauda não foi re-pintada");
+    assert!(
+        bytes <= 2 * area * 4,
+        "a cauda guardou {bytes} B para repor {area} texels (o plano inteiro são {} B)",
+        1200 * 600 * 4
+    );
+}
+
+/// **B17.A1, ao bit:** repor o fora da janela a partir das linhas guardadas de `tocados` é o `repoe_fora` de antes
+/// (o plano inteiro como `antes`), em RGBA e na máscara, com a janela dentro, na borda e fora de `tocados`.
+#[test]
+fn a_cauda_guardada_repoe_o_fora_ao_bit() {
+    use super::Region;
+    let (w, h) = (97usize, 61usize);
+    let r = |x, y, w, h| Region { x, y, w, h };
+    for canais in [4usize, 1] {
+        let antes: Vec<u8> = (0..w * h * canais).map(|i| (i * 31 % 251) as u8).collect();
+        let base: Vec<u8> = (0..w * h * canais).map(|i| (i * 7 % 239) as u8).collect();
+        for (tocados, limpa) in [
+            (r(10, 5, 40, 30), r(20, 10, 10, 10)),
+            (r(0, 0, 97, 61), r(0, 0, 50, 61)),
+            (r(30, 20, 20, 20), r(30, 20, 20, 20)),
+            (r(5, 7, 33, 9), r(60, 40, 5, 5)),
+        ] {
+            let mut velho = base.clone();
+            super::traco_plano::repoe_fora_plano_inteiro(
+                &mut velho, &antes, w, tocados, limpa, canais,
+            );
+            let mut novo = base.clone();
+            super::traco_plano::repoe_fora_guardado(&mut novo, &antes, w, tocados, limpa, canais);
+            assert!(
+                velho == novo,
+                "{canais} canais, {tocados:?} / {limpa:?}: a cauda guardada mudou a tela"
+            );
+        }
+    }
+}

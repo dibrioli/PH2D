@@ -160,7 +160,7 @@ impl PainterTool {
         } else if has_base {
             std::mem::take(&mut self.paint.per_layer_stroke.pre) // route flipped: keep the stroke's base
         } else {
-            (*self.canvas_rgba).clone() // first batch of the stroke: snapshot the canvas once
+            crate::plane_copy::par_clone(&self.canvas_rgba) // first batch: snapshot the canvas once
         };
         self.paint.per_layer_stroke.init(pre, n, len);
     }

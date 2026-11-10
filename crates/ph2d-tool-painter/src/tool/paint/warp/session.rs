@@ -263,13 +263,14 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            None,
+            Some(bbox),
         );
         if por_area {
             reamostra_por_area(buf, &src, &disp, w, h, bbox, TETO_DA_AREA);
         } else {
             reamostra(buf, &src, &disp, w, h, bbox);
         }
+        self.declare_wrote(Some(bbox)); // os dois re-amostrar escrevem só as linhas e colunas de `bbox`
         self.warp_render_relief(bbox);
     }
 }

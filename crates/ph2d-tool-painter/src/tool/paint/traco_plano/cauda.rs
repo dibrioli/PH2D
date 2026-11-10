@@ -2,6 +2,17 @@
 
 use super::*;
 
+// O pen-up da cauda nesta thread: (bytes copiados para repor o fora da janela, área de `tocados` em texels).
+#[cfg(test)]
+thread_local! {
+    pub(crate) static COPIA_DA_CAUDA: std::cell::Cell<(usize, usize)> = const { std::cell::Cell::new((0, 0)) };
+}
+
+#[cfg(test)]
+fn conta_copia(bytes: usize, tocados: Region) {
+    COPIA_DA_CAUDA.with(|c| c.set((bytes, tocados.w as usize * tocados.h as usize)));
+}
+
 impl PainterTool {
     /// O plano da cauda: os lotes a re-carimbar, a janela que se limpa e a que muda.
     ///
@@ -161,9 +172,23 @@ impl PainterTool {
     /// estava FORA dela (os dabs re-carimbados transbordam). O fluxo de sorteio do tool fica onde estava.
     pub(super) fn repinta_a_cauda(&mut self, s: &mut PlanoDoTraco, c: &Cauda) {
         let w = self.source_size.0 as usize;
-        let antes = Arc::clone(&s.plano);
-        let mascara_antes = self.paint.stroke_mask.clone();
+        // Só as linhas de `tocados` voltam (`repoe_fora`): guardá-las, não o plano (33 MB a 4K) nem a máscara (8 MB).
+        let antes = guarda(&s.plano, w, c.tocados, 4);
+        let com_mascara = self.paint.stroke_mask.len() * 4 == s.plano.len();
+        let mascara_antes = if com_mascara {
+            guarda(&self.paint.stroke_mask, w, c.tocados, 1)
+        } else {
+            Vec::new()
+        };
+        let mascara_len = self.paint.stroke_mask.len();
+        #[cfg(test)]
+        let ptr = Arc::as_ptr(&s.plano);
         let p: &mut Vec<u8> = Arc::make_mut(&mut s.plano);
+        #[cfg(test)]
+        conta_copia(
+            antes.len() + mascara_antes.len() + if std::ptr::eq(ptr, p) { 0 } else { p.len() },
+            c.tocados,
+        );
         limpa_regiao(p, w, c.limpa, 4);
         if self.paint.stroke_mask.len() * 4 == s.plano.len() {
             limpa_regiao(&mut self.paint.stroke_mask, w, c.limpa, 1);
@@ -199,7 +224,7 @@ impl PainterTool {
         let p: &mut Vec<u8> = Arc::make_mut(&mut s.plano);
         repoe_fora(p, &antes, w, c.tocados, c.limpa, 4);
         self.paint.mistura_opaca.sombra.recomeca();
-        if mascara_antes.len() == self.paint.stroke_mask.len() && !mascara_antes.is_empty() {
+        if com_mascara && mascara_len == self.paint.stroke_mask.len() {
             repoe_fora(
                 &mut self.paint.stroke_mask,
                 &mascara_antes,

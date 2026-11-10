@@ -136,6 +136,7 @@ impl PainterTool {
                     dst[gi] = v.clamp(-H_MAX, H_MAX);
                 }
             }
+            self.declare_wrote(Some(bbox));
         }
         let pre_cover = Arc::clone(&self.paint.warp.pre_cover);
         if pre_cover.len() == n
@@ -158,6 +159,7 @@ impl PainterTool {
                     dst[gi] = bilinear_u8(&pre_cover, w, h, dx as f32 - d[0], dy as f32 - d[1]);
                 }
             }
+            self.declare_wrote(Some(bbox));
         }
         let pre_mats = Arc::clone(&self.paint.warp.pre_mats);
         if pre_mats.len() == n
@@ -180,6 +182,7 @@ impl PainterTool {
                     dst[gi] = bilinear_mat(&pre_mats, w, h, dx as f32 - d[0], dy as f32 - d[1]);
                 }
             }
+            self.declare_wrote(Some(bbox));
         }
         // Grow by one: the light reads a texel's NEIGHBOURS (the normal is a central difference), so a
         // texel just outside the changed box is lit by a slope that changed inside it. The pixel path's

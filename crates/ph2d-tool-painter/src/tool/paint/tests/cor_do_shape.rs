@@ -365,3 +365,29 @@ fn a_cor_da_rampa_do_shape_anda_com_o_pincel() {
          dois sítios"
     );
 }
+
+/// **B17.A2: a base do traço por camada (Per-Layer Color) nasce pela cópia em blocos** (`par_clone`), ao bit —
+/// 67 MB a 4096² em série eram ~11 ms no 1.º lote. A 2.ª chamada do mesmo traço não copia de novo.
+#[test]
+fn a_base_do_traco_por_camada_nasce_por_par_clone() {
+    let size = 1536u32; // 9,4 MB: acima do limiar da cópia paralela
+    let mut t = white_canvas(size, 6.0);
+    let len = (size * size * 4) as usize;
+    let antes = crate::plane_copy::par_clones_nesta_thread();
+    t.ensure_per_layer_stroke(true, 2, len);
+    assert_eq!(
+        crate::plane_copy::par_clones_nesta_thread() - antes,
+        1,
+        "a base do traço por camada não nasceu pela cópia em blocos"
+    );
+    assert!(
+        t.paint.per_layer_stroke.pre[..] == t.canvas_rgba[..],
+        "a base não é a tela ao bit"
+    );
+    t.ensure_per_layer_stroke(true, 2, len);
+    assert_eq!(
+        crate::plane_copy::par_clones_nesta_thread() - antes,
+        1,
+        "o 2.º lote copiou a base outra vez"
+    );
+}

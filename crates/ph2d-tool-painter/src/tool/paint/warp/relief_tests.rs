@@ -582,3 +582,36 @@ fn a_selected_transform_carries_the_body_and_leaves_the_hole() {
          a crista, que é a luz sombrando tinta que não está mais lá"
     );
 }
+
+/// **B17.A3: o Smear declara o que re-renderiza** — sem isso cada lote abria um acesso à tela sem região e o
+/// commit varria o plano inteiro (~470 MB/traço a 4K). Com e sem o corpo; e o undo devolve a tela ao byte.
+#[test]
+fn o_smear_declara_a_regiao_que_re_renderiza() {
+    for com_corpo in [false, true] {
+        let (mut t, _layer) = deformable_relief_tool();
+        t.set_paint_tool_mode("smear");
+        t.paint.warp.affect_relief = com_corpo;
+        let antes: Vec<u8> = t.canvas_rgba.to_vec();
+        t.on_canvas_pointer(cp([60.0, 80.0], PointerPhase::Down));
+        for i in 1..=8 {
+            t.on_canvas_pointer(cp([60.0 + (i as f32) * 5.0, 80.0], PointerPhase::Move));
+        }
+        let w = t.undo.write_state.get();
+        assert_eq!(
+            w.undeclared(),
+            0,
+            "o Smear (corpo {com_corpo}) deixou acessos por declarar"
+        );
+        assert!(w.declarada().is_some(), "a janela declarada tem de existir");
+        t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Up));
+        assert!(
+            t.canvas_rgba[..] != antes[..],
+            "fixtura: o Smear tem de mexer"
+        );
+        assert!(t.undo_last());
+        assert!(
+            t.canvas_rgba[..] == antes[..],
+            "o undo do Smear não devolveu a tela ao byte"
+        );
+    }
+}

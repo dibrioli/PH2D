@@ -60,9 +60,10 @@ pub struct InspectorPhysicsInfo {
     pub outline: Option<InspectorOutlineInfo>,
     /// As alças da forma estão acesas neste objecto (`ph2d_shape_handles`).
     pub shape_edit_on: bool,
-    /// Quem estica a forma no MUNDO (a escala dela vezes a dos pais, |x| ≠ |y|): a pose do mais próximo, ela ou
-    /// um pai (o corpo, na opção B), com escala desigual — o «Scale 1» repõe-lhe a escala. `None` = não esticada.
-    pub estica: Option<super::InspectorTransformInfo>,
+    /// Quem estica a forma no MUNDO (a escala dela vezes a dos pais, |x| ≠ |y|): os bits de CADA um da cadeia, ela e
+    /// os pais, com a própria escala desigual, do mais próximo ao mais longe — o «Set Scale to 1» repõe-nos todos
+    /// ([`PhysicsFieldEdit::ScaleToOne`]). Vazio = não esticada.
+    pub estica: Vec<u64>,
     pub density: f32,
     pub restitution: f32,
     pub friction: f32,
@@ -379,6 +380,9 @@ pub enum PhysicsFieldEdit {
     /// Regra B: o «Delete animation» do modal dos pontos animados — apaga as trilhas 51/52 da forma
     /// num passo de undo (`canais_pontos::apagar_num_passo`). Não é escrita de componente.
     DeletePointsAnimation,
+    /// O «Set Scale to 1» da forma redonda esticada: a escala de cada um de `InspectorPhysicsInfo::estica` volta a
+    /// 1, o espelho (o sinal) fica — tudo na mesma edição, um passo de undo.
+    ScaleToOne,
     /// **Um passo do arrasto das alças:** medidas e Offset juntos, UM valor, porque dois campos no mesmo quadro
     /// perderiam o primeiro (a fila é diferida, doc 17b A3). `medidas`: caixa `[half_x, half_y]`, bola `[radius, _]`,
     /// cápsula `[radius, half_height]`. Só para o objecto agarrado: não se espalha pela seleção.
@@ -602,6 +606,7 @@ impl PhysicsFieldEdit {
         matches!(
             self,
             P::FitToPicture
+                | P::ScaleToOne
                 | P::ShapeDrag { .. }
                 | P::Shape(_)
                 | P::Outline(_)

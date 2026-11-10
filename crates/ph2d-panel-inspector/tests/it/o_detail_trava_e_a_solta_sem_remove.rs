@@ -21,7 +21,7 @@ fn contorno(editando: bool, custom: bool) -> InspectorPhysicsInfo {
         shape_of: "Torso".into(),
         shape_tag: 3,
         shape_edit_on: editando,
-        estica: None,
+        estica: Vec::new(),
         outline: Some(InspectorOutlineInfo {
             detail_px: 2.0,
             alpha_cutoff: 0.5,

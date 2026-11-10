@@ -300,37 +300,108 @@ fn escala(sim: &mut SimWorld, q: Entity, s: [f32; 2]) {
 }
 
 /// ⭐ A forma esticada pelo CORPO (opção B: ela é filha, com escala 1) diz QUEM a estica — no cartão dela e no do
-/// corpo —, e o «Scale 1» vai a esse; dois esticões que se anulam não esticam nada. Antes, o aviso olhava só a
-/// escala da própria forma e nunca aparecia (foto de 09/11).
+/// corpo —; dois esticões que se anulam não esticam nada. Antes, o aviso olhava só a escala da própria forma e nunca
+/// aparecia (foto de 09/11).
 ///
-/// Mutação que deve sangrar: `estica: None` no `build_physics_info`.
+/// Mutação que deve sangrar: `estica: Vec::new()` no `build_physics_info`.
 #[test]
 fn a_forma_esticada_pelo_corpo_diz_quem_a_estica() {
     let (mut sim, e) = sprite_scene();
     apply(&mut sim, e, PhysicsFieldEdit::Add);
     let forma = ph2d_physics_ecs::forma_para_editar(sim.world(), e).expect("a filha");
     assert_ne!(forma, e, "opção B");
-    assert_eq!(info_de(&sim, forma, 0).estica, None, "1 × 1");
+    assert!(info_de(&sim, forma, 0).estica.is_empty(), "1 × 1");
     escala(&mut sim, e, [-2.0, 1.0]);
-    let quem = info_de(&sim, forma, 0)
-        .estica
-        .expect("o corpo estica a filha");
-    assert_eq!((quem.entity_bits, quem.scale), (e.to_bits(), [-2.0, 1.0]));
     assert_eq!(
-        info_de(&sim, e, 0).estica.map(|p| p.entity_bits),
-        Some(e.to_bits()),
+        info_de(&sim, forma, 0).estica,
+        [e.to_bits()],
+        "o corpo estica a filha"
+    );
+    assert_eq!(
+        info_de(&sim, e, 0).estica,
+        [e.to_bits()],
         "o cartão do corpo também o sabe"
     );
     escala(&mut sim, forma, [0.5, 1.0]);
-    assert_eq!(
-        info_de(&sim, forma, 0).estica,
-        None,
+    assert!(
+        info_de(&sim, forma, 0).estica.is_empty(),
         "2 × 0,5 = 1: anulam-se"
     );
     escala(&mut sim, e, [1.0, 1.0]);
     assert_eq!(
-        info_de(&sim, forma, 0).estica.map(|p| p.entity_bits),
-        Some(forma.to_bits()),
+        info_de(&sim, forma, 0).estica,
+        [forma.to_bits()],
         "a própria forma"
     );
+}
+
+/// A escala de `q` no mundo do teste, e a dela vezes a do pai.
+fn escala_de(sim: &SimWorld, q: Entity) -> [f32; 2] {
+    let s = sim.world().get::<Transform>(q).expect("pose").scale;
+    [s.x, s.y]
+}
+
+/// ⭐⭐ **«Set Scale to 1» conserta a CADEIA num clique** (dono 10/11): a forma (2, 1) sob o corpo (1, 3) — o 1.º
+/// clique repunha só a forma, ela continuava (1, 3) no mundo e o aviso ficava. Agora UMA edição repõe as duas
+/// escalas, o espelho de cada uma fica, o mundo fica igual, o aviso some, e repor a captura de antes (o Ctrl+Z, um
+/// passo: a fila de undo nasce por diff uma vez por quadro) devolve as duas. Quem já tinha escala igual (2 × 2) fica.
+///
+/// Mutações que devem sangrar: só o 1.º de `quem_estica` · o sinal não fica.
+#[test]
+fn set_scale_to_1_conserta_a_cadeia_num_clique() {
+    for (sx, por_cima) in [(2.0, None), (-2.0, None), (2.0, Some([2.0, 2.0]))] {
+        let (mut sim, e) = sprite_scene();
+        apply(&mut sim, e, PhysicsFieldEdit::Add);
+        apply(&mut sim, e, PhysicsFieldEdit::Shape(0));
+        let forma = ph2d_physics_ecs::forma_para_editar(sim.world(), e).expect("a filha");
+        let avo = por_cima.map(|s: [f32; 2]| {
+            let a = sim.world_mut().spawn(Transform::default()).id();
+            sim.world_mut().entity_mut(e).insert(ph2d_ecs::ChildOf(a));
+            escala(&mut sim, a, s);
+            a
+        });
+        escala(&mut sim, forma, [sx, 1.0]);
+        escala(&mut sim, e, [1.0, 3.0]);
+        let quem = info_de(&sim, e, 0).estica;
+        assert_eq!(
+            quem,
+            [forma.to_bits(), e.to_bits()],
+            "os dois, o mais próximo 1.º"
+        );
+        let antes = snap(&mut sim);
+        apply(&mut sim, e, PhysicsFieldEdit::ScaleToOne);
+        assert_eq!(
+            escala_de(&sim, forma),
+            [sx.signum(), 1.0],
+            "a forma, espelho incluído"
+        );
+        assert_eq!(escala_de(&sim, e), [1.0, 1.0], "o corpo, no MESMO clique");
+        if let (Some(a), Some(s)) = (avo, por_cima) {
+            assert_eq!(escala_de(&sim, a), s, "o avô 2 × 2 não estica: fica");
+        }
+        assert!(info_de(&sim, e, 0).estica.is_empty(), "o aviso some");
+        assert!(info_de(&sim, forma, 0).estica.is_empty());
+        // O Ctrl+Z: como o `undo::restore`, despawna e repõe a captura de antes.
+        let vivos: Vec<Entity> = sim
+            .world_mut()
+            .query::<(Entity, &Transform)>()
+            .iter(sim.world())
+            .map(|(q, _)| q)
+            .collect();
+        for q in vivos {
+            let _ = sim.world_mut().despawn(q);
+        }
+        ph2d_ecs::scene::snapshot_to_world(sim.world_mut(), &antes, &registry()).expect("restore");
+        let mut escalas: Vec<[f32; 2]> = sim
+            .world_mut()
+            .query::<&Transform>()
+            .iter(sim.world())
+            .map(|t| [t.scale.x, t.scale.y])
+            .filter(|s| *s != [1.0, 1.0] && Some(*s) != por_cima)
+            .collect();
+        escalas.sort_by(|a, b| a[0].total_cmp(&b[0]));
+        let mut esperadas = vec![[sx, 1.0], [1.0, 3.0]];
+        esperadas.sort_by(|a, b| a[0].total_cmp(&b[0]));
+        assert_eq!(escalas, esperadas, "um passo de undo devolve as duas");
+    }
 }

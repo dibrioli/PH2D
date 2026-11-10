@@ -184,7 +184,7 @@ pub fn build_physics_info(
             shape_follows: None,
             outline: None,
             shape_edit_on: false,
-            estica: None,
+            estica: Vec::new(),
             linvel: InitialVelocity::REST.linvel,
             angvel: InitialVelocity::REST.angvel,
             ccd: false,
@@ -290,7 +290,10 @@ pub fn build_physics_info(
         shape_follows: ph2d_physics_outline::follows(world, forma),
         outline: ph2d_physics_outline::card_info(world, forma),
         shape_edit_on: ph2d_shape_handles::editando(world) == Some(entity_bits),
-        estica: super::estica::quem_estica(world, forma),
+        estica: super::estica::quem_estica(world, forma)
+            .iter()
+            .map(|e| e.to_bits())
+            .collect(),
         linvel: iv.linvel,
         angvel: iv.angvel,
         ccd,

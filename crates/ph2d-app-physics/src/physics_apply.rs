@@ -9,10 +9,8 @@ use crate::physics_seed::sprite_half_extents;
 use crate::physics_surface::apply_surface_edit;
 use ph2d_inspector_ordering::{queue_remove, queue_set};
 
-/// Apply one [`PhysicsFieldEdit`] (§11).
-///
-/// **`Add` derives the collider from the sprite's own bounds** (Unity/Godot fit the box to the renderer too);
-/// a sprite-less entity falls back to a half-metre box.
+/// Apply one [`PhysicsFieldEdit`] (§11). **`Add` derives the collider from the sprite's own bounds**
+/// (Unity/Godot fit the box to the renderer too); a sprite-less entity falls back to a half-metre box.
 pub fn apply_physics_edit(
     sim: &mut SimWorld,
     entity_bits: u64,
@@ -52,6 +50,9 @@ pub fn apply_physics_edit(
     }
     if crate::physics_colide::apply_collides_edit(sim.world(), entity, edit, queue, registry) {
         return;
+    }
+    if matches!(edit, PhysicsFieldEdit::ScaleToOne) {
+        return crate::inspector::estica::escala_a_um(sim.world(), entity, queue, registry);
     }
     if matches!(edit, PhysicsFieldEdit::MoveShapeToChild) {
         let _ = ph2d_physics_ecs::move_forma_para_filha(sim.world_mut(), entity);
@@ -407,11 +408,9 @@ pub fn apply_physics_edit(
     };
     let mut next = cur;
     match edit {
-        // Not a field edit at all: creating a joint is one gesture over a
-        // PAIR, and it is intercepted before the per-entity fan-out that
-        // brings us here. Reaching this arm would mean the interception was
-        // removed — and the fan-out would then create one joint per selected
-        // body instead of one joint.
+        // Not a field edit at all: creating a joint is one gesture over a PAIR, and it is intercepted before
+        // the per-entity fan-out that brings us here. Reaching this arm would mean the interception was
+        // removed — and the fan-out would then create one joint per selected body instead of one joint.
         // Not field edits: SELECTION gestures or app options, intercepted before the per-entity fan-out.
         PhysicsFieldEdit::Join
         | PhysicsFieldEdit::Bake
@@ -552,6 +551,7 @@ pub fn apply_physics_edit(
         | PhysicsFieldEdit::MoveShapeToChild
         | PhysicsFieldEdit::Remove
         | PhysicsFieldEdit::FitToPicture
+        | PhysicsFieldEdit::ScaleToOne
         | PhysicsFieldEdit::Outline(_)
         | PhysicsFieldEdit::Kind(_)
         | PhysicsFieldEdit::GravityScale(_)

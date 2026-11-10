@@ -187,7 +187,7 @@ fn estado_da_forma(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f3
 
 /// Uma forma redonda esticada no MUNDO (por ela ou por um pai — `InspectorPhysicsInfo::estica`)?
 pub(crate) fn esticada(info: &InspectorPhysicsInfo) -> bool {
-    info.shape_tag != SHAPE_BOX && info.estica.is_some()
+    info.shape_tag != SHAPE_BOX && !info.estica.is_empty()
 }
 
 /// O aviso e as duas saídas; o cartão Body também o pinta (é lá que o artista esticou o corpo).

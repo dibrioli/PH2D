@@ -94,6 +94,8 @@ impl SolverScratch {
             self.dst_susp = vec![0.0; n];
             self.dst_rgb = vec![[0.0; 3]; n];
             self.edge = vec![0; n];
+            #[cfg(test)]
+            veneno::aplica(self, false);
         }
     }
 
@@ -101,7 +103,43 @@ impl SolverScratch {
     pub fn ensure_backrun(&mut self, n: usize) {
         if self.bflags.len() != n {
             self.bflags = vec![0; n];
+            #[cfg(test)]
+            veneno::aplica(self, true);
         }
+    }
+}
+
+/// B12.4: o rascunho ENVENENADO — com [`veneno::LIGADO`] no fio que dá o passo, cada plano que o `ensure` aloca
+/// nasce a lixo (NaN, bytes ≠ 0) em vez de zeros: um passe que lê o que não escreveu muda a grade.
+#[cfg(test)]
+pub(crate) mod veneno {
+    use super::SolverScratch;
+    use std::cell::Cell;
+
+    thread_local! {
+        pub(crate) static LIGADO: Cell<bool> = const { Cell::new(false) };
+        /// Quantos `ensure` envenenaram neste fio (o gate prova que o veneno chegou ao passo).
+        pub(crate) static APLICADOS: Cell<usize> = const { Cell::new(0) };
+    }
+
+    const NAN: f32 = f32::from_bits(0x7fa5_a5a5);
+
+    pub(super) fn aplica(s: &mut SolverScratch, backrun: bool) {
+        if !LIGADO.get() {
+            return;
+        }
+        APLICADOS.set(APLICADOS.get() + 1);
+        if backrun {
+            s.bflags.fill(0xa5);
+            return;
+        }
+        s.uv.fill([NAN; 2]);
+        s.outflow.fill(NAN);
+        s.bt.fill(3);
+        s.dst_film.fill(NAN);
+        s.dst_susp.fill(NAN);
+        s.dst_rgb.fill([NAN; 3]);
+        s.edge.fill(0xa5);
     }
 }
 

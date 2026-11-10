@@ -589,7 +589,6 @@ fn catching_up_in_one_call_is_the_same_as_catching_up_step_by_step() {
 }
 
 /// **O MOTOR e o PAINEL dão a mesma resposta a «esta reprodução está pendurada?»**
-///
 /// ⚠️ A lei existe **duas vezes**, e de propósito: o painel é chrome e não vê o motor
 /// ([`ph2d_ecs::animator_state`] vive no `ph2d-ecs`; [`InspectorAnimInfo::current_dangling`] no
 /// modelo do editor).

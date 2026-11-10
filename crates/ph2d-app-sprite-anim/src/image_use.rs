@@ -202,10 +202,8 @@ fn to_animated(
 }
 
 /// ⭐ **O seletor «Use»** (plano GEF 15 D3): `e` passa a ser usada como `to`. **Cada uso guarda a sua configuração**
-/// (dono 27/10) no [`ImageUseMemory`]: o uso que se deixa fica lá tal e qual, e um uso que já foi usado volta como
-/// estava (o tamanho, o corte, o ladrilho, as animações). Um uso novo nasce à MESMA [`display_scale`]: parada = a
-/// imagem inteira; animada = uma célula; repetida = UM ladrilho (1 × 1) da imagem inteira. O collider automático segue o tamanho.
-/// Um passo de desfazer devolve tudo. `false` se já o era, se não é uma sprite, ou se é uma camada de fundo
+/// (dono 27/10) no [`ImageUseMemory`]: um uso já usado volta como estava. Um uso novo nasce à MESMA
+/// [`display_scale`] (parada = a imagem; animada = uma célula; repetida = um ladrilho). Um passo de desfazer. `false` se já o era, se não é uma sprite, ou se é uma camada de fundo
 /// (`ScrollRepeat`, outra lei: repete sempre). `rgba` é a imagem que ela mostra, para propor a grelha.
 pub fn set_use(
     world: &mut World,

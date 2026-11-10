@@ -248,7 +248,6 @@ pub fn library_facts(
 /// atlas que já a tem (fábrica ou importada), senão uma textura própria com o nome dos píxeis.
 ///
 /// `acquire` sobe uma textura própria (`w`, `h`, RGBA8) e devolve o id dela — o `SpriteRenderer` no app.
-///
 /// # Errors
 /// O texto para o artista se `id` não é uma imagem, `e` não é uma sprite, ou a placa recusa a textura.
 pub fn choose_library_image(
@@ -379,7 +378,6 @@ pub fn override_law(
 
 /// ⭐ **Uma sprite nova com a imagem `id` da biblioteca, no ponto `at`** — a queda no canvas. Uma sprite parada
 /// nova e a MESMA porta da troca ([`choose_library_image`]): a referência do atlas, o tamanho nativo de uma célula.
-///
 /// # Errors
 /// O texto para o artista se `id` não é uma imagem, ou a placa recusa a textura (a sprite não fica).
 ///
@@ -435,7 +433,6 @@ pub fn place_library_image(
 /// ⭐ **Traz um ficheiro de imagem para a biblioteca do projecto, sem criar objecto** (o *Import* da Unity):
 /// os píxeis no `db` (com o caminho, que dá o nome), uma célula do atlas e o par `chave → AssetId` que o save
 /// grava. Idempotente por conteúdo: a mesma imagem não ocupa duas células.
-///
 /// # Errors
 /// O ficheiro não abre, não é imagem, ou o atlas não tem lugar.
 pub fn bring_into_library(

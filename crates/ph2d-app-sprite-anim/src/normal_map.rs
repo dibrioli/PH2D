@@ -1,9 +1,6 @@
-//! ⭐ **O NORMAL MAP é da IMAGEM** ([P14 §11](../../../docs/PixelArt/P14_plano.md), «Sprite: a linha Normal Map»):
-//! `imagem de cor → imagem normal`, por conteúdo (blake3) — como a `CanvasTexture` da Godot e a *secondary texture*
-//! da Unity. Todo sprite que mostra aquela imagem (textura própria ou célula do átlas) acende pela MESMA normal.
-//!
-//! A verdade é UMA: o mapa [`ph2d_sprite_edit::normais`] (a biblioteca lê-o para dar nome à normal), que viaja no `LibraryDoc` do `ProjectState` (undo e ficheiro, irmão das
-//! lápides). O `SpriteRenderer` é só a cópia na placa: [`sincronizar`] a refaz a partir daqui.
+//! ⭐ **O NORMAL MAP é da IMAGEM** ([P14 §11](../../../docs/PixelArt/P14_plano.md)): cor → normal por blake3 (a
+//! `CanvasTexture` da Godot). A verdade é o mapa [`ph2d_sprite_edit::normais`], no `LibraryDoc` do `ProjectState`;
+//! o `SpriteRenderer` é só a cópia na placa, que [`sincronizar`] refaz.
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{Entity, SpritePixels, World};
@@ -21,7 +18,6 @@ pub enum Alvo {
 /// O que a placa sabe fazer com uma normal (o `SpriteRenderer`; os gates trazem a sua).
 pub trait PlacaDeNormais {
     /// Regista (`Some((w, h, texels))`) ou tira (`None`) a normal de `alvo` (16 bits só na textura própria).
-    ///
     /// # Errors
     /// A placa recusa (outro tamanho, alvo desconhecido).
     fn definir(
@@ -133,7 +129,6 @@ pub fn imagem_de(world: &World, e: Entity, atlas: &BTreeMap<u32, AssetId>) -> Op
 }
 
 /// ⭐ **A imagem que o sprite `e` mostra passa a ter a normal `normal`** (`None` = tira).
-///
 /// # Errors
 /// O texto para o artista (chave i18n): `e` sem imagem, `normal` não é imagem, ou outro tamanho que a cor.
 pub fn escolher_normal(

@@ -4,9 +4,7 @@
 
 use super::CardPainted;
 use ph2d_code_debugcard::LiveRow;
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, frame_radius, paint_text, resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, frame_radius, paint_text, resolve};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr_with;
 use ph2d_text::TextSystem;

@@ -5,9 +5,7 @@ use crate::frame::CodeFrame;
 use crate::geom;
 use crate::palette::Palette;
 use crate::view::CodeView;
-use ph2d_editor_core::paint::{
-    fill_circle, frame_radius, paint_text, rect_to_vello, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_circle, frame_radius, paint_text, rect_to_vello};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{Radius, Spacing, StrokeToken, TypeToken};

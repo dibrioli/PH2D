@@ -5,7 +5,7 @@ use super::{ButtonIds, DebugCardView};
 use ph2d_code_debugcard::{Ask, CardState, CardStyle, DebugCard, WhoTag};
 use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, frame_radius, paint_text, paint_text_title, resolve,
-    stroke_rounded_rect, token_to_vello,
+    token_to_vello,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};

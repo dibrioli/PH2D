@@ -35,10 +35,12 @@ nasce lá.
   segunda moeda com `coin_takn` → «1 listens» × «nobody listens».
 
 ## Onda 2 — medidas e camadas
+✅ feita — commits `c8e004d79d`, `985319e9ac` ([handoff](../handoffs/HANDOFF_CONTINUACAO_GEF02_F3_ONDAS_2_3_2026-11-09.md)). A curva da timeline diz o número do cartão (Width/Height, altura inteira da cápsula, °/s, unidade de comprimento do projeto).
 Half Size → Width/Height na forma (o documento guarda o que o artista escreve; o motor recebe metade).
 Layer mostra o nome da camada no campo.
 
 ## Onda 3 — corpo mais limpo
+✅ feita — commits `89460ca606`, `985319e9ac`, `1b33fd2a6c` ([handoff](../handoffs/HANDOFF_CONTINUACAO_GEF02_F3_ONDAS_2_3_2026-11-09.md)). O «More» é a dobra já existente renomeada (dono 09/11); o aviso de forma esticada foi curado para a opção B (estava morto).
 Parte «More», fechada por omissão, com os campos raros (nenhum some). Remover o corpo deixa recibo
 «Removed — Undo». Aviso quando o corpo está escalado.
 

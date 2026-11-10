@@ -16,3 +16,5 @@ Técnico (delegado): nome da camada no campo Layer, recibo «Removed — Undo» 
 
 **Why:** a crítica apontou erros mudos (nome de sinal errado) e campos que confundem; o dono aceitou o pacote recomendado.
 **How to apply:** ondas 0 (mover código: app-physics no tecto exato, shell com 2 linhas) → 1 etiqueta de sinal → 2 Width/Height + nome da camada → 3 More/Undo/escala → 4 tecla no Trigger. Ver [[project_physics_cards_owner_decisions_2026_11_07]].
+
+Dono 09/11 (smoke das ondas 2–3 OK): a dobra dos campos raros chama-se **More**; a curva da Timeline mostra o MESMO número do cartão (Width/Height inteiros, altura inteira da cápsula, °/s) — "resolva agora".

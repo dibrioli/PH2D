@@ -15,7 +15,9 @@ pub(crate) fn play_map<'a>(jogador: &'a PlaySession, hero: &'a HeroScreen) -> &'
 impl crate::App {
     /// O Play começou: as teclas deste computador para este jogo, por cima do mapa.
     pub(crate) fn jogador_entra(&mut self) {
-        let base = (!cfg!(test)).then(ph2d_player_controls::home_base).flatten();
+        let base = (!cfg!(test))
+            .then(ph2d_player_controls::home_base)
+            .flatten();
         let file = ph2d_player_controls::player_file_of(base.as_deref(), self.game_id());
         if let Some(h) = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()) {
             self.components.jogador.start(&h.input_map, file);

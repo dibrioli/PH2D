@@ -237,7 +237,7 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         ATRITO => c("canal.fisica.atrito", campo),
         COMBINA_RESTITUICAO => d("canal.fisica.combina_restituicao", campo, op(COMBINA)),
         COMBINA_ATRITO => d("canal.fisica.combina_atrito", campo, op(COMBINA)),
-        CAMADA => d("canal.fisica.camada", campo, Especie::Numero),
+        CAMADA => d("canal.fisica.camada", campo, Especie::CamadaDeColisao),
         SENSOR => d(
             "canal.fisica.sensor",
             campo,

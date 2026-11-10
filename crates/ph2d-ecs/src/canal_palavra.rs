@@ -28,6 +28,11 @@ pub enum Palavra {
 #[derive(Resource, Debug, Default, Clone, PartialEq, Eq)]
 pub struct NomesDosScripts(pub BTreeMap<u64, String>);
 
+/// O rótulo de cada camada de colisão, pelo número (`""` = sem rótulo) — publicado por quem tem a tabela
+/// e as traduções (`ph2d-app-physics`), o mesmo do campo Layer do cartão.
+#[derive(Resource, Debug, Default, Clone, PartialEq, Eq)]
+pub struct NomesDasCamadasDeColisao(pub Vec<String>);
+
 /// Os modos de mistura pelo CÓDIGO que o documento guarda (`ph2d_vec_scene::BlendMode`, a camada
 /// do Flip): as chaves da tabela `blend.mode.*`.
 pub const MISTURAS: &[&str] = &[
@@ -131,6 +136,13 @@ pub fn palavra(world: &World, entidade: u64, k: FieldKey, v: f32) -> Option<Pala
             });
             nome.map(Palavra::DoArtista)
         }
+        Especie::CamadaDeColisao => world
+            .get_resource::<NomesDasCamadasDeColisao>()?
+            .0
+            .get(usize::try_from(i).ok()?)
+            .filter(|n| !n.is_empty())
+            .cloned()
+            .map(Palavra::DoArtista),
         Especie::Script if i == 0 => Some(Palavra::Chave(Cow::Borrowed(NENHUM))),
         Especie::Script => world
             .get_resource::<NomesDosScripts>()?
@@ -170,7 +182,11 @@ pub fn prende(k: FieldKey, v: f32) -> f32 {
         Especie::Ligado => f32::from(u8::from(v.is_finite() && v >= 0.5)),
         Especie::Opcoes(chaves) => mais_proxima(chaves, v).unwrap_or(inteiro),
         Especie::Catalogo => crate::canal_componente::n_opcoes(k).map_or(inteiro, ate),
-        Especie::PorIrmao { .. } | Especie::Camada | Especie::Script | Especie::Texto => inteiro,
+        Especie::PorIrmao { .. }
+        | Especie::Camada
+        | Especie::CamadaDeColisao
+        | Especie::Script
+        | Especie::Texto => inteiro,
     }
 }
 

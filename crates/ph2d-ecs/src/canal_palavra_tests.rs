@@ -176,3 +176,33 @@ fn a_curva_so_escreve_escolhas_que_existem() {
     w.escrever(7, k, 200.0);
     assert_eq!(w.drenar(crate::canal::familia::VETOR), vec![(7, k, 2.0)]);
 }
+
+/// ⭐ A camada de COLISÃO diz o nome que o campo Layer do cartão mostra (a tabela que a física publica);
+/// antes, o canal era `Numero` e a timeline escrevia «3».
+///
+/// Mutação que deve sangrar: `Especie::CamadaDeColisao => None`.
+#[test]
+fn a_camada_de_colisao_diz_o_nome_do_cartao() {
+    let mut w = World::new();
+    let k = FieldKey::new(
+        crate::canal::familia::FISICA,
+        crate::canal_fisica::CAMADA,
+        0,
+        0,
+    );
+    assert_eq!(palavra(&w, 0, k, 3.0), None, "sem a tabela publicada");
+    w.insert_resource(NomesDasCamadasDeColisao(vec![
+        "Default".to_owned(),
+        "Layer 1".to_owned(),
+        String::new(),
+        "Coins".to_owned(),
+    ]));
+    assert_eq!(palavra(&w, 0, k, 3.0), do_artista("Coins"));
+    assert_eq!(palavra(&w, 0, k, 0.0), do_artista("Default"));
+    assert_eq!(palavra(&w, 0, k, 2.0), None, "um rótulo vazio");
+    assert_eq!(palavra(&w, 0, k, 9.0), None, "fora da tabela");
+    assert!(
+        (prende(k, 3.4) - 3.0).abs() < f32::EPSILON,
+        "um índice inteiro"
+    );
+}

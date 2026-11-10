@@ -327,3 +327,29 @@ fn a_chave_da_forma_no_corpo_vai_para_a_filha() {
         assert!(sim.world().get::<Collider>(e).is_none(), "nada no corpo");
     }
 }
+
+/// ⭐ A timeline lê a camada de colisão pelo MESMO rótulo do campo Layer: o nome dado, «Default» na 0,
+/// «Layer n» sem nome — publicado com os valores, por quadro.
+///
+/// Mutação que deve sangrar: tirar a publicação dos nomes do `publicar`.
+#[test]
+fn a_timeline_le_a_camada_de_colisao_pelo_rotulo_do_cartao() {
+    let (mut sim, e) = corpo();
+    ph2d_physics_ecs::LayerNames::rename(sim.world_mut(), 3, "Coins");
+    publicar(&mut sim, &[e.to_bits()]);
+    let nomes = sim
+        .world()
+        .get_resource::<ph2d_ecs::canal_palavra::NomesDasCamadasDeColisao>()
+        .expect("publicada");
+    assert_eq!(nomes.0.len(), ph2d_physics_ecs::MAX_LAYERS);
+    assert_eq!(nomes.0[0], ph2d_i18n::tr("card.physics.layer_zero"));
+    assert_eq!(nomes.0[3], "Coins");
+    assert_eq!(
+        nomes.0[5],
+        ph2d_panel_physics::aba::nome_inteiro(&ph2d_physics_ecs::LayerNames::of(sim.world()), 5)
+    );
+    assert_ne!(
+        nomes.0[5], "5",
+        "sem nome, o rótulo do cartão, não o número"
+    );
+}

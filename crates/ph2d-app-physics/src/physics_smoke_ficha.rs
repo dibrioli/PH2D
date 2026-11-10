@@ -52,6 +52,9 @@ pub fn physics_smoke_ficha(ctx: &mut crate::SceneCtx<'_>) {
             .find(|(_, n)| n.0 == nome.trim())
             .map(|(e, _)| e.to_bits());
     }
+    if std::env::var_os("PH2D_PHYSICS_SMOKE_CAMADA_NA_TIMELINE").is_some() {
+        camada_na_timeline(ctx);
+    }
     println!(
         "[physics-smoke 120] The whole item, PAUSED. Space plays: the Crate falls through the Loose Shape and \
          lands on the Floor; the Stretched Ball falls into the Updraft Zone and the zone pushes it up. Left/Right \
@@ -60,6 +63,43 @@ pub fn physics_smoke_ficha(ctx: &mut crate::SceneCtx<'_>) {
          picture: Detail, Alpha cutoff and Ignore specks under each reshape it. It lands on the Floor. The Marble falls inside the Ring's hole and rests on its bottom. The Table \
          stands on its two legs: one body, three shapes. Stop puts everything back."
     );
+}
+
+/// A foto da camada de colisão na timeline: a do Player vai de «Player» (0 s) a «Props» (1 s), Timeline aberta.
+fn camada_na_timeline(ctx: &mut crate::SceneCtx<'_>) {
+    let mut q = ctx.world.query::<(Entity, &Name)>();
+    let Some(player) = q
+        .iter(ctx.world)
+        .find(|(_, n)| n.0 == "Player")
+        .map(|(e, _)| e)
+    else {
+        return;
+    };
+    let prop = ph2d_timeline::PropKind::Field(ph2d_ecs::FieldKey::new(
+        ph2d_ecs::canal::familia::FISICA,
+        ph2d_ecs::canal_fisica::CAMADA,
+        0,
+        0,
+    ));
+    let dono = crate::canais_corpo::dono_da_chave(ctx.world, player.to_bits(), prop);
+    for (t, camada) in [(0.0, "Player"), (1.0, "Props")] {
+        let Some(i) = ph2d_physics_scene::ficha::CAMADAS
+            .iter()
+            .position(|c| *c == camada)
+        else {
+            continue;
+        };
+        #[allow(clippy::cast_precision_loss)]
+        ctx.timeline.insert_key(
+            dono,
+            prop,
+            ph2d_anim::RationalTime::from_seconds(t),
+            ph2d_anim::AnimValue::Float(i as f32),
+            ph2d_anim::Interp::Linear,
+        );
+    }
+    ctx.want.panels.push("timeline");
+    ctx.want.select = Some(player.to_bits());
 }
 
 #[cfg(test)]

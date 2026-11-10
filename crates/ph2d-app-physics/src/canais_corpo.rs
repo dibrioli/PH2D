@@ -267,9 +267,24 @@ pub fn dono_da_chave(world: &ph2d_ecs::World, e: u64, prop: ph2d_timeline::PropK
     }
 }
 
+/// O rótulo de cada camada de colisão, o do campo Layer, para a palavra do canal `CAMADA` — só quando muda.
+fn publicar_nomes_das_camadas(sim: &mut SimWorld) {
+    use ph2d_ecs::canal_palavra::NomesDasCamadasDeColisao as Nomes;
+    let tabela = ph2d_physics_ecs::LayerNames::of(sim.world());
+    let nomes = Nomes(
+        (0..ph2d_physics_ecs::MAX_LAYERS)
+            .map(|n| ph2d_panel_physics::aba::nome_inteiro(&tabela, n))
+            .collect(),
+    );
+    if sim.world().get_resource::<Nomes>() != Some(&nomes) {
+        sim.world_mut().insert_resource(nomes);
+    }
+}
+
 /// ⭐ **Publica o que cada corpo vale AGORA** (através do eco) — os campos que a §11 mostra —,
 /// esquecido antes o que cada entidade publicou desta família.
 pub fn publicar(sim: &mut SimWorld, entidades: &[u64]) {
+    publicar_nomes_das_camadas(sim);
     let mut lotes: Vec<(u64, FieldKey, f32)> = entidades
         .iter()
         .filter_map(|&b| Some((b, retrato(sim, b)?)))

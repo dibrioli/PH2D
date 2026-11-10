@@ -29,7 +29,8 @@ fn compativel(kind: FieldKind, view: View, e: Especie) -> bool {
         (FieldKind::Toggle, _) => {
             matches!(e, Especie::Ligado) || matches!(e, Especie::Opcoes(c) if c.len() == 2)
         }
-        (FieldKind::Int, _) => matches!(e, Especie::Numero),
+        // A camada de colisão é um inteiro que a timeline diz pelo rótulo do campo Layer.
+        (FieldKind::Int, _) => matches!(e, Especie::Numero | Especie::CamadaDeColisao),
         (
             FieldKind::Scalar
             | FieldKind::Angle

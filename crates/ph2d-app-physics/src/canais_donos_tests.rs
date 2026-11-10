@@ -35,7 +35,7 @@ fn outro(k: FieldKey, antes: f32) -> f32 {
             (antes + 1.0) % n
         }
         Especie::Ligado => 1.0 - antes,
-        Especie::Numero => antes + 1.0,
+        Especie::Numero | Especie::CamadaDeColisao => antes + 1.0,
         _ => [0.375, 0.625, 1.5]
             .into_iter()
             .find(|&v| !perto(v, antes))

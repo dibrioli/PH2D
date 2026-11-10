@@ -180,6 +180,9 @@ pub enum Especie {
     Catalogo,
     /// Uma camada de ordenação, pelo `LayerId`: o nome é do artista.
     Camada,
+    /// Uma camada de COLISÃO (`Collider::layer`): o rótulo que o campo Layer mostra, publicado pela física em
+    /// [`crate::canal_palavra::NomesDasCamadasDeColisao`].
+    CamadaDeColisao,
     /// Um script da biblioteca, pelo `ScriptId` (`0` = nenhum): o nome é do artista.
     Script,
     /// Um índice em [`TextosDosCanais`].

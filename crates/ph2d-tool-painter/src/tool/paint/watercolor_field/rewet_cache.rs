@@ -24,6 +24,12 @@ thread_local! {
     /// O oráculo do B16.5: sem a cache (o `build_rewet_fields` de sempre, verbatim).
     pub(in crate::tool::paint) static REWET_SEM_CACHE: std::cell::Cell<bool> =
         const { std::cell::Cell::new(false) };
+    /// O caminho de antes do híbrido (B16b-cont): sempre a cache, mesmo quando custa mais.
+    pub(in crate::tool::paint) static REWET_SEM_HIBRIDO: std::cell::Cell<bool> =
+        const { std::cell::Cell::new(false) };
+    /// Quantos quadros tomaram o caminho direto do híbrido.
+    pub(in crate::tool::paint) static REWET_DIRETOS: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
 }
 
 /// Um rectângulo de células, meio-aberto: `[x0, x1) × [y0, y1)`.
@@ -130,23 +136,53 @@ pub(in crate::tool::paint) fn build_rewet_fields_cached(
         },
     };
     // 1. O sujo do quadro `⊕ R`: o píxel `p` só é amostrado pela célula `p / ds`.
-    if let Some(d) = changed.filter(|_| c.feito.iter().any(|&f| f)) {
-        let (dx0, dy0) = (d.x as usize / ds, d.y as usize / ds);
-        let dx1 = (d.x as usize + d.w as usize).div_ceil(ds);
-        let dy1 = (d.y as usize + d.h as usize).div_ceil(ds);
-        let u = (
-            dx0.saturating_sub(rr),
-            dy0.saturating_sub(rr),
-            (dx1 + rr).min(gw),
-            (dy1 + rr).min(gh),
-        );
-        if u.0 < u.2 && u.1 < u.3 {
-            recompute(&mut c, &e, u, (r1, r2, rr));
-        }
-    }
-    // 2. Os ladrilhos da janela nunca calculados (troços iguais de filas seguidas juntam-se).
+    let sujo = changed
+        .map(|d| {
+            let (dx0, dy0) = (d.x as usize / ds, d.y as usize / ds);
+            let dx1 = (d.x as usize + d.w as usize).div_ceil(ds);
+            let dy1 = (d.y as usize + d.h as usize).div_ceil(ds);
+            (
+                dx0.saturating_sub(rr),
+                dy0.saturating_sub(rr),
+                (dx1 + rr).min(gw),
+                (dy1 + rr).min(gh),
+            )
+        })
+        .filter(|u| u.0 < u.2 && u.1 < u.3);
     let (tx0, tx1) = (lox0 / LADO, (lox0 + lw).div_ceil(LADO));
     let (ty0, ty1) = (loy0 / LADO, (loy0 + lh).div_ceil(LADO));
+    // HÍBRIDO: refazer o sujo custa o sujo ⊕ 2R; ≥ ½ janela (o quadro do traço) ⇒ refazer direto (o
+    // oráculo), sem encher ladrilhos, e esquecer os do sujo ⊕ R, que envelheceram. A cache enche-se
+    // nos quadros de janela ≫ sujo (recomposição, secagem), onde ganha.
+    let sujo_2r = sujo.map_or(0, |u| {
+        ((u.2 + rr).min(gw) - u.0.saturating_sub(rr))
+            * ((u.3 + rr).min(gh) - u.1.saturating_sub(rr))
+    });
+    #[cfg(test)]
+    let hibrido = !REWET_SEM_HIBRIDO.get();
+    #[cfg(not(test))]
+    let hibrido = true;
+    if let Some(u) = sujo.filter(|_| hibrido && 2 * sujo_2r >= lw * lh) {
+        esquece(&mut c, u);
+        #[cfg(test)]
+        REWET_DIRETOS.set(REWET_DIRETOS.get() + 1);
+        let f = super::build_rewet_fields(
+            e.base,
+            e.ground,
+            e.wet_soak,
+            e.soaked,
+            e.stroke_water,
+            e.watered,
+            (fw, fh),
+            (rx0, ry0, rx1, ry1),
+            spread,
+        );
+        return (f, c);
+    }
+    if let Some(u) = sujo.filter(|_| c.feito.iter().any(|&f| f)) {
+        recompute(&mut c, &e, u, (r1, r2, rr));
+    }
+    // 2. Os ladrilhos da janela nunca calculados (troços iguais de filas seguidas juntam-se).
     let mut trocos: Vec<Rect> = Vec::new();
     for ty in ty0..ty1 {
         let mut tx = tx0;
@@ -209,6 +245,33 @@ pub(in crate::tool::paint) fn build_rewet_fields_cached(
         loy0,
     };
     (f, c)
+}
+
+/// Larga os ladrilhos que tocam as células `u` (deixam de ser `feito`; a próxima visita refá-los).
+fn esquece(c: &mut RewetCache, u: Rect) {
+    for ty in u.1 / LADO..u.3.div_ceil(LADO) {
+        for tx in u.0 / LADO..u.2.div_ceil(LADO) {
+            let i = ty * c.tw + tx;
+            if !c.feito[i] {
+                continue;
+            }
+            c.feito[i] = false;
+            let planos = [
+                &mut c.pres,
+                &mut c.soak,
+                &mut c.soak_halo,
+                &mut c.water_halo,
+            ]
+            .into_iter()
+            .chain(c.near.iter_mut())
+            .chain(c.far.iter_mut().flatten());
+            for p in planos {
+                if let Some(t) = p.0.get_mut(i) {
+                    *t = None;
+                }
+            }
+        }
+    }
 }
 
 /// O rectângulo `(o, (w, h))` de um plano com `tw` ladrilhos por fila, linha a linha (ladrilho por

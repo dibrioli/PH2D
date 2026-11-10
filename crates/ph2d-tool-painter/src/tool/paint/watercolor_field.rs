@@ -177,10 +177,10 @@ fn box_blur_com(
 // filho [`borrao`] (teto de LOC, corte por assunto); re-exportados para o caminho plano de sempre.
 mod borrao;
 mod rewet_cache;
+pub(super) use borrao::{box_blur2, box_blur4};
 pub(super) use rewet_cache::{Entradas as RewetEntradas, RewetCache, build_rewet_fields_cached};
 #[cfg(test)]
-pub(super) use rewet_cache::REWET_SEM_CACHE;
-pub(super) use borrao::{box_blur2, box_blur4};
+pub(super) use rewet_cache::{REWET_DIRETOS, REWET_SEM_CACHE, REWET_SEM_HIBRIDO};
 
 /// A largura das faixas da passagem vertical do [`box_blur`]: `64` floats = `256` bytes = quatro
 /// linhas de cache por linha de faixa. Não muda um bit do resultado (as somas por coluna são as

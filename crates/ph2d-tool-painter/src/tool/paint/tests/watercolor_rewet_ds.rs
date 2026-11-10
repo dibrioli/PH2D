@@ -302,8 +302,18 @@ fn o_campo_do_rewet_guardado_e_o_refeito() {
                     h: 18,
                 };
                 let pad = reach + 6;
-                let (rx0, ry0) = (dx.saturating_sub(2 * pad), dy.saturating_sub(2 * pad));
-                let (rx1, ry1) = ((dx + 18 + 2 * pad).min(fw), (dy + 18 + 2 * pad).min(fh));
+                // Quadros pares: janela ≈ sujo ⊕ 2R (o traço: caminho HÍBRIDO, refaz direto e
+                // esquece). Ímpares: a tela inteira (janela ≫ sujo: a cache, sobre o que esqueceu).
+                let (rx0, ry0, rx1, ry1) = if q % 2 == 1 {
+                    (0, 0, fw, fh)
+                } else {
+                    (
+                        dx.saturating_sub(2 * pad),
+                        dy.saturating_sub(2 * pad),
+                        (dx + 18 + 2 * pad).min(fw),
+                        (dy + 18 + 2 * pad).min(fh),
+                    )
+                };
                 let e = RewetEntradas {
                     base: &base,
                     ground: &ground,
@@ -336,7 +346,8 @@ fn o_campo_do_rewet_guardado_e_o_refeito() {
                 );
                 let (mut pior, mut n) = (0.0f32, 0usize);
                 let lado = |a: usize, z: usize| {
-                    let (lo, hi) = (a + pad, z.saturating_sub(pad).max(a + pad));
+                    let p = if a == 0 { 0 } else { pad };
+                    let (lo, hi) = (a + p, z.saturating_sub(pad).max(a + p));
                     (0..(hi - lo) * 2).map(move |k| lo as f32 + k as f32 * 0.5)
                 };
                 for gy in lado(ry0, ry1).step_by(3) {
@@ -360,9 +371,19 @@ fn o_campo_do_rewet_guardado_e_o_refeito() {
         }
         erros
     };
+    use crate::tool::paint::watercolor_field::REWET_DIRETOS;
+    REWET_DIRETOS.set(0);
     let certo = sessao(false);
+    let diretos = REWET_DIRETOS.get();
     let velho = sessao(true);
-    eprintln!("guardado × refeito: {certo:#?}\nCONTROLO (sujo esquecido): {velho:#?}");
+    eprintln!(
+        "guardado × refeito: {certo:#?}\nCONTROLO (sujo esquecido): {velho:#?}\ndiretos: {diretos}/30"
+    );
+    // Os quadros pares (q ≥ 2) são o traço: o híbrido refaz direto; os ímpares lêem a cache.
+    assert!(
+        (10..=20).contains(&diretos),
+        "o híbrido devia refazer direto os quadros do traço e só eles: {diretos} de 30"
+    );
     assert!(
         certo.is_empty(),
         "a grelha guardada envelheceu:\n{}",
@@ -456,49 +477,145 @@ fn mede_o_rewet_guardado_a_4096() {
         t.set_brush_wet_rewet(0.4);
         t
     };
-    let (mut a, mut b) = (novo(), novo());
-    let br = &a.paint.brush;
+    use crate::tool::paint::watercolor_field::REWET_SEM_HIBRIDO;
+    // 0 = sem cache (o refeito) · 1 = a cache SEM o híbrido (12ddb9b8cf) · 2 = a cache híbrida.
+    let mut t3 = [novo(), novo(), novo()];
+    let br = &t3[0].paint.brush;
     eprintln!(
         "pincel: rewet {} spread {} r {}",
         br.wet_rewet, br.edge_spread, br.radius_px
     );
     let y = (N / 2) as f32;
-    for t in [&mut a, &mut b] {
+    for t in t3.iter_mut() {
         assert!(t.on_canvas_pointer(cp([300.0, y], PointerPhase::Down)));
     }
-    let quadro = |t: &mut PainterTool, sem: bool, x: f32| {
-        REWET_SEM_CACHE.set(sem);
+    let quadro = |t: &mut PainterTool, v: usize, x: f32| {
+        REWET_SEM_CACHE.set(v == 0);
+        REWET_SEM_HIBRIDO.set(v == 1);
         let t0 = Instant::now();
         t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
         t.on_canvas_pointer(cp([x + 20.0, y], PointerPhase::Move));
         t.on_tick(16.0);
         let ms = t0.elapsed().as_secs_f64() * 1e3;
         REWET_SEM_CACHE.set(false);
+        REWET_SEM_HIBRIDO.set(false);
         ms
     };
-    let (mut com, mut sem) = (Vec::new(), Vec::new());
+    let mut ms: [Vec<f64>; 3] = Default::default();
     for k in 0..48usize {
         let x = 320.0 + 40.0 * k as f32;
-        let (ca, sb) = if k % 2 == 0 {
-            (quadro(&mut a, false, x), quadro(&mut b, true, x))
-        } else {
-            let sb = quadro(&mut b, true, x);
-            (quadro(&mut a, false, x), sb)
-        };
-        if k >= 6 {
-            com.push(ca);
-            sem.push(sb);
+        // Ordem rodada por quadro (0 1 2 · 1 2 0 · 2 0 1): nenhuma variante corre sempre primeiro.
+        for j in 0..3 {
+            let v = (k + j) % 3;
+            let m = quadro(&mut t3[v], v, x);
+            if k >= 6 {
+                ms[v].push(m);
+            }
         }
     }
     let resumo = |v: &mut Vec<f64>| {
         v.sort_by(f64::total_cmp);
         (v[0], v[v.len() / 2], v.iter().sum::<f64>())
     };
-    let (c, s) = (resumo(&mut com), resumo(&mut sem));
-    let mem = a.paint.wet_rewet_cache.as_ref().map(|c| c.bytes());
+    let [s, v, h] = ms.each_mut().map(resumo);
+    let mem = |t: &PainterTool| t.paint.wet_rewet_cache.as_ref().map(|c| c.bytes());
     eprintln!(
-        "quadro 4096² Rewet 0,4 (42 quadros): sem cache mín {:.2} med {:.2} soma {:.0} ms × com cache \
-         mín {:.2} med {:.2} soma {:.0} ms · cache (alocado, denso) = {mem:?} B",
-        s.0, s.1, s.2, c.0, c.1, c.2
+        "quadro 4096² Rewet 0,4 (42 quadros, mín/med/soma ms): sem cache {:.2}/{:.2}/{:.0} · cache \
+         sem híbrido {:.2}/{:.2}/{:.0} · cache híbrida {:.2}/{:.2}/{:.0} · cache (alocado, denso): \
+         sem híbrido {:?} · híbrida {:?} B",
+        s.0,
+        s.1,
+        s.2,
+        v.0,
+        v.1,
+        v.2,
+        h.0,
+        h.1,
+        h.2,
+        mem(&t3[1]),
+        mem(&t3[2])
     );
+}
+
+/// **B16b-cont — a sonda da janela ≫ sujo** (onde a cache devia ganhar: recomposição larga com um
+/// sujo pequeno, quadro após quadro): 4096², janela fixa 2048², sujo 64² a andar, dwell + água,
+/// Spread 7 e 30; o refeito × a cache, intercalados, mín/med de 20 quadros (o 1.º, frio, à parte).
+#[test]
+#[ignore = "sonda: --profile smoke -- --ignored"]
+fn mede_o_rewet_guardado_janela_larga() {
+    use crate::tool::paint::watercolor_field::{
+        RewetEntradas, build_rewet_fields, build_rewet_fields_cached,
+    };
+    use std::time::Instant;
+    let n = 4096usize;
+    let (base, ground) = (vec![200u8; n * n * 4], vec![255u8; n * n * 4]);
+    let (mut soak, mut water) = (vec![30u8; n * n], vec![50u8; n * n]);
+    let jan = (1024, 1024, 3072, 3072);
+    for spread in [7usize, 30] {
+        let (mut cache, mut frio) = (None, 0.0);
+        let (mut com, mut sem) = (Vec::new(), Vec::new());
+        for q in 0..21usize {
+            let (dx, dy) = (1400 + q * 40, 1900);
+            for y in dy..dy + 64 {
+                for x in dx..dx + 64 {
+                    soak[y * n + x] = soak[y * n + x].wrapping_add(7);
+                    water[y * n + x] = water[y * n + x].wrapping_add(5);
+                }
+            }
+            let d = Region {
+                x: dx as u32,
+                y: dy as u32,
+                w: 64,
+                h: 64,
+            };
+            let e = RewetEntradas {
+                base: &base,
+                ground: &ground,
+                wet_soak: &soak,
+                soaked: true,
+                stroke_water: &water,
+                watered: true,
+                fw: n,
+                fh: n,
+            };
+            let corre_sem = || {
+                let t0 = Instant::now();
+                std::hint::black_box(build_rewet_fields(
+                    &base,
+                    &ground,
+                    &soak,
+                    true,
+                    &water,
+                    true,
+                    (n, n),
+                    jan,
+                    spread,
+                ));
+                t0.elapsed().as_secs_f64() * 1e3
+            };
+            let s0 = if q % 2 == 0 { Some(corre_sem()) } else { None };
+            let t0 = Instant::now();
+            let (f, c) = build_rewet_fields_cached(e, jan, spread, Some(d), cache.take());
+            std::hint::black_box(f);
+            let ms = t0.elapsed().as_secs_f64() * 1e3;
+            cache = Some(c);
+            let s = s0.unwrap_or_else(corre_sem);
+            if q == 0 {
+                frio = ms;
+            } else {
+                com.push(ms);
+                sem.push(s);
+            }
+        }
+        let r = |v: &mut Vec<f64>| {
+            v.sort_by(f64::total_cmp);
+            (v[0], v[v.len() / 2])
+        };
+        let (c, s) = (r(&mut com), r(&mut sem));
+        eprintln!(
+            "janela 2048² sujo 64² Spread {spread}: refeito mín {:.2} med {:.2} ms × cache mín {:.2} \
+             med {:.2} ms (1.º quadro, frio: {frio:.2} ms)",
+            s.0, s.1, c.0, c.1
+        );
+    }
 }

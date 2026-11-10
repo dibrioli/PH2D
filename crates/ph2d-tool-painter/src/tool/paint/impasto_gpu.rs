@@ -171,6 +171,19 @@ impl PainterTool {
     /// caller being generous about what changed, which is safe, where refusing would drop a frame's light.
     #[must_use]
     pub fn impasto_gpu_planes_in(&self, region: (u32, u32, u32, u32)) -> Option<ImpastoPlanes> {
+        self.impasto_gpu_planes_reusing(region, None)
+    }
+
+    /// The same fold, writing into the buffers of the previous frame's planes instead of allocating
+    /// four new ones (B15-cont: ~107 MB of `calloc` + page faults + `cfree` per 4K Ctrl+Z frame). Every
+    /// texel of the window is overwritten, so what `prev` held never reaches the result — the gate
+    /// `os_planos_reusados_sao_os_novos_ao_bit` pre-fills them with garbage to prove it.
+    #[must_use]
+    pub fn impasto_gpu_planes_reusing(
+        &self,
+        region: (u32, u32, u32, u32),
+        prev: Option<ImpastoPlanes>,
+    ) -> Option<ImpastoPlanes> {
         if !self.impasto_visible() {
             return None;
         }
@@ -189,10 +202,13 @@ impl PainterTool {
         if n == 0 {
             return None;
         }
-        let mut relief = vec![0f32; n];
-        let mut cover = vec![0u8; n];
-        let mut mat0 = vec![0u8; n * 4];
-        let mut mat1 = vec![0u8; n * 4];
+        let (mut relief, mut cover, mut mat0, mut mat1) =
+            prev.map_or_else(Default::default, |p| (p.relief, p.cover, p.mat0, p.mat1));
+        // `resize` só escreve o que CRESCE: com a janela do quadro anterior (o caso do Ctrl+Z) não toca num byte.
+        relief.resize(n, 0.0);
+        cover.resize(n, 0);
+        mat0.resize(n * 4, 0);
+        mat1.resize(n * 4, 0);
         // The samplers are the light's OWN, asked in the same order as before, so a texel inside the
         // window carries the identical bytes a full fold would have given it. That is what makes
         // "partial" a statement about how MUCH is folded and never about WHAT it says.
@@ -258,6 +274,10 @@ impl ReliefFields<'_> {
         (self.cover_at(x, y) * 255.0 + 0.5) as u8
     }
 }
+
+#[cfg(test)]
+#[path = "impasto_gpu_reuso_tests.rs"]
+mod reuso_tests;
 
 #[cfg(test)]
 mod tests {

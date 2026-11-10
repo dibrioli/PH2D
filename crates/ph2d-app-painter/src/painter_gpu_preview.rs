@@ -39,6 +39,9 @@ pub struct PainterGpuPreview {
     /// A geração de memória da placa em que a sessão nasceu (F36): no fim de um episódio sem memória
     /// a sessão e o slot refazem-se e a tela recompõe-se inteira (a fonte são as camadas em CPU).
     geracao: u64,
+    /// Os planos do último envio, cujos buffers a próxima dobra reescreve (B15-cont: sem os ~107 MB alocados e
+    /// soltos a cada quadro do Ctrl+Z 4K).
+    planos: Option<ph2d_tool_painter::ImpastoPlanes>,
 }
 
 /// Builds the session BEFORE the first stroke needs it (doc 28 §4.8): its passes compile
@@ -92,6 +95,7 @@ impl PainterGpuPreview {
             light: ImpastoLightPass::new(gpu),
             premul: PreviewPremul::new(gpu),
             geracao: ph2d_gpu::memoria::geracao(),
+            planos: None,
         }
     }
 }
@@ -325,7 +329,7 @@ fn compose_light_premul(
         .unwrap_or((0, 0, width, height));
     // The fold clock travels with its window (rect vs canvas).
     let m_fold = crate::paint_perf::on().then(std::time::Instant::now);
-    let planes = tool.impasto_gpu_planes_in(plane_win);
+    let planes = tool.impasto_gpu_planes_reusing(plane_win, session.planos.take());
     if let Some(t0) = m_fold {
         crate::paint_perf::note_gpu_fold(
             t0.elapsed().as_secs_f64() as f32 * 1e3,
@@ -368,15 +372,14 @@ fn compose_light_premul(
                 paper_body: planes.paper_body,
             };
             // Falling through UNLIT would silently drop the shading.
-            session
-                .light
-                .run(&session.gpu, comp_out, &input)
-                .map_err(|e| {
-                    ph2d_i18n::tr_with(
-                        "app.painter.painter_gpu_preview.impasto_light",
-                        &[("e_", &format!("{:?}", e))],
-                    )
-                })?
+            let lit = session.light.run(&session.gpu, comp_out, &input);
+            session.planos = Some(planes);
+            lit.map_err(|e| {
+                ph2d_i18n::tr_with(
+                    "app.painter.painter_gpu_preview.impasto_light",
+                    &[("e_", &format!("{:?}", e))],
+                )
+            })?
         }
     };
 

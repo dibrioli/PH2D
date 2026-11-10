@@ -82,7 +82,7 @@ fn the_gate_reads_the_producer_it_claims_to_read() {
 ///
 /// Três afirmações, porque são três fatos independentes e cada um sozinho pode apodrecer:
 ///
-/// 1. a porta chamada é a regional (`impasto_gpu_planes_in`);
+/// 1. a porta chamada é a regional (`impasto_gpu_planes_reusing`, a de `_in` com os buffers do quadro anterior);
 /// 2. o que ela recebe nasce de `preview_gpu_region()` — o retângulo que o tool só oferece quando a
 ///    mudança FOI confinada a ele (uma edição estrutural passa por `invalidate_composite`, que o
 ///    derruba), e é isso que torna o upload parcial correto em vez de meramente rápido;
@@ -101,7 +101,8 @@ fn the_gate_reads_the_producer_it_claims_to_read() {
 fn the_shell_folds_the_window_the_tool_reports_dirty() {
     let bind = plane_win_binding();
     assert!(
-        bind.contains("impasto_gpu_planes_in(") || SRC.contains("impasto_gpu_planes_in(plane_win)"),
+        bind.contains("impasto_gpu_planes_reusing(")
+            || SRC.contains("impasto_gpu_planes_reusing(plane_win, session.planos.take())"),
         "a shell precisa chamar a porta REGIONAL do fold — a de tela cheia custa 202 ms/frame a 4096²"
     );
     assert!(

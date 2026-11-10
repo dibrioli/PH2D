@@ -7,8 +7,7 @@ use crate::table_text::CodeCells;
 use crate::view::CodeView;
 use ph2d_code_debugcard::{DebugCard, VarGroup, VarRow, shown_value, value_ink};
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, frame_radius, paint_text, paint_text_title, resolve, stroke_rounded_rect,
-    token_to_vello,
+    fill_rounded_rect, frame_radius, paint_text, paint_text_title, resolve, token_to_vello,
 };
 use ph2d_editor_core::widget::scroll_area::OwnBar;
 use ph2d_editor_core::widget::{ScrollbarState, paint_scrollbar, scrollbar_track_rect};

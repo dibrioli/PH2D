@@ -8,7 +8,7 @@ use ph2d_editor_core::paint::{fill_rounded_rect, frame_radius, paint_text, resol
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr_with;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_ui_table::{Hit, Key, Span, StableWidths};
 use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;

@@ -10,8 +10,7 @@ use crate::table_text::CodeCells;
 use crate::view::CodeView;
 use ph2d_code_debugcard::{CardStyle, DebugCard, LIVE_WINDOW_S, LiveRow, shown_value, value_ink};
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, frame_radius, paint_text, resolve, stroke_polyline, stroke_rounded_rect,
-    token_to_vello,
+    fill_rounded_rect, frame_radius, paint_text, resolve, stroke_polyline, token_to_vello,
 };
 use ph2d_editor_core::widget::scroll_area::OwnBar;
 use ph2d_editor_core::widget::{ScrollbarState, paint_scrollbar, scrollbar_track_rect};

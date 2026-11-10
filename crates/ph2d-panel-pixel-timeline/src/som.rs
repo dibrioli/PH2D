@@ -5,7 +5,9 @@
 use crate::PixelTimelinePanelState;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore};
+use ph2d_editor_core::interaction::{
+    InteractiveState, PixelTimelineHitKind, WidgetEvent, WidgetStore,
+};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx};
 use ph2d_editor_core::pixel_panel::PixelPanelInfo;
@@ -30,6 +32,34 @@ pub fn mute_id(i: usize) -> NodeId {
 #[must_use]
 pub fn remove_id(i: usize) -> NodeId {
     hash_node_id_runtime(&format!("pixel_timeline.audio.{i}.remove"))
+}
+
+/// A onda da faixa `i`: arrastar desloca-a no tempo.
+#[must_use]
+pub fn faixa_id(i: usize) -> NodeId {
+    hash_node_id_runtime(&format!("pixel_timeline.audio.{i}.track"))
+}
+
+/// O instante em ms sob `x` (o inverso de [`x_de`]; antes do 1.º quadro, a duração dele continua).
+pub(crate) fn ms_de(info: &PixelPanelInfo, geo: &crate::gestos::Geo, x: f32) -> f64 {
+    #[expect(clippy::cast_precision_loss, reason = "colunas à vista")]
+    let mut c = f64::from((x - geo.gx) / geo.col_w) + geo.first as f64;
+    let mut durs = info.frames.iter().map(|f| f64::from(f.duration_ms.max(1)));
+    let mut ultima = info
+        .frames
+        .first()
+        .map_or(1.0, |f| f64::from(f.duration_ms.max(1)));
+    if c < 0.0 {
+        return c * ultima;
+    }
+    let mut t = 0.0;
+    for d in durs.by_ref() {
+        if c < 1.0 {
+            return t + c * d;
+        }
+        (t, c, ultima) = (t + d, c - 1.0, d);
+    }
+    t + c * ultima
 }
 
 /// A banda das linhas de som tirada do fundo de `grade`: `(grade que sobra, banda)`. Uma linha por
@@ -129,18 +159,25 @@ pub(crate) fn paint(
             (esquerda - 2.0 * h - Spacing::Xs.px()).max(1.0),
             resolve(tinta, theme),
         );
-        onda(
-            ctx,
-            info,
-            geo,
-            l,
-            Rect::new(geo.gx, y, banda.x + banda.w - geo.gx, h),
-        );
+        let r = Rect::new(geo.gx, y, banda.x + banda.w - geo.gx, h);
+        ctx.host.hit_index_mut().register(faixa_id(i), r);
+        let inicio = match st.arrasto {
+            Some(crate::gestos::Arrasto::Som { index, ms, .. }) if index == i => ms,
+            _ => l.inicio_ms,
+        };
+        onda(ctx, info, geo, l, inicio, r);
     }
 }
 
 /// A onda: um traço por pico, do mínimo ao máximo, no tempo da faixa (`inicio_ms` desloca-a).
-fn onda(ctx: &mut PaintCtx, info: &PixelPanelInfo, geo: &crate::gestos::Geo, l: &Linha, r: Rect) {
+fn onda(
+    ctx: &mut PaintCtx,
+    info: &PixelPanelInfo,
+    geo: &crate::gestos::Geo,
+    l: &Linha,
+    inicio_ms: i32,
+    r: Rect,
+) {
     if r.w <= 0.0 {
         return;
     }
@@ -160,7 +197,7 @@ fn onda(ctx: &mut PaintCtx, info: &PixelPanelInfo, geo: &crate::gestos::Geo, l: 
     let meio = r.y + r.h * 0.5;
     for (k, p) in l.picos.iter().enumerate() {
         #[expect(clippy::cast_precision_loss, reason = "ms de um som")]
-        let ms = f64::from(l.inicio_ms) + k as f64 * passo;
+        let ms = f64::from(inicio_ms) + k as f64 * passo;
         let (x0, x1) = (x_de(info, geo, ms), x_de(info, geo, ms + passo));
         if x1 < r.x {
             continue;
@@ -176,9 +213,16 @@ fn onda(ctx: &mut PaintCtx, info: &PixelPanelInfo, geo: &crate::gestos::Geo, l: 
     ctx.scene.pop_layer();
 }
 
-/// O registo por quadro: o Add Audio… e o Mute/Remove de cada linha publicada.
+/// O registo por quadro: o Add Audio…, o Mute/Remove e a onda arrastável de cada linha publicada.
 pub(crate) fn registra(store: &mut WidgetStore) {
     let n = canal::linhas().len();
+    let parent = ph2d_editor_core::ids::PIXEL_TIMELINE_PANEL;
+    for i in 0..n {
+        let index = u16::try_from(i).unwrap_or(u16::MAX);
+        let kind = PixelTimelineHitKind::AudioTrack { index };
+        let surface = InteractiveState::PixelTimelineSurface { parent, kind };
+        store.register_if_absent(faixa_id(i), surface);
+    }
     let ids = (0..n).flat_map(|i| {
         [
             (mute_id(i), "panel.pixel.timeline.audio_mute_tip"),

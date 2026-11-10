@@ -1,5 +1,5 @@
 //! P13 T: as linhas de som da Timeline (o painel pede, a família aplica: um passo cada).
-use ph2d_pixel_audio::canal as c;
+use ph2d_pixel_audio::{AudioEngine, canal as c, motor as m};
 
 impl crate::PixelApp {
     /// Uma vez por quadro, depois do tocar.
@@ -13,5 +13,13 @@ impl crate::PixelApp {
             self.passo_nomeado(key, op, "pixel.history.palette_data");
         }
         c::publica(self.docs.get(&key).map(|d| &d.sprite), None);
+    }
+
+    /// O som do Play no mixer do host, antes de o Play andar; devolve o `dt` dele.
+    pub fn som_do_play(&mut self, mixer: Option<&mut AudioEngine>, dt: u32) -> u32 {
+        let d = self.chave.and_then(|k| Some((k, self.docs.get(&k)?)));
+        let v =
+            d.map(|(k, d)| m::Vista::de(k, &d.sprite, d.frame, d.play.as_ref().map(|p| p.index)));
+        m::quadro(mixer, v, dt)
     }
 }

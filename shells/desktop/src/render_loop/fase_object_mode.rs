@@ -28,7 +28,8 @@ impl crate::App {
         };
         let window = crate::scene_mapping::janela(hero.view.center_split, surface.size());
         let spawn = ph2d_app_components::object_add::spawn_empty_root;
-        self.pixel.frame_of(sim, camera, window, hero, spawn);
+        let mixer = self.audio.as_mut().map(|a| a.engine_mut());
+        self.pixel.frame_of(sim, camera, window, hero, spawn, mixer);
         // ⭐ A raiz de ossos sem esqueleto ganha um (A14): projectos antigos, cenas, o 1.º *Create*.
         if !ph2d_app_skeleton::loose::adopt_loose_roots(sim, &mut self.timeline).is_empty() {
             self.title_dirty = true;
@@ -46,7 +47,6 @@ impl crate::App {
             hero.undo_links.rearmar = true; // a cena mexeu sem entrada: base nova (auditoria F31)
         }
         ph2d_app_flip::flip_mode::smoke_step(&self.flip_state, hero);
-        // ⭐ **As famílias que declaram modos**, compiladas.
         let mut paint = ph2d_app_painter::paint_mode::Family;
         let mut flip = ph2d_app_flip::flip_mode::Family::new(&mut self.flip_state, flip);
         let mut vector = ph2d_app_vec::vector_mode::Family::new(&mut self.vec, sim);

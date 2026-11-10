@@ -26,6 +26,8 @@ pub enum PixelTimelineHitKind {
     /// O colchete `[` (`right = false`) ou `]` da faixa do onion (P12 R4): arrastar muda quantos
     /// quadros antes / depois do actual.
     OnionEdge { right: bool },
+    /// A onda da faixa de som `index` (P13 T): arrastar desloca-a no tempo (`inicio_ms`).
+    AudioTrack { index: u16 },
 }
 
 /// Um gesto de ponteiro na linha do tempo do Pixel (posições globais).
@@ -106,8 +108,14 @@ impl WidgetStore {
             PixelTimelineHitKind::TagEdge { .. } | PixelTimelineHitKind::OnionEdge { .. } => {
                 Some(L::ResizeEw)
             }
-            PixelTimelineHitKind::RangeOutline if agarrada.is_some() => Some(L::Grabbing),
-            PixelTimelineHitKind::RangeOutline => Some(L::Grab),
+            PixelTimelineHitKind::RangeOutline | PixelTimelineHitKind::AudioTrack { .. }
+                if agarrada.is_some() =>
+            {
+                Some(L::Grabbing)
+            }
+            PixelTimelineHitKind::RangeOutline | PixelTimelineHitKind::AudioTrack { .. } => {
+                Some(L::Grab)
+            }
             _ => None,
         }
     }

@@ -78,6 +78,11 @@ pub fn limpa() {
     LINHAS.with(|l| l.borrow_mut().clear());
 }
 
+/// Os sons decodificados da família (os mesmos que as linhas desenham), para tocar.
+pub fn com_sons<R>(f: impl FnOnce(&mut Sons) -> R) -> R {
+    SONS.with(|c| f(&mut c.borrow_mut()))
+}
+
 /// As linhas publicadas.
 #[must_use]
 pub fn linhas() -> Vec<Linha> {

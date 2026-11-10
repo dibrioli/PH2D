@@ -72,6 +72,14 @@ pub(crate) enum Arrasto {
     },
     /// Um colchete da faixa do onion ([`crate::onion_faixa`]).
     Onion { right: bool },
+    /// A onda da faixa de som `index` ([`crate::som`]): premida em `x0` quando começava em
+    /// `inicio_ms`, agora em `ms` (a prévia; o passo só ao soltar).
+    Som {
+        index: usize,
+        x0: f32,
+        inicio_ms: i32,
+        ms: i32,
+    },
     /// A moldura do intervalo, agora sobre a fronteira `alvo`; o rato premiu em `de` e está em `a`
     /// (o bloco voa com ele, [`crate::paint_grid`]); `copy` = Ctrl premido agora.
     Bloco {
@@ -326,6 +334,19 @@ fn pedidos(
             st.arrasto = Some(Arrasto::Onion { right });
             Vec::new()
         }
+        (H::AudioTrack { index }, GesturePhase::Begin) => {
+            let index = usize::from(index);
+            if let Some(l) = ph2d_pixel_audio::canal::linhas().get(index) {
+                let (x0, inicio_ms, ms) = (g.x, l.inicio_ms, l.inicio_ms);
+                st.arrasto = Some(Arrasto::Som {
+                    index,
+                    x0,
+                    inicio_ms,
+                    ms,
+                });
+            }
+            Vec::new()
+        }
         (H::RangeOutline, GesturePhase::Begin) => {
             st.arrasto = Some(Arrasto::Bloco {
                 alvo: geo.fronteira(g.x, n),
@@ -371,6 +392,27 @@ fn pedidos(
                 }
                 Some(Arrasto::Onion { right }) => {
                     crate::onion_faixa::arrasta(info, right, geo.col(g.x, n));
+                    None
+                }
+                Some(Arrasto::Som {
+                    index,
+                    x0,
+                    inicio_ms,
+                    ..
+                }) => {
+                    let d = crate::som::ms_de(info, &geo, g.x) - crate::som::ms_de(info, &geo, x0);
+                    #[expect(clippy::cast_possible_truncation, reason = "ms de um arrasto")]
+                    let ms = inicio_ms.saturating_add(d.round() as i32);
+                    st.arrasto = Some(Arrasto::Som {
+                        index,
+                        x0,
+                        inicio_ms,
+                        ms,
+                    });
+                    if fim && ms != inicio_ms {
+                        let e = ph2d_pixel_audio::faixas::Edicao::Move(index, ms);
+                        ph2d_pixel_audio::canal::pede(ph2d_pixel_audio::canal::Pedido::Edita(e));
+                    }
                     None
                 }
                 Some(Arrasto::Bloco { de, .. }) => {

@@ -225,6 +225,7 @@ impl PixelApp {
         window: WindowSize,
         hero: &HeroScreen,
         spawn_root: impl FnOnce(&mut ph2d_ecs::SimWorld, &str) -> u64,
+        mixer: Option<&mut ph2d_pixel_audio::AudioEngine>,
     ) {
         crate::input_teclas::troca_de_teclas();
         let editing = crate::mode::editing(sim.world(), hero);
@@ -234,6 +235,7 @@ impl PixelApp {
         let dt = self.relogio.replace(now).map_or(0, |t| {
             u32::try_from(now.duration_since(t).as_millis()).unwrap_or(u32::MAX)
         });
+        let dt = self.som_do_play(mixer, dt);
         self.tick(dt);
         self.som();
         let whole =

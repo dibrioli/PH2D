@@ -12,6 +12,7 @@
 
 pub mod canal;
 pub mod faixas;
+pub mod motor;
 mod picos;
 mod relogio;
 mod sons;
@@ -20,9 +21,9 @@ pub use picos::{PICO_MS, Pico, picos};
 pub use relogio::{Relogio, dt_do_play};
 pub use sons::{Som, Sons};
 
-use ph2d_audio::{
-    AudioEngine, AudioError, PlayParams, STREAM_CHUNK_FRAMES, SampleData, StreamFeeder, VoiceId,
-};
+/// O mixer do host (a shell empresta-o a [`motor::quadro`]).
+pub use ph2d_audio::AudioEngine;
+use ph2d_audio::{AudioError, PlayParams, STREAM_CHUNK_FRAMES, SampleData, StreamFeeder, VoiceId};
 use ph2d_pixel_core::FaixaDeAudio;
 
 /// Uma faixa a tocar: o produtor do stream e onde ele vai na fonte.

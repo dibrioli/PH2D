@@ -319,6 +319,12 @@ impl AudioSystem {
         (&mut self.scene, &mut self.engine)
     }
 
+    /// The mixer itself, lent each frame to a family that plays its own voices (the Pixel
+    /// sprite's sound, P13): composition in the shell, the family never sees this crate.
+    pub fn engine_mut(&mut self) -> &mut AudioEngine {
+        &mut self.engine
+    }
+
     pub fn levels(&self) -> [f32; 2] {
         self.engine.levels()
     }

@@ -550,10 +550,11 @@ fn every_image_apply_commits_through_the_door_with_its_own_tool_id() {
 #[test]
 fn the_sprite_gizmo_box_is_the_drawn_mesh_box() {
     const GIZMO: &str = "shells/desktop/src/render_loop/snapshots_gizmo.rs";
-    let src = fonte(GIZMO);
+    // Sem espaços: o `rustfmt` parte a chamada de outra maneira quando o argumento cresce.
+    let src: String = fonte(GIZMO).split_whitespace().collect();
     assert!(
-        src.contains("ph2d_render::drawn_instance_of(present.world(), bits)")
-            && src.contains("is_tool_previewed(tool_preview_bits, sim_entity),\n        malha,"),
+        src.contains("ph2d_render::drawn_instance_of(present.world(),bits)")
+            && src.contains("is_tool_previewed(tool_preview_bits,sim_entity,),malha,);"),
         "{GIZMO} deixou de dar à caixa do gizmo a malha com que a sprite é desenhada: numa imagem \
          presa e dobrada as alças voltam a cercar o quad de repouso."
     );

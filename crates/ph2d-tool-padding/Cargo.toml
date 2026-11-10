@@ -32,10 +32,8 @@ ph2d-vector = { path = "../ph2d-vector" }
 ph2d-a11y = { path = "../ph2d-a11y" }
 # MemoryBudget type for the manifest budget declaration (HR-13).
 ph2d-core = { path = "../ph2d-core" }
-# Typed color wrapper (SrgbRgba) — Wave 11 color-space migration: the
-# add_padding entry takes a typed `&[SrgbRgba]` instead of `&[u8]` so
-# the IO boundary is explicit.
-ph2d-color = { path = "../ph2d-color" }
+# The pure Padding law (moved down to a leaf so `ph2d-anim-sheets` reads it without climbing).
+ph2d-sprite-edit = { path = "../ph2d-sprite-edit" }
 
 [lints]
 workspace = true

@@ -9,7 +9,7 @@ use ph2d_editor_core::paint::{fill_rounded_rect, frame_radius, rect_to_vello};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ROW_H_PX, Radius, Spacing, Theme};
+use ph2d_tokens::{ROW_H_PX, Radius, Theme};
 use ph2d_vector::VectorScene;
 
 /// A rolagem de uma lista da Bancada: a caixa das linhas e a altura do conteúdo.
@@ -77,7 +77,7 @@ impl BancadaView {
         let ui = Ui::new(*theme);
         self.outline_hits.clear();
         scene.fill_rect(rect_to_vello(area), ui.bg);
-        let g = Spacing::Sm.px();
+        let g = ph2d_tokens::card_pad_px();
         let w = (area.w - g * 2.0).max(0.0);
         card_title(
             scene,

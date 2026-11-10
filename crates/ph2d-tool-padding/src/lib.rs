@@ -8,34 +8,34 @@
 //!   single edge by N pixels, driven by a gizmo edge-drag.
 //!
 //! They are the same operation: directional expand is just editing ONE
-//! field of the per-edge [`algorithm::PaddingSpec`]. So the algorithm is
-//! a single function — [`algorithm::add_padding`] — that resizes the
+//! field of the per-edge [`PaddingSpec`]. So the algorithm is
+//! a single function — [`add_padding`] — that resizes the
 //! canvas by a signed `{top, right, bottom, left}` spec (positive =
 //! transparent expand, negative = crop), and reports the content offset
 //! so the caller can keep the sprite's world position stable.
 //!
 //! ### Shape of this island (mirrors `ph2d-tool-make-square`)
-//! - [`algorithm`] — pure `add_padding` + types + tests (no editor/ECS dep).
+//! - the pure law (`add_padding` + types + tests) lives in `ph2d_sprite_edit::padding`, a leaf, so the
+//!   per-frame Padding of `ph2d-anim-sheets` reads it without climbing to a tool (integ 10/11).
 //! - [`icon`] — `BezPath` glyph for the chrome pill.
 //! - [`manifest`] — `ToolManifest` declaration + handler stubs.
 //! - [`register`] — appended (one line) to `register_all` by the Coordinator.
 //!
 //! SCAFFOLD (Coordinator): the algorithm signature + types + manifest are
-//! pinned; the Implementer fills [`algorithm::add_padding`] (+ tests) and
+//! pinned; the Implementer fills [`add_padding`] (+ tests) and
 //! the real [`icon::padding_bezpath`] glyph. The **stateful integration**
 //! — the 4-field panel, the gizmo edge-drag (directional expand UX), the
 //! live preview, the shell bake + pivot/Transform fix-up, and the
 //! chrome-pill wiring — is done by the Coordinator on a clean tree (it
 //! touches editor-core / shells / gizmo, NOT this crate).
 
-pub mod algorithm;
 pub mod icon;
 pub mod ids;
 pub mod manifest;
 pub mod params;
 pub mod tool;
 
-pub use algorithm::{PaddingResult, PaddingSpec, add_padding};
+pub use ph2d_sprite_edit::padding::{PaddingResult, PaddingSpec, add_padding};
 pub use icon::padding_bezpath;
 pub use manifest::MANIFEST;
 pub use tool::PaddingTool;

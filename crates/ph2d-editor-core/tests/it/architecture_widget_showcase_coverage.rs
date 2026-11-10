@@ -36,6 +36,10 @@ const WIDGET_OPT_OUT: &[(&str, &str)] = &[
         "not a widget: it is the CENSUS of the compaction law. Painters report into it and it paints nothing and registers nothing; outside `grava` it costs one cell read. The gates `lei_da_compactacao` and `nenhum_texto_sai_do_botao` read it, and the gallery is one of the panels they measure.",
     ),
     (
+        "field_suffix",
+        "not a widget: it is the short word INSIDE a text box (`1 listens` / `nobody listens`), painted by the text-box painters (`property_row`, `cards_linhas`) only when a panel installs a provider for that id; it has no box, state or control of its own. Proved by the Inspector's signal-name boxes (`ph2d-panel-inspector/src/signal_hint.rs`).",
+    ),
+    (
         "censo_cartao",
         "not a widget: it is the CENSUS of the old layout pieces that a card body should no longer call. It paints nothing and has no state outside `grava`; only a gate reads it, so a gallery section would have nothing to show.",
     ),

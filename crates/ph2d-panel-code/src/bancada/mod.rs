@@ -143,7 +143,7 @@ impl Default for BancadaView {
 /// e o «In this script» por baixo — nenhum se a coluna está recolhida ou não sobra para três linhas.
 #[must_use]
 pub fn left_split(col: Rect, list_rows: usize, open: bool) -> (Rect, Option<Rect>) {
-    let g = crate::cards::gap();
+    let g = crate::cards::margin();
     let want = crate::ScriptListView::height_for(list_rows);
     let list_h = want.min(col.h * 0.5);
     let rest = col.h - list_h - g;
@@ -159,13 +159,13 @@ pub fn left_split(col: Rect, list_rows: usize, open: bool) -> (Rect, Option<Rect
 /// A altura da faixa da frase do pé.
 #[must_use]
 pub fn phrase_height() -> f32 {
-    ROW_H_PX + Spacing::Sm.px()
+    ph2d_tokens::row_pitch_px()
 }
 
 /// A coluna do documento partida: o resto em cima e a faixa da frase em baixo.
 #[must_use]
 pub fn phrase_split(doc: Rect) -> (Rect, Rect) {
-    let h = (phrase_height() + crate::cards::gap()).min(doc.h);
+    let h = (phrase_height() + crate::cards::margin()).min(doc.h);
     (
         Rect::new(doc.x, doc.y, doc.w, doc.h - h),
         Rect::new(

@@ -70,7 +70,7 @@ fn field_row(
     let pad = Spacing::Sm.px();
     let gap = ph2d_tokens::control_gap_px();
     let radius = frame_radius(theme, Radius::Sm.px());
-    let nx = card.x + pad + f32::from(v.depth) * Spacing::Lg.px();
+    let nx = card.x + pad + f32::from(v.depth) * ph2d_tokens::list_indent_px();
     let hint = crate::style::Ink::Hint;
     view.paint_code_value(
         ts,

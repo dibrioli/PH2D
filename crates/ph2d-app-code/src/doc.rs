@@ -428,9 +428,9 @@ impl CodeDoc {
     }
 
     /// Os dois cartões da direita: o código (com a busca e a barra de estado) em cima, a faixa de
-    /// baixo (Console | Problems) em baixo, com o vão de [`crate::cards::gap`] entre eles.
+    /// baixo (Console | Problems) em baixo, com o vão de [`crate::cards::margin`] entre eles.
     pub(crate) fn cards(&self, area: Rect, console_open: bool) -> (Rect, Rect) {
-        let g = crate::cards::gap();
+        let g = crate::cards::margin();
         let find_h = self.find.bar_height();
         let console_h =
             ConsoleView::height(console_open, area.h).min((area.h - find_h - g).max(0.0));
@@ -454,7 +454,7 @@ impl CodeDoc {
     /// O cartão da Bancada (a grelha e o mapa), por cima da faixa de baixo (`None` = nenhum).
     pub(crate) fn bench_rect(&self, area: Rect, console_open: bool) -> Option<Rect> {
         let (_, band) = self.cards(area, console_open);
-        let y = band.y - crate::cards::gap() - self.bench_h;
+        let y = band.y - crate::cards::margin() - self.bench_h;
         (self.bench_h > 0.0).then(|| Rect::new(area.x, y, area.w, self.bench_h))
     }
 
@@ -467,7 +467,7 @@ impl CodeDoc {
         let (code, _) = self.cards(area, console_open);
         Some(Rect::new(
             area.x,
-            code.y + code.h + crate::cards::gap(),
+            code.y + code.h + crate::cards::margin(),
             area.w,
             h,
         ))

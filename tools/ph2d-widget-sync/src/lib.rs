@@ -37,6 +37,7 @@ const PUB_MODULE_OVERRIDE: &[&str] = &[
     "command_palette",
     "composto",
     "cromo_barra",
+    "field_suffix",
     "illustration",
     "lista_flutuante",
     "panel_chrome",

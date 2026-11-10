@@ -38,7 +38,7 @@ const BASELINE: &[&str] = &[
     // crates/ph2d-tool-color-equalization/src/tool.rs — migrated Wave 11 (typed input)
     // crates/ph2d-tool-equalize-sizes/src/algorithm.rs — migrated Wave 11 (typed input)
     // crates/ph2d-tool-make-square/src/algorithm.rs — migrated Wave 11 (typed input)
-    // crates/ph2d-tool-padding/src/algorithm.rs — migrated Wave 11 (typed input)
+    // crates/ph2d-sprite-edit/src/padding.rs (was ph2d-tool-padding/src/algorithm.rs) — migrated Wave 11 (typed input)
     // crates/ph2d-tool-trim-transparency/src/algorithm.rs — migrated Wave 11 (typed input)
     // crates/ph2d-tool-upscale/src/algorithm.rs — migrated Wave 11 (typed input)
     // crates/ph2d-tool-upscale/src/tool.rs — migrated Wave 11 (typed input)

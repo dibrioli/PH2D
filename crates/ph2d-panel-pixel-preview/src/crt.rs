@@ -75,7 +75,7 @@ pub(crate) fn numero(store: &WidgetStore, id: ph2d_a11y::NodeId) -> bool {
         return true;
     };
     #[expect(clippy::cast_possible_truncation, reason = "params da CRT ∈ [0, 2]")]
-    let n = (n as f32).clamp(0.0, TECTOS[i]);
+    let n = ph2d_editor_core::math::safe_clamp(n as f32, 0.0, TECTOS[i]);
     let mut v = vista();
     let p = &mut v.params;
     *[

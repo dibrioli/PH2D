@@ -8,16 +8,17 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
-/// A margem entre a aba e os cartões, e o vão entre cartões.
+/// A margem entre a aba e os cartões, e o vão entre cartões (a da aba Collision Layers; não é o vão de duas
+/// linhas, que é o `control_gap_px`).
 #[must_use]
-pub fn gap() -> f32 {
+pub fn margin() -> f32 {
     Spacing::Md.px()
 }
 
 /// `area` menos a margem de fora em cada lado.
 #[must_use]
 pub fn inset(area: Rect) -> Rect {
-    let g = gap();
+    let g = margin();
     Rect::new(
         area.x + g,
         area.y + g,

@@ -402,7 +402,7 @@ impl CodeDocs {
             head.x,
             head.y,
             head.w,
-            (head.h + crate::cards::gap() * 2.0).min(doc_r.h),
+            (head.h + crate::cards::margin() * 2.0).min(doc_r.h),
         );
         crate::cards::open(scene, back, theme);
         self.bar.paint(head, &crumb, scene, ts, theme);

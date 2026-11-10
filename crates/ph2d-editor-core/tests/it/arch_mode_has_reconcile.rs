@@ -86,6 +86,11 @@ const BENIGN_SET_MODE: &[(&str, &str)] = &[
          Nada derivado.",
     ),
     (
+        "set_color_mode_metric",
+        "a métrica de cor (Exact RGB · OKLab · Keep ramps) escolhida no diálogo Color Mode: uma \
+         escrita na escolha que o OK copia. Nada derivado.",
+    ),
+    (
         "set_erase_mode",
         "FlipTool erase sub-mode (Soft/Hard/Stroke): a single `erase` field write, read \
          fresh at erase time by `flip_erase::erase_at`. No derived cache keyed on it.",
@@ -379,7 +384,8 @@ fn collect_rs(dir: &Path, out: &mut Vec<PathBuf>) {
             let Some(name) = p.file_name().and_then(|s| s.to_str()) else {
                 continue;
             };
-            if name == "target" || name == "node_modules" || name.starts_with('.') {
+            // `vendor/`: código de terceiros (o rapier2d vendorizado), não é nosso.
+            if name == "target" || name == "node_modules" || name == "vendor" || name.starts_with('.') {
                 continue;
             }
             collect_rs(&p, out);

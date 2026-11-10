@@ -40,6 +40,14 @@ use std::path::{Path, PathBuf};
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
     (
+        "card_field/conta.rs",
+        "o parser das CONTAS do texto de um campo (`eval_number`): lógica pura, sem pintura nem nó; a semântica é a do card_field",
+    ),
+    (
+        "scroll_area/own_bar.rs",
+        "geometria e arrasto de uma barra cuja rolagem o DONO guarda; pinta pelo `paint_scrollbar` e a a11y é a da vista que a usa",
+    ),
+    (
         "card_field/valor.rs",
         "o texto do número e a amostra de cor de um campo; a semântica é a do card_field que os pinta",
     ),
@@ -860,6 +868,14 @@ const WIDGET_DELEGATE_MARKERS: &[&str] = &[
 /// da categoria (b) está a justificar a isenção com um facto que não se verifica, e o gate — que
 /// só lê o par `(caminho, razão)` — não sabe a diferença.
 const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
+    (
+        "ph2d-panel-pixel-tools/src/paint_hex.rs",
+        "só formata o hex de uma cor em texto (`hex`); zero pintura e zero ids — a a11y é a do campo que o mostra",
+    ),
+    (
+        "ph2d-panel-timeline/src/paint_passos.rs",
+        "passos da `paint` da Timeline cortados pelo tecto de LOC (seguir o cursor, fechar arrastos, o pé da fita); zero ids registados — a a11y é a do `paint.rs`",
+    ),
     // ⭐ CodeEditor (Onda 2): os nós do leitor de ecrã das filas pintadas saíram para `a11y.rs` da
     // MESMA crate (que importa `ph2d_a11y`). ⚠️ MEDIDO: zero `NodeId`, `hit_index` ou `register(` no
     // ficheiro — ele pinta as linhas visíveis e devolve rects.

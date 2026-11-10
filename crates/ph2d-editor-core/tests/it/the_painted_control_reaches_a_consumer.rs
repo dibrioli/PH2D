@@ -175,6 +175,15 @@ const NO_CONSUMER_PENDING: &[(&str, &str)] = &[
          da largura po^e o valor em 0,75 e o estado em `Dragging`, partindo do `populate` do \
          proprio painel. \u{26d4} Se essa prova desaparecer, esta linha sai daqui.",
     ),
+    // Terceira da família do consumidor GENÉRICO: aqui é o hover que mostra a dica.
+    (
+        "INSP_PHYS_OUTLINE_LOCKED",
+        "VIVO, MEDIDO: o bloco das três linhas travadas do Outline (dono 09/11) só dá a DICA \
+         (`InteractiveState::Plain` + `set_tooltip` no `populate_physics.rs`); o consumidor é o \
+         hover genérico do tooltip, que não nomeia id. Prova: \
+         `ph2d-panel-inspector/tests/it/o_detail_trava_e_a_solta_sem_remove.rs` (o alvo existe e \
+         `tooltip_for` devolve a razão). \u{26d4} Se essa prova desaparecer, esta linha sai daqui.",
+    ),
 ];
 
 /// **Controlo NEGATIVO** — ids verificados VIVOS à mão em 2026-08-30, cada um

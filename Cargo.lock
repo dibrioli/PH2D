@@ -5573,7 +5573,6 @@ dependencies = [
  "ph2d-sprite-sheet",
  "ph2d-text",
  "ph2d-tokens",
- "ph2d-tool-padding",
  "ph2d-vector",
 ]
 
@@ -11511,6 +11510,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-anim",
  "ph2d-asset",
+ "ph2d-color",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
@@ -11810,9 +11810,9 @@ name = "ph2d-tool-padding"
 version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
- "ph2d-color",
  "ph2d-core",
  "ph2d-editor-core",
+ "ph2d-sprite-edit",
  "ph2d-tool-registry",
  "ph2d-vector",
 ]

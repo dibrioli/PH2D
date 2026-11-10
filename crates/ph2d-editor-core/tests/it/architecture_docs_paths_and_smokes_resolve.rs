@@ -36,6 +36,8 @@ use std::path::{Path, PathBuf};
 const ALLOW_DEAD_PATHS: &[&str] = &[
     // Placeholders in prose that show the SHAPE of a path, not a real file.
     "docs/architecture/decisions/NNNN-titulo.md",
+    // CLAUDE.md §0.8: o MOLDE do link de imagem ao dono numa worktree.
+    "Worktrees/line-<x>/docs/…png",
 ];
 
 /// Smokes cited by the canon that no `.rs` reads. Each entry needs a reason.

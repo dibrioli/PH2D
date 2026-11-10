@@ -262,10 +262,10 @@ impl CodeDocs {
     }
 
     /// O cartão da lista e a área do documento (os seus dois cartões) dentro da aba: a margem de fora
-    /// e o vão entre eles são os de [`crate::cards::gap`].
+    /// e o vão entre eles são os de [`crate::cards::margin`].
     pub(crate) fn split_area(&self, area: Rect) -> (Rect, Rect) {
         let a = crate::cards::inset(area);
-        let g = crate::cards::gap();
+        let g = crate::cards::margin();
         let w = ScriptListView::width(self.list.open).min(a.w);
         (
             Rect::new(a.x, a.y, w, a.h),

@@ -6,7 +6,7 @@
 //! cada píxel cair no mesmo sítio local.
 
 use ph2d_ecs::{Entity, SpriteGrid, World};
-use ph2d_tool_padding::PaddingSpec;
+use ph2d_sprite_edit::padding::PaddingSpec;
 
 /// O corte da folha visível: mais de uma célula, todas com píxeis inteiros.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -103,7 +103,7 @@ pub fn padding(rgba: &[u8], w: u32, cut: &Cut, spec: PaddingSpec) -> Option<Cell
         return None;
     }
     let primeira = remap(rgba, w, janela(cut, 0, 0), cut.cell, [0, 0]);
-    let r = ph2d_tool_padding::add_padding(
+    let r = ph2d_sprite_edit::padding::add_padding(
         bytemuck::cast_slice(&primeira),
         cut.cell[0],
         cut.cell[1],

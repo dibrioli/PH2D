@@ -36,6 +36,10 @@ const NOT_INSIDE_A_SECTION: &[(&str, &str)] = &[
         "crates/ph2d-panel-audio-editor/src/cards_moldura.rs",
         "a camada de audio pinta-se SOBRE o desenho, fora de todo painel: a regua desceu da shell e a isencao viajou com ela",
     ),
+    (
+        "crates/ph2d-panel-code/src/cards.rs",
+        "as regioes da aba de scripts SAO os cartoes de topo, sobre o chao da aba (`PanelBg`) e fora de qualquer seccao; com `PH2D_CARDS=0` o `Bg1` e' o cartao, nunca algo dentro dele",
+    ),
 ];
 
 fn repo_root() -> PathBuf {

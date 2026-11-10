@@ -196,7 +196,7 @@ impl OptionsCard {
             need = need.max(text + lg + sw);
         }
         need = need.max(one(ts, sentence, font()) + lg + restart_w);
-        let g = crate::cards::gap();
+        let g = crate::cards::margin();
         let w = (need + side * 2.0).min((under.w - g * 2.0).max(0.0));
         let inner_w = (w - side * 2.0).max(0.0);
         let tw = (inner_w - sw - lg).max(0.0);

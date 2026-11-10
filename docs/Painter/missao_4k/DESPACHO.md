@@ -52,6 +52,13 @@
 | onda 4 | B16c | parcial (4584d861ef): B16.12 só diagnóstico: toque do papel 154,5 ms (composição CPU 94,7 + envio 18,7 + Down 22,5); a 1.ª aguada cria o vidro e passa o produtor à CPU. Branco/blocos 41 ms. Cura por fazer. |
 | onda 4 | B08b-cont | feito (a3821cf1a0): B08.2 completo: os 10 pincéis lentos nos 3 fundos que faltavam, matriz 10 × 6 = 60/60, mesmo binário, Radeon, load 26–44. Nenhum dos 10 passa em fundo nenhum. Sem mudar desenho nem gate. |
 | onda 4 | verificação | verde |
+| onda 5 | B23-cont3 | parcial (0692ff3bab): B23.6 diagnóstico: ph2d-gpu diz o adaptador e avisa se o dispositivo se perde; a causa do pânico no KWin virtual é a WSI. Falta compositor headless com GL; q/s minimizado não medido. |
+| onda 5 | B10c-cont2 | feito (34a963a3df): Ctrl+Z do 1.º traço Wet confinado à janela do traço (confined_region por camada); invalidate_composite põe gpu_lane_stale. Gate red→green, 7/7 + 187 vizinhos verdes. App 4K não medido. |
+| onda 5 | B16c-cont | feito (db4ce86030): papel_pede_a_cpu: CPU desde o armar do Watercolor sobre papel; a placa que larga o documento faz a CPU compor a tela. App 4K: toque 186,3 → 32,0 ms (alvo ≤41). Gates red→green. |
+| onda 5 | B16-cont3 | feito (060b3fe257): B16.2 cont3: watercolor_render/dono.rs dá ao texel sem dono o mais próximo até pad; style_at e o desloca leem-no. Sonda 4K raio misto 118,65 → 3,14 ms. Prancha: 0 píxeis mudam. |
+| onda 5 | B12a | parcial (58f6a1cde7): B12.4 veneno do rascunho do solver (cfg(test)): grade igual ao bit à do rascunho limpo; mutação vermelha, sem ela verde. Falta B12.1 marca_dab no pouso, B12.3 tile esparso, B52.R11. |
+| onda 5 | B14-cont3 | feito (f00ea17138): B14.4 o emboss da tinta sem óleo segue o Light angle do cartão (Sim::luz_do_relevo); 225° igual ao bit. Gate o_emboss_segue_a_luz_do_cartao red→green; mutação red. Alarmes verdes. |
+| onda 5 | verificação | verde |
 
 ## Fatos medidos que mudam a ordem
 

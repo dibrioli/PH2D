@@ -152,7 +152,11 @@ fn readable_names() {
 fn a_click_on_a_key_box_listens_on_that_box() {
     let g = game();
     let r = rows(&g);
-    let lay = Layout::of(Rect::new(0.0, 0.0, 1280.0, 720.0), &r);
+    let lay = Layout::of(
+        Rect::new(0.0, 0.0, 1280.0, 720.0),
+        &r,
+        &mut ph2d_text::TextSystem::new(),
+    );
     let row = row_of(&g, "jump");
     let b = lay.rows[row].slots[1];
     let hit = lay.hit(b.x + b.w * 0.5, b.y + b.h * 0.5);

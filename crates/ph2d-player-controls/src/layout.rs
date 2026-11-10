@@ -1,20 +1,30 @@
-//! A geometria do painel — pura, a MESMA para a pintura e para o clique.
+//! A geometria do painel — a MESMA para a pintura e para o clique. As caixas de tecla medem o próprio texto (maquete
+//! C4: «J» é uma caixa estreita, «Press a key» uma larga), por isso a disposição mede com o `TextSystem` da pintura.
 
 use ph2d_card_stack::metrics as m;
+use ph2d_editor_core::paint::rect_for_label;
 use ph2d_editor_core::widget::scrollbar_thumb_rect;
 use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::tr;
+use ph2d_text::{FontWeight, TextSystem};
 
-use crate::screen::{Hit, Row};
+use crate::screen::{ControlsScreen, Hit, Row};
 
-/// A coluna do nome e cada caixa de tecla, em alturas de campo («Left Arrow» e «Press a key» cabem a `VALUE_PX`).
-const NAME_W: f32 = m::FIELD_H * 4.0; // LITERAL-PX-OK: quatro alturas de campo
-const SLOT_W: f32 = m::FIELD_H * 3.5; // LITERAL-PX-OK: três alturas e meia de campo
-/// O aviso da tecla repetida («Left Arrow is also Move right.» cabe a `LABEL_PX`); só existe com um aviso.
-const NOTE_W: f32 = m::FIELD_H * 6.0; // LITERAL-PX-OK: seis alturas de campo
 const KEY_H: f32 = m::FIELD_H - m::SEG_INSET;
 const ROW_H: f32 = m::FIELD_H;
 /// O indicador de rolagem, fino como nas listas de cartões: metade do recuo, no meio da margem direita.
 const BAR_W: f32 = m::SEG_INSET * 0.5; // LITERAL-PX-OK: meio recuo
+/// O título do painel, um degrau acima do título de cartão (maquete C4).
+pub const TITLE_PX: f32 = m::LIST_TITLE_PX;
+/// O pé («Reset to defaults» e a dica): menor e apagado, separado das linhas por um fio.
+pub const FOOT_PX: f32 = m::LABEL_PX;
+const FOOT_H: f32 = m::FIELD_H - m::SEG_INSET;
+/// As três frases que a dica pode dizer: o painel tem a largura da MAIOR, para não mudar de largura ao escutar.
+const HINTS: [&str; 3] = [
+    "player_controls.hint_choose",
+    "player_controls.hint_listening",
+    "player_controls.none",
+];
 
 /// Onde fica cada coisa do painel, em pixels de ecrã.
 #[derive(Clone, Debug, PartialEq)]
@@ -27,6 +37,8 @@ pub struct Layout {
     pub first: usize,
     /// Rola: `(trilha, polegar)` do indicador.
     pub bar: Option<(Rect, Rect)>,
+    /// O fio entre as linhas e o pé.
+    pub rule: Rect,
     pub reset: Rect,
     pub hint: Rect,
 }
@@ -40,30 +52,81 @@ pub struct RowLayout {
     pub note: Rect,
 }
 
+/// O texto de uma caixa de tecla: o nome da tecla, «Add» na vazia, «Press a key» na que escuta.
+#[must_use]
+pub fn slot_label(row: &Row, slot: usize, listening_here: bool) -> String {
+    if listening_here {
+        return tr("player_controls.listening").to_owned();
+    }
+    row.keys
+        .get(slot)
+        .map_or_else(|| tr("player_controls.add").to_owned(), |k| k.label())
+}
+
+/// A largura de uma caixa de tecla: o texto inteiro com o respiro do rótulo, nunca mais estreita que alta.
+fn chip_w(text: &mut TextSystem, label: &str) -> f32 {
+    rect_for_label(text.prefix_width(label, m::VALUE_PX).ceil()).max(KEY_H)
+}
+
 impl Layout {
-    /// O painel centrado em `area`, do topo da lista, uma linha por acção e a de «Reset to defaults» no fim.
+    /// O painel centrado em `area`, do topo da lista, fechado (ninguém escuta).
     #[must_use]
-    pub fn of(area: Rect, rows: &[Row]) -> Self {
-        Self::scrolled(area, rows, 0, 0)
+    pub fn of(area: Rect, rows: &[Row], text: &mut TextSystem) -> Self {
+        Self::scrolled(area, rows, &ControlsScreen::default(), text)
     }
 
-    /// O mesmo, rolado: começa em `top` e acerta-o para a linha `selected` ficar à vista (`selected == rows.len()`
-    /// é «Reset to defaults», sempre à vista em baixo).
+    /// O mesmo, rolado: começa em `screen.top()` e acerta-o para a linha escolhida ficar à vista (`selected ==
+    /// rows.len()` é «Reset to defaults», sempre à vista em baixo). A caixa que escuta mede «Press a key».
     #[must_use]
-    pub fn scrolled(area: Rect, rows: &[Row], selected: usize, top: usize) -> Self {
-        let cols = rows.iter().map(Row::slots).max().unwrap_or(crate::SLOTS);
-        let note_w = if rows.iter().any(|r| r.also.is_some()) {
-            NOTE_W + m::FIELD_GAP
-        } else {
-            0.0
-        };
-        let inner_w = NAME_W + (SLOT_W + m::FIELD_GAP) * cols as f32 + note_w;
+    pub fn scrolled(
+        area: Rect,
+        rows: &[Row],
+        screen: &ControlsScreen,
+        text: &mut TextSystem,
+    ) -> Self {
+        let (selected, top) = (screen.selected(), screen.top());
+        let listening =
+            |i: usize, s: usize| screen.listening() && i == selected && s == screen.slot();
+        let widths: Vec<Vec<f32>> = rows
+            .iter()
+            .enumerate()
+            .map(|(i, r)| {
+                (0..r.slots())
+                    .map(|s| chip_w(text, &slot_label(r, s, listening(i, s))))
+                    .collect()
+            })
+            .collect();
+        let name_w = rows
+            .iter()
+            .map(|r| text.prefix_width_weighted(&r.label, m::VALUE_PX, FontWeight::SEMI_BOLD))
+            .fold(0.0_f32, f32::max)
+            .ceil();
+        let keys_w = widths
+            .iter()
+            .map(|w| w.iter().sum::<f32>() + m::SEG_INSET * w.len().saturating_sub(1) as f32)
+            .fold(0.0_f32, f32::max);
+        let note_w = rows
+            .iter()
+            .filter_map(Row::note)
+            .map(|n| text.prefix_width(&n, m::LABEL_PX).ceil() + m::FIELD_GAP)
+            .fold(0.0_f32, f32::max);
+        let foot_w = HINTS
+            .iter()
+            .chain(std::iter::once(&"player_controls.reset"))
+            .map(|k| rect_for_label(text.prefix_width(tr(k), FOOT_PX).ceil()))
+            .fold(0.0_f32, f32::max);
+        let title_w = text
+            .prefix_width_weighted(tr("player_controls.title"), TITLE_PX, FontWeight::SEMI_BOLD)
+            .ceil();
+        let lead = m::SEG_INSET + name_w + m::CARD_PAD_X;
+        let inner_w = (lead + keys_w + note_w + m::SEG_INSET)
+            .max(foot_w)
+            .max(title_w);
         let w = (inner_w + m::CARD_PAD_X * 2.0).min(area.w);
         let fixed = m::CARD_PAD_TOP
             + m::CARD_HEAD_H
-            + ROW_H
-            + m::FIELD_ROW_GAP
-            + ROW_H
+            + m::FIELD_ROW_GAP * 2.0
+            + FOOT_H * 2.0
             + m::CARD_PAD_BOTTOM;
         let fit = (((area.h - fixed) / ROW_H).floor().max(1.0)) as usize;
         let visible = rows.len().min(fit);
@@ -88,12 +151,11 @@ impl Layout {
         let title = Rect::new(x0, panel.y + m::CARD_PAD_TOP, iw, m::CARD_HEAD_H);
         let list_y = title.y + title.h;
         let mut y = list_y;
-        let out_rows = rows[first..first + visible]
-            .iter()
-            .map(|r| {
+        let out_rows = (first..first + visible)
+            .map(|i| {
                 let band = Rect::new(x0, y, iw, ROW_H);
                 y += ROW_H;
-                RowLayout::of(band, r.slots(), cols, note_w)
+                RowLayout::of(band, name_w, lead, &widths[i], note_w)
             })
             .collect();
         let bar = (visible < rows.len()).then(|| {
@@ -111,14 +173,17 @@ impl Layout {
             );
             (track, thumb)
         });
-        let reset = Rect::new(x0, y, iw, ROW_H);
-        let hint = Rect::new(x0, y + ROW_H + m::FIELD_ROW_GAP, iw, ROW_H);
+        let rule_y = y + m::FIELD_ROW_GAP;
+        let rule = Rect::new(x0, rule_y, iw, ph2d_tokens::StrokeToken::Hairline.px());
+        let reset = Rect::new(x0, rule_y + m::FIELD_ROW_GAP, iw, FOOT_H);
+        let hint = Rect::new(x0, reset.y + FOOT_H, iw, FOOT_H);
         Self {
             panel,
             title,
             rows: out_rows,
             first,
             bar,
+            rule,
             reset,
             hint,
         }
@@ -146,22 +211,24 @@ impl Layout {
 }
 
 impl RowLayout {
-    fn of(band: Rect, slots: usize, cols: usize, note_w: f32) -> Self {
-        let x0 = band.x;
-        let name = Rect::new(x0 + m::SEG_INSET, band.y, NAME_W - m::SEG_INSET, ROW_H);
+    fn of(band: Rect, name_w: f32, lead: f32, widths: &[f32], note_w: f32) -> Self {
+        let name = Rect::new(band.x + m::SEG_INSET, band.y, name_w, ROW_H);
         let ky = band.y + (ROW_H - KEY_H) * 0.5;
-        let slots = (0..slots)
-            .map(|i| {
-                Rect::new(
-                    x0 + NAME_W + (SLOT_W + m::FIELD_GAP) * i as f32,
-                    ky,
-                    SLOT_W,
-                    KEY_H,
-                )
+        let mut x = band.x + lead;
+        let slots = widths
+            .iter()
+            .map(|&w| {
+                let r = Rect::new(x, ky, w, KEY_H);
+                x += w + m::SEG_INSET;
+                r
             })
             .collect();
-        let nx = x0 + NAME_W + (SLOT_W + m::FIELD_GAP) * cols as f32;
-        let note = Rect::new(nx, band.y, (note_w - m::FIELD_GAP).max(0.0), ROW_H);
+        let note = Rect::new(
+            x - m::SEG_INSET + m::FIELD_GAP,
+            band.y,
+            (note_w - m::FIELD_GAP).max(0.0),
+            ROW_H,
+        );
         Self {
             band,
             name,

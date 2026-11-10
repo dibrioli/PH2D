@@ -15,6 +15,7 @@ use crate::view_list::text::line;
 use ph2d_editor_core::paint::{fill_rounded_rect, fill_rounded_rect_radii, stroke_rounded_rect};
 use ph2d_editor_core::panel::cards::{CardCtx, Widget};
 use ph2d_editor_core::widget::CheckboxValue;
+use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_input::ActionId;
 
 use super::state::TryHit;
@@ -146,7 +147,7 @@ pub(super) fn controls(
     {
         let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, x, w);
         let id = TryHit::PlayersCanChange.id();
-        let label = tr("input_map_try.players_can_change").into();
+        let label = Rotulo::vista_de(tr("input_map_try.players_can_change"));
         y = c.full(
             None,
             Widget::Check {
@@ -241,7 +242,7 @@ pub(super) fn controls(
             None,
             Widget::Check {
                 id: hid,
-                label: name.as_str().into(),
+                label: Rotulo::vista_de(name.as_str()),
                 value: check(controls.shown_in_game(id)),
                 off: false,
             },

@@ -42,7 +42,7 @@ fn keys_of(map: &InputMap, name: &str) -> Vec<Binding> {
 
 /// Lays out like the paint does and writes the scroll back, as `PlaySession::paint`.
 fn lay(area: Rect, s: &mut ControlsScreen, map: &InputMap) -> Layout {
-    let l = Layout::scrolled(area, &rows(map), s.selected(), s.top());
+    let l = Layout::scrolled(area, &rows(map), s, &mut ph2d_text::TextSystem::new());
     s.scroll_to(l.first);
     l
 }
@@ -98,7 +98,11 @@ fn twenty_actions_in_a_small_rect_scroll_and_keep_the_selected_row_visible() {
         assert!((l.first..l.first + l.rows.len()).contains(&s.selected()));
     }
     assert_eq!((s.selected(), s.top()), (0, 0));
-    let big = Layout::of(Rect::new(0.0, 0.0, 1280.0, 1000.0), &rows(&g));
+    let big = Layout::of(
+        Rect::new(0.0, 0.0, 1280.0, 1000.0),
+        &rows(&g),
+        &mut ph2d_text::TextSystem::new(),
+    );
     assert!(big.bar.is_none() && big.rows.len() == 20, "cabe: não rola");
 }
 
@@ -126,7 +130,11 @@ fn a_repeated_key_the_player_made_says_so_in_the_row() {
             && keys_of(&eff, "move_left").contains(&Binding::Key(LEFT)),
         "avisa e guarda as duas: nada se tira em silêncio"
     );
-    let l = Layout::of(Rect::new(0.0, 0.0, 1280.0, 720.0), &r);
+    let l = Layout::of(
+        Rect::new(0.0, 0.0, 1280.0, 720.0),
+        &r,
+        &mut ph2d_text::TextSystem::new(),
+    );
     let jr = r.iter().position(|r| r.action == "jump").expect("jump");
     let note = l.rows[jr].note;
     assert!(note.w > 0.0 && note.x >= l.rows[jr].slots[1].x + l.rows[jr].slots[1].w);

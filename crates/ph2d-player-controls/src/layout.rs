@@ -19,12 +19,27 @@ pub const TITLE_PX: f32 = m::LIST_TITLE_PX;
 /// O pé («Reset to defaults» e a dica): menor e apagado, separado das linhas por um fio.
 pub const FOOT_PX: f32 = m::LABEL_PX;
 const FOOT_H: f32 = m::FIELD_H - m::SEG_INSET;
+/// O recuo do fundo: o MESMO espaço por baixo da última linha da dica que por cima do título (o título centra-se em
+/// `CARD_HEAD_H`, cada linha do pé em `FOOT_H`).
+const PAD_BOTTOM: f32 =
+    m::CARD_PAD_TOP + (m::CARD_HEAD_H - TITLE_PX) * 0.5 - (FOOT_H - FOOT_PX) * 0.5;
 /// As três frases que a dica pode dizer: o pé reserva as linhas da MAIOR, para não mudar de altura ao escutar.
 pub(crate) const HINTS: [&str; 3] = [
     "player_controls.hint_choose",
     "player_controls.hint_listening",
     "player_controls.none",
 ];
+
+/// A frase que a dica diz agora: sem acções, à escuta, ou a de escolher.
+pub(crate) fn hint_key(rows: &[Row], screen: &ControlsScreen) -> &'static str {
+    if rows.is_empty() {
+        HINTS[2]
+    } else if screen.listening() {
+        HINTS[1]
+    } else {
+        HINTS[0]
+    }
+}
 
 /// Onde fica cada coisa do painel, em pixels de ecrã.
 #[derive(Clone, Debug, PartialEq)]
@@ -40,7 +55,7 @@ pub struct Layout {
     /// O fio entre as linhas e o pé.
     pub rule: Rect,
     pub reset: Rect,
-    /// A dica, partida na largura das linhas ([`foot_lines`]): uma faixa de `FOOT_H` por linha.
+    /// A dica de agora, partida na largura das linhas ([`foot_lines`]): uma faixa de `FOOT_H` por linha dela.
     pub hint: Rect,
 }
 
@@ -182,7 +197,12 @@ impl Layout {
             + m::CARD_HEAD_H
             + m::FIELD_ROW_GAP * 2.0
             + FOOT_H * (1 + hint_n) as f32
-            + m::CARD_PAD_BOTTOM;
+            + PAD_BOTTOM;
+        // A reserva da frase maior não fica como faixa vazia em baixo: o conteúdo centra-se na altura reservada.
+        let shown_n = foot_lines(text, tr(hint_key(rows, screen)), iw)
+            .len()
+            .min(hint_n);
+        let lift = FOOT_H * (hint_n - shown_n) as f32 * 0.5;
         let fit = (((area.h - fixed) / ROW_H).floor().max(1.0)) as usize;
         let visible = if natural {
             rows.len()
@@ -211,7 +231,7 @@ impl Layout {
             )
         };
         let x0 = panel.x + m::CARD_PAD_X;
-        let title = Rect::new(x0, panel.y + m::CARD_PAD_TOP, iw, m::CARD_HEAD_H);
+        let title = Rect::new(x0, panel.y + m::CARD_PAD_TOP + lift, iw, m::CARD_HEAD_H);
         let list_y = title.y + title.h;
         let mut y = list_y;
         let out_rows = (first..first + visible)
@@ -239,7 +259,7 @@ impl Layout {
         let rule_y = y + m::FIELD_ROW_GAP;
         let rule = Rect::new(x0, rule_y, iw, ph2d_tokens::StrokeToken::Hairline.px());
         let reset = Rect::new(x0, rule_y + m::FIELD_ROW_GAP, iw, FOOT_H);
-        let hint = Rect::new(x0, reset.y + FOOT_H, iw, FOOT_H * hint_n as f32);
+        let hint = Rect::new(x0, reset.y + FOOT_H, iw, FOOT_H * shown_n as f32);
         Self {
             panel,
             title,

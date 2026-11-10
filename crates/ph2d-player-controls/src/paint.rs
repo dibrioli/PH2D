@@ -169,13 +169,7 @@ pub(crate) fn paint_with(
             ColorToken::Text3
         }),
     );
-    let hint = if rows.is_empty() {
-        "player_controls.none"
-    } else if screen.listening() {
-        "player_controls.hint_listening"
-    } else {
-        "player_controls.hint_choose"
-    };
+    let hint = crate::layout::hint_key(rows, screen);
     let line_h = lay.reset.h;
     for (i, l) in foot_lines(text, tr(hint), lay.hint.w).iter().enumerate() {
         let r = Rect::new(

@@ -58,15 +58,24 @@ fn escrever_na_busca_nunca_mexe_a_coluna_dos_chips() {
     );
 }
 
+/// ⛔ R13: a área do `frame()` é mais larga que a aba real e dava verde com a foto `c1_1600` a ~5 px de texto. A
+/// prova pinta na área que a aba RECEBE com a Hierarchy e o Inspector abertos (medida nas fotos c1_1600/c1_1280).
 #[test]
 fn a_previa_das_onze_accoes_le_se_a_pelo_menos_tres_quartos() {
-    let m = cena("C1");
-    assert_eq!(m.tab().doc.snap.map.len(), 11, "o mapa das 11 acções");
-    let k = m.tab().doc.tryit.preview_scale;
-    assert!(
-        k >= 0.75 - 1e-4,
-        "a prévia a {k:.3} (texto ilegível abaixo de 0,75)"
-    );
+    let tabs = [
+        ("1600", Rect::new(308.0, 28.0, 988.0, 890.0)), // LITERAL-PX-OK: a aba medida na foto c1_1600
+        ("1280", Rect::new(297.0, 28.0, 690.0, 604.0)), // LITERAL-PX-OK: a aba medida na foto c1_1280
+    ];
+    for (at, tab) in tabs {
+        let mut m = cena("C1");
+        assert_eq!(m.tab().doc.snap.map.len(), 11, "o mapa das 11 acções");
+        m.paint_in(tab);
+        let k = m.tab().doc.tryit.preview_scale;
+        assert!(
+            k >= 0.75 - 1e-4,
+            "{at}: a prévia a {k:.3} (texto ilegível abaixo de 0,75)"
+        );
+    }
 }
 
 #[test]

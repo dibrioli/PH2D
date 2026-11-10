@@ -1,5 +1,5 @@
-//! O comando desenhado (maquete B3): o corpo em curvas com as pegas, gatilhos e ombros ACIMA dele, as duas
-//! manches como anéis (as quatro metades são setas pequenas à volta: clicar numa liga essa metade), ABXY em
+//! O comando desenhado (maquete B3): o corpo em curvas com as pegas, os gatilhos na aresta do topo e os ombros
+//! logo abaixo, as duas manches como anéis (as quatro metades são setas pequenas à volta: clicar numa liga essa metade), ABXY em
 //! losango, a cruz, Back e Start. Por baixo de cada alvo, uma barra por acção — a mesma lei das teclas.
 //! Desvio documentado da maquete B3 (que só desenha LT/RT, as manches e ABXY): LB/RB, Back/Start e a cruz ficam
 //! no desenho porque são botões que se ligam — sem eles, uma ligação a um deles não teria onde se clicar.

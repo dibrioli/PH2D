@@ -312,7 +312,13 @@ pub fn paint(
             .filter(|&j| col_of(j) == col_of(i))
             .map(|j| heights[j] + m::CARD_GAP)
             .sum();
-        doc.tryit.controls_room = (inner.h - above).max(0.0);
+        // Duas colunas: a tela do jogo só cresce até ao que sobra na coluna. Uma coluna: a página já rola, e
+        // a tela cresce com as linhas (com o tecto, as 11 acções liam-se a 0,47 na aba de 1600, foto c1_1600).
+        doc.tryit.controls_room = if two {
+            (inner.h - above).max(0.0)
+        } else {
+            f32::INFINITY
+        };
         heights.push(h(doc, ts, col_w));
     }
     let mut tops = [inner.y, inner.y];

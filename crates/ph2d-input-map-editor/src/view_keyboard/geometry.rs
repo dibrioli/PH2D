@@ -151,10 +151,10 @@ const SMALL_PILL: (f32, f32) = (0.07, 0.035); // LITERAL-PX-OK: maquete B3
 const BTN: (f32, f32) = (0.06, 0.06); // LITERAL-PX-OK: maquete B3
 const ARM: (f32, f32) = (0.045, 0.045); // LITERAL-PX-OK: maquete B3
 const TIP: (f32, f32) = (0.04, 0.04); // LITERAL-PX-OK: maquete B3
-/// Gatilhos e ombros lado a lado, ACIMA do corpo (o topo do corpo é `BODY_START.1`).
-const TOP_Y: f32 = 0.06; // LITERAL-PX-OK: maquete B3
-const LT: f32 = 0.17; // LITERAL-PX-OK: maquete B3
-const LB: f32 = 0.33; // LITERAL-PX-OK: maquete B3
+/// Os gatilhos ASSENTAM na aresta do topo do corpo (o fundo da pílula em `BODY_START.1`, maquete B3); os ombros
+/// ficam logo abaixo da aresta, já dentro do corpo, entre a manche esquerda (o espelho: o Y) e o Back/Start.
+const LT: (f32, f32) = (0.2, BODY_START.1 - PILL.1); // LITERAL-PX-OK: maquete B3
+const LB: (f32, f32) = (0.34, BODY_START.1 + 0.07); // LITERAL-PX-OK: maquete B3
 const BACK: (f32, f32) = (0.44, 0.34); // LITERAL-PX-OK: maquete B3
 const START: (f32, f32) = (0.56, 0.34); // LITERAL-PX-OK: maquete B3
 const DPAD: (f32, f32) = (0.41, 0.63); // LITERAL-PX-OK: maquete B3
@@ -190,15 +190,26 @@ pub(crate) fn pad() -> Vec<PadPart> {
     let wide = |h: f32| h / PAD_ASPECT;
     let (fx, fy) = FACE;
     let (px, py) = DPAD;
+    let mirror = |(x, y): (f32, f32)| (1.0 - x, y);
     let pills = [
-        (P::LeftTrigger, "input_map_keyboard.pad.lt", LT),
-        (P::LeftBumper, "input_map_keyboard.pad.lb", LB),
-        (P::RightBumper, "input_map_keyboard.pad.rb", 1.0 - LB),
-        (P::RightTrigger, "input_map_keyboard.pad.rt", 1.0 - LT),
+        (P::LeftTrigger, "input_map_keyboard.pad.lt", LT, PILL),
+        (P::LeftBumper, "input_map_keyboard.pad.lb", LB, SMALL_PILL),
+        (
+            P::RightBumper,
+            "input_map_keyboard.pad.rb",
+            mirror(LB),
+            SMALL_PILL,
+        ),
+        (
+            P::RightTrigger,
+            "input_map_keyboard.pad.rt",
+            mirror(LT),
+            PILL,
+        ),
     ];
     let mut out: Vec<PadPart> = pills
         .into_iter()
-        .map(|(p, k, x)| part(b(p), k, (x, TOP_Y), PILL, Pill))
+        .map(|(p, k, at, size)| part(b(p), k, at, size, Pill))
         .collect();
     out.extend([
         part(

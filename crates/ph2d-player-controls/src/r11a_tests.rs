@@ -81,3 +81,35 @@ fn a_previa_nunca_aumenta_o_painel() {
         nat.panel
     );
 }
+
+/// R13 · foto P1: a reserva da dica maior (para a caixa não saltar ao escutar) ficava como faixa vazia por baixo
+/// da última linha. Fechada e à escuta, o espaço por cima do título é o MESMO que por baixo da última linha da dica,
+/// e a caixa não muda.
+#[test]
+fn o_painel_tem_o_mesmo_espaco_em_cima_e_em_baixo_e_nao_salta_ao_escutar() {
+    use crate::ControlsScreen;
+    use crate::layout::{FOOT_PX, TITLE_PX};
+    use ph2d_input::{Key, PlayerKeys};
+    let mut g = InputMap::with_player_defaults();
+    g.controls_mut().players_can_change_keys = true;
+    let r = rows(&g);
+    let mut ts = TextSystem::new();
+    let area = Rect::new(0.0, 0.0, 1280.0, 720.0); // LITERAL-PX-OK: a janela do plano §8
+    let mut listening = ControlsScreen::default();
+    let mut keys = PlayerKeys::new();
+    listening.handle_key(Key(0xF704), true, &g, &mut keys); // F1 abre
+    listening.handle_key(Key(0x0D), true, &g, &mut keys); // Enter escuta
+    assert!(listening.listening(), "Enter escuta");
+    let rest = Layout::scrolled(area, &r, &ControlsScreen::default(), &mut ts);
+    let heard = Layout::scrolled(area, &r, &listening, &mut ts);
+    assert_eq!(rest.panel, heard.panel, "a caixa não salta ao escutar");
+    for (at, l) in [("fechada", &rest), ("à escuta", &heard)] {
+        let above = l.title.y + (l.title.h - TITLE_PX) * 0.5 - l.panel.y;
+        let last = l.hint.y + l.hint.h - l.reset.h * 0.5 + FOOT_PX * 0.5;
+        let below = l.panel.y + l.panel.h - last;
+        assert!(
+            (above - below).abs() < 0.5,
+            "{at}: {above} por cima do título × {below} por baixo da dica"
+        );
+    }
+}

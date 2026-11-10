@@ -95,7 +95,10 @@ pub(crate) fn plano_do_hash(g: &Grid, a: usize, b: usize) -> Vec<f32> {
         }
     }
     if !g.oleo.is_empty() {
-        v.extend(g.oleo[a..b].iter().flat_map(|c| [c.meio, c.corpo]));
+        v.extend((a..b).flat_map(|i| {
+            let c = g.oleo[i];
+            [c.meio, c.corpo]
+        }));
     }
     v
 }
@@ -214,8 +217,12 @@ impl TintaGpu {
                     c.filme = soma(&fi[k * 6..k * 6 + 6]);
                     c.aberto = soma(&ab[k * 6..k * 6 + 6]);
                     c.o = op[k];
-                    if let Some(o) = g.oleo.get_mut(i) {
-                        o.meio = me[k];
+                    // Só o que mudou ao bit: o pedaço do chão não acorda (B12.3).
+                    if g.oleo
+                        .get(i)
+                        .is_some_and(|o| o.meio.to_bits() != me[k].to_bits())
+                    {
+                        g.oleo[i].meio = me[k];
                     }
                 }
             }

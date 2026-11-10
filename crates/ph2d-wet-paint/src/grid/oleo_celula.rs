@@ -7,6 +7,7 @@
 //! Doc: `docs/Painter/49_realshader/W3b_painel_so_no_futuro.md` §Depth e Gloss.
 
 use super::Grid;
+use super::campo_esparso::CampoEsparso;
 use crate::sim::Params;
 use crate::tuning::Knob;
 
@@ -46,6 +47,39 @@ impl OleoCelula {
     };
 }
 
+/// O campo da grade (B12.3): pedaços esparsos, o ausente lê [`OleoCelula::NEUTRA`].
+pub type CampoOleo = CampoEsparso<OleoCelula>;
+
+/// O campo que ainda não existe (o `Vec::new()` de antes).
+#[must_use]
+pub fn sem_campo() -> CampoOleo {
+    CampoEsparso::vazio(OleoCelula::NEUTRA)
+}
+
+/// O denso `v` como campo (os testes, a tinta que volta).
+#[must_use]
+pub fn campo_de(v: &[OleoCelula]) -> CampoOleo {
+    CampoEsparso::de_vec(OleoCelula::NEUTRA, v, mesmo_bit)
+}
+
+/// Igualdade ao bit (o `==` de `f32` iguala `-0.0` e `0.0`).
+#[must_use]
+pub fn mesmo_bit(a: &OleoCelula, b: &OleoCelula) -> bool {
+    let f = |c: &OleoCelula| {
+        (
+            [c.oleo, c.profundidade, c.brilho, c.soluvel, c.meio, c.corpo].map(f32::to_bits),
+            c.pincel_de_oleo,
+        )
+    };
+    f(a) == f(b)
+}
+
+/// Os bytes que o campo ocupa (o gate do 1.º toque, B12.3).
+#[must_use]
+pub fn bytes_alocados(g: &Grid) -> usize {
+    g.oleo.bytes_vivos()
+}
+
 impl OleoCelula {
     /// Tinta com o Real Oil (a fracção ou a última mão).
     #[inline]
@@ -58,7 +92,7 @@ impl OleoCelula {
 /// Reconta [`Grid::oleo_real`] depois de uma porta que reescreve o campo inteiro ou uma janela dele (desfazer,
 /// instantâneo, limpar).
 pub fn reconta_real(g: &mut Grid) {
-    g.oleo_real = g.oleo.iter().any(OleoCelula::e_real);
+    g.oleo_real = g.oleo.iter().any(|c| c.e_real());
 }
 
 impl Default for OleoCelula {
@@ -94,7 +128,7 @@ pub fn do_pincel(p: &Params) -> OleoCelula {
 /// O ganho da altura de óleo da célula `i` (`Depth × Real Oil`): `0` = a tinta sem óleo é lisa para o campo.
 #[inline]
 #[must_use]
-pub fn ganho(campo: &[OleoCelula], i: usize) -> f64 {
+pub fn ganho(campo: &CampoOleo, i: usize) -> f64 {
     let c = da_celula(campo, i);
     f64::from(c.profundidade) * f64::from(c.oleo)
 }
@@ -102,8 +136,8 @@ pub fn ganho(campo: &[OleoCelula], i: usize) -> f64 {
 /// O da célula `i` — [`OleoCelula::NEUTRA`] sem o campo.
 #[inline]
 #[must_use]
-pub fn da_celula(campo: &[OleoCelula], i: usize) -> OleoCelula {
-    campo.get(i).copied().unwrap_or(OleoCelula::NEUTRA)
+pub fn da_celula(campo: &CampoOleo, i: usize) -> OleoCelula {
+    campo.get(i).unwrap_or(OleoCelula::NEUTRA)
 }
 
 /// Pousa `v` de massa e `agua` de líquido com `nova` sobre a célula `i`, que tinha `m_old` (susp + sett): a média
@@ -114,7 +148,7 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: OleoCelula, (v, agua): (f
         if nova == OleoCelula::NEUTRA {
             return;
         }
-        g.oleo = crate::par::plano_cheio(OleoCelula::NEUTRA, g.cells);
+        g.oleo = CampoEsparso::novo(OleoCelula::NEUTRA, g.cells);
     }
     g.oleo_real |= nova.e_real();
     let a = g.oleo[i];
@@ -169,7 +203,7 @@ pub fn veste_virgens(g: &mut Grid, (x0, y0, x1, y1): (i32, i32, i32, i32), nova:
 /// ao byte, e larga a memória dele).
 pub fn restaura_janela(g: &mut Grid, janela: (i32, i32, i32, i32), linhas: &[OleoCelula]) {
     let (n, s) = (g.cells, g.s);
-    super::altura::restaura_campo(&mut g.oleo, n, s, janela, linhas, OleoCelula::NEUTRA);
+    super::altura::restaura_campo_esparso(&mut g.oleo, n, s, janela, linhas, mesmo_bit);
     reconta_real(g);
     if linhas.is_empty()
         && g.oleo.iter().all(|c| {
@@ -180,7 +214,7 @@ pub fn restaura_janela(g: &mut Grid, janela: (i32, i32, i32, i32), linhas: &[Ole
                 && c.corpo <= 0.0
         })
     {
-        g.oleo = Vec::new();
+        g.oleo = sem_campo();
     }
 }
 

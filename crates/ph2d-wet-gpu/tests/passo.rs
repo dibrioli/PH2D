@@ -471,11 +471,15 @@ fn a_placa_aceita_a_lei_pigmento_e_recusa_o_que_nao_sabe() {
     assert!(sabe(&e), "E11: a placa sabe a lei Pigmento");
 
     // O meio e o corpo pousados: só a lei nova os leva à placa.
-    e.layers[idx].grid.oleo = vec![Default::default(); e.layers[idx].grid.cells];
+    e.layers[idx].grid.oleo =
+        ph2d_wet_paint::grid::oleo_celula::campo_de(&vec![
+            Default::default();
+            e.layers[idx].grid.cells
+        ]);
     assert!(sabe(&e), "o óleo da célula é da placa com a lei Pigmento");
     e.sim.set_tinta(LeiDaTinta::Velha);
     assert!(!sabe(&e), "a lei velha não leva o óleo da célula à placa");
-    e.layers[idx].grid.oleo = Vec::new();
+    e.layers[idx].grid.oleo = ph2d_wet_paint::grid::oleo_celula::sem_campo();
     e.sim.set_tinta(LeiDaTinta::Pigmento);
 
     // O que fica na CPU, um a um.

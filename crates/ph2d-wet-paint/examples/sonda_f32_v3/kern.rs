@@ -811,7 +811,7 @@ pub fn drying_pass_jacobi_rows(
     let paper: &[f32] = paper;
     let vela: &[f32] = vela;
     let aparencia_c: &aparencia::CampoAparencia = aparencia;
-    let oleo: &[oleo_celula::OleoCelula] = oleo;
+    let oleo: &oleo_celula::CampoOleo = oleo;
     let band = by0 as usize * s..(by1 as usize + 1) * s;
     par::walk_rows5(
         mode,

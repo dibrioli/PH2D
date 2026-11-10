@@ -50,6 +50,30 @@ pub(super) fn restaura_campo<T: Copy>(
     }
 }
 
+/// O [`restaura_campo`] de um campo esparso (B12.3): a janela neutra não acorda pedaço (`mesmo_bit`).
+pub(super) fn restaura_campo_esparso<T: Copy>(
+    campo: &mut super::campo_esparso::CampoEsparso<T>,
+    n: usize,
+    s: usize,
+    (x0, y0, x1, y1): (i32, i32, i32, i32),
+    linhas: &[T],
+    mesmo_bit: impl Fn(&T, &T) -> bool + Copy,
+) {
+    if linhas.is_empty() && campo.is_empty() {
+        return;
+    }
+    if campo.is_empty() {
+        *campo = super::campo_esparso::CampoEsparso::novo(campo.chao(), n);
+    }
+    let w = (x1 - x0 + 1) as usize;
+    let neutra = vec![campo.chao(); w];
+    for (r, y) in (y0..=y1).enumerate() {
+        let o = y as usize * s + x0 as usize;
+        let l = linhas.get(r * w..(r + 1) * w).unwrap_or(&neutra);
+        campo.escreve_intervalo_poupando(o, l, mesmo_bit);
+    }
+}
+
 #[cfg(test)]
 #[path = "altura_tests.rs"]
 mod tests;

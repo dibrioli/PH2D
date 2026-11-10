@@ -92,7 +92,10 @@ fn difere(a: &Grid, b: &Grid, m: &Grid) -> Option<&'static str> {
             "aparencia",
             fora_das_virgens(&a.aparencia.para_vec(), &b.aparencia.para_vec(), m),
         ),
-        ("oleo", fora_das_virgens(&a.oleo, &b.oleo, m)),
+        (
+            "oleo",
+            fora_das_virgens(&a.oleo.para_vec(), &b.oleo.para_vec(), m),
+        ),
         ("tinta", a.tinta == b.tinta),
         ("pigmento", a.pigmento == b.pigmento),
         ("oleo_real", a.oleo_real == b.oleo_real),

@@ -123,7 +123,10 @@ pub(super) fn render_plano(t: &mut PainterTool) -> Option<Vec<f32>> {
                     (
                         std::mem::replace(&mut g.relevo, zero),
                         std::mem::take(&mut g.altura),
-                        std::mem::take(&mut g.oleo),
+                        std::mem::replace(
+                            &mut g.oleo,
+                            ph2d_wet_paint::grid::oleo_celula::sem_campo(),
+                        ),
                         std::mem::replace(&mut g.film, seco),
                         std::mem::take(&mut g.oleo_real),
                     )

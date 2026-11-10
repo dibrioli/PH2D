@@ -211,7 +211,7 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
         oleo,
         ..
     } = g;
-    let oleo: &[crate::grid::oleo_celula::OleoCelula] = oleo;
+    let oleo: &crate::grid::oleo_celula::CampoOleo = oleo;
     // A tensão de cedência (meio + corpo) só existe com o campo da célula; sem ele, o fluxo de sempre.
     let com_tensao = !oleo.is_empty();
     // Tudo abaixo é LEITURA — é isto que faz do passe um gather, e o

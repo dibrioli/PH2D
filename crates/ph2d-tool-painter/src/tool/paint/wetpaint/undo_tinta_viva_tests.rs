@@ -62,7 +62,7 @@ fn grade(t: &mut PainterTool) -> Option<Grade> {
         g.susp.clone(),
         g.film.clone(),
         g.wet.clone(),
-        g.oleo.clone(),
+        g.oleo.para_vec(),
     ))
 }
 
@@ -313,7 +313,11 @@ fn diag_custo_da_ladeira_no_inicio_do_traco() {
         let mut e = ph2d_wet_paint::painter::Engine::new(lado, lado);
         e.sim.oleo = true;
         let g = &mut e.layers[0].grid;
-        g.oleo = vec![ph2d_wet_paint::grid::oleo_celula::OleoCelula::NEUTRA; g.cells];
+        g.oleo = ph2d_wet_paint::grid::campo_esparso::CampoEsparso::de_vec(
+            ph2d_wet_paint::grid::oleo_celula::OleoCelula::NEUTRA,
+            &vec![ph2d_wet_paint::grid::oleo_celula::OleoCelula::NEUTRA; g.cells],
+            |_, _| false,
+        );
         g.sett.fill(1.0);
         let mut melhor = f64::MAX;
         for _ in 0..5 {

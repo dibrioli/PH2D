@@ -154,7 +154,7 @@ fn pintar_tudo_com_o_real_oil_e_a_imagem_de_antes_salvo_o_oleo_sobre_o_oleo() {
         "controlo: o campo existe"
     );
     for l in grades(&mut t).iter_mut() {
-        l.grid.oleo = Vec::new();
+        l.grid.oleo = ph2d_wet_paint::grid::oleo_celula::sem_campo();
     }
     super::oleo_plano::lei_da_caixa::set(true);
     let antes = recompoe(&mut t);

@@ -38,62 +38,6 @@ pub fn composite_region(
     encode(&acc)
 }
 
-/// Composite the FULL canvas with the cut-point cache (ADR-0045 §2.7) — the
-/// slider-drag FPS lever. On a param-only change of a root adjustment (after
-/// `cache.invalidate_above(adj, stack)`), this restarts from that adjustment's
-/// cached accumulator-below instead of recomposing the layers underneath; on a
-/// cold cache (or structural change → `invalidate_from`) it composes the whole
-/// stack and (re)fills the cuts. **Bit-identical to [`composite`]** — the layers
-/// below the restart point are unchanged, and an adjustment resets `clip_base`, so
-/// the restart state matches the full walk (gate `cache_matches_full_recompose`).
-#[must_use]
-pub fn composite_with_cache(
-    stack: &LayerStack,
-    src: &impl LayerPixelSource,
-    width: u32,
-    height: u32,
-    cache: &mut CompositorCache,
-) -> Vec<u8> {
-    let root = stack.root();
-    // Highest root adjustment (smallest index = MOST below-layers cached) whose
-    // cut is still valid. Its cut is the composite of everything below it.
-    let start = root.iter().enumerate().find(|&(_, &id)| {
-        matches!(
-            stack.get(id).map(|l| &l.kind),
-            Some(LayerKind::Adjustment(_))
-        ) && cache.cuts.contains_key(&id)
-    });
-    let (mut acc, ids): (Vec<[f32; 4]>, &[LayerId]) = match start {
-        // `composite_into` walks `ids` REVERSED (panel order is top-first;
-        // index 0 = topmost). So the cut at panel index `i` = composite of the
-        // layers BELOW it (`root[i+1..]`). Seed `acc` with that cut, then hand
-        // `root[..=i]` (the adjustment + everything above): the reversed walk
-        // processes the adjustment FIRST (on the correct below-acc), then the
-        // layers above it. Restarting from the smallest valid index reuses the
-        // largest cut (most below-layers cached) → fewest layers recomposed.
-        Some((i, &id)) => (cache.cuts[&id].clone(), &root[..=i]),
-        None => (
-            vec![[0.0f32; 4]; (width as usize) * (height as usize)],
-            root,
-        ),
-    };
-    composite_into(
-        &mut acc,
-        ids,
-        stack,
-        src,
-        (width, height),
-        0,
-        0,
-        width,
-        height,
-        0,
-        Some(cache),
-        None,
-    );
-    encode(&acc)
-}
-
 pub(super) fn encode(acc: &[[f32; 4]]) -> Vec<u8> {
     let mut out = vec![0u8; acc.len() * 4];
     // Pure per-pixel map → split across the cores for large buffers (bit-identical: disjoint chunks,
@@ -512,15 +456,23 @@ pub(super) fn composite_into(
                 // the whole stack. Stored BEFORE applying the adjustment. Only
                 // depth-0 adjustments cache; group-internal ones recompose in their
                 // (smaller) sub-buffer. An adjustment resets `clip_base` below, so
-                // restarting here is bit-identical to the full walk.
+                // restarting here is bit-identical to the full walk. B19.9: the only cut already
+                // present on the walk is the restart one, which IS `acc` — not copied again.
+                let mut adjusted: Vec<[f32; 4]> = Vec::new();
                 if depth == 0
                     && let Some(c) = cache.as_deref_mut()
                 {
-                    c.cuts.insert(id, acc.to_vec());
+                    if super::cache::copias_antigas() {
+                        c.cuts.insert(id, acc.to_vec());
+                    } else {
+                        c.cuts.entry(id).or_insert_with(|| acc.to_vec());
+                        adjusted = std::mem::take(&mut c.ajustado);
+                    }
                 }
                 let adj_opacity = adj.opacity.clamp(0.0, 1.0);
                 let adj_mode = adj.blend_mode;
-                let mut adjusted: Vec<[f32; 4]> = acc.to_vec();
+                adjusted.clear();
+                adjusted.extend_from_slice(acc);
                 // Window-aware dispatch: spatial blurs (Gaussian/Sharpen/Motion/
                 // Chroma) need the 2-D layout; Noise/Halftone need the absolute
                 // canvas coordinate (origin + local). Per-pixel kinds delegate to
@@ -618,6 +570,12 @@ pub(super) fn composite_into(
                             ];
                         }
                     }
+                }
+                if depth == 0
+                    && !super::cache::copias_antigas()
+                    && let Some(c) = cache.as_deref_mut()
+                {
+                    c.ajustado = adjusted;
                 }
                 // An adjustment is not a raster clip base — it breaks the chain.
                 (clip_base, clip_hidden) = (None, false);

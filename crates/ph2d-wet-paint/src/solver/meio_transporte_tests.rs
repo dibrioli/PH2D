@@ -20,12 +20,13 @@ fn corre(molhada: f32, seca: f32, mode: Rows) -> (Vec<f32>, Vec<f32>, Vec<f32>) 
     let p = e.sim.gather_params(&e.tuning);
     let g = e.active_grid_mut();
     let antes = g.film.clone();
-    g.oleo = (0..g.cells)
+    let v: Vec<OleoCelula> = (0..g.cells)
         .map(|i| OleoCelula {
             meio: if g.film[i] > 0.0 { molhada } else { seca },
             ..OleoCelula::NEUTRA
         })
         .collect();
+    g.oleo = crate::grid::oleo_celula::campo_de(&v);
     for _ in 0..12 {
         crate::solver::rebuild_active_region(g);
         for v in g.flow_x.iter_mut() {

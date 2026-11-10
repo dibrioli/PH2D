@@ -136,7 +136,7 @@ fn sem_meio_sem_corpo_e_o_de_sempre() {
         e.active_grid().oleo.is_empty(),
         "Medium 0 · Body 0 · Real Oil off alocou o campo"
     );
-    assert_eq!(da_celula(&[], 3), OleoCelula::NEUTRA);
+    assert_eq!(da_celula(&super::sem_campo(), 3), OleoCelula::NEUTRA);
     for t0 in [0.0, 3.0] {
         for m in [0.0, 0.5, 1.0] {
             for massa in [0.0, 1.0, 600.0] {

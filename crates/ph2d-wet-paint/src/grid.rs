@@ -103,7 +103,7 @@ pub struct Grid {
     pub borda_fundo: f64,
     /// **O Depth e o Gloss do Óleo Real da tinta** (dono 28/10, [`oleo_celula`]): os do pincel que a pousou. VAZIO (=
     /// NEUTRO) até o primeiro pincel fora da fábrica pintar.
-    pub oleo: Vec<oleo_celula::OleoCelula>,
+    pub oleo: oleo_celula::CampoOleo,
     /// Alguma célula de [`Self::oleo`] tem tinta com o **Real Oil** (J9 §3): sem ela a óptica do óleo dá a mesma tela
     /// que o caminho sem óleo, ao byte — o campo pode existir só pelo meio, a solubilidade ou o corpo.
     /// [`oleo_celula::pousa`] liga-o; as portas que reescrevem o campo recontam ([`oleo_celula::reconta_real`]).
@@ -299,7 +299,7 @@ impl Grid {
             aparencia: aparencia::sem_campo(),
             suave_teto: 0.0,
             borda_fundo: -1.0,
-            oleo: Vec::new(),
+            oleo: oleo_celula::sem_campo(),
             oleo_real: false,
             oleo_antes: Vec::new(),
             oleo_antes_assente: Vec::new(),

@@ -126,7 +126,7 @@ pub(crate) fn tensao_com_corpo(
 #[inline]
 #[must_use]
 pub(crate) fn cede(
-    oleo: &[crate::grid::oleo_celula::OleoCelula],
+    oleo: &crate::grid::oleo_celula::CampoOleo,
     (susp, sett): (&[f32], &[f32]),
     fi: usize,
     f: f64,

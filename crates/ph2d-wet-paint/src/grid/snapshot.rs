@@ -25,7 +25,7 @@ pub struct GridSnapshot {
     pub vela: Vec<f32>,
     pub material: Vec<crate::material::MaterialCelula>,
     pub aparencia: aparencia::CampoAparencia,
-    pub oleo: Vec<oleo_celula::OleoCelula>,
+    pub oleo: oleo_celula::CampoOleo,
     /// [`Grid::tinta`] (F4-2 E3): vazia com a lei velha.
     pub tinta: Vec<tinta::CelulaTinta>,
     /// [`Grid::pigmento`] (E10c): vazio sem Pigment mix.
@@ -181,8 +181,25 @@ impl<T: Clone> Plano<T> for Vec<T> {
     }
 }
 
-impl Plano<aparencia::AparenciaCelula> for aparencia::CampoAparencia {
-    fn tira_tile(&self, s: usize, r: Ret) -> Vec<aparencia::AparenciaCelula> {
+/// A igualdade ao bit da célula de um campo esparso (o tile que é todo chão não acorda pedaço).
+trait MesmoBit: Copy {
+    fn mesmo_bit(a: &Self, b: &Self) -> bool;
+}
+
+impl MesmoBit for aparencia::AparenciaCelula {
+    fn mesmo_bit(a: &Self, b: &Self) -> bool {
+        aparencia::mesmo_bit(a, b)
+    }
+}
+
+impl MesmoBit for oleo_celula::OleoCelula {
+    fn mesmo_bit(a: &Self, b: &Self) -> bool {
+        oleo_celula::mesmo_bit(a, b)
+    }
+}
+
+impl<T: MesmoBit> Plano<T> for campo_esparso::CampoEsparso<T> {
+    fn tira_tile(&self, s: usize, r: Ret) -> Vec<T> {
         if self.is_empty() {
             return Vec::new();
         }
@@ -192,17 +209,13 @@ impl Plano<aparencia::AparenciaCelula> for aparencia::CampoAparencia {
         }
         out
     }
-    fn poe_tile(&mut self, s: usize, r: Ret, d: &[aparencia::AparenciaCelula]) {
+    fn poe_tile(&mut self, s: usize, r: Ret, d: &[T]) {
         if self.is_empty() || d.is_empty() {
             return;
         }
         let w = r.x1 - r.x0;
         for (i, y) in (r.y0..r.y1).enumerate() {
-            self.escreve_intervalo_poupando(
-                y * s + r.x0,
-                &d[i * w..(i + 1) * w],
-                aparencia::mesmo_bit,
-            );
+            self.escreve_intervalo_poupando(y * s + r.x0, &d[i * w..(i + 1) * w], T::mesmo_bit);
         }
     }
 }
@@ -468,7 +481,7 @@ impl Registo {
         ajusta(&mut g.nivelado, v[3], a3.as_ref());
         ajusta(&mut g.material, v[4], a5.as_ref());
         ajusta_campo(&mut g.aparencia, v[5], a6.is_some());
-        ajusta(&mut g.oleo, v[6], a7.as_ref());
+        ajusta_campo(&mut g.oleo, v[6], a7.is_some());
         let a8 = amostra!(tinta);
         ajusta(&mut g.tinta, v[7], a8.as_ref());
         let a9 = amostra!(pigmento);

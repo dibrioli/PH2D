@@ -176,9 +176,13 @@ pub(super) fn gancho(
                 (&mut rel, &mut bit),
                 |a, b| ex(a != b),
             );
-            campo(&g.oleo, &mut gs.oleo, jan, (&mut rel, &mut bit), |a, b| {
-                ex(a != b)
-            });
+            campo(
+                &g.oleo.para_vec(),
+                &mut gs.oleo,
+                jan,
+                (&mut rel, &mut bit),
+                |a, b| ex(a != b),
+            );
             campo(
                 &g.tinta,
                 &mut gs.tinta,

@@ -31,7 +31,7 @@ pub(crate) fn hash_grid(g: &Grid) -> Vec<u64> {
     h(&mut st, &s.vela);
     h(&mut st, &s.material);
     h(&mut st, &s.aparencia.para_vec());
-    h(&mut st, &s.oleo);
+    h(&mut st, &s.oleo.para_vec());
     h(&mut st, &s.vel_x);
     h(&mut st, &s.vel_y);
     h(&mut st, &s.wet);
@@ -558,6 +558,7 @@ fn celulas_que_diferem(a: &crate::grid::GridSnapshot, b: &crate::grid::GridSnaps
         .any(|(x, y)| x.get(i).map(|v| v.to_bits()) != y.get(i).map(|v| v.to_bits()))
     };
     let (apa, apb) = (a.aparencia.para_vec(), b.aparencia.para_vec());
+    let (ola, olb) = (a.oleo.para_vec(), b.oleo.para_vec());
     (0..a.film.len())
         .filter(|&i| {
             f32s(i)
@@ -565,7 +566,7 @@ fn celulas_que_diferem(a: &crate::grid::GridSnapshot, b: &crate::grid::GridSnaps
                 || bits(&a.sett_rgb, i) != bits(&b.sett_rgb, i)
                 || bits(&a.material, i) != bits(&b.material, i)
                 || bits(&apa, i) != bits(&apb, i)
-                || bits(&a.oleo, i) != bits(&b.oleo, i)
+                || bits(&ola, i) != bits(&olb, i)
                 || bits(&a.tinta, i) != bits(&b.tinta, i)
                 || bits(&a.pigmento, i) != bits(&b.pigmento, i)
                 || a.wet.get(i) != b.wet.get(i)

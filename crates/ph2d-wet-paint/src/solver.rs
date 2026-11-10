@@ -109,7 +109,7 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
         oleo,
         ..
     } = g;
-    let oleo: &[_] = oleo;
+    let oleo: &crate::grid::oleo_celula::CampoOleo = oleo;
 
     // Per-row subslices of the READ-ONLY arrays (film/paper/vel/active are
     // never written by this pass on any path) let the compiler prove the

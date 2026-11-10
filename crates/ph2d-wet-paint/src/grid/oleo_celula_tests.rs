@@ -11,7 +11,7 @@ const H: usize = 40;
 /// Duas faixas de tinta lado a lado (x `20..=59` e `60..=99`, y `10..=30`) com o mesmo pigmento e o óleo `a` / `b`.
 fn duas(a: OleoCelula, b: OleoCelula) -> Grid {
     let mut g = Grid::new(W, H);
-    g.oleo = vec![OleoCelula::NEUTRA; g.cells];
+    g.oleo = CampoEsparso::novo(OleoCelula::NEUTRA, g.cells);
     for y in 10..=30 {
         for x in 20..=99 {
             let i = x + y * g.s;
@@ -29,7 +29,8 @@ fn perfis(a: OleoCelula, b: OleoCelula) -> (Vec<f64>, Vec<f64>) {
     let g = duas(a, b);
     let antes = CampoAltura::de(&[(&g, true)], &o, 1, 1, 1, W, H);
     let mut neutra = g.clone();
-    for c in &mut neutra.oleo {
+    let mut v = neutra.oleo.para_vec();
+    for c in &mut v {
         if c.oleo > 0.0 {
             *c = OleoCelula {
                 oleo: 1.0,
@@ -42,6 +43,7 @@ fn perfis(a: OleoCelula, b: OleoCelula) -> (Vec<f64>, Vec<f64>) {
             };
         }
     }
+    neutra.oleo = campo_de(&v);
     let liso = CampoAltura::de(&[(&neutra, true)], &o, 1, 1, 1, W, H);
     let y = 20isize;
     let a_ = (1..=W as isize).map(|x| antes.at(x, y)).collect();
@@ -116,7 +118,7 @@ fn o_oleo_de_fabrica_e_o_campo_de_antes_ao_bit() {
     };
     let g = duas(um, um);
     let mut antes = g.clone();
-    antes.oleo = Vec::new();
+    antes.oleo = sem_campo();
     let o = OleoReal::default();
     let c = CampoAltura::de(&[(&g, true)], &o, 1, 1, 1, W, H);
     let d = CampoAltura::de(&[(&antes, true)], &o, 1, 1, 1, W, H);
@@ -178,4 +180,37 @@ fn o_campo_nasce_com_o_oleo_mistura_se_e_larga_se_sem_ele() {
     assert_eq!(da_celula(&g.oleo, i), m, "a célula pintada não se veste");
     restaura_janela(&mut g, (1, 1, 32, 32), &[]);
     assert!(g.oleo.is_empty(), "o desfazer sem óleo não largou o campo");
+}
+
+/// B12.3: o 1.º dab com o Real Oil (raio 30) aloca os pedaços das linhas dele, não a tela (era `plano_cheio`).
+#[test]
+fn o_primeiro_dab_com_oleo_aloca_o_campo_das_linhas_dele() {
+    let mut g = Grid::new(3840, 600);
+    let nova = OleoCelula {
+        oleo: 1.0,
+        pincel_de_oleo: true,
+        ..OleoCelula::NEUTRA
+    };
+    let (cx, cy, r) = (1900i32, 300i32, 30i32);
+    for y in cy - r..=cy + r {
+        for x in cx - r..=cx + r {
+            if (x - cx).pow(2) + (y - cy).pow(2) <= r * r {
+                let i = x as usize + y as usize * g.s;
+                pousa(&mut g, i, 0.0, nova, (1.0, 0.0));
+            }
+        }
+    }
+    let pedaco = super::super::campo_esparso::PEDACO;
+    let denso = g.cells * std::mem::size_of::<OleoCelula>();
+    let teto = (((2 * r + 1) as usize * g.s).div_ceil(pedaco) + 1)
+        * pedaco
+        * std::mem::size_of::<OleoCelula>();
+    let vivos = bytes_alocados(&g);
+    assert!(
+        vivos > 0 && vivos <= teto && vivos * 8 < denso,
+        "{vivos} B: as linhas do dab cabem em {teto} B, o denso {denso} B"
+    );
+    assert!(g.oleo_real);
+    assert_eq!(da_celula(&g.oleo, cx as usize + cy as usize * g.s), nova);
+    assert_eq!(da_celula(&g.oleo, 3 + 3 * g.s), OleoCelula::NEUTRA);
 }

@@ -18,7 +18,7 @@ pub(super) fn precisa(g: &Grid) -> bool {
         return false;
     }
     let banda = g.by0 as usize * g.s..(g.by1 as usize + 1) * g.s;
-    g.oleo[banda].iter().any(|c| c.meio > 0.0)
+    banda.into_iter().any(|i| g.oleo[i].meio > 0.0)
 }
 
 #[inline]
@@ -32,7 +32,7 @@ fn molhado(g: &Grid, i: usize) -> f64 {
 pub(super) fn advect(g: &mut Grid, mode: Rows) {
     let s = g.s;
     let banda = g.by0 as usize * s..(g.by1 as usize + 1) * s;
-    let mut dst: Vec<f32> = g.oleo[banda.clone()].iter().map(|c| c.meio).collect();
+    let mut dst: Vec<f32> = banda.clone().map(|i| g.oleo[i].meio).collect();
     let g0: &Grid = g;
     par::walk_rows(mode, &mut dst, s, |r, row| {
         let y = g0.by0 + r as i32;
@@ -43,8 +43,11 @@ pub(super) fn advect(g: &mut Grid, mode: Rows) {
             }
         }
     });
-    for (c, m) in g.oleo[banda].iter_mut().zip(dst) {
-        c.meio = m;
+    // Só o que mudou ao bit se escreve: o pedaço do chão que o passe não move não acorda (B12.3).
+    for (i, m) in banda.zip(dst) {
+        if g.oleo[i].meio.to_bits() != m.to_bits() {
+            g.oleo[i].meio = m;
+        }
     }
 }
 

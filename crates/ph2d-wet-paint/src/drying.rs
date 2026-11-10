@@ -558,7 +558,7 @@ fn dry_jacobi<P: edge_window::EdgePlane>(
     let paper: &[f32] = paper;
     let vela: &[f32] = vela;
     let aparencia: &crate::grid::aparencia::CampoAparencia = aparencia;
-    let oleo: &[crate::grid::oleo_celula::OleoCelula] = oleo;
+    let oleo: &crate::grid::oleo_celula::CampoOleo = oleo;
     let band = by0 as usize * s..(by1 as usize + 1) * s;
     crate::par::walk_rows5(
         mode,

@@ -188,7 +188,7 @@ pub fn clear_canvas(g: &mut Grid) {
     g.material = Vec::new();
     g.aparencia = super::aparencia::sem_campo();
     g.suave_teto = 0.0;
-    g.oleo = Vec::new();
+    g.oleo = super::oleo_celula::sem_campo();
     g.oleo_real = false;
     g.tinta = Vec::new();
     g.pigmento = Vec::new();

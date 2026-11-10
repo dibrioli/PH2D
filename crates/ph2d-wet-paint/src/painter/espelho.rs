@@ -58,7 +58,7 @@ impl Espelho {
                     + b(&g.vela)
                     + b(&g.material)
                     + g.aparencia.bytes_vivos()
-                    + b(&g.oleo)
+                    + g.oleo.bytes_vivos()
                     + b(&g.tinta)
                     + b(&g.pigmento)
                     + b(&g.wet)
@@ -230,7 +230,13 @@ fn copia_faixas(d: &mut Grid, g: &Grid, faixas: &[std::ops::Range<usize>]) {
     } else {
         d.aparencia.clone_from(&g.aparencia);
     }
-    um(&mut d.oleo, &g.oleo, faixas);
+    if d.oleo.len() == g.oleo.len() {
+        for f in faixas {
+            d.oleo.copia_faixa_de(&g.oleo, f.clone());
+        }
+    } else {
+        d.oleo.clone_from(&g.oleo);
+    }
     um(&mut d.tinta, &g.tinta, faixas);
     um(&mut d.pigmento, &g.pigmento, faixas);
     um(&mut d.wet, &g.wet, faixas);

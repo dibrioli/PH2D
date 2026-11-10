@@ -19,7 +19,7 @@ use ph2d_tokens::{ColorToken, Radius, Theme};
 use crate::graph::TimeView;
 use crate::stack_ease_grip::{EASE_IN, EASE_OUT, blend_px, overlaps, strip_grips};
 use crate::state::TimelinePanelState;
-use crate::strip_paint::paint_strip;
+use crate::strip_paint::{Fase, paint_strip};
 use crate::{geom, ids};
 
 /// Vertical inset of a strip inside its row, so lanes read as separate rows.
@@ -106,6 +106,7 @@ fn paint_lane(
         g.rows.h,
     );
     let mut boxes: Vec<(&ph2d_timeline::StripView, Rect)> = Vec::new();
+    let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
     ctx.scene.push_clip(&rect_to_vello(time_band));
     for s in &lane.strips {
         let (x0, x1) = (view.x(s.t_start), view.x(s.t_end));
@@ -121,8 +122,15 @@ fn paint_lane(
             (row.h - pad * 2.0).max(0.0),
         );
         let tinta = crate::pecas_cartoes::tinta_do_strip(s, snap);
-        paint_strip(ctx, theme, view, body, s, dim, index, tinta);
+        let fase = if cartoes { Fase::Base } else { Fase::Tudo };
+        paint_strip(ctx, theme, view, body, s, dim, index, tinta, fase);
         boxes.push((s, body));
+    }
+    if cartoes {
+        for (s, body) in &boxes {
+            let tinta = crate::pecas_cartoes::tinta_do_strip(s, snap);
+            paint_strip(ctx, theme, view, *body, s, dim, index, tinta, Fase::Topo);
+        }
     }
     ctx.scene.pop_layer();
     paint_trim_preview(ctx, theme, state, index, &boxes, view, time_band);

@@ -216,9 +216,17 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // banda nova aparece no quadro seguinte, como toda medida de chrome autorada (é a mesma
     // latência de um quadro da largura das colunas).
     let rect = rect0;
-    ctx.host
-        .store_mut()
-        .set_panel_rect(ph2d_editor_core::ids::TIMELINE_PANEL, rect);
+    // Nos cartões a Timeline flutua sobre o canvas (como a lista de cartões): o rect é o alvo do
+    // clique, sem reservar a área.
+    if cartoes {
+        ctx.host
+            .store_mut()
+            .set_floating_panel_rect(ph2d_editor_core::ids::TIMELINE_PANEL, rect);
+    } else {
+        ctx.host
+            .store_mut()
+            .set_panel_rect(ph2d_editor_core::ids::TIMELINE_PANEL, rect);
+    }
     // Resize grippers FIRST, so every later hit (close button, lanes, keys) wins
     // over the border strips where they overlap.
     register_resize_grips(ctx, rect);

@@ -619,10 +619,7 @@ impl HeroLayout {
             return;
         }
         // A pílula do rodapé nunca cobre as filas da faixa, mesmo com a área acima do split dos Nodes.
-        self.bottom_hud.y = self
-            .bottom_hud
-            .y
-            .min(strip.y - HUD_BOTTOM_PAD - self.bottom_hud.h);
+        self.lift_hud_over(strip);
         let area_bottom = self.draw_area.y + self.draw_area.h;
         if strip.y >= area_bottom {
             return; // a faixa está fora da área — nada a reclamar
@@ -634,6 +631,14 @@ impl HeroLayout {
         // janela e cobria as filas da faixa (smoke da linha do tempo do Pixel, cena 8, 25/10).
         let hud_y = self.draw_area.y + self.draw_area.h - HUD_BOTTOM_PAD - self.bottom_hud.h;
         self.bottom_hud.y = self.bottom_hud.y.min(hud_y);
+    }
+
+    /// A pílula do rodapé sobe para cima de `strip` (a faixa que flutua sobre o canvas não a tapa).
+    pub fn lift_hud_over(&mut self, strip: Rect) {
+        self.bottom_hud.y = self
+            .bottom_hud
+            .y
+            .min(strip.y - HUD_BOTTOM_PAD - self.bottom_hud.h);
     }
 
     /// F5 (D10 decisão 2): a fila ② passa para BAIXO da área — a mesma faixa e a mesma altura, a

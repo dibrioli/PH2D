@@ -167,6 +167,11 @@ fn a_montagem_poe_cada_container_onde_o_eprintln_diz() {
     let nomes: Vec<_> = doc.containers().iter().map(|c| c.name.clone()).collect();
     assert_eq!(nomes.join(", "), "Run & jump, Idle pack, Step");
     assert_eq!([0, 1, 2].map(|i| doc.container_uses(i)), [2, 0, 1]);
+    assert_eq!(
+        doc.view_authored_end(None, false),
+        Some(super::MONTAGEM_END),
+        "o fim da cena"
+    );
     let cena = doc.host_stack(StackHost::Document).expect("a cena");
     let faixas: Vec<_> = cena.iter().map(|l| (l.weight, l.muted)).collect();
     assert_eq!(faixas, [(1.0, false), (0.6, false), (1.0, true)]);

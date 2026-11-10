@@ -185,7 +185,17 @@ fn fundo_pintado(snap: &TimelineViewSnapshot, s: &StripView) -> Option<String> {
     ctx.scene.record();
     let body = Rect::new(100.0, 60.0, 200.0, 22.0);
     let t = tinta_do_strip(s, snap);
-    crate::strip_paint::paint_strip(&mut ctx, Theme::Forge, view, body, s, false, 0, t);
+    crate::strip_paint::paint_strip(
+        &mut ctx,
+        Theme::Forge,
+        view,
+        body,
+        s,
+        false,
+        0,
+        t,
+        crate::strip_paint::Fase::Tudo,
+    );
     ctx.scene.take_record().into_iter().find_map(|op| match op {
         ph2d_vector::DrawOp::Fill {
             brush: ph2d_vector::Brush::Gradient(g),

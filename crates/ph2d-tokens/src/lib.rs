@@ -98,7 +98,7 @@ pub(crate) mod generated {
     include!(concat!(env!("OUT_DIR"), "/tokens_generated.rs"));
 }
 
-pub use camadas_de_colisao::LAYER_OUTLINE_OFF_ALPHA;
+pub use camadas_de_colisao::{LAYER_OUTLINE_OFF_ALPHA, OUTLINE_SHADOW_ALPHA};
 pub use changed::{changed_band, changed_ink, value_ink};
 pub use chrome::{
     CHECKBOX_BOX_PX, DIVIDER_GAP_PX, DRAG_GHOST_ALPHA, DRAG_GHOST_SCALE, EDGE_PAD_PX,

@@ -97,7 +97,7 @@ pub fn icones_em(
         .collect()
 }
 
-const ALFA_SOMBRA: f32 = 0.75; // LITERAL-PX-OK: opacidade da sombra, a mesma dos contornos (GEF02)
+const ALFA_SOMBRA: f32 = ph2d_tokens::OUTLINE_SHADOW_ALPHA;
 
 /// Pinta a câmera no canvas.
 pub fn desenhar(

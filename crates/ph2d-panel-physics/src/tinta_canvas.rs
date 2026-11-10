@@ -139,7 +139,7 @@ pub fn tinta_do_contorno(tinta: Tinta, theme: Theme) -> (Stroke, Color) {
     (traco, c)
 }
 
-const ALFA_SOMBRA: f32 = 0.75; // LITERAL-PX-OK: opacidade da sombra do contorno
+const ALFA_SOMBRA: f32 = ph2d_tokens::OUTLINE_SHADOW_ALPHA;
 
 /// ⭐ **A sombra escura por baixo do contorno da camada** (dono 07/11, GEF02 fecho: *«sombra escura
 /// por baixo dos contornos do canvas, SIM»*): o contorno laranja do Crate sumia sobre a arte laranja.

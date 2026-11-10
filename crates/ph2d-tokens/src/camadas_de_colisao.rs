@@ -7,6 +7,10 @@ use crate::color::ColorToken;
 /// a dizer qual camada é, o estado lê-se pela caixa de marcar. O teste dos contornos mede os dois estados.
 pub const LAYER_OUTLINE_OFF_ALPHA: f32 = 0.4; // LITERAL-PX-OK: opacidade do contorno desligado
 
+/// ⭐ A sombra escura por baixo de um contorno ou alça do canvas (GEF02, dono 07/11): `BgScrim` a esta
+/// opacidade, `Thin` mais larga de cada lado. A câmera, os contornos da física e as alças da Timeline.
+pub const OUTLINE_SHADOW_ALPHA: f32 = 0.75; // LITERAL-PX-OK: opacidade da sombra dos contornos (GEF02)
+
 impl ColorToken {
     /// As 32 cores das camadas de colisão, pelo número da camada.
     pub const LAYERS: [Self; 32] = [

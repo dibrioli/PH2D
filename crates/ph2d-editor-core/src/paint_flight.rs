@@ -50,3 +50,13 @@ pub fn fly(scene: &mut VectorScene, local: &VectorScene, r: Rect, tilt_deg: f64)
         * Affine::translate((-pivot.0, -pivot.1));
     scene.append_transformed(local, t);
 }
+
+/// ⭐ A sombra de uma alça do canvas (a lei da câmera e dos contornos, GEF02): `(cor, alargamento)` —
+/// a forma pintada antes da alça, `Thin` mais larga de cada lado, em `BgScrim` a
+/// [`ph2d_tokens::OUTLINE_SHADOW_ALPHA`].
+#[must_use]
+pub fn sombra_de_alca(theme: Theme) -> (Color, f32) {
+    let mut c = crate::paint::resolve(ColorToken::BgScrim, theme);
+    c.components[3] = ph2d_tokens::OUTLINE_SHADOW_ALPHA;
+    (c, ph2d_tokens::StrokeToken::Thin.px())
+}

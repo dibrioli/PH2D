@@ -133,11 +133,15 @@ pub(super) fn frame_layout(
     // o sítio errado com toda a confiança.*
     // A linha do tempo do Pixel (P4) declara o mesmo encaixe: a mesma banda, a mesma reserva (a
     // família centra o sprite na área que sobra).
-    if hero.is_panel_visible(super::PANEL_TIMELINE)
-        || hero.is_panel_visible("flip_frames")
-        || hero.is_panel_visible(super::PANEL_PIXEL_TIMELINE)
-    {
+    // ⭐ Nos cartões a Timeline FLUTUA sobre o canvas como a Hierarchy (dono 10/11): não reserva a
+    // faixa, só ergue a pílula do rodapé acima dela.
+    let flutua = crate::widget::lista_flutuante::cromo_em_cartoes();
+    let fundo_docado =
+        hero.is_panel_visible("flip_frames") || hero.is_panel_visible(super::PANEL_PIXEL_TIMELINE);
+    if fundo_docado || (hero.is_panel_visible(super::PANEL_TIMELINE) && !flutua) {
         layout.reserve_bottom_strip(layout.timeline);
+    } else if hero.is_panel_visible(super::PANEL_TIMELINE) {
+        layout.lift_hud_over(layout.timeline);
     }
     // ⭐⭐ **E as ABAS saem do encaixe, por último.** Depois da docagem do timeline e das faixas do
     // fundo, de propósito: os dois MOVEM rects, e reservar antes reservaria sobre a geometria

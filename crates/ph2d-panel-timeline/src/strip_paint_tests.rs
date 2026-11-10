@@ -343,3 +343,58 @@ fn without_a_seam_a_fade_out_still_falls() {
         .expect("a cunha de saída");
     assert!(fade.slice.is_none() && !fade.rising, "{fade:?}");
 }
+
+/// ⭐ **A mistura de uma peça cobre SÓ a sobreposição dela** (smoke `PH2D_NEST_SMOKE=4`, dono
+/// 10/11): a montagem da maquete B — `Run & jump` em `[4, 6)` sobre `idle` `[2.75, 4.25)`, sob o
+/// loop `[0, 6)` — listra `[4, 4.25)` e nada mais.
+#[test]
+fn a_mistura_de_uma_peca_cobre_so_a_sobreposicao() {
+    use ph2d_timeline::{StackHost, StripSource, TimelineDoc, TimelineState, TimelineViewSnapshot};
+    let mut doc = TimelineDoc::new();
+    let run = doc.add_container("Run & jump".into());
+    let inner = doc
+        .add_lane_in(StackHost::Container(run), "Base".into())
+        .unwrap();
+    for (t0, t1) in [(0.0, 1.25), (1.0, 2.0)] {
+        doc.add_strip_to(
+            StackHost::Container(run),
+            inner,
+            StripSource::Clip(0),
+            t0,
+            t1,
+        )
+        .unwrap();
+    }
+    let l = doc.add_lane_in(StackHost::Document, "Base".into()).unwrap();
+    let c = StripSource::Container(u16::try_from(run).unwrap());
+    for (src, t0, t1) in [
+        (StripSource::Clip(0), 0.0, 1.33),
+        (c, 1.0, 3.0),
+        (StripSource::Clip(0), 2.75, 4.25),
+        (c, 4.0, 6.0),
+    ] {
+        doc.add_strip_to(StackHost::Document, l, src, t0, t1)
+            .unwrap();
+    }
+    doc.set_active_loop_for(false, Some((0.0, 6.0)));
+    let mut st = TimelineState::new();
+    st.doc = doc;
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &ph2d_core::Playhead::default(), false);
+    let ultima = snap.lanes[0].strips.last().expect("a peça");
+    let v = view();
+    let corpo = Rect::new(
+        v.x(ultima.t_start),
+        60.0,
+        v.x(ultima.t_end) - v.x(ultima.t_start),
+        20.0,
+    );
+    let listrado: f32 = crate::strip_paint::fade_bands(ultima, v, corpo)
+        .iter()
+        .map(|(_, r, _)| r.w)
+        .sum();
+    assert!(
+        (listrado - 25.0).abs() < 0.5,
+        "a mistura é [4, 4.25) = 25 px, não {listrado} px: {ultima:?}"
+    );
+}

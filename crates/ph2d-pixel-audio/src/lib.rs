@@ -10,6 +10,7 @@
 //!
 //! [`Sprite::audio`]: ph2d_pixel_core::Sprite::audio
 
+pub mod canal;
 pub mod faixas;
 mod picos;
 mod relogio;

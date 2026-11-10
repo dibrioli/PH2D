@@ -7,6 +7,7 @@ const PREFIX: &str = "panel.pixel.timeline.";
 const TABLES: &[&str] = &[
     "crates/ph2d-i18n/src/pixel.rs",
     "crates/ph2d-i18n/src/pixel_slices.rs",
+    "crates/ph2d-i18n/src/pixel_som.rs",
 ];
 
 /// ⭐ As excepções, **com o mecanismo** — nunca uma lista aberta.

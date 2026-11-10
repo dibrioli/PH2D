@@ -235,6 +235,7 @@ impl PixelApp {
             u32::try_from(now.duration_since(t).as_millis()).unwrap_or(u32::MAX)
         });
         self.tick(dt);
+        self.som();
         let whole =
             ph2d_editor_core::zones::Rect::new(0.0, 0.0, window.width as f32, window.height as f32);
         let (r, _) = ph2d_app_host::canvas_area::frame_target(hero, whole);

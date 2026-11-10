@@ -23,6 +23,7 @@ mod paint_grid;
 mod paint_props;
 mod paint_voo;
 pub mod seam_user;
+pub mod som;
 mod state;
 
 pub use state::{PixelTimelinePanelState, current_pixel, pede_rename_layer, set_current_pixel};

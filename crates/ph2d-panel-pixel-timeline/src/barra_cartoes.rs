@@ -51,6 +51,7 @@ fn grupos(info: &PixelPanelInfo) -> Vec<Vec<Icone>> {
                 .collect(),
         );
     }
+    v.push(vec![fila(crate::som::ADD_AUDIO, IconId::Audio)]);
     v
 }
 

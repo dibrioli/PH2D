@@ -136,7 +136,9 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
         let n = crate::paint_props::colunas_em(body.w * 0.5);
         let props_w = crate::paint_props::largura(n).min(body.w * 0.5);
         let grade = Rect::new(body.x, body.y, (body.w - props_w - gap).max(0.0), body.h);
+        let (grade, som) = crate::som::parte(grade, ph2d_pixel_audio::canal::linhas().len());
         crate::paint_grid::paint(st, ctx, &info, grade);
+        crate::som::paint(st, ctx, &info, som);
         let props = Rect::new(body.x + body.w - props_w, body.y, props_w, body.h);
         let tinta = ph2d_editor_core::widget::card_ink::CardInk::of_list(theme);
         if cartoes {
@@ -265,6 +267,7 @@ fn barra(
                 .collect(),
         );
     }
+    grupos.push(vec![(crate::som::ADD_AUDIO, IconId::Audio)]);
     for grupo in grupos {
         let n = grupo.len();
         #[expect(clippy::cast_precision_loss, reason = "≤ cinco botões")]

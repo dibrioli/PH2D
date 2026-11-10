@@ -31,6 +31,8 @@ ph2d-pen = { path = "../../crates/ph2d-pen" }
 ph2d-pixel-core = { path = "../../crates/ph2d-pixel-core" }
 ph2d-pixel-cenas = { path = "../../crates/ph2d-pixel-cenas" }
 ph2d-pixel-io = { path = "../../crates/ph2d-pixel-io" }
+# P13 T: o canal das linhas de som (o gate do Add Audio…).
+ph2d-pixel-audio = { path = "../../crates/ph2d-pixel-audio" }
 ph2d-pixel-render = { path = "../../crates/ph2d-pixel-render" }
 ph2d-pixel-text = { path = "../../crates/ph2d-pixel-text" }
 ph2d-panel-pixel-preview = { path = "../../crates/ph2d-panel-pixel-preview" }

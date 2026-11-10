@@ -1,7 +1,8 @@
 //! Os assets de som do sprite, decodificados uma vez cada (fora do Play), com os picos da onda.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
+use std::sync::Arc;
 
 use ph2d_audio::SampleData;
 
@@ -10,7 +11,7 @@ use crate::picos::{Pico, picos};
 /// Um asset pronto a tocar e a desenhar.
 pub struct Som {
     pub dados: SampleData,
-    pub picos: Vec<Pico>,
+    pub picos: Arc<[Pico]>,
 }
 
 impl Som {
@@ -26,12 +27,15 @@ impl Som {
 #[derive(Default)]
 pub struct Sons {
     mapa: BTreeMap<String, Som>,
+    /// Os assets que não se leram: não se tenta de novo a cada quadro.
+    falhou: BTreeSet<String>,
 }
 
 impl Sons {
     /// Guarda `dados` sob `asset` e calcula os picos (uma vez).
     pub fn insere(&mut self, asset: &str, dados: SampleData) {
-        let picos = picos(&dados);
+        let picos = picos(&dados).into();
+        self.falhou.remove(asset);
         self.mapa.insert(asset.to_owned(), Som { dados, picos });
     }
 
@@ -48,13 +52,21 @@ impl Sons {
         if self.mapa.contains_key(asset) {
             return Ok(());
         }
+        if self.falhou.contains(asset) {
+            return Err(asset.to_owned());
+        }
         let p = Path::new(asset);
         let p = match base {
             Some(b) if p.is_relative() => b.join(p),
             _ => p.to_path_buf(),
         };
-        let bytes = std::fs::read(&p).map_err(|e| format!("{}: {e}", p.display()))?;
-        self.carrega_bytes(asset, &bytes)
+        let r = std::fs::read(&p)
+            .map_err(|e| format!("{}: {e}", p.display()))
+            .and_then(|b| self.carrega_bytes(asset, &b));
+        if r.is_err() {
+            self.falhou.insert(asset.to_owned());
+        }
+        r
     }
 
     /// O som de `asset`, se carregado.

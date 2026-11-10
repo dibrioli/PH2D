@@ -104,6 +104,7 @@ fn superficie(store: &mut WidgetStore, id: NodeId, kind: H) {
 /// O registo POR QUADRO dos ids que derivam da linha do tempo (cabeçalhos, cels e pontas de tag
 /// são superfícies de arrasto: [`crate::gestos`]).
 pub(crate) fn register_frame(store: &mut WidgetStore, info: &PixelPanelInfo) {
+    crate::som::registra(store);
     for r in &info.layers {
         for w in W::TIMELINE {
             let id = ids::layer_widget_id(r.id, w);
@@ -300,6 +301,9 @@ pub(crate) fn apply_event(
     ev: WidgetEvent,
 ) -> EventOutcome {
     if let Some(o) = crate::seam_user::evento(host, &ev) {
+        return o;
+    }
+    if let Some(o) = crate::som::evento(&ev) {
         return o;
     }
     if ev == WidgetEvent::Click(ids::ONION_SETTINGS) {

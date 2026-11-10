@@ -66,6 +66,8 @@ ph2d-panel-pixel-lint = { path = "../ph2d-panel-pixel-lint" }
 bumpalo = "3"
 # P14c-pixel 2: o Pixel Sprite na luz 2D (a banda normal por faixa, a oclusão).
 ph2d-pixel-luz = { path = "../ph2d-pixel-luz" }
+# P13 T: o som do sprite (as linhas da Timeline, Add Audio…).
+ph2d-pixel-audio = { path = "../ph2d-pixel-audio" }
 # O diálogo de ficheiro do Load/Save Palette (pela porta `ph2d_app_host::modal`).
 rfd = "0.17"
 

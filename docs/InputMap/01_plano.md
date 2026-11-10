@@ -248,3 +248,34 @@ PH2D_GAME_SMOKE=<n> 1600 1000 <saida.png>` e a 1280×720. Montagens finais em `d
   `playhead.pause()/play()`. Com «Players can change keys» desligado, o ficheiro do jogador é ignorado no Play.
   ABERTO: `ph2d_app_physics::player_input::resolve_player_input` ficou sem chamador; a tela não rola; tecla
   repetida sem aviso; edição do autor durante o Play só entra na próxima troca do jogador. Shell: 35 linhas de folga.
+
+## 13 · Onda 2 — contratos (teclado de notebook + polimento pro)
+
+Ordem do dono e foto: [prompt da onda 2](handoffs/PROMPT_MISSAO_InputMap_ONDA2_2026-11-10.md) §2 ·
+[foto](maquetes/06_teclado_notebook_dono.png).
+
+### 13.1 · W1 — códigos de tecla (`ph2d-input/src/keyboard.rs`)
+
+Tecla FÍSICA (o `KeyCode` do winit, nunca a lógica): o numérico liga igual com o Num Lock aceso ou apagado.
+
+| Grupo | Códigos | Rótulo (`label`) | Nome de script |
+|---|---|---|---|
+| Pontuação (ASCII) | `0x60` `` ` `` · `0x2D` `-` · `0x3D` `=` · `0x5C` `\` · `0x3B` `;` · `0x27` `'` · `0x2F` `/` | o próprio carácter | o próprio carácter |
+| Navegação (faixa NSEvent) | `0xF727` Insert · `0xF72B` End · `0xF72C` Page Up · `0xF72D` Page Down | `Insert` `End` `Page Up` `Page Down` | `insert` `end` `pageup` `pagedown` |
+| Travas | `0xF716` Caps Lock · `0xF717` Num Lock | `Caps Lock` `Num Lock` | `capslock` `numlock` |
+| Numérico | `0xF740..=0xF749` kp0–kp9 · `0xF74A` . · `0xF74B` / · `0xF74C` * · `0xF74D` - · `0xF74E` + · `0xF74F` Enter | `Numpad 0`…`Numpad 9`, `Numpad .`, `Numpad /`, `Numpad *`, `Numpad -`, `Numpad +`, `Numpad Enter` | `kp0`…`kp9`, `kp.`, `kp/`, `kp*`, `kp-`, `kp+`, `kpenter` |
+| Do SISTEMA (desenhadas, nunca ligam) | `0xF718` Left Windows · `0xF719` Right Windows · `0xF71A` Fn · `0xF72E` Print Screen | `Windows key`, `Fn`, `Print Screen` | **nenhum** (um script nunca as vê) |
+
+- `NumpadEnter` deixa de cair no Enter (`0x0D`): Numpad Enter ≠ Enter, Numpad 7 ≠ 7 ≠ Home.
+- **Medido nesta máquina (10/11):** o teclado do dono (`POP Icon Keys`) NÃO declara `KEY_FN` nas capacidades
+  evdev (`/sys/class/input/event*/device/capabilities/key`, bit 464) — Fn resolve-se dentro do teclado. O KDE
+  prende `Print` ao Spectacle (`org.kde.spectacle.desktop: X-KDE-Shortcuts=Print`) e `Meta` ao lançador
+  (`kglobalshortcutsrc: activate application launcher=Meta`). `KEY_NUMLOCK`, `KEY_CAPSLOCK`, `KEY_INSERT` e o
+  numérico inteiro chegam. O winit 0.30.13 não dá o ESTADO do Num Lock (`ModifiersState` = Shift/Ctrl/Alt/Super)
+  ⇒ **a luz do Num Lock não se desenha** (luz falsa, não).
+- `Key::cap()` (a legenda da foto: `Backspace`, `CapsLk`, `Num Lock`, `PrtSc`, `Insert`, `Delete`, `PgUp`…) e
+  `Key::cap_short()` (a legenda curta dos teclados compactos: `Bksp`, `Caps`, `Num`, `Ins`, `Del`…) moram ao lado
+  da `NAMED`; o pintor escolhe a que cabe, medida, por tecla. `Key::system_owned() -> Option<&'static str>`
+  devolve a chave i18n do porquê (`input_map_keyboard.system.{fn,windows,print_screen}`).
+- A tradução winit → `Key` SAI da shell (paga as linhas novas: catraca `the_shell_only_shrinks`).
+

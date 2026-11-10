@@ -149,4 +149,9 @@ popover, tamanho da letra 1×, limiar do «In this script», cobertura de `value
 por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, divisor): itens G/H e os doc-comments de
 `peso_exato.rs` e `splitter.rs`.
 
-(2.ª construção: ver abaixo)
+Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 20,85 s); a 2.ª:
+
+```
+▸ linha line_scripteditor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.33s
+```

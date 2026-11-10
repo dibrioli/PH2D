@@ -144,11 +144,14 @@ fn a_linha_pairada_ganha_fio_e_a_que_escuta_ganha_a_barra_do_acento() {
         "o chip pairado ganha o fio do acento"
     );
     m.click(on_name(&m, k));
-    assert_eq!(
-        m.hero.store.input_map_listening(),
-        Some(k),
-        "clicar na linha escuta"
+    assert!(
+        m.hero.store.input_map_listening().is_none(),
+        "clicar na linha NÃO escuta (acidental)"
     );
+    assert_eq!(m.tab().doc.focused(), Some(row), "clicar na linha foca-a");
+    assert!(m.tab_mut().doc.take_pending().is_empty(), "nenhuma edição");
+    m.click(m.at(ListHit::Listen(k).id()));
+    assert_eq!(m.hero.store.input_map_listening(), Some(k), "o «+» escuta");
     let l = look(&m, row).expect("a linha");
     assert!(l.marker, "a linha à escuta tem a barra do acento");
     assert_eq!(l.edge, Some(ph2d_tokens::ColorToken::Accent));
@@ -191,7 +194,7 @@ fn tab_ate(m: &mut Mesa, alvo: NodeId) -> Vec<NodeId> {
 }
 
 #[test]
-fn o_tab_chega_a_linha_chip_x_mais_e_lixo_e_enter_na_linha_escuta() {
+fn o_tab_chega_a_linha_chip_x_mais_e_lixo_e_enter_na_linha_so_foca() {
     let (mut m, k, _) = mesa();
     let vistos = tab_ate(&mut m, ListHit::Trash(k).id());
     for id in [
@@ -208,11 +211,16 @@ fn o_tab_chega_a_linha_chip_x_mais_e_lixo_e_enter_na_linha_escuta() {
     );
     tab_ate(&mut m, ListHit::Row(k).id());
     m.key(DocKey::Enter, None);
-    assert_eq!(
-        m.hero.store.input_map_listening(),
-        Some(k),
-        "Enter na linha escuta"
+    assert!(
+        m.hero.store.input_map_listening().is_none(),
+        "Enter na linha não escuta"
     );
+    assert_eq!(
+        m.tab().doc.focused(),
+        Some(ListHit::Row(k).id()),
+        "Enter na linha deixa o foco (o anel) nela"
+    );
+    assert!(m.tab_mut().doc.take_pending().is_empty(), "nenhuma edição");
 }
 
 #[test]

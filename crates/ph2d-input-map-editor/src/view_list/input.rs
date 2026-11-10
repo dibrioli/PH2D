@@ -377,8 +377,12 @@ pub(crate) fn act(doc: &mut InputMapDoc, id: ph2d_a11y::NodeId) {
             focus(doc, None);
             doc.pending.push(InputMapEdit::Remove(a));
         }
-        // A linha inteira é o verbo dela: clicar (ou Enter no foco) escuta a próxima tecla, como o «+».
-        Some(ListHit::Listen(a) | ListHit::Row(a)) => {
+        // A linha só FOCA (o anel, nenhuma edição): escutar por um clique na linha era acidental. Escuta-se no «+».
+        Some(ListHit::Row(_)) => {
+            focus(doc, None);
+            doc.ui.focus = Some(id);
+        }
+        Some(ListHit::Listen(a)) => {
             focus(doc, None);
             let armed = doc.snap.listening == Some(a);
             doc.list.listen_request = Some((!armed).then_some(a));

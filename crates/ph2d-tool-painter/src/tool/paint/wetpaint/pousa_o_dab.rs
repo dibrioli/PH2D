@@ -18,6 +18,17 @@ thread_local! {
     static SEM_MEMO_BASE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     /// As caixas da silhueta base criadas neste fio (a prova de que o caso as exerce).
     static MEMOS_BASE: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    /// O oráculo de B14c-cont3: toda célula da caixa do motor avaliada, como antes.
+    static SEM_CORTE_FORA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+fn com_corte_fora() -> bool {
+    #[cfg(test)]
+    {
+        !SEM_CORTE_FORA.with(std::cell::Cell::get)
+    }
+    #[cfg(not(test))]
+    true
 }
 
 fn com_memo_base() -> bool {
@@ -202,7 +213,24 @@ pub(super) fn pousa_o_dab(
         && spec.shape.kind != ph2d_painter_brush::TextureKind::Image
         && !erasing;
     let sil_input = shape_input.filter(|_| !padrao_a_parte);
+    // B14c-cont3: sem ponta de imagem e com o falloff nulo além de `t = 1`, a célula inteira (o quadrado dela mais
+    // `folga` px por eixo) com `t ≥ 1` dá `0` sem as sub-amostras — o `t` minorado pelo Lipschitz da pegada, ao bit.
+    let lado = aa_step * f32::from(aa_n);
+    let lips = fp_raio
+        .falloff_t_lipschitz()
+        .filter(|_| com_corte_fora() && sil_input.is_none() && spec.falloff_weight(1.0) == 0.0);
+    let fora = move |cx: i32, cy: i32, folga: f32| -> bool {
+        lips.is_some_and(|l| {
+            let sx = grid_map::cell_subsample_px(cx, ratio, 0, lado);
+            let sy = grid_map::cell_subsample_px(cy, ratio, 0, lado);
+            let t = fp_raio.falloff_t((sx - d.center[0]) * inv_r, (sy - d.center[1]) * inv_r);
+            t - l * (0.5 * lado + folga) * std::f32::consts::SQRT_2 * inv_r >= 1.001
+        })
+    };
     let sil = |cx: i32, cy: i32| -> f64 {
+        if fora(cx, cy, 0.0) {
+            return 0.0;
+        }
         crate::wet_diag::conta_sil(2, 1);
         crate::wet_diag::conta_sil(3, u64::from(aa_n) * u64::from(aa_n));
         let mut acc = 0.0f32;
@@ -345,7 +373,14 @@ pub(super) fn pousa_o_dab(
     let memo =
         (relevo_dab.is_some() || lamina || grain_active && spec.texture.lei.mode.le_a_ponta())
             .then(|| super::sil_memo::SilMemo::nova(cell_x, cell_y, meia));
+    // A bilinear da ponta lê até `alcance + 1 célula` por eixo do ponto: com folga 1 ‰, o motor salta também a ponta.
+    let folga_ponta = ponta
+        .as_ref()
+        .map_or(0.0, |p| p.alcance_px() as f32 * 1.001 + lado);
     let sil = |cx: i32, cy: i32| -> f64 {
+        if fora(cx, cy, folga_ponta) {
+            return 0.0;
+        }
         crate::wet_diag::conta_sil(0, 1);
         memo.as_ref()
             .map_or_else(|| sil(cx, cy), |m| m.ou(cx, cy, sil))

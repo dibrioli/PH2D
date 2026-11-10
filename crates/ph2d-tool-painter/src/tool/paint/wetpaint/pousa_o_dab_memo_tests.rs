@@ -49,3 +49,42 @@ fn a_ponta_das_cerdas_com_a_silhueta_base_guardada_da_a_tela_do_oraculo_ao_byte(
         );
     }
 }
+
+/// B14c-cont3: a tela e as leituras da silhueta base `(avaliadas, as que deram 0)`, com ou sem o corte além de `t = 1`.
+fn pinta_contando(sem_corte: bool, pincel: &str, tamanho: f32) -> (Vec<u8>, [u64; 2]) {
+    super::SEM_CORTE_FORA.with(|s| s.set(sem_corte));
+    crate::wet_diag::CONTA_SIL.store(true, std::sync::atomic::Ordering::Relaxed);
+    let _ = crate::wet_diag::take_sil();
+    let (px, _) = pinta(false, pincel, tamanho);
+    let s = crate::wet_diag::take_sil();
+    crate::wet_diag::CONTA_SIL.store(false, std::sync::atomic::Ordering::Relaxed);
+    super::SEM_CORTE_FORA.with(|s| s.set(false));
+    (px, [s[2], s[5]])
+}
+
+#[test]
+fn a_silhueta_alem_da_pegada_nao_e_avaliada_e_a_tela_e_a_do_oraculo_ao_byte() {
+    for (pincel, tamanho) in [
+        ("Oil/Flat/Flat Bristle.ph2d-brush.png", 70.0),
+        ("Oil/Flat/Thick Impasto.ph2d-brush.png", 60.0),
+    ] {
+        let (velho, [n0, z0]) = pinta_contando(true, pincel, tamanho);
+        let (novo, [n1, z1]) = pinta_contando(false, pincel, tamanho);
+        assert!(
+            velho.iter().any(|&b| b != 255),
+            "{pincel}: o traço não pintou"
+        );
+        assert!(
+            velho == novo,
+            "{pincel}: a tela mudou com o corte além da pegada"
+        );
+        assert!(
+            z0 * 5 > n0,
+            "{pincel}: o oráculo não exerce o corte ({z0} zeros em {n0} avaliações)"
+        );
+        assert!(
+            z1 * 4 < z0 && n1 + z0 / 2 < n0,
+            "{pincel}: a silhueta base ainda é avaliada além da pegada — {n0} → {n1} avaliações, zeros {z0} → {z1}"
+        );
+    }
+}

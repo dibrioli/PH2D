@@ -558,6 +558,15 @@ impl FootprintDeform {
         }
         (1.0 - self.quina) * l2 + self.quina * d[0].abs().max(d[1].abs())
     }
+
+    /// A constante de Lipschitz do [`Self::falloff_t`] (na aritmética exacta): `|t(p) − t(q)| ≤ L·|p − q|` — `None` com a
+    /// curva da arte (não linear). `apply` plano é `diag(1, 1/m)·R` (norma `max(1, 1/m)`) e `(1 − q)|·|₂ + q|·|∞` é
+    /// 1-Lipschitz. Quem salta a silhueta onde `t ≥ 1` (B14c) usa-a para minorar `t` numa célula inteira.
+    #[inline]
+    #[must_use]
+    pub fn falloff_t_lipschitz(&self) -> Option<f32> {
+        self.curve.is_flat().then_some(self.inv_minor.max(1.0))
+    }
 }
 
 #[cfg(test)]

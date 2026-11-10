@@ -84,6 +84,10 @@ fn no_pixel(c: &Cena, img: [f64; 2]) -> (f32, f32) {
 
 /// O quadro de overlays do Painter, pela porta real.
 fn quadro(c: &Cena, p: &PainterTool, cursor: (f32, f32)) -> VectorScene {
+    quadro_com(c, p, cursor, true)
+}
+
+fn quadro_com(c: &Cena, p: &PainterTool, cursor: (f32, f32), dentro: bool) -> VectorScene {
     let mut vs = VectorScene::new();
     let mut texto = ph2d_text::TextSystem::without_system_fonts();
     let mut perf = [0.0; crate::paint_perf::CHROME_SUB];
@@ -98,6 +102,7 @@ fn quadro(c: &Cena, p: &PainterTool, cursor: (f32, f32)) -> VectorScene {
         &mut vs,
         &mut texto,
         cursor,
+        dentro,
         &mut perf,
         false,
         false,
@@ -172,6 +177,26 @@ fn the_eyedropper_cursor_shows_the_new_and_the_previous_colour_and_hides_the_rin
     assert!(
         !tem(&vs, rgb(PINCEL)) && !mira_na_tela(),
         "fora da tela não há caixa"
+    );
+}
+
+/// ⭐ AU-AU13-7: com o ponteiro fora da janela (ou ela sem foco) nada segue o cursor — nem o anel do pincel,
+/// nem a caixa do conta-gotas, nem a mira — no último ponto de dentro, colado à borda.
+#[test]
+fn o_anel_some_com_o_ponteiro_fora_da_janela() {
+    let c = cena();
+    let anel = Color::new(crate::painter_bridge_brush_ring::COR_DO_ANEL);
+    let borda = no_pixel(&c, [10.0, 12.0]);
+    assert!(
+        tem(&quadro_com(&c, &painter(false), borda, true), anel),
+        "dentro, o anel está lá"
+    );
+    let vs = quadro_com(&c, &painter(false), borda, false);
+    assert!(!tem(&vs, anel), "fora da janela o anel do pincel sai");
+    let vs = quadro_com(&c, &painter(true), borda, false);
+    assert!(
+        !tem(&vs, rgb(PINCEL)) && !mira_na_tela(),
+        "fora da janela o conta-gotas não mostra a caixa nem a mira"
     );
 }
 

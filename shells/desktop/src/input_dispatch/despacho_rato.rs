@@ -36,6 +36,7 @@ impl App {
     /// Foco perdido ou ponteiro fora: o `Up` nunca chega (Alt+Tab, grab; W3, B03). O foco solta as teclas; o
     /// traço do Painter fecha no último ponto de dentro, com o seu passo de undo (salvo cena que conduz).
     pub(crate) fn perde_a_mao(&mut self, foco: bool) {
+        self.pointer_inside = false;
         if foco {
             self.input.apply_event(ph2d_input::Event::FocusLost);
         }

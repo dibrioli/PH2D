@@ -86,6 +86,8 @@ pub fn dispatch(
     toasts: &mut ToastQueue,
     // `true` while a pointer button is held (gesture in flight) — see `set_shape_draft_hold`.
     pointer_held: bool,
+    // `false` once the pointer left the window or it lost focus: the cursor-following chrome hides.
+    pointer_inside: bool,
     // The bucket colour-drag state, resolved by the shell (input layer).
     fill_drag_armed: bool,
     // The sprite pixel reader from the shell: STRAIGHT alpha `Vec<u8>` + dims.
@@ -452,6 +454,7 @@ pub fn dispatch(
             vector_scene,
             text_system,
             cursor,
+            pointer_inside,
             &mut ph_chrome_sub,
             perf_t0.is_some(),
             fill_drag_armed,

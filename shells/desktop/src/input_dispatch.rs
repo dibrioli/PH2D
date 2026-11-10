@@ -151,6 +151,7 @@ impl App {
     /// ⭐ A porta ÚNICA do movimento: o rato do winit e a caneta (`input_drop/caneta.rs`) acabam aqui.
     pub(crate) fn pointer_moved(&mut self, evt: PointerEvent) {
         ph2d_pen::porta::poe_tinta(&evt);
+        self.pointer_inside = true;
         // Diagnostics: count every raw winit move (input rate), paired with `paint_stamps_this_frame`
         // in the HUD so the coalescing is visible (high events → 1 stamp).
         self.input_events_this_frame = self.input_events_this_frame.saturating_add(1);

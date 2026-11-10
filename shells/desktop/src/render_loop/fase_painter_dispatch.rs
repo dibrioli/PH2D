@@ -107,10 +107,7 @@ impl crate::App {
             viewport,
             text: text_system,
         };
-        // Painter panel ⟷ tool bridge (W1 T1.5) — source push +
-        // current_preview drain + pending_commit capture; on-canvas
-        // overlay paints the canvas RGBA over the sprite footprint.
-        // Sidebar Procreate-style lands in W2 (ph2d-panel-painter).
+        // Painter panel ⟷ tool bridge: source push, preview drain, commit capture, on-canvas overlays.
         // O passo global da mesma transação (a etapa editada de uma macro, W8) desfaz-se com este.
         let redo = self.painter_redo_requested;
         if (redo || self.painter_undo_requested)
@@ -145,6 +142,7 @@ impl crate::App {
             &mut self.painter_redo_requested,
             toasts,
             self.held_button.is_some(),
+            self.pointer_inside,
             crate::input_dispatch::fill_drag::fill_drag_armed(),
             // O funil de leitura desta shell: a família não conhece o `texture_edit`.
             // PRECISION-READONLY: o bind só lê; a escrita de volta é o Apply.

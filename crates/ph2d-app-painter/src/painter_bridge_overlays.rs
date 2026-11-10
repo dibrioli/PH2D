@@ -43,6 +43,8 @@ pub fn draw_overlays(
     vector_scene: &mut VectorScene,
     text_system: &mut ph2d_text::TextSystem,
     cursor: (f32, f32),
+    // `false` = o ponteiro saiu da janela (ou ela perdeu o foco): nada segue o cursor (AU-AU13-7).
+    pointer_inside: bool,
     // `PH2D_PAINT_PERF` split: per-call ms, in call order (`paint_perf::CHROME_LABELS`). Written only
     // when `timing` — otherwise this function does not read the clock at all.
     perf: &mut [f32; crate::paint_perf::CHROME_SUB],
@@ -79,16 +81,18 @@ pub fn draw_overlays(
         vector_scene,
     );
     mark(&mut perf[0], &mut t);
-    crate::painter_bridge_brush_ring::draw_brush_ring(
-        painter,
-        hero,
-        sim,
-        present,
-        camera,
-        window_size,
-        vector_scene,
-        cursor,
-    );
+    if pointer_inside {
+        crate::painter_bridge_brush_ring::draw_brush_ring(
+            painter,
+            hero,
+            sim,
+            present,
+            camera,
+            window_size,
+            vector_scene,
+            cursor,
+        );
+    }
     mark(&mut perf[1], &mut t);
     crate::painter_bridge_curve_overlay::draw_curve_overlay(
         painter,
@@ -200,22 +204,24 @@ pub fn draw_overlays(
         vector_scene,
     );
     mark(&mut perf[11], &mut t);
-    crate::painter_bridge_fill_overlay::draw_fill_cursor(
-        painter,
-        vector_scene,
-        cursor,
-        fill_drag_armed,
-    );
-    // O cursor do conta-gotas — por cima de tudo, como o do balde (e na mesma fatia do relógio).
-    crate::painter_bridge_eyedropper_cursor::draw_eyedropper_cursor(
-        painter,
-        hero,
-        sim,
-        camera,
-        window_size,
-        vector_scene,
-        cursor,
-    );
+    // Os cursores do balde e do conta-gotas — por cima de tudo, na mesma fatia do relógio.
+    if pointer_inside {
+        crate::painter_bridge_fill_overlay::draw_fill_cursor(
+            painter,
+            vector_scene,
+            cursor,
+            fill_drag_armed,
+        );
+        crate::painter_bridge_eyedropper_cursor::draw_eyedropper_cursor(
+            painter,
+            hero,
+            sim,
+            camera,
+            window_size,
+            vector_scene,
+            cursor,
+        );
+    }
     mark(&mut perf[12], &mut t);
 }
 

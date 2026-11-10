@@ -30,7 +30,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.lint.color_limit" => "Color limit",
         "pixel.lint.none" => "No issues found",
         "pixel.lint.no_document" => "Open a Pixel Sprite in Draw to check it.",
-        "pixel.lint.count" => "issues",
+        "pixel.lint.count" => "{n} {n?issue|issues} \u{b7} {severity}",
         _ => return None,
     })
 }

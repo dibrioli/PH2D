@@ -13,6 +13,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
+pub use paint::chave_da_regra;
 /// O `Panel::ID` (`ph2d-editor-core::screens::hero::panel_ids`; nasce FECHADO).
 pub use ph2d_editor_core::screens::hero::PANEL_PIXEL_LINT;
 

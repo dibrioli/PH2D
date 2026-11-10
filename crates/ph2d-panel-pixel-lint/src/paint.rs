@@ -10,14 +10,16 @@ use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::card_field::Glyph;
 use ph2d_editor_core::widget::panel_chrome::panel_drag_handle_rect;
 use ph2d_editor_core::zones::Rect;
-use ph2d_i18n::tr;
+use ph2d_i18n::{tr, tr_with};
 use ph2d_pixel_lint::{Regra, Regras, Severidade};
-use ph2d_tokens::Spacing;
+use ph2d_tokens::{PANEL_MIN_W_PX, Spacing};
 
-use crate::canal::{self, LintView};
+use crate::canal::{self, Grupo, LintView};
 use crate::{PixelLintPanel, event, ids};
 
-fn solta(ctx: &mut PaintCtx) -> Rect {
+/// O rect da janela. `piso` é a linha de grupo mais larga inteira ([`piso`]): é também a largura de
+/// fábrica, para o nome da regra e o facto lerem-se sem o artista alargar.
+fn solta(ctx: &mut PaintCtx, piso: f32) -> Rect {
     let area = ctx.layout.draw_area;
     let teto = {
         let r = ph2d_editor_core::ruler::top_band(area);
@@ -28,7 +30,11 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
     let coluna = ctx.slot.x;
     let store = ctx.host.store_mut();
     let node = PixelLintPanel::NODE_ID;
-    let w = borda::largura(store, node, area, coluna).min(direita - esquerda);
+    let w = match store.accessory_width(node) {
+        None => PANEL_MIN_W_PX.max(piso).min(borda::tecto(area, coluna)),
+        Some(_) => borda::largura_com_piso(store, node, area, coluna, piso),
+    }
+    .min(direita - esquerda);
     let base = (direita - w).max(esquerda);
     borda::coloca(store, node, w, (esquerda, base), (teto, fundo))
 }
@@ -52,6 +58,31 @@ fn chave_da_severidade(s: Severidade) -> &'static str {
         Severidade::Media => "pixel.lint.severity.medium",
         Severidade::Alta => "pixel.lint.severity.high",
     }
+}
+
+/// O facto à direita da linha do grupo: «1 issue · Low».
+fn facto(g: &Grupo) -> String {
+    tr_with(
+        "pixel.lint.count",
+        &[
+            ("n", &g.avisos.len()),
+            ("severity", &tr(chave_da_severidade(g.severidade))),
+        ],
+    )
+}
+
+/// ⭐ A largura em que a linha de grupo mais larga se lê inteira: o nome mais largo de TODAS as
+/// regras (a janela não dança quando um grupo aparece) mais o facto mais largo da corrida, na
+/// régua da `ListRow` (nome em `VALUE_PX`, facto em `LABEL_PX` com o recuo dele).
+fn piso(ctx: &mut PaintCtx, v: &LintView) -> f32 {
+    let ts = &mut *ctx.text_system;
+    let nomes = Regra::TODAS.map(|r| tr(chave_da_regra(r)));
+    let factos = v
+        .grupos
+        .iter()
+        .map(|g| ts.prefix_width(&facto(g), m::LABEL_PX) + m::SEG_INSET)
+        .fold(0.0_f32, f32::max);
+    borda::piso_das_linhas(ts, nomes) + factos.ceil()
 }
 
 fn cartao_regras(r: Regras) -> CardDef<'static> {
@@ -88,12 +119,7 @@ fn cartao_avisos(v: LintView) -> CardDef<'static> {
                 return c.hint(tr("pixel.lint.none"), y);
             }
             for g in &v.grupos {
-                let facto = format!(
-                    "{} {} · {}",
-                    g.avisos.len(),
-                    tr("pixel.lint.count"),
-                    tr(chave_da_severidade(g.severidade))
-                );
+                let facto = facto(g);
                 y = c.list_row(
                     &ListRow {
                         trailing: Some(&facto),
@@ -133,8 +159,11 @@ pub(crate) fn paint(ctx: &mut PaintCtx) {
     let v = canal::view();
     event::regista_avisos(ctx.host.store_mut(), &v);
     let titulo = <PixelLintPanel as Panel>::TITLE.tr();
-    let cartoes = [cartao_regras(canal::regras()), cartao_avisos(v)];
-    let slot = solta(ctx);
+    let piso = piso(ctx, &v);
+    // A lista primeiro: é o trabalho; as regras ajustam-se uma vez e ficam por baixo, recolhíveis.
+    // Com elas em cima, num ecrã de 872 px só se viam 1–2 grupos (foto `smoke_P13_cena33`, 10/11).
+    let cartoes = [cartao_avisos(v), cartao_regras(canal::regras())];
+    let slot = solta(ctx, piso);
     let encaixe = ctx.slot;
     ctx.slot = slot;
     borda::declara_fecho(ctx.host.store_mut(), node);

@@ -152,3 +152,73 @@ fn a_caixa_da_regra_cala_o_grupo_dela() {
     assert!(!regras_vistas(&v).contains(&Regra::Faixa), "{v:?}");
     assert_eq!(v.grupos.len(), 5);
 }
+
+/// O ecrã do smoke (`smoke_P13_cena33`, 1 600 × 872, sem a timeline: a janela Lint tinha ~460 px):
+/// com as regras em cima, só 1–2 grupos se viam. Aqui o mock não tem timeline, logo um ecrã de 620 px
+/// dá a mesma janela. A lista vem primeiro, e cada linha de grupo e de aviso fica INTEIRA dentro dela.
+#[test]
+fn num_ecra_baixo_cada_grupo_e_aviso_cabe_inteiro_na_janela() {
+    let baixa = Rect::new(0.0, 0.0, 1600.0, 620.0);
+    let mut m = mesa();
+    let (t, _) = fixture::vicios_p13();
+    let s = t.sprite();
+    corre(&s, 1);
+    m.assenta_em(baixa);
+    let janela = m
+        .host
+        .store()
+        .panel_rect(PixelLintPanel::NODE_ID)
+        .expect("janela publicada");
+    assert!(
+        janela.h < 480.0,
+        "a janela tem de ser a do smoke: {janela:?}"
+    );
+    let v = canal::view();
+    let dentro = |r: Rect| r.y >= janela.y && r.y + r.h <= janela.y + janela.h + 0.5;
+    let mut vistos = 0;
+    for g in &v.grupos {
+        let ids_do_grupo = std::iter::once(ids::grupo(g.regra))
+            .chain((0..g.avisos.len()).map(|i| ids::aviso(g.regra, i)));
+        for id in ids_do_grupo {
+            let r = m
+                .rect(id)
+                .unwrap_or_else(|| panic!("{:?}: linha sem rect", g.regra));
+            assert!(dentro(r), "{:?}: {r:?} sai da janela {janela:?}", g.regra);
+            vistos += 1;
+        }
+    }
+    assert!(vistos >= 10, "{vistos}");
+}
+
+/// «1 issues» era o plural colado no código: a frase inteira vem da tabela.
+#[test]
+fn o_facto_do_grupo_diz_issue_no_singular() {
+    let um = ph2d_i18n::tr_with("pixel.lint.count", &[("n", &1), ("severity", &"Low")]);
+    let tres = ph2d_i18n::tr_with("pixel.lint.count", &[("n", &3), ("severity", &"Low")]);
+    assert_eq!(um, "1 issue \u{b7} Low");
+    assert_eq!(tres, "3 issues \u{b7} Low");
+}
+
+/// «Orphan pi…»: na largura de FÁBRICA (o artista nunca alargou), o nome de cada regra lê-se
+/// inteiro na linha do grupo, ao lado do facto.
+#[test]
+fn na_largura_de_fabrica_o_nome_de_cada_regra_le_se_inteiro() {
+    let mut m = mesa();
+    let (t, _) = fixture::vicios_p13();
+    let s = t.sprite();
+    corre(&s, 1);
+    m.assenta_em(JANELA);
+    let nomes: Vec<&str> = Regra::TODAS
+        .iter()
+        .map(|&r| ph2d_i18n::tr(ph2d_panel_pixel_lint::chave_da_regra(r)))
+        .collect();
+    let medidos = m
+        .host
+        .medindo_a_pintura::<PixelLintPanel>(&mut m.st, JANELA);
+    let cortados: Vec<_> = medidos
+        .iter()
+        .filter(|md| nomes.contains(&md.texto.as_str()) && md.pintado != md.texto)
+        .map(|md| (&md.texto, &md.pintado, md.largura))
+        .collect();
+    assert!(cortados.is_empty(), "{cortados:?}");
+}

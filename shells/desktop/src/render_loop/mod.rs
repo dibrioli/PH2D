@@ -475,6 +475,7 @@ pub(crate) use ph2d_app_vec::vector_bridge;
 use crate::*;
 use frame_prof::*;
 
+use ph2d_app_host::quadro::rastreio::{Fase, marca};
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::paint::PaintCtx;
 use ph2d_editor_core::zones::Rect as EditorRect;
@@ -488,7 +489,7 @@ impl crate::App {
         let player_input = self.fase_pointer_subjects();
         // PH2D_PAINT_PERF: whole-frame timer (aggregated on scope exit, paired with the dispatch info).
         let _paint_frame_timer =
-            PaintFrameTimer(ph2d_app_painter::paint_perf::on().then(std::time::Instant::now));
+            PaintFrameTimer(ph2d_app_painter::paint_perf::on().then_some(marca(Fase::Fora)));
         self.fase_audio_panels();
         let (cpu_start, diag_input_events, diag_paint_stamps) = self.fase_input_and_drops();
 
@@ -509,13 +510,13 @@ impl crate::App {
         self.fase_surface_resize();
         // ⚠️ **O relógio da SIMULAÇÃO** (`PH2D_FLUID_PROFILE`) — ver `frame_prof`. Ela corre
         // `report.ticks` tiques, logo um quadro atrasado paga-a várias vezes.
-        let sim_t0 = std::time::Instant::now();
+        let sim_t0 = marca(Fase::Cena);
         let Some((report, tool_preview_bits)) = self.fase_frame_simulation(wall_dt, player_input)
         else {
             return;
         };
         {
-            let us = sim_t0.elapsed().as_micros() as u64;
+            let us = marca(Fase::Sim).duration_since(sim_t0).as_micros() as u64;
             FRAME_PROF_SIM_SUM_US.with(|c| c.set(c.get() + us));
             FRAME_PROF_SIM_MAX_US.with(|c| c.set(c.get().max(us)));
             FRAME_PROF_SIM_N.with(|c| c.set(c.get() + 1));
@@ -549,9 +550,7 @@ impl crate::App {
             self.fase_legacy_chrome(viewport);
         }
 
-        // Paint + present + title — extracted to `present.rs` sibling
-        // method (Wave 3.2 stage A). Re-acquires self.gfx + self.host
-        // refs inside; values needed are passed explicitly.
+        // Paint + present + title (`present.rs`).
         self.run_present_phase(cpu_start, r, g, b);
 
         self.fase_frame_profile();

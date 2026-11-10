@@ -27,7 +27,7 @@ impl crate::App {
         // raw-fps measurement. Stopped after `queue.submit` (before
         // the present blocks on vsync) so the EWMA tracks pure
         // hardware capacity, independent of refresh rate.
-        let cpu_start = Instant::now();
+        let cpu_start = marca(Fase::Entrada);
         // Pump gamepad events first so InputState reflects the latest
         // state by the time sim/extract run. Order: input → script
         // input snapshot → sim → extract → render.

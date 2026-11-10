@@ -144,3 +144,31 @@ fn o_wayland_suspenso_chega_a_shell_como_occluded() {
         "a shell não entrega o `Occluded` ao `Laco::oculta`"
     );
 }
+
+/// B23.1: cada `Fase` do rastreio (ph2d-app-host) tem a sua `marca` no quadro da shell, uma vez.
+/// *Mutação: tirar a `marca(super::Fase::Acquire)` do `present.rs` ⇒ vermelho.*
+#[test]
+fn cada_fase_do_quadro_marca_as_faltas() {
+    let rastreio = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../ph2d-app-host/src/quadro_rastreio.rs"),
+    )
+    .unwrap();
+    let fases: Vec<&str> = rastreio
+        .split("(Fase::")
+        .skip(1)
+        .filter_map(|r| r.split_once(", \"").map(|(f, _)| f))
+        .collect();
+    assert_eq!(fases.len(), 7, "controlo positivo: as fases de `FASES`");
+    let rl = shell_src().join("render_loop");
+    let quadro: String = ["mod.rs", "fase_input_and_drops.rs", "present.rs"]
+        .iter()
+        .map(|f| fs::read_to_string(rl.join(f)).unwrap())
+        .collect();
+    for f in fases {
+        let n = quadro.matches(&format!("Fase::{f})")).count();
+        assert_eq!(
+            n, 1,
+            "a fase `{f}` tem {n} marcas no quadro da shell (quer 1)"
+        );
+    }
+}

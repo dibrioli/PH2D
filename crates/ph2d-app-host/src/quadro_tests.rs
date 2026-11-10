@@ -196,3 +196,37 @@ fn o_rastreio_conta_quem_pediu_o_quadro() {
     let depois = r.nota(&dorme, Some(1_240));
     assert_eq!(depois, None, "a janela recomeça");
 }
+
+/// B23.1: cada marca fecha o troço desde a anterior; a média é por quadro desenhado (os `Fora`).
+#[test]
+fn o_rastreio_parte_as_faltas_por_fase() {
+    use rastreio::{Fase, PorFase};
+    let mut f = PorFase::default();
+    f.marca(Fase::Present, 100); // o quadro anterior: só arma
+    let quadro = [
+        (Fase::Fora, 2),
+        (Fase::Entrada, 4),
+        (Fase::Cena, 0),
+        (Fase::Sim, 6),
+        (Fase::Desenho, 10),
+        (Fase::Acquire, 0),
+        (Fase::Present, 20),
+    ];
+    let mut m = 100;
+    for _ in 0..2 {
+        for (fase, d) in quadro {
+            m += d;
+            f.marca(fase, m);
+        }
+    }
+    assert_eq!(
+        f.resumo(),
+        " | por quadro desenhado (2): fora=2.0 entrada=4.0 cena=0.0 sim=6.0 desenho=10.0 acquire=0.0 present=20.0"
+    );
+    assert_eq!(f.resumo(), "", "a janela recomeça vazia");
+    f.marca(Fase::Fora, m + 3);
+    assert!(
+        f.resumo().contains("(1): fora=3.0 "),
+        "o último lido sobrevive à janela"
+    );
+}

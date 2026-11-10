@@ -108,10 +108,10 @@ impl crate::App {
         // trabalho de CPU e se lia como espera de GPU: com `tick 3,31` de um
         // "stall" de 7,91, a espera real é ~4,6 e a CPU trabalha ~12 ms de um
         // quadro de 16,6 — não os 8,25 que a linha sugeria.
-        let acquire_t0 = Instant::now();
+        let acquire_t0 = super::marca(super::Fase::Desenho);
         match surface.acquire_frame() {
             Ok(frame) => {
-                let after_acquire = Instant::now();
+                let after_acquire = super::marca(super::Fase::Acquire);
                 super::note_acquire_wait(after_acquire.duration_since(acquire_t0));
                 self.present_vista_da_camera(r, g, b, motion_draws);
                 let Some((plan, banded)) = self.present_world_sprites(
@@ -140,7 +140,8 @@ impl crate::App {
                     b,
                 );
                 // FrameTarget presents on Drop.
-                let work_after_acquire = after_acquire.elapsed();
+                let work_after_acquire =
+                    super::marca(super::Fase::Present).duration_since(after_acquire);
                 let cpu_total = work_before_acquire + work_after_acquire;
                 let cpu_ms_now = cpu_total.as_secs_f64() * 1000.0;
                 const ALPHA_CPU: f32 = 0.1;

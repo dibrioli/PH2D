@@ -680,3 +680,7 @@ mod fecho;
 /// O ciclo de vida (GameEngineFuncional N0).
 #[path = "scene_life_tests.rs"]
 mod life;
+
+/// As acções do Input Map (`ph2d.action_*`).
+#[path = "scene_action_tests.rs"]
+mod action;

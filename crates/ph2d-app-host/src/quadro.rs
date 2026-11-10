@@ -10,6 +10,9 @@
 
 use std::time::{Duration, Instant};
 
+#[path = "quadro_rastreio.rs"]
+pub mod rastreio;
+
 /// Quanto um trabalho de fundo (autosave, capa a descodificar, mensagem da rede) espera, no pior
 /// caso, para ser visto com o laço a dormir (estudo X-02, «prazo 250 ms»). Latência, não recurso.
 pub const PRAZO: Duration = Duration::from_millis(250);
@@ -253,7 +256,9 @@ impl Laco {
     /// Sem present, o «já» é o próximo [`SEM_PRESENT`]: o quadro que acabou de correr gastou o anterior.
     #[must_use]
     pub fn acorda(&mut self, documento: &[Produtor], agora: Instant) -> Option<Instant> {
-        match self.pedido(documento, agora) {
+        let pedido = self.pedido(documento, agora);
+        rastreio::rastreia(&pedido);
+        match pedido {
             Pedido::Ja(_) if !self.apresenta() => {
                 let alvo = match self.passo_oculto {
                     Some(t) if t > agora => t,

@@ -125,6 +125,60 @@ if [ "$1" = matriz ]; then
   exit 0
 fi
 
+# ── CAMADAS (B23.4 caso (e), 10/11): o painel Layers à frente, tela 4096² Textured, A × B no MESMO binário e
+# intercalados: `PH2D_COMPOSITE_CAMADAS=1` × `=12`. Fases: parado SEG s · traço SEG s (ida e volta contínua). Por
+# fase: `panel`/`chrome` do `[paint-perf]` e `hero-paint` do `[frame]` (o mínimo e o máximo das janelas), quadro p50
+# e a linha `[quadro] quem:` (B23.1). uso: … mede_pen_up_4k.sh camadas [rodadas] [segundos] [binario]
+if [ "$1" = camadas ]; then
+  N=${2:-2}; SEG=${3:-6}; BIN=${4:-$R/target/smoke/ph2d-host-desktop}; D=${DISPLAY_MATRIZ:-:97}; O=$S/camadas
+  mkdir -p "$O"
+  PLACA_ENV=(VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.json VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
+    MESA_VK_WSI_DEBUG=sw __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
+  Xvfb $D -screen 0 1600x1000x24 >/dev/null 2>&1 & XV=$!
+  sleep 1
+  cd "$R"
+  for i in $(seq 1 "$N"); do for c in 1 12; do
+    TAG=c${c}_$i; L=$O/$TAG.log
+    env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$O/home_$TAG PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=0 "${PLACA_ENV[@]}" \
+      PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PAINEL=layers PH2D_COMPOSITE_PILHA=0 PH2D_COMPOSITE_FUNDO=papel \
+      PH2D_COMPOSITE_PAPEL=1 PH2D_COMPOSITE_TELA=4096x4096 PH2D_COMPOSITE_CAMADAS=$c PH2D_EXIT_AFTER_FRAMES=1000000 \
+      "$BIN" > "$L" 2>&1 &
+    APP=$!; WIN=
+    for _ in $(seq 1 120); do
+      grep -q "pilha armada" "$L" && WIN=$(DISPLAY=$D xdotool search --pid $APP 2>/dev/null | tail -1)
+      [ -n "$WIN" ] && break; sleep 0.5
+    done
+    if [ -n "$WIN" ]; then
+      DISPLAY=$D xdotool windowsize $WIN 1600 1000 windowmove $WIN 0 0 windowfocus --sync $WIN 2>/dev/null; sleep 5
+      l0=$(wc -l < "$L"); sleep "$SEG"; l1=$(wc -l < "$L")
+      DISPLAY=$D xdotool mousemove 560 460 mousedown 1; fim=$(( $(date +%s) + SEG ))
+      while [ "$(date +%s)" -lt $fim ]; do
+        cmd=""; for k in $(seq 0 60); do cmd="$cmd mousemove $((560 + (k < 30 ? k : 60 - k) * 12)) $((460 + k % 9)) sleep 0.008"; done
+        DISPLAY=$D xdotool $cmd
+      done
+      DISPLAY=$D xdotool mouseup 1; l2=$(wc -l < "$L"); sleep 2
+      DISPLAY=$D import -window root "$O/$TAG.png" 2>/dev/null
+    fi
+    kill -INT $APP 2>/dev/null
+    for _ in $(seq 1 40); do kill -0 $APP 2>/dev/null || break; sleep 0.25; done
+    kill -KILL $APP 2>/dev/null; wait $APP 2>/dev/null
+    for f in parado traco; do
+      [ $f = parado ] && { a=$l0; b=$l1; } || { a=$l1; b=$l2; }
+      sed -n "$((a + 1)),${b}p" "$L" | awk -v tag="$TAG" -v f=$f -v cam="$(grep -o 'CAMADAS: [0-9]*' "$L")" '
+        function mm(arr, n,   i, lo, hi) { lo = 1e9; hi = 0; for (i = 1; i <= n; i++) { if (arr[i] < lo) lo = arr[i]; if (arr[i] > hi) hi = arr[i] }
+          return n ? sprintf("%.2f..%.2f", lo, hi) : "-" }
+        /^\[paint-perf\]/ { for (i = 1; i <= NF; i++) { if ($i == "panel") p[++np] = $(i + 1); if ($i == "chrome") { x = $(i + 1); sub(/\)/, "", x); c[++nc] = x } } }
+        /^\[frame\] total=/ { for (i = 1; i <= NF; i++) if ($i ~ /^hero-paint=/) { x = $i; sub(/hero-paint=/, "", x); sub(/ms/, "", x); h[++nh] = x } }
+        /^\[quadro-lento\]/ { x = $4; sub(/quadro=/, "", x); q[++nq] = x + 0 }
+        /^\[quadro\] quem:/ { quem = $0 }
+        END { asort(q); printf "[camadas] %s %s (%s) panel=%s chrome=%s hero-paint=%s quadro p50=%.1f ms (%d) | %s\n",
+          tag, f, cam, mm(p, np), mm(c, nc), mm(h, nh), nq ? q[int((nq + 1) / 2)] : 0, nq, quem }' | tee -a "$O/resumo.txt"
+    done
+  done; done
+  kill $XV
+  exit 0
+fi
+
 # ── PERF (10/11, diagnóstico do quadro de ~100 ms e do parado): o roteiro da matriz para UM pincel, mas o perf ABRE o
 # app (-k CLOCK_MONOTONIC -F 997, sem -g: paranoid 2) e cada marca leva os DOIS relógios (mono = o do perf; parede = o
 # do [quadro-lento]). Fases: parado 5 s · toque · traço · soltar · 3 s · Ctrl+Z · 1,5 s · parado 5 s. Mesma placa.

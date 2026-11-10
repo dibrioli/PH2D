@@ -302,6 +302,16 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
         Ok("layers") => painter.set_dock_shows_layers(true),
         _ => {}
     }
+    // B23.4 caso (e): `PH2D_COMPOSITE_CAMADAS=<n>` põe n camadas no documento (o painel Layers cheio).
+    if let Some(n) = std::env::var("PH2D_COMPOSITE_CAMADAS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+    {
+        let novas = (2..=n)
+            .filter_map(|i| painter.add_raster_layer(format!("Layer {i}")))
+            .count();
+        println!("PH2D_COMPOSITE_CAMADAS: {} camadas no documento", novas + 1);
+    }
     if let Some(v) = std::env::var("PH2D_COMPOSITE_RELEVO")
         .ok()
         .and_then(|v| v.parse().ok())

@@ -169,3 +169,30 @@ fn oculta_sem_present_o_documento_corre_a_60_e_nao_gira() {
         "o smoke apresenta: o present segura"
     );
 }
+
+/// B23.1: a linha `[quadro] quem:` conta o vencedor da lei e a parada, por janela, com as faltas por quadro.
+#[test]
+fn o_rastreio_conta_quem_pediu_o_quadro() {
+    use rastreio::{JANELA, Rastreio};
+    let mut r = Rastreio::default();
+    let dorme = Pedido::Ate {
+        prazo: PRAZO,
+        porque: Parada::Ocioso,
+    };
+    assert_eq!(r.nota(&dorme, Some(1_000)), None);
+    for i in 1..JANELA - 1 {
+        assert_eq!(
+            r.nota(&Pedido::Ja(Produtor::Smoke), Some(1_000 + u64::from(i))),
+            None
+        );
+    }
+    let linha = r
+        .nota(&Pedido::Ja(Produtor::Entrada), Some(1_000 + 240))
+        .expect("fim da janela");
+    assert_eq!(
+        linha,
+        "[quadro] quem: Entrada=1 Smoke=118 dorme:Ocioso=1 | minflt/quadro=2.0 (fio da UI)"
+    );
+    let depois = r.nota(&dorme, Some(1_240));
+    assert_eq!(depois, None, "a janela recomeça");
+}

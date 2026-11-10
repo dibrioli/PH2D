@@ -224,3 +224,63 @@ fn a_optica_custa_pela_caixa_suja_e_nao_pela_folha() {
         "a fixture nao contem o fenomeno (nenhum passo sujou sem mudar)"
     );
 }
+
+/// **B14-cont3: o anel liga as faixas — parte-se também por colunas.** Com água junto à borda, o anel que
+/// `solver::apply_boundaries` reescreve muda a coluna 1 em todas as linhas; com duas manchas longe (uma em cima à
+/// esquerda, outra em baixo à direita), as faixas de linhas eram UMA, a folha inteira de altura. Partidas também por
+/// colunas: o anel e cada mancha, a mesma envolvente, e cada célula mudada numa caixa.
+#[test]
+fn o_anel_da_borda_nao_liga_as_faixas() {
+    let e = Engine::new(N, N);
+    let espelho = e.layers[0].grid.clone();
+    let mut g = espelho.clone();
+    let s = g.s;
+    let mut mudadas = Vec::new();
+    let mut muda = |g: &mut crate::grid::Grid, x: usize, y: usize| {
+        g.film[y * s + x] += 1.0;
+        mudadas.push((x as i32, y as i32));
+    };
+    for y in 1..=N {
+        muda(&mut g, 1, y);
+    }
+    for (xs, ys) in [(40..=60, 20..=30), (100..=120, 120..=130)] {
+        for y in ys {
+            for x in xs.clone() {
+                muda(&mut g, x, y);
+            }
+        }
+    }
+    let caixas = super::faixas_que_mudaram(&g, &espelho, (0, 0, N as i32 + 1, N as i32 + 1))
+        .expect("o espelho serve");
+    let area: usize = caixas
+        .iter()
+        .map(|&(a, b, c, d)| ((c - a + 1) * (d - b + 1)) as usize)
+        .sum();
+    eprintln!(
+        "anel + duas manchas: {caixas:?} = {area} celulas (envolvente {})",
+        120 * N
+    );
+    let dentro = |&(x, y): &(i32, i32)| {
+        caixas
+            .iter()
+            .any(|&(a, b, c, d)| a <= x && x <= c && b <= y && y <= d)
+    };
+    assert!(
+        mudadas.iter().all(dentro),
+        "uma celula mudada fora das caixas"
+    );
+    let env = caixas
+        .iter()
+        .copied()
+        .reduce(|a, b| (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3)));
+    assert_eq!(
+        env,
+        Some((1, 1, 120, N as i32)),
+        "a envolvente e a de sempre"
+    );
+    assert_eq!(
+        caixas,
+        vec![(1, 1, 1, N as i32), (40, 20, 60, 30), (100, 120, 120, 130)],
+        "o anel e as duas manchas, cada um na sua caixa"
+    );
+}

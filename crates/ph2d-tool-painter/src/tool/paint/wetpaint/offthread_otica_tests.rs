@@ -230,18 +230,18 @@ fn envolvente(img: &Imagem) -> CaixaCel {
         .expect("caixas")
 }
 
-/// Duas pinceladas molhadas longe uma da outra (o topo e o fundo da folha) e o óleo; o traço aberto junto à de cima.
-fn cena_de_duas_faixas() -> Box<Engine> {
+/// Duas pinceladas molhadas longe uma da outra (em `inicios`) e o óleo; o traço aberto em `aberto`, junto à primeira.
+fn cena_de_duas_faixas(inicios: [(f64, f64); 2], aberto: (f64, f64)) -> Box<Engine> {
     let mut e = Engine::new(N, N);
-    for y in [24.0, 226.0] {
-        e.pointer_down(116.0, y, None);
+    for (x, y) in inicios {
+        e.pointer_down(x, y, None);
         for k in 0..24 {
-            e.pointer_frame(116.0 + k as f64, y + (k % 5) as f64);
+            e.pointer_frame(x + k as f64, y + (k % 5) as f64);
         }
         e.pointer_up();
     }
     e.layers[0].grid.oleo_real = true;
-    e.pointer_down(128.0, 26.0, None);
+    e.pointer_down(aberto.0, aberto.1, None);
     assert!(!e.sim_should_run(), "a fixture precisa da agua parada");
     Box::new(e)
 }
@@ -250,40 +250,48 @@ fn cena_de_duas_faixas() -> Box<Engine> {
 /// compositor compõe uma caixa por faixa (a síncrona, a envolvente das duas), e os planos ficam ao byte da síncrona.
 #[test]
 fn duas_faixas_vivas_compoem_duas_caixas_ao_byte_da_sincrona() {
+    duas_caixas_vivas([(116.0, 24.0), (116.0, 226.0)], (128.0, 26.0), |a, b| {
+        a.3 < b.1
+    });
+}
+
+/// **B14-cont3: lado a lado, nas MESMAS linhas** — as faixas de linhas eram uma (a envolvente das duas); partidas também
+/// por colunas, duas caixas, ao byte da síncrona.
+#[test]
+fn duas_pinceladas_lado_a_lado_compoem_duas_caixas_ao_byte_da_sincrona() {
+    duas_caixas_vivas([(16.0, 120.0), (216.0, 120.0)], (28.0, 122.0), |a, b| {
+        a.2 < b.0
+    });
+}
+
+fn duas_caixas_vivas(
+    inicios: [(f64, f64); 2],
+    aberto: (f64, f64),
+    separadas: fn(CaixaCel, CaixaCel) -> bool,
+) {
     let w = sobe();
-    let mut e = cena_de_duas_faixas();
+    let mut e = cena_de_duas_faixas(inicios, aberto);
     let (mut controlo, mut referencia) = (
         PlanosDaOtica::da_grade(FORMA.grade),
         PlanosDaOtica::da_grade(FORMA.grade),
     );
-    type Prepara = fn(&mut Engine);
-    let rondas: [(&str, Prepara, usize); 3] = [
-        ("sujo inteiro", Engine::mark_dirty_full, 1),
-        (
-            "a agua corre nas duas",
-            |e| {
-                e.pointer_up();
-                for _ in 0..3 {
-                    while e.step_stage().is_none() {}
-                }
-                e.pointer_down(128.0, 26.0, None);
-            },
-            2,
-        ),
-        (
-            "e continua a correr",
-            |e| {
-                e.pointer_up();
-                for _ in 0..2 {
-                    while e.step_stage().is_none() {}
-                }
-                e.pointer_down(128.0, 26.0, None);
-            },
-            2,
-        ),
+    // `None` = o sujo inteiro; `Some(n)` = a água corre `n` estágios (o traço fecha e reabre em `aberto`).
+    let rondas: [(&str, Option<usize>, usize); 3] = [
+        ("sujo inteiro", None, 1),
+        ("a agua corre nas duas", Some(3), 2),
+        ("e continua a correr", Some(2), 2),
     ];
-    for (k, (nome, prepara, quantas)) in rondas.into_iter().enumerate() {
-        prepara(&mut e);
+    for (k, (nome, estagios, quantas)) in rondas.into_iter().enumerate() {
+        match estagios {
+            None => e.mark_dirty_full(),
+            Some(n) => {
+                e.pointer_up();
+                for _ in 0..n {
+                    while e.step_stage().is_none() {}
+                }
+                e.pointer_down(aberto.0, aberto.1, None);
+            }
+        }
         let esperada = sincrona(&e, None, &mut referencia).expect("a sincrona compoe");
         entrega(&w, e);
         let epoca = 200 + k as u64;
@@ -316,7 +324,7 @@ fn duas_faixas_vivas_compoem_duas_caixas_ao_byte_da_sincrona() {
         if quantas == 2 {
             assert!(nossa < dela, "{nome}: as faixas custam {nossa} >= {dela}");
             assert!(
-                caixas[0].3 < caixas[1].1,
+                separadas(caixas[0], caixas[1]),
                 "{nome}: as faixas sobrepoem-se {caixas:?}"
             );
         }

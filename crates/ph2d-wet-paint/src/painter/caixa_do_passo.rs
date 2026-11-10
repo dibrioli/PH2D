@@ -126,9 +126,11 @@ enum PelaOtica {
     Faixas { alheio: Dirty, faixas: Vec<Caixa> },
 }
 
-/// As faixas de linhas de `caixa` (presa a `[1..=w]×[1..=h]`) onde algum plano da óptica difere ao bit entre `g` e o
-/// espelho `e`, de cima para baixo, cada uma com as colunas da primeira à última diferença das suas linhas; uma linha
-/// sem diferença parte a faixa. Vazio = nenhuma; `None` = o espelho não serve (um plano de outro tamanho, um escalar).
+/// As caixas de `caixa` (presa a `[1..=w]×[1..=h]`) onde algum plano da óptica difere ao bit entre `g` e o espelho `e`,
+/// de cima para baixo: as faixas de linhas mudadas (uma linha sem diferença parte), cada uma partida em colunas (uma
+/// coluna sem diferença parte; o anel que `solver::apply_boundaries` reescreve com água junto à borda muda uma coluna
+/// em todas as linhas e ligava as faixas, B14-cont3) e de novo em linhas, até nenhuma se partir; cada caixa é a
+/// envolvente justa das suas diferenças. Vazio = nenhuma; `None` = o espelho não serve (um plano, um escalar).
 fn faixas_que_mudaram(g: &Grid, e: &Grid, (x0, y0, x1, y1): Caixa) -> Option<Vec<Caixa>> {
     if !mesmos_escalares(g, e) || !mesmos_tamanhos(g, e) {
         return None;
@@ -142,10 +144,11 @@ fn faixas_que_mudaram(g: &Grid, e: &Grid, (x0, y0, x1, y1): Caixa) -> Option<Vec
     let s = g.s;
     let difere = |x: usize, y: usize| difere_em(g, e, y * s + x);
     let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
+    let mut linhas: Vec<(usize, usize, usize, usize)> = Vec::new();
     let mut aberta: Option<(usize, usize, usize, usize)> = None;
     for y in ya..=yb {
         let Some(l) = (xa..=xb).find(|&x| difere(x, y)) else {
-            faixas.extend(aberta.take().map(|(a, b, c, d)| (i(a), i(b), i(c), i(d))));
+            linhas.extend(aberta.take());
             continue;
         };
         let r = (l..=xb).rev().find(|&x| difere(x, y)).unwrap_or(l);
@@ -154,8 +157,62 @@ fn faixas_que_mudaram(g: &Grid, e: &Grid, (x0, y0, x1, y1): Caixa) -> Option<Vec
             None => (l, y, r, y),
         });
     }
-    faixas.extend(aberta.map(|(a, b, c, d)| (i(a), i(b), i(c), i(d))));
+    linhas.extend(aberta);
+    for (lo, topo, hi, fundo) in linhas {
+        let mw = hi + 1 - lo;
+        let mascara: Vec<bool> = (topo..=fundo)
+            .flat_map(|y| (lo..=hi).map(move |x| (x, y)))
+            .map(|(x, y)| difere(x, y))
+            .collect();
+        let mut locais = Vec::new();
+        parte(&mascara, mw, (0, 0, mw - 1, fundo - topo), &mut locais);
+        faixas.extend(
+            locais
+                .into_iter()
+                .map(|(a, b, c, d)| (i(lo + a), i(topo + b), i(lo + c), i(topo + d))),
+        );
+    }
     Some(faixas)
+}
+
+/// O corte XY da `mascara` (`mw` colunas) dentro de `(x0, y0, x1, y1)`: as corridas de linhas com alguma diferença; com
+/// uma só, as de colunas; com uma só de cada, a caixa justa. Cada ramo encolhe estritamente: termina.
+fn parte(
+    m: &[bool],
+    mw: usize,
+    (x0, y0, x1, y1): (usize, usize, usize, usize),
+    out: &mut Vec<(usize, usize, usize, usize)>,
+) {
+    let corridas = |n0: usize, n1: usize, tem: &dyn Fn(usize) -> bool| {
+        let mut v: Vec<(usize, usize)> = Vec::new();
+        for k in n0..=n1 {
+            if !tem(k) {
+                continue;
+            }
+            match v.last_mut() {
+                Some((_, b)) if *b + 1 == k => *b = k,
+                _ => v.push((k, k)),
+            }
+        }
+        v
+    };
+    let ls = corridas(y0, y1, &|y| m[y * mw + x0..=y * mw + x1].contains(&true));
+    match ls.as_slice() {
+        [] => {}
+        &[(ya, yb)] => {
+            let cs = corridas(x0, x1, &|x| (ya..=yb).any(|y| m[y * mw + x]));
+            match cs.as_slice() {
+                [] => {}
+                &[(xa, xb)] => out.push((xa, ya, xb, yb)),
+                _ => cs
+                    .iter()
+                    .for_each(|&(xa, xb)| parte(m, mw, (xa, ya, xb, yb), out)),
+            }
+        }
+        _ => ls
+            .iter()
+            .for_each(|&(ya, yb)| parte(m, mw, (x0, ya, x1, yb), out)),
+    }
 }
 
 /// Os escalares que a óptica lê (os de `espelho::escalares` sem a caixa do fluido, que ela não lê).

@@ -214,8 +214,8 @@ impl crate::App {
         let filed = self.recovery.project_path.is_some();
         ph2d_app_code::frame(sim, script.as_mut(), hero, toasts, filed);
         let tl = (&self.timeline.doc, &mut self.timeline_intents);
-        let live = (&self.input, &self.components.jogador);
-        document_families(sim, hero, tl, toasts, (self.gilrs.as_ref(), live));
+        let io = (self.gilrs.as_ref(), (&self.input, &self.components.jogador));
+        document_families(sim, hero, tl, toasts, io);
         // ⭐ **A LUZ** (Luz 2D): a secção do Inspector e a recusa do solver, que sobe como aviso.
         let (timeline, playhead) = (&self.timeline, &self.playhead);
         let mut ultimas = |sim: &mut ph2d_ecs::SimWorld, (b, n): (Option<u64>, usize)| {

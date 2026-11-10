@@ -565,8 +565,7 @@ color_tokens! {
     Categorical01 => "categorical-01", Categorical02 => "categorical-02", Categorical03 => "categorical-03", Categorical04 => "categorical-04",
     Categorical05 => "categorical-05", Categorical06 => "categorical-06", Categorical07 => "categorical-07", Categorical08 => "categorical-08",
     Categorical09 => "categorical-09", Categorical10 => "categorical-10", Categorical11 => "categorical-11", Categorical12 => "categorical-12",
-    // A prévia de um JOGO (a tela de controles no Try it, maquete C4): céu claro sobre chão verde, o mesmo em todo tema.
-    PreviewSky => "preview-sky", PreviewGround => "preview-ground",
+    PreviewSky => "preview-sky", PreviewGround => "preview-ground", // a prévia de um JOGO (C4), igual em todo tema
 }
 
 impl ColorToken {

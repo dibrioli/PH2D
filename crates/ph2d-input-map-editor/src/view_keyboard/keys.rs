@@ -242,6 +242,8 @@ fn paint_keyboard(
         draw.h - m::CARD_PAD_X * 2.0,
     );
     let p = pitch(inner.w);
+    // Centrado: na janela larga o desenho não passa do passo máximo e sobra espaço dos dois lados.
+    let ox = inner.x + (inner.w - g::WIDTH * p).max(0.0) * 0.5;
     let open = doc
         .kb
         .open
@@ -255,7 +257,7 @@ fn paint_keyboard(
     } in g::keyboard()
     {
         let kr = Rect::new(
-            inner.x + col * p,
+            ox + col * p,
             inner.y + row * p * g::ROW_PITCH,
             (span - (1.0 - g::KEY_FILL)) * p,
             p * g::KEY_H,

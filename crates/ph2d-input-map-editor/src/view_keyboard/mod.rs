@@ -11,8 +11,8 @@ pub mod state;
 mod tiles;
 mod travel;
 
-pub use input::tip_of;
 pub(crate) use input::{key, motion, press, raw_key};
+pub use input::{tip_here, tip_of};
 
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::paint::fill_rounded_rect;

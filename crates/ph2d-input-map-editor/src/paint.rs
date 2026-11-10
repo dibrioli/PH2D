@@ -73,13 +73,10 @@ fn paint_hover_tip(
     let (id, msg) = match doc.hover {
         Some(v) => (v.id(), tr(v.tip_key())),
         None if doc.view() == View::Keyboard => {
-            let Some(h) = doc.kb.hover else {
+            let Some(t) = crate::view_keyboard::tip_here(doc) else {
                 return;
             };
-            let Some(msg) = crate::view_keyboard::tip_of(doc, h.id()) else {
-                return;
-            };
-            (h.id(), msg)
+            t
         }
         None => {
             let Some(id) = doc.list.hover_target.filter(|_| doc.view() == View::List) else {

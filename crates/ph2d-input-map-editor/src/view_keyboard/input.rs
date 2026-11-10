@@ -29,6 +29,16 @@ pub fn tip_of(doc: &InputMapDoc, id: ph2d_a11y::NodeId) -> Option<&'static str> 
     Some(ph2d_i18n::tr(key))
 }
 
+/// O alvo sob o ponteiro e a sua dica: os da vista B, e os campos que ela partilha com a A (nome novo, números).
+#[must_use]
+pub fn tip_here(doc: &InputMapDoc) -> Option<(ph2d_a11y::NodeId, &'static str)> {
+    let (x, y) = doc.kb.pointer?;
+    let id = doc.hits.hit(x, y)?;
+    tip_of(doc, id)
+        .or_else(|| crate::view_list::tip_of(doc, id))
+        .map(|t| (id, t))
+}
+
 /// Acrescenta `b` à acção aberta (a família recusa a repetida; aqui nem se pede).
 fn add(doc: &mut InputMapDoc, b: Binding) {
     let Some(a) = doc.kb.open.and_then(|id| doc.snap.map.get(id)) else {

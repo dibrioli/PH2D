@@ -148,7 +148,8 @@ impl ScriptListView {
                 row.users.to_string()
             };
             let lixo = if row.current { trash } else { 0.0 };
-            let need = gap * 4.0 + chrome::label_w(ts, &name) + chrome::label_w(ts, &count) + lixo;
+            let folgas = gap * 4.0; // LITERAL-PX-OK: fora · nome · contagem · fim
+            let need = folgas + chrome::label_w(ts, &name) + chrome::label_w(ts, &count) + lixo;
             w.max(need)
         })
     }

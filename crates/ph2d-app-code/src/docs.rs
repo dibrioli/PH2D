@@ -14,7 +14,7 @@ use crate::doc::CodeDoc;
 use ph2d_code_intel::GrammarWorker;
 use ph2d_editor_core::ToastQueue;
 use ph2d_editor_core::zones::Rect;
-use ph2d_panel_code::{Badge, FindHit, ScriptListView, count_text};
+use ph2d_panel_code::{Badge, FindHit, count_text};
 use ph2d_script::{LibraryEpoch, ScriptId};
 use std::collections::BTreeMap;
 

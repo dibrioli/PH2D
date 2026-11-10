@@ -236,6 +236,8 @@ pub struct WidgetStore {
     /// a ser o dono do relógio, do carácter e do *reduced motion* — o store carrega o NÚMERO, não
     /// a lei que o produz.
     pub(in crate::interaction) hover_live: BTreeMap<NodeId, f32>,
+    /// Campos cujo caret está na fase APAGADA do piscar (o dono do relógio é quem pinta). Vazio = sempre aceso.
+    pub(in crate::interaction) caret_off: std::collections::BTreeSet<NodeId>,
     /// Painter-published rect of each scrollable panel — populated
     /// every frame so the wheel dispatch can find which panel sits
     /// under the cursor. Cleared together with `clear_for_frame` on

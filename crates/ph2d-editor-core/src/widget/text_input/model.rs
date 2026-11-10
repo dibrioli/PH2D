@@ -34,6 +34,8 @@ pub struct TextInput {
     /// O que a ponta direita guarda para um botão por cima da caixa (o «×» da busca): o texto e o
     /// caret nunca entram nela.
     pub reserva_direita: f32,
+    /// O caret na fase apagada do piscar (o campo continua focado e com a seleção). `false` = o de sempre.
+    pub caret_hidden: bool,
 }
 
 impl TextInput {
@@ -48,7 +50,15 @@ impl TextInput {
             hover_t: crate::motion::SETTLED,
             anel_fino: false,
             reserva_direita: 0.0,
+            caret_hidden: false,
         }
+    }
+
+    /// Ver [`Self::caret_hidden`]: `visible = false` apaga o caret nesta pintura.
+    #[must_use]
+    pub const fn caret_visible(mut self, visible: bool) -> Self {
+        self.caret_hidden = !visible;
+        self
     }
 
     /// Ver [`Self::reserva_direita`].

@@ -185,7 +185,7 @@ pub(crate) fn drag_thumb(doc: &mut InputMapDoc, y: f32) -> bool {
 }
 
 pub(crate) fn release(doc: &mut InputMapDoc) -> bool {
-    if doc.list.thumb_drag.take().is_some() {
+    if doc.list.thumb_drag.take().is_some() | doc.list.text_drag.take().is_some() {
         return true;
     }
     let Some(s) = doc.list.scrub.take() else {
@@ -239,6 +239,55 @@ fn apply(
 }
 
 /// Aplica o número escrito (o que não for número devolve o valor do foco).
+/// O byte de fronteira mais perto de `x` no campo `id`, na pintura de agora.
+fn stop_at(doc: &InputMapDoc, id: ph2d_a11y::NodeId, x: f32) -> usize {
+    doc.list
+        .text_stops
+        .iter()
+        .find(|(o, _)| *o == id)
+        .and_then(|(_, s)| {
+            s.iter()
+                .min_by(|a, b| (a.1 - x).abs().total_cmp(&(b.1 - x).abs()))
+                .map(|s| s.0)
+        })
+        .unwrap_or(0)
+}
+
+/// O Down num campo de texto (nativo): foca JÁ e o caret cai onde se carregou; arrastar selecciona.
+pub(crate) fn press_text(doc: &mut InputMapDoc, id: ph2d_a11y::NodeId, x: f32) {
+    commit_typing(doc);
+    if doc.snap.listening.is_some() {
+        doc.list.listen_request = Some(None);
+    }
+    focus(doc, Some(id));
+    let b = stop_at(doc, id, x);
+    set_text_caret(doc, id, b, None);
+    doc.list.text_drag = Some((id, b));
+}
+
+fn set_text_caret(doc: &mut InputMapDoc, id: ph2d_a11y::NodeId, at: usize, anchor: Option<usize>) {
+    if let Some(InteractiveState::TextInput {
+        text,
+        caret,
+        selection_anchor,
+        ..
+    }) = doc.store.get_mut(id)
+    {
+        *caret = at.min(text.len());
+        *selection_anchor = anchor.filter(|a| *a != *caret);
+    }
+}
+
+/// O ponteiro anda com o botão em baixo num campo de texto: a selecção vai da âncora ao byte sob ele.
+pub(crate) fn drag_text(doc: &mut InputMapDoc, x: f32) -> bool {
+    let Some((id, anchor)) = doc.list.text_drag else {
+        return false;
+    };
+    let b = stop_at(doc, id, x);
+    set_text_caret(doc, id, b, Some(anchor));
+    true
+}
+
 pub(crate) fn commit_typing(doc: &mut InputMapDoc) {
     if let Some(t) = doc.list.typing.take() {
         let (v, clamp) = crate::field::value_of(&t.buffer, &doc.list.caret);

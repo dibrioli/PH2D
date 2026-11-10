@@ -407,7 +407,8 @@ impl<'s> CardCtx<'s> {
         let input = TextInput::new(id, "")
             .placeholder(placeholder)
             .visual((state, self.store.hover_live(id)))
-            .reserva_direita(reserva);
+            .reserva_direita(reserva)
+            .caret_visible(self.store.caret_visible(id));
         paint_text_input_with_buffer(
             &input,
             text,

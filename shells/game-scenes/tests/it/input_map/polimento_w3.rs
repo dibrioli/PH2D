@@ -243,3 +243,298 @@ fn o_numero_da_zona_edita_como_um_campo_pro() {
     m.key(K::Tab, None);
     assert_eq!(m.tab().doc.list.warn, None, "a edição válida apaga a frase");
 }
+
+// ── R3-A2: o polimento pro da vista A ──────────────────────────────────────────────────────────────────────────
+
+/// Uma tecla com modificadores pela porta `key` da aba, seguida do quadro.
+fn key_mods(m: &mut Mesa, key: ph2d_editor_core::doc_surface::Key, mods: ph2d_host::Modifiers) {
+    let input = ph2d_editor_core::doc_surface::KeyInput {
+        key,
+        mods,
+        pressed: true,
+        text: None,
+        paste: None,
+    };
+    let ts = &mut m.ts;
+    if let Some((f, id)) = m.hero.documents.active_surface_mut() {
+        let _ = f.key(id, ts, input);
+    }
+    m.frame();
+}
+
+/// A lista com uma acção de manche (os dois números) e uma de tecla (o chip ×, o lixo e o «+»).
+fn mesa_com_manche() -> (Mesa, ph2d_input::ActionId, ph2d_input::ActionId) {
+    let mut m = Mesa::aberta(View::List);
+    let mut map = ph2d_input::InputMap::new();
+    let a = map.create("steer");
+    if let Some(act) = map.get_mut(a) {
+        act.bindings.push(ph2d_input::Binding::PadAxis {
+            axis: ph2d_input::GamepadAxis::LeftStickX,
+            positive: true,
+        });
+        act.set_zone(0.2, 0.5);
+    }
+    let k = map.create("jump");
+    if let Some(act) = map.get_mut(k) {
+        act.bindings
+            .push(ph2d_input::Binding::Key(ph2d_input::Key(u32::from('J'))));
+    }
+    m.hero.input_map = map;
+    m.frame();
+    (m, a, k)
+}
+
+/// O campo de texto foca no DOWN (não no Up) e o caret cai onde se carregou; arrastar selecciona; soltar acaba.
+#[test]
+fn o_campo_de_texto_foca_no_down_e_o_caret_cai_onde_se_carrega() {
+    let mut m = Mesa::aberta(View::List);
+    m.click(m.at(ids::NEW_NAME));
+    m.type_text("taunt");
+    let r = m.tab().doc.rect_of(ids::NEW_NAME).expect("pintado");
+    let (esq, dir, meio_y) = (r.x + 1.0, r.x + r.w - 2.0, r.y + r.h * 0.5); // LITERAL-PX-OK: dentro da borda
+    m.down(m.at(ids::SEARCH));
+    assert_eq!(
+        m.tab().doc.focus(),
+        Some(ids::SEARCH),
+        "a busca foca no Down"
+    );
+    m.up(m.at(ids::SEARCH));
+    m.down((esq, meio_y));
+    assert_eq!(
+        m.tab().doc.focus(),
+        Some(ids::NEW_NAME),
+        "o nome foca no Down"
+    );
+    assert_eq!(
+        m.tab().doc.field_caret(ids::NEW_NAME).map(|c| c.0),
+        Some(0),
+        "carregar antes da 1.ª letra põe o caret no início"
+    );
+    m.hover((dir, meio_y));
+    assert_eq!(
+        m.tab().doc.field_caret(ids::NEW_NAME).map(|c| (c.0, c.1)),
+        Some((5, Some(0))),
+        "arrastar selecciona do Down ao ponteiro"
+    );
+    m.up((dir, meio_y));
+    assert_eq!(m.tab().doc.list.text_drag, None, "soltar acaba o arrasto");
+    m.hover((esq, meio_y));
+    assert_eq!(
+        m.tab().doc.field_caret(ids::NEW_NAME).map(|c| c.0),
+        Some(5),
+        "sem botão, mover não mexe no caret"
+    );
+}
+
+/// O caret do campo focado pisca pelo relógio do movimento (e pede quadro) e fica fixo, aceso, com reduced motion.
+#[test]
+fn o_caret_do_campo_pisca_e_fica_fixo_com_reduced_motion() {
+    let mut m = Mesa::aberta(View::List);
+    m.click(m.at(ids::NEW_NAME));
+    let fase = |m: &Mesa| {
+        m.tab()
+            .doc
+            .field_caret(ids::NEW_NAME)
+            .map(|c| c.2)
+            .expect("campo")
+    };
+    let a = fase(&m);
+    assert!(m.tab().wants_frame(), "o caret vivo pede quadro");
+    m.hero.motion.advance(0.6);
+    m.frame();
+    assert_ne!(fase(&m), a, "meio período depois, o caret trocou");
+    m.hero.motion.advance(0.6);
+    m.frame();
+    assert_eq!(fase(&m), a, "e volta");
+    m.hero.motion.set_reduced_motion(true);
+    for _ in 0..3 {
+        m.hero.motion.advance(0.6);
+        m.frame();
+        assert!(fase(&m), "reduced motion: fixo, aceso");
+    }
+    assert!(
+        m.tab().doc.field_caret(ids::SEARCH).is_some_and(|c| c.2),
+        "o campo sem foco não pisca"
+    );
+}
+
+/// Shift+↑ dez passos, Alt+↑ um décimo; Tab do Dead vai ao Press e Shift+Tab volta; Esc devolve.
+#[test]
+fn o_numero_da_zona_passo_largo_fino_e_tab_entre_os_dois() {
+    use ph2d_app_input_map::ids::ListHit;
+    use ph2d_app_input_map::view_list::state::Zone;
+    use ph2d_editor_core::doc_surface::Key as K;
+    let (mut m, a, _) = mesa_com_manche();
+    let shift = ph2d_host::Modifiers {
+        shift: true,
+        ..Default::default()
+    };
+    let alt = ph2d_host::Modifiers {
+        alt: true,
+        ..Default::default()
+    };
+    let open = |m: &Mesa| {
+        m.tab()
+            .doc
+            .list
+            .typing
+            .as_ref()
+            .map(|t| (t.zone, t.buffer.clone()))
+    };
+    m.click(m.at(ListHit::Dead(a).id()));
+    key_mods(&mut m, K::Up, shift);
+    assert_eq!(
+        open(&m),
+        Some((Zone::Dead, "0.30".into())),
+        "Shift+↑ = dez passos"
+    );
+    m.key(K::Escape, None);
+    assert_eq!(
+        m.hero.input_map.get(a).expect("a").dead_zone,
+        0.2,
+        "Esc devolve"
+    );
+    m.click(m.at(ListHit::Dead(a).id()));
+    key_mods(&mut m, K::Up, alt);
+    assert_eq!(
+        open(&m),
+        Some((Zone::Dead, "0.201".into())),
+        "Alt+↑ = um décimo"
+    );
+    m.key(K::Escape, None);
+    m.click(m.at(ListHit::Dead(a).id()));
+    m.key(K::Tab, None);
+    assert_eq!(open(&m).map(|o| o.0), Some(Zone::Press), "Tab vai ao Press");
+    key_mods(&mut m, K::Tab, shift);
+    assert_eq!(
+        open(&m).map(|o| o.0),
+        Some(Zone::Dead),
+        "Shift+Tab volta ao Dead"
+    );
+}
+
+/// O hover acende SÓ o controlo pairado, no mesmo quadro.
+#[test]
+fn o_hover_acende_so_o_controlo_pairado_da_lista() {
+    let (mut m, _, k) = mesa_com_manche();
+    use ph2d_app_input_map::ids::ListHit;
+    let alvos = [
+        ids::NEW_NAME,
+        ids::ADD,
+        ids::SEARCH,
+        ListHit::Listen(k).id(),
+    ];
+    for quem in alvos {
+        m.hover(m.at(quem));
+        for outro in alvos {
+            let esperado = if outro == quem { 1.0 } else { 0.0 };
+            assert_eq!(
+                m.tab().doc.hover_live(outro),
+                esperado,
+                "pairado {quem:?}, lido {outro:?}"
+            );
+        }
+    }
+}
+
+/// O premido à vista e o arrasto para fora que cancela, no × do chip, no lixo e no «+».
+#[test]
+fn chip_lixo_e_mais_premem_e_cancelam_ao_sair() {
+    use ph2d_app_input_map::ids::ListHit;
+    let (mut m, _, k) = mesa_com_manche();
+    let row = m.at(ListHit::Row(k).id());
+    for alvo in [
+        ListHit::RemoveBinding(k, 0).id(),
+        ListHit::Trash(k).id(),
+        ListHit::Listen(k).id(),
+    ] {
+        m.hover(row);
+        let at = m.at(alvo);
+        m.down(at);
+        assert!(m.tab().doc.is_pressed(alvo), "{alvo:?}: premido à vista");
+        assert!(
+            m.tab_mut().doc.take_pending().is_empty(),
+            "o Down não dispara"
+        );
+        let fora = (at.0, at.1 + 400.0); // LITERAL-PX-OK: muito abaixo da linha
+        m.hover(fora);
+        assert!(
+            !m.tab().doc.is_pressed(alvo),
+            "{alvo:?}: fora apaga o premido"
+        );
+        m.up(fora);
+        assert!(
+            m.tab_mut().doc.take_pending().is_empty(),
+            "{alvo:?}: o Up fora cancela"
+        );
+    }
+    assert_eq!(
+        m.hero.input_map.get(k).map(|a| a.bindings.len()),
+        Some(1),
+        "nada mudou"
+    );
+}
+
+/// O cursor por espécie de controlo da A: texto, mão, ↔ no número, seta no Add desligado.
+#[test]
+fn o_cursor_por_especie_de_controlo_da_lista() {
+    use ph2d_app_input_map::ids::ListHit;
+    let (mut m, a, k) = mesa_com_manche();
+    let look = |m: &Mesa, id| {
+        let (x, y) = m.at(id);
+        m.tab().doc.look_at(x, y)
+    };
+    assert_eq!(look(&m, ids::NEW_NAME), Some(PointerLook::Text));
+    assert_eq!(look(&m, ids::SEARCH), Some(PointerLook::Text));
+    assert_eq!(
+        look(&m, ids::ADD),
+        Some(PointerLook::Arrow),
+        "Add desligado"
+    );
+    assert_eq!(
+        look(&m, ListHit::Dead(a).id()),
+        Some(PointerLook::Text),
+        "o corpo escreve"
+    );
+    assert_eq!(
+        look(&m, ListHit::DeadHandle(a).id()),
+        Some(PointerLook::ResizeEw),
+        "a alça arrasta"
+    );
+    assert_eq!(look(&m, ListHit::Listen(k).id()), Some(PointerLook::Hand));
+    m.hover(m.at(ListHit::Row(k).id()));
+    assert_eq!(look(&m, ListHit::Trash(k).id()), Some(PointerLook::Hand));
+    assert_eq!(
+        look(&m, ListHit::RemoveBinding(k, 0).id()),
+        Some(PointerLook::Hand)
+    );
+}
+
+/// A acessibilidade da A: um nó por controlo pintado, cada um com papel e nome.
+#[test]
+fn cada_controlo_da_lista_tem_no_com_papel_e_nome() {
+    use ph2d_a11y::Role as R;
+    use ph2d_app_input_map::ids::ListHit;
+    let (m, a, k) = mesa_com_manche();
+    let nodes = m.tab().a11y(TAB_ID);
+    assert_eq!(nodes[0].1.role(), R::Document);
+    for (id, n) in &nodes[1..] {
+        assert!(n.label().is_some_and(|l| !l.is_empty()), "{id:?} sem nome");
+        assert!(
+            m.tab().doc.rect_of(*id).is_some(),
+            "{id:?}: nó sem controlo pintado"
+        );
+    }
+    let papel = |id| nodes.iter().find(|(o, _)| *o == id).map(|(_, n)| n.role());
+    assert_eq!(papel(ids::NEW_NAME), Some(R::TextInput));
+    assert_eq!(papel(ids::SEARCH), Some(R::TextInput));
+    assert_eq!(papel(ids::ADD), Some(R::Button));
+    assert_eq!(papel(ListHit::Dead(a).id()), Some(R::SpinButton));
+    assert_eq!(papel(ListHit::Listen(k).id()), Some(R::Button));
+    let ids_unicos: std::collections::BTreeSet<_> = nodes.iter().map(|(id, _)| *id).collect();
+    assert_eq!(
+        ids_unicos.len(),
+        nodes.len(),
+        "um nó por controlo, sem repetidos"
+    );
+}

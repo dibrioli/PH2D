@@ -396,6 +396,14 @@ impl InputMapDoc {
     pub(crate) fn press_control(&mut self, x: f32, y: f32) -> Option<bool> {
         self.ui.pointer = Some((x, y));
         let c = self.control_at(x, y)?;
+        // O campo de texto foca no Down e o caret cai onde se carregou (o arrasto selecciona), como no SO.
+        if c.role == ControlRole::TextField && c.enabled() && self.view() == View::List {
+            let id = c.id;
+            self.ui.focus = None;
+            self.ui.pressed = None;
+            crate::view_list::press_text(self, id, x);
+            return Some(true);
+        }
         if c.role.drags() {
             return None;
         }

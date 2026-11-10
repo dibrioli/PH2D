@@ -63,6 +63,10 @@ pub struct ListState {
     pub(crate) bar: Option<Bar>,
     /// O polegar agarrado: o y do ponteiro e o rolar ao carregar.
     pub thumb_drag: Option<(f32, f32)>,
+    /// Onde cada byte de fronteira de um campo de texto caiu na última pintura (o clique põe o caret ali).
+    pub(crate) text_stops: Vec<(ph2d_a11y::NodeId, Vec<(usize, f32)>)>,
+    /// O arrasto de selecção num campo de texto: o campo e a âncora (o byte do Down).
+    pub text_drag: Option<(ph2d_a11y::NodeId, usize)>,
 }
 
 impl ListState {

@@ -12,8 +12,40 @@ pub(crate) mod text;
 pub use footer::binding_label;
 pub use input::tip_of;
 pub(crate) use input::{
-    act, commit_typing, drag, drag_thumb, key, open_number, press, raw_key, release, wheel,
+    act, commit_typing, drag, drag_text, drag_thumb, key, open_number, press, press_text, raw_key,
+    release, wheel,
 };
+
+/// Antes de o cartão pintar um campo de texto: a fase do piscar do caret (só o focado pisca e pede quadro).
+fn blink(doc: &mut InputMapDoc, id: ph2d_a11y::NodeId) {
+    let on = doc.store.focus_id() != Some(id) || doc.caret_on(id);
+    doc.store.set_caret_visible(id, on);
+}
+
+/// Depois de o cartão pintar o campo `id`: onde cai cada fronteira de byte, pela lei do pintor que o desenhou
+/// (o focado: `text_input_text_origin_x` a `TypeToken::Base`; o em repouso: `FIELD_PAD_R` a `VALUE_PX`).
+fn record_stops(doc: &mut InputMapDoc, ts: &mut TextSystem, id: ph2d_a11y::NodeId) {
+    let Some(r) = doc.hits.rect_for(id) else {
+        return;
+    };
+    let text = doc.store.text(id).unwrap_or("").to_owned();
+    let (x0, px) = if doc.store.focus_id() == Some(id) {
+        (
+            ph2d_editor_core::widget::text_input_text_origin_x(r),
+            ph2d_tokens::TypeToken::Base.px(),
+        )
+    } else {
+        (r.x + m::FIELD_PAD_R, m::VALUE_PX)
+    };
+    let stops = text
+        .char_indices()
+        .map(|(i, _)| i)
+        .chain([text.len()])
+        .map(|i| (i, x0 + ts.prefix_width(&text[..i], px)))
+        .collect();
+    doc.list.text_stops.retain(|(o, _)| *o != id);
+    doc.list.text_stops.push((id, stops));
+}
 
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::icons::IconId;
@@ -102,6 +134,8 @@ pub fn paint(
             ButtonState::Normal
         };
     }
+    blink(doc, ids::NEW_NAME);
+    blink(doc, ids::SEARCH);
     {
         let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, x, name_w);
         let text = Widget::Text {
@@ -125,6 +159,7 @@ pub fn paint(
         };
         y = below.max(c.full(None, button, y));
     }
+    record_stops(doc, ts, ids::NEW_NAME);
     if let Some(r) = doc.hits.rect_for(ids::NEW_NAME) {
         doc.control(Control::new(
             ids::NEW_NAME,
@@ -203,6 +238,7 @@ fn paint_search(
             },
             r.y,
         );
+        record_stops(doc, ts, ids::SEARCH);
         let field = doc.hits.rect_for(ids::SEARCH).unwrap_or(r);
         doc.control(Control::new(ids::SEARCH, field, ControlRole::TextField, ph));
         // O × só com texto: limpa e o foco fica na busca.

@@ -81,6 +81,21 @@ impl WidgetStore {
         self.hover_live.insert(id, t);
     }
 
+    /// O caret de `id` está aceso? `true` por omissão (o campo que ninguém faz piscar).
+    #[must_use]
+    pub fn caret_visible(&self, id: NodeId) -> bool {
+        !self.caret_off.contains(&id)
+    }
+
+    /// A fase do piscar do caret de `id`, publicada por quem tem o relógio.
+    pub fn set_caret_visible(&mut self, id: NodeId, on: bool) {
+        if on {
+            self.caret_off.remove(&id);
+        } else {
+            self.caret_off.insert(id);
+        }
+    }
+
     /// Convenience: read button state.
     /// O que um chip numérico pinta a partir do store: o estado, o buffer em edição, o cursor e a
     /// âncora da seleção — o `Normal` vazio quando o id não é um `NumberInput`. ⚠️ Um acessor, e

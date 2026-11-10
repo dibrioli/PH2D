@@ -401,10 +401,12 @@ pub fn paint_text_input_with_buffer(
             CARET_W,
             (rect.h - pad_y * 2.0).max(0.0),
         );
-        scene.fill_rect(
-            crate::paint::rect_to_vello(caret_rect),
-            resolve(ColorToken::Accent, theme),
-        );
+        if !input.caret_hidden {
+            scene.fill_rect(
+                crate::paint::rect_to_vello(caret_rect),
+                resolve(ColorToken::Accent, theme),
+            );
+        }
         crate::ime::publish_caret(input.id, caret_rect);
     }
     scene.pop_layer();

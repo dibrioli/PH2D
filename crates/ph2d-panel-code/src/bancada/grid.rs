@@ -34,18 +34,23 @@ pub(super) struct Painted {
     rows: Vec<Row>,
 }
 
-/// As colunas: os nomes e uma por propriedade (os números à direita, na mono).
+/// A tinta do texto da grelha (nomes e valores que não são números): a de «alive» no quadro parado
+/// (`Hint` = `Text2`), um degrau abaixo do `Text1` (dono 10/11).
+const TEXT_INK: Ink = Ink::Name;
+
+/// As colunas: os nomes e uma por propriedade, todas na mono do código (a letra de «alive», dono
+/// 10/11); os números à direita. Os cabeçalhos ficam na letra da interface.
 fn columns(who: &Who) -> Vec<Column> {
     let props = who.columns.iter().map(|c| {
-        let col = Column::new(c.name.clone(), c.name.clone());
+        let col = Column::new(c.name.clone(), c.name.clone()).mono();
         if c.kind == Some(CellKind::Number) {
-            col.end().mono()
+            col.end()
         } else {
             col
         }
     });
     // O título da primeira coluna é o da folha do Stopped (a tabela irmã na mesma aba).
-    std::iter::once(Column::new(NAME, tr("code.debug.col.name")))
+    std::iter::once(Column::new(NAME, tr("code.debug.col.name")).mono())
         .chain(props)
         .collect()
 }
@@ -54,12 +59,12 @@ fn columns(who: &Who) -> Vec<Column> {
 fn rows(who: &Who) -> Vec<Row> {
     let ink = |c: usize| match who.columns[c].kind {
         Some(CellKind::Number) => Ink::Number,
-        _ => Ink::Plain,
+        _ => TEXT_INK,
     };
     let row = |(h, holder): (usize, &Holder)| {
         let name = Cell {
             dot: Some(ColorToken::layer(holder.color)),
-            ..Cell::new(holder.name.clone(), Ink::Name)
+            ..Cell::new(holder.name.clone(), TEXT_INK)
         };
         let cells = (0..who.columns.len()).map(|c| {
             who.cell(h, c).map_or_else(Cell::default, |x| Cell {

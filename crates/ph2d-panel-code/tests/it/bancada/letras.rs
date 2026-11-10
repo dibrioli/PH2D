@@ -397,3 +397,103 @@ fn a_frase_sem_propriedades_e_o_texto_dos_problemas_tem_a_letra_de_alive() {
         "o cabeçalho «Problem» passou à mono"
     );
 }
+
+/// A grelha de `quem()` pintada com a mono medida em `theme`: as corridas e a tinta de cada uma
+/// (ids, a cor que o Vello codificou à frente da corrida, RGBA pré-multiplicado).
+fn grelha(ts: &mut TextSystem, theme: Theme) -> (Vec<Corrida>, Vec<(Vec<u32>, u32)>) {
+    let (who, mut v, mut s) = (quem(), BancadaView::default(), VectorScene::new());
+    let mut view = medido(ts);
+    v.paint_bench(&who, GRADE, None, &mut view, &mut s, ts, &theme);
+    let e = s.inner().encoding();
+    let tintas = e
+        .resources
+        .glyph_runs
+        .iter()
+        .map(|g| {
+            let ids = e.resources.glyphs[g.glyphs.clone()].iter().map(|x| x.id);
+            (ids.collect(), e.draw_data[g.stream_offsets.draw_data])
+        })
+        .collect();
+    (corridas(&s), tintas)
+}
+
+/// A tinta da corrida com os glifos de `t` na mono.
+fn tinta_de(ts: &mut TextSystem, tintas: &[(Vec<u32>, u32)], t: &str) -> u32 {
+    let ids = ids_mono(ts, t);
+    tintas
+        .iter()
+        .find_map(|(i, c)| (*i == ids).then_some(*c))
+        .unwrap_or_else(|| panic!("«{t}» não se pintou"))
+}
+
+/// Uma cor como o Vello a codifica.
+fn rgba(c: Color) -> u32 {
+    c.premultiply().to_rgba8().to_u32()
+}
+
+/// (5) Dono 10/11: na grelha os nomes e os valores de texto saem na letra de «alive» (como o texto
+/// dos problemas) e na tinta dela, `Text2`, um degrau abaixo do `Text1`; o que mudou fica âmbar.
+#[test]
+fn a_grelha_tem_a_letra_e_a_tinta_de_alive() {
+    use ph2d_tokens::ColorToken;
+    let mut ts = TextSystem::without_system_fonts();
+    let quadro = quadro(&mut ts);
+    let alive = letra(achar(&quadro, &ids_mono(&mut ts, "alive"), "«alive»"));
+    for theme in [Theme::Forge, Theme::Light] {
+        let (cena, rec) = grelha(&mut ts, theme);
+        let res = |t| rgba(ph2d_editor_core::paint::resolve(t, theme));
+        for t in ["Hero", "Hero 2", "true", "calm", "0"] {
+            let c = achar(&cena, &ids_mono(&mut ts, t), t);
+            assert_eq!(
+                letra(c),
+                alive,
+                "{theme:?}: «{t}» não tem a letra de «alive»"
+            );
+            let ink = tinta_de(&mut ts, &rec, t);
+            assert_eq!(ink, res(ColorToken::Text2), "{theme:?}: a tinta de «{t}»");
+            assert_ne!(
+                ink,
+                res(ColorToken::Text1),
+                "{theme:?}: «{t}» ficou no Text1"
+            );
+        }
+        let mudou = rgba(ph2d_editor_core::paint::token_to_vello(
+            ph2d_tokens::changed_ink(theme),
+        ));
+        assert_eq!(
+            tinta_de(&mut ts, &rec, "false"),
+            mudou,
+            "{theme:?}: o que mudou fica âmbar"
+        );
+        assert_eq!(
+            tinta_de(&mut ts, &rec, "sleepy"),
+            mudou,
+            "{theme:?}: o que mudou fica âmbar"
+        );
+        let cab = ids_mono(&mut ts, tr("code.debug.col.name"));
+        assert!(
+            !cena.iter().any(|c| c.4 == cab),
+            "o cabeçalho passou à mono"
+        );
+    }
+}
+
+/// (6) A tinta da grelha passa o mínimo de texto da WCAG (4,5:1) sobre as duas listras, com e sem
+/// cartões, no escuro (Forge) e no claro (Light).
+#[test]
+fn a_tinta_da_grelha_tem_contraste_nos_dois_temas() {
+    use ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread;
+    use ph2d_tokens::{ColorToken, faint_row_bg};
+    for theme in [Theme::Forge, Theme::Light] {
+        for cartoes in [true, false] {
+            force_cards_on_this_thread(Some(cartoes));
+            let base = ph2d_panel_code::cards::card_tone().resolve(theme);
+            for fundo in [base, faint_row_bg(base)] {
+                let r = ColorToken::Text2.resolve(theme).contrast_ratio(&fundo);
+                eprintln!("{theme:?} cartões={cartoes} Text2 sobre {fundo:?}: {r:.2}");
+                assert!(r >= 4.5, "{theme:?} cartões={cartoes}: Text2 {r:.2} < 4,5");
+            }
+        }
+        force_cards_on_this_thread(None);
+    }
+}

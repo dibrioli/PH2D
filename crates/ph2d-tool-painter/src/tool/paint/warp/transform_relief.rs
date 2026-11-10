@@ -58,11 +58,11 @@ impl PainterTool {
     /// levantar. `None` quando a camada ativa não tem relevo — não há corpo a carregar, e um
     /// `FloatingRelief` vazio faria o render trabalhar para escrever o que já está lá.
     ///
-    /// `mask` é a cobertura da seleção quando o Transform está restrito a ela, `None` para a camada
-    /// inteira.
+    /// `sel` é a cobertura da seleção (e a caixa dela) quando o Transform está restrito a ela, `None`
+    /// para a camada inteira — aí o patch leva TODA a cobertura e a base fica sem nenhuma.
     pub(super) fn lift_transform_relief(
         &self,
-        mask: Option<&dyn Fn(u32, u32) -> u8>,
+        sel: Option<(&[u8], Region)>,
     ) -> Option<FloatingRelief> {
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
@@ -70,26 +70,8 @@ impl PainterTool {
         let heights = self.heights.get(&layer).filter(|v| v.len() == n)?;
         let covers = self.covers.get(&layer).filter(|v| v.len() == n)?;
         let mats = self.mats.get(&layer).filter(|v| v.len() == n)?;
-        let (c_patch, c_base) = match mask {
-            // Camada inteira: o patch leva TODA a cobertura e a base fica sem nenhuma.
-            None => (Arc::clone(covers), None),
-            Some(mask) => {
-                let mut cp = vec![0u8; n];
-                let mut cb = vec![0u8; n];
-                for y in 0..h {
-                    for x in 0..w {
-                        let gi = (y * w + x) as usize;
-                        let mk = f32::from(mask(x, y)) / 255.0;
-                        let c = f32::from(covers[gi]);
-                        // A MESMA partição que o alfa da cor faz — patch `c·m`, base `c·(1−m)` —, que é
-                        // o que faz a identidade reconstruir a cobertura de origem.
-                        cp[gi] = (c * mk).round().clamp(0.0, 255.0) as u8;
-                        cb[gi] = (c * (1.0 - mk)).round().clamp(0.0, 255.0) as u8;
-                    }
-                }
-                (Arc::new(cp), Some(Arc::new(cb)))
-            }
-        };
+        // A MESMA partição que o alfa da cor faz (patch `c·m`, base `c·(1−m)`), só na caixa (B06.A4).
+        let (c_patch, c_base) = super::transform_lift::split_covers(covers, sel, w);
         Some(FloatingRelief {
             layer,
             h: Arc::clone(heights),

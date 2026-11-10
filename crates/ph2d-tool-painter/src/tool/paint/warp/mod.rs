@@ -35,6 +35,7 @@ mod prancha_b06b_tests;
 mod transform;
 mod transform_float;
 mod transform_geom;
+mod transform_lift;
 mod transform_mesh;
 #[cfg(test)]
 mod transform_modes_tests;

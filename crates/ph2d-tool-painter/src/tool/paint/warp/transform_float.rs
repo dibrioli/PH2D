@@ -104,58 +104,28 @@ impl PainterTool {
         let before = self.snapshot_model();
         let restrict = self.deform_restricts_to_selection();
         let cur = Arc::clone(&self.canvas_rgba);
-        let mut patch = vec![0u8; n * 4];
-        let mut base = (*cur).clone();
-        let (mut x0, mut y0, mut x1, mut y1) = (u32::MAX, u32::MAX, 0u32, 0u32);
-        let mut any = false;
-        for y in 0..h {
-            for x in 0..w {
-                let m = if restrict {
-                    f32::from(self.selection_coverage_at(x, y)) / 255.0
-                } else {
-                    1.0
-                };
-                if m <= 0.0 {
-                    continue;
-                }
-                let i = ((y * w + x) as usize) * 4;
-                let a = f32::from(cur[i + 3]);
-                // Split the source alpha: the patch takes the `m` fraction, the base keeps `1 − m` (a clean
-                // partition → additive/over reconstruct the source at identity for a hard mask).
-                patch[i] = cur[i];
-                patch[i + 1] = cur[i + 1];
-                patch[i + 2] = cur[i + 2];
-                patch[i + 3] = (a * m).round() as u8;
-                base[i + 3] = (a * (1.0 - m)).round() as u8;
-                if patch[i + 3] > 0 {
-                    any = true;
-                    x0 = x0.min(x);
-                    y0 = y0.min(y);
-                    x1 = x1.max(x);
-                    y1 = y1.max(y);
-                }
-            }
-        }
-        if !any {
+        // Split the source alpha: the patch takes the `m` fraction, the base keeps `1 − m` (a clean
+        // partition → over reconstructs the source at identity for a hard mask). B06.A4: only the
+        // selection's box is walked (`transform_lift`).
+        let sel = if restrict {
+            let mask = &self.paint.selection_mask[..];
+            let Some(sb) = super::transform_lift::mask_bbox(mask, w, h) else {
+                return false; // empty selection
+            };
+            Some((mask, sb))
+        } else {
+            None
+        };
+        let Some((patch, base, src)) = super::transform_lift::lift_colour(&cur, sel, w, h) else {
             return false; // nothing to lift (empty layer / empty selection)
-        }
-        let src = Region {
-            x: x0,
-            y: y0,
-            w: x1 - x0 + 1,
-            h: y1 - y0 + 1,
         };
         let frame = frame_from_region(src);
         // ⚠️ O corpo é congelado com a MESMA máscara que partiu o alfa da cor, logo acima — as duas
         // metades da tinta têm de concordar sobre o que subiu com o patch e o que ficou no buraco.
-        let relief = if restrict {
-            self.lift_transform_relief(Some(&|x, y| self.selection_coverage_at(x, y)))
-        } else {
-            self.lift_transform_relief(None)
-        };
+        let relief = self.lift_transform_relief(sel);
         self.paint.deform.xform_patch = Some(FloatingPatch {
-            patch: Arc::new(patch),
-            base: Arc::new(base),
+            patch,
+            base,
             src,
             relief,
         });

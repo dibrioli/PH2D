@@ -3,16 +3,16 @@
 //! Settings ▸ Input Map… chega como o pedido do `WidgetStore`, e o `frame` abre (ou traz à frente) a aba.
 
 pub use ph2d_input_map_editor::{
-    InputMapDoc, InputMapEdit, Snapshot, View, ids, view_keyboard, view_list,
+    InputMapDoc, InputMapEdit, Snapshot, View, ids, view_keyboard, view_list, view_try,
 };
 
-mod apply;
 pub mod listen;
 pub mod readers;
 pub mod smoke;
 mod surface;
 
 pub use surface::{InputMapTab, TAB_ID};
+pub use ph2d_player_controls;
 
 use ph2d_editor_core::HeroScreen;
 
@@ -38,7 +38,12 @@ pub fn view(hero: &HeroScreen) -> View {
 }
 
 /// **O quadro da família**: abre a aba pedida, aplica os pedidos dela no mapa e publica o snapshot.
-pub fn frame(world: &ph2d_ecs::World, hero: &mut HeroScreen, gamepad_connected: bool) {
+pub fn frame(
+    world: &ph2d_ecs::World,
+    hero: &mut HeroScreen,
+    gamepad_connected: bool,
+    live: &ph2d_input::InputState,
+) {
     let open = hero.store.take_input_map_tab_request();
     let Some(tab) = hero.documents.surfaces_mut().find_mut::<InputMapTab>() else {
         return;
@@ -48,8 +53,9 @@ pub fn frame(world: &ph2d_ecs::World, hero: &mut HeroScreen, gamepad_connected: 
     }
     let edits = tab.doc.take_pending();
     let listen = tab.doc.take_listen_request();
+    let file = tab.doc.player_file();
     for e in edits {
-        apply::apply(&mut hero.input_map, e);
+        ph2d_input_map_editor::edit::apply(&mut hero.input_map, e, file.as_deref());
     }
     match listen {
         Some(Some(id)) => hero.store.listen_for_binding(id),
@@ -67,9 +73,13 @@ pub fn frame(world: &ph2d_ecs::World, hero: &mut HeroScreen, gamepad_connected: 
         play_running: ph2d_ecs::run_is_on_copy(world),
         readers: readers::of_world(world),
         listening,
+        game_id: world
+            .get_resource::<ph2d_player_controls::GameId>()
+            .map_or(0, |g| g.0),
     };
     if let Some(tab) = hero.documents.surfaces_mut().find_mut::<InputMapTab>() {
         tab.doc.set_snapshot(snap);
+        tab.doc.tick_try(live);
     }
 }
 

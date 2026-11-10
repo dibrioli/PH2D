@@ -186,10 +186,8 @@ pub(crate) struct ProjectFile {
     pub(crate) game_id: u64,
 }
 
-/// **A identidade do jogo, no mundo** — recurso como o `StableIdCounter` (campo do ficheiro, fora do
-/// `ProjectState`): o load semeia-o e o projecto que nasce sorteia-o na primeira pergunta.
-#[derive(bevy_ecs::prelude::Resource, Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) struct GameId(pub(crate) u64);
+/// A identidade do jogo, no mundo (mora em `ph2d_player_controls`, que a aba Input Map também lê).
+pub(crate) use ph2d_player_controls::GameId;
 
 /// **Um `game_id` novo, nunca `0`** — o acaso do SO (a chave da `RandomState` da std, sem dependência
 /// nova) misturado com o relógio.

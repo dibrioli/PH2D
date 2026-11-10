@@ -15,6 +15,7 @@ authors.workspace = true
 # reusa o `paint` na prévia.
 
 [dependencies]
+bevy_ecs = "0.20"
 ph2d-card-stack = { path = "../ph2d-card-stack" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-i18n = { path = "../ph2d-i18n" }

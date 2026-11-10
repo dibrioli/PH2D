@@ -19,6 +19,12 @@ pub use paint::paint;
 pub use screen::{ControlsScreen, Hit, Outcome, Row, SLOTS, readable_name, rebind, rows};
 pub use session::PlaySession;
 
+/// **A identidade do jogo, no mundo** — recurso como o `StableIdCounter` (campo do ficheiro, fora do undo): o load
+/// semeia-o e o projecto que nasce sorteia-o na primeira pergunta. Mora aqui para a aba Input Map achar o ficheiro
+/// do jogador ([`player_file`]) sem a shell.
+#[derive(bevy_ecs::prelude::Resource, Copy, Clone, Debug, PartialEq, Eq)]
+pub struct GameId(pub u64);
+
 #[cfg(test)]
 mod play_tests;
 #[cfg(test)]

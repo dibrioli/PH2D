@@ -29,9 +29,14 @@ fn pitch(w: f32) -> f32 {
     (w / g::WIDTH).min(m::FIELD_H * g::PITCH_MAX_ROWS)
 }
 
+/// A altura do desenho do teclado para a largura `w` (a vista C reusa-o).
+pub(crate) fn keyboard_h(w: f32) -> f32 {
+    pitch(w) * g::ROW_PITCH * g::ROWS + m::CARD_PAD_X * 2.0
+}
+
 fn drawing_h(doc: &InputMapDoc, w: f32) -> f32 {
     match doc.kb.sub {
-        Sub::Keyboard => pitch(w) * g::ROW_PITCH * g::ROWS + m::CARD_PAD_X * 2.0,
+        Sub::Keyboard => keyboard_h(w),
         Sub::Gamepad => super::pad::height(w),
     }
 }
@@ -235,6 +240,26 @@ fn paint_keyboard(
     ts: &mut TextSystem,
     ink: CardInk,
 ) {
+    let open = doc
+        .kb
+        .open
+        .and_then(|a| doc.snap.map.get(a))
+        .map(|a| a.bindings.clone())
+        .unwrap_or_default();
+    paint_keys(doc, draw, scene, ts, ink, &|k| {
+        open.contains(&Binding::Key(k))
+    });
+}
+
+/// O teclado desenhado: UM pintor para B (acesas = as da acção aberta) e C (acesas = as premidas no Try it).
+pub(crate) fn paint_keys(
+    doc: &mut InputMapDoc,
+    draw: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    ink: CardInk,
+    lit_of: &dyn Fn(ph2d_input::Key) -> bool,
+) {
     let inner = Rect::new(
         draw.x + m::CARD_PAD_X,
         draw.y + m::CARD_PAD_X,
@@ -244,11 +269,6 @@ fn paint_keyboard(
     let p = pitch(inner.w);
     // Centrado: na janela larga o desenho não passa do passo máximo e sobra espaço dos dois lados.
     let ox = inner.x + (inner.w - g::WIDTH * p).max(0.0) * 0.5;
-    let open = doc
-        .kb
-        .open
-        .and_then(|a| doc.snap.map.get(a))
-        .map(|a| a.bindings.clone());
     for KeyCap {
         key,
         col,
@@ -264,7 +284,7 @@ fn paint_keyboard(
         );
         let b = Binding::Key(key);
         let who = users(doc, b);
-        let lit = open.as_ref().is_some_and(|o| o.contains(&b));
+        let lit = lit_of(key);
         let hover = doc.kb.hover == Some(KbHit::Key(key));
         let bg = if lit || hover {
             ColorToken::CardFieldHover

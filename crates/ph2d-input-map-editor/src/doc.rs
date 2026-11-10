@@ -91,6 +91,8 @@ pub struct InputMapDoc {
     pub list: ListState,
     /// O estado da vista B.
     pub kb: crate::view_keyboard::state::KbState,
+    /// O estado da vista C (o bench do Try it).
+    pub tryit: crate::view_try::state::TryState,
     /// O que a última pintura pôs na tela (textos e campos numéricos).
     pub census: Census,
 }
@@ -108,6 +110,7 @@ impl InputMapDoc {
             hover: None,
             list: ListState::default(),
             kb: crate::view_keyboard::state::KbState::default(),
+            tryit: crate::view_try::state::TryState::new(),
             census: Census::default(),
         }
     }
@@ -118,6 +121,7 @@ impl InputMapDoc {
     }
 
     pub fn set_view(&mut self, view: View) {
+        self.tryit.reread |= view == View::TryIt && self.view != view;
         self.view = view;
     }
 
@@ -134,14 +138,32 @@ impl InputMapDoc {
     }
 
     pub fn set_snapshot(&mut self, snap: Snapshot) {
+        self.tryit.reread |= snap.game_id != self.snap.game_id;
         self.snap = snap;
+        crate::view_try::reread_player_file(self);
+    }
+
+    /// O quadro do bench do Try it: com o jogo parado, as teclas da aba (+ o comando ao vivo); com o Play a
+    /// correr, o estado do jogo (`live`). Nunca escreve no mapa nem no `live`.
+    pub fn tick_try(&mut self, live: &ph2d_input::InputState) {
+        crate::view_try::tick(self, live);
+    }
+
+    /// O ficheiro do jogador deste jogo neste computador (o `ForgetPlayerKeys` apaga-o).
+    #[must_use]
+    pub fn player_file(&self) -> Option<std::path::PathBuf> {
+        let base = self.tryit.base.as_ref()?;
+        (self.snap.game_id != 0).then(|| ph2d_player_controls::player_file(base, self.snap.game_id))
     }
 
     /// Carregar em `(x, y)`: um segmento troca a vista. `true` = dentro da aba (tomado).
     pub fn press(&mut self, x: f32, y: f32) -> bool {
         if let Some(v) = self.hits.hit(x, y).and_then(View::of_id) {
-            self.view = v;
+            self.set_view(v);
             return true;
+        }
+        if self.view == View::TryIt && self.layout.body.contains(x, y) {
+            return crate::view_try::press(self, x, y);
         }
         if self.view == View::List && self.layout.body.contains(x, y) {
             return crate::view_list::press(self, x, y);
@@ -183,7 +205,11 @@ impl InputMapDoc {
 
     /// A roda: rola a lista.
     pub fn wheel(&mut self, dy: f32) -> bool {
-        self.view == View::List && crate::view_list::wheel(self, dy)
+        match self.view {
+            View::List => crate::view_list::wheel(self, dy),
+            View::TryIt => crate::view_try::wheel(self, dy),
+            View::Keyboard => false,
+        }
     }
 
     /// Uma tecla para o campo focado da aba. `true` = tomada.
@@ -191,7 +217,7 @@ impl InputMapDoc {
         match self.view {
             View::List => crate::view_list::key(self, input),
             View::Keyboard => crate::view_keyboard::key(self, input),
-            View::TryIt => false,
+            View::TryIt => crate::view_try::key(self, input),
         }
     }
 
@@ -200,7 +226,7 @@ impl InputMapDoc {
         match self.view {
             View::List => crate::view_list::raw_key(self, key, pressed, writes_text),
             View::Keyboard => crate::view_keyboard::raw_key(self, key, pressed, writes_text),
-            View::TryIt => false,
+            View::TryIt => crate::view_try::raw_key(self, key, pressed),
         }
     }
 

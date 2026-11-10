@@ -3,13 +3,13 @@
 //! baixo a acção aberta com as ligações em ladrilhos, a escuta no lugar e — com manche — a barra do curso.
 
 mod geometry;
-mod input;
-mod keys;
+pub(crate) mod input;
+pub(crate) mod keys;
 mod list;
 mod pad;
 pub mod state;
 mod tiles;
-mod travel;
+pub(crate) mod travel;
 
 pub(crate) use input::{key, motion, press, raw_key};
 pub use input::{tip_here, tip_of};

@@ -96,7 +96,27 @@ pub(super) fn paint(
             ink.color(ColorToken::Text2),
         );
     }
+    // O comando AO VIVO: a marca de onde a manche está agora (o mesmo cru que o resolvedor lê).
+    let live = crate::view_try::pad_raw(&doc.tryit.live_pad, a);
+    if live > 0.0 {
+        let lx = bar.x + bar.w * live;
+        let dot = Rect::new(lx - bar.h * 0.5, bar.y, bar.h, bar.h);
+        fill_rounded_rect(scene, dot, bar.h * 0.5, ink.color(ColorToken::Accent));
+    }
     y += LABEL_H + m::FIELD_ROW_GAP;
+    zone_fields(doc, a, Rect::new(r.x, y, r.w, 0.0), scene, ts, ink);
+}
+
+/// Os dois campos «Dead zone (0 to 1)» / «Press at (0 to 1)» numa linha a partir de `r.y` (A, B e C usam ESTES).
+pub(crate) fn zone_fields(
+    doc: &mut InputMapDoc,
+    a: &InputAction,
+    r: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    ink: CardInk,
+) {
+    let y = r.y;
     let half = (r.w - m::FIELD_GAP) * 0.5;
     for (i, (hit, label, value)) in [
         (ListHit::Dead(a.id), "input_map_list.dead", a.dead_zone),

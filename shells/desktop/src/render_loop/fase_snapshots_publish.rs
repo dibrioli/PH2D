@@ -214,7 +214,7 @@ impl crate::App {
         let filed = self.recovery.project_path.is_some();
         ph2d_app_code::frame(sim, script.as_mut(), hero, toasts, filed);
         let tl = (&self.timeline.doc, &mut self.timeline_intents);
-        document_families(sim, hero, tl, toasts, self.gilrs.as_ref());
+        document_families(sim, hero, tl, toasts, (self.gilrs.as_ref(), &self.input));
         // ⭐ **A LUZ** (Luz 2D): a secção do Inspector e a recusa do solver, que sobe como aviso.
         let (timeline, playhead) = (&self.timeline, &self.playhead);
         let mut ultimas = |sim: &mut ph2d_ecs::SimWorld, (b, n): (Option<u64>, usize)| {
@@ -277,11 +277,11 @@ fn document_families(
         &mut Vec<ph2d_timeline::TimelineIntent>,
     ),
     toasts: &mut ph2d_editor_core::ToastQueue,
-    gilrs: Option<&gilrs::Gilrs>,
+    (gilrs, input): (Option<&gilrs::Gilrs>, &ph2d_input::InputState),
 ) {
     ph2d_app_components::kanban_scene::frame(sim, hero, tl, intents);
     ph2d_app_kanban::frame(hero);
     ph2d_app_planner::frame(hero, toasts);
     let pad = gilrs.is_some_and(|g| g.gamepads().next().is_some());
-    ph2d_app_input_map::frame(sim.world(), hero, pad);
+    ph2d_app_input_map::frame(sim.world(), hero, pad, input);
 }

@@ -49,8 +49,15 @@ fn add(doc: &mut InputMapDoc, b: Binding) {
     }
 }
 
-fn scrub(doc: &mut InputMapDoc, zone: Zone, x: f32, width: f32, opens_text: bool) {
-    let Some(a) = doc.kb.open.and_then(|id| doc.snap.map.get(id)) else {
+pub(crate) fn scrub(
+    doc: &mut InputMapDoc,
+    action: Option<ph2d_input::ActionId>,
+    zone: Zone,
+    x: f32,
+    width: f32,
+    opens_text: bool,
+) {
+    let Some(a) = action.and_then(|id| doc.snap.map.get(id)) else {
         return;
     };
     let start = if zone == Zone::Dead {
@@ -118,7 +125,7 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
                 Zone::Press
             };
             let w = doc.kb.bar.map_or(1.0, |b| b.1);
-            scrub(doc, zone, x, w, false);
+            scrub(doc, open, zone, x, w, false);
         }
         None => {
             let field = open.and_then(|a| {
@@ -131,7 +138,7 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
             });
             if let Some((h, zone)) = field {
                 let w = doc.hits.rect_for(h.id()).map_or(1.0, |r| r.w);
-                scrub(doc, zone, x, w, true);
+                scrub(doc, open, zone, x, w, true);
             }
         }
     }

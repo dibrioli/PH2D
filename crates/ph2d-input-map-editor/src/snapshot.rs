@@ -17,4 +17,6 @@ pub struct Snapshot {
     pub readers: BTreeMap<String, Vec<Reader>>,
     /// A acção à escuta pela escuta partilhada (`WidgetStore::input_map_listening`), se é desta aba.
     pub listening: Option<ActionId>,
+    /// A identidade do jogo (`ph2d_player_controls::GameId`); `0` = ainda sem mundo.
+    pub game_id: u64,
 }

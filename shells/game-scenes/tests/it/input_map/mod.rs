@@ -9,6 +9,8 @@ mod lista_acabamento;
 mod lista_censo;
 mod teclado;
 mod teclado_censo;
+mod try_it;
+mod try_it_censo;
 
 use ph2d_a11y::NodeId;
 use ph2d_app_input_map::{InputMapTab, TAB_ID, View};
@@ -36,6 +38,8 @@ pub(super) struct Mesa {
     pub ts: TextSystem,
     /// Há um comando ligado (o que a shell passa ao `frame`).
     pub gamepad: bool,
+    /// O `InputState` da shell (o comando ao vivo; o estado do jogo com o Play a correr).
+    pub live: ph2d_input::InputState,
 }
 
 impl Mesa {
@@ -48,6 +52,7 @@ impl Mesa {
             hero,
             ts: TextSystem::without_system_fonts(),
             gamepad: false,
+            live: ph2d_input::InputState::default(),
         }
     }
 
@@ -67,7 +72,7 @@ impl Mesa {
 
     /// Um quadro: a família, o hero a seguir as abas, a pintura da aba activa.
     pub fn frame(&mut self) {
-        ph2d_app_input_map::frame(self.sim.world(), &mut self.hero, self.gamepad);
+        ph2d_app_input_map::frame(self.sim.world(), &mut self.hero, self.gamepad, &self.live);
         self.hero.documents.follow_surfaces();
         self.paint();
     }

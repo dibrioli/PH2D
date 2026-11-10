@@ -27,3 +27,7 @@ pub fn com_peso_exato<R>(f: impl FnOnce() -> R) -> R {
 pub(crate) fn ativo() -> bool {
     EXATO.with(Cell::get)
 }
+
+#[cfg(test)]
+#[path = "peso_exato_tests.rs"]
+mod tests;

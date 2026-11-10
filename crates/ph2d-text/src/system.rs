@@ -476,7 +476,7 @@ const WEIGHT_MAX: f32 = 900.0;
 /// [`ph2d_tokens::crisp_weight_boost_for`]. `Default` returns the
 /// nominal unchanged because its params are all-zero. Result is
 /// clamped to `[100, 900]`.
-fn effective_weight(
+pub(crate) fn effective_weight(
     nominal: FontWeight,
     font_size: f32,
     rendering: ph2d_tokens::TextRendering,

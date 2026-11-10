@@ -203,6 +203,16 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   mutações (nomes sem `.mono()`; propriedades sem `.mono()`; `TEXT_INK = Plain`; `changed: false`) → vermelho as 4. Fotos
   [passo_1.png](../ferramentas/smoke/cena15/passo_1.png) · [passo_1_claro.png](../ferramentas/smoke/cena15/passo_1_claro.png) ·
   [al_grelha_zoom.png](../ferramentas/smoke/cena15/al_grelha_zoom.png) (2×, grelha ao lado dos problemas, escuro e claro).
+- **A letra do script igual à dos problemas (dono 10/11, `1afce7cb8e`):** MEDIDO antes de mexer: já eram a mesma corrida
+  (fonte, índice, corpo, eixo `wght`) — a coluna Problem pinta pela `CodeCells` → `CodeView::paint_mono`, com as `Metrics` do
+  próprio código. Corpo / altura da linha: Small 12 / 17 px · Normal 13 / 19 px · Large 15 / 22 px, antes = depois (nada do
+  que deriva da letra mudou). O que entra: `CODE_TYPE`/`code_font_px()` em `metrics.rs`, a ÚNICA fonte do corpo da mono
+  (`Metrics::measure`, a re-medida do `paint.rs` e do `help/paint.rs`, `mono_label`, `Font::Mono` da ajuda — antes três
+  repetiam `TypeToken::Base`). Teste `letras::a_linha_do_codigo_tem_a_letra_do_texto_dos_problemas` (código = problema =
+  «alive» = `code_font_px` em Small/Normal/Large); mutações (linhas do código a 0,9×; `CODE_TYPE = Sm`; coluna Problem na
+  letra da interface) → vermelho as 3. Fotos [am_codigo.png](../ferramentas/smoke/am_codigo.png) (cena 13) ·
+  [passo_1.png](../ferramentas/smoke/cena15/passo_1.png) · [am_codigo_zoom.png](../ferramentas/smoke/am_codigo_zoom.png)
+  (2×, linha do código ao lado de um problema).
 
 Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,35 s, já construído pelas fotos); a 2.ª:
 

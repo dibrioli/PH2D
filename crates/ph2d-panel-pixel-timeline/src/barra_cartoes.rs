@@ -43,7 +43,11 @@ fn grupos(info: &PixelPanelInfo) -> Vec<Vec<Icone>> {
         };
         fila(*id, icon)
     });
-    let mut v: Vec<Vec<Icone>> = vec![transporte.collect()];
+    // Add Audio… é da linha do tempo inteira, como o transporte: cabe na tira do cabeçalho.
+    let mut v: Vec<Vec<Icone>> = vec![
+        transporte.collect(),
+        vec![fila(crate::som::ADD_AUDIO, IconId::Audio)],
+    ];
     for g in ids::ACTION_GROUPS {
         v.push(
             g.iter()
@@ -51,7 +55,6 @@ fn grupos(info: &PixelPanelInfo) -> Vec<Vec<Icone>> {
                 .collect(),
         );
     }
-    v.push(vec![fila(crate::som::ADD_AUDIO, IconId::Audio)]);
     v
 }
 

@@ -156,10 +156,11 @@ pub const ACTIONS: [(A, NodeId, IconId, &str); 14] = [
     ),
 ];
 
-/// Os grupos da barra de acções (índices em [`ACTIONS`]): criar · apagar · mover · ligar · tag
-/// (nova, ir ao início / ao fim dela, *Set Loop Section*).
-pub const ACTION_GROUPS: [&[usize]; 5] =
-    [&[0, 1, 2], &[3], &[4, 5, 6], &[7, 8, 13], &[9, 10, 11, 12]];
+/// Os grupos da barra de acções (índices em [`ACTIONS`]): criar e apagar (a ordem do menu Frame do
+/// Aseprite) · mover · ligar · tag (nova, ir ao início / ao fim dela, *Set Loop Section*).
+/// ⚠️ Quatro grupos e não cinco: a 1000 px a fileira do corpo tem 297 px, e dez ícones em quatro
+/// grupos davam 298 — uma fileira a mais tapava a 1.ª camada (`numa_janela_estreita_…`).
+pub const ACTION_GROUPS: [&[usize]; 4] = [&[0, 1, 2, 3], &[4, 5, 6], &[7, 8, 13], &[9, 10, 11, 12]];
 
 /// O cabeçalho do frame `frame` (o id estável do frame; a população é a linha do tempo).
 #[must_use]

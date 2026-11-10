@@ -27,13 +27,17 @@
 - Motor `crates/ph2d-timeline/src/trecho.rs`: estado de sessão `trecho` + `trecho_armado` em `TimelineState`; `trecho::arma` a cada quadro em `arm_view_loop`;
   agulha ao início, toca, Wrap. Deixa de valer com ✕, outro clipe/aba/container/lista ou marcador mudado. Não grava, não desfaz, não reescreve `loop_range`.
   Intent `PlayStretch(Option<(usize,usize)>)`.
-- Painel: faixa «Markers» da B6 (`crates/ph2d-panel-timeline/src/faixa_marcadores.rs`, 22 px, última linha da lista, rola). Chip 15×15 r4: ⚡ fundo
-  `TimelineMarker` quando tem sinal; etiqueta a 12 %/30 % quando só nome; nome a 9 px, vira à esquerda só quando não cabe. Vão entre chips = alvo
-  `TimelineHitKind::MarkerGap{a,b}`; caixa do trecho 20 %/fio 65 %.
+- Painel: faixa «Markers» da B6 (`crates/ph2d-panel-timeline/src/faixa_marcadores.rs`, 22 px, última linha da lista, rola). ⭐ Dono 10/11 (smoke,
+  1e4850b53d): o chip 15×15 da B6 foi RECUSADO («não mostra a posição exata») — cada marcador é uma LINHA no tempo exato (± 0,5 px) com a alça do
+  fade das strips no topo (`strip_paint_alcas::forma_da_alca_de_fade` partilhada, `alca_estado::pinta`, cursor ↔ tingido), tinta `TimelineMarker`;
+  ⚡ pequeno antes do nome quando tem sinal; nome vira à esquerda só quando não cabe. Pisos: marcador × alça do fade 0,080 (Sunstone, piso 0,07),
+  × fundo 0,186 (0,16). Vão entre alças = alvo `TimelineHitKind::MarkerGap{a,b}` (começa onde o alvo da alça acaba); caixa do trecho 20 %/fio 65 %.
+  Foto [25_marcador_alca_zoom.png](../fotos/25_marcador_alca_zoom.png); as 24_trecho* saíram sem o trecho armado (o FOTO-HACK armou antes da aba virar).
 - Marcadores são do DOCUMENTO (tempo da cena); a faixa aparece em Arrange e Keys sem pilha, nunca dentro de container, só com ≥ 1 marcador.
 - Régua dos cartões: sem bandeirolas/nomes; o laço fino do topo mostra o TRECHO enquanto vale; as pontas do laço do clipe não se pintam nem se agarram
   enquanto o trecho toca (controlo que mente); todos os números voltam.
-- Gestos dos marcadores (arrastar, Alt+clique, clique busca, botão direito) passaram para o chip, mesmos ids; alvo 20×8 → 20×22.
+- Gestos dos marcadores (arrastar, Alt+clique, clique busca, botão direito) passaram para a alça, mesmos ids; alvo 20×8 → 20×22.
+- **Smoke do dono 10/11: OK** nos testes 1 (contorno/voltas) e 3 (losango); teste 2 OK depois da troca do chip pela alça.
 - Pílula «▷ takeoff → top ✕» na barra (`transport_cartoes.rs`); alvo = a pílula inteira.
 - Pisos OKLab em `Theme::ALL`: fundo × régua 0,104 (piso 0,09), contorno 0,341 (0,30), número × caixa 0,195 (0,17).
 - Cena `PH2D_NEST_SMOKE=2`: takeoff 0 / top 1,1 / land 2 s e `set_scene_length(10.6)` (antes 2 pulos apareciam «além do fim»). Shell líquido 0.

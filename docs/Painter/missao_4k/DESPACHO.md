@@ -66,6 +66,13 @@
 | onda 6 | B06b | parcial (473854fefa): B06.A5: risca da malha curada (homografias em coordenadas locais; folga em distância 1e-3 texel); texels sem dono 3 → 0; 54 testes do warp verdes. B06.7 bloqueado; falta resto de relevo e estrias. |
 | onda 6 | B23-cont4 | feito (aa64a921ee): B23.1 minflt por fase na linha [quadro]; shell 189 015 → 189 015. 4096²: 1 camada a traçar 1,6 faltas/quadro, p50 42 ms; 12 camadas 0,0, 16 ms. Gates verdes; commit levou linhas B06.2/B06.3 do BACKLOG. |
 | onda 6 | verificação | verde |
+| onda 7 | B15a | feito (e892702f1c): B15.5-cont: com Gaussiano/Nitidez, planos da placa só da janela cortada, ao bit; sonda 4K (load 56, só o sentido): planos 434 → 3,0 ms. B15.8: cobertura clampada 1×; gate red→green. |
+| onda 7 | B17b | parcial (58d017b8d7): StoredPlane::changed_tiles guarda só os tiles que mudaram; undo de diagonal a 4K: Impasto 265,4 → 32,0 MB, Digital 10,8 → 8,4 MB. Gate novo. Falta B17.5 (recontar só tiles restaurados). |
+| onda 7 | B12b | parcial (14cb07ed06): CampoEsparso<T> em ph2d-wet-paint (pedaços de 4096 células): dab r30 a 4K escreve ~26 MB contra 897 MB; 3 gates ao bit. AINDA não ligado à Grid; falta Ctrl+Z a 4K no app. |
+| onda 7 | B14c-cont3 | parcial (543e7ca42e): A/B no mesmo binário do corte da silhueta, Flat Bristle 240 a 4K: 562,4 → 534,7 G instruções (−4,9 %), hash igual. A silhueta já não é a alavanca: ~89 G/dab fora dela; falta perfilar. |
+| onda 7 | B16b | parcial (12ddb9b8cf): RewetCache com planos esparsos por ladrilho 64²: 3,1 MB contra 201 MB (Spread 12); 4096²: 37,8 contra 738 MB. Mas o traço fica mais lento (9,1–10,0 → 12,6–12,8 ms); falta caminho híbrido. |
+| onda 7 | B14b-cont | parcial (11a7100349): Dabber na cena Composite já liga o Real Oil, sem .rs; wet6 ganhou gesto longo e --ciclos a tabela. A × B, load 10–28: nenhum ganho decisivo. Falta log da óptica por quadro (.rs). |
+| onda 7 | verificação | verde |
 
 ## Fatos medidos que mudam a ordem
 

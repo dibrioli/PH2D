@@ -75,14 +75,11 @@ fn rows() -> Vec<Row> {
     vec![grupo, item]
 }
 
+/// Cada corrida de glifos: os ids, o tamanho e as posições.
+type Corridas = Vec<(Vec<u32>, f32, Vec<i16>)>;
+
 /// Pinta a tabela com `look` no preset de fábrica; devolve a cena e a geometria.
-fn pinta(
-    look: Look,
-) -> (
-    Vec<(Vec<u32>, f32, Vec<i16>)>,
-    ph2d_ui_table::Layout,
-    Metrics,
-) {
+fn pinta(look: Look) -> (Corridas, ph2d_ui_table::Layout, Metrics) {
     // A casa é a de omissão: o `standard()` sem nada por cima.
     let mut m = Metrics::standard();
     if look != Look::House {

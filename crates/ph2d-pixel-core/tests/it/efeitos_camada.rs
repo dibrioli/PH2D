@@ -196,12 +196,8 @@ fn aplicar_os_efeitos_assa_todos_os_quadros_num_passo_com_inverso_exacto() {
         assert!(matches!(op, Op::Batch(_)), "um passo");
         let inverso = apply(&mut s, op).expect("apply");
         assert!(s.layer(topo).unwrap().efeitos.is_empty(), "a lista esvazia");
-        for f in 0..2 {
-            assert_eq!(
-                vista(&s, f, Purpose::Export),
-                vivas[f],
-                "{mode:?} quadro {f}"
-            );
+        for (f, viva) in vivas.iter().enumerate() {
+            assert_eq!(&vista(&s, f, Purpose::Export), viva, "{mode:?} quadro {f}");
         }
         assert!(
             aplicar_efeitos(&s, topo).is_none(),

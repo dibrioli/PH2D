@@ -8,7 +8,7 @@ use std::collections::BTreeSet;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::pixel_panel::{ColorModeChoice, PixelRequest, PixelSelect};
 use ph2d_pixel_core::palette::{self};
-use ph2d_pixel_core::{ColorMode, Op, Patch, Rect, Sprite, compose_rgba};
+use ph2d_pixel_core::{ColorMode, Op, Patch, Rect, compose_rgba};
 use ph2d_pixel_io::palette_file::{self, PaletteFormat};
 
 use crate::PixelApp;

@@ -52,7 +52,9 @@ pub(crate) fn sprite(fx: &Value, rgb: &[u8], com_rampas: bool) -> Sprite {
     let mut s = Sprite::with_palette(spec, &pal).expect("sprite");
     let key = (s.layers()[0].id, s.frames()[0].id);
     let data: Vec<u8> = rgb
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .flat_map(|c| [c[0], c[1], c[2], 255])
         .collect();
     let mut cels = BTreeMap::new();

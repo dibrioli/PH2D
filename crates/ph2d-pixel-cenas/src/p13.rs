@@ -334,7 +334,12 @@ pub fn foto_p13() -> Option<(Vec<u8>, Vec<[u8; 4]>)> {
         .filter(|t| !t.is_empty())
         .map(|t| t.parse().ok())
         .collect::<Option<_>>()?;
-    let pal = n.chunks_exact(3).map(|c| [c[0], c[1], c[2], 255]).collect();
+    let pal = n
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| [c[0], c[1], c[2], 255])
+        .collect();
     Some((rgb, pal))
 }
 
@@ -381,12 +386,17 @@ fn em_rgba(w: &ph2d_pixel_core::Whole) -> Option<Vec<u8>> {
     Some(px)
 }
 
+/// (Exact RGB, Keep ramps, paleta) da cena 29.
+pub type FotoLadoALado = (Vec<u8>, Vec<u8>, Vec<[u8; 4]>);
+
 /// As duas metades da cena 29: (Exact RGB, Keep ramps), cada uma 64 × 64 RGBA.
 #[must_use]
-pub fn foto_lado_a_lado() -> Option<(Vec<u8>, Vec<u8>, Vec<[u8; 4]>)> {
+pub fn foto_lado_a_lado() -> Option<FotoLadoALado> {
     let (rgb, pal) = foto_p13()?;
     let rgba: Vec<u8> = rgb
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .flat_map(|c| [c[0], c[1], c[2], 255])
         .collect();
     let s = com_rampas(rgba, FOTO_29, &pal)?;

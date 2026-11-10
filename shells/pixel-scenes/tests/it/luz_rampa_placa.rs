@@ -173,7 +173,9 @@ fn a_placa_e_o_gabarito_concordam_na_rampa() {
     dev.poll(wgpu::PollType::wait_indefinitely()).expect("poll");
     let m = fatia.get_mapped_range().expect("mapa lido");
     let f: Vec<f32> = m
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
         .collect();
     let mut trocas = 0;

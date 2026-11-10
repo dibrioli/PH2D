@@ -7,7 +7,6 @@ use ph2d_editor_core::pixel_panel::{
     PixelBrushAction, PixelBrushShape, PixelBrushSlotInfo, PixelBrushSlotKind, PixelPatternTurn,
     PixelRequest,
 };
-use ph2d_pixel_core::brush::BrushShape;
 use ph2d_pixel_core::pattern::PatternBrush;
 use ph2d_pixel_io::brush_file::{self, BrushKind, BrushParams, BrushSlot};
 

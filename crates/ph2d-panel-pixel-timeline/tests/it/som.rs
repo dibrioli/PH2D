@@ -2,7 +2,6 @@
 //! ⇒ a faixa no documento num passo, Ctrl+Z tira; Mute e Remove pedem a edição DA linha.
 
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::pixel_panel::{PixelFrameCol, PixelPanelInfo};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_pixel_timeline::ids::header_id;

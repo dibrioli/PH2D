@@ -4,7 +4,6 @@
 use std::sync::Arc;
 
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::panel::Panel;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_pixel_preview::{
     PixelPreviewPanel, PixelPreviewPanelState, PreviewFrame, crt, ids, publish,

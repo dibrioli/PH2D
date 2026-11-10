@@ -5,7 +5,8 @@
 use crate::ids;
 use crate::state::with_current;
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
+use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore};
+use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_editor_core::pixel_panel::PixelRequest;
 use ph2d_editor_core::widget::{ButtonState, CheckboxState, CheckboxValue, TextInputState};
 use ph2d_i18n::tr;
@@ -182,4 +183,52 @@ fn efeito_de(
         _ => return None,
     };
     Some(PixelRequest::LayerEffect(layer, e))
+}
+
+/// O renomear de uma camada: duplo clique na linha abre o campo; Enter/perder o foco grava num
+/// passo; Esc desiste. `None` = o evento não é deste fluxo.
+pub(crate) fn renomear(
+    st: &mut crate::PixelToolsPanelState,
+    host: &mut dyn PanelHostInternal,
+    ev: &WidgetEvent,
+) -> Option<EventOutcome> {
+    match *ev {
+        WidgetEvent::DoubleClick(id) => {
+            let alvo = with_current(|i| {
+                i.layers
+                    .iter()
+                    .find(|r| ids::layer_widget_id(r.id, ids::LayerWidget::Row) == id)
+                    .map(|r| r.id)
+            });
+            Some(match alvo {
+                Some(layer) => {
+                    st.rename = Some((layer, false));
+                    EventOutcome::Consumed
+                }
+                None => EventOutcome::Ignored,
+            })
+        }
+        WidgetEvent::Submit(id) | WidgetEvent::Blur(id) if id == ids::LAYER_RENAME => {
+            let Some((layer, _)) = st.rename.take() else {
+                return Some(EventOutcome::Consumed);
+            };
+            let name = match host.store().get(ids::LAYER_RENAME) {
+                Some(InteractiveState::TextInput { text, .. }) => text.trim().to_owned(),
+                _ => String::new(),
+            };
+            if host.store().focus_id() == Some(ids::LAYER_RENAME) {
+                host.store_mut().set_focus(None);
+            }
+            let pedido = Some(PixelRequest::LayerRename { id: layer, name });
+            Some(crate::seam::empurra(host, pedido))
+        }
+        WidgetEvent::Cancel(id) if id == ids::LAYER_RENAME => {
+            st.rename = None;
+            if host.store().focus_id() == Some(ids::LAYER_RENAME) {
+                host.store_mut().set_focus(None);
+            }
+            Some(EventOutcome::Consumed)
+        }
+        _ => None,
+    }
 }

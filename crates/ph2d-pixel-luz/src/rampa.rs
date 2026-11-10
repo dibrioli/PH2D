@@ -43,13 +43,13 @@ pub fn texeis_rampa(o: &ObjetoPixel<'_>, lut: &LutDaLuz, base: usize) -> Vec<u8>
     px
 }
 
+/// A banda da rampa pronta para a placa: `(cena, (L, r, g, b) por degrau, (largura, rampas))`.
+pub type BandaRampaDaFaixa = (VectorScene, Vec<[f32; 4]>, (u32, u32));
+
 /// [`banda_rampa`] com o «Light: Palette» de cada documento (`PaletteRamps::luz_na_paleta`), e a
 /// LUT já em texels da placa: `(cena, (L, r, g, b) por degrau, (largura, rampas))`.
 #[must_use]
-pub fn banda_rampa_da_faixa(
-    objetos: &[ObjetoPixel<'_>],
-    cam: Affine,
-) -> Option<(VectorScene, Vec<[f32; 4]>, (u32, u32))> {
+pub fn banda_rampa_da_faixa(objetos: &[ObjetoPixel<'_>], cam: Affine) -> Option<BandaRampaDaFaixa> {
     let paleta: Vec<bool> = objetos
         .iter()
         .map(|o| o.sprite.ramps().luz_na_paleta)

@@ -273,42 +273,10 @@ pub(crate) fn apply_event(
     if let Some(o) = crate::seam_rampas::evento(st, host, &ev) {
         return o;
     }
+    if let Some(o) = crate::seam_camadas::renomear(st, host, &ev) {
+        return o;
+    }
     let id = match ev {
-        WidgetEvent::DoubleClick(id) => {
-            let alvo = with_current(|i| {
-                i.layers
-                    .iter()
-                    .find(|r| ids::layer_widget_id(r.id, ids::LayerWidget::Row) == id)
-                    .map(|r| r.id)
-            });
-            return match alvo {
-                Some(layer) => {
-                    st.rename = Some((layer, false));
-                    EventOutcome::Consumed
-                }
-                None => EventOutcome::Ignored,
-            };
-        }
-        WidgetEvent::Submit(id) | WidgetEvent::Blur(id) if id == ids::LAYER_RENAME => {
-            let Some((layer, _)) = st.rename.take() else {
-                return EventOutcome::Consumed;
-            };
-            let name = match host.store().get(ids::LAYER_RENAME) {
-                Some(InteractiveState::TextInput { text, .. }) => text.trim().to_owned(),
-                _ => String::new(),
-            };
-            if host.store().focus_id() == Some(ids::LAYER_RENAME) {
-                host.store_mut().set_focus(None);
-            }
-            return empurra(host, Some(PixelRequest::LayerRename { id: layer, name }));
-        }
-        WidgetEvent::Cancel(id) if id == ids::LAYER_RENAME => {
-            st.rename = None;
-            if host.store().focus_id() == Some(ids::LAYER_RENAME) {
-                host.store_mut().set_focus(None);
-            }
-            return EventOutcome::Consumed;
-        }
         WidgetEvent::ValueChanged(id) if id == ids::LAYER_OPACITY => {
             let v = host.store().number_value(id).filter(|v| v.is_finite());
             #[expect(

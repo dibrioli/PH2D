@@ -27,7 +27,9 @@ fn o_indexed_rgb_e_o_do_imagemagick() {
     let fx = fixture();
     let s = sprite(&fx, &foto(&fx), false);
     let rgb: Vec<[u8; 4]> = foto(&fx)
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|c| [c[0], c[1], c[2], 255])
         .collect();
     let d2 = |c: [u8; 4], i: u8| {
@@ -139,7 +141,9 @@ fn manter_rampas_nunca_inverte_a_claridade() {
     let fx = fixture();
     let s = sprite(&fx, &foto(&fx), true);
     let rgb: Vec<[u8; 4]> = foto(&fx)
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|c| [c[0], c[1], c[2], 255])
         .collect();
     let pr = indexed_data(&converte_preservando_rampas(&s, opt(Dither::None)).expect("rampas"));
@@ -187,7 +191,9 @@ fn o_indexed_perceptual_nao_e_pior_que_o_pngquant() {
     );
     let s = sprite(&fx, &foto(&fx), false);
     let rgb: Vec<[u8; 4]> = foto(&fx)
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|c| [c[0], c[1], c[2], 255])
         .collect();
     let ok = indexed_data(&converte_oklab(&s, opt(Dither::None)).expect("oklab"));

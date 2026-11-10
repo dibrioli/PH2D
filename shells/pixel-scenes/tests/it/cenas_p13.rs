@@ -51,7 +51,9 @@ fn rgba(s: &Sprite, f: usize) -> Vec<u8> {
 }
 
 fn cores(px: &[u8]) -> BTreeSet<[u8; 4]> {
-    px.chunks_exact(4)
+    px.as_chunks::<4>()
+        .0
+        .iter()
         .filter(|c| c[3] > 0)
         .map(|c| [c[0], c[1], c[2], c[3]])
         .collect()
@@ -81,7 +83,9 @@ fn a_sonda_das_cenas_28_a_36() {
         .map(|&i| s.palette()[usize::from(i)])
         .collect();
     let agua = rgba(s, 0)
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|c| cor_agua.contains(&[c[0], c[1], c[2], c[3]]))
         .count();
     println!("28: px da água (mudam de cor a cada passo do ciclo): {agua}");
@@ -90,8 +94,10 @@ fn a_sonda_das_cenas_28_a_36() {
     // 29: Exact RGB × Keep ramps, lado a lado.
     let (a, b, pal) = p13::foto_lado_a_lado().expect("foto");
     let dif = a
-        .chunks_exact(4)
-        .zip(b.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.as_chunks::<4>().0.iter())
         .filter(|(x, y)| x != y)
         .count();
     let (ca, cb) = (cores(&a), cores(&b));
@@ -116,7 +122,12 @@ fn a_sonda_das_cenas_28_a_36() {
     for i in 0..3u32 {
         let y0 = (faixa / 2 + i * faixa + 2) as usize;
         let n = (y0..y0 + (faixa - 4) as usize)
-            .flat_map(|y| px[y * w * 4 + 16..(y * w + w - 4) * 4].chunks_exact(4))
+            .flat_map(|y| {
+                px[y * w * 4 + 16..(y * w + w - 4) * 4]
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+            })
             .filter(|c| c[..3] == ph2d_pixel_core::palette::DEFAULT[1][..3])
             .count();
         fr.push(n);
@@ -202,7 +213,9 @@ fn a_sonda_das_cenas_28_a_36() {
         .map(|f| {
             let px = rgba(s, f);
             let xs: Vec<u32> = px
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .enumerate()
                 .filter(|(_, c)| c[3] > 0)
                 .map(|(i, _)| i as u32 % s.width())

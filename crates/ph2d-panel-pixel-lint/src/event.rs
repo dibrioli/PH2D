@@ -10,7 +10,7 @@ use ph2d_pixel_lint::{Regra, Regras};
 use crate::{PixelLintPanel, canal, ids};
 
 /// O teto do Color limit: um índice de paleta é um `u8` (256 cores).
-const LIMITE_MAX: f64 = 256.0;
+const LIMITE_MAX: f64 = 256.0; // LITERAL-PX-OK: contagem de cores de paleta (u8), não píxel
 
 fn botao(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     store.register(

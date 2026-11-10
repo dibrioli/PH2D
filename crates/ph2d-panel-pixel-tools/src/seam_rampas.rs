@@ -31,31 +31,31 @@ pub const FIELDS: [(NodeId, &str, f64, f64); 5] = [
         hash_node_id("pixel.ramp.steps"),
         "pixel.ramp.steps",
         1.0,
-        255.0,
+        255.0, // LITERAL-PX-OK: degraus de uma rampa (contagem de índices de paleta, não píxel)
     ),
     (
         hash_node_id("pixel.ramp.hue_shift"),
         "pixel.ramp.hue_shift",
-        -180.0,
-        180.0,
+        -180.0, // LITERAL-PX-OK: graus de matiz
+        180.0,  // LITERAL-PX-OK: graus de matiz
     ),
     (
         hash_node_id("pixel.ramp.chroma"),
         "pixel.ramp.chroma",
         0.0,
-        100.0,
+        100.0, // LITERAL-PX-OK: percentagem de croma
     ),
     (
         hash_node_id("pixel.ramp.light_min"),
         "pixel.ramp.light_min",
         0.0,
-        100.0,
+        100.0, // LITERAL-PX-OK: percentagem de luz
     ),
     (
         hash_node_id("pixel.ramp.light_max"),
         "pixel.ramp.light_max",
         0.0,
-        100.0,
+        100.0, // LITERAL-PX-OK: percentagem de luz
     ),
 ];
 
@@ -202,7 +202,7 @@ pub(crate) fn evento(
                 .iter()
                 .filter_map(|&k| u8::try_from(k).ok())
                 .collect();
-            (!ix.is_empty()).then(|| PixelRequest::Ramp(PixelRampAction::Make(ix)))
+            (!ix.is_empty()).then_some(PixelRequest::Ramp(PixelRampAction::Make(ix)))
         }),
         WidgetEvent::Click(id) if id == REMOVE => {
             with_current(|i| atual(i).map(|r| PixelRequest::Ramp(PixelRampAction::Remove(r.id))))

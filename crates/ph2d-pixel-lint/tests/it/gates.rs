@@ -21,9 +21,11 @@ fn corre(t: &Tela, regras: &Regras) -> Vec<Aviso> {
 #[test]
 fn cada_vicio_e_achado_onde_esta() {
     let (t, gabarito) = vicios_p13();
-    let mut regras = Regras::default();
     // 8 cores na fixture: com 7, a mais rara (a do órfão) passa do limite.
-    regras.limite_cores = 7;
+    let regras = Regras {
+        limite_cores: 7,
+        ..Regras::default()
+    };
     let achado = por_regra(&corre(&t, &regras));
     for r in Regra::TODAS {
         assert_eq!(

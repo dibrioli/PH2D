@@ -11,10 +11,10 @@ use std::collections::VecDeque;
 fn profundidades(img: &Img<'_>) -> Vec<u32> {
     let mut d = vec![0u32; img.len()];
     let mut fila = VecDeque::new();
-    for i in 0..img.len() {
+    for (i, di) in d.iter_mut().enumerate() {
         let (x, y) = img.xy(i);
         if img.opaco(x, y) && VIZ8.iter().any(|&(dx, dy)| !img.opaco(x + dx, y + dy)) {
-            d[i] = 1;
+            *di = 1;
             fila.push_back(i);
         }
     }

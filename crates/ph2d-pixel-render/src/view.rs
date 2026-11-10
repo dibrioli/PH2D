@@ -244,18 +244,8 @@ fn region_into(
 
 /// A composição cheia em faixas de linhas, uma por núcleo da fatia da linha (metade dos da
 /// máquina). Medido (`mede_compose`, load ~6): 512² × 20 camadas 123 ms num núcleo, 16,7 ms em 8.
-/// `onion` leva a camada activa (o `Current layer only`).
-#[must_use]
-pub fn compose_bands(
-    sprite: &Sprite,
-    frame: FrameId,
-    pending: Option<&Stroke>,
-    onion: Option<(&Onion, Option<LayerId>)>,
-) -> Vec<u8> {
-    compose_bands_em(sprite, frame, pending, onion, 0)
-}
-
-/// O [`compose_bands`] com as `voltas` do Play somadas ao instante dos ciclos de cor.
+/// `onion` leva a camada activa (o `Current layer only`); `voltas` do Play somam-se ao instante dos
+/// ciclos de cor.
 #[must_use]
 pub fn compose_bands_em(
     sprite: &Sprite,

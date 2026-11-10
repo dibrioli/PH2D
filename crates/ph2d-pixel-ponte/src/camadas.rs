@@ -71,13 +71,14 @@ pub fn sibling(s: &Sprite, id: LayerId, up: bool) -> Option<LayerId> {
 /// P13: o Outline da camada no vocabulário do chrome (o primeiro efeito; hoje só há este).
 #[must_use]
 pub fn outline_of(l: &Layer) -> Option<PixelOutline> {
-    l.efeitos.iter().find_map(|EfeitoDeCamada::Outline(o)| {
-        Some(PixelOutline {
+    l.efeitos
+        .iter()
+        .map(|EfeitoDeCamada::Outline(o)| PixelOutline {
             color: o.color,
             inside: o.place == Place::Inside,
             square: o.matrix == SQUARE,
         })
-    })
+        .next()
 }
 
 /// P13: Layer Properties ▸ Effects ⇒ a Op de UM passo (`SetLayerEffects`, ou o `Batch` do Apply).

@@ -19,7 +19,7 @@ use ph2d_editor_core::widget::scroll_area::{BarDrag, OwnBar};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
-use ph2d_ui_table::{Column, Hit, Layout, Metrics, Row, TableState, natural_height};
+use ph2d_ui_table::{Column, Hit, Layout, Row, TableState, natural_height};
 use ph2d_vector::VectorScene;
 
 /// A parte da altura da aba que o quadro toma sozinho: o código manda, o corpo rola (smoke do

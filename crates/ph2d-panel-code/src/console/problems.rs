@@ -14,7 +14,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing};
-use ph2d_ui_table::{Cell, Column, Hit, Ink, Layout, Metrics, Row, StableWidths, TableState};
+use ph2d_ui_table::{Cell, Column, Hit, Ink, Layout, Row, StableWidths, TableState};
 use ph2d_vector::VectorScene;
 
 /// Uma linha da lista de problemas, já composta: o texto (a explicação do I8 ou a mensagem crua), a

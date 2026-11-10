@@ -19,7 +19,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
-use ph2d_ui_table::{Cell, Column, Hit, Ink, Key, Layout, Metrics, Row, natural_widths};
+use ph2d_ui_table::{Cell, Column, Hit, Ink, Key, Layout, Row, natural_widths};
 use ph2d_vector::VectorScene;
 
 /// A parte da coluna do código que a grelha pode tomar: o código manda, a grelha rola.

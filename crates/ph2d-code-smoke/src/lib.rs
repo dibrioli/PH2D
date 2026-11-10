@@ -135,7 +135,9 @@ pub enum Until {
 
 pub mod steps;
 pub use steps::NONE;
-pub use steps::{STEPS, STEPS_4, STEPS_5, STEPS_10, STEPS_11, STEPS_12, STEPS_13, STEPS_14};
+pub use steps::{
+    STEPS, STEPS_4, STEPS_5, STEPS_10, STEPS_11, STEPS_12, STEPS_13, STEPS_14, STEPS_15,
+};
 
 /// O roteiro da cena `level` (`None` = a cena não tem fotos conduzidas).
 #[must_use]
@@ -149,6 +151,7 @@ pub fn steps(level: u32) -> Option<&'static [&'static [Gesture]]> {
         12 => Some(STEPS_12),
         13 => Some(STEPS_13),
         14 => Some(STEPS_14),
+        15 => Some(STEPS_15),
         _ => None,
     }
 }

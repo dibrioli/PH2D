@@ -9,11 +9,12 @@ use ph2d_script::{LuauScript, ProjectScripts, ScriptEditRequests};
 use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecScene, ellipse, rectangle, regular_polygon, star};
 
+pub mod arena;
 pub mod bancada;
 pub mod inspector;
 
 /// Quantas cenas este roteador serve — o `max_level` do roteador da família (conferido em teste).
-pub const CENAS: u32 = 14;
+pub const CENAS: u32 = 15;
 
 /// O nome do script das formas nos scripts do projeto.
 pub const BOB_NAME: &str = "bob.luau";

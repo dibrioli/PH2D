@@ -48,6 +48,7 @@
 //! - **14** — os quadros do depurador (plano 14): as três formas correm o [`DEPURA_LUAU`], parado em
 //!   `self.t = …`; o Stopped em planilha (Sheet), o Next line acende `self.t` e `self.pos.x` em âmbar,
 //!   e `View ▸ Card Style` troca para Cards e Strip.
+//! - **15** — muitos problemas e muitos donos: [`ph2d_code_scenes::arena`].
 
 pub use ph2d_code_scenes::*;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
@@ -78,6 +79,9 @@ pub fn monta_em(
     }
     if nivel == 13 {
         return bancada::monta(sim, cena, mapa);
+    }
+    if nivel == 15 {
+        return arena::monta(sim, cena, mapa);
     }
     let (bob, broken) = {
         let mut lib = sim.world_mut().get_resource_or_init::<ProjectScripts>();
@@ -209,6 +213,13 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
             "[code-smoke] =14 os quadros do depurador: as três formas correm o depura.luau, parado no \
              Circle na linha «self.t = …». O quadro Stopped é uma planilha (Name · Value · Type); Next \
              line acende em âmbar o que mudou; View ▸ Card Style troca para Cards e Strip."
+        );
+        return None;
+    }
+    if nivel == 15 {
+        println!(
+            "[code-smoke] =15 oito formas correm o arena.luau (sete propriedades, seis com valor \
+             próprio em âmbar na grelha Who has what) e o script tem uns dez problemas na lista."
         );
         return None;
     }

@@ -187,6 +187,21 @@ if [ "$1" = faixas ]; then
   exit 0
 fi
 
+# ── PRÉVIA (B20a-cont, 10/11): o caminho antigo (A, PH2D_PREVIA_INTEIRA=1) × a região suja (B), o MESMO binário,
+# intercalados: as CAMADAS 1/4/10 a 4096² e o pen-up 4K (matriz CURTO, PEN_CAMADAS camadas, o pincel PEN).
+# uso: … mede_pen_up_4k.sh previa [rodadas] [binario] · resumo: $S/camadas/resumo.txt e mede_pen_up_4k.py --matriz $S/matriz
+if [ "$1" = previa ]; then
+  N=${2:-2}; BIN=${3:-$R/target/smoke/ph2d-host-desktop}
+  CAMS="1 4 10" PREVIA_AB=1 SAIDA=$S bash "$0" camadas "$N" "${SEG:-5}" "$BIN"
+  for i in $(seq 1 "$N"); do for v in A B; do
+    [ $v = A ] && PV=1 || PV=0
+    env PH2D_PREVIA_INTEIRA=$PV PH2D_COMPOSITE_CAMADAS="${PEN_CAMADAS:-4}" CURTO=1 ROT="P${v}${i}" KNOBS= TECLAS=0 RELEVO= \
+      PRE= SAIDA=$S bash "$0" matriz 3840x2160 papel "$BIN" "${PEN:-omissão:digital}"
+  done; done
+  echo "[previa] feito: $S"
+  exit 0
+fi
+
 # ── CAMADAS (B23.4 caso (e), 10/11): o painel Layers à frente, tela 4096² Textured, A × B no MESMO binário e
 # intercalados: `PH2D_COMPOSITE_CAMADAS=1` × `=12`. Fases: parado SEG s · traço SEG s (ida e volta contínua). Por
 # fase: `panel`/`chrome` do `[paint-perf]` e `hero-paint` do `[frame]` (o mínimo e o máximo das janelas), quadro p50
@@ -199,9 +214,15 @@ if [ "$1" = camadas ]; then
   Xvfb $D -screen 0 1600x1000x24 >/dev/null 2>&1 & XV=$!
   sleep 1
   cd "$R"
-  for i in $(seq 1 "$N"); do for c in 1 12; do
-    TAG=c${c}_$i; L=$O/$TAG.log
-    env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$O/home_$TAG PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=0 "${PLACA_ENV[@]}" \
+  # B20a-cont: CAMS="1 4 10" troca a lista; PREVIA_AB=1 corre cada uma A (PH2D_PREVIA_INTEIRA=1, o caminho antigo:
+  # prévia da placa e mips inteiros) e logo B (a região suja), o MESMO binário, intercalados.
+  VS=(x); [ "$PREVIA_AB" = 1 ] && VS=(A B)
+  for i in $(seq 1 "$N"); do for c in ${CAMS:-1 12}; do for v in "${VS[@]}"; do
+    TAG=c${c}_$i; PV=PH2D_PREVIA_INTEIRA=0
+    [ "$v" != x ] && TAG=c${c}${v}_$i
+    [ "$v" = A ] && PV=PH2D_PREVIA_INTEIRA=1
+    L=$O/$TAG.log
+    env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$O/home_$TAG PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=0 "${PLACA_ENV[@]}" $PV \
       PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PAINEL=layers PH2D_COMPOSITE_PILHA=0 PH2D_COMPOSITE_FUNDO=papel \
       PH2D_COMPOSITE_PAPEL=1 PH2D_COMPOSITE_TELA=4096x4096 PH2D_COMPOSITE_CAMADAS=$c PH2D_EXIT_AFTER_FRAMES=1000000 \
       "$BIN" > "$L" 2>&1 &
@@ -236,7 +257,7 @@ if [ "$1" = camadas ]; then
         END { asort(q); printf "[camadas] %s %s (%s) panel=%s chrome=%s hero-paint=%s quadro p50=%.1f ms (%d) | %s\n",
           tag, f, cam, mm(p, np), mm(c, nc), mm(h, nh), nq ? q[int((nq + 1) / 2)] : 0, nq, quem }' | tee -a "$O/resumo.txt"
     done
-  done; done
+  done; done; done
   kill $XV
   exit 0
 fi

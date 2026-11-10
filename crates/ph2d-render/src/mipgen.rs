@@ -20,6 +20,13 @@
 
 use ph2d_gpu::GpuContext;
 
+/// `PH2D_PREVIA_INTEIRA=1`: the pre-B20 path at RUN time (the A of an A×B in the same binary,
+/// `docs/Painter/ferramentas/mede_pen_up_4k.sh`): the whole mip chain and the whole GPU preview.
+pub fn previa_inteira() -> bool {
+    static V: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *V.get_or_init(|| std::env::var("PH2D_PREVIA_INTEIRA").is_ok_and(|v| v == "1"))
+}
+
 /// Mip levels for a `width × height` 2D texture: `floor(log2(max)) + 1`.
 /// `mip_levels(1) == 1`; `mip_levels(2048) == 12`.
 pub fn mip_levels(width: u32, height: u32) -> u32 {
@@ -146,7 +153,7 @@ impl MipGenerator {
         mip_count: u32,
         rect: (u32, u32, u32, u32),
     ) {
-        self.cadeia(gpu, texture, mip_count, Some(rect));
+        self.cadeia(gpu, texture, mip_count, (!previa_inteira()).then_some(rect));
     }
 
     pub fn run(&self, gpu: &GpuContext, texture: &wgpu::Texture, mip_count: u32) {

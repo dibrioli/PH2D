@@ -79,6 +79,9 @@ fn regiao_suja(
     if SEMPRE_INTEIRA.get() {
         return None;
     }
+    if ph2d_render::mipgen::previa_inteira() {
+        return None;
+    }
     let r = painter.preview_gpu_region()?;
     let mesmo_slot = slot.is_some_and(|g| (g.width, g.height) == (w, h));
     (s.dona && mesmas && mesmo_slot).then(|| halo(r, w, h))

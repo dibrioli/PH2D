@@ -7,9 +7,7 @@ use ph2d_editor_core::pixel_panel::PixelShape;
 use ph2d_pixel_core::brush::{Brush, BrushShape};
 use ph2d_pixel_core::fill::{Bucket, BucketSample};
 use ph2d_pixel_core::ink::Ink;
-use ph2d_pixel_core::raster::{
-    Cell, curve_path, line_cells, polygon_cells, snap_pixel_angle, square_box,
-};
+use ph2d_pixel_core::raster::{Cell, curve_path, line_cells, polygon_cells, square_box};
 use ph2d_pixel_core::symmetry::{Mirrors, Symmetry, Tiling};
 use ph2d_pixel_core::{Paint, Sprite, Stroke};
 

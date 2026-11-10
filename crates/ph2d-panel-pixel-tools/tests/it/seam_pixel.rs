@@ -285,7 +285,8 @@ fn o_balde_e_o_blur_sao_botoes_de_grupo_com_o_gradient_e_o_jumble_no_flyout() {
         faces,
         [
             BarFace::Icon(IconId::PixelBlur),
-            BarFace::Icon(IconId::PixelJumble)
+            BarFace::Icon(IconId::PixelJumble),
+            BarFace::Icon(IconId::Smear)
         ]
     );
     assert!(todas[1].on && todas[1].label.contains("(R)"));

@@ -305,7 +305,7 @@ impl KanbanElementInput for Input {
             }
             if !modal
                 && let KanbanWheel::Wheel { dy, shift } = w
-                && crate::w6::wheel(docs, id, x, y, crate::pointer::wheel_px(dy), shift)
+                && crate::w6::wheel(docs, id, x, y, [0.0, crate::pointer::wheel_px(dy)], shift)
             {
                 return true;
             }

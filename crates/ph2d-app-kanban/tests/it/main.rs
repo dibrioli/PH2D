@@ -29,6 +29,7 @@ mod j5_botoes;
 mod j6_verso_regras;
 mod j8_fotos_ao_vivo;
 mod medida;
+mod swipe_lateral;
 mod t1_abrir_cartao;
 mod teclado;
 mod teto;

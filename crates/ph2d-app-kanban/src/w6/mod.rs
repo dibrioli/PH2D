@@ -498,15 +498,16 @@ pub(crate) fn close_top(docs: &mut KanbanDocs, id: u64) {
 }
 
 /// A roda sobre um painel rola-o. `true` = tomada.
-pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
+pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, x: f32, y: f32, d: [f32; 2], s: bool) -> bool {
     let Some(t) = docs.tab_mut(id) else {
         return false;
     };
+    let dy = d[1];
     if !t.w6.sheets.borrow().iter().any(|r| r.contains(x, y)) {
         if t.w6.open() && t.back.is_none() {
             return true;
         }
-        return t.back.is_none() && crate::header::other::wheel(docs, id, x, y, dy, shift);
+        return t.back.is_none() && crate::header::other::wheel(docs, id, x, y, d, s);
     }
     let max = t.w6.scroll_max.get();
     t.w6.scroll = (t.w6.scroll.min(max) + dy).clamp(0.0, max);

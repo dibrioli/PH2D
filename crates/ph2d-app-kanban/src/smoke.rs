@@ -1,25 +1,15 @@
 //! ⭐ **As cenas de smoke do Kanban** — `PH2D_KANBAN_SMOKE=<n>` abre, no arranque, um Kanban montado
 //! numa aba. Roteador PRÓPRIO (o do Quadro é o `PH2D_BOARD_SMOKE`); a próxima cena é a `CENAS + 1`.
 //!
-//! - **1** — o quadro da maquete aprovada (27/10): «Short film — production», cinco listas, a
-//!   «Doing» azul e cheia (limite `3 / 3`), a «Review» recolhida, e cartões com todas as variantes
-//!   da frente: uma capa de IMAGEM («Fox concept sheet», atrasada), uma entrega em menos de 24 h
-//!   («Clean up shot 08») e uma concluída («Lock the script»). ⚠️ Sem o cartão envelhecido (W6).
+//! - **1** — a maquete aprovada (27/10): «Short film — production», a «Doing» cheia (`3 / 3`), a
+//!   «Review» recolhida, capa de IMAGEM, entrega em < 24 h e uma concluída. ⚠️ Sem envelhecimento.
 //! - **2** — um quadro grande (8 listas × 250 cartões) para sentir o arrasto a 60 fps.
-//! - **3** — o quadro da cena 1 com a «To Do» NA MÃO, a meio do caminho entre a «Doing» e a
-//!   «Review»: inclinada, com a sombra de voo e os cartões dentro; as outras abriram-lhe o espaço.
-//!   Mexer o rato leva-a; um clique larga-a ali.
-//! - **4** — o quadro da cena 1 com o VERSO de «Animate shot 12» aberto (a maquete `Back.dc.html`):
-//!   capa, membros, etiquetas, prazo atrasado, descrição rica, campos, a checklist «Animation pass»
-//!   com responsável e data, um comentário com menção e reacção, e o histórico.
-//! - **5** — W6: o FILTRO aberto (a maquete `Filter.dc.html`) e o envelhecimento regular.
-//! - **6** — W6: o envelhecimento PIRATA, um MODELO e um ESPELHO ([`crate::smoke_w6`]).
-//! - **7** — J1: o Kanban da cena 1 PARTILHADO, o «Share» aberto e um colega («Rui») a ver
-//!   ([`crate::share::smoke`]).
-//! - **8** — J2: o BUTLER (regras, botões, uma sugestão) e o verso com botões e ligações ao
-//!   projecto ([`crate::smoke_j2`]).
-//! - **9** — W10: o quadro sintético do Trello IMPORTADO (a fixture do `ph2d-kanban-import`), com
-//!   o RELATÓRIO da importação aberto por cima da aba: o que entrou e o que ficou de fora.
+//! - **3** — a cena 1 com a «To Do» NA MÃO entre a «Doing» e a «Review»; um clique larga-a ali.
+//! - **4** — a cena 1 com o VERSO de «Animate shot 12» aberto (a maquete `Back.dc.html`).
+//! - **5**, **6** — W6: o FILTRO; o envelhecimento PIRATA, MODELO e ESPELHO ([`crate::smoke_w6`]).
+//! - **7** — J1: PARTILHADO, o «Share» aberto e o colega «Rui» a ver ([`crate::share::smoke`]).
+//! - **8** — J2: o BUTLER e o verso com botões e ligações ao projecto ([`crate::smoke_j2`]).
+//! - **9** — W10: o Trello IMPORTADO (fixture do `ph2d-kanban-import`) com o RELATÓRIO aberto.
 
 use crate::docs::KanbanDocs;
 use ph2d_editor_core::screens::hero::HeroScreen;

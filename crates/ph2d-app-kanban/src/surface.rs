@@ -90,7 +90,13 @@ impl DocumentSurface for KanbanDocs {
     }
 
     fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
-        let taken = self.route_wheel(id, x, y, dy, shift);
+        let taken = self.route_wheel(id, x, y, [0.0, dy], shift);
+        crate::hooks::settle(self);
+        taken
+    }
+
+    fn wheel_sideways(&mut self, id: u64, x: f32, y: f32, dx: f32) -> bool {
+        let taken = self.route_wheel(id, x, y, [dx, 0.0], false);
         crate::hooks::settle(self);
         taken
     }
@@ -340,20 +346,24 @@ impl KanbanDocs {
         crate::pointer::moved(self, id, input.text, x, y)
     }
 
-    fn route_wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
-        if crate::io::wheel(self, id, crate::pointer::wheel_px(dy)) {
+    /// `[dx, dy]`: o `dx` (o deslizar de lado) só o lêem as camadas que rolam de lado; nas só-verticais o
+    /// `dy` dele é zero e elas tomam-no sem mexer.
+    fn route_wheel(&mut self, id: u64, x: f32, y: f32, [dx, dy]: [f32; 2], shift: bool) -> bool {
+        let (h, v) = (crate::pointer::wheel_px(dx), crate::pointer::wheel_px(dy));
+        let io = crate::io::wheel(self, id, v);
+        if io || id == HOME {
+            return io;
+        }
+        if crate::bg::wheel(self, id, x, y, v) || crate::w6::wheel(self, id, x, y, [h, v], shift) {
             return true;
         }
-        if id != HOME && crate::bg::wheel(self, id, x, y, crate::pointer::wheel_px(dy)) {
-            return true;
+        if crate::back::is_open(self, id) {
+            return crate::back::wheel(self, id, (x, y), v);
         }
-        if id != HOME && crate::w6::wheel(self, id, x, y, crate::pointer::wheel_px(dy), shift) {
-            return true;
+        if dx != 0.0 {
+            return crate::pointer::scroll(self, id, (x, y), [h, 0.0]);
         }
-        if id != HOME && crate::back::is_open(self, id) {
-            return crate::back::wheel(self, id, (x, y), crate::pointer::wheel_px(dy));
-        }
-        id != HOME && crate::pointer::wheel(self, id, x, y, dy, shift)
+        crate::pointer::wheel(self, id, x, y, dy, shift)
     }
 
     fn route_key(&mut self, id: u64, ts: &mut TextSystem, input: KeyInput<'_>) -> KeyOutcome {

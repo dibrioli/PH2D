@@ -1,12 +1,7 @@
 //! As cenas de smoke da W6 (o roteador é o [`crate::smoke`]):
 //!
-//! - **5** — o quadro da cena 1 com o FILTRO aberto (a maquete `Filter.dc.html`): etiquetas
-//!   «Animation» e «Audio» marcadas (o botão diz «Filters 2»), as listas mostram «n of m» e a que
-//!   ficou vazia diz «No cards match the filter.»; o envelhecimento REGULAR ligado — «Voice casting»
-//!   parado há 9 dias desbota um degrau, «Pick the music» (16 dias) dois.
-//! - **6** — o mesmo quadro sem filtro, no envelhecimento PIRATA (papel amarelo, bordas rasgadas,
-//!   rachas: 9, 16 e 30 dias), com um MODELO («Shot template», o selo «This card is a template») e
-//!   um ESPELHO de «Animate shot 12» na «Review» (o selo do espelho).
+//! - **5** — a cena 1 com o FILTRO aberto («Filters 2», «n of m») e o envelhecimento REGULAR.
+//! - **6** — sem filtro, o envelhecimento PIRATA, um MODELO e um ESPELHO na «Review».
 
 use ph2d_kanban_model::{Aging, CardRef, KanbanId, KanbanOp, KanbanSet, Moment, Record};
 

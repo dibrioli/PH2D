@@ -144,7 +144,7 @@ pub(crate) fn pointer(
 }
 
 /// A roda numa vista que não é o quadro. `true` = tomada.
-pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
+pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, x: f32, y: f32, d: [f32; 2], s: bool) -> bool {
     let floor = docs.over.map(|o| o.y);
     let inside = docs
         .tab_mut(id)
@@ -152,8 +152,9 @@ pub(crate) fn wheel(docs: &mut KanbanDocs, id: u64, x: f32, y: f32, dy: f32, shi
     if !inside {
         return false;
     }
-    with_views(docs, id, |v, set, kid, cx| {
-        v.wheel(set, kid, cx, (x, y), dy, (shift, false))
+    with_views(docs, id, |v, set, kid, cx| match d {
+        [dx, _] if dx != 0.0 => v.wheel_sideways(set, kid, cx, (x, y), dx),
+        [_, dy] => v.wheel(set, kid, cx, (x, y), dy, (s, false)),
     });
     true
 }

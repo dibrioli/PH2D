@@ -163,6 +163,27 @@ impl Views {
         }
     }
 
+    /// O deslizar de lado do trackpad (`dx` na unidade da roda): o Shift+roda onde ele rola na horizontal (a
+    /// Tabela; a Linha do tempo fora da gaveta); nas que só rolam na vertical, nada.
+    pub fn wheel_sideways(
+        &mut self,
+        set: &KanbanSet,
+        kanban: KanbanId,
+        cx: &Ctx<'_>,
+        (x, y): (f32, f32),
+        dx: f32,
+    ) -> Reply {
+        let at = self.to_view(x, y);
+        let drawer = |r: Option<Rect>| r.is_some_and(|r| r.contains(at.0, at.1));
+        match self.kind {
+            ViewKind::Table => table::wheel(&mut self.table, at, dx, true),
+            ViewKind::Timeline if !drawer(self.timeline.painted().drawer) => {
+                timeline::wheel(&mut self.timeline, set, kanban, cx, at, dx, (true, false))
+            }
+            _ => Reply::default(),
+        }
+    }
+
     /// Uma tecla.
     pub fn key(
         &mut self,

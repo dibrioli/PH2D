@@ -1,10 +1,7 @@
 //! A cena de smoke de J2 (o roteador é o [`crate::smoke`]):
 //!
-//! - **8** — o quadro da cena 1 com o BUTLER montado e o verso de «Animate shot 12» aberto: na coluna
-//!   «Buttons» o botão de cartão «Ship it»; na secção «Project links» uma ligação VIVA ao Quadro
-//!   «Storyboard» e uma QUEBRADA («Fox rig (deleted)»); no «…» do Kanban (ou em «Add button» do
-//!   verso) o painel de automação com três regras, um botão de quadro e uma SUGESTÃO («You moved 3
-//!   cards to Review and did the same each time: … join the card»).
+//! - **8** — a cena 1 com o BUTLER e o verso de «Animate shot 12»: o botão «Ship it», uma ligação
+//!   VIVA e uma QUEBRADA em «Project links», e no «…» três regras, um botão e uma SUGESTÃO.
 
 use ph2d_kanban_auto::{
     Action, Added, By, Condition, Dest, End, Every, Kind, Scope, Sort, Spec, Test, TimeOfDay,

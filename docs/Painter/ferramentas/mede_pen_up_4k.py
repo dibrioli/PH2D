@@ -331,6 +331,7 @@ def ciclos(pasta):
               f"{g('principal') * 1e3 / max(quadros, 1):.1f} ({quadros} q) |")
     print("\n| corrida | pincel | `]` | carga | pen-down M ciclos principal ×6 | soltar 3 s G todos ×6 "
           "| soltar 3 s G otica ×6 | M ciclos sim/passo ×6 |\n|---|---|---|---|---|---|---|---|")
+    gestos = []
     for meta_f in sorted(glob.glob(os.path.join(pasta, "wet6", "*.meta"))):
         tag = meta_f[:-5]
         if not os.path.exists(tag + ".perf"):
@@ -344,10 +345,12 @@ def ciclos(pasta):
         m = {p[0]: int(p[1]) - off for p in linhas if len(p) >= 2 and p[0] != "relogio"}
         a = amostras(tag + ".perf")
         janela = lambda t0, t1, fio=None: sum(c for x, t, c in a if t0 < t <= t1 and (fio is None or x == fio))
-        passos, ultimo = [], 0
+        passos, ultimo, quadros = [], 0, []
         for linha in open(tag + ".log", errors="replace"):
             if linha.startswith("[quadro-lento]"):
-                ultimo = int(dict(kv.split("=") for kv in linha.split()[1:])["parede"]) - off
+                kv = dict(x.split("=") for x in linha.split()[1:])
+                ultimo = int(kv["parede"]) - off
+                quadros.append((ultimo, float(kv["intervalo"])))
             elif "TAXA DA AGUA" in linha and ultimo:
                 q = re.search(r"\((\d+) passos em", linha)
                 if q:
@@ -365,6 +368,21 @@ def ciclos(pasta):
         b = os.path.basename(tag).split("_")
         print(f"| {b[0]}_{b[1]} | {meta['pincel']} | {meta['teclas']} | {meta['carga']} | {fmt(pd, 0)} | {fmt(so, 2)} "
               f"| {fmt(ot, 2)} | {fmt(sp)} |")
+        # O GESTO (B14.2, PASSOS longos): pincel na tela do 1.º movimento ao soltar — G ciclos/s do rayon (onde a
+        # óptica corre) e de todos os fios, quadros/s e o maior intervalo de quadro (ms).
+        for t in range(1, 7):
+            if f"up{t}" not in m:
+                break
+            t0, t1 = m[f"traco{t}"], m[f"up{t}"]
+            s = (t1 - t0) / 1e9
+            qs = [iv for p, iv in quadros if t0 < p <= t1]
+            gestos.append(f"| {b[0]}_{b[1]} | {meta['pincel']} | {meta['carga']} | {t} | {s:.2f} | "
+                          f"{janela(t0, t1, 'rayon') / 1e9 / s:.2f} | {janela(t0, t1) / 1e9 / s:.2f} | "
+                          f"{len(qs) / s:.1f} | {max(qs, default=0):.0f} |")
+    if gestos:
+        print("\n| corrida | pincel | carga | traço | gesto s | G ciclos/s rayon | G ciclos/s todos | quadros/s "
+              "| maior intervalo ms |\n|---|---|---|---|---|---|---|---|---|")
+        print("\n".join(gestos))
 
 
 if len(sys.argv) > 1 and sys.argv[1] == "--lote":

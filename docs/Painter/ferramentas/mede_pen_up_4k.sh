@@ -415,10 +415,21 @@ if [ "$1" = wet6 ]; then
     DISPLAY=$D xdotool windowsize $WIN 1600 1000 windowmove $WIN 0 0 2>/dev/null; sleep 4
     DISPLAY=$D xdotool windowfocus --sync $WIN 2>/dev/null; DISPLAY=$D xdotool mousemove 560 300; sleep 0.3
     for _ in $(seq 1 "$TECLAS"); do DISPLAY=$D xdotool key bracketright; sleep 0.05; done; sleep 1
-    for t in 1 2 3 4 5 6; do
+    # OLEO="x y" (B14b-cont 3): clica a caixa «Real Oil» do cartão Wet Paint (a cena Composite não tem porta para ela)
+    # e volta à tela; PNG=1 fotografa o ecrã já com ela ($TAG.oleo.png). TRACOS (6) e PASSOS (60 eventos × 8 ms):
+    # o gesto LONGO do óleo (B14.2) é PASSOS=400 ≈ 3,2 s de pincel na tela, em zigue-zague dentro de 400 px.
+    # OLEO_ROLA=n: n cliques da roda sobre o painel Brush antes (a caixa fica abaixo da dobra a 1600x1000).
+    if [ -n "$OLEO$OLEO_ROLA" ]; then
+      [ -n "$OLEO_ROLA" ] && DISPLAY=$D xdotool mousemove 1440 700 click --repeat "$OLEO_ROLA" --delay 60 5 && sleep 1
+      [ -n "$OLEO" ] && DISPLAY=$D xdotool mousemove $OLEO click 1; sleep 1.5; DISPLAY=$D xdotool mousemove 560 300; sleep 0.5
+      [ -n "$PNG" ] && DISPLAY=$D import -window root "$W6/$TAG.oleo.png" 2>/dev/null
+    fi
+    for t in $(seq 1 "${TRACOS:-6}"); do
       y=$((260 + t * 70)); DISPLAY=$D xdotool mousemove 520 $y; sleep 0.3
       marca down$t; DISPLAY=$D xdotool mousedown 1; sleep 0.4
-      cmd=""; for i in $(seq 1 60); do cmd="$cmd mousemove $((520 + i * 32 / 10)) $((y + (i % 7))) sleep 0.008"; done
+      cmd=""; for i in $(seq 1 "${PASSOS:-60}"); do
+        k=$((i % 250)); [ $k -gt 125 ] && k=$((250 - k))
+        cmd="$cmd mousemove $((520 + k * 32 / 10)) $((y + (i % 7))) sleep 0.008"; done
       marca traco$t; DISPLAY=$D xdotool $cmd
       marca up$t; DISPLAY=$D xdotool mouseup 1; sleep 3; marca fim$t
     done

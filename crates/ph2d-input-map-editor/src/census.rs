@@ -67,15 +67,18 @@ pub struct ControlLook {
 pub struct KeyLook {
     pub key: ph2d_input::Key,
     pub rect: Rect,
+    /// O estado (`keys::face_of`): repouso, hover, aceso na cor da acção ou premido.
     pub face: ph2d_tokens::ColorToken,
+    /// O que enche a TECLA: só repouso ou hover — premida e acesa acendem a plaquinha (onda 3, D1).
+    pub body: ph2d_tokens::ColorToken,
+    /// A face da plaquinha à vista; `None` = sem plaquinha (tecla sem acção nem estado, onda 3 D2).
+    pub plate_face: Option<ph2d_tokens::ColorToken>,
     pub ink: ph2d_tokens::ColorToken,
     /// O contorno: só o acento da acção aberta (a tecla do sistema não tem nenhum).
     pub edge: Option<ph2d_tokens::ColorToken>,
     /// A face de repouso pintada translúcida sobre o fundo (a tecla do sistema): menos ênfase que o repouso.
     pub dimmed: bool,
-    /// A faixa escura por baixo das barras (face cheia: premida ou acesa), para as barras não sumirem nela.
-    pub strip: Option<Rect>,
-    /// A plaquinha («adesivo») por baixo da legenda e por cima das barras.
+    /// A caixa da plaquinha («adesivo») por baixo da legenda e por cima das barras (pintada só com `plate_face`).
     pub plate: Rect,
     /// A legenda em texto e o seu tamanho; `None` = ícone.
     pub text: Option<(String, f32)>,

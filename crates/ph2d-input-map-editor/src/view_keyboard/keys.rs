@@ -281,20 +281,6 @@ pub(super) fn fill_face(
     fill_rounded_rect(scene, r, radius, ink.color(tok));
 }
 
-/// A faixa por baixo da pilha `bars`, no fundo do desenho (`CardField`): as barras mantêm o contraste sobre uma face
-/// cheia (premida ou acesa na cor de uma acção).
-fn paint_bar_strip(scene: &mut VectorScene, ink: CardInk, bars: &[Rect]) -> Option<Rect> {
-    let (first, last) = (bars.first()?, bars.last()?);
-    let s = Rect::new(
-        first.x - BAR_GAP,
-        first.y - BAR_GAP,
-        first.w + BAR_GAP * 2.0,
-        last.y + last.h - first.y + BAR_GAP * 2.0,
-    );
-    fill_rounded_rect(scene, s, BAR_H, ink.color(ColorToken::CardField));
-    Some(s)
-}
-
 /// As listras das acções de `who` na pilha `bars` (uma por acção, na cor dela), por trás da plaquinha.
 fn paint_stack(
     census: &mut crate::census::Census,
@@ -463,26 +449,25 @@ fn paint_key(
     } else {
         face_of(pressed, filled, hover)
     };
+    // ⭐ Onda 3, D1: a TECLA nunca se enche da cor de uma acção (engolia a barra dela): fica no repouso ou no hover,
+    // e a premida/acesa acende a PLAQUINHA. As barras ficam sempre sobre a face neutra.
+    let lit_plate = !system && (pressed || filled.is_some());
+    let body = face_of(false, None, hover && !system);
     if system {
         let c = ink.color(bg).multiply_alpha(SYSTEM_FACE_ALPHA);
         fill_rounded_rect(scene, kr, m::SEG_RADIUS, c);
     } else {
-        fill_face(scene, ink, kr, m::SEG_RADIUS, bg);
+        fill_face(scene, ink, kr, m::SEG_RADIUS, body);
     }
     if let Some(c) = filled.filter(|_| !pressed) {
         doc.census.filled.push((kr, c));
     }
-    // As barras por TRÁS da plaquinha: a pilha centrada na tecla, a faixa escura dela na face cheia.
+    // As barras por TRÁS da plaquinha: a pilha centrada na tecla.
     let bars = fit::bar_stack(kr, who.len());
-    let strip = if pressed || filled.is_some() {
-        paint_bar_strip(scene, ink, &bars)
-    } else {
-        None
-    };
     paint_stack(&mut doc.census, scene, ink, &bars, &who);
     let fg_tok = if system {
         ColorToken::TextDisabled
-    } else if pressed || filled.is_some() {
+    } else if lit_plate {
         ColorToken::Bg0
     } else if who.is_empty() {
         ColorToken::Text3
@@ -492,23 +477,31 @@ fn paint_key(
     let fg = ink.color(fg_tok);
     let legend = fit::choose(ts, key, (level, true), kr.w, fit::label_h(kr.h))
         .unwrap_or_else(|| fit::legend_at(key, level));
-    // ⭐ A legenda fica SEMPRE no centro da tecla, numa plaquinha opaca da face dela (dono 10/11: «como aqueles
-    // adesivos que colocamos no teclado»), com a aresta fina que a lê como colada; a do sistema, apagada também.
+    // ⭐ A legenda fica SEMPRE no centro da tecla, numa plaquinha opaca (dono 10/11: «como aqueles adesivos que
+    // colocamos no teclado»), com a aresta fina que a lê como colada. Só se vê quando há barras por trás dela ou um
+    // estado (D2: sem acção, nada de contorno à volta da legenda); acesa, a aresta escura separa-a das barras.
     let lb = fit::legend_box(ts, kr, &legend);
     let plate = fit::plate_of(kr, lb, matches!(legend, Legend::Icon(_)));
-    if system {
-        let c = ink.color(bg).multiply_alpha(SYSTEM_FACE_ALPHA);
-        fill_rounded_rect(scene, plate, fit::PLATE_RADIUS, c);
+    let plate_face = if lit_plate {
+        Some(bg)
     } else {
-        fill_face(scene, ink, plate, fit::PLATE_RADIUS, bg);
-    }
-    let rim = if system {
-        ink.color(ColorToken::Border)
-            .multiply_alpha(SYSTEM_FACE_ALPHA)
-    } else {
-        ink.color(ColorToken::Border)
+        (!who.is_empty()).then_some(body)
     };
-    stroke_rounded_rect(scene, plate, fit::PLATE_RADIUS, m::FIELD_BORDER, rim);
+    if let Some(pf) = plate_face {
+        fill_face(scene, ink, plate, fit::PLATE_RADIUS, pf);
+        let rim = if lit_plate {
+            ColorToken::CardField
+        } else {
+            ColorToken::Border
+        };
+        stroke_rounded_rect(
+            scene,
+            plate,
+            fit::PLATE_RADIUS,
+            m::FIELD_BORDER,
+            ink.color(rim),
+        );
+    }
     let text = match &legend {
         Legend::Icon(icon) => {
             // O ícone fica da altura da letra no mínimo e nunca encosta à aresta da tecla.
@@ -547,10 +540,11 @@ fn paint_key(
         key,
         rect: kr,
         face: bg,
+        body,
+        plate_face,
         ink: fg_tok,
         edge,
         dimmed: system,
-        strip,
         plate,
         text,
     });

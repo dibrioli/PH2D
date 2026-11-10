@@ -265,3 +265,223 @@ fn o_chip_do_also_poe_o_nome_numa_plaquinha_e_as_barras_por_tras() {
         &[1, 2, 5],
     );
 }
+
+// ── Rodada 2 da onda 3 (revisão visual): D1 tecla apertada, D2 plaquinha sem acção, D3 seta da manche ──
+
+use ph2d_app_input_map::census::KeyLook;
+use ph2d_tokens::{ColorToken, Theme};
+
+fn olhar(m: &Mesa, k: Key) -> KeyLook {
+    (m.tab().doc.census.keys.iter())
+        .find(|l| l.key == k)
+        .cloned()
+        .expect("tecla desenhada")
+}
+
+const UP: Key = Key(0xF700);
+
+/// O contraste de cada barra de `k` com o que está por trás dela (a face da tecla), em todo tema, e o da mesma
+/// barra numa tecla em repouso. Devolve `(menor agora, menor em repouso)`.
+fn contraste_das_barras(m: &Mesa, k: Key, at: &str) -> (f64, f64) {
+    let doc = &m.tab().doc;
+    let l = olhar(m, k);
+    let r = l.rect;
+    let mut pior = (f64::MAX, f64::MAX);
+    for (b, id) in &doc.census.bars {
+        if !r.contains(b.x + b.w * 0.5, b.y + b.h * 0.5) {
+            continue;
+        }
+        let cor = ph2d_tokens::categorical(id.0);
+        for theme in Theme::ALL {
+            let c = cor.resolve(theme);
+            let agora = c.contrast_ratio(&l.body.resolve(theme));
+            let repouso = c.contrast_ratio(&ColorToken::KanbanCardRaised.resolve(theme));
+            let antes = c.contrast_ratio(&l.face.resolve(theme));
+            eprintln!(
+                "{at} {theme:?} {cor:?}: atrás {agora:.2} · repouso {repouso:.2} · na face cheia {antes:.2}"
+            );
+            assert!(
+                agora >= repouso.min(3.0) - 1e-6,
+                "{at} {theme:?}: a barra {cor:?} some ({agora:.2} < {repouso:.2})"
+            );
+            pior = (pior.0.min(agora), pior.1.min(repouso));
+        }
+    }
+    pior
+}
+
+/// ⭐ D1: a ↑ apertada no Try it (jump + move_up) acende a PLAQUINHA na cor da acção; a tecla fica neutra e toda
+/// barra continua distinguível do que está por trás dela (≥ o contraste em repouso, ou ≥ 3:1). O premido do rato
+/// na B segue a mesma lei.
+#[test]
+fn a_tecla_apertada_acende_a_plaquinha_e_nunca_engole_as_barras() {
+    for a in &AREAS[..2] {
+        let mut m = pinta(View::TryIt, Sub::Keyboard, onze(), *a);
+        assert!(m.physical(UP), "a ↑ apertada");
+        m.paint_in(*a);
+        let at = format!("C {}", a.w);
+        let l = olhar(&m, UP);
+        let jump = m.hero.input_map.id("jump").expect("jump");
+        assert_eq!(
+            l.face,
+            ph2d_tokens::categorical(jump.0),
+            "{at}: aceso na cor do jump"
+        );
+        assert_eq!(
+            l.body,
+            ColorToken::KanbanCardRaised,
+            "{at}: a tecla fica neutra"
+        );
+        assert_eq!(l.plate_face, Some(l.face), "{at}: a plaquinha acende");
+        assert_eq!(
+            l.ink,
+            ColorToken::Bg0,
+            "{at}: o nome lê-se na plaquinha acesa"
+        );
+        let (agora, repouso) = contraste_das_barras(&m, UP, &at);
+        eprintln!("{at}: pior barra {agora:.2} (repouso {repouso:.2})");
+
+        // O premido do rato na B: a tecla neutra, a plaquinha no AccentPress.
+        let mut b = pinta(View::Keyboard, Sub::Keyboard, onze(), *a);
+        let q = Key(u32::from('Q'));
+        let c = b.at(KbHit::Key(q).id());
+        b.down(c);
+        b.paint_in(*a);
+        let at = format!("B {}", a.w);
+        let l = olhar(&b, q);
+        assert_eq!(l.face, ColorToken::AccentPress, "{at}: premida");
+        assert_ne!(l.body, ColorToken::AccentPress, "{at}: a tecla fica neutra");
+        assert_eq!(
+            l.plate_face,
+            Some(ColorToken::AccentPress),
+            "{at}: a plaquinha acende"
+        );
+        contraste_das_barras(&b, q, &at);
+        b.release();
+    }
+}
+
+/// ⭐ D2: sem acção (e sem estado), a plaquinha não se pinta — nada de contorno à volta da legenda (o numérico, o
+/// Home/End). Com acção, pinta-se.
+#[test]
+fn sem_accao_a_plaquinha_nao_se_ve() {
+    for a in &AREAS[..2] {
+        for view in [View::Keyboard, View::TryIt] {
+            let m = pinta(view, Sub::Keyboard, onze(), *a);
+            let doc = &m.tab().doc;
+            let at = format!("{view:?} {}", a.w);
+            let (mut com, mut sem) = (0, 0);
+            for l in &doc.census.keys {
+                let who = (doc.kb.bars.iter())
+                    .find(|(h, _)| *h == KbHit::Key(l.key))
+                    .map_or(0, |b| b.1.len());
+                if who == 0 {
+                    sem += 1;
+                    assert_eq!(
+                        l.plate_face,
+                        None,
+                        "{at}: {} sem acção mostra a plaquinha",
+                        l.key.label()
+                    );
+                } else {
+                    com += 1;
+                    assert!(
+                        l.plate_face.is_some(),
+                        "{at}: {} com acção sem plaquinha",
+                        l.key.label()
+                    );
+                }
+            }
+            assert!(com > 5 && sem > 50, "{at}: {com} com acção, {sem} sem"); // LITERAL-PX-OK: contagens
+        }
+    }
+}
+
+/// ⭐ D3: a seta da manche ligada (o ← do LS com move_left) lê-se como as outras partes ligadas: o glifo do tamanho
+/// do braço da cruz, as barras à vista dos dois lados (≥ 2 px), sem tocar o anel da manche nem sair do corpo, e
+/// nenhuma parte do comando sobre outra — nas duas larguras.
+#[test]
+fn a_seta_da_manche_ligada_le_se_como_as_outras_partes() {
+    let ls_left = Binding::PadAxis {
+        axis: GamepadAxis::LeftStickX,
+        positive: false,
+    };
+    let dpad_up = Binding::PadButton(GamepadButton::DPadUp);
+    for a in &AREAS[..2] {
+        let at = format!("{}", a.w);
+        let map = liga(liga(onze(), dpad_up, 1), ls_left, 2);
+        let m = pinta(View::Keyboard, Sub::Gamepad, map, *a);
+        let doc = &m.tab().doc;
+        let caixa = doc.kb.pad_box.expect("o comando pintado");
+        let icone = |b: Binding| {
+            let r = doc.rect_of(KbHit::Pad(b).id()).expect("a parte");
+            let i = (doc.census.icons.iter())
+                .find(|i| r.contains(i.0.x + i.0.w * 0.5, i.0.y + i.0.h * 0.5))
+                .expect("a seta")
+                .0;
+            (r, i)
+        };
+        let (r, ir) = icone(ls_left);
+        let (_, braco) = icone(dpad_up);
+        eprintln!("{at}: seta do LS {ir:?} na parte {r:?}; braço da cruz {braco:?}");
+        assert!(
+            ir.w >= braco.w - 0.01,
+            "{at}: o glifo {} < o do braço {}",
+            ir.w,
+            braco.w
+        );
+        let bs = barras(doc, r);
+        assert_eq!(bs.len(), 2, "{at}: move_left e a outra por trás da seta");
+        for b in bs {
+            assert!(dentro(b, r), "{at}: a barra {b:?} sai da parte");
+            let lado = (ir.x - b.x).min(b.x + b.w - ir.x - ir.w);
+            eprintln!("{at}: barra à vista {lado:.2}");
+            assert!(lado >= BAR_VISIBLE_MIN - 0.01, "{at}: espreita {lado:.2}");
+        }
+        // O anel do LS: a legenda «LS» pinta-se na altura do anel (2 r) com o centro nele.
+        let ls = (doc.census.texts.iter())
+            .find(|t| t.1 == "LS")
+            .expect("o LS")
+            .0;
+        let (cx, cy, raio) = (ls.x + ls.w * 0.5, ls.y + ls.h * 0.5, ls.h * 0.5);
+        let partes: Vec<Rect> = (doc.kb.bars.iter())
+            .filter_map(|(h, _)| doc.rect_of(h.id()))
+            .collect();
+        for (i, p) in partes.iter().enumerate() {
+            for q in &partes[i + 1..] {
+                let separadas =
+                    p.x + p.w <= q.x || q.x + q.w <= p.x || p.y + p.h <= q.y || q.y + q.h <= p.y;
+                assert!(separadas, "{at}: {p:?} sobre {q:?}");
+            }
+            for (x, y) in [
+                (p.x, p.y),
+                (p.x + p.w, p.y),
+                (p.x, p.y + p.h),
+                (p.x + p.w, p.y + p.h),
+            ] {
+                let fora_do_topo = p.y + p.h <= caixa.y + caixa.h * 0.2; // LITERAL-PX-OK: os gatilhos na aresta
+                assert!(
+                    fora_do_topo || ph2d_app_input_map::view_keyboard::body_contains(caixa, x, y),
+                    "{at}: {p:?} sai do corpo"
+                );
+            }
+        }
+        // As quatro setas do LS não tocam o anel (o traço do anel aceso tem 3 px: metade para fora).
+        for (h, _) in &doc.kb.bars {
+            let KbHit::Pad(Binding::PadAxis { axis, .. }) = h else {
+                continue;
+            };
+            if !matches!(axis, GamepadAxis::LeftStickX | GamepadAxis::LeftStickY) {
+                continue;
+            }
+            let p = doc.rect_of(h.id()).expect("a seta");
+            let nx = cx.clamp(p.x, p.x + p.w);
+            let ny = cy.clamp(p.y, p.y + p.h);
+            let d = ((nx - cx).powi(2) + (ny - cy).powi(2)).sqrt();
+            assert!(
+                d > raio + 1.5,
+                "{at}: {p:?} toca o anel ({d:.1} ≤ {raio:.1})"
+            ); // LITERAL-PX-OK: meio traço
+        }
+    }
+}

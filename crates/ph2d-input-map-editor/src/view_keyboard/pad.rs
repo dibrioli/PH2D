@@ -63,6 +63,14 @@ fn body(at: &dyn Fn(f32, f32) -> (f64, f64)) -> BezPath {
     path
 }
 
+/// O ponto `(x, y)` fica dentro do corpo do comando pintado na caixa `bx` (`KbState::pad_box`)?
+#[must_use]
+pub fn body_contains(bx: Rect, x: f32, y: f32) -> bool {
+    use ph2d_vector::Shape;
+    let at = |fx: f32, fy: f32| (f64::from(bx.x + fx * bx.w), f64::from(bx.y + fy * bx.h));
+    body(&at).winding((f64::from(x), f64::from(y)).into()) != 0
+}
+
 pub(super) fn paint(
     doc: &mut InputMapDoc,
     draw: Rect,
@@ -79,6 +87,7 @@ pub(super) fn paint(
         let (x, y) = at(fx, fy);
         (f64::from(x), f64::from(y))
     };
+    doc.kb.pad_box = Some(Rect::new(ox, oy, bw, bh));
     let outline = body(&at64);
     let edge = Stroke::new(f64::from(m::FIELD_BORDER * 2.0));
     scene.inner_mut().stroke(
@@ -166,7 +175,7 @@ pub(super) fn paint(
         if matches!(p.shape, PadShape::Pill) {
             // O nome e as barras de cada lado dele cabem dentro das pontas redondas.
             let ends = hh * (1.0 - std::f32::consts::FRAC_1_SQRT_2);
-            hw = hw.max(ts.prefix_width(tr(p.short_key), m::LABEL_PX) * 0.5 + m::SEG_INSET + ends);
+            hw = hw.max(ts.prefix_width(tr(p.short_key), m::LABEL_PX) * 0.5 + LEGEND_MARGIN + ends);
         }
         let r = Rect::new(cx - hw, cy - hh, hw * 2.0, hh * 2.0);
         let who = users(doc, p.binding);
@@ -183,7 +192,9 @@ pub(super) fn paint(
         // A mesma precedência das teclas (`face_of`); a seta de uma metade só ganha face quando premida ou sob o
         // ponteiro (em repouso é uma seta solta à volta do anel, maquete B3).
         let half = matches!(p.shape, PadShape::Half(..));
-        let face = (!half || pressed || hover).then(|| face_of(pressed, None, hover));
+        // Com barras, a premida acende a plaquinha e a face fica neutra (a lei da tecla, onda 3 D1).
+        let body_pressed = pressed && who.is_empty();
+        let face = (!half || pressed || hover).then(|| face_of(body_pressed, None, hover));
         if let Some(f) = face {
             super::keys::fill_face(scene, ink, r, radius, f);
         }
@@ -197,7 +208,7 @@ pub(super) fn paint(
             ColorToken::Text1
         });
         // As barras por TRÁS do nome, numa plaquinha (a lei da tecla); o nome no centro com 0 ou N barras.
-        let plate_face = face.unwrap_or(ColorToken::KanbanCardRaised);
+        let plate_face = face_of(pressed, None, hover);
         let sticker = (r, radius, plate_face);
         match p.shape {
             PadShape::Arm(icon) | PadShape::Half(icon, _) => {

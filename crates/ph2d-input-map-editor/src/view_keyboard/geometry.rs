@@ -239,7 +239,9 @@ const PILL: (f32, f32) = (0.11, 0.045); // LITERAL-PX-OK: maquete B3
 const SMALL_PILL: (f32, f32) = (0.07, 0.035); // LITERAL-PX-OK: maquete B3
 const BTN: (f32, f32) = (0.06, 0.06); // LITERAL-PX-OK: maquete B3
 const ARM: (f32, f32) = (0.045, 0.045); // LITERAL-PX-OK: maquete B3
-const TIP: (f32, f32) = (0.04, 0.04); // LITERAL-PX-OK: maquete B3
+/// A seta de uma metade de manche tem o tamanho do braço da cruz: o mesmo glifo das outras setas, com a plaquinha e as
+/// barras à vista dos dois lados quando ligada (onda 3, D3: a 0,04 a seta lia-se como uma caixinha).
+const TIP: (f32, f32) = ARM;
 /// Os gatilhos ASSENTAM na aresta do topo do corpo (o fundo da pílula em `BODY_START.1`, maquete B3); os ombros
 /// ficam logo abaixo da aresta, já dentro do corpo, entre a manche esquerda (o espelho: o Y) e o Back/Start.
 const LT: (f32, f32) = (0.2, BODY_START.1 - PILL.1); // LITERAL-PX-OK: maquete B3

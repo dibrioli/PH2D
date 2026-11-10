@@ -4,6 +4,7 @@
 
 pub mod geometry;
 pub use geometry::half_icon;
+pub use pad::body_contains;
 pub mod hscroll;
 pub(crate) mod input;
 pub(crate) mod keys;
@@ -113,6 +114,7 @@ pub fn paint(
     doc.kb.targets.clear();
     doc.kb.bars.clear();
     doc.kb.live_dot = None;
+    doc.kb.pad_box = None;
     doc.kb.bar = None;
     if let Some(n) = doc.kb.select_name.clone()
         && let Some(id) = doc.snap.map.id(&n)

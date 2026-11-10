@@ -453,7 +453,8 @@ fn tecla(nome: &str) -> Key {
     Key::named_in_script(nome).expect("tecla")[0]
 }
 
-/// K2 #2: na C, a ↑ premida (jump amarelo + move_up) enche-se — e as barras ficam numa faixa escura própria.
+/// K2 #2: na C, a ↑ premida (jump amarelo + move_up) acende — e as barras ficam sobre a face NEUTRA da tecla (onda 3,
+/// D1: a face cheia na cor do jump engolia a barra dele; agora acende a plaquinha, `onda3_tracos`).
 #[test]
 fn k2_a_face_cheia_nao_engole_as_barras() {
     for area in AREAS {
@@ -462,7 +463,8 @@ fn k2_a_face_cheia_nao_engole_as_barras() {
         assert!(c.physical(up));
         c.paint_in(area);
         let l = olhar_de(&c, up);
-        let strip = l.strip.expect("a ↑ premida tem a faixa das barras");
+        assert_eq!(l.body, ColorToken::KanbanCardRaised, "a tecla fica neutra");
+        let strip = l.rect;
         let r = c.tab().doc.rect_of(KbHit::Key(up).id()).expect("alvo");
         let bars: Vec<Rect> = (c.tab().doc.census.bars.iter())
             .filter(|(b, _)| r.contains(b.x + b.w * 0.5, b.y + b.h * 0.5))
@@ -476,8 +478,8 @@ fn k2_a_face_cheia_nao_engole_as_barras() {
                 area.w
             );
         }
-        // Uma tecla em repouso não ganha faixa.
-        assert_eq!(olhar_de(&c, tecla("q")).strip, None);
+        // Uma tecla em repouso tem a mesma face neutra.
+        assert_eq!(olhar_de(&c, tecla("q")).body, ColorToken::KanbanCardRaised);
     }
 }
 

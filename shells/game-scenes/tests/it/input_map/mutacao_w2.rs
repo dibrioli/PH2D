@@ -198,7 +198,7 @@ fn o_tab_traz_para_a_vista_a_linha_que_o_recorte_escondia() {
     let mut m = Mesa::aberta(View::Keyboard);
     let mut map = ph2d_input::InputMap::with_player_defaults();
     for i in 0..40 {
-        map.create(&format!("acao_{i:02}"));
+        map.create(format!("acao_{i:02}"));
     }
     m.hero.input_map = map;
     m.frame();

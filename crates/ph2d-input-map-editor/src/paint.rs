@@ -28,7 +28,7 @@ pub fn paint_doc(
     let mut local = std::mem::take(&mut doc.scratch);
     local.reset();
     paint_pass(doc, area, &mut local, text, theme);
-    if doc.settle_hover() {
+    if doc.settle_hover() | doc.hot_moved() {
         local.reset();
         paint_pass(doc, area, &mut local, text, theme);
         doc.settle_hover();
@@ -48,6 +48,7 @@ fn paint_pass(
     doc.layout = l;
     let ink = CardInk::of_list(theme);
     fill_rounded_rect(scene, area, 0.0, ink.color(ColorToken::KanbanList));
+    doc.begin_hot();
     doc.hits = HitIndex::default();
     doc.census = crate::census::Census::default();
     doc.begin_paint();
@@ -100,7 +101,10 @@ fn paint_pass(
         .and_then(|id| doc.ui.controls.iter().find(|c| c.id == id))
         .and_then(|c| Some((c.role, doc.hits.rect_for(c.id)?)))
     {
-        let radius = if matches!(c.0, ControlRole::Segment | ControlRole::Key) {
+        let radius = if matches!(
+            c.0,
+            ControlRole::Segment | ControlRole::Key | ControlRole::Chip | ControlRole::Button
+        ) {
             m::SEG_RADIUS
         } else {
             m::FIELD_RADIUS

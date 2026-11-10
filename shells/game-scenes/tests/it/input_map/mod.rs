@@ -20,6 +20,7 @@ mod polimento_b;
 mod polimento_c;
 mod polimento_f3;
 mod polimento_w3;
+mod polimento_w3_lista;
 mod teclado;
 mod teclado_censo;
 mod teclado_r7b;

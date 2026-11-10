@@ -41,6 +41,21 @@ pub struct Census {
     pub scrollbars: Vec<(Rect, Rect, Rect)>,
     /// Cada ladrilho de ligação da B (o fundo do chip e o token dele).
     pub chips: Vec<(Rect, ph2d_tokens::ColorToken)>,
+    /// A A: o olhar de cada controlo da linha no estado em que se pintou (linha, chip, ×, «No key», «+», lixo).
+    pub looks: Vec<ControlLook>,
+}
+
+/// Como um controlo da A se pintou: o fundo, a aresta (e se é tracejada), a tinta e a marca do acento à esquerda.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ControlLook {
+    pub id: ph2d_a11y::NodeId,
+    /// O alvo (o rect registado): o mesmo em todo estado.
+    pub rect: Rect,
+    pub fill: Option<ph2d_tokens::ColorToken>,
+    pub edge: Option<ph2d_tokens::ColorToken>,
+    pub ink: ph2d_tokens::ColorToken,
+    /// A barra do acento à esquerda (a linha à escuta).
+    pub marker: bool,
 }
 
 /// Como uma tecla desenhada se pintou.
@@ -70,6 +85,12 @@ impl Census {
             .filter(|t| t.2)
             .map(|t| t.1.as_str())
             .collect()
+    }
+
+    /// O olhar pintado de `id` (`None` = não se pintou neste quadro).
+    #[must_use]
+    pub fn look(&self, id: ph2d_a11y::NodeId) -> Option<ControlLook> {
+        self.looks.iter().rev().find(|l| l.id == id).copied()
     }
 
     #[must_use]

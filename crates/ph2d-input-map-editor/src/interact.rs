@@ -129,6 +129,8 @@ pub struct Ui {
     pub(crate) pointer: Option<(f32, f32)>,
     /// O controlo capturado no Down.
     pub(crate) pressed: Option<NodeId>,
+    /// O alvo quente da pintura em curso, lido nos rects da pintura anterior (`view_list::looks`).
+    pub(crate) paint_hot: Option<NodeId>,
     pub(crate) focus: Option<NodeId>,
     /// Shift premido (a porta física não traz modificadores).
     pub(crate) shift: bool,
@@ -215,7 +217,7 @@ impl InputMapDoc {
     }
 
     /// O id quente: o capturado só enquanto o ponteiro está nele; sem captura, o de cima.
-    fn hot(&self) -> Option<NodeId> {
+    pub(crate) fn hot(&self) -> Option<NodeId> {
         let (x, y) = self.ui.pointer?;
         match self.ui.pressed {
             Some(p) => self

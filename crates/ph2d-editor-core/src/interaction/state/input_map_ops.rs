@@ -118,10 +118,11 @@ pub fn capture_if_listening(
     store.input_map_listening()?;
     // ⛔ O que a aba nunca liga não é capturado: segue e a escuta continua (InputMap W1/W2b). Uma tecla do SISTEMA,
     // o F5 (no Play é o transporte: a ligação nunca chegaria ao jogo), Ctrl/Alt e o acorde com o Ctrl em baixo.
-    let held = store
-        .cmd_held()
-        .then(|| ph2d_input::Key::named_in_script("ctrl").unwrap_or_default())
-        .unwrap_or_default();
+    let held = if store.cmd_held() {
+        ph2d_input::Key::named_in_script("ctrl").unwrap_or_default()
+    } else {
+        Default::default()
+    };
     if ph2d_input::editor_keys::never_binds(ph2d_input::Key(keycode), held) {
         return None;
     }

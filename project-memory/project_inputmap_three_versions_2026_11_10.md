@@ -34,3 +34,5 @@ numéricos e todos os acabamentos. Prompt: `docs/InputMap/handoffs/PROMPT_MISSAO
 **Onda 2 entregue 10/11:** o teclado das versões B e C é o de notebook da foto do dono (101 teclas, numérico com Numpad Enter próprio, Num Lock ⇭, teclas do sistema esmaecidas que nunca ligam; a 1280 a B empilha). Camada de polimento: registo único de controlos (premido nativo, Tab, a11y), campo numérico pro, caret que pisca; hover INSTANTÂNEO (D32). Handoff: `docs/InputMap/handoffs/HANDOFF_INTEGRACAO_line_InputMap_2026-11-10_ONDA2.md`.
 
 Dono 10/11 (depois da onda 2): a letra da tecla fica parada no centro, numa plaquinha tipo adesivo; os traços das acções passam por trás dela.
+
+Dono 10/11: a lista pede hover e clique caprichados (linha, chips, ×, No key) — sem fade (D32).

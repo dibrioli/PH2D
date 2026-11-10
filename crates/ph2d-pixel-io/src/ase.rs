@@ -108,6 +108,8 @@ fn posicao(b: Rect) -> Result<(i16, i16), AseErro> {
 mod slices;
 pub use slices::{COLLIDER_PROP, Colliders, PIVOT_PROP};
 use slices::{slices_de, slices_saida, tira_collider, tira_pivo};
+mod efeitos;
+pub use efeitos::{CRU_PROP, CYCLES_PROP, EFEITOS_PROP, RAMPS_PROP};
 mod saida_tiles;
 mod user;
 use saida_tiles::{mapa_saida, tilesets_saida, vai_em_tiles};
@@ -120,6 +122,8 @@ pub fn escrever(s: &Sprite) -> Result<(Vec<u8>, Vec<Aviso>), AseErro> {
     if s.frames().len() > usize::from(u16::MAX) {
         return Err(AseErro::QuadrosDemais(s.frames().len()));
     }
+    let assado = efeitos::assa(s);
+    let s: &Sprite = &assado;
     let ordem = pre_ordem(s);
     let ext = user::extensoes(s);
     let layers = ordem
@@ -532,6 +536,7 @@ pub fn ler_com_colliders(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>, Colliders)
     if pivo.is_some() {
         let _ = ph2d_pixel_core::apply(&mut sprite, ph2d_pixel_core::Op::PivotSlice(pivo));
     }
+    efeitos::repoe(&mut sprite);
     Ok((sprite, avisos, colliders))
 }
 

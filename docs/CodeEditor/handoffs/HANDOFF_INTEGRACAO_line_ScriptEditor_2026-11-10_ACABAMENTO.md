@@ -166,9 +166,9 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   aba aberta a 600 e a outra a 400. Testes `bancada::letras` (3) e `barra_da_aba::os_menus_da_barra_tem_a_letra_do_codigo`;
   6 mutações vermelhas. Foto `smoke/aj_letras.png`.
 
-Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 20,85 s); a 2.ª:
+Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,35 s, já construído pelas fotos); a 2.ª:
 
 ```
 ▸ linha line_scripteditor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.33s
+    Finished `smoke` profile [optimized] target(s) in 0.42s
 ```

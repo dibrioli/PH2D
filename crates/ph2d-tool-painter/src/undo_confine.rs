@@ -74,6 +74,8 @@ impl ModelSnapshot {
             //   muda um pixel, e exigir igualdade deles recusaria todo passo elidido — que é o comum.
             relief_elided: _,
             canvas_elided: _,
+            #[cfg(any(test, debug_assertions))]
+                canvas_audit: _,
             writes: _,
             // — a MARCA do Wet: muda a luz do papel só onde a camada tem alfa; quem a julga é o
             //   [`UndoEntry::confined_region`], pela janela da tinta —

@@ -267,6 +267,16 @@ impl PainterTool {
         velha: &[u8],
         casco: Option<Caixa>,
     ) -> Vec<bool> {
+        self.wet_enterra_no_casco_com_toque(sess, velha, casco).0
+    }
+
+    /// [`Self::wet_enterra_no_casco`] com a caixa (0-based, inclusiva) das células tocadas.
+    pub(in crate::tool::paint::wetpaint) fn wet_enterra_no_casco_com_toque(
+        &self,
+        sess: &mut WetSession,
+        velha: &[u8],
+        casco: Option<Caixa>,
+    ) -> (Vec<bool>, Option<Caixa>) {
         let nova = &self.canvas_rgba[..];
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
         let q = usize::from(sess.ratio);
@@ -318,7 +328,7 @@ impl PainterTool {
         let (mudou, caixa, orla) = mudou_do_enterro(&tocada, toque, &antes, &sess.planos, (gw, gh));
         self.wet_orla_vai_para_a_base(sess, &mudou, &tocada, orla);
         self.wet_congela(sess, caixa.map(|c| (&tocada[..], &mudou[..], c)));
-        tocada
+        (tocada, toque)
     }
 
     /// Na orla do enterro a tinta perdeu cobertura que a tela ainda mostra: fica na `base`, ou a Borracha que refaz estes

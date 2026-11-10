@@ -28,6 +28,8 @@ impl PainterTool {
             // [`Self::snapshot_model_eliding_relief`].
             relief_elided: crate::undo::elide::ElidedRelief::default(),
             canvas_elided: None,
+            #[cfg(any(test, debug_assertions))]
+            canvas_audit: None,
             canvas_rgba: Arc::clone(&self.canvas_rgba),
             // A forma do que o snapshot carrega — o stride de cada plano para o motor de delta.
             canvas_size: self.source_size,

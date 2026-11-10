@@ -183,8 +183,7 @@ impl PainterTool {
     /// ```
     #[cfg(any(test, debug_assertions))]
     pub(crate) fn audit_journal_matches_the_before(&self, before: &crate::undo::ModelSnapshot) {
-        static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-        if !*ON.get_or_init(|| std::env::var_os("PH2D_UNDO_AUDIT").is_some()) {
+        if !crate::undo::elide::ligada() {
             return;
         }
         // O alvo FORTE: o journal foi zerado no início DESTE passo, então ele descreve o `before` dele.
@@ -193,7 +192,15 @@ impl PainterTool {
             .write_state
             .journal_describes_step_at(before.writes)
         {
-            self.audit_journal_against("PASSO", &before.canvas_rgba);
+            // Elidido, o `before` não segura a tela: a sombra da auditoria é o alvo (B17.4), nunca a rede vazia.
+            let want = match (&before.canvas_elided, &before.canvas_audit) {
+                (None, _) => &before.canvas_rgba,
+                (Some(_), Some(sombra)) => sombra,
+                (Some(_), None) => panic!(
+                    "o `before` do passo elidiu a tela sem a sombra da auditoria: a rede do journal ficaria vazia"
+                ),
+            };
+            self.audit_journal_against("PASSO", want);
             self.audit_relief_journals(before);
             return;
         }

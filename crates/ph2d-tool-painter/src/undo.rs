@@ -113,6 +113,9 @@ pub struct ModelSnapshot {
     /// **A tela DESCRITA sem ser segurada** (B17.4, o molde do [`ElidedRelief`]): `Some` = `canvas_rgba` está
     /// vazio e o lado de antes é `journal.rewind(vivo)`, válido enquanto o vivo for o objeto da testemunha.
     pub(crate) canvas_elided: Option<std::sync::Weak<Vec<u8>>>,
+    /// Só com `PH2D_UNDO_AUDIT`: a cópia da tela que a elisão largou, para a rede do journal ter contra o que conferir.
+    #[cfg(any(test, debug_assertions))]
+    pub(crate) canvas_audit: Option<Arc<Vec<u8>>>,
     pub canvas_rgba: Arc<Vec<u8>>,
     /// A forma do canvas quando o snapshot foi tirado — o que dá o **stride** de cada plano ao motor de
     /// delta ([`crate::undo_delta::Strides`]). Um snapshot que não sabe a largura do que carrega só pode

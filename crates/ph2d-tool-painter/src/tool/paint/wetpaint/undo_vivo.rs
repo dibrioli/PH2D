@@ -25,7 +25,7 @@ pub(super) use casco::casco_de;
 mod foto;
 mod orla;
 pub(crate) use foto::FotoDoMotor;
-use orla::{caixa_dos_planos, perto_de, CaixaDeCelulas, ALCANCE_DA_ORLA};
+use orla::{ALCANCE_DA_ORLA, CaixaDeCelulas, caixa_dos_planos};
 
 /// Um passo de undo com a tinta viva de antes (e, depois de desfeito, a de depois para o redo).
 #[derive(Clone)]
@@ -199,21 +199,27 @@ impl PainterTool {
         esquece_os_passos(sess);
         sess.enterrou = true;
         sess.otica.toca_tudo(sess.grid);
-        let tocada = self.wet_enterra_no_casco(sess, velha, casco);
+        let (tocada, toque) = self.wet_enterra_no_casco_com_toque(sess, velha, casco);
         // O passo deixou tinta onde ela não muda nenhum píxel (a orla fina da aguada, alfa 0): voltaria a correr. Só a dele.
         let (gw, gh) = sess.grid;
-        let perto = perto_de(&tocada, gw, gh, ALCANCE_DA_ORLA);
+        #[cfg(test)]
+        if orla::antigo::get() {
+            let perto = orla::antigo::perto_de(&tocada, gw, gh, ALCANCE_DA_ORLA);
+            if let Some(c) = perto.1.map(|c| caixa_dos_planos(c, gw, gh)) {
+                self.wet_planos_em_dia(sess, c);
+            }
+            let invisivel = orla::antigo::invisiveis(sess, &perto.0);
+            sess.engine.enterra_celulas(&invisivel, gw);
+            sess.engine.take_dirty();
+            return;
+        }
+        // B12.2: só a caixa do toque alargada pelo alcance, nunca a grade.
+        let perto = orla::perto_na_caixa(&tocada, toque, gw, gh, ALCANCE_DA_ORLA);
         // Só a caixa: a água que corre noutro sítio recompõe-se no passo seguinte dela.
-        if let Some(c) = perto.1.map(|c| caixa_dos_planos(c, gw, gh)) {
+        if let Some(c) = perto.as_ref().map(|p| caixa_dos_planos(p.caixa, gw, gh)) {
             self.wet_planos_em_dia(sess, c);
         }
-        let g = sess.engine.active_grid();
-        let invisivel: Vec<bool> = (0..gw * gh)
-            .map(|k| {
-                let c = (k / gw + 1) * g.s + k % gw + 1;
-                perto.0[k] && sess.planos.pigment[k * 4 + 3] == 0 && g.sett[c] + g.susp[c] > 0.0
-            })
-            .collect();
+        let invisivel = orla::invisiveis(sess, perto.as_ref());
         sess.engine.enterra_celulas(&invisivel, gw);
         sess.engine.take_dirty();
     }

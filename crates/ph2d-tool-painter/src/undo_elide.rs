@@ -120,11 +120,22 @@ pub(crate) fn witness<T>(
     Some(w.upgrade().is_some_and(|p| Arc::ptr_eq(&p, live)))
 }
 
+/// `PH2D_UNDO_AUDIT`: a rede de verificação do journal ([`crate::tool::PainterTool::audit_journal_matches_the_before`]).
+#[cfg(any(test, debug_assertions))]
+pub(crate) fn ligada() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("PH2D_UNDO_AUDIT").is_some())
+}
+
 impl super::ModelSnapshot {
     /// **A tela passa a ser DESCRITA** (B17.4): fica a testemunha, o `Arc` forte sai — no mesmo passo, pela razão do
     /// [`ElidedRelief::of`]. O lado de antes é o journal da tela sobre o plano vivo.
     pub(crate) fn elide_canvas(&mut self) {
         if self.canvas_elided.is_none() && !self.canvas_rgba.is_empty() {
+            #[cfg(any(test, debug_assertions))]
+            if ligada() {
+                self.canvas_audit = Some(Arc::new(self.canvas_rgba.as_ref().clone()));
+            }
             self.canvas_elided = Some(Arc::downgrade(&self.canvas_rgba));
             self.canvas_rgba = Arc::new(Vec::new());
         }

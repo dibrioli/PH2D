@@ -73,13 +73,13 @@ fn cena(glaze: bool) -> Engine {
     let g = e.active_grid_mut();
     // A tinta semeada à mão foi pousada com o «Glaze layering» que a cena pede (o vidrado é da célula, W3b).
     if glaze {
-        g.aparencia = vec![
+        g.aparencia = ph2d_wet_paint::grid::aparencia::campo_de(&vec![
             AparenciaCelula {
                 vidrado: 1.0,
                 ..AparenciaCelula::NEUTRA
             };
             g.cells
-        ];
+        ]);
     }
     for y in 1..=H {
         let (sc, uc) = PARES[((y - 1) / 10) % PARES.len()];

@@ -4,7 +4,7 @@
 
 use super::*;
 use ph2d_wet_paint::grid::Grid;
-use ph2d_wet_paint::grid::aparencia::AparenciaCelula;
+use ph2d_wet_paint::grid::aparencia::{self, CampoAparencia};
 use ph2d_wet_paint::grid::celula_bytes::{Celula, de_bytes, para_bytes};
 use ph2d_wet_paint::grid::oleo_celula::OleoCelula;
 use ph2d_wet_paint::material::MaterialCelula;
@@ -61,12 +61,26 @@ fn volta<T: Celula>(b: &Bloco, v: &mut Vec<T>) {
     }
 }
 
+/// O campo esparso viaja denso (o zstd come o chão); volta ao bit, só com os pedaços que não são o chão.
+fn encolhe_campo(v: &mut CampoAparencia) -> Bloco {
+    let c = std::mem::replace(v, aparencia::sem_campo());
+    let mut denso = c.para_vec();
+    drop(c);
+    encolhe(&mut denso)
+}
+
+fn volta_campo(b: &Bloco, v: &mut CampoAparencia) {
+    if b.n > 0 {
+        *v = aparencia::campo_de(&de_bytes(&b.bytes(b.n)));
+    }
+}
+
 /// Um plano da grade, pelo tipo da célula.
 enum Plano<'a> {
     F(&'a mut Vec<f32>),
     F3(&'a mut Vec<[f32; 3]>),
     M(&'a mut Vec<MaterialCelula>),
-    A(&'a mut Vec<AparenciaCelula>),
+    A(&'a mut CampoAparencia),
     O(&'a mut Vec<OleoCelula>),
     B(&'a mut Vec<u8>),
 }
@@ -77,7 +91,7 @@ impl Plano<'_> {
             Plano::F(v) => encolhe(v),
             Plano::F3(v) => encolhe(v),
             Plano::M(v) => encolhe(v),
-            Plano::A(v) => encolhe(v),
+            Plano::A(v) => encolhe_campo(v),
             Plano::O(v) => encolhe(v),
             Plano::B(v) => encolhe_u8(v),
         }
@@ -88,7 +102,7 @@ impl Plano<'_> {
             Plano::F(v) => volta(b, v),
             Plano::F3(v) => volta(b, v),
             Plano::M(v) => volta(b, v),
-            Plano::A(v) => volta(b, v),
+            Plano::A(v) => volta_campo(b, v),
             Plano::O(v) => volta(b, v),
             Plano::B(v) => volta_u8(b, v),
         }

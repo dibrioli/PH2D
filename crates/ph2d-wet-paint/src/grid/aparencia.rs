@@ -6,6 +6,7 @@
 //! o Smear e o Blend não o movem). Doc: `docs/Painter/49_realshader/W3b_painel_so_no_futuro.md`.
 
 use super::Grid;
+use super::campo_esparso::CampoEsparso;
 use crate::sim::Params;
 use crate::tuning::Knob;
 
@@ -31,6 +32,33 @@ pub struct AparenciaCelula {
     /// O **Edge Darkening** da tinta (dono 05/11, Bug #69: é do TRAÇO): a borda desta célula seca por ele, e trocar de
     /// pincel não a endurece. [`BORDA_DO_FUNDO`] = o da grade ([`Grid::borda_fundo`]).
     pub borda: f32,
+}
+
+/// O campo da grade (B12.3): pedaços esparsos, o ausente lê [`AparenciaCelula::NEUTRA`].
+pub type CampoAparencia = CampoEsparso<AparenciaCelula>;
+
+/// O campo que ainda não existe (o `Vec::new()` de antes).
+#[must_use]
+pub fn sem_campo() -> CampoAparencia {
+    CampoEsparso::vazio(AparenciaCelula::NEUTRA)
+}
+
+/// O denso `v` como campo (os testes, o upload inverso).
+#[must_use]
+pub fn campo_de(v: &[AparenciaCelula]) -> CampoAparencia {
+    CampoEsparso::de_vec(AparenciaCelula::NEUTRA, v, mesmo_bit)
+}
+
+/// Igualdade ao bit (o `==` de `f32` iguala `-0.0` e `0.0`).
+#[must_use]
+pub fn mesmo_bit(a: &AparenciaCelula, b: &AparenciaCelula) -> bool {
+    let f = |c: &AparenciaCelula| {
+        [
+            c.papel, c.grao, c.vidrado, c.textura, c.opaca, c.suave, c.borda,
+        ]
+        .map(f32::to_bits)
+    };
+    f(a) == f(b)
 }
 
 /// A célula sem borda própria lê a da grade: a tela de um pincel só não aloca o campo por causa disto.
@@ -81,28 +109,28 @@ pub fn do_pincel(g: &mut Grid, p: &Params) -> AparenciaCelula {
 /// A aparência da célula `i` — [`AparenciaCelula::NEUTRA`] sem o campo.
 #[inline]
 #[must_use]
-pub fn da_celula(campo: &[AparenciaCelula], i: usize) -> AparenciaCelula {
-    campo.get(i).copied().unwrap_or(AparenciaCelula::NEUTRA)
+pub fn da_celula(campo: &CampoAparencia, i: usize) -> AparenciaCelula {
+    campo.get(i).unwrap_or(AparenciaCelula::NEUTRA)
 }
 
 /// O vidrado da célula `i` (a lei do ecrã de cada célula, [`crate::assenta::Ecra::com_vidrado`]).
 #[inline]
 #[must_use]
-pub fn vidrado(campo: &[AparenciaCelula], i: usize) -> f32 {
+pub fn vidrado(campo: &CampoAparencia, i: usize) -> f32 {
     campo.get(i).map_or(0.0, |a| a.vidrado)
 }
 
 /// A opacidade da célula `i` ([`crate::assenta::Ecra::com_opaca`]).
 #[inline]
 #[must_use]
-pub fn opaca(campo: &[AparenciaCelula], i: usize) -> f32 {
+pub fn opaca(campo: &CampoAparencia, i: usize) -> f32 {
     campo.get(i).map_or(0.0, |a| a.opaca)
 }
 
 /// O Edge Darkening próprio da célula `i`, ou [`BORDA_DO_FUNDO`].
 #[inline]
 #[must_use]
-pub fn borda(campo: &[AparenciaCelula], i: usize) -> f32 {
+pub fn borda(campo: &CampoAparencia, i: usize) -> f32 {
     campo.get(i).map_or(BORDA_DO_FUNDO, |a| a.borda)
 }
 
@@ -162,6 +190,12 @@ pub fn raio_do_teto(camadas: &[(&Grid, bool)]) -> f32 {
     raio_do_degrau(degrau_do_suave(teto_do_suave(camadas)))
 }
 
+/// Os bytes que o campo ocupa (o gate do 1.º toque, B12.3).
+#[must_use]
+pub fn bytes_alocados(g: &Grid) -> usize {
+    g.aparencia.bytes_vivos()
+}
+
 /// As portas que reescrevem o campo inteiro (o instantâneo, o histórico) recontam o tecto: nunca o baixam.
 pub fn reconta_teto(g: &mut Grid) {
     g.suave_teto = g.aparencia.iter().fold(g.suave_teto, |t, a| t.max(a.suave));
@@ -174,7 +208,7 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: AparenciaCelula, v: f64) 
         if nova == AparenciaCelula::NEUTRA {
             return;
         }
-        g.aparencia = crate::par::plano_cheio(AparenciaCelula::NEUTRA, g.cells);
+        g.aparencia = CampoEsparso::novo(AparenciaCelula::NEUTRA, g.cells);
     }
     g.suave_teto = g.suave_teto.max(nova.suave);
     let fundo = g.borda_fundo as f32;
@@ -207,14 +241,20 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: AparenciaCelula, v: f64) 
 pub fn restaura_janela(g: &mut Grid, janela: (i32, i32, i32, i32), linhas: &[AparenciaCelula]) {
     let (n, s) = (g.cells, g.s);
     g.suave_teto = linhas.iter().fold(g.suave_teto, |t, a| t.max(a.suave));
-    super::altura::restaura_campo(
-        &mut g.aparencia,
-        n,
-        s,
-        janela,
-        linhas,
-        AparenciaCelula::NEUTRA,
-    );
+    let (x0, y0, x1, y1) = janela;
+    if linhas.is_empty() && g.aparencia.is_empty() {
+        return;
+    }
+    if g.aparencia.is_empty() {
+        g.aparencia = CampoEsparso::novo(AparenciaCelula::NEUTRA, n);
+    }
+    let w = (x1 - x0 + 1) as usize;
+    let neutra = vec![AparenciaCelula::NEUTRA; w];
+    for (r, y) in (y0..=y1).enumerate() {
+        let o = y as usize * s + x0 as usize;
+        let l = linhas.get(r * w..(r + 1) * w).unwrap_or(&neutra);
+        g.aparencia.escreve_intervalo_poupando(o, l, mesmo_bit);
+    }
 }
 
 /// O alcance, em células, da orla VIRGEM que a tinta nova veste ([`veste_virgens`]): medido no gate
@@ -255,7 +295,7 @@ mod veste_tests {
     #[test]
     fn vestir_a_orla_virgem_sobe_o_tecto_do_suave() {
         let mut g = Grid::new(16, 16);
-        g.aparencia = crate::par::plano_cheio(AparenciaCelula::NEUTRA, g.cells);
+        g.aparencia = CampoEsparso::novo(AparenciaCelula::NEUTRA, g.cells);
         let nova = AparenciaCelula {
             suave: 0.5,
             ..AparenciaCelula::NEUTRA
@@ -268,6 +308,37 @@ mod veste_tests {
         let mut e = crate::painter::Engine::with_flow_ratio(8, 8, 1);
         e.tuning.set(Knob::EdgeDarkening, ed);
         e.sim.gather_params(&e.tuning)
+    }
+
+    /// B12.3: o 1.º dab fora da fábrica (raio 30) aloca os pedaços das linhas dele, não a tela (era `plano_cheio`).
+    #[test]
+    fn o_primeiro_dab_nao_neutro_aloca_a_aparencia_das_linhas_dele() {
+        // A largura da tela 4K (a linha cabe num pedaço); a altura só tem de passar o dab.
+        let mut g = Grid::new(3840, 600);
+        let nova = AparenciaCelula {
+            vidrado: 1.0,
+            ..AparenciaCelula::NEUTRA
+        };
+        let (cx, cy, r) = (1900i32, 300i32, 30i32);
+        for y in cy - r..=cy + r {
+            for x in cx - r..=cx + r {
+                if (x - cx).pow(2) + (y - cy).pow(2) <= r * r {
+                    let i = x as usize + y as usize * g.s;
+                    pousa(&mut g, i, 0.0, nova, 1.0);
+                }
+            }
+        }
+        let denso = g.cells * std::mem::size_of::<AparenciaCelula>();
+        let vivos = bytes_alocados(&g);
+        let linhas = ((2 * r + 1) as usize * g.s).div_ceil(super::super::campo_esparso::PEDACO) + 1;
+        let teto =
+            linhas * super::super::campo_esparso::PEDACO * std::mem::size_of::<AparenciaCelula>();
+        assert!(
+            vivos > 0 && vivos <= teto && vivos * 8 < denso,
+            "{vivos} B: as linhas do dab cabem em {teto} B, o denso {denso} B"
+        );
+        assert_eq!(vidrado(&g.aparencia, cx as usize + cy as usize * g.s), 1.0);
+        assert_eq!(vidrado(&g.aparencia, 3 + 3 * g.s), 0.0);
     }
 
     /// Bug #69: o fundo é o do 1.º pincel, e o 2.º guarda o dele na célula: a tinta de A não passa a secar pelo de B.
@@ -285,7 +356,7 @@ mod veste_tests {
     fn a_borda_mistura_pela_massa_em_celula_com_tinta() {
         let mut g = Grid::new(16, 16);
         g.borda_fundo = 10.0;
-        g.aparencia = crate::par::plano_cheio(AparenciaCelula::NEUTRA, g.cells);
+        g.aparencia = CampoEsparso::novo(AparenciaCelula::NEUTRA, g.cells);
         let com = |borda| AparenciaCelula {
             borda,
             ..AparenciaCelula::NEUTRA

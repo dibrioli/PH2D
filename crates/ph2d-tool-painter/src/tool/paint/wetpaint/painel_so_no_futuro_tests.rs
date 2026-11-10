@@ -280,14 +280,22 @@ fn a_fabrica_nao_aloca_a_aparencia() {
         .layers[0]
         .grid;
     assert_eq!(std::mem::size_of::<AparenciaCelula>(), 28);
+    // B12.3: o campo é esparso — custa os pedaços que o traço tocou, nunca a tela inteira.
+    let vivos = g.aparencia.bytes_vivos();
     assert_eq!(
         g.bytes_retidos() - base,
-        28 * cells,
-        "o campo custa 28 B por célula"
+        vivos,
+        "o campo custa os seus pedaços"
+    );
+    assert!(
+        vivos > 0 && vivos < 28 * cells,
+        "o campo custa {vivos} B, a tela densa {} B",
+        28 * cells
     );
     eprintln!(
-        "APARENCIA: grade {} B/célula, campo +28 B/célula",
-        base as f64 / cells as f64
+        "APARENCIA: grade {} B/célula, campo +{vivos} B (denso {} B)",
+        base as f64 / cells as f64,
+        28 * cells
     );
 }
 

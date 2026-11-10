@@ -94,7 +94,7 @@ pub struct Grid {
     pub material: Vec<crate::material::MaterialCelula>,
     /// **A APARÊNCIA da tinta** (W3b, [`aparencia`]): os controlos do pincel que o ecrã lê, guardados no pouso. VAZIA
     /// (= NEUTRA) até o primeiro pincel fora da fábrica pintar.
-    pub aparencia: Vec<aparencia::AparenciaCelula>,
+    pub aparencia: aparencia::CampoAparencia,
     /// O maior [`aparencia::AparenciaCelula::suave`] pousado aqui ([`aparencia::teto_do_suave`]): `0` = quem não usa o
     /// Smooth Edges não paga nem a leitura do campo.
     pub suave_teto: f32,
@@ -296,7 +296,7 @@ impl Grid {
             nivelado: Vec::new(),
             vela: vec![0.0; n],
             material: Vec::new(),
-            aparencia: Vec::new(),
+            aparencia: aparencia::sem_campo(),
             suave_teto: 0.0,
             borda_fundo: -1.0,
             oleo: Vec::new(),

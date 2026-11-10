@@ -280,14 +280,14 @@ fn the_paper_visual_prints_the_tooth_into_the_pigment_alpha_intact() {
     // Paint laid with Emboss 0 and Visual grain 0 carries neither.
     let g = e.active_grid_mut();
     g.relevo.fill(0.0);
-    g.aparencia = vec![
+    g.aparencia = ph2d_wet_paint::grid::aparencia::campo_de(&vec![
         ph2d_wet_paint::grid::aparencia::AparenciaCelula {
             grao: 0.0,
             textura: 1.0,
             ..ph2d_wet_paint::grid::aparencia::AparenciaCelula::NEUTRA
         };
         g.cells
-    ];
+    ]);
     let layers = layers_of(&e);
     let mut on_zeroed = vec![0u8; W * H * 4];
     render_pigment_region_visual(Some(&params), &layers, paper_on, 1, 1, W, H, &mut on_zeroed);

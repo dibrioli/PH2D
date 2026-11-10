@@ -123,7 +123,7 @@ pub(super) fn dry_jacobi<P: EdgePlane>(
     let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
     let edge: &[u8] = &scratch.edge;
     let (paper, vela): (&[f32], &[f32]) = (paper, vela);
-    let aparencia: &[crate::grid::aparencia::AparenciaCelula] = aparencia;
+    let aparencia: &crate::grid::aparencia::CampoAparencia = aparencia;
     let oleo: &[crate::grid::oleo_celula::OleoCelula] = oleo;
     let (row_lo, row_hi): (&[i32], &[i32]) = (row_lo, row_hi);
     let band = by0 as usize * s..(by1 as usize + 1) * s;

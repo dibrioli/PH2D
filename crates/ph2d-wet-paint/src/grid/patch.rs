@@ -114,6 +114,24 @@ fn take_rows<T: Copy>(src: &[T], s: usize, x0: i32, y0: i32, x1: i32, y1: i32) -
     out
 }
 
+/// O [`take_rows`] de um campo esparso (B12.3).
+fn linhas_do_campo<T: Copy>(
+    src: &super::campo_esparso::CampoEsparso<T>,
+    s: usize,
+    x0: i32,
+    y0: i32,
+    x1: i32,
+    y1: i32,
+) -> Vec<T> {
+    let w = (x1 - x0 + 1) as usize;
+    let mut out = Vec::with_capacity(w * (y1 - y0 + 1) as usize);
+    for y in y0..=y1 {
+        let row = y as usize * s + x0 as usize;
+        src.copia_intervalo(row, row + w - 1, &mut out);
+    }
+    out
+}
+
 /// A inversa exata de [`take_rows`].
 fn put_rows<T: Copy>(dst: &mut [T], s: usize, x0: i32, y0: i32, x1: i32, y1: i32, src: &[T]) {
     let w = (x1 - x0 + 1) as usize;
@@ -176,7 +194,7 @@ pub fn snapshot_grid_region(g: &Grid, x0: i32, y0: i32, x1: i32, y1: i32) -> Opt
         aparencia: if g.aparencia.is_empty() {
             Vec::new()
         } else {
-            take_rows(&g.aparencia, s, x0, y0, x1, y1)
+            linhas_do_campo(&g.aparencia, s, x0, y0, x1, y1)
         },
         oleo: if g.oleo.is_empty() {
             Vec::new()

@@ -24,7 +24,7 @@ pub struct GridSnapshot {
     pub nivelado: Vec<f32>,
     pub vela: Vec<f32>,
     pub material: Vec<crate::material::MaterialCelula>,
-    pub aparencia: Vec<aparencia::AparenciaCelula>,
+    pub aparencia: aparencia::CampoAparencia,
     pub oleo: Vec<oleo_celula::OleoCelula>,
     /// [`Grid::tinta`] (F4-2 E3): vazia com a lei velha.
     pub tinta: Vec<tinta::CelulaTinta>,
@@ -166,6 +166,47 @@ fn ret_do_tile(k: u32, s: usize, rows: usize) -> Ret {
     }
 }
 
+/// Um plano que o tile tira e põe: o `Vec` denso ou o campo esparso (B12.3).
+trait Plano<T> {
+    fn tira_tile(&self, s: usize, r: Ret) -> Vec<T>;
+    fn poe_tile(&mut self, s: usize, r: Ret, d: &[T]);
+}
+
+impl<T: Clone> Plano<T> for Vec<T> {
+    fn tira_tile(&self, s: usize, r: Ret) -> Vec<T> {
+        tira(self, s, r)
+    }
+    fn poe_tile(&mut self, s: usize, r: Ret, d: &[T]) {
+        poe(self, s, r, d);
+    }
+}
+
+impl Plano<aparencia::AparenciaCelula> for aparencia::CampoAparencia {
+    fn tira_tile(&self, s: usize, r: Ret) -> Vec<aparencia::AparenciaCelula> {
+        if self.is_empty() {
+            return Vec::new();
+        }
+        let mut out = Vec::with_capacity((r.x1 - r.x0) * (r.y1 - r.y0));
+        for y in r.y0..r.y1 {
+            self.copia_intervalo(y * s + r.x0, y * s + r.x1 - 1, &mut out);
+        }
+        out
+    }
+    fn poe_tile(&mut self, s: usize, r: Ret, d: &[aparencia::AparenciaCelula]) {
+        if self.is_empty() || d.is_empty() {
+            return;
+        }
+        let w = r.x1 - r.x0;
+        for (i, y) in (r.y0..r.y1).enumerate() {
+            self.escreve_intervalo_poupando(
+                y * s + r.x0,
+                &d[i * w..(i + 1) * w],
+                aparencia::mesmo_bit,
+            );
+        }
+    }
+}
+
 fn tira<T: Clone>(v: &[T], s: usize, r: Ret) -> Vec<T> {
     if v.is_empty() {
         return Vec::new();
@@ -192,8 +233,8 @@ macro_rules! tile_fino {
         #[derive(Clone, Default)]
         struct TileFino { $($f: Vec<$t>,)* }
         impl TileFino {
-            fn tira(g: &Grid, r: Ret) -> Self { TileFino { $($f: tira(&g.$f, g.s, r),)* } }
-            fn poe(&self, g: &mut Grid, r: Ret) { $(poe(&mut g.$f, g.s, r, &self.$f);)* }
+            fn tira(g: &Grid, r: Ret) -> Self { TileFino { $($f: Plano::tira_tile(&g.$f, g.s, r),)* } }
+            fn poe(&self, g: &mut Grid, r: Ret) { $(Plano::poe_tile(&mut g.$f, g.s, r, &self.$f);)* }
             fn bytes(&self) -> usize { 0 $(+ std::mem::size_of_val(self.$f.as_slice()))* }
         }
     };
@@ -232,6 +273,15 @@ fn ajusta<T: Clone>(v: &mut Vec<T>, base: usize, amostra: Option<&T>) {
         && let Some(a) = amostra
     {
         v.resize(base, a.clone());
+    }
+}
+
+/// O [`ajusta`] do campo esparso: o preenchimento é o chão (a colagem dos tiles cobre a tela inteira).
+fn ajusta_campo<T: Copy>(v: &mut campo_esparso::CampoEsparso<T>, base: usize, amostra: bool) {
+    if base == 0 {
+        v.clear();
+    } else if v.len() != base && amostra {
+        *v = campo_esparso::CampoEsparso::novo(v.chao(), base);
     }
 }
 
@@ -417,7 +467,7 @@ impl Registo {
         ajusta(&mut g.crista, v[2], a2.as_ref());
         ajusta(&mut g.nivelado, v[3], a3.as_ref());
         ajusta(&mut g.material, v[4], a5.as_ref());
-        ajusta(&mut g.aparencia, v[5], a6.as_ref());
+        ajusta_campo(&mut g.aparencia, v[5], a6.is_some());
         ajusta(&mut g.oleo, v[6], a7.as_ref());
         let a8 = amostra!(tinta);
         ajusta(&mut g.tinta, v[7], a8.as_ref());

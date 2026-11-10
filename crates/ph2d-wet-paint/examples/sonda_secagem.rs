@@ -905,7 +905,7 @@ fn drying_copy<const C: u8, const N: bool>(
     let edge: &[u8] = &scratch.edge;
     let paper: &[f32] = paper;
     let vela: &[f32] = vela;
-    let ap: &[aparencia::AparenciaCelula] = ap;
+    let ap: &aparencia::CampoAparencia = ap;
     let oleo: &[oleo_celula::OleoCelula] = oleo;
     let band = by0 as usize * s..(by1 as usize + 1) * s;
     type Row<'a> = (

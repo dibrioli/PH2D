@@ -30,7 +30,7 @@ pub(crate) fn hash_grid(g: &Grid) -> Vec<u64> {
     h(&mut st, &s.nivelado);
     h(&mut st, &s.vela);
     h(&mut st, &s.material);
-    h(&mut st, &s.aparencia);
+    h(&mut st, &s.aparencia.para_vec());
     h(&mut st, &s.oleo);
     h(&mut st, &s.vel_x);
     h(&mut st, &s.vel_y);
@@ -557,13 +557,14 @@ fn celulas_que_diferem(a: &crate::grid::GridSnapshot, b: &crate::grid::GridSnaps
         .iter()
         .any(|(x, y)| x.get(i).map(|v| v.to_bits()) != y.get(i).map(|v| v.to_bits()))
     };
+    let (apa, apb) = (a.aparencia.para_vec(), b.aparencia.para_vec());
     (0..a.film.len())
         .filter(|&i| {
             f32s(i)
                 || bits(&a.susp_rgb, i) != bits(&b.susp_rgb, i)
                 || bits(&a.sett_rgb, i) != bits(&b.sett_rgb, i)
                 || bits(&a.material, i) != bits(&b.material, i)
-                || bits(&a.aparencia, i) != bits(&b.aparencia, i)
+                || bits(&apa, i) != bits(&apb, i)
                 || bits(&a.oleo, i) != bits(&b.oleo, i)
                 || bits(&a.tinta, i) != bits(&b.tinta, i)
                 || bits(&a.pigmento, i) != bits(&b.pigmento, i)

@@ -57,7 +57,7 @@ impl Espelho {
                     + b(&g.nivelado)
                     + b(&g.vela)
                     + b(&g.material)
-                    + b(&g.aparencia)
+                    + g.aparencia.bytes_vivos()
                     + b(&g.oleo)
                     + b(&g.tinta)
                     + b(&g.pigmento)
@@ -223,7 +223,13 @@ fn copia_faixas(d: &mut Grid, g: &Grid, faixas: &[std::ops::Range<usize>]) {
     um(&mut d.nivelado, &g.nivelado, faixas);
     um(&mut d.vela, &g.vela, faixas);
     um(&mut d.material, &g.material, faixas);
-    um(&mut d.aparencia, &g.aparencia, faixas);
+    if d.aparencia.len() == g.aparencia.len() {
+        for f in faixas {
+            d.aparencia.copia_faixa_de(&g.aparencia, f.clone());
+        }
+    } else {
+        d.aparencia.clone_from(&g.aparencia);
+    }
     um(&mut d.oleo, &g.oleo, faixas);
     um(&mut d.tinta, &g.tinta, faixas);
     um(&mut d.pigmento, &g.pigmento, faixas);

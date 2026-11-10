@@ -285,7 +285,10 @@ fn a_sombra_sem_furo_nao_escurece_a_celula_clara() {
 /// A grade `g` com o Smooth Edges `v(x)` pousado em cada célula (coluna `x`, `1..=w`).
 fn com_suave(g: &Grid, v: impl Fn(usize) -> f32) -> Grid {
     let mut out = g.clone();
-    out.aparencia = vec![crate::grid::aparencia::AparenciaCelula::NEUTRA; g.cells];
+    out.aparencia = crate::grid::campo_esparso::CampoEsparso::novo(
+        crate::grid::aparencia::AparenciaCelula::NEUTRA,
+        g.cells,
+    );
     for y in 1..=g.h {
         for x in 1..=g.w {
             out.aparencia[x + y * g.s].suave = v(x);

@@ -158,6 +158,56 @@ impl<T: Copy> CampoEsparso<T> {
         }
     }
 
+    /// O [`Self::escreve_intervalo`] que não aloca o pedaço ausente quando o trecho dele é todo o chão
+    /// (`mesmo_bit`): o restauro de uma janela neutra não acorda a tela.
+    pub fn escreve_intervalo_poupando(
+        &mut self,
+        a: usize,
+        v: &[T],
+        mesmo_bit: impl Fn(&T, &T) -> bool,
+    ) {
+        assert!(
+            a + v.len() <= self.n,
+            "escrita {a}+{} fora de {}",
+            v.len(),
+            self.n
+        );
+        let mut feito = 0;
+        while feito < v.len() {
+            let i = a + feito;
+            let (k, o) = (i >> LOG_PEDACO, i & MASCARA);
+            let m = (v.len() - feito).min(PEDACO - o);
+            let trecho = &v[feito..feito + m];
+            if self.pedacos[k].is_some() || !trecho.iter().all(|c| mesmo_bit(c, &self.chao)) {
+                self.pedaco_mut(k)[o..o + m].copy_from_slice(trecho);
+            }
+            feito += m;
+        }
+    }
+
+    /// Copia as células `faixa` de `o` (o mesmo `len` e o mesmo chão): o pedaço ausente nos dois não se aloca, e o
+    /// ausente só na origem volta ao chão no destino.
+    pub fn copia_faixa_de(&mut self, o: &Self, faixa: std::ops::Range<usize>) {
+        debug_assert_eq!(self.n, o.n);
+        let (mut i, fim) = (faixa.start.min(self.n), faixa.end.min(self.n));
+        while i < fim {
+            let (k, d) = (i >> LOG_PEDACO, i & MASCARA);
+            let m = (fim - i).min(PEDACO - d);
+            match (&o.pedacos[k], self.pedacos[k].is_some()) {
+                (Some(p), _) => self.pedaco_mut(k)[d..d + m].copy_from_slice(&p[d..d + m]),
+                (None, true) => self.pedaco_mut(k)[d..d + m].fill(o.chao),
+                (None, false) => {}
+            }
+            i += m;
+        }
+    }
+
+    /// Volta a não existir (o `clear` do `Vec`).
+    pub fn clear(&mut self) {
+        self.n = 0;
+        self.pedacos.clear();
+    }
+
     fn pedaco_mut(&mut self, k: usize) -> &mut [T] {
         let chao = self.chao;
         self.pedacos[k].get_or_insert_with(|| vec![chao; PEDACO].into_boxed_slice())

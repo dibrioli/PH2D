@@ -226,6 +226,8 @@ impl PainterTool {
         // são exatamente o estado que o undo está desfazendo. Sem esta linha o journal jura que o passo
         // seguinte começou no estado desfeito (o censo do degrau 2 pegou as 3 últimas divergências aqui).
         self.undo.write_state.reset_journal();
+        // O passo pode ter tirado uma camada: a tinta adormecida dela não acorda na que reusar o id (B02.1).
+        self.wet_poda_as_adormecidas();
     }
 
     /// Record a STRUCTURAL transition from `before` (captured at the edit's start)

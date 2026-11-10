@@ -267,11 +267,29 @@ impl PainterTool {
         if w == 0 || h == 0 {
             return None;
         }
+        // O que se pinta vai ao cache por empréstimo, mesmo descartável, e volta depois (B02.A2).
+        let volta = self
+            .bound_doc
+            .filter(|&d| d != entity && !self.canvas_rgba.is_empty())
+            .map(|d| {
+                let tintas = self.wet_sai_do_documento();
+                let doc = self.stash_current_doc(tintas);
+                self.doc_cache.insert(d, doc);
+                (d, self.edited_since_bind)
+            });
+        if volta.is_some() {
+            self.bound_doc = None;
+        }
         // Os pixels passados aqui são ignorados: o `bind_document` acha o documento no cache e restaura
         // aquele — este é o mesmo caminho que trocar de sprite percorre.
         self.bind_document(entity, Vec::new(), w, h);
         self.preview_dirty = true; // um documento recém-restaurado ainda não foi composto nesta sessão
-        let (px, pw, ph) = self.take_preview_arc()?;
+        let lido = self.take_preview_arc();
+        if let Some((d, editado)) = volta {
+            self.bind_document(d, Vec::new(), w, h);
+            self.edited_since_bind = editado;
+        }
+        let (px, pw, ph) = lido?;
         Some((px.as_ref().clone(), pw, ph))
     }
 }

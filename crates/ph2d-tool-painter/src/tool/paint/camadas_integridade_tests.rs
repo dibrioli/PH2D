@@ -94,6 +94,7 @@ fn mapas_seguem(t: &PainterTool) -> Result<(), String> {
         "tintas_molhadas",
         t.tintas_molhadas.iter().copied().collect(),
     )?;
+    orfas("adormecidas", t.camadas_adormecidas())?; // B02.1
     Ok(())
 }
 

@@ -46,6 +46,7 @@ impl PainterTool {
         self.covers.retain(|l, _| vivas.contains(l));
         self.mats.retain(|l, _| vivas.contains(l));
         self.tintas_molhadas.retain(|l| vivas.contains(l));
+        self.wet_poda_as_adormecidas();
     }
 
     /// Remove `id` (and its subtree + mask) and clean up the tool buffers. The base sprite (root bottom) is

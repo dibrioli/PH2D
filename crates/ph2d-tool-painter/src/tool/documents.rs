@@ -36,6 +36,8 @@ pub(crate) struct StashedDoc {
     papel: Option<[u8; 3]>,
     /// As camadas com tinta do Wet ([`PainterTool::tintas_molhadas`]) — os ids colidem entre documentos.
     tintas_molhadas: BTreeSet<RtLayerId>,
+    /// A tinta viva adormecida do documento (B02.1): fica com ele, como `tintas_molhadas`.
+    adormecidas: Vec<crate::tool::paint::TintaAdormecida>,
     layer_pixel_versions: BTreeMap<RtLayerId, u64>,
     source_size: (u32, u32),
     undo: crate::undo::UndoController,
@@ -92,6 +94,7 @@ impl StashedDoc {
             vidros: reshare(doc.vidros),
             papel: doc.papel,
             tintas_molhadas: doc.tintas_molhadas,
+            adormecidas: Vec::new(),
             // Rebuilt on demand: a version cache and a fresh history. (`bump_layer_pixels` re-stamps
             // the versions the first time the compositor asks.)
             layer_pixel_versions: BTreeMap::new(),
@@ -144,11 +147,13 @@ impl PainterTool {
         }
         // Stash the OUTGOING document (keep its work) before we replace it. A torn-down one has no work
         // to keep — stashing it would cache a document with no pixels and hand it straight back below.
+        // A tinta Wet sai com ele (adormecida, ou acabada): nunca atravessa para o seguinte.
+        let tintas = self.wet_sai_do_documento();
         if let Some(old) = self.bound_doc
             && !torn_down
             && !self.doc_is_disposable()
         {
-            let stashed = self.stash_current_doc();
+            let stashed = self.stash_current_doc(tintas);
             self.doc_cache.insert(old, stashed);
             // If the outgoing doc IS the Shape source, it now needs a live preview rendered (it's no
             // longer the active sprite, so the bridge must drive its composite into a preview slot).
@@ -203,6 +208,7 @@ impl PainterTool {
         // O papel branco de uma tela que nasceu branca reconstrói-se da sprite enquanto a camada estiver
         // vazia; com tinta, o alfa dela só vive aqui (BUGS #45).
         self.preview_layer_stack_is_trivial()
+            && !self.edited_since_bind // a sprite não tem a tinta por assar (B02.A2)
             && self.heights.is_empty()
             && self.tintas_molhadas.is_empty() // a sprite não diz que a tinta é do Wet
             && match self.papel {
@@ -216,7 +222,10 @@ impl PainterTool {
 
     /// Move the current working document out into a [`StashedDoc`] (leaving the painter's live fields
     /// empty — the caller restores or re-sources immediately after).
-    fn stash_current_doc(&mut self) -> StashedDoc {
+    pub(super) fn stash_current_doc(
+        &mut self,
+        adormecidas: Vec<crate::tool::paint::TintaAdormecida>,
+    ) -> StashedDoc {
         self.drop_live_relief(); // the open stroke's ground belongs to the document being put away
         StashedDoc {
             canvas_rgba: std::mem::take(&mut self.canvas_rgba),
@@ -228,6 +237,7 @@ impl PainterTool {
             vidros: std::mem::take(&mut self.vidros),
             papel: self.papel.take(),
             tintas_molhadas: std::mem::take(&mut self.tintas_molhadas),
+            adormecidas,
             layer_pixel_versions: std::mem::take(&mut self.layer_pixel_versions),
             source_size: self.source_size,
             undo: std::mem::take(&mut self.undo),
@@ -256,6 +266,7 @@ impl PainterTool {
         self.covers = doc.covers;
         self.papel = doc.papel;
         self.tintas_molhadas = doc.tintas_molhadas;
+        self.wet_entra_no_documento(doc.adormecidas);
         self.drop_live_relief();
         // The stack and the relief travelled together, so the `has_relief` flags arrive already true —
         // EXCEPT for a document that came off disk from a build that never sculpted it. Re-deriving is
@@ -511,6 +522,47 @@ mod rebind_tests {
 
     fn px(w: u32, h: u32) -> Vec<u8> {
         vec![200u8; (w as usize) * (h as usize) * 4]
+    }
+
+    /// Um traço Digital por assar na única camada do documento `doc` (16²).
+    fn pintado(t: &mut PainterTool, doc: u64) -> Vec<u8> {
+        use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
+        let p = |x: f32, phase| CanvasPointer {
+            pos: [x, 8.0],
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        t.bind_document(doc, px(16, 16), 16, 16);
+        t.on_canvas_pointer(p(2.0, PointerPhase::Down));
+        t.on_canvas_pointer(p(13.0, PointerPhase::Move));
+        t.on_canvas_pointer(p(13.0, PointerPhase::Up));
+        let tela = t.canvas_rgba.as_ref().clone();
+        assert_ne!(tela, px(16, 16), "fixture: o traço pintou");
+        tela
+    }
+
+    /// B02.A2 — a sprite não reconstrói tinta por assar: trocar de documento guarda-a.
+    #[test]
+    fn um_documento_com_edicao_nao_assada_nunca_e_descartavel() {
+        let mut t = PainterTool::default();
+        let tela = pintado(&mut t, 7);
+        t.bind_document(8, px(16, 16), 16, 16);
+        t.bind_document(7, px(16, 16), 16, 16);
+        assert!(*t.canvas_rgba == tela, "o traço por assar sumiu na troca");
+    }
+
+    /// B02.A2 — compor outro documento (o load do projecto) não troca o que se pinta.
+    #[test]
+    fn ler_os_pixeis_de_outro_documento_nao_troca_o_que_se_pinta() {
+        let mut t = PainterTool::default();
+        t.bind_document(8, px(16, 16), 16, 16);
+        t.add_raster_layer("L2");
+        let tela = pintado(&mut t, 7);
+        assert!(t.baked_document_pixels(8).is_some(), "fixture: B compõe");
+        assert_eq!(t.bound_document(), Some(7), "a tela passou a ser a de B");
+        assert!(*t.canvas_rgba == tela, "a tela de A mudou");
+        assert!(t.has_unbaked_edits(), "o traço de A ficou por assar");
     }
 
     /// **DEFECT REPRO (Enio, 2026-07-22):** *"o app sai de modo de pintura e não volta mais nem se

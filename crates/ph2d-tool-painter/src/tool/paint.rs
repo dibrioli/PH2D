@@ -139,6 +139,7 @@ pub(crate) use symmetry::SymmetryPick;
 mod tiling;
 mod wet_editable;
 mod wetpaint; // Wet Paint (PaintMode::WetPaint): the fluid-engine session — ADR-0134; see its module doc
+pub(crate) use wetpaint::adormecida::TintaAdormecida; // viaja no documento guardado (B02.1)
 pub(crate) use wetpaint::fita; // a fita do worker que a trilha da macro (`crate::macro_track`) grava e toca
 mod blend_vazio_settings; // a porta do painel do modo sobre o vazio (L7)
 mod dual; // o DUAL BRUSH (L6): a 2.ª ponta, o motor dela e a máscara do traço que recorta a 1.ª

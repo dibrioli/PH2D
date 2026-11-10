@@ -219,16 +219,18 @@ pub(super) fn pousa_o_dab(
     let lips = fp_raio
         .falloff_t_lipschitz()
         .filter(|_| com_corte_fora() && sil_input.is_none() && spec.falloff_weight(1.0) == 0.0);
-    let fora = move |cx: i32, cy: i32, folga: f32| -> bool {
+    // `desliza`: o que um deslocamento conhecido soma a `t` (a métrica da pegada na direcção dele — `falloff_t` é a
+    // norma de `apply`, linear com a curva plana).
+    let fora = move |cx: i32, cy: i32, folga: f32, desliza: f32| -> bool {
         lips.is_some_and(|l| {
             let sx = grid_map::cell_subsample_px(cx, ratio, 0, lado);
             let sy = grid_map::cell_subsample_px(cy, ratio, 0, lado);
             let t = fp_raio.falloff_t((sx - d.center[0]) * inv_r, (sy - d.center[1]) * inv_r);
-            t - l * (0.5 * lado + folga) * std::f32::consts::SQRT_2 * inv_r >= 1.001
+            t - l * (0.5 * lado + folga) * std::f32::consts::SQRT_2 * inv_r - desliza >= 1.001
         })
     };
     let sil = |cx: i32, cy: i32| -> f64 {
-        if fora(cx, cy, 0.0) {
+        if fora(cx, cy, 0.0, 0.0) {
             return 0.0;
         }
         crate::wet_diag::conta_sil(2, 1);
@@ -373,12 +375,16 @@ pub(super) fn pousa_o_dab(
     let memo =
         (relevo_dab.is_some() || lamina || grain_active && spec.texture.lei.mode.le_a_ponta())
             .then(|| super::sil_memo::SilMemo::nova(cell_x, cell_y, meia));
-    // A bilinear da ponta lê até `alcance + 1 célula` por eixo do ponto: com folga 1 ‰, o motor salta também a ponta.
-    let folga_ponta = ponta
-        .as_ref()
-        .map_or(0.0, |p| p.alcance_px() as f32 * 1.001 + lado);
+    // A ponta lê a base no ponto deslocado `|s| ≤ alcance` AO LONGO do traço e, pela bilinear, até 1 célula por eixo
+    // dele: a folga isotrópica é essa célula, o deslocamento entra pela métrica da pegada nessa direcção (a fita do
+    // Flat 240 deitada no traço: o Lipschitz isotrópico × alcance cobria a caixa inteira e o corte nunca disparava).
+    let (folga_ponta, desliza) = ponta.as_ref().map_or((0.0, 0.0), |p| {
+        let n = relevo_dab.or(fios_dab).expect("a ponta tem fios").normal();
+        let a = p.alcance_px() as f32 * 1.001 * inv_r;
+        (lado, fp_raio.falloff_t(n[1] as f32 * a, -n[0] as f32 * a) * 1.001)
+    });
     let sil = |cx: i32, cy: i32| -> f64 {
-        if fora(cx, cy, folga_ponta) {
+        if fora(cx, cy, folga_ponta, desliza) {
             return 0.0;
         }
         crate::wet_diag::conta_sil(0, 1);

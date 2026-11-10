@@ -31,9 +31,9 @@ const NO_LIGATURES: [FontFeature; 2] = [
     },
 ];
 
-/// O peso do texto de código (o eixo `wght` da JetBrains Mono variável tem de ser empurrado: sem ele
-/// a fonte cai no peso de omissão).
-pub const CODE_WEIGHT: FontWeight = FontWeight::MEDIUM;
+/// O peso do texto de código, o `.mono` da maquete 14 (`400`; só o `kbd` é `500`). O eixo `wght`
+/// da JetBrains Mono variável tem de ser empurrado: sem ele a fonte cai no peso de omissão.
+pub const CODE_WEIGHT: FontWeight = FontWeight::NORMAL;
 
 #[derive(Default)]
 pub struct LineCache {

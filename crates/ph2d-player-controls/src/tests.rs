@@ -189,6 +189,14 @@ fn the_player_file_round_trips_in_a_temp_dir() {
     again.start(&g, Some(path.clone()));
     assert_eq!(again.keys(), s.keys());
     assert!(keys_of(again.map(&g), "jump").contains(&Binding::Key(J)));
+    let mut closed = g.clone();
+    closed.controls_mut().players_can_change_keys = false;
+    again.start(&closed, Some(path.clone()));
+    assert!(
+        again.keys().is_empty(),
+        "o autor fechou as trocas: valem as do jogo"
+    );
+    assert!(path.exists(), "o ficheiro do jogador fica");
     for _ in 0..rows(&g).len() {
         s.key(DOWN, true, &g);
     }

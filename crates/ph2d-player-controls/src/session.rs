@@ -25,11 +25,13 @@ pub struct PlaySession {
 }
 
 impl PlaySession {
-    /// O Play começou: lê o ficheiro do jogador (se há) e põe as trocas por cima do mapa do jogo.
+    /// O Play começou: lê o ficheiro do jogador (se há) e põe as trocas por cima do mapa do jogo. Com «Players can
+    /// change keys» desligado, as teclas do jogo valem sozinhas (o ficheiro fica, intacto).
     pub fn start(&mut self, game: &InputMap, file: Option<PathBuf>) {
-        let keys = file
-            .as_deref()
-            .map_or_else(PlayerKeys::new, crate::file::load);
+        let keys = match file.as_deref() {
+            Some(f) if game.controls().players_can_change_keys => crate::file::load(f),
+            _ => PlayerKeys::new(),
+        };
         self.start_with(game, keys, file);
     }
 

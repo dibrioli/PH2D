@@ -616,6 +616,8 @@ fn salto_ligado() -> bool {
 }
 
 #[cfg(test)]
-mod salto_tests;
+mod prancha_b19a_tests;
 #[cfg(test)]
 mod recorte_tests;
+#[cfg(test)]
+mod salto_tests;

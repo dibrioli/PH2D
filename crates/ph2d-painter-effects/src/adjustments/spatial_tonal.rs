@@ -204,6 +204,11 @@ fn bilinear(buf: &[[f32; 4]], w: i32, h: i32, fx: f32, fy: f32) -> [f32; 4] {
     out
 }
 
+/// Display luma below which Shadows/Highlights stops scaling the colour (≈ 8 codes of 8-bit):
+/// `new_l / l` on near-black noise turned it into a saturated primary (DF-50). Mirrored by the
+/// WGSL `SH_LUMA_FLOOR` (`cs_combine_sh`).
+pub const SH_LUMA_FLOOR: f32 = 1.0 / 32.0;
+
 /// Shadows/Highlights — LOCAL tonal correction. The display luma is blurred into a
 /// local-average tone map (separate `*_radius` for each), so shadows lift /
 /// highlights recover based on the NEIGHBOURHOOD tone — preserving local contrast,
@@ -212,11 +217,6 @@ fn bilinear(buf: &[[f32; 4]], w: i32, h: i32, fx: f32, fy: f32) -> [f32; 4] {
 /// saturation in the corrected regions. Defined in display tones end to end (the
 /// encoded values as they are). Coverage is PRESERVED (a tonal op, not an image
 /// blur — `feathers_coverage` is false).
-/// Display luma below which Shadows/Highlights stops scaling the colour (≈ 8 codes of 8-bit):
-/// `new_l / l` on near-black noise turned it into a saturated primary (DF-50). Mirrored by the
-/// WGSL `SH_LUMA_FLOOR` (`cs_combine_sh`).
-pub const SH_LUMA_FLOOR: f32 = 1.0 / 32.0;
-
 pub fn apply_shadows_highlights(
     p: &ShadowsHighlightsParams,
     acc: &mut [[f32; 4]],

@@ -1,92 +1,7 @@
-//! ⭐ **Um problema, um lugar** (Onda A, `docs/CodeEditor/13_plano_bancada.md` §4.1): os problemas
-//! do Play ([`PlayProblem`]) entram na MESMA lista que os do texto. Um do Play na linha de um do
-//! texto funde-se nele — o texto diz a causa, o sufixo diz onde e quantas vezes o Play a viu, e o
-//! tom é o mais grave dos dois. Os outros viram linhas próprias, explicadas pelo `ph2d-code-explain`
-//! como as do texto. A barra de estado e o título dos Problems contam ESTA lista.
+//! Os problemas do Play de uma aba ancorados ao texto que correu; a fusão com os do texto e o «On»
+//! vivem em [`ph2d_code_assist::play_problems`].
 
-use crate::console::PlayProblem;
-use ph2d_i18n::tr_with;
-use ph2d_panel_code::Problem;
-
-/// Os nomes que o «On» mostra; o resto conta-se.
-const ON_SHOWN: usize = 2;
-
-/// O «On»: «Circle», «Circle, Star» ou «Circle, Star +1»; só sem nome, «2 objects»; vazio sem
-/// objectos (o topo do script).
-fn who(p: &PlayProblem) -> String {
-    let rest = p.names.len().saturating_sub(ON_SHOWN) + p.more();
-    let names = p.names[..p.names.len().min(ON_SHOWN)].join(", ");
-    match rest {
-        0 => names,
-        n if names.is_empty() => tr_with("code.problems.objects", &[("count", &n)]),
-        n => tr_with("code.problems.more", &[("names", &names), ("count", &n)]),
-    }
-}
-
-/// `text` com o sufixo do Play: o «×N» (só com N > 1); `merged` = funde-se num problema do texto
-/// (o sufixo diz «in Play»). Os objectos vão ao `Problem.on`.
-fn with_play(text: &str, p: &PlayProblem, merged: bool) -> String {
-    let n = p.count;
-    let key = match (n > 1, merged) {
-        (true, false) => "code.problems.times",
-        (false, true) => "code.problems.in_play",
-        (true, true) => "code.problems.times_in_play",
-        (false, false) => return text.to_owned(),
-    };
-    tr_with(key, &[("text", &text), ("count", &n)])
-}
-
-/// O texto que a lista mostra de um problema (o título da explicação, ou a mensagem crua).
-fn shown(p: &Problem) -> &str {
-    p.explanation
-        .as_ref()
-        .map_or(p.message.as_str(), |e| e.title.as_str())
-        .lines()
-        .next()
-        .unwrap_or_default()
-}
-
-/// Põe o sufixo do Play no que a lista mostra de `p`.
-fn suffix(p: &mut Problem, play: &PlayProblem, merged: bool) {
-    let text = with_play(shown(p), play, merged);
-    p.on = who(play);
-    match &mut p.explanation {
-        Some(e) => e.title = text,
-        None => p.message = text,
-    }
-}
-
-/// Os problemas do texto (`stat`, já pela ordem da calha) com os do Play fundidos.
-pub(crate) fn merge(mut stat: Vec<Problem>, play: &[PlayProblem]) -> Vec<Problem> {
-    if play.is_empty() {
-        return stat;
-    }
-    let fixed = stat.len();
-    let mut merged = std::collections::BTreeSet::new();
-    for g in play {
-        let line = g.line.map_or(0, |n| n.saturating_sub(1) as usize);
-        if g.line.is_some()
-            && merged.insert(line)
-            && let Some(p) = stat[..fixed].iter_mut().find(|p| p.line == line)
-        {
-            p.severity = p.severity.max(g.severity());
-            suffix(p, g, true);
-            continue;
-        }
-        let mut p = Problem {
-            line,
-            severity: g.severity(),
-            culprit: None,
-            message: g.message.clone(),
-            explanation: crate::note::explanation(&g.message),
-            on: String::new(),
-        };
-        suffix(&mut p, g, false);
-        stat.push(p);
-    }
-    stat.sort_by_key(|p| (p.line, p.culprit.as_ref().map(|c| c.start)));
-    stat
-}
+pub(crate) use ph2d_code_assist::play_problems::merge;
 
 impl crate::doc::CodeDoc {
     /// Os problemas do Play cuja linha ainda tem o texto que correu, na linha onde as edições a
@@ -192,6 +107,9 @@ mod tests {
             s.push(&l, None);
         }
         assert_eq!(s.play().len(), 1, "controlo: um problema agrupado");
-        assert_eq!(super::who(&s.play()[0]), "2 objects");
+        assert_eq!(
+            ph2d_code_assist::play_problems::who(&s.play()[0]),
+            "2 objects"
+        );
     }
 }

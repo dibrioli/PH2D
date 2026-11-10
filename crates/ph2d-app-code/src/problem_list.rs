@@ -11,48 +11,10 @@ use crate::doc::CodeDoc;
 use ph2d_code_buffer::{Range, Selection};
 use ph2d_editor_core::doc_surface::{self, KeyOutcome};
 use ph2d_host::Modifiers;
-use ph2d_panel_code::{Problem, ProblemRow, Severity};
+use ph2d_panel_code::{Problem, ProblemRow};
 use ph2d_script::ScriptId;
-use std::cmp::Reverse;
 
-/// Um problema na ordem da lista (o F8 segue-o entre quadros, mesmo que a lista mude).
-pub(crate) type Key = (Reverse<Severity>, usize, Option<usize>, String);
-
-fn sort_key(p: &Problem) -> (Reverse<Severity>, usize, Option<usize>, &str) {
-    (
-        Reverse(p.severity),
-        p.line,
-        p.culprit.as_ref().map(|c| c.start),
-        p.message.as_str(),
-    )
-}
-
-fn key(p: &Problem) -> Key {
-    let (s, l, c, m) = sort_key(p);
-    (s, l, c, m.to_owned())
-}
-
-fn key_ref(k: &Key) -> (Reverse<Severity>, usize, Option<usize>, &str) {
-    (k.0, k.1, k.2, k.3.as_str())
-}
-
-/// Os índices de `ps` pela ordem da lista.
-pub(crate) fn order(ps: &[Problem]) -> Vec<usize> {
-    let mut v: Vec<usize> = (0..ps.len()).collect();
-    v.sort_by(|&a, &b| sort_key(&ps[a]).cmp(&sort_key(&ps[b])));
-    v
-}
-
-/// O texto de uma linha: o título da explicação (I8) quando a há, senão a mensagem crua (a 1.ª
-/// linha dela).
-pub(crate) fn text(p: &Problem) -> &str {
-    p.explanation
-        .as_ref()
-        .map_or(p.message.as_str(), |e| e.title.as_str())
-        .lines()
-        .next()
-        .unwrap_or_default()
-}
+pub(crate) use ph2d_code_assist::play_problems::{Key, key, key_ref, order, sort_key, text};
 
 pub(crate) fn row(p: &Problem) -> ProblemRow<'_> {
     ProblemRow {

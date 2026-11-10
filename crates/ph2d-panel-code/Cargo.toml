@@ -26,5 +26,11 @@ parley = "0.12.0"
 accesskit = "0.25.2"
 unicode-segmentation = "1.13"
 
+[dev-dependencies]
+# O teste `peso_na_placa`: a tinta do texto pintado pela porta com peso, medida no píxel (a placa e o
+# rasterizador do app).
+ph2d-gpu = { path = "../ph2d-gpu" }
+ph2d-render = { path = "../ph2d-render" }
+
 [lints]
 workspace = true

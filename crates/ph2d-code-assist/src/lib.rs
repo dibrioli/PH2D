@@ -4,12 +4,15 @@
 
 pub mod actions;
 pub mod complete;
+pub mod folds;
 pub mod help_doc;
 pub mod lint;
 pub mod nav;
+pub mod play_problems;
 pub mod problems;
 pub mod recovery;
 pub mod seen;
 pub mod semantic;
 pub mod skeleton;
 pub mod snippet;
+pub mod strict;

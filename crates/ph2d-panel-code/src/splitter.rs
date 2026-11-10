@@ -42,6 +42,28 @@ impl Split {
             max,
         }
     }
+
+    /// O separador no VÃO de largura `gap` depois de uma coluna à esquerda de `a` (o divisor da
+    /// coluna da esquerda da aba de scripts, dono 10/11): a largura do artista (ou `default`) presa
+    /// entre `fit` — o que o conteúdo pede para caber sem cortar, nunca acima de `default` — e o que
+    /// deixa `other_min` à coluna da direita.
+    #[must_use]
+    pub fn gap_after(
+        a: Rect,
+        gap: f32,
+        user: Option<f32>,
+        (default, fit, other_min): (f32, f32, f32),
+    ) -> Self {
+        let min = fit.min(default);
+        let max = (a.w - gap - other_min).max(min);
+        let w = safe_clamp(user.unwrap_or(default), min, max);
+        Self {
+            hit: Rect::new(a.x + w, a.y, gap, a.h),
+            side_w: w,
+            min,
+            max,
+        }
+    }
 }
 
 /// Pinta a linha do separador na faixa que começa em `x` (de `y`, altura `h`) e devolve onde
@@ -102,6 +124,16 @@ impl Splitter {
     ) {
         let hot = self.dragging.is_some() || self.hover.replace(false);
         s.hit = paint_band(hot, at, scene, theme);
+        self.painted = Some(s);
+    }
+
+    /// Guarda `s` (medido por [`Split::gap_after`]: `s.hit` é o vão) e acende a linha ao meio do
+    /// vão por cima ou a arrastar.
+    pub fn paint_gap(&mut self, s: Split, scene: &mut VectorScene, theme: Theme) {
+        if self.dragging.is_some() || self.hover.replace(false) {
+            let x = s.hit.x + (s.hit.w - band()) * 0.5;
+            let _ = paint_band(true, (x, s.hit.y, s.hit.h), scene, theme);
+        }
         self.painted = Some(s);
     }
 

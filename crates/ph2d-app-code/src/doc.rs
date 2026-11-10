@@ -366,11 +366,7 @@ impl CodeDoc {
 
     /// As dobras fechadas, em linhas (os testes lêem-nas).
     pub fn closed_folds(&self) -> Vec<(usize, usize)> {
-        self.folds
-            .marks(self.buffer.text())
-            .iter()
-            .map(|f| (f.start, f.end))
-            .collect()
+        self.folds.lines(self.buffer.text())
     }
 
     /// Abre/fecha a dobra que começa na linha `line`.
@@ -507,7 +503,13 @@ impl CodeDoc {
                     .collect::<Vec<_>>()
                     .join("\n\n")
             });
-        let closed = self.folds.marks(self.buffer.text());
+        let closed = (self.folds.lines(self.buffer.text()).into_iter())
+            .map(|(start, end)| FoldMark {
+                start,
+                end,
+                folded: true,
+            })
+            .collect::<Vec<_>>();
         let bracket = self.bracket();
         let rename_note = self.rename_note();
         if self.find.open {

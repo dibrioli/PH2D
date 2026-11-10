@@ -17,9 +17,6 @@ use std::path::PathBuf;
 #[cfg(doc)]
 use crate::hint::HOVER_PAUSE_NS;
 
-/// A explicação de uma mensagem crua, se a classe tem uma.
-pub(crate) use ph2d_code_assist::problems::explanation;
-
 pub(crate) use ph2d_code_assist::seen::Seen;
 
 impl CodeDoc {

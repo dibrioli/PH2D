@@ -12,6 +12,7 @@ mod medicoes_do_fecho;
 mod opcoes_do_script;
 mod pagina;
 mod peso_das_pecas;
+mod peso_na_placa;
 mod problemas;
 mod quadro_do_depurador;
 mod sublinhado;

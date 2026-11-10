@@ -14,6 +14,7 @@ mod display;
 mod drop_mark;
 pub mod field;
 pub mod find_bar;
+pub mod find_state;
 pub mod frame;
 mod geom;
 mod glyphs;

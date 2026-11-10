@@ -233,7 +233,7 @@ const TETOS_DAS_CRATES_APP: &[(&str, usize)] = &[
 /// viaja com o código (CLAUDE.md §5.0) — o que sai da catraca da `ph2d-app-code` entra nesta, com
 /// a mesma régua. Medido 2026-11-08 na `line/ScriptEditor` (o medido no comentário).
 const TETOS_DAS_CRATES_DA_FAMILIA: &[(&str, usize)] = &[
-    ("ph2d-code-assist", 3_925),           // 3_825
+    ("ph2d-code-assist", 4_188), // 4_088 (10/11: as dobras fechadas, os problemas do Play e o `--!strict` saíram da `ph2d-app-code`)
     ("ph2d-code-bancada", 1_028), // 928 (Onda B, a Bancada; os nomes da cena saíram da `ph2d-app-code`)
     ("ph2d-code-debugcard", 663), // 563 (plano 14: o modelo do quadro saiu da `ph2d-code-assist`; a pintura foi para o `ph2d-panel-code`)
     ("ph2d-code-scenes", 666),    // 566

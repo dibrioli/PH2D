@@ -9,9 +9,9 @@
 
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr_with;
-use ph2d_panel_code::{BandTab, ConsoleRow, ConsoleSource, Severity, Tone};
+use ph2d_panel_code::{BandTab, ConsoleRow, ConsoleSource, Tone};
 use ph2d_script::{CONSOLE_BYTES_MAX, CONSOLE_LINES_MAX, ConsoleKind, ConsoleLine, ScriptId};
-use std::collections::{BTreeSet, VecDeque};
+use std::collections::VecDeque;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Entry {
@@ -23,44 +23,7 @@ struct Entry {
     who: Option<u64>,
 }
 
-/// De onde vem um problema do Play.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum PlayKind {
-    Runtime,
-    Refused,
-    Warning,
-}
-
-/// ⭐ **Um problema do Play** — todas as ocorrências da MESMA (espécie, linha, mensagem), com os
-/// objectos onde aconteceu (os primeiros [`NAMES_SHOWN`] pelo nome, o resto contado) e quantas vezes.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct PlayProblem {
-    pub kind: PlayKind,
-    /// 1-based, como o diagnóstico.
-    pub line: Option<u32>,
-    /// A 1.ª linha da mensagem crua do Luau.
-    pub message: String,
-    pub names: Vec<String>,
-    entities: BTreeSet<u64>,
-    pub count: u64,
-}
-
-/// Os nomes que a linha mostra; o resto vira «+N more».
-pub(crate) const NAMES_SHOWN: usize = 3;
-
-impl PlayProblem {
-    pub fn severity(&self) -> Severity {
-        match self.kind {
-            PlayKind::Warning => Severity::Warning,
-            PlayKind::Runtime | PlayKind::Refused => Severity::Error,
-        }
-    }
-
-    /// Quantos objectos ficaram fora dos nomes mostrados.
-    pub fn more(&self) -> usize {
-        self.entities.len().saturating_sub(self.names.len())
-    }
-}
+pub(crate) use ph2d_code_assist::play_problems::{PlayKind, PlayProblem};
 
 /// O tempo de jogo como a linha o mostra (`m:ss`).
 pub(crate) fn game_time(at_us: u64) -> String {
@@ -118,26 +81,11 @@ impl Store {
                 if self.play.len() >= CONSOLE_LINES_MAX {
                     self.play.remove(0);
                 }
-                self.play.push(PlayProblem {
-                    kind,
-                    line: d.line,
-                    message: message.to_owned(),
-                    names: Vec::new(),
-                    entities: BTreeSet::new(),
-                    count: 0,
-                });
+                self.play.push(PlayProblem::new(kind, d.line, message));
                 self.play.len() - 1
             }
         };
-        let g = &mut self.play[i];
-        g.count += 1;
-        if let Some(e) = entity
-            && g.entities.insert(e)
-            && g.names.len() < NAMES_SHOWN
-            && let Some(w) = who
-        {
-            g.names.push(w.to_owned());
-        }
+        self.play[i].seen(entity, who);
         self.play_generation += 1;
         let runtime = kind == PlayKind::Runtime;
         if runtime {

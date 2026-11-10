@@ -109,4 +109,9 @@ Deu errado se: a 28 não muda entre as duas fotos; a 29 mostra duas fotos iguais
 
 ## 9. Build final (item 9)
 
-PREENCHER
+`bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` 2× sobre `5135e590ee` (o código final); a 2.ª:
+
+```
+▸ linha line_pixelart · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 600s
+    Finished `smoke` profile [optimized] target(s) in 0.21s
+```

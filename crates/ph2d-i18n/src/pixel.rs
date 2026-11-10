@@ -226,9 +226,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.ink.copy" => "Copy Alpha+Color",
         "panel.pixel.ink.lock" => "Lock Alpha",
         "panel.pixel.ink.shading" => "Shading",
-        "panel.pixel.ink.shading_hint" => {
-            "Shading walks the selected palette colors: left button one step right, right button one step left. Shift/Ctrl+click the palette to choose them."
-        }
         "panel.pixel.edit_color" => "Edit color · {hex}",
         "panel.pixel.palette_size" => "Palette size",
         "panel.pixel.move_left" => "Move left",

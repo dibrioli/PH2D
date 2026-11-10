@@ -4,8 +4,8 @@
 //! devolve a largura do carregar. A largura vive na vista (a sessão), como a do mapa.
 //!
 //! Limites (medidos 10/11 no teste `divisor`, área 1000 × 700, `TextSystem` sem fontes do sistema:
-//! mínimo 118,6 px — o título «IN THIS SCRIPT» espaçado; era 95,6 sem os títulos —, máximo 712,8 px,
-//! documento 263,2 px — a barra):
+//! mínimo 118,6 px — o cabeçalho «SCRIPTS» espaçado + os botões; era 95,6 sem os títulos —,
+//! máximo 712,8 px, documento 263,2 px — a barra):
 //! - **mínimo** = a largura em que a lista ([`ScriptListView::fit_w`]: título · botões, nome ·
 //!   contagem · lixo) e o «In this script» ([`BancadaView::outline_fit_w`]: título, nome · `ln N`)
 //!   cabem sem cortar, os títulos medidos como se pintam (`title_tracked_width`), nunca acima

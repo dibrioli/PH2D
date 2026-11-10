@@ -202,3 +202,37 @@ fn no_minimo_os_titulos_dos_cartoes_cabem_inteiros() {
         }
     }
 }
+
+/// O «In this script» sozinho também conta o título: numa coluna da largura do fit dele, o
+/// orçamento do título (o do mínimo menos a sobra) ainda leva «IN THIS SCRIPT» inteiro. (No mínimo
+/// manda o cabeçalho da lista, mais largo; sem isto um fit do outline sem título passava calado.)
+#[test]
+fn o_fit_do_in_this_script_conta_o_titulo() {
+    use ph2d_editor_core::panel::cards::banda::metrics as mt;
+    let (mut m, id) = aberta();
+    let (col, ..) = rects(&mut m, id);
+    arrasta(&mut m, id, vao(col), -5000.0);
+    let (min_col, ..) = rects(&mut m, id);
+    let fit = m.docs().bench.outline_fit_w();
+    let sobra = min_col.w - fit;
+    assert!(sobra >= 0.0, "controlo: o mínimo cobre o fit ({sobra})");
+    let (_, medidos) = ph2d_editor_core::text_elide::elisao::medindo(|| m.pinta(id));
+    let t = ph2d_i18n::tr("code.bancada.outline.title");
+    let x = medidos
+        .iter()
+        .find(|x| x.texto.eq_ignore_ascii_case(t))
+        .expect("controlo: o título foi medido");
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let w = ph2d_editor_core::paint::title_tracked_width(
+        &mut ts,
+        &x.texto,
+        x.fonte,
+        mt::LIST_TITLE_TRACKING_EM,
+    );
+    assert!(w > 0.0, "controlo: mediu-se");
+    assert!(
+        x.largura - sobra >= w,
+        "orçamento {} − {sobra} < título {w}",
+        x.largura
+    );
+}

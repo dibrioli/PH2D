@@ -74,7 +74,7 @@ Problems sai no mesmo quadro da cena 11 passo 2: ver `ac_options.png`) · `cena1
 
 ## Smoke do dono (pendente)
 
-1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-ScriptEditor && bash scripts/ph2d-run.sh cargo run --profile smoke -p ph2d-desktop` com `PH2D_CODE_SMOKE=11` (passo 2: Script options e Problems) e depois `=13` (balão).
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-ScriptEditor && bash scripts/ph2d-run.sh cargo run --profile smoke -p ph2d-host-desktop` com `PH2D_CODE_SMOKE=11` (passo 2: Script options e Problems) e depois `=13` (balão).
 2. Abrir «Script options»: os discos das três pílulas são claros, ligadas e desligadas; passar o rato numa linha clareia o cartão.
 3. Repetir com `PH2D_THEME=light`: o disco continua claro e o hover escurece.
 4. Deu errado se: disco quase preto no tema claro, ▸ reservado numa tabela sem árvore, ou fios que passam da última linha.

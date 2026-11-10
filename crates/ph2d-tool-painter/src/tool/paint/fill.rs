@@ -1,116 +1,13 @@
-//! The **Fill** (Bucket) tool's flood-fill core + the Procreate-style ColorDrop gesture state.
-//!
-//! [`flood_fill`] is the pure algorithm: a scanline (span) flood fill of the 4-connected region whose
-//! colour is within `tol` of the seed pixel, painted with `fill`. The gesture (drag the colour onto the
-//! canvas → drop → drag to adjust the threshold) is driven by [`PainterTool`]'s Fill methods, which snapshot
-//! the pre-fill layer so every threshold change re-fills from the original pixels (not the already-filled
-//! result), exactly like Procreate's live ColorDrop-Threshold.
+//! The **Fill** (Bucket) tool's Procreate-style ColorDrop gesture: the drop, the live threshold re-fill
+//! from the pre-fill snapshot, the selection clip and Done/Cancel. The pure flood ([`flood_fill`]) and the
+//! selection component live in `fill_nucleo.rs` (★B52.R10).
 
-use super::Region;
+#[path = "fill_nucleo.rs"]
+mod nucleo;
+pub(super) use nucleo::flood_fill;
+
 use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
-
-/// Max per-channel (RGBA) difference from the seed colour for a pixel to be filled, at a given tolerance.
-#[inline]
-fn color_match(px: &[u8], i: usize, seed: [u8; 4], tol: u8) -> bool {
-    let d = px[i]
-        .abs_diff(seed[0])
-        .max(px[i + 1].abs_diff(seed[1]))
-        .max(px[i + 2].abs_diff(seed[2]))
-        .max(px[i + 3].abs_diff(seed[3]));
-    d <= tol
-}
-
-/// Scanline flood-fill `px` (straight RGBA8, `w*h`) from `seed`, replacing the connected region within
-/// `tol` of the seed colour with opaque `fill`. Returns the affected bounding box, or `None` if the seed
-/// is out of bounds or nothing changed. A `visited` bitmap makes it correct even when `fill` equals the
-/// seed colour (no infinite loop).
-/// ⚠️ **`mask` é o CONJUNTO preenchido, não um segundo desenho.** O balde escreve pixels duros e o
-/// clip da seleção os compõe depois; o corpo do Impasto precisa saber *onde* o flood chegou, e a
-/// varredura já mantém exatamente esse conjunto no `visited`. Publicá-lo custa uma escrita por texel
-/// preenchido e evita um segundo flood — que seria uma segunda resposta a *"até onde a cor foi"*.
-pub(super) fn flood_fill(
-    px: &mut [u8],
-    w: usize,
-    h: usize,
-    seed: (usize, usize),
-    fill: [u8; 3],
-    tol: u8,
-    mut mask: Option<&mut [u8]>,
-) -> Option<Region> {
-    if w == 0 || h == 0 || px.len() != w * h * 4 {
-        return None;
-    }
-    let (sx, sy) = seed;
-    if sx >= w || sy >= h {
-        return None;
-    }
-    let si = (sy * w + sx) * 4;
-    let seed_c = [px[si], px[si + 1], px[si + 2], px[si + 3]];
-    let fillpx = [fill[0], fill[1], fill[2], 255];
-    // No-op fast path: the seed already IS the fill colour (a solid fill would change nothing there).
-    // We still run — an anti-aliased edge may differ — but skip if the seed itself is exactly fill.
-    let mut visited = vec![false; w * h];
-    let mut stack: Vec<(usize, usize)> = vec![seed];
-    let (mut minx, mut miny, mut maxx, mut maxy) = (sx, sy, sx, sy);
-    let mut changed = false;
-    while let Some((x, y)) = stack.pop() {
-        if visited[y * w + x] {
-            continue;
-        }
-        // Grow the horizontal span [lx, rx] around x over matching, unvisited pixels.
-        let mut lx = x;
-        while lx > 0
-            && !visited[y * w + lx - 1]
-            && color_match(px, (y * w + lx - 1) * 4, seed_c, tol)
-        {
-            lx -= 1;
-        }
-        let mut rx = x;
-        while rx + 1 < w
-            && !visited[y * w + rx + 1]
-            && color_match(px, (y * w + rx + 1) * 4, seed_c, tol)
-        {
-            rx += 1;
-        }
-        // Fill the span.
-        for xx in lx..=rx {
-            let idx = y * w + xx;
-            visited[idx] = true;
-            if let Some(m) = mask.as_deref_mut()
-                && let Some(cell) = m.get_mut(idx)
-            {
-                *cell = 255;
-            }
-            let o = idx * 4;
-            if px[o..o + 4] != fillpx {
-                changed = true;
-            }
-            px[o..o + 4].copy_from_slice(&fillpx);
-        }
-        minx = minx.min(lx);
-        maxx = maxx.max(rx);
-        miny = miny.min(y);
-        maxy = maxy.max(y);
-        // Seed the rows above and below across the span.
-        for ny in [y.checked_sub(1), (y + 1 < h).then_some(y + 1)]
-            .into_iter()
-            .flatten()
-        {
-            for xx in lx..=rx {
-                if !visited[ny * w + xx] && color_match(px, (ny * w + xx) * 4, seed_c, tol) {
-                    stack.push((xx, ny));
-                }
-            }
-        }
-    }
-    changed.then(|| Region {
-        x: minx as u32,
-        y: miny as u32,
-        w: (maxx - minx + 1) as u32,
-        h: (maxy - miny + 1) as u32,
-    })
-}
 
 impl PainterTool {
     /// Route the Fill "Fill adjust" modal's controls (the threshold slider + Done/Cancel). Returns
@@ -142,34 +39,6 @@ impl PainterTool {
         (self.paint.fill_threshold.clamp(0.0, 1.0) * 255.0).round() as u8
     }
 
-    /// The connected COMPONENT (4-connected, `≥128` inside) of the active selection mask that contains texel
-    /// `(sx, sy)` — `255` inside that one region, `0` elsewhere. Lets a ColorDrop fill only the selection
-    /// area the colour was dropped on, not every disjoint area (Enio 2026-07-04). All-`0` when the drop is
-    /// outside the selection.
-    fn selection_component_at(&self, sx: usize, sy: usize, w: usize, h: usize) -> Vec<u8> {
-        let mask = &self.paint.selection_mask;
-        let mut comp = vec![0u8; w * h];
-        if mask.len() != w * h || sx >= w || sy >= h || mask[sy * w + sx] < 128 {
-            return comp; // drop outside the selection → fills nothing
-        }
-        let mut stack = vec![(sx, sy)];
-        comp[sy * w + sx] = 255;
-        while let Some((x, y)) = stack.pop() {
-            for (dx, dy) in [(-1i32, 0), (1, 0), (0, -1), (0, 1)] {
-                let (nx, ny) = (x as i32 + dx, y as i32 + dy);
-                if nx < 0 || ny < 0 || nx >= w as i32 || ny >= h as i32 {
-                    continue;
-                }
-                let idx = ny as usize * w + nx as usize;
-                if comp[idx] == 0 && mask[idx] >= 128 {
-                    comp[idx] = 255;
-                    stack.push((nx as usize, ny as usize));
-                }
-            }
-        }
-        comp
-    }
-
     /// Run the flood fill from the ORIGINAL (pre-fill) pixels: restore the snapshot into the canvas, then
     /// fill from `fill_seed` at the current threshold with the current brush colour. Shared by the drop
     /// and every live threshold adjustment. No-op without a seed / snapshot.
@@ -193,7 +62,7 @@ impl PainterTool {
         // component of the selection mask under the seed — NOT every disjoint selection area (Enio
         // 2026-07-04). Computed before the mutable canvas borrow. `None` when there's no live selection.
         let clip = (self.paint.selection_active && self.paint.selection_mask.len() == w * h)
-            .then(|| self.selection_component_at(sx, sy, w, h));
+            .then(|| nucleo::componente_da_selecao(&self.paint.selection_mask, sx, sy, w, h));
         // ⚠️ A cobertura que a SELEÇÃO concede a um fill: a máscara verbatim no digital, e com o perfil
         // do Falloff na borda quando há corpo em mãos (`impasto_fill`). O balde a lê pela MESMA porta que
         // o Color Fill — duas leituras divergiriam no dia em que uma delas ganhasse um caso especial.
@@ -315,6 +184,14 @@ impl PainterTool {
     pub(super) fn fill_pointer(&mut self, ev: CanvasPointer) -> bool {
         match ev.phase {
             PointerPhase::Down => {
+                // B48.3: um 2.º soltar com o 1.º pendente FECHA o 1.º com o seu passo (como a troca de
+                // ferramenta) — senão o «antes» do 2.º seria o 1.º aplicado e o 1.º perdia o undo. A volta
+                // do ColorDrop momentâneo fica para quando o último balde fechar.
+                if self.has_active_fill() {
+                    let volta = self.paint.fill_return_mode.take();
+                    self.fill_commit();
+                    self.paint.fill_return_mode = volta;
+                }
                 self.fill_begin_drop(ev.pos);
                 true
             }
@@ -447,96 +324,5 @@ impl PainterTool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// An `w×h` RGBA8 buffer: left half `a`, right half `b`.
-    fn split(w: usize, h: usize, a: [u8; 4], b: [u8; 4]) -> Vec<u8> {
-        let mut px = vec![0u8; w * h * 4];
-        for y in 0..h {
-            for x in 0..w {
-                let o = (y * w + x) * 4;
-                px[o..o + 4].copy_from_slice(if x < w / 2 { &a } else { &b });
-            }
-        }
-        px
-    }
-
-    fn rgb(px: &[u8], w: usize, x: usize, y: usize) -> [u8; 3] {
-        let o = (y * w + x) * 4;
-        [px[o], px[o + 1], px[o + 2]]
-    }
-
-    #[test]
-    fn fills_the_connected_region_and_stops_at_a_colour_boundary() {
-        let (w, h) = (8, 8);
-        let mut px = split(w, h, [200, 0, 0, 255], [0, 0, 200, 255]);
-        let rect = flood_fill(&mut px, w, h, (1, 1), [0, 255, 0], 10, None).expect("filled");
-        for y in 0..h {
-            for x in 0..w {
-                if x < 4 {
-                    assert_eq!(
-                        rgb(&px, w, x, y),
-                        [0, 255, 0],
-                        "red half → green at ({x},{y})"
-                    );
-                } else {
-                    assert_eq!(
-                        rgb(&px, w, x, y),
-                        [0, 0, 200],
-                        "blue half untouched at ({x},{y})"
-                    );
-                }
-            }
-        }
-        assert_eq!((rect.x, rect.y, rect.w, rect.h), (0, 0, 4, 8));
-    }
-
-    #[test]
-    fn tolerance_bridges_small_differences() {
-        // Two near-identical reds (Δ = 8) meeting a far blue. tol 0 fills only the exact seed colour;
-        // tol 20 bridges the near-red into one region; neither crosses into blue.
-        let (w, h) = (6, 1);
-        let mut px = vec![0u8; w * h * 4];
-        let cols = [
-            [200, 0, 0, 255],
-            [200, 0, 0, 255],
-            [208, 0, 0, 255],
-            [208, 0, 0, 255],
-            [0, 0, 200, 255],
-            [0, 0, 200, 255],
-        ];
-        for (x, c) in cols.iter().enumerate() {
-            px[x * 4..x * 4 + 4].copy_from_slice(c);
-        }
-        let mut tight = px.clone();
-        flood_fill(&mut tight, w, h, (0, 0), [0, 255, 0], 0, None);
-        assert_eq!(rgb(&tight, w, 0, 0), [0, 255, 0]);
-        assert_eq!(
-            rgb(&tight, w, 2, 0),
-            [208, 0, 0],
-            "Δ=8 not bridged at tol 0"
-        );
-        let mut loose = px.clone();
-        flood_fill(&mut loose, w, h, (0, 0), [0, 255, 0], 20, None);
-        assert_eq!(rgb(&loose, w, 2, 0), [0, 255, 0], "Δ=8 bridged at tol 20");
-        assert_eq!(rgb(&loose, w, 4, 0), [0, 0, 200], "far blue never crossed");
-    }
-
-    #[test]
-    fn out_of_bounds_seed_returns_none() {
-        let mut px = vec![255u8; 4 * 4 * 4];
-        assert!(flood_fill(&mut px, 4, 4, (9, 9), [1, 2, 3], 0, None).is_none());
-    }
-
-    #[test]
-    fn no_change_returns_none() {
-        // Seed region already the fill colour ⇒ nothing changes ⇒ None.
-        let (w, h) = (4, 4);
-        let mut px = vec![0u8; w * h * 4];
-        for c in px.as_chunks_mut::<4>().0.iter_mut() {
-            c.copy_from_slice(&[0, 255, 0, 255]);
-        }
-        assert!(flood_fill(&mut px, w, h, (1, 1), [0, 255, 0], 0, None).is_none());
-    }
-}
+#[path = "fill_gesto_tests.rs"]
+mod gesto_tests;

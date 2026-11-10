@@ -11,7 +11,8 @@ use ph2d_vector::VectorScene;
 use super::cards::{GAP, PAD, ROW, inner_w};
 use super::{line_h, para, para_h};
 use crate::doc::InputMapDoc;
-use crate::view_list::text::line;
+// O corpo da C no peso Regular (como a A e a B); só os destaques e os nomes de acção vão em SemiBold.
+use crate::view_list::text::body as line;
 use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect, paint_icon, stroke_polyline};
 use ph2d_input::resolve::{pressed_of, strength_of};
 use ph2d_input::{ActionId, Binding};
@@ -28,9 +29,13 @@ pub const OUTER_INK: ColorToken = ColorToken::KanbanCard;
 pub const DEAD_INK: ColorToken = ColorToken::KanbanBlackSubtle;
 pub const DOT_INK: ColorToken = ColorToken::InputMapHighlight;
 
-/// A altura do bloco de texto ao lado do círculo: o título, os números Dead/Press e a leitura.
+/// O raio do ponto ao vivo em fracção do raio do círculo (maquete C3, medido: ponto de 14 px num círculo de 138 px).
+pub const DOT_OF_RADIUS: f32 = 0.1;
+
+/// A altura do bloco de texto ao lado do círculo: o título, o vão de linha do cartão, os números Dead/Press e a
+/// leitura.
 fn block_h() -> f32 {
-    line_h(m::LABEL_PX) + line_h(m::LABEL_PX) + ROW + GAP + line_h(m::VALUE_PX)
+    line_h(m::LABEL_PX) + GAP + line_h(m::LABEL_PX) + ROW + GAP + line_h(m::VALUE_PX)
 }
 
 /// A acção da manche: a aberta na vista B se usa manche, senão a primeira que usa.
@@ -132,7 +137,8 @@ pub(super) fn stick(
         m::FIELD_BORDER * 2.0,
         color,
     );
-    fill_circle(scene, cx + px * rad, cy + py * rad, m::SEG_PAD * 2.0, color);
+    let dot = rad * DOT_OF_RADIUS;
+    fill_circle(scene, cx + px * rad, cy + py * rad, dot, color);
     let rx = x + d + m::CARD_GAP;
     let rw = (x + w - rx).max(0.0);
     // O bloco de texto ao centro da altura do círculo (maquete C3).
@@ -169,7 +175,7 @@ pub(super) fn stick(
         paint_icon(scene, icon, ir, fg, StrokeToken::Default.px());
         doc.census.icons.push((ir, icon));
     }
-    let mut ty = y + lh;
+    let mut ty = y + lh + GAP;
     crate::view_keyboard::travel::zone_fields(doc, &a, Rect::new(rx, ty, rw, 0.0), scene, ts, ink);
     ty += line_h(m::LABEL_PX) + ROW + GAP;
     let (s, p) = (
@@ -181,8 +187,8 @@ pub(super) fn stick(
     } else {
         "input_map_try.not_pressed"
     });
-    // «Pushed 0.62  Strength 0.55  Pressed» (maquete C3): os rótulos no texto calmo, os valores em negrito no texto
-    // normal, e SÓ o «Pressed» na cor do sucesso.
+    // «Pushed 0.62  Strength 0.55  Pressed» (maquete C3): os rótulos no texto calmo e no Regular, os valores em
+    // negrito no texto normal (a leitura É o destaque do cartão), e SÓ o «Pressed» na cor do sucesso.
     let state = if p {
         ColorToken::Success
     } else {

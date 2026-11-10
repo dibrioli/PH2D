@@ -15,7 +15,8 @@ use ph2d_vector::VectorScene;
 use super::state::TryHit;
 use super::{card_target, line_h, para, para_h, target, wrap};
 use crate::doc::InputMapDoc;
-use crate::view_list::text::line;
+// O corpo da C no peso Regular (como a A e a B); só os destaques e os nomes de acção vão em SemiBold.
+use crate::view_list::text::body as line;
 
 pub(super) const PAD: f32 = m::CARD_PAD_X;
 pub(super) const ROW: f32 = m::FIELD_H;
@@ -47,13 +48,11 @@ pub(super) fn inner_w(w: f32) -> f32 {
     (w - PAD * 2.0).max(0.0)
 }
 
-/// O ladrilho da receita (maquete C1): compacto, ~160 px, encostado à esquerda; a fila parte-se no estreito.
-const RECIPE_TILE_W: f32 = ROW * 5.75;
-
 /// O mais estreito a que um ladrilho encolhe para as receitas caberem numa fila só (os nomes partem-se mais).
 const RECIPE_TILE_MIN: f32 = ROW * 4.5;
 
-/// Uma fila só se as receitas couberem encolhidas; senão metade por fila (nunca uma sozinha); uma só no estreito.
+/// Colunas IGUAIS que enchem a largura do cartão: uma fila só se as receitas couberem; senão metade por fila (nunca
+/// uma sozinha); uma só no estreito.
 #[must_use]
 pub fn recipe_cols(w: f32) -> usize {
     let n = Recipe::ALL.len();
@@ -82,12 +81,11 @@ fn names_of(r: Recipe) -> String {
     }
 }
 
+/// A largura de cada coluna: a do cartão repartida por igual, sem cauda vazia à direita.
 #[must_use]
 pub fn tile_w(w: f32) -> f32 {
     let k = recipe_cols(w) as f32;
-    RECIPE_TILE_W
-        .min((inner_w(w) - m::FIELD_GAP * (k - 1.0)) / k)
-        .max(0.0)
+    ((inner_w(w) - m::FIELD_GAP * (k - 1.0)) / k).max(0.0)
 }
 
 fn tile_h(ts: &mut TextSystem, w: f32) -> f32 {

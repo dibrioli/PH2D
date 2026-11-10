@@ -352,10 +352,13 @@ fn a_escuta_do_opens_with_toma_o_tab_antes_do_foco() {
     assert!(m.tab().doc.tryit.listening_open_key, "à escuta");
     m.physical(key("escape"));
     assert!(
-        m.tab().doc.tryit.listening_open_key,
-        "o Esc é recusado pela escuta (com o porquê), não larga o foco"
+        !m.tab().doc.tryit.listening_open_key,
+        "o Esc cancela a escuta, como em toda a aba"
     );
-    assert_eq!(m.tab().doc.focused(), Some(id));
+    assert_eq!(m.tab().doc.focused(), Some(id), "e não larga o foco");
+    assert_eq!(m.hero.input_map.controls().open_key, key("f1"));
+    m.key(K::Enter, None);
+    assert!(m.tab().doc.tryit.listening_open_key, "de novo à escuta");
     m.physical(key("tab"));
     assert!(
         !m.tab().doc.tryit.listening_open_key,
@@ -391,4 +394,220 @@ fn o_polegar_da_c_arrasta() {
         "sem botão, mover não rola"
     );
     assert_eq!(doc.tryit.scroll, s);
+}
+
+// ── F2 (onda 2 W6): o acabamento da C e da tela do jogador ────────────────────────────────────────────────────────
+
+/// As áreas REAIS da aba a 1600×1000 e a 1280×720.
+fn areas() -> [ph2d_editor_core::zones::Rect; 2] {
+    use ph2d_editor_core::zones::Rect;
+    // LITERAL-PX-OK: as áreas reais da aba (lição 1 da missão)
+    [
+        Rect::new(308.0, 28.0, 988.0, 890.0),
+        Rect::new(297.0, 28.0, 690.0, 604.0),
+    ]
+}
+
+fn text_of(m: &Mesa, s: &str) -> ph2d_editor_core::zones::Rect {
+    (m.tab().doc.census.texts.iter())
+        .find(|t| t.1 == s)
+        .unwrap_or_else(|| panic!("«{s}» pintado"))
+        .0
+}
+
+/// O Esc à escuta do «Opens with» CANCELA (como em toda a aba): a tecla fica a de antes e nada se recusa; o F5
+/// continua recusado com o porquê e a escuta continua.
+#[test]
+fn o_esc_cancela_a_escuta_do_opens_with_e_o_f5_fica_recusado() {
+    let mut m = mesa();
+    let before = m.hero.input_map.controls().open_key;
+    m.click(m.at(TryHit::OpenKey.id()));
+    assert!(m.tab().doc.tryit.listening_open_key);
+    m.physical(key("escape"));
+    let doc = &m.tab().doc;
+    assert!(!doc.tryit.listening_open_key, "o Esc cancela");
+    assert_eq!(doc.tryit.refused, None, "e não é uma recusa");
+    assert_eq!(m.hero.input_map.controls().open_key, before);
+    m.click(m.at(TryHit::OpenKey.id()));
+    m.physical(key("f5"));
+    assert!(
+        m.tab().doc.tryit.listening_open_key,
+        "o F5 recusado, à escuta"
+    );
+    assert!(m.tab().doc.tryit.refused.is_some());
+    assert_eq!(m.hero.input_map.controls().open_key, before);
+}
+
+/// As receitas são colunas IGUAIS que enchem o cartão (sem a cauda vazia de 270 px a 1600); no estreito partem-se em
+/// menos colunas, iguais também.
+#[test]
+fn as_receitas_sao_colunas_iguais_que_enchem_o_cartao() {
+    for area in areas() {
+        let mut m = mesa();
+        m.paint_in(area);
+        let doc = &m.tab().doc;
+        let tiles: Vec<_> = (Recipe::ALL.iter())
+            .map(|r| doc.rect_of(TryHit::Recipe(*r).id()).expect("o ladrilho"))
+            .collect();
+        let left = text_of(&m, ph2d_i18n::tr("input_map_try.start_from")).x;
+        let stopped = text_of(&m, ph2d_i18n::tr("input_map_try.stopped"));
+        let right = stopped.x + stopped.w;
+        let cols = tiles
+            .iter()
+            .filter(|t| (t.y - tiles[0].y).abs() < 0.5)
+            .count();
+        assert!(cols > 1, "{area:?}: mais de uma coluna");
+        for t in &tiles {
+            assert!(
+                (t.w - tiles[0].w).abs() < 0.5,
+                "{area:?}: colunas iguais {t:?}"
+            );
+        }
+        assert!(
+            (tiles[0].x - left).abs() < 0.5,
+            "{area:?}: encosta à esquerda"
+        );
+        let last = tiles[cols - 1];
+        assert!(
+            (last.x + last.w - right).abs() < 0.5,
+            "{area:?}: a última coluna acaba no recuo direito ({} × {right})",
+            last.x + last.w
+        );
+    }
+}
+
+/// «Shown in the game» numa grelha certa: colunas da MESMA largura, caixas da mesma altura, o vão das métricas nas
+/// duas direcções e filas equilibradas (nunca uma caixa órfã sozinha numa fila); o «Opens with F1» no chip de tecla.
+#[test]
+fn as_caixas_do_shown_sao_uma_grelha_e_o_opens_with_e_um_chip_de_tecla() {
+    use ph2d_app_input_map::view_try::{KEY_CHIP_H, SHOWN_GAP};
+    const ROW_H: f32 = 28.0; // LITERAL-PX-OK: FIELD_H, a altura da pílula
+    let m = super::try_it_censo::cena("C4");
+    let doc = &m.tab().doc;
+    let cells: Vec<_> = (m.hero.input_map.actions().iter())
+        .map(|a| doc.rect_of(TryHit::Shown(a.id).id()).expect("a caixa"))
+        .collect();
+    assert!(cells.len() > 2);
+    let cols = cells
+        .iter()
+        .filter(|c| (c.y - cells[0].y).abs() < 0.5)
+        .count();
+    // O alvo da caixa vive dentro da pílula (o recuo dela dos dois lados): o passo entre alvos é o da grelha.
+    let (step_x, step_y) = (cells[0].w + SHOWN_GAP, cells[0].h + SHOWN_GAP);
+    let inset = (ROW_H - cells[0].h) * 0.5;
+    for (i, c) in cells.iter().enumerate() {
+        assert!((c.w - cells[0].w).abs() < 0.5, "largura igual: {c:?}");
+        assert!((c.h - cells[0].h).abs() < 0.5, "altura igual: {c:?}");
+        if i % cols > 0 {
+            let step = c.x - cells[i - 1].x;
+            let pill = cells[0].w + (step - cells[0].w - SHOWN_GAP);
+            assert!(
+                step >= step_x - 0.5 && (step - (pill + SHOWN_GAP)).abs() < 0.5,
+                "passo {step}"
+            );
+            assert!(
+                (step - (cells[1].x - cells[0].x)).abs() < 0.5,
+                "o mesmo passo: {step}"
+            );
+        }
+        if i >= cols {
+            let step = c.y - cells[i - cols].y;
+            assert!(
+                (step - (step_y + inset * 2.0)).abs() < 0.5,
+                "passo vertical {step}"
+            );
+        }
+    }
+    let tail = cells.len() % cols;
+    assert!(
+        tail == 0 || tail * 2 >= cols,
+        "a última fila não fica órfã: {tail} de {cols}"
+    );
+    let open = doc.rect_of(TryHit::OpenKey.id()).expect("o chip");
+    assert!(
+        (open.h - KEY_CHIP_H).abs() < 0.5,
+        "o chip de tecla: {open:?}"
+    );
+}
+
+/// A manche: o ponto ao vivo na proporção da maquete C3 (14 px num círculo de 138), um vão de linha do cartão entre
+/// o título e o «Dead zone», e o disco Dead com contraste de token sobre o círculo.
+#[test]
+fn a_manche_tem_o_ponto_da_maquete_e_o_titulo_respira() {
+    use ph2d_app_input_map::view_try::stick::{DEAD_INK, DOT_OF_RADIUS, OUTER_INK};
+    use ph2d_tokens::Theme;
+    assert!(
+        (DOT_OF_RADIUS - 7.0 / 69.0).abs() < 0.01,
+        "o ponto da maquete"
+    ); // LITERAL-PX-OK: a maquete C3
+    let lum = |t: ph2d_tokens::ColorToken| {
+        let c = t.resolve(Theme::default());
+        let ch = |v: u8| {
+            let v = f32::from(v) / 255.0;
+            if v <= 0.040_45 {
+                v / 12.92
+            } else {
+                ((v + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b)
+    };
+    let ratio = (lum(DEAD_INK) + 0.05) / (lum(OUTER_INK) + 0.05);
+    assert!(ratio >= 1.5, "o disco Dead lê-se sobre o círculo: {ratio}");
+    let m = super::try_it_censo::cena("C3");
+    let doc = &m.tab().doc;
+    let a = (m.hero.input_map.actions().iter())
+        .find(|a| a.is_analog())
+        .expect("a manche");
+    let title = (doc.census.texts.iter())
+        .find(|t| t.1.starts_with(&a.name) && t.1.contains('\u{00B7}'))
+        .expect("o título")
+        .0;
+    let dead = text_of(&m, ph2d_i18n::tr("input_map_list.dead"));
+    let gap = dead.y - (title.y + title.h);
+    assert!(gap >= 5.5, "o vão título × Dead: {gap}"); // LITERAL-PX-OK: FIELD_ROW_GAP (6) menos meio px
+}
+
+/// A hierarquia do texto da C: corpo, chips e dicas no Regular; o SemiBold só nos destaques (o título da receita,
+/// «You are pressing …:», a leitura da manche da maquete C3) e nos nomes de acção acesos. Nas duas áreas reais, nos dois modos de texto.
+#[test]
+fn o_negrito_da_c_e_so_dos_destaques_e_dos_nomes_de_accao() {
+    use ph2d_i18n::tr;
+    super::em_cada_modo_de_texto(|| {
+        for area in areas() {
+            let mut m = mesa();
+            m.tab_mut().doc.tryit.player_changed = 2;
+            m.physical(key("up"));
+            m.frame();
+            m.paint_in(area);
+            let c = &m.tab().doc.census;
+            let leads: Vec<&str> = Recipe::ALL.iter().map(|r| tr(r.label_key())).collect();
+            let names: Vec<String> = (m.hero.input_map.actions().iter())
+                .map(|a| a.name.clone())
+                .collect();
+            let lead_of_press = tr("input_map_try.pressing").replace("{keys}", "");
+            let reading: Vec<&str> = c
+                .runs
+                .iter()
+                .filter(|r| r.2)
+                .map(|r| r.0.as_str())
+                .collect();
+            for s in &c.semibold {
+                assert!(
+                    leads.contains(&s.as_str())
+                        || reading.contains(&s.as_str())
+                        || names.contains(s)
+                        || s.starts_with(lead_of_press.trim_end_matches(':').trim_end()),
+                    "{area:?}: «{s}» em negrito sem ser destaque nem nome de acção"
+                );
+            }
+            for body in [tr("input_map_try.opens_with"), tr("input_map_try.forget")] {
+                assert!(
+                    c.regular.iter().any(|s| s == body),
+                    "{area:?}: «{body}» no Regular"
+                );
+            }
+            assert_eq!(c.elided(), Vec::<&str>::new(), "{area:?}: texto cortado");
+        }
+    });
 }

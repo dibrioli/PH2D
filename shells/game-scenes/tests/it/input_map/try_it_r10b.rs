@@ -109,7 +109,7 @@ fn c3_o_ponto_no_destaque_o_disco_dead_mais_claro_e_o_texto_ao_centro() {
 }
 
 #[test]
-fn c1_os_ladrilhos_sao_compactos_e_encostam_a_esquerda() {
+fn c1_os_ladrilhos_sao_colunas_iguais_e_encostam_a_esquerda() {
     let m = cena("C1");
     let doc = &m.tab().doc;
     let label = text_rect(&m, tr("input_map_try.start_from"));
@@ -118,13 +118,11 @@ fn c1_os_ladrilhos_sao_compactos_e_encostam_a_esquerda() {
         .collect();
     assert!((tiles[0].x - label.x).abs() < 0.5, "o primeiro à esquerda");
     for (i, t) in tiles.iter().enumerate() {
-        assert!(
-            (150.0..=170.0).contains(&t.w), // LITERAL-PX-OK: ~160 px, a maquete C1
-            "ladrilho {i} compacto: {t:?}"
-        );
+        // F2: colunas IGUAIS que enchem o cartão (a cauda vazia de 270 px saiu; prova em `polimento_c.rs`).
+        assert!((t.w - tiles[0].w).abs() < 0.5, "ladrilho {i} igual: {t:?}");
         if i > 0 && (t.y - tiles[0].y).abs() < 0.5 {
             let gap = t.x - (tiles[i - 1].x + tiles[i - 1].w);
-            assert!(gap > 0.0 && gap < 12.0, "lado a lado, sem esticar: {gap}"); // LITERAL-PX-OK: o vão
+            assert!(gap > 0.0 && gap < 12.0, "lado a lado: {gap}"); // LITERAL-PX-OK: o vão
         }
     }
     let names: Vec<String> = Recipe::ALL

@@ -19,10 +19,13 @@ pub const TITLE_PX: f32 = m::LIST_TITLE_PX;
 /// O pé («Reset to defaults» e a dica): menor e apagado, separado das linhas por um fio.
 pub const FOOT_PX: f32 = m::LABEL_PX;
 const FOOT_H: f32 = m::FIELD_H - m::SEG_INSET;
-/// O recuo do fundo: o MESMO espaço por baixo da última linha da dica que por cima do título (o título centra-se em
-/// `CARD_HEAD_H`, cada linha do pé em `FOOT_H`).
-const PAD_BOTTOM: f32 =
-    m::CARD_PAD_TOP + (m::CARD_HEAD_H - TITLE_PX) * 0.5 - (FOOT_H - FOOT_PX) * 0.5;
+/// O recuo do painel, IGUAL nos quatro lados: dos lados até às faixas das linhas, em cima até ao texto do título e
+/// em baixo desde o texto da última linha da dica.
+pub const PAD: f32 = m::CARD_PAD_X;
+/// O título centra-se em `CARD_HEAD_H`: o rect começa meia folga acima do `PAD` visível.
+const PAD_TOP: f32 = PAD - (m::CARD_HEAD_H - TITLE_PX) * 0.5;
+/// Cada linha do pé centra-se em `FOOT_H`: o fundo desconta a meia folga de baixo.
+const PAD_BOTTOM: f32 = PAD - (FOOT_H - FOOT_PX) * 0.5;
 /// As três frases que a dica pode dizer: o pé reserva as linhas da MAIOR, para não mudar de altura ao escutar.
 pub(crate) const HINTS: [&str; 3] = [
     "player_controls.hint_choose",
@@ -185,15 +188,15 @@ impl Layout {
         let inner_w = (lead + keys_w + note_w + m::SEG_INSET)
             .max(foot_w)
             .max(title_w);
-        let w = inner_w + m::CARD_PAD_X * 2.0;
+        let w = inner_w + PAD * 2.0;
         let w = if natural { w } else { w.min(area.w) };
-        let iw = w - m::CARD_PAD_X * 2.0;
+        let iw = w - PAD * 2.0;
         let hint_n = HINTS
             .iter()
             .map(|k| foot_lines(text, tr(k), iw).len())
             .max()
             .unwrap_or(1);
-        let fixed = m::CARD_PAD_TOP
+        let fixed = PAD_TOP
             + m::CARD_HEAD_H
             + m::FIELD_ROW_GAP * 2.0
             + FOOT_H * (1 + hint_n) as f32
@@ -230,8 +233,8 @@ impl Layout {
                 h,
             )
         };
-        let x0 = panel.x + m::CARD_PAD_X;
-        let title = Rect::new(x0, panel.y + m::CARD_PAD_TOP + lift, iw, m::CARD_HEAD_H);
+        let x0 = panel.x + PAD;
+        let title = Rect::new(x0, panel.y + PAD_TOP + lift, iw, m::CARD_HEAD_H);
         let list_y = title.y + title.h;
         let mut y = list_y;
         let out_rows = (first..first + visible)
@@ -258,7 +261,9 @@ impl Layout {
         });
         let rule_y = y + m::FIELD_ROW_GAP;
         let rule = Rect::new(x0, rule_y, iw, ph2d_tokens::StrokeToken::Hairline.px());
-        let reset = Rect::new(x0, rule_y + m::FIELD_ROW_GAP, iw, FOOT_H);
+        // «Reset to defaults» é um BOTÃO do tamanho do rótulo, ao centro (o alvo do clique é ele, não a faixa).
+        let rw = reset_w.min(iw);
+        let reset = Rect::new(x0 + (iw - rw) * 0.5, rule_y + m::FIELD_ROW_GAP, rw, FOOT_H);
         let hint = Rect::new(x0, reset.y + FOOT_H, iw, FOOT_H * shown_n as f32);
         Self {
             panel,

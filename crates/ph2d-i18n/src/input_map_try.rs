@@ -67,7 +67,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Click, then press the key that opens the Controls screen in the game."
         }
         "input_map_try.press_open_key" => "Press a key\u{2026}",
-        "input_map_try.refused_escape" => "Esc cannot open it: Esc closes the screen.",
         "input_map_try.refused_f5" => "F5 cannot open it: F5 starts and stops the game.",
         "input_map_try.shown" => "Shown in the game",
         "input_map_try.shown_tip" => {

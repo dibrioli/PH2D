@@ -162,10 +162,23 @@ fn as_caixas_e_a_tecla_que_abre_chegam_ao_mapa() {
     m.click(m.at(TryHit::OpenKey.id()));
     m.physical(key("escape"));
     assert!(
-        texts(&m).contains("Esc cannot open it"),
-        "a recusa com o porquê"
+        !m.tab().doc.tryit.listening_open_key,
+        "Esc cancela a escuta"
     );
     assert_eq!(m.hero.input_map.controls().open_key, key("f1"));
+    m.physical(key("f2"));
+    assert_eq!(
+        m.hero.input_map.controls().open_key,
+        key("f1"),
+        "cancelada, a tecla seguinte não muda nada"
+    );
+    m.click(m.at(TryHit::OpenKey.id()));
+    m.physical(key("f5"));
+    assert!(
+        m.tab().doc.tryit.listening_open_key,
+        "F5 recusado, a escuta continua"
+    );
+    assert!(texts(&m).contains("F5"), "a recusa com o porquê");
     m.physical(key("f2"));
     assert_eq!(m.hero.input_map.controls().open_key, key("f2"));
 }

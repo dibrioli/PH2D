@@ -7,7 +7,7 @@ pub mod state;
 pub mod stick;
 
 pub use cards::{METER_TRACK, meter_fill, recipe_cols, tile_w};
-pub use controls::preview_frame_h;
+pub use controls::{KEY_CHIP_H, SHOWN_GAP, preview_frame_h};
 
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::doc_surface::KeyInput;
@@ -22,7 +22,8 @@ use ph2d_vector::{Color, VectorScene};
 use crate::doc::InputMapDoc;
 use crate::edit::InputMapEdit;
 use crate::interact::{Control, ControlRole};
-use crate::view_list::text::line;
+// O corpo da C no peso Regular (como a A e a B); só os destaques e os nomes de acção vão em SemiBold.
+use crate::view_list::text::body as line;
 use state::TryHit;
 
 /// A largura mínima de uma coluna para a vista ir a duas.
@@ -98,7 +99,7 @@ pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool) -> bool {
 }
 
 /// **Antes do foco da aba** (o `doc.rs` chama-a primeiro): à escuta da tecla que abre a tela, TODA tecla é dela
-/// (o Tab também; o Esc e o F5 ficam recusados com o porquê — a lei de `try_it.rs` — e a escuta continua); com a pergunta da receita aberta, o diálogo. `true` = tomada.
+/// (o Tab também; o Esc cancela a escuta; o F5 fica recusado com o porquê — a lei de `try_it.rs` — e a escuta continua); com a pergunta da receita aberta, o diálogo. `true` = tomada.
 pub(crate) fn before_focus(doc: &mut InputMapDoc, key: Key, pressed: bool) -> bool {
     if doc.view() != crate::doc::View::TryIt || doc.snap.play_running {
         return false;
@@ -123,7 +124,13 @@ pub(crate) fn before_focus_text(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> 
 fn take_open_key(doc: &mut InputMapDoc, key: Key) {
     let esc = Key::named_in_script("escape").unwrap_or_default();
     let f5 = Key::named_in_script("f5").unwrap_or_default();
-    if esc.contains(&key) || f5.contains(&key) {
+    if esc.contains(&key) {
+        // Esc cancela a escuta, como em toda a aba («Esc cancels»): a tecla fica a que era.
+        doc.tryit.refused = None;
+        doc.tryit.listening_open_key = false;
+        return;
+    }
+    if f5.contains(&key) {
         doc.tryit.refused = Some(key);
         return;
     }

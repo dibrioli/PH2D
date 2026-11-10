@@ -13,7 +13,8 @@ use ph2d_vector::VectorScene;
 use super::cards::{GAP, PAD, ROW, inner_w, word};
 use super::{line_h, para};
 use crate::doc::InputMapDoc;
-use crate::view_list::text::line;
+// O corpo da C no peso Regular (como a A e a B); só os destaques e os nomes de acção vão em SemiBold.
+use crate::view_list::text::body as line;
 use ph2d_editor_core::paint::{fill_rounded_rect, fill_rounded_rect_radii, stroke_rounded_rect};
 use ph2d_editor_core::panel::cards::{CardCtx, Widget};
 use ph2d_editor_core::widget::CheckboxValue;
@@ -52,18 +53,31 @@ fn stage(doc: &InputMapDoc, ts: &mut TextSystem, w: f32) -> (Rect, Rect) {
     (st, Rect::new((iw - sw) * 0.5, PAD, sw, sh))
 }
 
-fn chips_rows(doc: &InputMapDoc, ts: &mut TextSystem, col_w: f32) -> usize {
-    let mut rows = 1;
-    let mut x = 0.0;
-    for a in doc.snap.map.actions() {
-        let cw = chip_w(ts, &a.name);
-        if x + cw > col_w && x > 0.0 {
-            rows += 1;
-            x = 0.0;
-        }
-        x += cw + m::FIELD_GAP;
-    }
-    rows
+/// O vão da grelha do «Shown in the game», nas duas direcções.
+pub const SHOWN_GAP: f32 = m::CARD_GAP;
+
+/// A grelha do «Shown in the game» em `w`: colunas IGUAIS (a maior caixa cabe em cada uma), as filas equilibradas
+/// (11 em 6 + 5, nunca 10 + 1) e a largura repartida por igual. Devolve `(colunas, filas, largura da coluna)`.
+#[must_use]
+pub fn shown_grid(names: &[&str], ts: &mut TextSystem, w: f32) -> (usize, usize, f32) {
+    let n = names.len().max(1);
+    let widest = names.iter().map(|s| chip_w(ts, s)).fold(0.0_f32, f32::max);
+    let max_cols = (((w + SHOWN_GAP) / (widest + SHOWN_GAP)).floor() as usize).clamp(1, n);
+    let rows = n.div_ceil(max_cols);
+    let cols = n.div_ceil(rows);
+    let cw = ((w - SHOWN_GAP * (cols as f32 - 1.0)) / cols as f32).max(0.0);
+    (cols, rows, cw)
+}
+
+fn chips_rows(doc: &InputMapDoc, ts: &mut TextSystem, w: f32) -> usize {
+    let names: Vec<&str> = doc
+        .snap
+        .map
+        .actions()
+        .iter()
+        .map(|a| a.name.as_str())
+        .collect();
+    shown_grid(&names, ts, w).1
 }
 
 /// A pílula de uma caixa: a caixa, o nome e o recuo dos dois lados.
@@ -87,7 +101,7 @@ pub(super) fn controls_h(doc: &mut InputMapDoc, ts: &mut TextSystem, w: f32) -> 
     } else {
         0.0
     };
-    let chips = chips_rows(doc, ts, inner_w(w)) as f32 * (ROW + GAP);
+    let chips = chips_rows(doc, ts, inner_w(w)) as f32 * (ROW + SHOWN_GAP) - SHOWN_GAP + GAP;
     let below = (ROW + GAP) + refuse + line_h(m::LABEL_PX) + chips + ROW + forget;
     let rest = m::CARD_PAD_TOP + line_h(m::LABEL_PX) + GAP + below + m::CARD_PAD_BOTTOM;
     // A tela cresce só até ao que sobra na coluna: a vista não passa a rolar por causa dela.
@@ -138,13 +152,8 @@ pub(super) fn controls(
     }
     let label = tr("input_map_try.players_can_change");
     card_target(doc, TryHit::PlayersCanChange, label, scene, ink);
-    if let Some(k) = doc.tryit.refused {
-        let esc = ph2d_input::Key::named_in_script("escape").unwrap_or_default();
-        let why = tr(if esc.contains(&k) {
-            "input_map_try.refused_escape"
-        } else {
-            "input_map_try.refused_f5"
-        });
+    if doc.tryit.refused.is_some() {
+        let why = tr("input_map_try.refused_f5");
         y = para(
             doc,
             ts,
@@ -230,7 +239,6 @@ fn shown(
         ink.color(ColorToken::CardLabel),
     );
     y += line_h(m::LABEL_PX);
-    let mut cx = x;
     let actions: Vec<(ActionId, String)> = doc
         .snap
         .map
@@ -238,12 +246,11 @@ fn shown(
         .iter()
         .map(|a| (a.id, a.name.clone()))
         .collect();
-    for (id, name) in actions {
-        let cw = chip_w(ts, &name);
-        if cx + cw > x + w && cx > x {
-            cx = x;
-            y += ROW + GAP;
-        }
+    let names: Vec<&str> = actions.iter().map(|a| a.1.as_str()).collect();
+    let (cols, rows, cw) = shown_grid(&names, ts, w);
+    for (i, (id, name)) in actions.into_iter().enumerate() {
+        let cx = x + (cw + SHOWN_GAP) * (i % cols) as f32;
+        let y = y + (ROW + SHOWN_GAP) * (i / cols) as f32;
         let pill = Rect::new(cx, y, cw, ROW);
         let bg = ink.color(ColorToken::CardField);
         fill_rounded_rect(scene, pill, m::FIELD_RADIUS, bg);
@@ -261,12 +268,17 @@ fn shown(
             y,
         );
         card_target(doc, TryHit::Shown(id), name.as_str(), scene, ink);
-        cx += cw + m::FIELD_GAP;
     }
-    y + ROW + GAP
+    y + (ROW + SHOWN_GAP) * rows.max(1) as f32 - SHOWN_GAP + GAP
 }
 
-/// «Opens with F1», discreto; devolve o fundo da linha.
+/// O chip da tecla no MESMO molde dos chips de tecla da vista A (`view_list::rows::paint_chip`): a altura, o raio,
+/// o recuo dos lados e o texto no tamanho do valor.
+pub const KEY_CHIP_H: f32 = m::FIELD_H - m::SEG_INSET;
+pub const KEY_CHIP_RADIUS: f32 = m::SEG_RADIUS;
+pub const KEY_CHIP_SIDE: f32 = m::KEY_MARK_BOX + m::SEG_INSET + m::SEG_PAD * 2.0;
+
+/// «Opens with F1»: o rótulo discreto e a tecla num chip de tecla; devolve o fundo da linha.
 fn open_key(
     doc: &mut InputMapDoc,
     (x, y, w): (f32, f32, f32),
@@ -283,22 +295,21 @@ fn open_key(
     } else {
         controls.open_key.label()
     };
-    let tw = ts.prefix_width(&key_text, SUBTLE_PX);
-    let ch = line_h(SUBTLE_PX);
+    let tw = ts.prefix_width(&key_text, m::VALUE_PX);
     let chip = Rect::new(
         x + lw + m::SEG_ICON_GAP,
-        y + (ROW - ch) * 0.5,
-        tw + m::SEG_INSET * 2.0,
-        ch,
+        y + (ROW - KEY_CHIP_H) * 0.5,
+        tw + KEY_CHIP_SIDE * 2.0,
+        KEY_CHIP_H,
     );
     let id = TryHit::OpenKey.id();
     let listening = doc.tryit.listening_open_key;
     let (bg, fg) = if listening {
         (ColorToken::Accent, ColorToken::Text1)
     } else {
-        (super::face(doc, id, false), ColorToken::Text2)
+        (super::face(doc, id, false), ColorToken::Text1)
     };
-    fill_rounded_rect(scene, chip, m::FIELD_RADIUS, ink.color(bg));
+    fill_rounded_rect(scene, chip, KEY_CHIP_RADIUS, ink.color(bg));
     if listening {
         // À escuta, o anel tracejado do foco (o da caixa à escuta da vista A) respira pelo pulso do registo;
         // estático (inteiro) em Discreto e com reduced motion.
@@ -313,7 +324,7 @@ fn open_key(
         ph2d_editor_core::paint::stroke_rounded_rect_dashed(
             scene,
             outer,
-            m::FIELD_RADIUS,
+            KEY_CHIP_RADIUS,
             m::FIELD_BORDER,
             m::LOOSE_DASH,
             ring,
@@ -325,8 +336,8 @@ fn open_key(
         ts,
         scene,
         &key_text,
-        Rect::new(chip.x + m::SEG_INSET, y, tw, ROW),
-        SUBTLE_PX,
+        Rect::new(chip.x + KEY_CHIP_SIDE, chip.y, tw, chip.h),
+        m::VALUE_PX,
         ink.color(fg),
     );
     let named = tr("input_map_try.opens_with_named").replace("{key}", &key_text);

@@ -14,6 +14,12 @@ use ph2d_vector::{Affine, VectorScene};
 use crate::layout::{FOOT_PX, Layout, TITLE_PX, foot_lines, slot_label};
 use crate::screen::{ControlsScreen, Row};
 
+/// A faixa da linha escolhida, o fundo do botão «Reset to defaults» (o das caixas de tecla) e a dica (texto
+/// secundário).
+pub const ROW_INK: ColorToken = ColorToken::AccentSoft;
+pub const RESET_INK: ColorToken = ColorToken::Bg3;
+pub const HINT_INK: ColorToken = ColorToken::Text2;
+
 /// Pinta o painel em `area` (a vista do jogo). Devolve a disposição, para o clique usar a MESMA.
 pub fn paint(
     area: Rect,
@@ -107,9 +113,9 @@ pub(crate) fn paint_with(
     );
     for ((i, row), rl) in rows.iter().enumerate().skip(lay.first).zip(&lay.rows) {
         let selected = !preview && i == screen.selected();
-        // A linha escolhida acende baixinho; à escuta quem fala é a caixa amarela, a faixa apaga-se.
-        if selected && !screen.listening() {
-            fill_rounded_rect(scene, rl.band, m::FIELD_RADIUS, c(ColorToken::Bg2));
+        // A linha escolhida acende no acento suave, também à escuta (a caixa amarela diz qual das teclas).
+        if selected {
+            fill_rounded_rect(scene, rl.band, m::FIELD_RADIUS, c(ROW_INK));
         }
         let ty = rl.name.y + folga_do_texto(rl.name.h, m::VALUE_PX);
         paint_text_title_elided(
@@ -151,11 +157,19 @@ pub(crate) fn paint_with(
         fill_rounded_rect(scene, track, r, c(ColorToken::Bg2));
         fill_rounded_rect(scene, thumb, r, c(ColorToken::Text3));
     }
-    // O pé: um fio, e por baixo o «Reset to defaults» e a dica, pequenos e apagados.
+    // O pé: um fio, e por baixo o BOTÃO «Reset to defaults» (a caixa das teclas, o anel de foco quando escolhido) e a
+    // dica no texto secundário.
     fill_rounded_rect(scene, lay.rule, 0.0, c(ColorToken::Border));
     let on_reset = !preview && screen.selected() >= rows.len();
+    fill_rounded_rect(scene, lay.reset, m::FIELD_RADIUS, c(RESET_INK));
     if on_reset {
-        fill_rounded_rect(scene, lay.reset, m::FIELD_RADIUS, c(ColorToken::Bg2));
+        stroke_rounded_rect(
+            scene,
+            lay.reset,
+            m::FIELD_RADIUS,
+            StrokeToken::Default.px(),
+            c(ColorToken::FocusRing),
+        );
     }
     paint_text_centered(
         text,
@@ -163,11 +177,7 @@ pub(crate) fn paint_with(
         tr("player_controls.reset"),
         lay.reset,
         FOOT_PX,
-        c(if on_reset {
-            ColorToken::Text1
-        } else {
-            ColorToken::Text3
-        }),
+        c(ColorToken::Text1),
     );
     let hint = crate::layout::hint_key(rows, screen);
     let line_h = lay.reset.h;
@@ -178,7 +188,7 @@ pub(crate) fn paint_with(
             lay.hint.w,
             line_h,
         );
-        paint_text_centered(text, scene, l, r, FOOT_PX, c(ColorToken::Text3));
+        paint_text_centered(text, scene, l, r, FOOT_PX, c(HINT_INK));
     }
 }
 

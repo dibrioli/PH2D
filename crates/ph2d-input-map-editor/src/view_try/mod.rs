@@ -7,7 +7,7 @@ pub mod state;
 mod stick;
 
 use ph2d_card_stack::metrics as m;
-use ph2d_editor_core::doc_surface::{Key as DocKey, KeyInput};
+use ph2d_editor_core::doc_surface::KeyInput;
 use ph2d_editor_core::paint::fill_rounded_rect;
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
@@ -94,6 +94,11 @@ pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool) -> bool {
         }
         return true;
     }
+    let esc = Key::named_in_script("escape").unwrap_or_default();
+    if pressed && doc.tryit.confirm.is_some() && esc.contains(&key) {
+        doc.tryit.confirm = None;
+        return true;
+    }
     let kb = &mut doc.tryit.bench.keyboard;
     if pressed {
         kb.handle_key_down(key);
@@ -119,10 +124,6 @@ fn take_open_key(doc: &mut InputMapDoc, key: Key) {
 
 /// A porta do texto: os números Dead/Press abertos (os da vista A).
 pub(crate) fn key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
-    if doc.tryit.confirm.is_some() && input.pressed && input.key == DocKey::Escape {
-        doc.tryit.confirm = None;
-        return true;
-    }
     crate::view_list::key(doc, input)
 }
 

@@ -43,6 +43,9 @@ fn a_receita_pede_confirmacao_e_substitui_num_passo() {
     assert_eq!(m.tab().doc.tryit.confirm, Some(Recipe::Platformer));
     assert_eq!(m.hero.input_map, before, "pedir não troca nada");
     assert!(texts(&m).contains("Replace your 11 actions with Platformer? Undo brings them back."));
+    m.physical(key("escape"));
+    assert_eq!(m.tab().doc.tryit.confirm, None, "Esc fecha a pergunta");
+    m.click(m.at(TryHit::Recipe(Recipe::Platformer).id()));
     // Replace: UM pedido, aplicado no mesmo quadro (o undo por diff faz dele UM passo).
     let at = m.at(TryHit::Replace.id());
     let ts = &mut m.ts;

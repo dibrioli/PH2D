@@ -92,6 +92,7 @@ impl DocumentSurface for CodeDocs {
         self.list
             .paint(list_r, id, &|s| dirty.contains(&s), scene, text, theme);
         crate::cards::close(scene);
+        self.paint_left_split(scene, theme);
         if let Some(page) = page_of(id) {
             crate::cards::open(scene, doc_r, theme);
             self.paint_help(page, doc_r, scene, text, theme);
@@ -167,6 +168,17 @@ impl DocumentSurface for CodeDocs {
         {
             self.pressed = taken;
             return taken;
+        }
+        // O divisor da coluna da esquerda ganha aos cartões: o vão é só dele.
+        if matches!(kind, PointerKind::Up) && self.left_release() {
+            self.pressed = false;
+            return true;
+        }
+        if matches!((kind, button), (PointerKind::Down, PointerButton::Primary))
+            && self.left.press(x, y)
+        {
+            self.pressed = true;
+            return true;
         }
         if matches!(
             (kind, button),
@@ -246,6 +258,9 @@ impl DocumentSurface for CodeDocs {
     }
 
     fn pointer_move(&mut self, id: u64, input: PointerInput<'_>, x: f32, y: f32) -> bool {
+        if self.left.drag_right_to(x) {
+            return true;
+        }
         if let Some(drag) = self.list.drag.as_mut() {
             let (dx, dy) = (x - drag.from.0, y - drag.from.1);
             drag.moved |= dx.hypot(dy) > DRAG_THRESHOLD_PX;
@@ -312,7 +327,9 @@ impl DocumentSurface for CodeDocs {
             text,
             paste,
         } = input;
-        if pressed && (self.context_key(key) || (key == Key::Escape && self.bar_escape())) {
+        let esc = key == Key::Escape;
+        if pressed && (self.context_key(key) || (esc && (self.left.cancel() || self.bar_escape())))
+        {
             return KeyOutcome {
                 consumed: true,
                 copy: None,
@@ -493,6 +510,9 @@ impl DocumentSurface for CodeDocs {
     }
 
     fn pointer_look(&self, id: u64, x: f32, y: f32) -> Option<PointerLook> {
+        if self.left.look(x, y) {
+            return Some(PointerLook::ResizeEw);
+        }
         if let Some(page) = page_of(id) {
             return self.help.open.get(&page)?.view.pointer_look(x, y);
         }

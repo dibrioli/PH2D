@@ -94,6 +94,8 @@ pub struct CodeDocs {
     pub bench: ph2d_panel_code::bancada::BancadaView,
     /// `View ▸ Card Style` (decisão 13): a aparência dos quadros acessórios, a mesma em todas as abas.
     pub card_style: ph2d_code_debugcard::CardStyle,
+    /// O divisor entre a coluna da esquerda e a do documento ([`crate::column`]).
+    pub(crate) left: ph2d_panel_code::splitter::Splitter,
 }
 
 /// O que a gramática de uma aba fez (a sonda do gate da tecla).
@@ -146,6 +148,7 @@ impl Default for CodeDocs {
             bancada: ph2d_code_bancada::Bancada::default(),
             bench: ph2d_panel_code::bancada::BancadaView::default(),
             card_style: ph2d_code_debugcard::CardStyle::default(),
+            left: ph2d_panel_code::splitter::Splitter::default(),
         }
     }
 }
@@ -266,7 +269,7 @@ impl CodeDocs {
     pub(crate) fn split_area(&self, area: Rect) -> (Rect, Rect) {
         let a = crate::cards::inset(area);
         let g = crate::cards::margin();
-        let w = ScriptListView::width(self.list.open).min(a.w);
+        let w = self.left_w(a).min(a.w);
         (
             Rect::new(a.x, a.y, w, a.h),
             Rect::new(a.x + w + g, a.y, (a.w - w - g).max(0.0), a.h),

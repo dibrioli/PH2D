@@ -23,6 +23,7 @@ mod depurador;
 mod despacho;
 mod dicas;
 mod dicas_de_tipo;
+mod divisor;
 mod dobras;
 mod esqueletos;
 mod explicacoes;

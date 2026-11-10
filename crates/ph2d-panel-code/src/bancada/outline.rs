@@ -73,6 +73,12 @@ pub(super) fn card_title(
 }
 
 impl BancadaView {
+    /// A largura em que o «In this script» do último quadro cabe sem cortar nome nem `ln N`.
+    #[must_use]
+    pub fn outline_fit_w(&self) -> f32 {
+        self.outline_fit
+    }
+
     /// Pinta o «In this script» em `area` (o cartão já aberto pela família).
     pub fn paint_outline(
         &mut self,
@@ -127,6 +133,20 @@ impl BancadaView {
         let mut y = top - self.outline.y;
         let radius = frame_radius(*theme, Radius::Sm.px());
         let eh = outline_entry_h();
+        // O que cabe sem cortar: o título de secção entre as folgas (2g) e cada entrada — folga ½ ·
+        // folga · nome · folga · `ln N` · folga ½ · folga ½ (3,5g), a mesma conta da pintura abaixo.
+        self.outline_fit = sections
+            .iter()
+            .filter(|s| !s.1.is_empty())
+            .fold(0.0, |w, (k, es)| {
+                es.iter().fold(
+                    w.max(chrome::label_w(ts, tr(k)) + g * 2.0),
+                    |w, Entry(n, l)| {
+                        let ln = tr_with("code.bancada.outline.line", &[("line", &(l + 1))]);
+                        w.max(chrome::label_w(ts, n) + chrome::label_w(ts, &ln) + g * 3.5) // LITERAL-PX-OK: 3,5 folgas
+                    },
+                )
+            });
         for (key, entries) in sections.iter().filter(|s| !s.1.is_empty()) {
             chrome::label_in(
                 scene,

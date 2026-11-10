@@ -99,6 +99,8 @@ pub struct BancadaView {
     pop_steady: Option<(usize, ph2d_ui_table::StableWidths)>,
     pop_painted: Option<(ph2d_ui_table::Layout, Vec<ph2d_ui_table::Row>)>,
     outline: outline::Scroll,
+    /// A largura em que o «In this script» do último quadro cabe sem cortar ([`outline`]).
+    outline_fit: f32,
     /// A tabela da grelha: a rolagem, as larguras arrastadas e o que ela acende.
     table: ph2d_ui_table::TableState,
     steady: ph2d_ui_table::StableWidths,
@@ -137,6 +139,7 @@ impl Default for BancadaView {
             pop_steady: None,
             pop_painted: None,
             outline: outline::Scroll::default(),
+            outline_fit: 0.0,
             table: ph2d_ui_table::TableState::default(),
             steady: ph2d_ui_table::StableWidths::default(),
             painted: None,

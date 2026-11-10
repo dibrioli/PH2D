@@ -91,6 +91,8 @@ pub struct ScriptListView {
     content_h: f32,
     counts: Vec<PaintedCount>,
     tip: Option<String>,
+    /// A largura em que o cabeçalho e cada linha cabem inteiros (nome, contagem, lixo).
+    fit_w: f32,
 }
 
 impl Default for ScriptListView {
@@ -104,6 +106,7 @@ impl Default for ScriptListView {
             content_h: 0.0,
             counts: Vec::new(),
             tip: None,
+            fit_w: 0.0,
         }
     }
 }
@@ -125,6 +128,35 @@ impl ScriptListView {
     pub fn height_for(rows: usize) -> f32 {
         let g = Spacing::Sm.px();
         g + ROW_H_PX + g + ROW_H_PX + g + ROW_H_PX * rows.max(1) as f32 + g
+    }
+
+    /// A largura mínima em que o cabeçalho (`head`: os dois botões e as folgas) e cada linha de
+    /// `list` cabem sem cortar: folga · nome · folga · contagem · folga (+ o lixo na actual),
+    /// mais a folga de fora da linha — a mesma conta de [`Self::paint`].
+    fn fit_of(ts: &mut TextSystem, list: &ScriptList<'_>, head: f32) -> f32 {
+        let gap = Spacing::Sm.px();
+        let trash = ICON_BTN_SIZE_PX.min(ROW_H_PX);
+        list.rows.iter().fold(head, |w, row| {
+            let name = if row.dirty {
+                tr_with("doc.tab.dirty_title", &[("name", &row.name)])
+            } else {
+                row.name.to_owned()
+            };
+            let count = if row.users == 0 {
+                tr("code.list.unused").to_owned()
+            } else {
+                row.users.to_string()
+            };
+            let lixo = if row.current { trash } else { 0.0 };
+            let need = gap * 4.0 + chrome::label_w(ts, &name) + chrome::label_w(ts, &count) + lixo;
+            w.max(need)
+        })
+    }
+
+    /// A largura em que a lista do último quadro cabe inteira ([`Self::fit_of`]).
+    #[must_use]
+    pub fn fit_w(&self) -> f32 {
+        self.fit_w
     }
 
     /// A área do último quadro.
@@ -163,6 +195,7 @@ impl ScriptListView {
             return;
         }
         let new = self.icon_button(scene, IconId::Plus, ListHit::New, toggle.x, y, &ui);
+        self.fit_w = Self::fit_of(ts, list, area.x + area.w - new.x + gap * 2.0);
         let title = tr("code.list.title");
         let caixa = Rect::new(
             area.x + gap,

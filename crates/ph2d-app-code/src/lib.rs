@@ -12,6 +12,7 @@
 mod actions;
 mod bancada;
 use ph2d_panel_code::cards;
+mod column;
 pub mod commands;
 pub use ph2d_code_assist::complete;
 mod complete_doc;

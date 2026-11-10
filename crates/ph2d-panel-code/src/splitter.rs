@@ -111,11 +111,29 @@ impl Splitter {
 
     /// O arrasto: para a esquerda a coluna do lado cresce. `true` = havia arrasto.
     pub fn drag_to(&mut self, x: f32) -> bool {
+        self.drag_by(x, -1.0)
+    }
+
+    /// [`Self::drag_to`] com a coluna do lado à ESQUERDA: para a direita ela cresce.
+    pub fn drag_right_to(&mut self, x: f32) -> bool {
+        self.drag_by(x, 1.0)
+    }
+
+    fn drag_by(&mut self, x: f32, sign: f32) -> bool {
         let Some((x0, w0)) = self.dragging else {
             return false;
         };
         let s = self.painted.unwrap_or_default();
-        self.side_w = Some(safe_clamp(w0 - (x - x0), s.min, s.max));
+        self.side_w = Some(safe_clamp(w0 + sign * (x - x0), s.min, s.max));
+        true
+    }
+
+    /// O Esc a meio do arrasto: a largura volta à do carregar. `true` = havia arrasto.
+    pub fn cancel(&mut self) -> bool {
+        let Some((_, w0)) = self.dragging.take() else {
+            return false;
+        };
+        self.side_w = Some(w0);
         true
     }
 

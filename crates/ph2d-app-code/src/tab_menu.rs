@@ -34,6 +34,8 @@ pub struct BarPainted {
     pub gear: Option<Rect>,
     /// As dicas do rato: a engrenagem, a função do caminho e o alfinete do cartão das opções.
     pub tips: Vec<(Rect, String)>,
+    /// A largura em que os menus e a engrenagem cabem sem se tocar (o mínimo da coluna do documento).
+    pub min_w: f32,
 }
 
 /// O estado da barra: o menu aberto e a linha sob o rato.
@@ -147,6 +149,7 @@ impl Bar {
         }
         // A engrenagem no fim; o caminho encostado à esquerda dela.
         let side = r.h;
+        self.painted.min_w = x - r.x + sm + side + pad;
         let gear = Rect::new(r.x + r.w - pad - side, r.y, side, side);
         let inset = Spacing::Xs.px();
         let glyph = Rect::new(

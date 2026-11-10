@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Fotos da cena `CENA` (omissão 14; plano 14 Q3/Q4): o binário de smoke numa Xvfb (o XTest chega; ver
 # ../../conduz_posse/corre.sh), conduzido até ao passo k (`PH2D_CODE_SMOKE_PASSO`), e uma foto da
-# janela. Com `RATO="x y"` o rato real (xdotool) pára ali antes da foto (a dica sobre um traço).
+# janela. Com `RATO="x y"` o rato real (xdotool) pára ali antes da foto (a dica sobre um traço); com
+# `TECLAS="ctrl+z"` teclas reais (xdotool key) chegam à app depois do rato e antes da foto.
 # Uso (da raiz da worktree, binário `target/smoke` feito):
 #   [CENA=13] bash docs/CodeEditor/ferramentas/smoke/cena14/fotos_q3.sh <passo> <saida.png> [espera_s]
 set -uo pipefail
@@ -35,5 +36,16 @@ if [ -n "${RATO:-}" ]; then
   sleep 1
   [ -n "${CLIQUE:-}" ] && { xdotool click 1; sleep 1; }
 fi
+if [ -n "${TECLAS:-}" ]; then
+  # Teclas reais (XTest) na janela da app, depois do passo e antes da foto: na Xvfb chegam (medido 10/11,
+  # `PH2D_UNDO_LOG=1 TECLAS=ctrl+z` ⇒ «RECEBIDA pela janela» no log). Foco por `windowfocus`: sem gestor de
+  # janelas o `windowactivate` falha calado e a tecla não entra. Na sessão `kwin_wayland --virtual` NÃO chegam.
+  # `LOG=<ficheiro>` guarda o log da app.
+  [ -n "$W" ] && { xdotool windowfocus --sync "$W"; echo "foco: $(xdotool getwindowfocus) janela: $W"; }
+  # shellcheck disable=SC2086
+  xdotool key --delay 120 $TECLAS
+  sleep 1
+fi
+[ -n "${LOG:-}" ] && cp "$T/app.log" "$LOG"
 import -window root "$SAIDA"
 echo "foto: $SAIDA"

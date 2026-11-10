@@ -51,6 +51,15 @@ RAJADA="${FOTO_RAJADA:-1}"
 # inteiro do teclado (a janela, a shell, a aba), que um roteiro de smoke não percorre. CodeEditor 13
 # Onda B, smoke do dono 09/11 (passo 5: o Ctrl+Z da grelha).
 TECLAS="${FOTO_TECLAS:-}"
+# ⛔ Medido 09–10/11: sob este kwin_wayland --virtual as teclas NUNCA chegam (o XTEST é ignorado pelo
+# Xwayland e o key --window é XSendEvent, que o winit ignora; o log da app não tem «RECEBIDA»). Numa Xvfb
+# chegam: docs/CodeEditor/ferramentas/smoke/cena14/fotos_q3.sh com TECLAS="..." (provado com
+# PH2D_UNDO_LOG=1 TECLAS=ctrl+z ⇒ «Ctrl+Z RECEBIDA pela janela»). Recusa alto em vez de fingir.
+if [ -n "$TECLAS" ]; then
+  echo "RECUSA: FOTO_TECLAS não chega à app nesta sessão kwin --virtual (medido 09/11)." >&2
+  echo "        Use: TECLAS=\"$TECLAS\" bash docs/CodeEditor/ferramentas/smoke/cena14/fotos_q3.sh <passo> <saida.png>" >&2
+  exit 3
+fi
 # FOTO_ESCOLHA=head: fotografa a 1.ª janela do app (o editor atrás da janela do jogo), não a última.
 # FOTO_JANELA_A_CADA=1: cada foto da rajada reescolhe a janela (a ÚLTIMA do app) — para um app que
 # abre uma 2.ª janela a meio (a janela do jogo, GameEngineFuncional R0c).

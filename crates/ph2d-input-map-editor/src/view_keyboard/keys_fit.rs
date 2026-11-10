@@ -14,20 +14,73 @@ use super::keys::{BAR_GAP, BAR_H};
 /// repouso no tema escuro, mais funda no claro: sempre MAIS ênfase que o repouso, nunca um contorno.
 pub const HOVER_FACE: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::KanbanShadowHover;
 
-/// A tecla nunca é mais baixa que a letra com duas barras por baixo (a 1280 as barras tapavam a letra).
+/// A tecla mais baixa: a letra na plaquinha com folga para a pilha de barras (o valor de antes, que a 1280 já cabia).
 pub(super) const KEY_MIN_H: f32 =
     m::VALUE_PX + m::SEG_PAD + (BAR_H + BAR_GAP) * 2.0 + m::SEG_INSET * 0.5;
 
-/// A margem mínima de cada lado da legenda, dentro da tecla.
+/// A margem mínima de cada lado da legenda, dentro da tecla (a plaquinha nunca passa dela).
 pub(crate) const LEGEND_PAD: f32 = m::SEG_INSET * 0.5;
+
+/// A folga da plaquinha («adesivo») à volta da legenda, e o raio dela.
+pub(crate) const PLATE_PAD_X: f32 = m::SEG_PAD * 2.0;
+pub(crate) const PLATE_PAD_Y: f32 = m::SEG_PAD;
+pub(crate) const PLATE_RADIUS: f32 = m::SEG_RADIUS - m::FIELD_BORDER;
+
+/// O recuo das barras às arestas da tecla: de lado, uma aresta dupla; em cima e em baixo, o raio (as barras nunca
+/// entram nos cantos redondos).
+pub(crate) const BAR_INSET_X: f32 = m::FIELD_BORDER * 2.0;
 
 /// O menor tamanho de legenda: o menor texto que a app já tem (`TypeToken::Xxs`), nada menor (a porta dos testes).
 pub const MIN_LEGEND_PX: f32 = ph2d_tokens::TypeToken::Xxs.px();
 
-/// O topo da pilha de `n` barras dentro da tecla `r` (a legenda fica por cima dele).
+/// A faixa vertical que a pilha de barras pode ocupar na tecla de altura `kh` (fora dos cantos redondos).
+fn bar_band(kh: f32) -> f32 {
+    (kh - m::SEG_RADIUS * 2.0).max(0.0)
+}
+
+/// Quantas barras cabem na tecla de altura `kh` à espessura cheia (`BAR_H`, vão `BAR_GAP`). A tecla mais baixa
+/// possível (`KEY_MIN_H` = 25) leva 4.
 #[must_use]
-pub fn bars_top(r: ph2d_editor_core::zones::Rect, n: usize) -> f32 {
-    r.y + r.h - m::SEG_INSET * 0.5 - (BAR_H + BAR_GAP) * n as f32
+pub fn bars_full(kh: f32) -> usize {
+    ((bar_band(kh) + BAR_GAP) / (BAR_H + BAR_GAP)) as usize
+}
+
+/// ⭐ As `n` barras da tecla `r`, de cima para baixo: listras da largura interior, empilhadas e centradas no
+/// centro vertical da tecla (o da legenda), por TRÁS da plaquinha. Até [`bars_full`] têm a espessura cheia; além
+/// disso, listra e vão encolhem na mesma proporção para a pilha caber na faixa — nunca sai da tecla, nunca empurra
+/// a legenda.
+#[must_use]
+pub fn bar_stack(r: ph2d_editor_core::zones::Rect, n: usize) -> Vec<ph2d_editor_core::zones::Rect> {
+    if n == 0 {
+        return Vec::new();
+    }
+    let pitch = BAR_H + BAR_GAP;
+    let scale = ((bar_band(r.h) + BAR_GAP) / (pitch * n as f32)).min(1.0);
+    let (h, gap) = (BAR_H * scale, BAR_GAP * scale);
+    let total = h * n as f32 + gap * (n - 1) as f32;
+    let top = r.y + (r.h - total) * 0.5;
+    let w = (r.w - BAR_INSET_X * 2.0).max(0.0);
+    (0..n)
+        .map(|i| {
+            ph2d_editor_core::zones::Rect::new(r.x + BAR_INSET_X, top + (h + gap) * i as f32, w, h)
+        })
+        .collect()
+}
+
+/// A plaquinha da legenda `l` (a caixa da legenda) na tecla `kr`: a legenda mais a folga, nunca além de
+/// [`LEGEND_PAD`] das arestas (as barras espreitam de cada lado) nem fora da tecla em altura.
+#[must_use]
+pub fn plate_of(
+    kr: ph2d_editor_core::zones::Rect,
+    l: ph2d_editor_core::zones::Rect,
+) -> ph2d_editor_core::zones::Rect {
+    let x0 = (l.x - PLATE_PAD_X).max(kr.x + LEGEND_PAD).min(l.x);
+    let x1 = (l.x + l.w + PLATE_PAD_X)
+        .min(kr.x + kr.w - LEGEND_PAD)
+        .max(l.x + l.w);
+    let y0 = (l.y - PLATE_PAD_Y).max(kr.y);
+    let y1 = (l.y + l.h + PLATE_PAD_Y).min(kr.y + kr.h);
+    ph2d_editor_core::zones::Rect::new(x0, y0, x1 - x0, (y1 - y0).max(0.0))
 }
 
 /// A altura de uma tecla de uma fila para o passo `p`.
@@ -184,9 +237,10 @@ pub(crate) fn two_lines_h(px: f32) -> f32 {
     px * ph2d_tokens::LineHeight::Tight.ratio() * 2.0
 }
 
-/// A altura livre para a legenda numa tecla de altura `kh` com `bars` barras (a do sistema não tem nenhuma).
-pub(crate) fn label_h(kh: f32, bars: usize) -> f32 {
-    (kh - m::SEG_INSET * 0.5 - (BAR_H + BAR_GAP) * bars as f32).max(0.0)
+/// A altura livre para a legenda numa tecla de altura `kh`: a da tecla menos a folga da plaquinha (as barras
+/// passam por trás dela e não tiram altura nenhuma).
+pub(crate) fn label_h(kh: f32) -> f32 {
+    (kh - PLATE_PAD_Y * 2.0).max(0.0)
 }
 
 /// A legenda da tecla no degrau `level` que cabe em `w` × `h`: a de uma linha; senão, se a tecla se imprime em
@@ -221,15 +275,6 @@ pub(crate) fn choose(
         .filter(|_| sys_icon && key.system_owned().is_some())
         .map(Legend::Icon);
     icon.filter(|l| fits(ts, l, w))
-}
-
-/// As barras que a legenda reserva: nenhuma na tecla do sistema (nunca ligável), pelo menos uma nas outras.
-pub(crate) fn reserved_bars(key: Key, who: usize) -> usize {
-    if key.system_owned().is_some() {
-        0
-    } else {
-        who.max(1)
-    }
 }
 
 /// O símbolo ISO/IEC 9995-7 de uma tecla, o último degrau da legenda (a fonte não tem os glifos ⇱ ⇲ ⇞ ⇟ ↵ ⎙).
@@ -267,7 +312,7 @@ fn group_level(ts: &mut TextSystem, a: Arrangement, p: f32, grp: Group) -> Optio
             .filter(|l| *l != Level::Icon || icons_all)
             .find(|l| {
                 caps.iter().all(|c| {
-                    let h = label_h(key_h(c.rows, p), reserved_bars(c.key, 1));
+                    let h = label_h(key_h(c.rows, p));
                     choose(ts, c.key, (*l, sys_icon), key_w(c.span, p), h).is_some()
                 })
             })

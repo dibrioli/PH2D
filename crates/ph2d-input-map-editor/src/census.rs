@@ -56,6 +56,8 @@ pub struct KeyLook {
     pub dimmed: bool,
     /// A faixa escura por baixo das barras (face cheia: premida ou acesa), para as barras não sumirem nela.
     pub strip: Option<Rect>,
+    /// A plaquinha («adesivo») por baixo da legenda e por cima das barras.
+    pub plate: Rect,
     /// A legenda em texto e o seu tamanho; `None` = ícone.
     pub text: Option<(String, f32)>,
 }

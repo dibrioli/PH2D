@@ -5,7 +5,7 @@ use super::Mesa;
 use super::lista::onze;
 use super::teclado_censo::AREAS;
 use ph2d_app_input_map::view_keyboard::geometry::{Arrangement, drawn_keys};
-use ph2d_app_input_map::view_keyboard::keys_fit::{MIN_LEGEND_PX, bars_top, fit_for_width};
+use ph2d_app_input_map::view_keyboard::keys_fit::{MIN_LEGEND_PX, fit_for_width};
 use ph2d_app_input_map::view_keyboard::state::{KbHit, Sub};
 use ph2d_app_input_map::{InputMapEdit, View};
 use ph2d_editor_core::icons::IconId;
@@ -31,10 +31,7 @@ fn provas(m: &Mesa, at: &str) -> (f32, f32, f32) {
             .count();
         assert_eq!(n, 1, "{at}: {} pintada {n} vezes", k.label());
         let r = doc.rect_of(KbHit::Key(*k).id()).expect("alvo da tecla");
-        let who = (doc.kb.bars.iter())
-            .find(|(h, _)| *h == KbHit::Key(*k))
-            .map_or(0, |(_, w)| w.len());
-        let bars_top = bars_top(r, who);
+        adesivo(doc, *k, r, at);
         if let Some(t) = (c.texts.iter()).find(|t| {
             let (cx, cy) = (t.0.x + t.0.w * 0.5, t.0.y + t.0.h * 0.5);
             r.contains(cx, cy)
@@ -42,11 +39,6 @@ fn provas(m: &Mesa, at: &str) -> (f32, f32, f32) {
             assert!(
                 t.0.x >= r.x && t.0.x + t.0.w <= r.x + r.w,
                 "{at}: legenda de {} sai da tecla",
-                k.label()
-            );
-            assert!(
-                t.0.y + t.0.h <= bars_top + 0.5,
-                "{at}: as barras tapam {}",
                 k.label()
             );
             assert!(
@@ -72,11 +64,6 @@ fn provas(m: &Mesa, at: &str) -> (f32, f32, f32) {
                     )
                 })
                 .0;
-            assert!(
-                ir.y + ir.h <= bars_top + 0.5,
-                "{at}: as barras tapam o ícone de {}",
-                k.label()
-            );
             margin = margin.min(ir.x - r.x).min(r.x + r.w - ir.x - ir.w);
         }
         rects.push((k.label(), r));
@@ -584,4 +571,124 @@ fn k2_hover_aberta_e_simbolos_lem_se_diferentes() {
             );
         }
     }
+}
+
+/// ⭐ Dono 10/11: a legenda no CENTRO da tecla, numa plaquinha («adesivo») dentro da tecla; as barras por TRÁS
+/// dela, todas dentro da tecla e cada uma à vista (nunca inteira por baixo da plaquinha). Devolve a menor espreita.
+fn adesivo(doc: &ph2d_app_input_map::InputMapDoc, k: Key, r: Rect, at: &str) -> f32 {
+    let l = (doc.census.keys.iter())
+        .find(|l| l.key == k)
+        .expect("olhar");
+    let p = l.plate;
+    let n = k.label();
+    let dentro = |a: Rect, b: Rect| {
+        a.x >= b.x - 0.01
+            && a.y >= b.y - 0.01
+            && a.x + a.w <= b.x + b.w + 0.01
+            && a.y + a.h <= b.y + b.h + 0.01
+    };
+    assert!(dentro(p, r), "{at}: a plaquinha de {n} {p:?} sai de {r:?}");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    assert!(
+        (p.x + p.w * 0.5 - cx).abs() < 0.5 && (p.y + p.h * 0.5 - cy).abs() < 0.5,
+        "{at}: a plaquinha de {n} fora do centro"
+    );
+    let legends = (doc.census.texts.iter().map(|t| t.0))
+        .chain(doc.census.icons.iter().map(|i| i.0))
+        .filter(|t| r.contains(t.x + t.w * 0.5, t.y + t.h * 0.5));
+    for t in legends {
+        assert!(
+            dentro(t, p),
+            "{at}: a legenda de {n} {t:?} sai da plaquinha {p:?}"
+        );
+    }
+    let who = (doc.kb.bars.iter())
+        .find(|(h, _)| *h == KbHit::Key(k))
+        .map_or(0, |b| b.1.len());
+    let bars: Vec<Rect> = (doc.census.bars.iter())
+        .filter(|(b, _)| r.contains(b.x + b.w * 0.5, b.y + b.h * 0.5))
+        .map(|b| b.0)
+        .collect();
+    assert_eq!(bars.len(), who, "{at}: {n} tem {who} acções");
+    let mut peek = f32::MAX;
+    for b in bars {
+        assert!(
+            dentro(b, r) && b.h > 0.0,
+            "{at}: a barra {b:?} sai de {n} {r:?}"
+        );
+        let lado = (p.x - b.x).max(b.x + b.w - p.x - p.w);
+        let cima = (p.y - b.y).max(b.y + b.h - p.y - p.h);
+        assert!(
+            lado > 0.5 || cima > 0.5,
+            "{at}: a barra {b:?} some debaixo da plaquinha de {n}"
+        );
+        peek = peek.min(lado.max(cima));
+    }
+    peek
+}
+
+/// A Q ligada a `n` acções (e a nenhuma outra).
+fn q_com(n: usize) -> ph2d_input::InputMap {
+    let q = Binding::Key(tecla("q"));
+    let mut map = onze();
+    let ids: Vec<_> = map.actions().iter().map(|a| a.id).collect();
+    assert!(ids.len() >= n, "o mapa tem {} acções", ids.len());
+    for (i, id) in ids.into_iter().enumerate() {
+        let a = map.get_mut(id).expect("acção");
+        a.bindings.retain(|b| *b != q);
+        if i < n {
+            a.bindings.push(q);
+        }
+    }
+    map
+}
+
+/// ⭐ A letra nunca sobe: o centro da legenda da Q é o MESMO com 0, 1, 2, 5 e 11 barras, na B e na C, nas duas áreas
+/// reais × os dois modos de texto; com 11 (além do que cabe à espessura cheia) a pilha afina e fica na tecla.
+#[test]
+fn a_legenda_fica_parada_na_plaquinha_com_qualquer_numero_de_barras() {
+    use ph2d_app_input_map::view_keyboard::keys_fit::bars_full;
+    super::em_cada_modo_de_texto(|| {
+        for area in AREAS {
+            for v in [View::Keyboard, View::TryIt] {
+                let mut centros = Vec::new();
+                for n in [0, 1, 2, 5, 11] {
+                    let mut m = Mesa::aberta(v);
+                    m.hero.input_map = q_com(n);
+                    m.frame();
+                    if v == View::Keyboard {
+                        m.click(m.at(KbHit::Sub(Sub::Keyboard).id()));
+                    }
+                    m.paint_in(area);
+                    let at = format!("{v:?} {}×{} n={n}", area.w, area.h);
+                    assert_eq!(
+                        m.tab().doc.census.elided(),
+                        Vec::<&str>::new(),
+                        "{at}: cortado"
+                    );
+                    let doc = &m.tab().doc;
+                    let q = tecla("q");
+                    let r = doc.rect_of(KbHit::Key(q).id()).expect("a Q");
+                    let peek = adesivo(doc, q, r, &at);
+                    let t = (doc.census.texts.iter())
+                        .find(|t| r.contains(t.0.x + t.0.w * 0.5, t.0.y + t.0.h * 0.5))
+                        .expect("a legenda da Q")
+                        .0;
+                    eprintln!(
+                        "{at}: tecla {:.1} cabem {} espreita {peek:.1}",
+                        r.h,
+                        bars_full(r.h)
+                    );
+                    centros.push((t.x + t.w * 0.5, t.y + t.h * 0.5));
+                }
+                for c in &centros {
+                    assert!(
+                        (c.0 - centros[0].0).abs() < 0.01 && (c.1 - centros[0].1).abs() < 0.01,
+                        "{v:?} {}: a legenda mexeu-se {centros:?}",
+                        area.w
+                    );
+                }
+            }
+        }
+    });
 }

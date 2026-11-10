@@ -227,7 +227,8 @@ pub(crate) fn hover_text(doc: &InputMapDoc) -> Option<(String, String)> {
     Some((lead, format!("{list}{}", tr("input_map_list.period"))))
 }
 
-/// Uma barra por acção que usa `b`, em baixo de `r`, na cor da acção (o censo regista cada uma).
+/// Uma barra por acção, em baixo de `r`, na cor da acção — o comando e os chips do «Also:»; a tecla desenhada usa a
+/// pilha por trás da plaquinha (`keys_fit::bar_stack`).
 pub(super) fn paint_bars(
     census: &mut crate::census::Census,
     scene: &mut VectorScene,
@@ -287,19 +288,58 @@ pub(super) fn fill_face(
     fill_rounded_rect(scene, r, radius, ink.color(tok));
 }
 
-/// A faixa por baixo das `n` barras de `r`, no fundo do desenho (`CardField`): as barras mantêm o contraste sobre
-/// uma face cheia (premida ou acesa na cor de uma acção).
-fn paint_bar_strip(scene: &mut VectorScene, ink: CardInk, r: Rect, n: usize) -> Rect {
-    let top = fit::bars_top(r, n) - BAR_GAP;
-    let inset = m::SEG_INSET * 0.25;
+/// A faixa por baixo da pilha `bars`, no fundo do desenho (`CardField`): as barras mantêm o contraste sobre uma face
+/// cheia (premida ou acesa na cor de uma acção).
+fn paint_bar_strip(scene: &mut VectorScene, ink: CardInk, bars: &[Rect]) -> Option<Rect> {
+    let (first, last) = (bars.first()?, bars.last()?);
     let s = Rect::new(
-        r.x + inset,
-        top,
-        (r.w - inset * 2.0).max(0.0),
-        (r.y + r.h - inset - top).max(0.0),
+        first.x - BAR_GAP,
+        first.y - BAR_GAP,
+        first.w + BAR_GAP * 2.0,
+        last.y + last.h - first.y + BAR_GAP * 2.0,
     );
     fill_rounded_rect(scene, s, BAR_H, ink.color(ColorToken::CardField));
-    s
+    Some(s)
+}
+
+/// As listras das acções de `who` na pilha `bars` (uma por acção, na cor dela), por trás da plaquinha.
+fn paint_stack(
+    census: &mut crate::census::Census,
+    scene: &mut VectorScene,
+    ink: CardInk,
+    bars: &[Rect],
+    who: &[ActionId],
+) {
+    for (bar, id) in bars.iter().zip(who) {
+        let c = ink.color(crate::palette::of_action(*id));
+        fill_rounded_rect(scene, *bar, (bar.h * 0.5).min(BAR_H * 0.5), c);
+        census.bars.push((*bar, *id));
+    }
+}
+
+/// A caixa da legenda `l` centrada na tecla `kr` (o mesmo centro com 0 ou N barras).
+fn legend_box(ts: &mut TextSystem, kr: Rect, l: &Legend) -> Rect {
+    let (cx, cy) = (kr.x + kr.w * 0.5, kr.y + kr.h * 0.5);
+    let (w, h) = match l {
+        Legend::Icon(_) => {
+            let s = ARROW_BOX
+                .min(fit::label_h(kr.h))
+                .min(kr.w - fit::LEGEND_PAD * 2.0)
+                .max(0.0);
+            (s, s)
+        }
+        Legend::Text(s, px) => (
+            ts.prefix_width(s, *px).min(kr.w),
+            px * ph2d_tokens::LineHeight::Tight.ratio(),
+        ),
+        Legend::Two(a, b, px) => (
+            ts.prefix_width(a, *px)
+                .max(ts.prefix_width(b, *px))
+                .min(kr.w),
+            fit::two_lines_h(*px),
+        ),
+    };
+    Rect::new(cx - w * 0.5, cy - h * 0.5, w, h)
 }
 
 /// O contorno da acção aberta, recuado de uma aresta para dentro (o anel do foco fica na aresta, os dois lêem-se).
@@ -339,7 +379,7 @@ fn paint_keyboard(
 }
 
 /// Como uma tecla acesa se mostra: na B, a da acção ABERTA ganha o contorno; no Try it, a PREMIDA enche-se da cor
-/// da primeira acção que ela liga (maquete C2: a ↑ amarela do jump), com as barras de todas por baixo.
+/// da primeira acção que ela liga (maquete C2: a ↑ amarela do jump), com as barras de todas por trás da legenda.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Lit {
     Outline,
@@ -435,15 +475,14 @@ fn paint_key(
     if let Some(c) = filled.filter(|_| !pressed) {
         doc.census.filled.push((kr, c));
     }
-    let strip = (!who.is_empty() && (pressed || filled.is_some()))
-        .then(|| paint_bar_strip(scene, ink, kr, who.len()));
-    let outlined = lit && !system && style == Lit::Outline;
-    let edge = if outlined {
-        open_outline(scene, ink, kr, m::SEG_RADIUS);
-        Some(ColorToken::Accent)
+    // As barras por TRÁS da plaquinha: a pilha centrada na tecla, a faixa escura dela na face cheia.
+    let bars = fit::bar_stack(kr, who.len());
+    let strip = if pressed || filled.is_some() {
+        paint_bar_strip(scene, ink, &bars)
     } else {
         None
     };
+    paint_stack(&mut doc.census, scene, ink, &bars, &who);
     let fg_tok = if system {
         ColorToken::TextDisabled
     } else if pressed || filled.is_some() {
@@ -454,17 +493,29 @@ fn paint_key(
         ColorToken::Text1
     };
     let fg = ink.color(fg_tok);
-    let label_h = fit::label_h(kr.h, fit::reserved_bars(key, who.len()));
-    let legend = fit::choose(ts, key, (level, true), kr.w, label_h)
+    let legend = fit::choose(ts, key, (level, true), kr.w, fit::label_h(kr.h))
         .unwrap_or_else(|| fit::legend_at(key, level));
+    // ⭐ A legenda fica SEMPRE no centro da tecla, numa plaquinha opaca da face dela (dono 10/11: «como aqueles
+    // adesivos que colocamos no teclado»), com a aresta fina que a lê como colada; a do sistema, apagada também.
+    let lb = legend_box(ts, kr, &legend);
+    let plate = fit::plate_of(kr, lb);
+    if system {
+        let c = ink.color(bg).multiply_alpha(SYSTEM_FACE_ALPHA);
+        fill_rounded_rect(scene, plate, fit::PLATE_RADIUS, c);
+    } else {
+        fill_face(scene, ink, plate, fit::PLATE_RADIUS, bg);
+    }
+    let rim = if system {
+        ink.color(ColorToken::Border)
+            .multiply_alpha(SYSTEM_FACE_ALPHA)
+    } else {
+        ink.color(ColorToken::Border)
+    };
+    stroke_rounded_rect(scene, plate, fit::PLATE_RADIUS, m::FIELD_BORDER, rim);
     let text = match &legend {
         Legend::Icon(icon) => {
             // O ícone fica da altura da letra no mínimo e nunca encosta à aresta da tecla.
-            let s = ARROW_BOX
-                .min(label_h)
-                .min(kr.w - fit::LEGEND_PAD * 2.0)
-                .max(0.0);
-            let ir = Rect::new(kr.x + (kr.w - s) * 0.5, kr.y + (label_h - s) * 0.5, s, s);
+            let ir = lb;
             // O símbolo é traço fino: nunca mais apagado que `Text2` numa tecla do jogo (a ligada fica em `Text1`).
             let tone = if fg_tok == ColorToken::Text3 {
                 ink.color(ColorToken::Text2)
@@ -476,22 +527,25 @@ fn paint_key(
             None
         }
         Legend::Text(label, px) => {
-            let tw = ts.prefix_width(label, *px).min(kr.w);
-            let lr = Rect::new(kr.x + (kr.w - tw) * 0.5, kr.y, tw, label_h);
-            line(&mut doc.census, ts, scene, label, lr, *px, fg);
+            line(&mut doc.census, ts, scene, label, lb, *px, fg);
             Some((label.clone(), *px))
         }
         Legend::Two(a, b2, px) => {
-            let lh = fit::two_lines_h(*px) * 0.5;
-            let top = kr.y + label_h * 0.5 - lh;
+            let lh = lb.h * 0.5;
             for (i, s) in [a, b2].into_iter().enumerate() {
                 let tw = ts.prefix_width(s, *px).min(kr.w);
-                let lr = Rect::new(kr.x + (kr.w - tw) * 0.5, top + lh * i as f32, tw, lh);
+                let lr = Rect::new(kr.x + (kr.w - tw) * 0.5, lb.y + lh * i as f32, tw, lh);
                 line(&mut doc.census, ts, scene, s, lr, *px, fg);
             }
             Some((format!("{a}{b2}"), *px))
         }
     };
+    // O contorno da aberta por cima de tudo (as pontas das barras não o tapam).
+    let outlined = lit && !system && style == Lit::Outline;
+    let edge = outlined.then(|| {
+        open_outline(scene, ink, kr, m::SEG_RADIUS);
+        ColorToken::Accent
+    });
     doc.census.keys.push(KeyLook {
         key,
         rect: kr,
@@ -500,9 +554,9 @@ fn paint_key(
         edge,
         dimmed: system,
         strip,
+        plate,
         text,
     });
-    paint_bars(&mut doc.census, scene, ink, kr, &who);
     doc.kb.bars.push((KbHit::Key(key), who));
     doc.kb.targets.push(KbHit::Key(key));
 }

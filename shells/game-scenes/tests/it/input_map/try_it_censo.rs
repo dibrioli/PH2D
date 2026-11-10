@@ -30,6 +30,18 @@ fn o_try_it_nao_corta_texto_nem_mostra_numero_morto() {
                 let c = &m.tab().doc.census;
                 let at = format!("{label} {w}×{h} confirm={confirm}");
                 assert_eq!(c.elided(), Vec::<&str>::new(), "{at}: texto cortado");
+                let low = c
+                    .texts
+                    .iter()
+                    .map(|t| t.0.y + t.0.h)
+                    .fold(0.0_f32, f32::max);
+                let right = c
+                    .texts
+                    .iter()
+                    .map(|t| t.0.x + t.0.w)
+                    .fold(0.0_f32, f32::max);
+                assert!(right <= w, "{at}: texto fora da janela à direita ({right})");
+                assert!(low <= h, "{at}: texto abaixo da janela ({low} > {h})");
                 let stick = map.actions().iter().find(|a| a.is_analog()).map(|a| a.id);
                 for b in map.actions() {
                     let want = if Some(b.id) == stick { 2 } else { 0 };

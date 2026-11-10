@@ -3,7 +3,7 @@
 
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::paint::fill_rounded_rect;
-use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget};
+use ph2d_editor_core::panel::cards::{CardCtx, Widget};
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -164,8 +164,8 @@ pub(super) fn paint(
         tr("input_map_keyboard.remove"),
         tr("input_map_list.new_name"),
     );
-    let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, x, w);
     if doc.kb.adding {
+        let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, x, w);
         y = c.full(
             None,
             Widget::Text {
@@ -175,22 +175,25 @@ pub(super) fn paint(
             y,
         ) + m::FIELD_ROW_GAP;
     }
-    let end = c.row(
-        &[
-            Cell::new(Widget::Button {
-                id: KbHit::Add.id(),
-                text: add,
-                primary: false,
-            }),
-            Cell::new(Widget::Button {
-                id: KbHit::Remove.id(),
-                text: remove,
-                primary: false,
-            }),
-        ],
-        y,
-    );
-    doc.kb.targets.push(KbHit::Add);
-    doc.kb.targets.push(KbHit::Remove);
+    // «+ Add» e «Remove» compactos, na largura do texto (maquete B1), encostados à esquerda.
+    let (mut bx, mut end) = (x, y);
+    for (h, text) in [(KbHit::Add, add), (KbHit::Remove, remove)] {
+        let bw = button_w(ts, text).min((x + w - bx).max(0.0));
+        let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, bx, bw);
+        let widget = Widget::Button {
+            id: h.id(),
+            text,
+            primary: false,
+        };
+        end = c.full(None, widget, y);
+        bx += bw + m::FIELD_GAP;
+        doc.kb.targets.push(h);
+    }
     end + m::LIST_PAD_BOTTOM
+}
+
+/// A largura de um botão compacto: o texto e o recuo do cartão dos dois lados.
+#[must_use]
+pub fn button_w(ts: &mut TextSystem, text: &str) -> f32 {
+    ts.prefix_width(text, m::VALUE_PX) + m::CARD_PAD_X * 2.0
 }

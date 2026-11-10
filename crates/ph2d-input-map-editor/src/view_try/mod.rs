@@ -6,6 +6,9 @@ mod controls;
 pub mod state;
 pub mod stick;
 
+pub use cards::{METER_TRACK, meter_fill, recipe_cols, tile_w};
+pub use controls::preview_frame_h;
+
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::doc_surface::KeyInput;
 use ph2d_editor_core::paint::fill_rounded_rect;
@@ -302,8 +305,16 @@ pub fn paint(
         (stick::stick_h, stick::stick),
         (controls::controls_h, controls::controls),
     ];
-    let heights: Vec<f32> = order.iter().map(|(h, _)| h(doc, ts, col_w)).collect();
     let col_of = |i: usize| usize::from(two && i >= 2);
+    let mut heights: Vec<f32> = Vec::with_capacity(order.len());
+    for (i, (h, _)) in order.iter().enumerate() {
+        let above: f32 = (0..i)
+            .filter(|&j| col_of(j) == col_of(i))
+            .map(|j| heights[j] + m::CARD_GAP)
+            .sum();
+        doc.tryit.controls_room = (inner.h - above).max(0.0);
+        heights.push(h(doc, ts, col_w));
+    }
     let mut tops = [inner.y, inner.y];
     let mut bottom = inner.y;
     for i in 0..order.len() {

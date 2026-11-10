@@ -351,9 +351,15 @@ pub(super) fn paint(
 /// As frases de baixo: a tecla repetida (de propósito explica; engano avisa), o Add recusado e ninguém lê.
 fn phrases(doc: &InputMapDoc, a: &InputAction) -> Vec<(String, bool)> {
     let mut out = Vec::new();
+    // A frase do hover (no topo do teclado) já diz quem partilha a tecla sob o ponteiro: aqui não se repete.
+    let hovered = |b: Binding| match doc.kb.hover {
+        Some(super::state::KbHit::Key(k)) => b == Binding::Key(k),
+        Some(super::state::KbHit::Pad(p)) => b == p,
+        _ => false,
+    };
     for s in shared_bindings(&doc.snap.map, &doc.snap.readers)
         .iter()
-        .filter(|s| s.actions.contains(&a.id))
+        .filter(|s| s.actions.contains(&a.id) && !hovered(s.binding))
     {
         let others: Vec<String> = s
             .actions

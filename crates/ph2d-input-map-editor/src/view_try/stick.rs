@@ -153,7 +153,7 @@ pub(super) fn stick(
     let iw = icon.map_or(0.0, |_| m::LABEL_PX + m::SEG_PAD);
     let tw = ts.prefix_width(&title, m::LABEL_PX).min((rw - iw).max(0.0));
     let lh = line_h(m::LABEL_PX);
-    let fg = ink.color(ColorToken::Text2);
+    let fg = ink.color(ColorToken::CardLabel);
     line(
         &mut doc.census,
         ts,

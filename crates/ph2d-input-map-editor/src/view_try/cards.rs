@@ -50,9 +50,23 @@ pub(super) fn inner_w(w: f32) -> f32 {
 /// O ladrilho da receita (maquete C1): compacto, ~160 px, encostado à esquerda; a fila parte-se no estreito.
 const RECIPE_TILE_W: f32 = ROW * 5.75;
 
-fn recipe_cols(w: f32) -> usize {
-    let fit = ((inner_w(w) + m::FIELD_GAP) / (RECIPE_TILE_W + m::FIELD_GAP)) as usize;
-    fit.clamp(1, Recipe::ALL.len())
+/// O mais estreito a que um ladrilho encolhe para as receitas caberem numa fila só (os nomes partem-se mais).
+const RECIPE_TILE_MIN: f32 = ROW * 4.5;
+
+/// Uma fila só se as receitas couberem encolhidas; senão metade por fila (nunca uma sozinha); uma só no estreito.
+#[must_use]
+pub fn recipe_cols(w: f32) -> usize {
+    let n = Recipe::ALL.len();
+    let fits =
+        |k: usize| RECIPE_TILE_MIN * k as f32 + m::FIELD_GAP * (k as f32 - 1.0) <= inner_w(w);
+    let half = n.div_ceil(2);
+    if fits(n) {
+        n
+    } else if fits(half) {
+        half
+    } else {
+        1
+    }
 }
 
 fn recipe_rows(w: f32) -> usize {
@@ -68,8 +82,12 @@ fn names_of(r: Recipe) -> String {
     }
 }
 
-fn tile_w(w: f32) -> f32 {
-    RECIPE_TILE_W.min(inner_w(w))
+#[must_use]
+pub fn tile_w(w: f32) -> f32 {
+    let k = recipe_cols(w) as f32;
+    RECIPE_TILE_W
+        .min((inner_w(w) - m::FIELD_GAP * (k - 1.0)) / k)
+        .max(0.0)
 }
 
 fn tile_h(ts: &mut TextSystem, w: f32) -> f32 {
@@ -466,9 +484,20 @@ fn bar_row(
     let bw = (r.x + r.w - vw - m::SEG_ICON_GAP - bx).max(0.0);
     // O trilho cinza à vista mesmo a 0.00 (maquete C2), a força por cima na cor da acção.
     let bar = Rect::new(bx, r.y + (r.h - METER_H) * 0.5, bw, METER_H);
-    fill_rounded_rect(scene, bar, METER_H * 0.5, ink.color(ColorToken::BorderEmph));
-    if s > 0.0 {
-        let fill = Rect::new(bx, bar.y, (bw * s).max(METER_H), bar.h);
+    fill_rounded_rect(scene, bar, METER_H * 0.5, ink.color(METER_TRACK));
+    if let Some(fill) = meter_fill(bar, s) {
         fill_rounded_rect(scene, fill, METER_H * 0.5, color);
     }
+}
+
+/// O trilho vazio do medidor: um cinza neutro de superfície (o tom das teclas), NUNCA o acento — a 0.00 não pinta azul.
+pub const METER_TRACK: ColorToken = ColorToken::KanbanCardRaised;
+
+/// A força por cima do trilho, na cor da acção: largura = força × trilho; nada a 0.00.
+#[must_use]
+pub fn meter_fill(track: Rect, strength: f32) -> Option<Rect> {
+    (strength > 0.0).then(|| {
+        let w = (track.w * strength.min(1.0)).max(METER_H).min(track.w);
+        Rect::new(track.x, track.y, w, track.h)
+    })
 }

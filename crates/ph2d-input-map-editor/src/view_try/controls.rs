@@ -29,11 +29,25 @@ const SCREEN_H: f32 = SCREEN_W * 9.0 / 16.0;
 /// O texto discreto do pé do cartão («Opens with», a frase do jogador e o «Forget them»).
 const SUBTLE_PX: f32 = m::LABEL_PX;
 
+/// A escala mínima da prévia: abaixo dela o texto do painel (11 linhas) deixa de se ler.
+pub const PREVIEW_MIN_SCALE: f32 = 0.75;
+
+/// A altura da tela do jogo para `rows`: 16:9 por omissão; com muitas linhas cresce para o painel inteiro caber a
+/// [`PREVIEW_MIN_SCALE`] no céu (o recuo da prévia e a faixa do chão por cima disso).
+#[must_use]
+pub fn preview_frame_h(sw: f32, panel_h: f32) -> f32 {
+    let need = panel_h * PREVIEW_MIN_SCALE + m::CARD_PAD_X * 2.0 + ROW;
+    (sw * SCREEN_H / SCREEN_W).max(need)
+}
+
 /// O palco (relativo ao conteúdo, largura inteira) e a tela do jogo ao centro dele.
-fn stage(w: f32) -> (Rect, Rect) {
+fn stage(doc: &InputMapDoc, ts: &mut TextSystem, w: f32) -> (Rect, Rect) {
     let iw = inner_w(w);
     let sw = SCREEN_W.min((iw - PAD * 2.0).max(0.0));
-    let sh = sw * SCREEN_H / SCREEN_W;
+    let rows = ph2d_player_controls::rows(doc.snap.read_map());
+    let panel = ph2d_player_controls::Layout::natural(0.0, 0.0, &rows, ts).panel;
+    let base = sw * SCREEN_H / SCREEN_W;
+    let sh = preview_frame_h(sw, panel.h).min(doc.tryit.screen_cap.max(base));
     let st = Rect::new(0.0, 0.0, iw, sh + PAD * 2.0);
     (st, Rect::new((iw - sw) * 0.5, PAD, sw, sh))
 }
@@ -73,10 +87,13 @@ pub(super) fn controls_h(doc: &mut InputMapDoc, ts: &mut TextSystem, w: f32) -> 
     } else {
         0.0
     };
-    let (st, _) = stage(w);
     let chips = chips_rows(doc, ts, inner_w(w)) as f32 * (ROW + GAP);
     let below = (ROW + GAP) + refuse + line_h(m::LABEL_PX) + chips + ROW + forget;
-    m::CARD_PAD_TOP + line_h(m::LABEL_PX) + st.h + GAP + below + m::CARD_PAD_BOTTOM
+    let rest = m::CARD_PAD_TOP + line_h(m::LABEL_PX) + GAP + below + m::CARD_PAD_BOTTOM;
+    // A tela cresce só até ao que sobra na coluna: a vista não passa a rolar por causa dela.
+    doc.tryit.screen_cap = (doc.tryit.controls_room - rest - PAD * 2.0).max(0.0);
+    let (st, _) = stage(doc, ts, w);
+    rest + st.h
 }
 
 /// C·4: a prévia pela MESMA pintura da tela do jogador, as caixas e o «Forget them».
@@ -89,7 +106,7 @@ pub(super) fn controls(
 ) {
     let (x, w) = (r.x + PAD, inner_w(r.w));
     let mut y = r.y + m::CARD_PAD_TOP;
-    let (st, screen) = stage(r.w);
+    let (st, screen) = stage(doc, ts, r.w);
     let label = Rect::new(x, y, w, line_h(m::LABEL_PX));
     line(
         &mut doc.census,
@@ -154,7 +171,7 @@ fn check(on: bool) -> CheckboxValue {
 
 /// O palco e a tela do jogo emoldurada, com o painel do Play pela prévia (sem linha escolhida, sem anel de foco).
 fn preview(
-    doc: &InputMapDoc,
+    doc: &mut InputMapDoc,
     (x, y): (f32, f32),
     (st, screen): (Rect, Rect),
     scene: &mut VectorScene,
@@ -182,7 +199,13 @@ fn preview(
     );
     let rows = ph2d_player_controls::rows(doc.snap.read_map());
     let sky = Rect::new(back.x, back.y, back.w, back.h - ROW);
-    let _ = ph2d_player_controls::paint_preview(sky, &rows, scene, ts, doc.tryit.theme);
+    let at = ph2d_player_controls::paint_preview(sky, &rows, scene, ts, doc.tryit.theme);
+    let natural = ph2d_player_controls::Layout::natural(0.0, 0.0, &rows, ts).panel;
+    doc.tryit.preview_scale = if natural.h > 0.0 {
+        at.h / natural.h
+    } else {
+        1.0
+    };
 }
 
 /// «Shown in the game» e uma caixa por acção, cada uma numa pílula; devolve o fundo.

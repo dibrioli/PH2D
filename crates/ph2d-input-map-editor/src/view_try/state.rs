@@ -80,6 +80,12 @@ pub struct TryState {
     pub(crate) targets: Vec<TryHit>,
     /// O tema da última pintura (a prévia da tela do jogador pinta com ele).
     pub(crate) theme: ph2d_tokens::Theme,
+    /// A escala a que a prévia da C4 assentou na última pintura (1 = tamanho natural).
+    pub preview_scale: f32,
+    /// A altura que sobra ao cartão Controls na coluna dele (a tela do jogo só cresce até aí).
+    pub(crate) controls_room: f32,
+    /// O tecto da altura da tela do jogo, medido pelo `controls_h` (o `controls` pinta com o MESMO).
+    pub(crate) screen_cap: f32,
 }
 
 impl TryState {

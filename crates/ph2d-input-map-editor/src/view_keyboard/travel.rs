@@ -139,7 +139,7 @@ pub(crate) fn zone_value(
         mark,
         mr,
         m::VALUE_PX,
-        ink.color(ColorToken::Text2),
+        ink.color(ColorToken::CardLabel),
     );
     let vx = x + mw + m::SEG_INSET;
     let vr = Rect::new(vx, f.y, (f.x + f.w - m::SEG_INSET - vx).max(0.0), f.h);
@@ -177,7 +177,7 @@ pub(crate) fn zone_fields(
             ts,
             scene,
             tr(label),
-            Rect::new(x, y, half, LABEL_H),
+            Rect::new(x, y, half, m::LABEL_PX),
             m::LABEL_PX,
             ink.color(ColorToken::CardLabel),
         );

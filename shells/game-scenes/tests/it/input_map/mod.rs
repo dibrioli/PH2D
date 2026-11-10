@@ -3,6 +3,7 @@
 //! pintura e o ponteiro da aba activa. As ondas seguintes (A · List, B · Keyboard, C · Try it) usam-no.
 
 mod abrir;
+mod acabamento_r12;
 mod acabamento_r5b;
 mod acabamento_r6a;
 mod auditoria_fios;

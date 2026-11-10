@@ -44,8 +44,8 @@ pub(super) fn paint_rows(
         .iter()
         .filter_map(|id| doc.snap.map.get(*id).cloned())
         .collect();
-    let name_w = actions
-        .iter()
+    // A coluna dos nomes mede-se sobre TODAS as acções: escrever na busca nunca mexe os chips.
+    let name_w = (doc.snap.map.actions().iter())
         .map(|a| text::title_width(ts, &a.name, NAME_PX))
         .fold(0.0_f32, f32::max)
         + m::LIST_PAD_X
@@ -374,20 +374,27 @@ fn paint_plus(
     if !visible {
         return;
     }
-    if doc.list.hover_row == Some(id) {
-        fill_rounded_rect(
-            scene,
-            r,
-            m::SEG_RADIUS,
-            ink.color(ColorToken::CardFieldHover),
-        );
+    // Numa linha SEM teclas o «+» é a única coisa a fazer: numa caixa como a de um chip, em tinta cheia.
+    let empty = doc.snap.map.get(id).is_some_and(|a| a.bindings.is_empty());
+    if doc.list.hover_row == Some(id) || empty {
+        let bg = if doc.list.hover_row == Some(id) {
+            ColorToken::CardFieldHover
+        } else {
+            ColorToken::CardField
+        };
+        fill_rounded_rect(scene, r, m::SEG_RADIUS, ink.color(bg));
     }
     let gl = Rect::new(r.x + (r.w - g) * 0.5, r.y + (r.h - g) * 0.5, g, g);
+    let fg = if empty {
+        ColorToken::Text1
+    } else {
+        ColorToken::Text2
+    };
     paint_icon(
         scene,
         IconId::Plus,
         gl,
-        ink.color(ColorToken::Text2),
+        ink.color(fg),
         StrokeToken::Default.px(),
     );
     doc.census.plus.push(id);
@@ -413,7 +420,7 @@ fn paint_zones(
     .enumerate()
     {
         let x = r.x + pad + (half + m::FIELD_GAP) * i as f32;
-        let lr = Rect::new(x, r.y, half, m::VALUE_PX + m::LABEL_BOTTOM);
+        let lr = Rect::new(x, r.y, half, m::VALUE_PX);
         text::line(
             &mut doc.census,
             ts,
@@ -423,7 +430,7 @@ fn paint_zones(
             m::VALUE_PX,
             ink.color(ColorToken::CardLabel),
         );
-        let f = Rect::new(x, lr.y + lr.h, half, m::FIELD_H);
+        let f = Rect::new(x, lr.y + lr.h + m::LABEL_BOTTOM, half, m::FIELD_H);
         let live = doc.list.scrub.is_some_and(|s| {
             ListHit::Dead(s.action) == hit && s.zone == super::state::Zone::Dead
                 || ListHit::Press(s.action) == hit && s.zone == super::state::Zone::Press

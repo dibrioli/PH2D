@@ -90,3 +90,14 @@ do nome.
 - Smoke do dono desta onda.
 - Não apagar `backup/line-ScriptEditor-2026-11-08` sem o sim do dono.
 - Fecho da linha (`/pd-linha-fechar`) só depois do smoke aprovado; integração e troca do link no CLAUDE.md §5.1 são do integrador.
+
+## D — Molduras de valor (smoke do dono 10/11, depois deste handoff)
+
+- Causa: a integração `411a89fa5c` passou o número ao vivo no código, a caixa de campo (Cards), a dica
+  do traço e o gráfico por `stroke_frame(.., Feel::Rest, ..)`; num tema moderno a pele plana apaga a
+  moldura de repouso. Não são molduras de controlo.
+- Cura `74d6a5f77b` + `e85f3b0bd5`: `cards::value_outline` (traço sempre, `FRAME-RAW-OK`). Os botões da
+  cabeça do quadro ficam pela porta (são controlos).
+- Testes: `a_moldura_do_numero_ao_vivo_pinta_nos_temas_modernos_e_nos_classicos` (mutação: voltar a
+  `stroke_frame` ⇒ vermelho «Dark: a moldura do valor sumiu») e `o_contorno_de_valor_e_um_traco_em_todos_os_temas`.
+- Fotos: `smoke/ac_molduras_valores_codigo.png` (cena 12 passo 3), `smoke/ac_molduras_valores_cartoes.png` (cena 14 passo 9).

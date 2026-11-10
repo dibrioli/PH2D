@@ -261,9 +261,12 @@ fn a_ordem_e_da_pilha_e_nao_da_taxa_do_rato() {
             traco(&mut t, passo);
             (*t.canvas_rgba).clone()
         };
-        let um_lote = monta(X1 - X0);
-        for passo in [2.0f32, 8.0] {
-            let n_lotes = monta(passo);
+        let um_lote = com_fios(1, || monta(X1 - X0));
+        for (passo, fios) in [2.0f32, 8.0]
+            .into_iter()
+            .flat_map(|p| [1usize, 2, 32].map(|f| (p, f)))
+        {
+            let n_lotes = com_fios(fios, || monta(passo));
             let (bytes, pior) =
                 um_lote
                     .iter()
@@ -274,10 +277,95 @@ fn a_ordem_e_da_pilha_e_nao_da_taxa_do_rato() {
                     });
             assert!(
                 pior == 0 && bytes == 0,
-                "{topo:?} em passos de {passo}: a entrega em lotes MUDOU a imagem \
+                "{topo:?} em passos de {passo} a {fios} fios: a entrega em lotes MUDOU a imagem \
                  ({bytes} bytes diferentes, pior {pior}) — as caixas somam inteiros (B24.1), \
                  o borrão não depende da região do lote"
             );
+        }
+    }
+    a_macro_da_o_mesmo_byte_em_qualquer_entrega();
+}
+
+/// O lote em bandas a `fios` fios (`1` = o laço serial) só durante `f`.
+fn com_fios<R>(fios: usize, f: impl FnOnce() -> R) -> R {
+    use crate::tool::paint::stamp_banded::FIOS;
+    FIOS.with(|c| c.set(Some(fios)));
+    let r = f();
+    FIOS.with(|c| c.set(None));
+    r
+}
+
+/// ⭐ **B25.1 — o portão-mãe «byte = f(documento, lote, dabs)», tolerância ZERO.** A MESMA fita de eventos
+/// (a ponta reta a 45°, cujo canto chega a `√2·r` e é o que a porta do disco cortava na borda da banda)
+/// tocada a 1/3/N eventos por quadro × 1/2/32 fios × numa tela nova ou depois de outra história (um traço
+/// desfeito) dá a imagem do serial a 1 evento por quadro, ao byte. O CONTROLO corre no mesmo processo: com
+/// a porta de antes (`PORTA_DO_DISCO`) alguma entrega a 32 fios diverge — senão a fixtura não tem o fenómeno.
+fn a_macro_da_o_mesmo_byte_em_qualquer_entrega() {
+    use crate::tool::paint::stamp_banded::PORTA_DO_DISCO;
+    const L: u32 = 512;
+    let fita: Vec<CanvasPointer> = {
+        let mut v = vec![cp([80.0, 120.0], PointerPhase::Down)];
+        v.extend((1..60).map(|k| {
+            let f = k as f32 / 60.0;
+            cp(
+                [80.0 + 352.0 * f, 120.0 + 272.0 * f * f],
+                PointerPhase::Move,
+            )
+        }));
+        v.push(cp([432.0, 392.0], PointerPhase::Up));
+        v
+    };
+    let toca = |por_quadro: usize, fios: usize, historia: bool| {
+        com_fios(fios, || {
+            let mut t = PainterTool::default();
+            t.set_source(vec![255u8; (L * L * 4) as usize], L, L);
+            t.paint.brush.radius_px = 36.0;
+            t.paint.brush.hardness = 1.0;
+            t.paint.brush.dab_quina = 1.0;
+            t.paint.brush.dab_angle_deg = 45;
+            t.paint.brush.color = [0.1, 0.2, 0.8];
+            if historia {
+                t.on_canvas_pointer(cp([100.0, 400.0], PointerPhase::Down));
+                t.on_canvas_pointer(cp([400.0, 100.0], PointerPhase::Move));
+                t.on_canvas_pointer(cp([400.0, 100.0], PointerPhase::Up));
+                t.on_tick(1000.0 / 60.0);
+                assert!(t.undo_last(), "a outra história desfaz-se");
+            }
+            for quadro in fita.chunks(por_quadro) {
+                for e in quadro {
+                    t.on_canvas_pointer(*e);
+                }
+                t.on_tick(1000.0 / 60.0);
+            }
+            (*t.canvas_rgba).clone()
+        })
+    };
+    let difere = |a: &[u8], b: &[u8]| a.iter().zip(b).filter(|(x, y)| x != y).count();
+    let oraculo = toca(1, 1, false);
+    assert!(
+        oraculo.iter().any(|&b| b != 255),
+        "controlo: a fita tem de pintar"
+    );
+    PORTA_DO_DISCO.with(|p| p.set(true));
+    let cortados: usize = [1usize, 3, fita.len()]
+        .iter()
+        .map(|&n| difere(&oraculo, &toca(n, 32, false)))
+        .sum();
+    PORTA_DO_DISCO.with(|p| p.set(false));
+    eprintln!("B25.1 controlo: a porta do disco a 32 fios diverge em {cortados} bytes");
+    assert!(
+        cortados > 0,
+        "controlo: a porta de antes tinha de cortar a quina nalguma entrega a 32 fios"
+    );
+    for n in [1usize, 3, fita.len()] {
+        for fios in [1usize, 2, 32] {
+            for historia in [false, true] {
+                let d = difere(&oraculo, &toca(n, fios, historia));
+                assert_eq!(
+                    d, 0,
+                    "{d} bytes divergem: {n} eventos/quadro, {fios} fios, outra história {historia}"
+                );
+            }
         }
     }
 }

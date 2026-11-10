@@ -540,9 +540,12 @@ mod panico_tests;
 mod quina_tests;
 
 #[cfg(test)]
+mod prancha_tests;
+
+#[cfg(test)]
 thread_local! {
     /// Os fios do lote forçados pelo teste (`None` = os da máquina), para o mesmo lote a 2 e a 32 fios.
-    static FIOS: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
+    pub(super) static FIOS: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
     /// `true` = a porta de ANTES (o raio cru, `[1, 1]`), para o vermelho do B25.2 correr no mesmo processo.
-    static PORTA_DO_DISCO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    pub(super) static PORTA_DO_DISCO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }

@@ -1,0 +1,376 @@
+, a unidade e as três portas. Da C, leve Units quando quiser: tira a promessa falsa da busca.
+Comece por tirar «hearts» da busca, ou fazer Units.
+🎮PainelInput Map
+As teclas do jogo, com nome. Hoje uma janela de 22 números que, com tecla, não mudam nada.
+1Como é hoje
+Abre por Settings › Input Map…, numa janela por cima do canvas. Uma ação é um nome (jump, fire) com as suas teclas; o projeto guarda o mapa. main ids/menus_settings.rs:46 main shells/desktop/src/project.rs:136-152
+Todo projeto novo traz 8 ações e 14 teclas: move_left, move_right, jump, down, dash e grab, lidas pelo Platform Player; move_up e move_down, lidas pelo Top-Down Player (move_left e move_right valem para os dois). main ph2d-input/src/map.rs:69-107 main ph2d-physics-ecs/src/player_input.rs:73-82
+Os dois números de cada linha são Dead e Press, cortados em «...» na sua foto. Dead é a folga da manche; Press é o ponto em que ela conta como apertada (0 e 0.50 de fábrica). Numa tecla eles não fazem nada: a tecla vale 0 ou 1, e 1 sempre passa de 0.50. Na sua foto são 22 números, e nenhuma linha tem comando. main ph2d-input/src/action.rs:60-118 main ph2d-input/src/resolve.rs:78-122
+«K...» é a palavra «Key» cortada: o tipo da ligação (Key, Pad ou Axis). Na foto, 38 textos cortados: 22 números e 16 teclas. main chrome/input_map.rs:55-71 main ph2d-i18n/src/input_map.rs:36-44
+Gravar uma tecla: o «+» da linha arma a escuta, a próxima tecla entra, Esc cancela. A frase diz «Press a key or a gamepad button», mas o caminho que li só recebe teclado; não achei captura de botão do comando. main interaction/state/input_map_ops.rs:134-152 main interaction/dispatch/key.rs:60
+Tecla repetida, sem aviso. A seta de cima está em jump e em move_up; a de baixo e o S, em down e em move_down. É de propósito: «as duas leis nunca correm na mesma cena», porque um objeto tem um só jeito de andar. O painel não diz isso, e nenhum aviso existe para quando a repetição é engano. main map.rs:86-96 main app-components/src/trigger_smoke.rs:73
+Nome errado é silêncio. Uma ação que não existe responde «não apertada». O Trigger é o único que avisa e oferece «Create this action»; a tecla continua noutra janela. O Luau lê teclas pelo nome da tecla, não pelo mapa. main resolve.rs:142-144 main trigger_bridge.rs:62-69 main ph2d-script/src/host.rs:132-136
+O jogador do jogo pronto não troca teclas: não achei tela nem código para isso. Nenhuma cena de teste abre a janela; a foto abaixo é a sua.
+[IMG img_critica/ph2d/inputmap_dono.png]sua foto 11 ações, 22 números, 16 teclas. «...» é Dead e Press; «K...» é Key.
+[IMG img_critica/ph2d/gef_editor_animacoes.png]GameEngineFuncional O molde que você pediu. Na B, o teclado ocupa o lugar da folha, e as teclas da ação aberta, o lugar dos quadros.
+2O que as 9 fazem
+Pesquisa nova, só na doc oficial (o Construct por trecho de busca), em pesquisa_inputmap.json; dez fotos baixadas da doc e abertas uma a uma. Três famílias: tabela de ações do projeto (Godot, Unity, Unreal, Roblox, Defold, e o PH2D), tecla amarrada no evento (GameMaker, Cocos, Construct, GDevelop) e entradas fixas da plataforma (UEFN). O PH2D já está na família certa e é quase a Godot: a mesma tabela, o mesmo «+» que escuta. Nas fontes que lemos, só o Roblox avisa tecla repetida, só o UEFN entrega pronta a troca de tecla pelo jogador, e nenhuma desenha o teclado.
+UnityInput Actions
+[IMG img_critica/inputmap/unity1.png][IMG img_critica/inputmap/unity2.png]Três painéis: grupos de ações, ações e propriedades. O botão «Listen» filtra a lista pelo que se aperta, inclusive no comando. O ponto de «apertado» padrão é 0.5, o mesmo número do PH2D.
+Vale roubar: O botão «Listen» dentro do seletor de controle, que filtra a lista pelo que se aperta, mais o composite 2D Vector que transforma WASD num vetor.
+Evitar: Nome errado vira null silencioso por omissão, e não há aviso de tecla duplicada documentado.
+Só doc e fotos · fonte
+Unreal EngineEnhanced Input
+[IMG img_critica/inputmap/unreal1.png][IMG img_critica/inputmap/unreal2.png]Um arquivo por ação, com tipo (sim/não, 1D, 2D), e um contexto com as teclas, ligado e desligado em jogo. Folga da manche é um modificador por tecla. A troca pelo jogador existe, mas a doc a chama de experimental.
+Vale roubar: Ação tipada (bool/1D/2D/3D) separada do contexto com prioridade, e o checkbox «Is Player Mappable» por tecla já ligado ao sistema de troca.
+Evitar: WASD feito à mão com Swizzle/Negate por tecla é obscuro, e a troca de teclas pelo jogador ainda é experimental e sem tela pronta.
+Só doc e fotos · fonte
+GodotInput Map
+[IMG img_critica/inputmap/godot1.png][IMG img_critica/inputmap/godot2.png]A mesma ideia do PH2D: uma tabela por projeto, um nome por ação, o «+» que escuta a tecla. A folga (Deadzone, 0.2) é uma coluna em toda ação, com ou sem comando. Filtra por nome e por tecla.
+Vale roubar: Uma tabela única com a Deadzone visível em cada ação e o «aperte a tecla» direto no +.
+Evitar: Ação sem tipo e lida por string: erro de digitação só aparece em execução.
+Só doc e fotos · fonte
+GameMakersem mapa
+Sem foto: não há tela de mapa de entradas.
+Não há ações com nome: o jogo pergunta pela tecla. A folga do comando é uma por comando, e o manual mostra a conta da reescala com um número, a mesma lei do PH2D.
+Vale roubar: A deadzone reescalada (não só cortada), explicada com um número no manual.
+Evitar: Não ter ações nomeadas obriga cada jogo a reinventar o mapa e a tela de troca.
+Só doc e fotos · fonte
+Roblox StudioInput Action Manager (beta)
+[IMG img_critica/inputmap/roblox1.png][IMG img_critica/inputmap/roblox2.png]Uma grade de ações por coluna de aparelho (teclado, toque, comando), com alerta onde falta tecla e onde uma tecla se repete. Escolhe-se a tecla numa lista: a equipe tirou a captura porque brigava com os atalhos do Studio.
+Vale roubar: A grade ação × plataforma com alerta de binding faltando e de keycode duplicado.
+Evitar: Sem captura de tecla: escolher num dropdown de centenas de KeyCodes.
+Só doc e fotos · fonte
+UEFNInput Trigger
+Sem foto: a página do Input Trigger não tem imagem da tela.
+O criador não grava teclas: escolhe uma de 12 entradas fixas, de Custom 1 a Custom 12. Em troca, o jogador muda as teclas num menu do próprio Fortnite, que vale para todos os jogos.
+Vale roubar: A troca de tecla pelo jogador vem pronta e é única em toda a plataforma.
+Evitar: Só 12 ações genéricas («Custom 1..12») e nenhum nome próprio do jogo.
+Só doc e fotos · fonte
+Cocos Creatorsem mapa
+Sem foto: não há tela de mapa de entradas.
+Sem mapa: cada script ouve a tecla e compara o código dela. A doc não mostra tela nem folga de comando.
+Vale roubar: Nada a roubar no mapa de entradas; só a API de eventos limpa (on/off).
+Evitar: Teclas espalhadas em switch por script, sem camada de ação.
+Só doc e fotos · fonte
+Construct 3sem mapa
+Sem foto: não há tela de mapa, e o site recusou o download (403).
+Sem mapa: cada evento amarra uma tecla. A folga é uma propriedade do objeto Gamepad (só trecho de busca). O site recusou o download da doc.
+Vale roubar: Deadzone radial como propriedade visível do objeto Gamepad (só trecho de busca).
+Evitar: Sem camada de ação, cada evento amarra uma tecla física.
+Só doc e fotos · fonte
+GDevelopremapper e eventos
+Sem foto: não há tabela de ações; as teclas moram nos comportamentos.
+Sem tabela: o andar vem de comportamentos com as teclas dentro, e há receitas de teclado prontas (WASD, ZQSD, IJKL). Folga dos sticks 0.2, por comando.
+Vale roubar: Presets de teclado prontos (WASD, ZQSD, IJKL) num só clique.
+Evitar: Mapa espalhado por behaviors e variáveis, sem tabela de ações.
+Só doc e fotos · fonte
+Defold (fora das 9)Input Binding
+[IMG img_critica/inputmap/extra1.png][IMG img_critica/inputmap/extra2.png]Uma tabela por aparelho: à esquerda a tecla, à direita o nome da ação, digitado. Lê-se de relance. Nome errado passa calado.
+Vale roubar: Uma tabela simples Input → Action por tipo de dispositivo, legível de relance.
+Evitar: Ação digitada como texto livre e comparada por hash: erro de nome passa calado.
+Só doc e fotos · fonte
+3Cortar
+CampoEscreve onde → quem lêO leitor decide?Veredito e saída
+Cada ação
+Nome da açãoInputAction.name → Input::pressed(nome) main ph2d-input/src/resolve.rs:142-144SimManter É o contrato com quem lê: Platform Player, Top-Down Player, Trigger. Fica, e a lista diz quem lê.
+Dead («...» na foto)dead_zone → a força main resolve.rs:100-122Só com mancheVale rever? Numa tecla não muda nada: a tecla vale 0 ou 1. Aparece só na linha que tem manche ou gatilho, com o rótulo inteiro.
+Press («...» na foto)press_point → «apertado» main resolve.rs:100-122Só com mancheVale rever? O mesmo: 1 sempre passa de 0.50. Junto do Dead, com a escala no rótulo: «Press at (0 to 1)».
+Lixeiraapaga a ação main chrome/input_map.rs main input_map/apply.rsSimManter Fica. Na B, «Remove» embaixo da lista, como no editor de animações.
+«+» da linha (escutar)listen_for_binding → próxima tecla main interaction/state/input_map_ops.rs:134-152SimManter Fica, no lugar onde a tecla cai. A frase dele promete o comando; ver «vale rever».
+Cada tecla
+Nome da teclaBinding::Key main ph2d-input/src/action.rs:22-30SimManter Fica, inteiro: «Left Arrow».
+«K...» (o dispositivo)«Key», cortado main chrome/input_map.rs:55-71—Juntar Vira o ícone do teclado no chip. Um rótulo de três letras cortado em «K...» é o pior dos dois.
+× da tecladelete_binding main input_map/apply.rsSimManter Fica, no chip ou no ladrilho.
+A janela
+Janela flutuante sobre o canvasSettings › Input Map… main ids/menus_settings.rs:46—Juntar Vira aba no meio, como o editor de animações: sua ordem de 09/11.
+New action name + AddInputMap::create main ph2d-input/src/map.rsSimManter Fica no topo na A; na B, «+ Add» embaixo da lista, como em Animations.
+«No key yet. Press + on this row…»Só lê main ph2d-i18n/src/input_map.rs:40—Manter Vira o ladrilho que já escuta: a frase vira o gesto.
+4Acrescentar
+O teclado desenhado, com uma barra por ação em cada teclaResponde «quem usa esta tecla?» e «que teclas sobram?» olhando. Substitui ler a lista inteira.Vem de: Ideia nova; o molde é a folha do seu editor de animações
+Busca por teclaUm campo só. Apertar ↑ deixa as duas linhas que usam a seta.Vem de: Godot («Filter by Event»)
+Aviso de tecla repetida, que diz quem lê cada umaO Roblox só acusa. O PH2D pode dizer quando a repetição é de propósito: jump e move_up nunca correm no mesmo objeto.Vem de: Roblox («Duplicate Keycode — Space is used elsewhere»)
+Ações agrupadas por quem as lêAqui o grupo não é um contexto novo: é o componente que lê o nome. Custo zero no motor.Vem de: Grupos de ações da Unity (Player, UI) e contextos do Unreal e do Roblox
+Dead e Press só onde há manche, com o desenho do cursoTira 16 números das 8 ações de fábrica e mostra o que eles fazem quando servem.Vem de: A Godot mostra a folga em toda linha; o GameMaker explica a reescala com um número
+Captura do comando de verdadeA frase de hoje já promete. Sem ela, ligar o comando é impossível pelo painel.Vem de: Unity («Listen»), Godot (o «+» escuta o comando)
+Teste ao vivo com o jogo paradoApertar e ver acender explica a tecla repetida melhor que qualquer frase.Vem de: Ideia nova; o Unreal só mostra em jogo (showdebug enhancedinput)
+Tela de controles do jogadorO jogo pronto ganha o que todo jogo de PC tem. Caro: precisa salvar as teclas do jogador fora do projeto.Vem de: UEFN (pronta, em todo jogo), Unreal (Is Player Mappable, experimental), Unity (amostra Rebinding UI)
+Receitas de começoUma tela no projeto vazio, nenhuma depois.Vem de: GDevelop (WASD, ZQSD, IJKL); a Unity cria Move e Jump sozinha
+5O ideal, em números
+O que se medeHojeABC
+Números à vista que não mudam nada (o seu mapa, 11 ações)22000
+Textos cortados38000
+Campos à vista no painel do meio, em usoa janela da foto: 23221
+Gestos: quem mais usa a seta de cima?nenhum responde: ler as 11 linhas e rolar211
+Gestos: ligar J ao fire e ver funcionar7: Settings · Input Map… · + · J · fechar · Play · J665
+Contagem no papel, sem teste com pessoas. A janela de hoje: o nome novo e os 22 números. Busca por tecla: A = clicar na busca e apertar ↑; B = pôr o ponteiro no ↑ do desenho; C = apertar ↑ com a aba aberta. J no fire: A = Settings · Input Map… · + · J · Play · J (a aba não precisa fechar); B = Settings · Input Map… · fire na lista · J no desenho · Play · J; C = Settings · Input Map… · + · J · J de novo, e a linha acende sem Play.
+✏️ E se o cartão de Input Map do PH2D fosse assim?
+6 · As 3 maquetes. Conceito em HTML, não é tela do app. O herói é a folha heroi_azul.png do repositório, a variante azul, com o mesmo arranjo 8 × 4 do herói verde de fábrica. Dentro do painel, tudo em inglês, com os ícones reais da UI nova. Explicações aparecem ao passar o mouse sobre os rótulos, como no app. Os números de campos são contados no próprio painel.
+A · A lista de hoje, consertada
+A ideia: não muda o desenho, só o que mente e o que corta. A janela vira aba no meio, como você pediu. Cada tecla vira um chip com o nome inteiro; os dois números somem das linhas que só têm teclas; uma busca que aceita apertar a tecla responde «quem usa o ↑?».
+1 · Fábrica
+INPUT MAP
+SceneInput Map
+New action name
+Add
+Find an action, or press a key
+move_leftLeft ArrowA
+move_rightRight ArrowD
+jumpUp ArrowZ
+downDown ArrowS
+dashQ
+grabR
+move_upUp ArrowW
+move_downDown ArrowS
+8 actions · 14 keys. Up Arrow, Down Arrow and S are in two actions: a Platform Player and a Top-Down Player never run on the same object.
+2 campos à vista · 0 em cartões fechados
+As 8 ações que todo projeto novo já traz, com as 14 teclas de map.rs. Hoje as mesmas linhas mostram 16 números e 14 «K...». A frase do pé explica a tecla repetida: o código a faz de propósito, e a janela de hoje não diz por quê.
+2 · Escutando
+INPUT MAP
+SceneInput Map
+New action name
+Add
+Find an action, or press a key
+dashQ
+grabR
+fireJ
+reloadPress a key or a gamepad button. Esc cancels.
+laserH
+Listening for reload. The next key goes to this row.
+2 campos à vista · 0 em cartões fechados
+O «+» de hoje, com a frase que ele já tem («Press a key or a gamepad button. Esc cancels.»), mas no próprio lugar onde a tecla vai cair. Pelo que li, a escuta hoje só recebe teclado; a frase promete o comando.
+3 · Busca por tecla
+INPUT MAP
+SceneInput Map
+New action name
+Add
+Up Arrow
+jumpUp ArrowZ
+move_upUp ArrowW
+Up Arrow is in 2 of 11 actions. jump is read by Platform Player, move_up by Top-Down Player.
+2 campos à vista · 0 em cartões fechados
+Clicar na busca e apertar ↑ deixa só as linhas que usam a seta. Vem do «Filter by Event» da Godot. Hoje a resposta é ler as 11 linhas e rolar a janela.
+4 · Uma ação com manche
+INPUT MAP
+SceneInput Map
+New action name
+Add
+Find an action, or press a key
+move_leftLeft ArrowAPadLeft Stick ←
+Dead zone (0 to 1)
+D0.15
+Press at (0 to 1)
+P0.50
+move_rightRight ArrowD
+jumpUp ArrowZ
+Dead zone and Press at only show on rows with a stick or a trigger. A key is either up or down, so they change nothing for it.
+4 campos à vista · 0 em cartões fechados
+Os dois números só aparecem quando a linha tem manche ou gatilho, e com o rótulo inteiro e a escala no rótulo. A manche no move_left é exemplo inventado: nenhuma ação de fábrica tem comando.
+Utilidade Poder Facilidade Diversão Notas de 1 a 5: opinião informada, não teste de uso.
+B · O editor de animações, com o teclado
+A ideia: é a aba que você aprovou no Animated Sprite, trocando a folha pelo teclado. À esquerda, as ações agrupadas por quem as lê, com quantas teclas têm. Em cima, o teclado: cada tecla leva uma barra por ação, como a célula da folha leva uma barra por animação. Embaixo, a ação aberta, com as teclas em ladrilhos, como os quadros.
+1 · jump aberto
+INPUT MAP
+SceneInput Map
+Actions
+Platform Player
+move_left2
+move_right2
+jump2
+down2
+dash1
+grab1
+Top-Down Player
+move_up2
+move_down2
+Yours
+fire1
+reloadnone
+laser1
++ AddRemove
+Keyboard · click a key to add it to the open action
+KeyboardGamepad
+QWERTYUIOP
+ASDFGHJKL
+ZXCVBNM
+Space
+↑←↓→
+jump · 2 keysRead by Platform Player
+↑Up Arrow
+ZKeyboard
+Press a key
+Up Arrow is also in move_up. Top-Down Player reads that one; one object has one mover, so they never fire together.
+2 campos à vista · 0 em cartões fechados
+Os grupos «Platform Player» e «Top-Down Player» são quem lê os nomes no código (player_input.rs:73-82). Duas barras numa tecla = duas ações. As teclas acesas são as da ação aberta.
+2 · Ponteiro numa tecla
+INPUT MAP
+SceneInput Map
+Actions
+Platform Player
+move_left2
+move_right2
+jump2
+down2
+dash1
+grab1
+Top-Down Player
+move_up2
+move_down2
+Yours
+fire1
+reloadnone
+laser1
++ AddRemove
+Keyboard · click a key to add it to the open action
+KeyboardGamepad
+QWERTYUIOP
+ASDFGHJKL
+ZXCVBNM
+Space
+↑←↓→
+Up Arrow: jump (Platform Player) · move_up (Top-Down Player).
+jump · 2 keysRead by Platform Player
+↑Up Arrow
+ZKeyboard
+Press a key
+2 campos à vista · 0 em cartões fechados
+A frase do pé, como na grade de Collision Layers: as ações daquela tecla e quem as lê. Responde «quem usa o ↑?» sem ler nada.
+3 · Comando
+INPUT MAP
+SceneInput Map
+Actions
+Platform Player
+move_left2
+move_right2
+jump2
+down2
+dash1
+grab1
+Top-Down Player
+move_up2
+move_down2
+Yours
+fire1
+reloadnone
+laser1
++ AddRemove
+Gamepad · click a button or a stick to add it
+KeyboardGamepad
+LTRTLSRSABXY
+move_left · 3 inputsRead by Platform Player and Top-Down Player
+←Left Arrow
+AKeyboard
+LS ←Gamepad
+Press a button
+The stick, from rest to full
+0Dead 0.15Press 0.501
+Dead zone (0 to 1)
+D0.15
+Press at (0 to 1)
+P0.50
+4 campos à vista · 0 em cartões fechados
+O desenho do comando é novo, e os botões nele são exemplo inventado. A barra mostra o que Dead e Press fazem na manche: abaixo de 0.15 não conta; passou de 0.50, conta como apertado. É a lei de resolve.rs.
+4 · Ação nova, sem tecla
+INPUT MAP
+SceneInput Map
+Actions
+Platform Player
+move_left2
+move_right2
+jump2
+down2
+dash1
+grab1
+Top-Down Player
+move_up2
+move_down2
+Yours
+fire1
+reloadnone
+laser1
++ AddRemove
+Keyboard · click a key to add it to the open action
+KeyboardGamepad
+QWERTYUIOP
+ASDFGHJKL
+ZXCVBNM
+Space
+↑←↓→
+reload · no keysNobody reads it yet
+Click a key above, or press one
+Nobody reads reload yet. A Trigger can turn it into a signal: type reload in its Action.
+2 campos à vista · 0 em cartões fechados
+A frase «No key yet» vira o ladrilho que escuta. O aviso de baixo é novo: hoje uma ação que ninguém lê é silêncio. Contar quem lê um nome digitado num Trigger é o mesmo trabalho da etiqueta «1 listens» do lote 5.
+Utilidade Poder Facilidade Diversão Notas de 1 a 5: opinião informada, não teste de uso.
+C · Bancada: aperte e veja
+A ideia: em vez de ler o mapa, apertar as teclas e ver o que acende, com o jogo parado. Receitas para o primeiro minuto, a manche desenhada para quem usa comando, e a tela de controles que o jogador vê, saindo do mesmo mapa.
+1 · Receitas
+INPUT MAP
+SceneInput Map
+Start from
+Platformermove_left · move_right · jump · down · dash · grab
+Top-downmove_left · move_right · move_up · move_down
+Shootermove_left · move_right · jump · fire · reload
+BlankNo actions. You add them.
+A recipe makes the actions and their keys. Platform Player and Top-Down Player read them by name, so they work at once.
+0 campos à vista · 0 em cartões fechados
+Vem dos presets de teclado do GDevelop e do asset pronto da Unity. Hoje todo projeto já nasce com as 8 de fábrica, de plataforma e de vista de cima juntas. A receita faz só as do jogo escolhido. Não existe hoje.
+2 · Teste ao vivo, jogo parado
+INPUT MAP
+SceneInput Map
+Try it ● LIVEThe game is not running
+QWERTYUIOP
+ASDFGHJKL
+ZXCVBNM
+Space
+↑←↓→
+move_left0.00
+move_right0.00
+jump1.00
+down0.00
+dash0.00
+grab0.00
+move_up1.00
+move_down0.00
+You are pressing Up Arrow: jump and move_up are on. Nothing moves, because nothing runs.
+1 campos à vista · 0 em cartões fechados
+Apertar ↑ acende jump e move_up ao mesmo tempo, que é a melhor explicação da tecla repetida. Hoje só se testa dando Play. Não confirmei o custo de ouvir o teclado com a aba aberta.
+3 · A manche
+INPUT MAP
+SceneInput Map
+move_left · Left Stick ←
+Dead zone (0 to 1)
+D0.15
+Press at (0 to 1)
+P0.50
+Pushed 0.62Strength 0.55Pressed
+Inner disc: too small to count. Dashed ring: where it counts as pressed. Move the stick and watch the dot.
+3 campos à vista · 0 em cartões fechados
+A mesma lei da B, em círculo. As contas: empurrada a 0.62, com Dead 0.15, a força é (0.62 − 0.15) ÷ 0.85 = 0.55; e conta como apertada, porque 0.62 passou de 0.50.
+4 · Tela de controles do jogador
+INPUT MAP
+SceneInput Map
+ControlsJumpUp ArrowZ
+Move leftLeft ArrowA
+FireJPress a key
+✓Players can change keys
+Shown in the game
+jumpmove_leftmove_rightfiredash
+6 campos à vista · 0 em cartões fechados
+A tela do jogo pronto em que o jogador troca a tecla. Hoje não existe: no jogo exportado as teclas são as do mapa. As caixas dizem quais ações aparecem nela.
+Utilidade Poder Facilidade Diversão Notas de 1 a 5: opinião informada, não teste de uso.
+HojeABC
+Janela sobre o canvasaba no meioaba no meio, no molde do editor de animaçõesaba no meio
+Dead e Press em toda linhasó com manchesó com manche, com a barra do cursosó com manche, com o círculo
+«K...»ícone do teclado no chipladrilho com o nomecomo a B
+Tecla repetida, sem avisofrase no péduas barras na tecla e a frase no péapertar e ver as duas acenderem
+«No key yet…»«No key yet» no lugar do chipladrilho que escutacomo a B
+Quem lê a ação (não aparece)só no pégrupos na listareceitas por tipo de jogo
+Jogador não troca teclasigualigualtela de controles do jogo
+Vale rever? A frase promete o comando«Press a key or a gamepad button» aparece na escuta, e o tipo da ligação já tem Pad e Axis. Mas o caminho que li só leva a tecla do teclado para a ação. Ou falta a captura do comando, ou a frase tem de perder a metade. Li, não rodei com um comando ligado.
+Vale rever? Dead e Press por açãoHoje valem para a ação inteira, como na Godot. Mas uma ação com teclado e manche tem dois números que só servem para a manche. As versões mostram-nos só onde há manche; se um dia uma ação tiver duas manches diferentes, eles teriam de ir para cada ligação.
+Vale rever? O comentário de map.rs diz «as setas, e não o WASD»O código põe W e S em move_up e move_down, e o plano do Top-Down diz que o WASD ficou como decisão sua. O comentário envelheceu e ainda diz que o W abre um painel do editor. Não confirmei se o W ainda abre esse painel.
+Vale rever? O Luau não lê o mapaUm script que pergunta pela tecla «W» passa por cima do mapa. Se um dia o jogador puder trocar teclas (C4), esse script continua ouvindo o W. Ler pelo nome da ação seria o caminho que não quebra.
+7 · Minha recomendação
+Fique com a B. É a aba do editor de animações que você já aprovou: a lista à esquerda, agora com quem lê cada ação; o teclado em cima, com uma barra por ação em cada tecla, como a folha; a ação aberta embaixo, com as teclas em ladrilhos. Dead e Press só aparecem quando há manche, e com o desenho do que fazem.
+Comece pelo que é barato e já dói: tirar os dois números das linhas que só têm teclas; o rótulo inteiro em vez de «...» e «K...»; a frase da escuta igual ao que ela ouve. Da C, leve depois o teste ao vivo com o jogo parado e a tela de controles do jogador, que é o que um jogo pronto costuma ter.

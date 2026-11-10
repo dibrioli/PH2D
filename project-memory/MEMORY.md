@@ -126,6 +126,7 @@
 - ⭐⭐⭐ [Dono 08/11: Color Mixing afina-se pelo NOSSO motor, não pelo CSP; Round Mixing = Amount 0,25 + Hardness 0,5](project_color_mixing_tuned_for_our_engine_not_csp_2026_11_08.md)
 - ⭐⭐ [Dono 09/11: crítica da física — Sensor fica, etiqueta de quem ouve o sinal, Width/Height, «More» fechado, tecla no Trigger](project_physics_critique_answers_2026_11_09.md)
 - ⭐⭐ [Dono 10/11: Pastel enche o dente OK; grão Noise 120 dele; Chalk/Crayon enchem; Color mixing em cartão próprio; mistura talvez invertida](project_pastel_tooth_fill_and_mixing_card_2026_11_10.md)
+- ⭐⭐ [Dono 10/11: Input Map = aba central com as 3 versões (A·B·C) e seletor; tela de controles funciona no jogo; Luau pela ação](project_inputmap_three_versions_2026_11_10.md)
 - ⭐⭐ [Dono 09/11: Timeline redesenhada sem mudar funções — versão B (chips à Rive); Keys|Curves de fora](project_timeline_redesign_rive_mold_b_2026_11_09.md)
 - ⭐ [Dono 09/11: P13 do Pixel — tween = quadros reais, várias faixas de som, CRT na prévia e no jogo, pasta «Apps de Pixel»](project_pixel_p13_owner_decisions_2026_11_09.md)
 - ⛔⛔ [Sonda de custo sem o papel/relevo do dono não tem o fenómeno: 1,6 ms × 1,7 s no app (pen-up 4K, 10/11)](feedback_a_cost_probe_without_the_owners_paper_has_no_phenomenon.md)

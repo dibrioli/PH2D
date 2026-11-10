@@ -30,6 +30,8 @@ ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 # As cenas do smoke do editor de scripts (saíram de `code_smoke.rs`, fecho da Onda D).
 ph2d-code-scenes = { path = "../ph2d-code-scenes" }
+# A cena 15 (crate própria: a `ph2d-code-scenes` está no tecto da catraca).
+ph2d-code-scene-arena = { path = "../ph2d-code-scene-arena" }
 # ADR-0186: o cartão da `Macro` lê a gravação (o formato, sem UI).
 ph2d-macro = { path = "../ph2d-macro" }
 # ⭐ O GATILHO (suplente #24): a ponte que resolve o teclado em acções NOMEADAS vive aqui,

@@ -1,9 +1,12 @@
 //! ⭐ **Cena 15 — muitos problemas e muitos donos** (o pedido do dono de 10/11): catorze formas correm
 //! o MESMO `arena.luau` (sete propriedades, de cada tipo da grelha), dez com um valor próprio (as
 //! células âmbar), e o script com uns dez problemas que o lint acusa sem o `luau-lsp`, mais um erro
-//! do Play (`hud.x` sobre `nil`).
+//! do Play (`hud.x` sobre `nil`). Aqui moram a montagem e o roteiro; [`steps`] é o roteador da
+//! família com a 15 (`ph2d_code_smoke::steps` serve as outras).
 
-use crate::{SHAPE_R, tinta};
+use ph2d_code_scenes::{SHAPE_R, SHAPE_Y, tinta};
+use ph2d_code_smoke::{Gesture, Until};
+use ph2d_code_viewmodel::Aim;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_script::{LuauScript, ProjectScripts, ScriptEditRequests, ScriptValue};
 use ph2d_vec_entities::entities::{VecEntityMap, sync};
@@ -66,10 +69,7 @@ pub fn monta(sim: &mut SimWorld, cena: &mut VecScene, mapa: &mut VecEntityMap) -
         };
         let e = Entity::from_bits(bits);
         #[allow(clippy::cast_precision_loss)]
-        let (x, y) = (
-            -6.0 + 1.7 * (i % 7) as f32,
-            crate::SHAPE_Y + 1.5 * (i / 7) as f32,
-        );
+        let (x, y) = (-6.0 + 1.7 * (i % 7) as f32, SHAPE_Y + 1.5 * (i / 7) as f32);
         let t = Transform::from_translation(ph2d_core::Vec2::new(x, y));
         let mut cfg = LuauScript::library(script);
         if let Some((k, v)) = proprio(i) {
@@ -86,4 +86,38 @@ pub fn monta(sim: &mut SimWorld, cena: &mut VecScene, mapa: &mut VecEntityMap) -
         .0
         .push(script);
     out
+}
+
+/// ⭐ **O roteiro da cena 15**: 1 = a aba com os Problems à frente e a grelha; 2 = o rato numa
+/// célula âmbar (a do `speed` do Jumper): a frase do pé diz o que é; 3 = a roda sobre a grelha (a
+/// mão do dono; nas fotos, `RODA` do `cena14/fotos_q3.sh`) leva ao fim.
+pub const STEPS_15: &[&[Gesture]] = &[
+    &[
+        Gesture::Wait(Until::Script),
+        Gesture::Wait(Until::Problems(8)),
+        Gesture::ClickBandTab(1),
+        Gesture::Frame,
+    ],
+    &[Gesture::PointAim(Aim::Cell(1, 0)), Gesture::Frame],
+    &[Gesture::Frame],
+];
+
+/// O roteiro da cena `level` (`None` = a cena não tem fotos conduzidas).
+#[must_use]
+pub fn steps(level: u32) -> Option<&'static [&'static [Gesture]]> {
+    if level == 15 {
+        return Some(STEPS_15);
+    }
+    ph2d_code_smoke::steps(level)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn o_roteador_serve_a_15_daqui_e_as_outras_da_code_smoke() {
+        assert_eq!(super::steps(15), Some(super::STEPS_15));
+        assert_eq!(super::steps(13), ph2d_code_smoke::steps(13));
+        assert!(super::steps(13).is_some());
+        assert_eq!(super::steps(16), None);
+    }
 }

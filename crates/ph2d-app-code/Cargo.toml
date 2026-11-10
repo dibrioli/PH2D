@@ -22,6 +22,8 @@ ph2d-code-bancada = { path = "../ph2d-code-bancada" }
 ph2d-code-assist = { path = "../ph2d-code-assist" }
 # Os roteiros do smoke conduzido (saíram de `smoke_drive.rs`, fecho da Onda D).
 ph2d-code-smoke = { path = "../ph2d-code-smoke" }
+# O roteiro da cena 15 e o roteador `steps` que a acrescenta.
+ph2d-code-scene-arena = { path = "../ph2d-code-scene-arena" }
 # A explicação escrita à mão de cada mensagem do Luau (I8).
 ph2d-code-explain = { path = "../ph2d-code-explain" }
 # O StyLua fixado que formata ao salvar (I13).

@@ -236,9 +236,10 @@ const TETOS_DAS_CRATES_DA_FAMILIA: &[(&str, usize)] = &[
     ("ph2d-code-assist", 4_188), // 4_088 (10/11: as dobras fechadas, os problemas do Play e o `--!strict` saíram da `ph2d-app-code`)
     ("ph2d-code-bancada", 1_028), // 928 (Onda B, a Bancada; os nomes da cena saíram da `ph2d-app-code`)
     ("ph2d-code-debugcard", 663), // 563 (plano 14: o modelo do quadro saiu da `ph2d-code-assist`; a pintura foi para o `ph2d-panel-code`)
-    ("ph2d-code-scenes", 666),    // 566
-    ("ph2d-code-smoke", 614),     // 514
-    ("ph2d-code-viewmodel", 304), // 204
+    ("ph2d-code-scene-arena", 223), // 123 (10/11: a cena 15, crate nova porque a `ph2d-code-scenes` e a `ph2d-code-smoke` estão no tecto)
+    ("ph2d-code-scenes", 666),      // 566
+    ("ph2d-code-smoke", 614),       // 514
+    ("ph2d-code-viewmodel", 304),   // 204
     ("ph2d-physics-smoke-scenes", 18_572), // 18_208 (GEF02 onda 0, 09/11: as cenas que saíram da `ph2d-app-physics`)
 ];
 

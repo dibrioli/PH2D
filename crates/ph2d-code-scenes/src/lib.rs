@@ -9,7 +9,6 @@ use ph2d_script::{LuauScript, ProjectScripts, ScriptEditRequests};
 use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecScene, ellipse, rectangle, regular_polygon, star};
 
-pub mod arena;
 pub mod bancada;
 pub mod inspector;
 

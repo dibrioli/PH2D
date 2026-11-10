@@ -401,20 +401,6 @@ pub const STEPS_13: &[&[Gesture]] = &[
     ],
 ];
 
-/// ⭐ **Cena 15 — muitos problemas e muitos donos**: 1 = a aba com os Problems à frente e a grelha;
-/// 2 = o rato numa célula âmbar (a do `speed` do Jumper): a frase do pé diz o que é; 3 = a roda sobre
-/// a grelha (a mão do dono; nas fotos, `RODA` do `cena14/fotos_q3.sh`) leva ao fim.
-pub const STEPS_15: &[&[Gesture]] = &[
-    &[
-        Gesture::Wait(Until::Script),
-        Gesture::Wait(Until::Problems(8)),
-        Gesture::ClickBandTab(1),
-        Gesture::Frame,
-    ],
-    &[Gesture::PointAim(Aim::Cell(1, 0)), Gesture::Frame],
-    &[Gesture::Frame],
-];
-
 pub const QUADROS_BREAK: &str = "self.t = self.t + dt";
 
 /// ⭐ **Cena 14 — os quadros do depurador** (plano 14; 7–10: o Live, o gráfico, Cards, Strip).

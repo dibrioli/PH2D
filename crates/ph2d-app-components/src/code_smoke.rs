@@ -48,8 +48,9 @@
 //! - **14** — os quadros do depurador (plano 14): as três formas correm o [`DEPURA_LUAU`], parado em
 //!   `self.t = …`; o Stopped em planilha (Sheet), o Next line acende `self.t` e `self.pos.x` em âmbar,
 //!   e `View ▸ Card Style` troca para Cards e Strip.
-//! - **15** — muitos problemas e muitos donos: [`ph2d_code_scenes::arena`].
+//! - **15** — muitos problemas e muitos donos: [`ph2d_code_scene_arena`].
 
+pub use ph2d_code_scene_arena as arena;
 pub use ph2d_code_scenes::*;
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_script::{LuauScript, ProjectScripts, ScriptEditRequests, ScriptId, ScriptValue};

@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-code-scene-arena"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A cena 15 do smoke do editor de scripts (muitos problemas, muitos donos; dono 10/11): a montagem e
+# o roteiro. Crate própria porque `ph2d-code-scenes` e `ph2d-code-smoke` estão no tecto da catraca
+# (feature nova = drop-crate); por isso é ela quem estende o roteador `steps` com a 15.
+[dependencies]
+ph2d-code-scenes = { path = "../ph2d-code-scenes" }
+ph2d-code-smoke = { path = "../ph2d-code-smoke" }
+ph2d-code-viewmodel = { path = "../ph2d-code-viewmodel" }
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-script = { path = "../ph2d-script" }
+ph2d-vec-entities = { path = "../ph2d-vec-entities" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+
+[lints]
+workspace = true

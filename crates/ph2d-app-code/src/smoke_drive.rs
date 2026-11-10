@@ -5,9 +5,8 @@
 //! anda pelo `go_to` da paleta `:` e o Ctrl carregado vai para o `WidgetStore` como o da janela. Os
 //! testes das cenas (na shell, `shells/desktop/tests/it/a_cena_{3,4,5}_do_editor_conduzida.rs`)
 //! conduzem os MESMOS roteiros e conferem as agulhas no texto da cena. Os roteiros moram em
-//! `ph2d-code-smoke`. As
-//! teclas `Key`/`Type` vão para o script; `TabKey`/`TabType` para a aba ACTIVA da família (a página
-//! de ajuda, quando é ela).
+//! `ph2d-code-smoke` (a 15 em `ph2d-code-scene-arena`). As teclas `Key`/`Type` vão para o script;
+//! `TabKey`/`TabType` para a aba ACTIVA da família (a página de ajuda, quando é ela).
 
 use crate::help::page_of;
 
@@ -22,9 +21,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
+pub use ph2d_code_scene_arena::steps;
 pub use ph2d_code_smoke::{
     Gesture, NONE, STEP_ENV, STEPS, STEPS_4, STEPS_5, STEPS_10, STEPS_11, STEPS_12, STEPS_13,
-    Until, VIEW_ENV, steps,
+    Until, VIEW_ENV,
 };
 
 /// Quanto um passo espera pelo editor (o assistente, a pausa do aviso) antes de desistir e dizê-lo.

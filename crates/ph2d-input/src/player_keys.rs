@@ -57,7 +57,11 @@ impl PlayerKeys {
     #[must_use]
     pub fn apply_over(&self, map: &InputMap) -> InputMap {
         let mut out = map.clone();
-        let ids: Vec<_> = map.actions().iter().map(|a| (a.id, a.name.clone())).collect();
+        let ids: Vec<_> = map
+            .actions()
+            .iter()
+            .map(|a| (a.id, a.name.clone()))
+            .collect();
         for (id, name) in ids {
             if let (Some(b), Some(a)) = (self.by_action.get(&name), out.get_mut(id)) {
                 a.bindings.clone_from(b);
@@ -71,7 +75,11 @@ impl PlayerKeys {
     pub fn changed(&self, map: &InputMap) -> usize {
         map.actions()
             .iter()
-            .filter(|a| self.by_action.get(&a.name).is_some_and(|b| *b != a.bindings))
+            .filter(|a| {
+                self.by_action
+                    .get(&a.name)
+                    .is_some_and(|b| *b != a.bindings)
+            })
             .count()
     }
 
@@ -127,7 +135,11 @@ pub fn binding_text(b: Binding) -> String {
         },
         Binding::PadButton(p) => format!("pad:{}", p.as_lua_key()),
         Binding::PadAxis { axis, positive } => {
-            format!("axis:{}{}", axis.as_lua_key(), if positive { '+' } else { '-' })
+            format!(
+                "axis:{}{}",
+                axis.as_lua_key(),
+                if positive { '+' } else { '-' }
+            )
         }
     }
 }
@@ -147,13 +159,17 @@ fn parse_bindings(rhs: &str) -> Option<Vec<Binding>> {
             }
             "pad" => {
                 let (name, tail) = take_word(after);
-                let p = GamepadButton::ALL.into_iter().find(|p| p.as_lua_key() == name)?;
+                let p = GamepadButton::ALL
+                    .into_iter()
+                    .find(|p| p.as_lua_key() == name)?;
                 out.push(Binding::PadButton(p));
                 after_name = tail;
             }
             "axis" => {
                 let (name, tail) = take_word(after);
-                let axis = GamepadAxis::ALL.into_iter().find(|a| a.as_lua_key() == name)?;
+                let axis = GamepadAxis::ALL
+                    .into_iter()
+                    .find(|a| a.as_lua_key() == name)?;
                 let positive = match tail.chars().next()? {
                     '+' => true,
                     '-' => false,

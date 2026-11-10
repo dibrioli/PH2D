@@ -43,11 +43,11 @@ pub use pencil::{PencilButton, PencilEvent, PencilState};
 pub use state::InputState;
 
 pub use action::{ActionId, Binding, InputAction};
+pub use controls::PlayerControls;
 pub use map::{
     InputMap, PLAYER_DASH, PLAYER_DOWN, PLAYER_GRAB, PLAYER_JUMP, PLAYER_MOVE_DOWN,
     PLAYER_MOVE_LEFT, PLAYER_MOVE_RIGHT, PLAYER_MOVE_UP,
 };
-pub use controls::PlayerControls;
 pub use player_keys::{PLAYER_KEYS_HEADER, PlayerKeys, binding_text};
 pub use readers::{
     PLATFORM_PLAYER_READS, Reader, ReaderFacts, SharedBinding, TOP_DOWN_PLAYER_READS,

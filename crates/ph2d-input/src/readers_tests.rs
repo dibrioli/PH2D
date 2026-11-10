@@ -37,7 +37,10 @@ fn two_actions_nobody_reads_on_one_key_is_a_mistake() {
     let mut m = InputMap::with_player_defaults();
     for n in ["fire", "laser"] {
         let id = m.create(n);
-        m.get_mut(id).expect("existe").bindings.push(Binding::Key(J));
+        m.get_mut(id)
+            .expect("existe")
+            .bindings
+            .push(Binding::Key(J));
     }
     let groups = shared_bindings(&m, &readers(&ReaderFacts::default()));
     let wrong: Vec<_> = groups.iter().filter(|g| !g.on_purpose).collect();
@@ -72,7 +75,10 @@ fn a_shared_key_between_a_mover_name_and_move_left_is_a_mistake() {
     // move_left é lido pelos DOIS movers: não é disjunto de jump.
     let mut m = InputMap::with_player_defaults();
     let left = m.id("move_left").expect("fábrica");
-    m.get_mut(left).expect("existe").bindings.push(Binding::Key(UP));
+    m.get_mut(left)
+        .expect("existe")
+        .bindings
+        .push(Binding::Key(UP));
     let groups = shared_bindings(&m, &readers(&ReaderFacts::default()));
     let up = groups
         .iter()
@@ -138,12 +144,6 @@ ph2d.action_down("")
     let got: Vec<String> = action_names_in_script(src).into_iter().collect();
     assert_eq!(
         got,
-        [
-            "after_block",
-            "after_string",
-            "fire",
-            "move_left",
-            "reload"
-        ]
+        ["after_block", "after_string", "fire", "move_left", "reload"]
     );
 }

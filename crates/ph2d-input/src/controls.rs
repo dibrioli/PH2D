@@ -80,7 +80,11 @@ mod tests {
         m.controls_mut().set_shown_in_game(dash, false);
         m.remove(jump);
         assert_eq!(
-            m.controls().hidden_in_game.iter().copied().collect::<Vec<_>>(),
+            m.controls()
+                .hidden_in_game
+                .iter()
+                .copied()
+                .collect::<Vec<_>>(),
             [dash]
         );
     }

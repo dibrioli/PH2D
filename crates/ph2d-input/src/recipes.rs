@@ -77,16 +77,8 @@ impl Recipe {
                     GamepadAxis::LeftStickY,
                     false,
                 ),
-                plain(
-                    PLAYER_DASH,
-                    &[Key(0x51)],
-                    &[GamepadButton::West],
-                ),
-                plain(
-                    PLAYER_GRAB,
-                    &[Key(0x52)],
-                    &[GamepadButton::East],
-                ),
+                plain(PLAYER_DASH, &[Key(0x51)], &[GamepadButton::West]),
+                plain(PLAYER_GRAB, &[Key(0x52)], &[GamepadButton::East]),
             ],
             Self::TopDown => vec![
                 walk_left(),
@@ -115,11 +107,7 @@ impl Recipe {
                     &[Key(0x4A)],
                     &[GamepadButton::West, GamepadButton::RightTrigger],
                 ),
-                plain(
-                    RECIPE_RELOAD,
-                    &[Key(0x52)],
-                    &[GamepadButton::North],
-                ),
+                plain(RECIPE_RELOAD, &[Key(0x52)], &[GamepadButton::North]),
             ],
             Self::Blank => Vec::new(),
         }

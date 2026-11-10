@@ -6,9 +6,11 @@ fn every_binding() -> Vec<Binding> {
         .chain([Key(0x1234)])
         .map(Binding::Key)
         .chain(GamepadButton::ALL.into_iter().map(Binding::PadButton))
-        .chain(GamepadAxis::ALL.into_iter().flat_map(|axis| {
-            [true, false].map(|positive| Binding::PadAxis { axis, positive })
-        }))
+        .chain(
+            GamepadAxis::ALL
+                .into_iter()
+                .flat_map(|axis| [true, false].map(|positive| Binding::PadAxis { axis, positive })),
+        )
         .collect()
 }
 
@@ -17,7 +19,10 @@ fn the_player_file_round_trips_every_binding_kind() {
     let all = every_binding();
     let mut k = PlayerKeys::new();
     k.set("jump", all.clone());
-    k.set("fire", vec![Binding::Key(Key(0x2C)), Binding::Key(Key(0x2E))]);
+    k.set(
+        "fire",
+        vec![Binding::Key(Key(0x2C)), Binding::Key(Key(0x2E))],
+    );
     k.set("none", Vec::new());
     let text = k.to_text();
     assert!(text.starts_with("# PH2D player keys\n"));
@@ -59,7 +64,13 @@ fn a_bad_line_is_skipped_and_the_rest_is_read() {
     );
     assert_eq!(
         k.get("grab"),
-        Some([Binding::Key(Key(0x52)), Binding::PadButton(GamepadButton::East)].as_slice())
+        Some(
+            [
+                Binding::Key(Key(0x52)),
+                Binding::PadButton(GamepadButton::East)
+            ]
+            .as_slice()
+        )
     );
     for bad in ["broken", "also", "axis", "dash", ""] {
         assert_eq!(k.get(bad), None, "{bad}");

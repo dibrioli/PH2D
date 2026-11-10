@@ -52,7 +52,10 @@ fn the_recipe_keyboard_is_the_factory_keyboard() {
 fn only_actions_with_a_stick_get_the_dead_zone() {
     for r in Recipe::ALL {
         for ra in r.actions() {
-            let stick = ra.bindings.iter().any(|b| matches!(b, Binding::PadAxis { .. }));
+            let stick = ra
+                .bindings
+                .iter()
+                .any(|b| matches!(b, Binding::PadAxis { .. }));
             let want: f32 = if stick { 0.2 } else { 0.0 };
             assert_eq!(ra.dead_zone.to_bits(), want.to_bits(), "{r:?}/{}", ra.name);
         }

@@ -32,9 +32,13 @@ pub enum Reader {
     PlatformPlayer,
     TopDownPlayer,
     /// Um Trigger da cena com o nome da acção na sua Action.
-    Trigger { object: String },
+    Trigger {
+        object: String,
+    },
     /// Um script Luau do projecto que chama `ph2d.action_*`.
-    Script { name: String },
+    Script {
+        name: String,
+    },
 }
 
 impl Reader {
@@ -162,7 +166,11 @@ fn without_comments(src: &str) -> String {
             quote = Some(c);
         } else if c == b'-' && b.get(i + 1) == Some(&b'-') {
             let end = comment_end(src, i + 2);
-            out.extend(src[i..end].chars().map(|ch| if ch == '\n' { '\n' } else { ' ' }));
+            out.extend(
+                src[i..end]
+                    .chars()
+                    .map(|ch| if ch == '\n' { '\n' } else { ' ' }),
+            );
             i = end;
             continue;
         }
@@ -180,7 +188,9 @@ fn comment_end(src: &str, at: usize) -> usize {
         let eqs = open.bytes().take_while(|c| *c == b'=').count();
         if open[eqs..].starts_with('[') {
             let close = format!("]{}]", "=".repeat(eqs));
-            return rest.find(&close).map_or(src.len(), |e| at + e + close.len());
+            return rest
+                .find(&close)
+                .map_or(src.len(), |e| at + e + close.len());
         }
     }
     rest.find('\n').map_or(src.len(), |e| at + e)

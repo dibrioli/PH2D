@@ -56,7 +56,7 @@ use crate::undo::window::WriteState;
 #[cfg(test)]
 pub(super) fn fork_par<'a, T>(arc: &'a mut Arc<Vec<T>>, win: &WriteState) -> &'a mut Vec<T>
 where
-    T: Copy + Send + Sync,
+    T: Copy + Default + Send + Sync,
 {
     // ⚠️ **Todo fork nasce NÃO-DECLARADO, e é isso que torna a janela segura.** O histórico paga ~470 MB
     // de varredura por traço a 4096² para DERIVAR uma janela que quem escreve já conhece (doc 28 §5.16);
@@ -245,7 +245,7 @@ pub(super) fn fork_plano_de_trabalho(arc: &mut Arc<Vec<u8>>) -> &mut Vec<u8> {
 /// O fork cru — a metade de POSSE, sem a de declaração. Privado: quem escreve passa pelo guard.
 fn fork_par_raw<T>(arc: &mut Arc<Vec<T>>) -> &mut Vec<T>
 where
-    T: Copy + Send + Sync,
+    T: Copy + Default + Send + Sync,
 {
     // ⚠️ **`strong_count`, NUNCA `Arc::get_mut`** — e a diferença custou uma regressão de 4× no Wet
     // Paint antes de ser vista.

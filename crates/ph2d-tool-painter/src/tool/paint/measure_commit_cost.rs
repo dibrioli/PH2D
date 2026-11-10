@@ -166,7 +166,7 @@ fn what_a_plane_fork_costs_through_the_products_own_door() {
     use std::sync::Arc;
     use std::time::Instant;
 
-    fn best<T: Copy + Send + Sync>(src: &Arc<Vec<T>>, reps: u32) -> f64 {
+    fn best<T: Copy + Default + Send + Sync>(src: &Arc<Vec<T>>, reps: u32) -> f64 {
         let mut lo = f64::INFINITY;
         for _ in 0..reps {
             let mut a = Arc::clone(src);

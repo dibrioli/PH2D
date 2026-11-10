@@ -107,7 +107,7 @@ impl<T> Default for TileJournal<T> {
     }
 }
 
-impl<T: Copy + Send + Sync> TileJournal<T> {
+impl<T: Copy + Default + Send + Sync> TileJournal<T> {
     /// Esquece tudo: o passo fechou, e o próximo captura do zero.
     pub(crate) fn reset(&mut self) {
         self.stride = 0;

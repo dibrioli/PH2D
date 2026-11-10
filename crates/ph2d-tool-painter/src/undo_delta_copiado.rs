@@ -3,7 +3,7 @@
 
 use super::{ImageEntry, StoredEntry, StoredImages, StoredMap, StoredPlane};
 
-impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
+impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
     /// Só a janela (`Patch`); os buffers inteiros (`Whole`) são `Arc` partilhados com o original, que
     /// os segura de qualquer forma.
     pub(crate) fn copiado_bytes(&self) -> usize {
@@ -14,7 +14,7 @@ impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
     }
 }
 
-impl<T: Copy + PartialEq + Send + Sync> StoredEntry<T> {
+impl<T: Copy + Default + PartialEq + Send + Sync> StoredEntry<T> {
     pub(super) fn heap_bytes(&self) -> usize {
         match self {
             Self::Both(p) => p.heap_bytes(),
@@ -30,7 +30,7 @@ impl<T: Copy + PartialEq + Send + Sync> StoredEntry<T> {
     }
 }
 
-impl<T: Copy + PartialEq + Send + Sync> StoredMap<T> {
+impl<T: Copy + Default + PartialEq + Send + Sync> StoredMap<T> {
     /// Ver [`StoredPlane::copiado_bytes`].
     pub(crate) fn copiado_bytes(&self) -> usize {
         self.entries.values().map(StoredEntry::copiado_bytes).sum()

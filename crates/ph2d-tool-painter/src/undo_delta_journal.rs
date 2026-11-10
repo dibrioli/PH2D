@@ -110,7 +110,7 @@ impl PlaneWindow {
     /// tile por elemento — ver [`TileJournal::read_row_into`](crate::undo::journal::TileJournal), que é
     /// quem sabe onde os tiles moram. A ORDEM de percurso é a mesma do [`Self::extract`], e ela é
     /// load-bearing: o `Patch` guarda os dois lados e eles se correspondem índice a índice.
-    fn extract_journal<T: Copy + Send + Sync>(
+    fn extract_journal<T: Copy + Default + Send + Sync>(
         &self,
         j: &crate::undo::journal::TileJournal<T>,
         live: &[T],
@@ -123,7 +123,7 @@ impl PlaneWindow {
     }
 }
 
-impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
+impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
     /// **O delta de um plano cujo lado `before` vem do JOURNAL** — o degrau 2 do S3 (doc 28 §5.58.2).
     ///
     /// O `split` clássico precisa dos DOIS endpoints materializados, e é isso que obriga o
@@ -213,7 +213,7 @@ impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
     }
 }
 
-impl<T: Copy + PartialEq + Send + Sync> StoredMap<T> {
+impl<T: Copy + Default + PartialEq + Send + Sync> StoredMap<T> {
     /// **O mapa de uma família de relevo, com o lado `before` vindo do JOURNAL** — ver
     /// [`StoredPlane::from_journal`], que é o motor; aqui mora só *quais chaves*, que é a metade que o
     /// journal não sabe (ele guarda bytes de UM plano, não a forma de um mapa).

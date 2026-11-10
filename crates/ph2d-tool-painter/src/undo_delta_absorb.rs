@@ -48,7 +48,7 @@ fn envolve(a: PlaneWindow, b: PlaneWindow) -> PlaneWindow {
     }
 }
 
-impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
+impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
     /// **O [`Self::split`] sem janela, respondido varrendo SÓ a janela DECLARADA** — o detector da
     /// absorção, para o canvas.
     ///

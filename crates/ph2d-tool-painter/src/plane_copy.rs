@@ -12,27 +12,27 @@
 
 use rayon::prelude::*;
 
-/// **O limiar é em BYTES, não em elementos** — e a diferença foi medida, não escolhida.
+/// **O limiar é em BYTES, não em elementos** — e a diferença foi medida, não escolhida: um plano de
+/// `[u8; 7]` com a mesma CONTAGEM de um de `u8` move sete vezes a memória.
 ///
-/// Um plano de `u8` e um de `[u8; 7]` com a mesma CONTAGEM carregam sete vezes a memória, e o que decide
-/// se vale espalhar a cópia por threads é quanta memória ela move. Com o limiar em elementos a mesma
-/// tela mandava o canvas para o caminho paralelo e o de material junto, e a 1024² isso **dobrou** o
-/// custo de um Ctrl+Z (0,42 -> 0,86 ms) porque o fork do rayon passou a dominar quatro cópias pequenas.
-///
-/// Medido, um Ctrl+Z (que copia os quatro planos do cursor):
+/// Z1 (B17.1, 10/11, `z1_copias_de_plano_a_4k`, 16 fios, o mínimo de 15 rodadas intercaladas, ms;
+/// tabela inteira em `docs/Painter/missao_4k/medicoes/Z1_copias_de_plano.md`):
 ///
 /// ```text
-///   1024²  (planos de 1 a 7 MB)     serial  0,42 ms   paralelo  0,86 ms
-///   2048²  (planos de 4 a 29 MB)    serial  3,12 ms   paralelo  3,47 ms
-///   4096²  (planos de 17 a 117 MB)  serial 46,56 ms   paralelo 21,86 ms   2,1x
+///                              frio: série  collect  blocos | reciclado: série  collect  blocos
+///   u8 3840x2160      8,29 MB        0,97     2,21    0,29  |            0,25     2,06    0,29
+///   rgba 2048²       16,78 MB        0,90     4,45    0,67  |            0,60     4,21    0,63
+///   rgba 3840x2160   33,18 MB        1,78     7,72    1,67  |            1,37     7,80    1,46
+///   [u8;7] 3840x2160 58,06 MB        3,03     3,02    2,93  |            2,67     2,52    2,76
+///   rgba 4096²       67,11 MB       10,78    15,66    3,43  |           10,51    16,34    3,05
 /// ```
 ///
-/// A virada está entre 29 e 67 MB, então o limiar fica em **32 MB**: a 2048² tudo segue serial (onde o
-/// serial ganha) e a 4096² os três planos grandes vão para o paralelo (onde ele ganha 2×). ⚠️ O número
-/// grande do serial a 4096² **não é largura de banda** (5,8 GB/s é lento demais para isso): é o
-/// *first-touch* de 67-117 MB recém-alocados, uma falha de página por vez — e é exatamente isso que
-/// espalhar por threads conserta.
-pub(crate) const PAR_MIN_BYTES: usize = 32 << 20;
+/// ⚠️ O que «perdia a 2048²» era o `collect` do rayon (escrita elemento a elemento, 4–7× o `memcpy`
+/// em `u8`), não o paralelo: em BLOCOS ele empata com a série onde as páginas já estão mapeadas e ganha
+/// 3× onde há *first-touch* (o fork do pen-down com três donos copia para memória nova). O limiar fica
+/// em **7,5 MiB**: o plano `u8` 4K e a tela 1080p (8,29 MB) entram; o Ctrl+Z de 1024² (planos até
+/// 7,3 MB, onde um fork do rayon por plano pequeno dobrou o custo) fica em série.
+pub(crate) const PAR_MIN_BYTES: usize = 15 << 19;
 
 /// Vale paralelizar uma cópia de `len` elementos de `T`? A pergunta é feita aqui e só aqui — a porta de
 /// fork DECIDE por ela e o primitivo abaixo EXECUTA por ela, então as duas não podem divergir.
@@ -40,12 +40,9 @@ pub(crate) const fn worth_parallel<T>(len: usize) -> bool {
     len.saturating_mul(size_of::<T>()) >= PAR_MIN_BYTES
 }
 
-/// **O limiar do PREENCHIMENTO, e ele NÃO é o da cópia** — medido, não herdado.
-///
-/// ⚠️ Uma cópia LÊ e ESCREVE; um preenchimento só ESCREVE, e sobre memória **recém-alocada**, onde o
-/// custo é o *first-touch* de página em vez de largura de banda. Herdar os 32 MB do [`PAR_MIN_BYTES`]
-/// deixava o plano de MATERIAL a 2048² — **29,4 MB**, a um fio do limiar — na rota serial, que é
-/// precisamente o caso que esta wave existe para curar.
+/// **O limiar do PREENCHIMENTO** — medido à parte do da cópia (um preenchimento só ESCREVE, sobre
+/// memória **recém-alocada**: o custo é o *first-touch* de página). Os dois caem hoje no mesmo número
+/// porque a cópia em blocos (B17.1) também passou a ser dominada pelo *first-touch*.
 ///
 /// Medido a frio (alocações SEGURADAS, uma página nova por amostra), `[u8; 7]`:
 ///
@@ -58,9 +55,9 @@ pub(crate) const fn worth_parallel<T>(len: usize) -> bool {
 /// ```
 ///
 /// O serial fica preso em **~6,2 GB/s** (a taxa de falta de página) e o paralelo em ~31 GB/s, então a
-/// razão é ~4-5× em toda a faixa que importa. A virada está entre 4 e 8 MB; **o limiar fica em 8**,
-/// onde o ganho já é inequívoco (3,08×) e abaixo do qual o serial custa no máximo 1,35 ms.
-pub(crate) const FILL_PAR_MIN_BYTES: usize = 8 << 20;
+/// razão é ~4-5× em toda a faixa que importa. A virada está entre 4 e 8 MB. Os 8 MiB antigos deixavam
+/// o plano `u8` 4K (8 294 400 B) 1,1 % abaixo (B17.2); **7,5 MiB** põe-no do lado que ganha.
+pub(crate) const FILL_PAR_MIN_BYTES: usize = 15 << 19;
 
 /// Vale paralelizar o preenchimento de `len` elementos de `T`? Irmã da [`worth_parallel`], com o
 /// limiar DELA — ver [`FILL_PAR_MIN_BYTES`] para o porquê de não ser o mesmo número.
@@ -71,13 +68,25 @@ pub(crate) const fn worth_parallel_fill<T>(len: usize) -> bool {
 /// Clona um plano, em paralelo quando [`worth_parallel`] diz que vale.
 pub(crate) fn par_clone<T>(src: &[T]) -> Vec<T>
 where
-    T: Copy + Send + Sync,
+    T: Copy + Default + Send + Sync,
 {
     if !worth_parallel::<T>(src.len()) {
         return src.to_vec();
     }
-    src.par_iter().copied().collect()
+    #[cfg(test)]
+    PAR_CLONES.with(|c| c.set(c.get() + 1));
+    // Em BLOCOS de `memcpy`: o `collect` do rayon escreve elemento a elemento (ver a Z1 acima). O
+    // destino nasce por `alloc_zeroed` (páginas do SO, sem escrita) e cada fio falta as suas.
+    let bloco = (COPY_BLOCK_BYTES / size_of::<T>()).max(1);
+    let mut dst = vec![T::default(); src.len()];
+    dst.par_chunks_mut(bloco)
+        .zip(src.par_chunks(bloco))
+        .for_each(|(d, s)| d.copy_from_slice(s));
+    dst
 }
+
+/// O bloco de cada `memcpy` da cópia paralela: 32 blocos no plano `u8` 4K. Z1: 256 KiB × 1 MiB empatam.
+const COPY_BLOCK_BYTES: usize = 256 << 10;
 
 /// **Materializa `n` elementos no valor `value`, em paralelo quando vale** — a irmã exata do
 /// [`par_clone`], e pelo MESMO motivo que ele existe.
@@ -115,6 +124,7 @@ where
 #[cfg(test)]
 thread_local! {
     static PAR_FILLS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    static PAR_CLONES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 /// **Materializa um plano de `n` elementos no valor `value`** — e o caso do ZERO é de graça.
@@ -180,6 +190,10 @@ where
 }
 
 #[cfg(test)]
+#[path = "plane_copy_z1.rs"]
+mod z1;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -197,6 +211,32 @@ mod tests {
         let n7 = PAR_MIN_BYTES / 7 + 7;
         let m: Vec<[u8; 7]> = (0..n7).map(|i| [(i % 251) as u8; 7]).collect();
         assert_eq!(par_clone(&m), m);
+    }
+
+    /// **B17.1/B17.3: a tela 4K (33 177 600 B) e o vidro da aguada 4K (58 MB) copiam-se pela rota em
+    /// BLOCOS, ao bit.** O contador é o que vê a rota (a igualdade fica verde com qualquer cópia).
+    #[test]
+    fn a_tela_4k_e_o_vidro_copiam_em_blocos_ao_bit() {
+        let tela: Vec<u8> = (0..3840 * 2160 * 4).map(|i| (i % 251) as u8).collect();
+        let vidro: Vec<[u8; 7]> = (0..3840 * 2160).map(|i| [(i % 13) as u8; 7]).collect();
+        PAR_CLONES.with(|c| c.set(0));
+        assert_eq!(par_clone(&tela), tela);
+        assert_eq!(par_clone(&vidro), vidro);
+        assert_eq!(PAR_CLONES.with(std::cell::Cell::get), 2, "a 4K não foi em blocos");
+        // Abaixo do limiar (o Ctrl+Z de 1024², planos de 1 a 7,3 MB) segue em série.
+        let m1024 = vec![[1u8; 7]; 1024 * 1024];
+        assert_eq!(par_clone(&m1024), m1024);
+        assert_eq!(PAR_CLONES.with(std::cell::Cell::get), 2, "1024² foi para o rayon");
+    }
+
+    /// **B17.2: o plano `u8` 4K (8 294 400 B, 1,1 % abaixo dos 8 MiB antigos) preenche-se em paralelo.**
+    #[test]
+    fn preenchimento_u8_4k_a_frio() {
+        PAR_FILLS.with(|c| c.set(0));
+        let mut par = Vec::<u8>::new();
+        size_to(&mut par, 3840 * 2160, 255);
+        assert_eq!(PAR_FILLS.with(std::cell::Cell::get), 1, "o u8 4K ficou em série");
+        assert_eq!(par, vec![255u8; 3840 * 2160]);
     }
 
     /// **O limiar é em BYTES, e isso é o gate** — porque em ELEMENTOS ele mandava um plano de `u8` de
@@ -366,11 +406,10 @@ mod tests {
             "o plano de material a 2048^2 ({} MB) ficou abaixo do limiar de preenchimento",
             N * 7 / (1 << 20)
         );
-        // E o CONTROLE que nomeia a diferença: pelo limiar da CÓPIA ele NÃO cruzaria.
-        assert!(
-            !worth_parallel::<[u8; 7]>(N),
-            "os dois limiares convergiram — este gate deixou de dizer alguma coisa"
-        );
+        // E o CONTROLE: o material de 1024² (7,3 MB, o Ctrl+Z que um fork por plano pequeno dobrou)
+        // fica em série nas duas portas — o piso não desceu sem medida.
+        assert!(!worth_parallel_fill::<[u8; 7]>(1024 * 1024));
+        assert!(!worth_parallel::<[u8; 7]>(1024 * 1024));
     }
 
     /// **Sonda do item 6 da fila 44: quanto custa o FORK da tela a 4096².** O começo de uma pincelada

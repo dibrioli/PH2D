@@ -49,8 +49,8 @@ use crate::layers::LayerId as RtLayerId;
 /// Abaixo de tantos elementos a varredura é sub-milissegundo e a escolha não pode importar, então o
 /// limiar só existe para manter o fork do rayon longe de plano pequeno.
 ///
-/// Irmão exato do [`crate::tool::paint::plane_fork`]`::PAR_MIN`, que existe pela mesma razão e sobre os
-/// mesmos planos — e o mesmo número, porque a pergunta é a mesma: *este plano é canvas-shaped?*
+/// Em ELEMENTOS de propósito: é a varredura de comparação (custo por elemento), não uma cópia — as
+/// cópias decidem em BYTES por [`crate::plane_copy::worth_parallel`] (B17.1, IN-115).
 const PAR_MIN: usize = 1 << 20;
 
 /// A janela em que dois estados de um plano diferem — em **ELEMENTOS do plano**, nunca em pixels do
@@ -313,7 +313,7 @@ const fn fits(len: usize, stride: usize) -> bool {
     stride != 0 && len != 0 && len.is_multiple_of(stride)
 }
 
-impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
+impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
     /// Extrai o delta dos dois endpoints e **ESVAZIA os dois** — depois disto os pixels vivem aqui e só
     /// aqui, e o `ModelSnapshot` guardado carrega apenas metadados.
     pub(crate) fn split(
@@ -441,7 +441,7 @@ pub(crate) struct StoredMap<T> {
     entries: BTreeMap<RtLayerId, StoredEntry<T>>,
 }
 
-impl<T: Copy + PartialEq + Send + Sync> StoredMap<T> {
+impl<T: Copy + Default + PartialEq + Send + Sync> StoredMap<T> {
     /// Extrai o delta dos dois mapas e **esvazia os dois**. `stride` é em elementos por linha do plano
     /// (um por pixel nos três mapas de impasto).
     pub(crate) fn split(

@@ -135,3 +135,25 @@ fn a_pre_edicao_empurra_o_texto_e_o_cursor_fica_no_fim_dela() {
         "o «b» anda uma coluna para a direita"
     );
 }
+
+/// O separador da grelha e da Sheet carrega por [`Splitter::press`], sem relógio: dois cliques
+/// sem arrasto nunca fazem o duplo que esquece a largura do artista.
+#[test]
+#[allow(clippy::field_reassign_with_default)] // o resto dos campos é privado
+fn o_separador_sem_relogio_nunca_faz_duplo_clique() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_panel_code::splitter::{Split, Splitter};
+    let mut s = Splitter::default();
+    s.side_w = Some(80.0);
+    s.painted = Some(Split {
+        hit: Rect::new(0.0, 0.0, 10.0, 100.0),
+        side_w: 80.0,
+        min: 0.0,
+        max: 200.0,
+    });
+    for _ in 0..3 {
+        assert!(s.press(5.0, 50.0), "controlo: agarra");
+        assert!(s.release());
+    }
+    assert_eq!(s.side_w, Some(80.0), "a largura do artista fica");
+}

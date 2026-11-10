@@ -88,6 +88,9 @@ impl DocumentSurface for CodeDocs {
         // A frase de uma recusa ocupa a lista inteira até sair (o «In this script» cede-lhe).
         let open = self.list.open && self.list.notice.is_none();
         let (list_r, outline_r) = bancada::left_split(list_r, rows, open);
+        if outline_r.is_none() || page_of(id).is_some() {
+            self.bench.forget_outline_fit();
+        }
         crate::cards::open(scene, list_r, theme);
         self.list
             .paint(list_r, id, &|s| dirty.contains(&s), scene, text, theme);
@@ -163,9 +166,13 @@ impl DocumentSurface for CodeDocs {
         y: f32,
     ) -> bool {
         let area = self.code_body(id, self.split_area(self.area).1);
+        if matches!(kind, PointerKind::Down) && !matches!(button, PointerButton::Primary) {
+            self.left.other_press();
+        }
         if matches!((kind, button), (PointerKind::Down, PointerButton::Primary))
             && let Some(taken) = self.context_press(x, y)
         {
+            self.left.other_press();
             self.pressed = taken;
             return taken;
         }

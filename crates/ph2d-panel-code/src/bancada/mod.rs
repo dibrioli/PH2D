@@ -32,10 +32,11 @@ pub const PEEK_PAUSE_NS: u128 = 1_000_000_000;
 const OUTLINE_MIN_ROWS: usize = 3;
 
 /// A altura que o «In this script» pinta com [`OUTLINE_MIN_ROWS`] entradas: as folgas do cartão em
-/// cima, entre o título e as linhas e em baixo (as de `paint_outline`), o título e as entradas.
+/// cima, entre o título e as linhas e em baixo (as de `paint_outline`), o título, o cabeçalho de
+/// uma secção e as entradas.
 fn outline_min_h() -> f32 {
     let pads = ph2d_tokens::card_pad_px() * 3.0; // LITERAL-PX-OK: três folgas do cartão (token)
-    pads + ROW_H_PX + outline_entry_h() * OUTLINE_MIN_ROWS as f32
+    pads + ROW_H_PX * 2.0 + outline_entry_h() * OUTLINE_MIN_ROWS as f32
 }
 
 /// O raio do ponto da cor de um objecto ao lado do nome (o quadradinho da camada da GEF02,

@@ -4,6 +4,7 @@
 //! pintura e o arrasto; a Sheet do depurador (Call stack) e a grelha da Bancada (o mapa «Where») usam-nos.
 
 use ph2d_editor_core::interaction::DOUBLE_CLICK_WINDOW_NS;
+use ph2d_editor_core::interaction::drag::DRAG_THRESHOLD_PX;
 use ph2d_editor_core::math::safe_clamp;
 use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::zones::Rect;
@@ -108,9 +109,14 @@ pub struct Splitter {
     pub dragging: Option<(f32, f32)>,
     pub hover: std::cell::Cell<bool>,
     pub painted: Option<Split>,
+    /// A largura do artista antes do carregar (o Esc devolve-a, `None` incluído).
+    before: Option<f32>,
     press_ns: u128,
+    press_xy: (f32, f32),
+    /// O carregar trouxe relógio ([`Self::press_at`]): só esse conta para o duplo-clique.
+    clocked: bool,
     moved: bool,
-    last_click: Option<u128>,
+    last_click: Option<(u128, f32, f32)>,
 }
 
 impl Splitter {
@@ -137,37 +143,63 @@ impl Splitter {
         self.painted = Some(s);
     }
 
-    /// Carregar no separador começa o arrasto. `true` = tomado.
+    /// Carregar no separador começa o arrasto, sem duplo-clique. `true` = tomado.
     pub fn press(&mut self, x: f32, y: f32) -> bool {
-        self.press_at(x, y, 0)
+        self.last_click = None;
+        self.grab(x, y)
     }
 
-    /// [`Self::press`] no instante `now_ns` (o relógio do duplo-clique, ver [`Self::release`]).
+    /// [`Self::press`] no instante `now_ns`: este carregar conta para o duplo-clique
+    /// ([`Self::release`]).
     pub fn press_at(&mut self, x: f32, y: f32, now_ns: u128) -> bool {
+        if !self.grab(x, y) {
+            return false;
+        }
+        (self.press_ns, self.press_xy, self.clocked) = (now_ns, (x, y), true);
+        true
+    }
+
+    /// Um carregar que não é no separador (outro botão, um que outro alvo tomou): acaba o arrasto
+    /// cujo largar se perdeu e esquece o último clique.
+    pub fn other_press(&mut self) {
+        self.dragging = None;
+        self.last_click = None;
+    }
+
+    fn grab(&mut self, x: f32, y: f32) -> bool {
+        // Um arrasto ainda aberto perdeu o largar (fora da aba): acaba aqui.
+        if self.dragging.take().is_some() {
+            self.last_click = None;
+        }
         let Some(s) = self.painted.filter(|s| s.hit.contains(x, y)) else {
             self.last_click = None;
             return false;
         };
         self.dragging = Some((x, s.side_w));
-        (self.press_ns, self.moved) = (now_ns, false);
+        (self.before, self.moved, self.clocked) = (self.side_w, false, false);
         true
     }
 
-    /// O largar acaba o arrasto. Dois cliques sem arrasto dentro de [`DOUBLE_CLICK_WINDOW_NS`]
-    /// esquecem a largura do artista (volta a de fábrica). `true` = havia arrasto.
+    /// O largar acaba o arrasto. Dois cliques sem arrasto, perto um do outro
+    /// ([`DRAG_THRESHOLD_PX`]) e dentro de [`DOUBLE_CLICK_WINDOW_NS`], esquecem a largura do
+    /// artista (volta a de fábrica). `true` = havia arrasto.
     pub fn release(&mut self) -> bool {
         if self.dragging.take().is_none() {
             return false;
         }
-        let t = self.press_ns;
-        let double = !self.moved
-            && self
-                .last_click
-                .is_some_and(|t0| t.saturating_sub(t0) <= DOUBLE_CLICK_WINDOW_NS);
+        if !self.clocked || self.moved {
+            self.last_click = None;
+            return true;
+        }
+        let (t, (x, y)) = (self.press_ns, self.press_xy);
+        let double = self.last_click.is_some_and(|(t0, x0, y0)| {
+            t.saturating_sub(t0) <= DOUBLE_CLICK_WINDOW_NS
+                && (x - x0).hypot(y - y0) <= DRAG_THRESHOLD_PX
+        });
         if double {
             self.side_w = None;
         }
-        self.last_click = (!self.moved && !double).then_some(t);
+        self.last_click = (!double).then_some((t, x, y));
         true
     }
 
@@ -181,22 +213,26 @@ impl Splitter {
         self.drag_by(x, 1.0)
     }
 
+    /// Abaixo de [`DRAG_THRESHOLD_PX`] (o tremor da caneta) ainda é um clique: a largura não mexe.
     fn drag_by(&mut self, x: f32, sign: f32) -> bool {
         let Some((x0, w0)) = self.dragging else {
             return false;
         };
-        let s = self.painted.unwrap_or_default();
-        self.moved |= x != x0;
-        self.side_w = Some(safe_clamp(w0 + sign * (x - x0), s.min, s.max));
+        self.moved |= (x - x0).abs() > DRAG_THRESHOLD_PX;
+        if self.moved {
+            let s = self.painted.unwrap_or_default();
+            self.side_w = Some(safe_clamp(w0 + sign * (x - x0), s.min, s.max));
+        }
         true
     }
 
-    /// O Esc a meio do arrasto: a largura volta à do carregar. `true` = havia arrasto.
+    /// O Esc a meio do arrasto: a largura do artista volta à de antes do carregar. `true` = havia
+    /// arrasto.
     pub fn cancel(&mut self) -> bool {
-        let Some((_, w0)) = self.dragging.take() else {
+        if self.dragging.take().is_none() {
             return false;
-        };
-        self.side_w = Some(w0);
+        }
+        self.side_w = self.before;
         true
     }
 

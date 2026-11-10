@@ -49,20 +49,27 @@ fn a_coluna_da_lista_so_parte_quando_aberta_e_com_altura() {
     assert!(fora.h >= ROW_H_PX * 4.0);
 }
 
-/// O limiar do «In this script» é o que ele pinta: as três folgas do cartão, o título e três entradas
-/// no passo apertado — a coluna que lhe dá exactamente isso mostra-o; um píxel a menos, não.
+/// O limiar do «In this script» é o que ele pinta: as três folgas do cartão, o título, o cabeçalho
+/// da secção e três entradas inteiras — a coluna que lhe dá exactamente isso mostra-o; 1 px a
+/// menos, não.
 #[test]
 fn o_in_this_script_aparece_quando_cabem_o_titulo_e_tres_entradas() {
     let g = ph2d_panel_code::cards::margin();
+    let pad = ph2d_tokens::card_pad_px();
+    let eh = ph2d_panel_code::bancada::outline_entry_h();
     let lista = ph2d_panel_code::ScriptListView::height_for(1);
-    let cabe = ph2d_tokens::card_pad_px() * 3.0
-        + ROW_H_PX
-        + ph2d_panel_code::bancada::outline_entry_h() * 3.0;
+    let cabe = pad * 3.0 + ROW_H_PX * 2.0 + eh * 3.0;
     let col = |h: f32| Rect::new(0.0, 0.0, 200.0, h);
     let justa = lista + g + cabe;
     assert!(justa * 0.5 >= lista, "a lista não encolhe no limiar");
     let (_, fora) = left_split(col(justa), 1, true);
     let fora = fora.expect("cabe exactamente: aparece");
+    // As linhas de `paint_outline`: do fim do título (folga · título · folga) à folga de baixo.
+    let linhas = fora.h - pad * 3.0 - ROW_H_PX;
+    assert!(
+        linhas + 1e-3 >= ROW_H_PX + eh * 3.0,
+        "o cabeçalho e três entradas inteiras: {linhas}"
+    );
     assert!((fora.h - cabe).abs() < 1e-3, "{} × {cabe}", fora.h);
     assert_eq!(
         left_split(col(justa - 1.0), 1, true).1,

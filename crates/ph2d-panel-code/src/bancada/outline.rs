@@ -79,6 +79,11 @@ impl BancadaView {
         self.outline_fit
     }
 
+    /// O «In this script» não se pinta neste quadro: o mínimo do divisor deixa de o contar.
+    pub fn forget_outline_fit(&mut self) {
+        self.outline_fit = 0.0;
+    }
+
     /// Pinta o «In this script» em `area` (o cartão já aberto pela família).
     pub fn paint_outline(
         &mut self,

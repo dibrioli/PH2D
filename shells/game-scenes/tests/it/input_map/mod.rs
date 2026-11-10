@@ -14,6 +14,7 @@ mod lista_r7a;
 mod teclado;
 mod teclado_censo;
 mod teclado_r7b;
+mod teclado_r9b;
 mod try_it;
 mod try_it_censo;
 

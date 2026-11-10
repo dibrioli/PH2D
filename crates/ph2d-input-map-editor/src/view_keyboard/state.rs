@@ -80,6 +80,8 @@ pub struct KbState {
     pub(crate) bar: Option<(f32, f32)>,
     /// Onde o ponteiro está (o × aparece com o ponteiro sobre o ladrilho).
     pub(crate) pointer: Option<(f32, f32)>,
+    /// Ctrl/Alt em baixo (a tecla física): com um deles, o premir é acorde do editor e não liga.
+    pub(crate) held: crate::raw_keys::HeldModifiers,
     /// As barras da última pintura: cada alvo desenhado e as acções que o usam (o censo da lei «uma barra por acção»).
     pub bars: Vec<(KbHit, Vec<ActionId>)>,
     /// A marca do comando AO VIVO na barra do curso da última pintura (`None` = manche em repouso).

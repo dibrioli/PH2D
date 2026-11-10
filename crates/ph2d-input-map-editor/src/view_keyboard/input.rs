@@ -77,6 +77,8 @@ pub(crate) fn scrub(
 }
 
 pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
+    // O Ctrl solto noutra vista ou fora da aba não chega aqui: o clique na B recomeça os modificadores.
+    doc.kb.held = crate::raw_keys::HeldModifiers::default();
     crate::view_list::commit_typing(doc);
     let Some(id) = doc.hits.hit(x, y) else {
         doc.store.set_focus(None);
@@ -183,9 +185,12 @@ pub(crate) fn key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
 }
 
 /// A tecla física: com a acção aberta ainda sem ligações e nenhum campo focado, a tecla liga-se
-/// («Click a key above, or press one»).
+/// («Click a key above, or press one») — salvo o que [`crate::raw_keys::never_binds`] deixa ao editor (Ctrl/Alt,
+/// os acordes, o F5).
 pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool, _writes_text: bool) -> bool {
+    doc.kb.held.update(key, pressed);
     if !pressed
+        || crate::raw_keys::never_binds(key, doc.kb.held.iter())
         || doc.snap.play_running
         || doc.store.focus_id().is_some()
         || doc.list.typing.is_some()

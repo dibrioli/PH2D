@@ -179,6 +179,13 @@ impl PainterTool {
         }
         // J13b P6: com o compositor da óptica, a água chega como imagem ([`super::otica_no_tique`]) — o tique só
         // traz o motor para casa pelos factos e pelos adiados.
+        // B11.A1: o compositor morto cai para o composite de casa (o tique larga-o com o motor cá).
+        let morto = self
+            .paint
+            .wetpaint
+            .session
+            .as_ref()
+            .is_some_and(WetSession::compositor_morto);
         let fora = self.wet_otica_fora();
         if fora {
             self.wet_recebe_imagens();
@@ -195,7 +202,7 @@ impl PainterTool {
         // núcleo esperando na fronteira de estágio.
         let done = sess.sim_steps();
         let fresh = done != sess.seen_steps;
-        let mostra = fresh && !fora;
+        let mostra = (fresh || morto) && !fora;
         // Facts land while the water SITS too (Dry Speed / Gravity / the
         // tilt are sim forces): the tick reconciles with the stamp's door.
         let facts_moved = sess.applied != facts;
@@ -220,6 +227,9 @@ impl PainterTool {
             let got = sess.try_bring_home();
             crate::wet_diag::note_wait(t_wait.elapsed().as_secs_f32() * 1e3);
             if got {
+                if morto {
+                    sess.larga_o_compositor_morto();
+                }
                 if !fora {
                     sess.seen_steps = done;
                 }

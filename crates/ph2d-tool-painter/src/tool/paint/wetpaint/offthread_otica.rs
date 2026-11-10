@@ -20,9 +20,9 @@ use super::super::fita::MarcaDaAgua;
 use super::super::otica_factos::FactosDaOtica;
 use super::STEP_S;
 use ph2d_wet_paint::oleo_real::OleoReal;
+use ph2d_wet_paint::painter::Dirty;
 #[cfg(test)]
 use ph2d_wet_paint::painter::Engine;
-use ph2d_wet_paint::painter::Dirty;
 #[cfg(test)]
 use std::sync::Arc;
 #[cfg(test)]
@@ -69,10 +69,11 @@ pub(in crate::tool::paint::wetpaint) struct PedidoDeImagem {
     pub(in crate::tool::paint::wetpaint) com_veu: bool,
 }
 
-/// O filme e a molha da grade ACTIVA nas linhas `linha0..` (largura `s`, a da grade): as linhas da caixa de
-/// píxeis com uma de folga de cada lado (o menisco lê `film[i ± s]`).
+/// O filme e a molha da grade ACTIVA na caixa de células que a caixa de píxeis toca, com uma de folga de cada lado
+/// (o menisco lê `film[i ± 1]` e `film[i ± s]`): linhas `linha0..`, colunas `col0..col0 + s` (B11.A2).
 pub(in crate::tool::paint::wetpaint) struct VeuDaCaixa {
     pub(in crate::tool::paint::wetpaint) linha0: usize,
+    pub(in crate::tool::paint::wetpaint) col0: usize,
     pub(in crate::tool::paint::wetpaint) s: usize,
     pub(in crate::tool::paint::wetpaint) film: Vec<f32>,
     pub(in crate::tool::paint::wetpaint) wet: Vec<u8>,
@@ -220,13 +221,35 @@ impl super::super::WetSession {
             .worker
             .as_ref()
             .and_then(|w| w.otica.as_ref())
+            .filter(|o| o.vivo())
             .ok_or(SemCompositor)?;
         Ok(o.pede(p))
     }
 
-    /// Esta sessão tem compositor (o worker ao relógio subiu-o)?
+    /// Esta sessão tem compositor de pé (o worker ao relógio subiu-o e ele não morreu)?
     pub(in crate::tool::paint::wetpaint) fn tem_compositor(&self) -> bool {
-        self.worker.as_ref().is_some_and(|w| w.otica.is_some())
+        self.worker
+            .as_ref()
+            .and_then(|w| w.otica.as_ref())
+            .is_some_and(DoFioPrincipal::vivo)
+    }
+
+    /// O compositor desta sessão morreu e o tique ainda não o largou (B11.A1)?
+    pub(in crate::tool::paint::wetpaint) fn compositor_morto(&self) -> bool {
+        self.worker
+            .as_ref()
+            .and_then(|w| w.otica.as_ref())
+            .is_some_and(|o| !o.vivo())
+    }
+
+    /// Com o motor em casa: o sujo que a tela ainda não mostra volta ao motor, e a sessão larga o compositor morto
+    /// — daqui em diante compõe em casa (B11.A1).
+    pub(in crate::tool::paint::wetpaint) fn larga_o_compositor_morto(&mut self) {
+        self.o_sujo_por_mostrar_volta_ao_motor();
+        self.otica.esquece_o_que_estava_no_ar();
+        if let Some(w) = self.worker.as_mut() {
+            w.otica = None;
+        }
     }
 
     /// [`DoFioPrincipal::sujo_do_pedido`] desta sessão.

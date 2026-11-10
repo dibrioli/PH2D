@@ -385,3 +385,88 @@ fn sem_o_interruptor_nao_ha_compositor() {
     assert!(w.otica.is_none());
     assert!(r.otica.is_none(), "o worker ritmado nunca tem compositor");
 }
+
+/// B11.A1: o compositor MORRE (pânico em `compoe`) com o worker vivo. A água não congela: o sujo que ele levava
+/// volta ao motor, a sessão deixa de ter compositor e a tela compõe em casa — ao byte da composição de casa.
+#[test]
+fn compositor_morto_cai_para_o_composite_de_casa() {
+    use crate::tool::paint::wetpaint::agua_sobre_oleo_tests::preset;
+    use crate::tool::paint::wetpaint::otica_no_tique_tests::{
+        LADO, assenta, cena, confere_com_casa, ponto, quadros, sess, tique,
+    };
+    use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
+    let mut t = cena(true, 0.0, false);
+    quadros(&mut t, 6);
+    sess(&t)
+        .worker
+        .as_ref()
+        .and_then(|w| w.otica.as_ref())
+        .expect("premissa: o compositor de pé")
+        .mata_no_teste();
+    let vistos = sess(&t).seen_steps;
+    let lado = LADO as f32;
+    t.preset_aplicar(&preset("Watercolor/Fluid/Wet Drip.ph2d-brush.png"))
+        .expect("o preset");
+    for (k, cor) in [[200u8, 40, 40], [40, 160, 60], [90, 40, 200]]
+        .iter()
+        .enumerate()
+    {
+        t.set_brush_color_srgb8(*cor);
+        let y = lado * (0.25 + 0.2 * k as f32);
+        let _ = t.on_canvas_pointer(ponto(lado * 0.2, y, PointerPhase::Down));
+        for s in 1..=12 {
+            let _ =
+                t.on_canvas_pointer(ponto(lado * (0.2 + 0.05 * s as f32), y, PointerPhase::Move));
+            tique(&mut t);
+            std::thread::sleep(Duration::from_millis(16));
+        }
+        let _ = t.on_canvas_pointer(ponto(lado * 0.8, y, PointerPhase::Up));
+        quadros(&mut t, 10);
+    }
+    assert!(
+        sess(&t).seen_steps > vistos,
+        "a tela parou nos passos da morte do compositor"
+    );
+    assenta(&mut t);
+    assert!(!sess(&t).tem_compositor(), "premissa: o compositor morreu");
+    confere_com_casa(&mut t, "compositor morto");
+}
+
+/// B11.A2: o véu de uma caixa ESTREITA leva só as colunas dela (com uma de folga, o menisco lê `film[i ± 1]`), não as
+/// linhas inteiras da grade — e pinta o mesmo véu, ao byte, que a grade inteira.
+#[test]
+fn o_veu_leva_so_a_largura_da_caixa() {
+    use crate::tool::paint::wetpaint::veu::{FilmeEMolha, pinta_o_veu};
+    let e = cena();
+    let g = &e.layers[0].grid;
+    let caixa_px = (10, 12, 52, 44);
+    let v = compositor::veu_da_caixa(g, caixa_px, 1, FORMA.grade);
+    let area = (caixa_px.2 - caixa_px.0 + 2) * (caixa_px.3 - caixa_px.1 + 2);
+    assert_eq!(v.film.len(), v.wet.len());
+    assert!(
+        v.film.len() * 5 <= area * 5 * 12 / 10,
+        "o véu leva {} células para uma caixa de {area}: linhas inteiras da grade",
+        v.film.len()
+    );
+    let pinta = |fm: &FilmeEMolha<'_>| {
+        let mut canvas = vec![128u8; N * N * 4];
+        pinta_o_veu(fm, &mut canvas, (N, 1), FORMA.grade, caixa_px);
+        canvas
+    };
+    let inteira = pinta(&FilmeEMolha::da_grade(g));
+    let recortada = pinta(&FilmeEMolha {
+        film: &v.film,
+        wet: &v.wet,
+        s: v.s,
+        linha0: v.linha0,
+        col0: v.col0,
+    });
+    assert!(
+        inteira.iter().any(|&b| b != 128),
+        "a caixa não tem molhado — não contém o fenómeno"
+    );
+    assert!(
+        inteira == recortada,
+        "o véu recortado difere do da grade inteira"
+    );
+}

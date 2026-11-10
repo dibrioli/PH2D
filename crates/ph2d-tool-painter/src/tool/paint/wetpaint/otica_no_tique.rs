@@ -70,6 +70,15 @@ impl OticaDoTique {
         self.simples = Some(une(self.simples, c));
     }
 
+    /// O compositor morreu: o que estava no ar e por servir já voltou ao motor (B11.A1).
+    pub(super) fn esquece_o_que_estava_no_ar(&mut self) {
+        self.no_ar = None;
+        self.uniao_local = None;
+        self.divida = None;
+        self.agua = None;
+        self.simples = None;
+    }
+
     fn deve(&mut self, c: CaixaCel) {
         self.divida = Some(une(self.divida, c));
     }
@@ -249,6 +258,7 @@ impl PainterTool {
                     wet: &v.wet,
                     s: v.s,
                     linha0: v.linha0,
+                    col0: v.col0,
                 },
                 None => sem_veu(),
             };
@@ -311,5 +321,6 @@ const fn sem_veu() -> FilmeEMolha<'static> {
         wet: &[],
         s: 0,
         linha0: 0,
+        col0: 0,
     }
 }

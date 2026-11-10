@@ -11,12 +11,14 @@ const WET_VEIL_RGB: [f64; 3] = [56.0, 80.0, 104.0];
 const WET_LIGHT_X: f64 = -std::f64::consts::FRAC_1_SQRT_2;
 const WET_LIGHT_Y: f64 = -std::f64::consts::FRAC_1_SQRT_2;
 
-/// O filme e a molha que o véu lê: as linhas `linha0..` de uma grade de largura `s` (a grade inteira: `linha0 = 0`).
+/// O filme e a molha que o véu lê: as linhas `linha0..` e as colunas `col0..col0 + s` de uma grade (a grade inteira:
+/// `linha0 = col0 = 0`, `s` = a largura dela).
 pub(super) struct FilmeEMolha<'a> {
     pub(super) film: &'a [f32],
     pub(super) wet: &'a [u8],
     pub(super) s: usize,
     pub(super) linha0: usize,
+    pub(super) col0: usize,
 }
 
 impl<'a> FilmeEMolha<'a> {
@@ -26,6 +28,7 @@ impl<'a> FilmeEMolha<'a> {
             wet: &g.wet,
             s: g.s,
             linha0: 0,
+            col0: 0,
         }
     }
 }
@@ -65,7 +68,7 @@ pub(super) fn pinta_o_veu(
         let cy = (py / rr + 1).min(gh);
         for px in px0..px1 {
             let cx = (px / rr + 1).min(gw);
-            let i = cx + cy * sg - g.linha0 * sg;
+            let i = (cx - g.col0) + (cy - g.linha0) * sg;
             let film = f64::from(g.film[i]);
             let mut wet_sig = f64::from(g.wet[i]) / 255.0;
             if film > 0.02 {

@@ -7,7 +7,7 @@ use crate::tool::paint::wetpaint::composite_otica::{EntradaDaOtica, TrabalhoDaOt
 use crate::tool::paint::wetpaint::fita::MarcaDaAgua;
 use ph2d_wet_paint::painter::Engine;
 use ph2d_wet_paint::painter::espelho::Espelho;
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::mpsc::{Receiver, Sender, TryRecvError, channel};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Instant;
 
@@ -17,6 +17,11 @@ struct Correio {
     pedido: Option<PedidoDeImagem>,
     /// `(época, caixa)` do último pedido servido: o sujo saiu do motor e a imagem dele vem a caminho.
     servido: Option<(u64, CaixaCel)>,
+    /// O fio do compositor morreu (B11.A1): o sujo servido voltou ao motor e a tela compõe em casa.
+    morto: bool,
+    /// A porta de teste: o próximo `compoe` entra em pânico.
+    #[cfg(test)]
+    mata: bool,
 }
 
 /// A ponta do fio principal.
@@ -51,6 +56,17 @@ impl DoFioPrincipal {
         )
     }
 
+    /// O compositor ainda está de pé? `false` = morreu e o sujo que levava voltou ao motor (B11.A1).
+    pub(in crate::tool::paint::wetpaint) fn vivo(&self) -> bool {
+        !trava(&self.correio).morto
+    }
+
+    /// A porta de teste de B11.A1: o próximo `compoe` entra em pânico e o fio do compositor morre.
+    #[cfg(test)]
+    pub(in crate::tool::paint::wetpaint) fn mata_no_teste(&self) {
+        trava(&self.correio).mata = true;
+    }
+
     /// A próxima resposta, sem esperar.
     pub(in crate::tool::paint::wetpaint) fn try_recv(&self) -> Option<RespostaDaOtica> {
         self.imagens.try_recv().ok()
@@ -66,6 +82,7 @@ pub(in crate::tool::paint::wetpaint::offthread) struct DoWorker {
     espelho: Option<Box<Espelho>>,
     agenda: Agenda,
     relogio: Instant,
+    morto: bool,
 }
 
 fn trava<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -94,6 +111,7 @@ pub(in crate::tool::paint::wetpaint::offthread) fn par() -> (DoWorker, DoFioPrin
             espelho: Some(Box::default()),
             agenda: Agenda::default(),
             relogio: Instant::now(),
+            morto: false,
         },
         DoFioPrincipal {
             correio,
@@ -108,15 +126,22 @@ impl DoWorker {
     /// O gancho do `worker_loop`, num passo FECHADO: serve o pedido se o espelho está aqui e a [`Agenda`] deixa (a
     /// cópia cabe na folga, ou ocupa ≤ 20 % do worker com a água atrasada). O correio lê-se primeiro: sem pedido
     /// nada anda.
-    pub(in crate::tool::paint::wetpaint::offthread) fn serve(&mut self, engine: &mut Engine, acc: f64, passos: u64) {
-        if engine.sim.step_pending() {
+    pub(in crate::tool::paint::wetpaint::offthread) fn serve(
+        &mut self,
+        engine: &mut Engine,
+        acc: f64,
+        passos: u64,
+    ) {
+        if self.morto || engine.sim.step_pending() {
             return;
         }
         if self.espelho.is_none() {
-            self.espelho = self.volta.try_recv().ok();
-        }
-        if self.espelho.is_none() {
-            return;
+            match self.volta.try_recv() {
+                Ok(e) => self.espelho = Some(e),
+                // O compositor morreu com o espelho (pânico em `compoe`): o sujo servido perdeu-se com ele.
+                Err(TryRecvError::Disconnected) => return self.morre(engine),
+                Err(TryRecvError::Empty) => return,
+            }
         }
         if trava(&self.correio).pedido.is_none() {
             return;
@@ -189,9 +214,23 @@ impl DoWorker {
             epoca: p.epoca,
             passos,
             veu: p.com_veu.then_some(engine.active_layer),
+            #[cfg(test)]
+            panica: trava(&self.correio).mata,
         };
         if let Err(e) = self.para_o_compositor.send(trabalho) {
             self.espelho = Some(e.0.espelho);
+            self.morre(engine);
+        }
+    }
+
+    /// O compositor morreu: o sujo do pedido servido volta ao motor e a tela passa a compor em casa (B11.A1).
+    fn morre(&mut self, engine: &mut Engine) {
+        self.morto = true;
+        let mut c = trava(&self.correio);
+        c.morto = true;
+        if let Some((_, (x0, y0, x1, y1))) = c.servido.take() {
+            let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
+            engine.merge_dirty_otica(i(x0), i(y0), i(x1), i(y1));
         }
     }
 }

@@ -19,10 +19,17 @@ pub(super) struct Trabalho {
     pub(super) passos: u64,
     /// A camada activa, se o pedido quer o véu.
     pub(super) veu: Option<usize>,
+    /// A porta de teste de B11.A1 ([`super::DoFioPrincipal::mata_no_teste`]).
+    #[cfg(test)]
+    pub(super) panica: bool,
 }
 
 /// O laço do compositor: até o worker fechar o canal de trabalho.
-pub(super) fn compositor(rx: &Receiver<Trabalho>, volta: &Sender<Box<Espelho>>, ui: &Sender<RespostaDaOtica>) {
+pub(super) fn compositor(
+    rx: &Receiver<Trabalho>,
+    volta: &Sender<Box<Espelho>>,
+    ui: &Sender<RespostaDaOtica>,
+) {
     let mut planos = PlanosDaOtica::default();
     while let Ok(t) = rx.recv() {
         let t0 = Instant::now();
@@ -47,12 +54,16 @@ fn no_pool<R: Send>(f: impl FnOnce() -> R + Send) -> R {
 
 /// A metade de cima sobre o espelho, e a imagem tirada dos planos de trabalho.
 fn compoe(t: Trabalho, planos: &mut PlanosDaOtica) -> (Box<Espelho>, Imagem) {
+    #[cfg(test)]
+    assert!(!t.panica, "compoe em panico (porta de teste do B11.A1)");
     let (gw, gh) = t.entrada.grade;
     if planos.pigment.len() != gw * gh * 4 {
         *planos = PlanosDaOtica::da_grade((gw, gh));
     }
     let layers = t.espelho.camadas_render();
-    let faixas = crate::tool::paint::wetpaint::composite_otica::faixas_da_otica(&t.entrada, &layers, &t.faixas);
+    let faixas = crate::tool::paint::wetpaint::composite_otica::faixas_da_otica(
+        &t.entrada, &layers, &t.faixas,
+    );
     let oleo = t.entrada.factos.oleo_da_tela(&layers);
     let mut caixas = Vec::with_capacity(faixas.len());
     let mut entrada = t.entrada;
@@ -106,22 +117,34 @@ fn caixas_da_imagem(
     }
 }
 
-/// As linhas de células que a caixa de píxeis toca, com uma de folga de cada lado.
-fn veu_da_caixa(
+/// As células que a caixa de píxeis toca, com uma de folga de cada lado (B11.A2: só as colunas dela).
+pub(super) fn veu_da_caixa(
     g: &ph2d_wet_paint::grid::Grid,
-    (_, py0, _, py1): (usize, usize, usize, usize),
+    (px0, py0, px1, py1): (usize, usize, usize, usize),
     ratio: u8,
-    (_, gh): (usize, usize),
+    (gw, gh): (usize, usize),
 ) -> VeuDaCaixa {
     let rr = usize::from(ratio).max(1);
-    let lo = (py0 / rr + 1).min(gh);
-    let hi = (py1.saturating_sub(1) / rr + 1).min(gh);
-    let (a, b) = (lo - 1, (hi + 1).min(g.rows - 1));
+    let celulas = |p0: usize, p1: usize, n: usize, fim: usize| {
+        let (lo, hi) = ((p0 / rr + 1).min(n), (p1.saturating_sub(1) / rr + 1).min(n));
+        (lo - 1, (hi + 1).min(fim))
+    };
+    let (a, b) = celulas(py0, py1, gh, g.rows - 1);
+    let (c0, c1) = celulas(px0, px1, gw, g.s - 1);
+    let largura = c1 + 1 - c0;
+    let mut film = Vec::with_capacity((b + 1 - a) * largura);
+    let mut wet = Vec::with_capacity((b + 1 - a) * largura);
+    for y in a..=b {
+        let o = y * g.s;
+        film.extend_from_slice(&g.film[o + c0..=o + c1]);
+        wet.extend_from_slice(&g.wet[o + c0..=o + c1]);
+    }
     VeuDaCaixa {
         linha0: a,
-        s: g.s,
-        film: g.film[a * g.s..(b + 1) * g.s].to_vec(),
-        wet: g.wet[a * g.s..(b + 1) * g.s].to_vec(),
+        col0: c0,
+        s: largura,
+        film,
+        wet,
     }
 }
 

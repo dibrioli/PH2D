@@ -158,23 +158,35 @@ impl Pintor<'_> {
             );
         }
         let dx = lado + Spacing::Sm.px();
-        let (x0, w0) = (self.x, self.w);
-        self.x += dx;
-        self.w -= dx;
         let texto = if ligada {
             self.resumo(resumo)
         } else {
             String::new()
         };
-        let fim = self.dobra(y, fold, titulo, &texto, |p, yy| {
-            let (x, w) = (x0, w0);
-            p.x = x;
-            p.w = w;
-            corpo(p, yy)
-        });
-        self.x = x0;
-        self.w = w0;
-        fim
+        // O título começa depois da caixa, mas a dobra (o recorte da animação) é da largura inteira:
+        // com a dobra também deslocada, a faixa sob a caixa só aparecia no fim da abertura (smoke 10/11).
+        use ph2d_editor_core::widget::{SectionHeader, paint_group_header};
+        let header = SectionHeader::new(fold, titulo)
+            .collapsible(!self.store.is_collapsed(fold))
+            .open_t(self.store.section_open_live(fold));
+        let rect = Rect::new(self.x + dx, topo, self.w - dx, h);
+        paint_group_header(&header, rect, self.scene, self.text, self.theme);
+        self.hit.register(fold, rect);
+        let corpo_y = topo + h + ph2d_tokens::control_gap_px();
+        match ph2d_editor_core::widget::SectionFold::begin(
+            self.store, fold, self.x, self.w, corpo_y, self.scene, self.hit,
+        ) {
+            Some(dobra) => {
+                let fim = corpo(self, corpo_y);
+                dobra.finish(self.store, self.scene, self.hit, fim)
+            }
+            None => {
+                super::rows::resumo_do_grupo(
+                    self.scene, self.text, self.theme, rect.x, rect.w, corpo_y, titulo, &texto,
+                );
+                corpo_y
+            }
+        }
     }
 
     fn botao(&mut self, y: f32, id: NodeId, label: &str) -> f32 {

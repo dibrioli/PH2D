@@ -128,6 +128,15 @@ objecto, sem copiar a cena por tique.
   pelo item 7** ([06_posse_do_teclado.md](06_posse_do_teclado.md)): com a cena a correr, o jogo tem o teclado e o clique.
 - O empurrão dos dispositivos sai da shell para `ph2d-app-components` (`script_input`), a shell só o chama.
 - `ph2d.input` fica para o comando de jogo, como está.
+- **As acções do Input Map pelo NOME** (line/InputMap, `docs/InputMap/01_plano.md` §5, 10/11):
+  **`ph2d.action_down(a)` · `ph2d.action_pressed(a)` · `ph2d.action_released(a)` · `ph2d.action_strength(a) -> 0..1`**
+  (o idioma do `key_*`; a força é a do resolvedor do `ph2d-input`, com a zona morta). Lêem o MESMO mapa e `ActionState`
+  que o Play tica em `resolve_player_input` (`fase_pointer_subjects`, que corre ANTES da `fase_input_and_drops`): a
+  shell passa os dois a `script_input::frame` → `Devices::feed_actions`. As bordas acumulam-se até o tique as ver, como
+  as das teclas. Nome que o mapa não tem ⇒ **erro que lista as acções do mapa** (`action_api.rs`). Portões
+  (`scene_action_tests.rs`): `o_script_le_o_salto_pelo_nome_da_accao` · `a_accao_segue_o_mapa_e_nao_a_tecla` ·
+  `um_nome_que_o_mapa_nao_tem_e_erro_que_lista_as_accoes` · `a_forca_e_a_do_resolvedor`; o caminho da porta:
+  `a_accao_que_o_play_resolveu_chega_ao_script` (`script_input.rs`).
 - Portões: `uma_tecla_e_pressed_num_so_tique` · `um_toque_no_mesmo_quadro_nao_se_perde` ·
   `dois_tiques_num_quadro_veem_uma_borda` · `um_nome_de_tecla_errado_e_erro` · `todo_codigo_da_shell_tem_nome` ·
   `o_rato_e_lido_no_mundo` · `um_clique_fora_da_cena_nao_conta`.

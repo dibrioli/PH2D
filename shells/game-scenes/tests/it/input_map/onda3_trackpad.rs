@@ -27,7 +27,7 @@ use ph2d_vector::VectorScene;
 
 /// Uma família que NÃO pede o lado (o caso de Kanban, Code, Planner, Sprite, SFX e da aba da física): conta
 /// cada roda que lhe chega, `(dy, shift)`.
-struct Espia(Rc<RefCell<Vec<(f32, bool)>>>);
+struct Espia(Rodas);
 
 impl DocumentSurface for Espia {
     fn tabs(&self) -> Vec<DocTab> {
@@ -74,7 +74,10 @@ impl DocumentSurface for Espia {
     }
 }
 
-fn com_espia() -> (HeroScreen, Rc<RefCell<Vec<(f32, bool)>>>) {
+/// O que a espia ouviu: cada roda (dy, shift).
+type Rodas = Rc<RefCell<Vec<(f32, bool)>>>;
+
+fn com_espia() -> (HeroScreen, Rodas) {
     let mut hero = HeroScreen::new(NodeId(1));
     let rodas = Rc::new(RefCell::new(Vec::new()));
     hero.documents
@@ -85,11 +88,7 @@ fn com_espia() -> (HeroScreen, Rc<RefCell<Vec<(f32, bool)>>>) {
 }
 
 /// O que a família ouve de um gesto (e esvazia a conta).
-fn ouve(
-    hero: &mut HeroScreen,
-    rodas: &Rc<RefCell<Vec<(f32, bool)>>>,
-    s: BoardScroll,
-) -> Vec<(f32, bool)> {
+fn ouve(hero: &mut HeroScreen, rodas: &Rodas, s: BoardScroll) -> Vec<(f32, bool)> {
     scroll(hero, 500.0, 300.0, s); // LITERAL-PX-OK: um ponto qualquer da área
     std::mem::take(&mut *rodas.borrow_mut())
 }

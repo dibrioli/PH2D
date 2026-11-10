@@ -91,10 +91,7 @@ fn o_fator_da_fila_f_e_o_medido_nos_dois_modos_de_texto() {
     let piso = medidos.iter().map(|m| m.1).fold(0.0, f32::max);
     assert_eq!(k, FN_ROW_FACTOR, "o FN_ROW_FACTOR é o medido: {medidos:?}");
     assert_eq!(piso, PITCH_FLOOR, "o PITCH_FLOOR é o medido: {medidos:?}");
-    assert!(
-        FN_ROW_FACTOR <= 0.7,
-        "meia altura, como na foto: {FN_ROW_FACTOR}"
-    ); // LITERAL-PX-OK: fator
+    assert!(k <= 0.7, "meia altura, como na foto: {k}"); // LITERAL-PX-OK: fator
 }
 
 /// ⭐ Esc F1–F12 Insert PrtSc Delete e Home End PgUp PgDn em meia altura (foto do dono), nas duas áreas reais e na

@@ -99,6 +99,16 @@ fn o_tique_de_luz_pelo_gbuffer_e_a_luz_inteira() {
     for i in 1..10 {
         confere(&mut t, &mut gemeo, i, DrainBranch::Luz, "2.ª volta");
     }
+    // A profundidade da camada muda a DOBRA e não a composição não acesa: o G-buffer cai com ela.
+    for (k, depth) in [(0, 0.35), (1, -0.6)] {
+        for tool in [&mut t, &mut gemeo] {
+            let id = tool.layers.active().expect("camada activa");
+            tool.set_layer_impasto_depth(id, depth);
+        }
+        let ramo = DrainBranch::FullComposite;
+        confere(&mut t, &mut gemeo, 1 + k, ramo, "depois da profundidade");
+        confere(&mut t, &mut gemeo, 2 + k, DrainBranch::Luz, "G-buffer novo");
+    }
     // Traço e tique no MESMO quadro (o `mark_dirty` antes do knob): a drenagem compõe o traço, nunca a luz velha.
     crista(&mut t, 0.4);
     crista(&mut gemeo, 0.4);
@@ -141,5 +151,51 @@ fn sonda_tique_de_luz_4k() {
     eprintln!(
         "[tique 4K] mín {min:.1} · média {:.1} ms · só a luz (apply_impasto_light) {luz:.1} ms",
         soma / 10.0
+    );
+}
+
+/// Sonda (B15.3 G-buffer): o passe inteiro (dobra + sombra, o tique de antes) × o sombreado pelo G-buffer, no MESMO
+/// processo, intercalados, o mínimo de 7; e a montagem do G-buffer (o 1.º tique).
+#[test]
+#[ignore = "sonda: corra com --ignored --nocapture em --profile smoke"]
+fn sonda_gbuffer_da_dobra_4k() {
+    use crate::tool::paint::impasto_luz_dobra::LuzGuardada;
+    let (w, h) = (3840, 2160);
+    let mut t = tela(w, h);
+    drena(&mut t);
+    let full = Region { x: 0, y: 0, w, h };
+    let base = vec![128u8; (w * h * 4) as usize];
+    let g = LuzGuardada::new(base.clone());
+    let (mut px, t0) = (base.clone(), std::time::Instant::now());
+    assert!(t.acende_pela_dobra(&g, &mut px));
+    let montagem = t0.elapsed().as_secs_f64() * 1e3;
+    let (mut inteira, mut gbuf) = (f64::MAX, f64::MAX);
+    for _ in 0..7 {
+        let mut a = base.clone();
+        let t0 = std::time::Instant::now();
+        t.apply_impasto_light(&mut a, full);
+        inteira = inteira.min(t0.elapsed().as_secs_f64() * 1e3);
+        let mut b = base.clone();
+        let t0 = std::time::Instant::now();
+        assert!(t.acende_pela_dobra(&g, &mut b));
+        gbuf = gbuf.min(t0.elapsed().as_secs_f64() * 1e3);
+        assert!(a == b, "o G-buffer acendeu outro bit");
+    }
+    // B15.1: a faixa de 64 linhas contra a de 32 (o mesmo bit; o que muda é a moldura e o L2).
+    let mut faixa = [f64::MAX; 2];
+    for _ in 0..7 {
+        for (k, linhas) in [32, 64].into_iter().enumerate() {
+            let mut a = base.clone();
+            let t0 = std::time::Instant::now();
+            t.acende_em_faixas(&mut a, full, linhas);
+            faixa[k] = faixa[k].min(t0.elapsed().as_secs_f64() * 1e3);
+        }
+    }
+    eprintln!(
+        "[gbuffer 4K] passe inteiro {inteira:.1} ms · pelo G-buffer {gbuf:.1} ms · montagem (1.º tique) {montagem:.1} ms"
+    );
+    eprintln!(
+        "[faixa 4K] 32 linhas {:.1} ms · 64 linhas {:.1} ms",
+        faixa[0], faixa[1]
     );
 }

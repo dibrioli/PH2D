@@ -7,6 +7,7 @@
 //! larga o `composited`) derrubam-na.
 
 use super::Region;
+use super::impasto_luz_dobra::LuzGuardada;
 use crate::tool::{DrainBranch, PainterTool};
 use std::sync::Arc;
 
@@ -34,7 +35,7 @@ impl PainterTool {
         self.luz_so_lampada = false;
         self.luz_nao_aceso = self
             .impasto_relief_present()
-            .then(|| Arc::new(nao_aceso.to_vec()));
+            .then(|| Arc::new(LuzGuardada::new(nao_aceso.to_vec())));
     }
 
     /// O ramo da lâmpada: `true` = a prévia saiu reacesa da composição guardada (`dirty` = o retângulo sujo).
@@ -42,17 +43,19 @@ impl PainterTool {
         if !std::mem::take(&mut self.luz_so_lampada) {
             return false;
         }
-        let Some(nao_aceso) = self
+        let Some(guardada) = self
             .luz_nao_aceso
-            .as_ref()
+            .clone()
             .filter(|_| dirty.is_none() && self.composited.is_some())
         else {
             self.larga_a_luz_guardada();
             return false;
         };
         let (w, h) = self.source_size;
-        let mut px = nao_aceso.to_vec();
-        self.apply_impasto_light(&mut px, Region { x: 0, y: 0, w, h });
+        let mut px = guardada.nao_aceso.clone();
+        if !self.acende_pela_dobra(&guardada, &mut px) {
+            self.apply_impasto_light(&mut px, Region { x: 0, y: 0, w, h });
+        }
         self.apply_mask_overlay(&mut px);
         self.composited = Some(Arc::new(px));
         self.preview_upload_bbox = None;

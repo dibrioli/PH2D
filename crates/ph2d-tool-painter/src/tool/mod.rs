@@ -207,8 +207,8 @@ pub struct PainterTool {
     /// Cached composite output (non-trivial stacks only), behind an `Arc` so the
     /// bridge drain is zero-copy. Invalidated (`None`) on any layer edit.
     composited: Option<Arc<Vec<u8>>>,
-    /// B15.3: a tela composta ANTES da luz, válida por lista branca (só os knobs da lâmpada a deixam viva).
-    luz_nao_aceso: Option<Arc<Vec<u8>>>,
+    /// B15.3: a tela composta ANTES da luz e o G-buffer da dobra, válidos por lista branca (só os knobs da lâmpada).
+    luz_nao_aceso: Option<Arc<paint::impasto_luz_dobra::LuzGuardada>>,
     /// B15.3: desde a última drenagem, só um knob da lâmpada sujou a prévia.
     luz_so_lampada: bool,
     /// The dirty bbox the LAST `take_preview_arc` recomposed (`Some` for a

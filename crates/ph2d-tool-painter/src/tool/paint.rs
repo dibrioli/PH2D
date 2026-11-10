@@ -59,6 +59,7 @@ pub mod impasto_gpu; // Impasto: the composed relief, materialised for the GPU l
 mod impasto_fields; // Impasto: os campos que a luz lê (a dobra, e através dos ajustes de vizinhança)
 mod impasto_light; // Impasto: the light pass — normal from the height field + Lambert/Blinn-Phong
 mod impasto_luz_tique; // Impasto: o tique da lâmpada reacende a composição não acesa guardada (B15.3)
+pub(crate) mod impasto_luz_dobra; // Impasto: o G-buffer da dobra — o tique da lâmpada só sombreia (B15.3)
 mod impasto_live; // Impasto: the stroke's commit + the Body card's live re-derivation (LOC split)
 mod impasto_material; // Impasto: the paint's MATERIAL on the canvas (deposit + the live re-bake)
 mod impasto_settings; // Impasto: section setters + the panel-event route (mirrors watercolor_settings)

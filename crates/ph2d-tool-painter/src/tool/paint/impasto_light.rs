@@ -25,6 +25,7 @@
 //! have been the obvious thing, and it would have compounded the shading a little more every frame.
 
 use super::Region;
+use super::impasto_luz_dobra::{PorBytes, dobra_da_faixa, sombreia_faixa};
 use super::impasto_shade::Rig;
 use super::relief_fields::ReliefFields;
 use crate::layers::ReliefComposite;
@@ -91,7 +92,7 @@ pub(super) use ph2d_light::AMBIENT;
 /// (`≤ W_TAIL` of silhouette — where the wall does not stand, the light does not push, and the brush no
 /// longer lays pigment either), full over solid paint (`≥ W_SOLID`), the ramp between.
 #[inline]
-fn paint_body(cover: f32) -> f32 {
+pub(super) fn paint_body(cover: f32) -> f32 {
     cover
 }
 
@@ -113,7 +114,7 @@ fn paint_body(cover: f32) -> f32 {
 /// visible, and it must not bleach. Fixing one by breaking the other is how this knob died the first
 /// time.)
 #[inline]
-fn gloss_body(cover: f32) -> f32 {
+pub(super) fn gloss_body(cover: f32) -> f32 {
     paint_body(cover)
 }
 
@@ -157,6 +158,11 @@ impl PainterTool {
     /// against ([`super::impasto_gpu`] + `ph2d_render::ImpastoLightPass`). A parity gate that compared the
     /// shader to a re-implementation of this would agree with the bug; it compares against THIS.
     pub fn apply_impasto_light(&self, rgba: &mut [u8], region: Region) {
+        self.acende_em_faixas(rgba, region, FAIXA_LINHAS);
+    }
+
+    /// [`Self::apply_impasto_light`] com `linhas` por faixa (a sonda mede 32 × 64 no MESMO binário).
+    pub(super) fn acende_em_faixas(&self, rgba: &mut [u8], region: Region, linhas: usize) {
         if !self.impasto_visible() {
             return;
         }
@@ -179,58 +185,20 @@ impl PainterTool {
         let paper_body = fields.paper_body();
         let (x0, y0) = (i64::from(region.x), i64::from(region.y));
         rgba[..w * h * 4]
-            .par_chunks_mut(w * 4 * FAIXA_LINHAS)
+            .par_chunks_mut(w * 4 * linhas)
             .enumerate()
             .for_each(|(b, faixa)| {
                 let n = faixa.len() / (w * 4);
-                let gy0 = y0 + (b * FAIXA_LINHAS) as i64;
+                let gy0 = y0 + (b * linhas) as i64;
                 let fw = w + 2;
                 let mut alt = vec![0.0f32; fw * (n + 2)];
                 let mut cob = vec![0.0f32; fw * n];
                 let mut mats: Vec<MaterialBytes> = vec![[0; 7]; fw * n];
-                for (j, linha) in alt.chunks_exact_mut(fw).enumerate() {
-                    let gy = gy0 - 1 + j as i64;
-                    if j == 0 || j == n + 1 {
-                        for (i, a) in linha.iter_mut().enumerate() {
-                            *a = fields.height_at(x0 - 1 + i as i64, gy);
-                        }
-                    } else {
-                        let r = (j - 1) * fw..j * fw;
-                        fields.dobra_da_linha(gy, x0 - 1, linha, &mut cob[r.clone()], &mut mats[r]);
-                    }
-                }
-                let mut mat =
+                dobra_da_faixa(&fields, gy0, x0, fw, &mut alt, &mut cob, &mut mats);
+                let cache =
                     light.resolve(ph2d_painter_brush::material::Material::NEUTRAL.to_bytes());
-                for ry in 0..n {
-                    let c = (ry + 1) * fw + 1; // o píxel (0, ry) na moldura
-                    for rx in 0..w {
-                        let k = c + rx;
-                        let q = ry * fw + 1 + rx; // o mesmo píxel nas linhas da dobra
-                        let dhx = (alt[k + 1] - alt[k - 1]) * 0.5;
-                        let dhy = (alt[k + fw] - alt[k - fw]) * 0.5;
-                        let cover = cob[q];
-                        let i = (ry * w + rx) * 4;
-                        let albedo = [
-                            f32::from(faixa[i]) / 255.0,
-                            f32::from(faixa[i + 1]) / 255.0,
-                            f32::from(faixa[i + 2]) / 255.0,
-                        ];
-                        let key = mats[q];
-                        if key != mat.key {
-                            mat = light.resolve(key);
-                        }
-                        let body = paint_body(cover).max(paper_body);
-                        let (mul, add) =
-                            light.shade(&mat, body, gloss_body(cover), dhx, dhy, albedo);
-                        if mul == [1.0; 3] && add == [0.0; 3] {
-                            continue; // flat: byte-identical, and not even a rounding trip through f32
-                        }
-                        for c in 0..3 {
-                            let lit = light_pixel(albedo[c], mul[c], add[c]);
-                            faixa[i + c] = (lit * 255.0 + 0.5) as u8;
-                        }
-                    }
-                }
+                let fonte = PorBytes { mats: &mats, cache };
+                sombreia_faixa(&light, paper_body, &alt, &cob, faixa, w, fonte);
             });
     }
 

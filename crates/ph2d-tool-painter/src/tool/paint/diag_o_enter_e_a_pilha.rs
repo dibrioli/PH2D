@@ -178,11 +178,13 @@ fn fixar_fecha_a_pilha() {
             })
             .count()
     };
-    // Sem o esfregão, para a régua afirmar SÓ o que esta cura comprou.
-    let corre = |sem_cura: bool| {
+    // `smear = false` cala o esfregão: a metade que afirma SÓ o que esta cura comprou.
+    let corre = |sem_cura: bool, smear: bool| {
         super::composite_reposicoes::COMMIT_SEM_FECHAR.with(|c| c.set(sem_cura));
         let mut t = cena();
-        t.paint.composite[4].strength = 0.0;
+        if !smear {
+            t.paint.composite[4].strength = 0.0;
+        }
         figura(&mut t, [420.0, 512.0], 110.0);
         assert!(t.commit_open_shape(), "o Enter não fixou nada");
         // ⚠️ A pilha mede-se AQUI, e não no fim: a 2.ª figura reabre-a e re-semeia o `pre` — *uma
@@ -198,11 +200,11 @@ fn fixar_fecha_a_pilha() {
     };
 
     // CONTROLO POSITIVO: o Enter de facto assou arte — senão «não apaga nada» é vácuo.
-    let (fixado, n, fechou) = corre(false);
+    let (fixado, n, fechou) = corre(false, false);
     assert!(fixado > 20_000, "o Enter mal assou arte ({fixado} texels)");
 
     // ⛔ O CONTROLO DA CURA: sem ela a figura seguinte APAGA o que foi fixado.
-    let (_, sem_cura, fechou_sem_cura) = corre(true);
+    let (_, sem_cura, fechou_sem_cura) = corre(true, false);
     assert!(
         sem_cura > 5_000,
         "a fixtura não contém o fenómeno: sem a cura só {sem_cura} texels foram destruídos"
@@ -221,6 +223,91 @@ fn fixar_fecha_a_pilha() {
         n, 0,
         "a figura seguinte apagou {n} texels da arte fixada (sem a cura eram {sem_cura})"
     );
+
+    // ⭐ A metade COM o Smear (B24.3). O esfregão ARRASTA a arte que encontra — é a lei dele —, logo
+    // «nada apagado» não é a régua: o oráculo é a tela fixada aberta como DOCUMENTO NOVO e a mesma
+    // figura por cima. Depois do Enter nada do traço anterior pode sobreviver para a distinguir.
+    let (fixado_s, n_s, fechou_s) = corre(false, true);
+    assert!(fixado_s > 20_000, "com o Smear o Enter mal assou arte ({fixado_s} texels)");
+    assert!(fechou_s, "com o Smear o Enter não fechou a pilha");
+    let contra_o_novo = |sem_cura: bool| {
+        super::composite_reposicoes::COMMIT_SEM_FECHAR.with(|c| c.set(sem_cura));
+        let mut t = cena();
+        figura(&mut t, [420.0, 512.0], 110.0);
+        assert!(t.commit_open_shape(), "o Enter não fixou nada");
+        let fixada = t.canvas_rgba.to_vec();
+        figura(&mut t, [600.0, 512.0], 110.0);
+        super::composite_reposicoes::COMMIT_SEM_FECHAR.with(|c| c.set(false));
+        let mut novo = cena();
+        novo.set_source(fixada.clone(), S, S);
+        figura(&mut novo, [600.0, 512.0], 110.0);
+        let (dif, pior) = t
+            .canvas_rgba
+            .iter()
+            .zip(novo.canvas_rgba.iter())
+            .fold((0usize, 0u8), |(d, p), (a, b)| {
+                (d + usize::from(a != b), p.max(a.abs_diff(*b)))
+            });
+        (dif, pior, destruido(&fixada, &novo))
+    };
+    // CONTROLO: o oráculo DISCRIMINA — sem a cura do Enter a figura difere do documento novo.
+    let (dif_sem, _, _) = contra_o_novo(true);
+    assert!(dif_sem > 5_000, "o oráculo não vê o defeito do Enter: só {dif_sem} bytes diferem");
+    let (dif, pior, n_novo) = contra_o_novo(false);
+    assert!(
+        n_novo > 1_000,
+        "o oráculo não contém o fenómeno: no documento novo o Smear só arrastou {n_novo} texels"
+    );
+    assert_eq!(
+        (dif, pior, n_s),
+        (0, 0, n_novo),
+        "depois do Enter a figura com o Smear não é a de um documento novo ({dif} bytes, pior \
+         {pior}; arrastados {n_s} contra {n_novo})"
+    );
+}
+
+/// ⭐ **B24.4 — a variante Composite do T1-26:** retirar ou trocar uma camada do Composite com a
+/// figura aberta desalinhava `composite[i]` do estado por posição da pilha (planos, máscara, RNG,
+/// arco, relevo). A porta assa a figura com a pilha com que ela foi desenhada, como as portas de
+/// camada do documento (`fecha_a_forma_aberta`).
+#[test]
+fn toda_porta_do_composite_fecha_a_figura_aberta() {
+    type Porta = fn(&mut PainterTool);
+    let portas: [(&str, Porta); 3] = [
+        ("retira_camada", |t| t.retira_camada(1)),
+        ("move_composite_layer_up", |t| t.move_composite_layer_up(2)),
+        ("move_composite_layer_down", |t| t.move_composite_layer_down(2)),
+    ];
+    for (nome, porta) in portas {
+        let mut t = PainterTool::default();
+        t.set_source(vec![0u8; (S * S * 4) as usize], S, S);
+        t.paint.brush.radius_px = 24.0;
+        t.paint.brush.hardness = 1.0;
+        t.paint.brush.strength = 1.0;
+        t.paint.brush.space_attenuation = false;
+        t.paint.composite_enabled = true;
+        pilha_do_dono(&mut t);
+        t.paint.composite_len = 5;
+        t.paint.brush.stroke_method = ph2d_painter_brush::StrokeMethod::Ellipse;
+        let c = [420.0f32, 512.0];
+        t.on_canvas_pointer(cp(c, PointerPhase::Down));
+        for i in 1..=4 {
+            t.on_canvas_pointer(cp([c[0] + 27.5 * i as f32, c[1]], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([c[0] + 110.0, c[1]], PointerPhase::Up));
+        assert!(t.is_editing_shape(), "{nome}: a figura não ficou aberta");
+        let aberta = t.canvas_rgba.to_vec();
+        assert!(aberta.iter().any(|&b| b != 0), "{nome}: a figura não pintou");
+        porta(&mut t);
+        assert!(
+            !t.is_editing_shape() && !t.has_parked_shapes() && t.paint.drag_preview.is_none(),
+            "{nome}: a figura ficou aberta"
+        );
+        assert!(t.paint.pilha.pre.is_empty(), "{nome}: a pilha ficou aberta");
+        assert!(t.canvas_rgba[..] == aberta[..], "{nome}: a figura mudou ao fechar");
+        t.cancel_open_shape();
+        assert!(t.canvas_rgba[..] == aberta[..], "{nome}: o Esc apagou a figura");
+    }
 }
 
 /// ⚠️⚠️ **A PREMISSA DESTA SONDA MORREU, e ela fica com a morte à vista.**

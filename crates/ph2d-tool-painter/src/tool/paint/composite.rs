@@ -379,6 +379,7 @@ impl PainterTool {
     /// com a medição, em vez de um gate que afirma o nada.*
     pub fn move_composite_layer_up(&mut self, pos: usize) {
         if (1..self.paint.composite_len).contains(&pos) {
+            self.fecha_a_forma_aberta(); // B24.4: como em `retira_camada`
             self.paint.composite.swap(pos, pos - 1);
         }
     }
@@ -386,6 +387,7 @@ impl PainterTool {
     /// Move the layer at `pos` one position DOWN (toward the bottom). No-op at the bottom.
     pub fn move_composite_layer_down(&mut self, pos: usize) {
         if pos + 1 < self.paint.composite_len {
+            self.fecha_a_forma_aberta(); // B24.4: como em `retira_camada`
             self.paint.composite.swap(pos, pos + 1);
         }
     }

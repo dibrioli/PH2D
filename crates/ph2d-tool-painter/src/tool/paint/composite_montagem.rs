@@ -90,6 +90,9 @@ impl PainterTool {
         if pos >= self.paint.composite_len {
             return;
         }
+        // A figura aberta assa-se com a pilha com que foi desenhada: o estado por posição (planos,
+        // máscara, RNG, arco, relevo) não segue a troca (B24.4).
+        self.fecha_a_forma_aberta();
         for i in pos..self.paint.composite_len - 1 {
             self.paint.composite[i] = self.paint.composite[i + 1];
         }

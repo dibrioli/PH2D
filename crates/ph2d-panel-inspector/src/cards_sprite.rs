@@ -41,7 +41,7 @@ pub(crate) fn componente_do_cartao(secao: NodeId) -> NodeId {
 /// O convite do cartão vazio mede cinco campos: é o único alvo do cartão.
 const LINHAS_DO_CONVITE: f32 = 5.0; // LITERAL-PX-OK: conta de campos, não geometria
 
-fn botao(store: &mut WidgetStore, id: NodeId, dica: &str) {
+pub(crate) fn botao(store: &mut WidgetStore, id: NodeId, dica: &str) {
     store.register_if_absent(
         id,
         InteractiveState::Button {

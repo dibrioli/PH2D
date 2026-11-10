@@ -91,7 +91,7 @@ impl Grandeza {
 /// Os campos de mundo de tabela FIXA (uma unidade por id). As tabelas das secções que já são
 /// indexadas por id (Platform Player, Particles) e a junta (unidade pelo tipo/eixo) respondem em
 /// [`guardada`] a partir da PRÓPRIA tabela.
-const FIXOS: [(NodeId, Grandeza); 52] = {
+const FIXOS: [(NodeId, Grandeza); 54] = {
     use Grandeza::{Comprimento as L, PixelsDoMundo as P, Velocidade as V};
     [
         (i::INSP_CAMERA_HEIGHT, L),
@@ -104,6 +104,8 @@ const FIXOS: [(NodeId, Grandeza); 52] = {
         (i::INSP_CAMERA_MAX_X, L),
         (i::INSP_CAMERA_MAX_Y, L),
         (i::INSP_PHYS_OFFSET_X, L),
+        (i::INSP_SHAPE_PIVOT_XY[0], L),
+        (i::INSP_SHAPE_PIVOT_XY[1], L),
         (i::INSP_PHYS_OFFSET_Y, L),
         (i::INSP_PHYS_RADIUS, L),
         (i::INSP_PHYS_HALF_X, L),

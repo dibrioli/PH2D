@@ -130,3 +130,24 @@ pub const INSP_PIXEL_PIVOT_OPT: [NodeId; 65] = {
     }
     t
 };
+
+/// **O Look da forma de colisão** (GEF02 onda 8): os nove pontos do Pivot (por linhas, a de cima primeiro), o botão
+/// que abre os campos, os campos X e Y (metros a partir do centro da forma) e a Opacity (barra 0..1 e o chip em %).
+pub const INSP_SHAPE_PIVOT: [NodeId; 9] = [
+    hash_node_id("insp_shape_pivot_0"),
+    hash_node_id("insp_shape_pivot_1"),
+    hash_node_id("insp_shape_pivot_2"),
+    hash_node_id("insp_shape_pivot_3"),
+    hash_node_id("insp_shape_pivot_4"),
+    hash_node_id("insp_shape_pivot_5"),
+    hash_node_id("insp_shape_pivot_6"),
+    hash_node_id("insp_shape_pivot_7"),
+    hash_node_id("insp_shape_pivot_8"),
+];
+pub const INSP_SHAPE_PIVOT_NOME: NodeId = hash_node_id("insp_shape_pivot_nome");
+pub const INSP_SHAPE_PIVOT_XY: [NodeId; 2] = [
+    hash_node_id("insp_shape_pivot_x"),
+    hash_node_id("insp_shape_pivot_y"),
+];
+pub const INSP_SHAPE_OPACITY: NodeId = hash_node_id("insp_shape_opacity");
+pub const INSP_SHAPE_OPACITY_CHIP: NodeId = hash_node_id("insp_shape_opacity_chip");

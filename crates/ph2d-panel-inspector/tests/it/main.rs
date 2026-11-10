@@ -74,6 +74,7 @@ mod o_cartao_da_forma_filha;
 mod o_cartao_da_sprite;
 mod o_cartao_das_camadas;
 mod o_cartao_do_pixel_sprite;
+mod o_cartao_look_da_forma;
 mod o_chip_da_vigia_mostra_um_sinal;
 mod o_chip_de_uma_tag_cabe_na_pilula;
 mod o_corpo_fisico_em_pares;

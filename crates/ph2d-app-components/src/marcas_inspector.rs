@@ -236,6 +236,18 @@ fn mascara() -> &'static [(NodeId, Box<[PropKind]>)] {
         // O losango do Pivot é o do pivô; a posição e o collider que o escritor também move entram só no
         // clique ([`ARRASTA_DO_PIVO`]).
         let pivo: Box<[PropKind]> = [chave(4, 0), chave(4, 1)].into_iter().flatten().collect();
+        // O pivô da forma de colisão (onda 8) anda com a posição e o Offset que se dobra nela.
+        let look = |campo, faixa| {
+            ph2d_ecs::canal_componente::chave("ph2d::physics::ShapeLook", campo, faixa)
+                .map(PropKind::Field)
+        };
+        let pivo_da_forma: Box<[PropKind]> = [look(0, 0), look(0, 1)]
+            .into_iter()
+            .flatten()
+            .chain(POSICAO.iter().copied())
+            .chain([fi(fs::DESLOC_X)])
+            .collect();
+        let opacidade_da_forma: Box<[PropKind]> = look(2, 0).into_iter().collect();
         (insp::INSP_CAMERA_CULL_BIT.iter())
             .chain([&insp::INSP_CAMERA_CULL_HEADER])
             .map(|&id| (id, reps.clone()))
@@ -243,6 +255,8 @@ fn mascara() -> &'static [(NodeId, Box<[PropKind]>)] {
                 [insp::INSP_SPRITE_FLIP_X, insp::INSP_SPRITE_FLIP_Y].map(|id| (id, flip.clone())),
             )
             .chain(insp::INSP_SPRITE_PIVOT_XY.map(|id| (id, pivo.clone())))
+            .chain(insp::INSP_SHAPE_PIVOT_XY.map(|id| (id, pivo_da_forma.clone())))
+            .chain([(insp::INSP_SHAPE_OPACITY_CHIP, opacidade_da_forma.clone())])
             .collect()
     })
 }

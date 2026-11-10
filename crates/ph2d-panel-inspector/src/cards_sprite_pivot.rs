@@ -92,8 +92,29 @@ pub(crate) fn prepara_campos_do_pivot(store: &mut WidgetStore) {
     }
 }
 
-/// A grade 3 × 3 do Pivot, o nome do ponto ao lado; devolve o fundo.
+/// A grade 3 × 3 do Pivot da Sprite.
 fn grade_do_pivot(c: &mut CardCtx<'_>, y: f32, f: slot_image::SpriteFacts) -> f32 {
+    let aberto = pivot_campos_abertos(&f);
+    grade(
+        c,
+        y,
+        &ids::INSP_SPRITE_PIVOT,
+        ids::INSP_SPRITE_PIVOT_NOME,
+        f.pivot_ponto,
+        aberto,
+    )
+}
+
+/// ⭐ A grade 3 × 3 de um Pivot (a Sprite e a forma de colisão): `aceso` = o ponto `[coluna, linha]` em que o pivô
+/// cai, e o botão `nome` ao lado, ligado quando os campos X e Y estão `aberto`s. Devolve o fundo.
+pub(crate) fn grade(
+    c: &mut CardCtx<'_>,
+    y: f32,
+    pontos: &[NodeId; 9],
+    nome: NodeId,
+    aceso: Option<[u8; 2]>,
+    aberto: bool,
+) -> f32 {
     let theme = c.ink.theme;
     let casa = m::FIELD_H * 0.5;
     let lado = casa * CASAS_POR_LADO;
@@ -104,10 +125,8 @@ fn grade_do_pivot(c: &mut CardCtx<'_>, y: f32, f: slot_image::SpriteFacts) -> f3
         ph2d_editor_core::paint::frame_radius(theme, ph2d_tokens::Radius::Sm.px()),
         resolve(ColorToken::Bg2, theme),
     );
-    let aceso = f
-        .pivot_ponto
-        .map(|p| usize::from(p[1]) * 3 + usize::from(p[0]));
-    for (i, id) in ids::INSP_SPRITE_PIVOT.into_iter().enumerate() {
+    let aceso = aceso.map(|p| usize::from(p[1]) * 3 + usize::from(p[0]));
+    for (i, &id) in pontos.iter().enumerate() {
         let r = Rect::new(
             c.x + (i % 3) as f32 * casa,
             y + (i / 3) as f32 * casa,
@@ -134,10 +153,10 @@ fn grade_do_pivot(c: &mut CardCtx<'_>, y: f32, f: slot_image::SpriteFacts) -> f3
         c.hit_index.register(id, r);
     }
     let botao = [Seg {
-        id: ids::INSP_SPRITE_PIVOT_NOME,
+        id: nome,
         icon: Some(IconId::More),
         text: "",
-        on: pivot_campos_abertos(&f),
+        on: aberto,
     }];
     let (x0, w0) = (c.x, c.w);
     (c.x, c.w) = (c.x + lado + Spacing::Xs.px(), m::FIELD_H);

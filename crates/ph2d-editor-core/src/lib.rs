@@ -272,8 +272,8 @@ pub use screens::{
     InspectorTransformInfo, InspectorVisibilityInfo, InspectorVisibilityMixed,
     InspectorVisibilitySectionInfo, InspectorWheelInfo, JointFieldEdit, OrderingFieldEdit,
     OutlineEdit, PhysicsFieldEdit, PlayerFieldEdit, RequestedSpriteStrategy, SamplingFieldEdit,
-    SliceFieldEdit, SpriteFieldEdit, TimerFieldEdit, ViewFocusKind, VisibilityFieldEdit,
-    WheelFieldEdit, paint_hero_screen, row_cells,
+    ShapeLookFacts, SliceFieldEdit, SpriteFieldEdit, TimerFieldEdit, ViewFocusKind,
+    VisibilityFieldEdit, WheelFieldEdit, paint_hero_screen, row_cells,
 };
 pub use tags_edits::{TagTreeEdit, TagsFieldEdit, TagsPanelInfo, TagsPanelRow};
 pub use toast::{Toast, ToastQueue, ToastSeverity};

@@ -203,7 +203,7 @@ fn apply_event_do_retrato(
 /// hit-indexado que não despacha é um controlo morto, e dois censos deste repo o dizem. O clique é
 /// o que torna a queda **descoberta** — o artista abre, vê as imagens, e arrasta uma.
 fn texture_slot_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    if crate::cards_sprite::evento(host, ev) {
+    if crate::cards_sprite::evento(host, ev) || crate::cards_forma_look::evento(host, ev) {
         return true;
     }
     if ev != WidgetEvent::Click(ids::INSP_RENDER_TEXTURE_SLOT) {

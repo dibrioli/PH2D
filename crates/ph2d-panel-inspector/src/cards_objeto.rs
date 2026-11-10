@@ -85,6 +85,9 @@ pub(crate) fn do_topo(store: &WidgetStore) -> Vec<CardDef<'static>> {
     {
         out.push(crate::cards_sprite::imagem_do_pixel(card.clone()));
     }
+    if let Some(look) = crate::cards_forma_look::cartao() {
+        out.push(look);
+    }
     if let Some(info) = crate::state::current_inspector_visibility_section() {
         out.push(visibilidade(info));
     }

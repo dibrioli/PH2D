@@ -242,6 +242,12 @@ pub(super) const COLLIDER: &[FieldDesc] = &[
     f(5, "component.field.collider.5", K::Toggle).named_as("trigger", "is_sensor"),
     f(6, "component.field.collider.6", K::Vec2).named("offset"),
 ];
+/// O Look da forma de colisão (GEF02 onda 8): os canais do pivô (fração da meia-extensão), da cor e da opacidade.
+pub(super) const SHAPE_LOOK: &[FieldDesc] = &[
+    f(0, "component.field.shape_look.0", K::Vec2).named("pivot"),
+    f(1, "component.field.shape_look.1", K::Color).named("tint"),
+    f(2, "component.field.shape_look.2", K::Scalar).named("opacity"),
+];
 pub(super) const GRAVITY_SCALE: &[FieldDesc] =
     &[f(0, "component.field.gravity_scale.0", K::Scalar).named_as("gravity_scale", WHOLE)];
 /// `init_spin` guarda rad/s — o do script (os ângulos do script são radianos); o cartão pinta graus/s.

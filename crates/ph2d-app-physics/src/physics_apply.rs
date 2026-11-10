@@ -48,7 +48,9 @@ pub fn apply_physics_edit(
         crate::physics_seed::forma_que_falta(sim.world_mut(), entity);
         return;
     }
-    if crate::physics_colide::apply_collides_edit(sim.world(), entity, edit, queue, registry) {
+    if crate::physics_colide::apply_collides_edit(sim.world(), entity, edit, queue, registry)
+        || crate::physics_apply_look::aplica(sim, entity, edit, queue, registry)
+    {
         return;
     }
     if matches!(edit, PhysicsFieldEdit::ScaleToOne) {
@@ -539,6 +541,11 @@ pub fn apply_physics_edit(
         | PhysicsFieldEdit::FitToPicture
         | PhysicsFieldEdit::ScaleToOne
         | PhysicsFieldEdit::Outline(_)
+        | PhysicsFieldEdit::LookPivotPoint(_)
+        | PhysicsFieldEdit::LookPivotX(_)
+        | PhysicsFieldEdit::LookPivotY(_)
+        | PhysicsFieldEdit::LookOpacity(_)
+        | PhysicsFieldEdit::LookTint(_)
         | PhysicsFieldEdit::Kind(_)
         | PhysicsFieldEdit::GravityScale(_)
         | PhysicsFieldEdit::LinvelX(_)

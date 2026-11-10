@@ -190,6 +190,7 @@ pub fn build_physics_info(
             ccd: false,
             lock_rotation: false,
             offset: [0.0, 0.0],
+            look: ph2d_editor_core::ShapeLookFacts::NONE,
             walk_grip: WalkSurface::NEUTRAL.grip,
             walk_belt: WalkSurface::NEUTRAL.belt,
             lock_x: false,
@@ -299,6 +300,8 @@ pub fn build_physics_info(
         ccd,
         lock_rotation,
         offset: col.offset,
+        // O cartão Look só do objeto «Collision Shape» selecionado (um `Collider` sem corpo).
+        look: crate::physics_apply_look::fatos(world, forma, &col, forma == entity && rb.is_none()),
         // A superfície AUTORADA — ausente, o neutro. Sem estas duas linhas as
         // rows seriam write-only, o defeito que a família das zonas shipou
         // inteira e que custou um report do Enio.

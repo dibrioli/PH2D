@@ -93,6 +93,7 @@ pub(crate) fn with_body() -> InspectorPhysicsInfo {
         ccd: false,
         lock_rotation: false,
         offset: [0.0, 0.0],
+        look: ph2d_editor_core::ShapeLookFacts::NONE,
         lock_x: false,
         lock_y: false,
         mass_manual: false,

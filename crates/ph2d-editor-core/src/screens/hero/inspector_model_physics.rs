@@ -86,6 +86,8 @@ pub struct InspectorPhysicsInfo {
     /// the sprite centre (a character's feet, an off-centre hitbox). Mirrors
     /// `Collider.offset`. Not Dynamic-only — any collider can be offset.
     pub offset: [f32; 2],
+    /// O cartão Look de um objeto «Collision Shape» (onda 8): pivô, cor, opacidade.
+    pub look: super::ShapeLookFacts,
     /// **A superfície que o pé encontra** (`W-Surface`) — espelha
     /// `WalkSurface.grip`: quanto do orçamento de caminhada o pé aproveita
     /// aqui. Neutro `1.0`. Ausente o componente, é o neutro.
@@ -408,6 +410,14 @@ pub enum PhysicsFieldEdit {
     /// write on `Collider.offset`; not Dynamic-only.
     OffsetX(f32),
     OffsetY(f32),
+    /// O Look da forma (onda 8): o pivô num dos nove pontos `[coluna, linha]`, a linha 0 em cima.
+    LookPivotPoint([u8; 2]),
+    /// O pivô em metros a partir do centro da forma (`y` para cima), num eixo; a forma fica no mundo.
+    LookPivotX(f32),
+    LookPivotY(f32),
+    /// A opacidade (`0..=1`) e a cor do overlay da forma.
+    LookOpacity(f32),
+    LookTint([f32; 4]),
     /// **A tração desta superfície** (`W-Surface`) — escreve `WalkSurface.grip`.
     /// Só a lei do PLAYER a lê; um caixote não sabe que ela existe.
     WalkGrip(f32),
@@ -616,6 +626,11 @@ impl PhysicsFieldEdit {
                 | P::CapHalfHeight(_)
                 | P::OffsetX(_)
                 | P::OffsetY(_)
+                | P::LookPivotPoint(_)
+                | P::LookPivotX(_)
+                | P::LookPivotY(_)
+                | P::LookOpacity(_)
+                | P::LookTint(_)
                 | P::WalkGrip(_)
                 | P::WalkBelt(_)
                 | P::Density(_)

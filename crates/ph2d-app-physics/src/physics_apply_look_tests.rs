@@ -33,3 +33,110 @@ fn a_alca_numa_forma_com_pivo_deixa_o_centro_onde_puxou() {
         "a borda esquerda, o pivô, na origem"
     );
 }
+
+/// Um corpo parado com a forma FILHA `1 × 1` em `(3, 2)`, girada 90° e esticada 2× em X no corpo.
+fn corpo_com_forma() -> (SimWorld, Entity) {
+    let mut sim = SimWorld::new();
+    let p = sim
+        .world_mut()
+        .spawn(ph2d_ecs::Transform::from_translation(ph2d_core::Vec2::new(
+            3.0, 2.0,
+        )))
+        .id();
+    ph2d_physics_ecs::torna_corpo(
+        sim.world_mut(),
+        p,
+        ph2d_physics_ecs::BodyKind::Static,
+        [0.5, 0.5],
+        false,
+    );
+    let f = ph2d_physics_ecs::main_shape(sim.world(), p).expect("a forma");
+    let mut t = *sim.world().get::<ph2d_ecs::Transform>(f).expect("t");
+    t.rotation = std::f32::consts::FRAC_PI_2;
+    t.scale.x = 2.0;
+    sim.world_mut().entity_mut(f).insert(t);
+    sim.world_mut().get_mut::<Collider>(f).expect("c").offset = [0.25, 0.0];
+    (sim, f)
+}
+
+/// Os quatro cantos da forma em MUNDO, pela porta única (o que o solver e o overlay leem).
+fn cantos(sim: &SimWorld, f: Entity) -> Vec<[f32; 2]> {
+    let w = sim.world();
+    let col = ph2d_physics_ecs::forma_resolvida(w, f, w.get::<Collider>(f).expect("c"));
+    let t = ph2d_ecs::world_transform(w, f).expect("mundo");
+    let h = ph2d_physics_ecs::shape_look::meia_extensao(col.shape);
+    let (s, c) = libm::sincosf(t.rotation);
+    [[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]]
+        .iter()
+        .map(|k: &[f32; 2]| {
+            let q = [
+                (col.offset[0] + k[0] * h[0]) * t.scale.x,
+                (col.offset[1] + k[1] * h[1]) * t.scale.y,
+            ];
+            [
+                t.translation.x + c * q[0] - s * q[1],
+                t.translation.y + s * q[0] + c * q[1],
+            ]
+        })
+        .collect()
+}
+
+/// ⭐ O ponto de baixo à esquerda (e depois o Custom): a forma não sai do lugar no mundo, a origem do objeto vai
+/// para o canto (a fração `[-1, -1]`) e o Offset de antes dobra-se na posição.
+#[test]
+fn o_pivo_novo_deixa_a_forma_no_lugar_e_leva_a_origem_ao_ponto() {
+    let (mut sim, f) = corpo_com_forma();
+    let antes = cantos(&sim, f);
+    crate::physics_tests::apply(&mut sim, f, PhysicsFieldEdit::LookPivotPoint([0, 2]));
+    let depois = cantos(&sim, f);
+    for (a, b) in antes.iter().zip(&depois) {
+        assert!(
+            (a[0] - b[0]).abs() < 1e-5 && (a[1] - b[1]).abs() < 1e-5,
+            "{antes:?} → {depois:?}"
+        );
+    }
+    let w = sim.world();
+    assert_eq!(w.get::<ShapeLook>(f).expect("o look").pivot, [-1.0, -1.0]);
+    assert_eq!(
+        w.get::<Collider>(f).expect("c").offset,
+        [0.0, 0.0],
+        "o Offset dobrou-se"
+    );
+    let o = ph2d_ecs::world_transform(w, f).expect("mundo").translation;
+    assert!(
+        depois
+            .iter()
+            .any(|q| (q[0] - o.x).abs() < 1e-5 && (q[1] - o.y).abs() < 1e-5),
+        "a origem está num canto: {o:?} {depois:?}"
+    );
+    crate::physics_tests::apply(&mut sim, f, PhysicsFieldEdit::LookPivotX(0.25));
+    let custom = cantos(&sim, f);
+    for (a, b) in antes.iter().zip(&custom) {
+        assert!(
+            (a[0] - b[0]).abs() < 1e-5 && (a[1] - b[1]).abs() < 1e-5,
+            "Custom: {custom:?}"
+        );
+    }
+    assert_eq!(
+        sim.world().get::<ShapeLook>(f).expect("o look").pivot,
+        [0.5, -1.0]
+    );
+}
+
+#[test]
+fn a_opacidade_e_a_cor_nao_mexem_na_forma() {
+    let (mut sim, f) = corpo_com_forma();
+    let col = *sim.world().get::<Collider>(f).expect("c");
+    let t = *sim.world().get::<ph2d_ecs::Transform>(f).expect("t");
+    crate::physics_tests::apply(&mut sim, f, PhysicsFieldEdit::LookOpacity(0.3));
+    crate::physics_tests::apply(
+        &mut sim,
+        f,
+        PhysicsFieldEdit::LookTint([1.0, 0.0, 0.0, 1.0]),
+    );
+    let w = sim.world();
+    let l = w.get::<ShapeLook>(f).expect("o look");
+    assert_eq!((l.opacity, l.tint), (0.3, [1.0, 0.0, 0.0, 1.0]));
+    assert_eq!(*w.get::<Collider>(f).expect("c"), col);
+    assert_eq!(*w.get::<ph2d_ecs::Transform>(f).expect("t"), t);
+}

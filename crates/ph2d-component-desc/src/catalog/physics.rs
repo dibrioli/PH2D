@@ -484,7 +484,12 @@ pub const DESCS: &[D] = &[
     // As folgas das pontas da corda arrastam-se no canvas (o batente); nenhum cartão as mostra.
     i("ph2d::physics::RopeStops", "component.rope_stops.name").hidden(H::OtherEditor),
     // O Look da forma de colisão (GEF02 onda 8): escreve-o o cartão Look e a ferramenta Pivot do canvas.
-    i("ph2d::physics::ShapeLook", "component.shape_look.name").hidden(H::OtherEditor),
+    il(
+        "ph2d::physics::ShapeLook",
+        "component.shape_look.name",
+        SHAPE_LOOK,
+    )
+    .hidden(H::OtherEditor),
     il(
         "ph2d::physics::SignalOnHit",
         "component.signal_on_hit.name",

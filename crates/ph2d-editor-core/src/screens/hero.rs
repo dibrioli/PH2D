@@ -94,6 +94,7 @@ mod inspector_model_physics;
 /// §14 diz que COMPORTAMENTO ele tem.
 mod inspector_model_player;
 mod inspector_model_properties;
+mod inspector_model_shape_look;
 mod inspector_model_slice;
 mod inspector_model_tags;
 mod inspector_model_timer;
@@ -156,6 +157,7 @@ pub use inspector_model_ordering::*;
 pub use inspector_model_physics::*;
 pub use inspector_model_player::*;
 pub use inspector_model_properties::*;
+pub use inspector_model_shape_look::ShapeLookFacts;
 pub use inspector_model_slice::*;
 pub use inspector_model_tags::*;
 pub use inspector_model_timer::*;

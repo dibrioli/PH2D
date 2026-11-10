@@ -82,6 +82,7 @@ pub use cards_input_map::{
     set_current_input_map,
 };
 mod cards_corpos;
+mod cards_forma_look;
 mod cards_objeto;
 mod cards_pilha;
 mod cards_pixel_luz;

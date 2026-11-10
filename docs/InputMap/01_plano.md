@@ -207,3 +207,27 @@ PH2D_GAME_SMOKE=<n> 1600 1000 <saida.png>` e a 1280×720. Montagens finais em `d
   `input_map_view` gravado pelo detector de `forwarding_persist.rs`; o seletor pinta com
   `Widget::Choice` via `CardCtx::flutuante`. Arnês: `shells/game-scenes/tests/it/input_map/mod.rs`
   (`Mesa`).
+
+## 11 · Contratos depois da R2
+
+- **A janela saiu** (−1 211 editor-core, −188 shell, −1 023 testes, −48 i18n). `chrome/input_map.rs` ficou só
+  com o abridor do menu, os braços partilhados da escuta (`INPUT_MAP_BIND_CAPTURED`,
+  `INPUT_MAP_LISTEN_CANCELLED`) e `pedidos.rs` (Trigger). Scrollbar 842 reformada, nunca reutilizada.
+- **Escuta:** o slot partilhado é `Option<Binding>` (`capture_binding`/`take_captured_binding`); o comando
+  entra por `ph2d_app_input_map::listen::{pad_binding, deliver_pad}` (`AXIS_PUSHED = 0.5`), chamado em
+  `render_loop/fase_pointer_subjects.rs:50-52`, antes do resolve. A aba pede a escuta por
+  `InputMapDoc::take_listen_request`; a família chama `listen_for_binding`/`stop_listening`.
+- **Undo:** `ProjectState.input_map` (`undo.rs:100`), `ProjectState::{do_hero, ao_hero}` (`undo_app.rs:578/585`,
+  o restauro corta a escuta); `ProjectFile.input_map` saiu (uma fonte só). Gesto em curso:
+  `ph2d_app_input_map::gesture_in_progress(&hero)` em `undo_app_macros.rs::motivo_da_supressao`.
+- **game_id:** `ProjectFile.game_id: u64` (último campo), recurso do mundo `project::GameId`,
+  `App::game_id()` (`project.rs:212`), sorteado na 1.ª chamada (não há comando «New project»). Schema 232
+  (escada + const em `project_schema.rs`, tripla `(232, 13, 29)` em `project_schema_tests.rs`; conferido
+  por `python3 scripts/recontar.py --apenas schema`).
+- **A · List:** `Snapshot.{readers, listening}`; `InputMapDoc.{list, census}`; ids `NEW_NAME, ADD, SEARCH,
+  SEARCH_CLEAR`, `ListHit::{RemoveBinding, Listen, Trash, Dead, Press, Row}`; `view_list::{shown, tip_of,
+  binding_label}`, `palette::of_action`; leitores = `SignalOnAction` (nome da entidade + acção) e
+  `ProjectScripts` do mundo (`readers::{facts, of_world}`). Comando com `IconId::Player`, tecla `IconId::Kbd`.
+- **Aberto da A** (vai para a rodada de acabamento): nome da acção em peso normal (maquete: negrito); chip
+  da manche sem seta de direcção; sem barra de rolagem desenhada; sem menu de botão direito; a frase do
+  pé do estado 4 («Dead zone and Press at only show on rows with a stick…») não aparece.

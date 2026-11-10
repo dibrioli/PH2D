@@ -214,9 +214,7 @@ impl crate::App {
         let filed = self.recovery.project_path.is_some();
         ph2d_app_code::frame(sim, script.as_mut(), hero, toasts, filed);
         let tl = (&self.timeline.doc, &mut self.timeline_intents);
-        kanban_families(sim, hero, tl, toasts);
-        let pad = self.gilrs.iter().any(|g| g.gamepads().next().is_some());
-        ph2d_app_input_map::frame(sim.world(), hero, pad);
+        document_families(sim, hero, tl, toasts, self.gilrs.as_ref());
         // ⭐ **A LUZ** (Luz 2D): a secção do Inspector e a recusa do solver, que sobe como aviso.
         let (timeline, playhead) = (&self.timeline, &self.playhead);
         let mut ultimas = |sim: &mut ph2d_ecs::SimWorld, (b, n): (Option<u64>, usize)| {
@@ -269,9 +267,9 @@ fn animation_editor(
     anim_editor(sim, hero, db, at, reg, toasts);
 }
 
-/// As famílias do Kanban no quadro (o catálogo da cena para os cartões, o Kanban, o Planner) — à parte
-/// pelo tecto de função da `fase_snapshots_publish`.
-fn kanban_families(
+/// As famílias de documento (o catálogo da cena para os cartões, o Kanban, o Planner, o Input Map) — à
+/// parte pelo tecto de função da `fase_snapshots_publish`.
+fn document_families(
     sim: &mut ph2d_ecs::SimWorld,
     hero: &mut ph2d_editor_core::screens::hero::HeroScreen,
     (tl, intents): (
@@ -279,8 +277,11 @@ fn kanban_families(
         &mut Vec<ph2d_timeline::TimelineIntent>,
     ),
     toasts: &mut ph2d_editor_core::ToastQueue,
+    gilrs: Option<&gilrs::Gilrs>,
 ) {
     ph2d_app_components::kanban_scene::frame(sim, hero, tl, intents);
     ph2d_app_kanban::frame(hero);
     ph2d_app_planner::frame(hero, toasts);
+    let pad = gilrs.is_some_and(|g| g.gamepads().next().is_some());
+    ph2d_app_input_map::frame(sim.world(), hero, pad);
 }

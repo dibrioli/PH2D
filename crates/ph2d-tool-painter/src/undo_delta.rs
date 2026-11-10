@@ -237,15 +237,15 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
                 );
             }
             if let Some(rects) = px.and_then(|(px, cw)| win.rects_within(px, cw))
-                && tiles::worth(&rects, &win)
-                && 2 * rects.iter().map(PlaneWindow::elems).sum::<usize>() < before.len()
-            {
-                let out = Self::tiles_from(
+                && let Some(out) = Self::changed_tiles(
                     win,
                     rects,
-                    |r, b| b.extend_from_slice(&r.extract(before)),
+                    before.len(),
+                    |r| !r.same_in(before, after),
+                    |r| r.extract(before),
                     after,
-                );
+                )
+            {
                 #[cfg(debug_assertions)]
                 debug_assert!(
                     out.side(after, true).is_some_and(|b| *b == **before),

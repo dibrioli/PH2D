@@ -203,18 +203,14 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
             .into_iter()
             .filter_map(|t| t.intersect(win))
             .collect();
-        if super::tiles::worth(&rects, &win) {
-            let out = Self::tiles_from(
-                win,
-                rects,
-                |r, b| b.extend_from_slice(&r.extract_journal(j, live)),
-                live,
-            );
-            if let Self::Tiles { before, after, .. } = &out
-                && before == after
-            {
-                return Some(Self::Unchanged);
-            }
+        if let Some(out) = Self::changed_tiles(
+            win,
+            rects,
+            live.len(),
+            |r| !r.holds(&r.extract_journal(j, live), live),
+            |r| r.extract_journal(j, live),
+            live,
+        ) {
             return Some(out);
         }
         let before = win.extract_journal(j, live);

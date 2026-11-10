@@ -98,32 +98,71 @@ fn elems(rects: &[PlaneWindow]) -> usize {
     rects.iter().map(PlaneWindow::elems).sum()
 }
 
-/// As caixas compensam contra a janela única? (Elas guardam os mesmos dois lados, só de menos texels.)
-pub(super) fn worth(rects: &[PlaneWindow], win: &PlaneWindow) -> bool {
-    rects.len() > 1 && elems(rects) < win.elems()
+impl PlaneWindow {
+    /// Os dois planos coincidem nesta caixa?
+    pub(super) fn same_in<T: PartialEq>(&self, a: &[T], b: &[T]) -> bool {
+        (0..self.rows).all(|r| {
+            let s = (self.row + r) * self.stride + self.col;
+            a[s..s + self.cols] == b[s..s + self.cols]
+        })
+    }
+
+    /// O plano tem, nesta caixa, exactamente os elementos de `patch` (na ordem do `extract`)?
+    pub(super) fn holds<T: PartialEq>(&self, patch: &[T], plane: &[T]) -> bool {
+        (0..self.rows).all(|r| {
+            let s = (self.row + r) * self.stride + self.col;
+            patch[r * self.cols..(r + 1) * self.cols] == plane[s..s + self.cols]
+        })
+    }
 }
 
 impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
-    /// Os dois lados das `rects`, na ordem delas (o `extract` e o `blit` percorrem-nas na MESMA).
-    pub(super) fn tiles_from(
+    /// **Só as caixas que MUDARAM**, com os dois lados, na ordem de `rects` (o `extract` e o `blit`
+    /// percorrem-nas na MESMA). A marca diz onde se PODE ter escrito; a caixa igual nos dois lados não se
+    /// guarda — o commit do Impasto declara a caixa do traço inteiro (a diagonal = a tela) e só os tiles
+    /// da pegada mudam (B17.5).
+    ///
+    /// `None` = as caixas que mudaram não pesam menos que a janela `win` nem que metade do plano
+    /// (`plane_len`): o chamador guarda a janela, como antes. A comparação e a extração correm por caixa
+    /// no rayon (leitura pura, caixas disjuntas, `collect` na ordem: o mesmo bit em qualquer nº de fios).
+    pub(super) fn changed_tiles(
         win: PlaneWindow,
         rects: Vec<PlaneWindow>,
-        before: impl Fn(&PlaneWindow, &mut Vec<T>),
+        plane_len: usize,
+        differs: impl Fn(&PlaneWindow) -> bool + Sync,
+        before: impl Fn(&PlaneWindow) -> Box<[T]> + Sync,
         after: &[T],
-    ) -> Self {
-        let n = elems(&rects);
+    ) -> Option<Self> {
+        use rayon::prelude::*;
+        let mudou: Vec<bool> = rects.par_iter().map(&differs).collect();
+        let kept: Vec<PlaneWindow> = rects
+            .into_iter()
+            .zip(mudou)
+            .filter_map(|(r, m)| m.then_some(r))
+            .collect();
+        if kept.is_empty() {
+            return Some(Self::Unchanged);
+        }
+        let n = elems(&kept);
+        if n >= win.elems() || 2 * n >= plane_len {
+            return None;
+        }
+        let lados: Vec<(Box<[T]>, Box<[T]>)> = kept
+            .par_iter()
+            .map(|r| (before(r), r.extract(after)))
+            .collect();
         let mut b = Vec::with_capacity(n);
         let mut a = Vec::with_capacity(n);
-        for r in &rects {
-            before(r, &mut b);
-            a.extend_from_slice(&r.extract(after));
+        for (x, y) in &lados {
+            b.extend_from_slice(x);
+            a.extend_from_slice(y);
         }
-        Self::Tiles {
+        Some(Self::Tiles {
             win,
-            rects: rects.into_boxed_slice(),
+            rects: kept.into_boxed_slice(),
             before: b.into_boxed_slice(),
             after: a.into_boxed_slice(),
-        }
+        })
     }
 
     /// Escreve um dos lados das caixas sobre um plano completo.
@@ -134,5 +173,41 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
             r.blit(&side[at..at + n], dst);
             at += n;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+
+    /// **A marca larga guarda só os tiles que MUDARAM, e os dois lados voltam ao bit** (B17.5): o commit
+    /// do Impasto marca a caixa do traço inteiro (a diagonal = a tela) e a pegada é um tile.
+    #[test]
+    fn a_marca_larga_guarda_so_os_tiles_que_mudaram_e_os_dois_lados_voltam_ao_bit() {
+        let (w, h) = (512u32, 384u32);
+        let t = TILE as u32;
+        let before = Arc::new(vec![7u8; (w * h) as usize]);
+        let mut a = (*before).clone();
+        a[(t + 5) as usize * w as usize + 2 * t as usize + 9] = 200; // só o tile (1, 2)
+        let after = Arc::new(a);
+        let tudo = Region { x: 0, y: 0, w, h };
+        let mut marks = TileMarks::default();
+        marks.mark(tudo);
+        let px = marks
+            .for_hint(Some(tudo), 1)
+            .expect("os marks viram a janela");
+        let hint = PlaneWindow::from_region(tudo, w, w as usize);
+        let (mut b, mut d) = (Arc::clone(&before), Arc::clone(&after));
+        let out = StoredPlane::split_tiled(&mut b, &mut d, w as usize, hint, Some((&px, w)));
+        match &out {
+            StoredPlane::Tiles { rects, .. } => assert_eq!(rects.len(), 1, "só o tile que mudou"),
+            o => panic!("esperava Tiles, veio {}", o.variant()),
+        }
+        assert_eq!(out.side(&after, true).as_deref(), Some(&*before));
+        assert_eq!(out.side(&before, false).as_deref(), Some(&*after));
+        let (mut b, mut d) = (Arc::clone(&before), Arc::new((*before).clone()));
+        let igual = StoredPlane::split_tiled(&mut b, &mut d, w as usize, hint, Some((&px, w)));
+        assert_eq!(igual.variant(), "-", "nada mudou: zero bytes");
     }
 }

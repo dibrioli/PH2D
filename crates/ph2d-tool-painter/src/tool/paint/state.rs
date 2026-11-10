@@ -561,6 +561,9 @@ pub(crate) struct PaintState {
     /// settings (the paper cannot change mid-stroke ⇒ no in-stroke invalidation to get wrong).
     /// Empty outside a watercolor stroke. Pure memoisation keyed by canvas index ⇒ byte-identical.
     pub(super) wet_substrate: Vec<f32>,
+    /// A caixa que o memo acima preencheu desde o último reset, com a largura da tela em que foi
+    /// medida: fora dela tudo é `NaN`, então o pen-down só a repõe (B16.9). `None` = tudo `NaN`.
+    pub(super) wet_substrate_caixa: Option<(Region, u32)>,
     /// **Watercolor mixer** (Wet Mix — `wet_charge`/`wet_pull`/`wet_dilution`, `docs/Painter/07` §4)
     /// per-stroke state: the picked-up colour reservoir (unpremultiplied rgb + a presence-weighted
     /// confidence `w`) and its `recentness` (the Pull-gated resample clock). The brush deposits

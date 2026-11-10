@@ -186,6 +186,7 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("wet_editable_tex", SESSAO),
     ("wet_shape_norm", TRACO),
     ("wet_substrate", CACHE),
+    ("wet_substrate_caixa", CACHE),
     ("wet_mix", TRACO),
     ("mistura_opaca", TRACO),
     ("mistura_camada", TRACO),

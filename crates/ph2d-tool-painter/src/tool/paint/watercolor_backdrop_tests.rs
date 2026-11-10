@@ -142,3 +142,102 @@ fn o_despejo_da_agua_em_paralelo_da_o_byte_da_serie() {
         }
     }
 }
+
+/// **B16.9: o pen-down repõe o memo do substrato só na caixa que o composite preencheu** — e o que
+/// fica é o estado da tela inteira reposta (tudo `NaN`). O sentinela plantado FORA da caixa mede o
+/// alcance do reset: o de antes (a tela inteira) apagava-o.
+#[test]
+fn o_pen_down_so_repoe_o_substrato_que_o_traco_tocou() {
+    use ph2d_painter_brush::{Falloff, TextureKind, TextureMapping};
+    let cp = |pos: [f32; 2], phase| CanvasPointer {
+        pos,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    let size = 256usize;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; size * size * 4], size as u32, size as u32);
+    t.paint.brush = BrushSpec {
+        radius_px: 8.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.2, 0.4, 0.6],
+        space_attenuation: false,
+        watercolor: true,
+        fill: 0.5,
+        depth: 1.5,
+        granulation: 0.9,
+        ..Default::default()
+    };
+    t.paint.brush.paper.kind = TextureKind::Voronoi;
+    t.paint.brush.paper.mapping = TextureMapping::Tiled;
+    t.paint.brush.paper_depth = 1.0;
+    t.paint.brush_by_mode.fill(t.paint.brush);
+    t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
+    t.on_canvas_pointer(cp([60.0, 40.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([60.0, 40.0], PointerPhase::Up));
+    let memo = t.paint.wet_substrate.iter().filter(|v| !v.is_nan()).count();
+    assert!(memo > 0, "a fixtura tem de memorizar o papel");
+    let (c, _) = t.paint.wet_substrate_caixa.expect("a caixa do memo");
+    let longe = 5 * size + 250;
+    assert!((c.x + c.w) as usize <= 250, "o sentinela tem de ficar fora da caixa");
+    t.paint.wet_substrate[longe] = 0.5;
+    t.on_canvas_pointer(cp([200.0, 200.0], PointerPhase::Down));
+    let sub = &t.paint.wet_substrate;
+    let agora = t.paint.wet_substrate_caixa.map(|(r, _)| r);
+    let dentro = |i: usize| {
+        let (x, y) = ((i % size) as u32, (i / size) as u32);
+        agora.is_some_and(|r| x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)
+    };
+    assert!(agora.is_none_or(|r| r.x >= c.x + c.w || r.y >= c.y + c.h));
+    let velho = sub.iter().enumerate().filter(|&(i, v)| i != longe && !v.is_nan() && !dentro(i));
+    assert_eq!(velho.count(), 0, "o pen-down deixou memo de outro traço");
+    assert_eq!(sub[longe].to_bits(), 0.5f32.to_bits(), "o reset varreu fora da caixa");
+}
+
+/// Sonda B16.9 (`--ignored`): o pen-down da aguada a 3840×2160 com 1 e 3 camadas — o reset do memo
+/// só na caixa (A) contra a caixa = a tela inteira (B, o custo de antes), no MESMO processo, ABBA,
+/// o mínimo de 6 de cada.
+#[test]
+#[ignore]
+fn mede_o_pen_down_da_aguada_4k() {
+    let cp = |pos: [f32; 2], phase| CanvasPointer {
+        pos,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    let (fw, fh) = (3840u32, 2160u32);
+    for camadas in [1usize, 3] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (fw * fh * 4) as usize], fw, fh);
+        for k in 1..camadas {
+            let _ = t.add_raster_layer(format!("L{k}"));
+        }
+        t.paint.brush = BrushSpec {
+            radius_px: 30.0,
+            watercolor: true,
+            ..Default::default()
+        };
+        t.paint.brush_by_mode.fill(t.paint.brush);
+        let mut best = [f64::MAX; 2];
+        for i in 0..12u32 {
+            let v = [0usize, 1, 1, 0][(i % 4) as usize];
+            let (x, y) = (300.0 + 280.0 * (i % 12) as f32, 400.0 + 100.0 * (i % 3) as f32);
+            if v == 1 {
+                t.paint.wet_substrate_caixa = Some((Region { x: 0, y: 0, w: fw, h: fh }, fw));
+            }
+            let t0 = std::time::Instant::now();
+            t.on_canvas_pointer(cp([x, y], PointerPhase::Down));
+            let ms = t0.elapsed().as_secs_f64() * 1e3;
+            t.on_canvas_pointer(cp([x + 30.0, y], PointerPhase::Move));
+            t.on_canvas_pointer(cp([x + 30.0, y], PointerPhase::Up));
+            best[v] = best[v].min(ms);
+        }
+        println!(
+            "[B16.9] 3840x2160 camadas {camadas}: pen-down caixa {:.2} ms | tela inteira {:.2} ms",
+            best[0], best[1]
+        );
+    }
+}

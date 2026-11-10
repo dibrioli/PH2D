@@ -106,17 +106,36 @@ impl PainterTool {
         // Substrate cache: invalidate for the new stroke (the paper is constant WITHIN a stroke, so a
         // full reset at pen-down is the only invalidation needed — no in-stroke staleness). Filled
         // lazily by the composite ([`Self::apply_watercolor`]); `NaN` marks an untouched pixel.
-        let n = (self.source_size.0 as usize) * (self.source_size.1 as usize);
-        // ⚠️ Across the cores: serial this fill was `~9,4 ms` of the pen-down at 4096² (measured
-        // 2026-09-24, 67 MB of `NaN` on one thread, every stroke). Byte-identical — every element
-        // gets the same value.
-        if self.paint.wet_substrate.len() != n {
-            self.paint.wet_substrate = vec![0.0; n];
+        self.repoe_o_substrato();
+    }
+
+    /// Repõe o memo do substrato a `NaN` (B16.9): só na caixa que o composite preencheu desde o
+    /// último reset, porque fora dela já é `NaN` ⇒ o mesmo estado que a tela inteira. Tamanho ou
+    /// largura novos ⇒ a tela inteira. Pelos fios, por linha: cada elemento recebe o mesmo valor.
+    pub(super) fn repoe_o_substrato(&mut self) {
+        let (fw, fh) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        let n = fw * fh;
+        let sub = &mut self.paint.wet_substrate;
+        let caixa = self.paint.wet_substrate_caixa.take();
+        let nova = sub.len() != n;
+        if nova {
+            *sub = vec![0.0; n];
         }
-        self.paint
-            .wet_substrate
-            .par_chunks_mut(WET_PAR_MIN) // rayon, like the soak pour below (ADR-0173)
-            .for_each(|c| c.fill(f32::NAN));
+        match caixa {
+            _ if nova => sub
+                .par_chunks_mut(WET_PAR_MIN)
+                .for_each(|c| c.fill(f32::NAN)),
+            None => {}
+            Some((c, w)) if w as usize == fw && c.x + c.w <= w && ((c.y + c.h) as usize) <= fh => {
+                let (x0, x1) = (c.x as usize, (c.x + c.w) as usize);
+                sub[c.y as usize * fw..(c.y + c.h) as usize * fw]
+                    .par_chunks_mut(fw)
+                    .for_each(|l| l[x0..x1].fill(f32::NAN));
+            }
+            Some(_) => sub
+                .par_chunks_mut(WET_PAR_MIN) // rayon, like the soak pour below (ADR-0173)
+                .for_each(|c| c.fill(f32::NAN)),
+        }
     }
 
     /// Composite the layers strictly BELOW the anchor over the document paper colour → the opaque
@@ -488,10 +507,7 @@ impl PainterTool {
         // (The Grain is sampled live, which is why the Grain half worked and the smoke passed.)
         // Sweep 2026-07-12, `BUGS_painter.md` #14. Same root as Bug #12: a reuse guard that never asks
         // whether the cached value still belongs to the inputs that produced it.
-        self.paint
-            .wet_substrate
-            .iter_mut()
-            .for_each(|v| *v = f32::NAN);
+        self.repoe_o_substrato();
         // `close_stroke` dropped the live base + ground; point the render at the kept snapshot and force the
         // committed footprint dirty, then reconstruct the wash with the CURRENT texture (`apply_watercolor`
         // reads `brush.texture`/`paper`). `commit=false` keeps the base for the next edit.

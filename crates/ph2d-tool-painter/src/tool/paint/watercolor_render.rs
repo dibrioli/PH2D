@@ -261,6 +261,7 @@ impl PainterTool {
             fw,
             noise_tile,
         );
+        window::nota_o_substrato(&mut self.paint.wet_substrate_caixa, use_substrate_cache, region, fw);
         let substrate = &self.paint.wet_substrate;
         // A FORMA DA BORDA (BUGS #31): o fluxo do Ragged Edge e o papel na borda — [`watercolor_flow`].
         let (flow, paper_edge_any) = watercolor_flow::EdgeFlow::build(

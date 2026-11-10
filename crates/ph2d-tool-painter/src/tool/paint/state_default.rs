@@ -313,6 +313,7 @@ impl Default for PaintState {
             wet_soak_pos: None,
             wet_soak_active: false,
             wet_substrate: Vec::new(),
+            wet_substrate_caixa: None,
             wet_shape_norm: 1.0,
             stroke_density: Vec::new(),
             stroke_deplete: Vec::new(),

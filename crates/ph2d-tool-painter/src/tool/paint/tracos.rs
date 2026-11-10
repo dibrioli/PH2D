@@ -221,6 +221,7 @@ pub(crate) const PARTILHADO: &[&str] = &[
     "wet_editable_tex",
     "wet_shape_norm",
     "wet_substrate",
+    "wet_substrate_caixa",
     "wet_frame_dirty",
     "wet_frame_linhas",
     "wet_cum_dirty",

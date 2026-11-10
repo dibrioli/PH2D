@@ -285,6 +285,23 @@ pub(in crate::tool::paint) fn ponto_na_janela(g: usize, o: f32, d: f32, origem: 
     (g as f32 + o + d) - origem as f32
 }
 
+/// Soma à caixa do memo do substrato a janela que o composite acabou de preencher (B16.9: o
+/// pen-down só repõe essa caixa). `usa = false` ⇒ o memo não foi escrito.
+pub(super) fn nota_o_substrato(
+    caixa: &mut Option<(Region, u32)>,
+    usa: bool,
+    region: Region,
+    fw: usize,
+) {
+    if usa {
+        *caixa = match *caixa {
+            None => Some((region, fw as u32)),
+            Some((c, w)) if w as usize == fw => Some((union_region(c, region), w)),
+            velha => velha, // outra largura: o reset repõe a tela inteira
+        };
+    }
+}
+
 /// **O vão da linha de saída `gy`** (em colunas da saída `x0..x0 + bw`): os texels a menos de `pad`
 /// de uma das `linhas` que mudaram (`(y, x0, x1)` por `y`, sem repetir). Fora dele nenhuma entrada
 /// mudou e o composite é o mesmo em qualquer janela (BUGS #36/#38). `None` = a linha inteira.

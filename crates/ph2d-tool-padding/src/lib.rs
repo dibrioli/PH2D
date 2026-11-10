@@ -35,9 +35,9 @@ pub mod manifest;
 pub mod params;
 pub mod tool;
 
-pub use ph2d_sprite_edit::padding::{PaddingResult, PaddingSpec, add_padding};
 pub use icon::padding_bezpath;
 pub use manifest::MANIFEST;
+pub use ph2d_sprite_edit::padding::{PaddingResult, PaddingSpec, add_padding};
 pub use tool::PaddingTool;
 
 /// Construct the Padding tool as a boxed trait object for the behavior

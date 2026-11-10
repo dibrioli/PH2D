@@ -110,10 +110,12 @@ pub(super) fn tip(
     let r = Rect::new(x, y, w, rh);
     let radius = frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(scene, r, radius, resolve(ColorToken::Bg3, theme));
-    stroke_rounded_rect(
+    ph2d_editor_core::paint::stroke_frame(
         scene,
         r,
         radius,
+        theme,
+        ph2d_tokens::visuals::Feel::Rest,
         StrokeToken::Thin.px(),
         resolve(ColorToken::BorderStrong, theme),
     );

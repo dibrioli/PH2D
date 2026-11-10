@@ -1,11 +1,7 @@
 //! **AS PALAVRAS DO CATÁLOGO DE COMPONENTES** — o irmão de tabela do [`super`], e o primeiro
 //! MOTOR deste repo a falar por ela.
-//! ⛔⛔ **Porque ele faltava, e porque nenhum censo o via.** O fecho de 2026-09-16 pôs 26 painéis, a
-//! moldura, a shell e 8 crates de família a falar por [`super::tr`], com 30 censos a defendê-lo. A
-//! `ph2d-component-desc` **não é nenhum deles** — e o texto que ela declara é pintado por uma que
-//! É: a paleta *Add Component* fazia, à letra, `desc.display_name.to_string()` e só depois
-//! concatenava `tr(…)`. ⇒ *um censo cuja crate não é DONA do texto que ela pinta fica verde sobre
-//! texto cru*, e eram **291** palavras.
+//! O porquê (o fecho de 2026-09-16 e as 291 palavras cruas) está em
+//! `docs/archive/integracao-jornadas/COMENTARIOS_CORTADOS_PARA_O_TECTO_2026-11-10.md`.
 //! # ⭐ A CHAVE é derivada do ID; o TEXTO é que vive aqui
 //!
 //! Medido antes de escrever a primeira linha: `display_name` coincide com a derivação do

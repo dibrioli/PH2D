@@ -356,6 +356,14 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
         "as três linhas do «Outline»: canais FISICA 48..50 (`marcas_inspector`)",
     ),
     (
+        "ph2d-panel-inspector",
+        "sections/physics_cartao_contorno.rs::fundir",
+        NaoAnimavel,
+        &["INSP_PHYS_OUTLINE_MERGE_DIST"],
+        "a distância do «Merge by distance»: parâmetro do botão Merge (lido só no clique, \
+         `event_physics.rs`), não estado do Outline — nada para animar",
+    ),
+    (
         "ph2d-panel-skeleton",
         "section_campos.rs::linha_com_losango",
         Canal,

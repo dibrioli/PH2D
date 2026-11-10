@@ -74,7 +74,15 @@ fn buttons(
         fill_rounded_rect(scene, br, radius, ink(fill));
         if i > 0 {
             let line = StrokeToken::Thin.px();
-            stroke_rounded_rect(scene, br, radius, line, ink(ColorToken::Border));
+            ph2d_editor_core::paint::stroke_frame(
+                scene,
+                br,
+                radius,
+                theme,
+                ph2d_tokens::visuals::Feel::Rest,
+                line,
+                ink(ColorToken::Border),
+            );
         }
         let ty = br.y + (br.h - font) * 0.5;
         paint_text(ts, scene, label, br.x + pad, ty, font, lw + gap, ink(fg));

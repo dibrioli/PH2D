@@ -735,3 +735,12 @@ História verbatim dos `//!` removidos (o porquê histórico vive aqui, não no 
     //! O gesto só se conhece no bus, e o mundo escrito por ele é igual ao da linha: quem viu o ▶ deixa aqui o objecto
     //! marcado, e o passe do Auto Key tira esses campos do diff enquanto a marca durar. Não é documento.
 
+
+## `crates/ph2d-i18n/src/component_catalog.rs:3`
+
+    //! ⛔⛔ **Porque ele faltava, e porque nenhum censo o via.** O fecho de 2026-09-16 pôs 26 painéis, a
+    //! moldura, a shell e 8 crates de família a falar por [`super::tr`], com 30 censos a defendê-lo. A
+    //! `ph2d-component-desc` **não é nenhum deles** — e o texto que ela declara é pintado por uma que
+    //! É: a paleta *Add Component* fazia, à letra, `desc.display_name.to_string()` e só depois
+    //! concatenava `tr(…)`. ⇒ *um censo cuja crate não é DONA do texto que ela pinta fica verde sobre
+    //! texto cru*, e eram **291** palavras.

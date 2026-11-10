@@ -91,6 +91,29 @@ impl ReliefFields<'_> {
     /// A altura da tinta já com o tecto, mais o dente do papel que a tinta deixa ver em `i` = `(cx, cy)` (clampados).
     #[inline]
     fn com_o_papel(&self, h: f32, i: usize, cx: i64, cy: i64) -> f32 {
+        self.com_o_papel_em(self.papel_da_linha().as_ref(), h, i, cx, cy)
+    }
+
+    /// As constantes do papel que [`Self::com_o_papel_em`] lê, tiradas UMA vez por linha (por texel eram uma divisão e um
+    /// `OnceLock` a cada píxel: perfil do Ctrl+Z 4K, B15.6-cont).
+    #[inline]
+    fn papel_da_linha(&self) -> Option<PapelDaLinha<'_>> {
+        self.substrate.as_ref().map(|s| PapelDaLinha {
+            s,
+            enche_em: CORPO_QUE_ENCHE * s.amplitude_em_cargas(),
+            meio: s.meio_do_dente(),
+        })
+    }
+
+    #[inline]
+    fn com_o_papel_em(
+        &self,
+        papel: Option<&PapelDaLinha<'_>>,
+        h: f32,
+        i: usize,
+        cx: i64,
+        cy: i64,
+    ) -> f32 {
         // ⚠️ **O dente do papel SOMA à altura da tinta, e entra DEPOIS do teto de vidro.** Depois,
         // porque o teto é uma propriedade de como a TINTA se empilha (`impasto_ceiling`) e um papel não
         // é tinta — comprimi-lo pelo peso de uma pilha que não é dele seria o dente sumir justamente
@@ -109,17 +132,17 @@ impl ReliefFields<'_> {
         // divergência era **1149 bytes, começando em (0,0)**, um anel de um texel em volta da tela.
         // *Um fold cujo domínio é o canvas tem de ser lido no canvas, mesmo quando a fonte sabe
         // responder fora dele.*
-        match self.substrate.as_ref() {
-            Some(s) => {
+        match papel {
+            Some(&PapelDaLinha { s, enche_em, meio }) => {
                 // A tinta tapa o dente mas fica à altura média dele: sem o degrau que a fazia parecer afundada (Bug #71).
                 // Só a tinta com CORPO o enche (doc 19 §1.2; dono 08/11: no Digital o relevo do papel tem de se ver na
                 // tinta): a opaca tapa-o na proporção da altura dela sobre a do dente — sem corpo (Digital, aguada)
                 // a tinta segue o papel; mais alta que o dente (o óleo grosso, §BUG-papel), enterra-o como antes.
                 // A tinta do Wet (que já traz o papel desenhado) tapa-o pela opacidade, como sempre (§BUG-papel).
-                let enche = (h / (CORPO_QUE_ENCHE * s.amplitude_em_cargas())).clamp(0.0, 1.0);
+                let enche = (h / enche_em).clamp(0.0, 1.0);
                 let (molhada, outra) = self.papel_a_vista(i);
                 let v = molhada * (1.0 - enche * (1.0 - outra));
-                h + s.dente_na_tela(cx, cy) * v + s.meio_do_dente() * (1.0 - v)
+                h + s.dente_na_tela(cx, cy) * v + meio * (1.0 - v)
             }
             None => h,
         }
@@ -209,6 +232,7 @@ impl ReliefFields<'_> {
                 sobre(&mut m, self.live_mat, a);
             }
         }
+        // O `map` fica aqui de propósito: este amostrador é o oráculo da dobra da linha (`mat_bytes`/`mat_f32`).
         m.map(|v| (v + 0.5) as u8)
     }
 
@@ -227,6 +251,7 @@ impl ReliefFields<'_> {
         debug_assert!(alt.len() == cob.len() && cob.len() == mat.len());
         let cy = y.clamp(0, self.height as i64 - 1);
         let linha = cy as usize * self.width;
+        let papel = self.papel_da_linha();
         for (k, ((a, c), mt)) in alt
             .iter_mut()
             .zip(cob.iter_mut())
@@ -237,7 +262,7 @@ impl ReliefFields<'_> {
             let i = linha + cx as usize;
             let live = self.live_c.map_or(0.0, |l| f32::from(l[i]) / 255.0);
             let (mut cover_max, mut corpo) = (0.0f32, live);
-            let mut m = self.neutral.map(f32::from);
+            let mut m = mat_f32(self.neutral);
             for l in &self.layers {
                 if let Some(cv) = l.cover {
                     corpo = corpo.max(f32::from(cv[i]) / 255.0);
@@ -251,7 +276,7 @@ impl ReliefFields<'_> {
             if live > 0.0 {
                 sobre(&mut m, self.live_mat, live);
             }
-            *mt = m.map(|v| (v + 0.5) as u8);
+            *mt = mat_bytes(m);
             let h = match &self.folded {
                 Some((f, cf)) => {
                     corpo = cf[i];
@@ -274,7 +299,13 @@ impl ReliefFields<'_> {
                 }
             };
             *c = corpo.clamp(0.0, 1.0);
-            *a = self.com_o_papel(super::impasto_ceiling::soft_ceiling(h), i, cx, cy);
+            *a = self.com_o_papel_em(
+                papel.as_ref(),
+                super::impasto_ceiling::soft_ceiling(h),
+                i,
+                cx,
+                cy,
+            );
         }
     }
 
@@ -376,12 +407,48 @@ impl crate::layers::ReliefSamples for Amostras<'_, '_> {
 #[inline]
 fn sobre(m: &mut [f32; 7], src: MaterialBytes, a: f32) {
     if a >= 1.0 {
-        *m = src.map(f32::from);
+        *m = mat_f32(src);
         return;
     }
     for (c, v) in m.iter_mut().enumerate() {
         *v += (f32::from(src[c]) - *v) * a;
     }
+}
+
+/// As constantes do papel por linha ([`ReliefFields::papel_da_linha`]).
+struct PapelDaLinha<'p> {
+    s: &'p super::substrate_relief::Substrate<'p>,
+    enche_em: f32,
+    meio: f32,
+}
+
+/// O material em bytes → f32 e de volta, por extenso: o `map` dos arrays de 7 não se alinhava (`Drain` e um `memcpy` de
+/// 7 bytes por texel, 20 % do Ctrl+Z 4K). Os mesmos `f32::from` e `(v + 0.5) as u8`: o mesmo bit.
+#[inline]
+fn mat_f32(b: MaterialBytes) -> [f32; 7] {
+    [
+        f32::from(b[0]),
+        f32::from(b[1]),
+        f32::from(b[2]),
+        f32::from(b[3]),
+        f32::from(b[4]),
+        f32::from(b[5]),
+        f32::from(b[6]),
+    ]
+}
+
+#[inline]
+fn mat_bytes(m: [f32; 7]) -> MaterialBytes {
+    let q = |v: f32| (v + 0.5) as u8;
+    [
+        q(m[0]),
+        q(m[1]),
+        q(m[2]),
+        q(m[3]),
+        q(m[4]),
+        q(m[5]),
+        q(m[6]),
+    ]
 }
 
 /// A espessura de tinta que ENCHE o dente do papel, em fracções da altura dele ([`ReliefFields::height_at`]): a tinta tão

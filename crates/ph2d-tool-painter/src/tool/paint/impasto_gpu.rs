@@ -219,13 +219,16 @@ impl PainterTool {
                 |(cob, mats), (row, (((rrow, crow), m0row), m1row))| {
                     let y = i64::from(ry) + row as i64;
                     fields.dobra_da_linha(y, i64::from(rx), rrow, cob, mats);
-                    for i in 0..rww {
+                    // Byte a byte e não `copy_from_slice`: este não se alinhava (um `memcpy` de 4 bytes da libc por
+                    // canal, 18 % do Ctrl+Z 4K, B15.6-cont). Os mesmos bytes.
+                    let texels = crow.iter_mut().zip(cob.iter()).zip(mats.iter());
+                    let planos = m0row.chunks_exact_mut(4).zip(m1row.chunks_exact_mut(4));
+                    for (((c, cb), m), (m0, m1)) in texels.zip(planos) {
                         // Quantised the way the canvas already stores coverage, so the shader's unorm decode
                         // lands on the CPU's `f32::from(u8) / 255.0` and not merely near it.
-                        crow[i] = (cob[i] * 255.0 + 0.5) as u8;
-                        let m = mats[i];
-                        m0row[i * 4..i * 4 + 4].copy_from_slice(&[m[0], m[1], m[2], m[3]]);
-                        m1row[i * 4..i * 4 + 4].copy_from_slice(&[m[4], m[5], m[6], 255]);
+                        *c = (cb * 255.0 + 0.5) as u8;
+                        (m0[0], m0[1], m0[2], m0[3]) = (m[0], m[1], m[2], m[3]);
+                        (m1[0], m1[1], m1[2], m1[3]) = (m[4], m[5], m[6], 255);
                     }
                 },
             );

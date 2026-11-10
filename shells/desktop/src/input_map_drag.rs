@@ -68,6 +68,7 @@ impl crate::App {
             .gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
+            .filter(|h| !h.store.input_map_listen_replaces()) // o cartão diz «Press a key»
             .and_then(|h| h.store.input_map_listening())
         else {
             return;

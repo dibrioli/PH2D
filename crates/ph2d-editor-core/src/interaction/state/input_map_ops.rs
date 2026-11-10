@@ -89,6 +89,24 @@ impl WidgetStore {
         self.input_map_listen_replaces = true;
     }
 
+    /// ⭐ **Um clique em QUALQUER sítio desarma a escuta do cartão** (auditoria do fecho 09/11): com
+    /// ela armada e esquecida, a tecla seguinte — escrita num campo, o F5 do Play, a primeira do
+    /// jogo — trocaria em silêncio as teclas da acção, e o Input Map não é do `Ctrl+Z`. Chamado pela
+    /// porta ÚNICA do clique da shell em cada `Down`. A escuta da JANELA do mapa não é tocada.
+    pub fn desarma_escuta_no_clique(&mut self) {
+        self.input_map_listen_cancelled_by_down =
+            self.input_map_listening.is_some() && self.input_map_listen_replaces;
+        if self.input_map_listen_cancelled_by_down {
+            self.stop_listening();
+        }
+    }
+
+    /// **O clique em curso começou por cancelar a escuta?** O botão Key lê-o para CANCELAR em vez de
+    /// re-armar (o `Down` dele já desarmou). Drena.
+    pub fn take_listen_cancelled_by_down(&mut self) -> bool {
+        std::mem::take(&mut self.input_map_listen_cancelled_by_down)
+    }
+
     /// A escuta armada troca (`true`) ou acrescenta (`false`).
     #[must_use]
     pub fn input_map_listen_replaces(&self) -> bool {

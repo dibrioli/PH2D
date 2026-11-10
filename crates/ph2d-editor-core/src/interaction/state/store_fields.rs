@@ -340,6 +340,8 @@ pub struct WidgetStore {
     /// A escuta armada pelo cartão do Trigger **troca** as teclas de teclado da acção (dono 09/11);
     /// a da janela do mapa acrescenta.
     pub(in crate::interaction) input_map_listen_replaces: bool,
+    /// O último `Down` cancelou a escuta do cartão — o clique que ele começa não a re-arma.
+    pub(in crate::interaction) input_map_listen_cancelled_by_down: bool,
     // ⚠️ A rolagem da lista da janela NÃO mora aqui desde 2026-09-29: ela passou às tabelas de
     // rolagem de todo painel, com a chave `ids::INPUT_MAP_SURFACE` (a porta `widget::scroll_area`).
     /// Onion settings floating modal (ADR-0142 W3b): `Some((x, y))` = the card's top-left in screen

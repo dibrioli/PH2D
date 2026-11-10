@@ -181,3 +181,32 @@ fn a_linha_key_le_a_tecla_e_quem_mais_a_usa() {
         "acção desconhecida: nada"
     );
 }
+
+/// ⭐ Auditoria do fecho: com a escuta do cartão armada, um clique em QUALQUER sítio desarma-a — a
+/// tecla seguinte (escrita num campo, F5, a do jogo) não troca as teclas da acção.
+#[test]
+fn um_clique_fora_desarma_a_escuta_do_cartao() {
+    let mut h = com_a_e_comando();
+    let antes = ligacoes(&h);
+    aplica_pedidos_do_mapa(&mut h, vec![PedidoDoMapa::CriarEEscutar(NOME.into())]);
+    h.store.desarma_escuta_no_clique();
+    assert!(h.store.input_map_listening().is_none(), "o clique desarmou");
+    carrega(&mut h, KEY_Z);
+    assert_eq!(ligacoes(&h), antes, "a tecla seguinte não tocou no mapa");
+    assert!(
+        h.store.take_listen_cancelled_by_down(),
+        "e o clique em curso sabe que cancelou"
+    );
+    assert!(!h.store.take_listen_cancelled_by_down(), "drena");
+}
+
+/// A escuta da JANELA do mapa não é do cartão: o clique não a desarma (a janela tem o Esc).
+#[test]
+fn um_clique_nao_desarma_a_escuta_da_janela() {
+    let mut h = com_a_e_comando();
+    let id = h.input_map.id(NOME).expect("existe");
+    h.store.listen_for_binding(id);
+    h.store.desarma_escuta_no_clique();
+    assert_eq!(h.store.input_map_listening(), Some(id));
+    assert!(!h.store.take_listen_cancelled_by_down());
+}

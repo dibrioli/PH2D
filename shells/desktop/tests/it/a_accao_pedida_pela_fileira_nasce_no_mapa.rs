@@ -61,3 +61,22 @@ fn o_braco_do_barramento_guarda_o_pedido_e_nao_o_trata_como_documento() {
         "o braço tem de GUARDAR o pedido ali mesmo — {guarda} bytes depois é outro braço"
     );
 }
+
+/// ⭐ Auditoria do fecho 09/11: a porta ÚNICA do clique desarma a escuta do cartão do Trigger em cada
+/// `Down`, ANTES dos ramos que saem cedo (canvas, jogo) — senão um clique no canvas a deixava armada.
+#[test]
+fn a_porta_do_clique_desarma_a_escuta_do_cartao_antes_de_sair_cedo() {
+    let src = include_str!("../../src/input_dispatch.rs");
+    let porta = src
+        .find("fn pointer_button(")
+        .expect("a porta única do clique");
+    let corpo = &src[porta..];
+    let desarma = corpo
+        .find("desarma_escuta_no_clique()")
+        .expect("a porta desarma a escuta do cartão");
+    let primeiro_return = corpo.find("return;").expect("a porta tem saídas cedo");
+    assert!(
+        desarma < primeiro_return,
+        "desarmar vem antes da primeira saída cedo"
+    );
+}

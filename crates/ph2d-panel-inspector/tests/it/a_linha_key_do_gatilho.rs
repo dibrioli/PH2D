@@ -62,6 +62,10 @@ fn rect_de(rects: &[(ph2d_a11y::NodeId, Rect)], id: ph2d_a11y::NodeId) -> Option
 }
 
 fn clica(h: &mut MockPanelHost, st: &mut InspectorState) -> Vec<EditorAction> {
+    clica_em(h, st, SEC)
+}
+
+fn clica_em(h: &mut MockPanelHost, st: &mut InspectorState, t0: u128) -> Vec<EditorAction> {
     let rects = h.paint::<InspectorPanel>(st, VIEWPORT);
     let r = rect_de(&rects, ids::INSP_TRIGGER_SET_KEY).expect("a linha Key foi pintada como alvo");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
@@ -75,8 +79,8 @@ fn clica(h: &mut MockPanelHost, st: &mut InspectorState) -> Vec<EditorAction> {
         timestamp_ns: t,
     };
     let _ = h.drained_actions();
-    let mut evs = h.dispatch_pointer_event(ponto(PointerKind::Down, SEC));
-    evs.extend(h.dispatch_pointer_event(ponto(PointerKind::Up, SEC + SEC / 100)));
+    let mut evs = h.dispatch_pointer_event(ponto(PointerKind::Down, t0));
+    evs.extend(h.dispatch_pointer_event(ponto(PointerKind::Up, t0 + SEC / 100)));
     assert!(
         !evs.is_empty(),
         "o ponteiro sobre o botão Key não virou evento"
@@ -175,4 +179,22 @@ fn o_rotulo_do_botao_key_diz_o_estado() {
         rotulo(h.store(), &sem),
         ph2d_i18n::tr("panel.inspector.trigger.press_a_key")
     );
+}
+
+/// O `Down` sobre o próprio botão Key já desarmou (porta do clique da shell): o clique que ele começa
+/// CANCELA, não re-arma; o clique seguinte arma de novo.
+#[test]
+fn o_clique_que_desarmou_nao_rearma() {
+    let (mut h, mut st) = host(linha("fire", NoMapa::Ligada, fire()));
+    h.store_mut().listen_for_binding_replacing(FIRE);
+    h.store_mut().desarma_escuta_no_clique();
+    let acoes = clica(&mut h, &mut st);
+    assert!(
+        pedidos(&acoes).is_empty(),
+        "o clique que cancelou não pede outra vez"
+    );
+    // ⚠️ Um segundo depois: no mesmo instante seria um DUPLO clique.
+    let acoes = clica_em(&mut h, &mut st, 3 * SEC);
+    assert_eq!(pedidos(&acoes), vec!["fire"], "o seguinte arma");
+    set_current_inspector_action_trigger(None);
 }

@@ -390,7 +390,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.trigger.press_a_key" => "Press a key\u{2026} (Esc cancels)",
         "panel.inspector.trigger.key_also_used_by" => "{key} is also used by {action}",
         "panel.inspector.trigger.there_is_no_action_called" => {
-            "There is no action called \u{201c}{name}\u{201d} \u{2014} add it in Settings \u{203a} Input Map."
+            "There is no action called \u{201c}{name}\u{201d} yet \u{2014} create it below."
         }
         // ⭐⭐⭐ **O SEGUNDO silêncio, e a cura dele é OUTRA.** Uma acção declarada e sem ligação
         // nenhuma resolve para `Sample::default()`, logo o gatilho fica tão calado como com um

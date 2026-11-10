@@ -92,6 +92,7 @@ impl WidgetStore {
             input_map_listening: None,
             input_map_captured: None,
             input_map_listen_replaces: false,
+            input_map_listen_cancelled_by_down: false,
             onion_modal: None,
             command_palette: None,
             command_pick: None,

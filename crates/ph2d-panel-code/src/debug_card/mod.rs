@@ -277,8 +277,10 @@ impl DebugCardView {
                 rows.get(row)?.cells.get(i).map(|c| c.text.clone())
             };
             let copy = match &hit {
-                Hit::Cell { row, col: "value" } => text(*row, "value").map(CardClick::Copy),
-                Hit::Cell { row, col: "line" } => text(*row, "line")
+                Hit::Cell { row, col } if col == "value" => {
+                    text(*row, "value").map(CardClick::Copy)
+                }
+                Hit::Cell { row, col } if col == "line" => text(*row, "line")
                     .and_then(|l| l.parse().ok())
                     .map(CardClick::Jump),
                 _ => None,
@@ -399,7 +401,11 @@ impl DebugCardView {
         self.table
             .column_menu(&cols)
             .into_iter()
-            .map(|(k, t, on)| (k, t.to_owned(), on))
+            .filter_map(|(k, t, on)| match k {
+                // As colunas do quadro têm chaves fixas.
+                std::borrow::Cow::Borrowed(k) => Some((k, t.to_owned(), on)),
+                std::borrow::Cow::Owned(_) => None,
+            })
             .collect()
     }
 

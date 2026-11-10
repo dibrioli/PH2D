@@ -11,7 +11,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr_with;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
-use ph2d_ui_table::{Hit, Layout, Row, Span};
+use ph2d_ui_table::{Hit, Key, Span, StableWidths};
 use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;
 
@@ -19,28 +19,18 @@ use std::collections::BTreeMap;
 const CLICKABLE: [&str; 2] = ["line", "value"];
 
 /// Uma célula da Sheet ao vivo: `(chave da linha, coluna)`.
-pub type CellAt = (String, &'static str);
+pub type CellAt = (String, Key);
 
 /// ⭐ As maiores larguras vistas desde que o Live começou: a Sheet por coluna, a Strip pela largura
 /// do valor de cada linha. Só crescem; zeram ao sair do Live.
 #[derive(Clone, Debug, Default)]
 pub struct Steady {
-    cols: Vec<f32>,
+    /// As colunas da Sheet (a lei da casa).
+    pub cols: StableWidths,
     strip: BTreeMap<String, f32>,
 }
 
 impl Steady {
-    /// As larguras naturais de agora, nunca abaixo das maiores já vistas.
-    pub fn cols(&mut self, natural: Vec<f32>) -> Vec<f32> {
-        if self.cols.len() != natural.len() {
-            self.cols = vec![0.0; natural.len()];
-        }
-        for (seen, now) in self.cols.iter_mut().zip(&natural) {
-            *seen = seen.max(*now);
-        }
-        self.cols.clone()
-    }
-
     /// A largura do valor da linha `key` na Strip, nunca abaixo da maior já vista.
     pub fn strip(&mut self, key: &str, now: f32) -> f32 {
         let seen = self.strip.entry(key.to_owned()).or_default();
@@ -56,42 +46,17 @@ pub fn cell_at(p: &CardPainted, x: f32, y: f32) -> Option<CellAt> {
         return None;
     }
     match lay.hit(rows, x, y)? {
-        Hit::Cell { row, col } if CLICKABLE.contains(&col) => {
+        Hit::Cell { row, col } if CLICKABLE.contains(&&*col) => {
             rows.get(row).map(|r| (r.key.clone(), col))
         }
         _ => None,
     }
 }
 
-/// A moldura da célula debaixo do rato (`hover`) e da premida (`pressed`, mais forte), por cima do
-/// texto sem o tapar.
-pub fn paint_cells(
-    lay: &Layout,
-    rows: &[Row],
-    hover: Option<&CellAt>,
-    pressed: Option<&CellAt>,
-    scene: &mut VectorScene,
-    theme: Theme,
-) {
-    let radius = frame_radius(theme, Radius::Sm.px());
-    let at = |c: &CellAt| {
-        let i = rows.iter().position(|r| r.key == c.0)?;
-        let r = lay.cell_rect(i, c.1)?;
-        let d = Spacing::Xxs.px();
-        Some(Rect::new(
-            r.x + d,
-            r.y + d,
-            (r.w - d * 2.0).max(0.0),
-            (r.h - d * 2.0).max(0.0),
-        ))
-    };
-    if let Some(r) = pressed.and_then(at) {
-        let ink = resolve(ColorToken::Accent, theme);
-        stroke_rounded_rect(scene, r, radius, StrokeToken::Thick.px(), ink);
-    } else if let Some(r) = hover.and_then(at) {
-        let ink = resolve(ColorToken::BorderStrong, theme);
-        stroke_rounded_rect(scene, r, radius, StrokeToken::Thin.px(), ink);
-    }
+/// A célula como a moldura da casa a pede: `(chave da linha, coluna)`.
+#[must_use]
+pub fn pair(c: &CellAt) -> (&str, &str) {
+    (&c.0, &c.1)
 }
 
 /// Um número curto para o gráfico e a dica (até duas casas, sem zeros à direita).

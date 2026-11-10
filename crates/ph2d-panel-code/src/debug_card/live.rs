@@ -187,9 +187,8 @@ fn sheet(
     let (cols, m) = (live_columns(), Metrics::standard());
     let rows = live_sheet_rows(c, st.graph.as_deref());
     let mut text = CodeCells { view, theme };
-    let natural = st
-        .steady
-        .cols(natural_widths(&cols, &rows, &m, ts, &mut text));
+    let natural = natural_widths(&cols, &rows, &m, ts, &mut text);
+    let natural = st.steady.cols.widths(&cols, &natural);
     let table_r = Rect::new(body.x, body.y, body.w, (body.h - rh).max(0.0));
     reveal_graph(st, &rows, table_r.h - m.header_h, &m);
     let lay = ph2d_ui_table::layout(&cols, &rows, &natural, &mut st.table, table_r, &m);
@@ -199,7 +198,9 @@ fn sheet(
     );
     let hover = st.cell_hover.take();
     let pressed = st.cell_pressed.as_ref();
-    super::live_marks::paint_cells(&lay, &rows, hover.as_ref(), pressed, scene, theme);
+    let at = super::live_marks::pair;
+    let (hover, pressed) = (hover.as_ref().map(at), pressed.map(at));
+    ph2d_ui_table::paint_cell_frames(&lay, &rows, hover, pressed, scene, theme);
     for span in &lay.rows {
         let row = &rows[span.index];
         if row.cells.get(3).is_some_and(|c| c.spark.is_some())

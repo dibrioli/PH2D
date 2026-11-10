@@ -120,7 +120,7 @@ fn arrastar_o_puxador_muda_a_largura_e_nunca_desce_do_minimo() {
     let edge = l.cols[1].x + l.cols[1].w;
     let y = l.header.y + l.header.h * 0.5;
     let hit = l.hit(&r, edge, y).expect("puxador");
-    assert_eq!(hit, Hit::Resize("value"));
+    assert_eq!(hit, Hit::Resize("value".into()));
     assert!(st.press(&hit, (edge, y), &l, &r));
     assert!(st.dragging());
     assert!(st.drag_to((edge + m.min_col, y), &m));
@@ -140,13 +140,13 @@ fn esconder_a_coluna_type_tira_a_do_cabecalho_e_do_corpo() {
     let c = cols();
     assert_eq!(
         st.column_menu(&c),
-        vec![("type", "Type", true)],
+        vec![("type".into(), "Type", true)],
         "só Type se esconde"
     );
     st.set_hidden("type", true);
     let (l, _) = lay(&mut st, area(&m));
     assert!(l.col("type").is_none());
-    assert_eq!(st.column_menu(&c), vec![("type", "Type", false)]);
+    assert_eq!(st.column_menu(&c), vec![("type".into(), "Type", false)]);
     let a = area(&m);
     let total: f32 = l.cols.iter().map(|c| c.w).sum();
     assert!(
@@ -173,7 +173,7 @@ fn o_clique_no_chevron_vira_a_dobra_e_no_valor_e_uma_celula() {
         l.hit(&r, vx, cy),
         Some(Hit::Cell {
             row: pos.index,
-            col: "value"
+            col: "value".into()
         })
     );
     // O cabeçalho de grupo dobra em qualquer ponto da linha.
@@ -385,4 +385,222 @@ fn o_anel_guarda_as_ultimas_amostras_e_o_que_mudou() {
     t.sample([um("b", 1.0)]);
     assert_eq!(t.old("b"), None, "quem volta recomeça");
     assert_eq!(Span::of(&[f32::NAN]), None);
+}
+
+// ── Plano 14 Q4: as marcas que a tabela pinta ─────────────────────────────────────────────────
+
+use ph2d_editor_core::widget::{RowHighlight, paint_row_highlight};
+use ph2d_text::TextSystem;
+use ph2d_tokens::{ColorToken, Theme};
+use ph2d_ui_table::{StableWidths, UiText, paint, paint_cell_frames};
+use ph2d_vector::VectorScene;
+
+const TEMA: Theme = Theme::Dark;
+
+/// O `draw_data` de um preenchimento na cor `c`: a «tinta» que se procura numa cena.
+fn tinta(c: ph2d_vector::Color) -> u32 {
+    let mut s = VectorScene::new();
+    ph2d_editor_core::paint::fill_rounded_rect(&mut s, Rect::new(0.0, 0.0, 1.0, 1.0), 0.0, c);
+    s.inner().encoding().draw_data[0]
+}
+
+fn tom(t: ColorToken) -> u32 {
+    tinta(ph2d_editor_core::paint::resolve(t, TEMA))
+}
+
+fn realce(h: RowHighlight) -> u32 {
+    let mut s = VectorScene::new();
+    paint_row_highlight(&mut s, Rect::new(0.0, 0.0, 1.0, 1.0), TEMA, h, 0.0);
+    s.inner().encoding().draw_data[0]
+}
+
+/// Pinta `rows` e devolve `(draw_data, path_data, segmentos)` e a geometria.
+fn pinta(st: &mut TableState, rows: &[Row], m: &Metrics) -> (Vec<u32>, Vec<u32>, u32, Layout) {
+    let (c, a) = (cols(), area(m));
+    let l = layout(&c, rows, &natural(m), st, a, m);
+    let (mut scene, mut ts) = (VectorScene::new(), TextSystem::without_system_fonts());
+    let tones = (ColorToken::PanelBg, ColorToken::Bg3);
+    let mut text = UiText { theme: TEMA };
+    paint(
+        &l, &c, rows, st, tones, &mut scene, &mut ts, &mut text, TEMA,
+    );
+    let e = scene.inner().encoding();
+    (
+        e.draw_data.clone(),
+        e.path_data.clone(),
+        e.n_path_segments,
+        l,
+    )
+}
+
+#[test]
+fn a_coluna_acesa_pinta_a_banda_e_acende_o_titulo_e_a_leve_o_tom_do_hover() {
+    let m = Metrics::standard();
+    let r = rows();
+    let (antes, ..) = pinta(&mut TableState::default(), &r, &m);
+    let (soft, title) = (realce(RowHighlight::Hovered), tom(ColorToken::Text1));
+    assert!(!antes.contains(&tom(ColorToken::AccentSoft)) && !antes.contains(&soft));
+    assert!(
+        !antes.contains(&title),
+        "controlo: nada em Text1 sem coluna acesa"
+    );
+    let mut st = TableState::default();
+    st.lit_col = Some("value".into());
+    let (acesa, ..) = pinta(&mut st, &r, &m);
+    assert!(
+        acesa.contains(&tom(ColorToken::AccentSoft)),
+        "a banda da coluna acesa"
+    );
+    assert!(acesa.contains(&title), "o título da coluna acesa em Text1");
+    let mut st = TableState::default();
+    st.soft_col = Some("type".into());
+    let (leve, ..) = pinta(&mut st, &r, &m);
+    assert!(
+        leve.contains(&soft),
+        "a coluna do cursor no tom do hover das listas"
+    );
+    assert!(!leve.contains(&tom(ColorToken::AccentSoft)) && !leve.contains(&title));
+}
+
+#[test]
+fn a_celula_mudada_ganha_a_banda_ambar_recuada_e_o_texto_ambar() {
+    let m = Metrics::standard();
+    let mut r = rows();
+    let band = tinta(ph2d_ui_table::changed_tint(TEMA));
+    let (antes, ..) = pinta(&mut TableState::default(), &r, &m);
+    assert!(!antes.contains(&band));
+    let i = r.iter().position(|x| x.key == "dt").unwrap();
+    r[i].cells[1].changed = true;
+    let (depois, path, _, l) = pinta(&mut TableState::default(), &r, &m);
+    assert!(depois.contains(&band), "a banda âmbar da célula");
+    let ambar = tinta(ph2d_ui_table::ink_color(Ink::Changed, TEMA));
+    assert!(
+        !antes.contains(&ambar) && depois.contains(&ambar),
+        "o texto da célula em âmbar"
+    );
+    let cell = l.cell_rect(i, "value").unwrap();
+    let frame = l.cell_frame(&r, "dt", "value").unwrap();
+    let d = ph2d_tokens::Spacing::Xxs.px();
+    assert!((frame.x - (cell.x + d)).abs() < 1e-3 && (frame.w - (cell.w - d * 2.0)).abs() < 1e-3);
+    assert!(
+        path.contains(&frame.x.to_bits()),
+        "a banda assenta na célula recuada"
+    );
+    assert!(!r[i].changed, "a linha não mudou: só a célula");
+}
+
+#[test]
+fn a_linha_escolhida_vence_o_hover() {
+    let m = Metrics::standard();
+    let r = rows();
+    let hover = tom(ColorToken::AccentSoft);
+    let mut st = TableState::default();
+    st.hover = Some("dt".into());
+    let (so_hover, ..) = pinta(&mut st, &r, &m);
+    assert!(so_hover.contains(&hover), "controlo: o hover pinta-se");
+    st.selected = Some("dt".into());
+    let (escolhida, ..) = pinta(&mut st, &r, &m);
+    assert!(escolhida.contains(&realce(RowHighlight::Selected)));
+    assert!(!escolhida.contains(&hover), "a selecção tapa o hover");
+}
+
+#[test]
+fn o_quadrado_de_cor_toma_o_lugar_do_texto_e_a_largura_e_a_dele() {
+    let m = Metrics::standard();
+    let mut r = rows();
+    let cor = [0.9, 0.2, 0.1, 1.0];
+    for row in r.iter_mut().filter(|x| x.group.is_none()) {
+        row.cells[1] = Cell {
+            text: "a very long value that would be wide".into(),
+            swatch: Some(cor),
+            ..Cell::default()
+        };
+    }
+    let (data, ..) = pinta(&mut TableState::default(), &r, &m);
+    assert!(data.contains(&tinta(ph2d_vector::Color::new(cor))));
+    let mut ts = TextSystem::without_system_fonts();
+    let mut text = UiText { theme: TEMA };
+    let n = ph2d_ui_table::natural_widths(&cols(), &r, &m, &mut ts, &mut text);
+    let want = (ph2d_ui_table::swatch_side() + m.pad * 2.0).max(m.min_col);
+    assert!((n[1] - want).abs() < 1e-3, "{} vs {want}", n[1]);
+}
+
+#[test]
+fn sem_cabecalho_o_corpo_comeca_em_cima_e_nada_do_cabecalho_se_pinta() {
+    let m = Metrics {
+        header_h: 0.0,
+        ..Metrics::standard()
+    };
+    let r = rows();
+    let (data, .., l) = pinta(&mut TableState::default(), &r, &m);
+    assert!((l.body.y - l.area.y).abs() < 1e-3 && l.header.h == 0.0);
+    let top = l.rows.first().unwrap();
+    assert_eq!(
+        l.hit(&r, l.cols[1].x + 1.0, l.area.y),
+        Some(Hit::Toggle(top.index))
+    );
+    let vx = l.cols[1].x + 1.0;
+    let first_item = l.rows.iter().find(|s| r[s.index].group.is_none()).unwrap();
+    assert!(matches!(
+        l.hit(&r, vx, first_item.rect.y + 1.0),
+        Some(Hit::Cell { .. })
+    ));
+    // O `base` (PanelBg) só se pinta no fundo opaco do cabeçalho (a listra é um tom derivado).
+    let fundo = tom(ColorToken::PanelBg);
+    assert!(!data.contains(&fundo), "sem cabeçalho, nada do fundo dele");
+    let (com, ..) = pinta(&mut TableState::default(), &r, &Metrics::standard());
+    assert!(
+        com.contains(&fundo),
+        "controlo: com cabeçalho o fundo dele pinta-se"
+    );
+}
+
+#[test]
+fn a_moldura_da_celula_premida_vence_a_do_rato() {
+    let m = Metrics::standard();
+    let r = rows();
+    let mut st = TableState::default();
+    let l = layout(&cols(), &r, &natural(&m), &mut st, area(&m), &m);
+    let frames = |hover, pressed| {
+        let mut s = VectorScene::new();
+        paint_cell_frames(&l, &r, hover, pressed, &mut s, TEMA);
+        s.inner().encoding().draw_data.clone()
+    };
+    assert!(frames(None, None).is_empty());
+    let rato = frames(Some(("dt", "value")), None);
+    assert!(!rato.is_empty() && !rato.contains(&tom(ColorToken::Accent)));
+    let premida = frames(Some(("dt", "value")), Some(("dt", "value")));
+    assert_ne!(premida, rato, "a premida é outra moldura");
+    assert!(
+        frames(Some(("nobody", "value")), None).is_empty(),
+        "linha que não existe"
+    );
+}
+
+#[test]
+fn as_larguras_estaveis_so_crescem() {
+    let c = cols();
+    let mut s = StableWidths::default();
+    assert_eq!(s.widths(&c, &[50.0, 30.0, 20.0]), [50.0, 30.0, 20.0]);
+    assert_eq!(
+        s.widths(&c, &[40.0, 35.0, 20.0]),
+        [50.0, 35.0, 20.0],
+        "só cresce"
+    );
+    let menos = &c[..2];
+    assert_eq!(
+        s.widths(menos, &[10.0, 10.0]),
+        [10.0, 10.0],
+        "outras colunas: recomeça"
+    );
+    let mut trocada = cols();
+    trocada[0] = Column::new(String::from("speed"), "speed");
+    s.widths(&c, &[50.0, 30.0, 20.0]);
+    assert_eq!(
+        s.widths(&trocada, &[5.0, 30.0, 20.0])[0],
+        5.0,
+        "outra chave: recomeça"
+    );
+    s.reset();
+    assert_eq!(s.widths(&trocada, &[1.0, 2.0, 3.0]), [1.0, 2.0, 3.0]);
 }

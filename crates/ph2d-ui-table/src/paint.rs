@@ -1,15 +1,16 @@
 //! A pintura da tabela sobre a [`crate::Layout`]: listras → estado (rato, mudou) → texto, depois o
 //! cabeçalho e as divisórias, e a barra de rolagem quando o corpo transborda.
 
-use crate::{Align, Column, Ink, Layout, Row, TableState};
+use crate::{Align, Cell, ColSpan, Column, Ink, Layout, Row, TableState};
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, paint_icon, paint_text, paint_text_title, rect_to_vello,
-    resolve, stroke_polyline, token_to_vello,
+    fill_circle, fill_rounded_rect, frame_radius, paint_icon, paint_text, paint_text_title,
+    rect_to_vello, resolve, stroke_polyline, token_to_vello,
 };
+use ph2d_editor_core::widget::{RowHighlight, paint_row_highlight};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// O texto das células: o anfitrião mede e pinta (o editor de scripts pinta a mono com a cor do
@@ -140,7 +141,10 @@ pub fn paint(
         // O fio de baixo de cada linha (a grelha da maquete: subtil, as colunas mais fortes).
         let floor = Rect::new(r.x, r.y + r.h - hair, r.w, hair);
         fill_rounded_rect(scene, floor, 0.0, ink(head));
-        if row.changed {
+        // A selecção vence o «mudou» e o hover (é um facto do documento, não do rato).
+        if st.selected.as_deref() == Some(row.key.as_str()) {
+            paint_row_highlight(scene, r, theme, RowHighlight::Selected, 0.0);
+        } else if row.changed {
             fill_rounded_rect(scene, r, 0.0, changed_tint(theme));
         } else if st.hover.as_deref() == Some(row.key.as_str()) {
             fill_rounded_rect(scene, r, 0.0, ink(ColorToken::AccentSoft));
@@ -198,6 +202,7 @@ pub fn paint(
                 continue;
             };
             let col = &cols[c.index];
+            paint_cell_marks(scene, c, r, cell, st, theme);
             let mut x = c.x + m.pad;
             let right = c.x + c.w - m.pad;
             if k == 0 {
@@ -211,6 +216,16 @@ pub fn paint(
                 let rad = m.row_h * 0.15;
                 fill_circle(scene, x + rad, r.y + r.h * 0.5, rad, ink(dot));
                 x += m.row_h * 0.5;
+            }
+            if let Some(sw) = cell.swatch {
+                let side = crate::swatch_side();
+                let sx = match col.align {
+                    Align::Start => x,
+                    Align::End => (right - side).max(x),
+                };
+                let q = Rect::new(sx, r.y + (r.h - side) * 0.5, side, side);
+                fill_rounded_rect(scene, q, Spacing::Xxs.px(), ph2d_vector::Color::new(sw));
+                continue;
             }
             if let Some(s) = &cell.spark {
                 paint_spark(
@@ -244,7 +259,7 @@ pub fn paint(
                 ts,
                 scene,
                 &cell.text,
-                cell.ink,
+                if cell.changed { Ink::Changed } else { cell.ink },
                 col.mono,
                 tx,
                 (r.y, r.h),
@@ -265,8 +280,43 @@ pub fn paint(
     }
     scene.pop_layer();
 
-    // O cabeçalho.
+    paint_header(lay, cols, st, (base, head), scene, ts, theme);
+
+    // A barra de rolagem da casa: agarra-se no polegar ou na trilha (`Hit::Bar`).
+    let bar = lay.bar();
+    let state = if st.bar_dragging() {
+        ph2d_editor_core::widget::ScrollbarState::Dragging
+    } else {
+        ph2d_editor_core::widget::ScrollbarState::Normal
+    };
+    let (body, content, visible) = (bar.body, bar.content_h, bar.visible_h);
+    let visual = (state, ph2d_editor_core::motion::SETTLED);
+    let _ = ph2d_editor_core::widget::paint_scrollbar(
+        body, lay.scroll, content, visible, visual, scene, theme,
+    );
+}
+
+/// O cabeçalho: opaco e pintado DEPOIS do corpo (nada do corpo se lê por baixo dele).
+#[allow(clippy::too_many_arguments)]
+fn paint_header(
+    lay: &Layout,
+    cols: &[Column],
+    st: &TableState,
+    (base, head): (ColorToken, ColorToken),
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+) {
+    let Some(m) = lay.m else { return };
+    let ink = |t: ColorToken| resolve(t, theme);
+    let hair = StrokeToken::Thin.px();
+    let small = TypeToken::Xs.px();
+    let ty_small = |y: f32, h: f32| y + (h - small) * 0.5;
     let h = lay.header;
+    // `Metrics.header_h = 0`: uma tabela sem cabeçalho (nem a linha de baixo dele).
+    if h.h <= 0.0 {
+        return;
+    }
     scene.push_clip(&rect_to_vello(h));
     // Opaco e DEPOIS do corpo: nada do corpo se lê por baixo do cabeçalho.
     fill_rounded_rect(scene, h, 0.0, ink(base));
@@ -287,7 +337,11 @@ pub fn paint(
             ty_small(h.y, h.h),
             small,
             (c.x + c.w - x).max(0.0),
-            ink(ColorToken::Text3),
+            ink(if st.lit_col.as_deref() == Some(&*c.key) {
+                ColorToken::Text1
+            } else {
+                ColorToken::Text3
+            }),
         );
         if c.x > lay.area.x {
             stroke_polyline(
@@ -305,19 +359,29 @@ pub fn paint(
         hair,
         ink(ColorToken::Border),
     );
+}
 
-    // A barra de rolagem da casa: agarra-se no polegar ou na trilha (`Hit::Bar`).
-    let bar = lay.bar();
-    let state = if st.bar_dragging() {
-        ph2d_editor_core::widget::ScrollbarState::Dragging
-    } else {
-        ph2d_editor_core::widget::ScrollbarState::Normal
-    };
-    let (body, content, visible) = (bar.body, bar.content_h, bar.visible_h);
-    let visual = (state, ph2d_editor_core::motion::SETTLED);
-    let _ = ph2d_editor_core::widget::paint_scrollbar(
-        body, lay.scroll, content, visible, visual, scene, theme,
-    );
+/// As marcas de uma célula, depois da listra e antes do texto: a banda da coluna acesa
+/// (`AccentSoft`) ou da leve (o hover das listas), e a da célula mudada (âmbar, recuada).
+fn paint_cell_marks(
+    scene: &mut VectorScene,
+    c: &ColSpan,
+    r: Rect,
+    cell: &Cell,
+    st: &TableState,
+    theme: Theme,
+) {
+    let band = Rect::new(c.x, r.y, c.w, r.h);
+    if st.lit_col.as_deref() == Some(&*c.key) {
+        fill_rounded_rect(scene, band, 0.0, resolve(ColorToken::AccentSoft, theme));
+    } else if st.soft_col.as_deref() == Some(&*c.key) {
+        paint_row_highlight(scene, band, theme, RowHighlight::Hovered, 0.0);
+    }
+    if cell.changed {
+        let radius = frame_radius(theme, Radius::Sm.px());
+        let at = crate::marks::inset(band, Spacing::Xxs.px());
+        fill_rounded_rect(scene, at, radius, changed_tint(theme));
+    }
 }
 
 /// O fundo de uma linha que mudou: a banda âmbar opaca ([`ph2d_tokens::changed_band`]; o `WarnSoft`

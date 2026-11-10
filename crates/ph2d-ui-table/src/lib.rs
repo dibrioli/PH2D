@@ -9,19 +9,27 @@
 //! ele, e a **geometria** pura ([`layout`] → [`Layout`], [`Layout::hit`]) que a pintura
 //! ([`paint`]) e o clique partilham — o mesmo rectângulo desenha e recebe.
 
+mod marks;
 mod paint;
+mod steady;
 mod trail;
 
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing};
 
+pub use marks::{paint_cell_frames, swatch_side};
 pub use paint::{
     CellText, UiText, changed_tint, ink_color, paint, paint_spark, spark_points, ui_font,
 };
+pub use steady::StableWidths;
 pub use trail::{Span, Trails};
+
+/// A chave de uma coluna: fixa (`"value"`) ou feita em execução (uma coluna por propriedade).
+pub type Key = Cow<'static, str>;
 
 /// Onde o texto encosta na célula (os números à direita, para os dígitos se compararem).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -34,7 +42,7 @@ pub enum Align {
 /// Uma coluna. A chave é estável (é ela que guarda a largura e o «escondida»).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Column {
-    pub key: &'static str,
+    pub key: Key,
     pub title: String,
     pub align: Align,
     /// O texto das células na letra do código.
@@ -49,9 +57,9 @@ pub struct Column {
 
 impl Column {
     #[must_use]
-    pub fn new(key: &'static str, title: impl Into<String>) -> Self {
+    pub fn new(key: impl Into<Key>, title: impl Into<String>) -> Self {
         Self {
-            key,
+            key: key.into(),
             title: title.into(),
             align: Align::Start,
             mono: false,
@@ -120,6 +128,10 @@ pub struct Cell {
     pub dot: Option<ColorToken>,
     /// O traço dos últimos segundos (amostras, a mais antiga primeiro).
     pub spark: Option<Vec<f32>>,
+    /// Só esta célula mudou: banda âmbar recuada e o texto em [`Ink::Changed`].
+    pub changed: bool,
+    /// Um quadrado desta cor (RGBA) no lugar do texto.
+    pub swatch: Option<[f32; 4]>,
 }
 
 impl Cell {
@@ -186,9 +198,9 @@ impl Metrics {
 }
 
 /// Um arrasto de largura em curso.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 struct Drag {
-    key: &'static str,
+    key: Key,
     x0: f32,
     w0: f32,
 }
@@ -197,13 +209,19 @@ struct Drag {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TableState {
     /// As larguras que o utilizador arrastou.
-    pub widths: BTreeMap<&'static str, f32>,
-    pub hidden: BTreeSet<&'static str>,
+    pub widths: BTreeMap<Key, f32>,
+    pub hidden: BTreeSet<Key>,
     /// As linhas cuja dobra difere da de omissão.
     pub toggled: BTreeSet<String>,
     pub scroll: f32,
     /// A linha sob o rato.
     pub hover: Option<String>,
+    /// A linha escolhida (chave): o fundo de selecção da casa, que vence o hover.
+    pub selected: Option<String>,
+    /// A coluna acesa: banda `AccentSoft` no corpo e o título em `Text1`.
+    pub lit_col: Option<Key>,
+    /// A coluna leve (a do cursor do texto): a banda do hover das listas.
+    pub soft_col: Option<Key>,
     drag: Option<Drag>,
     /// O arrasto da barra de rolagem.
     bar: Option<ph2d_editor_core::widget::scroll_area::BarDrag>,
@@ -213,15 +231,15 @@ pub struct TableState {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Hit {
     /// O puxador à direita da coluna.
-    Resize(&'static str),
-    Header(&'static str),
+    Resize(Key),
+    Header(Key),
     /// A barra de rolagem do corpo (polegar ou trilha).
     Bar,
     /// O ▸ de uma linha (ou um cabeçalho de grupo inteiro).
     Toggle(usize),
     Cell {
         row: usize,
-        col: &'static str,
+        col: Key,
     },
 }
 
@@ -237,11 +255,12 @@ impl TableState {
         }
     }
 
-    pub fn set_hidden(&mut self, key: &'static str, hidden: bool) {
+    pub fn set_hidden(&mut self, key: impl Into<Key>, hidden: bool) {
+        let key = key.into();
         if hidden {
             self.hidden.insert(key);
         } else {
-            self.hidden.remove(key);
+            self.hidden.remove(&key);
         }
     }
 
@@ -279,7 +298,11 @@ impl TableState {
             }
             Hit::Resize(key) => {
                 let w0 = lay.col(key).map_or(0.0, |c| c.w);
-                self.drag = Some(Drag { key, x0: x, w0 });
+                self.drag = Some(Drag {
+                    key: key.clone(),
+                    x0: x,
+                    w0,
+                });
                 true
             }
             Hit::Toggle(i) => {
@@ -322,9 +345,9 @@ impl TableState {
             let before = std::mem::replace(&mut self.scroll, b.scroll_at(y));
             return (self.scroll - before).abs() > f32::EPSILON;
         }
-        let Some(d) = self.drag else { return false };
+        let Some(d) = &self.drag else { return false };
         let w = (d.w0 + x - d.x0).max(m.min_col);
-        self.widths.insert(d.key, w) != Some(w)
+        self.widths.insert(d.key.clone(), w) != Some(w)
     }
 
     /// Larga o arrasto. `true` = havia um.
@@ -358,18 +381,24 @@ impl TableState {
 
     /// O menu do cabeçalho: `(chave, título, à vista)` de cada coluna que se pode esconder.
     #[must_use]
-    pub fn column_menu<'a>(&self, cols: &'a [Column]) -> Vec<(&'static str, &'a str, bool)> {
+    pub fn column_menu<'a>(&self, cols: &'a [Column]) -> Vec<(Key, &'a str, bool)> {
         cols.iter()
             .filter(|c| c.hideable)
-            .map(|c| (c.key, c.title.as_str(), !self.hidden.contains(c.key)))
+            .map(|c| {
+                (
+                    c.key.clone(),
+                    c.title.as_str(),
+                    !self.hidden.contains(&c.key),
+                )
+            })
             .collect()
     }
 }
 
 /// Uma coluna à vista na geometria.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ColSpan {
-    pub key: &'static str,
+    pub key: Key,
     /// O índice em `cols` (e nas células de cada linha).
     pub index: usize,
     pub x: f32,
@@ -429,17 +458,18 @@ impl Layout {
             return None;
         }
         let last = self.cols.len().saturating_sub(1);
-        if self.header.contains(x, y) {
+        // Sem cabeçalho (`header_h = 0`) a borda de cima é do corpo.
+        if self.header.h > 0.0 && self.header.contains(x, y) {
             for (i, c) in self.cols.iter().enumerate() {
                 if i < last && (x - (c.x + c.w)).abs() <= m.handle {
-                    return Some(Hit::Resize(c.key));
+                    return Some(Hit::Resize(c.key.clone()));
                 }
             }
             return self
                 .cols
                 .iter()
                 .find(|c| x >= c.x && x < c.x + c.w)
-                .map(|c| Hit::Header(c.key));
+                .map(|c| Hit::Header(c.key.clone()));
         }
         if self.bar().hit().is_some_and(|b| b.contains(x, y)) {
             return Some(Hit::Bar);
@@ -462,7 +492,7 @@ impl Layout {
             .find(|c| x >= c.x && x < c.x + c.w)
             .map(|c| Hit::Cell {
                 row: span.index,
-                col: c.key,
+                col: c.key.clone(),
             })
     }
 
@@ -482,7 +512,7 @@ pub fn min_width(cols: &[Column], natural: &[f32], st: &TableState, m: &Metrics)
     let cells: f32 = cols
         .iter()
         .zip(natural)
-        .filter(|(c, _)| !st.hidden.contains(c.key))
+        .filter(|(c, _)| !st.hidden.contains(&c.key))
         .map(|(c, w)| if c.flex { m.min_col } else { w.max(m.min_col) })
         .sum();
     cells + bar_gutter()
@@ -505,7 +535,11 @@ pub fn natural_widths(
                 .filter(|r| r.group.is_none())
                 .filter_map(|r| r.cells.get(ci).map(|cell| (r, cell)))
                 .map(|(r, cell)| {
-                    let mut w = text.width(ts, &cell.text, c.mono);
+                    let mut w = if cell.swatch.is_some() {
+                        swatch_side()
+                    } else {
+                        text.width(ts, &cell.text, c.mono)
+                    };
                     if let Some(old) = &cell.old {
                         w += text.width(ts, old, c.mono) + m.pad;
                     }
@@ -539,13 +573,13 @@ pub fn layout(
     m: &Metrics,
 ) -> Layout {
     let shown: Vec<usize> = (0..cols.len())
-        .filter(|&i| !st.hidden.contains(cols[i].key))
+        .filter(|&i| !st.hidden.contains(&cols[i].key))
         .collect();
     let mut widths: Vec<f32> = shown
         .iter()
         .map(|&i| {
             st.widths
-                .get(cols[i].key)
+                .get(&cols[i].key)
                 .copied()
                 .unwrap_or_else(|| natural.get(i).copied().unwrap_or(m.min_col))
                 .max(m.min_col)
@@ -558,7 +592,7 @@ pub fn layout(
     // A `flex` (Name) toma o que sobra — e é ELA que encolhe primeiro, até `min_col`; as outras
     // nunca descem abaixo da natural (o texto delas nunca se corta enquanto o Name tiver folga).
     if let Some(f) = shown.iter().position(|&i| cols[i].flex)
-        && !st.widths.contains_key(cols[shown[f]].key)
+        && !st.widths.contains_key(&cols[shown[f]].key)
     {
         let others: f32 = widths
             .iter()
@@ -574,7 +608,7 @@ pub fn layout(
         .zip(&widths)
         .map(|(&i, &w)| {
             let s = ColSpan {
-                key: cols[i].key,
+                key: cols[i].key.clone(),
                 index: i,
                 x,
                 w,

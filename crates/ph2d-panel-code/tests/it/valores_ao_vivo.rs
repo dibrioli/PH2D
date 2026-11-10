@@ -128,7 +128,7 @@ fn o_live_values_e_uma_tabela_com_o_traco_dos_ultimos_4_s() {
         r.h
     );
     let (lay, rows, cols) = v.painted.table.clone().expect("a Sheet é a tabela");
-    let keys: Vec<_> = cols.iter().map(|c| c.key).collect();
+    let keys: Vec<&str> = cols.iter().map(|c| &*c.key).collect();
     assert_eq!(keys, ["line", "name", "value", "trail"]);
     assert_eq!(rows.len(), 2);
     assert!(

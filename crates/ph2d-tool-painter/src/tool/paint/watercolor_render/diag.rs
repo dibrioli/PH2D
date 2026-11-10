@@ -31,6 +31,11 @@ impl PainterTool {
         let t0 = std::time::Instant::now();
         let px0 = self.wash.window_px;
         let out = self.compoe_as_janelas_do_quadro(commit);
+        let out = if commit {
+            self.pegada_da_sessao(out)
+        } else {
+            out
+        };
         crate::wash_diag::note_composite(
             t0.elapsed().as_secs_f32() * 1e3,
             self.wash.window_px.saturating_sub(px0),

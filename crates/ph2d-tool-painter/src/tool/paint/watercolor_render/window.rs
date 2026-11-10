@@ -89,7 +89,7 @@ impl PainterTool {
         };
         let changed = frame;
         let dirty = if commit {
-            match (self.paint.wet_cum_dirty, frame) {
+            match (self.pegada_do_commit(), frame) {
                 (Some(c), Some(f)) => Some(union_region(c, f)),
                 (c, f) => c.or(f),
             }
@@ -278,7 +278,67 @@ pub(in crate::tool::paint) fn ponto_na_janela(g: usize, o: f32, d: f32, origem: 
     (g as f32 + o + d) - origem as f32
 }
 
+#[cfg(test)]
+#[path = "commit_tests.rs"]
+mod commit_tests;
+
+#[cfg(test)]
+thread_local! {
+    /// O oráculo do B16.2: o pen-up pela UNIÃO da sessão (o caminho antigo, verbatim).
+    pub(super) static COMMIT_PELA_UNIAO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 impl PainterTool {
+    /// **O que o pen-up recompõe além do quadro: o TRAÇO** (B16.2). Fora de `traço ⊕ pad` nenhuma
+    /// entrada do composite mudou desde o pen-up que a escreveu (os quadros só escrevem ali), e a
+    /// união da sessão dava os mesmos bytes ao preço de todos os traços anteriores.
+    /// Só com o estilo da sessão UNIFORME: um traço com outro raio/Spread/Rewet muda os máximos da
+    /// sessão, e a união dava outros bytes longe dele (medido: 90 texels no 3.º traço, raio 3→5).
+    fn pegada_do_commit(&self) -> Option<Region> {
+        #[cfg(test)]
+        if COMMIT_PELA_UNIAO.get() {
+            return self.paint.wet_cum_dirty;
+        }
+        let t = &self.paint.wet_styles.table;
+        let uniforme = t.first().is_none_or(|a| {
+            !super::super::watercolor_rewet_px::params_differ(t)
+                && t.iter().all(|s| {
+                    (s.core_r, s.spread_px, s.reserve_r) == (a.core_r, a.spread_px, a.reserve_r)
+                        && (s.wet, s.paper_edge, s.granulation) == (a.wet, a.paper_edge, a.granulation)
+                        && (s.spread_thin, s.pigment_mix) == (a.spread_thin, a.pigment_mix)
+                })
+        });
+        if uniforme {
+            self.paint.wet_stroke_dirty
+        } else {
+            self.paint.wet_cum_dirty
+        }
+    }
+
+    /// A pegada que o pen-up DEVOLVE (o que a edição viva do Grain/Paper re-renderiza): a união da
+    /// sessão ⊕ `pad`, a mesma de antes do B16.2 — o pen-up escreve menos, a aguada editável não encolhe.
+    pub(super) fn pegada_da_sessao(&self, escrita: Option<Region>) -> Option<Region> {
+        let (fw, fh) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        let Some(c) = self.paint.wet_cum_dirty else {
+            return escrita;
+        };
+        let pad = self.alcance_da_janela().pad;
+        let x0 = (c.x as usize).saturating_sub(pad);
+        let y0 = (c.y as usize).saturating_sub(pad);
+        let x1 = ((c.x as usize) + (c.w as usize) + pad).min(fw);
+        let y1 = ((c.y as usize) + (c.h as usize) + pad).min(fh);
+        if x0 >= x1 || y0 >= y1 {
+            return escrita;
+        }
+        let u = Region {
+            x: x0 as u32,
+            y: y0 as u32,
+            w: (x1 - x0) as u32,
+            h: (y1 - y0) as u32,
+        };
+        Some(escrita.map_or(u, |e| union_region(e, u)))
+    }
+
     /// O chão uniforme (cor do papel, opaco) de `n` texels, guardado por (cor, tamanho) (B16.A2).
     pub(in crate::tool::paint) fn chao_uniforme(&mut self, n: usize) -> Arc<Vec<u8>> {
         let p = self.cor_do_chao();

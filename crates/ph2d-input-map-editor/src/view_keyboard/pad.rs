@@ -102,7 +102,12 @@ pub(super) fn paint(
         Rect::new(cx - half_w, cy - reach, half_w * 2.0, reach * 2.0),
         Rect::new(cx - reach, cy - half_w, reach * 2.0, half_w * 2.0),
     ] {
-        fill_rounded_rect(scene, r, m::SEG_RADIUS, ink.color(ColorToken::KanbanCardRaised));
+        fill_rounded_rect(
+            scene,
+            r,
+            m::SEG_RADIUS,
+            ink.color(ColorToken::KanbanCardRaised),
+        );
     }
     // Os anéis das manches: aceso inteiro quando a aberta usa uma metade dele; as barras por baixo da seta de baixo.
     for (i, ((fx, fy), key, fr)) in g::STICKS.into_iter().enumerate() {

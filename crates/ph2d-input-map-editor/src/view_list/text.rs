@@ -40,28 +40,6 @@ pub(crate) fn line(
     w.min(r.w)
 }
 
-/// `s` partido pelas palavras em linhas que cabem em `w` (uma palavra maior que `w` fica sozinha na linha).
-pub(crate) fn wrap(ts: &mut TextSystem, s: &str, px: f32, w: f32) -> Vec<String> {
-    let mut out = Vec::new();
-    let mut cur = String::new();
-    for word in s.split(' ') {
-        let next = if cur.is_empty() {
-            word.to_owned()
-        } else {
-            format!("{cur} {word}")
-        };
-        if cur.is_empty() || ts.prefix_width(&next, px) <= w {
-            cur = next;
-        } else {
-            out.push(std::mem::replace(&mut cur, word.to_owned()));
-        }
-    }
-    if !cur.is_empty() {
-        out.push(cur);
-    }
-    out
-}
-
 /// `s` partido pelas palavras: a 1.ª linha tem `first` (o que sobra ao lado de um destaque), as outras `w`. Uma
 /// 1.ª linha onde nem a primeira palavra cabe fica vazia (o resto começa por baixo), nunca cortada.
 pub(crate) fn wrap_after(ts: &mut TextSystem, s: &str, px: f32, first: f32, w: f32) -> Vec<String> {

@@ -102,7 +102,12 @@ pub fn paint(
     let ink = CardInk::of_list(theme);
     // A B como a A: o fundo é a superfície MAIS FUNDA (kanban-list), os cartões sobem (kanban-card) e as teclas
     // sobem mais (kanban-card-raised). Da cor do quadro, o fundo não deixa faixa vazia por baixo do conteúdo.
-    fill_rounded_rect(scene, body, m::CARD_RADIUS, ink.color(ColorToken::KanbanList));
+    fill_rounded_rect(
+        scene,
+        body,
+        m::CARD_RADIUS,
+        ink.color(ColorToken::KanbanList),
+    );
     doc.kb.targets.clear();
     doc.kb.bars.clear();
     doc.kb.live_dot = None;

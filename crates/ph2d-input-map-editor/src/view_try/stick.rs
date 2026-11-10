@@ -51,7 +51,9 @@ fn disc(w: f32) -> f32 {
 pub(super) fn stick_h(doc: &mut InputMapDoc, ts: &mut TextSystem, w: f32) -> f32 {
     let iw = inner_w(w) - m::SEG_INSET * 2.0;
     let body = if stick_action(doc).is_some() {
-        disc(w).max(block_h()) + GAP + para_h(ts, tr("input_map_try.stick_caption"), m::LABEL_PX, iw)
+        disc(w).max(block_h())
+            + GAP
+            + para_h(ts, tr("input_map_try.stick_caption"), m::LABEL_PX, iw)
     } else {
         para_h(ts, tr("input_map_try.no_stick"), m::VALUE_PX, inner_w(w))
     };

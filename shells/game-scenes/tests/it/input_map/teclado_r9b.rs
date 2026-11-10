@@ -29,7 +29,13 @@ fn defeito_2_a_accao_vazia_da_vista_b_nao_toma_ctrl_nem_f5() {
     assert_eq!(m.tab().doc.kb.open, Some(reload));
     let ctrl = m.physical(named("left_ctrl"));
     let f5 = m.physical(named("f5"));
-    let b = m.hero.input_map.get(reload).expect("reload").bindings.clone();
+    let b = m
+        .hero
+        .input_map
+        .get(reload)
+        .expect("reload")
+        .bindings
+        .clone();
     assert!(
         !ctrl && !f5 && b.is_empty(),
         "Ctrl (do Ctrl+Z/Ctrl+S) e F5 (Play) viraram teclas do reload: {b:?}"
@@ -52,9 +58,19 @@ fn alt_sozinho_e_o_acorde_inteiro_passam_e_solto_o_ctrl_a_tecla_liga() {
         !m.physical(Key(u32::from('S'))),
         "com o Ctrl em baixo o S é o Ctrl+S"
     );
-    assert!(m.hero.input_map.get(reload).expect("reload").bindings.is_empty());
+    assert!(
+        m.hero
+            .input_map
+            .get(reload)
+            .expect("reload")
+            .bindings
+            .is_empty()
+    );
     assert!(!up(&mut m, named("left_ctrl")));
-    assert!(m.physical(Key(u32::from('R'))), "solto o Ctrl, a tecla liga-se");
+    assert!(
+        m.physical(Key(u32::from('R'))),
+        "solto o Ctrl, a tecla liga-se"
+    );
     assert_eq!(
         m.hero.input_map.get(reload).expect("reload").bindings,
         vec![Binding::Key(Key(u32::from('R')))]
@@ -74,9 +90,16 @@ fn o_ctrl_z_depois_do_add_vai_ao_editor_sem_ligar_nada() {
     m.frame();
     let r = m.hero.input_map.id("reload").expect("criada");
     assert_eq!(m.tab().doc.kb.open, Some(r));
-    assert_eq!(m.tab().doc.focus(), None, "nenhum campo focado: a tecla física é da acção vazia");
+    assert_eq!(
+        m.tab().doc.focus(),
+        None,
+        "nenhum campo focado: a tecla física é da acção vazia"
+    );
     let antes = m.hero.input_map.clone();
     assert!(!m.physical(named("left_ctrl")), "o Ctrl do Ctrl+Z passa");
     assert!(!m.physical(Key(u32::from('Z'))), "o Z do Ctrl+Z passa");
-    assert_eq!(m.hero.input_map, antes, "o Ctrl+Z não ligou Left Ctrl nem Z ao reload");
+    assert_eq!(
+        m.hero.input_map, antes,
+        "o Ctrl+Z não ligou Left Ctrl nem Z ao reload"
+    );
 }

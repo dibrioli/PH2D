@@ -36,12 +36,22 @@ fn a_previa_mostra_o_painel_inteiro_escalado_para_caber_no_ceu() {
     let nat = Layout::natural(0.0, 0.0, &r, &mut ts);
     assert_eq!(nat.rows.len(), r.len(), "todas as linhas");
     assert!(nat.bar.is_none(), "sem indicador de rolagem");
-    assert!(nat.hint.y + nat.hint.h <= nat.panel.y + nat.panel.h, "a dica dentro do painel");
+    assert!(
+        nat.hint.y + nat.hint.h <= nat.panel.y + nat.panel.h,
+        "a dica dentro do painel"
+    );
     let mut scene = VectorScene::new();
     let at = paint_preview(SKY, &r, &mut scene, &mut ts, Theme::default());
-    assert!(at.h < nat.panel.h, "escalado para baixo: {at:?} × {:?}", nat.panel);
     assert!(
-        at.x >= SKY.x && at.y >= SKY.y && at.x + at.w <= SKY.x + SKY.w && at.y + at.h <= SKY.y + SKY.h,
+        at.h < nat.panel.h,
+        "escalado para baixo: {at:?} × {:?}",
+        nat.panel
+    );
+    assert!(
+        at.x >= SKY.x
+            && at.y >= SKY.y
+            && at.x + at.w <= SKY.x + SKY.w
+            && at.y + at.h <= SKY.y + SKY.h,
         "nada cortado: {at:?} dentro de {SKY:?}"
     );
     let aspect = |r: Rect| r.w / r.h;

@@ -229,15 +229,7 @@ fn bar_cols(w: f32) -> usize {
     ((inner_w(w) / (ROW * 6.0)) as usize).clamp(1, METER_COLS)
 }
 
-/// O pé do Try it: «You are pressing Up Arrow: jump and move_up are on. …».
-pub(crate) fn footer(doc: &InputMapDoc) -> String {
-    match footer_parts(doc) {
-        (Some(lead), rest) => format!("{lead} {rest}"),
-        (None, rest) => rest,
-    }
-}
-
-/// O pé em duas partes: o destaque em SemiBold («You are pressing Up Arrow:») e o resto em regular.
+/// O pé do Try it em duas partes («You are pressing Up Arrow: jump and move_up are on. …»): o destaque em SemiBold («You are pressing Up Arrow:») e o resto em regular.
 fn footer_parts(doc: &InputMapDoc) -> (Option<String>, String) {
     if doc.snap.play_running {
         return (None, tr("input_map_try.idle_running").to_owned());

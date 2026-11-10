@@ -114,7 +114,11 @@ mod tests {
         frame(Some(&host), &mut input, None, Some((&map, &actions)));
         assert_eq!(host.devices().action("jump", Edge::Pressed), Some(true));
         assert_eq!(host.devices().action("dash", Edge::Down), Some(false));
-        assert_eq!(host.devices().action("nada", Edge::Down), None, "fora do mapa");
+        assert_eq!(
+            host.devices().action("nada", Edge::Down),
+            None,
+            "fora do mapa"
+        );
         frame(Some(&host), &mut input, None, None);
         assert_eq!(
             host.devices().action("jump", Edge::Down),

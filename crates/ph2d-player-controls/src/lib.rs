@@ -4,7 +4,7 @@
 //!
 //! - [`screen`]: o estado e os gestos (↑/↓, Enter ou clique escuta, Esc cancela ou fecha, «Reset to defaults»).
 //! - [`layout`] + [`paint`]: o painel, puro (a aba Input Map reusa-o na prévia).
-//! - [`file`]: `<base>/players/<game_id>.txt`.
+//! - [`file`]: o ficheiro do jogador, `<base>/players/<game_id>.txt`.
 //! - [`host`]: a tecla e o clique que a shell passa à sessão, e o relógio que eles pedem.
 //! - [`session`]: uma corrida do Play — o mapa EFECTIVO que os quatro leitores do Play lêem.
 
@@ -29,14 +29,19 @@ pub use session::PlaySession;
 #[derive(bevy_ecs::prelude::Resource, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct GameId(pub u64);
 
-/// **Um `game_id` novo, nunca `0`** — o acaso do SO (a chave da `RandomState` da std, sem dependência nova)
-/// misturado com o relógio.
+/// **Um `game_id` novo, nunca `0`** — o relógio, o processo e um contador do processo (duas perguntas no mesmo
+/// instante dão ids diferentes), misturados pelo SipHash da std, sem dependência nova (a `RandomState` é proibida
+/// pelo HR-5).
 #[must_use]
 pub fn new_game_id() -> u64 {
-    use std::hash::{BuildHasher, Hasher};
+    use std::hash::{DefaultHasher, Hasher};
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static SEQ: AtomicU64 = AtomicU64::new(0);
     let agora = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH);
-    let mut h = std::collections::hash_map::RandomState::new().build_hasher();
+    let mut h = DefaultHasher::new();
     h.write_u128(agora.map_or(0, |d| d.as_nanos()));
+    h.write_u32(std::process::id());
+    h.write_u64(SEQ.fetch_add(1, Ordering::Relaxed));
     h.finish().max(1)
 }
 

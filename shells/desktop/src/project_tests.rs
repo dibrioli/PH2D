@@ -409,7 +409,7 @@ fn project_file_round_trips_through_postcard() {
         }],
         motion: motion.clone(),
         timeline: animation_of_hero(),
-        game_id: 0x5EED_0F_6A3E,
+        game_id: 0x005E_ED0F_6A3E,
         // NÃO-vazio pela razão do `input_map` acima: dois quadros com nome.
         boards: two_boards().to_bytes().unwrap(),
         ..bare_file(state.clone())
@@ -422,7 +422,7 @@ fn project_file_round_trips_through_postcard() {
         two_boards(),
         "os QUADROS atravessaram o arquivo (v185)"
     );
-    assert_eq!(back.game_id, 0x5EED_0F_6A3E, "o game_id (v232)");
+    assert_eq!(back.game_id, 0x005E_ED0F_6A3E, "o game_id (v232)");
     // ⭐ **O INPUT MAP atravessa o arquivo** (no `state` desde a v232), CAMPO A CAMPO: um igual de
     // estrutura passaria se os dois lados fossem o default.
     let want = super::input_map_tests::authored_input_map();

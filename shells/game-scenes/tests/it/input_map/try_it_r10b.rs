@@ -177,7 +177,11 @@ fn forget_com_a_tela_do_jogo_aberta_deixa_a_aberta_e_o_relogio_parado() {
     m.sim.world_mut().insert_resource(ph2d_ecs::RunOnCopy);
     m.jogador.start(&project, Some(file.clone()));
     let opened = m.jogador.key(key("f1"), true, &project);
-    assert_eq!(m.jogador.clock_after(opened, true), Some(false), "abriu e parou");
+    assert_eq!(
+        m.jogador.clock_after(opened, true),
+        Some(false),
+        "abriu e parou"
+    );
     assert!(m.jogador.screen().is_open());
     m.frame();
     m.click(m.at(TryHit::Forget.id()));

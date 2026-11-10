@@ -150,12 +150,11 @@ fn parse_bindings(rhs: &str) -> Option<Vec<Binding>> {
     let mut rest = rhs.trim_start();
     while !rest.is_empty() {
         let (kind, after) = rest.split_once(':')?;
-        let after_name;
-        match kind.trim() {
+        let after_name = match kind.trim() {
             "key" => {
                 let (name, tail) = take_key_name(after)?;
                 out.extend(parse_key(name)?.into_iter().map(Binding::Key));
-                after_name = tail;
+                tail
             }
             "pad" => {
                 let (name, tail) = take_word(after);
@@ -163,7 +162,7 @@ fn parse_bindings(rhs: &str) -> Option<Vec<Binding>> {
                     .into_iter()
                     .find(|p| p.as_lua_key() == name)?;
                 out.push(Binding::PadButton(p));
-                after_name = tail;
+                tail
             }
             "axis" => {
                 let (name, tail) = take_word(after);
@@ -176,10 +175,10 @@ fn parse_bindings(rhs: &str) -> Option<Vec<Binding>> {
                     _ => return None,
                 };
                 out.push(Binding::PadAxis { axis, positive });
-                after_name = &tail[1..];
+                &tail[1..]
             }
             _ => return None,
-        }
+        };
         let tail = after_name.trim_start();
         rest = match tail.strip_prefix(',') {
             Some(t) => t.trim_start(),

@@ -26,7 +26,6 @@ ph2d-script = { path = "../ph2d-script" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }
-tracing = "0.1"
 
 [lints]
 workspace = true

@@ -17,7 +17,10 @@ fn key(name: &str) -> Key {
 fn c2_as_setas_encostam_a_direita_do_cartao_e_as_letras_a_esquerda() {
     let m = cena("C2");
     let doc = &m.tab().doc;
-    let at = |k: &str| doc.rect_of(KbHit::Key(key(k)).id()).expect("a tecla pintada");
+    let at = |k: &str| {
+        doc.rect_of(KbHit::Key(key(k)).id())
+            .expect("a tecla pintada")
+    };
     let (q, p, space) = (at("q"), at("p"), at("space"));
     let (up, left, down, right) = (at("up"), at("left"), at("down"), at("right"));
     let status = (doc.census.texts.iter())

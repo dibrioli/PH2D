@@ -386,7 +386,11 @@ pub(crate) fn paint_keys(
 
 /// O contorno branco do hover, distinto do da acção aberta (POR FORA dele quando os dois se juntam, maquete B1).
 pub(super) fn hover_ring(scene: &mut VectorScene, ink: CardInk, r: Rect, outlined: bool) {
-    let d = if outlined { -m::FIELD_BORDER * 3.0 } else { 0.0 };
+    let d = if outlined {
+        -m::FIELD_BORDER * 3.0
+    } else {
+        0.0
+    };
     let rr = Rect::new(
         r.x + d,
         r.y + d,

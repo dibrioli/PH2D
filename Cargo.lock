@@ -5903,7 +5903,6 @@ dependencies = [
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-vector",
- "tracing",
 ]
 
 [[package]]

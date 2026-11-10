@@ -9,7 +9,9 @@ use ph2d_app_light2d::{DEGRAU_PADRAO, LuzDoQuadro};
 use ph2d_ecs::{GlobalTransform, PresentWorld, Transform};
 use ph2d_light2d_ecs::{BloqueiaLuz, Luz, NaoRecebeLuz};
 use ph2d_pixel_core::Sprite;
-use ph2d_pixel_luz::{ObjetoPixel, OclusaoDoPixel, banda_normal, base_da_instancia};
+use ph2d_pixel_luz::{
+    ObjetoPixel, OclusaoDoPixel, banda_normal, banda_normal_no_draw, base_da_instancia,
+};
 use ph2d_vector::{ImageQuality, StableImage, VectorScene};
 
 use crate::comum_luz::{Cadeia, FUNDO, H, W, afim, gpu, ler, ler_bgra};
@@ -111,9 +113,21 @@ fn assentar(
     objetos: &[ObjetoPixel<'_>],
     bloqueia: bool,
 ) {
+    assentar_no_draw(gpu, c, l, w, objetos, (bloqueia, None));
+}
+
+/// [`assentar`] com a banda da faixa em que `xadrez` (bits) está em Draw (`banda_normal_no_draw`).
+fn assentar_no_draw(
+    gpu: &ph2d_gpu::GpuContext,
+    c: &Cadeia,
+    l: &mut LuzDoQuadro,
+    w: &World,
+    objetos: &[ObjetoPixel<'_>],
+    (bloqueia, xadrez): (bool, Option<u64>),
+) {
     let mut present = PresentWorld::new();
     for _ in 0..30 {
-        l.normais_mut().cenas = vec![banda_normal(objetos, afim())];
+        l.normais_mut().cenas = vec![banda_normal_no_draw(objetos, afim(), xadrez)];
         assert!(l.preparar(w, afim(), (W, H)));
         if bloqueia {
             let mut o = OclusaoDoPixel {
@@ -477,4 +491,93 @@ fn a_luz_na_rampa_no_quadro_fica_na_rampa() {
         panic!("os dois lados têm de estar na rampa: {claro:?} {escuro:?}");
     };
     assert!(a >= b, "mais luz nunca escurece o degrau: {a} contra {b}");
+}
+
+/// ⭐ **O xadrez do Draw nunca recebe a luz** (cena 34, 10/11): em Draw a faixa leva o xadrez OPACO por
+/// baixo da cor (`draw::art`), e a colagem acendia-o com a normal de frente — claro do lado da
+/// lâmpada, preto na sombra do próprio sprite. Com a banda do Draw (`banda_normal_no_draw`) o texel
+/// transparente sai como apagado, com e sem Normal Map; o disco opaco recebe a luz de antes. O controlo
+/// (`None` = a banda de antes, `banda_normal`) mostra o fenómeno na MESMA fixture.
+#[test]
+fn o_xadrez_do_draw_nao_recebe_a_luz() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — gate saltado");
+        return;
+    };
+    let com_n = ph2d_pixel_cena::fixture::heroi_p14();
+    let plano = sem_normal(com_n.clone());
+    let cinza = StableImage::from_rgba(
+        std::sync::Arc::new([128u8, 128, 128, 255].repeat(256)),
+        16,
+        16,
+    )
+    .unwrap();
+    // Os cantos do recorte 16×16 ficam fora do disco (alfa 0): o lado da lâmpada e o da sombra.
+    let (lado_luz, lado_sombra, disco) = ([-0.42, 0.42], [0.42, 0.42], [-0.3, 0.0]);
+    for (i, (nome, s)) in [("com Normal Map", &com_n), ("sem Normal Map", &plano)]
+        .into_iter()
+        .enumerate()
+    {
+        let mut w = World::new();
+        lampada(&mut w, None);
+        // Bits (e `stamp`) distintos por sprite: a imagem normal guarda-se por objecto.
+        for _ in 0..i {
+            w.spawn_empty();
+        }
+        let t = translacao_para(s, [0.0, 0.0]);
+        let (tr, g) = pose(t[0], t[1]);
+        let e = w
+            .spawn((
+                tr,
+                g,
+                ph2d_ecs::PixelSprite(1),
+                BloqueiaLuz { opacidade: 1.0 },
+            ))
+            .id();
+        let objetos = [objeto(&w, e, s, false)];
+        let mut cor = VectorScene::new();
+        cor.draw_stable_image_transformed(&cinza, afim() * objetos[0].img_mundo, ImageQuality::Low);
+        cor.append_scene(&cena_de_cor(&objetos));
+        let mut c = Cadeia::nova(&gpu);
+        let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
+        let mut quadro = |xadrez: Option<u64>| {
+            assentar_no_draw(&gpu, &c, &mut l, &w, &objetos, (true, xadrez));
+            let acesa = colar(&gpu, &mut c, &mut l, &cor, true);
+            let apagada = colar(&gpu, &mut c, &mut l, &cor, false);
+            let d = |p| luma(&acesa, px_de(p)) - luma(&apagada, px_de(p));
+            (
+                d(lado_luz),
+                d(lado_sombra),
+                d(disco),
+                luma(&apagada, px_de(lado_luz)),
+            )
+        };
+        let antes = quadro(None);
+        let hoje = quadro(Some(e.to_bits()));
+        eprintln!(
+            "xadrez do Draw {nome}: acesa − apagada (lado da luz, lado da sombra, disco) antes {:.1} {:.1} {:.1} · hoje {:.1} {:.1} {:.1}",
+            antes.0, antes.1, antes.2, hoje.0, hoje.1, hoje.2
+        );
+        assert!(
+            (hoje.3 - 128.0).abs() < 40.0,
+            "controlo: o xadrez é opaco à vista ({:.1})",
+            hoje.3
+        );
+        assert!(
+            antes.0.abs() > 4.0 || antes.1.abs() > 4.0,
+            "controlo ({nome}): a banda de antes acende o xadrez"
+        );
+        assert!(
+            hoje.0.abs() <= 1.0 && hoje.1.abs() <= 1.0,
+            "{nome}: o xadrez tem de sair como apagado: {:.1} {:.1}",
+            hoje.0,
+            hoje.1
+        );
+        assert!(
+            (hoje.2 - antes.2).abs() <= 1.0,
+            "{nome}: o disco opaco recebe a MESMA luz de antes ({:.1} contra {:.1})",
+            hoje.2,
+            antes.2
+        );
+    }
 }

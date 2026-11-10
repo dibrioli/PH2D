@@ -128,6 +128,9 @@ pub struct PixelApp {
     pub(crate) wants_edit: Option<u64>,
     /// O objecto em Draw no quadro anterior (para enquadrar à entrada).
     pub(crate) was_editing: Option<u64>,
+    /// O objecto a que a última [`crate::draw::art`] pôs o xadrez por baixo (a banda de luz da MESMA
+    /// faixa tira-o da luz: [`crate::luz::faixa_de_luz`]).
+    pub(crate) xadrez_na_faixa: Option<u64>,
     /// O papel vegetal (as opções do Trial por omissão) e se está ligado (F3).
     pub onion: ph2d_pixel_core::Onion,
     pub onion_on: bool,
@@ -271,6 +274,7 @@ impl Default for PixelApp {
             miniaturas: crate::cartao::Miniaturas::new(),
             wants_edit: None,
             was_editing: None,
+            xadrez_na_faixa: None,
             onion: ph2d_pixel_core::Onion::default(),
             onion_on: false,
             alterna_timeline: false,

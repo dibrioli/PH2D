@@ -76,8 +76,9 @@ pub fn normal_no_mundo(rgba: &[u8], lin: [f64; 4]) -> Vec<u8> {
     out
 }
 
-/// A assinatura de uma imagem normal já feita: versão do documento, quadro, base e «sem luz».
-type Assinatura = (u64, u32, [u64; 4], bool);
+/// A assinatura de uma imagem normal já feita: versão do documento, quadro, base, «sem luz» e
+/// «com o xadrez do Draw por baixo».
+type Assinatura = (u64, u32, [u64; 4], bool, bool);
 
 thread_local! {
     static NORMAIS: RefCell<BTreeMap<u64, (Assinatura, StableImage)>> =
@@ -96,7 +97,21 @@ pub fn precisa_da_banda(objetos: &[ObjetoPixel<'_>]) -> bool {
 /// objecto enquanto a assinatura não muda.
 #[must_use]
 pub fn imagem_normal(o: &ObjetoPixel<'_>) -> Option<StableImage> {
-    let sig: Assinatura = (o.stamp, o.quadro.0, o.lin.map(f64::to_bits), o.sem_luz);
+    imagem_normal_de(o, false)
+}
+
+/// [`imagem_normal`] com `xadrez` = o editor pinta o xadrez de transparência por baixo do objecto
+/// (o modo Draw): o texel de alfa 0 leva a sentinela [`SEM_LUZ`] OPACA — o xadrez fica fora da luz,
+/// como o transparente fora do Draw (onde a cor é alfa 0 e a luz não tem o que mudar).
+#[must_use]
+pub fn imagem_normal_de(o: &ObjetoPixel<'_>, xadrez: bool) -> Option<StableImage> {
+    let sig: Assinatura = (
+        o.stamp,
+        o.quadro.0,
+        o.lin.map(f64::to_bits),
+        o.sem_luz,
+        xadrez,
+    );
     NORMAIS.with(|n| {
         let mut n = n.borrow_mut();
         if let Some((s, img)) = n.get(&o.bits)
@@ -112,6 +127,11 @@ pub fn imagem_normal(o: &ObjetoPixel<'_>) -> Option<StableImage> {
         } else {
             px = normal_no_mundo(&px, o.lin);
         }
+        if xadrez {
+            for t in px.as_chunks_mut::<4>().0.iter_mut().filter(|t| t[3] == 0) {
+                *t = [SEM_LUZ[0], SEM_LUZ[1], SEM_LUZ[2], 255];
+            }
+        }
         let (w, h) = (o.sprite.width(), o.sprite.height());
         let img = StableImage::from_rgba(Arc::new(px), w, h)?;
         n.insert(o.bits, (sig, img.clone()));
@@ -124,12 +144,26 @@ pub fn imagem_normal(o: &ObjetoPixel<'_>) -> Option<StableImage> {
 /// é alocado). Os que não têm Normal Map entram de frente (tapam a normal de quem está atrás).
 #[must_use]
 pub fn banda_normal(objetos: &[ObjetoPixel<'_>], cam: Affine) -> Option<VectorScene> {
-    if !precisa_da_banda(objetos) {
+    banda_normal_no_draw(objetos, cam, None)
+}
+
+/// ⭐ [`banda_normal`] com `xadrez` = o objecto (`bits`) que o editor desenha em Draw, com o xadrez
+/// de transparência por baixo da cor NA MESMA faixa: a colagem acenderia o xadrez (claro do lado da
+/// lâmpada, a sombra do próprio sprite do outro). A banda nasce para ele mesmo sem Normal Map, e o
+/// transparente dele vai fora da luz ([`imagem_normal_de`]).
+#[must_use]
+pub fn banda_normal_no_draw(
+    objetos: &[ObjetoPixel<'_>],
+    cam: Affine,
+    xadrez: Option<u64>,
+) -> Option<VectorScene> {
+    let no_draw = |o: &ObjetoPixel<'_>| xadrez == Some(o.bits);
+    if !precisa_da_banda(objetos) && !objetos.iter().any(no_draw) {
         return None;
     }
     let mut cena = VectorScene::new();
     for o in objetos {
-        if let Some(img) = imagem_normal(o) {
+        if let Some(img) = imagem_normal_de(o, no_draw(o)) {
             cena.draw_stable_image_transformed(&img, cam * o.img_mundo, ImageQuality::Low);
         }
     }

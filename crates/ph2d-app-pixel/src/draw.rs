@@ -70,6 +70,7 @@ fn art_of(
     scene: &mut VectorScene,
 ) -> Vec<Drawn> {
     let mut drawn = Vec::new();
+    let mut xadrez = None;
     for &bits in ids {
         let Some(key) = crate::input::key_of(world, bits) else {
             continue;
@@ -125,6 +126,7 @@ fn art_of(
         }
         if edit {
             doc.view.draw_doc_checker(scene, (w, h), &chk, m);
+            xadrez = Some(bits);
         }
         doc.view.draw(scene, m);
         drawn.push(Drawn {
@@ -134,6 +136,7 @@ fn art_of(
             pivo: crate::input::origem_px(world, entity, doc),
         });
     }
+    app.xadrez_na_faixa = xadrez;
     drawn
 }
 

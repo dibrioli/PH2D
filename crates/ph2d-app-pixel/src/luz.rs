@@ -50,7 +50,9 @@ pub fn faixa_de_luz(
 ) -> Option<ph2d_render::luz_rampa_faixas::BandasDaFaixa> {
     let o = objetos(app, world, ppm, ids, sem_luz?);
     let rampa = ph2d_pixel_luz::banda_rampa_da_faixa(&o, cam).map(Into::into);
-    Some((ph2d_pixel_luz::banda_normal(&o, cam), rampa))
+    // O xadrez do Draw que a `draw::art` desta faixa acabou de pôr fica fora da luz.
+    let normal = ph2d_pixel_luz::banda_normal_no_draw(&o, cam, app.xadrez_na_faixa);
+    Some((normal, rampa))
 }
 
 /// A camada de oclusão de TODOS os Pixel Sprites (a luz pede os que bloqueiam, por `quem`).

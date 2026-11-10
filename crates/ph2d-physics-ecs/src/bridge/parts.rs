@@ -125,82 +125,10 @@ impl PhysicsBridge {
                 continue;
             };
             self.part_seen.push(e);
-            // A pose de MUNDO da peça — é dela que sai a ESCALA que o
-            // `scaled_shape` do W6 lê.
-            let Some(t_part) = space::world_transform(world, e, &mut self.chain) else {
+            let Some((desc, local)) = self.desc_da_peca(world, e, owner, col) else {
                 continue;
             };
-            // ⚠️ **A pose LOCAL vem da cadeia AUTORADA, não de um round-trip pelo
-            // solver** (docs de `space::local_in_ancestor`): é isso que a torna
-            // bit-estável durante o play e que apaga a razão do gate de repouso.
-            let Some(rel) = space::local_in_ancestor(world, e, owner, &mut self.chain) else {
-                continue;
-            };
-            // O `body_type` sai do DONO: uma peça não tem tipo próprio, e é isso
-            // que a torna uma forma a mais em vez de um segundo corpo.
-            let Some(owner_kind) = world.get::<RigidBody>(owner).copied() else {
-                continue;
-            };
-            // ⚠️ A escala é a de MUNDO da PEÇA (`t_part`), não a do dono: uma peça
-            // pode ser escalada por conta própria, e o `scaled_shape` do W6 lê
-            // exatamente esse campo.
-            let desc = crate::scale::body_desc(
-                &owner_kind,
-                col,
-                &t_part,
-                crate::GravityScale::NEUTRAL,
-                [0.0, 0.0],
-                0.0,
-                false,
-                false,
-                false,
-                false,
-                None,
-                0,
-                // ⚠️ **Lido da PEÇA** (W-PartFace): as regras de combine são
-                // propriedade do COLLIDER em rapier, e este passava
-                // `default()` enquanto o `OneWayPlatform` logo abaixo já vinha
-                // da entidade — a única assimetria da lista, e um descuido meu
-                // na W-Compound. Com ela, o §11 de uma peça pintaria dois chips
-                // que o solver ignora; sem ela, dois chips a menos que o irmão
-                // sólido tem. A cura é o lado que faz o knob VIVER.
-                world
-                    .get::<crate::MaterialCombine>(e)
-                    .copied()
-                    .unwrap_or_default(),
-                None,
-                world.get::<crate::OneWayPlatform>(e).is_some(),
-                // Uma peça-sensor com componentes de área é uma ZONA (GEF02 B6).
-                super::bodies::area_effect(world, e),
-            );
-            // ⚠️ **A POSE do `desc` é zerada, e é isso que torna a comparação
-            // abaixo honesta.** `attach_part` lê só a metade de COLLIDER do
-            // descriptor (docs dele); os campos `x`/`y`/`rotation` vêm da pose de
-            // MUNDO da peça e portanto mudam a cada frame em que o dono se move.
-            // Compará-los fazia a peça ser despendurada e re-pendurada em **133
-            // de 301 ticks** numa descida de rampa — churn puro, invisível porque
-            // o gate de repouso o escondia. Uma comparação tem de perguntar o que
-            // o CONSUMIDOR pergunta.
-            let desc = ph2d_physics::BodyDesc {
-                x: 0.0,
-                y: 0.0,
-                rotation: 0.0,
-                collide: super::bodies::collide_of(world, e),
-                shape: self.outlines.resolve(
-                    &mut self.world,
-                    world.get::<crate::ColliderOutline>(e),
-                    desc.shape,
-                    t_part.scale,
-                ),
-                ..desc
-            };
-            wanted.push((
-                e,
-                owner,
-                handle,
-                desc,
-                [rel.translation.x, rel.translation.y, rel.rotation],
-            ));
+            wanted.push((e, owner, handle, desc, local));
         }
         self.part_query = Some(q);
         // A ordem de pendurar decide os handles: por entidade, nunca pela do arquétipo (HR-5).
@@ -235,6 +163,14 @@ impl PhysicsBridge {
                 // silêncio. Uma peça é AUTORADA o tempo todo; o dono é que é
                 // simulado.
                 Some(p) if p.owner == owner && p.rest == desc && p.local == local => {}
+                // O mesmo dono, outra forma, material ou pose no corpo (a curva a meio do Play):
+                // reafina-se no lugar, como o corpo e a junta — o ring vale (GEF02 onda 7).
+                Some(p) if p.owner == owner && self.world.retune_part(p.handle, &desc, local) => {
+                    if let Some(p) = self.parts.get_mut(&e) {
+                        p.rest = desc;
+                        p.local = local;
+                    }
+                }
                 _ => {
                     self.ring.clear(); // estrutural, como o spawn/remove de um corpo
                     if let Some(old) = self.parts.remove(&e) {
@@ -254,6 +190,82 @@ impl PhysicsBridge {
                 }
             }
         }
+    }
+
+    /// **O que a peça `e` (de `owner`) é para o solver AGORA**: a descrição (pose zerada, só a
+    /// metade-colisor) e a pose dela no corpo, lida da cadeia AUTORADA. A porta única do
+    /// `reconcile_parts` (1×/quadro) e do `drive_shapes` (1×/tique).
+    pub(super) fn desc_da_peca(
+        &mut self,
+        world: &bevy_ecs::world::World,
+        e: Entity,
+        owner: Entity,
+        col: &crate::Collider,
+    ) -> Option<(ph2d_physics::BodyDesc, [f32; 3])> {
+        // A pose de MUNDO da peça — é dela que sai a ESCALA que o
+        // `scaled_shape` do W6 lê.
+        let t_part = space::world_transform(world, e, &mut self.chain)?;
+        // ⚠️ **A pose LOCAL vem da cadeia AUTORADA, não de um round-trip pelo
+        // solver** (docs de `space::local_in_ancestor`): é isso que a torna
+        // bit-estável durante o play e que apaga a razão do gate de repouso.
+        let rel = space::local_in_ancestor(world, e, owner, &mut self.chain)?;
+        // O `body_type` sai do DONO: uma peça não tem tipo próprio, e é isso
+        // que a torna uma forma a mais em vez de um segundo corpo.
+        let owner_kind = world.get::<RigidBody>(owner).copied()?;
+        // ⚠️ A escala é a de MUNDO da PEÇA (`t_part`), não a do dono: uma peça
+        // pode ser escalada por conta própria, e o `scaled_shape` do W6 lê
+        // exatamente esse campo.
+        let desc = crate::scale::body_desc(
+            &owner_kind,
+            col,
+            &t_part,
+            crate::GravityScale::NEUTRAL,
+            [0.0, 0.0],
+            0.0,
+            false,
+            false,
+            false,
+            false,
+            None,
+            0,
+            // ⚠️ **Lido da PEÇA** (W-PartFace): as regras de combine são
+            // propriedade do COLLIDER em rapier, e este passava
+            // `default()` enquanto o `OneWayPlatform` logo abaixo já vinha
+            // da entidade — a única assimetria da lista, e um descuido meu
+            // na W-Compound. Com ela, o §11 de uma peça pintaria dois chips
+            // que o solver ignora; sem ela, dois chips a menos que o irmão
+            // sólido tem. A cura é o lado que faz o knob VIVER.
+            world
+                .get::<crate::MaterialCombine>(e)
+                .copied()
+                .unwrap_or_default(),
+            None,
+            world.get::<crate::OneWayPlatform>(e).is_some(),
+            // Uma peça-sensor com componentes de área é uma ZONA (GEF02 B6).
+            super::bodies::area_effect(world, e),
+        );
+        // ⚠️ **A POSE do `desc` é zerada, e é isso que torna a comparação
+        // abaixo honesta.** `attach_part` lê só a metade de COLLIDER do
+        // descriptor (docs dele); os campos `x`/`y`/`rotation` vêm da pose de
+        // MUNDO da peça e portanto mudam a cada frame em que o dono se move.
+        // Compará-los fazia a peça ser despendurada e re-pendurada em **133
+        // de 301 ticks** numa descida de rampa — churn puro, invisível porque
+        // o gate de repouso o escondia. Uma comparação tem de perguntar o que
+        // o CONSUMIDOR pergunta.
+        let desc = ph2d_physics::BodyDesc {
+            x: 0.0,
+            y: 0.0,
+            rotation: 0.0,
+            collide: super::bodies::collide_of(world, e),
+            shape: self.outlines.resolve(
+                &mut self.world,
+                world.get::<crate::ColliderOutline>(e),
+                desc.shape,
+                t_part.scale,
+            ),
+            ..desc
+        };
+        Some((desc, [rel.translation.x, rel.translation.y, rel.rotation]))
     }
 
     /// Re-pendura toda peça depois de um rewind.

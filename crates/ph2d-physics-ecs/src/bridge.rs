@@ -48,6 +48,7 @@ mod outlines;
 /// A metade PEÇA do reconcile — os colliders extra de um corpo composto.
 pub mod parts;
 mod player;
+mod shape_drive;
 /// O tipo do empurrão de fora (`W-Launch`) — mora no canal do player, e sobe
 /// por aqui porque o módulo dono é privado.
 pub use player::channel::Launch;
@@ -199,12 +200,10 @@ pub(super) struct BodyRef {
     /// Cached so `readback` knows which bodies to read (only dynamic ones
     /// move; static bodies keep their authored pose).
     kind: BodyKind,
-    /// The spawn description captured when this body was FIRST created —
-    /// i.e. the **rest state at tick 0**. rapier cannot rewind, so a
-    /// backwards clock replays from here (see
-    /// [`PhysicsBridge::rewind_to`]). Without it, Reset could not put the
-    /// ball back where it started: the live `Transform` has already been
-    /// overwritten by the readback.
+    /// **A pose de repouso no tique 0** (`x`/`y`/`rotation`/velocidade inicial) e o que o solver tem
+    /// AGORA no resto (forma e material seguem a curva, reafinados no lugar). rapier não volta atrás:
+    /// um relógio para trás que falha o ring replaya daqui ([`PhysicsBridge::rewind_to`]), e o
+    /// `drive_shapes` forçado do 1.º tique veste-lhe as formas desse tique (GEF02 onda 7).
     pub(super) rest: BodyDesc,
     /// A entidade da FORMA principal (`crate::main_shape`): o próprio corpo, ou a filha que leva o
     /// `Collider` (opção B). É dela que se lê o lado-forma e é ela que um gatilho reporta.

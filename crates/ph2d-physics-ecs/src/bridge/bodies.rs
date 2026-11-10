@@ -27,117 +27,17 @@ impl PhysicsBridge {
         let at_rest = self.last_stepped == 0;
         self.main_of.clear();
         for (e, rb, _local) in q.iter(world) {
-            // **A forma PRINCIPAL** (opção B): a do corpo, ou a 1.ª filha LIGADA da ordem da árvore.
-            // Todas desligadas (dono 09/11): o corpo FICA no solver com a 1.ª, de colisor desligado.
-            // Sem forma NENHUMA também fica (dono 09/11): o colisor nasce desligado, logo a geometria
-            // não conta — a `Collider::default()` NEUTRA, lida no próprio corpo. Cai com 1 kg.
-            let (shape, shape_off) = crate::main_shape(world, e)
-                .map(|s| (s, false))
-                .or_else(|| crate::forma_para_editar(world, e).map(|s| (s, true)))
-                .unwrap_or((e, true));
-            let col = &world.get::<Collider>(shape).copied().unwrap_or_default();
+            let (shape, desc) = self.desc_do_corpo(world, e, rb);
             self.seen.push(e);
-            // ⚠️ WORLD, not the local `Transform` the query just handed us. The
-            // solver has no hierarchy: a body authored under a parent must be
-            // DESCRIBED where it is actually drawn, or it spawns (and rests, and
-            // collides) at its local coordinates read as world ones.
-            let Some(mut t) = space::world_transform(world, e, &mut self.chain) else {
-                continue;
-            };
-            // A forma FILHA: a escala é a de mundo DELA (a lei das peças) e a pose dela no corpo vai
-            // para `shape_pose`, lida da cadeia AUTORADA como a das peças.
-            let mut shape_pose = [0.0; 3];
             if shape != e {
                 self.main_of.push((shape, e));
-                let Some(ts) = space::world_transform(world, shape, &mut self.chain) else {
-                    continue;
-                };
-                let Some(rel) = space::local_in_ancestor(world, shape, e, &mut self.chain) else {
-                    continue;
-                };
-                t.scale = ts.scale;
-                shape_pose = [rel.translation.x, rel.translation.y, rel.rotation];
             }
+            let Some(desc) = desc else {
+                continue;
+            };
             if let Some(b) = self.bodies.get_mut(&e) {
                 b.shape = shape;
             }
-            // Optional per-body gravity multiplier (W8); absent = full gravity.
-            // Read here because this is the half holding the `World`; folded into
-            // the `BodyDesc` so it survives rewind.
-            let gravity_scale = world
-                .get::<crate::GravityScale>(e)
-                .map_or(crate::GravityScale::NEUTRAL, |g| g.0);
-            // Optional authored initial velocity (W9); absent = at rest. Folded
-            // into the `BodyDesc` for the same reason — a rewind re-arms it.
-            let iv = world
-                .get::<crate::InitialVelocity>(e)
-                .copied()
-                .unwrap_or(crate::InitialVelocity::REST);
-            // Optional CCD marker (W-CCD); its PRESENCE is the flag (absent =
-            // discrete, rapier's default). Folded into the `BodyDesc` so a rewind
-            // re-arms it, exactly like the two above.
-            let ccd = world.get::<crate::Ccd>(e).is_some();
-            // Optional LockRotation marker (Freeze Rotation); presence is the flag.
-            let lock_rotation = world.get::<crate::LockRotation>(e).is_some();
-            // Optional LockPositionX/Y markers (Freeze Position); each presence is a
-            // flag that ORs its axis into the same `LockedAxes` fold, so a rewind
-            // re-arms it exactly like the rotation lock above.
-            let lock_x = world.get::<crate::LockPositionX>(e).is_some();
-            let lock_y = world.get::<crate::LockPositionY>(e).is_some();
-            // Optional MassOverride (W-Mass); its VALUE is the explicit mass in kg
-            // (`None` = auto, density-derived). Folded into the `BodyDesc` so a
-            // rewind re-arms it, exactly like gravity scale.
-            let mass_override = world.get::<crate::MassOverride>(e).map(|m| m.0);
-            // Optional Dominance (W-Dominance); its VALUE is the collision priority
-            // (absent = neutral `0`). Folded in and rides the `BodyDesc` for rewind.
-            let dominance = world.get::<crate::Dominance>(e).map_or(0, |d| d.0);
-            // Optional MaterialCombine (W-Material); absent = both `Average`. The
-            // collider's friction/restitution combine policy, folded in and riding
-            // the `BodyDesc` for rewind like the rest.
-            let material = world
-                .get::<crate::MaterialCombine>(shape)
-                .copied()
-                .unwrap_or_default();
-            // Optional DampingOverride (W-Damping); absent = the world default drag.
-            // Folded into the `BodyDesc` for rewind, AND re-stamped each dispatch by
-            // `restamp_damping` so a mid-play global-drag change cannot clobber it.
-            let damping = world.get::<crate::DampingOverride>(e).copied();
-            // Optional OneWayPlatform marker (W-OneWay); its PRESENCE is the flag. A
-            // collider property (a platform is usually Static), folded in and riding
-            // the `BodyDesc` for the rewind like the rest.
-            let one_way = world.get::<crate::OneWayPlatform>(shape).is_some();
-            // As zonas (W-Area…W-AreaFalloff): a porta única `area_effect`, também a das peças.
-            let effector = area_effect(world, shape);
-            let desc = crate::scale::body_desc(
-                rb,
-                col,
-                &t,
-                gravity_scale,
-                iv.linvel,
-                iv.angvel,
-                ccd,
-                lock_rotation,
-                lock_x,
-                lock_y,
-                mass_override,
-                dominance,
-                material,
-                damping,
-                one_way,
-                effector,
-            );
-            // A exceção de camadas da forma (GEF02 B9), lida da FORMA como o resto do lado-forma.
-            let collide = collide_of(world, shape);
-            let outline = world.get::<crate::ColliderOutline>(shape);
-            let desc = BodyDesc {
-                shape: self
-                    .outlines
-                    .resolve(&mut self.world, outline, desc.shape, t.scale),
-                shape_pose,
-                collide,
-                shape_off,
-                ..desc
-            };
             match self.bodies.get(&e) {
                 None => self.to_spawn.push((e, desc, rb.kind)),
                 // **The rest pose is the authored pose at tick 0** — read, not
@@ -153,7 +53,7 @@ impl PhysicsBridge {
                 }
                 // A meio da simulação a pose é do solver; o MATERIAL é da curva (F30 §C):
                 // reafina-se no lugar, como a junta.
-                Some(b) if !at_rest && sem_pose(b.rest) != sem_pose(desc) => {
+                Some(b) if sem_pose(b.rest) != sem_pose(desc) => {
                     self.to_retune.push((e, desc));
                 }
                 Some(_) => {}
@@ -170,14 +70,7 @@ impl PhysicsBridge {
             // O memo só anda quando a escrita pegou (a lei do `retune_joint`); a pose de repouso
             // fica a de repouso.
             if self.world.retune_body(b.handle, &desc) {
-                b.rest = BodyDesc {
-                    x: b.rest.x,
-                    y: b.rest.y,
-                    rotation: b.rest.rotation,
-                    linvel: b.rest.linvel,
-                    angvel: b.rest.angvel,
-                    ..desc
-                };
+                b.rest = com_a_pose_de(b.rest, desc);
             }
         }
 
@@ -240,6 +133,124 @@ impl PhysicsBridge {
             self.world.set_colliders_muted(b.handle, mudo, b.rest.layer);
         }
     }
+
+    /// **O que o corpo `e` é para o solver AGORA**, lido do ECS: a entidade da forma principal e o
+    /// `BodyDesc` (pose de mundo autorada incluída); `None` quando a cadeia de transforms não
+    /// resolve. A porta única do `reconcile_structure` (1×/quadro) e do `drive_shapes` (1×/tique).
+    pub(super) fn desc_do_corpo(
+        &mut self,
+        world: &bevy_ecs::world::World,
+        e: Entity,
+        rb: &crate::RigidBody,
+    ) -> (Entity, Option<BodyDesc>) {
+        // **A forma PRINCIPAL** (opção B): a do corpo, ou a 1.ª filha LIGADA da ordem da árvore.
+        // Todas desligadas (dono 09/11): o corpo FICA no solver com a 1.ª, de colisor desligado.
+        // Sem forma NENHUMA também fica (dono 09/11): o colisor nasce desligado, logo a geometria
+        // não conta — a `Collider::default()` NEUTRA, lida no próprio corpo. Cai com 1 kg.
+        let (shape, shape_off) = crate::main_shape(world, e)
+            .map(|s| (s, false))
+            .or_else(|| crate::forma_para_editar(world, e).map(|s| (s, true)))
+            .unwrap_or((e, true));
+        let col = &world.get::<Collider>(shape).copied().unwrap_or_default();
+        // ⚠️ WORLD, not the local `Transform` the query just handed us. The
+        // solver has no hierarchy: a body authored under a parent must be
+        // DESCRIBED where it is actually drawn, or it spawns (and rests, and
+        // collides) at its local coordinates read as world ones.
+        let Some(mut t) = space::world_transform(world, e, &mut self.chain) else {
+            return (shape, None);
+        };
+        // A forma FILHA: a escala é a de mundo DELA (a lei das peças) e a pose dela no corpo vai
+        // para `shape_pose`, lida da cadeia AUTORADA como a das peças.
+        let mut shape_pose = [0.0; 3];
+        if shape != e {
+            let Some(ts) = space::world_transform(world, shape, &mut self.chain) else {
+                return (shape, None);
+            };
+            let Some(rel) = space::local_in_ancestor(world, shape, e, &mut self.chain) else {
+                return (shape, None);
+            };
+            t.scale = ts.scale;
+            shape_pose = [rel.translation.x, rel.translation.y, rel.rotation];
+        }
+        // Optional per-body gravity multiplier (W8); absent = full gravity.
+        // Read here because this is the half holding the `World`; folded into
+        // the `BodyDesc` so it survives rewind.
+        let gravity_scale = world
+            .get::<crate::GravityScale>(e)
+            .map_or(crate::GravityScale::NEUTRAL, |g| g.0);
+        // Optional authored initial velocity (W9); absent = at rest. Folded
+        // into the `BodyDesc` for the same reason — a rewind re-arms it.
+        let iv = world
+            .get::<crate::InitialVelocity>(e)
+            .copied()
+            .unwrap_or(crate::InitialVelocity::REST);
+        // Optional CCD marker (W-CCD); its PRESENCE is the flag (absent =
+        // discrete, rapier's default). Folded into the `BodyDesc` so a rewind
+        // re-arms it, exactly like the two above.
+        let ccd = world.get::<crate::Ccd>(e).is_some();
+        // Optional LockRotation marker (Freeze Rotation); presence is the flag.
+        let lock_rotation = world.get::<crate::LockRotation>(e).is_some();
+        // Optional LockPositionX/Y markers (Freeze Position); each presence is a
+        // flag that ORs its axis into the same `LockedAxes` fold, so a rewind
+        // re-arms it exactly like the rotation lock above.
+        let lock_x = world.get::<crate::LockPositionX>(e).is_some();
+        let lock_y = world.get::<crate::LockPositionY>(e).is_some();
+        // Optional MassOverride (W-Mass); its VALUE is the explicit mass in kg
+        // (`None` = auto, density-derived). Folded into the `BodyDesc` so a
+        // rewind re-arms it, exactly like gravity scale.
+        let mass_override = world.get::<crate::MassOverride>(e).map(|m| m.0);
+        // Optional Dominance (W-Dominance); its VALUE is the collision priority
+        // (absent = neutral `0`). Folded in and rides the `BodyDesc` for rewind.
+        let dominance = world.get::<crate::Dominance>(e).map_or(0, |d| d.0);
+        // Optional MaterialCombine (W-Material); absent = both `Average`. The
+        // collider's friction/restitution combine policy, folded in and riding
+        // the `BodyDesc` for rewind like the rest.
+        let material = world
+            .get::<crate::MaterialCombine>(shape)
+            .copied()
+            .unwrap_or_default();
+        // Optional DampingOverride (W-Damping); absent = the world default drag.
+        // Folded into the `BodyDesc` for rewind, AND re-stamped each dispatch by
+        // `restamp_damping` so a mid-play global-drag change cannot clobber it.
+        let damping = world.get::<crate::DampingOverride>(e).copied();
+        // Optional OneWayPlatform marker (W-OneWay); its PRESENCE is the flag. A
+        // collider property (a platform is usually Static), folded in and riding
+        // the `BodyDesc` for the rewind like the rest.
+        let one_way = world.get::<crate::OneWayPlatform>(shape).is_some();
+        // As zonas (W-Area…W-AreaFalloff): a porta única `area_effect`, também a das peças.
+        let effector = area_effect(world, shape);
+        let desc = crate::scale::body_desc(
+            rb,
+            col,
+            &t,
+            gravity_scale,
+            iv.linvel,
+            iv.angvel,
+            ccd,
+            lock_rotation,
+            lock_x,
+            lock_y,
+            mass_override,
+            dominance,
+            material,
+            damping,
+            one_way,
+            effector,
+        );
+        // A exceção de camadas da forma (GEF02 B9), lida da FORMA como o resto do lado-forma.
+        let collide = collide_of(world, shape);
+        let outline = world.get::<crate::ColliderOutline>(shape);
+        let desc = BodyDesc {
+            shape: self
+                .outlines
+                .resolve(&mut self.world, outline, desc.shape, t.scale),
+            shape_pose,
+            collide,
+            shape_off,
+            ..desc
+        };
+        (shape, Some(desc))
+    }
 }
 
 /// O que um corpo É para o solver, sem a pose e a velocidade INICIAL (que são da criação).
@@ -253,7 +264,19 @@ pub(super) fn collide_of(
         .map_or([0; 2], |o| [o.include, o.exclude])
 }
 
-fn sem_pose(d: BodyDesc) -> BodyDesc {
+/// O memo de um corpo reafinado: o `desc` novo, com a pose e a velocidade de CRIAÇÃO de `rest`.
+pub(super) fn com_a_pose_de(rest: BodyDesc, desc: BodyDesc) -> BodyDesc {
+    BodyDesc {
+        x: rest.x,
+        y: rest.y,
+        rotation: rest.rotation,
+        linvel: rest.linvel,
+        angvel: rest.angvel,
+        ..desc
+    }
+}
+
+pub(super) fn sem_pose(d: BodyDesc) -> BodyDesc {
     BodyDesc {
         x: 0.0,
         y: 0.0,

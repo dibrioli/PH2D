@@ -36,6 +36,12 @@ impl PhysicsWorld {
             .collect()
     }
 
+    /// O corpo está a dormir no solver? `None` se o handle morreu.
+    #[must_use]
+    pub fn body_sleeping(&self, handle: RigidBodyHandle) -> Option<bool> {
+        self.bodies.get(handle).map(|b| b.is_sleeping())
+    }
+
     /// **A caixa que envolve TODAS as formas de um corpo**, em mundo —
     /// `(mínimos, máximos)`. `None` se o handle morreu ou se o corpo não tem
     /// forma nenhuma.

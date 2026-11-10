@@ -103,6 +103,7 @@ impl PhysicsBridge {
             // `drive_joint_params` compararia contra o memo, diria *"nada mudou"*,
             // e o replay correria com os números de outro tick.
             self.drive_joint_params(sim, i == 0);
+            self.drive_shapes(sim);
             self.drive_kinematic(sim, 1.0);
             // ⚠️ **E os CONTROLADORES — a correção de bug desta wave.** Este laço
             // dirigia as poses da cena e deixava o personagem sem perna e sem
@@ -134,6 +135,7 @@ impl PhysicsBridge {
         if replayed == 0 {
             scene.put(sim, target);
             self.drive_joint_params(sim, true);
+            self.drive_shapes(sim);
         }
         self.readback(sim);
         self.last_stepped = target;

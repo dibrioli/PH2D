@@ -30,7 +30,46 @@ use crate::joint::{JointKind, PhysicsJoint};
 /// `ph2d_physics::world::pulley`. Devolver `Option` em vez de mapear a polia
 /// para o tipo "mais parecido" é o que impede uma corda de virar uma corda-de-
 /// rapier em silêncio.
+///
+/// `lado_b_mundo`: o corpo B é a âncora de um pino de MUNDO. O cartão fala no referencial do
+/// OBJETO (o ângulo e o deslize dele no mundo, dono 10/11); o rapier mede B relativo a A, que ali é
+/// o mundo relativo ao objeto — o sinal oposto. Ver [`no_outro_referencial`].
 pub fn joint_desc(
+    j: &PhysicsJoint,
+    local_a: [f32; 2],
+    local_b: [f32; 2],
+    axis: ([f32; 2], [f32; 2]),
+    lado_b_mundo: bool,
+) -> Option<JointDesc> {
+    let d = desc_do_cartao(j, local_a, local_b, axis)?;
+    Some(if lado_b_mundo {
+        no_outro_referencial(d)
+    } else {
+        d
+    })
+}
+
+/// **Troca o referencial do grau de liberdade**: `B relativo a A` ↔ `A relativo a B`. Os limites
+/// viram `[−max, −min]` e o motor troca de sentido (o alvo e a velocidade); a corda não, porque a
+/// distância entre as âncoras é a mesma vista de qualquer lado. É uma involução: a vista do desenho
+/// aplica-a ao `desc` do solver para voltar aos números do cartão.
+#[must_use]
+pub fn no_outro_referencial(mut d: JointDesc) -> JointDesc {
+    let inverte = |[mn, mx]: [f32; 2]| [-mx, -mn];
+    d.limits = d.limits.map(inverte);
+    if d.kind != ph2d_physics::JointKind::Rope
+        && let Some(m) = d.motor.as_mut()
+    {
+        m.speed = -m.speed;
+        m.target = -m.target;
+    }
+    for a in &mut d.custom.axes {
+        [a.min, a.max] = inverte([a.min, a.max]);
+    }
+    d
+}
+
+fn desc_do_cartao(
     j: &PhysicsJoint,
     local_a: [f32; 2],
     local_b: [f32; 2],

@@ -248,11 +248,16 @@ fn a_torque_threshold_is_only_handed_to_a_kind_that_can_report_one() {
             break_torque: 25.0,
             ..PhysicsJoint::default()
         };
-        let desc =
-            ph2d_physics_ecs::joint_desc(&j, [0.0, 0.0], [0.0, 0.0], ([1.0, 0.0], [1.0, 0.0]))
-                // `None` só para uma Pulley, que não é um joint do rapier e não
-                // chega aqui — este varredor percorre os tipos que partem.
-                .expect("todo tipo que pode partir tem descritor");
+        let desc = ph2d_physics_ecs::joint_desc(
+            &j,
+            [0.0, 0.0],
+            [0.0, 0.0],
+            ([1.0, 0.0], [1.0, 0.0]),
+            false,
+        )
+        // `None` só para uma Pulley, que não é um joint do rapier e não
+        // chega aqui — este varredor percorre os tipos que partem.
+        .expect("todo tipo que pode partir tem descritor");
         assert_eq!(
             desc.break_torque.is_finite(),
             expect_finite,

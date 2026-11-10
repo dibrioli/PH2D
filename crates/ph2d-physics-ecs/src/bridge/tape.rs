@@ -263,6 +263,12 @@ impl PhysicsBridge {
                 nav_ordens: self.nav.ordens.em_vigor.clone(),
                 nav_rondas: self.nav.rondas.clone(),
                 nav_sinais: self.nav.sinais.clone(),
+                formas: self.bodies.iter().map(|(&e, b)| (e, b.rest)).collect(),
+                pecas: self
+                    .parts
+                    .iter()
+                    .map(|(&e, p)| (e, p.rest, p.local))
+                    .collect(),
             },
         );
         // A janela do ring é limitada; a nossa segue a dele pela borda de baixo
@@ -292,6 +298,16 @@ impl PhysicsBridge {
             self.nav.sinais = m.nav_sinais.clone();
             // As procuras a meio são do futuro: a condução refá-las a partir de `a_meio`.
             self.nav.planos.clear();
+            for &(e, d) in &m.formas {
+                if let Some(b) = self.bodies.get_mut(&e) {
+                    b.rest = d;
+                }
+            }
+            for &(e, d, local) in &m.pecas {
+                if let Some(p) = self.parts.get_mut(&e) {
+                    (p.rest, p.local) = (d, local);
+                }
+            }
         }
     }
 
@@ -347,6 +363,11 @@ pub(super) struct ControllerMemory {
     /// ⭐ (W15) A assinatura de cada MALHA (plano 30 §23): sem ela o replay comparava a malha do âncora
     /// com a do fim da corrida e via uma porta mudar onde a corrida não viu.
     pub(super) nav_sinais: BTreeMap<super::nav::ChaveMalha, u64>,
+    /// O que o solver tem de cada corpo e peça NESTE tique (o memo `rest`/`local`): o checkpoint
+    /// repõe os colisores daquele instante, e o `drive_shapes` só reafina o que difere dele — reafinar
+    /// às cegas refaz os contactos e o replay deixa de ser o Play (GEF02 onda 7).
+    pub(super) formas: Vec<(Entity, ph2d_physics::BodyDesc)>,
+    pub(super) pecas: Vec<(Entity, ph2d_physics::BodyDesc, [f32; 3])>,
 }
 
 /// O tipo da tabela — uma memória por tique âncora.

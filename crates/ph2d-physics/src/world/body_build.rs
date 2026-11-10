@@ -172,7 +172,8 @@ impl PhysicsWorld {
             x: _,
             y: _,
             rotation: _,
-            density,
+            // Os dois de massa vão no `copia_colisor`, lidos do `desc`.
+            density: _,
             shape: _,
             restitution: _,
             friction: _,
@@ -186,7 +187,7 @@ impl PhysicsWorld {
             offset: _,
             lock_x,
             lock_y,
-            mass_override,
+            mass_override: _,
             dominance,
             material: _,
             damping,
@@ -206,6 +207,10 @@ impl PhysicsWorld {
             .get(collider_handle)
             .is_some_and(|c| !c.is_enabled());
         if let Some(b) = self.bodies.get_mut(handle) {
+            // Reafinar é mudar o corpo: acorda-o (o Box2D v3 acorda em `SetPolygon`). O rapier só
+            // acorda o dono de um colisor mudado que já tenha contactos, e um portão a dormir num
+            // pino de mundo não toca em nada — ficava congelado com a forma a mudar (GEF02 onda 7).
+            b.wake_up(true);
             // O olho abre ou fecha a meio do play: a massa do corpo sem forma entra ou sai.
             match shape_off_mass(desc) {
                 Some(m) => b.set_additional_mass(m, true),
@@ -245,22 +250,9 @@ impl PhysicsWorld {
             self.apply_damping_override(handle, d);
         }
         let fresh = collider_build::build_collider(&self.outlines, desc);
+        // Sem pai, a posição do construtor É a relativa ao pai (`insert_with_parent` adopta-a).
+        self.copia_colisor(collider_handle, &fresh, desc, *fresh.position());
         if let Some(c) = self.colliders.get_mut(collider_handle) {
-            c.set_shape(fresh.shared_shape().clone());
-            match mass_override {
-                Some(m) => c.set_mass(m),
-                None => c.set_density(density),
-            }
-            c.set_restitution(fresh.restitution());
-            c.set_friction(fresh.friction());
-            c.set_restitution_combine_rule(fresh.restitution_combine_rule());
-            c.set_friction_combine_rule(fresh.friction_combine_rule());
-            c.set_sensor(fresh.is_sensor());
-            c.set_active_collision_types(fresh.active_collision_types());
-            // Sem pai, a posição do construtor É a relativa ao pai (`insert_with_parent` adopta-a).
-            c.set_position_wrt_parent(*fresh.position());
-            c.user_data = fresh.user_data;
-            c.set_active_hooks(fresh.active_hooks());
             c.set_enabled(!shape_off);
         }
         if (shape_off || was_off)
@@ -271,6 +263,37 @@ impl PhysicsWorld {
         self.stamp_layer(collider_handle, layer as usize);
         effector::register(&mut self.effectors, collider_handle, handle, desc);
         true
+    }
+}
+
+impl PhysicsWorld {
+    /// **Escreve no colisor VIVO `ch` o que o `fresh` (saído do [`collider_build::build_collider`])
+    /// descreve**, em `pose` relativa ao pai — a metade-colisor do [`PhysicsWorld::retune_body`] e
+    /// do [`PhysicsWorld::retune_part`]: contactos, handle e ring ficam.
+    pub(super) fn copia_colisor(
+        &mut self,
+        ch: ColliderHandle,
+        fresh: &rapier2d::geometry::Collider,
+        desc: &BodyDesc,
+        pose: crate::rmath::Pose,
+    ) {
+        let Some(c) = self.colliders.get_mut(ch) else {
+            return;
+        };
+        c.set_shape(fresh.shared_shape().clone());
+        match desc.mass_override {
+            Some(m) => c.set_mass(m),
+            None => c.set_density(desc.density),
+        }
+        c.set_restitution(fresh.restitution());
+        c.set_friction(fresh.friction());
+        c.set_restitution_combine_rule(fresh.restitution_combine_rule());
+        c.set_friction_combine_rule(fresh.friction_combine_rule());
+        c.set_sensor(fresh.is_sensor());
+        c.set_active_collision_types(fresh.active_collision_types());
+        c.set_position_wrt_parent(pose);
+        c.user_data = fresh.user_data;
+        c.set_active_hooks(fresh.active_hooks());
     }
 }
 

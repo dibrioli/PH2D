@@ -316,6 +316,19 @@ impl PhysicsBridge {
             let pose_a = self.world.body_pose(j.bodies.0)?;
             let pose_b = self.world.body_pose(j.bodies.1)?;
             let kind = authored_kind(j.rest.kind);
+            // Num pino de MUNDO o desenho fala no referencial do OBJETO, como o cartão: o arco
+            // parado no mundo com os números autorados, a agulha no ângulo do objeto.
+            let mundo = j.world_anchor.is_some();
+            let cartao = if mundo {
+                super::joint_desc::no_outro_referencial(j.rest)
+            } else {
+                j.rest
+            };
+            let (angle_a, angle_b) = if mundo {
+                (pose_b.rotation.angle(), pose_a.rotation.angle())
+            } else {
+                (pose_a.rotation.angle(), pose_b.rotation.angle())
+            };
             Some(JointView {
                 entity,
                 kind,
@@ -331,8 +344,8 @@ impl PhysicsBridge {
                 rotation_free: kind == JointKind::Custom
                     && j.rest.custom.axes[ph2d_physics::CustomAxis::Rotation as usize].mode
                         == ph2d_physics::AxisMode::Free,
-                angle_a: pose_a.rotation.angle(),
-                angle_b: pose_b.rotation.angle(),
+                angle_a,
+                angle_b,
                 // ⚠️ **Sem re-filtrar por tipo, e é o ponto:** o `rest` É o
                 // desc que o solver recebeu, e `joint_desc` já recusou ali todo
                 // parâmetro que o tipo ignora (`is_hinge()`). Perguntar de novo
@@ -342,8 +355,8 @@ impl PhysicsBridge {
                 // precisamente o defeito que esta wave existe para tornar
                 // impossível. A 1ª versão re-filtrava; a mutação que apagou o
                 // filtro **não sangrou**, e foi assim que a duplicata apareceu.
-                limits: j.rest.limits,
-                motor_speed: j.rest.motor.map(|m| m.speed),
+                limits: cartao.limits,
+                motor_speed: cartao.motor.map(|m| m.speed),
                 // Só uma polia tem roldanas — o padrão do `axis`/`length`.
                 wheel_start: 0,
                 wheel_count: 0,

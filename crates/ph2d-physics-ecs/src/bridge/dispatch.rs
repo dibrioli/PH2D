@@ -196,6 +196,7 @@ impl PhysicsBridge {
                     // keyframado chega uma vez por QUADRO, com o valor do quadro
                     // aplicado a todos os ticks devidos.
                     self.drive_joint_params(sim, false);
+                    self.drive_shapes(sim); // e as FORMAS (`bridge::shape_drive`)
                     self.drive_kinematic(sim, f);
                     // E o DEDO daquele tick (W7). Antes da perna, porque é ela
                     // que o consome.

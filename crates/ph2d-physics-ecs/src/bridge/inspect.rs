@@ -77,6 +77,20 @@ impl PhysicsBridge {
         self.world.body_aabb(self.bodies.get(&entity)?.handle)
     }
 
+    /// **O corpo desta entidade está a dormir no solver?** `None` sem corpo.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn body_sleeping(&self, entity: Entity) -> Option<bool> {
+        self.world.body_sleeping(self.bodies.get(&entity)?.handle)
+    }
+
+    /// O handle do corpo desta entidade, em bits: muda quando a ponte o RECRIA (gates de churn).
+    #[doc(hidden)]
+    #[must_use]
+    pub fn body_handle_bits(&self, entity: Entity) -> Option<(u32, u32)> {
+        Some(self.bodies.get(&entity)?.handle.into_raw_parts())
+    }
+
     /// Number of live rapier bodies (for tests / diagnostics).
     ///
     /// ⚠️ **Conta o mapa entidade→corpo da PONTE**, não a arena: um corpo sem

@@ -63,6 +63,7 @@ impl PhysicsBridge {
                 j.rest.anchor_a,
                 j.rest.anchor_b,
                 (j.rest.axis_a, j.rest.axis_b),
+                j.world_anchor.is_some(),
             ) else {
                 continue;
             };

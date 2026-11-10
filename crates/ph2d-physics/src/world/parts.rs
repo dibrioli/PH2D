@@ -76,6 +76,30 @@ impl PhysicsWorld {
 
     /// Tira uma peça do corpo. `wake` acorda o dono — uma peça que some muda a
     /// massa dele, e um corpo dormindo não recomputaria nada.
+    /// **Reafina uma peça VIVA no lugar** — a gémea do [`PhysicsWorld::retune_body`] para um
+    /// colisor extra: a forma, o material e a pose no corpo mudam sem arrancar o colisor (o handle,
+    /// os contactos e o ring de checkpoints ficam), e o dono acorda. `false` quando o handle não
+    /// nomeia uma peça viva (o chamador pendura uma nova).
+    pub fn retune_part(
+        &mut self,
+        handle: ColliderHandle,
+        desc: &BodyDesc,
+        local: [f32; 3],
+    ) -> bool {
+        let Some(body) = self.colliders.get(handle).and_then(|c| c.parent()) else {
+            return false;
+        };
+        let fresh = collider_build::build_collider(&self.outlines, desc);
+        let place = Pose::from_parts(Vector::new(local[0], local[1]), Rotation::new(local[2]));
+        self.copia_colisor(handle, &fresh, desc, place * *fresh.position());
+        self.stamp_layer(handle, desc.layer as usize);
+        super::effector::register(&mut self.effectors, handle, body, desc);
+        if let Some(b) = self.bodies.get_mut(body) {
+            b.wake_up(true);
+        }
+        true
+    }
+
     pub fn detach_part(&mut self, handle: ColliderHandle) {
         self.effectors.retain(|z| z.collider != handle);
         let owner = self.colliders.get(handle).and_then(|c| c.parent());

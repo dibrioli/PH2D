@@ -474,6 +474,7 @@ impl PhysicsBridge {
                 la,
                 lb,
                 PhysicsWorld::axis_locals(transform.rotation, rest_a[2], rest_b[2]),
+                world_point.is_some(),
             ) else {
                 drop_if_live(self);
                 continue;

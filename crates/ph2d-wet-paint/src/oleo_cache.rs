@@ -98,10 +98,18 @@ impl CacheCampo {
         if cx0 != 1 || cx1 != gw || de.x0 != 1 || de.x0 + de.w != gw + 1 {
             return;
         }
-        let reusa = cache
+        // B14.A1: outra revisão ou chave na MESMA grade só esquece as linhas; os planos ficam (no Wet a revisão
+        // muda a cada imagem — realocá-los custava ~28 B por célula a cada uma). Gate `a_cache_nao_realoca_com_a_revisao`.
+        let mesma_grade = cache
             .as_ref()
-            .is_some_and(|c| c.revisao == revisao && c.chave == chave && c.campo.w == gw);
-        if !reusa {
+            .is_some_and(|c| c.campo.w == gw && c.campo.h == gh);
+        if let (true, Some(c)) = (mesma_grade, cache.as_mut())
+            && (c.revisao != revisao || c.chave != chave)
+        {
+            c.chave = chave;
+            c.revisao = revisao;
+            c.validas.fill(false);
+        } else if !mesma_grade {
             *cache = Some(Self {
                 chave,
                 revisao,
@@ -173,3 +181,7 @@ fn copia<T: Copy>(
     }
     dst[d..d + w].copy_from_slice(&src[s..s + w]);
 }
+
+#[cfg(test)]
+#[path = "oleo_cache_tests.rs"]
+mod oleo_cache_tests;

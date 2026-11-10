@@ -374,3 +374,7 @@ impl CampoAltura {
         f64::from(self.v[i]) + f64::from(self.detalhe[i])
     }
 }
+
+#[cfg(test)]
+#[path = "oleo_campo_sonda.rs"]
+mod oleo_campo_sonda;

@@ -16,6 +16,9 @@
 use super::*;
 use rayon::prelude::*;
 
+#[cfg(test)]
+mod ligacao_tests;
+
 /// Um troço de linha da união da sessão: os texels `[a, b)` da linha `y`, e se algum tem papel molhado.
 #[derive(Clone, Copy)]
 struct Troco {
@@ -33,7 +36,15 @@ fn raiz(pai: &mut [u32], mut i: u32) -> u32 {
     i
 }
 
+#[cfg(test)]
+thread_local! {
+    /// As chamadas de [`une`] neste fio (a régua do custo da ligação das poças, B16.A1).
+    pub(super) static UNIOES: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
 fn une(pai: &mut [u32], i: usize, j: usize) {
+    #[cfg(test)]
+    UNIOES.with(|c| c.set(c.get() + 1));
     let (ri, rj) = (raiz(pai, i as u32), raiz(pai, j as u32));
     if ri != rj {
         pai[ri.max(rj) as usize] = ri.min(rj);
@@ -63,6 +74,115 @@ fn separacao(al: &super::watercolor_render::Alcance) -> usize {
         0
     };
     campos.max(2 * w).max(agua)
+}
+
+/// Os troços da linha `y` em `[x0, x1)`; os que estão a menos de `elo` px um do outro fundem-se num
+/// troço LARGO (`elo = 0`: os estreitos, um por corrida de texels ocupados).
+fn trocos_da_linha(
+    y: usize,
+    x0: usize,
+    x1: usize,
+    elo: usize,
+    ocupado: impl Fn(usize) -> bool,
+    molhado: impl Fn(usize) -> bool,
+) -> Vec<Troco> {
+    let mut v: Vec<Troco> = Vec::new();
+    let mut aberto = false;
+    for x in x0..x1 {
+        if !ocupado(x) {
+            aberto = false;
+            continue;
+        }
+        match v.last_mut() {
+            Some(t) if aberto || x < t.b + elo => {
+                t.b = x + 1;
+                t.molhado |= molhado(x);
+            }
+            _ => v.push(Troco {
+                y,
+                a: x,
+                b: x + 1,
+                molhado: molhado(x),
+            }),
+        }
+        aberto = true;
+    }
+    v
+}
+
+/// **As poças secas** (B16.A1): `seco[k]` diz se o troço LARGO `k` é de uma poça sem papel molhado.
+/// Dois largos ligam-se se estão a `elo` px (Chebyshev) um do outro — na mesma linha nunca estão, e o
+/// intervalo `[a, b + elo)` de um largo é a união dos dos estreitos dele: o veredicto da ligação troço
+/// a troço, sem visitar cada par de estreitos (`O(linhas·elo·troços²)` em listras finas).
+fn largos_secos(largos: &[Troco], inicio: &[usize], elo: usize) -> Vec<bool> {
+    let mut pai: Vec<u32> = (0..largos.len() as u32).collect();
+    for j in 0..inicio.len() - 1 {
+        let (qa, qb) = (inicio[j], inicio[j + 1]);
+        for jj in j.saturating_sub(elo)..j {
+            let (pa, pb) = (inicio[jj], inicio[jj + 1]);
+            let mut lo = pa;
+            for q in qa..qb {
+                let tq = largos[q];
+                while lo < pb && largos[lo].b + elo <= tq.a {
+                    lo += 1;
+                }
+                let mut p = lo;
+                while p < pb && largos[p].a < tq.b + elo {
+                    une(&mut pai, p, q);
+                    p += 1;
+                }
+            }
+        }
+    }
+    let mut fica = vec![false; largos.len()];
+    for (k, l) in largos.iter().enumerate() {
+        if l.molhado {
+            fica[raiz(&mut pai, k as u32) as usize] = true;
+        }
+    }
+    (0..largos.len())
+        .map(|k| !fica[raiz(&mut pai, k as u32) as usize])
+        .collect()
+}
+
+/// O ORÁCULO: a ligação troço a troço de antes do B16.A1, verbatim.
+#[cfg(test)]
+fn pocas_secas_troco_a_troco(trocos: &[Troco], inicio: &[usize], elo: usize) -> Vec<bool> {
+    let linhas = inicio.len() - 1;
+    // As poças: união dos troços a `elo` px um do outro (na mesma linha e nas `elo` de cima).
+    let mut pai: Vec<u32> = (0..trocos.len() as u32).collect();
+    for j in 0..linhas {
+        let (qa, qb) = (inicio[j], inicio[j + 1]);
+        for k in qa + 1..qb {
+            if trocos[k].a < trocos[k - 1].b + elo {
+                une(&mut pai, k - 1, k);
+            }
+        }
+        for jj in j.saturating_sub(elo)..j {
+            let (pa, pb) = (inicio[jj], inicio[jj + 1]);
+            let mut lo = pa;
+            for q in qa..qb {
+                let tq = trocos[q];
+                while lo < pb && trocos[lo].b + elo <= tq.a {
+                    lo += 1;
+                }
+                let mut p = lo;
+                while p < pb && trocos[p].a < tq.b + elo {
+                    une(&mut pai, p, q);
+                    p += 1;
+                }
+            }
+        }
+    }
+    let mut fica = vec![false; trocos.len()];
+    for k in 0..trocos.len() {
+        if trocos[k].molhado {
+            fica[raiz(&mut pai, k as u32) as usize] = true;
+        }
+    }
+    (0..trocos.len())
+        .map(|k| !fica[raiz(&mut pai, k as u32) as usize])
+        .collect()
 }
 
 impl PainterTool {
@@ -106,82 +226,36 @@ impl PainterTool {
         let molhado = &self.paint.canvas_wet;
         let agua = (self.paint.stroke_water.len() == n).then_some(&self.paint.stroke_water[..]);
         let soak = (self.paint.wet_soak.len() == n).then_some(&self.paint.wet_soak[..]);
+        let ocupado = |i: usize| {
+            cov[i] > 0 || agua.is_some_and(|a| a[i] > 0) || soak.is_some_and(|s| s[i] > 0)
+        };
+        let linha = |y: usize, a: usize, b: usize, elo: usize| {
+            trocos_da_linha(y, a, b, elo, |x| ocupado(y * fw + x), |x| molhado[y * fw + x] > 0)
+        };
+        // Os troços LARGOS: os de uma linha a menos de `elo` um do outro já são da mesma poça.
         let linhas: Vec<Vec<Troco>> = (y0..y1)
             .into_par_iter()
-            .map(|y| {
-                let mut v = Vec::new();
-                let mut aberto: Option<Troco> = None;
-                for x in x0..x1 {
-                    let i = y * fw + x;
-                    let ocupado = cov[i] > 0
-                        || agua.is_some_and(|a| a[i] > 0)
-                        || soak.is_some_and(|s| s[i] > 0);
-                    match (&mut aberto, ocupado) {
-                        (Some(t), true) => {
-                            t.b = x + 1;
-                            t.molhado |= molhado[i] > 0;
-                        }
-                        (None, true) => {
-                            aberto = Some(Troco {
-                                y,
-                                a: x,
-                                b: x + 1,
-                                molhado: molhado[i] > 0,
-                            });
-                        }
-                        (Some(_), false) => v.extend(aberto.take()),
-                        (None, false) => {}
-                    }
-                }
-                v.extend(aberto);
-                v
-            })
+            .map(|y| linha(y, x0, x1, elo))
             .collect();
         let mut inicio = Vec::with_capacity(linhas.len() + 1);
-        let mut trocos: Vec<Troco> = Vec::new();
+        let mut largos: Vec<Troco> = Vec::new();
         for l in &linhas {
-            inicio.push(trocos.len());
-            trocos.extend_from_slice(l);
+            inicio.push(largos.len());
+            largos.extend_from_slice(l);
         }
-        inicio.push(trocos.len());
-        if trocos.is_empty() {
+        inicio.push(largos.len());
+        if largos.is_empty() {
             return 0;
         }
-        // As poças: união dos troços a `elo` px um do outro (na mesma linha e nas `elo` de cima).
-        let mut pai: Vec<u32> = (0..trocos.len() as u32).collect();
-        for j in 0..linhas.len() {
-            let (qa, qb) = (inicio[j], inicio[j + 1]);
-            for k in qa + 1..qb {
-                if trocos[k].a < trocos[k - 1].b + elo {
-                    une(&mut pai, k - 1, k);
-                }
-            }
-            for jj in j.saturating_sub(elo)..j {
-                let (pa, pb) = (inicio[jj], inicio[jj + 1]);
-                let mut lo = pa;
-                for q in qa..qb {
-                    let tq = trocos[q];
-                    while lo < pb && trocos[lo].b + elo <= tq.a {
-                        lo += 1;
-                    }
-                    let mut p = lo;
-                    while p < pb && trocos[p].a < tq.b + elo {
-                        une(&mut pai, p, q);
-                        p += 1;
-                    }
-                }
-            }
-        }
-        let mut fica = vec![false; trocos.len()];
-        for k in 0..trocos.len() {
-            if trocos[k].molhado {
-                fica[raiz(&mut pai, k as u32) as usize] = true;
-            }
-        }
-        let assa: Vec<Troco> = (0..trocos.len())
-            .filter(|&k| !fica[raiz(&mut pai, k as u32) as usize])
-            .map(|k| trocos[k])
-            .collect();
+        let seco = largos_secos(&largos, &inicio, elo);
+        // Os troços que assam: os estreitos de cada largo seco, na ordem da linha.
+        let assa: Vec<Troco> = largos
+            .par_iter()
+            .zip(seco.par_iter())
+            .filter(|(_, s)| **s)
+            .map(|(l, _)| linha(l.y, l.a, l.b, 0))
+            .collect::<Vec<_>>()
+            .concat();
         if assa.is_empty() {
             return 0;
         }

@@ -403,3 +403,96 @@ fn a_separacao_das_pocas_e_exacta_na_fronteira() {
         eprintln!("SEPARACAO [{nome}] o 2.º traço mais perto que deixou o 1.º assar: x = {perto}");
     }
 }
+
+/// Sonda B16.A1: o custo da LIGAÇÃO das poças no pen-down a 4096², com o papel Textured (o deslocamento
+/// do Paper Edge sobe o elo) — o traço de fábrica e o pior caso, a união em listras de 2 px. Rodadas
+/// intercaladas, o MÍNIMO; conta as chamadas de `une`.
+#[test]
+#[ignore = "sonda: a ligação das poças a 4096² (B16.A1)"]
+fn sonda_a_ligacao_das_pocas_a_4096_com_papel() {
+    use crate::compositor::Region;
+    use crate::tool::paint::watercolor_secagem::UNIOES;
+    let lado = 4096u32;
+    let n = (lado * lado) as usize;
+    let mut t = white_canvas(lado, 8.0);
+    t.paint.brush = BrushSpec {
+        radius_px: 120.0,
+        watercolor: true,
+        space_attenuation: false,
+        ..tela(10.0).paint.brush
+    };
+    t.paint.brush_by_mode.fill(t.paint.brush);
+    t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperCold.to_u8());
+    t.set_substrate_depth(0.5);
+    t.set_substrate_roughness(0.5);
+    t.set_brush_paper_depth(1.0);
+    let risca = |t: &mut PainterTool, x: f32| {
+        assert!(t.on_canvas_pointer(cp([x, 200.0], PointerPhase::Down)));
+        let mut y = 200.0f32;
+        while y < 3900.0 {
+            y += 40.0;
+            t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+            frame(t);
+        }
+        t.on_canvas_pointer(cp([x, 3900.0], PointerPhase::Up));
+    };
+    risca(&mut t, 600.0);
+    espera(&mut t, 5.0);
+    risca(&mut t, 3400.0);
+    espera(&mut t, 6.0);
+    assert!(t.wet_session_continues(), "a régua: a C mantém a sessão viva");
+    let al = t.alcance_da_janela();
+    let real = (
+        t.paint.stroke_coverage.clone(),
+        t.paint.stroke_water.clone(),
+        t.paint.wet_soak.clone(),
+        t.paint.canvas_wet.clone(),
+        t.paint.wet_cum_dirty,
+    );
+    // Listras de 2 px em toda a tela, molhadas num canto: uma poça só, nada assa, a ligação paga tudo.
+    let listras: Vec<u8> = (0..n).map(|i| if i % 4 < 2 { 200 } else { 0 }).collect();
+    let mut molhado_listras = vec![0u8; n];
+    molhado_listras[..lado as usize].fill(255);
+    let poe = |t: &mut PainterTool, k: usize| {
+        let p = &mut t.paint;
+        if k == 0 {
+            p.stroke_coverage.clone_from(&real.0);
+            p.stroke_water.clone_from(&real.1);
+            p.wet_soak.clone_from(&real.2);
+            p.canvas_wet.clone_from(&real.3);
+            p.wet_cum_dirty = real.4;
+        } else {
+            p.stroke_coverage.clone_from(&listras);
+            p.stroke_water.fill(0);
+            p.wet_soak.fill(0);
+            p.canvas_wet.clone_from(&molhado_listras);
+            p.wet_cum_dirty = Some(Region { x: 0, y: 0, w: lado, h: lado });
+        }
+    };
+    let rotulo = ["traço de fábrica, assa a A", "listras de 2 px, nada assa"];
+    let mut minimo = [f64::MAX; 2];
+    let mut unioes = [0u64; 2];
+    let mut assou = [0usize; 2];
+    for _ in 0..7 {
+        for k in 0..2 {
+            poe(&mut t, k);
+            UNIOES.with(|c| c.set(0));
+            let t0 = std::time::Instant::now();
+            assou[k] = t.assa_as_pocas_secas();
+            minimo[k] = minimo[k].min(t0.elapsed().as_secs_f64() * 1e3);
+            unioes[k] = UNIOES.with(std::cell::Cell::get);
+        }
+    }
+    let mut rel = format!("ALCANCE\tpad {}\treach {}\tdesloca {}\n", al.pad, al.reach, al.desloca);
+    for k in 0..2 {
+        rel += &format!(
+            "LIGAÇÃO\t{}\t{} troços assados\t{} uniões\tmín {:.2} ms\n",
+            rotulo[k], assou[k], unioes[k], minimo[k]
+        );
+    }
+    eprint!("{rel}");
+    let _ = std::fs::write(
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../target/sonda_b16a1.tsv"),
+        rel,
+    );
+}

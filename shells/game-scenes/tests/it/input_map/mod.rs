@@ -17,6 +17,7 @@ mod lista_r7a;
 mod mutacao_r13;
 mod polimento_b;
 mod polimento_c;
+mod polimento_f3;
 mod polimento_w3;
 mod teclado;
 mod teclado_censo;

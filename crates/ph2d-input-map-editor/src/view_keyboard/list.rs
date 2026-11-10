@@ -76,7 +76,7 @@ pub(super) fn paint(
     let x = r.x + m::LIST_PAD_X;
     let w = (r.w - m::LIST_PAD_X * 2.0).max(0.0);
     let mut y = r.y + m::LIST_PAD_X;
-    let head = Rect::new(x + m::SEG_INSET, y, w, ROW_H);
+    let head = Rect::new(x + m::SEG_INSET, y, w - m::SEG_INSET, ROW_H);
     line(
         &mut doc.census,
         ts,

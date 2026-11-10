@@ -662,7 +662,7 @@ fn o_x_da_busca_tem_24_px_e_o_add_desligado_tem_aresta() {
     let add = doc.rect_of(ids::ADD).expect("o Add");
     assert!(
         (doc.census.filled.iter())
-            .any(|(r, t)| *r == add && *t == ph2d_tokens::ColorToken::BorderEmph),
+            .any(|(r, t)| *r == add && *t == ph2d_tokens::ColorToken::BorderStrong),
         "o Add desligado com aresta: {add:?}"
     );
 }

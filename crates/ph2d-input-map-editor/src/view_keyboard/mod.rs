@@ -157,20 +157,17 @@ pub fn paint(
     keys::paint_top(doc, top, scene, ts, ink);
     // A região que rola: a lista (lado a lado) ou, empilhada, a lista e a acção aberta como UMA região por baixo do
     // desenho — o teclado nunca rola.
+    // Empilhada, o fundo da região guarda o mesmo recuo do topo (`CARD_PAD_TOP`): o último cartão acaba onde o recorte
+    // acaba, sem faixa de outro cartão por baixo.
     let region = if stacked {
-        Rect::new(
-            inner.x,
-            below,
-            inner.w,
-            (inner.y + inner.h - below).max(0.0),
-        )
+        let floor = body.y + body.h - m::CARD_PAD_TOP;
+        Rect::new(inner.x, below, inner.w, (floor - below).max(0.0))
     } else {
         Rect::new(inner.x, below, list_w, (inner.y + inner.h - below).max(0.0))
     };
-    // A calha da barra, reservada dentro da região: empilhada, o cartão da acção encolhe para ela; lado a lado, mora
-    // no recuo direito da lista (nenhum texto lá).
-    let gutter_w = ph2d_editor_core::widget::SCROLLBAR_W;
-    let gutter = Rect::new(region.x + region.w - gutter_w, region.y, gutter_w, region.h);
+    // A calha da barra é o recuo direito da LISTA (nenhum texto lá), empilhada ou lado a lado: só a lista rola.
+    let gutter_w = m::LIST_PAD_X;
+    let gutter = Rect::new(inner.x + list_w - gutter_w, region.y, gutter_w, region.h);
     // A acção aberta que a pintura anterior não mostrou (clique, cena, porta de smoke) rola para a vista, pela conta
     // da lista (já na 1.ª pintura), e a rolagem em repouso pára numa fronteira de linha.
     let opened = doc.kb.open;
@@ -203,16 +200,17 @@ pub fn paint(
     let mut over = VectorScene::new();
     over.push_clip(&ph2d_editor_core::paint::rect_to_vello(region));
     let list_r = Rect::new(inner.x, y0, list_w, if stacked { tall } else { region.h });
-    let mut end = fitted(&mut over, ink, list_r, region, |s| {
+    let list_end = fitted(&mut over, ink, list_r, region, |s| {
         list::paint(doc, list_r, s, ts, ink)
     });
     let rx = list_r.x + list_r.w + m::CARD_GAP;
-    let rw = (inner.x + inner.w - rx - if stacked { gutter_w } else { 0.0 }).max(0.0);
+    let rw = (inner.x + inner.w - rx).max(0.0);
+    let (mut end, mut card_end) = (list_end, region.y);
     if stacked {
         // O cartão da aberta fica no topo da região (não rola com a lista): revelar uma linha do fundo da lista não
         // o tira da vista.
         let bottom = Rect::new(rx, region.y, rw, tall);
-        let card_end = fitted(&mut over, ink, bottom, region, |s| {
+        card_end = fitted(&mut over, ink, bottom, region, |s| {
             tiles::paint(doc, bottom, s, ts, ink)
         });
         end = end.max(card_end - region.y + y0);
@@ -226,22 +224,18 @@ pub fn paint(
     doc.kb.scroll = doc.kb.scroll.clamp(0.0, (total - region.h).max(0.0));
     if total > region.h + f32::EPSILON {
         doc.census.clip = Some(region);
-        let cols = [
-            Rect::new(inner.x, region.y, list_w, region.h),
-            Rect::new(rx, region.y, rw, region.h),
-        ];
-        let cols = if stacked { &cols[..] } else { &cols[..1] };
-        let max = total - region.h;
-        fade(
-            doc,
-            scene,
-            ink,
-            cols,
-            (
-                doc.kb.scroll > f32::EPSILON,
-                doc.kb.scroll + f32::EPSILON < max,
-            ),
+        // O desvanecer só sobre o cartão que o recorte corta: a lista (rola) e, empilhada, o da aberta se passa do fundo.
+        let floor = region.y + region.h;
+        let list_col = Rect::new(inner.x, region.y, list_w, region.h);
+        let list_cut = (
+            doc.kb.scroll > f32::EPSILON,
+            list_end > floor + f32::EPSILON,
         );
+        fade(doc, scene, ink, &[list_col], list_cut);
+        if stacked && card_end > floor + f32::EPSILON {
+            let card_col = Rect::new(rx, region.y, rw, region.h);
+            fade(doc, scene, ink, &[card_col], (false, true));
+        }
         list::scrollbar(doc, (region, gutter), total, scene, ink);
     }
     if !stacked {

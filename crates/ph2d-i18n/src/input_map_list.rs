@@ -23,6 +23,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "input_map_list.listen_key" => "Press a key. Esc cancels.",
         "input_map_list.listening" => "Listening for {action}.",
         "input_map_list.listening_rest" => "The next key goes to this row.",
+        "input_map_list.no_key" => "No key",
         "input_map_list.add_key_tip" => "Add a key or a gamepad button: click here, then press it.",
         "input_map_list.remove_key_tip" => "Remove this key from the action.",
         "input_map_list.remove_action_tip" => "Delete this action.",

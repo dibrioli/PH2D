@@ -417,6 +417,11 @@ fn paint_plus(
         doc.control(Control::new(lid, r, ControlRole::Button, label));
         return;
     }
+    // Numa linha SEM teclas: a caixa tracejada «No key» (o desenho da escuta, neutro); clicar nela escuta.
+    let empty = doc.snap.map.get(id).is_some_and(|a| a.bindings.is_empty());
+    if empty {
+        return paint_no_key(doc, id, room, scene, ts, ink);
+    }
     let r = Rect::new(room.x, room.y, (g + m::SEG_INSET * 2.0).min(room.w), room.h);
     // O alvo fica registado mesmo invisível: só se chega a ele com o ponteiro na linha, e aí ele desenha-se.
     let lid = ListHit::Listen(id).id();
@@ -429,31 +434,67 @@ fn paint_plus(
     if !visible {
         return;
     }
-    // Numa linha SEM teclas o «+» é a única coisa a fazer: numa caixa como a de um chip, em tinta cheia.
-    let empty = doc.snap.map.get(id).is_some_and(|a| a.bindings.is_empty());
-    if doc.list.hover_row == Some(id) || empty {
+    if doc.list.hover_row == Some(id) {
         let bg = if doc.is_pressed(lid) {
             ColorToken::AccentSoft
-        } else if doc.list.hover_row == Some(id) {
-            ColorToken::CardFieldHover
         } else {
-            ColorToken::CardField
+            ColorToken::CardFieldHover
         };
         fill_rounded_rect(scene, r, m::SEG_RADIUS, ink.color(bg));
     }
     let gl = Rect::new(r.x + (r.w - g) * 0.5, r.y + (r.h - g) * 0.5, g, g);
-    let fg = if empty {
-        ColorToken::Text1
-    } else {
-        ColorToken::Text2
-    };
     paint_icon(
         scene,
         IconId::Plus,
         gl,
-        ink.color(fg),
+        ink.color(ColorToken::Text2),
         StrokeToken::Default.px(),
     );
+    doc.census.plus.push(id);
+}
+
+/// A caixa tracejada «No key» da linha sem teclas: o tracejado da escuta em aresta neutra, o texto em `Text2`; sob
+/// o ponteiro ou premida acende como o «+». É o alvo que escuta.
+fn paint_no_key(
+    doc: &mut InputMapDoc,
+    id: ActionId,
+    room: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    ink: CardInk,
+) {
+    let msg = tr("input_map_list.no_key");
+    let w = (ts.prefix_width(msg, m::VALUE_PX) + m::SEG_INSET * 2.0).min(room.w);
+    let r = Rect::new(room.x, room.y, w, room.h);
+    let lid = ListHit::Listen(id).id();
+    let bg = if doc.is_pressed(lid) {
+        Some(ColorToken::AccentSoft)
+    } else {
+        (doc.list.hover_row == Some(id)).then_some(ColorToken::CardFieldHover)
+    };
+    if let Some(bg) = bg {
+        fill_rounded_rect(scene, r, m::SEG_RADIUS, ink.color(bg));
+    }
+    ph2d_editor_core::paint::stroke_rounded_rect_dashed(
+        scene,
+        r,
+        m::SEG_RADIUS,
+        m::FIELD_BORDER,
+        m::LOOSE_DASH,
+        ink.color(ColorToken::BorderStrong),
+    );
+    let inner = Rect::new(r.x + m::SEG_INSET, r.y, r.w - m::SEG_INSET * 2.0, r.h);
+    text::body(
+        &mut doc.census,
+        ts,
+        scene,
+        msg,
+        inner,
+        m::VALUE_PX,
+        ink.color(ColorToken::Text2),
+    );
+    let label = tr("input_map_list.add_key_tip");
+    doc.control(Control::new(lid, r, ControlRole::Button, label));
     doc.census.plus.push(id);
 }
 

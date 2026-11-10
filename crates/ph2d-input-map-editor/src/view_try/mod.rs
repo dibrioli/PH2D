@@ -369,8 +369,29 @@ fn close_confirm(doc: &mut InputMapDoc) {
     }
 }
 
-/// Quebra `s` em linhas que cabem em `w` (palavra a palavra).
+/// Quebra `s` em linhas que cabem em `w`, EQUILIBRADAS (o `text-wrap: balance` do CSS): o mesmo número de linhas da
+/// quebra gulosa, na menor largura que o mantém — a última linha nunca fica com uma palavra sozinha.
 pub(crate) fn wrap(ts: &mut TextSystem, s: &str, px: f32, w: f32) -> Vec<String> {
+    let greedy = wrap_greedy(ts, s, px, w);
+    if greedy.len() < 2 {
+        return greedy;
+    }
+    let n = greedy.len();
+    let (mut lo, mut hi) = (0.0_f32, w);
+    // Bissecção até menos de um pixel: 16 passos dividem qualquer coluna real abaixo disso.
+    for _ in 0..16 {
+        let mid = (lo + hi) * 0.5;
+        if wrap_greedy(ts, s, px, mid).len() <= n {
+            hi = mid;
+        } else {
+            lo = mid;
+        }
+    }
+    wrap_greedy(ts, s, px, hi)
+}
+
+/// A quebra gulosa: palavra a palavra, cada linha o mais cheia que cabe em `w`.
+fn wrap_greedy(ts: &mut TextSystem, s: &str, px: f32, w: f32) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     let mut cur = String::new();
     for word in s.split(' ') {

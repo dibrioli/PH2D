@@ -200,12 +200,14 @@ pub fn paint(
         if doc.is_pressed(ids::ADD) {
             ring(scene, r, ink);
         }
-        if add_off.is_some() {
-            // Desligado com aresta (o botão desligado dos cartões): a caixa lê-se como botão, não como campo.
-            let edge = ColorToken::BorderEmph;
-            stroke_rounded_rect(scene, r, m::FIELD_RADIUS, m::FIELD_BORDER, ink.color(edge));
-            doc.census.filled.push((r, edge));
-        }
+        // A aresta lê a caixa como botão: neutra desligado, no acento só quando o Add pode agir.
+        let edge = if add_off.is_some() {
+            ColorToken::BorderStrong
+        } else {
+            ColorToken::BorderEmph
+        };
+        stroke_rounded_rect(scene, r, m::FIELD_RADIUS, m::FIELD_BORDER, ink.color(edge));
+        doc.census.filled.push((r, edge));
         doc.control(Control::new(ids::ADD, r, ControlRole::Button, add).disabled(add_off));
     }
     if let Some(why) = doc.list.refused {

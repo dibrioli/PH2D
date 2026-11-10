@@ -133,3 +133,4 @@
 - ⛔⛔ [Sonda de custo sem o papel/relevo do dono não tem o fenómeno: 1,6 ms × 1,7 s no app (pen-up 4K, 10/11)](feedback_a_cost_probe_without_the_owners_paper_has_no_phenomenon.md)
 - [perf neste PC: ele ABRE o app, `-k` sem `-g`, `STRIP=none` no smoke](reference_perf_on_this_pc_opens_the_app_no_callgraph.md)
 - ⭐ [Dono 11/11: o Done da Timeline desliga o Auto Key e não larga a seleção](project_timeline_done_turns_off_autokey_2026_11_11.md)
+- ⭐⭐ [Dono 10/11: Collision Shape com o Look da Sprite — Color substitui, Opacity ≥ 25 %, resets, Pivot com X/Y à vista; ferramenta Pivot](project_collision_shape_look_2026_11_10.md)

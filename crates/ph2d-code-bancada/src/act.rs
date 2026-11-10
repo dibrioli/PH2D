@@ -18,6 +18,28 @@ pub fn parse_number(s: &str) -> Option<f64> {
         .filter(|v| v.is_finite())
 }
 
+/// Um par escrito à mão, com a vírgula decimal ou o ponto: `x; y` (com `;` a vírgula é decimal — a
+/// convenção das listas onde ela o é, Excel e LibreOffice), `x y` ou `x, y` (um espaço separa), `x,y`
+/// (uma vírgula só), e `( )`/`[ ]` à volta. `1,5,2` é ambíguo e recusa-se.
+#[must_use]
+pub fn parse_vec2(s: &str) -> Option<[f64; 2]> {
+    let s = s.trim().trim_start_matches(['(', '[']);
+    let s = s.trim_end_matches([')', ']']);
+    let parts: Vec<&str> = if s.contains(';') {
+        s.split(';').collect()
+    } else if s.split_whitespace().count() == 2 {
+        s.split_whitespace()
+            .map(|p| p.trim_end_matches(','))
+            .collect()
+    } else {
+        s.split(',').collect()
+    };
+    match parts.as_slice() {
+        [x, y] => Some([parse_number(x)?, parse_number(y)?]),
+        _ => None,
+    }
+}
+
 /// A edição que `intent` pede, ou `None` (não é uma edição, ou o texto não serve ao tipo).
 /// `decls` = as declarações que o painel mostra (as pistas `min`/`max` limitam o número, como no
 /// campo do Inspector).
@@ -47,13 +69,7 @@ pub fn act(who: &Who, decls: Option<&[PropDecl]>, intent: &Intent) -> Option<Edi
             col.options.iter().find(|o| *o == value)?;
             E::SetText(name, value.clone())
         }
-        CellKind::Vec2 => {
-            let mut it = value.split([',', ' ']).filter(|p| !p.trim().is_empty());
-            let x = parse_number(it.next()?)?;
-            let y = parse_number(it.next()?)?;
-            it.next().is_none().then_some(())?;
-            E::SetVec2(name, [x, y])
-        }
+        CellKind::Vec2 => E::SetVec2(name, parse_vec2(value)?),
         CellKind::Object => E::SetObject(name, value.trim().to_owned()),
         CellKind::Color => return None,
     };

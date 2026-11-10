@@ -87,3 +87,30 @@ fn cada_tipo_aceita_so_o_que_lhe_serve() {
     assert_eq!(act(&who, Some(&d), &Intent::Jump(0)), None);
     assert_eq!(act(&who, Some(&d), &Intent::Select(0)), None);
 }
+
+/// Onda B, aberto 1: o par aceita a vírgula decimal (`1,5, 2`), como o número aceita (`1,5`); o
+/// que mostra (`1.5, 2`) volta a entrar; `1,5,2` sem espaço é ambíguo e recusa-se.
+#[test]
+fn o_par_aceita_a_virgula_decimal_como_o_numero() {
+    use ph2d_code_bancada::parse_vec2;
+    for (s, par) in [
+        ("1,5, 2", [1.5, 2.0]),
+        ("1,5; 2,25", [1.5, 2.25]),
+        ("1,5 -2", [1.5, -2.0]),
+        ("1.5, 2", [1.5, 2.0]),
+        ("1, 2", [1.0, 2.0]),
+        ("1,2", [1.0, 2.0]),
+        ("1 , 2", [1.0, 2.0]),
+        ("(0,5; 1)", [0.5, 1.0]),
+    ] {
+        assert_eq!(parse_vec2(s), Some(par), "«{s}»");
+    }
+    for s in ["1,5,2", "1", "1, 2, 3", "1; 2; 3", "a, 2", ""] {
+        assert_eq!(parse_vec2(s), None, "«{s}»");
+    }
+    let (who, d, [a, _]) = grelha();
+    assert_eq!(
+        act(&who, Some(&d), &Intent::Edit(0, 3, "1,5, 2".into())),
+        edicao(a, E::SetVec2("aim".into(), [1.5, 2.0]))
+    );
+}

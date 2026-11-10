@@ -8,6 +8,6 @@ pub mod names;
 pub mod scene;
 pub mod who;
 
-pub use act::{act, parse_number};
+pub use act::{act, parse_number, parse_vec2};
 pub use scene::{SceneOutlines, ScenePeek};
 pub use who::{Bancada, Open, TextFacts, number_text, read, text_of};

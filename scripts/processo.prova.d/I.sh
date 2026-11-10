@@ -22,6 +22,12 @@ igual "regerar presets num subagente vai à fila" "$(_i PreToolUse ag1 1600 'PH2
 igual "pôr na fila o regerar passa num subagente" "$(_i PreToolUse ag1 1600 "bash scripts/fila-pesada.sh pôr 'PH2D_REGERA_PRESETS=1 bash scripts/y.sh'")" ""
 igual "pôr na fila não abre buraco para encadear" "$(_i PreToolUse ag1 1600 "bash scripts/fila-pesada.sh pôr x; PH2D_REGERA_PRESETS=1 bash scripts/y.sh")" "deny"
 igual "correr a fila com o regerar continua recusado" "$(_i PreToolUse ag1 1600 "bash scripts/fila-pesada.sh correr PH2D_REGERA_X")" "deny"
+igual "a bancada (teste ignorado) num subagente vai à fila" "$(_i PreToolUse ag1 1600 'bash scripts/ph2d-run.sh cargo test -p ph2d-skin-weights bancada -- --ignored')" "deny"
+igual "…e a da tecla→pixel também" "$(_i PreToolUse ag1 1600 'PH2D_GPU=1 bash scripts/ph2d-run.sh cargo test --profile smoke -p ph2d-app-code --test it bancada -- --ignored --nocapture')" "deny"
+igual "a palavra «bancada» num grep passa" "$(_i PreToolUse ag1 1600 'grep -rn bancada crates/ph2d-panel-code/src')" ""
+igual "…num caminho passa" "$(_i PreToolUse ag1 1600 'cat crates/ph2d-panel-code/src/bancada/grid.rs')" ""
+igual "…num teste por nome passa" "$(_i PreToolUse ag1 1600 'bash scripts/cargo-test-narrow.sh ph2d-panel-code bancada::grelha')" ""
+igual "…no git log passa" "$(_i PreToolUse ag1 1600 'git log --grep=bancada')" ""
 igual "a janela principal não é tocada""$(_i PreToolUse "" 9999999 'bash scripts/ship.sh')" ""
 # a fila
 _f() { PH2D_FILA_DIR="$tmp/fila" bash scripts/fila-pesada.sh "$@"; }

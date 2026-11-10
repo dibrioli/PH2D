@@ -57,6 +57,7 @@ mod os_outros_meios_nao_mudam;
 mod pinceis_da_ponta;
 mod presets_de_fabrica;
 mod presets_dos_meios;
+mod push_look_probe; // render-and-look do Push (veio do ph2d-app-painter, 10/11: só a API do PainterTool)
 mod receitas_de_fabrica;
 mod regua_escada;
 mod regua_midia;

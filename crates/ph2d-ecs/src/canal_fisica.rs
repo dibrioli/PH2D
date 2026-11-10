@@ -7,7 +7,8 @@
 //! ⛔ **Os números são gravados no documento da timeline: só APPEND, nunca renumerar** (gate
 //! `o_vocabulario_da_fisica_nao_renumera`).
 //!
-//! O valor é o do COMPONENTE: metros, kg, m/s, a rotação inicial em rad/s; um interruptor é 0/1;
+//! O valor é o número do CARTÃO (dono 09/11): metros, kg, m/s, a rotação inicial em graus/s, a caixa em Width e
+//! Height inteiros e a cápsula na altura inteira (o `Collider` guarda metades); um interruptor é 0/1;
 //! uma escolha é a `tag` (tipo, forma, camada, regras de combinação). Um vector de duas componentes
 //! (o deslocamento, a caixa, a velocidade, a força da zona) é UM grupo, como a posição do
 //! Transform; o resto, uma linha do painel por grupo.
@@ -29,7 +30,7 @@ pub const TRAVA_Y: u16 = 5;
 pub const ESCALA_GRAVIDADE: u16 = 6;
 /// `Dominance` (a prioridade `i8`; ausente = 0).
 pub const DOMINANCIA: u16 = 7;
-/// `InitialVelocity` — a linear (m/s, um grupo) e a angular (rad/s).
+/// `InitialVelocity` — a linear (m/s, um grupo) e a angular (graus/s, como o cartão).
 pub const VEL_X: u16 = 10;
 pub const VEL_Y: u16 = 11;
 pub const VEL_ANGULAR: u16 = 12;
@@ -40,7 +41,8 @@ pub const AMORT_MODO: u16 = 15;
 /// `MassOverride`: a fonte (0 auto · 1 manual) e a massa em kg.
 pub const MASSA_MANUAL: u16 = 16;
 pub const MASSA: u16 = 17;
-/// `Collider::shape` (Ball 0 · Box 1 · Capsule 2 · Outline 3) e as medidas da forma (m).
+/// `Collider::shape` (Ball 0 · Box 1 · Capsule 2 · Outline 3) e as medidas da forma (m): raio, Width, Height, a
+/// altura inteira da cápsula.
 pub const FORMA: u16 = 20;
 pub const RAIO: u16 = 21;
 pub const MEIO_X: u16 = 22;

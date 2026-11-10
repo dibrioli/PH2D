@@ -346,6 +346,13 @@ pub fn unidade(k: FieldKey) -> Unidade {
             | vet::PARAM_ALTURA,
         ) => Unidade::Comprimento,
         (familia::CAD, cad::ANGULO) => Unidade::Angulo,
+        // As medidas da forma de física, em metros como o cartão (Width e Height inteiros).
+        (
+            familia::FISICA,
+            crate::canal_fisica::RAIO..=crate::canal_fisica::CAPSULA
+            | crate::canal_fisica::DESLOC_X
+            | crate::canal_fisica::DESLOC_Y,
+        ) => Unidade::Comprimento,
         _ => Unidade::Nenhuma,
     }
 }

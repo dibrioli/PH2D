@@ -117,13 +117,19 @@ fn a_forma_decide_as_medidas() {
     );
 }
 
-/// ⭐ **O MESMO funil que o painel**: a rotação inicial escrita em radianos pelo canal dá o corpo
+/// ⭐ **O MESMO funil que o painel**: a rotação inicial escrita em graus pelo canal dá o corpo
 /// que o Inspector dá ao emitir a edição dos graus; a trava, o marcador que o clique põe.
 #[test]
 fn o_canal_e_a_edicao_do_painel_dao_o_mesmo_corpo() {
     let reg = registry();
     let (mut pelo_canal, e) = corpo();
-    let _ = escrever(&mut pelo_canal, &reg, e.to_bits(), f::VEL_ANGULAR, 1.0);
+    let _ = escrever(
+        &mut pelo_canal,
+        &reg,
+        e.to_bits(),
+        f::VEL_ANGULAR,
+        1_f32.to_degrees(),
+    );
     let _ = escrever(&mut pelo_canal, &reg, e.to_bits(), f::TRAVA_ROTACAO, 1.0);
     let (mut pelo_painel, e2) = corpo();
     apply(&mut pelo_painel, e2, PhysicsFieldEdit::Angvel(1.0));
@@ -289,7 +295,11 @@ fn a_chave_da_forma_no_corpo_vai_para_a_filha() {
     assert_ne!(filha, e, "a forma é filha");
     publicar(&mut sim, &[b]);
     let lidos = sim.world().resource::<CanaisLidos>();
-    assert_eq!(lidos.valor(filha.to_bits(), k(f::MEIO_X)), Some(0.5));
+    assert_eq!(
+        lidos.valor(filha.to_bits(), k(f::MEIO_X)),
+        Some(1.0),
+        "Width = 2 × 0,5"
+    );
     assert_eq!(
         lidos.valor(b, k(f::MEIO_X)),
         None,
@@ -323,6 +333,8 @@ fn a_chave_da_forma_no_corpo_vai_para_a_filha() {
             (f::MEIO_X, ColliderShape::Cuboid { half_x, .. }) => half_x,
             _ => c.restitution,
         };
+        // A curva fala Width; o `Collider`, metades.
+        let v = if campo == f::MEIO_X { v * 0.5 } else { v };
         assert!((vale - v).abs() < 1e-5, "{campo}: {vale} ≠ {v}");
         assert!(sim.world().get::<Collider>(e).is_none(), "nada no corpo");
     }
@@ -351,5 +363,58 @@ fn a_timeline_le_a_camada_de_colisao_pelo_rotulo_do_cartao() {
     assert_ne!(
         nomes.0[5], "5",
         "sem nome, o rótulo do cartão, não o número"
+    );
+}
+
+/// ⭐ A curva diz o número do CARTÃO (dono 09/11): Width e Height inteiros, a altura inteira da cápsula, o giro em
+/// graus por segundo; e as medidas da forma levam a unidade de comprimento do projecto na timeline.
+///
+/// Mutação que deve sangrar: o `ler` de `MEIO_X` voltar a `info.half_x`.
+#[test]
+fn a_curva_diz_o_numero_do_cartao() {
+    use ph2d_ecs::canal::{Unidade, unidade};
+    let reg = registry();
+    let (mut sim, e) = corpo();
+    let b = e.to_bits();
+    let forma = |sim: &SimWorld| {
+        let f = ph2d_physics_ecs::forma_para_editar(sim.world(), e).unwrap_or(e);
+        sim.world().get::<Collider>(f).expect("forma").shape
+    };
+    let _ = escrever(&mut sim, &reg, b, f::FORMA, 1.0);
+    let _ = escrever(&mut sim, &reg, b, f::MEIO_X, 3.0);
+    match forma(&sim) {
+        ColliderShape::Cuboid { half_x, .. } => assert!((half_x - 1.5).abs() < 1e-5, "{half_x}"),
+        s => panic!("{s:?}"),
+    }
+    assert!((valor(&sim, e, f::MEIO_X) - 3.0).abs() < 1e-5, "Width 3");
+    let _ = escrever(&mut sim, &reg, b, f::FORMA, 2.0);
+    let _ = escrever(&mut sim, &reg, b, f::RAIO, 0.25);
+    let _ = escrever(&mut sim, &reg, b, f::CAPSULA, 2.0);
+    match forma(&sim) {
+        ColliderShape::Capsule {
+            half_height,
+            radius,
+        } => assert!(((half_height + radius) * 2.0 - 2.0).abs() < 1e-5),
+        s => panic!("{s:?}"),
+    }
+    assert!((valor(&sim, e, f::CAPSULA) - 2.0).abs() < 1e-5, "Height 2");
+    let _ = escrever(&mut sim, &reg, b, f::VEL_ANGULAR, 90.0);
+    let giro = sim.world().get::<InitialVelocity>(e).expect("giro").angvel;
+    assert!((giro - 90_f32.to_radians()).abs() < 1e-5, "90 °/s");
+    assert!((valor(&sim, e, f::VEL_ANGULAR) - 90.0).abs() < 1e-3);
+    for c in [
+        f::RAIO,
+        f::MEIO_X,
+        f::MEIO_Y,
+        f::CAPSULA,
+        f::DESLOC_X,
+        f::DESLOC_Y,
+    ] {
+        assert_eq!(unidade(k(c)), Unidade::Comprimento, "campo {c}");
+    }
+    assert_eq!(
+        unidade(k(f::VEL_ANGULAR)),
+        Unidade::Nenhuma,
+        "°/s não é um ângulo"
     );
 }

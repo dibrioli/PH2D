@@ -67,6 +67,12 @@ fn escrever_pela_fisica_muda_o_que_o_catalogo_le() {
             ph2d_ecs::Entity::from_bits(ph2d_physics_ecs::dono_do_campo(sim.world(), b, k.campo));
         let lido = cc::ler_pelo_catalogo(&reg, sim.world(), dono, c, fid, x)
             .unwrap_or_else(|| panic!("{c}.{fid}.{x}: o catálogo não lê"));
+        // O catálogo guarda o giro em rad/s; a curva da física, o número do cartão (graus/s).
+        let lido = if k.campo == f::VEL_ANGULAR {
+            lido.to_degrees()
+        } else {
+            lido
+        };
         assert!(
             perto(lido, ficou),
             "{c}.{fid}.{x} = {lido} ↔ {k:?} = {ficou}"

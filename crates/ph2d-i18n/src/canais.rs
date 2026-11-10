@@ -97,7 +97,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "canal.fisica.forma" => "Collider Shape",
         "canal.fisica.raio" => "Collider Radius",
         "canal.fisica.caixa" => "Collider Size",
-        "canal.fisica.capsula" => "Capsule Half Height",
+        "canal.fisica.capsula" => "Capsule Height",
         "canal.fisica.deslocamento" => "Collider Offset",
         "canal.fisica.densidade" => "Density",
         "canal.fisica.restituicao" => "Restitution",

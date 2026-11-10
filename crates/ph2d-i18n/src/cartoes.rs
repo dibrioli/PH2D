@@ -12,7 +12,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.height" => "Height",
         "card.insp.phys.touch" => "Touch",
         "card.insp.phys.start_moving" => "Start moving",
-        "card.insp.phys.advanced" => "Advanced",
+        "card.insp.phys.advanced" => "More",
         "card.insp.phys.joint" => "Joint",
         "card.insp.phys.bake" => "Bake to Timeline",
         "card.insp.phys.offset" => "Offset",

@@ -97,7 +97,7 @@ pub fn ler(info: &InspectorPhysicsInfo, campo: u16) -> Option<f32> {
         f::DOMINANCIA => f32::from(info.dominance),
         f::VEL_X => info.linvel[0],
         f::VEL_Y => info.linvel[1],
-        f::VEL_ANGULAR => info.angvel,
+        f::VEL_ANGULAR => info.angvel.to_degrees(),
         f::AMORT_LINEAR => info.linear_damping,
         f::AMORT_ANGULAR => info.angular_damping,
         f::AMORT_MODO => f32::from(info.damp_mode_tag),
@@ -105,9 +105,9 @@ pub fn ler(info: &InspectorPhysicsInfo, campo: u16) -> Option<f32> {
         f::MASSA => info.mass,
         f::FORMA => f32::from(info.shape_tag),
         f::RAIO => info.radius,
-        f::MEIO_X => info.half_x,
-        f::MEIO_Y => info.half_y,
-        f::CAPSULA => info.cap_half_height,
+        f::MEIO_X => info.half_x * 2.0,
+        f::MEIO_Y => info.half_y * 2.0,
+        f::CAPSULA => (info.cap_half_height + info.radius) * 2.0,
         f::DESLOC_X => info.offset[0],
         f::DESLOC_Y => info.offset[1],
         f::DENSIDADE => info.density,
@@ -151,17 +151,8 @@ fn opcao(v: f32, n: usize) -> u8 {
 #[must_use]
 pub fn edicao(info: &InspectorPhysicsInfo, campo: u16, v: f32) -> Option<PhysicsFieldEdit> {
     match porta(campo)? {
-        Porta::Numero(id) => {
-            // O painel fala graus na rotação inicial; o componente, radianos.
-            // E as medidas inteiras: o canal guarda metades, como o `Collider`; o painel, Width e Height.
-            let ui = match campo {
-                f::VEL_ANGULAR => v.to_degrees(),
-                f::MEIO_X | f::MEIO_Y => v * 2.0,
-                f::CAPSULA => (v + info.radius) * 2.0,
-                _ => v,
-            };
-            ph2d_panel_inspector::physics_edit_for(id, Some(ui), info)
-        }
+        // O canal guarda o número do cartão (graus/s, Width, Height, a altura inteira da cápsula).
+        Porta::Numero(id) => ph2d_panel_inspector::physics_edit_for(id, Some(v), info),
         Porta::Escolha(ops) => {
             let id = *ops.get(usize::from(opcao(v, ops.len())))?;
             ph2d_panel_inspector::physics_edit_for(id, None, info)

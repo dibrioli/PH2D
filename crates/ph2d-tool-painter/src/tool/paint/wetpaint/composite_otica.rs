@@ -123,6 +123,59 @@ pub(super) fn compoe_a_otica(
     }
 }
 
+type Caixa = (usize, usize, usize, usize);
+
+/// As faixas que a óptica fora compõe (B14.1), cada uma pela [`compoe_a_otica`] nos mesmos planos, de cima para baixo:
+/// as do sujo juntas até nenhum par se alcançar — o alcance do Óleo Real e o do Smooth Edges em uso (os píxeis que o
+/// laço escreve). Duas faixas ficam separadas só a mais de 2× esse alcance: nenhuma célula nem píxel é escrito por duas
+/// (os degraus de [`plano_do_suave`] podem repetir-se: são da célula, o mesmo byte).
+pub(super) fn faixas_da_otica(
+    e: &EntradaDaOtica,
+    layers: &[RenderLayer<'_>],
+    faixas: &[Caixa],
+) -> Vec<Caixa> {
+    let oleo = e.factos.oleo_da_tela(layers);
+    let grades: Vec<_> = layers.iter().map(|l| (l.grid, l.visible)).collect();
+    let rr = usize::from(e.ratio).max(1);
+    let raio = ph2d_wet_paint::grid::aparencia::raio_do_teto(&grades);
+    let suave = if raio > 0.0 {
+        super::smooth_edges::alcance_da_mudanca(raio)
+    } else {
+        0
+    };
+    let cresce = |c: Caixa| {
+        let a = oleo.as_ref().map_or(0, |o| {
+            ph2d_wet_paint::oleo_real::alcance_na(o, &grades, rr, c)
+        }) + suave.div_ceil(rr)
+            + 1;
+        (
+            c.0.saturating_sub(a),
+            c.1.saturating_sub(a),
+            c.2 + a,
+            c.3 + a,
+        )
+    };
+    let toca = |a: Caixa, b: Caixa| a.0 <= b.2 && b.0 <= a.2 && a.1 <= b.3 && b.1 <= a.3;
+    let mut v: Vec<(Caixa, Caixa)> = faixas.iter().map(|&c| (c, cresce(c))).collect();
+    'junta: loop {
+        for i in 0..v.len() {
+            for j in i + 1..v.len() {
+                if toca(v[i].1, v[j].1) {
+                    let (a, b) = (v[i].0, v[j].0);
+                    let u = (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3));
+                    v[i] = (u, cresce(u));
+                    v.swap_remove(j);
+                    continue 'junta;
+                }
+            }
+        }
+        break;
+    }
+    let mut v: Vec<Caixa> = v.into_iter().map(|(c, _)| c).collect();
+    v.sort_unstable_by_key(|c| (c.1, c.0));
+    v
+}
+
 fn compoe_a_caixa(
     e: &EntradaDaOtica,
     t: &TrabalhoDaOtica,

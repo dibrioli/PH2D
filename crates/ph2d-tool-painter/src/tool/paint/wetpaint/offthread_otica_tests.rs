@@ -184,15 +184,16 @@ fn a_imagem_do_compositor_e_a_otica_sincrona_ao_byte() {
             (RespostaDaOtica::Imagem(img), Some(caixa)) => {
                 assert_eq!(img.epoca, epoca, "{nome}");
                 assert!(img.oleo.is_some(), "{nome}: sem Real Oil");
-                let c = img.caixas.as_ref().expect("caixas");
+                let c = img.caixas.first().expect("caixas");
+                let env = envolvente(&img);
                 if nome == "a agua corre" {
-                    let (a, b) = (c.caixa_cel, caixa);
+                    let (a, b) = (env, caixa);
                     assert!(
                         a.0 >= b.0 && a.1 >= b.1 && a.2 <= b.2 && a.3 <= b.3 && a != b,
                         "{nome}: a caixa {a:?} nao e menor que a do fluido {b:?}"
                     );
                 } else {
-                    assert_eq!(c.caixa_cel, caixa, "{nome}: a caixa composta");
+                    assert_eq!(env, caixa, "{nome}: a caixa composta");
                 }
                 assert!(
                     c.sombra.is_some() && c.veu.is_some(),
@@ -218,6 +219,108 @@ fn a_imagem_do_compositor_e_a_otica_sincrona_ao_byte() {
         referencia.pigment.iter().any(|&b| b > 0) && referencia.sombra.iter().any(|&b| b > 0),
         "a comparacao foi sobre planos vazios"
     );
+}
+
+fn envolvente(img: &Imagem) -> CaixaCel {
+    img.caixas
+        .iter()
+        .map(|c| c.caixa_cel)
+        .reduce(|a, b| super::super::super::otica_no_tique::une(Some(a), b))
+        .expect("caixas")
+}
+
+/// Duas pinceladas molhadas longe uma da outra (o topo e o fundo da folha) e o óleo; o traço aberto junto à de cima.
+fn cena_de_duas_faixas() -> Box<Engine> {
+    let mut e = Engine::new(N, N);
+    for y in [24.0, 226.0] {
+        e.pointer_down(116.0, y, None);
+        for k in 0..24 {
+            e.pointer_frame(116.0 + k as f64, y + (k % 5) as f64);
+        }
+        e.pointer_up();
+    }
+    e.layers[0].grid.oleo_real = true;
+    e.pointer_down(128.0, 26.0, None);
+    assert!(!e.sim_should_run(), "a fixture precisa da agua parada");
+    Box::new(e)
+}
+
+/// **B14.1: duas faixas vivas, duas caixas** — a água corre nas duas pinceladas e as linhas entre elas não mudam: o
+/// compositor compõe uma caixa por faixa (a síncrona, a envolvente das duas), e os planos ficam ao byte da síncrona.
+#[test]
+fn duas_faixas_vivas_compoem_duas_caixas_ao_byte_da_sincrona() {
+    let w = sobe();
+    let mut e = cena_de_duas_faixas();
+    let (mut controlo, mut referencia) = (
+        PlanosDaOtica::da_grade(FORMA.grade),
+        PlanosDaOtica::da_grade(FORMA.grade),
+    );
+    type Prepara = fn(&mut Engine);
+    let rondas: [(&str, Prepara, usize); 3] = [
+        ("sujo inteiro", Engine::mark_dirty_full, 1),
+        (
+            "a agua corre nas duas",
+            |e| {
+                e.pointer_up();
+                for _ in 0..3 {
+                    while e.step_stage().is_none() {}
+                }
+                e.pointer_down(128.0, 26.0, None);
+            },
+            2,
+        ),
+        (
+            "e continua a correr",
+            |e| {
+                e.pointer_up();
+                for _ in 0..2 {
+                    while e.step_stage().is_none() {}
+                }
+                e.pointer_down(128.0, 26.0, None);
+            },
+            2,
+        ),
+    ];
+    for (k, (nome, prepara, quantas)) in rondas.into_iter().enumerate() {
+        prepara(&mut e);
+        let esperada = sincrona(&e, None, &mut referencia).expect("a sincrona compoe");
+        entrega(&w, e);
+        let epoca = 200 + k as u64;
+        w.otica.as_ref().unwrap().pede(PedidoDeImagem {
+            factos: factos(),
+            epoca,
+            divida: None,
+            forma: FORMA,
+            com_veu: true,
+        });
+        let resposta = espera(&w);
+        e = traz(&w);
+        let RespostaDaOtica::Imagem(img) = resposta else {
+            panic!("{nome}: o compositor nao compos");
+        };
+        let caixas: Vec<CaixaCel> = img.caixas.iter().map(|c| c.caixa_cel).collect();
+        eprintln!("{nome}: sincrona {esperada:?} -> compositor {caixas:?}");
+        assert_eq!(
+            caixas.len(),
+            quantas,
+            "{nome}: {caixas:?} (a sincrona {esperada:?})"
+        );
+        let area = |c: CaixaCel| (c.2 + 1 - c.0) * (c.3 + 1 - c.1);
+        let (nossa, dela) = (caixas.iter().map(|&c| area(c)).sum::<usize>(), area(esperada));
+        eprintln!("{nome}: {dela} -> {nossa} celulas compostas");
+        if quantas == 2 {
+            assert!(nossa < dela, "{nome}: as faixas custam {nossa} >= {dela}");
+            assert!(
+                caixas[0].3 < caixas[1].1,
+                "{nome}: as faixas sobrepoem-se {caixas:?}"
+            );
+        }
+        img.aplica(&mut controlo, FORMA.grade);
+        assert!(controlo.pigment == referencia.pigment, "{nome}: o pigmento difere");
+        assert!(controlo.sombra == referencia.sombra, "{nome}: a sombra difere");
+        assert!(controlo.grao == referencia.grao, "{nome}: o grao difere");
+        assert!(controlo.suave == referencia.suave, "{nome}: o suave difere");
+    }
 }
 
 /// **O compositor acaba com a sessão** — o mesmo `Drop` que fecha o worker (com o motor COM ele) fecha-o.

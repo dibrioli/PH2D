@@ -113,7 +113,7 @@ impl PainterTool {
                 }
                 RespostaDaOtica::Imagem(im) => {
                     if sess.otica.no_ar != Some(im.epoca) {
-                        if let Some(c) = &im.caixas {
+                        for c in &im.caixas {
                             sess.otica.deve(c.caixa_cel);
                         }
                         continue;
@@ -130,7 +130,9 @@ impl PainterTool {
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
-        if let Some(c) = &im.caixas {
+        // A imagem aplica-se inteira ou vai toda para a dívida (as faixas são do mesmo instante do motor).
+        let mut recusa = false;
+        for c in &im.caixas {
             // Pela caixa dos degraus, a maior que `Imagem::aplica` cola (`plano_do_suave`: contém a do pigmento).
             debug_assert!(toca(c.caixa_cel, c.caixa_suave) && c.caixa_suave.0 <= c.caixa_cel.0);
             let tocou = sess
@@ -144,10 +146,13 @@ impl PainterTool {
             // A casa pintou depois do pedido e tem um plano que a imagem diz vazio (o 1.º óleo, o 1.º Smooth Edges):
             // a imagem é velha, e aplicá-la apagava esse plano fora da caixa dela.
             let velha = sess.otica.uniao_local.is_some() && c.esvazia(&sess.planos);
-            if tocou || velha || (show_wet && c.veu.is_none()) {
+            recusa |= tocou || velha || (show_wet && c.veu.is_none());
+        }
+        if recusa {
+            for c in &im.caixas {
                 sess.otica.deve(c.caixa_cel);
-                return;
             }
+            return;
         }
         im.aplica(&mut sess.planos, sess.grid);
         sess.seen_steps = im.passos;
@@ -165,38 +170,37 @@ impl PainterTool {
             caixas,
             ..
         } = im;
-        let (caixas, veu) = match caixas {
-            Some(c) => (
-                Some(CaixasDaOtica {
+        if caixas.is_empty() {
+            let saida = SaidaDaOtica {
+                oleo,
+                marca,
+                caixas: None,
+            };
+            self.wetpaint_depois_da_otica(&antes, saida, show_wet, VeuDe::DaImagem(sem_veu()));
+        }
+        // O laço de píxel por faixa (B14.1).
+        for c in caixas {
+            let linhas = match &c.veu {
+                Some(v) => FilmeEMolha {
+                    film: &v.film,
+                    wet: &v.wet,
+                    s: v.s,
+                    linha0: v.linha0,
+                },
+                None => sem_veu(),
+            };
+            let saida = SaidaDaOtica {
+                oleo,
+                marca,
+                caixas: Some(CaixasDaOtica {
                     caixa_cel: c.caixa_cel,
                     caixa_px: c.caixa_px,
                     caixa_suave: c.caixa_suave,
                     sem_oleo: c.sem_oleo,
                 }),
-                c.veu,
-            ),
-            None => (None, None),
-        };
-        let linhas = match &veu {
-            Some(v) => FilmeEMolha {
-                film: &v.film,
-                wet: &v.wet,
-                s: v.s,
-                linha0: v.linha0,
-            },
-            None => FilmeEMolha {
-                film: &[],
-                wet: &[],
-                s: 0,
-                linha0: 0,
-            },
-        };
-        let saida = SaidaDaOtica {
-            oleo,
-            marca,
-            caixas,
-        };
-        self.wetpaint_depois_da_otica(&antes, saida, show_wet, VeuDe::DaImagem(linhas));
+            };
+            self.wetpaint_depois_da_otica(&antes, saida, show_wet, VeuDe::DaImagem(linhas));
+        }
     }
 
     /// Com água nova a mostrar (ou dívida) e nada no ar, publica o pedido; `done` = os passos que o tique leu.
@@ -232,5 +236,15 @@ impl PainterTool {
             o.uniao_local = None;
             o.divida = antigo.and_then(|a| a.divida);
         }
+    }
+}
+
+/// O véu de uma imagem sem o filme (sem caixas ou sem `show_wet`).
+const fn sem_veu() -> FilmeEMolha<'static> {
+    FilmeEMolha {
+        film: &[],
+        wet: &[],
+        s: 0,
+        linha0: 0,
     }
 }

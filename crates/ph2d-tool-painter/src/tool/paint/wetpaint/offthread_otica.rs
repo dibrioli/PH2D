@@ -88,8 +88,8 @@ pub(in crate::tool::paint::wetpaint) struct Imagem {
     pub(in crate::tool::paint::wetpaint) epoca: u64,
     /// Os passos do worker no instante da cópia (⇒ `seen_steps`).
     pub(in crate::tool::paint::wetpaint) passos: u64,
-    /// `None` = a caixa ficou vazia depois de presa à grade.
-    pub(in crate::tool::paint::wetpaint) caixas: Option<CaixasDaImagem>,
+    /// Uma por faixa composta (B14.1); vazio = a caixa ficou vazia depois de presa à grade.
+    pub(in crate::tool::paint::wetpaint) caixas: Vec<CaixasDaImagem>,
 }
 
 /// O que volta ao fio principal por pedido servido.
@@ -123,26 +123,28 @@ impl Imagem {
         planos: &mut PlanosDaOtica,
         grade: (usize, usize),
     ) {
-        let Some(c) = &self.caixas else {
-            return;
-        };
         let (gw, gh) = grade;
-        cola(&mut planos.pigment, 4, gw, c.caixa_cel, &c.pigmento);
-        for (plano, caixa, onde) in [
-            (&mut planos.sombra, &c.sombra, c.caixa_cel),
-            (&mut planos.grao, &c.grao, c.caixa_cel),
-            (&mut planos.suave, &c.suave, c.caixa_suave),
-        ] {
-            match caixa {
-                Some(b) => {
-                    if plano.len() != gw * gh {
-                        *plano = vec![0u8; gw * gh];
+        for c in &self.caixas {
+            cola(&mut planos.pigment, 4, gw, c.caixa_cel, &c.pigmento);
+            for (plano, caixa, onde) in [
+                (&mut planos.sombra, &c.sombra, c.caixa_cel),
+                (&mut planos.grao, &c.grao, c.caixa_cel),
+                (&mut planos.suave, &c.suave, c.caixa_suave),
+            ] {
+                match caixa {
+                    Some(b) => {
+                        if plano.len() != gw * gh {
+                            *plano = vec![0u8; gw * gh];
+                        }
+                        cola(plano, 1, gw, onde, b);
                     }
-                    cola(plano, 1, gw, onde, b);
+                    None if !plano.is_empty() => *plano = Vec::new(),
+                    None => {}
                 }
-                None if !plano.is_empty() => *plano = Vec::new(),
-                None => {}
             }
+        }
+        if self.caixas.is_empty() {
+            return;
         }
         if self.oleo.is_none() {
             planos.campo_cache = None;
@@ -153,7 +155,10 @@ impl Imagem {
 /// O que o worker manda ao compositor.
 struct Trabalho {
     espelho: Box<Espelho>,
+    /// `trabalho.caixa` = a envolvente das `faixas`.
     entrada: EntradaDaOtica,
+    /// O sujo em pedaços, cada um preso à grade (B14.1).
+    faixas: Vec<CaixaCel>,
     epoca: u64,
     passos: u64,
     /// A camada activa, se o pedido quer o véu.
@@ -322,12 +327,17 @@ impl DoWorker {
             engine.merge_dirty_otica(i(x0), i(y0), i(x1), i(y1));
         }
         let marca = MarcaDaAgua::de(engine);
-        // B14.1: o sujo do passo da sim reduz-se às células que diferem do espelho (a entrada da imagem anterior).
+        // B14.1: o sujo do passo da sim reduz-se às faixas de células que diferem do espelho (a entrada da imagem
+        // anterior).
         let sujo = match self.espelho.as_deref() {
-            Some(e) => engine.take_dirty_pela_otica(e),
-            None => engine.take_dirty(),
+            Some(e) => engine.take_dirty_pela_otica_em_faixas(e),
+            None => vec![engine.take_dirty()],
         };
-        let Some(caixa) = caixa_da_grade(sujo, p.forma.grade) else {
+        let faixas: Vec<CaixaCel> = sujo
+            .into_iter()
+            .filter_map(|d| caixa_da_grade(d, p.forma.grade))
+            .collect();
+        let Some(caixa) = faixas.iter().copied().reduce(|a, b| super::super::otica_no_tique::une(Some(a), b)) else {
             let _ = self.ui.send(RespostaDaOtica::Nada {
                 epoca: p.epoca,
                 passos,
@@ -358,6 +368,7 @@ impl DoWorker {
                 tela: p.forma.tela,
                 revisao: engine.revisao(),
             },
+            faixas,
             epoca: p.epoca,
             passos,
             veu: p.com_veu.then_some(engine.active_layer),
@@ -399,20 +410,30 @@ fn compoe(t: Trabalho, planos: &mut PlanosDaOtica) -> (Box<Espelho>, Imagem) {
         *planos = PlanosDaOtica::da_grade((gw, gh));
     }
     let layers = t.espelho.camadas_render();
-    let saida = compoe_a_otica(&t.entrada, &layers, planos);
-    drop(layers);
-    // Sem cache: a chave leva a `revisao`, que anda a cada passo (J13 §2); o campo é exacto sem ela.
+    let faixas = super::super::composite_otica::faixas_da_otica(&t.entrada, &layers, &t.faixas);
+    let oleo = t.entrada.factos.oleo_da_tela(&layers);
+    let mut caixas = Vec::with_capacity(faixas.len());
+    let mut entrada = t.entrada;
+    for f in faixas {
+        if let Some(tr) = entrada.trabalho.as_mut() {
+            tr.caixa = f;
+        }
+        // Sem cache: a chave leva a `revisao`, que anda a cada passo (J13 §2); o campo é exacto sem ela.
+        planos.campo_cache = None;
+        let saida = compoe_a_otica(&entrada, &layers, planos);
+        caixas.extend(saida.caixas.map(|c| {
+            let veu = t
+                .veu
+                .and_then(|i| t.espelho.camadas.get(i))
+                .map(|c_| veu_da_caixa(&c_.grid, c.caixa_px, entrada.ratio, (gw, gh)));
+            caixas_da_imagem(c, planos, (gw, gh), veu)
+        }));
+    }
     planos.campo_cache = None;
-    let caixas = saida.caixas.map(|c| {
-        let veu = t
-            .veu
-            .and_then(|i| t.espelho.camadas.get(i))
-            .map(|c_| veu_da_caixa(&c_.grid, c.caixa_px, t.entrada.ratio, (gw, gh)));
-        caixas_da_imagem(c, planos, (gw, gh), veu)
-    });
+    drop(layers);
     let imagem = Imagem {
-        oleo: saida.oleo,
-        marca: saida.marca,
+        oleo,
+        marca: entrada.marca,
         epoca: t.epoca,
         passos: t.passos,
         caixas,

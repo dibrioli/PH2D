@@ -3,44 +3,6 @@
 //! O que ela mostra: **o mundo rola e o HUD não se move.** É a frase inteira da feature, e é por
 //! isso que a cena COMPÕE com a da câmera de jogo (TOP-20 #7) em vez de montar um mundo próprio —
 //! sem um mundo que se desloque debaixo dele, um HUD é indistinguível de qualquer desenho parado.
-//!
-//! | o que está na tela | o que prova |
-//! |---|---|
-//! | os postes e a cerca, que passam ao lado | a câmera segue o herói (a cena do #7) |
-//! | **Pontos: N** no canto de cima | o rótulo lê um [`ph2d_ecs::Counter`] que o relógio soma |
-//! | **N.N s** no canto oposto | um rótulo de [`ph2d_ecs::LabelSource::TimerLeft`], que desce sozinho |
-//! | o botão **+10** | o clique publica um sinal, e a tabela do #5 soma ao MESMO contador |
-//!
-//! # ⚠️ TRÊS quadros, e a razão do terceiro é uma armadilha desta casa
-//!
-//! O `sync` do render loop é que dá **entidade** a um `VecPath` recém-nascido, e sem entidade não
-//! há onde pendurar um `UiLabel`. ⇒ o mundo e as formas nascem num quadro, os componentes no
-//! seguinte. É a mesma razão que o `text_fx_smoke` e o `text_wrap_smoke` já pagaram.
-//!
-//! # ⚠️⚠️ A vista da câmera de jogo é a da JANELA, e o editor pinta num sub-rectângulo
-//!
-//! O `fase_game_camera` calcula o enquadramento com o aspecto da **superfície inteira**
-//! (`camera_2d::aspect_of(surface.size())`), e o editor desenha o mundo na área que sobra **entre
-//! os painéis**. ⇒ no EDITOR, um HUD colado às bordas da caixa de referência cai atrás da régua e
-//! dos painéis; numa janela de jogo (sem painéis) ele assenta exactamente onde foi autorado.
-//!
-//! ⇒ **esta cena põe as quatro peças bem dentro da caixa** (`±5` de `16`, `−5` de `9`) e **fecha o
-//! painel da timeline**, para o que o dono vê ser o que a lei faz. *Uma cena cujo canto está atrás
-//! de um painel ensina que o ancoramento está partido.* As duas distâncias são MEDIDAS numa foto e
-//! a calibração está escrita ao lado de cada uma (ver [`ph2d_app_components::hud_smoke_anchors`] e
-//! o bloco do transporte).
-//!
-//! # ⚠️ As três peças vivem EM BAIXO, e a razão é uma medição
-//!
-//! Os avisos de sinal (*toasts*) empilham-se no **topo** do canvas, e o relógio desta cena publica
-//! um a cada dois segundos — com o placar no canto de cima, a foto mostrou-o **tapado** metade do
-//! tempo. *Uma cena em que o número que se vai ler está escondido não prova nada.*
-//!
-//! # ⛔ O que esta cena NÃO faz
-//!
-//! Ela **não** arma a ferramenta vectorial: um clique aqui é do jogo (o relógio anda), e a cena
-//! tem de abrir no estado em que o botão do HUD responde. *Uma cena que abre com a ferramenta
-//! errada ensina que o botão está partido.*
 
 use ph2d_ecs::{
     ChildOf, Counter, CounterRuntime, Entity, Fit, LabelSource, Name, SignalActions, TimerRuntime,

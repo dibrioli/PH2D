@@ -5,48 +5,6 @@
 //!
 //! A ponte dos estados escreveu, no dia em que nasceu, as duas razões pelas quais o rato não
 //! dirigia nada — e as duas continuam verdadeiras:
-//!
-//! 1. **Um hover que animasse a forma enquanto o artista trabalha tornaria o editor inutilizável.**
-//!    É por isso que o Figma põe a interação num *modo de apresentação* separado.
-//! 2. **O undo deste editor é por DIFF do mundo**, então uma pose escrita por hover viraria um
-//!    passo de undo a cada vez que o rato passasse por cima de um botão.
-//!
-//! ⇒ o modo resolve as duas de uma vez: **enquanto ele está ligado, o gesto de edição não existe e
-//! o undo não regista**; quando ele desliga, **o mundo volta exactamente ao que era**.
-//!
-//! # ⭐ Sair RESTAURA, e a restauração é do MUNDO — nunca do estado Default
-//!
-//! A tentação barata é *"ao sair, vá para o Default"*. Ela está errada, e o modo de falha é
-//! silencioso: o **Default é uma pose GRAVADA**, e o artista pode ter movido a forma depois de a
-//! gravar. Sair para o Default **moveria** o desenho dele — o documento mudaria por ele ter olhado.
-//!
-//! O que se restaura é a pose que o mundo tinha **no instante em que a preview foi ligada**. Ela é
-//! capturada pela MESMA porta que o botão *Rec* usa ([`crate::vec_ui_state_edit::capture`]): uma
-//! segunda leitura ao lado seria a que esquece um canal no dia em que a pose ganhar um.
-//!
-//! # O conjunto capturado cobre tudo o que a preview pode escrever — mas ele NÃO é uma lista de ids
-//!
-//! A [`ph2d_ui_state::Machine`] só emite poses cujos ids aparecem nos estados autorados (o
-//! `overlay` dela escreve o que a `Transition` produziu, e a `Transition` casa as duas listas
-//! autoradas). ⇒ capturar todo id mencionado por qualquer estado de qualquer hospedeiro é
-//! **completo por construção**, e não uma lista que envelhece. Há gate a medi-lo.
-//!
-//! ⚠️ **E desde 2026-08-23 uma pose escreve fora do próprio id**: o canal `bool_group_op` faz o
-//! `install` escrever o `VecBoolGroup` da entidade de **GRUPO** acima da forma — e um grupo não
-//! tem `VecPathId`, logo **não pode estar no conjunto capturado**. A auditoria apanhou a frase
-//! antiga (*"EXACTAMENTE o que a preview pode escrever"*) a afirmar mais do que ela mede: o gate
-//! itera IDS, e essa escrita não é endereçada por id nenhum.
-//!
-//! ⭐ **O restauro continua correto, e é por REDUNDÂNCIA:** a pose capturada de cada operando
-//! carrega a operação do grupo, então reinstalá-la devolve o grupo. Ou seja o conjunto **cobre** a
-//! escrita sem a **conter** — e as duas coisas não são a mesma, então há gate PRÓPRIO a medir a
-//! volta (`the_group_operation_comes_back_when_the_preview_leaves`).
-//!
-//! # O rato diz *o que aconteceu*; o papel é DERIVADO
-//!
-//! `hot` (sobre que hospedeiro o cursor está) + `pressed` (o botão está em baixo) são os dois
-//! fatos que a shell conhece. O papel sai deles por uma função, e não por uma tabela de gatilhos:
-//! uma tabela teria de ser mantida em dia com a lista de papéis, e a lista já é um catálogo fixo.
 
 use ph2d_ecs::SimWorld;
 use ph2d_ui_state::{ObjectPose, StateRole, StateSets};

@@ -4,40 +4,6 @@
 //! dolly, todos em `ph2d_ecs::scroll_factor::saida_eixo`), e a ponte vive na
 //! `ph2d_app_components::parallax_bridge`. O que esta shell decide é **quando** ela corre e **com
 //! que dado** — e as duas metades são gateadas aqui, porque nenhuma é visível de dentro da crate.
-//!
-//! # ⚠️ Metade 1 — a vista é a DESTE quadro
-//!
-//! A `fase_game_camera` calcula o rectângulo da câmera do jogo; um passe de paralaxe ANTES dela
-//! deslocaria contra o enquadramento do quadro ANTERIOR, e num jogo em que a câmera segue o herói
-//! o fundo lia-se como *«atrasado um quadro»* — a mesma classe de defeito que a ordem do HUD paga,
-//! e que esta shell já pagou quatro vezes noutros sítios.
-//!
-//! # ⭐⭐ Metade 2 — a invariância ao zoom, e a PREMISSA que MORREU aqui
-//!
-//! A pesquisa mediu no alvo que o deslocamento de um `Parallax2D` **não depende do zoom nem da
-//! rotação da câmera** — a paralaxe nasce da TRANSLAÇÃO, e uma câmera que só roda não produz
-//! nenhuma ([`docs/Components/23_pesquisa_paralaxe.md`](../../../../docs/Components/23_pesquisa_paralaxe.md)
-//! §4.4).
-//!
-//! ⛔⛔ **A 1.ª redacção deste gate (e o NOME dele, até à auditoria 26) exigia que o rectângulo da câmera NÃO atravessasse a fronteira**,
-//! e ela estava certa enquanto a paralaxe fosse só um deslocamento. A **W3** (o confinamento) tem o
-//! joelho em `(região − ecrã)/2` — *ele precisa de saber quanto a vista mede* — e a premissa morreu
-//! no dia seguinte ao de ter sido escrita.
-//!
-//! ⇒ **as duas perguntas separaram-se, e a lei continua gateada pela mais forte das duas réguas:**
-//!
-//! 1. *o zoom entra no DESLOCAMENTO?* — **não**, e quem o afirma é a **ASSINATURA**:
-//!    `ScrollFactor::deslocamento(centro)` recebe um centro e mais nada, logo não HÁ zoom para ler
-//!    e nenhum gate é preciso. *Uma lei que o compilador proíbe não precisa de uma régua.*
-//! 2. *o zoom entra no CONFINAMENTO?* — **sim**, e é a lei medida; ele tem gate próprio na crate da
-//!    lei (`o_joelho_esta_onde_a_borda_da_vista_alcanca_a_regiao`).
-//!
-//! O que fica aqui é o que só a shell pode afirmar: **a fase entrega o rectângulo INTEIRO**, porque
-//! um centro sozinho tornaria o confinamento inexprimível — o defeito oposto ao que a 1.ª redacção
-//! guardava.
-//!
-//! ⚠️ **A lente é o TEXTO EMENDADO do quadro** (`frame_text::render_frame`), nunca um ficheiro: a
-//! fase que corre primeiro pode morar no ficheiro que vem depois.
 
 /// ⛔ **O TEXTO LÊ-SE SEM COMENTÁRIOS** (auditoria 26, §3): o `frame_text` devolve o fonte
 /// inteiro, e uma chamada COMENTADA (`// self.fase_paralaxe(…)`) contém a mesma agulha que a viva ⇒

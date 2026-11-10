@@ -3,42 +3,6 @@
 //! Wave 11 follow-up (Enio 2026-05-26): the old `vector_scene` overlay
 //! was replaced with direct ECS-sprite bakes per slider tick. The user
 //! sees the modified imagem real in real time; no overlay layer.
-//!
-//! Run once per frame BEFORE `paint_hero_screen`. Does, in order:
-//!
-//! 1. Drives the panel's visibility (shown iff `color_equalization`
-//!    is the active tool, keyed `"color_equalization"`).
-//! 2. Publishes the per-frame `ColorEqualizationUiSnapshot` / histogram
-//!    the panel paints next frame.
-//! 3. Drains the panel-staged dropdown close + reset requests.
-//! 4. Maintains a **shell-local cache of original sprite pixels** keyed
-//!    by entity (`SOURCE_CACHE` thread_local). The cache is populated on
-//!    first sight of each newly-selected entity (read once from
-//!    `texture_edit::read_sprite_source`), so subsequent bakes re-feed
-//!    the *original* — they never compound over previously-baked output.
-//! 5. On `params_dirty` (and NOT mid-drag), bakes every selected entity
-//!    from its cached original and writes the result back into the ECS
-//!    sprite via `texture_edit::commit_edited_texture`. No overlay paint.
-//! 6. On Apply, reverts every cached entity to its original, clears the
-//!    cache, and returns the selection to the caller — caller's
-//!    `drain_color_equalization` then re-bakes from the clean source and
-//!    creates the official `ImageEditSnapshot` (undo entry intact).
-//! 7. On Cancel / tool deactivate / selection shrink, reverts the
-//!    relevant cached entities so the sprite snaps back to its original
-//!    look (mirrors the legacy "preview disappears when you leave the
-//!    tool" UX).
-//!
-//! ### Trade-offs
-//!
-//! Cost per slider tick is roughly Apply-grade (full-res pipeline +
-//! texture upload). The `dragging_ceq` gate still throttles this to a
-//! single bake on slider release — same heuristic that protected the
-//! previous overlay rebuild.
-//!
-//! Undo: each Apply creates one entry (revert + caller's drain → undo).
-//! Live-bake ticks that never reach Apply do *not* create entries; the
-//! `SOURCE_CACHE` is the shadow source of truth and Cancel / deactivate
-//! restores from it.
 
 use crate::app_state::ColorEqualizationPreview;
 use crate::hero_intents::texture_edit;

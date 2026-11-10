@@ -6,64 +6,6 @@
 //! música, de referências em vídeo e de chamadas — e um som que ninguém pediu é um som que se
 //! desliga no primeiro minuto e leva a feature com ele. Ele mora no
 //! `~/.ph2d/prefs.txt`, ao lado do `motion_character` e do `reduced_motion`, e nasce em `0`.
-//!
-//! # ⭐⭐ A LEI: um som CONFIRMA o que a mão fez, nunca ANUNCIA o que o app decidiu
-//!
-//! É a única linha que separa um som de UI bom de um irritante, e ela tem duas metades:
-//!
-//! - **só o que a MÃO causou soa** — um clique, um commit, uma recusa. O que o app faz sozinho
-//!   (um quadro, uma transição a assentar, um painel a publicar) é **mudo**;
-//! - **o HOVER nunca soa.** Passar o rato por cima de uma fileira de botões é o gesto mais barato
-//!   e mais frequente do editor; sonorizá-lo transforma navegar num chocalho. É a irmã exacta da
-//!   cerca do §6.2 do estudo (*o realce de uma lista obedece ao cursor; oito rows meio-acesas ao
-//!   mesmo tempo é rasto, não vida*).
-//!
-//! Há gate para as duas.
-//!
-//! # E o vocabulário é CURTO de propósito
-//!
-//! Quatro sons. Um vocabulário grande obriga o ouvido a aprender uma língua para ganhar o que uma
-//! confirmação já dá — e cada som a mais é uma chance a mais de o artista desligar o conjunto.
-//!
-//! ⚠️ **Sintetizados, sem ficheiro nenhum**: o motor já traz os geradores
-//! ([`ph2d_audio::signals`]), e um asset de UI seria mais um binário a versionar, a licenciar e
-//! a manter afinado com o tema.
-//!
-//! # ⛔⛔ O QUINTO ELO da cadeia mora FORA do processo — e foi ele que partiu primeiro
-//!
-//! Medido 2026-08-23, no primeiro smoke desta feature: **silêncio total**, e não era nosso. Os
-//! quatro elos que o `PH2D_UI_SOUND_DIAG` sabe interrogar estavam todos verdes — `pref=true`,
-//! `dispositivo=true`, a voz alocada, o bus SFX. O `PH2D_AUDIO_SMOKE` (440 Hz, 600 ms, ganho 0,4)
-//! **também** era mudo, o que já excluía "o meu blip é curto/baixo demais". O elo partido era o
-//! **mixer por-aplicação do SO**:
-//!
-//! ```text
-//!   Sink Input #29923 · application.name = "PipeWire ALSA [ph2d-host-desktop]"
-//!   Mute: yes
-//!   module-stream-restore.id = "sink-input-by-application-name:PipeWire ALSA [ph2d-host-desktop]"
-//! ```
-//!
-//! …e o `mute:true` estava **gravado em disco**, em
-//! `~/.local/state/wireplumber/stream-properties`, indexado pelo NOME da aplicação. Um mute dado
-//! uma vez (um clique no applet de volume, meses antes) sobrevive a todo `cargo run` seguinte —
-//! *incluindo* aos builds novos, porque a chave é o nome, não o binário.
-//!
-//! ⚠️ **`cpal` não expõe isto, e por isso o diag NÃO o pode medir.** A API de saída dá o
-//! dispositivo e o formato; o volume/mute por-stream é do servidor de som, um andar acima. É um
-//! limite real da fronteira, não uma lacuna de implementação — e é exactamente por isso que ele
-//! fica escrito aqui e impresso pelo diag como **ponteiro**: a única coisa que o processo pode
-//! fazer por quem está a depurar é dizer-lhe onde olhar a seguir.
-//!
-//! O comando que responde, e a cura:
-//!
-//! ```text
-//!   pactl list sink-inputs | grep -E 'application.name|Mute:'   # com o app ABERTO
-//!   pactl set-sink-input-mute <id> 0                            # e o WirePlumber grava
-//! ```
-//!
-//! ⚠️ **O sintoma é indistinguível de "a feature não funciona"**, e essa é a lição durável: um
-//! canal de saída atravessa processos, e a suíte inteira deste repo cobre apenas o nosso lado
-//! dele. *Um gate verde sobre um canal mudo continua verde.*
 
 // ⭐ **O enum e a `voice()` mudaram-se para a `ph2d-audio-desktop`** (hoje `ph2d-app-audio`) — o motor é que os lê, e um
 // tipo que o motor lê não pode ficar do lado de cá de uma fronteira que ele não atravessa. O

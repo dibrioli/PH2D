@@ -5,58 +5,6 @@
 //! Até 2026-09-09 a câmera deste app era um **recurso do editor**: ela enquadrava o que o artista
 //! edita, e nada na cena podia dizer *«a câmera segue-me»*. O levantamento chama a isto *«a maior
 //! lacuna do PH2D e de metade da indústria»*.
-//!
-//! ```text
-//!   Heroi (o quadrado amarelo) ──── SETAS do teclado ────► a câmera segue
-//!   Camera (segue o Heroi)  ·  amortecimento 5  ·  janela morta 0,25
-//!   Cerca (os quatro cantos vermelhos) ─────────► a JANELA pára neles, não o centro
-//!   Postes (de 3 em 3 m) ───────────────────────► é por eles que o movimento se vê
-//! ```
-//!
-//! # ⛔⛔ Porque o herói anda pelo TECLADO e não pelo rato — o report de 2026-09-09
-//!
-//! A primeira redacção desta cena mandava **arrastar** o herói, e o dono devolveu: *«arrastar o
-//! herói provoca umas travadas no movimento dele porque o rato sai de cima do player»*. Ele tem
-//! razão, e não é um defeito da câmera: **é um LAÇO**.
-//!
-//! Um arrasto de canvas ancora o objecto na posição de MUNDO debaixo do cursor, e essa posição é
-//! derivada da câmera. Com uma câmera que segue o objecto, a cadeia fecha-se sobre si mesma:
-//!
-//! ```text
-//!   rato parado → a câmera ainda vem a caminho → o mundo debaixo do cursor MUDA
-//!               → o objecto «move-se» sem ninguém lhe tocar → a câmera segue de novo → …
-//! ```
-//!
-//! Ele converge (o amortecimento é `< 1`), mas o caminho até lá é a trepidação que o dono viu.
-//! ⛔ **Não há afinação que o cure** — a realimentação é da geometria, não de um número.
-//!
-//! ⭐ **A cura é a FONTE DO MOVIMENTO.** Num jogo, o sujeito de uma câmera nunca é arrastado pelo
-//! ponteiro: ele anda por **entrada, em metros por segundo**, e a câmera segue. Trocada a fonte, o
-//! laço deixa de existir — o herói passa a depender só do teclado e a câmera só do herói.
-//! *Uma cena de smoke tem de encenar o que o produto faz, senão ela mede um caminho que ninguém
-//! percorre.*
-//!
-//! ⚠️ **Arrastar o herói continua a funcionar** (é o canvas de sempre) e continua a trepidar
-//! enquanto a pré-visualização estiver ligada. Isso é **declarado**, não um defeito por corrigir:
-//! é o que qualquer editor faz ao arrastar dentro de uma vista que se move sozinha.
-//!
-//! # ⚠️ O que provar
-//!
-//! - **A janela morta:** dar um toque numa seta **não** mexe a câmera. Ela só começa a seguir
-//!   quando o herói passa de ~¼ do ecrã do centro. *É isto que faz um plataforma não enjoar.*
-//! - **O amortecimento:** ao largar a seta, a câmera **assenta** — ela não pára a seco.
-//! - ⭐⭐ **A CERCA prende a JANELA, não o centro:** leve o Heroi para lá dos cantos vermelhos. A
-//!   câmera pára com o canto **na borda do ecrã** — nunca com o canto no meio dele. É a diferença
-//!   que o levantamento nomeia como a entrega do P0, e a que todo jogo escreve à mão.
-//! - ⚠️ **O nascimento não viaja:** ao abrir, a câmera já está no Heroi. Ela não vem da origem.
-//!
-//! ⚠️ **Enquanto a pré-visualização está ligada, a câmera da cena é dona do pan E do zoom** — a
-//! roda e o arrasto de vista ficam por conta dela. É o que uma câmera de jogo é.
-//!
-//! ⏳ **O que esta wave NÃO entrega, e é nomeado:** o botão que liga e desliga a pré-visualização
-//! vive na secção do Inspector, que é a wave seguinte (W3). Aqui ela é ligada pela cena.
-//!
-//! ⚠️ Se a linha `[camera-2d-smoke]` não aparecer, **PARE**: a cena não montou.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{CameraFollow, CameraLimits, GameCamera, Name, Transform};

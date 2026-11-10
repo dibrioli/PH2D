@@ -4,48 +4,6 @@
 //! Dois canais nunca souberam responder *"que valor você tem no mundo?"* — Morph e
 //! Position — porque a porta de leitura tomava só o `PropKind`, enquanto a de escrita
 //! sempre tomou o BINDING inteiro. O que isso custava, medido no produto:
-//!
-//! - um **Morph sob um fade-in teleportava 0,700 num frame** (estalava na forma A);
-//! - um prop-link `Nome.morph` / `Nome.position` resolvia **0** em silêncio, com o
-//!   parser aceitando o token e a aresta de dependência montada — um controle que MENTE.
-//!
-//! A cena mostra os dois de uma vez, e é uma cena de **SCRUB**, não de play: o defeito
-//! vivia num único quadro, e um playhead correndo passa por cima dele.
-//!
-//! **A cena** (unidades de mundo, ~±6):
-//!   - **"Morpher"** — um morph REAL entre um círculo (esquerda) e uma estrela (direita).
-//!     A pose autorada é `t = 0.85` (quase a estrela). Uma track de **Morph** keya `0.15`
-//!     (quase o círculo) num clip, e a strip que a toca vive em `[2, 6)s` com fade-in.
-//!   - **"Needle"** (âmbar) — um sprite cujo **Y é dirigido pelo prop-link
-//!     `Morpher.morph * 6 - 3`**: ele é o mostrador do canal. Sem o fix ele fica cravado
-//!     em −3 para sempre, porque o link resolve 0.
-//!
-//! **O que provar** (arraste a régua devagar — NÃO dê play):
-//! 1. **Em `t < 2`** (antes do fade abrir) a forma está na pose AUTORADA (perto da
-//!    estrela) e a agulha está no ALTO. Este é o quadro que quebrava.
-//! 2. **Atravesse `t = 2.0` devagar.** A forma tem de COMEÇAR a caminhar dali — sem estalo.
-//!    Antes do fix ela saltava para o círculo no primeiro quadro do fade.
-//! 3. **`t` de 2 a 3** — a forma caminha até quase o círculo e a **agulha desce junto**,
-//!    continuamente. A agulha se mexendo É o prop-link funcionando.
-//! 4. **`t > 3`** — segura em `0.15`, agulha embaixo.
-//!
-//! **A trajetória, MEDIDA headless nesta configuração exata** (não é estimativa):
-//!
-//! ```text
-//!      t    morph.t   agulha.y
-//!   0.00     0.8500     2.1000   <- a pose AUTORADA; sem o fix, 0.0000 / -3.0000
-//!   1.95     0.8500     2.1000
-//!   2.00     0.8500     2.1000   <- o fade ABRE aqui e parte DAQUI (era o teleporte)
-//!   2.25     0.7406     1.4438
-//!   2.50     0.5000     0.0000
-//!   2.75     0.2594    -1.4437
-//!   3.00     0.1500    -2.1000   <- o fade fecha
-//!   4.00     0.1500    -2.1000
-//!   pior passo num frame (20 Hz): 0.0523   (o defeito era um salto de 0,7000)
-//! ```
-//!
-//! ⚠️ Se a linha `[morph-fade-smoke]` não aparecer, PARE: a cena não montou, e o resto
-//! do smoke não significa nada.
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;

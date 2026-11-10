@@ -8,44 +8,6 @@
 //! única e a persistência de uma vez. É a cicatriz que o `the_smokes_open_the_painter_in_digital`
 //! pregou: *um smoke que arma o estado por baixo da mesa salta exactamente a costura que ele
 //! existia para provar*.
-//!
-//! ⚠️ **E o RELÓGIO não se julga aqui.** *A corda dá a mesma forma a 30 e a 120 fps* é propriedade
-//! de gate (`the_rope_is_a_fact_of_the_wall_clock_not_of_the_frame_rate`, medido em **0,0000 px**),
-//! e um olho não distingue 1 px numa corda a balançar. O que o smoke julga é o LOOK: os números de
-//! aparência (`NODES` · `SLACK` · a gravidade de ecrã) saem daqui, como o
-//! `RESAMPLE_STEP_FRACTION` do Flip saiu.
-//!
-//! # `=1` — O CARÁCTER
-//!
-//! Nada é montado na cena: o assunto é o **chrome**, que já está todo na tela. O roteiro pede três
-//! comparações, e a terceira é a que só um segundo arranque responde.
-//!
-//! # `=2` — A CORDA
-//!
-//! Abre o card **Fill adjust** no meio do ecrã. Ele é o caso do Pixelator: um card que **nasceu**
-//! num sítio (a largada do ColorDrop) e que o artista arrasta dali — a corda liga os dois.
-//!
-//! ⚠️ **A abertura é SETUP, o arrasto é o teste.** O card só nasce depois de um ColorDrop real no
-//! Painter, que é meia dúzia de gestos antes do assunto; o que esta wave construiu é a corda, e o
-//! gesto que a exercita é **arrastar o card**. O arrasto é o caminho real e completo (o
-//! `arm_fill_modal_drag_if_on_handle` do shell, sem atalhos).
-//!
-//! # `=3` — A DOBRA
-//!
-//! Abre o painel de **física** e manda dobrar uma secção. A F4a deu o `t` ao CABEÇALHO; a F4b
-//! deu-o ao CORPO, e a cena existe porque a segunda metade tem **quatro** modos de falha com
-//! causas diferentes — o corpo a saltar, o que está por baixo a não subir junto, uma row a
-//! transbordar por cima da secção seguinte, e uma row invisível a continuar a responder ao rato.
-//! Um roteiro que dissesse só *«veja se desliza»* deixaria três deles passar.
-//!
-//! ⚠️ **A cena não monta uma secção — ela abre um painel que já as tem.** É a mesma leitura do
-//! `=1`: o assunto é chrome, e inventar um painel de demonstração pintaria a dobra num sítio que
-//! nenhum artista visita. O painel de física é o escolhido por ser **global** (não pede ferramenta
-//! nem selecção) e por trazer secções de altura desigual, que é onde o deslize se lê.
-//!
-//! ⚠️ **E ela imprime a CONTAGEM que a torna válida**, resolvida do painel (`rows::SECTIONS`) e
-//! medida no store (`collapsible_ids`) — nunca um literal aqui, que seria a segunda cópia de um
-//! número que o painel declara.
 
 use ph2d_editor_core::ids;
 

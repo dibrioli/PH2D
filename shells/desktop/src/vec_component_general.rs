@@ -5,55 +5,6 @@
 //! O app tem **dois** motores para a mesma feature. O geral (ADR-0164) faz de uma cópia uma
 //! **sub-árvore de entidades reais**; o vetorial ([`crate::vec_component_edit`]) guarda um
 //! **rectângulo de suporte** e **deriva o desenho por quadro**. As diferenças que o artista vê:
-//!
-//! | | vetorial (velho) | geral (novo) |
-//! |---|---|---|
-//! | a cópia na Hierarquia | **uma** linha (o suporte) | a sub-árvore, com as peças nomeadas |
-//! | editar uma peça da cópia | só pelos slots do painel (`MAX_INSTANCE_PIECES`) | seleccionar a peça e usar qualquer ferramenta |
-//! | onde a excepção mora | `VecInstance.overrides` | `ObjectInstance.overrides` |
-//!
-//! *Dois motores para o mesmo estado é pior que um motor lento* — e é a razão pela qual a F4.6c
-//! existe no plano desde o início.
-//!
-//! # ⭐⭐⭐ Ele é o caminho de OMISSÃO desde 2026-09-06, e a data importa
-//!
-//! Ele **nasceu desligado**, e isso não era timidez: esta secção é um fluxo que **o dono usa** e
-//! que **eu não posso smokar** — ela vive no editor vetorial, atrás de uma janela. Trocar o motor
-//! por baixo dela e entregar sem rede seria pedir-lhe que descobrisse a regressão por mim.
-//!
-//! ⇒ o precedente é **o do `PH2D_RETOPO_EXTRACT`, inteiro**: shipa desligado, o dono smoka, e
-//! **quando ele aprova, o motor novo passa a ser o caminho de omissão**. Aqui foram **três** smokes
-//! aprovados em sequência (o modo · o conta-gotas do *Swap* · a cascata + o *Make Variant*), e a
-//! última coisa que faltava — os três controlos que o motor velho tinha a mais — está medida na
-//! tabela abaixo. *A lei «tudo o que é novo shipa desligado» vale enquanto houver algo por fechar;
-//! ela não é um estado permanente.*
-//!
-//! ⛔⛔ **E O INTERRUPTOR MORREU COM O OUTRO MOTOR** (F4.6c wave 3, 2026-09-07). Aqui viveu um
-//! `armed()` — `PH2D_VEC_COMPONENT_GENERAL=0` voltava ao motor `VecInstance` — lido nos **três**
-//! sítios que decidiam. O bloqueio daquela wave era **prático e não técnico** (apagar ~2 961 LOC
-//! em 27 ficheiros com a `line/Vector` viva era catástrofe de merge), e dissolveu-se no dia em
-//! que aquela linha integrou. *Não há segundo motor, logo não há o que escolher.*
-//!
-//! ⚠️ **Uma instância vetorial GRAVADA antes de 2026-09-06 lê-se como forma comum** (o painel
-//! oferece-lhe *Make Prefab*), e a partir de então não havia como criar uma. Não há projectos
-//! gravados — decisão do Enio, registada no §5 —, e o `PROJECT_SCHEMA` sobe com este corte para
-//! que um ficheiro que carregasse aquele componente **recuse em voz alta** em vez de ser lido
-//! errado em silêncio.
-//!
-//! # ⭐⭐⭐ Os TRÊS controlos que o motor velho tinha a mais, e onde cada um foi parar
-//!
-//! A F4.6c media *«um porte MENOS três features»*. Medidas uma a uma em 2026-09-06, **duas já
-//! existiam noutra superfície do modelo geral** e a terceira foi construída:
-//!
-//! | controlo do painel vetorial | no modelo geral |
-//! |---|---|
-//! | **conta-gotas do *Swap*** | ⭐ **construído aqui** ([`swap_by_pick`]) — o mesmo gesto de duas mãos, com o alvo resolvido pelo `master_subject` e re-key determinístico, que o *Swap* do vetor nunca teve |
-//! | **lista de peças** (o olho · a cor por peça) | ⛔ **não se porta: as peças são ENTIDADES REAIS.** O olho é o da Hierarquia e a cor é qualquer ferramenta sobre a peça seleccionada — as duas portas estão medidas em `ph2d_app_components::instance_structure::instance_piece_override_tests`. *A lista existia porque naquele modelo a peça não tinha endereço; aqui tem.* |
-//! | **fileira de variants** | ⛔ **não se porta: ela já é pintada**, no cartão *Properties* do Inspector (`variant_axes::axes_for`, alimentado pelo `family_members`), derivada pelo MESMO mapa que a troca usa. Uma segunda fileira noutro painel seria a mesma pergunta com duas respostas. |
-//!
-//! ⚠️ **E é por isso que a shell publica as duas listas VAZIAS** neste modo — não por elas ficarem
-//! vazias sozinhas (o `VecInstance` viaja na cópia profunda), mas por DECLARAÇÃO. *Um controlo que
-//! aparece e não faz nada é o defeito que este repo caça.*
 
 use ph2d_ecs::{Entity, MasterRoot, SimWorld};
 use ph2d_i18n::{tr, tr_with};

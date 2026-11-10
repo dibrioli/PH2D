@@ -4,47 +4,6 @@
 //!
 //! Duas portas idênticas, lado a lado, a ouvir **o mesmo sinal** (`tocar`, que um relógio publica
 //! de quatro em quatro segundos):
-//!
-//! | | o que tem | o que FAZ |
-//! |---|---|---|
-//! | **esquerda — «Door»** | um **Sequence Player** a apontar à cutscene `Abrir` | sobe, ao ritmo do relógio DELA |
-//! | **direita — «Door (no cutscene)»** | o MESMO relógio e a MESMA tabela de acções | fica parada: o relógio corre e não há sequência a correr com ele |
-//!
-//! ⭐⭐⭐ **É o CONTROLO que torna a wave legível.** Sem ele, a porta da esquerda parece uma porta
-//! animada — com ele, vê-se *o que o componente compra*: **a timeline vira uma cutscene que um
-//! objecto toca no relógio dele**, e não uma animação presa ao relógio da cena.
-//!
-//! # ⚠️ A cena tem DUAS cutscenes, e a segunda é o ponto do PAINEL
-//!
-//! `Abrir` (a porta sobe) e `Abanar` (a porta treme no sítio). Trocar uma pela outra no selector da
-//! secção *Sequence* muda o que a porta faz **sem tocar na timeline** — que é a metade desta wave
-//! que o artista alcança com o dedo. ⛔ *Uma só cutscene deixaria o selector a mostrar uma lista
-//! com um item, e um selector sem escolha não se lê como selector.*
-//!
-//! # ⛔ A arrumação da timeline fica VAZIA, e isso é load-bearing
-//!
-//! Nenhuma das duas cutscenes é colocada na faixa da cena. A vista *Arrange* com a pilha vazia
-//! **não toca nada** (a lei do `apply_scene`, ordem do dono em 2026-07-27), logo tudo o que se vê a
-//! mexer veio do `SequencePlayer` — e não do playhead da cena a passar por cima de um clip. *Com
-//! uma instância na faixa, a cena ensinaria o contrário do que diz.*
-//!
-//! # ⛔⛔ E a cena NÃO abre a timeline — a ausência é load-bearing, e a foto foi quem a mediu
-//!
-//! A vista **Keys** *sola* a clip que o animador edita e congela o relógio da cena, logo a fase das
-//! cutscenes **não corre lá** (a condição `container.is_none() && !solo` do `timeline_bridge`). E
-//! escolher um objecto **pede a aba Keys** (`selection_jumps_to_keys`) ⇒ uma cena que abrisse a
-//! timeline *e* escolhesse a porta mostraria duas portas paradas, com todos os dados certos.
-//!
-//! ⚠️ **Com o painel fechado o `keys_mode` é publicado `false`** (a lei do `paint` dele), e é isso
-//! que faz a cutscene correr. ⭐ Quem abrir a timeline para espreitar tem de escolher **Arrange** —
-//! ali ela continua a correr; na **Keys**, não. *Esta é a fronteira da wave, e ela é a mesma que o
-//! animador já conhece: a aba Keys é onde se AUTORA, não onde a cena corre.*
-//!
-//! # O que tem de acontecer
-//!
-//! A porta da **esquerda** sobe, volta ao chão e sobe outra vez, de quatro em quatro segundos. A da
-//! **direita** nunca se mexe. ⚠️ Se a linha `[sequence-smoke]` não aparecer, **PARE**: a cena não
-//! montou.
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;

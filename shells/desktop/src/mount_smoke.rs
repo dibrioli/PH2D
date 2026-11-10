@@ -4,44 +4,6 @@
 //! cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Sprite \
 //!   && env PH2D_MOUNT_SMOKE=1 cargo run -p ph2d-host-desktop --release
 //! ```
-//!
-//! O [`crate::socket_smoke`] mostra o que uma âncora **é**. Este mostra para que ela **serve**: um
-//! boneco com duas âncoras, e três objetos pendurados nele.
-//!
-//! | objeto | monta em | o que prova |
-//! |---|---|---|
-//! | espada (vermelha) | `hand_r` | segue a mão |
-//! | chapéu (amarelo) | `head` | segue a cabeça |
-//! | **mancha cinzenta** | *nada* | **o controlo** — fica na origem do boneco |
-//! | quadrado verde | `head`, **deslocado** | «Reset to Anchor» tem o que fazer, e a `head` mostra `2 riding` |
-//!
-//! # ⚠️ A mancha cinzenta é metade da cena, e é a metade que se esquece
-//!
-//! Ela é filha do boneco tal como as outras duas e **não monta em âncora nenhuma**. Sem ela, uma
-//! cena em que a montagem estivesse a ser ignorada por completo pareceria exatamente igual — três
-//! filhos a acompanhar o pai é o que filhos já faziam antes deste trabalho existir. *Uma fixtura
-//! sem o controlo mede silêncio*; o que se vê aqui é a **diferença** entre os dois.
-//!
-//! # O gesto
-//!
-//! O boneco nasce selecionado. Com a seção **Sockets / Anchors** aberta:
-//!
-//! 1. Escolher `hand_r` na lista → aparecem as alças no canvas.
-//! 2. **Arrastar a cruz** → a espada vai junto, ao vivo. A mancha cinzenta não se mexe.
-//! 3. **Arrastar o braço** (roda a âncora) → a espada gira em torno da mão.
-//! 4. Selecionar a espada: a §12 mostra **«Rides Parent Anchor: hand_r»**. Pôr «—» larga-a na
-//!    origem do boneco, em cima da mancha cinzenta — que é a prova de que era a âncora a movê-la.
-//!    Voltar a escolher `hand_r` **pousa-a na mão outra vez**, e não onde ela tinha ficado.
-//! 5. Selecionar o **verde**: ele monta na `head` e está fora dela. A §12 diz *«Off anchor by
-//!    35, 30 px»* e oferece **«Reset to Anchor»** — que o põe em cima do chapéu, e desaparece.
-//! 6. Selecionar o **boneco** e marcar **«Always show anchors»**: as cruzes ficam mesmo depois de
-//!    selecionar outra coisa, ou de fechar a seção.
-//!
-//! ⚠️ **A segunda caixa, «Show anchors at runtime», grava e ainda não tem quem a leia** — não há
-//! modo de jogo neste app (`shells/game`, Runtime R1, adiado). Ver
-//! `ph2d_ecs::AnchorVisibility::at_runtime`.
-//!
-//! [ADR-0072]: ../../../docs/architecture/decisions/0072-named-anchor-unification.md
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{AnchorMount, ChildOf, NamedAnchor, NamedAnchorList, Transform};

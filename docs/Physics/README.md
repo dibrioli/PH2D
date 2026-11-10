@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**13 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**).
+**14 arquivos** · **1** citados pelo `CLAUDE.md` (marcados **◆**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -26,6 +26,7 @@
 | 09 |   | [09_auditoria_engines.md](09_auditoria_engines.md) | auditoria | Auditoria 09 — o Player medido contra Unity, Godot, Unreal e o tnua (2026-08-12) |
 | 10 |   | [10_plano_fila_da_auditoria.md](10_plano_fila_da_auditoria.md) | plano | Plano 10 — a fila da auditoria 09, desenhada (2026-08-12) |
 | — | ◆ | [BUGS_physics.md](BUGS_physics.md) | bugs | Bugs do módulo Physics — registro + soluções |
+| — |   | [CABECALHOS_DAS_CENAS_DE_SMOKE.md](CABECALHOS_DAS_CENAS_DE_SMOKE.md) | — | Os cabeçalhos das cenas de smoke da física (verbatim) |
 
 **Subpastas:** [`handoffs/`](handoffs/README.md)
 

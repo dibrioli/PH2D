@@ -1,10 +1,13 @@
 //! **O DAB que entra na água** — o corpo do laço de [`super::dab_route`] (filho de [`super`], LOC cap).
 //!
 //! A rota apura uma vez o que vale para o LOTE inteiro ([`LoteDoDab`]); aqui cada dab do lote vira lane,
-//! silhueta, grão, cor e a porta do motor que o pousa.
+//! silhueta, grão, cor e a porta do motor que o pousa. A lane e o peso vivem em [`a_lane`]; a porta em
+//! [`despacho`].
 
 use super::*;
-use ph2d_det_math::DetMath as _;
+
+mod a_lane;
+mod despacho;
 
 pub(super) use super::lote_do_dab::LoteDoDab;
 
@@ -35,61 +38,30 @@ pub(super) fn pousa_o_dab(
         filme_liso,
         fios,
         relevo,
-        rebordo,
         lamina,
-        passo_do_pigmento,
-        capsulas,
         shape_active,
         grain_image,
         grain_active,
         groups,
         canvas_wh,
         strength,
-        fino,
-        esmaece_fino,
         escala_tex,
         grao_e_o_papel,
         media_depois_do_portao,
         ponta_sob_o_grao,
         ganho_do_grao,
         sem_grao,
-        pigmento_da_marca,
         escala_cerdas,
-        copia,
         pontas,
         alem,
         esbate_e,
-        virtual_,
         lote,
-        gota,
+        ..
     } = l;
     let [x, y] = d.center;
-    // A lane do dab ([`super::rota_da_lane::casa_a_lane`]); a borracha não tem lanes.
-    let (li, lane_born) = if erasing {
-        (0, false)
-    } else if let Some(&li) = sess.fecho.get(didx) {
-        // Um dab virtual das pontas rectas: a lane é a que ele continua ([`super::tampa`]).
-        let p = sess.lanes[li].pos;
-        let corda = (x - p[0]).det_hypot(y - p[1]);
-        let caminho = super::tampa::passo_virtual(&sess.lanes[li], brush);
-        super::rota_da_lane::anda_a_lane(sess, li, corda, caminho, wet_tool);
-        (li, false)
-    } else {
-        super::rota_da_lane::casa_a_lane(sess, d, brush, copia[didx], wet_tool, gota)
-    };
-    // The lane's PREVIOUS centre (before this dab updates it) — the
-    // direct tools' displacement source; a born lane has none, and
-    // the eraser has no lanes at all.
-    let lane_prev: Option<[f32; 2]> = (!erasing && !lane_born).then(|| sess.lanes[li].pos);
+    let lane = a_lane::casa(l, sess, didx, d);
+    let (li, lane_prev) = (lane.li, lane.lane_prev);
     // `Some(None)` = o dab sem rumo com as pontas rectas: não pousa (a lane anda na mesma).
-    // O caminho desde o dab anterior da lane: o de um dab virtual é o passo dela (a abertura anda para trás).
-    let caminho = if lane_prev.is_none() {
-        0.0
-    } else if virtual_ {
-        super::tampa::passo_virtual(&sess.lanes[li], brush)
-    } else {
-        (d.arc_len - sess.lanes[li].arco).max(0.0)
-    };
     let tampa = pontas.then(|| super::tampa::Tampa::do_dab(d, &mut sess.lanes[li], lote, alem));
     let corte = tampa.flatten();
     let esbate = (esbate_e != 0.0).then(|| {
@@ -114,33 +86,7 @@ pub(super) fn pousa_o_dab(
         super::lote::escala_o_grao(&mut spec.texture, escala_tex);
     }
     super::lote::escala_as_cerdas(&mut spec.shape, escala_cerdas);
-    // Sem Pigment Spacing, a cápsula pesa cada sub-dab pelo sub-passo NATURAL (antes do arredondamento a células):
-    // a tinta por área não depende de onde o diâmetro cai na grelha ([`super::lote::sub_passo_natural`]).
-    let peso_da_capsula = if capsulas && passo_do_pigmento <= 0.0 && lane_prev.is_some() {
-        let w = caminho / super::lote::sub_passo_do_peso(&sess.engine.tuning, brush, ratio);
-        if (w - 1.0).abs() < 1e-3 { 1.0 } else { w }
-    } else {
-        1.0
-    };
-    let peso = lane_prev
-        .filter(|_| passo_do_pigmento > 0.0)
-        .map_or(peso_da_capsula, |_| {
-            let w = caminho / brush.passo_ao_longo_px(passo_do_pigmento, d.dir);
-            // O passo do PRÓPRIO Spacing de afinação é o dab inteiro, ao byte (a corda sai dos centros em f32).
-            if (w - 1.0).abs() < 1e-3 {
-                1.0
-            } else if capsulas {
-                w
-            } else {
-                w.min(1.0)
-            }
-        });
-    // O pente do relevo também é por comprimento: as células de caminho desde o dab anterior da lane (a
-    // borracha, sem lanes, pelo sub-passo da cápsula).
-    let passos_do_pente = lane_prev.map_or(1.0, |_| {
-        let n = f64::from(caminho) / f64::from(ratio);
-        if (n - 1.0).abs() < 1e-3 { 1.0 } else { n }
-    });
+    let (peso, passos_do_pente) = a_lane::pesos(l, sess, &lane, d);
     let fp = spec.dab_footprint_of(d);
     let dab_index = didx;
     let tex_rng = dab_rng.enter(groups, dab_index);
@@ -570,125 +516,34 @@ pub(super) fn pousa_o_dab(
         .as_ref()
         .map_or(cor_arg, |c| Some(c as ph2d_wet_paint::brush::ColorFn<'_>));
     if matches!(tampa, Some(None)) || matches!(esbate, Some(None)) {
-        sess.lanes[li].pos = d.center;
-        sess.lanes[li].arco = d.arc_len;
-        if gota {
-            super::rota_da_lane::solta_a_gota(sess, li);
-        }
+        despacho::anda_a_lane(l, sess, li, d);
         return;
     }
-    if erasing {
-        // W2.6: the same §9 mapping, routed to the engine's ERASER —
-        // silhouette and grain shape the erase exactly as they shape
-        // the deposit. O Flow (a taxa por dab, à vista na Borracha do Wet) escala a força
-        // do Erase Strength; a Strength escondida já saiu do `b` (`coverage / strength`).
-        // A Borracha não tem o canal do padrão: o que desenha depois do portão, de média 1, morde aqui (Bug #65 A1).
-        let grao_mao = grain.as_ref().filter(|_| ponta_sob_o_grao);
-        let grao_mao = grao_mao.zip(media_depois_do_portao);
-        let cerdas_mao = cerdas_fn.as_ref().zip(sem_grao);
-        let morde = (grao_mao.is_some() || cerdas_mao.is_some()).then_some(|cx: i32, cy: i32| {
-            grain_arg.map_or(1.0, |g| g(cx, cy))
-                * grao_mao.map_or(1.0, |(g, m)| g(cx, cy) / m)
-                * cerdas_mao.map_or(1.0, |(c, [_, m])| c(cx, cy) / m)
-        });
-        sess.engine.dispatch_pressure_dab_erase(
-            cell_x,
-            cell_y,
-            b,
-            f64::from(brush.flow.clamp(0.0, 1.0)),
-            cell_r,
-            Some(&sil),
-            morde
-                .as_ref()
-                .map_or(grain_arg, |f| Some(f as ph2d_wet_paint::brush::CellFn<'_>)),
-        );
-        // A borracha tira também o relevo que houver (sem o campo, nada a tirar).
-        if !sess.engine.active_grid().altura.is_empty() {
-            let passos = passo.map_or(1.0, |s| f64::from(s) / px_cel);
-            sess.engine
-                .pentear_relevo(cell_x, cell_y, meia, &sil, &|_, _| 0.0, passos);
-        }
-        return;
-    }
-    match wet_tool {
-        WetTool::Paint => {
-            sess.engine.dispatch_pressure_dab_lane_cor(
-                li,
-                cell_x,
-                cell_y,
-                b,
-                cell_r,
-                // O FILME não pesa por comprimento (o máximo de um dab já é a camada): com o peso, o 1.º dab
-                // da lane (peso 1) ficava acima dos seguintes (4 ÷ 4,775 a 190 px) — o disco do 1.º toque.
-                opacidade
-                    * f64::from(if filme_liso { fino } else { peso * fino })
-                    * esmaece_fino
-                    * f64::from(pigmento_da_marca),
-                Some(&sil),
-                grain_arg,
-                padrao_arg,
-                cor_arg,
-            );
-            if let Some(f) = relevo_dab {
-                let contacto = f64::from(d.radius_px / d.stroke_radius_px.max(1e-3));
-                super::lote::penteia_o_relevo_do_dab(
-                    &mut sess.engine,
-                    &f,
-                    &relevo,
-                    contacto,
-                    [centro_x, centro_y],
-                    meia,
-                    px_cel,
-                    &sil,
-                    passos_do_pente,
-                );
-            }
-            if lamina {
-                sess.engine.pentear_rebordo(
-                    centro_x,
-                    centro_y,
-                    meia,
-                    &sil,
-                    rumo,
-                    rebordo / px_cel,
-                    passos_do_pente,
-                );
-            }
-        }
-        // Blend keeps the engine's own fixed-hardness stamp (the
-        // model's tools ignore the brush silhouette on purpose) — o Grain armado modula a máscara dele
-        // (J4 mistura, L-2; sem Grain, a de sempre ao bit).
-        WetTool::Blend => sess.engine.dispatch_pressure_dab_lane_blend_grao(
+    despacho::despacha(
+        l,
+        sess,
+        d,
+        despacho::Despacho {
             li,
-            cell_x,
-            cell_y,
+            cell: [cell_x, cell_y],
             b,
             cell_r,
-            grain
-                .as_ref()
-                .map(|g| g as ph2d_wet_paint::brush::CellFn<'_>),
-        ),
-        // Direct tools: per-dab grid ops; the displacement source is
-        // THIS lane's previous centre (host-tracked per copy).
-        WetTool::Wet | WetTool::Dry | WetTool::Blow | WetTool::Smear => {
-            sess.engine.dispatch_pressure_dab_tool(
-                wet_tool.engine(),
-                cell_x,
-                cell_y,
-                b,
-                cell_r,
-                lane_prev.map(|p| {
-                    [
-                        grid_map::px_to_cell(f64::from(p[0]), ratio),
-                        grid_map::px_to_cell(f64::from(p[1]), ratio),
-                    ]
-                }),
-            );
-        }
-    }
-    sess.lanes[li].pos = d.center;
-    sess.lanes[li].arco = d.arc_len;
-    if gota {
-        super::rota_da_lane::solta_a_gota(sess, li);
-    }
+            opacidade,
+            peso,
+            sil: &sil,
+            grain_arg,
+            padrao_arg,
+            cor_arg,
+            grain: grain.as_ref(),
+            cerdas_fn: cerdas_fn.as_ref(),
+            ponta_sob_o_grao,
+            relevo_dab,
+            meia,
+            px_cel,
+            passos_do_pente,
+            rumo,
+            lane_prev,
+            passo,
+        },
+    );
 }

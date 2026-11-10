@@ -83,12 +83,13 @@ impl SolverScratch {
     pub const BT_NADA: i8 = i8::MIN;
 
     /// Garante os planos com `n` células. Idempotente e sem realocar depois da
-    /// primeira vez.
+    /// primeira vez. Todo plano nasce a ZEROS (`alloc_zeroed`, nenhum byte escrito): cada passe escreve a faixa
+    /// viva que lê — o `bt` incluído, que o `prepare_rows` escreve antes de o `outflow_rows` o ler (B12.4).
     pub fn ensure(&mut self, n: usize) {
         if self.outflow.len() != n {
             self.uv = vec![[0.0; 2]; n];
             self.outflow = vec![0.0; n];
-            self.bt = vec![Self::BT_NADA; n];
+            self.bt = vec![0; n];
             self.dst_film = vec![0.0; n];
             self.dst_susp = vec![0.0; n];
             self.dst_rgb = vec![[0.0; 3]; n];
@@ -103,3 +104,7 @@ impl SolverScratch {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "scratch_tests.rs"]
+mod tests;

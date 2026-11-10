@@ -354,3 +354,44 @@ fn o_rotulo_do_botao_fica_no_meio_e_a_tecla_na_linha_de_base_dele() {
         assert!((meio - alvo).abs() < 0.75, "botão {i}: {meio} × {alvo}");
     }
 }
+
+/// O contorno da caixa de cada valor do Stopped no estilo «Cards» pinta-se em todos os temas: uma
+/// variável a mais acrescenta os mesmos caminhos num tema moderno e num clássico (a moldura de um
+/// controlo, que a pele plana apaga em repouso, daria menos no moderno).
+#[test]
+fn o_contorno_do_valor_do_stopped_nos_cards_pinta_em_todos_os_temas() {
+    let caminhos = |theme: Theme, n: usize| {
+        let c = parado(n);
+        let mut v = DebugCardView::default();
+        v.style = CardStyle::Cards;
+        let h = v.height(&c, ABA);
+        let r = Rect::new(ABA.x, ABA.y + ABA.h - h, ABA.w, h);
+        let (mut scene, mut ts) = (VectorScene::new(), TextSystem::without_system_fonts());
+        v.paint(
+            &c,
+            [NodeId(1), NodeId(2)],
+            r,
+            &mut CodeView::new(),
+            &mut scene,
+            &mut ts,
+            theme,
+        );
+        scene.inner().encoding().n_paths
+    };
+    let tema = |moderno: bool| {
+        Theme::ALL
+            .into_iter()
+            .find(|t| t.is_modern() == moderno)
+            .expect("o tema")
+    };
+    let extra = |t| caminhos(t, 2) - caminhos(t, 1);
+    assert!(
+        extra(tema(false)) >= 1,
+        "controlo: a segunda variável pinta"
+    );
+    assert_eq!(
+        extra(tema(true)),
+        extra(tema(false)),
+        "o contorno do valor sumiu no moderno"
+    );
+}

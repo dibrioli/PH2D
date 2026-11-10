@@ -52,6 +52,8 @@ mod play_tests;
 #[cfg(test)]
 mod r10a_tests;
 #[cfg(test)]
+mod r11a_tests;
+#[cfg(test)]
 mod r5c_tests;
 #[cfg(test)]
 mod r7c_tests;

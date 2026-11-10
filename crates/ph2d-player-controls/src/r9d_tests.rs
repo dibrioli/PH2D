@@ -52,19 +52,12 @@ fn a_previa_nao_acende_linha_nem_foco() {
     let r = rows(&g);
     let mut ts = TextSystem::new();
     let s = ControlsScreen::default();
-    let mut lay_play = None;
-    let play = ops(|sc| lay_play = Some(crate::paint(AREA, &r, &s, sc, &mut ts, Theme::default())));
+    let lay = Layout::natural(0.0, 0.0, &r, &mut ts);
+    let th = Theme::default();
+    let play = ops(|sc| crate::paint::paint_with(&lay, &r, &s, sc, &mut ts, th, false));
     let mut lay_prev = None;
-    let prev = ops(|sc| {
-        lay_prev = Some(crate::paint_preview(
-            AREA,
-            &r,
-            sc,
-            &mut ts,
-            Theme::default(),
-        ))
-    });
-    assert_eq!(lay_play, lay_prev, "a mesma disposição");
+    let prev = ops(|sc| lay_prev = Some(crate::paint::paint_preview_natural(&r, sc, &mut ts, th)));
+    assert_eq!(lay_prev, Some(lay), "a mesma disposição");
     assert_eq!(play.0, prev.0 + 1, "só a faixa da linha escolhida sai");
     assert_eq!(play.1, prev.1 + 1, "só o anel de foco sai");
 }

@@ -108,6 +108,24 @@ impl Layout {
         screen: &ControlsScreen,
         text: &mut TextSystem,
     ) -> Self {
+        Self::place(area, rows, screen, text, false)
+    }
+
+    /// **O painel no tamanho NATURAL**, a partir de `(x, y)`: todas as linhas à vista (sem indicador de rolagem) e a
+    /// largura que o texto pede, sem o tecto de uma vista. A prévia da aba pinta-o assim e ESCALA-o para a tela.
+    #[must_use]
+    pub fn natural(x: f32, y: f32, rows: &[Row], text: &mut TextSystem) -> Self {
+        let at = Rect::new(x, y, 0.0, 0.0);
+        Self::place(at, rows, &ControlsScreen::default(), text, true)
+    }
+
+    fn place(
+        area: Rect,
+        rows: &[Row],
+        screen: &ControlsScreen,
+        text: &mut TextSystem,
+        natural: bool,
+    ) -> Self {
         let (selected, top) = (screen.selected(), screen.top());
         let listening =
             |i: usize, s: usize| screen.listening() && i == selected && s == screen.slot();
@@ -152,7 +170,8 @@ impl Layout {
         let inner_w = (lead + keys_w + note_w + m::SEG_INSET)
             .max(foot_w)
             .max(title_w);
-        let w = (inner_w + m::CARD_PAD_X * 2.0).min(area.w);
+        let w = inner_w + m::CARD_PAD_X * 2.0;
+        let w = if natural { w } else { w.min(area.w) };
         let iw = w - m::CARD_PAD_X * 2.0;
         let hint_n = HINTS
             .iter()
@@ -165,7 +184,11 @@ impl Layout {
             + FOOT_H * (1 + hint_n) as f32
             + m::CARD_PAD_BOTTOM;
         let fit = (((area.h - fixed) / ROW_H).floor().max(1.0)) as usize;
-        let visible = rows.len().min(fit);
+        let visible = if natural {
+            rows.len()
+        } else {
+            rows.len().min(fit)
+        };
         let mut first = top;
         if selected < rows.len() {
             if selected < first {
@@ -175,13 +198,18 @@ impl Layout {
             }
         }
         let first = first.min(rows.len() - visible);
-        let h = (fixed + ROW_H * visible as f32).min(area.h);
-        let panel = Rect::new(
-            area.x + (area.w - w) * 0.5,
-            area.y + (area.h - h) * 0.5,
-            w,
-            h,
-        );
+        let h = fixed + ROW_H * visible as f32;
+        let panel = if natural {
+            Rect::new(area.x, area.y, w, h)
+        } else {
+            let h = h.min(area.h);
+            Rect::new(
+                area.x + (area.w - w) * 0.5,
+                area.y + (area.h - h) * 0.5,
+                w,
+                h,
+            )
+        };
         let x0 = panel.x + m::CARD_PAD_X;
         let title = Rect::new(x0, panel.y + m::CARD_PAD_TOP, iw, m::CARD_HEAD_H);
         let list_y = title.y + title.h;

@@ -9,7 +9,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::{FontWeight, TextSystem};
 use ph2d_tokens::{ColorToken, StrokeToken, Theme};
-use ph2d_vector::VectorScene;
+use ph2d_vector::{Affine, VectorScene};
 
 use crate::layout::{FOOT_PX, Layout, TITLE_PX, foot_lines, slot_label};
 use crate::screen::{ControlsScreen, Row};
@@ -23,39 +23,65 @@ pub fn paint(
     text: &mut TextSystem,
     theme: Theme,
 ) -> Layout {
-    paint_with(area, rows, screen, scene, text, theme, false)
+    let lay = Layout::scrolled(area, rows, screen, text);
+    paint_with(&lay, rows, screen, scene, text, theme, false);
+    lay
 }
 
-/// **A prévia** (aba Input Map, vista C): o mesmo painel do topo da lista, sem linha escolhida e sem anel de foco —
-/// ninguém está a jogar, por isso nada acende.
+/// **A prévia** (aba Input Map, vista C): o painel do jogador INTEIRO — no tamanho natural, com todas as linhas, o
+/// «Reset to defaults» e a dica, sem indicador de rolagem — ESCALADO para caber em `area` (nunca aumentado) e
+/// centrado nela. Sem linha escolhida e sem anel de foco: ninguém está a jogar, por isso nada acende. Devolve onde
+/// o painel escalado assentou.
 pub fn paint_preview(
     area: Rect,
     rows: &[Row],
     scene: &mut VectorScene,
     text: &mut TextSystem,
     theme: Theme,
-) -> Layout {
-    paint_with(
-        area,
-        rows,
-        &ControlsScreen::default(),
-        scene,
-        text,
-        theme,
-        true,
-    )
+) -> Rect {
+    let mut local = VectorScene::new();
+    let lay = paint_preview_natural(rows, &mut local, text, theme);
+    let fit = Rect::new(
+        area.x + m::CARD_PAD_X,
+        area.y + m::CARD_PAD_X,
+        (area.w - m::CARD_PAD_X * 2.0).max(0.0),
+        (area.h - m::CARD_PAD_X * 2.0).max(0.0),
+    );
+    let k = (fit.w / lay.panel.w).min(fit.h / lay.panel.h).min(1.0);
+    let (w, h) = (lay.panel.w * k, lay.panel.h * k);
+    let at = Rect::new(
+        area.x + (area.w - w) * 0.5,
+        area.y + (area.h - h) * 0.5,
+        w,
+        h,
+    );
+    let t = Affine::translate((f64::from(at.x), f64::from(at.y))) * Affine::scale(f64::from(k));
+    scene.append_transformed(&local, t);
+    at
 }
 
-fn paint_with(
-    area: Rect,
+/// O painel da prévia no tamanho natural, com o canto em `(0, 0)` — o que [`paint_preview`] escala.
+pub(crate) fn paint_preview_natural(
+    rows: &[Row],
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+) -> Layout {
+    let lay = Layout::natural(0.0, 0.0, rows, text);
+    let screen = ControlsScreen::default();
+    paint_with(&lay, rows, &screen, scene, text, theme, true);
+    lay
+}
+
+pub(crate) fn paint_with(
+    lay: &Layout,
     rows: &[Row],
     screen: &ControlsScreen,
     scene: &mut VectorScene,
     text: &mut TextSystem,
     theme: Theme,
     preview: bool,
-) -> Layout {
-    let lay = Layout::scrolled(area, rows, screen, text);
+) {
     let c = |t: ColorToken| resolve(t, theme);
     let line = StrokeToken::Hairline.px();
     fill_rounded_rect(scene, lay.panel, m::CARD_RADIUS, c(ColorToken::Bg1));
@@ -160,7 +186,6 @@ fn paint_with(
         );
         paint_text_centered(text, scene, l, r, FOOT_PX, c(ColorToken::Text3));
     }
-    lay
 }
 
 /// Uma caixa de tecla do tamanho do nome; à escuta, «Press a key» no amarelo do Input Map com a tinta escura.

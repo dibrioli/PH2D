@@ -62,7 +62,7 @@ fn alt_sozinho_e_o_acorde_inteiro_passam_e_solto_o_ctrl_a_tecla_liga() {
 }
 
 /// O Ctrl+Z logo depois do + Add: as duas teclas vão ao editor e nada se liga — o último passo do undo continua a
-/// ser o Add (que o undo por diff desfaz, `project_input_map_audit_det_tests`).
+/// ser o Add (que o undo por diff desfaz, `project_input_map_tests`).
 #[test]
 fn o_ctrl_z_depois_do_add_vai_ao_editor_sem_ligar_nada() {
     let mut m = Mesa::aberta(View::Keyboard);

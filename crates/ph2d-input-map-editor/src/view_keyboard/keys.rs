@@ -277,12 +277,12 @@ pub(crate) enum Lit {
     Fill,
 }
 
-/// Onde o teclado assenta na caixa quando ela é mais larga que ele: a B ao centro, o Try it encostado à esquerda
-/// (maquete C2).
+/// Onde o teclado assenta na caixa quando ela é mais larga que ele: a B ao centro; o Try it com as letras encostadas
+/// à esquerda e as setas à DIREITA do cartão (maquete C2).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum KeysAlign {
     Center,
-    Left,
+    Spread,
 }
 
 /// O teclado desenhado: UM pintor para B (acesas = as da acção aberta) e C (acesas = as premidas no Try it).
@@ -305,9 +305,12 @@ pub(crate) fn paint_keys(
     // O passo sai da caixa recebida (largura e altura): a B e a C pedem alturas diferentes ao mesmo pintor.
     let p = (inner.w / g::WIDTH).min(pitch_for_rows(inner.h));
     let (kh, step) = (key_height(p), key_height(p) + p * (g::ROW_PITCH - g::KEY_H));
-    let ox = match align {
-        KeysAlign::Center => inner.x + (inner.w - g::WIDTH * p).max(0.0) * 0.5,
-        KeysAlign::Left => inner.x,
+    let spare = (inner.w - g::WIDTH * p).max(0.0);
+    // A → acaba no recuo direito como o Q começa no esquerdo: o desenho sem o vão que segue a última tecla.
+    let inked = (g::WIDTH - (1.0 - g::KEY_FILL)) * p;
+    let (ox, arrows_dx) = match align {
+        KeysAlign::Center => (inner.x + spare * 0.5, 0.0),
+        KeysAlign::Spread => (inner.x, (inner.w - inked).max(0.0)),
     };
     for KeyCap {
         key,
@@ -316,8 +319,13 @@ pub(crate) fn paint_keys(
         span,
     } in g::keyboard()
     {
+        let dx = if g::arrow_icon(key).is_some() {
+            arrows_dx
+        } else {
+            0.0
+        };
         let kr = Rect::new(
-            ox + col * p,
+            ox + dx + col * p,
             inner.y + row * step,
             (span - (1.0 - g::KEY_FILL)) * p,
             kh,

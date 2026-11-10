@@ -355,7 +355,7 @@ pub(super) fn live(
     );
     let held = doc.tryit.held_keys();
     use crate::view_keyboard::keys::{KeysAlign, Lit, paint_keys};
-    let style = (Lit::Fill, KeysAlign::Left);
+    let style = (Lit::Fill, KeysAlign::Spread);
     paint_keys(doc, draw, scene, ts, ink, style, &|k| held.contains(&k));
     y += dh + GAP;
     let cols = bar_cols(r.w);

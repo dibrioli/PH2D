@@ -21,9 +21,11 @@ const DASHES: usize = 24;
 const SIDES: usize = 64;
 
 /// As tintas do círculo (maquete C3): o curso todo escuro, o disco Dead num cinza MAIS CLARO, o ponto ao vivo e o
-/// raio até ele no destaque da aba.
+/// raio até ele no destaque da aba. O disco é o cinza neutro do Kanban (69 79 89 no escuro, um degrau claro e
+/// menos azul que o `kanban-card-raised`, que mal se via): os `bg-3`/`bg-elev` mudam com o tema e no Forge ficam
+/// MAIS ESCUROS que o cartão, que é sempre o do Kanban.
 pub const OUTER_INK: ColorToken = ColorToken::KanbanCard;
-pub const DEAD_INK: ColorToken = ColorToken::KanbanCardRaised;
+pub const DEAD_INK: ColorToken = ColorToken::KanbanBlackSubtle;
 pub const DOT_INK: ColorToken = ColorToken::InputMapHighlight;
 
 /// A altura do bloco de texto ao lado do círculo: o título, os números Dead/Press e a leitura.

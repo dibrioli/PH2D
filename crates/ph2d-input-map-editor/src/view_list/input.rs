@@ -170,7 +170,7 @@ pub(crate) fn release(doc: &mut InputMapDoc) -> bool {
 }
 
 /// Aplica o número escrito (o que não for número é ignorado).
-fn commit_typing(doc: &mut InputMapDoc) {
+pub(crate) fn commit_typing(doc: &mut InputMapDoc) {
     if let Some(t) = doc.list.typing.take()
         && let Ok(v) = t.buffer.trim().parse::<f32>()
     {

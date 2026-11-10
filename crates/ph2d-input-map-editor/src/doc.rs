@@ -89,6 +89,8 @@ pub struct InputMapDoc {
     pub(crate) hover: Option<View>,
     /// O estado da vista A.
     pub list: ListState,
+    /// O estado da vista B.
+    pub kb: crate::view_keyboard::state::KbState,
     /// O que a última pintura pôs na tela (textos e campos numéricos).
     pub census: Census,
 }
@@ -105,6 +107,7 @@ impl InputMapDoc {
             layout: Layout::default(),
             hover: None,
             list: ListState::default(),
+            kb: crate::view_keyboard::state::KbState::default(),
             census: Census::default(),
         }
     }
@@ -143,11 +146,20 @@ impl InputMapDoc {
         if self.view == View::List && self.layout.body.contains(x, y) {
             return crate::view_list::press(self, x, y);
         }
+        if self.view == View::Keyboard && self.layout.body.contains(x, y) {
+            return crate::view_keyboard::press(self, x, y);
+        }
         self.layout.area.contains(x, y)
     }
 
     /// O ponteiro passou: guarda o segmento para a dica. `true` = mudou (pede quadro).
     pub fn motion(&mut self, x: f32, y: f32) -> bool {
+        if self.view == View::Keyboard {
+            let h = self.hits.hit(x, y).and_then(View::of_id);
+            let changed = h != self.hover;
+            self.hover = h;
+            return crate::view_keyboard::motion(self, x, y) || changed;
+        }
         let h = self.hits.hit(x, y).and_then(View::of_id);
         let row = self.snap.map.actions().iter().map(|a| a.id).find(|a| {
             self.hits
@@ -176,12 +188,20 @@ impl InputMapDoc {
 
     /// Uma tecla para o campo focado da aba. `true` = tomada.
     pub fn key(&mut self, input: &KeyInput<'_>) -> bool {
-        self.view == View::List && crate::view_list::key(self, input)
+        match self.view {
+            View::List => crate::view_list::key(self, input),
+            View::Keyboard => crate::view_keyboard::key(self, input),
+            View::TryIt => false,
+        }
     }
 
     /// A tecla física (`DocumentSurface::raw_key`): a busca por tecla. `true` = tomada.
     pub fn raw_key(&mut self, key: Key, pressed: bool, writes_text: bool) -> bool {
-        self.view == View::List && crate::view_list::raw_key(self, key, pressed, writes_text)
+        match self.view {
+            View::List => crate::view_list::raw_key(self, key, pressed, writes_text),
+            View::Keyboard => crate::view_keyboard::raw_key(self, key, pressed, writes_text),
+            View::TryIt => false,
+        }
     }
 
     /// ⭐ Um arrasto de número está vivo: o undo do projecto espera o fim (um passo por arrasto).

@@ -24,7 +24,7 @@ pub fn binding_label(b: Binding) -> String {
 }
 
 /// «A, B and C».
-fn and_list(items: &[String]) -> String {
+pub(crate) fn and_list(items: &[String]) -> String {
     match items {
         [] => String::new(),
         [one] => one.clone(),
@@ -36,11 +36,11 @@ fn and_list(items: &[String]) -> String {
     }
 }
 
-fn readers_of<'a>(snap: &'a Snapshot, name: &str) -> &'a [Reader] {
+pub(crate) fn readers_of<'a>(snap: &'a Snapshot, name: &str) -> &'a [Reader] {
     snap.readers.get(name).map_or(&[], Vec::as_slice)
 }
 
-fn reader_names(rs: &[Reader]) -> String {
+pub(crate) fn reader_names(rs: &[Reader]) -> String {
     let names: Vec<String> = rs
         .iter()
         .map(|r| match r {

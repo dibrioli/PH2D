@@ -2,15 +2,15 @@
 //! por tecla), uma linha por acção com as teclas em chips de nome inteiro, a escuta no próprio lugar, os dois
 //! números só nas linhas com manche ou gatilho, e o pé que explica.
 
-mod footer;
+pub(crate) mod footer;
 mod input;
 mod rows;
 pub mod state;
-mod text;
+pub(crate) mod text;
 
 pub use footer::binding_label;
 pub use input::tip_of;
-pub(crate) use input::{drag, key, press, raw_key, release, wheel};
+pub(crate) use input::{commit_typing, drag, key, press, raw_key, release, wheel};
 
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::icons::IconId;

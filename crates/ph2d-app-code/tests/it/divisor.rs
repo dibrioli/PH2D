@@ -4,6 +4,7 @@
 use crate::{Mesa, centro};
 use ph2d_editor_core::doc_surface::{DocumentSurface, Key, PointerLook};
 use ph2d_editor_core::zones::Rect;
+use ph2d_host::PointerKind::{self, Down, Up};
 use ph2d_host::{Modifiers, PointerButton};
 use ph2d_panel_code::bancada::Aim;
 use ph2d_panel_code::{ScriptListView, cards};
@@ -237,21 +238,19 @@ fn o_fit_do_in_this_script_conta_o_titulo() {
     );
 }
 
-/// Um carregar e largar de `button` em `p`, cru (sem exigir que a aba o tome).
-fn botao(
-    m: &mut Mesa,
-    id: ScriptId,
-    p: (f32, f32),
-    kind: ph2d_host::PointerKind,
-    b: PointerButton,
-) {
+/// Um evento de `b` em `p`, cru (sem exigir que a aba o tome).
+fn botao(m: &mut Mesa, id: ScriptId, p: (f32, f32), k: PointerKind, b: PointerButton) {
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
-    let _ = m.docs().pointer(id.0, input(&mut ts), kind, b, p.0, p.1);
+    let _ = m.docs().pointer(id.0, input(&mut ts), k, b, p.0, p.1);
 }
 
 fn move_para(m: &mut Mesa, id: ScriptId, (x, y): (f32, f32)) {
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     let _ = m.docs().pointer_move(id.0, input(&mut ts), x, y);
+}
+
+fn largura(m: &mut Mesa, id: ScriptId) -> f32 {
+    rects(m, id).0.w
 }
 
 /// O tremor da caneta (meio píxel) não é arrasto: a largura não mexe e o clique conta para o duplo.
@@ -263,14 +262,10 @@ fn o_tremor_da_caneta_nao_arrasta_e_o_duplo_clique_ainda_reinicia() {
     let (largo, ..) = rects(&mut m, id);
     let p = vao(largo);
     arrasta(&mut m, id, p, 0.5);
-    assert_eq!(
-        rects(&mut m, id).0.w,
-        largo.w,
-        "o tremor não muda a largura"
-    );
+    assert_eq!(largura(&mut m, id), largo.w, "o tremor não mexe");
     m.clica(id, p.0, p.1, Modifiers::default());
     m.pinta(id);
-    assert_eq!(rects(&mut m, id).0.w, col.w, "o duplo-clique reinicia");
+    assert_eq!(largura(&mut m, id), col.w, "o duplo-clique reinicia");
 }
 
 /// O segundo clique tem de cair perto do primeiro, e qualquer outro carregar pelo meio esquece-o.
@@ -280,29 +275,18 @@ fn o_duplo_clique_pede_o_mesmo_sitio_e_nada_pelo_meio() {
     let (col, ..) = rects(&mut m, id);
     arrasta(&mut m, id, vao(col), 60.0);
     let (largo, ..) = rects(&mut m, id);
-    let (x, _) = vao(largo);
-    let (cima, baixo) = (largo.y + 2.0, largo.y + largo.h - 2.0);
-    m.clica(id, x, cima, Modifiers::default());
-    m.clica(id, x, baixo, Modifiers::default());
-    m.pinta(id);
-    assert_eq!(
-        rects(&mut m, id).0.w,
-        largo.w,
-        "em cima e em baixo não é duplo"
-    );
     let p = vao(largo);
+    m.clica(id, p.0, largo.y + 2.0, Modifiers::default());
+    m.clica(id, p.0, largo.y + largo.h - 2.0, Modifiers::default());
+    m.pinta(id);
+    assert_eq!(largura(&mut m, id), largo.w, "em cima e em baixo");
     m.clica(id, p.0, p.1, Modifiers::default());
-    let (down, up) = (ph2d_host::PointerKind::Down, ph2d_host::PointerKind::Up);
-    botao(&mut m, id, p, down, PointerButton::Secondary);
-    botao(&mut m, id, p, up, PointerButton::Secondary);
+    botao(&mut m, id, p, Down, PointerButton::Secondary);
+    botao(&mut m, id, p, Up, PointerButton::Secondary);
     m.tecla(id, Key::Escape, Modifiers::default(), None);
     m.clica(id, p.0, p.1, Modifiers::default());
     m.pinta(id);
-    assert_eq!(
-        rects(&mut m, id).0.w,
-        largo.w,
-        "o direito pelo meio esquece o clique"
-    );
+    assert_eq!(largura(&mut m, id), largo.w, "o direito pelo meio");
 }
 
 /// O Esc devolve o estado de antes do carregar: sem largura do artista, a coluna volta a seguir a
@@ -310,32 +294,19 @@ fn o_duplo_clique_pede_o_mesmo_sitio_e_nada_pelo_meio() {
 #[test]
 fn o_esc_sem_largura_do_artista_volta_a_seguir_a_de_fabrica() {
     let (mut m, id) = aberta();
-    let estreita = Rect::new(
-        0.0,
-        0.0,
-        ScriptListView::width(true) + PANEL_MIN_W_PX * 0.5,
-        700.0,
-    );
+    let fabrica = ScriptListView::width(true);
+    let estreita = Rect::new(0.0, 0.0, fabrica + PANEL_MIN_W_PX * 0.5, 700.0);
     m.pinta_em(id, estreita);
     m.pinta_em(id, estreita);
     let col = rects(&mut m, id).0;
-    assert!(
-        col.w < ScriptListView::width(true),
-        "controlo: apertada ({})",
-        col.w
-    );
+    assert!(col.w < fabrica, "controlo: apertada ({})", col.w);
     let p = vao(col);
-    let (down, prim) = (ph2d_host::PointerKind::Down, PointerButton::Primary);
-    botao(&mut m, id, p, down, prim);
+    botao(&mut m, id, p, Down, PointerButton::Primary);
     move_para(&mut m, id, (p.0 - 30.0, p.1));
     m.tecla(id, Key::Escape, Modifiers::default(), None);
     m.pinta(id);
     m.pinta(id);
-    assert_eq!(
-        rects(&mut m, id).0.w,
-        ScriptListView::width(true),
-        "segue a de fábrica"
-    );
+    assert_eq!(largura(&mut m, id), fabrica, "segue a de fábrica");
 }
 
 /// Um largar perdido (fora da aba) não deixa o divisor colado ao rato: o carregar seguinte acaba-o.
@@ -343,49 +314,28 @@ fn o_esc_sem_largura_do_artista_volta_a_seguir_a_de_fabrica() {
 fn o_largar_perdido_acaba_no_carregar_seguinte() {
     let (mut m, id) = aberta();
     let (col, code, _) = rects(&mut m, id);
-    let p = vao(col);
-    let (down, up, prim) = (
-        ph2d_host::PointerKind::Down,
-        ph2d_host::PointerKind::Up,
-        PointerButton::Primary,
-    );
-    botao(&mut m, id, p, down, prim);
+    let (p, prim) = (vao(col), PointerButton::Primary);
+    botao(&mut m, id, p, Down, prim);
     move_para(&mut m, id, (p.0 + 40.0, p.1));
     m.pinta(id);
-    let w = rects(&mut m, id).0.w;
+    let w = largura(&mut m, id);
     assert_eq!(w, col.w + 40.0, "controlo: arrastou");
-    let c = centro(code);
-    botao(&mut m, id, (c.0 + 40.0, c.1), down, prim);
-    move_para(&mut m, id, (c.0 + 140.0, c.1));
-    botao(&mut m, id, (c.0 + 140.0, c.1), up, prim);
+    let (c, d) = (centro(code), centro(code).0 + 100.0);
+    botao(&mut m, id, c, Down, prim);
+    move_para(&mut m, id, (d, c.1));
+    botao(&mut m, id, (d, c.1), Up, prim);
     m.pinta(id);
-    assert_eq!(
-        rects(&mut m, id).0.w,
-        w,
-        "o arrasto no código não mexe no divisor"
-    );
+    assert_eq!(largura(&mut m, id), w, "o arrasto no código");
 }
 
 /// O mínimo só conta o «In this script» quando ele se pinta: escondido (coluna baixa demais), o
 /// fit dele sai da conta.
 #[test]
 fn o_in_this_script_escondido_sai_do_minimo() {
-    let (m, ids) = Mesa::new(&[(
-        "a.luau",
-        "function on_a_really_long_function_name_for_the_width(self)\nend\n",
-    )]);
-    let id = ids[0];
-    let mut m = m.com_cena(id, 1);
-    m.pede(id);
-    m.quadro();
-    m.pinta(id);
-    m.pinta(id);
+    let (mut m, id) = aberta();
     assert!(m.docs().bench.outline_fit_w() > 0.0, "controlo: pintou-se");
-    let baixa = Rect::new(0.0, 0.0, 1000.0, 220.0);
-    m.pinta_em(id, baixa);
-    assert!(
-        m.docs().bench.target(Aim::Entry(0)).is_none(),
-        "controlo: escondido"
-    );
+    m.pinta_em(id, Rect::new(0.0, 0.0, 1000.0, 220.0));
+    let escondido = m.docs().bench.target(Aim::Entry(0)).is_none();
+    assert!(escondido, "controlo: escondido");
     assert_eq!(m.docs().bench.outline_fit_w(), 0.0, "o fit sai da conta");
 }

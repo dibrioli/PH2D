@@ -139,7 +139,7 @@ impl PlaneDeltas {
         c.add_map(heights);
         c.add_map(covers);
         c.add_map(mats);
-        c.add_map(vidros);
+        c.add_vidros(vidros);
         c.add(mask_scratch.reach());
         c.add(selection_mask.reach());
         c.add(selection_crisp.reach());

@@ -148,6 +148,73 @@ fn a_structural_edit_is_not_confined() {
     );
 }
 
+/// O documento do smoke 4K, em pequeno: a sprite nascida «Textured Paper» aberta no `meio`.
+fn papel_texturizado(
+    side: u32,
+    meio: crate::tool::paint::media::PaintMedia,
+    confine: bool,
+) -> PainterTool {
+    let mut t = PainterTool::default();
+    let px = PainterTool::pixeis_do_papel_texturizado(side, side);
+    t.abre_a_sprite_nova(7, px, side, side);
+    t.set_paint_media(meio);
+    t.set_brush_size_px(9.0);
+    t.undo.confine = confine;
+    stroke(&mut t, 120.0);
+    let _ = t.take_preview_arc();
+    t
+}
+
+/// **B10c: o Ctrl+Z do 1.º traço sobre o papel texturizado é confinado no Digital e no Watercolor** — e a
+/// tela da pista parcial é a do repaint inteiro ao bit (undo e redo) nos 4 meios. Era `None` no Watercolor
+/// (o vidro aparece: `v=WHOLE`), dobra e prévia da TELA no app. O 1.º traço Impasto (o relevo aparece) e
+/// Wet (`tintas_molhadas`) seguem não confinados: só o oráculo os julga.
+#[test]
+fn o_ctrl_z_de_um_traco_no_papel_e_confinado_em_cada_meio() {
+    use crate::tool::paint::media::PaintMedia::{Digital, Impasto, Watercolor, WetPaint};
+    let screen = |t: &mut PainterTool| {
+        t.paint_tick(1.0 / 60.0);
+        t.take_preview_arc().map(|(px, _, _)| px)
+    };
+    let mut falhas = Vec::new();
+    for meio in [Digital, Impasto, Watercolor, WetPaint] {
+        let (mut fast, mut slow) = (
+            papel_texturizado(256, meio, true),
+            papel_texturizado(256, meio, false),
+        );
+        let why = fast.undo.peek_confine_diagnosis(false).unwrap_or_default();
+        if meio == Watercolor {
+            assert!(
+                why.contains("v=WHOLE"),
+                "controlo: o vidro aparece neste passo — {why}"
+            );
+        }
+        let deve = matches!(meio, Digital | Watercolor);
+        if deve && fast.undo.peek_confined_region(false).is_none() {
+            falhas.push(format!("{meio:?}: {why}"));
+        }
+        assert!(
+            fast.undo_last() && slow.undo_last(),
+            "{meio:?}: há o que desfazer"
+        );
+        assert_eq!(
+            screen(&mut fast),
+            screen(&mut slow),
+            "{meio:?}: undo ≠ repaint inteiro"
+        );
+        assert!(
+            fast.redo_last() && slow.redo_last(),
+            "{meio:?}: há o que refazer"
+        );
+        assert_eq!(
+            screen(&mut fast),
+            screen(&mut slow),
+            "{meio:?}: redo ≠ repaint inteiro"
+        );
+    }
+    assert!(falhas.is_empty(), "não confinados: {falhas:#?}");
+}
+
 /// **Dois planos VAZIOS não azedam o veredito** — a lição que custou a wave (doc 28 §5.63).
 ///
 /// O `split` manda para `Whole` tudo o que não sabe medir, e comprimento zero não é medível; as seis

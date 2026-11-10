@@ -183,6 +183,20 @@ impl Confine {
         }
     }
 
+    /// O VIDRO ausente é o plano de zeros: um texel nunca selado dá o alfa único do píxel, exacto
+    /// ([`crate::compositor::vidro::alfas`]). Então o lado que aparece (o 1.º traço de aguada numa camada)
+    /// alcança só a janela dos texels selados, não a tela (B10c).
+    pub(crate) fn add_vidros(&mut self, m: &StoredMap<crate::compositor::vidro::Vidro>) {
+        for e in m.entries() {
+            self.add(match e {
+                StoredEntry::Both(p) => p.reach(),
+                StoredEntry::OnlyBefore(p) | StoredEntry::OnlyAfter(p) => {
+                    janela_dos_selados(p, self.canvas_w as usize)
+                }
+            });
+        }
+    }
+
     pub(crate) fn add_images(&mut self, m: &StoredImages) {
         for e in m.entries() {
             self.add(e.reach());
@@ -197,6 +211,37 @@ impl Confine {
     pub(crate) const fn finish(self) -> Option<Region> {
         if self.confined { self.acc } else { None }
     }
+}
+
+/// A janela dos texels não nulos de um plano de vidro de `stride` texels por linha; `Untouched` se nenhum.
+fn janela_dos_selados(p: &[crate::compositor::vidro::Vidro], stride: usize) -> PlaneReach {
+    if stride == 0 || p.is_empty() || !p.len().is_multiple_of(stride) {
+        return PlaneReach::Whole;
+    }
+    // OR dos bytes da linha: vectoriza (o `any` com saída cedo não).
+    let nula = |l: &[crate::compositor::vidro::Vidro]| {
+        l.as_flattened().iter().fold(0u8, |a, &b| a | b) == 0
+    };
+    let linhas: Vec<_> = p.chunks_exact(stride).collect();
+    let Some(row) = linhas.iter().position(|l| !nula(l)) else {
+        return PlaneReach::Untouched;
+    };
+    let last = linhas.iter().rposition(|l| !nula(l)).unwrap_or(row);
+    let (mut col, mut end) = (stride, 0usize);
+    for l in &linhas[row..=last] {
+        if let Some(c) = l.iter().position(|v| *v != [0; 7]) {
+            col = col.min(c);
+            end = end.max(l.iter().rposition(|v| *v != [0; 7]).unwrap_or(c) + 1);
+        }
+    }
+    PlaneReach::Window(PlaneWindow {
+        row,
+        rows: last - row + 1,
+        col,
+        cols: end.saturating_sub(col),
+        stride,
+        plane_len: p.len(),
+    })
 }
 
 impl<T> StoredMap<T> {
@@ -290,6 +335,23 @@ mod tests {
             );
             assert_eq!((r.y, r.h), (2, 3), "as linhas passam sem conversao");
         }
+    }
+
+    /// O vidro que APARECE alcança a caixa dos texels selados (também os de píxel intacto: a orla de alfa 0),
+    /// nada fora dela; um plano de zeros não alcança nada.
+    #[test]
+    fn o_vidro_que_aparece_alcanca_so_os_texels_selados() {
+        use super::{PlaneReach, janela_dos_selados};
+        let (w, h) = (10usize, 6usize);
+        let mut p = vec![[0u8; 7]; w * h];
+        assert_eq!(janela_dos_selados(&p, w), PlaneReach::Untouched);
+        p[w + 2] = [0, 0, 0, 0, 9, 0, 0];
+        p[4 * w + 7] = [1, 2, 3, 4, 5, 6, 7];
+        let PlaneReach::Window(j) = janela_dos_selados(&p, w) else {
+            panic!("dois texels selados dão uma janela");
+        };
+        let r = j.to_region(w as u32).expect("escalar");
+        assert_eq!((r.x, r.y, r.w, r.h), (2, 1, 6, 4));
     }
 
     /// Um plano ESCALAR (um elemento por pixel) tem de sair exato — é o controle do gate acima: sem

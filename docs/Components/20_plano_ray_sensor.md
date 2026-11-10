@@ -80,7 +80,7 @@ marcador, não matéria*). ⇒ **nenhum parâmetro novo na porta**, e a decisão
 
 ### §3.1 — ⛔⛔⛔ O REGISTO ESPERA PELA UI, e a decisão tem endereço
 
-O gate [`every_registered_physics_component_has_a_ui_writer`](../../shells/desktop/tests/it/every_physics_component_is_authorable.rs)
+O gate [`every_registered_physics_component_has_a_ui_writer`](../../crates/ph2d-panel-inspector/tests/it/every_physics_component_is_authorable.rs)
 **reprovou no instante** em que os dois componentes entraram no `register_physics_components`, e a
 mensagem dele oferece duas saídas: *«ou dê a ele uma row na §11 (e um arm em `apply_physics_edit`),
 ou **não o registre ainda**»*.

@@ -47,7 +47,7 @@ const WRITERS: [&str; 16] = [
     // pipeline canônico de componente que o nome da entidade usa (fila de comandos
     // + registro), que mora aqui. Um braço de string dentro do enum de campos
     // numéricos seria um segundo formato de edição vivendo dentro do primeiro.
-    "src/render_loop/inspector_commits.rs",
+    "../../shells/desktop/src/render_loop/inspector_commits.rs",
     // ⚠️ **O oitavo chegou pela porta que este gate existe para vigiar** (W5): o
     // `PlatformPlayer` foi registrado na W2 e a §14 só nasceu três waves depois,
     // então o gate ficou VERMELHO nesse intervalo inteiro e foi ele quem
@@ -68,7 +68,7 @@ const WRITERS: [&str; 16] = [
     // este componente?»*, e a resposta continua a ser um ficheiro nomeado. O que muda é que a lista
     // deixou de ser «os escritores da família da física» e passou a ser «os escritores, onde quer
     // que morem» — que é o que o nome dela sempre disse.
-    "src/render_loop/inspector_topdown.rs",
+    "../../shells/desktop/src/render_loop/inspector_topdown.rs",
     // ⭐ E o PROJÉCTIL (TOP-20 #14), pelo mesmo molde e no mesmo sítio.
     "../../crates/ph2d-app-components/src/projectile_inspector.rs",
     // ⭐⭐⭐ E o RAIO (suplente #21), pelo mesmo molde.

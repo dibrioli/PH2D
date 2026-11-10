@@ -31,7 +31,7 @@ hábito e não uma regra. Agora é regra, e vale para **toda wave futura desta l
 Uma wave só fecha quando o que ela construiu é alcançável por um artista **sem escrever código**:
 
 1. **Existe** — todo componente registrado tem um caminho de escrita a partir do Inspector.
-   Gate: `shells/desktop/tests/it/every_physics_component_is_authorable.rs` (estrutural, sobre o fonte).
+   Gate: `crates/ph2d-panel-inspector/tests/it/every_physics_component_is_authorable.rs` (saiu da shell em 10/11) (estrutural, sobre o fonte).
 2. **É pintado e registrado** — o controle aparece e é focável.
    Gate: `architecture_panel_wiring_parity`.
 3. **O clique chega ao barramento** — cada row/chip despachado, com a recusa no `event`, nunca no laço de pintura

@@ -53,6 +53,7 @@ mod as_quatro_seccoes_que_estreavam_a_catraca;
 mod every_form_row_reserves_the_animation_column;
 mod every_label_this_panel_paints_fits_its_column;
 mod every_painted_id_is_reachable;
+mod every_physics_component_is_authorable;
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod girar_e_espelhar_todo_objecto;
 mod inspector_regression;

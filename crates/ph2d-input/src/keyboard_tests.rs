@@ -207,7 +207,10 @@ fn numpad_7_is_neither_7_nor_home() {
     let labels: Vec<String> = keys.iter().map(|k| k.label()).collect();
     assert_eq!(labels, ["Numpad 7", "7", "Home"]);
     let names: Vec<Option<String>> = keys.iter().map(|k| k.script_name()).collect();
-    assert_eq!(names, [Some("kp7".into()), Some("7".into()), Some("home".into())]);
+    assert_eq!(
+        names,
+        [Some("kp7".into()), Some("7".into()), Some("home".into())]
+    );
     assert_eq!(Key::named_in_script("kp7"), Some(vec![KP7]));
     assert_ne!(Key::NUMPAD_ENTER, Key::ENTER);
     assert!(Key::NUMPAD_ENTER.is_enter_like() && Key::ENTER.is_enter_like());
@@ -232,9 +235,18 @@ fn system_keys_have_a_reason_and_no_script_name() {
             assert_eq!(Key::named_in_script(&n), None, "{n}");
         }
     }
-    assert_eq!(Key(0xF71A).system_owned(), Some("input_map_keyboard.system.fn"));
-    assert_eq!(Key(0xF718).system_owned(), Some("input_map_keyboard.system.windows"));
-    assert_eq!(Key(0xF72E).system_owned(), Some("input_map_keyboard.system.print_screen"));
+    assert_eq!(
+        Key(0xF71A).system_owned(),
+        Some("input_map_keyboard.system.fn")
+    );
+    assert_eq!(
+        Key(0xF718).system_owned(),
+        Some("input_map_keyboard.system.windows")
+    );
+    assert_eq!(
+        Key(0xF72E).system_owned(),
+        Some("input_map_keyboard.system.print_screen")
+    );
 }
 
 /// ⭐ Toda tecla da foto tem legenda, e a curta nunca é mais longa: as da foto e as dos compactos.
@@ -263,7 +275,11 @@ fn every_key_of_the_photo_has_a_cap_and_a_short_cap() {
         (0xF747, "7", "7"),
         (0xF74F, "Enter", "Enter"),
     ] {
-        assert_eq!((Key(code).cap(), Key(code).cap_short()), (cap, short), "{code:#X}");
+        assert_eq!(
+            (Key(code).cap(), Key(code).cap_short()),
+            (cap, short),
+            "{code:#X}"
+        );
     }
     assert_eq!(Key(0x1234).cap(), "", "código sem tecla");
 }

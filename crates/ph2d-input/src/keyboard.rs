@@ -92,10 +92,28 @@ const NUMPAD_ENTER: u32 = 0xF74F;
 /// (plano §13.1): o Fn resolve-se dentro do teclado, o KDE prende o Print ao Spectacle e o Meta ao
 /// lançador.
 const SYSTEM: &[(u32, &str, &str, &str, &str)] = &[
-    (0xF718, "Windows key", "Win", "Win", "input_map_keyboard.system.windows"),
-    (0xF719, "Windows key", "Win", "Win", "input_map_keyboard.system.windows"),
+    (
+        0xF718,
+        "Windows key",
+        "Win",
+        "Win",
+        "input_map_keyboard.system.windows",
+    ),
+    (
+        0xF719,
+        "Windows key",
+        "Win",
+        "Win",
+        "input_map_keyboard.system.windows",
+    ),
     (0xF71A, "Fn", "Fn", "Fn", "input_map_keyboard.system.fn"),
-    (0xF72E, "Print Screen", "PrtSc", "PrtSc", "input_map_keyboard.system.print_screen"),
+    (
+        0xF72E,
+        "Print Screen",
+        "PrtSc",
+        "PrtSc",
+        "input_map_keyboard.system.print_screen",
+    ),
 ];
 
 const LETTERS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -104,11 +122,15 @@ const F_CAPS: [&str; 12] = [
     "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
 ];
 
-fn named_row(c: u32) -> Option<&'static (u32, &'static str, &'static str, &'static str, &'static str)> {
+fn named_row(
+    c: u32,
+) -> Option<&'static (u32, &'static str, &'static str, &'static str, &'static str)> {
     NAMED.iter().find(|r| r.0 == c)
 }
 
-fn system_row(c: u32) -> Option<&'static (u32, &'static str, &'static str, &'static str, &'static str)> {
+fn system_row(
+    c: u32,
+) -> Option<&'static (u32, &'static str, &'static str, &'static str, &'static str)> {
     SYSTEM.iter().find(|r| r.0 == c)
 }
 

@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-input-winit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ A tradução winit → `ph2d_input::Key` como FOLHA (InputMap W1, plano §13.1): a `ph2d-input` é
+# modelo puro (sem `winit`, gate `the_input_map_stays_a_leaf`) e a shell só compõe (catraca
+# `the_shell_only_shrinks`). Nenhuma crate existente tinha as duas: a `ph2d-pixel-keys` tem `winit`
+# mas é do Pixel, e a `ph2d-editor-core` tem `ph2d-input` mas não `winit`. A `ph2d-input` entra só
+# nos testes: a tabela dela é a régua do mapa.
+[dependencies]
+winit = "0.30"
+
+[dev-dependencies]
+ph2d-input = { path = "../ph2d-input" }
+
+[lints]
+workspace = true

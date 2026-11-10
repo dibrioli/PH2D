@@ -224,3 +224,26 @@ fn the_session_map_is_the_project_outside_play() {
     s.stop();
     assert!(!s.running() && std::ptr::eq(s.map(&g), &g));
 }
+
+/// ⛔ O Numpad Enter tem código próprio (InputMap W1, §13.1) e continua a CONFIRMAR na tela do jogador:
+/// abre a escuta como o Enter; à escuta, liga-se como qualquer tecla (é uma tecla do jogo).
+#[test]
+fn numpad_enter_confirms_like_enter_and_binds_while_listening() {
+    let g = game();
+    let (mut s, mut k) = (ControlsScreen::default(), PlayerKeys::new());
+    on_jump(&mut s, &g, &mut k);
+    assert_ne!(Key::NUMPAD_ENTER, ENTER);
+    assert_eq!(
+        s.handle_key(Key::NUMPAD_ENTER, true, &g, &mut k),
+        Outcome::Consumed
+    );
+    assert!(s.listening(), "o Numpad Enter abre a escuta como o Enter");
+    assert_eq!(
+        s.handle_key(Key::NUMPAD_ENTER, true, &g, &mut k),
+        Outcome::Changed
+    );
+    assert!(
+        k.get("jump")
+            .is_some_and(|b| b[0] == Binding::Key(Key::NUMPAD_ENTER))
+    );
+}

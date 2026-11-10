@@ -9,7 +9,6 @@ const KEY_UP: Key = Key(0xF700);
 const KEY_DOWN: Key = Key(0xF701);
 const KEY_LEFT: Key = Key(0xF702);
 const KEY_RIGHT: Key = Key(0xF703);
-const KEY_ENTER: Key = Key(0x0D);
 const KEY_SPACE: Key = Key(0x20);
 const KEY_ESC: Key = Key(0x1B);
 
@@ -247,7 +246,8 @@ impl ControlsScreen {
                 self.clamp_slot(&rows);
                 Outcome::Consumed
             }
-            KEY_ENTER | KEY_SPACE => self.activate(&rows, keys),
+            // Os dois Enter (fileira e numérico) confirmam: `Key::is_enter_like`.
+            k if k.is_enter_like() || k == KEY_SPACE => self.activate(&rows, keys),
             _ => Outcome::Consumed,
         }
     }

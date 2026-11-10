@@ -7656,6 +7656,7 @@ dependencies = [
  "ph2d-imageio",
  "ph2d-imageio-registry-init",
  "ph2d-input",
+ "ph2d-input-winit",
  "ph2d-inspector-ordering",
  "ph2d-label-census",
  "ph2d-light2d-ecs",
@@ -8216,6 +8217,14 @@ dependencies = [
  "ph2d-input",
  "ph2d-input-map-editor",
  "ph2d-script",
+]
+
+[[package]]
+name = "ph2d-input-winit"
+version = "0.0.0"
+dependencies = [
+ "ph2d-input",
+ "winit",
 ]
 
 [[package]]

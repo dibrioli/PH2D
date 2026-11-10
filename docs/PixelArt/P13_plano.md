@@ -647,3 +647,30 @@ criar, a ordem do menu Frame) e o Add Audio logo depois do transporte, na tira d
 restaurada por `git checkout`, `git diff --quiet` limpo, 3/3 verdes de novo.
 **Fica:** o mixer real, arrastar e scrub do áudio; fmt/clippy das crates tocadas e a crate
 `ph2d-panel-registry-init` inteira no fecho; os `smoke_P14_*.log` por rastrear são da onda P14.
+
+### Áudio: mixer, arrastar, scrub (09/11, agente)
+
+Commit `1463b82629`. **Mixer real:** `AudioSystem::engine_mut` (append-only, `ph2d-app-audio`); a shell
+empresta-o em `fase_object_mode.rs` (`self.audio.as_mut().map(|a| a.engine_mut())` → `frame_of(.., mixer)`;
+saldo da shell **0**: sai o comentário «As famílias que declaram modos», que repetia o cabeçalho do módulo).
+O Pixel (`som.rs::som_do_play`, antes do `tick`; app-pixel **+10** linhas) chama
+`ph2d_pixel_audio::motor::quadro(mixer, Vista, host_ms)`: Play ⇒ `Tocador::tocar` no instante onde o quadro
+de partida começa; Stop/fim do Play ⇒ `parar`; cada quadro ⇒ `bombear`; a tocar, o `dt` é `dt_do_play`
+(o do som). Sem mixer, o `dt` do host e nada se pede. `canal::com_sons` partilha o cache das linhas.
+**Arrastar:** `PixelTimelineHitKind::AudioTrack { index }` (editor-core, append-only, cursor Grab);
+a onda regista-se como superfície; `Arrasto::Som` mostra o `inicio_ms` novo durante o arrasto (sem passo) e,
+ao soltar, pede `Edicao::Move` ⇒ um `SetAudio`. O px→ms é `som::ms_de`, o inverso do `x_de` da onda.
+**Scrub:** parado, o mesmo sprite com som noutro quadro (o cursor arrastado nos cabeçalhos) ⇒
+`Tocador::pedaco` com a duração desse quadro. Também soa ao clicar num quadro ou andar com as setas
+(o mesmo critério: o quadro mostrado mudou); trocar de sprite não soa.
+
+| Gate (por nome) | Crate | Veredito · mutação |
+|---|---|---|
+| `o_play_pede_o_som_ao_mixer` | pixel-audio | ✓ · `t_ms` = 0 (`f[..0]`) ⇒ ✗, restaurada |
+| `o_scrub_pede_o_pedaco_do_quadro` | pixel-audio | ✓ · `q == v.quadro` ⇒ ✗, restaurada |
+| `arrastar_a_faixa_dez_quadros_muda_o_inicio_num_passo_e_ctrl_z_volta` | panel-pixel-timeline | ✓ · `if false && …` ⇒ ✗, restaurada |
+| `relogio` (3) · `som::` (2) · `seam` (20) · `os_cartoes` (8) · `every_` (4) | pixel-audio, panel-pixel-timeline | ✓ |
+| `pixel_timeline` (3) · `the_shell_only_shrinks` · `architecture_workspace_file_loc_cap` | editor-core | ✓ |
+
+**Fica:** o smoke do dono (ouvir o Play, arrastar a onda, scrub) e fmt/clippy no fecho. Os assets relativos
+continuam a resolver-se sem a pasta do projeto (`publica(.., None)`, como antes).

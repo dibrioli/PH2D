@@ -1059,6 +1059,65 @@ período o grão é sub-texel e as duas leituras não se distinguem). Lado a lad
 **Aprovada pelo dono (10/11): «Aprovado».**
 **Guia geral (método, curas, recusas):** [Pinceis/COMO_ACELERAR_UM_PINCEL.md](Pinceis/COMO_ACELERAR_UM_PINCEL.md).
 
+## Bug #85 (CURADO 10/11, o dono: «ótimo») — a imagem 4K travava ~1,7 s depois de soltar o mouse, mesmo num traço pequeno
+
+**Sintoma do dono (10/11):** «trava no mouse-up numa imagem 4K, mesmo num traço pequeno». **Reprodução no app real**
+([`ferramentas/mede_pen_up_4k.sh`](ferramentas/mede_pen_up_4k.sh) + [`.py`](ferramentas/mede_pen_up_4k.py)): Xvfb `:94`
+1600×1000 e rato real por XTEST (`xdotool`); cena `PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PILHA=0 PH2D_COMPOSITE_PAPEL=1
+PH2D_COMPOSITE_TELA=3840x2160 PH2D_COMPOSITE_PAINEL=<digital|water|impasto|wet>`; 6 traços curtos de 41 eventos, 2,5 s parado
+depois de cada Up; o `perf` ABRE o app (`perf record -k CLOCK_MONOTONIC -F 997`). O `.py` resume a CPU da linha principal por
+fatia de 50 ms depois de cada Up e os quadros lentos perto dele. Comandos e armadilhas do `perf` neste PC:
+[Pinceis/COMO_ACELERAR_UM_PINCEL.md](Pinceis/COMO_ACELERAR_UM_PINCEL.md) §6.
+**Medido ANTES:** em Digital, Water, Impasto e Wet, ~0,81–0,88 s depois de CADA Up um quadro de 1 650–2 070 ms (linha
+principal a 100 %). **Mecanismo:** esse instante são os `QUADROS_PARADOS = 30` de `ph2d_anim_sheets::sheet_cache::follow_live`,
+que lê `PainterTool::imagem_aplicada` (`trait_impls_raster.rs:194`) → `pilha_aplicada` + `apply_impasto_light` sobre a TELA
+INTEIRA. Perfil dentro desses quadros: `texture::sample` (o dente do papel, por `ReliefFields::height_at` →
+`Substrate::tooth_loads` → `tooth_px`), `apply_impasto_light`, `blend_mode::apply`, `compose::encode`. Causa: o passe de luz
+corria num fio só, lendo `height_at` 4× por píxel (diferenças centrais), cada leitura a amostrar o papel procedural.
+**Por que as sondas diziam «não é»:** `sonda_pen_up_4k` (`tests/it`) e `measure_o_quadro_do_pen_up_em_4k`
+(`painter_preview_measure.rs`) mediam tela SEM relevo de papel (1,6–7 ms): a fixture não tinha o fenómeno. **Lição:** medir
+no app real, com o papel do dono (memória `feedback_a_cost_probe_without_the_owners_paper_has_no_phenomenon`).
+**Cura (`569be991bd`, `tool/paint/impasto_light.rs`):** `apply_impasto_light` por FAIXAS de `FAIXA_LINHAS = 32` linhas em
+`par_chunks_mut`; cada faixa lê `height_at` UMA vez por píxel numa moldura de 1 px ((n+2)×(w+2)) e difere dentro dela; cache do
+material por faixa. Mesmo bit. O passe por píxel antigo ficou verbatim como oráculo `#[cfg(test)] apply_impasto_light_por_pixel`.
+**Gate:** `as_faixas_dao_o_passe_por_pixel_ao_bit` (`substrate_relief_tests.rs`; papel + crista de impasto com cera, tela
+150×101, inteira e sub-região `{7,33,91,67}`); 2 mutações vermelhas (moldura sem a linha de cima: `gy = gy0 + j`; faixa a
+recomeçar no y da região: `gy0 = y0`). Sonda `sonda_luz_4k` (ignored; `cargo test --profile smoke -p ph2d-tool-painter --lib
+sonda_luz_4k -- --ignored --nocapture`): por píxel **1 776,5 ms** × faixas **153,9 ms** (16 núcleos da fatia da linha, mínimo
+de 3 intercalados). **Depois, no app (mesmo roteiro):** o quadro do pen-up **108–130 ms** (impasto 111,6–128,4; digital
+107,9–129,5). **Smoke do dono: «ótimo».**
+**Instrumento novo:** `PH2D_QUADRO_LENTO_MS=<n>` (`paint_perf.rs`, `quadro_lento`, chamado de `end_frame`; liga com
+`PH2D_PAINT_PERF`) imprime `[quadro-lento] parede=<ns época> intervalo=<ms> quadro=<ms>` por quadro cujo intervalo fim-a-fim
+passa de n: o agregado do paint-perf (janela de 90/120 quadros) esconde um quadro só, e um quadro à ESPERA não aparece no
+perfil de CPU. `PH2D_COMPOSITE_TELA=<w>x<h>` (`composite_smoke.rs`, só com PAPEL; imagem quadrada).
+**ABERTO — o que resta (~120 ms) é a tela inteira refeita a cada traço:** o perfil espalha-se por `texture::sample`,
+`height_at`, `material_at`, `Rig::shade`, blend, encode. A cura é a leitura INCREMENTAL de `imagem_aplicada`; desenho e
+invalidações no [prompt 10f](handoffs/PROMPT_CONTINUACAO_2026-11-10f_pen_up_incremental.md). Nota lateral: a barra da cena a 4K,
+mesmo parada, tem frame p50 ~18–30 ms (não é o pen-up).
+
+### Auditoria de 2 lentes, 10/11 (diff `f254e42bf1..fde1d09969`) — 3 achados curados, cada um com gate red-first
+
+1. **`95685615e1` — a meia definição do Wet Wash Mix (Bug #84 cura 6) passava o DENTE do papel intacto** (`meia.rs`),
+   amostrado nas coordenadas da metade: 2× maior e fora do papel visível. Δ à inteira com papel Relief 0,8 · Tooth 1,6: médio
+   2,239 máx 61 → **0,338 / 11** (sem papel 0,346 / 14). Cura: o dente recebe o mesmo `size ×2` do grão Tiled (`na_meia_tela`);
+   só ladrilho preso à tela (`preso_a_tela`: mapping Tiled) arma a meia — View Plane/Random/Stencil seguem o dab e iam com
+   frequência dobrada; vão à inteira ao bit. O doc do módulo dizia «sem papel» e a guarda só excluía o papel COMO Grain.
+   Gates `a_meia_definicao_leva_o_dente_do_papel_a_escala_da_tela`, `o_grao_que_segue_o_pincel_vai_a_definicao_inteira`
+   (`sonda_custo_do_veu.rs`). **O gate verde que mentia:** `o_veu_a_meia_definicao_fica_perto_da_inteira` — a fixture não tinha
+   papel com relevo. Alarmes de pincel verdes. **Smoke do dono deste item: PENDENTE** (ele não entendeu o roteiro).
+2. **`be24b0a239` — `follow_live`:** um `read()` a `None` deixava `devida` verdadeira: releitura da tela inteira a CADA quadro
+   e selo preso em `Filling(1.0)`. Cura: `SheetCache::falhou` (uma tentativa por revisão; o selo apaga-se sem check). Gate
+   `a_leitura_vazia_nao_se_repete_nem_prende_o_selo` (vermelho no HEAD anterior; `ph2d-anim-sheets`).
+3. **`7d4c1caa2b` — `CardCtx::pair`/`compact`** (`ph2d-editor-core/src/panel/cards_compacta.rs`) pintavam a célula sozinha por
+   `row_inteira`, saltando o `escolha_em_linhas`: uma Choice que não cabia cortava (Paint Mixing: Pigment + Color mixing,
+   `cards_mistura.rs:167`). Cura: a célula sozinha vai pela `row`. Gate `a_choice_alone_in_a_pair_or_compact_row_still_wraps`;
+   varredura por consumidor verde (editor-core, panel-painter-layers, panel-vector, panel-widget-gallery).
+
+Conferidos sem defeito: JSON da meia/softness/tip_depth/fill, constantes do selo, relógio do selo (`dispatch_tick` por quadro,
+`fase_chrome_clock.rs:85`), pegadas paralelas ao bit, chave «pigment» (era a de dentro do `mistura_opaca`), `float_roundtrip`,
+«×» da busca, remoções sem id órfão, Save as New/Default (clique→disco→vista; sem teste de cadeia inteira), miniatura = motor.
+Lacunas de teste baixas: Save as Default sem verificação da vista; Paint Mixing sem teste de troca de preset.
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

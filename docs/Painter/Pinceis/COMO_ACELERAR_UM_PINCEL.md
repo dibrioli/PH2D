@@ -28,7 +28,7 @@ cd <worktree> && PH2D_SONDA_PRESETS="<pincel>" PH2D_SONDA_EVQ=9 PH2D_SONDA_VELS=
 - O quadro do app fora do ponteiro (produtor, drenagem, upload, placa) mede-se à parte (`app_frame` + GPU): 1–2 ms ⇒ o custo era todo do carimbo.
 - Tamanho da tela (1024/2048/4096) e papel + camada transparente × tela branca: **não mudam nada** (±1 ms) — não gaste rodadas nisso.
 
-**Passo 3 — sem perfilador.** `perf`/`samply` estão **BLOQUEADOS** nesta máquina (`perf_event_paranoid` 2, mesmo `cpu-clock:u`).
+**Passo 3 — sem perfilador.** `samply` e `perf record -g` estão **BLOQUEADOS** nesta máquina (`perf_event_paranoid` 2); o `perf` simples (função folha) abre o app — §6.
 A ablação (chave do motor trocada no MESMO processo, intercalada, o MÍNIMO — [MEDIR_VELOCIDADE](../../DevOps/MEDIR_VELOCIDADE.md))
 mais relógios `Instant` temporários são o instrumento. Remova os relógios antes do commit.
 
@@ -76,3 +76,26 @@ execução (`PH2D_SONDA_ABLA='brush.mistura_opaca.meia_definicao=true'`) e mostr
 a pincel. Hoje a porta só arma na rota da mistura dentro do plano do traço; um pincel lento fora dela pede estender a
 porta (a tela directa, a rota sem mistura) — meça antes. O que resta a 360 px/quadro
 (~24 ms) não foi dividido por fase — meça antes de cortar.
+
+## 6. Medir o PEN-UP (soltar o mouse) no app real — Bug #85
+
+O custo do pincel (§1) é do traço; o do **mouse-up** é outro: tela inteira refeita depois do Up. **Lição:** a sonda sem o
+papel/relevo do dono não tinha o fenómeno (`sonda_pen_up_4k` e `measure_o_quadro_do_pen_up_em_4k` leram 1,6–7 ms; o app, 1,7 s).
+Meça no app, com `PH2D_COMPOSITE_PAPEL=1`.
+
+1. **Compilar com nomes:** o perfil `smoke` herda `strip=symbols` do release; o `perf` sem nomes é inútil. Só religar:
+   `CARGO_PROFILE_SMOKE_STRIP=none bash scripts/ph2d-run.sh cargo build --profile smoke -p ph2d-host-desktop`.
+2. **Correr o roteiro** (Bash com o sandbox desligado, por causa do `perf`):
+   `bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/mede_pen_up_4k.sh target/smoke/ph2d-host-desktop <rotulo> 3840x2160 <digital|water|impasto|wet>`.
+   Xvfb `:94` + rato real por XTEST; 6 traços de 41 eventos, 2,5 s parado depois de cada Up. O `.py` irmão resume.
+3. **O `perf` ABRE o app** (`perf record … -- <app>`): o `ptrace_scope` do Yama recusa `perf record -p` num não-filho.
+   `-k CLOCK_MONOTONIC -F 997` para casar as amostras com os `[quadro-lento]`; **sem `-g`** (com `paranoid` 2 a cadeia não abre:
+   amostra só a função folha — some o «quem chamou», some a atribuição por camada).
+4. **`PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=<n>`** imprime `[quadro-lento] parede=<ns> intervalo=<ms> quadro=<ms>` por quadro
+   lento. O agregado do paint-perf (janela de 90/120 quadros) esconde um quadro só, e um quadro à ESPERA (fila, GPU) não
+   aparece no perfil de CPU — o intervalo fim-a-fim sim.
+5. **Leia o instante:** o quadro lento a ~0,85 s depois do Up são os `QUADROS_PARADOS = 30` do `follow_live` (a folha de animação
+   relê `imagem_aplicada`). Se o atraso mudar, o suspeito mudou — não assuma.
+6. **Cura de passe sobre a tela inteira:** faixas no pool que leem o campo UMA vez por píxel (moldura de 1 px), o passe antigo
+   guardado como oráculo `#[cfg(test)]` e um gate ao bit (inteira e sub-região). Foi 1 776,5 → 153,9 ms (`sonda_luz_4k`).
+Aberto: a leitura incremental ([prompt 10f](../handoffs/PROMPT_CONTINUACAO_2026-11-10f_pen_up_incremental.md)).

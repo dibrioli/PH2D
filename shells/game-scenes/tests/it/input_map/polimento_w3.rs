@@ -75,8 +75,9 @@ fn tab_percorre_o_seletor_enter_activa_e_esc_larga() {
     );
     m.key(k, None);
     assert_eq!(m.tab().doc.focused(), Some(ids::VIEW_KEYBOARD));
-    m.physical(ph2d_input::Key(0x10)); // Shift
-    m.physical(ph2d_input::Key(0x09)); // Tab
+    let named = |n: &str| ph2d_input::Key::named_in_script(n).expect("no teclado")[0];
+    m.physical(named("left_shift"));
+    m.physical(named("tab"));
     assert_eq!(
         m.tab().doc.focused(),
         Some(ids::VIEW_LIST),
@@ -161,4 +162,84 @@ fn caret_e_pulso_seguem_o_relogio_e_o_reduced_motion() {
     m.frame();
     assert_eq!(m.tab_mut().doc.pulse(id), None, "reduced: sem pulso");
     assert!(m.tab_mut().doc.caret_on(id), "reduced: caret fixo, aceso");
+}
+
+/// O Add com o nome vazio fica DESLIGADO: o clique não cria nada, a dica diz porquê, o cursor é a seta e o nó
+/// a11y está desligado; com um nome novo, liga e o clique (Up dentro) cria a acção.
+#[test]
+fn o_add_vazio_esta_desligado_e_diz_porque() {
+    let mut m = Mesa::aberta(View::List);
+    let add = m.at(ids::ADD);
+    m.hover(add);
+    assert_eq!(
+        m.tab().doc.disabled_why_here().map(|w| w.1),
+        Some("input_map_list.add_off_empty")
+    );
+    assert_eq!(m.tab().doc.look_at(add.0, add.1), Some(PointerLook::Arrow));
+    m.click(add);
+    assert!(
+        m.tab_mut().doc.take_pending().is_empty(),
+        "desligado não dispara"
+    );
+    m.click(m.at(ids::NEW_NAME));
+    m.type_text("taunt");
+    m.down(add);
+    assert!(m.tab().doc.is_pressed(ids::ADD), "premido à vista");
+    m.up(add);
+    assert!(m.hero.input_map.id("taunt").is_some(), "o Up dentro cria");
+}
+
+/// O número da zona: o foco selecciona tudo; ↑ um passo, Shift+↑ dez, Alt+↑ um décimo; Esc devolve; Enter
+/// aplica UMA vez; fora de 0..1 fica no limite com a frase, que some na edição válida seguinte.
+#[test]
+fn o_numero_da_zona_edita_como_um_campo_pro() {
+    use ph2d_app_input_map::ids::ListHit;
+    use ph2d_editor_core::doc_surface::Key as K;
+    let mut m = Mesa::aberta(View::List);
+    let mut map = ph2d_input::InputMap::new();
+    let a = map.create("steer");
+    if let Some(act) = map.get_mut(a) {
+        act.bindings.push(ph2d_input::Binding::PadAxis {
+            axis: ph2d_input::GamepadAxis::LeftStickX,
+            positive: true,
+        });
+        act.set_zone(0.2, 0.5);
+    }
+    m.hero.input_map = map;
+    m.frame();
+    let dead0 = m.hero.input_map.get(a).expect("a").dead_zone;
+    m.click(m.at(ListHit::Dead(a).id()));
+    let open = |m: &Mesa| m.tab().doc.list.typing.as_ref().map(|t| t.buffer.clone());
+    assert_eq!(open(&m), Some(format!("{dead0:.2}")));
+    assert!(
+        m.tab().doc.list.caret.selection().is_some(),
+        "tudo seleccionado"
+    );
+    m.key(K::Up, None);
+    assert_eq!(open(&m).as_deref(), Some("0.21"), "↑ um passo");
+    assert_eq!(
+        m.hero.input_map.get(a).expect("a").dead_zone,
+        dead0,
+        "↑ ainda não aplica"
+    );
+    m.key(K::Escape, None);
+    assert_eq!(open(&m), None, "Esc larga");
+    assert_eq!(
+        m.hero.input_map.get(a).expect("a").dead_zone,
+        dead0,
+        "Esc devolve"
+    );
+    m.click(m.at(ListHit::Dead(a).id()));
+    m.type_text("1.5");
+    m.key(K::Enter, None);
+    assert_eq!(m.hero.input_map.get(a).expect("a").press_point, 1.0);
+    assert_eq!(
+        m.tab().doc.list.warn.map(|w| w.2.i18n_key()),
+        Some("input_map_list.kept_max"),
+        "a frase do limite"
+    );
+    m.click(m.at(ListHit::Press(a).id()));
+    m.type_text("0.5");
+    m.key(K::Tab, None);
+    assert_eq!(m.tab().doc.list.warn, None, "a edição válida apaga a frase");
 }

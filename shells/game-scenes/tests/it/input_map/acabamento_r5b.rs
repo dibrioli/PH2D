@@ -249,8 +249,11 @@ fn arrastar_o_polegar_da_a_rola_a_lista() {
         "presa no fim"
     );
     assert!(m.tab_mut().doc.release(), "largar toma o gesto");
-    assert!(
-        !m.tab_mut().doc.motion(x, y),
+    let end = m.tab().doc.list.scroll;
+    m.tab_mut().doc.motion(x, y);
+    assert_eq!(
+        m.tab().doc.list.scroll,
+        end,
         "solto, o ponteiro já não rola"
     );
     assert_eq!(m.tab().doc.list.scroll, m.tab().doc.list.scroll_max);

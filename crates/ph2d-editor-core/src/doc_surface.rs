@@ -220,6 +220,13 @@ pub trait DocumentSurface: Any {
     }
     /// Roda sobre a área (`shift` = o Shift premido: rolar na horizontal). `true` = tomada.
     fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool;
+    /// Os dois dedos do trackpad andaram de LADO (`dx` px, no sinal da roda), à parte da [`Self::wheel`] do
+    /// eixo vertical. `true` = tomado. Por omissão nada: a roda com o Shift não serve de proxy, que a maioria
+    /// das famílias (e das zonas dentro delas) o ignora e rolaria na VERTICAL.
+    fn wheel_sideways(&mut self, id: u64, x: f32, y: f32, dx: f32) -> bool {
+        let _ = (id, x, y, dx);
+        false
+    }
     /// Uma tecla premida ou solta ([`KeyInput`]).
     fn key(&mut self, id: u64, text_system: &mut TextSystem, input: KeyInput<'_>) -> KeyOutcome;
     /// Composição (IME / tecla morta). `true` = tomada.

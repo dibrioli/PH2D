@@ -216,11 +216,11 @@ pub fn scroll(hero: &mut HeroScreen, x: f32, y: f32, s: BoardScroll) -> bool {
         BoardScroll::Wheel(dy) | BoardScroll::Pan([_, dy]) => dy,
         BoardScroll::Pinch(_) => 0.0,
     };
-    let (d, sideways) = match s {
-        BoardScroll::Pan([dx, dy]) if dx.abs() > dy.abs() => (dx, true),
-        _ => (dy, false),
+    let dx = match s {
+        BoardScroll::Pan([dx, _]) => dx,
+        _ => 0.0,
     };
-    if let Some(taken) = super::surface_input::wheel(hero, x, y, d, sideways) {
+    if let Some(taken) = super::surface_input::wheel(hero, x, y, dy, dx) {
         return taken;
     }
     // W8 — durante a apresentação a vista é a da viagem: a roda não a mexe (W19: nem no ecrã inteiro do

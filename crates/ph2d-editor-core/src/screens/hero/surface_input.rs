@@ -39,18 +39,14 @@ pub fn owns_the_keyboard(hero: Option<&HeroScreen>) -> bool {
     hero.is_some_and(|h| h.documents.surface_active().is_some() && !h.text_entry_focused())
 }
 
-/// A roda: o Shift vem da cache que a shell actualiza a cada mudança de modificadores; `sideways` = os dois dedos
-/// do trackpad andaram de lado (chega como a roda com o Shift, o idioma de rolar na horizontal).
-pub(super) fn wheel(
-    hero: &mut HeroScreen,
-    x: f32,
-    y: f32,
-    dy: f32,
-    sideways: bool,
-) -> Option<bool> {
-    let shift = sideways || hero.store.shift_held();
+/// A roda: o Shift vem da cache que a shell actualiza a cada mudança de modificadores. `dx` = os dois dedos do
+/// trackpad andaram de lado: vai à [`crate::doc_surface::DocumentSurface::wheel_sideways`], nunca à roda com o Shift (onda 3 item 7:
+/// Sprite, SFX, Planner e a lista do Input Map ignoram o Shift e rolavam na vertical). Cada eixo vai uma vez.
+pub(super) fn wheel(hero: &mut HeroScreen, x: f32, y: f32, dy: f32, dx: f32) -> Option<bool> {
+    let shift = hero.store.shift_held();
     let (f, id) = hero.documents.active_surface_mut()?;
-    Some(f.wheel(id, x, y, dy, shift))
+    let side = dx != 0.0 && f.wheel_sideways(id, x, y, dx);
+    Some(f.wheel(id, x, y, dy, shift) || side)
 }
 
 /// Os comandos da aba de família activa (vazio sem ela), seguidos dos de cada família (valem com

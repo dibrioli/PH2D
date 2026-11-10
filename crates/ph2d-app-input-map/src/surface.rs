@@ -118,6 +118,11 @@ impl DocumentSurface for InputMapTab {
         self.doc.wheel_shift(dy, shift)
     }
 
+    /// O deslizar de lado rola o teclado (Keyboard e Try it), como o Shift+roda; a lista não rola de lado.
+    fn wheel_sideways(&mut self, _id: u64, _x: f32, _y: f32, dx: f32) -> bool {
+        self.doc.view() != View::List && self.doc.wheel_shift(dx, true)
+    }
+
     fn key(&mut self, _id: u64, _ts: &mut TextSystem, input: KeyInput<'_>) -> KeyOutcome {
         KeyOutcome {
             consumed: self.doc.key(&input),

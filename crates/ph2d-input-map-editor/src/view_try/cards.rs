@@ -319,7 +319,8 @@ pub(super) fn live(
         ink.color(ColorToken::KanbanCard),
     );
     let held = doc.tryit.held_keys();
-    crate::view_keyboard::keys::paint_keys(doc, draw, scene, ts, ink, &|k| held.contains(&k));
+    let fill = crate::view_keyboard::keys::Lit::Fill;
+    crate::view_keyboard::keys::paint_keys(doc, draw, scene, ts, ink, fill, &|k| held.contains(&k));
     y += dh + GAP;
     let cols = bar_cols(r.w);
     let cw = (w - m::FIELD_GAP * (cols as f32 - 1.0)) / cols as f32;

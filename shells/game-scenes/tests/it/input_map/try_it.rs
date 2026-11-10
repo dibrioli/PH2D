@@ -137,14 +137,15 @@ fn a_manche_a_062_com_dead_015_da_055_e_premida() {
         want.to_bits(),
         "a mesma lei, bit a bit"
     );
-    let all = texts(&m);
-    assert!(
-        all.contains(&format!(
-            "Pushed 0.62 \u{00B7} Strength {want:.2} \u{00B7} Pressed"
-        )),
-        "{all}"
+    let runs: Vec<&str> = (m.tab().doc.census.runs.iter())
+        .map(|r| r.0.as_str())
+        .collect();
+    let want_s = format!("{want:.2}");
+    assert_eq!(
+        runs,
+        vec!["Pushed", "0.62", "Strength", want_s.as_str(), "Pressed"]
     );
-    assert_eq!(format!("{want:.2}"), "0.55");
+    assert_eq!(want_s, "0.55");
 }
 
 #[test]

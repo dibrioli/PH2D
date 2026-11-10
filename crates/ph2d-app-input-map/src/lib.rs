@@ -3,7 +3,7 @@
 //! Settings ▸ Input Map… chega como o pedido do `WidgetStore`, e o `frame` abre (ou traz à frente) a aba.
 
 pub use ph2d_input_map_editor::{
-    InputMapDoc, InputMapEdit, Snapshot, View, ids, view_keyboard, view_list, view_try,
+    InputMapDoc, InputMapEdit, Snapshot, View, ids, palette, view_keyboard, view_list, view_try,
 };
 
 pub mod listen;

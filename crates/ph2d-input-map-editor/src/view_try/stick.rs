@@ -5,14 +5,14 @@ use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::ColorToken;
+use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
 
 use super::cards::{GAP, PAD, ROW, inner_w};
 use super::{line_h, para, para_h};
 use crate::doc::InputMapDoc;
 use crate::view_list::text::line;
-use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect, stroke_polyline};
+use ph2d_editor_core::paint::{fill_circle, fill_rounded_rect, paint_icon, stroke_polyline};
 use ph2d_input::resolve::{pressed_of, strength_of};
 use ph2d_input::{ActionId, Binding};
 
@@ -132,19 +132,21 @@ pub(super) fn stick(
         .find(|b| matches!(b, Binding::PadAxis { .. } | Binding::PadButton(_)));
     let title = tr("input_map_try.stick_of")
         .replace("{action}", &a.name)
-        .replace(
-            "{stick}",
-            &half.map_or_else(String::new, |b| crate::view_list::footer::binding_label(*b)),
-        );
-    let mut ty = para(
-        doc,
-        ts,
-        scene,
-        &title,
-        (rx, y, rw),
-        m::LABEL_PX,
-        ink.color(ColorToken::Text2),
-    );
+        .replace("{stick}", &half.map_or_else(String::new, |b| stick_name(*b)));
+    // «move_left · Left Stick ←»: a direcção é um ÍCONE (a mesma porta do ladrilho da B), nunca um glifo.
+    let icon = half.and_then(|b| crate::view_keyboard::half_icon(*b));
+    let iw = icon.map_or(0.0, |_| m::LABEL_PX + m::SEG_PAD);
+    let tw = ts.prefix_width(&title, m::LABEL_PX).min((rw - iw).max(0.0));
+    let lh = line_h(m::LABEL_PX);
+    let fg = ink.color(ColorToken::Text2);
+    line(&mut doc.census, ts, scene, &title, Rect::new(rx, y, tw, lh), m::LABEL_PX, fg);
+    if let Some(icon) = icon {
+        let s = m::LABEL_PX;
+        let ir = Rect::new(rx + tw + m::SEG_PAD, y + (lh - s) * 0.5, s, s);
+        paint_icon(scene, icon, ir, fg, StrokeToken::Default.px());
+        doc.census.icons.push((ir, icon));
+    }
+    let mut ty = y + lh;
     crate::view_keyboard::travel::zone_fields(doc, &a, Rect::new(rx, ty, rw, 0.0), scene, ts, ink);
     ty += line_h(m::LABEL_PX) + ROW + GAP;
     let (s, p) = (
@@ -156,25 +158,45 @@ pub(super) fn stick(
     } else {
         "input_map_try.not_pressed"
     });
-    let read = format!(
-        "{} {raw:.2} \u{00B7} {} {s:.2} \u{00B7} {pressed}",
-        tr("input_map_try.pushed"),
-        tr("input_map_try.strength")
-    );
-    let tok = if p {
+    // «Pushed 0.62  Strength 0.55  Pressed» (maquete C3): os rótulos no texto calmo, os valores em negrito no texto
+    // normal, e SÓ o «Pressed» na cor do sucesso.
+    let state = if p {
         ColorToken::Success
     } else {
-        ColorToken::Text1
+        ColorToken::Text2
     };
-    para(
-        doc,
-        ts,
-        scene,
-        &read,
-        (rx, ty, rw),
-        m::VALUE_PX,
-        ink.color(tok),
-    );
+    let runs = [
+        (tr("input_map_try.pushed").to_owned(), ColorToken::Text2, false),
+        (format!("{raw:.2}"), ColorToken::Text1, true),
+        (tr("input_map_try.strength").to_owned(), ColorToken::Text2, false),
+        (format!("{s:.2}"), ColorToken::Text1, true),
+        (pressed.to_owned(), state, p),
+    ];
+    let mut cx = rx;
+    let vh = line_h(m::VALUE_PX);
+    for (i, (t, tok, bold)) in runs.iter().enumerate() {
+        cx += match i {
+            0 => 0.0,
+            _ if i % 2 == 1 => m::SEG_PAD * 2.0,
+            _ => m::CARD_GAP,
+        };
+        let room = (rx + rw - cx).max(0.0);
+        let w = if *bold {
+            crate::view_list::text::title_width(ts, t, m::VALUE_PX)
+        } else {
+            ts.prefix_width(t, m::VALUE_PX)
+        }
+        .min(room);
+        let r = Rect::new(cx, ty, w, vh);
+        let c = ink.color(*tok);
+        if *bold {
+            crate::view_list::text::title(&mut doc.census, ts, scene, t, r, m::VALUE_PX, c);
+        } else {
+            line(&mut doc.census, ts, scene, t, r, m::VALUE_PX, c);
+        }
+        doc.census.runs.push((t.clone(), *tok, *bold));
+        cx += w;
+    }
     let cy2 = y + d + GAP;
     let cap = tr("input_map_try.stick_caption");
     let ch = para_h(ts, cap, m::LABEL_PX, w - m::SEG_INSET * 2.0);
@@ -193,6 +215,22 @@ pub(super) fn stick(
         m::LABEL_PX,
         ink.color(ColorToken::Text2),
     );
+}
+
+/// O nome da manche sem o eixo («Left Stick»); um gatilho ou botão fica com o nome dele.
+fn stick_name(b: Binding) -> String {
+    use ph2d_input::GamepadAxis as A;
+    match b {
+        Binding::PadAxis {
+            axis: A::LeftStickX | A::LeftStickY,
+            ..
+        } => tr("input_map_try.left_stick").to_owned(),
+        Binding::PadAxis {
+            axis: A::RightStickX | A::RightStickY,
+            ..
+        } => tr("input_map_try.right_stick").to_owned(),
+        other => crate::view_list::footer::binding_label(other),
+    }
 }
 
 /// Onde o ponto está: a manche da 1.ª meia-ligação da acção (x, y em −1..1).

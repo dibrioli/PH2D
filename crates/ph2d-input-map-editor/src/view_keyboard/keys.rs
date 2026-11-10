@@ -246,18 +246,28 @@ fn paint_keyboard(
         .and_then(|a| doc.snap.map.get(a))
         .map(|a| a.bindings.clone())
         .unwrap_or_default();
-    paint_keys(doc, draw, scene, ts, ink, &|k| {
+    paint_keys(doc, draw, scene, ts, ink, Lit::Outline, &|k| {
         open.contains(&Binding::Key(k))
     });
 }
 
+/// Como uma tecla acesa se mostra: na B, a da acção ABERTA ganha o contorno; no Try it, a PREMIDA enche-se da cor
+/// da primeira acção que ela liga (maquete C2: a ↑ amarela do jump), com as barras de todas por baixo.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Lit {
+    Outline,
+    Fill,
+}
+
 /// O teclado desenhado: UM pintor para B (acesas = as da acção aberta) e C (acesas = as premidas no Try it).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_keys(
     doc: &mut InputMapDoc,
     draw: Rect,
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     ink: CardInk,
+    style: Lit,
     lit_of: &dyn Fn(ph2d_input::Key) -> bool,
 ) {
     let inner = Rect::new(
@@ -286,13 +296,18 @@ pub(crate) fn paint_keys(
         let who = users(doc, b);
         let lit = lit_of(key);
         let hover = doc.kb.hover == Some(KbHit::Key(key));
-        let bg = if lit || hover {
-            ColorToken::CardFieldHover
-        } else {
-            ColorToken::CardField
+        let filled = (lit && style == Lit::Fill)
+            .then(|| who.first().map_or(ColorToken::Accent, |a| crate::palette::of_action(*a)));
+        let bg = match filled {
+            Some(c) => c,
+            None if lit || hover => ColorToken::CardFieldHover,
+            None => ColorToken::CardField,
         };
         fill_rounded_rect(scene, kr, m::SEG_RADIUS, ink.color(bg));
-        if lit {
+        if let Some(c) = filled {
+            doc.census.filled.push((kr, c));
+        }
+        if lit && style == Lit::Outline {
             stroke_rounded_rect(
                 scene,
                 kr,
@@ -301,7 +316,9 @@ pub(crate) fn paint_keys(
                 ink.color(ColorToken::Accent),
             );
         }
-        let fg = ink.color(if who.is_empty() {
+        let fg = ink.color(if filled.is_some() {
+            ColorToken::Bg0
+        } else if who.is_empty() {
             ColorToken::Text2
         } else {
             ColorToken::Text1

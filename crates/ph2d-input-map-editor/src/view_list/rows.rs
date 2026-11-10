@@ -423,16 +423,8 @@ fn paint_zones(
             ring(scene, f, ink);
         }
         let v = typing.map_or_else(|| format!("{value:.2}"), |t| t.buffer.clone());
-        let vr = Rect::new(f.x + m::SEG_INSET, f.y, f.w - m::SEG_INSET * 2.0, f.h);
-        text::line(
-            &mut doc.census,
-            ts,
-            scene,
-            &v,
-            vr,
-            m::VALUE_PX,
-            ink.color(ColorToken::Text1),
-        );
+        let dead = matches!(hit, ListHit::Dead(_));
+        crate::view_keyboard::travel::zone_value(doc, ts, scene, ink, f, dead, &v);
         doc.hits.register(hit.id(), f);
         doc.census.numbers.push(a.id);
     }

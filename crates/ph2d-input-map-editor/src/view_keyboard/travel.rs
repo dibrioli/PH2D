@@ -109,6 +109,30 @@ pub(super) fn paint(
 }
 
 /// Os dois campos «Dead zone (0 to 1)» / «Press at (0 to 1)» numa linha a partir de `r.y` (A, B e C usam ESTES).
+/// O valor de um campo Dead/Press com a marca «D»/«P» à frente (maquete C3): UM pintor para A, B e C.
+pub(crate) fn zone_value(
+    doc: &mut InputMapDoc,
+    ts: &mut TextSystem,
+    scene: &mut VectorScene,
+    ink: CardInk,
+    f: Rect,
+    dead: bool,
+    v: &str,
+) {
+    let mark = tr(if dead {
+        "input_map_try.dead_mark"
+    } else {
+        "input_map_try.press_mark"
+    });
+    let x = f.x + m::SEG_INSET;
+    let mw = ts.prefix_width(mark, m::VALUE_PX);
+    let mr = Rect::new(x, f.y, mw, f.h);
+    line(&mut doc.census, ts, scene, mark, mr, m::VALUE_PX, ink.color(ColorToken::Text2));
+    let vx = x + mw + m::SEG_INSET;
+    let vr = Rect::new(vx, f.y, (f.x + f.w - m::SEG_INSET - vx).max(0.0), f.h);
+    line(&mut doc.census, ts, scene, v, vr, m::VALUE_PX, ink.color(ColorToken::Text1));
+}
+
 pub(crate) fn zone_fields(
     doc: &mut InputMapDoc,
     a: &InputAction,
@@ -147,16 +171,8 @@ pub(crate) fn zone_fields(
             crate::view_list::ring(scene, f, ink);
         }
         let v = typing.map_or_else(|| format!("{value:.2}"), |t| t.buffer.clone());
-        let vr = Rect::new(f.x + m::SEG_INSET, f.y, f.w - m::SEG_INSET * 2.0, f.h);
-        line(
-            &mut doc.census,
-            ts,
-            scene,
-            &v,
-            vr,
-            m::VALUE_PX,
-            ink.color(ColorToken::Text1),
-        );
+        let dead = matches!(hit, ListHit::Dead(_));
+        zone_value(doc, ts, scene, ink, f, dead, &v);
         doc.hits.register(hit.id(), f);
         doc.census.numbers.push(a.id);
     }

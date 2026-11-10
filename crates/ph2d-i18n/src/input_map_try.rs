@@ -46,6 +46,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "No action uses a stick yet. Open the Keyboard view, pick an action, switch to Gamepad and click a stick arrow."
         }
         "input_map_try.stick_of" => "{action} \u{00B7} {stick}",
+        "input_map_try.left_stick" => "Left Stick",
+        "input_map_try.right_stick" => "Right Stick",
+        "input_map_try.dead_mark" => "D",
+        "input_map_try.press_mark" => "P",
         "input_map_try.pushed" => "Pushed",
         "input_map_try.strength" => "Strength",
         "input_map_try.pressed" => "Pressed",

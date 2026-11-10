@@ -55,7 +55,7 @@ fn o_try_it_nao_corta_texto_nem_mostra_numero_morto() {
 }
 
 /// As cenas C1..C4 armadas como a shell as arma (o mapa do dono, a aba pedida).
-fn cena(c: &str) -> Mesa {
+pub(super) fn cena(c: &str) -> Mesa {
     let mut m = Mesa::new(View::Keyboard);
     let map =
         ph2d_app_game::smoke::input_map::arma(&mut m.tab_mut().doc, c).expect("cena do roteiro");

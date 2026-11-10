@@ -6,7 +6,7 @@ regressão. Nada integrado nem enviado.
 ## 1. Identidade
 
 - Branch `line/PainterWatercolor`, merge-base com o main `f254e42bf1`, 55 commits (09/11 a 10/11), 194 ficheiros.
-- HEAD do código `07873cfdcf`; **o commit deste handoff vem por cima** (só docs + a linha do Painter no `CLAUDE.md` §5.1).
+- HEAD do código `a7053be5df`; **o commit deste handoff vem por cima** (só docs + a linha do Painter no `CLAUDE.md` §5.1).
 - Anterior: [mistura e papel, 08/11](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-08_MISTURA_E_PAPEL.md) (já no main). Prompt do estado
   atual: [10f](PROMPT_CONTINUACAO_2026-11-10f_pen_up_incremental.md).
 - Tocado, por crate (linhas + / −): `ph2d-tool-painter` 2127/521 (41 ficheiros) · `ph2d-painter-brush` 1531/355 (17) ·
@@ -25,10 +25,12 @@ Cargo.lock: nenhum '+name' novo · marcadores de conflito: nenhum
 TETOS DE LOC: ✗ 735/700 ph2d-painter-brush/src/dab.rs · ✗ 710/700 ph2d-tool-painter/src/tool/paint/traco_plano_tests.rs
 ```
 
-⛔ **VERMELHO NO FECHO (achado ao escrever este handoff, 10/11):** `architecture_workspace_file_loc_cap::workspace_src_files_under_loc_cap`
-(`ph2d-editor-core`) REPROVA com exactamente esses dois ficheiros (base: `dab.rs` 643, `traco_plano_tests.rs` 658). Os «132/133 censos»
-da árvore combinada não o apanharam. Cura = CORTAR por responsabilidade (nunca subir o tecto): fica para a linha antes de integrar —
-o integrador não deve receber a linha com este gate vermelho. Corra-o por nome:
+✅ **CURADO (era vermelho no fecho, 10/11):** `architecture_workspace_file_loc_cap::workspace_src_files_under_loc_cap`
+(`ph2d-editor-core`) reprovava com esses dois ficheiros (base: `dab.rs` 643, `traco_plano_tests.rs` 658; os «132/133 censos» não o
+apanharam). Curado por `a7053be5df` (partição, sem isenção): as entradas `stamp_dab_textured_masked`/`_po`/`_with` → `dab/mascarado.rs`
+(re-exportadas, caminhos iguais), `dab.rs` 735 → 605; a cauda com a taxa (`o_plano_compoe_a_capsula_inteira`,
+`a_cauda_com_a_taxa_afila_sem_discos` + ajudantes) → `traco_plano_tests/taxa.rs`, 710 → 603. Verde, e verdes por nome
+`the_shell_only_shrinks`, `architecture_panel_loc_cap`, `architecture_widget_loc_cap`. Corra-o por nome:
 `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && bash scripts/cargo-test-narrow.sh ph2d-editor-core architecture_workspace_file_loc_cap`.
 
 Ficheiros PARTILHADOS fora do Painter que a linha mexeu (todos aditivos salvo a nota):
@@ -101,7 +103,8 @@ Nada de suíte completa nem `nextest-impacted` (dono 23/10). fmt ✓ nas 6 crate
 - `ph2d-app-painter`: `painter_preview` 9 · `composite_smoke` 3 · `paint_perf` 9.
 - Censos da árvore combinada 132/133; o único vermelho (`the_shell_only_shrinks`) curado por `07873cfdcf` e conferido por nome.
 - **Mutação:** `as_faixas…` (2 vermelhas) · meia+dente e grão que segue o pincel (red-first) · leitura vazia (red-first) · Choice no pair (red-first).
-- ⛔ **NÃO verde:** `architecture_workspace_file_loc_cap` (§2) — fora da bateria acima; achado depois.
+- `architecture_workspace_file_loc_cap::workspace_src_files_under_loc_cap` estava vermelho (`dab.rs` 735, `traco_plano_tests.rs` 710),
+  curado por `a7053be5df` (partição, §2), verde; por nome depois da partição: `dab::` 26 e `traco_plano` 14 + 2 ignorados (iguais a antes).
 - `agent-loop-profile`: paralelismo 1,09/passo ✗ (alvo ≥ 1,5) · test:check 2,4× ✗ · contexto 225 mil/passo ✓ · edições sem conferir 0,8 % ✓.
 - **NA INTEGRAÇÃO, suíte inteira:** código movido entre ficheiros, `float_roundtrip` (deps/features) e o formato gravado dos presets.
 

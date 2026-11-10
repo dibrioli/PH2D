@@ -193,17 +193,16 @@ um teste de 1100 px (curado com `textos_em`); a contagem `pintados + n == total`
 - Régua nova `ph2d_ui_testkit::caixas_pintadas` (caixa visível de cada primitivo Vello, recortes aplicados) + `MockPanelHost::paint_vector_scene`. Testes `o_cartao_estreito::*` (3) e `ruler::veil::tests::nos_cartoes_a_seta_*`. Mutações: sem pino e sem reserva → vermelho; sem o recorte → verde (defesa em profundidade: o pino já mantém tudo dentro).
 - Foto `22_cartao_estreito.png` POR TIRAR: esperou a vez da placa (a app aberta de `line-InputMap` tinha-a) e o prazo acabou. Tirar: `docked.w = 400` temporário em `cartao_solto::lugar`, `fotografa_cena.sh PH2D_NEST_SMOKE=4 1930 1040 docs/Timeline/fotos/22_cartao_estreito.png 9`, reverter.
 
-## Rodada 3i (10/11): nada da Timeline se pinta fora do cartão estreito
-
-- Dono (foto, cartão a ~400 px): a ⟷ da duração pintava-se à direita da borda. Causa: `ruler_veil` punha a ⟷ SEMPRE `DUR_ARROW_OFFSET` (40) + 18 px à direita do fim, e `ruler::paint` desenha DEPOIS do `pop_layer` das faixas, sem recorte; o enquadrar deixava só 5 % de folga (15 px a 300 px).
-- Cura (só cartões; clássico byte a byte): `ruler_fim::{abre,fecha}_recorte` recorta tudo o que a régua pinta (véu, fim, laço, playhead, ⟷, marcadores) na área de tempo; as leituras de arrasto viram de lado na borda (`alca_estado::poe_faixa`). `ruler_veil::onde_a_seta`: a ⟷ encosta na borda; com o fim além (vista à mão) fica PRESA com um ▸, o alvo = o de antes + o ▸, o arrasto relativo continua a mudar a duração; presa, a leitura vai à esquerda.
-- `view::apply_fit_clip` reserva `DUR_ARROW_ROOM` (58 px, ≤ meia área) à direita com fim autorado: a vista enquadrada re-enquadra ao estreitar (regra 3f) com a ⟷ inteira e solta.
-- Régua nova `ph2d_ui_testkit::caixas_pintadas` (caixa visível de cada primitivo Vello, recortes aplicados) + `MockPanelHost::paint_vector_scene`. Testes `o_cartao_estreito::*` (3) e `ruler::veil::tests::nos_cartoes_a_seta_*`. Mutações: sem pino e sem reserva → vermelho; sem o recorte → verde (defesa em profundidade: o pino já mantém tudo dentro).
-- Foto `22_cartao_estreito.png` POR TIRAR: esperou a vez da placa (a app aberta de `line-InputMap` tinha-a) e o prazo acabou. Tirar: `docked.w = 400` temporário em `cartao_solto::lugar`, `fotografa_cena.sh PH2D_NEST_SMOKE=4 1930 1040 docs/Timeline/fotos/22_cartao_estreito.png 9`, reverter.
-
 ## Rodada 3j (10/11): o olho da faixa, de ponta a ponta
 
 - Dono: «veja se o olhinho está fazendo o trabalho dele». Controlo morto conferido elo a elo: clique `TIMELINE_LANE_MUTE[i]` → `event.rs:416` (`SetLaneMuted{muted: !snap}`) → `fase_timeline_view.rs:43` → `intent_apply.rs:511` (`edit_at` no host aberto, um passo de undo) → `stack_frames.rs:310` e `stack_eval.rs:240` saltam a faixa muda (e `nest.rs:232`, `nest_map.rs:360`) → `snapshot.rs:610` → olho `faixas_coluna` (`Eye`/`EyeClosed`, `OlhoMudo`) e peças a `TIMELINE_PECA_MUDA_ALPHA`. **Nada partido.**
 - O defeito era a CENA: o shake movia X só 0,15 (≈15 px) por 0,5 s — invisível. Agora `shake` = 0,25 s ±0,6 X, peça [2,75; 3,75) em loop (4 sacudidas); eprintln, `smoke_nest.md` e o gate `a_montagem_poe_cada_container_onde_o_eprintln_diz` dizem-no. Shell líquido 0.
 - Faltava a DICA do olho (nenhum modo tinha): `faixas_coluna::dica_do_olho` (`panel.timeline.lane_mute` / `lane_unmute`, diz o que o clique fará), a mesma no clássico e nos cartões.
 - Teste novo de costura: `as_faixas_nos_cartoes::o_olho_da_faixa_tira_e_devolve_a_faixa_da_pose` (clique pintado → `apply_intent` → `apply_from_doc` num `World`: muda = a pose sem a faixa; reabre = a sacudida; Ctrl+Z; cartões e clássico).
+
+## Rodada 3k (10/11): a faixa muda nas cores originais, meio apagadas
+
+- Dono: «com olhinho fechado as cores da strip e alças devem ser as originais, meio apagadas; o cursor e as setas, as do olho aberto». Causa (`strip_paint`): na faixa muda os cantos pintavam-se a PLENO (verde/vermelho sem desbote, sombra inteira, barras de mudança inteiras), a alça de fade virava CINZA (`Border`), e o estado era forçado a `Repouso` — sem hover/aperto e sem cor publicada, logo o cursor não se tingia.
+- Cura (só cartões; clássico byte a byte): porta ÚNICA `pecas_cartoes::desbote(muda)` (= `TIMELINE_PECA_MUDA_ALPHA`), lida por `cores`, `tons_da_mistura`, a curva do fade, as barras de mudança e `alca_estado::pinta_desbotada` (forma + `pinta_sombra_de_alca(.., k)`). Apertada/arrasto = a pleno; o hover desbotado; `publica_cor` leva o repouso VIVO. O fade cinza fica só para `locked` (e para o clássico mudo).
+- Testes `alca_estado::tests::faixa_muda::*` (2): cor a cor na ordem de pintura, RGB igual e α = viva × K em `Theme::ALL` (pior matiz 0,0000°), cantos/fade/topo/pé/contorno/nome presentes desbotados; estados e cursor (hover e aperto) = repouso da faixa viva. Mutações: fade em `Border` → vermelho; alças sem `k` → vermelho.
+- Fotos: [23_faixa_muda.png](../fotos/23_faixa_muda.png) · [zoom shake × swing](../fotos/23_faixa_muda_zoom.png).

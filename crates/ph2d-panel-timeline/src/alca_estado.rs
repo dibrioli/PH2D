@@ -136,6 +136,20 @@ pub(crate) fn pinta(
     rects: &[Rect],
     tris: &[Tri],
 ) {
+    pinta_desbotada(ctx, theme, (estado, 1.0), repouso, rects, tris);
+}
+
+/// [`pinta`] com a opacidade `k` da faixa ([`crate::pecas_cartoes::desbote`]) na forma e na sombra;
+/// apertada ou no arrasto a alça vem inteira (o que a mão segura vê-se). O cursor leva o repouso.
+pub(crate) fn pinta_desbotada(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    (estado, k): (EstadoAlca, f32),
+    repouso: Color,
+    rects: &[Rect],
+    tris: &[Tri],
+) {
+    let k = if estado.apertada() { 1.0 } else { k };
     let d = estado.cresce();
     let rects: Vec<Rect> = rects.iter().map(|r| cresce_rect(*r, d)).collect();
     let tris: Vec<Tri> = tris.iter().map(|t| cresce_tri(*t, d)).collect();
@@ -152,9 +166,9 @@ pub(crate) fn pinta(
                 .stroke_path(&s, Affine::IDENTITY, &b, &tri_path(*t));
         }
     }
-    crate::strip_paint::pinta_sombra_de_alca(ctx, &rects, &tris);
+    crate::strip_paint::pinta_sombra_de_alca(ctx, &rects, &tris, k);
     publica_cor(ctx, estado, repouso);
-    let c = cor(estado, repouso, theme);
+    let c = cor(estado, repouso, theme).multiply_alpha(k);
     for r in rects {
         fill_rounded_rect(ctx.scene, r, Radius::Xs.px(), c);
     }

@@ -136,7 +136,17 @@ fn pinta_faixa_lendo<R>(
     prepara: impl FnOnce(&mut WidgetStore),
     le: impl FnOnce(&WidgetStore) -> R,
 ) -> (Vec<DrawOp>, Vec<(NodeId, Rect)>, Alvos, R) {
-    let snap = snap_duas_pecas();
+    pinta_faixa_de(theme, cartoes, &snap_duas_pecas(), prepara, le)
+}
+
+/// [`pinta_faixa_lendo`] sobre `snap` (a faixa muda, por exemplo).
+fn pinta_faixa_de<R>(
+    theme: Theme,
+    cartoes: bool,
+    snap: &TimelineViewSnapshot,
+    prepara: impl FnOnce(&mut WidgetStore),
+    le: impl FnOnce(&WidgetStore) -> R,
+) -> (Vec<DrawOp>, Vec<(NodeId, Rect)>, Alvos, R) {
     ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(cartoes));
     let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::TimelinePanel>();
     prepara(host.store_mut());
@@ -172,7 +182,7 @@ fn pinta_faixa_lendo<R>(
         ..TimelinePanelState::default()
     };
     ctx.scene.record();
-    crate::stack_lane_paint::paint(&mut ctx, theme, &g, view, &state, &snap);
+    crate::stack_lane_paint::paint(&mut ctx, theme, &g, view, &state, snap);
     let ops = ctx.scene.take_record();
     let hits: Vec<(NodeId, Rect)> = ctx.host.hit_index_mut().iter_registrations().collect();
     let store = ctx.host.store();
@@ -460,3 +470,6 @@ fn o_cursor_da_faixa_sai_do_alvo_registado() {
 
 #[path = "alca_cursor_tests.rs"]
 mod cursor;
+
+#[path = "faixa_muda_tests.rs"]
+mod faixa_muda;

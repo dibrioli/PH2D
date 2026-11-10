@@ -75,13 +75,15 @@ pub(crate) struct Cores {
     pub anel: Option<[Color; 2]>,
 }
 
+/// ⭐ **A porta ÚNICA do desbote da faixa muda** (dono 10/11: «as cores originais, meio apagadas»):
+/// a opacidade que o corpo, a mistura, o rótulo e as alças da strip multiplicam — o matiz nunca muda.
+pub(crate) const fn desbote(muda: bool) -> f32 {
+    if muda { TIMELINE_PECA_MUDA_ALPHA } else { 1.0 }
+}
+
 /// As tintas de `p`.
 pub(crate) fn cores(p: &PecaDesenho<'_>) -> Cores {
-    let k = if p.muda {
-        TIMELINE_PECA_MUDA_ALPHA
-    } else {
-        1.0
-    };
+    let k = desbote(p.muda);
     let cor = tinta(p.tinta, p.theme);
     let de = |t: TimelineTinta| tinta(t, p.theme).multiply_alpha(k);
     Cores {
@@ -227,7 +229,7 @@ pub(crate) fn pinta_mistura(ctx: &mut PaintCtx, theme: Theme, r: Rect, muda: boo
 
 /// `(listra, fundo, contorno)` da mistura — a porta que o pintor e o portão leem.
 pub(crate) fn tons_da_mistura(theme: Theme, muda: bool) -> (Color, Color, Color) {
-    let k = if muda { TIMELINE_PECA_MUDA_ALPHA } else { 1.0 };
+    let k = desbote(muda);
     let claro = tinta(TimelineTinta::TextoCabecalho, theme);
     (
         claro.multiply_alpha(TIMELINE_MISTURA_ALPHA * k),

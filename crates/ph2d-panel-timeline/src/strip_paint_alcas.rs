@@ -12,7 +12,7 @@ use super::*;
 /// so what is drawn and what is clickable start at the same pixel.
 pub(super) fn paint_corner(
     ctx: &mut PaintCtx,
-    (theme, estado): (Theme, EstadoAlca),
+    (theme, estado, k): (Theme, EstadoAlca, f32),
     body: Rect,
     left: bool,
     top: bool,
@@ -35,7 +35,7 @@ pub(super) fn paint_corner(
         Rect::new(x_out, y_edge, arm, w),
         Rect::new(x_edge, y_out, w, arm),
     ];
-    crate::alca_estado::pinta(ctx, theme, estado, color, &bracos, &[]);
+    crate::alca_estado::pinta_desbotada(ctx, theme, (estado, k), color, &bracos, &[]);
 }
 
 /// A guia (a altura da strip, `Xs` além de cada lado) e a leitura de `segundos` junto de `x`,
@@ -57,11 +57,17 @@ pub(super) fn guia_e_leitura(
 /// A sombra de uma alça feita de `rects` e `tris`, pintada ANTES dela, só nos cartões (a lei da
 /// câmera, `paint_flight::sombra_de_alca`: a mesma forma, `Thin` mais larga de cada lado). As
 /// alças das strips e as da régua (loop, duração) passam todas por aqui.
-pub(crate) fn pinta_sombra_de_alca(ctx: &mut PaintCtx, rects: &[Rect], tris: &[[(f32, f32); 3]]) {
+pub(crate) fn pinta_sombra_de_alca(
+    ctx: &mut PaintCtx,
+    rects: &[Rect],
+    tris: &[[(f32, f32); 3]],
+    k: f32,
+) {
     if !ph2d_editor_core::panel::cards::ferramenta::cards_on() {
         return;
     }
     let (sombra, g) = ph2d_editor_core::paint_flight::sombra_de_alca(ctx.host.theme());
+    let sombra = sombra.multiply_alpha(k);
     for r in rects {
         let cresce = Rect::new(r.x - g, r.y - g, r.w + g * 2.0, r.h + g * 2.0);
         fill_rounded_rect(ctx.scene, cresce, Radius::Xs.px() + g, sombra);
@@ -78,7 +84,7 @@ pub(crate) fn pinta_sombra_de_alca(ctx: &mut PaintCtx, rects: &[Rect], tris: &[[
 /// The fade handle: a vertical line centred at `xc` plus a ◀ ▶ arrow pair at mid-height.
 pub(super) fn paint_fade_handle(
     ctx: &mut PaintCtx,
-    (theme, estado): (Theme, EstadoAlca),
+    (theme, estado, k): (Theme, EstadoAlca, f32),
     xc: f32,
     y: f32,
     h: f32,
@@ -100,7 +106,7 @@ pub(super) fn paint_fade_handle(
             (xc + gap, my + ARROW_SZ),
         ],
     ];
-    crate::alca_estado::pinta(ctx, theme, estado, color, &[barra], &setas);
+    crate::alca_estado::pinta_desbotada(ctx, theme, (estado, k), color, &[barra], &setas);
 }
 
 fn tri(pts: [(f32, f32); 3]) -> BezPath {

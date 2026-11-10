@@ -143,12 +143,12 @@ pub(crate) fn paint_strip(
     // Nos cartões o destaque é o dos três estados (`alca_estado`); o Accent no hover é o clássico.
     let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
     let is_hot = |edge: u8| -> bool { !dim && !cartoes && hot == Some(id_de(edge)) };
-    let estado_de = |ctx: &PaintCtx, edge: u8| {
-        if dim {
-            EstadoAlca::Repouso
-        } else {
-            EstadoAlca::nos_cartoes(ctx, id_de(edge))
-        }
+    // Nos cartões a faixa muda tem os MESMOS estados, desbotados por uma porta só (dono 10/11).
+    let estado_de = |ctx: &PaintCtx, edge: u8| EstadoAlca::nos_cartoes(ctx, id_de(edge));
+    let k = if cartoes {
+        crate::pecas_cartoes::desbote(dim)
+    } else {
+        1.0
     };
     let peca = crate::pecas_cartoes::peca_do_strip(s, tinta, dim, theme);
     if fase == Fase::Topo {
@@ -207,7 +207,7 @@ pub(crate) fn paint_strip(
                 ctx.scene,
                 bar,
                 Radius::Xs.px(),
-                resolve(corner_token(stretch), theme),
+                resolve(corner_token(stretch), theme).multiply_alpha(k),
             );
         }
     }
@@ -226,7 +226,7 @@ pub(crate) fn paint_strip(
         let e = estado_de(ctx, corner_hit_edge(stretch, edge));
         paint_corner(
             ctx,
-            (theme, e),
+            (theme, e, k),
             body,
             edge == 0,
             stretch,
@@ -256,7 +256,7 @@ pub(crate) fn paint_strip(
             (b, s.ease_locked_out, false, EASE_OUT),
         ] {
             let color = resolve(
-                if locked || dim {
+                if locked || (dim && !cartoes) {
                     ColorToken::Border
                 } else if is_hot(edge) {
                     // A LOCKED grip never lights up: it takes no hit, and a control that
@@ -274,7 +274,7 @@ pub(crate) fn paint_strip(
                 estado_de(ctx, edge)
             };
             let xc = x + EASE_BAR_W * 0.5;
-            paint_fade_handle(ctx, (theme, e), xc, g.y, g.h, color);
+            paint_fade_handle(ctx, (theme, e, k), xc, g.y, g.h, color);
             // A leitura do fade é o COMPRIMENTO dele (o que o arrasto muda).
             let len = if at_left {
                 s.lead_in.max(s.blend_in)
@@ -337,7 +337,13 @@ fn paint_fade_region(
         );
         paint_hatch(ctx, rect, resolve(ColorToken::Border, theme), false);
     }
-    paint_fade_curve(ctx, theme, rect, curve);
+    let k = crate::pecas_cartoes::desbote(cartoes == Some(true));
+    paint_fade_curve(
+        ctx,
+        resolve(ColorToken::Text2, theme).multiply_alpha(k),
+        rect,
+        curve,
+    );
 }
 
 /// **As quatro faixas de fade de um strip, em pixels** — a porta ÚNICA que o pintor listra e
@@ -466,7 +472,7 @@ pub(crate) struct FadeCurve {
 /// ⚠️ **A altura vem de [`ph2d_timeline::fade_ramp`], a MESMA função que o avaliador usa.**
 /// Reimplementar o `smoothstep` aqui daria duas respostas para *"que forma tem este fade?"*,
 /// e elas divergiriam exatamente onde ninguém confere: numa screenshot.
-fn paint_fade_curve(ctx: &mut PaintCtx, theme: Theme, rect: Rect, fade: FadeCurve) {
+fn paint_fade_curve(ctx: &mut PaintCtx, cor: Color, rect: Rect, fade: FadeCurve) {
     let pts = fade_curve_points(rect, fade);
     if pts.is_empty() {
         return;
@@ -482,7 +488,7 @@ fn paint_fade_curve(ctx: &mut PaintCtx, theme: Theme, rect: Rect, fade: FadeCurv
     ctx.scene.inner_mut().stroke(
         &Stroke::new(f64::from(FADE_CURVE_W)),
         Affine::IDENTITY,
-        resolve(ColorToken::Text2, theme),
+        cor,
         None,
         &p,
     );

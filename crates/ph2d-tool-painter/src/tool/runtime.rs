@@ -469,18 +469,12 @@ impl PainterTool {
         // marque-o, para a próxima drenagem dela recusar confinamento e refazer inteiro. Espelho do
         // `composited = None` que a pista GPU faz na direção oposta (`take_preview_dirty`).
         self.gpu_lane_stale = true;
-        let (w, h) = self.source_size;
-        // A mask row's grayscale-VIEW eye is open → show that mask's grayscale instead of the composite.
-        if let Some(gray) = self.mask_grayscale_view_pixels() {
-            self.composited = Some(Arc::new(gray));
-            self.preview_upload_bbox = None;
-            self.last_drain_branch = crate::tool::DrainBranch::Gray;
-            return (
-                Arc::clone(self.composited.as_ref().expect("just set")),
-                w,
-                h,
-            );
+        // A mask row's grayscale-VIEW eye is open → show that mask's grayscale ([`super::vista_cinza`]).
+        if let Some(cinza) = self.drena_a_vista_cinza() {
+            return cinza;
         }
+        self.composited_cinza = None;
+        let (w, h) = self.source_size;
         // The trivial stack (single visible opaque Normal raster) stays the
         // zero-copy fast path. Any non-trivial stack (≥2 layers, or a layer with
         // opacity<1 / non-Normal blend / hidden / an adjustment) MUST be

@@ -8,6 +8,7 @@
 //! live pixels, so a slider drag on the selected texture layer updates the preview immediately.
 
 use super::super::*;
+use super::passo::prop;
 use crate::layers::{HARD_CAP_LAYERS, TextureLayer};
 use ph2d_color::{RampColorMode, RampInterp, RampStop};
 use ph2d_painter_brush::{
@@ -83,37 +84,45 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
+    /// B05.3: a edição da Texture activa é UM passo de undo (`gesto` = `(prop, índice)` de um arrasto, que
+    /// coalesce; `None` = clique) e re-pinta a camada ao vivo.
+    fn edita_textura(&mut self, gesto: Option<(u8, usize)>, muda: impl FnOnce(&mut TextureLayer)) {
+        let Some(id) = self.active_texture_id() else {
+            return;
+        };
+        let g = gesto.and_then(|(p, i)| super::passo::arrasto(id, p, i));
+        self.passo_de_camada(g, |t| {
+            if let Some(x) = t.layers.texture_mut(id) {
+                muda(x);
+            }
+            t.rerender_texture_layer(id);
+        });
+    }
+
     // ── Per-property setters (act on the active texture layer; each re-renders live) ──
 
     /// Set the texture kind from a wire discriminant and reset the per-pattern params to that kind's
     /// `param_specs` defaults (so each pattern starts from sensible knobs).
     pub fn set_texture_layer_kind(&mut self, k: u8) {
-        let Some(id) = self.active_texture_id() else {
-            return;
-        };
-        if let Some(t) = self.layers.texture_mut(id) {
+        self.edita_textura(None, |t| {
             t.kind = k;
             let mut params = [0.5f32; MAX_TEX_PARAMS];
             for (i, s) in param_specs(TextureKind::from_u8(k)).iter().enumerate() {
                 params[i] = s.default;
             }
             t.params = params;
-        }
-        self.rerender_texture_layer(id);
+        });
     }
 
     /// Set per-pattern parameter `slot` from the slider's `0..1` track (stored normalized).
     pub fn set_texture_layer_param_norm(&mut self, slot: usize, t01: f32) {
-        let Some(id) = self.active_texture_id() else {
+        if slot >= MAX_TEX_PARAMS {
             return;
-        };
-        if slot < MAX_TEX_PARAMS
-            && let Some(t) = self.layers.texture_mut(id)
-        {
+        }
+        self.edita_textura(Some((prop::TEX_PARAM, slot)), |t| {
             let kind = TextureKind::from_u8(t.kind);
             t.params[slot] = t01.clamp(0.0, ph2d_painter_brush::param_escala(kind, slot).u_max());
-        }
-        self.rerender_texture_layer(id);
+        });
     }
 
     /// Set the texture scale for `axis` (`0` = X, `1` = Y) to a REAL value, clamped to
@@ -121,152 +130,104 @@ impl PainterTool {
     /// directly (Enio 2026-06-25) — NOT a `0..1` track — so the layer must clamp like the brush's
     /// [`super::super::PainterTool::set_brush_texture_size`], else any value ≥ 1 mapped past the bound.
     pub fn set_texture_layer_size(&mut self, axis: usize, v: f32) {
-        let Some(id) = self.active_texture_id() else {
+        if axis >= 2 {
             return;
-        };
-        if axis < 2
-            && let Some(t) = self.layers.texture_mut(id)
-        {
-            t.size[axis] = v.clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
         }
-        self.rerender_texture_layer(id);
+        self.edita_textura(Some((prop::TEX_TAMANHO, axis)), |t| {
+            t.size[axis] = v.clamp(TEX_SIZE_MIN, TEX_SIZE_MAX);
+        });
     }
 
     /// Set the texture offset for `axis` (`0` = X, `1` = Y) to a REAL value, clamped to
     /// `[`[`TEX_OFFSET_MIN`]`, `[`TEX_OFFSET_MAX`]`]` — the real-value counterpart of the brush's
     /// [`super::super::PainterTool::set_brush_texture_offset`] (the field emits real, not `0..1`).
     pub fn set_texture_layer_offset(&mut self, axis: usize, v: f32) {
-        let Some(id) = self.active_texture_id() else {
+        if axis >= 2 {
             return;
-        };
-        if axis < 2
-            && let Some(t) = self.layers.texture_mut(id)
-        {
-            t.offset[axis] = v.clamp(TEX_OFFSET_MIN, TEX_OFFSET_MAX);
         }
-        self.rerender_texture_layer(id);
+        self.edita_textura(Some((prop::TEX_DESLOCA, axis)), |t| {
+            t.offset[axis] = v.clamp(TEX_OFFSET_MIN, TEX_OFFSET_MAX);
+        });
     }
 
     // ── Color Ramp setters (mirror the brush ramp ops, but on the layer's own ramp) ──
 
     /// Toggle whether the Color Ramp recolours the texture (off → grayscale fill).
     pub fn toggle_texture_layer_ramp_enabled(&mut self) {
-        let Some(id) = self.active_texture_id() else {
-            return;
-        };
-        if let Some(t) = self.layers.texture_mut(id) {
-            t.ramp_enabled = !t.ramp_enabled;
-        }
-        self.rerender_texture_layer(id);
+        self.edita_textura(None, |t| t.ramp_enabled = !t.ramp_enabled);
     }
 
     /// Reset the active texture layer's **Color Ramp** to defaults (ramp off, default gradient, alpha
     /// off) — the layer-editor counterpart of [`super::super::PainterTool::reset_brush_color_ramp`].
     pub fn reset_texture_layer_ramp(&mut self) {
-        let Some(id) = self.active_texture_id() else {
-            return;
-        };
-        if let Some(t) = self.layers.texture_mut(id) {
+        self.edita_textura(None, |t| {
             t.ramp = crate::layers::rampa_nova();
             t.ramp_enabled = false;
             t.ramp_alpha_mode = RampAlphaMode::None.to_u8();
-        }
-        self.rerender_texture_layer(id);
+        });
     }
 
     /// Set the ramp colour-interpolation space (`RampColorMode` wire).
     pub fn set_texture_layer_ramp_mode(&mut self, m: u8) {
-        let Some(id) = self.active_texture_id() else {
-            return;
-        };
-        if let Some(t) = self.layers.texture_mut(id) {
-            t.ramp.color_mode = RampColorMode::from_u8(m);
-        }
-        self.rerender_texture_layer(id);
+        self.edita_textura(None, |t| t.ramp.color_mode = RampColorMode::from_u8(m));
     }
 
     /// Set the ramp interpolation mode (`RampInterp` wire).
     pub fn set_texture_layer_ramp_interp(&mut self, i: u8) {
-        let Some(id) = self.active_texture_id() else {
-            return;
-        };
-        if let Some(t) = self.layers.texture_mut(id) {
-            t.ramp.interp = RampInterp::from_u8(i);
-        }
-        self.rerender_texture_layer(id);
+        self.edita_textura(None, |t| t.ramp.interp = RampInterp::from_u8(i));
     }
 
     /// Set what the ramp colour's alpha does (`RampAlphaMode` wire): opaque recolour / translucent.
     pub fn set_texture_layer_ramp_alpha_mode(&mut self, m: u8) {
-        let Some(id) = self.active_texture_id() else {
-            return;
-        };
-        if let Some(t) = self.layers.texture_mut(id) {
+        self.edita_textura(None, |t| {
             t.ramp_alpha_mode = RampAlphaMode::from_u8(m).to_u8();
-        }
-        self.rerender_texture_layer(id);
+        });
     }
 
     /// Move the ramp stop with stable `sid` to normalized position `pos` (tracked by id, so it may be
     /// dragged past its neighbours).
     pub fn texture_layer_ramp_move_stop(&mut self, sid: u8, pos: f32) {
-        let Some(id) = self.active_texture_id() else {
-            return;
-        };
-        if let Some(t) = self.layers.texture_mut(id)
-            && let Some(idx) = t.ramp.index_of_id(sid)
-        {
-            t.ramp.set_position(idx, pos.clamp(0.0, 1.0));
-        }
-        self.rerender_texture_layer(id);
+        self.edita_textura(Some((prop::TEX_RAMPA_POS, usize::from(sid))), |t| {
+            if let Some(idx) = t.ramp.index_of_id(sid) {
+                t.ramp.set_position(idx, pos.clamp(0.0, 1.0));
+            }
+        });
     }
 
     /// Set the colour of the ramp stop with stable `sid` from straight-sRGB **RGBA** bytes (picker
     /// space): RGB → the ramp's linear space, alpha straight.
     pub fn texture_layer_ramp_set_stop_color(&mut self, sid: u8, rgba: [u8; 4]) {
-        let Some(id) = self.active_texture_id() else {
-            return;
-        };
         let lin = ph2d_color::srgb::srgb_to_linear_byte;
-        if let Some(t) = self.layers.texture_mut(id)
-            && let Some(idx) = t.ramp.index_of_id(sid)
-        {
-            t.ramp.set_color(
-                idx,
-                [
-                    lin(rgba[0]),
-                    lin(rgba[1]),
-                    lin(rgba[2]),
-                    f32::from(rgba[3]) / 255.0,
-                ],
-            );
-        }
-        self.rerender_texture_layer(id);
+        self.edita_textura(Some((prop::TEX_RAMPA_COR, usize::from(sid))), |t| {
+            if let Some(idx) = t.ramp.index_of_id(sid) {
+                t.ramp.set_color(
+                    idx,
+                    [
+                        lin(rgba[0]),
+                        lin(rgba[1]),
+                        lin(rgba[2]),
+                        f32::from(rgba[3]) / 255.0,
+                    ],
+                );
+            }
+        });
     }
 
     /// Add a ramp stop at the midpoint of the largest gap (coloured on the current gradient there).
     pub fn texture_layer_ramp_add_stop(&mut self) {
-        let Some(id) = self.active_texture_id() else {
-            return;
-        };
-        if let Some(t) = self.layers.texture_mut(id) {
+        self.edita_textura(None, |t| {
             let pos = largest_gap_midpoint(&t.ramp);
             let color = t.ramp.eval(pos);
             t.ramp.add_stop(RampStop::new(pos, color));
-        }
-        self.rerender_texture_layer(id);
+        });
     }
 
     /// Remove the last (highest-position) ramp stop (the ramp always keeps at least one).
     pub fn texture_layer_ramp_remove_last_stop(&mut self) {
-        let Some(id) = self.active_texture_id() else {
-            return;
-        };
-        if let Some(t) = self.layers.texture_mut(id) {
+        self.edita_textura(None, |t| {
             let last = t.ramp.len().saturating_sub(1);
             t.ramp.remove_stop(last);
-        }
-        self.rerender_texture_layer(id);
+        });
     }
 
     /// Route a Texture-layer panel event: the "+ Texture" create action (always), plus — when a

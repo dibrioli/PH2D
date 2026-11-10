@@ -38,27 +38,7 @@ impl PainterTool {
         self.mask_view_grayscale.map(|id| id.0)
     }
 
-    /// The mask's grayscale as an opaque RGBA frame for the preview, when a mask-view eye is open (and the
-    /// mask still exists). `None` otherwise → normal compositing. Shows the RAW painted mask (no invert).
-    #[must_use]
-    pub(crate) fn mask_grayscale_view_pixels(&self) -> Option<Vec<u8>> {
-        let src = self.mask_grayscale_view_source()?;
-        let (w, h) = self.source_size;
-        let n = (w as usize) * (h as usize);
-        let mut out = vec![0u8; n * 4];
-        for i in 0..n {
-            let g = (crate::compositor::mask_value(src, i) * 255.0)
-                .round()
-                .clamp(0.0, 255.0) as u8;
-            out[i * 4] = g;
-            out[i * 4 + 1] = g;
-            out[i * 4 + 2] = g;
-            out[i * 4 + 3] = 255;
-        }
-        Some(out)
-    }
-
-    /// The mask whose grayscale the preview shows (see [`Self::mask_grayscale_view_pixels`]), without
+    /// The mask whose grayscale the preview shows (see `PainterTool::mask_grayscale_view_pixels` in `tool::vista_cinza`), without
     /// building the frame.
     pub(crate) fn mask_grayscale_view_source(&self) -> Option<&[u8]> {
         let mv = self.mask_view_grayscale?;

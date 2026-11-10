@@ -112,6 +112,7 @@ impl RasterEditTool for PainterTool {
             c
         };
         self.composited = Some(Arc::new(composited));
+        self.composited_cinza = None;
         let px = self
             .composited
             .as_ref()

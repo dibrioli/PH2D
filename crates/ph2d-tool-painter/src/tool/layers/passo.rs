@@ -15,6 +15,11 @@ pub(crate) mod prop {
     pub const OPACIDADE: u8 = 6;
     pub const IMPASTO: u8 = 7;
     pub const NOME: u8 = 8;
+    pub const TEX_PARAM: u8 = 9;
+    pub const TEX_TAMANHO: u8 = 10;
+    pub const TEX_DESLOCA: u8 = 11;
+    pub const TEX_RAMPA_POS: u8 = 12;
+    pub const TEX_RAMPA_COR: u8 = 13;
 }
 
 /// Os quadros de um arrasto de `p`/`i` sobre `id` coalescem num passo; qualquer outro passo parte o run.

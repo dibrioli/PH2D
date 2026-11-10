@@ -336,6 +336,8 @@ pub struct PainterTool {
     /// The layer-system mask whose GRAYSCALE the canvas shows (its row's "view" eye is open); `None` (the
     /// default) shows the masked effect. View-only, transient (not saved). See `layers::mask_view`.
     mask_view_grayscale: Option<RtLayerId>,
+    /// A máscara cujo cinza o `composited` guarda (a vista quente: [`vista_cinza`]); `None` = outra coisa.
+    composited_cinza: Option<RtLayerId>,
     /// A gravação de uma macro em curso ([`crate::macro_track`]); `None` = nada a gravar.
     pub(crate) macro_gravacao: Option<Box<crate::macro_track::Gravacao>>,
     /// O encaixe de uma reprodução por cima ([`crate::macro_track::encaixe`]); `None` = a tela é a gravada.
@@ -436,6 +438,7 @@ impl Default for PainterTool {
             shape_source_revision: 0,
             shape_source_preview_dirty: false,
             mask_view_grayscale: None,
+            composited_cinza: None,
             macro_gravacao: None,
             macro_por_cima: None,
             desde_o_ultimo_up: None,
@@ -479,6 +482,9 @@ pub(crate) mod papel;
 mod papel_texturizado; // o «Textured Paper» do New Image (dono 30/10)
 mod reescrita_da_gravacao; // editar uma etapa da macro reescreve a imagem (W8 item 2b)
 mod runtime;
+mod vista_cinza; // o ramo Gray do dreno (B52.R4 + B10.A1)
+#[cfg(test)]
+mod vista_cinza_tests;
 mod trait_impls;
 mod trait_impls_raster;
 mod undo_audit; // a rede de verificação do S3 (doc 28 §7) — irmã do runtime, por assunto // `impl RasterEditTool` split from `trait_impls` (workspace file-LOC cap)

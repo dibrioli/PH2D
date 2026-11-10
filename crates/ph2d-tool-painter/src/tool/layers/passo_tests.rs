@@ -247,7 +247,69 @@ fn censo() -> Vec<(&'static str, K, Acto, Acto, bool)> {
             },
             true,
         ),
+        tex("set_texture_layer_kind", |t, _| {
+            t.set_texture_layer_kind(ph2d_painter_brush::TextureKind::Clouds.to_u8() + 1);
+        }),
+        tex("set_texture_layer_param_norm", |t, _| {
+            t.set_texture_layer_param_norm(0, 0.123);
+        }),
+        tex("set_texture_layer_size", |t, _| {
+            t.set_texture_layer_size(0, 2.5)
+        }),
+        tex("set_texture_layer_offset", |t, _| {
+            t.set_texture_layer_offset(1, 0.25);
+        }),
+        tex("toggle_texture_layer_ramp_enabled", |t, _| {
+            t.toggle_texture_layer_ramp_enabled();
+        }),
+        tex("reset_texture_layer_ramp", |t, _| {
+            t.reset_texture_layer_ramp()
+        }),
+        tex("set_texture_layer_ramp_mode", |t, _| {
+            t.set_texture_layer_ramp_mode(0);
+        }),
+        tex("set_texture_layer_ramp_interp", |t, _| {
+            t.set_texture_layer_ramp_interp(0);
+        }),
+        tex("set_texture_layer_ramp_alpha_mode", |t, _| {
+            t.set_texture_layer_ramp_alpha_mode(1);
+        }),
+        tex("texture_layer_ramp_move_stop", |t, _| {
+            let sid = primeira_paragem(t);
+            t.texture_layer_ramp_move_stop(sid, 0.37);
+        }),
+        tex("texture_layer_ramp_set_stop_color", |t, _| {
+            let sid = primeira_paragem(t);
+            t.texture_layer_ramp_set_stop_color(sid, [200, 40, 10, 255]);
+        }),
+        tex("texture_layer_ramp_add_stop", |t, _| {
+            t.texture_layer_ramp_add_stop();
+        }),
+        tex("texture_layer_ramp_remove_last_stop", |t, _| {
+            t.texture_layer_ramp_remove_last_stop();
+        }),
     ]
+}
+
+/// B05.3 — os 12 setters da camada Texture: o preparo cria a camada (activa) fora do passo.
+fn tex(nome: &'static str, acto: Acto) -> (&'static str, K, Acto, Acto, bool) {
+    (
+        nome,
+        K::Invert,
+        |t, _| {
+            t.add_texture_layer().expect("a camada Texture");
+        },
+        acto,
+        true,
+    )
+}
+
+fn primeira_paragem(t: &PainterTool) -> u8 {
+    let a = t.layers.active().expect("a Texture activa");
+    match &t.layers.get(a).expect("a camada").kind {
+        LayerKind::Texture(x) => x.ramp.stops()[0].id,
+        _ => panic!("a activa não é Texture"),
+    }
 }
 
 /// B05.1 + B05.3 + B05.A1 — cada setter: pilha mudou (controlo), não assado, revisão sobe, +1 passo, e o

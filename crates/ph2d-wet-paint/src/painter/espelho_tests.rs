@@ -233,6 +233,84 @@ fn o_espelho_incremental_e_a_copia_total_ao_bit() {
     );
 }
 
+/// B11.5: trocar o papel com a sessão viva (`seed_paper_with`, `instala_papel`) chega ao espelho e à tela — sem isto
+/// a óptica fora pintava o papel velho sob a tinta (a costura). O mesmo papel outra vez não suja nada.
+#[test]
+fn trocar_o_papel_com_a_sessao_viva_chega_ao_espelho() {
+    let mut e = motor();
+    let mut r = Lcg(0x5EED_B115);
+    let mut inc = Espelho::default();
+    for _ in 0..3 {
+        traco(&mut e, &mut r);
+    }
+    for _ in 0..4 {
+        e.step_simulation();
+    }
+    let leis: [&(dyn Fn(i64, i64) -> f64 + Sync); 3] = [
+        &|x, y| f64::from(((x * 7 + y * 3).rem_euclid(11)) as i32) / 10.0,
+        &|x, y| if (x / 9 + y / 5) % 2 == 0 { 0.9 } else { 0.2 },
+        &|x, _| f64::from((x.rem_euclid(5)) as i32) * 0.2,
+    ];
+    for (k, lei) in leis.iter().enumerate() {
+        for porta in ["seed_paper_with", "instala_papel", "o mesmo papel"] {
+            e.copia_para(&mut inc);
+            let _ = e.take_dirty();
+            let antes = e.layers[e.active_layer].grid.paper.clone();
+            match porta {
+                "seed_paper_with" => e.seed_paper_with(*lei),
+                "instala_papel" => {
+                    let lei_b = |x: i64, y: i64| 1.0 - lei(x, y);
+                    let plano = e.papel_semeado(e.paper_tooth(), &lei_b);
+                    e.instala_papel(plano);
+                }
+                _ => {
+                    let plano = e.layers[e.active_layer].grid.paper.clone();
+                    e.instala_papel(plano);
+                }
+            }
+            let mudou = !f32s(&antes, &e.layers[e.active_layer].grid.paper);
+            assert_eq!(mudou, porta != "o mesmo papel", "lei {k} · {porta}");
+            let tela_suja = !matches!(e.take_dirty(), Dirty::Clean);
+            e.copia_para(&mut inc);
+            for (c, l) in inc.camadas.iter().zip(&e.layers) {
+                assert_eq!(
+                    difere(&c.grid, &l.grid, &l.grid),
+                    None,
+                    "lei {k} · {porta}: espelho ≠ grade"
+                );
+            }
+            assert_eq!(
+                imagem(&e, &inc.camadas_render()),
+                imagem(&e, &camadas_do_motor(&e)),
+                "lei {k} · {porta}: a imagem do espelho ≠ a da grade"
+            );
+            assert_eq!(tela_suja, mudou, "lei {k} · {porta}: a tela não sabe que o papel mudou");
+        }
+    }
+}
+
+/// O preço de conferir o papel (B11.5) a 4K, no pior caso (o mesmo papel: a varredura inteira, nada a sujar), contra o
+/// `instala_papel` com o sujo já `Full` (sem conferir). Intercalado, o mínimo de 9. Medida: `--ignored`.
+#[test]
+#[ignore = "medida"]
+fn mede_conferir_o_papel_4k() {
+    let mut e = Engine::new(3840, 2160);
+    let (mut confere, mut salta) = (f64::MAX, f64::MAX);
+    for _ in 0..9 {
+        let plano = e.layers[0].grid.paper.clone();
+        e.mark_dirty_full();
+        let t = std::time::Instant::now();
+        e.instala_papel(plano);
+        salta = salta.min(t.elapsed().as_secs_f64() * 1e3);
+        let _ = (e.take_dirty(), e.take_espelho_sujo());
+        let plano = e.layers[0].grid.paper.clone();
+        let t = std::time::Instant::now();
+        e.instala_papel(plano);
+        confere = confere.min(t.elapsed().as_secs_f64() * 1e3);
+    }
+    println!("4K instala_papel: sujo Full {salta:.3} ms · a conferir (mesmo papel) {confere:.3} ms");
+}
+
 /// O custo de `copia_para` com `Dirty::Full` (no lugar, e a reconstrução) e os bytes por célula. Medida: `--ignored`.
 #[test]
 #[ignore = "medida"]

@@ -77,6 +77,10 @@ const IDLE_SLEEP: Duration = Duration::from_millis(4);
 /// poça de três traços).
 ///
 /// A 4 ms a taxa é **99% da bloqueante** com o tick preso num dígito.
+///
+/// ⚠️ A tabela mede SÓ o ramo `mostra` (sem o compositor da óptica). Os factos (Dry Speed, Gravity) e os lotes
+/// adiados, e todo o tique com o compositor, pedem pela [`super::WetSession::try_bring_home_now`] (B12.A1): lá o
+/// estágio a 4K passa dos 4 ms e a espera falhava quadro após quadro.
 const TICK_WAIT: Duration = IDLE_SLEEP;
 
 /// **Onde o engine está.** Os canais moram no [`SimWorker`] (persistentes); o slot só diz o lado.
@@ -117,6 +121,9 @@ pub(in crate::tool::paint) struct SimWorker {
     otica: Option<otica::DoFioPrincipal>,
     /// B11.A1: o worker morreu em pânico e levou o motor ([`super::WetSession::perde_o_motor`]).
     perdido: bool,
+    /// B12.A1: um pedido sem espera ficou sem resposta — o motor pode estar no canal de volta, e o tique tem de o ir
+    /// buscar mesmo que nada mais o chame ([`super::WetSession::motor_pedido`]).
+    pedido: bool,
 }
 
 /// Copia o motor que está nesta thread; um motor com o worker não se alcança por `&self` e PANICA
@@ -239,6 +246,9 @@ impl super::WetSession {
             self.perde_o_motor();
             return;
         };
+        if let Some(w) = self.worker.as_mut() {
+            w.pedido = false;
+        }
         self.engine = EngineSlot::Here(engine);
         self.grava_que_voltou();
     }
@@ -314,6 +324,11 @@ impl super::WetSession {
         true
     }
 
+    /// Um pedido do tique ([`Self::try_bring_home_now`]) ficou por responder: o motor anda a caminho de casa.
+    pub(in crate::tool::paint) fn motor_pedido(&self) -> bool {
+        matches!(self.engine, EngineSlot::Away) && self.worker.as_ref().is_some_and(|w| w.pedido)
+    }
+
     /// O motor desta sessão morreu com o worker ([`Self::perde_o_motor`]).
     pub(in crate::tool::paint) fn perdeu_o_motor(&self) -> bool {
         self.worker.as_ref().is_some_and(|w| w.perdido)
@@ -328,6 +343,9 @@ impl super::WetSession {
 
     /// O resultado de um pedido sem espera: o motor (se veio) vai para casa, e a fita grava a resposta.
     fn recebe(&mut self, voltou: Option<Box<Engine>>) -> bool {
+        if let Some(w) = self.worker.as_mut() {
+            w.pedido = voltou.is_none();
+        }
         let Some(engine) = voltou else {
             if let Some(f) = &self.fita {
                 fita::trava(f).grava(RespostaDoWorker::NaoVoltou);

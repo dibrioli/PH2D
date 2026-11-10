@@ -208,7 +208,7 @@ impl PainterTool {
         // tilt are sim forces): the tick reconciles with the stamp's door.
         let facts_moved = sess.applied != facts;
         let adiados = !sess.adiados.is_empty();
-        if mostra || facts_moved || adiados {
+        if mostra || facts_moved || adiados || sess.motor_pedido() {
             // ⚠️ **PEDE e não espera.** O tick é a única porta que pode voltar
             // de mãos vazias (a água corre a ~33 Hz, o display a 60 ⇒ mostrar
             // um passo no frame seguinte é invisível), e bloquear aqui custava
@@ -225,7 +225,14 @@ impl PainterTool {
             // (`hand_off_sim`), e consertar o `return` não mudou um Hz. As duas
             // mutações estão documentadas em `offthread_tests.rs`.
             let t_wait = std::time::Instant::now();
-            let got = sess.try_bring_home();
+            // B12.A1: só o `mostra` (sem compositor) compra a espera do `TICK_WAIT`; factos e adiados (e todo o
+            // tique com o compositor) pedem sem esperar — o estágio a 4K passa dos 4 ms e a espera repetia-se por
+            // quadro. O pedido sem resposta fica marcado e o tique seguinte vai buscá-lo.
+            let got = if mostra {
+                sess.try_bring_home()
+            } else {
+                sess.try_bring_home_now()
+            };
             crate::wet_diag::note_wait(t_wait.elapsed().as_secs_f32() * 1e3);
             if got {
                 if morto {

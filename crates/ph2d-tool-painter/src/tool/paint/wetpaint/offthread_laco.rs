@@ -61,6 +61,7 @@ impl SimWorker {
             ritmo: ui,
             otica,
             perdido: false,
+            pedido: false,
         }
     }
 }

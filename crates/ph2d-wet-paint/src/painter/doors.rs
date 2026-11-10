@@ -427,6 +427,7 @@ impl Engine {
         mode: crate::par::Rows,
     ) {
         let k = self.paper_tooth();
+        let antigo = self.papel_por_conferir();
         let g = &mut self.layers[self.active_layer].grid;
         let s = g.s;
         crate::par::walk_rows(mode, &mut g.paper[..g.rows * s], s, |y, row| {
@@ -435,6 +436,7 @@ impl Engine {
                 *cell = crate::paper::dente(h, k);
             }
         });
+        self.suja_o_papel_que_mudou(antigo.as_deref());
     }
 
     /// O plano que [`Self::seed_paper_with`] escreveria com o dente `k`, sem tocar o motor: o preparo do toque o semeia
@@ -457,7 +459,26 @@ impl Engine {
     pub fn instala_papel(&mut self, plano: Vec<f32>) {
         let g = &mut self.layers[self.active_layer].grid;
         assert_eq!(plano.len(), g.paper.len());
-        g.paper = plano;
+        let antigo = std::mem::replace(&mut g.paper, plano);
+        self.suja_o_papel_que_mudou(Some(&antigo));
+    }
+
+    /// O papel de antes de uma troca, se alguém o tem de conferir: com a tela e o espelho já `Full` (o motor novo de
+    /// cada sessão) nada a sujar, e a cópia não se paga.
+    fn papel_por_conferir(&self) -> Option<Vec<f32>> {
+        let cheio = matches!(self.dirty, super::Dirty::Full)
+            && matches!(self.espelho_sujo, super::Dirty::Full);
+        (!cheio).then(|| self.layers[self.active_layer].grid.paper.clone())
+    }
+
+    /// B11.5: o papel trocado com a sessão viva suja a caixa do que MUDOU (o espelho e a tela) — sem isto a óptica fora
+    /// pintava o papel velho sob a tinta. `None` = o sujo já é `Full`.
+    fn suja_o_papel_que_mudou(&mut self, antigo: Option<&[f32]>) {
+        let Some(antigo) = antigo else { return };
+        let g = &self.layers[self.active_layer].grid;
+        if let Some(caixa) = caixa_do_que_mudou(antigo, &g.paper, g.s) {
+            self.merge_dirty(caixa.0, caixa.1, caixa.2, caixa.3);
+        }
     }
 
     /// ⭐ **A janela que sobra POUSA** nas `lanes` (as PONTAS RECTAS do anfitrião, J6): o traço cortado a direito
@@ -490,4 +511,21 @@ impl Engine {
             t.drop_remainder();
         }
     }
+}
+
+/// A caixa `(x0, y0, x1, y1)` em células da grade onde `a` e `b` diferem ao bit (linhas de `s`); `None` = iguais.
+fn caixa_do_que_mudou(a: &[f32], b: &[f32], s: usize) -> Option<(i32, i32, i32, i32)> {
+    let mut caixa: Option<(usize, usize, usize, usize)> = None;
+    for (y, (la, lb)) in a.chunks(s).zip(b.chunks(s)).enumerate() {
+        let difere = |x: &usize| la[*x].to_bits() != lb[*x].to_bits();
+        let Some(x0) = (0..la.len()).find(difere) else {
+            continue;
+        };
+        let x1 = (0..la.len()).rev().find(difere).unwrap_or(x0);
+        caixa = Some(match caixa {
+            None => (x0, y, x1, y),
+            Some((a0, b0, a1, _)) => (a0.min(x0), b0, a1.max(x1), y),
+        });
+    }
+    caixa.map(|(x0, y0, x1, y1)| (x0 as i32, y0 as i32, x1 as i32, y1 as i32))
 }

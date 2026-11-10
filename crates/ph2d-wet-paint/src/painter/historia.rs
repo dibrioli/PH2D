@@ -41,6 +41,28 @@ fn faixas_do_passo(g: &Grid, f: i64) -> Vec<[i64; 4]> {
     out
 }
 
+/// O que um restauro pode mudar na camada INTEIRA fora dos tiles: os planos preguiçosos que nascem/morrem, o
+/// caminho do Real Oil e o tecto do Smooth Edges (o alcance da óptica).
+type FormaGlobal = ([usize; 9], bool, u32);
+
+fn forma_global(g: &Grid) -> FormaGlobal {
+    (
+        [
+            g.altura.len(),
+            g.espessura.len(),
+            g.crista.len(),
+            g.nivelado.len(),
+            g.material.len(),
+            g.aparencia.len(),
+            g.oleo.len(),
+            g.tinta.len(),
+            g.pigmento.len(),
+        ],
+        g.oleo_real,
+        g.suave_teto.to_bits(),
+    )
+}
+
 impl Engine {
     // -----------------------------------------------------------------------
     // History (SPEC §15): per-layer undo/redo ring, depth 6.
@@ -225,6 +247,8 @@ impl Engine {
         // O «depois» que o redo devolve é o passo TERMINADO (o undo_vivo fotografa o resto no mesmo instante).
         self.drain_step();
         let agora = self.passo_em_voo();
+        let caixa = self.caixa_do_restauro(false);
+        let forma = forma_global(&self.layers[self.active_layer].grid);
         let layer = &mut self.layers[self.active_layer];
         let Some(reg) = layer.undo.pop() else {
             return false;
@@ -236,13 +260,15 @@ impl Engine {
         let paper_changed = reg.restaura(&mut layer.grid, None);
         layer.desde = Some(Registo::abre(&layer.grid));
         self.repoe_passo(&reg.passo);
-        self.depois_do_restauro(paper_changed);
+        self.depois_do_restauro(paper_changed, caixa, forma);
         true
     }
 
     /// Refaz; o passo em voo de agora entra no registo inverso (um undo devolve-o) e o do registo é reposto.
     pub fn redo(&mut self) -> bool {
         let agora = self.passo_em_voo();
+        let caixa = self.caixa_do_restauro(true);
+        let forma = forma_global(&self.layers[self.active_layer].grid);
         let fundo = self.fundo_da_historia;
         let layer = &mut self.layers[self.active_layer];
         let Some(reg) = layer.redo.pop() else {
@@ -260,18 +286,36 @@ impl Engine {
         }
         layer.desde = (!layer.redo.is_empty()).then(|| Registo::abre(&layer.grid));
         self.repoe_passo(&reg.passo);
-        self.depois_do_restauro(paper_changed);
+        self.depois_do_restauro(paper_changed, caixa, forma);
         true
     }
 
-    fn depois_do_restauro(&mut self, paper_changed: bool) {
+    /// B12.2: o sujo é a CAIXA do que o restauro escreveu (`caixa`, de antes dele); `Full` só se o papel mudou ou um
+    /// estado de toda a camada ([`forma_global`]) mudou. Passo vazio (sem caixa) não suja nada.
+    fn depois_do_restauro(
+        &mut self,
+        paper_changed: bool,
+        caixa: Option<[usize; 4]>,
+        forma: FormaGlobal,
+    ) {
         if paper_changed {
             let g = &self.layers[self.active_layer].grid;
             self.paper_preset = g.paper_preset;
             self.paper_sheet = g.paper_sheet;
             self.rebake_paper();
         }
-        self.mark_dirty_full();
+        let g = &self.layers[self.active_layer].grid;
+        if forma != forma_global(g) {
+            return self.mark_dirty_full();
+        }
+        if let Some([x0, y0, x1, y1]) = caixa {
+            let (w, h) = (g.w as i32, g.h as i32);
+            let (x0, y0) = ((x0 as i32).max(1), (y0 as i32).max(1));
+            let (x1, y1) = ((x1 as i32 - 1).min(w), (y1 as i32 - 1).min(h));
+            if x0 <= x1 && y0 <= y1 {
+                self.merge_dirty(x0, y0, x1, y1);
+            }
+        }
     }
 
     /// A caixa (células com o pad, meio-aberta) de tudo o que o próximo `undo`/`redo` escreve na grade. `None`: nada.

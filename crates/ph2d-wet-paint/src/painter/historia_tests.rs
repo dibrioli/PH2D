@@ -534,3 +534,107 @@ fn historia_o_passo_marca_a_faixa_viva_e_nao_o_casco() {
     assert!(e.redo());
     assert_eq!(hash_grid(e.active_grid()), fim, "redo do 2.º traço");
 }
+
+/// As células (índice com o pad) em que algum plano que a tela desenha difere AO BIT entre `a` e `b`.
+fn celulas_que_diferem(a: &crate::grid::GridSnapshot, b: &crate::grid::GridSnapshot) -> Vec<usize> {
+    fn bits<T: std::fmt::Debug>(v: &[T], i: usize) -> String {
+        v.get(i).map(|x| format!("{x:?}")).unwrap_or_default()
+    }
+    let f32s = |i: usize| {
+        [
+            (&a.film, &b.film),
+            (&a.susp, &b.susp),
+            (&a.sett, &b.sett),
+            (&a.relevo, &b.relevo),
+            (&a.altura, &b.altura),
+            (&a.espessura, &b.espessura),
+            (&a.crista, &b.crista),
+            (&a.nivelado, &b.nivelado),
+            (&a.vela, &b.vela),
+        ]
+        .iter()
+        .any(|(x, y)| x.get(i).map(|v| v.to_bits()) != y.get(i).map(|v| v.to_bits()))
+    };
+    (0..a.film.len())
+        .filter(|&i| {
+            f32s(i)
+                || bits(&a.susp_rgb, i) != bits(&b.susp_rgb, i)
+                || bits(&a.sett_rgb, i) != bits(&b.sett_rgb, i)
+                || bits(&a.material, i) != bits(&b.material, i)
+                || bits(&a.aparencia, i) != bits(&b.aparencia, i)
+                || bits(&a.oleo, i) != bits(&b.oleo, i)
+                || bits(&a.tinta, i) != bits(&b.tinta, i)
+                || bits(&a.pigmento, i) != bits(&b.pigmento, i)
+                || a.wet.get(i) != b.wet.get(i)
+                || a.bloom.get(i) != b.bloom.get(i)
+        })
+        .collect()
+}
+
+/// **B12.2 — o restauro suja a CAIXA do que escreve, não a tela** (a porta `Full`): cada célula que o undo/redo muda
+/// AO BIT (todos os planos que a tela desenha) cai dentro do sujo, que é um `Rect` — o composite da caixa dá a mesma
+/// tela que o do `Full`. Um passo vazio não suja nada.
+#[test]
+fn historia_o_restauro_suja_a_caixa_e_nao_a_tela() {
+    let mut e = Engine::new(600, 400);
+    e.sliders.water = 1.0;
+    traco(&mut e, 40.0, 40.0, 5);
+    corre(&mut e, 5);
+    traco(&mut e, 300.0, 200.0, 5);
+    corre(&mut e, 5);
+    e.drain_step();
+    for refaz in [false, true] {
+        let antes = snapshot_grid(e.active_grid());
+        e.take_dirty();
+        assert!(if refaz { e.redo() } else { e.undo() });
+        let depois = snapshot_grid(e.active_grid());
+        let d = e.take_dirty();
+        let Dirty::Rect { x0, y0, x1, y1 } = d else {
+            panic!("refaz={refaz}: o sujo do restauro é {d:?}, não a caixa");
+        };
+        let s = e.active_grid().s;
+        let mudadas = celulas_que_diferem(&antes, &depois);
+        assert!(
+            !mudadas.is_empty(),
+            "refaz={refaz}: o restauro não mudou nada"
+        );
+        let fora = mudadas
+            .iter()
+            .filter(|&&i| {
+                let (x, y) = ((i % s) as i32, (i / s) as i32);
+                !(x0..=x1).contains(&x) || !(y0..=y1).contains(&y)
+            })
+            .count();
+        assert_eq!(fora, 0, "refaz={refaz}: células mudadas fora do sujo {d:?}");
+    }
+    // Passo vazio: capturar sem escrever e desfazer não suja nada.
+    e.capture_history();
+    e.take_dirty();
+    assert!(e.undo());
+    assert_eq!(e.take_dirty(), Dirty::Clean, "o passo vazio sujou a tela");
+}
+
+/// **B12.2, a régua a 3840×2160:** o Ctrl+Z de um traço molhado compõe a caixa dele, não as 8 294 400 células.
+#[test]
+fn historia_o_undo_a_4k_compoe_a_caixa_do_traco() {
+    let mut e = Engine::new(3840, 2160);
+    e.sliders.water = 1.0;
+    traco(&mut e, 1900.0, 1000.0, 8);
+    corre(&mut e, 3);
+    e.drain_step();
+    e.take_dirty();
+    assert!(e.undo());
+    let area = match e.take_dirty() {
+        Dirty::Rect { x0, y0, x1, y1 } => i64::from(x1 - x0 + 1) * i64::from(y1 - y0 + 1),
+        Dirty::Full => 3840 * 2160,
+        Dirty::Clean => 0,
+    };
+    eprintln!(
+        "B12.2 undo 3840x2160: celulas sujas {area} (Full = {})",
+        3840 * 2160
+    );
+    assert!(
+        area > 0 && area < 3840 * 2160 / 20,
+        "o undo compõe {area} células"
+    );
+}

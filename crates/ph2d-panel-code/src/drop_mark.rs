@@ -48,7 +48,7 @@ impl CodeView {
         };
         let tr = self.text_rect();
         let (pad, f) = (Spacing::Sm.px(), font());
-        let line = f + Spacing::Xs.px();
+        let line = crate::chrome::font_shown() + Spacing::Xs.px();
         let chars = d.hint.iter().map(|l| l.chars().count()).max().unwrap_or(0);
         let w = (chars as f32 * self.m.advance + 2.0 * pad).min(tr.w);
         let h = d.hint.len() as f32 * line + 2.0 * pad;

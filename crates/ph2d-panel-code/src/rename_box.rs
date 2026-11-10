@@ -36,7 +36,7 @@ impl CodeView {
         };
         let tr = self.text_rect();
         let pad = Spacing::Xs.px();
-        let line = font() + 2.0 * Spacing::Sm.px();
+        let line = crate::chrome::font_shown() + 2.0 * Spacing::Sm.px();
         let note = r.error.unwrap_or(r.hint);
         let chars = ph2d_editor_core::math::safe_clamp_ord(
             note.chars().count(),

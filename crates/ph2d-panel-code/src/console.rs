@@ -155,7 +155,7 @@ pub fn title_text() -> String {
 }
 
 fn row_h() -> f32 {
-    ph2d_editor_core::ui_scale::ao_pixel(chrome::font() * LineHeight::Normal.ratio())
+    ph2d_editor_core::ui_scale::ao_pixel(chrome::font_shown() * LineHeight::Normal.ratio())
 }
 
 /// Os limites de um nó do leitor de ecrã.

@@ -61,9 +61,9 @@ pub(super) fn pad() -> f32 {
 }
 
 /// O tamanho e o peso de cada letra: os MESMOS na medida e na pintura (`paint_text` = MEDIUM,
-/// `paint_text_title` = SEMI_BOLD).
+/// `paint_text_title` = SEMI_BOLD). Nominal: o `TextSystem` aplica o tamanho da letra da interface.
 pub(super) fn face(f: Font) -> (f32, FontWeight) {
-    let px = |t: TypeToken| ph2d_text::displayed_font_px(t.px());
+    let px = |t: TypeToken| t.px();
     match f {
         Font::Prose => (px(TypeToken::Base), FontWeight::MEDIUM),
         Font::Strong => (px(TypeToken::Base), FontWeight::SEMI_BOLD),

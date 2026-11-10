@@ -92,9 +92,14 @@ impl Ui {
     }
 }
 
-/// O tamanho do texto das peças.
+/// O tamanho NOMINAL do texto das peças: o `TextSystem` aplica o tamanho da letra da interface.
 pub(crate) fn font() -> f32 {
-    ph2d_text::displayed_font_px(TypeToken::Sm.px())
+    TypeToken::Sm.px()
+}
+
+/// O tamanho em que [`font`] sai desenhado — para alturas de linha, nunca para um pintor.
+pub(crate) fn font_shown() -> f32 {
+    ph2d_text::displayed_font_px(font())
 }
 
 /// O fundo de uma faixa, com a linha de borda em cima (`top`) ou em baixo.

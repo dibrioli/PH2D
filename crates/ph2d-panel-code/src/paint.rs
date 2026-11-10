@@ -422,7 +422,7 @@ impl CodeView {
     /// O «…» no fim de cada linha com dobra fechada.
     fn paint_fold_pills(&self, scene: &mut VectorScene, ts: &mut TextSystem, pal: &Palette) {
         let label = ph2d_i18n::tr("code.fold.ellipsis");
-        let font = ph2d_text::displayed_font_px(TypeToken::Sm.px());
+        let font = TypeToken::Sm.px();
         let pad = Spacing::Xs.px();
         let w = label_column_width(ts, font, [label]) + pad * 2.0;
         // O «…» também no fim de uma linha mostrada só até ao tecto (`render_cap`).

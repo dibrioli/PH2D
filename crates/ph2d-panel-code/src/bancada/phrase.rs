@@ -203,7 +203,7 @@ impl BancadaView {
         self.paint_phrase(who, "", phrase, scene, ts, theme);
         let ui = Ui::new(*theme);
         let s = Spacing::Sm.px();
-        let f = chrome::font();
+        let f = chrome::font_shown();
         let dot = super::chip_r();
         let w = dot * 2.0 + s * 2.0 + s + chrome::label_w(ts, &holder.name);
         let r = Rect::new(self.pointer.0 + s, self.pointer.1 + s, w, f + s * 2.0);

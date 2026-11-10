@@ -110,7 +110,9 @@ impl CodeView {
         pal: &Palette,
     ) {
         let tr = self.text_rect();
-        let font = ph2d_text::displayed_font_px(TypeToken::Sm.px());
+        let font = TypeToken::Sm.px();
+        // O `paint_text` sobe o topo metade do que a letra cresceu; a linha de base é medida.
+        let lift = (ph2d_text::displayed_font_px(font) - font) * 0.5;
         for g in frame.debug.ghosts {
             let Some(row) = self.row_of(g.line) else {
                 continue;
@@ -135,7 +137,7 @@ impl CodeView {
             let w = shaped.width().min(room);
             // Na linha de base do código ao lado (centrar a caixa da letra descia-o ~2 px; foto 09/11).
             let base = shaped.lines().next().map_or(font, |l| l.metrics().baseline);
-            let ty = row.y + self.m.text_dy + self.m.baseline - base;
+            let ty = row.y + self.m.text_dy + self.m.baseline - base + lift;
             let (pad, inset) = (Spacing::Sm.px(), Spacing::Xxs.px());
             let frame = Rect {
                 x: x - pad,

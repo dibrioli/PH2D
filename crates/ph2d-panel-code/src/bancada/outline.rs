@@ -17,7 +17,7 @@ use ph2d_vector::VectorScene;
 /// secções ficam em [`ROW_H_PX`].
 #[must_use]
 pub fn outline_entry_h() -> f32 {
-    ph2d_editor_core::ui_scale::ao_pixel(chrome::font() * LineHeight::Loose.ratio())
+    ph2d_editor_core::ui_scale::ao_pixel(chrome::font_shown() * LineHeight::Loose.ratio())
 }
 
 /// A rolagem de uma lista da Bancada: a caixa das linhas e a altura do conteúdo.

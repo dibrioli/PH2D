@@ -40,7 +40,7 @@ fn outline_min_h() -> f32 {
 /// O raio do ponto da cor de um objecto ao lado do nome (o quadradinho da camada da GEF02,
 /// `lado_do_quadradinho`, feito redondo).
 pub(crate) fn chip_r() -> f32 {
-    (crate::chrome::font() - Spacing::Xs.px()) * 0.5
+    (crate::chrome::font_shown() - Spacing::Xs.px()) * 0.5
 }
 
 /// Quanto o balão espera pelo rato que saiu da marca a caminho dele (ou dele para fora) antes de

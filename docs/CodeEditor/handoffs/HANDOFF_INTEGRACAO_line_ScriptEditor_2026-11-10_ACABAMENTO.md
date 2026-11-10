@@ -149,6 +149,16 @@ popover, tamanho da letra 1×, limiar do «In this script», cobertura de `value
 por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, divisor): itens G/H e os doc-comments de
 `peso_exato.rs` e `splitter.rs`.
 
+- **Ícones do cabeçalho SCRIPTS (dono 10/11, `cdaddf4cb1`):** o «+» e o «‹» com a altura das maiúsculas do título. Novo
+  `ph2d_text::cap_height_px(nominal)`; `chrome::icon_on_caps` (ph2d-panel-code) põe a TINTA (traço incluído, `expand_stroke`)
+  em `cap_height_px(LIST_TITLE_PX)` com o meio no meio das maiúsculas como o pintor as põe (topo do texto em `ao_pixel`),
+  escolhendo escala e y inteiro do encaixe de menor erro; alvo do clique intacto (22 px). Só este cabeçalho usa o padrão
+  (o lixo da linha e os outros cartões ficam). Medido Normal: maiúsculas 9,28 px; tinta antes + 7,23 / ‹ 6,30, depois
+  + 9,37 / ‹ 9,33 (Large: 10,71 → 10,92 / 10,76). Teste
+  `os_icones_do_cabecalho_scripts_tem_a_altura_das_maiusculas_do_titulo` (Normal e Large, ± 0,5 px altura e meio); mutação
+  (o cabeçalho de volta a `chrome::icon_button`) → vermelho nos 4 casos. Foto: [ai_icones.png](../ferramentas/smoke/ai_icones.png) ·
+  [zoom 4×](../ferramentas/smoke/ai_icones_zoom.png) — título, + e ‹ com 9 px de tinta a partir da mesma linha.
+
 Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 20,85 s); a 2.ª:
 
 ```

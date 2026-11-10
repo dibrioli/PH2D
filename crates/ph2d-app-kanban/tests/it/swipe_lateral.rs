@@ -4,10 +4,10 @@ use ph2d_editor_core::screens::hero::board_view::{BoardScroll, scroll};
 use ph2d_kanban_model::{FieldDef, FieldId, FieldKind, FracKey, KanbanOp, Meta, Record};
 use ph2d_kanban_views::table::Column;
 fn gemeos(mut g: Mesa, mut r: Mesa, p: (f32, f32), x: impl Fn(&mut Mesa) -> f64) {
-    let passos: [([f32; 2], &[(f32, bool)]); 3] = [
-        ([-48.0, 0.0], &[(-48.0, true)]),
-        ([0.0, -48.0], &[(-48.0, false)]),
-        ([-32.0, -16.0], &[(-32.0, true), (-16.0, false)]),
+    let passos = [
+        ([-48.0_f32, 0.0], &[(-48.0_f32, true)][..]),
+        ([0.0, -48.0], &[(-48.0, false)][..]),
+        ([-32.0, -16.0], &[(-32.0, true), (-16.0, false)][..]),
     ];
     for (i, ([dx, dy], rodas)) in passos.into_iter().enumerate() {
         let antes = x(&mut g);

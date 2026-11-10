@@ -119,6 +119,7 @@
 - 📚 [Arquitetura / norte / perf: mais (29) lições — caminho DERIVADO × do ARTISTA · ASSAR (7,7×)](reference_topic_architecture_north_perf_lessons.md)
 - [fixture (19)](reference_topic_fixture_discipline.md)
 - [Provas de mutação (43) — 4 controlos, pré-voo das âncoras · cercas em SEQUÊNCIA](reference_topic_mutation_proofs.md)
+- ⭐⭐⭐ [Dono 10/11: física FLUIDA com limites de junta e tamanhos de forma animados; o «mínimo» do limite é o do OBJETO](project_physics_fluid_under_animation_2026_11_10.md)
 - ⭐ [Animated Sprite: smoke do dono feito 07/11 e 09/11; próximo = Align (GEF 28)](project_gef_animated_sprite_delivered_without_owner_smoke_2026_11_07.md)
 - ⛔ [Janela passada de 300 mil/passo: uma rodada de smoke = um agente novo; a janela só decide e confere (05/11)](feedback_a_main_window_past_300k_delegates_each_round.md)
 

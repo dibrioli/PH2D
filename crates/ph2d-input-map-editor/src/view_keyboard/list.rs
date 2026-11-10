@@ -18,6 +18,8 @@ use crate::ids;
 use crate::view_list::text::line;
 
 const ROW_H: f32 = m::FIELD_H - m::SEG_PAD;
+/// O marcador da cor da acção: um quadrado de cantos redondos (maquete B1).
+const MARK: f32 = m::KEY_MARK_BOX - m::SEG_PAD;
 
 const GROUPS: [(Group, &str); 3] = [
     (
@@ -50,7 +52,7 @@ pub(super) fn width(doc: &InputMapDoc, ts: &mut TextSystem) -> f32 {
         .iter()
         .map(|(_, k)| ts.prefix_width(&tr(k).to_uppercase(), m::LABEL_PX))
         .fold(0.0_f32, f32::max);
-    let row = m::KEY_MARK_PX + m::SEG_INSET * 4.0 + names + count_w;
+    let row = MARK + m::SEG_INSET * 4.0 + names + count_w;
     let buttons = [
         tr("input_map_keyboard.add"),
         tr("input_map_keyboard.remove"),
@@ -68,7 +70,7 @@ pub(super) fn paint(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     ink: CardInk,
-) {
+) -> f32 {
     let x = r.x + m::LIST_PAD_X;
     let w = (r.w - m::LIST_PAD_X * 2.0).max(0.0);
     let mut y = r.y + m::LIST_PAD_X;
@@ -121,12 +123,12 @@ pub(super) fn paint(
                     ink.color(ColorToken::CardFieldHover),
                 );
             }
-            let dot = m::KEY_MARK_PX;
+            let dot = MARK;
             let dr = Rect::new(row.x + m::SEG_INSET, row.y + (row.h - dot) * 0.5, dot, dot);
             fill_rounded_rect(
                 scene,
                 dr,
-                dot * 0.5,
+                m::SEG_PAD,
                 ink.color(crate::palette::of_action(id)),
             );
             let count = count_text(n);
@@ -150,12 +152,13 @@ pub(super) fn paint(
                 &count,
                 cr,
                 m::VALUE_PX,
-                ink.color(ColorToken::Text2),
+                ink.color(ColorToken::Text3),
             );
             target(doc, KbHit::Row(id), row);
         }
     }
-    let bottom = r.y + r.h - m::LIST_PAD_BOTTOM - m::FIELD_H;
+    // Logo abaixo do último grupo (maquete B1), nunca presos ao fundo de um cartão alto.
+    y += m::FIELD_ROW_GAP;
     let (add, remove, name) = (
         tr("input_map_keyboard.add"),
         tr("input_map_keyboard.remove"),
@@ -163,17 +166,16 @@ pub(super) fn paint(
     );
     let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, x, w);
     if doc.kb.adding {
-        let fy = bottom - m::FIELD_H - m::FIELD_ROW_GAP;
-        c.full(
+        y = c.full(
             None,
             Widget::Text {
                 id: ids::NEW_NAME,
                 placeholder: name,
             },
-            fy.max(y),
-        );
+            y,
+        ) + m::FIELD_ROW_GAP;
     }
-    c.row(
+    let end = c.row(
         &[
             Cell::new(Widget::Button {
                 id: KbHit::Add.id(),
@@ -186,8 +188,9 @@ pub(super) fn paint(
                 primary: false,
             }),
         ],
-        bottom.max(y),
+        y,
     );
     doc.kb.targets.push(KbHit::Add);
     doc.kb.targets.push(KbHit::Remove);
+    end + m::LIST_PAD_BOTTOM
 }

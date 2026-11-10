@@ -23,8 +23,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Click to add this to the open action. Around a stick, each arrow is one direction."
         }
         "input_map_keyboard.also" => "Also:",
-        "input_map_keyboard.hint" => "Point at a key to see which actions use it.",
-        "input_map_keyboard.unused" => "{key}: no action uses it.",
+        "input_map_keyboard.unused" => "no action uses it.",
         "input_map_keyboard.users" => "{key}: {list}.",
         "input_map_keyboard.user" => "{action} ({who})",
         "input_map_keyboard.nobody" => "nobody reads it",

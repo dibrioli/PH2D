@@ -30,6 +30,8 @@ pub(crate) const WIDTH: f32 = 14.7; // LITERAL-PX-OK: passos de tecla, maquete B
 pub(crate) const ROWS: f32 = 4.0; // LITERAL-PX-OK: linhas do desenho
 /// O passo não passa deste múltiplo da altura de um campo.
 pub(crate) const PITCH_MAX_ROWS: f32 = 1.6; // LITERAL-PX-OK: múltiplo do token de linha
+/// O tecto da B: o teclado enche o cartão como na maquete B1 (a C fica no de cima).
+pub(crate) const PITCH_MAX_ROWS_B: f32 = 2.0; // LITERAL-PX-OK: múltiplo do token de linha
 
 const ARROW: f32 = 1.45; // LITERAL-PX-OK: passos de tecla, maquete B1
 const UP: u32 = 0xF700;
@@ -58,10 +60,10 @@ pub(crate) fn keyboard() -> Vec<KeyCap> {
 pub(crate) fn arrow_icon(key: Key) -> Option<ph2d_editor_core::icons::IconId> {
     use ph2d_editor_core::icons::IconId;
     match key.0 {
-        UP => Some(IconId::ChevronUp),
-        DOWN => Some(IconId::ChevronDown),
-        LEFT => Some(IconId::ChevronLeft),
-        RIGHT => Some(IconId::ChevronRight),
+        UP => Some(IconId::ArrowUp),
+        DOWN => Some(IconId::ArrowDown),
+        LEFT => Some(IconId::ArrowLeft),
+        RIGHT => Some(IconId::ArrowRight),
         _ => None,
     }
 }
@@ -69,15 +71,18 @@ pub(crate) fn arrow_icon(key: Key) -> Option<ph2d_editor_core::icons::IconId> {
 /// A forma de um alvo do comando.
 #[derive(Clone, Copy)]
 pub(crate) enum PadShape {
-    /// Pílula (gatilhos e ombros): centro, meia largura, meia altura.
+    /// Pílula (gatilhos, ombros, Back e Start): a largura cresce até caber o nome.
     Pill,
-    /// Círculo (botões e manches): centro, raio = meia altura.
+    /// Botão redondo da face (A B X Y): raio = meia altura.
     Round,
-    /// Um braço da cruz ou uma metade de manche: quadrado com a seta.
-    Arrow(ph2d_editor_core::icons::IconId),
+    /// Um braço da cruz, com a seta dentro.
+    Arm(ph2d_editor_core::icons::IconId),
+    /// Uma metade de manche: a seta pequena à volta do anel `stick` (índice em [`STICKS`]).
+    Half(ph2d_editor_core::icons::IconId, usize),
 }
 
-/// Um alvo do comando: o que liga, a chave do nome curto, centro e meio-tamanho em fracções da caixa.
+/// Um alvo do comando: o que liga, a chave do nome curto, centro (fracções da caixa) e meio-tamanho (fracções
+/// da ALTURA da caixa nos dois eixos, para um redondo ser redondo).
 pub(crate) struct PadPart {
     pub binding: Binding,
     pub short_key: &'static str,
@@ -116,190 +121,193 @@ const fn half(axis: GamepadAxis, positive: bool) -> Binding {
 
 /// A caixa do comando: largura sobre altura.
 pub(crate) const PAD_ASPECT: f32 = 1.75; // LITERAL-PX-OK: razão adimensional, maquete B3
-/// O contorno do corpo, em fracções da caixa (um lado; o outro é o espelho em x).
-pub(crate) const BODY: [(f32, f32); 9] = [
-    (0.5, 0.2),   // LITERAL-PX-OK: maquete B3
-    (0.2, 0.2),   // LITERAL-PX-OK: maquete B3
-    (0.1, 0.32),  // LITERAL-PX-OK: maquete B3
-    (0.03, 0.62), // LITERAL-PX-OK: maquete B3
-    (0.02, 0.86), // LITERAL-PX-OK: maquete B3
-    (0.08, 0.95), // LITERAL-PX-OK: maquete B3
-    (0.16, 0.9),  // LITERAL-PX-OK: maquete B3
-    (0.27, 0.72), // LITERAL-PX-OK: maquete B3
-    (0.5, 0.72),  // LITERAL-PX-OK: maquete B3
+/// A parte da largura do desenho que o comando enche (maquete B3: o corpo vai de ~1/8 a ~7/8).
+pub(crate) const PAD_FILL: f32 = 0.76; // LITERAL-PX-OK: fração da largura, maquete B3
+/// O tecto da altura do comando, em alturas de campo.
+pub(crate) const PAD_MAX_ROWS: f32 = 10.0; // LITERAL-PX-OK: múltiplo do token de linha
+
+/// Um troço do contorno: recta até, ou cúbica (dois controlos e o fim), em fracções da caixa.
+#[derive(Clone, Copy)]
+pub(crate) enum BodySeg {
+    Line((f32, f32)),
+    Cubic((f32, f32), (f32, f32), (f32, f32)),
+}
+
+/// O contorno do lado esquerdo, do meio do topo ao meio do fundo (o direito é o espelho em x): ombro curvo,
+/// a pega que desce e volta, e o fundo direito entre as pegas.
+pub(crate) const BODY_START: (f32, f32) = (0.5, 0.17); // LITERAL-PX-OK: maquete B3
+pub(crate) const BODY: [BodySeg; 6] = [
+    BodySeg::Line((0.27, 0.17)), // LITERAL-PX-OK: maquete B3
+    BodySeg::Cubic((0.17, 0.17), (0.11, 0.21), (0.08, 0.33)), // LITERAL-PX-OK: maquete B3
+    BodySeg::Cubic((0.04, 0.5), (0.0, 0.78), (0.03, 0.9)), // LITERAL-PX-OK: maquete B3
+    BodySeg::Cubic((0.05, 1.0), (0.15, 1.0), (0.2, 0.94)), // LITERAL-PX-OK: maquete B3
+    BodySeg::Cubic((0.24, 0.89), (0.28, 0.83), (0.35, 0.82)), // LITERAL-PX-OK: maquete B3
+    BodySeg::Line((0.5, 0.82)),  // LITERAL-PX-OK: maquete B3
 ];
 
-// As medidas do comando (fracções da caixa), maquete B3.
-const PILL: (f32, f32) = (0.07, 0.035); // LITERAL-PX-OK: maquete B3
-const WIDE: (f32, f32) = (0.065, 0.035); // LITERAL-PX-OK: maquete B3
-const BTN: (f32, f32) = (0.04, 0.06); // LITERAL-PX-OK: maquete B3
-const ARM: (f32, f32) = (0.03, 0.045); // LITERAL-PX-OK: maquete B3
-const LT: (f32, f32) = (0.24, 0.06); // LITERAL-PX-OK: maquete B3
-const RT: (f32, f32) = (0.76, 0.06); // LITERAL-PX-OK: maquete B3
-const LB: (f32, f32) = (0.24, 0.14); // LITERAL-PX-OK: maquete B3
-const RB: (f32, f32) = (0.76, 0.14); // LITERAL-PX-OK: maquete B3
-const BACK: (f32, f32) = (0.42, 0.4); // LITERAL-PX-OK: maquete B3
-const START: (f32, f32) = (0.58, 0.4); // LITERAL-PX-OK: maquete B3
-const DPAD: (f32, f32) = (0.4, 0.62); // LITERAL-PX-OK: maquete B3
-const FACE: (f32, f32) = (0.78, 0.4); // LITERAL-PX-OK: maquete B3
-/// O passo entre botões da face e da cruz, e o alcance das setas à volta da manche.
-const STEP: f32 = 0.075; // LITERAL-PX-OK: maquete B3
-const REACH: f32 = 0.1; // LITERAL-PX-OK: maquete B3
+// As medidas do comando, maquete B3. Centros em fracções da caixa; meio-tamanhos em fracções da altura.
+const PILL: (f32, f32) = (0.11, 0.045); // LITERAL-PX-OK: maquete B3
+const SMALL_PILL: (f32, f32) = (0.07, 0.035); // LITERAL-PX-OK: maquete B3
+const BTN: (f32, f32) = (0.06, 0.06); // LITERAL-PX-OK: maquete B3
+const ARM: (f32, f32) = (0.045, 0.045); // LITERAL-PX-OK: maquete B3
+const TIP: (f32, f32) = (0.04, 0.04); // LITERAL-PX-OK: maquete B3
+/// Gatilhos e ombros lado a lado, ACIMA do corpo (o topo do corpo é `BODY_START.1`).
+const TOP_Y: f32 = 0.06; // LITERAL-PX-OK: maquete B3
+const LT: f32 = 0.17; // LITERAL-PX-OK: maquete B3
+const LB: f32 = 0.33; // LITERAL-PX-OK: maquete B3
+const BACK: (f32, f32) = (0.44, 0.34); // LITERAL-PX-OK: maquete B3
+const START: (f32, f32) = (0.56, 0.34); // LITERAL-PX-OK: maquete B3
+const DPAD: (f32, f32) = (0.41, 0.63); // LITERAL-PX-OK: maquete B3
+const FACE: (f32, f32) = (0.8, 0.4); // LITERAL-PX-OK: maquete B3
+/// O passo dos botões da face e dos braços da cruz (fracções da altura).
+const FACE_STEP: f32 = 0.13; // LITERAL-PX-OK: maquete B3
+const ARM_STEP: f32 = 0.09; // LITERAL-PX-OK: maquete B3
+/// O vão entre o anel da manche e as setas das metades (fracção da altura).
+const TIP_GAP: f32 = 0.02; // LITERAL-PX-OK: maquete B3
 
-/// Os alvos do comando (fracções da caixa). As metades de manche são as quatro setas à volta de cada manche.
+/// As duas manches: centro (fracções da caixa), a chave do nome e o raio do anel (fracção da altura).
+pub(crate) const STICKS: [((f32, f32), &str, f32); 2] = [
+    ((0.27, 0.43), "input_map_keyboard.pad.ls", 0.1), // LITERAL-PX-OK: maquete B3
+    ((0.63, 0.56), "input_map_keyboard.pad.rs", 0.085), // LITERAL-PX-OK: maquete B3
+];
+
+/// A distância do centro de uma manche à seta de cada metade (fracção da altura).
+pub(crate) fn tip_reach(r: f32) -> f32 {
+    r + TIP_GAP + TIP.1
+}
+
+/// A meia altura da seta de uma metade (fracção da altura).
+pub(crate) const fn pad_tip_h() -> f32 {
+    TIP.1
+}
+
+/// Os alvos do comando. As metades de manche são as quatro setas à volta de cada anel.
 pub(crate) fn pad() -> Vec<PadPart> {
     use GamepadAxis as A;
     use GamepadButton as P;
-    use PadShape::{Arrow, Pill, Round};
+    use PadShape::{Arm, Half, Pill, Round};
     use ph2d_editor_core::icons::IconId as I;
-    let (fx, fy, dx) = (FACE.0, FACE.1, STEP * PAD_ASPECT);
-    let (px, py, ex) = (DPAD.0, DPAD.1, STEP / PAD_ASPECT);
-    let mut out = vec![
-        part(
-            b(P::LeftTrigger),
-            "input_map_keyboard.pad.lt",
-            LT,
-            PILL,
-            Pill,
-        ),
-        part(
-            b(P::RightTrigger),
-            "input_map_keyboard.pad.rt",
-            RT,
-            PILL,
-            Pill,
-        ),
-        part(
-            b(P::LeftBumper),
-            "input_map_keyboard.pad.lb",
-            LB,
-            PILL,
-            Pill,
-        ),
-        part(
-            b(P::RightBumper),
-            "input_map_keyboard.pad.rb",
-            RB,
-            PILL,
-            Pill,
-        ),
+    let wide = |h: f32| h / PAD_ASPECT;
+    let (fx, fy) = FACE;
+    let (px, py) = DPAD;
+    let pills = [
+        (P::LeftTrigger, "input_map_keyboard.pad.lt", LT),
+        (P::LeftBumper, "input_map_keyboard.pad.lb", LB),
+        (P::RightBumper, "input_map_keyboard.pad.rb", 1.0 - LB),
+        (P::RightTrigger, "input_map_keyboard.pad.rt", 1.0 - LT),
+    ];
+    let mut out: Vec<PadPart> = pills
+        .into_iter()
+        .map(|(p, k, x)| part(b(p), k, (x, TOP_Y), PILL, Pill))
+        .collect();
+    out.extend([
         part(
             b(P::Select),
             "input_map_keyboard.pad.back",
             BACK,
-            WIDE,
+            SMALL_PILL,
             Pill,
         ),
         part(
             b(P::Start),
             "input_map_keyboard.pad.start",
             START,
-            WIDE,
+            SMALL_PILL,
             Pill,
         ),
         part(
             b(P::North),
             "input_map_keyboard.pad.y",
-            (fx, fy - dx),
+            (fx, fy - FACE_STEP),
             BTN,
             Round,
         ),
         part(
             b(P::South),
             "input_map_keyboard.pad.a",
-            (fx, fy + dx),
+            (fx, fy + FACE_STEP),
             BTN,
             Round,
         ),
         part(
             b(P::West),
             "input_map_keyboard.pad.x",
-            (fx - STEP, fy),
+            (fx - wide(FACE_STEP), fy),
             BTN,
             Round,
         ),
         part(
             b(P::East),
             "input_map_keyboard.pad.b",
-            (fx + STEP, fy),
+            (fx + wide(FACE_STEP), fy),
             BTN,
             Round,
         ),
-        part(
-            b(P::DPadUp),
-            "input_map_keyboard.pad.dpad",
-            (px, py - STEP),
-            ARM,
-            Arrow(I::ChevronUp),
-        ),
+    ]);
+    let dk = "input_map_keyboard.pad.dpad";
+    out.extend([
+        part(b(P::DPadUp), dk, (px, py - ARM_STEP), ARM, Arm(I::ArrowUp)),
         part(
             b(P::DPadDown),
-            "input_map_keyboard.pad.dpad",
-            (px, py + STEP),
+            dk,
+            (px, py + ARM_STEP),
             ARM,
-            Arrow(I::ChevronDown),
+            Arm(I::ArrowDown),
         ),
         part(
             b(P::DPadLeft),
-            "input_map_keyboard.pad.dpad",
-            (px - ex, py),
+            dk,
+            (px - wide(ARM_STEP), py),
             ARM,
-            Arrow(I::ChevronLeft),
+            Arm(I::ArrowLeft),
         ),
         part(
             b(P::DPadRight),
-            "input_map_keyboard.pad.dpad",
-            (px + ex, py),
+            dk,
+            (px + wide(ARM_STEP), py),
             ARM,
-            Arrow(I::ChevronRight),
+            Arm(I::ArrowRight),
         ),
-    ];
-    for ((cx, cy), key) in STICKS {
-        let (x, y) = if key == STICKS[0].1 {
+    ]);
+    for (i, ((cx, cy), key, r)) in STICKS.into_iter().enumerate() {
+        let (x, y) = if i == 0 {
             (A::LeftStickX, A::LeftStickY)
         } else {
             (A::RightStickX, A::RightStickY)
         };
-        let dy = REACH * PAD_ASPECT;
-        out.push(part(
-            half(y, true),
-            key,
-            (cx, cy - dy),
-            ARM,
-            Arrow(I::ChevronUp),
-        ));
-        out.push(part(
-            half(y, false),
-            key,
-            (cx, cy + dy),
-            ARM,
-            Arrow(I::ChevronDown),
-        ));
-        out.push(part(
-            half(x, false),
-            key,
-            (cx - REACH, cy),
-            ARM,
-            Arrow(I::ChevronLeft),
-        ));
-        out.push(part(
-            half(x, true),
-            key,
-            (cx + REACH, cy),
-            ARM,
-            Arrow(I::ChevronRight),
-        ));
+        let d = tip_reach(r);
+        out.extend([
+            part(half(y, true), key, (cx, cy - d), TIP, Half(I::ArrowUp, i)),
+            part(
+                half(y, false),
+                key,
+                (cx, cy + d),
+                TIP,
+                Half(I::ArrowDown, i),
+            ),
+            part(
+                half(x, false),
+                key,
+                (cx - wide(d), cy),
+                TIP,
+                Half(I::ArrowLeft, i),
+            ),
+            part(
+                half(x, true),
+                key,
+                (cx + wide(d), cy),
+                TIP,
+                Half(I::ArrowRight, i),
+            ),
+        ]);
     }
     out
 }
 
-/// O centro das duas manches (o círculo desenhado, que não é alvo: as metades são as setas à volta).
-pub(crate) const STICKS: [((f32, f32), &str); 2] = [
-    ((0.28, 0.4), "input_map_keyboard.pad.ls"), // LITERAL-PX-OK: maquete B3
-    ((0.65, 0.66), "input_map_keyboard.pad.rs"), // LITERAL-PX-OK: maquete B3
-];
-/// O raio do círculo da manche, em fracções da altura da caixa.
-pub(crate) const STICK_R: f32 = 0.1; // LITERAL-PX-OK: maquete B3
+/// O centro da cruz e o passo dos braços (fracções da caixa e da altura), para o desenho da cruz inteira.
+pub(crate) const fn dpad() -> ((f32, f32), f32, (f32, f32)) {
+    (DPAD, ARM_STEP, ARM)
+}
 
 /// O ícone da direcção de uma metade de manche — o ladrilho «LS ←» da B e o chip da A (uma porta só).
 #[must_use]
@@ -309,10 +317,10 @@ pub fn half_icon(b: Binding) -> Option<ph2d_editor_core::icons::IconId> {
         return None;
     };
     Some(match (axis, positive) {
-        (GamepadAxis::LeftStickX | GamepadAxis::RightStickX, false) => I::ChevronLeft,
-        (GamepadAxis::LeftStickX | GamepadAxis::RightStickX, true) => I::ChevronRight,
-        (GamepadAxis::LeftStickY | GamepadAxis::RightStickY, true) => I::ChevronUp,
-        (GamepadAxis::LeftStickY | GamepadAxis::RightStickY, false) => I::ChevronDown,
+        (GamepadAxis::LeftStickX | GamepadAxis::RightStickX, false) => I::ArrowLeft,
+        (GamepadAxis::LeftStickX | GamepadAxis::RightStickX, true) => I::ArrowRight,
+        (GamepadAxis::LeftStickY | GamepadAxis::RightStickY, true) => I::ArrowUp,
+        (GamepadAxis::LeftStickY | GamepadAxis::RightStickY, false) => I::ArrowDown,
         _ => return None,
     })
 }

@@ -16,7 +16,7 @@ use super::state::{KbHit, Sub};
 use super::{geometry as g, target};
 use crate::doc::InputMapDoc;
 use crate::view_list::footer::{and_list, binding_label, reader_names, readers_of};
-use crate::view_list::text::line;
+use crate::view_list::text::{line, wrap};
 
 const TITLE_H: f32 = m::FIELD_H;
 const TILE_H: f32 = m::FIELD_H * 2.0;
@@ -61,45 +61,64 @@ fn face(b: Binding) -> (String, Option<ph2d_editor_core::icons::IconId>, String)
     }
 }
 
-/// Uma linha de aviso (âmbar) ou de explicação, com o fundo do campo.
+/// A altura de uma linha de frase partida.
+const PHRASE_LINE_H: f32 = m::VALUE_PX + m::SEG_INSET;
+
+/// Uma frase de aviso (fundo e faixa do aviso) ou de explicação, PARTIDA dentro do cartão: devolve a altura.
+#[allow(clippy::too_many_arguments)]
 fn phrase(
     doc: &mut InputMapDoc,
     s: &str,
     warn: bool,
-    r: Rect,
+    (x, y, w): (f32, f32, f32),
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     ink: CardInk,
-) {
+) -> f32 {
+    let tx = x + m::SEG_INSET * 2.0;
+    let tw = (w - m::SEG_INSET * 3.0).max(0.0);
+    let lines = wrap(ts, s, m::VALUE_PX, tw);
+    let h = PHRASE_LINE_H * lines.len() as f32 + (m::FIELD_H - PHRASE_LINE_H);
+    let r = Rect::new(x, y, w, h);
     let bg = if warn {
-        ColorToken::WarnSoft
+        ColorToken::InputMapWarningBg
     } else {
         ColorToken::CardField
     };
     fill_rounded_rect(scene, r, m::FIELD_RADIUS, ink.color(bg));
     if warn {
         let bar = Rect::new(r.x, r.y, m::SEG_PAD, r.h);
-        fill_rounded_rect(scene, bar, m::FIELD_BORDER, ink.color(ColorToken::Warn));
+        fill_rounded_rect(
+            scene,
+            bar,
+            m::FIELD_BORDER,
+            ink.color(ColorToken::InputMapWarning),
+        );
     }
-    let inner = Rect::new(r.x + m::SEG_INSET * 2.0, r.y, r.w - m::SEG_INSET * 3.0, r.h);
-    line(
-        &mut doc.census,
-        ts,
-        scene,
-        s,
-        inner,
-        m::VALUE_PX,
-        ink.color(ColorToken::Text1),
-    );
+    let mut ly = y + (m::FIELD_H - PHRASE_LINE_H) * 0.5;
+    for l in &lines {
+        line(
+            &mut doc.census,
+            ts,
+            scene,
+            l,
+            Rect::new(tx, ly, tw, PHRASE_LINE_H),
+            m::VALUE_PX,
+            ink.color(ColorToken::Text1),
+        );
+        ly += PHRASE_LINE_H;
+    }
+    h
 }
 
+/// Pinta o cartão da acção aberta a partir de `r.y` e devolve onde o conteúdo acaba (o cartão cabe nele).
 pub(super) fn paint(
     doc: &mut InputMapDoc,
     r: Rect,
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     ink: CardInk,
-) {
+) -> f32 {
     let x = r.x + m::CARD_PAD_X;
     let w = (r.w - m::CARD_PAD_X * 2.0).max(0.0);
     let mut y = r.y + m::CARD_PAD_TOP;
@@ -113,7 +132,7 @@ pub(super) fn paint(
             m::VALUE_PX,
             ink.color(ColorToken::Text2),
         );
-        return;
+        return y + TITLE_H + m::CARD_PAD_BOTTOM;
     };
     let rs = readers_of(&doc.snap, &a.name).to_vec();
     let right = if rs.is_empty() {
@@ -148,8 +167,8 @@ pub(super) fn paint(
     let mut tx = x;
     for (n, b) in a.bindings.iter().enumerate() {
         let (big, icon, cap) = face(*b);
-        let bw =
-            ts.prefix_width(&big, m::VALUE_PX) + icon.map_or(0.0, |_| m::KEY_MARK_BOX + m::SEG_PAD);
+        let bw = ts.prefix_width(&big, m::VALUE_PX)
+            + icon.map_or(0.0, |_| super::keys::ARROW_BOX + m::SEG_PAD);
         let cw = ts.prefix_width(&cap, m::LABEL_PX);
         let tile = Rect::new(
             tx,
@@ -191,7 +210,7 @@ pub(super) fn paint(
             kx += w0 + m::SEG_PAD;
         }
         if let Some(i) = icon {
-            let s = m::KEY_MARK_BOX;
+            let s = super::keys::ARROW_BOX.min(key.h);
             paint_icon(
                 scene,
                 i,
@@ -251,16 +270,19 @@ pub(super) fn paint(
         (tx, y)
     };
     let tile = Rect::new(lx, ly, lw.max(TILE_H).min(w), TILE_H);
-    if listening {
+    // À escuta, ou a acção ainda sem ligação (maquete B4): o tracejado do acento.
+    if listening || a.bindings.is_empty() {
         stroke_rounded_rect_dashed(
             scene,
             tile,
             m::FIELD_RADIUS,
             m::FIELD_BORDER * 2.0,
             m::LOOSE_DASH,
-            ink.color(ColorToken::FocusRing),
+            ink.color(ColorToken::Accent),
         );
-        doc.census.dashed.push(tile);
+        if listening {
+            doc.census.dashed.push(tile);
+        }
     } else {
         stroke_rounded_rect_dashed(
             scene,
@@ -274,39 +296,31 @@ pub(super) fn paint(
     let mw = ts
         .prefix_width(msg, m::LABEL_PX)
         .min(tile.w - m::SEG_INSET * 2.0);
+    // Em baixo, na linha da legenda dos outros ladrilhos (maquete B1/B4).
+    let my = tile.y + m::SEG_INSET + CAP + m::SEG_PAD;
     line(
         &mut doc.census,
         ts,
         scene,
         msg,
-        Rect::new(tile.x + (tile.w - mw) * 0.5, tile.y, mw, tile.h),
+        Rect::new(tile.x + (tile.w - mw) * 0.5, my, mw, CAP),
         m::LABEL_PX,
-        ink.color(ColorToken::Text2),
+        ink.color(if listening || a.bindings.is_empty() {
+            ColorToken::Accent
+        } else {
+            ColorToken::Text2
+        }),
     );
     target(doc, KbHit::Listen, tile);
     y = tile.y + tile.h + m::FIELD_ROW_GAP;
     for (s, warn) in phrases(doc, &a) {
-        phrase(
-            doc,
-            &s,
-            warn,
-            Rect::new(x, y, w, m::FIELD_H),
-            scene,
-            ts,
-            ink,
-        );
-        y += m::FIELD_H + m::FIELD_ROW_GAP;
+        y += phrase(doc, &s, warn, (x, y, w), scene, ts, ink) + m::FIELD_ROW_GAP;
     }
     if a.is_analog() {
-        super::travel::paint(
-            doc,
-            &a,
-            Rect::new(x, y, w, (r.y + r.h - y).max(0.0)),
-            scene,
-            ts,
-            ink,
-        );
+        y = super::travel::paint(doc, &a, Rect::new(x, y, w, 0.0), scene, ts, ink)
+            + m::FIELD_ROW_GAP;
     }
+    y - m::FIELD_ROW_GAP + m::CARD_PAD_BOTTOM
 }
 
 /// As frases de baixo: a tecla repetida (de propósito explica; engano avisa), o Add recusado e ninguém lê.

@@ -119,13 +119,7 @@ pub fn paint(
     );
     let list_w = list::width(doc, ts).min(inner.w * 0.5);
     let list_r = Rect::new(inner.x, inner.y, list_w, inner.h);
-    fill_rounded_rect(
-        scene,
-        list_r,
-        m::CARD_RADIUS,
-        ink.color(ColorToken::KanbanList),
-    );
-    list::paint(doc, list_r, scene, ts, ink);
+    fitted(scene, ink, list_r, |s| list::paint(doc, list_r, s, ts, ink));
     let rx = list_r.x + list_r.w + m::CARD_GAP;
     let rw = (inner.x + inner.w - rx).max(0.0);
     let top_h = keys::top_height(doc, rw);
@@ -139,13 +133,23 @@ pub fn paint(
     keys::paint_top(doc, top, scene, ts, ink);
     let by = top.y + top.h + m::CARD_GAP;
     let bottom = Rect::new(rx, by, rw, (inner.y + inner.h - by).max(0.0));
+    fitted(scene, ink, bottom, |s| {
+        tiles::paint(doc, bottom, s, ts, ink)
+    });
+}
+
+/// Um cartão que cabe no conteúdo: `f` pinta numa cena à parte e devolve onde acabou; o fundo entra por baixo.
+fn fitted(scene: &mut VectorScene, ink: CardInk, r: Rect, f: impl FnOnce(&mut VectorScene) -> f32) {
+    let mut over = VectorScene::new();
+    let end = f(&mut over);
+    let card = Rect::new(r.x, r.y, r.w, (end - r.y).clamp(0.0, r.h));
     fill_rounded_rect(
         scene,
-        bottom,
+        card,
         m::CARD_RADIUS,
         ink.color(ColorToken::KanbanList),
     );
-    tiles::paint(doc, bottom, scene, ts, ink);
+    scene.append_scene(&over);
 }
 
 /// Regista um alvo da vista: no índice da pintura e na lista que devolve o `KbHit`.

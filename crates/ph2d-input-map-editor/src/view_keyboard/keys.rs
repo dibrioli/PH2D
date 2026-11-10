@@ -17,26 +17,56 @@ use super::state::{KbHit, Sub};
 use super::{target, users};
 use crate::doc::InputMapDoc;
 use crate::view_list::footer::{binding_label, reader_names, readers_of};
-use crate::view_list::text::line;
+use crate::view_list::text::{line, title};
 
 const CAPTION_H: f32 = m::FIELD_H - m::SEG_PAD;
 /// A barra de uma acção numa tecla, e o vão entre barras.
 pub(super) const BAR_H: f32 = m::SEG_PAD + m::FIELD_BORDER;
 pub(super) const BAR_GAP: f32 = m::FIELD_BORDER;
+/// A caixa da seta desenhada (teclas, ladrilhos, comando): da altura da letra, para ler como ↑ e não como ponto.
+pub(super) const ARROW_BOX: f32 = m::VALUE_PX + m::SEG_PAD * 2.0;
 
-/// O passo de tecla para a largura `w` (o mesmo que a pintura usa).
-fn pitch(w: f32) -> f32 {
-    (w / g::WIDTH).min(m::FIELD_H * g::PITCH_MAX_ROWS)
+/// O passo de tecla para a largura `w`, até `cap` alturas de campo.
+fn pitch_upto(w: f32, cap: f32) -> f32 {
+    (w / g::WIDTH).min(m::FIELD_H * cap)
+}
+
+/// A tecla nunca é mais baixa que a letra com duas barras por baixo (a 1280 as barras tapavam a letra).
+const KEY_MIN_H: f32 = m::VALUE_PX + m::SEG_PAD + (BAR_H + BAR_GAP) * 2.0 + m::SEG_INSET * 0.5;
+
+/// A altura de uma tecla para o passo `p`.
+fn key_height(p: f32) -> f32 {
+    (p * g::KEY_H).max(KEY_MIN_H)
+}
+
+/// A altura das quatro filas para o passo `p` (a tecla e o vão do passo).
+fn rows_h(p: f32) -> f32 {
+    (key_height(p) + p * (g::ROW_PITCH - g::KEY_H)) * g::ROWS
+}
+
+/// O passo cujas filas medem `h` (o inverso de [`rows_h`]): a pintura tira o passo da caixa que recebe.
+fn pitch_for_rows(h: f32) -> f32 {
+    let linear = h / (g::ROW_PITCH * g::ROWS);
+    if linear * g::KEY_H >= KEY_MIN_H {
+        linear
+    } else {
+        (h / g::ROWS - KEY_MIN_H).max(0.0) / (g::ROW_PITCH - g::KEY_H)
+    }
 }
 
 /// A altura do desenho do teclado para a largura `w` (a vista C reusa-o).
 pub(crate) fn keyboard_h(w: f32) -> f32 {
-    pitch(w) * g::ROW_PITCH * g::ROWS + m::CARD_PAD_X * 2.0
+    rows_h(pitch_upto(w, g::PITCH_MAX_ROWS)) + m::CARD_PAD_X * 2.0
+}
+
+/// O teclado da B enche a largura do cartão (maquete B1): o tecto do passo é mais alto que o da C.
+fn keyboard_h_b(w: f32) -> f32 {
+    rows_h(pitch_upto(w - m::CARD_PAD_X * 2.0, g::PITCH_MAX_ROWS_B)) + m::CARD_PAD_X * 2.0
 }
 
 fn drawing_h(doc: &InputMapDoc, w: f32) -> f32 {
     match doc.kb.sub {
-        Sub::Keyboard => keyboard_h(w),
+        Sub::Keyboard => keyboard_h_b(w),
         Sub::Gamepad => super::pad::height(w),
     }
 }
@@ -68,15 +98,14 @@ pub(super) fn top_height(doc: &InputMapDoc, w: f32) -> f32 {
     let also_h = if also(doc).is_empty() {
         0.0
     } else {
-        m::FIELD_H + m::FIELD_ROW_GAP
+        m::FIELD_ROW_GAP + m::FIELD_H
     };
     m::CARD_PAD_TOP
         + CAPTION_H
         + m::FIELD_H
-        + m::FIELD_ROW_GAP * 2.0
+        + m::FIELD_ROW_GAP
         + drawing_h(doc, inner)
         + also_h
-        + m::FIELD_H
         + m::CARD_PAD_BOTTOM
 }
 
@@ -90,19 +119,43 @@ pub(super) fn paint_top(
     let x = r.x + m::CARD_PAD_X;
     let w = (r.w - m::CARD_PAD_X * 2.0).max(0.0);
     let mut y = r.y + m::CARD_PAD_TOP;
-    let cap = match doc.kb.sub {
-        Sub::Keyboard => "input_map_keyboard.caption.keyboard",
-        Sub::Gamepad => "input_map_keyboard.caption.gamepad",
-    };
-    line(
-        &mut doc.census,
-        ts,
-        scene,
-        tr(cap),
-        Rect::new(x, y, w, CAPTION_H),
-        m::LABEL_PX,
-        ink.color(ColorToken::CardLabel),
-    );
+    let cap_r = Rect::new(x, y, w, CAPTION_H);
+    if let Some((lead, rest)) = hover_text(doc) {
+        let lw = title(
+            &mut doc.census,
+            ts,
+            scene,
+            &lead,
+            cap_r,
+            m::LABEL_PX,
+            ink.color(ColorToken::Text1),
+        );
+        let rx = x + lw + m::SEG_PAD * 2.0;
+        let rr = Rect::new(rx, y, (x + w - rx).max(0.0), CAPTION_H);
+        line(
+            &mut doc.census,
+            ts,
+            scene,
+            &rest,
+            rr,
+            m::LABEL_PX,
+            ink.color(ColorToken::Text2),
+        );
+    } else {
+        let cap = match doc.kb.sub {
+            Sub::Keyboard => "input_map_keyboard.caption.keyboard",
+            Sub::Gamepad => "input_map_keyboard.caption.gamepad",
+        };
+        line(
+            &mut doc.census,
+            ts,
+            scene,
+            tr(cap),
+            cap_r,
+            m::LABEL_PX,
+            ink.color(ColorToken::CardLabel),
+        );
+    }
     y += CAPTION_H;
     let segs = [
         (Sub::Keyboard, "input_map_keyboard.sub.keyboard"),
@@ -133,65 +186,27 @@ pub(super) fn paint_top(
         Sub::Keyboard => paint_keyboard(doc, draw, scene, ts, ink),
         Sub::Gamepad => super::pad::paint(doc, draw, scene, ts, ink),
     }
-    y += dh + m::FIELD_ROW_GAP;
+    y += dh;
     let extra = also(doc);
     if !extra.is_empty() {
+        y += m::FIELD_ROW_GAP;
         paint_also(doc, &extra, Rect::new(x, y, w, m::FIELD_H), scene, ts, ink);
-        y += m::FIELD_H + m::FIELD_ROW_GAP;
-    }
-    let foot = Rect::new(x, y, w, m::FIELD_H);
-    fill_rounded_rect(
-        scene,
-        foot,
-        m::FIELD_RADIUS,
-        ink.color(ColorToken::CardField),
-    );
-    let (lead, rest) = hover_text(doc);
-    let inner = Rect::new(
-        foot.x + m::SEG_INSET,
-        foot.y,
-        foot.w - m::SEG_INSET * 2.0,
-        foot.h,
-    );
-    let lw = ts.prefix_width(&lead, m::VALUE_PX).min(inner.w);
-    line(
-        &mut doc.census,
-        ts,
-        scene,
-        &lead,
-        Rect::new(inner.x, inner.y, lw, inner.h),
-        m::VALUE_PX,
-        ink.color(ColorToken::Text1),
-    );
-    if !rest.is_empty() {
-        let rx = inner.x + lw + m::SEG_ICON_GAP;
-        let rr = Rect::new(rx, inner.y, (inner.x + inner.w - rx).max(0.0), inner.h);
-        line(
-            &mut doc.census,
-            ts,
-            scene,
-            &rest,
-            rr,
-            m::VALUE_PX,
-            ink.color(ColorToken::Text2),
-        );
     }
 }
 
-/// O pé: «Up Arrow: jump (Platform Player) · move_up (Top-Down Player).», ou a dica quando nada está sob o ponteiro.
-pub(crate) fn hover_text(doc: &InputMapDoc) -> (String, String) {
+/// A frase do hover, no LUGAR da legenda (zero salto): «Up Arrow: jump (Platform Player) · move_up (Top-Down
+/// Player).»; `None` sem tecla nem botão sob o ponteiro.
+pub(crate) fn hover_text(doc: &InputMapDoc) -> Option<(String, String)> {
     let b = match doc.kb.hover {
         Some(KbHit::Key(k)) => Binding::Key(k),
         Some(KbHit::Pad(b)) => b,
-        _ => return (tr("input_map_keyboard.hint").to_owned(), String::new()),
+        _ => return None,
     };
     let label = binding_label(b);
     let who = users(doc, b);
     if who.is_empty() {
-        return (
-            tr("input_map_keyboard.unused").replace("{key}", &label),
-            String::new(),
-        );
+        let lead = format!("{label}{}", tr("input_map_keyboard.colon"));
+        return Some((lead, tr("input_map_keyboard.unused").to_owned()));
     }
     let parts: Vec<String> = who
         .iter()
@@ -210,7 +225,7 @@ pub(crate) fn hover_text(doc: &InputMapDoc) -> (String, String) {
         .collect();
     let lead = format!("{label}{}", tr("input_map_keyboard.colon"));
     let list = parts.join(tr("input_map_keyboard.sep"));
-    (lead, format!("{list}{}", tr("input_map_list.period")))
+    Some((lead, format!("{list}{}", tr("input_map_list.period"))))
 }
 
 /// Uma barra por acção que usa `b`, em baixo de `r`, na cor da acção.
@@ -276,8 +291,9 @@ pub(crate) fn paint_keys(
         draw.w - m::CARD_PAD_X * 2.0,
         draw.h - m::CARD_PAD_X * 2.0,
     );
-    let p = pitch(inner.w);
-    // Centrado: na janela larga o desenho não passa do passo máximo e sobra espaço dos dois lados.
+    // O passo sai da caixa recebida (largura e altura): a B e a C pedem alturas diferentes ao mesmo pintor.
+    let p = (inner.w / g::WIDTH).min(pitch_for_rows(inner.h));
+    let (kh, step) = (key_height(p), key_height(p) + p * (g::ROW_PITCH - g::KEY_H));
     let ox = inner.x + (inner.w - g::WIDTH * p).max(0.0) * 0.5;
     for KeyCap {
         key,
@@ -288,19 +304,22 @@ pub(crate) fn paint_keys(
     {
         let kr = Rect::new(
             ox + col * p,
-            inner.y + row * p * g::ROW_PITCH,
+            inner.y + row * step,
             (span - (1.0 - g::KEY_FILL)) * p,
-            p * g::KEY_H,
+            kh,
         );
         let b = Binding::Key(key);
         let who = users(doc, b);
         let lit = lit_of(key);
         let hover = doc.kb.hover == Some(KbHit::Key(key));
-        let filled = (lit && style == Lit::Fill)
-            .then(|| who.first().map_or(ColorToken::Accent, |a| crate::palette::of_action(*a)));
+        let filled = (lit && style == Lit::Fill).then(|| {
+            who.first()
+                .map_or(ColorToken::Accent, |a| crate::palette::of_action(*a))
+        });
+        // Sem acção a tecla apaga-se (face e letra); com acção a face clareia e a letra acende.
         let bg = match filled {
             Some(c) => c,
-            None if lit || hover => ColorToken::CardFieldHover,
+            None if lit || !who.is_empty() => ColorToken::CardFieldHover,
             None => ColorToken::CardField,
         };
         fill_rounded_rect(scene, kr, m::SEG_RADIUS, ink.color(bg));
@@ -316,16 +335,19 @@ pub(crate) fn paint_keys(
                 ink.color(ColorToken::Accent),
             );
         }
+        if hover {
+            hover_ring(scene, ink, kr, lit && style == Lit::Outline);
+        }
         let fg = ink.color(if filled.is_some() {
             ColorToken::Bg0
         } else if who.is_empty() {
-            ColorToken::Text2
+            ColorToken::Text3
         } else {
             ColorToken::Text1
         });
-        let label_h = kr.h - (BAR_H + BAR_GAP) * who.len().max(1) as f32;
+        let label_h = kr.h - m::SEG_INSET * 0.5 - (BAR_H + BAR_GAP) * who.len().max(1) as f32;
         if let Some(icon) = g::arrow_icon(key) {
-            let s = m::KEY_MARK_BOX;
+            let s = ARROW_BOX.min(label_h);
             let ir = Rect::new(kr.x + (kr.w - s) * 0.5, kr.y + (label_h - s) * 0.5, s, s);
             paint_icon(scene, icon, ir, fg, StrokeToken::Default.px());
         } else {
@@ -338,6 +360,24 @@ pub(crate) fn paint_keys(
         doc.kb.bars.push((KbHit::Key(key), who));
         target(doc, KbHit::Key(key), kr);
     }
+}
+
+/// O contorno branco do hover, distinto do da acção aberta (por dentro dele quando os dois se juntam).
+pub(super) fn hover_ring(scene: &mut VectorScene, ink: CardInk, r: Rect, inside: bool) {
+    let d = if inside { m::FIELD_BORDER * 2.0 } else { 0.0 };
+    let rr = Rect::new(
+        r.x + d,
+        r.y + d,
+        (r.w - d * 2.0).max(0.0),
+        (r.h - d * 2.0).max(0.0),
+    );
+    stroke_rounded_rect(
+        scene,
+        rr,
+        m::SEG_RADIUS,
+        m::FIELD_BORDER,
+        ink.color(ColorToken::Text1),
+    );
 }
 
 /// «Also:» e um chip por ligação fora do desenho (clicar acrescenta à aberta, como uma tecla desenhada).

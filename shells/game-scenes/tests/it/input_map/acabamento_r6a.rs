@@ -53,7 +53,7 @@ fn a_manche_diz_a_direccao_por_icone_marca_os_campos_e_so_o_pressed_e_verde() {
     assert!(c.texts.iter().any(|t| t.1 == titulo), "C3: «{titulo}»");
     assert_eq!(
         c.icons.iter().map(|i| i.1).collect::<Vec<_>>(),
-        vec![IconId::ChevronLeft],
+        vec![IconId::ArrowLeft],
         "a direcção da manche é um ícone"
     );
     for k in ["input_map_try.dead_mark", "input_map_try.press_mark"] {

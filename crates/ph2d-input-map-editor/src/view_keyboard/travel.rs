@@ -19,6 +19,8 @@ use crate::ids::ListHit;
 use crate::view_list::text::line;
 
 const LABEL_H: f32 = m::LABEL_PX + m::LABEL_BOTTOM;
+/// A barra do curso: meia linha de campo (maquete B3).
+const BAR_H: f32 = m::FIELD_H * 0.5;
 
 pub(super) fn paint(
     doc: &mut InputMapDoc,
@@ -27,7 +29,7 @@ pub(super) fn paint(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     ink: CardInk,
-) {
+) -> f32 {
     let mut y = r.y;
     line(
         &mut doc.census,
@@ -38,21 +40,23 @@ pub(super) fn paint(
         m::LABEL_PX,
         ink.color(ColorToken::CardLabel),
     );
-    y += LABEL_H;
-    let bar = Rect::new(r.x, y, r.w, m::BAR_THUMB);
+    y += LABEL_H + m::SEG_PAD * 2.0;
+    let bar = Rect::new(r.x, y, r.w, BAR_H);
     fill_rounded_rect(scene, bar, m::SEG_RADIUS, ink.color(ColorToken::CardField));
-    // A zona morta hachurada: um traço por quadrado da altura da barra.
+    // De Dead a 1 a barra clareia (o curso que conta); a zona morta fica hachurada, suave.
     let dead_w = bar.w * a.dead_zone;
+    let live = Rect::new(bar.x + dead_w, bar.y, (bar.w - dead_w).max(0.0), bar.h);
+    fill_rounded_rect(
+        scene,
+        live,
+        m::SEG_RADIUS,
+        ink.color(ColorToken::CardFieldHover),
+    );
     let mut hx = bar.x;
     while hx < bar.x + dead_w {
         let cell = Rect::new(hx, bar.y, bar.h.min(bar.x + dead_w - hx), bar.h);
-        fill_slash(
-            scene,
-            cell,
-            m::FIELD_BORDER * 2.0,
-            ink.color(ColorToken::Text2),
-        );
-        hx += bar.h;
+        fill_slash(scene, cell, m::FIELD_BORDER, ink.color(ColorToken::Text3));
+        hx += bar.h * 0.5;
     }
     doc.kb.bar = Some((bar.x, bar.w));
     for (hit, v, tok) in [
@@ -106,6 +110,7 @@ pub(super) fn paint(
     }
     y += LABEL_H + m::FIELD_ROW_GAP;
     zone_fields(doc, a, Rect::new(r.x, y, r.w, 0.0), scene, ts, ink);
+    y + LABEL_H + m::FIELD_H
 }
 
 /// Os dois campos «Dead zone (0 to 1)» / «Press at (0 to 1)» numa linha a partir de `r.y` (A, B e C usam ESTES).
@@ -127,10 +132,26 @@ pub(crate) fn zone_value(
     let x = f.x + m::SEG_INSET;
     let mw = ts.prefix_width(mark, m::VALUE_PX);
     let mr = Rect::new(x, f.y, mw, f.h);
-    line(&mut doc.census, ts, scene, mark, mr, m::VALUE_PX, ink.color(ColorToken::Text2));
+    line(
+        &mut doc.census,
+        ts,
+        scene,
+        mark,
+        mr,
+        m::VALUE_PX,
+        ink.color(ColorToken::Text2),
+    );
     let vx = x + mw + m::SEG_INSET;
     let vr = Rect::new(vx, f.y, (f.x + f.w - m::SEG_INSET - vx).max(0.0), f.h);
-    line(&mut doc.census, ts, scene, v, vr, m::VALUE_PX, ink.color(ColorToken::Text1));
+    line(
+        &mut doc.census,
+        ts,
+        scene,
+        v,
+        vr,
+        m::VALUE_PX,
+        ink.color(ColorToken::Text1),
+    );
 }
 
 pub(crate) fn zone_fields(

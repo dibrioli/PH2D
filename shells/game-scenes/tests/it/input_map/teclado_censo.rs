@@ -7,7 +7,12 @@ use ph2d_app_input_map::View;
 use ph2d_app_input_map::view_keyboard::state::{KbHit, Sub};
 use ph2d_editor_core::zones::Rect;
 
-const SIZES: [(f32, f32); 2] = [(1600.0, 1000.0), (1280.0, 720.0)]; // LITERAL-PX-OK: as janelas do plano §8
+/// A área que a aba RECEBE em cada janela do plano §8 (medida nas fotos b1_1600 e b4_1280): dar à aba a janela
+/// inteira deixava o censo verde enquanto a 1280 o app cortava a frase do cartão aberto e o aviso.
+pub(super) const AREAS: [Rect; 2] = [
+    Rect::new(308.0, 28.0, 988.0, 890.0), // LITERAL-PX-OK: a área central na foto da janela 1600×1000
+    Rect::new(297.0, 28.0, 690.0, 604.0), // LITERAL-PX-OK: a área central na foto da janela 1280×720
+];
 
 #[test]
 fn o_teclado_nao_corta_texto_nem_mostra_numero_morto() {
@@ -16,8 +21,8 @@ fn o_teclado_nao_corta_texto_nem_mostra_numero_morto() {
             ("fábrica", ph2d_input::InputMap::with_player_defaults()),
             ("onze", onze()),
         ] {
-            for (w, h) in SIZES {
-                let area = Rect::new(0.0, 0.0, w, h);
+            for area in AREAS {
+                let (w, h) = (area.w, area.h);
                 let mut m = Mesa::aberta(View::Keyboard);
                 m.hero.input_map = map.clone();
                 m.frame();

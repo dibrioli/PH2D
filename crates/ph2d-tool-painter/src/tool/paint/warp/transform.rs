@@ -173,7 +173,15 @@ impl PainterTool {
                 });
             }
         } else if m == MODE_WARP {
-            self.paint.deform.xform_mesh = Some(Mesh::seed(box4(&cur), MESH_COLS, MESH_ROWS));
+            // `pristine` no espaço do PATCH (o box do levante), `current` no box de agora: a malha nasce
+            // como o afim que a tela já mostra (B06.3 — semear os dois no box movido amostrava o vazio).
+            let lift = self.paint.deform.xform.map_or(x.pristine, |x| x.pristine);
+            self.paint.deform.xform_mesh = Some(Mesh::seed_between(
+                box4(&lift),
+                box4(&cur),
+                MESH_COLS,
+                MESH_ROWS,
+            ));
         }
     }
 

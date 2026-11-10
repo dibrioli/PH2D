@@ -34,6 +34,8 @@ mod transform;
 mod transform_float;
 mod transform_geom;
 mod transform_mesh;
+#[cfg(test)]
+mod transform_modes_tests;
 mod transform_relief;
 
 pub use transform::DeformGizmoView;

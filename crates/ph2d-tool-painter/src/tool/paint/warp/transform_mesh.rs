@@ -35,21 +35,22 @@ pub(crate) struct Mesh {
 impl Mesh {
     /// Seed an evenly-spaced grid over the box corners `b = [TL, TR, BR, BL]` (bilinear), pristine == current.
     pub(crate) fn seed(b: [[f32; 2]; 4], cols: u32, rows: u32) -> Mesh {
-        let mut pts = Vec::with_capacity(((cols + 1) * (rows + 1)) as usize);
-        for r in 0..=rows {
-            let v = r as f32 / rows as f32;
-            for c in 0..=cols {
-                let u = c as f32 / cols as f32;
-                let top = lerp(b[0], b[1], u); // TL→TR
-                let bot = lerp(b[3], b[2], u); // BL→BR
-                pts.push(lerp(top, bot, v));
-            }
-        }
+        Mesh::seed_between(b, b, cols, rows)
+    }
+
+    /// Seed with `pristine` over the box where the patch was LIFTED (the patch's own space) and `current`
+    /// over the box where it is NOW — so the mesh starts as exactly the affine the box already shows.
+    pub(crate) fn seed_between(
+        pristine: [[f32; 2]; 4],
+        current: [[f32; 2]; 4],
+        cols: u32,
+        rows: u32,
+    ) -> Mesh {
         Mesh {
             cols,
             rows,
-            pristine: pts.clone(),
-            current: pts,
+            pristine: grid_over(pristine, cols, rows),
+            current: grid_over(current, cols, rows),
         }
     }
 
@@ -143,7 +144,30 @@ impl PainterTool {
             [i(r, c), i(r, c + 1), i(r + 1, c + 1), i(r + 1, c)]
         };
 
-        let affected = points_bbox(&fine_dst, w, h);
+        // Precompute each fine cell ONCE per move (inverse homography + quads + reach).
+        let mut cells = Vec::with_capacity((fr * fc) as usize);
+        let mut affected = points_bbox(&fine_dst, w, h);
+        for r in 0..fr {
+            for c in 0..fc {
+                let src = fine_cell(&fine_src, r, c);
+                let dst = fine_cell(&fine_dst, r, c);
+                let Some(hinv) = homography_from_quads(&src, &dst).and_then(|m| m.inverse()) else {
+                    continue;
+                };
+                let outer = [r == 0, c + 1 == fc, r + 1 == fr, c == 0];
+                let bbox = region_clip(cell_reach(&src, &dst, outer, w, h), w, h);
+                if bbox.w == 0 || bbox.h == 0 {
+                    continue;
+                }
+                affected = region_union(affected, bbox);
+                cells.push(MeshCell {
+                    hinv,
+                    src,
+                    outer,
+                    bbox,
+                });
+            }
+        }
         let dirty = region_clip(
             region_union(
                 affected,
@@ -152,27 +176,6 @@ impl PainterTool {
             w,
             h,
         );
-        // Precompute each fine cell ONCE per move (inverse homography + dst quad + clipped bbox).
-        struct Cell {
-            hinv: Mat3,
-            dst: [[f32; 2]; 4],
-            bbox: Region,
-        }
-        let mut cells = Vec::with_capacity((fr * fc) as usize);
-        for r in 0..fr {
-            for c in 0..fc {
-                let src = fine_cell(&fine_src, r, c);
-                let dst = fine_cell(&fine_dst, r, c);
-                let Some(hinv) = homography_from_quads(&src, &dst).and_then(|m| m.inverse()) else {
-                    continue;
-                };
-                let bbox = region_clip(points_bbox(&dst, w, h), w, h);
-                if bbox.w == 0 || bbox.h == 0 {
-                    continue;
-                }
-                cells.push(Cell { hinv, dst, bbox });
-            }
-        }
         let patch = &fp.patch;
         let base = &fp.base;
         let buf = crate::tool::paint::plane_fork::fork_canvas(
@@ -196,7 +199,7 @@ impl PainterTool {
                 row[d0..d1].copy_from_slice(&base[brow + d0..brow + d1]);
             }
             // 2) Overlay each FINE deformed cell clipped to this band (backward-gather through its
-            //    inverse homography, clipped to the cell quad).
+            //    inverse homography; ownership tested at the SAME point that is sampled).
             for cell in &cells {
                 let y0 = cell.bbox.y.max(band_y0);
                 let y1 = (cell.bbox.y + cell.bbox.h).min(band_y1);
@@ -205,11 +208,9 @@ impl PainterTool {
                     let row = &mut band[ry * stride..(ry + 1) * stride];
                     let brow = (y as usize) * stride;
                     for x in cell.bbox.x..cell.bbox.x + cell.bbox.w {
-                        let p = [x as f32 + 0.5, y as f32 + 0.5];
-                        if !point_in_quad(&cell.dst, p) {
+                        let Some(sp) = cell.locate(x, y) else {
                             continue;
-                        }
-                        let sp = cell.hinv.apply([x as f32, y as f32]);
+                        };
                         let px = bilinear_patch(patch, w, h, sp[0], sp[1]);
                         let o = (x as usize) * 4;
                         let b = [
@@ -223,9 +224,106 @@ impl PainterTool {
                 }
             }
         });
+        // …e o CORPO pela mesma malha, sobre a mesma janela, com a mesma posse por célula.
+        self.composite_mesh_relief(&cells, dirty);
         self.paint.deform.xform_last_bbox = Some(affected);
         self.mark_dirty(dirty);
     }
+}
+
+/// One fine cell of the Warp mesh, precomputed once per move.
+pub(super) struct MeshCell {
+    hinv: Mat3,
+    src: [[f32; 2]; 4],
+    /// Which edges (`top, right, bottom, left`) are the OUTER border of the whole mesh.
+    outer: [bool; 4],
+    bbox: Region,
+}
+
+impl MeshCell {
+    /// The patch-space point texel `(x, y)` samples, when this cell owns it. The test is made in SOURCE
+    /// space, at the very point the sampler reads — on the outer border it reaches one source texel past
+    /// the edge (the bilinear's support), so the patch alpha draws the antialiased rim, as the affine does.
+    pub(super) fn locate(&self, x: u32, y: u32) -> Option<[f32; 2]> {
+        let sp = self.hinv.apply([x as f32, y as f32]);
+        in_cell(&self.src, sp, self.outer).then_some(sp)
+    }
+
+    pub(super) fn bbox(&self) -> Region {
+        self.bbox
+    }
+}
+
+/// The bilinear sampler's support past an outer edge, in SOURCE texels.
+const SRC_RIM_TEXELS: f32 = 1.0;
+
+/// The canvas reach of a cell: its dst bbox, grown on the outer border by the rim mapped to dst
+/// (`SRC_RIM_TEXELS` × the cell's largest edge stretch, + 1 for the floor/ceil).
+fn cell_reach(
+    src: &[[f32; 2]; 4],
+    dst: &[[f32; 2]; 4],
+    outer: [bool; 4],
+    w: u32,
+    h: u32,
+) -> Region {
+    let b = points_bbox(dst, w, h);
+    if !outer.iter().any(|o| *o) {
+        return b;
+    }
+    let len = |q: &[[f32; 2]; 4], i: usize| {
+        let (a, c) = (q[i], q[(i + 1) % 4]);
+        ((c[0] - a[0]) * (c[0] - a[0]) + (c[1] - a[1]) * (c[1] - a[1])).sqrt()
+    };
+    let stretch = (0..4)
+        .filter(|i| len(src, *i) > 0.0)
+        .map(|i| len(dst, i) / len(src, i))
+        .fold(1.0f32, f32::max);
+    let m = (stretch * SRC_RIM_TEXELS).ceil() as u32 + 1;
+    let x0 = b.x.saturating_sub(m);
+    let y0 = b.y.saturating_sub(m);
+    let x1 = (b.x + b.w + m).min(w);
+    let y1 = (b.y + b.h + m).min(h);
+    Region {
+        x: x0,
+        y: y0,
+        w: x1.saturating_sub(x0),
+        h: y1.saturating_sub(y0),
+    }
+}
+
+/// Whether `p` is inside the quad `q = [TL, TR, BR, BL]` (all edge cross-products share a sign; a tiny
+/// epsilon lets both neighbours claim a seam texel), with the OUTER edges pushed out by [`SRC_RIM_TEXELS`] (along the quad's orientation).
+fn in_cell(q: &[[f32; 2]; 4], p: [f32; 2], outer: [bool; 4]) -> bool {
+    let area2: f32 = (0..4)
+        .map(|i| {
+            let (a, b) = (q[i], q[(i + 1) % 4]);
+            a[0] * b[1] - b[0] * a[1]
+        })
+        .sum();
+    let s = if area2 > 0.0 {
+        1.0
+    } else if area2 < 0.0 {
+        -1.0
+    } else {
+        0.0
+    };
+    let mut pos = false;
+    let mut neg = false;
+    for i in 0..4 {
+        let a = q[i];
+        let b = q[(i + 1) % 4];
+        let mut cross = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+        if outer[i] {
+            let len = ((b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1])).sqrt();
+            cross += s * len * SRC_RIM_TEXELS;
+        }
+        if cross > 1e-3 {
+            pos = true;
+        } else if cross < -1e-3 {
+            neg = true;
+        }
+    }
+    !(pos && neg)
 }
 
 /// How finely each control cell is subdivided for the smooth Catmull-Rom render (per axis). Higher = smoother
@@ -315,6 +413,21 @@ fn cr(p0: [f32; 2], p1: [f32; 2], p2: [f32; 2], p3: [f32; 2], t: f32) -> [f32; 2
     ]
 }
 
+/// The bilinear `(cols+1)×(rows+1)` grid over a box `b = [TL, TR, BR, BL]` (row-major).
+fn grid_over(b: [[f32; 2]; 4], cols: u32, rows: u32) -> Vec<[f32; 2]> {
+    let mut pts = Vec::with_capacity(((cols + 1) * (rows + 1)) as usize);
+    for r in 0..=rows {
+        let v = r as f32 / rows as f32;
+        for c in 0..=cols {
+            let u = c as f32 / cols as f32;
+            let top = lerp(b[0], b[1], u); // TL→TR
+            let bot = lerp(b[3], b[2], u); // BL→BR
+            pts.push(lerp(top, bot, v));
+        }
+    }
+    pts
+}
+
 /// Linear interpolation of two points.
 fn lerp(a: [f32; 2], b: [f32; 2], t: f32) -> [f32; 2] {
     [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
@@ -350,24 +463,6 @@ fn points_bbox(pts: &[[f32; 2]], w: u32, h: u32) -> Region {
         w: x1.saturating_sub(x0),
         h: y1.saturating_sub(y0),
     }
-}
-
-/// Whether `p` is inside the (convex) quad `q = [TL, TR, BR, BL]` — all edge cross-products share a sign.
-/// A tiny epsilon keeps shared cell edges from dropping seam pixels (both adjacent cells claim them).
-fn point_in_quad(q: &[[f32; 2]; 4], p: [f32; 2]) -> bool {
-    let mut pos = false;
-    let mut neg = false;
-    for i in 0..4 {
-        let a = q[i];
-        let b = q[(i + 1) % 4];
-        let cross = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
-        if cross > 1e-3 {
-            pos = true;
-        } else if cross < -1e-3 {
-            neg = true;
-        }
-    }
-    !(pos && neg)
 }
 
 #[cfg(test)]

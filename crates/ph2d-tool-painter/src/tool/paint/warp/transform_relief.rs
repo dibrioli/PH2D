@@ -28,6 +28,7 @@ use super::super::Region;
 use super::super::impasto_ceiling::H_MAX;
 use super::relief::{bilinear_f32, bilinear_mat, bilinear_u8};
 use super::transform_geom::Mat3;
+use super::transform_mesh::MeshCell;
 use crate::tool::PainterTool;
 use crate::tool::RtLayerId;
 use ph2d_painter_brush::material::MaterialBytes;
@@ -111,6 +112,54 @@ impl PainterTool {
         dirty: Region,
         affected: Region,
     ) {
+        self.compose_floating_relief(dirty, &|dx, dy| {
+            let inside = dy >= affected.y
+                && dy < affected.y + affected.h
+                && dx >= affected.x
+                && dx < affected.x + affected.w;
+            inside.then(|| minv.apply([dx as f32, dy as f32]))
+        });
+    }
+
+    /// O irmão da malha (B06.2): o corpo vai pelas MESMAS células que a cor, com a mesma posse (a
+    /// última célula que reclama o texel, na ordem da cor) — o mapa por texel é montado uma vez.
+    pub(super) fn composite_mesh_relief(&mut self, cells: &[MeshCell], dirty: Region) {
+        if !self.paint.warp.affect_relief
+            || self
+                .paint
+                .deform
+                .xform_patch
+                .as_ref()
+                .is_none_or(|p| p.relief.is_none())
+        {
+            return;
+        }
+        let dw = dirty.w as usize;
+        let mut map = vec![[f32::NAN; 2]; dw * dirty.h as usize];
+        for cell in cells {
+            let b = cell.bbox();
+            let (x0, x1) = (b.x.max(dirty.x), (b.x + b.w).min(dirty.x + dirty.w));
+            let (y0, y1) = (b.y.max(dirty.y), (b.y + b.h).min(dirty.y + dirty.h));
+            for y in y0..y1 {
+                for x in x0..x1 {
+                    if let Some(sp) = cell.locate(x, y) {
+                        map[(y - dirty.y) as usize * dw + (x - dirty.x) as usize] = sp;
+                    }
+                }
+            }
+        }
+        self.compose_floating_relief(dirty, &|dx, dy| {
+            let sp = map[(dy - dirty.y) as usize * dw + (dx - dirty.x) as usize];
+            (!sp[0].is_nan()).then_some(sp)
+        });
+    }
+
+    /// `over` do corpo sobre `dirty`: `locate(x, y)` diz onde o texel lê o patch (`None` = só a base).
+    fn compose_floating_relief(
+        &mut self,
+        dirty: Region,
+        locate: &dyn Fn(u32, u32) -> Option<[f32; 2]>,
+    ) {
         if !self.paint.warp.affect_relief {
             return;
         }
@@ -137,7 +186,6 @@ impl PainterTool {
         let mut out_m = vec![[0u8; 7]; (dirty.w * dirty.h) as usize];
         for ry in 0..dirty.h {
             let dy = dirty.y + ry;
-            let inside_rows = dy >= affected.y && dy < affected.y + affected.h;
             for rx in 0..dirty.w {
                 let dx = dirty.x + rx;
                 let gi = (dy * w + dx) as usize;
@@ -145,9 +193,7 @@ impl PainterTool {
                 // O lado da BASE: o que ficou para trás quando o patch subiu.
                 let cb = f32::from(fr.c_base.as_ref().map_or(0, |v| v[gi])) / 255.0;
                 let (hb, mb) = (fr.h[gi], fr.m[gi]);
-                let inside = inside_rows && dx >= affected.x && dx < affected.x + affected.w;
-                let (cp, hp, mp) = if inside {
-                    let sp = minv.apply([dx as f32, dy as f32]);
+                let (cp, hp, mp) = if let Some(sp) = locate(dx, dy) {
                     (
                         f32::from(bilinear_u8(&fr.c_patch, w, h, sp[0], sp[1])) / 255.0,
                         bilinear_f32(&fr.h, w, h, sp[0], sp[1]),

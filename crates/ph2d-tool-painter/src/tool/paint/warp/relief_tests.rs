@@ -386,77 +386,7 @@ fn a_bare_layer_gains_no_planes_from_a_warp() {
     let _ = Arc::clone(&t.canvas_rgba); // the pixels exist and moved; the body correctly never did
 }
 
-/// **O corpo viaja com a cor no TRANSFORM também** — o report do Enio (2026-08-08): *"as ferramentas do
-/// painel Transform não atuam sobre o relevo de impasto. Em Liquify funciona corretamente"*.
-///
-/// ⚠️ **A W4 cobriu METADE do Deform.** Ela deu ao warp a advecção de `h`/`covers`/`mats` pelo `disp`
-/// da sessão, e o `disp` só existe na metade das PINCELADAS (Push/Twist/Pinch/Wrinkle/Fold/
-/// Reconstruct). A metade do GIZMO não tem `disp`: ela LEVANTA um patch e o compõe sobre a base, e os
-/// quatro arquivos dela não citam `heights`/`covers`/`mats` uma única vez. A doutrina do `relief.rs` —
-/// *corpo e cor não podem divergir sobre "para onde foi"* — valia para um render e não para o outro.
-///
-/// O oráculo é a própria doutrina: os dois **CENTROIDES** (o da tinta e o do relevo) têm de andar
-/// juntos. Comparar posições absolutas seria frágil; comparar o DESLOCAMENTO de um contra o do outro é
-/// a pergunta que a frase faz.
-///
-/// **Mutação que tem de sangrar:** tirar a chamada ao relevo do `composite_transform`.
-#[test]
-fn the_transform_carries_the_body_where_it_carries_the_colour() {
-    let (mut t, layer) = deformable_relief_tool();
-    t.set_deform_temperament(super::super::DEFORM_TEMPERAMENT_TRANSFORM);
-
-    /// Centroide em x, pesado — `None` quando não há nada a pesar.
-    fn centroid_x(vals: &[f32], w: u32, keep: impl Fn(f32) -> bool) -> Option<f32> {
-        let (mut sum, mut wsum) = (0.0f64, 0.0f64);
-        for (i, v) in vals.iter().enumerate() {
-            if keep(*v) {
-                let x = (i % (w as usize)) as f64;
-                sum += x * f64::from(*v);
-                wsum += f64::from(*v);
-            }
-        }
-        (wsum > 0.0).then(|| (sum / wsum) as f32)
-    }
-    // ⚠️ **O peso da tinta é o PIGMENTO, não o alfa.** A fixture pinta sobre branco OPACO, então o alfa
-    // é 255 na tela inteira e o centroide dele descreve a MOLDURA, não o traço: um Transform de camada
-    // inteira que anda 20 px deixa uma faixa vazia de 20 px e move esse centroide ~10. Medir alfa
-    // contra altura seria comparar duas populações diferentes — o erro que fez este gate acusar um
-    // produto correto de mover o corpo "demais". O traço é vermelho sobre branco, então o déficit de
-    // VERDE é exatamente a tinta que a pincelada depositou.
-    let ink = |t: &PainterTool| {
-        let g: Vec<f32> = t
-            .canvas_rgba
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .map(|p| 255.0 - f32::from(p[1]))
-            .collect();
-        centroid_x(&g, 160, |v| v > 8.0).expect("fixture: a tinta existe")
-    };
-    let body = |t: &PainterTool| {
-        centroid_x(&heights_of(t, layer), 160, |v| v > 0.5).expect("fixture: o relevo existe")
-    };
-
-    let (ink0, body0) = (ink(&t), body(&t));
-    // Pega a alça central e arrasta o patch 20 px para a direita.
-    t.on_canvas_pointer(cp([80.0, 80.0], PointerPhase::Down));
-    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Move));
-    t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Up));
-    let (ink1, body1) = (ink(&t), body(&t));
-
-    let ink_moved = ink1 - ink0;
-    let body_moved = body1 - body0;
-    assert!(
-        ink_moved > 5.0,
-        "fixture: o Transform não moveu a TINTA ({ink_moved:.2} px), então nada abaixo diz respeito ao \
-         relevo"
-    );
-    assert!(
-        (body_moved - ink_moved).abs() < 3.0,
-        "o Transform moveu a tinta {ink_moved:.2} px e o CORPO {body_moved:.2} px — a luz vai sombrear \
-         uma crista de tinta que não está mais lá"
-    );
-}
+// O gate «o corpo viaja com a cor no Transform» mora em `transform_modes_tests.rs`, por sub-modo.
 
 /// **E o relevo DEIXA o lugar de onde saiu** — a outra metade da mesma frase.
 ///

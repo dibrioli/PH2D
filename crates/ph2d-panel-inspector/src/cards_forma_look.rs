@@ -50,8 +50,9 @@ fn corpo(c: &mut CardCtx<'_>, y: f32, f: ShapeLookFacts) -> f32 {
     let lado = m * 0.5 * crate::cards_sprite_pivot::CASAS_POR_LADO;
     let (x0, w0) = (c.x, c.w);
     c.w = lado;
+    // O rótulo como o da Sprite: uma linha com «Pivot», e a grade pinta-se por cima da caixa dela.
     let fim_rotulo = c.row(
-        &[Cell::new(Widget::Bare(&[])).label(tr("card.insp.pivot"))],
+        &[Cell::new(Widget::Readout { text: "" }).label(tr("card.insp.pivot"))],
         y,
     );
     let fim_grade = grade(c, fim_rotulo - m, &ids::INSP_SHAPE_PIVOT, None, f.ponto);

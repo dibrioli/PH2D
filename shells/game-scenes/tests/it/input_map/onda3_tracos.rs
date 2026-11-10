@@ -641,3 +641,84 @@ fn o_deslize_de_lado_so_rola_o_teclado_debaixo_do_ponteiro() {
         assert!(m.tab().doc.kb.hscroll > 0.0, "{view:?}: rolou");
     }
 }
+
+/// O lado de dentro do traço do contorno da acção aberta (`keys::open_outline`: recuo de 2, traço de 2, raio da parte
+/// menos 3) à altura `y`, à esquerda da parte `r` de raio `raio`.
+fn borda_do_contorno(r: Rect, raio: f32, y: f32) -> f32 {
+    let (x0, y0, y1) = (
+        r.x + OUTLINE_REACH,
+        r.y + OUTLINE_REACH,
+        r.y + r.h - OUTLINE_REACH,
+    );
+    let rr = (raio - OUTLINE_REACH).max(0.0);
+    let dy = if y < y0 + rr {
+        y0 + rr - y
+    } else if y > y1 - rr {
+        y - (y1 - rr)
+    } else {
+        0.0
+    };
+    x0 + rr - (rr * rr - dy.min(rr) * dy.min(rr)).sqrt()
+}
+
+/// ⭐ Rodada 6: com a acção ABERTA, o contorno dela nunca come barra — em toda parte ligada do comando (braço da cruz,
+/// botão redondo, pílula, seta da manche) ficam ≥ `BAR_VISIBLE_MIN` de cada barra à vista de cada lado do nome, por
+/// dentro do contorno, a 1600 e a 1280.
+#[test]
+fn o_contorno_da_accao_aberta_nunca_come_as_barras_do_comando() {
+    let partes = [
+        (Binding::PadButton(GamepadButton::DPadUp), "braço"),
+        (Binding::PadButton(GamepadButton::DPadLeft), "braço"),
+        (Binding::PadButton(GamepadButton::South), "redondo"),
+        (Binding::PadButton(GamepadButton::LeftBumper), "pílula"),
+        (Binding::PadButton(GamepadButton::Start), "pílula"),
+        (
+            Binding::PadAxis {
+                axis: GamepadAxis::LeftStickX,
+                positive: false,
+            },
+            "seta",
+        ),
+    ];
+    for a in &AREAS[..2] {
+        for n in [1, 2] {
+            let mut map = onze();
+            for (b, _) in partes {
+                map = liga(map, b, n);
+            }
+            let aberta = map.actions()[0].id;
+            let mut m = pinta(View::Keyboard, Sub::Gamepad, map, *a);
+            m.tab_mut().doc.kb.open = Some(aberta);
+            m.paint_in(*a);
+            let doc = &m.tab().doc;
+            for (b, nome) in partes {
+                let at = format!("{} n={n} {nome} {b:?}", a.w);
+                let r = doc.rect_of(KbHit::Pad(b).id()).expect("a parte");
+                let lg = legenda(doc, r).expect("o nome");
+                let raio = match nome {
+                    "redondo" | "pílula" => r.h * 0.5,
+                    _ => 4.0, // LITERAL-PX-OK: metrics::SEG_RADIUS (o raio da tecla)
+                };
+                let bs = barras(doc, r);
+                assert_eq!(bs.len(), n, "{at}: as barras");
+                let mut pior = f32::MAX;
+                for bar in bs {
+                    let mut esq = f32::MAX;
+                    let mut dir = f32::MAX;
+                    for y in [bar.y, bar.y + bar.h] {
+                        let e = borda_do_contorno(r, raio, y);
+                        let d = r.x + r.w - (e - r.x);
+                        esq = esq.min(lg.x - bar.x.max(e));
+                        dir = dir.min((bar.x + bar.w).min(d) - lg.x - lg.w);
+                    }
+                    pior = pior.min(esq.min(dir));
+                }
+                eprintln!("{at}: barra à vista por dentro do contorno {pior:.2}");
+                assert!(
+                    pior >= BAR_VISIBLE_MIN - 0.01,
+                    "{at}: o contorno come a barra ({pior:.2})"
+                );
+            }
+        }
+    }
+}

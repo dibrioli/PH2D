@@ -227,8 +227,10 @@ pub(super) fn paint(
         });
         // As barras por TRÁS do nome, numa plaquinha (a lei da tecla); o nome no centro com 0 ou N barras.
         let plate_face = face_of(pressed, None, hover);
-        // A seta da manche: as barras começam por dentro do contorno da aberta (`OUTLINE_REACH`), que nunca as tapa.
-        let d = if half {
+        // As setas (manche e cruz): as barras começam por dentro do contorno da aberta (`OUTLINE_REACH`), que nunca as
+        // tapa; nos redondos e nas pílulas a caixa inscrita já fica por dentro dele.
+        let arrow = matches!(p.shape, PadShape::Arm(_) | PadShape::Half(..));
+        let d = if arrow {
             fit::OUTLINE_REACH - fit::BAR_INSET_X
         } else {
             0.0
@@ -237,9 +239,9 @@ pub(super) fn paint(
         let sticker = (bars_r, radius, plate_face);
         match p.shape {
             PadShape::Arm(icon) | PadShape::Half(icon, _) => {
-                let s = (super::keys::ARROW_BOX.min(r.h))
-                    .min(r.w - LEGEND_MARGIN * 2.0)
-                    .max(0.0);
+                // O glifo deixa `BAR_VISIBLE_MIN` de barra por dentro do contorno (o braço da cruz: 15,2 px a 1600).
+                let room = r.w - (fit::OUTLINE_REACH + fit::BAR_VISIBLE_MIN) * 2.0;
+                let s = (super::keys::ARROW_BOX.min(r.h)).min(room).max(0.0);
                 let ir = Rect::new(cx - s * 0.5, cy - s * 0.5, s, s);
                 paint_sticker(&mut doc.census, (scene, ink), sticker, (ir, true), &who);
                 // A seta é traço fino: nunca mais apagada que `Text2` (a regra dos símbolos das teclas).

@@ -195,8 +195,10 @@ impl ScriptListView {
             return;
         }
         let new = self.icon_button(scene, IconId::Plus, ListHit::New, toggle.x, y, &ui);
-        self.fit_w = Self::fit_of(ts, list, area.x + area.w - new.x + gap * 2.0);
         let title = tr("code.list.title");
+        // O cabeçalho: folga · título · folga · os dois botões.
+        let head = area.x + area.w - new.x + gap * 2.0 + chrome::card_title_w(ts, title);
+        self.fit_w = Self::fit_of(ts, list, head);
         let caixa = Rect::new(
             area.x + gap,
             y,

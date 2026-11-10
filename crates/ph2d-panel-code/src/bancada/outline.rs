@@ -135,10 +135,11 @@ impl BancadaView {
         let eh = outline_entry_h();
         // O que cabe sem cortar: o título de secção entre as folgas (2g) e cada entrada — folga ½ ·
         // folga · nome · folga · `ln N` · folga ½ · folga ½ (3,5g), a mesma conta da pintura abaixo.
+        let title_w = chrome::card_title_w(ts, tr("code.bancada.outline.title")) + g * 2.0;
         self.outline_fit = sections
             .iter()
             .filter(|s| !s.1.is_empty())
-            .fold(0.0, |w, (k, es)| {
+            .fold(title_w, |w, (k, es)| {
                 es.iter().fold(
                     w.max(chrome::label_w(ts, tr(k)) + g * 2.0),
                     |w, Entry(n, l)| {

@@ -577,6 +577,21 @@ pub fn paint_text_title_elided(
     );
 }
 
+/// O peso de [`paint_text_title_elided_tracked`], o mesmo que [`title_tracked_width`] mede.
+const TITLE_TRACKED_WEIGHT: FontWeight = FontWeight::SEMI_BOLD;
+
+/// A largura de `text` inteiro como [`paint_text_title_elided_tracked`] o pinta (mesmo peso e
+/// espaçamento, no regime de peso de quem chama): quem dá a largura mínima a um título.
+#[must_use]
+pub fn title_tracked_width(
+    text_system: &mut TextSystem,
+    text: &str,
+    font_size: f32,
+    tracking_em: f32,
+) -> f32 {
+    text_system.prefix_width_tracked(text, font_size, TITLE_TRACKED_WEIGHT, tracking_em)
+}
+
 /// [`paint_text_title_elided`] com espaçamento entre letras `tracking_em` (em `em`): mede e corta
 /// com o MESMO valor com que pinta. `0.0` pinta o mesmo, ao bit.
 #[allow(clippy::too_many_arguments)]
@@ -591,7 +606,7 @@ pub fn paint_text_title_elided_tracked(
     color: Color,
     tracking_em: f32,
 ) {
-    let (t, w) = (tracking_em, FontWeight::SEMI_BOLD);
+    let (t, w) = (tracking_em, TITLE_TRACKED_WEIGHT);
     paint_elided_weighted(
         text_system,
         scene,

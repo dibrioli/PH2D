@@ -119,6 +119,23 @@ pub(crate) fn label_w(ts: &mut TextSystem, text: &str) -> f32 {
     crate::peso::label_column_width(ts, font(), [text])
 }
 
+/// A largura do título de um cartão da coluna (MAIÚSCULAS espaçadas em cartões, o rótulo sem
+/// eles), medida como se pinta: a parte do título no mínimo do divisor.
+pub(crate) fn card_title_w(ts: &mut TextSystem, title: &str) -> f32 {
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        use ph2d_editor_core::panel::cards::banda::metrics as m;
+        let t = title.to_uppercase();
+        ph2d_editor_core::paint::title_tracked_width(
+            ts,
+            &t,
+            m::LIST_TITLE_PX,
+            m::LIST_TITLE_TRACKING_EM,
+        )
+    } else {
+        label_w(ts, title)
+    }
+}
+
 /// A largura de um [`text_button`] com `text`: a lei inversa do orçamento com que ele o pinta
 /// (`rect_for_label`) — a folga somada à mão cortava «Word» em «W…» na barra de busca.
 pub(crate) fn button_w(ts: &mut TextSystem, text: &str) -> f32 {

@@ -4,9 +4,11 @@
 //! devolve a largura do carregar. A largura vive na vista (a sessão), como a do mapa.
 //!
 //! Limites (medidos 10/11 no teste `divisor`, área 1000 × 700, `TextSystem` sem fontes do sistema:
-//! mínimo 95,6 px — o «In this script» de `speed`/`on_update` —, documento 263,2 px — a barra):
-//! - **mínimo** = a largura em que a lista ([`ScriptListView::fit_w`]: nome · contagem · lixo) e o
-//!   «In this script» ([`BancadaView::outline_fit_w`]: nome · `ln N`) cabem sem cortar, nunca acima
+//! mínimo 118,6 px — o título «IN THIS SCRIPT» espaçado; era 95,6 sem os títulos —, máximo 712,8 px,
+//! documento 263,2 px — a barra):
+//! - **mínimo** = a largura em que a lista ([`ScriptListView::fit_w`]: título · botões, nome ·
+//!   contagem · lixo) e o «In this script» ([`BancadaView::outline_fit_w`]: título, nome · `ln N`)
+//!   cabem sem cortar, os títulos medidos como se pintam (`title_tracked_width`), nunca acima
 //!   da de fábrica ([`ScriptListView::width`], `PANEL_MIN_W_PX` = 220): um nome mais longo que ela
 //!   continua a elidir-se como antes, e o artista pode alargar para o ler.
 //! - **máximo** = o que deixa à coluna do documento o seu mínimo: os menus e a engrenagem da barra

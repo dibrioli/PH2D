@@ -94,7 +94,7 @@ pub use text::{
     folga_do_texto, label_column_width, paint_text, paint_text_block, paint_text_block_in_weight,
     paint_text_block_spans, paint_text_elided, paint_text_elided_in_weight, paint_text_in_weight,
     paint_text_rotated_ccw, paint_text_title, paint_text_title_elided,
-    paint_text_title_elided_tracked,
+    paint_text_title_elided_tracked, title_tracked_width,
 };
 pub(crate) use text::{ouve_o_texto, paint_text_weighted};
 

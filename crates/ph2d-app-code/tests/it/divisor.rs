@@ -179,3 +179,26 @@ fn o_duplo_clique_num_cartao_nao_mexe_no_divisor() {
     m.pinta(id);
     assert_eq!(rects(&mut m, id).0.w, largo.w, "o cartão não reinicia");
 }
+
+/// No mínimo os títulos dos dois cartões («SCRIPTS», «IN THIS SCRIPT», maiúsculas espaçadas)
+/// pintam-se inteiros: o mínimo conta-os, não só as linhas.
+#[test]
+fn no_minimo_os_titulos_dos_cartoes_cabem_inteiros() {
+    let (mut m, id) = aberta();
+    let (col, ..) = rects(&mut m, id);
+    arrasta(&mut m, id, vao(col), -5000.0);
+    let (min_col, ..) = rects(&mut m, id);
+    assert!(min_col.w < col.w, "controlo: estreitou ({})", min_col.w);
+    let (_, medidos) = ph2d_editor_core::text_elide::elisao::medindo(|| m.pinta(id));
+    for k in ["code.list.title", "code.bancada.outline.title"] {
+        let t = ph2d_i18n::tr(k);
+        let titulo: Vec<_> = medidos
+            .iter()
+            .filter(|x| x.texto.eq_ignore_ascii_case(t))
+            .collect();
+        assert!(!titulo.is_empty(), "controlo: «{t}» foi medido");
+        for x in titulo {
+            assert!(x.coube(), "cortado no mínimo {}: {x:?}", min_col.w);
+        }
+    }
+}

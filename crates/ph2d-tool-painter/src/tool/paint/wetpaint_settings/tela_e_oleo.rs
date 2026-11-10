@@ -121,12 +121,15 @@ impl PainterTool {
     fn guarda_oleo_valores(&mut self, o: ph2d_wet_paint::oleo_real::OleoReal) {
         let w = &mut self.paint.wetpaint;
         let muda = w.oleo_real_valores != o;
+        // O Light angle manda também no emboss da tinta sem óleo (B14.4).
+        let luz = w.oleo_real_valores.azimute.to_bits() != o.azimute.to_bits()
+            && w.session.as_ref().is_some_and(|s| s.ha_tinta());
         w.oleo_real_valores = o;
         if w.oleo_real.is_some() {
             w.oleo_real = Some(o);
         }
-        // Os números do cartão são da TELA: mudam a tinta com óleo já pousada (e só ela).
-        if muda && w.oleo_na_tela {
+        // Os números do cartão são da TELA: mudam a tinta com óleo já pousada (e o azimute, todo o relevo).
+        if muda && (w.oleo_na_tela || luz) {
             self.wet_recompoe_no_quadro();
         }
     }

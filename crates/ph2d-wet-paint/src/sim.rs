@@ -110,6 +110,8 @@ pub struct Params {
     pub pigment_mix: f32,
     /// [`Sim::absorcao`].
     pub absorcao: f64,
+    /// Os pesos `(x, y)` do emboss pela luz do cartão ([`crate::render::pesos_do_relevo`] de [`Sim::luz_do_relevo`]).
+    pub relevo: [f64; 2],
 }
 
 impl Params {
@@ -210,6 +212,9 @@ pub struct Sim {
     /// **A Absorbency da TELA** (E10d2): o múltiplo da taxa com que o papel bebe a água do filme
     /// ([`Params::retencao`]). Da tela, nunca do preset; [`ABSORCAO_NEUTRA`] = o motor de antes, ao bit.
     pub absorcao: f64,
+    /// **O azimute da luz do cartão** (radianos, o do [`crate::oleo_real::OleoReal::azimute`]): o emboss da tinta
+    /// segue-o; [`crate::render::AZIMUTE_DE_FABRICA`] = o de antes, ao bit.
+    pub luz_do_relevo: f64,
     /// **A tinta molhada parece mais forte e clareia ao secar** (o Rebelle e a aguarela real; dono 10/10):
     /// a densidade óptica do pigmento em SUSPENSÃO vale este múltiplo no render (`a = 1 − (1 − a)^k`).
     /// Assentar preserva o ecrã SECO ([`crate::assenta`]), então o traço clareia aos poucos ao secar sem
@@ -318,6 +323,7 @@ impl Default for Sim {
             tinta: LeiDaTinta::Velha,
             pigment_mix: 0.0,
             absorcao: ABSORCAO_NEUTRA,
+            luz_do_relevo: crate::render::AZIMUTE_DE_FABRICA,
             molhada_escurece: 1.0,
             esconde: 1.0,
             camadas_transparentes: false,
@@ -455,6 +461,7 @@ impl Sim {
             tinta: self.tinta,
             pigment_mix: self.pigment_mix,
             absorcao: self.absorcao,
+            relevo: crate::render::pesos_do_relevo(self.luz_do_relevo),
         }
     }
 }

@@ -21,6 +21,8 @@ use crate::tuning::Knob;
 
 mod pre_luz; // o PreLuz da linha do óleo (A.1) — filho por LOC
 pub use pre_luz::PreLuz;
+mod relevo_da_luz; // o emboss pela luz do cartão (B14.4)
+pub use relevo_da_luz::{AZIMUTE_DE_FABRICA, pesos_do_relevo};
 pub(crate) mod tinta; // o ecrã pela lei da tinta (F4-2 E5)
 
 const INV_SQRT2: f64 = 0.707_106_781_186_547_6;
@@ -69,6 +71,7 @@ pub fn render_region(
     let paper_vis = p.k(Knob::PaperVisibility);
     let grain_vis = p.k(Knob::VisualGrain);
     let emboss_k = p.k(Knob::Emboss);
+    let [wx, wy] = p.relevo;
     // `ext_bypass`: os efeitos de Look (rake, valley, sheen, dither, edge tint) saíram na E10 (mortos, F3 §9).
     let _ = ext_bypass;
 
@@ -127,13 +130,13 @@ pub fn render_region(
                 }
                 let mut v = (pap * 100.0 - 40.0) * grain_vis * fade;
                 // Signed emboss from the mass gradient: one side lightens,
-                // the other darkens — a soft bevel, not an outline. Vertical
-                // weighted 2x.
+                // the other darkens — a soft bevel, not an outline. Weighted by
+                // the card's light (`Params::relevo`).
                 let m_l = lgrd.sett[i - 1] as f64 + lgrd.susp[i - 1] as f64;
                 let m_r = lgrd.sett[i + 1] as f64 + lgrd.susp[i + 1] as f64;
                 let m_u = lgrd.sett[i - s] as f64 + lgrd.susp[i - s] as f64;
                 let m_d = lgrd.sett[i + s] as f64 + lgrd.susp[i + s] as f64;
-                let mut emb = ((m_r - m_l) * 0.5 + (m_d - m_u) * 1.0) * 0.008 * emboss_k;
+                let mut emb = ((m_r - m_l) * wx + (m_d - m_u) * wy) * 0.008 * emboss_k;
                 emb = emb.clamp(-40.0, 40.0);
                 v += emb;
                 // A Transparency da tinta (dono 27/10): a cobertura de composição × (1 − T), a massa fica.
@@ -413,6 +416,8 @@ fn pigment_row(
     // ([`Grid::relevo`], Bug #48), nunca o do pincel de agora; `0` = nenhum.
     let com_relevo = p.is_some() && (paper_on || visual.relevo);
     let tinta_nova = p.is_some_and(|p| p.tinta == crate::sim::LeiDaTinta::Pigmento);
+    // O emboss pela luz do cartão (B14.4): só entra com `p` (`com_relevo`).
+    let [wx, wy] = p.map_or([0.0; 2], |p| p.relevo);
     {
         let mut i = x0 + cy * s;
         let mut o = (x0 - 1) * 4;
@@ -465,7 +470,7 @@ fn pigment_row(
                     // The tooth printed into the pigment — [`render_region`]'s
                     // exact `v`: paper faded by the master toward flat 0.5,
                     // granulation fading out as mass goes 1000 -> 3000, plus
-                    // the signed emboss (vertical weighted 2x). Adding v to
+                    // the signed emboss (by the card's light). Adding v to
                     // the combined colour equals adding it to settled AND
                     // suspended before combining (distributivity).
                     let (paper_vis, grain_vis) = if paper_on {
@@ -491,11 +496,11 @@ fn pigment_row(
                     let m_r = lg.sett[i + 1] as f64 + lg.susp[i + 1] as f64;
                     let m_u = lg.sett[i - s] as f64 + lg.susp[i - s] as f64;
                     let m_d = lg.sett[i + s] as f64 + lg.susp[i + s] as f64;
-                    let mut emb = ((m_r - m_l) * 0.5 + (m_d - m_u) * 1.0) * 0.008 * emboss_k;
+                    let mut emb = ((m_r - m_l) * wx + (m_d - m_u) * wy) * 0.008 * emboss_k;
                     // O relevo dos FIOS (W3b) acende-se pelo MESMO emboss: o cinza que o Rebelle soma.
                     if !lg.altura.is_empty() {
                         let h = |j: usize| f64::from(lg.altura[j]);
-                        emb += ((h(i + 1) - h(i - 1)) * 0.5 + (h(i + s) - h(i - s)) * 1.0)
+                        emb += ((h(i + 1) - h(i - 1)) * wx + (h(i + s) - h(i - s)) * wy)
                             * crate::bristles_relevo::LUZ
                             * emboss_k;
                     }

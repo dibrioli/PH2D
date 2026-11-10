@@ -32,6 +32,8 @@ pub(in crate::tool::paint) struct WetEngineFacts {
     pub(in crate::tool::paint) borda_que_pesa: f64,
     /// A **Absorbency** da tela (E10d2, `Sim::absorcao`).
     pub(in crate::tool::paint) absorcao: f64,
+    /// O **Light angle** do cartão (radianos): o emboss da tinta segue-o (`Sim::luz_do_relevo`, B14.4).
+    pub(in crate::tool::paint) luz_do_relevo: f64,
 }
 
 impl WetEngineFacts {
@@ -51,6 +53,7 @@ impl WetEngineFacts {
         agua_viva: false,
         borda_que_pesa: 0.0,
         absorcao: ph2d_wet_paint::sim::ABSORCAO_NEUTRA,
+        luz_do_relevo: ph2d_wet_paint::render::AZIMUTE_DE_FABRICA,
     };
 }
 
@@ -328,6 +331,9 @@ impl WetSession {
         }
         if f.oleo != a.oleo {
             e.sim.oleo = f.oleo;
+        }
+        if f.luz_do_relevo.to_bits() != a.luz_do_relevo.to_bits() {
+            e.sim.luz_do_relevo = f.luz_do_relevo;
         }
         if f.agua_viva != a.agua_viva {
             e.sim.sim_while_painting = f.agua_viva;

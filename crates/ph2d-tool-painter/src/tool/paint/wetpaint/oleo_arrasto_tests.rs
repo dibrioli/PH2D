@@ -213,3 +213,6 @@ fn sonda_arrasto_do_oleo() {
 
 #[path = "oleo_cache_tests.rs"]
 mod oleo_cache_tests;
+
+#[path = "relevo_pela_luz_tests.rs"]
+mod relevo_pela_luz_tests;

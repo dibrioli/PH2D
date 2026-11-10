@@ -29,6 +29,7 @@ impl PainterTool {
             agua_viva: w.agua_viva,
             borda_que_pesa: w.borda_que_pesa,
             absorcao: w.absorcao,
+            luz_do_relevo: w.oleo_real_valores.azimute,
         }
     }
 

@@ -1,22 +1,22 @@
 //! O teclado de notebook medido: o passo para a caixa, a legenda que cabe em cada tecla (`cap` → `cap_short`, as
-//! setas em ícone) e o arranjo — `Wide` se toda tecla tem legenda que cabe, senão `Narrow` (plano §13.2). Funções
-//! puras da caixa e do texto: a altura pedida e a pintura chegam ao MESMO arranjo e ao MESMO passo.
+//! setas em ícone) e o passo mínimo, abaixo do qual o desenho rola na horizontal (plano §13.2, dono 10/11). Funções
+//! puras da caixa e do texto: a altura pedida e a pintura chegam ao MESMO passo.
 
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::icons::IconId;
+use ph2d_editor_core::zones::Rect;
 use ph2d_input::Key;
 use ph2d_text::TextSystem;
 
-use super::geometry::{self as g, Arrangement, KeyCap};
-use super::keys::{BAR_GAP, BAR_H};
+use super::geometry::{self as g, KeyCap};
+use super::keys::{ARROW_BOX, BAR_GAP, BAR_H};
 
 /// A face do hover: a de repouso com o véu do hover do cartão por cima (`KanbanShadowHover`) — mais clara que o
 /// repouso no tema escuro, mais funda no claro: sempre MAIS ênfase que o repouso, nunca um contorno.
 pub const HOVER_FACE: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::KanbanShadowHover;
 
 /// A tecla mais baixa: a letra na plaquinha com folga para a pilha de barras (o valor de antes, que a 1280 já cabia).
-pub(super) const KEY_MIN_H: f32 =
-    m::VALUE_PX + m::SEG_PAD + (BAR_H + BAR_GAP) * 2.0 + m::SEG_INSET * 0.5;
+pub const KEY_MIN_H: f32 = m::VALUE_PX + m::SEG_PAD + (BAR_H + BAR_GAP) * 2.0 + m::SEG_INSET * 0.5;
 
 /// A margem mínima de cada lado da legenda, dentro da tecla (a plaquinha nunca passa dela).
 pub(crate) const LEGEND_PAD: f32 = m::SEG_INSET * 0.5;
@@ -31,6 +31,21 @@ pub(crate) const PLATE_RADIUS: f32 = m::SEG_RADIUS - m::FIELD_BORDER;
 pub(crate) const BAR_INSET_X: f32 = m::FIELD_BORDER * 2.0;
 /// Quanto de cada barra se quer à vista de cada lado da plaquinha.
 pub(crate) const BAR_PEEK: f32 = m::SEG_INSET;
+
+/// Quanto de cada barra tem de ficar à vista de cada lado da plaquinha: duas arestas (2 px) — abaixo disso a cor da
+/// acção some atrás do adesivo (as capturas do dono, 10/11). Com 3 px o piso medido subia a 33,5 e a área real a 1280
+/// (630 px de desenho) já rolava.
+pub const BAR_VISIBLE_MIN: f32 = m::FIELD_BORDER * 2.0;
+
+/// ⭐ O passo mínimo da tecla (dono 10/11: «dê um limite ao achatamento»). MEDIDO por [`measured_floor`]
+/// (`teclado_piso::o_passo_minimo_e_o_medido_nos_dois_modos_de_texto`, fontes embutidas): `Default` 30,5 px,
+/// `CrispHeavyPlus` 31,5 px (barra à vista 2,16 px) — o maior vale. Nele todo grupo tem um degrau de legenda que cabe
+/// com [`BAR_VISIBLE_MIN`] de barra de cada lado, a tecla tem `KEY_MIN_H` e a proporção dela; o desenho mede
+/// 603 px (cabe nos 630 da área real a 1280). Acima, o teclado enche a caixa; abaixo, fica neste passo e a caixa ROLA.
+pub const PITCH_FLOOR: f32 = 31.5; // LITERAL-PX-OK: medido por measured_floor, ver o doc
+
+/// A faixa por baixo do desenho que segura a barra horizontal quando o teclado rola.
+pub(super) const HBAR_BAND: f32 = m::BAR_TRACK + m::SEG_INSET;
 
 /// O menor tamanho de legenda: o menor texto que a app já tem (`TypeToken::Xxs`), nada menor (a porta dos testes).
 pub const MIN_LEGEND_PX: f32 = ph2d_tokens::TypeToken::Xxs.px();
@@ -52,7 +67,7 @@ pub fn bars_full(kh: f32) -> usize {
 /// disso, listra e vão encolhem na mesma proporção para a pilha caber na faixa — nunca sai da tecla, nunca empurra
 /// a legenda.
 #[must_use]
-pub fn bar_stack(r: ph2d_editor_core::zones::Rect, n: usize) -> Vec<ph2d_editor_core::zones::Rect> {
+pub fn bar_stack(r: Rect, n: usize) -> Vec<Rect> {
     if n == 0 {
         return Vec::new();
     }
@@ -63,9 +78,7 @@ pub fn bar_stack(r: ph2d_editor_core::zones::Rect, n: usize) -> Vec<ph2d_editor_
     let top = r.y + (r.h - total) * 0.5;
     let w = (r.w - BAR_INSET_X * 2.0).max(0.0);
     (0..n)
-        .map(|i| {
-            ph2d_editor_core::zones::Rect::new(r.x + BAR_INSET_X, top + (h + gap) * i as f32, w, h)
-        })
+        .map(|i| Rect::new(r.x + BAR_INSET_X, top + (h + gap) * i as f32, w, h))
         .collect()
 }
 
@@ -73,15 +86,16 @@ pub fn bar_stack(r: ph2d_editor_core::zones::Rect, n: usize) -> Vec<ph2d_editor_
 /// [`LEGEND_PAD`] das arestas (as barras espreitam de cada lado) nem fora da tecla em altura. `icon`: a caixa do
 /// ícone já traz a folga dele ([`super::keys::ARROW_BOX`]), a de lado pode ir a zero.
 #[must_use]
-pub fn plate_of(
-    kr: ph2d_editor_core::zones::Rect,
-    l: ph2d_editor_core::zones::Rect,
-    icon: bool,
-) -> ph2d_editor_core::zones::Rect {
+pub fn plate_of(kr: Rect, l: Rect, icon: bool) -> Rect {
     // A folga de lado cede para as barras espreitarem `BAR_PEEK` de cada lado: nas setas e nas letras a 1280 a
     // folga cheia deixava 1–3 px de barra (fotos b1_1600/b1_1280, 10/11).
     let room = (kr.w - BAR_INSET_X * 2.0 - BAR_PEEK * 2.0 - l.w) * 0.5;
-    let floor = if icon { 0.0 } else { PLATE_PAD_Y };
+    // Sem lugar, a folga cede até zero: a barra à vista vence a folga do adesivo.
+    let floor = if icon {
+        0.0
+    } else {
+        PLATE_PAD_Y.min(room.max(0.0))
+    };
     let pad = room.clamp(floor, PLATE_PAD_X);
     let x0 = (l.x - pad).max(kr.x + LEGEND_PAD).min(l.x);
     let x1 = (l.x + l.w + pad)
@@ -89,7 +103,7 @@ pub fn plate_of(
         .max(l.x + l.w);
     let y0 = (l.y - PLATE_PAD_Y).max(kr.y);
     let y1 = (l.y + l.h + PLATE_PAD_Y).min(kr.y + kr.h);
-    ph2d_editor_core::zones::Rect::new(x0, y0, x1 - x0, (y1 - y0).max(0.0))
+    Rect::new(x0, y0, x1 - x0, (y1 - y0).max(0.0))
 }
 
 /// A altura de uma tecla de uma fila para o passo `p`.
@@ -217,12 +231,16 @@ pub(crate) fn legend_at(key: Key, level: Level) -> Legend {
     }
 }
 
+/// A margem de cada lado da legenda que a faz «caber»: o recuo das barras e a barra à vista ([`BAR_VISIBLE_MIN`]) —
+/// a legenda nunca tapa a pilha de barras inteira (dono 10/11).
+pub(crate) const LEGEND_MARGIN: f32 = BAR_INSET_X + BAR_VISIBLE_MIN;
+
 fn fits(ts: &mut TextSystem, l: &Legend, w: f32) -> bool {
     match l {
-        Legend::Icon(_) => m::VALUE_PX + LEGEND_PAD * 2.0 <= w,
-        Legend::Text(s, px) => ts.prefix_width(s, *px) + LEGEND_PAD * 2.0 <= w,
+        Legend::Icon(_) => m::VALUE_PX + LEGEND_MARGIN * 2.0 <= w,
+        Legend::Text(s, px) => ts.prefix_width(s, *px) + LEGEND_MARGIN * 2.0 <= w,
         Legend::Two(a, b, px) => {
-            ts.prefix_width(a, *px).max(ts.prefix_width(b, *px)) + LEGEND_PAD * 2.0 <= w
+            ts.prefix_width(a, *px).max(ts.prefix_width(b, *px)) + LEGEND_MARGIN * 2.0 <= w
         }
     }
 }
@@ -300,10 +318,10 @@ pub(crate) fn iso_icon(key: Key) -> Option<IconId> {
     })
 }
 
-/// O degrau do grupo `grp` no arranjo `a` ao passo `p`: o primeiro em que TODA tecla do grupo cabe. O ícone só
+/// O degrau do grupo `grp` ao passo `p`: o primeiro em que TODA tecla do grupo cabe. O ícone só
 /// conta se toda palavra do grupo tem símbolo (senão o grupo misturaria palavra e ícone); `None` = nenhum cabe.
-fn group_level(ts: &mut TextSystem, a: Arrangement, p: f32, grp: Group) -> Option<Level> {
-    let caps: Vec<KeyCap> = g::keyboard(a)
+fn group_level(ts: &mut TextSystem, p: f32, grp: Group) -> Option<Level> {
+    let caps: Vec<KeyCap> = g::keyboard()
         .into_iter()
         .filter(|c| group_of(c.key) == grp)
         .collect();
@@ -343,54 +361,126 @@ pub fn levels(ts: &mut TextSystem, f: Fit) -> Vec<(Group, Level)> {
     GROUPS
         .into_iter()
         .map(|grp| {
-            let l = group_level(ts, f.arrangement, f.pitch, grp).unwrap_or(Level::ShortSmall);
+            let l = group_level(ts, f.pitch, grp).unwrap_or(Level::ShortSmall);
             (grp, l)
         })
         .collect()
 }
 
-/// O arranjo escolhido e o passo, para uma caixa de largura `w` (e altura `h`, se a caixa já foi dada).
+/// O passo escolhido para uma caixa de largura `w` (e altura `h`, se a caixa já foi dada).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Fit {
-    pub arrangement: Arrangement,
     pub pitch: f32,
     /// Toda tecla tem uma legenda que cabe.
     pub legible: bool,
+    /// A caixa é mais estreita que o desenho ao [`PITCH_FLOOR`]: o teclado rola na horizontal.
+    pub scrolls: bool,
 }
 
-fn pitch_of(a: Arrangement, w: f32, h: Option<f32>, cap: f32) -> f32 {
-    let (cols, rows) = g::extent(a);
+fn pitch_of(w: f32, h: Option<f32>, cap: f32) -> f32 {
+    let (cols, rows) = g::extent();
     let p = (w / cols).min(m::FIELD_H * cap);
     h.map_or(p, |h| p.min(pitch_for_rows(h, rows)))
 }
 
-fn legible(ts: &mut TextSystem, a: Arrangement, p: f32) -> bool {
+fn legible(ts: &mut TextSystem, p: f32) -> bool {
     GROUPS
         .into_iter()
-        .all(|grp| group_level(ts, a, p, grp).is_some())
+        .all(|grp| group_level(ts, p, grp).is_some())
 }
 
-/// ⭐ A escolha (plano §13.2): `Wide` se toda tecla tem legenda que cabe; senão `Narrow`.
-pub(crate) fn fit(ts: &mut TextSystem, w: f32, h: Option<f32>, cap: f32) -> Fit {
-    let wide = pitch_of(Arrangement::Wide, w, h, cap);
-    if legible(ts, Arrangement::Wide, wide) {
-        return Fit {
-            arrangement: Arrangement::Wide,
-            pitch: wide,
-            legible: true,
-        };
-    }
-    let p = pitch_of(Arrangement::Narrow, w, h, cap);
-    Fit {
-        arrangement: Arrangement::Narrow,
+/// A caixa da legenda `l` centrada na tecla `kr` (o mesmo centro com 0 ou N barras).
+pub(super) fn legend_box(ts: &mut TextSystem, kr: Rect, l: &Legend) -> Rect {
+    let (cx, cy) = (kr.x + kr.w * 0.5, kr.y + kr.h * 0.5);
+    let (w, h) = match l {
+        Legend::Icon(_) => {
+            let s = ARROW_BOX
+                .min(label_h(kr.h))
+                .min(kr.w - LEGEND_MARGIN * 2.0)
+                .max(0.0);
+            (s, s)
+        }
+        Legend::Text(s, px) => (
+            ts.prefix_width(s, *px).min(kr.w),
+            px * ph2d_tokens::LineHeight::Tight.ratio(),
+        ),
+        Legend::Two(a, b, px) => (
+            ts.prefix_width(a, *px)
+                .max(ts.prefix_width(b, *px))
+                .min(kr.w),
+            two_lines_h(*px),
+        ),
+    };
+    Rect::new(cx - w * 0.5, cy - h * 0.5, w, h)
+}
+
+/// A menor barra à vista ao lado da plaquinha, em toda tecla desenhada ao passo `p` (o que a pintura faria).
+#[must_use]
+pub fn bar_visible_at(ts: &mut TextSystem, p: f32) -> f32 {
+    let f = Fit {
         pitch: p,
-        legible: legible(ts, Arrangement::Narrow, p),
+        legible: true,
+        scrolls: false,
+    };
+    let lv = levels(ts, f);
+    let mut least = f32::MAX;
+    for (c, x, y, w, h) in placed(f) {
+        let kr = Rect::new(x, y, w, h);
+        let level = lv
+            .iter()
+            .find(|(gr, _)| *gr == group_of(c.key))
+            .map_or(Level::ShortSmall, |l| l.1);
+        let legend = choose(ts, c.key, (level, true), w, label_h(h))
+            .unwrap_or_else(|| legend_at(c.key, level));
+        let plate = plate_of(
+            kr,
+            legend_box(ts, kr, &legend),
+            matches!(legend, Legend::Icon(_)),
+        );
+        least = least.min(plate.x - (kr.x + BAR_INSET_X));
+    }
+    least
+}
+
+/// O passo serve: todo grupo tem legenda e toda tecla deixa [`BAR_VISIBLE_MIN`] de barra de cada lado.
+#[must_use]
+pub fn fits_at(ts: &mut TextSystem, p: f32) -> bool {
+    legible(ts, p) && bar_visible_at(ts, p) >= BAR_VISIBLE_MIN - f32::EPSILON
+}
+
+/// A medida do [`PITCH_FLOOR`]: o menor passo (de meio em meio px) a partir do qual todo passo maior serve.
+#[must_use]
+pub fn measured_floor(ts: &mut TextSystem) -> f32 {
+    let top = m::FIELD_H * g::PITCH_MAX_ROWS_B;
+    let mut p = top;
+    while p - 0.5 >= m::VALUE_PX && fits_at(ts, p - 0.5) {
+        p -= 0.5;
+    }
+    p
+}
+
+/// ⭐ A escolha (plano §13.2): o passo que enche a caixa, nunca abaixo de [`PITCH_FLOOR`] — abaixo, o desenho fica
+/// no passo mínimo e a caixa rola na horizontal (o numérico nunca muda de sítio).
+pub(crate) fn fit(ts: &mut TextSystem, w: f32, h: Option<f32>, cap: f32) -> Fit {
+    let p = pitch_of(w, h, cap);
+    let scrolls = pitch_of(w, None, cap) < PITCH_FLOOR;
+    let pitch = p.max(PITCH_FLOOR);
+    Fit {
+        pitch,
+        legible: legible(ts, pitch),
+        scrolls,
     }
 }
 
-/// A altura do desenho (sem o enchimento) para a escolha `f`.
+/// A altura do desenho (sem o enchimento) para a escolha `f`, com a faixa da barra quando rola.
 pub(super) fn drawing_rows_h(f: Fit) -> f32 {
-    rows_h(f.pitch, g::extent(f.arrangement).1)
+    rows_h(f.pitch, g::extent().1) + if f.scrolls { HBAR_BAND } else { 0.0 }
+}
+
+/// A largura do desenho ao passo `p` (a tinta: sem o vão que segue a última coluna).
+#[must_use]
+pub fn drawing_w(p: f32) -> f32 {
+    (g::extent().0 - (1.0 - g::KEY_FILL)) * p
 }
 
 /// A escolha para a largura `w` (pública para os testes e o relatório de medida).
@@ -404,21 +494,15 @@ pub fn fit_for_width(ts: &mut TextSystem, w: f32, cap_b: bool) -> Fit {
     fit(ts, w, None, cap)
 }
 
-/// As teclas sem legenda que caiba no arranjo `a` à largura `w` (tecto da B ou da C): `(rótulo, largura da tecla)`.
-/// A medida que decide o arranjo, exposta para o relatório e os testes.
+/// As teclas sem legenda que caiba à largura `w` (tecto da B ou da C): `(rótulo, largura da tecla)`.
 #[must_use]
-pub fn misfits(ts: &mut TextSystem, w: f32, a: Arrangement, cap_b: bool) -> Vec<(String, f32)> {
-    let cap = if cap_b {
-        g::PITCH_MAX_ROWS_B
-    } else {
-        g::PITCH_MAX_ROWS
-    };
-    let p = pitch_of(a, w, None, cap);
+pub fn misfits(ts: &mut TextSystem, w: f32, cap_b: bool) -> Vec<(String, f32)> {
+    let p = fit_for_width(ts, w, cap_b).pitch;
     let lost: Vec<Group> = GROUPS
         .into_iter()
-        .filter(|grp| group_level(ts, a, p, *grp).is_none())
+        .filter(|grp| group_level(ts, p, *grp).is_none())
         .collect();
-    g::keyboard(a)
+    g::keyboard()
         .into_iter()
         .filter(|c| {
             lost.contains(&group_of(c.key))
@@ -438,7 +522,7 @@ pub fn misfits(ts: &mut TextSystem, w: f32, a: Arrangement, cap_b: bool) -> Vec<
 /// As teclas com a sua caixa relativa à origem do desenho: `(tecla, x, y, w, h)`.
 pub(super) fn placed(f: Fit) -> Vec<(KeyCap, f32, f32, f32, f32)> {
     let p = f.pitch;
-    g::keyboard(f.arrangement)
+    g::keyboard()
         .into_iter()
         .map(|c| {
             let (x, y) = (c.col * p, c.row * row_step(p));

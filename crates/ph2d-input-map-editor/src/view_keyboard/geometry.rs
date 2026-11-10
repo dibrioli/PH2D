@@ -38,37 +38,18 @@ const DOWN: u32 = 0xF701;
 const LEFT: u32 = 0xF702;
 const RIGHT: u32 = 0xF703;
 
-/// Onde mora o bloco do numérico (plano §13.2): ao lado do principal (a foto) ou por baixo dele, à esquerda das
-/// setas, quando ao lado alguma legenda não caberia.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Arrangement {
-    Wide,
-    Narrow,
-}
-
-/// A largura do bloco principal (ANSI) e o vão até ao numérico, em unidades de tecla.
+/// A largura do bloco principal (ANSI) e o vão até ao numérico, em unidades de tecla. UM arranjo só (dono 10/11,
+/// plano §13.2): o numérico ao lado do principal, como na foto — nunca desce; abaixo do passo mínimo o desenho rola.
 pub(crate) const MAIN_W: f32 = 15.0; // LITERAL-PX-OK: unidades de tecla, ANSI
 const MAIN_ROWS: f32 = 7.0; // LITERAL-PX-OK: filas do bloco principal (R0..R6)
 const PAD_GAP: f32 = 0.25; // LITERAL-PX-OK: unidades de tecla, foto do dono
 const PAD_W: f32 = 4.0; // LITERAL-PX-OK: colunas do numérico
-const PAD_ROWS: f32 = 6.0; // LITERAL-PX-OK: filas do numérico (Home…PgDn e R1..R5)
-/// A coluna da ← (R6): o numérico estreito acaba a um vão dela.
+/// A coluna da ← (R6).
 const ARROWS_COL: f32 = 12.0; // LITERAL-PX-OK: unidades de tecla, ANSI
 
 /// A extensão do desenho (colunas, filas) em unidades de tecla.
-pub(crate) fn extent(a: Arrangement) -> (f32, f32) {
-    match a {
-        Arrangement::Wide => (MAIN_W + PAD_GAP + PAD_W, MAIN_ROWS),
-        Arrangement::Narrow => (MAIN_W, MAIN_ROWS - 1.0 + PAD_ROWS),
-    }
-}
-
-/// A origem do bloco do numérico (coluna, fila).
-fn pad_origin(a: Arrangement) -> (f32, f32) {
-    match a {
-        Arrangement::Wide => (MAIN_W + PAD_GAP, 0.0),
-        Arrangement::Narrow => (ARROWS_COL - PAD_GAP - PAD_W, MAIN_ROWS - 1.0),
-    }
+pub(crate) const fn extent() -> (f32, f32) {
+    (MAIN_W + PAD_GAP + PAD_W, MAIN_ROWS)
 }
 
 /// Uma fila de teclas de 1 u a partir de `col`.
@@ -148,21 +129,17 @@ fn numpad(ox: f32, oy: f32) -> Vec<KeyCap> {
     out
 }
 
-/// O teclado de notebook inteiro no arranjo `a`: o principal e o numérico.
-pub(crate) fn keyboard(a: Arrangement) -> Vec<KeyCap> {
-    let (ox, oy) = pad_origin(a);
+/// O teclado de notebook inteiro: o principal e, ao lado dele, o numérico.
+pub(crate) fn keyboard() -> Vec<KeyCap> {
     let mut out = main_block();
-    out.extend(numpad(ox, oy));
+    out.extend(numpad(MAIN_W + PAD_GAP, 0.0));
     out
 }
 
-/// As teclas desenhadas (as mesmas nos dois arranjos), pela ordem da tabela.
+/// As teclas desenhadas, pela ordem da tabela.
 #[must_use]
 pub fn drawn_keys() -> Vec<Key> {
-    keyboard(Arrangement::Wide)
-        .into_iter()
-        .map(|c| c.key)
-        .collect()
+    keyboard().into_iter().map(|c| c.key).collect()
 }
 
 /// As setas pintam-se com ícone (a fonte não tem os glifos ←↑↓→).

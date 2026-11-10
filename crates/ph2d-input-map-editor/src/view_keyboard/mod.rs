@@ -4,6 +4,7 @@
 
 pub mod geometry;
 pub use geometry::half_icon;
+pub mod hscroll;
 pub(crate) mod input;
 pub(crate) mod keys;
 pub mod keys_fit;
@@ -129,8 +130,8 @@ pub fn paint(
     );
     let list_w = list::width(doc, ts).min(inner.w * 0.5);
     let side_w = (inner.w - list_w - m::CARD_GAP).max(0.0);
-    // ⭐ Plano §13.2 (a 1280): a coluna do teclado não segura o arranjo Wide legível ⟹ empilha — o teclado na
-    // largura inteira por cima, a lista e a acção aberta lado a lado por baixo. A mesma regra no comando.
+    // ⭐ Plano §13.2 (a 1280): a coluna do teclado não segura o passo mínimo ⟹ empilha — o teclado na largura
+    // inteira por cima, a lista e a acção aberta lado a lado por baixo. A mesma regra no comando.
     let stacked = !wide_fits(ts, side_w);
     doc.kb.stacked = stacked;
     let (top, below) = if stacked {
@@ -285,8 +286,8 @@ fn fade(
     }
 }
 
-/// A coluna de largura `w` segura o teclado Wide com toda legenda inteira (a medida do `keys_fit`, com os dois
-/// recuos do cartão e do desenho que o `top_height` desconta).
+/// A coluna de largura `w` segura o teclado sem rolar (o passo mínimo, com os dois recuos do cartão e do desenho
+/// que o `top_height` desconta).
 fn wide_fits(ts: &mut TextSystem, w: f32) -> bool {
     let f = keys_fit::fit(
         ts,
@@ -294,11 +295,14 @@ fn wide_fits(ts: &mut TextSystem, w: f32) -> bool {
         None,
         geometry::PITCH_MAX_ROWS_B,
     );
-    f.arrangement == geometry::Arrangement::Wide && f.legible
+    !f.scrolls && f.legible
 }
 
-/// A roda rola a lista das acções (só quando ela não cabe). `true` = rolou.
-pub(crate) fn wheel(doc: &mut InputMapDoc, dy: f32) -> bool {
+/// A roda rola a lista das acções (só quando ela não cabe); com o Shift, o teclado na horizontal. `true` = rolou.
+pub(crate) fn wheel(doc: &mut InputMapDoc, dy: f32, shift: bool) -> bool {
+    if shift {
+        return hscroll::wheel(doc, dy);
+    }
     let before = doc.kb.scroll;
     let max = (doc.kb.list_total - doc.kb.list_view_h).max(0.0);
     doc.kb.scroll = (doc.kb.scroll - dy).clamp(0.0, max);

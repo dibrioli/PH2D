@@ -24,6 +24,7 @@ mod polimento_w3;
 mod polimento_w3_lista;
 mod teclado;
 mod teclado_censo;
+mod teclado_piso;
 mod teclado_r7b;
 mod teclado_r9b;
 mod teclado_w2;

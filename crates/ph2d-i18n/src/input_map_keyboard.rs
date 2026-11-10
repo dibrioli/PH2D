@@ -12,6 +12,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "input_map_keyboard.remove_off_none" => "Open an action first, then Remove deletes it.",
         "input_map_keyboard.scrollbar" => "Actions scroll bar",
         "input_map_keyboard.scrollbar_tip" => "Drag to scroll the actions.",
+        "input_map_keyboard.hscrollbar" => "Keyboard scroll bar",
+        "input_map_keyboard.hscrollbar_tip" => {
+            "Drag, or hold Shift and use the wheel, to see the rest of the keyboard."
+        }
         "input_map_keyboard.tile_x" => "Remove {key}",
         "input_map_keyboard.listen_label" => "Press a key to add it",
         "input_map_keyboard.bar_dead" => "Dead zone handle",

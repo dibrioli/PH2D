@@ -114,8 +114,8 @@ impl DocumentSurface for InputMapTab {
         self.open && self.doc.wants_frame()
     }
 
-    fn wheel(&mut self, _id: u64, _x: f32, _y: f32, dy: f32, _shift: bool) -> bool {
-        self.doc.wheel(dy)
+    fn wheel(&mut self, _id: u64, _x: f32, _y: f32, dy: f32, shift: bool) -> bool {
+        self.doc.wheel_shift(dy, shift)
     }
 
     fn key(&mut self, _id: u64, _ts: &mut TextSystem, input: KeyInput<'_>) -> KeyOutcome {

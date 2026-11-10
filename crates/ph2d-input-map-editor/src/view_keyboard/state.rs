@@ -30,6 +30,8 @@ pub enum KbHit {
     BarPress,
     /// O polegar da lista das acções (empilhada a 1280, quando as linhas não cabem).
     Thumb,
+    /// O polegar do teclado que rola na horizontal (abaixo do passo mínimo).
+    HThumb,
 }
 
 const BASE: NodeId = hash_node_id("input_map_kb.target");
@@ -62,6 +64,7 @@ impl KbHit {
             Self::BarDead => off(7, 1),
             Self::BarPress => off(7, 2),
             Self::Thumb => off(7, 3),
+            Self::HThumb => off(7, 4),
         }
     }
 }
@@ -109,6 +112,14 @@ pub struct KbState {
     pub(crate) painted_open: Option<ActionId>,
     /// Cada linha da lista: (acção, topo relativo ao conteúdo, altura) — o que o `reveal` lê.
     pub(crate) rows: Vec<(ActionId, f32, f32)>,
+    /// Quanto o teclado rolou na horizontal (px; só abaixo do passo mínimo).
+    pub hscroll: f32,
+    /// A barra horizontal da última pintura (`None` = o teclado cabe).
+    pub hbar: Option<super::hscroll::HBar>,
+    /// As teclas que a última pintura pôs no desenho que rola (o foco trá-las à vista).
+    pub(crate) hkeys: Vec<NodeId>,
+    /// O arrasto do polegar horizontal: (x do Down, rolagem no Down).
+    pub(crate) hdrag: Option<(f32, f32)>,
 }
 
 impl KbState {

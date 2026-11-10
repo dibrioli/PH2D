@@ -154,7 +154,7 @@ fn paint_play_banner(
 
 /// A dica do segmento sob o ponteiro, por baixo dele.
 fn paint_hover_tip(
-    doc: &InputMapDoc,
+    doc: &mut InputMapDoc,
     scene: &mut VectorScene,
     text: &mut TextSystem,
     theme: Theme,
@@ -192,9 +192,17 @@ fn paint_hover_tip(
         return;
     };
     let pad = Spacing::Sm.px();
-    let w = text.prefix_width(msg, TypeToken::Sm.px()) + pad * 2.0;
     let area = doc.layout.area;
-    let x = seg.x.min(area.x + area.w - w - pad).max(area.x);
-    let r = Rect::new(x, seg.y + seg.h + pad, w, m::FIELD_H);
+    let w = (text.prefix_width(msg, TypeToken::Sm.px()) + pad * 2.0).min(area.w);
+    // Sempre inteira dentro da aba: encosta-se à borda que a cortaria e, sem lugar por baixo, sobe para cima.
+    let x = seg.x.min(area.x + area.w - w).max(area.x);
+    let below = seg.y + seg.h + pad;
+    let y = if below + m::FIELD_H > area.y + area.h {
+        (seg.y - pad - m::FIELD_H).max(area.y)
+    } else {
+        below
+    };
+    let r = Rect::new(x, y, w, m::FIELD_H);
+    doc.census.tip = Some(r);
     paint_tooltip(&Tooltip::new(id, msg), r, scene, text, theme);
 }

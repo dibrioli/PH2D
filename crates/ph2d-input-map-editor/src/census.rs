@@ -6,6 +6,8 @@ use ph2d_input::ActionId;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Census {
+    /// A caixa da dica do hover pintada (sempre inteira dentro da aba).
+    pub tip: Option<Rect>,
     /// Cada texto: onde, o texto, e se não coube (foi cortado com reticência).
     pub texts: Vec<(Rect, String, bool)>,
     /// Cada campo numérico, pela acção dona.
@@ -43,6 +45,8 @@ pub struct Census {
     pub chips: Vec<(Rect, ph2d_tokens::ColorToken)>,
     /// A A: o olhar de cada controlo da linha no estado em que se pintou (linha, chip, ×, «No key», «+», lixo).
     pub looks: Vec<ControlLook>,
+    /// A A: cada emblema redondo que apaga (o × do chip), à vista: o id e a face pintada.
+    pub badges: Vec<(ph2d_a11y::NodeId, Rect)>,
 }
 
 /// Como um controlo da A se pintou: o fundo, a aresta (e se é tracejada), a tinta e a marca do acento à esquerda.

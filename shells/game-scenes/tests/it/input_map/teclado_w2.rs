@@ -4,7 +4,7 @@
 use super::Mesa;
 use super::lista::onze;
 use super::teclado_censo::AREAS;
-use ph2d_app_input_map::view_keyboard::geometry::{Arrangement, drawn_keys};
+use ph2d_app_input_map::view_keyboard::geometry::drawn_keys;
 use ph2d_app_input_map::view_keyboard::keys_fit::{MIN_LEGEND_PX, fit_for_width};
 use ph2d_app_input_map::view_keyboard::state::{KbHit, Sub};
 use ph2d_app_input_map::{InputMapEdit, View};
@@ -77,8 +77,8 @@ fn provas(m: &Mesa, at: &str) -> (f32, f32, f32) {
     let top = rects.iter().map(|r| r.1.y).fold(f32::MAX, f32::min);
     let low = rects.iter().map(|r| r.1.y + r.1.h).fold(0.0, f32::max);
     eprintln!(
-        "{at}: {:?} passo {:.1} margem {margin:.1} altura {:.0}",
-        fit.arrangement,
+        "{at}: rola {:?} passo {:.1} margem {margin:.1} altura {:.0}",
+        fit.scrolls,
         fit.pitch,
         low - top
     );
@@ -109,10 +109,7 @@ fn mede_as_teclas_que_nao_cabem() {
     use ph2d_app_input_map::view_keyboard::keys_fit::misfits;
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     for w in [600.0, 614.0, 640.0] {
-        eprintln!(
-            "C w={w}: {:?}",
-            misfits(&mut ts, w, Arrangement::Wide, false)
-        );
+        eprintln!("C w={w}: {:?}", misfits(&mut ts, w, false));
     }
 }
 
@@ -120,10 +117,11 @@ fn mede_as_teclas_que_nao_cabem() {
 fn o_arranjo_e_funcao_pura_da_largura_e_do_texto() {
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     let largo = fit_for_width(&mut ts, 900.0, true); // LITERAL-PX-OK: caixa de teste
-    assert_eq!(largo.arrangement, Arrangement::Wide);
+    assert!(!largo.scrolls);
     assert!(largo.legible);
     let estreito = fit_for_width(&mut ts, 300.0, true); // LITERAL-PX-OK: caixa de teste
-    assert_eq!(estreito.arrangement, Arrangement::Narrow);
+    assert!(estreito.scrolls, "abaixo do passo mínimo o teclado rola");
+    assert!(estreito.legible);
     assert_eq!(
         fit_for_width(&mut ts, 300.0, true),
         estreito,
@@ -506,8 +504,8 @@ fn k2_o_numerico_fala_e_a_pontuacao_pesa() {
                 word_or(Key::NUMPAD_ENTER, "Enter", IconId::KbdEnter);
                 word_or(tecla("numlock"), "Num", IconId::KbdNumLock);
                 assert_eq!(
-                    m.tab().doc.kb.fit.map(|f| f.arrangement),
-                    Some(Arrangement::Wide),
+                    m.tab().doc.kb.fit.map(|f| f.scrolls),
+                    Some(false),
                     "{at}: o numérico fica à vista"
                 );
                 for l in &m.tab().doc.census.keys {

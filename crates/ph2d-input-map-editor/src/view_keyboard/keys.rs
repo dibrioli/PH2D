@@ -12,7 +12,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
 
-use super::geometry::{self as g, Arrangement, KeyCap};
+use super::geometry::{self as g, KeyCap};
 use super::keys_fit::{self as fit, HOVER_FACE, Legend, Level};
 use super::state::{KbHit, Sub};
 use super::users;
@@ -317,31 +317,6 @@ fn paint_stack(
     }
 }
 
-/// A caixa da legenda `l` centrada na tecla `kr` (o mesmo centro com 0 ou N barras).
-fn legend_box(ts: &mut TextSystem, kr: Rect, l: &Legend) -> Rect {
-    let (cx, cy) = (kr.x + kr.w * 0.5, kr.y + kr.h * 0.5);
-    let (w, h) = match l {
-        Legend::Icon(_) => {
-            let s = ARROW_BOX
-                .min(fit::label_h(kr.h))
-                .min(kr.w - fit::LEGEND_PAD * 2.0)
-                .max(0.0);
-            (s, s)
-        }
-        Legend::Text(s, px) => (
-            ts.prefix_width(s, *px).min(kr.w),
-            px * ph2d_tokens::LineHeight::Tight.ratio(),
-        ),
-        Legend::Two(a, b, px) => (
-            ts.prefix_width(a, *px)
-                .max(ts.prefix_width(b, *px))
-                .min(kr.w),
-            fit::two_lines_h(*px),
-        ),
-    };
-    Rect::new(cx - w * 0.5, cy - h * 0.5, w, h)
-}
-
 /// O contorno da acção aberta, recuado de uma aresta para dentro (o anel do foco fica na aresta, os dois lêem-se).
 pub(super) fn open_outline(scene: &mut VectorScene, ink: CardInk, r: Rect, radius: f32) {
     let d = m::FIELD_BORDER * 2.0;
@@ -411,22 +386,39 @@ pub(crate) fn paint_keys(
         draw.w - m::CARD_PAD_X * 2.0,
         draw.h - m::CARD_PAD_X * 2.0,
     );
-    // O arranjo e o passo saem da caixa recebida (largura e altura) pela MESMA escolha que pediu a altura.
-    let f = fit::fit(ts, inner.w, Some(inner.h), cap);
+    // O passo sai da caixa recebida pela MESMA escolha que pediu a altura; abaixo do passo mínimo o desenho fica
+    // nele e rola na horizontal, com a barra na faixa de baixo.
+    let wide = fit::fit(ts, inner.w, None, cap);
+    let f = if wide.scrolls {
+        wide
+    } else {
+        fit::fit(ts, inner.w, Some(inner.h), cap)
+    };
     // O degrau da legenda por GRUPO (nunca por tecla): a B e a C, na mesma caixa, dão o mesmo.
     let levels = fit::levels(ts, f);
     let p = f.pitch;
-    let (cols, _) = g::extent(f.arrangement);
+    let (cols, _) = g::extent();
     let spare = (inner.w - cols * p).max(0.0);
+    let hmax = (fit::drawing_w(p) - inner.w).max(0.0);
+    // A rolagem só se aperta quando rola: alargar a janela e voltar guarda onde estava.
+    if f.scrolls {
+        doc.kb.hscroll = doc.kb.hscroll.clamp(0.0, hmax);
+    }
     // O Try it encosta o principal à esquerda e o numérico à DIREITA do cartão (maquete C2: as setas à direita).
-    let (ox, pad_dx) = match (align, f.arrangement) {
-        (KeysAlign::Center, _) | (KeysAlign::Spread, Arrangement::Narrow) => {
-            (inner.x + spare * 0.5, 0.0)
-        }
+    let (ox, pad_dx) = match align {
+        _ if f.scrolls => (inner.x - doc.kb.hscroll, 0.0),
+        KeysAlign::Center => (inner.x + spare * 0.5, 0.0),
         // A tinta da última coluna acaba no recuo (sem o vão que segue a última tecla).
-        (KeysAlign::Spread, Arrangement::Wide) => (inner.x, spare + (1.0 - g::KEY_FILL) * p),
+        KeysAlign::Spread => (inner.x, spare + (1.0 - g::KEY_FILL) * p),
     };
     doc.kb.fit = Some(f);
+    // Rolando, nada se pinta nem se acerta fora do desenho: o recorte é o campo inteiro.
+    let clip = f.scrolls.then_some(draw);
+    if let Some(c) = clip {
+        scene.push_clip(&ph2d_editor_core::paint::rect_to_vello(c));
+        doc.hits.push_clip(c);
+    }
+    let mark = doc.ui.controls.len();
     for (KeyCap { key, col, .. }, x, y, w, h) in fit::placed(f) {
         let dx = if col >= g::MAIN_W { pad_dx } else { 0.0 };
         let kr = Rect::new(ox + dx + x, inner.y + y, w, h);
@@ -435,6 +427,18 @@ pub(crate) fn paint_keys(
             .find(|(g, _)| *g == fit::group_of(key))
             .map_or(Level::ShortSmall, |l| l.1);
         paint_key(doc, scene, ts, ink, (style, kr), (key, lit_of(key), level));
+    }
+    if let Some(c) = clip {
+        doc.hits.pop_clip();
+        scene.pop_layer();
+        doc.kb.hkeys = doc.ui.controls[mark..].iter().map(|c| c.id).collect();
+        let band = Rect::new(
+            inner.x,
+            inner.y + inner.h - fit::HBAR_BAND,
+            inner.w,
+            fit::HBAR_BAND,
+        );
+        super::hscroll::paint_bar(doc, (c, inner, band), fit::drawing_w(p), scene, ink);
     }
 }
 
@@ -497,7 +501,7 @@ fn paint_key(
         .unwrap_or_else(|| fit::legend_at(key, level));
     // ⭐ A legenda fica SEMPRE no centro da tecla, numa plaquinha opaca da face dela (dono 10/11: «como aqueles
     // adesivos que colocamos no teclado»), com a aresta fina que a lê como colada; a do sistema, apagada também.
-    let lb = legend_box(ts, kr, &legend);
+    let lb = fit::legend_box(ts, kr, &legend);
     let plate = fit::plate_of(kr, lb, matches!(legend, Legend::Icon(_)));
     if system {
         let c = ink.color(bg).multiply_alpha(SYSTEM_FACE_ALPHA);

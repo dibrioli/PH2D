@@ -39,9 +39,16 @@ pub fn owns_the_keyboard(hero: Option<&HeroScreen>) -> bool {
     hero.is_some_and(|h| h.documents.surface_active().is_some() && !h.text_entry_focused())
 }
 
-/// A roda: o Shift vem da cache que a shell actualiza a cada mudança de modificadores.
-pub(super) fn wheel(hero: &mut HeroScreen, x: f32, y: f32, dy: f32) -> Option<bool> {
-    let shift = hero.store.shift_held();
+/// A roda: o Shift vem da cache que a shell actualiza a cada mudança de modificadores; `sideways` = os dois dedos
+/// do trackpad andaram de lado (chega como a roda com o Shift, o idioma de rolar na horizontal).
+pub(super) fn wheel(
+    hero: &mut HeroScreen,
+    x: f32,
+    y: f32,
+    dy: f32,
+    sideways: bool,
+) -> Option<bool> {
+    let shift = sideways || hero.store.shift_held();
     let (f, id) = hero.documents.active_surface_mut()?;
     Some(f.wheel(id, x, y, dy, shift))
 }

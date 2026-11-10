@@ -287,7 +287,8 @@ impl InputMapDoc {
         let dragged = crate::view_list::drag(self, x)
             | crate::view_list::drag_thumb(self, y)
             | crate::view_list::drag_text(self, x)
-            | crate::view_try::drag_thumb(self, y);
+            | crate::view_try::drag_thumb(self, y)
+            | crate::view_keyboard::hscroll::drag(self, x);
         let changed = h != self.hover || row != self.list.hover_row || dragged;
         let target = self.hits.hit(x, y).filter(|_| h.is_none());
         let changed = changed || target != self.list.hover_target;
@@ -307,16 +308,23 @@ impl InputMapDoc {
     pub fn release_at(&mut self, x: f32, y: f32) -> bool {
         let fired = self.release_control(x, y).unwrap_or(false);
         self.kb.thumb_drag = None;
+        self.kb.hdrag = None;
         let thumb = self.tryit.thumb_drag.take().is_some();
         crate::view_list::release(self) || fired || thumb
     }
 
     /// A roda: rola a lista.
     pub fn wheel(&mut self, dy: f32) -> bool {
+        self.wheel_shift(dy, false)
+    }
+
+    /// A roda com o Shift (ou os dois dedos de lado): rola o teclado na horizontal quando ele não cabe.
+    pub fn wheel_shift(&mut self, dy: f32, shift: bool) -> bool {
         match self.view {
             View::List => crate::view_list::wheel(self, dy),
+            View::TryIt if shift => crate::view_keyboard::hscroll::wheel(self, dy),
             View::TryIt => crate::view_try::wheel(self, dy),
-            View::Keyboard => crate::view_keyboard::wheel(self, dy),
+            View::Keyboard => crate::view_keyboard::wheel(self, dy, shift),
         }
     }
 

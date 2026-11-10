@@ -549,6 +549,9 @@ impl InputMapDoc {
     /// A região que rola da B traz o controlo `id` (da última pintura) inteiro para a vista: o Tab nunca pousa num
     /// controlo que o recorte esconde (a rolagem nativa de quem recebe o foco).
     fn reveal_control(&mut self, id: NodeId) {
+        if let Some(r) = self.control_of(id).map(|c| c.rect) {
+            crate::view_keyboard::hscroll::reveal(self, id, r);
+        }
         let (Some(r), Some(clip)) = (self.control_of(id).map(|c| c.rect), self.census.clip) else {
             return;
         };
@@ -667,6 +670,8 @@ impl InputMapDoc {
             .map(|c| c.id)
             .collect();
         self.ui.controls.clear();
+        self.kb.hbar = None;
+        self.kb.hkeys.clear();
         self.ui.pulses.clear();
         self.ui.carets.clear();
     }

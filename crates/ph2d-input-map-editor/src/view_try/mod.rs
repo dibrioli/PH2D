@@ -177,6 +177,10 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
         doc.tryit.thumb_drag = Some((y, doc.tryit.scroll));
         return true;
     }
+    if id == crate::view_keyboard::state::KbHit::HThumb.id() {
+        crate::view_keyboard::hscroll::grab(doc, x);
+        return true;
+    }
     if let Some(a) = stick::stick_action(doc) {
         for (h, zone) in [
             (

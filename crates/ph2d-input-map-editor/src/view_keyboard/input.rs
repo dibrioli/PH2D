@@ -26,6 +26,7 @@ pub fn tip_of(doc: &InputMapDoc, id: ph2d_a11y::NodeId) -> Option<&'static str> 
         KbHit::BarDead => "input_map_keyboard.bar_dead_tip",
         KbHit::BarPress => "input_map_keyboard.bar_press_tip",
         KbHit::Thumb => "input_map_keyboard.scrollbar_tip",
+        KbHit::HThumb => "input_map_keyboard.hscrollbar_tip",
     };
     Some(ph2d_i18n::tr(key))
 }
@@ -118,6 +119,7 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
         }
         Some(KbHit::Sub(s)) => doc.kb.sub = s,
         Some(KbHit::Thumb) => doc.kb.thumb_drag = Some((y, doc.kb.scroll)),
+        Some(KbHit::HThumb) => super::hscroll::grab(doc, x),
         Some(KbHit::Key(k)) => add(doc, Binding::Key(k)),
         Some(KbHit::Pad(b)) => add(doc, b),
         Some(KbHit::TileX(n)) => {
@@ -161,7 +163,7 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
 /// O ponteiro anda: o alvo sob ele (o pé, o ×, a dica) e o arrasto de um número ou de uma marca.
 pub(crate) fn motion(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
     let h = doc.hits.hit(x, y).and_then(|id| doc.kb.hit_of(id));
-    let mut dragged = crate::view_list::drag(doc, x);
+    let mut dragged = crate::view_list::drag(doc, x) | super::hscroll::drag(doc, x);
     if let Some((y0, s0)) = doc.kb.thumb_drag {
         let view = doc.kb.list_view_h.max(1.0);
         let max = (doc.kb.list_total - view).max(0.0);

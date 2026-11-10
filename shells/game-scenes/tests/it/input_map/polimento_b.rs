@@ -5,7 +5,7 @@
 use super::Mesa;
 use super::lista::onze;
 use super::teclado_censo::AREAS;
-use ph2d_app_input_map::view_keyboard::geometry::{Arrangement, drawn_keys};
+use ph2d_app_input_map::view_keyboard::geometry::drawn_keys;
 use ph2d_app_input_map::view_keyboard::state::{KbHit, Sub};
 use ph2d_app_input_map::{InputMapEdit, View};
 use ph2d_editor_core::doc_surface::{Key as DocKey, PointerLook};
@@ -46,12 +46,7 @@ fn a_1280_a_b_empilha_e_tudo_se_alcanca() {
                 assert_eq!(doc.kb.stacked, i == 1, "{}: empilha só a 1280", area.w);
                 if sub == Sub::Keyboard {
                     let f = fit.expect("o teclado pintado");
-                    assert_eq!(
-                        f.arrangement,
-                        Arrangement::Wide,
-                        "{}: o arranjo da foto",
-                        area.w
-                    );
+                    assert!(!f.scrolls, "{}: o teclado cabe sem rolar", area.w);
                     let rs: Vec<Rect> = drawn_keys()
                         .into_iter()
                         .map(|k| doc.rect_of(KbHit::Key(k).id()).expect("tecla pintada"))

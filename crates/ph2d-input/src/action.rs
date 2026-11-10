@@ -122,14 +122,15 @@ impl InputAction {
     /// ⚠️ **Uma porta só**: o [`InputAction::with_zone`] chama esta. Duas funções a impor o mesmo
     /// invariante seriam duas que divergem quando um terceiro número nascer.
     pub fn set_zone(&mut self, dead_zone: f32, press_point: f32) {
-        /// O maior valor que a `dead_zone` pode ter sem que `1 - dead_zone` deixe de ser um divisor
-        /// útil.
-        const MAX_DEAD_ZONE: f32 = 0.99;
         let dz = clamp01(dead_zone).min(MAX_DEAD_ZONE);
         self.dead_zone = dz;
         self.press_point = clamp01(press_point).max(dz);
     }
 }
+
+/// O maior valor que a `dead_zone` pode ter sem que `1 - dead_zone` deixe de ser um divisor útil (o limite
+/// que o editor nomeia quando prende o número escrito).
+pub const MAX_DEAD_ZONE: f32 = 0.99;
 
 /// `x` preso a `0..1`, com `NaN` a virar `0` — um `f32::clamp` devolve `NaN` para `NaN`, e um `NaN`
 /// a viajar até à força de uma acção envenenaria toda subtracção que a lesse.

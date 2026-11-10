@@ -42,7 +42,7 @@ pub use mouse::{MouseButton, MouseState};
 pub use pencil::{PencilButton, PencilEvent, PencilState};
 pub use state::InputState;
 
-pub use action::{ActionId, Binding, InputAction};
+pub use action::{ActionId, Binding, InputAction, MAX_DEAD_ZONE};
 pub use controls::PlayerControls;
 pub use map::{
     InputMap, PLAYER_DASH, PLAYER_DOWN, PLAYER_GRAB, PLAYER_JUMP, PLAYER_MOVE_DOWN,

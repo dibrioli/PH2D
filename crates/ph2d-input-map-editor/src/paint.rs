@@ -93,16 +93,19 @@ fn paint_pass(
         View::Keyboard => crate::view_keyboard::paint(doc, l.body, scene, text, theme),
         View::TryIt => crate::view_try::paint(doc, l.body, scene, text, theme),
     }
+    doc.settle_focus();
+    // O anel no que o recorte deixa ver do controlo (nunca por fora do cartão que rola).
     if let Some(c) = doc
         .focused()
         .and_then(|id| doc.ui.controls.iter().find(|c| c.id == id))
+        .and_then(|c| Some((c.role, doc.hits.rect_for(c.id)?)))
     {
-        let radius = if matches!(c.role, ControlRole::Segment | ControlRole::Key) {
+        let radius = if matches!(c.0, ControlRole::Segment | ControlRole::Key) {
             m::SEG_RADIUS
         } else {
             m::FIELD_RADIUS
         };
-        paint_focus_ring(scene, ink, c.rect, radius);
+        paint_focus_ring(scene, ink, c.1, radius);
     }
     paint_hover_tip(doc, scene, text, theme);
 }

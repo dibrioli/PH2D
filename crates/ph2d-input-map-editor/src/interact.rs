@@ -124,6 +124,8 @@ impl Control {
 pub struct Ui {
     /// Os controlos da última pintura, pela ordem dela (a do Tab).
     pub(crate) controls: Vec<Control>,
+    /// A ordem do Tab da pintura anterior: o foco cujo controlo sumiu segue para o seguinte dela.
+    pub(crate) last_order: Vec<NodeId>,
     pub(crate) pointer: Option<(f32, f32)>,
     /// O controlo capturado no Down.
     pub(crate) pressed: Option<NodeId>,
@@ -496,6 +498,11 @@ impl InputMapDoc {
         let from = self.ui.focus.or(field);
         match k {
             FocusKey::Activate => match self.ui.focus.filter(|_| field.is_none()) {
+                // Um foco sem controlo pintado larga-se: a tecla segue para quem a quiser.
+                Some(id) if !order.contains(&id) || self.hits.rect_for(id).is_none() => {
+                    self.ui.focus = None;
+                    false
+                }
                 Some(id) => {
                     self.activate(id);
                     true
@@ -534,6 +541,46 @@ impl InputMapDoc {
             }
             _ => self.ui.focus = Some(id),
         }
+        self.reveal_control(id);
+    }
+
+    /// A região que rola da B traz o controlo `id` (da última pintura) inteiro para a vista: o Tab nunca pousa num
+    /// controlo que o recorte esconde (a rolagem nativa de quem recebe o foco).
+    fn reveal_control(&mut self, id: NodeId) {
+        let (Some(r), Some(clip)) = (self.control_of(id).map(|c| c.rect), self.census.clip) else {
+            return;
+        };
+        if self.view() != View::Keyboard || !self.kb.scrolled.contains(&id) {
+            return;
+        }
+        let d = if r.y < clip.y {
+            r.y - clip.y
+        } else {
+            (r.y + r.h - (clip.y + clip.h)).max(0.0).min(r.y - clip.y)
+        };
+        self.kb.scroll = (self.kb.scroll + d).max(0.0);
+    }
+
+    /// Fim de uma pintura: o foco cujo controlo sumiu (ou ficou todo recortado) passa ao seguinte da ordem anterior
+    /// que esta pintura mostrou; sem nenhum, larga-se.
+    pub(crate) fn settle_focus(&mut self) {
+        let Some(f) = self.ui.focus else {
+            return;
+        };
+        let alive = |d: &Self, id: NodeId| {
+            d.hits.rect_for(id).is_some()
+                && d.control_of(id).is_some_and(|c| c.focusable && c.enabled())
+        };
+        if alive(self, f) {
+            return;
+        }
+        let at = self.ui.last_order.iter().position(|o| *o == f);
+        let next = at.and_then(|i| {
+            let tail = self.ui.last_order[i + 1..].iter();
+            let head = self.ui.last_order[..i].iter().rev();
+            tail.chain(head).copied().find(|id| alive(self, *id))
+        });
+        self.ui.focus = next;
     }
 
     /// A tecla física para o foco (Tab, Shift, Enter, Space, Esc), pelos nomes do vocabulário do app
@@ -613,6 +660,10 @@ impl InputMapDoc {
 
     /// Começo de uma pintura: o registo esvazia (a pintura enche-o de novo).
     pub(crate) fn begin_paint(&mut self) {
+        self.ui.last_order = (self.ui.controls.iter())
+            .filter(|c| c.focusable && c.enabled())
+            .map(|c| c.id)
+            .collect();
         self.ui.controls.clear();
         self.ui.pulses.clear();
         self.ui.carets.clear();

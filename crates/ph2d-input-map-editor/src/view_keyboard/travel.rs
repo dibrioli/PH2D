@@ -197,9 +197,12 @@ pub(crate) fn zone_fields(
         let warn = (doc.list.warn)
             .filter(|(w, z, _)| *w == a.id && *z == zone)
             .map(|(_, _, c)| c);
-        let (above, tint) = warn.map_or((tr(label), ColorToken::CardLabel), |c| {
-            (tr(c.i18n_key()), ColorToken::Warn)
-        });
+        let warned = warn.map(|c| c.sentence(zone.max()));
+        let (above, tint) = warned
+            .as_deref()
+            .map_or((tr(label), ColorToken::CardLabel), |s| {
+                (s, ColorToken::Warn)
+            });
         line(
             &mut doc.census,
             ts,

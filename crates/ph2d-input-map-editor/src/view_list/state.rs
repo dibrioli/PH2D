@@ -9,6 +9,17 @@ pub enum Zone {
     Press,
 }
 
+impl Zone {
+    /// O maior valor que o mapa guarda para este número (`InputAction::set_zone`).
+    #[must_use]
+    pub const fn max(self) -> f32 {
+        match self {
+            Self::Dead => ph2d_input::MAX_DEAD_ZONE,
+            Self::Press => 1.0,
+        }
+    }
+}
+
 /// Um arrasto de número em curso (scrub).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Scrub {

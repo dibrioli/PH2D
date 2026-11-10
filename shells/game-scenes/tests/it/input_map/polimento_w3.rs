@@ -232,7 +232,11 @@ fn o_numero_da_zona_edita_como_um_campo_pro() {
     m.click(m.at(ListHit::Dead(a).id()));
     m.type_text("1.5");
     m.key(K::Enter, None);
-    assert_eq!(m.hero.input_map.get(a).expect("a").press_point, 1.0);
+    // A zona morta prende ao que o mapa guarda (`MAX_DEAD_ZONE`) e o Press acompanha-a.
+    assert_eq!(
+        m.hero.input_map.get(a).expect("a").press_point,
+        ph2d_input::MAX_DEAD_ZONE
+    );
     assert_eq!(
         m.tab().doc.list.warn.map(|w| w.2.i18n_key()),
         Some("input_map_list.kept_max"),

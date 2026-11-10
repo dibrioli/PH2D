@@ -52,8 +52,8 @@ fn o_numpad_enter_na_busca_vazia_faz_o_que_o_enter_faz() {
     assert_eq!(kp, enter, "o Numpad Enter divergiu do Enter na busca vazia");
 }
 
-/// (6) A frase do limite diz o valor que FICA no mapa: «Kept at 1.00» só se a zona morta gravada é 1,00; e um
-/// valor dentro de 0..1 que o mapa muda tem de avisar.
+/// (6) A frase do limite diz o valor que FICA no mapa: a zona morta prende a `MAX_DEAD_ZONE` (0,99) e a frase
+/// nomeia esse número; um valor dentro de 0..1 que o mapa muda tem de avisar.
 #[test]
 fn a_zona_morta_escrita_e_a_que_o_mapa_guarda_ou_avisa() {
     let mut m = Mesa::aberta(View::List);
@@ -75,7 +75,11 @@ fn a_zona_morta_escrita_e_a_que_o_mapa_guarda_ou_avisa() {
         let dead = m.hero.input_map.get(a).expect("a").dead_zone;
         let warn = m.tab().doc.list.warn.map(|w| w.2.i18n_key());
         let ok = match warn {
-            Some("input_map_list.kept_max") => (dead - 1.0).abs() < 1e-6,
+            Some("input_map_list.kept_max") => {
+                let want = ph2d_i18n::tr("input_map_list.kept_max").replace("{v}", "0.99");
+                let said = (m.tab().doc.census.texts.iter()).any(|t| t.1 == want);
+                (dead - ph2d_input::MAX_DEAD_ZONE).abs() < 1e-6 && said
+            }
             None => (dead - typed.parse::<f32>().expect("n")).abs() < 1e-6,
             _ => false,
         };

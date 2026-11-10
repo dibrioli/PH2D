@@ -1,7 +1,8 @@
 //! **O campo numérico da aba** (partilhado: a vista A agora, a B a seguir; plano §13.3): o foco abre o texto do
 //! valor TODO seleccionado; escrever substitui a selecção; ↑/↓ um passo (Shift ×10, Alt ×0,1 — a lei do
 //! `card_step_mul` do cartão, pelas MESMAS constantes `SCRUB_SHIFT_MUL`/`SCRUB_ALT_MUL`); Enter aplica, Esc
-//! devolve o valor do foco, Tab aplica e segue. Fora de `0..=1` o valor fica no limite e o [`Clamp`] diz porquê.
+//! devolve o valor do foco, Tab aplica e segue. Fora de `0..=max` (o limite que o MAPA guarda para este número,
+//! [`Caret::max`]) o valor fica no limite e o [`Clamp`] diz porquê, nomeando esse limite.
 //!
 //! O texto mora com quem o usa (`Typing::buffer` na A); aqui moram o caret, a âncora e o valor do foco.
 
@@ -33,13 +34,19 @@ impl Clamp {
             Self::Min => "input_map_list.kept_min",
         }
     }
+
+    /// A frase com o valor que FICA no mapa (`max` = [`Caret::max`] do campo).
+    #[must_use]
+    pub fn sentence(self, max: f32) -> String {
+        ph2d_i18n::tr(self.i18n_key()).replace("{v}", &format(max))
+    }
 }
 
-/// `v` dentro de `0..=1`, e se foi preciso prender.
+/// `v` dentro de `0..=max`, e se foi preciso prender.
 #[must_use]
-pub fn clamp01(v: f32) -> (f32, Option<Clamp>) {
-    if v > 1.0 {
-        (1.0, Some(Clamp::Max))
+pub fn clamp_to(v: f32, max: f32) -> (f32, Option<Clamp>) {
+    if v > max {
+        (max, Some(Clamp::Max))
     } else if v < 0.0 {
         (0.0, Some(Clamp::Min))
     } else {
@@ -64,17 +71,20 @@ pub struct Caret {
     pub caret: usize,
     pub anchor: Option<usize>,
     pub at_focus: f32,
+    /// O maior valor que o mapa guarda para este número (Dead: `MAX_DEAD_ZONE`; Press: `1`).
+    pub max: f32,
 }
 
 impl Caret {
     /// O foco num campo de valor `v`: o texto formatado, TODO seleccionado.
     #[must_use]
-    pub fn open(v: f32) -> (String, Self) {
+    pub fn open(v: f32, max: f32) -> (String, Self) {
         let buffer = format(v);
         let c = Self {
             caret: buffer.len(),
             anchor: Some(0),
             at_focus: v,
+            max,
         };
         (buffer, c)
     }
@@ -136,10 +146,10 @@ pub fn step_mul(mods: ph2d_host::Modifiers) -> f32 {
     }
 }
 
-/// O valor do texto, preso a `0..=1`; texto que não é número = o valor do foco.
+/// O valor do texto, preso a `0..=max`; texto que não é número = o valor do foco.
 #[must_use]
 pub fn value_of(buffer: &str, c: &Caret) -> (f32, Option<Clamp>) {
-    clamp01(buffer.trim().parse::<f32>().unwrap_or(c.at_focus))
+    clamp_to(buffer.trim().parse::<f32>().unwrap_or(c.at_focus), c.max)
 }
 
 /// Uma tecla para o campo aberto.
@@ -165,7 +175,7 @@ pub fn key(buffer: &mut String, c: &mut Caret, input: &KeyInput<'_>) -> Outcome 
         DocKey::Up | DocKey::Down => {
             let sign = if input.key == DocKey::Up { 1.0 } else { -1.0 };
             let (now, _) = value_of(buffer, c);
-            let (v, clamp) = clamp01(now + sign * STEP * step_mul(input.mods));
+            let (v, clamp) = clamp_to(now + sign * STEP * step_mul(input.mods), c.max);
             *buffer = format(v);
             c.select_all(buffer.len());
             Outcome::Stepped(clamp)
@@ -270,7 +280,7 @@ mod tests {
 
     #[test]
     fn foco_seleciona_tudo_e_escrever_substitui() {
-        let (mut b, mut c) = Caret::open(0.2);
+        let (mut b, mut c) = Caret::open(0.2, 1.0);
         assert_eq!((b.as_str(), c.selection()), ("0.20", Some((0, 4))));
         let none = ph2d_host::Modifiers::default();
         key(&mut b, &mut c, &press(DocKey::Char('7'), Some("7"), none));
@@ -283,7 +293,7 @@ mod tests {
 
     #[test]
     fn passos_e_limites() {
-        let (mut b, mut c) = Caret::open(0.995);
+        let (mut b, mut c) = Caret::open(0.995, 1.0);
         let shift = ph2d_host::Modifiers {
             shift: true,
             ..Default::default()

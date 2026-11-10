@@ -157,7 +157,7 @@ fn set_zone(doc: &mut InputMapDoc, action: ph2d_input::ActionId, zone: Zone, v: 
     let Some(a) = doc.snap.map.get(action) else {
         return false;
     };
-    let v = v.clamp(0.0, 1.0);
+    let v = v.clamp(0.0, zone.max());
     let (dead, press) = match zone {
         Zone::Dead => (v, a.press_point.max(v)),
         Zone::Press => (a.dead_zone.min(v), v),
@@ -207,7 +207,7 @@ fn open_zone(doc: &mut InputMapDoc, action: ph2d_input::ActionId, zone: Zone) {
     } else {
         a.press_point
     };
-    let (buffer, caret) = crate::field::Caret::open(v);
+    let (buffer, caret) = crate::field::Caret::open(v, zone.max());
     doc.list.caret = caret;
     doc.list.typing = Some(Typing {
         action,
@@ -420,12 +420,13 @@ pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool, writes_tex
     if writes_text && !space {
         return false;
     }
-    let editing = ["backspace", "delete", "enter", "escape", "tab"];
-    if editing
-        .iter()
-        .filter_map(|n| Key::named_in_script(n))
-        .flatten()
-        .any(|k| k == key)
+    let editing = ["backspace", "delete", "escape", "tab"];
+    if key.is_enter_like()
+        || editing
+            .iter()
+            .filter_map(|n| Key::named_in_script(n))
+            .flatten()
+            .any(|k| k == key)
     {
         return false;
     }

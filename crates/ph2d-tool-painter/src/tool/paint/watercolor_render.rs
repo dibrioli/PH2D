@@ -676,6 +676,7 @@ impl PainterTool {
             self.devolve_o_vidro(c, p);
         }
         self.paint.wet_reserve_cache = reserve.and_then(watercolor_reserve::ReserveFields::devolve);
+        self.declare_wrote(Some(region)); // o laço só escreve `y0..y1 × x0..x0+bw` (B16.1)
         self.mark_dirty(region);
         if commit {
             self.paint.watercolor_base = None;

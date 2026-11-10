@@ -136,34 +136,33 @@ impl PainterTool {
         }
     }
 
-    fn wet_aplica_imagem(&mut self, im: Imagem) {
+    fn wet_aplica_imagem(&mut self, mut im: Imagem) {
         let show_wet = self.paint.wetpaint.show_wet;
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
-        // A imagem aplica-se inteira ou vai toda para a dívida (as faixas são do mesmo instante do motor).
-        let mut recusa = false;
-        for c in &im.caixas {
+        // A recusa é POR FAIXA (B14.1): a que a casa tocou vai à dívida, as outras aplicam-se (as faixas não partilham
+        // célula nem píxel). A dívida é o sujo da faixa: a composição seguinte cresce-o pelo alcance.
+        let (uniao_local, compostas) = (sess.otica.uniao_local, im.caixas.len());
+        let (otica, planos) = (&mut sess.otica, &sess.planos);
+        im.caixas.retain(|c| {
             // Pela caixa dos degraus, a maior que `Imagem::aplica` cola (`plano_do_suave`: contém a do pigmento).
             debug_assert!(toca(c.caixa_cel, c.caixa_suave) && c.caixa_suave.0 <= c.caixa_cel.0);
-            let tocou = sess
-                .otica
-                .uniao_local
-                .is_some_and(|u| toca(u, c.caixa_suave));
+            let tocou = uniao_local.is_some_and(|u| toca(u, c.caixa_suave));
             #[cfg(test)]
             {
-                sess.otica.tocadas += u32::from(tocou);
+                otica.tocadas += u32::from(tocou);
             }
             // A casa pintou depois do pedido e tem um plano que a imagem diz vazio (o 1.º óleo, o 1.º Smooth Edges):
             // a imagem é velha, e aplicá-la apagava esse plano fora da caixa dela.
-            let velha = sess.otica.uniao_local.is_some() && c.esvazia(&sess.planos);
-            recusa |= tocou || velha || (show_wet && c.veu.is_none());
-        }
-        // A dívida é o sujo da faixa: a composição seguinte cresce-o pelo alcance (pela `caixa_cel` crescia a cada recusa).
-        if recusa {
-            for c in &im.caixas {
-                sess.otica.deve(c.sujo);
+            let velha = uniao_local.is_some() && c.esvazia(planos);
+            let recusa = tocou || velha || (show_wet && c.veu.is_none());
+            if recusa {
+                otica.deve(c.sujo);
             }
+            !recusa
+        });
+        if compostas > 0 && im.caixas.is_empty() {
             return;
         }
         im.aplica(&mut sess.planos, sess.grid);

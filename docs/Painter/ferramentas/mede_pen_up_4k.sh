@@ -34,12 +34,13 @@ if [ "$1" = matriz ]; then
   PLACA_ENV=(VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.json VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
     MESA_VK_WSI_DEBUG=sw __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
   [ "$PLACA" = app ] && PLACA_ENV=()
+  for _ in $(seq 1 40); do [ -e "/tmp/.X11-unix/X${D#:}" ] || break; sleep 0.25; done
   Xvfb $D -screen 0 1600x1000x24 >/dev/null 2>&1 & XV=$!
   sleep 1
   cd "$R"
   for pp in "${PINCEIS[@]}"; do
     PIN=${pp%%:*}; PAINEL=${pp##*:}
-    TAG="$(echo "${PIN}_${PAINEL}_${TELA}_${FUNDO}" | tr ' ' '-' | tr -cd 'A-Za-z0-9_.-')"
+    TAG="$(echo "${ROT:+${ROT}_}${PIN}_${PAINEL}_${TELA}_${FUNDO}" | tr ' ' '-' | tr -cd 'A-Za-z0-9_.-')"
     EXTRA=(PH2D_COMPOSITE_PILHA=0)
     [ "$PIN" = "Composite Brush" ] && EXTRA=(PH2D_COMPOSITE_PILHA=1)
     [ "$PIN" != omissão ] && [ "$PIN" != "Composite Brush" ] && EXTRA+=("PH2D_COMPOSITE_PRESET=$PIN")
@@ -47,8 +48,11 @@ if [ "$1" = matriz ]; then
     EXTRA+=("PH2D_COMPOSITE_FUNDO=$FUNDO" "PH2D_COMPOSITE_TELA=$TELA")
     [ "$FUNDO" = papel ] && EXTRA+=(PH2D_COMPOSITE_PAPEL=1)
     [ -n "$ABRIR" ] && EXTRA+=(PH2D_COMPOSITE_SEGUNDA=1)
-    printf '{"pincel":"%s","painel":"%s","tela":"%s","fundo":"%s","carga":"%s"}\n' "$PIN" "$PAINEL" "$TELA" \
-      "$FUNDO" "$(cut -d' ' -f1-3 /proc/loadavg)" > "$M/$TAG.meta"
+    # B08.5 (faixas): KNOBS = linhas do Tuning do Wet depois do preset; RELEVO = o Relief do papel; TECLAS = `]` × n.
+    [ -n "$KNOBS" ] && EXTRA+=("PH2D_COMPOSITE_KNOBS=$KNOBS")
+    [ -n "$RELEVO" ] && EXTRA+=("PH2D_COMPOSITE_RELEVO=$RELEVO")
+    printf '{"pincel":"%s","painel":"%s","tela":"%s","fundo":"%s","carga":"%s","rot":"%s","knobs":"%s","teclas":"%s","relevo":"%s"}\n' \
+      "$PIN" "$PAINEL" "$TELA" "$FUNDO" "$(cut -d' ' -f1-3 /proc/loadavg)" "$ROT" "$KNOBS" "${TECLAS:-0}" "$RELEVO" > "$M/$TAG.meta"
     : > "$M/$TAG.marcas"
     env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$M/home_$TAG PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PAINEL=$PAINEL \
       PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=0 PH2D_EXIT_AFTER_FRAMES=1000000 "${PLACA_ENV[@]}" "${EXTRA[@]}" "$BIN" \
@@ -68,6 +72,10 @@ if [ "$1" = matriz ]; then
       DISPLAY=$D xdotool windowsize $WIN 1600 1000 windowmove $WIN 0 0 2>/dev/null; sleep 4
       # Sem gestor de janelas o teclado não segue o rato: sem o foco, o Ctrl+Z não chega (medido 10/11, a foto).
       DISPLAY=$D xdotool windowfocus --sync $WIN 2>/dev/null
+      if [ "${TECLAS:-0}" -gt 0 ]; then
+        DISPLAY=$D xdotool mousemove 560 300; sleep 0.3
+        for _ in $(seq 1 "$TECLAS"); do DISPLAY=$D xdotool key bracketright; sleep 0.05; done; sleep 1
+      fi
       marca parado0_ini; sleep 3; marca parado0_fim
       DISPLAY=$D xdotool mousemove 560 460; sleep 0.3
       marca down; DISPLAY=$D xdotool mousedown 1; sleep 0.4
@@ -85,6 +93,10 @@ if [ "$1" = matriz ]; then
       # B08.1, trocar de camada: cliques no cartão BRUSH (janela 1600x1000 em 0,0): aba Layers · «+» (camada nova, que
       # fica a ativa) · a camada de baixo · a de cima. Uma foto por passo (PNG=1) confere que o clique caiu no sítio.
       foto() { [ -n "$PNG" ] && DISPLAY=$D import -window root "$M/$TAG.$1.png" 2>/dev/null; }
+      # CURTO=1 (B08.5): o roteiro pára no CONTROLO (sem camadas, luz nem abrir doc).
+      [ -n "$CURTO" ] && PAINEL_CURTO=1 || PAINEL_CURTO=
+    fi
+    if [ -n "$WIN" ] && [ -z "$PAINEL_CURTO" ]; then
       marca camada_aba; DISPLAY=$D xdotool mousemove ${CAMADA_ABA:-1510 159} click 1; sleep 1.5; foto camada1_aba
       marca camada_mais; DISPLAY=$D xdotool mousemove ${CAMADA_MAIS:-1332 233} click 1; sleep 1.5; foto camada2_mais
       marca camada_troca; DISPLAY=$D xdotool mousemove ${CAMADA_OUTRA:-1430 397} click 1; sleep 1.5; foto camada3_troca
@@ -122,6 +134,37 @@ if [ "$1" = matriz ]; then
   done
   kill $XV
   echo "[matriz] feito: $M"
+  exit 0
+fi
+
+# ── FAIXAS (B08.5, 10/11): as «faixas seguras» do PA §E no app, DENTRO × FORA da faixa no MESMO binário,
+# intercalados por caso (rodada i: A depois B; nunca todos os A primeiro). Cada caso = «id|pincel:painel|A|B», e A/B
+# são `KNOBS=…` (linhas do Tuning do Wet), `TECLAS=n` (`]` × n, ×1,15 o raio) ou `RELEVO=x` (o Relief do papel).
+# O roteiro é o da matriz até ao CONTROLO (CURTO=1). uso: … mede_pen_up_4k.sh faixas <WxH> <fundo> <rodadas> [binario]
+# resumo: mede_pen_up_4k.py --matriz $S/matriz (as colunas rot/knobs/teclas/relevo estão no .meta)
+if [ "$1" = faixas ]; then
+  TELA=$2; FUNDO=$3; N=${4:-1}; BIN=${5:-$R/target/smoke/ph2d-host-desktop}
+  CASOS=(
+    "W3|Wet Wash:wet|TECLAS=10|TECLAS=10 KNOBS=evaporation=0.2,retention=1,waterCap=30,baseEvaporation=0"
+    "W4|Wet Wash:wet|KNOBS=maxVelocity=1|KNOBS=maxVelocity=3"
+    "W5|Flat Bristle:wet|TECLAS=0|TECLAS=10"
+    "W6|omissão:wet|TECLAS=0|TECLAS=10"
+    "W11|omissão:wet|KNOBS=subsurface=0|KNOBS=subsurface=0.5"
+    "W16|omissão:wet|KNOBS=edgeSoftMass=0|KNOBS=edgeSoftMass=4"
+    "X1|omissão:digital|RELEVO=0|RELEVO=1"
+    "D2|omissão:digital|TECLAS=0|TECLAS=15"
+    "D1|Round Mixing:digital|TECLAS=0|TECLAS=10"
+    "C2|Watercolor Basic:water|TECLAS=0|TECLAS=10"
+  )
+  [ -n "$SO" ] && mapfile -t CASOS < <(printf '%s\n' "${CASOS[@]}" | grep -E "^($SO)\|")
+  for i in $(seq 1 "$N"); do for c in "${CASOS[@]}"; do
+    IFS='|' read -r ID PP VA VB <<< "$c"
+    for v in A B; do
+      [ $v = A ] && VV=$VA || VV=$VB
+      env CURTO=1 ROT="${ID}${v}${i}" KNOBS= TECLAS=0 RELEVO= $VV SAIDA=$S bash "$0" matriz "$TELA" "$FUNDO" "$BIN" "$PP"
+    done
+  done; done
+  echo "[faixas] feito: $S/matriz"
   exit 0
 fi
 

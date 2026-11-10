@@ -452,6 +452,48 @@ if len(sys.argv) > 1 and sys.argv[1] == "--perf":
     perfil(sys.argv[2])
     sys.exit(0)
 
+def faixas(pasta, saida):
+    """`--faixas <pasta> <saida>` (B08.5): o par DENTRO (A) × FORA (B) da faixa segura de cada caso, rodada a rodada,
+    com a carga de cada lançamento; o MÍNIMO entre rodadas quando há mais de uma."""
+    import contextlib
+    import io
+    import json
+    import os
+    import re
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        matriz(pasta, saida)
+    casos = {}
+    for linha in open(os.path.join(saida, "matriz.jsonl")):
+        r = json.loads(linha)
+        m = re.fullmatch(r"(.+)([AB])(\d+)", r.get("rot", ""))
+        if m:
+            casos.setdefault(m.group(1), {}).setdefault(m.group(2), []).append(r)
+    campos = ("toque", "traco_p50", "traco_p95", "soltar_1s", "ctrlz", "parado_cpu_depois", "agua_hz")
+    print("| caso | variante | pincel | toque ms | traço p50/p95 ms | +1 s máx ms | Ctrl+Z ms | CPU parado depois % "
+          "| Wet img/s | controlo ms | carga |")
+    print("|---|---|---|---|---|---|---|---|---|---|---|")
+    for caso, vs in casos.items():
+        for v in "AB":
+            rs = [r for r in vs.get(v, []) if "erro" not in r]
+            if not rs:
+                print(f"| {caso} | {v} | — | sem janela ou sem quadros |||||||")
+                continue
+            mn = {k: min((r[k] for r in rs if r.get(k) is not None), default=None) for k in campos}
+            if mn["agua_hz"] is not None:
+                mn["agua_hz"] = max(r.get("agua_hz") or 0 for r in rs)
+            var = " ".join(x for x in (rs[0].get("knobs") and "knobs " + rs[0]["knobs"],
+                                       rs[0].get("teclas", "0") != "0" and "`]`×" + rs[0]["teclas"],
+                                       rs[0].get("relevo") and "relief " + rs[0]["relevo"]) if x) or "fábrica"
+            print(f"| {caso} | {v}: {var} | {rs[0]['pincel']} | {mn['toque']} | {mn['traco_p50']} / {mn['traco_p95']} "
+                  f"| {mn['soltar_1s']} | {mn['ctrlz']} | {mn['parado_cpu_depois']} | {mn['agua_hz'] or '—'} "
+                  f"| {min(r.get('controlo', 0) for r in rs)} | {' · '.join(r['carga'].split()[0] for r in rs)} |")
+
+
+if len(sys.argv) > 1 and sys.argv[1] == "--faixas":
+    faixas(sys.argv[2], sys.argv[3])
+    sys.exit(0)
+
 if len(sys.argv) > 1 and sys.argv[1] == "--matriz":
     matriz(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
     sys.exit(0)

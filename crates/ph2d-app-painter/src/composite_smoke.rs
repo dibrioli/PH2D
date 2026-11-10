@@ -340,6 +340,17 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
             None => eprintln!("PH2D_COMPOSITE_PRESET: {nome} não é de fábrica"),
         }
     }
+    // B08.5: `PH2D_COMPOSITE_KNOBS=chave=valor,…` = linhas do Tuning do Wet DEPOIS do preset (faixa segura × fora dela).
+    let knobs = std::env::var("PH2D_COMPOSITE_KNOBS").unwrap_or_default();
+    for (k, v) in knobs.split(',').filter_map(|kv| {
+        let (k, v) = kv.split_once('=')?;
+        Some((k.trim(), v.trim().parse::<f64>().ok()?))
+    }) {
+        let id = ph2d_tool_painter::ids::wet_tuning_slider_id(k);
+        let ev = ph2d_editor_core::tool::PanelEvent::SetValue(id, v);
+        ph2d_editor_core::tool::Tool::handle_panel_event(painter, ev);
+        println!("PH2D_COMPOSITE_KNOBS: {k} = {v}");
+    }
     println!(
         "PH2D_COMPOSITE_SMOKE: pilha armada — {} camadas, Composite Brush ligado, Size 0.4.",
         painter.composite_len()

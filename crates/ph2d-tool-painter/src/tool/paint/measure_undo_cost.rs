@@ -423,3 +423,67 @@ fn what_a_diagonal_step_retains_at_4k() {
         );
     }
 }
+
+/// **B17.5 (b) — o que um Ctrl+Z do passo diagonal COPIA a 4K, e quem segura a tela.**
+///
+/// O `side()` dos `Tiles` começa por um `par_clone` do plano do cursor; um `Arc::make_mut` só o
+/// pouparia se o cursor fosse o ÚNICO dono. A sonda imprime os donos da tela viva antes do undo, as
+/// cópias de plano inteiro (contador `PAR_CLONES`) e o relógio (mínimo de 5) do undo e do redo.
+#[test]
+#[ignore = "medicao — rode com --profile smoke --ignored"]
+fn what_a_diagonal_ctrl_z_copies_at_4k() {
+    use std::time::Instant;
+    const W: u32 = 3840;
+    const H: u32 = 2160;
+    for impasto in [false, true] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (W * H * 4) as usize], W, H);
+        let mut b = t.paint.brush;
+        b.radius_px = 40.0;
+        b.strength = 1.0;
+        b.impasto = impasto;
+        t.paint.brush = b;
+        t.paint.brush_by_mode.fill(b);
+        stroke(&mut t, 40.0);
+        let n = 64u16;
+        let p = |k: u16| {
+            let f = f32::from(k) / f32::from(n);
+            [60.0 + f * (W as f32 - 120.0), 60.0 + f * (H as f32 - 120.0)]
+        };
+        let cp = super::measure_stroke_owners::cp;
+        t.on_canvas_pointer(cp(p(0), PointerPhase::Down));
+        for k in 1..=n {
+            t.on_canvas_pointer(cp(p(k), PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp(p(n), PointerPhase::Up));
+        let _ = t.take_preview_arc();
+        let donos = std::sync::Arc::strong_count(&t.canvas_rgba);
+        eprintln!("  variantes do topo: {:?}", t.undo.probe_top_variants());
+        let (mut un, mut re, mut cu, mut cr) = (f64::MAX, f64::MAX, 0, 0);
+        for _ in 0..5 {
+            let c0 = crate::plane_copy::par_clones_nesta_thread();
+            let t0 = Instant::now();
+            assert!(
+                t.undo_last(),
+                "a fixture nao contem o fenomeno: nada a desfazer"
+            );
+            un = un.min(t0.elapsed().as_secs_f64() * 1e3);
+            let c1 = crate::plane_copy::par_clones_nesta_thread();
+            let t1 = Instant::now();
+            assert!(
+                t.redo_last(),
+                "a fixture nao contem o fenomeno: nada a refazer"
+            );
+            re = re.min(t1.elapsed().as_secs_f64() * 1e3);
+            let c2 = crate::plane_copy::par_clones_nesta_thread();
+            (cu, cr) = (c1 - c0, c2 - c1);
+            assert!(
+                cu >= 1,
+                "controle: o undo nao copiou plano nenhum — a sonda mede outra coisa"
+            );
+        }
+        eprintln!(
+            "impasto={impasto} donos da tela {donos} · undo {un:.2} ms ({cu} copias) · redo {re:.2} ms ({cr} copias)"
+        );
+    }
+}

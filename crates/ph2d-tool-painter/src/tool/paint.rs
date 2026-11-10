@@ -56,6 +56,7 @@ mod impasto_ceiling; // Impasto: the glass ceiling — how the paint TOPS OUT (a
 mod impasto_erase_session;
 mod impasto_fill; // o Fill no Impasto: cor + CORPO, borda no perfil do Falloff (Enio 2026-08-07)
 pub mod impasto_gpu; // Impasto: the composed relief, materialised for the GPU light pass
+mod impasto_fields; // Impasto: os campos que a luz lê (a dobra, e através dos ajustes de vizinhança)
 mod impasto_light; // Impasto: the light pass — normal from the height field + Lambert/Blinn-Phong
 mod impasto_live; // Impasto: the stroke's commit + the Body card's live re-derivation (LOC split)
 mod impasto_material; // Impasto: the paint's MATERIAL on the canvas (deposit + the live re-bake)

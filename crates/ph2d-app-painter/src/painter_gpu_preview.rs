@@ -42,6 +42,8 @@ pub struct PainterGpuPreview {
     /// Os planos do último envio, cujos buffers a próxima dobra reescreve (B15-cont: sem os ~107 MB alocados e
     /// soltos a cada quadro do Ctrl+Z 4K).
     planos: Option<ph2d_tool_painter::ImpastoPlanes>,
+    /// A placa produziu o último quadro do documento: ao largá-lo, a CPU compõe a tela já nesse quadro.
+    dona: bool,
 }
 
 /// Builds the session BEFORE the first stroke needs it (doc 28 §4.8): its passes compile
@@ -96,6 +98,7 @@ impl PainterGpuPreview {
             premul: PreviewPremul::new(gpu),
             geracao: ph2d_gpu::memoria::geracao(),
             planos: None,
+            dona: false,
         }
     }
 }
@@ -138,6 +141,7 @@ pub(super) fn try_drive(
         return false;
     };
     let Some((ops, adj_luts)) = gpu_eligible(painter) else {
+        larga_a_placa(session_slot.as_mut().map(|s| &mut s.dona), painter);
         return false;
     };
     let renasce = session_slot
@@ -162,7 +166,18 @@ pub(super) fn try_drive(
         );
     }
     let _ = painter.take_preview_upload_bbox();
+    if let Some(s) = session_slot.as_mut() {
+        s.dona = true;
+    }
     true
+}
+
+/// The GPU let go of the document: the CPU lane composes the whole canvas THIS frame (B16.12).
+fn larga_a_placa(dona: Option<&mut bool>, painter: &mut PainterTool) {
+    if let Some(d) = dona.filter(|d| **d) {
+        *d = false;
+        painter.pede_a_composicao_inteira();
+    }
 }
 
 /// The GPU-vs-CPU gate, pure half: `Some(ops, adj_luts)` iff this frame composites on the GPU.
@@ -185,8 +200,9 @@ fn gpu_eligible(painter: &PainterTool) -> Option<(Vec<LayerOp>, Vec<f32>)> {
         return None;
     }
     // Wash GLASS under coloured paper (doc 48): paper crosses each channel by its alpha and the GPU
-    // compositor knows one alpha per texel — the CPU produces.
-    if painter.papel_atravessa_vidro() {
+    // compositor knows one alpha per texel — the CPU produces, from the moment the wash is ARMED on
+    // that paper (B16.12: never on the touch frame).
+    if painter.papel_pede_a_cpu() {
         return None;
     }
     ph2d_tool_painter::flatten_for_gpu(painter.layers())

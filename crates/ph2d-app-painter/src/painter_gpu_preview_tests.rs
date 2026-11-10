@@ -353,3 +353,60 @@ fn the_end_of_an_out_of_memory_episode_recomposes_the_gpu_preview() {
         "o slot do preview não se refez (o quadro sem pincelada não recompôs)"
     );
 }
+
+/// **B16.12 — a troca GPU→CPU sai do quadro do toque.** Com a aguada ARMADA sobre o papel de cor, a 1.ª
+/// aguada criaria o vidro e tiraria o documento da placa NO toque (4K: a tela inteira composta na CPU e
+/// 33 MB enviados, 154,5 ms). O portão decide a CPU antes do 1.º vidro, e o toque não muda a pista; o
+/// Digital no mesmo papel fica na GPU.
+#[test]
+fn troca_gpu_cpu_a_aguada_armada_no_papel_de_cor_sai_do_toque() {
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase, Tool};
+    let cp = |pos: [f32; 2], phase: PointerPhase| CanvasPointer {
+        pos,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    let mut t = sculpted_tool();
+    t.handle_panel_event(PanelEvent::SelectOption(
+        ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
+        "153,121,91".into(),
+    ));
+    assert!(
+        gpu_eligible(&t).is_some(),
+        "controlo: esculpido, no Digital, sobre o papel castanho, a GPU produz"
+    );
+    t.set_paint_media(ph2d_tool_painter::PaintMedia::Watercolor);
+    assert!(!t.papel_atravessa_vidro(), "controlo: ainda sem vidro");
+    let antes = gpu_eligible(&t).is_some();
+    t.on_canvas_pointer(cp([10.0, 10.0], PointerPhase::Down));
+    let _ = t.take_preview_arc();
+    let no_toque = gpu_eligible(&t).is_some();
+    t.on_canvas_pointer(cp([38.0, 12.0], PointerPhase::Move));
+    t.on_canvas_pointer(cp([38.0, 12.0], PointerPhase::Up));
+    assert!(t.papel_atravessa_vidro(), "controlo: a aguada deixou vidro");
+    assert_eq!(antes, no_toque, "o toque não pode trocar a pista");
+    assert!(!antes, "a aguada armada no papel de cor já está na CPU antes do toque");
+    t.set_paint_media(ph2d_tool_painter::PaintMedia::Digital);
+    assert!(
+        gpu_eligible(&t).is_none(),
+        "com o vidro, o Digital continua na CPU"
+    );
+}
+
+/// **A placa larga o documento e a CPU compõe a tela inteira NESSE quadro** (B16.12): sem isto a pista
+/// da CPU só compunha no próximo sujo — o toque — e pagava ali a tela fria inteira e o envio cheio.
+#[test]
+fn troca_gpu_cpu_a_placa_que_larga_aquece_a_cpu_no_mesmo_quadro() {
+    let mut t = sculpted_tool();
+    let _ = t.take_preview_dirty(); // a pista GPU drenou: o composite da CPU caiu
+    assert!(t.take_preview_arc().is_none(), "controlo: sem sujo a CPU não compõe");
+    let mut dona = false;
+    larga_a_placa(Some(&mut dona), &mut t);
+    assert!(t.take_preview_arc().is_none(), "sem a placa dona antes, nada a aquecer");
+    dona = true;
+    larga_a_placa(Some(&mut dona), &mut t);
+    assert!(!dona, "a placa deixou de ser dona");
+    assert!(t.take_preview_arc().is_some(), "a CPU compõe no quadro da troca");
+    assert_eq!(t.take_preview_upload_bbox(), None, "a tela inteira sobe nesse quadro");
+}

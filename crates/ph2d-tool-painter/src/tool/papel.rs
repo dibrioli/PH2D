@@ -252,6 +252,15 @@ impl PainterTool {
             .is_some_and(|p| p != PAPEL_BRANCO && !self.vidros.is_empty())
     }
 
+    /// **O papel tira o documento da placa** (B16.12): o vidro já o atravessa, ou a aguada está ARMADA
+    /// sobre o papel de cor — a 1.ª aguada criaria o vidro e a troca GPU→CPU cairia no quadro do toque.
+    #[must_use]
+    pub fn papel_pede_a_cpu(&self) -> bool {
+        self.papel_atravessa_vidro()
+            || (self.paint_media() == super::PaintMedia::Watercolor
+                && self.papel.is_some_and(|p| p != PAPEL_BRANCO))
+    }
+
     /// **A região `r` sobre o papel PELO VIDRO** ([`crate::compositor::vidro`]): `Some` quando o papel é
     /// de cor e a aguada pintou (o papel atravessa cada canal pelo alfa dele); `None` = a porta de
     /// sempre (o composite e [`Self::compoe_sobre_o_papel`]), ao byte.

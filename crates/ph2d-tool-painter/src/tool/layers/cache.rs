@@ -17,6 +17,13 @@ impl PainterTool {
         self.layers_revision = self.layers_revision.wrapping_add(1);
     }
 
+    /// **A pista da CPU volta a ser a dona da prévia** (a placa largou o documento, B16.12): o próximo
+    /// [`Self::take_preview_arc`] compõe a tela INTEIRA já neste quadro, e não no próximo sujo (o toque).
+    pub fn pede_a_composicao_inteira(&mut self) {
+        self.invalidate_composite();
+        self.preview_dirty = true;
+    }
+
     /// Mark the composite stale so the next `current_preview` recomputes.
     ///
     /// ⚠️ **`PH2D_INVALIDATE_TRACE=1` diz QUEM derrubou o cache** (só em teste, e só com a env var).

@@ -133,21 +133,20 @@ impl BancadaView {
         let mut y = top - self.outline.y;
         let radius = frame_radius(*theme, Radius::Sm.px());
         let eh = outline_entry_h();
-        // O que cabe sem cortar: o título de secção entre as folgas (2g) e cada entrada — folga ½ ·
-        // folga · nome · folga · `ln N` · folga ½ · folga ½ (3,5g), a mesma conta da pintura abaixo.
-        let title_w = chrome::card_title_w(ts, tr("code.bancada.outline.title")) + g * 2.0;
-        self.outline_fit = sections
-            .iter()
-            .filter(|s| !s.1.is_empty())
-            .fold(title_w, |w, (k, es)| {
-                es.iter().fold(
-                    w.max(chrome::label_w(ts, tr(k)) + g * 2.0),
-                    |w, Entry(n, l)| {
-                        let ln = tr_with("code.bancada.outline.line", &[("line", &(l + 1))]);
-                        w.max(chrome::label_w(ts, n) + chrome::label_w(ts, &ln) + g * 3.5) // LITERAL-PX-OK: 3,5 folgas
-                    },
-                )
-            });
+        // O que cabe sem cortar: o título do cartão e o de cada secção entre as folgas (2g) e cada
+        // entrada — folga ½ · folga · nome · folga · `ln N` · folga ½ · folga ½ (3,5g), a mesma
+        // conta da pintura abaixo.
+        let folgas = g * 3.5; // LITERAL-PX-OK: 3,5 folgas
+        let title = tr("code.bancada.outline.title");
+        let mut fit = chrome::card_title_w(ts, title) + g * 2.0;
+        for (k, es) in sections.iter().filter(|s| !s.1.is_empty()) {
+            fit = fit.max(chrome::label_w(ts, tr(k)) + g * 2.0);
+            for Entry(n, l) in es.iter() {
+                let ln = tr_with("code.bancada.outline.line", &[("line", &(l + 1))]);
+                fit = fit.max(chrome::label_w(ts, n) + chrome::label_w(ts, &ln) + folgas);
+            }
+        }
+        self.outline_fit = fit;
         for (key, entries) in sections.iter().filter(|s| !s.1.is_empty()) {
             chrome::label_in(
                 scene,

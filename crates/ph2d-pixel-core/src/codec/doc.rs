@@ -6,6 +6,7 @@
 //! Sprite 19 Guias   : 1|2|3 ponto de fuga (Ponto) · 4 horizonte (bits f32) · 5 iso (Ponto da origem)
 //!                     · 6 passo do losango iso (uint; sem = `Iso2x1::PASSO`)
 //! Sprite 20 Audio*  : 1 asset (utf8) · 2 início ms (zigzag) · 3 ganho (bits f32) · 4 mudo
+//! Sprite 21 Luz     : uint 1 = «Light: Palette» (sem = Smooth)
 //! Layer  9  Efeito* : 1 espécie (1 = Outline) · 2 cor (4 bytes) · 3 cor do fundo (4 bytes; sem =
 //!                     o transparente) · 4 matriz (9 bits, linha a linha) · 5 Inside · 6 Tiled
 //! Ponto             : 1 x (bits f32) · 2 y (bits f32)
@@ -49,7 +50,7 @@ fn read_ponto(v: &[u8]) -> Result<[f32; 2], CodecError> {
     Ok(p)
 }
 
-/// Os campos 17–20 do registo do sprite.
+/// Os campos 17–21 do registo do sprite.
 pub(super) fn put_sprite(r: &mut Vec<u8>, s: &Sprite) {
     for ramp in &s.ramps.ramps {
         let mut b = Vec::new();
@@ -94,9 +95,12 @@ pub(super) fn put_sprite(r: &mut Vec<u8>, s: &Sprite) {
         b.push(0);
         put_field(r, 20, &b);
     }
+    if s.ramps.luz_na_paleta {
+        put_uint(r, 21, 1);
+    }
 }
 
-/// Lê um dos campos 17–20; `false` = a etiqueta não é destas.
+/// Lê um dos campos 17–21; `false` = a etiqueta não é destas.
 pub(super) fn read_sprite_field(s: &mut Sprite, tag: u64, v: &[u8]) -> Result<bool, CodecError> {
     match tag {
         17 => {
@@ -171,6 +175,7 @@ pub(super) fn read_sprite_field(s: &mut Sprite, tag: u64, v: &[u8]) -> Result<bo
             }
             s.audio.push(a);
         }
+        21 => s.ramps.luz_na_paleta = uint(v)? != 0,
         _ => return Ok(false),
     }
     Ok(true)

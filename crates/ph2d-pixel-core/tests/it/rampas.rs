@@ -53,6 +53,9 @@ fn com_tudo() -> Sprite {
         },
     )
     .unwrap();
+    let mut luz = s.ramps().clone();
+    luz.luz_na_paleta = true;
+    doc(&mut s, DocOp::SetRamps(luz)).unwrap();
     let guias = Guias {
         pontos_de_fuga: [Some([-40.5, 7.25]), Some([60.0, 7.25]), None],
         horizonte: Some(7.25),
@@ -95,6 +98,7 @@ fn o_blob_pixel_volta_igual() {
     let s = com_tudo();
     assert_eq!(s.ramps().ramps.len(), 2);
     assert_eq!(s.ramps().cycles.len(), 1);
+    assert!(s.ramps().luz_na_paleta, "Light: Palette viaja no campo 21");
     assert_ne!(*s.guias(), Guias::default());
     assert_eq!(s.audio().len(), 2);
     assert_eq!(s.layers()[0].efeitos.len(), 1);

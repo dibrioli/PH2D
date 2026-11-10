@@ -12,6 +12,19 @@ pub struct RampaDaFaixa {
     pub tamanho_lut: (u32, u32),
 }
 
+/// As duas bandas de luz de uma faixa: a normal e a de rampa.
+pub type BandasDaFaixa = (Option<VectorScene>, Option<RampaDaFaixa>);
+
+impl From<(VectorScene, Vec<[f32; 4]>, (u32, u32))> for RampaDaFaixa {
+    fn from((cena, lut, tamanho_lut): (VectorScene, Vec<[f32; 4]>, (u32, u32))) -> Self {
+        Self {
+            cena,
+            lut,
+            tamanho_lut,
+        }
+    }
+}
+
 /// As bandas de rampa do quadro (índice = o da faixa) e as texturas onde pousam.
 #[derive(Default)]
 pub struct RampasDasFaixas {

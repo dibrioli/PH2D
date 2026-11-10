@@ -51,6 +51,7 @@ fn paleta_rampas() -> (Vec<[u8; 4]>, PaletteRamps) {
     let r = PaletteRamps {
         ramps,
         cycles: Vec::new(),
+        luz_na_paleta: true,
     };
     (pal, r)
 }

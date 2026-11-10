@@ -466,7 +466,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
             14 => s.user = user::read_user(b)?,
             15 => s.prefs = user::read_prefs(b)?,
             16 => s.pivot_slice = Some(crate::slice::SliceId(u32_of(b, "sprite.pivot_slice")?)),
-            17..=20 => _ = doc::read_sprite_field(&mut s, tag, b)?,
+            17..=21 => _ = doc::read_sprite_field(&mut s, tag, b)?,
             12 => {
                 let mut t = Tileset::new(TilesetId(0), "", 0, 0, Vec::new());
                 for (tag, v) in Fields::new(b)? {

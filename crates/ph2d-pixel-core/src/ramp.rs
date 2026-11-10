@@ -23,6 +23,8 @@ pub struct Ramp {
 pub struct PaletteRamps {
     pub ramps: Vec<Ramp>,
     pub cycles: Vec<Cycle>,
+    /// «Light: Palette»: a luz 2D escolhe um degrau da rampa em vez de tingir a cor.
+    pub luz_na_paleta: bool,
 }
 
 impl PaletteRamps {
@@ -30,6 +32,14 @@ impl PaletteRamps {
     pub fn ramp(&self, id: RampId) -> Option<&Ramp> {
         self.ramps.iter().find(|r| r.id == id)
     }
+}
+
+/// *Light: Smooth · Palette* (P13 L) como `SetRamps`; `None` = o documento já está assim.
+#[must_use]
+pub fn set_luz_na_paleta(s: &Sprite, on: bool) -> Option<crate::Op> {
+    let mut r = s.ramps().clone();
+    (std::mem::replace(&mut r.luz_na_paleta, on) != on)
+        .then(|| crate::Op::Doc(Box::new(crate::DocOp::SetRamps(r))))
 }
 
 /// A rampa que contém o índice `idx` e a posição dele nela (`0` = o degrau mais escuro).

@@ -27,8 +27,10 @@ pub fn imagem_rampa(o: &ObjetoPixel<'_>, lut: &LutDaLuz, base: usize) -> Option<
 /// Os texels RGBA8 de [`imagem_rampa`].
 #[must_use]
 pub fn texeis_rampa(o: &ObjetoPixel<'_>, lut: &LutDaLuz, base: usize) -> Vec<u8> {
-    let mut px = Vec::new();
-    ph2d_pixel_core::compose_rgba(o.sprite, o.quadro, None, &mut px);
+    // O mesmo instante da cor (`ph2d_pixel_render::view`): o ciclo roda o índice antes do degrau.
+    let t = ph2d_pixel_core::instante_do_quadro(o.sprite, o.quadro);
+    let (sprite, quadro, view) = (o.sprite, o.quadro, ph2d_pixel_core::Purpose::View);
+    let mut px = ph2d_pixel_core::compose_window_em(sprite, quadro, None, sprite.bounds(), view, t);
     for t in px.as_chunks_mut::<4>().0 {
         *t = match (t[3], lut.degrau_de(*t)) {
             (0, _) => [0; 4],
@@ -39,6 +41,22 @@ pub fn texeis_rampa(o: &ObjetoPixel<'_>, lut: &LutDaLuz, base: usize) -> Vec<u8>
         };
     }
     px
+}
+
+/// [`banda_rampa`] com o «Light: Palette» de cada documento (`PaletteRamps::luz_na_paleta`), e a
+/// LUT já em texels da placa: `(cena, (L, r, g, b) por degrau, (largura, rampas))`.
+#[must_use]
+pub fn banda_rampa_da_faixa(
+    objetos: &[ObjetoPixel<'_>],
+    cam: Affine,
+) -> Option<(VectorScene, Vec<[f32; 4]>, (u32, u32))> {
+    let paleta: Vec<bool> = objetos
+        .iter()
+        .map(|o| o.sprite.ramps().luz_na_paleta)
+        .collect();
+    let (cena, lut) = banda_rampa(objetos, &paleta, cam)?;
+    let tamanho = (lut.largura() as u32, lut.rampas.len() as u32);
+    Some((cena, lut.texeis(), tamanho))
 }
 
 /// ⭐ A banda de rampa e a LUT da faixa com `objetos` (de trás para a frente; `paleta[i]` = o

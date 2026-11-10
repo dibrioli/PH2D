@@ -31,6 +31,12 @@ impl NormaisDasFaixas {
             + self.rampas.bytes()
     }
 
+    /// As bandas da faixa seguinte (a normal e a de rampa, no MESMO índice).
+    pub fn empurra(&mut self, (normal, rampa): ph2d_render::luz_rampa_faixas::BandasDaFaixa) {
+        self.cenas.push(normal);
+        self.rampas.cenas.push(rampa);
+    }
+
     /// Esvazia as bandas do quadro (normais e de rampa).
     pub fn limpar(&mut self) {
         self.cenas.clear();

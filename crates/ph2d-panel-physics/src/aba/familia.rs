@@ -73,6 +73,11 @@ impl DocumentSurface for AbaDasCamadas {
         aba::rola(x, y, dy, shift)
     }
 
+    /// O deslizar de lado do trackpad: as colunas da grelha, como o Shift+roda.
+    fn wheel_sideways(&mut self, _id: u64, x: f32, y: f32, dx: f32) -> bool {
+        aba::rola(x, y, dx, true)
+    }
+
     fn key(&mut self, _id: u64, _ts: &mut TextSystem, _input: KeyInput<'_>) -> KeyOutcome {
         KeyOutcome::default()
     }

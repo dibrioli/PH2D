@@ -9,3 +9,4 @@ mod as_seccoes_arrastam_e_tem_tema; // o tema e o arrasto das secções do paine
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod o_contraste_da_pergunta; // onda 9f: os nomes na caixa do Remove a ≥ 4,5:1
 mod os_cartoes; // o painel em cartões: todo id vivo, pelo gesto real
+mod swipe_lateral; // InputMap onda 3 item 7: o deslizar de lado do trackpad na grade

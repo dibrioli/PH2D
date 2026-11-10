@@ -370,6 +370,18 @@ impl DocumentSurface for CodeDocs {
         true
     }
 
+    fn wheel_sideways(&mut self, id: u64, x: f32, y: f32, dx: f32) -> bool {
+        if !self.area.contains(x, y)
+            || self.list.view.wheel(x, y, 0.0)
+            || self.bench.wheel(x, y, 0.0)
+            || page_of(id).is_some()
+        {
+            return false;
+        }
+        self.split(id)
+            .is_some_and(|(doc, store)| doc.wheel_sideways(x, y, dx, store))
+    }
+
     fn key(&mut self, id: u64, _ts: &mut TextSystem, input: KeyInput<'_>) -> KeyOutcome {
         let KeyInput {
             key,

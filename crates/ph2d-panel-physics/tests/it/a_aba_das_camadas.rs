@@ -29,14 +29,14 @@ const AREA: Rect = Rect {
 /// As cinco camadas da maquete B (0..4) à vista.
 const CINCO: u32 = 0b1_1111;
 
-struct Mesa {
+pub(super) struct Mesa {
     host: MockPanelHost,
     st: PhysicsPanelState,
     rects: Vec<(NodeId, Rect)>,
 }
 
 impl Mesa {
-    fn nova(nomes: LayerNames, classica: bool) -> Self {
+    pub(super) fn nova(nomes: LayerNames, classica: bool) -> Self {
         cards::force_cards_on_this_thread(Some(!classica));
         ph2d_panel_physics::set_current_physics(Some(PhysicsSnapshot::default()));
         ph2d_panel_physics::set_layer_names(nomes);
@@ -141,13 +141,13 @@ fn mundo_de(intents: &[PhysicsIntent]) -> LayerMatrix {
         .expect("a célula escreve")
 }
 
-fn abre(mesa: &mut Mesa) {
+pub(super) fn abre(mesa: &mut Mesa) {
     aba::abre(None);
     aba::poe_area_fixa(AREA);
     mesa.pinta();
 }
 
-fn nomes_b() -> LayerNames {
+pub(super) fn nomes_b() -> LayerNames {
     let mut n = LayerNames::default();
     for (i, s) in ["Ground", "Player", "Enemy", "Pickup", "Player Shots"]
         .iter()

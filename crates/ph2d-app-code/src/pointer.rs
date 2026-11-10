@@ -210,6 +210,27 @@ impl CodeDoc {
 
     /// A roda: sobre o console rola-o, senão rola o texto — na horizontal com o Shift.
     pub fn wheel(&mut self, x: f32, y: f32, dy: f32, shift: bool, console: &Store) {
+        if self.wheel_inner(x, y, dy, console) {
+            return;
+        }
+        if shift {
+            self.view.scroll_x_by(-dy);
+        } else {
+            self.view.scroll_by(-dy);
+        }
+    }
+
+    /// O deslizar de lado do trackpad: o Shift+roda sobre o texto; nas zonas que só rolam na vertical, nada.
+    pub fn wheel_sideways(&mut self, x: f32, y: f32, dx: f32, console: &Store) -> bool {
+        let text = !self.wheel_inner(x, y, 0.0, console);
+        if text {
+            self.view.scroll_x_by(-dx);
+        }
+        text
+    }
+
+    /// As zonas que só rolam na vertical (o depurador, as listas, o console). `true` = era de uma delas.
+    fn wheel_inner(&mut self, x: f32, y: f32, dy: f32, console: &Store) -> bool {
         self.hints.hover = None;
         let rows = ph2d_panel_code::wheel_rows(dy, self.view.metrics().line_h);
         let over_list = self.view.completion_hit(x, y).is_some();
@@ -219,10 +240,9 @@ impl CodeDoc {
             self.list_scroll(rows);
         } else if self.console_view.area().contains(x, y) {
             self.console_view.scroll_by(dy, console.len());
-        } else if shift {
-            self.view.scroll_x_by(-dy);
         } else {
-            self.view.scroll_by(-dy);
+            return false;
         }
+        true
     }
 }

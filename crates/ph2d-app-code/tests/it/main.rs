@@ -42,6 +42,7 @@ mod projecto;
 mod promover;
 mod renomear;
 mod salvar;
+mod swipe_lateral;
 mod teclado;
 mod um_lugar;
 

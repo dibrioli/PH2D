@@ -9,13 +9,8 @@
 //!    (`ph2d-render::LayerCompositor` `SpatialAdjustment`). The σ↔radius mapping,
 //!    the unsharp coefficient, and the motion box live HERE (single source of
 //!    truth) and ARE gated: `spatial_weights_parity` pins [`gaussian_weights`] /
-//!    [`motion_weights`] against the GPU. **Exception — Chromatic Aberration is
-//!    NOT a single source of truth (audit 2026-06-18):** the CPU
-//!    [`apply_chromatic_aberration`] fallback DIVERGES from the GPU `cs_chroma` in
-//!    the displacement SIGN (outward vs inward), the centre (`(w-1)/2` vs `w/2`)
-//!    and the normaliser (`corner` vs `half_diag`), and NO gate reconciles them.
-//!    It is latent only because that CPU fallback has no production caller yet — a
-//!    W-spatial enable must pick ONE model and gate it before trusting either.
+//!    [`motion_weights`] against the GPU. Chromatic Aberration follows the GPU
+//!    `cs_chroma` model (canvas centre, `half_diag`, inward gather; B19.2).
 //! 2. **CPU fallback** when a stack is not GPU-representable (per-layer mask /
 //!    clipping / reference layer): [`apply_adjustment_windowed`] runs the kernel
 //!    on the compositor's f32 window.
@@ -33,14 +28,9 @@
 //! in display (sRGB) space — the values as they are — and DO preserve coverage.
 //!
 //! ### Documented limitations (mirror the GPU pass-graph's own, handoff §4)
-//! - **Spatial blur on a sub-window:** the kernels sample with clamp-to-edge at
-//!   the window border, so a blur run on a dirty-rect *sub*-window is approximate
-//!   at that border (the halo outside the rect is unavailable on the CPU). The
-//!   real-time GPU path expands the work region by the blur halo and is exact; the
-//!   common CPU case — a full-canvas recompose on an adjustment-param drag
-//!   (`composite_with_cache`) — is also exact (window == canvas). Noise / Halftone
-//!   are pure functions of the *absolute* canvas coordinate, so they are dirty-rect
-//!   exact (`composite_region` == crop of `composite`).
+//! - **Spatial kernels on a sub-window** sample with clamp-to-edge at the window
+//!   border; the compositor grows a dirty window by the summed [`window_halo`]s
+//!   (or to the canvas) and crops, so `composite_region` == crop of `composite`.
 //! - **Sampling is nearest-tap** for Motion / Chromatic Aberration. Bilinear taps
 //!   are a quality refinement to land jointly with the GPU (`cs_blur_dir` /
 //!   `cs_chroma`).
@@ -54,7 +44,9 @@ use ph2d_det_math::DetMath as _;
 
 #[path = "spatial_tonal.rs"]
 mod tonal; // Bloom + Shadows/Highlights (LOC cap: sibling module)
-pub use tonal::{SH_LUMA_FLOOR, apply_bloom, apply_shadows_highlights, separable_blur_scalar};
+#[cfg(test)]
+pub(super) use tonal::SH_LUMA_FLOOR;
+pub use tonal::{apply_bloom, apply_shadows_highlights, separable_blur_scalar};
 /// Largest separable-blur half-width (kernel reaches `±MAX_BLUR_HALF` texels).
 /// Bounds the weights buffer + per-pixel tap count. **Mirrors
 /// `ph2d_render::layer_compositor::MAX_BLUR_HALF`** (kept in lock-step; a 256-px
@@ -91,6 +83,9 @@ pub struct AdjustWindow {
     pub height: u32,
     pub origin_x: u32,
     pub origin_y: u32,
+    /// The whole canvas the window lives in (Chromatic Aberration is centred on it).
+    pub canvas_width: u32,
+    pub canvas_height: u32,
 }
 
 impl AdjustWindow {
@@ -103,8 +98,51 @@ impl AdjustWindow {
             height,
             origin_x: 0,
             origin_y: 0,
+            canvas_width: width,
+            canvas_height: height,
         }
     }
+}
+
+/// How far (texels, Chebyshev) an output pixel of `params` reads its input — a window grown by the
+/// SUM of the halos of a stack's kernels and cropped back is the crop of the whole-canvas result, to
+/// the byte (gate `a_janela_suja_sob_um_ajuste_espacial_e_o_recorte_da_tela`). `None` = the kernel
+/// depends on the window's SIZE (Bloom past the low-res cap: its downsample grid and upsample ratio
+/// are the canvas's), so only the whole canvas is exact. Per-pixel and absolute-coordinate kinds: 0.
+#[must_use]
+pub fn window_halo(params: &AdjustmentParams) -> Option<u32> {
+    let half = |r: f32| if r > 0.0 { gaussian_weights(r).1 } else { 0 };
+    Some(match params {
+        AdjustmentParams::GaussianBlur(p) => half(p.radius),
+        AdjustmentParams::Sharpen(p) if p.amount != 0.0 => half(p.radius),
+        AdjustmentParams::MotionBlur(p) if p.distance > 0.0 => motion_weights(p.distance).1,
+        AdjustmentParams::ChromaticAberration(p) => {
+            let m = p
+                .red_shift
+                .abs()
+                .max(p.green_shift.abs())
+                .max(p.blue_shift.abs());
+            if !m.is_finite() {
+                return None;
+            }
+            // |dir · shift / half_diag| ≤ |shift| per axis; +2 for the rounding of the tap.
+            if m == 0.0 {
+                0
+            } else {
+                (m.ceil() as u32).saturating_add(2)
+            }
+        }
+        AdjustmentParams::Bloom(p) if p.intensity > 0.0 && p.radius > 0.0 => {
+            if bloom_downsample_factor(p.radius) != 1 {
+                return None;
+            }
+            half(p.radius)
+        }
+        AdjustmentParams::ShadowsHighlights(p) => {
+            half(p.shadows_radius).max(half(p.highlights_radius))
+        }
+        _ => 0,
+    })
 }
 
 /// Apply any adjustment `kind` to the compositor's ENCODED f32 window, with the
@@ -435,18 +473,14 @@ pub fn apply_motion_blur(p: &MotionBlurParams, acc: &mut [[f32; 4]], win: Adjust
     unpremultiply(acc);
 }
 
-/// Chromatic aberration — a per-channel radial GATHER, in **premultiplied** display
-/// tones. Each output channel `c` samples the below-composite at `centre + (p −
-/// centre)·scale_c`, where `scale_c = 1 + shift_c / corner_dist` (so `shift_c` px
-/// of fringe at the canvas corner, 0 at the centre — the linear-radial model).
-/// Alpha is gathered UNSHIFTED (the lens shifts colour channels, not the overall
-/// coverage). The per-channel scales + centre are computed once (no per-pixel
-/// `sqrt`). `falloff_center` is RESERVED. Nearest-tap (bilinear is a follow-up).
-///
-/// Premultiplication is what kills the **transparent-edge speckle** (Enio's blue
-/// dots): a transparent texel carries arbitrary stale RGB in straight space, so a
-/// shifted blue gather sprayed that colour into visible pixels. Premultiplied,
-/// every transparent texel is `(0,0,0,0)` → it contributes nothing to the gather.
+/// Chromatic aberration — a per-channel radial GATHER, in **premultiplied** display tones, on the
+/// GPU `cs_chroma` model: centre = the CANVAS centre `(cw/2, ch/2)`, `scale_c = shift_c / half_diag`
+/// (half the canvas diagonal), channel `c` of canvas pixel `p` reads `floor(p − (p − centre)·scale_c
+/// + ½)` (inward gather: a positive shift fringes outward), clamped to the window. Computed in
+/// ABSOLUTE canvas coordinates, so a dirty window is the crop of the whole canvas (its halo is
+/// [`window_halo`]). Alpha is gathered UNSHIFTED (the lens shifts colour, not coverage).
+/// `falloff_center` is RESERVED. Premultiplied, a transparent texel contributes nothing (no
+/// transparent-edge speckle).
 pub fn apply_chromatic_aberration(
     p: &ChromaticAberrationParams,
     acc: &mut [[f32; 4]],
@@ -460,30 +494,35 @@ pub fn apply_chromatic_aberration(
         return;
     }
     premultiply(acc);
-    let cx = (w as f32 - 1.0) * 0.5;
-    let cy = (h as f32 - 1.0) * 0.5;
-    let corner = (cx * cx + cy * cy).sqrt().max(1e-3);
-    let scale = |shift: f32| 1.0 + shift / corner;
-    let (sr, sg, sb) = (
-        scale(p.red_shift),
-        scale(p.green_shift),
-        scale(p.blue_shift),
-    );
-    let src = acc.to_vec(); // premultiplied
-    let gather = |dx: f32, dy: f32, s: f32, ch: usize| -> f32 {
-        let sx = (cx + dx * s).round() as i32;
-        let sy = (cy + dy * s).round() as i32;
-        sample_clamp(&src, w, h, sx, sy)[ch]
+    let (cw, ch) = (win.canvas_width as f32, win.canvas_height as f32);
+    let half_diag = 0.5 * (cw * cw + ch * ch).sqrt();
+    let inv = if half_diag > 0.0 {
+        1.0 / half_diag
+    } else {
+        0.0
     };
+    let (cx, cy) = (cw * 0.5, ch * 0.5);
+    let scale = [p.red_shift * inv, p.green_shift * inv, p.blue_shift * inv];
+    let (ox, oy) = (win.origin_x as i32, win.origin_y as i32);
+    let src = acc.to_vec(); // premultiplied
     for y in 0..h {
+        let gy = (oy + y) as f32;
+        let dy = gy - cy;
         for x in 0..w {
-            let dx = x as f32 - cx;
-            let dy = y as f32 - cy;
-            let o = &mut acc[(y * w + x) as usize];
-            o[0] = gather(dx, dy, sr, 0);
-            o[1] = gather(dx, dy, sg, 1);
-            o[2] = gather(dx, dy, sb, 2);
-            o[3] = gather(dx, dy, 1.0, 3); // coverage: no shift
+            let gx = (ox + x) as f32;
+            let dx = gx - cx;
+            let tap = |sc: f32| {
+                let sx = (gx - dx * sc + 0.5).floor() as i32 - ox;
+                let sy = (gy - dy * sc + 0.5).floor() as i32 - oy;
+                sample_clamp(&src, w, h, sx, sy)
+            };
+            let i = (y * w + x) as usize;
+            acc[i] = [
+                tap(scale[0])[0],
+                tap(scale[1])[1],
+                tap(scale[2])[2],
+                src[i][3],
+            ];
         }
     }
     unpremultiply(acc);

@@ -42,6 +42,8 @@ fn janela_da_dobra(
         height: (y1 - y0) as u32,
         origin_x: x0 as u32,
         origin_y: y0 as u32,
+        canvas_width: w,
+        canvas_height: h,
     }
 }
 

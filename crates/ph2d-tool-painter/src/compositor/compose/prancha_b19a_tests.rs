@@ -15,7 +15,7 @@ use ph2d_painter_effects::adjustments::{
     apply_shadows_highlights, separable_blur_scalar,
 };
 
-fn fundo(w: u32, h: u32, qual: u8) -> Vec<u8> {
+pub(super) fn fundo(w: u32, h: u32, qual: u8) -> Vec<u8> {
     if qual == 2 {
         let mut t = PainterTool::default();
         t.agenda_papel_texturizado(7);
@@ -40,7 +40,7 @@ fn fundo(w: u32, h: u32, qual: u8) -> Vec<u8> {
     v
 }
 
-fn camada(w: u32, h: u32, f: impl Fn(u32, u32) -> Option<[u8; 4]>) -> LayerImage {
+pub(super) fn camada(w: u32, h: u32, f: impl Fn(u32, u32) -> Option<[u8; 4]>) -> LayerImage {
     let mut img = LayerImage::transparent(w, h);
     for (i, p) in img.rgba8.chunks_exact_mut(4).enumerate() {
         if let Some(c) = f(i as u32 % w, i as u32 / w) {
@@ -182,12 +182,7 @@ fn sombras(w: u32, h: u32, bg: &[u8]) -> (Vec<u8>, Vec<u8>) {
     let adj = s.add_adjustment(AdjustmentKind::ShadowsHighlights).unwrap();
     s.adjustment_mut(adj).unwrap().params = AdjustmentParams::ShadowsHighlights(p);
     let depois = composite(&s, &src, w, h);
-    let win = AdjustWindow {
-        width: w,
-        height: h,
-        origin_x: 0,
-        origin_y: 0,
-    };
+    let win = AdjustWindow::full(w, h);
     let acc0: Vec<[f32; 4]> = por_baixo
         .chunks_exact(4)
         .map(|c| [0, 1, 2, 3].map(|k| decode_byte(c[k])))
@@ -205,7 +200,7 @@ fn sombras(w: u32, h: u32, bg: &[u8]) -> (Vec<u8>, Vec<u8>) {
 }
 
 /// Antes | depois | o que muda (vermelho ∝ a diferença), no recorte central de lado `h/2`.
-fn monta(a: &[u8], d: &[u8], w: u32, h: u32) -> image::RgbaImage {
+pub(super) fn monta(a: &[u8], d: &[u8], w: u32, h: u32) -> image::RgbaImage {
     let lado = h / 2;
     let (x0, y0) = ((w - lado) / 2, (h - lado) / 2);
     let gap = 8u32;

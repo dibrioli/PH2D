@@ -1851,6 +1851,8 @@ fn noise_is_deterministic_per_absolute_coordinate() {
             height: 2,
             origin_x: 1,
             origin_y: 1,
+            canvas_width: 4,
+            canvas_height: 4,
         },
     );
     for ly in 0..2u32 {
@@ -2240,6 +2242,8 @@ fn parallel_kernels_are_deterministic_and_coord_correct_at_scale() {
             height: 2,
             origin_x: 137,
             origin_y: 151,
+            canvas_width: n,
+            canvas_height: n,
         },
     );
     let full = a[(151 * n + 137) as usize];

@@ -82,7 +82,7 @@ pub fn composite_with_cache(
         ids,
         stack,
         src,
-        width,
+        (width, height),
         0,
         0,
         width,
@@ -150,9 +150,26 @@ pub(super) fn has_spatial_adjustment(stack: &LayerStack, ids: &[LayerId]) -> boo
         })
 }
 
+/// The SUM of the [`window_halo`](ph2d_painter_effects::adjustments::window_halo)s of the visible
+/// adjustments in `ids` (recursing into visible groups): each kernel reads the previous one's output,
+/// so the halos add up. `None` = some kernel is exact only on the whole canvas.
+fn halo_da_pilha(stack: &LayerStack, ids: &[LayerId]) -> Option<u32> {
+    ids.iter().try_fold(0u32, |soma, &id| {
+        let h = match stack.get(id).map(|l| (&l.kind, l.visible)) {
+            Some((LayerKind::Group(g), true)) => halo_da_pilha(stack, &g.children)?,
+            Some((LayerKind::Adjustment(a), true)) if a.visible => {
+                ph2d_painter_effects::adjustments::window_halo(&a.params)?
+            }
+            _ => 0,
+        };
+        Some(soma.saturating_add(h))
+    })
+}
+
 /// Composite `region` into a freshly-allocated linear accumulator
 /// (`region.w * region.h` entries, row-major). Clamps the region to the
-/// canvas bounds.
+/// canvas bounds. Under a spatial adjustment the region is composed grown by the stack's halo (or
+/// as the whole canvas) and cropped back, so it is the crop of [`composite`] to the byte (T1-13).
 /// Devolve o acumulador e, com `vidros`, a transparência por canal do papel (o fundo da pilha).
 pub(super) fn composite_region_linear(
     stack: &LayerStack,
@@ -166,6 +183,59 @@ pub(super) fn composite_region_linear(
     let ry = region.y.min(height);
     let rw = region.w.min(width - rx);
     let rh = region.h.min(height - ry);
+    let r = Region {
+        x: rx,
+        y: ry,
+        w: rw,
+        h: rh,
+    };
+    if rw == 0 || rh == 0 || !has_spatial_adjustment(stack, stack.root()) {
+        return compor_regiao(stack, src, width, height, r, vidros);
+    }
+    let g = match halo_da_pilha(stack, stack.root()) {
+        Some(halo) => {
+            let (x0, y0) = (rx.saturating_sub(halo), ry.saturating_sub(halo));
+            let x1 = rx.saturating_add(rw).saturating_add(halo).min(width);
+            let y1 = ry.saturating_add(rh).saturating_add(halo).min(height);
+            Region {
+                x: x0,
+                y: y0,
+                w: x1 - x0,
+                h: y1 - y0,
+            }
+        }
+        None => Region {
+            x: 0,
+            y: 0,
+            w: width,
+            h: height,
+        },
+    };
+    let (acc, t) = compor_regiao(stack, src, width, height, g, vidros);
+    if g == r {
+        return (acc, t);
+    }
+    fn recorta<T: Copy>(v: &[T], g: Region, r: Region) -> Vec<T> {
+        let mut out = Vec::with_capacity((r.w as usize) * (r.h as usize));
+        for y in r.y..r.y + r.h {
+            let i = ((y - g.y) * g.w + (r.x - g.x)) as usize;
+            out.extend_from_slice(&v[i..i + r.w as usize]);
+        }
+        out
+    }
+    (recorta(&acc, g, r), t.map(|t| recorta(&t, g, r)))
+}
+
+/// [`composite_region_linear`] over an already-clamped `region`, with no halo.
+fn compor_regiao(
+    stack: &LayerStack,
+    src: &(impl LayerPixelSource + Sync),
+    width: u32,
+    height: u32,
+    region: Region,
+    vidros: Option<&super::vidro::Vidros>,
+) -> (Vec<[f32; 4]>, Option<Vec<[f32; 3]>>) {
+    let (rx, ry, rw, rh) = (region.x, region.y, region.w, region.h);
     let mut acc = vec![[0.0f32; 4]; (rw as usize) * (rh as usize)];
     // A transparência do papel nasce 1 (nada por cima): o enchimento em paralelo (`plane_copy`).
     let mut t = vidros.map(|_| {
@@ -178,8 +248,7 @@ pub(super) fn composite_region_linear(
     // walk over its own rows). This was the painter's biggest per-frame cost on a non-trivial doc
     // stack: `take_preview_arc` recomposites the shape methods' whole-shape dirty bbox EVERY move
     // (~31 ms serial @2048², Enio's "FPS 60→10"). SPATIAL adjustments (blur/bloom/…) read
-    // neighbouring pixels — banding would seam at band edges — so those stacks stay serial (they are
-    // already clamp-to-edge approximate on a sub-window; the GPU pass-graph is their real-time path).
+    // neighbouring pixels — banding would seam at band edges — so those stacks stay serial.
     let threads = parallel_threads(
         (rw as usize) * (rh as usize),
         if has_spatial_adjustment(stack, stack.root()) {
@@ -194,7 +263,7 @@ pub(super) fn composite_region_linear(
             stack.root(),
             stack,
             src,
-            width,
+            (width, height),
             rx,
             ry,
             rw,
@@ -226,7 +295,7 @@ pub(super) fn composite_region_linear(
                         stack.root(),
                         stack,
                         src,
-                        width,
+                        (width, height),
                         rx,
                         band_ry,
                         rw,
@@ -255,7 +324,7 @@ pub(super) fn composite_into(
     ids: &[LayerId],
     stack: &LayerStack,
     src: &impl LayerPixelSource,
-    canvas_w: u32,
+    canvas: (u32, u32),
     rx: u32,
     ry: u32,
     rw: u32,
@@ -271,6 +340,7 @@ pub(super) fn composite_into(
     if depth > MAX_GROUP_DEPTH {
         return;
     }
+    let canvas_w = canvas.0;
     // Bottom-to-top (§2.11): the panel order is top-first, so iterate rev.
     // T3.6: a clipping layer clips to the nearest NON-clipping raster below it
     // (§2.8); consecutive clipping layers chain to the same base. As we walk up,
@@ -391,7 +461,7 @@ pub(super) fn composite_into(
                     &g.children,
                     stack,
                     src,
-                    canvas_w,
+                    canvas,
                     rx,
                     ry,
                     rw,
@@ -454,10 +524,8 @@ pub(super) fn composite_into(
                 // Window-aware dispatch: spatial blurs (Gaussian/Sharpen/Motion/
                 // Chroma) need the 2-D layout; Noise/Halftone need the absolute
                 // canvas coordinate (origin + local). Per-pixel kinds delegate to
-                // the flat `apply_adjustment` inside. (Spatial blur on a dirty-rect
-                // sub-window is clamp-to-edge approximate at the seam — the GPU
-                // pass-graph with halo is the exact real-time path; a full-canvas
-                // recompose here, the common param-drag case, is exact.)
+                // the flat `apply_adjustment` inside. (A dirty window arrives grown
+                // by the stack's halo: `composite_region_linear`.)
                 ph2d_painter_effects::adjustments::apply_adjustment_windowed(
                     &adj.kind,
                     &adj.params,
@@ -467,6 +535,8 @@ pub(super) fn composite_into(
                         height: rh,
                         origin_x: rx,
                         origin_y: ry,
+                        canvas_width: canvas.0,
+                        canvas_height: canvas.1,
                     },
                 );
                 // Optional mask — raw layer-id (amendment-1): white = full
@@ -615,6 +685,10 @@ fn salto_ligado() -> bool {
     !SEM_SALTO.load(std::sync::atomic::Ordering::Relaxed)
 }
 
+#[cfg(test)]
+mod janela_tests;
+#[cfg(test)]
+mod prancha_b19_2_tests;
 #[cfg(test)]
 mod prancha_b19a_tests;
 #[cfg(test)]

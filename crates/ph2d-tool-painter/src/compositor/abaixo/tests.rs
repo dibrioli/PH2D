@@ -66,7 +66,18 @@ fn composite_below_antigo(
     let mut acc = vec![g; (width as usize) * (height as usize)];
     for ids in slices {
         composite_into(
-            &mut acc, ids, stack, src, width, 0, 0, width, height, 0, None, None,
+            &mut acc,
+            ids,
+            stack,
+            src,
+            (width, height),
+            0,
+            0,
+            width,
+            height,
+            0,
+            None,
+            None,
         );
     }
     encode(&acc)

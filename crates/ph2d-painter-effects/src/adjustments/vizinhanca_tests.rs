@@ -122,9 +122,10 @@ fn the_sharpen_is_an_unsharp_mask_of_display_tones() {
 
 #[test]
 fn the_chromatic_aberration_gathers_premultiplied_display_tones() {
-    // w = 9 ⇒ centro 4, canto 4; `red_shift = 4` ⇒ o vermelho do píxel 5 vem do píxel 6.
+    // w = 9 (o modelo da placa) ⇒ centro 4,5, meia diagonal √82/2; `red_shift = 4` puxa para
+    // dentro: o vermelho do píxel 8 vem de ⌊8 − 3,5·4/(√82/2) + ½⌋ = 5.
     let mut px = vec![PRETO; 9];
-    px[6] = BRANCO_140;
+    px[5] = BRANCO_140;
     let mut acc = px.clone();
     apply_chromatic_aberration(
         &ChromaticAberrationParams {
@@ -136,14 +137,15 @@ fn the_chromatic_aberration_gathers_premultiplied_display_tones() {
         &mut acc,
         linha(9),
     );
-    // O vermelho pré-multiplicado do 6 (1 · 140/255) sobre a cobertura do 5 (opaco): 140/255 em
+    // O vermelho pré-multiplicado do 5 (1 · 140/255) sobre a cobertura do 8 (opaco): 140/255 em
     // tons de ecrã (em luz seria 0,77).
     assert!(
-        (acc[5][0] - 140.0 / 255.0).abs() < 2e-5,
+        (acc[8][0] - 140.0 / 255.0).abs() < 2e-5,
         "vermelho {} ≠ 140/255",
-        acc[5][0]
+        acc[8][0]
     );
-    assert_eq!([acc[5][1], acc[5][2], acc[5][3]], [0.0, 0.0, 1.0]);
+    assert_eq!([acc[8][1], acc[8][2], acc[8][3]], [0.0, 0.0, 1.0]);
+    assert_eq!(acc[4], PRETO, "o 4 lê-se a si mesmo");
 }
 
 #[test]
@@ -190,7 +192,12 @@ fn sombras_sobre_ruido_quase_preto_nao_viram_cor() {
     };
     let ruido = [3.0 / 255.0, 0.0, 0.0, 1.0];
     let escuro = [0.30, 0.10, 0.10, 1.0];
-    let mut px = vec![[0.0, 0.0, 0.0, 1.0], ruido, [0.0, 1.0 / 255.0, 0.0, 1.0], escuro];
+    let mut px = vec![
+        [0.0, 0.0, 0.0, 1.0],
+        ruido,
+        [0.0, 1.0 / 255.0, 0.0, 1.0],
+        escuro,
+    ];
     let antes = px.clone();
     let n = px.len();
     apply_shadows_highlights(&p, &mut px, linha(n));
@@ -203,7 +210,14 @@ fn sombras_sobre_ruido_quase_preto_nao_viram_cor() {
     // Controlo: acima do piso, `d · new_l / l` como antes (o recorte não muda a lei de quem tem cor).
     let l = luma(&escuro);
     assert!(l >= SH_LUMA_FLOOR);
-    let ws = 1.0 - { let t = (l / 0.6).clamp(0.0, 1.0); t * t * (3.0 - 2.0 * t) };
+    let ws = 1.0 - {
+        let t = (l / 0.6).clamp(0.0, 1.0);
+        t * t * (3.0 - 2.0 * t)
+    };
     let ratio = (l + 0.5 * ws).clamp(0.0, 1.0) / l;
-    assert!((px[3][0] - (escuro[0] * ratio).clamp(0.0, 1.0)).abs() < 1e-6, "{:?}", px[3]);
+    assert!(
+        (px[3][0] - (escuro[0] * ratio).clamp(0.0, 1.0)).abs() < 1e-6,
+        "{:?}",
+        px[3]
+    );
 }

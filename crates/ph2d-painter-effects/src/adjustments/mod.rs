@@ -618,11 +618,10 @@ pub use lut::{LUT_PRESET_COUNT, LUT_PRESETS, apply_color_lookup};
 pub use psd_export::PsdExport;
 // Window-/coordinate-aware kernels (spatial blurs + Noise/Halftone). The Gaussian
 // + Motion math is the canonical reference the GPU pass-graph reconciles against
-// (gated by `spatial_weights_parity`); `apply_chromatic_aberration` is NOT yet
-// reconciled and DIVERGES from the GPU (see `spatial.rs` §Two roles, audit 2026-06-18).
+// (gated by `spatial_weights_parity`); `apply_chromatic_aberration` is the GPU `cs_chroma` model.
 pub use spatial::{
     AdjustWindow, MAX_BLUR_HALF, apply_adjustment_windowed, apply_bloom,
     apply_chromatic_aberration, apply_gaussian, apply_halftone, apply_motion_blur, apply_noise,
     apply_shadows_highlights, apply_sharpen, gaussian_weights, motion_weights,
-    separable_blur_scalar,
+    separable_blur_scalar, window_halo,
 };

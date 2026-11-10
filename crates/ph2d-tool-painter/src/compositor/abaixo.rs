@@ -128,7 +128,18 @@ fn abaixo_em_faixas(
         let mut acc = vec![g; w * (height as usize)];
         for ids in slices {
             composite_into(
-                &mut acc, ids, stack, src, width, 0, 0, width, height, 0, None, None,
+                &mut acc,
+                ids,
+                stack,
+                src,
+                (width, height),
+                0,
+                0,
+                width,
+                height,
+                0,
+                None,
+                None,
             );
         }
         return encode(&acc);
@@ -151,7 +162,17 @@ fn abaixo_em_faixas(
                         acc.resize(fh * w, g);
                         for ids in slices {
                             composite_into(
-                                &mut acc, ids, stack, src, width, 0, y0, width, fh as u32, 0, None,
+                                &mut acc,
+                                ids,
+                                stack,
+                                src,
+                                (width, height),
+                                0,
+                                y0,
+                                width,
+                                fh as u32,
+                                0,
+                                None,
                                 None,
                             );
                         }

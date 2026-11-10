@@ -368,8 +368,8 @@ impl crate::App {
             s.lead_in = 0.6;
             s.lead_out = 0.5;
         }
-
         // O loop no doc é o que a costura lê (`seam_source`): sem ele o lead-out não a cruza.
+        doc.set_scene_length(Some(10.6)); // o fim é o do loop: sem véu sobre os pulos
         doc.set_active_loop_for(false, Some((0.0, 10.6)));
         for (t, n) in [(0.0, "takeoff"), (1.1, "top"), (2.0, "land")] {
             doc.add_marker(RationalTime::from_seconds(t), n); // o trecho entre dois (doc 17 item 2)
@@ -381,7 +381,7 @@ impl crate::App {
         eprintln!(
             "[nest-smoke] JumpDemo: container \"Jump\" = 3 clips (Rise/Fall/Drift) em 2 lanes, \
              instanciado 3x em [0,2) [3,7) [8,10) — a do meio esticada (speed 0.5 = camera \
-             lenta). Abra L: [Keys | Containers | Arrange]. Gestos: docs/Timeline/smoke_nest.md."
+             lenta), fim da cena 10.6 s. Abra L: [Keys | Containers | Arrange]. Gestos: docs/Timeline/smoke_nest.md."
         );
     }
 }

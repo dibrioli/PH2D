@@ -157,6 +157,10 @@ pub const TIMELINE_FIM_LINHA_PX: f32 = 2.0; // LITERAL-PX-OK: espessura da linha
 pub const TIMELINE_LACO_REGUA_PX: f32 = 5.0; // LITERAL-PX-OK: altura da faixa do laço na régua
 /// A opacidade da faixa do laço na régua.
 pub const TIMELINE_LACO_REGUA_ALPHA: f32 = 0.7; // LITERAL-PX-OK: opacidade da faixa do laço
+/// ⭐ **O trecho entre marcadores** (maquete B6, `.c13sec`): a cor do laço a 20 % com fio de 1 px a 65 %.
+pub const TIMELINE_TRECHO_FUNDO_ALPHA: f32 = 0.2; // LITERAL-PX-OK: fundo da caixa do trecho
+/// O fio da caixa do trecho (e do vão sob o ponteiro).
+pub const TIMELINE_TRECHO_BORDA_ALPHA: f32 = 0.65; // LITERAL-PX-OK: fio da caixa do trecho
 /// A folga de cada lado do enquadrar da Timeline (`F` e o abrir), em fracção do que se enquadra: o fim
 /// do clipe e um pouco de «além do fim» ficam à vista (estado da arte, ~5–8 %).
 pub const TIMELINE_ENQUADRE_MARGEM: f32 = 0.05; // LITERAL-PX-OK: folga do enquadrar, fracção do vão

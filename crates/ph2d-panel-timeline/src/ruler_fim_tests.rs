@@ -201,3 +201,34 @@ fn a_faixa_do_laco_le_se_sobre_a_regua_em_todo_tema() {
         pior.1
     );
 }
+
+/// ⭐ **A caixa do trecho lê-se na régua e os números leem-se nela, em todo tema** (maquete B6, `.c13sec`).
+/// Pisos MEDIDOS em `Theme::ALL` (OKLab, sobre o fundo da régua dos cartões), 10/11: fundo × régua pior
+/// 0,104 (Sunstone) → 0,09 · fio × régua 0,341 (Sunstone) → 0,30 · número (`Text2`) × caixa 0,195 (Forge) → 0,17.
+#[test]
+fn a_caixa_do_trecho_le_se_e_deixa_ler_os_numeros_em_todo_tema() {
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(true));
+    let mut pior = [(f64::MAX, Theme::Forge); 3];
+    for theme in Theme::ALL {
+        let regua = crate::folha_tinta::cor(ColorToken::TimelineRulerBg, theme);
+        let (fundo, fio) = crate::ruler_trecho::tintas(theme);
+        let [r, g, b, _] = regua.components;
+        let caixa = sobre(fundo, regua);
+        let texto = crate::folha_tinta::cor(ColorToken::Text2, theme).components;
+        let d = [
+            dist(caixa, [r, g, b]),
+            dist(sobre(fio, regua), [r, g, b]),
+            dist([texto[0], texto[1], texto[2]], caixa),
+        ];
+        for (p, d) in pior.iter_mut().zip(d) {
+            if d < p.0 {
+                *p = (d, theme);
+            }
+        }
+    }
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(None);
+    let pisos = [0.09, 0.30, 0.17];
+    for (p, piso) in pior.iter().zip(pisos) {
+        assert!(p.0 >= piso, "{:.3} < {piso} em {:?}", p.0, p.1);
+    }
+}

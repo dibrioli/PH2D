@@ -310,3 +310,60 @@ LOC: `sprite.rs` 698 · `op.rs` 697 · `codec.rs` 667 (tecto 700) ⇒ **o próxi
 Mutações (restauradas, árvore conferida): o sinal do desvio sangra no coloraide e sobrevive na monotonia, como esperado; corte em L sangra nos dois; sem corte sangra no coloraide. Por nome e verdes: core `rampas`, `codec`, `history`, `pure_core`, `user_data`, `tiles`; cena `o_pixel_formato_le_o_que_grava`; `check` da `ph2d-app-pixel` verde.
 
 **Falta / para os próximos:** (1) o `Op::Whole` (Color Mode, New Palette from Sprite) passa a RECUSAR quando a paleta nova parte uma rampa: o R3 (`PreservaRampas`) tem de remapear as rampas no mesmo passo. (2) Rampa de um degrau é aceite; o `shade` do R2 decide se ela conta. (3) O `.ase` (user data `ph2d.ramps`/`ph2d.cycles`, efeito assado) e a folha JSON `meta.audio` não foram feitos (§5, são do R4/C/T). (4) A gravação de `Guias` com coordenada não finita não é recusada.
+
+### Espaço na ph2d-app-pixel (09/11, agente)
+
+**A regra do gate** (`architecture_the_shell_only_shrinks.rs`, `the_shell_only_shrinks_and_every_app_crate_too`): reprova `loc > tecto`; só obriga a descer quando `loc + censo_da_crate(tecto) < tecto`, com `censo = max(tecto/10, 500)` = **1 127** para 11 278. ⇒ cortar NÃO obriga o tecto a descer até 1 127 linhas de folga; o tecto fica **11 278** (inalterado) e a folga é o corte. ⚠️ O integrador pode recontar para `medido + folga_da_crate` (2 %, = 222 sobre 11 147 → 11 369): também deixa folga, nunca zero.
+
+**O que moveu (comportamento idêntico, só endereço):**
+1. O registo do que o quadro desenhou (`Drawn`, `DRAWN`/`PENDING`, `pick_at`, `caixa_local`, `begin_frame`) → `ph2d-pixel-render::desenhados` (nova API `desenhados`/`junta_pendentes`/`tira_pendentes`/`regista`); `draw.rs` re-exporta os três `pub`. −54.
+2. O ficheiro dos pincéis guardados (`FILE`, `pasta_do_utilizador`, `le`, `shape_in`/`shape_out`) → `ph2d-pixel-ponte::pinceis` (irmão de `paletas`); `pinceis.rs` re-exporta os dois `pub`. −43.
+3. Os diálogos modais (`dialog_open`, `dialog_text`) → `ph2d-pixel-ponte::dialogo`; `compose.rs` re-exporta (a shell chama `compose::dialog_*` sem mudar). −21.
+Zero dependência nova (as três folhas já tinham as deps) ⇒ `Cargo.lock` intocado; nenhuma aresta sobe (folha → folha). Sem `cfg(feature)`, `cfg(test)`, `include_str!` nem censo por prefixo no código movido (HOWTO §2.4–2.7 conferidos); itens privados que passaram a `pub` levaram doc (§2.21: todos `pub` numa lib, nenhum privado sem chamador).
+
+**Linhas:** 11 261 → **11 147** (−114, contadas por `conta()`, já com `rustfmt`); tecto 11 278 ⇒ **folga 131** (era 17). Abaixo do alvo de 300: o que resta na crate é quase tudo `impl PixelApp`/`&mut PixelApp` — as ondas anteriores já tiraram o puro (`ponte`, `cenas`, `formas`, `keys`). Os ~1 960 dos `smoke*.rs` dirigem o `PixelApp` e NÃO podem sair: família → família e folha → família são arestas proibidas (`architecture_no_dependency_climbs_a_layer`), e fingir-se `*-registry-init` seria contornar.
+
+**Gates por nome (verdes):** `check` `ph2d-app-pixel` e `ph2d-host-desktop`; `ph2d-editor-core::the_shell_only_shrinks_and_every_app_crate_too`; `ph2d-host-pixel-scenes`: `the_slots_live_in_the_users_folder_and_survive_a_new_session`, `enquadr*` (3), `a_shell_pergunta_a_caixa_ao_pixel_e_a_luz`.
+
+**Padrão de ligação recomendado para as 12 peças da §6** (131 linhas não chegam para ~12 peças à moda antiga): cada peça de UI nasce num `ph2d-panel-pixel-<peça>` (painel: pode depender de folhas, a família depende dele — como `export`, `tiles`, `slices`, `keys`, `history`), com a lei numa folha `ph2d-pixel-*` (`lint`, `guia`, `crt`, `rampa`); o painel publica pedidos num canal próprio (o `canal::{Pedido, Tela}` do `ph2d-panel-pixel-export`) e a app só os drena e aplica ao documento. Custo na app por peça: 1 linha `Cargo.toml` (não conta: não é `.rs`) + ~1 linha de registo/`frame` + ~3–6 linhas do braço que aplica o pedido ao `Doc` (`Op` já é do núcleo). **Total estimado: 12 × ≈6 ≈ 70–80 linhas** ⇒ cabe na folga de 131 com ~50 de margem. Regra para a onda: braço com mais de ~10 linhas na app = sinal de que a lei está do lado errado — desce para a folha.
+
+### V — CRT (09/11, agente)
+
+**Crate nova `crates/ph2d-pixel-crt`** (deps: `ph2d-gpu`, `wgpu 30.0.1`; nada do núcleo — a CRT é da VISTA e nunca grava no ficheiro, §11). `Cargo.lock` NÃO commitado: o diff dele tem também os hunks de `ph2d-pixel-guia`/`-lint` (outros agentes) — o integrador regenera.
+
+**Params (dado da lei, não UI):** `CrtParams { scanline, mascara, curvatura, brilho, bloom }`, `Default` = desligada (`0,0,0,1,0`).
+
+**A lei** (doc-comment de `lib.rs`), saída `W×H = w·escala × h·escala`:
+- **Curvatura barril em ponto fixo Q14 (só inteiros)** — `u = (2x+1−W)·2¹⁴/W`, `r² = (u²+v²)>>14`, `f = 2¹⁴ + (k·r²>>12)` com `k = round(curvatura·2¹²)`, `du = (u·f)>>14`; fora de `[−2¹⁴,2¹⁴)` ⇒ preto opaco; senão `sx = ((du+2¹⁴)·W)>>15`, texel `sx/escala` (nearest). Escolhido inteiro para a placa e a CPU amostrarem o MESMO texel (f32 com FMA mudaria o `floor` em bordas ⇒ um pixel inteiro errado). Tectos com o recurso dito: `LADO_MAXIMO = 2¹⁴` (identidade exacta e `i32` sem transbordo; = o `max_texture_dimension_2d` 16384 das placas de secretária), `CURVATURA_MAXIMA = 1` (`u·f < 2³¹`).
+- **Cor** por canal, em níveis: `g = brilho·(y ímpar ? 1−scanline : 1)·(c == x mod 3 ? 1 : 1−mascara)`, `out = clamp(floor(s·g + bloom·(e+s+d)/3 + ½))` (e/d = vizinhos horizontais na origem). `floor(+½)` nos dois lados (o `round` do WGSL é meio-para-par). Alfa = o da origem.
+
+**WGSL** `src/crt.wgsl`: triângulo de ecrã cheio, `textureLoad` (sem sampler), uniforme de 32 B. **Rust** `gpu::CrtGpu::{new(device, formato), codifica(device, queue, encoder, origem, alvo, (w,h,escala), &params, timestamps)}` + `gpu::{prepara, le_alvo, crt_na_placa}` (gabarito/medida).
+
+**Gates** (`ph2d-pixel-crt::testes`, verdes): `a_crt_desligada_e_a_identidade` (4 tamanhos × escala, e o mapa `k=0` = identidade até `2¹⁴−1`) · `a_curvatura_nao_mexe_o_centro_e_apaga_os_cantos` · `a_scanline_escurece_so_a_linha_impar` · `a_placa_e_o_gabarito_concordam_na_crt` (3 casos, incl. tudo no máximo; SKIP explícito sem adaptador) — **pior diferença 0 níveis** nos 3 (tolerância ≤ 1), RTX 5060 Ti. ⚠️ Red-first honesto: escrevi lei e gates na mesma passada; o vermelho veio das mutações.
+
+**Mutações à mão (restauradas, `grep -c` = 1 em cada):** M1 trocar linha par/ímpar na CPU ⇒ vermelho em `a_scanline_…` e em `a_placa_e_o_gabarito_…`; M2 tirar a curvatura no WGSL (`f = UM`) ⇒ vermelho em `a_placa_e_o_gabarito_…`.
+
+**Medida** (`mede_a_crt_na_placa_a_2048`, 512² × 4 ⇒ 2048², params ligados, timestamp query, 3 de aquecimento): **mínimo de 20 = 0,098 ms** na RTX 5060 Ti (perfil `dev`; a placa não depende do perfil). Contra 25,7 ms a 1 fio na CPU (passo 0b) ⇒ ~260×: a vista corre a CRT por quadro sem custo que se veja.
+
+**A porta (onda seguinte):** a prévia e a janela do jogo criam UMA vez `CrtGpu::new(&device, formato_do_alvo)` e, por quadro, `codifica` com a textura do quadro composto (RGBA8 não-sRGB, tamanho do documento) e um alvo `w·escala × h·escala` (no lugar da ampliação nearest que já fazem; com `CrtParams::default()` basta não chamar). Num alvo `*Srgb` a placa codifica por cima — usar vista não-sRGB para os níveis da lei. O export chama `crt_cpu` (mesma resposta byte a byte).
+
+**Falta:** UI dos params (cartão), onde os params moram (preferência da vista, não o `Doc`), a ligação nos dois sítios, e o `Cargo.lock` no integrador.
+
+### R2 (09/11, agente)
+
+Commit `b35bf15584` (núcleo + gates). Sem UI; `ph2d-app-pixel` e `ph2d-pixel-ponte`: zero linhas (a ponte compila sem mudar).
+
+**Leis (`ph2d-pixel-core`):**
+- **Shading na rampa do documento** — `ink::shade_in_document(sprite, selecção, dest, dir)` (o braço `Ink::Shading` de `ink::apply`): a rampa de `Sprite.ramps` que contém `dest` manda, ±1, pára nas pontas; **rampa de 1 degrau = não anda e manda mais que a selecção** (fecha a pendência 2 do R1). Fora de toda rampa do documento ⇒ a selecção de hoje, byte a byte (`color_laws` verde; o gate compara com `shade(sel, …)` sem rampas). RGB/Gray: a rampa são as cores da paleta (`value_of_rgba(palette[i])`).
+- **Ink Dither** — `dither::PincelDither { nivel: 0..=64, matriz: Dither }` + `Stroke::with_dither(secundária, d)`: a célula `(x, y)` do CANVAS pinta a primária se `level(x,y) · 64/side² < nivel` (Bayer8 = a lei literal; Bayer2/4 escalam para que os 65 níveis valham em todas). Entra no funil `ink_value` ⇒ lápis, formas, spray e balde; a tinta (`Ink`) aplica-se depois. Não é variante de `Ink` de propósito: `ph2d-pixel-ponte::gesto::ink_out` faz `match` exaustivo e o `PixelInk` do `ph2d-editor-core` não tem Dither.
+- **Smudge::Push** — `Kind::Push { forca: u8 }` (`forca/255` = 0..1) + `Smudge::arrasta(&sprite, centro, cells)`: cada célula recebe a cor da célula anterior do traço (desvio do cursor desde o carimbo anterior), mistura RGBA, volta à paleta por `Sprite::value_of_rgba` (a mesma métrica do Indexed; `convert.rs` intacto, não expõe «mais próxima»). O 1.º carimbo só regista. `arrasta` em Blur/Jumble = `dab`; `dab` com Push não faz nada. Blur/Jumble byte a byte (`fx_oracle` 8/8 com `oracle_trial_blur.json`).
+
+**Gates (todos vistos VERMELHOS com stub antes):** `o_shading_anda_na_rampa_do_documento` (20≠4: andou na selecção) · `o_dither_fica_preso_ao_canvas` (9≠3) · `push_arrasta_a_cor_e_fica_na_paleta` ((6,6) sem cor) → verdes. Vizinhos por nome verdes: `color_laws`, `fx_oracle`, `dither_laws`, `stroke::`, `gradient`.
+
+**Mutações à mão (restauradas, todas sangram):** sinal do Shading invertido (`:79`) · ler a selecção em vez da rampa (`:79`) · padrão relativo ao início do traço (`:151`) · Push lê a célula atual em vez da anterior (`:186`) · Push sem voltar à paleta (`:199`).
+
+**Chaves i18n (para quem fizer a UI; nenhuma criada):** `pixel.ink.dither` («Dither») · `pixel.ink.dither.level` («Level») · `pixel.ink.dither.matrix` («Matrix») · `pixel.ink.dither.matrix.bayer2|bayer4|bayer8` («Bayer 2×2/4×4/8×8») · `pixel.ink.dither.tooltip` («Paints a fixed pattern between the foreground and background colors; the pattern stays put on the canvas») · `pixel.smudge.push` («Push») · `pixel.smudge.push.strength` («Strength») · `pixel.smudge.push.tooltip` («Drags the color under the brush along the stroke») · `pixel.ink.shading.tooltip` (revisto: «Steps one shade along the palette ramp under the brush; outside any ramp, along the selected colors»).
+
+**A porta para a UI:** (1) `PixelInk::Dither` no `ph2d-editor-core::pixel_panel` + `Options.dither: PincelDither` (Level 0..=64, Matrix Bayer2/4/8); `gesto::ink` mapeia `PixelInk::Dither ⇒ Ink::Simple` e `ink_out` não precisa de braço novo. (2) No premir (`input.rs`, ao lado do `shading`), se o ink é Dither: `stroke.with_dither(s.value_of_rgba(bg), options.dither)` — botão direito troca primária/secundária. Mesmo no balde/formas. (3) Smudge: a tecla R passa a alternar Blur → Jumble → Push; no `degrade.rs` o Push chama `smudge.arrasta(s, at, &carimbo(..))` no premir e em cada célula do `line_path` do arrasto (em vez de `dab`), força num slider «Strength».
+
+**Falta / avisos:** (1) a UI acima (outro agente). (2) Push em camada não Indexed fica em RGBA exacto; o alfa também mistura (empurrar para o transparente desbota). (3) ⚠️ Corri `cargo fmt -p ph2d-pixel-core` uma vez: pode ter reformatado `compose.rs`/`convert.rs`/`efeito.rs`/`lib.rs` em curso de outros agentes (só formato; não os commitei). (4) Cena de smoke 30 «Dither» ainda não montada.

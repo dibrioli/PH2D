@@ -14,7 +14,7 @@ fn a_folha_pintada_mostra_a_tinta_quando_o_traco_acaba() {
     let mut leu = 0;
     // O traço anda: a revisão muda a cada quadro, nada se lê.
     for r in 1..4 {
-        follow_live(&mut w, Some((e, (0, r))), 0, || {
+        follow_live(&mut w, Some((e, (0, r))), true, 0, || {
             leu += 1;
             px(9)
         });
@@ -22,7 +22,7 @@ fn a_folha_pintada_mostra_a_tinta_quando_o_traco_acaba() {
     assert_eq!(leu, 0, "a meio do traço não se lê");
     // Parou: uma leitura quando fica QUADROS_PARADOS quadros parada, e a folha 0 mostra-a.
     for _ in 1..QUADROS_PARADOS {
-        follow_live(&mut w, Some((e, (0, 3))), 0, || {
+        follow_live(&mut w, Some((e, (0, 3))), true, 0, || {
             leu += 1;
             px(9)
         });
@@ -32,7 +32,7 @@ fn a_folha_pintada_mostra_a_tinta_quando_o_traco_acaba() {
         "parada há menos de QUADROS_PARADOS quadros ainda não se lê"
     );
     for _ in 0..3 {
-        follow_live(&mut w, Some((e, (0, 3))), 0, || {
+        follow_live(&mut w, Some((e, (0, 3))), true, 0, || {
             leu += 1;
             px(9)
         });
@@ -42,7 +42,7 @@ fn a_folha_pintada_mostra_a_tinta_quando_o_traco_acaba() {
     assert_eq!(c.of_sheet(e, 0).map(|x| x.sheet.rgba[0]), Some(9));
     assert!(c.of_sheet(e, 1).is_none(), "só a folha visível");
     // Assou: a gravada volta.
-    follow_live(&mut w, None, 0, || px(1));
+    follow_live(&mut w, None, true, 0, || px(1));
     assert!(w.resource::<SheetCache>().of_sheet(e, 0).is_none());
 }
 
@@ -59,7 +59,7 @@ fn o_selo_gira_com_a_tinta_a_andar_enche_parada_e_acaba_no_check() {
     let mut agora = 0u128;
     let mut quadro = |w: &mut World, vivo| {
         agora += 16_666_667;
-        follow_live(w, vivo, agora, || px(5));
+        follow_live(w, vivo, true, agora, || px(5));
     };
     for q in 0..120u64 {
         quadro(&mut w, Some((e, (0, 100 + q / 3))));
@@ -120,7 +120,7 @@ fn a_agua_do_wet_a_andar_nao_le_a_tela_a_cada_passo() {
     let mut leu = 0;
     // Dois segundos de água a 60 Hz: a revisão anda a cada 3 quadros (20 Hz) e fica parada nos outros dois.
     for q in 0..120u64 {
-        follow_live(&mut w, Some((e, (0, 100 + q / 3))), 0, || {
+        follow_live(&mut w, Some((e, (0, 100 + q / 3))), true, 0, || {
             leu += 1;
             px(5)
         });
@@ -128,7 +128,7 @@ fn a_agua_do_wet_a_andar_nao_le_a_tela_a_cada_passo() {
     assert_eq!(leu, 0, "a água a andar fez {leu} leituras da tela inteira");
     // Assentou: meio segundo parada e lê-se uma vez.
     for _ in 0..=QUADROS_PARADOS {
-        follow_live(&mut w, Some((e, (0, 999))), 0, || {
+        follow_live(&mut w, Some((e, (0, 999))), true, 0, || {
             leu += 1;
             px(5)
         });
@@ -148,7 +148,7 @@ fn a_leitura_vazia_nao_se_repete_nem_prende_o_selo() {
     let e = w.spawn_empty().id().to_bits();
     let mut leu = 0;
     for _ in 0..QUADROS_PARADOS * 4 {
-        follow_live(&mut w, Some((e, (0, 7))), 0, || {
+        follow_live(&mut w, Some((e, (0, 7))), true, 0, || {
             leu += 1;
             None
         });
@@ -161,7 +161,7 @@ fn a_leitura_vazia_nao_se_repete_nem_prende_o_selo() {
     );
     // Outra revisão: tenta de novo, e agora lê.
     for _ in 0..=QUADROS_PARADOS + 1 {
-        follow_live(&mut w, Some((e, (0, 8))), 0, || {
+        follow_live(&mut w, Some((e, (0, 8))), true, 0, || {
             leu += 1;
             px(3)
         });
@@ -173,4 +173,39 @@ fn a_leitura_vazia_nao_se_repete_nem_prende_o_selo() {
             .map(|x| x.sheet.rgba[0]),
         Some(3)
     );
+}
+
+/// ⭐ **Sem a folha à vista, a tela não se lê** (B10.3, `DIAGNOSTICO_100MS.md`): a leitura (composição Full + papel + luz do
+/// relevo, ~98 ms a 4K) corria 30 quadros depois de cada traço, Up, Ctrl+Z e pausa, com ou sem cartão/aba a mostrá-la.
+/// Escondida fica devida; à vista outra vez, lê-se UMA vez e o selo acaba no check. *Mutação: ignorar `a_vista` ⇒ 1 leitura
+/// escondida.*
+#[test]
+fn sem_a_folha_a_vista_imagem_aplicada_nao_e_chamada() {
+    let mut w = World::new();
+    let e = w.spawn_empty().id().to_bits();
+    let mut leu = 0;
+    for r in 1..4 {
+        follow_live(&mut w, Some((e, (0, r))), false, 0, || {
+            leu += 1;
+            px(4)
+        });
+    }
+    for _ in 0..QUADROS_PARADOS * 4 {
+        follow_live(&mut w, Some((e, (0, 3))), false, 0, || {
+            leu += 1;
+            px(4)
+        });
+    }
+    assert_eq!(leu, 0, "escondida, a tela leu-se {leu} vezes");
+    assert!(w.resource::<SheetCache>().of_sheet(e, 0).is_none());
+    for _ in 0..3 {
+        follow_live(&mut w, Some((e, (0, 3))), true, 0, || {
+            leu += 1;
+            px(4)
+        });
+    }
+    assert_eq!(leu, 1, "à vista outra vez: uma leitura");
+    let c = w.resource::<SheetCache>();
+    assert_eq!(c.of_sheet(e, 0).map(|x| x.sheet.rgba[0]), Some(4));
+    assert_eq!(c.sync(e), Some(ProgressPhase::Done(0.0)), "o check do selo");
 }

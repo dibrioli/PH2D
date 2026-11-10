@@ -9,6 +9,9 @@ pub use ph2d_anim_editor::{
     align, align_pivot, bands, doc, layout, paint, paint_sheet, split, strip_bar,
 };
 
+mod folha_viva;
+pub use folha_viva::{follow_live, shown};
+
 use std::collections::BTreeMap;
 
 use crate::inspector::Commit;

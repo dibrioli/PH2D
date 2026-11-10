@@ -255,8 +255,7 @@ fn animation_editor(
         ph2d_anim_sheets::names::publish(sim.world_mut(), ids, &lib);
     }
     let vivo = ph2d_app_painter::painter_bridge_queries::revisao_viva(tools);
-    let agora = hero.store.clock_ns();
-    ph2d_anim_sheets::sheet_cache::follow_live(sim.world_mut(), vivo, agora, || {
+    ph2d_app_sprite_anim::editor::follow_live(sim, hero, vivo, || {
         ph2d_app_painter::painter_bridge_queries::imagem_por_assar(tools, vivo?.0)
     });
     anim_editor(sim, hero, db, at, reg, toasts);

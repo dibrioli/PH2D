@@ -87,8 +87,9 @@ impl SheetCache {
         if self.devida && self.seen.is_some_and(|(b, _)| b == bits) {
             return Some(match self.parado.checked_sub(QUADROS_A_GIRAR) {
                 None => ProgressPhase::Indeterminate,
+                // Escondida, a leitura espera (`follow_live`) e `parado` passa dos [`QUADROS_PARADOS`]: o anel fica cheio.
                 Some(n) => ProgressPhase::Filling(fracao(
-                    n.into(),
+                    n.min(QUADROS_PARADOS - QUADROS_A_GIRAR).into(),
                     (QUADROS_PARADOS - QUADROS_A_GIRAR).into(),
                 )),
             });
@@ -219,9 +220,13 @@ pub fn refresh(world: &mut World, entities: &[u64], db: &AssetDb, atlas: &BTreeM
 /// a água assentou), `read` dá os píxeis retos da tinta, e a folha visível desse objeto passa a mostrá-los — no editor,
 /// no cartão e nas miniaturas. Uma leitura por traço, nunca por quadro nem por passo da água. `agora_ns` = o relógio da
 /// interface, que conta a vida do check do selo ([`SheetCache::sync`]).
+///
+/// ⭐ **`a_vista`** (B10.3, missão 4K): nenhum cartão nem aba mostra a folha de `vivo` — a leitura (a tela inteira composta
+/// e acesa: ~98 ms a 4K com papel) fica DEVIDA e corre uma vez quando a folha volta à vista.
 pub fn follow_live(
     world: &mut World,
     vivo: Option<(u64, (u64, u64))>,
+    a_vista: bool,
     agora_ns: u128,
     read: impl FnOnce() -> Option<(Vec<u8>, u32, u32)>,
 ) {
@@ -244,8 +249,8 @@ pub fn follow_live(
         return; // ainda a mudar
     }
     cache.parado = cache.parado.saturating_add(1);
-    if cache.parado < QUADROS_PARADOS || !cache.devida {
-        return; // parada há pouco (a água do Wet ainda pode andar), ou já lida
+    if cache.parado < QUADROS_PARADOS || !cache.devida || !a_vista {
+        return; // parada há pouco (a água do Wet ainda pode andar), já lida, ou ninguém a mostra
     }
     let guess = cache.of_sheet(bits, k).and_then(|e| e.guess);
     cache.live = read()

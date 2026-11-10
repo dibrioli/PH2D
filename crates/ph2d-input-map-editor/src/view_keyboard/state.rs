@@ -99,6 +99,10 @@ pub struct KbState {
     pub(crate) list_view_h: f32,
     /// O arrasto do polegar: (y do Down, rolagem no Down).
     pub(crate) thumb_drag: Option<(f32, f32)>,
+    /// A acção recém-aberta: a pintura seguinte rola a linha dela para a vista.
+    pub(crate) reveal: Option<ActionId>,
+    /// Cada linha da lista: (acção, topo relativo ao conteúdo, altura) — o que o `reveal` lê.
+    pub(crate) rows: Vec<(ActionId, f32, f32)>,
 }
 
 impl KbState {

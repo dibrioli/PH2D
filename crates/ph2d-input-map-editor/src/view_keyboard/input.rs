@@ -102,7 +102,10 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
     doc.store.set_focus(None);
     let open = doc.kb.open;
     match hit {
-        Some(KbHit::Row(a)) => doc.kb.open = Some(a),
+        Some(KbHit::Row(a)) => {
+            doc.kb.open = Some(a);
+            doc.kb.reveal = Some(a);
+        }
         Some(KbHit::Add) => {
             doc.kb.adding = !doc.kb.adding;
             doc.list.refused = None;

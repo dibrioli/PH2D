@@ -178,7 +178,9 @@ fn o_remove_sem_accao_aberta_fica_desligado_e_diz_porque() {
 fn clicar_no_remove_com_accao_aberta_apaga_a_aberta() {
     let mut m = mesa_b();
     let open = m.tab().doc.kb.open.expect("aberta");
-    m.tab_mut().doc.pending.clear();
+    let n = m.hero.input_map.actions().len();
     m.click(m.at(KbHit::Remove.id()));
-    assert!(m.tab().doc.pending.contains(&InputMapEdit::Remove(open)), "{:?}", m.tab().doc.pending);
+    // O quadro da família aplica o pedido: a aberta sai do mapa.
+    assert!(m.hero.input_map.get(open).is_none(), "a aberta ficou");
+    assert_eq!(m.hero.input_map.actions().len(), n - 1);
 }

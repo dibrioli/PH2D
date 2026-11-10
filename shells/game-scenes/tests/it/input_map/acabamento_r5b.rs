@@ -55,11 +55,14 @@ fn nenhum_rect_da_aba_cruza_o_hud_a_1280_e_a_1600() {
                 cut <= hud.y || cut.is_infinite(),
                 "{view:?} {size:?}: o recorte em {cut}"
             );
-            assert_eq!(
-                doc.census.clip.is_some(),
-                view == View::TryIt,
-                "{view:?}: quem recorta"
-            );
+            // A C rola sempre; a B rola a região de baixo quando não cabe (plano §13.2, R3-B); a A nunca recorta.
+            if view != View::Keyboard {
+                assert_eq!(
+                    doc.census.clip.is_some(),
+                    view == View::TryIt,
+                    "{view:?}: quem recorta"
+                );
+            }
             for (r, s, _) in &doc.census.texts {
                 let seen = (r.y + r.h).min(cut);
                 assert!(

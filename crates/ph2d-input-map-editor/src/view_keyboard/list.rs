@@ -160,6 +160,7 @@ pub(super) fn paint(
                 ink.color(ColorToken::Text3),
             );
             doc.kb.targets.push(KbHit::Row(id));
+            doc.kb.rows.push((id, row.y - r.y, row.h));
             doc.control(Control::new(rid, row, ControlRole::ListItem, name));
         }
     }

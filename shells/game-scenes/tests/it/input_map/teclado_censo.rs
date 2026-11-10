@@ -27,8 +27,11 @@ fn o_teclado_nao_corta_texto_nem_mostra_numero_morto() {
                 m.hero.input_map = map.clone();
                 m.frame();
                 for sub in [Sub::Keyboard, Sub::Gamepad] {
+                    // O clique cai na pintura da mesa (o controlo dispara no Up dentro do rect que o quadro repinta).
+                    m.paint();
                     m.click(m.at(KbHit::Sub(sub).id()));
                     for a in map.actions() {
+                        m.paint();
                         m.click(m.at(KbHit::Row(a.id).id()));
                         m.paint_in(area);
                         let c = &m.tab().doc.census;

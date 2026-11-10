@@ -13,6 +13,8 @@ fn named(n: &str) -> Key {
 
 fn abre(m: &mut Mesa, name: &str) {
     let id = m.hero.input_map.id(name).expect("a acção existe");
+    // Na pintura da mesa: a 1280 a linha pode estar rolada para fora, e o Up dispara no rect repintado.
+    m.paint();
     m.click(m.at(KbHit::Row(id).id()));
 }
 
@@ -104,6 +106,7 @@ fn a_frase_do_hover_substitui_a_legenda_sem_mexer_no_desenho() {
 fn o_comando_diz_botao_ou_manche_e_nenhum_alvo_se_sobrepoe() {
     for area in AREAS {
         let mut m = Mesa::aberta(View::Keyboard);
+        m.paint();
         m.click(m.at(KbHit::Sub(Sub::Gamepad).id()));
         m.paint_in(area);
         let doc = &m.tab().doc;

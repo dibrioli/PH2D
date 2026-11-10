@@ -86,6 +86,8 @@ pub struct KbState {
     pub bars: Vec<(KbHit, Vec<ActionId>)>,
     /// A marca do comando AO VIVO na barra do curso da última pintura (`None` = manche em repouso).
     pub live_dot: Option<ph2d_editor_core::zones::Rect>,
+    /// O arranjo e o passo do teclado na última pintura (plano §13.2).
+    pub fit: Option<super::keys_fit::Fit>,
 }
 
 impl KbState {

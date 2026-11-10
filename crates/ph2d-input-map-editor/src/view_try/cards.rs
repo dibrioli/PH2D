@@ -299,7 +299,7 @@ pub(super) fn live_h(doc: &mut InputMapDoc, ts: &mut TextSystem, w: f32) -> f32 
     let foot = foot_h(doc, ts, inner_w(w) - m::SEG_INSET * 2.0);
     m::CARD_PAD_TOP
         + ROW
-        + crate::view_keyboard::keys::keyboard_h(inner_w(w))
+        + crate::view_keyboard::keys::keyboard_h(ts, inner_w(w))
         + GAP
         + n * line_h(m::LABEL_PX)
         + GAP
@@ -355,7 +355,7 @@ pub(super) fn live(
         ink.color(ColorToken::Text2),
     );
     y += ROW;
-    let dh = crate::view_keyboard::keys::keyboard_h(w);
+    let dh = crate::view_keyboard::keys::keyboard_h(ts, w);
     let draw = Rect::new(x, y, w, dh);
     fill_rounded_rect(
         scene,
@@ -365,7 +365,7 @@ pub(super) fn live(
     );
     let held = doc.tryit.held_keys();
     use crate::view_keyboard::keys::{KeysAlign, Lit, paint_keys};
-    let style = (Lit::Fill, KeysAlign::Spread);
+    let style = (Lit::Fill, KeysAlign::Spread, crate::view_keyboard::keys::PITCH_CAP_C);
     paint_keys(doc, draw, scene, ts, ink, style, &|k| held.contains(&k));
     y += dh + GAP;
     let cols = bar_cols(r.w);

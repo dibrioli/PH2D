@@ -2,10 +2,11 @@
 //! esquerda as acções por quem as lê, em cima o teclado (ou o comando) com uma barra por acção em cada tecla, em
 //! baixo a acção aberta com as ligações em ladrilhos, a escuta no lugar e — com manche — a barra do curso.
 
-mod geometry;
+pub mod geometry;
 pub use geometry::half_icon;
 pub(crate) mod input;
 pub(crate) mod keys;
+pub mod keys_fit;
 mod list;
 mod pad;
 pub mod state;
@@ -130,7 +131,7 @@ pub fn paint(
     fitted(scene, ink, list_r, |s| list::paint(doc, list_r, s, ts, ink));
     let rx = list_r.x + list_r.w + m::CARD_GAP;
     let rw = (inner.x + inner.w - rx).max(0.0);
-    let top_h = keys::top_height(doc, rw);
+    let top_h = keys::top_height(doc, ts, rw);
     let top = Rect::new(rx, inner.y, rw, top_h);
     fill_rounded_rect(
         scene,

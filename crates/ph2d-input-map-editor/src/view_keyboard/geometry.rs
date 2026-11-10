@@ -1,14 +1,16 @@
-//! As tabelas do desenho: o teclado US (em passos de tecla) e o comando (em fracções da caixa). Fonte das
+//! As tabelas do desenho: o teclado de notebook (em unidades de tecla, plano §13.2) e o comando (em fracções da caixa). Fonte das
 //! proporções: a maquete `docs/InputMap/maquetes/03_B_teclado_e_comando.png` (B1 e B3), medida em pixels.
 
 use ph2d_input::{Binding, GamepadAxis, GamepadButton, Key};
 
-/// Uma tecla: código, coluna e linha (em passos), largura (em passos).
+/// Uma tecla: código, coluna e linha (em unidades de tecla), largura e altura (em unidades e em filas).
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct KeyCap {
     pub key: Key,
     pub col: f32,
     pub row: f32,
     pub span: f32,
+    pub rows: f32,
 }
 
 const fn k(code: u32, col: f32, row: f32, span: f32) -> KeyCap {
@@ -17,6 +19,7 @@ const fn k(code: u32, col: f32, row: f32, span: f32) -> KeyCap {
         col,
         row,
         span,
+        rows: 1.0,
     }
 }
 
@@ -25,35 +28,138 @@ pub(crate) const KEY_FILL: f32 = 0.88; // LITERAL-PX-OK: fração do passo, maqu
 /// A altura da tecla e o passo entre linhas, em passos de tecla.
 pub(crate) const KEY_H: f32 = 0.68; // LITERAL-PX-OK: fração do passo, maquete B1
 pub(crate) const ROW_PITCH: f32 = 0.8; // LITERAL-PX-OK: fração do passo, maquete B1
-/// A largura do desenho inteiro, em passos (da coluna do Q ao fim da →).
-pub(crate) const WIDTH: f32 = 14.7; // LITERAL-PX-OK: passos de tecla, maquete B1
-pub(crate) const ROWS: f32 = 4.0; // LITERAL-PX-OK: linhas do desenho
 /// O passo não passa deste múltiplo da altura de um campo.
 pub(crate) const PITCH_MAX_ROWS: f32 = 1.6; // LITERAL-PX-OK: múltiplo do token de linha
 /// O tecto da B: o teclado enche o cartão como na maquete B1 (a C fica no de cima).
 pub(crate) const PITCH_MAX_ROWS_B: f32 = 2.0; // LITERAL-PX-OK: múltiplo do token de linha
 
-const ARROW: f32 = 1.45; // LITERAL-PX-OK: passos de tecla, maquete B1
 const UP: u32 = 0xF700;
 const DOWN: u32 = 0xF701;
 const LEFT: u32 = 0xF702;
 const RIGHT: u32 = 0xF703;
 
-/// Q..P, A..L, Z..M, Space e as quatro setas.
-pub(crate) fn keyboard() -> Vec<KeyCap> {
-    let rows: [(&str, f32); 3] = [("QWERTYUIOP", 0.0), ("ASDFGHJKL", 0.4), ("ZXCVBNM", 0.8)]; // LITERAL-PX-OK: recuo das filas US, maquete B1
-    let mut out = Vec::new();
-    for (r, (letters, shift)) in rows.iter().enumerate() {
-        for (i, c) in letters.chars().enumerate() {
-            out.push(k(u32::from(c), shift + i as f32, r as f32, 1.0));
-        }
+/// Onde mora o bloco do numérico (plano §13.2): ao lado do principal (a foto) ou por baixo dele, à esquerda das
+/// setas, quando ao lado alguma legenda não caberia.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Arrangement {
+    Wide,
+    Narrow,
+}
+
+/// A largura do bloco principal (ANSI) e o vão até ao numérico, em unidades de tecla.
+pub(crate) const MAIN_W: f32 = 15.0; // LITERAL-PX-OK: unidades de tecla, ANSI
+const MAIN_ROWS: f32 = 7.0; // LITERAL-PX-OK: filas do bloco principal (R0..R6)
+const PAD_GAP: f32 = 0.25; // LITERAL-PX-OK: unidades de tecla, foto do dono
+const PAD_W: f32 = 4.0; // LITERAL-PX-OK: colunas do numérico
+const PAD_ROWS: f32 = 6.0; // LITERAL-PX-OK: filas do numérico (Home…PgDn e R1..R5)
+/// A coluna da ← (R6): o numérico estreito acaba a um vão dela.
+const ARROWS_COL: f32 = 12.0; // LITERAL-PX-OK: unidades de tecla, ANSI
+
+/// A extensão do desenho (colunas, filas) em unidades de tecla.
+pub(crate) fn extent(a: Arrangement) -> (f32, f32) {
+    match a {
+        Arrangement::Wide => (MAIN_W + PAD_GAP + PAD_W, MAIN_ROWS),
+        Arrangement::Narrow => (MAIN_W, MAIN_ROWS - 1.0 + PAD_ROWS),
     }
-    out.push(k(0x20, 2.0, 3.0, 6.0)); // LITERAL-PX-OK: a barra de espaço, maquete B1
-    out.push(k(UP, 11.75, 2.0, ARROW)); // LITERAL-PX-OK: maquete B1
-    out.push(k(LEFT, 10.25, 3.0, ARROW)); // LITERAL-PX-OK: maquete B1
-    out.push(k(DOWN, 11.75, 3.0, ARROW)); // LITERAL-PX-OK: maquete B1
-    out.push(k(RIGHT, 13.25, 3.0, ARROW)); // LITERAL-PX-OK: maquete B1
+}
+
+/// A origem do bloco do numérico (coluna, fila).
+fn pad_origin(a: Arrangement) -> (f32, f32) {
+    match a {
+        Arrangement::Wide => (MAIN_W + PAD_GAP, 0.0),
+        Arrangement::Narrow => (ARROWS_COL - PAD_GAP - PAD_W, MAIN_ROWS - 1.0),
+    }
+}
+
+/// Uma fila de teclas de 1 u a partir de `col`.
+fn run(out: &mut Vec<KeyCap>, codes: impl IntoIterator<Item = u32>, col: f32, row: f32) {
+    for (i, c) in codes.into_iter().enumerate() {
+        out.push(k(c, col + i as f32, row, 1.0));
+    }
+}
+
+fn ascii(s: &str) -> impl Iterator<Item = u32> + '_ {
+    s.chars().map(u32::from)
+}
+
+/// O bloco principal ANSI de 15 u (plano §13.2, foto do dono).
+fn main_block() -> Vec<KeyCap> {
+    let mut out = Vec::new();
+    // R0: Esc F1–F12 Insert PrtSc Delete — 16 teclas sobre 15 u.
+    const F1: u32 = 0xF704;
+    let r0: Vec<u32> = std::iter::once(0x1B)
+        .chain(F1..F1 + 12)
+        .chain([0xF727, 0xF72E, 0xF728])
+        .collect();
+    let w0 = MAIN_W / r0.len() as f32;
+    for (i, c) in r0.into_iter().enumerate() {
+        out.push(k(c, i as f32 * w0, 0.0, w0));
+    }
+    run(&mut out, ascii("`1234567890-="), 0.0, 1.0);
+    out.push(k(0x08, 13.0, 1.0, 2.0)); // LITERAL-PX-OK: unidades ANSI
+    out.push(k(0x09, 0.0, 2.0, 1.5)); // LITERAL-PX-OK: unidades ANSI
+    run(&mut out, ascii("QWERTYUIOP[]"), 1.5, 2.0); // LITERAL-PX-OK: unidades ANSI
+    out.push(k(0x5C, 13.5, 2.0, 1.5)); // LITERAL-PX-OK: unidades ANSI
+    out.push(k(0xF716, 0.0, 3.0, 1.75)); // LITERAL-PX-OK: unidades ANSI
+    run(&mut out, ascii("ASDFGHJKL;'"), 1.75, 3.0); // LITERAL-PX-OK: unidades ANSI
+    out.push(k(0x0D, 12.75, 3.0, 2.25)); // LITERAL-PX-OK: unidades ANSI
+    out.push(k(0xF710, 0.0, 4.0, 2.25)); // LITERAL-PX-OK: unidades ANSI
+    run(&mut out, ascii("ZXCVBNM,./"), 2.25, 4.0); // LITERAL-PX-OK: unidades ANSI
+    out.push(k(0xF711, 12.25, 4.0, 2.75)); // LITERAL-PX-OK: unidades ANSI
+    // R5: Ctrl Fn Win Alt Space Alt Ctrl, e a ↑ na coluna 13.
+    let r5: [(u32, f32); 7] = [
+        (0xF712, 1.25), // LITERAL-PX-OK: unidades ANSI
+        (0xF71A, 1.0),
+        (0xF718, 1.0),
+        (0xF714, 1.25), // LITERAL-PX-OK: unidades ANSI
+        (0x20, 5.0),    // LITERAL-PX-OK: unidades ANSI
+        (0xF715, 1.25), // LITERAL-PX-OK: unidades ANSI
+        (0xF713, 1.25), // LITERAL-PX-OK: unidades ANSI
+    ];
+    let mut x = 0.0;
+    for (c, w) in r5 {
+        out.push(k(c, x, 5.0, w));
+        x += w;
+    }
+    out.push(k(UP, ARROWS_COL + 1.0, 5.0, 1.0));
+    run(&mut out, [LEFT, DOWN, RIGHT], ARROWS_COL, 6.0);
     out
+}
+
+/// O bloco do numérico, de 4 × 6 u, com origem em `(ox, oy)`.
+fn numpad(ox: f32, oy: f32) -> Vec<KeyCap> {
+    const KP: u32 = 0xF740;
+    let mut out = Vec::new();
+    run(&mut out, [0xF729, 0xF72B, 0xF72C, 0xF72D], ox, oy);
+    run(&mut out, [0xF717, 0xF74B, 0xF74C, 0xF74D], ox, oy + 1.0);
+    run(&mut out, [KP + 7, KP + 8, KP + 9], ox, oy + 2.0);
+    out.push(KeyCap {
+        rows: 2.0,
+        ..k(0xF74E, ox + 3.0, oy + 2.0, 1.0)
+    });
+    run(&mut out, [KP + 4, KP + 5, KP + 6], ox, oy + 3.0);
+    run(&mut out, [KP + 1, KP + 2, KP + 3], ox, oy + 4.0);
+    out.push(KeyCap {
+        rows: 2.0,
+        ..k(0xF74F, ox + 3.0, oy + 4.0, 1.0)
+    });
+    out.push(k(KP, ox, oy + 5.0, 2.0));
+    out.push(k(0xF74A, ox + 2.0, oy + 5.0, 1.0));
+    out
+}
+
+/// O teclado de notebook inteiro no arranjo `a`: o principal e o numérico.
+pub(crate) fn keyboard(a: Arrangement) -> Vec<KeyCap> {
+    let (ox, oy) = pad_origin(a);
+    let mut out = main_block();
+    out.extend(numpad(ox, oy));
+    out
+}
+
+/// As teclas desenhadas (as mesmas nos dois arranjos), pela ordem da tabela.
+#[must_use]
+pub fn drawn_keys() -> Vec<Key> {
+    keyboard(Arrangement::Wide).into_iter().map(|c| c.key).collect()
 }
 
 /// As setas pintam-se com ícone (a fonte não tem os glifos ←↑↓→).

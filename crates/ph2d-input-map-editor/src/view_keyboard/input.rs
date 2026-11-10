@@ -41,6 +41,12 @@ pub fn tip_here(doc: &InputMapDoc) -> Option<(ph2d_a11y::NodeId, &'static str)> 
 
 /// Acrescenta `b` à acção aberta (a família recusa a repetida; aqui nem se pede).
 fn add(doc: &mut InputMapDoc, b: Binding) {
+    // A tecla do sistema desenha-se e diz o porquê no hover; o clique não liga (plano §13.2).
+    if let Binding::Key(k) = b
+        && k.system_owned().is_some()
+    {
+        return;
+    }
     let Some(a) = doc.kb.open.and_then(|id| doc.snap.map.get(id)) else {
         return;
     };
@@ -202,8 +208,9 @@ pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool, _writes_te
         .open
         .and_then(|a| doc.snap.map.get(a))
         .is_some_and(|a| a.bindings.is_empty());
-    let editing = ["escape", "tab", "backspace", "delete", "enter"];
+    let editing = ["escape", "tab", "backspace", "delete"];
     if !empty
+        || key.is_enter_like()
         || editing
             .iter()
             .filter_map(|n| Key::named_in_script(n))

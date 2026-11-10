@@ -12,7 +12,8 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
 
-use super::geometry::{self as g, KeyCap};
+use super::geometry::{self as g, Arrangement, KeyCap};
+use super::keys_fit::{self as fit, Legend};
 use super::state::{KbHit, Sub};
 use super::{target, users};
 use crate::doc::InputMapDoc;
@@ -26,47 +27,24 @@ pub(super) const BAR_GAP: f32 = m::FIELD_BORDER;
 /// A caixa da seta desenhada (teclas, ladrilhos, comando): da altura da letra, para ler como ↑ e não como ponto.
 pub(super) const ARROW_BOX: f32 = m::VALUE_PX + m::SEG_PAD * 2.0;
 
-/// O passo de tecla para a largura `w`, até `cap` alturas de campo.
-fn pitch_upto(w: f32, cap: f32) -> f32 {
-    (w / g::WIDTH).min(m::FIELD_H * cap)
-}
-
-/// A tecla nunca é mais baixa que a letra com duas barras por baixo (a 1280 as barras tapavam a letra).
-const KEY_MIN_H: f32 = m::VALUE_PX + m::SEG_PAD + (BAR_H + BAR_GAP) * 2.0 + m::SEG_INSET * 0.5;
-
-/// A altura de uma tecla para o passo `p`.
-fn key_height(p: f32) -> f32 {
-    (p * g::KEY_H).max(KEY_MIN_H)
-}
-
-/// A altura das quatro filas para o passo `p` (a tecla e o vão do passo).
-fn rows_h(p: f32) -> f32 {
-    (key_height(p) + p * (g::ROW_PITCH - g::KEY_H)) * g::ROWS
-}
-
-/// O passo cujas filas medem `h` (o inverso de [`rows_h`]): a pintura tira o passo da caixa que recebe.
-fn pitch_for_rows(h: f32) -> f32 {
-    let linear = h / (g::ROW_PITCH * g::ROWS);
-    if linear * g::KEY_H >= KEY_MIN_H {
-        linear
-    } else {
-        (h / g::ROWS - KEY_MIN_H).max(0.0) / (g::ROW_PITCH - g::KEY_H)
-    }
-}
+/// O tecto do passo da C (o Try it).
+pub(crate) const PITCH_CAP_C: f32 = g::PITCH_MAX_ROWS;
 
 /// A altura do desenho do teclado para a largura `w` (a vista C reusa-o).
-pub(crate) fn keyboard_h(w: f32) -> f32 {
-    rows_h(pitch_upto(w, g::PITCH_MAX_ROWS)) + m::CARD_PAD_X * 2.0
+pub(crate) fn keyboard_h(ts: &mut TextSystem, w: f32) -> f32 {
+    let inner = w - m::CARD_PAD_X * 2.0;
+    fit::drawing_rows_h(fit::fit(ts, inner, None, g::PITCH_MAX_ROWS)) + m::CARD_PAD_X * 2.0
 }
 
 /// O teclado da B enche a largura do cartão (maquete B1): o tecto do passo é mais alto que o da C.
-fn keyboard_h_b(w: f32) -> f32 {
-    rows_h(pitch_upto(w - m::CARD_PAD_X * 2.0, g::PITCH_MAX_ROWS_B)) + m::CARD_PAD_X * 2.0
+fn keyboard_h_b(ts: &mut TextSystem, w: f32) -> f32 {
+    let inner = w - m::CARD_PAD_X * 2.0;
+    fit::drawing_rows_h(fit::fit(ts, inner, None, g::PITCH_MAX_ROWS_B)) + m::CARD_PAD_X * 2.0
 }
 
-fn drawing_h(doc: &InputMapDoc, w: f32) -> f32 {
+fn drawing_h(doc: &InputMapDoc, ts: &mut TextSystem, w: f32) -> f32 {
     match doc.kb.sub {
-        Sub::Keyboard => keyboard_h_b(w),
+        Sub::Keyboard => keyboard_h_b(ts, w),
         Sub::Gamepad => super::pad::height(w),
     }
 }
@@ -74,7 +52,7 @@ fn drawing_h(doc: &InputMapDoc, w: f32) -> f32 {
 /// O que está ligado e o desenho não mostra (dígitos, Shift, Enter…, ou Mode e os cliques de manche).
 pub(super) fn also(doc: &InputMapDoc) -> Vec<Binding> {
     let drawn: Vec<Binding> = match doc.kb.sub {
-        Sub::Keyboard => g::keyboard().iter().map(|k| Binding::Key(k.key)).collect(),
+        Sub::Keyboard => g::drawn_keys().into_iter().map(Binding::Key).collect(),
         Sub::Gamepad => g::pad().iter().map(|p| p.binding).collect(),
     };
     let mut out: Vec<Binding> = Vec::new();
@@ -93,7 +71,7 @@ pub(super) fn also(doc: &InputMapDoc) -> Vec<Binding> {
     out
 }
 
-pub(super) fn top_height(doc: &InputMapDoc, w: f32) -> f32 {
+pub(super) fn top_height(doc: &InputMapDoc, ts: &mut TextSystem, w: f32) -> f32 {
     let inner = w - m::CARD_PAD_X * 2.0;
     let also_h = if also(doc).is_empty() {
         0.0
@@ -104,7 +82,7 @@ pub(super) fn top_height(doc: &InputMapDoc, w: f32) -> f32 {
         + CAPTION_H
         + m::FIELD_H
         + m::FIELD_ROW_GAP
-        + drawing_h(doc, inner)
+        + drawing_h(doc, ts, inner)
         + also_h
         + m::CARD_PAD_BOTTOM
 }
@@ -176,7 +154,7 @@ pub(super) fn paint_top(
     doc.kb
         .targets
         .extend([KbHit::Sub(Sub::Keyboard), KbHit::Sub(Sub::Gamepad)]);
-    let dh = drawing_h(doc, w);
+    let dh = drawing_h(doc, ts, w);
     let draw = Rect::new(x, y, w, dh);
     fill_rounded_rect(
         scene,
@@ -205,6 +183,11 @@ pub(crate) fn hover_text(doc: &InputMapDoc) -> Option<(String, String)> {
         _ => return None,
     };
     let label = binding_label(b);
+    if let Binding::Key(k) = b
+        && let Some(why) = k.system_owned()
+    {
+        return Some((format!("{label}{}", tr("input_map_keyboard.colon")), tr(why).to_owned()));
+    }
     let who = users(doc, b);
     if who.is_empty() {
         let lead = format!("{label}{}", tr("input_map_keyboard.colon"));
@@ -263,7 +246,7 @@ fn paint_keyboard(
         .and_then(|a| doc.snap.map.get(a))
         .map(|a| a.bindings.clone())
         .unwrap_or_default();
-    let style = (Lit::Outline, KeysAlign::Center);
+    let style = (Lit::Outline, KeysAlign::Center, g::PITCH_MAX_ROWS_B);
     paint_keys(doc, draw, scene, ts, ink, style, &|k| {
         open.contains(&Binding::Key(k))
     });
@@ -293,7 +276,7 @@ pub(crate) fn paint_keys(
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     ink: CardInk,
-    (style, align): (Lit, KeysAlign),
+    (style, align, cap): (Lit, KeysAlign, f32),
     lit_of: &dyn Fn(ph2d_input::Key) -> bool,
 ) {
     let inner = Rect::new(
@@ -302,86 +285,96 @@ pub(crate) fn paint_keys(
         draw.w - m::CARD_PAD_X * 2.0,
         draw.h - m::CARD_PAD_X * 2.0,
     );
-    // O passo sai da caixa recebida (largura e altura): a B e a C pedem alturas diferentes ao mesmo pintor.
-    let p = (inner.w / g::WIDTH).min(pitch_for_rows(inner.h));
-    let (kh, step) = (key_height(p), key_height(p) + p * (g::ROW_PITCH - g::KEY_H));
-    let spare = (inner.w - g::WIDTH * p).max(0.0);
-    // A → acaba no recuo direito como o Q começa no esquerdo: o desenho sem o vão que segue a última tecla.
-    let inked = (g::WIDTH - (1.0 - g::KEY_FILL)) * p;
-    let (ox, arrows_dx) = match align {
-        KeysAlign::Center => (inner.x + spare * 0.5, 0.0),
-        KeysAlign::Spread => (inner.x, (inner.w - inked).max(0.0)),
+    // O arranjo e o passo saem da caixa recebida (largura e altura) pela MESMA escolha que pediu a altura.
+    let f = fit::fit(ts, inner.w, Some(inner.h), cap);
+    let p = f.pitch;
+    let (cols, _) = g::extent(f.arrangement);
+    let spare = (inner.w - cols * p).max(0.0);
+    // O Try it encosta o principal à esquerda e o numérico à DIREITA do cartão (maquete C2: as setas à direita).
+    let (ox, pad_dx) = match (align, f.arrangement) {
+        (KeysAlign::Center, _) | (KeysAlign::Spread, Arrangement::Narrow) => {
+            (inner.x + spare * 0.5, 0.0)
+        }
+        (KeysAlign::Spread, Arrangement::Wide) => (inner.x, spare),
     };
-    for KeyCap {
-        key,
-        col,
-        row,
-        span,
-    } in g::keyboard()
-    {
-        let dx = if g::arrow_icon(key).is_some() {
-            arrows_dx
-        } else {
-            0.0
-        };
-        let kr = Rect::new(
-            ox + dx + col * p,
-            inner.y + row * step,
-            (span - (1.0 - g::KEY_FILL)) * p,
-            kh,
+    doc.kb.fit = Some(f);
+    for (KeyCap { key, col, .. }, x, y, w, h) in fit::placed(f) {
+        let dx = if col >= g::MAIN_W { pad_dx } else { 0.0 };
+        let kr = Rect::new(ox + dx + x, inner.y + y, w, h);
+        paint_key(doc, scene, ts, ink, (style, kr), key, lit_of(key));
+    }
+}
+
+/// Uma tecla: a face, o contorno da aberta ou a cor da premida, o hover, a legenda medida e as barras.
+fn paint_key(
+    doc: &mut InputMapDoc,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    ink: CardInk,
+    (style, kr): (Lit, Rect),
+    key: ph2d_input::Key,
+    lit: bool,
+) {
+    let system = key.system_owned().is_some();
+    let b = Binding::Key(key);
+    let who = if system { Vec::new() } else { users(doc, b) };
+    let hover = doc.kb.hover == Some(KbHit::Key(key));
+    let filled = (lit && !system && style == Lit::Fill).then(|| {
+        who.first()
+            .map_or(ColorToken::Accent, |a| crate::palette::of_action(*a))
+    });
+    // Sem acção a tecla apaga-se (face e letra); com acção a face clareia e a letra acende. A do sistema fica
+    // na tinta desligada: desenhada, nunca ligável (plano §13.2).
+    let bg = match filled {
+        Some(c) => c,
+        None if system => ColorToken::KanbanCard,
+        None if hover => ColorToken::AccentSoft,
+        None => ColorToken::KanbanCardRaised,
+    };
+    fill_rounded_rect(scene, kr, m::SEG_RADIUS, ink.color(bg));
+    if let Some(c) = filled {
+        doc.census.filled.push((kr, c));
+    }
+    let outlined = lit && !system && style == Lit::Outline;
+    if outlined {
+        stroke_rounded_rect(
+            scene,
+            kr,
+            m::SEG_RADIUS,
+            m::FIELD_BORDER * 2.0,
+            ink.color(ColorToken::Accent),
         );
-        let b = Binding::Key(key);
-        let who = users(doc, b);
-        let lit = lit_of(key);
-        let hover = doc.kb.hover == Some(KbHit::Key(key));
-        let filled = (lit && style == Lit::Fill).then(|| {
-            who.first()
-                .map_or(ColorToken::Accent, |a| crate::palette::of_action(*a))
-        });
-        // Sem acção a tecla apaga-se (face e letra); com acção a face clareia e a letra acende.
-        let bg = match filled {
-            Some(c) => c,
-            None if hover => ColorToken::AccentSoft,
-            None => ColorToken::KanbanCardRaised,
-        };
-        fill_rounded_rect(scene, kr, m::SEG_RADIUS, ink.color(bg));
-        if let Some(c) = filled {
-            doc.census.filled.push((kr, c));
-        }
-        if lit && style == Lit::Outline {
-            stroke_rounded_rect(
-                scene,
-                kr,
-                m::SEG_RADIUS,
-                m::FIELD_BORDER * 2.0,
-                ink.color(ColorToken::Accent),
-            );
-        }
-        if hover {
-            hover_ring(scene, ink, kr, lit && style == Lit::Outline);
-        }
-        let fg = ink.color(if filled.is_some() {
-            ColorToken::Bg0
-        } else if who.is_empty() {
-            ColorToken::Text3
-        } else {
-            ColorToken::Text1
-        });
-        let label_h = kr.h - m::SEG_INSET * 0.5 - (BAR_H + BAR_GAP) * who.len().max(1) as f32;
-        if let Some(icon) = g::arrow_icon(key) {
+    }
+    if hover {
+        hover_ring(scene, ink, kr, outlined);
+    }
+    let fg = ink.color(if filled.is_some() {
+        ColorToken::Bg0
+    } else if system {
+        ColorToken::TextDisabled
+    } else if who.is_empty() {
+        ColorToken::Text3
+    } else {
+        ColorToken::Text1
+    });
+    let label_h = (kr.h - m::SEG_INSET * 0.5 - (BAR_H + BAR_GAP) * who.len().max(1) as f32).max(0.0);
+    let legend = fit::legend(ts, key, kr.w).unwrap_or_else(|| fit::shortest(key));
+    match legend {
+        Legend::Icon(icon) => {
             let s = ARROW_BOX.min(label_h);
             let ir = Rect::new(kr.x + (kr.w - s) * 0.5, kr.y + (label_h - s) * 0.5, s, s);
             paint_icon(scene, icon, ir, fg, StrokeToken::Default.px());
-        } else {
-            let label = key.label();
-            let tw = ts.prefix_width(&label, m::VALUE_PX).min(kr.w);
-            let lr = Rect::new(kr.x + (kr.w - tw) * 0.5, kr.y, tw, label_h);
-            line(&mut doc.census, ts, scene, &label, lr, m::VALUE_PX, fg);
+            doc.census.icons.push((ir, icon));
         }
-        paint_bars(scene, ink, kr, &who);
-        doc.kb.bars.push((KbHit::Key(key), who));
-        target(doc, KbHit::Key(key), kr);
+        Legend::Text(label, px) => {
+            let tw = ts.prefix_width(&label, px).min(kr.w);
+            let lr = Rect::new(kr.x + (kr.w - tw) * 0.5, kr.y, tw, label_h);
+            line(&mut doc.census, ts, scene, &label, lr, px, fg);
+        }
     }
+    paint_bars(scene, ink, kr, &who);
+    doc.kb.bars.push((KbHit::Key(key), who));
+    target(doc, KbHit::Key(key), kr);
 }
 
 /// O contorno branco do hover, distinto do da acção aberta (POR FORA dele quando os dois se juntam, maquete B1).

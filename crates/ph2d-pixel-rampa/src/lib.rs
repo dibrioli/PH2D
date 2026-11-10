@@ -146,6 +146,7 @@ pub fn op_rampa_nova(s: &ph2d_pixel_core::Sprite, nome: &str, cores: &[[u8; 4]])
     ]))
 }
 
+pub mod luz;
 pub mod quantiza;
 pub use quantiza::{Oklab, PreservaRampas, converte_oklab, converte_preservando_rampas};
 

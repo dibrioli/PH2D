@@ -40,6 +40,8 @@ diferentes. Uma onda só começa quando os blocos de que depende (coluna) fechar
 
 B45a–g (pente fino, SÓ leitura) corre a partir da onda 2 em paralelo com tudo: cada achado entra como linha `B45.x` nova.
 
+Extensão: [BACKLOG_AUDITORIA.md](BACKLOG_AUDITORIA.md) — os achados do pente fino AU01–AU15, ligados aos blocos (`B<nn>.A<n>`) e aos B48+ (B48 balde · B49 pó do papel · B50 preset · B51 costura · B52 refatoração).
+
 ## Blocos
 
 ### B01 — Camadas sem perda de dados · M
@@ -645,13 +647,13 @@ Lentes (`/pd-auditoria`): CORREÇÃO (dois lugares que devem concordar e discord
 
 | id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
 |---|---|---|---|---|---|---|---|---|---|---|
-| B45.1 | (a) ph2d-tool-painter: tool/layers, compositor, undo*, plane_*, documents, persist | §6 | TP/{tool/layers,compositor,undo*,plane_*}, TL/{documents,persist}.rs | — | — | auditoria de 2 lentes + desempenho | por achado | | | aberto |
-| B45.2 | (b) ph2d-tool-painter: tool/paint/wetpaint* | §6 | tp/wetpaint/**, tp/wetpaint_* | — | — | idem | por achado | | | aberto |
-| B45.3 | (c) ph2d-tool-painter: watercolor*, impasto*, stamp*, warp, selection, resto de tool/paint | §6 | tp/** (resto) | — | — | idem | por achado | | | aberto |
-| B45.4 | (d) ph2d-painter-brush | §6 | PB/** | — | — | idem | por achado | | | aberto |
-| B45.5 | (e) ph2d-wet-paint, ph2d-paint-tinta, ph2d-pigment; ph2d-wet-gpu e ph2d-paint-gpu só leitura (placa fora) | §6 | WP/**, crates/ph2d-{paint-tinta,pigment,wet-gpu,paint-gpu} | — | — | idem | por achado | | | aberto |
-| B45.6 | (f) ph2d-app-painter, ph2d-panel-painter-layers, ph2d-panel-wet-tuning, ph2d-anim-sheets | §6 | AP/**, PL/**, TU/**, crates/ph2d-anim-sheets | — | — | idem (costura de UI pesa mais) | por achado | | | aberto |
-| B45.7 | (g) ph2d-painter-effects, ph2d-brush-presets, ph2d-inpaint e as partes do Painter em ph2d-render/ph2d-i18n/ph2d-editor-core | §6 | crates/ph2d-{painter-effects,brush-presets,inpaint}; RR/, i18n, editor-core | — | — | idem | por achado | | | aberto |
+| B45.1 | (a) ph2d-tool-painter: tool/layers, compositor, undo*, plane_*, documents, persist | §6 | TP/{tool/layers,compositor,undo*,plane_*}, TL/{documents,persist}.rs | — | — | auditoria de 2 lentes + desempenho | por achado | | | feito (7e11fbcb6f; achados em BACKLOG_AUDITORIA.md) |
+| B45.2 | (b) ph2d-tool-painter: tool/paint/wetpaint* | §6 | tp/wetpaint/**, tp/wetpaint_* | — | — | idem | por achado | | | feito (7e11fbcb6f; achados em BACKLOG_AUDITORIA.md) |
+| B45.3 | (c) ph2d-tool-painter: watercolor*, impasto*, stamp*, warp, selection, resto de tool/paint | §6 | tp/** (resto) | — | — | idem | por achado | | | feito (7e11fbcb6f; achados em BACKLOG_AUDITORIA.md) |
+| B45.4 | (d) ph2d-painter-brush | §6 | PB/** | — | — | idem | por achado | | | feito (7e11fbcb6f; achados em BACKLOG_AUDITORIA.md) |
+| B45.5 | (e) ph2d-wet-paint, ph2d-paint-tinta, ph2d-pigment; ph2d-wet-gpu e ph2d-paint-gpu só leitura (placa fora) | §6 | WP/**, crates/ph2d-{paint-tinta,pigment,wet-gpu,paint-gpu} | — | — | idem | por achado | | | feito (7e11fbcb6f; achados em BACKLOG_AUDITORIA.md) |
+| B45.6 | (f) ph2d-app-painter, ph2d-panel-painter-layers, ph2d-panel-wet-tuning, ph2d-anim-sheets | §6 | AP/**, PL/**, TU/**, crates/ph2d-anim-sheets | — | — | idem (costura de UI pesa mais) | por achado | | | feito (7e11fbcb6f; achados em BACKLOG_AUDITORIA.md) |
+| B45.7 | (g) ph2d-painter-effects, ph2d-brush-presets, ph2d-inpaint e as partes do Painter em ph2d-render/ph2d-i18n/ph2d-editor-core | §6 | crates/ph2d-{painter-effects,brush-presets,inpaint}; RR/, i18n, editor-core | — | — | idem | por achado | | | feito (7e11fbcb6f; achados em BACKLOG_AUDITORIA.md) |
 | B45.8 | (h) refactor: ficheiros > 700 linhas ou com responsabilidades misturadas; comentários longos → doc com link | §6 | lista do censo | não | — | partir, nunca isentar; mover (catraca) | `workspace_src_files_under_loc_cap`, `the_shell_only_shrinks` | | | aberto |
 
 ### B46 — Docs e comentários · M (a docs · b comentários · c BUGS/guia/ADR)

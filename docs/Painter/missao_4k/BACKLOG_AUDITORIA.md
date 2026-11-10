@@ -1,0 +1,264 @@
+# BACKLOG_AUDITORIA — os achados do pente fino AU01–AU15 (missão Painter 4K)
+
+O pente fino AU01–AU15 foi feito em LEITURA sobre `cd02ac77ef` (commit `7e11fbcb6f`; fontes: [`auditoria/AU01.md`](auditoria/AU01.md) … `AU15.md`, com mecanismo, reprodução e «porque o verde era verde»). Este ficheiro é a EXTENSÃO do [`BACKLOG.md`](BACKLOG.md): mesma legenda de estados (`aberto` · `em curso` · `feito` · `parcial` · `recusa medida`), mesmos prefixos (TP/TL/tp/PB/WP/AP/PL/TU/RR/FX/SH/i18n) e mesmo formato de linha; o agente que cura um item edita SÓ a linha dele aqui, no mesmo commit.
+74 achados: **64 juntam-se a blocos existentes** (`B<nn>.A<n>`, abaixo; correm na onda do bloco) e **10 abrem os blocos novos B48–B51**; as refatorações propostas estão no **B52**. Todo item é red-first (visto vermelho antes da cura); «muda aparência? não» = paridade ao bit contra o oráculo `#[cfg(test)]` verbatim. Por ficheiro >700 linhas: ★ = PRÉ-REQUISITO (parte-se antes, pelo mesmo agente, na onda do bloco que bloqueia).
+
+## Onde os blocos novos cabem na tabela de ondas do BACKLOG
+
+| onda | bloco novo | pegada (1 linha) | depende de |
+|---|---|---|---|
+| 2 | B48 Balde (`fill.rs`) | `tp/fill.rs`+`tp/impasto_fill.rs` (disjunta de B02/B04/B05/B06/B09) | B52.R10 (★ parte `fill.rs` antes de B48.2) |
+| 3 | B49 Pó do papel e grão por dab | `tp/po_do_papel.rs`+`tp/uma_passagem.rs` (disjunta de B10/B12/B16a/B21/B24) | — |
+| 11 | B50 Formato do preset (enums pelo nome, id órfão) | `tp/wetpaint_preset/json.rs`+`meio.rs`+`ids/painter_wetpaint.rs`+`assets/brushes` | B35c, B36, B37, B39 (regravam os mesmos presets); sobe `PROJECT_SCHEMA` |
+| 11 | B51 Costura do app-painter e fora da missão | `AP/painter_bridge*.rs`+`SH/main.rs` (CursorLeft)+`ph2d-wet-gpu` (só leitura/Result) | B20, B23, B39 |
+| 12 | B52 Refatoração do pente fino | um ficheiro por linha; os ★ correm na onda do bloco que bloqueiam | — |
+
+Os `B<nn>.A<n>` entram na onda do `B<nn>`; pegada deles = o ficheiro da coluna «arquivos», que já cabe na pegada do bloco (confirmado por `grep` contra o BACKLOG).
+
+---
+
+## Achados que se juntam a blocos existentes
+
+Colunas: `| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |`
+
+### → junta-se ao B01 (camadas sem perda de dados)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B01.A1 | `apply_mask`: laço serial de 16,7 M px + clone de 67 MB da máscara só para ler | AU-01-5 | TL/layers/mutate.rs:411,419 | não | relógio 4K do gesto (raro) | ler a máscara por `Arc` emprestado; `par_chunks_mut` | paridade ao bit com o laço antigo + relógio 4K | | | aberto |
+
+### → junta-se ao B02 (Wet preso ao documento/camada)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B02.A1 | O olho de cinza da máscara (`mask_view_grayscale`) atravessa documentos: ids de camada colidem entre docs e a máscara id N do doc B acende cinza | AU-01-2 | TL/documents.rs:21-48,250 (`StashedDoc`, `restore_doc`); TL/trait_impls_raster.rs:9; tp/lifecycle.rs:23 | sim (some o cinza indevido) | repro: A e B com máscara id 3, olho aberto, `bind_document(B)` | o campo viaja em `StashedDoc` ou limpa-se no `restore_doc`/`set_source` (5 linhas) | `o_olho_da_mascara_nao_atravessa_documentos` | | | aberto |
+| B02.A2 | `doc_is_disposable` ignora `edited_since_bind`: a tinta não assada some ao trocar de documento; `baked_document_pixels` troca o documento vivo só para ler pixels | AU-01-4 | TL/documents.rs:130,202; TL/persist.rs:264 | não | repro motor: doc A 1 camada + traço, `baked_document_pixels(B)` (confirmar chamadores no shell) | `&& !edited_since_bind` no predicado; compor o `StashedDoc` por empréstimo, sem `bind_document` | `ler_os_pixeis_de_outro_documento_nao_troca_o_que_se_pinta` + `um_documento_com_edicao_nao_assada_nunca_e_descartavel` | | | aberto |
+| B02.A3 | Enterro/undo/acordar com tela alheia varre tela e grade INTEIRAS em série no fio da UI (2·W·H visitas para 1 px diferente; clones de pigmento+sombra) | AU-AU02-1 | tp/wetpaint/adormecida.rs:379-399,405-425,446-465,468-495 | não | `PH2D_FLUID_PROFILE`, 4K com tinta viva, traço pequeno de outro meio | caixa dos px diferentes na 1.ª passagem; laços 2 e orla só nela (+1 célula); `par_chunks_mut`; `wet_congela` por caixa (`Arc::make_mut`) | `o_enterro_visita_so_a_caixa_tocada` (contador de visitas) + paridade ao bit de `base`/`congelada`/`enterradas`/`mudou`/`tocada` | | | aberto |
+
+### → junta-se ao B05 (ajustes e camadas com passo de undo)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B05.A1 | Só `set_adjustment_param` marca «editado»: curvas, gradiente, mixer, cor seletiva, segmentos e toggles deixam `has_unbaked_edits()` falso e o desativar descarta a edição | AU-01-1 | TL/layers/adjustments.rs:68,82,107,186,215,264; TL/runtime.rs:261; TL/trait_impls.rs:92 | sim (a sprite deixa de ficar como no Apply) | repro motor: `mark_baked(); set_curve_point(); has_unbaked_edits()` | `fn ajuste_mudou(&mut self,id)` única, chamada nas 7 portas (~20 linhas) | `um_ajuste_mexido_depois_do_apply_conta_como_nao_assado` (6 portas) | | | aberto |
+
+### → junta-se ao B06 (relevo acompanha a tinta; warp/paste)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B06.A1 | Mover a peça colada clona cor+corpo até 3× por evento de ponteiro, também no Hover | AU06-2 | tp/paste_patch.rs:552,564,626,335 | não | contar clones/bytes por Move e por Hover (dhat) | `rgba` e `relief` em `Arc`; hit-test por referência; `composite_patch` em faixas | `mover_a_peca_nao_copia_os_pixels_dela` (Hover = 0 B) + paridade ao bit da tela | | | aberto |
+| B06.A2 | Warp/Transform afim: o CORPO (relevo) recompõe em série e aloca 3 planos do tamanho do sujo (33+8+58 MB a 4K) POR movimento | AU09-6 | tp/warp/transform_relief.rs:135-170; transform_float.rs:200-250 | não | `perf_transform_whole_image_table` com coluna «com relevo» 2048²/4096² | bandas disjuntas de linhas (`thread::scope`, como a cor), escrever direto nos planos forkados | relevo ≤ 1,5× cor + oráculo ao bit do laço serial | | | aberto |
+| B06.A3 | Pincelada do Warp: dois laços seriais por dab sobre a bbox e `adds`/`win_buf` realocados por dab | AU09-4 | tp/warp/apply.rs:75-131; session.rs:286-310 | não | `perf_tests.rs` raio grande 4096², ms/dab | bandas por linha (passada 2 lê `win` imutável); buffers na sessão | teto ms/dab + paridade ao bit | | | aberto |
+| B06.A4 | Início do Transform: duas cópias da tela (66 MB) + laço de tela inteira com `selection_coverage_at` por texel | AU09-5 | tp/warp/transform_float.rs:107-139; transform_relief.rs:76-90 | não | tempo de `begin_transform` 4096² com seleção pequena | laço só na caixa da seleção; bandas paralelas; `base` só o necessário | `begin_transform` ≤ 60 ms + texels visitados ≤ caixa + oráculo ao bit | | | aberto |
+| B06.A5 | Warp em malha: cobertura testada no centro do texel, amostra no canto, sem AA na borda (serrilha, meio texel contra o afim) | AU09-8 | tp/warp/transform_mesh.rs:198-204; transform_float.rs:242 | sim (borda; prancha) | malha 1×1 × afim com a mesma matriz | amostrar em `x+0,5` e deixar o alfa decidir (ou `over_fast` do afim) | `a_malha_de_quatro_cantos_e_o_afim_na_borda` | | | aberto |
+
+### → junta-se ao B10 (pen-up 4K, leitura incremental)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B10.A1 | Vista cinza da máscara: laço serial de 16,7 M it. + upload cheio a CADA quadro de traço com o olho aberto | AU-01-3 | TL/layers/model.rs:44-59; TL/runtime.rs:474-482 | não | ramo `DrainBranch::Gray` em 4K sob traço com Mask brush | `par_chunks_mut` por linhas; com `composited` quente blitar só a `dirty_rect` e publicar o bbox | `a_vista_cinza_paralela_e_a_serial` (ao bit) + medição serial × par × dirty_rect (vermelho: > 1 ms) | | | aberto |
+| B10.A2 | `alturas_do_papel_de_fabrica`: 262 144 amostras + quantis no 1.º uso (gaguez única no 1.º pen-down Wet) | AU08-5 | tp/substrate_relief.rs:439-460; wetpaint/preparo.rs:95 | não | cronometrar a 1.ª chamada em `smoke` | aquecer em fio de fundo ao criar o tool/no `preparo` (medir antes: pode já cair no fio do preparo) | 1.ª chamada ≤ N ms ou «já aquecida» | | | aberto |
+
+### → junta-se ao B11 (Wet: a imagem a tempo)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B11.A1 | Compositor da óptica (ou worker) morto deixa a água congelada para sempre: `send` falha após `take_dirty`, `no_ar` nunca limpa | AU-AU02-2 | tp/wetpaint/offthread_otica.rs `DoWorker::serve`; otica_no_tique.rs `wet_pede_imagem`; ciclo.rs | não | repro motor: `compoe` em pânico / largar o `Receiver` | `send` falhou ⇒ `merge_dirty_otica(caixa)` + erro à UI (`tem_compositor()=false`); `bring_home` sem `expect` | `compositor_morto_cai_para_o_composite_de_casa` (byte igual ao caminho sem compositor) | | | aberto |
+| B11.A2 | `VeuDaCaixa` copia as LINHAS INTEIRAS da grade para uma caixa estreita (6× o necessário) | AU-AU02-4 | tp/wetpaint/offthread_otica.rs `veu_da_caixa`; veu.rs/`FilmeEMolha` | não | bytes de `VeuDaCaixa` por imagem com traço curto | guardar `col0` e largura, recortar por linha | `o_veu_leva_so_a_largura_da_caixa` | | | aberto |
+
+### → junta-se ao B12 (Wet: pen-down, undo, memória)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B12.A1 | O tique espera até `TICK_WAIT` (4 ms) por quadro quando só um «facto» mexeu ou há lote adiado | AU-AU02-3 | tp/wetpaint/ciclo.rs (`wetpaint_tick`); offthread.rs `try_bring_home` | não | `wet_diag::note_wait` por quadro arrastando Dry Speed/Gravity (a medir) | `try_bring_home_now` quando `fora`/`!mostra` | relógio simulado: estágio de 10 ms ⇒ espera ≤ 1 ms/quadro | | | aberto |
+
+### → junta-se ao B13 (Wet: o passo a 4K)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B13.A1 | A ladeira do óleo varre a FOLHA inteira (`0..s`) em série a cada passo de fluxo | AU-12-1 | WP/solver/flow_jacobi.rs:190; WP/solver/ladeira_do_oleo.rs:206-236,299-309 | não | folha 4K, água 64² + óleo noutro lugar | iterar `span_window` por linha (fora: `h=0`, `assente=1`) + `walk_rows`; reusar buffers no `scratch` | `a_ladeira_so_visita_a_faixa_viva` + paridade ao bit de `h`/`assente` | | | aberto |
+| B13.A2 | `diffusion_pass` Gauss-Seidel SERIAL sobre a bbox, 3 de cada 4 passos (só com Diffusion > 0) | AU-12-2 | WP/solver.rs:526-560; WP/sim.rs:555; PL/populate_wetpaint.rs:54 | sim (Jacobi muda bits; prancha ao dono) | sonda de custo com Diffusion > 0 | Jacobi por faixas (fluxo materializado, dois tempos) | `a_difusao_nao_depende_da_ordem_e_cabe_no_pool` (espelho + 1 × N fios) | | | aberto |
+
+### → junta-se ao B14 (óptica, Óleo Real)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B14.A1 | Campo de altura do Óleo Real f64, ~9 planos por JANELA (~600 MB de rascunho a 2880²); a cache realoca a grade a cada revisão | AU-12-3 | WP/oleo_campo.rs:41-46,101,122,193,223; WP/oleo_cache.rs:~96-117 | não (f32 recusado: muda bits) | ms/imagem ao longo de 6 traços | `Scratch` por Engine; `guarda` por linhas sem realocar; cache por tiles | `a_optica_custa_pela_caixa_suja_e_nao_pela_folha` + `a_cache_nao_realoca_com_a_revisao` | | | aberto |
+| B14.A2 | `#[ignore]` esconde um vermelho medido: `o_grao_ralo_nao_engorda_no_oleo` (Knife Stain 0,269 → 0,610) | AU-12-4 | WP/oleo_borda_w3b_tests.rs:564-565 | sim (R2-B; prancha) | já medido: +0,85 sobre a crua | R2-B (cobertura crua nas ralas) ou apagar o teste se o dono recusar | censo `nenhum_ignore_com_VERMELHO_sem_item_no_BACKLOG` (o ignore cita um id) | | | aberto |
+
+### → junta-se ao B15 (Impasto: o resto da luz)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B15.A1 | `box_blur` do assentamento: 3 alocações da caixa + 2 transposições seriais cache-hostis; corre a cada tique do slider Smoothing/Body/Push/Source | AU05-2 | tp/impasto_settle.rs `box_blur`/`transpose`; impasto_live.rs `refresh_live_relief`/`rebuild_live_layer_relief` | não | `settle` por tique, traço diagonal 4K, Smoothing 1,0 (spans por fase) | transposição por ladrilhos 64×64 em `par_chunks`; 2 buffers em vez de 3 | `o_assentamento_paralelo_e_ladrilhado_e_o_da_rota_antiga_ao_bit` (1×1…4096×2160, r 1..4) | | | aberto |
+| B15.A2 | `layer_height_view`: API `pub` morta que clonaria 33 MB por chamada (o `dead_code` não vê `pub`) | AU05-3 | tp/impasto_live.rs (`pub fn layer_height_view`) | não | `rg layer_height_view crates shells` = 0 chamadores | apagar (ou `#[cfg(test)]`) | apagar + `check` verde | | | aberto |
+
+### → junta-se ao B16 (Watercolor)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B16.A1 | Ligação das poças em `assa_as_pocas_secas`: O(linhas×elo×troços) serial, no pen-down de cada traço contínuo (hipótese) | AU08-4 | tp/watercolor_secagem.rs:150-176 | não | cobertura em listras de 2 px, 4K; contar uniões | se medir > 5 ms: fundir troços antes / dilatação separável + etiquetar componentes | contador de uniões ≤ X + oráculo ao bit | | | aberto |
+| B16.A2 | Fundo de reserva «defensivo» realocado (33 MB) a CADA quadro quando `wet_backdrop` falta | AU09-7 | tp/watercolor_render/window.rs:70-79 | não | 2 `wash_window` com `wet_backdrop=None` | guardar o fundo uniforme em `wet_backdrop` (ou `debug_assert` se inalcançável) | 1 alocação do tamanho da tela (hoje 2) | | | aberto |
+| B16.A3 | Campo da reserva da aguada: mudar o conjunto de raios descarta o plano guardado INTEIRO e recalcula todos os raios | AU09-2 | tp/watercolor_reserve/cache.rs:97-107; style.rs:202 | não | texels recalculados no 1.º quadro do traço k, tamanhos variando | `fields`/`feito` por raio; acrescentar o raio novo sem tocar os existentes | `o_campo_guardado_da_o_byte_do_campo_refeito` estendido + contador ≤ janela × 1 raio | | | aberto |
+| B16.A4 | Preenchimento de `stroke_density`: varredura serial da tela (8,3 M it.) no 1.º carimbo texturado | AU08-3 | tp/watercolor_accum.rs:397-405 (irmão `stroke_deplete` :424 já é `par_iter`) | não | sonda de custo (mínimo intercalado) | `par_iter().map(\|c\| if c>0 {255} else {0})` | paridade ao bit com o laço antigo | | | aberto |
+| B16.A5 | O véu de humidade a passo > 1 muda de fase quando a vista é arrastada (a franja «borbulha») | AU-AU13-2 | AP/painter_bridge_wetness.rs:62,184 | sim (tira a cintilação) | pan de 1 px com `step` 4 | alinhar `cx0/cy0` ao múltiplo de `step` antes de construir (~6 linhas) | `o_veu_nao_depende_da_fase_do_recorte` | | | aberto |
+
+### → junta-se ao B17 (cópias de plano, pools)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B17.A1 | Pen-up da cauda do traço copia o plano INTEIRO (33 MB) + a máscara do traço (8 MB) para ler uma caixa de poucos milhares de texels | AU09-1 | tp/traco_plano/cauda.rs:162-166; traco_plano.rs:558 (`repoe_fora`) | não | bytes copiados no pen-up 4K | guardar só as linhas de `tocados` (e da `stroke_mask`) | `a_cauda_nao_copia_o_plano_inteiro` (≤ 2·área(tocados)·4) | | | aberto |
+| B17.A2 | 1.º lote Per-Layer Color clona a tela em série (67 MB, ~11 ms) em vez de `par_clone` | AU-AU07-2 | tp/stamp_color_cache.rs:163; stamp_color_dynamic.rs:45,189; plane_copy `par_clone` | não | pen-down 4K cerdas coloridas (~11 → ~3,5 ms esperado) | `crate::plane_copy::par_clone(&self.canvas_rgba)` (1 linha, ao bit) | `a_base_do_traco_por_camada_nasce_por_par_clone` (contador `PAR_CLONES`) | | | aberto |
+| B17.A3 | Smear/Knife re-renderiza com `fork_canvas(…, None)` embora conheça a `bbox` (undo varre ~470 MB/traço) | AU-AU07-6 | tp/warp/session.rs:262-267 | não | `undeclared()` depois de um traço de Smear | `Some(bbox)` + `declare_wrote(Some(bbox))` (3 linhas); entra no lote dos 21 `fork_canvas(None)` | `undeclared()==0` depois do Smear (por modo) | | | aberto |
+
+### → junta-se ao B19 (Compositor CPU / efeitos)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B19.A1 | Direção do Motion Blur na placa usa `f32::cos/sin` do sistema; a CPU usa `det_sin_cos` (Bug #58) | AU15-1 | RR/layer_compositor/compositor/dispatch.rs:194 × FX/spatial.rs:419 | sim (≤ 1 tap em ângulos de fronteira; pode nem diferir) | 4 096 ângulos GPU × `det_sin_cos` | `let (s,c)=angle.det_sin_cos();` | `motion_direction_gpu_is_det_sin_cos_bits` | | | aberto |
+| B19.A2 | Motion Blur e Chromatic Aberration da CPU seriais em tela inteira (8,3 Mpx × até 513 taps, num núcleo) + `acc.to_vec()` de 133 MB | AU15-2 | FX/spatial.rs:420-433,472-487 | não | Motion half=256 a 4K, serial × `par_rows` | `par_rows` (cada pixel lê só `src`) | `motion_e_chromatic_em_faixas_dao_o_serial_ao_bit` (150×101 + sub-janela; mutação y0=0) | | | aberto |
+| B19.A3 | `downsample_box` do Bloom serial (133 MB) e Shadows/Highlights com dois borrões iguais | AU15-3 | FX/spatial_tonal.rs:157-185,224-227 | não | Bloom 4K, fase do downsample | `par_rows` por linha de destino; reutilizar o campo quando os raios coincidem | `bloom_downsample_em_faixas_ao_bit` + `s_h_com_raios_iguais_borra_uma_vez` | | | aberto |
+
+### → junta-se ao B20 (prévia na placa e envio)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B20.A1 | `try_drive` ignora o `false` de `drive`: a placa falha e NINGUÉM produz o quadro | AU-AU13-1 | AP/painter_gpu_preview.rs:125-162,140,145,161,246,253,268 | sim (só no caminho de falha) | repro: tela > `max_texture_dimension_2d` ou trait de teste | `try_drive` devolve `drive(..)`; em `false`, `mark_preview_dirty` e deixa o quadro à CPU (~10 linhas) | `a_falha_da_placa_entrega_o_quadro_a_cpu` (hoje `true` e `None`) | | | aberto |
+| B20.A2 | Upload parcial confia que `dirty` cobre tudo desde o último upload (hipótese, não provado) | AU15-6 | RR/layer_compositor/compositor/buffers.rs:88-100 | não | confirmar que `version` é +1 (`preview_layer_pixels`) | se `pixels.version != existing.version+1` ⇒ upload inteiro (3 linhas) | `salto_de_versao_com_dirty_sobe_a_camada_inteira` | | | aberto |
+
+### → junta-se ao B25 (porta do carimbo)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B25.A1 | Banda do carimbo que entra em pânico some com a tinta em silêncio (`join().unwrap_or(None)`); os irmãos gritam | AU-AU07-4 | tp/stamp_banded.rs:486 × stamp_color_cache.rs:412, stamp_color_dynamic.rs:375 | não | — | `h.join().expect("stamp band panicked")` (1 linha) | `uma_banda_que_entra_em_panico_derruba_o_lote` (`#[should_panic]`) | | | aberto |
+| B25.A2 | A ponte do carimbo na placa é instalada uma vez e nunca refeita depois de um episódio sem memória | AU-AU13-6 | AP/painter_stamp_device.rs:26-30 × painter_gpu_preview.rs:130,205 (`memoria::geracao()`) | não | confiança média (não vi o `StampPass` falhar) | guardar a geração junto da ponte e reinstalar quando difere (~15 linhas) | `a_ponte_do_carimbo_renasce_com_a_geracao_da_placa` | | | aberto |
+
+### → junta-se ao B26 (lote por quadro, bandas e constantes do dab)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B26.A1 | Mapa de cobertura (`stroke_mask`) zerado por `resize`: 16,8 MB escritos por traço E POR MOVIMENTO nos fills | AU-AU07-3 | tp/stroke_lifecycle.rs:101; tp/stamp_cache.rs:83-91 | não | bytes escritos por `prepare_stroke_mask` num re-stamp | `Vec::new()` + `plane_copy::size_to(…,0)` no pen-down; nos fills zerar só a união do `touched` anterior | contador de bytes (verde ≤ janela anterior) + identidade da máscara (oráculo) | | | aberto |
+| B26.A2 | O dente do papel é re-amostrado a cada texel de cada dab, sem a memória (`grao_cache`) do Grain (~90 dabs/px) | AU10-1 | PB/dab/bands.rs:556; PB/dente.rs:28-48; bands.rs:524-527 | não | A×B no MESMO processo (MEDIR_VELOCIDADE) | reusar `GraoCache` (chave papel+base) para o `t` do dente | contador de amostras do papel ≤ texels distintos + identidade de bytes | | | aberto |
+
+### → junta-se ao B29 (precisão da tinta)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B29.A1 | Fluxo baixo estanca no canvas u8 do próprio carimbo: `a·\|cor−prev\| < 0,5/255` nunca acumula (cinza 128 fica 128; α fica 0) | AU10-2 | PB/dab/bands.rs:564-568,636-648,656 | sim (o dono aprova; alarme de pincel vermelho esperado) | centro após 200 dabs = 128/255 | dither determinístico por (px,py,dab) no `encode` ou plano residual de 1 B por traço; coordenar com PL-40 numa só cura | centro ≥ 0,5+0,1·(1−0,985²⁰⁰)−1/255 | | | aberto |
+| B29.A2 | Lote Per-Layer de tamanhos mistos DESCARTA a pintura em silêncio (`return None` depois de escolher as bandas); a rota serial pinta | AU-11-1 | PB/stamp_color/accumulate_batch.rs:153-155; accumulate_rgba_batch.rs:35-36 | não hoje | mapas serial × bandas do mesmo lote | usar `b.size`/`stamp.nivel(b.k)` por carimbo (ou recusar nas DUAS rotas) | `lote_de_tamanhos_mistos_pinta_igual_nas_duas_rotas` | | | aberto |
+| B29.A3 | Grão Tiled nas rotas Per-Layer/Rampa reamostrado por píxel por dab, sem a memória do Bug #84 | AU-11-2 | PB/stamp_color/accumulate_batch.rs:430; accumulate.rs:250-251; grao_cache.rs:1-9 | não | contador de amostras (ablate/probe) | passar `GraoCache` (já `Sync`) ao laço de banda das duas rotas | `o_grao_tiled_da_rota_per_layer_e_amostrado_uma_vez_por_pixel` + paridade cache × sem-cache | | | aberto |
+
+### → junta-se ao B30 (relevo × tinta no carimbo)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B30.A1 | Pânico numa banda do relevo é engolido (`unwrap_or_default`): cor sem relevo, em silêncio | AU10-5 | PB/height_walk.rs:119 | não | — | `unwrap_or_else(\|p\| resume_unwind(p))` (1 linha) | `walk_dab_rows` propaga o pânico da banda | | | aberto |
+
+### → junta-se ao B32 (mistura de cores)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B32.A1 | Mistura espectral recomputa `log_espectro(tinta)` (constante do dab) por texel: metade dos 20 log2 + 10 exp2 é invariante | AU10-3 | PB/espectral.rs `mistura`; PB/dab/bands.rs:636 | não | medir antes (o K–M #84 pode dominar) | variante `mistura_com(lt)` com `log_espectro(color)` içado ao `DabCtx` | contador de `log2` ≤ texels+10 por dab; saída ao bit | | | aberto |
+
+### → junta-se ao B35 (controlos do Wet)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B35.A1 | Guardar sobre um preset existente herda os campos opcionais que o artista DESLIGOU (`extend` nunca remove): pontas_rectas, dual, hose, pixel, size_max_px… voltam ligados | AU-AU03-1 | tp/wetpaint_preset.rs:559-566; wetpaint_preset/meios.rs:309-317; json.rs:586-617 | sim (só nos ficheiros guardados; os de fábrica ao byte) | repro: carregar preset com `pontas_rectas:true`, desligar, Save as New, reaplicar | `p.brush.retain(\|k,_\| !campos.contains(k))` antes do `extend`, nos dois sítios (~5 linhas) | `a_captura_nao_herda_o_campo_opcional_desligado` (`wet_preset_capturar` e `preset_capturar`) | | | aberto |
+| B35.A2 | «Reset» da secção Watercolor não repõe Flow Size/Angle, Paper Edge nem Same-as-Paper (nem limpa `flow_map`) | AU-AU08-1 | tp/watercolor_settings.rs:503-524,147-157,334-348,497 | sim (só no Reset) | repro: mexer nos 4 knobs, Reset | repor `b.<grupo> = d.<grupo>` por struct (~10 linhas) | `reset_da_aguada_repoe_todo_o_pincel_da_aguada` (percorre os ids roteados) | | | aberto |
+| B35.A3 | O cartão do Tuning re-mede texto e re-aloca por quadro enquanto aberto (~70–200 `prefix_width`) | AU-AU13-3 | TU/cards.rs:96,183-216; TU/paint.rs:75-78 | não | contador de `prefix_width` por quadro parado (por medir) | cache `(rótulo,w)->bool` em `thread_local`; dica da inércia só quando muda | `o_tuning_nao_mede_texto_em_quadro_parado` | | | aberto |
+
+### → junta-se ao B38 (alfa pré-multiplicado: Clone, Heal, Inpaint)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B38.A1 | Heal: bbox do buraco por varredura serial da máscara inteira (8,3 MB, ~5–10 ms) a cada soltar + `paint_begin` refaz 8 MB de zeros | AU05-4 | tp/inpaint.rs `heal_inpaint`; tp/stroke_lifecycle.rs:36 | não | `heal_inpaint` até `run_inpaint`, 1 dab pequeno 4K | `inpaint_touched: Option<Region>` guardado no `stamp_dabs_inpaint`; limpar só essa caixa | `o_heal_acha_o_buraco_sem_varrer_a_mascara` (mesma caixa; bytes lidos ≤ caixa) | | | aberto |
+
+### → junta-se ao B39 (UI que mente; presets)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B39.A1 | Delete (e Duplicate) ignoram a multisseleção que o painel destaca; só Group a usa | AU-14-1 | PL/cards_camadas.rs:354; PL/event.rs:~196; TL/layers/mutate.rs:589 | não | repro: 3 selecionadas + Delete | `DeleteActive` percorre `selection` (menos a base) num só passo de undo (decisão: apagar todas; se o dono quiser «só a ativa», tirar o realce) | `apagar_com_varias_selecionadas_apaga_todas` | | | aberto |
+| B39.A2 | Lixo / Duplicate / Group desenhados «ligados» onde a ferramenta recusa (base, Group, sem alvo) | AU-14-2 | PL/cards_camadas.rs:176-190; TL/layers/mutate.rs:168,205-210 | sim (esmaece) | — | `verbos` recebe `active_modifiers()`/`is_group` e usa o estilo `seta` (ícone `TextDisabled`, sem `Seg`) | `o_lixo_na_base_pinta_apagado_e_sem_alvo` | | | aberto |
+| B39.A3 | `current_layers()` clona a `LayerStack` inteira (≥ 18 sítios, ~6–10×/quadro na vista Layers) | AU-14-5 | PL/state.rs:37,448; cards_camadas.rs:46,53,73,115,145,274; paint.rs:460,462 | não | contar clones por `paint` | guardar `Arc<LayerStack>`; `current_layers()` devolve `Arc` | contador de clones por `paint` ≤ 1 | | | aberto |
+| B39.A4 | `GroupData.collapsed` tem leitor e nenhum escritor: grupos não se recolhem | AU-14-6 | PL/cards_camadas.rs:405; paint_rows.rs:137; ids/painter.rs:349; TL/layers/mod.rs:74 | sim (chevron novo; olho do dono) | — | id `GroupFold` + chevron em `camada()` + `E::ToggleCollapse` | `um_grupo_recolhe_por_clique` / `todo_campo_lido_do_modelo_de_camadas_tem_escritor` | | | aberto |
+| B39.A5 | `ALTURAS` (altura do rect da linha) vem do QUADRO ANTERIOR e nunca é podada: rect clicável desencontrado 1 quadro | AU-14-7 | PL/cards_camadas_linha.rs:275,299 | não | — | registar o rect no fim de `camada()`; podar por `stack.all_ids()` no `prepare` | `o_rect_da_linha_e_o_do_mesmo_quadro` | | | aberto |
+| B39.A6 | Prévia de padrão re-renderizada e re-enviada a CADA quadro (140×bh px + LUT de 256) | AU-14-4 | PL/paint_texture.rs:466; cards_grao.rs:87,368; cards_papel.rs:46 | não | cronometrar o cartão visível, quadro parado | cache de 1 entrada por origem (`thread_local`, chave = kind/params/size/offset/angle/ramp/`Arc::as_ptr`/`bw,bh`/alfa) | `a_previa_igual_devolve_o_mesmo_arc` + paridade ao bit do pixel | | | aberto |
+| B39.A7 | A biblioteca de pincéis (100 PNG, 2,3 MB) lê e decodifica no fio do quadro e recarrega inteira a cada Save/Reset | AU-AU13-4 | AP/painter_bridge_presets.rs:73-110,434; ph2d-brush-presets/src/biblioteca.rs:142-174 | não | 1.º `drive` com a pasta real (por medir) | catálogo em fio de fundo; decodificar o preset só ao aplicar; `recarregar` só o ficheiro tocado | `abrir_a_biblioteca_nao_custa_um_quadro` (marcar «por medir» até a corrida) | | | aberto |
+| B39.A8 | O preview vivo constrói e compara a chave da cena a cada quadro, com clones (`brush_settings()`, `wet_preview_chave()`) | AU-AU13-5 | AP/painter_bridge_preview.rs:202-206; tp/wetpaint_preset/preview.rs:222 | não | alocações por quadro parado | contador de revisão do pincel (`content_revision`); a chave só se refaz quando ele muda | `a_chave_do_preview_nao_aloca_em_quadro_parado` | | | aberto |
+| B39.A9 | Os dois ↺ (secção × campo) e o duplo clique: confirmado na fonte e alargado a ~30 chamadores | AU-14-3 | PL/jitter_settings.rs:427,437,454; impasto_settings.rs:488; cards_linhas.rs:236; cards_wet.rs:114,325; cards_traco.rs:236,254 | sim | — | NOTA: o item é o já listado **IN-72 / PA-8**; cure lá e confira os ~30 chamadores | o gate de IN-72/PA-8 | | | aberto (nota; cura em IN-72/PA-8) |
+
+### → junta-se ao B40 (formas, seleção e máscara)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B40.A1 | Color Fill, Cut e Colar ignoram o bloqueio de alfa da camada e a máscara de proteção (o carimbo respeita) | AU06-1 | tp/selection_actions.rs:78-113; traco_plano.rs:253-257,346; stamp_banded.rs `alpha_locked`; mask.rs:196 | sim (só nos casos hoje errados) | repro: alfa travado + Color Fill sobre texels transparentes | uma porta `keep_da_escrita_direta()` (seleção × proteção + lock do alfa) nas 3 ações; conferir o balde (`fill*.rs`) em B48 | `color_fill_com_alfa_travado_nao_muda_o_alfa`, `cut_…`, `colar_…`, `color_fill_nao_pinta_o_protegido` | | | aberto |
+| B40.A2 | Feather da seleção: `box_blur` O(raio)/texel, serial, passe vertical contra o stride, 3× por `set_selection_from_crisp` (todo arrasto/slider) | AU-AU07-1 | tp/selection_raster.rs:132-152,157-186 | não | sonda `derive_effective` 4096² r=64 (teto em ms; vermelha hoje) | soma deslizante O(1)/texel com bordas presas, passe V por tiras, bandas de linhas, janela = caixa ⊕ 3r (≥ 50× em r grande) | `a_soma_deslizante_dá_o_box_blur_ao_bit` (oráculo verbatim, soma u32) | | | aberto |
+| B40.A3 | Seleção: cópias e passes seriais de tela inteira por quadro de arrasto/slider (`crisp` reconstruído, `to_vec` 16,8 MB, clones do mapa) | AU-AU07-5 | tp/selection_shapes.rs:167,175-182; selection_offset.rs:245,277,285,294 | não | sonda `recompose_selection_mask` 4096² (1 forma de 3 movida) | trabalhar na caixa (união das caixas ± nível), bandas disjuntas, `Arc::clone` no neutro | teto da sonda + identidade de `crisp`/`selection_mask` com o caminho velho | | | aberto |
+| B40.A4 | Projeção da proteção (máscara/seleção): `free` = 2.ª tela de 33 MB por época e fork de outros 33 MB por LOTE | AU05-1 | tp/mask.rs `begin_or_keep_gate_epoch` (~l.300 `project_gate_region`); layers/undo.rs:137 | não | sonda 4K seleção ativa, bytes copiados no 1.º lote (< 3 ms ⇒ rebaixar a «baixa») | `free` só da caixa suja (plano esparso/`region_pixels`); `base` sem 2.º dono forte | `a_protecao_nao_copia_a_tela_inteira_por_traco` (≤ 1 cópia/época; 0 no 2.º/3.º traço; ≤ 1 recaptura com Ctrl+Z) | | | aberto |
+| B40.A5 | Mask brush com seleção ativa: cópia do rascunho (33 MB) por LOTE + `clip_canvas_to_selection` varre a tela inteira e declara-a escrita | AU09-3 | tp/stamp_route/mascara.rs:17-19; tp/selection.rs:187-212 | não | contador de trabalho do quadro (padrão GT-07) Mask+seleção | copiar e recortar só `dabs_bounds`; `fork_canvas(.., Some(caixa))` | texels declarados ≤ pegada nos quatro modos | | | aberto |
+
+### → junta-se ao B41 (pânicos, casos-limite, macros)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B41.A1 | `ph2d-inpaint` na placa entra em PÂNICO se a placa falha (`expect` no readback) e recompila os pipelines por chamada | AU15-4 | ph2d-inpaint/src/gpu/mod.rs:233-237; lib.rs:316; tp/inpaint.rs:241 | não | repro: injeção de erro no `run_level` | `Result` até `inpaint()` (cai para `inpaint_cpu`); `GpuInpainter` guardado na sessão | `inpaint_gpu_devolve_erro_e_o_chamador_cai_na_cpu` + `o_inpainter_reaproveita_os_pipelines` | | | aberto |
+| B41.A2 | Curva Custom do falloff: Hermite avaliada por texel com tangentes recomputadas; `weight_area` até 3+ avaliações | AU10-4 | PB/falloff_curve.rs:162,184-196,384-415; PB/spec/queries.rs:648-651; dab.rs:57,59; bands.rs:485-490 | não | MEDIR primeiro: só vale se Custom for caminho quente de algum dos 100 pincéis | LUT do `t` por (curva, dureza, passo) memoizada por traço | `eval_falloff_curve` ≤ ~1/texel por dab r=100 | | | aberto |
+
+### → junta-se ao B44 (sondas e gates)
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B44.A1 | O gate «ablação nunca armada no produto» não vigia o outro interruptor global `texture::mede_sem_a_area` (muda o byte de Dots/Bricks e a chave do `grao_cache`) | AU-11-3 | PB/tests/ablation_is_never_armed_in_product.rs; PB/texture/pela_area.rs:13-16; grao_cache.rs:63 | não | — | estender a varredura a `mede_sem_a_area(` com o mesmo `is_measurement` + asserção «armado em ≥ 1 medição» (3 linhas) | o próprio gate | | | aberto |
+
+---
+
+## Blocos novos
+
+### B48 — Balde (`fill.rs`): pilha, tique do slider e segundo soltar · M
+Pegada: `tp/fill.rs` + `tp/impasto_fill.rs`. Depende de: ★ B52.R10 (partir `fill.rs` antes de B48.2). Gate: por linha. Onda 2. B40.A1 manda conferir o balde contra o alfa travado (junto a B48.3).
+
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B48.1 | `flood_fill` empilha CADA texel das linhas vizinhas, não só o início de cada corrida (tela 4096² em branco: ~256 MB de pico, ~2 passes/texel) | AU-AU04-1 | tp/fill.rs:~95-105 | não | pico da pilha / tempo em 4096² uniforme | empilhar só o 1.º texel de cada corrida contígua (sinalizador `em_corrida`; ~25 linhas) | `o_balde_empilha_uma_entrada_por_corrida_nao_por_texel` (pico ≤ 4·h) + oráculo verbatim em 6 telas (uniforme, xadrez, metade, anel, ruído tol 0/40/255) | | | aberto |
+| B48.2 | Cada tique do slider de tolerância faz trabalho de TELA INTEIRA e aloca ~0,3 GB a 4K (snapshot 64 MB, `visited`, `fill_mask`, `comp`, `cov`, 5 planos do corpo do impasto) | AU-AU04-2 | tp/fill.rs `refill_from_snapshot` ~l.180-290; tp/impasto_fill.rs:134-185 (`arm_fill_body`) | não | `set_fill_threshold` 2048² × 4096² com `PH2D_PAINT_PERF`, Impasto + seleção | trabalhar na bbox do flood (`visited` por janela), `fill_selection_keep` em cache, `cov`/planos só na bbox, `copy_from_slice` só de `fill_last_rect ∪ nova` (~150 linhas) | `o_tique_do_balde_custa_pela_regiao_nao_pela_tela` (`t(4096)/t(2048) < 1,5`; bytes < 8·região) + paridade ao bit (camada + relevo, 5 limiares) | | | aberto |
+| B48.3 | Um 2.º «soltar» com o 1.º balde pendente perde o estado de ANTES do 1.º no Desfazer e no Cancelar | AU-AU04-3 | tp/fill.rs `fill_pointer`/`fill_begin_drop` ~l.338-347 | não | repro: A (sem Done), B, `fill_commit`, `undo` | no Down: `if has_active_fill() { fill_commit() }` antes de `fill_begin_drop` (decisão: comitar o 1.º, como a troca de ferramenta) | `um_segundo_balde_com_o_primeiro_pendente_nao_perde_o_antes` | | | aberto |
+
+### B49 — Pó do papel e grão por dab · P
+Pegada: `tp/po_do_papel.rs` + `tp/uma_passagem.rs`. Depende de: nada. Gate: por linha. Onda 3.
+
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B49.1 | O «pó do papel» (Pastel/Chalk/Crayon) borra o alfa da camada INTEIRA no pen-down: 33 MB `f32`, alocação por linha, transposição com salto de 15 KB — sem número medido | AU06-3 | tp/po_do_papel.rs:17-31,43-77 | não (manter apron 3·`RAIO_DA_CAIXA` = idêntico) | pen-down 4K Pastel: medir `prepara_o_po` | pó preguiçoso por ladrilho 256² (+apron) na 1.ª leitura; sem transposição (passe vertical em faixas de 16–32 colunas) | `o_po_so_toca_a_janela_do_traco` (texels ≤ caixa + apron) + paridade ao bit com `po_da_tela` como oráculo | | | aberto |
+| B49.2 | `nivel_no_grao_medio` é O(N²) em dabs e reconstrói a base do grão (`dab_basis`) a cada par; `grao_medio` repete 4096× | AU08-2 | tp/uma_passagem.rs:147-190,106-120,78 | não (byte-idêntico) | só vale se `dab_basis` ≥ 100 ns | calcular a base UMA vez por chamada e passá-la a `grao_do_dab` (~15 linhas) | contador `#[cfg(test)]` de `dab_basis` ≤ 1+N com 64 dabs (padrão `TOOTH_SAMPLES`) | | | aberto |
+
+### B50 — Formato do preset: enums pelo NOME e id órfão · M
+Pegada: `tp/wetpaint_preset/{json,meio}.rs` + `ids/painter_wetpaint.rs` + regravar `assets/brushes`. Depende de: B35c, B36, B37, B39 (regravam os mesmos presets). Gate: por linha; sobe `PROJECT_SCHEMA`/`SCHEMA` do preset (`python3 scripts/schema-recount.py`; sem leitor velho, regra 11). Onda 11.
+
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B50.1 | Enums gravados como NÚMERO (`pixel`, `hose.mode`, `lei.mode`, `dual.modo`, `pen_tilt.rotation`) contra a lei «enums pelo NOME» do próprio módulo: reordenar uma variante muda presets gravados em silêncio | AU-AU03-2 | tp/wetpaint_preset/json.rs:3-5,92,308,311; meio.rs | não (miniaturas não devem mudar; os de fábrica mudam de bytes) | repro: inserir variante a meio de `GrainMode` | gravar `nome()` e ler `de_nome` (sem leitura numérica), sobe o schema, regrava ~100 PNG por script; ★ B52.R5 (tabela única `(nome,ler,escrever,condição)`) | `os_enums_do_preset_gravam_o_nome` (`Value::String`; vermelho nos cinco) | | | aberto |
+| B50.2 | `PAINTER_WETPAINT_PIGMENT` é id órfão com doc que mente: zero referências além da definição | AU-AU03-3 | ids/painter_wetpaint.rs:285 | não | `rg`: 1 órfão em 512 ids | apagar a constante e o comentário | censo `nenhum_id_do_painter_fica_sem_referencia` (vermelho em 1) | | | aberto |
+
+### B51 — Costura do app-painter e o que está fora da missão · M
+Pegada: `AP/painter_bridge*.rs` + `SH/main.rs` (`CursorLeft`) + `ph2d-wet-gpu` (só `Result`, placa fora). Depende de: B20, B23, B39 (mesmos ficheiros do AP). Gate: por linha. Onda 11.
+
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B51.1 | O anel do pincel fica no último ponto do cursor quando o rato sai da janela / ela perde o foco (a shell não trata `CursorLeft`) | AU-AU13-7 | AP/painter_bridge.rs (`cursor`); painter_bridge_brush_ring.rs:35-41; SH/main.rs:956 | sim (o anel some) | repro: tirar o rato da janela | a shell passa `Option<(f32,f32)>` (None ao `CursorLeft`/`Focused(false)`, junto da cura de DF-40) | `o_anel_some_com_o_ponteiro_fora_da_janela` | | | aberto |
+| B51.2 | 22 `#[allow(clippy::too_many_arguments)]` no `ph2d-app-painter` contra a lei «silenciar um diagnóstico é armengo» | AU-AU13-8 | AP/painter_bridge.rs:58; painter_gpu_preview.rs:194; painter_bridge_overlays.rs:32,268,371; painter_bridge_shape_overlays.rs:31,128,218; painter_bridge_brush_ring.rs:15,186; TU/paint.rs | não | `rg` = 22 | `struct OverlayCtx<'a>` no sítio da chamada (molde `BindCtx`) para os 12 desenhos; corte mecânico (encolhe `dispatch`) | `nenhum_allow_de_argumentos_em_ph2d_app_painter` (baseline 22 → 0) | | | aberto |
+| B51.3 | `wet-gpu`: leituras bloqueantes com `expect("map")` em callback e `poll(wait_indefinitely)` sem prazo no fio da UI (placa fora da missão: só com a RTX liberada) | AU15-5 | ph2d-wet-gpu/src/passo.rs:562-565; passo/desce.rs:73-76; tinta.rs:199-203; transfere.rs:68-71 | não | injeção de erro de mapeamento | `Result` + queda para a CPU; `poll` com prazo; ★ B52.R30 (módulo `leitura`) | `uma_falha_de_mapeamento_nao_derruba_o_passo` | | | aberto (placa fora; adiado até a RTX) |
+
+---
+
+## B52 — Refatoração do pente fino · G (uma linha por ficheiro; ★ = PRÉ-REQUISITO)
+
+Ficheiros rentes a 700 linhas ou com função > 150 linhas, vindos do §Refatoração de cada AU. Tecto: `workspace_src_files_under_loc_cap` (partir, nunca isentar) + `the_shell_only_shrinks` (mover/cortar). ★ = a cura do bloco indicado soma linhas ao ficheiro: parte-se ANTES, pelo mesmo agente, com paridade ao bit (nenhum byte do desenho muda). Os sem ★ correm na onda 12 (B45.8). Teste/sonda acima do tecto fora de produto: tratados na última linha.
+
+| id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
+|---|---|---|---|---|---|---|---|---|---|---|
+| B52.R1 | ★ bloqueia B01.A1, B05 (setters), B18, B39.A1: `mutate.rs` (678) | AU01 | TL/layers/mutate.rs | não | — | `mutate_estrutura.rs` (add/delete/duplicate/seleção) + `mutate_mascara.rs` (apply_mask, toggles) | loc cap + testes da pilha por nome | | | aberto |
+| B52.R2 | ★ bloqueia B05.A1: as 7 portas repetem o bloco de invalidação | AU01 | TL/layers/adjustments.rs | não | — | uma `ajuste_mudou` (a própria cura de B05.A1; o ficheiro encolhe) | idem B05.A1 | | | aberto |
+| B52.R3 | ★ bloqueia B19 (a, b, c): `compose.rs` (697) | AU01 | TP/compositor/compose.rs | não | — | separar `composite_below`/`flat_fill` (backdrop do Wet) das entradas `composite*` | loc cap + `cache_matches_full_recompose` | | | aberto |
+| B52.R4 | ★ bloqueia B10c, B17b: `undo_marca` 660, `undo_window` 671, `undo` 689, `undo_delta` 693, `tool/runtime.rs` 669, `layers/stack.rs` 674 (< 40 linhas do tecto) | AU01 | TP/undo_*.rs; TL/runtime.rs; TP/layers/stack.rs | não | — | partir por responsabilidade ao tocar (runtime: o ramo Gray de B10.A1 sai antes) | loc cap | | | aberto |
+| B52.R5 | ★ bloqueia B35.A1, B50.1: `json.rs` (663) — 6 `match` espelhados ida/volta | AU-AU03 | tp/wetpaint_preset/json.rs | não | — | tabela única `(nome, ler, escrever, condição_de_gravar)` (a condição «só quando ligado» vive ao lado do valor por omissão) | `o_pincel_inteiro_vai_e_volta…` + `todo_campo_do_pincel_tem_destino` | | | aberto |
+| B52.R6 | ★ bloqueia B35 (b, d): `brush_settings.rs` (696), `wetpaint_settings.rs` (694) | AU-AU03 | tp/brush_settings.rs; tp/wetpaint_settings.rs | não | — | `brush_settings/{jitter,cor,grao}.rs`; `wetpaint_settings/{volumes,mao}.rs` | loc cap | | | aberto |
+| B52.R7 | ★ bloqueia B35b, B39: `ids/painter.rs` (646), `ids/painter_brush_sections.rs` (528); `wetpaint_preset/tests.rs` (684) | AU-AU03 | ids/painter*.rs; tp/wetpaint_preset/tests.rs | não | — | partir por cartão; `captura_tests.rs` (onde entra o gate de B35.A1) | loc cap + censo de ids | | | aberto |
+| B52.R8 | ★ bloqueia B11.A1/A2: `offthread_otica.rs` (521) mistura correio, aplicação e compositor | AU-AU02 | tp/wetpaint/offthread_otica.rs | não | — | `otica_correio.rs` (Correio/DoFioPrincipal/DoWorker) + `otica_compositor.rs` (compositor/compoe/recorta/cola/veu_da_caixa) | testes de leak/offthread por nome | | | aberto |
+| B52.R9 | ★ bloqueia B02.A3: `adormecida.rs` (550) | AU-AU02 | tp/wetpaint/adormecida.rs | não | — | `wet_enterra_o_que_mudou`/`wet_orla_vai_para_a_base`/`wet_congela` → `enterro.rs` (onde cai a cura) | `undo_auditoria_tests` | | | aberto |
+| B52.R10 | ★ bloqueia B48.2: `fill.rs` (542) mistura núcleo puro, gesto, recorte da seleção e corpo do impasto; `impasto_fill.rs` (291) → `impasto_mancha.rs` | AU-AU04 | tp/fill.rs; tp/impasto_fill.rs | não | — | núcleo puro (`flood_fill`, `color_match`, `selection_component_at`) separado de `fill_pointer`/commit/cancel; `assenta_o_corpo_da_mancha` → `impasto_mancha.rs` | `impasto_fill_tests` + `edit_modes` por nome | | | aberto |
+| B52.R11 | ★ bloqueia B02/B12 (qualquer cura que lhe some linhas): `pousa_o_dab.rs` (694), `undo_vivo.rs` (561) | AU-AU02 | tp/wetpaint/pousa_o_dab.rs; undo_vivo.rs | não | — | partir `pousa_o_dab.rs` por responsabilidade antes da cura | loc cap | | | aberto |
+| B52.R12 | ★ bloqueia B25/B26 (dab_spec): `dab_spec.rs` (679), `brush_settings.rs` (696, ver R6), `composite_pilha.rs` (681, `recompoe_por_replay` → `composite_replay.rs`), `composite_acumulado.rs` (680, próximo corte: `acumula_as_camadas`) | AU-AU04 | tp/dab_spec.rs; tp/composite_pilha.rs; tp/composite_acumulado.rs | não | — | cortar por grupo de controlos / rota de bissecção | loc cap + `PH2D_COMPOSITE_REPLAY` por nome | | | aberto |
+| B52.R13 | ★ bloqueia B40.A4, B40.A5: `mask.rs` (660) mistura scratch, proteção e overlay | AU05 | tp/mask.rs | não | — | `mask_gate.rs` (`gate_scoped`/`project_gate_region`; onde cai B40.A4) + `mask_overlay.rs`; `mask.rs` fica com o scratch e os eventos | `mask_gate_tests` | | | aberto |
+| B52.R14 | ★ bloqueia B15 (PX-8) e B31: `impasto_light.rs` (544) | AU05 | tp/impasto_light.rs | não | — | construtor de campos (`impasto_fields`, `relief_filter_masks`) → `impasto_fields.rs` | testes de luz por nome | | | aberto |
+| B52.R15 | `measure_commit_cost` 687 / `measure_relief_systems` 689 / `measure_shape_system` 679 / `measure_watercolor_cost` 692 / `measure_wetpaint_step` 639 / `sculpt_tests` 663 (sondas; < 25 linhas do tecto) | AU05, AU06 | tp/measure_*.rs; sculpt_tests.rs | não | — | partir por tema antes de a próxima onda os estourar (B44a mexe nas sondas: coordenar) | loc cap | | | aberto |
+| B52.R16 | ★ bloqueia B06.A1, B40.A1: `paste_patch.rs` (684) | AU06 | tp/paste_patch.rs | não | — | `PastePatch` (pose + `weights`/`sample`/`footprint`) × `paste_patch_input.rs` (gizmo/hit-test/`transformed`) × compositor/relevo (`composite_patch*`, `snapshot_paste_pristine`) | testes de colar por nome | | | aberto |
+| B52.R17 | ★ bloqueia B40.A1: `selection_actions.rs` (334) | AU06 | tp/selection_actions.rs | não | — | relevo (`ReliefClip`, `copy_relief`, `erase_relief`) → `selection_relief.rs` | loc cap | | | aberto |
+| B52.R18 | ★ bloqueia B25.A1: `stamp_banded.rs` (636) + ~170 linhas de contadores thread-local | AU-AU07 | tp/stamp_banded.rs | não | — | diag → `stamp_banded_diag.rs` | loc cap | | | aberto |
+| B52.R19 | ★ bloqueia B17.A2, B29: `stamp_color_cache.rs` (697, no tecto): partir `stamp_color_ramp.rs` (~90 linhas) e extrair `recomposite_band` comum com `stamp_color_dynamic.rs:recomposite_per_layer_rgba` (duas cópias do corpo por pixel) | AU-AU07 | tp/stamp_color_cache.rs; stamp_color_dynamic.rs | não | — | idem | paridade ao bit das duas rotas | | | aberto |
+| B52.R20 | ★ bloqueia B28/B25: `solid_deposit.rs` (699) → `solid_blend.rs` (`SolidBand`, `blend_solid_rows`, `blend_solid_row`); `shape_settings` 675, `stamp_route` 660, `state` 652, `stroke_boolean` 630, `stroke_multi` 620, `stroke_lifecycle` 606, `snapshot` 605 (< 100 linhas do tecto) | AU-AU07 | tp/solid_deposit.rs e vizinhos | não | — | partir antes de crescer | loc cap | | | aberto |
+| B52.R21 | `apply_watercolor_inner` (638 linhas numa função); `accumulate_wet_coverage` (277), `accumulate_wet_color` (255), `assa_as_pocas_secas` (174), `smear_wet_base` (171), `wet_preset_aplicar_corpo` (172), `route_brush_watercolor_event` (143, ~25 braços `x if x == id`) | AU08 | tp/watercolor_render.rs; watercolor_accum*.rs; watercolor_secagem.rs; watercolor_smudge.rs; wetpaint_preset.rs; watercolor_settings.rs | não | — | `CamposDoQuadro::build` + `fn texel(&Ctx,gx,gy)`; `DabCursor` comum (IN-5); 3 fases puras da secagem; tabela `[(id, setter)]` (resolve também o censo «id roteado × declarado» de B35.A2) — ★ a tabela e a secagem bloqueiam B35.A2 e B16.A1 | paridade ao bit protege os cortes | | | aberto |
+| B52.R22 | ★ bloqueia B28: `stamp_dabs_mistura_opaca` (~560 linhas numa função) em `stamp_route/mistura/lote.rs` (578) | AU09 | tp/stamp_route/mistura/lote.rs | não | — | `prepara_pegada_e_cor` (28-135) + `pegadas_em_lote` (140-170) + `pelicula_do_lote` com um `struct Contexto` | paridade ao bit (mistura opaca) | | | aberto |
+| B52.R23 | ★ bloqueia B06.A2, B06.A4: `warp/transform_float.rs` (478) | AU09 | tp/warp/transform_float.rs | não | — | `for_dirty_rows_parallel`/`over` → `warp/bandas.rs` (também usada por `transform_mesh.rs`) | `perf_transform_whole_image_table` | | | aberto |
+| B52.R24 | ★ bloqueia B41 (macros): `macro_track/etapas.rs` (694), `macro_track/marca.rs` (682), `macro_track/mod.rs` (658) | AU09, AU13 | AP/macro_track/*.rs | não | — | etapas → `etapas_pinceladas.rs`; marca → `marca_cobertura.rs`; mod: `PalcoDaPintura`/`atual_e_marca` × `segue`/`sobe` | loc cap | | | aberto |
+| B52.R25 | ★ bloqueia B26.A2, B29.A1, B32.A1: `dab/bands.rs` (691): `stamp_band` (~275 linhas); `blur_caixa.rs` (662) mistura contadores de medição | AU10 | PB/dab/bands.rs; PB/blur_caixa.rs | não | — | `stamp_band` → `silhueta` / `tinta` / `deposito` (içar invariantes, PX-17, AU10-3); contadores → `blur_caixa_sondas` | paridade ao bit (matriz de pincéis) | | | aberto |
+| B52.R26 | ★ bloqueia B29.A2/A3: `texture.rs` (673), `stamp.rs` (689), `spec.rs` (689), `stroke.rs` (664), `spec/queries.rs` (655); `accumulate_batch.rs` (510) com o esqueleto de bandas + `union` copiado 3× com `accumulate_rgba_batch.rs` | AU11 | PB/texture.rs; stamp.rs; spec*.rs; stamp_color/accumulate*_batch.rs | não | — | `texture/amostra.rs`; `stamp/piramide.rs`; `bandas_com_toque(...)` único (resolve B29.A2 num só lugar) | loc cap + paridade ao bit | | | aberto |
+| B52.R27 | ★ bloqueia B13.A1/A2, B14: `trail.rs` 699, `trail/transfer.rs` 699, `assenta.rs` 700, `par.rs` 696, `sim.rs` 674 (`gather_params` + `StepCursor`), `oleo_real.rs` 683 | AU12 | WP/trail.rs; trail/transfer.rs; assenta.rs; par.rs; sim.rs; oleo_real.rs | não | — | `par/{rows,reduce}.rs`; `assenta/lei.rs`; `sim/passo.rs`; "montagem do campo" × "sombreado" ao introduzir o `Scratch` de B14.A1 | loc cap | | | aberto |
+| B52.R28 | ★ bloqueia B20.A1, B51.2: `painter_bridge.rs::dispatch` (~460 linhas numa função) | AU13 | AP/painter_bridge.rs | não | — | `fase_preview(...)`, `fase_painel(...)` (o bloco `panel-painter-layers` com 8 `static` de borda), `fase_overlays(...)`; `OverlayCtx` em `painter_bridge_{overlays,shape_overlays,line_overlay}.rs` | testes de ponte por nome | | | aberto |
+| B52.R29 | ★ bloqueia B39.A2, B39.A6: `cards_camadas_linha.rs`+`cards_camadas.rs` (712 somadas); `paint_texture.rs` 593; `state.rs` 594; `seccoes.rs` 591; `cards_shape.rs` 577; `paint_wetpaint.rs` 566. Corpo legado `PH2D_CARDS=0` (~45 ficheiros ≈ 14 mil linhas) duplica o dos cartões | AU13, AU14 | PL/cards_camadas*.rs; PL/paint*.rs; TU/paint.rs | não | — | `verbos`/`modificadores` → `cards_camadas_verbos.rs`; `Previa`+`previa_do_padrao` → `previa_cache.rs`; legado → módulo `legado/` (e apagar `paint_body`/`paint_group`/`paint_experimental` ~330 linhas quando a saída de referência cair) | loc cap | | | aberto |
+| B52.R30 | ★ bloqueia B51.3: `ph2d-wet-gpu/src/lib.rs` (678), `passo.rs` (607) | AU15 | ph2d-wet-gpu/src/{lib,passo}.rs | não | — | leituras de volta (`le_stage`, `desce`, `transfere`) → módulo `leitura` | loc cap | | | aberto |
+| B52.R31 | Testes e shader acima do tecto (fora do tecto de produto, ilegíveis): `adjustments/tests.rs` 2 512, `hero/tests.rs` 2 287, `number_drag.rs` 1 118, `layer_composite.wgsl` 1 346, `tests/impasto_body/deposit.rs` 2 126, `watercolor_session.rs` 1 717, `selection_editing.rs` 1 562, `wetpaint/tests.rs` 1 717, `dab/tests.rs` 889 | AU02, AU09, AU10, AU15 | vários | não | — | um ficheiro por tema/família; WGSL por estágio só se o carregador aceitar `#include`; confirmar se há isenção registada | loc cap (o gate decide se vale) | | | aberto |

@@ -184,3 +184,18 @@ um teste de 1100 px (curado com `textos_em`); a contagem `pintados + n == total`
 - Achado: largado sobre uma coluna, o cartão virava a «lista flutuante» dela (`DockSides::with_floating`) e o encaixe de origem andava atrás dele (x 6→312). Cura: `column_floating_rects` exclui os cartões livres. A pílula do rodapé só sobe sobre a Timeline encaixada (`frame_layout`).
 - Grava-se em `~/.ph2d/sections.txt` (`timeline_card=dx,dy,dw,dh`), como o desvio do seletor de cor.
 - Testes: `a_timeline_arrasta_e_encaixa::*` (3: título + janela + pílula + encaixar; canto + piso; clássico sem alças), `floating_card_ops::tests` (4), `cartao_solto::tests` (2). Foto `docs/Timeline/fotos/21_timeline_move.png`.
+
+## Rodada 3i (10/11): nada da Timeline se pinta fora do cartão estreito
+
+- Dono (foto, cartão a ~400 px): a ⟷ da duração pintava-se à direita da borda. Causa: `ruler_veil` punha a ⟷ SEMPRE `DUR_ARROW_OFFSET` (40) + 18 px à direita do fim, e `ruler::paint` desenha DEPOIS do `pop_layer` das faixas, sem recorte; o enquadrar deixava só 5 % de folga (15 px a 300 px).
+- Cura (só cartões; clássico byte a byte): `ruler_fim::{abre,fecha}_recorte` recorta tudo o que a régua pinta (véu, fim, laço, playhead, ⟷, marcadores) na área de tempo; as leituras de arrasto viram de lado na borda (`alca_estado::poe_faixa`). `ruler_veil::onde_a_seta`: a ⟷ encosta na borda; com o fim além (vista à mão) fica PRESA com um ▸, o alvo = o de antes + o ▸, o arrasto relativo continua a mudar a duração; presa, a leitura vai à esquerda.
+- `view::apply_fit_clip` reserva `DUR_ARROW_ROOM` (58 px, ≤ meia área) à direita com fim autorado: a vista enquadrada re-enquadra ao estreitar (regra 3f) com a ⟷ inteira e solta.
+- Régua nova `ph2d_ui_testkit::caixas_pintadas` (caixa visível de cada primitivo Vello, recortes aplicados) + `MockPanelHost::paint_vector_scene`. Testes `o_cartao_estreito::*` (3) e `ruler::veil::tests::nos_cartoes_a_seta_*`. Mutações: sem pino e sem reserva → vermelho; sem o recorte → verde (defesa em profundidade: o pino já mantém tudo dentro).
+- Foto `22_cartao_estreito.png` POR TIRAR: esperou a vez da placa (a app aberta de `line-InputMap` tinha-a) e o prazo acabou. Tirar: `docked.w = 400` temporário em `cartao_solto::lugar`, `fotografa_cena.sh PH2D_NEST_SMOKE=4 1930 1040 docs/Timeline/fotos/22_cartao_estreito.png 9`, reverter.
+
+## Rodada 3j (10/11): o olho da faixa, de ponta a ponta
+
+- Dono: «veja se o olhinho está fazendo o trabalho dele». Controlo morto conferido elo a elo: clique `TIMELINE_LANE_MUTE[i]` → `event.rs:416` (`SetLaneMuted{muted: !snap}`) → `fase_timeline_view.rs:43` → `intent_apply.rs:511` (`edit_at` no host aberto, um passo de undo) → `stack_frames.rs:310` e `stack_eval.rs:240` saltam a faixa muda (e `nest.rs:232`, `nest_map.rs:360`) → `snapshot.rs:610` → olho `faixas_coluna` (`Eye`/`EyeClosed`, `OlhoMudo`) e peças a `TIMELINE_PECA_MUDA_ALPHA`. **Nada partido.**
+- O defeito era a CENA: o shake movia X só 0,15 (≈15 px) por 0,5 s — invisível. Agora `shake` = 0,25 s ±0,6 X, peça [2,75; 3,75) em loop (4 sacudidas); eprintln, `smoke_nest.md` e o gate `a_montagem_poe_cada_container_onde_o_eprintln_diz` dizem-no. Shell líquido 0.
+- Faltava a DICA do olho (nenhum modo tinha): `faixas_coluna::dica_do_olho` (`panel.timeline.lane_mute` / `lane_unmute`, diz o que o clique fará), a mesma no clássico e nos cartões.
+- Teste novo de costura: `as_faixas_nos_cartoes::o_olho_da_faixa_tira_e_devolve_a_faixa_da_pose` (clique pintado → `apply_intent` → `apply_from_doc` num `World`: muda = a pose sem a faixa; reabre = a sacudida; Ctrl+Z; cartões e clássico).

@@ -318,3 +318,102 @@ fn os_nomes_das_faixas_e_da_lista_saem_inteiros_a_1290() {
     }
     ferramenta::force_cards_on_this_thread(None);
 }
+
+/// ⭐ **O olho da faixa, de ponta a ponta** (dono 10/11: *«veja se o olhinho está fazendo o trabalho
+/// dele»*): o clique pintado → `SetLaneMuted` → `apply_intent` grava `lane.muted` → a pose avaliada
+/// no meio da peça é a de SEM a faixa; outro clique devolve a sacudida; Ctrl+Z desfaz. Nos dois modos.
+#[test]
+fn o_olho_da_faixa_tira_e_devolve_a_faixa_da_pose() {
+    use ph2d_anim::{AnimValue, Interp, RationalTime};
+    use ph2d_ecs::{Entity, Transform, World};
+    use ph2d_timeline::{PropKind, TimelineState, apply_from_doc, apply_intent};
+    let mut world = World::new();
+    let e = world.spawn(Transform::default()).id().to_bits();
+    let mut st = TimelineState::new();
+    let key = |doc: &mut TimelineDoc, t: f64, v: f32| {
+        let at = RationalTime::from_seconds(t);
+        doc.insert_key(
+            e,
+            PropKind::TranslationX,
+            at,
+            AnimValue::Float(v),
+            Interp::Linear,
+        );
+    };
+    key(&mut st.doc, 0.0, 1.0);
+    key(&mut st.doc, 2.0, 1.0);
+    let shake = st.doc.add_clip("shake".into());
+    st.doc.set_active(shake);
+    for (t, v) in [(0.0, 0.0), (0.25, 0.6), (0.5, 0.0)] {
+        key(&mut st.doc, t, v);
+    }
+    st.doc.set_active(0);
+    let src = |c: usize| StripSource::Clip(u16::try_from(c).expect("cabe"));
+    for (nome, c, t0, t1) in [("Base", 0, 0.0, 2.0), ("FX", shake, 1.0, 1.5)] {
+        let l = st.doc.add_lane(nome.into()).expect("faixa");
+        st.doc
+            .add_strip_to(StackHost::Document, l, src(c), t0, t1)
+            .expect("peça");
+    }
+    let mut ph = ph2d_core::Playhead::default();
+    let mut x_em = |doc: &mut TimelineDoc| {
+        apply_from_doc(&mut world, doc, 1.25);
+        world
+            .get::<Transform>(Entity::from_bits(e))
+            .expect("xf")
+            .translation
+            .x
+    };
+    let mut sem_fx = st.doc.clone();
+    sem_fx.remove_lane_in(StackHost::Document, 1);
+    let (x_sem, x_com) = (x_em(&mut sem_fx), x_em(&mut st.doc));
+    assert!(
+        (x_com - x_sem).abs() > 0.3,
+        "a sacudida mexe: {x_com} × {x_sem}"
+    );
+
+    for cartoes in [true, false] {
+        ferramenta::force_cards_on_this_thread(Some(cartoes));
+        let mut clica_o_olho = |st: &mut TimelineState| {
+            let mut snap = TimelineViewSnapshot::default();
+            snap.rebuild(st, &ph, false);
+            set_current_timeline(Some(snap));
+            let mut m = Mesa::<TimelinePanel>::nova(TimelinePanelState {
+                tab: Tab::Arrange,
+                ..TimelinePanelState::default()
+            });
+            m.assenta_em(JANELA);
+            let _ = drain_intents();
+            // A dica diz o que o clique FARÁ: fechado ⇒ «Unmute», aberto ⇒ «Mute».
+            let chave = if st.doc.stack()[1].muted {
+                "panel.timeline.lane_unmute"
+            } else {
+                "panel.timeline.lane_mute"
+            };
+            let dica = m.host.store().tooltip_for(ids::TIMELINE_LANE_MUTE[1]);
+            assert_eq!(dica, Some(ph2d_i18n::tr(chave)), "a dica do olho");
+            let _ = m.clica(ids::TIMELINE_LANE_MUTE[1]);
+            for i in drain_intents() {
+                apply_intent(st, &mut ph, i);
+            }
+        };
+        clica_o_olho(&mut st);
+        assert!(st.doc.stack()[1].muted, "o olho fechou a FX ({cartoes})");
+        assert_eq!(
+            x_em(&mut st.doc),
+            x_sem,
+            "muda = a pose sem a faixa ({cartoes})"
+        );
+        clica_o_olho(&mut st);
+        assert!(!st.doc.stack()[1].muted, "o olho reabriu ({cartoes})");
+        assert_eq!(
+            x_em(&mut st.doc),
+            x_com,
+            "aberta, a sacudida volta ({cartoes})"
+        );
+        clica_o_olho(&mut st);
+        apply_intent(&mut st, &mut ph, TimelineIntent::Undo);
+        assert!(!st.doc.stack()[1].muted, "Ctrl+Z desfaz o mudo ({cartoes})");
+    }
+    ferramenta::force_cards_on_this_thread(None);
+}

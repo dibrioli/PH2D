@@ -69,7 +69,7 @@ impl crate::App {
         eprintln!(
             "[nest-smoke] Hero: clips idle walk jump swing shake; Run & jump 2x na cena, Idle \
              pack nao posto, Step 1x dentro do Idle pack; faixas Base 1.0, Upper body 0.6, FX \
-             MUDA. Abre em {aba}."
+             MUDA (o olho solta o shake de +-0.6 X em [2.75, 3.75)). Abre em {aba}."
         );
     }
 
@@ -242,7 +242,7 @@ pub(crate) fn build_montagem(doc: &mut TimelineDoc, bits: u64) {
         ("walk", 0.75, [(X, 0.0, -1.0), (Y, 0.4, 0.15), (X, 0.75, 1.0)]),
         ("jump", 1.0, [(Y, 0.0, 0.0), (Y, 0.5, 1.2), (Y, 1.0, 0.0)]),
         ("swing", 0.5, [(R, 0.0, 0.0), (R, 0.25, 0.6), (R, 0.5, 0.0)]),
-        ("shake", 0.5, [(X, 0.0, 0.0), (X, 0.25, 0.15), (X, 0.5, 0.0)]),
+        ("shake", 0.25, [(X, 0.0, -0.6), (X, 0.125, 0.6), (X, 0.25, -0.6)]),
     ];
     let mut ix = [0_u16; 5];
     for (i, (name, len, keys)) in clips.into_iter().enumerate() {
@@ -272,7 +272,7 @@ pub(crate) fn build_montagem(doc: &mut TimelineDoc, bits: u64) {
         (scene, "Base", 1.0, false, &[(idle, 0.0, 1.33), (src(run), 1.0, 3.0),
                                       (idle, 2.75, 4.25), (src(run), 4.0, 6.0)]),
         (scene, "Upper body", 0.6, false, &[(swing, 1.67, 2.17)]),
-        (scene, "FX", 1.0, true, &[(shake, 2.75, 3.25)]),
+        (scene, "FX", 1.0, true, &[(shake, 2.75, 3.75)]),
     ];
     for (host, name, weight, muted, strips) in lanes {
         let l = doc.add_lane_in(host, name.into()).expect("lane");

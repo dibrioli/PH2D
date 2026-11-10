@@ -25,6 +25,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // Em cartões: a seta é o ícone da lista.
         "panel.timeline.add_track_lista" => "+ Track",
         "panel.timeline.add_lane" => "+ Lane",
+        // The lane's eye: open = the lane plays, closed = it is left out of the animation.
+        "panel.timeline.lane_mute" => "Mute this lane (open eye: it plays)",
+        "panel.timeline.lane_unmute" => "Unmute this lane (closed eye: it is left out)",
         "panel.timeline.add_container" => "+ Container",
         "panel.timeline.crumb_root" => "Scene",
         // The «Animation of» chip (ObjectsAndComponents 01 §6): whose animation the panel shows.

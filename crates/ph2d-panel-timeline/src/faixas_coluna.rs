@@ -33,6 +33,20 @@ pub(crate) const BOTAO_W: f32 = ROW_H_PX - STRIP_PAD_Y * 2.0;
 /// O ícone da coluna nos cartões: do tamanho da letra da faixa (a maquete B3: 12 px).
 pub(crate) const ICONE_PX: f32 = TypeToken::Sm.px();
 
+/// A dica do olho diz o que o clique FARÁ, pelo estado de agora — a mesma nos dois modos.
+fn dica_do_olho(ctx: &mut PaintCtx, index: usize, muted: bool) {
+    let id = ids::TIMELINE_LANE_MUTE[index];
+    let dica = ph2d_i18n::tr(if muted {
+        "panel.timeline.lane_unmute"
+    } else {
+        "panel.timeline.lane_mute"
+    });
+    let store = ctx.host.store_mut();
+    if store.tooltip_for(id) != Some(dica) {
+        store.set_tooltip(id, dica);
+    }
+}
+
 /// Paint one lane's label column — the classic one, or the cards one.
 pub(crate) fn paint(
     ctx: &mut PaintCtx,
@@ -42,6 +56,7 @@ pub(crate) fn paint(
     index: usize,
     row: Rect,
 ) {
+    dica_do_olho(ctx, index, lane.muted);
     if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
         paint_cartoes(ctx, theme, g, lane, index, row);
     } else {

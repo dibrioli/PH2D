@@ -60,7 +60,7 @@ lixeira que apaga em **CASCATA**. Ver «Cena `=3` — o que olhar», abaixo.
 
 O MESMO documento nas duas, montado por `build_montagem` (`shells/desktop/src/nest_smoke.rs`; o gate
 `a_montagem_poe_cada_container_onde_o_eprintln_diz` mede o que o terminal afirma). Um objeto **Hero**; os clipes
-`idle` (2 s), `walk` (0,75 s), `jump` (1 s), `swing` (0,5 s), `shake` (0,5 s); toda peça toca a velocidade 1
+`idle` (2 s), `walk` (0,75 s), `jump` (1 s), `swing` (0,5 s), `shake` (0,25 s: X −0,6 → +0,6 → −0,6); toda peça toca a velocidade 1
 (cortada ao vão, ou em loop quando o vão é maior que o clipe).
 
 | container | interior | posto |
@@ -70,11 +70,13 @@ O MESMO documento nas duas, montado por `build_montagem` (`shells/desktop/src/ne
 | **Step** | faixa `Base`: walk 0–0,75 | **1×**, dentro do Idle pack |
 
 A cena: faixa **Base** (peso 1,0) com idle [0; 1,33), Run & jump [1; 3), idle [2,75; 4,25), Run & jump [4; 6) — as
-sobreposições são mesclas; **Upper body** (peso 0,6) com swing [1,67; 2,17); **FX** **muda** com shake [2,75; 3,25).
+sobreposições são mesclas; **Upper body** (peso 0,6) com swing [1,67; 2,17); **FX** **muda** com shake [2,75; 3,75) em loop (4 sacudidas de ±0,6 em X).
 O laço do tempo é [0; 6).
 
 - **`=4`** abre a Timeline na aba **Arrange**, a tocar: as três faixas da cena, as peças com o nome do clipe ou do
-  container, as mesclas onde duas peças se sobrepõem, a faixa FX apagada (muda) e a Upper body a 0,6.
+  container, as mesclas onde duas peças se sobrepõem, a faixa FX apagada (muda, olho fechado) e a Upper body a 0,6.
+  **O olho:** clique o olho da FX (abre) — entre 2,75 s e 3,75 s o quadrado SACODE de lado; clique de novo (fecha) e a
+  sacudida some; Ctrl+Z desfaz. Passe o rato no olho: a dica diz o que o clique fará.
 - **`=5`** abre na aba **Containers**, na RAIZ (a lista; qualquer trilha aberta cai): três linhas — Run & jump
   «used 2×», Idle pack «not placed», Step «used 1×» (o «used» conta toda peça que põe o container, na cena e dentro
   de outro container; a faixa muda conta). A lista não toca (é a lei da aba); duplo-clique numa linha entra.

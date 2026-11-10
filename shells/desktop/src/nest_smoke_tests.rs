@@ -2,7 +2,7 @@
 //! [`super::build_library`] e [`super::build_montagem`] que o app chama (não um espelho).
 
 use super::{LIBRARY_END, build_library, build_montagem};
-use ph2d_timeline::{StackHost, StripSource, TimelineDoc, container_bar_seconds};
+use ph2d_timeline::{StackHost, StripLoop, StripSource, TimelineDoc, container_bar_seconds};
 
 /// Um doc montado como a cena `=3` monta.
 fn library() -> TimelineDoc {
@@ -130,13 +130,11 @@ fn deleting_the_leaf_asset_cascades_and_renumbers() {
     );
 }
 
-/// Os dois clips keyam canais **disjuntos**: as lanes do Walk somam (com X no Step, as três
-/// repetições voltariam ao mesmo lugar e a cena leria como quebrada).
+/// Os dois clips keyam canais **disjuntos**: com X no Step, as três repetições se anulariam.
 #[test]
 fn the_two_clips_key_disjoint_channels() {
     use ph2d_timeline::PropKind;
     let doc = library();
-    // O `target` de cada (objeto, propriedade): a tabela de bindings que o `upsert_key` usou.
     let target_of = |prop: PropKind| {
         doc.bindings()
             .iter()
@@ -156,8 +154,7 @@ fn the_two_clips_key_disjoint_channels() {
     assert!(!keyed(1, PropKind::TranslationY), "Glide NAO keya Y");
 }
 
-/// A cena `=4`/`=5` afirma: Run & jump 2×, Idle pack não posto, Step 1×; faixas Base 1.0, Upper
-/// body 0.6, FX muda; e cada peça a velocidade 1.
+/// A cena `=4`/`=5`: Run & jump 2×, Idle pack 0, Step 1×; Base 1.0, Upper body 0.6, FX muda.
 #[test]
 fn a_montagem_poe_cada_container_onde_o_eprintln_diz() {
     let mut doc = TimelineDoc::default();
@@ -175,6 +172,9 @@ fn a_montagem_poe_cada_container_onde_o_eprintln_diz() {
     let cena = doc.host_stack(StackHost::Document).expect("a cena");
     let faixas: Vec<_> = cena.iter().map(|l| (l.weight, l.muted)).collect();
     assert_eq!(faixas, [(1.0, false), (0.6, false), (1.0, true)]);
+    let fx = &cena[2].strips[0]; // o olho solta 4 sacudidas de ±0.6 X, nunca 15 px
+    assert!((fx.t_start, fx.t_end, fx.src_out) == (2.75, 3.75, 0.25));
+    assert!(fx.loop_mode == StripLoop::Loop, "o shake repete");
     let mut pecas = cena.iter().flat_map(|l| &l.strips);
     assert!(pecas.all(|s| (s.speed - 1.0).abs() < 1e-9), "velocidade 1");
 }

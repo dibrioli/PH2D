@@ -58,6 +58,13 @@ impl PainterTool {
     /// sobre o RAIO do pincel a partir da fronteira para dentro.
     #[must_use]
     pub(super) fn fill_selection_keep(&self) -> Arc<Vec<u8>> {
+        self.fill_selection_keep_na(None)
+    }
+
+    /// [`Self::fill_selection_keep`] só dentro de `janela` (B48.2: o tique do balde), `0` fora dela.
+    /// Ao bit dentro da janela crescida pela rampa: a EDT só perde sementes além de `ramp`, onde o
+    /// perfil já satura.
+    pub(super) fn fill_selection_keep_na(&self, janela: Option<Region>) -> Arc<Vec<u8>> {
         let mask = Arc::clone(&self.paint.selection_mask);
         if !self.paint.brush.deposits_height() || !self.paint.selection_active {
             return mask;
@@ -76,9 +83,33 @@ impl PainterTool {
             w: self.source_size.0,
             h: self.source_size.1,
         };
-        let dist = super::sculpt_close::distance_inside(&mask, w, full, INSIDE_THRESHOLD);
-        if dist.len() != w * h {
+        let r = janela.map_or(full, |j| {
+            let m = ramp.ceil() as u32 + 1;
+            let (x0, y0) = (j.x.saturating_sub(m), j.y.saturating_sub(m));
+            let x1 = (j.x + j.w + m).min(full.w);
+            let y1 = (j.y + j.h + m).min(full.h);
+            Region {
+                x: x0,
+                y: y0,
+                w: x1 - x0,
+                h: y1 - y0,
+            }
+        });
+        let (rx, ry, rw, rh) = (r.x as usize, r.y as usize, r.w as usize, r.h as usize);
+        let dist = super::sculpt_close::distance_inside(&mask, w, r, INSIDE_THRESHOLD);
+        if dist.len() != rw * rh {
             return mask;
+        }
+        if r != full {
+            let mut out = vec![0u8; w * h];
+            for yy in 0..rh {
+                let g = (ry + yy) * w + rx;
+                for xx in 0..rw {
+                    let m = mask[g + xx];
+                    out[g + xx] = self.keep_texel(dist[yy * rw + xx], m, ramp);
+                }
+            }
+            return Arc::new(out);
         }
         // ⚠️ **`falloff_weight` recebe `t = distância / raio` a partir do CENTRO do dab** (0 no miolo, 1
         // no aro) — não a profundidade. A grandeza que temos é a distância à BORDA, que é o complemento
@@ -92,19 +123,21 @@ impl PainterTool {
         let out: Vec<u8> = dist
             .iter()
             .zip(mask.iter())
-            .map(|(&d, &m)| {
-                if m <= INSIDE_THRESHOLD {
-                    return 0;
-                }
-                let t = 1.0 - (d / ramp).clamp(0.0, 1.0);
-                let wgt = self.paint.brush.falloff_weight(t).clamp(0.0, 1.0);
-                // ⚠️ O perfil MULTIPLICA a máscara, nunca a substitui: uma seleção com Feather já
-                // carrega uma cauda autorada, e trocá-la pelo perfil apagaria o que o artista pediu no
-                // slider. Dentro, longe da borda, `wgt = 1` e o produto devolve a máscara intacta.
-                (f32::from(m) * wgt).round().clamp(0.0, 255.0) as u8
-            })
+            .map(|(&d, &m)| self.keep_texel(d, m, ramp))
             .collect();
         Arc::new(out)
+    }
+
+    #[inline]
+    fn keep_texel(&self, d: f32, m: u8, ramp: f32) -> u8 {
+        if m <= INSIDE_THRESHOLD {
+            return 0;
+        }
+        let t = 1.0 - (d / ramp).clamp(0.0, 1.0);
+        let wgt = self.paint.brush.falloff_weight(t).clamp(0.0, 1.0);
+        // ⚠️ O perfil MULTIPLICA a máscara, nunca a substitui: uma seleção com Feather já carrega uma
+        // cauda autorada, e trocá-la pelo perfil apagaria o que o artista pediu no slider.
+        (f32::from(m) * wgt).round().clamp(0.0, 255.0) as u8
     }
 
     /// **Deposita CORPO na região que `cov` cobre** — escreve os cinco planos que um traço escreve e
@@ -171,6 +204,70 @@ impl PainterTool {
             .iter()
             .map(|&p| derive_height(&spec, p, f32::from(NO_GRAIN) / 255.0))
             .collect();
+        self.paint.relief.stroke_paint = paint;
+        self.paint.relief.stroke_grain = vec![NO_GRAIN; n];
+        self.paint.relief.stroke_film = film;
+        self.paint.relief.stroke_radius = rad;
+        self.paint.relief.stroke_height = height;
+        self.paint.relief.stroke_relief_bbox = Some(Region {
+            x: minx as u32,
+            y: miny as u32,
+            w: (maxx - minx + 1) as u32,
+            h: (maxy - miny + 1) as u32,
+        });
+        true
+    }
+}
+
+impl PainterTool {
+    /// [`Self::arm_fill_body`] com `cov` só na `janela` (B48.2: `cov` é `janela.w × janela.h`); os planos
+    /// continuam do tamanho da tela, com os mesmos valores fora dela.
+    pub(super) fn arm_fill_body_na(&mut self, cov: &[u8], janela: Region) -> bool {
+        if !self.paint.brush.deposits_height() {
+            return false;
+        }
+        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        let n = w * h;
+        let (jx, jy, jw, jh) = (
+            janela.x as usize,
+            janela.y as usize,
+            janela.w as usize,
+            janela.h as usize,
+        );
+        if n == 0 || cov.len() != jw * jh || jx + jw > w || jy + jh > h {
+            return false;
+        }
+        let radius = self.paint.brush.clamped_radius();
+        let spec = self.paint.brush;
+        let ng = f32::from(NO_GRAIN) / 255.0;
+        let mut paint = vec![0.0f32; n];
+        let mut film = vec![0u8; n];
+        let mut rad = vec![0.0f32; n];
+        let mut height = vec![derive_height(&spec, 0.0, ng); n];
+        let (mut minx, mut miny, mut maxx, mut maxy) = (usize::MAX, usize::MAX, 0usize, 0usize);
+        for yy in 0..jh {
+            let y = jy + yy;
+            for xx in 0..jw {
+                let c = cov[yy * jw + xx];
+                if c == 0 {
+                    continue;
+                }
+                let x = jx + xx;
+                let i = y * w + x;
+                let p = f32::from(c) / 255.0;
+                paint[i] = p;
+                height[i] = derive_height(&spec, p, ng);
+                film[i] = c;
+                rad[i] = radius;
+                minx = minx.min(x);
+                miny = miny.min(y);
+                maxx = maxx.max(x);
+                maxy = maxy.max(y);
+            }
+        }
+        if minx > maxx {
+            return false; // nada coberto
+        }
         self.paint.relief.stroke_paint = paint;
         self.paint.relief.stroke_grain = vec![NO_GRAIN; n];
         self.paint.relief.stroke_film = film;

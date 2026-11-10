@@ -33,6 +33,20 @@ pub(in crate::tool::paint) fn flood_fill(
     flood_fill_medido(px, w, h, seed, fill, tol, mask).0
 }
 
+/// [`flood_fill`] mais a CAIXA do que o flood visitou (mudado ou não) — a janela do tique (B48.2).
+pub(in crate::tool::paint) fn flood_fill_caixa(
+    px: &mut [u8],
+    w: usize,
+    h: usize,
+    seed: (usize, usize),
+    fill: [u8; 3],
+    tol: u8,
+    mask: Option<&mut [u8]>,
+) -> (Option<Region>, Option<Region>) {
+    let (r, _, caixa) = flood_fill_medido(px, w, h, seed, fill, tol, mask);
+    (r, caixa)
+}
+
 /// [`flood_fill`] mais o PICO da pilha (entradas) — a régua do B48.1.
 fn flood_fill_medido(
     px: &mut [u8],
@@ -42,13 +56,13 @@ fn flood_fill_medido(
     fill: [u8; 3],
     tol: u8,
     mut mask: Option<&mut [u8]>,
-) -> (Option<Region>, usize) {
+) -> (Option<Region>, usize, Option<Region>) {
     if w == 0 || h == 0 || px.len() != w * h * 4 {
-        return (None, 0);
+        return (None, 0, None);
     }
     let (sx, sy) = seed;
     if sx >= w || sy >= h {
-        return (None, 0);
+        return (None, 0, None);
     }
     let si = (sy * w + sx) * 4;
     let seed_c = [px[si], px[si + 1], px[si + 2], px[si + 3]];
@@ -114,13 +128,13 @@ fn flood_fill_medido(
         }
         pico = pico.max(stack.len());
     }
-    let r = changed.then(|| Region {
+    let caixa = Region {
         x: minx as u32,
         y: miny as u32,
         w: (maxx - minx + 1) as u32,
         h: (maxy - miny + 1) as u32,
-    });
-    (r, pico)
+    };
+    (changed.then_some(caixa), pico, Some(caixa))
 }
 
 /// The connected COMPONENT (4-connected, `≥128` inside) of the selection `mask` that contains texel

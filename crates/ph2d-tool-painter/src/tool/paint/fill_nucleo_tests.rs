@@ -98,7 +98,7 @@ fn o_balde_empilha_uma_entrada_por_corrida_nao_por_texel() {
     for (w, h) in [(512usize, 512usize), (2048, 2048)] {
         for seed in [(0, 0), (w / 2, h / 2), (w - 1, h - 1)] {
             let mut px = vec![255u8; w * h * 4];
-            let (r, pico) = flood_fill_medido(&mut px, w, h, seed, [0, 255, 0], 0, None);
+            let (r, pico, _) = flood_fill_medido(&mut px, w, h, seed, [0, 255, 0], 0, None);
             let r = r.expect("a tela inteira muda");
             assert_eq!((r.w, r.h), (w as u32, h as u32));
             eprintln!("B48.1 {w}x{h} semente {seed:?}: pico da pilha = {pico} entradas");

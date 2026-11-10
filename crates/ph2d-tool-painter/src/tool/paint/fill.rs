@@ -59,19 +59,13 @@ impl PainterTool {
             (self.paint.brush.color[2].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
         ];
         // The ColorDrop clips to the ONE selection region the colour was dropped on — the connected
-        // component of the selection mask under the seed — NOT every disjoint selection area (Enio
-        // 2026-07-04). Computed before the mutable canvas borrow. `None` when there's no live selection.
+        // component of the selection mask under the seed (Enio 2026-07-04). `None` without a selection.
         let clip = (self.paint.selection_active && self.paint.selection_mask.len() == w * h)
             .then(|| nucleo::componente_da_selecao(&self.paint.selection_mask, sx, sy, w, h));
-        // ⚠️ A cobertura que a SELEÇÃO concede a um fill: a máscara verbatim no digital, e com o perfil
-        // do Falloff na borda quando há corpo em mãos (`impasto_fill`). O balde a lê pela MESMA porta que
-        // o Color Fill — duas leituras divergiriam no dia em que uma delas ganhasse um caso especial.
-        let keep_mask = self.fill_selection_keep();
-        // O corpo do Impasto precisa do conjunto preenchido; o digital nem aloca o plano.
-        // ⚠️ A pergunta é do PINCEL (`deposits_height`), não do MODO: um balde nunca está em
-        // `PaintMode::Paint`, então o `impasto_applies` — que exige aquele modo — deixaria este plano
-        // sempre `None` e o corpo do balde morto em todo caminho, com a suíte inteira verde.
+        // O corpo do Impasto precisa do conjunto preenchido; o digital nem aloca o plano. A pergunta é do
+        // PINCEL (`deposits_height`), não do MODO: um balde nunca está em `PaintMode::Paint`.
         let mut fill_mask = self.paint.brush.deposits_height().then(|| vec![0u8; w * h]);
+        let prev = self.paint.fill_last_rect;
         let buf = crate::tool::paint::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
@@ -81,68 +75,85 @@ impl PainterTool {
         if buf.len() != w * h * 4 {
             return;
         }
-        // Restore the pre-fill pixels so the fill always starts from the original layer.
-        if self.paint.fill_snapshot.len() == buf.len() {
-            buf.copy_from_slice(&self.paint.fill_snapshot);
+        // B48.2: o buffer só difere do snapshot dentro do fill anterior — restaurar só essas linhas.
+        if self.paint.fill_snapshot.len() == buf.len()
+            && let Some(r) = prev
+        {
+            copia_caixa(buf, &self.paint.fill_snapshot, r, w);
         }
-        let filled = flood_fill(buf, w, h, (sx, sy), color, tol, fill_mask.as_deref_mut());
-        // Clip the fill to the drop's selection region — the flood writes `canvas_rgba` directly, bypassing
-        // the per-dab stamp gate, so revert texels outside that component (feathered coverage kept inside it,
-        // 0 outside) back to the pre-fill snapshot (ADR-0103).
-        if let Some(comp) = &clip {
-            let mask = &keep_mask;
+        let (filled, caixa) =
+            nucleo::flood_fill_caixa(buf, w, h, (sx, sy), color, tol, fill_mask.as_deref_mut());
+        let Some(caixa) = caixa else {
+            return;
+        };
+        // A cobertura que a SELEÇÃO concede (a mesma porta do Color Fill), só na caixa do flood.
+        let keep_mask = clip
+            .as_ref()
+            .map(|_| self.fill_selection_keep_na(Some(caixa)));
+        // Clip to the drop's selection region — the flood writes `canvas_rgba` directly, bypassing the
+        // per-dab stamp gate (ADR-0103). Fora do que o flood MUDOU o pixel é o snapshot e a mistura é a
+        // identidade, então só a caixa `filled` é percorrida.
+        if let (Some(comp), Some(mask), Some(fr)) = (&clip, &keep_mask, filled) {
+            let buf = crate::tool::paint::plane_fork::fork_canvas(
+                &mut self.canvas_rgba,
+                &self.undo.write_state,
+                self.source_size.0,
+                None,
+            );
             let snap = &self.paint.fill_snapshot;
             let n = (w * h).min(snap.len() / 4);
-            for i in 0..n {
-                // Keep the feathered selection coverage ONLY inside the drop's component; 0 elsewhere.
-                let keep = if comp[i] >= 128 {
-                    f32::from(mask[i]) / 255.0
-                } else {
-                    0.0
-                };
-                if keep >= 1.0 {
-                    continue;
-                }
-                let b = i * 4;
-                for c in 0..4 {
-                    let painted = f32::from(buf[b + c]);
-                    let orig = f32::from(snap[b + c]);
-                    buf[b + c] = (painted * keep + orig * (1.0 - keep))
-                        .round()
-                        .clamp(0.0, 255.0) as u8;
+            for y in fr.y as usize..(fr.y + fr.h) as usize {
+                for x in fr.x as usize..(fr.x + fr.w) as usize {
+                    let i = y * w + x;
+                    if i >= n {
+                        continue;
+                    }
+                    let keep = if comp[i] >= 128 {
+                        f32::from(mask[i]) / 255.0
+                    } else {
+                        0.0
+                    };
+                    if keep >= 1.0 {
+                        continue;
+                    }
+                    let b = i * 4;
+                    for c in 0..4 {
+                        let painted = f32::from(buf[b + c]);
+                        let orig = f32::from(snap[b + c]);
+                        buf[b + c] = (painted * keep + orig * (1.0 - keep))
+                            .round()
+                            .clamp(0.0, 255.0) as u8;
+                    }
                 }
             }
         }
-        // **O CORPO**: o mesmo conjunto que a cor pintou, pela mesma cobertura. Re-armado a cada tique do
-        // slider (o `reset` antes) — o commit é o `close_stroke` do Done, exatamente como num traço.
+        // **O CORPO**: o mesmo conjunto que a cor pintou, pela mesma cobertura, re-armado a cada tique (o
+        // `reset` antes); o commit é o `close_stroke` do Done. O que o `reset` apaga entra no sujo.
         let mut body = None;
         if let Some(fm) = fill_mask {
-            // O que o `reset` está prestes a APAGAR conta tanto quanto o que o `arm` põe: um fill que
-            // encolhe deixa relevo para trás, e quem some da tela precisa de repintura tanto quanto quem
-            // chega — a mesma razão pela qual a cor já une com o `fill_last_rect`.
-            //
-            // ⚠️ **Esta linha é defesa em camada, e a mutação que a apaga NÃO sangra** — varrida a suíte
-            // inteira. O motivo é aritmético e vale a pena escrever: cor-inalterada implica que o flood
-            // caiu sobre texels que já ERAM a cor do pincel, logo o conjunto não depende da tolerância e
-            // o corpo não encolhe; e quando ele encolhe é porque a cor mudou no tique anterior, e aí o
-            // `fill_last_rect` já cobre. Fica porque tirá-la faria o código AFIRMAR esse acoplamento sem
-            // nada o sustentar — e o `reset_stroke_height` apaga um plano que está na tela.
             body = self.paint.relief.stroke_relief_bbox;
             self.reset_stroke_height();
-            let keep = &keep_mask;
-            let cov: Vec<u8> = (0..w * h)
-                .map(|i| {
+            let (cx, cy, cw, ch) = (
+                caixa.x as usize,
+                caixa.y as usize,
+                caixa.w as usize,
+                caixa.h as usize,
+            );
+            let mut cov = vec![0u8; cw * ch];
+            for yy in 0..ch {
+                for xx in 0..cw {
+                    let i = (cy + yy) * w + cx + xx;
                     let inside = clip.as_ref().is_none_or(|c| c[i] >= 128);
                     if !inside || fm[i] == 0 {
-                        return 0;
+                        continue;
                     }
-                    let k = clip
+                    let k = keep_mask
                         .as_ref()
-                        .map_or(255, |_| keep.get(i).copied().unwrap_or(255));
-                    (u32::from(fm[i]) * u32::from(k) / 255) as u8
-                })
-                .collect();
-            self.arm_fill_body(&cov);
+                        .map_or(255, |keep| keep.get(i).copied().unwrap_or(255));
+                    cov[yy * cw + xx] = (u32::from(fm[i]) * u32::from(k) / 255) as u8;
+                }
+            }
+            self.arm_fill_body_na(&cov, caixa);
             body = match (body, self.paint.relief.stroke_relief_bbox) {
                 (Some(gone), Some(armed)) => Some(super::union_region(gone, armed)),
                 (a, b) => a.or(b),
@@ -323,6 +334,21 @@ impl PainterTool {
     }
 }
 
+/// Copia as linhas de `r` de `snap` para `buf` (RGBA8, largura `w`).
+fn copia_caixa(buf: &mut [u8], snap: &[u8], r: crate::tool::paint::Region, w: usize) {
+    let (x0, x1) = (r.x as usize * 4, (r.x + r.w) as usize * 4);
+    for y in r.y as usize..(r.y + r.h) as usize {
+        let (a, b) = (y * w * 4 + x0, y * w * 4 + x1);
+        if b <= buf.len() && b <= snap.len() {
+            buf[a..b].copy_from_slice(&snap[a..b]);
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "fill_gesto_tests.rs"]
 mod gesto_tests;
+
+#[cfg(test)]
+#[path = "fill_tique_tests.rs"]
+mod tique_tests;

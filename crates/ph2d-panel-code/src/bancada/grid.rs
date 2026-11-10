@@ -44,7 +44,8 @@ fn columns(who: &Who) -> Vec<Column> {
             col
         }
     });
-    std::iter::once(Column::new(NAME, String::new()))
+    // O título da primeira coluna é o da folha do Stopped (a tabela irmã na mesma aba).
+    std::iter::once(Column::new(NAME, tr("code.debug.col.name")))
         .chain(props)
         .collect()
 }

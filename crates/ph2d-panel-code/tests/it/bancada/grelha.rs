@@ -237,3 +237,32 @@ fn os_numeros_da_grelha_e_do_balao_pintam_na_mono_do_codigo() {
     assert!(v.popover_table().is_some(), "o balão pintou a tabela");
     assert!(balao.cache().shapes() > 0, "o balão moldou os valores");
 }
+
+/// Fecho 10/11: a primeira coluna da grelha tem título, o mesmo «Name» da folha do Stopped (a tabela
+/// irmã na mesma aba); antes o cabeçalho dela estava vazio.
+#[test]
+fn a_primeira_coluna_da_grelha_chama_se_name_como_na_folha_do_stopped() {
+    let (who, mut ts) = (quem(), ts());
+    let mut v = BancadaView::default();
+    let mut scene = VectorScene::new();
+    v.paint_bench(
+        &who,
+        GRADE,
+        None,
+        &mut CodeView::new(),
+        &mut scene,
+        &mut ts,
+        &Theme::default(),
+    );
+    let (lay, ..) = v.grid_table().expect("a tabela pintada");
+    let (col, head) = (lay.col("@name").expect("a coluna dos nomes"), lay.header);
+    assert_eq!(col.x, lay.area.x, "é a primeira");
+    let titulo = crate::linhas_de_base(&scene)
+        .into_iter()
+        .find(|&(_, x, b)| x >= col.x && x < col.x + col.w && b > head.y && b < head.y + head.h);
+    assert!(
+        titulo.is_some(),
+        "o cabeçalho da coluna dos nomes pintou texto"
+    );
+    assert_eq!(ph2d_i18n::tr("code.debug.col.name"), "Name");
+}

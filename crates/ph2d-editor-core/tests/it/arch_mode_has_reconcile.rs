@@ -385,7 +385,11 @@ fn collect_rs(dir: &Path, out: &mut Vec<PathBuf>) {
                 continue;
             };
             // `vendor/`: código de terceiros (o rapier2d vendorizado), não é nosso.
-            if name == "target" || name == "node_modules" || name == "vendor" || name.starts_with('.') {
+            if name == "target"
+                || name == "node_modules"
+                || name == "vendor"
+                || name.starts_with('.')
+            {
                 continue;
             }
             collect_rs(&p, out);

@@ -131,7 +131,9 @@ fn os_palcos_das_macros_passam_por_cada_sitio_do_quadro() {
             < em_chrome("palcos.lentes(surface.gpu(), world_rt, cena, fora);")
     );
     let luz = include_str!("present_luz.rs");
-    assert!(luz.contains(".com_oclusoes(\n            &mut [&mut flip_luz, &mut motion_luz, &mut pixel_luz],"));
+    assert!(luz.contains(
+        ".com_oclusoes(\n            &mut [&mut flip_luz, &mut motion_luz, &mut pixel_luz],"
+    ));
 }
 
 /// **As macros do Painter em cena** (W4 item 5.5 D): o palco segue o `MacroTempo` que o dreno da

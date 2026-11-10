@@ -199,22 +199,16 @@ fn every_light_quality_survives_a_round_trip() {
     );
 }
 
-/// A vista da aba Input Map (plano InputMap §3): as três voltam iguais; sem a chave (a 1.ª vez) ou
-/// com lixo, é o Keyboard.
+/// A vista da aba Input Map (plano §3): as três voltam iguais; sem a chave ou com lixo, o Keyboard.
 #[test]
 fn a_vista_do_input_map_volta_e_a_primeira_vez_e_o_teclado() {
     use ph2d_app_input_map::View;
+    let mut p = Prefs::default();
     for v in View::ALL {
-        let p = Prefs {
-            input_map_view: v,
-            ..Prefs::default()
-        };
-        assert_eq!(parse(&serialize(&p)), p, "{v:?} tem de voltar igual");
+        p.input_map_view = v;
+        assert_eq!(parse(&serialize(&p)), p, "{v:?}");
     }
-    assert_eq!(parse("").input_map_view, View::Keyboard);
-    assert_eq!(
-        parse("input_map_view=grid\n").input_map_view,
-        View::Keyboard
-    );
-    assert_eq!(parse("input_map_view=try\n").input_map_view, View::TryIt);
+    for junk in ["", "input_map_view=x"] {
+        assert_eq!(parse(junk).input_map_view, View::Keyboard);
+    }
 }

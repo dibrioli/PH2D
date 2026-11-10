@@ -215,10 +215,7 @@ impl crate::App {
         ph2d_app_code::frame(sim, script.as_mut(), hero, toasts, filed);
         let tl = (&self.timeline.doc, &mut self.timeline_intents);
         kanban_families(sim, hero, tl, toasts);
-        let pad = self
-            .gilrs
-            .as_ref()
-            .is_some_and(|g| g.gamepads().next().is_some());
+        let pad = self.gilrs.iter().any(|g| g.gamepads().next().is_some());
         ph2d_app_input_map::frame(sim.world(), hero, pad);
         // ⭐ **A LUZ** (Luz 2D): a secção do Inspector e a recusa do solver, que sobe como aviso.
         let (timeline, playhead) = (&self.timeline, &self.playhead);

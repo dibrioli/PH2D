@@ -5,6 +5,7 @@
 
 use std::path::PathBuf;
 
+use ph2d_app_input_map::View;
 use ph2d_editor_core::motion::UiCharacter;
 
 /// O par que viaja. Os dois eixos do plano: o GOSTO e a GARANTIA.
@@ -25,7 +26,7 @@ pub struct Prefs {
     /// O intervalo da cópia de recuperação (`recovery.minutes`, O15) — do artista e da máquina dele.
     pub recovery: ph2d_recovery::Period,
     /// A última vista da aba Input Map (`input_map_view`); a de omissão (nunca escolhida) é o Keyboard.
-    pub input_map_view: ph2d_app_input_map::View,
+    pub input_map_view: View,
 }
 
 /// `~/.ph2d/prefs.txt`, ou `None` com `$HOME` por definir (a persistência é então saltada).
@@ -105,11 +106,7 @@ pub fn parse(text: &str) -> Prefs {
                 }
             }
             "light_auto" => p.luz2d.automatica = value.trim() == "1",
-            "input_map_view" => {
-                if let Some(v) = ph2d_app_input_map::View::from_pref_key(value) {
-                    p.input_map_view = v;
-                }
-            }
+            "input_map_view" => p.input_map_view = View::from_pref_key(value).unwrap_or_default(),
             "ui_scale" => {
                 if let Some(z) = ph2d_tokens::UiScale::from_wire(value.trim()) {
                     p.ui_scale = z;

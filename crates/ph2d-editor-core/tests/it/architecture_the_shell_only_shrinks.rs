@@ -213,7 +213,7 @@ const TETOS_DAS_CRATES_APP: &[(&str, usize)] = &[
     ("ph2d-app-constraints", 10_526), // 10_320
     ("ph2d-app-flip", 28_960),        // 28_393
     ("ph2d-app-game", 2_728), // 2_628 (GEF 19: a moldura da câmera saiu para `ph2d-camera-frame`)
-    ("ph2d-app-input-map", 314), // 214 (InputMap R1b, 10/11: a família da aba nova; a pintura na `ph2d-input-map-editor`)
+    ("ph2d-app-input-map", 319), // 219 (InputMap R1b, 10/11: a família da aba nova; a pintura na `ph2d-input-map-editor`)
     ("ph2d-app-kanban", 32_175), // 31_545
     ("ph2d-app-light2d", 25_523), // 25_023
     ("ph2d-app-macros", 14_630), // 14_344

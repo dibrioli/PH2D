@@ -7822,6 +7822,7 @@ dependencies = [
  "ph2d-pixel-io",
  "ph2d-pixel-keys",
  "ph2d-pixel-luz",
+ "ph2d-pixel-rampa",
  "ph2d-pixel-render",
  "ph2d-pixel-slices",
  "ph2d-pixel-text",
@@ -10343,6 +10344,7 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-label-census",
  "ph2d-pixel-core",
+ "ph2d-pixel-crt",
  "ph2d-pixel-render",
  "ph2d-tokens",
  "ph2d-tool-registry",
@@ -10980,6 +10982,7 @@ dependencies = [
  "ph2d-light2d-gpu",
  "ph2d-pixel-cena",
  "ph2d-pixel-core",
+ "ph2d-pixel-rampa",
  "ph2d-pixel-render",
  "ph2d-vector",
  "wgpu",
@@ -10994,7 +10997,9 @@ dependencies = [
  "ph2d-pen-law",
  "ph2d-pixel-core",
  "ph2d-pixel-formas",
+ "ph2d-pixel-guia",
  "ph2d-pixel-io",
+ "ph2d-pixel-rampa",
  "ph2d-vector",
  "winit",
 ]
@@ -11013,6 +11018,7 @@ name = "ph2d-pixel-render"
 version = "0.0.0"
 dependencies = [
  "ph2d-pixel-core",
+ "ph2d-pixel-guia",
  "ph2d-pixel-slices",
  "ph2d-vector",
 ]

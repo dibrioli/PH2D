@@ -70,7 +70,7 @@ impl PainterTool {
             .collect();
         let saida = super::composite_otica::compoe_a_otica(&entrada, &layers, &mut sess.planos);
         drop(layers);
-        self.wetpaint_depois_da_otica(&antes, saida, veil, super::veu::VeuDe::Motor);
+        self.wetpaint_depois_da_otica(&antes, saida, veil, super::veu::VeuDe::Motor, None);
     }
 
     /// O que o composite lê da ferramenta ANTES de trazer o motor para casa (gates, Smooth Edges, marca, factos).
@@ -170,6 +170,7 @@ impl PainterTool {
         saida: super::composite_otica::SaidaDaOtica,
         veil: bool,
         veu: super::veu::VeuDe<'_>,
+        pronto: Option<&[u8]>,
     ) {
         let (w, h) = antes.tela;
         let (gate_sel, gate_prot, gate_alock) = &antes.gates;
@@ -322,69 +323,74 @@ impl PainterTool {
         // sorte numérica, por ser literalmente a mesma expressão.
         let sampler = grid_map::SampleU::new(ratio, gw, gh);
         let orla = oleo.is_none();
-        #[cfg(test)]
-        let orla = orla || super::smooth_edges::so_na_cor::get();
-        #[cfg(test)]
-        let plano_suave: &[u8] = if super::smooth_edges::sem_suave::get() {
-            &[]
+        if let Some(rgba) = pronto {
+            // B11.3: o compositor já correu o laço (sem vidro, sem marca): o fio da tela só copia.
+            super::offthread::otica::pixel::cola_na_tela(canvas, w, (px0, py0, px1, py1), rgba);
         } else {
-            plano_suave
-        };
-        let suavizada = super::smooth_edges::Suaves::nova(
-            sampler,
-            (pigment, stride),
-            (plano_suave, gw, gh),
-            (w, h),
-            (px0, py0, px1, py1),
-            rr,
-            linhas,
-            orla,
-        );
-        #[cfg(test)]
-        let suavizada = match super::smooth_edges::raio_escalar::get() {
-            Some(r) => Some(super::smooth_edges::Suaves::escalar(
-                super::smooth_edges::Suave::nova(
-                    sampler,
-                    (pigment, stride),
-                    (w, h),
-                    (px0, py0, px1, py1),
-                    r,
-                    linhas,
-                    orla,
-                ),
+            #[cfg(test)]
+            let orla = orla || super::smooth_edges::so_na_cor::get();
+            #[cfg(test)]
+            let plano_suave: &[u8] = if super::smooth_edges::sem_suave::get() {
+                &[]
+            } else {
+                plano_suave
+            };
+            let suavizada = super::smooth_edges::Suaves::nova(
+                sampler,
+                (pigment, stride),
+                (plano_suave, gw, gh),
                 (w, h),
-            )),
-            None => suavizada,
-        };
-        let laco = pixel::LacoDePixel {
-            w,
-            caixa_px: (px0, py0, px1, py1),
-            grade: (gw, gh),
-            rr,
-            sampler,
-            pigment,
-            base,
-            sombra,
-            grao_cel,
-            congelada,
-            suavizada: suavizada.as_ref(),
-            sem_oleo: &sem_oleo,
-            orla,
-            grao: grao.as_ref(),
-            gsel,
-            gprot,
-            alock_on,
-            modo,
-            vazio,
-            exata,
-            vbase,
-        };
-        pixel::laco_de_pixel(
-            &laco,
-            &mut canvas[py0 * stride..py1 * stride],
-            vlinhas,
-            cob_linhas,
-        );
+                (px0, py0, px1, py1),
+                rr,
+                linhas,
+                orla,
+            );
+            #[cfg(test)]
+            let suavizada = match super::smooth_edges::raio_escalar::get() {
+                Some(r) => Some(super::smooth_edges::Suaves::escalar(
+                    super::smooth_edges::Suave::nova(
+                        sampler,
+                        (pigment, stride),
+                        (w, h),
+                        (px0, py0, px1, py1),
+                        r,
+                        linhas,
+                        orla,
+                    ),
+                    (w, h),
+                )),
+                None => suavizada,
+            };
+            let laco = pixel::LacoDePixel {
+                w,
+                caixa_px: (px0, py0, px1, py1),
+                grade: (gw, gh),
+                rr,
+                sampler,
+                pigment,
+                base,
+                sombra,
+                grao_cel,
+                congelada,
+                suavizada: suavizada.as_ref(),
+                sem_oleo: &sem_oleo,
+                orla,
+                grao: grao.as_ref(),
+                gsel,
+                gprot,
+                alock_on,
+                modo,
+                vazio,
+                exata,
+                vbase,
+            };
+            pixel::laco_de_pixel(
+                &laco,
+                &mut canvas[py0 * stride..py1 * stride],
+                vlinhas,
+                cob_linhas,
+            );
+        }
         if let (Some(c), Some(p)) = (vcamada, vplano) {
             self.vidros.insert(c, p);
         }

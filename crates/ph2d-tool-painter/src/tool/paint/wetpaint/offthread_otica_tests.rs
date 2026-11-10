@@ -176,6 +176,7 @@ fn a_imagem_do_compositor_e_a_otica_sincrona_ao_byte() {
             agua: None,
             forma: FORMA,
             com_veu: true,
+            pixel: None,
         });
         assert!(antigo.is_none(), "{nome}: um pedido velho ficou na caixa");
         let resposta = espera(&w);
@@ -302,6 +303,7 @@ fn duas_caixas_vivas(
             agua: None,
             forma: FORMA,
             com_veu: true,
+            pixel: None,
         });
         let resposta = espera(&w);
         e = traz(&w);

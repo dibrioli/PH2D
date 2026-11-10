@@ -8,6 +8,7 @@
 //! - a pausa da autoria toca a tela inteira: nenhuma imagem se aplica por cima do esboço.
 
 use super::composite_otica::{CaixasDaOtica, SaidaDaOtica};
+use super::offthread::otica::pixel::EntradaDoPixel;
 use super::offthread::otica::{CaixaCel, FormaDaTela, Imagem, PedidoDeImagem, RespostaDaOtica};
 use super::veu::{FilmeEMolha, VeuDe};
 use super::*;
@@ -196,6 +197,10 @@ impl PainterTool {
 
     fn wet_aplica_imagem(&mut self, mut im: Imagem) {
         let show_wet = self.paint.wetpaint.show_wet;
+        // B11.3: os RGBA do compositor valem se a entrada do píxel é a mesma de quando se pediu.
+        let agora = self.wet_entrada_do_pixel(show_wet);
+        let valido = matches!((&im.pixel, &agora), (Some(a), Some(b)) if a.mesma(b));
+        drop(agora);
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
@@ -224,6 +229,8 @@ impl PainterTool {
             return;
         }
         im.aplica(&mut sess.planos, sess.grid);
+        // Os planos que leem a vizinhança ficaram vazios também na tela (a imagem esvazia-os ao colar).
+        let valido = valido && sess.planos.suave.is_empty() && sess.planos.sombra.is_empty();
         sess.seen_steps = im.passos;
         #[cfg(test)]
         {
@@ -248,7 +255,13 @@ impl PainterTool {
                 marca,
                 caixas: None,
             };
-            self.wetpaint_depois_da_otica(&antes, saida, show_wet, VeuDe::DaImagem(sem_veu()));
+            self.wetpaint_depois_da_otica(
+                &antes,
+                saida,
+                show_wet,
+                VeuDe::DaImagem(sem_veu()),
+                None,
+            );
         }
         // O laço de píxel por faixa (B14.1).
         for c in caixas {
@@ -262,6 +275,7 @@ impl PainterTool {
                 },
                 None => sem_veu(),
             };
+            let pronto = c.rgba.as_deref().filter(|_| valido);
             let saida = SaidaDaOtica {
                 oleo,
                 marca,
@@ -272,7 +286,7 @@ impl PainterTool {
                     sem_oleo: c.sem_oleo,
                 }),
             };
-            self.wetpaint_depois_da_otica(&antes, saida, show_wet, VeuDe::DaImagem(linhas));
+            self.wetpaint_depois_da_otica(&antes, saida, show_wet, VeuDe::DaImagem(linhas), pronto);
         }
     }
 
@@ -280,6 +294,7 @@ impl PainterTool {
     pub(super) fn wet_pede_imagem(&mut self, done: u64) {
         let com_veu = self.paint.wetpaint.show_wet;
         let factos = self.factos_da_otica();
+        let pixel = self.wet_entrada_do_pixel(com_veu);
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
@@ -302,15 +317,57 @@ impl PainterTool {
                 tela: (w, h),
             },
             com_veu,
+            pixel,
         };
         if let Ok(antigo) = sess.pede_imagem(p) {
             let o = &mut sess.otica;
             o.epoca = epoca;
             o.no_ar = Some(epoca);
             o.uniao_local = None;
-            o.divida = antigo.and_then(|a| a.divida);
+            o.divida = antigo.as_ref().and_then(|a| a.divida);
             o.agua = antigo.and_then(|a| a.agua);
         }
+    }
+}
+
+impl PainterTool {
+    /// B11.3: o que o laço de píxel lê da ferramenta, para o compositor o correr — `None` (a casa corre-o) com vidro na
+    /// camada, com a marca do artista ou com uma porta de teste do Smooth Edges (são do fio da tela).
+    pub(super) fn wet_entrada_do_pixel(&self, veil: bool) -> Option<EntradaDoPixel> {
+        #[cfg(test)]
+        if super::smooth_edges::so_na_cor::get()
+            || super::smooth_edges::sem_suave::get()
+            || super::smooth_edges::raio_escalar::get().is_some()
+        {
+            return None;
+        }
+        let sess = self.paint.wetpaint.session.as_ref()?;
+        if self.undo.marca.ativa()
+            || sess
+                .marca
+                .is_some_and(|_| self.undo.marca.molhada_viva(sess.marca))
+        {
+            return None;
+        }
+        let camada = self.layers.active().filter(|&id| !self.layers.is_mask(id));
+        #[cfg(test)]
+        let camada = camada.filter(|_| !self.sem_vidro);
+        if camada.is_some_and(|c| self.vidros.contains_key(&c)) {
+            return None;
+        }
+        let wp = &self.paint.wetpaint;
+        let linhas = (wp.tilt_on && wp.tilt_ring > 0).then(|| {
+            let [gx, gy] = ph2d_wet_paint::sim::tilt_dir_for_spoke(wp.tilt_spoke);
+            gy.abs() >= gx.abs()
+        });
+        Some(EntradaDoPixel {
+            base: Arc::clone(&sess.base),
+            gates: self.wet_splat_gates(),
+            congelada: sess.congelada.clone().filter(|_| !veil),
+            modo: sess.blend,
+            vazio: sess.vazio,
+            linhas,
+        })
     }
 }
 

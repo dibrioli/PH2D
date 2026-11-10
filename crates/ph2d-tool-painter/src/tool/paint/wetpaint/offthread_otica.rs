@@ -35,6 +35,8 @@ mod compositor; // o fio do compositor: compõe sobre o espelho e recorta as cai
 #[path = "otica_correio.rs"]
 mod correio; // a caixa de correio e as duas pontas (B52.R8)
 use compositor::cola;
+#[path = "otica_pixel.rs"]
+pub(in crate::tool::paint::wetpaint) mod pixel; // o laço de píxel no compositor (B11.3)
 pub(in crate::tool::paint::wetpaint) use correio::DoFioPrincipal;
 pub(super) use correio::{DoWorker, par};
 
@@ -55,7 +57,7 @@ pub(in crate::tool::paint::wetpaint) struct FormaDaTela {
 pub(in crate::tool::paint::wetpaint) type SujoDoPedido = ([Option<CaixaCel>; 2], Option<CaixaCel>);
 
 /// O pedido de UMA imagem, escrito só pelo fio principal.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(in crate::tool::paint::wetpaint) struct PedidoDeImagem {
     pub(in crate::tool::paint::wetpaint) factos: FactosDaOtica,
     /// Ecoada na resposta: o fio principal sabe a que pedido ela responde.
@@ -67,6 +69,8 @@ pub(in crate::tool::paint::wetpaint) struct PedidoDeImagem {
     pub(in crate::tool::paint::wetpaint) forma: FormaDaTela,
     /// `show_wet`: a imagem leva o filme e a molha da caixa para o véu.
     pub(in crate::tool::paint::wetpaint) com_veu: bool,
+    /// B11.3: com ela o compositor corre também o laço de píxel e a imagem traz os RGBA da caixa.
+    pub(in crate::tool::paint::wetpaint) pixel: Option<pixel::EntradaDoPixel>,
 }
 
 /// O filme e a molha da grade ACTIVA na caixa de células que a caixa de píxeis toca, com uma de folga de cada lado
@@ -95,6 +99,8 @@ pub(in crate::tool::paint::wetpaint) struct CaixasDaImagem {
     pub(in crate::tool::paint::wetpaint) caixa_suave: CaixaCel,
     pub(in crate::tool::paint::wetpaint) sem_oleo: SemOleo,
     pub(in crate::tool::paint::wetpaint) veu: Option<VeuDaCaixa>,
+    /// B11.3: os RGBA da `caixa_px` (`(px1 - px0) * 4` por linha), compostos pelo laço de píxel no compositor.
+    pub(in crate::tool::paint::wetpaint) rgba: Option<Vec<u8>>,
 }
 
 /// Uma imagem composta fora: o que a óptica decidiu e as caixas.
@@ -106,6 +112,8 @@ pub(in crate::tool::paint::wetpaint) struct Imagem {
     pub(in crate::tool::paint::wetpaint) passos: u64,
     /// Uma por faixa composta (B14.1); vazio = a caixa ficou vazia depois de presa à grade.
     pub(in crate::tool::paint::wetpaint) caixas: Vec<CaixasDaImagem>,
+    /// A entrada do píxel com que os `rgba` se compuseram (o fio da tela confere-a antes de os copiar).
+    pub(in crate::tool::paint::wetpaint) pixel: Option<pixel::EntradaDoPixel>,
 }
 
 /// O que volta ao fio principal por pedido servido.

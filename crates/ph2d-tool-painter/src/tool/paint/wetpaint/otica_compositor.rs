@@ -1,6 +1,7 @@
 //! O fio do COMPOSITOR da óptica (filho de [`super`] por LOC, B52.R8): compõe sobre o espelho e recorta as caixas.
 
-use super::{CaixaCel, CaixasDaImagem, Imagem, RespostaDaOtica, VeuDaCaixa};
+use super::pixel::{EntradaDoPixel, rgba_da_caixa};
+use super::{CaixaCel, CaixasDaImagem, FormaDaTela, Imagem, RespostaDaOtica, VeuDaCaixa};
 use crate::tool::paint::wetpaint::composite_otica::{
     CaixasDaOtica, EntradaDaOtica, PlanosDaOtica, compoe_a_otica,
 };
@@ -19,6 +20,8 @@ pub(super) struct Trabalho {
     pub(super) passos: u64,
     /// A camada activa, se o pedido quer o véu.
     pub(super) veu: Option<usize>,
+    /// B11.3: a entrada do laço de píxel (`None` = a tela compõe-no em casa).
+    pub(super) pixel: Option<EntradaDoPixel>,
     /// A porta de teste de B11.A1 ([`super::DoFioPrincipal::mata_no_teste`]).
     #[cfg(test)]
     pub(super) panica: bool,
@@ -31,9 +34,10 @@ pub(super) fn compositor(
     ui: &Sender<RespostaDaOtica>,
 ) {
     let mut planos = PlanosDaOtica::default();
+    let mut linhas = Vec::new();
     while let Ok(t) = rx.recv() {
         let t0 = Instant::now();
-        let (espelho, imagem) = no_pool(|| compoe(t, &mut planos));
+        let (espelho, imagem) = no_pool(|| compoe(t, &mut planos, &mut linhas));
         crate::wet_diag::note_otica(t0.elapsed().as_secs_f32() * 1000.0);
         // O espelho volta primeiro: o worker pode copiar a próxima enquanto a tela aplica esta.
         let _ = volta.send(espelho);
@@ -53,7 +57,7 @@ fn no_pool<R: Send>(f: impl FnOnce() -> R + Send) -> R {
 }
 
 /// A metade de cima sobre o espelho, e a imagem tirada dos planos de trabalho.
-fn compoe(t: Trabalho, planos: &mut PlanosDaOtica) -> (Box<Espelho>, Imagem) {
+fn compoe(t: Trabalho, planos: &mut PlanosDaOtica, linhas: &mut Vec<u8>) -> (Box<Espelho>, Imagem) {
     #[cfg(test)]
     assert!(!t.panica, "compoe em panico (porta de teste do B11.A1)");
     let (gw, gh) = t.entrada.grade;
@@ -67,6 +71,14 @@ fn compoe(t: Trabalho, planos: &mut PlanosDaOtica) -> (Box<Espelho>, Imagem) {
     let oleo = t.entrada.factos.oleo_da_tela(&layers);
     let mut caixas = Vec::with_capacity(faixas.len());
     let mut entrada = t.entrada;
+    let forma = FormaDaTela {
+        ratio: entrada.ratio,
+        grade: entrada.grade,
+        tela: entrada.tela,
+    };
+    // Sem Óleo Real (o grão do papel é da ferramenta) e na razão 1: o laço lê só as células da caixa, as que a
+    // imagem cola — fora dela os planos do compositor não são os da tela (a casa compõe sem os ver).
+    let pixel = t.pixel.filter(|_| oleo.is_none() && forma.ratio == 1);
     for f in faixas {
         if let Some(tr) = entrada.trabalho.as_mut() {
             tr.caixa = f;
@@ -79,7 +91,14 @@ fn compoe(t: Trabalho, planos: &mut PlanosDaOtica) -> (Box<Espelho>, Imagem) {
                 .veu
                 .and_then(|i| t.espelho.camadas.get(i))
                 .map(|c_| veu_da_caixa(&c_.grid, c.caixa_px, entrada.ratio, (gw, gh)));
-            caixas_da_imagem(f, c, planos, (gw, gh), veu)
+            // O Smooth Edges e a sombra leem a vizinhança da caixa: com eles, o laço é da casa.
+            let rgba = pixel
+                .as_ref()
+                .filter(|_| planos.suave.is_empty() && planos.sombra.is_empty())
+                .map(|e| rgba_da_caixa(e, planos, forma, &c, linhas));
+            let mut cx = caixas_da_imagem(f, c, planos, (gw, gh), veu);
+            cx.rgba = rgba;
+            cx
         }));
     }
     planos.campo_cache = None;
@@ -90,6 +109,7 @@ fn compoe(t: Trabalho, planos: &mut PlanosDaOtica) -> (Box<Espelho>, Imagem) {
         epoca: t.epoca,
         passos: t.passos,
         caixas,
+        pixel,
     };
     (t.espelho, imagem)
 }
@@ -114,6 +134,7 @@ fn caixas_da_imagem(
         caixa_suave: c.caixa_suave,
         sem_oleo: c.sem_oleo,
         veu,
+        rgba: None,
     }
 }
 

@@ -127,7 +127,7 @@ impl crate::PainterTool {
                 Some(c) => super::veu::VeuDe::Grade(&c.grid),
                 None => super::veu::VeuDe::Motor,
             };
-            self.wetpaint_depois_da_otica(&antes, saida, veil, veu);
+            self.wetpaint_depois_da_otica(&antes, saida, veil, veu, None);
         }
         PORTA.with(|q| *q.borrow_mut() = Some(p));
     }

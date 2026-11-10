@@ -46,7 +46,7 @@ impl DoFioPrincipal {
     /// servir)`. Só vale com o motor em casa: o worker não está a meio de um `serve`.
     pub(in crate::tool::paint::wetpaint) fn sujo_do_pedido(&self, epoca: u64) -> SujoDoPedido {
         let c = trava(&self.correio);
-        let pedido = c.pedido.filter(|p| p.epoca == epoca);
+        let pedido = c.pedido.as_ref().filter(|p| p.epoca == epoca);
         (
             [
                 pedido.and_then(|p| p.divida),
@@ -214,6 +214,7 @@ impl DoWorker {
             epoca: p.epoca,
             passos,
             veu: p.com_veu.then_some(engine.active_layer),
+            pixel: p.pixel,
             #[cfg(test)]
             panica: trava(&self.correio).mata,
         };

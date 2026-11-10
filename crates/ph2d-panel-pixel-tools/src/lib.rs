@@ -21,6 +21,7 @@ mod seam_camadas;
 mod seam_formas;
 mod seam_opcoes;
 mod seam_pincel;
+pub mod seam_rampas;
 mod seam_selecao;
 mod seam_seletor;
 pub mod seam_user;

@@ -59,6 +59,8 @@ mod selecao;
 mod sprite_props;
 #[path = "paint_paleta_voo.rs"]
 mod voo;
+#[path = "paint_rampas.rs"]
+mod rampas;
 pub(crate) use voo::Queda;
 
 pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
@@ -82,6 +84,7 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     with_current(|i| crate::column::por_quadro(ctx.host.store_mut(), i));
     seam::seed_rename(st, ctx.host.store_mut());
     crate::seam_user::quadro(ctx.host);
+    with_current(|i| crate::seam_rampas::quadro(ctx.host.store_mut(), i));
     let renaming = st.rename.map(|(id, _)| id);
     // Os campos mostram o MODELO (o instantâneo); a edição em curso de um campo com foco fica.
     let moldura = with_current(|i| i.transform);
@@ -154,7 +157,7 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     let seletor = &mut st.seletor;
     seletor.rects = [None; 3];
     let paleta_vista = &mut st.paleta;
-    *paleta_vista = crate::state::PaletaVista::default();
+    *paleta_vista = paleta_vista.do_quadro_novo();
     let pincel = &mut st.pincel;
     pincel.trilhas = [None; 2];
     let content_h = with_current(|info| {
@@ -266,6 +269,7 @@ impl Corpo<'_> {
         let y = self.cores(info, y) + gap;
         let y = self.camadas(info, renaming, y) + gap;
         let y = self.paleta(info, y) + gap;
+        let y = self.rampas(info, y) + gap;
         let y = self.acoes_da_paleta(info, y) + gap;
         let y = self.seletor(info, y) + gap;
         let y = self.menus_selecao(info, y) + gap;

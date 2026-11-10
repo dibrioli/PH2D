@@ -16,4 +16,5 @@ pub mod nomes;
 pub mod paletas;
 pub mod pinceis;
 pub mod quadros;
+pub mod rampas;
 pub mod user;

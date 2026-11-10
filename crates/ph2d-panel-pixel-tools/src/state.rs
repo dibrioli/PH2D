@@ -34,6 +34,18 @@ pub(crate) struct PaletaVista {
     pub(crate) marca: Option<Rect>,
     /// Onde o arrasto vivo largaria — a MESMA conta que se pintou; a queda lê-a (`seam::larga`).
     pub(crate) queda: Option<crate::paint::Queda>,
+    /// O diálogo New Ramp… aberto (o único campo que atravessa o quadro).
+    pub(crate) nova_rampa: bool,
+}
+
+impl PaletaVista {
+    /// A vista vazia do quadro que começa; o diálogo New Ramp… continua aberto.
+    pub(crate) fn do_quadro_novo(&self) -> Self {
+        Self {
+            nova_rampa: self.nova_rampa,
+            ..Self::default()
+        }
+    }
 }
 
 /// O bloco de amostras agarrado: a caixa (antes da inclinação), as cores e quantas por linha.

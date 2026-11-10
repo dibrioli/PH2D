@@ -45,6 +45,8 @@ pub struct SpriteImage {
     ghost_layer: Option<LayerId>,
     /// O xadrez das preferências do documento.
     doc_checker: crate::prefs_view::DocChecker,
+    /// O relógio do Play que os ciclos de cor somam ao instante do quadro (voltas inteiras).
+    relogio: (u64, u64),
 }
 
 impl SpriteImage {
@@ -63,6 +65,19 @@ impl SpriteImage {
     #[must_use]
     pub fn is_current(&self, frame: FrameId, stamp: u64, onion: Option<&Onion>) -> bool {
         self.image.is_some() && self.key == Some((stamp, frame, onion.copied()))
+    }
+
+    /// O Play andou `dt_ms`: os ciclos de cor rodam também num sprite de UM quadro. O `t` de cada
+    /// quadro é `instante + voltas inteiras da animação tocadas` (o mesmo índice por quadro dentro
+    /// de uma volta); só refaz a imagem quando a volta muda. Chamar só com ciclos no documento.
+    pub fn avanca_ciclo(&mut self, sprite: &Sprite, dt_ms: u32) {
+        let total: u64 = sprite.frames().iter().map(|f| u64::from(f.duration_ms)).sum();
+        let tocado = self.relogio.0.wrapping_add(u64::from(dt_ms));
+        let voltas = tocado - tocado % total.max(1);
+        if voltas != self.relogio.1 {
+            (self.key, self.frames_stamp) = (None, None);
+        }
+        self.relogio = (tocado, voltas);
     }
 
     /// A camada activa (o `Current layer only` do papel vegetal); mudá-la refaz a imagem.
@@ -123,15 +138,16 @@ impl SpriteImage {
         match (self.pending_rect, cur) {
             (Some(a), None) if assentou && pronto => {
                 let o = onion.map(|o| (o, self.ghost_layer));
-                region_into(sprite, frame, None, a, o, &mut self.scratch);
+                region_into(sprite, frame, None, a, o, &mut self.scratch, self.relogio.1);
             }
             (Some(a), Some(b)) if pronto => {
                 let o = onion.map(|o| (o, self.ghost_layer));
-                region_into(sprite, frame, pending, a.union(b), o, &mut self.scratch);
+                let r = a.union(b);
+                region_into(sprite, frame, pending, r, o, &mut self.scratch, self.relogio.1);
             }
             _ => {
                 let o = onion.map(|o| (o, self.ghost_layer));
-                self.scratch = compose_bands(sprite, frame, pending, o);
+                self.scratch = compose_bands_em(sprite, frame, pending, o, self.relogio.1);
             }
         }
         self.pending_rect = cur;
@@ -220,8 +236,9 @@ fn window(
     pending: Option<&Stroke>,
     region: Rect,
     onion: Option<(&Onion, Option<LayerId>)>,
+    voltas: u64,
 ) -> Vec<u8> {
-    let t = instante_do_quadro(sprite, frame);
+    let t = instante_do_quadro(sprite, frame) + voltas;
     match onion {
         Some((o, l)) => {
             compose_with_onion_em(sprite, frame, pending, region, o, (None, l), Some(t))
@@ -238,12 +255,13 @@ fn region_into(
     region: Rect,
     onion: Option<(&Onion, Option<LayerId>)>,
     out: &mut [u8],
+    voltas: u64,
 ) {
     let region = region.intersect(sprite.bounds());
     if region.is_empty() {
         return;
     }
-    let buf = window(sprite, frame, pending, region, onion);
+    let buf = window(sprite, frame, pending, region, onion, voltas);
     let (w, rw) = (sprite.width() as usize, region.w as usize * 4);
     for (y, row) in buf.chunks_exact(rw).enumerate() {
         let o = ((region.y as usize + y) * w + region.x as usize) * 4;
@@ -261,6 +279,18 @@ pub fn compose_bands(
     pending: Option<&Stroke>,
     onion: Option<(&Onion, Option<LayerId>)>,
 ) -> Vec<u8> {
+    compose_bands_em(sprite, frame, pending, onion, 0)
+}
+
+/// O [`compose_bands`] com as `voltas` do Play somadas ao instante dos ciclos de cor.
+#[must_use]
+pub fn compose_bands_em(
+    sprite: &Sprite,
+    frame: FrameId,
+    pending: Option<&Stroke>,
+    onion: Option<(&Onion, Option<LayerId>)>,
+    voltas: u64,
+) -> Vec<u8> {
     let (w, h) = (sprite.width(), sprite.height());
     let n = std::thread::available_parallelism().map_or(1, |n| (n.get() / 2).max(1)) as u32;
     let alto = h.div_ceil(n.min(h));
@@ -268,12 +298,12 @@ pub fn compose_bands(
         .map(|k| Rect::new(0, (k * alto) as i32, w, alto.min(h - k * alto)))
         .collect();
     if bands.len() == 1 {
-        return window(sprite, frame, pending, bands[0], onion);
+        return window(sprite, frame, pending, bands[0], onion, voltas);
     }
     let parts: Vec<Vec<u8>> = std::thread::scope(|sc| {
         let hs: Vec<_> = bands
             .iter()
-            .map(|&r| sc.spawn(move || window(sprite, frame, pending, r, onion)))
+            .map(|&r| sc.spawn(move || window(sprite, frame, pending, r, onion, voltas)))
             .collect();
         hs.into_iter()
             .map(|h| h.join().unwrap_or_else(|e| std::panic::resume_unwind(e)))

@@ -8,6 +8,7 @@ mod seam_pixel_formas;
 mod seam_pixel_gradiente;
 mod seam_pixel_paleta_voo;
 mod seam_pixel_pincel;
+mod seam_pixel_rampas;
 mod seam_pixel_selecao;
 mod seam_pixel_texto;
 mod seletor_arrasto;

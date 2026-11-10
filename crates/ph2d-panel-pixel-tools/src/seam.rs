@@ -97,6 +97,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     crate::seam_selecao::populate(store);
     crate::seam_formas::populate(store);
     crate::seam_pincel::populate(store);
+    crate::seam_rampas::populate(store);
     // As áreas do seletor de cor: o clique lê a posição do ponteiro contra o rect pintado.
     for (id, _) in ids::SELECTOR_AREAS {
         store.register(id, InteractiveState::Plain);
@@ -267,6 +268,9 @@ pub(crate) fn apply_event(
     ev: WidgetEvent,
 ) -> EventOutcome {
     if let Some(o) = crate::seam_user::evento(host, &ev) {
+        return o;
+    }
+    if let Some(o) = crate::seam_rampas::evento(st, host, &ev) {
         return o;
     }
     let id = match ev {

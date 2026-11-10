@@ -133,6 +133,7 @@ fn cartoes<'a, 'v: 'a>(
         vista,
         move |k, y| {
             let y = k.paleta(info, y);
+            let y = k.rampas(info, y);
             k.acoes_da_paleta(info, y)
         },
     ));
@@ -193,7 +194,7 @@ pub(super) fn pinta(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx, renaming:
     }
     let theme = ctx.host.theme();
     st.seletor.rects = [None; 3];
-    st.paleta = crate::state::PaletaVista::default();
+    st.paleta = st.paleta.do_quadro_novo();
     st.pincel.trilhas = [None; 2];
     let info = with_current(Clone::clone);
     let titulo = if info.editing {

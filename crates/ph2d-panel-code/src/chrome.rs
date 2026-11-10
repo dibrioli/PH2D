@@ -234,7 +234,7 @@ pub(crate) fn text_field(
     let pad = Spacing::Sm.px();
     let x0 = r.x + pad;
     let f = font();
-    let ty = r.y + (r.h - f) * 0.5;
+    let ty = r.y + folga_do_texto(r.h, f);
     let text = buf.text().to_string();
     scene.push_clip(&rect_to_vello(r));
     if text.is_empty() {

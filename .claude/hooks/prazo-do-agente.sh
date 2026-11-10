@@ -52,12 +52,15 @@ if printf '%s' "$cmd" | grep -qE '^[[:space:]]*bash scripts/fila-pesada\.sh (pô
   && ! printf '%s' "$cmd" | grep -qE '[;&|`<>]|\$\('; then
   exit 0
 fi
-pesado='(^|[;&|(`[:space:]])cargo[[:space:]]+(\+[^[:space:]]+[[:space:]]+)?(build|test|nextest|clippy|run|bench)([[:space:]]|$)|scripts/(ph2d-run|cargo-test-narrow|nextest-impacted|suite-completa|ship|integrar-rodada)\.sh'
-# A bancada pesada é um teste `#[ignore = "bancada…"]`: só corre com `--ignored`. A palavra solta (um
-# `grep`, o caminho `src/bancada/`, um teste por nome) é leve e passa.
-bancada() { printf '%s' "$cmd" | grep -qE "$pesado" && printf '%s' "$cmd" | grep -q 'bancada' \
-  && printf '%s' "$cmd" | grep -qE -- '--(include-)?ignored'; }
-if printf '%s' "$cmd" | grep -qE 'PH2D_REGERA_' || bancada; then
+# Antes de `cargo` pode vir uma aspa (`bash -c "cargo …"`); `t` é o alias de `test`.
+pesado="(^|[;&|(\`\"'[:space:]])cargo[[:space:]]+(\+[^[:space:]]+[[:space:]]+)?(build|test|t|nextest|clippy|run|bench)([[:space:]]|$)|scripts/(ph2d-run|cargo-test-narrow|nextest-impacted|suite-completa|ship|integrar-rodada)\.sh"
+# A bancada pesada é um teste `#[ignore = "bancada…"]`: o que a marca é o `--ignored` (do cargo, ou o
+# `--run-ignored` do nextest), com a palavra no comando ou sem ela. A palavra solta (um `grep`, o caminho
+# `src/bancada/`, um teste por nome) é leve e passa. Correr a fila é do coordenador.
+ignorado() { printf '%s' "$cmd" | grep -qE "$pesado" \
+  && printf '%s' "$cmd" | grep -qE -- '--(include-|run-)?ignored'; }
+fila_correr() { printf '%s' "$cmd" | grep -qE 'fila-pesada\.sh[[:space:]]+correr'; }
+if printf '%s' "$cmd" | grep -qE 'PH2D_REGERA_' || ignorado || fila_correr; then
   nega "⛔ O pesado de verdade (regerar presets, bancada) não corre num subagente: ponha-o na fila da onda —
   bash scripts/fila-pesada.sh pôr '<o comando>'
 — e diga-o no retorno; o coordenador corre a fila 1× com a régua congelada (REGRAS_DE_CUSTO §METODOLOGIA 4)."

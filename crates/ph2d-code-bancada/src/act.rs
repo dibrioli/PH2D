@@ -20,24 +20,38 @@ pub fn parse_number(s: &str) -> Option<f64> {
 
 /// Um par escrito à mão, com a vírgula decimal ou o ponto: `x; y` (com `;` a vírgula é decimal — a
 /// convenção das listas onde ela o é, Excel e LibreOffice), `x y` ou `x, y` (um espaço separa), `x,y`
-/// (uma vírgula só), e `( )`/`[ ]` à volta. `1,5,2` é ambíguo e recusa-se.
+/// (uma vírgula só), e `( )`/`[ ]` à volta. A vírgula que toca um espaço (`1 ,2`, `1,5 , 2`) é a que
+/// separa. `1,5,2` é ambíguo e recusa-se, e um número nunca começa nem acaba numa vírgula.
 #[must_use]
 pub fn parse_vec2(s: &str) -> Option<[f64; 2]> {
     let s = s.trim().trim_start_matches(['(', '[']);
     let s = s.trim_end_matches([')', ']']);
     let parts: Vec<&str> = if s.contains(';') {
         s.split(';').collect()
+    } else if let Some(at) = separating_comma(s) {
+        vec![&s[..at], &s[at + 1..]]
     } else if s.split_whitespace().count() == 2 {
-        s.split_whitespace()
-            .map(|p| p.trim_end_matches(','))
-            .collect()
+        s.split_whitespace().collect()
     } else {
         s.split(',').collect()
     };
+    let loose = |p: &str| p.trim().starts_with(',') || p.trim().ends_with(',');
     match parts.as_slice() {
-        [x, y] => Some([parse_number(x)?, parse_number(y)?]),
+        [x, y] if !loose(x) && !loose(y) => Some([parse_number(x)?, parse_number(y)?]),
         _ => None,
     }
+}
+
+/// O byte da ÚNICA vírgula que toca um espaço, se houver só uma.
+fn separating_comma(s: &str) -> Option<usize> {
+    let b = s.as_bytes();
+    let spaced = |i: usize| {
+        (i > 0 && b[i - 1].is_ascii_whitespace())
+            || b.get(i + 1).is_some_and(u8::is_ascii_whitespace)
+    };
+    let mut hits = s.match_indices(',').map(|(i, _)| i).filter(|&i| spaced(i));
+    let first = hits.next()?;
+    hits.next().is_none().then_some(first)
 }
 
 /// A edição que `intent` pede, ou `None` (não é uma edição, ou o texto não serve ao tipo).

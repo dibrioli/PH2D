@@ -177,7 +177,7 @@ impl BancadaView {
             push_popover_clip(r, scene);
             let strip = r.y + s;
             let title_ink = ink(ColorToken::Text1);
-            let ty = strip + (ROW_H_PX - f) * 0.5;
+            let ty = strip + ph2d_editor_core::paint::folga_do_texto(ROW_H_PX, f);
             paint_text_title(ts, scene, &title, inner_x, ty, f, title_w, title_ink);
             let line_r = Rect::new(inner_x + title_w, strip, line_w, ROW_H_PX);
             chrome::label_in(scene, ts, &line, line_r, ink(ColorToken::Text3));

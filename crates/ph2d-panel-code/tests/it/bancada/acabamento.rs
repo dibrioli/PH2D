@@ -60,3 +60,54 @@ fn as_entradas_do_in_this_script_ficam_mais_juntas_que_os_titulos() {
     let (fresh, on_signal) = (at(Aim::Entry(5)), at(Aim::Entry(14)));
     assert!((on_signal.y - fresh.y - eh - ROW_H_PX).abs() < 1e-3);
 }
+
+/// Auditoria do fecho 10/11: numa mesma linha, todo texto se centra pela mesma lei (o meio das
+/// maiúsculas). O título «Who has what» e a contagem ao lado, e o título do balão com a linha e a dica,
+/// leem-se na mesma altura (antes: um pela conta `(h − f) / 2`, o outro pela `folga_do_texto`).
+#[test]
+fn os_textos_da_mesma_linha_centram_se_pela_mesma_lei() {
+    use super::{GRADE, LIMITES, MARCA, meio};
+    use ph2d_panel_code::CodeView;
+    let (who, mut ts) = (quem(), TextSystem::without_system_fonts());
+    let mut v = BancadaView::default();
+    let theme = Theme::default();
+    let meios = |scene: &VectorScene, n: usize, ts: &mut TextSystem| -> Vec<f32> {
+        linhas_de_base(scene)
+            .into_iter()
+            .take(n)
+            .map(|(px, _, base)| meio_das_maiusculas(ts, "Hg", px, base))
+            .collect()
+    };
+    let mut grade = VectorScene::new();
+    v.paint_bench(
+        &who,
+        GRADE,
+        None,
+        &mut CodeView::new(),
+        &mut grade,
+        &mut ts,
+        &theme,
+    );
+    let cabeca = meios(&grade, 2, &mut ts);
+    v.set_marks(&[(0, MARCA)]);
+    let (x, y) = meio(MARCA);
+    assert!(v.hover(x, y, 0), "controlo: a marca abre o balão");
+    let mut balao = VectorScene::new();
+    v.paint_popover(
+        &who,
+        LIMITES,
+        &mut CodeView::new(),
+        &mut balao,
+        &mut ts,
+        &theme,
+    );
+    let faixa = meios(&balao, 3, &mut ts);
+    for (onde, m) in [("cabeça da grelha", cabeca), ("faixa do balão", faixa)] {
+        assert!(m.len() >= 2, "{onde}: controlo, pintou {} textos", m.len());
+        let (lo, hi) = m
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(a, b), &x| (a.min(x), b.max(x)));
+        // Medido: 0,64 px de arredondamento entre dois corpos; a lei antiga dava 3,64.
+        assert!(hi - lo < 1.0, "{onde}: os meios das maiúsculas {m:?}");
+    }
+}

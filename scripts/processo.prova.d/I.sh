@@ -28,7 +28,13 @@ igual "a palavra «bancada» num grep passa" "$(_i PreToolUse ag1 1600 'grep -rn
 igual "…num caminho passa" "$(_i PreToolUse ag1 1600 'cat crates/ph2d-panel-code/src/bancada/grid.rs')" ""
 igual "…num teste por nome passa" "$(_i PreToolUse ag1 1600 'bash scripts/cargo-test-narrow.sh ph2d-panel-code bancada::grelha')" ""
 igual "…no git log passa" "$(_i PreToolUse ag1 1600 'git log --grep=bancada')" ""
-igual "a janela principal não é tocada""$(_i PreToolUse "" 9999999 'bash scripts/ship.sh')" ""
+igual "…a do nextest (--run-ignored) também" "$(_i PreToolUse ag1 1600 'cargo nextest run -p ph2d-skin-weights bancada --run-ignored only')" "deny"
+igual "…dentro de bash -c também" "$(_i PreToolUse ag1 1600 'bash -c "cargo test -p ph2d-skin-weights bancada -- --ignored"')" "deny"
+igual "…pelo alias cargo t também" "$(_i PreToolUse ag1 1600 'cargo t -p ph2d-skin-weights bancada -- --ignored')" "deny"
+igual "…sem a palavra no comando também" "$(_i PreToolUse ag1 1600 'cargo test -p ph2d-skin-weights -- --ignored')" "deny"
+igual "correr a fila num subagente é recusado" "$(_i PreToolUse ag1 1600 'bash scripts/fila-pesada.sh correr')" "deny"
+igual "um teste por nome sem --ignored passa" "$(_i PreToolUse ag1 1600 'cargo test -p ph2d-panel-code opcoes_do_script')" ""
+igual "a janela principal não é tocada" "$(_i PreToolUse "" 9999999 'bash scripts/ship.sh')" ""
 # a fila
 _f() { PH2D_FILA_DIR="$tmp/fila" bash scripts/fila-pesada.sh "$@"; }
 echo r1 >"$tmp/regua.txt"

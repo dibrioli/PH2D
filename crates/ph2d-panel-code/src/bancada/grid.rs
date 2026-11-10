@@ -167,7 +167,7 @@ impl BancadaView {
         self.fold_rect = title_r;
         let font = TypeToken::Base.px();
         let title = tr("code.bancada.grid.title");
-        let fy = title_r.y + (ROW_H_PX - font) * 0.5;
+        let fy = title_r.y + ph2d_editor_core::paint::folga_do_texto(ROW_H_PX, font);
         paint_text_title(ts, scene, title, x, fy, font, w, ui.text1);
         let count = tr_with(
             "code.bancada.grid.count",

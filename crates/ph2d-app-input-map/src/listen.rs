@@ -1,9 +1,7 @@
 //! **A escuta também apanha o COMANDO** (plano `docs/InputMap/01_plano.md` §3 «Escuta»): enquanto a
 //! escuta partilhada está armada para uma acção da aba, o botão ou a haste viram a ligação dela,
-//! pela mesma ranhura e pelo mesmo `INPUT_MAP_BIND_CAPTURED` da tecla.
-//!
-//! ⚠️ A BORDA (`pressed`, não `held`): um botão já em baixo ao armar não se liga sozinho. O botão
-//! ganha à haste, porque um comando parado já reporta um resíduo nos eixos.
+//! pela mesma ranhura e pelo mesmo `INPUT_MAP_BIND_CAPTURED` da tecla. ⚠️ A BORDA (`pressed`):
+//! um botão já em baixo ao armar não se liga; o botão ganha à haste (o comando parado tem resíduo).
 
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::ids::INPUT_MAP_BIND_CAPTURED;
@@ -13,8 +11,7 @@ use ph2d_input::{Binding, GamepadAxis, GamepadButton, GamepadState};
 /// Meio curso: limiar de GESTO («empurrou de propósito?»), não o `press_point` da acção.
 pub const AXIS_PUSHED: f32 = 0.5;
 
-/// A ligação que o comando acabou de fazer neste quadro, se alguma: o 1.º botão com BORDA, senão a
-/// 1.ª haste com `|v| ≥` [`AXIS_PUSHED`] (o sinal escolhe a metade).
+/// A ligação do comando neste quadro: o 1.º botão com BORDA, senão a 1.ª haste `|v| ≥` [`AXIS_PUSHED`].
 #[must_use]
 pub fn pad_binding(pad: &GamepadState) -> Option<Binding> {
     GamepadButton::ALL
@@ -33,8 +30,8 @@ pub fn pad_binding(pad: &GamepadState) -> Option<Binding> {
         })
 }
 
-/// Entrega a ligação do comando à escuta armada para uma acção do mapa (não à do Trigger, que diz
-/// «Press a key»). `true` = ligou. A shell chama-o uma vez por quadro, ANTES de resolver o Play.
+/// Entrega a ligação do comando à escuta armada de uma acção do mapa (não à do Trigger); `true` =
+/// ligou. A shell chama-o uma vez por quadro, ANTES de resolver o Play.
 pub fn deliver_pad(hero: &mut HeroScreen, pad: &GamepadState) -> bool {
     if hero.store.input_map_listening().is_none() || hero.store.input_map_listen_replaces() {
         return false;

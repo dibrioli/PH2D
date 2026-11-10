@@ -16,8 +16,7 @@
 pub use crate::color_space::{oklch_in_gamut, oklch_to_linear_srgb, oklch_to_srgb, srgb_to_oklch};
 use crate::theme::Theme;
 
-/// sRGB 8-bit color with alpha. Constructed via `from_hex` ou
-/// `from_oklch`; stored as four bytes para cheap copy + tests.
+/// sRGB 8-bit color with alpha, via `from_hex`/`from_oklch`; four bytes (cheap copy + tests).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Color {
     pub r: u8,
@@ -143,8 +142,7 @@ macro_rules! color_tokens {
                 match key { $( $key => Some(Self::$variant), )* _ => None }
             }
 
-            /// Todos os tokens de cor, na ordem em que a lista os declara (agrupada por família:
-            /// fundos, bordas, texto, acento, semânticos…).
+            /// Todos os tokens de cor, na ordem da lista (por família: fundos, bordas, texto, acento…).
             ///
             /// É a lista que o PICKER oferece. Ela é DADO — um token novo entra na lista da macro
             /// e aparece no picker sem que ninguém toque na UI; uma lista escrita à mão no painel
@@ -230,8 +228,7 @@ color_tokens! {
     // ── Semantic states ────────────────────────────────────────────
     Danger => "danger",
     DangerSoft => "danger-soft",
-    /// `danger-press` — o perigo premido: mais fundo que `danger` (o pairado) nos temas claro e escuro,
-    /// com `accent-fg` ≥ 4,5:1 por cima. Gate: `onda3_premido` (game-scenes).
+    /// `danger-press` — premido: mais fundo que `danger` em todo tema (gate `onda3_premido`).
     DangerPress => "danger-press",
     Success => "success",
     SuccessSoft => "success-soft",

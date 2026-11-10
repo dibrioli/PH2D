@@ -17,8 +17,7 @@ pub struct InputMapTab {
     pub doc: InputMapDoc,
     open: bool,
     focus: Option<u64>,
-    /// A faixa do HUD que o hero pinta POR CIMA (`chrome_over`); o rect pintado e o Down tomado — o Move fora dele
-    /// só é da aba com o botão preso nela (senão matava a borda das colunas, dono 10/11).
+    /// A faixa do HUD pintada POR CIMA (`chrome_over`); o rect pintado e o Down tomado (o Move fora só com o botão preso).
     over: Option<Rect>,
     claim: (Rect, bool),
 }
@@ -118,7 +117,6 @@ impl DocumentSurface for InputMapTab {
         self.doc.wheel_shift(dy, shift)
     }
 
-    /// O deslizar de lado rola o teclado (Keyboard e Try it), como o Shift+roda; a lista não rola de lado.
     fn wheel_sideways(&mut self, _id: u64, _x: f32, _y: f32, dx: f32) -> bool {
         self.doc.view() != View::List && self.doc.wheel_shift(dx, true)
     }

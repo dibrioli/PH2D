@@ -173,6 +173,18 @@ impl IndividualTextureStore {
         }
     }
 
+    /// [`Self::regen_mips`] after a write confined to the level-0 `rect` (B20.3).
+    fn regen_mips_rect(&self, gpu: &GpuContext, id: u32, rect: (u32, u32, u32, u32)) {
+        if let Some(entry) = self.entries.get(&id).filter(|e| e.fonte.is_none()) {
+            let generator = if entry.format == Self::FORMAT_16 {
+                &self.mip_gen_16
+            } else {
+                &self.mip_gen
+            };
+            generator.run_rect(gpu, &entry.texture, entry.mip_count, rect);
+        }
+    }
+
     /// Total number of individually-owned textures currently held.
     /// Used by tests and the future Inspector telemetry. Excludes the
     /// shared atlas.
@@ -451,7 +463,7 @@ impl IndividualTextureStore {
             ph2d_gpu::pass_profiler::copy_span_end(&mut encoder, t);
         }
         gpu.queue.submit([encoder.finish()]);
-        self.regen_mips(gpu, id);
+        self.regen_mips_rect(gpu, id, (dst_x, dst_y, w, h));
         Ok(())
     }
 

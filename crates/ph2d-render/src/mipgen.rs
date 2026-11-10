@@ -137,16 +137,61 @@ impl MipGenerator {
     /// mip_count`, with level 0 already populated. Submits its own command buffer
     /// (ordered after any prior submit that wrote level 0). A `mip_count <= 1`
     /// texture is a no-op.
+    /// [`Self::run`] for a level-0 `rect` (`x, y, w, h`) that is the only change since the last
+    /// full chain: each level redraws, under a scissor, the rect's image +1 texel; the rest is kept.
+    pub fn run_rect(
+        &self,
+        gpu: &GpuContext,
+        texture: &wgpu::Texture,
+        mip_count: u32,
+        rect: (u32, u32, u32, u32),
+    ) {
+        self.cadeia(gpu, texture, mip_count, Some(rect));
+    }
+
     pub fn run(&self, gpu: &GpuContext, texture: &wgpu::Texture, mip_count: u32) {
+        self.cadeia(gpu, texture, mip_count, None);
+    }
+
+    fn cadeia(
+        &self,
+        gpu: &GpuContext,
+        texture: &wgpu::Texture,
+        mip_count: u32,
+        rect: Option<(u32, u32, u32, u32)>,
+    ) {
         if mip_count <= 1 {
             return;
         }
+        // The rect as [x0, x1) × [y0, y1) at the level being written; each level maps the one above
+        // by its size ratio, widened 1 texel (the bilinear footprint of a non-2× odd level).
+        let mut janela = rect.map(|(x, y, w, h)| [x, x + w, y, y + h]);
+        let (mut sw, mut sh) = (texture.width(), texture.height());
         let mut encoder = gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("ph2d-render mipgen encoder"),
             });
         for level in 1..mip_count {
+            let (dw, dh) = ((sw / 2).max(1), (sh / 2).max(1));
+            let tesoura = janela.map(|[x0, x1, y0, y1]| {
+                let baixo =
+                    |v: u32, d: u32, s: u32| (u64::from(v) * u64::from(d) / u64::from(s)) as u32;
+                let cima = |v: u32, d: u32, s: u32| {
+                    (u64::from(v) * u64::from(d)).div_ceil(u64::from(s)) as u32
+                };
+                [
+                    baixo(x0, dw, sw).saturating_sub(1),
+                    (cima(x1, dw, sw) + 1).min(dw),
+                    baixo(y0, dh, sh).saturating_sub(1),
+                    (cima(y1, dh, sh) + 1).min(dh),
+                ]
+            });
+            janela = tesoura;
+            (sw, sh) = (dw, dh);
+            if tesoura.is_some_and(|[x0, x1, y0, y1]| x0 >= x1 || y0 >= y1) {
+                continue;
+            }
             let src = texture.create_view(&wgpu::TextureViewDescriptor {
                 label: Some("mipgen src"),
                 base_mip_level: level - 1,
@@ -180,7 +225,11 @@ impl MipGenerator {
                     depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        load: if tesoura.is_some() {
+                            wgpu::LoadOp::Load
+                        } else {
+                            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
+                        },
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -191,6 +240,9 @@ impl MipGenerator {
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bg, &[]);
+            if let Some([x0, x1, y0, y1]) = tesoura {
+                pass.set_scissor_rect(x0, y0, x1 - x0, y1 - y0);
+            }
             pass.draw(0..3, 0..1);
         }
         gpu.queue.submit([encoder.finish()]);

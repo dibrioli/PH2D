@@ -219,3 +219,53 @@ fn rgba8unorm_copies_byte_identical_into_srgb_slot() {
         "rgba8unorm → Rgba8UnormSrgb copy must be byte-identical"
     );
 }
+
+/// B20.1: the premultiply of a dirty rect writes ONLY that rect (the rest keeps the last frame) and,
+/// inside it, the same bytes as the whole-canvas pass. Odd sizes and a rect that touches no workgroup edge.
+#[test]
+#[ignore = "needs a GPU device (GPU CI lane)"]
+fn o_premul_da_regiao_so_escreve_a_regiao() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("no headless GPU; skipping o_premul_da_regiao_so_escreve_a_regiao");
+        return;
+    };
+    let (w, h) = (37u32, 29u32);
+    let px = |s: u32| -> Vec<u8> {
+        (0..w * h * 4)
+            .map(|i| ((i.wrapping_mul(2_654_435_761) >> 7).wrapping_add(s) % 256) as u8)
+            .collect()
+    };
+    let (a, b) = (px(0), px(91));
+    let (src_a, src_b) = (make_src(&gpu, w, h, &a), make_src(&gpu, w, h, &b));
+    let mut todo = PreviewPremul::new(&gpu);
+    let esperado_b = readback(&gpu, todo.run(&gpu, &src_b, w, h).expect("premul"), w, h);
+    let mut premul = PreviewPremul::new(&gpu);
+    let esperado_a = readback(&gpu, premul.run(&gpu, &src_a, w, h).expect("premul"), w, h);
+    for rect in [
+        (5u32, 3u32, 11u32, 9u32),
+        (0, 0, w, 1),
+        (36, 28, 1, 1),
+        (0, 0, w, h),
+    ] {
+        let _ = premul.run(&gpu, &src_a, w, h);
+        let got = readback(
+            &gpu,
+            premul.run_region(&gpu, &src_b, w, h, rect).expect("premul"),
+            w,
+            h,
+        );
+        let (rx, ry, rw, rh) = rect;
+        for y in 0..h {
+            for x in 0..w {
+                let dentro = x >= rx && x < rx + rw && y >= ry && y < ry + rh;
+                let i = ((y * w + x) * 4) as usize;
+                let quer = if dentro { &esperado_b } else { &esperado_a };
+                assert_eq!(
+                    &got[i..i + 4],
+                    &quer[i..i + 4],
+                    "rect {rect:?}, px ({x},{y}), dentro={dentro}"
+                );
+            }
+        }
+    }
+}

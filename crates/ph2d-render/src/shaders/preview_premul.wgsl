@@ -14,14 +14,15 @@
 
 @group(0) @binding(0) var src: texture_2d<f32>;
 @group(0) @binding(1) var dst: texture_storage_2d<rgba8unorm, write>;
+// The rect to premultiply: origin xy, extent zw (the whole canvas for a full pass).
+@group(0) @binding(2) var<uniform> rect: vec4<u32>;
 
 @compute @workgroup_size(8, 8, 1)
 fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
-    let dims = textureDimensions(dst);
-    if (gid.x >= dims.x || gid.y >= dims.y) {
+    if (gid.x >= rect.z || gid.y >= rect.w) {
         return;
     }
-    let coord = vec2<i32>(i32(gid.x), i32(gid.y));
+    let coord = vec2<i32>(i32(rect.x + gid.x), i32(rect.y + gid.y));
     let c = textureLoad(src, coord, 0);
     // Straight-alpha premultiply: rgb' = rgb * a, alpha unchanged.
     let pm = vec4<f32>(c.rgb * c.a, c.a);

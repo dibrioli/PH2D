@@ -60,6 +60,7 @@ mod mask_interaction_regression;
 mod measure_first_stroke_pipelines;
 mod o_compositor_e_meia_cobertura;
 mod precision_parity_gpu;
+mod mipgen_rect_gpu;
 mod preview_premul_gpu;
 mod render_instance_pod_size_v4;
 mod skin_mesh_gpu_ceiling;

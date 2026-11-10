@@ -45,6 +45,8 @@ struct OutTex {
 pub struct PreviewPremul {
     pipeline: wgpu::ComputePipeline,
     bgl: wgpu::BindGroupLayout,
+    /// `vec4<u32>` rect (origin, extent) the dispatch covers.
+    rect: wgpu::Buffer,
     out: Option<OutTex>,
 }
 
@@ -86,8 +88,25 @@ impl PreviewPremul {
                         },
                         count: None,
                     },
+                    // 2: the rect (origin xy, extent zw)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
                 ],
             });
+        let rect = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ph2d-render preview_premul rect"),
+            size: 16,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         let layout = gpu
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -108,6 +127,7 @@ impl PreviewPremul {
         Self {
             pipeline,
             bgl,
+            rect,
             out: None,
         }
     }
@@ -129,10 +149,36 @@ impl PreviewPremul {
         w: u32,
         h: u32,
     ) -> Option<&wgpu::Texture> {
+        self.run_region(gpu, src, w, h, (0, 0, w, h))
+    }
+
+    /// [`Self::run`] restricted to `rect` (`x, y, w, h` inside the canvas): texels outside it keep the
+    /// last run's bytes. A freshly (re)allocated output is filled whole.
+    pub fn run_region(
+        &mut self,
+        gpu: &GpuContext,
+        src: &wgpu::Texture,
+        w: u32,
+        h: u32,
+        rect: (u32, u32, u32, u32),
+    ) -> Option<&wgpu::Texture> {
         if w == 0 || h == 0 {
             return None;
         }
-        self.ensure_out(gpu, w, h);
+        let (rx, ry, rw, rh) = if self.ensure_out(gpu, w, h) {
+            (0, 0, w, h)
+        } else {
+            let (x, y) = (rect.0.min(w), rect.1.min(h));
+            (x, y, rect.2.min(w - x), rect.3.min(h - y))
+        };
+        if rw == 0 || rh == 0 {
+            return self.out.as_ref().map(|o| &o.texture);
+        }
+        let bytes: Vec<u8> = [rx, ry, rw, rh]
+            .iter()
+            .flat_map(|v| v.to_le_bytes())
+            .collect();
+        gpu.queue.write_buffer(&self.rect, 0, &bytes);
         let src_view = src.create_view(&wgpu::TextureViewDescriptor::default());
         let out = self.out.as_ref()?;
         let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -146,6 +192,10 @@ impl PreviewPremul {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: wgpu::BindingResource::TextureView(&out.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.rect.as_entire_binding(),
                 },
             ],
         });
@@ -163,19 +213,19 @@ impl PreviewPremul {
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
-            pass.dispatch_workgroups(w.div_ceil(WORKGROUP_EDGE), h.div_ceil(WORKGROUP_EDGE), 1);
+            pass.dispatch_workgroups(rw.div_ceil(WORKGROUP_EDGE), rh.div_ceil(WORKGROUP_EDGE), 1);
         }
         gpu.queue.submit([encoder.finish()]);
         self.out.as_ref().map(|o| &o.texture)
     }
 
-    /// Ensure the output texture is sized `w × h`.
-    fn ensure_out(&mut self, gpu: &GpuContext, w: u32, h: u32) {
+    /// Ensure the output texture is sized `w × h`; `true` when it was (re)allocated.
+    fn ensure_out(&mut self, gpu: &GpuContext, w: u32, h: u32) -> bool {
         if let Some(o) = &self.out
             && o.width == w
             && o.height == h
         {
-            return;
+            return false;
         }
         let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("ph2d-render preview_premul out"),
@@ -202,6 +252,7 @@ impl PreviewPremul {
             width: w,
             height: h,
         });
+        true
     }
 }
 

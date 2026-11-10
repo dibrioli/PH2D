@@ -475,9 +475,10 @@ fn compose_light_premul(
     };
 
     // 3) Premultiply into a COPY_SRC texture (the slot samples PREMULTIPLIED);
+    let Region { x, y, w, h } = tocada;
     session
         .premul
-        .run(&session.gpu, finished, width, height)
+        .run_region(&session.gpu, finished, width, height, (x, y, w, h))
         .ok_or(ph2d_i18n::tr(
             "app.painter.painter_gpu_preview.premultiply_produced_no_texture",
         ))?;

@@ -63,6 +63,8 @@ pub enum TimelineTinta {
     Cursor,
     /// A borda da folha com o Auto Key a gravar.
     Gravando,
+    /// A moldura da área das trilhas em repouso: o traço da régua da maquete, neutro e sutil.
+    Moldura,
 }
 
 impl TimelineTinta {
@@ -90,6 +92,7 @@ impl TimelineTinta {
             Self::SummaryFita => (T::KanbanList, [20, 36, 68]),
             Self::Listra => (T::KanbanList, [9, 12, 24]),
             Self::Gravando => (T::KanbanList, [196, 116, 114]),
+            Self::Moldura => (T::KanbanList, [37, 41, 56]),
         }
     }
 

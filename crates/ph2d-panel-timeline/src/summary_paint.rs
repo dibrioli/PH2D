@@ -112,7 +112,7 @@ pub(crate) fn paint(
         ctx.scene,
         ph2d_i18n::tr("panel.timeline.summary"),
         region.x + Spacing::Sm.px(),
-        y + (ROW_H_PX - font) * 0.5,
+        crate::linhas::y_do_texto(y, font),
         font,
         label_budget,
         if ph2d_editor_core::panel::cards::ferramenta::cards_on() {

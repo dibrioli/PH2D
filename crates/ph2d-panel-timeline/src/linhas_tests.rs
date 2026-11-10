@@ -468,3 +468,65 @@ fn o_summary_tem_cor_propria_nos_oito_temas() {
 /// Medido (onda 2g, cores da maquete): fundo 0,045 · texto/losango 0,249; as barras logo abaixo.
 const BARRA_SUMMARY: f64 = 0.044;
 const LEGIVEL_SUMMARY: f64 = 0.24;
+
+/// ⭐ Dono 09/11 («os nomes não estão centrados»): em toda linha da coluna (Summary, cabeçalho do
+/// objecto, grupo, propriedade e o valor), o meio das maiúsculas que o pintor desenha fica a ≤ 1 px
+/// do meio da linha — onde estão o losango, a barra, o ícone e o ▶/▾. Reconstrói a conta do pintor
+/// (`ph2d_text`: o tamanho desenhado e o meio das maiúsculas). *Mutação: a conta `(linha − letra)/2`
+/// de antes ⇒ ~2,5 px ⇒ vermelho.*
+#[test]
+fn o_texto_da_coluna_fica_no_meio_da_linha() {
+    use ph2d_tokens::TypeToken;
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(true));
+    let y = 300.0_f32;
+    let meio = y + ROW_H_PX * 0.5;
+    let losango = meio; // `paint_lane_keys`, `paint_grupo`, `paint_objeto`: cy = y + ROW_H_PX/2
+    let icone = y + (ROW_H_PX - ICONE_PX) * 0.5 + ICONE_PX * 0.5;
+    for font in [TypeToken::Sm.px(), TypeToken::Xs.px()] {
+        let topo = y_do_texto(y, font) - (ph2d_text::displayed_font_px(font) - font) * 0.5;
+        let maiusculas = topo + ph2d_text::cap_centre_px(font);
+        for (alvo, o_que) in [(meio, "linha"), (losango, "losango"), (icone, "ícone")] {
+            assert!(
+                (maiusculas - alvo).abs() <= 1.0,
+                "letra {font}: texto a {:.2} px do meio do(a) {o_que}",
+                maiusculas - alvo
+            );
+        }
+    }
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(None);
+}
+
+/// ⭐ Dono 09/11 («uma outline como tem na referência»): a moldura da área das trilhas existe com o
+/// Auto Key desligado e ligado, muda de tinta com ele (neutra → vermelha) em todo tema, lê-se contra
+/// a folha, e cabe inteira na área: não invade a barra de rolagem nem passa da última linha.
+#[test]
+fn a_moldura_da_fita_existe_e_acende_com_o_auto_key() {
+    use TimelineTinta as T;
+    let g = geom::resolve(Rect::new(0.0, 0.0, 1200.0, 400.0), 60.0, 180.0, 56.0);
+    let (r0, t0) = moldura(&g, false);
+    let (r1, t1) = moldura(&g, true);
+    assert_eq!((t0, t1), (T::Moldura, T::Gravando));
+    assert_eq!(
+        r0, r1,
+        "a moldura é a mesma nos dois estados; só a tinta muda"
+    );
+    let meia = ph2d_tokens::TIMELINE_FRAME_PX * 0.5;
+    assert!(r0.w > 0.0 && r0.h > 0.0, "a moldura existe");
+    assert!(
+        r0.x + r0.w + meia <= g.scrollbar.x + 0.01,
+        "não cobre a barra de rolagem"
+    );
+    assert!(
+        r0.y + r0.h + meia <= g.rows.y + g.rows.h + 0.01,
+        "não passa da última linha"
+    );
+    assert!(r0.x - meia >= g.region.x - 0.01 && r0.y - meia >= g.region.y - 0.01);
+    let mudou = pior(&[T::Moldura], &[T::Gravando]);
+    let le_se = pior(
+        &[T::Moldura],
+        &[T::FitaPropriedade, T::NomesPropriedade, T::FitaRegua],
+    );
+    eprintln!("moldura: muda {mudou:.3} · contra a folha {le_se:.3}");
+    assert!(mudou >= 0.10, "o Auto Key muda a moldura só {mudou:.3}");
+    assert!(le_se >= 0.05, "a moldura some na folha ({le_se:.3})");
+}

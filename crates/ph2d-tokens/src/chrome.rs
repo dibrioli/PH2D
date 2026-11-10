@@ -104,6 +104,9 @@ pub const TIMELINE_KEY_RING_PX: f32 = 1.5; // LITERAL-PX-OK: contorno do losango
 /// O alvo de clique da chave: o losango com o contorno inteiro (6,5 + 1,5) e o encaixe ao splitter
 /// (`TIME_GUTTER` 12 − 8 = o `SPLIT_GRIP` de 4).
 pub const TIMELINE_KEY_HIT_HALF_PX: f32 = 8.0; // LITERAL-PX-OK: meia-largura do alvo da chave
+/// **A moldura da área das trilhas** (dono 09/11: «uma outline como tem na referência»): maquete B1
+/// medida, um pixel cheio e meio antialiasado, raio do cartão.
+pub const TIMELINE_FRAME_PX: f32 = 1.5; // LITERAL-PX-OK: espessura da moldura medida na maquete
 /// O ponto do cabeçalho do objecto (maquete: ~7 px).
 pub const TIMELINE_OBJECT_DOT_HALF_PX: f32 = 4.0; // LITERAL-PX-OK: meia-diagonal do ponto do objecto
 

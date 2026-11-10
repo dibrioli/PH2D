@@ -291,7 +291,7 @@ pub(crate) fn paint_grupo(
         ctx.scene,
         &texto,
         x + TWIRL_W,
-        y + (ROW_H_PX - font) * 0.5,
+        y_do_texto(y, font),
         font,
         (geo.label_w - TWIRL_W - Spacing::Xs.px()).max(0.0),
         if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
@@ -340,6 +340,37 @@ pub(crate) fn paint_grupo(
             ),
         );
     }
+}
+
+/// ⭐ **O `y` do texto da coluna de nomes numa linha que começa em `y`** (dono 09/11: «não estão
+/// centrados»). Nos cartões, o meio das MAIÚSCULAS no meio da linha — a porta dos cartões,
+/// [`ph2d_editor_core::paint::folga_do_texto`]; a conta `(linha − letra) / 2` punha o texto ~2,5 px
+/// abaixo. No clássico, a de sempre.
+pub(crate) fn y_do_texto(y: f32, font: f32) -> f32 {
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        y + ph2d_editor_core::paint::folga_do_texto(ROW_H_PX, font)
+    } else {
+        y + (ROW_H_PX - font) * 0.5
+    }
+}
+
+/// ⭐ **A moldura da área das trilhas** (dono 09/11, maquete B1): régua + coluna de nomes + fita, até
+/// antes da barra de rolagem, recuada meia espessura para o traço caber inteiro dentro (não corta a
+/// última linha nem cobre a barra). A tinta: neutra em repouso, a vermelha com o Auto Key a gravar.
+pub(crate) fn moldura(g: &geom::Geom, auto_key: bool) -> (Rect, ph2d_tokens::TimelineTinta) {
+    let meia = ph2d_tokens::TIMELINE_FRAME_PX * 0.5;
+    let (x0, y0) = (g.region.x + meia, g.region.y + meia);
+    let x1 = g.rows.x + g.rows.w - meia;
+    let y1 = g.rows.y + g.rows.h - meia;
+    let tinta = if auto_key {
+        ph2d_tokens::TimelineTinta::Gravando
+    } else {
+        ph2d_tokens::TimelineTinta::Moldura
+    };
+    (
+        Rect::new(x0, y0, (x1 - x0).max(0.0), (y1 - y0).max(0.0)),
+        tinta,
+    )
 }
 
 /// A espessura do fio entre dois objectos.
@@ -421,7 +452,7 @@ pub(crate) fn paint_objeto(
         ctx.scene,
         &crate::tracks::objeto_snap(snap, entity),
         tx,
-        y + (ROW_H_PX - font) * 0.5,
+        y_do_texto(y, font),
         font,
         (x + geo.label_w - tx - Spacing::Xs.px()).max(0.0),
         crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::TextoCabecalho, theme),

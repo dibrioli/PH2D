@@ -23,7 +23,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::project::ProjectSettings;
 use ph2d_editor_core::{DisplayAngle, LengthDisplay};
 use ph2d_timeline::{PropKind, TimelineViewSnapshot, TrackView};
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
 
 /// A fatia reservada ao número, no fim da coluna de nomes.
 ///
@@ -230,7 +230,7 @@ pub(crate) fn paint_name_and_value(
         ctx.scene,
         texto,
         label_x,
-        y + (ROW_H_PX - font) * 0.5,
+        crate::linhas::y_do_texto(y, font),
         font,
         name_w,
         cor,
@@ -245,7 +245,7 @@ pub(crate) fn paint_name_and_value(
         ctx.scene,
         &valor,
         right - VALUE_W - Spacing::Xs.px(),
-        y + (ROW_H_PX - font) * 0.5,
+        crate::linhas::y_do_texto(y, font),
         font,
         VALUE_W,
         // ⚠️ `Text3` de propósito: o nome é que identifica a row, e um número em `Text1` ao lado

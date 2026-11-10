@@ -337,14 +337,15 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     if cartoes && state.tab.shows_keys() && !snapshot.tracks.is_empty() {
         crate::legenda::paint(ctx, theme, crate::tracks::lane_rect(&g, view));
     }
-    // Auto Key a gravar acende a borda da folha (doc 15 onda 2): o aviso mora onde a chave nasce.
-    if cartoes && snapshot.auto_key {
+    // A moldura da área das trilhas (maquete B1, sempre); o Auto Key a gravar acende-a a vermelho.
+    if cartoes {
+        let (r, cor) = crate::linhas::moldura(&g, snapshot.auto_key);
         ph2d_editor_core::paint::stroke_rounded_rect(
             ctx.scene,
-            g.region,
-            ph2d_tokens::Radius::Xs.px(),
-            ph2d_editor_core::panel::cards::banda::metrics::FIELD_BORDER * 2.0,
-            crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::Gravando, theme),
+            r,
+            ph2d_editor_core::panel::cards::banda::metrics::CARD_RADIUS,
+            ph2d_tokens::TIMELINE_FRAME_PX,
+            crate::folha_tinta::tinta(cor, theme),
         );
     }
     // The label/time splitter sits over the lanes AND the ruler, so it is

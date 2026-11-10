@@ -60,13 +60,25 @@ pub(in crate::tool::paint) struct RewetCache {
     k: Chave,
     gw: usize,
     gh: usize,
-    pres: Vec<f32>,
-    soak: Vec<f32>,
-    soak_halo: Vec<f32>,
-    water_halo: Vec<f32>,
-    near: [Vec<f32>; 4],
-    far: Option<[Vec<f32>; 4]>,
+    tw: usize,
+    pres: Plano,
+    soak: Plano,
+    soak_halo: Plano,
+    water_halo: Plano,
+    near: [Plano; 4],
+    far: Option<[Plano; 4]>,
     feito: Vec<bool>,
+}
+
+/// Um plano da grelha em ladrilhos de `LADO²` células, cada um alocado na 1.ª escrita (só os
+/// ladrilhos `feito` se escrevem: a memória é a da área visitada, não a da tela).
+#[derive(Clone, Default)]
+struct Plano(Vec<Option<Box<[f32]>>>);
+
+impl Plano {
+    fn novo(n: usize) -> Self {
+        Plano(vec![None; n])
+    }
 }
 
 /// Os campos da janela de leitura, lidos da grelha guardada e recalculados só onde a janela é nova
@@ -99,20 +111,22 @@ pub(in crate::tool::paint) fn build_rewet_fields_cached(
         base: e.base.as_ptr() as usize,
         ground: e.ground.as_ptr() as usize,
     };
-    let g = gw * gh;
+    let tw = gw.div_ceil(LADO);
+    let nt = tw * gh.div_ceil(LADO);
     let mut c = match cache {
         Some(c) if c.k == k => c,
         _ => RewetCache {
             k,
             gw,
             gh,
-            pres: vec![0.0; g],
-            soak: vec![0.0; g],
-            soak_halo: if e.soaked { vec![0.0; g] } else { Vec::new() },
-            water_halo: if e.watered { vec![0.0; g] } else { Vec::new() },
-            near: std::array::from_fn(|_| vec![0.0; g]),
-            far: e.soaked.then(|| std::array::from_fn(|_| vec![0.0; g])),
-            feito: vec![false; gw.div_ceil(LADO) * gh.div_ceil(LADO)],
+            tw,
+            pres: Plano::novo(nt),
+            soak: Plano::novo(nt),
+            soak_halo: Plano::novo(if e.soaked { nt } else { 0 }),
+            water_halo: Plano::novo(if e.watered { nt } else { 0 }),
+            near: std::array::from_fn(|_| Plano::novo(nt)),
+            far: e.soaked.then(|| std::array::from_fn(|_| Plano::novo(nt))),
+            feito: vec![false; nt],
         },
     };
     // 1. O sujo do quadro `⊕ R`: o píxel `p` só é amostrado pela célula `p / ds`.
@@ -131,7 +145,6 @@ pub(in crate::tool::paint) fn build_rewet_fields_cached(
         }
     }
     // 2. Os ladrilhos da janela nunca calculados (troços iguais de filas seguidas juntam-se).
-    let tw = gw.div_ceil(LADO);
     let (tx0, tx1) = (lox0 / LADO, (lox0 + lw).div_ceil(LADO));
     let (ty0, ty1) = (loy0 / LADO, (loy0 + lh).div_ceil(LADO));
     let mut trocos: Vec<Rect> = Vec::new();
@@ -157,11 +170,16 @@ pub(in crate::tool::paint) fn build_rewet_fields_cached(
         }
     }
     for (x0, x1, y0, y1) in trocos {
-        let u = (x0 * LADO, y0 * LADO, (x1 * LADO).min(gw), (y1 * LADO).min(gh));
+        let u = (
+            x0 * LADO,
+            y0 * LADO,
+            (x1 * LADO).min(gw),
+            (y1 * LADO).min(gh),
+        );
         recompute(&mut c, &e, u, (r1, r2, rr));
     }
     // 3. A janela sai da grelha (as mesmas `lox0/loy0/lw/lh` do refeito: o `samp` não muda).
-    let tira = |src: &[f32]| recorta(src, gw, (lox0, loy0), (lw, lh));
+    let tira = |src: &Plano| recorta(src, tw, (lox0, loy0), (lw, lh));
     let f = RewetFields {
         pres: tira(&c.pres),
         soak_raw: if e.soaked {
@@ -193,14 +211,54 @@ pub(in crate::tool::paint) fn build_rewet_fields_cached(
     (f, c)
 }
 
-/// O rectângulo `(o, (w, h))` de um plano de largura `gw`, linha a linha.
-fn recorta(src: &[f32], gw: usize, (ox, oy): (usize, usize), (w, h): (usize, usize)) -> Vec<f32> {
+/// O rectângulo `(o, (w, h))` de um plano com `tw` ladrilhos por fila, linha a linha (ladrilho por
+/// alocar = zeros).
+fn recorta(src: &Plano, tw: usize, (ox, oy): (usize, usize), (w, h): (usize, usize)) -> Vec<f32> {
     let mut out = vec![0.0f32; w * h];
     out.par_chunks_mut(w).enumerate().for_each(|(j, row)| {
-        let s = (oy + j) * gw + ox;
-        row.copy_from_slice(&src[s..s + w]);
+        let (ty, ly) = ((oy + j) / LADO, (oy + j) % LADO);
+        let mut x = ox;
+        while x < ox + w {
+            let (tx, lx) = (x / LADO, x % LADO);
+            let n = (LADO - lx).min(ox + w - x);
+            if let Some(t) = &src.0[ty * tw + tx] {
+                let s = ly * LADO + lx;
+                row[x - ox..x - ox + n].copy_from_slice(&t[s..s + n]);
+            }
+            x += n;
+        }
     });
     out
+}
+
+/// Escreve as células `u` (lidas de `src`, de largura `ww`, com `u` em `o`) nos ladrilhos `feito`.
+fn poe(
+    p: &mut Plano,
+    feito: &[bool],
+    tw: usize,
+    u: Rect,
+    src: &[f32],
+    ww: usize,
+    o: (usize, usize),
+) {
+    let (tx0, tx1) = (u.0 / LADO, u.2.div_ceil(LADO));
+    let (ty0, ty1) = (u.1 / LADO, u.3.div_ceil(LADO));
+    p.0.par_iter_mut()
+        .enumerate()
+        .filter(|(i, _)| {
+            let (tx, ty) = (i % tw, i / tw);
+            feito[*i] && (tx0..tx1).contains(&tx) && (ty0..ty1).contains(&ty)
+        })
+        .for_each(|(i, t)| {
+            let (bx, by) = ((i % tw) * LADO, (i / tw) * LADO);
+            let t = t.get_or_insert_with(|| vec![0.0f32; LADO * LADO].into_boxed_slice());
+            let (x0, x1) = (u.0.max(bx), u.2.min(bx + LADO));
+            for y in u.1.max(by)..u.3.min(by + LADO) {
+                let s = (o.1 + y - u.1) * ww + o.0 + x0 - u.0;
+                let d = (y - by) * LADO + x0 - bx;
+                t[d..d + x1 - x0].copy_from_slice(&src[s..s + x1 - x0]);
+            }
+        });
 }
 
 /// Recalcula as células `u` sobre a janela `u ⊕ R` (o valor de `u` é o de qualquer janela maior) e
@@ -215,7 +273,12 @@ fn recompute(c: &mut RewetCache, e: &Entradas<'_>, u: Rect, (r1, r2, rr): (usize
     );
     let (ww, wh) = (w.2 - w.0, w.3 - w.1);
     let nn = ww * wh;
-    let (mut pres, mut wr, mut wg, mut wb) = (vec![0.0f32; nn], vec![0.0; nn], vec![0.0; nn], vec![0.0; nn]);
+    let (mut pres, mut wr, mut wg, mut wb) = (
+        vec![0.0f32; nn],
+        vec![0.0; nn],
+        vec![0.0; nn],
+        vec![0.0; nn],
+    );
     let (mut soak, mut water) = (vec![0.0f32; nn], vec![0.0f32; nn]);
     let half = ds / 2;
     let (fw, fh) = (e.fw, e.fh);
@@ -247,17 +310,8 @@ fn recompute(c: &mut RewetCache, e: &Entradas<'_>, u: Rect, (r1, r2, rr): (usize
         });
     let near = box_blur4([&pres, &wr, &wg, &wb], ww, wh, r1);
     let o = (u.0 - w.0, u.1 - w.1);
-    let um = (u.2 - u.0, u.3 - u.1);
-    let poe = |dst: &mut [f32], src: &[f32]| {
-        dst.par_chunks_mut(gw)
-            .skip(u.1)
-            .take(um.1)
-            .enumerate()
-            .for_each(|(j, row)| {
-                let s = (o.1 + j) * ww + o.0;
-                row[u.0..u.2].copy_from_slice(&src[s..s + um.0]);
-            });
-    };
+    let (tw, feito) = (c.tw, &c.feito);
+    let poe = |dst: &mut Plano, src: &[f32]| poe(dst, feito, tw, u, src, ww, o);
     poe(&mut c.pres, &pres);
     for (dst, src) in c.near.iter_mut().zip(near.iter()) {
         poe(dst, src);
@@ -274,5 +328,21 @@ fn recompute(c: &mut RewetCache, e: &Entradas<'_>, u: Rect, (r1, r2, rr): (usize
                 poe(dst, src);
             }
         }
+    }
+}
+
+#[cfg(test)]
+impl RewetCache {
+    /// `(bytes dos ladrilhos alocados, bytes da grelha densa dos mesmos planos)`.
+    pub(in crate::tool::paint) fn bytes(&self) -> (usize, usize) {
+        let planos = || {
+            [&self.pres, &self.soak, &self.soak_halo, &self.water_halo]
+                .into_iter()
+                .chain(self.near.iter())
+                .chain(self.far.iter().flatten())
+        };
+        let vivos: usize = planos().map(|p| p.0.iter().flatten().count()).sum();
+        let densos = planos().filter(|p| !p.0.is_empty()).count();
+        (vivos * LADO * LADO * 4, densos * self.gw * self.gh * 4)
     }
 }

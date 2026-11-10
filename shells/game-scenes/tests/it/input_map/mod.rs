@@ -227,3 +227,16 @@ impl Mesa {
         ph2d_app_input_map::view(&self.hero).pref_key()
     }
 }
+
+/// Corre `f` no modo de texto dos testes e no de FÁBRICA do app (`CrispHeavyPlus`, com o −0,01 em de espaçamento):
+/// um censo só no `Default` tem larguras exactas em f32 e não via o «F1» que a C4 cortava.
+/// ⚠️ O `CrispHeavy` fica de fora: nele a dica do painel do jogador (`ph2d-player-controls`) corta-se a 304 px.
+pub(super) fn em_cada_modo_de_texto(mut f: impl FnMut()) {
+    use ph2d_tokens::TextRendering as R;
+    for modo in [R::Default, R::CrispHeavyPlus] {
+        eprintln!("modo de texto: {modo:?}");
+        ph2d_text::set_active_text_rendering(modo);
+        f();
+    }
+    ph2d_text::set_active_text_rendering(R::Default);
+}

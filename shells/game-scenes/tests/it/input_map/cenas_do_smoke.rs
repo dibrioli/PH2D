@@ -122,17 +122,33 @@ fn as_cenas_do_try_it_e_do_play_poem_a_tecla_a_manche_e_a_tela_do_jogador() {
 fn a_cena_c4_mostra_a_troca_do_jogador_sem_escrever_no_home() {
     use ph2d_app_game::smoke::input_map::GAME_ID;
     use ph2d_app_input_map::ph2d_player_controls::{home_base, player_file};
-    let carimbo = |p: &std::path::Path| std::fs::metadata(p).ok().map(|m| (m.len(), m.modified().ok()));
+    let carimbo = |p: &std::path::Path| {
+        std::fs::metadata(p)
+            .ok()
+            .map(|m| (m.len(), m.modified().ok()))
+    };
     let ficheiro = home_base().map(|b| player_file(&b, GAME_ID));
     let antes = ficheiro.as_deref().map(carimbo);
     for c in CENAS {
         let m = armada(c);
-        assert_eq!(m.tab().doc.tryit.base, home_base(), "{c}: a pasta é a de omissão");
+        assert_eq!(
+            m.tab().doc.tryit.base,
+            home_base(),
+            "{c}: a pasta é a de omissão"
+        );
         if c == "C4" {
-            assert_eq!(m.tab().doc.tryit.player_changed, 1, "C4: 1 troca, lida da memória");
+            assert_eq!(
+                m.tab().doc.tryit.player_changed,
+                1,
+                "C4: 1 troca, lida da memória"
+            );
         }
     }
-    assert_eq!(ficheiro.as_deref().map(carimbo), antes, "nenhuma cena tocou no ficheiro do jogador no HOME");
+    assert_eq!(
+        ficheiro.as_deref().map(carimbo),
+        antes,
+        "nenhuma cena tocou no ficheiro do jogador no HOME"
+    );
 }
 
 #[test]

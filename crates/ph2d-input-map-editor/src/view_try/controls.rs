@@ -5,14 +5,14 @@ use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
-use ph2d_tokens::ColorToken;
+use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
 
 use super::cards::{GAP, PAD, ROW, inner_w, word};
 use super::{line_h, para};
 use crate::doc::InputMapDoc;
 use crate::view_list::text::line;
-use ph2d_editor_core::paint::{fill_rounded_rect, fill_rounded_rect_radii};
+use ph2d_editor_core::paint::{fill_rounded_rect, fill_rounded_rect_radii, stroke_rounded_rect};
 use ph2d_editor_core::panel::cards::{CardCtx, Widget};
 use ph2d_editor_core::widget::CheckboxValue;
 use ph2d_input::ActionId;
@@ -20,12 +20,31 @@ use ph2d_input::ActionId;
 use super::state::TryHit;
 use super::target;
 
-fn chips_rows(doc: &InputMapDoc, ts: &mut TextSystem, w: f32) -> usize {
+/// A tela do jogo da prévia (maquete C4): 16:9, o painel ao centro do céu, a faixa do chão por baixo.
+const SCREEN_W: f32 = ROW * 16.0;
+const SCREEN_H: f32 = SCREEN_W * 9.0 / 16.0;
+/// A coluna dos controlos só fica AO LADO da tela com esta largura; abaixo dela, empilha.
+const SIDE_MIN: f32 = ROW * 14.0;
+
+/// A tela (relativa ao conteúdo) e a coluna dos controlos `(dx, w)`: lado a lado no largo (o cartão inteiro cabe a
+/// 1600×1000), empilhadas no estreito com a tela ao centro.
+fn split(w: f32) -> (Rect, f32, f32) {
+    let iw = inner_w(w);
+    let sw = SCREEN_W.min(iw);
+    let sh = sw * SCREEN_H / SCREEN_W;
+    if iw >= SCREEN_W + PAD + SIDE_MIN {
+        (Rect::new(0.0, 0.0, sw, sh), sw + PAD, iw - sw - PAD)
+    } else {
+        (Rect::new((iw - sw) * 0.5, 0.0, sw, sh), 0.0, iw)
+    }
+}
+
+fn chips_rows(doc: &InputMapDoc, ts: &mut TextSystem, col_w: f32) -> usize {
     let mut rows = 1;
     let mut x = 0.0;
     for a in doc.snap.map.actions() {
         let cw = chip_w(ts, &a.name);
-        if x + cw > inner_w(w) && x > 0.0 {
+        if x + cw > col_w && x > 0.0 {
             rows += 1;
             x = 0.0;
         }
@@ -36,10 +55,6 @@ fn chips_rows(doc: &InputMapDoc, ts: &mut TextSystem, w: f32) -> usize {
 
 fn chip_w(ts: &mut TextSystem, name: &str) -> f32 {
     ts.prefix_width(name, m::VALUE_PX) + ROW + m::SEG_INSET * 2.0
-}
-
-fn preview_h(w: f32) -> f32 {
-    (inner_w(w) * 0.4).min(ROW * 8.0)
 }
 
 fn changed_text(n: usize) -> String {
@@ -58,17 +73,15 @@ pub(super) fn controls_h(doc: &mut InputMapDoc, ts: &mut TextSystem, w: f32) -> 
     } else {
         0.0
     };
-    let chips = chips_rows(doc, ts, w) as f32 * (ROW + GAP);
-    m::CARD_PAD_TOP
-        + line_h(m::LABEL_PX)
-        + preview_h(w)
-        + GAP
-        + (ROW + GAP) * 2.0
-        + refuse
-        + line_h(m::LABEL_PX)
-        + chips
-        + forget
-        + m::CARD_PAD_BOTTOM
+    let (screen, dx, col_w) = split(w);
+    let chips = chips_rows(doc, ts, col_w) as f32 * (ROW + GAP);
+    let column = (ROW + GAP) * 2.0 + refuse + line_h(m::LABEL_PX) + chips + forget;
+    let body = if dx > 0.0 {
+        screen.h.max(column)
+    } else {
+        screen.h + GAP + column
+    };
+    m::CARD_PAD_TOP + line_h(m::LABEL_PX) + body + m::CARD_PAD_BOTTOM
 }
 
 /// C·4: a prévia pela MESMA pintura da tela do jogador, as caixas e o «Forget them».
@@ -81,6 +94,7 @@ pub(super) fn controls(
 ) {
     let (x, w) = (r.x + PAD, inner_w(r.w));
     let mut y = r.y + m::CARD_PAD_TOP;
+    let (screen, dx, col_w) = split(r.w);
     let label = Rect::new(x, y, w, line_h(m::LABEL_PX));
     line(
         &mut doc.census,
@@ -92,27 +106,35 @@ pub(super) fn controls(
         ink.color(ColorToken::CardLabel),
     );
     y += line_h(m::LABEL_PX);
-    let ph = preview_h(r.w);
-    let back = Rect::new(x, y, w, ph);
-    // A prévia é um JOGO (maquete C4): céu claro e a faixa do chão, o mesmo em todo tema.
+    let back = Rect::new(x + screen.x, y, screen.w, screen.h);
+    // A prévia é uma TELA DE JOGO emoldurada (maquete C4): céu claro, a faixa do chão, o painel ao centro do céu.
     fill_rounded_rect(
         scene,
         back,
         m::FIELD_RADIUS,
         ink.color(ColorToken::PreviewSky),
     );
-    let ground = Rect::new(x, y + ph - ROW, w, ROW);
-    let r = m::FIELD_RADIUS;
+    let ground = Rect::new(back.x, back.y + back.h - ROW, back.w, ROW);
+    let rad = m::FIELD_RADIUS;
     fill_rounded_rect_radii(
         scene,
         ground,
-        (0.0, 0.0, r, r),
+        (0.0, 0.0, rad, rad),
         ink.color(ColorToken::PreviewGround),
     );
+    stroke_rounded_rect(
+        scene,
+        back,
+        rad,
+        StrokeToken::Hairline.px(),
+        ink.color(ColorToken::Border),
+    );
     let rows = ph2d_player_controls::rows(doc.snap.read_map());
-    let screen = ph2d_player_controls::ControlsScreen::default();
-    ph2d_player_controls::paint(back, &rows, &screen, scene, ts, doc.tryit.theme);
-    y += ph + GAP;
+    let shown = ph2d_player_controls::ControlsScreen::default();
+    let sky = Rect::new(back.x, back.y, back.w, back.h - ROW);
+    ph2d_player_controls::paint(sky, &rows, &shown, scene, ts, doc.tryit.theme);
+    y += if dx > 0.0 { 0.0 } else { screen.h + GAP };
+    let (x, w) = (x + dx, col_w);
     let controls = doc.snap.map.controls().clone();
     let check = |on: bool| {
         if on {
@@ -152,8 +174,8 @@ pub(super) fn controls(
     } else {
         controls.open_key.label()
     };
-    let kw = ts.prefix_width(&key_text, m::VALUE_PX) + m::SEG_INSET * 2.0;
-    let chip = Rect::new(x + lw + m::SEG_ICON_GAP, y, kw, ROW);
+    let tw = ts.prefix_width(&key_text, m::VALUE_PX);
+    let chip = Rect::new(x + lw + m::SEG_ICON_GAP, y, tw + m::SEG_INSET * 2.0, ROW);
     let bg = if doc.tryit.listening_open_key {
         ColorToken::Accent
     } else {
@@ -165,7 +187,7 @@ pub(super) fn controls(
         ts,
         scene,
         &key_text,
-        Rect::new(chip.x + m::SEG_INSET, y, kw - m::SEG_INSET * 2.0, ROW),
+        Rect::new(chip.x + m::SEG_INSET, y, tw, ROW),
         m::VALUE_PX,
         ink.color(ColorToken::Text1),
     );

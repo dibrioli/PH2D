@@ -8,6 +8,12 @@ use ph2d_vector::VectorScene;
 
 use crate::census::Census;
 
+/// «Não coube?» com a MESMA comparação do pintor (`text_elide::coube`: `largura <= orçamento`, sem folga): uma folga
+/// aqui deixava passar o corte de um ulp que o pintor faz (o «F1» da C4 saía «…» e o censo dizia que coube).
+fn cortado(w: f32, budget: f32) -> bool {
+    w > budget
+}
+
 /// Pinta `s` numa linha dentro de `r` (centrado na vertical), regista-o no censo, e devolve a largura usada.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn line(
@@ -20,7 +26,7 @@ pub(crate) fn line(
     color: Color,
 ) -> f32 {
     let w = ts.prefix_width(s, px);
-    census.texts.push((r, s.to_owned(), w > r.w + f32::EPSILON));
+    census.texts.push((r, s.to_owned(), cortado(w, r.w)));
     paint_text_elided(
         ts,
         scene,
@@ -73,7 +79,7 @@ pub(crate) fn title(
     color: Color,
 ) -> f32 {
     let w = title_width(ts, s, px);
-    census.texts.push((r, s.to_owned(), w > r.w + f32::EPSILON));
+    census.texts.push((r, s.to_owned(), cortado(w, r.w)));
     census.semibold.push(s.to_owned());
     paint_text_title_elided(
         ts,

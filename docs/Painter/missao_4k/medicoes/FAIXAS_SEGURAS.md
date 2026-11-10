@@ -89,3 +89,31 @@ do roteiro nem dos knobs (`W1bA1` correu na 1.ª rodada e parou na 2.ª com o me
 **Leitura do bloco inteiro:** as faixas que CUSTAM a 4K na Radeon continuam as quatro da 1.ª rodada (W3, W5, W6, D1)
 mais um custo pequeno do Smooth Edges (W8); Max velocity, Subsurface, edgeSoftMass, Size×Spacing do Digital e o
 Relief do papel no traço não pagam acima do ruído — o PA §E sobrestimava-os para este caminho.
+
+## Continuação 2 (10/11, 19:52–20:01): W1 Body/Medium, W9, W17, W7, W13, W14
+
+- **Binário:** o mesmo `target/b08b-limpo` (árvore limpa `cd02ac77ef` + só os pedaços do `PH2D_COMPOSITE_KNOBS`),
+  reconstruído 1× às 19:57 com duas chaves novas: `realOil=1` (a caixa Real Oil do cartão, `Click`) e `ferramenta=n`
+  (o fio do trilho: 0 Pincel · 2 Blend · 4 Dry). `mede_pen_up_4k.sh`: casos W7/W13/W14 e `PRE=x,y` (o mesmo traço com
+  o Pincel antes, e o clique no botão do trilho: Dry 328,307 · Blend 328,227, fotografado em `.pre.png`).
+  W1b–W17 correram com o binário de antes (as chaves deles não mudaram). Radeon 14/14 `.placa`, zero `nvidia`.
+- **Carga 10–81 (tecto, não veredito).** Régua: controlo 250 ms lê 264–391 em 14/14.
+
+| caso (PA) | A | B | traço p50/p95 A → B ms | +1 s máx A → B | Ctrl+Z A → B | CPU parado A → B % | Wet img/s A → B | leitura (carga) |
+|---|---|---|---|---|---|---|---|---|
+| W1 Body | 0 | 0,5 | 29/54 → 29/38 | 33 → 45 | 169 → 202 | 64 → 61 | 36 → 36 | sem custo acima do ruído (11–14) |
+| W1 Medium | 0 | 1 (Oil) | 61/74 → 32/65 | 90 → 64 | 325 → 162 | 46 → 64 | 19 → 32 | ruído (A pior que B, 17–27) |
+| W9 Bristle Size×Count | 8 · 2000 | 16 · 4000 | **199/308 → 380/380** | **134 → 1 340** | 244 → 354 | 44 → 67 | 16 → 15 | **confirmada** (27–40): o Flat Bristle com mais e maiores cerdas trava o pen-up 1,3 s |
+| W17 bristleHeight | 0 | 8 | 70 → — | 2 397 → 2 085 | 399 → 238 | 69 → 42 | — → 19 | sem veredito: load 80–82 (o traço B não deixou quadros) |
+| W7 Real Oil Size | fábrica (20 px) | `]`×10 | 30/39 → 31/33 | 45 → 33 | 177 → 127 | 59 → 57 | 28 → 35 | sem custo no traço a 4K papel (27–40) |
+| W13 Dryer level | 1 | 2 | 28/40 → 27/29 | 38 → 29 | 163 → 94 | 116 → 120 | 39 → 39 | sem custo do nível; a água do traço antes põe o parado em ~118 % nos dois (19) |
+| W14 Blender reach | 0 | 1 | 27/30 → **32/53** | 45 → 53 | 275 → 185 | 105 → 104 | **36 → 24** | custo pequeno: p95 +80 %, img/s −33 % (13–17) |
+
+Crua: [`antes/b085/faixas3.md`](antes/b085/faixas3.md) (W1/W9/W17), [`faixas4.md`](antes/b085/faixas4.md) (W7),
+[`faixas5.md`](antes/b085/faixas5.md) (W13/W14), jsonl ao lado. ⚠️ O W7 não fotografou o cartão com a caixa: o log
+diz `realOil = 1` (o `Click` alterna a partir de desligado no preset de omissão).
+
+**Leitura final do B08.5:** custam a 4K na Radeon W3 secagem, W5 lâmina chata larga, W6 Size do Wet, W9 cerdas
+grandes, D1 Color mixing largo; custo pequeno W8 Smooth Edges e W14 Blender reach. Sem custo acima do ruído: W1 Body e
+Medium, W4, W7 (Size do Real Oil no traço), W11, W13, W16, D2, X1 no traço. Sem veredito: W17 (load 80). Fora: W1
+Opaque (sem porta; contagem do B08.4), W15 Tilt (só caneta).

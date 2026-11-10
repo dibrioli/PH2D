@@ -76,6 +76,15 @@ if [ "$1" = matriz ]; then
         DISPLAY=$D xdotool mousemove 560 300; sleep 0.3
         for _ in $(seq 1 "$TECLAS"); do DISPLAY=$D xdotool key bracketright; sleep 0.05; done; sleep 1
       fi
+      # B08.5 W13/W14: PRE=x,y = o mesmo traço com o Pincel ANTES (a água que o Dryer/Blender trabalham) e o clique no
+      # trilho em x,y (a ferramenta que o KNOBS=ferramenta=… armou com o nível dela); PNG=1 fotografa o depois.
+      if [ -n "$PRE" ]; then
+        cmd="mousemove 560 460 mousedown 1"; for i in $(seq 1 125); do
+          cmd="$cmd mousemove $((560 + i * 32 / 10)) $(awk -v i=$i 'BEGIN{printf "%d", 460+50*sin(i*0.05)}') sleep 0.008"
+        done; DISPLAY=$D xdotool $cmd mouseup 1; sleep 1
+        DISPLAY=$D xdotool mousemove ${PRE/,/ } click 1; sleep 1.5
+        [ -n "$PNG" ] && DISPLAY=$D import -window root "$M/$TAG.pre.png" 2>/dev/null
+      fi
       marca parado0_ini; sleep 3; marca parado0_fim
       DISPLAY=$D xdotool mousemove 560 460; sleep 0.3
       marca down; DISPLAY=$D xdotool mousedown 1; sleep 0.4
@@ -161,13 +170,17 @@ if [ "$1" = faixas ]; then
     "W1m|omissão:wet|KNOBS=medium=0|KNOBS=medium=1"
     "W9|Flat Bristle:wet|KNOBS=bristleSize=8,bristleCount=2000|KNOBS=bristleSize=16,bristleCount=4000"
     "W17|Flat Bristle:wet|KNOBS=bristleHeight=0|KNOBS=bristleHeight=8"
+    # W7 a caixa Real Oil; W13/W14 o Dryer/Blender na mão sobre a água de um traço antes (PRE = o botão do trilho).
+    "W7|omissão:wet|KNOBS=realOil=1|TECLAS=10 KNOBS=realOil=1"
+    "W13|omissão:wet|PRE=${RAIL_DRY:-0,0} KNOBS=ferramenta=4,dryerLevel=1,ferramenta=0|PRE=${RAIL_DRY:-0,0} KNOBS=ferramenta=4,dryerLevel=2,ferramenta=0"
+    "W14|omissão:wet|PRE=${RAIL_BLEND:-0,0} KNOBS=ferramenta=2,blendReach=0,ferramenta=0|PRE=${RAIL_BLEND:-0,0} KNOBS=ferramenta=2,blendReach=1,ferramenta=0"
   )
   [ -n "$SO" ] && mapfile -t CASOS < <(printf '%s\n' "${CASOS[@]}" | grep -E "^($SO)\|")
   for i in $(seq 1 "$N"); do for c in "${CASOS[@]}"; do
     IFS='|' read -r ID PP VA VB <<< "$c"
     for v in A B; do
       [ $v = A ] && VV=$VA || VV=$VB
-      env CURTO=1 ROT="${ID}${v}${i}" KNOBS= TECLAS=0 RELEVO= $VV SAIDA=$S bash "$0" matriz "$TELA" "$FUNDO" "$BIN" "$PP"
+      env CURTO=1 ROT="${ID}${v}${i}" KNOBS= TECLAS=0 RELEVO= PRE= $VV SAIDA=$S bash "$0" matriz "$TELA" "$FUNDO" "$BIN" "$PP"
     done
   done; done
   echo "[faixas] feito: $S/matriz"

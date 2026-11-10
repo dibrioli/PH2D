@@ -348,6 +348,18 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     }) {
         // As linhas Hidden pela porta do produto: o cartão Wet Paint (Smooth Edges, Body, Paint type) e o Shape (cerdas).
         use ph2d_tool_painter::ids;
+        // W7: a caixa Real Oil (alterna). W13/W14: a ferramenta da água na mão (0 Pincel · 2 Blend · 4 Dry).
+        const FIOS: [&str; 6] = ["wet_paint", "wet_smear", "wet_blend", "wet_water", "wet_dry", "wet_blow"];
+        if k == "realOil" || k == "ferramenta" {
+            if k == "realOil" {
+                let ev = ph2d_editor_core::tool::PanelEvent::Click(ids::PAINTER_WETPAINT_OLEO_REAL);
+                ph2d_editor_core::tool::Tool::handle_panel_event(painter, ev);
+            } else if let Some(fio) = FIOS.get(v as usize) {
+                painter.set_paint_tool_mode(fio);
+            }
+            println!("PH2D_COMPOSITE_KNOBS: {k} = {v}");
+            continue;
+        }
         let id = match k {
             "smoothEdges" => Some(ids::PAINTER_WETPAINT_SMOOTH_EDGES),
             "body" => Some(ids::PAINTER_WETPAINT_BODY),

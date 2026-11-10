@@ -141,6 +141,10 @@ impl GpuInpainter {
 
     /// Run the full EM loop for one pyramid level on the GPU, overwriting the
     /// hole pixels of `content` in place. `reg.sources` must be non-empty.
+    ///
+    /// # Errors
+    /// When the device cannot finish the level (poll, map or readback fails):
+    /// `content` is then untouched and the caller falls back to the CPU.
     #[allow(clippy::too_many_arguments)] // mirrors the backend-closure param list
     pub fn run_level(
         &self,
@@ -152,7 +156,7 @@ impl GpuInpainter {
         r: i32,
         em_iters: u32,
         seed: u32,
-    ) {
+    ) -> Result<(), GpuInpaintError> {
         let (w, h) = (content.w, content.h);
         let n = w * h;
         let n_src = reg.sources.len() as u32;
@@ -232,9 +236,12 @@ impl GpuInpainter {
         });
         gpu.device
             .poll(wgpu::PollType::wait_indefinitely())
-            .expect("poll inpaint readback");
-        rx.recv().expect("readback channel").expect("map_async");
-        let data = slice.get_mapped_range().expect("mapped range");
+            .map_err(falhou("poll inpaint readback"))?;
+        let mapped = rx.recv().map_err(falhou("readback channel"))?;
+        #[cfg(test)]
+        let mapped = tests::injecta_falha(mapped);
+        mapped.map_err(falhou("map_async"))?;
+        let data = slice.get_mapped_range().map_err(falhou("mapped range"))?;
         let floats: &[f32] = bytemuck::cast_slice(&data);
         for i in 0..n {
             let o = i * 4;
@@ -244,6 +251,7 @@ impl GpuInpainter {
         }
         drop(data);
         readback.unmap();
+        Ok(())
     }
 
     /// Encode one kernel dispatch with its own baked uniform buffer + bind group.
@@ -362,6 +370,22 @@ impl GpuInpainter {
             cost_b: empty("inpaint.cost_b", (n * 4) as u64),
         }
     }
+}
+
+/// Why the device could not run an inpaint level — the caller answers with [`crate::inpaint_cpu`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GpuInpaintError(pub String);
+
+impl std::fmt::Display for GpuInpaintError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "GPU inpaint level failed: {}", self.0)
+    }
+}
+
+impl std::error::Error for GpuInpaintError {}
+
+fn falhou<E: std::fmt::Debug>(o_que: &'static str) -> impl FnOnce(E) -> GpuInpaintError {
+    move |e| GpuInpaintError(format!("{o_que}: {e:?}"))
 }
 
 fn bind(binding: u32, buffer: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {

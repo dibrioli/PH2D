@@ -187,3 +187,15 @@ fn the_bow_waves_bite_keeps_the_serial_road() {
         bite.displaced
     );
 }
+
+/// Bit de ablação que SÓ os testes armam: a banda do laço que o vê entra em pânico (a injecção do B30.A1).
+pub(super) const PANICO_NA_BANDA: u32 = 1 << 31;
+
+/// **B30.A1 — o pânico de uma banda do relevo chega a quem a abriu.** O `join().unwrap_or_default()`
+/// engolia-o: a cor pousava sem o relevo daquela banda, em silêncio. A fixture é a do gate acima (cruza o
+/// piso: a rota é a em banda).
+#[test]
+#[should_panic(expected = "pânico injectado na banda")]
+fn walk_dab_rows_propaga_o_panico_da_banda() {
+    let _ = deposit(PANICO_NA_BANDA, 100.0, 320);
+}

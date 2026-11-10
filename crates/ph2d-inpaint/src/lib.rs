@@ -31,6 +31,8 @@ mod plane;
 mod rng;
 mod vote;
 
+#[cfg(feature = "gpu")]
+pub use gpu::{GpuInpaintError, GpuInpainter};
 pub use mask::{Mask, Regions};
 pub use nnf::Nnf;
 pub use plane::Plane;
@@ -153,14 +155,15 @@ fn rgba_from_plane(content: &Img, mask: &HoleMask, src_rgba: &[u8]) -> Vec<u8> {
 /// em_iters, seed)` fills the hole pixels of `content` in place. Returns the
 /// finest-level reconstruction, or `None` when the image is unfillable (no
 /// source patch survives even at the coarsest level, i.e. it is all hole).
-fn run_pyramid<F>(
+/// The first level the backend refuses stops the pyramid with its error.
+fn run_pyramid<F, E>(
     base_img: &Img,
     base_mask: &HoleMask,
     params: &InpaintParams,
     mut run_level: F,
-) -> Option<Img>
+) -> Result<Option<Img>, E>
 where
-    F: FnMut(&mut Img, &Img, &HoleMask, &Regions, i32, u32, u64),
+    F: FnMut(&mut Img, &Img, &HoleMask, &Regions, i32, u32, u64) -> Result<(), E>,
 {
     let r = params.patch_radius as i32;
 
@@ -187,7 +190,7 @@ where
             break;
         }
         if start == 0 {
-            return None;
+            return Ok(None);
         }
         start -= 1;
     }
@@ -235,11 +238,48 @@ where
             r,
             params.em_iters,
             params.seed,
-        );
+        )?;
         prev = Some(content);
     }
 
-    Some(prev.expect("the start level always runs"))
+    Ok(Some(prev.expect("the start level always runs")))
+}
+
+/// Decode, run the pyramid on `level`, re-encode — the one path every backend takes.
+///
+/// # Panics
+/// If `rgba.len() != width*height*4` or `mask.len() != width*height`.
+fn inpaint_with<F, E>(req: &InpaintRequest<'_>, level: F) -> Result<InpaintResult, E>
+where
+    F: FnMut(&mut Img, &Img, &HoleMask, &Regions, i32, u32, u64) -> Result<(), E>,
+{
+    let Some((base_img, base_mask)) = decode_request(req) else {
+        return Ok(InpaintResult {
+            rgba: req.rgba.to_vec(),
+        });
+    };
+    Ok(
+        match run_pyramid(&base_img, &base_mask, &req.params, level)? {
+            Some(result) => InpaintResult {
+                rgba: rgba_from_plane(&result, &base_mask, req.rgba),
+            },
+            None => InpaintResult {
+                rgba: req.rgba.to_vec(),
+            },
+        },
+    )
+}
+
+/// A backend that refused a level hands the WHOLE request to [`inpaint_cpu`]: the answer is then the
+/// reference byte for byte, never a mix of the two backends' levels.
+fn or_the_cpu<E: std::fmt::Display>(
+    req: &InpaintRequest<'_>,
+    attempt: Result<InpaintResult, E>,
+) -> InpaintResult {
+    attempt.unwrap_or_else(|e| {
+        eprintln!("[ph2d-inpaint] {e}; falling back to the CPU reference");
+        inpaint_cpu(req)
+    })
 }
 
 /// The CPU backend for one level: EM loop (E = jump-flood NNF search, M = vote).
@@ -264,22 +304,11 @@ fn cpu_level(
 /// # Panics
 /// If `rgba.len() != width*height*4` or `mask.len() != width*height`.
 pub fn inpaint_cpu(req: &InpaintRequest<'_>) -> InpaintResult {
-    let (base_img, base_mask) = match decode_request(req) {
-        Some(pair) => pair,
-        None => {
-            return InpaintResult {
-                rgba: req.rgba.to_vec(),
-            };
-        }
-    };
-    match run_pyramid(&base_img, &base_mask, &req.params, cpu_level) {
-        Some(result) => InpaintResult {
-            rgba: rgba_from_plane(&result, &base_mask, req.rgba),
-        },
-        None => InpaintResult {
-            rgba: req.rgba.to_vec(),
-        },
-    }
+    let Ok(out) = inpaint_with(req, |c, s, m, reg, r, it, seed| {
+        cpu_level(c, s, m, reg, r, it, seed);
+        Ok::<(), std::convert::Infallible>(())
+    });
+    out
 }
 
 /// Validate + decode a request into `(image, mask)`. Returns `None` when there
@@ -301,26 +330,18 @@ fn decode_request(req: &InpaintRequest<'_>) -> Option<(Img, HoleMask)> {
 }
 
 /// Inpaint on the GPU (jump-flood NNF + voting compute), reconciled with the CPU
-/// reference within ε. Falls back to the CPU per level only if a level cannot
-/// run; prefer [`inpaint`] for the runtime GPU-or-CPU choice.
+/// reference within ε, on pipelines compiled once by the caller ([`GpuInpainter::new`]).
+/// Prefer [`inpaint`] / [`inpaint_on`] for the runtime GPU-or-CPU choice.
+///
+/// # Errors
+/// The first level the device cannot finish ([`GpuInpaintError`]).
 #[cfg(feature = "gpu")]
-pub fn inpaint_gpu(gpu: &ph2d_gpu::GpuContext, req: &InpaintRequest<'_>) -> InpaintResult {
-    let (base_img, base_mask) = match decode_request(req) {
-        Some(pair) => pair,
-        None => {
-            return InpaintResult {
-                rgba: req.rgba.to_vec(),
-            };
-        }
-    };
-    let painter = gpu::GpuInpainter::new(gpu);
-    let backend = |content: &mut Img,
-                   src: &Img,
-                   mask: &HoleMask,
-                   reg: &Regions,
-                   r: i32,
-                   em_iters: u32,
-                   seed: u64| {
+pub fn inpaint_gpu_with(
+    gpu: &ph2d_gpu::GpuContext,
+    painter: &GpuInpainter,
+    req: &InpaintRequest<'_>,
+) -> Result<InpaintResult, GpuInpaintError> {
+    inpaint_with(req, |content, src, mask, reg, r, em_iters, seed| {
         painter.run_level(
             gpu,
             content,
@@ -330,25 +351,40 @@ pub fn inpaint_gpu(gpu: &ph2d_gpu::GpuContext, req: &InpaintRequest<'_>) -> Inpa
             r,
             em_iters,
             hash::seed32(seed),
-        );
-    };
-    match run_pyramid(&base_img, &base_mask, &req.params, backend) {
-        Some(result) => InpaintResult {
-            rgba: rgba_from_plane(&result, &base_mask, req.rgba),
-        },
-        None => InpaintResult {
-            rgba: req.rgba.to_vec(),
-        },
-    }
+        )
+    })
+}
+
+/// [`inpaint_gpu_with`] compiling the pipelines for this one call.
+///
+/// # Errors
+/// The first level the device cannot finish ([`GpuInpaintError`]).
+#[cfg(feature = "gpu")]
+pub fn inpaint_gpu(
+    gpu: &ph2d_gpu::GpuContext,
+    req: &InpaintRequest<'_>,
+) -> Result<InpaintResult, GpuInpaintError> {
+    inpaint_gpu_with(gpu, &GpuInpainter::new(gpu), req)
+}
+
+/// GPU with CPU fallback on pipelines the session keeps: a level the device refuses
+/// hands the whole request to [`inpaint_cpu`].
+#[cfg(feature = "gpu")]
+pub fn inpaint_on(
+    gpu: &ph2d_gpu::GpuContext,
+    painter: &GpuInpainter,
+    req: &InpaintRequest<'_>,
+) -> InpaintResult {
+    or_the_cpu(req, inpaint_gpu_with(gpu, painter, req))
 }
 
 /// Inpaint with the GPU when a [`GpuContext`](ph2d_gpu::GpuContext) is available,
 /// otherwise the CPU reference — the runtime "GPU with CPU fallback" entry point
-/// the shell calls (`gpu = None` ⇒ pure CPU).
+/// (`gpu = None` ⇒ pure CPU; a level the device refuses ⇒ [`inpaint_cpu`]).
 #[cfg(feature = "gpu")]
 pub fn inpaint(gpu: Option<&ph2d_gpu::GpuContext>, req: &InpaintRequest<'_>) -> InpaintResult {
     match gpu {
-        Some(g) => inpaint_gpu(g, req),
+        Some(g) => or_the_cpu(req, inpaint_gpu(g, req)),
         None => inpaint_cpu(req),
     }
 }

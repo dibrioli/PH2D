@@ -231,7 +231,11 @@ impl PainterTool {
         mut f: impl FnMut(&mut Self, usize, &[Dab]),
     ) {
         let n = self.brush_shape_hose_count();
-        let k_de = |d: &Dab| d.tilt.map_or(0, |t| usize::from(t.imagem)).min(n - 1);
+        let k_de = |d: &Dab| {
+            d.tilt
+                .map_or(0, |t| usize::from(t.imagem))
+                .min(n.saturating_sub(1))
+        };
         self.paint.mangueira.dentro = true;
         let mut i = 0;
         while i < dabs.len() {
@@ -410,4 +414,50 @@ fn cada_corrida_da_mangueira_leva_o_indice_global_do_lote() {
         esperado += n;
     }
     assert!(vistos.len() > 1 && esperado == dabs.len(), "{vistos:?}");
+}
+
+/// **B41.2 — a Shape sem imagens não desce a `n − 1`.** Um lote do Wet adiado pode chegar aqui com a Shape já
+/// sem imagem (`n == 0`): o índice do dab vai à principal, numa corrida só, sem pânico nem `usize::MAX`.
+#[cfg(test)]
+#[test]
+fn a_mangueira_sem_imagens_nao_entra_em_panico() {
+    use ph2d_painter_brush::{BrushSpec, DabTilt, Dynamics, Stroke, StrokePoint};
+    let mut t = PainterTool::default();
+    assert_eq!(
+        t.brush_shape_hose_count(),
+        0,
+        "o controlo: a Shape não tem imagens"
+    );
+    let mut s = Stroke::new(
+        BrushSpec {
+            radius_px: 4.0,
+            ..Default::default()
+        },
+        Dynamics::default(),
+        1,
+    );
+    let mut dabs = Vec::new();
+    s.begin(
+        StrokePoint {
+            pos: [4.0, 8.0],
+            pressure: 1.0,
+        },
+        &mut dabs,
+    );
+    s.extend(
+        StrokePoint {
+            pos: [60.0, 8.0],
+            pressure: 1.0,
+        },
+        &mut dabs,
+    );
+    for d in &mut dabs {
+        d.tilt = Some(DabTilt {
+            imagem: 1,
+            ..d.tilt.unwrap_or(DabTilt::NEUTRA)
+        });
+    }
+    let mut vistos = Vec::new();
+    t.stamp_dabs_mangueira_com(&dabs, |_, i, corrida| vistos.push((i, corrida.len())));
+    assert_eq!(vistos, vec![(0, dabs.len())]);
 }

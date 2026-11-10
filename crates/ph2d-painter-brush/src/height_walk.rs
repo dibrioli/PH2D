@@ -111,12 +111,27 @@ pub(super) fn walk_dab_rows(
     std::thread::scope(|s| {
         bands
             .into_iter()
-            .map(|(planes, band_y0)| s.spawn(move || band_out(walk_band(w, planes, band_y0, None))))
+            .map(|(planes, band_y0)| {
+                s.spawn(move || {
+                    #[cfg(test)]
+                    assert_eq!(
+                        w.ablate & tests::PANICO_NA_BANDA,
+                        0,
+                        "pânico injectado na banda"
+                    );
+                    band_out(walk_band(w, planes, band_y0, None))
+                })
+            })
             // Coletado ANTES do fold para que TODA banda seja joinada (um `fold` preguiçoso com
             // curto-circuito deixaria thread pendurada) — a mesma nota do `parallel_band_stamp`.
             .collect::<Vec<_>>()
             .into_iter()
-            .fold(false, |acc, h| band_join(acc, h.join().unwrap_or_default()))
+            .fold(false, |acc, h| {
+                band_join(
+                    acc,
+                    h.join().unwrap_or_else(|p| std::panic::resume_unwind(p)),
+                )
+            })
     })
 }
 

@@ -236,9 +236,9 @@ fn run_inpaint(cw: usize, ch: usize, req: &InpaintRequest<'_>) -> ph2d_inpaint::
     // GPU pays for its device round-trip only above ~128² pixels; small heals stay on the CPU.
     const GPU_MIN_PIXELS: usize = 128 * 128;
     if cw * ch >= GPU_MIN_PIXELS
-        && let Some(gpu) = try_gpu()
+        && let Some((gpu, painter)) = try_gpu()
     {
-        ph2d_inpaint::inpaint(Some(gpu), req)
+        ph2d_inpaint::inpaint_on(gpu, painter, req)
     } else {
         inpaint_cpu(req)
     }
@@ -250,15 +250,18 @@ fn run_inpaint(_cw: usize, _ch: usize, req: &InpaintRequest<'_>) -> ph2d_inpaint
     inpaint_cpu(req)
 }
 
-/// A process-wide headless [`GpuContext`](ph2d_gpu::GpuContext), created lazily on the first heal that
-/// wants it (`None` when no adapter — the heal then falls back to CPU). Mirror of
-/// `ph2d-tool-color-equalization`'s `try_headless_gpu`.
+/// A process-wide headless [`GpuContext`](ph2d_gpu::GpuContext) and its inpaint pipelines, created lazily
+/// on the first heal that wants them and kept for the session (`None` when no adapter — the heal then
+/// falls back to CPU). Mirror of `ph2d-tool-color-equalization`'s `try_headless_gpu`.
 #[cfg(feature = "gpu")]
-fn try_gpu() -> Option<&'static ph2d_gpu::GpuContext> {
+fn try_gpu() -> Option<&'static (ph2d_gpu::GpuContext, ph2d_inpaint::GpuInpainter)> {
     use std::sync::OnceLock;
-    static GPU: OnceLock<Option<ph2d_gpu::GpuContext>> = OnceLock::new();
+    static GPU: OnceLock<Option<(ph2d_gpu::GpuContext, ph2d_inpaint::GpuInpainter)>> =
+        OnceLock::new();
     GPU.get_or_init(|| {
-        ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).ok()
+        let gpu = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None).ok()?;
+        let painter = ph2d_inpaint::GpuInpainter::new(&gpu);
+        Some((gpu, painter))
     })
     .as_ref()
 }

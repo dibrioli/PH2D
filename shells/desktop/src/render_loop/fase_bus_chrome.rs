@@ -137,11 +137,11 @@ impl crate::App {
                 renderer.set_filter_mode(mode);
             }
             EditorAction::SetPresentMode { vsync } => {
-                // VSync (Fifo, the universal fallback) = paced; Immediate = no mouse-stutter.
+                // VSync (Fifo, the universal fallback) = paced; off = the best mode the backend HAS.
                 surface.set_present_mode(if vsync {
                     wgpu::PresentMode::Fifo
                 } else {
-                    wgpu::PresentMode::Immediate
+                    surface.best_nonblocking_mode()
                 });
             }
             EditorAction::PlayerControlsToggle => {

@@ -169,3 +169,40 @@ fn different_seeds_still_fill_the_whole_hole_opaque() {
         }
     }
 }
+
+/// **B41.1 — um nível que a placa recusa cai na CPU sem pânico.** O backend recusa o 2.º nível: a pirâmide pára
+/// nele com o erro, e a queda responde com a referência da CPU ao byte (nunca um híbrido de níveis).
+#[test]
+fn um_nivel_que_a_placa_recusa_cai_na_cpu_sem_panico() {
+    let (w, h) = (96, 96);
+    let img = rgba_from(w, h, |x, y| {
+        let s = if (x / 3) % 2 == 0 { 210 } else { 40 };
+        [s, ((y * 3) % 256) as u8, ((x + y) % 256) as u8]
+    });
+    let mask = rect_mask(w, h, 36, 36, 20, 20);
+    let req = InpaintRequest {
+        width: w as u32,
+        height: h as u32,
+        rgba: &img,
+        mask: &mask,
+        params: InpaintParams::default(),
+    };
+    let mut niveis = 0u32;
+    let recusa = inpaint_with(&req, |c, s, m, reg, r, it, seed| {
+        niveis += 1;
+        if niveis == 2 {
+            return Err("the device refused the level");
+        }
+        cpu_level(c, s, m, reg, r, it, seed);
+        Ok(())
+    });
+    assert!(
+        recusa.is_err(),
+        "o controlo: a recusa não chegou a quem chamou"
+    );
+    assert_eq!(niveis, 2, "a pirâmide seguiu depois do nível recusado");
+    assert!(
+        or_the_cpu(&req, recusa).rgba == inpaint_cpu(&req).rgba,
+        "a queda não é a referência da CPU ao byte"
+    );
+}

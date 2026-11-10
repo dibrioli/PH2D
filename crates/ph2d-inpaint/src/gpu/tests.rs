@@ -76,7 +76,7 @@ fn gpu_reconciles_with_cpu_within_epsilon() {
         params,
     };
     let cpu = inpaint_cpu(&req).rgba;
-    let gpu_out = inpaint_gpu(&gpu, &req).rgba;
+    let gpu_out = inpaint_gpu(&gpu, &req).expect("gpu level").rgba;
     let (mean, max) = diff(&cpu, &gpu_out);
     assert!(
         mean <= 2.0,
@@ -115,6 +115,7 @@ fn gpu_reconstructs_periodic_stripes() {
             params: InpaintParams::default(),
         },
     )
+    .expect("gpu level")
     .rgba;
     let mut worst = 0i32;
     for y in 26..38 {
@@ -147,6 +148,7 @@ fn gpu_flat_colour_stays_flat_and_known_pixels_untouched() {
             params: InpaintParams::default(),
         },
     )
+    .expect("gpu level")
     .rgba;
     for y in 0..h {
         for x in 0..w {
@@ -161,4 +163,61 @@ fn gpu_flat_colour_stays_flat_and_known_pixels_untouched() {
             }
         }
     }
+}
+
+thread_local! {
+    /// Quantos níveis da placa correm antes de o readback FALHAR (`None` = nenhum falha) — a injecção do B41.1.
+    static FALHA_DEPOIS_DE: std::cell::Cell<Option<u32>> = const { std::cell::Cell::new(None) };
+}
+
+/// O readback de um nível, com a falha injectada no ponto em que a placa a devolveria (`map_async`).
+pub(super) fn injecta_falha(
+    r: Result<(), wgpu::BufferAsyncError>,
+) -> Result<(), wgpu::BufferAsyncError> {
+    match FALHA_DEPOIS_DE.with(std::cell::Cell::get) {
+        Some(0) => {
+            FALHA_DEPOIS_DE.with(|c| c.set(None));
+            Err(wgpu::BufferAsyncError)
+        }
+        Some(k) => {
+            FALHA_DEPOIS_DE.with(|c| c.set(Some(k - 1)));
+            r
+        }
+        None => r,
+    }
+}
+
+/// **B41.1/B41.A1 — a placa que recusa um nível não fecha o programa:** o `inpaint` cai no `inpaint_cpu`, e a
+/// resposta é a referência ao byte (nunca um híbrido de níveis da placa com níveis da CPU).
+#[test]
+#[ignore = "needs a GPU adapter; run with --features gpu -- --ignored"]
+fn inpaint_gpu_devolve_erro_e_o_chamador_cai_na_cpu() {
+    let Some(gpu) = try_gpu() else {
+        eprintln!("no GPU adapter — skipping");
+        return;
+    };
+    let (w, h) = (96, 96);
+    let img = rgba_from(w, h, |x, y| {
+        let s = if (x / 3) % 2 == 0 { 210 } else { 40 };
+        [s, ((y * 3) % 256) as u8, ((x + y) % 256) as u8]
+    });
+    let mask = rect_mask(w, h, 36, 36, 20, 20);
+    let req = InpaintRequest {
+        width: w as u32,
+        height: h as u32,
+        rgba: &img,
+        mask: &mask,
+        params: InpaintParams::default(),
+    };
+    FALHA_DEPOIS_DE.with(|c| c.set(Some(1)));
+    let out = crate::inpaint(Some(&gpu), &req).rgba;
+    let consumida = FALHA_DEPOIS_DE.with(std::cell::Cell::take).is_none();
+    assert!(
+        consumida,
+        "o controlo: a falha injectada não chegou a correr"
+    );
+    assert!(
+        out == inpaint_cpu(&req).rgba,
+        "a queda não é a referência da CPU ao byte"
+    );
 }

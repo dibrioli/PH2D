@@ -1056,7 +1056,7 @@ outros pincéis ao bit (`cmp` das `.ppm`). Gate `o_veu_a_meia_definicao_fica_per
 difere, Δ médio ≤ 0,6 e máx ≤ 24): vermelho por mutação da ampliação deslocada meio texel, sem pré-multiplicar, da porta
 fechada e da receita sem a chave; ⚠️ **sobrevive** o grão sem a escala (Δ 0,336 × 0,346, energia 0,97 × 1,05: a 1,6 px de
 período o grão é sub-texel e as duas leituras não se distinguem). Lado a lado: `handoffs/material_2026-11-10_veu_meia/`.
-**À espera do olho do dono.**
+**Aprovada pelo dono (10/11): «Aprovado».**
 **Guia geral (método, curas, recusas):** [Pinceis/COMO_ACELERAR_UM_PINCEL.md](Pinceis/COMO_ACELERAR_UM_PINCEL.md).
 
 ## Como adicionar um bug aqui

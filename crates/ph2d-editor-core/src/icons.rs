@@ -256,6 +256,7 @@ pub enum IconId {
     KbdEnd,
     KbdEnter,
     KbdHome,
+    KbdNumLock,
     KbdPageDown,
     KbdPageUp,
     KbdPrintScreen,

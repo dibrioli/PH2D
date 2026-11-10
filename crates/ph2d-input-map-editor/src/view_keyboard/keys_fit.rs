@@ -97,6 +97,7 @@ pub(crate) fn iso_icon(key: Key) -> Option<IconId> {
         0xF72C => IconId::KbdPageUp,
         0xF72D => IconId::KbdPageDown,
         0xF72E => IconId::KbdPrintScreen,
+        0xF717 => IconId::KbdNumLock,
         _ if key.is_enter_like() => IconId::KbdEnter,
         _ => return None,
     })
@@ -178,6 +179,23 @@ pub fn fit_for_width(ts: &mut TextSystem, w: f32, cap_b: bool) -> Fit {
         g::PITCH_MAX_ROWS
     };
     fit(ts, w, None, cap)
+}
+
+/// As teclas sem legenda que caiba no arranjo `a` à largura `w` (tecto da B ou da C): `(rótulo, largura da tecla)`.
+/// A medida que decide o arranjo, exposta para o relatório e os testes.
+#[must_use]
+pub fn misfits(ts: &mut TextSystem, w: f32, a: Arrangement, cap_b: bool) -> Vec<(String, f32)> {
+    let cap = if cap_b {
+        g::PITCH_MAX_ROWS_B
+    } else {
+        g::PITCH_MAX_ROWS
+    };
+    let p = pitch_of(a, w, None, cap);
+    g::keyboard(a)
+        .into_iter()
+        .filter(|c| legend(ts, c.key, key_w(c.span, p)).is_none())
+        .map(|c| (c.key.label(), key_w(c.span, p)))
+        .collect()
 }
 
 /// As teclas com a sua caixa relativa à origem do desenho: `(tecla, x, y, w, h)`.

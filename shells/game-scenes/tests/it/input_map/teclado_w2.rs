@@ -82,6 +82,15 @@ fn o_teclado_de_notebook_inteiro_na_b_e_na_c_nas_areas_reais() {
 }
 
 #[test]
+fn mede_as_teclas_que_nao_cabem() {
+    use ph2d_app_input_map::view_keyboard::keys_fit::misfits;
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    for w in [600.0, 614.0, 640.0] {
+        eprintln!("C w={w}: {:?}", misfits(&mut ts, w, Arrangement::Wide, false));
+    }
+}
+
+#[test]
 fn o_arranjo_e_funcao_pura_da_largura_e_do_texto() {
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     let largo = fit_for_width(&mut ts, 900.0, true); // LITERAL-PX-OK: caixa de teste
@@ -134,14 +143,20 @@ fn a_tecla_do_sistema_diz_o_porque_no_hover() {
 #[test]
 fn o_numerico_acende_no_try_it() {
     let mut m = Mesa::aberta(View::TryIt);
-    m.hero.input_map = onze();
-    m.frame();
     let kp8 = Key::named_in_script("kp8").expect("kp8")[0];
+    let mut map = onze();
+    let up = map.id("move_up").expect("move_up");
+    map.get_mut(up).expect("move_up").bindings.push(Binding::Key(kp8));
+    m.hero.input_map = map;
+    m.frame();
     assert!(m.physical(kp8), "o bench toma o Numpad 8");
     m.frame();
     let r = m.tab().doc.rect_of(KbHit::Key(kp8).id()).expect("Numpad 8 pintado");
     assert!(
-        m.tab().doc.census.filled.iter().any(|(f, _)| *f == r),
-        "o Numpad 8 premido enche-se"
+        (m.tab().doc.census.filled.iter())
+            .any(|(f, _)| (f.x - r.x).abs() < 0.01 && (f.y - r.y).abs() < 0.01 && (f.w - r.w).abs() < 0.01),
+        "o Numpad 8 premido enche-se: {r:?} × {:?} held {:?}",
+        m.tab().doc.census.filled,
+        m.tab().doc.tryit.held_keys()
     );
 }

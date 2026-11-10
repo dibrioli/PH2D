@@ -31,10 +31,13 @@ fn o_try_it_nao_corta_texto_nem_mostra_numero_morto() {
                     let c = &m.tab().doc.census;
                     let at = format!("{label} {w}×{h} confirm={confirm}");
                     assert_eq!(c.elided(), Vec::<&str>::new(), "{at}: texto cortado");
+                    // W2: o teclado de notebook alonga o cartão ao vivo; a C ROLA, e o que sai do recorte não se
+                    // pinta (o mesmo critério do acabamento_r5b). Conta o texto VISTO.
+                    let cut = c.clip.map_or(f32::INFINITY, |k| k.y + k.h);
                     let low = c
                         .texts
                         .iter()
-                        .map(|t| t.0.y + t.0.h)
+                        .map(|t| (t.0.y + t.0.h).min(cut))
                         .fold(0.0_f32, f32::max);
                     let right = c
                         .texts

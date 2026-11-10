@@ -23,6 +23,8 @@ fn c2_as_setas_encostam_a_direita_do_cartao_e_as_letras_a_esquerda() {
     };
     let (q, p, space) = (at("q"), at("p"), at("space"));
     let (up, left, down, right) = (at("up"), at("left"), at("down"), at("right"));
+    // W2: o bloco da DIREITA do cartão é agora o numérico (arranjo Wide); a sua última coluna acaba no recuo.
+    let edge = at("pagedown");
     let status = (doc.census.texts.iter())
         .find(|t| t.1 == tr("input_map_try.stopped"))
         .expect("«The game is not running»")
@@ -30,8 +32,8 @@ fn c2_as_setas_encostam_a_direita_do_cartao_e_as_letras_a_esquerda() {
     let pad = 10.0; // LITERAL-PX-OK: CARD_PAD_X, o recuo do desenho
     let card_right = status.x + status.w;
     assert!(
-        (right.x + right.w - (card_right - pad)).abs() < 1.0,
-        "a → no recuo DIREITO do desenho: {right:?} × {status:?}"
+        (edge.x + edge.w - (card_right - pad)).abs() < 1.0,
+        "o numérico no recuo DIREITO do desenho: {edge:?} × {status:?}"
     );
     assert!(
         left.x > space.x + space.w + p.w && left.x > p.x + p.w,

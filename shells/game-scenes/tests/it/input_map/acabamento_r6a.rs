@@ -52,7 +52,16 @@ fn a_manche_diz_a_direccao_por_icone_marca_os_campos_e_so_o_pressed_e_verde() {
         .replace("{stick}", tr("input_map_try.left_stick"));
     assert!(c.texts.iter().any(|t| t.1 == titulo), "C3: «{titulo}»");
     assert_eq!(
-        c.icons.iter().map(|i| i.1).collect::<Vec<_>>(),
+        // W2: as legendas-ícone das teclas também entram no censo; aqui conta só o que fica FORA do teclado.
+        (c.icons.iter())
+            .filter(|i| {
+                let (cx, cy) = (i.0.x + i.0.w * 0.5, i.0.y + i.0.h * 0.5);
+                !(m.tab().doc.kb.bars.iter()).any(|(h, _)| {
+                    m.tab().doc.rect_of(h.id()).is_some_and(|r| r.contains(cx, cy))
+                })
+            })
+            .map(|i| i.1)
+            .collect::<Vec<_>>(),
         vec![IconId::ArrowLeft],
         "a direcção da manche é um ícone"
     );

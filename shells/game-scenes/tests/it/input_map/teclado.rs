@@ -223,12 +223,13 @@ fn color_of(a: ActionId) -> ph2d_tokens::ColorToken {
 fn a_acao_sem_tecla_toma_a_tecla_premida_e_o_que_nao_esta_desenhado_aparece_em_also() {
     let mut m = teclado(onze());
     abre(&mut m, "reload");
-    let k = Key(u32::from('1'));
+    // W2: o teclado de notebook desenha todo o vocabulário; o «Also:» fica para um código FORA dele.
+    let k = Key(0xE000);
     assert!(m.physical(k), "a acção vazia toma a tecla");
     assert_eq!(bindings(&m, "reload"), vec![Binding::Key(k)]);
     let t = texts(&m);
     assert!(
-        t.iter().any(|s| s == "Also:") && t.iter().any(|s| s == "1"),
+        t.iter().any(|s| s == "Also:") && t.iter().any(|s| *s == k.label()),
         "{t:?}"
     );
     assert!(

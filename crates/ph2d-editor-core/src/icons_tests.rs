@@ -364,6 +364,7 @@ const ALL_ICONS: &[IconId] = &[
     IconId::KbdEnd,
     IconId::KbdEnter,
     IconId::KbdHome,
+    IconId::KbdNumLock,
     IconId::KbdPageDown,
     IconId::KbdPageUp,
     IconId::KbdPrintScreen,

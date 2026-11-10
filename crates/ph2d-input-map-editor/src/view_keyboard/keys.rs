@@ -295,7 +295,8 @@ pub(crate) fn paint_keys(
         (KeysAlign::Center, _) | (KeysAlign::Spread, Arrangement::Narrow) => {
             (inner.x + spare * 0.5, 0.0)
         }
-        (KeysAlign::Spread, Arrangement::Wide) => (inner.x, spare),
+        // A tinta da última coluna acaba no recuo (sem o vão que segue a última tecla).
+        (KeysAlign::Spread, Arrangement::Wide) => (inner.x, spare + (1.0 - g::KEY_FILL) * p),
     };
     doc.kb.fit = Some(f);
     for (KeyCap { key, col, .. }, x, y, w, h) in fit::placed(f) {

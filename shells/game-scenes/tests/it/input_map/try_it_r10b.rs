@@ -144,7 +144,8 @@ fn c1_os_ladrilhos_sao_compactos_e_encostam_a_esquerda() {
 fn c2_o_teclado_encosta_a_esquerda_do_cartao() {
     let m = cena("C2");
     let doc = &m.tab().doc;
-    let q = doc.rect_of(KbHit::Key(key("q")).id()).expect("o Q");
+    // W2: a primeira coluna do teclado de notebook é a do Esc/` (o Q recua 1,5 u atrás do Tab).
+    let q = doc.rect_of(KbHit::Key(key("`")).id()).expect("o `");
     let label = text_rect(&m, tr("input_map_try.try_it"));
     let pad = 10.0; // LITERAL-PX-OK: CARD_PAD_X, o recuo do desenho
     assert!(

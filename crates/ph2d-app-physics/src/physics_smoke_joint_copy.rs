@@ -114,8 +114,65 @@ mod tests;
 
 /// **Cena 66 (W-JointCopy).** Quatro portões iguais; um afinado, três por
 /// afinar — e um clique que os iguala.
+/// **A variante ANIMADA** (`PH2D_PHYSICS_SMOKE_ANIMA=1`, GEF02 onda 7): o «Limit min» do Pin A
+/// desce de −25° a −60° entre 2,6 s e 3,4 s (o portão, que já dormiu no batente, segue-o), e a
+/// largura do Gate A cresce de 1,5 m a 2,4 m entre 3,5 s e 4 s (a forma acompanha sem salto). Tudo
+/// dentro dos 4 s da régua: depois do fim a curva segura o último valor.
+pub fn author_limit_and_width_tracks(world: &mut World, doc: &mut ph2d_timeline::TimelineDoc) {
+    use ph2d_anim::{AnimValue, Interp, RationalTime};
+    use ph2d_ecs::canal::familia::{FISICA, JUNTA};
+    use ph2d_timeline::PropKind;
+    let mut q = world.query::<(ph2d_ecs::Entity, &Name)>();
+    let mut achar = |n: &str| q.iter(world).find(|(_, m)| m.as_str() == n).map(|(e, _)| e);
+    let (Some(pino), Some(portao)) = (achar(PINS[0]), achar(NAMES[0])) else {
+        return;
+    };
+    let min = PropKind::Field(ph2d_ecs::FieldKey::new(
+        JUNTA,
+        ph2d_ecs::canal_junta::LIMITE_MIN,
+        0,
+        0,
+    ));
+    let largura = PropKind::Field(ph2d_ecs::FieldKey::new(
+        FISICA,
+        ph2d_ecs::canal_fisica::MEIO_X,
+        0,
+        0,
+    ));
+    let chaves = [
+        (
+            pino,
+            min,
+            [
+                (0.0, -TUNED_LIMIT_DEG),
+                (2.6, -TUNED_LIMIT_DEG),
+                (3.4, -60.0),
+            ],
+        ),
+        (
+            portao,
+            largura,
+            [(0.0, 2.0 * HALF_W), (3.5, 2.0 * HALF_W), (4.0, 2.4)],
+        ),
+    ];
+    for (e, prop, pontos) in chaves {
+        for (t, v) in pontos {
+            doc.insert_key(
+                e.to_bits(),
+                prop,
+                RationalTime::from_seconds(t),
+                AnimValue::Float(v),
+                Interp::Linear,
+            );
+        }
+    }
+}
+
 pub fn physics_smoke_joint_copy(ctx: &mut crate::SceneCtx<'_>) {
     build_joint_copy(ctx.world);
+    if std::env::var_os("PH2D_PHYSICS_SMOKE_ANIMA").is_some() {
+        author_limit_and_width_tracks(ctx.world, ctx.timeline);
+    }
     ctx.want.camera_center = Some(CAMERA_CENTRE);
     ctx.want.camera_height_world = Some(CAMERA_HEIGHT);
     ctx.want.panels.push("physics");

@@ -143,3 +143,73 @@ fn the_message_of_scene_66_quotes_measured_numbers() {
     close(before[1], MEASURED_PLAIN_DEG, "um portao cru");
     close(after[1], MEASURED_PASTED_DEG, "um portao depois da colagem");
 }
+
+/// ⭐ **A variante animada da cena** (`PH2D_PHYSICS_SMOKE_ANIMA`, GEF02 onda 7) faz o que a foto e o
+/// smoke prometem, pelo caminho do APP (a curva → os canais → a ponte, quadro a quadro): o Gate A,
+/// já adormecido no batente, segue o «Limit min» até −60°; e a forma dele chega a 2,4 m no solver.
+#[test]
+fn a_cena_66_animada_leva_o_portao_ao_minimo_novo() {
+    let reg = crate::physics_tests::registry();
+    let mut sim = SimWorld::new();
+    build_joint_copy(sim.world_mut());
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let mut doc = ph2d_timeline::TimelineDoc::new();
+    author_limit_and_width_tracks(sim.world_mut(), &mut doc);
+    let mut bridge = PhysicsBridge::default();
+    let mut estado = crate::physics_state::PhysicsState::default();
+    let mut drive = ph2d_preview_drive::PreviewDrive::default();
+    let dt = 1.0 / 60.0;
+    let mut ph = ph2d_core::Playhead::new(dt);
+    ph.play();
+    let gate = {
+        let mut q = sim.world_mut().query::<(ph2d_ecs::Entity, &Name)>();
+        q.iter(sim.world())
+            .find(|(_, n)| n.as_str() == NAMES[0])
+            .map(|(e, _)| e)
+            .expect("Gate A")
+    };
+    let mut no_batente_a_dormir = false;
+    for q in 0..=(8 * 60) {
+        if q > 0 {
+            ph.advance();
+        }
+        ph2d_timeline::apply_from_doc(sim.world_mut(), &mut doc, ph.time());
+        estado.conducao.no_tempo(ph.time());
+        estado.conducao.a_tocar(true);
+        crate::aplicar_canais(&mut sim, &reg, &mut bridge, &mut estado, (&mut drive, &doc));
+        crate::bridge::dispatch::dispatch(
+            &mut bridge,
+            &mut sim,
+            &ph,
+            dt,
+            &mut doc,
+            true,
+            ph2d_physics_ecs::PlayerInput::default(),
+            &mut ph2d_physics_ecs::InputTape::new(),
+            &mut drive,
+        );
+        crate::aplicar_canais(&mut sim, &reg, &mut bridge, &mut estado, (&mut drive, &doc));
+        estado.conducao.settle();
+        if q == 155 {
+            no_batente_a_dormir = bridge.body_sleeping(gate) == Some(true);
+        }
+        if q == 225 {
+            let a = angle_deg(&mut sim, NAMES[0]);
+            assert!(
+                (a + 60.0).abs() < 1.0,
+                "aos 3,75 s no mínimo novo, −60°: {a}"
+            );
+        }
+    }
+    assert!(
+        no_batente_a_dormir,
+        "aos 2,58 s o portão já dormia no batente"
+    );
+    let (mn, mx) = bridge.body_aabb(gate).expect("Gate A");
+    let a = angle_deg(&mut sim, NAMES[0]).to_radians();
+    let largura = (mx[0] - mn[0] - 2.0 * HALF_H * a.sin().abs()) / a.cos().abs();
+    assert!(
+        (largura - 2.4).abs() < 0.02,
+        "a forma chegou a 2,4 m: {largura}"
+    );
+}

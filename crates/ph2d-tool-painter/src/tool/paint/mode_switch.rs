@@ -38,6 +38,7 @@ impl PainterTool {
         let molhada = super::WetTool::do_fio(mode);
         let mode = if molhada.is_some() { "wetpaint" } else { mode };
         let new_wet = molhada.unwrap_or(self.paint.wetpaint.tool);
+        let conta_gotas_no_wet = mode == "eyedropper" && old_mode == PaintMode::WetPaint;
         let new_mode = match mode {
             "smear" => PaintMode::Smear,
             "blur" => PaintMode::Blur,
@@ -71,6 +72,9 @@ impl PainterTool {
             // stays a momentary Paint, and unknown wires keep their
             // conservative fallback.
             "brush" if self.paint.wetpaint.armed => PaintMode::WetPaint,
+            // Dentro do Wet o conta-gotas é momentâneo (B02.3, decisão do dono 06/11): a água continua a correr e o slot
+            // fica — sair do modo adormecia a sessão e trocava o pincel.
+            "eyedropper" if conta_gotas_no_wet => PaintMode::WetPaint,
             // "brush" / "eraser" / "eyedropper" / anything else → normal Paint.
             _ => PaintMode::Paint,
         };
@@ -80,6 +84,7 @@ impl PainterTool {
         // A Borracha tem o seu slot (dono 24/10): a flag dela decide-se ANTES da troca (o `match` do fim).
         let new_eraser = match mode {
             "smear" | "blur" | "clone" | "sculpt" => self.paint.eraser,
+            "eyedropper" if conta_gotas_no_wet => self.paint.eraser,
             "eraser" => true,
             _ => false,
         };
@@ -173,7 +178,7 @@ impl PainterTool {
             // canvas rather than laying colour, so the Eraser override is none of its business.
             "smear" | "blur" | "clone" | "sculpt" => {}
             "eyedropper" => {
-                self.paint.eraser = false;
+                self.paint.eraser &= conta_gotas_no_wet;
                 self.paint.eyedropper_armed = true;
             }
             "eraser" => self.paint.eraser = true,

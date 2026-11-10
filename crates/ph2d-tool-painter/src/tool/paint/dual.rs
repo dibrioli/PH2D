@@ -79,6 +79,24 @@ impl DualEstado {
         swap(&mut self.curva, &mut o.curva);
     }
 
+    /// O traço acaba sem pousar (a troca de documento, B02.4): a máscara e as marcas eram da tela que sai; a imagem, a
+    /// cache e a versão são da ponta e ficam.
+    pub(super) fn abandona_o_traco(&mut self) {
+        self.troca_o_traco(&mut Self::default());
+    }
+
+    /// Um traço a meio, de sonda: a máscara de `n` bytes.
+    #[cfg(test)]
+    pub(super) fn poe_traco_de_sonda(&mut self, n: usize) {
+        self.mascara = Some(Arc::new(vec![255; n]));
+    }
+
+    /// Há um traço da 2.ª ponta (motor, marcas ou máscara) por acabar.
+    #[cfg(test)]
+    pub(super) fn tem_traco(&self) -> bool {
+        self.motor.is_some() || !self.pendentes.is_empty() || self.mascara.is_some()
+    }
+
     /// Instala a imagem da 2.ª ponta (a do pincel copiado para o tool do preview).
     pub(super) fn poe_imagem(&mut self, imagem: Option<BrushTextureImage>) {
         self.imagem = imagem;

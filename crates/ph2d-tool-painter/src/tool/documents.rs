@@ -42,6 +42,8 @@ pub(crate) struct StashedDoc {
     source_size: (u32, u32),
     undo: crate::undo::UndoController,
     selection: BTreeSet<RtLayerId>,
+    /// O olho de cinza da máscara (B02.A1): os ids colidem entre documentos, então ele é do documento.
+    mask_view: Option<RtLayerId>,
 }
 
 impl StashedDoc {
@@ -101,6 +103,7 @@ impl StashedDoc {
             source_size: doc.size,
             undo: crate::undo::UndoController::default(),
             selection: BTreeSet::new(),
+            mask_view: None,
         }
     }
 }
@@ -162,6 +165,7 @@ impl PainterTool {
             }
         }
         self.bound_doc = Some(entity);
+        self.mask_view_grayscale = None; // o olho do documento descartado não acende o do seguinte (B02.A1)
         match self.doc_cache.remove(&entity) {
             Some(doc) => self.restore_doc(doc), // bring back its cached multi-layer stack
             None => {
@@ -242,6 +246,7 @@ impl PainterTool {
             source_size: self.source_size,
             undo: std::mem::take(&mut self.undo),
             selection: std::mem::take(&mut self.selection),
+            mask_view: self.mask_view_grayscale.take(),
         }
     }
 
@@ -287,6 +292,7 @@ impl PainterTool {
             doc.source_size.1,
         ));
         self.selection = doc.selection;
+        self.mask_view_grayscale = doc.mask_view;
         self.composited = None;
         self.compositor_cache = CompositorCache::new();
         self.adjustment_cache_pending = false;

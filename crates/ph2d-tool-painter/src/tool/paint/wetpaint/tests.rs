@@ -791,8 +791,9 @@ fn the_wet_checkbox_survives_the_tool_round_trips() {
 
 /// Every non-brush tool wire LEAVES the wet mode — the rail's whole matrix
 /// (Enio 2026-07-21: "não consigo sair do modo wet e entrar nos outros
-/// modos"; the tool half of that seam, wire by wire). Only "brush" (the arm)
-/// and "eraser" (W2.6, the wet eraser) stay. Mutation that bleeds it: any
+/// modos"; the tool half of that seam, wire by wire). Only "brush" (the arm),
+/// "eraser" (W2.6, the wet eraser) and the momentary "eyedropper" (B02.3, dono
+/// 06/11: `o_conta_gotas_no_wet_nao_adormece_a_agua`) stay. Mutation that bleeds it: any
 /// wire arm in `set_paint_tool_mode` learning a `WetPaint` fallback.
 #[test]
 fn every_other_tool_wire_leaves_the_wet_mode() {
@@ -807,7 +808,6 @@ fn every_other_tool_wire_leaves_the_wet_mode() {
         "deform",
         "sculpt",
         "knife",
-        "eyedropper",
     ] {
         let mut t = tool_in_mode("wetpaint");
         t.set_paint_tool_mode(wire);

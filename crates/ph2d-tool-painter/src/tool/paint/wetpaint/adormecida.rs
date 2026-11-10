@@ -12,6 +12,8 @@ use crate::layers::LayerId as RtLayerId;
 #[cfg(test)]
 mod documento_tests;
 mod enterro;
+#[cfg(test)]
+mod troca_tests;
 pub(crate) use enterro::Congelada;
 
 /// A sessão fora do caminho de um undo sem fotografia, com a tela e a camada de antes.
@@ -285,15 +287,16 @@ impl PainterTool {
     /// Acorda a tinta da camada activa. `false` se não há, ou se ela já não serve (a grade ou o Blend mudaram com tinta
     /// na tela: a lei de sempre fecha a sessão).
     pub(in crate::tool::paint) fn wet_acorda(&mut self) -> bool {
+        // As recusas antes do `remove` (B02.3, O2-16): recusar não leva a tinta.
+        if self.paint.wetpaint.session.is_some() || self.undo.marca.ativa() {
+            return false;
+        }
         let camada = self.layers.active();
         let lista = &mut self.paint.wetpaint.adormecidas;
         let Some(i) = lista.iter().position(|a| a.camada == camada) else {
             return false;
         };
         let a = lista.remove(i);
-        if self.paint.wetpaint.session.is_some() || self.undo.marca.ativa() {
-            return false;
-        }
         let tela = Arc::clone(&a.tela);
         let mut sess = a.acorda();
         let w = &self.paint.wetpaint;

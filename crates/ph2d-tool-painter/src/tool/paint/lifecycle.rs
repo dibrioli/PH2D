@@ -25,6 +25,7 @@ impl PainterTool {
         self.abandon_pending_fill(); // Fill ColorDrop: fill_seed / fill_snapshot / fill_last_rect
         self.paint.stroke = None; // an in-progress brush stroke (mid-gesture rebind)
         self.paint.stroke_undo = None; // its pending undo snapshot (of the OLD document)
+        self.paint.dual.abandona_o_traco(); // a máscara da 2.ª ponta (33 MB a 4K) é da tela velha (B02.4)
         self.paint.drag_preview = None; // Drag-Dot restore record — holds OLD-canvas pixels
         // O plano do traço (L8/L5) segura DUAS telas do documento velho e o trilho da ponta de píxel (L18) um píxel
         // pendente: o traço é abandonado como o `stroke` acima (a lei do cancelar) — a tela já tem o que se viu.

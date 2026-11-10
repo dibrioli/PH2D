@@ -105,7 +105,7 @@ pub(crate) const MIN_LABEL_W: f32 = 56.0; // LITERAL-PX-OK: min track-name colum
 /// there, this is it.
 pub(crate) const MIN_LANE_LABEL_W: f32 = 148.0; // LITERAL-PX-OK: lane controls (94) + a name
 
-/// O texto mais largo da faixa nos cartões, «Translate X (px)»: 16 caracteres a `TypeToken::Sm`.
+/// O texto mais largo da faixa nos cartões, «Position X (px)» (15 caracteres a `TypeToken::Sm`; a folga dos 16 de antes fica).
 const NOME_ARVORE_W: f32 = 112.0; // LITERAL-PX-OK: 16 chars at TypeToken::Sm, measured on the smoke photo
 /// ⭐ O piso da coluna de nomes na árvore dos cartões (doc 15 onda 2): ▶ + ícone da propriedade + o
 /// nome inteiro + o valor — o dono viu «Translate…» cortado e a coluna existe para o ler.

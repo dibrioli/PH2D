@@ -14,15 +14,15 @@ use ph2d_timeline::PropKind;
 /// The display label for a property (the panel's presentation of `PropKind`).
 pub(crate) fn prop_label(p: PropKind) -> &'static str {
     match p {
-        PropKind::TranslationX => ph2d_i18n::tr("panel.timeline.prop.translate_x"),
-        PropKind::TranslationY => ph2d_i18n::tr("panel.timeline.prop.translate_y"),
-        PropKind::Rotation => ph2d_i18n::tr("panel.timeline.prop.rotation"),
-        PropKind::ScaleX => ph2d_i18n::tr("panel.timeline.prop.scale_x"),
-        PropKind::ScaleY => ph2d_i18n::tr("panel.timeline.prop.scale_y"),
-        PropKind::Opacity => ph2d_i18n::tr("panel.timeline.prop.opacity"),
+        PropKind::TranslationX
+        | PropKind::TranslationY
+        | PropKind::Rotation
+        | PropKind::ScaleX
+        | PropKind::ScaleY
+        | PropKind::Opacity
+        | PropKind::Position => palavra_do_inspector(p),
         PropKind::TimeRemap => ph2d_i18n::tr("panel.timeline.prop.time"),
         PropKind::Morph => ph2d_i18n::tr("panel.timeline.prop.morph"),
-        PropKind::Position => ph2d_i18n::tr("panel.timeline.prop.position"),
         PropKind::JointMotorTarget => ph2d_i18n::tr("panel.timeline.prop.motor_target"),
         PropKind::JointMotorSpeed => ph2d_i18n::tr("panel.timeline.prop.motor_speed"),
         PropKind::JointRestLength => ph2d_i18n::tr("panel.timeline.prop.rest_length"),
@@ -38,6 +38,38 @@ pub(crate) fn prop_label(p: PropKind) -> &'static str {
             ph2d_i18n::tr(k.info().map_or("panel.timeline.prop.field", |i| i.rotulo))
         }
     }
+}
+
+/// ⭐ **Dono 10/11: o canal do Transform diz a palavra do INSPECTOR** («Position X», nunca
+/// «Translate X»). A fonte é a chave do cartão do Inspector, sem a unidade entre parênteses (a
+/// Timeline põe a sua, [`propriedade_snap`]) e com o glifo do eixo do mesmo cartão: renomear lá
+/// renomeia cá. Gate `the_channel_says_the_inspectors_word`.
+fn palavra_do_inspector(p: PropKind) -> &'static str {
+    use ph2d_i18n::tr;
+    static NOMES: std::sync::OnceLock<[String; 7]> = std::sync::OnceLock::new();
+    let sem_unidade = |k: &str| tr(k).split(" (").next().unwrap_or_default().to_owned();
+    let eixo = |k: &str, g: &str| format!("{} {}", sem_unidade(k), tr(g));
+    let n = NOMES.get_or_init(|| {
+        [
+            eixo("card.insp.position_px", "card.glyph.x"),
+            eixo("card.insp.position_px", "card.glyph.y"),
+            sem_unidade("card.insp.rotation_deg"),
+            eixo("card.insp.scale", "card.glyph.x"),
+            eixo("card.insp.scale", "card.glyph.y"),
+            sem_unidade("card.insp.opacity"),
+            sem_unidade("card.insp.position_px"),
+        ]
+    });
+    let i = match p {
+        PropKind::TranslationX => 0,
+        PropKind::TranslationY => 1,
+        PropKind::Rotation => 2,
+        PropKind::ScaleX => 3,
+        PropKind::ScaleY => 4,
+        PropKind::Opacity => 5,
+        _ => 6,
+    };
+    &n[i]
 }
 
 /// **How this app names an animated channel** — `Ball · Position X`, or the short id

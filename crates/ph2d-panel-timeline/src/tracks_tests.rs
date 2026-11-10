@@ -81,3 +81,59 @@ fn a_lista_do_mais_track_nao_tapa_o_chip() {
         "não cabe: desliza depois"
     );
 }
+
+/// ⭐ **Dono 10/11: o canal diz a palavra do INSPECTOR** («Position X», nunca «Translate X»).
+///
+/// Varre o enum inteiro pelo id de fio (`from_target`), e o `match` exaustivo obriga cada
+/// variante nova a dizer que palavra do Inspector é a dela. A régua é o Inspector CLÁSSICO
+/// («Position X / Y» partido pelo eixo) — a porta lê o de cartões —, logo os dois Inspectors e a
+/// Timeline têm de concordar.
+///
+/// **Mutação que deve sangrar:** `palavra_do_inspector` devolver «Translate X» para o X.
+#[test]
+fn the_channel_says_the_inspectors_word() {
+    use ph2d_i18n::tr;
+    let eixo = |par: &str, i: usize| {
+        let (nome, eixos) = tr(par).split_once(' ').expect("«Nome X / Y»");
+        format!("{nome} {}", eixos.split(" / ").nth(i).expect("dois eixos"))
+    };
+    let mut vistos = 0;
+    for id in 0..=u64::from(u8::MAX) {
+        let Some(p) = PropKind::from_target(ph2d_timeline::AnimTarget::new(id)) else {
+            continue;
+        };
+        let esperado = match p {
+            PropKind::TranslationX => eixo("panel.inspector.transform.position_px", 0),
+            PropKind::TranslationY => eixo("panel.inspector.transform.position_px", 1),
+            PropKind::ScaleX => eixo("panel.inspector.transform.scale", 0),
+            PropKind::ScaleY => eixo("panel.inspector.transform.scale", 1),
+            PropKind::Rotation => tr("panel.inspector.transform.rotation").to_owned(),
+            PropKind::Opacity => tr("card.insp.opacity").replace(" (%)", ""),
+            PropKind::Position => eixo("panel.inspector.transform.position_px", 0)
+                .trim_end_matches(" X")
+                .to_owned(),
+            // Fora do cartão Transform/Appearance: o Inspector não tem campo com nome próprio.
+            PropKind::TimeRemap
+            | PropKind::Morph
+            | PropKind::JointMotorTarget
+            | PropKind::JointMotorSpeed
+            | PropKind::JointRestLength
+            | PropKind::JointMaxLength
+            | PropKind::BoneBendInX
+            | PropKind::BoneBendInY
+            | PropKind::BoneBendOutX
+            | PropKind::BoneBendOutY
+            | PropKind::IkBendSide
+            | PropKind::MacroTime
+            | PropKind::Field(_) => continue,
+        };
+        assert_eq!(prop_label(p), esperado, "{p:?}");
+        assert!(!prop_label(p).contains("Translate"), "{p:?}");
+        vistos += 1;
+    }
+    assert_eq!(
+        vistos,
+        PropKind::ALL.len() + 1,
+        "a pose inteira e o Position"
+    );
+}

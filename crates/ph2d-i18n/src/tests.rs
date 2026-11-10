@@ -16,7 +16,7 @@ fn known_keys_round_trip_to_english() {
     // Timeline panel chrome (W2.E9).
     assert_eq!(tr("panel.timeline.title"), "Timeline");
     assert_eq!(tr("panel.timeline.loop"), "Loop");
-    assert_eq!(tr("panel.timeline.prop.translate_x"), "Translate X");
+    assert_eq!(tr("panel.timeline.prop.morph"), "Morph");
     // Vector panel chrome — section headers + the shape-catalogue words.
     assert_eq!(tr("panel.vector.section.tool"), "Tool");
     assert_eq!(tr("panel.vector.mode.shape"), "Shape");

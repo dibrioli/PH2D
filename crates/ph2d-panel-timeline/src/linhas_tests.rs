@@ -295,7 +295,8 @@ fn a_faixa_diz_so_a_propriedade_e_o_cabecalho_o_objeto() {
     cartoes(Some(false));
     let classica = crate::tracks::propriedade_snap(&s, PropKind::TranslationX, u);
     cartoes(None);
-    let tx = ph2d_i18n::tr("panel.timeline.prop.translate_x");
+    let tx = crate::tracks::prop_label(PropKind::TranslationX);
+    assert_eq!(tx, "Position X", "a palavra do Inspector (dono 10/11)");
     // O `Transform` guarda metros e radianos: nos cartões a faixa diz a unidade do projecto, como o
     // Inspector; o caminho clássico fica como era.
     assert_eq!(p, format!("{tx} ({})", u_px(u)));

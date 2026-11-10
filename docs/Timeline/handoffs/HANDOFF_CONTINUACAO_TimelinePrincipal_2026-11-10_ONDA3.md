@@ -95,7 +95,7 @@ um teste de 1100 px (curado com `textos_em`); a contagem `pintados + n == total`
 
 ## Próximo
 
-- O plano 15 fecha com esta onda. Falta: smoke do dono (não feito) e a decisão pendente «Translate X» × «Position X» (perguntada de novo no fim da onda 3).
+- O plano 15 fecha com esta onda. Falta: smoke do dono (não feito). A decisão «Translate X» × «Position X» foi tomada (Rodada 3l: «Position X»).
 - Depois: `/pd-linha-fechar` (handoff de integração; §5.1 do CLAUDE.md: Timeline passa a `PH2D_NEST_SMOKE=1..5`). Sem push nem integração.
 
 ## Rodada 3b (dono 10/11): Timeline flutua + listras por baixo + sombra das alças
@@ -206,3 +206,9 @@ um teste de 1100 px (curado com `textos_em`); a contagem `pintados + n == total`
 - Cura (só cartões; clássico byte a byte): porta ÚNICA `pecas_cartoes::desbote(muda)` (= `TIMELINE_PECA_MUDA_ALPHA`), lida por `cores`, `tons_da_mistura`, a curva do fade, as barras de mudança e `alca_estado::pinta_desbotada` (forma + `pinta_sombra_de_alca(.., k)`). Apertada/arrasto = a pleno; o hover desbotado; `publica_cor` leva o repouso VIVO. O fade cinza fica só para `locked` (e para o clássico mudo).
 - Testes `alca_estado::tests::faixa_muda::*` (2): cor a cor na ordem de pintura, RGB igual e α = viva × K em `Theme::ALL` (pior matiz 0,0000°), cantos/fade/topo/pé/contorno/nome presentes desbotados; estados e cursor (hover e aperto) = repouso da faixa viva. Mutações: fade em `Border` → vermelho; alças sem `k` → vermelho.
 - Fotos: [23_faixa_muda.png](../fotos/23_faixa_muda.png) · [zoom shake × swing](../fotos/23_faixa_muda_zoom.png).
+
+## Rodada 3l (dono 10/11): nomes do Inspector
+
+- Dono: os canais dizem as palavras do Inspector — «Position X/Y», «Scale X/Y», «Rotation», «Opacity», «Position» (nunca «Translate X»), nos cartões e no clássico.
+- Porta: `tracks_label::palavra_do_inspector` compõe das chaves do cartão do Inspector (`card.insp.position_px`/`scale`/`rotation_deg`/`opacity` sem a unidade entre parênteses + `card.glyph.x|y`); as 7 chaves `panel.timeline.prop.{translate_x,translate_y,rotation,scale_x,scale_y,opacity,position}` saíram. Renomear no Inspector renomeia na Timeline (faixas, cabeçalhos, lista do «+ Track», grafo — todos passam por `prop_label`). Sufixo de unidade igual.
+- Gate `tracks::tests::the_channel_says_the_inspectors_word`: varre `PropKind` por `from_target(0..=255)` com `match` exaustivo; régua = o Inspector CLÁSSICO («Position X / Y» partido pelo eixo) — os dois Inspectors e a Timeline concordam. `a_faixa_diz_so_a_propriedade…` afirma «Position X».

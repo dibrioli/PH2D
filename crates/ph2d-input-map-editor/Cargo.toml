@@ -25,6 +25,8 @@ ph2d-player-controls = { path = "../ph2d-player-controls" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }
+# O pedido recusado (uma tecla do sistema) avisa no log, nunca some calado.
+tracing = "0.1"
 
 [lints]
 workspace = true

@@ -30,6 +30,10 @@ pub fn apply(map: &mut InputMap, edit: InputMapEdit, player_file: Option<&std::p
         InputMapEdit::Remove(id) => {
             map.remove(id);
         }
+        InputMapEdit::AddBinding(_, Binding::Key(k)) if k.system_owned().is_some() => {
+            // ⛔ Uma tecla do SISTEMA (Windows, Fn, Print Screen) nunca chega ao jogo (plano §13.1).
+            tracing::warn!(key = %k.label(), "Input Map: a system key never binds; the request was refused");
+        }
         InputMapEdit::AddBinding(id, b) => {
             if let Some(a) = map.get_mut(id)
                 && !a.bindings.contains(&b)
@@ -59,5 +63,34 @@ pub fn apply(map: &mut InputMap, edit: InputMapEdit, player_file: Option<&std::p
                 let _ = ph2d_player_controls::file::save(p, &PlayerKeys::new());
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// ⛔ Ligar uma tecla do sistema é recusado (o mapa fica igual); uma tecla do jogo liga.
+    #[test]
+    fn a_system_key_never_binds_and_a_game_key_does() {
+        let mut map = InputMap::with_player_defaults();
+        let id = map.id("jump").expect("fábrica");
+        let before = map.clone();
+        for k in Key::system_keys() {
+            apply(
+                &mut map,
+                InputMapEdit::AddBinding(id, Binding::Key(k)),
+                None,
+            );
+        }
+        assert_eq!(map, before, "uma tecla do sistema entrou no mapa");
+        let kp7 = Key::named_in_script("kp7").expect("o numérico")[0];
+        apply(
+            &mut map,
+            InputMapEdit::AddBinding(id, Binding::Key(kp7)),
+            None,
+        );
+        let a = map.get(id).expect("existe");
+        assert!(a.bindings.contains(&Binding::Key(kp7)));
     }
 }

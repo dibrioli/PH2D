@@ -29,10 +29,11 @@ pub fn is_chord_or_modifier(key: Key, held: impl IntoIterator<Item = Key>) -> bo
     is_modifier(key) || held.into_iter().any(is_modifier)
 }
 
-/// `true` = nunca vira ligação e segue para o editor: o acorde ([`is_chord_or_modifier`]) ou o F5.
+/// `true` = nunca vira ligação: o acorde ([`is_chord_or_modifier`]), o F5, ou uma tecla do SISTEMA
+/// (Windows, Fn, Print Screen: `Key::system_owned`, plano §13.1 — o jogo nunca as recebe).
 #[must_use]
 pub fn never_binds(key: Key, held: impl IntoIterator<Item = Key>) -> bool {
-    is_transport(key) || is_chord_or_modifier(key, held)
+    key.system_owned().is_some() || is_transport(key) || is_chord_or_modifier(key, held)
 }
 
 /// Os modificadores em baixo, para quem não tem um `KeyboardState` (a vista B): só Ctrl/Alt, ordenados.
@@ -57,5 +58,24 @@ impl HeldModifiers {
     /// Os modificadores em baixo.
     pub fn iter(&self) -> impl Iterator<Item = Key> + '_ {
         self.0.iter().copied()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// ⛔ As do sistema nunca ligam, nem sozinhas; o numérico e a pontuação ligam (são do jogo).
+    #[test]
+    fn system_keys_never_bind_and_notebook_keys_do() {
+        let sys: Vec<Key> = Key::system_keys().collect();
+        assert_eq!(sys.len(), 4);
+        for k in sys {
+            assert!(never_binds(k, []), "{}", k.label());
+        }
+        for n in ["kp7", "kpenter", "numlock", "capslock", "insert", "/", "`"] {
+            let k = Key::named_in_script(n).expect(n)[0];
+            assert!(!never_binds(k, []), "{n}");
+        }
     }
 }

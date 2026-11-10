@@ -77,6 +77,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "input_map_keyboard.pad.back" => "Back",
         "input_map_keyboard.pad.start" => "Start",
         "input_map_keyboard.pad.dpad" => "D-pad",
+        "input_map_keyboard.system.fn" => "Fn is handled inside the keyboard; games never see it.",
+        "input_map_keyboard.system.windows" => {
+            "The Windows key belongs to the system: it opens the app menu. Games never get it."
+        }
+        "input_map_keyboard.system.print_screen" => {
+            "Print Screen belongs to the system: it takes a screenshot. Games never get it."
+        }
         _ => return None,
     })
 }

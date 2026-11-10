@@ -24,15 +24,13 @@ mod aparencia; // a óptica de um texel como função do chão (LOC split; o vid
 mod diag; // o envelope de diagnóstico do composite (LOC split)
 mod pigment; // a COR do pigmento por pixel (LOC split, por assunto)
 mod texel; // o corpo do laço por texel (B52.R21, LOC split)
+mod dono; // o dono do halo: o texel sem dono pelo dono mais próximo no alcance (B16.2)
 mod window;
 pub(in crate::tool::paint) use window::Alcance;
 pub(in crate::tool::paint) use window::ponto_na_janela;
 
 use super::watercolor_field::*;
-use super::watercolor_rewet_px::{
-    blur_of, build_style_field, build_wet_field, params_differ, rewet_px, sample_wet_field,
-    style_at,
-};
+use super::watercolor_rewet_px::{build_style_field, build_wet_field, params_differ};
 use super::*;
 use rayon::prelude::*;
 
@@ -308,6 +306,11 @@ impl PainterTool {
         };
         let vbase: Option<&[crate::compositor::vidro::Vidro]> = vbase.as_deref().map(Vec::as_slice);
         let vchao: Option<&[u8]> = vchao.as_deref().map(Vec::as_slice);
+        let halo = if has_style {
+            dono::DonoDoHalo::build(style_owner, (fw, fh), (rx0, ry0, rw, rh), pad)
+        } else {
+            dono::DonoDoHalo::vazio()
+        };
         let q = texel::Quadro {
             fw,
             fh,
@@ -331,6 +334,7 @@ impl PainterTool {
             dens_buf,
             style_table,
             style_owner,
+            halo: &halo,
             has_style,
             cur_style,
             substrate_session: &substrate_session,

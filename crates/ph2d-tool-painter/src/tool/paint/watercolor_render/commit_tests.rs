@@ -157,9 +157,6 @@ fn o_decimo_traco_da_sessao_nao_paga_os_nove_anteriores() {
                 c.nome
             ));
         }
-        if c.raio_varia {
-            continue; // estilo não uniforme: o pen-up fica na união (só a paridade conta)
-        }
         if px_velho[TRACOS - 1] <= 2 * px_velho[0] {
             falhas.push(format!(
                 "{}: o controlo — pela união o 10.º ({}) devia pagar > 2× o 1.º ({})",
@@ -191,6 +188,12 @@ fn o_decimo_traco_da_sessao_nao_paga_os_nove_anteriores() {
 #[test]
 #[ignore]
 fn mede_o_pen_up_da_aguada_4k() {
+    for misto in [false, true] {
+        mede_uma_sessao_4k(misto);
+    }
+}
+
+fn mede_uma_sessao_4k(misto: bool) {
     let (fw, fh) = (3840u32, 2160u32);
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (fw * fh * 4) as usize], fw, fh);
@@ -206,6 +209,9 @@ fn mede_o_pen_up_da_aguada_4k() {
         #[allow(clippy::cast_precision_loss)]
         let (x, y) = (200.0 + 220.0 * k as f32, 300.0 + 400.0 * (k % 4) as f32);
         sessao += usize::from(k > 0 && t.wet_session_continues());
+        if misto {
+            t.set_brush_size_px([30.0, 20.0, 40.0][k % 3]); // estilos mistos (B16.2 cont3)
+        }
         t.on_canvas_pointer(cp([x, y], PointerPhase::Down));
         for j in 1..=10 {
             #[allow(clippy::cast_precision_loss)]
@@ -225,8 +231,8 @@ fn mede_o_pen_up_da_aguada_4k() {
         }
     }
     println!(
-        "[B16.2] 3840x2160, 16 traços ({sessao} continuam a sessão): pen-up pelo traço {:.2} ms \
-         ({} texels) | pela união {:.2} ms ({} texels)",
+        "[B16.2] 3840x2160, 16 traços ({sessao} continuam a sessão, raio misto {misto}): pen-up pelo \
+         traço {:.2} ms ({} texels) | pela união {:.2} ms ({} texels)",
         best[0], px[0], best[1], px[1]
     );
 }

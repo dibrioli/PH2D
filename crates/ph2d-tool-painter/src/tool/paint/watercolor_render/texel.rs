@@ -35,6 +35,8 @@ pub(super) struct Quadro<'a> {
     pub(super) dens_buf: &'a Vec<u8>,
     pub(super) style_table: &'a [WetStrokeStyle],
     pub(super) style_owner: &'a [watercolor_field::Dono],
+    /// O dono resolvido do halo (B16.2, [`super::dono`]).
+    pub(super) halo: &'a super::dono::DonoDoHalo,
     pub(super) has_style: bool,
     pub(super) cur_style: WetStrokeStyle,
     pub(super) substrate_session: &'a SubstrateSession<'a>,
@@ -90,6 +92,7 @@ impl Quadro<'_> {
             dens_buf,
             style_table,
             style_owner,
+            halo,
             has_style,
             cur_style,
             substrate_session,
@@ -119,11 +122,11 @@ impl Quadro<'_> {
         // Per-stroke style: warp AMPLITUDE by the pixel's owner (read PRE-warp —
         // the displacement needs the amp first); owner 0 = current brush, old path.
         let o_pre = if has_style {
-            style_owner[gy * fw + gx]
+            halo.em(gx, gy, style_owner[gy * fw + gx])
         } else {
             0
         };
-        let st_warp = style_at(has_style, style_owner, style_table, cur_style, gy * fw + gx).warp;
+        let st_warp = style_at(has_style, o_pre, style_table, cur_style).warp;
         // #18: smooth the Warp amplitude across the owner boundary (else the new stroke's
         // RaggedEdge re-warps the old wash's junction — a hard artefact). PRE-warp `(lx, ly)`.
         let st_warp = style_field
@@ -198,7 +201,12 @@ impl Quadro<'_> {
         let wgx = (rx0 as f32 + sx).clamp(0.0, (fw - 1) as f32) as usize;
         let wgy = (ry0 as f32 + sy).clamp(0.0, (fh - 1) as f32) as usize;
         let widx = wgy * fw + wgx;
-        let st = style_at(has_style, style_owner, style_table, cur_style, widx);
+        let dono_px = if has_style {
+            halo.em(wgx, wgy, style_owner[widx])
+        } else {
+            0
+        };
+        let st = style_at(has_style, dono_px, style_table, cur_style);
         // #18: fill/depth/edge/opacity SMOOTHED across the owner boundary (else they step = a
         // hard junction); geometry/colour stay DISCRETE (Bug #8 lição #4). `None` ⇒ discrete.
         let (st_fill, st_depth, st_edge_gain, st_opacity) = style_field
@@ -251,7 +259,7 @@ impl Quadro<'_> {
         // from the owner's paper. See [`SubstrateSession::at`].
         let cached_ph = use_substrate_cache.then(|| substrate[gy * fw + gx]);
         let (paper_h, gran_h, paper_component) =
-            substrate_session.at(&st, owner_px, cached_ph, gx, gy);
+            substrate_session.at(&st, dono_px, cached_ph, gx, gy);
         // Take 10: TODO termo wet-driven lê o campo borrado ([`sample_wet_field`]) —
         // o thinning do interior era o degrau de ~11 bytes/px na fronteira de dono.
         let st_wet_px = sample_wet_field(wet_field.as_ref(), (rw, rh), (sx, sy), st.wet);

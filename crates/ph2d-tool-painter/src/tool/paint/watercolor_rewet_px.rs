@@ -380,18 +380,18 @@ impl StyleField {
 }
 
 /// Resolve the per-pixel OWNER stroke's style (EDGE-1 per-stroke params — recency ownership: an
-/// older wash keeps ITS Concentration/Edge/water on the union re-bake, Enio 2026-07-09). Owner `0`
-/// / no style map ⇒ the current brush's style, the exact pre-style path.
+/// older wash keeps ITS Concentration/Edge/water on the union re-bake, Enio 2026-07-09). `dono` is
+/// already RESOLVED (B16.2: the halo takes the nearest owner in reach, `watercolor_render::dono`);
+/// `0` (nobody in reach) / no style map ⇒ the current brush's style, the exact pre-style path.
 #[inline]
 pub(super) fn style_at(
     has_style: bool,
-    owner: &[Dono],
+    dono: Dono,
     table: &[WetStrokeStyle],
     cur: WetStrokeStyle,
-    idx: usize,
 ) -> WetStrokeStyle {
     if has_style {
-        match owner[idx] {
+        match dono {
             0 => cur,
             o => table[(o as usize - 1).min(table.len() - 1)],
         }

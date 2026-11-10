@@ -29,6 +29,8 @@ pub struct ListState {
     pub scrub: Option<Scrub>,
     /// A linha sob o ponteiro (mostra × nas teclas e o lixo).
     pub hover_row: Option<ActionId>,
+    /// O alvo sob o ponteiro (a dica).
+    pub hover_target: Option<ph2d_a11y::NodeId>,
     /// Pedido à escuta partilhada: `Some(Some(a))` arma, `Some(None)` desarma. A família drena-o.
     pub listen_request: Option<Option<ActionId>>,
     /// Quanto a lista rolou (px, ≥ 0) e quanto pode rolar.

@@ -156,8 +156,11 @@ impl InputMapDoc {
         });
         let dragged = self.view == View::List && crate::view_list::drag(self, x);
         let changed = h != self.hover || row != self.list.hover_row || dragged;
+        let target = self.hits.hit(x, y).filter(|_| h.is_none());
+        let changed = changed || target != self.list.hover_target;
         self.hover = h;
         self.list.hover_row = row;
+        self.list.hover_target = target;
         changed
     }
 

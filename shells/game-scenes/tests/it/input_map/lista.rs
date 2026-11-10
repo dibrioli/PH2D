@@ -249,3 +249,38 @@ fn o_pe_da_busca_nomeia_o_trigger_e_o_script_que_leem_a_accao() {
         |x| matches!(x, ph2d_input::readers::Reader::Script { name } if name == "laser_gun")
     )));
 }
+
+#[test]
+fn cada_controlo_da_lista_tem_dica_em_ingles_simples() {
+    let mut m = Mesa::aberta(View::List);
+    m.hero.input_map = onze();
+    m.frame();
+    let ml = id(&m, "move_left");
+    let row = m.at(ListHit::Row(ml).id());
+    m.hover(row);
+    for target in [
+        ids::NEW_NAME,
+        ids::ADD,
+        ids::SEARCH,
+        ListHit::Listen(ml).id(),
+        ListHit::RemoveBinding(ml, 0).id(),
+        ListHit::Trash(ml).id(),
+        ListHit::Dead(ml).id(),
+        ListHit::Press(ml).id(),
+    ] {
+        let at = m.at(target);
+        m.hover(at);
+        assert_eq!(
+            m.tab().doc.list.hover_target,
+            Some(target),
+            "o ponteiro achou o alvo"
+        );
+        let tip = ph2d_app_input_map::view_list::tip_of(&m.tab().doc, target).expect("dica");
+        assert!(
+            tip.ends_with('.') && !tip.contains("input_map"),
+            "dica em frase: {tip}"
+        );
+        // Volta à linha para o × e o lixo continuarem pintados.
+        m.hover(row);
+    }
+}

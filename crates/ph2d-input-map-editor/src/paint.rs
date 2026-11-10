@@ -70,15 +70,25 @@ fn paint_hover_tip(
     text: &mut TextSystem,
     theme: Theme,
 ) {
-    let Some(v) = doc.hover else {
+    let (id, msg) = match doc.hover {
+        Some(v) => (v.id(), tr(v.tip_key())),
+        None => {
+            let Some(id) = doc.list.hover_target.filter(|_| doc.view() == View::List) else {
+                return;
+            };
+            let Some(msg) = crate::view_list::tip_of(doc, id) else {
+                return;
+            };
+            (id, msg)
+        }
+    };
+    let Some(seg) = doc.hits.rect_for(id) else {
         return;
     };
-    let Some(seg) = doc.hits.rect_for(v.id()) else {
-        return;
-    };
-    let msg = tr(v.tip_key());
     let pad = Spacing::Sm.px();
     let w = text.prefix_width(msg, TypeToken::Sm.px()) + pad * 2.0;
-    let r = Rect::new(seg.x, seg.y + seg.h + pad, w, m::FIELD_H);
-    paint_tooltip(&Tooltip::new(v.id(), msg), r, scene, text, theme);
+    let area = doc.layout.area;
+    let x = seg.x.min(area.x + area.w - w - pad).max(area.x);
+    let r = Rect::new(x, seg.y + seg.h + pad, w, m::FIELD_H);
+    paint_tooltip(&Tooltip::new(id, msg), r, scene, text, theme);
 }

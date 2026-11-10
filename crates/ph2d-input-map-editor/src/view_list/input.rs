@@ -24,6 +24,25 @@ fn hit_of(doc: &InputMapDoc, id: ph2d_a11y::NodeId) -> Option<ListHit> {
     })
 }
 
+/// A dica (Plain English) de um alvo da lista, se ele tem uma.
+#[must_use]
+pub fn tip_of(doc: &InputMapDoc, id: ph2d_a11y::NodeId) -> Option<&'static str> {
+    let key = match id {
+        i if i == ids::NEW_NAME => "input_map_list.new_name_tip",
+        i if i == ids::ADD => "input_map_list.add_tip",
+        i if i == ids::SEARCH => "input_map_list.search_tip",
+        _ => match hit_of(doc, id)? {
+            ListHit::Listen(_) => "input_map_list.add_key_tip",
+            ListHit::RemoveBinding(..) => "input_map_list.remove_key_tip",
+            ListHit::Trash(_) => "input_map_list.remove_action_tip",
+            ListHit::Dead(_) => "input_map_list.dead_tip",
+            ListHit::Press(_) => "input_map_list.press_tip",
+            ListHit::Row(_) => return None,
+        },
+    };
+    Some(ph2d_i18n::tr(key))
+}
+
 fn focus(doc: &mut InputMapDoc, id: Option<ph2d_a11y::NodeId>) {
     doc.store.set_focus(id);
 }

@@ -18,7 +18,11 @@ struct Caixa {
 thread_local! {
     /// A caixa do último dab pousado neste fio, à espera do próximo.
     static GUARDADA: RefCell<Caixa> = RefCell::new(Caixa::default());
+    /// A da silhueta BASE (sem a ponta), que a bilinear da ponta das cerdas lê quatro vezes por célula.
+    static GUARDADA_BASE: RefCell<Caixa> = RefCell::new(Caixa::default());
 }
+
+type Guarda = &'static std::thread::LocalKey<RefCell<Caixa>>;
 
 /// A silhueta de UM dab na caixa `[x0, x0 + w) × [y0, y0 + h)` (células), calculada na 1.ª leitura de cada célula.
 /// Atómica: o depósito lê-a por linhas em paralelo; duas threads que calculem a mesma célula guardam o MESMO valor.
@@ -29,15 +33,25 @@ pub(super) struct SilMemo {
     w: i32,
     h: i32,
     c: Caixa,
+    guarda: Guarda,
 }
 
 impl SilMemo {
     /// A caixa do pente (`Engine::pentear_relevo`): a meia-extensão `meia` (células) à volta de `(x, y)`.
     pub(super) fn nova(x: f64, y: f64, meia: [f64; 2]) -> Self {
+        Self::na(&GUARDADA, x, y, meia)
+    }
+
+    /// A caixa da silhueta BASE (B14c): a guardada à parte, para conviver no mesmo dab com a de [`Self::nova`].
+    pub(super) fn nova_base(x: f64, y: f64, meia: [f64; 2]) -> Self {
+        Self::na(&GUARDADA_BASE, x, y, meia)
+    }
+
+    fn na(guarda: Guarda, x: f64, y: f64, meia: [f64; 2]) -> Self {
         let (ax, ay) = (meia[0].ceil() as i32 + 1, meia[1].ceil() as i32 + 1);
         let (cx, cy) = (x.round() as i32, y.round() as i32);
         let (w, h) = (2 * ax + 1, 2 * ay + 1);
-        let mut c = GUARDADA
+        let mut c = guarda
             .try_with(|g| std::mem::take(&mut *g.borrow_mut()))
             .unwrap_or_default();
         let n = (w * h) as usize;
@@ -58,6 +72,7 @@ impl SilMemo {
             w,
             h,
             c,
+            guarda,
         }
     }
 
@@ -65,6 +80,7 @@ impl SilMemo {
     pub(super) fn ou(&self, cx: i32, cy: i32, sil: impl Fn(i32, i32) -> f64) -> f64 {
         let (i, j) = (cx - self.x0, cy - self.y0);
         if i < 0 || j < 0 || i >= self.w || j >= self.h {
+            crate::wet_diag::conta_sil(4, 1);
             return sil(cx, cy);
         }
         let k = (j * self.w + i) as usize;
@@ -81,7 +97,7 @@ impl SilMemo {
 impl Drop for SilMemo {
     fn drop(&mut self) {
         let c = std::mem::take(&mut self.c);
-        let _ = GUARDADA.try_with(|g| *g.borrow_mut() = c);
+        let _ = self.guarda.try_with(|g| *g.borrow_mut() = c);
     }
 }
 

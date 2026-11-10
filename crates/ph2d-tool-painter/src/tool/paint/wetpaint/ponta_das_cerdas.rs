@@ -69,6 +69,11 @@ impl PontaDasCerdas {
         })
     }
 
+    /// O maior deslocamento da pegada (px): `|desvio| ≤ ρ` nas duas leis.
+    pub(super) fn alcance_px(&self) -> f64 {
+        self.meia * self.rho.abs()
+    }
+
     /// A silhueta `sil` na célula `(cx, cy)` com a ponta das cerdas: a do dab deslocada ao longo do traço pelo desvio
     /// do fio da célula — SUB-CÉLULA (a bilinear das quatro células em volta do ponto deslocado): o desvio em px não
     /// pode depender do tamanho da célula (arredondado a células inteiras, a 2 px por célula o pente lia 0,44 da

@@ -347,6 +347,25 @@ pub fn note_stamp(dabs: usize, deposit_ms: f32, composite_ms: f32) {
     STAMP_N.fetch_add(1, Ordering::Relaxed);
 }
 
+/// Liga a contagem da silhueta do dab (B14c; só a sonda `mede_o_dab` a liga — desligada custa uma leitura relaxada).
+pub static CONTA_SIL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static SIL: [AtomicU64; 6] = [const { AtomicU64::new(0) }; 6];
+
+/// Uma leitura da silhueta, no nível `k`: `0` a do motor · `1` a da ponta (memo falhada) · `2` a base · `3` os
+/// sub-pontos do AA da base · `4` as do motor FORA da caixa da memo · `5` as da base que dão `0`.
+#[inline]
+pub fn conta_sil(k: usize, n: u64) {
+    if CONTA_SIL.load(Ordering::Relaxed) {
+        SIL[k].fetch_add(n, Ordering::Relaxed);
+    }
+}
+
+/// As quatro contagens de [`conta_sil`] desde a última leitura, ZERANDO.
+#[must_use]
+pub fn take_sil() -> [u64; 6] {
+    [0, 1, 2, 3, 4, 5].map(|k| SIL[k].swap(0, Ordering::Relaxed))
+}
+
 /// `(dabs, depósito ms, composite ms, entregas)` desde a última leitura, ZERANDO.
 #[must_use]
 pub fn take_stamp() -> (u64, f64, f64, u64) {

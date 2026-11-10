@@ -8,6 +8,27 @@ use super::*;
 
 mod a_lane;
 mod despacho;
+#[cfg(test)]
+#[path = "pousa_o_dab_memo_tests.rs"]
+mod memo_tests;
+
+#[cfg(test)]
+thread_local! {
+    /// O oráculo de B14c: a ponta lê a silhueta base sem a caixa dela, como antes.
+    static SEM_MEMO_BASE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// As caixas da silhueta base criadas neste fio (a prova de que o caso as exerce).
+    static MEMOS_BASE: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+fn com_memo_base() -> bool {
+    #[cfg(test)]
+    {
+        MEMOS_BASE.with(|n| n.set(n.get() + 1));
+        !SEM_MEMO_BASE.with(std::cell::Cell::get)
+    }
+    #[cfg(not(test))]
+    true
+}
 
 pub(super) use super::lote_do_dab::LoteDoDab;
 
@@ -182,6 +203,8 @@ pub(super) fn pousa_o_dab(
         && !erasing;
     let sil_input = shape_input.filter(|_| !padrao_a_parte);
     let sil = |cx: i32, cy: i32| -> f64 {
+        crate::wet_diag::conta_sil(2, 1);
+        crate::wet_diag::conta_sil(3, u64::from(aa_n) * u64::from(aa_n));
         let mut acc = 0.0f32;
         for j in 0..aa_n {
             let sy = grid_map::cell_subsample_px(cy, ratio, j, aa_step);
@@ -202,6 +225,9 @@ pub(super) fn pousa_o_dab(
                     None => v,
                 };
             }
+        }
+        if acc == 0.0 {
+            crate::wet_diag::conta_sil(5, 1);
         }
         f64::from(acc * aa_inv)
     };
@@ -276,6 +302,17 @@ pub(super) fn pousa_o_dab(
         alc,
         &sil,
     );
+    // A bilinear da ponta lê a silhueta BASE em quatro células por célula: guardada à parte (B14c), cada célula da
+    // janela do motor deslocada do maior desvio é avaliada UMA vez, ao byte.
+    let memo_base = ponta.as_ref().filter(|_| com_memo_base()).map(|p| {
+        let m = cell_r * sess.engine.silhouette_reach[0].max(1.0) + p.alcance_px() / px_cel + 2.0;
+        super::sil_memo::SilMemo::nova_base(cell_x, cell_y, [m, m])
+    });
+    let sil_base = |cx: i32, cy: i32| -> f64 {
+        memo_base
+            .as_ref()
+            .map_or_else(|| sil(cx, cy), |m| m.ou(cx, cy, sil))
+    };
     // A ponta que ESFARELA (W3 K3b): com um grão PRESO À TELA armado, o desvio de cada célula é o do grão, não o
     // do fio — a ponta acaba em grumos. Sem grão `Tiled`, a desfiada de sempre, ao bit.
     let esfarela = grain_basis.as_ref().filter(|_| {
@@ -283,7 +320,7 @@ pub(super) fn pousa_o_dab(
             && !spec.texture.flow
     });
     let grao_img_ponta = grain_image.as_ref();
-    let sil = |cx: i32, cy: i32| match (ponta.as_ref(), esfarela) {
+    let sil_da_ponta = |cx: i32, cy: i32| match (ponta.as_ref(), esfarela) {
         (Some(p), Some(gb)) => {
             let u = ph2d_painter_brush::texture::sample(
                 &spec.texture,
@@ -294,10 +331,14 @@ pub(super) fn pousa_o_dab(
                 d.radius_px,
                 grao_img_ponta,
             );
-            p.recorta_pelo_grao(&sil, cx, cy, f64::from(u))
+            p.recorta_pelo_grao(&sil_base, cx, cy, f64::from(u))
         }
-        (Some(p), None) => p.recorta(&sil, cx, cy),
+        (Some(p), None) => p.recorta(&sil_base, cx, cy),
         (None, _) => sil(cx, cy),
+    };
+    let sil = |cx: i32, cy: i32| {
+        crate::wet_diag::conta_sil(1, 1);
+        sil_da_ponta(cx, cy)
     };
     // O depósito, o pente e o grão que lê a ponta leem a MESMA silhueta (com a ponta), avaliada UMA vez por célula
     // e guardada no dab ([`super::sil_memo`]), ao byte.
@@ -305,6 +346,7 @@ pub(super) fn pousa_o_dab(
         (relevo_dab.is_some() || lamina || grain_active && spec.texture.lei.mode.le_a_ponta())
             .then(|| super::sil_memo::SilMemo::nova(cell_x, cell_y, meia));
     let sil = |cx: i32, cy: i32| -> f64 {
+        crate::wet_diag::conta_sil(0, 1);
         memo.as_ref()
             .map_or_else(|| sil(cx, cy), |m| m.ou(cx, cy, sil))
     };

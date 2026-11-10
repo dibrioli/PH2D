@@ -189,6 +189,9 @@ fn preset(rondas: usize) {
     assert!(falhas.is_empty(), "texturas por ler: {falhas:?}");
     t.set_brush_size_px(size);
     t.set_brush_color_srgb8([20, 150, 230]);
+    // `CONTA_SIL=1`: as leituras da silhueta por dab (motor · ponta · base · sub-pontos do AA) — o relógio fica sem valor.
+    let conta = std::env::var("CONTA_SIL").is_ok_and(|v| v == "1");
+    wet_diag::CONTA_SIL.store(conta, std::sync::atomic::Ordering::Relaxed);
     let mut am = Vec::new();
     for ronda in 0..=rondas {
         let (x0, y) = (300.0, 300.0 + (500.0 * ronda as f32) % 1600.0);
@@ -205,6 +208,14 @@ fn preset(rondas: usize) {
         t.on_canvas_pointer(cp([x, y], PointerPhase::Up));
         let _ = t.take_preview_arc();
         let (dabs, dep, comp, _) = wet_diag::take_stamp();
+        let sil = wet_diag::take_sil();
+        if conta {
+            let por = sil.map(|v| v / dabs.max(1));
+            println!(
+                "ronda {ronda}: {dabs} dabs · silhueta por dab: motor {} (fora da memo {}) · ponta {} · base {} (zero {}) · sub-pontos {}",
+                por[0], por[4], por[1], por[2], por[5], por[3]
+            );
+        }
         // A ronda 0 aquece (texturas, caches) e fica fora da régua.
         if ronda > 0 {
             am.push((1e3 * ms / moves as f64, dabs, dep, comp));

@@ -1,23 +1,39 @@
 //! ⭐ **A mistura a MEIA definição** (Bug #84, dono 10/11 «vamos tentar»; [`MisturaOpaca::meia_definicao`], só a receita
 //! do Wet Wash Mix a liga): no plano do traço a pegada e a película correm numa tela de metade do lado (¼ dos texels) —
-//! o carimbo com centro, raio, passo e arco ÷ 2, o grão Tiled com o `size` × 2 (o `size` é a FREQUÊNCIA do ladrilho) —
+//! o carimbo com centro, raio, passo e arco ÷ 2, o grão Tiled e o dente do papel com o `size` × 2 (o `size` é a
+//! FREQUÊNCIA do ladrilho) —
 //! e a ampliação bilinear pré-multiplicada escreve o plano inteiro na caixa tocada, uma vez por lote. A amostra lê a
 //! base (e as camadas visíveis) em médias 2×2 pré-multiplicadas, na hora. O plano do traço nasce transparente no
 //! 1.º lote; a meia tela também (recomeça com a mistura, no pen-down).
 //!
-//! Arma só na rota do Grain sem Shape, rampa, píxel, pó, papel, trinco de alfa, cauda nem dual: o resto vai à rota de
-//! sempre, à definição inteira. Medição e aparência: `docs/Painter/BUGS_painter.md` #84.
+//! Arma só na rota do Grain Tiled (e dente Tiled) sem Shape, rampa, píxel, pó, papel como Grain, trinco de alfa, cauda
+//! nem dual: o resto vai à rota de sempre, à definição inteira. Medição e aparência: `docs/Painter/BUGS_painter.md` #84.
 //!
 //! [`MisturaOpaca::meia_definicao`]: ph2d_painter_brush::mistura_opaca::MisturaOpaca::meia_definicao
 
 use super::{Region, pegada_do_dab};
 use crate::tool::PainterTool;
+use ph2d_painter_brush::dente::Dente;
 use ph2d_painter_brush::mistura_opaca::{
     Carimbo, Pegada, ReservatorioOpaco, Tela, mistura_opaca_carimbo,
 };
-use ph2d_painter_brush::texture::TEX_SIZE_MAX;
+use ph2d_painter_brush::texture::{TEX_SIZE_MAX, TextureMapping, TextureSettings};
 use ph2d_painter_brush::{BrushSpec, Dab};
 use rayon::prelude::*;
+
+/// Um ladrilho preso à TELA (Tiled): só ele escala com a meia tela pelo `size` (a frequência). View Plane, Random e
+/// Stencil seguem o dab ou o rect, que a meia tela já divide — o `size` × 2 dobrar-lhes-ia a frequência.
+fn preso_a_tela(t: &TextureSettings) -> bool {
+    t.mapping == TextureMapping::Tiled
+}
+
+/// O ladrilho Tiled `t` na meia tela: o `size` × 2 (o tecto do `size` é o píxel, `TEX_SIZE_MAX`).
+fn na_meia_tela(t: TextureSettings) -> TextureSettings {
+    TextureSettings {
+        size: t.size.map(|s| (s * 2.0).min(TEX_SIZE_MAX)),
+        ..t
+    }
+}
 
 /// O dab `d` na meia tela.
 fn meio(d: &Dab) -> Dab {
@@ -150,6 +166,8 @@ impl PainterTool {
                 .is_some_and(|b| b.len() == n4)
             && !alpha_locked
             && brush.texture.is_active()
+            && preso_a_tela(&brush.texture)
+            && brush.dente.as_ref().is_none_or(|d| preso_a_tela(&d.papel))
             && !self.pixel_vivo(brush)
             && !brush.shape_silhouette_active(self.paint.shape_image.is_some())
             && self.color_ramp_owner(true) == RampLutOwner::None
@@ -186,10 +204,12 @@ impl PainterTool {
             meia.resize(m4, 0);
         }
         let pincel = BrushSpec {
-            texture: ph2d_painter_brush::texture::TextureSettings {
-                size: brush.texture.size.map(|s| (s * 2.0).min(TEX_SIZE_MAX)),
-                ..brush.texture
-            },
+            texture: na_meia_tela(brush.texture),
+            // O dente do papel é preso à tela como o grão Tiled: a mesma escala, senão sai 2× maior.
+            dente: brush.dente.map(|d| Dente {
+                papel: na_meia_tela(d.papel),
+                ..d
+            }),
             borda_px: brush.borda_px * 0.5,
             ..*brush
         };

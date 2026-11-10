@@ -202,3 +202,51 @@ fn o_veu_a_meia_definicao_fica_perto_da_inteira() {
         "a meia definição afastou-se da inteira: Δ médio {m:.3} máx {x} ({n} px com Δ > 2)"
     );
 }
+
+/// O Wet Wash Mix com o papel do documento a MORDER (Relief 0,8 · Tooth 1,6) ou com o Grain no `mapping` `m`.
+fn tela_com(v: Variante, papel: bool, m: Option<u8>) -> Vec<u8> {
+    let mut t = cena("Wet Wash Mix", 30.0, v);
+    if papel {
+        t.set_substrate_depth(0.8);
+        t.set_brush_paper_depth(1.6);
+    }
+    if let Some(m) = m {
+        t.set_brush_texture_mapping(m);
+    }
+    traco(&mut t);
+    t.run_full().0
+}
+
+/// ⭐ **O dente do papel na meia definição** (auditoria 10/11): o papel que morde por cima do Grain é preso à tela e
+/// escala como o grão Tiled (`size` × 2) — à escala da tela inteira, a mancha fica tão perto da inteira como sem ele.
+/// Um dente amostrado nas coordenadas da metade sai 2× maior e fora do papel visível.
+#[test]
+fn a_meia_definicao_leva_o_dente_do_papel_a_escala_da_tela() {
+    let (inteira, meia) = (
+        tela_com(Variante::Inteira, true, None),
+        tela_com(Variante::Meia, true, None),
+    );
+    assert!(
+        inteira != tela_com(Variante::Inteira, false, None),
+        "o papel não mordeu: a cena não tem o dente"
+    );
+    let (m, x, n) = delta(&meia, &inteira);
+    eprintln!("[meia+dente] Δ à inteira médio {m:.3} máx {x} · {n} px com Δ > 2");
+    assert!(n > 0, "a meia definição não correu com o papel");
+    assert!(
+        m <= 0.6 && x <= 24,
+        "o dente do papel na meia definição afastou-se da inteira: Δ médio {m:.3} máx {x} ({n} px com Δ > 2)"
+    );
+}
+
+/// ⭐ **Só o grão preso à TELA vai à meia definição** (auditoria 10/11): em View Plane, Random e Stencil o grão segue o
+/// dab (ou o rect), que a meia tela já divide por 2 — o `size` × 2 dobraria a frequência. Esses vão à inteira, ao bit.
+#[test]
+fn o_grao_que_segue_o_pincel_vai_a_definicao_inteira() {
+    for m in [0u8, 2, 3] {
+        assert!(
+            tela_com(Variante::Meia, false, Some(m)) == tela_com(Variante::Inteira, false, Some(m)),
+            "o Grain no mapping {m} correu a meia definição (o `size` × 2 só vale no Tiled)"
+        );
+    }
+}

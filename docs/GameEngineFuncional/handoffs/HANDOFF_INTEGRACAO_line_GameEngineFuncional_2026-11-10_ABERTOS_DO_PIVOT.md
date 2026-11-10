@@ -73,12 +73,9 @@ Arquivos quentes: `shells/desktop/src/undo_app.rs` (1 linha) · `render_loop/ins
 - **Mutações** (verdes antes, vermelhas com a mutação, restauradas): M1 `FolhasAVista::depois` vazio (2 testes) · M2 sem o `SetCurrent` da nova · M3 sem a linha `repoe_a_sessao` na shell (gate textual) · M4 pedido `(b, true)` · M5 `align.on=true` no laço e M5b `on=false` (`o_campo_pivot_abre_o_editor_com_o_align_ligado`) · **M6** `folhas: Default::default()` em `antes_do_restauro` **sobreviveu na 1.ª rodada**, fechada por `a_porta_do_restauro_leva_a_folha_a_vista_so_num_passo` (vermelho: passo=true left 0 right 2) · M7 `align_off` sem o reset do picking → `a_animacao_nova_sai_do_align` vermelho.
 - O gate de `machete` só existe no `suite-completa`/`ship`: não correu.
 
-## 9. ABERTO (baixa)
+## 9. ABERTO — fechado na onda `401d4d5e3c` (§11)
 
-- As 3 strings de diagnóstico de consola que saíram da shell para `mesa.rs:166,174,280` ficam fora do censo da tabela de strings da shell (não são UI pintada; nenhum censo varre `ph2d-sprite-anim-scene`).
-- `ph2d-sprite-anim-scene` depende de `ph2d-anim-editor` só pelo re-export `AnimDoc` (dep transitiva em `ph2d-app-game`).
-- Se o `SetCurrent` recursivo fosse recusado, `commit_anim_edit` devolveria Recusado após um Add aplicado (improvável).
-- Não feito, de propósito: «Cmd+Z» nos textos (rótulo por sistema operativo, linha de UI); `ph2d-app-macros tutorial_painter::outra_tela_diz_o_tamanho_gravado` (alheio); `janela_do_jogo_smoke.rs` (214 linhas) continua na shell — pode ser da GEF02, a `Mesa` serve-lhe de molde; «INSERT HERE» não reproduzido (§2).
+Os quatro itens desta secção e os dois de «não feito» que não são da GEF02 foram fechados num bloco (§11). Fica de fora, de propósito: `janela_do_jogo_smoke.rs` (214 linhas na shell) — da GEF02; a `Mesa` serve-lhe de molde.
 
 ## 10. Smoke do dono (binário `--profile smoke`)
 
@@ -90,3 +87,28 @@ Arquivos quentes: `shells/desktop/src/undo_app.rs` (1 linha) · `render_loop/ins
 6. Clique devagar (segure o botão) numa célula da folha → nada aparece na tira enquanto segura; ao soltar, o cartão desce e o lugar abre. Errado: o quadro aparece no lugar antes de descer.
 
 Fotos: [`fotos_30/`](../fotos_30/). Smoke do dono de 10/11: OK nos passos 2–4 e, depois do pedido do Align ao criar, no passo 5.
+
+## 11. Onda dos abertos (`401d4d5e3c`, 10/11)
+
+| Item | Mecanismo / cura | Prova |
+|---|---|---|
+| «Cmd+Z» no Linux/Windows | a tabela escreve `Ctrl+`; `ph2d_i18n::atalho` (`Sistema::DESTE`, `atalho_em`, `da_tabela` com cache leak-once) diz `Cmd+` só no macOS — o despacho aceita Ctrl OU ⌘ em todo acorde (`keyboard.rs:36`, `input_handlers.rs:68`). «Hold Ctrl» sem `+` fica literal. 33 entradas (`chrome_menus`, `chrome_panes`, `code_editor`, `shell_media`) + 7 literais (showcase, fixtures de widget, `main.rs`, testes do app-code) | `a_tecla_dos_atalhos_vem_da_porta` (tabela COM subpastas — o leitor de `a_tabela_inglesa_fala_ingles` só lê o 1.º nível — e todo `.rs` de `crates/`+`shells/`), `o_acorde_diz_cmd_so_no_mac`, `a_tabela_passa_pela_porta`. No Linux tirar a porta do `tr` não se vê (mesma palavra): o teste exerce `da_tabela(Sistema::Mac, …)` |
+| `tutorial_painter::outra_tela_diz_o_tamanho_gravado` | NÃO era flake: estouro de pilha do fio `macro-referencias` (2 MiB). `TocadorDoPainter` levava o `PainterTool` (~270 KB) por valor; `Trabalho` passa pelo `sync_channel` da medição e o debug copia-o 4–5× (gdb, `$sp` por quadro: 2 083 272 B em 28 quadros, 4 de ~270 KB + `corre` 900 KB). Cura: `tool: Box<PainterTool>` (`ph2d-tool-painter/macro_track/tocar.rs`). Passa com `RUST_MIN_STACK=1 MiB`; 512 KiB cai no fio do próprio teste | `o_tocador_e_leve_para_viajar_por_valor` (≤ 4 KiB) + o teste das macros |
+| strings da cena 5 fora do censo | a crate inteira (39 literais, desde GEF 24, já no `main`) não tinha censo: `ph2d-sprite-anim-scene/tests/it/every_word_this_scene_shows…` (`gate::intrusos_fora_de`); `lib.rs`/`fotos.rs` isentos por ficheiro (guião = nomes de objectos + terminal), as 3 de `mesa.rs` literal a literal | os 2 testes + `isentos_mortos` |
+| Add aplicado e `SetCurrent` recusado | `Commit::FeitoComAviso(Toast)` (aviso `anim_editor.new_not_selected`); shell e editor tratam-no como feito (o editor sai do Align). Só um defeito de registo o provoca (um nome não registado a fila salta em silêncio) | `ph2d-panel-registry-init` `o_add_que_pegou_e_feito_mesmo_sem_escolher_a_nova` (lá porque a catraca de `ph2d-app-sprite-anim` conta `src/` E `tests/`) |
+| dep `ph2d-anim-editor` da cena | cortada: a `Mesa` pede `AlvosDoEditor` (valores: botões do Align, pivô, caixa, pega, barra, ranhura, último quadro); a shell monta-o. `ph2d-app-game` deixa de chegar ao editor | `cargo tree -i ph2d-anim-editor -p ph2d-app-game` vazio; compila |
+| «INSERT HERE» | foto com a tira rolada ao fim PELA BARRA (`Passo::RolaATira`: clique no fim do trilho, arrasto, soltar, relato) a 1930×1040 e 1366×768: `cobre=false` nas duas. Curado na foto estreita: o rótulo saía cortado em «INSERT» (quadro de 58 px) → `colunas_da_ranhura` parte por palavra e centra cada coluna por `folga_do_texto` (a âncora do texto rodado é o TOPO da linha; a coluna única também ficava à direita do meio) | `o_rotulo_da_ranhura_parte_se_quando_nao_cabe`; [`fotos_31/`](../fotos_31/) |
+
+**Mutações** (verdes antes, vermelhas com a mutação, restauradas): M1 sem o `Box` (2 testes; o das macros aborta) · M2 `atalho_em` sem o braço Mac · M3 `da_tabela` com `Sistema::Outro` · M4 `Cmd+Z` de volta numa entrada · M5 `"Cmd+O"` no showcase · M6 o `SetCurrent` cru no fim de `commit_anim_edit` (refeita no sítio novo do teste) · M7 isenção apagada / M7b literal mudado · M8 `colunas_da_ranhura` sempre inteira.
+
+**Fecho:** fmt e `clippy --all-targets -D warnings` limpos em ph2d-i18n, ph2d-tool-painter, ph2d-app-code, ph2d-editor-core, ph2d-host-desktop, ph2d-sprite-anim-scene, ph2d-app-sprite-anim, ph2d-anim-editor, ph2d-panel-registry-init. Verdes por nome: `the_shell_only_shrinks*`, `no_dependency_climbs_a_layer`, `workspace_src_files_under_loc_cap`, `architecture_no_orphan_source_file`, `hr15_no_hardcoded_ui_strings`, `no_literal_color`, `no_tofu_glyphs`, os 3 da tabela da shell (+1 isenção `main.rs` «Ctrl+Q»), os do i18n, `paleta`/`onda1` do app-code, `inspector` (22), `strip_bar`, `tutorial_painter`, `smoke` do app-game. Schema/registo/§6 intocados. **Suíte completa: do integrador.**
+
+**O que um merge pode partir:** quem escrever `"Cmd+"` num texto (o censo reprova: escreva `Ctrl+`); quem fizer `match` exaustivo em `inspector::Commit` (variante nova); quem implementar `Mesa` (`editor` → `alvos`).
+
+### Smoke do dono (onda)
+
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional && PH2D_GAME_SMOKE=5 ./target/smoke/ph2d-host-desktop`
+2. Menu **Edit**: tem de dizer «Undo · Ctrl+Z» e «Redo · Ctrl+Shift+Z». Errado: «Cmd».
+3. Selecione «Two Sheets», cartão Animation ▸ «Edit animations…», escolha `run`, arraste a barra azul debaixo da tira até o fim: «INSERT HERE» fica DEPOIS do quadro 12. Errado: por cima dele.
+4. Estreite a janela até os quadros ficarem pequenos: o rótulo vira duas colunas «INSERT» / «HERE», inteiras. Errado: só «INSERT».
+5. «+ Add» no cartão Animation: a nova aparece e fica escolhida, sem aviso vermelho.

@@ -259,7 +259,7 @@ pub(super) fn face_of(pressed: bool, lit_fill: Option<ColorToken>, hover: bool) 
     } else if hover {
         HOVER_FACE
     } else {
-        ColorToken::KanbanCardRaised
+        fit::REST_FACE
     }
 }
 
@@ -276,7 +276,7 @@ pub(super) fn fill_face(
     tok: ColorToken,
 ) {
     if tok == HOVER_FACE {
-        fill_rounded_rect(scene, r, radius, ink.color(ColorToken::KanbanCardRaised));
+        fill_rounded_rect(scene, r, radius, ink.color(fit::REST_FACE));
     }
     fill_rounded_rect(scene, r, radius, ink.color(tok));
 }
@@ -435,26 +435,23 @@ fn paint_key(
     let id = KbHit::Key(key).id();
     let who = if system { Vec::new() } else { users(doc, b) };
     let hover = doc.kb.hover == Some(KbHit::Key(key));
-    let filled = (lit && !system && style == Lit::Fill).then(|| {
-        who.first()
-            .map_or(ColorToken::Accent, |a| crate::palette::of_action(*a))
-    });
+    let filled = (lit && !system && style == Lit::Fill).then_some(fit::LIT_PLATE);
     // O registo de controlos (plano §13.3) ANTES de ler o premido (que pede o rect deste quadro); a do sistema
     // desligada com o porquê.
     doc.control(Control::new(id, kr, ControlRole::Key, key.label()).disabled(key.system_owned()));
     let pressed = !system && doc.is_pressed(id);
     // A do sistema: desenhada, nunca ligável (plano §13.2) — a face de repouso apagada, sem aresta nem estados.
     let bg = if system {
-        ColorToken::KanbanCardRaised
+        fit::REST_FACE
     } else {
         face_of(pressed, filled, hover)
     };
     // ⭐ Onda 3, D1: a TECLA nunca se enche da cor de uma acção (engolia a barra dela): fica no repouso ou no hover,
     // e a premida/acesa acende a PLAQUINHA. As barras ficam sempre sobre a face neutra.
     let lit_plate = !system && (pressed || filled.is_some());
-    // O corpo apertado: `PRESS_BODY` (o de repouso, medido).
+    // O corpo apertado é o de repouso (`REST_FACE`, uma fonte só).
     let body = if lit_plate {
-        fit::PRESS_BODY
+        face_of(false, None, false)
     } else {
         face_of(false, None, hover && !system)
     };
@@ -473,7 +470,7 @@ fn paint_key(
     let fg_tok = if system {
         ColorToken::TextDisabled
     } else if lit_plate {
-        ColorToken::Bg0
+        fit::LIT_INK
     } else if who.is_empty() {
         ColorToken::Text3
     } else {

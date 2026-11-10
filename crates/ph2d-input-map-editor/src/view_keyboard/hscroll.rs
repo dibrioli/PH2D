@@ -100,6 +100,12 @@ pub(crate) fn wheel(doc: &mut InputMapDoc, d: f32) -> bool {
     (doc.kb.hscroll - before).abs() > f32::EPSILON
 }
 
+/// O deslize de lado (os dois dedos do trackpad): rola o teclado só com o ponteiro `(x, y)` sobre o campo dele;
+/// noutro sítio (o cartão Controls, a lista) não faz nada.
+pub(crate) fn wheel_at(doc: &mut InputMapDoc, (x, y): (f32, f32), d: f32) -> bool {
+    doc.kb.hbar.is_some_and(|b| b.clip.contains(x, y)) && wheel(doc, d)
+}
+
 /// O foco pousou numa tecla do desenho que rola: a rolagem traz a tecla `r` inteira para a vista.
 pub(crate) fn reveal(doc: &mut InputMapDoc, id: ph2d_a11y::NodeId, r: Rect) {
     let Some(b) = doc.kb.hbar else {

@@ -266,7 +266,9 @@ fn o_chip_do_also_poe_o_nome_numa_plaquinha_e_as_barras_por_tras() {
 // ── Rodada 2 da onda 3 (revisão visual): D1 tecla apertada, D2 plaquinha sem acção, D3 seta da manche ──
 
 use ph2d_app_input_map::census::KeyLook;
-use ph2d_app_input_map::view_keyboard::keys_fit::{LIT_GAP, PRESS_BODY, lit_plate};
+use ph2d_app_input_map::view_keyboard::keys_fit::{
+    LIT_GAP, LIT_INK, LIT_PLATE, OUTLINE_REACH, REST_FACE, lit_plate,
+};
 use ph2d_tokens::{ColorToken, Theme};
 
 fn olhar(m: &Mesa, k: Key) -> KeyLook {
@@ -343,31 +345,24 @@ fn a_tecla_apertada_acende_a_plaquinha_e_nunca_engole_as_barras() {
         m.paint_in(*a);
         let at = format!("C {}", a.w);
         let l = olhar(&m, UP);
-        let jump = m.hero.input_map.id("jump").expect("jump");
+        // A11: com duas acções (jump + move_up) a plaquinha acesa NUNCA na cor de uma só: um neutro de alto contraste.
         assert_eq!(
-            l.face,
-            ph2d_tokens::categorical(jump.0),
-            "{at}: aceso na cor do jump"
+            l.face, LIT_PLATE,
+            "{at}: acesa no neutro, não na cor do jump"
         );
-        // Rodada 4: nenhum neutro de cromo cumpre a lei (`nenhum_neutro_de_cromo_cumpre_a_lei_do_premido`): o corpo
-        // apertado fica o de repouso, nunca um token de dado de outra família; a plaquinha acesa marca o apertado.
-        assert_eq!(
-            l.body,
-            ColorToken::KanbanCardRaised,
-            "{at}: o corpo apertado é o de repouso"
-        );
-        assert_eq!(
-            PRESS_BODY,
-            ColorToken::KanbanCardRaised,
-            "{at}: o token do corpo apertado"
-        );
-        assert_eq!(l.plate_face, Some(l.face), "{at}: a plaquinha acende");
+        // O corpo apertado é o de repouso (uma fonte só, `REST_FACE`); a plaquinha acesa marca o apertado.
+        assert_eq!(l.body, REST_FACE, "{at}: o corpo apertado é o de repouso");
+        assert_eq!(l.plate_face, Some(LIT_PLATE), "{at}: a plaquinha acende");
         vao(&m, UP, &at);
-        assert_eq!(
-            l.ink,
-            ColorToken::Bg0,
-            "{at}: o nome lê-se na plaquinha acesa"
-        );
+        assert_eq!(l.ink, LIT_INK, "{at}: o nome lê-se na plaquinha acesa");
+        // E com UMA acção (a Z do jump): a mesma plaquinha neutra.
+        let mut z = pinta(View::TryIt, Sub::Keyboard, onze(), *a);
+        let kz = Key(u32::from('Z'));
+        assert!(z.physical(kz), "a Z apertada");
+        z.paint_in(*a);
+        let lz = olhar(&z, kz);
+        assert_eq!(lz.plate_face, Some(LIT_PLATE), "{at}: a Z acende no neutro");
+        assert_eq!(lz.body, REST_FACE, "{at}: a Z no corpo de repouso");
         let (agora, repouso) = contraste_das_barras(&m, UP, &at);
         eprintln!("{at}: pior barra {agora:.2} (repouso {repouso:.2})");
 
@@ -459,7 +454,6 @@ fn a_seta_da_manche_ligada_le_se_como_as_outras_partes() {
             };
             m.paint_in(*a);
             let doc = &m.tab().doc;
-            let caixa = doc.kb.pad_box.expect("o comando pintado");
             let icone = |r: Rect| {
                 (doc.census.icons.iter())
                     .find(|i| r.contains(i.0.x + i.0.w * 0.5, i.0.y + i.0.h * 0.5))
@@ -482,18 +476,18 @@ fn a_seta_da_manche_ligada_le_se_como_as_outras_partes() {
                 let r = doc.rect_of(h.id()).expect("a seta");
                 let ir = icone(r);
                 let look = (doc.census.parts.iter())
-                    .find(|p| p.0 == r)
+                    .find(|p| p.rect == r)
                     .expect("o olhar da parte");
                 eprintln!(
                     "{at}: {b:?} parte {r:?} glifo {ir:?} face {:?} tinta {:?}",
-                    look.1, look.2
+                    look.face, look.ink
                 );
                 assert!(
-                    look.1.is_some(),
+                    look.face.is_some(),
                     "{at}: {b:?} ligada sem face (uma seta solta)"
                 );
                 assert_eq!(
-                    look.2,
+                    look.ink,
                     ColorToken::Text1,
                     "{at}: {b:?} o nome claro, nunca o acento"
                 );
@@ -507,7 +501,10 @@ fn a_seta_da_manche_ligada_le_se_como_as_outras_partes() {
                 assert_eq!(bs.len(), who.len(), "{at}: {b:?} as barras por trás");
                 for bar in bs {
                     assert!(dentro(bar, r), "{at}: a barra {bar:?} sai da parte");
-                    let lado = (ir.x - bar.x).min(bar.x + bar.w - ir.x - ir.w);
+                    // A12: o contorno da aberta (até `OUTLINE_REACH` para dentro) nunca tapa a barra.
+                    let x0 = bar.x.max(r.x + OUTLINE_REACH);
+                    let x1 = (bar.x + bar.w).min(r.x + r.w - OUTLINE_REACH);
+                    let lado = (ir.x - x0).min(x1 - ir.x - ir.w);
                     eprintln!("{at}: {b:?} barra à vista {lado:.2}");
                     assert!(lado >= BAR_PEEK - 0.01, "{at}: {b:?} espreita {lado:.2}");
                 }
@@ -524,19 +521,22 @@ fn a_seta_da_manche_ligada_le_se_como_as_outras_partes() {
                         || q.y + q.h <= p.y;
                     assert!(separadas, "{at}: {p:?} sobre {q:?}");
                 }
-                for (x, y) in [
-                    (p.x, p.y),
-                    (p.x + p.w, p.y),
-                    (p.x, p.y + p.h),
-                    (p.x + p.w, p.y + p.h),
-                ] {
-                    let fora_do_topo = p.y + p.h <= caixa.y + caixa.h * 0.2; // LITERAL-PX-OK: os gatilhos na aresta
-                    assert!(
-                        fora_do_topo
-                            || ph2d_app_input_map::view_keyboard::body_contains(caixa, x, y),
-                        "{at}: {p:?} sai do corpo"
-                    );
-                }
+                // (os cantos dentro do corpo: no censo, `PartLook::inside_body`)
+            }
+            for (h, _) in &doc.kb.bars {
+                let KbHit::Pad(b) = h else { continue };
+                let gatilho = matches!(
+                    b,
+                    Binding::PadButton(GamepadButton::LeftTrigger | GamepadButton::RightTrigger)
+                );
+                let r = doc.rect_of(h.id()).expect("a parte");
+                let look = (doc.census.parts.iter())
+                    .find(|p| p.rect == r)
+                    .expect("o olhar");
+                assert!(
+                    gatilho || look.inside_body,
+                    "{at}: {b:?} {r:?} sai do corpo"
+                );
             }
             // As setas não tocam o anel da sua manche (o traço do anel aceso tem 3 px: metade para fora).
             for (nome, eixos) in [
@@ -548,6 +548,32 @@ fn a_seta_da_manche_ligada_le_se_como_as_outras_partes() {
                     .expect("o anel")
                     .0;
                 let (cx, cy, raio) = (anel.x + anel.w * 0.5, anel.y + anel.h * 0.5, anel.h * 0.5);
+                // A12: as quatro setas do anel com a MESMA caixa e à mesma distância dele (o anel não fica torto).
+                let setas: Vec<Rect> = (doc.kb.bars.iter())
+                    .filter(|(h, _)| {
+                        matches!(h, KbHit::Pad(Binding::PadAxis { axis, .. }) if eixos.contains(axis))
+                    })
+                    .filter_map(|(h, _)| doc.rect_of(h.id()))
+                    .collect();
+                assert_eq!(setas.len(), 4, "{at}: {nome} tem quatro setas");
+                let folga = |p: &Rect| {
+                    let (px, py) = (p.x + p.w * 0.5 - cx, p.y + p.h * 0.5 - cy);
+                    if px.abs() > py.abs() {
+                        px.abs() - p.w * 0.5
+                    } else {
+                        py.abs() - p.h * 0.5
+                    }
+                };
+                for p in &setas {
+                    assert!(
+                        (p.w - setas[0].w).abs() < 0.01 && (p.h - setas[0].h).abs() < 0.01,
+                        "{at}: {nome} setas de caixas diferentes {setas:?}"
+                    );
+                    assert!(
+                        (folga(p) - folga(&setas[0])).abs() < 0.5,
+                        "{at}: {nome} setas a distâncias diferentes do anel {setas:?}"
+                    );
+                }
                 for (h, _) in &doc.kb.bars {
                     let KbHit::Pad(Binding::PadAxis { axis, .. }) = h else {
                         continue;
@@ -570,46 +596,48 @@ fn a_seta_da_manche_ligada_le_se_como_as_outras_partes() {
     }
 }
 
-/// Rodada 4 (medida): nenhum neutro de CROMO serve de corpo à tecla apertada — cada barra ≥ max(3:1, o contraste em
-/// repouso) nos 12 temas × 12 cores de acção. Falhas medidas (de 144): Bg0 48 · Bg1 60 · Bg2 96 · Bg3 108 · BgElev 84
-/// · RailBg 24 · PanelBg 12 · WindowGround 24 · Border 96 · BorderStrong 120 · BorderEmph 144 · CardField 48 ·
-/// CardFieldHover 48. Se um tema novo fizer algum cumprir, este teste avisa para reabrir a escolha.
+/// ⭐ A11: o neutro da plaquinha acesa lê-se em todo tema — o nome ≥ 4,5:1 sobre ela e ela ≥ 3:1 contra o corpo.
 #[test]
-fn nenhum_neutro_de_cromo_cumpre_a_lei_do_premido() {
-    use ColorToken as C;
-    for cand in [
-        C::Bg0,
-        C::Bg1,
-        C::Bg2,
-        C::Bg3,
-        C::BgElev,
-        C::RailBg,
-        C::PanelBg,
-        C::WindowGround,
-        C::Border,
-        C::BorderStrong,
-        C::BorderEmph,
-        C::CardField,
-        C::CardFieldHover,
-    ] {
-        let (mut falhas, mut dr, mut pior) = (0, f64::MAX, f64::MAX);
-        for theme in Theme::ALL {
-            let rest = C::KanbanCardRaised.resolve(theme);
-            let b = cand.resolve(theme);
-            dr = dr.min(b.contrast_ratio(&rest));
-            for i in 0..12u32 {
-                let c = ph2d_tokens::categorical(i).resolve(theme);
-                let (agora, rep) = (c.contrast_ratio(&b), c.contrast_ratio(&rest));
-                pior = pior.min(agora);
-                if agora < rep.max(3.0) - 1e-6 {
-                    falhas += 1;
-                }
-            }
-        }
-        eprintln!("{cand:?}: falhas {falhas}/144 · pior {pior:.2} · contra o repouso {dr:.2}");
-        assert!(
-            falhas > 0,
-            "{cand:?} cumpre a lei: reabra o corpo da tecla apertada (PRESS_BODY)"
+fn a_plaquinha_acesa_le_se_em_todo_tema() {
+    for theme in Theme::ALL {
+        let (p, i, c) = (
+            LIT_PLATE.resolve(theme),
+            LIT_INK.resolve(theme),
+            REST_FACE.resolve(theme),
         );
+        let (nome, corpo) = (i.contrast_ratio(&p), p.contrast_ratio(&c));
+        eprintln!("{theme:?}: nome {nome:.2} · plaquinha × corpo {corpo:.2}");
+        assert!(nome >= 4.5, "{theme:?}: o nome {nome:.2}"); // LITERAL-PX-OK: WCAG texto
+        assert!(corpo >= 3.0, "{theme:?}: a plaquinha {corpo:.2}"); // LITERAL-PX-OK: WCAG gráfico
+    }
+}
+
+/// ⭐ A6: o deslize de lado só rola o teclado com o ponteiro SOBRE o campo dele (Try it e Keyboard); noutro sítio
+/// (o cartão de baixo, fora da aba) não faz nada.
+#[test]
+fn o_deslize_de_lado_so_rola_o_teclado_debaixo_do_ponteiro() {
+    use ph2d_editor_core::doc_surface::DocumentSurface;
+    let a = AREAS[2];
+    for view in [View::TryIt, View::Keyboard] {
+        let mut m = pinta(view, Sub::Keyboard, onze(), a);
+        let b = m.tab().doc.kb.hbar.expect("o teclado rola na estreita");
+        let fora = [
+            (b.clip.x + b.clip.w * 0.5, b.clip.y + b.clip.h + 40.0), // LITERAL-PX-OK: abaixo do campo
+            (a.x + a.w + 50.0, b.clip.y + 10.0),                     // LITERAL-PX-OK: fora da aba
+        ];
+        for at in fora {
+            assert!(
+                !m.tab_mut().wheel_sideways(0, at.0, at.1, -40.0), // LITERAL-PX-OK: um deslize
+                "{view:?}: o deslize em {at:?} não mexe"
+            );
+            assert_eq!(m.tab().doc.kb.hscroll, 0.0, "{view:?}: o teclado não rolou");
+        }
+        let dentro_dele = (b.clip.x + b.clip.w * 0.5, b.clip.y + b.clip.h * 0.5);
+        assert!(
+            m.tab_mut()
+                .wheel_sideways(0, dentro_dele.0, dentro_dele.1, -40.0), // LITERAL-PX-OK: um deslize
+            "{view:?}: sobre o teclado o deslize rola"
+        );
+        assert!(m.tab().doc.kb.hscroll > 0.0, "{view:?}: rolou");
     }
 }

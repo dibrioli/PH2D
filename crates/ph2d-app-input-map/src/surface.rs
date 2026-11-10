@@ -117,8 +117,8 @@ impl DocumentSurface for InputMapTab {
         self.doc.wheel_shift(dy, shift)
     }
 
-    fn wheel_sideways(&mut self, _id: u64, _x: f32, _y: f32, dx: f32) -> bool {
-        self.doc.view() != View::List && self.doc.wheel_shift(dx, true)
+    fn wheel_sideways(&mut self, _id: u64, x: f32, y: f32, dx: f32) -> bool {
+        self.doc.view() != View::List && self.doc.wheel_sideways(x, y, dx)
     }
 
     fn key(&mut self, _id: u64, _ts: &mut TextSystem, input: KeyInput<'_>) -> KeyOutcome {

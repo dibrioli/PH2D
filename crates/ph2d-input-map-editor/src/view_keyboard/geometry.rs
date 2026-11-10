@@ -245,11 +245,11 @@ const TIP: (f32, f32) = ARM;
 /// Os gatilhos ASSENTAM na aresta do topo do corpo (o fundo da pílula em `BODY_START.1`, maquete B3); os ombros
 /// ficam logo abaixo da aresta, já dentro do corpo, entre a manche esquerda (o espelho: o Y) e o Back/Start.
 const LT: (f32, f32) = (0.2, BODY_START.1 - PILL.1); // LITERAL-PX-OK: maquete B3
-/// (0,345 e não os 0,34 da maquete: a seta ↑ do LS alargou na onda 3 e tocava o LB.)
-const LB: (f32, f32) = (0.345, BODY_START.1 + 0.07); // LITERAL-PX-OK: maquete B3
-/// (0,445/0,555 e não 0,44/0,56: a seta ↑ do RS alargou na onda 3 e tocava o Start.)
-const BACK: (f32, f32) = (0.445, 0.34); // LITERAL-PX-OK: maquete B3
-const START: (f32, f32) = (0.555, 0.34); // LITERAL-PX-OK: maquete B3
+/// (0,35 e não os 0,34 da maquete: a seta ↑ do LS alargou na onda 3 e tocava o LB.)
+const LB: (f32, f32) = (0.35, BODY_START.1 + 0.07); // LITERAL-PX-OK: maquete B3
+/// (0,45/0,55 e não 0,44/0,56: a seta ↑ do RS alargou na onda 3 e tocava o Start.)
+const BACK: (f32, f32) = (0.45, 0.34); // LITERAL-PX-OK: maquete B3
+const START: (f32, f32) = (0.55, 0.34); // LITERAL-PX-OK: maquete B3
 const DPAD: (f32, f32) = (0.41, 0.63); // LITERAL-PX-OK: maquete B3
 const FACE: (f32, f32) = (0.8, 0.4); // LITERAL-PX-OK: maquete B3
 /// O passo dos botões da face e dos braços da cruz (fracções da altura).

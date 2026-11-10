@@ -345,6 +345,15 @@ Barra de rolagem visível 5,4–6,3 px de cada lado (≥ 2).
 **14.2 Plaquinha do nome** (`pad.rs` comando, `keys.rs` chips «Also:»). Nome parado numa plaquinha, barras por trás,
 mesmas funções de `keys_fit`; plaquinha só com ≥ 1 acção; em redondos/pílulas as barras ficam na parte reta;
 Back/Start +2 px; setas da cruz/manches até 14 px; contorno da acção aberta por cima. Testes `onda3_tracos.rs` (4).
+Revisão (rodadas 2–5): sem acção não há plaquinha; a tecla apertada fica no corpo de repouso (`REST_FACE` =
+`KanbanCardRaised`, desde a onda 1) e acende a plaquinha num neutro (`LIT_PLATE` Text1, nome `LIT_INK` Bg0: nome
+7,80–17,16:1, plaquinha × corpo 7,74–15,52:1 nos 12 temas), nunca na cor de uma acção; vão de 2 px (`LIT_GAP`) entre
+as barras e a acesa. A seta da manche tem 34 × 25 px (16 px de glifo, barras 6 px à vista por dentro do contorno da
+aberta), as quatro de um anel iguais; LB 0,35, Back/Start 0,45/0,55 para não as tocar. O deslize de lado do trackpad
+só rola o teclado com o ponteiro sobre ele.
+⛔ Medido e recusado — um neutro de cromo como corpo da tecla apertada (cada barra ≥ max(3:1, repouso), 12 temas ×
+12 cores; falhas de 144): Bg0 48 · Bg1 60 · Bg2 96 · Bg3 108 · BgElev 84 · RailBg 24 · PanelBg 12 · WindowGround 24 ·
+Border 96 · BorderStrong 120 · BorderEmph 144 · CardField 48 · CardFieldHover 48.
 
 **14.3 Hover na tela Controls do jogo** (`ph2d-player-controls`, cab8aa7779). `host::pointer_move(s, at) ->
 (dela, repinta)`, `Layout::hover`; linha sob o ponteiro em `CardFieldHover` no quadro (D32); Reset: hover

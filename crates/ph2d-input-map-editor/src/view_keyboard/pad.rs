@@ -64,12 +64,16 @@ fn body(at: &dyn Fn(f32, f32) -> (f64, f64)) -> BezPath {
     path
 }
 
-/// O ponto `(x, y)` fica dentro do corpo do comando pintado na caixa `bx` (`KbState::pad_box`)?
-#[must_use]
-pub fn body_contains(bx: Rect, x: f32, y: f32) -> bool {
+/// Os quatro cantos de `r` dentro do contorno `outline` (o censo: nenhuma parte sai do corpo).
+fn inside(outline: &BezPath, r: Rect) -> bool {
     use ph2d_vector::Shape;
-    let at = |fx: f32, fy: f32| (f64::from(bx.x + fx * bx.w), f64::from(bx.y + fy * bx.h));
-    body(&at).winding((f64::from(x), f64::from(y)).into()) != 0
+    let corners = [
+        (r.x, r.y),
+        (r.x + r.w, r.y),
+        (r.x, r.y + r.h),
+        (r.x + r.w, r.y + r.h),
+    ];
+    (corners.iter()).all(|&(x, y)| outline.winding((f64::from(x), f64::from(y)).into()) != 0)
 }
 
 pub(super) fn paint(
@@ -88,7 +92,6 @@ pub(super) fn paint(
         let (x, y) = at(fx, fy);
         (f64::from(x), f64::from(y))
     };
-    doc.kb.pad_box = Some(Rect::new(ox, oy, bw, bh));
     let outline = body(&at64);
     let edge = Stroke::new(f64::from(m::FIELD_BORDER * 2.0));
     scene.inner_mut().stroke(
@@ -113,12 +116,7 @@ pub(super) fn paint(
         Rect::new(cx - half_w, cy - reach, half_w * 2.0, reach * 2.0),
         Rect::new(cx - reach, cy - half_w, reach * 2.0, half_w * 2.0),
     ] {
-        fill_rounded_rect(
-            scene,
-            r,
-            m::SEG_RADIUS,
-            ink.color(ColorToken::KanbanCardRaised),
-        );
+        fill_rounded_rect(scene, r, m::SEG_RADIUS, ink.color(fit::REST_FACE));
     }
     // Os anéis das manches: aceso inteiro quando a aberta usa uma metade dele; as barras ficam em cada metade.
     for (i, ((fx, fy), key, fr)) in g::STICKS.into_iter().enumerate() {
@@ -133,7 +131,7 @@ pub(super) fn paint(
             .any(|p| open.iter().any(|b| super::same_input(p.binding, *b)));
         let used = halves.iter().any(|p| !users(doc, p.binding).is_empty());
         let ring = Circle::new((f64::from(cx), f64::from(cy)), f64::from(r));
-        let face = ColorToken::KanbanCardRaised;
+        let face = fit::REST_FACE;
         scene.inner_mut().fill(
             ph2d_vector::Fill::NonZero,
             Affine::IDENTITY,
@@ -176,7 +174,7 @@ pub(super) fn paint(
         if let PadShape::Half(icon, _) = p.shape {
             // R1: a seta da manche tem a largura de uma tecla de letra — o glifo das setas e as barras à vista dos
             // dois lados como na tecla (`BAR_PEEK`); a ← e a → afastam-se do anel o que alargaram.
-            let wide = super::keys::ARROW_BOX * 0.5 + fit::BAR_INSET_X + fit::BAR_PEEK;
+            let wide = super::keys::ARROW_BOX * 0.5 + fit::OUTLINE_REACH + fit::BAR_PEEK;
             let extra = (wide - hw).max(0.0);
             hw += extra;
             match icon {
@@ -221,10 +219,22 @@ pub(super) fn paint(
             ColorToken::Text1
         };
         let fg = ink.color(fg_tok);
-        doc.census.parts.push((r, face, fg_tok));
+        doc.census.parts.push(crate::census::PartLook {
+            rect: r,
+            face,
+            ink: fg_tok,
+            inside_body: inside(&outline, r),
+        });
         // As barras por TRÁS do nome, numa plaquinha (a lei da tecla); o nome no centro com 0 ou N barras.
         let plate_face = face_of(pressed, None, hover);
-        let sticker = (r, radius, plate_face);
+        // A seta da manche: as barras começam por dentro do contorno da aberta (`OUTLINE_REACH`), que nunca as tapa.
+        let d = if half {
+            fit::OUTLINE_REACH - fit::BAR_INSET_X
+        } else {
+            0.0
+        };
+        let bars_r = Rect::new(r.x + d, r.y, (r.w - d * 2.0).max(0.0), r.h);
+        let sticker = (bars_r, radius, plate_face);
         match p.shape {
             PadShape::Arm(icon) | PadShape::Half(icon, _) => {
                 let s = (super::keys::ARROW_BOX.min(r.h))

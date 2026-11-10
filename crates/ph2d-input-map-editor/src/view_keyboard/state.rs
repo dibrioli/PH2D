@@ -116,8 +116,6 @@ pub struct KbState {
     pub hscroll: f32,
     /// A barra horizontal da última pintura (`None` = o teclado cabe).
     pub hbar: Option<super::hscroll::HBar>,
-    /// A caixa do comando da última pintura (`None` = não se pintou): a de [`super::body_contains`].
-    pub pad_box: Option<ph2d_editor_core::zones::Rect>,
     /// As teclas que a última pintura pôs no desenho que rola (o foco trá-las à vista).
     pub(crate) hkeys: Vec<NodeId>,
     /// O arrasto do polegar horizontal: (x do Down, rolagem no Down).

@@ -2,7 +2,6 @@
 //! (C2), e a manche diz a direcção por ícone, marca os campos com «D»/«P» e só pinta o «Pressed» de verde (C3).
 
 use super::try_it_censo::cena;
-use ph2d_app_input_map::palette::of_action;
 use ph2d_app_input_map::view_keyboard::state::KbHit;
 use ph2d_editor_core::icons::IconId;
 use ph2d_i18n::tr;
@@ -19,12 +18,16 @@ fn up() -> Key {
 fn a_tecla_premida_no_try_it_enche_se_da_cor_da_accao_e_a_da_b_so_tem_contorno() {
     let m = cena("C2");
     let doc = &m.tab().doc;
-    let jump = m.hero.input_map.id("jump").expect("jump");
     let key = doc.rect_of(KbHit::Key(up()).id()).expect("a ↑ desenhada");
     let [(r, cor)] = doc.census.filled.as_slice() else {
         panic!("C2: só a ↑ enchida, e não {:?}", doc.census.filled);
     };
-    assert_eq!(*cor, of_action(jump), "na cor do jump");
+    // Onda 3 (A11): a acesa no neutro de alto contraste, nunca na cor de uma acção só (as cores ficam nas barras).
+    assert_eq!(
+        *cor,
+        ph2d_app_input_map::view_keyboard::keys_fit::LIT_PLATE,
+        "no neutro da plaquinha acesa"
+    );
     let perto = |a: f32, b: f32| (a - b).abs() < 1e-3;
     assert!(
         perto(r.x, key.x) && perto(r.y, key.y) && perto(r.w, key.w) && perto(r.h, key.h),

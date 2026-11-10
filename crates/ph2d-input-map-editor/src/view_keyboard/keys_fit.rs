@@ -15,11 +15,15 @@ use super::keys::{ARROW_BOX, BAR_GAP, BAR_H};
 /// repouso no tema escuro, mais funda no claro: sempre MAIS ênfase que o repouso, nunca um contorno.
 pub const HOVER_FACE: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::KanbanShadowHover;
 
-/// O corpo da tecla APERTADA (premida ou acesa no Try it): o de REPOUSO — nunca a cor de uma acção nem um token de
-/// dado de outra família; a plaquinha acesa marca o apertado. Medido (`onda3_tracos::
-/// nenhum_neutro_de_cromo_cumpre_a_lei_do_premido`): nenhum neutro de cromo deixa cada barra ≥ max(3:1, repouso)
-/// nos 12 temas × 12 cores (o melhor, `PanelBg`, falha 12 de 144).
-pub const PRESS_BODY: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::KanbanCardRaised;
+/// A face de repouso de toda tecla e parte do comando — e também o corpo da APERTADA (a plaquinha acesa marca o
+/// apertado). Vem do `KanbanCardRaised` desde a onda 1 (decisão aprovada); nenhum neutro de cromo deixa cada barra
+/// ≥ max(3:1, repouso) nos 12 temas × 12 cores (medida no plano §14.2).
+pub const REST_FACE: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::KanbanCardRaised;
+
+/// A plaquinha ACESA (a tecla apertada no Try it) e o nome nela: um neutro de alto contraste, NUNCA a cor de uma acção
+/// (a ↑ com jump + move_up lia-se «só jump»); as cores ficam nas barras. Medido nos 12 temas (`onda3_tracos`).
+pub const LIT_PLATE: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::Text1;
+pub const LIT_INK: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::Bg0;
 
 /// O vão do corpo da tecla entre as barras e a plaquinha ACESA (a mesma folga da plaquinha em repouso).
 pub const LIT_GAP: f32 = m::SEG_PAD;
@@ -50,6 +54,8 @@ pub(crate) const PLATE_RADIUS: f32 = m::SEG_RADIUS - m::FIELD_BORDER;
 /// O recuo das barras às arestas da tecla: de lado, uma aresta dupla; em cima e em baixo, o raio (as barras nunca
 /// entram nos cantos redondos).
 pub(crate) const BAR_INSET_X: f32 = m::FIELD_BORDER * 2.0;
+/// Até onde o contorno da acção aberta entra na parte (`keys::open_outline`: recuo de 2 arestas, traço de 2).
+pub const OUTLINE_REACH: f32 = m::FIELD_BORDER * 3.0;
 /// Quanto de cada barra se quer à vista de cada lado da plaquinha.
 pub const BAR_PEEK: f32 = m::SEG_INSET;
 

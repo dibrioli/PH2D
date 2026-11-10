@@ -168,11 +168,13 @@ fn pinta(view: View, a: Rect) -> Mesa {
     m
 }
 
+/// O gesto com o ponteiro sobre o campo do teclado (onda 3, A6: noutro sítio o deslize de lado não faz nada).
 fn pan(m: &mut Mesa, a: Rect, d: [f32; 2]) {
+    let c = m.tab().doc.kb.hbar.map_or(a, |b| b.clip);
     scroll(
         &mut m.hero,
-        a.x + a.w * 0.5,
-        a.y + a.h * 0.5,
+        c.x + c.w * 0.5,
+        c.y + c.h * 0.5,
         BoardScroll::Pan(d),
     );
     m.paint_in(a);

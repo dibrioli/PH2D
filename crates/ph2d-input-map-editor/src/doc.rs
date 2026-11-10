@@ -328,6 +328,11 @@ impl InputMapDoc {
         }
     }
 
+    /// O deslize de lado do trackpad em `(x, y)`: só rola o teclado com o ponteiro sobre ele.
+    pub fn wheel_sideways(&mut self, x: f32, y: f32, dx: f32) -> bool {
+        crate::view_keyboard::hscroll::wheel_at(self, (x, y), dx)
+    }
+
     /// Uma tecla para o campo focado da aba. `true` = tomada.
     pub fn key(&mut self, input: &KeyInput<'_>) -> bool {
         // A escuta e o diálogo ANTES do foco: o Esc cancela-os; à escuta, o Tab é uma tecla.

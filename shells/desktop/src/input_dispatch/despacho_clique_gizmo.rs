@@ -245,7 +245,15 @@ impl crate::App {
                             world_pos,
                             ph2d_app_flip::gizmo_view::stroke_hit_r(&gfx.camera, window_size),
                         );
+                // Numa Animated Sprite o Pivot mora no editor de animações: o clique só dá o aviso (GEF 29).
+                began_pivot = (on_pivot_dot || on_object)
+                    && ph2d_app_sprite_anim::editor::pivot_tool_refused(
+                        gfx.sim.world(),
+                        entity,
+                        &mut gfx.toasts,
+                    );
                 if (on_pivot_dot || on_object)
+                    && !began_pivot
                     && !ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity)
                     && let Some(t) = gfx.sim.world().get::<Transform>(entity)
                 {

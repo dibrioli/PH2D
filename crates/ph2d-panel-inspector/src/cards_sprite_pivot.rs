@@ -237,6 +237,21 @@ pub(crate) fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
         return caixa_do_mirror(c, (xb, wb), fim_espelhos - m::FIELD_H, fim_espelhos, y);
     };
     (c.x, c.w) = (xb, wb);
+    if f.pivot_no_editor {
+        // Numa Animated Sprite o Pivot conta sobre todos os quadros: ajusta-se no editor (GEF 29).
+        let fim_botao = c.row(
+            &[Cell::new(Widget::Button {
+                id: ids::INSP_SPRITE_PIVOT_EDITOR,
+                text: tr("card.insp.pivot_in_editor"),
+                primary: false,
+            })
+            .label(tr("card.insp.pivot"))],
+            y,
+        );
+        (c.x, c.w) = (x0, w0);
+        let linha = fim_espelhos - m::FIELD_H;
+        return caixa_do_mirror(c, (xb, wb), linha, fim_espelhos, fim_botao);
+    }
     c.row(
         &[Cell::new(Widget::Readout { text: "" })
             .label(tr("card.insp.pivot"))
@@ -274,6 +289,16 @@ pub(crate) fn evento_do_pivot(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
     let pivot = match ev {
         WidgetEvent::Toggled(id) if id == ids::INSP_SPRITE_MIRROR_KEEP => {
             MIRROR_NO_LUGAR.with(|m| m.set(!m.get()));
+            return true;
+        }
+        WidgetEvent::Click(id) if id == ids::INSP_SPRITE_PIVOT_EDITOR => {
+            if let Some(s) = crate::state::current_inspector_sprite() {
+                crate::event_anim::push(
+                    host,
+                    s.entity_bits,
+                    ph2d_editor_core::AnimFieldEdit::OpenEditorAlign,
+                );
+            }
             return true;
         }
         WidgetEvent::Click(id) if id == ids::INSP_SPRITE_PIVOT_NOME => {

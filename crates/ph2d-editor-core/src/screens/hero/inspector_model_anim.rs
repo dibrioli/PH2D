@@ -451,6 +451,8 @@ pub enum AnimFieldEdit {
     /// «Editar animações…»: abrir o editor de animações desta sprite numa aba. Não mexe na cena — quem o
     /// trata é a shell, que abre a aba (`ph2d-app-sprite-anim`).
     OpenEditor,
+    /// O mesmo, com o Align ligado: o campo Pivot de uma Animated Sprite (GEF 29), que se ajusta lá.
+    OpenEditorAlign,
     /// A grelha da folha, colunas × linhas (a proposta confirmada, ou o campo do cartão).
     Grid(u32, u32),
 }

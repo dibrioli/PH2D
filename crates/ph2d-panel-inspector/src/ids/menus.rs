@@ -57,6 +57,8 @@ pub const INSP_SPRITE_PIVOT: [NodeId; 9] = [
 ];
 /// O botão ao lado da grade: abre os campos X e Y.
 pub const INSP_SPRITE_PIVOT_NOME: NodeId = hash_node_id("insp_sprite_pivot_nome");
+/// O campo Pivot de uma Animated Sprite (GEF 29): abre o editor de animações com o Align ligado.
+pub const INSP_SPRITE_PIVOT_EDITOR: NodeId = hash_node_id("insp_sprite_pivot_editor");
 /// **Keep in place**: o Mirror object espelha tudo, e a imagem fica onde está.
 pub const INSP_SPRITE_MIRROR_KEEP: NodeId = hash_node_id("insp_sprite_mirror_keep");
 /// Os campos do Pivot em Custom.

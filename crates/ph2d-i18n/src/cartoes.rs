@@ -235,6 +235,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.pivot" => "Pivot",
         "card.insp.pivot_px" => "Pivot (px)",
         "card.insp.pivot_nome_tip" => "Show the exact pivot position",
+        "card.insp.pivot_in_editor" => "Edit in Animations",
+        "card.insp.pivot_in_editor_tip" => {
+            "An Animated Sprite's pivot is set in the Animation Editor, over every frame of every animation"
+        }
         "card.insp.pivot.custom" => "Custom",
         "card.insp.pivot.top_left" => "Top Left",
         "card.insp.pivot.top" => "Top",

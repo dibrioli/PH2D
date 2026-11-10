@@ -154,14 +154,20 @@ pub(super) fn paint_align(
             *slot = Some(h);
         }
     }
-    let (ox, oy) = v.to_screen([0.0, 0.0]);
+    painted.all_frames = super::paint_pivot::paint_pivot_preview(doc, scene, v, theme);
+    // Com a cruz na mão, ela pinta-se onde o rato a leva; o Pivot só muda ao largar.
+    let (ox, oy) = v.to_screen(doc.align.pivot.hand.unwrap_or([0.0, 0.0]));
     let arm = ROW_H_PX * CROSS_ROWS;
     let thick = StrokeToken::Thick.px();
     stroke_polyline(scene, &[(ox - arm, oy), (ox + arm, oy)], thick, accent);
     stroke_polyline(scene, &[(ox, oy - arm), (ox, oy + arm)], thick, accent);
     fill_circle(scene, ox, oy, thick, tom(ColorToken::Bg0, theme));
     painted.pivot = Some((ox, oy));
-    let hint = tr("anim_editor.align_hint");
+    let hint = if doc.align.pivot.by_hand {
+        tr("anim_editor.pivot_hand_hint")
+    } else {
+        tr("anim_editor.align_hint")
+    };
     let hy = p.y + p.h - ROW_H_PX - Spacing::Xs.px();
     let hx = p.x + Spacing::Sm.px();
     paint_text(
@@ -180,7 +186,7 @@ pub(super) fn paint_align(
 
 /// ⭐ A moldura própria do Align, embaixo à direita (dono 09/11): o título com a referência, «Align» e o conta-gotas,
 /// «Previous» e «Reference». A moldura é a das outras com um fio de acento — levemente diferente.
-fn paint_frame(doc: &AnimDoc, scene: &mut VectorScene, text: &mut TextSystem, theme: Theme) {
+fn paint_frame(doc: &mut AnimDoc, scene: &mut VectorScene, text: &mut TextSystem, theme: Theme) {
     let l = doc.layout.align;
     if l.frame.w <= 0.0 {
         return;
@@ -281,6 +287,7 @@ fn paint_frame(doc: &AnimDoc, scene: &mut VectorScene, text: &mut TextSystem, th
         Look::of(a.on, false),
         fio,
     );
+    super::paint_pivot::paint_pivot_column(doc, scene, text, theme);
 }
 
 /// ⭐ A marca na tira de um quadro acertado (onda C): a palavra «aligned», pequena e na tinta do Align, logo à direita
@@ -310,7 +317,7 @@ pub(super) fn paint_nudge_mark(
 
 /// Como um botão da moldura se mostra.
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Look {
+pub(super) enum Look {
     /// Sem efeito agora (o Align desligado): letra e ícone apagados.
     Off,
     Idle,
@@ -318,7 +325,7 @@ enum Look {
 }
 
 impl Look {
-    const fn of(enabled: bool, on: bool) -> Self {
+    pub(super) const fn of(enabled: bool, on: bool) -> Self {
         match (enabled, on) {
             (false, _) => Self::Off,
             (true, false) => Self::Idle,
@@ -329,7 +336,7 @@ impl Look {
 
 /// Um botão da moldura do Align no idioma dos campos ao lado («F 10», «C 6»): a caixa um degrau acima da moldura, o
 /// ícone e a palavra; ligado, o fio e a tinta de acento; sem efeito, apagado (smoke do dono 09/11).
-fn chip(
+pub(super) fn chip(
     scene: &mut VectorScene,
     text: &mut TextSystem,
     theme: Theme,

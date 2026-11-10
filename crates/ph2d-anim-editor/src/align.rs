@@ -33,6 +33,11 @@ pub struct AlignLayout {
     /// «By feet» e «By centre» (onda C): cada quadro da animação vai aos pés ou ao centro da referência.
     pub by_feet: Rect,
     pub by_centre: Rect,
+    /// A coluna do Pivot (GEF 29): o rótulo, a grade 5 × 5, o «By hand» e o nome do ponto escolhido.
+    pub pivot_title: Rect,
+    pub pivot_grid: Rect,
+    pub by_hand: Rect,
+    pub pivot_name: Rect,
     /// A prévia.
     pub preview: Rect,
 }
@@ -95,6 +100,8 @@ pub struct AlignPaint {
     pub handles: [Option<Rect>; 4],
     /// O item «Use as reference» do menu aberto.
     pub menu_item: Option<Rect>,
+    /// A caixa do desenho de todos os quadros (no ecrã), sobre a qual os 25 pontos do Pivot se pintam.
+    pub all_frames: Option<Rect>,
 }
 
 /// O ponto do desenho que os botões de alinhar levam ao da referência.
@@ -125,6 +132,8 @@ pub struct AlignUi {
     /// célula, corte, imagem).
     floor_cache: Option<((u8, u32, u32, u32, usize), Option<Arc<Silhueta>>)>,
     pub painted: AlignPaint,
+    /// O Pivot do objeto (GEF 29): a grade de 25 pontos e o «By hand».
+    pub pivot: super::align_pivot::PivotUi,
 }
 
 /// O desenho de uma célula (os píxeis com alfa), em frações dela a partir do canto de cima: a caixa `[x0, y0, x1,
@@ -214,11 +223,12 @@ impl Default for AlignUi {
             drag: AlignDrag::None,
             floor_cache: None,
             painted: AlignPaint::default(),
+            pivot: super::align_pivot::PivotUi::default(),
         }
     }
 }
 
-fn hit(r: Rect, x: f32, y: f32) -> bool {
+pub(crate) fn hit(r: Rect, x: f32, y: f32) -> bool {
     r.w > 0.0 && r.h > 0.0 && x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h
 }
 
@@ -350,13 +360,17 @@ impl AnimDoc {
     /// base dela é a linha do chão.
     pub fn reference_box(&mut self) -> Option<([f32; 2], [f32; 2])> {
         let (f, sil) = self.reference_silhouette()?;
-        self.drawing_box(f, &sil)
+        self.drawing_box(f, sil.caixa)
     }
 
-    /// A caixa do desenho `sil` do quadro `f`, em metros locais: `(baixo-esquerda, cima-direita)`.
-    fn drawing_box(&self, f: AnimFrameRef, sil: &Silhueta) -> Option<([f32; 2], [f32; 2])> {
+    /// A caixa do desenho do quadro `f` (`frac` = [`Silhueta::caixa`]), em metros locais: `(baixo-esquerda,
+    /// cima-direita)`.
+    pub(crate) fn drawing_box(
+        &self,
+        f: AnimFrameRef,
+        frac: [f32; 4],
+    ) -> Option<([f32; 2], [f32; 2])> {
         let (c, s) = self.frame_quad(f)?;
-        let frac = sil.caixa;
         let (sw, sh) = (s[0].abs(), s[1].abs());
         let (left, top) = (c[0] - sw / 2.0, c[1] + sh / 2.0);
         Some((
@@ -396,7 +410,7 @@ impl AnimDoc {
     /// O ponto do desenho que «By feet» (o meio da base) ou «By centre» (o meio da caixa) alinha, em metros locais.
     #[must_use]
     pub fn align_point(&self, f: AnimFrameRef, by: AlignBy) -> Option<[f32; 2]> {
-        let (lo, hi) = self.drawing_box(f, &self.silhouette_of(f)?)?;
+        let (lo, hi) = self.drawing_box(f, self.silhouette_of(f)?.caixa)?;
         let y = match by {
             AlignBy::Feet => lo[1],
             AlignBy::Centre => (lo[1] + hi[1]) / 2.0,
@@ -506,6 +520,9 @@ impl AnimDoc {
                 return true;
             }
         }
+        if self.pivot_press(x, y) {
+            return true;
+        }
         if !hit(l.preview, x, y) {
             return false;
         }
@@ -551,6 +568,9 @@ impl AnimDoc {
 
     /// O rato moveu-se com um gesto da prévia em curso.
     pub(super) fn align_motion(&mut self, x: f32, y: f32) -> bool {
+        if self.pivot_motion(x, y) {
+            return true;
+        }
         let (Some(v), Some((_, f))) = (self.align.view, self.align_current()) else {
             return self.align.drag != AlignDrag::None;
         };
@@ -610,6 +630,9 @@ impl AnimDoc {
 
     /// Botão solto: o gesto da prévia acaba.
     pub(super) fn align_release(&mut self, x: f32, y: f32) -> bool {
+        if self.pivot_release(x, y) {
+            return true;
+        }
         if self.align.drag == AlignDrag::None {
             return false;
         }

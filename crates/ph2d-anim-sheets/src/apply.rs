@@ -37,6 +37,7 @@ pub fn apply(
         ImageUseEdit::NudgeCell { sheet, cell, by } => {
             crate::align::nudge_cell(world, e, sheet, cell, by)
         }
+        ImageUseEdit::MovePivot(p) => ph2d_sprite_edit::pivot::move_origin(world, e, ppm, p),
         _ => return None,
     })
 }

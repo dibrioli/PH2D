@@ -228,3 +228,60 @@ fn o_encaixe_da_folha_zero_segue_a_grelha_e_o_flip() {
     w.get_mut::<Sprite>(e).unwrap().flip_x = true;
     assert_eq!(centro_do_desenho(&w, e, &img), Some([0.125, -0.5]));
 }
+
+/// ⭐ **O Pivot do editor de animações** (GEF 29): a origem anda `p` e TODAS as folhas guardam o desenho no mundo, com
+/// o filho e a colisão; a posição compensa. Com o objeto rodado e escalado, a mesma lei.
+///
+/// *Mutações: só a folha visível anda (a lei do Inspector) ⇒ o quad da folha 0 sai do lugar · o filho e a colisão
+/// esquecidos, ou com o sinal trocado ⇒ saem do lugar · a posição sem compensar ⇒ tudo anda.*
+#[test]
+fn o_pivot_do_editor_leva_todas_as_folhas_e_o_resto_fica() {
+    let db = AssetDb::default();
+    for t in [
+        Transform {
+            translation: Vec2::new(5.0, 7.0),
+            ..Default::default()
+        },
+        Transform {
+            translation: Vec2::new(-2.0, 3.0),
+            rotation: 0.7,
+            scale: Vec2::new(1.5, -0.5),
+            ..Default::default()
+        },
+    ] {
+        let (mut w, e, filho) = duas_folhas(&db);
+        w.entity_mut(e).insert(t);
+        w.get_mut::<Collider>(e).unwrap().offset = [0.25, -0.5];
+        let mundo = |w: &World| {
+            let t = *w.get::<Transform>(e).unwrap();
+            let quad = |k: u8| {
+                let (s, _) = ph2d_render::sheet_geometry(w, e, k, 0).unwrap();
+                no_pai(t, s.resolve_anchor(100.0))
+            };
+            let f = w.get::<Transform>(filho).unwrap().translation;
+            let c = w.get::<Collider>(e).unwrap().offset;
+            [
+                quad(0),
+                quad(1),
+                no_pai(t, [f.x, f.y]),
+                t.translation + Vec2::new(c[0], c[1]),
+            ]
+        };
+        let antes = mundo(&w);
+        assert!(move_origin(&mut w, e, 100.0, [0.5, -1.25]));
+        let depois = mundo(&w);
+        for (i, (a, d)) in antes.iter().zip(depois.iter()).take(3).enumerate() {
+            assert!((*a - *d).length() < 1e-5, "{i}: {a:?} → {d:?} ({t:?})");
+        }
+        let andou = w.get::<Transform>(e).unwrap().translation - t.translation;
+        assert!(andou.length() > 0.1, "a origem anda ({t:?})");
+        if t.rotation == 0.0 && t.scale == Vec2::ONE {
+            assert!((antes[3] - depois[3]).length() < 1e-5, "a colisão fica");
+        }
+        assert!(!move_origin(&mut w, e, 100.0, [0.0, 0.0]), "nulo: nada");
+        assert!(
+            !move_origin(&mut w, e, 100.0, [f32::NAN, 0.0]),
+            "não finito: nada"
+        );
+    }
+}

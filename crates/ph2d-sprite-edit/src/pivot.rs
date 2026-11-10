@@ -243,6 +243,36 @@ fn pousa(world: &mut World, e: Entity, ppm: f32, k: u8, alvo: [f32; 2]) -> bool 
     true
 }
 
+/// ⭐ **O Pivot do editor de animações** (GEF 29): a origem de `e` passa a `p` (metros locais desde a de agora). TODAS
+/// as folhas guardam o desenho no mundo (cada âncora anda `-p`, os acertos de célula ficam), e os filhos e a colisão
+/// também: a posição compensa. `false` se `p` é nulo ou não finito, ou `e` não é sprite.
+pub fn move_origin(world: &mut World, e: Entity, ppm: f32, p: [f32; 2]) -> bool {
+    if !p.iter().all(|v| v.is_finite())
+        || (p[0].abs() < MESMO_PONTO_M && p[1].abs() < MESMO_PONTO_M)
+    {
+        return false;
+    }
+    let Some(t) = world.get::<Transform>(e).copied() else {
+        return false;
+    };
+    if world.get::<Sprite>(e).is_none() {
+        return false;
+    }
+    let folhas = 1 + world.get::<SpriteSheets>(e).map_or(0, |s| s.0.len());
+    for k in (0..folhas).filter_map(|k| u8::try_from(k).ok()) {
+        if let Some((s, _)) = ph2d_render::sheet_geometry(world, e, k, 0) {
+            let a = s.resolve_anchor(ppm);
+            poe_ancora(world, e, k, [a[0] - p[0], a[1] - p[1]]);
+        }
+    }
+    let delta = no_pai(t, p) - no_pai(t, [0.0, 0.0]);
+    o_resto_fica(world, e, t, p);
+    if let Some(mut tr) = world.get_mut::<Transform>(e) {
+        tr.translation += delta;
+    }
+    true
+}
+
 /// O Pivot da folha `k` passa a `anchor`: o do `Sprite` na `0` (centrado, sem `offset`), o da folha extra nas outras.
 fn poe_ancora(world: &mut World, e: Entity, k: u8, anchor: [f32; 2]) {
     if k == 0 {

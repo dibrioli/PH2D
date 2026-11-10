@@ -199,9 +199,10 @@ impl crate::App {
                 d.layout.align.toggle,
                 d.layout.align.by_feet,
                 d.align.painted,
+                (d.layout.align.pivot_grid, d.layout.align.by_hand),
             ))
         });
-        let Some((toggle, pes, p)) = doc else {
+        let Some((toggle, pes, p, (grade, mao))) = doc else {
             return eprintln!("[animado-prova] align: o editor não está aberto");
         };
         let c = |r: ph2d_editor_core::zones::Rect| (r.x + r.w / 2.0, r.y + r.h / 2.0);
@@ -211,7 +212,23 @@ impl crate::App {
         match (fase, *pega) {
             (0, _) => self.smoke_pointer_down(c(toggle).0, c(toggle).1),
             (8, _) => self.smoke_pointer_down(c(pes).0, c(pes).1),
-            (1 | 7 | 9, _) => self.smoke_pointer_up(),
+            (1 | 7 | 9 | 11 | 13 | 17, _) => self.smoke_pointer_up(),
+            // O Pivot (GEF 29): «Bottom» é a casa do meio da última fila da grade 5 × 5.
+            (10, _) => self.smoke_pointer_down(grade.x + grade.w / 2.0, grade.y + grade.h * 0.9),
+            (12, _) => self.smoke_pointer_down(c(mao).0, c(mao).1),
+            (14..=16, _) => {
+                let (Some((ox, oy)), Some(r)) = (p.pivot, p.all_frames) else {
+                    return eprintln!("[animado-prova] pivô: sem cruz ou sem caixa");
+                };
+                let s = f32::from(fase - 14) / 2.0;
+                let alvo = (r.x + r.w, r.y + r.h / 2.0);
+                let at = (ox + (alvo.0 - ox) * s, oy + (alvo.1 - oy) * s);
+                if fase == 14 {
+                    self.smoke_pointer_down(at.0, at.1);
+                } else {
+                    self.smoke_pointer_move(at.0, at.1);
+                }
+            }
             (2, _) => {
                 *pega = p.handles[3].map(c).zip(p.pivot);
                 eprintln!(
@@ -291,6 +308,22 @@ impl crate::App {
                 entity_bits,
                 edit: ph2d_editor_core::AnimFieldEdit::OpenEditor,
             }),
+            // O Pivot (GEF 29): pelo campo Pivot do Look aberto, que abre o editor com o Align ligado.
+            (Some(f), Some(entity_bits)) if f.pivo_no_editor() => {
+                h.store
+                    .set_collapsed(ph2d_panel_inspector::CARD_LOOK_ANIMADA, false);
+                // Na 1.ª foto o campo Pivot tem de se ver: Image e Animation dobrados.
+                for c in [
+                    ph2d_panel_inspector::CARD_TRANSFORM_IMAGE,
+                    ph2d_editor_core::ids::INSP_LIVE_ANIM_SECTION,
+                ] {
+                    h.store.set_collapsed(c, f == a::Foto::PivoAntes);
+                }
+                h.bus.push(EditorAction::InspectorAnimEdit {
+                    entity_bits,
+                    edit: ph2d_editor_core::AnimFieldEdit::OpenEditorAlign,
+                });
+            }
             _ => {}
         }
     }

@@ -138,6 +138,35 @@ fn cada_um_dos_nove_pontos_pede_o_seu_pivo() {
     }
 }
 
+/// ⭐ Numa Animated Sprite o Pivot mora no editor de animações (GEF 29): no lugar da grade de nove pontos, um botão que
+/// abre o editor com o Align ligado; nenhum ponto a clicar no cartão.
+/// *Mutação: o botão a pedir o `OpenEditor` simples ⇒ abre sem o Align, vermelho.*
+#[test]
+fn numa_animated_o_pivot_e_um_botao_que_abre_o_editor_com_o_align() {
+    let (mut host, mut st) = cena(SpriteFacts {
+        pivot_no_editor: true,
+        ..factos()
+    });
+    let r = pinta(&mut host, &mut st);
+    assert!(
+        !r.iter()
+            .any(|(i, q)| INSP_SPRITE_PIVOT.contains(i) && q.w > 0.0),
+        "sem a grade"
+    );
+    let (_, a) = clica(&mut host, &mut st, INSP_SPRITE_PIVOT_EDITOR);
+    assert!(
+        a.iter().any(|x| matches!(
+            x,
+            EditorAction::InspectorAnimEdit {
+                edit: ph2d_editor_core::AnimFieldEdit::OpenEditorAlign,
+                ..
+            }
+        )),
+        "{a:?}"
+    );
+    assert!(edicoes(&a).is_empty(), "o Pivot não muda no cartão");
+}
+
 #[test]
 fn os_campos_custom_so_aparecem_em_custom_ou_pela_mao() {
     let (mut host, mut st) = cena(factos());

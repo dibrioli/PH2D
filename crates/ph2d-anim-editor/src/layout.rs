@@ -278,9 +278,16 @@ impl AnimDoc {
             ph2d_i18n::tr("anim_editor.align_pick"),
             ph2d_i18n::tr("anim_editor.align_by_feet"),
             ph2d_i18n::tr("anim_editor.align_by_centre"),
+            ph2d_i18n::tr("anim_editor.pivot_by_hand"),
         ]) + row;
+        // A coluna do Pivot (GEF 29): a grade 5 × 5 com a altura das duas filas, e o «By hand» ao lado.
+        let pivot_side = row + gap + row;
+        let pivot_w = gap + pivot_side + gap + align_button;
+        let three = 3.0 * align_button + 2.0 * group_pad + 2.0 * gap; // LITERAL-PX-OK: três botões, as margens e os vãos
+        // Numa aba estreita a coluna do Pivot desce para baixo dos botões: a moldura nunca sai da aba.
+        let pivot_under = three + pivot_w > card_w;
         let align_w = if self.snap.sheet.is_some() {
-            3.0 * align_button + 2.0 * (group_pad + gap) // LITERAL-PX-OK: três botões, as margens e os vãos
+            if pivot_under { three } else { three + pivot_w }
         } else {
             0.0
         };
@@ -297,7 +304,8 @@ impl AnimDoc {
                 && w >= needs.iter().sum::<f32>()
         };
         let align_below = align_w > 0.0 && !cabe(beside);
-        let align_h = 2.0 * group_pad + line + row + gap + row; // LITERAL-PX-OK: as margens e as duas filas
+        let align_h = 2.0 * group_pad + line + row + gap + row // LITERAL-PX-OK: as margens e as duas filas
+            + if pivot_under { gap + line + pivot_side } else { 0.0 };
         let left_w = if align_w > 0.0 && !align_below {
             beside
         } else {
@@ -408,7 +416,6 @@ impl AnimDoc {
             };
             let (bx, by) = (f.x + group_pad, f.y + group_pad);
             l.align.frame = f;
-            l.align.title = Rect::new(bx, by, f.w - 2.0 * group_pad, line); // LITERAL-PX-OK: as duas margens
             let fila = |k: f32| by + line + k * (row + gap);
             l.align.toggle = Rect::new(bx, fila(0.0), align_button, row);
             l.align.pick = Rect::new(bx + align_button + gap, fila(0.0), align_button, row);
@@ -417,6 +424,22 @@ impl AnimDoc {
             let col3 = bx + 2.0 * (align_button + gap); // LITERAL-PX-OK: a terceira coluna
             l.align.by_feet = Rect::new(col3, fila(0.0), align_button, row);
             l.align.by_centre = Rect::new(col3, fila(1.0), align_button, row);
+            let (col4, py) = if pivot_under {
+                (bx, fila(2.0))
+            } else {
+                (col3 + align_button + gap, by)
+            };
+            let titulo_w = if pivot_under {
+                f.w - 2.0 * group_pad
+            } else {
+                col4 - gap - bx
+            }; // LITERAL-PX-OK: as duas margens
+            l.align.title = Rect::new(bx, by, titulo_w.max(0.0), line);
+            l.align.pivot_title = Rect::new(col4, py, pivot_side + gap + align_button, line);
+            l.align.pivot_grid = Rect::new(col4, py + line, pivot_side, pivot_side);
+            let col5 = col4 + pivot_side + gap;
+            l.align.by_hand = Rect::new(col5, py + line, align_button, row);
+            l.align.pivot_name = Rect::new(col5, py + line + row + gap, align_button, row);
         } else {
             self.align.on = false;
         }

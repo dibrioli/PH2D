@@ -68,6 +68,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "anim_editor.align_by_feet" => "By feet",
         "anim_editor.align_by_centre" => "By centre",
         "anim_editor.frame_aligned" => "aligned",
+        "anim_editor.pivot" => "Pivot",
+        "anim_editor.pivot_in_editor" => {
+            "An Animated Sprite's pivot is set in the Animation Editor: Edit animations, then Align \u{25b8} Pivot"
+        }
+        "anim_editor.pivot_by_hand" => "By hand",
+        "anim_editor.pivot_custom" => "Custom",
+        "anim_editor.pivot_at" => "{x}% \u{b7} {y}%",
+        "anim_editor.pivot_hand_hint" => {
+            "Drag the cross to place the pivot \u{b7} it snaps to the 25 points \u{b7} the game object stays put"
+        }
         "anim_editor.commit_failed" => "The animation edit did not apply: {e}",
         // O editor de Region (plano GEF 16 D2): a área que o objecto mostra.
         "region_editor.tab" => "Region \u{2014} {name}",

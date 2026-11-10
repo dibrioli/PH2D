@@ -5,7 +5,9 @@
 //! do cartão chega como `AnimFieldEdit::OpenEditor`, que a shell entrega a [`request_open`].
 
 // O documento da aba mora em `ph2d-anim-editor` (catraca das `ph2d-app-*`, auditoria 08/11); aqui fica a ligação.
-pub use ph2d_anim_editor::{align, bands, doc, layout, paint, paint_sheet, split, strip_bar};
+pub use ph2d_anim_editor::{
+    align, align_pivot, bands, doc, layout, paint, paint_sheet, split, strip_bar,
+};
 
 use std::collections::BTreeMap;
 
@@ -27,17 +29,47 @@ use ph2d_vector::VectorScene;
 #[derive(Resource, Default, Debug)]
 pub struct AnimEditorRequests(pub Vec<u64>);
 
+/// As abas pedidas com o Align ligado (o campo Pivot do Inspector, GEF 29).
+#[derive(Resource, Default, Debug)]
+pub struct AnimEditorAlignRequests(pub Vec<u64>);
+
 /// **A porta da shell para o `OpenEditor`.** Devolve `true` se a edição era esse pedido (e já foi
 /// registada): a shell salta então o `apply_anim_edit`.
 pub fn request_open(sim: &mut SimWorld, entity_bits: u64, edit: &AnimFieldEdit) -> bool {
-    if !matches!(edit, AnimFieldEdit::OpenEditor) {
+    if !matches!(
+        edit,
+        AnimFieldEdit::OpenEditor | AnimFieldEdit::OpenEditorAlign
+    ) {
         return false;
+    }
+    if *edit == AnimFieldEdit::OpenEditorAlign {
+        sim.world_mut()
+            .get_resource_or_init::<AnimEditorAlignRequests>()
+            .0
+            .push(entity_bits);
     }
     sim.world_mut()
         .get_resource_or_init::<AnimEditorRequests>()
         .0
         .push(entity_bits);
     true
+}
+
+/// ⭐ **A ferramenta Pivot do canvas numa Animated Sprite** (GEF 29): não age, e o aviso manda ao editor de animações,
+/// onde o Pivot conta sobre todos os quadros. Devolve se recusou.
+pub fn pivot_tool_refused(world: &ph2d_ecs::World, e: Entity, toasts: &mut ToastQueue) -> bool {
+    let animada =
+        crate::image_use::image_use(world, e) == Some(crate::image_use::ImageUse::Animated);
+    if animada {
+        toasts.push(Toast::info(ph2d_i18n::tr("anim_editor.pivot_in_editor")));
+    }
+    animada
+}
+
+/// ⭐ O campo Pivot do Inspector numa Animated Sprite é o botão que abre o editor (GEF 29).
+#[must_use]
+pub fn pivot_lives_in_editor(world: &ph2d_ecs::World, e: Entity) -> bool {
+    crate::image_use::image_use(world, e) == Some(crate::image_use::ImageUse::Animated)
 }
 
 /// **Uma imagem acabou de ser largada sobre a sprite ANIMADA `bits`**: se a transparência propõe uma
@@ -297,6 +329,11 @@ pub fn frame(
         .map(|mut r| std::mem::take(&mut r.0))
         .unwrap_or_default();
     let names: Vec<(u64, String)> = wanted.iter().map(|&b| (b, name_of(sim, b))).collect();
+    let with_align = sim
+        .world_mut()
+        .get_resource_mut::<AnimEditorAlignRequests>()
+        .map(|mut r| std::mem::take(&mut r.0))
+        .unwrap_or_default();
     let selection = hero.gizmo.selection;
     let (now, law) = (
         hero.store.clock_ns(),
@@ -317,6 +354,13 @@ pub fn frame(
     }
     for (b, n) in names {
         docs.open(b, n);
+    }
+    for d in docs
+        .docs
+        .iter_mut()
+        .filter(|d| with_align.contains(&d.entity))
+    {
+        d.align.on = true;
     }
     let moved = follow_identity(sim.world(), &mut docs.docs);
     let mut look: Vec<u64> = docs.docs.iter().map(|d| d.entity).collect();

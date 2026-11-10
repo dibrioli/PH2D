@@ -24,6 +24,7 @@ pub(super) fn publish_slot_image(
             pivot_px,
             folha: card::folha_em_still(w, e, asset_db, atlas_asset_map, ppm),
             corte_velho: card::cut_notice(w, e, asset_db, atlas_asset_map, ppm),
+            pivot_no_editor: ph2d_app_sprite_anim::editor::pivot_lives_in_editor(w, e),
         })
     }));
     ph2d_panel_inspector::slot_image::set_current_slot_image(alvo.bits.and_then(|b| {

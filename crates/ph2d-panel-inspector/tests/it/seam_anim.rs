@@ -502,6 +502,7 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
         E::CharacterFlip(false),
         E::SetStep(0),
         E::OpenEditor,
+        E::OpenEditorAlign,
         E::Grid(1, 1),
         E::MarkerAdd(0),
         E::MarkerStep(0, 0, 0),
@@ -551,6 +552,7 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
             E::MarkerRemove(..) => 104,
             E::StartsWith(_) => 105,
             E::SplitByRows(_) => 106,
+            E::OpenEditorAlign => 107,
         }
     }
     let want: std::collections::BTreeSet<u8> = declared.iter().map(sample).collect();
@@ -683,8 +685,14 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
     // ⚠️ **Os que NÃO são deste painel, nomeados** (e não engolidos por um `_`): a lista de quadros, o
     // modo do ciclo e a grelha confirmada são do EDITOR de animações (`ph2d-app-sprite-anim`), que
     // os levanta pelos gestos dele (o ciclo também tem o segmentado do cartão, acima); o `Autoplay`
-    // escreve-o o «Who Picks» (Me × Script) pela `Chooser` — a caixa saiu do cartão.
-    for e in [E::Frames(0, Vec::new()), E::Grid(1, 1), E::Autoplay(false)] {
+    // escreve-o o «Who Picks» (Me × Script) pela `Chooser` — a caixa saiu do cartão; o `OpenEditorAlign` é o campo
+    // Pivot do cartão Look de uma Animated Sprite (`o_cartao_da_sprite::numa_animated_o_pivot_e_um_botao_…`).
+    for e in [
+        E::Frames(0, Vec::new()),
+        E::Grid(1, 1),
+        E::Autoplay(false),
+        E::OpenEditorAlign,
+    ] {
         raised.insert(sample(&e));
     }
     let missing: Vec<u8> = want.difference(&raised).copied().collect();

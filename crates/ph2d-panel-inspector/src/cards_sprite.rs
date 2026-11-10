@@ -101,6 +101,11 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
         ids::INSP_SPRITE_PIVOT_NOME,
         "card.insp.pivot_nome_tip",
     );
+    botao(
+        store,
+        ids::INSP_SPRITE_PIVOT_EDITOR,
+        "card.insp.pivot_in_editor_tip",
+    );
     for (id, nome) in ids::INSP_SPRITE_PIVOT.into_iter().zip(NOMES_DO_PIVOT) {
         botao(store, id, nome);
     }

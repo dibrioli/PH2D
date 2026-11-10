@@ -116,6 +116,15 @@ pub enum Foto {
     Desalinhadas,
     /// …e alinhada: a `run` reduzida a 2/3 e o «By feet» pelo rato real.
     DesalinhadasAcertadas,
+    /// O Pivot no editor (GEF 29): «Two Sheets» aberto pelo campo Pivot do Inspector (Align ligado), na «attack»,
+    /// antes de mexer: a grade de 25 pontos e a caixa de todos os quadros…
+    PivoAntes,
+    /// …e o ponto «Bottom» clicado na grade pelo rato real: a cruz vai aos pés, o desenho não anda…
+    PivoPes,
+    /// …e um Ctrl+Z depois: o Pivot volta, num passo…
+    PivoDesfaz,
+    /// …e o «By hand»: a cruz arrastada pelo rato real até o ponto do meio da direita, onde encaixa.
+    PivoMao,
 }
 
 #[must_use]
@@ -152,11 +161,24 @@ pub fn foto() -> Option<Foto> {
         "animado_align_pes_desfaz" => Some(Foto::AlinharPesDesfaz),
         "animado_desalinhadas" => Some(Foto::Desalinhadas),
         "animado_desalinhadas_acertadas" => Some(Foto::DesalinhadasAcertadas),
+        "animado_pivot" => Some(Foto::PivoAntes),
+        "animado_pivot_pes" => Some(Foto::PivoPes),
+        "animado_pivot_desfaz" => Some(Foto::PivoDesfaz),
+        "animado_pivot_mao" => Some(Foto::PivoMao),
         _ => None,
     }
 }
 
 impl Foto {
+    /// Uma das fotos do Pivot no editor (GEF 29): abre-se pelo campo Pivot, com o Align ligado.
+    #[must_use]
+    pub const fn pivo_no_editor(self) -> bool {
+        matches!(
+            self,
+            Self::PivoAntes | Self::PivoPes | Self::PivoDesfaz | Self::PivoMao
+        )
+    }
+
     /// Onde a vista da foto abre: perto das duas folhas nas do Align, senão a [`VISTA`] da cena.
     #[must_use]
     pub fn vista(self) -> ([f32; 2], f32) {
@@ -189,6 +211,10 @@ impl Foto {
             | Self::AlinharDesfaz
             | Self::AlinharPes
             | Self::AlinharPesDesfaz
+            | Self::PivoAntes
+            | Self::PivoPes
+            | Self::PivoDesfaz
+            | Self::PivoMao
             | Self::IdleQuadro(_) => DUAS,
             Self::AlinhadasIdle | Self::AlinhadasRun => ALINHADAS,
             Self::Desalinhadas | Self::DesalinhadasAcertadas => DESALINHADAS,
@@ -221,7 +247,8 @@ pub enum Passo {
     /// botão sobre o pivô, o arrasto até perto do centro do quad, soltar e relatar.
     Pivo(&'static str, u8),
     /// A fase da prévia Align pelas portas do rato ([`previa_align`]): `0`/`1` o botão Align, `2..=7` a pega do canto,
-    /// `8`/`9` o botão «By feet».
+    /// `8`/`9` o botão «By feet»; o Pivot (GEF 29): `10`/`11` o ponto «Bottom» da grade, `12`/`13` o «By hand»,
+    /// `14` a cruz agarrada, `15`/`16` o caminho até o meio da direita, `17` soltar.
     Alinha(&'static str, u8),
     /// A entrada do artista, que fecha o passo de desfazer.
     Entrada,
@@ -378,6 +405,14 @@ fn previa_align(q: u32, foto: Option<Foto>) -> Vec<Passo> {
     if let Some(f) = foto.filter(|f| matches!(f, Foto::AlinharPes | Foto::AlinharPesDesfaz)) {
         return pes(q, f);
     }
+    if let Some(f) = foto.filter(|f| {
+        matches!(
+            f,
+            Foto::PivoAntes | Foto::PivoPes | Foto::PivoDesfaz | Foto::PivoMao
+        )
+    }) {
+        return pivo_no_editor(q, f);
+    }
     let Some(f) =
         foto.filter(|f| matches!(f, Foto::Alinhar | Foto::AlinharEscala | Foto::AlinharDesfaz))
     else {
@@ -442,6 +477,27 @@ fn pes(q: u32, f: Foto) -> Vec<Passo> {
         40 => vec![P::Relata("pés alinhados".into(), DUAS)],
         50 if f == Foto::AlinharPesDesfaz => vec![P::Desfaz],
         60 if f == Foto::AlinharPesDesfaz => vec![P::Relata("pés 1 Ctrl+Z".into(), DUAS)],
+        _ => Vec::new(),
+    }
+}
+
+/// ⭐ O Pivot no editor (GEF 29) com o rato real: o editor abre com o Align ligado (o campo Pivot do Inspector), na
+/// «attack»; o ponto «Bottom» da grade, ou o «By hand» e a cruz arrastada; e (na foto do desfazer) um Ctrl+Z.
+fn pivo_no_editor(q: u32, f: Foto) -> Vec<Passo> {
+    use Passo as P;
+    let pes = matches!(f, Foto::PivoPes | Foto::PivoDesfaz);
+    match q {
+        20 => vec![
+            P::Anim(DUAS, Ed::SetCurrent("attack".into())),
+            P::Anim(DUAS, Ed::Playing(false)),
+            P::Anim(DUAS, Ed::SetStep(1)),
+        ],
+        30 => vec![P::Relata("pivô antes".into(), DUAS)],
+        32 | 33 if pes => vec![P::Alinha(DUAS, (q - 22) as u8)],
+        32..=37 if f == Foto::PivoMao => vec![P::Alinha(DUAS, (q - 20) as u8)],
+        40 => vec![P::Relata("pivô depois".into(), DUAS)],
+        50 if f == Foto::PivoDesfaz => vec![P::Desfaz],
+        60 if f == Foto::PivoDesfaz => vec![P::Relata("pivô 1 Ctrl+Z".into(), DUAS)],
         _ => Vec::new(),
     }
 }

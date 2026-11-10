@@ -35,6 +35,8 @@ pub struct SpriteFacts {
     pub folha: Option<[u32; 2]>,
     /// Em Animated, a imagem trocada sem corte próprio: o aviso.
     pub corte_velho: Option<ph2d_editor_core::ImageCutNotice>,
+    /// Animated: o Pivot ajusta-se no editor de animações, e o campo é o botão que o abre (GEF 29).
+    pub pivot_no_editor: bool,
 }
 
 /// O que o Replace acabou de mudar: os píxeis de antes e de agora, e o tamanho no mundo de antes.

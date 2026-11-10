@@ -357,6 +357,10 @@ fn a_moldura_do_align_fica_embaixo_a_direita() {
 /// Uma folha 64 × 32 (2 × 1, um quad de 1 m) com o desenho de cada quadro noutro lugar: o 1.º com os pés em `y = 30`
 /// e o meio em `x = 8`; o 2.º com os pés em `y = 24` e o meio em `x = 46` (`14` na célula). A animação `idle` é
 /// os dois quadros, e o 1.º é a referência.
+/// O Pivot no Align (GEF 29): filho daqui para usar a prévia e a folha torta.
+#[path = "pivot.rs"]
+mod pivot;
+
 fn desalinhada(m: &mut Mesa) {
     let (w, h) = (64_usize, 32_usize);
     let mut px = vec![0_u8; w * h * 4];

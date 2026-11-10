@@ -70,6 +70,9 @@ pub enum ImageUseEdit {
     /// **Align ▸ acerto de um quadro** (GEF 28): a célula `cell` da folha `sheet` anda `by` metros locais. A folha vem
     /// dita porque «By feet / By centre» acertam numa edição os quadros de todas as folhas da animação.
     NudgeCell { sheet: u8, cell: u32, by: [f32; 2] },
+    /// **Align ▸ Pivot** (GEF 29): o Pivot do objeto vai a este ponto, em metros locais desde o de agora. Todas as
+    /// folhas e o objeto no jogo ficam onde estão; a posição compensa.
+    MovePivot([f32; 2]),
 }
 
 /// O aviso de imagem trocada, como o cartão Image o escreve.

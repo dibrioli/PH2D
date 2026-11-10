@@ -464,3 +464,19 @@ fn a_barra_da_lista_arrasta_pelo_rato_da_aba_sem_aceitar_nem_fechar() {
     let p = m.docs().completion_painted(id).expect("pintada");
     assert!(p[0].0 > 0, "o arrasto rolou a lista");
 }
+
+/// Onda 3 item 7 (mutação): a lista de completação rola só na vertical — o deslizar de lado sobre ela não é
+/// tomado como Shift+roda do texto (o texto não anda de lado por baixo da lista).
+#[test]
+fn o_deslizar_de_lado_sobre_a_lista_nao_e_do_texto() {
+    let (mut m, ids, _) = mesa(&[("a.luau", "")]);
+    let id = ids[0];
+    m.pede(id);
+    abre(&mut m, id, "ph2d.");
+    m.pinta(id);
+    let (x, y) = m.docs().completion_painted(id).expect("pintada")[0].3;
+    assert!(
+        !m.docs().wheel_sideways(id.0, x, y, -120.0), // LITERAL-PX-OK: um deslize
+        "sobre a lista o deslize de lado não é do texto"
+    );
+}

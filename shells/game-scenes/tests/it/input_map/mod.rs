@@ -14,6 +14,7 @@ mod lista;
 mod lista_acabamento;
 mod lista_censo;
 mod lista_r7a;
+mod mutacao_onda3;
 mod mutacao_r13;
 mod mutacao_w2;
 mod onda3_alt;

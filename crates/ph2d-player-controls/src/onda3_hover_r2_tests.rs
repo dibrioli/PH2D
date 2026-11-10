@@ -140,3 +140,15 @@ fn h4_so_o_botao_principal_faz_reset() {
     let _ = host::click(&mut s, (false, true), reset, false);
     assert!(s.keys().is_empty(), "o principal repõe");
 }
+
+/// Mutação (onda 3, item 3): a tela FECHADA não guarda hover — o movimento do ponteiro não é «alvo mudou» (a shell
+/// repintaria à toa a cada movimento) e nada fica por acender quando ela abre.
+#[test]
+fn a_tela_fechada_nao_guarda_hover() {
+    let mut s = crate::ControlsScreen::default();
+    assert!(!s.pointer_move(Some(Hover::Reset)), "fechada: nada mudou");
+    assert!(!s.pointer_move(Some(Hover::Row(0))), "fechada: nada mudou");
+    s.open();
+    assert_eq!(s.hovered(), None, "aberta de novo, sem hover herdado");
+    assert!(s.pointer_move(Some(Hover::Reset)), "aberta: o alvo mudou");
+}

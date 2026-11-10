@@ -127,6 +127,8 @@ mod vector_engine;
 mod chrome;
 /// As palavras do catálogo de componentes — o 1.º MOTOR a falar pela tabela.
 mod component_catalog;
+/// O Look da forma de colisão no catálogo (GEF02 onda 8): irmão do `component_catalog`, que está no tecto.
+mod component_catalog_forma;
 /// As palavras de INTENÇÃO do *Add Component* — só a busca as lê (F6).
 mod component_keywords;
 /// As palavras do cartão CONSTRAINTS.
@@ -649,6 +651,7 @@ fn tabela(key: &str) -> &'static str {
             .or_else(|| chrome_menus::tr(k))
             .or_else(|| object_add::tr(k))
             .or_else(|| component_add::tr(k))
+            .or_else(|| component_catalog_forma::tr(k))
             .or_else(|| object_mode::tr(k))
             .or_else(|| hier_rows::tr(k))
             .or_else(|| board::tr(k))

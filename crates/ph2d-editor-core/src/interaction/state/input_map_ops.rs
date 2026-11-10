@@ -117,12 +117,9 @@ pub fn capture_if_listening(
     const ESCAPE: u32 = 0x1B;
     store.input_map_listening()?;
     // ⛔ O que a aba nunca liga não é capturado: segue e a escuta continua (InputMap W1/W2b). Uma tecla do SISTEMA,
-    // o F5 (no Play é o transporte: a ligação nunca chegaria ao jogo), Ctrl/Alt e o acorde com o Ctrl em baixo.
-    let held = if store.cmd_held() {
-        ph2d_input::Key::named_in_script("ctrl").unwrap_or_default()
-    } else {
-        Default::default()
-    };
+    // o F5 (no Play é o transporte: a ligação nunca chegaria ao jogo), Ctrl/Alt e o acorde com Ctrl ou Alt em baixo
+    // (a shell empurra os dois em cada `ModifiersChanged`: `set_cmd_held`/`set_alt_held`).
+    let held = ph2d_input::editor_keys::held_from_flags(store.cmd_held(), store.alt_held());
     if ph2d_input::editor_keys::never_binds(ph2d_input::Key(keycode), held) {
         return None;
     }

@@ -316,3 +316,31 @@ fn a_ranhura_nunca_cobre_um_quadro() {
         }
     }
 }
+
+/// ⭐ Smoke do dono 10/11: com o botão ainda premido na célula, o quadro NÃO aparece no lugar da tira antes de o cartão
+/// descer — o vão fica fechado e a tira não o pinta até o voo. *Mutação: `arriving` sem o ramo do `Drag::Cells` ⇒ o
+/// lugar 2 tem a largura cheia enquanto o botão está premido.*
+#[test]
+fn com_o_botao_premido_o_quadro_ainda_nao_esta_na_tira() {
+    let mut m = Mesa::new();
+    m.paint();
+    let l = m.doc().layout.clone();
+    m.click((
+        l.frames[1].0.x + l.frames[1].0.w + 1.0,
+        centre(l.frames[1].0).1,
+    )); // LITERAL-PX-OK: o vão
+    let at = m.cell(20);
+    m.pointer(PointerKind::Down, at);
+    m.paint();
+    assert!(m.doc().flight.is_none(), "o voo só parte ao soltar");
+    assert!(m.doc().flying(2), "a célula 20 está a caminho do lugar 2");
+    assert_eq!(m.doc().layout.frames[2].0.w, 0.0, "e o lugar dela fechado");
+    m.pointer(PointerKind::Up, at);
+    m.paint();
+    assert!(m.doc().flight.is_some());
+    assert_eq!(
+        m.doc().layout.frames[2].0.w,
+        0.0,
+        "o voo parte do vão fechado"
+    );
+}

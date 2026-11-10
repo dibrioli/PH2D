@@ -93,8 +93,17 @@ impl AnimDoc {
     /// O quadro `i` da faixa é um dos que ainda voam (a faixa não o pinta: o cartão é ele).
     #[must_use]
     pub fn flying(&self, i: usize) -> bool {
-        self.flight
-            .as_ref()
-            .is_some_and(|f| i >= f.at && i < f.at + f.n)
+        self.arriving().is_some_and(|(r, _)| r.contains(&i))
+    }
+
+    /// Os quadros a caminho da faixa e quanto o vão deles abriu: os do voo e, com o botão ainda premido na folha, os
+    /// escolhidos, de vão fechado (smoke do dono 10/11: apareciam já no lugar antes de o cartão descer).
+    #[must_use]
+    pub fn arriving(&self) -> Option<(std::ops::Range<usize>, f32)> {
+        if let super::Drag::Cells { base, added, at } = &self.drag {
+            let a = (*at).min(base.len());
+            return Some((a..a + added.len(), 0.0));
+        }
+        self.flight.as_ref().map(|f| (f.at..f.at + f.n, f.open()))
     }
 }

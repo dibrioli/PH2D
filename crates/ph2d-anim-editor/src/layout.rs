@@ -540,11 +540,7 @@ impl AnimDoc {
             (l.strip.w - slot - n_frames.saturating_sub(1) as f32 * gap) / n_frames.max(1) as f32;
         let thumb_w = fill.min(thumb * THUMB_MAX_ASPECT).max(thumb);
         // O voo da inserção: os quadros que chegam abrem o vão aos poucos (`open`), e a tira anda até a marca.
-        let open = self
-            .flight
-            .as_ref()
-            .map_or(1.0, super::doc::flight::Flight::open);
-        let fly = self.flight.as_ref().map(|f| f.at..f.at + f.n);
+        let (fly, open) = self.arriving().map_or((None, 1.0), |(r, o)| (Some(r), o));
         let flying = |i: usize| fly.as_ref().is_some_and(|r| r.contains(&i));
         let pitch = |i: usize| (thumb_w + gap) * if flying(i) { open } else { 1.0 };
         let left = |k: usize| (0..k).map(pitch).sum::<f32>() + if k >= p { slot } else { 0.0 };

@@ -388,7 +388,8 @@ def ciclos(pasta):
 def otica(pasta):
     """`--otica <SAIDA>/wet6` (B14b-cont2): por corrida e por gesto, as imagens da óptica do log da cena
     (`[otica] gesto k: …`), imagens/s, a luz dos factos (Simples/total) e, com o perf, G ciclos do rayon por imagem
-    (traço k → soltar k + 3 s: a óptica corre no rayon). O veredito é a contagem, não o relógio."""
+    (traço k → soltar k + 3 s: a óptica corre no rayon) e a CASA no gesto (principal + rayon por tique de factos).
+    O veredito é a contagem, não o relógio."""
     import glob
     import json
     import os
@@ -421,9 +422,12 @@ def otica(pasta):
                 if f"fim{k}" in m:
                     c = sum(c for x, t, c in a if x == "rayon" and m[f"traco{k}"] < t <= m[f"fim{k}"]) / 1e9
                     n = g[0] + (fases["repouso"][k - 1][0] if k <= len(fases["repouso"]) else 0)
-                    gp = sum(c for x, t, c in a if x != "rayon" and m[f"traco{k}"] < t <= m[f"up{k}"]) / 1e9
+                    gp = sum(c for x, t, c in a if x == "principal" and m[f"traco{k}"] < t <= m[f"up{k}"]) / 1e9
                     gr = sum(c for x, t, c in a if x == "rayon" and m[f"traco{k}"] < t <= m[f"up{k}"]) / 1e9
-                    cic.append(f"{c / max(n, 1):.2f} (gesto: outros {gp:.1f} · rayon {gr:.1f} G)")
+                    # A CASA (o composite do traço) por tique de factos: principal + rayon, M ciclos.
+                    pf = (gp + gr) * 1e3 / max(g[3], 1)
+                    cic.append(f"{c / max(n, 1):.2f} (gesto: principal {gp:.1f} · rayon {gr:.1f} G · "
+                               f"casa {pf:.0f} M/facto)")
         g = " / ".join(f"{n} · {s:.1f} · {si}/{f}" for n, s, si, f in fases["gesto"])
         rp = " / ".join(f"{n} · {s:.1f}" for n, s, _, _ in fases["repouso"])
         print(f"| {os.path.basename(tag).split('_')[0]} | {meta['luz']} | {meta['carga']} | {g} | {rp} "

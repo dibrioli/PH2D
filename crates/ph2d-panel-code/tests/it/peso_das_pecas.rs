@@ -28,10 +28,7 @@ fn corridas(scene: &VectorScene) -> Vec<(Vec<u32>, f32, Vec<i16>)> {
         .iter()
         .map(|g| {
             let ids = r.glyphs[g.glyphs.clone()].iter().map(|x| x.id).collect();
-            let eixos = r.normalized_coords[g.normalized_coords.clone()]
-                .iter()
-                .copied()
-                .collect();
+            let eixos = r.normalized_coords[g.normalized_coords.clone()].to_vec();
             (ids, g.font_size, eixos)
         })
         .collect()

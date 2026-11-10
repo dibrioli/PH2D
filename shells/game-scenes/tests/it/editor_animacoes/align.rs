@@ -457,15 +457,21 @@ fn by_feet_e_by_centre_levam_cada_quadro_ao_ponto_da_referencia() {
 }
 
 /// ⭐ Dono 10/11: com o Align ligado, o «+» cria a animação e a aba SAI do Align (a nova nasce vazia e ganha quadros
-/// na folha). *Mutação: o Add não pede o Align desligado ⇒ a aba continua na prévia.*
+/// na folha), como o botão: sem conta-gotas armado. *Mutação: o Add não sai do Align ⇒ a aba continua na prévia.*
 #[test]
 fn a_animacao_nova_sai_do_align() {
     let mut m = Mesa::new();
     m.align_on();
+    let pick = m.doc().layout.align.pick;
+    m.click(centre(pick));
+    assert!(m.doc().align.picking, "o conta-gotas armado");
     let add = m.doc().layout.add;
     m.click(centre(add));
     m.frame();
-    m.frame();
-    assert!(!m.doc().align.on, "a nova sai do Align");
+    assert!(!m.doc().align.on, "a nova sai do Align no mesmo quadro");
+    assert!(
+        !m.doc().align.picking,
+        "e desarma o conta-gotas (o próximo clique na tira seria engolido)"
+    );
     assert!(m.doc().layout.sheet.w > 0.0, "e a folha volta");
 }

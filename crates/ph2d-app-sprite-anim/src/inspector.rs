@@ -204,10 +204,10 @@ pub fn commit_anim_edit(
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
 ) -> Commit {
-    let nova = (*edit == AnimFieldEdit::Add).then(|| {
-        let lib = sim
-            .world()
-            .get::<SpriteAnimations>(Entity::from_bits(entity_bits));
+    let (add, e) = (*edit == AnimFieldEdit::Add, Entity::from_bits(entity_bits));
+    // Sem tocador, o Add não inventa um para a escolher.
+    let nova = (add && sim.world().get::<SpriteAnimator>(e).is_some()).then(|| {
+        let lib = sim.world().get::<SpriteAnimations>(e);
         lib.map_or_else(
             || SpriteAnimations::new().next_free_name(),
             SpriteAnimations::next_free_name,
@@ -220,7 +220,7 @@ pub fn commit_anim_edit(
     if let Err(e) = ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), queue, registry) {
         return Commit::Falhou(e);
     }
-    if nova.is_some() {
+    if add {
         let off = (entity_bits, false);
         sim.world_mut()
             .get_resource_or_init::<crate::editor::AnimEditorAlignRequests>()

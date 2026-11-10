@@ -1,6 +1,6 @@
 //! ⭐ **Draw Mode Tiled** ([plano GEF 14](../../../docs/GameEngineFuncional/14_tiled_com_tamanho_plano.md) D3/D5):
 //! a Largura/Altura de uma sprite que repete — o collider automático vai junto. Ligá-lo é o uso «Repeated»
-//! ([`crate::image_use::set_use`]).
+//! (`ph2d_app_sprite_anim::image_use::set_use`).
 
 use ph2d_ecs::{Entity, ScrollRepeat, SpriteAnimations, TiledDraw, World};
 use ph2d_editor_core::InspectorDraw;
@@ -60,12 +60,7 @@ pub fn set_tiled_side(world: &mut World, e: Entity, axis: usize, copias: f32) ->
 
 /// O collider em caixa que media o desenho de `e` com o tamanho `antes` (o automático) passa a medir `depois`; um
 /// que o artista mudou à mão fica.
-pub(crate) fn follow_auto_collider(
-    world: &mut World,
-    e: Entity,
-    antes: [f32; 2],
-    depois: [f32; 2],
-) {
+pub fn follow_auto_collider(world: &mut World, e: Entity, antes: [f32; 2], depois: [f32; 2]) {
     // A forma do corpo mora na filha «Collision Shape» (opção B); uma forma no próprio `e` também serve.
     let f = ph2d_physics_ecs::forma_para_editar(world, e).unwrap_or(e);
     if let Some(mut c) = world.get_mut::<Collider>(f)

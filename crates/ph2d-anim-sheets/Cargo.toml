@@ -18,6 +18,8 @@ bytemuck = "1"
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-i18n = { path = "../ph2d-i18n" }
+# O collider automático que segue a Largura/Altura de uma sprite Tiled (`tiled`).
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 # O `Sprite` da folha 0 e a textura da folha promovida (`SheetTextures`); o corte proposto de uma imagem nova.
 ph2d-render = { path = "../ph2d-render" }
 ph2d-sprite-edit = { path = "../ph2d-sprite-edit" }

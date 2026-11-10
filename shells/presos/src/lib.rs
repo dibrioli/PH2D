@@ -71,9 +71,12 @@ pub struct AntesDoRestauro {
 
 impl AntesDoRestauro {
     /// ⭐ **Logo a seguir ao `restore`**, antes de quem lê o mundo: o estado de sessão dos objectos que voltaram
-    /// (a folha à vista do cartão Image e do editor de animações).
-    pub fn repoe_a_sessao(&self, world: &mut ph2d_ecs::World) {
-        self.folhas.depois(world);
+    /// (a folha à vista do cartão Image e do editor de animações). Só num passo do MESMO projeto (`passo`: Ctrl+Z,
+    /// Ctrl+Y, Stop); abrir outro não herda a folha de quem tinha o mesmo `StableId` no projeto anterior.
+    pub fn repoe_a_sessao(&self, world: &mut ph2d_ecs::World, passo: bool) {
+        if passo {
+            self.folhas.depois(world);
+        }
     }
 }
 
@@ -387,5 +390,34 @@ mod tests {
         assert!(pick_base(&mut p, true, nova, true));
         assert!(p.fill_is_hidden(), "a escolha destapou a tinta");
         assert_eq!(p.base_fill(), Some(&Paint::Solid(nova)));
+    }
+
+    /// ⭐ A folha à vista atravessa o respawn pela PORTA do restauro (mutação M6 do fecho 10/11: `folhas` vazio no
+    /// `antes_do_restauro` passava): num passo volta; ao abrir outro projeto (`passo = false`) não se herda.
+    #[test]
+    fn a_porta_do_restauro_leva_a_folha_a_vista_so_num_passo() {
+        use ph2d_ecs::{ExtraSheet, ShownSheet, SpriteSheets, StableId, World, shown_sheet};
+        let folha = |b: u8| ExtraSheet {
+            asset: ph2d_asset::AssetId::from_bytes(&[b]),
+            size: [1.0, 1.0],
+            anchor: [0.0, 0.0],
+            hframes: 2,
+            vframes: 1,
+            offsets: Default::default(),
+        };
+        let duas = || SpriteSheets([folha(1), folha(2)].into_iter().collect());
+        for passo in [true, false] {
+            let mut w = World::new();
+            let a = w.spawn((StableId(7), duas(), ShownSheet(2))).id();
+            let antes = super::antes_do_restauro(&w);
+            w.despawn(a);
+            let a2 = w.spawn((StableId(7), duas())).id();
+            antes.repoe_a_sessao(&mut w, passo);
+            assert_eq!(
+                shown_sheet(&w, a2),
+                if passo { 2 } else { 0 },
+                "passo = {passo}"
+            );
+        }
     }
 }

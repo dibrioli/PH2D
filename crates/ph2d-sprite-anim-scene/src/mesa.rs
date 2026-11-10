@@ -206,7 +206,7 @@ type Pega = Option<((f32, f32), (f32, f32))>;
 static PEGA: std::sync::Mutex<Pega> = std::sync::Mutex::new(None);
 
 /// A prévia Align pelas portas do rato, uma fase por quadro: `0`/`1` o botão Align; `2` a pega do canto, `3..=6` o
-/// caminho até `2/3` da distância ao Pivot, `7` soltar.
+/// caminho até `2/3` da distância ao Pivot, `7` soltar; daí até `22`, By feet, a grelha, By hand, Follow e o arrasto.
 fn alinha(m: &mut impl Mesa, fase: u8, bits: u64) {
     let doc = m.editor(bits, |d| {
         let l = &d.layout.align;

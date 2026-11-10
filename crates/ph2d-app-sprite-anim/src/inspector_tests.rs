@@ -134,6 +134,22 @@ fn o_mais_escolhe_a_animacao_nova() {
         Some(primeira),
         "o jogo continua a começar na de antes"
     );
+    let pedidos = sim
+        .world()
+        .get_resource::<crate::editor::AnimEditorAlignRequests>();
+    assert_eq!(
+        pedidos.map(|p| p.0.clone()),
+        Some(vec![(e.to_bits(), false); 2]),
+        "e sai do Align"
+    );
+    // Sem tocador, o Add não inventa um para escolher a nova.
+    let so = sprite(&mut sim, 8);
+    let queue = EditorCommandQueue::new();
+    assert!(matches!(
+        commit_anim_edit(&mut sim, so.to_bits(), &AnimFieldEdit::Add, &queue, &reg),
+        Commit::Feito
+    ));
+    assert!(sim.world().get::<SpriteAnimator>(so).is_none());
 }
 
 /// **A velocidade fecha o círculo: o que o artista escreve é o que ele volta a ler.**

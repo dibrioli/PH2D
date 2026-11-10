@@ -421,7 +421,7 @@ fn the_only_restore_door_of_the_shell_calls_the_two_halves_in_order() {
     let ordem = [
         "ph2d_host_presos::antes_do_restauro(gfx.sim.world())",
         "state.restore(s, reg)",
-        "antes.repoe_a_sessao(gfx.sim.world_mut());",
+        "antes.repoe_a_sessao(gfx.sim.world_mut(), mark.is_some());",
         "self.vec.entities = map;",
         "self.vec.pen.select_many(&alive);",
         "ph2d_host_presos::depois_do_restauro(",

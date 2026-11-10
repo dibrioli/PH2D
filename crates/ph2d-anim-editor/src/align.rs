@@ -169,6 +169,11 @@ pub(crate) fn hit(r: Rect, x: f32, y: f32) -> bool {
 }
 
 impl AnimDoc {
+    /// Sai do Align como o botão: sem arrasto a meio nem conta-gotas armado (o próximo clique na tira seria engolido).
+    pub fn align_off(&mut self) {
+        (self.align.on, self.align.drag, self.align.picking) = (false, AlignDrag::None, false);
+    }
+
     /// O quadro aberto na prévia: `(posição na animação, quadro)` — o escolhido na tira, senão o que toca, senão o 1.º.
     #[must_use]
     pub fn align_current(&self) -> Option<(usize, AnimFrameRef)> {
@@ -450,8 +455,9 @@ impl AnimDoc {
         }
         let l = self.layout.align;
         if hit(l.toggle, x, y) {
-            self.align.on = !self.align.on;
-            (self.align.drag, self.align.picking) = (AlignDrag::None, false);
+            let on = !self.align.on;
+            self.align_off();
+            self.align.on = on;
             return true;
         }
         if hit(l.pick, x, y) {

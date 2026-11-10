@@ -364,7 +364,7 @@ pub fn frame(
         docs.docs
             .iter_mut()
             .filter(|d| d.entity == b)
-            .for_each(|d| d.align.on = on);
+            .for_each(|d| if on { d.align.on = true } else { d.align_off() });
     }
     let moved = follow_identity(sim.world(), &mut docs.docs);
     let mut look: Vec<u64> = docs.docs.iter().map(|d| d.entity).collect();
@@ -400,6 +400,7 @@ pub fn frame(
             }
             let queue = EditorCommandQueue::new();
             match crate::inspector::commit_anim_edit(sim, d.entity, &edit, &queue, registry) {
+                Commit::Feito if edit == AnimFieldEdit::Add => d.align_off(), // já neste quadro
                 Commit::Feito => {}
                 Commit::Recusado(t) => {
                     toasts.push(t);

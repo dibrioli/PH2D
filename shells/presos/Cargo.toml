@@ -34,5 +34,9 @@ ph2d-vec-edit = { path = "../../crates/ph2d-vec-edit" }
 ph2d-vec-entities = { path = "../../crates/ph2d-vec-entities" }
 ph2d-vec-scene = { path = "../../crates/ph2d-vec-scene" }
 
+[dev-dependencies]
+# A imagem de uma folha extra no teste da folha à vista (`AntesDoRestauro`).
+ph2d-asset = { path = "../../crates/ph2d-asset" }
+
 [lints]
 workspace = true

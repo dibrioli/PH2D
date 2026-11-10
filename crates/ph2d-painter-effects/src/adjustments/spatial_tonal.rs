@@ -15,6 +15,12 @@ fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
+#[cfg(test)]
+thread_local! {
+    /// Borrões escalares que correram neste fio (gate `s_h_com_raios_iguais_borra_uma_vez`).
+    pub(super) static BORROES_ESCALARES: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
 /// Separable Gaussian blur of a SCALAR field (a tone map) in place, clamp-to-edge.
 /// Used by Shadows/Highlights to build the local-average luma. `radius ≤ 0` leaves
 /// the field unblurred (a global, per-pixel tone reference).
@@ -26,6 +32,8 @@ pub fn separable_blur_scalar(radius: f32, field: &mut [f32], win: AdjustWindow) 
     if w == 0 || h == 0 {
         return;
     }
+    #[cfg(test)]
+    BORROES_ESCALARES.with(|c| c.set(c.get() + 1));
     let (weights, half) = gaussian_weights(radius);
     let half = half as i32;
     let (wu, hu) = (w as usize, h as usize);
@@ -47,15 +55,16 @@ pub fn separable_blur_scalar(radius: f32, field: &mut [f32], win: AdjustWindow) 
             }
         });
     }
-    // Vertical pass: read `tmp` → write `field`.
+    // Vertical pass: read `tmp` → write `field`, tap `k` outside and `x` inside (same per-pixel
+    // `k` order, so the bits of the per-pixel loop).
     par_rows(field, wu, hu, |y, out_row| {
-        let y = y as i32;
-        for (x, o) in out_row.iter_mut().enumerate() {
-            let mut s = 0.0;
-            for k in -half..=half {
-                s += tap(&tmp, x as i32, y + k) * weights[k.unsigned_abs() as usize];
+        out_row.fill(0.0);
+        for k in -half..=half {
+            let r = (y as i32 + k).clamp(0, h - 1) as usize;
+            let wgt = weights[k.unsigned_abs() as usize];
+            for (o, s) in out_row.iter_mut().zip(&tmp[r * wu..(r + 1) * wu]) {
+                *o += s * wgt;
             }
-            *o = s;
         }
     });
 }
@@ -153,7 +162,7 @@ pub fn apply_bloom(p: &BloomParams, acc: &mut [[f32; 4]], win: AdjustWindow) {
 /// Box-downsample a `w×h` premultiplied buffer to `dw×dh` by averaging each
 /// `factor×factor` source block (clamped at the edges). Premultiplied RGBA is
 /// linear-combinable, so a plain average is correct.
-fn downsample_box(
+pub(super) fn downsample_box(
     src: &[[f32; 4]],
     w: i32,
     h: i32,
@@ -162,8 +171,11 @@ fn downsample_box(
     factor: i32,
 ) -> Vec<[f32; 4]> {
     let mut dst = vec![[0.0f32; 4]; (dw * dh) as usize];
-    for dy in 0..dh {
-        for dx in 0..dw {
+    // One destination row per band (each reads only `src`).
+    par_rows(&mut dst, dw as usize, dh as usize, |dy, out_row| {
+        let dy = dy as i32;
+        for (dx, o) in out_row.iter_mut().enumerate() {
+            let dx = dx as i32;
             let mut acc = [0.0f32; 4];
             let mut n = 0.0f32;
             for sy in 0..factor {
@@ -178,9 +190,9 @@ fn downsample_box(
                 }
             }
             let inv = 1.0 / n;
-            dst[(dy * dw + dx) as usize] = [acc[0] * inv, acc[1] * inv, acc[2] * inv, acc[3] * inv];
+            *o = [acc[0] * inv, acc[1] * inv, acc[2] * inv, acc[3] * inv];
         }
-    }
+    });
     dst
 }
 
@@ -226,14 +238,20 @@ pub fn apply_shadows_highlights(
         return;
     }
     // Local-average luma maps (one per correction radius).
+    // Equal radii give the same map: blur once and read it twice.
     let mut local_lo: Vec<f32> = acc.iter().map(display_luma).collect();
-    let mut local_hi = local_lo.clone();
+    let local_hi = if p.highlights_radius == p.shadows_radius {
+        None
+    } else {
+        let mut hi = local_lo.clone();
+        separable_blur_scalar(p.highlights_radius, &mut hi, win);
+        Some(hi)
+    };
     separable_blur_scalar(p.shadows_radius, &mut local_lo, win);
-    separable_blur_scalar(p.highlights_radius, &mut local_hi, win);
     let tw_s = p.shadows_tonal_width.max(1e-3);
     let tw_h = p.highlights_tonal_width.max(1e-3);
     let (wu, hu) = (win.width as usize, win.height as usize);
-    let (lo, hi) = (&local_lo, &local_hi);
+    let (lo, hi) = (&local_lo, local_hi.as_ref().unwrap_or(&local_lo));
     par_rows(acc, wu, hu, |y, out_row| {
         for (x, px) in out_row.iter_mut().enumerate() {
             let i = y * wu + x;

@@ -42,6 +42,10 @@ use super::compute::{em_luz, linear_to_srgb_f32};
 use super::*;
 use ph2d_det_math::DetMath as _;
 
+// B19b: as faixas e o blur de `k` por fora = o caminho antigo ao bit.
+#[cfg(test)]
+#[path = "spatial_faixas_tests.rs"]
+mod faixas_tests;
 #[path = "spatial_tonal.rs"]
 mod tonal; // Bloom + Shadows/Highlights (LOC cap: sibling module)
 #[cfg(test)]
@@ -253,10 +257,10 @@ fn sample_clamp(buf: &[[f32; 4]], w: i32, h: i32, x: i32, y: i32) -> [f32; 4] {
 /// opaque silhouette.
 #[inline]
 fn premultiply(buf: &mut [[f32; 4]]) {
-    for px in buf.iter_mut() {
+    par_pixels(buf, |px| {
         let a = px[3].clamp(0.0, 1.0);
         *px = [px[0] * a, px[1] * a, px[2] * a, a];
-    }
+    });
 }
 
 /// Inverse of [`premultiply`] (premultiplied encoded → encoded straight). A fully
@@ -269,11 +273,11 @@ fn unpremultiply(buf: &mut [[f32; 4]]) {
 /// Bloom's boundary: it is optical (light added), so it premultiplies in LIGHT.
 #[inline]
 fn premultiply_em_luz(buf: &mut [[f32; 4]]) {
-    for px in buf.iter_mut() {
+    par_pixels(buf, |px| {
         let a = px[3].clamp(0.0, 1.0);
         let l = em_luz(px);
         *px = [l[0] * a, l[1] * a, l[2] * a, a];
-    }
+    });
 }
 
 /// Inverse of [`premultiply_em_luz`] (premultiplied light → encoded straight).
@@ -283,8 +287,8 @@ fn unpremultiply_em_luz(buf: &mut [[f32; 4]]) {
 }
 
 #[inline]
-fn unpremultiply_with(buf: &mut [[f32; 4]], encode: impl Fn(f32) -> f32) {
-    for px in buf.iter_mut() {
+fn unpremultiply_with(buf: &mut [[f32; 4]], encode: impl Fn(f32) -> f32 + Sync) {
+    par_pixels(buf, |px| {
         let a = px[3].clamp(0.0, 1.0);
         if a > 1e-6 {
             px[0] = encode(px[0] / a);
@@ -294,7 +298,7 @@ fn unpremultiply_with(buf: &mut [[f32; 4]], encode: impl Fn(f32) -> f32) {
         } else {
             *px = [0.0, 0.0, 0.0, 0.0];
         }
-    }
+    });
 }
 
 /// Separable Gaussian blur in **premultiplied** display tones — colour AND coverage
@@ -384,38 +388,48 @@ fn separable_blur_premul(radius: f32, acc: &mut [[f32; 4]], win: AdjustWindow) {
     let (weights, half) = gaussian_weights(radius);
     let half = half as i32;
     let (wu, hu) = (w as usize, h as usize);
-    // Horizontal pass: read `acc` → write `tmp` (rows in parallel).
+    // Horizontal pass: read `acc` → write `tmp`; the interior reads without a clamp.
     let mut tmp = vec![[0.0f32; 4]; acc.len()];
     {
         let src: &[[f32; 4]] = acc;
         par_rows(&mut tmp, wu, hu, |y, out_row| {
-            let y = y as i32;
+            let row = &src[y * wu..(y + 1) * wu];
             for (x, o) in out_row.iter_mut().enumerate() {
+                let xi = x as i32;
                 let mut c = [0.0f32; 4];
-                for k in -half..=half {
-                    let s = sample_clamp(src, w, h, x as i32 + k, y);
-                    let wgt = weights[k.unsigned_abs() as usize];
-                    for ch in 0..4 {
-                        c[ch] += s[ch] * wgt;
+                if xi >= half && xi + half < w {
+                    let lo = x - half as usize;
+                    for (j, s) in row[lo..=x + half as usize].iter().enumerate() {
+                        let wgt = weights[(j as i32 - half).unsigned_abs() as usize];
+                        for ch in 0..4 {
+                            c[ch] += s[ch] * wgt;
+                        }
+                    }
+                } else {
+                    for k in -half..=half {
+                        let s = row[(xi + k).clamp(0, w - 1) as usize];
+                        let wgt = weights[k.unsigned_abs() as usize];
+                        for ch in 0..4 {
+                            c[ch] += s[ch] * wgt;
+                        }
                     }
                 }
                 *o = c;
             }
         });
     }
-    // Vertical pass: read `tmp` → write `acc` (rows in parallel).
+    // Vertical pass: read `tmp` → write `acc`, tap `k` outside and `x` inside (a whole source
+    // row per tap); each pixel still sums its taps in `k` order, so the bits are the per-pixel loop's.
     par_rows(acc, wu, hu, |y, out_row| {
-        let y = y as i32;
-        for (x, o) in out_row.iter_mut().enumerate() {
-            let mut c = [0.0f32; 4];
-            for k in -half..=half {
-                let s = sample_clamp(&tmp, w, h, x as i32, y + k);
-                let wgt = weights[k.unsigned_abs() as usize];
+        out_row.fill([0.0; 4]);
+        for k in -half..=half {
+            let r = (y as i32 + k).clamp(0, h - 1) as usize;
+            let wgt = weights[k.unsigned_abs() as usize];
+            for (o, s) in out_row.iter_mut().zip(&tmp[r * wu..(r + 1) * wu]) {
                 for ch in 0..4 {
-                    c[ch] += s[ch] * wgt;
+                    o[ch] += s[ch] * wgt;
                 }
             }
-            *o = c;
         }
     });
 }
@@ -455,21 +469,29 @@ pub fn apply_motion_blur(p: &MotionBlurParams, acc: &mut [[f32; 4]], win: Adjust
     let wgt = weights[0]; // uniform box
     let half = half as i32;
     let (sin, cos) = p.angle.det_sin_cos(); // direction (cos, sin)
+    let taps: Vec<(i32, i32)> = (-half..=half)
+        .map(|k| {
+            (
+                (k as f32 * cos).round() as i32,
+                (k as f32 * sin).round() as i32,
+            )
+        })
+        .collect();
     let src = acc.to_vec(); // premultiplied
-    for y in 0..h {
-        for x in 0..w {
-            let mut c = [0.0f32; 4];
-            for k in -half..=half {
-                let ox = (k as f32 * cos).round() as i32;
-                let oy = (k as f32 * sin).round() as i32;
-                let s = sample_clamp(&src, w, h, x + ox, y + oy);
+    let (wu, hu) = (w as usize, h as usize);
+    // Each output row reads only `src`; taps outside, `x` inside, summed in `k` order per pixel.
+    par_rows(acc, wu, hu, |y, out_row| {
+        out_row.fill([0.0; 4]);
+        for &(ox, oy) in &taps {
+            let r = &src[(y as i32 + oy).clamp(0, h - 1) as usize * wu..][..wu];
+            for (x, o) in out_row.iter_mut().enumerate() {
+                let s = r[(x as i32 + ox).clamp(0, w - 1) as usize];
                 for ch in 0..4 {
-                    c[ch] += s[ch] * wgt;
+                    o[ch] += s[ch] * wgt;
                 }
             }
-            acc[(y * w + x) as usize] = c;
         }
-    }
+    });
     unpremultiply(acc);
 }
 
@@ -505,26 +527,29 @@ pub fn apply_chromatic_aberration(
     let scale = [p.red_shift * inv, p.green_shift * inv, p.blue_shift * inv];
     let (ox, oy) = (win.origin_x as i32, win.origin_y as i32);
     let src = acc.to_vec(); // premultiplied
-    for y in 0..h {
+    let src = &src[..];
+    par_rows(acc, w as usize, h as usize, |y, out_row| {
+        let y = y as i32;
         let gy = (oy + y) as f32;
         let dy = gy - cy;
-        for x in 0..w {
+        for (x, o) in out_row.iter_mut().enumerate() {
+            let x = x as i32;
             let gx = (ox + x) as f32;
             let dx = gx - cx;
             let tap = |sc: f32| {
                 let sx = (gx - dx * sc + 0.5).floor() as i32 - ox;
                 let sy = (gy - dy * sc + 0.5).floor() as i32 - oy;
-                sample_clamp(&src, w, h, sx, sy)
+                sample_clamp(src, w, h, sx, sy)
             };
             let i = (y * w + x) as usize;
-            acc[i] = [
+            *o = [
                 tap(scale[0])[0],
                 tap(scale[1])[1],
                 tap(scale[2])[2],
                 src[i][3],
             ];
         }
-    }
+    });
     unpremultiply(acc);
 }
 

@@ -607,6 +607,10 @@ pub(crate) struct PaintState {
     /// current stroke's OWN footprint re-wets the moisture map at the bake ([`Self::pour_canvas_wet`]),
     /// so a second stroke never resets the drying clock of the earlier washes (doc 14 #4, Enio 2026-07-11).
     pub(super) wet_stroke_dirty: Option<Region>,
+    /// B16.11: o último pour deste traço e os quadros que os composites consumiram depois dele
+    /// ([`super::watercolor_backdrop::MarcaDoPour`]). `None` (pen-down, passo do secador, tela nova)
+    /// ⇒ o próximo pour caminha o traço inteiro.
+    pub(super) wet_pour_marca: Option<super::watercolor_backdrop::MarcaDoPour>,
     /// **Inpaint** defect mask (1 byte/px, `>= 128` ⇒ heal). Accumulated as the user brushes in Inpaint
     /// mode; on pen-up [`super::inpaint`] reconstructs the marked region and clears it. Sized `w*h`.
     pub(super) inpaint_mask: Vec<u8>,

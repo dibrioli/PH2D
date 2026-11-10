@@ -297,6 +297,54 @@ impl PainterTool {
             h: (y1 - y0) as u32,
         })
     }
+
+    /// B16.11 (RC-66): a janela que o pour caminha, dentro do retângulo do traço. Depois do pour
+    /// anterior do MESMO traço, `canvas_wet ≥ dureza(cobertura)` em todo texel dele; sem passo do
+    /// secador (ele derruba a marca), cobertura e dono só mudaram nos quadros consumidos desde então
+    /// (`pendente`) e no sujo ainda por consumir — fora deles o max-blend não muda um byte.
+    fn janela_do_pour(&mut self, rect: Rect4, cur_o: Dono, has_owner: bool) -> Rect4 {
+        let marca = self.paint.wet_pour_marca.take();
+        #[cfg(test)]
+        if POUR_CUMULATIVO.get() {
+            return rect;
+        }
+        let Some(m) = marca.filter(|m| has_owner && m.dono == cur_o && self.paint.tracos_fora == 0)
+        else {
+            return rect;
+        };
+        let (x0, y0, x1, y1) = rect;
+        let novo = match (m.pendente, self.paint.wet_frame_dirty) {
+            (Some(p), Some(f)) => union_region(p, f),
+            (p, f) => match p.or(f) {
+                Some(r) => r,
+                None => return (x0, y0, x0, y0),
+            },
+        };
+        let nx0 = (novo.x as usize).clamp(x0, x1);
+        let ny0 = (novo.y as usize).clamp(y0, y1);
+        let nx1 = ((novo.x + novo.w) as usize).clamp(nx0, x1);
+        let ny1 = ((novo.y + novo.h) as usize).clamp(ny0, y1);
+        (nx0, ny0, nx1, ny1)
+    }
+}
+
+type Rect4 = (usize, usize, usize, usize);
+use super::watercolor_field::Dono;
+
+/// B16.11: a marca do último pour do traço ([`PaintState::wet_pour_marca`]) — o dono que ele despejou
+/// e a união dos quadros que os composites consumiram depois dele (`watercolor_render/window.rs`).
+#[derive(Clone, Copy, Debug)]
+pub(super) struct MarcaDoPour {
+    dono: Dono,
+    pub(super) pendente: Option<Region>,
+}
+
+#[cfg(test)]
+thread_local! {
+    /// O oráculo do B16.11: o pour pelo retângulo CUMULATIVO do traço (o caminho antigo).
+    pub(super) static POUR_CUMULATIVO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// Texels que os pours caminharam (o gate conta em vez de cronometrar).
+    pub(super) static POUR_PX: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
 
 /// EDGE-1 — DEFAULT paper drying rate in wetness-bytes per second (~10 s window, Enio 2026-07-10:
@@ -372,6 +420,7 @@ impl PainterTool {
         let (fw, fh) = (fw as usize, fh as usize);
         let n = fw * fh;
         if n == 0 || self.paint.stroke_coverage.len() != n {
+            self.paint.wet_pour_marca = None;
             return;
         }
         let Some(r) = self.paint.wet_stroke_dirty else {
@@ -388,6 +437,7 @@ impl PainterTool {
         if self.paint.canvas_wet.len() != n {
             self.paint.canvas_wet = vec![0u8; n];
             self.paint.canvas_wet_rect = None;
+            self.paint.wet_pour_marca = None;
         }
         // Only THIS stroke's OWN footprint re-wets (not the union coverage over the rect) — else a stroke
         // whose bbox merely CONTAINS an earlier wash re-wet that wash into a rectangle. `has_owner` false
@@ -408,13 +458,21 @@ impl PainterTool {
         // em 9,6-13,6 ms/quadro, o segundo maior item do quadro do artista.
         //
         // [ADR-0109]: ../../../../docs/architecture/decisions/0109-rayon-exception-watercolor-composite.md
+        let rect = (x0, y0, x1, y1);
+        let (wx0, wy0, wx1, wy1) = self.janela_do_pour(rect, cur_o, has_owner);
+        self.paint.wet_pour_marca = has_owner.then_some(MarcaDoPour {
+            dono: cur_o,
+            pendente: None,
+        });
+        #[cfg(test)]
+        POUR_PX.set(POUR_PX.get() + ((wx1 - wx0) * (wy1 - wy0)) as u64);
         let lut = pour_hardening_lut();
         let cov = &self.paint.stroke_coverage;
         let owner = &self.paint.wet_styles.owner;
-        let band = &mut self.paint.canvas_wet[y0 * fw..y1 * fw];
+        let band = &mut self.paint.canvas_wet[wy0 * fw..wy1 * fw];
         let fold = |y: usize, row: &mut [u8]| {
-            let base = (y0 + y) * fw;
-            for x in x0..x1 {
+            let base = (wy0 + y) * fw;
+            for x in wx0..wx1 {
                 if has_owner && owner[base + x] != cur_o {
                     continue;
                 }
@@ -424,7 +482,7 @@ impl PainterTool {
                 }
             }
         };
-        if (x1 - x0) * (y1 - y0) >= WET_PAR_MIN {
+        if (wx1 - wx0) * (wy1 - wy0) >= WET_PAR_MIN {
             use rayon::prelude::*;
             band.par_chunks_mut(fw).enumerate().for_each(|(y, row)| {
                 fold(y, row);
@@ -463,6 +521,7 @@ impl PainterTool {
         self.paint.wet_soak_active = false;
         self.paint.wet_cum_dirty = None;
         self.paint.wet_stroke_dirty = None;
+        self.paint.wet_pour_marca = None;
         self.paint.wet_session_wetness = 0.0; // the forced "Wet the layer" rewet ends with the session (#3)
         self.clear_wet_editable(); // the wash is now permanent — no more live texture edits
     }
@@ -560,6 +619,7 @@ impl PainterTool {
         self.paint.wet_styles.clear();
         self.paint.wet_cum_dirty = None;
         self.paint.wet_stroke_dirty = None;
+        self.paint.wet_pour_marca = None;
         self.paint.wet_session_wetness = WET_CANVAS_REWET;
     }
 
@@ -593,3 +653,7 @@ pub type CanvasWetView<'a> = (&'a [u8], u32, u32, [u32; 4]);
 #[cfg(test)]
 #[path = "watercolor_backdrop_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "watercolor_backdrop_pour_tests.rs"]
+mod pour_tests;

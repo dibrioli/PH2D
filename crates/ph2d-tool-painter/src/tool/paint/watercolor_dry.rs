@@ -51,6 +51,7 @@ impl PainterTool {
             return;
         }
         self.paint.canvas_wet_carry -= f32::from(step);
+        self.paint.wet_pour_marca = None; // B16.11: a umidade baixou, o pour volta ao traço
         // O gap de 4 vizinhos tem de ler a umidade PRÉ-passo (a lei é independente de ordem); fora do
         // rect conta como seco (0), então a frente molhada recua também na borda do rect.
         //

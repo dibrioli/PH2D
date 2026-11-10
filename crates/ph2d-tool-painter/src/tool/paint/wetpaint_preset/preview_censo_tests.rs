@@ -198,6 +198,7 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("wet_frame_linhas", TRACO),
     ("wet_cum_dirty", TRACO),
     ("wet_stroke_dirty", TRACO),
+    ("wet_pour_marca", TRACO),
     ("inpaint_mask", OUTRA),
     ("fill_threshold", OUTRA),
     ("fill_seed", OUTRA),

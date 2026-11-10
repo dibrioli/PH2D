@@ -160,6 +160,7 @@ impl PainterTool {
         // THIS-stroke footprint restarts every stroke (even continuing a wet session): only what THIS
         // stroke paints re-wets the moisture map, so earlier washes keep their own drying clocks (#4).
         self.paint.wet_stroke_dirty = None;
+        self.paint.wet_pour_marca = None; // B16.11: o 1.º pour do traço caminha-o inteiro
         self.paint.wet_level_smear_pos = None;
         self.paint.wet_smear_pos = None; // the Wet Mix true-smear chain restarts with the stroke
         self.reset_wet_mix(); // the mixer reservoir starts fresh (no pickup) each stroke

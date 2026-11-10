@@ -53,6 +53,7 @@ impl PainterTool {
         let (fw, fh) = (fw as usize, fh as usize);
         let n = fw * fh;
         if n == 0 || self.paint.stroke_coverage.len() != n || self.canvas_rgba.len() != n * 4 {
+            self.paint.wet_pour_marca = None; // B16.11: um quadro ficou por consumir
             return None;
         }
         // The frozen base (own the Arc so the canvas make_mut doesn't alias the field).
@@ -60,12 +61,13 @@ impl PainterTool {
         // so a continuing stroke re-renders the whole UNION from scratch (one wash, one rim)
         // instead of double-counting its own bake. Per-stroke fallback = first-stroke identical.
         let base_arc = match self.paint.wet_session_base.as_ref() {
-            Some(b) if b.len() == n * 4 => Arc::clone(b),
-            _ => self.paint.watercolor_base.as_ref().map(Arc::clone)?,
+            Some(b) if b.len() == n * 4 => Some(Arc::clone(b)),
+            _ => self.paint.watercolor_base.as_ref().map(Arc::clone),
         };
-        if base_arc.len() != n * 4 {
+        let Some(base_arc) = base_arc.filter(|b| b.len() == n * 4) else {
+            self.paint.wet_pour_marca = None;
             return None;
-        }
+        };
         // The frozen GROUND ([`super::super::watercolor_backdrop`]): the Beer–Lambert base where
         // the layer is transparent, the rewet's "what is paint" reference and the lift's target.
         // A missing/mis-sized one (defensive) degrades to a uniform paper-colour ground.
@@ -77,6 +79,9 @@ impl PainterTool {
         // Pick the recomposite rect and CONSUME the frame one (wet_edges `resetFrame`): live =
         // this frame's dabs; commit = the whole stroke (`paint_end`'s finish dabs folded in).
         let frame = self.paint.wet_frame_dirty.take();
+        if let (Some(m), Some(f)) = (self.paint.wet_pour_marca.as_mut(), frame) {
+            m.pendente = Some(m.pendente.map_or(f, |p| union_region(p, f))); // o pour lê (B16.11)
+        }
         let frame = if self.wash.recompoe_tudo {
             Some(Region {
                 x: 0,
@@ -304,7 +309,8 @@ impl PainterTool {
             !super::super::watercolor_rewet_px::params_differ(t)
                 && t.iter().all(|s| {
                     (s.core_r, s.spread_px, s.reserve_r) == (a.core_r, a.spread_px, a.reserve_r)
-                        && (s.wet, s.paper_edge, s.granulation) == (a.wet, a.paper_edge, a.granulation)
+                        && (s.wet, s.paper_edge, s.granulation)
+                            == (a.wet, a.paper_edge, a.granulation)
                         && (s.spread_thin, s.pigment_mix) == (a.spread_thin, a.pigment_mix)
                 })
         });

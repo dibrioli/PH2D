@@ -52,6 +52,10 @@ pub fn physics_smoke_ficha(ctx: &mut crate::SceneCtx<'_>) {
             .find(|(_, n)| n.0 == nome.trim())
             .map(|(e, _)| e.to_bits());
     }
+    // A foto do Look da forma (GEF02 onda 8): o pivô da «Loose Shape» no canto de baixo à esquerda, a forma no lugar.
+    if std::env::var_os("PH2D_PHYSICS_SMOKE_PIVO_NO_CANTO").is_some() {
+        pivo_no_canto(ctx.world);
+    }
     if std::env::var_os("PH2D_PHYSICS_SMOKE_CAMADA_NA_TIMELINE").is_some() {
         camada_na_timeline(ctx);
     }
@@ -106,4 +110,28 @@ fn camada_na_timeline(ctx: &mut crate::SceneCtx<'_>) {
 #[test]
 fn a_cena_nasce_parada() {
     assert!(crate::smoke::PAUSED_SCENES.contains(&"120"));
+}
+
+/// O pivô da «Loose Shape» no canto de baixo à esquerda pela lei da ferramenta (`arrasta_pivo`): a forma fica.
+fn pivo_no_canto(world: &mut ph2d_ecs::World) {
+    let mut q = world.query::<(Entity, &Name)>();
+    let Some(e) = q
+        .iter(world)
+        .find(|(_, n)| n.0 == "Loose Shape")
+        .map(|(e, _)| e)
+    else {
+        return;
+    };
+    let (Some((c, h)), Some(t)) = (
+        ph2d_shape_handles::look::anchor_half(world, e),
+        world.get::<ph2d_ecs::Transform>(e).copied(),
+    ) else {
+        return;
+    };
+    let canto = [c[0] - h[0], c[1] - h[1]];
+    let origem = [
+        t.translation.x + canto[0] * t.scale.x,
+        t.translation.y + canto[1] * t.scale.y,
+    ];
+    let _ = ph2d_shape_handles::look::arrasta_pivo(world, e, origem, [h[0], h[1]]);
 }

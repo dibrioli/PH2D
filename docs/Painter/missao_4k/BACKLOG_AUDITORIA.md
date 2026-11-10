@@ -80,7 +80,7 @@ Colunas: `| id | tema | origem | arquivos (file:line) | muda aparência? | medi�
 | id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
 |---|---|---|---|---|---|---|---|---|---|---|
 | B15.A1 | `box_blur` do assentamento: 3 alocações da caixa + 2 transposições seriais cache-hostis; corre a cada tique do slider Smoothing/Body/Push/Source | AU05-2 | tp/impasto_settle.rs `box_blur`/`transpose`; impasto_live.rs `refresh_live_relief`/`rebuild_live_layer_relief` | não | `settle` por tique, traço diagonal 4K, Smoothing 1,0 (spans por fase) | transposição por ladrilhos 64×64 em `par_chunks`; 2 buffers em vez de 3 | `o_assentamento_paralelo_e_ladrilhado_e_o_da_rota_antiga_ao_bit` (1×1…4096×2160, r 1..4) | | | aberto |
-| B15.A2 | `layer_height_view`: API `pub` morta que clonaria 33 MB por chamada (o `dead_code` não vê `pub`) | AU05-3 | tp/impasto_live.rs (`pub fn layer_height_view`) | não | `rg layer_height_view crates shells` = 0 chamadores | apagar (ou `#[cfg(test)]`) | apagar + `check` verde | | | aberto |
+| B15.A2 | `layer_height_view`: API `pub` morta que clonaria 33 MB por chamada (o `dead_code` não vê `pub`) | AU05-3 | tp/impasto_live.rs (`pub fn layer_height_view`) | não | `rg layer_height_view crates shells` = 0 chamadores | apagar (ou `#[cfg(test)]`) | apagar + `check` verde | 17 chamadores, todos em testes | 5c5b454504 | feito (`#[cfg(any(test, feature = "test-support"))]`) |
 
 ### → junta-se ao B16 (Watercolor)
 | id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |

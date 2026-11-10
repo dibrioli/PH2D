@@ -531,8 +531,9 @@ mod tests {
         let src = include_str!("impasto_gpu.rs");
         // Controle positivo: a função tem de ser ENCONTRADA, senão o gate passa por não achar nada — a
         // falha que o arch-gate do Shape Flow pegou em si mesmo.
+        // B15-cont: o walk mora no `_reusing`; o `_in` é `reusing(None)` e varreria zero.
         let at = src
-            .find("pub fn impasto_gpu_planes_in(")
+            .find("pub fn impasto_gpu_planes_reusing(")
             .expect("controle: a porta do fold tem de existir");
         let body = &src[at..];
         let end = body

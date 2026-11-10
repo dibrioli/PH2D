@@ -282,6 +282,7 @@ impl PainterTool {
                     // restored) — dirtying all of `kr` every move would recompute the CPU light over the whole
                     // footprint and is the difference between 3 ms and 14 ms. So compare before/after here.
                     let old_c = cov[gi];
+                    let old_m = mat[gi];
                     let old_r: [u8; 4] = rgba[gi * 4..gi * 4 + 4].try_into().unwrap();
                     // **Every kr texel gets an UNCONDITIONAL final assignment** — the composite where a
                     // foreign source reaches it, the FROZEN plane where it does not. The height loop above is
@@ -358,14 +359,15 @@ impl PainterTool {
                             rgba[gi * 4..gi * 4 + 4].copy_from_slice(&pre_rgba[gi * 4..gi * 4 + 4]);
                         }
                     }
-                    if cov[gi] != old_c || rgba[gi * 4..gi * 4 + 4] != old_r {
+                    if cov[gi] != old_c || mat[gi] != old_m || rgba[gi * 4..gi * 4 + 4] != old_r {
                         let rr = Region { x, y, w: 1, h: 1 };
                         matter_moved =
                             Some(matter_moved.map_or(rr, |acc| super::union_region(acc, rr)));
                     }
                 }
             }
-            self.invalidate_composite();
+            // B15.4: sem `invalidate_composite()` — o `matter_moved` (com o material) marca o que mexeu.
+            self.edited_since_bind = true;
         }
 
         // Dirty exactly where the picture changed — the height's `moved` sliver ∪ the matter's `matter_moved`.

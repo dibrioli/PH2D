@@ -278,3 +278,45 @@ fn exactly_one_verb_moves_the_matter() {
         }
     }
 }
+
+/// B15.4 — o Inflate refaz só o que MEXEU (altura, cobertura, cor e material, +1 da normal), e o quadro é
+/// o da recomposição total ao bit. MUT: devolver o `invalidate_composite()` ⇒ `FullComposite` (vermelho);
+/// tirar o material do `matter_moved` ⇒ o quadro parcial difere.
+#[test]
+fn o_inflate_recompoe_so_o_que_mexeu_e_e_a_recomposicao_total_ao_bit() {
+    let (mut t, _layer, _) = deposited_stroke(200);
+    let _ = t.take_preview_arc();
+    arm_sculpt(&mut t, INFLATE, 0.5, 1.0);
+    t.paint.brush.impasto_wax = 0.9; // a bola leva material, não só cobertura
+    t.set_sculpt_depth(DEPTH_UP);
+    let _ = t.take_preview_arc();
+    let path = [
+        [70.0f32, 100.0],
+        [90.0, 102.0],
+        [110.0, 98.0],
+        [130.0, 100.0],
+    ];
+    t.on_canvas_pointer(cp(path[0], PointerPhase::Down));
+    let mut parciais = 0usize;
+    for (k, p) in path[1..].iter().enumerate() {
+        t.on_canvas_pointer(cp(*p, PointerPhase::Move));
+        let Some((parcial, _, _)) = t.take_preview_arc() else {
+            continue;
+        };
+        assert_eq!(
+            t.preview_drain_diag().0,
+            crate::tool::DrainBranch::PartialComposite,
+            "passo {k}: o Inflate não refaz a tela inteira"
+        );
+        parciais += 1;
+        let parcial = (*parcial).clone();
+        t.composited = None;
+        t.preview_dirty = true;
+        let (total, _, _) = t.take_preview_arc().expect("recomposição total");
+        assert!(*total == parcial, "passo {k}: o parcial difere do total");
+    }
+    assert!(
+        parciais >= 2,
+        "o Inflate tem de mudar o quadro ({parciais})"
+    );
+}

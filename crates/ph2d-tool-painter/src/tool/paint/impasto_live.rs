@@ -434,8 +434,10 @@ impl PainterTool {
         {
             return;
         }
+        // Sem `invalidate_composite()` (B15.4): o rebuild já marca a caixa que MEXEU (+1 da normal), e
+        // a recomposição da tela inteira custava 225 ms a 4096² por tique. O tique é trabalho por gravar.
         self.rebuild_live_layer_relief();
-        self.invalidate_composite();
+        self.edited_since_bind = true;
     }
 
     /// Forget the live stroke — its ground is no longer valid (an erase, an undo, a fresh document).
@@ -512,3 +514,7 @@ pub(super) mod spans {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "impasto_live_tests.rs"]
+mod live_tests;

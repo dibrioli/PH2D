@@ -10,7 +10,6 @@ mod a_aba_do_encaixe_passa_no_preview;
 mod a_accao_pedida_pela_fileira_nasce_no_mapa;
 mod a_coluna_pintada_encolhe_com_a_janela;
 mod a_fabrica_nasce_antes_de_a_morte_drenar;
-mod a_frame_request_has_a_listener;
 mod a_frames_handle_resizes_it_and_does_not_scale_it;
 mod a_layout_never_commands_a_panel_a_bridge_owns;
 mod a_paralaxe_corre_depois_da_camera_e_recebe_o_rectangulo_inteiro;

@@ -55,9 +55,11 @@ impl crate::App {
         let jogo = self.undo.janela_do_jogo.is_some() || self.no_palco();
         let conduz = ph2d_app_painter::macro_track::caminho::a_cena_conduz_o_ponteiro();
         let mut tem = vec![(jogo, P::Play), (self.playhead.is_playing(), P::Animacao)];
-        tem.push((self.morph_machines.values().any(|m| m.is_flying()), P::Animacao));
+        let voa = self.morph_machines.values().any(|m| m.is_flying());
+        let som = self.audio.as_ref().is_some_and(|a| a.audivel());
         let rede = ph2d_app_board::live::ao_vivo();
-        tem.extend([(conduz, P::Smoke), (rede, P::Rede)]);
+        tem.extend([(conduz, P::Smoke), (rede, P::Rede), (som, P::Som)]);
+        tem.push((voa, P::Animacao));
         if let Some(g) = self.gfx.as_mut() {
             ph2d_app_painter::painter_bridge_queries::quer_quadro(&mut g.tools, &mut ativos);
             let docs = g.hero_screen.as_ref().map(|h| &h.documents);

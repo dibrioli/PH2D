@@ -329,6 +329,12 @@ impl AudioSystem {
         self.engine.levels()
     }
 
+    /// B23.2 (o quadro a pedido): há som a sair — ver [`audivel`].
+    #[must_use]
+    pub fn audivel(&self) -> bool {
+        audivel(&self.engine)
+    }
+
     /// O Pause do jogo: as vozes da cena calam e guardam a posição. Chamado por quadro; fala uma vez por mudança.
     pub fn pause_voices(&mut self, paused: bool) {
         if paused != self.voices_paused && self.engine.pause_voices(paused).is_ok() {
@@ -583,6 +589,13 @@ impl AudioSystem {
     }
 }
 
+/// A prévia do editor a tocar (o cursor da onda anda) ou um medidor acima de zero: o laço a pedido não
+/// dorme. Calado, dorme — o último quadro (o medidor a zero) chega pelo despertador.
+#[must_use]
+pub fn audivel(engine: &AudioEngine) -> bool {
+    engine.preview_playing() || engine.levels().iter().any(|l| *l > 0.0)
+}
+
 /// ⭐ **O que a família do ÁUDIO declara à shell** — os roteadores de smoke, lidos DENTRO desta crate
 /// ([`smoke::ROUTERS`]), como nas outras famílias (auditoria de arquitectura A1, 2026-09-12).
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
@@ -607,5 +620,19 @@ mod tests {
         // Never exceeds the requested gain, and actually oscillates.
         assert!(s.iter().all(|&x| x.abs() <= 0.4 + 1e-4), "within gain");
         assert!(s.iter().any(|&x| x.abs() > 0.2), "tone has real amplitude");
+    }
+
+    /// B23.2: o motor calado não pede quadro; uma voz a soar pede.
+    #[test]
+    fn o_som_a_sair_pede_quadro() {
+        let format = AudioFormat::stereo(48_000);
+        let (mut engine, mut renderer) = AudioEngine::new(format);
+        let mut out = vec![0.0; 1024];
+        renderer.render(&mut out, 512);
+        assert!(!audivel(&engine), "calado");
+        let tom = signals::sine_tone(format, 440.0, 0.1, 0.4);
+        engine.play(tom, PlayParams::default()).unwrap();
+        renderer.render(&mut out, 512);
+        assert!(audivel(&engine), "uma voz a soar");
     }
 }

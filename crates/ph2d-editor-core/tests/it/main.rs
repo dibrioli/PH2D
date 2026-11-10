@@ -24,6 +24,7 @@ mod a_caixa_de_numero_nao_corta_o_numero;
 mod a_column_closes_by_the_gesture_that_resizes_it;
 mod a_coluna_da_especie_mede_a_familia;
 mod a_coluna_vazia_nao_pisca_quando_a_area_cresce;
+mod a_frame_request_has_a_listener; // o laço a pedido lê cada produtor (lê a shell; veio dela, 10/11)
 mod a_label_that_does_not_fit_is_elided_not_wrapped;
 mod a_label_that_fits_is_never_painted_with_dots;
 mod a_linha_de_escolha_tem_losango_nos_dois_feitios;

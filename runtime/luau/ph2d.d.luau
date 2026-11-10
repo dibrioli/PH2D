@@ -30,7 +30,7 @@ export type PropertyOptions = { min: number?, max: number?, step: number?, optio
 export type StateValue = boolean | number | string | { [string | number]: StateValue }
 
 --- A keyboard key, lower case; `shift`, `ctrl` and `alt` mean either side.
-export type KeyName = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" | "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "f1" | "f2" | "f3" | "f4" | "f5" | "f6" | "f7" | "f8" | "f9" | "f10" | "f11" | "f12" | "tab" | "enter" | "space" | "escape" | "backspace" | "delete" | "up" | "down" | "left" | "right" | "left_shift" | "right_shift" | "left_ctrl" | "right_ctrl" | "left_alt" | "right_alt" | "home" | "[" | "]" | "," | "." | "shift" | "ctrl" | "alt"
+export type KeyName = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" | "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "f1" | "f2" | "f3" | "f4" | "f5" | "f6" | "f7" | "f8" | "f9" | "f10" | "f11" | "f12" | "tab" | "enter" | "space" | "escape" | "backspace" | "delete" | "up" | "down" | "left" | "right" | "left_shift" | "right_shift" | "left_ctrl" | "right_ctrl" | "left_alt" | "right_alt" | "home" | "[" | "]" | "," | "." | "`" | "-" | "=" | "\\" | ";" | "'" | "/" | "insert" | "end" | "pageup" | "pagedown" | "capslock" | "numlock" | "kp0" | "kp1" | "kp2" | "kp3" | "kp4" | "kp5" | "kp6" | "kp7" | "kp8" | "kp9" | "kp." | "kp/" | "kp*" | "kp-" | "kp+" | "kpenter" | "shift" | "ctrl" | "alt"
 
 --- A mouse button.
 export type MouseButtonName = "left" | "right" | "middle"

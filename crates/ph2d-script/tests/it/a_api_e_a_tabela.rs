@@ -378,7 +378,8 @@ fn os_nomes_de_tecla_sao_os_do_teclado() {
         .definition;
     let na_tabela: Vec<String> = def
         .split(" | ")
-        .map(|n| n.trim_matches('"').to_owned())
+        // O `\\` é a string Luau da barra invertida (`key:\\` no teclado de notebook, §13.1).
+        .map(|n| n.trim_matches('"').replace("\\\\", "\\"))
         .collect();
     assert_eq!(na_tabela, ph2d_input::Key::script_names());
     let botoes = API_TYPES

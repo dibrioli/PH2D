@@ -684,3 +684,6 @@ mod life;
 /// As acções do Input Map (`ph2d.action_*`).
 #[path = "scene_action_tests.rs"]
 mod action;
+
+#[path = "scene_api_keys_tests.rs"]
+mod keys;

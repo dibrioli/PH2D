@@ -36,7 +36,7 @@ Colunas: `| id | tema | origem | arquivos (file:line) | muda aparência? | medi�
 ### → junta-se ao B05 (ajustes e camadas com passo de undo)
 | id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
 |---|---|---|---|---|---|---|---|---|---|---|
-| B05.A1 | Só `set_adjustment_param` marca «editado»: curvas, gradiente, mixer, cor seletiva, segmentos e toggles deixam `has_unbaked_edits()` falso e o desativar descarta a edição | AU-01-1 | TL/layers/adjustments.rs:68,82,107,186,215,264; TL/runtime.rs:261; TL/trait_impls.rs:92 | sim (a sprite deixa de ficar como no Apply) | repro motor: `mark_baked(); set_curve_point(); has_unbaked_edits()` | `fn ajuste_mudou(&mut self,id)` única, chamada nas 7 portas (~20 linhas) | `um_ajuste_mexido_depois_do_apply_conta_como_nao_assado` (6 portas) | | | aberto |
+| B05.A1 | Só `set_adjustment_param` marca «editado»: curvas, gradiente, mixer, cor seletiva, segmentos e toggles deixam `has_unbaked_edits()` falso e o desativar descarta a edição | AU-01-1 | TL/layers/adjustments.rs:68,82,107,186,215,264; TL/runtime.rs:261; TL/trait_impls.rs:92 | sim (a sprite deixa de ficar como no Apply) | repro motor: `mark_baked(); set_curve_point(); has_unbaked_edits()` | `fn ajuste_mudou(&mut self,id)` única, chamada nas 7 portas (~20 linhas) | coberto pelo censo `todo_setter_de_camada_e_de_ajuste_marca_sobe_a_revisao_e_cria_um_passo` (mark_baked → setter → has_unbaked_edits) | 12/12 portas marcam por `ajuste_mudou` | este commit | feito |
 
 ### → junta-se ao B06 (relevo acompanha a tinta; warp/paste)
 | id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |

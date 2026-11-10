@@ -7,6 +7,7 @@
 //! former `tool/layers.rs` god-file (pure move).
 
 use super::super::*;
+use super::passo::{arrasto, prop};
 use crate::layers::ReliefComposite;
 
 impl PainterTool {
@@ -19,8 +20,10 @@ impl PainterTool {
     /// an in-flight stroke. `invalidate_composite` just drops the cache, which a
     /// mid-stroke edit recovers from on the next drain.
     pub fn set_layer_visible(&mut self, id: RtLayerId, visible: bool) {
-        self.layers.set_visible(id, visible);
-        self.invalidate_composite();
+        self.passo_de_camada(None, |t| {
+            t.layers.set_visible(id, visible);
+            t.invalidate_composite();
+        })
     }
 
     /// **Renomeia uma camada.** No-op se `id` for desconhecido.
@@ -35,21 +38,28 @@ impl PainterTool {
     /// num campo do [`Layer`], nunca em buffers.
     pub fn set_layer_name(&mut self, id: RtLayerId, name: impl Into<String>) {
         self.macro_recusa("set_layer_name");
-        if let Some(layer) = self.layers.get_mut(id) {
-            layer.name = name.into();
-        }
+        self.passo_de_camada(arrasto(id, prop::NOME, 0), |t| {
+            if let Some(layer) = t.layers.get_mut(id) {
+                layer.name = name.into();
+            }
+            t.bump_layers_revision();
+        })
     }
 
     /// Set a layer's opacity (0..=1). No-op if `id` unknown.
     pub fn set_layer_opacity(&mut self, id: RtLayerId, opacity: f32) {
-        self.layers.set_opacity(id, opacity);
-        self.invalidate_composite();
+        self.passo_de_camada(arrasto(id, prop::OPACIDADE, 0), |t| {
+            t.layers.set_opacity(id, opacity);
+            t.invalidate_composite();
+        })
     }
 
     /// Set a layer's blend mode. No-op if `id` unknown.
     pub fn set_layer_blend_mode(&mut self, id: RtLayerId, mode: BlendMode) {
-        self.layers.set_blend_mode(id, mode);
-        self.invalidate_composite();
+        self.passo_de_camada(None, |t| {
+            t.layers.set_blend_mode(id, mode);
+            t.invalidate_composite();
+        })
     }
 
     /// Set a layer's **Impasto depth** (`-1..1`) — the live, permanent handle on everything ever
@@ -60,58 +70,74 @@ impl PainterTool {
     /// brush's own Depth is baked into each stroke as it lands and afterwards only the last one is
     /// still live.
     pub fn set_layer_impasto_depth(&mut self, id: RtLayerId, depth: f32) {
-        self.layers.set_impasto_depth(id, depth);
-        self.invalidate_composite();
+        self.passo_de_camada(arrasto(id, prop::IMPASTO, 0), |t| {
+            t.layers.set_impasto_depth(id, depth);
+            t.invalidate_composite();
+        })
     }
 
     /// [`Self::set_layer_impasto_depth`] from a **bare slider's** `0..1` track — the panel's per-row
     /// sliders (opacity, and now this) store normalised and the tool maps to the domain, exactly like
     /// `set_brush_size_norm`. `0.5` is the zero: the two halves of the track mean opposite things.
     pub fn set_layer_impasto_depth_norm(&mut self, id: RtLayerId, norm: f32) {
-        self.layers.set_impasto_depth_norm(id, norm);
-        self.invalidate_composite();
+        self.passo_de_camada(arrasto(id, prop::IMPASTO, 0), |t| {
+            t.layers.set_impasto_depth_norm(id, norm);
+            t.invalidate_composite();
+        })
     }
 
     /// Flip a layer's relief mode (`Add` ⇄ `Level`) — [`LayerStack::toggle_impasto_composite`].
     pub fn toggle_layer_impasto_composite(&mut self, id: RtLayerId) {
-        self.layers.toggle_impasto_composite(id);
-        self.invalidate_composite();
+        self.passo_de_camada(None, |t| {
+            t.layers.toggle_impasto_composite(id);
+            t.invalidate_composite();
+        })
     }
 
     /// Set how a layer's relief meets the relief below it (`Add` / `Level`). No-op if `id` unknown.
     pub fn set_layer_impasto_composite(&mut self, id: RtLayerId, mode: ReliefComposite) {
-        self.layers.set_impasto_composite(id, mode);
-        self.invalidate_composite();
+        self.passo_de_camada(None, |t| {
+            t.layers.set_impasto_composite(id, mode);
+            t.invalidate_composite();
+        })
     }
 
     /// Toggle a layer's clipping-mask modifier (§2.8) — non-destructive (the
     /// painting is preserved; only the composite changes). No-op if `id` unknown.
     pub fn set_layer_clipping(&mut self, id: RtLayerId, clipping: bool) {
-        self.layers.set_clipping(id, clipping);
-        self.invalidate_composite();
+        self.passo_de_camada(None, |t| {
+            t.layers.set_clipping(id, clipping);
+            t.invalidate_composite();
+        })
     }
 
     /// Toggle a layer's alpha-lock modifier (§2.10). Future paint into this
     /// layer is then clamped to its existing alpha. No-op if `id` unknown.
     pub fn set_layer_alpha_locked(&mut self, id: RtLayerId, locked: bool) {
-        self.layers.set_alpha_locked(id, locked);
-        self.invalidate_composite();
+        self.passo_de_camada(None, |t| {
+            t.layers.set_alpha_locked(id, locked);
+            t.invalidate_composite();
+        })
     }
 
     /// Toggle a layer's reference modifier (§2.9) — exclusive (setting one
     /// clears the others). No-op if `id` unknown. Full ColorDrop behavior is W7;
     /// this is the non-destructive flag + UI badge.
     pub fn set_layer_reference(&mut self, id: RtLayerId, is_reference: bool) {
-        self.layers.set_reference(id, is_reference);
-        self.invalidate_composite();
+        self.passo_de_camada(None, |t| {
+            t.layers.set_reference(id, is_reference);
+            t.invalidate_composite();
+        })
     }
 
     /// Add an empty group at the top of the stack (§2.1). No-op (`None`)
     /// mid-stroke or at the hard cap.
     pub fn add_group(&mut self) -> Option<RtLayerId> {
-        let id = self.layers.add_group("Group")?;
-        self.invalidate_composite();
-        Some(id)
+        self.passo_de_camada(None, |t| {
+            let id = t.layers.add_group("Group")?;
+            t.invalidate_composite();
+            Some(id)
+        })
     }
 
     /// Wrap the ACTIVE layer in a new group and return the group id. Interim
@@ -120,22 +146,24 @@ impl PainterTool {
     /// active layer stays the edit target (its `canvas_rgba` is untouched). No-op
     /// (`None`) mid-stroke, with no active layer, on the base sprite, or at cap.
     pub fn group_active(&mut self) -> Option<RtLayerId> {
-        let active = self.layers.active()?;
-        // The base sprite is pinned at root bottom — don't nest it.
-        if self.layers.root().last() == Some(&active) {
-            return None;
-        }
-        let g = self.layers.add_group("Group")?;
-        if !self.layers.move_into_group(active, g) {
-            self.layers.remove(g); // couldn't nest (depth/cycle) — drop the empty group
-            return None;
-        }
-        self.layers.set_active(active); // keep painting the layer, not the group
-        self.selection.clear();
-        self.selection.insert(g);
-        self.selection.insert(active);
-        self.invalidate_composite();
-        Some(g)
+        self.passo_de_camada(None, |t| {
+            let active = t.layers.active()?;
+            // The base sprite is pinned at root bottom — don't nest it.
+            if t.layers.root().last() == Some(&active) {
+                return None;
+            }
+            let g = t.layers.add_group("Group")?;
+            if !t.layers.move_into_group(active, g) {
+                t.layers.remove(g); // couldn't nest (depth/cycle) — drop the empty group
+                return None;
+            }
+            t.layers.set_active(active); // keep painting the layer, not the group
+            t.selection.clear();
+            t.selection.insert(g);
+            t.selection.insert(active);
+            t.invalidate_composite();
+            Some(g)
+        })
     }
 
     /// Apply a drag-drop reparent/reorder emitted by the dispatch
@@ -151,9 +179,11 @@ impl PainterTool {
         drop: ph2d_editor_core::interaction::PanelRowDrop,
     ) {
         self.macro_recusa("handle_layer_reparent");
-        if reparent_in(&mut self.layers, dragged, drop) {
-            self.invalidate_composite();
-        }
+        self.passo_de_camada(None, |t| {
+            if reparent_in(&mut t.layers, dragged, drop) {
+                t.invalidate_composite();
+            }
+        })
     }
 
     /// Snapshot the ACTIVE layer's working buffer (`canvas_rgba`) into
@@ -180,6 +210,17 @@ impl PainterTool {
     /// the new active starts as a fresh transparent `canvas_rgba`. Returns the
     /// new id, or `None` mid-stroke / before a source is set / at the cap.
     pub fn add_raster_layer(&mut self, name: impl Into<String>) -> Option<RtLayerId> {
+        self.add_raster_layer_com(name, None)
+    }
+
+    /// A porta das duas acima: os píxeis (ou a tela transparente) entram ANTES do commit, dentro do passo.
+    /// Escrevê-los depois era uma escrita da tela inteira fora de toda janela declarada (B01.5: o passo
+    /// seguinte disparava o `debug_assert` de `undo_delta_absorb`).
+    fn add_raster_layer_com(
+        &mut self,
+        name: impl Into<String>,
+        rgba: Option<Vec<u8>>,
+    ) -> Option<RtLayerId> {
         let (w, h) = self.source_size;
         if w == 0 || h == 0 {
             return None;
@@ -195,7 +236,8 @@ impl PainterTool {
         self.flush_active_to_images();
         let id = self.layers.add_raster(name, w, h)?; // sets active = id (top)
         self.images.remove(&id); // active lives in canvas_rgba, not images
-        self.replace_canvas(Arc::new(vec![0u8; (w as usize) * (h as usize) * 4]));
+        let rgba = rgba.unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
+        self.replace_canvas(Arc::new(rgba));
         self.commit_structural_edit(undo_before);
         self.reset_selection_to(id);
         self.invalidate_composite();
@@ -238,10 +280,7 @@ impl PainterTool {
         if rgba.len() != (w as usize) * (h as usize) * 4 {
             return None;
         }
-        let id = self.add_raster_layer(name)?;
-        self.replace_canvas(std::sync::Arc::new(rgba));
-        self.invalidate_composite();
-        Some(id)
+        self.add_raster_layer_com(name, Some(rgba))
     }
 
     /// Create a grayscale mask on the ACTIVE raster layer (§2.7) and make the
@@ -298,12 +337,14 @@ impl PainterTool {
     /// it (`1 - value`), so this just flips the flag + invalidates the
     /// composite. No-op mid-stroke or if `mask_id` is not a mask.
     pub fn toggle_mask_inverted(&mut self, mask_id: RtLayerId) {
-        let inverted = match self.layers.get(mask_id).map(|l| &l.kind) {
-            Some(LayerKind::Mask(m)) => m.inverted,
-            _ => return,
-        };
-        self.layers.set_mask_inverted(mask_id, !inverted);
-        self.invalidate_composite();
+        self.passo_de_camada(None, |t| {
+            let inverted = match t.layers.get(mask_id).map(|l| &l.kind) {
+                Some(LayerKind::Mask(m)) => m.inverted,
+                _ => return,
+            };
+            t.layers.set_mask_inverted(mask_id, !inverted);
+            t.invalidate_composite();
+        })
     }
 
     /// Make `id` the active edit target: flush the current active's pixels to
@@ -446,42 +487,48 @@ impl PainterTool {
         if targets.len() < 2 {
             return self.group_active();
         }
-        let g = self.layers.add_group("Group")?;
-        let mut moved_any = false;
-        for &id in &targets {
-            if self.layers.move_into_group(id, g) {
-                moved_any = true;
+        self.passo_de_camada(None, |t| {
+            let g = t.layers.add_group("Group")?;
+            let mut moved_any = false;
+            for &id in &targets {
+                if t.layers.move_into_group(id, g) {
+                    moved_any = true;
+                }
             }
-        }
-        if !moved_any {
-            self.layers.remove(g); // could not nest anything — drop the empty group
-            return None;
-        }
-        // Active is unchanged by grouping (its layer was reparented, not moved
-        // out of focus). Collapse the selection to the new group for a clear cue.
-        self.selection.clear();
-        self.selection.insert(g);
-        if let Some(a) = self.layers.active() {
-            self.selection.insert(a);
-        }
-        self.invalidate_composite();
-        Some(g)
+            if !moved_any {
+                t.layers.remove(g); // could not nest anything — drop the empty group
+                return None;
+            }
+            // Active is unchanged by grouping (its layer was reparented, not moved
+            // out of focus). Collapse the selection to the new group for a clear cue.
+            t.selection.clear();
+            t.selection.insert(g);
+            if let Some(a) = t.layers.active() {
+                t.selection.insert(a);
+            }
+            t.invalidate_composite();
+            Some(g)
+        })
     }
 
     /// Move a layer one step toward the FRONT (top of z-order) — layers panel
     /// ↑ reorder button. No-op mid-stroke (structural-edit lifecycle, mirror of
     /// `select_layer`) or at the top. Invalidates the composite.
     pub fn move_layer_up(&mut self, id: RtLayerId) {
-        self.layers.move_up(id);
-        self.invalidate_composite();
+        self.passo_de_camada(None, |t| {
+            t.layers.move_up(id);
+            t.invalidate_composite();
+        })
     }
 
     /// Move a layer one step toward the BACK (bottom of z-order) — layers panel
     /// ↓ reorder button. No-op mid-stroke or at the bottom. Invalidates the
     /// composite.
     pub fn move_layer_down(&mut self, id: RtLayerId) {
-        self.layers.move_down(id);
-        self.invalidate_composite();
+        self.passo_de_camada(None, |t| {
+            t.layers.move_down(id);
+            t.invalidate_composite();
+        })
     }
 }
 

@@ -185,7 +185,6 @@ fn elipse_aberta(t: &mut PainterTool) {
 /// B01.5 — toda porta de camada fecha a forma aberta (Apply na camada onde ela foi desenhada) antes de
 /// trocar a tela; um Esc depois não cola na camada nova a tela da antiga.
 #[test]
-#[ignore = "B01.5 parcial: debug_assert da janela de absorção (undo_delta_absorb.rs:86) numa das portas"]
 fn toda_porta_de_camada_fecha_a_forma_aberta() {
     type Porta = fn(&mut PainterTool, RtLayerId);
     let portas: [(&str, Porta); 5] = [

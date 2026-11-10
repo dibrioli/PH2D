@@ -264,6 +264,9 @@ pub enum CoalesceKind {
     OpCycleStroke,
     /// A centre-square Add↔Remove tap on selection shape `i` — taps on DIFFERENT shapes don't coalesce.
     OpCycleSelection(usize),
+    /// Um gesto CONTÍNUO sobre uma propriedade de camada/ajuste (camada, propriedade, índice): os quadros
+    /// de um arrasto de slider/curva/opacidade são UM passo (B05, `tool::layers::passo`).
+    Camada(crate::layers::LayerId, u8, u16),
 }
 
 /// One retained history entry: the two endpoints' **metadata** plus the DELTA of every canvas-shaped

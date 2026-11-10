@@ -7,6 +7,7 @@
 //! former `tool/layers.rs` god-file (pure move).
 
 use super::super::*;
+use super::passo::{arrasto, prop};
 
 /// Max control points per Curves channel (ADR-0045 §2.6 `ControlPoints` cap).
 /// The bespoke editor's add-point button stops here.
@@ -46,6 +47,7 @@ impl PainterTool {
     /// …). No-op mid-stroke or if `id` is not an adjustment. Invalidates the
     /// composite so the live preview re-renders.
     pub fn set_adjustment_param(&mut self, id: RtLayerId, slot: usize, slider01: f32) {
+        let antes = self.snapshot_model();
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
@@ -60,15 +62,7 @@ impl PainterTool {
         // `composite_with_cache` instead of recomposing the whole stack. (NOT the
         // structural `invalidate_composite`, which would clear all cuts + force a
         // cold full recompose every drag frame — the exact cost we're killing.)
-        self.compositor_cache.invalidate_above(id, &self.layers);
-        self.composited = None;
-        self.dirty_rect = None;
-        self.adjustment_cache_pending = true;
-        self.preview_dirty = true;
-        self.edited_since_bind = true; // adjustment edit → unbaked composite change
-        // The adjustment's params live in the published LayerStack, so the panel
-        // snapshot must republish (mirror of `invalidate_composite`'s bump).
-        self.layers_revision = self.layers_revision.wrapping_add(1);
+        self.ajuste_mudou(id, antes, arrasto(id, prop::SLIDER, slot));
     }
 
     /// Flip toggle `slot` of adjustment layer `id` (the panel's per-slot switches,
@@ -80,6 +74,7 @@ impl PainterTool {
     /// adjustment. Routes the preview through the same cut-cache fast lane as a
     /// slider edit ([`Self::set_adjustment_param`]).
     pub fn flip_adjustment_toggle(&mut self, id: RtLayerId, slot: usize) {
+        let antes = self.snapshot_model();
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
@@ -90,12 +85,7 @@ impl PainterTool {
         ph2d_painter_effects::adjustments::set_adjustment_toggle_param(&mut adj.params, slot, !cur);
         // Same param-only hot lane as `set_adjustment_param`: keep the cuts below
         // this adjustment, restart from its cut, republish for the panel snapshot.
-        self.compositor_cache.invalidate_above(id, &self.layers);
-        self.composited = None;
-        self.dirty_rect = None;
-        self.adjustment_cache_pending = true;
-        self.preview_dirty = true;
-        self.layers_revision = self.layers_revision.wrapping_add(1);
+        self.ajuste_mudou(id, antes, None);
     }
 
     /// Set weight `slot` (0 = R, 1 = G, 2 = B source, 3 = constant) of Channel
@@ -111,6 +101,7 @@ impl PainterTool {
         slot: usize,
         value01: f32,
     ) {
+        let antes = self.snapshot_model();
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
@@ -119,12 +110,7 @@ impl PainterTool {
             return;
         };
         ph2d_painter_effects::adjustments::set_channel_mixer_param(m, output, slot, value01);
-        self.compositor_cache.invalidate_above(id, &self.layers);
-        self.composited = None;
-        self.dirty_rect = None;
-        self.adjustment_cache_pending = true;
-        self.preview_dirty = true;
-        self.layers_revision = self.layers_revision.wrapping_add(1);
+        self.ajuste_mudou(id, antes, arrasto(id, prop::MIXER, output * 4 + slot));
     }
 
     /// Gradient-Map editor mutators (W4 BATCH-2) — move / add / remove a stop +
@@ -132,36 +118,40 @@ impl PainterTool {
     /// cut-cache fast lane as a slider edit. No-op mid-stroke or for a non-Gradient
     /// layer / out-of-range stop (delegated to the brush helpers).
     pub fn set_gradient_stop_offset(&mut self, id: RtLayerId, stop: usize, offset: f32) {
+        let antes = self.snapshot_model();
         if let Some(g) = self.gradient_params_mut(id) {
             ph2d_painter_effects::adjustments::move_gradient_stop(g, stop, offset);
-            self.after_curve_edit(id);
+            self.ajuste_mudou(id, antes, arrasto(id, prop::GRADIENTE_POS, stop));
         }
     }
 
     /// Insert a stop on Gradient-Map `id` (midpoint of the widest gap, color on the
     /// current gradient). Returns the inserted index, or `None` (cap / non-Gradient).
     pub fn add_gradient_stop(&mut self, id: RtLayerId) -> Option<usize> {
+        let antes = self.snapshot_model();
         let g = self.gradient_params_mut(id)?;
         let idx = ph2d_painter_effects::adjustments::add_gradient_stop(g);
         if idx.is_some() {
-            self.after_curve_edit(id);
+            self.ajuste_mudou(id, antes, None);
         }
         idx
     }
 
     /// Remove stop `stop` from Gradient-Map `id` (keeps ≥2 stops).
     pub fn remove_gradient_stop(&mut self, id: RtLayerId, stop: usize) {
+        let antes = self.snapshot_model();
         if let Some(g) = self.gradient_params_mut(id) {
             ph2d_painter_effects::adjustments::remove_gradient_stop(g, stop);
-            self.after_curve_edit(id);
+            self.ajuste_mudou(id, antes, None);
         }
     }
 
     /// Set RGB slider `slot` of Gradient-Map `id`'s `stop` from a `0..1` value.
     pub fn set_gradient_stop_color(&mut self, id: RtLayerId, stop: usize, slot: usize, value: f32) {
+        let antes = self.snapshot_model();
         if let Some(g) = self.gradient_params_mut(id) {
             ph2d_painter_effects::adjustments::set_gradient_stop_color_param(g, stop, slot, value);
-            self.after_curve_edit(id);
+            self.ajuste_mudou(id, antes, arrasto(id, prop::GRADIENTE_COR, stop * 4 + slot));
         }
     }
 
@@ -190,6 +180,7 @@ impl PainterTool {
         slot: usize,
         value01: f32,
     ) {
+        let antes = self.snapshot_model();
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
@@ -199,12 +190,7 @@ impl PainterTool {
             return;
         };
         ph2d_painter_effects::adjustments::set_selective_color_param(s, bucket, slot, value01);
-        self.compositor_cache.invalidate_above(id, &self.layers);
-        self.composited = None;
-        self.dirty_rect = None;
-        self.adjustment_cache_pending = true;
-        self.preview_dirty = true;
-        self.layers_revision = self.layers_revision.wrapping_add(1);
+        self.ajuste_mudou(id, antes, arrasto(id, prop::SELECTIVA, bucket * 4 + slot));
     }
 
     /// Select option `option` of adjustment layer `id`'s segmented param (the
@@ -213,18 +199,14 @@ impl PainterTool {
     /// mid-stroke or if `id` is not an adjustment. Routes the preview through the
     /// same cut-cache fast lane as a slider edit ([`Self::set_adjustment_param`]).
     pub fn set_adjustment_segment(&mut self, id: RtLayerId, option: usize) {
+        let antes = self.snapshot_model();
         let Some(adj) = self.layers.adjustment_mut(id) else {
             return;
         };
         ph2d_painter_effects::adjustments::set_adjustment_segment_param(&mut adj.params, option);
         // Same param-only hot lane as `set_adjustment_param` (a scope change only
         // rebuilds this adjustment's transfer; layers below keep their cuts).
-        self.compositor_cache.invalidate_above(id, &self.layers);
-        self.composited = None;
-        self.dirty_rect = None;
-        self.adjustment_cache_pending = true;
-        self.preview_dirty = true;
-        self.layers_revision = self.layers_revision.wrapping_add(1);
+        self.ajuste_mudou(id, antes, None);
     }
 
     /// Move control point `point_index` of adjustment `id`'s `channel` curve to
@@ -249,25 +231,16 @@ impl PainterTool {
         x01: f32,
         y01: f32,
     ) {
+        let antes = self.snapshot_model();
         if let Some(adj) = self.layers.adjustment_mut(id)
             && set_curve_point_in(&mut adj.params, channel, point_index, x01, y01)
         {
-            self.after_curve_edit(id);
+            self.ajuste_mudou(
+                id,
+                antes,
+                arrasto(id, prop::CURVA, usize::from(channel) * 16 + point_index),
+            );
         }
-    }
-
-    /// Cut-cache restart + republish after any curve edit (move/add/remove a
-    /// point): a curve change is param-only relative to the layers BELOW the
-    /// adjustment, so keep their cuts and restart from this adjustment's cut via
-    /// `composite_with_cache` (the GPU LUT path then re-renders in real time —
-    /// same hot-path lane as `set_adjustment_param`).
-    fn after_curve_edit(&mut self, id: RtLayerId) {
-        self.compositor_cache.invalidate_above(id, &self.layers);
-        self.composited = None;
-        self.dirty_rect = None;
-        self.adjustment_cache_pending = true;
-        self.preview_dirty = true;
-        self.layers_revision = self.layers_revision.wrapping_add(1);
     }
 
     /// Insert a control point on `channel`'s curve of adjustment `id` at the
@@ -276,9 +249,10 @@ impl PainterTool {
     /// inserted index, or `None` (no-op) mid-stroke, for a non-Curves layer, an
     /// out-of-range channel, a degenerate (<2-point) curve, or at the ≤8-point cap.
     pub fn add_curve_point(&mut self, id: RtLayerId, channel: u8) -> Option<usize> {
+        let antes = self.snapshot_model();
         let adj = self.layers.adjustment_mut(id)?;
         let at = add_curve_point_in(&mut adj.params, channel)?;
-        self.after_curve_edit(id);
+        self.ajuste_mudou(id, antes, None);
         Some(at)
     }
 
@@ -286,10 +260,11 @@ impl PainterTool {
     /// mid-stroke, for a non-Curves layer, an out-of-range channel/index, or when
     /// only the two endpoints remain (a curve needs ≥2 points).
     pub fn remove_curve_point(&mut self, id: RtLayerId, channel: u8, index: usize) {
+        let antes = self.snapshot_model();
         if let Some(adj) = self.layers.adjustment_mut(id)
             && remove_curve_point_in(&mut adj.params, channel, index)
         {
-            self.after_curve_edit(id);
+            self.ajuste_mudou(id, antes, None);
         }
     }
 }

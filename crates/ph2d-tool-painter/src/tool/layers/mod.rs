@@ -18,6 +18,9 @@ mod cache;
 mod estrutura;
 mod model;
 mod mutate;
+mod passo;
+#[cfg(test)]
+mod passo_tests;
 mod preview;
 mod texture;
 mod undo;

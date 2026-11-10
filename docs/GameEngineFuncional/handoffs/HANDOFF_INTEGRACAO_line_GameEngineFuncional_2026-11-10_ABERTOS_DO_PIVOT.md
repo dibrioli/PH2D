@@ -112,3 +112,5 @@ Fotos: [`fotos_30/`](../fotos_30/). Smoke do dono de 10/11: OK nos passos 2–4 
 3. Selecione «Two Sheets», cartão Animation ▸ «Edit animations…», escolha `run`, arraste a barra azul debaixo da tira até o fim: «INSERT HERE» fica DEPOIS do quadro 12. Errado: por cima dele.
 4. Estreite a janela até os quadros ficarem pequenos: o rótulo vira duas colunas «INSERT» / «HERE», inteiras. Errado: só «INSERT».
 5. «+ Add» no cartão Animation: a nova aparece e fica escolhida, sem aviso vermelho.
+
+Smoke do dono da onda (10/11): **OK** nos passos 1–5.

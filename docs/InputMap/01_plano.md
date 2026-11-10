@@ -231,3 +231,20 @@ PH2D_GAME_SMOKE=<n> 1600 1000 <saida.png>` e a 1280×720. Montagens finais em `d
 - **Aberto da A** (vai para a rodada de acabamento): nome da acção em peso normal (maquete: negrito); chip
   da manche sem seta de direcção; sem barra de rolagem desenhada; sem menu de botão direito; a frase do
   pé do estado 4 («Dead zone and Press at only show on rows with a stick…») não aparece.
+
+## 12 · Contratos depois da R3
+
+- **B · Keyboard:** `crates/ph2d-input-map-editor/src/view_keyboard/` (9 ficheiros; geometria em
+  `geometry.rs`), `KbState{open, sub, hover, adding, select_name, bars}`, `KbHit`, `Sub`, `InputMapDoc.kb`,
+  `view_keyboard::{paint, Group, group_of, open, tip_of, tip_here}`. Manche: quatro setas-alvo à volta de cada
+  stick (uma por metade). Tecla física sem escuta liga à acção aberta só se ela não tem ligação, nenhum campo
+  focado e o Play parado («or press one»). Linha do hover sempre reservada (idle: «Point at a key…»). Plural =
+  chaves `_one`/`_many`. ABERTO: marcador ao vivo da manche na barra do curso (precisa do `GamepadState`).
+- **Tela do jogador:** crate `ph2d-player-controls` (`paint`, `rows`, `ControlsScreen`, `PlaySession`,
+  `player_file(base, game_id)`, `home_base()`, `file::{load, save}`, `SLOTS = 2`). Estado em
+  `ComponentsShell.jogador`; `jogador_entra/jogador_sai` em `undo_jogo.rs`; acessor
+  `input_dispatch::controles_do_jogador::play_map(&PlaySession, &HeroScreen)` nos quatro leitores; porta da
+  tecla `keyboard.rs:108` (antes de `tecla_do_jogo` :124), do clique `input_dispatch.rs:414`; pausa por
+  `playhead.pause()/play()`. Com «Players can change keys» desligado, o ficheiro do jogador é ignorado no Play.
+  ABERTO: `ph2d_app_physics::player_input::resolve_player_input` ficou sem chamador; a tela não rola; tecla
+  repetida sem aviso; edição do autor durante o Play só entra na próxima troca do jogador. Shell: 35 linhas de folga.

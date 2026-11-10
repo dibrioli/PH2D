@@ -113,9 +113,11 @@ fn px(p: &[u8], x: usize, y: usize) -> [i32; 4] {
     [p[i], p[i + 1], p[i + 2], p[i + 3]].map(i32::from)
 }
 
-/// ⭐ Azul sobre amarelo dá VERDE ao longo do eixo depois de o reservatório apanhar o amarelo (a memória do Stretch
-/// 0,5 é ~0,74 diâmetro: de `x 200` em diante), sem degrau entre vizinhos em TODA a mancha (`x 160..290`, a costura
-/// da foto do dono 08/11); azul sobre vermelho dá violeta/vinho (R e B acima de G).
+/// ⭐ Azul sobre amarelo sai do azul em direção ao VERDE ao longo da mancha (G acima de R, B a descer), sem degrau
+/// entre vizinhos em TODA a mancha (`x 160..290`, a costura da foto do dono 08/11); no G-Pen fica verde de `x 260`.
+/// Azul sobre vermelho dá violeta/vinho (R e B acima de G). O limiar era `x 200` com o Pigment próprio do Wet blend;
+/// com o Pigment ÚNICO (`ac576c5df8`, handoff Painter 10/11 §4 «Cartão Paint Mixing», §7) medido na integração 10/11:
+/// G-Pen `x 200` `[93,130,148]` → `x 260` `[80,114,113]`; Hard Round `x 200` `[79,116,157]` → `x 290` `[71,104,106]`.
 #[test]
 fn o_pigment_mix_da_verde_continuo_e_violeta() {
     for preset in ["G-Pen", "Hard Round"] {
@@ -124,19 +126,33 @@ fn o_pigment_mix_da_verde_continuo_e_violeta() {
         for x in 160..290 {
             let c = px(&p, x, Y as usize);
             assert!(
-                x < 200 || (c[1] >= c[2] && c[1] > c[0] + 10),
+                c[1] > c[0] + 25,
+                "{preset}: x {x} sem o verde do amarelo: {c:?}"
+            );
+            assert!(
+                preset != "G-Pen" || x < 260 || (c[1] >= c[2] && c[1] > c[0] + 10),
                 "{preset}: x {x} não é verde: {c:?}"
             );
             if let Some(a) = ant {
                 let d = (0..3).map(|k| (c[k] - a[k]).abs()).max().unwrap_or(0);
                 assert!(d <= 12, "{preset}: degrau {d} em x {x}: {a:?} → {c:?}");
+                assert!(
+                    c[2] <= a[2] + 2,
+                    "{preset}: o azul volta a subir em x {x}: {a:?} → {c:?}"
+                );
             }
             ant = Some(c);
         }
+        let (ini, fim) = (px(&p, 160, Y as usize), px(&p, 289, Y as usize));
+        assert!(
+            fim[2] + 60 <= ini[2],
+            "{preset}: o azul não desce ao longo do amarelo: {ini:?} → {fim:?}"
+        );
         let v = digital(preset, Some(VERMELHO), 1.0);
         let c = px(&v, 220, Y as usize);
+        // Pigment único: G-Pen `86,63,130` · Hard Round `75,58,140` (R − G era > 20; agora 17 no Hard Round).
         assert!(
-            c[0] > c[1] + 20 && c[2] >= c[1],
+            c[0] > c[1] + 10 && c[2] >= c[1] + 40,
             "{preset}: azul sobre vermelho não é vinho: {c:?}"
         );
     }

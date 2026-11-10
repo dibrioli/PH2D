@@ -130,6 +130,17 @@ selo da prévia OK (09/11, `4c8843e605`) · enchimento do dente OK (10/11).
 2. A **proposta aceite e não ordenada**: medir todos os pincéis à velocidade do dono (`sonda_custo_no_app`, 9 × 40 px) e oferecer a meia definição aos lentos largos e macios, lado a lado ([COMO_ACELERAR_UM_PINCEL.md](../Pinceis/COMO_ACELERAR_UM_PINCEL.md) §5).
 3. Barra da cena a 4K parada com frame p50 ~18–30 ms (não é o pen-up; só se pedido).
 4. Herdados: Tooth fill não age na ponta de píxel (L18), no Shape de camadas coloridas e na máscara de stamp em cache (controlo morto: fechar ou esconder) · curva de pressão do K1 a p 0,5–0,65 abaixo da do Krita · traço pálido no branco · marca do Wet por camada · Splash · `SPRAY_FIXO_MAX` com Wet blend · painel a 245 px · dicas longas · papel de imagem sem dente com Grain · memória do 1.º traço · lacunas baixas da auditoria (Save as Default sem verificação da vista; Paint Mixing sem teste de troca de preset).
+5. ⭐ **Wet blend com Pigment único** (`ac576c5df8`; integração 10/11): azul sobre amarelo fica azul-esverdeado (G-Pen verde só a x≈260, Hard Round não chega a verde na faixa) — o dono olha no smoke se é o que quer (memória 10/11: «mistura talvez invertida»). Medido no `o_pigment_mix_da_verde_continuo_e_violeta` (azul `0,0,220` sobre amarelo `245,205,0`, Wet blend, Pigment 1, Amount 0,15, Density 1, 40 px; o teste passou a afirmar G > R e B a descer, verde no G-Pen de x 260):
+
+   | x | G-Pen | Hard Round |
+   |---|---|---|
+   | 160 | 98, 139, 212 | 87, 127, 190 |
+   | 200 | 93, 130, 148 | 79, 116, 157 |
+   | 260 | 80, 114, 113 | 73, 107, 120 |
+   | 290 | 75, 109, 100 | 71, 104, 106 |
+   | 300 | 74, 108, 97 | 70, 103, 102 |
+
+   Azul sobre vermelho continua violeta: x 220 G-Pen `86,63,130` · Hard Round `75,58,140`.
 
 ## 8. Riscos para o integrador
 

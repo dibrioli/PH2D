@@ -21,7 +21,7 @@ use super::*;
 pub(super) struct ReliefFields<'a> {
     /// ⭐ A dobra MATERIALIZADA através dos ajustes que agem no relevo — `(altura, corpo)` por píxel,
     /// antes do tecto. `None` = a dobra por píxel de sempre.
-    pub(super) folded: Option<(Vec<f32>, Vec<f32>)>,
+    pub(super) folded: Option<Dobrada>,
     /// Every visible layer that carries relief, **bottom-up** — the order it composites in. The order
     /// is load-bearing now: [`ReliefComposite::Level`] buries what is *under* it, and until it existed
     /// the fold was a commutative sum that could iterate in any order at all.
@@ -79,12 +79,12 @@ impl ReliefFields<'_> {
     #[inline]
     pub(super) fn height_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);
-        let h = match &self.folded {
-            Some((f, _)) => f[i],
-            None => self.fold_at(i),
-        };
         let cx = x.clamp(0, self.width as i64 - 1);
         let cy = y.clamp(0, self.height as i64 - 1);
+        let h = match &self.folded {
+            Some(d) => d.alt[d.at(cx, cy)],
+            None => self.fold_at(i),
+        };
         self.com_o_papel(super::impasto_ceiling::soft_ceiling(h), i, cx, cy)
     }
 
@@ -278,9 +278,10 @@ impl ReliefFields<'_> {
             }
             *mt = mat_bytes(m);
             let h = match &self.folded {
-                Some((f, cf)) => {
-                    corpo = cf[i];
-                    f[i]
+                Some(d) => {
+                    let j = d.at(cx, cy);
+                    corpo = d.corpo[j];
+                    d.alt[j]
                 }
                 None => {
                     let mut h = crate::layers::RELIEF_FOLD_SEED;
@@ -318,8 +319,10 @@ impl ReliefFields<'_> {
     #[inline]
     pub(super) fn cover_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);
-        if let Some((_, corpo)) = &self.folded {
-            return corpo[i].clamp(0.0, 1.0);
+        if let Some(d) = &self.folded {
+            let cx = x.clamp(0, self.width as i64 - 1);
+            let cy = y.clamp(0, self.height as i64 - 1);
+            return d.corpo[d.at(cx, cy)].clamp(0.0, 1.0);
         }
         let mut c = self.live_c.map_or(0.0, |l| f32::from(l[i]) / 255.0);
         for l in &self.layers {
@@ -374,25 +377,59 @@ impl ReliefFields<'_> {
 }
 
 /// ⭐ A tela 2D vista pela porta da dobra através dos ajustes ([`crate::layers::fold_relief_through`]).
+/// As amostras são as da JANELA `win` (B15.5): a amostra `i` é o píxel `i` da janela, em linhas.
 pub(super) struct Amostras<'f, 'a> {
     pub(super) f: &'f ReliefFields<'a>,
     pub(super) mascaras: std::collections::BTreeMap<crate::layers::LayerId, Vec<f32>>,
+    pub(super) win: ph2d_painter_effects::adjustments::AdjustWindow,
 }
 
 impl Amostras<'_, '_> {
     fn camada(&self, id: crate::layers::LayerId) -> Option<&ReliefLayer<'_>> {
         self.f.layers.iter().find(|l| l.id == id)
     }
+
+    /// O índice na tela da amostra `i` da janela.
+    #[inline]
+    fn na_tela(&self, i: usize) -> usize {
+        let ww = self.win.width as usize;
+        (self.win.origin_y as usize + i / ww) * self.f.width + self.win.origin_x as usize + i % ww
+    }
+}
+
+/// ⭐ A dobra através dos ajustes, materializada só numa JANELA da tela (B15.5): `alt`/`corpo` em linhas de `w`,
+/// a partir de `(x0, y0)`. Quem a lê fica dentro dela (a janela é a região lida dilatada pelos halos).
+pub(super) struct Dobrada {
+    pub(super) x0: usize,
+    pub(super) y0: usize,
+    pub(super) w: usize,
+    pub(super) h: usize,
+    pub(super) alt: Vec<f32>,
+    pub(super) corpo: Vec<f32>,
+}
+
+impl Dobrada {
+    /// O índice do píxel da tela `(cx, cy)` (já clampado à tela) na janela.
+    #[inline]
+    fn at(&self, cx: i64, cy: i64) -> usize {
+        let (lx, ly) = (cx as usize - self.x0, cy as usize - self.y0);
+        debug_assert!(
+            lx < self.w && ly < self.h,
+            "leitura ({cx},{cy}) fora da janela da dobra"
+        );
+        ly * self.w + lx
+    }
 }
 
 impl crate::layers::ReliefSamples for Amostras<'_, '_> {
     fn len(&self) -> usize {
-        self.f.width * self.f.height
+        self.win.width as usize * self.win.height as usize
     }
     fn has(&self, id: crate::layers::LayerId) -> bool {
         self.camada(id).is_some()
     }
     fn at(&self, id: crate::layers::LayerId, i: usize) -> (f32, f32) {
+        let i = self.na_tela(i);
         self.camada(id).map_or((0.0, 0.0), |l| {
             (self.f.own_at(l, i), self.f.layer_cover_at(l, i))
         })

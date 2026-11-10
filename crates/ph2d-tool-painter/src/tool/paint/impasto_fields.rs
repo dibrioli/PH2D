@@ -2,8 +2,42 @@
 //! vizinhança (Gaussiano/Nitidez). [Corte de LOC de `impasto_light`, B52.R14: o construtor mora aqui; a luz, lá.]
 
 use super::impasto_light::ReliefLayer;
-use super::relief_fields::ReliefFields;
+use super::relief_fields::{Dobrada, ReliefFields};
 use crate::tool::PainterTool;
+use ph2d_painter_effects::adjustments::AdjustWindow;
+
+/// A janela da dobra filtrada para acender `region` (`None` = a tela): a região + 1 px (a diferença central) + a
+/// SOMA dos halos dos filtros do plano, cortada pela tela.
+fn janela_da_dobra(
+    plan: &[crate::layers::ReliefStep],
+    region: Option<super::Region>,
+    w: u32,
+    h: u32,
+) -> AdjustWindow {
+    let Some(r) = region.filter(|r| r.w > 0 && r.h > 0) else {
+        return AdjustWindow::full(w, h);
+    };
+    let halo: i64 = 1 + plan
+        .iter()
+        .map(|s| match s {
+            crate::layers::ReliefStep::Filter { filter, .. } => i64::from(filter.halo()),
+            _ => 0,
+        })
+        .sum::<i64>();
+    let x0 = (i64::from(r.x) - halo).max(0);
+    let y0 = (i64::from(r.y) - halo).max(0);
+    let x1 = (i64::from(r.x) + i64::from(r.w) + halo).min(i64::from(w));
+    let y1 = (i64::from(r.y) + i64::from(r.h) + halo).min(i64::from(h));
+    if x1 <= x0 || y1 <= y0 {
+        return AdjustWindow::full(w, h);
+    }
+    AdjustWindow {
+        width: (x1 - x0) as u32,
+        height: (y1 - y0) as u32,
+        origin_x: x0 as u32,
+        origin_y: y0 as u32,
+    }
+}
 
 impl PainterTool {
     /// The relief and the paint coverage the light must read, as BORROWED slices — never materialised.
@@ -18,6 +52,18 @@ impl PainterTool {
     /// Subtract / Replace / Ignore is named and deferred. A hidden layer contributes neither: hide it and
     /// its paint stops catching the light.
     pub(super) fn impasto_fields(&self) -> Option<ReliefFields<'_>> {
+        self.impasto_fields_em(None)
+    }
+
+    /// Os campos para acender `region` (B15.5): com Gaussiano/Nitidez, a dobra através deles materializa-se só na
+    /// região + a moldura de 1 px da diferença central, dilatada pela SOMA dos halos dos filtros (cada passa-baixo
+    /// encolhe por ele a zona exata) e cortada pela tela — onde a janela toca a borda da tela, a borda é a da tela.
+    /// Ao bit com a dobra da tela inteira (`a_dobra_filtrada_da_janela_dilatada_e_a_da_tela`).
+    pub(super) fn impasto_fields_para(&self, region: super::Region) -> Option<ReliefFields<'_>> {
+        self.impasto_fields_em(Some(region))
+    }
+
+    fn impasto_fields_em(&self, region: Option<super::Region>) -> Option<ReliefFields<'_>> {
         let (w, h) = self.source_size;
         let n = (w as usize) * (h as usize);
         if n == 0 {
@@ -130,25 +176,38 @@ impl PainterTool {
         // a dobra materializa-se pela porta única; sem eles, a dobra por píxel.
         let plan = self.layers.relief_plan();
         if crate::layers::relief_plan_filters(&plan) {
-            let mascaras = self.relief_filter_masks(&plan);
+            let win = janela_da_dobra(&plan, region, w, h);
+            let mascaras = self.relief_filter_masks(&plan, win);
             let folded = crate::layers::fold_relief_through(
                 &plan,
                 &super::relief_fields::Amostras {
                     f: &fields,
                     mascaras,
+                    win,
                 },
-                &ph2d_painter_effects::adjustments::AdjustWindow::full(w, h),
+                &win,
             );
-            fields.folded = folded;
+            fields.folded = folded.map(|(alt, corpo)| Dobrada {
+                x0: win.origin_x as usize,
+                y0: win.origin_y as usize,
+                w: win.width as usize,
+                h: win.height as usize,
+                alt,
+                corpo,
+            });
         }
         Some(fields)
     }
 
-    /// As máscaras dos ajustes do plano, `0..1` por píxel (a luminância, como o compositor as lê).
+    /// As máscaras dos ajustes do plano, `0..1` por píxel da janela `win` (a luminância, como o compositor as lê).
     fn relief_filter_masks(
         &self,
         plan: &[crate::layers::ReliefStep],
+        win: AdjustWindow,
     ) -> std::collections::BTreeMap<crate::layers::LayerId, Vec<f32>> {
+        let tw = self.source_size.0 as usize;
+        let (ox, oy) = (win.origin_x as usize, win.origin_y as usize);
+        let ww = win.width as usize;
         let active = self.layers.active();
         plan.iter()
             .filter_map(|s| match *s {
@@ -163,14 +222,20 @@ impl PainterTool {
                 } else {
                     self.images.get(&m)?.rgba8.as_slice()
                 };
-                let n = rgba.len() / 4;
+                let n = ww * win.height as usize;
                 Some((
                     m,
                     (0..n)
-                        .map(|i| crate::compositor::mask_value(rgba, i))
+                        .map(|i| {
+                            crate::compositor::mask_value(rgba, (oy + i / ww) * tw + ox + i % ww)
+                        })
                         .collect(),
                 ))
             })
             .collect()
     }
 }
+
+#[cfg(test)]
+#[path = "impasto_fields_tests.rs"]
+mod tests;

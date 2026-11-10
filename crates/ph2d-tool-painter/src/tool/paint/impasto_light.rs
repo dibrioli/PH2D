@@ -160,7 +160,7 @@ impl PainterTool {
         if !self.impasto_visible() {
             return;
         }
-        let Some(fields) = self.impasto_fields() else {
+        let Some(fields) = self.impasto_fields_para(region) else {
             return;
         };
         let (w, h) = (region.w as usize, region.h as usize);

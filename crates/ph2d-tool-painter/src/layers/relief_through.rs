@@ -15,7 +15,7 @@
 use super::fold_relief_step;
 use super::{LayerId, LayerKind, LayerStack, MAX_GROUP_DEPTH, RELIEF_FOLD_SEED, ReliefComposite};
 use ph2d_painter_effects::adjustments::{
-    AdjustWindow, AdjustmentKind, AdjustmentParams, separable_blur_scalar,
+    AdjustWindow, AdjustmentKind, AdjustmentParams, gaussian_weights, separable_blur_scalar,
 };
 use rayon::prelude::*;
 
@@ -57,6 +57,15 @@ impl ReliefFilter {
                 })
             }
             _ => None,
+        }
+    }
+
+    /// Quantos texels o filtro lê para cada lado: o `half` do passa-baixo da cor ([`gaussian_weights`]).
+    /// Cada filtro encolhe por ele a zona onde uma janela dá o bit da tela; uma pilha encolhe pela SOMA.
+    #[must_use]
+    pub fn halo(&self) -> u32 {
+        match *self {
+            Self::Blur { radius } | Self::Sharpen { radius, .. } => gaussian_weights(radius).1,
         }
     }
 }

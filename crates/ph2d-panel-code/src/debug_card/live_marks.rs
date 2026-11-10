@@ -108,15 +108,8 @@ pub(super) fn tip(
     let r = Rect::new(x, y, w, rh);
     let radius = frame_radius(theme, Radius::Sm.px());
     fill_rounded_rect(scene, r, radius, resolve(ColorToken::Bg3, theme));
-    ph2d_editor_core::paint::stroke_frame(
-        scene,
-        r,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        StrokeToken::Thin.px(),
-        resolve(ColorToken::BorderStrong, theme),
-    );
+    let edge = resolve(ColorToken::BorderStrong, theme);
+    crate::cards::value_outline(scene, r, radius, edge);
     let tone = resolve(ColorToken::Text1, theme);
     paint_text(ts, scene, &s, x + pad, y + (rh - font) * 0.5, font, w, tone);
 }

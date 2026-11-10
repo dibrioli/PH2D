@@ -90,22 +90,12 @@ fn field_row(
     );
     let fill = resolve(crate::cards::card_tone(), theme);
     fill_rounded_rect(scene, field, radius, fill);
-    if v.old.is_some() {
-        let edge = token_to_vello(ph2d_tokens::changed_ink(theme));
-        // FRAME-RAW-OK: o contorno de «mudou» É a mensagem (o valor acabou de mudar).
-        stroke_rounded_rect(scene, field, radius, StrokeToken::Thin.px(), edge);
+    let edge = if v.old.is_some() {
+        token_to_vello(ph2d_tokens::changed_ink(theme))
     } else {
-        let edge = resolve(ColorToken::Border, theme);
-        ph2d_editor_core::paint::stroke_frame(
-            scene,
-            field,
-            radius,
-            theme,
-            ph2d_tokens::visuals::Feel::Rest,
-            StrokeToken::Thin.px(),
-            edge,
-        );
-    }
+        resolve(ColorToken::Border, theme)
+    };
+    crate::cards::value_outline(scene, field, radius, edge);
     let text = shown_value(v);
     let right = field.x + field.w - pad;
     let mut cells = CodeCells { view, theme };

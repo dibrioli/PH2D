@@ -325,3 +325,62 @@ fn os_numeros_vivos_mudam_de_largura_e_nada_mexe() {
         "não desce com o «1.2»"
     );
 }
+
+/// Smoke do dono 10/11: a moldura do número ao vivo no código pinta-se em TODOS os temas. A pele plana
+/// dos modernos apaga a moldura de um CONTROLO em repouso; o contorno de um VALOR não é isso.
+#[test]
+fn a_moldura_do_numero_ao_vivo_pinta_nos_temas_modernos_e_nos_classicos() {
+    use super::{Deco, frame, marcas, spans_de};
+    use ph2d_code_buffer::Buffer;
+    use ph2d_panel_code::{DebugMarks, Ghost};
+    let buf = Buffer::new("local x = 1\nx = x + 1\n");
+    let d = Deco::default();
+    let fantasma = [Ghost {
+        line: 1,
+        text: "x = 905".into(),
+        min_chars: 0,
+    }];
+    let caminhos = |theme: Theme, ghosts: &[Ghost]| {
+        let (mut v, mut ts) = (CodeView::new(), super::ts());
+        let mut scene = VectorScene::new();
+        for _ in 0..2 {
+            scene = VectorScene::new();
+            let mut f = |r: std::ops::Range<usize>| spans_de(&buf, r);
+            let mut m = marcas(&d);
+            let mut fr = frame(&buf, &d, &mut f, &mut m);
+            fr.debug = DebugMarks {
+                ghosts,
+                ..DebugMarks::default()
+            };
+            v.paint(fr, ABA, &mut scene, &mut ts, &theme);
+        }
+        scene.inner().encoding().n_paths
+    };
+    let classico = Theme::ALL
+        .into_iter()
+        .find(|t| !t.is_modern())
+        .expect("um clássico");
+    let moderno = Theme::ALL
+        .into_iter()
+        .find(|t| t.is_modern())
+        .expect("um moderno");
+    let extra = |t| caminhos(t, &fantasma) - caminhos(t, &[]);
+    assert!(extra(classico) >= 1, "controlo: o clássico pinta a moldura");
+    assert_eq!(
+        extra(moderno),
+        extra(classico),
+        "{moderno:?}: a moldura do valor sumiu"
+    );
+}
+
+/// O contorno de valor é um traço em todos os temas (nunca o «nada em repouso» da porta do tema).
+#[test]
+fn o_contorno_de_valor_e_um_traco_em_todos_os_temas() {
+    let r = Rect::new(10.0, 10.0, 80.0, 20.0);
+    for t in Theme::ALL {
+        let mut scene = VectorScene::new();
+        let ink = ph2d_editor_core::paint::resolve(ph2d_tokens::ColorToken::Border, t);
+        ph2d_panel_code::cards::value_outline(&mut scene, r, 4.0, ink);
+        assert_eq!(scene.inner().encoding().n_paths, 1, "{t:?}");
+    }
+}

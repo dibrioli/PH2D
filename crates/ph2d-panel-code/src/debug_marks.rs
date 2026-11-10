@@ -144,15 +144,7 @@ impl CodeView {
                 h: (self.m.line_h - inset * 2.0).max(0.0),
             };
             let radius = frame_radius(pal.theme, Radius::Sm.px());
-            ph2d_editor_core::paint::stroke_frame(
-                scene,
-                frame,
-                radius,
-                pal.theme,
-                ph2d_tokens::visuals::Feel::Rest,
-                StrokeToken::Thin.px(),
-                pal.border,
-            );
+            crate::cards::value_outline(scene, frame, radius, pal.border);
             paint_text(ts, scene, &g.text, x, ty, font, room, pal.number);
         }
     }

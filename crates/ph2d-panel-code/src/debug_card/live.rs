@@ -356,22 +356,12 @@ fn gauge(
         radius,
         resolve(crate::cards::card_tone(), theme),
     );
-    if r.var.old.is_some() {
-        let edge = token_to_vello(ph2d_tokens::changed_ink(theme));
-        // FRAME-RAW-OK: o contorno de «mudou» É a mensagem (o valor acabou de mudar).
-        stroke_rounded_rect(scene, field, radius, StrokeToken::Thin.px(), edge);
+    let edge = if r.var.old.is_some() {
+        token_to_vello(ph2d_tokens::changed_ink(theme))
     } else {
-        let edge = resolve(ColorToken::Border, theme);
-        ph2d_editor_core::paint::stroke_frame(
-            scene,
-            field,
-            radius,
-            theme,
-            ph2d_tokens::visuals::Feel::Rest,
-            StrokeToken::Thin.px(),
-            edge,
-        );
-    }
+        resolve(ColorToken::Border, theme)
+    };
+    crate::cards::value_outline(scene, field, radius, edge);
     let text = shown_value(&r.var);
     let right = field.x + field.w - pad;
     let mut cells = CodeCells { view, theme };
@@ -504,15 +494,7 @@ fn graph(r: &LiveRow, at: Rect, scene: &mut VectorScene, ts: &mut TextSystem, th
         radius,
         resolve(crate::cards::ground_tone(), theme),
     );
-    ph2d_editor_core::paint::stroke_frame(
-        scene,
-        at,
-        radius,
-        theme,
-        ph2d_tokens::visuals::Feel::Rest,
-        StrokeToken::Thin.px(),
-        resolve(ColorToken::Border, theme),
-    );
+    crate::cards::value_outline(scene, at, radius, resolve(ColorToken::Border, theme));
     let (hi, lo) = (short_number(span.max), short_number(span.min));
     let label_w = [&hi, &lo, &r.var.name]
         .iter()

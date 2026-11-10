@@ -353,9 +353,15 @@ pub(super) fn sem_entalhes(
 }
 
 /// Média móvel separável de raio `r` (caixa `2r+1`), presa às bordas; cada passagem por linhas de `rep`.
-pub(super) fn desfoca(rep: &impl Reparte, v: &[f64], w: usize, h: usize, r: usize) -> Vec<f64> {
+pub(super) fn desfoca(
+    rep: &impl Reparte,
+    v: &[f64],
+    (w, h): (usize, usize),
+    r: usize,
+    ras: &mut RascunhoCampo,
+) -> Vec<f64> {
     let n = (2 * r + 1) as f64;
-    let mut tmp = vec![0f64; w * h];
+    let mut tmp = ras.toma(w * h);
     por_linha(rep, w, &mut tmp, &|y, linha| {
         for (x, q) in linha.iter_mut().enumerate() {
             let mut s = 0.0;
@@ -365,7 +371,7 @@ pub(super) fn desfoca(rep: &impl Reparte, v: &[f64], w: usize, h: usize, r: usiz
             *q = s / n;
         }
     });
-    let mut out = vec![0f64; w * h];
+    let mut out = ras.toma(w * h);
     por_linha(rep, w, &mut out, &|y, linha| {
         for (x, q) in linha.iter_mut().enumerate() {
             let mut s = 0.0;
@@ -375,6 +381,7 @@ pub(super) fn desfoca(rep: &impl Reparte, v: &[f64], w: usize, h: usize, r: usiz
             *q = s / n;
         }
     });
+    ras.devolve(tmp);
     out
 }
 

@@ -3,6 +3,32 @@
 
 use super::*;
 
+/// Os planos `f64` de rascunho do [`CampoAltura::de_com_em`] (B14.A1, AU-12-3): quem o guarda entre imagens não os
+/// realoca (a 2880² eram ~600 MB por imagem). Um plano reusado sai com o LIXO da imagem anterior (zerá-lo era um
+/// `memset` em série): quem o toma escreve cada célula antes de a ler — o mesmo campo bit a bit (gate
+/// `o_rascunho_do_campo_nao_realoca_e_da_o_mesmo_campo`). Sem plano que sirva, `vec![0; n]` (o `calloc` de antes).
+#[derive(Default)]
+pub struct RascunhoCampo {
+    livres: Vec<Vec<f64>>,
+}
+
+impl RascunhoCampo {
+    pub(super) fn toma(&mut self, n: usize) -> Vec<f64> {
+        match self.livres.pop() {
+            Some(mut v) if v.capacity() >= n => {
+                v.truncate(n);
+                v.resize(n, 0.0);
+                v
+            }
+            _ => vec![0f64; n],
+        }
+    }
+
+    pub(super) fn devolve(&mut self, v: Vec<f64>) {
+        self.livres.push(v);
+    }
+}
+
 impl CampoAltura {
     /// A janela `[x0..=x1]×[y0..=y1]` (células, `1..=W`) alargada pela margem e presa à grade.
     pub fn de(
@@ -24,6 +50,25 @@ impl CampoAltura {
         camadas: &[(&Grid, bool)],
         o: &OleoReal,
         ratio: usize,
+        janela: (usize, usize, usize, usize),
+    ) -> Self {
+        Self::de_com_em(
+            &mut RascunhoCampo::default(),
+            rep,
+            camadas,
+            o,
+            ratio,
+            janela,
+        )
+    }
+
+    /// [`CampoAltura::de_com`] com os planos de rascunho tirados de `ras` e devolvidos a ele.
+    pub fn de_com_em(
+        ras: &mut RascunhoCampo,
+        rep: &impl Reparte,
+        camadas: &[(&Grid, bool)],
+        o: &OleoReal,
+        ratio: usize,
         (x0, y0, x1, y1): (usize, usize, usize, usize),
     ) -> Self {
         let g = camadas[0].0;
@@ -38,12 +83,14 @@ impl CampoAltura {
         let (ax1, ay1) = ((x1 + m).min(g.w), (y1 + m).min(g.h));
         let (w, h) = (ax1 + 1 - ax0, ay1 + 1 - ay0);
         let escala = af.px_por_massa * o.profundidade / ratio.max(1) as f64;
-        let mut massa = vec![0f64; w * h];
-        let mut fios = vec![0f64; w * h];
+        let ras = std::cell::RefCell::new(ras);
+        let toma = || ras.borrow_mut().toma(w * h);
+        let mut massa = toma();
+        let mut fios = toma();
         let com_material = camadas.iter().any(|&(lg, v)| v && !lg.material.is_empty());
         // Dono 28/10: o Real Oil é do traço — com o campo em alguma camada visível, só a tinta com óleo tem altura.
         let todo_oleo = !camadas.iter().any(|&(lg, v)| v && !lg.oleo.is_empty());
-        let mut cob = vec![0f64; w * h];
+        let mut cob = toma();
         por_linha(rep, w, &mut cob, &|y, linha| {
             for (x, c) in linha.iter_mut().enumerate() {
                 *c = cobertura_da_celula(camadas, (ax0 + x) + (ay0 + y) * g.s);
@@ -70,6 +117,8 @@ impl CampoAltura {
             *c *= f64::from(*b);
         }
         rep.por_linhas(w, &mut massa, &mut fios, &|y, massa, fios| {
+            massa.fill(0.0);
+            fios.fill(0.0);
             for x in 0..w {
                 let i = (ax0 + x) + (ay0 + y) * g.s;
                 for &(lg, visivel) in camadas {
@@ -98,10 +147,11 @@ impl CampoAltura {
             .iter()
             .any(|&(lg, v)| v && !lg.crista.is_empty())
             .then(|| {
-                let mut crista = vec![0f64; w * h];
+                let mut crista = toma();
                 por_linha(rep, w, &mut crista, &|y, linha| {
                     for (x, c) in linha.iter_mut().enumerate() {
                         let i = (ax0 + x) + (ay0 + y) * g.s;
+                        *c = 0.0;
                         let mut cobre = 0.0;
                         for &(lg, visivel) in camadas {
                             if !visivel {
@@ -158,12 +208,16 @@ impl CampoAltura {
             };
             (visto(|c| c.brilho, 1.0), visto(|c| c.oleo, 0.0))
         };
-        let d = |v: &[f64], r: usize| desfoca(rep, v, w, h, r);
+        let d = |v: &[f64], r: usize| desfoca(rep, v, (w, h), r, &mut ras.borrow_mut());
+        let d2 = |v: &[f64], r: usize| {
+            let a = d(v, r);
+            let b = d(&a, r);
+            ras.borrow_mut().devolve(a);
+            b
+        };
         let suave = match marca_do_nivelado(rep, camadas, (ax0, ay0, w, h)) {
-            Some((mu, peso)) => forma_viva(&massa, (&mu, &peso), &|v| {
-                d(&d(v, af.raio_suave), af.raio_suave)
-            }),
-            None => d(&d(&massa, af.raio_suave), af.raio_suave),
+            Some((mu, peso)) => forma_viva(&massa, (&mu, &peso), &|v| d2(v, af.raio_suave)),
+            None => d2(&massa, af.raio_suave),
         };
         let k_fios = af.fios * o.profundidade;
         // §BUG-ressalto: o desfoque alisa DENTRO da tinta; a altura de cada escala vai com a cobertura da célula,
@@ -189,9 +243,11 @@ impl CampoAltura {
             Some(s) => (suave[k] * escala * cob[k]) as f32 + s[k],
             None => (suave[k] * escala * cob[k]) as f32,
         });
-        let (massa_d, fios_d) = match af.raio_detalhe {
-            0 => (massa.clone(), fios),
-            r => (d(&massa, r), d(&fios, r)),
+        let desfocados =
+            (af.raio_detalhe > 0).then(|| (d(&massa, af.raio_detalhe), d(&fios, af.raio_detalhe)));
+        let (massa_d, fios_d): (&[f64], &[f64]) = match &desfocados {
+            Some((m, f)) => (m, f),
+            None => (&massa, &fios),
         };
         let detalhe = plano_f32(rep, w, h, &|k| {
             let d = (af.grao * (massa_d[k] - suave[k]) * escala + fios_d[k] * k_fios) * cob[k];
@@ -203,10 +259,8 @@ impl CampoAltura {
                 d as f32
             }
         });
-        let alta = match af.raio_sombra {
-            0 => massa,
-            r => d(&d(&massa, r), r),
-        };
+        let alta_d = (af.raio_sombra > 0).then(|| d2(&massa, af.raio_sombra));
+        let alta: &[f64] = alta_d.as_deref().unwrap_or(&massa);
         let sombra = plano_f32(rep, w, h, &|k| {
             let s = (alta[k] * escala * cob[k]) as f32;
             let s = if substrato.is_some() {
@@ -219,6 +273,12 @@ impl CampoAltura {
                 None => s,
             }
         });
+        let planos = [massa, fios, cob, suave]
+            .into_iter()
+            .chain(crista)
+            .chain(alta_d);
+        let planos = planos.chain(desfocados.into_iter().flat_map(|(m, f)| [m, f]));
+        planos.for_each(|v| ras.borrow_mut().devolve(v));
         let albedo = if af.rebote_papel > 0.0 && o.sombra > 0.0 {
             let mut albedo = vec![[1.0f32; 3]; w * h];
             por_linha(rep, w, &mut albedo, &|y, linha| {
@@ -378,3 +438,7 @@ impl CampoAltura {
 #[cfg(test)]
 #[path = "oleo_campo_sonda.rs"]
 mod oleo_campo_sonda;
+
+#[cfg(test)]
+#[path = "oleo_campo_rascunho_tests.rs"]
+mod oleo_campo_rascunho_tests;

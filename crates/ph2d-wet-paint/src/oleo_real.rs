@@ -27,6 +27,7 @@ mod oleo_borda;
 #[path = "oleo_campo.rs"]
 mod oleo_campo;
 pub(crate) use oleo_borda::*;
+pub use oleo_campo::RascunhoCampo;
 #[path = "oleo_luz.rs"]
 mod oleo_luz;
 pub use oleo_luz::*;

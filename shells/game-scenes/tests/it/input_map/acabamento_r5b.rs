@@ -218,3 +218,36 @@ fn os_controlos_da_c_explicam_se_ao_pairar() {
         assert_eq!(tip, Some(ph2d_i18n::tr(key)), "{hit:?}: a dica");
     }
 }
+
+#[test]
+fn arrastar_o_polegar_da_a_rola_a_lista() {
+    let mut m = Mesa::aberta(View::List);
+    m.hero.input_map = onze();
+    m.frame();
+    let short = Rect {
+        h: 420.0, // LITERAL-PX-OK: uma aba baixa, para a lista rolar
+        ..super::AREA
+    };
+    m.paint_in(short);
+    let thumb = m.tab().doc.list.thumb().expect("a aba baixa tem barra");
+    let (x, y) = (thumb.x + thumb.w * 0.5, thumb.y + thumb.h * 0.5);
+    assert!(m.tab_mut().doc.press(x, y), "o polegar agarra");
+    assert!(m.tab_mut().doc.motion(x, y + thumb.h), "arrastar rola");
+    m.paint_in(short);
+    let rolled = m.tab().doc.list.scroll;
+    assert!(rolled > 0.0, "a lista rolou: {rolled}");
+    let moved = m.tab().doc.list.thumb().expect("a barra");
+    assert!(moved.y > thumb.y, "o polegar desceu com o ponteiro");
+    assert!(m.tab_mut().doc.motion(x, y + 1.0e4), "ao fundo");
+    assert_eq!(
+        m.tab().doc.list.scroll,
+        m.tab().doc.list.scroll_max,
+        "presa no fim"
+    );
+    assert!(m.tab_mut().doc.release(), "largar toma o gesto");
+    assert!(
+        !m.tab_mut().doc.motion(x, y),
+        "solto, o ponteiro já não rola"
+    );
+    assert_eq!(m.tab().doc.list.scroll, m.tab().doc.list.scroll_max);
+}

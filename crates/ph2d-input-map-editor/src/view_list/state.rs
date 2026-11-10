@@ -30,6 +30,15 @@ pub struct Typing {
     pub buffer: String,
 }
 
+/// A barra da lista na última pintura: o polegar e as medidas que o arrasto converte.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Bar {
+    pub thumb: ph2d_editor_core::zones::Rect,
+    pub track_h: f32,
+    pub content_h: f32,
+    pub visible_h: f32,
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ListState {
     /// O filtro POR TECLA (o chip dentro da busca).
@@ -47,4 +56,15 @@ pub struct ListState {
     /// Quanto a lista rolou (px, ≥ 0) e quanto pode rolar.
     pub scroll: f32,
     pub scroll_max: f32,
+    pub(crate) bar: Option<Bar>,
+    /// O polegar agarrado: o y do ponteiro e o rolar ao carregar.
+    pub thumb_drag: Option<(f32, f32)>,
+}
+
+impl ListState {
+    /// O polegar da barra da última pintura (`None` = a lista cabe).
+    #[must_use]
+    pub fn thumb(&self) -> Option<ph2d_editor_core::zones::Rect> {
+        self.bar.map(|b| b.thumb)
+    }
 }

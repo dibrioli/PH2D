@@ -5,7 +5,9 @@ use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon};
 use ph2d_editor_core::widget::card_ink::CardInk;
-use ph2d_editor_core::widget::{SCROLLBAR_W, ScrollbarState, paint_scrollbar, scrollbar_is_needed};
+use ph2d_editor_core::widget::{
+    SCROLLBAR_W, ScrollbarState, paint_scrollbar, scrollbar_is_needed, scrollbar_track_rect,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_input::{ActionId, Binding, GamepadAxis, InputAction};
@@ -80,17 +82,28 @@ pub(super) fn paint_rows(
     } else {
         area.w
     };
+    doc.list.bar = None;
     if bar {
-        let visual = (ScrollbarState::Normal, 0.0);
-        let _ = paint_scrollbar(
+        let state = if doc.list.thumb_drag.is_some() {
+            ScrollbarState::Dragging
+        } else {
+            ScrollbarState::Normal
+        };
+        let thumb = paint_scrollbar(
             view,
             doc.list.scroll,
             total,
             list_h,
-            visual,
+            (state, 0.0),
             scene,
             ink.theme,
         );
+        doc.list.bar = thumb.map(|thumb| super::state::Bar {
+            thumb,
+            track_h: scrollbar_track_rect(view).h,
+            content_h: total,
+            visible_h: list_h,
+        });
     }
     let mut y = area.y - doc.list.scroll;
     for a in &actions {

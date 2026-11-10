@@ -75,6 +75,10 @@ fn commit_add(doc: &mut InputMapDoc) {
 
 pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
     commit_typing(doc);
+    if doc.list.bar.is_some_and(|b| b.thumb.contains(x, y)) {
+        doc.list.thumb_drag = Some((y, doc.list.scroll));
+        return true;
+    }
     let hit = doc.hits.hit(x, y);
     let listen = hit.and_then(|id| hit_of(doc, id));
     if doc.snap.listening.is_some() && !matches!(listen, Some(ListHit::Listen(_))) {
@@ -154,7 +158,27 @@ fn set_zone(doc: &mut InputMapDoc, action: ph2d_input::ActionId, zone: Zone, v: 
 }
 
 /// Soltar: acaba o arrasto; um clique sem arrasto abre o número para escrever.
+/// O polegar agarrado segue o ponteiro (a conversão da barra do cartão, `scrollbar_delta_for_drag`).
+pub(crate) fn drag_thumb(doc: &mut InputMapDoc, y: f32) -> bool {
+    let (Some((y0, s0)), Some(b)) = (doc.list.thumb_drag, doc.list.bar) else {
+        return false;
+    };
+    let d = ph2d_editor_core::widget::scrollbar_delta_for_drag(
+        y - y0,
+        b.track_h,
+        b.content_h,
+        b.visible_h,
+    );
+    let s = (s0 + d).clamp(0.0, doc.list.scroll_max);
+    let changed = (s - doc.list.scroll).abs() > f32::EPSILON;
+    doc.list.scroll = s;
+    changed
+}
+
 pub(crate) fn release(doc: &mut InputMapDoc) -> bool {
+    if doc.list.thumb_drag.take().is_some() {
+        return true;
+    }
     let Some(s) = doc.list.scrub.take() else {
         return false;
     };

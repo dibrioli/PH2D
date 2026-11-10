@@ -159,6 +159,13 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   (o cabeçalho de volta a `chrome::icon_button`) → vermelho nos 4 casos. Foto: [ai_icones.png](../ferramentas/smoke/ai_icones.png) ·
   [zoom 4×](../ferramentas/smoke/ai_icones_zoom.png) — título, + e ‹ com 9 px de tinta a partir da mesma linha.
 
+- **Letras do dono (10/11, `6c6db05d2f`, `4cc19dfcc8`):** o nome do script na lista, as entradas do «In this script» e os
+  menus da barra (títulos e nomes do menu aberto) na letra EXACTA de «alive» (mono do código, `TypeToken::Base` mostrado,
+  `CODE_WEIGHT` 400; `mono_label.rs` chama o mesmo `paint_mono`; medir = pintar em `fit_w`, `outline_fit_w`, `min_w`);
+  o título «Who has what» pelo `card_title` (maiúsculas espaçadas); «Console | Problems» no corpo da faixa «Paused», a
+  aba aberta a 600 e a outra a 400. Testes `bancada::letras` (3) e `barra_da_aba::os_menus_da_barra_tem_a_letra_do_codigo`;
+  6 mutações vermelhas. Foto `smoke/aj_letras.png`.
+
 Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 20,85 s); a 2.ª:
 
 ```

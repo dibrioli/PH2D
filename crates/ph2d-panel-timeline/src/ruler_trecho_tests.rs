@@ -2,8 +2,10 @@
 //! nomes dos marcadores nunca pisam os números.
 
 use super::*;
+use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::screens::hero::HeroLayout;
 use ph2d_editor_core::screens::slot::{Slot, SlotSet};
+use ph2d_tokens::Theme;
 use ph2d_vector::{DrawOp, Shape};
 
 const PX_S: f64 = 90.0;
@@ -99,20 +101,13 @@ fn o_trecho_armado_e_o_laco_da_regua() {
         "o laço do clipe some: {faixas:?}"
     );
     let (fundo, _) = tintas(Theme::Forge);
-    let caixa = ops.iter().any(|o| match o {
-        DrawOp::Fill {
-            brush: ph2d_vector::Brush::Solid(c),
-            path,
-            ..
-        } => {
-            let b = path.bounding_box();
-            *c == fundo
-                && perto((b.x0, b.x1), (x(0.0), x(1.1)))
-                && (b.height() - f64::from(RULER_H)).abs() < 0.5
-        }
-        _ => false,
-    });
-    assert!(caixa, "a caixa do trecho, a régua inteira");
+    let caixa = ops.iter().any(
+        |o| matches!(o, DrawOp::Fill { brush: ph2d_vector::Brush::Solid(c), .. } if *c == fundo),
+    );
+    assert!(
+        !caixa,
+        "a caixa do trecho mora na faixa Markers, não na régua"
+    );
     let (ops, _) = pinta(&s, None);
     let faixas = faixas_do_laco(&ops);
     assert!(
@@ -126,42 +121,25 @@ fn textos(caixas: &[Rect]) -> Vec<Rect> {
     caixas.iter().copied().filter(|r| r.h == 0.0).collect()
 }
 
-/// ⭐ **Os nomes dos marcadores não pisam os números da régua** (foto 24: «0takeoff», «2land»): pinta a
-/// régua sem nomes e com eles; os textos novos são os nomes, os que ficam são os números. Cada um
-/// estendido pelo corpo da letra do último glifo, nenhum nome cruza um número; e todo número que caía
-/// livre de nomes continua pintado. Medido nas caixas PINTADAS (`caixas_pintadas`). *Mutação: o número
-/// não ceder ⇒ reprova.*
+/// ⭐ **A régua dos cartões mostra TODOS os números** (a foto 24 perdia o 0, o 1 e o 2 para os nomes):
+/// os marcadores moram na faixa «Markers», por isso a régua com nomes pinta exactamente os mesmos textos
+/// que sem eles — um por segundo inteiro à vista (0..8 a 90 px/s em 800 px), e nenhum nome. Medido nas
+/// caixas PINTADAS (`caixas_pintadas`). *Mutação: pintar os marcadores na régua ⇒ reprova.*
 #[test]
-fn os_nomes_dos_marcadores_nao_pisam_os_numeros() {
+fn a_regua_mostra_todos_os_numeros() {
     let s = snap();
     let mut sem = s.clone();
     for m in &mut sem.markers {
         m.1.clear();
     }
     let (_, n) = pinta(&sem, None);
-    let (_, w) = pinta(&s, None);
+    let (_, w) = pinta(&s, Some((0, 1)));
     let (numeros, com) = (textos(&n), textos(&w));
-    let nomes: Vec<Rect> = com
-        .iter()
-        .copied()
-        .filter(|r| !numeros.contains(r))
-        .collect();
-    let ficam: Vec<Rect> = com
-        .iter()
-        .copied()
-        .filter(|r| numeros.contains(r))
-        .collect();
-    assert_eq!(nomes.len(), 3, "os três nomes pintados: {nomes:?}");
-    let corpo = TypeToken::Sm.px();
-    for a in &nomes {
-        for b in &ficam {
-            let (a0, a1, b0, b1) = (a.x, a.x + a.w + corpo, b.x, b.x + b.w + corpo);
-            assert!(a1 <= b0 || b1 <= a0, "o nome {a:?} pisa o número {b:?}");
-        }
-    }
+    let primeiros: std::collections::BTreeSet<i32> = numeros.iter().map(|r| r.x as i32).collect();
+    let segundos = (f64::from(REGIAO.w) / PX_S).floor() as usize + 1;
     assert!(
-        ficam.len() + 3 >= numeros.len(),
-        "só cedem os números sob um nome"
+        primeiros.len() >= segundos,
+        "um número por segundo: {primeiros:?}"
     );
-    assert!(ficam.len() >= 6, "a régua continua numerada: {ficam:?}");
+    assert_eq!(com, numeros, "com nomes, a régua pinta os mesmos textos");
 }

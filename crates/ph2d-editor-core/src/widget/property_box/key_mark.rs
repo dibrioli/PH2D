@@ -386,14 +386,39 @@ pub fn paint_decorator_for(
 
 /// ⭐ **A tinta de cada estado** (maquete B1, os 3 do Rive + o laranja do Spine): `Livre` na tinta
 /// `apagada` do ponto de quem pinta (`Text3` no clássico, `CardLabel` no cartão); `Animado` e `Chave`
-/// na da chave da dope-sheet — o mesmo losango, o mesmo significado; `Mudado` no aviso.
+/// na da chave da dope-sheet — o mesmo losango, o mesmo significado; `Mudado` no laranja da maquete
+/// ([`cor_mudado`]). `tok` resolve um token na tinta de quem pinta.
 #[must_use]
-pub const fn tinta_do_losango(mark: KeyMark, apagada: ColorToken) -> ColorToken {
+pub fn cor_do_losango(
+    mark: KeyMark,
+    apagada: ColorToken,
+    theme: Theme,
+    tok: impl Fn(ColorToken) -> ph2d_vector::Color,
+) -> ph2d_vector::Color {
     match mark {
-        KeyMark::Livre => apagada,
-        KeyMark::Animado | KeyMark::Chave => ColorToken::TimelineKey,
-        KeyMark::Mudado => ColorToken::Warn,
+        KeyMark::Livre => tok(apagada),
+        KeyMark::Animado | KeyMark::Chave => tok(ColorToken::TimelineKey),
+        KeyMark::Mudado => cor_mudado(theme),
     }
+}
+
+/// O laranja do `Mudado` (losango, valor do campo): `#FF9F5A` da maquete no tema dela, o mesmo desvio
+/// OKLab nos outros — piso e matiz medidos em `o_mudado_e_laranja_em_todo_tema`.
+#[must_use]
+pub fn cor_mudado(theme: Theme) -> ph2d_vector::Color {
+    crate::paint::token_to_vello(ph2d_tokens::TimelineTinta::Mudado.resolve(theme))
+}
+
+/// O contorno do campo `Mudado` nos cartões (maquete B1).
+#[must_use]
+pub fn contorno_mudado(theme: Theme) -> ph2d_vector::Color {
+    crate::paint::token_to_vello(ph2d_tokens::TimelineTinta::MudadoContorno.resolve(theme))
+}
+
+/// O campo `id` mudou e ninguém o gravou (o valor e o contorno vestem o laranja).
+#[must_use]
+pub fn mudado(id: NodeId) -> bool {
+    key_mark_of(&[id]) == Some(KeyMark::Mudado)
 }
 
 /// `Livre` e `Animado` são CONTORNO; `Chave` e `Mudado`, cheios.
@@ -431,7 +456,7 @@ pub(crate) fn pinta_losango(
 /// O losango no centro de `r` (o Inspector clássico).
 pub fn paint_key_mark(scene: &mut VectorScene, theme: Theme, r: Rect, mark: KeyMark) {
     let centro = (f64::from(r.x + r.w * 0.5), f64::from(r.y + r.h * 0.5));
-    let cor = resolve(tinta_do_losango(mark, ColorToken::Text3), theme);
+    let cor = cor_do_losango(mark, ColorToken::Text3, theme, |t| resolve(t, theme));
     pinta_losango(scene, centro, f64::from(Spacing::Xs.px()), mark, cor);
 }
 

@@ -9,6 +9,7 @@ use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_icon, paint_text};
 use crate::widget::card_ink::CardInk;
+use crate::widget::property_box::key_mark;
 use crate::widget::showcase::read_number_input;
 use crate::widget::text_input::TextInputState;
 use crate::zones::Rect;
@@ -147,6 +148,18 @@ pub fn paint_field(
             .is_some_and(|d| d.id == id && d.crossed_threshold);
     let hover = !parado && (store.hover_live(id) > 0.0 || st == TextInputState::Hovered);
     paint_field_frame(scene, ink, rect, hover, focused || scrubbing);
+    // Mudado e ninguém o gravou (maquete B1): o contorno e o valor no laranja do losango.
+    let mudado = !(parado || focused || scrubbing) && key_mark::mudado(id);
+    if mudado {
+        // FRAME-RAW-OK: o anel do campo MUDADO (a mensagem é «isto perde-se»)
+        crate::paint::stroke_rounded_rect(
+            scene,
+            rect,
+            m::FIELD_RADIUS,
+            m::FIELD_BORDER,
+            key_mark::contorno_mudado(ink.theme),
+        );
+    }
 
     let tinta = ink.color(if scrubbing {
         ColorToken::KanbanBlueBold
@@ -199,7 +212,11 @@ pub fn paint_field(
         y,
         m::VALUE_PX,
         area.w,
-        ink.color(cor),
+        if mudado {
+            key_mark::cor_mudado(ink.theme)
+        } else {
+            ink.color(cor)
+        },
     );
     if focused {
         let c = caret.min(texto.len());
@@ -351,7 +368,7 @@ pub fn paint_key_mark(
     fields: &[NodeId],
 ) {
     use crate::widget::property_box::key_mark::{
-        key_mark_of, pinta_losango, register_key_mark_target, tinta_do_losango,
+        cor_do_losango, key_mark_of, pinta_losango, register_key_mark_target,
     };
     let caixa = Rect::new(
         cx - m::KEY_MARK_BOX * 0.5,
@@ -376,7 +393,7 @@ pub fn paint_key_mark(
         // O losango de 6 px de lado: meia diagonal = lado / √2.
         Some(k) => {
             let d = f64::from(m::KEY_MARK_PX) * std::f64::consts::FRAC_1_SQRT_2;
-            let cor = ink.color(tinta_do_losango(k, ColorToken::CardLabel));
+            let cor = cor_do_losango(k, ColorToken::CardLabel, ink.theme, |t| ink.color(t));
             pinta_losango(scene, (x, y), d, k, cor);
         }
     }

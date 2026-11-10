@@ -305,6 +305,8 @@ pub(crate) fn paint_rows(
     // The time-scale box + grips over the current key selection (crown-jewels §4).
     // Registered AFTER the diamonds so the grips win the hit where they sit.
     crate::macro_steps::paint(ctx, theme, region, label_w, view, state, snap, fim, lane);
+    let y = fim + crate::macro_steps::macro_h(snap, state.tab);
+    crate::faixa_marcadores::paint(ctx, theme, g, view, state.tab, snap, y);
     crate::scale_drag::paint_selection_box(ctx, theme, g, view, state, snap);
     ctx.scene.pop_layer();
 }

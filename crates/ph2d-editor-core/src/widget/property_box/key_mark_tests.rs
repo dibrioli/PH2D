@@ -195,8 +195,16 @@ fn o_livre_e_o_animado_leem_se_diferentes_em_todo_tema() {
     let mut pior = f64::MAX;
     for theme in Theme::ALL {
         for apagada in [ColorToken::Text3, ColorToken::CardLabel] {
-            let p = lab(tinta_do_losango(KeyMark::Livre, apagada).resolve(theme));
-            let q = lab(tinta_do_losango(KeyMark::Animado, apagada).resolve(theme));
+            let tok = |t: ColorToken| t.resolve(theme);
+            let p = lab(vello(cor_do_losango(KeyMark::Livre, apagada, theme, |t| {
+                crate::paint::token_to_vello(tok(t))
+            })));
+            let q = lab(vello(cor_do_losango(
+                KeyMark::Animado,
+                apagada,
+                theme,
+                |t| crate::paint::token_to_vello(tok(t)),
+            )));
             let d = ((p.0 - q.0).powi(2) + (p.1 - q.1).powi(2) + (p.2 - q.2).powi(2)).sqrt();
             pior = pior.min(d);
             assert!(d >= PISO_LIVRE_ANIMADO, "{theme:?} {apagada:?}: {d:.3}");
@@ -208,3 +216,62 @@ fn o_livre_e_o_animado_leem_se_diferentes_em_todo_tema() {
 /// Medido 10/11: o par mais perto é `PlumberGreen`/`Text3` a 0,190 (o melhor, `Forge`/`CardLabel`, 0,380);
 /// a maquete B1 tem `--fg2` × `--c13-k` a 0,214 sólido e 0,31 com a opacidade 0,75 sobre o cartão.
 const PISO_LIVRE_ANIMADO: f64 = 0.15;
+
+/// A cor vello de volta a sRGB de 8 bits (a régua OKLab mede-a).
+fn vello(c: ph2d_vector::Color) -> ph2d_tokens::Color {
+    let c = c.to_rgba8();
+    ph2d_tokens::Color {
+        r: c.r,
+        g: c.g,
+        b: c.b,
+        a: c.a,
+    }
+}
+
+/// ⭐ **O `Mudado` lê-se LARANJA em todo tema** (maquete B1 `#FF9F5A`, matiz OKLCh ~55°): o matiz cai na
+/// faixa [`MATIZ_LARANJA`], e o losango afasta-se da chave e do fundo do cartão e do painel clássico de
+/// pelo menos [`PISO_MUDADO`] em OKLab, nos dois Inspectors.
+#[test]
+fn o_mudado_e_laranja_em_todo_tema() {
+    let lab = |c: ph2d_tokens::Color| {
+        let (l, ch, h) = ph2d_tokens::srgb_to_oklch(c.r, c.g, c.b);
+        let hr = h.to_radians();
+        ((l, ch * hr.cos(), ch * hr.sin()), h)
+    };
+    let dist = |p: (f64, f64, f64), q: (f64, f64, f64)| {
+        ((p.0 - q.0).powi(2) + (p.1 - q.1).powi(2) + (p.2 - q.2).powi(2)).sqrt()
+    };
+    let mut pior = f64::MAX;
+    for theme in Theme::ALL {
+        let (m, h) = lab(vello(cor_mudado(theme)));
+        assert!(
+            MATIZ_LARANJA.contains(&h),
+            "{theme:?}: matiz {h:.1}° não é laranja"
+        );
+        let (_, hv) = lab(vello(contorno_mudado(theme)));
+        assert!(
+            MATIZ_LARANJA.contains(&hv),
+            "{theme:?}: contorno a {hv:.1}°"
+        );
+        let card = crate::widget::card_ink::CardInk::of_list(theme);
+        let vizinhos = [
+            ("chave", vello(card.color(ColorToken::TimelineKey))),
+            ("chave clássica", ColorToken::TimelineKey.resolve(theme)),
+            ("cartão", vello(card.color(ColorToken::KanbanCard))),
+            ("campo", vello(card.color(ColorToken::CardField))),
+            ("painel", ColorToken::Bg1.resolve(theme)),
+        ];
+        for (nome, c) in vizinhos {
+            let d = dist(m, lab(c).0);
+            pior = pior.min(d);
+            assert!(d >= PISO_MUDADO, "{theme:?}: Mudado × {nome} a {d:.3}");
+        }
+    }
+    assert!(pior < 1.0, "a régua mediu alguma coisa: {pior}");
+}
+
+/// O laranja em OKLCh: `#FF9F5A` mede ~55°; o amarelo do `Warn` de antes caía em ~90°–100° («creme»).
+const MATIZ_LARANJA: std::ops::RangeInclusive<f64> = 35.0..=75.0;
+/// Piso OKLab do Mudado à chave e aos fundos. Medido 10/11 nos 12 temas: o par mais perto é `Oled` × chave a
+/// 0,153; cartão ≥ 0,533, campo ≥ 0,506, painel ≥ 0,375. Matiz do losango 41,7°–54,6°, do contorno 53,4°–59,4°.
+const PISO_MUDADO: f64 = 0.15;

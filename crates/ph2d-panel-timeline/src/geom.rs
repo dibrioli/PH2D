@@ -320,6 +320,7 @@ pub(crate) fn content_h(
             .map(|b| b.h)
             .sum::<f32>()
         + crate::macro_steps::macro_h(snap, tab)
+        + crate::faixa_marcadores::h(snap, tab)
 }
 
 /// The Summary channel's row rect, or `None` when there is no track to summarise.

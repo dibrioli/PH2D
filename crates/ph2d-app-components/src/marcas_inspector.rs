@@ -236,13 +236,9 @@ fn mascara() -> &'static [(NodeId, Box<[PropKind]>)] {
                 .map(PropKind::Field)
         };
         let flip: Box<[PropKind]> = [chave(2, 0), chave(3, 0)].into_iter().flatten().collect();
-        // O pivô anda com a posição e o deslocamento do collider: sem eles, tocar a animação moveria desenho e colisão.
-        let pivo: Box<[PropKind]> = [chave(4, 0), chave(4, 1)]
-            .into_iter()
-            .flatten()
-            .chain(POSICAO.iter().copied())
-            .chain([fi(fs::DESLOC_X)])
-            .collect();
+        // O losango do Pivot é o do pivô; a posição e o collider que o escritor também move entram só no
+        // clique ([`ARRASTA_DO_PIVO`]).
+        let pivo: Box<[PropKind]> = [chave(4, 0), chave(4, 1)].into_iter().flatten().collect();
         (insp::INSP_CAMERA_CULL_BIT.iter())
             .chain([&insp::INSP_CAMERA_CULL_HEADER])
             .map(|&id| (id, reps.clone()))
@@ -253,6 +249,16 @@ fn mascara() -> &'static [(NodeId, Box<[PropKind]>)] {
             .collect()
     })
 }
+
+/// ⭐ **O que o escritor do Pivot move além do pivô** (`ph2d_sprite_edit::pivot::pousa`: a posição compensa e
+/// o collider fica): o clique grava-os com ele, senão tocar a animação moveria desenho e colisão. O LOSANGO não
+/// os mostra — uma chave na Position não é uma chave no Pivot.
+const ARRASTA_DO_PIVO: &[PropKind] = &[
+    PropKind::TranslationX,
+    PropKind::TranslationY,
+    PropKind::Position,
+    fi(fs::DESLOC_X),
+];
 
 /// ⭐ **O grupo de um rótulo do catálogo** (F27 B2): a linha pintada com o `label_key` de um campo
 /// mostra o canal dele — `ph2d_ecs::canal_componente::chaves_do_rotulo`, uma vez por rótulo.
@@ -342,6 +348,10 @@ pub fn marcas(
     let mut por_grupo: BTreeMap<Cow<'static, [PropKind]>, KeyMark> = BTreeMap::new();
     let lig = ph2d_timeline::Ligacoes::de(doc, entidades, inst);
     for (id, reps) in todos() {
+        // O primeiro grupo de um campo vence, como em [`canal_do_campo`]: o losango mostra o que o clique grava.
+        if out.contains_key(&id) {
+            continue;
+        }
         let m = match por_grupo.get(&reps) {
             Some(&m) => m,
             None => {
@@ -376,6 +386,14 @@ pub fn clique(
         .find(|r| !r.is_empty())
     else {
         return Vec::new();
+    };
+    let reps: Cow<'static, [PropKind]> = if campos
+        .iter()
+        .any(|c| insp::INSP_SPRITE_PIVOT_XY.contains(c))
+    {
+        Cow::Owned(reps.iter().chain(ARRASTA_DO_PIVO).copied().collect())
+    } else {
+        reps
     };
     if reps.iter().any(|r| matches!(r, PropKind::Field(_))) {
         return ph2d_timeline::clique_com_posicao(
@@ -415,3 +433,7 @@ mod tests;
 #[cfg(test)]
 #[path = "marcas_inspector_custo_tests.rs"]
 mod custo;
+
+#[cfg(test)]
+#[path = "marcas_inspector_escritor_tests.rs"]
+mod escritor;

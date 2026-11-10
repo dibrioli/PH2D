@@ -445,10 +445,9 @@ fn grupo_de_gravar(
     );
     // O trecho a tocar (doc 17 item 2): «takeoff → top» com ✕; clicar volta ao clipe todo.
     if let Some(nome) = crate::ruler_trecho::rotulo(snap) {
-        let w = c.botao_com_icone_w(&nome);
+        let w = crate::faixa_marcadores::pilula_w(ctx, &nome);
         let (x, y) = f.poe(w);
-        let r = Rect::new(x, y, w, m::FIELD_H);
-        c.botao_com_icone_discreto_em(ids::TIMELINE_STRETCH_CLEAR, IconId::Close, &nome, r, tons);
+        crate::faixa_marcadores::pilula(ctx, theme, Rect::new(x, y, w, m::FIELD_H), &nome);
     }
 }
 

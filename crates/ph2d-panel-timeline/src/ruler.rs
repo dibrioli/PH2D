@@ -48,7 +48,7 @@ const LOOP_MOVE_GRAB_H: f32 = 8.0; // LITERAL-PX-OK: loop move-handle grab heigh
 pub(crate) const MARKER_W: f32 = 12.0; // LITERAL-PX-OK: marker pennant width
 const MARKER_H: f32 = 8.0; // LITERAL-PX-OK: marker pennant height
 /// Extra grab padding either side of a marker pennant.
-const MARKER_HIT_PAD: f32 = 4.0; // LITERAL-PX-OK: marker grab padding
+pub(crate) const MARKER_HIT_PAD: f32 = 4.0; // LITERAL-PX-OK: marker grab padding
 
 /// Paint the ruler strip (ticks + labels), the playhead line across `region`,
 /// and register the scrub hit. The view (`view_start`, `px_per_s`) is computed
@@ -105,9 +105,6 @@ pub(crate) fn paint(
     if clock.loop_band {
         paint_loop_band(ctx, theme, region, &time_to_x, trecho.or(snap.loop_range));
     }
-    crate::ruler_trecho::pinta_armado(ctx, theme, region, &time_to_x, trecho);
-    let cede =
-        crate::ruler_trecho::vaos_dos_nomes(ctx, region, &time_to_x, snap, clock, MARKER_W * 0.5);
     // The recorded-history band (Blender's cache bar): only on the ruler whose drag moves the
     // clock the history was recorded on (`RulerClock::history`), on this ruler's axis.
     if let Some(axis) = clock.history {
@@ -125,7 +122,7 @@ pub(crate) fn paint(
         TICK_MINOR_S,
         TICK_MINOR_H,
         false,
-        (&time_to_x, &cede),
+        &time_to_x,
     );
     paint_ticks(
         ctx,
@@ -136,7 +133,7 @@ pub(crate) fn paint(
         TICK_MAJOR_S,
         TICK_MAJOR_H,
         true,
-        (&time_to_x, &cede),
+        &time_to_x,
     );
 
     // The END line (cards): over the veil and every piece, under the playhead and the braces.
@@ -198,9 +195,6 @@ pub(crate) fn paint(
     if clock.loop_band && trecho.is_none() {
         paint_loop_braces(ctx, theme, region, &time_to_x, snap);
     }
-    // Nos cartões, os vãos entre marcadores ganham à faixa do laço (doc 17 item 2).
-    let marker = (MARKER_W, MARKER_H);
-    crate::ruler_trecho::paint(ctx, theme, region, &time_to_x, snap, clock, marker);
     // The DURATION handle at the veil's left edge — drag it to resize the composition
     // (Enio, 2026-07-23). Registered AFTER the braces (topmost) so grabbing the comp
     // end wins over a loop brace parked at the same instant, and gated the same way as
@@ -210,8 +204,9 @@ pub(crate) fn paint(
         veil::paint_duration_handle(ctx, theme, region, view_start, px_per_s, snap);
     }
     // The markers ARE timeline furniture (timeline-time) — Arrange, or Keys without a
-    // stack. On the clip's ruler under a stack they would stand at the wrong second.
-    if clock.markers {
+    // stack. On the clip's ruler under a stack they would stand at the wrong second. Nos cartões
+    // moram na faixa «Markers» do pé da lista (`faixa_marcadores`, maquete B6), não na régua.
+    if clock.markers && !ph2d_editor_core::panel::cards::ferramenta::cards_on() {
         paint_markers(ctx, theme, region, &time_to_x, snap);
     }
     fim::fecha_recorte(ctx, recorte);
@@ -432,9 +427,12 @@ pub(crate) fn paint_markers(
                 resolve(ColorToken::BgElev, theme),
             );
         }
-        // Label to the right of the triangle, elided so it never runs off (cards: nor into the next marker).
-        let (lx, ly, max) =
-            crate::ruler_trecho::lugar_do_nome(region, time_to_x, snap, index, MARKER_H);
+        // Label to the right of the triangle, elided so it never runs off.
+        let (lx, ly) = (
+            x + half + Spacing::Xs.px(),
+            region.y + (MARKER_H - font) * 0.5,
+        );
+        let max = (right - x - half).max(0.0);
         let cor = resolve(ColorToken::Text2, theme);
         let (ts, sc) = (&mut *ctx.text_system, &mut *ctx.scene);
         ph2d_editor_core::paint::paint_text_elided(ts, sc, label, lx, ly, font, max, cor);
@@ -499,7 +497,7 @@ fn paint_ticks(
     step: f64,
     tick_h: f32,
     label: bool,
-    (time_to_x, cede): (&impl Fn(f64) -> f32, &[(f32, f32)]),
+    time_to_x: &impl Fn(f64) -> f32,
 ) {
     if step <= 0.0 {
         return;
@@ -519,7 +517,7 @@ fn paint_ticks(
         );
         let (font, txt) = (TypeToken::Sm.px(), format!("{}", t.round() as i64));
         let x0 = x + Spacing::Xxs.px();
-        if label && !crate::ruler_trecho::cede_ao_nome(ctx, cede, x0, &txt, font) {
+        if label {
             paint_text(
                 ctx.text_system,
                 ctx.scene,

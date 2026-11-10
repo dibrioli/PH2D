@@ -70,6 +70,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.card.add_marker" => "Marker",
         // onda 1 — trecho (doc 17, item 2): o chip que toca só o pedaço entre dois marcadores.
         "panel.timeline.stretch.label" => "{from} → {to}",
+        // A faixa própria dos marcadores no pé da lista (maquete B6).
+        "panel.timeline.markers_row" => "Markers",
         "panel.timeline.tip.stretch" => {
             "Playing only this stretch, in a loop. Click to play the whole clip again"
         }

@@ -161,6 +161,22 @@ pub const TIMELINE_LACO_REGUA_ALPHA: f32 = 0.7; // LITERAL-PX-OK: opacidade da f
 pub const TIMELINE_TRECHO_FUNDO_ALPHA: f32 = 0.2; // LITERAL-PX-OK: fundo da caixa do trecho
 /// O fio da caixa do trecho (e do vão sob o ponteiro).
 pub const TIMELINE_TRECHO_BORDA_ALPHA: f32 = 0.65; // LITERAL-PX-OK: fio da caixa do trecho
+/// ⭐ **A faixa «Markers»** (maquete B6, `.c13mk`/`.c13ml`/`.c13sec`, medida em chrome headless): o
+/// chip de cada marcador (15 × 15, raio 4), o nome a 9 px do centro do chip e a caixa do trecho a 3 px
+/// de cima e de baixo da faixa.
+pub const TIMELINE_MARCADOR_CHIP_PX: f32 = 15.0; // LITERAL-PX-OK: lado do chip do marcador
+/// O raio do chip do marcador.
+pub const TIMELINE_MARCADOR_RAIO_PX: f32 = 4.0; // LITERAL-PX-OK: raio do chip do marcador
+/// O ícone dentro do chip (raio ⚡ ou etiqueta).
+pub const TIMELINE_MARCADOR_ICONE_PX: f32 = 10.0; // LITERAL-PX-OK: ícone do chip do marcador
+/// Do centro do chip ao começo (ou ao fim, virado) do nome.
+pub const TIMELINE_MARCADOR_NOME_DX_PX: f32 = 9.0; // LITERAL-PX-OK: nome a 9 px do centro do chip
+/// A folga de cima e de baixo da caixa do trecho na faixa.
+pub const TIMELINE_TRECHO_FOLGA_PX: f32 = 3.0; // LITERAL-PX-OK: caixa do trecho a 3 px da faixa
+/// O chip «só nome» (`.c13mt`): o texto a 12 % por dentro e o fio a 30 %.
+pub const TIMELINE_MARCADOR_SO_NOME_FUNDO_ALPHA: f32 = 0.12; // LITERAL-PX-OK: fundo do chip só nome
+/// O fio do chip «só nome».
+pub const TIMELINE_MARCADOR_SO_NOME_FIO_ALPHA: f32 = 0.3; // LITERAL-PX-OK: fio do chip só nome
 /// A folga de cada lado do enquadrar da Timeline (`F` e o abrir), em fracção do que se enquadra: o fim
 /// do clipe e um pouco de «além do fim» ficam à vista (estado da arte, ~5–8 %).
 pub const TIMELINE_ENQUADRE_MARGEM: f32 = 0.05; // LITERAL-PX-OK: folga do enquadrar, fracção do vão

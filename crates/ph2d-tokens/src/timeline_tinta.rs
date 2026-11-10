@@ -81,6 +81,11 @@ pub enum TimelineTinta {
     OlhoMudo,
     /// A faixa fina do laço no topo da régua (o `.c13lp` da maquete B: o verde da [`Self::PecaA`]).
     LacoDaRegua,
+    /// O losango `Mudado` do Inspector e o valor do campo mudado (maquete B1: `#FF9F5A`, o laranja do
+    /// Spine/Blender; a mesma amostra da [`Self::PecaContainer`], outro significado).
+    Mudado,
+    /// O contorno do campo mudado (maquete B1: o laranja a ~58 % sobre o cartão, amostra da moda).
+    MudadoContorno,
 }
 
 /// As cores das peças de clipe, na ordem da maquete; o clipe `i` veste `PECAS[i % PECAS.len()]`.
@@ -123,7 +128,8 @@ impl TimelineTinta {
             Self::PecaC => (T::KanbanBlueBold, [183, 156, 255]),
             Self::PecaD => (T::KanbanBlueBold, [108, 203, 250]),
             Self::PecaE => (T::KanbanBlueBold, [255, 122, 168]),
-            Self::PecaContainer => (T::KanbanBlueBold, [255, 159, 90]),
+            Self::PecaContainer | Self::Mudado => (T::KanbanBlueBold, [255, 159, 90]),
+            Self::MudadoContorno => (T::KanbanList, [162, 107, 71]),
             Self::PesoPilula => (T::KanbanList, [33, 37, 52]),
             Self::OlhoMudo => (T::KanbanList, [137, 83, 87]),
         }

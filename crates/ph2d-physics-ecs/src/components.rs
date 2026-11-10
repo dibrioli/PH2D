@@ -279,7 +279,10 @@ pub fn collider_box_or(
 ) -> ([f32; 2], [f32; 2]) {
     world
         .get::<Collider>(e)
-        .map_or(([0.0, 0.0], [marker, marker]), Collider::local_aabb)
+        // O centro pela porta única: com pivô (`ShapeLook`), a caixa abraça a forma onde ela está (onda 8).
+        .map_or(([0.0, 0.0], [marker, marker]), |c| {
+            crate::forma_resolvida(world, e, c).local_aabb()
+        })
 }
 
 #[cfg(test)]
@@ -318,6 +321,13 @@ mod collider_box_tests {
             .id();
         let bare = w.spawn_empty().id();
         assert_eq!(collider_box_or(&w, floor, 0.2), ([1.0, -2.0], [7.0, 0.5]));
+        // O pivô no canto de baixo à esquerda (onda 8): a caixa do gizmo vai para onde a forma está.
+        w.entity_mut(floor).insert(crate::ShapeLook {
+            pivot: [-1.0, -1.0],
+            ..crate::ShapeLook::default()
+        });
+        assert_eq!(collider_box_or(&w, floor, 0.2), ([8.0, -1.5], [7.0, 0.5]));
+        w.entity_mut(floor).remove::<crate::ShapeLook>();
         assert_eq!(collider_box_or(&w, ball, 0.2), ([0.0, 0.0], [0.75, 0.75]));
         assert_eq!(
             collider_box_or(&w, capsule, 0.2),

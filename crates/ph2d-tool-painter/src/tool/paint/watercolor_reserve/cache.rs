@@ -67,8 +67,18 @@ pub(in crate::tool::paint) struct ReserveCache {
     /// Os raios da sessão, ordenados e sem repetição — a MESMA ordem que o [`campos`] devolve.
     radii: Vec<u16>,
     fields: Vec<Vec<f32>>,
-    /// Um por ladrilho de [`LADO`]², linha a linha.
-    feito: Vec<bool>,
+    /// Por raio (B16.A3), um por ladrilho de [`LADO`]², linha a linha.
+    feito: Vec<Vec<bool>>,
+}
+
+#[cfg(test)]
+thread_local! {
+    /// O oráculo do B16.A3: o conjunto de raios mudou ⇒ o plano inteiro renasce (o de antes).
+    pub(in crate::tool::paint) static REFAZ_TODOS_OS_RAIOS: std::cell::Cell<bool> =
+        const { std::cell::Cell::new(false) };
+    /// Texels × raios calculados pelos ladrilhos NOVOS da janela (o passo 2).
+    pub(in crate::tool::paint) static TEXELS_NOVOS: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
 }
 
 impl ReserveFields {
@@ -96,19 +106,47 @@ impl ReserveFields {
         radii.sort_unstable();
         radii.dedup();
         let rmax = usize::from(*radii.last()?);
-        let mut c = match cache {
-            Some(c) if c.fw == fw && c.fh == fh && c.radii == radii => c,
-            _ => ReserveCache {
-                fw,
-                fh,
-                fields: radii.iter().map(|_| vec![0.0; n]).collect(),
-                radii,
-                feito: vec![false; fw.div_ceil(LADO) * fh.div_ceil(LADO)],
-            },
+        let nt = fw.div_ceil(LADO) * fh.div_ceil(LADO);
+        #[cfg(test)]
+        let cache = cache.filter(|c| c.radii == radii || !REFAZ_TODOS_OS_RAIOS.get());
+        // B16.A3: um raio novo nasce vazio; os que ficam guardam o plano e os ladrilhos.
+        let mut velho: Vec<(u16, Vec<f32>, Vec<bool>)> = match cache {
+            Some(c) if c.fw == fw && c.fh == fh => c
+                .radii
+                .into_iter()
+                .zip(c.fields)
+                .zip(c.feito)
+                .map(|((r, f), d)| (r, f, d))
+                .collect(),
+            _ => Vec::new(),
+        };
+        let (mut fields, mut feito) = (Vec::new(), Vec::new());
+        for &r in &radii {
+            match velho.iter().position(|v| v.0 == r) {
+                Some(i) => {
+                    let (_, f, d) = velho.swap_remove(i);
+                    fields.push(f);
+                    feito.push(d);
+                }
+                None => {
+                    fields.push(vec![0.0; n]);
+                    feito.push(vec![false; nt]);
+                }
+            }
+        }
+        let mut c = ReserveCache {
+            fw,
+            fh,
+            radii,
+            fields,
+            feito,
         };
         // 1. O sujo do quadro `⊕ R`: onde os planos mudaram, o campo mudou (num plano acabado de
         //    nascer não há nada calculado que envelheça — os ladrilhos em falta cobrem-no).
-        if let Some(d) = changed.filter(|_| c.feito.iter().any(|&f| f)) {
+        let vivos: Vec<usize> = (0..c.radii.len())
+            .filter(|&k| c.feito[k].iter().any(|&f| f))
+            .collect();
+        if let Some(d) = changed.filter(|_| !vivos.is_empty()) {
             let (dx, dy) = (d.x as usize, d.y as usize);
             let grown = (
                 dx.saturating_sub(rmax),
@@ -117,7 +155,7 @@ impl ReserveFields {
                 (dy + d.h as usize + rmax).min(fh),
             );
             if grown.0 < grown.2 && grown.1 < grown.3 {
-                recompute(&mut c, planes, table, cur, grown, rmax);
+                recompute(&mut c, planes, cur, grown, &vivos);
             }
         }
         // 2. Os ladrilhos da janela que nunca foram calculados: troços de cada fila, e troços IGUAIS
@@ -126,36 +164,49 @@ impl ReserveFields {
         let tw = fw.div_ceil(LADO);
         let (tx0, tx1) = (rx0 / LADO, (rx0 + rw).div_ceil(LADO));
         let (ty0, ty1) = (ry0 / LADO, (ry0 + rh).div_ceil(LADO));
-        let mut trocos: Vec<(usize, usize, usize, usize)> = Vec::new(); // (x0, x1, y0, y1) em ladrilhos
-        for ty in ty0..ty1 {
-            let mut tx = tx0;
-            while tx < tx1 {
-                if c.feito[ty * tw + tx] {
-                    tx += 1;
-                    continue;
+        //    Por raio; os raios com os mesmos troços calculam-se juntos.
+        let mut trocos: Vec<(Rect, Vec<usize>)> = Vec::new(); // (x0, x1, y0, y1) em ladrilhos
+        for k in 0..c.radii.len() {
+            let feito = &mut c.feito[k];
+            let mut deste: Vec<Rect> = Vec::new();
+            for ty in ty0..ty1 {
+                let mut tx = tx0;
+                while tx < tx1 {
+                    if feito[ty * tw + tx] {
+                        tx += 1;
+                        continue;
+                    }
+                    let t0 = tx;
+                    while tx < tx1 && !feito[ty * tw + tx] {
+                        feito[ty * tw + tx] = true;
+                        tx += 1;
+                    }
+                    match deste
+                        .iter_mut()
+                        .find(|t| t.0 == t0 && t.1 == tx && t.3 == ty)
+                    {
+                        Some(t) => t.3 = ty + 1,
+                        None => deste.push((t0, tx, ty, ty + 1)),
+                    }
                 }
-                let t0 = tx;
-                while tx < tx1 && !c.feito[ty * tw + tx] {
-                    c.feito[ty * tw + tx] = true;
-                    tx += 1;
-                }
-                match trocos
-                    .iter_mut()
-                    .find(|t| t.0 == t0 && t.1 == tx && t.3 == ty)
-                {
-                    Some(t) => t.3 = ty + 1,
-                    None => trocos.push((t0, tx, ty, ty + 1)),
+            }
+            for t in deste {
+                match trocos.iter_mut().find(|(u, _)| *u == t) {
+                    Some((_, ks)) => ks.push(k),
+                    None => trocos.push((t, vec![k])),
                 }
             }
         }
-        for (x0, x1, y0, y1) in trocos {
+        for ((x0, x1, y0, y1), ks) in trocos {
             let u = (
                 x0 * LADO,
                 y0 * LADO,
                 (x1 * LADO).min(fw),
                 (y1 * LADO).min(fh),
             );
-            recompute(&mut c, planes, table, cur, u, rmax);
+            #[cfg(test)]
+            TEXELS_NOVOS.set(TEXELS_NOVOS.get() + (u.2 - u.0) * (u.3 - u.1) * ks.len());
+            recompute(&mut c, planes, cur, u, &ks);
         }
         Some(Self {
             by_r: Vec::new(),
@@ -194,16 +245,28 @@ impl ReserveFields {
     }
 }
 
-/// Recalcula o campo em `u`, sobre a janela `u ⊕ R` (a distância `> R` de toda borda que não seja
-/// a do canvas, logo o valor é o de qualquer janela maior), e copia só `u` para o plano guardado.
+/// Recalcula os raios `ks` (índices de `c.radii`, crescentes) em `u`, sobre a janela `u ⊕ R` (a
+/// distância `> R` de toda borda que não seja a do canvas, logo o valor é o de qualquer janela
+/// maior), e copia só `u` para os planos guardados. Cada raio é um borrão independente: o `campos`
+/// de um subconjunto dá o `f32` do de todos.
 fn recompute(
     c: &mut ReserveCache,
     planes: (&[u8], &[u8]),
-    table: &[WetStrokeStyle],
     cur: &WetStrokeStyle,
     u: Rect,
-    rmax: usize,
+    ks: &[usize],
 ) {
+    let estilos: Vec<WetStrokeStyle> = ks
+        .iter()
+        .map(|&k| WetStrokeStyle {
+            reserve_r: c.radii[k],
+            ..*cur
+        })
+        .collect();
+    let Some(rmax) = estilos.iter().map(|s| usize::from(s.reserve_r)).max() else {
+        return;
+    };
+    let (table, cur) = (&estilos[..], &estilos[0]);
     let w = (
         u.0.saturating_sub(rmax),
         u.1.saturating_sub(rmax),
@@ -218,9 +281,14 @@ fn recompute(
         Ok(mut g) => campos(&mut g, planes, janela, table, cur),
         Err(_) => campos(&mut Rascunho::default(), planes, janela, table, cur),
     });
-    debug_assert!(by_r.iter().map(|(r, _)| *r).eq(c.radii.iter().copied()));
+    debug_assert!(
+        by_r.iter()
+            .map(|(r, _)| *r)
+            .eq(ks.iter().map(|&k| c.radii[k]))
+    );
     let (fw, uw) = (c.fw, u.2 - u.0);
-    for ((_, src), dst) in by_r.iter().zip(c.fields.iter_mut()) {
+    for ((_, src), &k) in by_r.iter().zip(ks) {
+        let dst = &mut c.fields[k];
         dst.par_chunks_mut(fw)
             .skip(u.1)
             .take(u.3 - u.1)

@@ -196,3 +196,49 @@ fn um_quadro_sem_dab_nao_refaz_a_reserva() {
         );
     }
 }
+
+/// **B16.A3 — um raio novo na sessão só calcula o raio novo**: o 2.º traço (outro raio, sobre o
+/// 1.º) enche os ladrilhos da janela só para o raio dele; os do 1.º ficam guardados. CONTROLO: o
+/// plano inteiro a renascer (`REFAZ_TODOS_OS_RAIOS`) calcula os dois raios. A paridade ao byte com
+/// o campo refeito é a do `o_campo_guardado_da_o_byte_do_campo_refeito` (cinco raios na sessão).
+#[test]
+fn um_raio_novo_so_calcula_o_raio_novo() {
+    use crate::tool::paint::watercolor_reserve::{REFAZ_TODOS_OS_RAIOS, TEXELS_NOVOS};
+    let corre = |todos: bool| -> (usize, Vec<u8>) {
+        REFAZ_TODOS_OS_RAIOS.set(todos);
+        let size = 320u32;
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+        t.paint.brush.color = [0.85, 0.12, 0.10];
+        watercolor_basic_de_antes(&mut t);
+        t.paint.brush.wet_charge = 0.95;
+        let mut novos = 0;
+        for (k, (r, rewet)) in [(32.0f32, 1.0f32), (20.0, 0.2)].into_iter().enumerate() {
+            t.paint.brush.radius_px = r;
+            t.paint.brush.wet_rewet = rewet;
+            let seed = t.paint.brush;
+            t.paint.brush_by_mode.fill(seed);
+            assert!(t.on_canvas_pointer(cp([60.0, 160.0], PointerPhase::Down)));
+            for i in 1..=10 {
+                TEXELS_NOVOS.set(0);
+                t.on_canvas_pointer(cp([60.0 + 20.0 * i as f32, 160.0], PointerPhase::Move));
+                frame(&mut t);
+                if k == 1 && i == 1 {
+                    novos = TEXELS_NOVOS.get();
+                }
+            }
+            fecha(&mut t, [260.0, 160.0]);
+        }
+        REFAZ_TODOS_OS_RAIOS.set(false);
+        (novos, t.canvas_rgba.to_vec())
+    };
+    let (cura, tela) = corre(false);
+    let (controlo, tela0) = corre(true);
+    eprintln!("1.º quadro do 2.º traço: texels×raios novos {cura} × controlo {controlo}");
+    assert!(controlo > 0, "CONTROLO: o 2.º traço não encheu ladrilhos");
+    assert!(
+        2 * cura <= controlo,
+        "o raio novo recalculou os raios guardados: {cura} × {controlo} (controlo, os dois raios)"
+    );
+    assert_eq!(tela, tela0, "o raio novo guardado à parte mudou bytes");
+}

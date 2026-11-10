@@ -48,6 +48,8 @@ use super::watercolor_field::{WetStrokeStyle, sample_bilinear};
 /// O campo guardado entre quadros (ADR-0173, 3.ª ronda).
 mod cache;
 pub(super) use cache::ReserveCache;
+#[cfg(test)]
+pub(super) use cache::{REFAZ_TODOS_OS_RAIOS, TEXELS_NOVOS};
 
 /// A casca externa do dab em que a reserva afila até zero (`dn ∈ [1−RAMP, 1]`) — a anatomia da borda
 /// de um traço com Charge < 1 (MIX-1, 2026-07-08). Era aplicada DENTRO do `max`; hoje é o factor `T`.

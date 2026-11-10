@@ -171,7 +171,7 @@ pub use layer_compositor::{
     LayerPixelProvider, LayerPixels, MAX_BLUR_HALF, Region, SPATIAL_BLOOM, SPATIAL_CHROMA,
     SPATIAL_GAUSSIAN, SPATIAL_MOTION, SPATIAL_SHADOWS_HIGHLIGHTS, SPATIAL_SHARPEN,
     flatten_layer_ops, gaussian_weights, has_spatial, layer_cache_budget, max_layers_for_budget,
-    motion_weights,
+    motion_direction, motion_weights,
 };
 pub use lens::{LensPass, LensUniform};
 pub use luz_recebida::{GrupoDeLuz, LuzRecebida, LuzUniforme, RECEBER_WGSL, entradas_do_layout};

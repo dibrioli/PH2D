@@ -1300,6 +1300,9 @@ fn cs_sh_luma(@builtin(global_invocation_id) gid: vec3<u32>) {
 
 // Apply the local tonal correction from base + the two blurred luma maps, then
 // blend the adjustment's own mode/opacity over the base (coverage = base.a).
+// The CPU `SH_LUMA_FLOOR` (`apply_shadows_highlights`).
+const SH_LUMA_FLOOR: f32 = 1.0 / 32.0;
+
 @compute @workgroup_size(8, 8, 1)
 fn cs_combine_sh(@builtin(global_invocation_id) gid: vec3<u32>) {
     let x = gid.x;
@@ -1321,10 +1324,12 @@ fn cs_combine_sh(@builtin(global_invocation_id) gid: vec3<u32>) {
     new_l = clamp(0.5 + (new_l - 0.5) * (1.0 + sh_g.midtone_contrast), 0.0, 1.0);
     // Re-tone in DISPLAY space, preserving hue (scale the display RGB toward new_l).
     var d = clamp(base_enc.rgb, vec3<f32>(0.0), vec3<f32>(1.0));
-    if l > 1e-4 {
+    if l >= SH_LUMA_FLOOR {
         d = clamp(d * (new_l / l), vec3<f32>(0.0), vec3<f32>(1.0));
     } else {
-        d = vec3<f32>(new_l, new_l, new_l);
+        // Below the floor the colour is noise: scale to the floor, add the rest as grey (DF-50).
+        let ratio = new_l / SH_LUMA_FLOOR;
+        d = clamp(d * ratio + vec3<f32>(new_l - l * ratio), vec3<f32>(0.0), vec3<f32>(1.0));
     }
     // Saturation tweak in the corrected regions.
     let cc = sh_g.color_correction * min(ws + wh, 1.0);

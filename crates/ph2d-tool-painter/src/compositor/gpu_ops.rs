@@ -82,6 +82,11 @@ fn flatten_ids(
     ops: &mut Vec<LayerOp>,
     adj_luts: &mut Vec<f32>,
 ) -> Option<()> {
+    // B19.1, espelho do `composite_into`: o elo do recorte é da estrutura. A placa só vê as ops
+    // emitidas, por isso o que a camada escondida faria ao elo vira aqui: base escondida ⇒ os
+    // recortados não se emitem; grupo/ajuste escondido ⇒ os recortados vão sem `clipping`
+    // (= o `NO_CLIP_BASE` da placa); base a opacidade 0 com recortado em cima ⇒ CPU.
+    let (mut clip_hidden, mut clip_broken, mut clip_zero) = (false, false, false);
     // Bottom-to-top, mirror of `composite_into`'s `ids.iter().rev()`.
     for &id in ids.iter().rev() {
         let Some(layer) = stack.get(id) else { continue };
@@ -89,8 +94,27 @@ fn flatten_ids(
         if matches!(layer.kind, LayerKind::Mask(_)) {
             continue;
         }
-        if !layer.visible || layer.opacity <= 0.0 {
+        let raster = matches!(layer.kind, LayerKind::Raster(_) | LayerKind::Texture(_));
+        let hidden_adj = matches!(&layer.kind, LayerKind::Adjustment(a) if !a.visible || a.opacity <= 0.0);
+        if !layer.visible || layer.opacity <= 0.0 || hidden_adj {
+            if raster && !layer.clipping {
+                (clip_hidden, clip_broken, clip_zero) = (!layer.visible, false, layer.visible);
+            } else if !raster {
+                (clip_hidden, clip_broken, clip_zero) = (false, true, false);
+            }
             continue;
+        }
+        let mut clipping = layer.clipping;
+        if raster && clipping {
+            if clip_hidden {
+                continue;
+            }
+            if clip_zero {
+                return None;
+            }
+            clipping = !clip_broken;
+        } else {
+            (clip_hidden, clip_broken, clip_zero) = (false, false, false);
         }
         // ⚠️ `is_reference` used to bail here. A reference layer is the *geometry source
         // for ColorDrop* (`layers/mod.rs` §2.9) — the CPU compositor never reads the flag
@@ -114,7 +138,7 @@ fn flatten_ids(
                 blend_mode,
                 opacity,
                 mask: layer_mask(stack, layer.mask),
-                clipping: layer.clipping,
+                clipping,
             }),
             LayerKind::Group(g) => {
                 // ⚠️ A masked or clipped GROUP is refused, and that is not an oversight to

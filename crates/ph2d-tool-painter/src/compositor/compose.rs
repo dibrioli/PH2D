@@ -276,9 +276,30 @@ pub(super) fn composite_into(
     // (§2.8); consecutive clipping layers chain to the same base. As we walk up,
     // `clip_base` holds that base raster's straight pixels (alpha = the clip).
     let mut clip_base: Option<&[u8]> = None;
+    // B19.1: o elo do recorte é da ESTRUTURA, não da visibilidade. Base escondida ⇒ os recortados
+    // somem (`clip_hidden`); base a opacidade 0 continua a ser a base; grupo/ajuste escondido quebra o elo.
+    let mut clip_hidden = false;
+    let need = if rw == 0 || rh == 0 {
+        4
+    } else {
+        (((ry + rh - 1) * canvas_w + (rx + rw - 1)) as usize + 1) * 4
+    };
     for &id in ids.iter().rev() {
         let Some(layer) = stack.get(id) else { continue };
         if !layer.visible || layer.opacity <= 0.0 {
+            match &layer.kind {
+                LayerKind::Raster(_) | LayerKind::Texture(_) if !layer.clipping => {
+                    if !layer.visible {
+                        clip_hidden = true;
+                    } else if let Some(rgba) = src.layer_rgba(id).filter(|r| r.len() >= need) {
+                        (clip_base, clip_hidden) = (Some(rgba), false);
+                    }
+                }
+                LayerKind::Group(_) | LayerKind::Adjustment(_) => {
+                    (clip_base, clip_hidden) = (None, false);
+                }
+                _ => {}
+            }
             continue;
         }
         let opacity = layer.opacity.clamp(0.0, 1.0);
@@ -288,18 +309,16 @@ pub(super) fn composite_into(
             // `images[id]`), so it blends through the exact same path as a painted raster — mask,
             // clipping, blend, opacity, and clip-base all apply identically.
             LayerKind::Raster(_) | LayerKind::Texture(_) => {
+                if layer.clipping && clip_hidden {
+                    continue;
+                }
                 let Some(rgba) = src.layer_rgba(id) else {
                     continue;
                 };
                 // Bounds guard: the highest texel index this window reads is
                 // the bottom-right corner. Skip a too-short buffer rather than
                 // panic-index (defense vs a mismatched/forged provider).
-                let max_idx = if rw == 0 || rh == 0 {
-                    0
-                } else {
-                    ((ry + rh - 1) * canvas_w + (rx + rw - 1)) as usize
-                };
-                if rgba.len() < (max_idx + 1) * 4 {
+                if rgba.len() < need {
                     continue;
                 }
                 // T3.5: an attached grayscale mask multiplies this layer's alpha
@@ -309,7 +328,7 @@ pub(super) fn composite_into(
                 let mask = layer.mask.and_then(|mid| match &stack.get(mid)?.kind {
                     LayerKind::Mask(m) => {
                         let mrgba = src.layer_rgba(mid)?;
-                        (mrgba.len() >= (max_idx + 1) * 4).then_some((mrgba, m.inverted))
+                        (mrgba.len() >= need).then_some((mrgba, m.inverted))
                     }
                     _ => None,
                 });
@@ -359,7 +378,7 @@ pub(super) fn composite_into(
                 // A NON-clipping raster becomes the clip base for the layers
                 // above it; a clipping raster chains to the same base.
                 if !layer.clipping {
-                    clip_base = Some(rgba);
+                    (clip_base, clip_hidden) = (Some(rgba), false);
                 }
             }
             LayerKind::Group(g) => {
@@ -400,7 +419,7 @@ pub(super) fn composite_into(
                     }
                 }
                 // A group is not a raster clip base — it breaks the clip chain.
-                clip_base = None;
+                (clip_base, clip_hidden) = (None, false);
             }
             // W4 (ADR-0045 §2.7, CPU-first): a non-destructive adjustment
             // transforms the layers BELOW it — already in `acc` (we walk
@@ -413,6 +432,7 @@ pub(super) fn composite_into(
             // Mask/opacity live HERE, not in the compute hook (W4-triage).
             LayerKind::Adjustment(adj) => {
                 if !adj.visible || adj.opacity <= 0.0 {
+                    (clip_base, clip_hidden) = (None, false);
                     continue;
                 }
                 // W5 cut-point cache (ADR-0045 §2.7): at the ROOT, snapshot the
@@ -530,7 +550,7 @@ pub(super) fn composite_into(
                     }
                 }
                 // An adjustment is not a raster clip base — it breaks the chain.
-                clip_base = None;
+                (clip_base, clip_hidden) = (None, false);
             }
             // Mask layers composite via their parent (T3.5); skip standalone.
             LayerKind::Mask(_) => continue,
@@ -597,3 +617,5 @@ fn salto_ligado() -> bool {
 
 #[cfg(test)]
 mod salto_tests;
+#[cfg(test)]
+mod recorte_tests;

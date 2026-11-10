@@ -212,6 +212,11 @@ fn bilinear(buf: &[[f32; 4]], w: i32, h: i32, fx: f32, fy: f32) -> [f32; 4] {
 /// saturation in the corrected regions. Defined in display tones end to end (the
 /// encoded values as they are). Coverage is PRESERVED (a tonal op, not an image
 /// blur — `feathers_coverage` is false).
+/// Display luma below which Shadows/Highlights stops scaling the colour (≈ 8 codes of 8-bit):
+/// `new_l / l` on near-black noise turned it into a saturated primary (DF-50). Mirrored by the
+/// WGSL `SH_LUMA_FLOOR` (`cs_combine_sh`).
+pub const SH_LUMA_FLOOR: f32 = 1.0 / 32.0;
+
 pub fn apply_shadows_highlights(
     p: &ShadowsHighlightsParams,
     acc: &mut [[f32; 4]],
@@ -244,13 +249,19 @@ pub fn apply_shadows_highlights(
                 px[1].clamp(0.0, 1.0),
                 px[2].clamp(0.0, 1.0),
             ];
-            if l > 1e-4 {
+            if l >= SH_LUMA_FLOOR {
                 let ratio = new_l / l;
                 for c in &mut d {
                     *c = (*c * ratio).clamp(0.0, 1.0);
                 }
             } else {
-                d = [new_l, new_l, new_l];
+                // B19.3: abaixo do piso a cor é ruído — escala até ao piso e soma o resto em cinza
+                // (a luma chega a `new_l`; `l → 0` é o cinza de antes, `l → piso` a lei de cima).
+                let ratio = new_l / SH_LUMA_FLOOR;
+                let add = new_l - l * ratio;
+                for c in &mut d {
+                    *c = (*c * ratio + add).clamp(0.0, 1.0);
+                }
             }
             // Saturation tweak in the corrected regions.
             let cc = p.color_correction * (ws + wh).min(1.0);

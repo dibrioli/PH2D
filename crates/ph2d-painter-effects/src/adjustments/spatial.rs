@@ -54,7 +54,7 @@ use ph2d_det_math::DetMath as _;
 
 #[path = "spatial_tonal.rs"]
 mod tonal; // Bloom + Shadows/Highlights (LOC cap: sibling module)
-pub use tonal::{apply_bloom, apply_shadows_highlights, separable_blur_scalar};
+pub use tonal::{SH_LUMA_FLOOR, apply_bloom, apply_shadows_highlights, separable_blur_scalar};
 /// Largest separable-blur half-width (kernel reaches `±MAX_BLUR_HALF` texels).
 /// Bounds the weights buffer + per-pixel tap count. **Mirrors
 /// `ph2d_render::layer_compositor::MAX_BLUR_HALF`** (kept in lock-step; a 256-px

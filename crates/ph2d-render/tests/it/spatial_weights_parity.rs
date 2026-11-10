@@ -21,7 +21,10 @@
 use ph2d_painter_effects::adjustments::{
     gaussian_weights as brush_gaussian, motion_weights as brush_motion,
 };
-use ph2d_render::{gaussian_weights as render_gaussian, motion_weights as render_motion};
+use ph2d_det_math::DetMath;
+use ph2d_render::{
+    gaussian_weights as render_gaussian, motion_direction, motion_weights as render_motion,
+};
 
 #[test]
 fn gaussian_weights_match_canonical_painter_brush() {
@@ -44,4 +47,23 @@ fn motion_weights_match_canonical_painter_brush() {
         assert_eq!(rh, bh, "motion half mismatch at distance {d}");
         assert_eq!(rw, bw, "motion weights mismatch at distance {d}");
     }
+}
+
+/// AU15-1: the GPU Motion Blur direction is the CPU blur's `det_sin_cos`, bit for
+/// bit (a last-bit libm drift flips the tap `round()` at x.5 boundaries).
+#[test]
+fn motion_direction_gpu_is_det_sin_cos_bits() {
+    let mut angles: Vec<f32> = (0..4096)
+        .map(|i| (i as f32 / 4096.0) * std::f32::consts::TAU - std::f32::consts::PI)
+        .collect();
+    angles.extend([37f32.to_radians(), 1e3, -1e3, 12345.678, 1e5, 0.0, -0.0]);
+    let mut wrong = Vec::new();
+    for &a in &angles {
+        let (s, c) = a.det_sin_cos();
+        let [gc, gs] = motion_direction(a);
+        if gc.to_bits() != c.to_bits() || gs.to_bits() != s.to_bits() {
+            wrong.push(a);
+        }
+    }
+    assert!(wrong.is_empty(), "{} of {} angles differ, e.g. {:?}", wrong.len(), angles.len(), &wrong[..wrong.len().min(5)]);
 }

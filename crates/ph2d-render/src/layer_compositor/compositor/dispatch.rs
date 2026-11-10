@@ -190,8 +190,7 @@ impl LayerCompositor {
                 k if k == SPATIAL_MOTION => {
                     let (weights, half) = motion_weights(params[0]);
                     let angle = params[1];
-                    // Direction computed CPU-side so the GPU does no sin/cos.
-                    let stage = BlurStage::Directional([angle.cos(), angle.sin()]);
+                    let stage = BlurStage::Directional(motion_direction(angle));
                     Some(KernelPlan {
                         weights,
                         half,

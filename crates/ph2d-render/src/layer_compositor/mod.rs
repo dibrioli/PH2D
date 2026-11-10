@@ -46,7 +46,7 @@ use ops::{COMBINE_BLOOM, COMBINE_GAUSSIAN, COMBINE_SHARPEN};
 pub use ops::{
     LayerMask, LayerOp, MAX_BLUR_HALF, SPATIAL_BLOOM, SPATIAL_CHROMA, SPATIAL_GAUSSIAN,
     SPATIAL_MOTION, SPATIAL_SHADOWS_HIGHLIGHTS, SPATIAL_SHARPEN, gaussian_weights, has_spatial,
-    motion_weights,
+    motion_direction, motion_weights,
 };
 use ops::{distinct_layer_count, op_mask, validate_op_list};
 use readback::readback_rgba8;

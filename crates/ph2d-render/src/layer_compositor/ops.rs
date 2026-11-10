@@ -122,6 +122,16 @@ pub fn motion_weights(distance: f32) -> (Vec<f32>, u32) {
     (vec![w; half as usize + 1], half)
 }
 
+/// Motion-blur direction `[cos, sin]` of `angle` (rad), computed CPU-side so the
+/// GPU does no trig. The SAME bits as the canonical CPU blur's `det_sin_cos`
+/// (Bug #58: the system libm may differ in the last bit and the tap `round()`
+/// then jumps a pixel) — pinned by `motion_direction_gpu_is_det_sin_cos_bits`.
+#[must_use]
+pub fn motion_direction(angle: f32) -> [f32; 2] {
+    let (s, c) = ph2d_det_math::DetMath::det_sin_cos(angle);
+    [c, s]
+}
+
 /// Does this op-list contain a spatial adjustment (a pass break)? When false,
 /// the compositor takes the untouched single-pass path; when true, it takes the
 /// segmented pass-graph.

@@ -175,3 +175,35 @@ fn the_bloom_stays_a_glow_of_light() {
         );
     }
 }
+
+/// T1-15 (DF-50): ruído quase preto + Shadows lift. `new_l / l` com `l` minúsculo levava
+/// `(3/255, 0, 0)` a `(1, 0, 0)`: um vermelho puro de um píxel de ruído. Agora a luma chega à
+/// mesma `new_l` e a cor cresce no máximo `new_l / piso` (antes croma 1, agora 0,19); acima do piso a lei de antes, ao bit (controlo).
+#[test]
+fn sombras_sobre_ruido_quase_preto_nao_viram_cor() {
+    use super::spatial::{SH_LUMA_FLOOR, apply_shadows_highlights};
+    let p = ShadowsHighlightsParams {
+        shadows_amount: 0.5,
+        shadows_tonal_width: 0.6,
+        shadows_radius: 0.0,
+        ..ShadowsHighlightsParams::default()
+    };
+    let ruido = [3.0 / 255.0, 0.0, 0.0, 1.0];
+    let escuro = [0.30, 0.10, 0.10, 1.0];
+    let mut px = vec![[0.0, 0.0, 0.0, 1.0], ruido, [0.0, 1.0 / 255.0, 0.0, 1.0], escuro];
+    let antes = px.clone();
+    let n = px.len();
+    apply_shadows_highlights(&p, &mut px, linha(n));
+    let luma = |q: &[f32; 4]| 0.2126 * q[0] + 0.7152 * q[1] + 0.0722 * q[2];
+    for (i, q) in px.iter().enumerate().take(3) {
+        let croma = q[0].max(q[1]).max(q[2]) - q[0].min(q[1]).min(q[2]);
+        assert!(croma < 0.25, "píxel {i} {:?} virou cor: {q:?}", antes[i]);
+        assert!(luma(q) > 0.3, "píxel {i} foi levantado: {q:?}");
+    }
+    // Controlo: acima do piso, `d · new_l / l` como antes (o recorte não muda a lei de quem tem cor).
+    let l = luma(&escuro);
+    assert!(l >= SH_LUMA_FLOOR);
+    let ws = 1.0 - { let t = (l / 0.6).clamp(0.0, 1.0); t * t * (3.0 - 2.0 * t) };
+    let ratio = (l + 0.5 * ws).clamp(0.0, 1.0) / l;
+    assert!((px[3][0] - (escuro[0] * ratio).clamp(0.0, 1.0)).abs() < 1e-6, "{:?}", px[3]);
+}

@@ -104,19 +104,7 @@ fn cells_of(world: &World, entity: Entity) -> u32 {
         .map_or(1, |g| g.cells().max(1))
 }
 
-/// **O cartão Animation (§11) existe para `entity`** — a porta de [`build_anim_info`] e da folha ao vivo (B10.3). Só uma
-/// SPRITE tem animação de frames (o pool é a grelha dela); o Pixel Sprite também (os clips e a grelha DERIVAM das tags do
-/// documento, P14 §4 A). Aparece com QUALQUER dos dois componentes (ADR-0166 F3): a biblioteca ou o tocador.
-#[must_use]
-pub fn has_anim_card(world: &World, entity: Entity) -> bool {
-    (world.get::<ph2d_ecs::PixelSprite>(entity).is_some()
-        || world.get::<ph2d_render::Sprite>(entity).is_some())
-        && (world.get::<SpriteAnimations>(entity).is_some()
-            || world.get::<SpriteAnimator>(entity).is_some())
-}
-
-/// Constrói o snapshot da §11, ou `None` quando a entidade não é uma sprite. Sem campo `mixed` (medido
-/// 23/08: ninguém o lia); a seleção múltipla diz «só a ativa» pelo `selected_count`.
+/// Constrói o snapshot da §11, ou `None` sem o cartão; a seleção múltipla diz «só a ativa» pelo `selected_count`.
 pub fn build_anim_info(
     world: &World,
     entity_bits: u64,
@@ -124,7 +112,7 @@ pub fn build_anim_info(
 ) -> Option<InspectorAnimInfo> {
     let entity = Entity::from_bits(entity_bits);
     let clips_do_documento = world.get::<ph2d_ecs::PixelSprite>(entity).is_some();
-    if !has_anim_card(world, entity) {
+    if !ph2d_anim_sheets::folha_viva::has_anim_card(world, entity) {
         return None;
     }
     let cells = cells_of(world, entity);

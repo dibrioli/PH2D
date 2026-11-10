@@ -745,6 +745,18 @@ História verbatim dos `//!` removidos (o porquê histórico vive aqui, não no 
     //! concatenava `tr(…)`. ⇒ *um censo cuja crate não é DONA do texto que ela pinta fica verde sobre
     //! texto cru*, e eram **291** palavras.
 
+## `crates/ph2d-app-sprite-anim/src/card.rs` (B10.3 da missão Painter 4K: a folha ao vivo saiu para `ph2d-anim-sheets::folha_viva`)
+
+    //!
+    //! Estende a §11 de [`crate::inspector`]: a lista de quadros, o modo do ciclo, «quem escolhe» e as
+    //! regras de animação ([plano 08](../../../docs/GameEngineFuncional/08_regras_de_animacao_plano.md)). Tudo passa pela fila de comandos (`queue_set`/`queue_remove`), então o undo
+    //! regista por diff como o resto do Inspector.
+
+## `crates/ph2d-app-sprite-anim/src/inspector.rs` (`build_anim_info`)
+
+    /// Constrói o snapshot da §11, ou `None` quando a entidade não é uma sprite. Sem campo `mixed` (medido
+    /// 23/08: ninguém o lia); a seleção múltipla diz «só a ativa» pelo `selected_count`.
+
 
 ## `crates/ph2d-i18n/src/component_catalog.rs` — cabeçalho, linhas 18–31 (line/GameEngineFuncional, 10/11, tecto de 700 LOC)
 

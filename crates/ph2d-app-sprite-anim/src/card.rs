@@ -1,9 +1,5 @@
 //! **O cartão «Animation» e o editor de animações: o que leem e o que escrevem**
 //! ([plano 07](../../../docs/GameEngineFuncional/07_animacao_num_cartao_plano.md) §Desenho técnico).
-//!
-//! Estende a §11 de [`crate::inspector`]: a lista de quadros, o modo do ciclo, «quem escolhe» e as
-//! regras de animação ([plano 08](../../../docs/GameEngineFuncional/08_regras_de_animacao_plano.md)). Tudo passa pela fila de comandos (`queue_set`/`queue_remove`), então o undo
-//! regista por diff como o resto do Inspector.
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{

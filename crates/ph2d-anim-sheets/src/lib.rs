@@ -6,6 +6,7 @@ pub mod align;
 pub mod apply;
 pub mod cell_edit;
 pub mod editor_ui;
+pub mod folha_viva;
 pub mod names;
 pub mod ops;
 pub mod panel_frame;

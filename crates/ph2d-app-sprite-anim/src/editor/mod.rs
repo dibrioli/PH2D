@@ -9,8 +9,18 @@ pub use ph2d_anim_editor::{
     align, align_pivot, bands, doc, layout, paint, paint_sheet, split, strip_bar,
 };
 
-mod folha_viva;
-pub use folha_viva::{follow_live, shown};
+/// [`ph2d_anim_sheets::folha_viva::follow_live`] com a aba à frente, se é do editor de animações (B10.3).
+pub fn follow_live(
+    sim: &mut ph2d_ecs::SimWorld,
+    hero: &ph2d_editor_core::HeroScreen,
+    vivo: Option<(u64, (u64, u64))>,
+    read: impl FnOnce() -> Option<(Vec<u8>, u32, u32)>,
+) {
+    let editor = hero.documents.surfaces().find::<AnimDocs>();
+    let aba = hero.documents.surface_active().map(|t| t.id);
+    let aba = aba.filter(|id| editor.is_some_and(|d| d.docs.iter().any(|x| x.entity == *id)));
+    ph2d_anim_sheets::folha_viva::follow_live(sim, hero, aba, vivo, read);
+}
 
 use std::collections::BTreeMap;
 

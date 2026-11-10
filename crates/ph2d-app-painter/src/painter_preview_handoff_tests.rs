@@ -14,9 +14,6 @@ use ph2d_tool_runtime::PreviewCache as PainterPreview;
 use std::sync::Arc;
 
 /// One frame of the app's preview lifecycle, in `dispatch`'s exact order: the GPU producer gets
-/// first refusal (`try_drive`), a GPU-owned frame clears the CPU cache, a CPU-owned frame drains
-/// the tool and runs the real upload door ([`crate::painter_bridge_upload::upload_cpu_preview`]).
-/// Returns whether the GPU producer owned the slot this frame.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn app_frame(
     renderer: &mut ph2d_render::SpriteRenderer,
@@ -40,7 +37,6 @@ pub(super) fn app_frame(
     } else if let Some((drained, w, h)) = painter.take_preview_arc() {
         dirty_bbox = painter.take_preview_upload_bbox();
         // The shell owns its preview buffer (drives the REAL helper), so the tool stays the sole
-        // owner of its canvas — exactly as `dispatch` does it.
         let mirror = crate::painter_bridge_upload::own_preview_buffer(
             preview.take(),
             ENTITY,
@@ -57,7 +53,6 @@ pub(super) fn app_frame(
         });
     }
     // Idle (drain None) reads the unchanged version → the plan Skips; a dirty frame reads the bumped
-    // one → it uploads.
     let cache_version = painter.canvas_version();
     crate::painter_bridge_upload::upload_cpu_preview(
         renderer,
@@ -72,28 +67,6 @@ pub(super) fn app_frame(
 }
 
 /// **The screen survives the producer handoffs — CPU→GPU→CPU, on real hardware.**
-///
-/// The producer handoff dance: the GPU producer takes the slot when the stack is representable, the
-/// CPU producer reclaims it when it is not, and **the first CPU frame after a GPU stretch must
-/// re-seed the slot whole** — the two defects this phase found (`take_preview_dirty` leaving the CPU
-/// composite stale + the partial plan patching a GPU-seeded slot) both live exactly on that seam,
-/// latent today only because every eligibility-flipping door happens to invalidate the composite.
-/// This gate runs the seam end-to-end — real `try_drive`, real upload door, real wgpu textures, real
-/// readback — and holds the final screen bytes to a from-scratch recompose.
-///
-/// ## The lever keeps moving, the gate does not
-///
-/// It first flipped eligibility with `impasto_show` (premise: *"the GPU compositor cannot light
-/// relief"*), then with a layer **mask** (2026-07-18, once the light port made relief GPU-eligible).
-/// Then the GPU Ondas made a mask an OP too (`docs/Painter/25_avaliacao_gpu.md`), so a mask no longer
-/// moves a document between producers either — the lever is now an **unported adjustment**
-/// (`ColorBalance`: no scalar and no spatial GPU code, so `flatten_for_gpu` still refuses it). Nothing
-/// this gate proves has changed: it needs a door that flips eligibility, not any particular door — and
-/// each time a wave widened what the GPU can represent, this gate's lever had to be the thing STILL
-/// outside it (⚠️ and this gate is GPU-adapter-only, so `ship.sh` never runs it — the mask lever went
-/// stale-green-latent for exactly one wave before this run caught it).
-///
-/// `#[ignore]`: needs a GPU adapter (none on CI); run locally with `--ignored`.
 #[test]
 #[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
 fn the_screen_survives_the_gpu_to_cpu_producer_handoff() {
@@ -132,7 +105,6 @@ fn the_screen_survives_the_gpu_to_cpu_producer_handoff() {
     };
 
     // 1. Trivial stack, nothing painted yet → the CPU producer owns (the trivial bow-out: its lane
-    //    is zero-composite there, strictly cheaper than a GPU round trip).
     assert!(
         !frame(
             &mut t,
@@ -175,8 +147,6 @@ fn the_screen_survives_the_gpu_to_cpu_producer_handoff() {
     );
 
     // 2. The stroke put RELIEF on the canvas, which takes the trivial bow-out away (the CPU lane
-    //    refuses its zero-composite fast path once `impasto_visible`) → CPU→GPU handoff, with the GPU
-    //    doing the lighting. This is the step the light port exists for.
     let l2 = t.add_raster_layer("Layer 2").expect("layer 2");
     t.set_layer_opacity(l2, 0.5);
     assert!(
@@ -237,11 +207,6 @@ fn the_screen_survives_the_gpu_to_cpu_producer_handoff() {
     );
 
     // 4. An UNPORTED adjustment (ColorBalance has no scalar and no spatial GPU code) → outside the
-    //    GPU op-list → GPU→CPU handoff; then one more impasto stroke so the partial lane runs over
-    //    the re-seeded slot. `add_adjustment_layer` leaves the previously-active RASTER as the paint
-    //    target, so the follow-up strokes still deposit. (The lever moved off the mask: this line's
-    //    own wave made masks GPU-representable, so a mask no longer flips eligibility — see the module
-    //    doc.)
     t.add_adjustment_layer(AdjustmentKind::ColorBalance)
         .expect("an unported adjustment above the stack");
     assert!(
@@ -308,18 +273,6 @@ fn the_screen_survives_the_gpu_to_cpu_producer_handoff() {
 }
 
 /// **A slot the GPU producer seeded is never PATCHED — the handoff must re-seed it whole.**
-///
-/// The GPU preview producer stamps its slots with `arc_token: 0` ("no CPU Arc") precisely so the
-/// first CPU frame after a GPU-owned stretch forces a full re-upload — the slot holds the GPU
-/// compositor's output (unlit, another era), and a rect patched over it leaves every other pixel
-/// to a different producer. The dims/entity guards can't tell the producers apart (the GPU lane
-/// reuses the same slot at the same dims), so the token is the ONLY witness. Today this is latent
-/// — every door that flips producer eligibility happens to invalidate the tool's composite, so no
-/// bbox reaches this plan on a handoff frame — but that safety is an enumeration of doors, and
-/// door N+1 (a future eligibility flip that forgets to invalidate) lands on exactly this line.
-///
-/// **Mutation that must bleed:** drop the `g.arc_token != 0` arm of the partial guard in
-/// [`plan_upload`] — the plan below comes back `Partial`.
 #[test]
 fn a_gpu_seeded_slot_is_reseeded_whole_never_patched() {
     let preview = PainterPreview {
@@ -337,7 +290,6 @@ fn a_gpu_seeded_slot_is_reseeded_whole_never_patched() {
     };
     assert_eq!(
         // A real CPU content version (1) against the GPU stamp (0): the version differs so an upload
-        // is due, and the `g.arc_token != 0` arm must still force it FULL rather than Partial.
         plan_upload(&preview, Some(gpu_seeded), Some((4, 4, 8, 8)), 1, false),
         UploadPlan::Full { reuse: Some(9) },
         "a valid bbox over a GPU-seeded slot must still plan a FULL upload — a Partial here \
@@ -346,22 +298,6 @@ fn a_gpu_seeded_slot_is_reseeded_whole_never_patched() {
 }
 
 /// **What the artist sees through the GPU producer is what they would have seen through the CPU one
-/// — on a SCULPTED canvas, with the relief lit by the shader.**
-///
-/// This is the gate the GPU light port is answerable to. Everything else about the port is checked a
-/// level down (`ph2d-render`'s `impasto_light_gpu` reconciles the shader against
-/// `apply_impasto_light` pixel for pixel), but that gate hands both sides the same synthetic buffer.
-/// This one runs the PRODUCT: the real `try_drive`, the real eligibility gate, the real flatten, the
-/// real GPU compositor, the real light pass, the real premultiply, the real slot texture — and reads
-/// the bytes the sprite shader will sample straight back off the device.
-///
-/// The oracle is the OTHER producer, which is the only oracle that answers the question actually
-/// being asked. Moving a document between two lanes is only safe if the lanes draw the same picture;
-/// a gate comparing the GPU lane to a re-derivation of what it ought to draw would agree with any bug
-/// the two share, and the whole risk of this change is that they might not share one.
-///
-/// **Why this could not have been written before 2026-07-18:** the eligibility gate sent every
-/// sculpted canvas to the CPU, so there was no GPU-owned frame with relief on it to read back.
 #[test]
 #[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
 fn the_gpu_producer_shows_what_the_cpu_producer_shows() {
@@ -379,7 +315,6 @@ fn the_gpu_producer_shows_what_the_cpu_producer_shows() {
         );
         let mut t = impasto_tool(size);
         // O PAPEL do documento (2026-10-06): a GPU compõe sobre ele com a lei inteira da CPU, então o
-        // mesmo documento, com papel de cor, tem de dar os mesmos bytes nos dois produtores.
         if let Some([r, g, b]) = papel {
             ph2d_editor_core::tool::Tool::handle_panel_event(
                 &mut t,
@@ -395,7 +330,6 @@ fn the_gpu_producer_shows_what_the_cpu_producer_shows() {
         let mut preview_gpu: Option<PainterPreviewGpu> = None;
 
         // Sculpt: a curved stroke, so the relief carries slopes in every direction. A straight one would
-        // leave the normal pointing the same way down the whole stroke and a sign error could hide.
         t.on_canvas_pointer(cp([60.0, 90.0], PointerPhase::Down));
         for i in 1u8..=6 {
             let f = f32::from(i);
@@ -407,8 +341,6 @@ fn the_gpu_producer_shows_what_the_cpu_producer_shows() {
         t.on_canvas_pointer(cp([192.0, 171.0], PointerPhase::Up));
 
         // Run frames until the producers settle. The GPU must be the one holding the slot: if the
-        // eligibility gate ever sends a sculpted canvas back to the CPU this reads as a plain failure
-        // here rather than as a silent loss of the speed the port was built for.
         let mut gpu_owns = false;
         for _ in 0..4 {
             gpu_owns = app_frame(
@@ -438,7 +370,6 @@ fn the_gpu_producer_shows_what_the_cpu_producer_shows() {
         assert_eq!((w, h), (size, size), "slot dims match the canvas");
 
         // …against the CPU producer's own answer for the same document. `screen_truth` drains the tool,
-        // so it runs AFTER the readback.
         let truth = screen_truth(&mut t);
         let lit_pixels = shown
             .as_chunks::<4>()
@@ -459,7 +390,6 @@ fn the_gpu_producer_shows_what_the_cpu_producer_shows() {
             &format!("GPU producer vs CPU producer, papel {papel:?}"),
         );
         // B15.3: o tique da lâmpada não redobra (janela de 1 texel) e a tela é a da CPU com a luz nova. O 1.º
-        // redobra: a `screen_truth` acima foi um quadro da CPU.
         for angulo in [120.0, 200.0] {
             t.set_impasto_light_angle(angulo);
             let args = (&mut session, &mut preview, &mut preview_gpu, &mut toasts);
@@ -494,22 +424,6 @@ fn the_gpu_producer_shows_what_the_cpu_producer_shows() {
 }
 
 /// **O PAPEL atravessa o produtor da GPU — o gate que faltava, e a razão de o Enio ver o papel morto.**
-///
-/// Irmão exato do de cima, com a única alavanca trocada: nenhuma pincelada, **só o substrato**. É a
-/// forma que o defeito de 2026-08-10 tinha (*"Paper parece não funcionar para Digital"*): a wave somava
-/// a inclinação do dente dentro do laço da **CPU**, e um documento que a **GPU** compõe — o caso normal
-/// — nunca passa por lá. Sete gates de unidade verdes, e o papel invisível na tela.
-///
-/// ⚠️ **A fixture NÃO pinta, e é isso que a torna o oráculo certo.** O gate irmão esculpe um traço, e
-/// sobre relevo de tinta o dente é um detalhe que se perde no ruído; um documento nu isola a única coisa
-/// que esta wave acrescenta. É também literalmente o caso do artista: o Digital não tem plano de
-/// `covers` nenhum.
-///
-/// **Duas mutações têm de sangrar, e cada uma sozinha:**
-///  * tirar o dente do `ReliefFields::height_at` (devolvê-lo ao laço da CPU) — o plano sobe chato e a
-///    tela da GPU volta a ser papel branco enquanto a da CPU tem grão;
-///  * zerar o `paper_body` no uniform — o plano sobe CERTO e o shader o apaga, multiplicando por uma
-///    cobertura de tinta que num documento digital é zero.
 #[test]
 #[ignore = "requires a GPU adapter (no GPU on CI); run with --ignored on a dev machine"]
 fn the_paper_alone_survives_the_gpu_producer() {
@@ -558,8 +472,6 @@ fn the_paper_alone_survives_the_gpu_producer() {
     assert_eq!((w, h), (size, size), "slot dims match the canvas");
 
     // ⚠️ O CONTROLE vem antes da paridade: sem tinta nenhuma, duas telas brancas casariam
-    // perfeitamente e o gate passaria por vácuo — que é exatamente o estado que ele existe para
-    // reprovar. O dente TEM de ter acendido alguma coisa.
     let lit = shown
         .as_chunks::<4>()
         .0

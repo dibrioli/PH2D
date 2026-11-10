@@ -958,3 +958,515 @@ Comentários históricos tirados do código de `ph2d-app-painter` (catraca the_s
 /// então quem soma é só o gate que afirma *"as fases não se perderam"*. Um `pub` sem chamador de
 /// produto seria uma segunda resposta esperando alguém chamá-la.
 ```
+
+## B20a — painter_gpu_preview{,_tests}.rs (verbatim, 2026-11-10)
+
+`painter_gpu_preview_tests.rs` (antes de `fn sculpted_tool() -> PainterTool {`):
+```text
+/// A single-layer canvas with a real impasto stroke on it. Big enough that a brush actually deposits
+/// relief — a 4x4 canvas would leave `heights` empty and every gate below would pass by doing
+/// nothing.
+```
+
+`painter_gpu_preview_tests.rs` (antes de `let t = sourced_tool();`):
+```text
+// A single plain raster IS GPU-representable (flatten = Some), but the
+// gate must bow out FIRST: the CPU path is zero-composite + partial
+// bbox upload there, and the fluid E4 texture mode (trivial-only)
+// must never share the frame with a GPU layer recomposite.
+```
+
+`painter_gpu_preview_tests.rs` (antes de `#[test]`):
+```text
+/// **Repeat Image keeps the CPU producer** (Enio 2026-07-20, "em impasto Tiling as imagens
+/// repetidas desaparecem"): the 3×3 tile preview blits the CPU composite (`PainterPreview`),
+/// and when the GPU owns the slot the bridge clears that cache — the tiles silently vanish.
+/// The fixture is the sculpted document (GPU-eligible since the light port — exactly the case
+/// the report came from); the presence half proves the refusal is the TOGGLE's, not the stack's.
+```
+
+`painter_gpu_preview_tests.rs` (antes de `#[test]`):
+```text
+/// **A PROTEÇÃO mantém o produtor de CPU** (Enio 2026-08-07: *"a máscara funcionou, mas fica invisível
+/// ao usar impasto"*): o overlay dela é um tinte por-pixel sobre o COMPOSTO (`apply_mask_overlay`, na
+/// `runtime.rs`), e o produtor de GPU não o desenha — ele composita e ilumina, e o overlay não é uma
+/// `LayerOp`.
+///
+/// ⚠️ **A fixture tem de ser o documento ESCULPIDO**, e é isso que torna o gate o do report: sem relevo
+/// um documento com scratch é trivial e a bow-out do topo já o mandava para a CPU, então o defeito não
+/// existia. Foi o relevo — elegível desde o port da luz — que o expôs.
+///
+/// **Mutação que deve sangrar:** apagar o `mask_scratch_active` do `gpu_eligible`.
+```
+
+`painter_gpu_preview_tests.rs` (antes de `#[test]`):
+```text
+/// A sculpted SINGLE-LAYER document — the most ordinary way to use Impasto — must now take the GPU
+/// path. It is the whole point of the light port, and it is the case the old `impasto_visible()` bail
+/// sent to the CPU compositor together with every layer, blend mode and adjustment in the document.
+///
+/// The premise this rests on is checked here rather than assumed: the stack IS trivial, so without
+/// the relief the gate would (correctly) bow out.
+```
+
+`painter_gpu_preview_tests.rs` (antes de `#[test]`):
+```text
+/// …and the light has something to hand the shader. A gate on eligibility alone would stay green if
+/// the planes came back `None`, which is the shape of "the GPU path claims the frame and draws it
+/// unlit" — the exact failure the old bail existed to prevent.
+```
+
+`painter_gpu_preview_tests.rs` (antes de `#[test]`):
+```text
+/// Switching the pass OFF must put the canvas back on the CPU's zero-composite fast lane. Otherwise
+/// hiding the relief would silently cost a full GPU recomposite per frame to draw a picture the CPU
+/// hands over by cloning an `Arc`.
+```
+
+`painter_gpu_preview_tests.rs` (antes de `#[test]`):
+```text
+/// **The masked document goes to the GPU now** — the headline of
+/// `docs/Painter/25_avaliacao_gpu.md` achado A, asserted where the routing
+/// actually happens rather than one layer down in the flatten.
+///
+/// Measured before this landed: a single mask took a 4096² adjustment drag
+/// from 0,738 ms to 652,9 ms — 885×, triggered by a checkbox, with nothing on
+/// screen to say why. A mask is how you paint inside a shape; it is not an
+/// exotic feature to leave on the slow producer.
+```
+
+`painter_gpu_preview_tests.rs` (antes de `#[test]`):
+```text
+/// The refusal that REMAINS, so "eligible" does not quietly become "always".
+///
+/// A clipped GROUP stays on the CPU deliberately: the CPU reference's Group
+/// arm reads neither `mask` nor `clipping`, and a GPU that honoured them would
+/// make the picture depend on which producer won the frame.
+```
+
+`painter_gpu_preview_tests.rs` (antes de `#[test]`):
+```text
+/// **Com PAPEL a GPU produz** (2026-10-06; era `o_papel_mantem_o_produtor_de_cpu`): o compositor
+/// compõe cada saída sobre o papel com a lei inteira da CPU (`LayerCompositor::set_paper`), então um
+/// documento que a GPU produziria deixa de cair na CPU por ter papel. ⚠️ Uma camada LISA com papel
+/// fica na CPU, MEDIDO: ali ela recompõe só a região suja e é `1,85–4,5×` mais rápida
+/// (`measure_o_quadro_com_papel_nos_dois_produtores`). A paridade ao byte é a do
+/// `the_gpu_producer_shows_what_the_cpu_producer_shows`, que corre o documento sem e com papel.
+```
+
+`painter_gpu_preview_tests.rs` (antes de `#[test]`):
+```text
+/// **Com o VIDRO da aguada sob papel de cor a CPU produz** (doc 48, BUGS #46): o compositor da GPU só
+/// conhece um alfa por texel, e mostraria a aguada que soma luz ao papel. Um desenho novo (papel branco)
+/// esculpido e com uma aguada continua na GPU; o papel castanho tira-o dela; sem aguada, o castanho
+/// não tira.
+```
+
+`painter_gpu_preview_tests.rs` (antes de `#[test]`):
+```text
+/// **G20 (F36 §1) — no fim de um episódio sem memória o preview na placa refaz a sessão e o slot e
+/// recompõe a tela, sem esperar uma pincelada.** O que a sessão e o slot criaram sob recusa é inválido;
+/// a fonte são as camadas em CPU. Um quadro parado sem episódio não refaz nada.
+```
+
+`painter_gpu_preview_tests.rs` (antes de `#[test]`):
+```text
+/// **B16.12 — a troca GPU→CPU sai do quadro do toque.** Com a aguada ARMADA sobre o papel de cor, a 1.ª
+/// aguada criaria o vidro e tiraria o documento da placa NO toque (4K: a tela inteira composta na CPU e
+/// 33 MB enviados, 154,5 ms). O portão decide a CPU antes do 1.º vidro, e o toque não muda a pista; o
+/// Digital no mesmo papel fica na GPU.
+```
+
+`painter_gpu_preview_tests.rs` (antes de `#[test]`):
+```text
+/// **B20.A2 — a versão de uma camada é um relógio do DOCUMENTO** (`bump_layer_pixels`: sobe a cada toque, de
+/// qualquer camada), não «+1 por envio». O retângulo sujo do instrumento cobre só o que mudou desde a drenagem
+/// ANTERIOR, logo só remenda a fatia que subiu nessa drenagem; uma camada que lá não esteve (fora da pilha,
+/// prewarm, falha) sobe inteira — senão o que mudou antes do retângulo ficava velho na placa.
+```
+
+`painter_gpu_preview_tests.rs` (antes de `#[test]`):
+```text
+/// **B20.A1 — a falha da placa entrega o quadro à CPU.** Uma tela mais larga do que a placa aceita: o
+/// compositor recusa, o `drive` devolve `false`, e antes o `try_drive` dizia `true` com o slot largado —
+/// ninguém produzia o quadro. Agora a CPU compõe a tela inteira nesse quadro e fica dona (um aviso só).
+```
+
+`painter_gpu_preview.rs` (antes de `let Some((ops, adj_luts)) = ph2d_tool_painter::flatten_for_gpu(painter`):
+```text
+// Also allocates the canvas-sized compositor/premul resources (first execution only).
+// ⚠️ The LIGHT pass stays out (named limitation, a product decision): a fresh stack has no
+// relief, so the first relief stroke folds the whole canvas. `gpu_eligible` is bypassed ON
+// PURPOSE (a fresh stack is trivial and refuses). The slot is released next frame; the passes'
+// internal textures live in `session_slot` and survive.
+```
+
+`painter_gpu_preview.rs` (antes de `struct PainterLayerProvider<'a> {`):
+```text
+/// Adapts [`PainterTool::preview_layer_pixels`] to the render crate's
+/// [`LayerPixelProvider`] — the tool stays decoupled from `ph2d-render`, so the
+/// bridge owns this glue.
+```
+
+`painter_gpu_preview.rs` (antes de `pub(super) fn try_drive(`):
+```text
+/// Decide GPU-vs-CPU for this frame and, when GPU, recomposite into the preview slot. Returns
+/// `true` iff the GPU producer owns the slot; otherwise a no-op and the caller runs the CPU path.
+/// Drains the preview-dirty flag (recomposite only on change) and the dirty bbox (no leak into a
+/// later CPU frame). A TRIVIAL stack stays on the CPU (zero-composite + partial upload) unless
+/// the canvas carries relief — see [`gpu_eligible`].
+```
+
+`painter_gpu_preview.rs` (antes de `if painter.preview_layer_stack_is_trivial() && !painter.impasto_visibl`):
+```text
+// Trivial bow-out unless relief: relief forces a CPU full composite + light, where the GPU is
+// better (mirrors `runtime.rs`). Paper alone keeps the document on the CPU lane (it recomposes
+// only the dirty region).
+```
+
+`painter_gpu_preview.rs` (antes de `if painter.papel_pede_a_cpu() {`):
+```text
+// Wash GLASS under coloured paper (doc 48): paper crosses each channel by its alpha and the GPU
+// compositor knows one alpha per texel — the CPU produces, from the moment the wash is ARMED on
+// that paper (B16.12: never on the touch frame).
+```
+
+`painter_gpu_preview.rs` (antes de `#[allow(clippy::too_many_arguments)]`):
+```text
+/// Composite `ops` on the GPU, premultiply, copy into the preview slot ((re)acquired when
+/// missing/resized). On a GPU error the slot is released and a toast queued. Returns `true` iff
+/// a preview texture is live.
+```
+
+`painter_gpu_preview.rs` (antes de `fn compose_light_premul(`):
+```text
+/// Composite, light, premultiply — everything that turns the layer stack into the bytes the preview
+/// slot will hold, with no slot and no `SpriteRenderer` in sight. The finished pixels are
+/// `session.premul.output_texture()`.
+///
+/// Extracted so the parity gate (`the_gpu_producer_shows_what_the_cpu_producer_shows`) drives
+/// the REAL chain.
+///
+/// # Errors
+///
+/// Which stage refused — each hands the frame back to the CPU producer.
+```
+
+`painter_gpu_preview.rs` (antes de `let mut novas = std::mem::take(&mut session.a_entregar);`):
+```text
+// 1) GPU composite into the PERSISTENT canvas-sized `out`, writing at canvas
+//    coords — a region dispatch refreshes only `region`, leaving the rest from
+//    the prior frame (the 4K multi-layer cost goes O(canvas×layers) → O(env)).
+```
+
+`painter_gpu_preview.rs` (antes de `let comp_out = session.compositor.output_texture().ok_or(ph2d_i18n::tr`):
+```text
+// 2) Impasto light on the freshly composited region (lighting is NOT idempotent). `None` planes
+//    = no relief / pass off / lamps dark. The match YIELDS the finished texture: one answer to
+//    "which texture holds the canvas".
+```
+
+`painter_gpu_preview_tests.rs` (antes de `let mut t = sourced_tool();`):
+```text
+// Opacity < 1 on the single layer breaks triviality without leaving
+// GPU-representability → the GPU path owns the preview.
+```
+
+`painter_gpu_preview_tests.rs` (antes de `#[test]`):
+```text
+/// **A placa larga o documento e a CPU compõe a tela inteira NESSE quadro** (B16.12): sem isto a pista
+/// da CPU só compunha no próximo sujo — o toque — e pagava ali a tela fria inteira e o envio cheio.
+```
+
+`painter_gpu_preview.rs` (antes de `pub struct PainterGpuPreview {`):
+```text
+/// Per-session GPU state for the Painter live preview: compositor, straight→premul blit and a
+/// cached [`GpuContext`]. Created on bind ([`prewarm`]) or lazily, kept for the tool session.
+```
+
+`painter_gpu_preview.rs` (antes de `light: ImpastoLightPass,`):
+```text
+/// Impasto's light — the relief made visible. Runs BETWEEN the composite and the premultiply, which
+/// is exactly where the CPU pass runs (`runtime::take_preview_arc`: composite, light, overlay).
+```
+
+`painter_gpu_preview.rs` (antes de `geracao: u64,`):
+```text
+/// A geração de memória da placa em que a sessão nasceu (F36): no fim de um episódio sem memória
+/// a sessão e o slot refazem-se e a tela recompõe-se inteira (a fonte são as camadas em CPU).
+```
+
+`painter_gpu_preview.rs` (antes de `planos: Option<ph2d_tool_painter::ImpastoPlanes>,`):
+```text
+/// Os planos do último envio, cujos buffers a próxima dobra reescreve (B15-cont: sem os ~107 MB alocados e
+/// soltos a cada quadro do Ctrl+Z 4K).
+```
+
+`painter_gpu_preview.rs` (antes de `entregue: Vec<(u64, u64)>,`):
+```text
+/// B20.A2: `(camada, versão)` entregues ao compositor na última drenagem da placa. O sujo do instrumento
+/// cobre só o que mudou desde a drenagem ANTERIOR: a camada que não subiu nela sobe inteira.
+```
+
+`painter_gpu_preview.rs` (antes de `pub(crate) fn prewarm(`):
+```text
+/// Builds the session BEFORE the first stroke needs it (doc 28 §4.8): its passes compile
+/// shaders (~28 ms), paid on the document bind — human time — never on the first pen-down.
+```
+
+`painter_gpu_preview.rs` (antes de `fn recusa(session_slot: &mut Option<PainterGpuPreview>, painter: &mut `):
+```text
+/// B20.A1: a placa recusou a tela. A CPU compõe-na inteira JÁ neste quadro e fica dona até a tela ou a
+/// geração de memória mudarem.
+```
+
+`painter_gpu_preview.rs` (antes de `let contigua = self.anteriores.iter().any(|&(k, _)| k == key);`):
+```text
+// A versão é um relógio do documento (sobe a cada toque, de qualquer camada): o sujo só remenda a
+// fatia que subiu na drenagem anterior; uma camada que lá não esteve sobe inteira.
+```
+
+`painter_gpu_preview.rs` (antes de `fn gpu_eligible(painter: &PainterTool) -> Option<(Vec<LayerOp>, Vec<f3`):
+```text
+/// The GPU-vs-CPU gate, pure half: `Some(ops, adj_luts)` iff this frame composites on the GPU.
+/// The trivial-stack check runs FIRST (see [`try_drive`]).
+```
+
+`painter_gpu_preview.rs` (antes de `if painter.repeat_image() {`):
+```text
+// Repeat Image draws its 3×3 tiles from the CPU composite, which a GPU-owned slot clears:
+// while the tiling preview is on, the CPU lane produces.
+```
+
+`painter_gpu_preview.rs` (antes de `if painter.mask_scratch_active() {`):
+```text
+// The mask PROTECTION tint (`apply_mask_overlay`) lives in the CPU composite and the GPU
+// producer does not draw it: while a scratch is live, the CPU lane produces.
+```
+
+`painter_gpu_preview.rs` (antes de `let region = if seed_full {`):
+```text
+// The composite region: the WHOLE canvas on a seed frame (so the persistent
+// `out` + the slot hold a valid full backdrop), else just the wet envelope.
+```
+
+`painter_gpu_preview.rs` (antes de `if let Err(e) = compose_light_premul(session, tool, &ops, &adj_luts, w`):
+```text
+// 1-3) Composite, light, premultiply — everything that turns the layer stack into the bytes the
+//      slot will hold. On any failure the slot is released and the CPU producer takes the frame.
+```
+
+`painter_gpu_preview.rs` (antes de `let slot = ensure_slot(renderer, painter_preview_gpu, entity_bits, wid`):
+```text
+// 4) Ensure a right-sized slot, then COPY the premultiplied result in: the whole canvas on a
+//    seed frame, else only the wet envelope rect.
+```
+
+`painter_gpu_preview.rs` (antes de `session.compositor.set_paper(tool.papel());`):
+```text
+// O PAPEL do documento: o compositor compõe cada saída SOBRE ele com a lei inteira da CPU
+// (`compoe_sobre_o_papel`), no mesmo lugar da cadeia — depois do composite, antes da luz.
+```
+
+`painter_gpu_preview.rs` (antes de `let plane_win = tool`):
+```text
+// Fold window: the tool's `preview_gpu_region` (Some only for a rect-confined change) AND the
+// pass's `planes_seeded` AND a lit last frame (an unlit one wrote no planes); any no folds the whole canvas.
+```
+
+`painter_gpu_preview.rs` (antes de `region: Region::full(width, height),`):
+```text
+// The WHOLE canvas: the light owns a second persistent canvas, so its freshness
+// cannot be inherited from the compositor's region (reads unlit, writes its own).
+```
+
+`painter_gpu_preview.rs` (antes de `session`):
+```text
+// 3) Premultiply into a COPY_SRC texture (the slot samples PREMULTIPLIED);
+//    full-canvas, re-premultiplying out-of-region texels is a no-op.
+```
+
+`painter_gpu_preview.rs` (antes de `fn ensure_slot(`):
+```text
+/// Ensure a `width × height` slot (reuse on matching dims, else release + acquire EMPTY);
+/// returns its `texture_id`. `arc_token` is `0`, so a GPU→CPU transition forces a full re-upload.
+```
+
+`painter_gpu_preview.rs` (antes de `fn release_slot(`):
+```text
+/// Release the preview slot (if any) — local mirror of
+/// `painter_bridge::release_preview_texture`, so the producers don't reach into each other.
+```
+
+`painter_preview_handoff_tests.rs` (antes de `#[allow(clippy::too_many_arguments)]`):
+```text
+/// One frame of the app's preview lifecycle, in `dispatch`'s exact order: the GPU producer gets
+/// first refusal (`try_drive`), a GPU-owned frame clears the CPU cache, a CPU-owned frame drains
+/// the tool and runs the real upload door ([`crate::painter_bridge_upload::upload_cpu_preview`]).
+/// Returns whether the GPU producer owned the slot this frame.
+```
+
+`painter_preview_handoff_tests.rs` (antes de `let mirror = crate::painter_bridge_upload::own_preview_buffer(`):
+```text
+// The shell owns its preview buffer (drives the REAL helper), so the tool stays the sole
+// owner of its canvas — exactly as `dispatch` does it.
+```
+
+`painter_preview_handoff_tests.rs` (antes de `let cache_version = painter.canvas_version();`):
+```text
+// Idle (drain None) reads the unchanged version → the plan Skips; a dirty frame reads the bumped
+// one → it uploads.
+```
+
+`painter_preview_handoff_tests.rs` (antes de `#[test]`):
+```text
+/// **The screen survives the producer handoffs — CPU→GPU→CPU, on real hardware.**
+///
+/// The producer handoff dance: the GPU producer takes the slot when the stack is representable, the
+/// CPU producer reclaims it when it is not, and **the first CPU frame after a GPU stretch must
+/// re-seed the slot whole** — the two defects this phase found (`take_preview_dirty` leaving the CPU
+/// composite stale + the partial plan patching a GPU-seeded slot) both live exactly on that seam,
+/// latent today only because every eligibility-flipping door happens to invalidate the composite.
+/// This gate runs the seam end-to-end — real `try_drive`, real upload door, real wgpu textures, real
+/// readback — and holds the final screen bytes to a from-scratch recompose.
+///
+/// ## The lever keeps moving, the gate does not
+///
+/// It first flipped eligibility with `impasto_show` (premise: *"the GPU compositor cannot light
+/// relief"*), then with a layer **mask** (2026-07-18, once the light port made relief GPU-eligible).
+/// Then the GPU Ondas made a mask an OP too (`docs/Painter/25_avaliacao_gpu.md`), so a mask no longer
+/// moves a document between producers either — the lever is now an **unported adjustment**
+/// (`ColorBalance`: no scalar and no spatial GPU code, so `flatten_for_gpu` still refuses it). Nothing
+/// this gate proves has changed: it needs a door that flips eligibility, not any particular door — and
+/// each time a wave widened what the GPU can represent, this gate's lever had to be the thing STILL
+/// outside it (⚠️ and this gate is GPU-adapter-only, so `ship.sh` never runs it — the mask lever went
+/// stale-green-latent for exactly one wave before this run caught it).
+///
+/// `#[ignore]`: needs a GPU adapter (none on CI); run locally with `--ignored`.
+```
+
+`painter_preview_handoff_tests.rs` (antes de `assert!(`):
+```text
+// 1. Trivial stack, nothing painted yet → the CPU producer owns (the trivial bow-out: its lane
+//    is zero-composite there, strictly cheaper than a GPU round trip).
+```
+
+`painter_preview_handoff_tests.rs` (antes de `let l2 = t.add_raster_layer("Layer 2").expect("layer 2");`):
+```text
+// 2. The stroke put RELIEF on the canvas, which takes the trivial bow-out away (the CPU lane
+//    refuses its zero-composite fast path once `impasto_visible`) → CPU→GPU handoff, with the GPU
+//    doing the lighting. This is the step the light port exists for.
+```
+
+`painter_preview_handoff_tests.rs` (antes de `t.add_adjustment_layer(AdjustmentKind::ColorBalance)`):
+```text
+// 4. An UNPORTED adjustment (ColorBalance has no scalar and no spatial GPU code) → outside the
+//    GPU op-list → GPU→CPU handoff; then one more impasto stroke so the partial lane runs over
+//    the re-seeded slot. `add_adjustment_layer` leaves the previously-active RASTER as the paint
+//    target, so the follow-up strokes still deposit. (The lever moved off the mask: this line's
+//    own wave made masks GPU-representable, so a mask no longer flips eligibility — see the module
+//    doc.)
+```
+
+`painter_preview_handoff_tests.rs` (antes de `#[test]`):
+```text
+/// **A slot the GPU producer seeded is never PATCHED — the handoff must re-seed it whole.**
+///
+/// The GPU preview producer stamps its slots with `arc_token: 0` ("no CPU Arc") precisely so the
+/// first CPU frame after a GPU-owned stretch forces a full re-upload — the slot holds the GPU
+/// compositor's output (unlit, another era), and a rect patched over it leaves every other pixel
+/// to a different producer. The dims/entity guards can't tell the producers apart (the GPU lane
+/// reuses the same slot at the same dims), so the token is the ONLY witness. Today this is latent
+/// — every door that flips producer eligibility happens to invalidate the tool's composite, so no
+/// bbox reaches this plan on a handoff frame — but that safety is an enumeration of doors, and
+/// door N+1 (a future eligibility flip that forgets to invalidate) lands on exactly this line.
+///
+/// **Mutation that must bleed:** drop the `g.arc_token != 0` arm of the partial guard in
+/// [`plan_upload`] — the plan below comes back `Partial`.
+```
+
+`painter_preview_handoff_tests.rs` (antes de `plan_upload(&preview, Some(gpu_seeded), Some((4, 4, 8, 8)), 1, false),`):
+```text
+// A real CPU content version (1) against the GPU stamp (0): the version differs so an upload
+// is due, and the `g.arc_token != 0` arm must still force it FULL rather than Partial.
+```
+
+`painter_preview_handoff_tests.rs` (antes de `#[test]`):
+```text
+/// **What the artist sees through the GPU producer is what they would have seen through the CPU one
+/// — on a SCULPTED canvas, with the relief lit by the shader.**
+///
+/// This is the gate the GPU light port is answerable to. Everything else about the port is checked a
+/// level down (`ph2d-render`'s `impasto_light_gpu` reconciles the shader against
+/// `apply_impasto_light` pixel for pixel), but that gate hands both sides the same synthetic buffer.
+/// This one runs the PRODUCT: the real `try_drive`, the real eligibility gate, the real flatten, the
+/// real GPU compositor, the real light pass, the real premultiply, the real slot texture — and reads
+/// the bytes the sprite shader will sample straight back off the device.
+///
+/// The oracle is the OTHER producer, which is the only oracle that answers the question actually
+/// being asked. Moving a document between two lanes is only safe if the lanes draw the same picture;
+/// a gate comparing the GPU lane to a re-derivation of what it ought to draw would agree with any bug
+/// the two share, and the whole risk of this change is that they might not share one.
+///
+/// **Why this could not have been written before 2026-07-18:** the eligibility gate sent every
+/// sculpted canvas to the CPU, so there was no GPU-owned frame with relief on it to read back.
+```
+
+`painter_preview_handoff_tests.rs` (antes de `if let Some([r, g, b]) = papel {`):
+```text
+// O PAPEL do documento (2026-10-06): a GPU compõe sobre ele com a lei inteira da CPU, então o
+// mesmo documento, com papel de cor, tem de dar os mesmos bytes nos dois produtores.
+```
+
+`painter_preview_handoff_tests.rs` (antes de `t.on_canvas_pointer(cp([60.0, 90.0], PointerPhase::Down));`):
+```text
+// Sculpt: a curved stroke, so the relief carries slopes in every direction. A straight one would
+// leave the normal pointing the same way down the whole stroke and a sign error could hide.
+```
+
+`painter_preview_handoff_tests.rs` (antes de `let mut gpu_owns = false;`):
+```text
+// Run frames until the producers settle. The GPU must be the one holding the slot: if the
+// eligibility gate ever sends a sculpted canvas back to the CPU this reads as a plain failure
+// here rather than as a silent loss of the speed the port was built for.
+```
+
+`painter_preview_handoff_tests.rs` (antes de `let truth = screen_truth(&mut t);`):
+```text
+// …against the CPU producer's own answer for the same document. `screen_truth` drains the tool,
+// so it runs AFTER the readback.
+```
+
+`painter_preview_handoff_tests.rs` (antes de `for angulo in [120.0, 200.0] {`):
+```text
+// B15.3: o tique da lâmpada não redobra (janela de 1 texel) e a tela é a da CPU com a luz nova. O 1.º
+// redobra: a `screen_truth` acima foi um quadro da CPU.
+```
+
+`painter_preview_handoff_tests.rs` (antes de `#[test]`):
+```text
+/// **O PAPEL atravessa o produtor da GPU — o gate que faltava, e a razão de o Enio ver o papel morto.**
+///
+/// Irmão exato do de cima, com a única alavanca trocada: nenhuma pincelada, **só o substrato**. É a
+/// forma que o defeito de 2026-08-10 tinha (*"Paper parece não funcionar para Digital"*): a wave somava
+/// a inclinação do dente dentro do laço da **CPU**, e um documento que a **GPU** compõe — o caso normal
+/// — nunca passa por lá. Sete gates de unidade verdes, e o papel invisível na tela.
+///
+/// ⚠️ **A fixture NÃO pinta, e é isso que a torna o oráculo certo.** O gate irmão esculpe um traço, e
+/// sobre relevo de tinta o dente é um detalhe que se perde no ruído; um documento nu isola a única coisa
+/// que esta wave acrescenta. É também literalmente o caso do artista: o Digital não tem plano de
+/// `covers` nenhum.
+///
+/// **Duas mutações têm de sangrar, e cada uma sozinha:**
+///  * tirar o dente do `ReliefFields::height_at` (devolvê-lo ao laço da CPU) — o plano sobe chato e a
+///    tela da GPU volta a ser papel branco enquanto a da CPU tem grão;
+///  * zerar o `paper_body` no uniform — o plano sobe CERTO e o shader o apaga, multiplicando por uma
+///    cobertura de tinta que num documento digital é zero.
+```
+
+`painter_preview_handoff_tests.rs` (antes de `let lit = shown`):
+```text
+// ⚠️ O CONTROLE vem antes da paridade: sem tinta nenhuma, duas telas brancas casariam
+// perfeitamente e o gate passaria por vácuo — que é exatamente o estado que ele existe para
+// reprovar. O dente TEM de ter acendido alguma coisa.
+```

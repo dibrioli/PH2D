@@ -26,28 +26,30 @@ use ph2d_render::layer_compositor::{
 };
 use ph2d_render::{ImpastoLamp, ImpastoLightInput, ImpastoLightPass};
 use ph2d_tool_painter::PainterTool;
+use std::cell::RefCell;
 
 /// Per-session GPU state for the Painter live preview: compositor, straight→premul blit and a
-/// cached [`GpuContext`]. Created on bind ([`prewarm`]) or lazily, kept for the tool session.
 pub struct PainterGpuPreview {
     gpu: GpuContext,
     compositor: LayerCompositor,
     /// Impasto's light — the relief made visible. Runs BETWEEN the composite and the premultiply, which
-    /// is exactly where the CPU pass runs (`runtime::take_preview_arc`: composite, light, overlay).
     light: ImpastoLightPass,
     premul: PreviewPremul,
     /// A geração de memória da placa em que a sessão nasceu (F36): no fim de um episódio sem memória
-    /// a sessão e o slot refazem-se e a tela recompõe-se inteira (a fonte são as camadas em CPU).
     geracao: u64,
     /// Os planos do último envio, cujos buffers a próxima dobra reescreve (B15-cont: sem os ~107 MB alocados e
-    /// soltos a cada quadro do Ctrl+Z 4K).
     planos: Option<ph2d_tool_painter::ImpastoPlanes>,
     /// A placa produziu o último quadro do documento: ao largá-lo, a CPU compõe a tela já nesse quadro.
     dona: bool,
+    /// B20.A2: `(camada, versão)` entregues ao compositor na última drenagem da placa. O sujo do instrumento
+    entregue: Vec<(u64, u64)>,
+    /// O vector da drenagem em curso (reusado: zero alocação por quadro).
+    a_entregar: Vec<(u64, u64)>,
+    /// B20.A1: a tela `(w, h)` que a placa recusou nesta geração — a CPU produz, sem nova tentativa nem aviso.
+    recusou: Option<(u32, u32)>,
 }
 
 /// Builds the session BEFORE the first stroke needs it (doc 28 §4.8): its passes compile
-/// shaders (~28 ms), paid on the document bind — human time — never on the first pen-down.
 pub(crate) fn prewarm(
     session_slot: &mut Option<PainterGpuPreview>,
     renderer: &mut SpriteRenderer,
@@ -62,10 +64,6 @@ pub(crate) fn prewarm(
         ph2d_tool_painter::PainterTool::instala_placa_do_wet(renderer.gpu());
     }
     // Also allocates the canvas-sized compositor/premul resources (first execution only).
-    // ⚠️ The LIGHT pass stays out (named limitation, a product decision): a fresh stack has no
-    // relief, so the first relief stroke folds the whole canvas. `gpu_eligible` is bypassed ON
-    // PURPOSE (a fresh stack is trivial and refuses). The slot is released next frame; the passes'
-    // internal textures live in `session_slot` and survive.
     let Some((ops, adj_luts)) = ph2d_tool_painter::flatten_for_gpu(painter.layers()) else {
         return;
     };
@@ -73,7 +71,7 @@ pub(crate) fn prewarm(
     if w == 0 || h == 0 {
         return;
     }
-    drive(
+    let pronta = drive(
         session_slot,
         renderer,
         painter,
@@ -87,6 +85,21 @@ pub(crate) fn prewarm(
         painter_preview_gpu,
         toasts,
     );
+    // O prewarm não drena o sujo (a CPU, se a placa recusou, compõe-no): não é uma drenagem anterior.
+    if let Some(s) = session_slot.as_mut() {
+        s.entregue.clear();
+        s.recusou = (!pronta).then_some((w, h));
+    }
+}
+
+/// B20.A1: a placa recusou a tela. A CPU compõe-na inteira JÁ neste quadro e fica dona até a tela ou a
+fn recusa(session_slot: &mut Option<PainterGpuPreview>, painter: &mut PainterTool, w: u32, h: u32) {
+    if let Some(s) = session_slot.as_mut() {
+        s.recusou = Some((w, h));
+        s.dona = false;
+        s.entregue.clear();
+    }
+    painter.pede_a_composicao_inteira();
 }
 
 impl PainterGpuPreview {
@@ -99,36 +112,39 @@ impl PainterGpuPreview {
             geracao: ph2d_gpu::memoria::geracao(),
             planos: None,
             dona: false,
+            entregue: Vec::new(),
+            a_entregar: Vec::new(),
+            recusou: None,
         }
     }
 }
 
 /// Adapts [`PainterTool::preview_layer_pixels`] to the render crate's
-/// [`LayerPixelProvider`] — the tool stays decoupled from `ph2d-render`, so the
-/// bridge owns this glue.
 struct PainterLayerProvider<'a> {
     tool: &'a PainterTool,
+    /// O que a drenagem anterior entregou (B20.A2).
+    anteriores: &'a [(u64, u64)],
+    /// O que esta drenagem entrega.
+    novas: RefCell<Vec<(u64, u64)>>,
 }
 
 impl LayerPixelProvider for PainterLayerProvider<'_> {
     fn layer_pixels(&self, key: u64) -> Option<LayerPixels<'_>> {
-        self.tool
-            .preview_layer_pixels(key)
-            .map(|(version, rgba8, dirty)| LayerPixels {
-                version,
-                rgba8,
-                // The active layer's dirty sub-rect (tuple → the render crate's `Region`), so the
-                // compositor re-uploads only what the stroke touched instead of the whole slice.
-                dirty: dirty.map(|(x, y, w, h)| Region { x, y, w, h }),
-            })
+        let (version, rgba8, dirty) = self.tool.preview_layer_pixels(key)?;
+        self.novas.borrow_mut().push((key, version));
+        // A versão é um relógio do documento (sobe a cada toque, de qualquer camada): o sujo só remenda a
+        let contigua = self.anteriores.iter().any(|&(k, _)| k == key);
+        Some(LayerPixels {
+            version,
+            rgba8,
+            dirty: dirty
+                .filter(|_| contigua)
+                .map(|(x, y, w, h)| Region { x, y, w, h }),
+        })
     }
 }
 
 /// Decide GPU-vs-CPU for this frame and, when GPU, recomposite into the preview slot. Returns
-/// `true` iff the GPU producer owns the slot; otherwise a no-op and the caller runs the CPU path.
-/// Drains the preview-dirty flag (recomposite only on change) and the dirty bbox (no leak into a
-/// later CPU frame). A TRIVIAL stack stays on the CPU (zero-composite + partial upload) unless
-/// the canvas carries relief — see [`gpu_eligible`].
 pub(super) fn try_drive(
     session_slot: &mut Option<PainterGpuPreview>,
     renderer: &mut SpriteRenderer,
@@ -144,13 +160,18 @@ pub(super) fn try_drive(
         larga_a_placa(session_slot.as_mut().map(|s| &mut s.dona), painter);
         return false;
     };
-    let renasce = session_slot
+    let (w, h) = painter.source_size();
+    let geracao = ph2d_gpu::memoria::geracao();
+    if session_slot
         .as_ref()
-        .is_some_and(|s| s.geracao != ph2d_gpu::memoria::geracao());
+        .is_some_and(|s| s.geracao == geracao && s.recusou == Some((w, h)))
+    {
+        return false;
+    }
+    let renasce = session_slot.as_ref().is_some_and(|s| s.geracao != geracao);
     if painter.take_preview_dirty() || renasce {
-        let (w, h) = painter.source_size();
         // CPU/hover path: a full recomposite, seeding the whole canvas.
-        drive(
+        if !drive(
             session_slot,
             renderer,
             painter,
@@ -163,7 +184,10 @@ pub(super) fn try_drive(
             true,
             painter_preview_gpu,
             toasts,
-        );
+        ) {
+            recusa(session_slot, painter, w, h);
+            return false;
+        }
     }
     let _ = painter.take_preview_upload_bbox();
     if let Some(s) = session_slot.as_mut() {
@@ -181,27 +205,20 @@ fn larga_a_placa(dona: Option<&mut bool>, painter: &mut PainterTool) {
 }
 
 /// The GPU-vs-CPU gate, pure half: `Some(ops, adj_luts)` iff this frame composites on the GPU.
-/// The trivial-stack check runs FIRST (see [`try_drive`]).
 fn gpu_eligible(painter: &PainterTool) -> Option<(Vec<LayerOp>, Vec<f32>)> {
     // Trivial bow-out unless relief: relief forces a CPU full composite + light, where the GPU is
-    // better (mirrors `runtime.rs`). Paper alone keeps the document on the CPU lane (it recomposes
-    // only the dirty region).
     if painter.preview_layer_stack_is_trivial() && !painter.impasto_visible() {
         return None;
     }
     // Repeat Image draws its 3×3 tiles from the CPU composite, which a GPU-owned slot clears:
-    // while the tiling preview is on, the CPU lane produces.
     if painter.repeat_image() {
         return None;
     }
     // The mask PROTECTION tint (`apply_mask_overlay`) lives in the CPU composite and the GPU
-    // producer does not draw it: while a scratch is live, the CPU lane produces.
     if painter.mask_scratch_active() {
         return None;
     }
     // Wash GLASS under coloured paper (doc 48): paper crosses each channel by its alpha and the GPU
-    // compositor knows one alpha per texel — the CPU produces, from the moment the wash is ARMED on
-    // that paper (B16.12: never on the touch frame).
     if painter.papel_pede_a_cpu() {
         return None;
     }
@@ -209,8 +226,6 @@ fn gpu_eligible(painter: &PainterTool) -> Option<(Vec<LayerOp>, Vec<f32>)> {
 }
 
 /// Composite `ops` on the GPU, premultiply, copy into the preview slot ((re)acquired when
-/// missing/resized). On a GPU error the slot is released and a toast queued. Returns `true` iff
-/// a preview texture is live.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn drive(
     session_slot: &mut Option<PainterGpuPreview>,
@@ -243,7 +258,6 @@ pub(super) fn drive(
     let session = session_slot.get_or_insert_with(|| PainterGpuPreview::new(renderer.gpu()));
 
     // The composite region: the WHOLE canvas on a seed frame (so the persistent
-    // `out` + the slot hold a valid full backdrop), else just the wet envelope.
     let region = if seed_full {
         Region::full(width, height)
     } else {
@@ -256,7 +270,6 @@ pub(super) fn drive(
     };
 
     // 1-3) Composite, light, premultiply — everything that turns the layer stack into the bytes the
-    //      slot will hold. On any failure the slot is released and the CPU producer takes the frame.
     if let Err(e) = compose_light_premul(session, tool, &ops, &adj_luts, width, height, region) {
         toasts.push(Toast::error(ph2d_i18n::tr_with(
             "app.painter.painter_gpu_preview.gpu_preview_failed",
@@ -267,7 +280,6 @@ pub(super) fn drive(
     }
 
     // 4) Ensure a right-sized slot, then COPY the premultiplied result in: the whole canvas on a
-    //    seed frame, else only the wet envelope rect.
     let slot = ensure_slot(renderer, painter_preview_gpu, entity_bits, width, height);
     let Some(premul_tex) = session.premul.output_texture() else {
         return false;
@@ -291,15 +303,6 @@ pub(super) fn drive(
 }
 
 /// Composite, light, premultiply — everything that turns the layer stack into the bytes the preview
-/// slot will hold, with no slot and no `SpriteRenderer` in sight. The finished pixels are
-/// `session.premul.output_texture()`.
-///
-/// Extracted so the parity gate (`the_gpu_producer_shows_what_the_cpu_producer_shows`) drives
-/// the REAL chain.
-///
-/// # Errors
-///
-/// Which stage refused — each hands the frame back to the CPU producer.
 fn compose_light_premul(
     session: &mut PainterGpuPreview,
     tool: &PainterTool,
@@ -310,35 +313,38 @@ fn compose_light_premul(
     region: Region,
 ) -> Result<(), String> {
     // 1) GPU composite into the PERSISTENT canvas-sized `out`, writing at canvas
-    //    coords — a region dispatch refreshes only `region`, leaving the rest from
-    //    the prior frame (the 4K multi-layer cost goes O(canvas×layers) → O(env)).
-    let provider = PainterLayerProvider { tool };
+    let mut novas = std::mem::take(&mut session.a_entregar);
+    novas.clear();
+    let provider = PainterLayerProvider {
+        tool,
+        anteriores: &session.entregue,
+        novas: RefCell::new(novas),
+    };
     // O PAPEL do documento: o compositor compõe cada saída SOBRE ele com a lei inteira da CPU
-    // (`compoe_sobre_o_papel`), no mesmo lugar da cadeia — depois do composite, antes da luz.
     session.compositor.set_paper(tool.papel());
-    session
-        .compositor
-        .composite_region_into_canvas(
-            &session.gpu,
-            ops,
-            adj_luts,
-            &provider,
-            width,
-            height,
-            region,
-        )
-        .map_err(|e| {
-            ph2d_i18n::tr_with("app.painter.painter_gpu_preview.composite", &[("e", &e)])
-        })?;
+    let composto = session.compositor.composite_region_into_canvas(
+        &session.gpu,
+        ops,
+        adj_luts,
+        &provider,
+        width,
+        height,
+        region,
+    );
+    let mut feitas = provider.novas.into_inner();
+    if composto.is_err() {
+        feitas.clear();
+    }
+    session.a_entregar = std::mem::replace(&mut session.entregue, feitas);
+    composto.map_err(|e| {
+        ph2d_i18n::tr_with("app.painter.painter_gpu_preview.composite", &[("e", &e)])
+    })?;
 
     // 2) Impasto light on the freshly composited region (lighting is NOT idempotent). `None` planes
-    //    = no relief / pass off / lamps dark. The match YIELDS the finished texture: one answer to
-    //    "which texture holds the canvas".
     let comp_out = session.compositor.output_texture().ok_or(ph2d_i18n::tr(
         "app.painter.painter_gpu_preview.composite_produced_no_texture",
     ))?;
     // Fold window: the tool's `preview_gpu_region` (Some only for a rect-confined change) AND the
-    // pass's `planes_seeded` AND a lit last frame (an unlit one wrote no planes); any no folds the whole canvas.
     let plane_win = tool
         .preview_gpu_region()
         .filter(|_| session.planos.is_some() && session.light.planes_seeded(width, height))
@@ -368,7 +374,6 @@ fn compose_light_premul(
                 width,
                 height,
                 // The WHOLE canvas: the light owns a second persistent canvas, so its freshness
-                // cannot be inherited from the compositor's region (reads unlit, writes its own).
                 region: Region::full(width, height),
                 // …but the PLANES are only the fold's window (the textures persist).
                 plane_region: Region {
@@ -400,7 +405,6 @@ fn compose_light_premul(
     };
 
     // 3) Premultiply into a COPY_SRC texture (the slot samples PREMULTIPLIED);
-    //    full-canvas, re-premultiplying out-of-region texels is a no-op.
     session
         .premul
         .run(&session.gpu, finished, width, height)
@@ -411,7 +415,6 @@ fn compose_light_premul(
 }
 
 /// Ensure a `width × height` slot (reuse on matching dims, else release + acquire EMPTY);
-/// returns its `texture_id`. `arc_token` is `0`, so a GPU→CPU transition forces a full re-upload.
 fn ensure_slot(
     renderer: &mut SpriteRenderer,
     painter_preview_gpu: &mut Option<PainterPreviewGpu>,
@@ -447,7 +450,6 @@ fn ensure_slot(
 }
 
 /// Release the preview slot (if any) — local mirror of
-/// `painter_bridge::release_preview_texture`, so the producers don't reach into each other.
 fn release_slot(
     renderer: &mut SpriteRenderer,
     painter_preview_gpu: &mut Option<PainterPreviewGpu>,

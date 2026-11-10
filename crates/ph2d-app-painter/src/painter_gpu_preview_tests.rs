@@ -8,9 +8,12 @@ fn sourced_tool() -> PainterTool {
 }
 
 /// A single-layer canvas with a real impasto stroke on it. Big enough that a brush actually deposits
-/// relief — a 4x4 canvas would leave `heights` empty and every gate below would pass by doing
-/// nothing.
 fn sculpted_tool() -> PainterTool {
+    esculpido_de(48, 48)
+}
+
+/// [`sculpted_tool`] numa tela `w × h` (o traço na faixa `y = 24`).
+fn esculpido_de(w: u32, h: u32) -> PainterTool {
     use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
     let cp = |pos: [f32; 2], phase: PointerPhase| CanvasPointer {
         pos,
@@ -19,7 +22,7 @@ fn sculpted_tool() -> PainterTool {
         phase,
     };
     let mut t = PainterTool::default();
-    t.set_source(vec![255u8; 48 * 48 * 4], 48, 48);
+    t.set_source(vec![255u8; w as usize * h as usize * 4], w, h);
     t.toggle_brush_impasto();
     t.set_brush_impasto_depth(0.8);
     t.set_brush_size_px(9.0);
@@ -32,9 +35,6 @@ fn sculpted_tool() -> PainterTool {
 #[test]
 fn trivial_stack_stays_on_the_cpu_path() {
     // A single plain raster IS GPU-representable (flatten = Some), but the
-    // gate must bow out FIRST: the CPU path is zero-composite + partial
-    // bbox upload there, and the fluid E4 texture mode (trivial-only)
-    // must never share the frame with a GPU layer recomposite.
     let t = sourced_tool();
     assert!(t.preview_is_trivial_stack());
     assert!(
@@ -46,10 +46,6 @@ fn trivial_stack_stays_on_the_cpu_path() {
 }
 
 /// **Repeat Image keeps the CPU producer** (Enio 2026-07-20, "em impasto Tiling as imagens
-/// repetidas desaparecem"): the 3×3 tile preview blits the CPU composite (`PainterPreview`),
-/// and when the GPU owns the slot the bridge clears that cache — the tiles silently vanish.
-/// The fixture is the sculpted document (GPU-eligible since the light port — exactly the case
-/// the report came from); the presence half proves the refusal is the TOGGLE's, not the stack's.
 #[test]
 fn repeat_image_keeps_the_cpu_producer() {
     let mut t = sculpted_tool();
@@ -70,15 +66,6 @@ fn repeat_image_keeps_the_cpu_producer() {
 }
 
 /// **A PROTEÇÃO mantém o produtor de CPU** (Enio 2026-08-07: *"a máscara funcionou, mas fica invisível
-/// ao usar impasto"*): o overlay dela é um tinte por-pixel sobre o COMPOSTO (`apply_mask_overlay`, na
-/// `runtime.rs`), e o produtor de GPU não o desenha — ele composita e ilumina, e o overlay não é uma
-/// `LayerOp`.
-///
-/// ⚠️ **A fixture tem de ser o documento ESCULPIDO**, e é isso que torna o gate o do report: sem relevo
-/// um documento com scratch é trivial e a bow-out do topo já o mandava para a CPU, então o defeito não
-/// existia. Foi o relevo — elegível desde o port da luz — que o expôs.
-///
-/// **Mutação que deve sangrar:** apagar o `mask_scratch_active` do `gpu_eligible`.
 #[test]
 fn a_live_protection_keeps_the_cpu_producer() {
     use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, Tool as _};
@@ -114,7 +101,6 @@ fn a_live_protection_keeps_the_cpu_producer() {
 #[test]
 fn non_trivial_representable_stack_is_gpu_eligible() {
     // Opacity < 1 on the single layer breaks triviality without leaving
-    // GPU-representability → the GPU path owns the preview.
     let mut t = sourced_tool();
     let active = t.layers().active().expect("set_source creates Layer 1");
     t.set_layer_opacity(active, 0.5);
@@ -127,11 +113,6 @@ fn non_trivial_representable_stack_is_gpu_eligible() {
 }
 
 /// A sculpted SINGLE-LAYER document — the most ordinary way to use Impasto — must now take the GPU
-/// path. It is the whole point of the light port, and it is the case the old `impasto_visible()` bail
-/// sent to the CPU compositor together with every layer, blend mode and adjustment in the document.
-///
-/// The premise this rests on is checked here rather than assumed: the stack IS trivial, so without
-/// the relief the gate would (correctly) bow out.
 #[test]
 fn a_sculpted_document_goes_to_the_gpu_even_when_the_stack_is_trivial() {
     let t = sculpted_tool();
@@ -152,8 +133,6 @@ fn a_sculpted_document_goes_to_the_gpu_even_when_the_stack_is_trivial() {
 }
 
 /// …and the light has something to hand the shader. A gate on eligibility alone would stay green if
-/// the planes came back `None`, which is the shape of "the GPU path claims the frame and draws it
-/// unlit" — the exact failure the old bail existed to prevent.
 #[test]
 fn a_gpu_eligible_sculpted_document_hands_over_planes() {
     let t = sculpted_tool();
@@ -169,8 +148,6 @@ fn a_gpu_eligible_sculpted_document_hands_over_planes() {
 }
 
 /// Switching the pass OFF must put the canvas back on the CPU's zero-composite fast lane. Otherwise
-/// hiding the relief would silently cost a full GPU recomposite per frame to draw a picture the CPU
-/// hands over by cloning an `Arc`.
 #[test]
 fn hiding_the_relief_returns_a_trivial_document_to_the_cpu() {
     let mut t = sculpted_tool();
@@ -183,13 +160,6 @@ fn hiding_the_relief_returns_a_trivial_document_to_the_cpu() {
 }
 
 /// **The masked document goes to the GPU now** — the headline of
-/// `docs/Painter/25_avaliacao_gpu.md` achado A, asserted where the routing
-/// actually happens rather than one layer down in the flatten.
-///
-/// Measured before this landed: a single mask took a 4096² adjustment drag
-/// from 0,738 ms to 652,9 ms — 885×, triggered by a checkbox, with nothing on
-/// screen to say why. A mask is how you paint inside a shape; it is not an
-/// exotic feature to leave on the slow producer.
 #[test]
 fn a_masked_stack_is_gpu_eligible_now() {
     let mut t = sourced_tool();
@@ -202,10 +172,6 @@ fn a_masked_stack_is_gpu_eligible_now() {
 }
 
 /// The refusal that REMAINS, so "eligible" does not quietly become "always".
-///
-/// A clipped GROUP stays on the CPU deliberately: the CPU reference's Group
-/// arm reads neither `mask` nor `clipping`, and a GPU that honoured them would
-/// make the picture depend on which producer won the frame.
 #[test]
 fn a_clipped_group_is_still_not_gpu_eligible() {
     let mut t = sourced_tool();
@@ -218,11 +184,6 @@ fn a_clipped_group_is_still_not_gpu_eligible() {
 }
 
 /// **Com PAPEL a GPU produz** (2026-10-06; era `o_papel_mantem_o_produtor_de_cpu`): o compositor
-/// compõe cada saída sobre o papel com a lei inteira da CPU (`LayerCompositor::set_paper`), então um
-/// documento que a GPU produziria deixa de cair na CPU por ter papel. ⚠️ Uma camada LISA com papel
-/// fica na CPU, MEDIDO: ali ela recompõe só a região suja e é `1,85–4,5×` mais rápida
-/// (`measure_o_quadro_com_papel_nos_dois_produtores`). A paridade ao byte é a do
-/// `the_gpu_producer_shows_what_the_cpu_producer_shows`, que corre o documento sem e com papel.
 #[test]
 fn com_papel_a_gpu_produz() {
     let mut t = sculpted_tool();
@@ -250,9 +211,6 @@ fn com_papel_a_gpu_produz() {
 }
 
 /// **Com o VIDRO da aguada sob papel de cor a CPU produz** (doc 48, BUGS #46): o compositor da GPU só
-/// conhece um alfa por texel, e mostraria a aguada que soma luz ao papel. Um desenho novo (papel branco)
-/// esculpido e com uma aguada continua na GPU; o papel castanho tira-o dela; sem aguada, o castanho
-/// não tira.
 #[test]
 fn com_vidro_sob_papel_de_cor_a_cpu_produz() {
     use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase, Tool};
@@ -303,8 +261,6 @@ fn com_vidro_sob_papel_de_cor_a_cpu_produz() {
 }
 
 /// **G20 (F36 §1) — no fim de um episódio sem memória o preview na placa refaz a sessão e o slot e
-/// recompõe a tela, sem esperar uma pincelada.** O que a sessão e o slot criaram sob recusa é inválido;
-/// a fonte são as camadas em CPU. Um quadro parado sem episódio não refaz nada.
 #[test]
 #[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
 fn the_end_of_an_out_of_memory_episode_recomposes_the_gpu_preview() {
@@ -355,9 +311,6 @@ fn the_end_of_an_out_of_memory_episode_recomposes_the_gpu_preview() {
 }
 
 /// **B16.12 — a troca GPU→CPU sai do quadro do toque.** Com a aguada ARMADA sobre o papel de cor, a 1.ª
-/// aguada criaria o vidro e tiraria o documento da placa NO toque (4K: a tela inteira composta na CPU e
-/// 33 MB enviados, 154,5 ms). O portão decide a CPU antes do 1.º vidro, e o toque não muda a pista; o
-/// Digital no mesmo papel fica na GPU.
 #[test]
 fn troca_gpu_cpu_a_aguada_armada_no_papel_de_cor_sai_do_toque() {
     use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase, Tool};
@@ -386,7 +339,10 @@ fn troca_gpu_cpu_a_aguada_armada_no_papel_de_cor_sai_do_toque() {
     t.on_canvas_pointer(cp([38.0, 12.0], PointerPhase::Up));
     assert!(t.papel_atravessa_vidro(), "controlo: a aguada deixou vidro");
     assert_eq!(antes, no_toque, "o toque não pode trocar a pista");
-    assert!(!antes, "a aguada armada no papel de cor já está na CPU antes do toque");
+    assert!(
+        !antes,
+        "a aguada armada no papel de cor já está na CPU antes do toque"
+    );
     t.set_paint_media(ph2d_tool_painter::PaintMedia::Digital);
     assert!(
         gpu_eligible(&t).is_none(),
@@ -395,18 +351,112 @@ fn troca_gpu_cpu_a_aguada_armada_no_papel_de_cor_sai_do_toque() {
 }
 
 /// **A placa larga o documento e a CPU compõe a tela inteira NESSE quadro** (B16.12): sem isto a pista
-/// da CPU só compunha no próximo sujo — o toque — e pagava ali a tela fria inteira e o envio cheio.
 #[test]
 fn troca_gpu_cpu_a_placa_que_larga_aquece_a_cpu_no_mesmo_quadro() {
     let mut t = sculpted_tool();
     let _ = t.take_preview_dirty(); // a pista GPU drenou: o composite da CPU caiu
-    assert!(t.take_preview_arc().is_none(), "controlo: sem sujo a CPU não compõe");
+    assert!(
+        t.take_preview_arc().is_none(),
+        "controlo: sem sujo a CPU não compõe"
+    );
     let mut dona = false;
     larga_a_placa(Some(&mut dona), &mut t);
-    assert!(t.take_preview_arc().is_none(), "sem a placa dona antes, nada a aquecer");
+    assert!(
+        t.take_preview_arc().is_none(),
+        "sem a placa dona antes, nada a aquecer"
+    );
     dona = true;
     larga_a_placa(Some(&mut dona), &mut t);
     assert!(!dona, "a placa deixou de ser dona");
-    assert!(t.take_preview_arc().is_some(), "a CPU compõe no quadro da troca");
-    assert_eq!(t.take_preview_upload_bbox(), None, "a tela inteira sobe nesse quadro");
+    assert!(
+        t.take_preview_arc().is_some(),
+        "a CPU compõe no quadro da troca"
+    );
+    assert_eq!(
+        t.take_preview_upload_bbox(),
+        None,
+        "a tela inteira sobe nesse quadro"
+    );
+}
+
+/// **B20.A2 — a versão de uma camada é um relógio do DOCUMENTO** (`bump_layer_pixels`: sobe a cada toque, de
+#[test]
+fn salto_de_versao_com_dirty_sobe_a_camada_inteira() {
+    let mut t = sculpted_tool();
+    assert!(t.take_preview_dirty(), "controlo: o traço sujou a prévia");
+    let key = t.layers().active().expect("a camada activa").0;
+    let (versao, _, sujo) = t.preview_layer_pixels(key).expect("a activa");
+    assert!(sujo.is_some(), "controlo: o instrumento dá um retângulo");
+    let sem_anterior = PainterLayerProvider {
+        tool: &t,
+        anteriores: &[],
+        novas: RefCell::default(),
+    };
+    assert_eq!(
+        sem_anterior.layer_pixels(key).and_then(|l| l.dirty),
+        None,
+        "a camada não subiu na drenagem anterior: tem de subir inteira"
+    );
+    assert_eq!(sem_anterior.novas.into_inner(), vec![(key, versao)]);
+    let anterior = [(key, versao.wrapping_sub(3))];
+    let contigua = PainterLayerProvider {
+        tool: &t,
+        anteriores: &anterior,
+        novas: RefCell::default(),
+    };
+    assert!(
+        contigua.layer_pixels(key).and_then(|l| l.dirty).is_some(),
+        "subiu na drenagem anterior: remenda só o retângulo, por mais que a versão salte"
+    );
+}
+
+/// **B20.A1 — a falha da placa entrega o quadro à CPU.** Uma tela mais larga do que a placa aceita: o
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn a_falha_da_placa_entrega_o_quadro_a_cpu() {
+    let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
+        return;
+    };
+    let largura = gpu.device.limits().max_texture_dimension_2d + 1;
+    let atlas = ph2d_render::TextureAtlas::new(&gpu, 64);
+    let mut renderer = SpriteRenderer::new(
+        gpu.clone(),
+        ph2d_gpu::TextureFormat::Rgba8UnormSrgb,
+        atlas,
+        16,
+    );
+    let mut t = esculpido_de(largura, 48);
+    assert!(
+        gpu_eligible(&t).is_some(),
+        "precondição: a tela iria à placa"
+    );
+    let (mut sessao, mut slot, mut toasts) = (None, None, ToastQueue::default());
+    let g0 = ph2d_gpu::memoria::geracao();
+    for quadro in 0..2 {
+        assert!(
+            !try_drive(
+                &mut sessao,
+                &mut renderer,
+                &mut t,
+                Some(1),
+                &mut slot,
+                &mut toasts
+            ),
+            "quadro {quadro}: a placa recusou e ainda se diz dona"
+        );
+        assert!(slot.is_none(), "quadro {quadro}: sem slot da placa");
+        if quadro == 0 {
+            assert!(t.take_preview_arc().is_some(), "a CPU compõe nesse quadro");
+            assert_eq!(t.take_preview_upload_bbox(), None, "a tela inteira sobe");
+        }
+    }
+    let avisos: Vec<_> = toasts.iter().map(|t| t.message.clone()).collect();
+    // Outro teste pode fechar um episódio sem memória no meio (`VIGIA` global): aí a placa tenta de novo.
+    if ph2d_gpu::memoria::geracao() == g0 {
+        assert_eq!(
+            avisos.len(),
+            1,
+            "um aviso só, não um por quadro: {avisos:?}"
+        );
+    }
 }

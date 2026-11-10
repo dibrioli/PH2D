@@ -78,7 +78,7 @@ impl HelpView {
         theme: &Theme,
     ) {
         let (pal, ui) = (Palette::new(*theme), Ui::new(*theme));
-        let want = ph2d_text::displayed_font_px(TypeToken::Base.px());
+        let want = crate::metrics::code_font_px();
         if self.m.font_px != want {
             self.m = Metrics::measure(&mut self.cache, ts, 1).0;
         }

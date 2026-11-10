@@ -104,7 +104,7 @@ impl CodeView {
         self.line_count = t.line_count();
         self.revision = frame.buffer.revision();
         self.tab = frame.tab.max(1);
-        let want = ph2d_text::displayed_font_px(TypeToken::Base.px());
+        let want = crate::metrics::code_font_px();
         let digits = crate::metrics::count_digits(self.line_count).max(2);
         if self.digits.is_none() || self.m.font_px != want || self.m.digits != digits {
             let (m, d) = Metrics::measure(&mut self.cache, ts, self.line_count);

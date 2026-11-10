@@ -49,7 +49,7 @@ fn letra(c: &Corrida) -> (u64, u32, f32, Vec<i16>) {
 /// Os ids de `text` moldado na mono do código.
 fn ids_mono(ts: &mut TextSystem, text: &str) -> Vec<u32> {
     let mut cache = LineCache::default();
-    let px = ph2d_text::displayed_font_px(TypeToken::Base.px());
+    let px = ph2d_panel_code::code_font_px();
     let layout = cache.get(ts, text, &[], px);
     let mut ids = Vec::new();
     for line in layout.lines() {
@@ -456,6 +456,7 @@ fn a_linha_do_codigo_tem_a_letra_do_texto_dos_problemas() {
             code.metrics().line_h
         );
         let quer = ph2d_text::displayed_font_px(TypeToken::Base.px());
+        assert_eq!(quer.to_bits(), ph2d_panel_code::code_font_px().to_bits());
         if linha != p || p != alive || (linha.2 - quer).abs() > 1e-4 {
             falhas.push(format!(
                 "{size:?}: código {linha:?} · problema {p:?} · alive {alive:?}"

@@ -1,4 +1,4 @@
-//! As medidas do editor, todas por tokens ou MEDIDAS na fonte: o tamanho é `TypeToken::Base`, a
+//! As medidas do editor, todas por tokens ou MEDIDAS na fonte: o tamanho é o [`CODE_TYPE`], a
 //! altura da linha `LineHeight::Normal` no píxel, o avanço sai da mono moldada.
 
 use crate::line_cache::LineCache;
@@ -9,6 +9,16 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{LineHeight, Spacing, StrokeToken, TypeToken};
 
 const DIGITS: &str = "0123456789";
+
+/// O corpo da mono do código: o do script, o do texto dos problemas, o de «alive» e de toda a
+/// letra pintada pelas [`Metrics`] (dono 10/11: uma letra só).
+pub const CODE_TYPE: TypeToken = TypeToken::Base;
+
+/// O tamanho mostrado da mono do código (o [`CODE_TYPE`] com o tamanho da letra da interface).
+#[must_use]
+pub fn code_font_px() -> f32 {
+    ph2d_text::displayed_font_px(CODE_TYPE.px())
+}
 
 /// Os dez dígitos da calha já moldados: os números pintam-se glifo a glifo, sem moldar nada.
 pub(crate) struct DigitFont {
@@ -48,7 +58,7 @@ impl Metrics {
         ts: &mut TextSystem,
         line_count: usize,
     ) -> (Self, Option<DigitFont>) {
-        let font_px = ph2d_text::displayed_font_px(TypeToken::Base.px());
+        let font_px = code_font_px();
         let line_h = ao_pixel(font_px * LineHeight::Normal.ratio()).max(1.0);
         let layout = cache.shape_loose(ts, DIGITS, font_px);
         let advance = layout.width() / DIGITS.len() as f32;

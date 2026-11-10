@@ -69,7 +69,7 @@ pub(super) fn face(f: Font) -> (f32, FontWeight) {
         Font::Strong => (px(TypeToken::Base), FontWeight::SEMI_BOLD),
         Font::Heading => (px(TypeToken::Lg), FontWeight::SEMI_BOLD),
         Font::Title => (px(TypeToken::Xl), FontWeight::SEMI_BOLD),
-        Font::Mono => (px(TypeToken::Base), CODE_WEIGHT),
+        Font::Mono => (px(crate::metrics::CODE_TYPE), CODE_WEIGHT),
     }
 }
 

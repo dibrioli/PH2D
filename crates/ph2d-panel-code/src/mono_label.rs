@@ -11,7 +11,7 @@ use crate::palette::Palette;
 use crate::style::Ink;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Theme, TypeToken};
+use ph2d_tokens::Theme;
 use ph2d_vector::{Color, VectorScene};
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -35,7 +35,7 @@ fn with<R>(
     f: impl FnOnce(&mut LineCache, &Metrics, &mut TextSystem) -> R,
 ) -> R {
     LABEL.with_borrow_mut(|l| {
-        let px = ph2d_text::displayed_font_px(TypeToken::Base.px());
+        let px = crate::metrics::code_font_px();
         if l.m.is_none_or(|m| m.font_px.to_bits() != px.to_bits()) {
             l.cache.clear();
             l.m = Some(Metrics::measure(&mut l.cache, ts, 1).0);

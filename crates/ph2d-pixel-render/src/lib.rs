@@ -7,8 +7,8 @@
 //! transform de um `stroke` do Vello multiplica a espessura).
 
 pub mod desenhados;
-mod lint_marks;
 pub mod guias;
+mod lint_marks;
 mod overlay;
 pub mod prefs_canal;
 pub mod prefs_view;

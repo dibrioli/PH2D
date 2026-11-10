@@ -63,7 +63,11 @@ fn contorno(place: Place) -> Outline {
     Outline {
         color: [255, 255, 255, 255],
         background: Fundo::Mask,
-        matrix: if place == Place::Outside { CIRCLE } else { SQUARE },
+        matrix: if place == Place::Outside {
+            CIRCLE
+        } else {
+            SQUARE
+        },
         place,
         tiled: false,
     }
@@ -81,7 +85,13 @@ fn o_efeito_de_contorno_e_o_filtro() {
             let o = contorno(place);
             let mut vivo = base.clone();
             let efeitos = vec![EfeitoDeCamada::Outline(o)];
-            doc(&mut vivo, DocOp::SetLayerEffects { layer: topo, efeitos });
+            doc(
+                &mut vivo,
+                DocOp::SetLayerEffects {
+                    layer: topo,
+                    efeitos,
+                },
+            );
             let mut assado = base.clone();
             let keys: Vec<_> = assado.frames().iter().map(|f| (topo, f.id)).collect();
             let op = filter::apply(&assado, &keys, Channels::ALL, &o).expect("o filtro muda");
@@ -99,7 +109,11 @@ fn o_efeito_de_contorno_e_o_filtro() {
                 // O contorno exterior sai do bbox do cel (4,3 3×2): (5,2) é contorno.
                 let v = vista(&vivo, 0, Purpose::View);
                 let i = (2 * W as usize + 5) * 4;
-                assert_eq!(&v[i..i + 4], &[255, 255, 255, 255], "{mode:?}: fora do bbox");
+                assert_eq!(
+                    &v[i..i + 4],
+                    &[255, 255, 255, 255],
+                    "{mode:?}: fora do bbox"
+                );
             }
         }
     }
@@ -128,14 +142,38 @@ fn sem_efeito_e_a_composicao_de_hoje() {
             out
         };
         for frame in 0..2 {
-            assert_eq!(vista(&s, frame, Purpose::View), esperado(&s, frame), "{mode:?}");
+            assert_eq!(
+                vista(&s, frame, Purpose::View),
+                esperado(&s, frame),
+                "{mode:?}"
+            );
         }
         let efeitos = vec![EfeitoDeCamada::Outline(contorno(Place::Outside))];
-        doc(&mut s, DocOp::SetLayerEffects { layer: topo, efeitos });
-        assert_ne!(vista(&s, 0, Purpose::View), esperado(&s, 0), "o efeito tem de se ver");
-        doc(&mut s, DocOp::SetLayerEffects { layer: topo, efeitos: Vec::new() });
+        doc(
+            &mut s,
+            DocOp::SetLayerEffects {
+                layer: topo,
+                efeitos,
+            },
+        );
+        assert_ne!(
+            vista(&s, 0, Purpose::View),
+            esperado(&s, 0),
+            "o efeito tem de se ver"
+        );
+        doc(
+            &mut s,
+            DocOp::SetLayerEffects {
+                layer: topo,
+                efeitos: Vec::new(),
+            },
+        );
         for frame in 0..2 {
-            assert_eq!(vista(&s, frame, Purpose::View), esperado(&s, frame), "{mode:?}");
+            assert_eq!(
+                vista(&s, frame, Purpose::View),
+                esperado(&s, frame),
+                "{mode:?}"
+            );
         }
     }
 }
@@ -145,7 +183,13 @@ fn aplicar_os_efeitos_assa_todos_os_quadros_num_passo_com_inverso_exacto() {
     for mode in [ColorMode::Rgba, ColorMode::Indexed] {
         let (mut s, topo) = cena(mode);
         let efeitos = vec![EfeitoDeCamada::Outline(contorno(Place::Outside))];
-        doc(&mut s, DocOp::SetLayerEffects { layer: topo, efeitos });
+        doc(
+            &mut s,
+            DocOp::SetLayerEffects {
+                layer: topo,
+                efeitos,
+            },
+        );
         let antes = s.clone();
         let vivas: Vec<_> = (0..2).map(|f| vista(&s, f, Purpose::Export)).collect();
         let op = aplicar_efeitos(&s, topo).expect("tem efeitos");
@@ -153,9 +197,16 @@ fn aplicar_os_efeitos_assa_todos_os_quadros_num_passo_com_inverso_exacto() {
         let inverso = apply(&mut s, op).expect("apply");
         assert!(s.layer(topo).unwrap().efeitos.is_empty(), "a lista esvazia");
         for f in 0..2 {
-            assert_eq!(vista(&s, f, Purpose::Export), vivas[f], "{mode:?} quadro {f}");
+            assert_eq!(
+                vista(&s, f, Purpose::Export),
+                vivas[f],
+                "{mode:?} quadro {f}"
+            );
         }
-        assert!(aplicar_efeitos(&s, topo).is_none(), "sem efeitos não há passo");
+        assert!(
+            aplicar_efeitos(&s, topo).is_none(),
+            "sem efeitos não há passo"
+        );
         apply(&mut s, inverso).expect("inverso");
         assert_eq!(s, antes, "{mode:?}: o inverso devolve o documento");
     }
@@ -214,7 +265,10 @@ fn o_ciclo_na_composicao_e_o_do_ciclo_em() {
         let s = com_ciclo(ColorMode::Indexed, direcao);
         let f = s.frames()[0].id;
         let hoje = compose_window(&s, f, None, s.bounds(), Purpose::View);
-        assert_eq!(compose_window_em(&s, f, None, s.bounds(), Purpose::View, 0), hoje);
+        assert_eq!(
+            compose_window_em(&s, f, None, s.bounds(), Purpose::View, 0),
+            hoje
+        );
         let mut mudou = false;
         for t in (0..1200).step_by(50) {
             let perm = ciclo_em(s.ramps(), t);

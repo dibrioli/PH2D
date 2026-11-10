@@ -40,6 +40,7 @@ mod painel_e_dialogo;
 mod palco_do_jogo;
 mod paleta;
 mod pincel;
+mod pintura_p13;
 mod pivo;
 mod pixel_na_luz;
 mod pontas;

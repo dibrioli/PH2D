@@ -150,26 +150,52 @@ fn sonda_perfil_do_veu() {
 
 /// ⭐ **A mistura não custa mais que o pincel sem ela** (auditoria 10/11: o Wet Wash Mix a 7–10 FPS no app, e o
 /// portão de custo do app só media o Filbert e o Express Oil). O traço do Wet Wash Mix com o Wet blend × o mesmo com
-/// `Off`, intercalados no MESMO processo, o mínimo de 3 — uma RAZÃO, que a carga da máquina não move. Antes da cura
-/// (a cópia do véu, a película em faixas, o pool no kernel) a razão era 2,5–3,8; depois ~0,9.
+/// `Off` no MESMO processo — uma RAZÃO. Antes da cura (a cópia do véu, a película em faixas, o pool no kernel) a razão
+/// era 2,5–3,8; depois ~0,9. A régua (B07.1, `docs/DevOps/MEDIR_VELOCIDADE.md`): um aquecimento de cada descartado,
+/// [`VOLTAS`] voltas intercaladas de ordem rodada, o MÍNIMO (a mediana e o `loadavg` ao lado, contexto); corre na faixa
+/// isolada (`docs/DevOps/FLAKES_DE_CARGA.md`). Com 3 voltas e sem aquecimento colava a 1,26–1,29 contra o tecto 1,3; a
+/// régua nova mede 0,55–0,60 (load 8–14) e a mutação que DOBRA a rota da mistura 0,89–1,12 — o 1,3 não a via, por isso
+/// o tecto é [`TECTO`] (o meio geométrico; tabela no `docs/Painter/missao_4k/BACKLOG.md` B07.1).
 #[test]
 fn a_mistura_do_wet_wash_mix_nao_custa_mais_que_sem_ela() {
-    let mut min = [f64::INFINITY; 2];
-    for volta in 0..3 {
+    const VOLTAS: usize = 7;
+    const TECTO: f64 = 0.75;
+    let carga = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    let carga0 = carga();
+    let vs = [Variante::Meia, Variante::Off];
+    for v in vs {
+        traco(&mut cena("Wet Wash Mix", 30.0, v));
+    }
+    let mut amostras = [[0.0f64; VOLTAS]; 2];
+    for volta in 0..VOLTAS {
         for j in 0..2 {
             let vi = (j + volta) % 2;
-            let v = [Variante::Meia, Variante::Off][vi];
-            let mut t = cena("Wet Wash Mix", 30.0, v);
-            min[vi] = min[vi].min(traco(&mut t));
+            let mut t = cena("Wet Wash Mix", 30.0, vs[vi]);
+            amostras[vi][volta] = traco(&mut t);
         }
     }
-    let razao = min[0] / min[1];
+    let [mistura, sem] = amostras.map(|mut a| {
+        a.sort_by(f64::total_cmp);
+        (a[0], a[VOLTAS / 2])
+    });
+    let razao = mistura.0 / sem.0;
+    eprintln!(
+        "[custo do veu] razão dos mínimos {razao:.3} (medianas {:.3}) · mistura mín {:.4} s med {:.4} s · sem mín \
+         {:.4} s med {:.4} s · loadavg {} → {}",
+        mistura.1 / sem.1,
+        mistura.0,
+        mistura.1,
+        sem.0,
+        sem.1,
+        carga0.trim(),
+        carga().trim()
+    );
     assert!(
-        razao <= 1.3,
+        razao <= TECTO,
         "o Wet blend do Wet Wash Mix custa {razao:.2}× o pincel sem ele ({:.3} s × {:.3} s): a rota da mistura \
          voltou a pagar por carimbo o que o kernel não paga (`docs/Painter/BUGS_painter.md` #84)",
-        min[0],
-        min[1]
+        mistura.0,
+        sem.0
     );
 }
 

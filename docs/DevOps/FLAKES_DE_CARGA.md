@@ -97,6 +97,7 @@ razão nenhuma. Cada membro entra pelo **nome**.
 | `o_oleo_pouco_diluido_cruza_o_amarelo_no_azul_em_verde` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/src/tool/paint/wetpaint_preset/portao_mae_f0.rs) | prazo global do nextest (180 s) — TIMEOUT na suíte de 03/11 (load ~100); por nome 112 s (load ~57) |
 | `sorting_a_reversed_list_grows_n_log_n_not_n_squared` | [`ph2d-kanban-filter`](../../crates/ph2d-kanban-filter/src/sort_tests.rs) | razão de relógios: ×28,7 contra o tecto ×24 na suíte de 05/11 (load 11–45), zero diff na crate; sozinho 5/5 |
 | `a_area_do_blend_cabe_no_circulo` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/tests/it/presets_de_fabrica/misturador.rs) | memória da fatia: «179 MiB + 9 de reserva > 186 livres» na suíte de 05/11; sozinho 5/5 |
+| `a_mistura_do_wet_wash_mix_nao_custa_mais_que_sem_ela` | [`ph2d-tool-painter`](../../crates/ph2d-tool-painter/tests/it/sonda_custo_do_veu.rs) | razão de relógios: 1,26–1,29 contra o tecto 1,3 sob carga (10/11), sã ~0,9; a régua passou a aquecimento + 7 voltas rodadas + o mínimo (B07.1) e o tecto não subiu |
 
 As cenas 3, 4 e 5 do editor de scripts (`a_cena_*_conduzida_passo_a_passo`) SAÍRAM em 29/10: não eram carga, era a
 árvore velha da gramática a esticar o comentário sobre o `ph2d.` escrito na linha nova (cura e gate em

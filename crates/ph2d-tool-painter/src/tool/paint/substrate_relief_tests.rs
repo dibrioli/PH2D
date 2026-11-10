@@ -631,11 +631,17 @@ fn recorte(t: &PainterTool, r: Region) -> Vec<u8> {
 /// ⭐ **As FAIXAS dão o passe por píxel AO BIT** (dono 10/11: o pen-up a 4K travava 1,6 s no passe de luz). Papel com
 /// relevo, impasto com cera, uma tela que não é múltiplo da faixa, inteira e numa sub-região fora da origem (a moldura
 /// lê através da borda). *Mutações: a moldura sem a linha de cima ⇒ `dhy` errado na 1.ª linha de cada faixa; a faixa
-/// a recomeçar no `y` da região ⇒ todas as faixas leem a 1.ª.*
+/// a recomeçar no `y` da região ⇒ todas as faixas leem a 1.ª.* Num pool PRÓPRIO de 4 operários (o global da suíte
+/// pode ter 1: série contra série) e com o controlo de que cada região parte em ≥ 2 faixas (B07.2).
 #[test]
 fn as_faixas_dao_o_passe_por_pixel_ao_bit() {
     let (w, h) = (150, 101);
-    let t = papel_e_crista(w, h);
+    let mut t = papel_e_crista(w, h);
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(4)
+        .build()
+        .expect("o pool do teste");
+    assert!(pool.current_num_threads() >= 2);
     for r in [
         Region { x: 0, y: 0, w, h },
         Region {
@@ -645,9 +651,21 @@ fn as_faixas_dao_o_passe_por_pixel_ao_bit() {
             h: 67,
         },
     ] {
+        assert!(
+            (r.h as usize).div_ceil(super::impasto_light::FAIXA_LINHAS) >= 2,
+            "{r:?} cabe numa faixa só: o teste compara o passe inteiro com ele mesmo"
+        );
         let base = recorte(&t, r);
-        let (mut faixas, mut por_pixel) = (base.clone(), base.clone());
-        t.apply_impasto_light(&mut faixas, r);
+        let mut por_pixel = base.clone();
+        // O `PainterTool` não é `Sync`: vai e volta por valor ao pool.
+        let (de_volta, faixas) = pool.install({
+            let mut f = base.clone();
+            move || {
+                t.apply_impasto_light(&mut f, r);
+                (t, f)
+            }
+        });
+        t = de_volta;
         t.apply_impasto_light_por_pixel(&mut por_pixel, r);
         assert!(por_pixel != base, "a fixture não acendeu nada em {r:?}");
         assert!(

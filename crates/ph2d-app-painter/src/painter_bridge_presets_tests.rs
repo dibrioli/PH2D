@@ -142,6 +142,7 @@ fn guardar_como_padrao_sobrepoe_e_o_reset_volta_a_fabrica() {
     let e = p.bib.procurar(ROUND).unwrap();
     assert_eq!((e.origem, e.tem_fabrica), (Origem::Utilizador, true));
     assert_eq!(e.preset.parametros.engine["pigmentPerDab"], 1500.0);
+    vista_com_reset_sem_delete(&p, "depois do Save as Default");
 
     p.atender(&mut t, PedidoPreset::Repor, &mut toasts);
     sem_erros(&toasts);
@@ -154,6 +155,28 @@ fn guardar_como_padrao_sobrepoe_e_o_reset_volta_a_fabrica() {
         knob(&t, "pigmentPerDab"),
         fabrica,
         "e o pincel voltou ao de fábrica"
+    );
+    vista_com_reset_sem_delete(&p, "depois do Reset");
+}
+
+/// O que o painel PINTA do Round (B07.4, GT-01): uma entrada só (a cópia do artista não duplica a de fábrica), activa
+/// (a condição do Save as Default e do Reset em `botoes_de_guardar`) e sem Delete — o de fábrica por baixo repõe-se,
+/// não se apaga (`botoes_da_biblioteca`).
+fn vista_com_reset_sem_delete(p: &Presets, quando: &str) {
+    let v = &p.vista;
+    assert_eq!(
+        v.entradas.iter().filter(|e| e.relativo == ROUND).count(),
+        1,
+        "{quando}: o Round aparece uma vez na vista"
+    );
+    assert_eq!(
+        v.ativo.as_deref(),
+        Some(ROUND),
+        "{quando}: o Round é o activo"
+    );
+    assert!(
+        !v.procurar(ROUND).unwrap().apagavel,
+        "{quando}: a vista oferece Delete a um pincel com fábrica por baixo"
     );
 }
 

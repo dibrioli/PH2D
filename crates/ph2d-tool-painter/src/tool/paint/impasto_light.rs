@@ -34,7 +34,7 @@ use rayon::prelude::*;
 
 /// Linhas por faixa do passe de luz ([`PainterTool::apply_impasto_light`]): 2 linhas de moldura por faixa (+6 %),
 /// 68 faixas numa tela 4K para o pool.
-const FAIXA_LINHAS: usize = 32;
+pub(super) const FAIXA_LINHAS: usize = 32;
 
 /// How many CANVAS PIXELS of physical paint height `h = 1.0` (one full-Depth stroke) represents.
 ///

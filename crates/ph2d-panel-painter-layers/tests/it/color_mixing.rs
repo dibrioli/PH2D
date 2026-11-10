@@ -318,3 +318,78 @@ fn paint_mixing_e_um_cartao_com_um_pigment_so() {
         }
     }
 }
+
+/// O que o cartão Paint Mixing pinta: (ids vivos do cartão, quantas linhas Pigment).
+fn o_cartao(m: &Mesa) -> (Vec<ph2d_a11y::NodeId>, usize) {
+    let ids = controlos()
+        .copied()
+        .filter(|id| m.rect(*id).is_some())
+        .collect();
+    let pigmentos = m
+        .rects
+        .iter()
+        .filter(|(id, r)| *id == p::PAINTER_WATERCOLOR_MIX && r.w > 0.0 && r.h > 0.0)
+        .count();
+    (ids, pigmentos)
+}
+
+/// ⭐ **Paint Mixing segue a TROCA de preset** (B07.5, GT-02): A = o Digital com o Wet blend → B = um Wet Paint (sem
+/// a mistura opaca) → A, no MESMO painel. Depois de cada troca o cartão é o do pincel novo — o seletor, o Sample e os
+/// números só no A, um Pigment no máximo — e é o que um painel aberto já nele pinta.
+#[test]
+fn paint_mixing_segue_a_troca_de_preset() {
+    use super::h2_os_cartoes::{ComPresets, ROUND, WASH};
+    use ph2d_panel_painter_layers::state::set_current_brush;
+    let (mut a, _) = pincel(PaintMedia::Digital, "brush");
+    a.mistura_opaca.modo = ModoMisturaOpaca::WetBlend;
+    a.inercias = ph2d_tool_painter::Inercias::NENHUMA;
+    let (b, _) = pincel(PaintMedia::WetPaint, "brush");
+    let abre = |m: &mut Mesa| {
+        m.so_abertos(&[
+            p::PAINTER_CARD_TOPO,
+            p::PAINTER_CARD_BASICOS,
+            p::PAINTER_BRUSH_MIX_SECTION,
+        ]);
+        m.quadro();
+    };
+    let fresco = |pincel, ativo| {
+        let _v = ComPresets::com(Some(ativo));
+        let mut m = Mesa::nova(true, pincel, false);
+        abre(&mut m);
+        o_cartao(&m)
+    };
+    let (cartao_a, cartao_b) = (fresco(a, ROUND), fresco(b, WASH));
+    assert!(
+        cartao_a.0.contains(&p::PAINTER_BRUSH_MIX_MODES[1]),
+        "o A não tem o Color mixing: a fixture não mede a troca"
+    );
+    let mut m = {
+        let _v = ComPresets::com(Some(ROUND));
+        let mut m = Mesa::nova(true, a, false);
+        abre(&mut m);
+        m
+    };
+    for (pincel, ativo, esperado, nome) in [
+        (b, WASH, &cartao_b, "A → B"),
+        (a, ROUND, &cartao_a, "B → A"),
+    ] {
+        let _v = ComPresets::com(Some(ativo));
+        set_current_brush(Some(pincel));
+        m.assenta();
+        abre(&mut m);
+        let agora = o_cartao(&m);
+        assert!(agora.1 <= 1, "{nome}: {} linhas Pigment", agora.1);
+        let com_mistura = pincel.mistura_opaca.modo != ModoMisturaOpaca::Off && !pincel.wetpaint;
+        for id in controlos() {
+            assert_eq!(
+                m.rect(*id).is_some(),
+                com_mistura,
+                "{nome}: {id:?} segue o preset de antes"
+            );
+        }
+        assert_eq!(
+            &agora, esperado,
+            "{nome}: o cartão não é o de um painel aberto já no pincel novo"
+        );
+    }
+}

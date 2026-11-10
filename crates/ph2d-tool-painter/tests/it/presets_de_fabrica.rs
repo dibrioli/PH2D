@@ -19,6 +19,7 @@
 
 mod alarme;
 mod memoria;
+mod miniatura_por_knob;
 mod misturador;
 mod portoes;
 pub(crate) mod regua_da_largura;

@@ -411,10 +411,16 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
             let nome = Name::new("Crate");
             let mut pose = onde;
             if caso == CasoFisica::Esticada {
-                pose.scale = Vec2::new(2.0, 1.0);
+                pose.scale = Vec2::new(1.0, 3.0);
             }
             let e = w.spawn((pose, nome, imagem, corpo(kind), col)).id();
             let filha = na_filha(w, e);
+            // A cadeia (dono 10/11): a forma (2, 1) sob o corpo (1, 3) — um clique repõe as duas.
+            if caso == CasoFisica::Esticada
+                && let Some(mut t) = w.get_mut::<ph2d_ecs::Transform>(filha)
+            {
+                t.scale = Vec2::new(2.0, 1.0);
+            }
             // Dynamic e Kinematic mostram o cartão Body; Bola e Esticada, o Shape.
             if matches!(caso, CasoFisica::Bola | CasoFisica::Esticada) {
                 filha

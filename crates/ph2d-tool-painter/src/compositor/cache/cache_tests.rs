@@ -110,10 +110,11 @@ fn o_cache_sem_copias_e_o_das_tres_copias_ao_bit() {
     }
 }
 
-/// Root (top-first): topo · grupo(filho, Overlay) · alto · ruído · meio (Multiply, masked) · baixo ·
-/// blur · base. The Gaussian is BELOW the dragged adjustments (baked into their cuts: the drag bands);
-/// the Noise reads the absolute row, so a band at the wrong `y` changes bytes.
-fn pilha_faixas(w: u32, h: u32) -> (LayerStack, MapPixelSource, [LayerId; 4]) {
+/// Root (top-first): topo · cima (Gaussian) · grupo(filho, Overlay) · alto · ruído · meio (Multiply,
+/// masked) · baixo · blur · base. One Gaussian BELOW the dragged adjustments (baked into their cuts),
+/// one ABOVE (the B19.6 barrier on the drag); the Noise reads the absolute row, so a band at the wrong
+/// `y` changes bytes.
+fn pilha_faixas(w: u32, h: u32) -> (LayerStack, MapPixelSource, [LayerId; 5]) {
     let mut s = LayerStack::new();
     let mut src = MapPixelSource::default();
     let base = s.add_raster("base", w, h).unwrap();
@@ -144,24 +145,30 @@ fn pilha_faixas(w: u32, h: u32) -> (LayerStack, MapPixelSource, [LayerId; 4]) {
     let filho = s.add_raster("filho", w, h).unwrap();
     src.insert(filho, tinta(w, h, 4));
     s.move_into_group(filho, grupo);
+    let cima = s.add_adjustment(AdjustmentKind::GaussianBlur).unwrap();
+    s.adjustment_mut(cima).unwrap().params =
+        AdjustmentParams::GaussianBlur(GaussianBlurParams { radius: 1.5 });
+    s.adjustment_mut(cima).unwrap().opacity = 0.8;
     let topo = s.add_raster("topo", w, h).unwrap();
     s.set_opacity(topo, 0.6);
     s.set_blend_mode(topo, BlendMode::Screen);
     src.insert(topo, tinta(w, h, 5));
-    (s, src, [blur, baixo, ruido, alto])
+    (s, src, [blur, baixo, ruido, alto, cima])
 }
 
 /// A drag session through [`composite_with_cache_into`] with ONE reused output buffer (B19.12: no
 /// reallocation after the cold frame); with `fios = 1` each frame is also checked against `composite`.
 fn sessao_faixas(w: u32, h: u32, fios: usize) -> Vec<Vec<u8>> {
-    let (mut s, src, [blur, baixo, ruido, alto]) = pilha_faixas(w, h);
+    let (mut s, src, [blur, baixo, ruido, alto, cima]) = pilha_faixas(w, h);
     FIOS_DO_CACHE.store(fios, Relaxed);
     let mut cache = CompositorCache::new();
     let mut out = Vec::new();
     composite_with_cache_into(&s, &src, w, h, &mut cache, &mut out);
     let ptr = out.as_ptr();
     let mut saidas = vec![out.clone()];
-    let passos = [baixo, alto, alto, ruido, baixo, blur, alto, baixo];
+    let passos = [
+        baixo, alto, cima, alto, ruido, baixo, cima, blur, alto, baixo,
+    ];
     for (k, &id) in passos.iter().enumerate() {
         let p = &mut s.adjustment_mut(id).unwrap().params;
         *p = match p {
@@ -242,4 +249,49 @@ fn mede_o_arrasto_do_ajuste_4k() {
         "[B19.6] 3840x2160, arrasto do ajuste alto: serial + Vec nova {:.2} ms | faixas + buffer reusado {:.2} ms",
         best[0], best[1]
     );
+}
+
+/// Probe (`--ignored`, `--profile smoke`, ALONE): 3840×2160, the drag of `alto` with the Gaussian
+/// (r 20) ABOVE it, and the drag of the Gaussian itself. A = the pre-barrier rule (a spatial item in
+/// the restart ⇒ the serial walk, `FIOS_DO_CACHE = 1`); B = the barrier. ABBA, min of 8 per variant.
+#[test]
+#[ignore]
+fn mede_o_arrasto_com_espacial_acima_4k() {
+    let (w, h) = (3840u32, 2160u32);
+    let (mut s, src, [_, alto, blur]) = pilha(w, h);
+    s.adjustment_mut(blur).unwrap().params =
+        AdjustmentParams::GaussianBlur(GaussianBlurParams { radius: 20.0 });
+    for (nome, arrastado) in [("alto", alto), ("gaussian", blur)] {
+        let mut caches = [CompositorCache::new(), CompositorCache::new()];
+        let mut best = [f64::MAX; 2];
+        let mut saidas: [Vec<u8>; 2] = [Vec::new(), Vec::new()];
+        for i in 0..18usize {
+            let v = [0usize, 1, 1, 0][i % 4];
+            FIOS_DO_CACHE.store(if v == 0 { 1 } else { 0 }, Relaxed);
+            let p = &mut s.adjustment_mut(arrastado).unwrap().params;
+            *p = match p {
+                AdjustmentParams::GaussianBlur(_) => {
+                    AdjustmentParams::GaussianBlur(GaussianBlurParams {
+                        radius: 20.0 + (i / 4) as f32,
+                    })
+                }
+                _ => bc(0.01 * (i / 4) as f32, 0.2),
+            };
+            caches[v].invalidate_above(arrastado, &s);
+            let t0 = std::time::Instant::now();
+            composite_with_cache_into(&s, &src, w, h, &mut caches[v], &mut saidas[v]);
+            let ms = t0.elapsed().as_secs_f64() * 1e3;
+            if i >= 2 {
+                best[v] = best[v].min(ms);
+            }
+            if i % 4 == 3 {
+                assert!(saidas[0] == saidas[1], "{nome}: as duas vias divergiram");
+            }
+        }
+        FIOS_DO_CACHE.store(0, Relaxed);
+        println!(
+            "[B19.6] 3840x2160, arrasto de {nome} com Gaussian r20 acima: serial {:.2} ms | barreira {:.2} ms",
+            best[0], best[1]
+        );
+    }
 }

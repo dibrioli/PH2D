@@ -186,13 +186,16 @@ fn compor_com_cache(
         }
     };
     // B19.6/B19.10: per-pixel work over `ids` (the cut already holds whatever is spatial below the
-    // restart) splits into the row bands of `compor_regiao`; the old serial walk is `fios = 1`.
-    let fios = if copias_antigas() || super::compose::has_spatial_adjustment(stack, ids) {
+    // restart) splits into the row bands of `compor_regiao`, cut at each spatial item in `ids`
+    // ([`segmentos`]); the old serial walk is `fios = 1`.
+    let fios = if copias_antigas() {
         1
     } else {
         fios_do_cache(acc.len(), height as usize)
     };
-    if fios <= 1 {
+    if fios > 1 && super::compose::has_spatial_adjustment(stack, ids) {
+        segmentos(&mut acc, ids, stack, src, (width, height), fios, cache);
+    } else if fios <= 1 {
         super::compose::composite_into(
             &mut acc,
             ids,
@@ -211,6 +214,49 @@ fn compor_com_cache(
         em_faixas(&mut acc, ids, stack, src, (width, height), fios, cache);
     }
     cache.acc = acc;
+}
+
+/// B19.6 barrier on the drag (as `compose/barreira.rs`): `ids` cut at each visible spatial item; the
+/// per-pixel runs go in bands ([`em_faixas`]), each spatial item alone over the canvas with the whole
+/// cache (its cut, if it is a root adjustment, is recorded whole). Adjustment and group reset the clip
+/// chain, so every run starts in the state of the serial walk.
+fn segmentos(
+    acc: &mut [[f32; 4]],
+    ids: &[LayerId],
+    stack: &LayerStack,
+    src: &(impl LayerPixelSource + Sync),
+    canvas: (u32, u32),
+    fios: usize,
+    cache: &mut CompositorCache,
+) {
+    let mut fim = ids.len();
+    while fim > 0 {
+        let mut ini = fim;
+        while ini > 0 && !super::compose::has_spatial_adjustment(stack, &ids[ini - 1..ini]) {
+            ini -= 1;
+        }
+        if ini < fim {
+            em_faixas(acc, &ids[ini..fim], stack, src, canvas, fios, cache);
+        }
+        if ini == 0 {
+            break;
+        }
+        super::compose::composite_into(
+            acc,
+            &ids[ini - 1..ini],
+            stack,
+            src,
+            canvas,
+            0,
+            0,
+            canvas.0,
+            canvas.1,
+            0,
+            Some(&mut *cache),
+            None,
+        );
+        fim = ini - 1;
+    }
 }
 
 /// The walk of [`compor_com_cache`] in `fios` row bands, each with its own cut map (the cuts already

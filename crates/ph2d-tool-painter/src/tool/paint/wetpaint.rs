@@ -403,6 +403,9 @@ mod manchas_liner_tests;
 #[path = "wetpaint/offthread_tests.rs"]
 mod offthread_tests; // os gates da sim FORA da thread do frame
 #[cfg(test)]
+#[path = "wetpaint/offthread_espera_tests.rs"]
+mod offthread_espera_tests; // B12.A1: o tique não espera o TICK_WAIT fora do mostra
+#[cfg(test)]
 #[path = "wetpaint/raio_igual_ao_anel_tests.rs"]
 mod raio_igual_ao_anel_tests;
 #[cfg(test)]

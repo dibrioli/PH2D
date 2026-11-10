@@ -80,7 +80,9 @@ impl PainterTool {
     }
 
     /// O passo do TICK: uma faixa da varredura, do tamanho que cabe em [`ORCAMENTO_MS`]. Sem o motor em casa
-    /// (o worker a meio de um passo) não espera — o quadro seguinte tenta.
+    /// (o worker a meio de um passo) espera até o `TICK_WAIT` (4 ms) e, sem resposta, o quadro seguinte tenta.
+    /// ⚠️ É a última espera do tique fora do `mostra` (B12.A1): trocá-la pela sem espera deixa a varredura sem motor
+    /// (o fim do tique devolve-o ao worker antes do quadro seguinte perguntar) — por medir.
     pub(in crate::tool::paint) fn wet_varre_oleo(&mut self) {
         let v = self.paint.wetpaint.varredura;
         if v.faltam == 0 {

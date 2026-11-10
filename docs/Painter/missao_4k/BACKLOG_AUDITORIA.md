@@ -62,7 +62,7 @@ Colunas: `| id | tema | origem | arquivos (file:line) | muda aparência? | medi�
 ### → junta-se ao B12 (Wet: pen-down, undo, memória)
 | id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
 |---|---|---|---|---|---|---|---|---|---|---|
-| B12.A1 | O tique espera até `TICK_WAIT` (4 ms) por quadro quando só um «facto» mexeu ou há lote adiado | AU-AU02-3 | tp/wetpaint/ciclo.rs (`wetpaint_tick`); offthread.rs `try_bring_home` | não | `wet_diag::note_wait` por quadro arrastando Dry Speed/Gravity (a medir) | `try_bring_home_now` quando `fora`/`!mostra` | relógio simulado: estágio de 10 ms ⇒ espera ≤ 1 ms/quadro | | | aberto |
+| B12.A1 | O tique espera até `TICK_WAIT` (4 ms) por quadro quando só um «facto» mexeu ou há lote adiado | AU-AU02-3 | tp/wetpaint/ciclo.rs (`wetpaint_tick`); offthread.rs `try_bring_home` | não | `wet_diag::note_wait` por quadro arrastando Dry Speed/Gravity (a medir) | `try_bring_home_now` quando `fora`/`!mostra` | `os_factos_com_o_motor_longe_nao_esperam_o_tick_wait` (motor longe, canal vazio, `tilt_ring` a mudar por quadro, 24 quadros, o MÍNIMO) | red (a ternária do `ciclo.rs` de volta ao `try_bring_home`): mín 4,03 ms, média 4,05 ms/quadro; green: mín 620 ns, média 969 ns (a porta com espera, controlo na mesma fixture: 4,05 ms). Fica a espera do `wet_varre_oleo` (só com varredura do óleo por compor): trocá-la deixa a varredura sem motor, por medir — doc corrigida | 157d472d21 + este commit | feito |
 
 ### → junta-se ao B13 (Wet: o passo a 4K)
 | id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |

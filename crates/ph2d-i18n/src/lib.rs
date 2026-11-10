@@ -181,6 +181,8 @@ mod painter_wet_cartao;
 mod pixel;
 /// O PIXEL ART, P6: os diálogos Color Range, Modify, Canvas Size e Sprite Size.
 mod pixel_dialogos;
+/// O PIXEL ART, P13: Layer Properties ▸ Effects ▸ Outline.
+mod pixel_efeitos;
 mod pixel_export;
 /// O PIXEL ART, P13: View ▸ Guides (perspectiva e iso 2:1).
 mod pixel_guias;
@@ -640,6 +642,7 @@ fn tabela(key: &str) -> &'static str {
             .or_else(|| pixel_selecao::tr(k))
             .or_else(|| pixel_pincel::tr(k))
             .or_else(|| pixel_dialogos::tr(k))
+            .or_else(|| pixel_efeitos::tr(k))
             .or_else(|| pixel_export::tr(k))
             .or_else(|| pixel_tiles::tr(k))
             .or_else(|| pixel_guias::tr(k))

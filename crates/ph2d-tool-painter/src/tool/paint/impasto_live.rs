@@ -459,7 +459,9 @@ impl PainterTool {
     /// This MATERIALISES the sum. The light pass deliberately does not use it — it samples the layers in
     /// place (`ReliefFields`), because building a canvas-sized buffer every frame cost twice the whole
     /// impasto budget while the pass only ever lights the dirty rect. Kept as the accessor for anything
-    /// that genuinely wants the field (the gates do), not as the hot path.
+    /// that genuinely wants the field (the gates do), not as the hot path. Só existe para os gates (B15.A2): o
+    /// produto não a chama, e cada chamada clona a tela (33 MB a 4K).
+    #[cfg(any(test, feature = "test-support"))]
     #[must_use]
     pub fn layer_height_view(&self, id: crate::tool::RtLayerId) -> Option<Vec<f32>> {
         let committed = self.heights.get(&id);

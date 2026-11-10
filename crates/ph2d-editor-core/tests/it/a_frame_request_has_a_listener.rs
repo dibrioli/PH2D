@@ -58,6 +58,16 @@ fn o_som_a_sair_pede_quadro() {
     );
 }
 
+/// B23-cont: a folha ao vivo conta `QUADROS_PARADOS` antes de ler a tinta e o check vive pelo relógio — a 4 q/s
+/// a leitura chegava ~4 s depois do traço.
+#[test]
+fn a_folha_devida_pede_quadro() {
+    assert!(
+        corpo_do_leitor().contains("SheetCache::quer_quadro"),
+        "o `pede_o_quadro` não lê a folha devida: a prévia da folha pintada demora segundos"
+    );
+}
+
 fn corpo_do_leitor() -> String {
     let src = fs::read_to_string(shell_src().join("janela_do_jogo.rs")).unwrap();
     let corpo = src.split("fn pede_o_quadro").nth(1).expect("o leitor");

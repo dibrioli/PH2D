@@ -209,3 +209,25 @@ fn sem_a_folha_a_vista_imagem_aplicada_nao_e_chamada() {
     assert_eq!(c.of_sheet(e, 0).map(|x| x.sheet.rgba[0]), Some(4));
     assert_eq!(c.sync(e), Some(ProgressPhase::Done(0.0)), "o check do selo");
 }
+
+/// B23.2: a folha devida pede quadro enquanto conta os quadros parados e enquanto o check vive; lida, o check morre
+/// pelo relógio e ela cala; escondida e cheia, espera a vista sem pedir.
+#[test]
+fn a_folha_devida_pede_quadro_ate_a_leitura_e_o_check() {
+    let quer = |w: &World| w.resource::<SheetCache>().quer_quadro();
+    let mut w = World::new();
+    let e = w.spawn_empty().id().to_bits();
+    follow_live(&mut w, Some((e, (0, 1))), true, 0, || px(9));
+    assert!(quer(&w), "parada há 0 quadros: conta");
+    for _ in 0..QUADROS_PARADOS {
+        follow_live(&mut w, Some((e, (0, 1))), true, 0, || px(9));
+    }
+    assert!(quer(&w), "lida agora: o check vive");
+    follow_live(&mut w, Some((e, (0, 1))), true, VIDA_DO_CHECK_NS, || px(9));
+    assert!(!quer(&w), "o check morreu: cala");
+    follow_live(&mut w, Some((e, (0, 2))), false, VIDA_DO_CHECK_NS, || px(9));
+    for _ in 0..=QUADROS_PARADOS {
+        follow_live(&mut w, Some((e, (0, 2))), false, VIDA_DO_CHECK_NS, || px(9));
+    }
+    assert!(!quer(&w), "escondida e cheia: espera a vista");
+}

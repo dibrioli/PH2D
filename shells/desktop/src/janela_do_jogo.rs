@@ -2,6 +2,7 @@
 //! janela própria, como o jogador o vê. Na janela, a janela, o host e a surface trocam de lugar com os do
 //! editor ao abrir e ao fechar; o editor fica com a última imagem e o aviso.
 
+use ph2d_anim_sheets::sheet_cache::SheetCache;
 use ph2d_editor_core::game_stage::{GameRun, GameStage};
 use ph2d_host::PlatformHost;
 use ph2d_pixel_crt::palco;
@@ -66,6 +67,8 @@ impl crate::App {
             tem.push((docs.is_some_and(|d| d.surfaces().wants_frame()), P::Aba));
             tem.push((!g.toasts.is_empty() || !g.jobs.is_empty(), P::Toast));
             tem.push((g.ui_machines.values().any(|m| m.is_animating()), P::UiAnima));
+            let folha = g.sim.world().get_resource::<SheetCache>();
+            tem.push((folha.is_some_and(SheetCache::quer_quadro), P::FolhaDevida));
         }
         ativos.extend(tem.into_iter().filter(|(s, _)| *s).map(|(_, p)| p));
         if let Some(t) = no_laco(|l| l.acorda(&ativos, std::time::Instant::now())) {

@@ -100,6 +100,15 @@ impl SheetCache {
             .then(|| ProgressPhase::Done(fracao(vida, VIDA_DO_CHECK_NS)))
     }
 
+    /// B23.2 (o quadro a pedido): a contagem dos [`QUADROS_PARADOS`] até à leitura e o check, que vive pelo relógio,
+    /// andam por quadro. Cheia e escondida, a leitura espera a vista: não pede.
+    #[must_use]
+    pub fn quer_quadro(&self) -> bool {
+        let conta = self.devida && self.seen.is_some() && self.parado < QUADROS_PARADOS;
+        let vida = |(_, t0): (u64, u128)| self.agora.saturating_sub(t0) < VIDA_DO_CHECK_NS;
+        conta || self.feito.is_some_and(vida)
+    }
+
     /// A folha `0` da entidade, se [`refresh`] a resolveu.
     #[must_use]
     pub fn of_entity(&self, bits: u64) -> Option<&SheetEntry> {

@@ -2,7 +2,9 @@
 # Fotos da cena `CENA` (omissão 14; plano 14 Q3/Q4): o binário de smoke numa Xvfb (o XTest chega; ver
 # ../../conduz_posse/corre.sh), conduzido até ao passo k (`PH2D_CODE_SMOKE_PASSO`), e uma foto da
 # janela. Com `RATO="x y"` o rato real (xdotool) pára ali antes da foto (a dica sobre um traço); com
-# `TECLAS="ctrl+z"` teclas reais (xdotool key) chegam à app depois do rato e antes da foto.
+# `TECLAS="ctrl+z"` teclas reais (xdotool key) chegam à app depois do rato e antes da foto. Com
+# `ARRASTA="x1 y1 x2 y2"` um arrasto real (carregar em x1 y1, mover a x2 y2 em passos, largar) corre
+# depois do rato e antes das teclas (o divisor da coluna da esquerda, 10/11).
 # Uso (da raiz da worktree, binário `target/smoke` feito):
 #   [CENA=13] bash docs/CodeEditor/ferramentas/smoke/cena14/fotos_q3.sh <passo> <saida.png> [espera_s]
 set -uo pipefail
@@ -35,6 +37,15 @@ if [ -n "${RATO:-}" ]; then
   xdotool mousemove $RATO
   sleep 1
   [ -n "${CLIQUE:-}" ] && { xdotool click 1; sleep 1; }
+fi
+if [ -n "${ARRASTA:-}" ]; then
+  read -r AX1 AY1 AX2 AY2 <<<"$ARRASTA"
+  xdotool mousemove "$AX1" "$AY1"; sleep 0.5
+  xdotool mousedown 1; sleep 0.3
+  for i in 1 2 3 4; do
+    xdotool mousemove $((AX1 + (AX2 - AX1) * i / 4)) $((AY1 + (AY2 - AY1) * i / 4)); sleep 0.2
+  done
+  xdotool mouseup 1; sleep 1
 fi
 if [ -n "${TECLAS:-}" ]; then
   # Teclas reais (XTest) na janela da app, depois do passo e antes da foto: na Xvfb chegam (medido 10/11,

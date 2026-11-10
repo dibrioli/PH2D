@@ -8,6 +8,16 @@
 use super::{ButtonState, InteractiveState, TextInputState, WidgetStore};
 
 impl WidgetStore {
+    /// Settings ▸ Input Map… pede a aba central (plano InputMap §3); quem a abre é a família.
+    pub fn request_input_map_tab(&mut self) {
+        self.input_map_tab_request = true;
+    }
+
+    /// Lê e limpa o pedido da aba.
+    pub fn take_input_map_tab_request(&mut self) -> bool {
+        std::mem::take(&mut self.input_map_tab_request)
+    }
+
     /// **Abre a janela** em `(x, y)` — idempotente: reabrir só a reposiciona.
     ///
     /// ⚠️ **E REGISTA os widgets fixos, sem o que a janela seria desenho.** Foi a condição 2 da

@@ -325,6 +325,8 @@ pub struct WidgetStore {
     /// que o dedo largou a tinta e precisa de lembrar onde foi; esta abre-se por um gesto de menu e
     /// só tem *onde está agora*.
     pub(in crate::interaction) input_map_window: Option<(f32, f32)>,
+    /// O menu pediu a ABA do Input Map; a família (`ph2d-app-input-map`) drena-o no `frame`.
+    pub(in crate::interaction) input_map_tab_request: bool,
     /// **Qual acção está à ESCUTA de uma tecla** (o gesto *press-to-bind*).
     ///
     /// ⚠️ Enquanto isto é `Some`, a próxima tecla é **conteúdo**, não atalho — e é o despacho de

@@ -104,6 +104,8 @@ mod hier_rows;
 mod image_tools;
 /// ⭐ **A JANELA do Input Map** — irmã por ASSUNTO, cortada do pai pelo tecto de LOC em 2026-09-17.
 mod input_map;
+/// A ABA Input Map e as suas vistas (`docs/InputMap/01_plano.md` §7).
+mod input_map_tab;
 /// O que o KANBAN diz (TrelloClone W2).
 mod kanban;
 mod kanban_back;
@@ -458,6 +460,7 @@ fn tabela(key: &str) -> &'static str {
         "panel.tokens.family.person" => "People",
         "panel.tokens.family.code" => "Code Editor",
         "panel.tokens.family.kanban" => "Kanban",
+        "panel.tokens.family.categorical" => "Category Colors",
         // O readout de CONTRASTE (plano UI/UX W4b). ⚠️ O nome do CRITÉRIO ("WCAG 2.2 AA 1.4.3")
         // não passa por aqui: ele é o endereço de uma norma, e traduzi-lo tornaria a coisa que o
         // artista precisa de PROCURAR impossível de procurar — a mesma lei que mantém as chaves
@@ -617,6 +620,7 @@ fn tabela(key: &str) -> &'static str {
             .or_else(|| node_options::tr(k))
             .or_else(|| chrome::tr(k))
             .or_else(|| input_map::tr(k))
+            .or_else(|| input_map_tab::tr(k))
             .or_else(|| painter_layers::tr(k))
             .or_else(|| painter_marca::tr(k))
             .or_else(|| painter_ponta::tr(k))

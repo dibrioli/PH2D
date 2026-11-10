@@ -5887,6 +5887,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-app-input-map"
+version = "0.0.0"
+dependencies = [
+ "ph2d-app-host",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-input",
+ "ph2d-input-map-editor",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
+ "tracing",
+]
+
+[[package]]
 name = "ph2d-app-kanban"
 version = "0.0.0"
 dependencies = [
@@ -8165,6 +8182,20 @@ version = "0.0.0"
 dependencies = [
  "criterion",
  "serde",
+]
+
+[[package]]
+name = "ph2d-input-map-editor"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-card-stack",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-input",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
 ]
 
 [[package]]

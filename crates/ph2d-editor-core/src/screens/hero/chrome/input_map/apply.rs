@@ -11,7 +11,6 @@ use crate::ids;
 use crate::interaction::WidgetEvent;
 use crate::screens::hero::HeroScreen;
 use ph2d_input::Binding;
-use ph2d_tokens::Spacing;
 
 /// **CRIA A ACÇÃO com o nome do campo** — a porta única, e ela existe porque **DOIS** gestos a
 /// alcançam: o botão `Add` e o **Enter** no campo.
@@ -97,15 +96,8 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     // Um abridor atrás dessa guarda seria a piada de precisar da janela aberta para a abrir, e é a
     // forma exacta de uma feature ficar inalcançável com todos os gates verdes.
     if id == ids::CTX_MENU_SETTINGS_INPUT_MAP {
-        // ⚠️ A janela nasce no canto útil da viewport, não sob o cursor: ela é grande e o cursor
-        // está no menu, no topo — abrir ali poria metade dela fora do ecrã antes do clamp.
-        let v = hero.last_viewport;
-        hero.store
-            .open_input_map(v.x + Spacing::Xl4.px(), v.y + Spacing::Xl4.px());
-        // ⚠️ E as linhas do mapa que veio do FICHEIRO registam-se aqui: elas existiam antes de a
-        // janela existir, e nenhum gesto as criou nesta sessão.
-        let map = hero.input_map.clone();
-        sync_input_map_rows(&mut hero.store, &map);
+        // A aba central (plano InputMap §3) toma o lugar da janela, que sai na R2.
+        hero.store.request_input_map_tab();
         return true;
     }
     // ⭐ **A TECLA APANHADA** — o `Click` sintético que o despacho de teclado emitiu. Ele vem antes

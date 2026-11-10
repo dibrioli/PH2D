@@ -1,0 +1,27 @@
+[package]
+name = "ph2d-input-map-editor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ O DOCUMENTO da aba Input Map (plano `docs/InputMap/01_plano.md` §3): estado, disposição e pintura das três
+# vistas (List · Keyboard · Try it). Folha no molde do `ph2d-anim-editor`: não toca no mundo; cada gesto vira um
+# `InputMapEdit` que a família (`ph2d-app-input-map`) aplica no `hero.input_map`.
+
+[dependencies]
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-card-stack = { path = "../ph2d-card-stack" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-input = { path = "../ph2d-input" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-vector = { path = "../ph2d-vector" }
+
+[lints]
+workspace = true

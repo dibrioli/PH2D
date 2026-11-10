@@ -7,8 +7,8 @@
 //! ⛔ **Os números são gravados no documento da timeline: só APPEND, nunca renumerar** (gate
 //! `o_vocabulario_da_junta_nao_renumera`).
 //!
-//! O valor é o do DOCUMENTO (o componente): limites em radianos numa dobradiça e em metros num
-//! curso — a mesma unidade do `PropKind::JointMotorTarget`; um bool é 0/1 (um marcador também: a
+//! O valor é o do CARTÃO (como a FISICA): limites e motor da roldana em GRAUS numa dobradiça, metros
+//! num curso (o `PropKind::JointMotorTarget` ainda guarda o do componente); um bool é 0/1 (um marcador também: a
 //! presença); um enum é a `tag`. A §13 (a roldana) mora aqui: uma Pulley é um tipo de junta.
 //! Cada linha do painel é um grupo (um losango por linha).
 
@@ -35,7 +35,7 @@ pub const SOLDA_MOLE: u16 = 30;
 pub const RIGIDEZ: u16 = 31;
 pub const AMORTECIMENTO: u16 = 32;
 /// Os eixos de um Custom (X · Y · Rotation): o do eixo `a` é `EIXO_* + EIXO_PASSO * a` — o modo
-/// (Free 0 · Limited 1 · Locked 2) e o par min/max (metros nos lineares, radianos na rotação).
+/// (Free 0 · Limited 1 · Locked 2) e o par min/max (metros nos lineares, graus na rotação).
 /// Um campo por eixo (e não um `i`) para que o dope-sheet diga de que eixo é a linha.
 pub const EIXO_MODO: u16 = 40;
 pub const EIXO_MIN: u16 = 41;

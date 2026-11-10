@@ -46,24 +46,42 @@ fn a_escrita_segue_o_dominio_do_painel() {
     assert!(ler(&custom(), FieldKey::new(JUNTA, j::RIGIDEZ, 1, 0)).is_none());
 }
 
-/// ⭐ **O MESMO funil que o painel**: o limite de uma dobradiça escrito em radianos pelo canal dá
-/// a junta que o Inspector dá ao escrever os graus.
+/// ⭐ **O MESMO funil e a MESMA unidade que o painel**: o limite de uma dobradiça é escrito e lido em
+/// GRAUS pelo canal (o número da curva é o do cartão), e dá a junta que o Inspector dá.
 #[test]
 fn o_canal_e_a_edicao_do_painel_dao_a_mesma_junta() {
     let pin = PhysicsJoint::default();
     assert_eq!(pin.kind, JointKind::Pin);
-    let pelo_canal = escrever(pin, k(j::LIMITE_MIN), -std::f32::consts::FRAC_PI_4);
+    let pelo_canal = escrever(pin, k(j::LIMITE_MIN), -45.0);
     let pelo_painel =
         crate::joint::joint_with_edit(pin, JointFieldEdit::LimitMin(-45.0)).expect("edição");
     assert!(perto(pelo_canal.limit_min, pelo_painel.limit_min));
+    assert!(perto(pelo_painel.limit_min, -std::f32::consts::FRAC_PI_4));
+    assert!(perto(
+        ler(&pelo_painel, k(j::LIMITE_MIN)).expect("campo"),
+        -45.0
+    ));
     let rot = j::do_eixo(j::EIXO_MAX, 2);
-    let pelo_canal = escrever(custom(), k(rot), 1.0);
+    let pelo_canal = escrever(custom(), k(rot), 60.0);
     let pelo_painel =
-        crate::joint::joint_with_edit(custom(), JointFieldEdit::AxisMax(2, 1.0_f32.to_degrees()))
-            .expect("edição");
+        crate::joint::joint_with_edit(custom(), JointFieldEdit::AxisMax(2, 60.0)).expect("edição");
     assert!(perto(
         pelo_canal.custom.axes[2].max,
         pelo_painel.custom.axes[2].max
+    ));
+    assert!(perto(ler(&pelo_painel, k(rot)).expect("campo"), 60.0));
+    let curso = j::do_eixo(j::EIXO_MAX, 0);
+    assert!(perto(
+        ler(&escrever(custom(), k(curso), 0.4), k(curso)).expect("campo"),
+        0.4
+    ));
+    let roda = PulleyWheel {
+        motor_speed: std::f32::consts::PI,
+        ..PulleyWheel::default()
+    };
+    assert!(perto(
+        ler_roda(&roda, false, k(j::RODA_MOTOR)).expect("campo"),
+        180.0
     ));
 }
 

@@ -10,7 +10,7 @@ use ph2d_ecs::canal::Especie;
 use ph2d_ecs::canal::familia::JUNTA;
 use ph2d_ecs::canal_componente::{self as cc, DONOS, Dono};
 use ph2d_ecs::canal_junta as j;
-use ph2d_physics_ecs::{JointKind, PhysicsJoint, PulleyWheel};
+use ph2d_physics_ecs::{CustomAxis, JointKind, PhysicsJoint, PulleyWheel};
 use ph2d_timeline::PropKind;
 
 fn perto(a: f32, b: f32) -> bool {
@@ -106,6 +106,16 @@ fn escrever_pela_junta_muda_o_que_o_catalogo_le() {
         assert!(!perto(ficou, antes), "{k:?}: a escrita não pegou ({antes})");
         let lido = cc::ler_pelo_catalogo(&reg, sim.world(), e, c, fid, x)
             .unwrap_or_else(|| panic!("{c}.{fid}.{x}: o catálogo não lê"));
+        // O catálogo guarda os ângulos em radianos; a curva da junta, o número do cartão (graus).
+        let em_graus = match j::eixo_de(k.campo) {
+            Some((a, b)) => b != j::EIXO_MODO && !CustomAxis::from_tag(a as u8).in_metres(),
+            None => {
+                k.campo == j::RODA_MOTOR
+                    || (matches!(k.campo, j::LIMITE_MIN | j::LIMITE_MAX)
+                        && !base.kind.limits_in_metres())
+            }
+        };
+        let lido = if em_graus { lido.to_degrees() } else { lido };
         assert!(
             perto(lido, ficou),
             "{c}.{fid}.{x} = {lido} ↔ {k:?} = {ficou}"

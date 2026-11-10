@@ -11,9 +11,9 @@
 //! curva é pré-visualização: declara-se ao [`PreviewDrive`] (`JointParams`, `PontaNoMundo`,
 //! `Roldana`).
 //!
-//! O canal guarda o valor do COMPONENTE (radianos numa dobradiça, metros num curso, `order`
-//! 0-based); o painel e o funil falam a unidade do Inspector, e a conversão para lá é a porta
-//! `*_out` de cada um.
+//! O canal fala a unidade do CARTÃO (graus numa dobradiça e no motor da roldana, metros num curso),
+//! como a família FISICA: o número da curva é o que o artista lê e digita. Só a `order` fica
+//! 0-based. A conversão para o componente é a do funil do painel; a leitura usa a porta `*_out`.
 
 use ph2d_ecs::canal::familia::JUNTA;
 use ph2d_ecs::canal_junta as j;
@@ -92,11 +92,13 @@ pub fn ler(pj: &PhysicsJoint, kk: FieldKey) -> Option<f32> {
         return None;
     }
     if let Some((a, base)) = j::eixo_de(kk.campo) {
-        let ax = pj.custom.axis(CustomAxis::from_tag(a as u8));
+        let eixo = CustomAxis::from_tag(a as u8);
+        let ax = pj.custom.axis(eixo);
+        let ui = |v: f32| if eixo.in_metres() { v } else { v.to_degrees() };
         return Some(match base {
             j::EIXO_MODO => f32::from(ax.mode.tag()),
-            j::EIXO_MIN => ax.min,
-            _ => ax.max,
+            j::EIXO_MIN => ui(ax.min),
+            _ => ui(ax.max),
         });
     }
     Some(match kk.campo {
@@ -108,8 +110,8 @@ pub fn ler(pj: &PhysicsJoint, kk: FieldKey) -> Option<f32> {
         j::QUEBRA_FORCA => pj.break_force,
         j::QUEBRA_TORQUE => pj.break_torque,
         j::LIMITES_LIGADOS => bit(pj.limits_enabled),
-        j::LIMITE_MIN => pj.limit_min,
-        j::LIMITE_MAX => pj.limit_max,
+        j::LIMITE_MIN => crate::joint::limit_out(pj.kind, pj.limit_min),
+        j::LIMITE_MAX => crate::joint::limit_out(pj.kind, pj.limit_max),
         j::SOLDA_MOLE => bit(pj.soft),
         j::RIGIDEZ => pj.stiffness,
         j::AMORTECIMENTO => pj.damping,
@@ -132,7 +134,7 @@ pub fn ler_roda(w: &PulleyWheel, weston: bool, kk: FieldKey) -> Option<f32> {
         j::RODA_WESTON => bit(weston),
         j::RODA_ORDEM => f32::from(w.order),
         j::RODA_LADO => f32::from(w.wrap.tag()),
-        j::RODA_MOTOR => w.motor_speed,
+        j::RODA_MOTOR => w.motor_speed.to_degrees(),
         j::RODA_QUEBRA_LIGADA => bit(w.break_enabled),
         j::RODA_QUEBRA_FORCA => w.break_force,
         _ => return None,
@@ -176,22 +178,16 @@ fn tag(v: f32, max: u8) -> u8 {
     }
 }
 
-/// ⭐ **A edição do Inspector que escreve `v` em `kk`** — o valor do componente convertido para a
-/// unidade do painel (a inversa da que o funil aplica).
+/// ⭐ **A edição do Inspector que escreve `v` em `kk`** — `v` já vem na unidade do painel.
 #[must_use]
 pub fn edicao(pj: &PhysicsJoint, kk: FieldKey, v: f32) -> Option<JointFieldEdit> {
     ler(pj, kk)?;
     if let Some((a, base)) = j::eixo_de(kk.campo) {
         let ax = a as u8;
-        let ui = if CustomAxis::from_tag(ax).in_metres() {
-            v
-        } else {
-            v.to_degrees()
-        };
         return Some(match base {
             j::EIXO_MODO => JointFieldEdit::AxisMode(ax, tag(v, AxisMode::Locked.tag())),
-            j::EIXO_MIN => JointFieldEdit::AxisMin(ax, ui),
-            _ => JointFieldEdit::AxisMax(ax, ui),
+            j::EIXO_MIN => JointFieldEdit::AxisMin(ax, v),
+            _ => JointFieldEdit::AxisMax(ax, v),
         });
     }
     let on = v >= 0.5;
@@ -204,8 +200,8 @@ pub fn edicao(pj: &PhysicsJoint, kk: FieldKey, v: f32) -> Option<JointFieldEdit>
         j::QUEBRA_FORCA => JointFieldEdit::BreakForce(v),
         j::QUEBRA_TORQUE => JointFieldEdit::BreakTorque(v),
         j::LIMITES_LIGADOS => JointFieldEdit::LimitsEnabled(on),
-        j::LIMITE_MIN => JointFieldEdit::LimitMin(crate::joint::limit_out(pj.kind, v)),
-        j::LIMITE_MAX => JointFieldEdit::LimitMax(crate::joint::limit_out(pj.kind, v)),
+        j::LIMITE_MIN => JointFieldEdit::LimitMin(v),
+        j::LIMITE_MAX => JointFieldEdit::LimitMax(v),
         j::SOLDA_MOLE => JointFieldEdit::Soft(on),
         j::RIGIDEZ => JointFieldEdit::Stiffness(v),
         j::AMORTECIMENTO => JointFieldEdit::Damping(v),
@@ -234,7 +230,7 @@ pub fn edicao_roda(kk: FieldKey, v: f32) -> Option<WheelFieldEdit> {
             WheelFieldEdit::Order(o as u32 + 1)
         }
         j::RODA_LADO => WheelFieldEdit::Wrap(tag(v, WrapSide::Under.tag())),
-        j::RODA_MOTOR => WheelFieldEdit::MotorDegPerS(v.to_degrees()),
+        j::RODA_MOTOR => WheelFieldEdit::MotorDegPerS(v),
         j::RODA_QUEBRA_LIGADA => WheelFieldEdit::BreakEnabled(on),
         j::RODA_QUEBRA_FORCA => WheelFieldEdit::BreakForce(v),
         _ => return None,

@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-pixel-guia"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# P13 bloco G (`docs/PixelArt/P13_plano.md` §4 «Onde aponta esta guia?»): a conta das guias de
+# perspectiva (1/2/3 pontos de fuga) e da isometria 2:1. O núcleo guarda as `Guias` como DADO;
+# aqui mora a direção guiada (o Shift da Linha) e as linhas do overlay. Puro: sem ECS, sem UI.
+[dependencies]
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+
+[lints]
+workspace = true

@@ -298,7 +298,7 @@ fn a_mancha_incremental_e_a_inteira_ao_byte() {
             t.paint.stroke_density.clone(),
             t.paint.stroke_deplete.clone(),
             t.paint.stroke_deplete_prox.clone(),
-            t.paint.wet_styles.owner.clone(),
+            bytemuck::cast_slice(&t.paint.wet_styles.owner).to_vec(),
         ]
     };
     use ph2d_painter_brush::line_kind::LineKind;
@@ -498,7 +498,7 @@ fn a_mancha_que_encolhe_devolve_o_papel_fora_dela() {
             t.paint.stroke_coverage.clone(),
             t.paint.stroke_color.clone(),
             t.paint.stroke_density.clone(),
-            t.paint.wet_styles.owner.clone(),
+            bytemuck::cast_slice(&t.paint.wet_styles.owner).to_vec(),
         ]
     };
     let mut a = prepara();

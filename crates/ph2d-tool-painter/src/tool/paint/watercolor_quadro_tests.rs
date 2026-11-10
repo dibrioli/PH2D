@@ -154,7 +154,11 @@ fn entradas(t: &PainterTool) -> Vec<(&'static str, usize, Vec<u8>)> {
         ("color", 4, t.paint.stroke_color.clone()),
         ("density", 1, t.paint.stroke_density.clone()),
         ("deplete", 1, t.paint.stroke_deplete.clone()),
-        ("owner", 1, t.paint.wet_styles.owner.clone()),
+        (
+            "owner",
+            2,
+            bytemuck::cast_slice(&t.paint.wet_styles.owner).to_vec(),
+        ),
         ("soak", 1, t.paint.wet_soak.clone()),
         ("water", 1, t.paint.stroke_water.clone()),
         ("canvas_wet", 1, t.paint.canvas_wet.clone()),

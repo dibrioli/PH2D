@@ -97,8 +97,8 @@ pub(super) struct PlanosDaAguada<'a> {
     dens: &'a mut [u8],
     depl: &'a mut [u8],
     prox: &'a mut [u8],
-    own: &'a mut [u8],
-    own_v: Option<u8>,
+    own: &'a mut [super::watercolor_field::Dono],
+    own_v: Option<super::watercolor_field::Dono>,
     col: [f32; 3],
 }
 
@@ -109,7 +109,7 @@ impl PainterTool {
         let own_v = (!self.paint.wet_styles.table.is_empty())
             .then(|| self.paint.wet_styles.current_owner());
         if own_v.is_some() && self.paint.wet_styles.owner.len() != n {
-            self.paint.wet_styles.owner = vec![0u8; n];
+            self.paint.wet_styles.owner = vec![0; n];
         }
         PlanosDaAguada {
             cov: &mut self.paint.stroke_coverage,

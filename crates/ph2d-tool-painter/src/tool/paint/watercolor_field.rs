@@ -419,8 +419,12 @@ mod tests {
 }
 
 mod style;
+#[cfg(test)]
+mod style_tests; // T1-41 (B04): a 256.ª pincelada não reescreve o estilo das antigas
 
-pub(super) use style::{MarcasDaAguada, WetSessionStyles, WetStrokeStyle, cor_em_bytes, wash_flow};
+pub(super) use style::{
+    Dono, MarcasDaAguada, WetSessionStyles, WetStrokeStyle, cor_em_bytes, wash_flow,
+};
 
 // ── Granulation settling (doc 12 GRAN-1 — Curtis §4.5 valley deposition, Tier-2) ────────────────────
 // Drying model (Enio 2026-07-08, take 3): the BAKE settles FULLY (the wash "sets" on pen-up);

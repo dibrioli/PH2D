@@ -82,7 +82,7 @@ fn a_juncao_de_dois_flows_nao_degraua() {
     let mut b = a;
     b.edge_flow.kind = TextureKind::Wood;
     let (w, h) = (120usize, 40usize);
-    let owner: Vec<u8> = (0..w * h).map(|i| if i % w < 60 { 1 } else { 2 }).collect();
+    let owner: Vec<Dono> = (0..w * h).map(|i| if i % w < 60 { 1 } else { 2 }).collect();
     let (f, _) = EdgeFlow::build(
         &b,
         &[a, b],

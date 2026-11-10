@@ -7,8 +7,9 @@
 //! fields (the ADR-0109 parallel-composite invariants hold: no cross-pixel state, no RNG).
 
 use super::watercolor_field::{
-    BACKRUN_POOL, LIFT_MAX, Luts, NoiseTile, REWET_LIFT, REWET_POOL, RewetFields, SOAK_DISSOLVE,
-    SOAK_LIFT, WetStrokeStyle, box_blur, box_blur2, box_blur4, paper_h_px, sample_bilinear,
+    BACKRUN_POOL, Dono, LIFT_MAX, Luts, NoiseTile, REWET_LIFT, REWET_POOL, RewetFields,
+    SOAK_DISSOLVE, SOAK_LIFT, WetStrokeStyle, box_blur, box_blur2, box_blur4, paper_h_px,
+    sample_bilinear,
 };
 use super::{PaintMode, PainterTool};
 use ph2d_painter_brush::TextureSettings;
@@ -148,7 +149,7 @@ pub(super) const WET_FIELD_BLUR_PX: usize = 8; // LITERAL-PX-OK: raio de suaviza
 /// POSSUÍDOS (tinta real se fundindo na junção) — nunca do brush vivo pra poça assada. Sessão de
 /// UM estilo: razão de blurs iguais ⇒ byte-idêntica.
 pub(super) fn build_wet_field(
-    style_owner: &[u8],
+    style_owner: &[Dono],
     table: &[WetStrokeStyle],
     fw: usize,
     (rx0, ry0): (usize, usize),
@@ -236,7 +237,7 @@ pub(super) fn params_differ(table: &[WetStrokeStyle]) -> bool {
 }
 
 pub(super) fn build_style_field(
-    style_owner: &[u8],
+    style_owner: &[Dono],
     table: &[WetStrokeStyle],
     fw: usize,
     (rx0, ry0): (usize, usize),
@@ -384,7 +385,7 @@ impl StyleField {
 #[inline]
 pub(super) fn style_at(
     has_style: bool,
-    owner: &[u8],
+    owner: &[Dono],
     table: &[WetStrokeStyle],
     cur: WetStrokeStyle,
     idx: usize,
@@ -608,7 +609,7 @@ impl<'a> SubstrateSession<'a> {
     pub(super) fn at(
         &self,
         st: &WetStrokeStyle,
-        owner: u8,
+        owner: Dono,
         cached_paper_h: Option<f32>,
         gx: usize,
         gy: usize,

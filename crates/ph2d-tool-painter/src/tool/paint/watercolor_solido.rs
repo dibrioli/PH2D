@@ -101,9 +101,14 @@ pub(super) fn janelas_do_quadro(
     out
 }
 
-/// Bytes por texel de cada plano: a cor é RGBA, o resto é um byte.
+/// Bytes por texel de cada plano: a cor é RGBA, o dono é um [`super::watercolor_field::Dono`], o
+/// resto é um byte.
 const fn bpp(k: usize) -> usize {
-    if k == 1 { 4 } else { 1 }
+    match k {
+        1 => 4,
+        5 => size_of::<super::watercolor_field::Dono>(),
+        _ => 1,
+    }
 }
 
 /// O índice de `(x, y)` (em pixels de canvas) dentro da caixa `r`.
@@ -113,15 +118,15 @@ fn em(r: Region, x: usize, y: usize) -> usize {
 
 impl PainterTool {
     /// O plano `k` da sessão molhada: cobertura · cor · densidade da ponta · nível da reserva · a
-    /// proximidade dele · o dono do estilo.
-    fn plano_da_aguada(&mut self, k: usize) -> &mut Vec<u8> {
+    /// proximidade dele · o dono do estilo (os bytes dele, na ordem nativa: o registo só os devolve).
+    fn plano_da_aguada(&mut self, k: usize) -> &mut [u8] {
         match k {
             0 => &mut self.paint.stroke_coverage,
             1 => &mut self.paint.stroke_color,
             2 => &mut self.paint.stroke_density,
             3 => &mut self.paint.stroke_deplete,
             4 => &mut self.paint.stroke_deplete_prox,
-            _ => &mut self.paint.wet_styles.owner,
+            _ => bytemuck::cast_slice_mut(&mut self.paint.wet_styles.owner[..]),
         }
     }
 

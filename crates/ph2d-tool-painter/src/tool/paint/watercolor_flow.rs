@@ -18,7 +18,7 @@
 //! pela altura do papel quase não se vê — desvio da borda `0,45 → 0,65 px` no Paper Rough: o pé da
 //! cobertura tem 1-2 px, e é só isso que um limiar alcança.
 
-use super::watercolor_field::{WetStrokeStyle, box_blur, sample_bilinear};
+use super::watercolor_field::{Dono, WetStrokeStyle, box_blur, sample_bilinear};
 use super::watercolor_noise::{NoiseTile, paper_height, snap_slot_size, warp_offset};
 use ph2d_painter_brush::texture::{ImageMask, angle_basis, sample_tiled_rot_wrapped};
 use ph2d_painter_brush::{TEX_TILE_BASE_PX, TextureKind, TextureSettings};
@@ -143,7 +143,7 @@ struct Fonte {
 pub(super) struct EdgeFlow {
     fontes: Vec<Fonte>,
     /// `dono → índice da fonte` (`0` = sem dono = o pincel vivo).
-    do_dono: Vec<u8>,
+    do_dono: Vec<Dono>,
     /// Com 2+ fontes: o peso de cada uma por texel da janela (a soma é `1` — todo texel tem um dono
     /// mais próximo).
     pesos: Option<Vec<Vec<f32>>>,
@@ -160,7 +160,7 @@ impl EdgeFlow {
     pub(super) fn build(
         cur: &WetStrokeStyle,
         table: &[WetStrokeStyle],
-        owner: Option<&[u8]>,
+        owner: Option<&[Dono]>,
         imagens: Imagens<'_>,
         fw: usize,
         caixa: (usize, usize, usize, usize),
@@ -168,7 +168,7 @@ impl EdgeFlow {
         tile: NoiseTile,
     ) -> (Self, bool) {
         let mut distintos = vec![Estilo::de(cur)];
-        let mut do_dono = vec![0u8; table.len() + 1];
+        let mut do_dono: Vec<Dono> = vec![0; table.len() + 1];
         if owner.is_some() {
             for (i, s) in table.iter().enumerate() {
                 let e = Estilo::de(s);
@@ -176,7 +176,7 @@ impl EdgeFlow {
                     distintos.push(e);
                     distintos.len() - 1
                 });
-                do_dono[i + 1] = k as u8;
+                do_dono[i + 1] = k as Dono;
             }
         }
         let papel = distintos.iter().any(|e| e.papel.is_some());
@@ -203,7 +203,7 @@ impl EdgeFlow {
             .then_some(())
             .and(owner)
             .and_then(|owner| {
-                let mut local = vec![0u8; rw * rh];
+                let mut local: Vec<Dono> = vec![0; rw * rh];
                 for wy in 0..rh {
                     let base = (ry0 + wy) * fw + rx0;
                     local[wy * rw..(wy + 1) * rw].copy_from_slice(&owner[base..base + rw]);
@@ -242,7 +242,7 @@ impl EdgeFlow {
     #[inline]
     pub(super) fn desloca(
         &self,
-        dono: u8,
+        dono: Dono,
         lx: f32,
         ly: f32,
         x: f32,
@@ -268,7 +268,7 @@ impl EdgeFlow {
 
 /// O dono MAIS PRÓXIMO de cada texel (transformada de distância chanfrada 3-4, duas passagens — exacta
 /// ao inteiro e determinística). `None` quando nenhum texel da janela tem dono.
-fn dono_mais_proximo(owner: &[u8], w: usize, h: usize) -> Option<Vec<u8>> {
+fn dono_mais_proximo(owner: &[Dono], w: usize, h: usize) -> Option<Vec<Dono>> {
     const INF: u32 = u32::MAX / 2;
     let mut dist: Vec<u32> = owner
         .iter()
@@ -278,7 +278,7 @@ fn dono_mais_proximo(owner: &[u8], w: usize, h: usize) -> Option<Vec<u8>> {
         return None;
     }
     let mut perto = owner.to_vec();
-    let relaxa = |i: usize, j: usize, custo: u32, dist: &mut [u32], perto: &mut [u8]| {
+    let relaxa = |i: usize, j: usize, custo: u32, dist: &mut [u32], perto: &mut [Dono]| {
         if dist[j] + custo < dist[i] {
             dist[i] = dist[j] + custo;
             perto[i] = perto[j];

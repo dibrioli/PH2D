@@ -180,18 +180,33 @@ impl WetStrokeStyle {
     }
 }
 
+/// O índice do dono no mapa por pixel. Era `u8`: da 256.ª pincelada de uma sessão em diante a
+/// entrada 255 era reescrita e as antigas trocavam de cor a cada pen-up (B04, DF-07, gate T1-41).
+pub(in crate::tool::paint) type Dono = u16;
+
 /// The wet session's per-stroke style TABLE + per-pixel OWNER map (`0` = unowned → the current
 /// brush's style; `k` = `table[k−1]`). Ownership is RECENCY — the last stroke to touch a pixel
 /// styles it, matching the colour buffer's source-over. Cleared with the session.
 #[derive(Clone, Default)]
 pub(in crate::tool::paint) struct WetSessionStyles {
     pub(in crate::tool::paint) table: Vec<WetStrokeStyle>,
-    pub(in crate::tool::paint) owner: Vec<u8>,
+    pub(in crate::tool::paint) owner: Vec<Dono>,
+    /// Oráculo: o tecto `u8` antigo (255 donos), verbatim, para a paridade ao bit até 255 traços.
+    #[cfg(test)]
+    pub(in crate::tool::paint) teto_u8_antigo: bool,
 }
 
 impl WetSessionStyles {
-    /// Register the beginning stroke's style; the index saturates at 255 (a 256th stroke in one
-    /// wet session shares the last slot — far beyond any real ~8.5 s session).
+    /// Quantos donos a tabela guarda: `Dono::MAX` (65 535 traços numa sessão molhada).
+    fn teto(&self) -> usize {
+        #[cfg(test)]
+        if self.teto_u8_antigo {
+            return 255;
+        }
+        usize::from(Dono::MAX)
+    }
+
+    /// Register the beginning stroke's style; past [`Self::teto`] the last slot is shared.
     pub(in crate::tool::paint) fn push_capture(
         &mut self,
         spec: &ph2d_painter_brush::BrushSpec,
@@ -199,16 +214,16 @@ impl WetSessionStyles {
         marcas: MarcasDaAguada,
     ) {
         let st = WetStrokeStyle::capture(spec, forced_wet).com_marcas(marcas);
-        if self.table.len() < 255 {
+        if self.table.len() < self.teto() {
             self.table.push(st);
         } else if let Some(last) = self.table.last_mut() {
             *last = st;
         }
     }
 
-    /// The CURRENT stroke's owner byte for the coverage splat.
-    pub(in crate::tool::paint) fn current_owner(&self) -> u8 {
-        self.table.len().min(255) as u8
+    /// The CURRENT stroke's owner for the coverage splat.
+    pub(in crate::tool::paint) fn current_owner(&self) -> Dono {
+        self.table.len().min(self.teto()) as Dono
     }
 
     /// SESSION MAXIMA of the geometry/field knobs, seeded with the live brush's values: any stroke with

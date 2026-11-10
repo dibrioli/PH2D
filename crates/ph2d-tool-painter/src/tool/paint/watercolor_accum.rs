@@ -442,7 +442,7 @@ impl PainterTool {
         let own_v = (!self.paint.wet_styles.table.is_empty())
             .then(|| self.paint.wet_styles.current_owner());
         if own_v.is_some() && self.paint.wet_styles.owner.len() != fw * fh {
-            self.paint.wet_styles.owner = vec![0u8; fw * fh];
+            self.paint.wet_styles.owner = vec![0; fw * fh];
         }
         let cov = &mut self.paint.stroke_coverage;
         let dens_buf = &mut self.paint.stroke_density;

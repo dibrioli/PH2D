@@ -295,8 +295,8 @@ fn the_cost_of_the_drying_pass_by_both_routes() {
 fn pour_reference(
     wet: &mut [u8],
     cov: &[u8],
-    owner: &[u8],
-    cur_o: u8,
+    owner: &[super::watercolor_field::Dono],
+    cur_o: super::watercolor_field::Dono,
     fw: usize,
     rect: (usize, usize, usize, usize),
 ) {
@@ -338,8 +338,8 @@ fn the_pour_lands_exactly_where_the_serial_one_it_replaced_landed() {
             let wet0: Vec<u8> = (0..nn).map(|i| ((i * 91) % 200) as u8).collect();
             // `current_owner()` é `table.len()`, e a tabela nasce vazia ⇒ 0. Metade do rect pertence a
             // outro dono, então o `continue` dispara — é o ramo que um `base` errado atravessaria calado.
-            let owner: Vec<u8> = if with_owner {
-                (0..nn).map(|i| u8::from(i % 3 == 0)).collect()
+            let owner: Vec<super::watercolor_field::Dono> = if with_owner {
+                (0..nn).map(|i| u16::from(i % 3 == 0)).collect()
             } else {
                 Vec::new()
             };

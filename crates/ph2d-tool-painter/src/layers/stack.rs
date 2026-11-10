@@ -215,16 +215,16 @@ impl LayerStack {
     /// duplication needs a fresh buffer — a follow-up; reference is exclusive).
     /// The caller copies the pixel buffer. `None` at the cap or unknown `id`.
     pub fn duplicate(&mut self, id: LayerId) -> Option<LayerId> {
-        if self.arena.len() >= HARD_CAP_LAYERS {
+        self.get(id)?;
+        let mut sub = Vec::new();
+        self.collect_subtree(id, &mut sub);
+        if self.arena.len() + sub.len() > HARD_CAP_LAYERS {
             return None;
         }
-        let mut copy = self.get(id)?.clone();
-        let new_id = self.alloc_id();
-        copy.id = new_id;
-        copy.name = format!("{} copy", copy.name);
-        copy.mask = None;
-        copy.is_reference = false;
-        self.arena.push(copy);
+        let new_id = self.clone_subtree(id, 0)?;
+        if let Some(copy) = self.get_mut(new_id) {
+            copy.name = format!("{} copy", copy.name);
+        }
         // Insert just above the source (index 0 = top, so `pos` itself is "above").
         let parent = self.parent_of(id);
         let inserted = self
@@ -236,10 +236,31 @@ impl LayerStack {
             })
             .is_some();
         if !inserted {
-            self.arena.pop(); // orphan cleanup (source had no parent list — unreachable)
+            self.remove(new_id); // orphan cleanup (source had no parent list — unreachable)
             return None;
         }
         self.active = Some(new_id);
+        Some(new_id)
+    }
+
+    /// Clona `id` e (num grupo) a subárvore inteira com ids NOVOS — a cópia nunca partilha filhos
+    /// (a árvore não vira DAG). Máscara e referência não se copiam.
+    fn clone_subtree(&mut self, id: LayerId, depth: usize) -> Option<LayerId> {
+        let mut copy = self.get(id)?.clone();
+        let new_id = self.alloc_id();
+        copy.id = new_id;
+        copy.mask = None;
+        copy.is_reference = false;
+        if let LayerKind::Group(g) = &mut copy.kind {
+            let filhos = std::mem::take(&mut g.children);
+            if depth <= MAX_GROUP_DEPTH {
+                g.children = filhos
+                    .into_iter()
+                    .filter_map(|c| self.clone_subtree(c, depth + 1))
+                    .collect();
+            }
+        }
+        self.arena.push(copy);
         Some(new_id)
     }
 
@@ -452,7 +473,8 @@ impl LayerStack {
     /// [`MAX_GROUP_DEPTH`] (§2.6 fold-to-8), if either id is unknown, if
     /// `group_id` isn't a group, or if `id == group_id`.
     pub fn move_into_group(&mut self, id: LayerId, group_id: LayerId) -> bool {
-        if id == group_id || self.index_of(id).is_none() {
+        // A base (fundo da raiz) é fixa: o Apply assa nela.
+        if id == group_id || self.index_of(id).is_none() || self.root.last() == Some(&id) {
             return false;
         }
         // Target must be a group, and must not be a descendant of `id`

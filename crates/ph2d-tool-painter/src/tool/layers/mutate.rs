@@ -156,82 +156,6 @@ impl PainterTool {
         }
     }
 
-    /// Remove `id` (and its subtree + mask) and clean up the tool buffers (the
-    /// `images` entries + the active `canvas_rgba` + undo). The base sprite (root
-    /// bottom) is NOT removable. No-op (`false`) mid-stroke, if `id` is unknown,
-    /// or if `id` is the base.
-    pub fn delete_layer(&mut self, id: RtLayerId) -> bool {
-        if self.layers.get(id).is_none() {
-            return false;
-        }
-        // The base sprite (bottom of root) is permanent — Apply bakes into it.
-        if self.layers.root().last() == Some(&id) {
-            return false;
-        }
-        let undo_before = self.snapshot_model();
-        let was_active = self.layers.active() == Some(id);
-        self.layers.remove(id); // drops subtree + mask, repoints active
-        // Drop `images` entries for any layer that no longer exists.
-        let alive: std::collections::BTreeSet<RtLayerId> = self.layers.all_ids().collect();
-        self.images.retain(|lid, _| alive.contains(lid));
-        self.vidros.retain(|lid, _| alive.contains(lid));
-        self.tintas_molhadas.retain(|lid| alive.contains(lid));
-        if was_active {
-            // The deleted layer's working buffer is discarded with it; load the
-            // NEW active's pixels into `canvas_rgba` (transparent if none).
-            let (w, h) = self.source_size;
-            let buf = self
-                .layers
-                .active()
-                .and_then(|a| self.images.remove(&a))
-                .map(|img| own_image(img).rgba8)
-                .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
-            self.replace_canvas(Arc::new(buf));
-        }
-        self.prune_selection(); // drop the deleted subtree + mask from the highlight
-        self.commit_structural_edit(undo_before);
-        self.invalidate_composite();
-        true
-    }
-
-    /// Duplicate `id` (a raster) above itself — clones the layer + its pixels,
-    /// inserts above, and makes the copy the active edit target. No-op (`None`)
-    /// mid-stroke, for a non-raster, or at the cap.
-    pub fn duplicate_layer(&mut self, id: RtLayerId) -> Option<RtLayerId> {
-        // Texture layers are raster-backed (pixels in `images[id]`/`canvas_rgba`), so the same
-        // flush+clone path duplicates them; `LayerStack::duplicate` carries the cloned `TextureLayer`
-        // spec, and the copy's buffer re-renders on its next edit.
-        if !matches!(
-            self.layers.get(id)?.kind,
-            LayerKind::Raster(_) | LayerKind::Texture(_)
-        ) {
-            return None;
-        }
-        // Ensure the source pixels live in `images` (flush the active), copy them,
-        // duplicate the model, then make the copy the active edit target.
-        let undo_before = self.snapshot_model();
-        self.flush_active_to_images();
-        let (w, h) = self.source_size;
-        let src_pixels = self
-            .images
-            .get(&id)
-            .map(|img| img.rgba8.clone())
-            .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
-        let new_id = self.layers.duplicate(id)?; // sets active = new_id
-        self.images.remove(&new_id); // active lives in canvas_rgba
-        if let Some(v) = self.vidros.get(&id).cloned() {
-            self.vidros.insert(new_id, v); // a cópia sela os mesmos píxeis
-        }
-        if self.tintas_molhadas.contains(&id) {
-            self.tintas_molhadas.insert(new_id); // ...e traz o papel desenhado neles
-        }
-        self.replace_canvas(Arc::new(src_pixels));
-        self.commit_structural_edit(undo_before);
-        self.reset_selection_to(new_id);
-        self.invalidate_composite();
-        Some(new_id)
-    }
-
     /// Snapshot the ACTIVE layer's working buffer (`canvas_rgba`) into
     /// `images` before a layer switch — so the layer we're leaving keeps its
     /// pixels. (The active layer is otherwise NOT stored in `images`.)
@@ -266,6 +190,7 @@ impl PainterTool {
         if self.layers.len() >= crate::layers::HARD_CAP_LAYERS {
             return None;
         }
+        self.fecha_a_forma_aberta();
         let undo_before = self.snapshot_model();
         self.flush_active_to_images();
         let id = self.layers.add_raster(name, w, h)?; // sets active = id (top)
@@ -335,6 +260,7 @@ impl PainterTool {
         ) {
             return None; // not a group / mask / adjustment
         }
+        self.fecha_a_forma_aberta();
         let undo_before = self.snapshot_model();
         let (w, h) = self.source_size;
         let mask = self.layers.add_mask_for(active, w, h)?;
@@ -380,77 +306,6 @@ impl PainterTool {
         self.invalidate_composite();
     }
 
-    /// **Apply mask (§2.7) — destructive bake.** Multiply each parent texel's
-    /// straight alpha by the mask coverage (Rec.601 luma, `1 - v` when the mask
-    /// is inverted — EXACTLY the live compositor's `mask_value` path, so the
-    /// baked result equals what was previewed), then remove the mask. The parent
-    /// becomes the active edit target carrying the baked pixels (mirror of mask
-    /// deletion). No-op (`false`) mid-stroke, if `mask_id` is not a mask, its
-    /// parent is gone, or a buffer is missing/short.
-    pub fn apply_mask(&mut self, mask_id: RtLayerId) -> bool {
-        // Resolve the mask + its invert flag, then the owning parent raster
-        // (the layer whose `.mask == Some(mask_id)`).
-        let inverted = match self.layers.get(mask_id).map(|l| &l.kind) {
-            Some(LayerKind::Mask(m)) => m.inverted,
-            _ => return false,
-        };
-        let Some(parent) = self
-            .layers
-            .all_ids()
-            .find(|&p| self.layers.get(p).and_then(|l| l.mask) == Some(mask_id))
-        else {
-            return false;
-        };
-        // Flush the live active buffer so BOTH parent + mask pixels are in
-        // `images` regardless of which (if either) is currently active.
-        let undo_before = self.snapshot_model();
-        self.flush_active_to_images();
-        let (w, h) = self.source_size;
-        let n = (w as usize) * (h as usize);
-        let Some(mask_px) = self.images.get(&mask_id).map(|img| img.rgba8.clone()) else {
-            return false;
-        };
-        let Some(parent_img) = self.images.get_mut(&parent).map(Arc::make_mut) else {
-            return false;
-        };
-        if parent_img.rgba8.len() < n * 4 || mask_px.len() < n * 4 {
-            return false; // degenerate buffers — refuse rather than index OOB
-        }
-        for idx in 0..n {
-            let v = crate::compositor::mask_value(&mask_px, idx);
-            let cov = if inverted { 1.0 - v } else { v };
-            let a = parent_img.rgba8[idx * 4 + 3] as f32;
-            parent_img.rgba8[idx * 4 + 3] = (a * cov).round().clamp(0.0, 255.0) as u8;
-        }
-        // Remove the mask (this also scrubs `parent.mask` back to None + repoints
-        // active off the mask) and drop its now-baked buffer.
-        let was_active = self.layers.active();
-        self.layers.remove(mask_id);
-        self.images.remove(&mask_id);
-        // GPU preview: the parent's alpha was baked → bump its content version.
-        self.bump_layer_pixels(Some(parent));
-        // The parent takes over as the active edit target iff the mask (or
-        // nothing) was active; an unrelated active layer is left untouched.
-        let new_active = match was_active {
-            Some(a) if a == mask_id => parent,
-            Some(a) => a,
-            None => parent,
-        };
-        self.layers.set_active(new_active);
-        // Reload `canvas_rgba` from `images[new_active]` (the baked parent when
-        // `new_active == parent`), restoring the "active not in images" invariant.
-        let buf = self
-            .images
-            .remove(&new_active)
-            .map(|img| own_image(img).rgba8)
-            .unwrap_or_else(|| vec![0u8; n * 4]);
-        self.replace_canvas(Arc::new(buf));
-        self.commit_structural_edit(undo_before);
-        self.reset_selection_to(new_active);
-        self.invalidate_composite();
-        true
-    }
-
     /// Make `id` the active edit target: flush the current active's pixels to
     /// `images`, load `id`'s pixels into `canvas_rgba` (transparent if it has
     /// none yet), swap the mask brush color, reset undo, invalidate. No buffer
@@ -475,17 +330,10 @@ impl PainterTool {
         if self.layers.active() == Some(target) {
             return;
         }
-        let id = target;
+        self.fecha_a_forma_aberta();
         let undo_before = self.snapshot_model();
         self.flush_active_to_images();
-        let (w, h) = self.source_size;
-        let buf = self
-            .images
-            .remove(&id)
-            .map(|img| own_image(img).rgba8)
-            .unwrap_or_else(|| vec![0u8; (w as usize) * (h as usize) * 4]);
-        self.replace_canvas(Arc::new(buf));
-        self.layers.set_active(id);
+        self.carrega_a_tela_da_activa(target);
         self.commit_structural_edit(undo_before);
         self.wet_acorda_da_camada();
         self.invalidate_composite();

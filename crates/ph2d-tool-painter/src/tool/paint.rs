@@ -371,6 +371,8 @@ pub(crate) use state::PaintState;
 use region::union_region;
 
 #[cfg(test)]
+mod camadas_integridade_tests; // B01 da missão 4K: os mapas por camada seguem a pilha
+#[cfg(test)]
 mod emboss_probe; // sonda de ESTUDO: que campo o Digital ofereceria a um emboss (Enio 2026-08-10)
 #[cfg(test)]
 mod film_probe; // sonda de ESTUDO: que amplitude o relevo do DEPOSITO quer (Enio 2026-08-10)

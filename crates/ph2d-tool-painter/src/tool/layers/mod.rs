@@ -15,6 +15,7 @@
 
 mod adjustments;
 mod cache;
+mod estrutura;
 mod model;
 mod mutate;
 mod preview;

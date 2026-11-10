@@ -11,6 +11,7 @@ Leitor: o agente integrador. Branch `line/GameEngineFuncional`, base `bc4a6ce930
 | `cbbed33ef9` | handoff de continuação ([base do «Feito» abaixo](HANDOFF_CONTINUACAO_2026-11-10_ABERTOS_DO_PIVOT.md)) + `fotos_30` |
 | `b3e8a9368e` | a animação nova sai do Align (pedido do dono no smoke de 10/11) |
 | `b0244c195d` | curas da auditoria (2 lentes) + a catraca da família |
+| `c93ce28b8c` | smoke do dono 10/11: com o botão premido na folha, o quadro já aparecia no lugar da tira antes de o cartão descer (o `Drag::Cells` mostrava a lista emendada com o vão aberto; o voo só partia ao soltar, de vão fechado). `AnimDoc::arriving` (ph2d-anim-editor) junta o voo e os escolhidos do `Drag::Cells` (vão `0`); `flying` e a disposição da tira leem-no. Teste `com_o_botao_premido_o_quadro_ainda_nao_esta_na_tira` (mutação: intervalo vazio ⇒ vermelho); `editor_animacoes` 89/89; clippy da crate limpo |
 
 ## 2. Feito (os ABERTOS do handoff de 09/11)
 
@@ -86,5 +87,6 @@ Arquivos quentes: `shells/desktop/src/undo_app.rs` (1 linha) · `render_loop/ins
 3. Cartão Animation, «+ Add» → a nova fica destacada. Errado: o destaque fica na de antes.
 4. Align + Follow ligados, escale pela quina, Ctrl+Z → folha e Pivot voltam juntos.
 5. Align ligado (conta-gotas armado ou não), «+» → sai do Align e a folha volta. Errado: continua em Align.
+6. Clique devagar (segure o botão) numa célula da folha → nada aparece na tira enquanto segura; ao soltar, o cartão desce e o lugar abre. Errado: o quadro aparece no lugar antes de descer.
 
 Fotos: [`fotos_30/`](../fotos_30/). Smoke do dono de 10/11: OK nos passos 2–4 e, depois do pedido do Align ao criar, no passo 5.

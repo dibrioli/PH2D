@@ -9,6 +9,7 @@ pub mod ids;
 pub mod layout;
 pub mod paint;
 pub mod palette;
+pub mod raw_keys;
 mod smoke_api;
 pub mod snapshot;
 pub mod view_keyboard;

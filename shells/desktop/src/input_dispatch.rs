@@ -298,8 +298,7 @@ impl App {
         if self.command_palette_wheel(dy) {
             return;
         }
-        // ⭐ A janela do Input Map publica o rect do cartão como rect de painel (rolagem única, W5): a
-        // roda rola-a como todo painel. Um menu da aba de família por cima de um painel é da aba.
+        // Um menu da aba de família por cima de um painel é da aba.
         let (px, py) = self.last_pointer;
         let over = cursor_over_hero_panel(self.gfx.as_ref(), px, py);
         let over_panel =

@@ -2,7 +2,7 @@
 //! pelas MESMAS portas do produto: o pedido do quadro, o `dispatch_key` e o `apply_event`.
 //!
 //! As leis: o pedido cria a acção que falta e arma a escuta · a tecla TROCA as de teclado (os
-//! botões de comando ficam) · `Esc` cancela sem tocar em nada · a escuta da janela do mapa
+//! botões de comando ficam) · `Esc` cancela sem tocar em nada · a escuta da aba do mapa
 //! continua a ACRESCENTAR · a linha Key lê a tecla e quem mais a usa.
 
 use bumpalo::Bump;
@@ -109,15 +109,15 @@ fn esc_no_cartao_cancela_sem_tocar_nas_teclas() {
     carrega(&mut h, KEY_ESCAPE);
     assert_eq!(ligacoes(&h), antes);
     assert!(h.store.input_map_listening().is_none());
-    // ⚠️ E a escuta seguinte da JANELA não herda a «troca» do cartão cancelado.
+    // ⚠️ E a escuta seguinte da ABA não herda a «troca» do cartão cancelado.
     let id = h.input_map.id(NOME).expect("existe");
     h.store.listen_for_binding(id);
     carrega(&mut h, KEY_Z);
-    assert_eq!(ligacoes(&h).len(), 3, "a janela acrescenta");
+    assert_eq!(ligacoes(&h).len(), 3, "a aba acrescenta");
 }
 
 #[test]
-fn a_escuta_da_janela_continua_a_acrescentar() {
+fn a_escuta_da_aba_continua_a_acrescentar() {
     let mut h = com_a_e_comando();
     let id = h.input_map.id(NOME).expect("existe");
     h.store.listen_for_binding(id);
@@ -200,9 +200,9 @@ fn um_clique_fora_desarma_a_escuta_do_cartao() {
     assert!(!h.store.take_listen_cancelled_by_down(), "drena");
 }
 
-/// A escuta da JANELA do mapa não é do cartão: o clique não a desarma (a janela tem o Esc).
+/// A escuta da ABA do mapa não é do cartão: o clique não a desarma (a aba tem o Esc).
 #[test]
-fn um_clique_nao_desarma_a_escuta_da_janela() {
+fn um_clique_nao_desarma_a_escuta_da_aba() {
     let mut h = com_a_e_comando();
     let id = h.input_map.id(NOME).expect("existe");
     h.store.listen_for_binding(id);

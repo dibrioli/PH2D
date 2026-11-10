@@ -598,3 +598,81 @@ fn measure_box_blur_window_invariance() {
         eprintln!("[blur-window off={off:3}] pior |big - sub| = {worst:.9} ({seen} px)");
     }
 }
+
+/// **B16.1: o composite da aguada DECLARA onde escreveu** (`declare_wrote`). Sem a declaração o
+/// acesso aberto pelo `fork_canvas` ficava pendente e o commit do traço varria a tela inteira. O
+/// undo/redo do traço continua ao byte com a janela declarada.
+#[test]
+fn depois_de_um_traco_de_aguada_nada_fica_por_declarar() {
+    let size = 256u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.paint.brush = BrushSpec {
+        radius_px: 14.0,
+        hardness: 1.0,
+        falloff: Falloff::Constant,
+        color: [0.24, 0.39, 0.63],
+        space_attenuation: false,
+        watercolor: true,
+        edge_gain: 3.0,
+        edge_spread: 12.0,
+        granulation: 0.4,
+        warp: 2.5,
+        fill: 0.35,
+        depth: 2.0,
+        ..Default::default()
+    };
+    t.paint.brush_by_mode.fill(t.paint.brush);
+    let antes: Vec<u8> = t.canvas_rgba.to_vec();
+    assert!(t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down)));
+    for i in 1..=30 {
+        t.on_canvas_pointer(cp(
+            [30.0 + i as f32 * 5.0, 30.0 + i as f32 * 4.0],
+            PointerPhase::Move,
+        ));
+        if i % 2 == 0 {
+            frame(&mut t);
+        }
+    }
+    let w = t.undo.write_state.get();
+    assert!(t.wash.composites > 0, "a fixtura tem de compor a aguada");
+    assert_eq!(
+        w.undeclared(),
+        0,
+        "um composite da aguada deixou o acesso por declarar"
+    );
+    assert!(w.declarada().is_some(), "a janela declarada tem de existir");
+    t.on_canvas_pointer(cp([180.0, 150.0], PointerPhase::Up));
+    let depois: Vec<u8> = t.canvas_rgba.to_vec();
+    assert_ne!(antes, depois, "o traço tem de pintar");
+    assert!(t.undo_last());
+    assert!(
+        t.canvas_rgba[..] == antes[..],
+        "o undo do traço não devolveu a tela ao byte"
+    );
+    assert!(t.redo_last());
+    assert!(
+        t.canvas_rgba[..] == depois[..],
+        "o redo do traço não refez a tela ao byte"
+    );
+}
+
+/// **B16.A4: o backfill da densidade da ponta é o laço serial antigo, ao byte** (oráculo verbatim).
+#[test]
+fn o_backfill_da_densidade_da_o_byte_do_laco_serial() {
+    let n = 1usize << 20;
+    let cov: Vec<u8> = (0..n)
+        .map(|i| ((i * 2_654_435_761) >> 13) as u8 & 0x0f)
+        .collect();
+    let mut velho = vec![0u8; n];
+    for (d, &c) in velho.iter_mut().zip(cov.iter()) {
+        if c > 0 {
+            *d = 255;
+        }
+    }
+    assert!(
+        velho.contains(&0) && velho.contains(&255),
+        "a fixtura tem de ter os dois casos"
+    );
+    assert!(super::watercolor_accum::densidade_sob_a_cobertura(&cov) == velho);
+}

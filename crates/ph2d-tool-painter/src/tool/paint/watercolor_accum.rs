@@ -118,6 +118,16 @@ pub(super) struct WetShapeStamp {
 /// it becomes tip DENSITY instead (`stroke_density` → the composite's fill term).
 const TIP_WET_LO: f32 = 0.03;
 const TIP_WET_HI: f32 = 0.20;
+
+/// O mapa de densidade que NASCE numa sessão molhada: 255 sob a cobertura existente, 0 fora. Cada
+/// byte é função só do seu ⇒ pelos fios dá o byte do laço serial (B16.A4; era `8,3 M` it. num fio a 4K).
+pub(super) fn densidade_sob_a_cobertura(cov: &[u8]) -> Vec<u8> {
+    use rayon::prelude::*;
+    cov.par_iter()
+        .map(|&c| if c > 0 { 255 } else { 0 })
+        .collect()
+}
+
 impl WetShapeStamp {
     /// The dab-local stamp sample at normalised distance `dn`: `(wet, density)`.
     /// - Shape inactive ⇒ `(falloff, 1)` — the plain manual disc.
@@ -395,15 +405,9 @@ impl PainterTool {
             stamp.as_ref().is_some_and(|s| s.shape_active) || rampa.is_some()
         );
         if textured_tip && self.paint.stroke_density.len() != fw * fh {
-            let mut dens = vec![0u8; fw * fh];
             // Sessão molhada: washs ANTERIORES (tip liso ⇒ densidade plena) não podem ler 0 do
             // mapa recém-criado — backfill 255 sob a cobertura existente (gêmeo do depl abaixo).
-            for (d, &c) in dens.iter_mut().zip(self.paint.stroke_coverage.iter()) {
-                if c > 0 {
-                    *d = 255;
-                }
-            }
-            self.paint.stroke_density = dens;
+            self.paint.stroke_density = densidade_sob_a_cobertura(&self.paint.stroke_coverage);
         }
         let shape_img_owned = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let grao_img = self.paint.texture_image.as_ref().map(|i| i.as_mask());

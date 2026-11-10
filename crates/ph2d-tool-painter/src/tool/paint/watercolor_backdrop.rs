@@ -82,7 +82,11 @@ impl PainterTool {
         // baked into `canvas_rgba` at its pen-up, which THIS base freeze captured). Drop its snapshot.
         self.clear_wet_editable();
         if !wet_session {
-            self.paint.wet_soak.iter_mut().for_each(|s| *s = 0);
+            // B16.9: pelos fios como o `NaN` abaixo (cada byte recebe o mesmo valor ⇒ o mesmo byte).
+            self.paint
+                .wet_soak
+                .par_chunks_mut(WET_PAR_MIN)
+                .for_each(|c| c.fill(0));
             self.paint.wet_soak_active = false;
         }
         self.paint.wet_soak_pos = None;

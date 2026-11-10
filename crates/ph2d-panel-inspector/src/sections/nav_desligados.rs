@@ -48,7 +48,12 @@ pub(super) fn paint(
     let resto = corpos.len().saturating_sub(ids.len());
     let mais =
         (resto > 0).then(|| tr_with("panel.inspector.nav.more_off_bodies", &[("n", &resto)]));
-    let font = button_label_font();
+    // A fonte em que o botão PINTA: no cartão, a do campo (`paint_card_button`).
+    let font = if em_cartao {
+        m::VALUE_PX
+    } else {
+        button_label_font()
+    };
     let pecas = corpos
         .iter()
         .zip(ids)
@@ -56,7 +61,14 @@ pub(super) fn paint(
         .chain(mais.as_deref().map(|t| (None, t)));
     let (mut cx, mut cy) = (x, topo);
     for (id, rotulo) in pecas {
-        let bw = (text_system.prefix_width(rotulo, font) + m::BUTTON_TEXT_PAD * 2.0).min(w);
+        // A caixa pede o respiro de quem a PINTA: no cartão o recuo do campo, fora a lei do rótulo.
+        let tw = text_system.prefix_width(rotulo, font);
+        let bw = if em_cartao {
+            tw + m::BUTTON_TEXT_PAD * 2.0
+        } else {
+            ph2d_editor_core::paint::rect_for_label(tw)
+        }
+        .min(w);
         if cx > x && cx + bw > x + w {
             cx = x;
             cy += h + vao;
@@ -88,6 +100,8 @@ pub(super) fn paint(
         }
         cx += bw + vao;
     }
+    // Um botão por corpo é a mesma capacidade («Select this body») ao longo da fila: um composto.
+    ph2d_editor_core::widget::composto::grupo(ids.iter().take(corpos.len()).copied());
     if em_cartao {
         cy + h
     } else {

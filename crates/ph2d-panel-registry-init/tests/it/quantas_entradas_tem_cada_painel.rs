@@ -1128,7 +1128,11 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    aprovado no smoke do dono de 06/11 (`docs/SfxLab/handoffs/HANDOFF_INTEGRACAO_line_SfxLab_2026-11-06.md`).
     //    Medido pela sonda `diag_de_quem_sao_as_entradas_do_inspector`: a secção `audio` conta 4 comandos (Browse ·
     //    Preview · Stop · Create sound) e nenhum composto deixou de se declarar (`anim` segue nos 8 de sempre).
-    ("inspector", 103),
+    // ⬆️ `103 → 104` na integração de 2026-11-10 (`line/GameEngineFuncional02` onda 4, `b8b58286a4`) — **capacidade
+    //    nova**: o «Create and set key» da linha Key do cartão Trigger (`INSP_TRIGGER_SET_KEY`). Os botões de um corpo
+    //    de formas desligadas da NAV REGION (GEF02 09/11) são UMA capacidade ao longo da fila e declaram-se composto
+    //    (`sections/nav_desligados.rs`); sem isso a fixtura armada lia `108` (um por corpo).
+    ("inspector", 104),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     // ⬆️ `4 → 5` em 2026-11-04 (NovaUI D1, o painel em cartões), MEDIDO: a mais é só o «…» da lista (D21).

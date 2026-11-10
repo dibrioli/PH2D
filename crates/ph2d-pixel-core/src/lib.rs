@@ -51,11 +51,11 @@ pub use audio::FaixaDeAudio;
 pub use codec::{CodecError, MAJOR, MINOR};
 pub use compose::{
     Ghost, NORMAL_FLAT, Onion, Purpose, Sample, compose_normal, compose_picked, compose_region,
-    compose_rgba, compose_window, compose_with_onion, compose_with_onion_of, ghosts, onion_tint,
-    pick,
+    compose_rgba, compose_window, compose_window_em, compose_with_onion, compose_with_onion_of,
+    ghosts, onion_tint, pick,
 };
 pub use cycle::{Cycle, CycleDirection, ciclo_em};
-pub use efeito::{EfeitoDeCamada, OutlineParams};
+pub use efeito::{EfeitoDeCamada, OutlineParams, aplicar_efeitos, imagem_com_efeitos};
 pub use forma::Forma;
 pub use guia::{Guias, Iso2x1};
 pub use history::{DEFAULT_CAP_BYTES, History, Label, PrettySize, StepState, Touched};

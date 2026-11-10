@@ -89,6 +89,32 @@ pub fn compose_window(
         pending,
         region,
         purpose,
+        t_ms: None,
+    }
+    .draw(&mut buf);
+    buf
+}
+
+/// [`compose_window`] no instante `t_ms` da animação: em Indexed os ciclos de cor da paleta
+/// ([`crate::ciclo_em`]) trocam o índice que cada célula MOSTRA antes de virar cor; em RGB e Gray
+/// é a mesma imagem de [`compose_window`].
+#[must_use]
+pub fn compose_window_em(
+    sprite: &Sprite,
+    frame: FrameId,
+    pending: Option<&Stroke>,
+    region: Rect,
+    purpose: Purpose,
+    t_ms: u64,
+) -> Vec<u8> {
+    let mut buf = vec![0u8; region.area() * 4];
+    Ctx {
+        sprite,
+        frame,
+        pending,
+        region,
+        purpose,
+        t_ms: Some(t_ms),
     }
     .draw(&mut buf);
     buf
@@ -106,6 +132,7 @@ pub fn compose_picked(sprite: &Sprite, frame: FrameId, pick: &dyn Fn(&Layer) -> 
         pending: None,
         region,
         purpose: Purpose::Export,
+        t_ms: None,
     }
     .draw_picked(pick, &mut buf);
     buf
@@ -249,6 +276,7 @@ pub fn compose_with_onion_of(
         pending,
         region,
         purpose: Purpose::View,
+        t_ms: None,
     };
     if onion.front {
         ctx.draw(&mut buf);
@@ -295,6 +323,8 @@ struct Ctx<'a> {
     pending: Option<&'a Stroke>,
     region: Rect,
     purpose: Purpose,
+    /// O instante dos ciclos de cor; `None` = sem ciclo (a imagem de hoje).
+    t_ms: Option<u64>,
 }
 
 impl Ctx<'_> {
@@ -373,19 +403,33 @@ impl Ctx<'_> {
             .pending
             .filter(|s| s.layer == layer.id && s.frame == self.frame);
         let cel = self.sprite.cel(key);
-        let area = match (cel, stroke) {
-            (Some(c), Some(s)) => c.bbox.union(s.rect()),
-            (Some(c), None) => c.bbox,
-            (None, Some(s)) => s.rect(),
-            (None, None) => return,
+        // Os efeitos da camada entram ANTES do blend, e o contorno exterior pode sair do bbox.
+        let fx = crate::efeito::imagem_com_efeitos(self.sprite, layer, self.frame, stroke);
+        let area = match (cel, stroke, &fx) {
+            (_, _, Some(_)) => self.sprite.bounds(),
+            (Some(c), Some(s), None) => c.bbox.union(s.rect()),
+            (Some(c), None, None) => c.bbox,
+            (None, Some(s), None) => s.rect(),
+            (None, None, None) => return,
         }
         .intersect(self.region);
         let s = self.sprite;
         let rw = self.region.w as usize;
         let bpp = s.mode().bpp();
         // A cor de cada valor: em Indexed uma tabela de 256 (a LUT), senão a conversão directa.
-        let lut: Option<Vec<[u8; 4]>> = (s.mode() == ColorMode::Indexed)
-            .then(|| (0..=255u32).map(|v| s.rgba_of_value(v)).collect());
+        // Com ciclo, a LUT lê o índice que a célula MOSTRA (o transparente fica transparente).
+        let lut: Option<Vec<[u8; 4]>> = (s.mode() == ColorMode::Indexed).then(|| {
+            let perm = self.t_ms.map(|t| crate::cycle::ciclo_em(s.ramps(), t));
+            (0..=255u8)
+                .map(|v| match &perm {
+                    Some(p) if v != s.transparent_index() => {
+                        s.rgba_of_value(u32::from(p[usize::from(v)]))
+                    }
+                    _ => s.rgba_of_value(u32::from(v)),
+                })
+                .collect()
+        });
+        let sw = s.width() as usize;
         let srect = stroke.map(Stroke::rect);
         // A opacidade efectiva é `mul(camada, cel)` (Trial `co_*.ase`).
         let opacity = cel.map_or(layer.opacity, |c| {
@@ -399,9 +443,10 @@ impl Ctx<'_> {
                 let traco = srect
                     .filter(|r| r.contains(x, y))
                     .and_then(|_| stroke?.value_at(s, x, y));
-                let v = match (traco, linha) {
-                    (Some(v), _) => v,
-                    (None, Some(c)) if x >= c.bbox.x && x < c.bbox.x + c.bbox.w as i32 => {
+                let v = match (&fx, traco, linha) {
+                    (Some(f), _, _) => f[y as usize * sw + x as usize],
+                    (None, Some(v), _) => v,
+                    (None, None, Some(c)) if x >= c.bbox.x && x < c.bbox.x + c.bbox.w as i32 => {
                         let i = ((y - c.bbox.y) as usize * c.bbox.w as usize
                             + (x - c.bbox.x) as usize)
                             * bpp;

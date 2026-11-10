@@ -11,6 +11,7 @@ mod draw_laws;
 mod draw_parity;
 mod dynamics_laws;
 mod dynamics_oracle;
+mod efeitos_camada;
 mod fast_tie;
 mod filter_indexed;
 mod filter_oracle;

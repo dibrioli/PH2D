@@ -81,7 +81,7 @@ const LINE: &str = "line";
 
 fn columns() -> Vec<Column> {
     vec![
-        Column::new(SEV, String::new()),
+        Column::new(SEV, String::new()).snug(),
         Column::new(PROBLEM, tr("code.problems.col.problem")).flex(),
         Column::new(ON, tr("code.problems.col.on")),
         Column::new(LINE, tr("code.problems.col.line")).end().mono(),

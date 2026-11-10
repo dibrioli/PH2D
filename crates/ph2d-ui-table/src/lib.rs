@@ -16,7 +16,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::ColorToken;
 
 pub use marks::{paint_cell_frames, paint_row_frames, swatch_side};
-pub use measure::{Metrics, bar_gutter, min_width, natural_height, natural_widths};
+pub use measure::{Metrics, bar_gutter, dot_radius, min_width, natural_height, natural_widths};
 pub use paint::{
     CellText, UiText, changed_tint, ink_color, paint, paint_spark, rules_bottom, spark_points,
     ui_font,
@@ -49,6 +49,8 @@ pub struct Column {
     pub flex: bool,
     /// A célula guarda um traço (a largura natural é a do traço, não a do texto).
     pub spark: bool,
+    /// Do tamanho do conteúdo, sem o piso `min_col` (a coluna de um ponto: o ponto no meio).
+    pub snug: bool,
 }
 
 impl Column {
@@ -62,7 +64,18 @@ impl Column {
             hideable: false,
             flex: false,
             spark: false,
+            snug: false,
         }
+    }
+    #[must_use]
+    pub fn snug(mut self) -> Self {
+        self.snug = true;
+        self
+    }
+    /// O piso da largura desta coluna.
+    #[must_use]
+    pub fn floor(&self, m: &Metrics) -> f32 {
+        if self.snug { 0.0 } else { m.min_col }
     }
     #[must_use]
     pub fn end(mut self) -> Self {
@@ -487,7 +500,7 @@ pub fn layout(
                 .get(&cols[i].key)
                 .copied()
                 .unwrap_or_else(|| natural.get(i).copied().unwrap_or(m.min_col))
-                .max(m.min_col)
+                .max(cols[i].floor(m))
         })
         .collect();
     // O corpo transborda ⇒ a barra da casa tem uma calha SÓ dela à direita; as colunas cabem no resto.

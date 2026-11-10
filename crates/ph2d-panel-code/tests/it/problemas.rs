@@ -149,3 +149,21 @@ fn a_linha_do_f8_rola_a_vista_em_linhas_inteiras_e_o_leitor_le_os_rects_da_tabel
         .collect();
     assert_eq!(itens, spans, "o leitor de ecrã lê as linhas da tabela");
 }
+
+/// Maquete 14: a coluna do ponto da gravidade é o ponto e as duas folgas (antes: o piso de uma
+/// coluna, ~44 px), com o ponto no meio dela.
+#[test]
+fn a_coluna_do_ponto_e_o_ponto_e_as_folgas_como_na_maquete() {
+    use ph2d_ui_table::{Metrics, dot_radius};
+    let rows = [linha(Severity::Error, "Unknown global «math.sinn»", 8, "")];
+    let mut v = ConsoleView::default();
+    pinta(&mut v, &rows, None);
+    let (lay, _) = v.problems_table().expect("a tabela pintada");
+    let m = Metrics::standard();
+    let quer = dot_radius(&m) * 2.0 + m.pad * 2.0;
+    let w = lay.cols[0].w;
+    assert!(
+        (w - quer).abs() < 1e-3,
+        "a coluna do ponto mede {w}, quer {quer}"
+    );
+}

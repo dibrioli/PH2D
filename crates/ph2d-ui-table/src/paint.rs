@@ -214,8 +214,14 @@ pub fn paint(
                 x += twist;
             }
             if let Some(dot) = cell.dot {
-                let rad = m.row_h * 0.15; // LITERAL-PX-OK: fracção da altura da linha (token)
-                fill_circle(scene, x + rad, r.y + r.h * 0.5, rad, ink(dot));
+                let rad = crate::dot_radius(&m);
+                // Só o ponto numa coluna justa: no meio dela.
+                let cx = if col.snug && cell.text.is_empty() {
+                    c.x + c.w * 0.5
+                } else {
+                    x + rad
+                };
+                fill_circle(scene, cx, r.y + r.h * 0.5, rad, ink(dot));
                 x += m.row_h * 0.5;
             }
             if let Some(sw) = cell.swatch {

@@ -60,7 +60,7 @@ pub fn min_width(cols: &[Column], natural: &[f32], st: &TableState, m: &Metrics)
         .iter()
         .zip(natural)
         .filter(|(c, _)| !st.hidden.contains(&c.key))
-        .map(|(c, w)| if c.flex { m.min_col } else { w.max(m.min_col) })
+        .map(|(c, w)| if c.flex { m.min_col } else { w.max(c.floor(m)) })
         .sum();
     cells + bar_gutter()
 }
@@ -77,7 +77,11 @@ pub fn natural_widths(
     cols.iter()
         .enumerate()
         .map(|(ci, c)| {
-            let head = text.width(ts, &c.title, false);
+            let head = if c.snug && c.title.is_empty() {
+                0.0
+            } else {
+                text.width(ts, &c.title, false)
+            };
             let cells = rows
                 .iter()
                 .filter(|r| r.group.is_none())
@@ -92,7 +96,12 @@ pub fn natural_widths(
                         w += text.width(ts, old, c.mono) + m.pad;
                     }
                     if cell.dot.is_some() {
-                        w += m.row_h * 0.5;
+                        // Só o ponto numa coluna justa: o diâmetro (pintado no meio).
+                        if c.snug && cell.text.is_empty() {
+                            w = crate::dot_radius(m) * 2.0;
+                        } else {
+                            w += m.row_h * 0.5;
+                        }
                     }
                     if cell.spark.is_some() {
                         w = w.max(m.spark_w);
@@ -104,9 +113,15 @@ pub fn natural_widths(
                 })
                 .fold(0.0f32, f32::max);
             let natural = if c.spark { m.spark_w } else { head.max(cells) };
-            (natural + m.pad * 2.0).max(m.min_col)
+            (natural + m.pad * 2.0).max(c.floor(m))
         })
         .collect()
+}
+
+/// O raio do ponto de uma célula.
+#[must_use]
+pub fn dot_radius(m: &Metrics) -> f32 {
+    m.row_h * 0.15 // LITERAL-PX-OK: fracção da altura da linha (token)
 }
 
 /// A calha da barra do corpo quando ele transborda: a trilha da casa e um recuo.

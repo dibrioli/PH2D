@@ -76,3 +76,26 @@ fn os_fios_das_colunas_acabam_na_ultima_linha() {
     assert!(ultima.y + ultima.h < l.body.y + l.body.h);
     assert_eq!(rules_bottom(&l), ultima.y + ultima.h);
 }
+
+/// Maquete 14 (Problems): a coluna da gravidade mede o ponto e as duas folgas, sem o piso
+/// `min_col`; uma coluna normal com o mesmo ponto continua no piso.
+#[test]
+fn a_coluna_justa_do_ponto_mede_o_ponto_e_as_folgas() {
+    use ph2d_ui_table::{Cell, Column, dot_radius};
+    let m = Metrics::standard();
+    let mut ponto = Cell::new("", Ink::Plain);
+    ponto.dot = Some(ph2d_tokens::ColorToken::Danger);
+    let rows = [Row {
+        key: "p".into(),
+        cells: vec![ponto],
+        ..Row::default()
+    }];
+    let mut ts = TextSystem::without_system_fonts();
+    let mut w = |c: Column| natural_widths(&[c], &rows, &m, &mut ts, &mut Sete)[0];
+    let justa = w(Column::new("sev", String::new()).snug());
+    let quer = dot_radius(&m) * 2.0 + m.pad * 2.0;
+    assert!((justa - quer).abs() < 1e-3, "{justa} × {quer}");
+    assert!(justa < m.min_col, "controlo: abaixo do piso");
+    let normal = w(Column::new("sev", String::new()));
+    assert_eq!(normal, m.min_col, "a coluna normal fica no piso");
+}

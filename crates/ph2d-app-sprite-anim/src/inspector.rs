@@ -1,12 +1,5 @@
 //! **§11 Animation** (spec Sprite 08) — o snapshot que a seção lê e o commit que ela escreve.
 //! Irmão do [`super::inspector_anchor`], pela mesma razão dele.
-//!
-//! # ⚠️ A conversão da VELOCIDADE mora aqui, nas duas pontas
-//!
-//! O motor guarda `Q16.16` (`65536` = `1,0×`) porque a multiplicação inteira é bit-idêntica entre
-//! sistemas; o artista escreve `1,5`. O snapshot divide na saída e o commit multiplica na entrada,
-//! **no mesmo ficheiro** — duplicar a conversão faria o número que ele lê e o que o motor aplica
-//! divergirem no dia em que uma metade fosse corrigida. É a mesma lei da §12 com os pixels.
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{

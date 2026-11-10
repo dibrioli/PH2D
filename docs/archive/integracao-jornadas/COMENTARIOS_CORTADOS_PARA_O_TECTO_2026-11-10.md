@@ -696,3 +696,42 @@ História verbatim dos `//!` removidos (o porquê histórico vive aqui, não no 
     //!
     //! ⚠️ Se a linha `[camera-2d-smoke]` não aparecer, **PARE**: a cena não montou.
 
+## `crates/ph2d-app-sprite-anim/src/inspector.rs:3`
+
+    //!
+    //! # ⚠️ A conversão da VELOCIDADE mora aqui, nas duas pontas
+    //!
+    //! O motor guarda `Q16.16` (`65536` = `1,0×`) porque a multiplicação inteira é bit-idêntica entre
+    //! sistemas; o artista escreve `1,5`. O snapshot divide na saída e o commit multiplica na entrada,
+    //! **no mesmo ficheiro** — duplicar a conversão faria o número que ele lê e o que o motor aplica
+    //! divergirem no dia em que uma metade fosse corrigida. É a mesma lei da §12 com os pixels.
+
+## `crates/ph2d-app-sprite-anim/src/inspector_tests.rs:490`
+
+    /// ⚠️ **Este gate existe porque uma mutação derrubou uma afirmação minha.** O tique corria um laço
+    /// de `ticks` chamadas, com a justificação de que um passo grande «atravessaria o fim de um ciclo
+    /// sem o fechar» — e a mutação que trocou o laço por uma chamada única **passou**. A lei tem o seu
+    /// próprio laço de recuperação, e é ele que fecha cada ciclo.
+    ///
+
+## `crates/ph2d-app-sprite-anim/src/inspector_tests.rs:553`
+
+    ///
+    /// ⚠️ **A frase que estava aqui apontava para o `ph2d_ecs_dir_label` «a espelhar a
+    /// `AnimDirection::label`, com um gate da shell a prender os dois» — e esse gate nunca existiu**
+    /// (medido 2026-09-19). A `AnimDirection::label` foi apagada como órfã, e aquele par deixou de ter
+    /// duas respostas. ⇒ o paralelo já não se aplica; o que segue vale para ESTA lei, que continua a
+    /// existir duas vezes de propósito.
+    ///
+    /// ⚠️ **E foi a auditoria que o encontrou** (2026-08-23): a `animator_state` estava exportada,
+    /// tinha gate próprio no `ph2d-ecs` e **nenhum consumidor** — enquanto o painel reimplementava a
+    /// lei sem nada a prendê-los. *Uma segunda resposta sem oráculo é uma divergência com data
+    /// marcada.*
+    ///
+
+## `crates/ph2d-app-sprite-anim/src/previa.rs:4`
+
+    //!
+    //! O gesto só se conhece no bus, e o mundo escrito por ele é igual ao da linha: quem viu o ▶ deixa aqui o objecto
+    //! marcado, e o passe do Auto Key tira esses campos do diff enquanto a marca durar. Não é documento.
+

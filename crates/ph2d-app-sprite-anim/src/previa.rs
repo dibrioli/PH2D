@@ -1,9 +1,6 @@
 //! **O ▶ é só prévia** ([ficha](../../../docs/GameEngineFuncional/componentes/02_animated_sprite.md), decisão
 //! delegada A2): com o Auto Key armado, o ▶ não grava chave de «qual animação toca», de «a tocar», nem da célula
 //! que o rebobinar escreve. A LINHA da lista continua a gravar: é o gesto que escolhe, e o Auto Key grava tudo (dono, 19/10).
-//!
-//! O gesto só se conhece no bus, e o mundo escrito por ele é igual ao da linha: quem viu o ▶ deixa aqui o objecto
-//! marcado, e o passe do Auto Key tira esses campos do diff enquanto a marca durar. Não é documento.
 
 use ph2d_ecs::canal_componente as cc;
 use ph2d_ecs::{FieldKey, Resource, World};

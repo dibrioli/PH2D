@@ -487,11 +487,6 @@ fn projeto_antigo_script_e_regras_ficam_como_estao() {
 
 /// **Recuperar um engasgo numa chamada dá o MESMO que recuperar passo a passo.**
 ///
-/// ⚠️ **Este gate existe porque uma mutação derrubou uma afirmação minha.** O tique corria um laço
-/// de `ticks` chamadas, com a justificação de que um passo grande «atravessaria o fim de um ciclo
-/// sem o fechar» — e a mutação que trocou o laço por uma chamada única **passou**. A lei tem o seu
-/// próprio laço de recuperação, e é ele que fecha cada ciclo.
-///
 /// A equivalência é o que autoriza a forma simples; sem gate, ela seria uma suposição.
 #[test]
 fn catching_up_in_one_call_is_the_same_as_catching_up_step_by_step() {
@@ -550,18 +545,6 @@ fn catching_up_in_one_call_is_the_same_as_catching_up_step_by_step() {
 /// ⚠️ A lei existe **duas vezes**, e de propósito: o painel é chrome e não vê o motor
 /// ([`ph2d_ecs::animator_state`] vive no `ph2d-ecs`; [`InspectorAnimInfo::current_dangling`] no
 /// modelo do editor).
-///
-/// ⚠️ **A frase que estava aqui apontava para o `ph2d_ecs_dir_label` «a espelhar a
-/// `AnimDirection::label`, com um gate da shell a prender os dois» — e esse gate nunca existiu**
-/// (medido 2026-09-19). A `AnimDirection::label` foi apagada como órfã, e aquele par deixou de ter
-/// duas respostas. ⇒ o paralelo já não se aplica; o que segue vale para ESTA lei, que continua a
-/// existir duas vezes de propósito.
-///
-/// ⚠️ **E foi a auditoria que o encontrou** (2026-08-23): a `animator_state` estava exportada,
-/// tinha gate próprio no `ph2d-ecs` e **nenhum consumidor** — enquanto o painel reimplementava a
-/// lei sem nada a prendê-los. *Uma segunda resposta sem oráculo é uma divergência com data
-/// marcada.*
-///
 /// **Mutação que deve sangrar:** tirar o `fits` de uma das duas.
 #[test]
 fn the_panel_and_the_engine_agree_on_a_dangling_playback() {

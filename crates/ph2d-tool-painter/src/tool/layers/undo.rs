@@ -341,3 +341,46 @@ impl PainterTool {
         self.undo.write_state.set(w);
     }
 }
+
+#[cfg(test)]
+mod donos_entre_gestos {
+    use super::super::super::*;
+    use ph2d_editor_core::tool::{CanvasPointer, PointerPhase, RasterEditTool};
+
+    fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
+        CanvasPointer {
+            pos,
+            pressure: 1.0,
+            tilt: [0.0, 0.0],
+            phase,
+        }
+    }
+
+    fn traco(t: &mut PainterTool, y: f32) {
+        t.on_canvas_pointer(cp([40.0, y], PointerPhase::Down));
+        for k in 1..=4u8 {
+            t.on_canvas_pointer(cp([40.0 + f32::from(k) * 30.0, y], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([200.0, y], PointerPhase::Up));
+    }
+
+    /// **B17.4 (PX-19/PP-01) SEGUE ABERTO, e este é o número dele:** em repouso a tela tem DOIS donos
+    /// fortes (o tool e o `cursor` do histórico); o 2.º faz o 1.º dab copiar a tela (33 MB a 4K). RED visto
+    /// com `n == 1`. Quando a cura (cursor e `before` elidindo a tela) chegar, isto fica vermelho: troque-o
+    /// pelo irmão `between_gestures_every_canvas_plane_has_one_strong_owner` (`n == 1`).
+    #[test]
+    fn between_gestures_the_canvas_still_has_two_owners_and_this_is_its_number() {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; 256 * 256 * 4], 256, 256);
+        traco(&mut t, 80.0);
+        traco(&mut t, 160.0);
+        let n = std::sync::Arc::strong_count(&t.canvas_rgba);
+        t.undo.clear();
+        let sem_historia = std::sync::Arc::strong_count(&t.canvas_rgba);
+        assert_eq!(sem_historia, 1, "sem história só o tool segura a tela");
+        assert_eq!(
+            n, 2,
+            "a tela tem {n} donos entre gestos: se é 1, o B17.4 curou — inverta o gate"
+        );
+    }
+}

@@ -477,6 +477,15 @@ fn modulo_de(p: &Path) -> &str {
     }
 }
 
+/// `crates/ph2d-x-y/src/lib.rs` → `ph2d_x_y`: a chamada `ph2d_x_y::f(` alcança a raiz da crate.
+fn raiz_da_crate(p: &Path) -> Option<String> {
+    if p.file_name()? != "lib.rs" || p.parent()?.file_name()? != "src" {
+        return None;
+    }
+    let c = p.parent()?.parent()?.file_name()?.to_str()?;
+    Some(c.replace('-', "_"))
+}
+
 /// O corpo que uma chamada alcança: pelo módulo quando ela o nomeia, senão no mesmo ficheiro,
 /// senão o único com esse nome. Um homónimo ambíguo não se segue (`resolve` tem 258 corpos).
 fn alcanca<'c>(
@@ -489,9 +498,10 @@ fn alcanca<'c>(
         return Vec::new();
     };
     match modulo {
-        Some(m) if !["crate", "self", "super", "Self"].contains(&m) => {
-            todos.iter().filter(|(p, _)| modulo_de(p) == m).collect()
-        }
+        Some(m) if !["crate", "self", "super", "Self"].contains(&m) => todos
+            .iter()
+            .filter(|(p, _)| modulo_de(p) == m || raiz_da_crate(p).is_some_and(|c| c == m))
+            .collect(),
         _ => {
             let aqui: Vec<_> = todos.iter().filter(|(p, _)| p == onde).collect();
             if aqui.is_empty() && todos.len() == 1 {

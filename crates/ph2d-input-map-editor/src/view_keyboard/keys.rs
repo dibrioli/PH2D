@@ -227,32 +227,25 @@ pub(crate) fn hover_text(doc: &InputMapDoc) -> Option<(String, String)> {
     Some((lead, format!("{list}{}", tr("input_map_list.period"))))
 }
 
-/// Uma barra por acção, em baixo de `r`, na cor da acção — o comando e os chips do «Also:»; a tecla desenhada usa a
-/// pilha por trás da plaquinha (`keys_fit::bar_stack`).
-pub(super) fn paint_bars(
+/// ⭐ A lei da tecla fora do teclado (o comando e o «Also:»): as barras de `who` por TRÁS, na caixa de `r` (raio
+/// `radius`, `keys_fit::bar_box`); com barras, a plaquinha da face `face` à volta do nome `lb` — N barras nunca
+/// mexem no nome. Pinta-se ANTES do nome.
+pub(super) fn paint_sticker(
     census: &mut crate::census::Census,
-    scene: &mut VectorScene,
-    ink: CardInk,
-    r: Rect,
+    (scene, ink): (&mut VectorScene, CardInk),
+    (r, radius, face): (Rect, f32, ColorToken),
+    (lb, icon): (Rect, bool),
     who: &[ActionId],
 ) {
-    let mut by = r.y + r.h - m::SEG_INSET * 0.5 - BAR_H;
-    for id in who.iter().rev() {
-        let bar = Rect::new(
-            r.x + m::SEG_INSET * 0.5,
-            by,
-            (r.w - m::SEG_INSET).max(0.0),
-            BAR_H,
-        );
-        fill_rounded_rect(
-            scene,
-            bar,
-            BAR_H * 0.5,
-            ink.color(crate::palette::of_action(*id)),
-        );
-        census.bars.push((bar, *id));
-        by -= BAR_H + BAR_GAP;
+    if who.is_empty() {
+        return;
     }
+    let bx = fit::bar_box(r, radius);
+    paint_stack(census, scene, ink, &fit::bar_stack(bx, who.len()), who);
+    let plate = fit::plate_of(bx, lb, icon);
+    fill_face(scene, ink, plate, fit::PLATE_RADIUS, face);
+    let rim = ink.color(ColorToken::Border);
+    stroke_rounded_rect(scene, plate, fit::PLATE_RADIUS, m::FIELD_BORDER, rim);
 }
 
 /// A face de um alvo desenhado (tecla ou botão do comando), por precedência: premido > aceso (a cor da acção, no
@@ -594,12 +587,11 @@ fn paint_also(
             break;
         }
         fill_rounded_rect(scene, chip, m::SEG_RADIUS, ink.color(ColorToken::CardField));
-        let lr = Rect::new(
-            chip.x + m::SEG_INSET,
-            chip.y,
-            tw,
-            chip.h - (BAR_H + BAR_GAP) * who.len() as f32,
-        );
+        // O nome parado no centro do chip; as barras por trás dele (a lei da tecla).
+        let th = m::VALUE_PX * ph2d_tokens::LineHeight::Tight.ratio();
+        let lr = Rect::new(chip.x + m::SEG_INSET, chip.y + (chip.h - th) * 0.5, tw, th);
+        let face = (chip, m::SEG_RADIUS, ColorToken::CardField);
+        paint_sticker(&mut doc.census, (scene, ink), face, (lr, false), &who);
         line(
             &mut doc.census,
             ts,
@@ -609,7 +601,6 @@ fn paint_also(
             m::VALUE_PX,
             ink.color(ColorToken::Text1),
         );
-        paint_bars(&mut doc.census, scene, ink, chip, &who);
         let hit = match b {
             Binding::Key(k) => KbHit::Key(*k),
             other => KbHit::Pad(*other),

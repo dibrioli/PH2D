@@ -367,13 +367,14 @@ fn cada_accao_ligada_ao_comando_mostra_a_barra_nessa_parte() {
             let KbHit::Pad(b) = h else { continue };
             let r = doc.rect_of(h.id()).expect("alvo da parte");
             ligadas += 1;
+            // Onda 3 (item 2): as barras por TRÁS do nome, dentro da parte (a lei da tecla).
             for id in who {
                 let ok = (doc.census.bars.iter()).any(|(br, a)| {
                     a == id
-                        && br.x >= r.x - 0.5
-                        && br.x + br.w <= r.x + r.w + 0.5
-                        && br.y >= r.y + r.h - 0.5
-                        && br.y <= r.y + r.h + r.h
+                        && br.x >= r.x - 0.01
+                        && br.x + br.w <= r.x + r.w + 0.01
+                        && br.y >= r.y - 0.01
+                        && br.y + br.h <= r.y + r.h + 0.01
                 });
                 assert!(ok, "{}: a barra de {id:?} falta em {b:?} {r:?}", area.w);
             }

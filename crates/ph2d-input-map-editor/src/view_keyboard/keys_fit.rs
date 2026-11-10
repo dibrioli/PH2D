@@ -82,6 +82,22 @@ pub fn bar_stack(r: Rect, n: usize) -> Vec<Rect> {
         .collect()
 }
 
+/// A caixa das barras de um alvo de raio `radius` (o comando, o chip do «Also:»): o raio da tecla já sai da faixa
+/// de [`bar_stack`]; um raio maior (pílula, redondo) recua ao retângulo inscrito — as barras nunca saem da curva.
+#[must_use]
+pub fn bar_box(r: Rect, radius: f32) -> Rect {
+    if radius <= m::SEG_RADIUS {
+        return r;
+    }
+    let d = radius * (1.0 - std::f32::consts::FRAC_1_SQRT_2);
+    Rect::new(
+        r.x + d,
+        r.y + d,
+        (r.w - d * 2.0).max(0.0),
+        (r.h - d * 2.0).max(0.0),
+    )
+}
+
 /// A plaquinha da legenda `l` (a caixa da legenda) na tecla `kr`: a legenda mais a folga, nunca além de
 /// [`LEGEND_PAD`] das arestas (as barras espreitam de cada lado) nem fora da tecla em altura. `icon`: a caixa do
 /// ícone já traz a folga dele ([`super::keys::ARROW_BOX`]), a de lado pode ir a zero.
@@ -106,28 +122,70 @@ pub fn plate_of(kr: Rect, l: Rect, icon: bool) -> Rect {
     Rect::new(x0, y0, x1 - x0, (y1 - y0).max(0.0))
 }
 
+/// ⭐ A fila de cima (Esc F1–F12 Insert PrtSc Delete) e a Home End PgUp PgDn em MEIA altura, como na foto do dono:
+/// a altura da tecla de uma fila vezes este fator. MEDIDO por [`measured_fn_factor`] (`onda3_tracos`): o menor
+/// fator em que, nos dois modos de texto e em todo passo desde o [`PITCH_FLOOR`], a legenda cabe em altura e
+/// largura com [`BAR_VISIBLE_MIN`] de barra de cada lado e uma barra cheia cabe por trás. Tabela no plano §14.
+pub const FN_ROW_FACTOR: f32 = 0.64; // LITERAL-PX-OK: medido por measured_fn_factor, ver o doc
+
+/// A tecla é da fila de meia altura (a de cima: [`Group::FnRow`] e [`Group::Nav`])?
+#[must_use]
+pub fn half_row(key: Key) -> bool {
+    matches!(group_of(key), Group::FnRow | Group::Nav)
+}
+
 /// A altura de uma tecla de uma fila para o passo `p`.
 pub(super) fn key_height(p: f32) -> f32 {
     (p * g::KEY_H).max(KEY_MIN_H)
 }
 
-/// O passo vertical entre filas para o passo `p` (a tecla e o vão).
-pub(super) fn row_step(p: f32) -> f32 {
-    key_height(p) + p * (g::ROW_PITCH - g::KEY_H)
+/// O vão entre filas para o passo `p`.
+fn row_gap(p: f32) -> f32 {
+    p * (g::ROW_PITCH - g::KEY_H)
 }
 
-/// A altura de `rows` filas para o passo `p`.
+/// O passo vertical entre filas para o passo `p` (a tecla e o vão).
+pub(super) fn row_step(p: f32) -> f32 {
+    key_height(p) + row_gap(p)
+}
+
+/// A altura das teclas da fila de cima (meia altura, fator `k`).
+fn half_h(p: f32, k: f32) -> f32 {
+    key_height(p) * k
+}
+
+/// O topo da fila `row` (a 0 é a de meia altura).
+fn row_y(row: f32, p: f32) -> f32 {
+    if row < 1.0 {
+        0.0
+    } else {
+        half_h(p, FN_ROW_FACTOR) + row_gap(p) + row_step(p) * (row - 1.0)
+    }
+}
+
+/// A altura pintada da tecla `c` ao passo `p` com o fator `k` da fila de cima.
+fn cap_h_at(c: &KeyCap, p: f32, k: f32) -> f32 {
+    if half_row(c.key) {
+        half_h(p, k)
+    } else {
+        key_h(c.rows, p)
+    }
+}
+
+/// A altura de `rows` filas para o passo `p` (a primeira em meia altura).
 pub(super) fn rows_h(p: f32, rows: f32) -> f32 {
-    row_step(p) * rows
+    half_h(p, FN_ROW_FACTOR) + row_gap(p) + row_step(p) * (rows - 1.0)
 }
 
 /// O passo cujas `rows` filas medem `h` (o inverso de [`rows_h`]).
 fn pitch_for_rows(h: f32, rows: f32) -> f32 {
-    let linear = h / (g::ROW_PITCH * rows);
+    let keys = FN_ROW_FACTOR + rows - 1.0;
+    let gap = g::ROW_PITCH - g::KEY_H;
+    let linear = h / (g::KEY_H * keys + gap * rows);
     if linear * g::KEY_H >= KEY_MIN_H {
         linear
     } else {
-        (h / rows - KEY_MIN_H).max(0.0) / (g::ROW_PITCH - g::KEY_H)
+        (h - KEY_MIN_H * keys).max(0.0) / (gap * rows)
     }
 }
 
@@ -280,6 +338,12 @@ pub(crate) fn choose(
     h: f32,
 ) -> Option<Legend> {
     let one = legend_at(key, level);
+    // A legenda cabe também em ALTURA (a fila de meia altura): o texto à sua linha, o símbolo da altura da letra.
+    let tall = match &one {
+        Legend::Text(_, px) => px * ph2d_tokens::LineHeight::Tight.ratio() <= h,
+        Legend::Icon(_) => m::VALUE_PX <= h,
+        Legend::Two(..) => true,
+    };
     if let Legend::Text(s, _) = &one
         && is_punct(s)
         && let Some(big) = PUNCT_PX.into_iter().find_map(|px| {
@@ -289,7 +353,7 @@ pub(crate) fn choose(
     {
         return Some(big);
     }
-    if fits(ts, &one, w) {
+    if tall && fits(ts, &one, w) {
         return Some(one);
     }
     if let (Some((a, b)), Legend::Text(_, px)) = (key.cap_lines(), &one) {
@@ -301,7 +365,7 @@ pub(crate) fn choose(
     let icon = (iso_icon(key))
         .filter(|_| sys_icon && key.system_owned().is_some())
         .map(Legend::Icon);
-    icon.filter(|l| fits(ts, l, w))
+    icon.filter(|l| m::VALUE_PX <= h && fits(ts, l, w))
 }
 
 /// O símbolo ISO/IEC 9995-7 de uma tecla, o último degrau da legenda (a fonte não tem os glifos ⇱ ⇲ ⇞ ⇟ ↵ ⎙).
@@ -321,6 +385,11 @@ pub(crate) fn iso_icon(key: Key) -> Option<IconId> {
 /// O degrau do grupo `grp` ao passo `p`: o primeiro em que TODA tecla do grupo cabe. O ícone só
 /// conta se toda palavra do grupo tem símbolo (senão o grupo misturaria palavra e ícone); `None` = nenhum cabe.
 fn group_level(ts: &mut TextSystem, p: f32, grp: Group) -> Option<Level> {
+    group_level_at(ts, p, grp, FN_ROW_FACTOR)
+}
+
+/// [`group_level`] com o fator `k` da fila de cima (a medida de [`measured_fn_factor`]).
+fn group_level_at(ts: &mut TextSystem, p: f32, grp: Group, k: f32) -> Option<Level> {
     let caps: Vec<KeyCap> = g::keyboard()
         .into_iter()
         .filter(|c| group_of(c.key) == grp)
@@ -339,7 +408,7 @@ fn group_level(ts: &mut TextSystem, p: f32, grp: Group) -> Option<Level> {
             .filter(|l| *l != Level::Icon || icons_all)
             .find(|l| {
                 caps.iter().all(|c| {
-                    let h = label_h(key_h(c.rows, p));
+                    let h = label_h(cap_h_at(c, p, k));
                     choose(ts, c.key, (*l, sys_icon), key_w(c.span, p), h).is_some()
                 })
             })
@@ -459,6 +528,33 @@ pub fn measured_floor(ts: &mut TextSystem) -> f32 {
     p
 }
 
+/// A medida do [`FN_ROW_FACTOR`]: o menor fator (de centésimo em centésimo, desde meia tecla) com que a fila de cima
+/// serve em todo passo do [`PITCH_FLOOR`] ao tecto da B (de 2 em 2 px): os grupos dela têm um degrau de legenda que
+/// cabe em altura e em largura (com [`BAR_VISIBLE_MIN`] de barra de cada lado) e uma barra cheia cabe por trás.
+#[must_use]
+pub fn measured_fn_factor(ts: &mut TextSystem) -> f32 {
+    let top = m::FIELD_H * g::PITCH_MAX_ROWS_B;
+    let mut pitches = Vec::new();
+    let mut p = PITCH_FLOOR;
+    while p < top {
+        pitches.push(p);
+        p += m::SEG_PAD;
+    }
+    pitches.push(top);
+    let serves = |ts: &mut TextSystem, k: f32| {
+        pitches.iter().all(|&p| {
+            bars_full(half_h(p, k)) >= 1
+                && [Group::FnRow, Group::Nav]
+                    .into_iter()
+                    .all(|grp| group_level_at(ts, p, grp, k).is_some())
+        })
+    };
+    (50..=100)
+        .map(|i| i as f32 / 100.0) // LITERAL-PX-OK: fator em centésimos
+        .find(|k| serves(ts, *k))
+        .unwrap_or(1.0)
+}
+
 /// ⭐ A escolha (plano §13.2): o passo que enche a caixa, nunca abaixo de [`PITCH_FLOOR`] — abaixo, o desenho fica
 /// no passo mínimo e a caixa rola na horizontal (o numérico nunca muda de sítio).
 pub(crate) fn fit(ts: &mut TextSystem, w: f32, h: Option<f32>, cap: f32) -> Fit {
@@ -511,7 +607,7 @@ pub fn misfits(ts: &mut TextSystem, w: f32, cap_b: bool) -> Vec<(String, f32)> {
                     c.key,
                     (Level::ShortSmall, true),
                     key_w(c.span, p),
-                    key_h(c.rows, p),
+                    label_h(cap_h_at(c, p, FN_ROW_FACTOR)),
                 )
                 .is_none()
         })
@@ -525,8 +621,8 @@ pub(super) fn placed(f: Fit) -> Vec<(KeyCap, f32, f32, f32, f32)> {
     g::keyboard()
         .into_iter()
         .map(|c| {
-            let (x, y) = (c.col * p, c.row * row_step(p));
-            (c, x, y, key_w(c.span, p), key_h(c.rows, p))
+            let (x, y) = (c.col * p, row_y(c.row, p));
+            (c, x, y, key_w(c.span, p), cap_h_at(&c, p, FN_ROW_FACTOR))
         })
         .collect()
 }

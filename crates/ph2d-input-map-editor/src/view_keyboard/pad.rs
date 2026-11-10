@@ -15,7 +15,8 @@ use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::{Affine, BezPath, Circle, Stroke, VectorScene};
 
 use super::geometry::{self as g, BodySeg, PadShape};
-use super::keys::{BAR_GAP, BAR_H, face_of, open_outline, paint_bars};
+use super::keys::{face_of, open_outline, paint_sticker};
+use super::keys_fit::LEGEND_MARGIN;
 use super::state::KbHit;
 use super::users;
 use crate::doc::InputMapDoc;
@@ -61,24 +62,6 @@ fn body(at: &dyn Fn(f32, f32) -> (f64, f64)) -> BezPath {
     }
     path.close_path();
     path
-}
-
-/// As barras por baixo de `r` (uma por acção, na cor dela).
-fn bars_under(
-    doc: &mut InputMapDoc,
-    scene: &mut VectorScene,
-    ink: CardInk,
-    r: Rect,
-    who: &[ActionId],
-) {
-    let h = (BAR_H + BAR_GAP) * who.len() as f32 + m::SEG_INSET * 0.5;
-    paint_bars(
-        &mut doc.census,
-        scene,
-        ink,
-        Rect::new(r.x, r.y + r.h, r.w, h),
-        who,
-    );
 }
 
 pub(super) fn paint(
@@ -182,7 +165,9 @@ pub(super) fn paint(
         let (cx, cy) = at(p.cx, p.cy);
         let (mut hw, hh) = (p.hw * bh, p.hh * bh);
         if matches!(p.shape, PadShape::Pill) {
-            hw = hw.max(ts.prefix_width(tr(p.short_key), m::LABEL_PX) * 0.5 + m::SEG_INSET);
+            // O nome e as barras de cada lado dele cabem dentro das pontas redondas.
+            let ends = hh * (1.0 - std::f32::consts::FRAC_1_SQRT_2);
+            hw = hw.max(ts.prefix_width(tr(p.short_key), m::LABEL_PX) * 0.5 + m::SEG_INSET + ends);
         }
         let r = Rect::new(cx - hw, cy - hh, hw * 2.0, hh * 2.0);
         let who = users(doc, p.binding);
@@ -203,9 +188,6 @@ pub(super) fn paint(
         if let Some(f) = face {
             super::keys::fill_face(scene, ink, r, radius, f);
         }
-        if lit && !half {
-            open_outline(scene, ink, r, radius);
-        }
         let fg = ink.color(if pressed {
             ColorToken::Bg0
         } else if lit && half {
@@ -215,10 +197,16 @@ pub(super) fn paint(
         } else {
             ColorToken::Text1
         });
+        // As barras por TRÁS do nome, numa plaquinha (a lei da tecla); o nome no centro com 0 ou N barras.
+        let plate_face = face.unwrap_or(ColorToken::KanbanCardRaised);
+        let sticker = (r, radius, plate_face);
         match p.shape {
             PadShape::Arm(icon) | PadShape::Half(icon, _) => {
-                let s = super::keys::ARROW_BOX.min(r.w).min(r.h);
+                let s = (super::keys::ARROW_BOX.min(r.h))
+                    .min(r.w - LEGEND_MARGIN * 2.0)
+                    .max(0.0);
                 let ir = Rect::new(cx - s * 0.5, cy - s * 0.5, s, s);
+                paint_sticker(&mut doc.census, (scene, ink), sticker, (ir, true), &who);
                 // A seta é traço fino: nunca mais apagada que `Text2` (a regra dos símbolos das teclas).
                 let tone = if who.is_empty() && !pressed && !lit {
                     ink.color(ColorToken::Text2)
@@ -226,15 +214,21 @@ pub(super) fn paint(
                     fg
                 };
                 paint_icon(scene, icon, ir, tone, StrokeToken::Default.px());
+                doc.census.icons.push((ir, icon));
             }
             PadShape::Pill | PadShape::Round => {
                 let label = tr(p.short_key);
                 let tw = ts.prefix_width(label, m::LABEL_PX).min(r.w);
-                let lr = Rect::new(cx - tw * 0.5, r.y, tw, r.h);
+                let th = (m::LABEL_PX * ph2d_tokens::LineHeight::Tight.ratio()).min(r.h);
+                let lr = Rect::new(cx - tw * 0.5, cy - th * 0.5, tw, th);
+                paint_sticker(&mut doc.census, (scene, ink), sticker, (lr, false), &who);
                 line(&mut doc.census, ts, scene, label, lr, m::LABEL_PX, fg);
             }
         }
-        bars_under(doc, scene, ink, r, &who);
+        // O contorno da aberta por cima de tudo (as pontas das barras não o tapam).
+        if lit && !half {
+            open_outline(scene, ink, r, radius);
+        }
         doc.kb.bars.push((KbHit::Pad(p.binding), who));
         doc.kb.targets.push(KbHit::Pad(p.binding));
     }

@@ -5,7 +5,8 @@ use super::Mesa;
 use super::lista::onze;
 use ph2d_app_input_map::view_keyboard::geometry::drawn_keys;
 use ph2d_app_input_map::view_keyboard::keys_fit::{
-    BAR_VISIBLE_MIN, KEY_MIN_H, PITCH_FLOOR, bar_visible_at, fits_at, measured_floor,
+    BAR_VISIBLE_MIN, FN_ROW_FACTOR, KEY_MIN_H, PITCH_FLOOR, bar_visible_at, fits_at, half_row,
+    measured_floor,
 };
 use ph2d_app_input_map::view_keyboard::state::{KbHit, Sub};
 use ph2d_app_input_map::{InputMapEdit, View};
@@ -78,11 +79,13 @@ fn estreitar_nunca_achata_as_teclas_e_o_numerico_nunca_desce() {
                     );
                 }
                 for l in keys {
-                    assert!(
-                        l.rect.h >= KEY_MIN_H - 0.01,
-                        "{at}: {} achatada",
-                        l.key.label()
-                    );
+                    // A fila de cima é de meia altura (onda 3, a foto do dono): o piso dela é o fator medido.
+                    let piso = if half_row(l.key) {
+                        KEY_MIN_H * FN_ROW_FACTOR
+                    } else {
+                        KEY_MIN_H
+                    };
+                    assert!(l.rect.h >= piso - 0.01, "{at}: {} achatada", l.key.label());
                     let side =
                         (l.plate.x - l.rect.x).min(l.rect.x + l.rect.w - l.plate.x - l.plate.w);
                     assert!(

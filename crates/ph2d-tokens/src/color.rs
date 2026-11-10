@@ -556,8 +556,7 @@ color_tokens! {
     KanbanDueSoonFg => "kanban-due-soon-fg", KanbanDueOver => "kanban-due-over",
     KanbanDueOverFg => "kanban-due-over-fg", KanbanDueDone => "kanban-due-done",
     KanbanDueDoneFg => "kanban-due-done-fg", KanbanStar => "kanban-star",
-    // O avatar de um membro: a inicial sobre a etiqueta `normal` (no escuro, MEDIDO: o navy do
-    // claro lia-se a 2,5:1 — subiu em L até 4,52:1 sobre `kanban-black`).
+    // O avatar: a inicial sobre a etiqueta `normal` (escuro MEDIDO: 4,52:1 sobre `kanban-black`).
     KanbanAvatarInk => "kanban-avatar-ink",
     // Cartões UI (docs/CartoesUI): a caixa de um campo, um degrau abaixo do cartão, e o rótulo dele.
     CardField => "card-field", CardFieldHover => "card-field-hover", CardLabel => "card-label",
@@ -566,6 +565,7 @@ color_tokens! {
     Categorical05 => "categorical-05", Categorical06 => "categorical-06", Categorical07 => "categorical-07", Categorical08 => "categorical-08",
     Categorical09 => "categorical-09", Categorical10 => "categorical-10", Categorical11 => "categorical-11", Categorical12 => "categorical-12",
     PreviewSky => "preview-sky", PreviewGround => "preview-ground", // a prévia de um JOGO (C4), igual em todo tema
+    InputMapHighlight => "input-map-highlight", InputMapWarning => "input-map-warning", InputMapWarningBg => "input-map-warning-bg",
 }
 
 impl ColorToken {

@@ -642,6 +642,7 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
             || k.starts_with("card-")
             || k.starts_with("categorical-")
             || k.starts_with("preview-")
+            || k.starts_with("input-map-")
             || k == "wire-fire-glow"
             || k == "attr-write" =>
         {

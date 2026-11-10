@@ -341,7 +341,10 @@ impl ColorToken {
             | T::Categorical11
             | T::Categorical12
             | T::PreviewSky
-            | T::PreviewGround => Role::Graphic,
+            | T::PreviewGround
+            | T::InputMapHighlight
+            | T::InputMapWarning
+            | T::InputMapWarningBg => Role::Graphic,
         }
     }
 }

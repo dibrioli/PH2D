@@ -22,3 +22,5 @@ Respostas do dono:
 **Why:** a crítica mediu 22 números mortos e 38 textos cortados na janela de hoje.
 **How to apply:** qualquer agente da linha InputMap parte destas quatro respostas; não as pergunte de novo.
 Ligado a [[reference_topic_owner_product_decisions]].
+
+**Entregue 10/11** (linha `line/InputMap`, 82 commits; handoff em `docs/InputMap/handoffs/HANDOFF_INTEGRACAO_line_InputMap_2026-11-10.md`): aba central com as três vistas (List · Keyboard · Try it) e seletor no topo, a última usada guardada nas prefs; a janela flutuante saiu. O mapa entra no undo do projeto por diff; `PROJECT_SCHEMA` 231 → 232. A tela «Controls» do jogador funciona no Play (F1, só com «Players can change keys»), troca guardada em `~/.ph2d/players/<game_id>.txt`; tecla repetida avisa, nunca troca. Lei do Play: UM mapa efectivo para cinco leitores; no Stop o documento inteiro (mapa incluído) é restaurado. Não existe jogo exportado no app — o export herda a tela. Luau lê pela ação (`ph2d.action_*`).

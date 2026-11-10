@@ -30,6 +30,11 @@ use super::relief_fields::ReliefFields;
 use crate::layers::ReliefComposite;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::material::MaterialBytes;
+use rayon::prelude::*;
+
+/// Linhas por faixa do passe de luz ([`PainterTool::apply_impasto_light`]): 2 linhas de moldura por faixa (+6 %),
+/// 68 faixas numa tela 4K para o pool.
+const FAIXA_LINHAS: usize = 32;
 
 /// How many CANVAS PIXELS of physical paint height `h = 1.0` (one full-Depth stroke) represents.
 ///
@@ -320,6 +325,78 @@ impl PainterTool {
     /// against ([`super::impasto_gpu`] + `ph2d_render::ImpastoLightPass`). A parity gate that compared the
     /// shader to a re-implementation of this would agree with the bug; it compares against THIS.
     pub fn apply_impasto_light(&self, rgba: &mut [u8], region: Region) {
+        if !self.impasto_visible() {
+            return;
+        }
+        let Some(fields) = self.impasto_fields() else {
+            return;
+        };
+        let (w, h) = (region.w as usize, region.h as usize);
+        if w == 0 || h == 0 || rgba.len() < w * h * 4 {
+            return; // shape guard — bail rather than index out of a mis-sized buffer
+        }
+        let Some(light) = Rig::new(&self.paint.impasto_rig) else {
+            return; // every lamp switched off: the canvas comes back unlit, to the byte
+        };
+        // ⭐ **Por FAIXAS de linhas, no pool** (dono 10/11: o pen-up a 4K travava 1,6 s — o `height_at` com o dente
+        // do papel, amostrado 4× por píxel pelas diferenças centrais, num fio só). Cada faixa lê a altura UMA vez por
+        // píxel numa moldura de 1 px e difere dentro dela: o mesmo `height_at` nos mesmos píxeis, logo o mesmo bit
+        // (`as_faixas_dao_o_passe_por_pixel_ao_bit`). Píxeis independentes; a cache do material é por faixa.
+        let paper_body = fields.paper_body();
+        let (x0, y0) = (i64::from(region.x), i64::from(region.y));
+        rgba[..w * h * 4]
+            .par_chunks_mut(w * 4 * FAIXA_LINHAS)
+            .enumerate()
+            .for_each(|(b, faixa)| {
+                let n = faixa.len() / (w * 4);
+                let gy0 = y0 + (b * FAIXA_LINHAS) as i64;
+                let fw = w + 2;
+                let mut alt = vec![0.0f32; fw * (n + 2)];
+                for (j, linha) in alt.chunks_exact_mut(fw).enumerate() {
+                    let gy = gy0 - 1 + j as i64;
+                    for (i, a) in linha.iter_mut().enumerate() {
+                        *a = fields.height_at(x0 - 1 + i as i64, gy);
+                    }
+                }
+                let mut mat =
+                    light.resolve(ph2d_painter_brush::material::Material::NEUTRAL.to_bytes());
+                for ry in 0..n {
+                    let gy = gy0 + ry as i64;
+                    let c = (ry + 1) * fw + 1; // o píxel (0, ry) na moldura
+                    for rx in 0..w {
+                        let gx = x0 + rx as i64;
+                        let k = c + rx;
+                        let dhx = (alt[k + 1] - alt[k - 1]) * 0.5;
+                        let dhy = (alt[k + fw] - alt[k - fw]) * 0.5;
+                        let cover = fields.cover_at(gx, gy);
+                        let i = (ry * w + rx) * 4;
+                        let albedo = [
+                            f32::from(faixa[i]) / 255.0,
+                            f32::from(faixa[i + 1]) / 255.0,
+                            f32::from(faixa[i + 2]) / 255.0,
+                        ];
+                        let key = fields.material_at(gx, gy);
+                        if key != mat.key {
+                            mat = light.resolve(key);
+                        }
+                        let body = paint_body(cover).max(paper_body);
+                        let (mul, add) =
+                            light.shade(&mat, body, gloss_body(cover), dhx, dhy, albedo);
+                        if mul == [1.0; 3] && add == [0.0; 3] {
+                            continue; // flat: byte-identical, and not even a rounding trip through f32
+                        }
+                        for c in 0..3 {
+                            let lit = light_pixel(albedo[c], mul[c], add[c]);
+                            faixa[i + c] = (lit * 255.0 + 0.5) as u8;
+                        }
+                    }
+                }
+            });
+    }
+
+    /// O passe POR PÍXEL de antes das faixas (10/11), verbatim: o oráculo ao bit de [`Self::apply_impasto_light`].
+    #[cfg(test)]
+    pub(super) fn apply_impasto_light_por_pixel(&self, rgba: &mut [u8], region: Region) {
         if !self.impasto_visible() {
             return;
         }

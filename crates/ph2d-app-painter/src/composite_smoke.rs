@@ -45,6 +45,18 @@ pub const NIVEIS: u32 = 1;
 /// pilha, para o que o dono sente e o que a sonda mede serem o mesmo regime.
 pub const LADO: u32 = 1024;
 
+/// O tamanho da tela: `LADO²`, ou `PH2D_COMPOSITE_TELA=<w>x<h>` (sonda do pen-up a 4K, dono 10/11: o tamanho que
+/// trava; só com o papel do *Textured Paper*, a imagem gerada é quadrada).
+fn tela() -> (u32, u32) {
+    std::env::var("PH2D_COMPOSITE_TELA")
+        .ok()
+        .and_then(|v| {
+            let (w, h) = v.split_once('x')?;
+            Some((w.parse().ok()?, h.parse().ok()?))
+        })
+        .unwrap_or((LADO, LADO))
+}
+
 /// Se a cena está armada. Barato o bastante para ser perguntado por quadro.
 pub fn enabled() -> bool {
     std::env::var_os("PH2D_COMPOSITE_SMOKE").is_some()
@@ -146,18 +158,19 @@ pub fn spawn_if_enabled(
     if !enabled() || FEITO.swap(true, Ordering::Relaxed) {
         return None;
     }
+    let (tw, th) = tela();
     match ph2d_image_import::spawn_rgba(
         sim,
         renderer,
         asset_db,
         cell_idx,
-        LADO,
-        LADO,
+        tw,
+        th,
         // `PH2D_COMPOSITE_PAPEL=1`: a tela do *New Image ▸ Textured Paper* (o bind reconhece-a e serve o papel).
         std::env::var_os("PH2D_COMPOSITE_PAPEL")
             .and_then(|_| {
                 let papel = ph2d_editor_core::ids::NEW_IMAGE_BG_PAPER;
-                crate::paint_mode::pixeis_da_imagem_nova([LADO, LADO], papel)
+                crate::paint_mode::pixeis_da_imagem_nova([tw, th], papel)
             })
             .unwrap_or_else(|| imagem(LADO)),
         Vec2::new(0.0, 0.0),
@@ -167,7 +180,7 @@ pub fn spawn_if_enabled(
     ) {
         Ok((label, bits)) => {
             println!(
-                "PH2D_COMPOSITE_SMOKE: tela '{label}' montada ({LADO}x{LADO}, uma imagem com \
+                "PH2D_COMPOSITE_SMOKE: tela '{label}' montada ({tw}x{th}, uma imagem com \
                  degrade, grelha e discos). O Painter abre sozinho e arma a pilha da foto \
                  com o pincel em Size 0.4."
             );

@@ -215,9 +215,44 @@ pub(super) fn record_dispatch(info: FrameInfo) {
     });
 }
 
+thread_local! {
+    /// O fim do quadro anterior e o limiar de [`quadro_lento`] (`None` = desligado; lido uma vez).
+    static LENTO: std::cell::Cell<(Option<std::time::Instant>, Option<Option<f32>>)> =
+        const { std::cell::Cell::new((None, None)) };
+}
+
+/// ⚠️ **Medição, nunca produto** (dono 10/11: «trava no mouse-up numa imagem 4K»): `PH2D_QUADRO_LENTO_MS=<n>` imprime
+/// cada quadro cujo INTERVALO desde o fim do anterior passa de `n` ms, com o relógio de parede (ns desde a época, o
+/// mesmo do `date +%s%N` da sonda) — o agregado por janela esconde um quadro só, e um quadro parado À ESPERA (placa,
+/// trinco) não aparece no perfil de CPU. `quadro` = o relógio do `PaintFrameTimer`; `intervalo` = fim a fim.
+fn quadro_lento(total_ms: f32) {
+    LENTO.with(|c| {
+        let (antes, limiar) = c.get();
+        let limiar = limiar.unwrap_or_else(|| {
+            std::env::var("PH2D_QUADRO_LENTO_MS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+        });
+        let agora = std::time::Instant::now();
+        if let (Some(n), Some(a)) = (limiar, antes) {
+            let intervalo = agora.duration_since(a).as_secs_f32() * 1e3;
+            if intervalo > n {
+                let parede = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |d| d.as_nanos());
+                eprintln!(
+                    "[quadro-lento] parede={parede} intervalo={intervalo:.1} quadro={total_ms:.1}"
+                );
+            }
+        }
+        c.set((Some(agora), Some(limiar)));
+    });
+}
+
 /// Close the frame with its whole-frame wall clock; aggregate + emit a summary every `WINDOW`
 /// painter frames. A frame with no recorded dispatch (painter inactive) is skipped.
 pub fn end_frame(total_ms: f32) {
+    quadro_lento(total_ms);
     AGG.with(|cell| {
         let a = &mut *cell.borrow_mut();
         let Some(cur) = a.cur.take() else { return };

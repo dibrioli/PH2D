@@ -593,3 +593,88 @@ fn probe_substrate_undo() {
     );
     println!();
 }
+
+/// Papel com relevo + uma crista de impasto com CERA (material ≠ neutro) numa tela `w`×`h`.
+fn papel_e_crista(w: u32, h: u32) -> PainterTool {
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (w * h * 4) as usize], w, h);
+    t.set_substrate_depth(1.0);
+    t.toggle_brush_impasto();
+    t.set_brush_size_px(h as f32 * 0.3);
+    t.paint.brush.color = [0.8, 0.2, 0.2];
+    t.paint.brush.impasto_wax = 0.9;
+    t.paint.brush.impasto_wax_color = [1.0, 0.6, 0.2];
+    let at = |x: f32, phase| CanvasPointer {
+        pos: [x, h as f32 * 0.5],
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
+    t.on_canvas_pointer(at(w as f32 * 0.2, PointerPhase::Down));
+    t.on_canvas_pointer(at(w as f32 * 0.5, PointerPhase::Move));
+    t.on_canvas_pointer(at(w as f32 * 0.8, PointerPhase::Up));
+    t
+}
+
+/// Os píxeis de `r` na tela de `t`, ainda sem luz.
+fn recorte(t: &PainterTool, r: Region) -> Vec<u8> {
+    let w = t.source_size.0 as usize;
+    (r.y..r.y + r.h)
+        .flat_map(|y| {
+            let i = (y as usize * w + r.x as usize) * 4;
+            t.canvas_rgba[i..i + r.w as usize * 4].to_vec()
+        })
+        .collect()
+}
+
+/// ⭐ **As FAIXAS dão o passe por píxel AO BIT** (dono 10/11: o pen-up a 4K travava 1,6 s no passe de luz). Papel com
+/// relevo, impasto com cera, uma tela que não é múltiplo da faixa, inteira e numa sub-região fora da origem (a moldura
+/// lê através da borda). *Mutações: a moldura sem a linha de cima ⇒ `dhy` errado na 1.ª linha de cada faixa; a faixa
+/// a recomeçar no `y` da região ⇒ todas as faixas leem a 1.ª.*
+#[test]
+fn as_faixas_dao_o_passe_por_pixel_ao_bit() {
+    let (w, h) = (150, 101);
+    let t = papel_e_crista(w, h);
+    for r in [
+        Region { x: 0, y: 0, w, h },
+        Region {
+            x: 7,
+            y: 33,
+            w: 91,
+            h: 67,
+        },
+    ] {
+        let base = recorte(&t, r);
+        let (mut faixas, mut por_pixel) = (base.clone(), base.clone());
+        t.apply_impasto_light(&mut faixas, r);
+        t.apply_impasto_light_por_pixel(&mut por_pixel, r);
+        assert!(por_pixel != base, "a fixture não acendeu nada em {r:?}");
+        assert!(
+            faixas == por_pixel,
+            "as faixas diferem do passe por píxel em {r:?}"
+        );
+    }
+}
+
+/// Sonda: o passe de luz numa tela 4K com papel, por píxel × por faixas, intercalados, o MÍNIMO de 3.
+/// `cargo test --profile smoke -p ph2d-tool-painter --lib sonda_luz_4k -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda de custo"]
+fn sonda_luz_4k() {
+    let (w, h) = (3840, 2160);
+    let t = papel_e_crista(w, h);
+    let r = Region { x: 0, y: 0, w, h };
+    let (mut antes, mut depois) = (f64::MAX, f64::MAX);
+    for _ in 0..3 {
+        let mut px = t.canvas_rgba.to_vec();
+        let t0 = std::time::Instant::now();
+        t.apply_impasto_light_por_pixel(&mut px, r);
+        antes = antes.min(t0.elapsed().as_secs_f64() * 1e3);
+        let mut px = t.canvas_rgba.to_vec();
+        let t0 = std::time::Instant::now();
+        t.apply_impasto_light(&mut px, r);
+        depois = depois.min(t0.elapsed().as_secs_f64() * 1e3);
+    }
+    eprintln!("[luz 4K] por píxel {antes:.1} ms · por faixas {depois:.1} ms");
+}

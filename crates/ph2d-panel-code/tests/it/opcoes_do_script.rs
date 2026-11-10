@@ -217,14 +217,20 @@ fn o_hover_e_um_fundo_unico_na_linha_e_nada_no_interruptor() {
 #[test]
 fn o_disco_da_pilula_ligada_e_claro_no_tema_escuro_e_no_claro() {
     use ph2d_editor_core::widget::switch_inks;
-    for theme in [Theme::Forge, Theme::Sunstone] {
-        let (track, knob) = switch_inks(true, theme);
+    for (theme, on) in [Theme::Forge, Theme::Sunstone, Theme::Light]
+        .into_iter()
+        .flat_map(|t| [(t, true), (t, false)])
+    {
+        let (track, knob) = switch_inks(on, theme);
         let lum = |c: ph2d_vector::Color| {
             let [r, g, b, _] = c.to_rgba8().to_u8_array();
             ph2d_tokens::Color { r, g, b, a: 255 }.relative_luminance()
         };
-        assert!(lum(knob) > 0.5, "{theme:?}: o disco lê claro");
-        assert!(lum(knob) > lum(track), "{theme:?}: mais claro que o trilho");
+        assert!(lum(knob) > 0.5, "{theme:?} on={on}: o disco lê claro");
+        assert!(
+            lum(knob) > lum(track),
+            "{theme:?} on={on}: mais claro que o trilho"
+        );
     }
 }
 

@@ -93,19 +93,20 @@ pub(super) fn paint_classic_toggle(
 /// As tintas da pílula: `(trilho, disco)` no estado `on`.
 #[must_use]
 pub fn switch_inks(on: bool, theme: Theme) -> (ph2d_vector::Color, ph2d_vector::Color) {
-    if on {
-        let knob = token_to_vello(ph2d_tokens::switch_knob(theme));
-        (resolve(ColorToken::Accent, theme), knob)
+    // O disco é o mesmo nos dois estados (macOS): no tema claro o `Text1` dava um disco quase preto.
+    let knob = token_to_vello(ph2d_tokens::switch_knob(theme));
+    let track = if on {
+        ColorToken::Accent
     } else {
-        let off = |t| resolve(t, theme);
-        (off(ColorToken::BorderStrong), off(ColorToken::Text1))
-    }
+        ColorToken::BorderStrong
+    };
+    (resolve(track, theme), knob)
 }
 
 /// ⭐ **A PÍLULA de definições** (dono 09/11, cartão «Script options»): o interruptor de efeito
 /// imediato do estado da arte (macOS/iOS, Windows 11, Material 3, VS Code), nos DOIS modos da UI.
 /// Ligado = trilho `Accent`, disco claro nos dois temas ([`ph2d_tokens::switch_knob`], o do macOS) à
-/// direita; desligado = trilho `BorderStrong`, disco `Text1` à esquerda. ⛔ Sem hover nem moldura
+/// direita; desligado = trilho `BorderStrong`, o mesmo disco à esquerda. ⛔ Sem hover nem moldura
 /// própria: quem a usa realça a LINHA inteira. Devolve o disco (centro, raio).
 pub fn paint_switch(
     on: bool,

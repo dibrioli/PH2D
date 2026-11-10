@@ -138,6 +138,15 @@ pub(crate) fn search(snap: &Snapshot, key: Key, shown: &[ActionId]) -> Phrase {
     }
 }
 
+/// «Dead zone and Press at only show on rows with a stick or a trigger. A key is either up or down, …» (estado 4).
+pub(crate) fn zones() -> Phrase {
+    Phrase {
+        lead: tr("input_map_list.zones_lead").to_owned(),
+        rest: tr("input_map_list.zones_rest").to_owned(),
+        warn: false,
+    }
+}
+
 /// «Listening for reload. The next key goes to this row.»
 pub(crate) fn listening(snap: &Snapshot, id: ActionId) -> Phrase {
     Phrase {

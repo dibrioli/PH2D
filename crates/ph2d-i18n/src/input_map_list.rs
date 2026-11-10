@@ -42,6 +42,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "input_map_list.shared_warn_rest" => {
             "Both react when it is pressed. Check that this is what you want."
         }
+        "input_map_list.zones_lead" => {
+            "Dead zone and Press at only show on rows with a stick or a trigger."
+        }
+        "input_map_list.zones_rest" => "A key is either up or down, so they change nothing for it.",
         "input_map_list.search_count" => "{key} is in {n} of {total} actions.",
         "input_map_list.read_by_first" => "{action} is read by {who}",
         "input_map_list.read_by_next" => "{action} by {who}",

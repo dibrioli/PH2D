@@ -5,9 +5,10 @@ use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon};
 use ph2d_editor_core::widget::card_ink::CardInk;
+use ph2d_editor_core::widget::{SCROLLBAR_W, ScrollbarState, paint_scrollbar, scrollbar_is_needed};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_input::{ActionId, Binding, InputAction};
+use ph2d_input::{ActionId, Binding, GamepadAxis, InputAction};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
@@ -39,20 +40,43 @@ pub(super) fn paint_rows(
         .collect();
     let name_w = actions
         .iter()
-        .map(|a| ts.prefix_width(&a.name, m::VALUE_PX))
+        .map(|a| text::title_width(ts, &a.name, m::VALUE_PX))
         .fold(0.0_f32, f32::max)
         + m::KEY_MARK_BOX
         + m::CARD_PAD_X * 2.0;
-    let phrases = foot(doc);
+    let mut phrases = foot(doc);
+    if doc.snap.listening.is_none() && actions.iter().any(InputAction::is_analog) {
+        phrases.push(footer::zones());
+    }
     let foot_h = (m::FIELD_H + m::FIELD_ROW_GAP) * phrases.len() as f32;
     let list_h = (area.h - foot_h).max(0.0);
     let total: f32 = actions.iter().map(|a| row_h(a) + m::FIELD_ROW_GAP).sum();
     doc.list.scroll_max = (total - list_h).max(0.0);
     doc.list.scroll = doc.list.scroll.clamp(0.0, doc.list.scroll_max);
+    // A barra do cartão quando a lista rola; as linhas encolhem para ela não tapar o lixo.
+    let view = Rect::new(area.x, area.y, area.w, list_h);
+    let bar = scrollbar_is_needed(total, list_h);
+    let row_w = if bar {
+        (area.w - SCROLLBAR_W - m::SEG_INSET).max(0.0)
+    } else {
+        area.w
+    };
+    if bar {
+        let visual = (ScrollbarState::Normal, 0.0);
+        let _ = paint_scrollbar(
+            view,
+            doc.list.scroll,
+            total,
+            list_h,
+            visual,
+            scene,
+            ink.theme,
+        );
+    }
     let mut y = area.y - doc.list.scroll;
     for a in &actions {
         let h = row_h(a);
-        let r = Rect::new(area.x, y, area.w, h);
+        let r = Rect::new(area.x, y, row_w, h);
         y += h + m::FIELD_ROW_GAP;
         if r.y < area.y - f32::EPSILON || r.y + r.h > area.y + list_h + f32::EPSILON {
             continue;
@@ -69,8 +93,8 @@ pub(super) fn paint_rows(
             (ColorToken::Text1, ColorToken::Text2)
         };
         let inner = Rect::new(r.x + m::SEG_INSET, r.y, r.w - m::SEG_INSET * 2.0, r.h);
-        let lead_w = ts.prefix_width(&p.lead, m::VALUE_PX);
-        text::line(
+        let lead_w = text::title_width(ts, &p.lead, m::VALUE_PX);
+        text::title(
             &mut doc.census,
             ts,
             scene,
@@ -95,6 +119,21 @@ pub(super) fn paint_rows(
         }
         fy += m::FIELD_H + m::FIELD_ROW_GAP;
     }
+}
+
+/// O ícone da direcção de uma metade de manche. ⚠️ Irmã de `view_keyboard::geometry::half_icon` (privada à
+/// vista B): a rodada seguinte funde as duas numa só porta.
+fn half_icon(b: Binding) -> Option<IconId> {
+    let Binding::PadAxis { axis, positive } = b else {
+        return None;
+    };
+    Some(match (axis, positive) {
+        (GamepadAxis::LeftStickX | GamepadAxis::RightStickX, false) => IconId::ChevronLeft,
+        (GamepadAxis::LeftStickX | GamepadAxis::RightStickX, true) => IconId::ChevronRight,
+        (GamepadAxis::LeftStickY | GamepadAxis::RightStickY, true) => IconId::ChevronUp,
+        (GamepadAxis::LeftStickY | GamepadAxis::RightStickY, false) => IconId::ChevronDown,
+        _ => return None,
+    })
 }
 
 fn foot(doc: &InputMapDoc) -> Vec<footer::Phrase> {
@@ -140,7 +179,7 @@ fn paint_row(
         name_w - dot - m::SEG_INSET * 2.0,
         head.h,
     );
-    text::line(
+    text::title(
         &mut doc.census,
         ts,
         scene,
@@ -157,7 +196,14 @@ fn paint_row(
     for (n, b) in a.bindings.iter().enumerate() {
         let label = footer::binding_label(*b);
         let tw = ts.prefix_width(&label, m::VALUE_PX);
-        let w = m::SEG_INSET * 3.0 + g * 2.0 + m::SEG_ICON_GAP + tw;
+        // A metade da manche leva a direcção desenhada («Left Stick ←»), nunca um glifo.
+        let arrow = half_icon(*b);
+        let aw = if arrow.is_some() {
+            g + m::SEG_ICON_GAP
+        } else {
+            0.0
+        };
+        let w = m::SEG_INSET * 3.0 + g * 2.0 + m::SEG_ICON_GAP + tw + aw;
         let chip = Rect::new(x, cy, w.min((right - x).max(0.0)), CHIP_H);
         let lit = doc.list.search_key.is_some_and(|k| *b == Binding::Key(k));
         let (bg, fg) = if lit {
@@ -181,10 +227,10 @@ fn paint_row(
         let tr_r = Rect::new(
             ir.x + g + m::SEG_ICON_GAP,
             chip.y,
-            tw.min((chip.x + chip.w - ir.x - g - m::SEG_ICON_GAP).max(0.0)),
+            tw.min((chip.x + chip.w - ir.x - g - m::SEG_ICON_GAP - aw).max(0.0)),
             chip.h,
         );
-        text::line(
+        let used = text::line(
             &mut doc.census,
             ts,
             scene,
@@ -193,6 +239,10 @@ fn paint_row(
             m::VALUE_PX,
             ink.color(fg),
         );
+        if let Some(icon) = arrow {
+            let ar = Rect::new(tr_r.x + used + m::SEG_ICON_GAP, ir.y, g, g);
+            paint_icon(scene, icon, ar, ink.color(fg), StrokeToken::Default.px());
+        }
         let xr = Rect::new(chip.x + chip.w - g - m::SEG_INSET, ir.y, g, g);
         if hover {
             paint_icon(

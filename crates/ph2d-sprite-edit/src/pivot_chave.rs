@@ -66,11 +66,15 @@ pub fn clique_leva_os_filhos(
     i
 }
 
+/// O canal de um pivô: a âncora da Sprite (campo 4) ou o pivô da forma de colisão (`ShapeLook` campo 0, dono 10/11:
+/// «animar o pivot fez a shape balançar» — a mesma cura da Sprite, a trajetória reta e o mesmo ritmo).
 fn e_ancora(p: PropKind) -> bool {
-    [0, 1].into_iter().any(|i| {
-        let k = ph2d_ecs::canal_componente::chave("ph2d::render::Sprite", 4, i);
-        k.map(PropKind::Field) == Some(p)
-    })
+    [("ph2d::render::Sprite", 4), ("ph2d::physics::ShapeLook", 0)]
+        .into_iter()
+        .flat_map(|(c, campo)| [0, 1].map(|i| (c, campo, i)))
+        .any(|(c, campo, i)| {
+            ph2d_ecs::canal_componente::chave(c, campo, i).map(PropKind::Field) == Some(p)
+        })
 }
 
 fn e_colisao(p: PropKind) -> bool {

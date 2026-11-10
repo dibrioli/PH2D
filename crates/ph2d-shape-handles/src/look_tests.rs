@@ -223,3 +223,12 @@ fn o_clique_agarra_dentro_da_forma() {
         .parent();
     assert!(!contem(sim.world(), corpo, meio), "o corpo não é a forma");
 }
+
+/// O piso da Opacity mora em dois sítios (o cartão não vê a física): têm de ser o mesmo número.
+#[test]
+fn o_piso_da_opacidade_e_um_so() {
+    assert_eq!(
+        ShapeLookFacts::OPACIDADE_MINIMA,
+        ph2d_physics_ecs::shape_look::OPACIDADE_MINIMA
+    );
+}

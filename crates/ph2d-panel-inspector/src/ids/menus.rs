@@ -144,7 +144,6 @@ pub const INSP_SHAPE_PIVOT: [NodeId; 9] = [
     hash_node_id("insp_shape_pivot_7"),
     hash_node_id("insp_shape_pivot_8"),
 ];
-pub const INSP_SHAPE_PIVOT_NOME: NodeId = hash_node_id("insp_shape_pivot_nome");
 pub const INSP_SHAPE_PIVOT_XY: [NodeId; 2] = [
     hash_node_id("insp_shape_pivot_x"),
     hash_node_id("insp_shape_pivot_y"),
@@ -152,4 +151,7 @@ pub const INSP_SHAPE_PIVOT_XY: [NodeId; 2] = [
 pub const INSP_SHAPE_OPACITY: NodeId = hash_node_id("insp_shape_opacity");
 /// A amostra Color (abre o seletor de cor; a cor vive na tabela `widget_colors`).
 pub const INSP_SHAPE_TINT_SWATCH: NodeId = hash_node_id("insp_shape_tint_swatch");
+/// Os resets da Color (a cor da camada) e da Opacity (100 %).
+pub const INSP_SHAPE_TINT_RESET: NodeId = hash_node_id("insp_shape_tint_reset");
+pub const INSP_SHAPE_OPACITY_RESET: NodeId = hash_node_id("insp_shape_opacity_reset");
 pub const INSP_SHAPE_OPACITY_CHIP: NodeId = hash_node_id("insp_shape_opacity_chip");

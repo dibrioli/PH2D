@@ -16,11 +16,16 @@ pub struct ShapeLook {
     /// cima: `[-1, -1]` = canto de baixo à esquerda, `[0, 0]` = centro, `[1, 1]` = canto de cima à direita. Fora de
     /// `[-1, 1]` é um pivô fora da forma, legal como o Custom da Sprite.
     pub pivot: [f32; 2],
-    /// Multiplica a cor que o tema dá à forma no overlay (o Tint da Sprite sobre a textura). Branco = a do tema.
+    /// A cor própria do overlay da forma: SUBSTITUI a da camada quando [`ShapeLook::cor_propria`] (dono 10/11).
     pub tint: [f32; 4],
-    /// Multiplica a opacidade do overlay da forma, `0..=1`.
+    /// Multiplica a opacidade do overlay da forma, [`OPACIDADE_MINIMA`]`..=1` (dono 10/11: nunca some de todo).
     pub opacity: f32,
+    /// A forma usa a cor `tint` em vez da cor da camada. `false` = a do tema (o Reset da Color).
+    pub cor_propria: bool,
 }
+
+/// A opacidade mínima do overlay de uma forma de colisão (dono 10/11: 25 %).
+pub const OPACIDADE_MINIMA: f32 = 0.25;
 
 impl SimComponent for ShapeLook {}
 
@@ -30,26 +35,31 @@ impl Default for ShapeLook {
             pivot: [0.0, 0.0],
             tint: [1.0; 4],
             opacity: 1.0,
+            cor_propria: false,
         }
     }
 }
 
 impl ShapeLook {
-    /// O multiplicador da cor do overlay: o Tint com a Opacity no alfa.
+    /// A cor do overlay (`None` = a da camada) e o multiplicador do alfa: o alfa da cor × a Opacity.
     #[must_use]
-    pub fn tom(&self) -> [f32; 4] {
+    pub fn tom(&self) -> (Option<[f32; 3]>, f32) {
         let [r, g, b, a] = self.tint;
-        [r, g, b, a * self.opacity]
+        if self.cor_propria {
+            (Some([r, g, b]), a * self.opacity)
+        } else {
+            (None, self.opacity)
+        }
     }
 
-    /// Números finitos; cor e opacidade em `0..=1`. O pivô não tem faixa (fora da forma é legal).
+    /// Números finitos; cor em `0..=1`, opacidade em `OPACIDADE_MINIMA..=1`. O pivô não tem faixa (fora da forma é legal).
     pub fn sanitize(&mut self) {
         let fin = |v: f32, d: f32| if v.is_finite() { v } else { d };
         self.pivot = [fin(self.pivot[0], 0.0), fin(self.pivot[1], 0.0)];
         for c in &mut self.tint {
             *c = fin(*c, 1.0).clamp(0.0, 1.0);
         }
-        self.opacity = fin(self.opacity, 1.0).clamp(0.0, 1.0);
+        self.opacity = fin(self.opacity, 1.0).clamp(OPACIDADE_MINIMA, 1.0);
     }
 }
 

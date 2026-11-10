@@ -140,3 +140,50 @@ fn a_cor_escolhida_no_seletor_chega_como_edicao() {
     assert!(e.contains(&E::LookTint([1.0, 0.0, 0.0, 1.0])), "{e:?}");
     sai();
 }
+
+/// ⭐ Dono 10/11: sem o «…», o «Pivot from centre» está sempre à vista (também num dos nove pontos), X por cima de Y
+/// e ao lado da grade.
+#[test]
+fn os_campos_do_pivo_estao_sempre_a_vista_ao_lado_da_grade() {
+    let (mut host, mut st) = cena(forma(ligado()), [1.0, 1.0]);
+    let r = pinta(&mut host, &mut st);
+    let (g, x, y) = (
+        achado(&r, INSP_SHAPE_PIVOT[2]).expect("o canto de cima à direita da grade"),
+        achado(&r, INSP_SHAPE_PIVOT_XY[0]).expect("o X"),
+        achado(&r, INSP_SHAPE_PIVOT_XY[1]).expect("o Y"),
+    );
+    assert!(x.x > g.x + g.w, "o X à direita da grade: {x:?} {g:?}");
+    assert!(
+        (x.x - y.x).abs() < 0.5 && y.y > x.y + x.h * 0.5,
+        "o Y por baixo do X: {x:?} {y:?}"
+    );
+    sai();
+}
+
+/// Os dois resets: a Color volta à da camada, a Opacity a 100 %; e o chip não desce de 25 %.
+#[test]
+fn os_resets_e_o_piso_da_opacidade() {
+    for (id, edit) in [
+        (INSP_SHAPE_TINT_RESET, E::LookResetColor),
+        (INSP_SHAPE_OPACITY_RESET, E::LookResetOpacity),
+    ] {
+        let (mut host, mut st) = cena(forma(ligado()), [1.0, 1.0]);
+        let r = pinta(&mut host, &mut st);
+        let q = achado(&r, id).expect("o reset");
+        assert_eq!(edicoes(&clica(&mut host, &mut st, q)), vec![edit]);
+        sai();
+    }
+    let (mut host, mut st) = cena(forma(ligado()), [1.0, 1.0]);
+    let _ = pinta(&mut host, &mut st);
+    let _ = host.drained_actions();
+    for ev in host.type_into_number(INSP_SHAPE_OPACITY_CHIP, "5") {
+        let _ = host.apply_panel_event::<InspectorPanel>(&mut st, ev);
+    }
+    let e = edicoes(&host.drained_actions());
+    assert!(
+        e.iter()
+            .all(|x| matches!(x, E::LookOpacity(v) if *v >= ShapeLookFacts::OPACIDADE_MINIMA)),
+        "{e:?}"
+    );
+    sai();
+}

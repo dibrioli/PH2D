@@ -34,9 +34,9 @@ pub enum Tinta {
         camada: u8,
         marca: Marca,
         corpo: Option<BodyKind>,
-        /// Multiplica a cor resolvida da camada: o Color × Opacity do Look da forma (GEF02 onda 8).
+        /// O Look da forma (GEF02 onda 8): a cor que SUBSTITUI a da camada e o multiplicador do alfa.
         /// [`TOM_NEUTRO`] = a cor do tema.
-        tom: [f32; 4],
+        tom: Tom,
     },
     /// ⭐ Uma linha de sensor (o traço fino de [`SONDA_PX`]). Com `camada` (o `RaySensor` do objecto, emenda 4, dono
     /// 08/11) a matiz é a da camada e o estado fica na opacidade `rgba[3]` (parado · nada · viu), com a sombra do
@@ -47,8 +47,18 @@ pub enum Tinta {
     },
 }
 
+/// O Look da forma no contorno: `cor` substitui o RGB da camada (`None` = a do tema); `alfa` multiplica a opacidade.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Tom {
+    pub cor: Option<[f32; 3]>,
+    pub alfa: f32,
+}
+
 /// O `tom` que não muda a cor da camada.
-pub const TOM_NEUTRO: [f32; 4] = [1.0; 4];
+pub const TOM_NEUTRO: Tom = Tom {
+    cor: None,
+    alfa: 1.0,
+};
 
 /// A espessura de uma linha de sensor, mais fina que o contorno (`OUTLINE_PX` da `ph2d-app-physics`).
 pub const SONDA_PX: f64 = 1.25; // LITERAL-PX-OK: chrome de overlay
@@ -107,7 +117,7 @@ pub fn marca(col: &Collider, corpo: Option<BodyKind>, aceso: bool, atravessavel:
 
 /// A tinta com o `tom` do Look da forma (só a da camada o leva; as anotações de cor fixa ficam).
 #[must_use]
-pub fn com_tom(tinta: Tinta, tom: [f32; 4]) -> Tinta {
+pub fn com_tom(tinta: Tinta, tom: Tom) -> Tinta {
     match tinta {
         Tinta::Camada {
             camada,
@@ -163,9 +173,10 @@ pub fn tinta_do_contorno(tinta: Tinta, theme: Theme) -> (Stroke, Color) {
         traco = traco.with_dashes(0.0, p);
     }
     c.components[3] *= alfa;
-    for (k, m) in c.components.iter_mut().zip(tom) {
-        *k *= m;
+    if let Some([r, g, b]) = tom.cor {
+        c.components[..3].copy_from_slice(&[r, g, b]);
     }
+    c.components[3] *= tom.alfa;
     (traco, c)
 }
 

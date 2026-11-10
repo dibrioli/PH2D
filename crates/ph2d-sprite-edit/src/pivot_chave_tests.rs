@@ -230,3 +230,55 @@ fn a_bolinha_grava_a_trajetoria_reta() {
     iguala_o_ritmo(&mut so_posicao, &TimelineDoc::new());
     assert_eq!(so_posicao.len(), 1);
 }
+
+/// ⭐ Dono 10/11: «animar o pivot fez a shape balançar». O pivô da forma de colisão (`ShapeLook`) é um pivô como a âncora
+/// da Sprite: anda no ritmo da posição, com o Offset que se dobra nele, e a trajetória das chaves dele fica reta.
+/// *Mutação: `e_ancora` só com a Sprite ⇒ vermelho.*
+#[test]
+fn o_pivo_da_forma_de_colisao_anda_no_ritmo_da_posicao() {
+    let doc = TimelineDoc::new();
+    let pivo = |i| {
+        PropKind::Field(
+            ph2d_ecs::canal_componente::chave("ph2d::physics::ShapeLook", 0, i).unwrap(),
+        )
+    };
+    let colisao = PropKind::Field(ph2d_ecs::FieldKey::new(
+        ph2d_ecs::canal::familia::FISICA,
+        ph2d_ecs::canal_fisica::DESLOC_X,
+        0,
+        0,
+    ));
+    let suave = Interp::Hold;
+    let quem = com_pivo([(FILHO, pivo(1))].into_iter());
+    assert_eq!(quem, vec![FILHO]);
+    for p in [pivo(0), pivo(1), colisao] {
+        assert_eq!(
+            ritmo_da_chave(&doc, FILHO, p, &quem, suave),
+            Interp::Linear,
+            "{p:?}"
+        );
+    }
+    let t = RationalTime::from_seconds(1.0);
+    let mut i = vec![
+        TimelineIntent::BeginEdit,
+        TimelineIntent::AddKey {
+            entity: FILHO,
+            prop: pivo(0),
+            t,
+            value: AnimValue::Float(-1.0),
+            interp: Interp::Hold,
+        },
+        TimelineIntent::AddPathKey {
+            entity: FILHO,
+            t,
+            at: [3.0, 4.0],
+        },
+        TimelineIntent::EndEdit,
+    ];
+    iguala_o_ritmo(&mut i, &doc);
+    assert!(
+        i.iter()
+            .any(|x| matches!(x, TimelineIntent::PathKeyCorner { entity: FILHO, .. })),
+        "a chave da posição vira canto: {i:?}"
+    );
+}

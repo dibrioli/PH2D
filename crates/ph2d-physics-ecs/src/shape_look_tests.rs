@@ -47,9 +47,13 @@ fn o_sanitize_poe_cor_e_opacidade_na_faixa() {
         pivot: [f32::NAN, 3.0],
         tint: [2.0, -1.0, 0.5, f32::INFINITY],
         opacity: 7.0,
+        cor_propria: true,
     };
     l.sanitize();
     assert_eq!(l.pivot, [0.0, 3.0]);
     assert_eq!(l.tint, [1.0, 0.0, 0.5, 1.0]);
     assert_eq!(l.opacity, 1.0);
+    l.opacity = 0.0;
+    l.sanitize();
+    assert_eq!(l.opacity, OPACIDADE_MINIMA, "a forma nunca some de todo");
 }

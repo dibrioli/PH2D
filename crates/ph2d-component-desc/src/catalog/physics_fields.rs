@@ -247,6 +247,7 @@ pub(super) const SHAPE_LOOK: &[FieldDesc] = &[
     f(0, "component.field.shape_look.0", K::Vec2).named("pivot"),
     f(1, "component.field.shape_look.1", K::Color).named("tint"),
     f(2, "component.field.shape_look.2", K::Scalar).named("opacity"),
+    f(3, "component.field.shape_look.3", K::Toggle).named("own_color"),
 ];
 pub(super) const GRAVITY_SCALE: &[FieldDesc] =
     &[f(0, "component.field.gravity_scale.0", K::Scalar).named_as("gravity_scale", WHOLE)];

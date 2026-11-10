@@ -24,16 +24,6 @@ const POR_CENTO: f64 = 100.0; // LITERAL-PX-OK: opacity percent scale
 /// O passo dos campos X e Y, um centímetro (o mesmo do Offset da física).
 const PASSO_M: f64 = 0.01; // LITERAL-PX-OK: meters
 
-thread_local! {
-    /// As formas com os campos X e Y abertos à mão, com o pivô num dos nove pontos.
-    static ABERTO: std::cell::RefCell<std::collections::BTreeSet<u64>> =
-        const { std::cell::RefCell::new(std::collections::BTreeSet::new()) };
-}
-
-fn aberto(bits: u64, f: &ShapeLookFacts) -> bool {
-    f.ponto.is_none() || ABERTO.with(|a| a.borrow().contains(&bits))
-}
-
 /// O cartão Look, só quando a seleção é um objeto «Collision Shape».
 pub(crate) fn cartao() -> Option<CardDef<'static>> {
     let info = crate::state::current_inspector_physics()?;
@@ -41,56 +31,51 @@ pub(crate) fn cartao() -> Option<CardDef<'static>> {
     if !f.on {
         return None;
     }
-    let bits = info.entity_bits;
     Some(CardDef {
         section: CARD_SHAPE_LOOK,
         title: tr("card.insp.look"),
         actions: Vec::new(),
         add: None,
         summary: None,
-        body: Some(Box::new(move |c: &mut CardCtx<'_>, y| corpo(c, y, bits, f))),
+        body: Some(Box::new(move |c: &mut CardCtx<'_>, y| corpo(c, y, f))),
     })
 }
 
-fn corpo(c: &mut CardCtx<'_>, y: f32, bits: u64, f: ShapeLookFacts) -> f32 {
+fn corpo(c: &mut CardCtx<'_>, y: f32, f: ShapeLookFacts) -> f32 {
     let y = crate::cards_objeto::com_corpo(c, y, |t, theme, store, x, w, y| {
-        crate::sections::look::paint_cor_da_forma(
-            t.scene, t.text, theme, t.hit, store, x, w, y, f.tint,
-        )
+        crate::sections::look::paint_cor_da_forma(t.scene, t.text, theme, t.hit, store, x, w, y)
     });
-    let fim = c.row(
-        &[Cell::new(Widget::Readout { text: "" })
-            .label(tr("card.insp.pivot"))
-            .key(&ids::INSP_SHAPE_PIVOT_XY)],
+    // O Pivot (dono 10/11): a grade à esquerda e o «Pivot from centre» sempre à vista à direita, X por cima de Y.
+    let m = ph2d_card_stack::metrics::FIELD_H;
+    let lado = m * 0.5 * crate::cards_sprite_pivot::CASAS_POR_LADO;
+    let (x0, w0) = (c.x, c.w);
+    c.w = lado;
+    let fim_rotulo = c.row(
+        &[Cell::new(Widget::Bare(&[])).label(tr("card.insp.pivot"))],
         y,
     );
-    let campos = aberto(bits, &f);
-    let fim = grade(
-        c,
-        fim - ph2d_card_stack::metrics::FIELD_H,
-        &ids::INSP_SHAPE_PIVOT,
-        ids::INSP_SHAPE_PIVOT_NOME,
-        f.ponto,
-        campos,
-    );
-    if !campos {
-        return fim;
-    }
+    let fim_grade = grade(c, fim_rotulo - m, &ids::INSP_SHAPE_PIVOT, None, f.ponto);
+    let folga = ph2d_tokens::Spacing::Md.px();
+    (c.x, c.w) = (x0 + lado + folga, w0 - lado - folga);
     let (gx, gy) = (tr("card.glyph.x"), tr("card.glyph.y"));
-    c.row(
-        &[
-            Cell::new(Widget::Field {
-                id: ids::INSP_SHAPE_PIVOT_XY[0],
-                glyph: ph2d_editor_core::widget::card_field::Glyph::Text(gx),
-            })
-            .label(tr("card.insp.shape_pivot_xy")),
-            Cell::new(Widget::Field {
-                id: ids::INSP_SHAPE_PIVOT_XY[1],
-                glyph: ph2d_editor_core::widget::card_field::Glyph::Text(gy),
-            }),
-        ],
-        fim,
-    )
+    let fim_x = c.row(
+        &[Cell::new(Widget::Field {
+            id: ids::INSP_SHAPE_PIVOT_XY[0],
+            glyph: ph2d_editor_core::widget::card_field::Glyph::Text(gx),
+        })
+        .label(tr("card.insp.shape_pivot_xy"))
+        .key(&ids::INSP_SHAPE_PIVOT_XY)],
+        y,
+    );
+    let fim_y = c.row(
+        &[Cell::new(Widget::Field {
+            id: ids::INSP_SHAPE_PIVOT_XY[1],
+            glyph: ph2d_editor_core::widget::card_field::Glyph::Text(gy),
+        })],
+        fim_x,
+    );
+    (c.x, c.w) = (x0, w0);
+    fim_grade.max(fim_y)
 }
 
 /// Uma vez por quadro: os widgets, as dicas e os números vivos (o pivô também anda pelo canvas e pela curva).
@@ -122,7 +107,8 @@ pub(crate) fn prepara(host: &mut dyn PanelHostInternal) {
             POR_CENTO as f32,
             0.0,
         );
-        store.set_number_range(ids::INSP_SHAPE_OPACITY_CHIP, 0.0, POR_CENTO, 1.0);
+        let minima = f64::from(ShapeLookFacts::OPACIDADE_MINIMA) * POR_CENTO;
+        store.set_number_range(ids::INSP_SHAPE_OPACITY_CHIP, minima, POR_CENTO, 1.0);
         // `Plain`: focável, o Down arma e o Up dá `Click` (a cor vive em `widget_colors`).
         store.register(ids::INSP_SHAPE_TINT_SWATCH, InteractiveState::Plain);
         for id in ids::INSP_SHAPE_PIVOT_XY {
@@ -144,8 +130,13 @@ pub(crate) fn prepara(host: &mut dyn PanelHostInternal) {
     }
     crate::cards_sprite::botao(
         store,
-        ids::INSP_SHAPE_PIVOT_NOME,
-        "card.insp.pivot_nome_tip",
+        ids::INSP_SHAPE_TINT_RESET,
+        "card.insp.shape_color_reset_tip",
+    );
+    crate::cards_sprite::botao(
+        store,
+        ids::INSP_SHAPE_OPACITY_RESET,
+        "card.insp.shape_opacity_reset_tip",
     );
     for id in ids::INSP_SHAPE_PIVOT_XY {
         store.mark_card_field(
@@ -183,7 +174,17 @@ pub(crate) fn prepara(host: &mut dyn PanelHostInternal) {
         }
     }
     // A Color: com o seletor nela, a cor escolhida vira edição; senão a amostra espelha a gravada.
-    let gravada = crate::state_tint::tint_f32_to_u8(f.tint);
+    // Sem cor própria a amostra mostra a da camada, a que o canvas pinta (a do tema).
+    let tema = host.theme();
+    let gravada = if f.cor_propria {
+        crate::state_tint::tint_f32_to_u8(f.tint)
+    } else {
+        let c = ph2d_editor_core::paint::resolve(
+            ph2d_tokens::ColorToken::layer(usize::from(f.camada)),
+            tema,
+        );
+        crate::state_tint::tint_f32_to_u8(c.components)
+    };
     let do_seletor = host.store().picker_target() == Some(ids::INSP_SHAPE_TINT_SWATCH)
         && host
             .store()
@@ -210,19 +211,15 @@ pub(crate) fn evento(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
     };
     let edit = match ev {
         WidgetEvent::Click(id) if id == ids::INSP_SHAPE_TINT_SWATCH => {
-            let semente = crate::state_tint::tint_f32_to_u8(info.look.tint);
-            host.store_mut().set_widget_color(id, semente);
+            // A semente é a cor que a amostra já mostra (a própria, ou a da camada): `prepara` espelha-a.
             host.store_mut().open_picker_on(id);
             return true;
         }
-        WidgetEvent::Click(id) if id == ids::INSP_SHAPE_PIVOT_NOME => {
-            ABERTO.with(|a| {
-                let mut a = a.borrow_mut();
-                if !a.remove(&info.entity_bits) {
-                    a.insert(info.entity_bits);
-                }
-            });
-            return true;
+        WidgetEvent::Click(id) if id == ids::INSP_SHAPE_TINT_RESET => {
+            PhysicsFieldEdit::LookResetColor
+        }
+        WidgetEvent::Click(id) if id == ids::INSP_SHAPE_OPACITY_RESET => {
+            PhysicsFieldEdit::LookResetOpacity
         }
         WidgetEvent::Click(id) => {
             let Some(i) = ids::INSP_SHAPE_PIVOT.iter().position(|o| *o == id) else {
@@ -244,7 +241,7 @@ pub(crate) fn evento(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
             let Some((_, v)) = host.store().slider(ids::INSP_SHAPE_OPACITY) else {
                 return true;
             };
-            PhysicsFieldEdit::LookOpacity(v)
+            PhysicsFieldEdit::LookOpacity(v.max(ShapeLookFacts::OPACIDADE_MINIMA))
         }
         _ => return false,
     };

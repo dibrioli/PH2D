@@ -113,7 +113,13 @@ pub fn outlines(
         let look = world.get::<ph2d_physics_ecs::ShapeLook>(e);
         out.push((
             path,
-            look.map_or(tinta, |l| crate::overlay::tinta::com_tom(tinta, l.tom())),
+            look.map_or(tinta, |l| {
+                let (cor, alfa) = l.tom();
+                crate::overlay::tinta::com_tom(
+                    tinta,
+                    ph2d_panel_physics::tinta_canvas::Tom { cor, alfa },
+                )
+            }),
         ));
         // Sem corpo acima o solver não a vê: nenhuma anotação de corpo.
         if kind.is_none() {

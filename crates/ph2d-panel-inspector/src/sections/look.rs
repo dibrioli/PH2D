@@ -100,7 +100,6 @@ pub(crate) fn paint_cor_da_forma(
     x: f32,
     w: f32,
     y: f32,
-    tint: [f32; 4],
 ) -> f32 {
     let rotulo = TextKey::new("component.field.shape_look.1");
     let sec = ph2d_editor_core::property_row::Seccao::medida(
@@ -113,7 +112,9 @@ pub(crate) fn paint_cor_da_forma(
         Rect::new(xa, y, wa, ROW_H_PX),
         rotulo,
         ids::INSP_SHAPE_TINT_SWATCH,
-        crate::state_tint::tint_f32_to_u8(tint),
+        store
+            .widget_color(ids::INSP_SHAPE_TINT_SWATCH)
+            .unwrap_or([u8::MAX; 4]),
         false,
         store,
         hit_index,
@@ -122,6 +123,29 @@ pub(crate) fn paint_cor_da_forma(
         theme,
         sec,
     );
+    // Os resets (dono 10/11) na linha do rótulo, à esquerda da marca de chave de cada coluna.
+    for (id, (cx, cw)) in [
+        (ids::INSP_SHAPE_TINT_RESET, (xa, wa)),
+        (ids::INSP_SHAPE_OPACITY_RESET, (xb, wb)),
+    ] {
+        use ph2d_card_stack::metrics as m;
+        let lado = m::LABEL_PX + m::LABEL_BOTTOM;
+        let r = Rect::new(
+            cx + cw - m::KEY_MARK_BOX - lado,
+            y + m::LABEL_TOP - lado * 0.5,
+            lado,
+            lado,
+        );
+        hit_index.register(id, r);
+        ph2d_editor_core::widget::paint_icon_button(
+            r,
+            ph2d_editor_core::widget::IconGlyph::Builtin(ph2d_editor_core::IconId::Reset),
+            ph2d_editor_core::widget::IconButtonStyle::Plain,
+            store.button_visual(id),
+            scene,
+            theme,
+        );
+    }
     ph2d_editor_core::panel::cards::corpo::bar_field(
         scene,
         text_system,

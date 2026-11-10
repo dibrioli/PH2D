@@ -148,7 +148,7 @@ fn a_forma_solta_nao_leva_anotacao_de_corpo() {
     assert_eq!(saiu.len(), 1, "só o contorno: saíram {}", saiu.len());
 }
 
-/// ⭐ **O Look da forma pinta o contorno** (GEF02 onda 8): o Color multiplica a cor do tema e a Opacity o alfa, no
+/// ⭐ **O Look da forma pinta o contorno** (GEF02 onda 8): o Color substitui a cor do tema e a Opacity multiplica o alfa, no
 /// contorno e na sombra dele; sem `ShapeLook`, a cor do tema intacta. E o contorno fica onde o pivô põe a forma.
 #[test]
 fn o_look_da_forma_tinge_o_contorno_e_o_pivo_o_move() {
@@ -172,10 +172,14 @@ fn o_look_da_forma_tinge_o_contorno_e_o_pivo_o_move() {
         pivot: [-1.0, 0.0],
         tint: [1.0, 0.0, 0.0, 1.0],
         opacity: 0.5,
+        cor_propria: true,
     }));
     let (t, k) = (tema.components, tinto.components);
-    assert_eq!(k[0], t[0], "o vermelho fica");
-    assert_eq!((k[1], k[2]), (0.0, 0.0), "o verde e o azul saem");
+    assert_eq!(
+        k[..3],
+        [1.0, 0.0, 0.0],
+        "a cor própria SUBSTITUI a da camada (dono 10/11)"
+    );
     assert!(
         (k[3] - t[3] * 0.5).abs() < 1e-6,
         "metade do alfa: {} × {}",

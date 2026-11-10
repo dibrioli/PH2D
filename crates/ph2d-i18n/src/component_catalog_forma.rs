@@ -7,6 +7,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.shape_look.0" => "Pivot",
         "component.field.shape_look.1" => "Color",
         "component.field.shape_look.2" => "Opacity",
+        "component.field.shape_look.3" => "Own Color",
         _ => return None,
     })
 }

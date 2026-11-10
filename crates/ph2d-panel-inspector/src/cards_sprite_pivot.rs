@@ -15,7 +15,7 @@ use ph2d_editor_core::{IconId, ImageUseEdit, SpritePivot};
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing};
 
-const CASAS_POR_LADO: f32 = 3.0; // LITERAL-PX-OK: a grade é 3 × 3, conta e não geometria
+pub(crate) const CASAS_POR_LADO: f32 = 3.0; // LITERAL-PX-OK: a grade é 3 × 3, conta e não geometria
 /// A marca do Flip grava os dois eixos; a do Pivot, o pivô e a posição (`marcas_inspector::mascara`).
 const FLIP_KEY: [NodeId; 2] = [ids::INSP_SPRITE_FLIP_X, ids::INSP_SPRITE_FLIP_Y];
 
@@ -99,21 +99,19 @@ fn grade_do_pivot(c: &mut CardCtx<'_>, y: f32, f: slot_image::SpriteFacts) -> f3
         c,
         y,
         &ids::INSP_SPRITE_PIVOT,
-        ids::INSP_SPRITE_PIVOT_NOME,
+        Some((ids::INSP_SPRITE_PIVOT_NOME, aberto)),
         f.pivot_ponto,
-        aberto,
     )
 }
 
 /// ⭐ A grade 3 × 3 de um Pivot (a Sprite e a forma de colisão): `aceso` = o ponto `[coluna, linha]` em que o pivô
-/// cai, e o botão `nome` ao lado, ligado quando os campos X e Y estão `aberto`s. Devolve o fundo.
+/// cai, e o botão `nome` ao lado (se há), ligado quando os campos X e Y estão abertos. Devolve o fundo.
 pub(crate) fn grade(
     c: &mut CardCtx<'_>,
     y: f32,
     pontos: &[NodeId; 9],
-    nome: NodeId,
+    nome: Option<(NodeId, bool)>,
     aceso: Option<[u8; 2]>,
-    aberto: bool,
 ) -> f32 {
     let theme = c.ink.theme;
     let casa = m::FIELD_H * 0.5;
@@ -152,16 +150,18 @@ pub(crate) fn grade(
         );
         c.hit_index.register(id, r);
     }
-    let botao = [Seg {
-        id: nome,
-        icon: Some(IconId::More),
-        text: "",
-        on: aberto,
-    }];
-    let (x0, w0) = (c.x, c.w);
-    (c.x, c.w) = (c.x + lado + Spacing::Xs.px(), m::FIELD_H);
-    c.row(&[Cell::new(Widget::Bare(&botao))], y);
-    (c.x, c.w) = (x0, w0);
+    if let Some((nome, aberto)) = nome {
+        let botao = [Seg {
+            id: nome,
+            icon: Some(IconId::More),
+            text: "",
+            on: aberto,
+        }];
+        let (x0, w0) = (c.x, c.w);
+        (c.x, c.w) = (c.x + lado + Spacing::Xs.px(), m::FIELD_H);
+        c.row(&[Cell::new(Widget::Bare(&botao))], y);
+        (c.x, c.w) = (x0, w0);
+    }
     y + lado + m::FIELD_ROW_GAP
 }
 

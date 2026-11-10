@@ -13,15 +13,23 @@ pub struct ShapeLookFacts {
     /// A cor e a opacidade do overlay (`ShapeLook::tint`/`opacity`).
     pub tint: [f32; 4],
     pub opacity: f32,
+    /// A forma tem cor própria; senão a amostra mostra a cor da `camada` (a do tema).
+    pub cor_propria: bool,
+    pub camada: u8,
 }
 
 impl ShapeLookFacts {
+    /// O piso da Opacity do cartão (dono 10/11: 25 %); o mesmo de `ph2d_physics_ecs::shape_look::OPACIDADE_MINIMA`
+    /// (gate `o_piso_da_opacidade_e_um_so` na `ph2d-shape-handles`).
+    pub const OPACIDADE_MINIMA: f32 = 0.25; // LITERAL-PX-OK: piso de opacidade do dono, não geometria
     pub const NONE: Self = Self {
         on: false,
         ponto: Some([1, 1]),
         metros: [0.0, 0.0],
         tint: [1.0; 4],
         opacity: 1.0,
+        cor_propria: false,
+        camada: 0,
     };
 }
 

@@ -42,8 +42,9 @@ impl CardCtx<'_> {
         if self.tudo_cabe(&par) {
             return self.row_inteira(&par, y);
         }
-        let y = self.row_inteira(&[a], y);
-        self.row_inteira(&[b], y)
+        // Um por linha pela `row`: a escolha sozinha que não cabe quebra em filas (lei 7).
+        let y = self.row(&[a], y);
+        self.row(&[b], y)
     }
 
     /// ⭐ **N irmãos curtos**: dois a dois enquanto couberem, pela ordem dada.
@@ -57,7 +58,7 @@ impl CardCtx<'_> {
                     resto = &cauda[1..];
                 }
                 _ => {
-                    y = self.row_inteira(&[*a], y);
+                    y = self.row(&[*a], y);
                     resto = cauda;
                 }
             }

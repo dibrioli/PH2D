@@ -587,3 +587,44 @@ fn the_mark_of_a_check_in_a_pair_walks_with_its_name() {
         "marca no fim da coluna: {pontos:?}, fim {fim}"
     );
 }
+
+/// ⭐ **A escolha num PAR ou num COMPACTO também quebra em filas** (auditoria 10/11, Paint Mixing: Pigment e Color mixing
+/// num `pair`). Na coluna estreita o par desce um por linha — e a escolha sozinha que não cabe tem de quebrar como na
+/// [`CardCtx::row`], em vez de cortar os segmentos. *Mutação: o par/compacto a pintar cada célula por `row_inteira`.*
+#[test]
+fn a_choice_alone_in_a_pair_or_compact_row_still_wraps() {
+    let seg = |id, text| Seg {
+        id,
+        icon: None,
+        text,
+        on: false,
+    };
+    let segs = [
+        seg(A, "Wet canvas"),
+        seg(B, "Dry canvas"),
+        seg(C, "Hand-packed"),
+    ];
+    for compacto in [false, true] {
+        let mut f = mesa();
+        let (_, censo) = censo::grava(|| {
+            let mut c = ctx(&mut f, 160.0);
+            let escolha = Cell::new(Widget::Choice(&segs)).label("Whole");
+            let outro = campo(NodeId(0x4b_0009), "Amount");
+            if compacto {
+                c.compact(&[escolha, outro], 0.0)
+            } else {
+                c.pair(escolha, outro, 0.0)
+            }
+        });
+        let (ra, rc) = (f.hit.rect_for(A).unwrap(), f.hit.rect_for(C).unwrap());
+        assert!(
+            rc.y > ra.y,
+            "compacto={compacto}: a escolha não quebrou {ra:?} {rc:?}"
+        );
+        assert!(
+            censo.textos_cortados().is_empty(),
+            "compacto={compacto}: {:?}",
+            censo.textos
+        );
+    }
+}

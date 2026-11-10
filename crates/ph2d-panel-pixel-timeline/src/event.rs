@@ -224,6 +224,7 @@ fn pedido(id: NodeId) -> Option<PixelRequest> {
                         W::Collapse => PixelRequest::LayerCollapsed(r.id),
                         W::Continuous => PixelRequest::LayerContinuous(r.id),
                         W::Normal => PixelRequest::LayerNormal(r.id),
+                        W::Effects => PixelRequest::LayerSelect(r.id),
                     });
                 }
             }

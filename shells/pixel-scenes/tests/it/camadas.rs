@@ -307,3 +307,45 @@ fn normal_map_from_the_panel_leaves_the_color_in_one_undo_step() {
     assert_eq!(p.janela(LOCKED_BOX), cor, "o Ctrl+Z devolve a cor");
     assert_eq!(normal(&p), n0, "e a normal");
 }
+
+/// P13 §6 Layer Properties ▸ Effects ▸ Outline, a 4.ª condição (`aplicar_o_efeito_e_um_passo`): ligar
+/// o Outline faz a composição mostrar o contorno (um passo); Apply assa-o num passo e a linha deixa
+/// de ter efeito, sem a imagem mudar; Ctrl+Z volta ao efeito VIVO (a linha volta a tê-lo).
+#[test]
+fn the_layer_outline_from_the_panel_shows_bakes_in_one_step_and_undoes_alive() {
+    use ph2d_editor_core::pixel_panel::PixelLayerEffect as E;
+    let mut p = Palco::novo();
+    let id = p.id("Opacity 50%");
+    let b = ph2d_app_pixel::smoke_camadas::OPACITY_BOX;
+    let w = (b.w + 4, b.h + 4);
+    let janela = Rect::new(b.x - 2, b.y - 2, w.0, w.1);
+    let sem = p.janela(janela);
+    let linha = |i: &PixelPanelInfo| i.layers.iter().find(|r| r.id == id).and_then(|r| r.outline);
+    let antes = p.passos();
+    let info = p.pede(PixelRequest::LayerEffect(id, E::On([250, 200, 0, 255])));
+    assert_eq!(p.passos(), antes + 1, "ligar é um passo");
+    assert!(
+        linha(&info).is_some(),
+        "a linha da camada diz que tem efeito"
+    );
+    let com = p.janela(janela);
+    assert_ne!(com, sem, "a composição mostra o contorno");
+    // O contorno exterior cai FORA da caixa: a célula logo à esquerda do canto muda.
+    let k = (2 * w.0 as usize + 1) * 4;
+    assert_ne!(
+        com[k..k + 4],
+        sem[k..k + 4],
+        "a célula fora da caixa ganhou o contorno"
+    );
+    let info = p.pede(PixelRequest::LayerEffect(id, E::Apply));
+    assert_eq!(p.passos(), antes + 2, "Apply é UM passo");
+    assert!(linha(&info).is_none(), "assado: o efeito sai da camada");
+    assert_eq!(p.janela(janela), com, "e a imagem fica a do efeito");
+    assert!(p.app.undo(p.key));
+    let info = p.quadro();
+    assert!(linha(&info).is_some(), "Ctrl+Z: o efeito volta vivo");
+    assert_eq!(p.janela(janela), com);
+    assert!(p.app.undo(p.key));
+    p.quadro();
+    assert_eq!(p.janela(janela), sem, "e o 2.º Ctrl+Z tira-o");
+}

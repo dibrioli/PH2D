@@ -390,6 +390,9 @@ pub(crate) fn apply_event(
         WidgetEvent::Toggled(id) if id == ids::LAYER_NORMAL => {
             return empurra(host, pedido_normal());
         }
+        WidgetEvent::Toggled(id) if crate::seam_camadas::pedido_efeito(id).is_some() => {
+            return empurra(host, crate::seam_camadas::pedido_efeito(id));
+        }
         WidgetEvent::Toggled(id) => {
             // O valor vem do MODELO (o instantâneo), nunca do visual da caixa.
             let pedido = with_current(|info| {

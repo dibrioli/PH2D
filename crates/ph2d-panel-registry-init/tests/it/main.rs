@@ -89,6 +89,8 @@ mod the_pixel_export_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-keys")]
 mod the_pixel_keys_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-tools")]
+mod the_pixel_layer_effects_answer_a_real_pointer;
+#[cfg(feature = "panel-pixel-tools")]
 mod the_pixel_layer_normal_map_answers_a_real_pointer;
 mod the_pixel_layer_user_data_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-tools")]

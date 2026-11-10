@@ -105,6 +105,7 @@ fn linha(id: u32, name: &str, normal: bool) -> PixelLayerRow {
         background: false,
         opacity: 255,
         blend: Default::default(),
+        outline: None,
     }
 }
 

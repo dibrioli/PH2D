@@ -7,7 +7,7 @@ use crate::state::with_current;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::pixel_panel::PixelRequest;
-use ph2d_editor_core::widget::{ButtonState, CheckboxState, TextInputState};
+use ph2d_editor_core::widget::{ButtonState, CheckboxState, CheckboxValue, TextInputState};
 use ph2d_i18n::tr;
 
 /// O registo POR QUADRO das partes das linhas de camada (os ids derivam do id da camada), com a
@@ -22,7 +22,23 @@ pub(crate) fn register_layers(
         (ids::LayerWidget::Solo, "panel.pixel.layer.solo"),
         (ids::LayerWidget::Collapse, "panel.pixel.layer.collapse"),
         (ids::LayerWidget::Normal, "panel.pixel.layer.normal_tip"),
+        (ids::LayerWidget::Effects, "panel.pixel.layer.effects_tip"),
     ];
+    for id in [
+        ids::LAYER_FX_OUTLINE,
+        ids::LAYER_FX_INSIDE,
+        ids::LAYER_FX_SQUARE,
+    ] {
+        let (state, value) = (CheckboxState::Normal, CheckboxValue::Unchecked);
+        store.register_if_absent(id, InteractiveState::Checkbox { state, value });
+    }
+    for (id, _) in ids::LAYER_FX_BUTTONS {
+        let state = ButtonState::Normal;
+        store.register_if_absent(id, InteractiveState::Button { state });
+    }
+    store.set_tooltip(ids::LAYER_FX_OUTLINE, tr("pixel.layer.effects.outline_tip"));
+    let apply = ids::LAYER_FX_BUTTONS[1].0;
+    store.set_tooltip(apply, tr("pixel.layer.effects.apply.tooltip"));
     for r in rows {
         for w in ids::LayerWidget::ALL {
             let id = ids::layer_widget_id(r.id, w);
@@ -120,6 +136,9 @@ pub(crate) fn pedido_camada(id: NodeId) -> Option<PixelRequest> {
         if !info.editing {
             return None;
         }
+        if let Some(e) = efeito_de(info, id) {
+            return Some(e);
+        }
         if let Some((_, a, _)) = ids::LAYER_ACTIONS.iter().find(|(b, ..)| *b == id) {
             return Some(PixelRequest::LayerAction(*a));
         }
@@ -133,8 +152,34 @@ pub(crate) fn pedido_camada(id: NodeId) -> Option<PixelRequest> {
                     W::Collapse => PixelRequest::LayerCollapsed(r.id),
                     W::Continuous => PixelRequest::LayerContinuous(r.id),
                     W::Normal => PixelRequest::LayerNormal(r.id),
+                    W::Effects => PixelRequest::LayerSelect(r.id),
                 })
             })
         })
     })
+}
+
+/// P13: o pedido de uma caixa ou botão de Layer Properties ▸ Effects (o valor vem do MODELO).
+pub(crate) fn pedido_efeito(id: NodeId) -> Option<PixelRequest> {
+    with_current(|i| efeito_de(i, id).filter(|_| i.editing))
+}
+
+fn efeito_de(
+    i: &ph2d_editor_core::pixel_panel::PixelPanelInfo,
+    id: NodeId,
+) -> Option<PixelRequest> {
+    use ph2d_editor_core::pixel_panel::PixelLayerEffect as E;
+    let layer = i.active_layer?;
+    let o = i.layers.iter().find(|r| r.id == layer)?.outline;
+    let b = ids::LAYER_FX_BUTTONS;
+    let e = match (id, o) {
+        (x, None) if x == ids::LAYER_FX_OUTLINE => E::On(i.fg),
+        (x, Some(_)) if x == ids::LAYER_FX_OUTLINE || x == b[2].0 => E::Off,
+        (x, Some(o)) if x == ids::LAYER_FX_INSIDE => E::Inside(!o.inside),
+        (x, Some(o)) if x == ids::LAYER_FX_SQUARE => E::Square(!o.square),
+        (x, Some(_)) if x == b[0].0 => E::Color(i.fg),
+        (x, Some(_)) if x == b[1].0 => E::Apply,
+        _ => return None,
+    };
+    Some(PixelRequest::LayerEffect(layer, e))
 }

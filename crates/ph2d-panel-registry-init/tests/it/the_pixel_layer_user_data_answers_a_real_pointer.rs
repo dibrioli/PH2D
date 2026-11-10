@@ -128,6 +128,7 @@ fn the_pixel_layer_user_data_card_answers_a_real_pointer() {
             background: false,
             opacity: 255,
             blend: Default::default(),
+            outline: None,
         }],
         active_layer: Some(4),
         user: PixelUserInfo {

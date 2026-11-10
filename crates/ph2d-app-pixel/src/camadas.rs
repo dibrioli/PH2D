@@ -58,6 +58,7 @@ impl PixelApp {
                 | PixelRequest::LayerAction(_)
                 | PixelRequest::LayerRename { .. }
                 | PixelRequest::LayerNormal(_)
+                | PixelRequest::LayerEffect(..)
         );
         if !layer_request {
             return false;
@@ -101,6 +102,9 @@ impl PixelApp {
                 let id = LayerId(*id);
                 s.layer(id)
                     .and_then(|l| layers::set_normal(s, id, !l.normal))
+            }
+            PixelRequest::LayerEffect(id, e) => {
+                ph2d_pixel_ponte::camadas::efeito_op(s, LayerId(*id), *e)
             }
             PixelRequest::LayerOpacity(o) => layers::edit(s, active, |l| l.opacity = *o),
             PixelRequest::LayerBlend(b) => layers::edit(s, active, |l| l.blend = blend_to(*b)),

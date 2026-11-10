@@ -20,6 +20,32 @@ pub struct PixelLayerRow {
     pub background: bool,
     pub opacity: u8,
     pub blend: PixelBlend,
+    /// P13: o efeito Outline da camada, se o tem.
+    pub outline: Option<PixelOutline>,
+}
+
+/// P13: o efeito Outline no vocabulário do chrome (os params do filtro Edit ▸ FX ▸ Outline).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PixelOutline {
+    pub color: [u8; 4],
+    pub inside: bool,
+    /// 8 vizinhos (quadrado); `false` = 4 (cruz).
+    pub square: bool,
+}
+
+/// P13: Layer Properties ▸ Effects — cada pedido é um passo do desfazer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PixelLayerEffect {
+    /// Liga o Outline com esta cor (a primária).
+    On([u8; 4]),
+    /// Remove o efeito (o cel fica como está).
+    Off,
+    Inside(bool),
+    Square(bool),
+    /// A cor do contorno passa a ser esta (a primária).
+    Color([u8; 4]),
+    /// Assa o efeito em todos os quadros e remove-o.
+    Apply,
 }
 
 /// O modo de mistura no vocabulário do chrome (os 19 do Aseprite, na ordem dos ids do `.ase`).

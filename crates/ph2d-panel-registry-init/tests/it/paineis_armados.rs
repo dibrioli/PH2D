@@ -378,6 +378,7 @@ fn camada_do_pixel(id: u32, name: &str) -> ph2d_editor_core::pixel_panel::PixelL
         background: false,
         opacity: 255,
         blend: Default::default(),
+        outline: None,
     }
 }
 

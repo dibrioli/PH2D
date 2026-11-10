@@ -6,6 +6,7 @@ use ph2d_editor_core::pixel_panel::{
     PixelDialogChoice, PixelEditAction as E, PixelFrameAction as F, PixelLayerAction, PixelRequest,
     PixelSpriteAction as Sp,
 };
+use ph2d_editor_core::pixel_panel::PixelLayerEffect;
 
 /// O nome de um passo do menu Edit: o do comando nos atalhos (`pixel.keys.*`) quando lá está.
 pub const fn nome_edit(a: E) -> &'static str {
@@ -64,6 +65,8 @@ pub const fn nome_camada(r: &PixelRequest) -> &'static str {
         PixelRequest::LayerVisible(_) | PixelRequest::LayerSolo(_) => "pixel.keys.layer.visibility",
         PixelRequest::LayerRename { .. } => "pixel.keys.layer.rename",
         PixelRequest::LayerNormal(_) => "pixel.history.layer_normal",
+        PixelRequest::LayerEffect(_, PixelLayerEffect::Apply) => "pixel.history.layer_effects_apply",
+        PixelRequest::LayerEffect(..) => "pixel.history.layer_effects",
         PixelRequest::LayerAction(a) => match a {
             A::NewLayer => "pixel.keys.layer.new",
             A::NewGroup => "pixel.keys.layer.new_group",

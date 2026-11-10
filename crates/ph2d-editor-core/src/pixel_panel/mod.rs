@@ -583,6 +583,8 @@ pub enum PixelRequest {
     LayerContinuous(u32),
     /// P14: Layer Properties ▸ Normal Map (e o ícone da linha): alterna; um passo do desfazer.
     LayerNormal(u32),
+    /// P13: Layer Properties ▸ Effects da camada `u32`.
+    LayerEffect(u32, PixelLayerEffect),
     /// O intervalo novo da linha do tempo (vazio = Esc).
     Range(PixelRange),
     /// Largar o intervalo de quadros arrastado pela moldura: `before` = a posição (na ordem de

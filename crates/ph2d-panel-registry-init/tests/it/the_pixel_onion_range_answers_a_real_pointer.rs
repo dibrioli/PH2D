@@ -61,6 +61,7 @@ fn palco(ts: &mut ph2d_text::TextSystem) -> HeroScreen {
             background: false,
             opacity: 255,
             blend: Default::default(),
+            outline: None,
         }],
         active_layer: Some(4),
         frames: (1..=8)

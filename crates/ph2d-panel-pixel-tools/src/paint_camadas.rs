@@ -82,6 +82,7 @@ impl Corpo<'_> {
             tr("panel.pixel.layer.mode"),
             tr("panel.pixel.layer.opacity"),
             tr("panel.pixel.layer.normal"),
+            tr("pixel.layer.effects.square"),
         ];
         let sec = Seccao::medida(self.text_system, 1, &nomes);
         let titulo = format!("{} · {}", tr("panel.pixel.layer.properties"), row.name);
@@ -134,11 +135,44 @@ impl Corpo<'_> {
                 self.campos_no_cartao(&[(tr("panel.pixel.layer.opacity"), ids::LAYER_OPACITY)], y);
             self.x = x;
             self.w = w;
-            return self.caixa_normal(row, sec, fim.max(r.y + r.h));
+            let y = self.caixa_normal(row, sec, fim.max(r.y + r.h));
+            return self.efeitos(row, sec, y);
         }
         y = r.y + r.h + ph2d_tokens::control_gap_px();
         let y = self.campo(tr("panel.pixel.layer.opacity"), ids::LAYER_OPACITY, sec, y);
-        self.caixa_normal(row, sec, y)
+        let y = self.caixa_normal(row, sec, y);
+        self.efeitos(row, sec, y)
+    }
+
+    /// P13: Layer Properties ▸ Effects ▸ Outline — ligado, Inside, 8 vizinhos; e com efeito, a cor
+    /// primária, Apply e Remove (sem efeito estes não se pintam: nenhum controlo morto).
+    fn efeitos(&mut self, row: &PixelLayerRow, sec: Seccao, y: f32) -> f32 {
+        let y = self.linha(tr("pixel.layer.effects"), ColorToken::Text3, y);
+        let on = [(
+            ids::LAYER_FX_OUTLINE,
+            tr("pixel.layer.effects.outline"),
+            row.outline.is_some(),
+        )];
+        let mut y = self.caixas(&on, sec, y);
+        if let Some(o) = row.outline {
+            let cx = [
+                (
+                    ids::LAYER_FX_INSIDE,
+                    tr("pixel.layer.effects.inside"),
+                    o.inside,
+                ),
+                (
+                    ids::LAYER_FX_SQUARE,
+                    tr("pixel.layer.effects.square"),
+                    o.square,
+                ),
+            ];
+            y = self.caixas(&cx, sec, y);
+            let b = ids::LAYER_FX_BUTTONS;
+            y = self.botoes(&[b[0]], y);
+            y = self.botoes(&[b[1], b[2]], y);
+        }
+        y
     }
 
     /// P14: Layer Properties ▸ Normal Map.

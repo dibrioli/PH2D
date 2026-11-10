@@ -93,6 +93,7 @@ fn info(normal: bool) -> PixelPanelInfo {
             background: false,
             opacity: 255,
             blend: Default::default(),
+            outline: None,
         }],
         active_layer: Some(4),
         ..PixelPanelInfo::default()

@@ -348,6 +348,25 @@ pub const LAYER_RENAME: NodeId = hash_node_id("pixel.layer.rename");
 pub const LAYER_OPACITY: NodeId = hash_node_id("pixel.layer.opacity");
 /// P14: Layer Properties ▸ Normal Map (caixa).
 pub const LAYER_NORMAL: NodeId = hash_node_id("pixel.layer.normal");
+/// P13: Layer Properties ▸ Effects ▸ Outline (caixas: ligado, Inside, 8 vizinhos).
+pub const LAYER_FX_OUTLINE: NodeId = hash_node_id("pixel.layer.fx.outline");
+pub const LAYER_FX_INSIDE: NodeId = hash_node_id("pixel.layer.fx.inside");
+pub const LAYER_FX_SQUARE: NodeId = hash_node_id("pixel.layer.fx.square");
+/// P13: Effects ▸ os botões (id, chave): a cor primária, Apply, Remove.
+pub const LAYER_FX_BUTTONS: [(NodeId, &str); 3] = [
+    (
+        hash_node_id("pixel.layer.fx.primary"),
+        "pixel.layer.effects.primary",
+    ),
+    (
+        hash_node_id("pixel.layer.fx.apply"),
+        "pixel.layer.effects.apply",
+    ),
+    (
+        hash_node_id("pixel.layer.fx.remove"),
+        "pixel.layer.effects.remove",
+    ),
+];
 /// O modo da camada activa (um menu de escolha).
 pub const LAYER_BLEND: NodeId = hash_node_id("pixel.layer.blend");
 

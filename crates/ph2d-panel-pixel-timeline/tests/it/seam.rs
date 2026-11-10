@@ -37,6 +37,7 @@ fn camada(id: u32, name: &str) -> PixelLayerRow {
         background: false,
         opacity: 255,
         blend: Default::default(),
+        outline: None,
     }
 }
 

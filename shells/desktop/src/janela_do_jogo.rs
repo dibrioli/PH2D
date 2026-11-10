@@ -97,7 +97,7 @@ impl crate::App {
         if self.gfx.is_none() || !ph2d_app_game::smoke::monta_agora() {
             return;
         }
-        if let Some(cx) = self.components_ctx() {
+        if let Some(mut cx) = self.components_ctx() {
             use ph2d_app_components::{component_attach, object_add};
             let (reg, seeds) = (cx.registry, ph2d_app_physics::physics_seed::COMPONENT_SEEDS);
             let anexa = |s: &mut ph2d_ecs::SimWorld, b, n: &str| {

@@ -49,6 +49,8 @@ fn dropped(mode: Option<PlayerMode>, cap: f32, glide: f32) -> (SimWorld, Physics
     if let Some(mut p) = sim.world_mut().get_mut::<PlatformPlayer>(player) {
         p.max_fall_speed = cap;
         p.glide_fall_speed = glide;
+        p.fall_limit_on = true;
+        p.glide_on = true;
     }
     let y = pose(&sim).1;
     if let Some(mut t) = sim.world_mut().get_mut::<Transform>(player) {

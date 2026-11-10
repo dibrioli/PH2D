@@ -147,6 +147,7 @@ fn measure_whether_the_glide_already_crosses_to_the_kinematic_mode() {
             let (mut sim, mut bridge, player) = falling(mode);
             if let Some(mut p) = sim.world_mut().get_mut::<PlatformPlayer>(player) {
                 p.glide_fall_speed = 4.0;
+                p.glide_on = true;
             }
             let y = |sim: &SimWorld| pose(sim).1;
             let mut out = Vec::new();

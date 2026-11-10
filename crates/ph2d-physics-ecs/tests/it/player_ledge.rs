@@ -80,6 +80,7 @@ fn scene(centre_y: f32, gap: f32, grab: f32) -> (SimWorld, PhysicsBridge, Entity
             PlatformPlayer {
                 float_height: FLOAT_HEIGHT,
                 ledge_grab: grab,
+                ledge_on: true,
                 // ⚠️ **A janela DECLARADA, e igual ao `grab`** — é o mundo de
                 // antes da `W-LedgeSensor`, quando um número fazia os dois
                 // eixos. Herdar o default (0,60) faria estes gates medirem uma

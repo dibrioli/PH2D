@@ -469,6 +469,7 @@ fn how_close_he_gets_walking_left_into_the_low_step() {
                 .get_mut::<ph2d_physics_ecs::PlatformPlayer>(ledge)
                 .expect("player");
             p.ledge_grab = grab;
+            p.ledge_on = grab > 0.0;
         }
         {
             let mut t = sim.world_mut().get_mut::<Transform>(ledge).expect("t");

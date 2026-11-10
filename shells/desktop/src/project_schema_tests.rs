@@ -370,7 +370,8 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ **`230` em 2026-11-09** (`line/PixelArt`, P14 Sprite com normal) — `LibraryDoc.normals`. A tripla NÃO vê.
         // ⚠️ **`231` em 2026-11-09** (`line/PixelArt`, P14e) — `SpriteCells` e `SegueCelula`. A tripla NÃO vê.
         // ⚠️ **`232` em 2026-11-10** (`line/TimelinePrincipal`, doc 17 onda 2) — «Opacity» = `Sprite::opacity`. A tripla NÃO vê.
-        (232, 13, 29),
+        // ⚠️ **`233` em 2026-11-10** (`line/GameEngineFuncional`) — a caixa de cada habilidade do Platform Player. A tripla NÃO vê.
+        (233, 13, 29),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -259,6 +259,7 @@ fn measure_the_gap_a_glide_crosses() {
             let (mut sim, mut bridge, player) = scene(0.0, 0.0);
             if let Some(mut p) = sim.world_mut().get_mut::<PlatformPlayer>(player) {
                 p.glide_fall_speed = teto;
+                p.glide_on = true;
             }
             // ⚠️ **A altura é escrita ANTES do primeiro dispatch, e é a regra do
             // W2a:** *a pose de repouso é a pose AUTORADA no tique 0*, então um

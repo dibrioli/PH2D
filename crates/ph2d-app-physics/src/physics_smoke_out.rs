@@ -110,6 +110,9 @@ pub(crate) fn build(world: &mut World) -> u64 {
                 dash_cooldown: 0.4,
                 ledge_grab: 0.5,
                 ledge_speed: 3.0,
+                walls_on: true,
+                dash_on: true,
+                ledge_on: true,
                 ..PlatformPlayer::default()
             },
             // ⚠️ **O opt-in, e só aqui.**

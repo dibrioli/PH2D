@@ -356,6 +356,11 @@ fn pinta(h: &mut MockPanelHost, st: &mut InspectorState, d: DisplayUnit) {
     h.project_mut().pixels_per_meter = PPM;
     let _ = h.paint::<InspectorPanel>(st, VIEWPORT);
     h.open_all_sections();
+    // As dobras do Platform Player (ficha 03_character) nascem fechadas e o
+    // `open_all_sections` não as alcança: fechadas, só o RESUMO passaria pela porta.
+    for id in ph2d_panel_inspector::ids::INSP_PLAYER_FOLDS {
+        h.set_collapsed(id, false);
+    }
     let _ = h.paint::<InspectorPanel>(st, VIEWPORT);
 }
 

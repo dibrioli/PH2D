@@ -96,6 +96,10 @@ fn ledge_scene_at(start_y: f32, gap: f32, wall_armed: bool) -> (SimWorld, Physic
                 wall_slide_speed: if wall_armed { 1.0 } else { 0.0 },
                 wall_jump_height: if wall_armed { 2.0 } else { 0.0 },
                 wall_grab_stamina: if wall_armed { 2.0 } else { 0.0 },
+                walls_on: wall_armed,
+                // A beirada liga-se onde cada sonda escreve o `ledge_grab`.
+                ledge_on: true,
+                ledge_grab: 0.0,
                 ..PlatformPlayer::default()
             },
             // Rente à face, do lado de fora.

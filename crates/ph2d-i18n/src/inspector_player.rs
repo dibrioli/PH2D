@@ -80,7 +80,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.player.dynamic" => "Dynamic",
         "panel.inspector.player.kinematic" => "Kinematic",
-        "panel.inspector.player.pure" => "Pure",
+        "panel.inspector.player.pure" => "Kinematic, pushes nothing",
         "panel.inspector.player.emit_signals" => "Emit Signals",
         "panel.inspector.player.off" => "Off",
         "panel.inspector.player.on" => "On",
@@ -136,12 +136,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.player.steepest_ramp_he_stands_on" => {
             "Steepest ramp he stands on and walks up, in DEGREES."
         }
-        "panel.inspector.player.how_high_a_full_jump" => "How high a full jump reaches, in metres.",
+        "panel.inspector.player.how_high_a_full_jump" => "How high a full jump reaches.",
         "panel.inspector.player.extra_jumps_after_leaving_the" => {
             "Extra jumps after leaving the ground. 0 turns it off; they refill on landing."
         }
         "panel.inspector.player.how_high_an_air_jump" => {
-            "How high an AIR jump reaches, in metres. Same as above is the Celeste feel; \
+            "How high an AIR jump reaches. Same as above is the Celeste feel; \
          lower is Hollow Knight."
         }
         "panel.inspector.player.gravity_while_rising_fast_1" => {
@@ -166,7 +166,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "A press this early still fires on landing."
         }
         "panel.inspector.player.slide_sideways_up_to_this" => {
-            "Slide sideways up to this to clear a ledge you clipped. In METRES."
+            "Slide sideways up to this to clear a ledge you clipped."
         }
         "panel.inspector.player.how_many_rays_scan_the" => {
             "How MANY rays scan the ceiling profile. More = a finer ledge edge."
@@ -253,19 +253,61 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.player.terminal_speed_the_fall_never" => {
             "Terminal speed: the fall never gets faster than this. 0 = no cap."
         }
-        "panel.inspector.player.leg" => "LEG",
-        "panel.inspector.player.walk" => "WALK",
-        "panel.inspector.player.jump" => "JUMP",
-        "panel.inspector.player.forgiveness" => "FORGIVENESS",
-        "panel.inspector.player.reaction" => "REACTION",
-        "panel.inspector.player.walls" => "WALLS",
-        "panel.inspector.player.dash" => "DASH",
-        "panel.inspector.player.crouch" => "CROUCH",
-        "panel.inspector.player.swim" => "SWIM",
-        "panel.inspector.player.ledge" => "LEDGE",
-        "panel.inspector.player.glide" => "GLIDE",
-        "panel.inspector.player.fall" => "FALL",
-        "panel.inspector.player.how_wide_that_slow_top" => "How wide that slow top is, in m/s.",
+        "panel.inspector.player.leg" => "Leg",
+        "panel.inspector.player.walk" => "Walk",
+        "panel.inspector.player.jump" => "Jump",
+        "panel.inspector.player.forgiveness" => "Forgiveness",
+        "panel.inspector.player.reaction" => "Reaction",
+        "panel.inspector.player.walls" => "Walls",
+        "panel.inspector.player.dash" => "Dash",
+        "panel.inspector.player.crouch" => "Crouch",
+        "panel.inspector.player.swim" => "Swim",
+        "panel.inspector.player.ledge" => "Ledge",
+        "panel.inspector.player.glide" => "Glide",
+        "panel.inspector.player.fall" => "Fall",
+        "panel.inspector.player.how_wide_that_slow_top" => "How wide that slow top is, as a speed.",
+        "panel.inspector.player.more_walk" => "More",
+        "panel.inspector.player.more_jump" => "Gravity",
+        "panel.inspector.player.wall_sensor" => "Wall Sensor",
+        "panel.inspector.player.advanced" => "Advanced",
+        "panel.inspector.player.sum_air" => "Air",
+        "panel.inspector.player.sum_slope" => "Slope",
+        "panel.inspector.player.sum_fall" => "Fall",
+        "panel.inspector.player.sum_cut" => "Cut",
+        "panel.inspector.player.sum_slide" => "Slide",
+        "panel.inspector.player.sum_jump" => "Jump",
+        "panel.inspector.player.sum_reach" => "Reach",
+        "panel.inspector.player.sum_speed" => "Speed",
+        "panel.inspector.player.sum_height" => "Height",
+        "panel.inspector.player.sum_grab" => "Grab",
+        "panel.inspector.player.sum_coyote" => "Coyote",
+        "panel.inspector.player.sum_buffer" => "Buffer",
+        "panel.inspector.player.sum_float" => "Float",
+        "panel.inspector.player.sum_signals_on" => "Signals on",
+        "panel.inspector.player.tip_walls" => {
+            "Slide down walls, jump off them and hold on to them. Tick to turn it on; the numbers stay when you untick."
+        }
+        "panel.inspector.player.tip_dash" => {
+            "A quick burst along the way he faces, on the Dash key. Tick to turn it on."
+        }
+        "panel.inspector.player.tip_crouch" => {
+            "Hold Down to crouch: the leg gets shorter and he walks slower. Tick to turn it on."
+        }
+        "panel.inspector.player.tip_swim" => {
+            "Inside water he swims in every direction instead of floating. Tick to turn it on."
+        }
+        "panel.inspector.player.tip_ledge" => {
+            "He grabs the top of a wall he jumps at, hangs, and climbs up. Tick to turn it on."
+        }
+        "panel.inspector.player.tip_glide" => {
+            "Hold Jump while falling to fall slowly. Tick to turn it on."
+        }
+        "panel.inspector.player.tip_fall_limit" => {
+            "The fall never gets faster than Max Fall. Untick for no limit."
+        }
+        "panel.inspector.player.tip_emit" => {
+            "Publish what he does (jumps, lands, dashes) as signals other objects can listen to."
+        }
         // ph2d-migrar-texto:end
         _ => return None,
     })

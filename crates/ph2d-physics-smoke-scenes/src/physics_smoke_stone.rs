@@ -84,6 +84,7 @@ pub fn build_stone_scene(world: &mut bevy_ecs::world::World) -> ph2d_ecs::Entity
         let mut q = world.query::<(&mut PlatformPlayer, &Transform)>();
         for (mut p, _) in q.iter_mut(world) {
             p.crouch_height = CROUCH_HEIGHT;
+            p.crouch_on = true;
             p.crouch_speed = CROUCH_SPEED;
         }
         player

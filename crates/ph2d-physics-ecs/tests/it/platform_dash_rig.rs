@@ -133,6 +133,7 @@ pub fn rig(speed: f32, start_y: f32) -> Rig {
                 corner_reach: 0.0,
                 lift_momentum: 0.0,
                 dash_speed: speed,
+                dash_on: true,
                 dash_time: DASH_TIME,
                 dash_cooldown: 0.2,
                 ..PlatformPlayer::default()

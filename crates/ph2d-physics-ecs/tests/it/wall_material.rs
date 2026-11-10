@@ -33,6 +33,7 @@ fn climber() -> PlatformPlayer {
         wall_slide_speed: 1.0,
         wall_jump_height: base.jump_height.max(1.0),
         wall_jump_push: 2.0,
+        walls_on: true,
         ..base
     }
 }

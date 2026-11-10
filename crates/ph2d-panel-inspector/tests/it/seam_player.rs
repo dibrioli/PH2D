@@ -144,7 +144,22 @@ pub(crate) fn player() -> InspectorPlayerInfo {
         // ausência do gate `the_clear_run_button…`.
         recorded_run_seconds: 0.0,
         discarded_run_seconds: 0.0,
+        // ⚠️ **Premissa declarada: TODAS as caixas marcadas**, pela razão das
+        // capacidades LIGADAS acima: uma caixa desmarcada esconde rows (o Fall
+        // Limit esconde o Max Fall), e a varredura não as alcançaria.
+        abilities: [true; 7],
     }
+}
+
+/// O host do produto com **todas as dobras do player ABERTAS** — elas nascem
+/// fechadas (`populate`), e uma varredura sobre dobras fechadas não alcançaria
+/// as rows de dentro.
+pub(crate) fn host_aberto() -> MockPanelHost {
+    let mut h = crate::host_em_metros();
+    for id in ph2d_panel_inspector::ids::INSP_PLAYER_FOLDS {
+        h.set_collapsed(id, false);
+    }
+    h
 }
 
 /// O MESMO player, com a saída de sinais LIGADA e uma leitura viva.
@@ -169,7 +184,7 @@ fn empty() -> InspectorPlayerInfo {
 }
 
 fn painted(info: InspectorPlayerInfo) -> Vec<(ph2d_a11y::NodeId, Rect)> {
-    let mut host = crate::host_em_metros();
+    let mut host = host_aberto();
     let mut state = InspectorState::default();
     set_current_inspector_player(Some(info));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -178,7 +193,7 @@ fn painted(info: InspectorPlayerInfo) -> Vec<(ph2d_a11y::NodeId, Rect)> {
 }
 
 fn click_real(info: InspectorPlayerInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
-    let mut host = crate::host_em_metros();
+    let mut host = host_aberto();
     let mut state = InspectorState::default();
     set_current_inspector_player(Some(info));
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -205,7 +220,7 @@ fn click_real(info: InspectorPlayerInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAct
 }
 
 fn commit(info: InspectorPlayerInfo, id: ph2d_a11y::NodeId, v: f64) -> Vec<EditorAction> {
-    let mut host = crate::host_em_metros();
+    let mut host = host_aberto();
     let mut state = InspectorState::default();
     set_current_inspector_player(Some(info));
     host.set_number_value(id, v);
@@ -672,7 +687,7 @@ fn the_rows_show_what_was_authored_not_the_seed() {
         reaction_push: 0.85,
         ..player()
     };
-    let mut host = crate::host_em_metros();
+    let mut host = host_aberto();
     let mut state = InspectorState::default();
     // ⚠️ **O NOME faz parte da fixture, e a premissa é declarada:** o
     // `entity_changed` do sync — a porta que decide re-semear as caixas — só
@@ -774,14 +789,22 @@ fn every_player_control_carries_a_hover_hint() {
     //    «stale» deste gate: o que fazia esta fixtura transbordar era o plano fechar um cartão
     //    antes de CADA secção da lista — no tema clássico, um separador inteiro por secção vazia.
     //    Com o `section_plan::Corredor` o corpo cabe, e a barra não aparece.
-    let chrome: [(&str, ph2d_a11y::NodeId); 2] = [
+    // ⚠️ **As DOBRAS (desenho da ficha 03_character) são cabeçalho de grupo**, o
+    // mesmo cromo das dobras da câmera e do HUD, cujo gate de dicas só olha campos:
+    // a dica mora na CAIXA da habilidade e nas rows de dentro, não no chevron.
+    let mut chrome: Vec<(&str, ph2d_a11y::NodeId)> = vec![
         ("o cabecalho da secao", ids::INSP_LIVE_PLAYER_SECTION),
         ("a pega de arrasto do cabecalho", ids::INSP_LIVE_PLAYER_GRIP),
     ];
+    chrome.extend(
+        ph2d_panel_inspector::ids::INSP_PLAYER_FOLDS
+            .iter()
+            .map(|&id| ("uma dobra do Platform Player", id)),
+    );
 
     let with_player = painted(player());
     let without: Vec<ph2d_a11y::NodeId> = {
-        let mut host = crate::host_em_metros();
+        let mut host = host_aberto();
         let mut state = InspectorState::default();
         set_current_inspector_player(None);
         host.paint::<InspectorPanel>(&mut state, VIEWPORT)
@@ -789,7 +812,7 @@ fn every_player_control_carries_a_hover_hint() {
             .map(|(id, _)| id)
             .collect()
     };
-    let mut host = crate::host_em_metros();
+    let mut host = host_aberto();
     let mut state = InspectorState::default();
     set_current_inspector_player(Some(player()));
     let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
@@ -897,42 +920,36 @@ fn every_card_holds_its_own_rows_and_they_do_not_overlap() {
         }
         spans.push((lo, hi));
     }
-    for w in spans.windows(2) {
-        assert!(
-            w[0].1 < w[1].0,
-            "dois cards se sobrepoem: {:?} e {:?}",
-            w[0],
-            w[1]
-        );
-    }
+    assert_eq!(spans.len(), cards_len(), "cada card da tabela foi medido");
 
-    // ⚠️ **E o passo entre cards é o da MOLDURA, não a soma das rows.**
-    //
-    // As duas réguas diferem por uma respiração, e a de baixo continua deixando
-    // as rows em ordem — então a asserção de sobreposição acima passa com o
-    // pintor errado. O que denuncia é comparar onde a primeira row de cada card
-    // caiu contra `player_card_pitch`, que é a altura que a moldura de fato
-    // desenhou.
-    let cards = ph2d_panel_inspector::player_card_spans();
-    let first_y: Vec<f32> = cards
-        .iter()
-        .map(|(_, rows)| {
-            rects
-                .iter()
-                .find(|(n, _)| *n == rows[0])
-                .map(|(_, r)| r.y)
-                .expect("a primeira row do card")
-        })
+    // ⚠️ **Desenho 03_character (10/11): os cards da TABELA já não são as caixas da
+    // tela** — Walk e Jump partem-se em cartão + dobra «More», e o Body foi para
+    // Advanced, no fim. A ordem da tabela deixou de ser a da tela, e o passo
+    // «card a card» (`player_card_pitch`) deixou de ter par na tela. A prova de
+    // «as caixas vazaram» passa a ser sobre o que a tela pinta: **nenhuma row do
+    // player cruza outra**, em lado nenhum.
+    let mut boxes: Vec<(ph2d_a11y::NodeId, Rect)> = ph2d_panel_inspector::player_card_spans()
+        .into_iter()
+        .flat_map(|(_, rows)| rows)
+        .filter_map(|id| rects.iter().find(|(n, _)| *n == id).copied())
         .collect();
-    for i in 0..cards.len() - 1 {
-        let step = first_y[i + 1] - first_y[i];
-        let want = ph2d_panel_inspector::player_card_pitch(cards[i].1.len());
-        assert!(
-            (step - want).abs() < 0.51,
-            "o card '{}' avancou {step:.2} px e a moldura dele mede {want:.2} px —              o pintor esta' somando as rows em vez de usar a altura do card, e as              molduras se sobrepoem",
-            cards[i].0
-        );
+    boxes.sort_by(|a, b| a.1.y.total_cmp(&b.1.y));
+    for (i, (a, ra)) in boxes.iter().enumerate() {
+        for (b, rb) in boxes.iter().skip(i + 1) {
+            let cruza = ra.x < rb.x + rb.w
+                && rb.x < ra.x + ra.w
+                && ra.y < rb.y + rb.h
+                && rb.y < ra.y + ra.h;
+            assert!(
+                !cruza,
+                "duas rows do player se cruzam: {a:?} {ra:?} e {b:?} {rb:?}"
+            );
+        }
     }
+}
+
+fn cards_len() -> usize {
+    ph2d_panel_inspector::player_card_spans().len()
 }
 
 /// **O botão de descartar a corrida existe SE, e SOMENTE SE, existe corrida**
@@ -1371,21 +1388,75 @@ fn the_shove_is_offered_only_to_the_mode_that_reads_it() {
 ///
 /// ⚠️ **As duas direções**, e não só a de ligar: um chip cujo `Off` não despacha
 /// é um opt-in que não se desfaz, e o artista fica com toasts para sempre.
+///
+/// ⚠️ Desenho 03_character (10/11): o seletor `Off|On` virou a CAIXA
+/// `INSP_PLAYER_EMIT_BOX` (evento `Toggled`); a prova das duas direções é a mesma.
 #[test]
 fn the_emit_signals_chip_reaches_the_bus_in_both_directions() {
     expect(
-        &click_real(player(), ph2d_panel_inspector::ids::INSP_PLAYER_EMIT_IDS[1]),
+        &toggle_real(player(), ph2d_panel_inspector::ids::INSP_PLAYER_EMIT_BOX),
         PlayerFieldEdit::EmitSignals(true),
         "ligar a saída de sinais",
     );
     expect(
-        &click_real(
-            emitting(),
-            ph2d_panel_inspector::ids::INSP_PLAYER_EMIT_IDS[0],
-        ),
+        &toggle_real(emitting(), ph2d_panel_inspector::ids::INSP_PLAYER_EMIT_BOX),
         PlayerFieldEdit::EmitSignals(false),
         "desligar a saída de sinais",
     );
+}
+
+/// **Cada caixa de habilidade chega ao barramento, nas duas direções e com a
+/// SUA habilidade** — um índice trocado entre `INSP_PLAYER_ABILITY` e
+/// `PlayerAbility::ALL` ligaria outra coisa com tudo pintado e vivo.
+#[test]
+fn every_ability_box_reaches_the_bus_in_both_directions() {
+    use ph2d_editor_core::screens::hero::PlayerAbility;
+    for (i, &id) in ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY
+        .iter()
+        .enumerate()
+    {
+        let a = PlayerAbility::ALL[i];
+        let off = InspectorPlayerInfo {
+            abilities: [false; 7],
+            ..player()
+        };
+        expect(
+            &toggle_real(off, id),
+            PlayerFieldEdit::Ability(a, true),
+            "marcar",
+        );
+        expect(
+            &toggle_real(player(), id),
+            PlayerFieldEdit::Ability(a, false),
+            "desmarcar",
+        );
+    }
+}
+
+/// O clique REAL numa caixa: tem de produzir o `Toggled` dela (focável e viva).
+fn toggle_real(info: InspectorPlayerInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
+    let mut host = host_aberto();
+    let mut state = InspectorState::default();
+    set_current_inspector_player(Some(info));
+    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let rect = rects
+        .iter()
+        .find(|(n, _)| *n == id)
+        .map(|(_, r)| *r)
+        .unwrap_or_else(|| panic!("a §14 nunca pintou a caixa {id:?}"));
+    let events = host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5);
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, WidgetEvent::Toggled(c) if *c == id)),
+        "clicar no meio de {id:?} produziu {events:?} — a caixa está morta sob o mouse"
+    );
+    for ev in events {
+        let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
+    }
+    let out = host.drained_actions();
+    set_current_inspector_player(None);
+    out
 }
 
 /// **O CHIP DA POLÍTICA DE PLATAFORMA chega ao barramento, nas TRÊS opções**
@@ -1496,20 +1567,14 @@ fn the_live_readout_takes_room_only_where_there_is_a_player() {
         "sem player o painel nao pinta nada — a guarda da F3 (a face vazia morreu)"
     );
 
-    // E o chip da saída fica ACIMA dos nove cards — o readout e o interruptor são
-    // a mesma pergunta, e nenhum deles é um knob de afinação.
-    let emit_y = with
-        .iter()
-        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_EMIT_IDS[0])
-        .map(|(_, r)| r.y)
-        .expect("o chip da saída é pintado com o player vivo");
-    let float_y = with
-        .iter()
-        .find(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_FLOAT)
-        .map(|(_, r)| r.y)
-        .expect("a primeira row de afinação é pintada");
-    assert!(
-        emit_y < float_y,
-        "o chip da saída ({emit_y}) tem de vir antes das rows de afinação ({float_y})"
-    );
+    // ⚠️ Desenho 03_character (10/11): a caixa da saída mora em Advanced, no FIM
+    // (antes, um chip acima dos cards). O que fica é: com player ela é pintada,
+    // na face vazia não.
+    let emit = |rects: &[(ph2d_a11y::NodeId, Rect)]| {
+        rects
+            .iter()
+            .any(|(n, _)| *n == ph2d_panel_inspector::ids::INSP_PLAYER_EMIT_BOX)
+    };
+    assert!(emit(&with), "a caixa da saída é pintada com o player vivo");
+    assert!(!emit(&empty_face), "e não na face vazia");
 }

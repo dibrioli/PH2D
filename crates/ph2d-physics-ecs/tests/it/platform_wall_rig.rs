@@ -160,6 +160,7 @@ pub fn rig_gapped(slide: f32, jump_height: f32, gap: f32) -> Rig {
                 lift_momentum: 0.0,
                 wall_slide_speed: slide,
                 wall_jump_height: jump_height,
+                walls_on: true,
                 ..PlatformPlayer::default()
             },
             Transform::from_translation(Vec2::new(0.35, START_Y)),

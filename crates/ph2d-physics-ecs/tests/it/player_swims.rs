@@ -113,6 +113,7 @@ fn player(sim: &mut SimWorld, kinematic: bool, swim: f32, accel: f32, start: f32
         PlatformPlayer {
             float_height: FLOAT,
             swim_speed: swim,
+            swim_on: true,
             swim_acceleration: accel,
             ..PlatformPlayer::default()
         },
@@ -474,6 +475,7 @@ fn a_glide_ceiling_never_reaches_a_swimmer() {
         let subject = player(&mut sim, false, SWIM_SPEED, SWIM_ACCEL, -8.0);
         if let Some(mut p) = sim.world_mut().get_mut::<PlatformPlayer>(subject) {
             p.glide_fall_speed = glide;
+            p.glide_on = true;
         }
         let mut bridge = PhysicsBridge::new();
         let y0 = pos_of(&sim).y;
@@ -532,6 +534,7 @@ fn measure_whether_the_swim_guard_is_observable() {
             });
         if let Some(mut p) = sim.world_mut().get_mut::<PlatformPlayer>(subject) {
             p.glide_fall_speed = glide;
+            p.glide_on = true;
         }
         let mut bridge = PhysicsBridge::new();
         let mut deepest = 0.0_f32;

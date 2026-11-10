@@ -35,9 +35,12 @@ fn the_scene_arms_everything_the_script_asks_for() {
         .get::<ph2d_physics_ecs::PlatformPlayer>(p)
         .copied()
         .expect("o sujeito e' um player");
-    assert!(cfg.wall_slide_speed > 0.0, "a parede");
-    assert!(cfg.dash_speed > 0.0, "o arranque");
-    assert!(cfg.ledge_grab > 0.0, "a beirada");
+    // ⚠️ Pela `config()`, que é o que a lei recebe: o número cru nasce pronto e a
+    // CAIXA é que liga (ficha 03_character).
+    let law = cfg.config();
+    assert!(law.wall.slide_speed > 0.0, "a parede");
+    assert!(law.dash.speed > 0.0, "o arranque");
+    assert!(law.ledge.grab > 0.0, "a beirada");
     assert!(cfg.jump_height > 0.0, "o pulo, que vem do ponto de partida");
 }
 

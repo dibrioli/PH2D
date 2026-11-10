@@ -97,6 +97,7 @@ pub fn physics_smoke_crouch(ctx: &mut crate::SceneCtx<'_>) {
     let mut q = world.query::<(&mut PlatformPlayer, &Transform)>();
     for (mut p, _) in q.iter_mut(world) {
         p.crouch_height = CROUCH_HEIGHT;
+        p.crouch_on = true;
         p.crouch_speed = CROUCH_SPEED;
     }
     eprintln!("{CROUCH_SMOKE_MESSAGE}");

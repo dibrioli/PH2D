@@ -264,4 +264,19 @@ pub(crate) fn sync_player_fields(host: &mut dyn PanelHostInternal) {
     ] {
         crate::unidade_mundo::semeia(host, id, f64::from(v));
     }
+    let caixas = crate::ids::INSP_PLAYER_ABILITY
+        .iter()
+        .zip(info.abilities)
+        .chain([(&crate::ids::INSP_PLAYER_EMIT_BOX, info.emits_signals)]);
+    for (&id, on) in caixas {
+        if let Some(ph2d_editor_core::interaction::InteractiveState::Checkbox { value, .. }) =
+            host.store_mut().get_mut(id)
+        {
+            *value = if on {
+                ph2d_editor_core::widget::CheckboxValue::Checked
+            } else {
+                ph2d_editor_core::widget::CheckboxValue::Unchecked
+            };
+        }
+    }
 }

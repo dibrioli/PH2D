@@ -15,20 +15,6 @@
 //! | o rótulo de um campo | `component.field.<snake(CONST)>.<field_id>` | 128 |
 //! | a família na paleta | `component.category.<snake>` | 16 |
 //! | o tipo de objecto no filtro | `component.object_kind.<snake>` | 5 (eram 7: o 3D saiu, ADR-0179) |
-//!
-//! ⚠️ **O dono da chave de um campo é o BLOCO e não o componente**, e isso foi medido: `MARKER` é
-//! partilhado por **5** descritores e `TAGS` por **2**. Um `FieldDesc` partilhado só pode carregar
-//! UMA chave — derivá-la do componente daria duas chaves para o mesmo byte.
-//!
-//! ⚠️ **As chaves derivadas são ÚNICAS, e há gate**: os 86 últimos segmentos de `canonical_name` não
-//! colidem (`80/80` na 1.ª medição, `86/86` com as formas que faltavam). *Uma derivação sem gate de
-//! unicidade cala-se no dia em que duas famílias declararem o mesmo nome.*
-//!
-//! ⛔⛔ **E TRÊS rótulos só entraram porque o gerador não é a régua léxica:** `"Y-Sort"`, `"9-Slice"`
-//! e `"3D"` (este saiu com o 3D, ADR-0179) eram pintados e a [`ph2d_label_census`] **não os
-//! acusava** — ela não reconhece uma sigla nem um composto com hífen ou dígito como língua. *Uma
-//! régua léxica tem um ponto cego exactamente onde o rótulo é mais curto*, e quem os apanhou foi o
-//! cruzamento entre as duas populações.
 
 /// A tradução de uma chave `component.*`, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
@@ -353,6 +339,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.platform_player.52" => "Platform Lift",
         "component.field.platform_player.53" => "Walk Off Ledges",
         "component.field.platform_player.54" => "  ...When Crouching",
+        "component.field.platform_player.55" => "Walls",
+        "component.field.platform_player.56" => "Dash",
+        "component.field.platform_player.57" => "Crouch",
+        "component.field.platform_player.58" => "Swim",
+        "component.field.platform_player.59" => "Ledge",
+        "component.field.platform_player.60" => "Glide",
+        "component.field.platform_player.61" => "Fall Limit",
         "component.field.player_mode.0" => "Body",
         "component.field.pulley_wheel.1" => "Rope",
         "component.field.pulley_wheel.7" => "Mounted On",

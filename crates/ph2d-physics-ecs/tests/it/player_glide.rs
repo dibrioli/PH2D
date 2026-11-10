@@ -20,6 +20,7 @@ fn dropped(glide: f32) -> (SimWorld, PhysicsBridge, Entity) {
     let (mut sim, bridge, player) = scene(0.0, 0.0);
     if let Some(mut p) = sim.world_mut().get_mut::<PlatformPlayer>(player) {
         p.glide_fall_speed = glide;
+        p.glide_on = true;
     }
     let y = pose(&sim).1;
     if let Some(mut t) = sim.world_mut().get_mut::<Transform>(player) {
@@ -192,6 +193,7 @@ fn a_jump_with_the_finger_held_reaches_the_same_height() {
         let (mut sim, mut bridge, player) = scene(0.0, 0.0);
         if let Some(mut p) = sim.world_mut().get_mut::<PlatformPlayer>(player) {
             p.glide_fall_speed = glide;
+            p.glide_on = true;
         }
         let mut tick = 0_u64;
         for _ in 0..30 {

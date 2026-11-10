@@ -142,6 +142,7 @@ pub fn add(entry: AddEntry, sim: &mut SimWorld, portas: Portas<'_>, pai: Option<
             {
                 p.float_height = HERO_SHEET_SOLE_BELOW_CENTRE;
                 p.crouch_height = AGACHADO;
+                p.crouch_on = true;
             }
         } else {
             let forma = ph2d_physics_ecs::pendura_forma(world, e, pai.map(Entity::from_bits));

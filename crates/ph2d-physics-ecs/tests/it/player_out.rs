@@ -327,6 +327,7 @@ fn wall_rig() -> (SimWorld, PhysicsBridge, Entity) {
                 // A parede só existe para a lei quando ela está ARMADA.
                 wall_slide_speed: 2.0,
                 wall_jump_height: 1.2,
+                walls_on: true,
                 wall_jump_push: 4.0,
                 ..PlatformPlayer::default()
             },

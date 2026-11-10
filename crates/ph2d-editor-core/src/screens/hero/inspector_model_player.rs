@@ -251,6 +251,32 @@ pub struct InspectorPlayerInfo {
     /// cairia sobre waves que nada têm com esta. É o mesmo opt-in autorado do
     /// `SignalOnHit`.
     pub emits_signals: bool,
+    /// A caixa de cada habilidade, na ordem de [`PlayerAbility::ALL`].
+    pub abilities: [bool; PlayerAbility::ALL.len()],
+}
+
+/// ⭐ **As habilidades com caixa** do Platform Player (ficha `componentes/03_character.md`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PlayerAbility {
+    Walls,
+    Dash,
+    Crouch,
+    Swim,
+    Ledge,
+    Glide,
+    FallLimit,
+}
+
+impl PlayerAbility {
+    pub const ALL: [Self; 7] = [
+        Self::Walls,
+        Self::Dash,
+        Self::Crouch,
+        Self::Swim,
+        Self::Ledge,
+        Self::Glide,
+        Self::FallLimit,
+    ];
 }
 
 /// **O readout VIVO de um player** — o que a lei publicou no último tique.
@@ -429,4 +455,6 @@ pub enum PlayerFieldEdit {
     /// Quanto da caminhada volta ao chao (W6).
     ReactionMovement(f32),
     ReactionPush(f32),
+    /// Marca ou desmarca a caixa de uma habilidade; os números ficam.
+    Ability(PlayerAbility, bool),
 }

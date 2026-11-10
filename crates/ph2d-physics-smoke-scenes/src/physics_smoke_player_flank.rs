@@ -96,6 +96,7 @@ pub fn physics_smoke_flank(ctx: &mut crate::SceneCtx<'_>) {
     for (mut p, _) in q.iter_mut(world) {
         p.wall_slide_speed = 3.0;
         p.wall_jump_height = 2.0;
+        p.walls_on = true;
     }
     eprintln!(
         "{FLANK_SMOKE_MESSAGE_HEAD}{n} janelas de 0,8 m na parede direita.\n{FLANK_SMOKE_MESSAGE}"

@@ -79,6 +79,7 @@ pub(super) fn cena(filha: bool) -> Cena {
             PlatformPlayer {
                 float_height: 1.1,
                 crouch_height: 0.6,
+                crouch_on: true,
                 crouch_speed: 2.0,
                 ..PlatformPlayer::default()
             },

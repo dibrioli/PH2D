@@ -73,6 +73,8 @@ fn scene(armed: bool) -> (SimWorld, PhysicsBridge, ph2d_ecs::Entity) {
                 wall_jump_height: if armed { 2.0 } else { 0.0 },
                 corner_reach: if armed { 0.12 } else { 0.0 },
                 crouch_height: if armed { 0.5 } else { 0.0 },
+                walls_on: armed,
+                crouch_on: armed,
                 ..PlatformPlayer::default()
             },
             Transform::from_translation(Vec2::new(0.0, FLOAT)),

@@ -47,15 +47,6 @@ fn populate_player_chips(store: &mut WidgetStore) {
         tr("panel.inspector.player.classic_platformer_the_same_controller"),
     );
     // O mesmo, para o chip da saída de sinais (A3).
-    register_button_ids(store, &ids::INSP_PLAYER_EMIT_IDS);
-    store.set_tooltip(
-        ids::INSP_PLAYER_EMIT_IDS[0],
-        tr("panel.inspector.player.nobody_hears_him_he_lands"),
-    );
-    store.set_tooltip(
-        ids::INSP_PLAYER_EMIT_IDS[1],
-        tr("panel.inspector.player.publish_what_he_does_as"),
-    );
     // O mesmo, para o chip da política de plataforma (`W-Leave`).
     register_button_ids(store, &ids::INSP_PLAYER_LIFT_POLICY_IDS);
     store.set_tooltip(
@@ -89,6 +80,38 @@ fn populate_player_chips(store: &mut WidgetStore) {
         ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[1],
         tr("panel.inspector.player.crouched_he_stops_at_the"),
     );
+}
+
+/// As caixas das habilidades e do Emit, e as dobras (nascem fechadas).
+fn populate_player_boxes(store: &mut WidgetStore) {
+    let dicas = [
+        "panel.inspector.player.tip_walls",
+        "panel.inspector.player.tip_dash",
+        "panel.inspector.player.tip_crouch",
+        "panel.inspector.player.tip_swim",
+        "panel.inspector.player.tip_ledge",
+        "panel.inspector.player.tip_glide",
+        "panel.inspector.player.tip_fall_limit",
+    ];
+    let caixas = ids::INSP_PLAYER_ABILITY.iter().zip(dicas).chain([(
+        &ids::INSP_PLAYER_EMIT_BOX,
+        "panel.inspector.player.tip_emit",
+    )]);
+    for (&id, dica) in caixas {
+        store.register(
+            id,
+            InteractiveState::Checkbox {
+                state: ph2d_editor_core::widget::CheckboxState::Normal,
+                value: ph2d_editor_core::widget::CheckboxValue::Unchecked,
+            },
+        );
+        store.set_tooltip(id, tr(dica));
+    }
+    // As dobras nascem fechadas; depois manda o que o artista abriu. `PH2D_PLAYER_DOBRAS=1` abre-as para a foto.
+    let abertas = std::env::var_os("PH2D_PLAYER_DOBRAS").is_some();
+    for id in ids::INSP_PLAYER_FOLDS {
+        store.set_collapsed_if_unchosen(id, !abertas);
+    }
 }
 
 pub(super) fn populate_player(store: &mut WidgetStore) {
@@ -130,6 +153,7 @@ pub(super) fn populate_player(store: &mut WidgetStore) {
     for (id, tip) in crate::sections::player::PLAYER_BUTTON_TIPS {
         store.set_tooltip(id, tip.tr());
     }
+    populate_player_boxes(store);
     for (id, value, min, max, step) in [
         // Metros. O piso NÃO é zero por acaso: uma perna de comprimento zero é
         // um personagem que não paira, e o piso geométrico real é maior ainda

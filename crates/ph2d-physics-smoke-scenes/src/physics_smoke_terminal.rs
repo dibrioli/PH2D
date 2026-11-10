@@ -94,6 +94,8 @@ fn lane(world: &mut bevy_ecs::world::World, x0: f32, tag: &str, cap: f32, glide:
         let mut cfg = e.get_mut::<PlatformPlayer>().expect("player");
         cfg.max_fall_speed = cap;
         cfg.glide_fall_speed = glide;
+        cfg.fall_limit_on = cap > 0.0;
+        cfg.glide_on = glide > 0.0;
     }
     p
 }

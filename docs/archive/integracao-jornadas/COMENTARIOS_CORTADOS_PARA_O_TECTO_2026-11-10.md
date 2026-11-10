@@ -744,3 +744,23 @@ História verbatim dos `//!` removidos (o porquê histórico vive aqui, não no 
     //! É: a paleta *Add Component* fazia, à letra, `desc.display_name.to_string()` e só depois
     //! concatenava `tr(…)`. ⇒ *um censo cuja crate não é DONA do texto que ela pinta fica verde sobre
     //! texto cru*, e eram **291** palavras.
+
+
+## `crates/ph2d-i18n/src/component_catalog.rs` — cabeçalho, linhas 18–31 (line/GameEngineFuncional, 10/11, tecto de 700 LOC)
+
+```rust
+//!
+//! ⚠️ **O dono da chave de um campo é o BLOCO e não o componente**, e isso foi medido: `MARKER` é
+//! partilhado por **5** descritores e `TAGS` por **2**. Um `FieldDesc` partilhado só pode carregar
+//! UMA chave — derivá-la do componente daria duas chaves para o mesmo byte.
+//!
+//! ⚠️ **As chaves derivadas são ÚNICAS, e há gate**: os 86 últimos segmentos de `canonical_name` não
+//! colidem (`80/80` na 1.ª medição, `86/86` com as formas que faltavam). *Uma derivação sem gate de
+//! unicidade cala-se no dia em que duas famílias declararem o mesmo nome.*
+//!
+//! ⛔⛔ **E TRÊS rótulos só entraram porque o gerador não é a régua léxica:** `"Y-Sort"`, `"9-Slice"`
+//! e `"3D"` (este saiu com o 3D, ADR-0179) eram pintados e a [`ph2d_label_census`] **não os
+//! acusava** — ela não reconhece uma sigla nem um composto com hífen ou dígito como língua. *Uma
+//! régua léxica tem um ponto cego exactamente onde o rótulo é mais curto*, e quem os apanhou foi o
+//! cruzamento entre as duas populações.
+```

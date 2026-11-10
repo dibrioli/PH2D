@@ -335,6 +335,7 @@ fn o_cartao_sabe_se_o_personagem_agacha() {
     );
     if let Some(mut p) = sim.world_mut().get_mut::<PlatformPlayer>(e) {
         p.crouch_height = 0.5 * p.float_height;
+        p.crouch_on = true;
     }
     assert!(info(&sim, e).card.can_crouch);
 }

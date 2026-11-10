@@ -20,6 +20,35 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
     let Some(info) = state::current_inspector_player() else {
         return false;
     };
+    let marcada = |host: &dyn PanelHostInternal, id| {
+        matches!(
+            host.store().get(id),
+            Some(ph2d_editor_core::interaction::InteractiveState::Checkbox {
+                value: ph2d_editor_core::widget::CheckboxValue::Checked,
+                ..
+            })
+        )
+    };
+    if let WidgetEvent::Toggled(id) = ev {
+        let edit = if let Some(i) = crate::ids::INSP_PLAYER_ABILITY
+            .iter()
+            .position(|&o| o == id)
+        {
+            let a = ph2d_editor_core::screens::hero::PlayerAbility::ALL[i];
+            Some(PlayerFieldEdit::Ability(a, marcada(host, id)))
+        } else if id == crate::ids::INSP_PLAYER_EMIT_BOX {
+            Some(PlayerFieldEdit::EmitSignals(marcada(host, id)))
+        } else {
+            None
+        };
+        if let Some(edit) = edit {
+            host.bus_mut().push(EditorAction::InspectorPlayerEdit {
+                entity_bits: info.entity_bits,
+                edit,
+            });
+            return true;
+        }
+    }
     let edit = match ev {
         WidgetEvent::Click(id) if crate::ids::INSP_PLAYER_MODE_IDS.contains(&id) => {
             // ⚠️ O índice VIRA o tag pela porta única do `PlayerMode` — nunca um
@@ -30,14 +59,6 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 .position(|&o| o == id)
                 .unwrap_or(0);
             Some(PlayerFieldEdit::Mode(i as u8))
-        }
-        WidgetEvent::Click(id) if crate::ids::INSP_PLAYER_EMIT_IDS.contains(&id) => {
-            // ⚠️ O índice É a resposta: `0` = Off, `1` = On. A tabela de rótulos
-            // do pintor e esta posição são as duas metades da mesma escolha, e é
-            // por isso que a lista vive nos `ids` e não em nenhuma das duas.
-            Some(PlayerFieldEdit::EmitSignals(
-                id == crate::ids::INSP_PLAYER_EMIT_IDS[1],
-            ))
         }
         WidgetEvent::Click(id) if crate::ids::INSP_PLAYER_LIFT_POLICY_IDS.contains(&id) => {
             // ⚠️ O índice É o `PlatformLift::tag`, sem remap — a tabela de

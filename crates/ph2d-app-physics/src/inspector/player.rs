@@ -176,6 +176,15 @@ pub fn build_player_info(
             .world()
             .get::<ph2d_physics_ecs::PlayerSignals>(entity)
             .is_some(),
+        abilities: [
+            p.walls_on,
+            p.dash_on,
+            p.crouch_on,
+            p.swim_on,
+            p.ledge_on,
+            p.glide_on,
+            p.fall_limit_on,
+        ],
     })
 }
 
@@ -517,6 +526,28 @@ pub fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: PlayerField
         PlayerFieldEdit::ReactionSupport(v) => p.reaction_support = v,
         PlayerFieldEdit::ReactionMovement(v) => p.reaction_movement = v,
         PlayerFieldEdit::ReactionPush(v) => p.reaction_push = v,
+        PlayerFieldEdit::Ability(a, ligada) => {
+            use ph2d_editor_core::screens::hero::PlayerAbility as A;
+            match a {
+                A::Walls => p.walls_on = ligada,
+                A::Dash => p.dash_on = ligada,
+                A::Crouch => p.crouch_on = ligada,
+                A::Swim => p.swim_on = ligada,
+                A::Ledge => p.ledge_on = ligada,
+                A::Glide => p.glide_on = ligada,
+                A::FallLimit => p.fall_limit_on = ligada,
+            }
+            // Marcar o agachar com uma altura que a lei recusa (fora de `0..float`) já o ajusta à
+            // cápsula, como o Fit crouch: marcar é ligar.
+            let serve = p.crouch_height > 0.0 && p.crouch_height < p.float_height;
+            if a == A::Crouch
+                && ligada
+                && !serve
+                && let Some(fit) = fitted_float(shape, p.max_slope_deg)
+            {
+                p.crouch_height = fit.min(p.float_height);
+            }
+        }
     }
     // ⭐ Os clamps de cada braço moram na lei do TIPO (`PlatformPlayer::sanitize`), que o script
     // também chama (doc CodeEditor 08 §3.5).

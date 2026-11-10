@@ -90,6 +90,7 @@ pub fn physics_smoke_wall_grab(ctx: &mut crate::SceneCtx<'_>) {
         p.wall_slide_speed = 3.0;
         p.wall_jump_height = 2.0;
         p.wall_grab_stamina = 0.0;
+        p.walls_on = true;
     }
     eprintln!("{GRAB_SMOKE_MESSAGE}");
 }

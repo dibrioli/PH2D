@@ -245,6 +245,8 @@ fn the_two_subjects_differ_only_in_the_capability() {
         // A única diferença permitida na LEI é a velocidade de nado.
         let mut a_cfg = head.1;
         a_cfg.swim_speed = other.1.swim_speed;
+        // A caixa acompanha o número (a pista «boia» tem o nado desligado).
+        a_cfg.swim_on = other.1.swim_on;
         assert_eq!(
             a_cfg, other.1,
             "so' a `swim_speed` pode diferir — senao o artista compara outra coisa"

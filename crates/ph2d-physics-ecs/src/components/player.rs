@@ -29,6 +29,11 @@ use serde::{Deserialize, Serialize};
 mod lift;
 pub use lift::PlatformLift;
 
+/// Os números com que cada habilidade nasce e a porta da caixa (`on`).
+#[path = "player_pronto.rs"]
+mod pronto;
+use pronto::{PRONTO, on};
+
 /// **Este corpo é um player de plataforma.**
 ///
 /// Presença = o comportamento existe; os campos são os ganhos da perna
@@ -362,6 +367,23 @@ pub struct PlatformPlayer {
     /// ⚠️ **Ele só APERTA:** a lei lê os dois com um `&&`, então marcá-lo não
     /// devolve a liberdade a quem a perdeu de pé — ver [`ph2d_platformer::walk_for`].
     pub crouch_walk_off_ledges: bool,
+
+    /// ⭐ **A caixa de cada habilidade** (ficha `docs/GameEngineFuncional/componentes/03_character.md`):
+    /// desligada, a lei recebe a habilidade inerte ([`Self::config`]) e os números ficam guardados.
+    /// Antes, `0` desligava, e a tela não o dizia.
+    pub walls_on: bool,
+    /// Caixa do Dash.
+    pub dash_on: bool,
+    /// Caixa do agachar.
+    pub crouch_on: bool,
+    /// Caixa do nado.
+    pub swim_on: bool,
+    /// Caixa da beirada.
+    pub ledge_on: bool,
+    /// Caixa do planeio.
+    pub glide_on: bool,
+    /// Caixa do teto de queda (`max_fall_speed`).
+    pub fall_limit_on: bool,
 }
 
 impl PlatformPlayer {
@@ -412,45 +434,45 @@ impl PlatformPlayer {
                 platform_lift: self.platform_lift.law(),
             },
             wall: WallConfig {
-                slide_speed: self.wall_slide_speed,
-                jump_height: self.wall_jump_height,
+                slide_speed: on(self.walls_on, self.wall_slide_speed),
+                jump_height: on(self.walls_on, self.wall_jump_height),
                 jump_push: self.wall_jump_push,
                 reach: self.wall_reach,
                 samples: self.wall_samples as usize,
                 spread: self.wall_spread,
                 jump_lockout: self.wall_jump_lockout,
-                grab_stamina: self.wall_grab_stamina,
+                grab_stamina: on(self.walls_on, self.wall_grab_stamina),
             },
             dash: DashConfig {
-                speed: self.dash_speed,
+                speed: on(self.dash_on, self.dash_speed),
                 time: self.dash_time,
                 cooldown: self.dash_cooldown,
             },
             crouch: CrouchConfig {
-                height: self.crouch_height,
+                height: on(self.crouch_on, self.crouch_height),
                 speed: self.crouch_speed,
                 walk_off_ledges: self.crouch_walk_off_ledges,
                 // A ponte põe-no a partir do collider (plano 09).
                 body_room: 0.0,
             },
             swim: SwimConfig {
-                speed: self.swim_speed,
+                speed: on(self.swim_on, self.swim_speed),
                 acceleration: self.swim_acceleration,
                 enter: self.swim_enter,
             },
             ledge: LedgeConfig {
-                grab: self.ledge_grab,
+                grab: on(self.ledge_on, self.ledge_grab),
                 reach_y: self.ledge_reach_y,
                 span: self.ledge_span,
                 offset_y: self.ledge_offset_y,
                 speed: self.ledge_speed,
             },
             glide: GlideConfig {
-                fall_speed: self.glide_fall_speed,
+                fall_speed: on(self.glide_on, self.glide_fall_speed),
             },
 
             fall: FallConfig {
-                max_speed: self.max_fall_speed,
+                max_speed: on(self.fall_limit_on, self.max_fall_speed),
             },
             react: ReactionConfig {
                 support: self.reaction_support,
@@ -496,32 +518,39 @@ impl Default for PlatformPlayer {
             reaction_support: c.react.support,
             reaction_movement: c.react.movement,
             reaction_push: c.react.push,
-            wall_slide_speed: c.wall.slide_speed,
-            wall_jump_height: c.wall.jump_height,
+            wall_slide_speed: PRONTO.wall_slide_speed,
+            wall_jump_height: PRONTO.wall_jump_height,
             wall_jump_push: c.wall.jump_push,
             wall_reach: c.wall.reach,
             wall_samples: u16::try_from(c.wall.samples).unwrap_or(u16::MAX),
             wall_spread: c.wall.spread,
             wall_jump_lockout: c.wall.jump_lockout,
             wall_grab_stamina: c.wall.grab_stamina,
-            dash_speed: c.dash.speed,
+            dash_speed: PRONTO.dash_speed,
             dash_time: c.dash.time,
             dash_cooldown: c.dash.cooldown,
-            crouch_height: c.crouch.height,
+            crouch_height: PRONTO.crouch_height,
             crouch_speed: c.crouch.speed,
-            swim_speed: c.swim.speed,
+            swim_speed: PRONTO.swim_speed,
             swim_acceleration: c.swim.acceleration,
             swim_enter: c.swim.enter,
-            ledge_grab: c.ledge.grab,
+            ledge_grab: PRONTO.ledge_grab,
             ledge_reach_y: c.ledge.reach_y,
             ledge_span: c.ledge.span,
             ledge_offset_y: c.ledge.offset_y,
             ledge_speed: c.ledge.speed,
-            glide_fall_speed: c.glide.fall_speed,
-            max_fall_speed: c.fall.max_speed,
+            glide_fall_speed: PRONTO.glide_fall_speed,
+            max_fall_speed: PRONTO.max_fall_speed,
             platform_lift: PlatformLift::of_law(c.jump.platform_lift),
             walk_off_ledges: c.walk.walk_off_ledges,
             crouch_walk_off_ledges: c.crouch.walk_off_ledges,
+            walls_on: false,
+            dash_on: false,
+            crouch_on: false,
+            swim_on: false,
+            ledge_on: false,
+            glide_on: false,
+            fall_limit_on: false,
         }
     }
 }

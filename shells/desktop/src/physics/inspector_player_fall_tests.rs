@@ -82,6 +82,19 @@ fn a_typed_cap_reaches_the_config_and_leaves_the_glide_alone() {
         "um player recem-criado nasce sem teto e sem planeio"
     );
 
+    // As duas caixas marcadas: desmarcada, a habilidade chega inerte à lei
+    // (ficha 03_character), e o número digitado não chegaria a ela.
+    use ph2d_editor_core::screens::hero::PlayerAbility;
+    apply_player_edit(
+        &mut sim,
+        bits,
+        PlayerFieldEdit::Ability(PlayerAbility::Glide, true),
+    );
+    apply_player_edit(
+        &mut sim,
+        bits,
+        PlayerFieldEdit::Ability(PlayerAbility::FallLimit, true),
+    );
     // O planeio primeiro, para o vizinho ter um valor que uma escrita errada
     // possa DESTRUIR — escrito depois, a mutação apenas o repetiria.
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::GlideFallSpeed(2.5));

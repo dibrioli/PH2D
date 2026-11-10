@@ -119,6 +119,8 @@ pub fn build_probe_scene(world: &mut bevy_ecs::world::World) -> ph2d_ecs::Entity
         p.wall_reach = WALL_REACH;
         p.wall_slide_speed = 3.0;
         p.wall_jump_height = 2.0;
+        p.walls_on = true;
+        p.crouch_on = true;
     }
     player
 }

@@ -147,6 +147,7 @@ fn subject(world: &mut World, name: &str, y: f32, tint: [f32; 4], swim: f32, kin
         PlatformPlayer {
             float_height: FLOAT,
             swim_speed: swim,
+            swim_on: swim > 0.0,
             swim_acceleration: SWIM_ACCEL,
             ..PlatformPlayer::default()
         },

@@ -545,6 +545,8 @@ pub fn spawn(sim: &mut SimWorld) {
             PlatformPlayer {
                 float_height: 0.9,
                 wall_slide_speed: 1.0,
+                wall_jump_height: 0.0,
+                walls_on: true,
                 ..PlatformPlayer::default()
             },
             Transform::from_translation(Vec2::new(x, 6.0)),

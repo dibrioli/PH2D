@@ -423,4 +423,11 @@
 /// canal OBJETO `11` sai (não se reusa) e o grupo OBJETO do tint leva o alfa (`TINTA + 3`). SEM leitura dos
 /// anteriores (§0.11). Gates: `cada_campo_novo_mostra_o_seu_grupo`, `a_swatch_do_tint_grava_a_cor_e_o_alfa`, `cada_campo_le_o_que_escreveu`. Registos: `0`.
 /// ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 232;
+///
+/// # `232 → 233` — **a caixa de cada habilidade do Platform Player** (`line/GameEngineFuncional`, 2026-11-10)
+///
+/// `PlatformPlayer` ganha sete `bool` no FIM (`walls_on`, `dash_on`, `crouch_on`, `swim_on`, `ledge_on`,
+/// `glide_on`, `fall_limit_on`): desligada, a lei recebe a habilidade inerte e os números ficam guardados (antes
+/// `0` desligava). Ficha `docs/GameEngineFuncional/componentes/03_character.md`. SEM leitura dos anteriores (§0.11).
+/// Registos: `0`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 233;

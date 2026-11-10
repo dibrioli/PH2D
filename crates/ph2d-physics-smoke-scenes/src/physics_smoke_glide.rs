@@ -130,11 +130,12 @@ fn lane(world: &mut bevy_ecs::world::World, x0: f32, tag: &str, glide: f32) -> E
     // eles. Só o NOME e o teto de descida são escritos por cima.
     let p = spawn_player(world, Vec2::new(x0 + 1.0, TAKEOFF_TOP + FLOAT));
     world.entity_mut(p).insert(Name::new(tag.to_string()));
-    world
-        .entity_mut(p)
-        .get_mut::<PlatformPlayer>()
-        .expect("player")
-        .glide_fall_speed = glide;
+    {
+        let mut e = world.entity_mut(p);
+        let mut cfg = e.get_mut::<PlatformPlayer>().expect("player");
+        cfg.glide_fall_speed = glide;
+        cfg.glide_on = glide > 0.0;
+    }
     p
 }
 

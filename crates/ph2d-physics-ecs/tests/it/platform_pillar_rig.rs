@@ -149,6 +149,7 @@ pub fn rig(stone: Option<(f32, f32, f32)>) -> Rig {
             PlatformPlayer {
                 float_height: FLOAT_HEIGHT,
                 crouch_height: CROUCH_HEIGHT,
+                crouch_on: true,
                 // As assistências que não são desta cena ficam FORA do caminho —
                 // a de quina especialmente, que existe para EMPURRAR um corpo
                 // que sobe contra uma beirada, e esta cena é feita de beiradas.

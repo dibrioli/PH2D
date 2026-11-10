@@ -314,6 +314,43 @@ fn fitting_the_crouch_seeds_it_from_the_floor_not_from_the_standing_leg() {
     );
 }
 
+/// ⭐ **Marcar a caixa Crouch com uma altura que a lei recusa já a ajusta à cápsula** (ficha 03): marcar é ligar.
+#[test]
+fn marcar_o_crouch_com_altura_que_nao_serve_ajusta_a_a_capsula() {
+    use ph2d_editor_core::screens::hero::PlayerAbility;
+    let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
+    attach_player(&mut sim, bits);
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(1.50));
+    apply_player_edit(&mut sim, bits, PlayerFieldEdit::CrouchHeight(2.0));
+    apply_player_edit(
+        &mut sim,
+        bits,
+        PlayerFieldEdit::Ability(PlayerAbility::Crouch, true),
+    );
+    let info = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
+    assert!(
+        info.crouch_armed,
+        "a caixa marcada deixou o agachar desarmado ({:.3})",
+        info.crouch_height
+    );
+    assert!(info.abilities[2]);
+}
+
+/// Cada caixa do painel liga a SUA habilidade, e só ela.
+#[test]
+fn cada_caixa_liga_so_a_sua_habilidade() {
+    use ph2d_editor_core::screens::hero::PlayerAbility;
+    for (i, a) in PlayerAbility::ALL.into_iter().enumerate() {
+        let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
+        attach_player(&mut sim, bits);
+        apply_player_edit(&mut sim, bits, PlayerFieldEdit::Ability(a, true));
+        let info = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
+        let mut esperado = [false; 7];
+        esperado[i] = true;
+        assert_eq!(info.abilities, esperado, "{a:?}");
+    }
+}
+
 /// **E o `Fit Crouch` nunca passa da perna de pé** — a metade que só morde numa
 /// cápsula cujo piso já está acima da altura autorada.
 ///

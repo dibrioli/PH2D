@@ -60,6 +60,7 @@ fn lane(world: &mut bevy_ecs::world::World, x0: f32, tag: &str, grab: f32) -> En
         let mut e = world.entity_mut(p);
         let mut cfg = e.get_mut::<PlatformPlayer>().expect("player");
         cfg.ledge_grab = grab;
+        cfg.ledge_on = grab > 0.0;
         // ⚠️ **Os dois DECLARADOS, e não herdados** (`W-LedgeSensor`): a janela
         // igual ao alcance é o mundo de antes da wave, quando um número fazia os
         // dois eixos, e é ela que o roteiro do passo 3 mede. Uma cena que

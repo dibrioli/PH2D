@@ -91,6 +91,8 @@ fn rig(armed: bool) -> Rig {
                 wall_jump_height: if armed { 2.0 } else { 0.0 },
                 corner_reach: if armed { CORNER_REACH } else { 0.0 },
                 crouch_height: if armed { CROUCH } else { 0.0 },
+                walls_on: armed,
+                crouch_on: armed,
                 ..PlatformPlayer::default()
             },
             Transform::from_translation(Vec2::new(0.0, FLOAT)),

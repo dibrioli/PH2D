@@ -79,6 +79,7 @@ pub fn physics_smoke_well(ctx: &mut crate::SceneCtx<'_>) {
     for (mut p, _) in q.iter_mut(world) {
         p.wall_slide_speed = 3.0;
         p.wall_jump_height = 2.0;
+        p.walls_on = true;
     }
     eprintln!("{WELL_SMOKE_MESSAGE}");
 }

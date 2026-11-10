@@ -107,6 +107,12 @@ fn the_crouching_chip_reaches_the_law_and_only_tightens() {
     // O agachar tem de estar AUTORADO, senao a `walk_for` devolve a config de
     // pe' e este gate ficaria verde sobre um numero que a lei nunca le'.
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::CrouchHeight(0.25));
+    // E a CAIXA marcada (ficha 03_character): desmarcada, a lei recebe o agachar inerte.
+    apply_player_edit(
+        &mut sim,
+        bits,
+        PlayerFieldEdit::Ability(ph2d_editor_core::screens::hero::PlayerAbility::Crouch, true),
+    );
 
     let crouched_allows = |sim: &SimWorld| {
         let c = sim
@@ -149,7 +155,19 @@ fn the_crouch_armed_flag_comes_from_the_law() {
     };
     assert!(!armed(&sim), "o agachar nasce DESLIGADO");
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::CrouchHeight(0.25));
-    assert!(armed(&sim), "com altura autorada ele fica armado");
+    assert!(
+        !armed(&sim),
+        "a altura sozinha não arma: a caixa está desmarcada"
+    );
+    apply_player_edit(
+        &mut sim,
+        bits,
+        PlayerFieldEdit::Ability(ph2d_editor_core::screens::hero::PlayerAbility::Crouch, true),
+    );
+    assert!(
+        armed(&sim),
+        "com altura autorada e a caixa marcada ele fica armado"
+    );
     // ⚠️ Uma altura que NAO e' menor que a de pe' nao e' um agachar — e e' a lei
     // que o diz, com a `float_height` na mao.
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::CrouchHeight(9.0));

@@ -177,6 +177,7 @@ pub fn rig_body(
                 corner_reach: 0.0,
                 lift_momentum: 0.0,
                 crouch_height,
+                crouch_on: true,
                 crouch_speed: CROUCH_SPEED,
                 ..PlatformPlayer::default()
             },

@@ -442,3 +442,42 @@ pub const INSP_PLAYER_CARD_DASH: NodeId = hash_node_id("insp_player_card_dash");
 pub const INSP_PLAYER_CARD_CROUCH: NodeId = hash_node_id("insp_player_card_crouch");
 
 pub const INSP_PLAYER_CARD_SWIM: NodeId = hash_node_id("insp_player_card_swim");
+
+/// ⭐ **A caixa de cada habilidade**, na ordem de `PlayerAbility::ALL` (Walls, Dash, Crouch, Swim,
+/// Ledge, Glide, Fall Limit) — ficha `docs/GameEngineFuncional/componentes/03_character.md`.
+pub const INSP_PLAYER_ABILITY: [NodeId; 7] = [
+    hash_node_id("insp.player.ability.walls"),
+    hash_node_id("insp.player.ability.dash"),
+    hash_node_id("insp.player.ability.crouch"),
+    hash_node_id("insp.player.ability.swim"),
+    hash_node_id("insp.player.ability.ledge"),
+    hash_node_id("insp.player.ability.glide"),
+    hash_node_id("insp.player.ability.fall_limit"),
+];
+
+/// A dobra «More» do cartão Walk.
+pub const INSP_PLAYER_FOLD_WALK_MORE: NodeId = hash_node_id("insp.player.fold.walk_more");
+/// A dobra «More» do cartão Jump.
+pub const INSP_PLAYER_FOLD_JUMP_MORE: NodeId = hash_node_id("insp.player.fold.jump_more");
+/// A dobra «Wall sensor» dentro de Walls.
+pub const INSP_PLAYER_FOLD_WALL_SENSOR: NodeId = hash_node_id("insp.player.fold.wall_sensor");
+/// A dobra «Advanced» (Body, sinais, plataforma, teto de queda, reação).
+pub const INSP_PLAYER_FOLD_ADVANCED: NodeId = hash_node_id("insp.player.fold.advanced");
+/// A caixa «Emit Signals» (antes um seletor Off|On).
+pub const INSP_PLAYER_EMIT_BOX: NodeId = hash_node_id("insp.player.emit.box");
+
+/// Todas as dobras do Platform Player: nascem fechadas (`populate`).
+pub const INSP_PLAYER_FOLDS: [NodeId; 12] = [
+    INSP_PLAYER_FOLD_WALK_MORE,
+    INSP_PLAYER_FOLD_JUMP_MORE,
+    INSP_PLAYER_CARD_WALL,
+    INSP_PLAYER_FOLD_WALL_SENSOR,
+    INSP_PLAYER_CARD_DASH,
+    INSP_PLAYER_CARD_CROUCH,
+    INSP_PLAYER_CARD_SWIM,
+    INSP_PLAYER_CARD_LEDGE,
+    INSP_PLAYER_CARD_GLIDE,
+    INSP_PLAYER_CARD_FORGIVE,
+    INSP_PLAYER_CARD_LEG,
+    INSP_PLAYER_FOLD_ADVANCED,
+];

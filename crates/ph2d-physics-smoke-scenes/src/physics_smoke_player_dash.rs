@@ -85,6 +85,7 @@ pub fn physics_smoke_dash(ctx: &mut crate::SceneCtx<'_>) {
     let mut q = world.query::<(&mut PlatformPlayer, &Transform)>();
     for (mut p, _) in q.iter_mut(world) {
         p.dash_speed = 18.0;
+        p.dash_on = true;
         p.dash_time = 0.15;
         p.dash_cooldown = 0.2;
     }

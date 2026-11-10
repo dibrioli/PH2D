@@ -87,6 +87,7 @@ fn scene(centre_y: f32, gap: f32, s: Sensor, half_x: f32) -> (SimWorld, PhysicsB
             PlatformPlayer {
                 float_height: FLOAT_HEIGHT,
                 ledge_grab: s.grab,
+                ledge_on: true,
                 ledge_reach_y: s.reach_y,
                 ledge_span: s.span,
                 ledge_offset_y: s.offset_y,
@@ -318,6 +319,7 @@ fn a_sample_inside_the_wall_refuses_the_whole_fan() {
             PlatformPlayer {
                 float_height: FLOAT_HEIGHT,
                 ledge_grab: fanned.grab,
+                ledge_on: true,
                 ledge_reach_y: fanned.reach_y,
                 ledge_span: fanned.span,
                 ledge_speed: 3.0,

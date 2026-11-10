@@ -103,6 +103,7 @@ fn player(sim: &mut SimWorld, kinematic: bool, swim: f32, density: f32) -> Entit
         PlatformPlayer {
             float_height: FLOAT,
             swim_speed: swim,
+            swim_on: true,
             swim_acceleration: 44.0,
             ..PlatformPlayer::default()
         },

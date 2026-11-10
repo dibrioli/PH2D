@@ -562,8 +562,9 @@ fn a_barra_tem_duas_fileiras_no_molde_do_rive() {
     let sep = ph2d_editor_core::panel::cards::banda::SEPARADOR_W + m::FIELD_GAP * 2.0;
     let abas = r(ids::TIMELINE_TAB_ARRANGE);
     let folga = r(ids::TIMELINE_GO_START).x - (abas.x + abas.w);
+    // O alvo da aba (onda 2i) cresceu meio vão para cada lado dentro da antiga caixa das abas.
     assert!(
-        folga >= sep + m::SEG_PAD - 0.5,
+        folga >= sep + m::SEG_PAD * 0.5 - 0.5,
         "sem separador entre Arrange e o |◁: folga {folga}"
     );
     let marker = r(ids::TIMELINE_ADD_MARKER);
@@ -715,4 +716,37 @@ fn com_muitos_clipes_os_chips_ficam_numa_fileira_e_o_resto_vai_para_a_lista() {
         m0.rect(ultimo).is_some(),
         "a lista não mostrou o último clipe"
     );
+}
+
+/// ⭐ Doc 15 onda 2i (dono 09/11): as abas passaram a pílula sem caixa e Auto Key · Record · Marker a
+/// discretos — SÓ a cara. Os alvos não encolheram: cada um é pelo menos o medido antes da mudança
+/// (abas 36,8 / 69,9 / 55,2 × 24; Auto Key 108 × 28; Record 176 × 28; Marker 75 × 28), e o clique na
+/// aba ainda troca a aba.
+#[test]
+fn os_alvos_da_barra_nao_encolheram_com_a_cara_nova() {
+    let mut mesa = mesa(true);
+    for (id, w, h) in [
+        (ids::TIMELINE_TAB_KEYS, 36.8, 24.0),
+        (ids::TIMELINE_TAB_CONTAINERS, 69.9, 24.0),
+        (ids::TIMELINE_TAB_ARRANGE, 55.2, 24.0),
+        (ids::TIMELINE_AUTOKEY, 108.0, 28.0),
+        (ids::TIMELINE_RECORD, 176.0, 28.0),
+        (ids::TIMELINE_ADD_MARKER, 75.0, 28.0),
+    ] {
+        let r = mesa.rect(id).expect("o controlo está pintado");
+        assert!(
+            r.w >= w && r.h >= h,
+            "{id:?}: alvo {}×{} < {w}×{h}",
+            r.w,
+            r.h
+        );
+    }
+    let _ = mesa.clica(ids::TIMELINE_TAB_ARRANGE);
+    mesa.assenta_em(JANELA);
+    assert_eq!(
+        mesa.st.tab,
+        ph2d_panel_timeline::tab::Tab::Arrange,
+        "a aba ainda troca"
+    );
+    ferramenta::force_cards_on_this_thread(None);
 }

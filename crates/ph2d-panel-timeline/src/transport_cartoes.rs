@@ -299,7 +299,7 @@ fn abas_e_migalha(
         let mut c = cartao(ctx, ink, body);
         let segs = segs_das_abas(&celulas, crate::transport_tabs::selected(view.tab, snap));
         let at = f.poe(c.segmentos_em_fila_w(&segs));
-        c.segmentos_em_fila(&segs, at.0, at.1);
+        c.abas_em(&segs, at.0, at.1, tons_da_barra(theme));
     }
     let w = crate::breadcrumb::width(snap);
     if w > 0.0 {
@@ -390,11 +390,15 @@ fn grupo_de_tocar(
 /// As duas caixas de gravar: Auto Key (o ponto acende-se vermelho quando liga) e Record while playing
 /// (o anel vermelho de gravação). A cor mora no sinal, nunca no quadradinho.
 fn caixas_de_gravar(snap: &TimelineViewSnapshot) -> [Emoldurada<'static>; 2] {
-    let ponto = if snap.auto_key {
-        ColorToken::Danger
-    } else {
-        ColorToken::Text3
+    // Apagados desligados; o vermelho só quando LIGA (doc 15 onda 2i: as abas mandam na barra).
+    let acende = |on: bool| {
+        if on {
+            ColorToken::Danger
+        } else {
+            ColorToken::TextDisabled
+        }
     };
+    let ponto = acende(snap.auto_key);
     [
         Emoldurada {
             id: TIMELINE_AUTOKEY,
@@ -407,7 +411,7 @@ fn caixas_de_gravar(snap: &TimelineViewSnapshot) -> [Emoldurada<'static>; 2] {
             id: TIMELINE_RECORD,
             nome: ph2d_i18n::tr("panel.timeline.card.record"),
             on: snap.performing,
-            antes: Some(Sinal::Icone(IconId::Circle, ColorToken::Danger)),
+            antes: Some(Sinal::Icone(IconId::Circle, acende(snap.performing))),
             fim: None,
         },
     ]
@@ -423,19 +427,36 @@ fn grupo_de_gravar(
 ) {
     let ink = CardInk::of_list(theme);
     let mut c = cartao(ctx, ink, body);
+    let tons = tons_da_barra(theme);
     for caixa in caixas_de_gravar(snap) {
         let (x, y) = f.poe(c.emoldurada_w(&caixa));
-        c.emoldurada_em(&caixa, x, y);
+        c.emoldurada_discreta_em(&caixa, x, y, tons);
     }
     let nome = ph2d_i18n::tr("panel.timeline.card.add_marker");
     let w = c.botao_com_icone_w(nome);
     let (x, y) = f.poe(w);
-    c.botao_com_icone_em(
+    c.botao_com_icone_discreto_em(
         TIMELINE_ADD_MARKER,
         IconId::Plus,
         nome,
         Rect::new(x, y, w, m::FIELD_H),
+        tons,
     );
+}
+
+/// ⭐ **A hierarquia da barra** (dono 09/11, onda 2i): as abas são a navegação principal e as mais
+/// fortes (pílula no azul do chip da maquete, texto claro em negrito); Auto Key, Record e Marker um
+/// degrau abaixo, sem caixa. As tintas são as da maquete B1 (`TimelineTinta`).
+pub(crate) fn tons_da_barra(theme: Theme) -> banda::TonsDaBarra {
+    use ph2d_tokens::TimelineTinta as T;
+    let t = |x| crate::folha_tinta::tinta(x, theme);
+    banda::TonsDaBarra {
+        ativa_fundo: t(T::ChipEscolhido),
+        ativa_texto: t(T::TextoCabecalho),
+        inativa_texto: t(T::TextoPropriedade),
+        sob_o_rato: t(T::NomesCabecalho),
+        discreta_texto: t(T::TextoValor),
+    }
 }
 
 /// A barra (doc 15, onda 1b, dono 09/11): DUAS fileiras. Na tira do cabeçalho `strip`: abas · migalha ·

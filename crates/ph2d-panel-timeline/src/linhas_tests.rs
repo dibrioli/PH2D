@@ -530,3 +530,35 @@ fn a_moldura_da_fita_existe_e_acende_com_o_auto_key() {
     assert!(mudou >= 0.10, "o Auto Key muda a moldura só {mudou:.3}");
     assert!(le_se >= 0.05, "a moldura some na folha ({le_se:.3})");
 }
+
+/// ⭐ Doc 15 onda 2i (dono 09/11: «as abas são a navegação principal»): em todo tema, a pílula e o
+/// texto da aba ativa destacam-se do fundo da barra MAIS do que a caixa do Auto Key desligada (a de
+/// antes, `CardField`, e a de agora, sem fundo) e o texto dela.
+#[test]
+fn a_aba_ativa_manda_mais_que_a_caixa_do_auto_key() {
+    let lab = |c: ph2d_vector::Color| {
+        let [r, g, b, _] = c.to_rgba8().to_u8_array();
+        lab_de(ph2d_tokens::Color {
+            r,
+            g,
+            b,
+            a: u8::MAX,
+        })
+    };
+    for t in TEMAS {
+        let fundo = lab(resolve(ColorToken::KanbanList, t));
+        let tons = crate::transport::cartoes::tons_da_barra(t);
+        let aba = dist(lab(tons.ativa_fundo), fundo);
+        let caixa_antes = dist(lab(resolve(ColorToken::CardField, t)), fundo);
+        assert!(
+            aba > caixa_antes && aba > 0.0,
+            "{t:?}: aba {aba:.3} × caixa {caixa_antes:.3}"
+        );
+        let txt_aba = dist(lab(tons.ativa_texto), fundo);
+        let txt_caixa = dist(lab(tons.discreta_texto), fundo);
+        assert!(
+            txt_aba > txt_caixa,
+            "{t:?}: texto da aba {txt_aba:.3} × da caixa {txt_caixa:.3}"
+        );
+    }
+}

@@ -129,157 +129,164 @@ pub(crate) const BODY: [(f32, f32); 9] = [
     (0.5, 0.72),  // LITERAL-PX-OK: maquete B3
 ];
 
+// As medidas do comando (fracções da caixa), maquete B3.
+const PILL: (f32, f32) = (0.07, 0.035); // LITERAL-PX-OK: maquete B3
+const WIDE: (f32, f32) = (0.065, 0.035); // LITERAL-PX-OK: maquete B3
+const BTN: (f32, f32) = (0.04, 0.06); // LITERAL-PX-OK: maquete B3
+const ARM: (f32, f32) = (0.03, 0.045); // LITERAL-PX-OK: maquete B3
+const LT: (f32, f32) = (0.24, 0.06); // LITERAL-PX-OK: maquete B3
+const RT: (f32, f32) = (0.76, 0.06); // LITERAL-PX-OK: maquete B3
+const LB: (f32, f32) = (0.24, 0.14); // LITERAL-PX-OK: maquete B3
+const RB: (f32, f32) = (0.76, 0.14); // LITERAL-PX-OK: maquete B3
+const BACK: (f32, f32) = (0.42, 0.4); // LITERAL-PX-OK: maquete B3
+const START: (f32, f32) = (0.58, 0.4); // LITERAL-PX-OK: maquete B3
+const DPAD: (f32, f32) = (0.4, 0.62); // LITERAL-PX-OK: maquete B3
+const FACE: (f32, f32) = (0.78, 0.4); // LITERAL-PX-OK: maquete B3
+/// O passo entre botões da face e da cruz, e o alcance das setas à volta da manche.
+const STEP: f32 = 0.075; // LITERAL-PX-OK: maquete B3
+const REACH: f32 = 0.1; // LITERAL-PX-OK: maquete B3
+
 /// Os alvos do comando (fracções da caixa). As metades de manche são as quatro setas à volta de cada manche.
 pub(crate) fn pad() -> Vec<PadPart> {
     use GamepadAxis as A;
     use GamepadButton as P;
     use PadShape::{Arrow, Pill, Round};
     use ph2d_editor_core::icons::IconId as I;
-    let (pill, btn, arm) = ((0.07, 0.035), (0.04, 0.06), (0.03, 0.045)); // LITERAL-PX-OK: maquete B3
-    let (ls, rs) = ((0.28, 0.4), (0.65, 0.66)); // LITERAL-PX-OK: maquete B3
-    let (dp, face) = ((0.4, 0.62), (0.78, 0.4)); // LITERAL-PX-OK: maquete B3
-    let (reach, step) = (0.1, 0.075); // LITERAL-PX-OK: maquete B3
+    let (fx, fy, dx) = (FACE.0, FACE.1, STEP * PAD_ASPECT);
+    let (px, py, ex) = (DPAD.0, DPAD.1, STEP / PAD_ASPECT);
     let mut out = vec![
         part(
             b(P::LeftTrigger),
             "input_map_keyboard.pad.lt",
-            (0.24, 0.06),
-            pill,
+            LT,
+            PILL,
             Pill,
-        ), // LITERAL-PX-OK: maquete B3
+        ),
         part(
             b(P::RightTrigger),
             "input_map_keyboard.pad.rt",
-            (0.76, 0.06),
-            pill,
+            RT,
+            PILL,
             Pill,
-        ), // LITERAL-PX-OK: maquete B3
+        ),
         part(
             b(P::LeftBumper),
             "input_map_keyboard.pad.lb",
-            (0.24, 0.14),
-            pill,
+            LB,
+            PILL,
             Pill,
-        ), // LITERAL-PX-OK: maquete B3
+        ),
         part(
             b(P::RightBumper),
             "input_map_keyboard.pad.rb",
-            (0.76, 0.14),
-            pill,
+            RB,
+            PILL,
             Pill,
-        ), // LITERAL-PX-OK: maquete B3
+        ),
         part(
             b(P::Select),
             "input_map_keyboard.pad.back",
-            (0.43, 0.38),
-            btn,
-            Round,
-        ), // LITERAL-PX-OK: maquete B3
+            BACK,
+            WIDE,
+            Pill,
+        ),
         part(
             b(P::Start),
             "input_map_keyboard.pad.start",
-            (0.57, 0.38),
-            btn,
-            Round,
-        ), // LITERAL-PX-OK: maquete B3
+            START,
+            WIDE,
+            Pill,
+        ),
         part(
             b(P::North),
             "input_map_keyboard.pad.y",
-            (face.0, face.1 - step * PAD_ASPECT),
-            btn,
+            (fx, fy - dx),
+            BTN,
             Round,
         ),
         part(
             b(P::South),
             "input_map_keyboard.pad.a",
-            (face.0, face.1 + step * PAD_ASPECT),
-            btn,
+            (fx, fy + dx),
+            BTN,
             Round,
         ),
         part(
             b(P::West),
             "input_map_keyboard.pad.x",
-            (face.0 - step, face.1),
-            btn,
+            (fx - STEP, fy),
+            BTN,
             Round,
         ),
         part(
             b(P::East),
             "input_map_keyboard.pad.b",
-            (face.0 + step, face.1),
-            btn,
+            (fx + STEP, fy),
+            BTN,
             Round,
         ),
         part(
             b(P::DPadUp),
             "input_map_keyboard.pad.dpad",
-            (dp.0, dp.1 - step),
-            arm,
+            (px, py - STEP),
+            ARM,
             Arrow(I::ChevronUp),
         ),
         part(
             b(P::DPadDown),
             "input_map_keyboard.pad.dpad",
-            (dp.0, dp.1 + step),
-            arm,
+            (px, py + STEP),
+            ARM,
             Arrow(I::ChevronDown),
         ),
         part(
             b(P::DPadLeft),
             "input_map_keyboard.pad.dpad",
-            (dp.0 - step / PAD_ASPECT, dp.1),
-            arm,
+            (px - ex, py),
+            ARM,
             Arrow(I::ChevronLeft),
         ),
         part(
             b(P::DPadRight),
             "input_map_keyboard.pad.dpad",
-            (dp.0 + step / PAD_ASPECT, dp.1),
-            arm,
+            (px + ex, py),
+            ARM,
             Arrow(I::ChevronRight),
         ),
     ];
-    for ((cx, cy), x, y, key) in [
-        (
-            ls,
-            A::LeftStickX,
-            A::LeftStickY,
-            "input_map_keyboard.pad.ls",
-        ),
-        (
-            rs,
-            A::RightStickX,
-            A::RightStickY,
-            "input_map_keyboard.pad.rs",
-        ),
-    ] {
-        let dy = reach * PAD_ASPECT;
+    for ((cx, cy), key) in STICKS {
+        let (x, y) = if key == STICKS[0].1 {
+            (A::LeftStickX, A::LeftStickY)
+        } else {
+            (A::RightStickX, A::RightStickY)
+        };
+        let dy = REACH * PAD_ASPECT;
         out.push(part(
             half(y, true),
             key,
             (cx, cy - dy),
-            arm,
+            ARM,
             Arrow(I::ChevronUp),
         ));
         out.push(part(
             half(y, false),
             key,
             (cx, cy + dy),
-            arm,
+            ARM,
             Arrow(I::ChevronDown),
         ));
         out.push(part(
             half(x, false),
             key,
-            (cx - reach, cy),
-            arm,
+            (cx - REACH, cy),
+            ARM,
             Arrow(I::ChevronLeft),
         ));
         out.push(part(
             half(x, true),
             key,
-            (cx + reach, cy),
-            arm,
+            (cx + REACH, cy),
+            ARM,
             Arrow(I::ChevronRight),
         ));
     }

@@ -5,6 +5,8 @@
 mod abrir;
 mod lista;
 mod lista_censo;
+mod teclado;
+mod teclado_censo;
 
 use ph2d_a11y::NodeId;
 use ph2d_app_input_map::{InputMapTab, TAB_ID, View};

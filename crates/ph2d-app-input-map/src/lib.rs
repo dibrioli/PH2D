@@ -2,7 +2,9 @@
 //! UMA aba. A shell instala-a com a vista das prefs ([`install`]) e chama [`frame`] uma vez por quadro: o
 //! Settings ▸ Input Map… chega como o pedido do `WidgetStore`, e o `frame` abre (ou traz à frente) a aba.
 
-pub use ph2d_input_map_editor::{InputMapDoc, InputMapEdit, Snapshot, View, ids, view_list};
+pub use ph2d_input_map_editor::{
+    InputMapDoc, InputMapEdit, Snapshot, View, ids, view_keyboard, view_list,
+};
 
 mod apply;
 pub mod listen;

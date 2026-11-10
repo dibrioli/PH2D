@@ -168,7 +168,11 @@ pub(crate) fn key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
 /// A tecla física: com a acção aberta ainda sem ligações e nenhum campo focado, a tecla liga-se
 /// («Click a key above, or press one»).
 pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool, _writes_text: bool) -> bool {
-    if !pressed || doc.store.focus_id().is_some() || doc.list.typing.is_some() {
+    if !pressed
+        || doc.snap.play_running
+        || doc.store.focus_id().is_some()
+        || doc.list.typing.is_some()
+    {
         return false;
     }
     let empty = doc

@@ -80,6 +80,8 @@ pub struct KbState {
     pub(crate) bar: Option<(f32, f32)>,
     /// Onde o ponteiro está (o × aparece com o ponteiro sobre o ladrilho).
     pub(crate) pointer: Option<(f32, f32)>,
+    /// As barras da última pintura: cada alvo desenhado e as acções que o usam (o censo da lei «uma barra por acção»).
+    pub bars: Vec<(KbHit, Vec<ActionId>)>,
 }
 
 impl KbState {

@@ -58,7 +58,7 @@ pub(super) fn also(doc: &InputMapDoc) -> Vec<Binding> {
     out
 }
 
-pub(super) fn top_height(doc: &InputMapDoc, w: f32, _room: f32, _ts: &mut TextSystem) -> f32 {
+pub(super) fn top_height(doc: &InputMapDoc, w: f32) -> f32 {
     let inner = w - m::CARD_PAD_X * 2.0;
     let also_h = if also(doc).is_empty() {
         0.0
@@ -296,11 +296,12 @@ fn paint_keyboard(
             line(&mut doc.census, ts, scene, &label, lr, m::VALUE_PX, fg);
         }
         paint_bars(scene, ink, kr, &who);
+        doc.kb.bars.push((KbHit::Key(key), who));
         target(doc, KbHit::Key(key), kr);
     }
 }
 
-/// «Also:» e um chip por ligação fora do desenho (clicar não acrescenta: já está ligada; o pé diz quem a usa).
+/// «Also:» e um chip por ligação fora do desenho (clicar acrescenta à aberta, como uma tecla desenhada).
 fn paint_also(
     doc: &mut InputMapDoc,
     extra: &[Binding],

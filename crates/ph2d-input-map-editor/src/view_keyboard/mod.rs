@@ -100,6 +100,7 @@ pub fn paint(
 ) {
     let ink = CardInk::of_list(theme);
     doc.kb.targets.clear();
+    doc.kb.bars.clear();
     doc.kb.bar = None;
     if let Some(n) = doc.kb.select_name.clone()
         && let Some(id) = doc.snap.map.id(&n)
@@ -125,7 +126,7 @@ pub fn paint(
     list::paint(doc, list_r, scene, ts, ink);
     let rx = list_r.x + list_r.w + m::CARD_GAP;
     let rw = (inner.x + inner.w - rx).max(0.0);
-    let top_h = keys::top_height(doc, rw, inner.h, ts);
+    let top_h = keys::top_height(doc, rw);
     let top = Rect::new(rx, inner.y, rw, top_h);
     fill_rounded_rect(
         scene,

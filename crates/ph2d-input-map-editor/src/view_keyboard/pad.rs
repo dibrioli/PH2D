@@ -127,6 +127,7 @@ pub(super) fn paint(
             (super::keys::BAR_H + super::keys::BAR_GAP) * who.len() as f32 + m::SEG_INSET * 0.5,
         );
         paint_bars(scene, ink, bars, &who);
+        doc.kb.bars.push((KbHit::Pad(p.binding), who));
         target(doc, KbHit::Pad(p.binding), r);
     }
 }

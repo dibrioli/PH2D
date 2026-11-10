@@ -68,7 +68,7 @@ fn o_tween_chega_ao_cel_b() {
         assert_eq!(s.frames().len(), 2 + n as usize);
         let ids = gerados(&s, fa, n as usize);
         for (k, &f) in ids.iter().enumerate() {
-            let e = f64::from(ease.em((k + 1) as f32 / n as f32));
+            let e = f64::from(ease.em((k + 1) as f32 / (n + 1) as f32));
             let esperado = |a: i32, b: i32| a + (f64::from(b - a) * e).round() as i32;
             let c = s.cel((l, f)).expect("cel gerado");
             assert_eq!(
@@ -79,28 +79,39 @@ fn o_tween_chega_ao_cel_b() {
             assert_eq!(c.data, pixels(A, 7), "a imagem é a de A");
         }
         let ultimo = s.cel((l, *ids.last().unwrap())).unwrap();
-        assert_eq!(
+        assert_ne!(
             (ultimo.bbox.x, ultimo.bbox.y),
             (B.x, B.y),
-            "o último chega a B"
+            "nenhum repete B"
         );
+        let depois = s.frames()[s.frame_index(*ids.last().unwrap()).unwrap() + 1].id;
+        assert_eq!(depois, fb, "o quadro depois do último gerado é B");
         assert_eq!(s.cel((l, fb)).cloned(), b_antes, "B intacto");
-        assert_eq!(s.frame_index(fb), Some(1 + n as usize), "B logo depois");
     }
-    // Linear, n = 3, Δ = 10: 3,33 → 3 e 6,67 → 7 (arredondar, não truncar).
+    // Linear, n = 3, Δ = 12: t = 1/4, 2/4, 3/4 ⇒ +3, +6, +9 (interpolação exacta inteira).
     let (mut s, l, _, fa, fb) = cena();
+    poe(&mut s, l, fb, Rect::new(A.x + 12, A.y, A.w, A.h), 99);
     let op = tween(&mut s, l, fa, fb, 3, &|t| t, 0.0).unwrap();
     apply(&mut s, op).unwrap();
     let xs: Vec<i32> = gerados(&s, fa, 3)
         .iter()
-        .map(|&f| s.cel((l, f)).unwrap().bbox.x)
+        .map(|&f| s.cel((l, f)).unwrap().bbox.x - A.x)
         .collect();
-    assert_eq!(xs, [5, 9, 12]);
+    assert_eq!(xs, [3, 6, 9]);
+    // Linear, n = 2, Δ = 10: 3,33 → 3 e 6,67 → 7 (arredondar, não truncar).
+    let (mut s, l, _, fa, fb) = cena();
+    let op = tween(&mut s, l, fa, fb, 2, &|t| t, 0.0).unwrap();
+    apply(&mut s, op).unwrap();
+    let xs: Vec<i32> = gerados(&s, fa, 2)
+        .iter()
+        .map(|&f| s.cel((l, f)).unwrap().bbox.x - A.x)
+        .collect();
+    assert_eq!(xs, [3, 7]);
     // A curva entra: o In cúbico no meio fica atrás do linear.
     let (mut s, l, _, fa, fb) = cena();
-    let op = tween(&mut s, l, fa, fb, 4, &|t| Facilidade::In.em(t), 0.0).unwrap();
+    let op = tween(&mut s, l, fa, fb, 3, &|t| Facilidade::In.em(t), 0.0).unwrap();
     apply(&mut s, op).unwrap();
-    let meio = s.cel((l, gerados(&s, fa, 4)[1])).unwrap().bbox.x;
+    let meio = s.cel((l, gerados(&s, fa, 3)[1])).unwrap().bbox.x;
     assert_eq!(meio, A.x + 1, "In cúbico em t = 0,5 = 0,125 · 10 → 1");
 }
 
@@ -148,8 +159,10 @@ fn com_rotacao_e_o_rotsprite_do_nucleo() {
         data: pixels(A, 7),
     };
     let t = s.transparent_value();
-    for (k, graus) in [(0usize, 15.0), (1, 30.0)] {
-        let alvo = if k == 1 { B } else { Rect::new(7, 8, A.w, A.h) };
+    for (k, graus, alvo) in [
+        (0usize, 10.0, Rect::new(5, 6, A.w, A.h)),
+        (1, 20.0, Rect::new(9, 10, A.w, A.h)),
+    ] {
         let m = Affine::around_center(Linear::from_screen_ccw(graus, 1.0, 1.0, 0.0), alvo);
         let (r, img) = transform_image(&src, &m, Resample::RotSprite, t, None).unwrap();
         let c = s.cel((l, ids[k])).unwrap();

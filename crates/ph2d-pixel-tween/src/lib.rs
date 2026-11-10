@@ -3,8 +3,9 @@
 //! movimento vivo).
 //!
 //! Leis:
-//! - o quadro `k` (`1..=n`) está em `t = k/n` da curva ⇒ o ÚLTIMO gerado chega a B (posição e
-//!   rotação inteiras); o cel B fica intacto, logo depois deles;
+//! - o quadro `k` (`1..=n`) está em `t = k/(n+1)` da curva: ESTRITAMENTE entre A e B (nenhum
+//!   repete a posição de B); o cel B fica intacto, logo depois deles, e é o `t = 1` (a rotação
+//!   total `rot` é a de B);
 //! - posição = canto ↖ do bbox, `A + round((B − A)·e(t))` — célula INTEIRA, arredondada;
 //! - a imagem é a do cel A; com rotação ≠ 0, girada `rot·e(t)` em torno do centro do bbox pelo
 //!   RotSprite do núcleo ([`transform_image`] com [`Resample::RotSprite`], a lei do Sprite Size);
@@ -19,8 +20,9 @@ use ph2d_pixel_core::frames::{self, NewFrame};
 use ph2d_pixel_core::transform::Image;
 use ph2d_pixel_core::{Cel, FrameId, LayerId, Rect, Sprite, UserData, apply};
 
-/// O teto de quadros gerados num gesto: o diálogo prende-se aqui.
-pub const MAX_QUADROS: u32 = 256;
+/// O teto de quadros do documento: o `WORD` do número de quadros no cabeçalho do `.ase`
+/// (`ph2d-pixel-io::ase::escrever` recusa acima dele). Recurso = o formato, não a CPU.
+pub const MAX_QUADROS_DO_DOCUMENTO: usize = u16::MAX as usize;
 
 /// O Ease do diálogo: as direcções do `ph2d-ease` sobre a família cúbica.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -89,7 +91,7 @@ fn cel_do_meio(s: &Sprite, a: &Cel, b: Rect, z: i16, e: f32, rot: f64) -> Option
 /// **Tween…**: `n` quadros entre `frame_a` e `frame_b` na `camada`, com a curva `curva` (a porta:
 /// `e(t)`, ver [`Facilidade::em`]) e a rotação total `rotacao_graus` (anti-horário, como o campo
 /// do Aseprite). `None` se A não está antes de B, se falta um dos cels, se a camada é tilemap/grupo
-/// ou `n ∉ 1..=MAX_QUADROS`.
+/// ou se `n = 0` ou o documento passaria de [`MAX_QUADROS_DO_DOCUMENTO`].
 pub fn tween(
     s: &mut Sprite,
     camada: LayerId,
@@ -101,7 +103,12 @@ pub fn tween(
 ) -> Option<Op> {
     let (ia, ib) = (s.frame_index(frame_a)?, s.frame_index(frame_b)?);
     let l = s.layer(camada)?;
-    if ia >= ib || !(1..=MAX_QUADROS).contains(&n) || l.is_group() || l.tileset().is_some() {
+    if ia >= ib
+        || n == 0
+        || s.frames().len() + n as usize > MAX_QUADROS_DO_DOCUMENTO
+        || l.is_group()
+        || l.tileset().is_some()
+    {
         return None;
     }
     let cel_a = s.cel((camada, frame_a))?.clone();
@@ -121,7 +128,7 @@ pub fn tween(
             ms,
         )?;
         let Op::Frames(mut set) = op else { return None };
-        let e = curva(k as f32 / n as f32);
+        let e = curva(k as f32 / (n + 1) as f32);
         let cel = cel_do_meio(&rascunho, &cel_a, alvo, z, e, rotacao_graus)?;
         set.cels.retain(|(key, _)| key.0 != camada);
         set.cels.push(((camada, id), Some(cel)));

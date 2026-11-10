@@ -3,7 +3,6 @@
 
 use super::h1_os_cartoes::{Mesa, pincel};
 use super::h10_fotos::foto;
-use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::panel::cards::grip_of;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tool_painter::ids as p;

@@ -40,7 +40,7 @@ pub(super) fn po(plano: Option<&Vec<u8>>, w: u32) -> Option<PoDoPapel<'_>> {
 
 /// O pó da tela `rgba` (`w`×`h`): o alfa desfocado por três caixas em cada eixo; vazio se a camada não tem tinta.
 fn po_da_tela(rgba: &[u8], w: usize, h: usize) -> Vec<u8> {
-    if !rgba.chunks_exact(4).any(|p| p[3] != 0) {
+    if !rgba.as_chunks::<4>().0.iter().any(|p| p[3] != 0) {
         return Vec::new();
     }
     let tres = |v: &mut Vec<f32>, n: usize| {
@@ -53,7 +53,9 @@ fn po_da_tela(rgba: &[u8], w: usize, h: usize) -> Vec<u8> {
         });
     };
     let mut a: Vec<f32> = rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|p| f32::from(p[3]) / 255.0)
         .collect();
     tres(&mut a, w);

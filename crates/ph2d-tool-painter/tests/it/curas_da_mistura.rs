@@ -399,7 +399,8 @@ fn a_ponta_de_pixel_carimba_binaria_com_a_mistura() {
 /// não sorteia a pegada e cobre 1,0 também no Off — o teste estava vermelho desde `3d8d15e0eb`).
 #[test]
 fn os_pinceis_que_espalham_enchem_com_a_mistura() {
-    for nome in ["Pointillism"] {
+    {
+        let nome = "Pointillism";
         let a = |off: bool| {
             let p = pinta_listras(nome, |t| {
                 if off {

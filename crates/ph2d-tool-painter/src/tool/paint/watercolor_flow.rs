@@ -367,7 +367,8 @@ impl Mapa {
 /// que a aguada usa quando nenhum papel foi escolhido).
 enum Amostrador<'a> {
     Textura {
-        s: [TextureSettings; 2],
+        /// Em caixa: as duas settings (com a lei do grão) fazem a variante 10× a do papel interno.
+        s: Box<[TextureSettings; 2]>,
         rot: [[f32; 2]; 2],
         img: Option<&'a ImageMask<'a>>,
         /// `(fonte, versão)` da imagem lida — [`SEM_IMAGEM`] para um procedural.
@@ -435,7 +436,7 @@ impl<'a> Amostrador<'a> {
         };
         Self::Textura {
             rot: [angle_basis(s0.angle_deg), angle_basis(s1.angle_deg)],
-            s: [s0, s1],
+            s: Box::new([s0, s1]),
             img,
             id_img,
             period: tile.slot_period(),

@@ -3,6 +3,9 @@
 use super::*;
 use rayon::prelude::*;
 
+/// Uma faixa de `ALTO` linhas da tela: o índice, os bytes dela e os ladrilhos da sombra que a cobrem.
+type Faixa<'a> = (u32, &'a mut [u8], &'a mut [Option<Box<[f32]>>]);
+
 /// Um carimbo do Wet blend. `antes(i)` = o RGBA do byte `i` (múltiplo de 4) da tela de ANTES do traço, sobre a qual
 /// a película se compõe; `amostra_de(i)` = o fundo de onde se amostra (a mesma tela, ou todas as camadas visíveis —
 /// [`AmostraDaMistura`]). Chamados só dentro da caixa da pegada. Devolve `None` com a lei `Off`, raio nulo ou fora da tela —
@@ -266,7 +269,7 @@ pub fn mistura_opaca_carimbo(
     let tabela_alfa: Option<[f32; 256]> = matches!(pegada, Pegada::Mascara { .. })
         .then(|| std::array::from_fn(|b| alfa_de(f32::from(b as u8) / 255.0)));
     let (plano, trava_alfa) = (tela.plano, tela.trava_alfa);
-    let pinta_faixa = |(ty, linhas, ladrilhos): (u32, &mut [u8], &mut [Option<Box<[f32]>>])| {
+    let pinta_faixa = |(ty, linhas, ladrilhos): Faixa<'_>| {
         let base = ty * ALTO;
         for y in base.max(y0)..(base + ALTO).min(y1) {
             for x in x0..x1 {

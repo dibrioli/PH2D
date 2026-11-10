@@ -77,7 +77,7 @@ fn grava(nome: &str, p: &[u8]) {
     let d = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/sonda-veu");
     let _ = std::fs::create_dir_all(&d);
     let mut b = format!("P6\n{W} {H}\n255\n").into_bytes();
-    for px in p.chunks_exact(4) {
+    for px in p.as_chunks::<4>().0 {
         b.extend_from_slice(&px[..3]);
     }
     let _ = std::fs::write(d.join(format!("{nome}.ppm")), b);

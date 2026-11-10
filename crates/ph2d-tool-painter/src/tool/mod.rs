@@ -478,6 +478,12 @@ pub use paint::{
     brush_falloff_weight_at, render_classic_flow_preview,
 };
 pub use paint::{DICA_DO_PARAMETRO, Dependente, Inercias, Natureza};
+mod aplicada; // a imagem aplicada pela caixa marcada (B10.5)
+#[cfg(test)]
+mod aplicada_tests;
+mod dreno; // o dreno da tela: editor, cena da macro e a porta genérica (B10c)
+#[cfg(test)]
+mod dreno_tests;
 mod layer_edit;
 mod marca_do_artista; // onde o artista escreveu depois da gravação (W9)
 /// O papel do documento: a cor sob as camadas (pedido do dono, 2026-10-05).
@@ -485,12 +491,9 @@ pub(crate) mod papel;
 mod papel_texturizado; // o «Textured Paper» do New Image (dono 30/10)
 mod reescrita_da_gravacao; // editar uma etapa da macro reescreve a imagem (W8 item 2b)
 mod runtime;
-mod aplicada; // a imagem aplicada pela caixa marcada (B10.5)
-#[cfg(test)]
-mod aplicada_tests;
+mod trait_impls;
+mod trait_impls_raster; // `impl RasterEditTool` split from `trait_impls` (workspace file-LOC cap)
+mod undo_audit; // a rede de verificação do S3 (doc 28 §7) — irmã do runtime, por assunto
 mod vista_cinza; // o ramo Gray do dreno (B52.R4 + B10.A1)
 #[cfg(test)]
 mod vista_cinza_tests;
-mod trait_impls;
-mod trait_impls_raster;
-mod undo_audit; // a rede de verificação do S3 (doc 28 §7) — irmã do runtime, por assunto // `impl RasterEditTool` split from `trait_impls` (workspace file-LOC cap)

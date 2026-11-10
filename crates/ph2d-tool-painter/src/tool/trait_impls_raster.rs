@@ -76,48 +76,21 @@ impl RasterEditTool for PainterTool {
             .set_max_bytes(crate::undo::history_budget_bytes(width, height));
     }
 
-    /// Borrow the current composite iff it changed (drains `preview_dirty`); trivial → `canvas_rgba`.
+    /// Borrow the current composite iff it changed: o MESMO dreno do editor ([`Self::take_preview_arc`],
+    /// B10.6) — luz do relevo, vidro, caixa suja —, emprestado do buffer que ele devolveu.
     fn current_preview(&mut self) -> Option<(&[u8], u32, u32)> {
         // Grava-se e fecha-se já: o corpo devolve um empréstimo do tool e não chama outra porta.
         if self.macro_entra(|_| crate::macro_track::Passo::PreviewAtual) {
             self.macro_sai();
         }
-        if !std::mem::take(&mut self.preview_dirty) || self.canvas_rgba.is_empty() {
-            return None;
-        }
-        let (w, h) = self.source_size;
-        // A mask row's grayscale-VIEW eye open shows that mask's grayscale; else the trivial fast path.
-        let gray = self.mask_grayscale_view_pixels();
-        if gray.is_none() && self.is_trivial_stack() && !self.mask_scratch_active() {
-            return Some((&self.canvas_rgba, w, h));
-        }
-        let composited = if let Some(g) = gray {
-            g
+        let (arc, w, h) = self.take_preview_arc_corpo()?;
+        let da_tela = Arc::ptr_eq(&arc, &self.canvas_rgba);
+        drop(arc);
+        let px = if da_tela {
+            self.canvas_rgba.as_slice()
         } else {
-            // Mask brush: the active layer composites NORMALLY (fully visible) — the protection scratch
-            // never hides it; the overlay below only tints the frozen region.
-            let active = self.layers.active().unwrap_or(RtLayerId(0));
-            let src = ToolPixelSource {
-                active_id: active,
-                active_rgba: &self.canvas_rgba,
-                images: &self.images,
-            };
-            let full = Region { x: 0, y: 0, w, h };
-            let mut c = self.composto_pelo_vidro(&src, full).unwrap_or_else(|| {
-                let mut c = composite(&self.layers, &src, w, h);
-                self.compoe_sobre_o_papel(&mut c, full);
-                c
-            });
-            self.apply_mask_overlay(&mut c); // tint the protected region (no-op without a scratch)
-            c
+            self.composited.as_deref().map_or(&[][..], Vec::as_slice)
         };
-        self.composited = Some(Arc::new(composited));
-        self.composited_cinza = None;
-        let px = self
-            .composited
-            .as_ref()
-            .map(|a| a.as_slice())
-            .unwrap_or(&[]);
         Some((px, w, h))
     }
 

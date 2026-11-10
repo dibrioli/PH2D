@@ -205,6 +205,7 @@ pub const PORTAS: &[(&str, Porta)] = &[
     ("ph2d::physics::RaySignals", Gravado),
     ("ph2d::physics::RigidBody", Gravado),
     ("ph2d::physics::RopeStops", Gravado),
+    ("ph2d::physics::ShapeLook", Gravado),
     ("ph2d::physics::SignalOnHit", Gravado),
     ("ph2d::physics::SignalOnLeave", Gravado),
     ("ph2d::physics::SignalTagFilter", Recusado(DO_PROJECTO)),

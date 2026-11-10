@@ -50,7 +50,7 @@ pub fn do_alvo(world: &World, alvo: u64) -> Option<(Pose, Medida, ColliderOutlin
     let col = world.get::<Collider>(e)?;
     let o = world.get::<ColliderOutline>(e)?;
     (matches!(col.shape, ColliderShape::Outline { .. }) && !o.rings.is_empty())
-        .then(|| Some((Pose::de(world, e)?, Medida::de(col), o.clone())))?
+        .then(|| Some((Pose::de(world, e)?, Medida::da_forma(world, e)?, o.clone())))?
 }
 
 /// Os anéis no referencial escalado: o centro `offset × escala` mais a lei de [`ColliderOutline::to_metres`].

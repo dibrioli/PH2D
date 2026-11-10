@@ -71,17 +71,17 @@ pub fn desenhar(
         return;
     };
     let e = Entity::from_bits(alvo);
-    let (Some(col), Some(pose)) = (world.get::<Collider>(e), Pose::de(world, e)) else {
+    let (Some(m), Some(pose)) = (Medida::da_forma(world, e), Pose::de(world, e)) else {
         return;
     };
-    let m = Medida::de(col);
     let com_pontos = crate::pontos::do_alvo(world, alvo).is_some();
     let (token, tracejada) = tinta_da_caixa(com_pontos);
     let cor = resolve(ColorToken::Selection, theme);
     let cor_da_caixa = resolve(token, theme);
     let fundo = resolve(ColorToken::Bg0, theme);
     let s = scene.inner_mut();
-    let traco = if col.is_sensor {
+    let sensor = world.get::<Collider>(e).is_some_and(|c| c.is_sensor);
+    let traco = if sensor {
         Stroke::new(TRACO_PX).with_dashes(0.0, TRACEJADO_PX)
     } else {
         Stroke::new(TRACO_PX)

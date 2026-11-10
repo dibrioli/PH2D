@@ -140,7 +140,7 @@ pub fn cursor_em(
 ) -> Option<CursorDaAlca> {
     let alvo = editando(world)?;
     let e = Entity::from_bits(alvo);
-    let (pose, m) = (Pose::de(world, e)?, Medida::de(world.get::<Collider>(e)?));
+    let (pose, m) = (Pose::de(world, e)?, Medida::da_forma(world, e)?);
     let alca = match arrasto(world) {
         Some(a) => a.alca,
         None => alca_em(&pose, &m, cam, win, s)?,
@@ -173,8 +173,7 @@ pub struct Porta<'a> {
 impl Porta<'_> {
     fn forma(&self, bits: u64) -> Option<(Pose, Medida)> {
         let e = Entity::from_bits(bits);
-        let col = self.world.get::<Collider>(e)?;
-        Some((Pose::de(self.world, e)?, Medida::de(col)))
+        Some((Pose::de(self.world, e)?, Medida::da_forma(self.world, e)?))
     }
 
     /// `true` = agarrou (o `Down` não segue para a seleção).

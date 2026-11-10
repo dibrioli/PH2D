@@ -113,9 +113,15 @@ pub(crate) fn create_joint_at(
         let w = sim.world();
         let f = ph2d_physics_ecs::forma_para_editar(w, e)?;
         w.get::<ph2d_physics_ecs::Collider>(f)
+            .map(|c| ph2d_physics_ecs::forma_resolvida(w, f, c))
             .zip(ph2d_ecs::world_transform(w, f))
     };
-    let seam = ph2d_physics_ecs::seam_between(silhueta(a), silhueta(b)).unwrap_or((pa + pb) * 0.5);
+    let (sa, sb) = (silhueta(a), silhueta(b));
+    let seam = ph2d_physics_ecs::seam_between(
+        sa.as_ref().map(|(c, t)| (c, *t)),
+        sb.as_ref().map(|(c, t)| (c, *t)),
+    )
+    .unwrap_or((pa + pb) * 0.5);
     // The display pivot: the A anchor when the gesture named one (the value
     // `sync_joint_pivots` will keep deriving), the seam otherwise.
     let origin = anchored.map_or(seam, |(_, _, wa, _)| ph2d_core::Vec2::new(wa[0], wa[1]));

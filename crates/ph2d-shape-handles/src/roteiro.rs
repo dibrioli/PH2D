@@ -71,8 +71,7 @@ static ULTIMO: Mutex<(f32, f32)> = Mutex::new((0.0, 0.0));
 /// A pose e a medida de agora.
 fn forma(world: &World, alvo: u64) -> Option<(Pose, Medida)> {
     let e = Entity::from_bits(alvo);
-    let col = world.get::<Collider>(e)?;
-    Some((Pose::de(world, e)?, Medida::de(col)))
+    Some((Pose::de(world, e)?, Medida::da_forma(world, e)?))
 }
 
 /// O passo deste quadro (um por chamada, um contador próprio).

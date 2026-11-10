@@ -46,6 +46,7 @@ lado_forma!(
     Collider,
     CollisionOverride,
     ColliderOutline,
+    ShapeLook,
     MaterialCombine,
     OneWayPlatform,
     WalkSurface,

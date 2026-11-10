@@ -151,7 +151,11 @@ impl PhysicsBridge {
             .map(|s| (s, false))
             .or_else(|| crate::forma_para_editar(world, e).map(|s| (s, true)))
             .unwrap_or((e, true));
-        let col = &world.get::<Collider>(shape).copied().unwrap_or_default();
+        // O centro pela porta única: o pivô do `ShapeLook` desconta-se do `offset` (onda 8).
+        let col = &world
+            .get::<Collider>(shape)
+            .map(|c| crate::forma_resolvida(world, shape, c))
+            .unwrap_or_default();
         // ⚠️ WORLD, not the local `Transform` the query just handed us. The
         // solver has no hierarchy: a body authored under a parent must be
         // DESCRIBED where it is actually drawn, or it spawns (and rests, and

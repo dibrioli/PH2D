@@ -89,7 +89,8 @@ pub fn limit_ghost(
     // O collider onde o SOLVER o põe: offset com a escala assinada dobrada,
     // girado com o corpo — a mesma leitura do `outlines`, porque um fantasma que
     // não casa com o contorno descreveria outro corpo.
-    let (ox, oy) = (col.offset[0] * t.scale.x, col.offset[1] * t.scale.y);
+    let c = ph2d_physics_ecs::forma_resolvida(world, body_b, col).offset;
+    let (ox, oy) = (c[0] * t.scale.x, c[1] * t.scale.y);
     let (sin_r, cos_r) = (t.rotation + d).sin_cos();
     let (wox, woy) = (ox * cos_r - oy * sin_r, ox * sin_r + oy * cos_r);
     Some(crate::overlay::outline::shape_outline(

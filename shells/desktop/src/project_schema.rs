@@ -443,4 +443,10 @@
 /// no `ProjectState` depois de `tags` (undo e ficheiro, um só dono); `game_id: u64` no FIM do `ProjectFile`
 /// (sorteado quando o projecto nasce). SEM leitura dos anteriores (§0.11). Gates: `input_map_tests::`,
 /// `project_file_round_trips_through_postcard`. Registos: `0`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 235;
+///
+/// # `235 → 236` — **o Look da forma de colisão** (`line/GameEngineFuncional02`, onda 8, 2026-11-10)
+///
+/// O componente `ph2d::physics::ShapeLook { pivot, tint, opacity }` entra no registo (`+1`) no lado-forma: o pivô da
+/// forma em fração da meia-extensão (a forma cresce em volta dele) e a cor do overlay. SEM leitura dos anteriores
+/// (§0.11). Gates: `ph2d-physics-ecs forma_pivot::`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 236;

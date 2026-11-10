@@ -97,6 +97,14 @@ impl Medida {
         }
     }
 
+    /// A medida da forma `e` com o CENTRO real (o pivô do `ShapeLook` descontado): é sobre ela que as alças
+    /// desenham e puxam; a escrita (`ShapeDrag`) volta ao `offset` cru do outro lado.
+    #[must_use]
+    pub fn da_forma(world: &World, e: Entity) -> Option<Self> {
+        let c = world.get::<Collider>(e)?;
+        Some(Self::de(&ph2d_physics_ecs::forma_resolvida(world, e, c)))
+    }
+
     /// A única edição do gesto: forma e Offset juntos, como um valor só.
     #[must_use]
     pub const fn edicao(&self) -> PhysicsFieldEdit {

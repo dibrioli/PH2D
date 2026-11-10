@@ -264,7 +264,8 @@ fn sweep_ghost(
         };
         // O MESMO dobramento de offset do contorno vivo: a escala é sincada e a
         // rotação do corpo gira o deslocamento.
-        let (ox, oy) = (col.offset[0] * t.scale.x, col.offset[1] * t.scale.y);
+        let c = ph2d_physics_ecs::forma_resolvida(world, e, col).offset;
+        let (ox, oy) = (c[0] * t.scale.x, c[1] * t.scale.y);
         let (sin_r, cos_r) = t.rotation.sin_cos();
         let (wox, woy) = (ox * cos_r - oy * sin_r, ox * sin_r + oy * cos_r);
         out.push((

@@ -37,6 +37,7 @@ mod fk_gesture_loop;
 mod fk_rigid;
 mod forma_animada;
 mod forma_filha;
+mod forma_pivot;
 mod grab;
 mod gravity_scale;
 mod health;

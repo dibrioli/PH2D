@@ -87,7 +87,8 @@ pub fn outlines(
         // The collider offset, placed exactly where the solver puts it. The
         // bridge folds the body's SIGNED scale into the offset (a flip mirrors it)
         // and rapier rotates the result with the body; the overlay does the same (…)
-        let (ox, oy) = (col.offset[0] * t.scale.x, col.offset[1] * t.scale.y);
+        let c = ph2d_physics_ecs::forma_resolvida(world, e, col).offset;
+        let (ox, oy) = (c[0] * t.scale.x, c[1] * t.scale.y);
         let (sin_r, cos_r) = t.rotation.sin_cos();
         let (wox, woy) = (ox * cos_r - oy * sin_r, ox * sin_r + oy * cos_r);
         // The SAME resolution the bridge does (size, ellipse, Outline rings, signed mirror).

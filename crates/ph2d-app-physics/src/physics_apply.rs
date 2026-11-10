@@ -517,25 +517,11 @@ pub fn apply_physics_edit(
                 };
             }
         }
-        // Collider offset — a signed position, no clamp; writes the ONE axis the edit names.
+        // As alças escrevem pelo CENTRO; o `offset` cru volta pelo pivô (`physics_apply_look`).
         PhysicsFieldEdit::ShapeDrag { medidas, offset } => {
-            next.offset = offset;
-            next.shape = match cur.shape {
-                ColliderShape::Cuboid { .. } => ColliderShape::Cuboid {
-                    half_x: medidas[0],
-                    half_y: medidas[1],
-                },
-                ColliderShape::Outline { .. } => ColliderShape::Outline {
-                    half_x: medidas[0],
-                    half_y: medidas[1],
-                },
-                ColliderShape::Ball { .. } => ColliderShape::Ball { radius: medidas[0] },
-                ColliderShape::Capsule { .. } => ColliderShape::Capsule {
-                    half_height: medidas[1],
-                    radius: medidas[0],
-                },
-            };
+            next = crate::physics_apply_look::forma_arrastada(sim.world(), entity, &cur, medidas, offset);
         }
+        // Collider offset — a signed position, no clamp; writes the ONE axis the edit names.
         PhysicsFieldEdit::OffsetX(v) => next.offset[0] = v,
         PhysicsFieldEdit::OffsetY(v) => next.offset[1] = v,
         PhysicsFieldEdit::Density(v) => next.density = v,

@@ -215,6 +215,7 @@ impl PhysicsBridge {
         // ⚠️ A escala é a de MUNDO da PEÇA (`t_part`), não a do dono: uma peça
         // pode ser escalada por conta própria, e o `scaled_shape` do W6 lê
         // exatamente esse campo.
+        let col = &crate::forma_resolvida(world, e, col);
         let desc = crate::scale::body_desc(
             &owner_kind,
             col,

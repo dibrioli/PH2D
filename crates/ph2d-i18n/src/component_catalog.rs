@@ -63,6 +63,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.collider.name" => "Collision Shape",
         "component.collider_outline.name" => "Collision Outline",
         "component.collision_override.name" => "Collision Override",
+        "component.shape_look.name" => "Collision Shape Look",
         "component.counter.name" => "Counter",
         "component.counter_watch.name" => "Counter Watch",
         "component.damping_override.name" => "Damping",

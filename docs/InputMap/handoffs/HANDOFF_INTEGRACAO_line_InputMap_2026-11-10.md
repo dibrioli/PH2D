@@ -1,6 +1,6 @@
 # HANDOFF de integração — `line/InputMap`, 10/11 (Input Map vira aba central: A · List, B · Keyboard, C · Try it + tela «Controls» do jogador)
 
-Leitor: o agente integrador. Branch `line/InputMap`, HEAD `b72e9f9945` (+ 3 acabamentos visuais de uma R12b em curso na hora de escrever; o integrador lê o HEAD real com `git log -1`), **82 commits** sobre `bc4a6ce930` = merge-base = ponta do `main` (conferido 10/11; `--ff-only` serve). `git diff --shortstat main...HEAD`: 253 files, +16 592 −2 755. Nada integrado, nenhum push. **Suíte completa, `nextest-impacted` e `ship.sh` NÃO correram** (regra do dono 23/10): são do integrador. Plano e contratos: [01_plano.md](../01_plano.md) (§10–§12 = o mapa; o código manda). Prompt da missão: [PROMPT_MISSAO](PROMPT_MISSAO_InputMap_2026-11-10.md).
+Leitor: o agente integrador. Branch `line/InputMap`, código até `d019c09ff5` (+ este handoff), **86 commits** sobre `bc4a6ce930` = merge-base = ponta do `main` (fecho 10/11: o `main` não andou, sem rebase; `--ff-only` serve). `git diff --shortstat main...HEAD`: 256 files, +17 072 −2 755. Nada integrado, nenhum push. **Suíte completa, `nextest-impacted` e `ship.sh` NÃO correram** (regra do dono 23/10): são do integrador. Plano e contratos: [01_plano.md](../01_plano.md) (§10–§12 = o mapa; o código manda). Prompt da missão: [PROMPT_MISSAO](PROMPT_MISSAO_InputMap_2026-11-10.md).
 
 ## 1. Ordem do dono (10/11) e as 4 decisões — todas cumpridas
 
@@ -17,7 +17,7 @@ Leitor: o agente integrador. Branch `line/InputMap`, HEAD `b72e9f9945` (+ 3 acab
 | `ph2d-input` (existente) | ganha `controls`, `recipes`, `readers`, `player_keys`; `strength_of`/`pressed_of` públicas; `is_analog` cobre gatilho como botão e eixo |
 | `ph2d-script` | `action_api.rs` (`ph2d.action_*`, `Devices::feed_actions`), `runtime/luau/ph2d.d.luau`, `api_help_actions.rs` |
 
-**Removido:** a janela flutuante do Input Map (−1 211 editor-core, −188 shell, −1 023 testes, −48 i18n, R2a); scrollbar id **842 reformada, NUNCA reutilizada** (`scrollbar_ids.rs`: próximo livre = 842 antes; confira o próximo livre no `main` do dia); `ph2d_app_physics::player_input::resolve_player_input` apagada (sem chamador desde a R3b); `ProjectFile.input_map` (o mapa vive em `ProjectState.input_map`, uma fonte só).
+**Removido:** a janela flutuante do Input Map (−1 211 editor-core, −188 shell, −1 023 testes, −48 i18n); scrollbar id **842 reformada, NUNCA reutilizada** (`scrollbar_ids.rs`; confira o próximo livre no `main` do dia); `resolve_player_input` (`ph2d-app-physics`, sem chamador); `ProjectFile.input_map` (o mapa vive só em `ProjectState.input_map`).
 
 ## 3. Foundational/compartilhado tocado — por quê
 
@@ -26,7 +26,7 @@ Leitor: o agente integrador. Branch `line/InputMap`, HEAD `b72e9f9945` (+ 3 acab
 | `ph2d-editor-core` | `DocumentSurface::raw_key` (`doc_surface.rs:309`, default append-only); menu → `request_input_map_tab` (`input_map_ops.rs:12`); janela removida (`chrome/input_map*`); slot de escuta partilhado agora `Option<Binding>`: `capture_binding`/`take_captured_binding` (`:68/:77`) | aditivo + **remoção** (linha que use a janela/ids da janela não compila) |
 | `ph2d-editor-core` icons | `ArrowUp/Down/Left/Right` | aditivo |
 | `ph2d-tokens` | `Categorical01..12` + `CATEGORICAL`/`categorical(i)`; `preview-sky`, `preview-ground`, `input-map-highlight`, `input-map-warning`, `input-map-warning-bg` (+ painel Tokens: família «Category Colors») | aditivo, ver §4 |
-| `shells/desktop` | `prefs.input_map_view` (+ `forwarding_persist.rs:42`); `undo.rs:100` `ProjectState.input_map`, `do_hero/ao_hero` (`undo_app.rs`), gesto em curso em `undo_app_macros.rs::motivo_da_supressao`; `ProjectFile.game_id`, `App::game_id()` (`project.rs`); `input_dispatch/controles_do_jogador.rs` (`play_map`), porta da tecla/clique (`keyboard.rs`, `input_dispatch.rs`, via `ph2d_player_controls::host`); `undo_jogo.rs` (`jogador_entra/sai`); leitores em `render_loop/fase_*` | composição |
+| `shells/desktop` | `prefs.input_map_view`; `ProjectState.input_map` (`undo.rs:100`, `undo_app.rs`), gesto em curso em `motivo_da_supressao`; `ProjectFile.game_id` (`project.rs`); `input_dispatch/controles_do_jogador.rs` (`play_map`); porta tecla/clique via `ph2d_player_controls::host`; `undo_jogo.rs`; leitores em `render_loop/fase_*` | composição |
 | `ph2d-app-registry-init`, `ph2d-app-sync`, `ph2d-app-game`, `ph2d-app-physics`, `ph2d-app-components` (`script_input.rs`) | registo da família, `CENAS`, `resolve_player_input` fora, mapa ao script | composição |
 | `ph2d-i18n` | `input_map_tab/_list/_keyboard/_try.rs`, `player_controls.rs` (um ficheiro por dono); `input_map.rs` encolhe | aditivo |
 | `Cargo.lock` | 4 `+name` internos, nenhum externo | — |
@@ -44,7 +44,7 @@ Leitor: o agente integrador. Branch `line/InputMap`, HEAD `b72e9f9945` (+ 3 acab
 
 ```
 SUPERFÍCIE DE COLISÃO — line/InputMap contra main
-  merge-base bc4a6ce930   ·   82 commit(s)   ·   253 arquivo(s)
+  merge-base bc4a6ce930   ·   86 commit(s)   ·   256 arquivo(s)
 ▸ SCHEMAS
   ⚠ PROJECT_SCHEMA                        232   (base: 231)
   ⚠   └ tripla do gate               (232, 13, 29)   (base: (231, 13, 29))
@@ -61,19 +61,19 @@ SUPERFÍCIE DE COLISÃO — line/InputMap contra main
 ▸ TETOS DE LOC
   ✗  1030 / 600   shells/desktop/src/main.rs   (já estava assim: a linha NÃO o fez crescer; a catraca é a `the_shell_only_shrinks`)
 ```
-**Schema como DELTA:** `PROJECT_SCHEMA` **+1** (231 → 232: `InputMap.controls`, `ProjectFile.game_id`, mapa na captura do undo), nos três sítios (escada, const em `shells/desktop/src/project_schema.rs`, tripla `(232, 13, 29)` em `project_schema_tests.rs`). `python3 scripts/recontar.py --apenas schema` → `✓ PROJECT_SCHEMA = 232 (tripla (232, 13, 29))`, `✓ recontar: tudo conta`. **Reconte pelo `main` do dia** (`git show main:shells/desktop/src/project_schema.rs`; `python3 scripts/schema-recount.py`): se outra linha subiu, esta vira `main + 1`. **Sem migração** (CLAUDE.md §0.11). Registo de componentes: DELTA 0 (o `ph2d-ecs` fica em 121). §6 intocado: nenhum `NodeOp/OpResolver/NodeManifest/Tool/VectorOp` tocado.
+**Schema como DELTA:** `PROJECT_SCHEMA` **+1** (231 → 232: `InputMap.controls`, `ProjectFile.game_id`, mapa no undo) nos três sítios (escada, `project_schema.rs`, tripla em `project_schema_tests.rs`); `recontar.py --apenas schema` ✓. **Reconte pelo `main` do dia** (`schema-recount.py`): se outra linha subiu, esta vira `main + 1`. Sem migração (§0.11). Componentes: DELTA 0 (`ph2d-ecs` 121). §6 intocado.
 
 ## 6. Decisões técnicas e o porquê
 
 - **`hidden_in_game`** (não `shown_in_game`): o default «todas as ações aparecem» não precisa de entrada; o projeto só guarda o que o autor escondeu.
 - **O mapa entra no undo do projeto por diff**; cada `InputMapEdit` = UM passo, Ctrl+Z devolve o mapa bit a bit (postcard). O arrasto de zona é um passo (gate `motivo_da_supressao`). «Forget them» NÃO é passo (é do computador do jogador).
-- **Play restaura o documento inteiro no Stop**, mapa incluído (mesma lei de toda edição) + **faixa de aviso na aba** durante o Play (`InputMapWarningBg/Warning`).
-- **Não existe jogo exportado no app**; a tela «Controls» mora no runtime do Play (F1) e um export herda. Por isso o «Play e exportado» do dono está cumprido no que existe.
-- **`game_id`** sorteado na 1.ª chamada (não há comando «New project»); hash de relógio + pid + contador do processo (`DefaultHasher`; HR-5 proíbe `RandomState`); nunca 0. **Ficheiro do jogador `~/.ph2d/players/<game_id 16 hex>.txt`; id 0 = sem ficheiro** (`player_file_of`). Smokes não tocam o disco (`PlaySession::keep_off_disk`).
+- **Play restaura o documento inteiro no Stop**, mapa incluído, + **faixa de aviso na aba** durante o Play.
+- **Não existe jogo exportado no app**; a tela «Controls» mora no runtime do Play (F1) e um export herda: o «Play e exportado» está cumprido no que existe.
+- **`game_id`** sorteado na 1.ª chamada (relógio + pid + contador, `DefaultHasher` — HR-5; nunca 0). Ficheiro do jogador `~/.ph2d/players/<16 hex>.txt`, **id 0 = sem ficheiro** (`player_file_of`); smokes fora do disco (`keep_off_disk`).
 - **F1** abre a tela, só com «Players can change keys»; recusa Esc/F5 como tecla de abrir. Aberta, é dona do teclado e do clique e pausa o relógio. Com a opção desligada o Play ignora o ficheiro (ele fica intacto).
 - **Tecla repetida do jogador = AVISO, nunca troca** (guia Xbox 107, TLOU2, demo do Godot).
-- **Um mapa efetivo (`play_map`, `controles_do_jogador.rs`) para CINCO leitores do Play**: resolve do jogador (`fase_pointer_subjects.rs`), Luau (`app_state_devices.rs`), morph/vector (`fase_vector_view_and_drives.rs`), sinais (`fase_signal_outbox.rs`) e `acoes_premidas` no passo da física. Gate de ordem na crate e na Mesa recusa `|h| &h.input_map`.
-- **Frase do hover da B SUBSTITUI a legenda** (R7b; o §12 do plano diz «sempre reservada» — está desatualizado: sem salto de layout, sem linha de repouso).
+- **Um mapa efetivo (`play_map`) para os CINCO leitores do Play** (resolve do jogador, Luau, morph/vector, sinais, `acoes_premidas` da física); o gate de ordem recusa `|h| &h.input_map`.
+- **Frase do hover da B SUBSTITUI a legenda** (R7b; supera o «sempre reservada» do §12 do plano).
 - LB/RB/Back/Start/cruz no comando desenhado (ligáveis). **Sem ◆ em Dead/Press** (o ◆ é a marca do Auto Key; aqui seria controlo morto).
 Censo de textos (0 cortados, 0 números mortos) em `Default` e `CrispHeavyPlus` com o registo de elisão do próprio pintor, a 1600×1000 e 1280×720.
 
@@ -82,24 +82,39 @@ Censo de textos (0 cortados, 0 números mortos) em `Default` e `CrispHeavyPlus` 
 1. **Schema/tripla** (§5) — conte contra o `main` do dia.
 2. **`ph2d-editor-core`**: linha que ainda use a janela do Input Map, o slot de escuta como `Binding` solto, ou o id 842.
 3. **`ph2d-i18n/src/lib.rs`** e `tokens.json`/`ph2d-tokens` (listas ordenadas de chaves; `color.rs` está no tecto 700, `fase_snapshots_publish` no 200).
-4. **Catraca da shell** (`the_shell_only_shrinks`): fechou em **189 018 contra o tecto 189 041** na R10a (sem subir número; a cura foi MOVER para `ph2d_player_controls::host`). Se outra linha cresceu a shell, a soma pode passar — a cura é mover, nunca subir. **Re-meça:** `the_shell_only_shrinks`.
+4. **Catraca da shell** (`the_shell_only_shrinks`): **189 034 / tecto 189 041** no fim (R13; nenhum número subiu — a cura da R10a foi MOVER para `ph2d_player_controls::host`). Folga de 7 linhas: se outra linha cresceu a shell, a soma passa — mover, nunca subir. **Re-meça.**
 5. **`ph2d-app-input-map` no tecto 449**; `project_input_map_audit_det_tests.rs` foi fundido em `project_input_map_tests.rs`.
-6. **Censo de texto (HR-15) da árvore combinada**: `bash scripts/censos-da-arvore-combinada.sh` — a linha introduziu muitas chaves i18n; um literal novo de outra linha acorda-se só na soma.
+6. **HR-15 da soma**: verde na linha (§8); um literal novo de outra linha acorda-se só na soma.
 7. Cenas de smoke 6..18 (§4) e `.config/testes-lentos.tsv` (gerado).
 
 ## 8. Prova de fecho (feita na linha)
 
 - Bateria de fecho **verde**: `cargo clippy --workspace --all-targets -D warnings`, `cargo fmt`, `cargo machete` (saiu `tracing` do app-input-map), `check-standalone-optional.sh`, `check-workflow-packages.sh`. **Nenhum `#[cfg(target_os` escrito ou movido** (sem cruzamento macOS).
-- **Auditoria por duas lentes independentes** (correção e wiring · determinismo e persistência) **+ três revisões visuais independentes** (lado a lado com a maquete). Defeitos confirmados e curados com teste visto VERMELHO→verde: escuta armada após trocar de vista/fechar a aba; Keyboard engolindo Ctrl/F5; busca da List apagando texto com Shift; Forget durante o Play; número digitado atravessando a troca de mapa; ordem dos leitores por arquétipo; quinto leitor do Play; smoke lendo o `~/.ph2d` real; `game_id` 0 partilhando ficheiro.
+- **Auditoria** por duas lentes independentes (correção e wiring · determinismo e persistência) + três revisões visuais lado a lado com a maquete; 9 defeitos curados com teste VERMELHO→verde (escuta armada após trocar de vista, Ctrl/F5 engolidos, Shift na busca, Forget no Play, número atravessando a troca de mapa, ordem dos leitores, 5.º leitor, smoke no `~/.ph2d` real, `game_id` 0).
+- **Censos da árvore combinada** (`d019c09ff5`): **133/133 verdes**, 12 de 12 censos (HR-15, `file_loc_caps`, `the_shell_only_shrinks*`).
 - **Impactados e suíte completa ficam para a integração.**
 
 ### Provas de mutação
 
-> TODO (coordenador): quatro leis — Dead/Press só com manche · aviso de tecla repetida e «Nobody reads» · resolução Pad no Play · mapa do jogador por cima do projeto. Cada mutação deve sangrar SÓ o gate certo. Colar a tabela aqui.
+Rodada 1: **28 mutações** nas quatro leis → **20 sangraram, 8 sobreviveram**:
+
+| Lei | Sobrevivente da rodada 1 |
+|---|---|
+| 1 · Dead/Press só com manche | `is_analog` ignorando gatilho (botão/eixo) na UI das três vistas |
+| 2 · tecla repetida e «Nobody reads» | apresentação do aviso: pé da List, cartão da Keyboard, «nobody» do hover |
+| 3 · resolução Pad no Play | `PadButton`→0 fora de `ph2d-input` (dedo do jogador, mapa efectivo) |
+| 4 · mapa do jogador por cima do projeto | o corpo de `play_map` |
+
+Rodada 2 (`d019c09ff5`): `shells/game-scenes/tests/it/input_map/mutacao_r13.rs` (5 provas), `ph2d-physics-ecs/src/player_input_tests.rs::a_pad_button_bound_to_jump_arms_the_jump`, `ph2d-player-controls/src/play_tests.rs::the_effective_map_still_resolves_a_pad_button`, `shells/desktop/src/project_input_map_tests.rs::o_play_le_o_mapa_do_jogador_e_fora_dele_o_do_projecto` ⇒ **as 8 sangram, e os 3 controlos também**; o censo passou a gravar fundo e faixa de cada aviso. ⚠️ **Armadilha:** `mut.py` restaura com `git checkout HEAD -- <file>` — comite antes de mutar.
 
 ### Binário do smoke
 
-> TODO (coordenador): depois do último commit e de `rm -rf …/Worktrees/line-InputMap/target/*/incremental`, `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` 2×; colar a 2.ª saída («Finished», zero «Compiling»).
+Após apagar `target/{debug,smoke}/incremental`: 1.ª corrida 129 `Compiling`, 50,5 s; **2.ª** (zero `Compiling`, código `d019c09ff5`):
+
+```
+▸ linha line_inputmap · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.26s
+```
 
 ### Perfil do loop do agente (`bash scripts/agent-loop-profile.sh`, 20 sessões)
 
@@ -111,15 +126,14 @@ Censo de textos (0 cortados, 0 números mortos) em `Default` e `CrispHeavyPlus` 
 
 ## 9. Smoke (do dono; o que NÃO foi smokado: tudo que é clique real e o gamepad físico)
 
-Comando (a worktree, **mesmo perfil e árvore do build do §8**): `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-InputMap && PH2D_GAME_SMOKE=<6..18> bash scripts/ph2d-run.sh cargo run -p ph2d-host-desktop --profile smoke`. Cena 18 junta `PH2D_GAME_SMOKE_DRIVE=editor`. Uma variável de ambiente NÃO é um build novo. Menu: abrir o Input Map pelo menu (abre a aba no meio, seletor List · Keyboard · Try it no topo). Fotos e 13 montagens nossa|maquete em `docs/InputMap/fotos/` (40 ficheiros; 1600×1000 e 1280×720).
-Não smokado por humano: troca de tecla pelo jogador no Play com F1 (provado por gates e Mesa), comando real (gilrs → `deliver_pad`), `Forget them` com disco real.
+`cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-InputMap && PH2D_GAME_SMOKE=<6..18> bash scripts/ph2d-run.sh cargo run -p ph2d-host-desktop --profile smoke` (o build do §8; cena 18 junta `PH2D_GAME_SMOKE_DRIVE=editor`). O menu abre o Input Map como aba no meio, seletor List · Keyboard · Try it no topo. Fotos e 13 montagens nossa|maquete em `docs/InputMap/fotos/`. Não smokado por humano: F1 no Play (provado por gates e Mesa), comando real (gilrs → `deliver_pad`), `Forget them` com disco real.
 
 ## 10. ABERTO e achados FORA da linha (para outras linhas)
 
-- Sem jogo exportado no app: a tela herda no dia em que o export existir.
+- **Acabamento fechado (R13):** a prévia das 11 ações lê-se na aba REAL (≥ 3/4, abas das fotos `c1_1600`/`c1_1280`); B3: LT/RT na aresta do topo, LB/RB dentro do corpo; P1 com o mesmo espaço em cima e em baixo. Nada visual em aberto.
+- Sem jogo exportado no app (§6): a tela herda quando o export existir.
 - **Fora da linha, não tocado:** o editor do Animated Sprite e a aba de região, o Planner e a aba da física NÃO implementam `chrome_over` (o rodapé pinta sob o HUD de baixo); o modo de texto de fábrica `CrispHeavyPlus` faz sumir os pingos de i/j a ~13 px em negrito (app inteiro, ex. «33 entitles»); a Hierarquia trunca «Collision Shap…».
 - Marcadores de conflito: nenhum. `main.rs` 1 030/600 é pré-existente.
-- `01_plano.md` §12 («hover sempre reservado») foi superado pela R7b (§6).
 
 ## 11. Proposta para o `CLAUDE.md §5.1` (só na integração — DIRETRIZ §1.5.9 item 8; a linha NÃO a escreve)
 

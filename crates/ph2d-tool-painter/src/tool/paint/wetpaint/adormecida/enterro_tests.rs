@@ -4,7 +4,7 @@ use super::super::super::agua_sobre_oleo_tests::{H, W, com_oleo};
 use super::*;
 
 impl PainterTool {
-    /// O enterro de antes de B02.A3, verbatim: os dois laços de píxel andam a tela inteira.
+    /// O enterro de antes de B02.A3, verbatim: os laços de píxel andam a tela inteira e os de célula a grade.
     fn wet_enterra_antigo(&self, sess: &mut WetSession, velha: &[u8]) -> Vec<bool> {
         let nova = &self.canvas_rgba[..];
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
@@ -82,78 +82,173 @@ impl PainterTool {
                 }
             }
         }
-        self.wet_congela(sess, Some((&tocada, &mudou)));
+        self.wet_congela_antigo(sess, Some((&tocada, &mudou)));
         tocada
+    }
+
+    /// O `wet_congela` de antes de B02.A3, verbatim: clona as marcas e os planos da grade inteira.
+    fn wet_congela_antigo(&self, sess: &mut WetSession, agora: Option<(&[bool], &[bool])>) {
+        let n = sess.grid.0 * sess.grid.1;
+        let (mut enterradas, mut mudou) = match sess.congelada.take() {
+            Some(c) => (c.enterradas.clone(), c.mudou.clone()),
+            None => (vec![false; n], vec![false; n]),
+        };
+        if let Some((t, m)) = agora {
+            for (e, t) in enterradas.iter_mut().zip(t) {
+                *e |= *t;
+            }
+            for (e, m) in mudou.iter_mut().zip(m) {
+                *e |= *m;
+            }
+        }
+        sess.congelada = Some(Arc::new(Congelada {
+            mudou,
+            enterradas,
+            tela: Arc::clone(&self.canvas_rgba),
+            base: Arc::clone(&sess.base),
+            pigment: sess.planos.pigment.clone(),
+            sombra: sess.planos.sombra.clone(),
+            caixa: None,
+            gw: sess.grid.0,
+            gh: sess.grid.1,
+            rr: usize::from(sess.ratio),
+        }));
     }
 }
 
-/// O que um enterro deixa: a tela, a `base`, as tocadas e a congelada inteira.
-type Rasto = (Vec<u8>, Vec<u8>, Vec<bool>, [Vec<u8>; 4], [Vec<bool>; 2]);
+/// O que os enterros deixam: a tela, a `base`, as tocadas de cada um, a congelada (tela, base, e o pigmento e a sombra
+/// só onde ela os lê: nas células `mudou`), as marcas, e o píxel que ela serve a cada píxel da tela.
+type Rasto = (
+    Vec<u8>,
+    Vec<u8>,
+    Vec<Vec<bool>>,
+    [Vec<u8>; 4],
+    [Vec<bool>; 2],
+    Vec<Option<[u8; 4]>>,
+);
 
-/// A tinta viva com um borrão de outro meio no rectângulo `r` (x0, y0, x1, y1): `antigo` = o oráculo.
-fn enterra(r: (usize, usize, usize, usize), antigo: bool) -> (Rasto, u64) {
+/// A tinta viva com borrões de outro meio, um enterro por rectângulo `(x0, y0, x1, y1)` na mesma sessão: `antigo` = o
+/// oráculo. As visitas são as do último enterro.
+fn enterra(rs: &[(usize, usize, usize, usize)], antigo: bool) -> (Rasto, u64) {
     let mut t = com_oleo();
     let mut sess = t.paint.wetpaint.session.take().expect("a sessão");
     sess.bring_home();
-    let velha = Arc::clone(&t.canvas_rgba);
-    {
-        let tela = Arc::make_mut(&mut t.canvas_rgba);
-        for y in r.1..r.3 {
-            for x in r.0..r.2 {
-                let o = (y * W + x) * 4;
-                tela[o..o + 4].copy_from_slice(&[200, 30, 30, 255]);
+    let mut tocadas = Vec::new();
+    let mut visitas = 0;
+    for (i, r) in rs.iter().enumerate() {
+        let velha = Arc::clone(&t.canvas_rgba);
+        {
+            let tela = Arc::make_mut(&mut t.canvas_rgba);
+            for y in r.1..r.3 {
+                for x in r.0..r.2 {
+                    let o = (y * W + x) * 4;
+                    tela[o..o + 4].copy_from_slice(&[200, 30 + 60 * i as u8, 30, 255]);
+                }
             }
         }
+        VISITAS.with(|v| v.set(0));
+        tocadas.push(if antigo {
+            t.wet_enterra_antigo(&mut sess, &velha)
+        } else {
+            t.wet_enterra_o_que_mudou(&mut sess, &velha)
+        });
+        visitas = VISITAS.with(|v| v.get());
     }
-    VISITAS.with(|v| v.set(0));
-    let tocada = if antigo {
-        t.wet_enterra_antigo(&mut sess, &velha)
-    } else {
-        t.wet_enterra_o_que_mudou(&mut sess, &velha)
-    };
-    let visitas = VISITAS.with(|v| v.get());
     let c = sess.congelada.as_ref().expect("a congelada");
+    let nas_mudou = |v: &[u8], k: usize| -> Vec<u8> {
+        v.chunks(k)
+            .zip(&c.mudou)
+            .flat_map(|(b, m)| if *m { b.to_vec() } else { vec![0; b.len()] })
+            .collect()
+    };
+    let (p, base) = (&sess.planos, &sess.base);
+    let servidos = (0..W * H)
+        .map(|i| {
+            c.pixel((i % W, i / W, i * 4), &p.pigment, &p.sombra, base)
+                .map(|px| [px[0], px[1], px[2], px[3]])
+        })
+        .collect();
     let rasto = (
         t.canvas_rgba.as_ref().clone(),
         sess.base.as_ref().clone(),
-        tocada,
+        tocadas,
         [
             c.tela.as_ref().clone(),
             c.base.as_ref().clone(),
-            c.pigment.clone(),
-            c.sombra.clone(),
+            nas_mudou(&c.pigment, 4),
+            nas_mudou(&c.sombra, 1),
         ],
         [c.enterradas.clone(), c.mudou.clone()],
+        servidos,
     );
     (rasto, visitas)
 }
 
-/// ⭐ B02.A3: um píxel de outro meio sobre a tinta viva — os laços de píxel andam a caixa dele e a orla, não a tela.
+/// ⭐ B02.A3: um píxel de outro meio sobre a tinta viva — os laços de píxel andam a caixa dele e a orla, e os de célula
+/// a caixa que a óptica reescreve (a célula crescida pelo alcance do Óleo Real, que não depende da tela): nem a tela
+/// nem a grade.
 #[test]
 fn o_enterro_visita_so_a_caixa_tocada() {
-    let (_, visitas) = enterra((60, 88, 61, 89), false);
+    let t = com_oleo();
+    let sess = t.paint.wetpaint.session.as_ref().expect("a sessão");
+    let (gw, gh) = sess.grid;
+    let layers: Vec<_> = sess
+        .engine
+        .layers
+        .iter()
+        .map(|l| ph2d_wet_paint::render::RenderLayer {
+            grid: &l.grid,
+            opacity: l.opacity,
+            visible: l.visible,
+        })
+        .collect();
+    let oleo = t
+        .factos_da_otica()
+        .oleo_da_tela(&layers)
+        .expect("fixture: Óleo Real");
+    let a = ph2d_wet_paint::oleo_real::alcance(&oleo);
+    let lado = (2 * a + 1).min(gw.max(gh));
+    // Píxeis: a caixa e a orla; células: o retrato de antes, o `mudou`, as marcas e os planos da congelada.
+    let tecto = (W * H / 16 + 4 * lado * lado) as u64;
+    let (_, visitas) = enterra(&[(60, 88, 61, 89)], false);
     assert!(visitas > 0, "fixture: o enterro anda a caixa");
     assert!(
-        visitas <= (W * H / 16) as u64,
-        "o enterro de 1 píxel visitou {visitas} píxeis (a tela tem {})",
+        tecto < (W * H + gw * gh) as u64,
+        "fixture: o tecto ({tecto}) separa a caixa da tela ({}) mais a grade ({gw}×{gh})",
+        W * H
+    );
+    assert!(
+        visitas <= tecto,
+        "o enterro de 1 píxel visitou {visitas} píxeis e células (tecto {tecto}; a tela tem {}, a grade {gw}×{gh})",
         W * H
     );
 }
 
 /// B02.A3: a caixa dá a mesma `base`, as mesmas tocadas e a mesma congelada que a tela inteira, ao bit — um píxel
-/// sobre a tinta, um borrão na borda da tela e um longe da tinta.
+/// sobre a tinta, um borrão na borda da tela, um longe da tinta, e dois enterros seguidos na mesma sessão (a congelada
+/// de antes reusada: as marcas somam e os planos põem-se em dia na caixa de todas).
 #[test]
 fn o_enterro_pela_caixa_e_o_da_tela_inteira_ao_bit() {
-    for r in [(60, 88, 61, 89), (200, 70, 240, 160), (5, 5, 30, 20)] {
-        let (novo, _) = enterra(r, false);
-        let (antigo, _) = enterra(r, true);
+    let casos: [&[(usize, usize, usize, usize)]; 4] = [
+        &[(60, 88, 61, 89)],
+        &[(200, 70, 240, 160)],
+        &[(5, 5, 30, 20)],
+        &[(60, 88, 61, 89), (64, 90, 90, 110), (5, 5, 30, 20)],
+    ];
+    for rs in casos {
+        let (novo, _) = enterra(rs, false);
+        let (antigo, _) = enterra(rs, true);
         assert!(
-            novo.2.iter().any(|t| *t),
-            "fixture {r:?}: o borrão toca células"
+            novo.2.iter().all(|t| t.iter().any(|t| *t)),
+            "fixture {rs:?}: cada borrão toca células"
+        );
+        assert!(
+            novo.5.iter().any(Option::is_some),
+            "fixture {rs:?}: a congelada serve píxeis"
         );
         assert!(
             novo == antigo,
-            "o enterro pela caixa {r:?} difere do da tela inteira"
+            "o enterro pela caixa {rs:?} difere do da tela inteira"
         );
     }
 }

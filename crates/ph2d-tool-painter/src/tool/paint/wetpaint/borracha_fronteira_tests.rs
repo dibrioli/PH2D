@@ -433,7 +433,13 @@ fn orla_da_base(pa: u8, s: u8, ba: u8, ta: u8, mudou: bool, tocada: bool) -> [u8
         c.copy_from_slice(&[0, 0, 0, pa]);
     }
     sess.planos.sombra = vec![s; gw * gh];
-    t.wet_orla_vai_para_a_base(&mut sess, &vec![mudou; gw * gh], &vec![tocada; gw * gh]);
+    let orla = (mudou && !tocada).then_some((0, 0, gw - 1, gh - 1));
+    t.wet_orla_vai_para_a_base(
+        &mut sess,
+        &vec![mudou; gw * gh],
+        &vec![tocada; gw * gh],
+        orla,
+    );
     let o = (50 * W + 100) * 4;
     assert!(o + 4 <= W * H * 4);
     sess.base[o..o + 4].try_into().unwrap()

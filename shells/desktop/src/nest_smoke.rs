@@ -297,8 +297,7 @@ pub(crate) fn build_montagem(doc: &mut TimelineDoc, bits: u64) {
 mod tests;
 
 impl crate::App {
-    /// Cena `=2` — **"o mesmo pulo, três vezes"**: o exemplo completo do diferencial. O que
-    /// olhar: `docs/Timeline/smoke_nest.md`.
+    /// Cena `=2` — o mesmo pulo, três vezes (`docs/Timeline/smoke_nest.md`).
     fn nest_scene_jump(&mut self) {
         let bits = {
             let gfx = self.gfx.as_mut().expect("gfx");
@@ -315,7 +314,6 @@ impl crate::App {
 
         let doc = &mut self.timeline.doc;
 
-        // 1. TRÊS clips; os keys caem no clip ATIVO, então cada lote troca a seleção antes.
         doc.rename_clip(0, "Rise".to_string());
         key(doc, bits, PropKind::TranslationY, 0.0, 0.0);
         key(doc, bits, PropKind::TranslationY, 1.1, 1.2);
@@ -363,7 +361,6 @@ impl crate::App {
             .add_strip_to(StackHost::Document, lane, src, 8.0, 10.0)
             .expect("3a instância");
 
-        // 4. As travessias: lead-in pelo vão; o lead-out da última cruza a costura do loop.
         if let Some(s) = doc.strip_in_mut(StackHost::Document, lane, slow) {
             s.lead_in = 0.6;
         }
@@ -374,6 +371,9 @@ impl crate::App {
 
         // O loop no doc é o que a costura lê (`seam_source`): sem ele o lead-out não a cruza.
         doc.set_active_loop_for(false, Some((0.0, 10.6)));
+        for (t, n) in [(0.0, "takeoff"), (1.1, "top"), (2.0, "land")] {
+            doc.add_marker(RationalTime::from_seconds(t), n); // o trecho entre dois (doc 17 item 2)
+        }
         self.playhead.rewind();
         self.playhead.set_loop(0.0, 10.6);
         self.playhead.play();

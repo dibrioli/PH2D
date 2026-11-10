@@ -388,6 +388,12 @@ pub enum TimelineHitKind {
     Marker {
         index: usize,
     },
+    /// The gap between two neighbouring markers on the ruler: a click plays only that stretch, in a
+    /// loop (`ph2d_timeline::trecho`). `a`/`b` are the two markers' storage indices.
+    MarkerGap {
+        a: usize,
+        b: usize,
+    },
     /// A resize gripper on the panel's border. `edges` is a bitmask of
     /// [`TIMELINE_EDGE_L`] .. [`TIMELINE_EDGE_B`] (a corner sets two). The panel
     /// owns the resize itself; the bits are named here only so the shell can pick

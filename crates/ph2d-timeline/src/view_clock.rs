@@ -74,8 +74,12 @@ pub fn arm_view_loop(state: &mut TimelineState, editor: &mut Playhead, clip: &mu
     let on_clip = keys && !state.doc.stack().is_empty();
     let was = std::mem::replace(&mut state.armed_view, (keys, on_clip));
     if was == (keys, on_clip) {
+        crate::trecho::arma(state, editor);
         return;
     }
+    // Trocar de vista larga o trecho (o loop da vista nova arma-se a seguir).
+    state.trecho = None;
+    state.trecho_armado = None;
     if on_clip {
         if was == (true, false) {
             clip.seek(editor.time());

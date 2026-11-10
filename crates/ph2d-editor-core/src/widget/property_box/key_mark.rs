@@ -384,43 +384,55 @@ pub fn paint_decorator_for(
     Some(key_mark_id(primeiro))
 }
 
-/// O losango no centro de `r`: a cor da chave da dope-sheet (`TimelineKey`) — o mesmo losango, o
-/// mesmo significado —, vazio quando `Animado`; cheio na cor de aviso quando `Mudado`; o ponto de
-/// sempre quando `Livre`.
-pub fn paint_key_mark(scene: &mut VectorScene, theme: Theme, r: Rect, mark: KeyMark) {
-    if mark == KeyMark::Livre {
-        super::row::paint_decorator(scene, theme, r, false);
-        return;
+/// ⭐ **A tinta de cada estado** (maquete B1, os 3 do Rive + o laranja do Spine): `Livre` na tinta
+/// `apagada` do ponto de quem pinta (`Text3` no clássico, `CardLabel` no cartão); `Animado` e `Chave`
+/// na da chave da dope-sheet — o mesmo losango, o mesmo significado; `Mudado` no aviso.
+#[must_use]
+pub const fn tinta_do_losango(mark: KeyMark, apagada: ColorToken) -> ColorToken {
+    match mark {
+        KeyMark::Livre => apagada,
+        KeyMark::Animado | KeyMark::Chave => ColorToken::TimelineKey,
+        KeyMark::Mudado => ColorToken::Warn,
     }
-    let h = f64::from(Spacing::Xs.px());
-    let (cx, cy) = (f64::from(r.x + r.w * 0.5), f64::from(r.y + r.h * 0.5));
+}
+
+/// `Livre` e `Animado` são CONTORNO; `Chave` e `Mudado`, cheios.
+#[must_use]
+pub const fn losango_vazio(mark: KeyMark) -> bool {
+    matches!(mark, KeyMark::Livre | KeyMark::Animado)
+}
+
+/// A porta única dos dois Inspectors: o losango de meia diagonal `d` centrado em `(cx, cy)`.
+pub(crate) fn pinta_losango(
+    scene: &mut VectorScene,
+    (cx, cy): (f64, f64),
+    d: f64,
+    mark: KeyMark,
+    cor: ph2d_vector::Color,
+) {
     let mut p = BezPath::new();
-    p.move_to((cx, cy - h));
-    p.line_to((cx + h, cy));
-    p.line_to((cx, cy + h));
-    p.line_to((cx - h, cy));
+    p.move_to((cx, cy - d));
+    p.line_to((cx + d, cy));
+    p.line_to((cx, cy + d));
+    p.line_to((cx - d, cy));
     p.close_path();
-    let cor = resolve(
-        if mark == KeyMark::Mudado {
-            ColorToken::Warn
-        } else {
-            ColorToken::TimelineKey
-        },
-        theme,
-    );
-    if mark == KeyMark::Animado {
-        scene.inner_mut().stroke(
-            &ph2d_vector::Stroke::new(1.0), // LITERAL-PX-OK: o traço de um losango vazio
-            Affine::IDENTITY,
-            cor,
-            None,
-            &p,
-        );
+    if losango_vazio(mark) {
+        let traco = ph2d_vector::Stroke::new(f64::from(ph2d_card_stack::metrics::FIELD_BORDER));
+        scene
+            .inner_mut()
+            .stroke(&traco, Affine::IDENTITY, cor, None, &p);
     } else {
         scene
             .inner_mut()
             .fill(Fill::NonZero, Affine::IDENTITY, cor, None, &p);
     }
+}
+
+/// O losango no centro de `r` (o Inspector clássico).
+pub fn paint_key_mark(scene: &mut VectorScene, theme: Theme, r: Rect, mark: KeyMark) {
+    let centro = (f64::from(r.x + r.w * 0.5), f64::from(r.y + r.h * 0.5));
+    let cor = resolve(tinta_do_losango(mark, ColorToken::Text3), theme);
+    pinta_losango(scene, centro, f64::from(Spacing::Xs.px()), mark, cor);
 }
 
 #[cfg(test)]

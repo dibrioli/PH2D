@@ -84,6 +84,8 @@ mod strip_edge_edit;
 pub mod topologia;
 pub mod track_values;
 mod view_clock;
+pub mod trecho;
+pub use trecho::Trecho;
 
 pub use apply::{
     apply_from_doc, apply_from_doc_except, apply_scene, clip_playhead, key_home, key_time,

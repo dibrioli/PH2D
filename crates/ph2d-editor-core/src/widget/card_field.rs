@@ -350,7 +350,9 @@ pub fn paint_key_mark(
     cy: f32,
     fields: &[NodeId],
 ) {
-    use crate::widget::property_box::key_mark::{KeyMark, key_mark_of, register_key_mark_target};
+    use crate::widget::property_box::key_mark::{
+        key_mark_of, pinta_losango, register_key_mark_target, tinta_do_losango,
+    };
     let caixa = Rect::new(
         cx - m::KEY_MARK_BOX * 0.5,
         cy - m::KEY_MARK_BOX * 0.5,
@@ -358,11 +360,11 @@ pub fn paint_key_mark(
         m::KEY_MARK_BOX,
     );
     let marca = key_mark_of(fields);
-    let h = f64::from(m::KEY_MARK_PX) * 0.5;
     let (x, y) = (f64::from(cx), f64::from(cy));
     match marca {
-        None | Some(KeyMark::Livre) => {
-            let c = ph2d_vector::Circle::new((x, y), h);
+        // Sem canal: o ponto inerte de sempre.
+        None => {
+            let c = ph2d_vector::Circle::new((x, y), f64::from(m::KEY_MARK_PX) * 0.5);
             scene.inner_mut().fill(
                 ph2d_vector::Fill::NonZero,
                 ph2d_vector::Affine::IDENTITY,
@@ -371,37 +373,11 @@ pub fn paint_key_mark(
                 &c,
             );
         }
+        // O losango de 6 px de lado: meia diagonal = lado / √2.
         Some(k) => {
-            // O losango de 6 px de lado: meia diagonal = lado / √2.
             let d = f64::from(m::KEY_MARK_PX) * std::f64::consts::FRAC_1_SQRT_2;
-            let mut p = ph2d_vector::BezPath::new();
-            p.move_to((x, y - d));
-            p.line_to((x + d, y));
-            p.line_to((x, y + d));
-            p.line_to((x - d, y));
-            p.close_path();
-            let cor = ink.color(if k == KeyMark::Mudado {
-                ColorToken::Warn
-            } else {
-                ColorToken::TimelineKey
-            });
-            if k == KeyMark::Animado {
-                scene.inner_mut().stroke(
-                    &ph2d_vector::Stroke::new(f64::from(m::FIELD_BORDER)),
-                    ph2d_vector::Affine::IDENTITY,
-                    cor,
-                    None,
-                    &p,
-                );
-            } else {
-                scene.inner_mut().fill(
-                    ph2d_vector::Fill::NonZero,
-                    ph2d_vector::Affine::IDENTITY,
-                    cor,
-                    None,
-                    &p,
-                );
-            }
+            let cor = ink.color(tinta_do_losango(k, ColorToken::CardLabel));
+            pinta_losango(scene, (x, y), d, k, cor);
         }
     }
     // O campo PARADO (travado) também não grava pela marca: sem alvo.

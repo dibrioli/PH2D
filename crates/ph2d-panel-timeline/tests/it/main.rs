@@ -7,6 +7,7 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod a_coluna_do_toggle_mede_a_lista;
+mod a_peca_escolhida;
 mod a_fita_abre_enquadrada;
 mod add_clip_full_seam;
 mod animation_chip_seam;
@@ -36,3 +37,4 @@ mod transport_motion_path_seam;
 mod transport_onion_seam;
 mod transport_physics_seam;
 mod view_tabs_seam;
+mod o_trecho_entre_marcadores;

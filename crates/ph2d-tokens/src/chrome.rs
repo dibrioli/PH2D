@@ -164,3 +164,12 @@ pub const TIMELINE_ENQUADRE_MARGEM: f32 = 0.05; // LITERAL-PX-OK: folga do enqua
 /// ⭐ **O FANTASMA de um cartão arrastado — a opacidade dele.** Meio transparente: a marca da
 /// queda (a barra de acento entre dois cartões) tem de se ver através dele.
 pub const DRAG_GHOST_ALPHA: f32 = 0.55; // LITERAL-PX-OK: opacidade do fantasma
+
+// ── onda 1 funções novas — strip (doc 17 item 4) ──
+/// ⭐ **As voltas do loop dentro da peça** (maquete B4, `.c13lm`): um risco pontilhado a cada recomeço.
+pub const TIMELINE_VOLTA_PX: f32 = 1.5; // LITERAL-PX-OK: espessura do risco da volta, a da maquete
+/// A opacidade do risco da volta (`rgba(255,255,255,.7)` da maquete).
+pub const TIMELINE_VOLTA_ALPHA: f32 = 0.7; // LITERAL-PX-OK: opacidade do risco da volta
+/// Voltas mais juntas que isto não se pintam: a 1,5 px de risco e pontos de 1,5 px, abaixo de 4× a
+/// espessura sobram < 4,5 px de corpo entre riscos e a peça vira hachura (o zoom afastado da cena 4).
+pub const TIMELINE_VOLTA_MIN_PX: f32 = 6.0; // LITERAL-PX-OK: vão mínimo entre dois riscos de volta

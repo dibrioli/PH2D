@@ -276,6 +276,7 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
                 track.set_interp(key, interp);
             }
         }),
+        I::PlayStretch(par) => crate::trecho::escolhe(state, par),
         I::AddMarker { t_seconds, label } => {
             let snapped = snap_time(
                 RationalTime::from_seconds(t_seconds),

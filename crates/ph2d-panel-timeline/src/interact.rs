@@ -63,6 +63,7 @@ pub(crate) fn process(
     // drag agree on px-per-second.
     let px_per_s = state.px_per_s;
     crate::macro_steps::envelhece_a_largada(state, snap);
+    crate::strip_drag::esquece_a_sumida(state, snap);
     let gestures: Vec<TimelineGesture> = ctx.host.store_mut().drain_timeline_gestures().collect();
     for g in gestures {
         // Resize grippers own the gesture whatever the button.
@@ -107,6 +108,7 @@ pub(crate) fn dispatch_primary(
         TimelineHitKind::Marker { index } => {
             marker_drag::apply(state, time_x, px_per_s, snap, index, g);
         }
+        TimelineHitKind::MarkerGap { a, b } => crate::ruler_trecho::apply(snap, a, b, g),
         // A time-scale grip on the key selection's box: scale the selected keys'
         // TIME about the opposite edge. A KEY edit (`ScaleSelectedKeys`) — never a
         // strip stretch, which is a different verb on the stack lane (`Strip`).
@@ -207,7 +209,13 @@ pub(crate) fn dispatch_primary(
         TimelineHitKind::CurveHandle { target, key, which } => {
             crate::graph::apply_handle_gesture(state, target, key, which, g);
         }
-        TimelineHitKind::Lane => box_select::apply_lane(state, g),
+        TimelineHitKind::Lane => {
+            // O clique no vazio da faixa larga a peça escolhida (doc 17 item 1).
+            if matches!(g.phase, GesturePhase::Click) {
+                state.strip_escolhida = None;
+            }
+            box_select::apply_lane(state, g);
+        }
         TimelineHitKind::ResizeEdge { .. } => {
             unreachable!("resize edges are handled before the button match")
         }

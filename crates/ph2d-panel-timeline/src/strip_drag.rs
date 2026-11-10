@@ -76,6 +76,10 @@ pub(crate) fn apply(
             if state.strip_drag.take().is_some() {
                 state::push_intent(TimelineIntent::EndEdit);
             }
+            // O clique no CORPO escolhe a peça (doc 17 item 1); as alças não.
+            if edge == BODY {
+                state.strip_escolhida = Some(StripId(strip));
+            }
         }
     }
 }
@@ -225,6 +229,8 @@ fn lane_at(d: StripDrag, y: f32, lanes: usize) -> usize {
     usize::try_from(target.clamp(0, last)).unwrap_or(0) // CLAMP-OK: measured bounds, min<=max
 }
 
+/// The strip's body (slide).
+const BODY: u8 = 2;
 /// The panel's grip code for a strip's fade-in (mirrors `stack_lane_paint`).
 const EASE_IN: u8 = 3;
 /// …and for its fade-out.
@@ -260,6 +266,15 @@ fn snapped(state: &TimelinePanelState, snap: &TimelineViewSnapshot, t: f64) -> f
         (t * snap.fps).round() / snap.fps
     } else {
         t
+    }
+}
+
+/// A peça escolhida que deixou de existir larga a escolha.
+pub(crate) fn esquece_a_sumida(state: &mut TimelinePanelState, snap: &TimelineViewSnapshot) {
+    if let Some(id) = state.strip_escolhida
+        && !snap.lanes.iter().flat_map(|l| &l.strips).any(|s| s.id == id)
+    {
+        state.strip_escolhida = None;
     }
 }
 

@@ -330,6 +330,17 @@ impl ClipStrip {
         self.fold(self.span())
     }
 
+    /// **Uma volta** em segundos da timeline: a fatia ÷ a velocidade (doc 17 item 4); `0.0` quando
+    /// não volta (`Once`, fatia vazia, velocidade ≤ 0). Derivado, nunca gravado.
+    #[must_use]
+    pub fn volta(&self) -> f64 {
+        let slice = self.slice();
+        if self.loop_mode == StripLoop::Once || slice <= 0.0 || self.speed <= 0.0 {
+            return 0.0;
+        }
+        slice / self.speed
+    }
+
     /// How far into the clip a strip that has been running for `elapsed` seconds of
     /// TIMELINE time is reading — rate, then whatever the source does past its slice.
     ///

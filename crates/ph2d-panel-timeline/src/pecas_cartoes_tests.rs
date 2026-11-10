@@ -190,6 +190,7 @@ fn strip(id: u64, nome: &str, container: Option<usize>) -> StripView {
         blend_out: 0.0,
         lead_in: 0.0,
         lead_out: 0.0,
+        volta: 0.0,
         ease_locked_in: false,
         ease_locked_out: false,
         curve_in: None,
@@ -203,6 +204,23 @@ fn strip(id: u64, nome: &str, container: Option<usize>) -> StripView {
 
 /// Pinta `s` com o pintor REAL e devolve o primeiro preenchimento em degradê (o fundo da peça).
 fn fundo_pintado(snap: &TimelineViewSnapshot, s: &StripView) -> Option<String> {
+    ops_pintadas(snap, s, false)
+        .into_iter()
+        .find_map(|op| match op {
+            ph2d_vector::DrawOp::Fill {
+                brush: ph2d_vector::Brush::Gradient(g),
+                ..
+            } => Some(format!("{:?}", g.stops)),
+            _ => None,
+        })
+}
+
+/// As ops que o pintor REAL grava para `s` (escolhida ou não), a 200 px/s a partir de `x = 100`.
+fn ops_pintadas(
+    snap: &TimelineViewSnapshot,
+    s: &StripView,
+    escolhida: bool,
+) -> Vec<ph2d_vector::DrawOp> {
     use ph2d_editor_core::screens::hero::HeroLayout;
     use ph2d_editor_core::screens::slot::{Slot, SlotSet};
     let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::TimelinePanel>();
@@ -235,18 +253,12 @@ fn fundo_pintado(snap: &TimelineViewSnapshot, s: &StripView) -> Option<String> {
         view,
         body,
         s,
-        false,
+        (false, escolhida),
         0,
         t,
         crate::strip_paint::Fase::Tudo,
     );
-    ctx.scene.take_record().into_iter().find_map(|op| match op {
-        ph2d_vector::DrawOp::Fill {
-            brush: ph2d_vector::Brush::Gradient(g),
-            ..
-        } => Some(format!("{:?}", g.stops)),
-        _ => None,
-    })
+    ctx.scene.take_record()
 }
 
 /// ⭐ **A cor que a PINTURA dá a cada strip** (doc 16): a strip de container veste a do container, a
@@ -303,4 +315,117 @@ fn o_rotulo_mora_no_vao_entre_os_fades_de_dentro() {
     assert_eq!(vao_livre(body, dentro.into_iter()), (140.0, 260.0));
     let tudo = [(BAND_IN, Rect::new(100.0, 0.0, 190.0, 22.0))];
     assert_eq!(vao_livre(body, tudo.into_iter()), (100.0, 300.0));
+}
+
+/// Os traços (ou preenchimentos) sólidos de cor `c` em `ops`.
+fn tracos_de(ops: &[ph2d_vector::DrawOp], c: Color) -> usize {
+    use ph2d_vector::{Brush, DrawOp};
+    ops.iter()
+        .filter(|op| match op {
+            DrawOp::Stroke {
+                brush: Brush::Solid(k),
+                ..
+            }
+            | DrawOp::Fill {
+                brush: Brush::Solid(k),
+                ..
+            } => *k == c,
+            _ => false,
+        })
+        .count()
+}
+
+/// ⭐ **A peça escolhida acende o anel** (doc 17 item 1, maquete B4 `.c13st.s`): o anel claro por
+/// dentro e o do foco por fora; a não escolhida não pinta nenhum dos dois.
+/// *Mutação: `paint_strip` ignorar `escolhida` ⇒ vermelho.*
+#[test]
+fn a_peca_escolhida_acende_o_anel_e_a_outra_nao() {
+    let snap = TimelineViewSnapshot::default();
+    let s = strip(1, "Walk", None);
+    force_cards_on_this_thread(Some(true));
+    let acesa = ops_pintadas(&snap, &s, true);
+    let apagada = ops_pintadas(&snap, &s, false);
+    force_cards_on_this_thread(None);
+    let p = peca_do_strip(&s, tinta_do_strip(&s, &snap), false, Theme::Forge);
+    let p = PecaDesenho {
+        escolhida: true,
+        ..p.unwrap_or_else(|| unreachable!())
+    };
+    let [dentro, fora] = cores(&p).anel.expect("a escolhida tem anel");
+    assert_eq!(tracos_de(&acesa, fora), 1, "o anel do foco, por fora");
+    assert!(tracos_de(&acesa, dentro) >= 1, "o anel claro, por dentro");
+    assert_eq!(tracos_de(&apagada, fora), 0, "sem escolha, sem anel");
+}
+
+/// Uma strip de `0` a `fim` s, uma volta de `volta` s.
+fn em_loop(modo: ph2d_timeline::StripLoop, fim: f64, volta: f64) -> StripView {
+    StripView {
+        t_end: fim,
+        volta,
+        loop_mode: modo,
+        ..strip(1, "Shake", None)
+    }
+}
+
+fn vista(px_per_s: f64) -> crate::graph::TimeView {
+    crate::graph::TimeView {
+        time_x: 100.0,
+        right: 2000.0,
+        view_start: 0.0,
+        px_per_s,
+    }
+}
+
+/// ⭐ **As voltas do loop** (doc 17 item 4): um risco a cada recomeço — quatro voltas de 0,25 s em
+/// 1 s dão 3 riscos em 0,25/0,5/0,75 s; o Ping-Pong risca cada inversão nos mesmos sítios; o dobro da
+/// velocidade (meia volta) dá o dobro (mais um); `Once` (volta 0) nada; e abaixo do piso de px nada.
+/// *Mutação: `voltas_x` devolver sempre vazio ⇒ vermelho.*
+#[test]
+fn as_voltas_riscam_cada_recomeco_e_somem_abaixo_do_piso() {
+    use ph2d_timeline::StripLoop as L;
+    let v = vista(200.0);
+    assert_eq!(
+        voltas_x(&em_loop(L::Loop, 1.0, 0.25), v),
+        vec![150.0, 200.0, 250.0]
+    );
+    assert_eq!(
+        voltas_x(&em_loop(L::PingPong, 1.0, 0.25), v),
+        vec![150.0, 200.0, 250.0]
+    );
+    assert_eq!(
+        voltas_x(&em_loop(L::Loop, 1.0, 0.125), v).len(),
+        7,
+        "2× = 8 voltas, 7 riscos"
+    );
+    assert!(voltas_x(&em_loop(L::Once, 1.0, 0.0), v).is_empty());
+    assert!(
+        voltas_x(&em_loop(L::Loop, 1.0, 0.3), v).len() == 3,
+        "3 voltas inteiras e um resto"
+    );
+    let piso = f64::from(ph2d_tokens::chrome::TIMELINE_VOLTA_MIN_PX);
+    let junto = vista(piso / 0.25 - 1.0);
+    assert!(
+        voltas_x(&em_loop(L::Loop, 1.0, 0.25), junto).is_empty(),
+        "abaixo do piso"
+    );
+    assert_eq!(
+        voltas_x(&em_loop(L::Loop, 1.0, 0.25), vista(piso / 0.25)).len(),
+        3,
+        "no piso"
+    );
+}
+
+/// Os riscos chegam à pintura nos cartões, na cor e opacidade do token.
+#[test]
+fn os_riscos_das_voltas_chegam_a_pintura() {
+    let snap = TimelineViewSnapshot::default();
+    let s = em_loop(ph2d_timeline::StripLoop::Loop, 1.0, 0.25);
+    force_cards_on_this_thread(Some(true));
+    let ops = ops_pintadas(&snap, &s, false);
+    force_cards_on_this_thread(None);
+    let cor = tinta(TimelineTinta::TextoCabecalho, Theme::Forge)
+        .multiply_alpha(ph2d_tokens::chrome::TIMELINE_VOLTA_ALPHA);
+    let pontos = tracos_de(&ops, cor);
+    // 3 riscos, cada um pontilhado ao longo dos 22 px da peça (1,5 px de ponto, 1,5 px de vão).
+    assert!(pontos >= 3 * 7, "os pontos dos 3 riscos: {pontos}");
 }

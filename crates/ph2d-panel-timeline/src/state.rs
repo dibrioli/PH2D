@@ -212,6 +212,8 @@ pub struct TimelinePanelState {
     pub dur_drag: Option<f64>,
     /// The clip strip being dragged or trimmed, if any.
     pub strip_drag: Option<StripDrag>,
+    /// A peça escolhida (doc 17 item 1): estado do painel, nem grava nem desfaz.
+    pub strip_escolhida: Option<ph2d_timeline::StripId>,
     /// A lane weight field is being edited (dragged or typed) and an undo bracket
     /// is open for it. Without it, dispatch's per-Move `ValueChanged` would make
     /// each frame of the drag its own atomic undo step — sliding the weight across
@@ -335,6 +337,7 @@ impl Default for TimelinePanelState {
             loop_drag: None,
             dur_drag: None,
             strip_drag: None,
+            strip_escolhida: None,
             weight_edit: None,
             marker_drag: None,
             marker_rename: None,

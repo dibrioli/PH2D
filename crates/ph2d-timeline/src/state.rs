@@ -249,6 +249,11 @@ pub struct TimelineState {
     /// Acabou de chegar do ficheiro e há bindings de item por decidir: o item que já não existe sai
     /// (nenhum undo o pode devolver). Sessão; só o load a liga (F32 §1).
     pub itens_por_decidir: bool,
+    // ── onda 1 — trecho (doc 17, item 2) ──
+    /// O trecho entre dois marcadores a tocar em loop (`crate::trecho`). Sessão; nunca gravado nem desfeito.
+    pub trecho: Option<crate::Trecho>,
+    /// O intervalo que [`crate::trecho`] armou no último quadro (a borda que devolve o loop do clipe).
+    pub(crate) trecho_armado: Option<(f64, f64)>,
 }
 
 impl TimelineState {

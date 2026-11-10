@@ -16,6 +16,7 @@ use ph2d_editor_core::panel::cards::banda::{degrade_vertical_em, metrics as m};
 use ph2d_editor_core::panel::cards::ferramenta::cards_on;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::{StripView, TimelineViewSnapshot};
+use ph2d_tokens::chrome::{TIMELINE_VOLTA_ALPHA, TIMELINE_VOLTA_MIN_PX, TIMELINE_VOLTA_PX};
 use ph2d_tokens::{
     PECAS, Spacing, StrokeToken, TIMELINE_MISTURA_ALPHA, TIMELINE_MISTURA_BORDA_ALPHA,
     TIMELINE_PECA_BORDA_ALPHA, TIMELINE_PECA_MUDA_ALPHA, TIMELINE_PECA_PE_ALPHA,
@@ -329,6 +330,47 @@ pub(crate) fn vao_livre(body: Rect, bandas: impl Iterator<Item = (u8, Rect)>) ->
         (body.x, body.x + body.w)
     } else {
         (x0, x1)
+    }
+}
+
+/// ⭐ **Onde cada volta recomeça** (doc 17 item 4): `x` de cada `t_start + k·volta` dentro da peça —
+/// no Ping-Pong cada volta é uma inversão. Vazio quando a peça não volta ou os riscos ficariam a
+/// menos de [`TIMELINE_VOLTA_MIN_PX`] (o zoom afastado).
+pub(crate) fn voltas_x(s: &StripView, view: crate::graph::TimeView) -> Vec<f32> {
+    let passo_px = s.volta * view.px_per_s;
+    if s.volta <= 0.0 || passo_px < f64::from(TIMELINE_VOLTA_MIN_PX) {
+        return Vec::new();
+    }
+    // A última volta que cai antes do fim (o recomeço no próprio fim não é um risco).
+    let eps = 1e-9 * s.volta.max(1.0);
+    let n = ((s.t_end - s.t_start - eps) / s.volta).floor().max(0.0) as usize;
+    (1..=n)
+        .map(|k| view.x(s.t_start + k as f64 * s.volta))
+        .collect()
+}
+
+/// Os riscos das voltas: pontos de [`TIMELINE_VOLTA_PX`], claros a [`TIMELINE_VOLTA_ALPHA`].
+pub(crate) fn pinta_voltas(
+    ctx: &mut PaintCtx,
+    body: Rect,
+    s: &StripView,
+    view: crate::graph::TimeView,
+    p: &PecaDesenho<'_>,
+) {
+    let xs = voltas_x(s, view);
+    if xs.is_empty() || body.h <= 0.0 {
+        return;
+    }
+    let cor = tinta(TimelineTinta::TextoCabecalho, p.theme)
+        .multiply_alpha(TIMELINE_VOLTA_ALPHA * desbote(p.muda));
+    let w = TIMELINE_VOLTA_PX;
+    // Pontos redondos, como o `dotted` da maquete: um ponto de `w`, um vão de `w`.
+    for x in xs {
+        let mut y = body.y;
+        while y + w <= body.y + body.h {
+            fill_rounded_rect(ctx.scene, Rect::new(x - w * 0.5, y, w, w), w * 0.5, cor);
+            y += w * 2.0;
+        }
     }
 }
 

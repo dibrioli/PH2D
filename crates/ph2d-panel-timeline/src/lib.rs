@@ -20,6 +20,7 @@ mod alca_estado;
 mod breadcrumb;
 mod folha_tinta;
 mod ruler_clock;
+mod ruler_trecho;
 
 /// The ruler's resolved clock, for the seam gate that pins which one it measures.
 ///

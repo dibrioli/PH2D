@@ -130,7 +130,7 @@ pub(crate) fn paint_strip(
     view: TimeView,
     body: Rect,
     s: &ph2d_timeline::StripView,
-    dim: bool,
+    (dim, escolhida): (bool, bool),
     lane: usize,
     tinta: ph2d_tokens::TimelineTinta,
     fase: Fase,
@@ -150,11 +150,13 @@ pub(crate) fn paint_strip(
     } else {
         1.0
     };
-    let peca = crate::pecas_cartoes::peca_do_strip(s, tinta, dim, theme);
+    let peca = crate::pecas_cartoes::peca_do_strip(s, tinta, dim, theme)
+        .map(|p| crate::pecas_cartoes::PecaDesenho { escolhida, ..p });
     if fase == Fase::Topo {
         // o corpo já foi pintado na passada de base
     } else if let Some(p) = &peca {
         crate::pecas_cartoes::pinta_fundo(ctx, body, p);
+        crate::pecas_cartoes::pinta_voltas(ctx, body, s, view, p);
     } else {
         fill_rounded_rect(
             ctx.scene,

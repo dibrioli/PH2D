@@ -85,7 +85,19 @@ O laço do tempo é [0; 6).
 
 Doc de `App::nest_scene_jump`, movida para cá em 10/11 (catraca da shell).
 
-Cena `=2` — **"o mesmo pulo, três vezes"**: o exemplo completo do diferencial.
+Cena `=2` — **"o mesmo pulo, três vezes"**: o exemplo completo do diferencial. Os keys caem no clip
+ATIVO, por isso cada lote troca a seleção antes; os leads das instâncias são as travessias (lead-in pelo
+vão; o lead-out da última cruza a costura do loop).
+
+### Tocar só um trecho (doc 17 item 2, 10/11)
+
+A cena tem três marcadores no primeiro pulo: **takeoff** (0 s), **top** (1,1 s) e **land** (2 s).
+Na aba **Arrange**, clique na régua, na faixa das bandeirolas, **entre takeoff e top**: o play salta para
+0 s e toca só a subida, em loop, e a barra mostra **«takeoff → top»** com um ✕. Clicar no chip volta ao
+loop da cena (0–10,6 s). Trocar de aba ou de clipe também volta. Nada disto entra no Ctrl+Z nem no
+ficheiro. ⚠️ A faixa própria «Markers» da maquete B6 (no pé da lista) fica para depois: hoje o alvo é o
+vão na régua (custo menor; o vão ganha à faixa de mover do loop só na banda das bandeirolas — as pontas
+do loop continuam a agarrar-se por baixo). Em `PH2D_CARDS=0` o vão não existe.
 
 ### O que olhar
 

@@ -278,6 +278,7 @@ fn snap_with_strips(strips: &[(f64, f64, f64)]) -> TimelineViewSnapshot {
                     blend_out: 0.0,
                     lead_in,
                     lead_out: 0.0,
+                    volta: 0.0,
                     ease_locked_in: false,
                     ease_locked_out: false,
                     curve_in: None,

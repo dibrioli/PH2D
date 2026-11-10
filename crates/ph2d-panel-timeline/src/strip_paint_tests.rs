@@ -33,6 +33,7 @@ fn strip(marks: [f64; 4]) -> StripView {
         blend_out: 0.0,
         lead_in: 0.0,
         lead_out: 0.0,
+        volta: 0.0,
         ease_locked_in: false,
         ease_locked_out: false,
         curve_in: None,

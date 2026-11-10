@@ -381,3 +381,25 @@ fn o_container_conta_onde_esta_colocado() {
     let published: Vec<usize> = snap.containers.iter().map(|c| c.uses).collect();
     assert_eq!(published, [2, 0, 1], "o snapshot publica a mesma contagem");
 }
+
+/// ⭐ **Uma volta = a fatia ÷ a velocidade** (doc 17 item 4), com o corte: fatia `[0,25; 0,75)` a 2× ⇒
+/// 0,25 s; `Once` ⇒ 0; Ping-Pong igual ao Loop. Derivado no `rebuild`, nunca gravado.
+#[test]
+fn a_volta_da_strip_e_a_fatia_sobre_a_velocidade() {
+    let mut st = TimelineState::new();
+    let lane = st.doc.add_lane("L".into()).unwrap();
+    let a = st.doc.add_strip(lane, 0, 0.0, 2.0).unwrap();
+    let ph = ph2d_core::Playhead::new(1.0 / 60.0);
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &ph, false);
+    assert_eq!(snap.lanes[0].strips[0].volta, 0.0, "Once não volta");
+    for modo in [StripLoop::Loop, StripLoop::PingPong] {
+        let s = st.doc.strip_mut(lane, a).unwrap();
+        (s.src_in, s.src_out, s.speed, s.loop_mode) = (0.25, 0.75, 2.0, modo);
+        snap.rebuild(&mut st, &ph, false);
+        assert_eq!(snap.lanes[0].strips[0].volta, 0.25, "{modo:?}");
+    }
+    st.doc.strip_mut(lane, a).unwrap().speed = 0.0;
+    snap.rebuild(&mut st, &ph, false);
+    assert_eq!(snap.lanes[0].strips[0].volta, 0.0, "velocidade 0 não volta");
+}

@@ -24,6 +24,7 @@ impl TimelineHitKind {
                 PointerLook::ResizeEw
             }
             Self::GraphResize => PointerLook::ResizeNs,
+            Self::MarkerGap { .. } => PointerLook::Hand,
             Self::Strip { edge, .. } | Self::LoopBrace { edge } if edge != CORPO => {
                 PointerLook::ResizeEw
             }

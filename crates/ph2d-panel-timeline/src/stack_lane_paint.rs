@@ -123,13 +123,15 @@ fn paint_lane(
         );
         let tinta = crate::pecas_cartoes::tinta_do_strip(s, snap);
         let fase = if cartoes { Fase::Base } else { Fase::Tudo };
-        paint_strip(ctx, theme, view, body, s, dim, index, tinta, fase);
+        let marca = (dim, state.strip_escolhida == Some(s.id));
+        paint_strip(ctx, theme, view, body, s, marca, index, tinta, fase);
         boxes.push((s, body));
     }
     if cartoes {
         for (s, body) in &boxes {
             let tinta = crate::pecas_cartoes::tinta_do_strip(s, snap);
-            paint_strip(ctx, theme, view, *body, s, dim, index, tinta, Fase::Topo);
+            let marca = (dim, state.strip_escolhida == Some(s.id));
+            paint_strip(ctx, theme, view, *body, s, marca, index, tinta, Fase::Topo);
         }
     }
     ctx.scene.pop_layer();

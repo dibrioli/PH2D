@@ -278,7 +278,8 @@ pub enum TimelineIntent {
         /// Formula text, or `None` to return to keyframes.
         expr: Option<String>,
     },
-
+    /// Tocar só o trecho entre os marcadores `(a, b)` em loop, ou largá-lo — sessão (`crate::trecho`).
+    PlayStretch(Option<(usize, usize)>),
     // ── markers (W4.T3; each is one undo step) ──────────────────────────────
     /// Add a marker at `t_seconds` with `label` (user content; the shell
     /// auto-names it). Frame-snapped like a key.

@@ -286,6 +286,7 @@ fn the_trim_preview_marks_only_the_removed_span_and_only_when_cutting() {
         blend_out: 0.0,
         lead_in: 0.0,
         lead_out: 0.0,
+        volta: 0.0,
         marks: [0.0; 4],
         ease_locked_in: false,
         ease_locked_out: false,

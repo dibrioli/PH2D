@@ -13,7 +13,7 @@ use ph2d_editor_core::widget::card_ink::CardInk;
 /// A largura do chip do dono.
 const ANIM_W: f32 = 168.0; // LITERAL-PX-OK: «Animation: Scene» + seta, medido na foto; nomes longos cortam
 
-const DICAS: [(ph2d_a11y::NodeId, &str); 16] = [
+const DICAS: [(ph2d_a11y::NodeId, &str); 17] = [
     (TIMELINE_GO_START, "panel.timeline.tip.go_start"),
     (TIMELINE_PREV_FRAME, "panel.timeline.tip.prev_frame"),
     (TIMELINE_PLAY, "panel.timeline.tip.play"),
@@ -25,6 +25,7 @@ const DICAS: [(ph2d_a11y::NodeId, &str); 16] = [
     (ids::TIMELINE_DELETE_CLIP, "panel.timeline.tip.delete_clip"),
     (ids::TIMELINE_REVERSE_CLIP, "panel.timeline.tip.reverse"),
     (TIMELINE_ADD_MARKER, "panel.timeline.tip.add_marker"),
+    (ids::TIMELINE_STRETCH_CLEAR, "panel.timeline.tip.stretch"),
     (
         ids::TIMELINE_ONION_SETTINGS,
         "panel.timeline.tip.onion_settings",
@@ -442,6 +443,13 @@ fn grupo_de_gravar(
         Rect::new(x, y, w, m::FIELD_H),
         tons,
     );
+    // O trecho a tocar (doc 17 item 2): «takeoff → top» com ✕; clicar volta ao clipe todo.
+    if let Some(nome) = crate::ruler_trecho::rotulo(snap) {
+        let w = c.botao_com_icone_w(&nome);
+        let (x, y) = f.poe(w);
+        let r = Rect::new(x, y, w, m::FIELD_H);
+        c.botao_com_icone_discreto_em(ids::TIMELINE_STRETCH_CLEAR, IconId::Close, &nome, r, tons);
+    }
 }
 
 /// ⭐ **A hierarquia da barra** (dono 09/11, onda 2i): as abas são a navegação principal e as mais

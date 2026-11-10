@@ -1,12 +1,10 @@
-//! [`TimelineViewSnapshot`] — the read-only projection the timeline panel
-//! paints, and [`TimelineViewSnapshot::rebuild`], which refills it from the
-//! [`TimelineState`] + [`Playhead`].
+//! [`TimelineViewSnapshot`] — the read-only projection the timeline panel paints, and
+//! [`TimelineViewSnapshot::rebuild`], which refills it from the [`TimelineState`] + [`Playhead`].
 //!
-//! The bridge owns one snapshot and `rebuild`s it **into reused buffers** (no
-//! per-frame allocation once warm — HR-3), only when the document or selection
-//! actually changed. Paused + unchanged ⇒ no rebuild ⇒ no allocation (W1.T9).
-//! The panel never reaches into the document; it reads this (mirrors
-//! `GraphViewSnapshot`).
+//! The bridge owns one snapshot and `rebuild`s it **into reused buffers** (no per-frame allocation
+//! once warm — HR-3), only when the document or selection actually changed. Paused + unchanged ⇒
+//! no rebuild ⇒ no allocation (W1.T9). The panel never reaches into the document; it reads this
+//! (mirrors `GraphViewSnapshot`).
 
 use ph2d_anim::{AnimTarget, Extrap, Interp, Key, KeyId};
 use ph2d_core::Playhead;
@@ -152,6 +150,8 @@ pub struct StripView {
     /// is mutually exclusive with `blend_out` (the fade-out grip is on one side of the end
     /// edge or the other).
     pub lead_out: f64,
+    /// Uma volta em segundos da timeline ([`crate::ClipStrip::volta`]); `0.0` = não volta.
+    pub volta: f64,
 }
 
 /// One lane of the clip stack.
@@ -603,6 +603,7 @@ impl TimelineViewSnapshot {
                     seam: seam.and_then(|sm| sm.slice_for(i)),
                     loop_mode: st.loop_mode,
                     speed: st.speed,
+                    volta: st.volta(),
                 });
             }
             self.lanes.push(LaneView {

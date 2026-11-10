@@ -115,3 +115,96 @@ fn a_linha_pintada_regista_o_rotulo_do_catalogo() {
         "um quadro novo esquece o que não voltou a ser pintado"
     );
 }
+
+// ── onda 1 — losango (plano `docs/Timeline/17` item 3): os estados do Rive ──────────────────────
+
+/// Estilos e geometria de uma cena (a tinta fica de fora).
+fn forma(scene: &VectorScene) -> (String, Vec<u32>) {
+    let e = scene.inner().encoding();
+    (format!("{:?}", e.styles), e.path_data.clone())
+}
+
+fn classico(mark: KeyMark) -> (String, Vec<u32>) {
+    let mut s = VectorScene::new();
+    paint_key_mark(&mut s, Theme::Dark, Rect::new(0.0, 0.0, 10.0, 10.0), mark);
+    forma(&s)
+}
+
+/// ⭐ `Livre` é o MESMO losango vazio de `Animado` (contorno, não o ponto); `Chave` e `Mudado` cheios.
+#[test]
+fn o_livre_e_um_losango_vazio_como_o_animado() {
+    let mut ponto = VectorScene::new();
+    super::super::row::paint_decorator(
+        &mut ponto,
+        Theme::Dark,
+        Rect::new(0.0, 0.0, 10.0, 10.0),
+        false,
+    );
+    assert_ne!(
+        classico(KeyMark::Livre),
+        forma(&ponto),
+        "o Livre voltou a ser o ponto"
+    );
+    assert_eq!(classico(KeyMark::Livre), classico(KeyMark::Animado));
+    assert_eq!(classico(KeyMark::Chave), classico(KeyMark::Mudado));
+    assert_ne!(
+        classico(KeyMark::Chave).0,
+        classico(KeyMark::Animado).0,
+        "cheio × contorno"
+    );
+}
+
+/// O cartão pinta pela mesma porta: `Livre` = losango vazio, alvo do MESMO tamanho de antes
+/// (`KEY_MARK_BOX`); sem canal = o ponto inerte, sem alvo.
+#[test]
+fn no_cartao_o_livre_e_losango_e_o_alvo_nao_encolhe() {
+    use crate::interaction::HitIndex;
+    use crate::widget::card_ink::CardInk;
+    use ph2d_card_stack::metrics as m;
+    let pinta = |mark: Option<KeyMark>| {
+        set_key_marks(mark.map(|k| BTreeMap::from([(X, k)])).unwrap_or_default());
+        let (mut s, mut hits) = (VectorScene::new(), HitIndex::new());
+        let ink = CardInk::of_list(Theme::Dark);
+        crate::widget::card_field::paint_key_mark(&mut s, ink, &mut hits, 20.0, 20.0, &[X]);
+        (forma(&s), hits.rect_for(key_mark_id(X)))
+    };
+    let (livre, alvo) = pinta(Some(KeyMark::Livre));
+    let (animado, _) = pinta(Some(KeyMark::Animado));
+    let (sem, sem_alvo) = pinta(None);
+    assert_eq!(livre, animado, "o Livre é o contorno do Animado");
+    assert_ne!(livre, sem, "o campo sem canal fica o ponto");
+    assert_eq!(sem_alvo, None);
+    let alvo = alvo.expect("o Livre é clicável");
+    assert!(
+        (alvo.w - m::KEY_MARK_BOX).abs() < f32::EPSILON
+            && (alvo.h - m::KEY_MARK_BOX).abs() < f32::EPSILON
+    );
+    set_key_marks(BTreeMap::new());
+}
+
+/// ⭐ `Livre` × `Animado` leem-se diferentes em TODO tema, nos dois Inspectors (o clássico apaga em
+/// `Text3`, o cartão em `CardLabel`, que num cartão de tema próprio é `Text3`). Distância OKLab;
+/// piso [`PISO_LIVRE_ANIMADO`].
+#[test]
+fn o_livre_e_o_animado_leem_se_diferentes_em_todo_tema() {
+    let lab = |c: ph2d_tokens::Color| {
+        let (l, ch, h) = ph2d_tokens::srgb_to_oklch(c.r, c.g, c.b);
+        let h = h.to_radians();
+        (l, ch * h.cos(), ch * h.sin())
+    };
+    let mut pior = f64::MAX;
+    for theme in Theme::ALL {
+        for apagada in [ColorToken::Text3, ColorToken::CardLabel] {
+            let p = lab(tinta_do_losango(KeyMark::Livre, apagada).resolve(theme));
+            let q = lab(tinta_do_losango(KeyMark::Animado, apagada).resolve(theme));
+            let d = ((p.0 - q.0).powi(2) + (p.1 - q.1).powi(2) + (p.2 - q.2).powi(2)).sqrt();
+            pior = pior.min(d);
+            assert!(d >= PISO_LIVRE_ANIMADO, "{theme:?} {apagada:?}: {d:.3}");
+        }
+    }
+    assert!(pior < 1.0, "a régua mediu alguma coisa: {pior}");
+}
+
+/// Medido 10/11: o par mais perto é `PlumberGreen`/`Text3` a 0,190 (o melhor, `Forge`/`CardLabel`, 0,380);
+/// a maquete B1 tem `--fg2` × `--c13-k` a 0,214 sólido e 0,31 com a opacidade 0,75 sobre o cartão.
+const PISO_LIVRE_ANIMADO: f64 = 0.15;

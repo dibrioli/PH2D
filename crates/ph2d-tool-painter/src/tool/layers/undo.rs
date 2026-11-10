@@ -123,6 +123,32 @@ impl PainterTool {
         }
     }
 
+    /// As camadas cujos píxeis um passo confinado pode trocar (B17.5): as duas ativas (a ativa lê a tela, que
+    /// o re-carimbo do restauro reescreve) e as de `images` cujo `Arc` difere. As outras são o MESMO buffer
+    /// nos dois lados: a versão delas fica, e a GPU não re-carrega a fatia. `None` = a pilha mudou: todas.
+    fn camadas_que_o_passo_troca(
+        &self,
+        m: &crate::undo::ModelSnapshot,
+    ) -> Option<std::collections::BTreeSet<RtLayerId>> {
+        if !self.layers.all_ids().eq(m.layers.all_ids()) {
+            return None;
+        }
+        let mut ids: std::collections::BTreeSet<RtLayerId> =
+            [self.layers.active(), m.layers.active()]
+                .into_iter()
+                .flatten()
+                .collect();
+        for id in self.images.keys().chain(m.images.keys()) {
+            match (self.images.get(id), m.images.get(id)) {
+                (Some(a), Some(b)) if Arc::ptr_eq(a, b) => {}
+                _ => {
+                    ids.insert(*id);
+                }
+            }
+        }
+        Some(ids)
+    }
+
     /// Reinstall a model snapshot (a structural undo/redo). Restores the layer
     /// tree (incl. the active target), the per-layer pixel store, the active
     /// working buffer, and the panel selection, then refreshes every derived
@@ -146,6 +172,7 @@ impl PainterTool {
         m: crate::undo::ModelSnapshot,
         confined: Option<crate::compositor::Region>,
     ) {
+        let trocadas = confined.and_then(|_| self.camadas_que_o_passo_troca(&m));
         self.layers = m.layers;
         self.images = m.images;
         self.heights = m.heights;
@@ -227,7 +254,12 @@ impl PainterTool {
         // undoing a deform stroke rolls the warp back AND keeps Reconstruct able to un-warp what remains.
         self.restore_deform(m.deform);
         let antes = (self.layers_revision, self.pixel_clock);
-        self.bump_all_layer_pixels();
+        match trocadas {
+            Some(ids) => ids
+                .into_iter()
+                .for_each(|id| self.bump_layer_pixels(Some(id))),
+            None => self.bump_all_layer_pixels(),
+        }
         match confined {
             // O caminho de sempre: um passo que pode ter mudado QUALQUER coisa (opacidade, blend,
             // ordem, visibilidade, um ajuste) muda o composite fora de retângulo nenhum.

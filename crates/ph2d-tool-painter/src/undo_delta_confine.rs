@@ -104,13 +104,32 @@ impl<T> StoredPlane<T> {
     pub(crate) fn reach(&self) -> PlaneReach {
         match self {
             Self::Unchanged => PlaneReach::Untouched,
-            Self::Patch { win, .. } | Self::Tiles { win, .. } => PlaneReach::Window(*win),
+            Self::Patch { win, .. } => PlaneReach::Window(*win),
+            // A caixa dos tiles RESTAURADOS, não a janela declarada (B17.5): fora deles os lados são iguais.
+            Self::Tiles { win, rects, .. } => PlaneReach::Window(caixa_dos(rects).unwrap_or(*win)),
             Self::Whole { before, after } if before.is_empty() && after.is_empty() => {
                 PlaneReach::Untouched
             }
             Self::Whole { .. } => PlaneReach::Whole,
         }
     }
+}
+
+/// A menor janela que contém todas as caixas (mesmo plano: mesmo `stride` e `plane_len`).
+fn caixa_dos(rects: &[PlaneWindow]) -> Option<PlaneWindow> {
+    let (first, rest) = rects.split_first()?;
+    Some(rest.iter().fold(*first, |c, r| {
+        let (row, col) = (c.row.min(r.row), c.col.min(r.col));
+        let fim_r = (c.row + c.rows).max(r.row + r.rows);
+        let fim_c = (c.col + c.cols).max(r.col + r.cols);
+        PlaneWindow {
+            row,
+            rows: fim_r - row,
+            col,
+            cols: fim_c - col,
+            ..c
+        }
+    }))
 }
 
 impl<T> StoredEntry<T> {
@@ -418,5 +437,36 @@ mod tests {
         let w = PlaneWindow::for_test(4, 5, 6, 7, 10);
         let r = w.to_region(10).expect("stride 10 mede um canvas de 10 px");
         assert_eq!((r.x, r.y, r.w, r.h), (6, 4, 7, 5));
+    }
+
+    /// **O passo guardado por tiles alcança os tiles RESTAURADOS, não a janela declarada** (B17.5): o
+    /// commit do Impasto declara a caixa do traço inteiro e o undo repintava-a toda. Dois tiles em cantos
+    /// opostos de uma janela declarada que é a tela: o alcance é a caixa dos dois, e não a tela.
+    #[test]
+    fn o_passo_por_tiles_alcanca_a_caixa_dos_tiles_que_mudaram() {
+        use super::super::tiles::TileMarks;
+        use super::{PlaneReach, Region, StoredPlane};
+        use crate::undo::journal::TILE;
+        use std::sync::Arc;
+        let (w, h, t) = (1024u32, 768u32, TILE as u32);
+        let before = Arc::new(vec![7u8; (w * h) as usize]);
+        let mut a = (*before).clone();
+        a[(t + 3) as usize * w as usize + t as usize + 1] = 9; // tile (1, 1)
+        a[(2 * t + 3) as usize * w as usize + 3 * t as usize + 1] = 9; // tile (2, 3)
+        let tudo = Region { x: 0, y: 0, w, h };
+        let mut marks = TileMarks::default();
+        marks.mark(tudo);
+        let px = marks
+            .for_hint(Some(tudo), 1)
+            .expect("os marks viram a janela");
+        let hint = PlaneWindow::from_region(tudo, w, w as usize);
+        let (mut b, mut d) = (Arc::clone(&before), Arc::new(a));
+        let p = StoredPlane::split_tiled(&mut b, &mut d, w as usize, hint, Some((&px, w)));
+        assert_eq!(p.variant(), "tiles");
+        let PlaneReach::Window(j) = p.reach() else {
+            panic!("um passo por tiles tem janela");
+        };
+        let r = j.to_region(w).expect("escalar mede-se em pixels");
+        assert_eq!((r.x, r.y, r.w, r.h), (t, t, 3 * t, 2 * t));
     }
 }

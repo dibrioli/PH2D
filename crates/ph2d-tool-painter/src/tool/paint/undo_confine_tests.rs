@@ -435,3 +435,47 @@ fn two_empty_planes_do_not_sour_the_confinement() {
         "um plano com conteudo segue Whole"
     );
 }
+
+/// **Um undo confinado só re-envia à placa a camada que ele mudou** (B17.5): o `bump_all_layer_pixels`
+/// subia a versão de TODA camada e o compositor da GPU re-carregava cada fatia (33 MB por camada a 4K)
+/// para desfazer um traço numa só. O conteúdo das outras é o MESMO `Arc` nos dois lados.
+#[test]
+fn um_undo_confinado_so_sobe_a_versao_da_camada_que_mudou() {
+    let mut t = armed(1024);
+    let baixo = t.layers.active().expect("camada de base");
+    let meio = t.add_raster_layer("meio").expect("camada do meio");
+    let topo = t.add_raster_layer("topo").expect("camada de cima");
+    stroke(&mut t, 200.0); // o 1.º relevo da camada não é confinado
+    stroke(&mut t, 120.0);
+    let _ = t.take_preview_arc();
+    let versao = |t: &PainterTool, id: crate::layers::LayerId| {
+        t.preview_layer_pixels(id.0).map(|(v, _, _)| v)
+    };
+    let antes: Vec<_> = [baixo, meio, topo]
+        .iter()
+        .map(|&id| versao(&t, id))
+        .collect();
+    let why = t.undo.peek_confine_diagnosis(false).unwrap_or_default();
+    assert!(
+        t.regiao_do_proximo_passo(false).is_some(),
+        "o traço é confinado — {why}"
+    );
+    assert!(t.undo_last());
+    assert!(
+        t.dirty_rect_now().is_some(),
+        "o undo foi pela pista confinada"
+    );
+    let depois: Vec<_> = [baixo, meio, topo]
+        .iter()
+        .map(|&id| versao(&t, id))
+        .collect();
+    assert_ne!(
+        depois[2], antes[2],
+        "CONTROLO: a camada pintada tem de subir de versão"
+    );
+    assert_eq!(
+        (depois[0], depois[1]),
+        (antes[0], antes[1]),
+        "as camadas que o passo não tocou não sobem de versão"
+    );
+}

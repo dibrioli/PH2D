@@ -59,6 +59,7 @@ campos_do_traco!(
     wet_soak_pos,
     plano_do_traco,
     pixel_trilhos,
+    po_do_papel, // o pó é o da tela DESTE pen-down (`stroke_lifecycle` zera-o)
 );
 
 /// Os campos do `PaintState` partilhados pelos traços abertos (a tela, as sessões, o relevo, a aguada,

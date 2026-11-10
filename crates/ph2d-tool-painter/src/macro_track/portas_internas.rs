@@ -398,4 +398,8 @@ pub const INTERNAS: &[&str] = &[
     "use_layers_as_watercolor_paper",
     // A SONDA do prompt 42 (`tests/it/sonda_midias.rs`): mexe no motor por baixo do painel — nunca se grava.
     "wet_sonda_motor",
+    // As sondas de custo da mistura (`tests/it/sonda_custo_do_veu.rs`, `o_custo_no_caminho_do_app.rs`):
+    // comparam variantes no MESMO processo (`MEDIR_VELOCIDADE.md`) — nunca se gravam.
+    "set_mistura_meia_definicao",
+    "set_mistura_salta_a_copia_do_veu",
 ];

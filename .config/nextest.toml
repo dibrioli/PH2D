@@ -251,6 +251,14 @@ filter = 'package(ph2d-app-light2d) | package(ph2d-light2d-gpu)'
 test-group = 'luz2d-placa'
 slow-timeout = { period = "60s", terminate-after = 6 }
 
+# P14 «L» (receptor com normal, `9ed72d2543`, linha PixelArt): o gabarito na CPU por ponto × 32 normais. Integração
+# 10/11: MORTOS aos 180 s na suíte (load ~15); sozinhos (nextest, `dev` com opt-level 2 na `-ref`, load 10–19):
+# `nunca_negativa` 80,6 s · `a_normal_de_frente_e_o_receptor_de_hoje_bit_a_bit` 93,2 s. Só a linha PixelArt tocou a
+# crate na rodada: custo do próprio teste, não da fusão. Tecto 8 × 60 s ≈ 5× o medido sozinho (a suíte custa 2,5×–4,6×).
+[[profile.default.overrides]]
+filter = 'package(ph2d-light2d-ref) & (test(=luz_em_com_normal::nunca_negativa) + test(=luz_em_com_normal::a_normal_de_frente_e_o_receptor_de_hoje_bit_a_bit))'
+slow-timeout = { period = "60s", terminate-after = 8 }
+
 # A matriz do undo vivo (07/11, `wetpaint/undo_matriz_tests.rs`): cada célula corre os 26 testes do undo vivo com as
 # razões da grade e do fluxo postas, em série (o `teto`/`grade_inteira` são estado do fio). Sozinho (integ 09/11,
 # `--profile smoke`, load ~40): `undo_vivo_grade_1_fluxo_2` 78,0 s; os seis estouraram os 180 s na suíte (load > 40).

@@ -97,7 +97,9 @@ pub(crate) fn digital(preset: &str, cor: Option<[u8; 3]>, densidade: f32) -> Vec
     }
     t.set_brush_mistura_modo(ModoMisturaOpaca::WetBlend);
     t.set_brush_mistura_numero(1, densidade);
-    t.set_brush_mistura_numero(5, 1.0);
+    // Um Pigment só (`ac576c5df8`, handoff Painter 10/11 §4 «Cartão Paint Mixing»): o reservatório do Wet blend lê o
+    // `effective_pigment_mix` do pincel — o antigo campo 5 da mistura saiu.
+    t.set_brush_pigment_mixing(1.0);
     // Amount 0,15: com a amostra do CSP (o traço vê o fundo e a sua tinta de há mais de um raio) o azul a 0,3 sobre o
     // amarelo dá azul-petróleo `30,70,114` (medido 08/11), não verde.
     t.set_brush_mistura_numero(0, 0.15);

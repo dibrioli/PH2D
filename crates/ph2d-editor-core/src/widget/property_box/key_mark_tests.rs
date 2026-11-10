@@ -183,7 +183,8 @@ fn no_cartao_o_livre_e_losango_e_o_alvo_nao_encolhe() {
 }
 
 /// ⭐ `Livre` × `Animado` leem-se diferentes em TODO tema, nos dois Inspectors (o clássico apaga em
-/// `Text3`, o cartão em `CardLabel`, que num cartão de tema próprio é `Text3`). Distância OKLab;
+/// `Text3` sobre o `Bg1`, o cartão em `CardLabel` sobre o `KanbanCard`), com o `Livre` JÁ COMPOSTO a
+/// [`TIMELINE_LOSANGO_LIVRE_ALPHA`] sobre o fundo de quem pinta — é o que o olho vê. Distância OKLab;
 /// piso [`PISO_LIVRE_ANIMADO`].
 #[test]
 fn o_livre_e_o_animado_leem_se_diferentes_em_todo_tema() {
@@ -192,30 +193,141 @@ fn o_livre_e_o_animado_leem_se_diferentes_em_todo_tema() {
         let h = h.to_radians();
         (l, ch * h.cos(), ch * h.sin())
     };
-    let mut pior = f64::MAX;
+    let sobre = |c: ph2d_vector::Color, fundo: ph2d_vector::Color| {
+        let (c, f) = (vello(c), vello(fundo));
+        let a = f32::from(c.a) / f32::from(u8::MAX);
+        let mix = |x: u8, y: u8| (f32::from(x) * a + f32::from(y) * (1.0 - a)).round() as u8;
+        ph2d_tokens::Color {
+            r: mix(c.r, f.r),
+            g: mix(c.g, f.g),
+            b: mix(c.b, f.b),
+            a: u8::MAX,
+        }
+    };
+    let mut pior = (f64::MAX, String::new());
     for theme in Theme::ALL {
-        for apagada in [ColorToken::Text3, ColorToken::CardLabel] {
-            let tok = |t: ColorToken| t.resolve(theme);
-            let p = lab(vello(cor_do_losango(KeyMark::Livre, apagada, theme, |t| {
-                crate::paint::token_to_vello(tok(t))
-            })));
-            let q = lab(vello(cor_do_losango(
-                KeyMark::Animado,
-                apagada,
-                theme,
-                |t| crate::paint::token_to_vello(tok(t)),
-            )));
+        let card = crate::widget::card_ink::CardInk::of_list(theme);
+        let classico = |t: ColorToken| resolve(t, theme);
+        let cartao = |t: ColorToken| card.color(t);
+        let quem: [(&str, ColorToken, Tinta<'_>, ColorToken); 2] = [
+            ("clássico", ColorToken::Text3, &classico, ColorToken::Bg1),
+            (
+                "cartão",
+                ColorToken::CardLabel,
+                &cartao,
+                ColorToken::KanbanCard,
+            ),
+        ];
+        for (nome, apagada, tok, fundo) in quem {
+            let p = lab(sobre(
+                cor_do_losango(KeyMark::Livre, apagada, theme, tok),
+                tok(fundo),
+            ));
+            let q = lab(vello(cor_do_losango(KeyMark::Animado, apagada, theme, tok)));
             let d = ((p.0 - q.0).powi(2) + (p.1 - q.1).powi(2) + (p.2 - q.2).powi(2)).sqrt();
-            pior = pior.min(d);
-            assert!(d >= PISO_LIVRE_ANIMADO, "{theme:?} {apagada:?}: {d:.3}");
+            if std::env::var_os("PH2D_MEDE_LOSANGO").is_some() {
+                eprintln!("{theme:?} {nome}: {d:.3}");
+            }
+            if d < pior.0 {
+                pior = (d, format!("{theme:?} {nome}"));
+            }
+            assert!(d >= PISO_LIVRE_ANIMADO, "{theme:?} {nome}: {d:.3}");
         }
     }
-    assert!(pior < 1.0, "a régua mediu alguma coisa: {pior}");
+    assert!(pior.0 < 1.0, "a régua mediu alguma coisa: {pior:?}");
 }
 
-/// Medido 10/11: o par mais perto é `PlumberGreen`/`Text3` a 0,190 (o melhor, `Forge`/`CardLabel`, 0,380);
-/// a maquete B1 tem `--fg2` × `--c13-k` a 0,214 sólido e 0,31 com a opacidade 0,75 sobre o cartão.
-const PISO_LIVRE_ANIMADO: f64 = 0.15;
+/// Medido 10/11 (Livre composto a 0,75, chave `TimelineTinta::Chave`): pior `PlumberGreen` clássico 0,294,
+/// `PlumberRed` 0,308; cartão ≥ 0,393 (o melhor, `Oled` clássico, 0,462). Antes: 0,190 sem opacidade e
+/// com a chave `TimelineKey` (o Livre e o Animado liam-se iguais na foto 24_lado_a_lado_losango).
+const PISO_LIVRE_ANIMADO: f64 = 0.25;
+
+/// ⭐ **O glifo tem o tamanho da maquete e cabe na sua caixa** (B1 `.c13dm`: 9 px de canto 1,5 girado
+/// 45°): a caixa PINTADA (pontos de controlo no transform, mais meio traço no vazio) mede ≥ 11 px de
+/// ponta a ponta — o de antes, 6 px de lado, media 8,5 — e não sai da [`m::KEY_MARK_BOX`] no cartão
+/// (o rótulo acaba onde ela começa: `cards_rotulos::largura_do_rotulo`) nem da coluna `DECORATOR_W`
+/// do clássico. *Mutação: `KEY_MARK_GLYPH` 9 → 6, ou o raio 0 (a ponta aguda sai da caixa).*
+#[test]
+fn o_glifo_tem_o_tamanho_da_maquete_e_nao_sai_da_caixa() {
+    use crate::interaction::HitIndex;
+    use crate::widget::card_ink::CardInk;
+    use ph2d_card_stack::metrics as m;
+    let caixa = |s: &VectorScene, mark: KeyMark| {
+        let e = s.inner().encoding();
+        let t = *e.transforms.last().expect("o losango gira");
+        let pts: Vec<f32> = e.path_data.iter().map(|&b| f32::from_bits(b)).collect();
+        let meio = if losango_vazio(mark) {
+            m::KEY_MARK_STROKE * 0.5
+        } else {
+            0.0
+        };
+        let mut c = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
+        for p in pts.as_chunks::<2>().0 {
+            let x = t.matrix[0] * p[0] + t.matrix[2] * p[1] + t.translation[0];
+            let y = t.matrix[1] * p[0] + t.matrix[3] * p[1] + t.translation[1];
+            c = [
+                c[0].min(x - meio),
+                c[1].min(y - meio),
+                c[2].max(x + meio),
+                c[3].max(y + meio),
+            ];
+        }
+        c
+    };
+    let (cx, cy) = (20.0, 20.0);
+    for mark in [
+        KeyMark::Livre,
+        KeyMark::Animado,
+        KeyMark::Chave,
+        KeyMark::Mudado,
+    ] {
+        set_key_marks(BTreeMap::from([(X, mark)]));
+        let (mut s, mut hits) = (VectorScene::new(), HitIndex::new());
+        let ink = CardInk::of_list(Theme::Dark);
+        crate::widget::card_field::paint_key_mark(&mut s, ink, &mut hits, cx, cy, &[X]);
+        let c = caixa(&s, mark);
+        let (w, h) = (c[2] - c[0], c[3] - c[1]);
+        assert!(
+            w >= 11.0 && h >= 11.0,
+            "{mark:?}: {w:.2}×{h:.2} — o pontinho voltou"
+        );
+        let metade = m::KEY_MARK_BOX * 0.5;
+        assert!(
+            c[0] >= cx - metade
+                && c[2] <= cx + metade
+                && c[1] >= cy - metade
+                && c[3] <= cy + metade,
+            "{mark:?}: {c:?} sai da caixa de {} px (invade o rótulo)",
+            m::KEY_MARK_BOX
+        );
+        let mut k = VectorScene::new();
+        let col = Rect::new(0.0, 0.0, super::super::DECORATOR_W, m::FIELD_H);
+        paint_key_mark(&mut k, Theme::Dark, col, mark);
+        let c = caixa(&k, mark);
+        assert!(
+            c[0] >= col.x && c[2] <= col.x + col.w,
+            "clássico {mark:?}: {c:?}"
+        );
+        assert!(c[2] - c[0] >= 11.0, "clássico {mark:?} pequeno");
+    }
+    assert!(
+        (meia_ponta_do_losango() * 2.0 - 11.49).abs() < 0.01,
+        "ponta a ponta da maquete"
+    );
+    set_key_marks(BTreeMap::new());
+}
+
+/// A meia extensão do losango de ponta a ponta (a ponta arredondada recua `r·(√2−1)`).
+fn meia_ponta_do_losango() -> f64 {
+    let (lado, raio) = (
+        f64::from(ph2d_card_stack::metrics::KEY_MARK_GLYPH) * 0.5,
+        f64::from(ph2d_card_stack::metrics::KEY_MARK_GLYPH_RADIUS),
+    );
+    (lado - raio) * std::f64::consts::SQRT_2 + raio
+}
+
+/// A tinta de quem pinta (o clássico ou o cartão).
+type Tinta<'a> = &'a dyn Fn(ColorToken) -> ph2d_vector::Color;
 
 /// A cor vello de volta a sRGB de 8 bits (a régua OKLab mede-a).
 fn vello(c: ph2d_vector::Color) -> ph2d_tokens::Color {
@@ -255,8 +367,7 @@ fn o_mudado_e_laranja_em_todo_tema() {
         );
         let card = crate::widget::card_ink::CardInk::of_list(theme);
         let vizinhos = [
-            ("chave", vello(card.color(ColorToken::TimelineKey))),
-            ("chave clássica", ColorToken::TimelineKey.resolve(theme)),
+            ("chave", ph2d_tokens::TimelineTinta::Chave.resolve(theme)),
             ("cartão", vello(card.color(ColorToken::KanbanCard))),
             ("campo", vello(card.color(ColorToken::CardField))),
             ("painel", ColorToken::Bg1.resolve(theme)),

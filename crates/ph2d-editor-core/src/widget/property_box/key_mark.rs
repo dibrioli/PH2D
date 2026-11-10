@@ -10,9 +10,10 @@ use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 
 use ph2d_a11y::NodeId;
+use ph2d_card_stack::metrics as m;
 use ph2d_i18n::TextKey;
-use ph2d_tokens::{ColorToken, Spacing, Theme};
-use ph2d_vector::{Affine, BezPath, Fill, VectorScene};
+use ph2d_tokens::{ColorToken, TIMELINE_LOSANGO_LIVRE_ALPHA, Theme, TimelineTinta};
+use ph2d_vector::{Affine, Fill, RoundedRect, VectorScene};
 
 use crate::paint::resolve;
 use crate::zones::Rect;
@@ -384,10 +385,11 @@ pub fn paint_decorator_for(
     Some(key_mark_id(primeiro))
 }
 
-/// ⭐ **A tinta de cada estado** (maquete B1, os 3 do Rive + o laranja do Spine): `Livre` na tinta
-/// `apagada` do ponto de quem pinta (`Text3` no clássico, `CardLabel` no cartão); `Animado` e `Chave`
-/// na da chave da dope-sheet — o mesmo losango, o mesmo significado; `Mudado` no laranja da maquete
-/// ([`cor_mudado`]). `tok` resolve um token na tinta de quem pinta.
+/// ⭐ **A tinta de cada estado** (maquete B1 `.c13dm`, os 3 do Rive + o laranja do Spine): `Livre` na
+/// tinta `apagada` do ponto de quem pinta (`Text3` no clássico, `CardLabel` no cartão) a
+/// [`TIMELINE_LOSANGO_LIVRE_ALPHA`]; `Animado` (contorno) e `Chave` (cheio) no claro da chave da
+/// maquete ([`TimelineTinta::Chave`], `#DCE2F5`) — distinguem-se pelo preenchimento, não pela cor;
+/// `Mudado` no laranja ([`cor_mudado`]). `tok` resolve um token na tinta de quem pinta.
 #[must_use]
 pub fn cor_do_losango(
     mark: KeyMark,
@@ -396,8 +398,10 @@ pub fn cor_do_losango(
     tok: impl Fn(ColorToken) -> ph2d_vector::Color,
 ) -> ph2d_vector::Color {
     match mark {
-        KeyMark::Livre => tok(apagada),
-        KeyMark::Animado | KeyMark::Chave => tok(ColorToken::TimelineKey),
+        KeyMark::Livre => tok(apagada).multiply_alpha(TIMELINE_LOSANGO_LIVRE_ALPHA),
+        KeyMark::Animado | KeyMark::Chave => {
+            crate::paint::token_to_vello(TimelineTinta::Chave.resolve(theme))
+        }
         KeyMark::Mudado => cor_mudado(theme),
     }
 }
@@ -427,29 +431,30 @@ pub const fn losango_vazio(mark: KeyMark) -> bool {
     matches!(mark, KeyMark::Livre | KeyMark::Animado)
 }
 
-/// A porta única dos dois Inspectors: o losango de meia diagonal `d` centrado em `(cx, cy)`.
+/// ⭐ **A porta única dos dois Inspectors**: o losango da maquete centrado em `(cx, cy)` — o
+/// quadrado [`m::KEY_MARK_GLYPH`] de canto [`m::KEY_MARK_GLYPH_RADIUS`] girado 45°; vazio = traço
+/// [`m::KEY_MARK_STROKE`] por DENTRO (o `inset` da maquete), cheio = o quadrado inteiro.
 pub(crate) fn pinta_losango(
     scene: &mut VectorScene,
     (cx, cy): (f64, f64),
-    d: f64,
     mark: KeyMark,
     cor: ph2d_vector::Color,
 ) {
-    let mut p = BezPath::new();
-    p.move_to((cx, cy - d));
-    p.line_to((cx + d, cy));
-    p.line_to((cx, cy + d));
-    p.line_to((cx - d, cy));
-    p.close_path();
+    let giro = Affine::translate((cx, cy)) * Affine::rotate(std::f64::consts::FRAC_PI_4);
+    let (lado, raio) = (
+        f64::from(m::KEY_MARK_GLYPH) * 0.5,
+        f64::from(m::KEY_MARK_GLYPH_RADIUS),
+    );
     if losango_vazio(mark) {
-        let traco = ph2d_vector::Stroke::new(f64::from(ph2d_card_stack::metrics::FIELD_BORDER));
+        let t = f64::from(m::KEY_MARK_STROKE);
+        let (l, r) = (lado - t * 0.5, (raio - t * 0.5).max(0.0));
+        let q = RoundedRect::new(-l, -l, l, l, r);
         scene
             .inner_mut()
-            .stroke(&traco, Affine::IDENTITY, cor, None, &p);
+            .stroke(&ph2d_vector::Stroke::new(t), giro, cor, None, &q);
     } else {
-        scene
-            .inner_mut()
-            .fill(Fill::NonZero, Affine::IDENTITY, cor, None, &p);
+        let q = RoundedRect::new(-lado, -lado, lado, lado, raio);
+        scene.inner_mut().fill(Fill::NonZero, giro, cor, None, &q);
     }
 }
 
@@ -457,7 +462,7 @@ pub(crate) fn pinta_losango(
 pub fn paint_key_mark(scene: &mut VectorScene, theme: Theme, r: Rect, mark: KeyMark) {
     let centro = (f64::from(r.x + r.w * 0.5), f64::from(r.y + r.h * 0.5));
     let cor = cor_do_losango(mark, ColorToken::Text3, theme, |t| resolve(t, theme));
-    pinta_losango(scene, centro, f64::from(Spacing::Xs.px()), mark, cor);
+    pinta_losango(scene, centro, mark, cor);
 }
 
 #[cfg(test)]

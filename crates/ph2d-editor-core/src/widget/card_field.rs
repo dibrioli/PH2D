@@ -390,11 +390,9 @@ pub fn paint_key_mark(
                 &c,
             );
         }
-        // O losango de 6 px de lado: meia diagonal = lado / √2.
         Some(k) => {
-            let d = f64::from(m::KEY_MARK_PX) * std::f64::consts::FRAC_1_SQRT_2;
             let cor = cor_do_losango(k, ColorToken::CardLabel, ink.theme, |t| ink.color(t));
-            pinta_losango(scene, (x, y), d, k, cor);
+            pinta_losango(scene, (x, y), k, cor);
         }
     }
     // O campo PARADO (travado) também não grava pela marca: sem alvo.

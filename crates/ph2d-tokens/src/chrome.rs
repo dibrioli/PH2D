@@ -99,6 +99,9 @@ pub const TIMELINE_SUMMARY_CELL_ALPHA: f32 = 0.45; // LITERAL-PX-OK: opacidade d
 /// **A chave da Timeline nos cartões** (dono 09/11: «muito pequenos»). Maquete B1 medida em chrome
 /// headless: losango de ~11 px com contorno escuro de ~1 px numa linha de 22. Aqui um pouco maior.
 pub const TIMELINE_KEY_HALF_PX: f32 = 6.5; // LITERAL-PX-OK: meia-diagonal do losango da chave
+/// O losango `Livre` do Inspector (maquete B1 `.c13dm.e`: `--fg2` a esta opacidade) — apagado ao lado
+/// do `Animado` claro; `key_mark_tests` mede a distância OKLab já composta sobre o fundo.
+pub const TIMELINE_LOSANGO_LIVRE_ALPHA: f32 = 0.75; // LITERAL-PX-OK: opacidade do losango Livre
 /// O contorno escuro à volta do losango (lê-se sobre a barra da interpolação).
 pub const TIMELINE_KEY_RING_PX: f32 = 1.5; // LITERAL-PX-OK: contorno do losango da chave
 /// O alvo de clique da chave: o losango com o contorno inteiro (6,5 + 1,5) e o encaixe ao splitter

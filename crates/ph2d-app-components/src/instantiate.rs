@@ -263,24 +263,9 @@ fn is_self_or_descendant(sim: &SimWorld, candidate: Entity, root: Entity) -> boo
 /// A cópia aterra ao lado da fonte (mesmo pai) e é um objeto independente. As referências internas
 /// são remapeadas pela mesma tabela: *a junta de uma cópia prende os corpos DELA*.
 ///
-/// ⚠️ **Isto substitui uma cópia RASA** que levava quatro componentes (`Transform`, `Sprite`,
-/// `Name`, `ChildOf`) e **nenhum filho** — duplicar um ragdoll dava uma linha vazia na Hierarquia.
-/// O ADR-0164 nomeia esse defeito; ele existia porque copiar bytes de tipos que a shell não conhece
-/// não tinha porta, e agora tem.
-///
-/// ⭐⭐⭐ **A cópia de uma RECEITA é um objeto COMUM, e não uma segunda receita** (report do Enio,
-/// 2026-08-27: *«a duplicata está ficando invisível como o componente»*).
-///
-/// ⛔⛔ **A lei anterior — *«uma cópia de um mestre é outro mestre»*, com o `MasterRoot` a viajar no
-/// blob — foi escrita quando um mestre DESENHAVA.** Desde a F4.6 ele só está na tela enquanto a
-/// linha dele está escolhida, então *Duplicate* numa receita devolvia um objeto que **desaparece
-/// assim que o artista clica noutro sítio**, com um toast de sucesso por cima. A auditoria de
-/// 2026-08-27 apanhou-o (§1.2); a 1.ª cura foi **selecionar** a cópia — o que a mostra e não a
-/// resolve, porque a selecção seguinte apaga-a outra vez. *Curar o sintoma de um objeto invisível
-/// é mostrá-lo uma vez.*
-///
-/// ⛔ **E não havia gesto que o desfizesse:** o `Make` recusa com `AlreadyAMaster`, o `Detach` exige
-/// `InstanceOf`. A cópia era um fantasma sem cura por verbo — só Ctrl+Z ou Delete.
+/// ⭐⭐⭐ **A cópia de uma RECEITA é um objeto COMUM, e não uma segunda receita.** A história (a
+/// cópia rasa, a lei anterior, o fantasma sem verbo) está em
+/// `docs/archive/integracao-jornadas/COMENTARIOS_CORTADOS_line_TimelinePrincipal_2026-11-10.md`.
 ///
 /// ⇒ *Duplicar* promete, em toda a app, **outro destes, ali**. Quem quer uma segunda receita faz
 /// *Duplicate* e depois *Make Component* — dois gestos, os dois visíveis.

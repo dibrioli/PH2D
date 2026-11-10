@@ -1,30 +1,8 @@
 //! **O catálogo de componentes que as fixturas desta família montam** — e o gate que o obriga a
 //! ser o MESMO que o produto monta.
 //!
-//! # Por que ele existe
-//!
-//! As fixturas desta família precisam de um [`ComponentRegistry`] para tudo o que medem: a cópia
-//! profunda copia **bytes de componentes registados**, e um componente que não esteja no registo é
-//! descartado **em silêncio** — que é precisamente o defeito que os gates desta família existem
-//! para apanhar. Até 2026-09-12 elas pediam-no a `crate::init::build_component_registry`, e essa
-//! chamada era a **âncora** que prendia a família à shell: **33 usos em 29 ficheiros, todos
-//! testes** — `91 %` do fecho da família, medido pelo `scripts/fecho-da-familia.py`.
-//!
-//! ⛔ **Uma crate nunca pode chamar o `bin`.** A shell é um binário e não pode ser dependência de
-//! ninguém (HOWTO §4), então «continuar a chamar o `init.rs`» não é uma opção deste lado da
-//! fronteira — a pergunta é só onde o catálogo passa a ser montado.
-//!
-//! # ⚠️ A tentação, e porque ela está REFUTADA por medição
-//!
-//! O precedente na árvore é a `ph2d-app-physics`: **seis** ficheiros de teste dela compõem o
-//! registo com o subconjunto que cada um usa (`register_ecs` + `register_physics`). Para aquela
-//! família chega, porque as fixturas dela só põem componentes daquelas duas crates.
-//!
-//! ⛔ **Aqui não chega, e o motivo é o assunto desta família.** Medido em 12/09, as fixturas
-//! usam `ph2d_render::Sprite` (**54** ocorrências), `ph2d_physics_ecs::{Collider, RigidBody,
-//! ColliderShape, PlatformPlayer}` (**23** ficheiros) — que são exactamente os componentes cujo **descarte silencioso** estes gates medem. *Um registo montado
-//! com «o que este teste põe» não pode nunca acusar «o produto deixou de registar isto»: ele é a
-//! mesma resposta escrita duas vezes, e as duas envelhecem juntas na direcção errada.*
+//! O porquê (a âncora `init.rs` de 2026-09-12, o registo por subconjunto refutado) está em
+//! `docs/archive/integracao-jornadas/COMENTARIOS_CORTADOS_line_TimelinePrincipal_2026-11-10.md`.
 //!
 //! ⇒ Este registo é montado com **as mesmas chamadas, na mesma ordem** que o
 //! `build_component_registry` do produto — incluindo o `ph2d_skeleton_ecs`, que **nenhum ficheiro

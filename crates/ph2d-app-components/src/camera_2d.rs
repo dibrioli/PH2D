@@ -1,14 +1,6 @@
 //! ⭐⭐⭐ **A CÂMERA DE JOGO — a lei do enquadramento** (TOP-20 #7), portada do Godot 4.7.2 (MIT).
 //!
-//! ⚠️⚠️ **Ela SAIU da `shells/desktop` em 2026-09-19, e a mudança foi imposta pela catraca**
-//! `the_shell_only_shrinks`: o suplente #25 pôs a shell `278` linhas acima do tecto, e a cura que o
-//! `CLAUDE.md` §2 prescreve para isso é **MOVER para a crate da família — nunca subir o número**.
-//!
-//! ⭐ **E o candidato era este por MEDIÇÃO e não por tamanho:** esta fase nunca tocou na `App` — ela
-//! recebe um `&mut SimWorld` e devolve o que a vista devia ser. *O que sai são os CORPOS; o que
-//! decide a ordem do quadro fica* (a lei da Fase C da física). O que ficou na shell é a
-//! `fase_game_camera`, que é composição: ela lê a superfície, escolhe se toma a vista e imprime o
-//! relatório.
+//! Saiu da shell em 2026-09-19 (o porquê: `COMENTARIOS_CORTADOS_line_TimelinePrincipal_2026-11-10.md`).
 //!
 //! ⭐⭐⭐ **A PONTE DA CÂMERA DE JOGO** — onde a cena passa a mandar no enquadramento (TOP-20 #7, W2).
 //!

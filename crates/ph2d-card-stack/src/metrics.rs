@@ -49,6 +49,11 @@ pub const LABEL_BOTTOM: f32 = 4.0;
 /// A marca de animação (ponto / losango) na linha do rótulo, à direita da caixa (D17c).
 pub const KEY_MARK_PX: f32 = 6.0;
 pub const KEY_MARK_BOX: f32 = 12.0;
+/// O losango (maquete B1 `.c13dm`): um quadrado de 9 px de canto 1,5 girado 45°, traço interno 1,5.
+/// A ponta arredondada recua `r·(√2−1)`: 11,5 px de ponta a ponta, dentro da [`KEY_MARK_BOX`].
+pub const KEY_MARK_GLYPH: f32 = 9.0;
+pub const KEY_MARK_GLYPH_RADIUS: f32 = 1.5;
+pub const KEY_MARK_STROKE: f32 = 1.5;
 /// O vão acima do título de um grupo de linhas: o de um rótulo mais o de uma linha (05 §4, ritmo).
 pub const GROUP_TOP: f32 = LABEL_TOP + FIELD_ROW_GAP;
 

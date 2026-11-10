@@ -30,7 +30,7 @@ Nenhum item toca contrato §6. Nenhum muda formato gravado por si (o 9 só se a 
 ## Ondas
 
 - **Onda 1 (P):** 1, 2, 3, 4. Smoke: `PH2D_NEST_SMOKE=4` (contorno, voltas) e uma cena com marcadores (trecho, losango).
-- **Onda 2 (M):** 5, 6, 7.
+- **Onda 2 (M):** abre pela cura do «Opacity» da Sprite (abaixo), depois 5, 6, 7.
 - **Onda 3 (M–G):** 8 e 9 — cada um abre por uma investigação curta (onde mora o ouvinte; onde nasce o passo da agulha) que
   pode mudar o desenho; série só aí.
 - **Onda 4 (G):** 10, sozinho.
@@ -49,3 +49,21 @@ Cada onda fecha com `/pd-onda-fechar` (smoke do dono, janela nova).
    `Mudado` = cheio laranja; campo sem canal continua o ponto inerte. Os dois Inspectors (cartões e clássico) leem o mesmo.
 4. **Voltas:** numa strip em Loop/Ping-Pong, um risco fino na altura da peça a cada volta (no Ping-Pong, cada inversão).
    Derivado no `rebuild` (volta = comprimento da fonte ÷ velocidade). Riscos mais juntos que `TIMELINE_*` px somem (zoom).
+
+## Achado da onda 1 — «Opacity» mente numa Sprite (abre a onda 2)
+
+Medido (10/11) ao fotografar o losango: `PropKind::Opacity` cai no alfa do Tint da Sprite (`ph2d-timeline/src/apply_prop.rs:162`,
+`tint[3]`), mas a Timeline chama-o «Opacity», que no Inspector é o slider «Opacity (%)» = `Sprite::opacity` (canal OBJETO 11, que a
+Timeline rotula «Sprite Opacity»). No vetor `PropKind::Opacity` já é a opacidade final do objeto (`VecDrivenStyle.alpha`) — certo.
+Cura escolhida (a): numa Sprite «Opacity» conduz `Sprite::opacity`; o alfa do Tint vai com o canal do Tint.
+
+1. `apply_prop.rs` escreve/lê `sprite.opacity` em vez de `tint[3]`.
+2. `ph2d-ecs/canal_objeto.rs`: sai `OPACIDADE = 11`; o canal do Tint leva o alfa (`TINTA_FIM = TINTA + 4`, como `AUTO_TINTA`); docs em `canal_componente_donos.rs`.
+3. `ph2d-app-components`: `canais_objeto.rs`, `marcas_inspector.rs` (`INSP_SPRITE_OPACITY`/`_CHIP` → `[PropKind::Opacity]`, amostra do Tint → `[ob(TINTA)]`), `tween_bridge.rs`.
+4. `ph2d-preview-drive` (`facto.rs`, `lib.rs`): o condutor `SpriteAlpha` passa a `opacity`.
+5. `ph2d-panel-inspector/event_sprite_value.rs`: o slider grava por `PropKind::Opacity`.
+6. `ph2d-app-constraints/smoke_interruptor.rs`: destino `Prop::Opacity`.
+7. Testes que prendem o sentido velho: `canais_objeto_donos_tests.rs:92`, `marcas_inspector_tests.rs:203–263`, a tabela `escritores()`.
+8. `PROJECT_SCHEMA` sobe (`python3 scripts/schema-recount.py`); sem migração (§0.11).
+9. Portão novo: por tipo de objeto, o nome de cada canal na Timeline = o rótulo do campo do Inspector cujo escritor o grava
+   (junta `the_channel_says_the_inspectors_word` com `escritores()`).

@@ -279,3 +279,24 @@ Tecla FÍSICA (o `KeyCode` do winit, nunca a lógica): o numérico liga igual co
   devolve a chave i18n do porquê (`input_map_keyboard.system.{fn,windows,print_screen}`).
 - A tradução winit → `Key` SAI da shell (paga as linhas novas: catraca `the_shell_only_shrinks`).
 
+### 13.2 · W2 — o desenho do teclado de notebook (`view_keyboard/geometry.rs` + `keys*.rs`)
+
+- **Tabela de dados em unidades de tecla** (`KeyCap { key, col, row, span, rows }`; `rows = 2` no `+` e no Enter do
+  numérico). Bloco principal ANSI de 15 u: R0 fila de função (Esc F1–F12 Insert PrtSc Delete = 16 teclas sobre 15 u)
+  · R1 `` ` ``1–0 `-` `=` Backspace 2 u · R2 Tab 1,5 Q–P `[` `]` `\` 1,5 · R3 CapsLk 1,75 A–L `;` `'` Enter 2,25 · R4
+  Shift 2,25 Z–M `,` `.` `/` Shift 2,75 · R5 Ctrl 1,25 Fn Win Alt 1,25 Space 5 Alt 1,25 Ctrl 1,25 e ↑ na col. 13 ·
+  R6 ← ↓ → nas col. 12–14 (o T invertido sai por baixo, como na foto). **Bloco do numérico** (4 colunas de 1 u, a
+  0,25 u do principal): R0 Home End PgUp PgDn (a foto alinha-as às colunas do numérico) · R1 Num Lock `/` `*` `-` ·
+  R2 7 8 9 `+`(2 filas) · R3 4 5 6 · R4 1 2 3 Enter(2 filas) · R5 0 (2 u) `.`. Desvio consciente: a foto tem o
+  numérico a ~0,82 u por coluna; aqui 1 u (o mesmo desenho, legendas legíveis).
+- **Legenda por tecla, medida:** a da foto (`Key::cap`) → a curta (`cap_short`) → o símbolo ISO/IEC 9995-7 (⇱ Home,
+  ⇲ End, ⇞ PgUp, ⇟ PgDn, ↵ Enter, ⌫ Backspace, ⇥ Tab, ⇪ Caps Lock, ⇧ Shift, ⎙ Print Screen) pintado como ícone
+  vectorial (a fonte não tem os glifos). Glifo único a `VALUE_PX`, palavra a `LABEL_PX` (o menor texto do cartão,
+  legível no modo de fábrica `CrispHeavyPlus`); ⛔ nada menor, ⛔ nunca elidir.
+- **Arranjo, medido:** `Wide` (a foto: numérico ao lado) se toda tecla tem legenda que cabe; senão `Narrow` (o
+  bloco do numérico, com a sua fila Home…PgDn, desce para baixo do principal, à esquerda das setas). Nunca
+  esconder tecla. A escolha é uma função pura da caixa e do texto (testada).
+- **Teclas do sistema** (`Key::system_owned`): apagadas, sem alvo de clique que ligue, o hover diz o porquê (a
+  frase da B) e o cursor fica a seta. Num Lock desenha-se sem luz.
+- B e C usam o MESMO pintor. «Also:» só para o que não está no desenho.
+

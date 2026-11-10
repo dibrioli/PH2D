@@ -1,47 +1,51 @@
-//! O deslizar de lado do trackpad (InputMap onda 3 item 7) = o Shift+roda onde ele rola de lado (o quadro,
-//! a Tabela); vertical = a roda; diagonal = cada eixo uma vez. Pela porta do hero, contra um gémeo.
-
+//! O deslizar de lado do trackpad (onda 3 item 7) = o Shift+roda no quadro e na Tabela, contra um gémeo.
 use crate::{AREA, Mesa, centro};
 use ph2d_editor_core::screens::hero::board_view::{BoardScroll, scroll};
+use ph2d_kanban_model::{FieldDef, FieldId, FieldKind, FracKey, KanbanOp, Meta, Record};
 use ph2d_kanban_views::table::Column;
-
-/// O gesto `d` num, e no gémeo as rodas `(dy, shift)` que ele tem de valer.
-fn passo(g: &mut Mesa, r: &mut Mesa, p: (f32, f32), d: [f32; 2], rodas: &[(f32, bool)]) {
-    let _ = scroll(&mut g.hero, p.0, p.1, BoardScroll::Pan(d));
-    g.quadro();
-    for &(dy, shift) in rodas {
-        r.hero.store.set_shift_held(shift);
-        let _ = r.roda(p.0, p.1, dy);
-    }
-    r.hero.store.set_shift_held(false);
-}
-
-const PASSOS: [([f32; 2], &[(f32, bool)]); 3] = [
-    ([-48.0, 0.0], &[(-48.0, true)]),
-    ([0.0, -48.0], &[(-48.0, false)]),
-    ([-32.0, -16.0], &[(-32.0, true), (-16.0, false)]),
-];
-
-#[test]
-fn no_quadro_o_deslizar_de_lado_e_o_shift_roda() {
-    let ((mut g, id), (mut r, _)) = (Mesa::cena1(), Mesa::cena1());
-    let v = |m: &mut Mesa| m.docs().probe_view(id.0).expect("vista");
-    for (i, (d, rodas)) in PASSOS.into_iter().enumerate() {
-        passo(&mut g, &mut r, centro(AREA), d, rodas);
-        assert_eq!(v(&mut g), v(&mut r), "passo {i}");
-        assert!(i > 0 || v(&mut g).scroll_x > 0.0, "rolou de lado");
+fn gemeos(mut g: Mesa, mut r: Mesa, p: (f32, f32), s: f32, x: impl Fn(&mut Mesa) -> f64) {
+    let passos: [([f32; 2], &[(f32, bool)]); 3] = [
+        ([-48.0, 0.0], &[(-48.0, true)]),
+        ([0.0, -48.0], &[(-48.0, false)]),
+        ([-32.0, -16.0], &[(-32.0, true), (-16.0, false)]),
+    ];
+    for (i, ([dx, dy], rodas)) in passos.into_iter().enumerate() {
+        let antes = x(&mut g);
+        let _ = scroll(&mut g.hero, p.0, p.1, BoardScroll::Pan([dx * s, dy * s]));
+        g.quadro();
+        for &(dy, shift) in rodas {
+            r.hero.store.set_shift_held(shift);
+            let _ = r.roda(p.0, p.1, dy * s);
+        }
+        assert_eq!(x(&mut g), x(&mut r), "passo {i}: = o Shift+roda");
+        assert_eq!(x(&mut g) == antes, i == 1, "passo {i} de {antes}");
     }
 }
-
 #[test]
-fn na_tabela_o_deslizar_de_lado_e_o_shift_roda() {
-    let ((mut g, id), (mut r, _)) = (Mesa::cena1(), Mesa::cena1());
-    crate::j1_vistas::vista(&mut g, id, 1);
-    crate::j1_vistas::vista(&mut r, id, 1);
-    let cel = |m: &mut Mesa| m.docs().probe_table_cell(id.0, 0, Column::Due);
-    let p = centro(cel(&mut g).expect("pintou").1);
-    for (i, (d, rodas)) in PASSOS.into_iter().enumerate() {
-        passo(&mut g, &mut r, p, d, rodas);
-        assert_eq!(cel(&mut g), cel(&mut r), "passo {i}");
-    }
+fn o_deslizar_de_lado_e_o_shift_roda_no_quadro_e_na_tabela() {
+    let ((g, id), (r, _)) = (Mesa::cena1(), Mesa::cena1());
+    let v = |m: &mut Mesa| m.docs().probe_view(id.0).unwrap().scroll_x;
+    gemeos(g, r, centro(AREA), 1.0, v);
+    let mut def = FieldDef {
+        id: FieldId(9200),
+        name: "Field".into(),
+        kind: FieldKind::Checkbox,
+        on_front: false,
+        pos: FracKey::between(None, None),
+        meta: Meta::default(),
+    }; // + vinte campos: a Tabela transborda na horizontal
+    let [mut g, r] = [0; 2].map(|_| {
+        let (mut m, _) = Mesa::cena1();
+        let set = m.hero.documents.kanbans_shared();
+        for i in 0..20 {
+            def.id = FieldId(9200 + i);
+            set.borrow_mut()
+                .apply(id, vec![KanbanOp::put(Record::Field(def.clone()))]);
+        }
+        crate::j1_vistas::vista(&mut m, id, 1);
+        m
+    });
+    let cel = move |m: &mut Mesa| m.docs().probe_table_cell(id.0, 0, Column::Due).unwrap().1;
+    let p = centro(cel(&mut g));
+    gemeos(g, r, p, -1.0, move |m| f64::from(cel(m).x));
 }

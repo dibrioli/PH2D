@@ -90,6 +90,21 @@ fn a_sonda_das_cenas_28_a_36() {
         .count();
     println!("28: px da água (mudam de cor a cada passo do ciclo): {agua}");
     assert!(agua > 0);
+    // A caixa «Cycle» lê a rampa da última amostra clicada: a cena deixa-a na água, a que cicla.
+    let ancora = app
+        .anchor()
+        .and_then(|a| u8::try_from(a).ok())
+        .expect("âncora");
+    let da_ancora = r.ramps.iter().find(|x| x.indices.contains(&ancora));
+    assert_eq!(
+        da_ancora.map(|x| x.name.as_str()),
+        Some(p13::RAMPAS_28[1].0)
+    );
+    assert!(
+        r.cycles
+            .iter()
+            .any(|c| Some(c.ramp) == da_ancora.map(|x| x.id))
+    );
 
     // 29: Exact RGB × Keep ramps, lado a lado.
     let (a, b, pal) = p13::foto_lado_a_lado().expect("foto");
@@ -142,9 +157,27 @@ fn a_sonda_das_cenas_28_a_36() {
 
     // 31: a bola da rampa Skin com Light: Palette. A lei da luz na rampa (a mesma da placa,
     // `luz_rampa_placa`) a dois níveis de luz: o lado da lâmpada e o lado de lá.
-    let (app, _sim, k) = monta(31);
+    let (app, mut sim, k) = monta(31);
+    ph2d_app_pixel::deriva(&app, sim.world_mut(), None);
     let s = sprite(&app, k);
     assert!(s.ramps().ramps.len() == 1 && s.ramps().luz_na_paleta);
+    // A «Collision Shape» do herói segue a slice `body`, que passou à bola: casa com o disco.
+    let body = s.slices().iter().find(|c| c.name == "body").expect("body");
+    let mut q = sim
+        .world()
+        .try_query::<(&ph2d_pixel_cena::SegueSlice, &ph2d_physics_ecs::Collider)>()
+        .expect("query");
+    let formas: Vec<_> = q
+        .iter(sim.world())
+        .filter(|(seg, _)| seg.slice == body.id.0)
+        .map(|(_, c)| (c.shape, c.offset))
+        .collect();
+    let r = p13::CORPO_31;
+    let pe = (f64::from(r.x + p13::PE_31.0), f64::from(r.y + p13::PE_31.1));
+    let rect = [r.x, r.y, r.w as i32, r.h as i32].map(f64::from);
+    let (shape, off) = ph2d_physics_ecs::forma_de_retangulo(rect, pe, 1.0 / f64::from(PPM));
+    println!("31: formas que seguem a body: {formas:?}");
+    assert_eq!(formas, [(shape, [off[0] as f32, off[1] as f32])]);
     let pal: BTreeSet<[u8; 4]> = s.palette().iter().copied().collect();
     let lut = ph2d_pixel_rampa::luz::LutDaLuz::da_paleta(s.palette(), s.ramps());
     let usadas = cores(&rgba(s, 0));
@@ -229,4 +262,24 @@ fn a_sonda_das_cenas_28_a_36() {
     );
     assert_eq!(n as u32, 2 + p13::TWEEN_36);
     assert_eq!(s.audio().len(), 1);
+    // A onda tem forma: um monte por sílaba, com silêncio entre eles (o seno liso dava uma barra).
+    let amostras = p13::fala_amostras(22_050, 13_230);
+    assert_eq!(wav, 44 + 2 * amostras.len() as u64);
+    let picos: Vec<i16> = amostras
+        .chunks(441)
+        .map(|c| c.iter().map(|v| v.saturating_abs()).max().unwrap_or(0))
+        .collect();
+    let montes = picos
+        .windows(2)
+        .filter(|w| w[0] < 300 && w[1] >= 300)
+        .count();
+    let maior = picos.iter().copied().max().unwrap_or(0);
+    println!("36: picos por 20 ms {picos:?}; montes {montes}");
+    assert_eq!(montes, p13::SILABAS_36.len());
+    assert!(maior > 15_000);
+    assert_eq!(
+        amostras,
+        p13::fala_amostras(22_050, 13_230),
+        "determinístico"
+    );
 }

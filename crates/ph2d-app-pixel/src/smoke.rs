@@ -49,13 +49,14 @@ pub fn rosto_em_object(
     bits
 }
 
-/// A cena 23 selecciona o objecto, uma vez: o artista chega ao cartão com um clique, e a cena poupa-o.
+/// As cenas 23 e 31 seleccionam o objecto, uma vez: o artista chega ao cartão com um clique, e a cena
+/// poupa-o (a 31: o cartão do sprite, com «Light: Palette», é o ponto da cena).
 pub(crate) fn conduz_o_cartao(
     world: &ph2d_ecs::World,
     hero: &mut ph2d_editor_core::screens::hero::HeroScreen,
 ) {
     static FEITO: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-    if armed_level() != Some(23) || FEITO.load(std::sync::atomic::Ordering::Relaxed) {
+    if !matches!(armed_level(), Some(23 | 31)) || FEITO.load(std::sync::atomic::Ordering::Relaxed) {
         return;
     }
     if let Some((bits, _)) = crate::mode::sprites(world).first() {
@@ -132,6 +133,9 @@ fn p13(app: &mut PixelApp, sim: &mut SimWorld, n: u32, r: impl Raiz) -> Option<(
     let pedidos = (c.monta)(&mut d.sprite)?;
     (d.frame, d.layer) = (d.sprite.frames()[0].id, d.sprite.layers()[0].id);
     pedidos.into_iter().for_each(|r| app.pede(r));
+    if !c.amostras.is_empty() {
+        app.select(c.amostras.iter().map(|&i| usize::from(i)));
+    }
     app.wants_edit = app.wants_edit.or(c.draw.then_some(bits));
     Some(())
 }

@@ -20,6 +20,9 @@ pub struct Cena {
     pub monta: fn(&mut Sprite) -> Option<Pedidos>,
     /// A cena abre o objecto em Draw (a 34: a Preview só mostra um Pixel Sprite em Draw).
     pub draw: bool,
+    /// As amostras da paleta que a cena deixa selecionadas (vazio = as da `base`). A 28: a água, para a
+    /// caixa «Cycle» mostrar a rampa que cicla (ela lê a rampa da última amostra clicada).
+    pub amostras: &'static [u8],
 }
 
 /// A cena `n` (28..=36).
@@ -41,6 +44,7 @@ pub fn cena(n: u32) -> Option<Cena> {
         base,
         monta,
         draw: n == 34,
+        amostras: if n == 28 { RAMPAS_28[1].1 } else { &[] },
     })
 }
 
@@ -212,8 +216,33 @@ fn luz(s: &mut Sprite) -> Option<Pedidos> {
     op(&mut b, add)?;
     let o = ph2d_pixel_core::ramp::set_luz_na_paleta(&b, true)?;
     apply(&mut b, o).ok()?;
+    corpo_da_bola(s, &mut b)?;
     *s = b;
     Some(Vec::new())
+}
+
+/// A caixa da slice `body` da bola da 31 (o disco de raio 7 em torno de (8, 8)) e o pivô nos pés.
+pub const CORPO_31: ph2d_pixel_core::Rect = ph2d_pixel_core::Rect::new(1, 1, 15, 15);
+pub const PE_31: (i32, i32) = (7, 14);
+
+/// A slice `body` do herói da 26 passa à bola com o MESMO id: a «Collision Shape» que a segue
+/// (`SegueSlice`) ganha a forma da bola no `deriva_formas`, em vez de sobrar com a do herói.
+fn corpo_da_bola(heroi: &Sprite, b: &mut Sprite) -> Option<()> {
+    use ph2d_pixel_core::{SliceKey, SliceShape};
+    let mut body = heroi.slices().iter().find(|c| c.name == "body")?.clone();
+    while b.reserve_id() < body.id.0 {}
+    body.keys = vec![SliceKey {
+        frame: 0,
+        shape: SliceShape {
+            bounds: CORPO_31,
+            center: None,
+            pivot: Some(PE_31),
+        },
+    }];
+    let id = body.id;
+    apply(b, Op::Slices(vec![body])).ok()?;
+    let o = ph2d_pixel_core::slice::set_pivot(b, Some(id))?;
+    apply(b, o).ok().map(|_| ())
 }
 
 /// Os pontos de fuga e a grade iso da cena 32 (células).
@@ -442,14 +471,50 @@ fn contorno(s: &mut Sprite) -> Option<Pedidos> {
     )])
 }
 
-/// O som curto da cena 36, gerado no arranque na pasta temporária: 0,6 s de seno de 440 Hz a
-/// 22 050 Hz, mono 16 bits.
+/// O som curto da cena 36, gerado no arranque na pasta temporária: 0,6 s parecido com fala, as
+/// quatro sílabas de [`SILABAS_36`] (ataque curto, decaimento, pausas entre elas, altura que
+/// desliza) a 22 050 Hz, mono 16 bits — a onda na Timeline mostra quatro montes e os vãos.
 #[must_use]
 pub fn fala_36() -> std::path::PathBuf {
     std::env::temp_dir().join("ph2d-p13-fala.wav")
 }
 /// Os quadros que o Tween gera entre A e B.
 pub const TWEEN_36: u32 = 3;
+
+/// As sílabas da 36: (início ms, duração ms, altura no início e no fim em Hz, pico de 0 a 1).
+pub const SILABAS_36: [(u32, u32, f64, f64, f64); 4] = [
+    (20, 110, 180.0, 215.0, 0.85),
+    (175, 85, 225.0, 190.0, 0.6),
+    (305, 135, 200.0, 245.0, 1.0),
+    (480, 100, 230.0, 160.0, 0.7),
+];
+/// O ataque de cada sílaba (ms).
+const ATAQUE_36_MS: f64 = 12.0;
+
+/// As `n` amostras da fala da 36 a `sr` Hz: em cada sílaba, uma voz de quatro harmónicos cuja
+/// altura desliza linearmente, sob um envelope de ataque linear e decaimento exponencial; silêncio
+/// entre as sílabas. Determinístico (sem ruído).
+#[must_use]
+pub fn fala_amostras(sr: u32, n: u32) -> Vec<i16> {
+    let mut out = vec![0i16; n as usize];
+    let ms = |m: f64| (m * f64::from(sr) / 1000.0) as usize;
+    for (ini, dur, f0, f1, pico) in SILABAS_36 {
+        let (a, len) = (ms(f64::from(ini)), ms(f64::from(dur)).max(1));
+        let mut fase = 0.0f64;
+        for k in 0..len {
+            let Some(o) = out.get_mut(a + k) else { break };
+            let u = k as f64 / len as f64;
+            fase += (f0 + (f1 - f0) * u) * std::f64::consts::TAU / f64::from(sr);
+            let t_ms = k as f64 * 1000.0 / f64::from(sr);
+            let env = (t_ms / ATAQUE_36_MS).min(1.0) * (-2.5 * u).exp() * (1.0 - u.powi(8));
+            let voz: f64 = (1..=4)
+                .map(|h| (fase * f64::from(h)).sin() / f64::from(h))
+                .sum();
+            *o = (voz / 2.1 * env * pico * 34_000.0) as i16;
+        }
+    }
+    out
+}
 
 fn wav() -> Option<std::path::PathBuf> {
     let p = fala_36();
@@ -471,9 +536,7 @@ fn wav() -> Option<std::path::PathBuf> {
     b.extend_from_slice(&16u16.to_le_bytes());
     b.extend_from_slice(b"data");
     b.extend_from_slice(&dados.to_le_bytes());
-    for i in 0..n {
-        let t = f64::from(i) / f64::from(sr);
-        let v = ((t * 440.0 * std::f64::consts::TAU).sin() * 12_000.0) as i16;
+    for v in fala_amostras(sr, n) {
         b.extend_from_slice(&v.to_le_bytes());
     }
     std::fs::write(&p, b).ok()?;

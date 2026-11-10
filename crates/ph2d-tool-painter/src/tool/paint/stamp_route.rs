@@ -8,6 +8,8 @@ use super::ramp_lut::RampLutOwner;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab};
 
+#[cfg(test)]
+mod aguada_tests; // B25.3: o mapa das cópias da aguada não vaza para o lote seguinte
 mod mascara; // a rota do pincel Mask — filho por LOC
 pub(super) mod mistura; // a mistura opaca do Digital (só com o modo ligado)
 
@@ -205,6 +207,8 @@ impl PainterTool {
                 self.smear_wet_base(dabs);
             }
             self.accumulate_wet_color(wet_dabs);
+            // O mapa é do lote DESTA aguada: um Smear/Mask seguinte lia-o contra a sua lista (B25.3).
+            self.paint.dab_groups.clear();
             crate::wash_diag::note_stamp(t_wash.elapsed().as_secs_f32() * 1e3);
             return;
         }

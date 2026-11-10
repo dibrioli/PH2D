@@ -33,7 +33,7 @@ impl PainterTool {
         } else if self.papel_como_grain_do(brush) {
             brush.texture = brush.paper;
             brush.grain_depth = self.mordida_do_papel(brush);
-        } else if self.papel_pode_morder()
+        } else if self.papel_pode_morder_do(brush)
             && brush.texture.is_active()
             && !ph2d_painter_brush::dente::sonda_desligou_o_dente()
         {
@@ -84,7 +84,7 @@ impl PainterTool {
     #[must_use]
     pub(crate) fn papel_como_grain_do(&self, brush: &ph2d_painter_brush::BrushSpec) -> bool {
         self.grao_e_o_papel_do(brush)
-            || (self.papel_pode_ser_grain() && self.paint.brush.paper_depth > 0.0)
+            || (self.papel_pode_ser_grain_do(brush) && brush.paper_depth > 0.0)
     }
 
     /// ⭐ **Grain «Same as Paper»** fora da Aquarela (dono 28/10: *«habilite o mesmo para todos os modos de
@@ -180,17 +180,29 @@ impl PainterTool {
     /// escolhido) — só falta o Tooth. É a lei do Tooth ESMAECIDO no Digital (`inercia`).
     #[must_use]
     pub(crate) fn papel_pode_ser_grain(&self) -> bool {
-        self.papel_pode_morder() && !self.paint.brush.texture.is_active()
+        self.papel_pode_ser_grain_do(&self.paint.brush)
+    }
+
+    /// [`Self::papel_pode_ser_grain`] com o Grain e o papel de um pincel dado (o do LOTE, B25.4).
+    #[must_use]
+    fn papel_pode_ser_grain_do(&self, brush: &ph2d_painter_brush::BrushSpec) -> bool {
+        self.papel_pode_morder_do(brush) && !brush.texture.is_active()
     }
 
     /// O Digital em condições de o papel morder a tinta (o Relief ligado com um papel e o Tooth > 0): como
     /// Grain sem Grain escolhido ([`Self::papel_pode_ser_grain`]), como dente por cima dele com um.
     #[must_use]
     pub(crate) fn papel_pode_morder(&self) -> bool {
+        self.papel_pode_morder_do(&self.paint.brush)
+    }
+
+    /// [`Self::papel_pode_morder`] com o papel de um pincel dado; o meio, o modo e o Relief são do documento.
+    #[must_use]
+    fn papel_pode_morder_do(&self, brush: &ph2d_painter_brush::BrushSpec) -> bool {
         matches!(self.paint_media(), super::super::media::PaintMedia::Digital)
             && matches!(self.paint.paint_mode, super::super::PaintMode::Paint)
             && self.paint.substrate_depth > 0.0
-            && self.paint.brush.paper.is_active()
+            && brush.paper.is_active()
     }
 
     /// A versão da imagem do slot que faz de Grain no traço (a do papel quando ele faz de Grain,
@@ -201,6 +213,50 @@ impl PainterTool {
             self.paint.paper_image_version | (1 << 63)
         } else {
             self.paint.texture_image_version
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::super::super::PainterTool;
+
+    /// B25.4 (DF-22, IN-6, T1-28): o lote adiado fecha com o pincel do SEU instante — mexer no Tooth ou no Grain do
+    /// painel a meio do traço não muda o grão com que ele pinta.
+    #[test]
+    fn mexer_o_tooth_e_o_grain_a_meio_do_traco_nao_muda_o_pincel_do_lote() {
+        let n = 64u32;
+        let mut t = PainterTool::default();
+        t.abre_a_sprite(vec![255u8; (n * n * 4) as usize], n, n);
+        t.set_substrate_depth(1.0);
+        let lote = t.paint.brush;
+        assert!(
+            t.papel_como_grain_do(&lote),
+            "a régua precisa do papel a fazer de Grain no pincel do lote"
+        );
+        let mut antes = lote;
+        t.poe_o_papel_como_grain(&mut antes);
+        for mexe in [
+            (|t: &mut PainterTool| t.set_brush_paper_depth(0.0)) as fn(&mut PainterTool),
+            |t| t.set_brush_texture_kind(ph2d_painter_brush::TextureKind::Noise as u8),
+        ] {
+            let mut t2 = PainterTool::default();
+            t2.abre_a_sprite(vec![255u8; (n * n * 4) as usize], n, n);
+            t2.set_substrate_depth(1.0);
+            mexe(&mut t2);
+            // Controlo: o pincel VIVO mudou mesmo o grão (senão a régua passa por vácuo).
+            let mut vivo = t2.paint.brush;
+            t2.poe_o_papel_como_grain(&mut vivo);
+            assert_ne!(
+                vivo, antes,
+                "a mexida do painel não muda o grão do pincel vivo"
+            );
+            let mut depois = lote;
+            t2.poe_o_papel_como_grain(&mut depois);
+            assert_eq!(
+                depois, antes,
+                "o grão do lote mudou com o painel mexido a meio do traço: a porta lê o pincel VIVO"
+            );
         }
     }
 }

@@ -28,8 +28,14 @@ pub use phrase::say;
 /// código disparavam sem querer, e a cena tira o editor da frente; o balão continua a 0,5 s).
 pub const PEEK_PAUSE_NS: u128 = 1_000_000_000;
 
-/// Abaixo disto (o título e três linhas) o «In this script» não aparece: a lista fica com a coluna.
+/// Abaixo disto (o título e três entradas) o «In this script» não aparece: a lista fica com a coluna.
 const OUTLINE_MIN_ROWS: usize = 3;
+
+/// A altura que o «In this script» pinta com [`OUTLINE_MIN_ROWS`] entradas: as folgas do cartão em
+/// cima, entre o título e as linhas e em baixo (as de `paint_outline`), o título e as entradas.
+fn outline_min_h() -> f32 {
+    ph2d_tokens::card_pad_px() * 3.0 + ROW_H_PX + outline_entry_h() * OUTLINE_MIN_ROWS as f32
+}
 
 /// O raio do ponto da cor de um objecto ao lado do nome (o quadradinho da camada da GEF02,
 /// `lado_do_quadradinho`, feito redondo).
@@ -148,7 +154,7 @@ pub fn left_split(col: Rect, list_rows: usize, open: bool) -> (Rect, Option<Rect
     let want = crate::ScriptListView::height_for(list_rows);
     let list_h = want.min(col.h * 0.5);
     let rest = col.h - list_h - g;
-    if !open || rest < ROW_H_PX * (OUTLINE_MIN_ROWS + 1) as f32 {
+    if !open || rest < outline_min_h() {
         return (col, None);
     }
     (

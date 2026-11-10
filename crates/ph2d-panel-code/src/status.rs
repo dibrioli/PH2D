@@ -195,7 +195,8 @@ pub(crate) fn paint(
         pal.border,
     );
     let s = StatusLine::at(frame, view.status_col.map_or(0, |c| c.1));
-    let font = ph2d_text::displayed_font_px(TypeToken::Sm.px());
+    // Nominal: o `TextSystem` e a folga aplicam o tamanho da letra da interface uma vez cada.
+    let font = TypeToken::Sm.px();
     let y = bar.y + ph2d_editor_core::paint::folga_do_texto(h, font);
     let pad = Spacing::Md.px();
     let gap = Spacing::Xl.px();

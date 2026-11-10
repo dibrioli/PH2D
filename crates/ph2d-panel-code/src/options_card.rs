@@ -14,7 +14,8 @@ use ph2d_editor_core::paint::{
     fill_rounded_rect, folga_do_texto, paint_icon, paint_text_block, paint_text_title_elided,
     resolve, text_rendering,
 };
-use ph2d_editor_core::widget::card_ink::{CardInk, card_body, tinta};
+use ph2d_editor_core::widget::card_ink::CardInk;
+use ph2d_editor_core::widget::lista_flutuante::Superficie;
 use ph2d_editor_core::widget::{
     Button, Popover, card_check_rect, paint_button, paint_card_check, paint_popover,
     pop_popover_clip, push_popover_clip,
@@ -58,6 +59,8 @@ pub struct OptionsPainted {
     /// O único realce pintado: o fundo da linha debaixo do rato ou carregada, e a tinta dele.
     pub highlight: Option<(Rect, ph2d_vector::Color)>,
     pub pin: Option<Rect>,
+    /// A tinta das caixas: a da superfície do próprio popover, nunca a do cartão à volta.
+    pub check_ink: Option<CardInk>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -180,7 +183,8 @@ impl OptionsCard {
         let (side, rh) = (lg, ph2d_tokens::row_pitch_px());
         let mark0 = card_check_rect(0.0, 0.0, 0.0);
         let (sw, sh) = (mark0.w, mark0.h);
-        let check_ink = card_body().unwrap_or(CardInk::of_list(*theme));
+        let surface = Superficie::de(*theme);
+        let check_ink = surface.tinta().unwrap_or(CardInk::of_list(*theme));
         let sentence = assist_sentence(f.assist);
         let restart = ph2d_i18n::tr("code.options.restart");
         let one = |ts: &mut TextSystem, s: &str, px: f32| measure(ts, s, px, f32::INFINITY).0;
@@ -222,7 +226,7 @@ impl OptionsCard {
         let mut y = card.y + head_h;
         for (o, &b) in f.rows.iter().zip(&blocks) {
             let r = Rect::new(card.x, y, card.w, row_h(b));
-            self.paint_highlight(o.cmd, r, scene, theme);
+            self.paint_highlight(o.cmd, r, scene, surface);
             let ty = r.y + (r.h - b.0 - Spacing::Xxs.px() - b.1) * 0.5;
             let ink = |t| resolve(t, *theme);
             paint_text_block(
@@ -271,16 +275,26 @@ impl OptionsCard {
         self.painted.rows.push((f.restart, br));
         pop_popover_clip(scene);
         self.painted.card = Some(card);
+        self.painted.check_ink = Some(check_ink);
     }
 
     /// O fundo da linha debaixo do rato ou carregada (mais forte): o ÚNICO realce da linha — sem
     /// moldura; a caixa só acende o fundo dela no hover. O hover é a camada do Material 3: a tinta do título, translúcida
-    /// ([`ph2d_tokens::HOVER_LAYER_ALPHA`]) — clareia o cartão num tema escuro.
-    fn paint_highlight(&mut self, cmd: NodeId, r: Rect, scene: &mut VectorScene, theme: &Theme) {
+    /// ([`ph2d_tokens::HOVER_LAYER_ALPHA`]) — clareia o cartão num tema escuro. Os dois tons vêm da
+    /// superfície do popover.
+    fn paint_highlight(
+        &mut self,
+        cmd: NodeId,
+        r: Rect,
+        scene: &mut VectorScene,
+        surface: Superficie,
+    ) {
         let ink = if self.pressed == Some(cmd) {
-            tinta(ColorToken::AccentSoft, *theme)
+            surface.cor(ColorToken::AccentSoft)
         } else if self.hover == Some(cmd) {
-            resolve(ColorToken::Text1, *theme).with_alpha(ph2d_tokens::HOVER_LAYER_ALPHA)
+            surface
+                .cor(ColorToken::Text1)
+                .with_alpha(ph2d_tokens::HOVER_LAYER_ALPHA)
         } else {
             return;
         };

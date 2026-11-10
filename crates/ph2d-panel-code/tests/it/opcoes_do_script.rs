@@ -207,20 +207,7 @@ fn o_hover_e_um_fundo_unico_na_linha_e_a_caixa_nao_se_mexe() {
     let (r, ink) = card.painted.highlight.expect("o hover pintou");
     assert_eq!(r, p.rows[1].1, "o fundo é a linha inteira");
     assert_eq!(card.painted.marks, p.marks, "a caixa não se mexe");
-    // A camada do Material 3: translúcida e mais clara que o cartão do Forge (escuro) ⇒ CLAREIA.
-    let [r8, g8, b8, _] = ink.to_rgba8().to_u8_array();
-    let rgb = ph2d_tokens::Color {
-        r: r8,
-        g: g8,
-        b: b8,
-        a: 255,
-    };
-    let fundo = ph2d_tokens::ColorToken::BgElev.resolve(Theme::Forge);
     assert!((ink.components[3] - ph2d_tokens::HOVER_LAYER_ALPHA).abs() < 1e-3);
-    assert!(
-        rgb.relative_luminance() > fundo.relative_luminance(),
-        "o hover clareia o cartão"
-    );
     card.pressed = Some(NodeId(2));
     assert_eq!(
         caminhos(&mut card),
@@ -228,6 +215,95 @@ fn o_hover_e_um_fundo_unico_na_linha_e_a_caixa_nao_se_mexe() {
         "carregado = um caminho a mais"
     );
     assert_eq!(card.painted.highlight.map(|h| h.0), Some(p.rows[1].1));
+}
+
+/// O fundo que o popover pinta: a lista suspensa dos cartões, ou o `BgElev` no modo de antes.
+fn superficie(theme: Theme, cartoes: bool) -> ph2d_vector::Color {
+    use ph2d_editor_core::widget::card_ink::CardInk;
+    use ph2d_tokens::ColorToken;
+    if cartoes {
+        CardInk::of_list(theme).color(ColorToken::KanbanCardRaised)
+    } else {
+        ph2d_editor_core::paint::resolve(ColorToken::BgElev, theme)
+    }
+}
+
+fn luz(c: ph2d_vector::Color) -> f64 {
+    let [r, g, b, _] = c.to_rgba8().to_u8_array();
+    ph2d_tokens::Color { r, g, b, a: 255 }.relative_luminance()
+}
+
+/// Pinta o cartão aberto em `theme`, com a tinta de um cartão de tema próprio publicada à volta (o
+/// cartão do código onde o popover se abre) e a linha 2 debaixo do rato ou carregada.
+fn pinta_sobre_cartao(theme: Theme, cartoes: bool, carregada: bool) -> OptionsPainted {
+    use ph2d_editor_core::widget::card_ink::{CardInk, com};
+    ph2d_editor_core::widget::lista_flutuante::force_cromo_on_this_thread(Some(cartoes));
+    let mut card = OptionsCard {
+        open: true,
+        hover: Some(NodeId(2)),
+        pressed: carregada.then_some(NodeId(2)),
+        ..OptionsCard::default()
+    };
+    let f = OptionsFrame {
+        id: NodeId(9),
+        script: "player.luau",
+        rows: &ROWS,
+        assist: None,
+        restart: NodeId(4),
+    };
+    let outro = if theme == Theme::Light {
+        Theme::Forge
+    } else {
+        Theme::Light
+    };
+    let (mut ts, mut scene) = (TextSystem::without_system_fonts(), VectorScene::new());
+    com(CardInk::of_card(Some(outro), theme), || {
+        card.paint(ABA, &f, &mut scene, &mut ts, &theme);
+    });
+    ph2d_editor_core::widget::lista_flutuante::force_cromo_on_this_thread(None);
+    card.painted
+}
+
+/// A caixa e o realce tomam a tinta da SUPERFÍCIE do popover, nunca a do cartão aberto à volta dele:
+/// nos dois modos e num tema escuro e num claro, o hover clareia o fundo escuro e escurece o claro, e
+/// o carregado é o `AccentSoft` dessa mesma superfície.
+#[test]
+fn a_caixa_e_o_realce_tomam_a_tinta_da_superficie_do_popover() {
+    use ph2d_editor_core::widget::card_ink::CardInk;
+    use ph2d_editor_core::widget::lista_flutuante::Superficie;
+    for cartoes in [true, false] {
+        for theme in [Theme::Forge, Theme::Light] {
+            let p = pinta_sobre_cartao(theme, cartoes, false);
+            assert_eq!(
+                p.check_ink,
+                Some(CardInk::of_list(theme)),
+                "{theme:?} {cartoes}"
+            );
+            let (_, hover) = p.highlight.expect("o hover pintou");
+            let fundo = superficie(theme, cartoes);
+            let a = hover.components[3];
+            let sobre = |f: f32, h: f32| f * (1.0 - a) + h * a;
+            let [fr, fg, fb, _] = fundo.components;
+            let [hr, hg, hb, _] = hover.components;
+            let mistura =
+                ph2d_vector::Color::new([sobre(fr, hr), sobre(fg, hg), sobre(fb, hb), 1.0]);
+            let escuro = luz(fundo) < 0.5;
+            assert_eq!(
+                luz(mistura) > luz(fundo),
+                escuro,
+                "{theme:?} cartões={cartoes}: o hover clareia o escuro e escurece o claro"
+            );
+            let p = pinta_sobre_cartao(theme, cartoes, true);
+            ph2d_editor_core::widget::lista_flutuante::force_cromo_on_this_thread(Some(cartoes));
+            let quer = Superficie::de(theme).cor(ph2d_tokens::ColorToken::AccentSoft);
+            ph2d_editor_core::widget::lista_flutuante::force_cromo_on_this_thread(None);
+            assert_eq!(
+                p.highlight.map(|h| h.1),
+                Some(quer),
+                "{theme:?} {cartoes}: carregado"
+            );
+        }
+    }
 }
 
 /// O alfinete: carregar nele segura o cartão (um clique fora já não o fecha) e não corre comando.

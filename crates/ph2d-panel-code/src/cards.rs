@@ -87,7 +87,12 @@ pub fn close(scene: &mut VectorScene) {
 /// O contorno de um VALOR mostrado (o número ao vivo no código, a caixa de campo, a dica, o gráfico):
 /// não é a moldura de um controlo — é o que separa o número do que está à volta —, por isso não passa
 /// pela porta do tema, que num tema moderno o apaga em repouso (smoke do dono 10/11).
-pub fn value_outline(scene: &mut VectorScene, r: Rect, radius: f32, ink: ph2d_vector::Color) {
+pub(crate) fn value_outline(
+    scene: &mut VectorScene,
+    r: Rect,
+    radius: f32,
+    ink: ph2d_vector::Color,
+) {
     let w = ph2d_tokens::StrokeToken::Thin.px();
     // FRAME-RAW-OK: contorno de valor, não de controlo; a pele plana apagava-o (dono 10/11).
     ph2d_editor_core::paint::stroke_rounded_rect(scene, r, radius, w, ink);

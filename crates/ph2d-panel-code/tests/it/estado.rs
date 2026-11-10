@@ -146,3 +146,40 @@ fn o_modo_estrito_aparece_na_barra() {
     };
     assert_eq!(status(&buf, &d).mode.as_deref(), Some("Strict types"));
 }
+
+/// Com a letra da interface fora do Normal, a posição da barra de estado pinta no tamanho escolhido
+/// (aplicado UMA vez) e fica no meio dela: maiúsculas a menos de 1 px do meio da barra.
+#[test]
+fn o_texto_da_barra_fica_no_meio_com_outro_tamanho_de_letra() {
+    use ph2d_tokens::{UiTextSize, UiTextStyle};
+    let antes = ph2d_text::active_text_style();
+    for size in [UiTextSize::Small, UiTextSize::Large] {
+        ph2d_text::set_active_text_style(UiTextStyle { size, ..antes });
+        let buf = Buffer::new("local x = 1\n");
+        let mut ts = crate::ts();
+        let mut v = ph2d_panel_code::CodeView::default();
+        let area = crate::area_para(&mut v, &buf, &mut ts, 4);
+        let scene = crate::pinta(&mut v, &buf, &mut ts, area, &Deco::default());
+        let m = *v.metrics();
+        let bar_y = area.y + area.h - m.status_h;
+        let (px, x, base) = crate::linhas_de_base(&scene)
+            .into_iter()
+            .filter(|r| r.2 > bar_y)
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .expect("a posição pintou");
+        let nominal = px / size.scale();
+        let pos = status(&buf, &Deco::default()).position;
+        let meio = crate::meio_das_maiusculas(&mut ts, &pos, nominal, base);
+        let alvo = bar_y + m.status_h * 0.5;
+        let quer = ph2d_text::displayed_font_px(ph2d_tokens::TypeToken::Sm.px());
+        ph2d_text::set_active_text_style(antes);
+        assert!(
+            (px - quer).abs() < 1e-3,
+            "{size:?}: a posição pinta a {px} px; o tamanho da letra aplica-se UMA vez ({quer})"
+        );
+        assert!(
+            (meio - alvo).abs() <= 1.0,
+            "{size:?}: posição em x {x}, meio {meio} contra o da barra {alvo}"
+        );
+    }
+}

@@ -49,6 +49,28 @@ fn a_coluna_da_lista_so_parte_quando_aberta_e_com_altura() {
     assert!(fora.h >= ROW_H_PX * 4.0);
 }
 
+/// O limiar do «In this script» é o que ele pinta: as três folgas do cartão, o título e três entradas
+/// no passo apertado — a coluna que lhe dá exactamente isso mostra-o; um píxel a menos, não.
+#[test]
+fn o_in_this_script_aparece_quando_cabem_o_titulo_e_tres_entradas() {
+    let g = ph2d_panel_code::cards::margin();
+    let lista = ph2d_panel_code::ScriptListView::height_for(1);
+    let cabe = ph2d_tokens::card_pad_px() * 3.0
+        + ROW_H_PX
+        + ph2d_panel_code::bancada::outline_entry_h() * 3.0;
+    let col = |h: f32| Rect::new(0.0, 0.0, 200.0, h);
+    let justa = lista + g + cabe;
+    assert!(justa * 0.5 >= lista, "a lista não encolhe no limiar");
+    let (_, fora) = left_split(col(justa), 1, true);
+    let fora = fora.expect("cabe exactamente: aparece");
+    assert!((fora.h - cabe).abs() < 1e-3, "{} × {cabe}", fora.h);
+    assert_eq!(
+        left_split(col(justa - 1.0), 1, true).1,
+        None,
+        "1 px a menos: some"
+    );
+}
+
 #[test]
 fn a_frase_fica_no_fundo_sem_tapar_o_resto() {
     let doc = Rect::new(0.0, 50.0, 800.0, 600.0);

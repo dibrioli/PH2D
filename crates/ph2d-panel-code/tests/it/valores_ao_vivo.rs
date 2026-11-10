@@ -373,14 +373,49 @@ fn a_moldura_do_numero_ao_vivo_pinta_nos_temas_modernos_e_nos_classicos() {
     );
 }
 
-/// O contorno de valor é um traço em todos os temas (nunca o «nada em repouso» da porta do tema).
+/// O contorno do campo de um valor ao vivo no estilo «Cards» pinta-se em todos os temas: uma
+/// variável a mais acrescenta os mesmos caminhos num tema moderno e num clássico (a moldura de um
+/// controlo, que a pele plana apaga em repouso, daria menos no moderno).
 #[test]
-fn o_contorno_de_valor_e_um_traco_em_todos_os_temas() {
-    let r = Rect::new(10.0, 10.0, 80.0, 20.0);
-    for t in Theme::ALL {
-        let mut scene = VectorScene::new();
-        let ink = ph2d_editor_core::paint::resolve(ph2d_tokens::ColorToken::Border, t);
-        ph2d_panel_code::cards::value_outline(&mut scene, r, 4.0, ink);
-        assert_eq!(scene.inner().encoding().n_paths, 1, "{t:?}");
-    }
+fn o_contorno_do_valor_ao_vivo_nos_cards_pinta_em_todos_os_temas() {
+    let (s, _) = amostrado(5);
+    let who = || WhoTag {
+        name: "Circle".into(),
+        color: None,
+    };
+    let caminhos = |theme: Theme, rows: usize| {
+        let c = live_card(who(), s.rows.iter().take(rows).cloned().collect());
+        let mut v = DebugCardView::default();
+        v.style = CardStyle::Cards;
+        let h = v.height(&c, ABA);
+        let r = Rect::new(ABA.x, ABA.y + ABA.h - h, ABA.w, h);
+        let (mut scene, mut ts) = (VectorScene::new(), TextSystem::without_system_fonts());
+        let mut code = CodeView::new();
+        v.paint(
+            &c,
+            [NodeId(1), NodeId(2)],
+            r,
+            &mut code,
+            &mut scene,
+            &mut ts,
+            theme,
+        );
+        scene.inner().encoding().n_paths
+    };
+    assert!(s.rows.len() >= 2, "duas variáveis amostradas");
+    let classico = Theme::ALL
+        .into_iter()
+        .find(|t| !t.is_modern())
+        .expect("um clássico");
+    let moderno = Theme::ALL
+        .into_iter()
+        .find(|t| t.is_modern())
+        .expect("um moderno");
+    let extra = |t| caminhos(t, 2) - caminhos(t, 1);
+    assert!(extra(classico) >= 1, "controlo: a segunda variável pinta");
+    assert_eq!(
+        extra(moderno),
+        extra(classico),
+        "{moderno:?}: o contorno do valor sumiu"
+    );
 }

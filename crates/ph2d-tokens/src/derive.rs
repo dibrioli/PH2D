@@ -583,6 +583,8 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
         // ── estado ──
         "danger" => r.error.color(),
         "danger-soft" => r.error.over(r.base, HIGHLIGHT_A).color(),
+        // Premido desce para o preto nos dois temas: o `mono_inv` do `accent-press` clareia no claro.
+        "danger-press" => r.error.lerp(Rgb::BLACK, 0.15).color(),
         "success" => r.success.color(),
         "success-soft" => r.success.over(r.base, HIGHLIGHT_A).color(),
         "warn" => r.warning.color(),

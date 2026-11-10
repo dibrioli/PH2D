@@ -172,6 +172,7 @@ impl ColorToken {
             | T::AccentHover
             | T::AccentPress
             | T::Danger
+            | T::DangerPress
             | T::Success
             | T::Warn
             | T::Info

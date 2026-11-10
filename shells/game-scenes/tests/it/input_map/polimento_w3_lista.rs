@@ -275,7 +275,7 @@ fn nenhum_texto_cortado_com_o_x_a_vista_nas_areas_reais() {
 }
 
 /// Dono 10/11 («o botão fechar deve ter mais destaque»): o × é um emblema redondo DENTRO do chip — neutro forte em
-/// repouso, o perigo pairado, o perigo suave premido —, e nenhum estado mexe o alvo nem a face.
+/// repouso, o perigo pairado, o perigo premido —, e nenhum estado mexe o alvo nem a face.
 #[test]
 fn o_x_do_chip_e_um_emblema_que_se_acende_no_perigo() {
     use ph2d_tokens::ColorToken;
@@ -326,9 +326,10 @@ fn o_x_do_chip_e_um_emblema_que_se_acende_no_perigo() {
     let press = look(&m, x).expect("premido");
     assert_eq!(
         press.fill,
-        Some(ColorToken::DangerSoft),
-        "premido: o perigo suave"
+        Some(ColorToken::DangerPress),
+        "premido: o perigo premido (onda 3, item 5)"
     );
+    assert_eq!(press.ink, ColorToken::AccentFg);
     assert!(
         rest.fill != hover.fill && hover.fill != press.fill && rest.fill != press.fill,
         "três fundos"

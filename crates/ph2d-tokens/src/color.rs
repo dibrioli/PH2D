@@ -230,6 +230,9 @@ color_tokens! {
     // ── Semantic states ────────────────────────────────────────────
     Danger => "danger",
     DangerSoft => "danger-soft",
+    /// `danger-press` — o perigo premido: mais fundo que `danger` (o pairado) nos temas claro e escuro,
+    /// com `accent-fg` ≥ 4,5:1 por cima. Gate: `onda3_premido` (game-scenes).
+    DangerPress => "danger-press",
     Success => "success",
     SuccessSoft => "success-soft",
     Warn => "warn",

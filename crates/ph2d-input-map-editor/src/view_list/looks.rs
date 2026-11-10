@@ -83,7 +83,8 @@ pub(super) enum Tone {
     /// Sem face em repouso; pairado enche-se deste tom; premido, do acento suave.
     Plain(ColorToken),
     /// Um emblema redondo que apaga (o × do chip, dono 10/11: «mais destaque»): em repouso o neutro forte com o
-    /// ícone claro; pairado o perigo com a tinta de quem se enche (a do botão Danger); premido o perigo suave.
+    /// ícone claro; pairado o perigo com a tinta de quem se enche (a do botão Danger); premido o perigo premido, mais
+    /// fundo que o pairado em todo tema (o `danger-soft` clareava no tema claro).
     Destructive,
 }
 
@@ -95,7 +96,9 @@ impl Tone {
             (Self::Plain(_), State::Press) => (Some(ColorToken::AccentSoft), ColorToken::Text1),
             (Self::Destructive, State::Rest) => (Some(ColorToken::BorderStrong), ColorToken::Text1),
             (Self::Destructive, State::Hover) => (Some(ColorToken::Danger), ColorToken::AccentFg),
-            (Self::Destructive, State::Press) => (Some(ColorToken::DangerSoft), ColorToken::Text1),
+            (Self::Destructive, State::Press) => {
+                (Some(ColorToken::DangerPress), ColorToken::AccentFg)
+            }
         }
     }
 }

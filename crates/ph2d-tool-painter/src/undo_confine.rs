@@ -95,7 +95,7 @@ impl ModelSnapshot {
             return false;
         }
 
-        *layers == other.layers
+        mesma_pilha_sem_o_relevo(layers, &other.layers)
             && *canvas_size == other.canvas_size
             && *selection == other.selection
             && offset_norm.to_bits() == other.offset_norm.to_bits()
@@ -108,6 +108,26 @@ impl ModelSnapshot {
             && selection_feather.to_bits() == other.selection_feather.to_bits()
             && *selection_shapes == other.selection_shapes
     }
+}
+
+/// As pilhas são a mesma figura salvo o `Layer::has_relief`: ele é a PROJECÇÃO do `heights` para o painel
+/// (nenhum compositor o lê), e quem responde pelo relevo é o plano. O 1.º traço Impasto numa camada vira-o
+/// e só mexe na janela do traço (B10c).
+fn mesma_pilha_sem_o_relevo(a: &crate::layers::LayerStack, b: &crate::layers::LayerStack) -> bool {
+    if a == b {
+        return true;
+    }
+    let sem = |s: &crate::layers::LayerStack| {
+        let mut s = s.clone();
+        let ids: Vec<_> = s.all_ids().collect();
+        for id in ids {
+            if let Some(l) = s.get_mut(id) {
+                l.has_relief = false;
+            }
+        }
+        s
+    };
+    sem(a) == sem(b)
 }
 
 impl UndoEntry {

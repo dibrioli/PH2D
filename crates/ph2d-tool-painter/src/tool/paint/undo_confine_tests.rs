@@ -165,10 +165,10 @@ fn papel_texturizado(
     t
 }
 
-/// **B10c: o Ctrl+Z do 1.º traço sobre o papel texturizado é confinado no Digital e no Watercolor** — e a
-/// tela da pista parcial é a do repaint inteiro ao bit (undo e redo) nos 4 meios. Era `None` no Watercolor
-/// (o vidro aparece: `v=WHOLE`), dobra e prévia da TELA no app. O 1.º traço Impasto (o relevo aparece) e
-/// Wet (`tintas_molhadas`) seguem não confinados: só o oráculo os julga.
+/// **B10c: o Ctrl+Z do 1.º traço sobre o papel texturizado é confinado no Digital, Watercolor e Impasto** — e
+/// a tela da pista parcial é a do repaint inteiro ao bit (undo e redo) nos 4 meios. Era `None` no Watercolor
+/// (o vidro aparece: `v=WHOLE`) e no Impasto (o relevo aparece e o `has_relief` vira), dobra e prévia da
+/// TELA no app. O 1.º traço Wet (`tintas_molhadas`) segue não confinado: só o oráculo o julga.
 #[test]
 fn o_ctrl_z_de_um_traco_no_papel_e_confinado_em_cada_meio() {
     use crate::tool::paint::media::PaintMedia::{Digital, Impasto, Watercolor, WetPaint};
@@ -189,7 +189,7 @@ fn o_ctrl_z_de_um_traco_no_papel_e_confinado_em_cada_meio() {
                 "controlo: o vidro aparece neste passo — {why}"
             );
         }
-        let deve = matches!(meio, Digital | Watercolor);
+        let deve = matches!(meio, Digital | Watercolor | Impasto);
         if deve && fast.undo.peek_confined_region(false).is_none() {
             falhas.push(format!("{meio:?}: {why}"));
         }

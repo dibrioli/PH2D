@@ -177,12 +177,6 @@ impl Confine {
         }
     }
 
-    pub(crate) fn add_map<T>(&mut self, m: &StoredMap<T>) {
-        for e in m.entries() {
-            self.add(e.reach());
-        }
-    }
-
     /// O VIDRO ausente é o plano de zeros: um texel nunca selado dá o alfa único do píxel, exacto
     /// ([`crate::compositor::vidro::alfas`]). Então o lado que aparece (o 1.º traço de aguada numa camada)
     /// alcança só a janela dos texels selados, não a tela (B10c).
@@ -192,6 +186,26 @@ impl Confine {
                 StoredEntry::Both(p) => p.reach(),
                 StoredEntry::OnlyBefore(p) | StoredEntry::OnlyAfter(p) => {
                     janela_dos_selados(p, self.canvas_w as usize)
+                }
+            });
+        }
+    }
+
+    /// O RELEVO ausente é o plano neutro: camada sem `heights` sai da dobra e altura 0 com cobertura 0 é a
+    /// identidade dela ([`crate::layers::fold_relief_step`]); `covers` ausente lê 0 e `mats` ausente lê o
+    /// material neutro (`relief_fields::material_at`). Então o lado que aparece (o 1.º traço Impasto numa
+    /// camada) alcança só a janela dos texels fora do neutro, não a tela (B10c).
+    pub(crate) fn add_relevo<T>(
+        &mut self,
+        m: &StoredMap<T>,
+        linha_neutra: impl Fn(&[T]) -> bool + Copy,
+        neutro: impl Fn(&T) -> bool + Copy,
+    ) {
+        for e in m.entries() {
+            self.add(match e {
+                StoredEntry::Both(p) => p.reach(),
+                StoredEntry::OnlyBefore(p) | StoredEntry::OnlyAfter(p) => {
+                    janela_fora_do_neutro(p, self.canvas_w as usize, linha_neutra, neutro)
                 }
             });
         }
@@ -215,23 +229,35 @@ impl Confine {
 
 /// A janela dos texels não nulos de um plano de vidro de `stride` texels por linha; `Untouched` se nenhum.
 fn janela_dos_selados(p: &[crate::compositor::vidro::Vidro], stride: usize) -> PlaneReach {
+    // OR dos bytes da linha: vectoriza (o `any` com saída cedo não).
+    janela_fora_do_neutro(
+        p,
+        stride,
+        |l| l.as_flattened().iter().fold(0u8, |a, &b| a | b) == 0,
+        |v| *v == [0; 7],
+    )
+}
+
+/// A janela dos texels fora do neutro de um plano de `stride` texels por linha; `Untouched` se nenhum.
+fn janela_fora_do_neutro<T>(
+    p: &[T],
+    stride: usize,
+    linha_neutra: impl Fn(&[T]) -> bool,
+    neutro: impl Fn(&T) -> bool,
+) -> PlaneReach {
     if stride == 0 || p.is_empty() || !p.len().is_multiple_of(stride) {
         return PlaneReach::Whole;
     }
-    // OR dos bytes da linha: vectoriza (o `any` com saída cedo não).
-    let nula = |l: &[crate::compositor::vidro::Vidro]| {
-        l.as_flattened().iter().fold(0u8, |a, &b| a | b) == 0
-    };
     let linhas: Vec<_> = p.chunks_exact(stride).collect();
-    let Some(row) = linhas.iter().position(|l| !nula(l)) else {
+    let Some(row) = linhas.iter().position(|l| !linha_neutra(l)) else {
         return PlaneReach::Untouched;
     };
-    let last = linhas.iter().rposition(|l| !nula(l)).unwrap_or(row);
+    let last = linhas.iter().rposition(|l| !linha_neutra(l)).unwrap_or(row);
     let (mut col, mut end) = (stride, 0usize);
     for l in &linhas[row..=last] {
-        if let Some(c) = l.iter().position(|v| *v != [0; 7]) {
+        if let Some(c) = l.iter().position(|v| !neutro(v)) {
             col = col.min(c);
-            end = end.max(l.iter().rposition(|v| *v != [0; 7]).unwrap_or(c) + 1);
+            end = end.max(l.iter().rposition(|v| !neutro(v)).unwrap_or(c) + 1);
         }
     }
     PlaneReach::Window(PlaneWindow {

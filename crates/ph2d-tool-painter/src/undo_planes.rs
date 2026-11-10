@@ -136,9 +136,23 @@ impl PlaneDeltas {
         let mut c = Confine::new(canvas_w);
         c.add(canvas_rgba.reach());
         c.add_images(images);
-        c.add_map(heights);
-        c.add_map(covers);
-        c.add_map(mats);
+        c.add_relevo(
+            heights,
+            |l| l.iter().fold(0u32, |a, v| a | v.to_bits()) == 0,
+            |v| v.to_bits() == 0,
+        );
+        c.add_relevo(
+            covers,
+            |l| l.iter().fold(0u8, |a, &b| a | b) == 0,
+            |v| *v == 0,
+        );
+        let neutro = ph2d_painter_brush::material::Material::NEUTRAL.to_bytes();
+        let fora = move |m: &MaterialBytes| (0..7).fold(0u8, |a, k| a | (m[k] ^ neutro[k]));
+        c.add_relevo(
+            mats,
+            move |l| l.iter().fold(0u8, |a, m| a | fora(m)) == 0,
+            move |m| fora(m) == 0,
+        );
         c.add_vidros(vidros);
         c.add(mask_scratch.reach());
         c.add(selection_mask.reach());

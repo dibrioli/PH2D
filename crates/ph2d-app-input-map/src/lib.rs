@@ -1,6 +1,5 @@
-//! **A aba Input Map** (plano `docs/InputMap/01_plano.md` §3): uma família de documentos ([`DocumentSurface`]) com
-//! UMA aba. A shell instala-a com a vista das prefs ([`install`]) e chama [`frame`] uma vez por quadro: o
-//! Settings ▸ Input Map… chega como o pedido do `WidgetStore`, e o `frame` abre (ou traz à frente) a aba.
+//! **A aba Input Map** (plano `docs/InputMap/01_plano.md` §3): uma família de documentos com UMA aba; a shell chama
+//! [`install`] com a vista das prefs e [`frame`] uma vez por quadro (abre a aba pedida pelo Settings ▸ Input Map…).
 
 pub use ph2d_input_map_editor::{
     InputMapDoc, InputMapEdit, Snapshot, View, census, ids, interact, palette, view_keyboard,
@@ -16,19 +15,17 @@ pub use surface::{InputMapTab, TAB_ID};
 
 use ph2d_editor_core::HeroScreen;
 
-/// O que a shell passa ao [`frame`] do que está vivo: o `InputState` e a sessão do jogador (o mapa que o Play lê).
+/// O que está vivo para o [`frame`]: o `InputState` e a sessão do jogador (o mapa que o Play lê).
 pub type Live<'a> = (
     &'a ph2d_input::InputState,
     &'a ph2d_player_controls::PlaySession,
 );
 
-/// A declaração da família à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "input-map",
     routers: &[],
 };
 
-/// Instala a família; `view` é a das prefs (a de omissão, a 1.ª vez, é o Keyboard).
 pub fn install(hero: &mut HeroScreen, view: View) {
     hero.documents
         .install_surface(Box::new(InputMapTab::new(view)));
@@ -92,7 +89,6 @@ pub fn frame(
     }
 }
 
-/// O undo do projecto pergunta: há um arrasto de número vivo na aba?
 #[must_use]
 pub fn gesture_in_progress(hero: &HeroScreen) -> bool {
     hero.documents
@@ -101,11 +97,8 @@ pub fn gesture_in_progress(hero: &HeroScreen) -> bool {
         .is_some_and(|t| t.doc.gesture_in_progress())
 }
 
-/// ⭐ **A tecla física para a aba de família activa** que tem o teclado ([`DocumentSurface::raw_key`]): a shell
-/// chama-a depois da escuta e dos modais, antes de todo atalho. `code` é o `ph2d_input::Key` normalizado;
-/// `text` é o texto do evento. `true` = consumida.
-///
-/// [`DocumentSurface::raw_key`]: ph2d_editor_core::doc_surface::DocumentSurface::raw_key
+/// ⭐ **A tecla física para a aba de família activa** que tem o teclado (`DocumentSurface::raw_key`), depois da escuta
+/// e dos modais, antes de todo atalho. `code` = o `ph2d_input::Key` normalizado; `true` = consumida.
 pub fn surface_raw_key(
     hero: &mut HeroScreen,
     code: u32,

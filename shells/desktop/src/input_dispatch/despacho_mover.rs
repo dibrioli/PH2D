@@ -196,20 +196,10 @@ impl crate::App {
         false
     }
 
-    /// O topo dos arrastos: a borda da coluna, a biblioteca, o pie menu, o cursor do conta-gotas, as guias, o hover da
-    /// preview (sem consumir), o conta-gotas arrastado e os arrastos do editor de áudio.
+    /// O topo dos arrastos: a biblioteca, o pie menu, o cursor do conta-gotas, as guias, o hover da preview (sem
+    /// consumir), o conta-gotas arrastado e os arrastos do editor de áudio. (A borda da coluna anda ANTES da aba de
+    /// família, no `pointer_moved`.)
     pub(super) fn ramo_mover_arrastos_de_topo(&mut self) -> bool {
-        // ⚠️ **A ORDEM destes dois foi decidida na integracao de 2026-09-04**, e nao
-        // e' arbitraria: o da BORDA tem `return` e uma guarda estreita (so' responde com
-        // `dock_seam_drag` armado), logo so' toma o quadro quando ha' um redimensionamento
-        // a serio -- e nesse quadro nao pode existir arrasto de biblioteca. Invertidos, o
-        // da biblioteca correria em todo quadro de um resize.
-        // ⭐ **O arrasto da BORDA de uma coluna** — dono do ponteiro até o Up, como todo arrasto
-        // desta shell. Vem cedo pelo mesmo motivo que o Down dele.
-        if self.dock_seam_move(self.last_pointer.0) {
-            return true;
-        }
-
         // ⭐ **O arrasto da biblioteca anda AQUI**, e não no `on_mouse_input` — é a mesma doutrina
         // das guias logo abaixo: um arrasto em curso responde ao movimento, não ao botão.
         {

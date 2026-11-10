@@ -11,15 +11,16 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
-/// O id da única aba da família.
 pub const TAB_ID: u64 = 1;
 
 pub struct InputMapTab {
     pub doc: InputMapDoc,
     open: bool,
     focus: Option<u64>,
-    /// A faixa do HUD de baixo que o hero pinta POR CIMA da área (`chrome_over`).
+    /// A faixa do HUD que o hero pinta POR CIMA (`chrome_over`); o rect pintado e o Down tomado — o Move fora dele
+    /// só é da aba com o botão preso nela (senão matava a borda das colunas, dono 10/11).
     over: Option<Rect>,
+    claim: (Rect, bool),
 }
 
 impl InputMapTab {
@@ -30,10 +31,10 @@ impl InputMapTab {
             open: false,
             focus: None,
             over: None,
+            claim: (Rect::default(), false),
         }
     }
 
-    /// Abre a aba, ou trá-la à frente se já está aberta (uma só).
     pub fn open(&mut self) {
         self.open = true;
         self.focus = Some(TAB_ID);
@@ -66,6 +67,7 @@ impl DocumentSurface for InputMapTab {
         theme: &Theme,
     ) {
         let area = above_the_hud(area, self.over);
+        self.claim.0 = area;
         ph2d_input_map_editor::paint::paint_doc(&mut self.doc, area, scene, text, *theme);
     }
 
@@ -75,23 +77,29 @@ impl DocumentSurface for InputMapTab {
 
     fn pointer(
         &mut self,
-        _id: u64,
-        _input: PointerInput<'_>,
+        id: u64,
+        input: PointerInput<'_>,
         kind: PointerKind,
         button: PointerButton,
         x: f32,
         y: f32,
     ) -> bool {
         match (kind, button) {
-            (PointerKind::Down, PointerButton::Primary) => self.doc.press(x, y),
-            (PointerKind::Up, _) => self.doc.release_at(x, y),
-            (PointerKind::Move, _) => self.doc.motion(x, y),
+            (PointerKind::Down, PointerButton::Primary) => {
+                self.claim.1 = self.doc.press(x, y);
+                self.claim.1
+            }
+            (PointerKind::Up, _) => {
+                self.claim.1 = false;
+                self.doc.release_at(x, y)
+            }
+            (PointerKind::Move, _) => self.pointer_move(id, input, x, y),
             _ => false,
         }
     }
 
     fn pointer_move(&mut self, _id: u64, _input: PointerInput<'_>, x: f32, y: f32) -> bool {
-        self.doc.motion(x, y)
+        self.doc.motion(x, y) && (self.claim.1 || self.claim.0.contains(x, y))
     }
 
     fn pointer_look(&self, _id: u64, x: f32, y: f32) -> Option<PointerLook> {
@@ -140,7 +148,6 @@ impl DocumentSurface for InputMapTab {
         false
     }
 
-    /// O mapa é documento: o Ctrl+Z vai à fila do projecto (o mapa entra nela na R2).
     fn undo_is_the_projects(&self) -> bool {
         true
     }

@@ -160,9 +160,6 @@ impl App {
         }
         let prev = self.last_pointer;
         self.last_pointer = (evt.x, evt.y);
-        // (Graph keyboard focus is set every frame by `motion_bridge` from the
-        // cursor — reliable even when the cursor stops before the panel rect is
-        // published; see its `over_graph` gate.)
         // M14.4e: cache the latest cursor for DroppedFile — winit's
         // DroppedFile carries no position, so we project the most-
         // recently-seen cursor to world.
@@ -170,6 +167,10 @@ impl App {
         // No palco só os botões do jogo reagem ao ponteiro.
         if self.no_palco() {
             let _ = forward_to_hero(self.gfx.as_mut(), evt);
+            return;
+        }
+        // ⭐ A BORDA da coluna é dona do Move até o Up, ANTES da aba de família (o Down dela não arma o `chrome_press`).
+        if self.dock_seam_move(self.last_pointer.0) {
             return;
         }
         // Um arrasto da vista de um QUADRO (MiroClone) em curso é dono do movimento.

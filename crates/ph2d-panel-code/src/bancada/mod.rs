@@ -248,6 +248,22 @@ impl BancadaView {
         self.marks.extend_from_slice(marks);
     }
 
+    /// Esquece os alvos pintados no último quadro (marcas, «In this script», grelha, mapa, balão,
+    /// dobra): chamado no início de cada quadro, para que uma peça que NÃO se pinta neste (aba de
+    /// ajuda, aba sem documento) não deixe um alvo vivo onde nada está desenhado.
+    pub fn forget_frame(&mut self) {
+        self.marks.clear();
+        self.outline_hits.clear();
+        self.grid_hits.clear();
+        self.map_hits.clear();
+        self.pop_hits.clear();
+        self.pop_rect = None;
+        self.pop_painted = None;
+        self.painted = None;
+        self.fold_rect = crate::chrome::NO_RECT;
+        self.split.painted = None;
+    }
+
     /// O nome de um objecto no Console sob o rato (a família sabe de quem é cada linha).
     pub fn set_console_aim(&mut self, hit: Option<(usize, Rect)>) {
         self.console_hit = hit.map(|(h, r)| (Aim::Holder(h), r));

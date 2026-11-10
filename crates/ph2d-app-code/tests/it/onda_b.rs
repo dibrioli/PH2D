@@ -187,3 +187,45 @@ fn o_passo_1_da_cena_13_abre_o_balao_de_speed_com_os_dois_herois() {
     assert_eq!(texto(0), ["Hero", "220", "default"]);
     assert_eq!(texto(1), ["Hero 2", "180", "changed"]);
 }
+
+/// ⭐ Uma peça da Bancada que não se pinta neste quadro não deixa alvo vivo: a aba de ajuda (que
+/// pinta a página no lugar do código) e a aba cujo documento fechou não respondem ao rato nem ao
+/// clique onde estava o nome de Bia no quadro de antes.
+#[test]
+fn sem_grelha_pintada_nenhum_alvo_do_quadro_anterior_responde() {
+    for ajuda in [true, false] {
+        let (mut m, id, _) = aberta();
+        m.docs().set_clock(1_000, false);
+        let r = m
+            .docs()
+            .bench
+            .target(Aim::Holder(1))
+            .expect("o nome de Bia pintado");
+        let (x, y) = centro(r);
+        let outra = if ajuda {
+            ScriptId(ph2d_app_code::HELP_TAG)
+        } else {
+            m.docs().close(id.0);
+            id
+        };
+        m.pinta(outra);
+        assert_eq!(m.docs().bench.target(Aim::Holder(1)), None, "ajuda={ajuda}");
+        m.rato(outra, x, y);
+        assert_eq!(m.docs().bench.aim(), Aim::Nothing, "ajuda={ajuda}");
+        let mut ts = ph2d_text::TextSystem::without_system_fonts();
+        let input = ph2d_editor_core::doc_surface::PointerInput {
+            text: &mut ts,
+            mods: Modifiers::default(),
+            now_ns: 1,
+        };
+        let (down, primary) = (
+            ph2d_host::PointerKind::Down,
+            ph2d_host::PointerButton::Primary,
+        );
+        let _ = m.docs().pointer(outra.0, input, down, primary, x, y);
+        assert!(
+            m.docs().bench.take_intents().is_empty(),
+            "ajuda={ajuda}: o clique não pediu nada"
+        );
+    }
+}

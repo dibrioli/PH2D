@@ -75,6 +75,9 @@ impl DocumentSurface for CodeDocs {
             self.bancada.who = who;
             return;
         }
+        // Cada peça da Bancada volta a pôr os seus alvos ao pintar-se: a que não se pinta neste quadro
+        // (aba de ajuda, aba cujo documento fechou) não deixa alvo nenhum.
+        self.bench.forget_frame();
         let dirty: Vec<ScriptId> = self
             .buffers()
             .filter(|d| d.2.is_dirty())

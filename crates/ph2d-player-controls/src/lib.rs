@@ -53,6 +53,8 @@ pub fn game_id_of(world: &mut bevy_ecs::world::World) -> u64 {
 }
 
 #[cfg(test)]
+mod f3_tests;
+#[cfg(test)]
 mod play_tests;
 #[cfg(test)]
 mod r10a_tests;

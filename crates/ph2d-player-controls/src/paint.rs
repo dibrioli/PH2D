@@ -3,7 +3,8 @@
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::paint::{
     fill_rounded_rect, folga_do_texto, paint_text_centered, paint_text_elided, paint_text_title,
-    paint_text_title_elided, resolve, stroke_rounded_rect, token_to_vello,
+    paint_text_title_elided, resolve, stroke_rounded_rect, stroke_rounded_rect_dashed,
+    token_to_vello,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -11,7 +12,7 @@ use ph2d_text::{FontWeight, TextSystem};
 use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 use ph2d_vector::{Affine, VectorScene};
 
-use crate::layout::{FOOT_PX, Layout, TITLE_PX, foot_lines, slot_label};
+use crate::layout::{FOOT_PX, HINT_LINE_H, Layout, TITLE_PX, foot_lines, slot_label};
 use crate::screen::{ControlsScreen, Row};
 
 /// A faixa da linha escolhida, o fundo do botão «Reset to defaults» (o das caixas de tecla) e a dica (texto
@@ -19,6 +20,9 @@ use crate::screen::{ControlsScreen, Row};
 pub const ROW_INK: ColorToken = ColorToken::AccentSoft;
 pub const RESET_INK: ColorToken = ColorToken::Bg3;
 pub const HINT_INK: ColorToken = ColorToken::Text2;
+/// A caixa vazia («Add»): sem fundo cheio, um contorno TRACEJADO e o texto secundário, legível mas recuado.
+pub const ADD_INK: ColorToken = ColorToken::Text2;
+pub const ADD_DASH_INK: ColorToken = ColorToken::Text3;
 
 /// Pinta o painel em `area` (a vista do jogo). Devolve a disposição, para o clique usar a MESMA.
 pub fn paint(
@@ -180,7 +184,7 @@ pub(crate) fn paint_with(
         c(ColorToken::Text1),
     );
     let hint = crate::layout::hint_key(rows, screen);
-    let line_h = lay.reset.h;
+    let line_h = HINT_LINE_H;
     for (i, l) in foot_lines(text, tr(hint), lay.hint.w).iter().enumerate() {
         let r = Rect::new(
             lay.hint.x,
@@ -210,7 +214,18 @@ fn paint_slot(
         paint_text_centered(text, scene, label, r, m::VALUE_PX, ink);
         return;
     }
-    fill_rounded_rect(scene, r, radius, c(ColorToken::Bg3));
+    if empty {
+        stroke_rounded_rect_dashed(
+            scene,
+            r,
+            radius,
+            m::FIELD_BORDER,
+            m::LOOSE_DASH,
+            c(ADD_DASH_INK),
+        );
+    } else {
+        fill_rounded_rect(scene, r, radius, c(ColorToken::Bg3));
+    }
     if here {
         // O anel de foco no MESMO traço do da aba (`interact::paint_focus_ring`): um anel, uma espessura.
         stroke_rounded_rect(
@@ -221,10 +236,6 @@ fn paint_slot(
             c(ColorToken::FocusRing),
         );
     }
-    let ink = if empty {
-        ColorToken::Text3
-    } else {
-        ColorToken::Text1
-    };
+    let ink = if empty { ADD_INK } else { ColorToken::Text1 };
     paint_text_centered(text, scene, label, r, m::VALUE_PX, c(ink));
 }

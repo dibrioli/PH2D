@@ -86,7 +86,7 @@ fn o_painel_abraca_as_linhas_e_o_pe_parte_se() {
         .expect("frases");
     assert!(n >= 2, "a frase maior parte-se");
     assert!(
-        (lay.hint.h - lay.reset.h * n as f32).abs() < 1e-3,
+        (lay.hint.h - crate::layout::HINT_LINE_H * n as f32).abs() < 1e-3,
         "uma faixa por linha"
     );
     assert!(
@@ -107,31 +107,6 @@ fn o_painel_abraca_as_linhas_e_o_pe_parte_se() {
         .map(|x| x.band.x + x.band.w)
         .fold(0.0_f32, f32::max);
     assert!((rows_right - (lay.panel.x + lay.panel.w - m::CARD_PAD_X)).abs() < 1e-3);
-}
-
-/// As caixas de tecla encostam à DIREITA da linha (maquete C4): a última de cada linha acaba no mesmo x.
-#[test]
-fn as_teclas_encostam_a_direita() {
-    let g = game();
-    let r = rows(&g);
-    let mut ts = TextSystem::new();
-    let lay = Layout::of(AREA, &r, &mut ts);
-    let ends: Vec<f32> = (lay.rows.iter())
-        .map(|x| x.slots.last().map_or(0.0, |s| s.x + s.w))
-        .collect();
-    let want = lay.rows[0].band.x + lay.rows[0].band.w - m::SEG_INSET;
-    for (i, e) in ends.iter().enumerate() {
-        assert!(
-            (e - want).abs() < 1e-3,
-            "linha {i}: acaba em {e}, a direita é {want}"
-        );
-    }
-    for x in &lay.rows {
-        assert!(
-            x.slots[0].x >= x.name.x + x.name.w,
-            "as caixas não pisam o nome"
-        );
-    }
 }
 
 /// `game_id` 0 (projecto gravado sem mundo) não tem ficheiro: partilharia o `0000000000000000.txt` entre projectos.

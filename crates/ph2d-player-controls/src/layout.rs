@@ -24,8 +24,10 @@ const FOOT_H: f32 = m::FIELD_H - m::SEG_INSET;
 pub const PAD: f32 = m::CARD_PAD_X;
 /// O título centra-se em `CARD_HEAD_H`: o rect começa meia folga acima do `PAD` visível.
 const PAD_TOP: f32 = PAD - (m::CARD_HEAD_H - TITLE_PX) * 0.5;
-/// Cada linha do pé centra-se em `FOOT_H`: o fundo desconta a meia folga de baixo.
-const PAD_BOTTOM: f32 = PAD - (FOOT_H - FOOT_PX) * 0.5;
+/// O passo entre as linhas da dica: o entrelinhado NORMAL da tipografia (a faixa do botão afastava-as como itens).
+pub const HINT_LINE_H: f32 = FOOT_PX * ph2d_tokens::LineHeight::Normal.ratio();
+/// Cada linha da dica centra-se em `HINT_LINE_H`: o fundo desconta a meia folga de baixo.
+const PAD_BOTTOM: f32 = PAD - (HINT_LINE_H - FOOT_PX) * 0.5;
 /// As três frases que a dica pode dizer: o pé reserva as linhas da MAIOR, para não mudar de altura ao escutar.
 pub(crate) const HINTS: [&str; 3] = [
     "player_controls.hint_choose",
@@ -58,7 +60,7 @@ pub struct Layout {
     /// O fio entre as linhas e o pé.
     pub rule: Rect,
     pub reset: Rect,
-    /// A dica de agora, partida na largura das linhas ([`foot_lines`]): uma faixa de `FOOT_H` por linha dela.
+    /// A dica de agora, partida na largura das linhas ([`foot_lines`]): uma faixa de [`HINT_LINE_H`] por linha.
     pub hint: Rect,
 }
 
@@ -147,12 +149,22 @@ impl Layout {
         let (selected, top) = (screen.selected(), screen.top());
         let listening =
             |i: usize, s: usize| screen.listening() && i == selected && s == screen.slot();
+        // A primeira tecla de cada linha numa COLUNA de largura fixa (a maior, contando a que escuta): as caixas
+        // começam todas no mesmo x e a borda não fica dentada.
+        let press_w = chip_w(text, tr("player_controls.listening"));
+        let first_w = rows
+            .iter()
+            .map(|r| chip_w(text, &slot_label(r, 0, false)))
+            .fold(press_w, f32::max);
         let widths: Vec<Vec<f32>> = rows
             .iter()
             .enumerate()
             .map(|(i, r)| {
                 (0..r.slots())
-                    .map(|s| chip_w(text, &slot_label(r, s, listening(i, s))))
+                    .map(|s| match s {
+                        0 => first_w,
+                        _ => chip_w(text, &slot_label(r, s, listening(i, s))),
+                    })
                     .collect()
             })
             .collect();
@@ -199,13 +211,14 @@ impl Layout {
         let fixed = PAD_TOP
             + m::CARD_HEAD_H
             + m::FIELD_ROW_GAP * 2.0
-            + FOOT_H * (1 + hint_n) as f32
+            + FOOT_H
+            + HINT_LINE_H * hint_n as f32
             + PAD_BOTTOM;
         // A reserva da frase maior não fica como faixa vazia em baixo: o conteúdo centra-se na altura reservada.
         let shown_n = foot_lines(text, tr(hint_key(rows, screen)), iw)
             .len()
             .min(hint_n);
-        let lift = FOOT_H * (hint_n - shown_n) as f32 * 0.5;
+        let lift = HINT_LINE_H * (hint_n - shown_n) as f32 * 0.5;
         let fit = (((area.h - fixed) / ROW_H).floor().max(1.0)) as usize;
         let visible = if natural {
             rows.len()
@@ -264,7 +277,7 @@ impl Layout {
         // «Reset to defaults» é um BOTÃO do tamanho do rótulo, ao centro (o alvo do clique é ele, não a faixa).
         let rw = reset_w.min(iw);
         let reset = Rect::new(x0 + (iw - rw) * 0.5, rule_y + m::FIELD_ROW_GAP, rw, FOOT_H);
-        let hint = Rect::new(x0, reset.y + FOOT_H, iw, FOOT_H * shown_n as f32);
+        let hint = Rect::new(x0, reset.y + FOOT_H, iw, HINT_LINE_H * shown_n as f32);
         Self {
             panel,
             title,
@@ -302,11 +315,8 @@ impl RowLayout {
     fn of(band: Rect, name_w: f32, lead: f32, widths: &[f32], note_w: f32) -> Self {
         let name = Rect::new(band.x + m::SEG_INSET, band.y, name_w, ROW_H);
         let ky = band.y + (ROW_H - KEY_H) * 0.5;
-        // As caixas encostam à DIREITA (maquete C4): a última acaba antes do aviso e do recuo.
-        let keys_w: f32 =
-            widths.iter().sum::<f32>() + m::SEG_INSET * widths.len().saturating_sub(1) as f32;
-        let right = band.x + band.w - m::SEG_INSET - note_w;
-        let mut x = (right - keys_w).max(band.x + lead);
+        // As caixas começam na coluna depois dos nomes, encostadas à ESQUERDA: a primeira tem largura fixa.
+        let mut x = band.x + lead;
         let slots = widths
             .iter()
             .map(|&w| {

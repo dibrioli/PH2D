@@ -105,7 +105,7 @@ fn o_painel_tem_o_mesmo_espaco_em_cima_e_em_baixo_e_nao_salta_ao_escutar() {
     assert_eq!(rest.panel, heard.panel, "a caixa não salta ao escutar");
     for (at, l) in [("fechada", &rest), ("à escuta", &heard)] {
         let above = l.title.y + (l.title.h - TITLE_PX) * 0.5 - l.panel.y;
-        let last = l.hint.y + l.hint.h - l.reset.h * 0.5 + FOOT_PX * 0.5;
+        let last = l.hint.y + l.hint.h - crate::layout::HINT_LINE_H * 0.5 + FOOT_PX * 0.5;
         let below = l.panel.y + l.panel.h - last;
         assert!(
             (above - below).abs() < 0.5,
@@ -135,7 +135,7 @@ fn o_painel_tem_recuo_igual_nos_quatro_lados_e_o_reset_e_um_botao() {
         let left = band.x - l.panel.x;
         let right = l.panel.x + l.panel.w - (band.x + band.w);
         let above = l.title.y + (l.title.h - TITLE_PX) * 0.5 - l.panel.y;
-        let last = l.hint.y + l.hint.h - l.reset.h * 0.5 + FOOT_PX * 0.5;
+        let last = l.hint.y + l.hint.h - crate::layout::HINT_LINE_H * 0.5 + FOOT_PX * 0.5;
         let below = l.panel.y + l.panel.h - last;
         for (side, v) in [
             ("esq", left),

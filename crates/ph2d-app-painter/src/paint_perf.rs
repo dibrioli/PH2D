@@ -1,12 +1,9 @@
 //! `PH2D_PAINT_PERF` aggregation — ONE summary line per window, not one per frame.
 //!
-//! The per-frame log drowned the terminal. Instead, `painter_bridge::dispatch` records this frame's
-//! dispatch cost — split into sub-phases — plus the producer + flags via [`record_dispatch`], and
-//! `run_render_frame`'s frame timer reports the whole-frame cost via [`end_frame`]; the two are paired
-//! and a compact summary is printed once every [`WINDOW`] painter frames. It reports the p50 of each
-//! sub-phase (so the dominant one is obvious) and the flags of the WORST-dispatch frame (so they
-//! describe the expensive case, not an idle tail frame). Painting a scenario for ~2 s yields one or
-//! two lines to paste — enough to locate the cost inside dispatch.
+//! `painter_bridge::dispatch` records the sub-phase split via [`record_dispatch`], the frame timer
+//! the whole frame via [`end_frame`]; every [`WINDOW`] painter frames it prints the p50 of each
+//! sub-phase and the flags of the WORST-dispatch frame.
+//! (história: docs/Painter/historia_comentarios_app_painter_2026-11-10.md)
 
 use std::cell::RefCell;
 
@@ -35,26 +32,20 @@ pub(super) struct FrameInfo {
     pub preview_ms: f32,
     pub panel_ms: f32,
     pub overlay_ms: f32,
-    /// The OVERLAY phase, split by call — it aggregated three of them, and a 3,9 ms number that could
-    /// belong to any of the three is a number nobody can act on (Enio, 2026-07-25, 4096²).
+    /// The OVERLAY phase, split by call.
     pub ov_tol_ms: f32,
     pub ov_selection_ms: f32,
     pub ov_chrome_ms: f32,
-    /// The PANEL phase split by step (labels in [`PANEL_LABELS`]) — a 3,8 ms number shared by a
-    /// revision-gated clone, a `brush_settings` snapshot and two shape re-bakes names none of them.
+    /// The PANEL phase split by step (labels in [`PANEL_LABELS`]).
     pub panel_sub: [f32; PANEL_SUB],
     /// The CHROME call (`draw_overlays`) split by the twelve overlays it aggregates
     /// (labels in [`CHROME_LABELS`]).
     pub chrome_sub: [f32; CHROME_SUB],
     pub upload_ms: f32,
-    /// **O DIVISOR do `preview` na rota GPU** — dentro do `try_drive` o composite e a luz correm no
-    /// device, mas o FOLD dos três planos de relevo roda na CPU, e ele é o único item ali cujo custo
-    /// depende de a janela ser um retângulo ou a tela inteira (§4.8.2: 0,38 ms contra 14,55 a 4096²).
-    /// Sem esta linha um `preview 54,3 ms` com `branch=idle` não distingue *o device demorou* de *a
-    /// CPU dobrou o canvas*, que são curas opostas.
+    /// The CPU fold of the relief planes inside the GPU route (ms) — the one cost there that
+    /// depends on the window being a rect or the whole canvas.
     pub fold_ms: f32,
-    /// `true` quando o fold percorreu a TELA INTEIRA — a pergunta que decide a cura, e que nenhum
-    /// relógio sozinho responde.
+    /// `true` when the fold walked the WHOLE canvas.
     pub fold_full: bool,
     pub w: u32,
     pub h: u32,
@@ -76,41 +67,21 @@ struct Agg {
     gpu: u32,
     cpu: u32,
     frame_ms: Vec<f32>,
-    /// **L0 — o relógio que o artista SENTE.** O instante do evento de ponteiro mais ANTIGO que ainda
-    /// não foi mostrado; `None` quando não há nada pendente. Ver [`stamp_pointer`].
+    /// L0: the OLDEST pointer event not yet shown (`None` = none pending); see [`stamp_pointer`].
     pending: Option<std::time::Instant>,
     /// `evento → fim do frame que o consumiu`, em ms.
     latency_ms: Vec<f32>,
-    /// **Quantos eventos chegaram na janela** — TODOS, não só os que abriram um lote.
-    ///
-    /// ⚠️ Sem ele o relatório não distingue as duas causas de uma latência alta, e elas têm curas
-    /// OPOSTAS: se chegam ~1 evento por frame, o atraso é do **pipeline** (o frame demora a sair); se
-    /// chegam muitos, eles **ENFILEIRAM** e a cura é consumir o lote inteiro por frame. A 1ª leitura
-    /// real (Enio, 4096², 2026-07-25) deu `p50 34,3 ms` com `frame p50 4,7 ms` — aritmética que só
-    /// fecha se uma das duas for verdade, e o relatório não dizia qual.
+    /// Events that arrived in the window (ALL of them): ~1/frame = pipeline delay, many = they
+    /// queue — opposite cures.
     events: u32,
-    /// **O trabalho de pintar, que acontece FORA do frame.** Acumulado dentro da janela entre dois
-    /// `end_frame`, em ms.
-    ///
-    /// ⚠️ **O `PaintFrameTimer` cobre o `run_render_frame` inteiro — e o `on_canvas_pointer` NÃO roda
-    /// lá dentro.** Ele roda no handler de input do winit, então carimbar dabs (a 4096², com impasto)
-    /// nunca apareceu em `frame`, nem em `dispatch`, nem em nenhum dos 17 sub-slots. A 1ª leitura com
-    /// período real mostrou o buraco: `frame p50 16,7 ms` e **período 99,9 ms/frame**, com 8,8 eventos
-    /// por frame — 83 ms por frame fora de tudo que o relatório media.
-    /// ⚠️ **Por FASE (`[down, move, up]`), e não um número só.** O log de 2026-08-01 trouxe
-    /// `INPUT p50=0,0 max=1016,5 ms`: mediana grátis e UM evento de um segundo — que admite *"um
-    /// pen-up custa um segundo"* e *"um move custa um segundo"*, **curas opostas**. Um custo sem a sua
-    /// fase é inatribuível, exatamente como `stamps` era antes de publicar as entregas (§5.48).
+    /// Painting work OUTSIDE the frame (`on_canvas_pointer` runs in the input handler), in ms,
+    /// accumulated between two `end_frame`s, per phase `[down, move, up]`.
     input_ms: [f32; 3],
     fold_ms: f32,
     fold_full: bool,
     /// Por-frame, o acumulado acima.
     input_hist: [Vec<f32>; 3],
-    /// Início da janela, para o **PERÍODO** real do frame (`span / frames`).
-    ///
-    /// ⚠️ O `frame p50` mede o **TRABALHO** dentro do frame, não o intervalo entre frames — e a
-    /// diferença é o que o app passa esperando o vsync, a fila de eventos e o compositor. Uma latência
-    /// de 34 ms sobre um trabalho de 4,7 é impossível de ler sem o período ao lado.
+    /// Window start, for the real frame PERIOD (`span / frames`); `frame p50` measures work only.
     window_start: Option<std::time::Instant>,
 }
 
@@ -119,19 +90,9 @@ thread_local! {
     static ON: std::cell::Cell<i8> = const { std::cell::Cell::new(-1) };
 }
 
-/// **L0: carimba a chegada de um evento de ponteiro de canvas** (o plano 26, frente L).
-///
-/// O módulo media `ms/frame` e `ms/dispatch` e **nunca mediu do evento até o pixel** — que é o único
-/// número que a pergunta *"por que o Procreate parece mais rápido?"* de fato cobra, e cujo alvo é
-/// público: **9 ms** (o Apple Pencil saiu de 20 para 9, e não foi compute — foi pipeline).
-///
-/// ⚠️ **Carimba o MAIS ANTIGO não-servido, nunca o mais recente.** Entre dois frames chegam vários
-/// eventos; o que o artista percebe como atraso é o do PRIMEIRO deles, porque é ele que está na tela
-/// esperando há mais tempo. Carimbar o último mediria a latência do evento mais sortudo do lote e
-/// reportaria um número que ninguém sente.
-///
-/// ⚠️ **É o relógio da SHELL, não do tool** — o contrato `CanvasPaintTool` está congelado (§6) e um
-/// método novo nele exigiria ADR. A shell já é dona do evento; ela o carimba na entrega.
+/// L0: stamps the arrival of a canvas pointer event (event → end of the consuming frame).
+/// Stamps the OLDEST unserved event, never the latest — that is the one the artist waits on.
+/// The shell's clock, not the tool's (`CanvasPaintTool` is frozen, §6).
 pub fn stamp_pointer() {
     if !on() {
         return;
@@ -145,13 +106,8 @@ pub fn stamp_pointer() {
     });
 }
 
-/// **Quanto este evento custou DENTRO do `on_canvas_pointer`** — o trabalho de carimbar dabs.
-///
-/// Irmão do [`stamp_pointer`]: aquele diz quando o evento CHEGOU, este diz quanto ele CUSTOU. Os dois
-/// juntos são a diferença entre *"o frame demora a sair"* e *"pintar é caro e ninguém estava olhando"*.
-/// Registra o custo do FOLD dos planos de relevo (a metade de CPU do `try_drive`) e se ele percorreu a
-/// tela inteira. Chamado de [`super::painter_gpu_preview`], onde a janela é resolvida — o `record_dispatch`
-/// o drena para o `FrameInfo` do quadro. No-op sem a env var.
+/// Records the CPU fold cost of the relief planes (inside `try_drive`) and whether it walked the
+/// whole canvas; `record_dispatch` drains it into the frame's `FrameInfo`. No-op without the env.
 pub(crate) fn note_gpu_fold(ms: f32, full: bool) {
     if !on() {
         return;
@@ -180,8 +136,7 @@ pub enum InputPhase {
 }
 
 impl InputPhase {
-    /// A fase de um evento de canvas. Mora AQUI, ao lado do enum que ela produz, e não no sítio de
-    /// chamada — o `painter_canvas_input.rs` está no teto de 600 LOC, e o mapeamento é do balde.
+    /// The phase of a canvas event (lives next to the enum it produces).
     pub const fn of(phase: ph2d_editor_core::tool::PointerPhase) -> Self {
         match phase {
             ph2d_editor_core::tool::PointerPhase::Down => Self::Down,
@@ -205,9 +160,7 @@ pub fn on() -> bool {
 pub(super) fn record_dispatch(info: FrameInfo) {
     AGG.with(|a| {
         let mut a = a.borrow_mut();
-        // ⚠️ O fold é anotado DENTRO do `try_drive`, que roda na fase `preview` deste mesmo quadro —
-        // então drená-lo aqui o credita ao quadro certo. Zerar depois de ler é o que impede um quadro
-        // sem fold de herdar o número do anterior.
+        // Drain the fold noted in this frame's `preview` phase; zeroing stops inheritance.
         let mut info = info;
         info.fold_ms = std::mem::take(&mut a.fold_ms);
         info.fold_full = std::mem::take(&mut a.fold_full);
@@ -260,9 +213,7 @@ pub fn end_frame(total_ms: f32) {
             a.window_start = Some(std::time::Instant::now());
         }
         // L0: este frame consumiu o que estava pendente — fecha o relógio do evento mais antigo.
-        // ⚠️ Ele mede *evento → fim do frame*, e o present acontece a uma fração de ms daqui; a
-        // diferença é honesta e menor que a resolução com que o artista percebe atraso. Prometer
-        // "→ pixel" quando o instrumento para no fim do frame seria vender o que ele não mede.
+        // Measures event → end of frame (the present follows a fraction of a ms later).
         if let Some(t0) = a.pending.take() {
             a.latency_ms.push(t0.elapsed().as_secs_f32() * 1e3);
         }
@@ -301,9 +252,7 @@ fn p50(v: &[f32]) -> f32 {
     s[s.len() / 2]
 }
 
-/// O quantil `q` de `v` (0..1). ⚠️ A latência se julga pela **CAUDA**: uma mediana de 8 ms com um
-/// p95 de 40 é exatamente o que o artista descreve como *"às vezes trava"*, e a mediana sozinha diz
-/// que está tudo bem.
+/// The `q` quantile of `v` (0..1) — latency is judged by its TAIL.
 fn pq(v: &[f32], q: f32) -> f32 {
     if v.is_empty() {
         return 0.0;
@@ -360,11 +309,7 @@ fn emit(a: &Agg) {
         },
         worst.trivial,
     );
-    // ⚠️ **E o SPLIT do frame PIOR, não só a magnitude dele.** O `max=` diz QUANTO o pior frame custou
-    // e as flags dizem em que estado ele estava — mas as fases eram todas p50, ou seja descreviam o
-    // frame TÍPICO. Um custo de UMA VEZ (o primeiro traço alocando as texturas do preview no tamanho
-    // do canvas) é invisível numa mediana por construção: ele é exatamente o outlier que a mediana
-    // existe para descartar. Sem esta linha, "muito delay no primeiro traço" não tem onde ser lido.
+    // The WORST frame's split too: a one-off cost is invisible in a median by construction.
     eprintln!(
         "[paint-perf] WORST split: dispatch={:.1} [preview {:.1} (fold {:.1} janela={}) panel {:.1} \
          overlay {:.1} upload {:.1}]",
@@ -396,14 +341,8 @@ fn emit(a: &Agg) {
         chrome.push_str(&format!(" {name} {v:.2}/{mx:.2}"));
     }
     eprintln!("[paint-perf]   CHROME p50/max:{chrome}");
-    // A AQUARELA do lado do TOOL, quando ela pintou nesta janela. Mora aqui e não no `[frame]` porque
-    // ⚠️ **é este o relatório que o artista roda** (`PH2D_PAINT_PERF`): a 1ª versão desta linha nasceu
-    // no bloco `[frame]`, que é de outra env, e **não apareceu no log do smoke** — um instrumento no
-    // logger errado é indistinguível de um instrumento que não existe.
-    //
-    // A linha `CHROME wet` acima é a metade do SHELL (o véu); esta é a metade do TOOL, e as duas
-    // juntas fecham o quadro. O `ns/texel` separa dois mundos com curas OPOSTAS entre duas janelas:
-    // constante = o pincel/documento cresceu (TRABALHO, e há sliders) · subindo = contenção.
+    // The tool's watercolour half, when it painted this window (in the report the artist runs).
+    // `ns/texel` constant = the work grew · rising = contention.
     let wash = ph2d_tool_painter::wash_diag::take();
     if wash.composite.n > 0 || wash.stamp.n > 0 {
         eprintln!(
@@ -426,8 +365,7 @@ fn emit(a: &Agg) {
             wash.ns_per_texel,
         );
     }
-    // L0: o número que a pergunta do Enio cobra, com o alvo público ao lado dele — e com as DUAS
-    // grandezas que dizem de onde ele vem (o período real do frame, e quantos eventos por frame).
+    // L0: event→frame latency with the public target, the real period and events per frame.
     if !a.latency_ms.is_empty() {
         #[allow(clippy::cast_precision_loss)]
         let frames = a.samples.len().max(1) as f32;
@@ -458,19 +396,13 @@ pub(super) type PreviewDiagState = (bool, Option<(u32, u32, u32, u32)>);
 
 /// Has the preview-diag state CHANGED since the last frame? (`PH2D_PREVIEW_DIAG`.)
 ///
-/// The trap answers *"which producer owns the slot, and what bbox did the CPU upload"* — both of which
-/// are interesting exactly when they MOVE. Logged per frame they emitted 60 lines a second, and the
-/// transition everyone was hunting scrolled past between two identical neighbours.
-///
-/// State lives here, next to the other diagnostic's accumulators, rather than in the bridge: a `static`
-/// declared inside a `dispatch` that already carries a dozen `dbg_` locals is a thirteenth thing to read
-/// past, and this one has to persist across frames.
+/// Logs on CHANGE only (per frame it hid the transitions it exists to show); the state
+/// persists across frames here.
 pub(super) fn preview_diag_changed(now: PreviewDiagState) -> bool {
     use std::sync::Mutex;
     static LAST: Mutex<Option<PreviewDiagState>> = Mutex::new(None);
     let Ok(mut last) = LAST.lock() else {
-        // A poisoned lock must not silence a diagnostic — logging one extra line is the harmless
-        // direction to be wrong in.
+        // A poisoned lock must not silence a diagnostic.
         return true;
     };
     if last.as_ref() == Some(&now) {
@@ -486,9 +418,7 @@ mod tests;
 
 /// Só em teste: liga o agregador nesta thread SEM tocar no ambiente.
 ///
-/// ⚠️ `std::env::set_var` é `unsafe` na edição 2024 e a shell tem `forbid(unsafe_code)`; e mesmo que
-/// não tivesse, mutar o ambiente de um processo de teste multi-thread é uma corrida. O `ON` já é
-/// `thread_local`, então armá-lo direto é a porta certa.
+/// `ON` is `thread_local`, so arming it directly avoids `set_var` (unsafe, racy in tests).
 #[cfg(test)]
 pub(super) fn force_on() {
     ON.with(|c| c.set(1));
@@ -505,9 +435,7 @@ pub(super) fn input_hist_by_phase() -> (Vec<f32>, Vec<f32>, Vec<f32>) {
 
 /// A soma das três fases por frame — o leitor agregado.
 ///
-/// ⚠️ `cfg(test)`: o RELATÓRIO passou a imprimir as três fases separadas (é esse o ponto do divisor),
-/// então quem soma é só o gate que afirma *"as fases não se perderam"*. Um `pub` sem chamador de
-/// produto seria uma segunda resposta esperando alguém chamá-la.
+/// `cfg(test)`: the report prints the three phases apart; only the gate sums.
 #[cfg(test)]
 pub(super) fn fold_hist() -> Vec<(f32, bool)> {
     AGG.with(|a| {

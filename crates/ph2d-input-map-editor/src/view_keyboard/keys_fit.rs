@@ -15,10 +15,11 @@ use super::keys::{ARROW_BOX, BAR_GAP, BAR_H};
 /// repouso no tema escuro, mais funda no claro: sempre MAIS ênfase que o repouso, nunca um contorno.
 pub const HOVER_FACE: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::KanbanShadowHover;
 
-/// O corpo da tecla APERTADA (premida ou acesa no Try it): um neutro mais fundo que o repouso, nunca a cor de uma
-/// acção. Medido nos 12 temas × 12 cores de acção (`onda3_tracos`): toda barra ≥ 3:1 contra ele (pior 4,37:1);
-/// `CardField`, `Bg0`, `Bg1` e os véus de sombra ficaram atrás (1,04–1,05 contra o repouso, ou barras abaixo de 3:1).
-pub const PRESS_BODY: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::KanbanCard;
+/// O corpo da tecla APERTADA (premida ou acesa no Try it): o de REPOUSO — nunca a cor de uma acção nem um token de
+/// dado de outra família; a plaquinha acesa marca o apertado. Medido (`onda3_tracos::
+/// nenhum_neutro_de_cromo_cumpre_a_lei_do_premido`): nenhum neutro de cromo deixa cada barra ≥ max(3:1, repouso)
+/// nos 12 temas × 12 cores (o melhor, `PanelBg`, falha 12 de 144).
+pub const PRESS_BODY: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::KanbanCardRaised;
 
 /// O vão do corpo da tecla entre as barras e a plaquinha ACESA (a mesma folga da plaquinha em repouso).
 pub const LIT_GAP: f32 = m::SEG_PAD;

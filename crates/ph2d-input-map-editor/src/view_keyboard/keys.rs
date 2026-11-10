@@ -452,7 +452,7 @@ fn paint_key(
     // ⭐ Onda 3, D1: a TECLA nunca se enche da cor de uma acção (engolia a barra dela): fica no repouso ou no hover,
     // e a premida/acesa acende a PLAQUINHA. As barras ficam sempre sobre a face neutra.
     let lit_plate = !system && (pressed || filled.is_some());
-    // R3: a apertada desce ao neutro de premido (barras ≥ 3:1 contra ele, medido).
+    // O corpo apertado: `PRESS_BODY` (o de repouso, medido).
     let body = if lit_plate {
         fit::PRESS_BODY
     } else {

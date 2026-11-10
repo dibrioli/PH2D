@@ -352,14 +352,17 @@ fn a_tecla_apertada_acende_a_plaquinha_e_nunca_engole_as_barras() {
             ph2d_tokens::categorical(jump.0),
             "{at}: aceso na cor do jump"
         );
+        // Rodada 4: nenhum neutro de cromo cumpre a lei (`nenhum_neutro_de_cromo_cumpre_a_lei_do_premido`): o corpo
+        // apertado fica o de repouso, nunca um token de dado de outra família; a plaquinha acesa marca o apertado.
         assert_eq!(
-            l.body, PRESS_BODY,
-            "{at}: o corpo no neutro de premido (R3)"
-        );
-        assert_ne!(
             l.body,
             ColorToken::KanbanCardRaised,
-            "{at}: a apertada não passa despercebida"
+            "{at}: o corpo apertado é o de repouso"
+        );
+        assert_eq!(
+            PRESS_BODY,
+            ColorToken::KanbanCardRaised,
+            "{at}: o token do corpo apertado"
         );
         assert_eq!(l.plate_face, Some(l.face), "{at}: a plaquinha acende");
         vao(&m, UP, &at);
@@ -380,7 +383,11 @@ fn a_tecla_apertada_acende_a_plaquinha_e_nunca_engole_as_barras() {
         let at = format!("B {}", a.w);
         let l = olhar(&b, q);
         assert_eq!(l.face, ColorToken::AccentPress, "{at}: premida");
-        assert_eq!(l.body, PRESS_BODY, "{at}: o corpo no neutro de premido");
+        assert_eq!(
+            l.body,
+            ColorToken::KanbanCardRaised,
+            "{at}: o corpo apertado é o de repouso"
+        );
         vao(&b, q, &at);
         assert_eq!(
             l.plate_face,
@@ -563,5 +570,49 @@ fn a_seta_da_manche_ligada_le_se_como_as_outras_partes() {
                 }
             }
         }
+    }
+}
+
+/// Rodada 4 (medida): nenhum neutro de CROMO serve de corpo à tecla apertada — cada barra ≥ max(3:1, o contraste em
+/// repouso) nos 12 temas × 12 cores de acção. Falhas medidas (de 144): Bg0 48 · Bg1 60 · Bg2 96 · Bg3 108 · BgElev 84
+/// · RailBg 24 · PanelBg 12 · WindowGround 24 · Border 96 · BorderStrong 120 · BorderEmph 144 · CardField 48 ·
+/// CardFieldHover 48. Se um tema novo fizer algum cumprir, este teste avisa para reabrir a escolha.
+#[test]
+fn nenhum_neutro_de_cromo_cumpre_a_lei_do_premido() {
+    use ColorToken as C;
+    for cand in [
+        C::Bg0,
+        C::Bg1,
+        C::Bg2,
+        C::Bg3,
+        C::BgElev,
+        C::RailBg,
+        C::PanelBg,
+        C::WindowGround,
+        C::Border,
+        C::BorderStrong,
+        C::BorderEmph,
+        C::CardField,
+        C::CardFieldHover,
+    ] {
+        let (mut falhas, mut dr, mut pior) = (0, f64::MAX, f64::MAX);
+        for theme in Theme::ALL {
+            let rest = C::KanbanCardRaised.resolve(theme);
+            let b = cand.resolve(theme);
+            dr = dr.min(b.contrast_ratio(&rest));
+            for i in 0..12u32 {
+                let c = ph2d_tokens::categorical(i).resolve(theme);
+                let (agora, rep) = (c.contrast_ratio(&b), c.contrast_ratio(&rest));
+                pior = pior.min(agora);
+                if agora < rep.max(3.0) - 1e-6 {
+                    falhas += 1;
+                }
+            }
+        }
+        eprintln!("{cand:?}: falhas {falhas}/144 · pior {pior:.2} · contra o repouso {dr:.2}");
+        assert!(
+            falhas > 0,
+            "{cand:?} cumpre a lei: reabra o corpo da tecla apertada (PRESS_BODY)"
+        );
     }
 }

@@ -61,3 +61,16 @@ fn o_chip_da_manche_leva_o_nome_inteiro_ao_lado_da_seta() {
     let t = t.expect("o chip da manche pintado");
     assert!(!t.2, "«{stick}» cabe inteiro no chip, com a seta");
 }
+
+#[test]
+fn na_aba_estreita_a_frase_do_pe_parte_em_duas_linhas_e_nada_se_corta() {
+    let mut m = lista(onze());
+    let estreita = Rect {
+        w: 690.0, // LITERAL-PX-OK: a aba central a 1280×720 com a Hierarchy e o Inspector (foto A1)
+        ..AREA
+    };
+    m.paint_in(estreita);
+    let census = &m.tab().doc.census.texts;
+    let cortados: Vec<&String> = census.iter().filter(|t| t.2).map(|t| &t.1).collect();
+    assert!(cortados.is_empty(), "textos cortados: {cortados:?}");
+}

@@ -48,7 +48,26 @@ pub(super) fn paint_rows(
     if doc.snap.listening.is_none() && actions.iter().any(InputAction::is_analog) {
         phrases.push(footer::zones());
     }
-    let foot_h = (m::FIELD_H + m::FIELD_ROW_GAP) * phrases.len() as f32;
+    // A frase que não cabe numa linha (a aba estreita, 1280×720 com os painéis) parte o resto pelas palavras,
+    // nas linhas de baixo.
+    let room = area.w - m::SEG_INSET * 2.0;
+    let wrapped: Vec<Option<Vec<String>>> = phrases
+        .iter()
+        .map(|p| {
+            let one = text::title_width(ts, &p.lead, m::VALUE_PX)
+                + m::SEG_ICON_GAP
+                + ts.prefix_width(&p.rest, m::VALUE_PX);
+            (!p.rest.is_empty() && one > room).then(|| text::wrap(ts, &p.rest, m::VALUE_PX, room))
+        })
+        .collect();
+    let lines: Vec<f32> = wrapped
+        .iter()
+        .map(|w| w.as_ref().map_or(1, |v| v.len() + 1) as f32)
+        .collect();
+    let foot_h: f32 = lines
+        .iter()
+        .map(|n| m::FIELD_H * n + m::FIELD_ROW_GAP)
+        .sum();
     let list_h = (area.h - foot_h).max(0.0);
     let total: f32 = actions.iter().map(|a| row_h(a) + m::FIELD_ROW_GAP).sum();
     doc.list.scroll_max = (total - list_h).max(0.0);
@@ -84,9 +103,10 @@ pub(super) fn paint_rows(
         paint_row(doc, a, r, name_w, scene, ts, ink);
     }
     let mut fy = area.y + total.min(list_h);
-    for p in phrases {
+    for ((p, n), wrap) in phrases.into_iter().zip(lines).zip(wrapped) {
+        let bg = Rect::new(area.x, fy, area.w, m::FIELD_H * n);
+        fill_rounded_rect(scene, bg, m::FIELD_RADIUS, ink.color(ColorToken::CardField));
         let r = Rect::new(area.x, fy, area.w, m::FIELD_H);
-        fill_rounded_rect(scene, r, m::FIELD_RADIUS, ink.color(ColorToken::CardField));
         let (lead_c, rest_c) = if p.warn {
             (ColorToken::Warn, ColorToken::Warn)
         } else {
@@ -103,21 +123,30 @@ pub(super) fn paint_rows(
             m::VALUE_PX,
             ink.color(lead_c),
         );
-        if !p.rest.is_empty() {
-            let gap = m::SEG_ICON_GAP;
-            let rx = inner.x + lead_w + gap;
-            let rw = (inner.x + inner.w - rx).max(0.0);
+        let rx = inner.x + lead_w + m::SEG_ICON_GAP;
+        let parts = wrap.map_or_else(
+            || vec![(rx, r.y, p.rest.clone())],
+            |v| {
+                let ys = (1..).map(|i| r.y + m::FIELD_H * i as f32);
+                v.into_iter()
+                    .zip(ys)
+                    .map(|(s, y)| (inner.x, y, s))
+                    .collect()
+            },
+        );
+        for (x, y, s) in parts.iter().filter(|_| !p.rest.is_empty()) {
+            let rw = (inner.x + inner.w - x).max(0.0);
             text::line(
                 &mut doc.census,
                 ts,
                 scene,
-                &p.rest,
-                Rect::new(rx, r.y, rw, r.h),
+                s,
+                Rect::new(*x, *y, rw, r.h),
                 m::VALUE_PX,
                 ink.color(rest_c),
             );
         }
-        fy += m::FIELD_H + m::FIELD_ROW_GAP;
+        fy += m::FIELD_H * n + m::FIELD_ROW_GAP;
     }
 }
 

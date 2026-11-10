@@ -34,6 +34,28 @@ pub(crate) fn line(
     w.min(r.w)
 }
 
+/// `s` partido pelas palavras em linhas que cabem em `w` (uma palavra maior que `w` fica sozinha na linha).
+pub(crate) fn wrap(ts: &mut TextSystem, s: &str, px: f32, w: f32) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut cur = String::new();
+    for word in s.split(' ') {
+        let next = if cur.is_empty() {
+            word.to_owned()
+        } else {
+            format!("{cur} {word}")
+        };
+        if cur.is_empty() || ts.prefix_width(&next, px) <= w {
+            cur = next;
+        } else {
+            out.push(std::mem::replace(&mut cur, word.to_owned()));
+        }
+    }
+    if !cur.is_empty() {
+        out.push(cur);
+    }
+    out
+}
+
 /// A largura de `s` em SemiBold (o peso de [`title`]).
 pub(crate) fn title_width(ts: &mut TextSystem, s: &str, px: f32) -> f32 {
     ts.prefix_width_weighted(s, px, FontWeight::SEMI_BOLD)

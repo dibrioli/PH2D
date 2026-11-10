@@ -189,12 +189,23 @@ impl ScriptListView {
         } else {
             IconId::ChevronRight
         };
-        let toggle = self.icon_button(scene, toggle_icon, ListHit::Toggle, right, y, &ui);
+        // Os botões do cabeçalho medem as maiúsculas do título (dono 10/11).
+        let cards = ph2d_editor_core::panel::cards::ferramenta::cards_on();
+        let title_px = if cards {
+            ph2d_editor_core::panel::cards::banda::metrics::LIST_TITLE_PX
+        } else {
+            chrome::font()
+        };
+        // O meio das maiúsculas como o pintor de texto o põe: o topo do texto cai num píxel.
+        let cc = ph2d_text::cap_centre_px(title_px);
+        let cap_mid = ph2d_editor_core::ui_scale::ao_pixel(y + ROW_H_PX * 0.5 - cc) + cc;
+        let caps = Some([cap_mid, ph2d_text::cap_height_px(title_px)]);
+        let toggle = self.icon_button(scene, toggle_icon, ListHit::Toggle, [right, y], caps, &ui);
         if !list.open {
             self.rows_rect = chrome::NO_RECT;
             return;
         }
-        let new = self.icon_button(scene, IconId::Plus, ListHit::New, toggle.x, y, &ui);
+        let new = self.icon_button(scene, IconId::Plus, ListHit::New, [toggle.x, y], caps, &ui);
         let title = tr("code.list.title");
         // O cabeçalho: folga · título · folga · os dois botões.
         let head = area.x + area.w - new.x + gap * 2.0 + chrome::card_title_w(ts, title);
@@ -205,7 +216,7 @@ impl ScriptListView {
             (new.x - gap - area.x - gap).max(0.0),
             ROW_H_PX,
         );
-        if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        if cards {
             // O título da coluna no idioma da lista de cartões, como HIERARCHY e INSPECTOR.
             use ph2d_editor_core::panel::cards::banda::metrics as m;
             ph2d_editor_core::paint::paint_text_title_elided_tracked(
@@ -304,8 +315,8 @@ impl ScriptListView {
                 scene,
                 IconId::Trash,
                 ListHit::Delete(row.id),
-                r.x + r.w,
-                r.y,
+                [r.x + r.w, r.y],
+                None,
                 ui,
             );
             text_right = del.x - gap;
@@ -522,13 +533,16 @@ impl ScriptListView {
         scene: &mut VectorScene,
         icon: IconId,
         hit: ListHit,
-        right: f32,
-        y: f32,
+        [right, y]: [f32; 2],
+        caps: Option<[f32; 2]>,
         ui: &Ui,
     ) -> Rect {
         let s = ICON_BTN_SIZE_PX.min(ROW_H_PX);
         let r = Rect::new(right - s, y, s, ROW_H_PX);
-        chrome::icon_button(scene, icon, r, ui);
+        match caps {
+            Some(caps) => chrome::icon_on_caps(scene, icon, r, caps, ui),
+            None => chrome::icon_button(scene, icon, r, ui),
+        }
         self.targets.push((hit, r));
         r
     }

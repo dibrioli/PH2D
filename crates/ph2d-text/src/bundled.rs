@@ -126,12 +126,24 @@ fn cap_metrics_em(bytes: &[u8]) -> Option<(f32, f32)> {
 /// `the_cap_centre_sits_on_the_baseline_parley_lays_out` confere-a contra o layout, nas três fontes.
 #[must_use]
 pub fn cap_centre_px(nominal: f32) -> f32 {
+    let (asc, cap) = active_cap_metrics_em();
+    let px = displayed_font_px(nominal);
+    (asc * px).round() - cap * px * 0.5
+}
+
+/// ⭐ **A altura das maiúsculas de um texto pedido a `nominal` px, como é DESENHADO** (fonte e tamanho
+/// ativos): o que um ícone ao lado de um título tem de medir para partilhar o topo e o pé das letras.
+#[must_use]
+pub fn cap_height_px(nominal: f32) -> f32 {
+    active_cap_metrics_em().1 * displayed_font_px(nominal)
+}
+
+/// A subida e a altura das maiúsculas da fonte ativa, em `em`.
+fn active_cap_metrics_em() -> (f32, f32) {
     static EM: OnceLock<[(f32, f32); UI_FONTS]> = OnceLock::new();
     let em =
         EM.get_or_init(|| BUNDLED.map(|(bytes, _)| cap_metrics_em(bytes).unwrap_or((1.0, 0.7))));
-    let (asc, cap) = em[active_text_style().font.index()];
-    let px = displayed_font_px(nominal);
-    (asc * px).round() - cap * px * 0.5
+    em[active_text_style().font.index()]
 }
 
 /// Regista as fontes EMBUTIDAS ([`BUNDLED`]) com o nome forçado e devolve a pilha de cada uma —

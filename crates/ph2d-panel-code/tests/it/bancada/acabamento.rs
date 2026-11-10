@@ -180,6 +180,82 @@ fn o_texto_das_pecas_aplica_o_tamanho_da_letra_uma_vez() {
     assert!(falhas.is_empty(), "{falhas:#?}");
 }
 
+/// Dono 10/11: o «+» e o «‹» do cabeçalho SCRIPTS são tão altos como as letras do título — a tinta
+/// deles (o traço incluído) mede a altura das maiúsculas e o meio dela cai no meio delas, em Normal e
+/// Large. O alvo do clique continua a linha inteira.
+#[test]
+fn os_icones_do_cabecalho_scripts_tem_a_altura_das_maiusculas_do_titulo() {
+    use ph2d_code_buffer::Buffer;
+    use ph2d_editor_core::panel::cards::banda::metrics::LIST_TITLE_PX;
+    use ph2d_panel_code::{ListHit, ScriptList, ScriptListView};
+    use ph2d_tokens::{UiTextSize, UiTextStyle};
+    use ph2d_vector::{DrawOp, Shape, StrokeOpts, expand_stroke};
+    let antes = ph2d_text::active_text_style();
+    let mut falhas = Vec::new();
+    for size in [UiTextSize::Normal, UiTextSize::Large] {
+        ph2d_text::set_active_text_style(UiTextStyle { size, ..antes });
+        let mut ts = TextSystem::without_system_fonts();
+        let filtro = Buffer::new("");
+        let lista = ScriptList {
+            open: true,
+            filter: &filtro,
+            focus: None,
+            rows: &[],
+            renaming: None,
+            notice: None,
+            hover_count: None,
+        };
+        let mut l = ScriptListView::default();
+        let mut s = VectorScene::new();
+        s.record();
+        let area = Rect::new(0.0, 0.0, 240.0, ScriptListView::height_for(1));
+        l.paint(&lista, area, &mut s, &mut ts, &Theme::default());
+        let ops = s.take_record();
+        let titulo_px = ph2d_text::displayed_font_px(LIST_TITLE_PX);
+        let (_, _, base) = *linhas_de_base(&s)
+            .iter()
+            .find(|r| (r.0 - titulo_px).abs() < 1e-3)
+            .expect("controlo: o título SCRIPTS pintou no tamanho da lista de cartões");
+        let cap_h = ph2d_text::cap_height_px(LIST_TITLE_PX);
+        let cap_mid = base - cap_h * 0.5;
+        for (nome, hit) in [("+", ListHit::New), ("‹", ListHit::Toggle)] {
+            let alvo = l.target_rect(hit).expect("o botão tem alvo");
+            assert!(alvo.h >= ROW_H_PX, "{nome}: o alvo {alvo:?} encolheu");
+            let tinta = ops
+                .iter()
+                .filter_map(|op| match op {
+                    DrawOp::Stroke {
+                        style,
+                        transform,
+                        path,
+                        ..
+                    } => {
+                        let mut o = expand_stroke(path.iter(), style, &StrokeOpts::default(), 1e-3);
+                        o.apply_affine(*transform);
+                        Some(o.bounding_box())
+                    }
+                    _ => None,
+                })
+                .find(|b| {
+                    let (cx, cy) = ((b.x0 + b.x1) as f32 * 0.5, (b.y0 + b.y1) as f32 * 0.5);
+                    cx > alvo.x && cx < alvo.x + alvo.w && cy > alvo.y && cy < alvo.y + alvo.h
+                })
+                .expect("controlo: o ícone pintou um traço no alvo");
+            let (h, meio) = (
+                (tinta.y1 - tinta.y0) as f32,
+                (tinta.y0 + tinta.y1) as f32 * 0.5,
+            );
+            if (h - cap_h).abs() > 0.5 || (meio - cap_mid).abs() > 0.5 {
+                falhas.push(format!(
+                    "{size:?} {nome}: tinta {h} px no meio {meio}; maiúsculas {cap_h} px no meio {cap_mid}"
+                ));
+            }
+        }
+    }
+    ph2d_text::set_active_text_style(antes);
+    assert!(falhas.is_empty(), "{falhas:#?}");
+}
+
 /// Auditoria do fecho 10/11: numa mesma linha, todo texto se centra pela mesma lei (o meio das
 /// maiúsculas). O título «Who has what» e a contagem ao lado, e o título do balão com a linha e a dica,
 /// leem-se na mesma altura (antes: um pela conta `(h − f) / 2`, o outro pela `folga_do_texto`).

@@ -5,8 +5,8 @@ use crate::peso::paint_text;
 use ph2d_code_buffer::Buffer;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, folga_do_texto, frame_radius, paint_icon, paint_text_centered,
-    rect_to_vello, resolve, stroke_frame,
+    fill_rounded_rect, folga_do_texto, frame_radius, icon_side_for_glyph, paint_icon,
+    paint_text_centered, rect_to_vello, resolve, stroke_frame,
 };
 use ph2d_editor_core::widget::section_cards::CardDepth;
 use ph2d_editor_core::zones::Rect;
@@ -172,6 +172,56 @@ pub(crate) fn icon_button(scene: &mut VectorScene, icon: IconId, r: Rect, ui: &U
     let s = ph2d_tokens::INLINE_ICON_PX.min(r.h);
     let ir = Rect::new(r.x + (r.w - s) * 0.5, r.y + (r.h - s) * 0.5, s, s);
     paint_icon(scene, icon, ir, ui.text2, StrokeToken::Default.px());
+}
+
+/// ⭐ Um ícone ao lado de um título (dono 10/11): a TINTA dele (o traço incluído) mede `cap_h` e o meio
+/// dela cai em `cap_mid` — o topo e o pé das maiúsculas. Centrado em `hit` na horizontal; o alvo não muda.
+pub(crate) fn icon_on_caps(
+    scene: &mut VectorScene,
+    icon: IconId,
+    hit: Rect,
+    [cap_mid, cap_h]: [f32; 2],
+    ui: &Ui,
+) {
+    const VIEWBOX: f32 = 24.0; // LITERAL-PX-OK: a viewbox 24×24 dos ícones
+    let (s, ty) = icon_fit_on_caps(icon, cap_mid, cap_h);
+    let side = icon_side_for_glyph(VIEWBOX * s);
+    let off = (side - VIEWBOX * s) * 0.5;
+    let r = Rect::new(hit.x + (hit.w - side) * 0.5, ty - off, side, side);
+    paint_icon(scene, icon, r, ui.text2, StrokeToken::Default.px());
+}
+
+/// A tinta de `icon` na viewbox: `(topo, pé)`, com o traço da casa (o encaixe escala-o com o glifo).
+fn icon_ink_y(icon: IconId) -> (f32, f32) {
+    use ph2d_vector::{BezPath, Shape, Stroke, StrokeOpts, expand_stroke};
+    let mut path = BezPath::new();
+    for cmd in icon.cmds() {
+        path.extend(ph2d_editor_core::icons::cmd_to_path(*cmd));
+    }
+    let style = Stroke::new(f64::from(StrokeToken::Default.px()));
+    let b = expand_stroke(path, &style, &StrokeOpts::default(), 1e-3).bounding_box();
+    (b.y0 as f32, b.y1 as f32)
+}
+
+/// A escala e o y (inteiro: o encaixe do ícone arredonda-o) que põem a tinta de `icon` em `cap_h` com o
+/// meio em `cap_mid`. Entre as escalas de ± 4 % escolhe-se a de menor erro, altura ou meio — o y
+/// arredondado sozinho erraria até 0,5 px.
+fn icon_fit_on_caps(icon: IconId, cap_mid: f32, cap_h: f32) -> (f32, f32) {
+    let (a0, b0) = icon_ink_y(icon);
+    let s0 = cap_h / (b0 - a0).max(f32::EPSILON); // CLAMP-OK: só evita o 0
+    let mut best = (f32::MAX, s0, 0.0);
+    for k in -8_i8..=8 {
+        let s = s0 * (1.0 + f32::from(k) * 0.005); // LITERAL-PX-OK: passos de 0,5 % da escala
+        let (a, b) = (a0 * s, b0 * s);
+        let ty = (cap_mid - (a + b) * 0.5).round();
+        let err = ((b - a) - cap_h)
+            .abs()
+            .max((ty + (a + b) * 0.5 - cap_mid).abs());
+        if err < best.0 {
+            best = (err, s, ty);
+        }
+    }
+    (best.1, best.2)
 }
 
 /// Um botão de texto; `on` = ligado (o realce de um interruptor).

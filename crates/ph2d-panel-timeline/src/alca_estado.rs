@@ -57,7 +57,8 @@ impl EstadoAlca {
         }
     }
 
-    const fn apertada(self) -> bool {
+    /// Apertada ou no arrasto: o que a mão segura.
+    pub(crate) const fn apertada(self) -> bool {
         matches!(self, Self::Apertada | Self::Arrasto)
     }
 
@@ -265,17 +266,23 @@ pub(crate) fn pinta_leitura(
     let font = TypeToken::Xs.px();
     let tw = ctx.text_system.prefix_width(&texto, font);
     let r = dentro_da_faixa(leitura_rect(tw, x, cy, a_esquerda), tw, x, cy);
+    pinta_etiqueta(ctx, theme, r, &texto);
+}
+
+/// A etiqueta da leitura em `r`: o fundo de acento e `texto` (cortado à largura de `r`) na tinta de
+/// mais contraste. A mesma porta para a leitura do tempo e a do marcador agarrado.
+pub(crate) fn pinta_etiqueta(ctx: &mut PaintCtx, theme: Theme, r: Rect, texto: &str) {
     let fundo = acento(theme);
     fill_rounded_rect(ctx.scene, r, Radius::Xs.px(), fundo);
     let pad = Spacing::Xs.px();
     paint_text_elided(
         ctx.text_system,
         ctx.scene,
-        &texto,
+        texto,
         r.x + pad,
         r.y + pad,
-        font,
-        tw,
+        TypeToken::Xs.px(),
+        (r.w - pad * 2.0).max(0.0),
         tinta_sobre(fundo, theme),
     );
 }

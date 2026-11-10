@@ -57,6 +57,26 @@ fn lugar_do_nome(xs: &[f32], i: usize, (esq, dir): (f32, f32), w: f32) -> (f32, 
     }
 }
 
+/// O `x0` da leitura de largura `w` do marcador em `x`: no lado do nome (`a_esquerda`), senão no
+/// outro, onde não pise nenhum dos `nomes` `(x0, x1)` vizinhos e caiba em `(esq, dir)`; sem lado
+/// livre, o do nome, empurrado para dentro da área de tempo.
+fn lugar_da_leitura(
+    x: f32,
+    w: f32,
+    nomes: &[(f32, f32)],
+    (esq, dir): (f32, f32),
+    a_esquerda: bool,
+) -> f32 {
+    let (d, e) = (x + DX, x - DX - w);
+    let ordem = if a_esquerda { [e, d] } else { [d, e] };
+    let livre =
+        |x0: f32| x0 >= esq && x0 + w <= dir && nomes.iter().all(|&(a, b)| x0 + w <= a || x0 >= b);
+    ordem
+        .into_iter()
+        .find(|&x0| livre(x0))
+        .unwrap_or_else(|| ordem[0].min(dir - w).max(esq))
+}
+
 /// Meia largura do alvo de um marcador: a da bandeirola do clássico (20 px ao todo, medida em 10/11).
 pub(crate) fn meio_alvo() -> f32 {
     crate::ruler::MARKER_W * 0.5 + crate::ruler::MARKER_HIT_PAD
@@ -144,20 +164,55 @@ fn alcas(
     let font = TypeToken::Xs.px();
     let so_nome = crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::TextoValor, theme);
     let (gap, meio) = (Spacing::Xs.px(), meio_alvo());
+    let area = (view.time_x, view.right);
+    let visivel = |x: f32| x >= view.time_x - meio && x <= view.right + meio;
+    // Os nomes de todos primeiro: a leitura do agarrado não pisa o de um vizinho.
+    let nomes: Vec<(f32, f32, f32, f32)> = snap
+        .markers
+        .iter()
+        .enumerate()
+        .map(|(i, (_, nome, sinal))| {
+            let raio = if sinal.is_some() { ICONE + gap } else { 0.0 };
+            let w = raio + label_column_width(ctx.text_system, font, [nome.as_str()]);
+            let (nx, max) = lugar_do_nome(&xs, i, area, w);
+            (nx, max, w, raio)
+        })
+        .collect();
     for (index, (t, nome, sinal)) in snap.markers.iter().enumerate() {
         let x = xs[index];
-        if x < view.time_x - meio || x > view.right + meio {
+        if !visivel(x) {
             continue;
         }
         let id = ids::timeline_marker_hit_id(index);
         let e = EstadoAlca::nos_cartoes(ctx, id);
         let (barra, setas) = forma(x, y);
         crate::alca_estado::pinta(ctx, theme, e, amarelo, &[barra], &setas);
-        crate::alca_estado::pinta_leitura(ctx, theme, e, *t, x + meio, y + ROW_H_PX * 0.5, false);
+        let hit = Rect::new(x - meio, y, meio * 2.0, ROW_H_PX);
+        registra(ctx, id, TimelineHitKind::Marker { index }, hit);
+        let (nx, max, _, raio) = nomes[index];
+        if e.apertada() {
+            // Agarrado (dono 10/11): o nome sai do lado e a leitura diz «nome tempo» no lugar dele.
+            let outros: Vec<(f32, f32)> = nomes
+                .iter()
+                .enumerate()
+                .filter(|&(i, n)| i != index && visivel(xs[i]) && n.1 > 0.0)
+                .map(|(_, n)| (n.0, n.0 + n.2.min(n.1)))
+                .collect();
+            let texto = ph2d_i18n::tr_with(
+                "panel.timeline.marker_readout",
+                &[
+                    ("name", nome),
+                    ("time", &crate::alca_estado::leitura_str(*t)),
+                ],
+            );
+            let tw = ctx.text_system.prefix_width(&texto, font);
+            let r = crate::alca_estado::leitura_rect(tw, x, y + ROW_H_PX * 0.5, false);
+            let x0 = lugar_da_leitura(x, r.w, &outros, area, nx < x);
+            let r = Rect::new(x0, r.y, r.w.min(area.1 - area.0), r.h);
+            crate::alca_estado::pinta_etiqueta(ctx, theme, r, &texto);
+            continue;
+        }
         // O nome: com sinal, o ⚡ à frente e a tinta dos marcadores; só nome, a tinta do valor.
-        let raio = if sinal.is_some() { ICONE + gap } else { 0.0 };
-        let w = raio + label_column_width(ctx.text_system, font, [nome.as_str()]);
-        let (nx, max) = lugar_do_nome(&xs, index, (view.time_x, view.right), w);
         if sinal.is_some() && max >= ICONE {
             let ic = Rect::new(nx, y + (ROW_H_PX - ICONE) * 0.5, ICONE, ICONE);
             paint_icon(
@@ -173,8 +228,6 @@ fn alcas(
         let (ts, sc) = (&mut *ctx.text_system, &mut *ctx.scene);
         let m = (max - raio).max(0.0);
         paint_text_elided(ts, sc, nome, nx + raio, ny, font, m, cor_nome);
-        let hit = Rect::new(x - meio, y, meio * 2.0, ROW_H_PX);
-        registra(ctx, id, TimelineHitKind::Marker { index }, hit);
     }
 }
 

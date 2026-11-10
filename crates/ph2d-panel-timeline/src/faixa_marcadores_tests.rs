@@ -38,7 +38,13 @@ fn snap() -> TimelineViewSnapshot {
 /// Pinta a faixa nos cartões com `prepara` no store; devolve as ops, a vista, o `y` e o store.
 fn pinta_faixa(
     prepara: impl Fn(&mut ph2d_editor_core::interaction::WidgetStore),
-) -> (Vec<ph2d_vector::DrawOp>, TimeView, f32, Option<[u8; 4]>) {
+) -> (
+    Vec<ph2d_vector::DrawOp>,
+    TimeView,
+    f32,
+    Option<[u8; 4]>,
+    Vec<Rect>,
+) {
     use ph2d_editor_core::panel::PanelHostInternal;
     use ph2d_editor_core::screens::hero::HeroLayout;
     use ph2d_editor_core::screens::slot::{Slot, SlotSet};
@@ -71,10 +77,11 @@ fn pinta_faixa(
     ctx.scene.record();
     paint(&mut ctx, Theme::Forge, &g, view, Tab::Keys, &snap, y);
     let ops = ctx.scene.take_record();
+    let pintadas = ph2d_ui_testkit::caixas_pintadas(ctx.scene);
     let id = ids::timeline_marker_hit_id(1);
     let tinta = host.store().timeline_cursor_tint(id);
     ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(None);
-    (ops, view, y, tinta)
+    (ops, view, y, tinta, pintadas)
 }
 
 /// As caixas das ops preenchidas na cor `c`.
@@ -119,7 +126,7 @@ fn bbox(pts: &[(f32, f32)]) -> ph2d_vector::Rect {
 fn a_linha_do_marcador_cai_no_tempo_exato_com_a_alca_do_fade() {
     use crate::alca_estado::{EstadoAlca, cor};
     let amarelo = resolve(ColorToken::TimelineMarker, Theme::Forge);
-    let (ops, view, y, tinta) = pinta_faixa(|_| {});
+    let (ops, view, y, tinta, _) = pinta_faixa(|_| {});
     assert_eq!(tinta, None, "em repouso nada tinge o cursor");
     let fills = caixas(&ops, amarelo);
     for (t, _, _) in snap().markers {
@@ -157,7 +164,7 @@ fn a_linha_do_marcador_cai_no_tempo_exato_com_a_alca_do_fade() {
     }
     let id = ids::timeline_marker_hit_id(1);
     for (estado, prepara) in [(EstadoAlca::Hover, true), (EstadoAlca::Apertada, false)] {
-        let (ops, view, y, tinta) = pinta_faixa(|s| {
+        let (ops, view, y, tinta, _) = pinta_faixa(|s| {
             if prepara {
                 s.set_hot(Some(id));
             } else {
@@ -228,3 +235,98 @@ fn a_alca_do_marcador_nao_se_confunde_com_a_do_fade_em_todo_tema() {
 
 const PISO_FADE: f64 = 0.07; // medido 0,080 (Sunstone), 10/11 — a forma é a mesma, a tinta e a faixa dizem «marcador»
 const PISO_FUNDO: f64 = 0.16; // medido 0,186 (Candy), 10/11
+
+/// Os textos pintados na área de tempo (caixa de altura zero: a linha das origens dos glifos).
+fn textos_no_tempo(pintadas: &[Rect], view: TimeView) -> Vec<Rect> {
+    pintadas
+        .iter()
+        .copied()
+        .filter(|r| r.h == 0.0 && r.x >= view.time_x)
+        .collect()
+}
+
+fn dentro(r: Rect, caixa: Rect) -> bool {
+    r.x >= caixa.x && r.x + r.w <= caixa.x + caixa.w && r.y >= caixa.y && r.y <= caixa.y + caixa.h
+}
+
+/// ⭐⭐ **Agarrado, o marcador diz «nome tempo» no lugar do nome** (dono 10/11: «ao mover a marca o
+/// tempo está embolado com o nome»). Em repouso e no hover os três nomes pintam-se; apertado e no
+/// arrasto o nome de «top» NÃO se pinta ao lado, e a etiqueta de acento (a porta da leitura) cai na
+/// área de tempo, sem pisar nenhum nome pintado — só o texto dela mora dentro dela. Medido nas caixas
+/// PINTADAS. *Mutação (10/11): pintar o nome também no arrasto ⇒ reprova.*
+#[test]
+fn agarrado_o_marcador_le_nome_e_tempo_sem_pisar_nenhum_nome() {
+    let id = ids::timeline_marker_hit_id(1);
+    let (_, view, _, _, repouso) = pinta_faixa(|_| {});
+    let nomes = textos_no_tempo(&repouso, view);
+    assert_eq!(nomes.len(), 3, "os três nomes em repouso: {nomes:?}");
+    let (_, _, _, _, hover) = pinta_faixa(|s| s.set_hot(Some(id)));
+    assert_eq!(textos_no_tempo(&hover, view), nomes, "no hover nada muda");
+    let top = nomes
+        .iter()
+        .copied()
+        .find(|r| r.x > view.x(1.1) && r.x < view.x(2.03))
+        .expect("o nome de top à direita da linha dele");
+    let acento = crate::alca_estado::acento(Theme::Forge);
+    let leitura_h = f64::from(TypeToken::Xs.px() + Spacing::Xs.px() * 2.0);
+    for arrasto in [false, true] {
+        let (ops, _, _, _, pintadas) = pinta_faixa(|s| {
+            s.set_active(Some(id));
+            s.begin_timeline_press(0.0, 0.0, false);
+            if arrasto {
+                s.note_timeline_pointer(40.0, 0.0);
+            }
+        });
+        let etiqueta = caixas(&ops, acento)
+            .into_iter()
+            .find(|b| (b.height() - leitura_h).abs() < 0.5)
+            .unwrap_or_else(|| panic!("arrasto={arrasto}: a etiqueta da leitura"));
+        let etiqueta = Rect::new(
+            etiqueta.x0 as f32,
+            etiqueta.y0 as f32,
+            etiqueta.width() as f32,
+            etiqueta.height() as f32,
+        );
+        assert!(
+            etiqueta.x >= view.time_x && etiqueta.x + etiqueta.w <= view.right,
+            "a etiqueta na área de tempo: {etiqueta:?}"
+        );
+        let textos = textos_no_tempo(&pintadas, view);
+        let (dela, fora): (Vec<Rect>, Vec<Rect>) =
+            textos.into_iter().partition(|r| dentro(*r, etiqueta));
+        assert!(!dela.is_empty(), "arrasto={arrasto}: a leitura tem texto");
+        assert!(
+            !fora.iter().any(|r| (r.x - top.x).abs() < 0.5),
+            "arrasto={arrasto}: o nome de top não se pinta ao lado: {fora:?}"
+        );
+        assert_eq!(fora.len(), 2, "os vizinhos continuam: {fora:?}");
+        for r in &fora {
+            assert!(
+                r.x + r.w < etiqueta.x || r.x > etiqueta.x + etiqueta.w,
+                "arrasto={arrasto}: a leitura {etiqueta:?} pisa o nome {r:?}"
+            );
+        }
+    }
+    let (_, _, _, _, solto) = pinta_faixa(|_| {});
+    assert_eq!(
+        textos_no_tempo(&solto, view),
+        nomes,
+        "ao soltar, o nome volta"
+    );
+}
+
+/// ⭐ **A leitura escolhe o lado livre** como o nome vira: sem lugar do lado do nome (um vizinho
+/// pintado lá), vai para o outro; sem lado livre, fica dentro da área de tempo.
+#[test]
+fn a_leitura_escolhe_o_lado_livre_e_fica_na_area_de_tempo() {
+    let area = (100.0, 600.0);
+    assert_eq!(lugar_da_leitura(300.0, 50.0, &[], area, false), 300.0 + DX);
+    let vizinho = [(300.0 + DX + 10.0, 400.0)];
+    assert_eq!(
+        lugar_da_leitura(300.0, 50.0, &vizinho, area, false),
+        300.0 - DX - 50.0,
+        "o vizinho à direita: vira à esquerda"
+    );
+    let x0 = lugar_da_leitura(590.0, 50.0, &[(0.0, 1000.0)], area, false);
+    assert!(x0 >= area.0 && x0 + 50.0 <= area.1, "dentro da área: {x0}");
+}

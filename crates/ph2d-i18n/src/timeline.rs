@@ -72,6 +72,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.stretch.label" => "{from} → {to}",
         // A faixa própria dos marcadores no pé da lista (maquete B6).
         "panel.timeline.markers_row" => "Markers",
+        // A leitura do marcador agarrado: o nome e o tempo juntos, no lugar do nome (dono 10/11).
+        "panel.timeline.marker_readout" => "{name} {time}",
         "panel.timeline.tip.stretch" => {
             "Playing only this stretch, in a loop. Click to play the whole clip again"
         }

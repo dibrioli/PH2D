@@ -24,3 +24,11 @@ fn the_gate_comes_before_the_game_key_and_the_four_readers_use_play_map() {
     let play = include_str!("../undo_jogo.rs");
     assert!(play.contains("self.jogador_entra();") && play.contains("self.jogador_sai();"));
 }
+
+/// A pintura da tela corre a cada quadro e recebe o mapa do PROJECTO: é ali que a sessão compara e segue a edição
+/// do autor no Play (`PlaySession::follow`), sem nenhuma linha a mais na shell.
+#[test]
+fn the_player_screen_paint_gets_the_project_map_every_frame() {
+    let paint = include_str!("../render_loop/fase_hero_paint.rs");
+    assert!(paint.contains("jogador.paint(_vp, &_hero.input_map,"));
+}

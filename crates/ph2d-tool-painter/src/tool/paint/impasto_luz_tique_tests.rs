@@ -121,6 +121,144 @@ fn o_tique_de_luz_pelo_gbuffer_e_a_luz_inteira() {
     );
 }
 
+/// A pista da PLACA (`compose_light_premul`): as texturas dos planos persistem e cada quadro escreve só a janela
+/// dobrada; um quadro sem planos (Show desligado) obriga o seguinte à tela inteira.
+#[derive(Default)]
+struct Placa {
+    relevo: Vec<u32>,
+    cob: Vec<u8>,
+    m0: Vec<u8>,
+    m1: Vec<u8>,
+    acesa: bool,
+}
+
+impl Placa {
+    /// Um quadro da pista: a área dobrada (0 = sem luz); confere planos e lâmpadas contra a dobra inteira.
+    fn quadro(&mut self, t: &mut PainterTool, caso: &str) -> u64 {
+        assert!(t.take_preview_dirty(), "{caso}: o tique suja a prévia");
+        let (w, h) = t.source_size;
+        let janela = t
+            .preview_gpu_region()
+            .filter(|_| self.acesa)
+            .unwrap_or((0, 0, w, h));
+        let Some(p) = t.impasto_gpu_planes_in(janela) else {
+            self.acesa = false;
+            return 0;
+        };
+        let n = (w * h) as usize;
+        if self.relevo.len() != n {
+            (self.relevo, self.cob) = (vec![0; n], vec![0; n]);
+            (self.m0, self.m1) = (vec![0; n * 4], vec![0; n * 4]);
+        }
+        let (x, y, pw, ph) = p.region;
+        for r in 0..ph as usize {
+            let (de, para, k) = (
+                r * pw as usize,
+                (y as usize + r) * w as usize + x as usize,
+                pw as usize,
+            );
+            for (d, s) in self.relevo[para..para + k]
+                .iter_mut()
+                .zip(&p.relief[de..de + k])
+            {
+                *d = s.to_bits();
+            }
+            self.cob[para..para + k].copy_from_slice(&p.cover[de..de + k]);
+            self.m0[para * 4..(para + k) * 4].copy_from_slice(&p.mat0[de * 4..(de + k) * 4]);
+            self.m1[para * 4..(para + k) * 4].copy_from_slice(&p.mat1[de * 4..(de + k) * 4]);
+        }
+        self.acesa = true;
+        let inteira = t.impasto_gpu_planes().expect("a dobra inteira");
+        let bits: Vec<u32> = inteira.relief.iter().map(|v| v.to_bits()).collect();
+        assert!(
+            bits == self.relevo,
+            "{caso}: relevo da placa ≠ dobra inteira"
+        );
+        assert!(
+            inteira.cover == self.cob,
+            "{caso}: cobertura ≠ dobra inteira"
+        );
+        assert!(
+            inteira.mat0 == self.m0 && inteira.mat1 == self.m1,
+            "{caso}: material ≠ dobra inteira"
+        );
+        assert_eq!(inteira.lamps, p.lamps, "{caso}: as lâmpadas da janela");
+        u64::from(pw) * u64::from(ph)
+    }
+}
+
+/// B15.3 (placa): o tique da lâmpada na pista GPU não redobra a tela — os planos persistem, só as lâmpadas
+/// mudam; traço, profundidade da camada e Show desligado continuam a dobrar o que mudou.
+#[test]
+fn o_tique_da_lampada_na_placa_nao_redobra_a_tela() {
+    let (w, h) = (240, 160);
+    let tela_toda = u64::from(w) * u64::from(h);
+    let mut t = tela(w, h);
+    let mut placa = Placa::default();
+    assert_eq!(placa.quadro(&mut t, "semente"), tela_toda);
+    let mut tique = |t: &mut PainterTool, placa: &mut Placa, i: usize, caso: &str| {
+        let acesa = placa.acesa;
+        arrasto(t, i);
+        let area = placa.quadro(t, &format!("{caso}, arrasto {i}"));
+        if acesa && area > 0 {
+            assert!(
+                area <= 1,
+                "{caso}, arrasto {i}: a placa redobrou {area} texels"
+            );
+        }
+    };
+    for i in 0..20 {
+        tique(&mut t, &mut placa, i, "arrastos");
+    }
+    crista(&mut t, 0.5);
+    let area = placa.quadro(&mut t, "traço");
+    assert!(
+        area > 1 && area < tela_toda,
+        "o traço dobra a sua janela ({area})"
+    );
+    tique(&mut t, &mut placa, 1, "depois do traço");
+    // A profundidade e o knob no MESMO quadro: a dobra muda na tela inteira.
+    let id = t.layers.active().expect("camada activa");
+    t.set_layer_impasto_depth(id, 0.35);
+    arrasto(&mut t, 2);
+    assert_eq!(placa.quadro(&mut t, "profundidade + knob"), tela_toda);
+    // Traço e knob no MESMO quadro: a janela do traço.
+    crista(&mut t, 0.4);
+    arrasto(&mut t, 3);
+    assert!(placa.quadro(&mut t, "traço + knob") > 1);
+    tique(&mut t, &mut placa, 0, "no fim");
+    // Uma tela nova do MESMO tamanho depois do knob (sai pela testemunha, não pela lista branca).
+    arrasto(&mut t, 1);
+    t.set_source(vec![255u8; (w * h * 4) as usize], w, h);
+    t.set_substrate_depth(1.0);
+    assert_eq!(placa.quadro(&mut t, "tela nova"), tela_toda);
+}
+
+/// Sonda (B15.3, placa): a dobra do tique da lâmpada na pista GPU a 4K — a tela inteira (antes) × a janela que a
+/// drenagem reivindica (agora), no MESMO processo, intercaladas, o mínimo de 10 arrastos.
+#[test]
+#[ignore = "sonda: corra com --ignored --nocapture em --profile smoke"]
+fn sonda_tique_da_placa_4k() {
+    let (w, h) = (3840, 2160);
+    let mut t = tela(w, h);
+    let _ = t.take_preview_dirty();
+    let (mut tela_ms, mut janela_ms) = (f64::MAX, f64::MAX);
+    for i in 0..10 {
+        t.set_impasto_light_angle(30.0 + 17.0 * i as f32);
+        let t0 = std::time::Instant::now();
+        assert!(t.take_preview_dirty());
+        let janela = t.preview_gpu_region().unwrap_or((0, 0, w, h));
+        let p = t.impasto_gpu_planes_in(janela).expect("planos");
+        janela_ms = janela_ms.min(t0.elapsed().as_secs_f64() * 1e3);
+        let t0 = std::time::Instant::now();
+        let q = t.impasto_gpu_planes_in((0, 0, w, h)).expect("planos");
+        tela_ms = tela_ms.min(t0.elapsed().as_secs_f64() * 1e3);
+        assert_eq!(p.lamps, q.lamps);
+        eprintln!("[placa 4K] {i}: janela {:?}", p.region);
+    }
+    eprintln!("[placa 4K] dobra do tique: tela inteira {tela_ms:.1} ms · janela {janela_ms:.2} ms");
+}
+
 /// Sonda (B15.3): 10 arrastos do ângulo a 4K, com papel e duas camadas de Impasto; ms por tique (o mínimo).
 #[test]
 #[ignore = "sonda: corra com --ignored --nocapture em --profile smoke"]

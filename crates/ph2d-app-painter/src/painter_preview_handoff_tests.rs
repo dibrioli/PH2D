@@ -458,6 +458,38 @@ fn the_gpu_producer_shows_what_the_cpu_producer_shows() {
             size,
             &format!("GPU producer vs CPU producer, papel {papel:?}"),
         );
+        // B15.3: o tique da lâmpada não redobra (janela de 1 texel) e a tela é a da CPU com a luz nova. O 1.º
+        // redobra: a `screen_truth` acima foi um quadro da CPU.
+        for angulo in [120.0, 200.0] {
+            t.set_impasto_light_angle(angulo);
+            let args = (&mut session, &mut preview, &mut preview_gpu, &mut toasts);
+            assert!(app_frame(
+                &mut renderer,
+                &mut t,
+                args.0,
+                args.1,
+                args.2,
+                args.3
+            ));
+        }
+        assert_eq!(
+            t.preview_gpu_region(),
+            Some((0, 0, 1, 1)),
+            "a lâmpada redobrou"
+        );
+        let slot = preview_gpu.expect("o slot da placa");
+        let (_, _, aceso) = renderer
+            .individual()
+            .readback(&gpu, slot.texture_id)
+            .expect("readback");
+        assert!(aceso != shown, "controlo: a luz nova mudou a tela");
+        let truth = screen_truth(&mut t);
+        assert_screen_equals(
+            &aceso,
+            &truth,
+            size,
+            &format!("tique da lâmpada, papel {papel:?}"),
+        );
     }
 }
 

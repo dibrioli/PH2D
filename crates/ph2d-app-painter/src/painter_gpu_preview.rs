@@ -338,10 +338,10 @@ fn compose_light_premul(
         "app.painter.painter_gpu_preview.composite_produced_no_texture",
     ))?;
     // Fold window: the tool's `preview_gpu_region` (Some only for a rect-confined change) AND the
-    // pass's `planes_seeded`; either one saying no folds the whole canvas.
+    // pass's `planes_seeded` AND a lit last frame (an unlit one wrote no planes); any no folds the whole canvas.
     let plane_win = tool
         .preview_gpu_region()
-        .filter(|_| session.light.planes_seeded(width, height))
+        .filter(|_| session.planos.is_some() && session.light.planes_seeded(width, height))
         .unwrap_or((0, 0, width, height));
     // The fold clock travels with its window (rect vs canvas).
     let m_fold = crate::paint_perf::on().then(std::time::Instant::now);

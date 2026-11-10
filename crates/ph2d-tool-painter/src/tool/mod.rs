@@ -211,6 +211,9 @@ pub struct PainterTool {
     luz_nao_aceso: Option<Arc<paint::impasto_luz_dobra::LuzGuardada>>,
     /// B15.3: desde a última drenagem, só um knob da lâmpada sujou a prévia.
     luz_so_lampada: bool,
+    /// B15.3 (placa): desde a última drenagem da pista GPU só knobs da lâmpada a sujaram; a testemunha
+    /// `(layers_revision, pixel_clock)` do último deles. Lista branca: `larga_a_luz_guardada` e a drenagem largam-na.
+    luz_placa: Option<(u64, u64)>,
     /// The dirty bbox the LAST `take_preview_arc` recomposed (`Some` for a
     /// partial fast-lane update the bridge may upload as a sub-rect).
     preview_upload_bbox: Option<Region>,
@@ -416,6 +419,7 @@ impl Default for PainterTool {
             composited: None,
             luz_nao_aceso: None,
             luz_so_lampada: false,
+            luz_placa: None,
             preview_upload_bbox: None,
             last_drain_branch: DrainBranch::Idle,
             layers_revision: 0,

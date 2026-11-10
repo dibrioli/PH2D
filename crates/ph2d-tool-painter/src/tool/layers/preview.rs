@@ -131,8 +131,18 @@ impl PainterTool {
             // *faça inteiro*. Consome-se o rect nos DOIS ramos — deixá-lo acumular faria a próxima
             // reivindicação incluir área que este frame já refez.
             let rect = self.dirty_rect.take();
+            // B15.3: só a lâmpada mudou ⇒ o relevo é o dos planos que a placa guarda: a janela de 1 texel
+            // (uma reivindicação generosa, logo sólida) reacende a tela inteira sem redobrá-la.
+            let so_luz = self.a_placa_so_reacende();
             self.preview_dirty_region = if std::mem::take(&mut self.gpu_lane_stale) {
                 None
+            } else if so_luz {
+                Some(Region {
+                    x: 0,
+                    y: 0,
+                    w: 1,
+                    h: 1,
+                })
             } else {
                 rect
             };

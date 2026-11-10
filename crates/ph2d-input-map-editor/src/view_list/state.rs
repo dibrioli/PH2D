@@ -47,6 +47,10 @@ pub struct ListState {
     pub refused: Option<&'static str>,
     pub scrub: Option<Scrub>,
     pub typing: Option<Typing>,
+    /// O caret, a selecção e o valor do foco do número aberto (`field.rs`).
+    pub caret: crate::field::Caret,
+    /// O último número que ficou no limite: a frase Warn ao lado dele, até à próxima edição válida.
+    pub warn: Option<(ActionId, Zone, crate::field::Clamp)>,
     /// A linha sob o ponteiro (mostra × nas teclas e o lixo).
     pub hover_row: Option<ActionId>,
     /// O alvo sob o ponteiro (a dica).

@@ -146,14 +146,14 @@ const PULSE_PERIOD_S: f64 = 1.2;
 /// O meio período do caret (s): o de omissão do Windows/GTK (530 ms).
 const CARET_HALF_S: f64 = 0.53;
 
-const VK_TAB: ph2d_input::Key = ph2d_input::Key(0x09);
-const VK_SPACE: ph2d_input::Key = ph2d_input::Key(0x20);
-const VK_ESCAPE: ph2d_input::Key = ph2d_input::Key(0x1B);
-const VK_SHIFTS: [ph2d_input::Key; 3] = [
-    ph2d_input::Key(0x10),
-    ph2d_input::Key(0xA0),
-    ph2d_input::Key(0xA1),
-];
+/// A tecla do vocabulário do app (`ph2d_input::Key::named_in_script`) é uma destas?
+fn is_named(key: ph2d_input::Key, names: &[&str]) -> bool {
+    names
+        .iter()
+        .filter_map(|n| ph2d_input::Key::named_in_script(n))
+        .flatten()
+        .any(|k| k == key)
+}
 
 /// O que uma tecla faz ao foco.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -427,6 +427,10 @@ impl InputMapDoc {
             self.set_view(v);
             return;
         }
+        if self.view() == View::List {
+            crate::view_list::act(self, id);
+            return;
+        }
         let r = c.rect;
         self.press_legacy(r.x + r.w * 0.5, r.y + r.h * 0.5);
     }
@@ -461,32 +465,49 @@ impl InputMapDoc {
                     (None, FocusKey::Next) => 0,
                     (None, _) => n - 1,
                 };
-                let id = order[i];
-                let text = self
-                    .control_of(id)
-                    .is_some_and(|c| c.role == ControlRole::TextField);
-                self.store.set_focus(text.then_some(id));
-                self.ui.focus = Some(id);
+                self.land_focus(order[i]);
                 true
             }
         }
     }
 
-    /// A tecla física para o foco (Tab, Shift, Enter, Space, Esc). `true` = tomada.
+    /// O foco chega a `id`: um campo de texto foca o campo (o anel é o da caixa do campo); um número da lista
+    /// abre o editor (`field.rs`); o resto ganha o anel da aba.
+    pub(crate) fn land_focus(&mut self, id: NodeId) {
+        let role = self.control_of(id).map(|c| c.role);
+        self.ui.focus = None;
+        self.store.set_focus(None);
+        match role {
+            Some(ControlRole::TextField) => self.store.set_focus(Some(id)),
+            Some(ControlRole::NumberField) if self.view() == View::List => {
+                crate::view_list::open_number(self, id);
+            }
+            _ => self.ui.focus = Some(id),
+        }
+    }
+
+    /// A tecla física para o foco (Tab, Shift, Enter, Space, Esc), pelos nomes do vocabulário do app
+    /// (`Key::named_in_script`). `true` = tomada.
     pub(crate) fn focus_raw_key(&mut self, key: ph2d_input::Key, pressed: bool) -> bool {
-        if VK_SHIFTS.contains(&key) {
+        if is_named(key, &["left_shift", "right_shift"]) {
             self.ui.shift = pressed;
             return false;
         }
         if !pressed {
             return false;
         }
-        let k = match key {
-            VK_TAB if self.ui.shift => FocusKey::Prev,
-            VK_TAB => FocusKey::Next,
-            VK_ESCAPE => FocusKey::Drop,
-            k if k == VK_SPACE || k.is_enter_like() => FocusKey::Activate,
-            _ => return false,
+        let k = if is_named(key, &["tab"]) {
+            if self.ui.shift {
+                FocusKey::Prev
+            } else {
+                FocusKey::Next
+            }
+        } else if is_named(key, &["escape"]) {
+            FocusKey::Drop
+        } else if is_named(key, &["space"]) || key.is_enter_like() {
+            FocusKey::Activate
+        } else {
+            return false;
         };
         self.focus_key(k)
     }

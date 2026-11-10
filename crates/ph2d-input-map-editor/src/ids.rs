@@ -19,6 +19,9 @@ const TRASH: NodeId = hash_node_id("input_map_list.trash");
 const DEAD: NodeId = hash_node_id("input_map_list.dead");
 const PRESS: NodeId = hash_node_id("input_map_list.press");
 const ROW: NodeId = hash_node_id("input_map_list.row");
+const CHIP: NodeId = hash_node_id("input_map_list.chip");
+const DEAD_HANDLE: NodeId = hash_node_id("input_map_list.dead_handle");
+const PRESS_HANDLE: NodeId = hash_node_id("input_map_list.press_handle");
 
 const fn per(base: NodeId, a: ph2d_input::ActionId, n: usize) -> NodeId {
     NodeId(
@@ -37,6 +40,11 @@ pub enum ListHit {
     Dead(ph2d_input::ActionId),
     Press(ph2d_input::ActionId),
     Row(ph2d_input::ActionId),
+    /// O chip de uma tecla (o × é o `RemoveBinding`).
+    Chip(ph2d_input::ActionId, usize),
+    /// A alça «D»/«P» que arrasta o número.
+    DeadHandle(ph2d_input::ActionId),
+    PressHandle(ph2d_input::ActionId),
 }
 
 impl ListHit {
@@ -49,6 +57,9 @@ impl ListHit {
             Self::Dead(a) => per(DEAD, a, 0),
             Self::Press(a) => per(PRESS, a, 0),
             Self::Row(a) => per(ROW, a, 0),
+            Self::Chip(a, n) => per(CHIP, a, n),
+            Self::DeadHandle(a) => per(DEAD_HANDLE, a, 0),
+            Self::PressHandle(a) => per(PRESS_HANDLE, a, 0),
         }
     }
 }
@@ -57,3 +68,6 @@ pub const SEARCH_CLEAR: NodeId = hash_node_id("input_map_list.search_clear");
 
 /// O nó de acessibilidade do documento da aba (os controlos são filhos dele).
 pub const DOCUMENT: NodeId = hash_node_id("input_map_tab.document");
+
+/// O polegar da barra da lista.
+pub const LIST_THUMB: NodeId = hash_node_id("input_map_list.thumb");

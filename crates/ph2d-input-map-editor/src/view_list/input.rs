@@ -18,8 +18,12 @@ fn hit_of(doc: &InputMapDoc, id: ph2d_a11y::NodeId) -> Option<ListHit> {
             ListHit::Trash(a.id),
             ListHit::Dead(a.id),
             ListHit::Press(a.id),
+            ListHit::DeadHandle(a.id),
+            ListHit::PressHandle(a.id),
+            ListHit::Row(a.id),
         ];
         all.extend((0..a.bindings.len()).map(|n| ListHit::RemoveBinding(a.id, n)));
+        all.extend((0..a.bindings.len()).map(|n| ListHit::Chip(a.id, n)));
         all.into_iter().find(|h| h.id() == id)
     })
 }
@@ -35,9 +39,9 @@ pub fn tip_of(doc: &InputMapDoc, id: ph2d_a11y::NodeId) -> Option<&'static str> 
             ListHit::Listen(_) => "input_map_list.add_key_tip",
             ListHit::RemoveBinding(..) => "input_map_list.remove_key_tip",
             ListHit::Trash(_) => "input_map_list.remove_action_tip",
-            ListHit::Dead(_) => "input_map_list.dead_tip",
-            ListHit::Press(_) => "input_map_list.press_tip",
-            ListHit::Row(_) => return None,
+            ListHit::Dead(_) | ListHit::DeadHandle(_) => "input_map_list.dead_tip",
+            ListHit::Press(_) | ListHit::PressHandle(_) => "input_map_list.press_tip",
+            ListHit::Row(_) | ListHit::Chip(..) => return None,
         },
     };
     Some(ph2d_i18n::tr(key))
@@ -102,8 +106,8 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
                     let armed = doc.snap.listening == Some(a);
                     doc.list.listen_request = Some((!armed).then_some(a));
                 }
-                Some(h @ (ListHit::Dead(a) | ListHit::Press(a))) => {
-                    let zone = if matches!(h, ListHit::Dead(_)) {
+                Some(h @ (ListHit::DeadHandle(a) | ListHit::PressHandle(a))) => {
+                    let zone = if matches!(h, ListHit::DeadHandle(_)) {
                         Zone::Dead
                     } else {
                         Zone::Press
@@ -116,7 +120,12 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
                             v.press_point
                         }
                     });
-                    let width = doc.hits.rect_for(h.id()).map_or(1.0, |r| r.w.max(1.0));
+                    let field = if zone == Zone::Dead {
+                        ListHit::Dead(a)
+                    } else {
+                        ListHit::Press(a)
+                    };
+                    let width = doc.hits.rect_for(field.id()).map_or(1.0, |r| r.w.max(1.0));
                     doc.list.scrub = Some(Scrub {
                         action: a,
                         zone,
@@ -183,48 +192,144 @@ pub(crate) fn release(doc: &mut InputMapDoc) -> bool {
         return false;
     };
     if !s.moved {
-        let buffer = format!("{:.2}", s.start);
-        doc.list.typing = Some(Typing {
-            action: s.action,
-            zone: s.zone,
-            buffer,
-        });
+        open_zone(doc, s.action, s.zone);
     }
     true
 }
 
-/// Aplica o número escrito (o que não for número é ignorado).
-pub(crate) fn commit_typing(doc: &mut InputMapDoc) {
-    if let Some(t) = doc.list.typing.take()
-        && let Ok(v) = t.buffer.trim().parse::<f32>()
-    {
-        set_zone(doc, t.action, t.zone, v);
+/// Abre o número `zone` de `action` (`field.rs`): o texto do valor, todo seleccionado.
+fn open_zone(doc: &mut InputMapDoc, action: ph2d_input::ActionId, zone: Zone) {
+    let Some(a) = doc.snap.map.get(action) else {
+        return;
+    };
+    let v = if zone == Zone::Dead {
+        a.dead_zone
+    } else {
+        a.press_point
+    };
+    let (buffer, caret) = crate::field::Caret::open(v);
+    doc.list.caret = caret;
+    doc.list.typing = Some(Typing {
+        action,
+        zone,
+        buffer,
+    });
+}
+
+/// O foco (clique ou Tab) chega ao número `id`.
+pub(crate) fn open_number(doc: &mut InputMapDoc, id: ph2d_a11y::NodeId) {
+    commit_typing(doc);
+    match hit_of(doc, id) {
+        Some(ListHit::Dead(a)) => open_zone(doc, a, Zone::Dead),
+        Some(ListHit::Press(a)) => open_zone(doc, a, Zone::Press),
+        _ => {}
     }
 }
 
-/// A tecla para o número aberto: dígitos e ponto escrevem, `Enter` aplica, `Esc` desiste.
+/// Aplica `v` (já preso) ao número aberto e guarda o aviso do limite.
+fn apply(
+    doc: &mut InputMapDoc,
+    action: ph2d_input::ActionId,
+    zone: Zone,
+    v: f32,
+    clamp: Option<crate::field::Clamp>,
+) {
+    doc.list.warn = clamp.map(|c| (action, zone, c));
+    set_zone(doc, action, zone, v);
+}
+
+/// Aplica o número escrito (o que não for número devolve o valor do foco).
+pub(crate) fn commit_typing(doc: &mut InputMapDoc) {
+    if let Some(t) = doc.list.typing.take() {
+        let (v, clamp) = crate::field::value_of(&t.buffer, &doc.list.caret);
+        apply(doc, t.action, t.zone, v, clamp);
+    }
+}
+
+/// A tecla para o número aberto (`field::key`): Enter aplica, Esc devolve, Tab aplica e segue.
 fn key_typing(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
+    use crate::field::Outcome;
     let Some(t) = doc.list.typing.as_mut() else {
         return false;
     };
-    if !input.pressed {
-        return true;
-    }
-    match input.key {
-        DocKey::Enter => commit_typing(doc),
-        DocKey::Escape => doc.list.typing = None,
-        DocKey::Backspace => {
-            t.buffer.pop();
+    let (action, zone) = (t.action, t.zone);
+    match crate::field::key(&mut t.buffer, &mut doc.list.caret, input) {
+        Outcome::Ignored | Outcome::Edited => {}
+        Outcome::Stepped(clamp) => doc.list.warn = clamp.map(|c| (action, zone, c)),
+        Outcome::Commit(v, clamp) => {
+            doc.list.typing = None;
+            apply(doc, action, zone, v, clamp);
         }
-        _ => t.buffer.extend(
-            input
-                .text
-                .unwrap_or("")
-                .chars()
-                .filter(|c| c.is_ascii_digit() || *c == '.'),
-        ),
+        Outcome::Revert(_) => doc.list.typing = None,
+        Outcome::Move { v, clamp, back } => {
+            doc.list.typing = None;
+            apply(doc, action, zone, v, clamp);
+            let id = if zone == Zone::Dead {
+                ListHit::Dead(action).id()
+            } else {
+                ListHit::Press(action).id()
+            };
+            doc.ui.focus = Some(id);
+            let k = if back {
+                crate::interact::FocusKey::Prev
+            } else {
+                crate::interact::FocusKey::Next
+            };
+            doc.focus_key(k);
+        }
     }
     true
+}
+
+/// Um controlo da lista disparou (o Up dentro, ou Enter/Space no foco): age pelo id, nunca pela posição.
+pub(crate) fn act(doc: &mut InputMapDoc, id: ph2d_a11y::NodeId) {
+    let hit = hit_of(doc, id);
+    if matches!(hit, Some(ListHit::Dead(_) | ListHit::Press(_))) {
+        doc.store.set_focus(None);
+        open_number(doc, id);
+        return;
+    }
+    commit_typing(doc);
+    if doc.snap.listening.is_some() && !matches!(hit, Some(ListHit::Listen(_))) {
+        doc.list.listen_request = Some(None);
+    }
+    match hit {
+        _ if id == ids::ADD => commit_add(doc),
+        _ if id == ids::NEW_NAME || id == ids::SEARCH => focus(doc, Some(id)),
+        _ if id == ids::SEARCH_CLEAR => {
+            doc.list.search_key = None;
+            clear_text(doc, ids::SEARCH);
+            focus(doc, Some(ids::SEARCH));
+        }
+        Some(ListHit::RemoveBinding(a, n)) => {
+            focus(doc, None);
+            doc.pending.push(InputMapEdit::RemoveBinding(a, n));
+        }
+        Some(ListHit::Trash(a)) => {
+            focus(doc, None);
+            doc.pending.push(InputMapEdit::Remove(a));
+        }
+        Some(ListHit::Listen(a)) => {
+            focus(doc, None);
+            let armed = doc.snap.listening == Some(a);
+            doc.list.listen_request = Some((!armed).then_some(a));
+        }
+        _ => focus(doc, None),
+    }
+}
+
+fn clear_text(doc: &mut InputMapDoc, id: ph2d_a11y::NodeId) {
+    if let Some(InteractiveState::TextInput {
+        text,
+        caret,
+        selection_anchor,
+        ..
+    }) = doc.store.get_mut(id)
+    {
+        text.clear();
+        *caret = 0;
+        *selection_anchor = None;
+    }
 }
 
 pub(crate) fn wheel(doc: &mut InputMapDoc, dy: f32) -> bool {
@@ -297,20 +402,38 @@ pub(crate) fn key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
             doc.list.search_key = None;
             return true;
         }
+        DocKey::Char('a' | 'A') if input.mods.ctrl => {
+            if let Some(InteractiveState::TextInput {
+                text,
+                caret,
+                selection_anchor,
+                ..
+            }) = doc.store.get_mut(f)
+            {
+                *selection_anchor = Some(0);
+                *caret = text.len();
+            }
+            return true;
+        }
+        DocKey::Backspace | DocKey::Delete if take_selection(doc, f) => {
+            edited(doc, f);
+            return true;
+        }
         DocKey::Backspace => "backspace",
         DocKey::Delete => "delete",
         DocKey::Left => "left",
         DocKey::Right => "right",
         DocKey::Home => "home",
+        DocKey::End => "end",
         _ => {
-            for ch in input.text.unwrap_or("").chars() {
+            let typed = input.text.unwrap_or("");
+            if !typed.is_empty() {
+                take_selection(doc, f);
+            }
+            for ch in typed.chars() {
                 let _ = dispatch_text_input(&mut doc.store, ch, &arena);
             }
-            if f == ids::NEW_NAME {
-                doc.list.refused = None;
-            } else {
-                doc.list.search_key = None;
-            }
+            edited(doc, f);
             return true;
         }
     };
@@ -324,4 +447,32 @@ pub(crate) fn key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
         let _ = dispatch_key(&mut doc.store, ev, &arena);
     }
     true
+}
+
+/// Apaga a selecção do campo `f`. `true` = havia uma.
+fn take_selection(doc: &mut InputMapDoc, f: ph2d_a11y::NodeId) -> bool {
+    let Some(InteractiveState::TextInput {
+        text,
+        caret,
+        selection_anchor,
+        ..
+    }) = doc.store.get_mut(f)
+    else {
+        return false;
+    };
+    let Some(a) = selection_anchor.take().filter(|a| *a != *caret) else {
+        return false;
+    };
+    let (s, e) = (a.min(*caret).min(text.len()), a.max(*caret).min(text.len()));
+    text.replace_range(s..e, "");
+    *caret = s;
+    true
+}
+
+fn edited(doc: &mut InputMapDoc, f: ph2d_a11y::NodeId) {
+    if f == ids::NEW_NAME {
+        doc.list.refused = None;
+    } else {
+        doc.list.search_key = None;
+    }
 }

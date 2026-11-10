@@ -11,7 +11,9 @@ pub(crate) mod text;
 
 pub use footer::binding_label;
 pub use input::tip_of;
-pub(crate) use input::{commit_typing, drag, drag_thumb, key, press, raw_key, release, wheel};
+pub(crate) use input::{
+    act, commit_typing, drag, drag_thumb, key, open_number, press, raw_key, release, wheel,
+};
 
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::icons::IconId;
@@ -27,6 +29,9 @@ use ph2d_vector::VectorScene;
 
 use crate::doc::InputMapDoc;
 use crate::ids;
+use crate::interact::{Control, ControlRole};
+use ph2d_editor_core::interaction::InteractiveState;
+use ph2d_editor_core::widget::ButtonState;
 
 /// As acções que a busca deixa ver, pela ordem do mapa.
 #[must_use]
@@ -77,6 +82,26 @@ pub fn paint(
         .max(m::FIELD_VALUE_MIN_W)
         .min(w);
     let name_w = (w - add_w - m::FIELD_GAP).max(0.0);
+    let typed = doc
+        .store
+        .text(ids::NEW_NAME)
+        .unwrap_or("")
+        .trim()
+        .to_owned();
+    let add_off = if typed.is_empty() {
+        Some("input_map_list.add_off_empty")
+    } else if doc.snap.map.id(&typed).is_some() {
+        Some("input_map_list.add_off_taken")
+    } else {
+        None
+    };
+    if let Some(InteractiveState::Button { state }) = doc.store.get_mut(ids::ADD) {
+        *state = if add_off.is_some() {
+            ButtonState::Disabled
+        } else {
+            ButtonState::Normal
+        };
+    }
     {
         let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, x, name_w);
         let text = Widget::Text {
@@ -99,6 +124,20 @@ pub fn paint(
             primary: false,
         };
         y = below.max(c.full(None, button, y));
+    }
+    if let Some(r) = doc.hits.rect_for(ids::NEW_NAME) {
+        doc.control(Control::new(
+            ids::NEW_NAME,
+            r,
+            ControlRole::TextField,
+            new_name,
+        ));
+    }
+    if let Some(r) = doc.hits.rect_for(ids::ADD) {
+        if doc.is_pressed(ids::ADD) {
+            ring(scene, r, ink);
+        }
+        doc.control(Control::new(ids::ADD, r, ControlRole::Button, add).disabled(add_off));
     }
     if let Some(why) = doc.list.refused {
         let r = Rect::new(x, y + m::FIELD_ROW_GAP, w, m::FIELD_H);
@@ -156,7 +195,7 @@ fn paint_search(
             r.x + indent,
             r.w - indent,
         );
-        return c.full(
+        let below = c.full(
             None,
             Widget::Search {
                 id: ids::SEARCH,
@@ -164,8 +203,17 @@ fn paint_search(
             },
             r.y,
         );
+        let field = doc.hits.rect_for(ids::SEARCH).unwrap_or(r);
+        doc.control(Control::new(ids::SEARCH, field, ControlRole::TextField, ph));
+        // O × só com texto: limpa e o foco fica na busca.
+        if !doc.store.text(ids::SEARCH).unwrap_or("").is_empty() {
+            let x_box = Rect::new(r.x + r.w - g - m::SEG_INSET, r.y + (r.h - g) * 0.5, g, g);
+            clear_button(doc, scene, x_box, ink);
+        }
+        return below;
     };
-    doc.hits.register(ids::SEARCH, r);
+    let ph = tr("input_map_list.search");
+    doc.control(Control::new(ids::SEARCH, r, ControlRole::TextField, ph));
     // A tecla procurada é o texto do campo, regular (maquete A3): o amarelo fica nas teclas das linhas.
     let label = k.label();
     let x_box = Rect::new(r.x + r.w - g - m::SEG_INSET, r.y + (r.h - g) * 0.5, g, g);
@@ -185,18 +233,30 @@ fn paint_search(
         ink.color(ColorToken::Text1),
     );
     // O × só com o campo focado ou sob o ponteiro; o alvo fica registado sempre.
-    let here = |id: ph2d_a11y::NodeId| id == ids::SEARCH || id == ids::SEARCH_CLEAR;
-    if doc.store.focus_id() == Some(ids::SEARCH) || doc.list.hover_target.is_some_and(here) {
-        paint_icon(
-            scene,
-            IconId::Close,
-            x_box,
-            ink.color(ColorToken::Text2),
-            StrokeToken::Default.px(),
-        );
-    }
-    doc.hits.register(ids::SEARCH_CLEAR, x_box);
+    clear_button(doc, scene, x_box, ink);
     r.y + r.h
+}
+
+/// O × da busca: um botão do registo (hover e premido à vista).
+fn clear_button(doc: &mut InputMapDoc, scene: &mut VectorScene, x_box: Rect, ink: CardInk) {
+    let id = ids::SEARCH_CLEAR;
+    if doc.is_pressed(id) || doc.is_hovered(id) {
+        let bg = if doc.is_pressed(id) {
+            ColorToken::AccentSoft
+        } else {
+            ColorToken::CardFieldHover
+        };
+        fill_rounded_rect(scene, x_box, m::SEG_RADIUS, ink.color(bg));
+    }
+    paint_icon(
+        scene,
+        IconId::Close,
+        x_box,
+        ink.color(ColorToken::Text2),
+        StrokeToken::Default.px(),
+    );
+    let label = tr("input_map_list.clear_search");
+    doc.control(Control::new(id, x_box, ControlRole::Button, label));
 }
 
 /// A tinta que se lê sobre o amarelo do destaque (escura no tema escuro, a do tema no claro).

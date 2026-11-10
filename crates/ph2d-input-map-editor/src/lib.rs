@@ -5,6 +5,7 @@
 pub mod census;
 pub mod doc;
 pub mod edit;
+pub mod field;
 pub mod ids;
 pub mod interact;
 pub mod layout;

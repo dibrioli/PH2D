@@ -17,7 +17,8 @@ use ph2d_vector::VectorScene;
 
 use super::{foot, footer, ring, text};
 use crate::doc::InputMapDoc;
-use crate::ids::ListHit;
+use crate::ids::{self, ListHit};
+use crate::interact::{Control, ControlRole};
 
 const ROW_H: f32 = m::FIELD_H + m::SEG_INSET;
 const CHIP_H: f32 = m::FIELD_H - m::SEG_INSET;
@@ -72,6 +73,8 @@ pub(super) fn paint_rows(
         let thumb = scrollbar_thumb_rect(track, doc.list.scroll, total, list_h);
         let color = if doc.list.thumb_drag.is_some() {
             ColorToken::Accent
+        } else if doc.thumb_fade(ids::LIST_THUMB) > 0.5 {
+            ColorToken::Text2
         } else {
             ColorToken::BorderEmph
         };
@@ -82,6 +85,13 @@ pub(super) fn paint_rows(
             thumb.h,
         );
         fill_rounded_rect(scene, pill, m::BAR_TRACK * 0.5, ink.color(color));
+        let bar = tr("input_map_list.list_bar");
+        doc.control(Control::new(
+            ids::LIST_THUMB,
+            thumb,
+            ControlRole::ScrollThumb,
+            bar,
+        ));
         doc.list.bar = Some(super::state::Bar {
             thumb,
             track_h: track.h,
@@ -183,7 +193,12 @@ fn paint_row(
         );
         doc.census.outlined.push(r);
     }
-    doc.hits.register(ListHit::Row(a.id).id(), r);
+    doc.control(Control::new(
+        ListHit::Row(a.id).id(),
+        r,
+        ControlRole::ListItem,
+        a.name.clone(),
+    ));
     let hover = doc.list.hover_row == Some(a.id);
     let name_x = head.x + m::LIST_PAD_X;
     let name_r = Rect::new(
@@ -206,8 +221,10 @@ fn paint_row(
     let mut x = head.x + name_w;
     let cy = head.y + (head.h - CHIP_H) * 0.5;
     for (n, b) in a.bindings.iter().enumerate() {
+        let chip_id = ListHit::Chip(a.id, n).id();
         let chip = paint_chip(
             doc,
+            chip_id,
             *b,
             Rect::new(x, cy, (right - x).max(0.0), CHIP_H),
             scene,
@@ -222,6 +239,17 @@ fn paint_row(
                 g,
                 g,
             );
+            let name = footer::binding_label(*b);
+            let label = tr("input_map_list.remove_named").replace("{key}", &name);
+            let x_id = ListHit::RemoveBinding(a.id, n).id();
+            if doc.is_pressed(x_id) || doc.is_hovered(x_id) {
+                let bg = if doc.is_pressed(x_id) {
+                    ColorToken::AccentSoft
+                } else {
+                    ColorToken::CardFieldHover
+                };
+                fill_rounded_rect(scene, xr, m::SEG_RADIUS, ink.color(bg));
+            }
             paint_icon(
                 scene,
                 IconId::Close,
@@ -229,7 +257,7 @@ fn paint_row(
                 ink.color(ColorToken::Text2),
                 StrokeToken::Default.px(),
             );
-            doc.hits.register(ListHit::RemoveBinding(a.id, n).id(), xr);
+            doc.control(Control::new(x_id, xr, ControlRole::Button, label));
         }
         x += chip.w + m::SEG_PAD * 2.0;
     }
@@ -247,6 +275,15 @@ fn paint_row(
         let g = m::KEY_MARK_BOX;
         let tr_box = Rect::new(right, head.y + (head.h - g) * 0.5, trash_w, g);
         let gl = Rect::new(tr_box.x + (trash_w - g) * 0.5, tr_box.y, g, g);
+        let t_id = ListHit::Trash(a.id).id();
+        if doc.is_pressed(t_id) || doc.is_hovered(t_id) {
+            let bg = if doc.is_pressed(t_id) {
+                ColorToken::AccentSoft
+            } else {
+                ColorToken::CardFieldHover
+            };
+            fill_rounded_rect(scene, tr_box, m::SEG_RADIUS, ink.color(bg));
+        }
         paint_icon(
             scene,
             IconId::Trash,
@@ -254,7 +291,8 @@ fn paint_row(
             ink.color(ColorToken::Text2),
             StrokeToken::Default.px(),
         );
-        doc.hits.register(ListHit::Trash(a.id).id(), tr_box);
+        let label = tr("input_map_list.remove_action_tip");
+        doc.control(Control::new(t_id, tr_box, ControlRole::Button, label));
     }
     if a.is_analog() {
         paint_zones(
@@ -272,6 +310,7 @@ fn paint_row(
 /// e a seta da manche depois. A tecla que a busca procura enche-se do amarelo do destaque, sem mudar de tamanho.
 fn paint_chip(
     doc: &mut InputMapDoc,
+    id: ph2d_a11y::NodeId,
     b: Binding,
     room: Rect,
     scene: &mut VectorScene,
@@ -299,6 +338,10 @@ fn paint_chip(
     let lit = doc.list.search_key.is_some_and(|k| b == Binding::Key(k));
     let bg = if lit {
         ColorToken::InputMapHighlight
+    } else if doc.is_pressed(id) {
+        ColorToken::AccentSoft
+    } else if doc.is_hovered(id) {
+        ColorToken::CardFieldHover
     } else {
         ColorToken::CardField
     };
@@ -311,6 +354,7 @@ fn paint_chip(
         )
     };
     fill_rounded_rect(scene, chip, m::SEG_RADIUS, ink.color(bg));
+    doc.control(Control::new(id, chip, ControlRole::Chip, label.clone()));
     if lit {
         doc.census.filled.push((chip, bg));
     }
@@ -352,8 +396,12 @@ fn paint_plus(
         let msg = tr(key);
         let w = (ts.prefix_width(msg, m::VALUE_PX) + m::SEG_INSET * 2.0).min(room.w);
         let r = Rect::new(room.x, room.y, w, room.h);
-        // A caixa à escuta tingida de azul por baixo do tracejado (maquete A2).
-        fill_rounded_rect(scene, r, m::SEG_RADIUS, ink.color(ColorToken::AccentSoft));
+        // A caixa à escuta tingida de azul por baixo do tracejado (maquete A2); o tingido pulsa (`doc.pulse`,
+        // estático sem movimento).
+        let lid = ListHit::Listen(id).id();
+        if doc.pulse(lid).is_none_or(|t| t > 0.5) {
+            fill_rounded_rect(scene, r, m::SEG_RADIUS, ink.color(ColorToken::AccentSoft));
+        }
         super::listening_ring(&mut doc.census, scene, r, ink);
         let inner = Rect::new(r.x + m::SEG_INSET, r.y, r.w - m::SEG_INSET * 2.0, r.h);
         text::line(
@@ -365,19 +413,28 @@ fn paint_plus(
             m::VALUE_PX,
             ink.color(ColorToken::Text1),
         );
-        doc.hits.register(ListHit::Listen(id).id(), r);
+        let label = tr("input_map_list.add_key_tip");
+        doc.control(Control::new(lid, r, ControlRole::Button, label));
         return;
     }
     let r = Rect::new(room.x, room.y, (g + m::SEG_INSET * 2.0).min(room.w), room.h);
     // O alvo fica registado mesmo invisível: só se chega a ele com o ponteiro na linha, e aí ele desenha-se.
-    doc.hits.register(ListHit::Listen(id).id(), r);
+    let lid = ListHit::Listen(id).id();
+    doc.control(Control::new(
+        lid,
+        r,
+        ControlRole::Button,
+        tr("input_map_list.add_key_tip"),
+    ));
     if !visible {
         return;
     }
     // Numa linha SEM teclas o «+» é a única coisa a fazer: numa caixa como a de um chip, em tinta cheia.
     let empty = doc.snap.map.get(id).is_some_and(|a| a.bindings.is_empty());
     if doc.list.hover_row == Some(id) || empty {
-        let bg = if doc.list.hover_row == Some(id) {
+        let bg = if doc.is_pressed(lid) {
+            ColorToken::AccentSoft
+        } else if doc.list.hover_row == Some(id) {
             ColorToken::CardFieldHover
         } else {
             ColorToken::CardField
@@ -420,41 +477,99 @@ fn paint_zones(
     .enumerate()
     {
         let x = r.x + pad + (half + m::FIELD_GAP) * i as f32;
+        let zone = if i == 0 {
+            super::state::Zone::Dead
+        } else {
+            super::state::Zone::Press
+        };
+        let handle_hit = if i == 0 {
+            ListHit::DeadHandle(a.id)
+        } else {
+            ListHit::PressHandle(a.id)
+        };
         let lr = Rect::new(x, r.y, half, m::VALUE_PX);
+        // O aviso do limite toma o lugar do rótulo, colado ao campo, até à próxima edição válida.
+        let warn = (doc.list.warn)
+            .filter(|(w, z, _)| *w == a.id && *z == zone)
+            .map(|(_, _, c)| c);
+        let (above, tint) = warn.map_or((tr(label), ColorToken::CardLabel), |c| {
+            (tr(c.i18n_key()), ColorToken::Warn)
+        });
         text::line(
             &mut doc.census,
             ts,
             scene,
-            tr(label),
+            above,
             lr,
             m::VALUE_PX,
-            ink.color(ColorToken::CardLabel),
+            ink.color(tint),
         );
         let f = Rect::new(x, lr.y + lr.h + m::LABEL_BOTTOM, half, m::FIELD_H);
-        let live = doc.list.scrub.is_some_and(|s| {
-            ListHit::Dead(s.action) == hit && s.zone == super::state::Zone::Dead
-                || ListHit::Press(s.action) == hit && s.zone == super::state::Zone::Press
-        });
-        let fill = if live {
-            ColorToken::CardFieldHover
+        let live = doc
+            .list
+            .scrub
+            .is_some_and(|s| s.action == a.id && s.zone == zone);
+        let typing = doc
+            .list
+            .typing
+            .as_ref()
+            .filter(|t| t.action == a.id && t.zone == zone)
+            .map(|t| t.buffer.clone());
+        let hover = doc.is_hovered(hit.id()) || doc.is_hovered(handle_hit.id());
+        crate::field::paint_frame(scene, ink, f, hover || live, typing.is_some() || live);
+        let mark = tr(if i == 0 {
+            "input_map_try.dead_mark"
         } else {
-            ColorToken::CardField
-        };
-        fill_rounded_rect(scene, f, m::FIELD_RADIUS, ink.color(fill));
-        if live {
-            ring(scene, f, ink);
-        }
-        let typing = doc.list.typing.as_ref().filter(|t| {
-            t.action == a.id
-                && (t.zone == super::state::Zone::Dead) == matches!(hit, ListHit::Dead(_))
+            "input_map_try.press_mark"
         });
+        let mw = ts.prefix_width(mark, m::VALUE_PX);
+        let handle = Rect::new(f.x, f.y, mw + m::SEG_INSET * 2.0, f.h);
+        let mr = Rect::new(f.x + m::SEG_INSET, f.y, mw, f.h);
+        let mark_tint = if live || doc.is_hovered(handle_hit.id()) {
+            ColorToken::Accent
+        } else {
+            ColorToken::CardLabel
+        };
+        text::line(
+            &mut doc.census,
+            ts,
+            scene,
+            mark,
+            mr,
+            m::VALUE_PX,
+            ink.color(mark_tint),
+        );
+        let vx = handle.x + handle.w;
+        let vr = Rect::new(vx, f.y, (f.x + f.w - m::SEG_INSET - vx).max(0.0), f.h);
+        let v = typing
+            .clone()
+            .unwrap_or_else(|| crate::field::format(value));
+        let fid = hit.id();
         if typing.is_some() {
-            ring(scene, f, ink);
+            let c = doc.list.caret;
+            let on = doc.caret_on(fid);
+            crate::field::paint_edit(scene, ts, ink, vr, vx, &v, c.caret, c.anchor, on);
         }
-        let v = typing.map_or_else(|| format!("{value:.2}"), |t| t.buffer.clone());
-        let dead = matches!(hit, ListHit::Dead(_));
-        crate::view_keyboard::travel::zone_value(doc, ts, scene, ink, f, dead, &v);
-        doc.hits.register(hit.id(), f);
+        text::line(
+            &mut doc.census,
+            ts,
+            scene,
+            &v,
+            vr,
+            m::VALUE_PX,
+            ink.color(ColorToken::Text1),
+        );
+        let mut body = Control::new(fid, f, ControlRole::NumberField, tr(label));
+        body.look = ph2d_editor_core::doc_surface::PointerLook::Text;
+        doc.control(body);
+        let mut grip = Control::new(
+            handle_hit.id(),
+            handle,
+            ControlRole::DragHandle,
+            tr("input_map_list.drag_tip"),
+        );
+        grip.focusable = false;
+        doc.control(grip);
         doc.census.numbers.push(a.id);
     }
 }

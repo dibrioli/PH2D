@@ -317,6 +317,10 @@ impl InputMapDoc {
 
     /// Uma tecla para o campo focado da aba. `true` = tomada.
     pub fn key(&mut self, input: &KeyInput<'_>) -> bool {
+        // O número aberto da lista é dono do Tab, do Enter e do Esc (aplica e segue, aplica, devolve).
+        if self.view == View::List && self.list.typing.is_some() {
+            return crate::view_list::key(self, input);
+        }
         if self.focus_text_key(input) {
             return true;
         }
@@ -329,7 +333,8 @@ impl InputMapDoc {
 
     /// A tecla física (`DocumentSurface::raw_key`): a busca por tecla. `true` = tomada.
     pub fn raw_key(&mut self, key: Key, pressed: bool, writes_text: bool) -> bool {
-        if self.focus_raw_key(key, pressed) {
+        let editing = self.view == View::List && self.list.typing.is_some();
+        if !editing && self.focus_raw_key(key, pressed) {
             return true;
         }
         match self.view {
@@ -382,7 +387,7 @@ impl InputMapDoc {
 
 /// O `WidgetStore` da aba: os dois campos de texto do cartão (nome novo e busca).
 fn text_fields() -> WidgetStore {
-    let mut s = WidgetStore::with_capacity(2);
+    let mut s = WidgetStore::with_capacity(3);
     for id in [ids::NEW_NAME, ids::SEARCH] {
         s.register(
             id,
@@ -394,6 +399,12 @@ fn text_fields() -> WidgetStore {
             },
         );
     }
+    s.register(
+        ids::ADD,
+        InteractiveState::Button {
+            state: ph2d_editor_core::widget::ButtonState::Normal,
+        },
+    );
     s
 }
 

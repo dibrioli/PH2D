@@ -55,6 +55,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "input_map_list.comma" => ", ",
         "input_map_list.and" => " and ",
         "input_map_list.period" => ".",
+        "input_map_list.kept_max" => "Kept at 1.00, the most it can be.",
+        "input_map_list.kept_min" => "Kept at 0.00, the least it can be.",
+        "input_map_list.add_off_empty" => "Type a name above first, then Add makes the action.",
+        "input_map_list.add_off_taken" => {
+            "An action already has this name. Change the name to add it."
+        }
+        "input_map_list.remove_named" => "Remove {key}",
+        "input_map_list.clear_search" => "Clear the search",
+        "input_map_list.drag_tip" => "Drag left or right to change the number.",
+        "input_map_list.list_bar" => "Scroll the actions",
         _ => return None,
     })
 }

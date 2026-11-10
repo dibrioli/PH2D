@@ -529,11 +529,17 @@ fn a_foto_mais_velha_conta_inteira() {
     // A 3.ª já tem o fluxo (as fotografias de antes dos dois primeiros traços ainda não): é a do motor inteiro.
     let do_motor = super::undo_vivo::FotoDoMotor::bytes_de_para_sonda(&s.engine);
     assert_eq!(fotos(&todos[2..3]), do_motor, "a 3.ª, à frente");
-    // CONTROLO: com a 1.ª por baixo, a 2.ª só acrescenta o que mudou.
-    let a_mais = fotos(&todos[..2]) - fotos(&todos[..1]);
+    // CONTROLO: com a 1.ª por baixo, a 2.ª nada acrescenta (o óleo seco não mexe no fluxo, e o anel de dreno já
+    // nasce selado, B12.1); com a 2.ª por baixo, a 3.ª acrescenta a ladeira nova e não o fluxo que partilha.
+    assert_eq!(
+        fotos(&todos[..2]) - fotos(&todos[..1]),
+        0,
+        "CONTROLO: a 2.ª"
+    );
+    let a_mais = fotos(&todos[..3]) - fotos(&todos[..2]);
     assert!(
-        a_mais > 0 && a_mais < inteira,
-        "CONTROLO: {a_mais} de {inteira}"
+        a_mais > 0 && a_mais < do_motor,
+        "CONTROLO: {a_mais} de {do_motor}"
     );
 }
 

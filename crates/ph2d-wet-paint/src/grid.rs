@@ -27,9 +27,9 @@ pub use scratch::{AdvCell, SolverScratch};
 pub mod altura;
 #[path = "grid/aparencia.rs"]
 pub mod aparencia;
-pub mod celula_bytes;
 #[path = "grid/campo_esparso.rs"]
 pub mod campo_esparso;
+pub mod celula_bytes;
 #[path = "grid/crista.rs"]
 pub mod crista;
 #[path = "grid/espessura.rs"]
@@ -278,7 +278,7 @@ impl Grid {
         let n = s * rows;
         let flow = crate::flow::FlowGeom::new(width, height, rf);
         let fn_ = flow.cells;
-        Grid {
+        let mut g = Grid {
             w: width,
             h: height,
             s,
@@ -331,7 +331,10 @@ impl Grid {
             scratch: SolverScratch::default(),
             paper_preset: PaperPreset::Cold,
             paper_sheet: 0,
-        }
+        };
+        // O anel de dreno nasce selado: o 1.º passo já não o escreve fora do registo do traço (B12.1).
+        crate::solver::apply_boundaries(&mut g, false);
+        g
     }
 
     /// A faixa a varrer na linha `y`, já intersectada com a bbox — a porta

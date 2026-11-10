@@ -211,6 +211,8 @@ fn tiles_devolvidos(v: &[f32], s: usize, rows: usize) -> Tiles {
 /// `marca` num rectângulo, tudo a 1, `restaura`: que tiles (finos, de fluxo) o registo guardou.
 fn guardados(x0: i64, y0: i64, x1: i64, y1: i64) -> (Tiles, Tiles) {
     let mut g = crate::grid::Grid::new(190, 190);
+    // A base a 0 em toda a grade (a nova nasce com o anel de dreno selado a ±0,1).
+    g.vel_x.fill(0.0);
     let mut r = crate::grid::Registo::abre(&g);
     r.marca(&g, x0, y0, x1, y1);
     g.film.fill(1.0);
@@ -637,4 +639,30 @@ fn historia_o_undo_a_4k_compoe_a_caixa_do_traco() {
         area > 0 && area < 3840 * 2160 / 20,
         "o undo compõe {area} células"
     );
+}
+
+/// **B12.1, o anel:** o 1.º traço numa camada NOVA (sem nenhum passo antes) desfaz-se até à grade nova ao bit,
+/// porque o anel de dreno já nasce selado e o 1.º passo não escreve fora do registo.
+#[test]
+fn historia_o_undo_do_primeiro_traco_volta_a_grade_nova() {
+    for rf in [1, 2] {
+        let mut e = Engine::with_flow_ratio(960, 640, rf);
+        e.sliders.water = 1.0;
+        let nova = hash_grid(e.active_grid());
+        traco(&mut e, 480.0, 320.0, 6);
+        corre(&mut e, 4);
+        e.drain_step();
+        assert_ne!(
+            hash_grid(e.active_grid()),
+            nova,
+            "o traço não pousou (rf {rf})"
+        );
+        assert!(e.undo());
+        e.drain_step();
+        assert_eq!(
+            hash_grid(e.active_grid()),
+            nova,
+            "undo do 1.º traço (rf {rf})"
+        );
+    }
 }

@@ -202,4 +202,6 @@ pub fn clear_canvas(g: &mut Grid) {
     g.empty_bbox();
     // Aqui a faixa PODE ser zerada: esta é a porta que zerou a velocidade.
     g.clear_spans();
+    // A grade limpa = a grade nova: o anel de dreno selado.
+    crate::solver::apply_boundaries(g, false);
 }

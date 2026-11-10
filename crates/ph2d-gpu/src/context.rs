@@ -116,6 +116,11 @@ impl GpuContext {
                     })?
             }
         };
+        let info = adapter.get_info();
+        eprintln!(
+            "[ph2d-gpu] adapter: {} ({:?}, {:?}, {} {})",
+            info.name, info.backend, info.device_type, info.driver, info.driver_info
+        );
 
         // Request the texture-compression families this adapter actually
         // advertises (KTX2 Fase 2 / W2.T4). wgpu only reports a feature in
@@ -260,6 +265,12 @@ fn blocos_do_alocador(escolha: Option<&str>) -> wgpu::MemoryHints {
 
 fn relata_erros_do_dispositivo(device: &wgpu::Device) {
     device.on_uncaptured_error(std::sync::Arc::new(relata_erro));
+    // Um dispositivo perdido não é erro «não apanhado»: sem isto os buffers nascem inválidos em silêncio.
+    device.set_device_lost_callback(|porque, msg| {
+        if porque != wgpu::DeviceLostReason::Destroyed {
+            eprintln!("[gpu-erro] o dispositivo perdeu-se ({porque:?}): {msg}");
+        }
+    });
 }
 
 static ERROS_VISTOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);

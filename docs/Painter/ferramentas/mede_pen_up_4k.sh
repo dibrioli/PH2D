@@ -265,10 +265,17 @@ fi
 if [ "$1" = wayland ]; then
   N=${2:-1}; SEG=${3:-5}; BIN=${4:-$R/target/smoke/ph2d-host-desktop}; O=$S/wayland; SOCK=ph2d-b23-$$
   mkdir -p "$O"
+  # WSI_SW=1 (o do Xvfb) no kwin em QPainter: o RADV perde o dispositivo ao configurar a superfície (medido 10/11:
+  # `DeviceLost(Unknown)` logo depois do `present mode`, 0 quadros). Por omissão o kwin compõe em OpenGL no Mesa
+  # (KWIN_COMPOSE=O) e o app apresenta por dmabuf, como na sessão do dono.
+  KC=${KWIN_COMPOSE:-O}
   PLACA_ENV=(VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.json VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
-    MESA_VK_WSI_DEBUG=sw __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
+    __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
+  [ "${WSI_SW:-0}" = 1 ] && PLACA_ENV+=(MESA_VK_WSI_DEBUG=sw)
+  # O kwin em OpenGL no nó da Radeon (vendor 0x1002): noutro nó ele recusa os dmabufs do app (protocol error 7).
+  NO=; for c in /sys/class/drm/renderD*; do [ "$(cat "$c/device/vendor")" = 0x1002 ] && NO=/dev/dri/${c##*/}; done
   bash "$R/scripts/vez-da-placa.sh" || exit $?
-  env -u DISPLAY -u WAYLAND_DISPLAY KWIN_COMPOSE=Q "${PLACA_ENV[@]}" kwin_wayland --virtual --width 1600 --height 1000 \
+  env -u DISPLAY -u WAYLAND_DISPLAY KWIN_COMPOSE=$KC KWIN_RENDER_NODES=$NO "${PLACA_ENV[@]}" kwin_wayland --virtual --width 1600 --height 1000 \
     --socket "$SOCK" --no-lockscreen > "$O/kwin.log" 2>&1 & KW=$!
   for _ in $(seq 1 40); do [ -S "$XDG_RUNTIME_DIR/$SOCK" ] && break; sleep 0.25; done
   cd "$R"
@@ -285,7 +292,8 @@ if [ "$1" = wayland ]; then
     env -u DISPLAY WAYLAND_DISPLAY=$SOCK HOME=$O/home_$TAG PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=0 "${PLACA_ENV[@]}" \
       "${VAR[@]}" "$BIN" > "$L" 2>&1 &
     APP=$!
-    for _ in $(seq 1 120); do { [ $modo = pedido ] || grep -q "pilha armada" "$L"; } && break; sleep 0.5; done
+    for _ in $(seq 1 120); do { [ $modo = pedido ] || grep -q "pilha armada" "$L"; } && break
+      kill -0 $APP 2>/dev/null || break; sleep 0.5; done
     sleep 4
     marca() { echo "$1 $(date +%s%N) $(awk '{print $14+$15}' /proc/$APP/stat 2>/dev/null)" >> "$O/$TAG.marcas"; }
     marca visivel_ini; sleep "$SEG"; marca visivel_fim
@@ -305,6 +313,10 @@ if [ "$1" = wayland ]; then
       | tee -a "$O/resumo.txt"
   done; done
   kill $KW; wait $KW 2>/dev/null
+  # O kwin activa serviços no bus DESTA corrida (knighttimed, 10/11) que sobrevivem e seguram o stdout: só esses.
+  for p in /proc/[0-9]*; do [ "${p#/proc/}" = $$ ] && continue
+    grep -qzaxF "DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS" "$p/environ" 2>/dev/null && kill "${p#/proc/}" 2>/dev/null
+  done
   exit 0
 fi
 

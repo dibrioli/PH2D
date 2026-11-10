@@ -484,3 +484,122 @@ fn a_fade_band_is_clipped_to_the_time_band() {
         );
     }
 }
+
+/// ⭐ **Nos cartões a mistura fica POR BAIXO do rótulo e das alças** (dono 10/11): `A` `[0, 2)` e
+/// `B` `[1.5, 3.5)` na mesma faixa — a mistura de `B` cobre o fim de `A`, onde moram as alças
+/// dele. A lane pinta-se em duas passadas, e toda listra da mistura sai antes de todo rótulo, de
+/// toda sombra e de toda alça. *Mutação: pintar a lane numa passada (`Fase::Tudo`) ⇒ a listra de
+/// `B` sai depois das alças de `A` e reprova.*
+#[test]
+fn nos_cartoes_a_mistura_sai_antes_do_rotulo_e_das_alcas() {
+    use ph2d_editor_core::screens::hero::HeroLayout;
+    use ph2d_editor_core::screens::slot::{Slot, SlotSet};
+    use ph2d_timeline::{StackHost, StripSource, TimelineDoc, TimelineState};
+    use ph2d_vector::{Brush, DrawOp};
+    let mut doc = TimelineDoc::new();
+    let l = doc.add_lane_in(StackHost::Document, "Base".into()).unwrap();
+    for (t0, t1) in [(0.0, 2.0), (1.5, 3.5)] {
+        doc.add_strip_to(StackHost::Document, l, StripSource::Clip(0), t0, t1)
+            .unwrap();
+    }
+    let mut st = TimelineState::new();
+    st.doc = doc;
+    let mut snap = TimelineViewSnapshot::default();
+    snap.rebuild(&mut st, &ph2d_core::Playhead::default(), false);
+    assert_eq!(snap.lanes[0].strips.len(), 2, "as duas peças");
+    for (s, nome) in snap.lanes[0].strips.iter_mut().zip(["Idle", "Walk"]) {
+        s.clip_name = nome.into();
+    }
+
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(true));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::TimelinePanel>();
+    let area = Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let layout = HeroLayout::for_viewport(area);
+    let mut scene = ph2d_vector::VectorScene::new();
+    let mut text = ph2d_text::TextSystem::without_system_fonts();
+    let mut ctx = PaintCtx {
+        host: &mut host,
+        layout: &layout,
+        slot: layout
+            .slot_rects(SlotSet::of(Slot::Bottom))
+            .get(Slot::Bottom),
+        viewport: area,
+        scene: &mut scene,
+        text_system: &mut text,
+    };
+    let g = geom::Geom {
+        region: Rect::new(0.0, 0.0, 900.0, 240.0),
+        label_w: 100.0,
+        time_area: Rect::new(100.0, 18.0, 800.0, 222.0),
+        rows: Rect::new(100.0, 40.0, 800.0, 200.0),
+        scrollbar: Rect::new(900.0, 40.0, 0.0, 200.0),
+    };
+    let view = TimeView {
+        time_x: 100.0,
+        right: 900.0,
+        view_start: 0.0,
+        px_per_s: 200.0,
+    };
+    let state = TimelinePanelState {
+        tab: crate::tab::Tab::Arrange,
+        ..TimelinePanelState::default()
+    };
+    let theme = Theme::Forge;
+    ctx.scene.record();
+    paint(&mut ctx, theme, &g, view, &state, &snap);
+    let ops = ctx.scene.take_record();
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(None);
+
+    let solida = |op: &DrawOp| match op {
+        DrawOp::Fill {
+            brush: Brush::Solid(c),
+            ..
+        }
+        | DrawOp::Stroke {
+            brush: Brush::Solid(c),
+            ..
+        } => Some(c.components),
+        _ => None,
+    };
+    // As listras saem por `inner_mut().stroke` (a gravação não as vê): moram entre o FUNDO da
+    // mistura (gravado) e o `Pop` do recorte dela.
+    let fundo = crate::pecas_cartoes::tons_da_mistura(theme, false)
+        .1
+        .components;
+    let (sombra, _) = ph2d_editor_core::paint_flight::sombra_de_alca(theme);
+    let alca = [ColorToken::Success, ColorToken::Danger]
+        .map(|t| ph2d_editor_core::paint::resolve(t, theme).components);
+    let onde = |f: &dyn Fn(&DrawOp) -> bool| -> Vec<usize> {
+        ops.iter()
+            .enumerate()
+            .filter(|(_, o)| f(o))
+            .map(|(i, _)| i)
+            .collect()
+    };
+    let listras = onde(&|o| matches!(o, DrawOp::Fill { .. }) && solida(o) == Some(fundo));
+    // O texto não se grava (`paint_text` vai direto ao Vello); o ÍCONE do rótulo sim, na cor dele.
+    let a = &snap.lanes[0].strips[0];
+    let tinta = crate::pecas_cartoes::tinta_do_strip(a, &snap);
+    let peca = crate::pecas_cartoes::peca_do_strip(a, tinta, false, theme).expect("peça");
+    let texto = crate::pecas_cartoes::cores(&peca).texto.components;
+    let rotulos = onde(&|o| solida(o) == Some(texto));
+    let sombras = onde(&|o| solida(o) == Some(sombra.components));
+    let alcas = onde(&|o| solida(o).is_some_and(|c| alca.contains(&c)));
+    assert!(!listras.is_empty(), "a mistura de B listrou");
+    assert!(!rotulos.is_empty(), "as peças têm rótulo");
+    assert!(
+        sombras.len() >= 16,
+        "duas peças × quatro alças × dois braços: {sombras:?}"
+    );
+    assert!(alcas.len() >= 16, "as alças: {alcas:?}");
+    let ultima = (*listras.last().unwrap()..ops.len())
+        .find(|i| matches!(ops[*i], DrawOp::Pop))
+        .expect("o recorte da mistura fecha");
+    for (nome, v) in [("rótulo", &rotulos), ("sombra", &sombras), ("alça", &alcas)] {
+        assert!(
+            v[0] > ultima,
+            "o primeiro {nome} (op {}) sai antes da última listra (op {ultima})",
+            v[0]
+        );
+    }
+}

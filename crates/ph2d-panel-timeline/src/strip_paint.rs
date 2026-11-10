@@ -282,52 +282,6 @@ pub(crate) fn paint_strip(
     );
 }
 
-/// A corner gizmo: an **L-shaped bracket** hugging the two edges that meet at this corner —
-/// a QUINA, not a dot (Enio, 2026-07-16). One arm runs along the top/bottom edge, the other
-/// down/up the left/right edge, both from the corner itself, so the mark reads as the corner
-/// you grab rather than a bead sitting near it.
-///
-/// The horizontal arm is the grab region's own width (`EDGE_W`, what `hit_plan` registers),
-/// so what is drawn and what is clickable start at the same pixel.
-fn paint_corner(ctx: &mut PaintCtx, body: Rect, left: bool, top: bool, color: Color) {
-    let arm = CORNER_ARM.min(body.w * 0.5).min(body.h * 0.5);
-    let w = CORNER_W.min(arm);
-    let (x_out, x_edge) = if left {
-        (body.x, body.x)
-    } else {
-        (body.x + body.w - arm, body.x + body.w - w)
-    };
-    let (y_edge, y_out) = if top {
-        (body.y, body.y)
-    } else {
-        (body.y + body.h - w, body.y + body.h - arm)
-    };
-    // The arm along the top/bottom edge, then the one down/up the side edge.
-    let bracos = [
-        Rect::new(x_out, y_edge, arm, w),
-        Rect::new(x_edge, y_out, w, arm),
-    ];
-    if let Some((sombra, g)) = sombra_de_alca(ctx) {
-        for r in bracos {
-            fill_rounded_rect(ctx.scene, cresce(r, g), Radius::Xs.px() + g, sombra);
-        }
-    }
-    for r in bracos {
-        fill_rounded_rect(ctx.scene, r, Radius::Xs.px(), color);
-    }
-}
-
-/// A sombra das alças nos cartões (a lei da câmera, `paint_flight::sombra_de_alca`); `None` no clássico.
-pub(crate) fn sombra_de_alca(ctx: &PaintCtx) -> Option<(Color, f32)> {
-    ph2d_editor_core::panel::cards::ferramenta::cards_on()
-        .then(|| ph2d_editor_core::paint_flight::sombra_de_alca(ctx.host.theme()))
-}
-
-/// `r` crescido `g` de cada lado.
-pub(crate) fn cresce(r: Rect, g: f32) -> Rect {
-    Rect::new(r.x - g, r.y - g, r.w + g * 2.0, r.h + g * 2.0)
-}
-
 /// Paint a fade area: a faint darkening + gray diagonal STRIPES, so it reads as "a fade
 /// lives here" at a glance. `cartoes = Some(muda)`: the mock-up's blend (`pecas_cartoes`).
 fn paint_fade_region(
@@ -575,59 +529,10 @@ pub(crate) fn paint_hatch(ctx: &mut PaintCtx, rect: Rect, color: Color, crossed:
     ctx.scene.pop_layer();
 }
 
-/// The fade handle: a vertical line centred at `xc` plus a ◀ ▶ arrow pair at mid-height.
-fn paint_fade_handle(ctx: &mut PaintCtx, xc: f32, y: f32, h: f32, color: Color) {
-    let barra = Rect::new(xc - EASE_BAR_W * 0.5, y, EASE_BAR_W, h);
-    let my = y + h * 0.5;
-    let gap = EASE_BAR_W * 0.5 + 1.0; // LITERAL-PX-OK: clear of the line
-    // Left arrow (points left) and right arrow (points right).
-    let setas = [
-        [
-            (xc - gap - ARROW_SZ, my),
-            (xc - gap, my - ARROW_SZ),
-            (xc - gap, my + ARROW_SZ),
-        ],
-        [
-            (xc + gap + ARROW_SZ, my),
-            (xc + gap, my - ARROW_SZ),
-            (xc + gap, my + ARROW_SZ),
-        ],
-    ];
-    if let Some((sombra, g)) = sombra_de_alca(ctx) {
-        fill_rounded_rect(ctx.scene, cresce(barra, g), Radius::Xs.px() + g, sombra);
-        for pts in setas {
-            let p = tri(pts);
-            ctx.scene.inner_mut().stroke(
-                &Stroke::new(f64::from(g * 2.0)),
-                Affine::IDENTITY,
-                sombra,
-                None,
-                &p,
-            );
-        }
-    }
-    fill_rounded_rect(ctx.scene, barra, Radius::Xs.px(), color);
-    for pts in setas {
-        fill_tri(ctx, pts, color);
-    }
-}
-
-fn tri(pts: [(f32, f32); 3]) -> BezPath {
-    let mut p = BezPath::new();
-    p.move_to((f64::from(pts[0].0), f64::from(pts[0].1)));
-    p.line_to((f64::from(pts[1].0), f64::from(pts[1].1)));
-    p.line_to((f64::from(pts[2].0), f64::from(pts[2].1)));
-    p.close_path();
-    p
-}
-
-/// Fill a triangle through three points.
-fn fill_tri(ctx: &mut PaintCtx, pts: [(f32, f32); 3], color: Color) {
-    let p = tri(pts);
-    ctx.scene
-        .inner_mut()
-        .fill(Fill::NonZero, Affine::IDENTITY, color, None, &p);
-}
+#[path = "strip_paint_alcas.rs"]
+mod alcas;
+pub(crate) use alcas::pinta_sombra_de_alca;
+use alcas::{paint_corner, paint_fade_handle};
 
 #[cfg(test)]
 #[path = "strip_paint_tests.rs"]

@@ -93,6 +93,10 @@ const OUTSIDE_THE_DOOR: &[(&str, &str)] = &[
         "CANVAS: as tiras de clip",
     ),
     (
+        "crates/ph2d-panel-timeline/src/strip_paint_alcas.rs",
+        "CANVAS: as alças das tiras de clip (split do strip_paint.rs, a isenção viaja com elas)",
+    ),
+    (
         "crates/ph2d-panel-timeline/src/stack_lane_paint.rs",
         "CANVAS: as faixas empilhadas",
     ),

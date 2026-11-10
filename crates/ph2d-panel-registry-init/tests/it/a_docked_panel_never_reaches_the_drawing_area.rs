@@ -238,3 +238,45 @@ fn every_panel_is_born_inside_its_own_allowed_slots() {
     );
     assert!(bad.is_empty(), "declarações incoerentes: {bad:?}");
 }
+
+/// `(área de desenho, rect da Timeline, flutua?)` com só a Timeline aberta, cartões `on`/`off`.
+fn timeline_settled(cartoes: bool) -> (Rect, Rect, bool) {
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(cartoes));
+    ph2d_editor_core::widget::lista_flutuante::force_cromo_on_this_thread(Some(cartoes));
+    let h = settled_one(ph2d_editor_core::screens::hero::PANEL_TIMELINE);
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(None);
+    ph2d_editor_core::widget::lista_flutuante::force_cromo_on_this_thread(None);
+    let draw = h.last_layout.expect("layout").draw_area;
+    let node = ph2d_editor_core::ids::TIMELINE_PANEL;
+    let rect = h
+        .store
+        .panel_rect(node)
+        .expect("a Timeline publicou o rect");
+    (draw, rect, h.store.is_floating_panel(node))
+}
+
+/// ⭐ **Nos cartões a Timeline FLUTUA sobre o canvas** (dono 10/11): a área de desenho desce até o
+/// fundo da janela e a Timeline mora DENTRO dela, declarando-o (`set_floating_panel_rect`); no
+/// clássico (`PH2D_CARDS=0`) a faixa continua reservada e a área pára acima dela.
+/// *Mutação: tirar o `&& !flutua` do `frame_layout` ⇒ a área pára na faixa e reprova a metade on.*
+#[test]
+fn nos_cartoes_a_timeline_flutua_e_o_desenho_chega_ao_fundo() {
+    let (draw, tl, flutua) = timeline_settled(true);
+    let fundo = draw.y + draw.h;
+    assert!(flutua, "nos cartões a Timeline declara flutuar");
+    assert!(
+        fundo >= tl.y + tl.h - 0.5 && tl.y >= draw.y && tl.x >= draw.x - 0.5,
+        "a Timeline flutuante mora dentro da área de desenho: draw={draw:?} timeline={tl:?}"
+    );
+    let (draw0, tl0, flutua0) = timeline_settled(false);
+    assert!(!flutua0, "o clássico continua docado");
+    assert!(
+        draw0.y + draw0.h <= tl0.y + 0.5,
+        "no clássico a faixa da Timeline continua reservada: draw={draw0:?} timeline={tl0:?}"
+    );
+    assert!(
+        fundo > draw0.y + draw0.h,
+        "nos cartões o desenho ganha a faixa: {fundo} × {}",
+        draw0.y + draw0.h
+    );
+}

@@ -58,35 +58,29 @@ pub(super) fn paint_duration_handle(
     let cy = region.y + RULER_H * 0.5;
     let gx = edge + DUR_ARROW_OFFSET;
     let half = DUR_ARROW_HALF_W;
-    fill_rounded_rect(
-        ctx.scene,
-        Rect::new(
-            gx - half,
-            cy - DUR_ARROW_SHAFT_HW,
-            half * 2.0,
-            DUR_ARROW_SHAFT_HW * 2.0,
-        ),
-        Radius::Xs.px(),
-        color,
+    let haste = Rect::new(
+        gx - half,
+        cy - DUR_ARROW_SHAFT_HW,
+        half * 2.0,
+        DUR_ARROW_SHAFT_HW * 2.0,
     );
-    fill_triangle(
-        ctx,
+    let pontas = [
         [
             (gx - half - DUR_ARROW_HEAD, cy),
             (gx - half, cy - DUR_ARROW_HEAD),
             (gx - half, cy + DUR_ARROW_HEAD),
         ],
-        color,
-    );
-    fill_triangle(
-        ctx,
         [
             (gx + half + DUR_ARROW_HEAD, cy),
             (gx + half, cy - DUR_ARROW_HEAD),
             (gx + half, cy + DUR_ARROW_HEAD),
         ],
-        color,
-    );
+    ];
+    crate::strip_paint::pinta_sombra_de_alca(ctx, &[haste], &pontas);
+    fill_rounded_rect(ctx.scene, haste, Radius::Xs.px(), color);
+    for pts in pontas {
+        fill_triangle(ctx, pts, color);
+    }
     // The grab target: ONLY the ↔ glyph (Enio, 2026-07-26 — reversed the whole-veil
     // grab). Clicking the dark veil to the right must NOT resize the duration; only
     // the arrow does.

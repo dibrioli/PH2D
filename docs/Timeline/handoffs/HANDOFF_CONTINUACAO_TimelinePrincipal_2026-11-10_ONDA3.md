@@ -97,3 +97,23 @@ um teste de 1100 px (curado com `textos_em`); a contagem `pintados + n == total`
 
 - O plano 15 fecha com esta onda. Falta: smoke do dono (não feito) e a decisão pendente «Translate X» × «Position X» (perguntada de novo no fim da onda 3).
 - Depois: `/pd-linha-fechar` (handoff de integração; §5.1 do CLAUDE.md: Timeline passa a `PH2D_NEST_SMOKE=1..5`). Sem push nem integração.
+
+## Rodada 3b (dono 10/11): Timeline flutua + listras por baixo + sombra das alças
+
+- **Flutua** (cartões só): `frame_layout.rs` deixa de reservar a faixa de baixo para a Timeline quando `cromo_em_cartoes()`;
+  só ergue a pílula do rodapé (`HeroLayout::lift_hud_over`). O painel publica `set_floating_panel_rect` (`paint.rs`), a declaração
+  D1/D24 em runtime. Flip/Pixel timeline e `PH2D_CARDS=0` continuam a reservar a faixa.
+- **Causa da peça toda listrada:** a cena 4 não autorava o fim da cena (fim = 4 s) e tudo depois dele lia-se como mistura. A cena
+  autora agora 6 s; `a_mistura_de_uma_peca_cobre_so_a_sobreposicao` prende `[4, 4.25)` = 25 px.
+- **Ordem de pintura** (cartões): `paint_lane` pinta em duas passadas (`Fase::Base` corpos + misturas de todas as peças, depois
+  `Fase::Topo` rótulo → barras de mudança → cantos → alças de fade). O clássico continua `Fase::Tudo`.
+- **Sombra das alças** = lei da câmera/contorno: a mesma forma `Thin` mais larga de cada lado, `BgScrim` a
+  `ph2d_tokens::OUTLINE_SHADOW_ALPHA` (`paint_flight::sombra_de_alca`). UMA porta na timeline: `strip_paint::pinta_sombra_de_alca`
+  (rects + triângulos), usada pelos cantos, alça de fade, chaveta e linha de mover do loop (`ruler.rs`) e a «⟷» da duração
+  (`ruler_veil.rs`). Hit rects intactos. Alças das strips foram para `strip_paint_alcas.rs` (tecto 600 LOC; a isenção de raio viaja).
+- **Testes novos:** `nos_cartoes_a_timeline_flutua_e_o_desenho_chega_ao_fundo` (registry-init; mutação: sem `&& !flutua` ⇒ vermelho) ·
+  `nos_cartoes_a_mistura_sai_antes_do_rotulo_e_das_alcas` (stack_lane_paint_tests; mutação: `Fase::Tudo` ⇒ vermelho). As listras
+  saem por `inner_mut().stroke` (não se gravam): o teste delimita-as entre o FUNDO da mistura e o `Pop` do recorte; o texto também
+  não se grava, o rótulo conta pelo ícone na cor `cores().texto`.
+- Fotos: `docs/Timeline/fotos/16_timeline_flutua.png`, `16_alcas_com_sombra_zoom.png` (2×).
+- **Aberto:** as listras além do fim da cena (véu) parecem listras de mistura — o dono pode querer outra textura para «fora da cena».

@@ -300,9 +300,11 @@ fn paint_loop_braces(
         // The visible move-handle line at the very top, so the grab reads as a handle
         // to drag rather than dead space. Drawn only where the grab exists — an
         // affordance you can see but not use is a lie.
+        let linha = Rect::new(x0, region.y, x1 - x0, LOOP_MOVE_LINE_H);
+        crate::strip_paint::pinta_sombra_de_alca(ctx, &[linha], &[]);
         fill_rounded_rect(
             ctx.scene,
-            Rect::new(x0, region.y, x1 - x0, LOOP_MOVE_LINE_H),
+            linha,
             Radius::Xs.px(),
             resolve(ColorToken::TimelineLoopBrace, theme),
         );
@@ -324,12 +326,6 @@ fn paint_loop_braces(
             continue;
         }
         let clamped = safe_clamp(x, region.x, right);
-        fill_rounded_rect(
-            ctx.scene,
-            Rect::new(clamped - BRACE_W * 0.5, region.y, BRACE_W, RULER_H),
-            Radius::Xs.px(),
-            resolve(ColorToken::TimelineLoopBrace, theme),
-        );
         // A little tick at the top, on the INNER side, so the brace reads as a
         // bracket [ or ] rather than a second playhead line.
         let tick_x = if edge == 0 {
@@ -337,12 +333,19 @@ fn paint_loop_braces(
         } else {
             clamped - BRACE_W * 0.5 - BRACE_W
         };
-        fill_rounded_rect(
-            ctx.scene,
+        let partes = [
+            Rect::new(clamped - BRACE_W * 0.5, region.y, BRACE_W, RULER_H),
             Rect::new(tick_x, region.y, BRACE_W, StrokeToken::Thick.px()),
-            Radius::Xs.px(),
-            resolve(ColorToken::TimelineLoopBrace, theme),
-        );
+        ];
+        crate::strip_paint::pinta_sombra_de_alca(ctx, &partes, &[]);
+        for r in partes {
+            fill_rounded_rect(
+                ctx.scene,
+                r,
+                Radius::Xs.px(),
+                resolve(ColorToken::TimelineLoopBrace, theme),
+            );
+        }
         let hit = Rect::new(
             clamped - BRACE_HIT_HW,
             region.y,

@@ -188,6 +188,24 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
     true
 }
 
+/// A dica (Plain English) de um alvo da vista C; os números Dead/Press usam a da vista A.
+#[must_use]
+pub fn tip_of(doc: &InputMapDoc, id: ph2d_a11y::NodeId) -> Option<&'static str> {
+    let Some(hit) = doc.tryit.hit_of(id) else {
+        return crate::view_list::tip_of(doc, id);
+    };
+    let key = match hit {
+        TryHit::Recipe(_) => "input_map_try.recipe_tip",
+        TryHit::Replace => "input_map_try.replace_tip",
+        TryHit::Cancel => "input_map_try.cancel_tip",
+        TryHit::PlayersCanChange => "input_map_try.players_can_change_tip",
+        TryHit::OpenKey => "input_map_try.opens_with_tip",
+        TryHit::Shown(_) => "input_map_try.shown_tip",
+        TryHit::Forget => "input_map_try.forget_tip",
+    };
+    Some(ph2d_i18n::tr(key))
+}
+
 /// Regista um alvo da vista C.
 pub(crate) fn target(doc: &mut InputMapDoc, h: TryHit, r: Rect) {
     doc.hits.register(h.id(), r);

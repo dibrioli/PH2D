@@ -188,7 +188,7 @@ impl InputMapDoc {
                 .rect_for(crate::ids::ListHit::Row(*a).id())
                 .is_some_and(|r| r.contains(x, y))
         });
-        let dragged = self.view == View::List && crate::view_list::drag(self, x);
+        let dragged = crate::view_list::drag(self, x);
         let changed = h != self.hover || row != self.list.hover_row || dragged;
         let target = self.hits.hit(x, y).filter(|_| h.is_none());
         let changed = changed || target != self.list.hover_target;

@@ -197,75 +197,17 @@ fn compor_regiao(
         crate::plane_copy::size_to(&mut t, acc.len(), [1.0f32; 3]);
         t
     });
-    // Per-pixel compositing is spatially independent → split the region's rows into disjoint bands
-    // across the cores (bit-identical to the serial walk; each band runs the same bottom→top layer
-    // walk over its own rows). This was the painter's biggest per-frame cost on a non-trivial doc
-    // stack: `take_preview_arc` recomposites the shape methods' whole-shape dirty bbox EVERY move
-    // (~31 ms serial @2048², Enio's "FPS 60→10"). SPATIAL adjustments (blur/bloom/…) read
-    // neighbouring pixels — banding would seam at band edges — so those stacks stay serial.
-    let threads = parallel_threads(
-        (rw as usize) * (rh as usize),
-        if has_spatial_adjustment(stack, stack.root()) {
-            1
-        } else {
-            rh as usize
-        },
+    let fios = barreira::fios_da_regiao(stack, (rw as usize) * (rh as usize), rh as usize);
+    barreira::compor_segmentos(
+        &mut acc,
+        t.as_deref_mut(),
+        stack,
+        src,
+        (width, height),
+        region,
+        vidros,
+        fios,
     );
-    if threads <= 1 {
-        composite_into(
-            &mut acc,
-            stack.root(),
-            stack,
-            src,
-            (width, height),
-            rx,
-            ry,
-            rw,
-            rh,
-            0,
-            None,
-            vidros.zip(t.as_deref_mut()),
-        );
-        return (acc, t);
-    }
-    let rpb = (rh as usize).div_ceil(threads);
-    let band_px = rpb * (rw as usize);
-    let mut t_bands: Vec<Option<&mut [[f32; 3]]>> = match t.as_deref_mut() {
-        Some(tt) => tt.chunks_mut(band_px).map(Some).collect(),
-        None => (0..acc.len().div_ceil(band_px)).map(|_| None).collect(),
-    };
-    std::thread::scope(|s| {
-        let handles: Vec<_> = acc
-            .chunks_mut(band_px)
-            .zip(t_bands.iter_mut())
-            .enumerate()
-            .map(|(bi, (band, tb))| {
-                let band_ry = ry + (bi * rpb) as u32;
-                let band_rh = (band.len() / (rw as usize)) as u32;
-                let tb = tb.take();
-                s.spawn(move || {
-                    composite_into(
-                        band,
-                        stack.root(),
-                        stack,
-                        src,
-                        (width, height),
-                        rx,
-                        band_ry,
-                        rw,
-                        band_rh,
-                        0,
-                        None,
-                        vidros.zip(tb),
-                    );
-                })
-            })
-            .collect();
-        for h in handles {
-            h.join().expect("composite band panicked");
-        }
-    });
-    drop(t_bands);
     (acc, t)
 }
 
@@ -653,6 +595,9 @@ fn salto_ligado() -> bool {
     !SEM_SALTO.load(std::sync::atomic::Ordering::Relaxed)
 }
 
+mod barreira;
+#[cfg(test)]
+mod barreira_tests;
 #[cfg(test)]
 mod janela_tests;
 #[cfg(test)]

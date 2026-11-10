@@ -109,3 +109,20 @@ fn changed_counts_actions_whose_bindings_differ() {
     k.clear_all();
     assert!(k.is_empty());
 }
+
+/// ⭐ O numérico no ficheiro do jogador: `key:kp7` e os de sinal (`key:kp-`, `key:kp+`) voltam à MESMA
+/// tecla, e Numpad 7 não vira 7 nem Home.
+#[test]
+fn numpad_keys_round_trip_through_the_player_file() {
+    let kp7 = Key(0xF747);
+    assert_eq!(binding_text(Binding::Key(kp7)), "key:kp7");
+    let mut k = PlayerKeys::new();
+    let signed = [0xF74A, 0xF74B, 0xF74C, 0xF74D, 0xF74E, 0xF74F].map(|c| Binding::Key(Key(c)));
+    k.set("jump", vec![Binding::Key(kp7), Binding::Key(Key(0x37))]);
+    k.set("signs", signed.to_vec());
+    let text = k.to_text();
+    assert!(text.contains("jump = key:kp7, key:7\n"), "{text}");
+    let back = PlayerKeys::from_text(&text);
+    assert_eq!(back, k, "{text}");
+    assert_eq!(back.get("signs"), Some(signed.as_slice()));
+}

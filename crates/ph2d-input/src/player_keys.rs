@@ -197,11 +197,17 @@ fn take_word(s: &str) -> (&str, &str) {
     s.split_at(end)
 }
 
-/// O nome de uma tecla: uma palavra, ou um sinal só (`[`, `]`, `,`, `.`).
+/// O nome de uma tecla: uma palavra, uma palavra com um sinal (`kp.`, `kp-`, `kp+`), ou um sinal só
+/// (`[`, `]`, `,`, `.`). A palavra com sinal só vale se for um nome de tecla: `key:a, key:b` continua lista.
 fn take_key_name(s: &str) -> Option<(&str, &str)> {
     let (w, tail) = take_word(s);
     if !w.is_empty() {
-        return Some((w, tail));
+        let signed = tail
+            .chars()
+            .next()
+            .map(|c| w.len() + c.len_utf8())
+            .filter(|&end| Key::named_in_script(&s[..end]).is_some());
+        return Some(signed.map_or((w, tail), |end| s.split_at(end)));
     }
     let c = s.chars().next()?;
     Some(s.split_at(c.len_utf8()))

@@ -20,31 +20,97 @@ use serde::{Deserialize, Serialize};
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Key(pub u32);
 
-/// ⭐ **A TABELA ÚNICA das teclas com nome** — o código normalizado, o rótulo que o artista lê e o
-/// nome que um script escreve. Letras, dígitos e F1..F12 derivam do código (abaixo).
-const NAMED: &[(u32, &str, &str)] = &[
-    (0x09, "Tab", "tab"),
-    (0x0D, "Enter", "enter"),
-    (0x20, "Space", "space"),
-    (0x1B, "Esc", "escape"),
-    (0x08, "Backspace", "backspace"),
-    (0xF728, "Delete", "delete"),
-    (0xF700, "Up Arrow", "up"),
-    (0xF701, "Down Arrow", "down"),
-    (0xF702, "Left Arrow", "left"),
-    (0xF703, "Right Arrow", "right"),
-    (0xF710, "Left Shift", "left_shift"),
-    (0xF711, "Right Shift", "right_shift"),
-    (0xF712, "Left Ctrl", "left_ctrl"),
-    (0xF713, "Right Ctrl", "right_ctrl"),
-    (0xF714, "Left Alt", "left_alt"),
-    (0xF715, "Right Alt", "right_alt"),
-    (0xF729, "Home", "home"),
-    (0x5B, "[", "["),
-    (0x5D, "]", "]"),
-    (0x2C, ",", ","),
-    (0x2E, ".", "."),
+/// ⭐ **A TABELA ÚNICA das teclas com nome** — o código normalizado, o rótulo que o artista lê, o
+/// nome que um script escreve, a legenda da tecla (`cap`, a da foto do teclado do dono) e a legenda
+/// curta dos teclados compactos (`cap_short`). Letras, dígitos e F1..F12 derivam do código (abaixo).
+/// Códigos e nomes: `docs/InputMap/01_plano.md` §13.1 (tecla FÍSICA: o numérico liga igual com o
+/// Num Lock aceso ou apagado).
+const NAMED: &[(u32, &str, &str, &str, &str)] = &[
+    (0x09, "Tab", "tab", "Tab", "Tab"),
+    (0x0D, "Enter", "enter", "Enter", "Enter"),
+    (0x20, "Space", "space", "Space", "Space"),
+    (0x1B, "Esc", "escape", "Esc", "Esc"),
+    (0x08, "Backspace", "backspace", "Backspace", "Bksp"),
+    (0xF728, "Delete", "delete", "Delete", "Del"),
+    (0xF700, "Up Arrow", "up", "Up Arrow", "Up"),
+    (0xF701, "Down Arrow", "down", "Down Arrow", "Down"),
+    (0xF702, "Left Arrow", "left", "Left Arrow", "Left"),
+    (0xF703, "Right Arrow", "right", "Right Arrow", "Right"),
+    (0xF710, "Left Shift", "left_shift", "Shift", "Shift"),
+    (0xF711, "Right Shift", "right_shift", "Shift", "Shift"),
+    (0xF712, "Left Ctrl", "left_ctrl", "Ctrl", "Ctrl"),
+    (0xF713, "Right Ctrl", "right_ctrl", "Ctrl", "Ctrl"),
+    (0xF714, "Left Alt", "left_alt", "Alt", "Alt"),
+    (0xF715, "Right Alt", "right_alt", "Alt", "Alt"),
+    (0xF729, "Home", "home", "Home", "Home"),
+    (0x5B, "[", "[", "[", "["),
+    (0x5D, "]", "]", "]", "]"),
+    (0x2C, ",", ",", ",", ","),
+    (0x2E, ".", ".", ".", "."),
+    // Pontuação: o ASCII do próprio carácter.
+    (0x60, "`", "`", "`", "`"),
+    (0x2D, "-", "-", "-", "-"),
+    (0x3D, "=", "=", "=", "="),
+    (0x5C, "\\", "\\", "\\", "\\"),
+    (0x3B, ";", ";", ";", ";"),
+    (0x27, "'", "'", "'", "'"),
+    (0x2F, "/", "/", "/", "/"),
+    // Navegação, na faixa NSEvent das setas.
+    (0xF727, "Insert", "insert", "Insert", "Ins"),
+    (0xF72B, "End", "end", "End", "End"),
+    (0xF72C, "Page Up", "pageup", "PgUp", "PgUp"),
+    (0xF72D, "Page Down", "pagedown", "PgDn", "PgDn"),
+    // Travas.
+    (0xF716, "Caps Lock", "capslock", "CapsLk", "Caps"),
+    (0xF717, "Num Lock", "numlock", "Num Lock", "Num"),
+    // O numérico: Numpad 7 ≠ 7 ≠ Home, Numpad Enter ≠ Enter.
+    (KP0, "Numpad 0", "kp0", "0", "0"),
+    (KP0 + 1, "Numpad 1", "kp1", "1", "1"),
+    (KP0 + 2, "Numpad 2", "kp2", "2", "2"),
+    (KP0 + 3, "Numpad 3", "kp3", "3", "3"),
+    (KP0 + 4, "Numpad 4", "kp4", "4", "4"),
+    (KP0 + 5, "Numpad 5", "kp5", "5", "5"),
+    (KP0 + 6, "Numpad 6", "kp6", "6", "6"),
+    (KP0 + 7, "Numpad 7", "kp7", "7", "7"),
+    (KP0 + 8, "Numpad 8", "kp8", "8", "8"),
+    (KP0 + 9, "Numpad 9", "kp9", "9", "9"),
+    (0xF74A, "Numpad .", "kp.", ".", "."),
+    (0xF74B, "Numpad /", "kp/", "/", "/"),
+    (0xF74C, "Numpad *", "kp*", "*", "*"),
+    (0xF74D, "Numpad -", "kp-", "-", "-"),
+    (0xF74E, "Numpad +", "kp+", "+", "+"),
+    (NUMPAD_ENTER, "Numpad Enter", "kpenter", "Enter", "Enter"),
 ];
+
+/// Numpad 0; Numpad 1..9 seguem-no.
+const KP0: u32 = 0xF740;
+/// O Enter do numérico, com código PRÓPRIO (já não cai no `0x0D`).
+const NUMPAD_ENTER: u32 = 0xF74F;
+
+/// ⛔ **As teclas do SISTEMA** — desenhadas no teclado, nunca ligadas: `(código, rótulo, cap,
+/// cap_short, chave i18n do porquê)`. Sem nome de script: um script nunca as vê. Medido a 10/11
+/// (plano §13.1): o Fn resolve-se dentro do teclado, o KDE prende o Print ao Spectacle e o Meta ao
+/// lançador.
+const SYSTEM: &[(u32, &str, &str, &str, &str)] = &[
+    (0xF718, "Windows key", "Win", "Win", "input_map_keyboard.system.windows"),
+    (0xF719, "Windows key", "Win", "Win", "input_map_keyboard.system.windows"),
+    (0xF71A, "Fn", "Fn", "Fn", "input_map_keyboard.system.fn"),
+    (0xF72E, "Print Screen", "PrtSc", "PrtSc", "input_map_keyboard.system.print_screen"),
+];
+
+const LETTERS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const DIGITS: &str = "0123456789";
+const F_CAPS: [&str; 12] = [
+    "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+];
+
+fn named_row(c: u32) -> Option<&'static (u32, &'static str, &'static str, &'static str, &'static str)> {
+    NAMED.iter().find(|r| r.0 == c)
+}
+
+fn system_row(c: u32) -> Option<&'static (u32, &'static str, &'static str, &'static str, &'static str)> {
+    SYSTEM.iter().find(|r| r.0 == c)
+}
 
 /// F1..F12, contíguas a partir daqui.
 pub(crate) const F1: u32 = 0xF704;
@@ -62,7 +128,7 @@ impl Key {
         (0x41..=0x5A)
             .chain(0x30..=0x39)
             .chain(F1..F1 + 12)
-            .chain(NAMED.iter().map(|(c, _, _)| *c))
+            .chain(NAMED.iter().map(|r| r.0))
             .map(Key)
     }
 
@@ -84,10 +150,9 @@ impl Key {
                 char::from_u32(c).map_or_else(|| format!("Key {c:#X}"), String::from)
             }
             c if (F1..F1 + 12).contains(&c) => format!("F{}", c - F1 + 1),
-            c => NAMED
-                .iter()
-                .find(|(k, _, _)| *k == c)
-                .map_or_else(|| format!("Key {c:#X}"), |(_, l, _)| (*l).to_owned()),
+            c => named_row(c)
+                .or_else(|| system_row(c))
+                .map_or_else(|| format!("Key {c:#X}"), |r| r.1.to_owned()),
         }
     }
 
@@ -100,10 +165,7 @@ impl Key {
                 char::from_u32(c).map(|ch| ch.to_ascii_lowercase().to_string())
             }
             c if (F1..F1 + 12).contains(&c) => Some(format!("f{}", c - F1 + 1)),
-            c => NAMED
-                .iter()
-                .find(|(k, _, _)| *k == c)
-                .map(|(_, _, n)| (*n).to_owned()),
+            c => named_row(c).map(|r| r.2.to_owned()),
         }
     }
 
@@ -126,6 +188,64 @@ impl Key {
             .filter_map(Key::script_name)
             .chain(SCRIPT_ALIASES.iter().map(|(n, _)| (*n).to_owned()))
             .collect()
+    }
+
+    /// O Enter da fileira principal.
+    pub const ENTER: Key = Key(0x0D);
+    /// O Enter do numérico — tecla própria, ligável à parte.
+    pub const NUMPAD_ENTER: Key = Key(NUMPAD_ENTER);
+
+    /// **Confirma como um Enter?** Os dois Enter (fileira e numérico): quem usa o Enter para
+    /// CONFIRMAR (um campo, a tela do jogador) aceita os dois; uma LIGAÇÃO de jogo distingue-os.
+    #[must_use]
+    pub fn is_enter_like(self) -> bool {
+        self == Self::ENTER || self == Self::NUMPAD_ENTER
+    }
+
+    /// As teclas do sistema (Windows, Fn, Print Screen): desenhadas, nunca ligadas, sem nome de script.
+    pub fn system_keys() -> impl Iterator<Item = Key> {
+        SYSTEM.iter().map(|r| Key(r.0))
+    }
+
+    /// `Some(chave i18n do porquê)` = tecla do SISTEMA, que nenhum jogo recebe
+    /// (`input_map_keyboard.system.{fn,windows,print_screen}`); `None` = uma tecla do jogo.
+    #[must_use]
+    pub fn system_owned(self) -> Option<&'static str> {
+        system_row(self.0).map(|r| r.4)
+    }
+
+    /// **A legenda impressa na tecla** (a foto do teclado do dono: `Backspace`, `CapsLk`, `PrtSc`,
+    /// `PgUp`, o `7` do numérico…). `""` = código sem tecla conhecida (o pintor usa o [`Key::label`]).
+    #[must_use]
+    pub fn cap(self) -> &'static str {
+        self.caps().0
+    }
+
+    /// A legenda curta dos teclados compactos (`Bksp`, `Caps`, `Num`, `Ins`, `Del`); igual ao
+    /// [`Key::cap`] quando não há uma mais curta. O pintor escolhe a que cabe, medida, por tecla.
+    #[must_use]
+    pub fn cap_short(self) -> &'static str {
+        self.caps().1
+    }
+
+    fn caps(self) -> (&'static str, &'static str) {
+        let at = |s: &'static str, i: u32| {
+            let i = i as usize;
+            let one = &s[i..=i];
+            (one, one)
+        };
+        match self.0 {
+            c @ 0x41..=0x5A => at(LETTERS, c - 0x41),
+            c @ 0x30..=0x39 => at(DIGITS, c - 0x30),
+            c if (F1..F1 + 12).contains(&c) => {
+                let f = F_CAPS[(c - F1) as usize];
+                (f, f)
+            }
+            c => named_row(c)
+                .map(|r| (r.3, r.4))
+                .or_else(|| system_row(c).map(|r| (r.2, r.3)))
+                .unwrap_or(("", "")),
+        }
     }
 }
 

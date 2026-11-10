@@ -11,6 +11,8 @@ use ph2d_input::readers::Reader;
 /// A composição da shell (`janela_do_jogo.rs::game_smoke`): arma a aba, instala o mapa e pede a aba.
 fn armada(cena: &str) -> Mesa {
     let mut m = Mesa::new(View::Keyboard);
+    let base = std::env::temp_dir().join(format!("ph2d-cenas-{}-{cena}", std::process::id()));
+    m.tab_mut().doc.tryit.base = Some(base); // a C4 grava o ficheiro do jogador: nunca no HOME de quem corre
     let map = arma(&mut m.tab_mut().doc, cena).expect("código do roteiro");
     m.hero.input_map = map;
     m.hero.store.request_input_map_tab();
@@ -38,13 +40,82 @@ fn cada_cena_abre_a_aba_na_vista_dela_com_as_11_accoes() {
         let m = armada(c);
         assert!(m.active(), "{c}: a aba aberta e à frente");
         assert_eq!(m.hero.input_map.len(), 11, "{c}");
-        let want = if c.starts_with('A') {
-            View::List
-        } else {
-            View::Keyboard
+        let want = match c.as_bytes()[0] {
+            b'A' => View::List,
+            b'B' => View::Keyboard,
+            _ => View::TryIt,
         };
         assert_eq!(m.tab().doc.view(), want, "{c}");
     }
+}
+
+#[test]
+fn as_cenas_do_try_it_e_do_play_poem_a_tecla_a_manche_e_a_tela_do_jogador() {
+    use ph2d_app_game::smoke::input_map::{
+        GAME_ID, MANCHE_C3, NA_TELA, abre_a_aba, manche, tecla_do_p1, troca_do_jogador,
+    };
+    let up = Key::named_in_script("up").and_then(|v| v.first().copied());
+    let m = armada("C1");
+    assert_eq!(
+        m.tab().doc.tryit.confirm,
+        None,
+        "C1: as receitas, sem pergunta"
+    );
+    let m = armada("C2");
+    assert_eq!(
+        m.tab().doc.tryit.held_keys(),
+        up.into_iter().collect::<Vec<_>>()
+    );
+    let c3 = PRIMEIRA + 10;
+    assert_eq!(codigo(c3), Some("C3"));
+    let (eixo, v) = manche(c3).expect("C3 empurra a manche");
+    assert!(eixo == ph2d_input::GamepadAxis::LeftStickX && (v - MANCHE_C3).abs() < 1e-6);
+    assert!(manche(c3 - 1).is_none() && manche(c3 + 1).is_none());
+    assert!(
+        armada("C3")
+            .hero
+            .input_map
+            .actions()
+            .iter()
+            .any(|a| a.is_analog())
+    );
+    for c in ["C4", "P1"] {
+        let m = armada(c);
+        let map = &m.hero.input_map;
+        assert!(map.controls().players_can_change_keys, "{c}");
+        let vistas: Vec<_> = (map.actions().iter())
+            .filter(|a| map.controls().shown_in_game(a.id))
+            .map(|a| a.name.as_str())
+            .collect();
+        assert_eq!(vistas, NA_TELA, "{c}");
+    }
+    let m = armada("C4");
+    assert_eq!(
+        troca_do_jogador(&m.hero.input_map).changed(&m.hero.input_map),
+        1
+    );
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let _ = leitores(&mut sim, PRIMEIRA + 11, |s| s.world_mut().spawn(()).id());
+    let id = sim
+        .world()
+        .get_resource::<ph2d_app_input_map::ph2d_player_controls::GameId>();
+    assert_eq!(id.map(|g| g.0), Some(GAME_ID));
+    let p1 = PRIMEIRA + 12;
+    assert!(!abre_a_aba("P1") && abre_a_aba("C4"));
+    let teclas: Vec<_> = (0..400).filter_map(|q| tecla_do_p1(p1, q)).collect();
+    assert_eq!(teclas.len(), 5, "abre, desce, desce, direita, Enter");
+    assert!((0..400).all(|q| tecla_do_p1(p1 - 1, q).is_none()));
+    // As teclas do condutor, pela porta da sessão do Play: a tela abre, desce ao Fire, 2.ª tecla, à escuta.
+    let mut m = armada("P1");
+    let map = m.hero.input_map.clone();
+    m.jogador.start_with(&map, troca_do_jogador(&map), None);
+    for k in teclas {
+        let _ = m.jogador.key(k, true, &map);
+    }
+    let tela = m.jogador.screen();
+    assert!(tela.is_open() && tela.listening(), "P1: aberta e à escuta");
+    assert_eq!(m.jogador.rows(&map)[tela.selected()].action, "fire");
+    assert_eq!(tela.slot(), 1, "a 2.ª tecla do Fire");
 }
 
 #[test]

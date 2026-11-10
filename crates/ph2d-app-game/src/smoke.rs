@@ -20,7 +20,7 @@ use ph2d_render::{
 use ph2d_script::{LuauScript, ProjectScripts};
 use std::sync::OnceLock;
 
-pub const CENAS: u32 = 13; // 6..13 = a aba Input Map, A1..B4 (a ordem e as próximas: `input_map`)
+pub const CENAS: u32 = 18; // 6..18 = a aba Input Map, A1..C4 e P1 (a tabela: `input_map`)
 pub use ph2d_input_map_scene as input_map;
 
 /// A cena 4 (plano 12): o nível 2 com duas imagens na biblioteca do projecto para trocar pelo Inspector — a
@@ -180,6 +180,7 @@ pub fn gesto_no_quadro(nivel: u32, stage: GameStage, quadro: u32) -> Option<Gest
         5 => &HORARIO_5,
         2 | 4 => &HORARIO_2,
         3 => &HORARIO_3,
+        n if input_map::codigo(n).is_some() => &[], // só o Play (as teclas da P1: `tecla_do_p1`)
         _ => &HORARIO_1,
     };
     match quadro {

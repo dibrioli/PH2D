@@ -122,7 +122,9 @@ impl crate::App {
                 let tab = tab.find_mut::<ph2d_app_input_map::InputMapTab>();
                 if let Some(map) = tab.and_then(|t| aba::arma(&mut t.doc, c)) {
                     h.input_map = map;
-                    h.store.request_input_map_tab();
+                    if aba::abre_a_aba(c) {
+                        h.store.request_input_map_tab();
+                    }
                 }
             }
             if let Some(hero) = cx.hero_screen.filter(|_| matches!(nivel, 2 | 4 | 5)) {
@@ -137,6 +139,9 @@ impl crate::App {
             }
         }
         self.troca_de_imagem_do_smoke(nivel);
+        if let Some((eixo, v)) = ph2d_app_game::smoke::input_map::manche(nivel) {
+            self.input.gamepad.handle_axis(eixo, v); // C3: o comando que o smoke não tem
+        }
         self.timeline.flags.simulate_physics = true;
         self.playhead.rewind();
         self.playhead.pause();
@@ -223,7 +228,16 @@ impl crate::App {
         let (Some(stage), Some(nivel)) = (s::conducao(), s::armed_level()) else {
             return;
         };
-        match s::gesto_no_quadro(nivel, stage, s::proximo_quadro()) {
+        let quadro = s::proximo_quadro();
+        if let Some(k) = s::input_map::tecla_do_p1(nivel, quadro) {
+            let h = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref());
+            let out = h.map(|h| self.components.jogador.key(k, true, &h.input_map));
+            let tocando = self.playhead.is_playing();
+            if out.and_then(|o| self.components.jogador.clock_after(o, tocando)) == Some(false) {
+                self.playhead.pause();
+            }
+        }
+        match s::gesto_no_quadro(nivel, stage, quadro) {
             Some(Gesto::Joga(stage)) => {
                 if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
                     use ph2d_editor_core::action_bus::{EditorAction, TransportCmd};

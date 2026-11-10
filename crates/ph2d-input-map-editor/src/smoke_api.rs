@@ -4,7 +4,7 @@
 
 use crate::doc::{InputMapDoc, View};
 use crate::view_keyboard::state::{KbHit, Sub};
-use ph2d_input::{ActionId, Key};
+use ph2d_input::{ActionId, Key, PlayerKeys};
 
 impl InputMapDoc {
     /// A vista (List · Keyboard · Try it).
@@ -35,5 +35,32 @@ impl InputMapDoc {
     /// Arma a escuta partilhada nesta acção (a família pede-a no próximo `frame`).
     pub fn smoke_listen(&mut self, action: ActionId) {
         self.list.listen_request = Some(Some(action));
+    }
+
+    /// Uma tecla em baixo na bancada da vista C (a mesma porta do `raw_key` com o jogo parado).
+    pub fn smoke_bench_key(&mut self, key: Option<Key>) {
+        key.into_iter()
+            .for_each(|k| self.tryit.bench.keyboard.handle_key_down(k));
+    }
+
+    /// O `game_id` do mundo da cena (o recurso que o `Snapshot` lê); o tipo fica na tela do jogador.
+    #[must_use]
+    pub fn smoke_game_id(id: u64) -> ph2d_player_controls::GameId {
+        ph2d_player_controls::GameId(id)
+    }
+
+    /// Grava as teclas de um jogador deste jogo na pasta das prefs da aba (a frase «a player changed…» da C·4).
+    ///
+    /// # Errors
+    /// Sem pasta das prefs, ou o erro do sistema de ficheiros.
+    pub fn smoke_player_keys(&mut self, game_id: u64, keys: &PlayerKeys) -> std::io::Result<()> {
+        let base = self
+            .tryit
+            .base
+            .as_ref()
+            .ok_or(std::io::ErrorKind::NotFound)?;
+        ph2d_player_controls::file::save(&ph2d_player_controls::player_file(base, game_id), keys)?;
+        self.tryit.reread = true;
+        Ok(())
     }
 }

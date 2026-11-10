@@ -4,13 +4,27 @@
 //! o aviso âmbar da B4) e o estado da aba de cada cena, posto pelas portas `InputMapDoc::smoke_*`. A shell compõe:
 //! acha a aba, chama [`arma`], instala o mapa e pede a aba (`request_input_map_tab`, o caminho do menu).
 //!
-//! **Numeração** (contada no roteiro, `CENAS`): A1..A4 = 6..9 · B1..B4 = 10..13. A rodada seguinte toma
-//! C1..C4 = 14..17 (receitas, ao vivo, manche, controles) e só DEPOIS P1 = 18 (o Play com a tela aberta): conta-se
-//! de novo `CENAS` e acrescenta-se ao fim de [`CODIGOS`] por esta ordem, nunca com cena falsa a guardar lugar.
+//! **Numeração** (contada no roteiro, `CENAS` = 18; uma cena nova conta-o de novo e entra ao fim de [`CODIGOS`]):
+//!
+//! | `PH2D_GAME_SMOKE` | Cena | Estado |
+//! |---|---|---|
+//! | 6 | A1 | List: as 11 acções do dono |
+//! | 7 | A2 | List: à escuta no reload |
+//! | 8 | A3 | List: busca pela ↑ (jump e move_up) |
+//! | 9 | A4 | List: move_left com a manche esquerda (Dead 0.15, Press 0.50) |
+//! | 10 | B1 | Keyboard: jump aberto |
+//! | 11 | B2 | Keyboard: o ponteiro sobre a ↑ |
+//! | 12 | B3 | Keyboard: o comando com o move_left aberto |
+//! | 13 | B4 | Keyboard: reload aberto (sem teclas, sem leitor) |
+//! | 14 | C1 | Try it: as quatro receitas, nenhuma pergunta aberta |
+//! | 15 | C2 | Try it: a ↑ em baixo na bancada (jump e move_up a 1.00, o pé nomeia-as) |
+//! | 16 | C3 | Try it: a manche esquerda a −0.62 ([`manche`], só no smoke): Pushed 0.62 · Strength 0.55 · Pressed |
+//! | 17 | C4 | Try it: «Players can change keys», só [`NA_TELA`] no jogo, um ficheiro do jogador com 1 troca |
+//! | 18 | P1 | Play (com `PH2D_GAME_SMOKE_DRIVE=editor`): a tela Controls aberta, Fire, 2.ª tecla à escuta ([`tecla_do_p1`]) |
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{ActionEdge, ActionTriggerRow, Entity, Name, SignalOnAction, SimWorld, Transform};
-use ph2d_input::{Binding, GamepadAxis, InputMap, Key};
+use ph2d_input::{Binding, GamepadAxis, InputMap, Key, PlayerKeys};
 use ph2d_input_map_editor::view_keyboard::state::Sub;
 use ph2d_input_map_editor::{InputMapDoc, View};
 use ph2d_script::{LuauScript, ProjectScripts};
@@ -19,10 +33,12 @@ use ph2d_script::{LuauScript, ProjectScripts};
 pub const PRIMEIRA: u32 = 6;
 
 /// O código de cada cena, pela ordem do roteiro.
-pub const CODIGOS: [&str; 8] = ["A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4"];
+pub const CODIGOS: [&str; 13] = [
+    "A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4", "C1", "C2", "C3", "C4", "P1",
+];
 
 /// O que cada cena mostra (o terminal do smoke).
-const O_QUE: [&str; 8] = [
+const O_QUE: [&str; 13] = [
     "A · List: as 11 acções do dono (fábrica + fire J, reload sem tecla, laser H)",
     "A · List: a escutar no reload (o chip tracejado espera a próxima tecla)",
     "A · List: busca pela seta ↑ (só jump e move_up; o pé diz quem as lê)",
@@ -31,7 +47,21 @@ const O_QUE: [&str; 8] = [
     "B · Keyboard: o ponteiro sobre a ↑ (o pé: jump e move_up)",
     "B · Keyboard: o comando com o move_left aberto (a barra 0 · Dead · Press · 1)",
     "B · Keyboard: reload aberto (sem teclas; ninguém o lê)",
+    "C · Try it: as quatro receitas, nenhuma pergunta aberta",
+    "C · Try it: a ↑ em baixo na bancada (jump e move_up a 1.00; o pé diz quem a lê)",
+    "C · Try it: a manche esquerda a 0.62 para a esquerda (Pushed 0.62 · Strength 0.55 · Pressed)",
+    "C · Try it: a tela do jogador (Players can change keys; jump, move_left e fire à vista; 1 tecla trocada)",
+    "P · Play: a tela Controls aberta no jogo, à escuta na 2.ª tecla do Fire (`PH2D_GAME_SMOKE_DRIVE=editor`)",
 ];
+
+/// A manche esquerda das cenas C3: empurrada a 0.62 para a esquerda (maquete C·3: força (0.62 − 0.15) ÷ 0.85).
+pub const MANCHE_C3: f32 = -0.62;
+/// O `game_id` do mundo das cenas C4 e P1 (o ficheiro do jogador mora em `~/.ph2d`, por jogo).
+pub const GAME_ID: u64 = 0x1A_9E3C;
+/// As acções que a tela do jogador mostra nas cenas C4 e P1 (as da maquete C·4), pela ordem do mapa.
+pub const NA_TELA: [&str; 3] = [ph2d_input::PLAYER_MOVE_LEFT, "jump", "fire"];
+/// A troca do jogador deste computador (C4): o fire ganha a `K` como 2.ª tecla — uma acção trocada.
+pub const TECLA_DO_JOGADOR: char = 'K';
 
 /// A zona da manche do move_left nas cenas com comando (maquetes A4 e B3).
 pub const DEAD: f32 = 0.15;
@@ -104,6 +134,9 @@ pub fn leitores(
         Transform::from_translation(Vec2::new(-7.0, 1.0)),
         LuauScript::library(laser),
     ));
+    if matches!(codigo(nivel), Some("C4" | "P1")) {
+        w.insert_resource(InputMapDoc::smoke_game_id(GAME_ID));
+    }
     ph2d_ecs::assign_missing_stable_ids(w);
     if let Some(i) = CODIGOS.iter().position(|c| Some(*c) == codigo(nivel)) {
         println!("[game-smoke] ={nivel} ({}) {}", CODIGOS[i], O_QUE[i]);
@@ -124,12 +157,24 @@ pub fn arma(doc: &mut InputMapDoc, cena: &str) -> Option<InputMap> {
     if !CODIGOS.contains(&cena) {
         return None;
     }
-    let map = owner_map(matches!(cena, "A4" | "B3"));
+    let mut map = owner_map(matches!(cena, "A4" | "B3" | "C3"));
+    if matches!(cena, "C4" | "P1") {
+        tela_do_jogador(&mut map);
+    }
     let id = |n: &str| map.id(n);
     let (jump, move_left, reload) = (id("jump"), id(ph2d_input::PLAYER_MOVE_LEFT), id("reload"));
-    let lista = cena.starts_with('A');
-    doc.smoke_view(if lista { View::List } else { View::Keyboard });
+    doc.smoke_view(match cena.as_bytes().first() {
+        Some(b'A') => View::List,
+        Some(b'B') => View::Keyboard,
+        _ => View::TryIt,
+    });
     match cena {
+        "C2" => doc.smoke_bench_key(up_arrow()),
+        "C4" => {
+            if let Err(e) = doc.smoke_player_keys(GAME_ID, &troca_do_jogador(&map)) {
+                eprintln!("[game-smoke] C4: o ficheiro do jogador não se gravou ({e})");
+            }
+        }
         "A2" => reload.into_iter().for_each(|r| doc.smoke_listen(r)),
         "A3" => doc.smoke_search_key(up_arrow()),
         "B1" => doc.smoke_open(jump),
@@ -145,4 +190,63 @@ pub fn arma(doc: &mut InputMapDoc, cena: &str) -> Option<InputMap> {
         _ => {}
     }
     Some(map)
+}
+
+/// «Players can change keys» ligado e só [`NA_TELA`] à vista no jogo (C4, P1).
+fn tela_do_jogador(map: &mut InputMap) {
+    let vistas: Vec<_> = (map.actions().iter())
+        .map(|a| (a.id, NA_TELA.contains(&a.name.as_str())))
+        .collect();
+    let c = map.controls_mut();
+    c.players_can_change_keys = true;
+    for (id, vista) in vistas {
+        c.set_shown_in_game(id, vista);
+    }
+}
+
+/// As teclas de um jogador que trocou UMA acção: o fire com [`TECLA_DO_JOGADOR`] a seguir à do jogo.
+#[must_use]
+pub fn troca_do_jogador(map: &InputMap) -> PlayerKeys {
+    let mut keys = PlayerKeys::new();
+    if let Some(fire) = map.id("fire").and_then(|id| map.get(id)) {
+        let mut b = fire.bindings.clone();
+        b.push(Binding::Key(Key(u32::from(TECLA_DO_JOGADOR))));
+        keys.set("fire", b);
+    }
+    keys
+}
+
+/// A aba abre-se por cima da vista? Na P1 não: o jogo corre na vista da cena.
+#[must_use]
+pub fn abre_a_aba(cena: &str) -> bool {
+    cena != "P1"
+}
+
+/// O eixo e o valor que a cena empurra no comando ao vivo (só a C3; o smoke não tem comando de verdade).
+#[must_use]
+pub fn manche(nivel: u32) -> Option<(GamepadAxis, f32)> {
+    (codigo(nivel) == Some("C3")).then_some((GamepadAxis::LeftStickX, MANCHE_C3))
+}
+
+/// O quadro de cada tecla do condutor na P1 (o Play entra ao 60): abre a tela, desce ao Fire, passa à 2.ª tecla e
+/// põe-na à escuta.
+const TECLAS_P1: [(u32, &str); 5] = [
+    (150, ""),
+    (160, "down"),
+    (170, "down"),
+    (180, "right"),
+    (190, "enter"),
+];
+
+/// A tecla que o condutor da P1 prime no `quadro` (`""` = a que abre a tela, a da fábrica).
+#[must_use]
+pub fn tecla_do_p1(nivel: u32, quadro: u32) -> Option<Key> {
+    if codigo(nivel) != Some("P1") {
+        return None;
+    }
+    let (_, nome) = TECLAS_P1.iter().find(|(q, _)| *q == quadro)?;
+    if nome.is_empty() {
+        return Some(ph2d_input::controls::PlayerControls::default().open_key);
+    }
+    Key::named_in_script(nome).and_then(|v| v.first().copied())
 }

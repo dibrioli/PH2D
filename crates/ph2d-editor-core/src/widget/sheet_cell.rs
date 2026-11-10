@@ -137,28 +137,8 @@ pub fn paint_sheet_cell(
         sheet,
         (hframes, vframes, cell),
         dest,
-        ui_image_quality(),
+        super::image_filter::ui_image_quality(),
     );
-}
-
-/// O filtro com que a UI pinta a arte do jogo (Edit ▸ Preferences ▸ Image Filter), já como [`ImageQuality`]: o
-/// `project::set_ui_image_filter` escreve-o a cada quadro. Mora aqui, do lado de quem pinta, para que o `widget` não
-/// suba ao `project` (DAG da fundação). `true` = suave.
-static UI_IMAGE_SMOOTH: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
-
-/// Escrito só pelo `project::set_ui_image_filter`, que traduz o modo pela porta `image_quality_for`.
-pub fn set_ui_image_quality(q: ImageQuality) {
-    UI_IMAGE_SMOOTH.store(q != ImageQuality::Low, std::sync::atomic::Ordering::Relaxed);
-}
-
-/// ⭐ O filtro com que um painel pinta uma imagem do jogo: o mesmo do canvas.
-#[must_use]
-pub fn ui_image_quality() -> ImageQuality {
-    if UI_IMAGE_SMOOTH.load(std::sync::atomic::Ordering::Relaxed) {
-        ImageQuality::High
-    } else {
-        ImageQuality::Low
-    }
 }
 
 /// [`paint_sheet_cell`] com o filtro dado (`Low` = o píxel nítido de uma ampliação de pixel art).

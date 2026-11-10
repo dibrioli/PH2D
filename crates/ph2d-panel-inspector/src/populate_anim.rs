@@ -27,6 +27,8 @@ pub(crate) fn populate_anim(store: &mut WidgetStore) {
             crate::ids::INSP_ANIM_ADD_PLAYER,
             crate::ids::INSP_ANIM_REWIND,
             crate::ids::INSP_ANIM_PLAYING,
+            // O selo da tinta a caminho na prévia: não age, mas é o alvo da dica (o hover pede-o focável).
+            crate::ids::INSP_ANIM_PREVIEW_SYNC,
         ],
     );
     register_button_ids(store, &crate::ids::INSP_ANIM_DIR);

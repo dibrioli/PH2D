@@ -41,6 +41,7 @@ mod dropdown;
 pub mod field_suffix;
 mod icon_button;
 pub mod illustration;
+pub mod image_filter;
 mod key_value_list;
 mod level_meter;
 mod list_item;

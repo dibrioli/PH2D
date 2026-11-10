@@ -188,6 +188,14 @@ const FORA: &[(&str, &str, &str)] = &[
          ler os corpos em cartões",
     ),
     (
+        "inspector",
+        // `INSP_NAV_OFF_BODY[0]` (`tabela_de_linha(hash_node_id("insp_nav_off_body"))[0]`): id de tabela, sem slug.
+        "#8b8123724fb912b7",
+        "os botões dos corpos de formas desligadas da NAV REGION (`sections/nav_desligados.rs`): uma LISTA de \
+         atalhos que seleciona cada corpo, sem valor a escolher; o nome é a frase de aviso por cima. Declara-se \
+         composto só para contar uma capacidade (`quantas_entradas_tem_cada_painel`)",
+    ),
+    (
         "widget_gallery",
         "insp_sample_tab_a",
         "a amostra do componente Tabs na galeria: é navegação, como a de cima",

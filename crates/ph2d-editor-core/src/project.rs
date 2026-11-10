@@ -16,7 +16,6 @@
 //! single scene.
 
 pub use ph2d_host::ImageFilterMode;
-use ph2d_vector::ImageQuality;
 
 /// Defaults — kept as `pub const` so tests + UI presets can reference
 /// the canonical value without re-typing the literal.
@@ -242,30 +241,9 @@ impl DisplayAngle {
     }
 }
 
-/// Map the app-wide [`ImageFilterMode`] (defined in `ph2d-host`) onto
-/// the peniko [`ImageQuality`] used by the Vello image preview
-/// (`VectorScene::draw_image_rgba`). Companion of
-/// `ph2d_render::wgpu_filter`, which maps the SAME enum onto the wgpu
-/// sprite sampler — keeping the on-canvas BG-Removal preview consistent
-/// with the baked sprite.
-///
-/// - `PixelArt` → [`ImageQuality::Low`]  (nearest-neighbor, crisp)
-/// - `Smooth`   → [`ImageQuality::High`] (bicubic, smooth)
-pub fn image_quality_for(mode: ImageFilterMode) -> ImageQuality {
-    match mode {
-        ImageFilterMode::PixelArt => ImageQuality::Low,
-        ImageFilterMode::Smooth => ImageQuality::High,
-    }
-}
-
-/// O filtro de imagem do app (Edit ▸ Preferences ▸ Image Filter) visto pela UI: o shell escreve-o a cada quadro e todo
-/// painel que pinta a arte do jogo lê-o por [`ui_image_quality`]. Global como o idioma do `tr`: passá-lo por cada
-/// painel deixava os painéis suavizados com o canvas em Pixel Art (smoke do dono 09/11). O valor mora no `widget`.
-pub fn set_ui_image_filter(mode: ImageFilterMode) {
-    crate::widget::sheet_cell::set_ui_image_quality(image_quality_for(mode));
-}
-
-pub use crate::widget::sheet_cell::ui_image_quality;
+/// O filtro de imagem do app (Edit ▸ Preferences ▸ Image Filter): a porta e o valor da UI moram no `widget` (DAG da
+/// fundação); o shell escreve-o a cada quadro e todo painel que pinta a arte do jogo lê-o por [`ui_image_quality`].
+pub use crate::widget::image_filter::{image_quality_for, set_ui_image_filter, ui_image_quality};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ProjectSettings {

@@ -174,13 +174,22 @@ fn planos(
 #[test]
 fn o_corpo_do_transform_em_faixas_e_o_serial_ao_bit() {
     let w3 = fx::W as f32 / 3.0;
-    let cases: [(&str, u8, [f32; 2], [f32; 2]); 3] = [
-        ("Uniform", 0, [80.0, 80.0], [100.0, 86.0]),
-        ("Distort", 2, [0.0, 0.0], [30.0, 24.0]),
-        ("Warp", 3, [w3, w3], [w3 + 18.0, w3 + 22.0]),
+    // `sel`: re-levantar com uma seleção que tira a janela suja da coluna 0 (`dirty.x > 0`).
+    let cases: [(&str, u8, bool, [f32; 2], [f32; 2]); 5] = [
+        ("Uniform", 0, false, [80.0, 80.0], [100.0, 86.0]),
+        ("Distort", 2, false, [0.0, 0.0], [30.0, 24.0]),
+        ("Warp", 3, false, [w3, w3], [w3 + 18.0, w3 + 22.0]),
+        ("Uniform+sel", 0, true, [80.0, 80.0], [100.0, 86.0]),
+        ("Distort+sel", 2, true, [40.0, 60.0], [56.0, 70.0]),
     ];
-    for (name, mode, from, to) in cases {
+    for (name, mode, sel, from, to) in cases {
         let gesto = |t: &mut PainterTool| {
+            if sel {
+                t.set_rect_selection(40, 60, 90, 44);
+                t.deform_apply();
+                let src = t.paint.deform.xform_patch.as_ref().expect("levante").src;
+                assert!(src.x > 0, "fixture [{name}]: a janela ficou na coluna 0");
+            }
             t.set_deform_transform_mode(mode);
             fx::drag(t, from, to);
         };

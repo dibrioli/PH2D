@@ -45,4 +45,5 @@ Parte «More», fechada por omissão, com os campos raros (nenhum some). Remover
 «Removed — Undo». Aviso quando o corpo está escalado.
 
 ## Onda 4 — tecla no Trigger
+✅ feita — commits `e4a95848f8`, `ffaf6162e3`, cura do fecho `394b3fd4ce` ([handoff de integração](../handoffs/HANDOFF_INTEGRACAO_line_GameEngineFuncional02_2026-11-09_OUTLINE_E_F3.md)). Linha «Key» no cartão: a tecla TROCA as de teclado, repetida é aceite com aviso, «Create and set key» cria e espera; um clique fora desarma a escuta.
 Escolher a tecla no próprio cartão do Trigger; o Input Map continua a ser a mesma fonte.

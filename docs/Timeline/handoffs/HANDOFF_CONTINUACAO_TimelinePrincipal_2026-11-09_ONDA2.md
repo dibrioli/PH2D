@@ -87,6 +87,8 @@ Testes por nome desta rodada: `linhas` 16 ✓ · `tracks_value` 6 ✓ · `scroll
 
 - **2e (dono 09/11, «capriche»):** chave nos cartões = métricas `ph2d_tokens::TIMELINE_KEY_HALF_PX` 6,5 + `_RING_PX` 1,5 (contorno `Bg0`; maquete medida: ~11 px com contorno ~1) e alvo `TIMELINE_KEY_HIT_HALF_PX` 8 (`tracks::paint_chave/chave_h/chave_hit_hw`; seam `o_alvo_da_chave_cobre_o_losango_com_contorno`, mutação sangra); ponto do objecto `TIMELINE_OBJECT_DOT_HALF_PX` 4 em `Text2`. Summary: 3 candidatos por `PH2D_SUMMARY_TOM` em execução ([comparação](../fotos/15_onda2_summary_candidatos.png)) — A faixa funda (`Bg0` + destaque a 0,25) com filete de 2 px: fundo 0,045 · texto/losango 0,235; B âmbar: losango a 0,148 (reprovado); C célula do destaque a 0,45: 0,045 · 0,189 e compete com o chip de clipe. **A escolhido**; override removido; `TIMELINE_SUMMARY_TINT_ALPHA` 0,25; gate apertado a 0,044 / 0,23. Zoom: [`15_onda2_losangos_zoom.png`](../fotos/15_onda2_losangos_zoom.png).
 
+- **2f (escolha do DONO, 09/11): Summary = candidato C**, já sem variável de comparação: célula do nome `PanelBg` + `TimelineSummaryRow` (→ `Accent`) a `TIMELINE_SUMMARY_CELL_ALPHA` 0,45, fita `Bg0` + o mesmo a `TIMELINE_SUMMARY_TINT_ALPHA` 0,25, sem filete (`summary_paint::fundo`). Gate nos números da C: fundo ≥ 0,044 (medido 0,045), texto/losango ≥ 0,188 (medido 0,189). A célula usa o mesmo azul do chip de clipe escolhido: deixado como o dono viu, sem ordem para mudar.
+
 ## Superfície de colisão
 
 `ph2d-panel-timeline`: `linhas.rs`, `tracks.rs`, `tracks_label.rs`, `tracks_value.rs`, `paint.rs`, `ruler.rs`, `state.rs`,

@@ -441,7 +441,7 @@ fn o_cabecalho_do_objeto_tem_fundo_e_icones_proprios() {
 
 /// ⭐ Dono 09/11: o Summary tem cor PRÓPRIA — a fita E a célula do nome longe do cabeçalho do
 /// objecto, das duas da zebra e do fundo, em todo tema; o texto e o losango âmbar legíveis por cima.
-/// Régua OKLab (a das barras). Os três candidatos medidos (A escolhido) estão no handoff da onda 2 (2e).
+/// Régua OKLab (a das barras). Os três candidatos medidos e a escolha do dono (C) no handoff (2e, 2f).
 #[test]
 fn o_summary_tem_cor_propria_nos_oito_temas() {
     use ph2d_tokens::{Theme, srgb_to_oklch};
@@ -484,8 +484,8 @@ fn o_summary_tem_cor_propria_nos_oito_temas() {
         let (mut fundo, mut leg) = (f64::MAX, f64::MAX);
         for t in temas {
             let f = crate::summary_paint::fundo(t);
-            {
-                let s = lab(compoe(&f.camadas));
+            for camadas in [&f.fita, &f.celula] {
+                let s = lab(compoe(camadas));
                 for o in [
                     ColorToken::TimelineObjectRow,
                     ColorToken::TimelineRowAlt,
@@ -506,8 +506,12 @@ fn o_summary_tem_cor_propria_nos_oito_temas() {
         fundo >= BARRA_SUMMARY,
         "o Summary a {fundo:.3} de um fundo vizinho (barra {BARRA_SUMMARY})"
     );
-    assert!(leg >= 0.23, "texto/losango a {leg:.3} do fundo do Summary");
+    assert!(
+        leg >= LEGIVEL_SUMMARY,
+        "texto/losango a {leg:.3} do fundo do Summary"
+    );
 }
 
-/// O mínimo medido do escolhido é 0,045 (fundo) e 0,235 (texto/losango); a barra fica logo abaixo.
+/// O mínimo medido da C (a do dono) é 0,045 (fundo) e 0,189 (texto/losango); as barras ficam logo abaixo.
 const BARRA_SUMMARY: f64 = 0.044;
+const LEGIVEL_SUMMARY: f64 = 0.188;

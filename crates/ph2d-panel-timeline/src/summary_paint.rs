@@ -36,30 +36,31 @@ const RULE_H: f32 = 1.0; // LITERAL-PX-OK: summary row bottom rule
 /// Side of the square padlock button at the right of the Summary label.
 const LOCK_SIZE: f32 = 14.0; // LITERAL-PX-OK: summary column-lock padlock button side
 
-/// ⭐ **O fundo do Summary** (dono 09/11, candidato A de três — `fotos/15_onda2_summary_candidatos.png`):
-/// nos cartões, uma faixa funda tingida do destaque (`Bg0` + `TimelineSummaryRow` a
-/// `TIMELINE_SUMMARY_TINT_ALPHA`) de ponta a ponta, com um filete do destaque à esquerda; os losangos
-/// âmbar brilham por cima. Gate `o_summary_tem_cor_propria_nos_oito_temas`. No clássico, o `Bg3`.
+/// ⭐ **O fundo do Summary** (escolha do DONO, 09/11: candidato C de três —
+/// `fotos/15_onda2_summary_candidatos.png`): nos cartões, a célula do nome em destaque forte
+/// (`PanelBg` + `TimelineSummaryRow` a `TIMELINE_SUMMARY_CELL_ALPHA`, o «chip» do canal-mestre do
+/// Blender) e a fita funda tingida (`Bg0` + o mesmo a `TIMELINE_SUMMARY_TINT_ALPHA`). Gate
+/// `o_summary_tem_cor_propria_nos_oito_temas`. No clássico, o `Bg3` de ponta a ponta.
 pub(crate) struct Fundo {
-    pub camadas: Vec<ph2d_vector::Color>,
-    pub filete: Option<ph2d_vector::Color>,
+    pub fita: Vec<ph2d_vector::Color>,
+    pub celula: Vec<ph2d_vector::Color>,
 }
 
 pub(crate) fn fundo(theme: Theme) -> Fundo {
     let r = |c| resolve(c, theme);
     if !ph2d_editor_core::panel::cards::ferramenta::cards_on() {
         return Fundo {
-            camadas: vec![r(ColorToken::Bg3)],
-            filete: None,
+            fita: vec![r(ColorToken::Bg3)],
+            celula: Vec::new(),
         };
     }
+    let tinta = |base, a| vec![r(base), r(ColorToken::TimelineSummaryRow).multiply_alpha(a)];
     Fundo {
-        camadas: vec![
-            r(ColorToken::Bg0),
-            r(ColorToken::TimelineSummaryRow)
-                .multiply_alpha(ph2d_tokens::TIMELINE_SUMMARY_TINT_ALPHA),
-        ],
-        filete: Some(r(ColorToken::TimelineSummaryRow)),
+        fita: tinta(ColorToken::Bg0, ph2d_tokens::TIMELINE_SUMMARY_TINT_ALPHA),
+        celula: tinta(
+            ColorToken::PanelBg,
+            ph2d_tokens::TIMELINE_SUMMARY_CELL_ALPHA,
+        ),
     }
 }
 
@@ -85,12 +86,12 @@ pub(crate) fn paint(
     }
     let row = Rect::new(region.x, y, region.w, h);
     let f = fundo(theme);
-    for cor in &f.camadas {
+    for cor in &f.fita {
         fill_rounded_rect(ctx.scene, row, Radius::Xs.px(), *cor);
     }
-    if let Some(cor) = f.filete {
-        let w = ph2d_editor_core::panel::cards::banda::metrics::FIELD_BORDER * 2.0;
-        fill_rounded_rect(ctx.scene, Rect::new(region.x, y, w, h), 0.0, cor);
+    let celula = Rect::new(region.x, y, g.label_w, h);
+    for cor in &f.celula {
+        fill_rounded_rect(ctx.scene, celula, Radius::Xs.px(), *cor);
     }
     fill_rounded_rect(
         ctx.scene,

@@ -92,6 +92,9 @@ pub const ROW_SELECTED_ALPHA: f32 = 0.35; // LITERAL-PX-OK: opacidade do realce
 /// 09/11: a 0,15 sobre o cabeçalho lia-se cinza sujo). Medida nos 8 temas (OKLab): a 0,25 o pior caso
 /// contra cabeçalho, zebra e fundo é 0,045; a 0,20 cai a 0,020 (handoff da onda 2, 2e).
 pub const TIMELINE_SUMMARY_TINT_ALPHA: f32 = 0.25; // LITERAL-PX-OK: opacidade da tinta do Summary
+/// A célula do nome do Summary, mais forte que a fita — o «chip» do canal-mestre, idioma do Blender
+/// (escolha do dono, 09/11, candidato C).
+pub const TIMELINE_SUMMARY_CELL_ALPHA: f32 = 0.45; // LITERAL-PX-OK: opacidade da célula do Summary
 
 /// **A chave da Timeline nos cartões** (dono 09/11: «muito pequenos»). Maquete B1 medida em chrome
 /// headless: losango de ~11 px com contorno escuro de ~1 px numa linha de 22. Aqui um pouco maior.

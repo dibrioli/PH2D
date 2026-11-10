@@ -57,6 +57,8 @@ ph2d-light2d-ecs = { path = "../../crates/ph2d-light2d-ecs" }
 ph2d-light2d-gpu = { path = "../../crates/ph2d-light2d-gpu" }
 ph2d-pixel-cena = { path = "../../crates/ph2d-pixel-cena" }
 ph2d-pixel-luz = { path = "../../crates/ph2d-pixel-luz" }
+# A luz na rampa: placa × gabarito (`luz_rampa_placa.rs`).
+ph2d-pixel-rampa = { path = "../../crates/ph2d-pixel-rampa" }
 # A sonda da cena 26 (`cena26.rs`): a física e a regra de animação.
 ph2d-physics-ecs = { path = "../../crates/ph2d-physics-ecs" }
 # A sonda da cena 27 (`cena27.rs`): o import do `.ase` como Sprite do motor (`liga`, `grid_for`, `pack`).

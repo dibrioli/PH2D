@@ -35,6 +35,7 @@ mod formas;
 mod guias;
 mod historia;
 mod intervalo;
+mod luz_rampa_placa;
 mod painel_e_dialogo;
 mod palco_do_jogo;
 mod paleta;

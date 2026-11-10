@@ -420,6 +420,7 @@ fn build_runtime(
     let runtime = ScriptRuntime::new()?;
     wire_ph2d_api(&runtime, write_queue, input_snapshot, state_table)?;
     wire_devices(runtime.lua(), devices)?;
+    crate::action_api::wire(runtime.lua(), devices)?;
     crate::lane::wire(runtime.lua())?;
     crate::stdlib::wire(runtime.lua())?;
     wire_scene_api(&runtime, emit_queue)?;

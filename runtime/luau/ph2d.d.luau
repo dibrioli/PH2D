@@ -196,6 +196,14 @@ declare ph2d: {
     mouse_released: (button: MouseButtonName) -> boolean,
     --- The point of the scene under the mouse, in the same units as `x` and `y`.
     mouse_position: () -> (number?, number?),
+    --- Whether an action of the Input Map is held right now, by any of its keys or buttons.
+    action_down: (action: string) -> boolean,
+    --- Whether the action went down since the last tick — true on one tick only.
+    action_pressed: (action: string) -> boolean,
+    --- Whether the action went up since the last tick — true on one tick only.
+    action_released: (action: string) -> boolean,
+    --- How far the action is pushed, from 0 to 1 (a key gives 0 or 1, a stick the values between).
+    action_strength: (action: string) -> number,
     --- Declares an Inspector property; only at the top of the script.
     property: (name: string, default: PropertyDefault, options: PropertyOptions?) -> (),
     --- A position value.

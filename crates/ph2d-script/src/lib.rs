@@ -21,8 +21,11 @@
 //! pattern; populated by shells from `ph2d_input::InputState` per
 //! frame.
 
+/// `ph2d.action_*`: as acções do Input Map, pelo nome (plano InputMap §5).
+mod action_api;
 /// O texto da página de ajuda de cada linha da `api_table`.
 pub mod api_help;
+mod api_help_actions;
 mod api_help_kanban;
 mod api_help_life;
 mod api_help_props;

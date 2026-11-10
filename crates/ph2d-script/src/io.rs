@@ -25,7 +25,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex};
 
-use ph2d_input::{Key, KeyboardState, MouseButton, MouseState};
+use ph2d_input::{ActionState, Input, InputMap, Key, KeyboardState, MouseButton, MouseState};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntityWrite {
@@ -229,6 +229,10 @@ struct DevicesInner {
     mouse_pressed: BTreeSet<MouseButton>,
     mouse_released: BTreeSet<MouseButton>,
     mouse_world: Option<[f64; 2]>,
+    /// As acções do mapa, na ordem dele: `(nome, segurada, força)`.
+    actions: Vec<(String, bool, f32)>,
+    actions_pressed: BTreeSet<String>,
+    actions_released: BTreeSet<String>,
 }
 
 /// ⭐ **O teclado e o rato que os scripts leem** (`ph2d.key_*`, `ph2d.mouse_*`).
@@ -271,6 +275,60 @@ impl Devices {
         g.mouse_world = mouse_world;
     }
 
+    /// ⭐ **As acções do Play** (`ph2d.action_*`, plano InputMap §5): o MESMO mapa e `ActionState` que
+    /// o Play resolveu neste quadro, já com o tique feito. As bordas acumulam-se como as das teclas.
+    /// `None` = sem mapa: nenhuma acção existe.
+    pub fn feed_actions(&self, resolved: Option<(&InputMap, &ActionState)>) {
+        let mut g = self.lock();
+        g.actions.clear();
+        let Some((map, state)) = resolved else {
+            g.actions_pressed.clear();
+            g.actions_released.clear();
+            return;
+        };
+        let input = Input::new(map, state);
+        for a in map.actions() {
+            let n = a.name.as_str();
+            g.actions
+                .push((n.to_owned(), input.pressed(n), input.strength(n)));
+            if input.just_pressed(n) {
+                g.actions_pressed.insert(n.to_owned());
+            }
+            if input.just_released(n) {
+                g.actions_released.insert(n.to_owned());
+            }
+        }
+    }
+
+    /// A acção `name` responde a `edge`? `None` = o mapa não tem essa acção.
+    #[must_use]
+    pub fn action(&self, name: &str, edge: Edge) -> Option<bool> {
+        let g = self.lock();
+        let (_, down, _) = g.actions.iter().find(|(n, ..)| n == name)?;
+        Some(match edge {
+            Edge::Down => *down,
+            Edge::Pressed => g.actions_pressed.contains(name),
+            Edge::Released => g.actions_released.contains(name),
+        })
+    }
+
+    /// A força `0..1` da acção `name`; `None` = o mapa não tem essa acção.
+    #[must_use]
+    pub fn action_strength(&self, name: &str) -> Option<f32> {
+        let g = self.lock();
+        g.actions.iter().find(|(n, ..)| n == name).map(|(.., s)| *s)
+    }
+
+    /// Os nomes das acções do mapa, na ordem dele (a lista do erro de um nome que ele não tem).
+    #[must_use]
+    pub fn action_names(&self) -> Vec<String> {
+        self.lock()
+            .actions
+            .iter()
+            .map(|(n, ..)| n.clone())
+            .collect()
+    }
+
     /// Um tique viu as bordas: esquece-as.
     pub fn edges_seen(&self) {
         let mut g = self.lock();
@@ -278,6 +336,8 @@ impl Devices {
         g.keys_released.clear();
         g.mouse_pressed.clear();
         g.mouse_released.clear();
+        g.actions_pressed.clear();
+        g.actions_released.clear();
     }
 
     /// Sem corrida, nenhuma borda espera pelo Play (senão uma tecla de há minutos dispararia no

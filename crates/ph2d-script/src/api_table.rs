@@ -336,6 +336,31 @@ pub const API: &[ApiEntry] = &[
         luau_type: "() -> (number?, number?)",
         doc: "The point of the scene under the mouse, in the same units as `x` and `y`.",
     },
+    // ── ph2d: as acções do Input Map ──
+    ApiEntry {
+        table: "ph2d",
+        ident: "action_down",
+        luau_type: "(action: string) -> boolean",
+        doc: "Whether an action of the Input Map is held right now, by any of its keys or buttons.",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "action_pressed",
+        luau_type: "(action: string) -> boolean",
+        doc: "Whether the action went down since the last tick — true on one tick only.",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "action_released",
+        luau_type: "(action: string) -> boolean",
+        doc: "Whether the action went up since the last tick — true on one tick only.",
+    },
+    ApiEntry {
+        table: "ph2d",
+        ident: "action_strength",
+        luau_type: "(action: string) -> number",
+        doc: "How far the action is pushed, from 0 to 1 (a key gives 0 or 1, a stick the values between).",
+    },
     // ── ph2d: as declarações e os valores ──
     ApiEntry {
         table: "ph2d",

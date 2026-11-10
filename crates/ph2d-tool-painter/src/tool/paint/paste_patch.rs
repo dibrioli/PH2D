@@ -224,7 +224,9 @@ impl PainterTool {
     /// Guarda o que a peça está prestes a cobrir: os pixels, e o corpo quando ela tem corpo a escrever.
     fn snapshot_paste_pristine(&self, patch: &PastePatch, rect: Region, w: u32) -> PastePristine {
         // A peça vem por PARÂMETRO e não de `self.paint.paste_patch`: o chamador já a tem na mão, e
-        // relê-la daqui seria uma segunda fonte para o mesmo fato.
+        // relê-la daqui seria uma segunda fonte para o mesmo fato. Camada sem plano guarda ZEROS do
+        // tamanho: o composite cria o plano, e o restauro tem de o devolver liso (B06.5).
+        let area = (rect.w as usize) * (rect.h as usize);
         let relief = patch
             .relief
             .is_some()
@@ -234,13 +236,14 @@ impl PainterTool {
                 (
                     self.heights
                         .get(&layer)
-                        .map_or_else(Vec::new, |p| region_of(p, rect, w)),
+                        .map_or_else(|| vec![0.0; area], |p| region_of(p, rect, w)),
                     self.covers
                         .get(&layer)
-                        .map_or_else(Vec::new, |p| region_of(p, rect, w)),
-                    self.mats
-                        .get(&layer)
-                        .map_or_else(Vec::new, |p| region_of(p, rect, w)),
+                        .map_or_else(|| vec![0; area], |p| region_of(p, rect, w)),
+                    self.mats.get(&layer).map_or_else(
+                        || vec![MaterialBytes::default(); area],
+                        |p| region_of(p, rect, w),
+                    ),
                 )
             });
         PastePristine {

@@ -98,8 +98,12 @@ impl PainterTool {
         }
         // The knife's Plow decides how much of the body comes along — through the ONE door, never a
         // second transport. Re-read every batch so the slider stays live within a stroke.
-        self.paint.warp.relief_disp_scale =
-            self.paint.brush.effective_impasto_plow().clamp(0.0, 1.0);
+        // A máscara é um canal cinzento sem corpo: o Smear dela nunca leva o relevo da camada (B06.4).
+        self.paint.warp.relief_disp_scale = if self.paint.paint_mode == PaintMode::Mask {
+            0.0
+        } else {
+            self.paint.brush.effective_impasto_plow().clamp(0.0, 1.0)
+        };
         // O grão com que o motor PINTA (o «Same as Paper» troca-o pelo papel, como no traço) e a imagem dele.
         let (base, _) = self.grao_que_pinta();
         let papel = self.papel_como_grain();

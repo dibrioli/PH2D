@@ -59,11 +59,18 @@ impl PainterTool {
     /// route (cached / canvas-cached / per-pixel / ramped / per-layer) contributes relief through the
     /// same path, and a route added tomorrow gets it for free.
     pub(super) fn stamp_dabs_height(&mut self, dabs: &[Dab], brush: &BrushSpec) {
-        if dabs.is_empty() || !self.impasto_batch_active() || self.paint.relief.corpo_suspenso {
+        if dabs.is_empty() || self.paint.relief.corpo_suspenso {
             return;
         }
-        let erasing = self.paint.eraser;
-        if !erasing && !brush.touches_height() {
+        // Apagar segue a CAMADA (o relevo que ela tem), nunca o pincel: a Borracha do trilho tem o
+        // `impasto` off, e o Grid Stamp apaga pela porta `stroke_erases` (B06.1, B06.6).
+        let erasing = self.stroke_erases();
+        let pass = if erasing && apagar_segue_a_camada() {
+            matches!(self.paint.paint_mode, PaintMode::Paint)
+        } else {
+            self.impasto_batch_active()
+        };
+        if !pass || (!erasing && !brush.touches_height()) {
             return; // no body laid AND none shoved aside ⇒ pigment only
         }
         let (w, h) = self.source_size;
@@ -620,3 +627,17 @@ impl PainterTool {
 // The deposit's SETTLE (the box blur that lets paint relax under its own weight), its reach, and the
 // sub-visible threshold the dirty-rect diff uses, all live in the sibling `impasto_settle` — the physics
 // of the material, apart from the plumbing that schedules it (workspace file-LOC cap).
+
+// A prancha de B06.1 e o caminho antigo (apagar seguia o pincel), guardado como oráculo de teste.
+#[cfg(test)]
+#[path = "prancha_b06a_tests.rs"]
+mod prancha_b06a_tests;
+
+/// B06.1: apagar segue a camada; o teste da prancha liga o caminho antigo (seguia o pincel).
+fn apagar_segue_a_camada() -> bool {
+    #[cfg(test)]
+    if prancha_b06a_tests::pelo_pincel() {
+        return false;
+    }
+    true
+}

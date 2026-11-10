@@ -461,3 +461,58 @@ fn cutting_takes_the_body_with_the_colour() {
         "a altura da tinta que NAO foi cortada mudou ({h0} -> {h1})"
     );
 }
+
+/// B06.5: colar com corpo numa camada SEM relevo. O pristino guardava `Vec::new()` e o restauro
+/// saltava-o, então o corpo que a peça pousou ao ser arrastada ficava: nem o Esc nem o Ctrl+Z o tiravam.
+#[test]
+fn colar_corpo_em_camada_lisa_esc_e_ctrl_z_devolvem_a_camada() {
+    for aplica in [false, true] {
+        let (mut t, _) = impasto_canvas();
+        t.selection_from_layer_contents();
+        t.selection_copy();
+        let lisa = t.add_raster_layer("lisa").expect("camada nova");
+        assert_eq!(
+            t.layers.active(),
+            Some(lisa),
+            "fixture: a camada lisa activa"
+        );
+        assert!(
+            !t.heights.contains_key(&lisa),
+            "fixture: a camada nasce sem relevo"
+        );
+        t.selection_paste();
+        t.on_canvas_pointer(cp([30.0, 24.0], PointerPhase::Down));
+        for k in 1..=10u8 {
+            t.on_canvas_pointer(cp([30.0, 24.0 + 4.0 * f32::from(k)], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([30.0, 64.0], PointerPhase::Up));
+        assert!(
+            t.heights
+                .get(&lisa)
+                .is_some_and(|p| p.iter().any(|&h| h > 0.0)),
+            "CONTROLO: a peça pousou corpo na camada lisa"
+        );
+        if aplica {
+            assert!(t.paste_commit(), "havia peça para aplicar");
+            assert!(t.undo_last(), "o Enter deixou um passo");
+        } else {
+            assert!(t.paste_cancel(), "havia peça para descartar");
+        }
+        let sobra = (
+            t.heights
+                .get(&lisa)
+                .map_or(0, |p| p.iter().filter(|&&h| h != 0.0).count()),
+            t.covers
+                .get(&lisa)
+                .map_or(0, |p| p.iter().filter(|&&c| c != 0).count()),
+            t.mats
+                .get(&lisa)
+                .map_or(0, |p| p.iter().filter(|m| **m != [0u8; 7]).count()),
+        );
+        assert_eq!(
+            sobra,
+            (0, 0, 0),
+            "aplica {aplica}: texels com corpo-fantasma (altura, cobertura, material)"
+        );
+    }
+}

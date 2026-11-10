@@ -374,50 +374,66 @@ fn a_selecao_protege_a_tinta_antiga_da_borracha() {
     assert!((depois - velho).abs() < 1e-9, "{velho:.1} → {depois:.1}");
 }
 
-/// O relevo do Impasto fica depois da Borracha, com ou sem Wet: a do trilho não tem `impasto` (BUGS #70).
+/// O corpo (altura e cobertura) da caixa `VELHO`, somado sobre as camadas.
+fn corpo_em(t: &PainterTool) -> (f64, f64) {
+    let (x0, x1, y0, y1) = VELHO;
+    let caixa = || (y0..y1).flat_map(move |y| (x0..x1).map(move |x| (y * SIZE + x) as usize));
+    let h = t
+        .heights
+        .values()
+        .map(|p| caixa().map(|i| f64::from(p[i])).sum::<f64>());
+    let c = t
+        .covers
+        .values()
+        .map(|p| caixa().map(|i| f64::from(p[i])).sum::<f64>());
+    (h.sum(), c.sum())
+}
+
+/// B06.1 (BUGS #70 «ABERTO novo»): a Borracha do trilho tem `impasto` off e o relevo ficava, com ou
+/// sem Wet (105,97 → 105,97 sob tinta 0,0). O relevo segue a CAMADA, não o pincel.
 #[test]
-#[ignore = "sonda: o relevo do Impasto antigo sob a Borracha no Wet"]
-fn sonda_relevo_do_impasto_sob_a_borracha() {
-    let mut m = Mesa::nova();
-    m.meio(PaintMedia::Impasto);
-    m.pinta(40.0);
-    let soma = |t: &PainterTool| -> f64 {
-        t.heights
-            .values()
-            .map(|h| {
-                (34..47usize)
-                    .flat_map(|y| (58..71usize).map(move |x| y * SIZE as usize + x))
-                    .map(|i| f64::from(h[i]))
-                    .sum::<f64>()
-            })
-            .sum()
-    };
-    let antes = soma(&m.t);
-    let mut c = Mesa::nova();
-    c.meio(PaintMedia::Impasto);
-    c.pinta(40.0);
-    c.trilho("eraser");
-    c.apaga();
-    eprintln!(
-        "RELEVO controlo sem Wet: {antes:.2} → {:.2}, tinta {:.1}, impasto no pincel {}",
-        soma(&c.t),
-        tinta_em(&c.t.canvas_rgba, VELHO),
-        c.t.paint.brush.impasto
-    );
-    m.meio(PaintMedia::WetPaint);
-    m.pinta(90.0);
-    m.quadros(20);
-    m.trilho("eraser");
-    m.apaga();
-    eprintln!("RELEVO antes {antes:.2} depois {:.2}", soma(&m.t));
-    let b = std::sync::Arc::new(vec![9u8; 4096 * 2560 * 4]);
-    let mut c = std::sync::Arc::clone(&b);
-    let t0 = std::time::Instant::now();
-    std::sync::Arc::make_mut(&mut c)[0] = 1;
-    eprintln!(
-        "COPIA da base 4096×2560: {:.1} ms",
-        t0.elapsed().as_secs_f64() * 1e3
-    );
+fn a_borracha_do_trilho_apaga_o_corpo_do_impasto() {
+    corpo_sob_a_borracha(false, 1);
+}
+
+/// B06.1 no Wet: a Borracha apaga a `base` pela lei gradual (`borracha_na_base`), que não leva o relevo.
+#[test]
+#[ignore = "B06.1 Wet aberto: o relevo não segue a lei gradual da base"]
+fn sonda_o_corpo_sob_a_borracha_no_wet() {
+    corpo_sob_a_borracha(true, 5);
+}
+
+fn corpo_sob_a_borracha(com_wet: bool, vezes: usize) {
+    {
+        let mut m = Mesa::nova();
+        m.meio(PaintMedia::Impasto);
+        m.pinta(40.0);
+        let (h0, c0) = corpo_em(&m.t);
+        assert!(h0 > 10.0 && c0 > 100.0, "fixture: corpo ({h0:.2}, {c0:.0})");
+        if com_wet {
+            m.meio(PaintMedia::WetPaint);
+            m.pinta(90.0);
+            m.quadros(20);
+        }
+        m.trilho("eraser");
+        assert!(
+            !m.t.paint.brush.impasto,
+            "fixture: a Borracha do trilho sem Impasto"
+        );
+        for _ in 0..vezes {
+            m.apaga();
+        }
+        let tinta = tinta_em(&m.t.canvas_rgba, VELHO);
+        assert!(
+            tinta < 1.0,
+            "Wet {com_wet}: CONTROLO, a cor saiu ({tinta:.1})"
+        );
+        let (h1, c1) = corpo_em(&m.t);
+        assert!(
+            h1 <= h0 * 0.01 && c1 <= c0 * 0.01,
+            "Wet {com_wet}: a tinta saiu e o corpo ficou: altura {h0:.2} → {h1:.2}, cobertura {c0:.0} → {c1:.0}"
+        );
+    }
 }
 
 #[test]
@@ -510,4 +526,93 @@ fn sonda_borracha_depois_do_wet() {
         m.apaga();
         m.relata(x, "X Wet Smear Borracha(menu Wet)", a);
     }
+}
+
+/// B06.6: o botão direito do Grid Stamp apaga pela porta `stroke_erases`, e o relevo perguntava só
+/// `paint.eraser`: com o filme do Paper, o gesto de apagar POUSAVA corpo onde tirava a cor.
+#[test]
+fn o_grid_stamp_a_apagar_tira_o_corpo_em_vez_de_o_pousar() {
+    use super::super::GridAxis;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (SIZE * SIZE * 4) as usize], SIZE, SIZE);
+    t.set_brush_stroke_method(ph2d_painter_brush::StrokeMethod::GridStamp.to_u8());
+    t.set_grid_cell_px(GridAxis::X, 32.0);
+    t.set_grid_cell_px(GridAxis::Y, 32.0);
+    t.paint.brush.color = [0.0, 0.0, 0.0];
+    t.paint.brush.film_depth = 1.0;
+    let toque = |t: &mut PainterTool| {
+        t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Down));
+        t.on_canvas_pointer(cp([48.0, 48.0], PointerPhase::Up));
+    };
+    let corpo = |t: &PainterTool| -> (f64, f64) {
+        let h = t
+            .heights
+            .values()
+            .flat_map(|p| p.iter())
+            .map(|&v| f64::from(v));
+        let c = t
+            .covers
+            .values()
+            .flat_map(|p| p.iter())
+            .map(|&v| f64::from(v));
+        (h.sum(), c.sum())
+    };
+    toque(&mut t);
+    let (h0, c0) = corpo(&t);
+    assert!(
+        c0 > 100.0,
+        "fixture: o filme pousou corpo ({h0:.2}, {c0:.0})"
+    );
+    let antes: Vec<f32> = t.heights.values().next().expect("plano").to_vec();
+    let alfa: Vec<u8> = t.canvas_rgba.iter().skip(3).step_by(4).copied().collect();
+    t.set_grid_stamp_erase(true);
+    toque(&mut t);
+    t.set_grid_stamp_erase(false);
+    let (h1, c1) = corpo(&t);
+    // O suporte: o corpo não fica em proporção maior que a cor, píxel a píxel somado.
+    let depois = t.heights.values().next().expect("plano");
+    let soma = |f: &dyn Fn(usize) -> f64| {
+        (0..antes.len())
+            .filter(|&i| antes[i] > 0.0)
+            .map(f)
+            .sum::<f64>()
+    };
+    let kh = soma(&|i| f64::from(depois[i])) / soma(&|i| f64::from(antes[i]));
+    let ka = soma(&|i| f64::from(t.canvas_rgba[i * 4 + 3])) / soma(&|i| f64::from(alfa[i]));
+    assert!(ka < 0.9, "CONTROLO: o gesto apagou a cor (fica {ka:.3})");
+    assert!(
+        h1 < h0 && c1 < c0 && kh <= ka + 0.05,
+        "o corpo ficou mais que a cor: cor fica {ka:.3}, altura fica {kh:.3} ({h0:.2} → {h1:.2}), \
+         cobertura {c0:.0} → {c1:.0}"
+    );
+}
+
+/// B06.4: a máscara é um canal cinzento sem corpo; o slot do Mask nasce com o Plow 1,0 da faca, e o
+/// Smear da máscara arrastava o relevo REAL da camada enquanto editava só o rascunho dela.
+#[test]
+fn o_esfregao_na_mascara_nao_toca_o_corpo() {
+    let mut m = Mesa::nova();
+    m.meio(PaintMedia::Impasto);
+    m.pinta(40.0);
+    let antes: Vec<Vec<f32>> = m.t.heights.values().map(|p| p.to_vec()).collect();
+    assert!(
+        antes.iter().flatten().any(|&h| h > 0.0),
+        "fixture: há corpo"
+    );
+    m.trilho("mask");
+    m.t.set_mask_brush(3);
+    assert_eq!(m.t.mask_brush(), 3, "fixture: o Smear da máscara");
+    m.t.paint.brush.radius_px = 12.0;
+    m.risca([64.0, 20.0], [64.0, 70.0], 30);
+    let depois: Vec<Vec<f32>> = m.t.heights.values().map(|p| p.to_vec()).collect();
+    let mudou = antes
+        .iter()
+        .flatten()
+        .zip(depois.iter().flatten())
+        .filter(|(a, b)| a != b)
+        .count();
+    assert_eq!(
+        mudou, 0,
+        "o Smear da máscara moveu {mudou} texels do relevo da camada"
+    );
 }

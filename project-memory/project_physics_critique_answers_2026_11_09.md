@@ -20,3 +20,5 @@ Técnico (delegado): nome da camada no campo Layer, recibo «Removed — Undo» 
 Dono 09/11 (smoke das ondas 2–3 OK): a dobra dos campos raros chama-se **More**; a curva da Timeline mostra o MESMO número do cartão (Width/Height inteiros, altura inteira da cápsula, °/s) — "resolva agora".
 
 Dono 09/11 (onda 4, tecla no cartão do Trigger): linha **Key** no cartão com a tecla atual + botão que espera a próxima tecla (Esc cancela). **Troca**: a tecla nova SUBSTITUI as teclas de teclado da acção (botões de comando ficam; duas teclas = janela Input Map). **Tecla repetida noutra acção: aceita e avisa** em cinza («Space is also used by jump»). **Nome por criar: um clique cria a acção e já espera a tecla**; campo vazio = botão apagado.
+
+Dono 10/11 (abertos da onda 4): **«Set Scale to 1» conserta TUDO num clique** — repõe a escala de todo elo da cadeia (forma e antepassados) cuja escala é desigual, num só passo de undo, espelho mantido; acabou o «dois cliques». **O botão antigo «Create this action» sai** (escolha delegada): o «Create and set key» já cria, e Esc depois dele deixa a acção criada sem tecla — dois botões para a mesma cura confundiam.

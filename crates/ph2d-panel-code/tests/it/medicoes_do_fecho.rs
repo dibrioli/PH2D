@@ -117,7 +117,14 @@ fn medicoes_do_fecho() {
                     current: None,
                     tab_width: 4,
                 };
-                views[i].paint(band, area, &mut scene, &mut ts, &theme);
+                views[i].paint(
+                    band,
+                    area,
+                    &mut CodeView::new(),
+                    &mut scene,
+                    &mut ts,
+                    &theme,
+                );
                 a[i].push(t.elapsed().as_secs_f64() * 1e6);
             }
         }

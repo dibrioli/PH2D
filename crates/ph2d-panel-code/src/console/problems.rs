@@ -6,15 +6,15 @@
 use super::{BandTab, ConsoleHit, ConsoleView, bounds};
 use crate::chrome::{self, Ui};
 use crate::frame::Severity;
+use crate::table_text::CodeCells;
+use crate::view::CodeView;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_editor_core::doc_surface::PointerLook;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing};
-use ph2d_ui_table::{
-    Cell, Column, Hit, Ink, Layout, Metrics, Row, StableWidths, TableState, UiText,
-};
+use ph2d_ui_table::{Cell, Column, Hit, Ink, Layout, Metrics, Row, StableWidths, TableState};
 use ph2d_vector::VectorScene;
 
 /// Uma linha da lista de problemas, já composta: o texto (a explicação do I8 ou a mensagem crua), a
@@ -156,9 +156,9 @@ impl ConsoleView {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn paint_problems(
         &mut self,
-        rows: &[ProblemRow<'_>],
-        current: Option<usize>,
+        (rows, current): (&[ProblemRow<'_>], Option<usize>),
         body: Rect,
+        view: &mut CodeView,
         scene: &mut VectorScene,
         ts: &mut TextSystem,
         ui: &Ui,
@@ -187,7 +187,10 @@ impl ConsoleView {
             }
             t.last_current = current;
         }
-        let mut text = UiText { theme: ui.theme };
+        let mut text = CodeCells {
+            view,
+            theme: ui.theme,
+        };
         let natural = ph2d_ui_table::natural_widths(&cols, &trows, &m, ts, &mut text);
         let natural = t.steady.widths(&cols, &natural);
         t.state.selected = current.map(|c| c.to_string());

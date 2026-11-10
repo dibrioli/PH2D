@@ -10,6 +10,8 @@
 
 use super::{Aim, BancadaView, Who};
 use crate::chrome;
+use crate::table_text::CodeCells;
+use crate::view::CodeView;
 use ph2d_a11y::NodeId;
 use ph2d_code_viewmodel::Holder;
 use ph2d_editor_core::motion::SETTLED;
@@ -21,7 +23,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::{FontWeight, TextSystem};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme};
-use ph2d_ui_table::{Cell, Column, Ink, Layout, Metrics, Row, StableWidths, UiText};
+use ph2d_ui_table::{Cell, Column, Ink, Layout, Metrics, Row, StableWidths};
 use ph2d_vector::VectorScene;
 
 /// A tabela do balão (sem cabeçalho): quem (o ponto e o nome), o valor (à direita, mono) e o estado
@@ -69,12 +71,14 @@ fn holder_key(aim: Option<Aim>) -> Option<String> {
 
 impl BancadaView {
     /// Pinta o balão aberto, por cima do código, encostado por baixo da marca e dentro de `bounds`.
-    /// Os alvos (uma linha por objecto, o «Select», o balão inteiro) saem da MESMA geometria.
+    /// Os alvos (uma linha por objecto, o «Select», o balão inteiro) saem da MESMA geometria; os
+    /// valores na mono de `view` (a do código).
     #[allow(clippy::too_many_lines)]
     pub fn paint_popover(
         &mut self,
         who: &Who,
         bounds: Rect,
+        view: &mut CodeView,
         scene: &mut VectorScene,
         ts: &mut TextSystem,
         theme: &Theme,
@@ -121,7 +125,10 @@ impl BancadaView {
             header_h: 0.0,
             ..Metrics::standard()
         };
-        let mut text = UiText { theme: *theme };
+        let mut text = CodeCells {
+            view,
+            theme: *theme,
+        };
         let natural = ph2d_ui_table::natural_widths(&cols, &rows, &m, ts, &mut text);
         // As larguras nascem ao abrir e só crescem enquanto o balão vive na MESMA marca.
         let steady = match &mut self.pop_steady {

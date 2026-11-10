@@ -664,7 +664,8 @@ impl CodeDoc {
             tab_width: TAB,
         };
         crate::cards::open(scene, console_r, theme);
-        self.console_view.paint(band, console_r, scene, ts, theme);
+        self.console_view
+            .paint(band, console_r, &mut self.view, scene, ts, theme);
         crate::cards::close(scene);
     }
 

@@ -8,6 +8,8 @@
 use super::{Aim, BancadaView, Who};
 use crate::chrome::{self, Ui};
 use crate::splitter::{Split, band};
+use crate::table_text::CodeCells;
+use crate::view::CodeView;
 use ph2d_code_viewmodel::{CellKind, Holder};
 use ph2d_editor_core::doc_surface::PointerLook;
 use ph2d_editor_core::icons::IconId;
@@ -16,7 +18,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
-use ph2d_ui_table::{Cell, Column, Hit, Ink, Key, Layout, Metrics, Row, UiText, natural_widths};
+use ph2d_ui_table::{Cell, Column, Hit, Ink, Key, Layout, Metrics, Row, natural_widths};
 use ph2d_vector::VectorScene;
 
 /// A parte da coluna do código que a grelha pode tomar: o código manda, a grelha rola.
@@ -109,13 +111,15 @@ impl BancadaView {
     }
 
     /// Pinta a grelha (e o mapa ao lado, ligado e com objectos, depois do separador ↔) em `area`,
-    /// cada um no seu cartão. `caret` = a coluna da propriedade sob o cursor do texto.
+    /// cada um no seu cartão. `caret` = a coluna da propriedade sob o cursor do texto; os números na
+    /// mono de `view` (a do código).
     #[allow(clippy::too_many_arguments)]
     pub fn paint_bench(
         &mut self,
         who: &Who,
         area: Rect,
         caret: Option<usize>,
+        view: &mut CodeView,
         scene: &mut VectorScene,
         ts: &mut TextSystem,
         theme: &Theme,
@@ -129,7 +133,7 @@ impl BancadaView {
         let side = split.map_or(0.0, |s| s.side_w + band());
         let grid_r = Rect::new(area.x, area.y, (area.w - side).max(0.0), area.h);
         crate::cards::open(scene, grid_r, theme);
-        self.paint_grid(who, grid_r, caret, scene, ts, theme);
+        self.paint_grid(who, grid_r, (caret, view), scene, ts, theme);
         crate::cards::close(scene);
         let Some(s) = split else {
             self.split.painted = None;
@@ -147,7 +151,7 @@ impl BancadaView {
         &mut self,
         who: &Who,
         area: Rect,
-        caret: Option<usize>,
+        (caret, view): (Option<usize>, &mut CodeView),
         scene: &mut VectorScene,
         ts: &mut TextSystem,
         theme: &Theme,
@@ -202,7 +206,7 @@ impl BancadaView {
             return;
         }
         let table_r = Rect::new(x, top, w, (area.y + area.h - s - top).max(0.0));
-        self.paint_table(who, table_r, caret, scene, ts, theme);
+        self.paint_table(who, table_r, (caret, view), scene, ts, theme);
     }
 
     /// A tabela da grelha em `table_r`, e os alvos dela saídos da MESMA geometria.
@@ -210,13 +214,16 @@ impl BancadaView {
         &mut self,
         who: &Who,
         table_r: Rect,
-        caret: Option<usize>,
+        (caret, view): (Option<usize>, &mut CodeView),
         scene: &mut VectorScene,
         ts: &mut TextSystem,
         theme: &Theme,
     ) {
         let (cols, rows, m) = (columns(who), rows(who), Metrics::standard());
-        let mut text = UiText { theme: *theme };
+        let mut text = CodeCells {
+            view,
+            theme: *theme,
+        };
         let natural = natural_widths(&cols, &rows, &m, ts, &mut text);
         let natural = self.steady.widths(&cols, &natural);
         let editing = self.editing.as_ref().map(|e| (e.holder, e.column));

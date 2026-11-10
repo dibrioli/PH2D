@@ -31,7 +31,8 @@ const FAIXA: Rect = Rect {
     h: ROW_H_PX * 6.0,
 };
 
-fn pinta(v: &mut ConsoleView, rows: &[ProblemRow<'_>], current: Option<usize>) {
+/// Pinta a faixa; devolve quantas linhas a mono do código moldou (os números da coluna Line).
+fn pinta(v: &mut ConsoleView, rows: &[ProblemRow<'_>], current: Option<usize>) -> u64 {
     let band = Band {
         open: true,
         tab: BandTab::Problems,
@@ -42,7 +43,9 @@ fn pinta(v: &mut ConsoleView, rows: &[ProblemRow<'_>], current: Option<usize>) {
         tab_width: 4,
     };
     let mut scene = VectorScene::new();
-    v.paint(band, FAIXA, &mut scene, &mut ts(), &Theme::default());
+    let view = &mut ph2d_panel_code::CodeView::new();
+    v.paint(band, FAIXA, view, &mut scene, &mut ts(), &Theme::default());
+    view.cache().shapes()
 }
 
 fn linha<'a>(severity: Severity, text: &'a str, line: usize, on: &'a str) -> ProblemRow<'a> {
@@ -66,7 +69,7 @@ fn as_colunas_sao_fixas_e_a_linha_encosta_a_direita() {
         linha(Severity::Warning, "«speed» is never used", 2, ""),
     ];
     let mut v = ConsoleView::default();
-    pinta(&mut v, &rows, None);
+    assert!(pinta(&mut v, &rows, None) > 0, "a linha na mono do código");
     let (lay, trows) = v.problems_table().expect("a tabela pintada");
     let keys: Vec<&str> = lay.cols.iter().map(|c| &*c.key).collect();
     assert_eq!(keys, ["sev", "problem", "on", "line"]);

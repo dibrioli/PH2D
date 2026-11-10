@@ -321,7 +321,14 @@ fn a_marca_pintada_abre_o_balao_da_vista() {
     assert_eq!(b.aim(), Aim::Mark(0));
     assert_eq!(b.popover_line(), Some(0));
     let mut scene = VectorScene::new();
-    b.paint_popover(&who, area, &mut scene, &mut ts, &Theme::default());
+    b.paint_popover(
+        &who,
+        area,
+        &mut CodeView::new(),
+        &mut scene,
+        &mut ts,
+        &Theme::default(),
+    );
     assert!(
         b.target(Aim::Select(1)).is_some(),
         "o «Select Hero 2» do balão"

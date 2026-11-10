@@ -204,10 +204,12 @@ impl ConsoleView {
         self.back = 0;
     }
 
+    /// Pinta a faixa; os números da lista de problemas na mono de `view` (a do código).
     pub fn paint(
         &mut self,
         band: Band<'_>,
         area: Rect,
+        view: &mut crate::view::CodeView,
         scene: &mut VectorScene,
         ts: &mut TextSystem,
         theme: &Theme,
@@ -263,7 +265,8 @@ impl ConsoleView {
                 self.paint_console(band.console, band.tab_width, body, scene, ts, &ui);
             }
             BandTab::Problems => {
-                self.paint_problems(band.problems, band.current, body, scene, ts, &ui);
+                let list = (band.problems, band.current);
+                self.paint_problems(list, body, view, scene, ts, &ui);
             }
         }
         scene.pop_layer();

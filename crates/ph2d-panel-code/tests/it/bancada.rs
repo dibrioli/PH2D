@@ -12,6 +12,7 @@ use ph2d_code_viewmodel::{Cell, CellKind, Column, Entry, Holder};
 use ph2d_editor_core::doc_surface::Key;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::Modifiers;
+use ph2d_panel_code::CodeView;
 use ph2d_panel_code::bancada::{Aim, BancadaView, Intent, PEEK_PAUSE_NS, Who, phrase_height};
 use ph2d_panel_code::field::FieldKey;
 use ph2d_text::TextSystem;
@@ -130,7 +131,15 @@ fn quem() -> Who {
 
 fn pinta_grade(v: &mut BancadaView, who: &Who, ts: &mut TextSystem) {
     let mut scene = VectorScene::new();
-    v.paint_bench(who, GRADE, None, &mut scene, ts, &Theme::default());
+    v.paint_bench(
+        who,
+        GRADE,
+        None,
+        &mut CodeView::new(),
+        &mut scene,
+        ts,
+        &Theme::default(),
+    );
 }
 
 fn meio(r: Rect) -> (f32, f32) {
@@ -344,7 +353,14 @@ fn balao_aberto(who: &Who, ts: &mut TextSystem) -> BancadaView {
     assert!(v.hover(x, y, 0));
     assert_eq!(v.popover_line(), Some(0), "pairar a marca abre o balão");
     let mut scene = VectorScene::new();
-    v.paint_popover(who, LIMITES, &mut scene, ts, &Theme::default());
+    v.paint_popover(
+        who,
+        LIMITES,
+        &mut CodeView::new(),
+        &mut scene,
+        ts,
+        &Theme::default(),
+    );
     v
 }
 

@@ -17,7 +17,8 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing};
 
 pub use marks::{paint_cell_frames, paint_row_frames, swatch_side};
 pub use paint::{
-    CellText, UiText, changed_tint, ink_color, paint, paint_spark, spark_points, ui_font,
+    CellText, UiText, changed_tint, ink_color, paint, paint_spark, rules_bottom, spark_points,
+    ui_font,
 };
 pub use steady::StableWidths;
 pub use trail::{Span, Trails};
@@ -188,6 +189,17 @@ impl Metrics {
     #[must_use]
     pub fn chevron(&self) -> f32 {
         self.row_h * 0.5 + self.pad
+    }
+
+    /// A reserva do ▸ na 1.ª coluna de `rows`: só quando alguma linha o mostra (uma lista plana
+    /// encosta o ponto e o texto ao recuo, como as tabelas sem árvore do estado da arte).
+    #[must_use]
+    pub fn twist(&self, rows: &[Row]) -> f32 {
+        if rows.iter().any(|r| r.expandable) {
+            self.chevron()
+        } else {
+            0.0
+        }
     }
 }
 
@@ -520,6 +532,7 @@ pub fn natural_widths(
     ts: &mut TextSystem,
     text: &mut dyn CellText,
 ) -> Vec<f32> {
+    let twist = m.twist(rows);
     cols.iter()
         .enumerate()
         .map(|(ci, c)| {
@@ -544,7 +557,7 @@ pub fn natural_widths(
                         w = w.max(m.spark_w);
                     }
                     if ci == 0 {
-                        w += f32::from(r.depth) * m.indent + m.chevron();
+                        w += f32::from(r.depth) * m.indent + twist;
                     }
                     w
                 })

@@ -123,8 +123,12 @@ impl DocumentSurface for CodeDocs {
         }
         if let Some((r, caret, marks, title)) = bench {
             self.bench.set_marks(&marks);
-            if let Some(r) = r {
-                self.bench.paint_bench(&who, r, caret, scene, text, theme);
+            if let Some(r) = r
+                && let Some(doc) = self.docs.iter_mut().find(|d| d.script.0 == id)
+            {
+                let view = &mut doc.view;
+                self.bench
+                    .paint_bench(&who, r, caret, view, scene, text, theme);
             }
             if let Some(ph) = phrase {
                 self.bench
@@ -132,7 +136,11 @@ impl DocumentSurface for CodeDocs {
             }
         }
         self.paint_over(id, doc_r, scene, text, theme);
-        self.bench.paint_popover(&who, doc_r, scene, text, theme);
+        if let Some(doc) = self.docs.iter_mut().find(|d| d.script.0 == id) {
+            let view = &mut doc.view;
+            self.bench
+                .paint_popover(&who, doc_r, view, scene, text, theme);
+        }
         self.context_paint(id, scene, text, theme);
         self.bancada.who = who;
     }

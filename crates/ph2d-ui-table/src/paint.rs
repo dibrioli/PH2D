@@ -125,6 +125,7 @@ pub fn paint(
     let hair = StrokeToken::Thin.px();
     let small = TypeToken::Xs.px();
     let ty_small = |y: f32, h: f32| y + (h - small) * 0.5;
+    let twist = m.twist(rows);
 
     // O corpo, recortado.
     scene.push_clip(&rect_to_vello(lay.body));
@@ -210,7 +211,7 @@ pub fn paint(
                 if row.expandable {
                     chev(scene, x);
                 }
-                x += m.chevron();
+                x += twist;
             }
             if let Some(dot) = cell.dot {
                 let rad = m.row_h * 0.15; // LITERAL-PX-OK: fracção da altura da linha (token)
@@ -269,11 +270,11 @@ pub fn paint(
             );
         }
     }
-    // As divisórias das colunas, pelo corpo.
+    let fundo = rules_bottom(lay);
     for c in lay.cols.iter().skip(1) {
         stroke_polyline(
             scene,
-            &[(c.x, lay.body.y), (c.x, lay.body.y + lay.body.h)],
+            &[(c.x, lay.body.y), (c.x, fundo)],
             hair,
             ink(ColorToken::Border),
         );
@@ -294,6 +295,16 @@ pub fn paint(
     let _ = ph2d_editor_core::widget::paint_scrollbar(
         body, lay.scroll, content, visible, visual, scene, theme,
     );
+}
+
+/// Onde acabam as divisórias das colunas: a borda de baixo da última linha à vista, dentro do corpo
+/// (nunca descem pelo vazio abaixo dela).
+#[must_use]
+pub fn rules_bottom(lay: &Layout) -> f32 {
+    lay.rows
+        .last()
+        .map_or(lay.body.y, |s| s.rect.y + s.rect.h)
+        .min(lay.body.y + lay.body.h)
 }
 
 /// O cabeçalho: opaco e pintado DEPOIS do corpo (nada do corpo se lê por baixo dele).

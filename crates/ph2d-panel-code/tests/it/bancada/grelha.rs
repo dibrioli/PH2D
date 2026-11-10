@@ -3,11 +3,12 @@
 //! ponto, larguras que não pulam, o tecto em linhas inteiras, a mão, e os dois arrastos (a barra ↕
 //! em linhas inteiras e o separador ↔ que dá a largura ao mapa).
 
-use super::{GRADE, LIVES, SPEED, TINT, alvo, celula, meio, pinta_grade, quem};
+use super::{GRADE, LIMITES, LIVES, MARCA, SPEED, TINT, alvo, celula, meio, pinta_grade, quem};
 use crate::ts;
 use ph2d_code_viewmodel::{Holder, Who};
 use ph2d_editor_core::doc_surface::PointerLook;
 use ph2d_editor_core::zones::Rect;
+use ph2d_panel_code::CodeView;
 use ph2d_panel_code::bancada::{Aim, BancadaView};
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 use ph2d_vector::VectorScene;
@@ -38,6 +39,7 @@ fn a_grelha_e_a_tabela_da_casa_e_os_alvos_saem_da_mesma_geometria() {
         &who,
         GRADE,
         Some(LIVES),
+        &mut CodeView::new(),
         &mut VectorScene::new(),
         &mut ts,
         &Theme::default(),
@@ -70,6 +72,7 @@ fn a_grelha_e_a_tabela_da_casa_e_os_alvos_saem_da_mesma_geometria() {
         &who,
         GRADE,
         None,
+        &mut CodeView::new(),
         &mut VectorScene::new(),
         &mut ts,
         &Theme::default(),
@@ -179,7 +182,16 @@ fn as_celulas_cortadas_da_grelha_nao_tomam_o_rato_sobre_o_mapa() {
     let mut v = BancadaView::default();
     let area = Rect::new(0.0, 0.0, 420.0, GRADE.h);
     let mut scene = VectorScene::new();
-    v.paint_bench(&who, area, None, &mut scene, &mut ts, &Theme::default());
+    let view = &mut CodeView::new();
+    v.paint_bench(
+        &who,
+        area,
+        None,
+        view,
+        &mut scene,
+        &mut ts,
+        &Theme::default(),
+    );
     let s = v.split().expect("com o mapa há separador");
     let (lay, ..) = v.grid_table().unwrap();
     let last = lay.cols.last().unwrap();
@@ -205,4 +217,23 @@ fn as_celulas_cortadas_da_grelha_nao_tomam_o_rato_sobre_o_mapa() {
         }
     }
     assert!(tocou > 0, "controlo: o mapa tem objectos sob o rato");
+}
+
+/// Smoke 09/11: os números da grelha e os valores do balão na mono do CÓDIGO (a da planilha), não
+/// na letra da interface — cada tabela molda-os na cache da vista que recebe.
+#[test]
+fn os_numeros_da_grelha_e_do_balao_pintam_na_mono_do_codigo() {
+    let (who, mut ts) = (quem(), ts());
+    let (grade, balao) = (&mut CodeView::new(), &mut CodeView::new());
+    let mut v = BancadaView::default();
+    let mut scene = VectorScene::new();
+    let theme = Theme::default();
+    v.paint_bench(&who, GRADE, None, grade, &mut scene, &mut ts, &theme);
+    assert!(grade.cache().shapes() > 0, "a grelha moldou os números");
+    v.set_marks(&[(0, MARCA)]);
+    let (x, y) = meio(MARCA);
+    assert!(v.hover(x, y, 0), "a marca abre o balão");
+    v.paint_popover(&who, LIMITES, balao, &mut scene, &mut ts, &theme);
+    assert!(v.popover_table().is_some(), "o balão pintou a tabela");
+    assert!(balao.cache().shapes() > 0, "o balão moldou os valores");
 }

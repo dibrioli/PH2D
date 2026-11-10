@@ -5,6 +5,8 @@ use ph2d_ui_table::{
     Cell, Column, Hit, Ink, Layout, Metrics, Row, TableState, layout, natural_height, spark_points,
 };
 
+mod reserva_e_fios;
+
 fn cols() -> Vec<Column> {
     vec![
         Column::new("name", "Name").flex(),

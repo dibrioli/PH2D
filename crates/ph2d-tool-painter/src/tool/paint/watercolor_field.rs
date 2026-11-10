@@ -227,6 +227,18 @@ impl RewetFields {
 /// the grid downsamples (`ds = spread / this`, capped). Above every unit test's Spread.
 pub(super) const REWET_DS_SPREAD: usize = 12;
 
+/// Células da grelha reduzida (`ds > 1`) além da janela de leitura (B16.4). A folga `pad` é em
+/// píxeis da tela; na grelha `ds×` o lado direito/de baixo ficava até `2 − 2/ds` células curto, e o
+/// borrão da célula da orla perdia suporte (o quadro ≠ a recomposição inteira). `ds == 1` não leva
+/// folga: lá a conta fecha exacta (Basic ao byte).
+pub(super) const REWET_FOLGA_CELULAS: usize = 2;
+
+#[cfg(test)]
+thread_local! {
+    /// O oráculo do B16.4: a grelha reduzida sem a folga de células (o caminho de antes).
+    pub(super) static REWET_SEM_FOLGA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 // ── Rewet tuning constants (moved from `watercolor_render`'s fn body for the file-LOC cap) ─────────
 
 /// Max fraction of the base's pigment the rewet lifts at `wet = 1` under full water (never a
@@ -275,10 +287,13 @@ pub(super) fn build_rewet_fields(
     // Downsample factor: 1 (exact) up to `REWET_DS_SPREAD`, then `spread / REWET_DS_SPREAD`
     // capped at 4 (blur cost /ds²). Global-aligned low-res grid over the read window.
     let ds = (spread / REWET_DS_SPREAD).clamp(1, 4);
-    let lox0 = rx0 / ds;
-    let loy0 = ry0 / ds;
-    let lw = (rx1).div_ceil(ds) - lox0;
-    let lh = (ry1).div_ceil(ds) - loy0;
+    let m = if ds > 1 { REWET_FOLGA_CELULAS } else { 0 };
+    #[cfg(test)]
+    let m = if REWET_SEM_FOLGA.get() { 0 } else { m };
+    let lox0 = (rx0 / ds).saturating_sub(m);
+    let loy0 = (ry0 / ds).saturating_sub(m);
+    let lw = (rx1.div_ceil(ds) + m).min(fw.div_ceil(ds)) - lox0;
+    let lh = (ry1.div_ceil(ds) + m).min(fh.div_ceil(ds)) - loy0;
     let mut pres = vec![0.0f32; lw * lh];
     let mut wr = vec![0.0f32; lw * lh];
     let mut wg = vec![0.0f32; lw * lh];

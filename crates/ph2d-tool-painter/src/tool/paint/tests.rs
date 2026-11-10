@@ -432,3 +432,6 @@ mod diag_cura_da_pilha; // o que a ACUMULAÇÃO entregou // AUDITORIA 2026-09-21
 
 #[path = "mistura_opaca_ferramenta_tests.rs"]
 mod mistura_opaca_ferramenta_tests; // a mistura opaca do Digital pela ferramenta (07/11)
+
+#[path = "traco_preso_tests.rs"]
+mod traco_preso_tests; // B03: o Up perdido não come o passo de undo do traço anterior

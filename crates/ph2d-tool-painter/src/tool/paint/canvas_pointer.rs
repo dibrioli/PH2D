@@ -126,6 +126,15 @@ impl PainterTool {
         }
         match ev.phase {
             PointerPhase::Down => {
+                // O `Up` do traço aberto perdeu-se (B03): ele fecha onde estava, com o SEU passo de undo.
+                if let Some((pos, pressure)) = self.paint.stroke.as_ref().map(|s| s.last_raw()) {
+                    self.paint_end(CanvasPointer {
+                        pos,
+                        pressure,
+                        phase: PointerPhase::Up,
+                        ..ev
+                    });
+                }
                 self.paint_begin(ev);
                 true
             }

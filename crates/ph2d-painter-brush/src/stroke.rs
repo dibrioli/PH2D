@@ -608,6 +608,12 @@ impl Stroke {
     pub fn heading(&self) -> [f32; 2] {
         self.heading
     }
+
+    /// A última amostra CRUA (posição, pressão): onde fecha um traço cujo `Up` se perdeu.
+    #[must_use]
+    pub fn last_raw(&self) -> ([f32; 2], f32) {
+        (self.last_raw_pos, self.last_raw_pressure)
+    }
 }
 
 mod curve;

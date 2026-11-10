@@ -14,9 +14,7 @@ use ph2d_app_painter::canvas_down::canvas_down_accepts;
 /// A lei vive em [`ph2d_app_painter::shape_grab`]; re-exportada para `painter_curve_input.rs`.
 pub(crate) use ph2d_app_painter::shape_grab::shape_grab_tol_from_affine;
 
-/// A malha sob o cursor — a porta ÚNICA das duas entradas de canvas (pincelada e passeio).
-/// O tamanho do dab entra na pergunta (a malha é afim por triângulo); o raio é o de ANTES da
-/// composição, senão é um laço.
+/// A malha sob o cursor, porta ÚNICA da pincelada e do passeio; o raio é o de ANTES da composição.
 pub(crate) fn malha_sob_o_cursor(
     present: &mut ph2d_ecs::World,
     bits: u64,
@@ -30,9 +28,7 @@ pub(crate) fn malha_sob_o_cursor(
     ph2d_render::mesh_uv(present, bits, world, starting, footprint_uv)
 }
 
-/// A deformação local da resposta da malha (identidade fora dela), lida pela tinta e pelo anel.
-/// É a ÚNICA conversão `ph2d_render::MeshWarp` → `CanvasWarp` (gémeos separados para o pincel não
-/// entrar no grafo de release do renderer).
+/// A deformação local da malha (identidade fora), lida pela tinta e pelo anel: a ÚNICA `MeshWarp` → `CanvasWarp`.
 pub(crate) fn warp_da_malha(malha: ph2d_render::MeshUv) -> ph2d_tool_painter::CanvasWarp {
     match malha {
         ph2d_render::MeshUv::Use { warp, .. } => ph2d_tool_painter::CanvasWarp {
@@ -44,8 +40,7 @@ pub(crate) fn warp_da_malha(malha: ph2d_render::MeshUv) -> ph2d_tool_painter::Ca
 }
 
 thread_local! {
-    /// `true` between a consumed painter Down and the matching Up — so CursorMoved
-    /// keeps feeding the open stroke and the Up arm knows to close it.
+    /// `true` between a consumed painter Down and its Up (or the lost Up: `perde_a_mao`).
     static STROKE_ACTIVE: Cell<bool> = const { Cell::new(false) };
     /// A pressão do último contacto do traço aberto — a do `Up`.
     static STROKE_PRESSURE: Cell<f32> = const { Cell::new(1.0) };
@@ -60,6 +55,11 @@ pub(crate) fn traco_de_teste(abre: bool) -> f32 {
     STROKE_PRESSURE.with(Cell::get)
 }
 
+#[cfg(test)]
+pub(crate) fn traco_esta_aberto() -> bool {
+    STROKE_ACTIVE.with(Cell::get)
+}
+
 impl App {
     /// The active tool as [`PainterTool`] (ADR-0040 §3 downcast); `None` when not the Painter.
     pub(crate) fn painter_tool_mut(&mut self) -> Option<&mut PainterTool> {
@@ -71,11 +71,9 @@ impl App {
             .downcast_mut::<PainterTool>()
     }
 
-    /// Primary Down while the Painter is active: deliver as [`PointerPhase::Down`]. `true` (consumes
-    /// the click) iff a stroke started, so it doesn't also pick/move the sprite.
+    /// Primary Down → [`PointerPhase::Down`]; `true` (consumes) iff a stroke started.
     pub(crate) fn painter_canvas_down(&mut self, px: f32, py: f32, pressure: f32) -> bool {
-        // A press over the CHROME belongs to its widgets (the one door, rails and bars included); an
-        // open stroke keeps painting over it via the Move path.
+        // A press over the CHROME is its widgets'; an open stroke keeps painting over it (Move).
         if crate::chrome_hit::pointer_over_chrome(self.gfx.as_ref(), px, py) {
             return false;
         }
@@ -108,10 +106,8 @@ impl App {
         }
     }
 
-    /// CursorMoved while a stroke is open: deliver as [`PointerPhase::Move`]; `true` while active.
-    /// Whole-shape re-stamp methods ([`PainterTool::coalesces_canvas_motion`]) are BUFFERED (latest
-    /// wins) and flushed once per frame by [`Self::flush_pending_painter_move`]; incremental ones
-    /// deliver per event.
+    /// CursorMoved over an open stroke → [`PointerPhase::Move`]; re-stamp methods are BUFFERED (latest
+    /// wins, [`Self::flush_pending_painter_move`]); incremental ones deliver per event.
     pub(crate) fn painter_canvas_move(&mut self, px: f32, py: f32, pressure: f32) -> bool {
         if !STROKE_ACTIVE.with(Cell::get) {
             // HOVER: feeds the brush ring's orientation; consumes nothing.
@@ -134,8 +130,7 @@ impl App {
         if delivered {
             self.paint_stamps_this_frame = self.paint_stamps_this_frame.saturating_add(1);
         } else {
-            // Painter no longer active / selection gone — abandon the stroke so we
-            // stop swallowing moves.
+            // Painter no longer active / selection gone — abandon the stroke.
             STROKE_ACTIVE.with(|s| s.set(false));
         }
         delivered
@@ -143,16 +138,11 @@ impl App {
 
     /// The Painter is in a method whose Moves may be coalesced to one delivery per frame.
     fn painter_coalesces_motion(&mut self) -> bool {
-        self.gfx
-            .as_mut()
-            .and_then(|g| g.tools.active_mut())
-            .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
+        self.painter_tool_mut()
             .is_some_and(|p| p.coalesces_canvas_motion())
     }
 
-    /// Deliver a **hover** (no button) in image px — the minimal sibling of
-    /// [`Self::deliver_canvas_pointer`]: no gesture state, modifiers, grab tol or snap. Side-effect-free
-    /// and never consumes (hovering also aims a pan or a gizmo grab).
+    /// A **hover** in image px: [`Self::deliver_canvas_pointer`] without gesture state; never consumes.
     fn deliver_canvas_hover(&mut self, px: f32, py: f32) {
         let Some(gfx) = self.gfx.as_mut() else { return };
         if !gfx
@@ -206,11 +196,7 @@ impl App {
         // O passeio pergunta à malha como a pincelada; `starting = false`: nunca abre um traço.
         let malha =
             malha_sob_o_cursor(gfx.present.world_mut(), bits, world, false, raio_px, iw, ih);
-        let Some(painter) = gfx
-            .tools
-            .active_mut()
-            .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
-        else {
+        let Some(painter) = self.painter_tool_mut() else {
             return;
         };
         painter.set_canvas_warp(warp_da_malha(malha));
@@ -253,8 +239,7 @@ impl App {
         self.pen_eraser_end();
     }
 
-    /// Painter-active + selected sprite → one [`CanvasPointer`] in image px. Returns the tool's
-    /// `consumed`, or `false` when not delivered (not the painter / no selection / Down outside).
+    /// One [`CanvasPointer`] in image px: the tool's `consumed`, or `false` when not delivered.
     pub(crate) fn deliver_canvas_pointer(
         &mut self,
         px: f32,
@@ -265,8 +250,7 @@ impl App {
         self.deliver_canvas_pointer_colordrop(px, py, pressure, phase, None)
     }
 
-    /// [`Self::deliver_canvas_pointer`] for the C&F drag (`colordrop` = the mode to return to); Fill
-    /// begins only once a Down lands inside the footprint.
+    /// [`Self::deliver_canvas_pointer`] for the C&F drag (`colordrop` = the mode to return to).
     pub(crate) fn deliver_canvas_pointer_colordrop(
         &mut self,
         px: f32,

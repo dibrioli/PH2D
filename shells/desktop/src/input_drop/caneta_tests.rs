@@ -9,7 +9,7 @@ use ph2d_pen::{PenEvent, PenPhase, PenSample, ToolKind};
 use winit::dpi::PhysicalPosition;
 use winit::event::{ElementState, MouseButton};
 
-use crate::input_dispatch::painter_canvas_input::traco_de_teste;
+use crate::input_dispatch::painter_canvas_input::{traco_de_teste, traco_esta_aberto};
 
 fn caneta(app: &mut crate::App, c: &mut Conversor, phase: PenPhase, pressure: f32, x: f64) {
     let (pos, tilt_deg, distance, tool) = ([x, 40.0], [0.0; 2], 0.0, ToolKind::Pen);
@@ -91,4 +91,16 @@ fn the_pen_pressure_reaches_the_painter_move_and_the_pencil() {
         (1.0, 1.0),
         "o rato"
     );
+}
+
+/// B03: o `Up` que a janela nunca recebe (Alt+Tab; o ponteiro sai com o botão em baixo) fecha o traço.
+#[test]
+fn sem_o_botao_premido_o_movimento_nao_pinta() {
+    for foco in [true, false] {
+        let mut app = crate::App::new();
+        app.on_mouse_input(ElementState::Pressed, MouseButton::Left);
+        traco_de_teste(true);
+        app.perde_a_mao(foco);
+        assert!(!traco_esta_aberto(), "foco={foco}: o Move pinta");
+    }
 }

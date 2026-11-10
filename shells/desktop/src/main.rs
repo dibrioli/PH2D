@@ -920,7 +920,11 @@ impl ApplicationHandler for App {
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 self.on_scale_factor_changed(scale_factor)
             }
-            WindowEvent::Focused(false) => self.on_focus_lost(),
+            WindowEvent::Focused(false) => {
+                self.on_focus_lost();
+                self.perde_a_mao(false);
+            }
+            WindowEvent::CursorLeft { .. } => self.perde_a_mao(false),
             WindowEvent::ModifiersChanged(mods) => self.on_modifiers_changed(mods),
             WindowEvent::Ime(ime) => self.on_ime(ime),
             WindowEvent::CursorMoved { .. }

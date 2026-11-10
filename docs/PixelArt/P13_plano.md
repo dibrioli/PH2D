@@ -463,6 +463,23 @@ Por nome, verdes: core `ciclo` (3), render `onion`, io `folha` (5). ⚠️ O `ch
 3. Gates de ponteiro da UI (New Ramp ⇒ rampa no documento; ligar Cycle ⇒ ciclo no documento) — dependem de 1.
 **Chaves i18n propostas (nenhuma criada):** `pixel.palette.new_ramp` «New Ramp…» · `.ramp.base` «Base» · `.ramp.steps` «Steps» · `.ramp.hue_shift` «Hue shift» · `.ramp.chroma` «Chroma» · `.ramp.light_range` «Light range» · `.ramp.make` «Make Ramp» · `.ramp.remove` «Remove Ramp» · `.cycle` «Cycle» · `.cycle.period` «Period (ms)» · `.cycle.direction.forward|reverse|ping_pong` «Forward|Reverse|Ping-pong» · `.cycle.rgb_off.tip` «Color cycling works only in Indexed mode: in RGB a pixel stores its color, not a palette index.»
 
+### U-CRT (09/11, agente)
+
+**Onde moram os params:** preferência de VISTA da sessão, `ph2d_panel_pixel_preview::crt::{vista, define, params_ligados}` (`thread_local` `VistaCrt { ligada, params }`, `Default` = desligada). **Não** no `PixelPrefs` (esse é do documento: registo 15 do codec, vai para o ficheiro — §11 proíbe). A janela do jogo lê a MESMA (`params_ligados()`: `None` ⇒ salta a chamada); a crate do painel é folha, a shell/app podem depender dela. **Não persiste entre sessões** (decisão: vista de TV é um modo de olhar; se o dono quiser que fique, guarda-se ao lado dos slots da pasta do utilizador, nunca no documento).
+
+**Prévia:** caixa **CRT** no topo do corpo da Preview (`CardCtx::flutuante`, `Widget::Check`) e, ligada, cinco campos à Figma aos pares (Scanlines, Mask, Curvature, Brightness, Bloom; `mark_card_field` + `set_number_range` com tectos 1/1/`CURVATURA_MAXIMA`/2/1). Chaves em `crates/ph2d-i18n/src/pixel_crt.rs` (inglês). **Passe = `crt_cpu`** (o gabarito que o WGSL iguala a 0 níveis), não o `CrtGpu`: medido no código, a Preview pinta por `draw_stable_image` num `VectorScene` sem device; pôr o `CrtGpu` exigia device + `VelloPass::register_texture` no render loop da shell (que só encolhe) e um `draw_image` de `ImageData` no `VectorScene`. Menor caminho correcto: a CPU corre só quando muda `(seq, escala inteira, params)` (a Preview compõe só ao mudar o quadro) e na escala `k = ⌊min(zoom, caber)⌋` ⇒ a saída fica presa à área do corpo (custo ∝ píxeis de saída, ~6 ns/px a 1 fio pelo passo 0b; janela de 400² ≈ 1 ms). Desligada: o caminho é o de hoje (a mesma `StableImage`, os mesmos bytes).
+
+**Linhas:** `ph2d-app-pixel` **0** · shell **0** (saldo 0; nada tocado). Painel: `crt.rs` novo (~190), `paint.rs` +18, `event.rs` +9, `state.rs` +20, `ids.rs` +10.
+
+**Gates** (`ph2d-panel-pixel-preview`, `tests/it/crt.rs`, verdes): `a_crt_desligada_e_a_previa_de_hoje` (passes = 0, `Arc::ptr_eq` + bytes iguais aos publicados) · `a_caixa_crt_liga_a_vista_e_a_previa_passa_pelo_passe` (clique REAL no meio da caixa ⇒ `vista().ligada` ⇒ 1 passe, bytes = `crt_cpu(…, k, params)` ≠ `amplia_nearest`, repintar não refaz) · `a_crt_ligada_nao_muda_o_documento` (`codec::write_entry` antes = depois). Vizinhos verdes: `seam` (9), `os_cartoes` (3), `every_word` (3; a tabela `pixel_crt.rs` entrou no censo). ⚠️ Red-first pelas mutações: **M1** `params_ligados()` → `None` ⇒ vermelho em 2 gates; **M2** caixa morta (`alterna()` → nada) ⇒ vermelho no gate de ponteiro. Restauradas (`grep -c` = 1).
+
+**Não commitado (hunks de outros agentes):** `crates/ph2d-i18n/src/lib.rs` (as minhas 2 linhas: `mod pixel_crt;` e `.or_else(|| pixel_crt::tr(k))`) e `Cargo.lock` (a aresta `ph2d-panel-pixel-preview → ph2d-pixel-crt`). Sem elas a crate do painel não compila: o integrador/coordenador commita-as.
+
+**Falta:**
+1. **Janela do jogo** — NÃO feita. O palco do jogo desenha a cena inteira pelo render loop da shell (Vello → surface, `janela_do_jogo.rs` só troca janela/surface); o CRT exige um passe pós-Vello (`intermediate_texture` → `CrtGpu::codifica` → surface) no `render_loop`, com a imagem do jogo em resolução de jogo (a lei é por texel: em resolução de ecrã com `escala=1` a scanline cai em cada linha do monitor). Precisa de mover linhas da shell antes (saldo ≤ 0) e de decidir a resolução lógica do jogo. Sem molde headless da janela do jogo: fica para a foto.
+2. Preview na placa (`CrtGpu`) quando houver porta de textura no `VectorScene`; persistência da vista (se o dono pedir).
+3. Foto da Preview com a CRT ligada (smoke do dono).
+
 ### U-Guias (09/11, agente)
 
 **Commit** `b65943d66b` (o braço da Linha em `ph2d-pixel-ponte/src/gesto.rs` — Shift ⇒ `direcao_guiada(sprite.guias(), from, to)` — e o `.chain(&ids::GUIDE_ACTIONS)` do `seam.rs` entraram por arrasto no `6e47fa23be` do U-Pintura, que commitou os ficheiros inteiros; o `b65943d66b` fecha-os: sem ele o HEAD não compilava).

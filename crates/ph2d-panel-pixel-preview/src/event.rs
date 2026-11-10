@@ -9,7 +9,9 @@ use ph2d_editor_core::widget::ButtonState;
 use ph2d_i18n::tr;
 
 pub(crate) fn populate(store: &mut WidgetStore) {
-    for id in [ids::PREVIEW_CLOSE, ids::PLAY] {
+    crate::crt::populate(store);
+    store.set_tooltip(ids::CRT, tr("panel.pixel.preview.crt_tip"));
+    for id in [ids::PREVIEW_CLOSE, ids::PLAY, ids::CRT] {
         let state = ButtonState::Normal;
         store.register(id, InteractiveState::Button { state });
     }
@@ -39,6 +41,13 @@ pub(crate) fn apply_event(
                 .push(EditorAction::Pixel(PixelRequest::FrameAction(
                     PixelFrameAction::PlayPreview,
                 )));
+            EventOutcome::Consumed
+        }
+        WidgetEvent::Click(id) | WidgetEvent::Toggled(id) if id == ids::CRT => {
+            crate::crt::alterna();
+            EventOutcome::Consumed
+        }
+        WidgetEvent::ValueChanged(id) if crate::crt::numero(host.store(), id) => {
             EventOutcome::Consumed
         }
         _ => EventOutcome::Ignored,

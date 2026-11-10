@@ -25,8 +25,12 @@ fn traco(t: &mut PainterTool, x0: f32, y: f32) {
 }
 
 fn base(meio: &str, cor: [u8; 3]) -> PainterTool {
+    base_de(meio, cor, (W, H))
+}
+
+fn base_de(meio: &str, cor: [u8; 3], (w, h): (usize, usize)) -> PainterTool {
     let mut t = PainterTool::default();
-    t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
+    t.abre_a_sprite(vec![255u8; w * h * 4], w as u32, h as u32);
     t.set_paint_tool_mode("wetpaint");
     t.set_wet_relogio_fixo(true);
     t.handle_panel_event(PanelEvent::SelectOption(
@@ -516,4 +520,50 @@ pub(super) fn undo_que_nao_se_aplica_nao_drena_o_passo_em_voo() {
         .expect("a sessão volta")
         .engine;
     assert_eq!(e.sim.stage_in_flight(), estagio, "o undo falhado drenou");
+}
+
+/// B12.2: o Ctrl+Z do Wet suja a caixa do traço desfeito, nunca a tela (no motor e na óptica): a fotografia do
+/// resto (óleo de antes, fluxo, relógio) não entra no sujo, que a óptica não a lê.
+#[test]
+pub(super) fn o_undo_do_wet_nao_suja_a_tela_inteira() {
+    for refaz in [false, true] {
+        // Tela larga: a caixa dos dois traços (e da água do A que anda no passo do B) fica longe da tela inteira.
+        let mut t = base_de(
+            "Watercolor/Fluid/Wet Flat.ph2d-brush.png",
+            [40, 90, 220],
+            (4 * W, 4 * H),
+        );
+        traco(&mut t, 40.0, 30.0);
+        tick(&mut t, 5);
+        traco(&mut t, 40.0, 60.0);
+        tick(&mut t, 5);
+        if refaz {
+            assert!(t.undo_last(), "havia o B para desfazer");
+            tick(&mut t, 5);
+        }
+        t.wet_bring_home();
+        let (gw, gh) = t.paint.wetpaint.session.as_ref().expect("a sessão").grid;
+        let _ = ph2d_wet_paint::painter::conta_sujo::tira();
+        ph2d_wet_paint::painter::conta_sujo::CONTA_SUJO
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        let feito = if refaz { t.redo_last() } else { t.undo_last() };
+        ph2d_wet_paint::painter::conta_sujo::CONTA_SUJO
+            .store(false, std::sync::atomic::Ordering::Relaxed);
+        assert!(feito, "refaz={refaz}: o passo aplicou-se");
+        let tela = (gw * gh) as u64;
+        let cheias: Vec<_> = ph2d_wet_paint::painter::conta_sujo::tira()
+            .into_iter()
+            .filter(|(_, _, c)| *c >= tela)
+            .collect();
+        assert!(
+            cheias.is_empty(),
+            "refaz={refaz}: sujo da tela inteira por {cheias:?}"
+        );
+        let s = t.paint.wetpaint.session.as_ref().expect("a sessão volta");
+        assert_ne!(
+            s.otica.uniao_local,
+            Some((1, 1, gw, gh)),
+            "refaz={refaz}: a óptica descarta a tela inteira no ar"
+        );
+    }
 }

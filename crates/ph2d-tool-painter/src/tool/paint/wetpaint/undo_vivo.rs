@@ -15,7 +15,7 @@
 
 use super::foto_em_tiles::PlanoEmTiles;
 use super::*;
-use ph2d_wet_paint::painter::Engine;
+use ph2d_wet_paint::painter::{Dirty, Engine};
 
 mod casco;
 #[cfg(test)]
@@ -302,7 +302,8 @@ impl FotoDoMotor {
         }
     }
 
-    /// Repõe o que fica fora das grades — DEPOIS do `undo`/`redo` do motor (que zera o fluxo).
+    /// Repõe o que fica fora das grades — DEPOIS do `undo`/`redo` do motor (que zera o fluxo). Nada disto é lido pela
+    /// óptica (o espelho ignora `oleo_antes` e o fluxo): o sujo é o que o restauro do motor marcou (B12.2).
     fn repoe(&self, e: &mut Engine) {
         for (l, o) in e.layers.iter_mut().zip(&self.oleo_antes) {
             o.repoe(&mut l.grid.oleo_antes);
@@ -317,7 +318,6 @@ impl FotoDoMotor {
         s.evap_scale = r.evap_scale;
         s.rewet_base = r.rewet_base;
         s.semente_do_po = r.semente_do_po;
-        e.mark_dirty_full();
     }
 
     fn planos(&self) -> impl Iterator<Item = &PlanoEmTiles> {
@@ -512,7 +512,16 @@ impl PainterTool {
             );
             foto.repoe(&mut sess.engine);
             // Uma imagem no ar é de antes do restauro: aplicada, punha a tela de outro passo por cima, e nada a corrigia.
-            sess.otica.toca_tudo(sess.grid);
+            // Fora do sujo do motor (a caixa do restauro e o que já estava por compor) a grade é a mesma.
+            match sess.engine.dirty {
+                Dirty::Full => sess.otica.toca_tudo(sess.grid),
+                Dirty::Rect { x0, y0, x1, y1 } => {
+                    let c = |v: i32, m: usize| usize::try_from(v).unwrap_or(1).clamp(1, m.max(1));
+                    sess.otica
+                        .compos_local((c(x0, gw), c(y0, gh), c(x1, gw), c(y1, gh)));
+                }
+                Dirty::Clean => {}
+            }
             sess.canvas = Arc::downgrade(&self.canvas_rgba);
             self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));
             sess.stroke_open = false;

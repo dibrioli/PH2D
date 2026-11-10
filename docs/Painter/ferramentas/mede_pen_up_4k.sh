@@ -258,6 +258,56 @@ if [ "$1" = oculto ]; then
   exit 0
 fi
 
+# ── WAYLAND (B23.6, 10/11): o mesmo roteiro do OCULTO num `kwin_wayland --virtual` (QPainter: o kwin não entra na
+# placa) sob `dbus-run-session` (o bus é desta corrida, nunca o do dono); minimizar/restaurar pelo script do KWin.
+# Conta `[quadro] oculta=true|false` (o `suspended` do xdg_toplevel que o winit vendorizado faz `Occluded`).
+# uso: bash scripts/ph2d-run.sh dbus-run-session -- bash docs/Painter/ferramentas/mede_pen_up_4k.sh wayland [rodadas] [segundos] [binario]
+if [ "$1" = wayland ]; then
+  N=${2:-1}; SEG=${3:-5}; BIN=${4:-$R/target/smoke/ph2d-host-desktop}; O=$S/wayland; SOCK=ph2d-b23-$$
+  mkdir -p "$O"
+  PLACA_ENV=(VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.json VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
+    MESA_VK_WSI_DEBUG=sw __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
+  bash "$R/scripts/vez-da-placa.sh" || exit $?
+  env -u DISPLAY -u WAYLAND_DISPLAY KWIN_COMPOSE=Q "${PLACA_ENV[@]}" kwin_wayland --virtual --width 1600 --height 1000 \
+    --socket "$SOCK" --no-lockscreen > "$O/kwin.log" 2>&1 & KW=$!
+  for _ in $(seq 1 40); do [ -S "$XDG_RUNTIME_DIR/$SOCK" ] && break; sleep 0.25; done
+  cd "$R"
+  minimiza() { echo "for (const w of workspace.windowList()) if (w.pid === $APP) w.minimized = $1;" > "$O/min.js"
+    local id; id=$(dbus-send --session --print-reply --dest=org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript \
+      string:"$O/min.js" string:"ph2d$1$k" | awk '/int32/ {print $2}'); k=$((k + 1))
+    dbus-send --session --dest=org.kde.KWin "/Scripting/Script$id" org.kde.kwin.Script.run; sleep 1; }
+  k=0
+  for i in $(seq 1 "$N"); do for modo in salta pedido; do
+    TAG=${modo}_$i; L=$O/$TAG.log; : > "$O/$TAG.marcas"
+    VAR=(PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PAINEL=wet PH2D_COMPOSITE_PILHA=0 PH2D_COMPOSITE_FUNDO=papel
+      PH2D_COMPOSITE_TELA=3840x2160 PH2D_COMPOSITE_PAPEL=1 PH2D_EXIT_AFTER_FRAMES=1000000 PH2D_OCULTA_APRESENTA=0)
+    [ $modo = pedido ] && VAR=()
+    env -u DISPLAY WAYLAND_DISPLAY=$SOCK HOME=$O/home_$TAG PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=0 "${PLACA_ENV[@]}" \
+      "${VAR[@]}" "$BIN" > "$L" 2>&1 &
+    APP=$!
+    for _ in $(seq 1 120); do { [ $modo = pedido ] || grep -q "pilha armada" "$L"; } && break; sleep 0.5; done
+    sleep 4
+    marca() { echo "$1 $(date +%s%N) $(awk '{print $14+$15}' /proc/$APP/stat 2>/dev/null)" >> "$O/$TAG.marcas"; }
+    marca visivel_ini; sleep "$SEG"; marca visivel_fim
+    minimiza true; marca minimizado_ini; sleep "$SEG"; marca minimizado_fim
+    minimiza false; marca restaurado_ini; sleep "$SEG"; marca restaurado_fim
+    kill -INT $APP 2>/dev/null
+    for _ in $(seq 1 40); do kill -0 $APP 2>/dev/null || break; sleep 0.25; done
+    kill -KILL $APP 2>/dev/null; wait $APP 2>/dev/null
+    awk -v hz="$(getconf CLK_TCK)" -v tag="$TAG" '
+      FNR == NR { split($1, f, "_"); if (f[2] == "ini") { a[f[1]] = $2; ta[f[1]] = $3; ordem[++n] = f[1] } else { b[f[1]] = $2; tb[f[1]] = $3 }; next }
+      /^\[quadro-lento\]/ { sub("parede=", "", $2); sub("quadro=", "", $4); for (k in a) if ($2 >= a[k] && $2 <= b[k]) q[k, ++c[k]] = $4 + 0 }
+      END { for (j = 1; j <= n; j++) { k = ordem[j]; s = (b[k] - a[k]) / 1e9; m = c[k] + 0
+        for (x = 1; x <= m; x++) v[x] = q[k, x]; asort(v); p50 = m ? v[int((m + 1) / 2)] : 0; delete v
+        printf "[wayland] %s %s q/s=%.1f p50=%.1f ms cpu=%d%%\n", tag, k, m / s, p50, (tb[k] - ta[k]) * 100 / hz / s } }
+    ' "$O/$TAG.marcas" "$L" | tee -a "$O/resumo.txt"
+    echo "[wayland] $TAG oculta=true:$(grep -c '^\[quadro\] oculta=true' "$L") oculta=false:$(grep -c '^\[quadro\] oculta=false' "$L")" \
+      | tee -a "$O/resumo.txt"
+  done; done
+  kill $KW; wait $KW 2>/dev/null
+  exit 0
+fi
+
 # ── ÓLEO (10/11): o Real Oil não tem porta na cena Composite; mede-se pela cena do FPS (PH2D_WETPAINT_SMOKE=3, o app
 # risca sozinho: Dabber com Real Oil, seca, Wet Drip, corre; 6 rodadas; período e imagens da água por segundo).
 # uso: bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/mede_pen_up_4k.sh oleo <lado> [binario]

@@ -1092,6 +1092,8 @@ extend-exclude = [
     # O `rapier2d` vendorizado (PixelArt P14, `[patch.crates-io]`): código de terceiros — `TOI` é o
     # «time of impact» do CCD dele, e renomear partiria o diff contra o upstream.
     "crates/ph2d-physics/vendor/**",
+    # O `winit` 0.30.13 vendorizado (Painter 4K B23.6): código de terceiros, o diff contra o upstream manda.
+    "crates/ph2d-app-host/vendor/**",
     # As SAÍDAS do oráculo Excalidraw (MiroClone): o que o programa de outro escreveu, gravado
     # byte a byte como fixture — os ids aleatórios dele (`…8IZFwDZa…`) não são palavras nossas, e
     # corrigi-los partiria a fixture que os gates leem.

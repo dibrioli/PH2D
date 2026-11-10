@@ -93,14 +93,54 @@ fn a_rede_acorda_o_laco_pelo_proxy() {
 #[test]
 fn o_pedido_de_quadro_passa_pela_lei() {
     let c = corpo_do_leitor();
-    let lei = c.find(".acorda(").expect("o `pede_o_quadro` não consulta a lei (`Laco::acorda`)");
+    let lei = c
+        .find(".acorda(")
+        .expect("o `pede_o_quadro` não consulta a lei (`Laco::acorda`)");
     let dorme = c.find("WaitUntil").expect("o `pede_o_quadro` nunca dorme");
-    let desenha = c.find("request_redraw").expect("o `pede_o_quadro` nunca desenha");
-    assert!(lei < dorme && dorme < desenha, "o redraw vem antes da lei: o laço é contínuo");
+    let desenha = c
+        .find("request_redraw")
+        .expect("o `pede_o_quadro` nunca desenha");
+    assert!(
+        lei < dorme && dorme < desenha,
+        "o redraw vem antes da lei: o laço é contínuo"
+    );
 }
 
 fn corpo_do_leitor() -> String {
     let src = fs::read_to_string(shell_src().join("janela_do_jogo.rs")).unwrap();
     let corpo = src.split("fn pede_o_quadro").nth(1).expect("o leitor");
     corpo.split("\n    }\n").next().unwrap().to_owned()
+}
+
+/// B23.6: no Wayland o winit 0.30.13 não dá `Occluded` (minimizada, o `Laco` nunca sabe que está oculta e a
+/// janela apresenta). O winit vendorizado (`crates/ph2d-app-host/vendor/winit/VENDOR.md`) converte o
+/// `suspended` do xdg_toplevel em `WindowEvent::Occluded`, e a shell entrega-o ao `Laco::oculta`.
+/// *Vermelho com o `event_loop/mod.rs` do upstream (o `occluded` não vira evento) ou sem o `[patch]`.*
+#[test]
+fn o_wayland_suspenso_chega_a_shell_como_occluded() {
+    let raiz = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let ler = |p: &str| fs::read_to_string(raiz.join(p)).unwrap_or_default();
+    let wl = "crates/ph2d-app-host/vendor/winit/src/platform_impl/linux/wayland";
+    let cargo = ler("Cargo.toml");
+    let patch = &cargo[cargo.find("[patch.crates-io]").unwrap_or(cargo.len())..];
+    assert!(
+        patch.contains("winit = { path = \"crates/ph2d-app-host/vendor/winit\" }"),
+        "o `[patch.crates-io]` não aponta o winit para o vendorizado"
+    );
+    assert!(
+        ler(&format!("{wl}/window/state.rs")).contains("contains(XdgWindowState::SUSPENDED))"),
+        "o winit vendorizado não lê o `suspended` do xdg_toplevel"
+    );
+    assert!(
+        ler(&format!("{wl}/state.rs")).contains(".occluded = Some(suspended)"),
+        "o `configure` do winit vendorizado não guarda a mudança do `suspended`"
+    );
+    assert!(
+        ler(&format!("{wl}/event_loop/mod.rs")).contains("event: WindowEvent::Occluded(occluded)"),
+        "o laço Wayland do winit vendorizado não entrega o `Occluded`"
+    );
+    assert!(
+        ler("shells/desktop/src/main.rs").contains("WindowEvent::Occluded(o) => l.oculta(o)"),
+        "a shell não entrega o `Occluded` ao `Laco::oculta`"
+    );
 }

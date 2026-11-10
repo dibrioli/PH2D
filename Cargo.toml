@@ -32,6 +32,9 @@ exclude = [
     # rapier2d 0.36.1 + a shape change invalidates the cached contact points:
     # `crates/ph2d-physics/vendor/rapier2d/VENDOR.md`.
     "crates/ph2d-physics/vendor/rapier2d",
+    # winit 0.30.13 + the Wayland xdg_toplevel `suspended` state becomes `WindowEvent::Occluded`:
+    # `crates/ph2d-app-host/vendor/winit/VENDOR.md`.
+    "crates/ph2d-app-host/vendor/winit",
 ]
 
 [workspace.package]
@@ -271,3 +274,6 @@ wgpu-core = { path = "crates/ph2d-gpu/vendor/wgpu-core" }
 # ⚠️ Temporário: rapier2d 0.36.1 sem invalidar os pontos de contacto ao trocar a forma (o corpo pousado
 # saltava a diferença dos offsets) — `crates/ph2d-physics/vendor/rapier2d/VENDOR.md`.
 rapier2d = { path = "crates/ph2d-physics/vendor/rapier2d" }
+# ⚠️ Temporário: winit 0.30.13 não dá `Occluded` no Wayland (minimizada, o laço não sabe que está
+# oculta) — `crates/ph2d-app-host/vendor/winit/VENDOR.md` (Painter missão 4K, B23.6).
+winit = { path = "crates/ph2d-app-host/vendor/winit" }

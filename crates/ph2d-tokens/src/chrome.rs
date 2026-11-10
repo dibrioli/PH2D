@@ -140,6 +140,18 @@ pub const TIMELINE_ALCA_HOVER_MIX: f32 = 0.5; // LITERAL-PX-OK: fracção da mis
 pub const TIMELINE_ALCA_HALO_ALPHA: f32 = 0.35; // LITERAL-PX-OK: opacidade do halo do arrasto
 /// A guia do arrasto (o fio de acento no tempo arrastado).
 pub const TIMELINE_ALCA_GUIA_ALPHA: f32 = 0.8; // LITERAL-PX-OK: opacidade da guia do arrasto
+/// ⭐ **Além do fim da animação** (dono 10/11): o véu da fita funda sobre o que passa do fim (apaga a
+/// peça, como a área fora do trabalho do After Effects) e as listras claras a 45° por cima dele (a
+/// mistura vai a 135°). Pisos medidos em `pecas_cartoes_tests` (12 temas × 6 peças + fita).
+pub const TIMELINE_ALEM_VEU_ALPHA: f32 = 0.65; // LITERAL-PX-OK: opacidade do véu além do fim
+/// As listras de «além do fim».
+pub const TIMELINE_ALEM_LISTRA_ALPHA: f32 = 0.42; // LITERAL-PX-OK: opacidade das listras além do fim
+/// A espessura de uma listra de «além do fim».
+pub const TIMELINE_ALEM_LISTRA_PX: f32 = 2.0; // LITERAL-PX-OK: espessura da listra além do fim
+/// O passo horizontal entre duas listras de «além do fim» (mais largo que o da mistura).
+pub const TIMELINE_ALEM_PASSO_PX: f32 = 12.0; // LITERAL-PX-OK: passo das listras além do fim
+/// A linha do fim da animação (a da ⟷ da duração), régua e faixas inteiras.
+pub const TIMELINE_FIM_LINHA_PX: f32 = 2.0; // LITERAL-PX-OK: espessura da linha do fim
 
 /// ⭐ **O FANTASMA de um cartão arrastado — a opacidade dele.** Meio transparente: a marca da
 /// queda (a barra de acento entre dois cartões) tem de se ver através dele.

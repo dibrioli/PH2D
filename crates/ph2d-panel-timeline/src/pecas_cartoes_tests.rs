@@ -135,6 +135,50 @@ fn as_listras_da_mistura_leem_se_sobre_toda_peca() {
 }
 const PISO_LISTRA: f64 = 0.17;
 
+/// ⭐ **«Além do fim» lê-se sobre toda peça e sobre a fita, e apaga a peça** (dono 10/11): a listra
+/// `\` contra o véu por baixo dela ≥ o piso da mistura, e a peça velada contra a mesma peça viva ≥ o
+/// piso medido. Medido 10/11 (12 temas × 6 peças + fita): listra 0,262 (Sunstone `PecaB`), véu
+/// 0,166 (Sunstone `PecaC`); os pisos ficam logo abaixo.
+/// *Mutação: véu a 0 ⇒ a peça velada é a viva e reprova; listra a 0,1 ⇒ reprova sobre a fita.*
+#[test]
+fn alem_do_fim_le_se_sobre_toda_peca_e_apaga_a_peca() {
+    let (mut listra_pior, mut veu_pior) = ((f64::MAX, String::new()), (f64::MAX, String::new()));
+    for theme in Theme::ALL {
+        let (veu, listra) = crate::ruler::fim::tons_alem(theme);
+        let pecas = todas()
+            .into_iter()
+            .map(|t| (format!("{t:?}"), fundos(&peca(t, theme, false))[1]));
+        for (nome, base) in pecas.clone().chain([("fita".to_owned(), fita(theme))]) {
+            let velada = sobre(veu, base);
+            let d = dist(sobre(listra, velada), velada);
+            if d < listra_pior.0 {
+                listra_pior = (d, format!("{theme:?} {nome}"));
+            }
+        }
+        for (nome, base) in pecas {
+            let d = dist(sobre(veu, base), base);
+            if d < veu_pior.0 {
+                veu_pior = (d, format!("{theme:?} {nome}"));
+            }
+        }
+    }
+    eprintln!(
+        "pior listra além × véu: {:.3} ({})",
+        listra_pior.0, listra_pior.1
+    );
+    eprintln!(
+        "pior peça velada × viva: {:.3} ({})",
+        veu_pior.0, veu_pior.1
+    );
+    assert!(
+        listra_pior.0 >= PISO_LISTRA_ALEM.max(PISO_LISTRA),
+        "listra além a {listra_pior:?}"
+    );
+    assert!(veu_pior.0 >= PISO_VEU, "véu a {veu_pior:?}");
+}
+const PISO_VEU: f64 = 0.16;
+const PISO_LISTRA_ALEM: f64 = 0.25;
+
 fn strip(id: u64, nome: &str, container: Option<usize>) -> StripView {
     StripView {
         id: ph2d_timeline::StripId(id),

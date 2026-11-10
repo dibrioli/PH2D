@@ -24,6 +24,8 @@ use ph2d_vector::{Affine, BezPath, Brush, Fill};
 use crate::alca_estado::EstadoAlca;
 use crate::ids;
 
+#[path = "ruler_fim.rs"]
+pub(crate) mod fim;
 #[path = "ruler_veil.rs"]
 mod veil;
 
@@ -84,13 +86,9 @@ pub(crate) fn paint(
     if clock.loop_band
         && let Some(shade) = beyond_end_shade(region, view_start, px_per_s, snap)
     {
-        // Nos cartões a zona morta é só LISTRADA sobre a fita funda (maquete B1, doc 15 onda 2g).
+        // Nos cartões: véu + listras a 45° (`ruler_fim.rs`, dono 10/11).
         if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
-            ph2d_editor_core::panel::cards::banda::listras_em(
-                ctx.scene,
-                shade,
-                crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::Listra, theme),
-            );
+            fim::pinta_alem(ctx, theme, shade);
         } else {
             fill_rounded_rect(
                 ctx.scene,
@@ -139,6 +137,11 @@ pub(crate) fn paint(
         true,
         &time_to_x,
     );
+
+    // The END line (cards): over the veil and every piece, under the playhead and the braces.
+    if clock.loop_band && ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        fim::pinta_linha_do_fim(ctx, theme, region, (view_start, px_per_s), snap);
+    }
 
     // Playhead line across the whole body (ruler + lanes area below) — at the
     // instant THIS ruler's clock reads. `None` means that clock has no answer

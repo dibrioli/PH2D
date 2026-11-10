@@ -57,8 +57,6 @@ pub enum TimelineTinta {
     SummaryCelula,
     /// A fita do Summary.
     SummaryFita,
-    /// A listra da zona depois do fim.
-    Listra,
     /// O cursor de tempo.
     Cursor,
     /// A borda da folha com o Auto Key a gravar.
@@ -115,7 +113,6 @@ impl TimelineTinta {
             Self::ChaveEscolhida => (T::KanbanBlueBold, [87, 157, 255]),
             Self::ChipEscolhido | Self::SummaryCelula => (T::KanbanList, [34, 54, 86]),
             Self::SummaryFita => (T::KanbanList, [20, 36, 68]),
-            Self::Listra => (T::KanbanList, [9, 12, 24]),
             Self::Gravando => (T::KanbanList, [196, 116, 114]),
             Self::Moldura => (T::KanbanList, [37, 41, 56]),
             // As cinco `--c13-*` e o `--c13-cont` do CSS da maquete (onda 3), ao bit.

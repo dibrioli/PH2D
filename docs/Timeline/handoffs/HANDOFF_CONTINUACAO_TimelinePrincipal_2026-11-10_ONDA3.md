@@ -149,3 +149,12 @@ um teste de 1100 px (curado com `textos_em`); a contagem `pintados + n == total`
   APERTADO (o `grabbing` segue o arrasto fora do hit). Shell: `icone_de(PointerLook)` partilhado com a aba — shell líquido −5 LOC.
 - Portões: `o_playhead_os_marcadores_e_as_chaves_mestras_mudam_de_estado` (3 estados × 4 alças, hits idênticos), `o_cursor_da_faixa_sai_do_alvo_registado`
   (faixa REAL), `as_pontas_esticam_o_corpo_agarra_o_fundo_e_a_seta` (editor-core). Corrigido o `clippy::unnecessary_operation` do `nest_smoke.rs:258`.
+
+## Rodada 3e (10/11): a linha do fim e «além do fim»
+
+- Causa: nos cartões nunca houve linha do fim — o clássico marca o fim pela borda do véu `BgScrim`; a onda 2g trocou o véu por listras `Listra` (escuras, a 135°, o mesmo ângulo da mistura) sobre a fita, e a borda sumiu. Sobre peça, listra escura em laranja ≈ mistura.
+- Novo `ruler_fim.rs` (filho de `ruler`): `pinta_alem` = véu `FitaPropriedade`×`TIMELINE_ALEM_VEU_ALPHA` (0,65) + listras claras a 45° (`\`, `TextoCabecalho`×0,42, 2 px, passo 12); `pinta_linha_do_fim` = linha de 2 px na tinta da ⟷ (`TimelinePlayhead`), régua+faixas inteiras, estado e sombra da ⟷ (`alca_estado::pinta`, id `TIMELINE_DUR_HANDLE`), pintada depois das ticks e antes do playhead/chavetas. Clássico intacto (véu `BgScrim`, sem linha).
+- Tokens novos em `chrome.rs` (`TIMELINE_ALEM_*`, `TIMELINE_FIM_LINHA_PX`); mortos removidos: `TimelineTinta::Listra`, `banda::listras_em`/`LISTRA_PASSO`.
+- Pisos medidos (12 temas × 6 peças + fita): listra × véu 0,262 (Sunstone `PecaB`, piso 0,25 ≥ 0,17 da mistura); peça velada × viva 0,166 (Sunstone `PecaC`, piso 0,16). Portões: `alem_do_fim_le_se_sobre_toda_peca_e_apaga_a_peca`, `nos_cartoes_a_linha_do_fim_sai_depois_das_pecas`.
+- Semântica igual (o fim autorado da vista). ⚠️ A cena 4 autora o fim em 6 s e abre enquadrada em ~0–5,7 s: nada passa do fim nela. A foto `18_fim_e_alem.png` foi tirada com um patch LOCAL não comitado (fim 5 s, 150 px/s) para mostrar a peça a cruzar o fim; zoom `18_fim_e_alem_zoom.png`.
+- ABERTO: o enquadrar ao abrir o Arrange não mostra o fim inteiro (corta ~5,7 de 6 s) — verificar `apply_fit_clip` com o Arrange.

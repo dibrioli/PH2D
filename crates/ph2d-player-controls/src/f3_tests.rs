@@ -91,11 +91,13 @@ fn a_dica_tem_entrelinhado_normal_e_uma_linha_quando_cabe() {
     em_cada_modo(|| {
         let r = rows(&game());
         let mut ts = TextSystem::new();
-        assert!(
-            HINT_LINE_H < m::FIELD_H - m::SEG_INSET,
-            "não é a faixa do botão"
-        );
-        assert!(HINT_LINE_H > FOOT_PX, "as linhas não se pisam");
+        const {
+            assert!(
+                HINT_LINE_H < m::FIELD_H - m::SEG_INSET,
+                "não é a faixa do botão"
+            );
+            assert!(HINT_LINE_H > FOOT_PX, "as linhas não se pisam");
+        }
         for area in AREAS {
             let l = Layout::of(area, &r, &mut ts);
             let shown = foot_lines(&mut ts, tr(HINTS[0]), l.hint.w).len();

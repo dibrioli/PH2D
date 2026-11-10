@@ -45,6 +45,13 @@
 | onda 3 | B14-cont2 | parcial (52db80f6cd): só medição: óptica 59 → 457 ms por faixa viva; margem não é a causa (85–88 % das células mudam ao bit, 18 % em u8); limiar recusado. Falta B14.2 (luz simplificada no gesto) e listas de faixas. |
 | onda 3 | B15-cont | feito (38cd706fcd): B15.A1: box_blur do settle com 1 buffer, ladrilhos 64×64, ao bit; sonda 4K r4 30,7–43,5 → 13,8–22,2 ms. Planos 34,7 → 18,7 ms; dobra do Ctrl+Z 12,3 → 9,9 ms. Resta o undo não confinado. |
 | onda 3 | verificação | verde |
+| onda 4 | B24 | feito (2528829629): B24.1/B24.2 prancha (709c41f60a): borda escura do Blur em camada transparente some. B24.5: Caixa r=512 9,0→9,9 ms/dab, Binomial 90→498; tecto fica no binomial. Gate 38 colunas, verde; alarmes verdes. |
+| onda 4 | B52.R3+B19.11 | feito (48adf8c0b9): blend_window pula o apply de camada Normal com α≤0 quando o resultado é o mesmo bit; gate das faixas refeito (Noise + controlo). 4K vazias 38,1→19,2 ms; traços 34,3→16,9; ruído branco sem ganho. |
+| onda 4 | B10c-cont | parcial (a2a5f9302c): R4 sem mudar comportamento: undo.rs 692→633 (undo_consulta.rs), undo_delta.rs 693→564 (undo_delta_diff.rs, sha256 igual). Verdes por nome. Falta confinar Impasto e Wet e medir a sonda. |
+| onda 4 | B14b | parcial (c77035d6f0): prancha gesto × repouso em pranchas/B14b (Real Oil, luz 12°): ~25 % dos píxeis diferem na tinta, média 10,6–12,5 níveis; repouso igual à Cheia ao byte. Falta medir no app (load 29–38). |
+| onda 4 | B16c | parcial (4584d861ef): B16.12 só diagnóstico: toque do papel 154,5 ms (composição CPU 94,7 + envio 18,7 + Down 22,5); a 1.ª aguada cria o vidro e passa o produtor à CPU. Branco/blocos 41 ms. Cura por fazer. |
+| onda 4 | B08b-cont | feito (a3821cf1a0): B08.2 completo: os 10 pincéis lentos nos 3 fundos que faltavam, matriz 10 × 6 = 60/60, mesmo binário, Radeon, load 26–44. Nenhum dos 10 passa em fundo nenhum. Sem mudar desenho nem gate. |
+| onda 4 | verificação | verde |
 
 ## Fatos medidos que mudam a ordem
 

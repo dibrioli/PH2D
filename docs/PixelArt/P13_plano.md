@@ -391,3 +391,22 @@ Mutações restauradas (diff do `compose.rs` conferido). ⚠️ «Efeito DEPOIS 
 **Chaves i18n (nenhuma criada):** `pixel.layer.effects` («Effects») · `pixel.layer.effects.outline` («Outline») · `pixel.layer.effects.apply` («Apply») · `pixel.layer.effects.apply.tooltip` («Bakes the effects into every frame of this layer and removes them») · `pixel.layer.effects.remove` («Remove») · `pixel.palette.cycle.preview` («Play color cycling»).
 
 **Falta:** (1) **`.ase`** — desenho decidido, não codificado: na escrita, um clone com `aplicar_efeitos` (o PNG/folha/`.ase` vêem o contorno); a camada leva `ph2d.efeitos` (Vector de Map com os campos do `Outline`) no mapa do artista (como `ph2d.normal`, `ase/user.rs:199`) e cada cel dono assado leva `ph2d.cru` (Rect + Vector U8 dos bytes originais) ⇒ o leitor do Pixel repõe o cel cru e recria o efeito = ida-e-volta exacta; outros apps ignoram as props. Rampas/ciclos: o `ph2d-aseprite` não modela user data do chunk de paleta ⇒ vão no user data do SPRITE (`ph2d.ramps`, `ph2d.cycles`), desvio do §5. `ase.rs` tem 689/700 linhas: o código vai em `ase/efeitos.rs` com um gancho de 1 linha na escrita e outro na leitura. Gate `o_ase_leva_rampas_ciclos_e_efeitos` por escrever. (2) `compose_with_onion_of` sem `t_ms`. (3) A UI (outro agente).
+
+### R3 (09/11, agente)
+
+**Commit** `a1cec84d70`. **Núcleo** (`convert.rs`, sem deps): `trait Metrica { mais_proxima(palette, candidates, c) -> u8 }`, `Rgb` (o `two_nearest` de antes — a 2.ª dele era morta), `convert = convert_com(.., &Rgb)`. **`ph2d-pixel-rampa::quantiza`**: `Oklab` (euclides OKLab + alfa, empate → menor), `PreservaRampas` (se a OKLab mais próxima é SOLTA ela ganha; senão a rampa de menor distância no plano `ab` e, nela, o degrau de `L` mais próximo — monótona em `L`), `converte_oklab`, `converte_preservando_rampas`, `srgb8_de_oklch`.
+**Oráculo**: `docs/PixelArt/ferramentas/oraculo_indexed_imagemagick.py` gera a `foto_p13` (64×64, LCG) e a `paleta_rampas` (pele 5 · água 4 · folha 6 · 3 soltas) e grava `tests/fixtures/imagemagick_indexed.json` (cabeçalho: ferramenta, versão, licença, comandos, data).
+**Achado**: o `magick +dither -remap` (7.1.2-35 Q16 HDRI) NÃO é a cor exata: a árvore de cubos poda e erra **124/4096** píxeis (ex.: (183,146,127) → (186,218,120), d² 5242, com (222,160,128) a d² 1717); o Pillow 13 `quantize` erra **129**. Por isso o gate não é «ao byte»: onde diferimos, a nossa está ESTRITAMENTE mais perto, e as contagens ficam fixas. `-ordered-dither o8x8` (posteriza cada canal a 2 níveis antes do remap) difere **3529**, o FS **1089**: por desenho, não forçado.
+
+| Gate (`ph2d-pixel-rampa`) | Vermelho visto | Verde |
+|---|---|---|
+| `o_indexed_rgb_de_hoje_nao_mudou_um_byte` (fixture `rgb_antes_r3.txt` gravada ANTES da porta; 4 dithers) | mutação empate `<=`: «o8x8: 1 píxeis mudaram» | ✓ |
+| `o_indexed_rgb_e_o_do_imagemagick` | «nenhum 124 ≠ 0» (a premissa «ao byte» caiu) e contagens 0 ≠ 3529/1089 | ✓ |
+| `manter_rampas_nunca_inverte_a_claridade` (armadilha 2 cores + foto) | mutações: croma em vez de L ⇒ `[1,0]`; ignorar as rampas ⇒ `[1,0]` | ✓ |
+| `manter_rampas_com_dither_fica_na_paleta_e_nas_rampas` (None/o8x8/Old4/FS; `Op::Whole` aceita) | — | ✓ |
+| `o_indexed_perceptual_nao_e_pior_que_o_pngquant` | `#[ignore = "pngquant por instalar (sudo do dono)"]` | — |
+
+Medido: na `foto_p13` sem dither as inversões são 0 para rampas, OKLab e RGB — os dentes da régua são a armadilha (a OKLab pura dá `[1,0]`, as rampas `[0,1]`). Core `dither_laws`/`tiles` verdes por nome.
+**Pendência 1 do R1**: o Color Mode mantém a paleta ⇒ nenhuma rampa a remapear; o `Op::Whole` aceita (gate acima). Quem mudar a paleta na conversão (New Palette from Sprite) continua a ter de levar as rampas.
+**Chaves i18n para a UI**: `pixel.convert.metric` («Color matching»), `pixel.convert.metric.rgb` («Exact RGB»), `pixel.convert.metric.perceptual` («Perceptual (OKLab)»), `pixel.convert.metric.keep_ramps` («Keep ramps»), `pixel.convert.metric.keep_ramps.tip` («Each color goes to the ramp with the closest hue, and to the step with the closest lightness, so light and dark never swap inside a ramp.»).
+**Falta**: o script ainda não CORRE o pngquant nem grava `pngquant.de_medio` (só regista a versão se instalado) — a acrescentar quando o dono instalar; a UI (seletor de métrica no diálogo Color Mode).

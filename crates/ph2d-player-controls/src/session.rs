@@ -136,7 +136,7 @@ impl PlaySession {
         }
         self.follow(game);
         let hit = self.last.as_ref().and_then(|l| l.hit(x, y));
-        let out = self.screen.click(hit, &mut self.keys);
+        let out = self.screen.click(hit);
         self.after(out, game)
     }
 

@@ -164,7 +164,7 @@ fn a_click_on_a_key_box_listens_on_that_box() {
     assert_eq!(lay.hit(-1.0, -1.0), None);
     let (mut s, mut k) = (ControlsScreen::default(), PlayerKeys::new());
     s.handle_key(F1, true, &g, &mut k);
-    assert_eq!(s.click(hit, &mut k), Outcome::Consumed);
+    assert_eq!(s.click(hit), Outcome::Consumed);
     assert!(s.listening());
     assert_eq!((s.selected(), s.slot()), (row, 1));
     assert_eq!(s.handle_key(J, true, &g, &mut k), Outcome::Changed);

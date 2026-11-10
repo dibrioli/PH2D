@@ -293,7 +293,7 @@ impl ControlsScreen {
 
     /// O Down no painel (o `Hit` vem do [`crate::layout::Layout::hit`]); `None` = fora do painel. Numa caixa escuta já;
     /// no «Reset to defaults» só o captura ([`Self::release`] dispara).
-    pub fn click(&mut self, hit: Option<Hit>, keys: &mut PlayerKeys) -> Outcome {
+    pub fn click(&mut self, hit: Option<Hit>) -> Outcome {
         if !self.open {
             return Outcome::Ignored;
         }

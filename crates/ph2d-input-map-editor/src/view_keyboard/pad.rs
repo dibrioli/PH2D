@@ -9,7 +9,6 @@ use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon};
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_input::ActionId;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::{Affine, BezPath, Circle, Stroke, VectorScene};

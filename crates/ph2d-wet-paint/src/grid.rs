@@ -28,6 +28,8 @@ pub mod altura;
 #[path = "grid/aparencia.rs"]
 pub mod aparencia;
 pub mod celula_bytes;
+#[path = "grid/campo_esparso.rs"]
+pub mod campo_esparso;
 #[path = "grid/crista.rs"]
 pub mod crista;
 #[path = "grid/espessura.rs"]

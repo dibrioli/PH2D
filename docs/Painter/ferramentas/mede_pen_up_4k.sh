@@ -204,8 +204,9 @@ fi
 
 # ── OCULTO (B23.3/B23.5, 10/11): q/s, quadro p50 e CPU com a janela à vista, desfocada e oculta (uma janela Tk por
 # cima: o X manda VisibilityNotify FullyObscured = `Occluded(true)`). Variantes intercaladas no MESMO binário:
-# `salta` = smoke 4K Textured (a omissão: oculta não apresenta) · `apresenta` = o mesmo com PH2D_OCULTA_APRESENTA=1
-# (o present de antes) · `pedido` = o app sem smoke (a lei a pedido). Resumo por fase no fim de cada lançamento.
+# `salta` = smoke 4K Textured com PH2D_OCULTA_APRESENTA=0 (a lei fora do smoke) · `apresenta` = o mesmo com `=1`
+# (o present de antes) · `pedido` = o app sem smoke (a lei a pedido). Resumo por fase no fim de cada lançamento, e
+# quantos `[quadro] oculta=true` o app viu (0 = o `Occluded` não chegou: a fase «oculto» não mede nada).
 # uso: bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/mede_pen_up_4k.sh oculto [rodadas] [segundos] [binario]
 if [ "$1" = oculto ]; then
   N=${2:-2}; SEG=${3:-5}; BIN=${4:-$R/target/smoke/ph2d-host-desktop}; D=${DISPLAY_MATRIZ:-:97}; O=$S/oculto
@@ -220,6 +221,8 @@ if [ "$1" = oculto ]; then
     TAG=${modo}_$i; L=$O/$TAG.log; : > "$O/$TAG.marcas"
     VAR=(PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PAINEL=wet PH2D_COMPOSITE_PILHA=0 PH2D_COMPOSITE_FUNDO=papel
       PH2D_COMPOSITE_TELA=3840x2160 PH2D_COMPOSITE_PAPEL=1 PH2D_EXIT_AFTER_FRAMES=1000000)
+    # O smoke apresenta sempre por omissão (`Laco::apresenta`): o salto pede o `=0` explícito.
+    [ $modo = salta ] && VAR+=(PH2D_OCULTA_APRESENTA=0)
     [ $modo = apresenta ] && VAR+=(PH2D_OCULTA_APRESENTA=1)
     [ $modo = pedido ] && VAR=()
     env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$O/home_$TAG PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=0 "${PLACA_ENV[@]}" "${VAR[@]}" "$BIN" \
@@ -249,6 +252,7 @@ if [ "$1" = oculto ]; then
         for (x = 1; x <= m; x++) v[x] = q[k, x]; asort(v); p50 = m ? v[int((m + 1) / 2)] : 0; delete v
         printf "[oculto] %s win=%s %s q/s=%.1f p50=%.1f ms cpu=%d%%\n", tag, win, k, m / s, p50, (tb[k] - ta[k]) * 100 / hz / s } }
     ' "$O/$TAG.marcas" "$L" | tee -a "$O/resumo.txt"
+    echo "[oculto] $TAG occluded=$(grep -c '^\[quadro\] oculta=true' "$L")" | tee -a "$O/resumo.txt"
   done; done
   kill $XV
   exit 0

@@ -3,7 +3,6 @@
 //! exacto do bloco, e ele re-deriva o `gfx` e a janela, que o início do quadro já verificou.
 
 use crate::AppGfx;
-use ph2d_host::PlatformHost;
 
 impl crate::App {
     /// Refresca o título quando o estado mudou.

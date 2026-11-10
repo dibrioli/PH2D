@@ -130,3 +130,42 @@ fn a_janela_oculta_nao_apresenta_salvo_o_smoke() {
         assert_eq!(l.apresenta(), apresenta, "PH2D_OCULTA_APRESENTA={forca:?}");
     }
 }
+
+/// B23.3: oculta e sem present, o vsync já não segura o laço (medido: 190–256 q/s, CPU 97–100 % de um
+/// núcleo × 58–83 q/s a apresentar); o Documento corre ao [`SEM_PRESENT`]. O laço da shell: `Some(t)`
+/// dorme até `t` e desenha; `None` desenha já. Cada quadro sem present custa 4 ms.
+#[test]
+fn oculta_sem_present_o_documento_corre_a_60_e_nao_gira() {
+    let doc = [Produtor::PapelMolhado];
+    let quadros_num_segundo = |l: &mut Laco| {
+        let t0 = Instant::now();
+        let (mut agora, mut n) = (t0, 0);
+        while agora < t0 + Duration::from_secs(1) {
+            if let Some(t) = l.acorda(&doc, agora) {
+                assert!(t > agora, "acordar no passado é girar");
+                agora = t;
+            }
+            agora += Duration::from_millis(4);
+            n += 1;
+        }
+        n
+    };
+    let mut l = Laco::novo(false);
+    l.oculta(true);
+    assert!(!l.apresenta());
+    let n = quadros_num_segundo(&mut l);
+    assert!((58..=61).contains(&n), "oculta sem present: {n} q/s");
+    l.oculta(false);
+    assert_eq!(
+        l.acorda(&doc, Instant::now()),
+        None,
+        "à vista, o present segura o laço"
+    );
+    let mut smoke = Laco::novo(true);
+    smoke.oculta(true);
+    assert_eq!(
+        quadros_num_segundo(&mut smoke),
+        250,
+        "o smoke apresenta: o present segura"
+    );
+}

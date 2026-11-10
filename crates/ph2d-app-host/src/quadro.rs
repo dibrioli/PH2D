@@ -17,6 +17,10 @@ pub const PRAZO: Duration = Duration::from_millis(250);
 /// O intervalo da UI com a janela desfocada: 10 q/s (estudo X-09/D1, PX-25).
 pub const DESFOCADA: Duration = Duration::from_millis(100);
 
+/// Oculta e sem present (B23.3), o vsync já não segura o laço: o Documento corre a 60 q/s, o ritmo que o
+/// present lhe dava (sem isto, medido: 190–256 q/s e um núcleo a 100 %).
+pub const SEM_PRESENT: Duration = Duration::from_nanos(16_666_667);
+
 /// Quem pode pedir um quadro. Cada variante tem a sua [`Classe`] (o `match` é exaustivo).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Produtor {
@@ -151,6 +155,8 @@ pub struct Laco {
     oculta: bool,
     /// `PH2D_OCULTA_APRESENTA=0|1`: força o present com a janela oculta (A × B no mesmo binário, `mede_pen_up_4k.sh oculto`).
     forca_oculta: Option<bool>,
+    /// O próximo quadro sem present ([`SEM_PRESENT`] depois do anterior).
+    passo_oculto: Option<Instant>,
 }
 
 /// Um smoke conta quadros ou conduz a cena: qualquer `PH2D_*SMOKE*`/`*DEMO*`,
@@ -171,6 +177,7 @@ impl Laco {
             smoke,
             oculta: false,
             forca_oculta: None,
+            passo_oculto: None,
         }
     }
 
@@ -194,6 +201,10 @@ impl Laco {
 
     /// A janela ficou oculta (minimizada / coberta) ou voltou a ver-se.
     pub fn oculta(&mut self, oculta: bool) {
+        if oculta != self.oculta {
+            // Régua do `mede_pen_up_4k.sh oculto`: prova que o `Occluded` chegou (só na mudança).
+            eprintln!("[quadro] oculta={oculta}");
+        }
         self.oculta = oculta;
     }
 
@@ -239,9 +250,19 @@ impl Laco {
     }
 
     /// A tradução para o laço: `None` = desenhar já; `Some(t)` = dormir até `t` (ou um evento).
+    /// Sem present, o «já» é o próximo [`SEM_PRESENT`]: o quadro que acabou de correr gastou o anterior.
     #[must_use]
-    pub fn acorda(&self, documento: &[Produtor], agora: Instant) -> Option<Instant> {
+    pub fn acorda(&mut self, documento: &[Produtor], agora: Instant) -> Option<Instant> {
         match self.pedido(documento, agora) {
+            Pedido::Ja(_) if !self.apresenta() => {
+                let alvo = match self.passo_oculto {
+                    Some(t) if t > agora => t,
+                    Some(t) => t + SEM_PRESENT,
+                    None => agora + SEM_PRESENT,
+                };
+                self.passo_oculto = Some(alvo.max(agora));
+                (alvo > agora).then_some(alvo)
+            }
             Pedido::Ja(_) => None,
             Pedido::Ate { prazo, .. } => Some(agora + prazo),
         }

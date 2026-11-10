@@ -1667,9 +1667,15 @@ const SEM_COLUNA_FORA: &[(&str, &str, Classe, &str)] = &[
     ),
     (
         "ph2d-panel-timeline",
-        "stack_lane_paint.rs::paint_lane",
+        "faixas_coluna.rs::paint_classico",
         NaoAnimavel,
         "o mudo de uma faixa da pilha é parâmetro da animação; não se anima a si própria",
+    ),
+    (
+        "ph2d-panel-timeline",
+        "faixas_coluna.rs::paint_cartoes",
+        NaoAnimavel,
+        "o mudo de uma faixa da pilha é parâmetro da animação; não se anima a si própria (cartões)",
     ),
     (
         "ph2d-panel-flip-frames",

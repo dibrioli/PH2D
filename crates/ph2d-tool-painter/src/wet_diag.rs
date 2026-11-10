@@ -401,8 +401,118 @@ pub fn take_window() -> (Half, Half, Half) {
     )
 }
 
+/// B14b-cont2: a variante A do A/B da luz no gesto (a cena Composite, `PH2D_COMPOSITE_LUZ_GESTO=cheia`): a luz Cheia
+/// também com o pincel na tela — o MESMO binário. Desligada (o produto) a decisão 2 vale: Simples no gesto.
+pub static LUZ_CHEIA_NO_GESTO: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+/// `0` sem factos ainda · `1` repouso · `2` o pincel na tela (o último `factos_da_otica`).
+static NA_TELA: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+static FACTOS_N: AtomicU64 = AtomicU64::new(0);
+static FACTOS_SIMPLES: AtomicU64 = AtomicU64::new(0);
+
+/// Os factos da óptica de um tique: o pincel na tela? e a luz que eles levam.
+pub fn note_factos(na_tela: bool, simples: bool) {
+    NA_TELA.store(1 + u8::from(na_tela), Ordering::Relaxed);
+    FACTOS_N.fetch_add(1, Ordering::Relaxed);
+    FACTOS_SIMPLES.fetch_add(u64::from(simples), Ordering::Relaxed);
+}
+
+/// As fases da óptica (gesto · repouso) por ordem, para o log da cena: uma linha por fase que FECHA.
+#[derive(Debug, Default)]
+pub struct FasesDaOtica {
+    fase: Option<(bool, u32, std::time::Instant)>,
+    gestos: u32,
+}
+
+impl FasesDaOtica {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            fase: None,
+            gestos: 0,
+        }
+    }
+
+    /// `na_tela` = a fase de agora; se mudou, a linha da que fechou com `(cópia, óptica)` e `(factos, Simples)` dela.
+    pub fn vira(
+        &mut self,
+        na_tela: bool,
+        agora: std::time::Instant,
+        otica: (Half, Half),
+        factos: (u64, u64),
+    ) -> Option<String> {
+        let fechou = self.fase.replace((na_tela, 0, agora));
+        if na_tela {
+            self.gestos += 1;
+        }
+        let (era, _, desde) = fechou?;
+        let k = self.gestos - u32::from(na_tela);
+        let ((c_ms, c_max, c_n), (o_ms, o_max, o_n)) = otica;
+        let s = (agora - desde).as_secs_f64();
+        let media = |soma: f64, n: u64| soma / n.max(1) as f64;
+        Some(format!(
+            "[otica] {} {k}: {o_n} imagens em {s:.2} s ({:.1}/s) · luz Simples {}/{} factos · óptica {:.1}/{:.1} ms · cópia {:.2}/{:.2} ms ({c_n})",
+            if era { "gesto" } else { "repouso" },
+            o_n as f64 / s.max(1e-3),
+            factos.1,
+            factos.0,
+            media(o_ms, o_n),
+            o_max,
+            media(c_ms, c_n),
+            c_max,
+        ))
+    }
+}
+
+/// Por quadro (a cena Composite): `Some(linha)` quando a fase da óptica muda; lê e ZERA `take_otica` e os factos.
+pub fn fase_da_otica(fases: &mut FasesDaOtica) -> Option<String> {
+    let na_tela = match NA_TELA.load(Ordering::Relaxed) {
+        0 => return None,
+        v => v == 2,
+    };
+    if fases.fase.is_some_and(|(f, ..)| f == na_tela) {
+        return None;
+    }
+    let factos = (
+        FACTOS_N.swap(0, Ordering::Relaxed),
+        FACTOS_SIMPLES.swap(0, Ordering::Relaxed),
+    );
+    fases.vira(na_tela, std::time::Instant::now(), take_otica(), factos)
+}
+
 #[cfg(test)]
 mod tests {
+    /// B14b-cont2: cada fase que fecha dá UMA linha com as imagens dela, as imagens/s e a luz dos factos; a 1.ª fase
+    /// só abre (o que havia antes dela não é de nenhum gesto).
+    #[test]
+    fn a_fase_da_otica_conta_as_imagens_de_cada_gesto() {
+        use std::time::{Duration, Instant};
+        let mut f = super::FasesDaOtica::default();
+        let t0 = Instant::now();
+        let nada = ((0.0, 0.0, 0), (0.0, 0.0, 0));
+        assert_eq!(f.vira(true, t0, nada, (0, 0)), None, "a 1.ª fase só abre");
+        let gesto = ((4.0, 1.5, 8), (400.0, 90.0, 8));
+        let l = f
+            .vira(false, t0 + Duration::from_secs(2), gesto, (120, 120))
+            .expect("o gesto fecha");
+        assert!(
+            l.contains("gesto 1:") && l.contains(" 8 imagens") && l.contains("4.0/s"),
+            "{l}"
+        );
+        assert!(
+            l.contains("Simples 120/120") && l.contains("óptica 50.0/90.0"),
+            "{l}"
+        );
+        let repouso = ((0.0, 0.0, 0), (30.0, 30.0, 1));
+        let l = f
+            .vira(true, t0 + Duration::from_secs(4), repouso, (60, 0))
+            .expect("o repouso fecha");
+        assert!(
+            l.contains("repouso 1:") && l.contains(" 1 imagens") && l.contains("Simples 0/60"),
+            "{l}"
+        );
+    }
+
     use super::*;
 
     /// **UM INTERVALO ABERTO É CREDITADO À JANELA EM QUE ELE ESTÁ ABERTO — E

@@ -386,13 +386,15 @@ if [ "$1" = wet6 ]; then
     MESA_VK_WSI_DEBUG=sw __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
   EXTRA=(PH2D_COMPOSITE_PILHA=0 PH2D_COMPOSITE_FUNDO=papel PH2D_COMPOSITE_PAPEL=1 "PH2D_COMPOSITE_TELA=$TELA")
   [ "$PIN" != omissão ] && EXTRA+=("PH2D_COMPOSITE_PRESET=$PIN")
+  # LUZ_GESTO=cheia (B14b-cont2): a variante A da luz no gesto (a Cheia também com o pincel na tela), o MESMO binário.
+  [ -n "$LUZ_GESTO" ] && EXTRA+=("PH2D_COMPOSITE_LUZ_GESTO=$LUZ_GESTO")
   # O Xvfb da corrida anterior pode ainda segurar o ecrã: sem o socket o app panica no `XOpenDisplay` (medido 10/11).
   for _ in $(seq 1 40); do [ -e "/tmp/.X11-unix/X${D#:}" ] || break; sleep 0.25; done
   Xvfb $D -screen 0 1600x1000x24 >/dev/null 2>&1 & XV=$!
   for _ in $(seq 1 40); do [ -e "/tmp/.X11-unix/X${D#:}" ] && break; sleep 0.25; done
   cd "$R"
-  printf '{"pincel":"%s","teclas":%s,"tela":"%s","bin":"%s","carga":"%s"}\n' "$PIN" "$TECLAS" "$TELA" "$BIN" \
-    "$(cut -d' ' -f1-3 /proc/loadavg)" > "$W6/$TAG.meta"
+  printf '{"pincel":"%s","teclas":%s,"tela":"%s","bin":"%s","luz":"%s","carga":"%s"}\n' "$PIN" "$TECLAS" "$TELA" "$BIN" \
+    "${LUZ_GESTO:-simples}" "$(cut -d' ' -f1-3 /proc/loadavg)" > "$W6/$TAG.meta"
   : > "$W6/$TAG.marcas"
   # CICLOS=1 (B14b-cont): o perf ABRE o app e conta cycles:u por fio (o veredito com load > 5); a 1.ª marca é o par
   # (mono, parede) que passa as marcas ao relógio do perf.
@@ -438,6 +440,22 @@ if [ "$1" = wet6 ]; then
   kill -INT $APP 2>/dev/null
   for _ in $(seq 1 40); do kill -0 $APP 2>/dev/null || break; sleep 0.25; done
   kill -KILL $APP 2>/dev/null; wait $PAI 2>/dev/null; kill $XV
+  exit 0
+fi
+
+# ── ÓTICA (B14b-cont2, 10/11): a luz no gesto, Simples (B) × Cheia (A, LUZ_GESTO=cheia), o MESMO binário, ABBA por
+# rodada; o gesto LONGO do óleo (Dabber + Real Oil, Textured 4K, 3 traços × PASSOS=400, OLEO_ROLA=55). O log da cena
+# conta as imagens da óptica por fase («[otica] gesto k: …»). uso: … mede_pen_up_4k.sh otica <rodadas> [binario]
+# resumo: mede_pen_up_4k.py --otica $S/wet6 (CICLOS=1 grava o perf: G ciclos do rayon por imagem no gesto)
+if [ "$1" = otica ]; then
+  BIN=${3:-$R/target/smoke/ph2d-host-desktop}
+  for i in $(seq 1 "${2:-2}"); do
+    for v in simples cheia cheia simples; do
+      k=$((${k:-0} + 1))
+      LUZ_GESTO=$([ $v = cheia ] && echo cheia) TRACOS=3 PASSOS=400 OLEO_ROLA=55 SAIDA=$S \
+        bash "$0" wet6 3840x2160 Dabber 0 "$BIN" "otica${k}${v}"
+    done
+  done
   exit 0
 fi
 

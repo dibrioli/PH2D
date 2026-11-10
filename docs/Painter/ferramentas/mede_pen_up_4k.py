@@ -385,6 +385,55 @@ def ciclos(pasta):
         print("\n".join(gestos))
 
 
+def otica(pasta):
+    """`--otica <SAIDA>/wet6` (B14b-cont2): por corrida e por gesto, as imagens da óptica do log da cena
+    (`[otica] gesto k: …`), imagens/s, a luz dos factos (Simples/total) e, com o perf, G ciclos do rayon por imagem
+    (traço k → soltar k + 3 s: a óptica corre no rayon). O veredito é a contagem, não o relógio."""
+    import glob
+    import json
+    import os
+    import re
+
+    print("| corrida | luz | carga | gesto: imagens · /s · Simples/factos | repouso: imagens · /s "
+          "| G ciclos rayon por imagem (gesto+3 s) |\n|---|---|---|---|---|---|")
+    for meta_f in sorted(glob.glob(os.path.join(pasta, "*.meta"))):
+        tag = meta_f[:-5]
+        meta = json.loads(open(meta_f).read())
+        if "luz" not in meta:
+            continue
+        fases = {"gesto": [], "repouso": []}
+        for l in open(tag + ".log", errors="replace"):
+            r = re.match(r"\[otica\] (gesto|repouso) (\d+): (\d+) imagens em ([\d.]+) s \(([\d.]+)/s\) · luz Simples "
+                         r"(\d+)/(\d+)", l)
+            if r:
+                fases[r[1]].append((int(r[3]), float(r[5]), int(r[6]), int(r[7])))
+        # Os OLEO_ROLA cliques da roda abrem uma «fase de gesto» curta antes dos traços: ficam os últimos TRACOS.
+        ups = sum(1 for p in open(tag + ".marcas") if p.startswith("up"))
+        fases = {f: v[-ups:] if ups else v for f, v in fases.items()}
+        cic = []
+        if os.path.exists(tag + ".perf"):
+            linhas = [p.split() for p in open(tag + ".marcas")]
+            rel = next(p for p in linhas if p[0] == "relogio")
+            off = int(rel[1]) - int(rel[2])
+            m = {p[0]: int(p[1]) - off for p in linhas if len(p) >= 2 and p[0] != "relogio"}
+            a = amostras(tag + ".perf")
+            for k, g in enumerate(fases["gesto"], 1):
+                if f"fim{k}" in m:
+                    c = sum(c for x, t, c in a if x == "rayon" and m[f"traco{k}"] < t <= m[f"fim{k}"]) / 1e9
+                    n = g[0] + (fases["repouso"][k - 1][0] if k <= len(fases["repouso"]) else 0)
+                    gp = sum(c for x, t, c in a if x != "rayon" and m[f"traco{k}"] < t <= m[f"up{k}"]) / 1e9
+                    gr = sum(c for x, t, c in a if x == "rayon" and m[f"traco{k}"] < t <= m[f"up{k}"]) / 1e9
+                    cic.append(f"{c / max(n, 1):.2f} (gesto: outros {gp:.1f} · rayon {gr:.1f} G)")
+        g = " / ".join(f"{n} · {s:.1f} · {si}/{f}" for n, s, si, f in fases["gesto"])
+        rp = " / ".join(f"{n} · {s:.1f}" for n, s, _, _ in fases["repouso"])
+        print(f"| {os.path.basename(tag).split('_')[0]} | {meta['luz']} | {meta['carga']} | {g} | {rp} "
+              f"| {' · '.join(cic) or '—'} |")
+
+
+if len(sys.argv) > 1 and sys.argv[1] == "--otica":
+    otica(sys.argv[2])
+    sys.exit(0)
+
 if len(sys.argv) > 1 and sys.argv[1] == "--lote":
     lote(sys.argv[2])
     sys.exit(0)

@@ -338,8 +338,8 @@ pub struct WidgetStore {
     /// A escuta armada pelo cartão do Trigger **troca** as teclas de teclado da acção (dono 09/11);
     /// a da aba do mapa acrescenta.
     pub(in crate::interaction) input_map_listen_replaces: bool,
-    /// O último `Down` cancelou a escuta do cartão — o clique que ele começa não a re-arma.
-    pub(in crate::interaction) input_map_listen_cancelled_by_down: bool,
+    /// A acção cuja escuta do cartão o último `Down` cancelou — o clique que ele começa não a re-arma.
+    pub(in crate::interaction) input_map_listen_cancelled_by_down: Option<ph2d_input::ActionId>,
     /// Onion settings floating modal (ADR-0142 W3b): `Some((x, y))` = the card's top-left in screen
     /// px (open); `None` = closed. Opened by the timeline's Onion-settings button (shell-side, so it
     /// can seed the widgets from `TimelineState::onion`); dragging the title band offsets it. Its

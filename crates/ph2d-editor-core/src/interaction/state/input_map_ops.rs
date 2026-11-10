@@ -39,16 +39,17 @@ impl WidgetStore {
     /// jogo — trocaria em silêncio as teclas da acção, e o Input Map não é do `Ctrl+Z`. Chamado pela
     /// porta ÚNICA do clique da shell em cada `Down`. A escuta da aba do mapa não é tocada.
     pub fn desarma_escuta_no_clique(&mut self) {
-        self.input_map_listen_cancelled_by_down =
-            self.input_map_listening.is_some() && self.input_map_listen_replaces;
-        if self.input_map_listen_cancelled_by_down {
+        self.input_map_listen_cancelled_by_down = self
+            .input_map_listening
+            .filter(|_| self.input_map_listen_replaces);
+        if self.input_map_listen_cancelled_by_down.is_some() {
             self.stop_listening();
         }
     }
 
-    /// **O clique em curso começou por cancelar a escuta?** O botão Key lê-o para CANCELAR em vez de
-    /// re-armar (o `Down` dele já desarmou). Drena.
-    pub fn take_listen_cancelled_by_down(&mut self) -> bool {
+    /// **De que acção o clique em curso começou por cancelar a escuta?** O botão Key e o «Bind…» da
+    /// janela leem-no para CANCELAR em vez de re-armar (o `Down` deles já desarmou). Drena.
+    pub fn take_listen_cancelled_by_down(&mut self) -> Option<ph2d_input::ActionId> {
         std::mem::take(&mut self.input_map_listen_cancelled_by_down)
     }
 

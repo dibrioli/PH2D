@@ -418,3 +418,34 @@ fn a_curva_diz_o_numero_do_cartao() {
         "°/s não é um ângulo"
     );
 }
+
+/// ⭐ Suspeita (a) do 09/11, MEDIDA: raio e altura da cápsula com chave no MESMO quadro. A altura
+/// inteira converte-se em meia-altura com o raio — tem de ser o raio NOVO, qualquer que seja a
+/// ordem em que as trilhas escreveram.
+#[test]
+fn raio_e_altura_da_capsula_no_mesmo_quadro_dao_a_altura_escrita() {
+    let reg = registry();
+    let (mut sim, e) = corpo();
+    let b = e.to_bits();
+    let _ = escrever(&mut sim, &reg, b, f::FORMA, 2.0);
+    let _ = escrever(&mut sim, &reg, b, f::RAIO, 0.3);
+    {
+        let mut w = sim
+            .world_mut()
+            .get_resource_or_insert_with(CanaisEscritos::default);
+        w.escrever(b, k(f::CAPSULA), 4.0);
+        w.escrever(b, k(f::RAIO), 1.0);
+    }
+    assert!(aplicar(
+        &mut sim,
+        &reg,
+        &mut ConducaoFisica::default(),
+        &Default::default()
+    ));
+    assert!((valor(&sim, e, f::RAIO) - 1.0).abs() < 1e-5);
+    assert!(
+        (valor(&sim, e, f::CAPSULA) - 4.0).abs() < 1e-5,
+        "altura {}",
+        valor(&sim, e, f::CAPSULA)
+    );
+}

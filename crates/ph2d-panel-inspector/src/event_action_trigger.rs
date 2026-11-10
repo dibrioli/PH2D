@@ -45,7 +45,7 @@ pub(crate) fn apply_action_trigger_event(
             && let Some(row) = info.rows.get(panel.trigger_selected)
             && !row.action.trim().is_empty()
         {
-            let cancelada = host.store_mut().take_listen_cancelled_by_down();
+            let cancelada = host.store_mut().take_listen_cancelled_by_down().is_some();
             if cancelada || crate::sections::action_trigger_tecla::a_escuta(host.store(), row) {
                 host.store_mut().stop_listening();
             } else {

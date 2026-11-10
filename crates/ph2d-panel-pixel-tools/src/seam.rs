@@ -44,6 +44,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     store.register_picker_swatch(ids::PIXEL_BG);
     // As opções: segmentos são botões, caixas são caixas, números são campos com faixa.
     let segmentos = ids::SHAPES.iter().map(|(_, id)| *id).chain(ids::SEGMENTS);
+    let segmentos = segmentos.chain(crate::ids_pintura::DITHER_MATRICES.map(|(_, id, _)| id));
     let inks = ids::INKS.iter().map(|(_, id)| *id);
     let sorts = ids::SORT_KEYS.iter().map(|(_, id)| *id);
     let acoes = ids::ACTIONS.iter().map(|(id, ..)| *id);
@@ -65,7 +66,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         store.register(id, InteractiveState::Checkbox { state, value });
     }
     let omissao = PixelOptions::default();
-    for (id, (min, max, step)) in ids::NUMBERS {
+    for (id, (min, max, step)) in ids::NUMBERS.into_iter().chain(crate::ids_pintura::NUMBERS) {
         let value = crate::seam_opcoes::numero(&omissao, id);
         store.register(
             id,
@@ -221,6 +222,7 @@ fn pedido(id: ph2d_a11y::NodeId, how: PixelSelect) -> Option<PixelRequest> {
             .chain(&ids::SELECT_ACTIONS)
             .chain(&ids::EDIT_ACTIONS)
             .chain(&ids::SPRITE_ACTIONS)
+            .chain(&ids::GUIDE_ACTIONS)
             .find(|(b, ..)| *b == id)
         {
             return Some(r.clone());
@@ -398,7 +400,7 @@ pub(crate) fn apply_event(
             });
             return empurra(host, pedido);
         }
-        WidgetEvent::ValueChanged(id) if ids::NUMBERS.iter().any(|(n, _)| *n == id) => {
+        WidgetEvent::ValueChanged(id) if crate::ids_pintura::e_numero(id) => {
             let v = host.store().number_value(id);
             let pedido = with_current(|info| {
                 let v = v?;

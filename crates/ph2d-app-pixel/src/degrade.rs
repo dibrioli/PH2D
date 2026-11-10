@@ -64,7 +64,10 @@ pub(crate) fn press(
     at: Cell,
     mods: Mods,
 ) -> Option<Press> {
-    if !matches!(tool, Tool::Gradient | Tool::Blur | Tool::Jumble) {
+    if !matches!(
+        tool,
+        Tool::Gradient | Tool::Blur | Tool::Jumble | Tool::Push
+    ) {
         return None;
     }
     app.mancha = None;
@@ -80,10 +83,12 @@ pub(crate) fn press(
         )
     } else {
         let paint = crate::gesture::paint(&app.options, doc, pincel.as_ref());
-        let k = if tool == Tool::Blur {
-            smudge::Kind::Blur
-        } else {
-            smudge::Kind::Jumble
+        let k = match tool {
+            Tool::Blur => smudge::Kind::Blur,
+            Tool::Jumble => smudge::Kind::Jumble,
+            _ => smudge::Kind::Push {
+                forca: app.options.push_strength,
+            },
         };
         // A semente é do gesto: a célula do premir (HR-5, nada de relógio).
         let mut smudge = Smudge::new(
@@ -92,7 +97,7 @@ pub(crate) fn press(
             k,
             spray_seed(u32::from(tool == Tool::Jumble), at.0, at.1),
         );
-        smudge.dab(&carimbo(s, ck, &paint, at));
+        smudge.arrasta(s, at, &carimbo(s, ck, &paint, at));
         let st = Stroke::with_values(ck.0, ck.1, smudge.values(s));
         app.mancha = Some(Mancha {
             smudge,
@@ -141,7 +146,7 @@ pub(crate) fn moved(app: &mut PixelApp, key: u32, at: Cell) -> bool {
             line_cells(m.last.0, m.last.1, at.0, at.1, |x, y| caminho.push((x, y)));
             for p in caminho.into_iter().skip(1) {
                 let cells = carimbo(s, ck, &m.paint, p);
-                m.smudge.dab(&cells);
+                m.smudge.arrasta(s, p, &cells);
             }
             m.last = at;
             m.smudge.values(s)

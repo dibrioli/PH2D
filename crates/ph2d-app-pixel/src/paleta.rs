@@ -7,7 +7,6 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::pixel_panel::{ColorModeChoice, PixelRequest, PixelSelect};
-use ph2d_pixel_core::convert::convert;
 use ph2d_pixel_core::palette::{self};
 use ph2d_pixel_core::{Cel, ColorMode, Op, Patch, Rect, Sprite, Whole, compose_rgba};
 use ph2d_pixel_io::palette_file::{self, PaletteFormat};
@@ -470,12 +469,12 @@ impl PixelApp {
         let Some(doc) = self.docs.get(&key) else {
             return;
         };
-        let (mode, opt) = conversao(c);
+        let (mode, _) = conversao(c);
         if ph2d_pixel_core::convert::normal_needs_rgb(&doc.sprite, mode) {
             self.aviso(true, ph2d_i18n::tr("panel.pixel.layer.normal_needs_rgb"));
             return;
         }
-        let Some(w) = convert(&doc.sprite, mode, opt) else {
+        let Some(w) = ph2d_pixel_ponte::leis::converte(&doc.sprite, c) else {
             return;
         };
         if self.passo_nomeado(

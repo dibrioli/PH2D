@@ -189,6 +189,7 @@ fn ok_e_enter_armam_o_pedido_com_a_escolha_e_ela_fica_lembrada() {
         target: NewSpriteMode::Indexed,
         dither: PixelDither::FloydSteinberg,
         gray: PixelToGray::Luminance,
+        ..Default::default()
     };
     assert_eq!(e.hero.store.take_color_mode_request(), Some(quer));
     assert_eq!(e.hero.store.take_color_mode_request(), None, "uma vez só");

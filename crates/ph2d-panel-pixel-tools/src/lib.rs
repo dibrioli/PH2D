@@ -14,6 +14,7 @@
 
 pub mod column;
 pub mod ids;
+pub mod ids_pintura;
 mod paint;
 mod seam;
 mod seam_camadas;

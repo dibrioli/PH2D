@@ -7,6 +7,9 @@ use ph2d_editor_core::pixel_panel::PixelOptions;
 
 /// O valor do campo `id` nas opções.
 pub(crate) fn numero(o: &PixelOptions, id: NodeId) -> f64 {
+    if let Some(v) = crate::ids_pintura::numero(o, id) {
+        return v;
+    }
     match id {
         ids::SIZE => f64::from(o.size),
         ids::ANGLE => f64::from(o.angle),
@@ -23,6 +26,7 @@ pub(crate) fn numero(o: &PixelOptions, id: NodeId) -> f64 {
 pub(crate) fn com_numero(mut o: PixelOptions, id: NodeId, v: f64) -> PixelOptions {
     let (min, max) = ids::NUMBERS
         .iter()
+        .chain(&crate::ids_pintura::NUMBERS)
         .find(|(n, _)| *n == id)
         .map_or((0.0, 0.0), |(_, (a, b, _))| (*a, *b));
     if !v.is_finite() {
@@ -46,7 +50,9 @@ pub(crate) fn com_numero(mut o: PixelOptions, id: NodeId, v: f64) -> PixelOption
         ids::REPLACE_TOLERANCE => o.replace_tolerance = u8::try_from(u).unwrap_or(u8::MAX),
         ids::WAND_TOLERANCE => o.wand_tolerance = u8::try_from(u).unwrap_or(u8::MAX),
         ids::TEXT_SIZE => o.text_px = u,
-        _ => {}
+        _ => {
+            crate::ids_pintura::grava(&mut o, id, u);
+        }
     }
     o
 }
@@ -72,6 +78,9 @@ pub(crate) fn caixa(o: &mut PixelOptions, id: NodeId) -> Option<&mut bool> {
 
 /// As opções com o segmento `id` escolhido, se é um.
 pub(crate) fn com_segmento(mut o: PixelOptions, id: NodeId) -> Option<PixelOptions> {
+    if crate::ids_pintura::segmento(&mut o, id) {
+        return Some(o);
+    }
     if let Some((shape, _)) = ids::SHAPES.iter().find(|(_, s)| *s == id) {
         o.shape = *shape;
         return Some(o);

@@ -213,6 +213,21 @@ pub fn conversao(c: ColorModeChoice) -> (ColorMode, Convert) {
     (mode, Convert { dither, to_gray })
 }
 
+/// **O OK do *Color Mode***: a conversão com a métrica escolhida (P13: Exact RGB = a de sempre,
+/// byte a byte; Perceptual = OKLab; Keep ramps = [`ph2d_pixel_rampa::PreservaRampas`]).
+#[must_use]
+pub fn converte(sprite: &Sprite, c: ColorModeChoice) -> Option<ph2d_pixel_core::Whole> {
+    use ph2d_editor_core::pixel_panel::PixelColorMetric as M;
+    let (mode, opt) = conversao(c);
+    match (mode, c.metric) {
+        (ColorMode::Indexed, M::Perceptual) => ph2d_pixel_rampa::converte_oklab(sprite, opt),
+        (ColorMode::Indexed, M::KeepRamps) => {
+            ph2d_pixel_rampa::converte_preservando_rampas(sprite, opt)
+        }
+        _ => ph2d_pixel_core::convert::convert(sprite, mode, opt),
+    }
+}
+
 pub fn sort_key(k: PixelSortKey) -> SortKey {
     match k {
         PixelSortKey::Hue => SortKey::Hue,

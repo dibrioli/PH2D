@@ -51,7 +51,7 @@ pub(crate) fn recusa_traco(doc: &Doc, tool: Tool) -> Option<&'static str> {
     let m = crate::camadas::recusa_pintar(doc)?;
     let funil = !matches!(
         tool,
-        Tool::Gradient | Tool::Blur | Tool::Jumble | Tool::Text
+        Tool::Gradient | Tool::Blur | Tool::Jumble | Tool::Push | Tool::Text
     );
     (m != "pixel.layer.refuse.tilemap" || !funil).then_some(m)
 }

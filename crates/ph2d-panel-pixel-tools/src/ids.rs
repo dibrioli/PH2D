@@ -211,7 +211,7 @@ pub fn palette_bg_id(i: usize) -> NodeId {
 }
 
 /// As tintas, na ordem do Aseprite (pintar, registar e despachar leem a MESMA tabela).
-pub const INKS: [(PixelInk, NodeId); 5] = [
+pub const INKS: [(PixelInk, NodeId); 6] = [
     (PixelInk::Simple, hash_node_id("pixel.opt.ink.simple")),
     (
         PixelInk::AlphaCompositing,
@@ -220,6 +220,7 @@ pub const INKS: [(PixelInk, NodeId); 5] = [
     (PixelInk::CopyAlphaColor, hash_node_id("pixel.opt.ink.copy")),
     (PixelInk::LockAlpha, hash_node_id("pixel.opt.ink.lock")),
     (PixelInk::Shading, hash_node_id("pixel.opt.ink.shading")),
+    (PixelInk::Dither, hash_node_id("pixel.opt.ink.dither")),
 ];
 
 /// Os critérios do Sort.

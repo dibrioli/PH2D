@@ -114,6 +114,9 @@ fn shift_p_picks_the_gradient_and_r_toggles_blur_and_jumble() {
     assert_eq!(app.tool, Tool::Blur);
     key(&mut app, &sim, bits, KeyCode::KeyR, false);
     assert_eq!(app.tool, Tool::Jumble);
+    // P13: o Push entra no ciclo do R (Blur → Jumble → Push).
+    key(&mut app, &sim, bits, KeyCode::KeyR, false);
+    assert_eq!(app.tool, Tool::Push);
     key(&mut app, &sim, bits, KeyCode::KeyR, false);
     assert_eq!(app.tool, Tool::Blur);
     assert_eq!(Tool::Jumble.group(), Some(PixelToolGroup::Smudge));

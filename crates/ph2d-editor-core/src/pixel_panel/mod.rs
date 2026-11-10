@@ -149,6 +149,11 @@ pub struct PixelOptions {
     /// o `TextStyle::px` (um múltiplo da altura nativa dela).
     pub text_font: u16,
     pub text_px: u32,
+    /// P13: o ink Dither — Level `0..=64` (64 = só a de frente) e a matriz (nunca `None`).
+    pub dither_level: u8,
+    pub dither_matrix: PixelGradientDither,
+    /// P13: a força do Smudge ▸ Push, `0..=255`.
+    pub push_strength: u8,
 }
 
 /// O seletor de cor abaixo da paleta — os cinco do menu ≡ da paleta do Aseprite 1.3.18, na ordem
@@ -194,17 +199,20 @@ pub enum PixelInk {
     AlphaCompositing,
     CopyAlphaColor,
     LockAlpha,
-    /// Anda um degrau na rampa = as cores SELECCIONADAS na paleta.
+    /// Anda um degrau na rampa da paleta sob o pincel; fora de toda rampa, na selecção.
     Shading,
+    /// P13: o padrão fixo (preso ao canvas) entre a cor de frente e a de fundo.
+    Dither,
 }
 
 impl PixelInk {
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Simple,
         Self::AlphaCompositing,
         Self::CopyAlphaColor,
         Self::LockAlpha,
         Self::Shading,
+        Self::Dither,
     ];
 
     #[must_use]
@@ -215,6 +223,7 @@ impl PixelInk {
             Self::CopyAlphaColor => "panel.pixel.ink.copy",
             Self::LockAlpha => "panel.pixel.ink.lock",
             Self::Shading => "panel.pixel.ink.shading",
+            Self::Dither => "pixel.ink.dither",
         }
     }
 }
@@ -300,6 +309,8 @@ pub struct ColorModeChoice {
     pub target: NewSpriteMode,
     pub dither: PixelDither,
     pub gray: PixelToGray,
+    /// P13: a métrica cor → índice do alvo Indexed.
+    pub metric: PixelColorMetric,
 }
 
 /// O estado do diálogo *Color Mode*: a última escolha, o modo do sprite ao abrir (o alvo que não se
@@ -383,6 +394,9 @@ impl Default for PixelOptions {
             gradient_ramp: false,
             text_font: 0,
             text_px: 1,
+            dither_level: 32,
+            dither_matrix: PixelGradientDither::Bayer4,
+            push_strength: 255,
         }
     }
 }

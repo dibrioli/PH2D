@@ -82,7 +82,34 @@ pub fn ink(i: ph2d_editor_core::pixel_panel::PixelInk) -> Ink {
         I::CopyAlphaColor => Ink::CopyAlphaColor,
         I::LockAlpha => Ink::LockAlpha,
         I::Shading => Ink::Shading,
+        // O padrão entra no traço (`Stroke::with_dither`); a tinta é a Simple.
+        I::Dither => Ink::Simple,
     }
+}
+
+/// P13: o padrão do ink Dither para o traço da ferramenta `tool` (`None` = sem padrão; a borracha
+/// e as que escrevem a cor pronta nunca o levam).
+#[must_use]
+pub fn pincel_dither(
+    o: &ph2d_editor_core::pixel_panel::PixelOptions,
+    tool: Tool,
+) -> Option<ph2d_pixel_core::dither::PincelDither> {
+    use ph2d_editor_core::pixel_panel::{PixelGradientDither as G, PixelInk};
+    use ph2d_pixel_core::dither::{Dither, PincelDither};
+    let pinta = tool.paints()
+        && !matches!(
+            tool,
+            Tool::Eraser | Tool::Gradient | Tool::Blur | Tool::Jumble | Tool::Push
+        );
+    let matriz = match o.dither_matrix {
+        G::Bayer2 => Dither::Bayer2,
+        G::None | G::Bayer4 => Dither::Bayer4,
+        G::Bayer8 => Dither::Bayer8,
+    };
+    (pinta && o.ink == PixelInk::Dither).then_some(PincelDither {
+        nivel: o.dither_level.min(PincelDither::MAX),
+        matriz,
+    })
 }
 
 /// A tinta do núcleo no vocabulário do chrome (um espaço guardado que volta).
@@ -205,7 +232,7 @@ pub fn reshape(
         Kind::Box { from, to } => match tool {
             Tool::Line => {
                 let to = if m.shift {
-                    snap_pixel_angle(*from, *to)
+                    ph2d_pixel_guia::direcao_guiada(sprite.guias(), *from, *to)
                 } else {
                     *to
                 };
@@ -250,6 +277,7 @@ pub fn rotulo(tool: Tool) -> ph2d_pixel_core::Label {
         Tool::Gradient => "pixel.history.gradient",
         Tool::Blur => "pixel.history.blur",
         Tool::Jumble => "pixel.history.jumble",
+        Tool::Push => "pixel.history.push",
         Tool::Contour => "pixel.history.contour",
         Tool::Polygon => "pixel.history.polygon",
         Tool::Text => "pixel.history.text",

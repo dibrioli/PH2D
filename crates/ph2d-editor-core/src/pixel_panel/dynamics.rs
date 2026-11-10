@@ -59,6 +59,28 @@ impl PixelGradientDither {
     }
 }
 
+/// P13: a métrica do *Color Mode ▸ Indexed* (Exact RGB = a de sempre, byte a byte).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PixelColorMetric {
+    #[default]
+    ExactRgb,
+    Perceptual,
+    KeepRamps,
+}
+
+impl PixelColorMetric {
+    pub const ALL: [Self; 3] = [Self::ExactRgb, Self::Perceptual, Self::KeepRamps];
+
+    #[must_use]
+    pub const fn label_key(self) -> &'static str {
+        match self {
+            Self::ExactRgb => "pixel.convert.metric.rgb",
+            Self::Perceptual => "pixel.convert.metric.perceptual",
+            Self::KeepRamps => "pixel.convert.metric.keep_ramps",
+        }
+    }
+}
+
 /// O popup inteiro.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PixelDynamics {

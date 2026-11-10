@@ -1,6 +1,11 @@
 //! **As palavras do PIXEL ART, P7** (ADR-0196): o pincel de padrão, os pincéis guardados e o
 //! popup Dynamics do painel PIXEL — em inglês simples (o app é só em inglês, dono 31/10).
 
+/// P13 U-Pintura: o ink Dither, o Push e a métrica do Color Mode (a família do pincel; aqui para
+/// não crescer a `lib.rs`, no tecto).
+#[path = "pixel_pintura.rs"]
+mod pintura;
+
 /// A tradução de uma chave daqui, ou `None`.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
@@ -60,6 +65,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.dynamics.range_hint" => {
             "Below the left handle counts as nothing, past the right handle as full"
         }
-        _ => return None,
+        _ => return pintura::tr(key),
     })
 }

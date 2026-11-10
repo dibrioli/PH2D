@@ -18,6 +18,7 @@ ph2d-pen-law = { path = "../ph2d-pen-law" }
 ph2d-pixel-core = { path = "../ph2d-pixel-core" }
 ph2d-pixel-io = { path = "../ph2d-pixel-io" }
 ph2d-pixel-formas = { path = "../ph2d-pixel-formas" }
+ph2d-pixel-rampa = { path = "../ph2d-pixel-rampa" }
 ph2d-vector = { path = "../ph2d-vector" }
 winit = "0.30"
 

@@ -320,7 +320,7 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
             st.spray(s, at, options.spray_width, options.spray_speed);
             (st, Kind::Spray)
         }
-        Tool::Gradient | Tool::Blur | Tool::Jumble => return Press::Done,
+        Tool::Gradient | Tool::Blur | Tool::Jumble | Tool::Push => return Press::Done,
         Tool::Bucket => {
             let mut st = Stroke::new(layer, frame, value, paint);
             st.fill(s, at, crate::gesture::bucket(&options));
@@ -359,6 +359,12 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         stroke.with_shading(crate::paleta::rampa(s, &sel), dir)
     } else {
         stroke
+    };
+    // P13 ink Dither: a outra cor é a secundária do padrão (o botão direito troca-as).
+    let outra = if button == Button::Primary { bg } else { fg };
+    let stroke = match ph2d_pixel_ponte::gesto::pincel_dither(&options, tool) {
+        Some(d) => stroke.with_dither(s.value_of_rgba(outra), d),
+        None => stroke,
     };
     doc.stamp = stamp;
     app.gesture = Some(Gesture {

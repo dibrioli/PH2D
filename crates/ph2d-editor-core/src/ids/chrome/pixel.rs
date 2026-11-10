@@ -4,7 +4,9 @@
 //! ⚠️ APPEND-ONLY: um id é o hash de uma STRING.
 
 use super::super::hash_node_id;
-use crate::pixel_panel::{NewSpriteBackground, NewSpriteMode, PixelDither, PixelToGray};
+use crate::pixel_panel::{
+    NewSpriteBackground, NewSpriteMode, PixelColorMetric, PixelDither, PixelToGray,
+};
 use ph2d_a11y::NodeId;
 
 pub const PIXEL_PANEL: NodeId = hash_node_id("pixel.panel");
@@ -247,6 +249,25 @@ pub const COLOR_MODE_GRAYS: [(PixelToGray, NodeId, &str); 3] = [
     ),
 ];
 
+/// P13: as três métricas do alvo Indexed («Color matching»).
+pub const COLOR_MODE_METRICS: [(PixelColorMetric, NodeId, &str); 3] = [
+    (
+        PixelColorMetric::ExactRgb,
+        hash_node_id("pixel.color_mode.metric.rgb"),
+        "pixel.convert.metric.rgb",
+    ),
+    (
+        PixelColorMetric::Perceptual,
+        hash_node_id("pixel.color_mode.metric.perceptual"),
+        "pixel.convert.metric.perceptual",
+    ),
+    (
+        PixelColorMetric::KeepRamps,
+        hash_node_id("pixel.color_mode.metric.keep_ramps"),
+        "pixel.convert.metric.keep_ramps",
+    ),
+];
+
 /// O `id` é um controlo do diálogo *Color Mode*?
 #[must_use]
 pub fn color_mode_dialog_owns(id: NodeId) -> bool {
@@ -255,4 +276,5 @@ pub fn color_mode_dialog_owns(id: NodeId) -> bool {
         || COLOR_MODE_TARGETS.iter().any(|(_, b, _)| *b == id)
         || COLOR_MODE_DITHERS.iter().any(|(_, b, _)| *b == id)
         || COLOR_MODE_GRAYS.iter().any(|(_, b, _)| *b == id)
+        || COLOR_MODE_METRICS.iter().any(|(_, b, _)| *b == id)
 }

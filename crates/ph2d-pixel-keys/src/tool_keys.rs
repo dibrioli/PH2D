@@ -11,7 +11,7 @@ pub fn tool_keys(map: &Keymap) -> PixelToolKeys {
     let mut out = Vec::new();
     for &a in PixelAction::ALL {
         let tools = match (a, a.tool()) {
-            (PixelAction::ToolBlurJumble, _) => vec![T::Blur, T::Jumble],
+            (PixelAction::ToolBlurJumble, _) => vec![T::Blur, T::Jumble, T::Push],
             (_, Some(t)) => vec![t],
             _ => continue,
         };

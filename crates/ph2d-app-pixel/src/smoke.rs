@@ -329,6 +329,7 @@ const PHOTO_DIALOG: ColorModeChoice = ColorModeChoice {
     target: NewSpriteMode::Indexed,
     dither: PixelDither::FloydSteinberg,
     gray: PixelToGray::Luminance,
+    metric: ph2d_editor_core::pixel_panel::PixelColorMetric::ExactRgb,
 };
 
 pub use ph2d_pixel_cenas::gradiente::{GRADIENT_SIZE, gradient_rgba};

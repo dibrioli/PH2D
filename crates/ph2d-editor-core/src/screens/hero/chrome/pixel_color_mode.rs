@@ -27,6 +27,10 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.store.set_color_mode_dither(d);
         return true;
     }
+    if let Some(&(m, ..)) = ids::COLOR_MODE_METRICS.iter().find(|(_, b, _)| *b == id) {
+        hero.store.set_color_mode_metric(m);
+        return true;
+    }
     if let Some(&(g, ..)) = ids::COLOR_MODE_GRAYS.iter().find(|(_, b, _)| *b == id) {
         hero.store.set_color_mode_gray(g);
         return true;

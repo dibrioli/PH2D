@@ -34,11 +34,12 @@ pub(in crate::screens::hero) fn paint_color_mode_dialog(
 ) {
     let choice = store.color_mode_choice();
     let current = store.color_mode_current();
+    let metricas = metricas(store);
     if corpo_em_cartao(scene, text_system, theme, hit_index, store, viewport) {
         return;
     }
     let extra = match choice.target {
-        NewSpriteMode::Indexed => 2 + ids::COLOR_MODE_DITHER_ROWS.len(),
+        NewSpriteMode::Indexed => 4 + ids::COLOR_MODE_DITHER_ROWS.len(),
         NewSpriteMode::Gray => 2,
         NewSpriteMode::Rgba => 0,
     };
@@ -123,6 +124,9 @@ pub(in crate::screens::hero) fn paint_color_mode_dialog(
             for (rotulo, ds) in ids::COLOR_MODE_DITHER_ROWS {
                 y = f.fila_rotulada(tr(rotulo), &ds.map(opt), y);
             }
+            let m = "pixel.convert.metric";
+            y = label(f.scene, f.text_system, m, y, ColorToken::Text3);
+            y = f.fila(&metricas, y);
         }
         NewSpriteMode::Gray => {
             y = label(
@@ -164,6 +168,15 @@ pub(in crate::screens::hero) fn paint_color_mode_dialog(
     }
 }
 
+/// P13: as três métricas do Indexed, `(id, rótulo, escolhida)`.
+fn metricas(store: &WidgetStore) -> Vec<(NodeId, &'static str, bool)> {
+    let m = store.color_mode_choice().metric;
+    ids::COLOR_MODE_METRICS
+        .iter()
+        .map(|(x, id, k)| (*id, tr(k), *x == m))
+        .collect()
+}
+
 /// O corpo em linhas de cartão; `false` no modo de antes.
 fn corpo_em_cartao(
     scene: &mut VectorScene,
@@ -191,6 +204,7 @@ fn corpo_em_cartao(
         .iter()
         .map(|(g, id, k)| (*id, tr(k), *g == choice.gray))
         .collect();
+    let metricas = metricas(store);
     let molde = caixa::Molde {
         largura: DIALOG_W,
         titulo: tr("pixel.color_mode.title"),
@@ -215,6 +229,7 @@ fn corpo_em_cartao(
                 for (rotulo, ds) in &filas {
                     y = escolha(c, Some(*rotulo), ds, y);
                 }
+                y = escolha(c, Some(tr("pixel.convert.metric")), &metricas, y);
             }
             NewSpriteMode::Gray => {
                 y = escolha(c, Some(tr("pixel.color_mode.method")), &metodos, y);

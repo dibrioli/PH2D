@@ -31,6 +31,8 @@ pub enum PixelTool {
     /// P8: Blur e Jumble (`R` alterna), ferramentas de pincel num botão de grupo.
     Blur,
     Jumble,
+    /// P13: o Smudge ▸ Push (`R` alterna Blur → Jumble → Push): arrasta a cor ao longo do traço.
+    Push,
     Line,
     Curve,
     /// Uma forma do Vector (P6b; P6e: o catálogo inteiro), num botão de grupo (P6c); cheia pela
@@ -47,7 +49,7 @@ pub enum PixelTool {
 }
 
 /// As ferramentas que não são formas, na ordem da coluna; as formas entram depois da Curva.
-const PLAIN: [PixelTool; 21] = [
+const PLAIN: [PixelTool; 22] = [
     PixelTool::RectMarquee,
     PixelTool::EllipseMarquee,
     PixelTool::Lasso,
@@ -63,6 +65,7 @@ const PLAIN: [PixelTool; 21] = [
     PixelTool::Gradient,
     PixelTool::Blur,
     PixelTool::Jumble,
+    PixelTool::Push,
     PixelTool::Line,
     PixelTool::Curve,
     PixelTool::Contour,
@@ -72,7 +75,7 @@ const PLAIN: [PixelTool; 21] = [
 ];
 
 /// Onde as formas entram em [`PixelTool::ALL`]: depois da Curva.
-const SHAPES_AT: usize = 17;
+const SHAPES_AT: usize = 18;
 
 impl PixelTool {
     /// O retângulo do Aseprite (`U`).
@@ -117,6 +120,7 @@ impl PixelTool {
             Self::Gradient => "pixel.tool.gradient",
             Self::Blur => "pixel.tool.blur",
             Self::Jumble => "pixel.tool.jumble",
+            Self::Push => "pixel.smudge.push",
             Self::Line => "pixel.tool.line",
             Self::Curve => "pixel.tool.curve",
             // O nome de cada forma é o do Vector ([`PixelShape::name`]).
@@ -164,6 +168,7 @@ impl PixelTool {
                 | Self::Polygon
                 | Self::Blur
                 | Self::Jumble
+                | Self::Push
         )
     }
 
@@ -182,7 +187,7 @@ impl PixelTool {
             }
             Self::Shape(_) => Some(PixelToolGroup::Shape),
             Self::Bucket | Self::Gradient => Some(PixelToolGroup::Bucket),
-            Self::Blur | Self::Jumble => Some(PixelToolGroup::Smudge),
+            Self::Blur | Self::Jumble | Self::Push => Some(PixelToolGroup::Smudge),
             _ => None,
         }
     }

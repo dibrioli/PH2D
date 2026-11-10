@@ -51,6 +51,8 @@ mod paleta;
 pub(crate) mod paleta_menu;
 #[path = "paint_pincel.rs"]
 pub(crate) mod pincel;
+#[path = "paint_pintura.rs"]
+mod pintura;
 #[path = "paint_selecao.rs"]
 mod selecao;
 #[path = "paint_sprite_props.rs"]
@@ -98,6 +100,7 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     let tamanho = (ids::PALETTE_SIZE, cores as f64);
     let numeros = ids::NUMBERS
         .iter()
+        .chain(&crate::ids_pintura::NUMBERS)
         .map(|(id, _)| (*id, crate::seam_opcoes::numero(&opcoes, *id)))
         .chain(crate::seam_formas::numeros(&opcoes))
         .chain(crate::seam_pincel::numeros(&opcoes));
@@ -403,21 +406,18 @@ impl Corpo<'_> {
         }
         // A borracha pinta sempre com a Simple: a tinta é das outras (o Gradient, o Blur e o
         // Jumble escrevem a cor pronta, sem tinta).
-        if t.paints()
-            && !matches!(
-                t,
-                PixelTool::Eraser | PixelTool::Gradient | PixelTool::Blur | PixelTool::Jumble
-            )
-        {
+        if t.paints() && !crate::ids_pintura::sem_tinta(t) {
             let tintas: Vec<(&str, bool, NodeId)> = ids::INKS
                 .iter()
                 .map(|&(k, id)| (tr(k.label_key()), k == o.ink, id))
                 .collect();
             y = self.escolha(tr("panel.pixel.ink"), &tintas, sec, y);
             if o.ink == PixelInk::Shading && info.selected.len() < 2 {
-                y = self.bloco(tr("panel.pixel.ink.shading_hint"), ColorToken::Text3, y);
+                y = self.bloco(tr("pixel.ink.shading.tooltip"), ColorToken::Text3, y);
             }
+            y = self.opcoes_dither(info, sec, y);
         }
+        y = self.opcoes_push(info, sec, y);
         if com_simetria && t.paints() {
             y = self.simetria(info, sec, y);
         }

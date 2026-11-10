@@ -4,7 +4,9 @@
 
 use super::super::WidgetStore;
 use crate::interaction::ContextMenuRequest;
-use crate::pixel_panel::{ColorModeChoice, NewSpriteMode, PixelDither, PixelToGray};
+use crate::pixel_panel::{
+    ColorModeChoice, NewSpriteMode, PixelColorMetric, PixelDither, PixelToGray,
+};
 
 impl WidgetStore {
     /// Abre o diálogo **Color Mode** sobre um sprite no modo `current`, com o próprio modo
@@ -18,6 +20,7 @@ impl WidgetStore {
         let targets = crate::ids::COLOR_MODE_TARGETS.iter().map(|(_, id, _)| *id);
         let dithers = crate::ids::COLOR_MODE_DITHERS.iter().map(|(_, id, _)| *id);
         let grays = crate::ids::COLOR_MODE_GRAYS.iter().map(|(_, id, _)| *id);
+        let grays = grays.chain(crate::ids::COLOR_MODE_METRICS.map(|(_, id, _)| id));
         let ends = [crate::ids::COLOR_MODE_OK, crate::ids::COLOR_MODE_CANCEL];
         for id in targets.chain(dithers).chain(grays).chain(ends) {
             let state = crate::widget::ButtonState::Normal;
@@ -52,6 +55,10 @@ impl WidgetStore {
 
     pub fn set_color_mode_gray(&mut self, g: PixelToGray) {
         self.pixel.color_mode.choice.gray = g;
+    }
+
+    pub fn set_color_mode_metric(&mut self, m: PixelColorMetric) {
+        self.pixel.color_mode.choice.metric = m;
     }
 
     /// O OK: a escolha vira o pedido — nenhum quando o alvo é o modo actual; fecha.

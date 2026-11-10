@@ -81,10 +81,10 @@ pub(crate) fn acao(app: &mut PixelApp, key: u32, a: A) -> Option<KeyAnswer> {
     Some(match a {
         A::ToolBlurJumble => ferramenta(
             app,
-            if app.tool == Tool::Blur {
-                Tool::Jumble
-            } else {
-                Tool::Blur
+            match app.tool {
+                Tool::Blur => Tool::Jumble,
+                Tool::Jumble => Tool::Push,
+                _ => Tool::Blur,
             },
         ),
         A::ToolTransform => {

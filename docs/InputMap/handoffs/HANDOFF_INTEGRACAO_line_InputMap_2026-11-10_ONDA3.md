@@ -1,6 +1,6 @@
 # HANDOFF de integração — `line/InputMap`, ONDA 3, 10/11 (tudo o que ficou aberto, de uma vez)
 
-Leitor: o integrador. Branch `line/InputMap`, código até `e6e8658d39`, fotos `ae3cde492c` (+ este handoff): onda 3 = `6acee19f4e..HEAD` (30 commits); a linha inteira, **181 commits** (`git rev-list --count main..HEAD`, antes deste commit), 357 files, `+29 299 −3 280` (`git diff --shortstat main...HEAD`), sobre `bc4a6ce930` = merge-base = ponta do `main` (**não andou: sem rebase, `--ff-only` serve**). Nada integrado, nenhum push. **Suíte completa, `nextest-impacted` e `ship.sh` NÃO correram** (são do integrador). Este handoff COMPLETA o da onda 2 (superfície, crates, schema 232, `play_map`, F1 continuam valendo): [onda 2](HANDOFF_INTEGRACAO_line_InputMap_2026-11-10_ONDA2.md) · [onda 1](HANDOFF_INTEGRACAO_line_InputMap_2026-11-10.md) · [plano §14](../01_plano.md) · [prompt da onda 3](PROMPT_MISSAO_InputMap_ONDA3_2026-11-10.md).
+Leitor: o integrador. Branch `line/InputMap`, código até `15b796a68c` (pós-smoke: §2b), fotos `c0fe8a64d9` (+ este handoff): a linha inteira, **188 commits** (`git rev-list --count main..HEAD`, antes deste commit; +1 com ele), 366 files, `+29 705 −3 286` (`git diff --shortstat main...HEAD`), sobre `bc4a6ce930` = merge-base = ponta do `main` (**não andou: sem rebase, `--ff-only` serve**). Nada integrado, nenhum push. **Suíte completa, `nextest-impacted` e `ship.sh` NÃO correram** (são do integrador). Este handoff COMPLETA o da onda 2 (superfície, crates, schema 232, `play_map`, F1 continuam valendo): [onda 2](HANDOFF_INTEGRACAO_line_InputMap_2026-11-10_ONDA2.md) · [onda 1](HANDOFF_INTEGRACAO_line_InputMap_2026-11-10.md) · [plano §14](../01_plano.md) · [prompt da onda 3](PROMPT_MISSAO_InputMap_ONDA3_2026-11-10.md).
 
 ## 1. Ordem do dono (10/11) — cumprida
 
@@ -16,6 +16,13 @@ Leitor: o integrador. Branch `line/InputMap`, código até `e6e8658d39`, fotos `
 6. **Shell** (`ec4d560a95`): o ajuste do Gap Closure pela roda sai para `ph2d_app_flip::gap_live::gap_wheel` (+27 no flip); comentários de história cortados: `input_dispatch.rs` **599 → 547**; shell **188 940 → 188 914**.
 7. **Swipe lateral do trackpad.** `DocumentSurface::wheel_sideways` (default `false`). **Regressão da onda 2 curada**: a onda 2 mandava o swipe a TODA aba como Shift+roda, e Sprite/SFX/Planner/List rolavam na vertical. Agora liga só onde há onde rolar: Input Map (só sobre o teclado), Code (só o texto), grelha das camadas da física, Kanban (quadro + Tabela; a roda passa `[dx,dy]` pelas camadas). **Tabela do Kanban: roda invertida curada** (`cd84ebaafb`): a 2.ª conversão foi removida (a vertical também estava invertida); a roda converte-se uma vez.
 8. **Revisão independente lado a lado, 3 rodadas + auditoria de 2 lentes (13 achados, curados):** tecla apertada = corpo `REST_FACE` + plaquinha acesa Text1/Bg0 (contraste 7,80–17,16); sem acção a plaquinha não se pinta; setas da manche com a mesma caixa 34×25,2; o contorno da acção aberta não come barras (cruz 2,00 px, glifo do braço 15,2); Alt/Ctrl/Shift esquecidos ao perder o foco.
+
+## 2b. Pós-smoke (`972dc4f7c9..15b796a68c`, 6 commits)
+
+- **(a) Ordem do dono 10/11: LT/RT acima do contorno do comando** (`8df5a2a828`, fotos B3 `104f48ecf1`), com vão de **6,00 px (`SEG_INSET`)** a 1600 e 1280. Teste `os_gatilhos_ficam_acima_do_contorno_com_um_vao` (`shells/game-scenes/tests/it/input_map/onda3_tracos.rs`); o teste dos cantos ficou sem a exceção dos gatilhos.
+- **(b) Cenas novas 20 P2 (rato na linha Jump), 21 P3 (Reset premido), 22 P4 (premido arrastado para fora)** (`ea863264cb`): **CENAS 19 → 22**. O ponteiro entra pela porta do host (`ph2d-input-map-scene` `rato_do_p`, `PlaySession::layout()`; `shells/desktop/src/janela_do_jogo.rs` +1/−1, líquido 0). **P1..P4 pedem `PH2D_GAME_SMOKE_DRIVE=editor`.** Teste `as_cenas_p2_a_p4_poem_o_ponteiro_pela_porta_do_host`. Fotos anotadas `docs/InputMap/fotos/smoke_f1_{1_aberta,2_rato_na_linha,3_reset_apertado,4_reset_arrastado}.png` (refeitas em `c0fe8a64d9` com o hover novo).
+- **(c) Token de cromo novo `row-hover`** (`ac7b8292ce`; `ColorToken::RowHover`): camada de estado neutra, opacidade 0,135 em `tokens.json`; `derive.rs` lê o alfa do clássico; `skin_body` `Surface(Raised)`. É o hover da linha da tela Controls: pairado ≥ 1,32:1 contra o painel e texto ≥ 4,58:1 nos 12 temas. Testes `o_hover_da_linha_le_se_e_o_texto_le_se_nele` e `o_hover_e_neutro_e_a_escolhida_e_a_do_acento` (`ph2d-player-controls`, `onda3_hover_contraste_tests.rs`). Tecto do painel tokens **2043 → 2074** (uma fileira de cromo `row-hover`, medido); `color.rs` **699/700**.
+- **(d)** `15b796a68c`: clippy `type_complexity` no `mutacao_onda3` (alias `Ouvido`).
 
 ## 3. Foundational/compartilhado tocado
 
@@ -70,22 +77,22 @@ SUPERFÍCIE DE COLISÃO — line/InputMap contra main
      o que exige julgamento (mesmo-símbolo, decisão de produto) continua leitura humana.
 ```
 
-**Contadores como DELTA:** `PROJECT_SCHEMA` — a onda 3 NÃO o mexeu (231 → 232 é da onda 1; `python3 scripts/schema-recount.py`). Componentes DELTA 0 (a SONDA CEGA `ph2d-render`/`ph2d-script` é a mesma das ondas 1–2: a linha não toca o registo). §6 intocado. ADR nenhum. `Cargo.lock` sem pacote novo nesta onda. `CENAS` continua **19**. Shell **−26** (188 940 → 188 914; re-meça contra o `main` do dia). `main.rs` 1 023/600 é pré-existente. Tecto de tokens do painel +31 (2012 → 2043).
+**Contadores como DELTA:** `PROJECT_SCHEMA` — a onda 3 NÃO o mexeu (231 → 232 é da onda 1; `python3 scripts/schema-recount.py`). Componentes DELTA 0 (a SONDA CEGA `ph2d-render`/`ph2d-script` é a mesma das ondas 1–2: a linha não toca o registo). §6 intocado. ADR nenhum. `Cargo.lock` sem pacote novo nesta onda. `CENAS` **19 → 22** (pós-smoke). Shell **−26** (188 940 → 188 914; `janela_do_jogo.rs` líquido 0; re-meça contra o `main` do dia). `main.rs` 1 023/600 é pré-existente. Tecto de tokens do painel +62 (2012 → 2074: `danger-press` +31, `row-hover` +31). A tabela da §4 foi colada antes do pós-smoke (180 commits, 357 arquivos): releia-a no dia.
 
 ## 5. Valores literais que colidem
 
-Um token novo: `danger-press` (`ColorToken::DangerPress`, 4 temas). Smoke `PH2D_GAME_SMOKE` **6..19** (sem cena nova). Se outra linha tomou cenas, renumere pelo `main` do dia (conte, não escolha).
+Dois tokens novos: `danger-press` (`ColorToken::DangerPress`, 4 temas) e `row-hover` (`ColorToken::RowHover`, 12 temas). Smoke `PH2D_GAME_SMOKE` **6..22** (P2–P4 = 20..22). Se outra linha tomou cenas, renumere pelo `main` do dia (conte, não escolha).
 
 ## 7. O que um merge pode partir
 
-1. **Tectos no limite exacto:** `ph2d-app-input-map` 449/449 · `ph2d-app-kanban` 32 175/32 175 · `ph2d-tokens/src/color.rs` 700/700 · `ph2d-app-code` 26 626/26 628 · `ph2d-app-sprite-anim` 5 209/5 209. Linha que acrescente nestas corta antes.
-2. **Tecto do painel tokens 2043**: linha que acrescente token de cromo soma 31 px por fileira.
-3. **`ColorToken::DangerPress` na lista da macro** (ordem): linha que acrescente token na mesma lista conflita na ordem.
+1. **Tectos no limite exacto:** `ph2d-app-input-map` 449/449 · `ph2d-app-kanban` 32 175/32 175 · `ph2d-tokens/src/color.rs` 699/700 · `ph2d-app-code` 26 626/26 628 · `ph2d-app-sprite-anim` 5 209/5 209. Linha que acrescente nestas corta antes.
+2. **Tecto do painel tokens 2074**: linha que acrescente token de cromo soma 31 px por fileira.
+3. **`ColorToken::DangerPress` e `RowHover` na lista da macro** (ordem): linha que acrescente token na mesma lista conflita na ordem.
 4. **`DocumentSurface::wheel_sideways`** (trait com default): implementações novas noutras linhas compilam; quem mexer na roda de `board_view.rs`/`surface_input.rs` conflita.
 5. **Kanban:** a roda passa `[dx,dy]` pelas camadas (linha que mexa nas camadas de roda conflita); a Tabela sem a 2.ª conversão (quem afirmar o sentido antigo reprova).
 6. **`input_dispatch.rs` 547** e o `on_focus_lost` novo em `despacho_metodos_janela_e_vetor.rs`; o Gap Closure vive em `ph2d_app_flip::gap_live::gap_wheel` (quem editar o ajuste na shell conflita).
 7. **`ControlsScreen::click(hit)`** sem `PlayerKeys`; `host::click(desceu, principal)`: chamadores novos noutras linhas não compilam.
-8. `CENAS` 19 e `.config/testes-lentos.tsv` (gerado). Schema 232 (o da onda 1). Os itens 1–11 do §7 da onda 2 continuam valendo, salvo o 9 (agora 547) e o 10 (agora via `wheel_sideways`).
+8. `CENAS` 22 (`ph2d-app-game/src/smoke.rs`) e `.config/testes-lentos.tsv` (gerado). Schema 232 (o da onda 1). Os itens 1–11 do §7 da onda 2 continuam valendo, salvo o 9 (agora 547) e o 10 (agora via `wheel_sideways`).
 
 ## 8. Prova de fecho (feita na linha)
 
@@ -94,9 +101,11 @@ Um token novo: `danger-press` (`ColorToken::DangerPress`, 4 temas). Smoke `PH2D_
 - Testes por nome: `input_map::` **227**; `ph2d-player-controls` tests 47 / `onda3_hover` 8 / `onda3_hover_r2` 5 / `r10a` 7 / `r11a` 4 / `f3` 3 / `play` 13; `ph2d-input` `keyboard` 13 + `alt_em_baixo` 1; `ph2d-editor-core` `file_loc_cap` 2, `the_shell_only_shrinks` 2, `the_shell_only_shrinks_and_every_app_crate_too` 1, `enum_order_matches_svgs` 1, `hr12_widgets_a11y` 3, `no_magic_numeric` 3, `board_view` 7; `ph2d-tokens` 196; `ph2d-tokens-dtcg` 26; `ph2d-panel-tokens` `familia` 1 / `os_cartoes` 11 / `seam_tokens` 30; `a_altura_de_abertura` 1; `a_tabela_inglesa_fala_ingles` 4; `ph2d-app-flip` `gap` 11; `ph2d-host-desktop` `the_two_normalizers` 1 + `perder_o_foco` 1; `swipe_lateral`: code 1 (após fusão), physics 1, kanban 1, planner 1, sfxlab 1, sprite-anim 1; `ph2d-kanban-views` `table` 10 / `wheel` 1; kanban `canvas_entrada` 6 / `d16` 5.
 - **Mutação: 54 mutações, 48 sangraram na 1.ª; 6 sobreviventes mortas** por testes novos (`0199210908`: `mutacao_onda3.rs`, `completar.rs`, `onda3_hover_r2_tests.rs`); a onda 2 e as 4 leis da onda 1 continuam a sangrar. **NÃO mutada:** a ordem `dock_seam_move` antes da aba em `input_dispatch.rs:173` (lei da shell; só W2a/W2b na aba a protegem) — o integrador pode mutá-la com um teste de App. ⚠️ `mut.py` restaura com `git checkout HEAD -- <file>`: comite antes de mutar.
 
-## 9. Smoke (do dono) — **PENDENTE**
+- **Re-corrida pós-smoke, verde em `15b796a68c`:** `cargo fmt`; `clippy --workspace --all-targets --keep-going -D warnings`; `input_map::` **234**; `onda3_hover` 11; `ph2d-tokens` 196; `ph2d-tokens-dtcg` 26; `a_altura_de_abertura` 1; `familia` 1; `file_loc_cap` 1; `the_shell_only_shrinks` 2; `the_shell_only_shrinks_and_every_app_crate_too` 1; `no_magic_numeric` 3; `a_tabela_inglesa_fala_ingles` 4. (Os números acima, de antes do smoke, ficam como história.)
 
-`cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-InputMap && PH2D_GAME_SMOKE=10 bash scripts/ph2d-run.sh cargo run -p ph2d-host-desktop --profile smoke` (cenas 6..19; a 18 junta `PH2D_GAME_SMOKE_DRIVE=editor`). Fotos em `docs/InputMap/fotos/` (`ae3cde492c`: B1, B3, B5, C2, C4, A1 a 1600/1280; B1 e C2 a 900). Gamepad físico não smokado.
+## 9. Smoke (do dono) — **OK para a onda 3 (10/11), salvo o passo da tela Controls: PENDENTE de confirmação**
+
+O passo da tela Controls (hover da linha, Reset premido/arrastado) foi refeito com fotos e reenviado ao dono; a confirmação não chegou. Comando: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-InputMap && PH2D_GAME_SMOKE=18 PH2D_GAME_SMOKE_DRIVE=editor bash scripts/ph2d-run.sh cargo run -p ph2d-host-desktop --profile smoke` (cenas 6..22; P1..P4 = 19..22 pedem `PH2D_GAME_SMOKE_DRIVE=editor`). Fotos em `docs/InputMap/fotos/` (`ae3cde492c`: B1, B3, B5, C2, C4, A1 a 1600/1280; B1 e C2 a 900). Gamepad físico não smokado.
 
 ## 10. ABERTO e fora da linha
 
@@ -112,4 +121,4 @@ Um token novo: `danger-press` (`ColorToken::DangerPress`, 4 temas). Smoke `PH2D_
 
 O InputMap não tem entrada própria. Proposta (≤ 700 B):
 
-> - **Input Map** — aba central com três vistas (List · Keyboard · Try it), teclado de notebook e comando, tela «Controls» no jogo (F1), ligação física, Luau pela ação (`ph2d-input`, `ph2d-input-map-editor`, `ph2d-app-input-map`, `ph2d-player-controls`, `ph2d-input-winit`). Smoke `PH2D_GAME_SMOKE=6..19`. Último: [onda 3, 10/11](docs/InputMap/handoffs/HANDOFF_INTEGRACAO_line_InputMap_2026-11-10_ONDA3.md) · [plano](docs/InputMap/01_plano.md)
+> - **Input Map** — aba central com três vistas (List · Keyboard · Try it), teclado de notebook e comando, tela «Controls» no jogo (F1), ligação física, Luau pela ação (`ph2d-input`, `ph2d-input-map-editor`, `ph2d-app-input-map`, `ph2d-player-controls`, `ph2d-input-winit`). Smoke `PH2D_GAME_SMOKE=6..22`. Último: [onda 3, 10/11](docs/InputMap/handoffs/HANDOFF_INTEGRACAO_line_InputMap_2026-11-10_ONDA3.md) · [plano](docs/InputMap/01_plano.md)

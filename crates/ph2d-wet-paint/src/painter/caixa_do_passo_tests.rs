@@ -103,6 +103,67 @@ fn area(d: Dirty) -> usize {
     }
 }
 
+/// **B14.1: a água herdada no pen-down volta como sujo do PASSO** — a casa tira o sujo partido
+/// ([`Engine::take_dirty_partido`]) e devolve-o ao worker: pela porta alheia (o caminho antigo, a `divida`) a óptica
+/// compunha a caixa do fluido inteira; por [`Engine::devolve_sujo_do_passo`] o espelho redu-la ao que mudou.
+#[test]
+fn a_agua_herdada_volta_como_sujo_do_passo_e_o_espelho_a_reduz() {
+    let mut e = Engine::new(N, N);
+    let mut esp = Espelho::default();
+    e.sim.oleo = true;
+    risca(&mut e, 40.0, 0.2);
+    e.sim.oleo = false;
+    risca(&mut e, 44.0, 1.0);
+    let _ = e.take_dirty();
+    e.copia_para(&mut esp);
+    let (mut velha, mut nova) = (0, 0);
+    for k in 0..40 {
+        e.step_simulation();
+        let uniao = e.dirty;
+        let (t, _) = mudou(&e, &esp, uniao);
+        let (passo, alheio) = e.take_dirty_partido();
+        assert_eq!(e.dirty, Dirty::Clean, "passo {k}: o sujo fica em casa");
+        let junta = match (passo, alheio) {
+            (d, Dirty::Clean) | (Dirty::Clean, d) => d,
+            (
+                Dirty::Rect { x0, y0, x1, y1 },
+                Dirty::Rect {
+                    x0: a,
+                    y0: b,
+                    x1: c,
+                    y1: d,
+                },
+            ) => Dirty::Rect {
+                x0: x0.min(a),
+                y0: y0.min(b),
+                x1: x1.max(c),
+                y1: y1.max(d),
+            },
+            _ => Dirty::Full,
+        };
+        assert_eq!(junta, uniao, "passo {k}: partido, a uniao e a de sempre");
+        let Dirty::Rect { x0, y0, x1, y1 } = passo else {
+            continue;
+        };
+        e.merge_dirty_otica(x0, y0, x1, y1);
+        let pela_divida = e.take_dirty_pela_otica(&esp);
+        e.devolve_sujo_do_passo(x0, y0, x1, y1);
+        let pelo_passo = e.take_dirty_pela_otica(&esp);
+        assert!(
+            contem(pela_divida, uniao),
+            "passo {k}: a porta alheia nao se reduz"
+        );
+        assert_eq!(pelo_passo, t, "passo {k}: devolvido, e o que mudou");
+        (velha, nova) = (velha + area(pela_divida), nova + area(pelo_passo));
+        e.copia_para(&mut esp);
+    }
+    eprintln!("agua herdada: pela divida {velha} cel. -> pelo passo {nova} cel.");
+    assert!(
+        nova < velha,
+        "a fixture nao contem o fenomeno ({nova} >= {velha})"
+    );
+}
+
 /// Óleo e um traço molhado por cima, a água a correr; um traço no meio (a porta alheia). Por passo: a caixa da óptica
 /// é EXACTAMENTE a das células mudadas (passo sem traço) ou contém-nas (com traço); depois da cópia, o espelho é a grade.
 #[test]

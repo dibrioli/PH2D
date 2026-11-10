@@ -43,6 +43,9 @@ pub(in crate::tool::paint::wetpaint) struct FormaDaTela {
     pub(in crate::tool::paint::wetpaint) tela: (usize, usize),
 }
 
+/// `([dívida por servir, caixa servida], água por servir)` de um pedido (`DoFioPrincipal::sujo_do_pedido`).
+pub(in crate::tool::paint::wetpaint) type SujoDoPedido = ([Option<CaixaCel>; 2], Option<CaixaCel>);
+
 /// O pedido de UMA imagem, escrito só pelo fio principal.
 #[derive(Clone, Copy)]
 pub(in crate::tool::paint::wetpaint) struct PedidoDeImagem {
@@ -51,6 +54,8 @@ pub(in crate::tool::paint::wetpaint) struct PedidoDeImagem {
     pub(in crate::tool::paint::wetpaint) epoca: u64,
     /// A caixa de uma imagem descartada (tocou a composição local): entra no sujo antes de o tirar.
     pub(in crate::tool::paint::wetpaint) divida: Option<CaixaCel>,
+    /// A água herdada no pen-down: entra como sujo do PASSO (o espelho redu-la ao que mudou).
+    pub(in crate::tool::paint::wetpaint) agua: Option<CaixaCel>,
     pub(in crate::tool::paint::wetpaint) forma: FormaDaTela,
     /// `show_wet`: a imagem leva o filme e a molha da caixa para o véu.
     pub(in crate::tool::paint::wetpaint) com_veu: bool,
@@ -67,6 +72,8 @@ pub(in crate::tool::paint::wetpaint) struct VeuDaCaixa {
 
 /// As caixas de uma imagem: os planos SÓ da `caixa_cel`, linha a linha.
 pub(in crate::tool::paint::wetpaint) struct CaixasDaImagem {
+    /// A faixa do sujo antes do alcance: a dívida se a imagem não se aplica.
+    pub(in crate::tool::paint::wetpaint) sujo: CaixaCel,
     pub(in crate::tool::paint::wetpaint) caixa_cel: CaixaCel,
     pub(in crate::tool::paint::wetpaint) caixa_px: (usize, usize, usize, usize),
     /// `4` bytes por célula.
@@ -191,17 +198,18 @@ impl DoFioPrincipal {
         trava(&self.correio).pedido.replace(p)
     }
 
-    /// O sujo que o pedido `epoca` levou do motor: a dívida dele por servir e a caixa já servida. Só vale com o motor em
-    /// casa: o worker não está a meio de um `serve`.
-    pub(in crate::tool::paint::wetpaint) fn sujo_do_pedido(
-        &self,
-        epoca: u64,
-    ) -> [Option<CaixaCel>; 2] {
+    /// O sujo que o pedido `epoca` levou do motor: `([a dívida dele por servir, a caixa já servida], a água dele por
+    /// servir)`. Só vale com o motor em casa: o worker não está a meio de um `serve`.
+    pub(in crate::tool::paint::wetpaint) fn sujo_do_pedido(&self, epoca: u64) -> SujoDoPedido {
         let c = trava(&self.correio);
-        [
-            c.pedido.filter(|p| p.epoca == epoca).and_then(|p| p.divida),
-            c.servido.filter(|s| s.0 == epoca).map(|s| s.1),
-        ]
+        let pedido = c.pedido.filter(|p| p.epoca == epoca);
+        (
+            [
+                pedido.and_then(|p| p.divida),
+                c.servido.filter(|s| s.0 == epoca).map(|s| s.1),
+            ],
+            pedido.and_then(|p| p.agua),
+        )
     }
 
     /// A próxima resposta, sem esperar.
@@ -322,9 +330,12 @@ impl DoWorker {
         let Some(p) = trava(&self.correio).pedido.take() else {
             return;
         };
+        let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
         if let Some((x0, y0, x1, y1)) = p.divida {
-            let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
             engine.merge_dirty_otica(i(x0), i(y0), i(x1), i(y1));
+        }
+        if let Some((x0, y0, x1, y1)) = p.agua {
+            engine.devolve_sujo_do_passo(i(x0), i(y0), i(x1), i(y1));
         }
         let marca = MarcaDaAgua::de(engine);
         // B14.1: o sujo do passo da sim reduz-se às faixas de células que diferem do espelho (a entrada da imagem
@@ -337,7 +348,11 @@ impl DoWorker {
             .into_iter()
             .filter_map(|d| caixa_da_grade(d, p.forma.grade))
             .collect();
-        let Some(caixa) = faixas.iter().copied().reduce(|a, b| super::super::otica_no_tique::une(Some(a), b)) else {
+        let Some(caixa) = faixas
+            .iter()
+            .copied()
+            .reduce(|a, b| super::super::otica_no_tique::une(Some(a), b))
+        else {
             let _ = self.ui.send(RespostaDaOtica::Nada {
                 epoca: p.epoca,
                 passos,
@@ -426,7 +441,7 @@ fn compoe(t: Trabalho, planos: &mut PlanosDaOtica) -> (Box<Espelho>, Imagem) {
                 .veu
                 .and_then(|i| t.espelho.camadas.get(i))
                 .map(|c_| veu_da_caixa(&c_.grid, c.caixa_px, entrada.ratio, (gw, gh)));
-            caixas_da_imagem(c, planos, (gw, gh), veu)
+            caixas_da_imagem(f, c, planos, (gw, gh), veu)
         }));
     }
     planos.campo_cache = None;
@@ -442,6 +457,7 @@ fn compoe(t: Trabalho, planos: &mut PlanosDaOtica) -> (Box<Espelho>, Imagem) {
 }
 
 fn caixas_da_imagem(
+    sujo: CaixaCel,
     c: CaixasDaOtica,
     planos: &PlanosDaOtica,
     (gw, gh): (usize, usize),
@@ -449,6 +465,7 @@ fn caixas_da_imagem(
 ) -> CaixasDaImagem {
     let corta = |plano: &[u8]| (plano.len() == gw * gh).then(|| recorta(plano, 1, gw, c.caixa_cel));
     CaixasDaImagem {
+        sujo,
         caixa_cel: c.caixa_cel,
         caixa_px: c.caixa_px,
         pigmento: recorta(&planos.pigment, 4, gw, c.caixa_cel),
@@ -526,14 +543,11 @@ impl super::super::WetSession {
     }
 
     /// [`DoFioPrincipal::sujo_do_pedido`] desta sessão.
-    pub(in crate::tool::paint::wetpaint) fn sujo_do_pedido(
-        &self,
-        epoca: u64,
-    ) -> [Option<CaixaCel>; 2] {
+    pub(in crate::tool::paint::wetpaint) fn sujo_do_pedido(&self, epoca: u64) -> SujoDoPedido {
         self.worker
             .as_ref()
             .and_then(|w| w.otica.as_ref())
-            .map_or([None, None], |o| o.sujo_do_pedido(epoca))
+            .map_or(([None, None], None), |o| o.sujo_do_pedido(epoca))
     }
 
     /// A próxima resposta do compositor, sem esperar.

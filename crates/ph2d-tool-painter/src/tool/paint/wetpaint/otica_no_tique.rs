@@ -20,6 +20,9 @@ pub(super) struct OticaDoTique {
     epoca: u64,
     pub(super) uniao_local: Option<CaixaCel>,
     pub(super) divida: Option<CaixaCel>,
+    /// A água do passo herdada no pen-down (B14.1): volta ao worker como sujo do PASSO, que o espelho reduz ao que
+    /// mudou; pela `divida` era a caixa do fluido inteira.
+    pub(super) agua: Option<CaixaCel>,
     #[cfg(test)]
     pub(super) aplicadas: u32,
     /// Imagens cuja caixa tocou a `uniao_local`.
@@ -50,7 +53,7 @@ impl OticaDoTique {
 
     /// Há sujo tirado do motor que a tela ainda não mostra (uma imagem no ar ou a dívida).
     pub(super) fn pendente(&self) -> bool {
-        self.no_ar.is_some() || self.divida.is_some()
+        self.no_ar.is_some() || self.divida.is_some() || self.agua.is_some()
     }
 
     fn deve(&mut self, c: CaixaCel) {
@@ -63,21 +66,29 @@ impl WetSession {
     /// worker é da ÁGUA (a tela de casa não tem traço por compor) e vai pela dívida, para a composição de casa do lote
     /// levar só o que o traço muda. O sujo é uma caixa só: sem isto o traço longe da poça compunha a UNIÃO das duas.
     pub(super) fn a_agua_herdada_vai_pela_divida(&mut self) {
-        if let Some(c) = offthread::otica::caixa_da_grade(self.engine.take_dirty(), self.grid) {
+        let (passo, alheio) = self.engine.take_dirty_partido();
+        if let Some(c) = offthread::otica::caixa_da_grade(alheio, self.grid) {
             self.otica.deve(c);
+        }
+        if let Some(c) = offthread::otica::caixa_da_grade(passo, self.grid) {
+            self.otica.agua = Some(une(self.otica.agua, c));
         }
     }
 
     /// O sujo que saiu do motor e a tela ainda não mostra (a dívida e a imagem no ar) volta ao motor. Motor em casa: a
     /// composição seguinte leva só o que falta, nunca a tela inteira.
     pub(super) fn o_sujo_por_mostrar_volta_ao_motor(&mut self) {
-        let no_ar = self
+        let ([divida, servido], agua) = self
             .otica
             .no_ar
-            .map_or([None, None], |e| self.sujo_do_pedido(e));
-        for (x0, y0, x1, y1) in no_ar.into_iter().chain([self.otica.divida]).flatten() {
-            let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
+            .map_or(([None, None], None), |e| self.sujo_do_pedido(e));
+        let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
+        for (x0, y0, x1, y1) in [divida, servido, self.otica.divida].into_iter().flatten() {
             self.engine.merge_dirty_otica(i(x0), i(y0), i(x1), i(y1));
+        }
+        for (x0, y0, x1, y1) in [agua, self.otica.agua].into_iter().flatten() {
+            self.engine
+                .devolve_sujo_do_passo(i(x0), i(y0), i(x1), i(y1));
         }
     }
 }
@@ -114,7 +125,7 @@ impl PainterTool {
                 RespostaDaOtica::Imagem(im) => {
                     if sess.otica.no_ar != Some(im.epoca) {
                         for c in &im.caixas {
-                            sess.otica.deve(c.caixa_cel);
+                            sess.otica.deve(c.sujo);
                         }
                         continue;
                     }
@@ -148,9 +159,10 @@ impl PainterTool {
             let velha = sess.otica.uniao_local.is_some() && c.esvazia(&sess.planos);
             recusa |= tocou || velha || (show_wet && c.veu.is_none());
         }
+        // A dívida é o sujo da faixa: a composição seguinte cresce-o pelo alcance (pela `caixa_cel` crescia a cada recusa).
         if recusa {
             for c in &im.caixas {
-                sess.otica.deve(c.caixa_cel);
+                sess.otica.deve(c.sujo);
             }
             return;
         }
@@ -213,7 +225,7 @@ impl PainterTool {
         };
         if sess.otica.no_ar.is_some()
             || sess.base.len() != w * h * 4
-            || (done == sess.seen_steps && sess.otica.divida.is_none())
+            || (done == sess.seen_steps && sess.otica.divida.is_none() && sess.otica.agua.is_none())
         {
             return;
         }
@@ -222,6 +234,7 @@ impl PainterTool {
             factos,
             epoca,
             divida: sess.otica.divida,
+            agua: sess.otica.agua,
             forma: FormaDaTela {
                 ratio: sess.ratio,
                 grade: sess.grid,
@@ -235,6 +248,7 @@ impl PainterTool {
             o.no_ar = Some(epoca);
             o.uniao_local = None;
             o.divida = antigo.and_then(|a| a.divida);
+            o.agua = antigo.and_then(|a| a.agua);
         }
     }
 }

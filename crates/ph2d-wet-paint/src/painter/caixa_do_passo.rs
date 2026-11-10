@@ -39,6 +39,21 @@ impl Engine {
             .une((x0, y0, x1, y1), self.width, self.height);
     }
 
+    /// O [`Engine::take_dirty`] de casa partido em `(passo, alheio)`; a união deles é a de sempre. O do passo volta ao
+    /// worker por [`Engine::devolve_sujo_do_passo`], onde o espelho o reduz ao que mudou (B14.1: a água herdada no
+    /// pen-down era a caixa do fluido inteira, a envolvente de todas as pinceladas molhadas).
+    pub fn take_dirty_partido(&mut self) -> (Dirty, Dirty) {
+        self.dirty = Dirty::Clean;
+        let SujoDaOtica { passo, alheio } = std::mem::take(&mut self.sujo_da_otica);
+        (passo, alheio)
+    }
+
+    /// Devolve ao motor um sujo do PASSO tirado por [`Engine::take_dirty_partido`].
+    #[track_caller]
+    pub fn devolve_sujo_do_passo(&mut self, x0: i32, y0: i32, x1: i32, y1: i32) {
+        self.merge_dirty_do_passo(x0, y0, x1, y1);
+    }
+
     /// O [`Engine::take_dirty`] da óptica fora, ANTES de [`Engine::copia_para`] sobre o mesmo `espelho`: as outras
     /// portas ∪ a caixa (com uma célula de folga) das células da camada activa cujos planos da óptica diferem ao bit
     /// entre a grade e o espelho dentro do sujo do passo. Sem espelho de confiança (outra forma, um plano de outro

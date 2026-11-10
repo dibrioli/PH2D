@@ -173,6 +173,7 @@ fn a_imagem_do_compositor_e_a_otica_sincrona_ao_byte() {
             factos: factos(),
             epoca,
             divida,
+            agua: None,
             forma: FORMA,
             com_veu: true,
         });
@@ -290,6 +291,7 @@ fn duas_faixas_vivas_compoem_duas_caixas_ao_byte_da_sincrona() {
             factos: factos(),
             epoca,
             divida: None,
+            agua: None,
             forma: FORMA,
             com_veu: true,
         });
@@ -306,7 +308,10 @@ fn duas_faixas_vivas_compoem_duas_caixas_ao_byte_da_sincrona() {
             "{nome}: {caixas:?} (a sincrona {esperada:?})"
         );
         let area = |c: CaixaCel| (c.2 + 1 - c.0) * (c.3 + 1 - c.1);
-        let (nossa, dela) = (caixas.iter().map(|&c| area(c)).sum::<usize>(), area(esperada));
+        let (nossa, dela) = (
+            caixas.iter().map(|&c| area(c)).sum::<usize>(),
+            area(esperada),
+        );
         eprintln!("{nome}: {dela} -> {nossa} celulas compostas");
         if quantas == 2 {
             assert!(nossa < dela, "{nome}: as faixas custam {nossa} >= {dela}");
@@ -316,8 +321,14 @@ fn duas_faixas_vivas_compoem_duas_caixas_ao_byte_da_sincrona() {
             );
         }
         img.aplica(&mut controlo, FORMA.grade);
-        assert!(controlo.pigment == referencia.pigment, "{nome}: o pigmento difere");
-        assert!(controlo.sombra == referencia.sombra, "{nome}: a sombra difere");
+        assert!(
+            controlo.pigment == referencia.pigment,
+            "{nome}: o pigmento difere"
+        );
+        assert!(
+            controlo.sombra == referencia.sombra,
+            "{nome}: a sombra difere"
+        );
         assert!(controlo.grao == referencia.grao, "{nome}: o grao difere");
         assert!(controlo.suave == referencia.suave, "{nome}: o suave difere");
     }

@@ -195,7 +195,8 @@ pub enum Commit {
 
 /// ⭐ **Uma edição de animação com o commit dela**, a porta única do cartão Animation e do editor de animações. O «+»
 /// escolhe a nova nas duas (handoff GEF 09/11, ABERTO 4: o do cartão não a escolhia): o nome é o que a biblioteca dá
-/// ANTES de a receber, e o `SetCurrent` vai depois de o Add pegar, porque ele lê a animação no mundo.
+/// ANTES de a receber, e o `SetCurrent` vai depois de o Add pegar, porque ele lê a animação no mundo. E o Add pede ao
+/// editor que saia do Align (dono 10/11).
 pub fn commit_anim_edit(
     sim: &mut SimWorld,
     entity_bits: u64,
@@ -218,6 +219,13 @@ pub fn commit_anim_edit(
     }
     if let Err(e) = ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), queue, registry) {
         return Commit::Falhou(e);
+    }
+    if nova.is_some() {
+        let off = (entity_bits, false);
+        sim.world_mut()
+            .get_resource_or_init::<crate::editor::AnimEditorAlignRequests>()
+            .0
+            .push(off);
     }
     match nova {
         Some(n) => commit_anim_edit(

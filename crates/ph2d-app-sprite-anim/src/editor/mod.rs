@@ -30,9 +30,10 @@ use ph2d_vector::VectorScene;
 #[derive(Resource, Default, Debug)]
 pub struct AnimEditorRequests(pub Vec<u64>);
 
-/// As abas pedidas com o Align ligado (o campo Pivot do Inspector, GEF 29).
+/// O Align pedido a cada aba: ligado pelo campo Pivot do Inspector (GEF 29), desligado por uma animação nova (dono
+/// 10/11: a nova nasce vazia e ganha quadros na folha). O último pedido da aba vence.
 #[derive(Resource, Default, Debug)]
-pub struct AnimEditorAlignRequests(pub Vec<u64>);
+pub struct AnimEditorAlignRequests(pub Vec<(u64, bool)>);
 
 /// **A porta da shell para o `OpenEditor`.** Devolve `true` se a edição era esse pedido (e já foi
 /// registada): a shell salta então o `apply_anim_edit`.
@@ -47,7 +48,7 @@ pub fn request_open(sim: &mut SimWorld, entity_bits: u64, edit: &AnimFieldEdit) 
         sim.world_mut()
             .get_resource_or_init::<AnimEditorAlignRequests>()
             .0
-            .push(entity_bits);
+            .push((entity_bits, true));
     }
     sim.world_mut()
         .get_resource_or_init::<AnimEditorRequests>()
@@ -359,12 +360,11 @@ pub fn frame(
     for (b, n) in names {
         docs.open(b, n);
     }
-    for d in docs
-        .docs
-        .iter_mut()
-        .filter(|d| with_align.contains(&d.entity))
-    {
-        d.align.on = true;
+    for &(b, on) in &with_align {
+        docs.docs
+            .iter_mut()
+            .filter(|d| d.entity == b)
+            .for_each(|d| d.align.on = on);
     }
     let moved = follow_identity(sim.world(), &mut docs.docs);
     let mut look: Vec<u64> = docs.docs.iter().map(|d| d.entity).collect();

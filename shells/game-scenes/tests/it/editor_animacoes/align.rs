@@ -455,3 +455,17 @@ fn by_feet_e_by_centre_levam_cada_quadro_ao_ponto_da_referencia() {
         assert_eq!(m.doc().align_reference(), Some(r));
     }
 }
+
+/// ⭐ Dono 10/11: com o Align ligado, o «+» cria a animação e a aba SAI do Align (a nova nasce vazia e ganha quadros
+/// na folha). *Mutação: o Add não pede o Align desligado ⇒ a aba continua na prévia.*
+#[test]
+fn a_animacao_nova_sai_do_align() {
+    let mut m = Mesa::new();
+    m.align_on();
+    let add = m.doc().layout.add;
+    m.click(centre(add));
+    m.frame();
+    m.frame();
+    assert!(!m.doc().align.on, "a nova sai do Align");
+    assert!(m.doc().layout.sheet.w > 0.0, "e a folha volta");
+}

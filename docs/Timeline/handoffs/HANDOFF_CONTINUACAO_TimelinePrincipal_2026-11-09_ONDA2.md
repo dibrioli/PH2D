@@ -85,6 +85,8 @@ Testes por nome desta rodada: `linhas` 16 ✓ · `tracks_value` 6 ✓ · `scroll
 
 - **2d (dono 09/11, Summary com cor própria):** `summary_paint::fundo` = `TimelineObjectRow` + `TimelineSummaryRow` (→ `Accent`) a `TIMELINE_SUMMARY_TINT_ALPHA` 0,15 (`ph2d-tokens/src/chrome.rs`); medido nos 8 temas: pior 0,049 contra cabeçalho/zebra/fundo (degraus existentes 0,020–0,112; âmbar a 0,20 dava 0,045 e o losango a 0,14 no Light); gate `o_summary_tem_cor_propria_nos_oito_temas` (≥ 0,04; texto e losango ≥ 0,15). Clássico continua `Bg3`. `color.rs` 700/700.
 
+- **2e (dono 09/11, «capriche»):** chave nos cartões = métricas `ph2d_tokens::TIMELINE_KEY_HALF_PX` 6,5 + `_RING_PX` 1,5 (contorno `Bg0`; maquete medida: ~11 px com contorno ~1) e alvo `TIMELINE_KEY_HIT_HALF_PX` 8 (`tracks::paint_chave/chave_h/chave_hit_hw`; seam `o_alvo_da_chave_cobre_o_losango_com_contorno`, mutação sangra); ponto do objecto `TIMELINE_OBJECT_DOT_HALF_PX` 4 em `Text2`. Summary: 3 candidatos por `PH2D_SUMMARY_TOM` em execução ([comparação](../fotos/15_onda2_summary_candidatos.png)) — A faixa funda (`Bg0` + destaque a 0,25) com filete de 2 px: fundo 0,045 · texto/losango 0,235; B âmbar: losango a 0,148 (reprovado); C célula do destaque a 0,45: 0,045 · 0,189 e compete com o chip de clipe. **A escolhido**; override removido; `TIMELINE_SUMMARY_TINT_ALPHA` 0,25; gate apertado a 0,044 / 0,23. Zoom: [`15_onda2_losangos_zoom.png`](../fotos/15_onda2_losangos_zoom.png).
+
 ## Superfície de colisão
 
 `ph2d-panel-timeline`: `linhas.rs`, `tracks.rs`, `tracks_label.rs`, `tracks_value.rs`, `paint.rs`, `ruler.rs`, `state.rs`,

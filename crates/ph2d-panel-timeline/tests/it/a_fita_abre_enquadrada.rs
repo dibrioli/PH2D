@@ -79,3 +79,37 @@ fn nos_cartoes_a_fita_abre_no_clipe_mesmo_a_tocar_depois_do_fim() {
         }
     }
 }
+
+/// ⭐ Dono 09/11 («losangos muito pequenos»): nos cartões a chave pinta-se do tamanho da maquete com
+/// contorno, e o alvo de clique REGISTADO acompanha — cobre o losango e o contorno inteiros,
+/// centrado na chave; no clássico, o de sempre.
+#[test]
+fn o_alvo_da_chave_cobre_o_losango_com_contorno() {
+    let id = ph2d_panel_timeline::ids::timeline_key_hit_id(1, 2);
+    for cartoes in [true, false] {
+        force_cards_on_this_thread(Some(cartoes));
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut st = TimelinePanelState::default();
+        set_current_timeline(Some(cena(1.2)));
+        host.paint::<TimelinePanel>(&mut st, VIEWPORT);
+        let regs = host.paint::<TimelinePanel>(&mut st, VIEWPORT);
+        set_current_timeline(None);
+        force_cards_on_this_thread(None);
+        let r = regs
+            .iter()
+            .find(|(w, _)| *w == id)
+            .map(|(_, r)| *r)
+            .expect("a chave em 1,5 s pintou o alvo dela");
+        if cartoes {
+            let losango = ph2d_tokens::TIMELINE_KEY_HALF_PX + ph2d_tokens::TIMELINE_KEY_RING_PX;
+            assert!(
+                r.w * 0.5 >= losango,
+                "alvo {} < losango com contorno {losango}",
+                r.w * 0.5
+            );
+            assert_eq!(r.w, ph2d_tokens::TIMELINE_KEY_HIT_HALF_PX * 2.0);
+        } else {
+            assert_eq!(r.w, 14.0, "o clássico fica com o alvo de sempre");
+        }
+    }
+}

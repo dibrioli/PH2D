@@ -88,10 +88,21 @@ pub const DRAG_GHOST_SCALE: f32 = 0.75; // LITERAL-PX-OK: escala adimensional do
 /// do cartão em 5 a 8 pontos de cor). `color_tests` mede o contraste em todo tema.
 pub const ROW_SELECTED_ALPHA: f32 = 0.35; // LITERAL-PX-OK: opacidade do realce
 
-/// **A linha «Summary» da Timeline: `timeline-summary-row` a esta opacidade sobre o cabeçalho do
-/// objecto** (dono, 09/11). Medida nos 8 temas (OKLab): pior 0,049 contra cabeçalho, zebra e fundo
-/// (os degraus entre eles: 0,020–0,112); o âmbar a 0,20 dava 0,045 e apagava o losango no Light.
-pub const TIMELINE_SUMMARY_TINT_ALPHA: f32 = 0.15; // LITERAL-PX-OK: opacidade da tinta do Summary
+/// **A linha «Summary» da Timeline: `timeline-summary-row` a esta opacidade sobre o `Bg0`** (dono,
+/// 09/11: a 0,15 sobre o cabeçalho lia-se cinza sujo). Medida nos 8 temas (OKLab): a 0,25 o pior caso
+/// contra cabeçalho, zebra e fundo é 0,045; a 0,20 cai a 0,020 (handoff da onda 2, 2e).
+pub const TIMELINE_SUMMARY_TINT_ALPHA: f32 = 0.25; // LITERAL-PX-OK: opacidade da tinta do Summary
+
+/// **A chave da Timeline nos cartões** (dono 09/11: «muito pequenos»). Maquete B1 medida em chrome
+/// headless: losango de ~11 px com contorno escuro de ~1 px numa linha de 22. Aqui um pouco maior.
+pub const TIMELINE_KEY_HALF_PX: f32 = 6.5; // LITERAL-PX-OK: meia-diagonal do losango da chave
+/// O contorno escuro à volta do losango (lê-se sobre a barra da interpolação).
+pub const TIMELINE_KEY_RING_PX: f32 = 1.5; // LITERAL-PX-OK: contorno do losango da chave
+/// O alvo de clique da chave: o losango com o contorno inteiro (6,5 + 1,5) e o encaixe ao splitter
+/// (`TIME_GUTTER` 12 − 8 = o `SPLIT_GRIP` de 4).
+pub const TIMELINE_KEY_HIT_HALF_PX: f32 = 8.0; // LITERAL-PX-OK: meia-largura do alvo da chave
+/// O ponto do cabeçalho do objecto (maquete: ~7 px).
+pub const TIMELINE_OBJECT_DOT_HALF_PX: f32 = 4.0; // LITERAL-PX-OK: meia-diagonal do ponto do objecto
 
 /// ⭐ **O FANTASMA de um cartão arrastado — a opacidade dele.** Meio transparente: a marca da
 /// queda (a barra de acento entre dois cartões) tem de se ver através dele.

@@ -439,14 +439,12 @@ fn o_cabecalho_do_objeto_tem_fundo_e_icones_proprios() {
     assert_eq!(crate::hier::icone_do_objeto(424_242), IconId::Sprite);
 }
 
-/// ⭐ Dono 09/11: o Summary tem cor PRÓPRIA — longe do cabeçalho do objecto, das duas da zebra e do
-/// fundo, em todo tema; o texto e o losango âmbar continuam legíveis por cima. Régua OKLab (a das
-/// barras); barra 0,04 = o dobro do menor degrau que já separa cabeçalho e zebra (0,020).
+/// ⭐ Dono 09/11: o Summary tem cor PRÓPRIA — a fita E a célula do nome longe do cabeçalho do
+/// objecto, das duas da zebra e do fundo, em todo tema; o texto e o losango âmbar legíveis por cima.
+/// Régua OKLab (a das barras). Os três candidatos medidos (A escolhido) estão no handoff da onda 2 (2e).
 #[test]
 fn o_summary_tem_cor_propria_nos_oito_temas() {
     use ph2d_tokens::{Theme, srgb_to_oklch};
-    const BARRA: f64 = 0.04;
-    const LEGIVEL: f64 = 0.15;
     let lab = |c: ph2d_vector::Color| {
         let [r, g, b, _] = c.to_rgba8().to_u8_array();
         let (l, ch, h) = srgb_to_oklch(r, g, b);
@@ -455,7 +453,6 @@ fn o_summary_tem_cor_propria_nos_oito_temas() {
     let d = |x: (f64, f64, f64), y: (f64, f64, f64)| {
         ((x.0 - y.0).powi(2) + (x.1 - y.1).powi(2) + (x.2 - y.2).powi(2)).sqrt()
     };
-    // As camadas compostas como o pintor as põe (fonte sobre fundo, sRGB).
     let compoe = |camadas: &[ph2d_vector::Color]| {
         let mut acc = [0.0_f32; 3];
         for c in camadas {
@@ -473,7 +470,7 @@ fn o_summary_tem_cor_propria_nos_oito_temas() {
         )
     };
     ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(true));
-    for t in [
+    let temas = [
         Theme::Forge,
         Theme::Workshop,
         Theme::Sunstone,
@@ -482,23 +479,35 @@ fn o_summary_tem_cor_propria_nos_oito_temas() {
         Theme::Gray,
         Theme::Light,
         Theme::Oled,
-    ] {
-        let s = lab(compoe(&crate::summary_paint::fundo(t)));
-        for o in [
-            ColorToken::TimelineObjectRow,
-            ColorToken::TimelineRowAlt,
-            ColorToken::PanelBg,
-        ] {
-            let x = d(s, lab(resolve(o, t)));
-            assert!(
-                x >= BARRA,
-                "{t:?}: Summary a {x:.3} de {o:?} (barra {BARRA})"
-            );
+    ];
+    let mede = || {
+        let (mut fundo, mut leg) = (f64::MAX, f64::MAX);
+        for t in temas {
+            let f = crate::summary_paint::fundo(t);
+            {
+                let s = lab(compoe(&f.camadas));
+                for o in [
+                    ColorToken::TimelineObjectRow,
+                    ColorToken::TimelineRowAlt,
+                    ColorToken::PanelBg,
+                ] {
+                    fundo = fundo.min(d(s, lab(resolve(o, t))));
+                }
+                for o in [ColorToken::Text2, ColorToken::TimelineSummaryKey] {
+                    leg = leg.min(d(s, lab(resolve(o, t))));
+                }
+            }
         }
-        for o in [ColorToken::Text2, ColorToken::TimelineSummaryKey] {
-            let x = d(s, lab(resolve(o, t)));
-            assert!(x >= LEGIVEL, "{t:?}: {o:?} a {x:.3} do fundo do Summary");
-        }
-    }
+        (fundo, leg)
+    };
+    let (fundo, leg) = mede();
     ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(None);
+    assert!(
+        fundo >= BARRA_SUMMARY,
+        "o Summary a {fundo:.3} de um fundo vizinho (barra {BARRA_SUMMARY})"
+    );
+    assert!(leg >= 0.23, "texto/losango a {leg:.3} do fundo do Summary");
 }
+
+/// O mínimo medido do escolhido é 0,045 (fundo) e 0,235 (texto/losango); a barra fica logo abaixo.
+const BARRA_SUMMARY: f64 = 0.044;

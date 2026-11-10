@@ -36,18 +36,30 @@ const RULE_H: f32 = 1.0; // LITERAL-PX-OK: summary row bottom rule
 /// Side of the square padlock button at the right of the Summary label.
 const LOCK_SIZE: f32 = 14.0; // LITERAL-PX-OK: summary column-lock padlock button side
 
-/// ⭐ **O fundo do Summary, em camadas** (dono 09/11): nos cartões, a cor do cabeçalho do objecto com
-/// a tinta `TimelineSummaryRow` por cima — identidade própria, diferente de cabeçalho, zebra e fundo
-/// em todo tema (gate `o_summary_tem_cor_propria_nos_oito_temas`); no clássico, o `Bg3` de sempre.
-pub(crate) fn fundo(theme: Theme) -> Vec<ph2d_vector::Color> {
-    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
-        vec![
-            resolve(ColorToken::TimelineObjectRow, theme),
-            resolve(ColorToken::TimelineSummaryRow, theme)
+/// ⭐ **O fundo do Summary** (dono 09/11, candidato A de três — `fotos/15_onda2_summary_candidatos.png`):
+/// nos cartões, uma faixa funda tingida do destaque (`Bg0` + `TimelineSummaryRow` a
+/// `TIMELINE_SUMMARY_TINT_ALPHA`) de ponta a ponta, com um filete do destaque à esquerda; os losangos
+/// âmbar brilham por cima. Gate `o_summary_tem_cor_propria_nos_oito_temas`. No clássico, o `Bg3`.
+pub(crate) struct Fundo {
+    pub camadas: Vec<ph2d_vector::Color>,
+    pub filete: Option<ph2d_vector::Color>,
+}
+
+pub(crate) fn fundo(theme: Theme) -> Fundo {
+    let r = |c| resolve(c, theme);
+    if !ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        return Fundo {
+            camadas: vec![r(ColorToken::Bg3)],
+            filete: None,
+        };
+    }
+    Fundo {
+        camadas: vec![
+            r(ColorToken::Bg0),
+            r(ColorToken::TimelineSummaryRow)
                 .multiply_alpha(ph2d_tokens::TIMELINE_SUMMARY_TINT_ALPHA),
-        ]
-    } else {
-        vec![resolve(ColorToken::Bg3, theme)]
+        ],
+        filete: Some(r(ColorToken::TimelineSummaryRow)),
     }
 }
 
@@ -72,8 +84,13 @@ pub(crate) fn paint(
         return;
     }
     let row = Rect::new(region.x, y, region.w, h);
-    for cor in fundo(theme) {
-        fill_rounded_rect(ctx.scene, row, Radius::Xs.px(), cor);
+    let f = fundo(theme);
+    for cor in &f.camadas {
+        fill_rounded_rect(ctx.scene, row, Radius::Xs.px(), *cor);
+    }
+    if let Some(cor) = f.filete {
+        let w = ph2d_editor_core::panel::cards::banda::metrics::FIELD_BORDER * 2.0;
+        fill_rounded_rect(ctx.scene, Rect::new(region.x, y, w, h), 0.0, cor);
     }
     fill_rounded_rect(
         ctx.scene,

@@ -53,6 +53,37 @@ const ROVE_DOT_R: f32 = 2.5; // LITERAL-PX-OK: roving key dot radius
 /// Horizontal half-width of a key's clickable hit rect (larger than the visual
 /// diamond so a small target is easy to grab).
 pub(crate) const KEY_HIT_HW: f32 = 7.0; // LITERAL-PX-OK: keyframe grab half-width
+
+/// A meia-diagonal do losango: a métrica dos cartões (`ph2d_tokens`), ou a clássica.
+pub(crate) fn chave_h() -> f32 {
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        ph2d_tokens::TIMELINE_KEY_HALF_PX
+    } else {
+        DIAMOND_H
+    }
+}
+
+/// A meia-largura do alvo de clique da chave: cobre o losango e o contorno que se pintam.
+pub(crate) fn chave_hit_hw() -> f32 {
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        ph2d_tokens::TIMELINE_KEY_HIT_HALF_PX
+    } else {
+        KEY_HIT_HW
+    }
+}
+
+/// ⭐ **A chave pintada** (doc 15 onda 2, dono 09/11): nos cartões, o losango do tamanho da maquete
+/// com contorno escuro (`Bg0`) por baixo, para se ler sobre a barra; no clássico, o de sempre.
+pub(crate) fn paint_chave(ctx: &mut PaintCtx, theme: Theme, cx: f32, cy: f32, tok: ColorToken) {
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        let h = ph2d_tokens::TIMELINE_KEY_HALF_PX;
+        let anel = h + ph2d_tokens::TIMELINE_KEY_RING_PX;
+        paint_diamond(ctx, cx, cy, anel, resolve(ColorToken::Bg0, theme));
+        paint_diamond(ctx, cx, cy, h, resolve(tok, theme));
+    } else {
+        paint_diamond(ctx, cx, cy, DIAMOND_H, resolve(tok, theme));
+    }
+}
 /// Extrapolation marks (plan §6): a dashed line + mode badge on the dope-sheet
 /// over the region a non-Hold Pre/Post governs. Dash geometry + the smallest
 /// region worth marking / labelling.
@@ -303,7 +334,7 @@ fn paint_lane_keys(
         } else {
             base_x
         };
-        if kx < time_x - DIAMOND_H || kx > right + DIAMOND_H {
+        if kx < time_x - chave_h() || kx > right + chave_h() {
             continue;
         }
         let tok = if k.selected {
@@ -321,12 +352,12 @@ fn paint_lane_keys(
                 resolve(tok, theme),
             );
         } else {
-            paint_diamond(ctx, kx, cy, DIAMOND_H, resolve(tok, theme));
+            paint_chave(ctx, theme, kx, cy, tok);
         }
         // Hit target keyed by identity (stable across frames/reorders). The grab
         // rect follows the drawn (previewed) position.
         let id = ids::timeline_key_hit_id(track.target.get(), k.id.get());
-        let hit = Rect::new(kx - KEY_HIT_HW, y, KEY_HIT_HW * 2.0, ROW_H_PX);
+        let hit = Rect::new(kx - chave_hit_hw(), y, chave_hit_hw() * 2.0, ROW_H_PX);
         ctx.host.store_mut().register(
             id,
             InteractiveState::TimelineSurface {

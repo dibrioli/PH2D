@@ -24,7 +24,7 @@ use crate::graph::TimeView;
 use crate::state::TimelinePanelState;
 use crate::summary::columns_of;
 use crate::tab::Tab;
-use crate::tracks::{DIAMOND_H, KEY_HIT_HW, TWIRL_W, paint_diamond, paint_twirl};
+use crate::tracks::{DIAMOND_H, TWIRL_W, paint_diamond, paint_twirl};
 use crate::{geom, ids};
 
 /// O endereço DURÁVEL de um grupo de canais: de que objecto, e o [`ph2d_ecs::FieldKey::grupo`].
@@ -313,7 +313,7 @@ pub(crate) fn paint_grupo(
         } else {
             ColorToken::TimelineKey
         };
-        paint_diamond(ctx, kx, cy, DIAMOND_H, resolve(tok, theme));
+        crate::tracks::paint_chave(ctx, theme, kx, cy, tok);
         let id = ids::timeline_group_key_id(handle, c.t_bits());
         ctx.host.store_mut().register(
             id,
@@ -328,7 +328,12 @@ pub(crate) fn paint_grupo(
         );
         ctx.host.hit_index_mut().register(
             id,
-            Rect::new(kx - KEY_HIT_HW, y, KEY_HIT_HW * 2.0, ROW_H_PX),
+            Rect::new(
+                kx - crate::tracks::chave_hit_hw(),
+                y,
+                crate::tracks::chave_hit_hw() * 2.0,
+                ROW_H_PX,
+            ),
         );
     }
 }
@@ -381,8 +386,6 @@ pub(crate) fn paint_icone(
     );
 }
 
-/// O losango do cabeçalho do objecto: metade do da faixa (a maquete B1 pinta-o como um ponto).
-const OBJ_DIAMOND_H: f32 = DIAMOND_H * 0.6; // LITERAL-PX-OK: fraction of the row diamond
 /// A espessura da barra entre duas chaves (maquete B1: 3 px numa linha de 22).
 pub(crate) const BARRA_TH: f32 = 3.0; // LITERAL-PX-OK: interpolation bar thickness
 /// O traço e o vão da barra de uma chave segura (Hold), tracejada.
@@ -448,8 +451,8 @@ pub(crate) fn paint_objeto(
             ctx,
             kx,
             cy,
-            OBJ_DIAMOND_H,
-            resolve(ColorToken::Text3, theme),
+            ph2d_tokens::TIMELINE_OBJECT_DOT_HALF_PX,
+            resolve(ColorToken::Text2, theme),
         );
     }
 }

@@ -1,8 +1,5 @@
-//! ⭐ **A fonte do Calendário do projecto** — todas as datas do projecto para a vista Calendário da
-//! W7 (plano §8.1): início e entrega dos cartões de TODOS os Kanbans, os itens de checklist com data
-//! e os eventos próprios da agenda (com as ocorrências das recorrências). Arrastar um item devolve o
-//! lote que muda a data DELE — no mesmo documento que o quadro mostra; o de uma ocorrência de uma
-//! série fica por responder em [`ProjectSource::asked`] (o alcance, [`crate::scope`]).
+//! ⭐ **A fonte do Calendário** (plano §8.1): as datas de TODOS os Kanbans e da agenda. Arrastar
+//! muda a data DELE; numa série, o alcance fica em [`ProjectSource::asked`] ([`crate::scope`]).
 
 use std::cell::RefCell;
 use std::collections::BTreeSet;

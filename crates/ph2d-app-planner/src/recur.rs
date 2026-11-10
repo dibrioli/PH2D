@@ -1,8 +1,5 @@
-//! **As ocorrências** de um evento com recorrência simples (diária, semanal, mensal, anual), na hora
-//! LOCAL: «toda segunda às 10:00» atravessa o horário de verão sem andar. O dia inteiro vive em UTC
-//! (o `DATE` do RFC 5545). Um mês sem o dia (31 de abril) salta, como no Google Calendar. As
-//! excepções e o fim da série (`until`, v7) tiram ocorrências; o evento avulso que substitui uma
-//! aparece por si.
+//! **As ocorrências** de uma recorrência simples na hora LOCAL (o dia inteiro em UTC); o mês sem o
+//! dia salta; as excepções e o `until` tiram ocorrências; o avulso que substitui aparece por si.
 
 use ph2d_kanban_dates::{CivilDate, Zone, add_days, civil, instant};
 use ph2d_kanban_model::{Event, Moment, Repeat};

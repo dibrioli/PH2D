@@ -1,12 +1,6 @@
-//! **A família PESSOAL do Kanban** (TrelloClone W9, plano §1.6 e §8.1) — o **Calendário do
-//! projecto** (todas as datas de todos os Kanbans e os eventos próprios; arrastar muda a data), o
-//! **Planner** (a semana com a coluna Inbox + os meus cartões sem data, que se arrastam para blocos de
-//! tempo), **My cards** e o **sino** das notificações (menções, atribuições, o que sigo, lembretes).
-//! Tudo DENTRO do projecto, sem Google/Microsoft; a porta para fora é o `.ics` (RFC 5545).
-//!
-//! Os dados moram na agenda do `KanbanSet` (`KanbanId::AGENDA`, formato v5; as excepções das séries
-//! no v7); a grelha do calendário é
-//! a vista da W7 (`ph2d-kanban-views`) sobre a [`source::ProjectSource`].
+//! **A família PESSOAL do Kanban** (TrelloClone W9, plano §1.6/§8.1): Calendário, Planner, My cards
+//! e o sino, DENTRO do projecto (fora, só o `.ics`). Os dados: a agenda do `KanbanSet`
+//! (`KanbanId::AGENDA`); a grelha: a vista da W7 sobre a [`source::ProjectSource`].
 
 mod dest_pop;
 mod docs;

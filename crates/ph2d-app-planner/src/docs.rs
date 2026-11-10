@@ -1,11 +1,6 @@
-//! ⭐ **`PlannerDocs` — a família instalada no hero**: UMA aba com três modos (o idioma do Trello de
-//! 2025: a barra «Inbox · Planner · Boards» é uma navegação, não três documentos) — **Calendar** (o
-//! Calendário do projecto), **Planner** (a semana com a coluna Inbox + cartões sem data) e **My
-//! cards**. O sino das notificações vive na barra dela.
-//!
-//! O documento é o MESMO `Rc` do projecto ([`SharedKanbans`]); cada gesto é um [`Plan`] aplicado por
-//! [`KanbanSet::apply_plan`] com a atividade em nome de «eu», e o desfazer da aba desfaz o gesto
-//! inteiro em todos os documentos que tocou ([`KanbanSet::undo_gesture`]).
+//! ⭐ **`PlannerDocs`**: UMA aba, três modos (Calendar · Planner · My cards) e o sino. O documento é
+//! o `Rc` do projecto ([`SharedKanbans`]); cada gesto é um [`Plan`] ([`KanbanSet::apply_plan`]) e o
+//! desfazer desfaz o gesto inteiro ([`KanbanSet::undo_gesture`]).
 
 use std::collections::{BTreeMap, BTreeSet};
 

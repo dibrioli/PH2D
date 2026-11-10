@@ -1,8 +1,5 @@
-//! **O popover do evento** — criar ou editar um evento próprio do Calendário: o título, a duração
-//! (30 min · 1 h · 2 h · dia inteiro), a recorrência, e o seletor de datas da W7 (o MESMO do verso do
-//! cartão) para o dia, a hora e o lembrete. «Start date» ligado = um evento de vários dias (do início
-//! à data). Numa ocorrência de uma série, «Save» e «Delete event» perguntam o alcance
-//! ([`crate::scope`]).
+//! **O popover do evento** — título, duração, recorrência e o seletor de datas; «Start date» =
+//! vários dias. Numa série, «Save» e «Delete event» perguntam o alcance ([`crate::scope`]).
 
 use ph2d_editor_core::doc_surface::{Key, KeyInput};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_elided, stroke_rounded_rect};

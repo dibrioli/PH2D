@@ -634,16 +634,16 @@ fn o_duplo_clique_no_campo_selecciona_tudo() {
 fn o_clique_no_campo_rolado_cai_onde_o_texto_esta() {
     let mut m = Mesa::aberta(View::List);
     foca_o_nome_pelo_tab(&mut m);
-    let long = "w".repeat(80);
+    let long = "w".repeat(400);
     m.type_text(&long);
     let r = m.tab().doc.rect_of(ids::NEW_NAME).expect("pintado");
     let pad = ph2d_editor_core::widget::field_pad_x();
-    m.down((r.x + r.w - pad, r.y + r.h * 0.5));
-    let c = m.tab().doc.field_caret(ids::NEW_NAME).expect("campo").0;
+    m.down((r.x + pad, r.y + r.h * 0.5));
+    let first = m.tab().doc.field_caret(ids::NEW_NAME).expect("campo").0;
     assert!(
-        c + 2 >= long.len(),
-        "o clique na ponta cai no fim: {c} de {}",
-        long.len()
+        first > 100,
+        "a ponta esquerda mostra o meio do texto: {first}"
     );
-    m.up((r.x + r.w - pad, r.y + r.h * 0.5));
+    assert!(first < long.len(), "e não no fim: {first}");
+    m.up((r.x + pad, r.y + r.h * 0.5));
 }

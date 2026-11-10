@@ -204,6 +204,7 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("fill_snapshot", OUTRA),
     ("fill_last_rect", OUTRA),
     ("fill_return_mode", OUTRA),
+    ("fill_rascunho", OUTRA),
     ("inpaint_patch_norm", OUTRA),
     ("inpaint_quality_norm", OUTRA),
     ("inpaint_search_norm", OUTRA),

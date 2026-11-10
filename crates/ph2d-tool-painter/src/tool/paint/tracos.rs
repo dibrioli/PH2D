@@ -232,6 +232,7 @@ pub(crate) const PARTILHADO: &[&str] = &[
     "fill_snapshot",
     "fill_last_rect",
     "fill_return_mode",
+    "fill_rascunho",
     "inpaint_patch_norm",
     "inpaint_quality_norm",
     "inpaint_search_norm",

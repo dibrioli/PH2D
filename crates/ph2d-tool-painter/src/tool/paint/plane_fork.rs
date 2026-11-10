@@ -228,6 +228,9 @@ impl crate::tool::PainterTool {
             .write_state
             .capture_canvas(&self.canvas_rgba, stride, None);
         self.undo.write_state.a_tela_sai(&self.canvas_rgba);
+        // O plano inteiro muda sem declaração: o commit seguinte varre (B01.5 — uma janela aberta antes da
+        // troca de camada perdia a tela inteira no undo).
+        open_access(&self.undo.write_state);
         self.canvas_rgba = new;
     }
 }

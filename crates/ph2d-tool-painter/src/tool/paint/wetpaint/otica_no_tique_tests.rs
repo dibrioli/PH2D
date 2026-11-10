@@ -559,3 +559,7 @@ fn a_luz_simples_no_gesto_e_a_cheia_no_repouso() {
         confere_com_casa(&mut t, &format!("{onde}: o repouso depois do gesto"));
     }
 }
+
+/// A prancha da luz do gesto (B14.2).
+#[path = "prancha_b14b_tests.rs"]
+mod prancha_b14b;

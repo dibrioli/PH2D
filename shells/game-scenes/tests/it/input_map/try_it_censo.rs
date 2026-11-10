@@ -102,11 +102,12 @@ fn o_censo_do_try_it_ve_cada_corte_do_pintor() {
 }
 
 /// O cartão Controls da C4 cabe INTEIRO a 1600×1000 (a tela do jogo ao lado das caixas): o «Forget them» e cada
-/// caixa do «Shown in the game» ficam acima do fundo da vista, sem rolar.
+/// caixa do «Shown in the game» ficam acima do fundo da vista, sem rolar. ⚠️ A área é a que a aba RECEBE na janela
+/// de 1600×1000 com a Hierarchy e o Inspector abertos (medida na foto `c4_1600.png`), não a janela inteira.
 #[test]
 fn o_cartao_controls_da_c4_cabe_inteiro_a_1600x1000() {
     let mut m = cena("C4");
-    m.paint_in(Rect::new(0.0, 0.0, 1600.0, 1000.0)); // LITERAL-PX-OK: a janela do plano §8
+    m.paint_in(Rect::new(308.0, 28.0, 988.0, 890.0)); // LITERAL-PX-OK: a área central medida na foto c4_1600
     let doc = &m.tab().doc;
     let clip = doc.census.clip.expect("a vista rola dentro de um recorte");
     assert_eq!(

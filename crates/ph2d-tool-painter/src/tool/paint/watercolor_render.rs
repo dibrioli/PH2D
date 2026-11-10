@@ -22,9 +22,9 @@
 
 mod aparencia; // a óptica de um texel como função do chão (LOC split; o vidro a avalia 2×)
 mod diag; // o envelope de diagnóstico do composite (LOC split)
+mod dono; // o dono do halo: o texel sem dono pelo dono mais próximo no alcance (B16.2)
 mod pigment; // a COR do pigmento por pixel (LOC split, por assunto)
 mod texel; // o corpo do laço por texel (B52.R21, LOC split)
-mod dono; // o dono do halo: o texel sem dono pelo dono mais próximo no alcance (B16.2)
 mod window;
 pub(in crate::tool::paint) use window::Alcance;
 pub(in crate::tool::paint) use window::ponto_na_janela;
@@ -50,12 +50,17 @@ impl PainterTool {
         // Window arithmetic (frozen bases + dirty-rect consumption + influence
         // padding + read window) — moved verbatim to [`window::WashWindow`];
         // `None` = nothing to composite, and the commit still drops the base.
+        // B16.7: um quadro sem sujo (Move abaixo do espaçamento) não consome nada ⇒ os campos guardados
+        // continuam certos; só um sujo consumido sem composite os larga.
+        let consome = commit || self.wash.recompoe_tudo || self.paint.wet_frame_dirty.is_some();
         let Some(w) = self.wash_window(commit) else {
             if commit {
                 self.paint.watercolor_base = None;
             }
-            self.paint.wet_reserve_cache = None; // um sujo consumido sem composite: não confiar
-            self.paint.wet_rewet_cache = None; // B16.5: idem
+            if consome {
+                self.paint.wet_reserve_cache = None; // um sujo consumido sem composite: não confiar
+                self.paint.wet_rewet_cache = None; // B16.5: idem
+            }
             return None;
         };
         // Counted AFTER the window resolves, so it counts composites that did WORK — a call that

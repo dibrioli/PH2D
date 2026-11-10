@@ -42,6 +42,15 @@ fn traco(t: &mut PainterTool, a: [f32; 2], b: [f32; 2]) -> Vec<u64> {
             frame(t);
             quadros.push(impressao(t));
         }
+        // B16.7: a caneta quase pára a meio — quadros sem dab, e o campo guardado continua certo.
+        if i == passos / 2 {
+            let p = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+            for k in 1..=2 {
+                t.on_canvas_pointer(cp([p[0] + 0.05 * k as f32, p[1]], PointerPhase::Move));
+                frame(t);
+                quadros.push(impressao(t));
+            }
+        }
     }
     quadros
 }
@@ -150,4 +159,40 @@ fn o_campo_guardado_da_o_byte_do_campo_refeito() {
         "quadro {primeiro:?} de {}: a tela diverge",
         quadros.len()
     );
+}
+
+/// **B16.7 — um quadro sem dab não larga o campo da reserva guardado** (a caneta parada a meio do
+/// traço: nada foi consumido, nada envelheceu; largá-lo obrigava o quadro seguinte a refazê-lo na
+/// janela inteira). A paridade com o campo refeito nesses quadros é a do gate de cima (`traco` pára).
+#[test]
+fn um_quadro_sem_dab_nao_refaz_a_reserva() {
+    let size = 256u32;
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
+    t.paint.brush.color = [0.85, 0.12, 0.10];
+    watercolor_basic_de_antes(&mut t);
+    t.paint.brush.wet_charge = 0.95;
+    t.paint.brush.radius_px = 20.0;
+    let seed = t.paint.brush;
+    t.paint.brush_by_mode.fill(seed);
+    assert!(t.on_canvas_pointer(cp([40.0, 128.0], PointerPhase::Down)));
+    for i in 1..=20 {
+        t.on_canvas_pointer(cp([40.0 + 8.0 * i as f32, 128.0], PointerPhase::Move));
+        if i % 2 == 0 {
+            frame(&mut t);
+        }
+    }
+    assert!(
+        t.paint.wet_reserve_cache.is_some(),
+        "CONTROLO: o traço vivo não guardou o campo"
+    );
+    // A caneta quase parada: um Move abaixo do espaçamento por quadro (o quadro compõe, nenhum dab cai).
+    for q in 0..3 {
+        t.on_canvas_pointer(cp([200.0 + 0.05 * q as f32, 128.0], PointerPhase::Move));
+        frame(&mut t);
+        assert!(
+            t.paint.wet_reserve_cache.is_some(),
+            "o quadro {q} sem dab largou o campo da reserva guardado"
+        );
+    }
 }

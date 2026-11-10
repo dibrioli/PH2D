@@ -23,6 +23,7 @@ pub mod line_cache;
 pub mod live_sampler;
 mod marks;
 mod metrics;
+pub mod options_card;
 mod paint;
 mod palette;
 mod popup;

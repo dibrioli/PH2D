@@ -421,15 +421,12 @@ impl CodeDocs {
         if page_of(id).is_some() {
             return;
         }
-        let state = self
-            .docs
-            .iter()
-            .find(|d| d.script.0 == id)
-            .map(|d| self.command_state(d));
-        if let Some(state) = state {
-            let assist = self.intel.assist();
+        let doc = self.docs.iter().find(|d| d.script.0 == id);
+        if let Some((state, title)) = doc.map(|d| (self.command_state(d), d.title.clone())) {
+            let rows = crate::options_card::rows(state);
+            let f = crate::options_card::frame(&title, &rows, self.intel.assist());
             let under = self.code_body(id, doc_r);
-            self.options.paint(under, state, assist, scene, ts, theme);
+            self.options.paint(under, &f, scene, ts, theme);
         }
         if self.options.open
             && let Some(pin) = self.options.painted.pin
@@ -503,7 +500,7 @@ impl CodeDocs {
             _ => (i, self.clock.0),
         });
         if self.bar.open.is_none() {
-            return false;
+            return self.options.hover(x, y);
         }
         if let Some(m) = self.bar.title_at(x, y) {
             self.bar.open = Some(m);

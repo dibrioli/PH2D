@@ -9,6 +9,7 @@ mod cronometro;
 mod estado;
 mod ligaduras;
 mod medicoes_do_fecho;
+mod opcoes_do_script;
 mod pagina;
 mod quadro_do_depurador;
 mod sublinhado;

@@ -166,6 +166,30 @@ fn o_cartao_script_options_pinta_tudo_dentro_dele_numa_grelha() {
     }
 }
 
+/// t5b (14 Q4 D): um clique real na FRASE de Format on save (a linha inteira é o alvo) alterna-a; a
+/// mão e a moldura de hover sobre a linha; o interruptor repintado mostra o estado novo.
+#[test]
+fn clicar_a_frase_de_uma_opcao_alterna_a_e_o_interruptor_mostra_o() {
+    use ph2d_editor_core::doc_surface::PointerLook;
+    let (mut m, id) = aberta();
+    m.docs().set_options_open(true);
+    m.pinta(id);
+    let p = m.docs().options_card().painted.clone();
+    let fmt = ph2d_app_code::commands::CMD_FORMAT_ON_SAVE;
+    let i = p.rows.iter().position(|r| r.0 == fmt).expect("a linha");
+    let antes = m.docs().format_on();
+    assert_eq!(p.on[i], antes, "o interruptor diz o estado");
+    let (x, y) = (p.says[i].x + 1.0, p.says[i].y + p.says[i].h * 0.5);
+    m.rato(id, x, y);
+    assert_eq!(m.docs().options_card().hover, Some(fmt), "a moldura de hover");
+    assert_eq!(m.docs().pointer_look(id.0, x, y), Some(PointerLook::Hand));
+    m.clica(id, x, y, Modifiers::default());
+    m.pinta(id);
+    assert_eq!(m.docs().format_on(), !antes, "a linha alternou");
+    let card = m.docs().options_card();
+    assert_eq!((card.painted.on[i], card.pressed), (!antes, None));
+}
+
 /// t6: o Esc fecha o cartão sem alfinete; com alfinete fica.
 #[test]
 fn o_esc_fecha_o_cartao_script_options_sem_alfinete() {

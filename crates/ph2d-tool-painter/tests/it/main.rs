@@ -78,6 +78,7 @@ mod sonda_largura;
 mod sonda_macro_custo;
 mod sonda_mescla_espacial; // a mescla espacial do Watercolor Basic, ingrediente a ingrediente (08/11, sonda)
 mod sonda_midias;
+mod sonda_pen_up_4k; // o pen-up numa tela 4K (dono 10/11, sonda)
 mod sonda_secao_render; // a secção Rendering do Digital, antes e depois da retirada (24/10)
 mod sonda_spacing_continuo;
 mod sonda_tilt_do_preset;

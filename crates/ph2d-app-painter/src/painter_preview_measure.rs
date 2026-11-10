@@ -350,3 +350,99 @@ fn measure_o_quadro_do_impasto_num_desenho_novo() {
     }
     eprintln!("[impasto-novo] loadavg {}", carga().trim());
 }
+
+/// **O quadro do PEN-UP numa tela 4K** (dono 10/11: «no mouse up em imagem 4k há um travamento mesmo se o traço for
+/// pequeno»). Um traço CURTO (6 moves de 10 px) num desenho novo (`bind_document`, o papel do app), cada move com o seu
+/// quadro do app, e o Up com o dele e os 3 seguintes — tudo com a placa à espera (`poll`). Nas duas telas no MESMO
+/// processo: o que cresce com a TELA e não com o traço é o travamento. A ferramenta sozinha (`sonda_pen_up_4k`) fica em
+/// ~1 ms no Up a 4K: se este quadro é caro, o custo é do caminho do app.
+#[test]
+#[ignore = "perf measurement (GPU adapter) — run with --ignored"]
+fn measure_o_quadro_do_pen_up_em_4k() {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("no GPU adapter on this machine — nothing to measure");
+        return;
+    };
+    fn traco(ctx: &ph2d_gpu::GpuContext, w: u32, h: u32) -> [f64; 5] {
+        let mut renderer = ph2d_render::SpriteRenderer::new(
+            ctx.clone(),
+            ph2d_render::GameRt::FORMAT,
+            ph2d_render::TextureAtlas::dummy(ctx),
+            8,
+        );
+        let mut t = PainterTool::default();
+        ph2d_editor_core::tool::RasterEditTool::set_source(
+            &mut t,
+            vec![255u8; (w * h * 4) as usize],
+            w,
+            h,
+        );
+        t.bind_document(1, vec![255u8; (w * h * 4) as usize], w, h);
+        t.set_brush_size_px(30.0);
+        let (mut session, mut preview, mut toasts) =
+            (None, None, ph2d_editor_core::toast::ToastQueue::default());
+        let mut preview_gpu: Option<PainterPreviewGpu> = None;
+        let mut quadro =
+            |t: &mut PainterTool, ev: Option<ph2d_editor_core::tool::CanvasPointer>| {
+                let t0 = std::time::Instant::now();
+                if let Some(e) = ev {
+                    t.on_canvas_pointer(e);
+                }
+                let owns = app_frame(
+                    &mut renderer,
+                    t,
+                    &mut session,
+                    &mut preview,
+                    &mut preview_gpu,
+                    &mut toasts,
+                );
+                let _ = ctx.device.poll(wgpu::PollType::wait_indefinitely());
+                (t0.elapsed().as_secs_f64() * 1e3, owns)
+            };
+        // Um traço de aquecimento (a 1.ª textura, o 1.º undo) fora da régua.
+        let (mut x, mut y) = (200.0f32, 300.0f32);
+        for (fase, n) in [
+            (PointerPhase::Down, 1),
+            (PointerPhase::Move, 6),
+            (PointerPhase::Up, 1),
+        ] {
+            for _ in 0..n {
+                x += 10.0;
+                quadro(&mut t, Some(cp([x, y], fase)));
+            }
+        }
+        quadro(&mut t, None);
+        y = 500.0;
+        let (down, _) = quadro(&mut t, Some(cp([x, y], PointerPhase::Down)));
+        let mut move_max = 0.0f64;
+        for _ in 0..6 {
+            x += 10.0;
+            move_max = move_max.max(quadro(&mut t, Some(cp([x, y], PointerPhase::Move))).0);
+        }
+        let (up, owns) = quadro(&mut t, Some(cp([x, y], PointerPhase::Up)));
+        let depois = (0..3).map(|_| quadro(&mut t, None).0).fold(0.0, f64::max);
+        [down, move_max, up, depois, f64::from(u8::from(owns))]
+    }
+    eprintln!(
+        "\n[pen-up-app] loadavg {}",
+        std::fs::read_to_string("/proc/loadavg")
+            .unwrap_or_default()
+            .trim()
+    );
+    for (w, h) in [(1024u32, 1024u32), (3840, 2160)] {
+        let mut min = [f64::INFINITY; 5];
+        for _ in 0..3 {
+            for (m, v) in min.iter_mut().zip(traco(&gpu, w, h)) {
+                *m = m.min(v);
+            }
+        }
+        eprintln!(
+            "[pen-up-app] {w}×{h}: down {:7.2} · move máx {:7.2} · UP {:7.2} · 3 quadros depois máx {:7.2} ms · gpu produz {}",
+            min[0],
+            min[1],
+            min[2],
+            min[3],
+            min[4] > 0.0
+        );
+    }
+}

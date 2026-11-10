@@ -218,3 +218,21 @@ fn a_cor_de_uma_acao_segue_o_id_depois_de_apagar_outra_antes() {
 fn color_of(a: ActionId) -> ph2d_tokens::ColorToken {
     ph2d_tokens::categorical(a.0)
 }
+
+#[test]
+fn a_acao_sem_tecla_toma_a_tecla_premida_e_o_que_nao_esta_desenhado_aparece_em_also() {
+    let mut m = teclado(onze());
+    abre(&mut m, "reload");
+    let k = Key(u32::from('1'));
+    assert!(m.physical(k), "a acção vazia toma a tecla");
+    assert_eq!(bindings(&m, "reload"), vec![Binding::Key(k)]);
+    let t = texts(&m);
+    assert!(
+        t.iter().any(|s| s == "Also:") && t.iter().any(|s| s == "1"),
+        "{t:?}"
+    );
+    assert!(
+        !m.physical(Key(u32::from('2'))),
+        "com tecla, a acção já não toma a premida"
+    );
+}

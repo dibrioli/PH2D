@@ -55,6 +55,7 @@ impl PainterTool {
                 self.paint.watercolor_base = None;
             }
             self.paint.wet_reserve_cache = None; // um sujo consumido sem composite: não confiar
+            self.paint.wet_rewet_cache = None; // B16.5: idem
             return None;
         };
         // Counted AFTER the window resolves, so it counts composites that did WORK — a call that
@@ -125,18 +126,44 @@ impl PainterTool {
         // per-stroke base poisoned reproducibility — the baked neighbour re-rendered through
         // dissolve/pool/mix as a lightening rectangle (Enio 2026-07-09). The water's redispersion
         // of session-mate pigment comes from the UNION fields below instead.
+        // B16.5: os campos lêem-se da grelha da tela guardada entre quadros (só o sujo ⊕ R refaz).
+        let rewet_cache = self.paint.wet_rewet_cache.take();
+        #[cfg(test)]
+        let rewet_cache = rewet_cache.filter(|_| !REWET_SEM_CACHE.get());
         let rewet = (wet_any > 0.0 || watered).then(|| {
-            build_rewet_fields(
-                &base_arc[..],
+            #[cfg(test)]
+            if REWET_SEM_CACHE.get() {
+                return build_rewet_fields(
+                    &base_arc[..],
+                    ground,
+                    &self.paint.wet_soak,
+                    soaked,
+                    &self.paint.stroke_water,
+                    watered,
+                    (fw, fh),
+                    (rx0, ry0, rx1, ry1),
+                    spread_any,
+                );
+            }
+            let e = RewetEntradas {
+                base: &base_arc[..],
                 ground,
-                &self.paint.wet_soak,
+                wet_soak: &self.paint.wet_soak,
                 soaked,
-                &self.paint.stroke_water,
+                stroke_water: &self.paint.stroke_water,
                 watered,
-                (fw, fh),
+                fw,
+                fh,
+            };
+            let (f, c) = build_rewet_fields_cached(
+                e,
                 (rx0, ry0, rx1, ry1),
                 spread_any,
-            )
+                changed,
+                rewet_cache,
+            );
+            self.paint.wet_rewet_cache = Some(c);
+            f
         });
         let cur_o = self.paint.wet_styles.current_owner();
 

@@ -469,6 +469,9 @@ pub(crate) struct PaintState {
     /// O CAMPO da reserva guardado entre quadros ([`super::watercolor_reserve::ReserveCache`]). ⚠️ Escrita
     /// EM MASSA nos dois planos acima ⇒ `None` (a lei: cabeçalho de `watercolor_reserve/cache.rs`).
     pub(super) wet_reserve_cache: Option<super::watercolor_reserve::ReserveCache>,
+    /// Os campos do Rewet guardados entre quadros (B16.5, `watercolor_field/rewet_cache.rs`): `None`
+    /// junto com o `wet_reserve_cache` em toda escrita em massa.
+    pub(super) wet_rewet_cache: Option<super::watercolor_field::RewetCache>,
     /// EDGE-1 (doc 12): canvas-wide MOISTURE map (`w*h`) surviving pen-up — dries on the heartbeat
     /// (~8.5 s, DiVerdi/Adobe; Curtis wet-area mask); the bake pours the HARDENED coverage
     /// (max-blend). While wet, watercolor strokes CONTINUE one **wet session**

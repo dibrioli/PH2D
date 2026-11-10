@@ -166,6 +166,7 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("stroke_deplete", TRACO),
     ("stroke_deplete_prox", TRACO),
     ("wet_reserve_cache", CACHE),
+    ("wet_rewet_cache", CACHE),
     ("canvas_wet", SESSAO),
     ("canvas_wet_rect", SESSAO),
     ("canvas_wet_snapshot", SESSAO),

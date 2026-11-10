@@ -260,3 +260,110 @@ fn os_campos_do_rewet_na_janela_sao_os_da_tela_inteira() {
         "CONTROLO: sem a folga, ds > 1 devia diferir (a régua é cega)"
     );
 }
+
+/// **B16.5 — a grelha guardada é a refeita.** Uma sessão de janelas que andam, com o soak e a água
+/// a mudar dentro do sujo de cada quadro: cada amostra que o composite pode pedir dá o `f32` dos
+/// campos refeitos na tela inteira (ao bit), por `ds` de 1 a 4. CONTROLO: esquecer o sujo de um
+/// quadro (`changed = None`) dá campos velhos — a régua vê o que a cache tem de refazer.
+#[test]
+fn o_campo_do_rewet_guardado_e_o_refeito() {
+    use crate::tool::paint::watercolor_field::{
+        RewetEntradas, RewetFields, build_rewet_fields, build_rewet_fields_cached,
+    };
+    let (fw, fh) = (LADO as usize, LADO as usize);
+    let base = riscas();
+    let ground = vec![255u8; fw * fh * 4];
+    fn campos(f: &RewetFields) -> Vec<&[f32]> {
+        let mut v: Vec<&[f32]> = vec![&f.pres, &f.soak_raw, &f.soak_halo, &f.water_halo];
+        v.extend(f.near.iter().map(|c| &c[..]));
+        v.extend(f.far.iter().flatten().map(|c| &c[..]));
+        v
+    }
+    let sessao = |esquece: bool| -> Vec<String> {
+        let mut erros = Vec::new();
+        for spread in [6usize, 12, 24, 36, 48] {
+            let reach = 2 * spread;
+            let mut soak = vec![0u8; fw * fh];
+            let mut water = vec![0u8; fw * fh];
+            let mut cache = None;
+            for q in 0..6usize {
+                // O dab do quadro: um quadrado que anda na diagonal, escrito no soak e na água.
+                let (dx, dy) = (200 + q * 23, 190 + q * 17);
+                for y in dy..dy + 18 {
+                    for x in dx..dx + 18 {
+                        soak[y * fw + x] = soak[y * fw + x].saturating_add(40 + q as u8);
+                        water[y * fw + x] = water[y * fw + x].saturating_add(55);
+                    }
+                }
+                let d = Region { x: dx as u32, y: dy as u32, w: 18, h: 18 };
+                let pad = reach + 6;
+                let (rx0, ry0) = (dx.saturating_sub(2 * pad), dy.saturating_sub(2 * pad));
+                let (rx1, ry1) = ((dx + 18 + 2 * pad).min(fw), (dy + 18 + 2 * pad).min(fh));
+                let e = RewetEntradas {
+                    base: &base,
+                    ground: &ground,
+                    wet_soak: &soak,
+                    soaked: true,
+                    stroke_water: &water,
+                    watered: true,
+                    fw,
+                    fh,
+                };
+                let changed = (!(esquece && q == 3)).then_some(d);
+                let (jan, c) =
+                    build_rewet_fields_cached(e, (rx0, ry0, rx1, ry1), spread, changed, cache.take());
+                cache = Some(c);
+                let toda = build_rewet_fields(
+                    &base, &ground, &soak, true, &water, true, (fw, fh), (0, 0, fw, fh), spread,
+                );
+                let (mut pior, mut n) = (0.0f32, 0usize);
+                let lado = |a: usize, z: usize| {
+                    let (lo, hi) = (a + pad, z.saturating_sub(pad).max(a + pad));
+                    (0..(hi - lo) * 2).map(move |k| lo as f32 + k as f32 * 0.5)
+                };
+                for gy in lado(ry0, ry1).step_by(3) {
+                    for gx in lado(rx0, rx1).step_by(2) {
+                        for (cj, ct) in campos(&jan).into_iter().zip(campos(&toda)) {
+                            let a = jan.samp(cj, rx0, ry0, gx - rx0 as f32, gy - ry0 as f32);
+                            let z = toda.samp(ct, 0, 0, gx, gy);
+                            if a.to_bits() != z.to_bits() {
+                                pior = pior.max((a - z).abs());
+                                n += 1;
+                            }
+                        }
+                    }
+                }
+                if n > 0 {
+                    erros.push(format!("Spread {spread} quadro {q}: {n} amostras, pior {pior:e}"));
+                }
+            }
+        }
+        erros
+    };
+    let certo = sessao(false);
+    let velho = sessao(true);
+    eprintln!("guardado × refeito: {certo:#?}\nCONTROLO (sujo esquecido): {velho:#?}");
+    assert!(certo.is_empty(), "a grelha guardada envelheceu:\n{}", certo.join("\n"));
+    assert!(!velho.is_empty(), "CONTROLO: esquecer o sujo devia dar campos velhos (régua cega)");
+}
+
+/// **B16.5 — o composite com a cache dá o byte do composite sem ela** (o `build_rewet_fields` de
+/// sempre): o traço vivo inteiro, Spread {6, 12, 30, 48} × Rewet {0; 0,3} × dwell. Spread ≤ 12 é a
+/// grelha exacta (`ds = 1`), a do Watercolor Basic.
+#[test]
+fn o_rewet_guardado_da_o_byte_do_refeito() {
+    use crate::tool::paint::watercolor_field::REWET_SEM_CACHE;
+    let mut falhas = Vec::new();
+    for (spread, rewet, dwell) in casos().chain([(6.0, 0.0, false), (6.0, 0.3, true)]) {
+        let com = traco_vivo(&mut PainterTool::default(), spread, rewet, dwell);
+        REWET_SEM_CACHE.set(true);
+        let sem = traco_vivo(&mut PainterTool::default(), spread, rewet, dwell);
+        REWET_SEM_CACHE.set(false);
+        let (w, _, n) = pior(&com, &sem);
+        eprintln!("Spread {spread} Rewet {rewet} dwell {dwell}: Δ{w} em {n} B");
+        if n > 0 {
+            falhas.push(format!("Spread {spread} Rewet {rewet} dwell {dwell}: Δ{w} em {n} B"));
+        }
+    }
+    assert!(falhas.is_empty(), "a cache muda bytes:\n{}", falhas.join("\n"));
+}

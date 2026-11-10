@@ -203,6 +203,7 @@ pub(crate) const PARTILHADO: &[&str] = &[
     "stroke_deplete",
     "stroke_deplete_prox",
     "wet_reserve_cache",
+    "wet_rewet_cache",
     "canvas_wet",
     "canvas_wet_rect",
     "canvas_wet_snapshot",

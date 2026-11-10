@@ -314,6 +314,7 @@ impl PainterTool {
             .iter_mut()
             .for_each(|c| *c = 0);
         self.paint.wet_reserve_cache = None; // escrita em MASSA: o campo guardado envelheceu
+        self.paint.wet_rewet_cache = None; // B16.5: idem
         self.paint.wet_level_smear_pos = None;
         // ⭐ **O RESERVATÓRIO DO MIXER RENASCE COM A COBERTURA** (auditoria 2026-09-22, doc 42): a
         // carga do pincel ESGOTA-SE com o depósito, e os dois chamadores desta porta reconstroem o
@@ -419,6 +420,7 @@ impl PainterTool {
         let depletion = self.wet_mix_depletion(dabs);
         if depletion.is_some() && self.paint.stroke_deplete.len() != fw * fh {
             self.paint.wet_reserve_cache = None; // os planos NASCEM (com backfill): tudo recalcula
+            self.paint.wet_rewet_cache = None; // B16.5: idem
             // EDGE-1 wet session: the union buffers may already hold PRIOR strokes of this wet
             // session (painted mixer-off ⇒ full reserve, no map). Backfill their footprint with
             // 255, or the union re-bake would multiply their density by 0 — the pools vanished.

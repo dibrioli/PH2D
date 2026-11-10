@@ -245,6 +245,7 @@ impl PainterTool {
         zera(&mut p.stroke_water, 1);
         zera(&mut p.wet_soak, 1);
         p.wet_reserve_cache = None; // escrita em massa nos planos do nível
+        p.wet_rewet_cache = None; // B16.5: idem
         assa.len()
     }
 }

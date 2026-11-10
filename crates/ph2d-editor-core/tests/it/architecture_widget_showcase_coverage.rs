@@ -40,6 +40,10 @@ const WIDGET_OPT_OUT: &[(&str, &str)] = &[
         "not a widget: it is the short word INSIDE a text box (`1 listens` / `nobody listens`), painted by the text-box painters (`property_row`, `cards_linhas`) only when a panel installs a provider for that id; it has no box, state or control of its own. Proved by the Inspector's signal-name boxes (`ph2d-panel-inspector/src/signal_hint.rs`).",
     ),
     (
+        "image_filter",
+        "not a widget: it is the project's image FILTER (`ImageFilterMode`) and the door `image_quality_for` that every painter of game art asks; it paints nothing and has no control. It lives under widget/ only so the foundation modules stay a DAG (widget → project). Proved by `architecture_a_arte_do_jogo_segue_o_filtro`.",
+    ),
+    (
         "censo_cartao",
         "not a widget: it is the CENSUS of the old layout pieces that a card body should no longer call. It paints nothing and has no state outside `grava`; only a gate reads it, so a gallery section would have nothing to show.",
     ),

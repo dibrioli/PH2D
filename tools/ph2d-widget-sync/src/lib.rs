@@ -39,6 +39,7 @@ const PUB_MODULE_OVERRIDE: &[&str] = &[
     "cromo_barra",
     "field_suffix",
     "illustration",
+    "image_filter",
     "lista_flutuante",
     "panel_chrome",
     "scroll_area",

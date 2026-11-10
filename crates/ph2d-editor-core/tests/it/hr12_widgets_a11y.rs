@@ -40,6 +40,10 @@ use std::path::{Path, PathBuf};
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
     (
+        "image_filter.rs",
+        "o filtro de imagem do PROJETO (`ImageFilterMode`) e a porta `image_quality_for`: estado e lei, sem pintura nem nó; mora sob widget/ só para o DAG widget→project",
+    ),
+    (
         "card_field/conta.rs",
         "o parser das CONTAS do texto de um campo (`eval_number`): lógica pura, sem pintura nem nó; a semântica é a do card_field",
     ),

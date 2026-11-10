@@ -8,7 +8,7 @@ use crate::tool::PainterTool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
 use ph2d_painter_brush::{BrushSpec, Falloff};
 
-const W: u32 = 160;
+pub(super) const W: u32 = 160;
 
 fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
@@ -20,7 +20,7 @@ fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
 }
 
 /// Um traço de Impasto REAL (cor + relevo) sobre branco, já no Transform.
-fn relief_in_transform() -> (PainterTool, crate::tool::RtLayerId) {
+pub(super) fn relief_in_transform() -> (PainterTool, crate::tool::RtLayerId) {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (W * W * 4) as usize], W, W);
     let b = BrushSpec {
@@ -50,7 +50,7 @@ fn relief_in_transform() -> (PainterTool, crate::tool::RtLayerId) {
     (t, layer)
 }
 
-fn drag(t: &mut PainterTool, from: [f32; 2], to: [f32; 2]) {
+pub(super) fn drag(t: &mut PainterTool, from: [f32; 2], to: [f32; 2]) {
     t.on_canvas_pointer(cp(from, PointerPhase::Down));
     t.on_canvas_pointer(cp(to, PointerPhase::Move));
     t.on_canvas_pointer(cp(to, PointerPhase::Up));

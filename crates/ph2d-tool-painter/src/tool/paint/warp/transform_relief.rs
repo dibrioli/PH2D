@@ -155,11 +155,17 @@ impl PainterTool {
     }
 
     /// `over` do corpo sobre `dirty`: `locate(x, y)` diz onde o texel lê o patch (`None` = só a base).
+    /// B06.A2: escreve direto nos planos forkados, em faixas de linhas disjuntas (o mesmo bit em
+    /// qualquer nº de fios; oráculo serial em `transform_relief_oracle_tests.rs`).
     fn compose_floating_relief(
         &mut self,
         dirty: Region,
-        locate: &dyn Fn(u32, u32) -> Option<[f32; 2]>,
+        locate: &(dyn Fn(u32, u32) -> Option<[f32; 2]> + Sync),
     ) {
+        #[cfg(test)]
+        if oracle_tests::pelo_oraculo() {
+            return self.compose_floating_relief_serial(dirty, locate);
+        }
         if !self.paint.warp.affect_relief {
             return;
         }
@@ -178,84 +184,74 @@ impl PainterTool {
         if self.layers.active() != Some(fr.layer) || fr.h.len() != n {
             return;
         }
-
-        // Uma passada, três planos: a cobertura composta é o PESO das outras duas, então computá-la
-        // aqui e reusá-la é o que impede as três de discordarem sobre quanta tinta há num texel.
-        let mut out_h = vec![0.0f32; (dirty.w * dirty.h) as usize];
-        let mut out_c = vec![0u8; (dirty.w * dirty.h) as usize];
-        let mut out_m = vec![[0u8; 7]; (dirty.w * dirty.h) as usize];
-        for ry in 0..dirty.h {
-            let dy = dirty.y + ry;
-            for rx in 0..dirty.w {
-                let dx = dirty.x + rx;
-                let gi = (dy * w + dx) as usize;
-                let oi = (ry * dirty.w + rx) as usize;
-                // O lado da BASE: o que ficou para trás quando o patch subiu.
-                let cb = f32::from(fr.c_base.as_ref().map_or(0, |v| v[gi])) / 255.0;
-                let (hb, mb) = (fr.h[gi], fr.m[gi]);
-                let (cp, hp, mp) = if let Some(sp) = locate(dx, dy) {
-                    (
-                        f32::from(bilinear_u8(&fr.c_patch, w, h, sp[0], sp[1])) / 255.0,
-                        bilinear_f32(&fr.h, w, h, sp[0], sp[1]),
-                        bilinear_mat(&fr.m, w, h, sp[0], sp[1]),
-                    )
-                } else {
-                    (0.0, 0.0, [0u8; 7])
-                };
-                // `over`, com a COBERTURA no lugar do alfa — a mesma lei que a cor usa uma linha ao lado.
-                let back = cb * (1.0 - cp);
-                let total = cp + back;
-                out_c[oi] = (total * 255.0).round().clamp(0.0, 255.0) as u8;
-                if total > 0.0 {
-                    out_h[oi] = ((hp * cp + hb * back) / total).clamp(-H_MAX, H_MAX);
-                    for c in 0..7 {
-                        out_m[oi][c] = ((f32::from(mp[c]) * cp + f32::from(mb[c]) * back) / total)
-                            .round()
-                            .clamp(0.0, 255.0) as u8;
-                    }
-                }
-                // …e onde não sobrou tinta nenhuma o texel fica em zero: cobertura zero é *não há tinta
-                // aqui*, e uma altura órfã ali é um número que a luz não pesa e que o próximo verbo lê.
-            }
-        }
-
         let layer = fr.layer;
         let area = Some(dirty);
-        if let Some(entry) = self.heights.get_mut(&layer)
-            && entry.len() == n
-        {
-            let dst = super::super::plane_fork::fork_heights(
-                entry,
-                &self.undo.write_state,
-                layer,
-                (w, h),
-                area,
-            );
-            blit(dst, &out_h, dirty, w);
-        }
-        if let Some(entry) = self.covers.get_mut(&layer)
-            && entry.len() == n
-        {
-            let dst = super::super::plane_fork::fork_covers(
-                entry,
-                &self.undo.write_state,
-                layer,
-                (w, h),
-                area,
-            );
-            blit(dst, &out_c, dirty, w);
-        }
-        if let Some(entry) = self.mats.get_mut(&layer)
-            && entry.len() == n
-        {
-            let dst = super::super::plane_fork::fork_mats(
-                entry,
-                &self.undo.write_state,
-                layer,
-                (w, h),
-                area,
-            );
-            blit(dst, &out_m, dirty, w);
+        let fork = super::super::plane_fork::fork_heights;
+        let win = &self.undo.write_state;
+        let dh = self
+            .heights
+            .get_mut(&layer)
+            .filter(|e| e.len() == n)
+            .map(|e| fork(e, win, layer, (w, h), area).as_mut_slice());
+        let dc = self
+            .covers
+            .get_mut(&layer)
+            .filter(|e| e.len() == n)
+            .map(|e| {
+                super::super::plane_fork::fork_covers(e, win, layer, (w, h), area).as_mut_slice()
+            });
+        let dm = self.mats.get_mut(&layer).filter(|e| e.len() == n).map(|e| {
+            super::super::plane_fork::fork_mats(e, win, layer, (w, h), area).as_mut_slice()
+        });
+        let wu = w as usize;
+        let fr = &fr;
+        let band = |y0: u32,
+                    bh: &mut Option<&mut [f32]>,
+                    bc: &mut Option<&mut [u8]>,
+                    bm: &mut Option<&mut [MaterialBytes]>,
+                    nrows: u32| {
+            for ry in 0..nrows {
+                let dy = y0 + ry;
+                for rx in 0..dirty.w {
+                    let dx = dirty.x + rx;
+                    let gi = (dy * w + dx) as usize;
+                    let li = (ry * w + dx) as usize;
+                    let (oh, oc, om) = texel(fr, w, h, gi, locate(dx, dy));
+                    if let Some(p) = bh.as_deref_mut() {
+                        p[li] = oh;
+                    }
+                    if let Some(p) = bc.as_deref_mut() {
+                        p[li] = oc;
+                    }
+                    if let Some(p) = bm.as_deref_mut() {
+                        p[li] = om;
+                    }
+                }
+            }
+        };
+        let bands = bands_for(dirty);
+        let rpb = (dirty.h as usize).div_ceil(bands.max(1)).max(1);
+        let (vh, vc, vm) = (
+            faixas(dh, dirty, wu, rpb),
+            faixas(dc, dirty, wu, rpb),
+            faixas(dm, dirty, wu, rpb),
+        );
+        let jobs: Vec<_> = vh.into_iter().zip(vc).zip(vm).enumerate().collect();
+        let band = &band;
+        let run = |(bi, ((mut bh, mut bc), mut bm)): (usize, _)| {
+            let y0 = dirty.y + (bi * rpb) as u32;
+            let nrows = (dirty.y + dirty.h - y0).min(rpb as u32);
+            band(y0, &mut bh, &mut bc, &mut bm, nrows);
+        };
+        if jobs.len() <= 1 {
+            jobs.into_iter().for_each(run);
+        } else {
+            std::thread::scope(|s| {
+                let hs: Vec<_> = jobs.into_iter().map(|j| s.spawn(move || run(j))).collect();
+                for h in hs {
+                    h.join().expect("transform relief band panicked");
+                }
+            });
         }
         // A luz lê a VIZINHANÇA de um texel (a normal é diferença central), então um texel logo fora da
         // caixa é iluminado por uma inclinação que mudou dentro dela — o mesmo crescimento de 1 que o
@@ -266,12 +262,69 @@ impl PainterTool {
     }
 }
 
-/// Copiar um bloco `dirty`-shaped de volta para o plano canvas-shaped.
-fn blit<T: Copy>(dst: &mut [T], src: &[T], dirty: Region, w: u32) {
-    for ry in 0..dirty.h {
-        let dy = dirty.y + ry;
-        let row = ((dy * w + dirty.x) as usize)..((dy * w + dirty.x + dirty.w) as usize);
-        let sr = ((ry * dirty.w) as usize)..(((ry + 1) * dirty.w) as usize);
-        dst[row].copy_from_slice(&src[sr]);
+/// As linhas de `dirty` de um plano (largura inteira), partidas em faixas de `rpb` linhas.
+fn faixas<T>(o: Option<&mut [T]>, dirty: Region, wu: usize, rpb: usize) -> Vec<Option<&mut [T]>> {
+    let n = (dirty.h as usize).div_ceil(rpb);
+    match o {
+        Some(p) => p[dirty.y as usize * wu..(dirty.y + dirty.h) as usize * wu]
+            .chunks_mut(rpb * wu)
+            .map(Some)
+            .collect(),
+        None => (0..n).map(|_| None).collect(),
     }
 }
+
+/// Quantas faixas: a mesma régua da cor (`for_dirty_rows_parallel`: série abaixo de 2^17 texels).
+fn bands_for(dirty: Region) -> usize {
+    #[cfg(test)]
+    if let Some(n) = oracle_tests::faixas_forcadas() {
+        return n;
+    }
+    const PARALLEL_MIN_AREA: usize = 1 << 17;
+    if (dirty.w as usize * dirty.h as usize) < PARALLEL_MIN_AREA || dirty.h <= 1 {
+        return 1;
+    }
+    std::thread::available_parallelism()
+        .map(std::num::NonZero::get)
+        .unwrap_or(1)
+        .clamp(1, dirty.h as usize)
+}
+
+/// Um texel do `over` do corpo, com a COBERTURA no lugar do alfa — a mesma lei que a cor usa.
+/// Onde não sobra tinta o texel fica em zero (cobertura zero é *não há tinta aqui*).
+fn texel(
+    fr: &FloatingRelief,
+    w: u32,
+    h: u32,
+    gi: usize,
+    sp: Option<[f32; 2]>,
+) -> (f32, u8, MaterialBytes) {
+    let cb = f32::from(fr.c_base.as_ref().map_or(0, |v| v[gi])) / 255.0;
+    let (hb, mb) = (fr.h[gi], fr.m[gi]);
+    let (cp, hp, mp) = if let Some(sp) = sp {
+        (
+            f32::from(bilinear_u8(&fr.c_patch, w, h, sp[0], sp[1])) / 255.0,
+            bilinear_f32(&fr.h, w, h, sp[0], sp[1]),
+            bilinear_mat(&fr.m, w, h, sp[0], sp[1]),
+        )
+    } else {
+        (0.0, 0.0, [0u8; 7])
+    };
+    let back = cb * (1.0 - cp);
+    let total = cp + back;
+    let oc = (total * 255.0).round().clamp(0.0, 255.0) as u8;
+    let (mut oh, mut om) = (0.0f32, [0u8; 7]);
+    if total > 0.0 {
+        oh = ((hp * cp + hb * back) / total).clamp(-H_MAX, H_MAX);
+        for c in 0..7 {
+            om[c] = ((f32::from(mp[c]) * cp + f32::from(mb[c]) * back) / total)
+                .round()
+                .clamp(0.0, 255.0) as u8;
+        }
+    }
+    (oh, oc, om)
+}
+
+#[cfg(test)]
+#[path = "transform_relief_oracle_tests.rs"]
+mod oracle_tests;

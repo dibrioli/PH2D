@@ -46,7 +46,11 @@ impl PainterTool {
 
     /// O que a luz do relevo lê além dos campos marcados: a chave da imagem aplicada (`tool/aplicada.rs`).
     pub(crate) fn chave_da_luz(&self) -> (SubstrateKey, impasto_rig::LightRig, bool) {
-        (self.substrate_key(), self.paint.impasto_rig, self.impasto_visible())
+        (
+            self.substrate_key(),
+            self.paint.impasto_rig,
+            self.impasto_visible(),
+        )
     }
 
     /// Stamp an interactive preview batch (Drag Dot / Anchored = 1 dab, Line = N): restore the
@@ -99,6 +103,10 @@ impl PainterTool {
         self.undo.marca.recomeca_os_discos();
         let restore_us = t_restore.elapsed().as_micros() as u64;
         let t_relief = std::time::Instant::now();
+        // B06.7: a pegada do relevo que sai pode passar a da cor restaurada; publica-se a união.
+        if let Some(velho) = self.paint.relief.stroke_relief_bbox {
+            self.mark_dirty(velho);
+        }
         // The pixels were just restored to their pre-preview state and the WHOLE shape is about to be
         // re-stamped — so the relief has to be restored too. Without this the height envelope keeps the
         // ridge of every intermediate shape the artist dragged through, and a curve leaves a fan of

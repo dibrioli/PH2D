@@ -29,9 +29,9 @@
 /// contabilidade do re-stamp — quem restaura a pegada MAIOR anterior não a une ao retângulo — e o
 /// dono daquele caminho é quem deve fechá-la.
 ///
-/// Não afirma nada; IMPRIME. `cargo test -p ph2d-tool-painter --release the_window_premise -- --ignored --nocapture`
+/// B06.7 (DF-59f): o re-carimbo une ao rect publicado a pegada do relevo que descasca
+/// (`stamp_preview.rs`); desde então é GATE: zero texels fora em todas as cenas (red visto: 4 → 0).
 #[test]
-#[ignore = "measurement, not a gate — run explicitly"]
 fn the_window_premise_is_measured_not_assumed() {
     use crate::tool::PainterTool;
     use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
@@ -101,6 +101,7 @@ fn the_window_premise_is_measured_not_assumed() {
     }
 
     println!("[window-premise] cena                        claim              fora  dcov   dh");
+    let fora = std::cell::RefCell::new(Vec::new());
     let probe = |name: &str, build: &dyn Fn() -> PainterTool, act: &dyn Fn(&mut PainterTool)| {
         let mut t = build();
         let _ = t.take_preview_dirty(); // zera a reivindicação anterior
@@ -119,6 +120,7 @@ fn the_window_premise_is_measured_not_assumed() {
             format!("{x},{y} {w}x{h}")
         });
         println!("[window-premise] {name:<28} {c:<18} {n:>5} {dc:>5} {dh:>6.3}  (dirty={dirty})");
+        fora.borrow_mut().push((name.to_string(), n));
     };
 
     // CONTROLE: um traço comum. Aqui a premissa TEM de valer.
@@ -172,6 +174,15 @@ fn the_window_premise_is_measured_not_assumed() {
         &|t| {
             t.on_canvas_pointer(cp([50.0, 48.0], PointerPhase::Move));
         },
+    );
+    let fora = fora.into_inner();
+    assert!(
+        fora.iter().any(|(n, _)| n.starts_with("drag dot")),
+        "a cena do re-carimbo tem de montar: {fora:?}"
+    );
+    assert!(
+        fora.iter().all(|&(_, n)| n == 0),
+        "texels de relevo mudaram FORA do rect publicado: {fora:?}"
     );
 }
 

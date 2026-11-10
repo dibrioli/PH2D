@@ -575,3 +575,8 @@ impl PainterTool {
         self.recompoe_a_pilha(camadas);
     }
 }
+
+// A prancha de B24.1/B24.2 (o Blur da pilha numa camada transparente, nos 3 fundos).
+#[cfg(test)]
+#[path = "prancha_b24_tests.rs"]
+mod prancha_b24_tests;

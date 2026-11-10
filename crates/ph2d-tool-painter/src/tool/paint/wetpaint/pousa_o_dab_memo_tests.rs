@@ -14,8 +14,11 @@ thread_local! {
 }
 
 fn pinta(sem_memo: bool, pincel: &str, tamanho: f32) -> (Vec<u8>, usize) {
-    let _vez = (!CONTANDO.with(std::cell::Cell::get))
-        .then(|| CONTAGEM.lock().unwrap_or_else(std::sync::PoisonError::into_inner));
+    let _vez = (!CONTANDO.with(std::cell::Cell::get)).then(|| {
+        CONTAGEM
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    });
     SEM_MEMO_BASE.with(|s| s.set(sem_memo));
     MEMOS_BASE.with(|n| n.set(0));
     let mut t = m::tela(320, 160, pincel, tamanho);
@@ -60,7 +63,9 @@ fn a_ponta_das_cerdas_com_a_silhueta_base_guardada_da_a_tela_do_oraculo_ao_byte(
 
 /// B14c-cont3: a tela e as leituras da silhueta base `(avaliadas, as que deram 0)`, com ou sem o corte além de `t = 1`.
 fn pinta_contando(sem_corte: bool, pincel: &str, tamanho: f32) -> (Vec<u8>, [u64; 3]) {
-    let _vez = CONTAGEM.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _vez = CONTAGEM
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     CONTANDO.with(|c| c.set(true));
     super::SEM_CORTE_FORA.with(|s| s.set(sem_corte));
     crate::wet_diag::CONTA_SIL.store(true, std::sync::atomic::Ordering::Relaxed);

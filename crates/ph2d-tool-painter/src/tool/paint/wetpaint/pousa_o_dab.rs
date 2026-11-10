@@ -28,7 +28,7 @@ fn com_corte_fora() -> bool {
         !SEM_CORTE_FORA.with(std::cell::Cell::get)
     }
     #[cfg(not(test))]
-    true
+    !crate::wet_diag::SIL_SEM_CORTE.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 fn com_memo_base() -> bool {
@@ -381,7 +381,10 @@ pub(super) fn pousa_o_dab(
     let (folga_ponta, desliza) = ponta.as_ref().map_or((0.0, 0.0), |p| {
         let n = relevo_dab.or(fios_dab).expect("a ponta tem fios").normal();
         let a = p.alcance_px() as f32 * 1.001 * inv_r;
-        (lado, fp_raio.falloff_t(n[1] as f32 * a, -n[0] as f32 * a) * 1.001)
+        (
+            lado,
+            fp_raio.falloff_t(n[1] as f32 * a, -n[0] as f32 * a) * 1.001,
+        )
     });
     let sil = |cx: i32, cy: i32| -> f64 {
         if fora(cx, cy, folga_ponta, desliza) {

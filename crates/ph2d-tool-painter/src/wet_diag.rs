@@ -350,6 +350,9 @@ pub fn note_stamp(dabs: usize, deposit_ms: f32, composite_ms: f32) {
 /// Liga a contagem da silhueta do dab (B14c; só a sonda `mede_o_dab` a liga — desligada custa uma leitura relaxada).
 pub static CONTA_SIL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static SIL: [AtomicU64; 6] = [const { AtomicU64::new(0) }; 6];
+/// A variante A da sonda (`mede_o_dab`, `SEM_CORTE=1`): toda célula da caixa da silhueta avaliada, sem o corte além da
+/// pegada — o A/B em instruções no MESMO binário. Lida 1× por dab.
+pub static SIL_SEM_CORTE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// Uma leitura da silhueta, no nível `k`: `0` a do motor · `1` a da ponta (memo falhada) · `2` a base · `3` os
 /// sub-pontos do AA da base · `4` as do motor FORA da caixa da memo · `5` as da base que dão `0`.

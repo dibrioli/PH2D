@@ -192,6 +192,9 @@ fn preset(rondas: usize) {
     // `CONTA_SIL=1`: as leituras da silhueta por dab (motor · ponta · base · sub-pontos do AA) — o relógio fica sem valor.
     let conta = std::env::var("CONTA_SIL").is_ok_and(|v| v == "1");
     wet_diag::CONTA_SIL.store(conta, std::sync::atomic::Ordering::Relaxed);
+    // `SEM_CORTE=1`: a variante A do A/B em instruções (o mesmo binário, sem o corte da silhueta além da pegada).
+    let sem_corte = std::env::var("SEM_CORTE").is_ok_and(|v| v == "1");
+    wet_diag::SIL_SEM_CORTE.store(sem_corte, std::sync::atomic::Ordering::Relaxed);
     let mut am = Vec::new();
     for ronda in 0..=rondas {
         let (x0, y) = (300.0, 300.0 + (500.0 * ronda as f32) % 1600.0);

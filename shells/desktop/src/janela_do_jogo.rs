@@ -48,6 +48,30 @@ impl crate::App {
         hero.is_some_and(|h| h.view.palco_do_jogo)
     }
 
+    /// B23.2: junta os produtores do quadro e traduz a lei ([`ph2d_app_host::quadro`]) no laço.
+    pub(crate) fn pede_o_quadro(&mut self, event_loop: &ActiveEventLoop) {
+        use ph2d_app_host::quadro::{Produtor as P, no_laco};
+        let mut ativos = Vec::new();
+        let jogo = self.undo.janela_do_jogo.is_some() || self.no_palco();
+        let conduz = ph2d_app_painter::macro_track::caminho::a_cena_conduz_o_ponteiro();
+        let mut tem = vec![(jogo, P::Play), (self.playhead.is_playing(), P::Animacao)];
+        let rede = ph2d_app_board::live::ao_vivo();
+        tem.extend([(conduz, P::Smoke), (rede, P::Rede)]);
+        if let Some(g) = self.gfx.as_mut() {
+            ph2d_app_painter::painter_bridge_queries::quer_quadro(&mut g.tools, &mut ativos);
+            let docs = g.hero_screen.as_ref().map(|h| &h.documents);
+            tem.push((docs.is_some_and(|d| d.surfaces().wants_frame()), P::Aba));
+            tem.push((!g.toasts.is_empty() || !g.jobs.is_empty(), P::Toast));
+            tem.push((g.ui_machines.values().any(|m| m.is_animating()), P::UiAnima));
+        }
+        ativos.extend(tem.into_iter().filter(|(s, _)| *s).map(|(_, p)| p));
+        if let Some(t) = no_laco(|l| l.acorda(&ativos, std::time::Instant::now())) {
+            return event_loop.set_control_flow(winit::event_loop::ControlFlow::WaitUntil(t));
+        }
+        self.host.as_ref().map(PlatformHost::request_redraw);
+        event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
+    }
+
     /// A CRT da vista no palco (P13 §11), na grade do projecto: `None` fora dele ou desligada.
     pub(crate) fn crt_do_palco(&self, j: ph2d_host::WindowSize) -> Option<palco::Pedido> {
         let g = self.gfx.as_ref()?;

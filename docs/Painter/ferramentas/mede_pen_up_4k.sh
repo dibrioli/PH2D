@@ -177,6 +177,31 @@ if [ "$1" = perf ]; then
   exit 0
 fi
 
+# ── PARADO (B23, 10/11): CPU do processo com o app aberto e sem entrada, SEM smoke (o smoke segura o laço contínuo).
+# A × B no MESMO binário, intercalados: a pedido (omissão) × `PH2D_QUADRO_A_PEDIDO=0` (o laço contínuo de antes).
+# uso: bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/mede_pen_up_4k.sh parado [rodadas] [segundos] [binario]
+if [ "$1" = parado ]; then
+  N=${2:-3}; SEG=${3:-10}; BIN=${4:-$R/target/smoke/ph2d-host-desktop}; D=${DISPLAY_MATRIZ:-:97}
+  PLACA_ENV=(VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.json VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
+    MESA_VK_WSI_DEBUG=sw __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
+  Xvfb $D -screen 0 1600x1000x24 >/dev/null 2>&1 & XV=$!
+  sleep 1
+  cd "$R"
+  tiques() { awk '{print $14+$15}' "/proc/$1/stat"; }
+  for i in $(seq 1 "$N"); do for modo in pedido continuo; do
+    VAR=(); [ $modo = continuo ] && VAR=(PH2D_QUADRO_A_PEDIDO=0)
+    env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$S/home_parado "${PLACA_ENV[@]}" "${VAR[@]}" "$BIN" > "$S/parado_$modo.log" 2>&1 &
+    APP=$!; sleep 8
+    a=$(tiques $APP); sleep "$SEG"; b=$(tiques $APP)
+    echo "[parado] rodada=$i modo=$modo cpu=$(( (b - a) * 100 / $(getconf CLK_TCK) / SEG ))% de um núcleo em ${SEG}s"
+    kill -INT $APP 2>/dev/null
+    for _ in $(seq 1 40); do kill -0 $APP 2>/dev/null || break; sleep 0.25; done
+    kill -KILL $APP 2>/dev/null; wait $APP 2>/dev/null
+  done; done
+  kill $XV
+  exit 0
+fi
+
 # ── ÓLEO (10/11): o Real Oil não tem porta na cena Composite; mede-se pela cena do FPS (PH2D_WETPAINT_SMOKE=3, o app
 # risca sozinho: Dabber com Real Oil, seca, Wet Drip, corre; 6 rodadas; período e imagens da água por segundo).
 # uso: bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/mede_pen_up_4k.sh oleo <lado> [binario]

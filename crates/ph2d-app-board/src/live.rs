@@ -90,8 +90,14 @@ fn random() -> u64 {
 }
 
 fn waker() -> net::Waker {
-    // A app redesenha a cada imagem (`ControlFlow::Poll`): não há nada a acordar.
+    // A sessão viva segura o laço a pedido por [`ao_vivo`] (B23.2): não há nada a acordar.
     Arc::new(|| {})
+}
+
+/// B23.2: uma sessão ao vivo ou uma procura na rede: o laço a pedido não dorme sobre a rede.
+#[must_use]
+pub fn ao_vivo() -> bool {
+    STATE.with_borrow(|st| st.live.is_some() || st.discovery.is_some())
 }
 
 /// ⭐ Uma vez por imagem (chamado por `io::service`).

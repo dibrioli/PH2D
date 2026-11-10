@@ -896,6 +896,11 @@ impl ApplicationHandler for App {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
+        ph2d_app_host::quadro::no_laco(|l| match event {
+            WindowEvent::RedrawRequested => {}
+            WindowEvent::Focused(f) => l.foco(f),
+            _ => l.entrada(Instant::now()),
+        });
         if self.da_outra_janela(id, &event) {
             return;
         }
@@ -952,8 +957,14 @@ impl ApplicationHandler for App {
         }
     }
 
-    fn about_to_wait(&mut self, _: &ActiveEventLoop) {
+    fn new_events(&mut self, _: &ActiveEventLoop, cause: winit::event::StartCause) {
+        if matches!(cause, winit::event::StartCause::ResumeTimeReached { .. }) {
+            self.host.as_ref().map(PlatformHost::request_redraw);
+        }
+    }
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         self.recovery_tick();
+        self.pede_o_quadro(event_loop);
     }
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
         crate::input_drop::release_wayland_receivers();
@@ -976,7 +987,7 @@ fn main() {
     // fórmula (`math_available()` falso). Antes do `App::new()` e nesta thread: o host é `thread_local`.
     ph2d_token_math::install();
     let event_loop = EventLoop::new().expect("create EventLoop");
-    event_loop.set_control_flow(ControlFlow::Poll);
+    event_loop.set_control_flow(ControlFlow::Wait);
 
     let mut app = App::new();
     init::banner();

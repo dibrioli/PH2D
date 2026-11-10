@@ -213,6 +213,15 @@ impl Laco {
     }
 }
 
+thread_local! {
+    static LACO: std::cell::RefCell<Laco> = std::cell::RefCell::new(Laco::do_ambiente());
+}
+
+/// O [`Laco`] do fio da UI: a shell dá-lhe os eventos da janela e os produtores do quadro.
+pub fn no_laco<R>(f: impl FnOnce(&mut Laco) -> R) -> R {
+    LACO.with_borrow_mut(f)
+}
+
 #[cfg(test)]
 #[path = "quadro_tests.rs"]
 mod tests;

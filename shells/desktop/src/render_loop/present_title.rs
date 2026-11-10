@@ -6,7 +6,7 @@ use crate::AppGfx;
 use ph2d_host::PlatformHost;
 
 impl crate::App {
-    /// Refresca o título quando o estado mudou, e pede o redesenho contínuo.
+    /// Refresca o título quando o estado mudou.
     pub(super) fn present_title_and_redraw(&mut self) {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
@@ -41,10 +41,6 @@ impl crate::App {
             host.window().set_title(&title);
             self.title_dirty = false;
         }
-
-        // Continuous redraw (paired with `ControlFlow::Poll` in main.rs). If mouse stutter returns:
-        // (1) per-frame text shaping (`ph2d-text` `layout_cache`); (2) present saturation —
-        // Config → Display → Immediate (`ph2d-gpu/src/surface.rs` `set_present_mode`).
-        host.request_redraw();
+        // O quadro seguinte pede-o o `about_to_wait`, pela lei do quadro a pedido (B23.2).
     }
 }

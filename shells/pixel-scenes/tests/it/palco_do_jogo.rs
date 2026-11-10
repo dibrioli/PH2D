@@ -49,7 +49,7 @@ fn o_pixel_sprite_aparece_no_palco_do_jogo() {
     // Sem espaços: o `rustfmt` parte a cadeia em linhas e o elo continua o mesmo.
     let compacto: String = inteiro.split_whitespace().collect();
     assert!(
-        compacto.contains("ifself.palco{self.order.pixel_ids()}")
+        compacto.contains(concat!("if", "self.palco{self.order.pixel_ids()}"))
             && compacto.contains("ph2d_app_pixel::draw::art("),
         "sem faixas, o documento do palco não leva a arte do Pixel:\n{inteiro}"
     );

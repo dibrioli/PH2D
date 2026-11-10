@@ -64,7 +64,7 @@ impl CellText for CodeCells<'_> {
         });
         let row_y = y + (h - self.view.metrics().line_h) * 0.5;
         // A medida é `chars × advance`; o corte do `paint_mono` soma os avanços da letra — à justa,
-        // o arredondamento largava a última (medido na foto da cena 14: «tru», «-»).
+        // o arredondamento largava a última (medido na foto da cena 14: o «true» sem o «e», «-»).
         let right = right + ph2d_tokens::StrokeToken::Hairline.px();
         self.view
             .paint_mono(ts, scene, &pal, text, code, x, row_y, right);

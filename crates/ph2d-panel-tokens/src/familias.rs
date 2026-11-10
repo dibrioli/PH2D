@@ -19,7 +19,7 @@ pub(crate) struct Familia {
 }
 
 /// As famílias de DADO, pela ordem em que aparecem na tabela.
-pub(crate) const FAMILIAS: [Familia; 8] = [
+pub(crate) const FAMILIAS: [Familia; 9] = [
     Familia {
         prefixos: &["node-cat-"],
         id: crate::ids::TOKENS_SEC_NODE_CAT,
@@ -60,6 +60,12 @@ pub(crate) const FAMILIAS: [Familia; 8] = [
         prefixos: &["categorical-"],
         id: crate::ids::TOKENS_SEC_CATEGORICAL,
         rotulo: "panel.tokens.family.categorical",
+    },
+    Familia {
+        // A prévia do jogo (`preview-*`) é a da tela de controles do Input Map, e vem logo a seguir.
+        prefixos: &["input-map-", "preview-"],
+        id: crate::ids::TOKENS_SEC_INPUT_MAP,
+        rotulo: "panel.tokens.family.input_map",
     },
 ];
 

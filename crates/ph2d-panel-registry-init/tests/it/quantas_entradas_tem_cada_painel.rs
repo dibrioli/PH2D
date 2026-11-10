@@ -2313,7 +2313,11 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    uma cor nova de uma família listada entra dobrada; uma família nova entra na tabela dela.
     // ⬇️ `2 302 → 2 012` em 2026-11-04 (NovaUI D1, em cartões), MEDIDO: a linha de cartão mede mais (`2 871`
     //    com a Escala aberta), e a cura é a Escala nascer dobrada.
-    ("tokens", 2012.0),
+    // ⬆️ `2 012 → 2 043` em 2026-11-10 (InputMap onda 3), MEDIDO: a linha abria `2 197` — cinco cores de dado
+    //    (`input-map-*`, `preview-*`) entraram na família recolhida «Input Map» (`−154`); o que fica é UMA fileira de
+    //    cromo à vista, `danger-press` (o × premido, mais fundo que `danger` em todo tema), ao lado de `danger` e
+    //    `danger-soft`: `31 px` exactos (sonda com ela dobrada = `2 012`). Dobrar os estados esconderia cromo.
+    ("tokens", 2043.0),
     // ⬆️ `1 239 → 1 262` em 2026-10-04 (spec/06 F3 ▸ Vector, o OBJECTO vetorial): a fileira TOOL
     //    volta a mostrar a grelha INTEIRA — o Edit do objecto tem todas as ferramentas (escolha do
     //    dono: *«o menu exatamente como era antigamente»*). É o valor de antes do filtro por modo.

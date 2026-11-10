@@ -459,6 +459,7 @@ fn tabela(key: &str) -> &'static str {
         "panel.tokens.family.code" => "Code Editor",
         "panel.tokens.family.kanban" => "Kanban",
         "panel.tokens.family.categorical" => "Category Colors",
+        "panel.tokens.family.input_map" => "Input Map",
         // O readout de CONTRASTE (plano UI/UX W4b). ⚠️ O nome do CRITÉRIO ("WCAG 2.2 AA 1.4.3")
         // não passa por aqui: ele é o endereço de uma norma, e traduzi-lo tornaria a coisa que o
         // artista precisa de PROCURAR impossível de procurar — a mesma lei que mantém as chaves

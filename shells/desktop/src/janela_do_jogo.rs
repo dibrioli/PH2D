@@ -116,6 +116,10 @@ impl crate::App {
                 importa_som: ph2d_app_components::sound_project::import_for_scene,
             };
             let jogador = ph2d_app_game::smoke::montar(cx.sim, portas, nivel).to_bits();
+            let aba = ph2d_app_game::smoke::input_map::codigo(nivel);
+            if let (Some(c), Some(hero)) = (aba, cx.hero_screen.as_deref_mut()) {
+                ph2d_app_input_map::smoke::arma(hero, c);
+            }
             if let Some(hero) = cx.hero_screen.filter(|_| matches!(nivel, 2 | 4 | 5)) {
                 hero.gizmo.replace_selection(Some(jogador)); // o Inspector abre no personagem
                 hero.store

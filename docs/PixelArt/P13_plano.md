@@ -562,3 +562,28 @@ Mutações restauradas (`grep -c` conferido).
 Empate `<` × `<=` sobrevive (medida zero). Custo GPU do passe com rampa: NÃO medido (o ramo é um `if` uniforme: sem rampa, 0).
 
 **Falta (por ordem; tudo ficheiros que hoje têm hunks de outros agentes):** (1) o DADO «Light: Smooth · Palette»: campo `PaletteRamps.luz_na_paleta` (4 literais a acertar) + registo no `codec/doc.rs` (MINOR 9, ainda não publicado), escrito por `DocOp::SetRamps` (sem Op nova); (2) `PixelSpriteCard.luz_na_paleta` + `PixelRequest::LuzNaPaleta { doc, on }` (`ph2d-editor-core/pixel_panel/mod.rs`), a linha no cartão como a `cards_pixel_pivot.rs` (`ph2d-panel-inspector`, ficheiro novo `cards_pixel_luz.rs`) e as chaves em `ph2d-i18n/src/pixel_luz_rampa.rs` (`card.insp.pixel_light` «Light», `.smooth` «Smooth», `.palette` «Palette», `_tip` «Palette keeps a lit sprite inside its color ramps: light picks a brighter or darker step instead of tinting the color.»); (3) app-pixel: o braço do pedido em `panel.rs` (~4 linhas) e `luz::faixa_rampa` (~3 linhas: `objetos` + `ph2d_pixel_luz::banda_rampa` + `RampaDaFaixa`); (4) shell `fase_vector_bands_doc.rs`: `normais.rampas.cenas.push(…)` nos dois ramos, saldo 0 trocando `normais.cenas.push(None)` por um `push` do par; (5) o ciclo de cor (t do quadro) na banda de rampa: hoje compõe sem `t` (`compose_rgba`); (6) smoke do dono e cena (próxima livre 28).
+
+### Consolidação (09/11, agente)
+
+**Índice antes:** 11 entradas staged = o U-CRT inteiro (`crt.rs`, `tests/it/crt.rs`, `pixel_crt.rs`, hunks de `event/ids/lib/paint/state`, `Cargo.toml`, `every_word`). Causa medida: o commit `b65943d66b` (U-Guias) foi montado sobre um índice anterior ao `f49547dbe8` (U-CRT) e **reverteu-o inteiro**, com a secção «### U-CRT» do plano. O staged = `f49547dbe8` byte a byte (`git diff --cached f49547dbe8` vazio). A deleção staged do `ph2d-panel-pixel-lint/tests/it/main.rs` já não estava (o ficheiro está no HEAD). Conferido por `git apply --cached --check -R` de cada commit da onda contra o índice: nenhum outro conteúdo perdido (os 3 que não aplicam são contexto mudado por commits seguintes). **Índice depois:** vazio; só os 5 `smoke_P14_*.log` por rastrear (não são da onda).
+**Plano:** a cópia de trabalho NÃO apagava o U-Pintura, só o movia para antes do U-Guias; ficou = HEAD + «### U-CRT» antes de «### U-Guias» (ordem dos commits: CRT 21:23, Guias, Lint, Pintura, Camada, L).
+
+**Commits:** `e34a7e4b57` restaura o U-CRT · `2b802f8d64` Cargo.lock (rampa ← app-pixel/pixel-gpu/ponte, guia ← ponte/render, crt ← preview) · `5ee4ca6025` i18n: as 9 tabelas Pixel sem pasta numa entrada `pixel_tabelas.rs` (`#[path]`, mesmos ficheiros em `src/` — os censos `every_word` leem-nos pelo caminho; mesma ordem de `or_else`; `pixel_slices`/`pixel_teclas` ficam: têm pasta), `lib.rs` 708 → **688**, e liga o `pixel_crt` · `badf8453d7` `mod pintura_p13` em `shells/pixel-scenes/tests/it/main.rs` (os 3 gates do U-Pintura **nunca entravam no alvo**) + fmt de `efeitos_camada.rs`/`pixel-render/lib.rs` · `eade4e03cc` costuras: `seam_pixel` passa a esperar o Push (`Smear`) no flyout do Smudge (lei do U-Pintura), import morto `snap_pixel_angle` na ponte, `component_catalog.rs` 701 → 700 (a linha `sprite_cells` do P14e; nota do 3D dobrada na tabela).
+**Compilação:** `check --tests` verde em app-pixel, host-desktop, host-pixel-scenes, panel-registry-init, panel-pixel-preview, pixel-ponte, pixel-core, pixel-io, pixel-render. Os relatados (E0502 em `guias.rs`, `outline_of`, `ColorModeChoice.metric`) já estavam curados.
+
+| Gate (por nome) | Crate | |
+|---|---|---|
+| `architecture_workspace_file_loc_cap` | editor-core | ✓ (era ✗: `component_catalog.rs` 701) |
+| `the_shell_only_shrinks_and_every_app_crate_too` (3) · `no_dependency_climbs_a_layer` | editor-core | ✓ |
+| `the_pixel_color_mode_dialog_is_alive` (6) | editor-core | ✓ |
+| `o_ink_dither_…` · `r_tres_vezes_e_o_push_…` · `o_color_mode_com_keep_ramps_…` · `shift_p_picks_…` | pixel-scenes | ✓ |
+| `guias::` (5) · `the_layer_outline_from_the_panel_…` | pixel-scenes | ✓ |
+| `seam_pixel` (45) | panel-pixel-tools | ✓ (era ✗: flyout sem Push) |
+| `o_ase_leva_rampas_ciclos_e_efeitos` · crate `ph2d-pixel-io` (76, formato) | pixel-io | ✓ |
+| crate `ph2d-pixel-core` (252, formato MINOR 9) | pixel-core | ✓ |
+| `crt::` (3) · `o_idioma_de_teste…` (8) | preview · i18n | ✓ |
+| `the_pixel_layer_effects_answer_a_real_pointer` · `quantas_entradas_tem_cada_painel` (15) · `the_window_menu_reaches_every_module` (4) · `quantas_mensagens_o_painel_escreve` (3) | registry-init | ✓ |
+| crate `ph2d-panel-registry-init` INTEIRA (motivo: registo de painel, Lint novo) | registry-init | ⚠️ sem veredito: morta (exit 144) ao fim de ~15 min, prazo da fatia; fica para o fecho/integrador |
+
+**Mutações** (à mão, `grep -c` = 1 antes, `git checkout -- <f>` + `git diff --quiet` depois): M1 Linha ⇒ `snap_pixel_angle` sangra `a_linha_com_shift_segue_a_guia` (+ o do lápis) · M2 `alvo_do_lapis` ⇒ ponteiro sangra `o_lapis_com_shift_segue_a_guia_…` · M3 R sem Push sangra `r_tres_vezes_e_o_push_…` · M4 métrica ignorada (sempre Exact RGB) sangra `o_color_mode_com_keep_ramps_…`. 4/4 vermelhas.
+**Fica:** os «Falta» de cada agente acima (janela do jogo com CRT, dado «Light: Palette» e cartão do L, tooltips do U-Pintura, ícone do Push); fmt/clippy das crates tocadas no fecho; os `smoke_P14_*.log` por rastrear são da onda P14.

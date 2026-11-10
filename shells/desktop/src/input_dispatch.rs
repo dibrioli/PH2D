@@ -162,7 +162,7 @@ impl App {
         // M14.4e: o `DroppedFile` do winit não traz posição — projecta-se o último cursor visto.
         self.last_cursor = self.last_pointer;
         // A tela «Controls» do jogador aberta é dona do ponteiro (o hover dela); no palco, só os botões do jogo.
-        if self.movimento_dos_controles() {
+        if self.movimento_dos_controles(true) {
             return;
         }
         if self.no_palco() {
@@ -232,12 +232,9 @@ impl App {
         // Motion Nodes M0.T1: `evt.button` is the REAL held button (winit's Move has none) — a
         // middle/right drag reaches editor-core with its identity (graph pan/box-select).
         self.handler.on_pointer(evt);
-        // A reparent only fires on pointer-Up (handled in on_mouse_input);
-        // Move never emits one.
+        // O reparent só sai no Up; o Move nunca o emite.
         let _ = forward_to_hero(self.gfx.as_mut(), evt);
-        // M14.7 C: advance an open gizmo drag against the latest cursor
-        // (MovePivot / scale / rotate / translate). Extracted to the
-        // `gizmo_drag` sibling to keep this dispatch hub readable.
+        // M14.7 C: o arrasto de gizmo aberto segue o cursor (pivô / escala / rotação / translação).
         self.advance_gizmo_drag();
         // W-J2: and the joint-anchor drag, which is NOT a gizmo drag — it writes
         // a body-local anchor through the bridge's door, not a `Transform`.
@@ -245,21 +242,14 @@ impl App {
         // **§12** — e a alça do gizmo de âncora, que também não é arrasto de gizmo: ela publica
         // `InspectorAnchorEdit` no barramento, a MESMA porta por onde o painel escreve.
         self.advance_anchor_gizmo_drag();
-        // W-Grab: e a MÃO, que também não é arrasto de gizmo — ela move a âncora
-        // de uma mola no solver, e o `Transform` chega pelo readback do dispatch.
-        //
-        // ⚠️⚠️ **Os três eram `impl App` e passaram a funções da crate da família** (W2/L2 Fase B).
-        // A conversão `ecrã → mundo` fica AQUI, e é o ponto inteiro: a câmera e o tamanho da
-        // janela são da shell, e o gesto só quer um ponto em mundo. ⭐ *Nenhum sexto método do
-        // `AppHost` foi preciso* — o que parecia «precisar da `App`» eram três tipos de crate de
-        // módulo que a shell por acaso segurava.
+        // W-Grab: a MÃO, a pose e o FK são da crate da física (W2/L2 Fase B); a conversão `ecrã → mundo` fica AQUI
+        // (a câmera e a janela são da shell). Os dois de POSE devolvem «autorou»: quando um quadro conta para o undo
+        // decide-se aqui.
         if let Some(gfx) = self.gfx.as_mut() {
             let window = gfx.scene_window();
             let world = gfx.camera.screen_to_world(self.last_pointer, window);
             let opts = self.physics.interaction.ik_options();
             ph2d_app_physics::body_grab::advance_body_grab(&mut gfx.physics, world);
-            // ⚠️ Os dois de POSE devolvem «autorou» e a shell é que marca o quadro: o gesto sabe
-            // *que* autorou, e *quando* um quadro conta para o diff de undo é decisão daqui.
             let autorou = ph2d_app_physics::body_pose::advance_body_pose(
                 &mut gfx.physics,
                 &mut gfx.sim,
@@ -387,7 +377,8 @@ impl App {
         self.ramo_arrasto_biblioteca(state, button);
         // O rato do JOGO (itens 6–7): com a cena a correr o clique na cena é SÓ dele (`posse_do_jogo`). Antes dele, a
         // tela «Controls» do jogador aberta é dona do clique (InputMap §4).
-        let controles = self.clique_dos_controles(state == ElementState::Pressed);
+        let principal = mapped_button == ph2d_host::PointerButton::Primary;
+        let controles = self.clique_dos_controles((state == ElementState::Pressed, principal));
         if controles || self.rato_do_jogo(mapped_button, state == ElementState::Pressed) {
             if !controles {
                 self.clique_so_do_jogo(mapped_button, state == ElementState::Pressed);
@@ -414,32 +405,18 @@ impl App {
         if self.ramo_editor_audio(kind) {
             return;
         }
-        // Was a right-click context menu (or the Fill "Fill adjust" modal) open when this click
-        // arrived? If so the click belongs to that overlay (its slider/buttons/items) — chrome dispatch
-        // in `forward_to_hero` handles it, so the canvas-consume arms below (paint / gizmo / select /
-        // pan) must NOT also fire on a click LANDING on the overlay (which sits over the canvas). The
-        // Fill modal counts as a modal exactly like the new-image dialog — without this, clicking its
-        // threshold slider started a fresh flood-fill on the canvas underneath (mirror of the
-        // new-image-modal "leaked a dab" fix). Captured now because `forward_to_hero` may close it.
+        // Um menu de contexto (ou o modal «Fill adjust») aberto ANTES do clique é dono dele: os ramos do canvas abaixo
+        // não disparam por baixo do overlay. Lido agora porque o `forward_to_hero` pode fechá-lo.
         let menu_open_before = self.menu_aberto();
-        // Colour-picker eyedropper armed when this click arrived? `forward_to_hero` services the pick
-        // (sampling the pixel) AND clears the pending flag, so by the time the consume arms below run
-        // it reads as disarmed. Capture it now so the Painter brush does NOT also paint where the user
-        // sampled — the eyedropper must inhibit the brush (the sampled click is consumed, not painted).
+        // O conta-gotas armado antes do clique (o `forward_to_hero` desarma-o): o pincel não pinta onde se amostrou.
         let eyedropper_armed_before = self
             .gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
             .is_some_and(|h| h.store.eyedropper_pending().is_some());
 
-        // ADR-0108 cutover: the Vector tool's Pen draws ONLY on empty canvas.
-        // A press over ANY UI — a docked panel body, a topbar pill, an open
-        // menu, or this tool's own Style panel controls — MUST fall through to
-        // the chrome dispatch below, never the pen; otherwise the whole UI is
-        // unclickable while drawing (can't even deactivate the tool). Guard
-        // mirrors the sprite-pick path: no panel under the cursor AND no
-        // interactive widget hit (`hit_index` covers pills / menus / panel
-        // controls; `panel_at` covers panel bodies incl. the vector panel).
+        // ADR-0108: a caneta do Vector só desenha no canvas VAZIO — sobre qualquer UI (painel, pílula, menu) o clique
+        // cai no cromo; sem painel sob o cursor E sem widget acertado (`hit_index` + `panel_at`).
         let on_canvas = self.pointer_on_canvas(evt.x, evt.y);
         if self.ramo_pixel(kind, mapped_button, on_canvas, menu_open_before) {
             return;

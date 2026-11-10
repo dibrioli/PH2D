@@ -397,3 +397,21 @@ fn fill_rule_toggle_vacates_or_fills_the_hole() {
         "EvenOdd vaza"
     );
 }
+
+/// H7 (InputMap onda 3): perder o foco esquece os modificadores — o `ModifiersChanged` do Alt solto nunca chega, e o
+/// store (a escuta do Input Map lê `alt_held`/`cmd_held`) recebe-os pela MESMA porta, o `apply_modifiers`.
+#[test]
+fn perder_o_foco_esquece_os_modificadores() {
+    use winit::keyboard::ModifiersState as M;
+    let mut app = crate::App::new();
+    crate::touch_input::set_keyboard(M::ALT | M::CONTROL);
+    app.apply_modifiers(app.effective_modifiers());
+    assert!(
+        app.modifiers.alt_key() && app.modifiers.control_key(),
+        "pré-condição"
+    );
+    app.on_focus_lost();
+    assert!(app.modifiers.is_empty(), "o Alt e o Ctrl não ficam presos");
+    app.apply_modifiers(app.effective_modifiers());
+    assert!(app.modifiers.is_empty(), "nem voltam do teclado lembrado");
+}

@@ -140,7 +140,7 @@ fn the_host_key_and_click_follow_the_screen() {
         (false, None)
     );
     assert_eq!(
-        host::click(&mut s, true, at, true),
+        host::click(&mut s, (true, true), at, true),
         (false, None),
         "fechada"
     );
@@ -155,7 +155,7 @@ fn the_host_key_and_click_follow_the_screen() {
         (true, None)
     );
     assert_eq!(
-        host::click(&mut s, false, at, false),
+        host::click(&mut s, (false, true), at, false),
         (true, None),
         "o rato é dela"
     );

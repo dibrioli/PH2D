@@ -24,6 +24,8 @@ pub struct PlaySession {
     file: Option<PathBuf>,
     resume_clock: bool,
     last: Option<Layout>,
+    /// O último ponto do ponteiro (lógico); `None` = fora da janela. O hover DERIVA dele sobre a disposição ACTUAL.
+    pointer: Option<(f32, f32)>,
     /// O smoke: nunca lê nem grava o ficheiro do jogador (sobrevive ao `start`/`stop`; só o smoke o liga).
     off_disk: bool,
 }
@@ -135,6 +137,7 @@ impl PlaySession {
             return Outcome::Ignored;
         }
         self.follow(game);
+        self.pointer_move(Some((x, y)));
         let hit = self.last.as_ref().and_then(|l| l.hit(x, y));
         let out = self.screen.click(hit);
         self.after(out, game)
@@ -146,14 +149,16 @@ impl PlaySession {
             return Outcome::Ignored;
         }
         self.follow(game);
+        self.pointer_move(Some((x, y)));
         let hit = self.last.as_ref().and_then(|l| l.hit(x, y));
         let out = self.screen.release(hit, &mut self.keys);
         self.after(out, game)
     }
 
-    /// O ponteiro mexeu (coordenadas da pintura): `true` = o alvo sob ele mudou e o quadro tem de se repintar.
-    pub fn pointer_move(&mut self, x: f32, y: f32) -> bool {
-        let hover = self.last.as_ref().and_then(|l| l.hover(x, y));
+    /// O ponteiro mexeu (coordenadas da pintura; `None` = saiu da janela): `true` = o alvo sob ele mudou.
+    pub fn pointer_move(&mut self, at: Option<(f32, f32)>) -> bool {
+        self.pointer = at;
+        let hover = at.and_then(|(x, y)| self.last.as_ref()?.hover(x, y));
         self.screen.pointer_move(hover)
     }
 
@@ -185,9 +190,14 @@ impl PlaySession {
             return;
         }
         let rows = self.rows(project);
-        let lay = crate::paint::paint(area, &rows, &self.screen, scene, text, theme);
+        // A disposição primeiro: a rolagem e o hover do ponteiro parado saem DELA, antes de pintar (D32, no quadro).
+        let lay = Layout::scrolled(area, &rows, &self.screen, text);
         self.screen.scroll_to(lay.first);
         self.last = Some(lay);
+        self.pointer_move(self.pointer);
+        if let Some(lay) = self.last.as_ref() {
+            crate::paint::paint_with(lay, &rows, &self.screen, scene, text, theme, false);
+        }
     }
 
     fn after(&mut self, out: Outcome, game: &InputMap) -> Outcome {

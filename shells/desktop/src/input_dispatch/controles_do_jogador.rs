@@ -39,21 +39,23 @@ impl crate::App {
         dela
     }
 
-    /// Aberta, a tela é dona do rato: `true` = o clique é dela.
-    pub(super) fn clique_dos_controles(&mut self, desceu: bool) -> bool {
+    /// Aberta, a tela é dona do rato: `true` = o clique é dela. `botao` = `(desceu, é o principal)`.
+    pub(super) fn clique_dos_controles(&mut self, botao: (bool, bool)) -> bool {
         let h = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref());
         let em = h.map(|h| (h.escala().to_logical(self.last_pointer), &h.input_map));
         let tocando = self.playhead.is_playing();
-        let (dela, relogio) = host::click(&mut self.components.jogador, desceu, em, tocando);
+        let (dela, relogio) = host::click(&mut self.components.jogador, botao, em, tocando);
         self.relogio_dos_controles(relogio);
         dela
     }
 
-    /// Aberta, a tela é dona do movimento: `true` = é dela. O hover acende no quadro seguinte (D32; o laço é
-    /// contínuo, `ControlFlow::Poll`, por isso o «repinta» do host não precisa de pedir quadro).
-    pub(super) fn movimento_dos_controles(&mut self) -> bool {
+    /// O ponteiro mexeu (`dentro`) ou saiu da janela (`CursorLeft`): aberta, a tela é dona do movimento (`true`). O
+    /// hover acende no quadro seguinte (D32; o laço é contínuo, `ControlFlow::Poll`, sem pedir quadro).
+    pub(crate) fn movimento_dos_controles(&mut self, dentro: bool) -> bool {
         let h = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref());
-        let em = h.map(|h| h.escala().to_logical(self.last_pointer));
+        let em = h
+            .filter(|_| dentro)
+            .map(|h| h.escala().to_logical(self.last_pointer));
         host::pointer_move(&mut self.components.jogador, em).0
     }
 

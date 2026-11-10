@@ -130,9 +130,13 @@ impl crate::App {
         }
     }
 
-    /// A janela perdeu o foco: a mão larga tudo e os menus da aba de família activa fecham.
+    /// `Focused(false)`: a janela esquece a mão — o `Up` e o `ModifiersChanged` nunca chegam quando ela vai embora.
+    /// As teclas (UMA memória, a W5 do plano 30) e os modificadores (o Alt/Ctrl/Shift do store ficavam presos na
+    /// escuta do Input Map), pela MESMA porta do evento; e os menus da aba de família activa fecham.
     pub(crate) fn on_focus_lost(&mut self) {
         self.input.apply_event(ph2d_input::Event::FocusLost);
+        crate::touch_input::set_keyboard(winit::keyboard::ModifiersState::empty());
+        self.apply_modifiers(self.effective_modifiers());
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             ph2d_editor_core::screens::hero::surface_input::dismiss_floating(hero);
         }

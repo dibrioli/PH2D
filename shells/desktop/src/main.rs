@@ -920,15 +920,8 @@ impl ApplicationHandler for App {
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
                 self.on_scale_factor_changed(scale_factor)
             }
-            // Perder o foco SOLTA as teclas de caminhada: o `Up` de uma tecla
-            // presa nunca chega quando a janela vai embora, e sem isto o player
-            // anda sozinho até alguém tocá-la de novo (W3).
-            WindowEvent::Focused(false) => {
-                // ⚠️ **UMA memória da mão, e ela larga tudo.** O `PlayerKeys` que vivia ao lado
-                // foi removido na W5 do plano 30: duas memórias divergiriam no primeiro `Up` que
-                // uma recebesse e a outra não.
-                self.on_focus_lost();
-            }
+            WindowEvent::Focused(false) => self.on_focus_lost(),
+            WindowEvent::CursorLeft { .. } => _ = self.movimento_dos_controles(false),
             WindowEvent::ModifiersChanged(mods) => self.on_modifiers_changed(mods),
             WindowEvent::Ime(ime) => self.on_ime(ime),
             WindowEvent::CursorMoved { .. }

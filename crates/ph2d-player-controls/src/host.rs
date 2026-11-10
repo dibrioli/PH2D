@@ -33,19 +33,19 @@ pub fn key(
     (out != Outcome::Ignored, s.clock_after(out, playing))
 }
 
-/// O clique: aberta, a tela é dona do rato (`.0`). O Down em `at` (lógico) escolhe nela; o Up dispara o botão
-/// premido se cai dentro dele (fora cancela).
+/// O clique: aberta, a tela é dona do rato (`.0`, qualquer botão). Só o botão PRINCIPAL (`primary`) age: o Down em
+/// `at` (lógico) escolhe nela; o Up dispara o botão premido se cai dentro dele (fora cancela).
 #[must_use]
 pub fn click(
     s: &mut PlaySession,
-    down: bool,
+    (down, primary): (bool, bool),
     at: Option<((f32, f32), &InputMap)>,
     playing: bool,
 ) -> (bool, Clock) {
     if !s.screen().is_open() {
         return (false, None);
     }
-    let Some(((x, y), map)) = at else {
+    let Some(((x, y), map)) = at.filter(|_| primary) else {
         return (true, None);
     };
     let out = if down {
@@ -56,12 +56,11 @@ pub fn click(
     (true, s.clock_after(out, playing))
 }
 
-/// O movimento do ponteiro em `at` (lógico): aberta, a tela é dona dele. `(dela, repinta)` — `repinta` = o alvo
-/// sob o ponteiro mudou (o hover acende no quadro, D32).
+/// O movimento do ponteiro em `at` (lógico; `None` = saiu da janela). O ponto guarda-se sempre (a tela que abre
+/// com o ponteiro parado acende o que está sob ele); aberta, a tela é dona dele. `(dela, repinta)` — `repinta` = o
+/// alvo sob o ponteiro mudou (o hover acende no quadro, D32).
 #[must_use]
 pub fn pointer_move(s: &mut PlaySession, at: Option<(f32, f32)>) -> (bool, bool) {
-    if !s.screen().is_open() {
-        return (false, false);
-    }
-    (true, at.is_some_and(|(x, y)| s.pointer_move(x, y)))
+    let repinta = s.pointer_move(at);
+    (s.screen().is_open(), repinta)
 }

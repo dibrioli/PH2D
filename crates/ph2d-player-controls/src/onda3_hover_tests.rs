@@ -104,7 +104,7 @@ fn o_reset_tem_hover_e_premido_e_o_up_fora_cancela() {
         "o Reset pairado"
     );
 
-    let _ = host::click(&mut s, true, Some((reset, &g)), false);
+    let _ = host::click(&mut s, (true, true), Some((reset, &g)), false);
     assert!(s.screen().reset_pressed(), "o Down captura");
     assert!(!s.keys().is_empty(), "o Down NÃO dispara");
     assert_eq!(
@@ -116,12 +116,12 @@ fn o_reset_tem_hover_e_premido_e_o_up_fora_cancela() {
     let fora = (-10.0, -10.0);
     let _ = host::pointer_move(&mut s, Some(fora));
     assert!(!s.screen().reset_pressed(), "fora do botão o premido apaga");
-    let _ = host::click(&mut s, false, Some((fora, &g)), false);
+    let _ = host::click(&mut s, (false, true), Some((fora, &g)), false);
     assert!(!s.keys().is_empty(), "o Up fora cancela");
 
     let _ = host::pointer_move(&mut s, Some(reset));
-    let _ = host::click(&mut s, true, Some((reset, &g)), false);
-    let _ = host::click(&mut s, false, Some((reset, &g)), false);
+    let _ = host::click(&mut s, (true, true), Some((reset, &g)), false);
+    let _ = host::click(&mut s, (false, true), Some((reset, &g)), false);
     assert!(s.keys().is_empty(), "o Up dentro dispara");
     assert!(!s.screen().reset_pressed());
 }

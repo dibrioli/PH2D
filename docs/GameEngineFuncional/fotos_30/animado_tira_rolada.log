@@ -1,0 +1,24 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   267ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   289ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   289ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   297ms] M11: VelloPass initialized (1024×768 intermediate)
+[   302ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   316ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   344ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   352ms] lifecycle: Foreground
+[   352ms] resize: 1024x768 @ 1.00x scale
+[game-smoke] =2 o nível feito SÓ com o menu Add (Add ▸ Game) e a arte do Kenney em vetor: chão e plataformas (Static Body), parede invisível (Collision Shape), tecto baixo (segure ↓), jogador (Character), moedas e bandeira (Animated Sprite), céu, nuvens e montes em parallax. o botão Play in a Window: cada moeda tocada faz «plim», soma 1 ao contador do HUD e some.
+[game-smoke] =5 o Animated Sprite peça a peça: «Empty Sheet» vazio; «Split Sheet» cortada por Split by rows com um marcador «footstep»; «Hears Step» salta quando o marcador grita; «Starts With» com outra animação em prévia; «Swapped Image» com o aviso; «Two Sheets» com as folhas idle e run e a animação «attack» que as mistura; «Aligned Sheets», as mesmas folhas com a run escalada pelo Align: o boneco não cresce ao trocar de folha; «Misaligned Sheets», as mesmas folhas com a run maior, deslocada e com dois quadros tortos, para alinhar do zero no Align; e o Player com regras, a que ganha acesa no Play.
+[ph2d-gpu] surface present mode → Immediate
+[   365ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 0.217s of sim time (max_substeps cap)
+[animado-prova] as folhas: Two Sheets: toca=Some("attack") inicio=Some("idle") anims=3 grade=Some((4, 1)) aviso=None folhas=2 visivel=1 quadros=Some([("run", 12), ("attack", 5)]) extra=Some([([0.48, 0.48], [0.0023809576, -0.0], 0)]) acertos0=0 folha0=Some(([0.32, 0.32], [0.0, 0.0]))
+[animado-prova] as folhas: Aligned Sheets: toca=Some("attack") inicio=Some("idle") anims=3 grade=Some((4, 1)) aviso=None folhas=2 visivel=1 quadros=Some([("run", 12), ("attack", 5)]) extra=Some([([0.32, 0.32], [0.0015873051, -0.0], 0)]) acertos0=0 folha0=Some(([0.32, 0.32], [0.0, 0.0]))
+[animado-prova] as folhas: Misaligned Sheets: toca=Some("attack") inicio=Some("idle") anims=3 grade=Some((4, 1)) aviso=None folhas=2 visivel=1 quadros=Some([("run", 12), ("attack", 5)]) extra=Some([([0.48, 0.48], [0.062380955, 0.1], 2)]) acertos0=0 folha0=Some(([0.32, 0.32], [0.0, 0.0]))
+[animado-prova] alinhadas: Aligned Sheets: toca=Some("attack") inicio=Some("idle") anims=3 grade=Some((4, 1)) aviso=None folhas=2 visivel=1 quadros=Some([("run", 12), ("attack", 5)]) extra=Some([([0.32, 0.32], [0.0015873051, -0.0], 0)]) acertos0=0 folha0=Some(([0.32, 0.32], [0.0, 0.0]))
+[ph2d-gpu] surface present mode → Fifo

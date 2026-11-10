@@ -98,7 +98,8 @@ pub(crate) fn click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         return true;
     }
     if id == crate::ids::INSP_PHYS_SCALE_ONE {
-        if let Some(mut t) = crate::state::current_inspector_transform() {
+        // Quem estica: o corpo, na opção B — não a forma escolhida.
+        if let Some(mut t) = crate::state::current_inspector_physics().and_then(|f| f.estica) {
             // O espelho é uma escolha do artista: fica.
             t.scale = t.scale.map(|s| if s < 0.0 { -1.0 } else { 1.0 });
             host.bus_mut().push(EditorAction::InspectorTransformEdit(t));

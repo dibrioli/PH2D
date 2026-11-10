@@ -15,8 +15,6 @@ use ph2d_i18n::{TextKey, tr, tr_with};
 
 const KIND_STATIC: u8 = 1;
 const SHAPE_BOX: u8 = 1;
-/// A folga com que dois lados de `Scale` contam como iguais: a de um `f32` que passou por um campo.
-const ESCALA_IGUAL: f32 = 1e-4;
 
 /// O cartão **Shape** de um corpo: `y` intacto para quem não tem corpo (a forma solta tem o cartão dela).
 #[allow(clippy::too_many_arguments)]
@@ -187,15 +185,13 @@ fn estado_da_forma(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f3
     }
 }
 
-/// `Scale` desigual numa forma redonda?
+/// Uma forma redonda esticada no MUNDO (por ela ou por um pai — `InspectorPhysicsInfo::estica`)?
 pub(crate) fn esticada(info: &InspectorPhysicsInfo) -> bool {
-    info.shape_tag != SHAPE_BOX
-        && crate::state::current_inspector_transform()
-            .filter(|p| p.entity_bits == info.entity_bits)
-            .is_some_and(|p| (p.scale[0].abs() - p.scale[1].abs()).abs() > ESCALA_IGUAL)
+    info.shape_tag != SHAPE_BOX && info.estica.is_some()
 }
 
-fn aviso_de_escala(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
+/// O aviso e as duas saídas; o cartão Body também o pinta (é lá que o artista esticou o corpo).
+pub(super) fn aviso_de_escala(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
     if !esticada(info) {
         return y;
     }

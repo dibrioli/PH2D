@@ -216,6 +216,10 @@ pub(super) fn corpo(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f
     if dinamico {
         y = dobra_bake(t, y, info);
     }
+    // Opção B: a forma é filha, e quem a estica é quase sempre este corpo.
+    if info.shape_on_child {
+        y = super::physics_cartao_forma::aviso_de_escala(t, y, info);
+    }
     let (r, y) = t.botao(
         ids::INSP_PHYS_REMOVE,
         tr("panel.inspector.physics.remove_physics_body"),

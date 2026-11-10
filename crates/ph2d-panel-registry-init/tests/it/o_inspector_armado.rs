@@ -424,6 +424,7 @@ pub fn fisica_armada() -> InspectorPhysicsInfo {
         shape_follows: None,
         outline: None,
         shape_edit_on: false,
+        estica: None,
         density: 1.0,
         restitution: 0.2,
         friction: 0.6,

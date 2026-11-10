@@ -292,3 +292,45 @@ fn o_cartao_mostra_o_outline_e_o_aviso_so_quando_subiu() {
     let o = info_de(&sim, e, 0).outline.expect("o cartão do Outline");
     assert_eq!(o.raised, Some((3.0, 256)), "subiu a 3 px");
 }
+
+fn escala(sim: &mut SimWorld, q: Entity, s: [f32; 2]) {
+    if let Some(mut t) = sim.world_mut().get_mut::<Transform>(q) {
+        t.scale = Vec2::new(s[0], s[1]);
+    }
+}
+
+/// ⭐ A forma esticada pelo CORPO (opção B: ela é filha, com escala 1) diz QUEM a estica — no cartão dela e no do
+/// corpo —, e o «Scale 1» vai a esse; dois esticões que se anulam não esticam nada. Antes, o aviso olhava só a
+/// escala da própria forma e nunca aparecia (foto de 09/11).
+///
+/// Mutação que deve sangrar: `estica: None` no `build_physics_info`.
+#[test]
+fn a_forma_esticada_pelo_corpo_diz_quem_a_estica() {
+    let (mut sim, e) = sprite_scene();
+    apply(&mut sim, e, PhysicsFieldEdit::Add);
+    let forma = ph2d_physics_ecs::forma_para_editar(sim.world(), e).expect("a filha");
+    assert_ne!(forma, e, "opção B");
+    assert_eq!(info_de(&sim, forma, 0).estica, None, "1 × 1");
+    escala(&mut sim, e, [-2.0, 1.0]);
+    let quem = info_de(&sim, forma, 0)
+        .estica
+        .expect("o corpo estica a filha");
+    assert_eq!((quem.entity_bits, quem.scale), (e.to_bits(), [-2.0, 1.0]));
+    assert_eq!(
+        info_de(&sim, e, 0).estica.map(|p| p.entity_bits),
+        Some(e.to_bits()),
+        "o cartão do corpo também o sabe"
+    );
+    escala(&mut sim, forma, [0.5, 1.0]);
+    assert_eq!(
+        info_de(&sim, forma, 0).estica,
+        None,
+        "2 × 0,5 = 1: anulam-se"
+    );
+    escala(&mut sim, e, [1.0, 1.0]);
+    assert_eq!(
+        info_de(&sim, forma, 0).estica.map(|p| p.entity_bits),
+        Some(forma.to_bits()),
+        "a própria forma"
+    );
+}

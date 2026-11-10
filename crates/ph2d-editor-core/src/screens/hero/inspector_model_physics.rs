@@ -60,6 +60,9 @@ pub struct InspectorPhysicsInfo {
     pub outline: Option<InspectorOutlineInfo>,
     /// As alças da forma estão acesas neste objecto (`ph2d_shape_handles`).
     pub shape_edit_on: bool,
+    /// Quem estica a forma no MUNDO (a escala dela vezes a dos pais, |x| ≠ |y|): a pose do mais próximo, ela ou
+    /// um pai (o corpo, na opção B), com escala desigual — o «Scale 1» repõe-lhe a escala. `None` = não esticada.
+    pub estica: Option<super::InspectorTransformInfo>,
     pub density: f32,
     pub restitution: f32,
     pub friction: f32,

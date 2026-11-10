@@ -536,22 +536,37 @@ fn fit_to_picture_so_em_custom_size() {
     }
 }
 
+/// A bola esticada avisa pelo `estica` da ficha (quem estica, ela ou um pai), não pela escala da seleção: na opção B
+/// a forma é filha com escala 1 e quem estica é o CORPO — o «Scale 1» repõe-lhe a dele, espelho incluído.
+///
+/// Mutação que deve sangrar: `esticada` voltar a ler `current_inspector_transform`.
 #[test]
 fn bola_esticada_avisa_com_as_duas_saidas() {
-    let bola = || InspectorPhysicsInfo {
+    const CORPO: u64 = ENTIDADE + 1;
+    let pelo_corpo = |s| InspectorTransformInfo {
+        entity_bits: CORPO,
+        ..pose(s)
+    };
+    let bola = |estica| InspectorPhysicsInfo {
         shape_tag: 0,
+        estica,
         ..with_body()
     };
-    let (mut host, mut st) = cena(bola(), [1.0, 1.0]);
-    assert!(achado(&pinta(&mut host, &mut st), INSP_PHYS_SCALE_ONE).is_none());
+    let (mut host, mut st) = cena(bola(None), [-2.0, 1.0]);
+    assert!(
+        achado(&pinta(&mut host, &mut st), INSP_PHYS_SCALE_ONE).is_none(),
+        "a escala da seleção não é a do mundo"
+    );
     sai();
-    let (mut host, mut st) = cena(bola(), [-2.0, 1.0]);
+    let (mut host, mut st) = cena(bola(Some(pelo_corpo([-2.0, 1.0]))), [1.0, 1.0]);
     let r = pinta(&mut host, &mut st);
     let a = clica(&mut host, &mut st, achado(&r, INSP_PHYS_SCALE_ONE).unwrap());
     assert_eq!(
         a,
-        [EditorAction::InspectorTransformEdit(pose([-1.0, 1.0]))],
-        "o espelho fica"
+        [EditorAction::InspectorTransformEdit(pelo_corpo([
+            -1.0, 1.0
+        ]))],
+        "o corpo, e o espelho fica"
     );
     let a = clica(&mut host, &mut st, achado(&r, INSP_PHYS_USE_BOX).unwrap());
     assert_eq!(
@@ -562,8 +577,20 @@ fn bola_esticada_avisa_com_as_duas_saidas() {
         }]
     );
     sai();
+    // O cartão Body de um corpo com a forma na filha também avisa.
+    let corpo = InspectorPhysicsInfo {
+        shape_on_child: true,
+        ..bola(Some(pelo_corpo([2.0, 1.0])))
+    };
+    let (mut host, mut st) = cena(corpo, [2.0, 1.0]);
+    assert!(achado(&pinta(&mut host, &mut st), INSP_PHYS_SCALE_ONE).is_some());
+    sai();
     // A caixa esticada é só uma caixa maior: sem aviso.
-    let (mut host, mut st) = cena(with_body(), [2.0, 1.0]);
+    let caixa = InspectorPhysicsInfo {
+        estica: Some(pelo_corpo([2.0, 1.0])),
+        ..with_body()
+    };
+    let (mut host, mut st) = cena(caixa, [2.0, 1.0]);
     assert!(achado(&pinta(&mut host, &mut st), INSP_PHYS_SCALE_ONE).is_none());
     sai();
 }
@@ -781,6 +808,7 @@ fn o_botao_das_alcas_liga_pelo_clique_em_shape_e_em_collision_shape() {
 fn o_botao_aceso_diz_como_sair_e_o_segundo_clique_pede_o_mesmo() {
     let info = InspectorPhysicsInfo {
         shape_edit_on: true,
+        estica: None,
         ..with_body()
     };
     let (mut host, mut st) = cena(info, [1.0, 1.0]);

@@ -5,4 +5,5 @@
 /// `shells/desktop/src/physics/inspector_body.rs` (W2/L2 Fase C): ela é a irmã
 /// da [`player`] por assunto, e morava noutra pasta só por ordem de chegada.
 pub mod body;
+pub mod estica;
 pub mod player;

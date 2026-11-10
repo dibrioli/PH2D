@@ -56,7 +56,11 @@ fn camada_de_json(v: &Value, base: CompositeLayer) -> CompositeLayer {
             Value::Null => None,
             c => Some(de_rgb(c, base.color.unwrap_or_default())),
         },
-        hardness: v["hardness"].as_f64().map(|n| n as f32),
+        // `null` = sem dureza própria; ausente = a da camada (B41.5), como todo campo daqui.
+        hardness: match v.get("hardness") {
+            None => base.hardness,
+            Some(h) => h.as_f64().map(|n| n as f32),
+        },
         size: f32_(&v["size"], base.size),
     }
 }

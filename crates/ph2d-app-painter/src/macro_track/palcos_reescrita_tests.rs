@@ -316,3 +316,90 @@ fn a_reescrita_espera_a_agua_do_editor_parar() {
         "a imagem do editor não é o fim editado"
     );
 }
+
+/// B41.7: **o prazo da espera pela água conta QUADROS do editor, não segundos** — a 4K a água anda a
+/// 20–25 passos/s e um prazo de relógio chegava com ela a correr (a reescrita comparava água viva). Com os
+/// dois fins prontos e a água a correr (nunca tica), a reescrita espera `N` quadros e escreve no seguinte.
+/// ⛔ VERMELHO com o prazo de relógio (120 s): `N` quadros correm em milissegundos e nada escreve.
+#[test]
+fn o_prazo_da_espera_pela_agua_conta_quadros_e_nao_segundos() {
+    // O Painter e o palco vivem na pilha deste teste: a de omissão do fio de teste não chega em debug.
+    std::thread::Builder::new()
+        .stack_size(256 << 20)
+        .spawn(o_prazo_conta_quadros)
+        .expect("fio")
+        .join()
+        .expect("o teste");
+}
+
+fn o_prazo_conta_quadros() {
+    const N: u32 = 7_200;
+    assert_eq!(N, crate::macro_track::reescrita::QUADROS_DA_ESPERA_PELA_AGUA);
+    let mut world = World::new();
+    let e = world.spawn(MacroTempo { segundos: 0.0 }).id();
+    let (mut t, doc, _) =
+        ph2d_tool_painter::macro_track::roteiro::grava_no_papel_ligado(LADO, e.to_bits(), 2)
+            .expect("grava");
+    world.entity_mut(e).insert(Macro {
+        doc: doc.clone(),
+        modo: ModoDaMacro::Fiel,
+    });
+    let mut c = Clipe {
+        world,
+        e,
+        palcos: PalcosDoPainter::default(),
+        placa: Placa::default(),
+        verdade: ph2d_tool_painter::macro_track::em_cena::MacroEmCena::de(&doc)
+            .expect("lê-se")
+            .expect("trilha"),
+        palco: Vec::new(),
+    };
+    let mut nunca = |_: u64, _: &mut Placa| -> Option<(Vec<u8>, u32, u32)> { None };
+    let mut nao_escreve = |_: u64, _: Vec<u8>, _: u32, _: u32, _: &mut Placa| {
+        panic!("com o Painter ligado não se escreve a sprite")
+    };
+    assert_eq!(
+        c.quadro_e_reescreve(0, Some(&mut t), &mut nunca, &mut nao_escreve),
+        None
+    );
+    c.world.entity_mut(c.e).insert(Macro {
+        doc: com_a_etapa_editada(&doc),
+        modo: ModoDaMacro::Fiel,
+    });
+    c.quadro(
+        1.0 / 60.0,
+        Atuais {
+            painter: Some(&t),
+            le_sprite: Some(&mut nunca),
+        },
+    );
+    // Os dois fins (num fio) chegam sem a reescrita correr: nenhum quadro dela conta.
+    let t0 = std::time::Instant::now();
+    loop {
+        let p = c.palco_mut();
+        let pr = p
+            .por_reescrever
+            .as_mut()
+            .expect("a edição arma a reescrita");
+        if pr.de.colhe().is_some() && p.fim.colhe().is_some() {
+            break;
+        }
+        assert!(
+            t0.elapsed().as_secs() < 120,
+            "os fins não chegaram em 120 s"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
+    for q in 0..N {
+        let r = c
+            .palcos
+            .reescreve(Some(&mut t), &mut nunca, &mut nao_escreve, &mut c.placa);
+        assert_eq!(r, None, "a reescrita correu antes do prazo (quadro {q})");
+    }
+    assert!(!t.agua_parada(), "controlo: a água ainda corre");
+    let r = c
+        .palcos
+        .reescreve(Some(&mut t), &mut nunca, &mut nao_escreve, &mut c.placa);
+    assert!(r.is_some(), "o prazo de {N} quadros não chegou");
+    assert!(!c.palcos.a_reescrever(), "a reescrita ainda espera");
+}

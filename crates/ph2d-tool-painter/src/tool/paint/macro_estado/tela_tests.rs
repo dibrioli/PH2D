@@ -54,3 +54,57 @@ fn o_estado_inicial_leva_a_pilha_do_composite_camada_a_camada() {
         (a.composite_enabled, a.composite_len, a.composite_add_op)
     );
 }
+
+/// B41.5: a dureza AUSENTE de uma camada mantém a da camada (como todo campo do estado); `null` é «sem
+/// dureza própria». ⛔ Antes, ausente virava `None` e a camada perdia a dureza em silêncio.
+#[test]
+fn a_dureza_ausente_da_camada_mantem_e_o_null_tira() {
+    let base = CompositeLayer {
+        hardness: Some(0.4),
+        ..CompositeLayer::default()
+    };
+    assert_eq!(
+        camada_de_json(&json!({}), base).hardness,
+        Some(0.4),
+        "ausente"
+    );
+    assert_eq!(
+        camada_de_json(&json!({ "hardness": null }), base).hardness,
+        None,
+        "null"
+    );
+    assert_eq!(
+        camada_de_json(&json!({ "hardness": 0.75 }), base).hardness,
+        Some(0.75),
+        "número"
+    );
+}
+
+/// B41.5: um estado cujo trilho não é desta tela (a máscara com outro tamanho) é erro e deixa a ferramenta
+/// INTACTA. ⛔ Antes, o erro do trilho subia depois de o preset, o meio, os pincéis e a pilha já estarem
+/// escritos: a ferramenta ficava meio-aplicada.
+#[test]
+fn um_estado_que_falha_no_trilho_deixa_a_ferramenta_intacta() {
+    let mut a = PainterTool::default();
+    a.paint.composite_enabled = true;
+    a.paint.composite_len = 3;
+    let (cfg, mut texturas) = a.macro_estado();
+    let mut controlo = PainterTool::default();
+    let antes = controlo.macro_estado();
+    controlo
+        .macro_estado_aplica(&cfg, texturas.clone())
+        .expect("controlo: o estado aplica-se");
+    assert_ne!(
+        controlo.macro_estado(),
+        antes,
+        "controlo: o estado muda a ferramenta"
+    );
+
+    texturas.insert("trilho/mascara".to_owned(), vec![0; 5]);
+    let mut u = PainterTool::default();
+    assert!(
+        u.macro_estado_aplica(&cfg, texturas).is_err(),
+        "a máscara de outra tela é erro"
+    );
+    assert_eq!(u.macro_estado(), antes, "a ferramenta ficou meio-aplicada");
+}

@@ -7,13 +7,12 @@
 use super::{PalcosDoPainter, fim};
 use ph2d_tool_painter::PainterTool;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{Duration, Instant};
 
-/// ⭐ **Quanto a reescrita espera que a água do editor pare** antes de comparar (a água a correr não é
-/// nem o fim antigo nem o novo). Medido (W7, `QUADROS_ATE_ASSENTAR`): a água das pinceladas de teste pára
-/// em 2 645–3 562 quadros (≤ 59 s); o dobro. Enquanto espera, o desfazer global não regista — o tecto é
-/// do artista, que não pode ficar sem passos de undo.
-const ESPERA_PELA_AGUA: Duration = Duration::from_secs(120);
+/// ⭐ **Quantos quadros do editor a reescrita espera que a água pare** com os dois fins prontos (a água a
+/// correr não é nem o fim antigo nem o novo). Medido (W7, `QUADROS_ATE_ASSENTAR`): a água das pinceladas
+/// de teste pára em 2 645–3 562 quadros; o dobro. Em QUADROS, nunca em segundos (B41.7): a 4K a água anda
+/// a 20–25 passos/s e os 120 s de relógio chegavam com ela a correr.
+pub(super) const QUADROS_DA_ESPERA_PELA_AGUA: u32 = 7_200;
 
 /// As transações das reescritas (o `0` não se usa).
 static TRANSACOES: AtomicU64 = AtomicU64::new(1);
@@ -21,15 +20,13 @@ static TRANSACOES: AtomicU64 = AtomicU64::new(1);
 /// O fim da trilha que a imagem ainda tem, à espera do novo.
 pub(super) struct PorReescrever {
     pub(super) de: fim::FimDaGravacao,
-    desde: Instant,
+    /// Quadros que esperou com os dois fins prontos.
+    quadros: u32,
 }
 
 impl PorReescrever {
     pub(super) fn de(de: fim::FimDaGravacao) -> Self {
-        Self {
-            de,
-            desde: Instant::now(),
-        }
+        Self { de, quadros: 0 }
     }
 }
 
@@ -130,9 +127,10 @@ impl PalcosDoPainter {
             let ligado = painter
                 .as_deref_mut()
                 .filter(|t| t.bound_document() == Some(sprite));
-            let prazo = pr.desde.elapsed() >= ESPERA_PELA_AGUA;
+            let prazo = pr.quadros >= QUADROS_DA_ESPERA_PELA_AGUA;
             let n = if let Some(t) = ligado {
                 if !t.agua_parada() && !prazo {
+                    pr.quadros += 1;
                     continue;
                 }
                 let t_id = transacao.unwrap_or_else(|| TRANSACOES.fetch_add(1, Ordering::Relaxed));
@@ -166,7 +164,10 @@ impl PalcosDoPainter {
                         n
                     }
                     // Um quadro sem leitura tenta no seguinte, até ao prazo; outro tamanho não casa.
-                    None if !prazo => continue,
+                    None if !prazo => {
+                        pr.quadros += 1;
+                        continue;
+                    }
                     _ => 0,
                 }
             };

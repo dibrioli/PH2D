@@ -142,12 +142,14 @@ fn fase_u8(f: PointerPhase) -> u64 {
     }
 }
 
-fn fase_de(v: u64) -> PointerPhase {
+/// Uma fase que este leitor não conhece é `None`: o ponteiro inteiro lê-se como desconhecido (B41.5).
+fn fase_de(v: u64) -> Option<PointerPhase> {
     match v {
-        0 => PointerPhase::Down,
-        2 => PointerPhase::Up,
-        3 => PointerPhase::Hover,
-        _ => PointerPhase::Move,
+        0 => Some(PointerPhase::Down),
+        1 => Some(PointerPhase::Move),
+        2 => Some(PointerPhase::Up),
+        3 => Some(PointerPhase::Hover),
+        _ => None,
     }
 }
 
@@ -407,11 +409,14 @@ impl Passo {
         let u8_ = |t: u32| u(t).map(|v| u8::try_from(v).unwrap_or(u8::MAX));
         let u32_ = |t: u32| u(t).map(|v| u32::try_from(v).unwrap_or(u32::MAX));
         Ok(match u(1)? {
-            1 => Passo::Ponteiro {
-                pos: [f64_(2)?, f64_(3)?],
-                pressao: f32_(4)?,
-                tilt: [f32_(5)?, f32_(6)?],
-                fase: fase_de(u(7)?),
+            1 => match fase_de(u(7)?) {
+                Some(fase) => Passo::Ponteiro {
+                    pos: [f64_(2)?, f64_(3)?],
+                    pressao: f32_(4)?,
+                    tilt: [f32_(5)?, f32_(6)?],
+                    fase,
+                },
+                None => Passo::Desconhecido(1),
             },
             2 => Passo::Hover([f64_(2)?, f64_(3)?]),
             3 => Passo::Tique(f32_(2)?),

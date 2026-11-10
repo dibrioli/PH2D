@@ -99,15 +99,15 @@ impl PainterTool {
         (v, crus)
     }
 
-    /// Aplica [`Self::macro_trilho`] (num tool que já tem o documento: o alvo da máscara é uma camada
-    /// dele). Uma cobertura de outro tamanho que a tela é erro: o estado não é desta tela.
-    pub(super) fn macro_trilho_aplica(
-        &mut self,
+    /// Lê [`Self::macro_trilho`] SEM escrever (B41.5: todo erro sai antes da 1.ª escrita do estado). Uma
+    /// cobertura de outro tamanho que a tela é erro: o estado não é desta tela. `None` = sem trilho.
+    pub(super) fn macro_trilho_le(
+        &self,
         v: &Value,
         mut crus: BTreeMap<String, Vec<u8>>,
-    ) -> Result<(), ErroDoEstado> {
+    ) -> Result<Option<TrilhoLido>, ErroDoEstado> {
         if v.is_null() {
-            return Ok(());
+            return Ok(None);
         }
         let (w, h) = self.source_size;
         let n = w as usize * h as usize;
@@ -139,6 +139,29 @@ impl PainterTool {
                 *crisp = toma(&raster(i), 1)?;
             }
         }
+        Ok(Some(TrilhoLido {
+            mascara,
+            sel,
+            base,
+            crisp,
+            formas,
+        }))
+    }
+
+    /// Escreve o trilho já lido ([`Self::macro_trilho_le`]; num tool que já tem o documento: o alvo da
+    /// máscara é uma camada dele).
+    pub(super) fn macro_trilho_aplica(&mut self, v: &Value, lido: Option<TrilhoLido>) {
+        let Some(TrilhoLido {
+            mascara,
+            sel,
+            base,
+            crisp,
+            formas,
+        }) = lido
+        else {
+            return;
+        };
+        let (cv, mv, sv) = (&v["clone"], &v["mascara"], &v["selecao"]);
         let p = &mut self.paint;
         p.clone_source = par(&cv["fonte"]);
         p.clone_offset = par(&cv["offset"]);
@@ -162,6 +185,14 @@ impl PainterTool {
         let ativa = sv["ativa"].as_bool().unwrap_or(false);
         self.restore_selection(sel, ativa, crisp, feather);
         self.invalidate_composite();
-        Ok(())
     }
+}
+
+/// O trilho de uma macro lido e conferido, à espera de se escrever.
+pub(super) struct TrilhoLido {
+    mascara: Arc<Vec<u8>>,
+    sel: Arc<Vec<u8>>,
+    base: Arc<Vec<u8>>,
+    crisp: Arc<Vec<u8>>,
+    formas: Vec<SelectionEntry>,
 }

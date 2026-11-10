@@ -143,6 +143,34 @@ fn um_tipo_desconhecido_le_se_como_desconhecido() {
     );
 }
 
+/// B41.5: um ponteiro com uma fase que o leitor não conhece lê-se como DESCONHECIDO (o tocador recusa-o),
+/// nunca como `Move` — tocá-lo pintaria um traço que a gravação não tem.
+#[test]
+fn uma_fase_de_ponteiro_desconhecida_le_se_como_desconhecido() {
+    let mut r = ph2d_macro::rec::Record::new();
+    r.varint(1, 1)
+        .f64(2, 0.5)
+        .f64(3, 0.5)
+        .f32(4, 1.0)
+        .varint(7, 9);
+    assert_eq!(
+        Passo::descodifica(&r.finish()).expect("lê-se"),
+        Passo::Desconhecido(1)
+    );
+    let mut controlo = ph2d_macro::rec::Record::new();
+    controlo.varint(1, 1).varint(7, 1);
+    assert!(
+        matches!(
+            Passo::descodifica(&controlo.finish()),
+            Ok(Passo::Ponteiro {
+                fase: ph2d_editor_core::tool::PointerPhase::Move,
+                ..
+            })
+        ),
+        "controlo: a fase 1 é Move"
+    );
+}
+
 /// O campo que um leitor antigo não conhece SALTA: o passo lê-se igual.
 #[test]
 fn um_campo_novo_dentro_de_um_passo_salta() {

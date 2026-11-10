@@ -205,6 +205,8 @@ impl PainterTool {
         // ⚠️ The cure is aimed at the FULL fold, which is the one the artist waits on. Measured at 4096²
         // with 32 cores: the walk is the entire cost (0,1 ms of allocation against 183 ms of walk), and
         // it is the biggest single number a Painter frame can produce.
+        // B15.6: a linha vem da MESMA dobra que as faixas da luz da CPU ([`ReliefFields::dobra_da_linha`]); só aqui o
+        // corpo vira byte, o do plano da placa.
         let rww = rw as usize;
         relief
             .par_chunks_mut(rww)
@@ -212,19 +214,21 @@ impl PainterTool {
             .zip(mat0.par_chunks_mut(rww * 4))
             .zip(mat1.par_chunks_mut(rww * 4))
             .enumerate()
-            .for_each(|(row, (((rrow, crow), m0row), m1row))| {
-                let y = i64::from(ry) + row as i64;
-                for i in 0..rww {
-                    let x = i64::from(rx) + i as i64;
-                    rrow[i] = fields.height_at(x, y);
-                    // Quantised the way the canvas already stores coverage, so the shader's unorm decode
-                    // lands on the CPU's `f32::from(u8) / 255.0` and not merely near it.
-                    crow[i] = (fields.cover_at(x, y) * 255.0 + 0.5) as u8;
-                    let m = fields.material_at(x, y);
-                    m0row[i * 4..i * 4 + 4].copy_from_slice(&[m[0], m[1], m[2], m[3]]);
-                    m1row[i * 4..i * 4 + 4].copy_from_slice(&[m[4], m[5], m[6], 255]);
-                }
-            });
+            .for_each_init(
+                || (vec![0f32; rww], vec![[0u8; 7]; rww]),
+                |(cob, mats), (row, (((rrow, crow), m0row), m1row))| {
+                    let y = i64::from(ry) + row as i64;
+                    fields.dobra_da_linha(y, i64::from(rx), rrow, cob, mats);
+                    for i in 0..rww {
+                        // Quantised the way the canvas already stores coverage, so the shader's unorm decode
+                        // lands on the CPU's `f32::from(u8) / 255.0` and not merely near it.
+                        crow[i] = (cob[i] * 255.0 + 0.5) as u8;
+                        let m = mats[i];
+                        m0row[i * 4..i * 4 + 4].copy_from_slice(&[m[0], m[1], m[2], m[3]]);
+                        m1row[i * 4..i * 4 + 4].copy_from_slice(&[m[4], m[5], m[6], 255]);
+                    }
+                },
+            );
         let lut = ph2d_painter_brush::material::SpecLut::get();
         Some(ImpastoPlanes {
             width: w,

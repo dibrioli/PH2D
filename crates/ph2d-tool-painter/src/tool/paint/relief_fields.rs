@@ -83,7 +83,14 @@ impl ReliefFields<'_> {
             Some((f, _)) => f[i],
             None => self.fold_at(i),
         };
-        let h = super::impasto_ceiling::soft_ceiling(h);
+        let cx = x.clamp(0, self.width as i64 - 1);
+        let cy = y.clamp(0, self.height as i64 - 1);
+        self.com_o_papel(super::impasto_ceiling::soft_ceiling(h), i, cx, cy)
+    }
+
+    /// A altura da tinta já com o tecto, mais o dente do papel que a tinta deixa ver em `i` = `(cx, cy)` (clampados).
+    #[inline]
+    fn com_o_papel(&self, h: f32, i: usize, cx: i64, cy: i64) -> f32 {
         // ⚠️ **O dente do papel SOMA à altura da tinta, e entra DEPOIS do teto de vidro.** Depois,
         // porque o teto é uma propriedade de como a TINTA se empilha (`impasto_ceiling`) e um papel não
         // é tinta — comprimi-lo pelo peso de uma pilha que não é dele seria o dente sumir justamente
@@ -104,8 +111,6 @@ impl ReliefFields<'_> {
         // responder fora dele.*
         match self.substrate.as_ref() {
             Some(s) => {
-                let cx = x.clamp(0, self.width as i64 - 1);
-                let cy = y.clamp(0, self.height as i64 - 1);
                 // A tinta tapa o dente mas fica à altura média dele: sem o degrau que a fazia parecer afundada (Bug #71).
                 // Só a tinta com CORPO o enche (doc 19 §1.2; dono 08/11: no Digital o relevo do papel tem de se ver na
                 // tinta): a opaca tapa-o na proporção da altura dela sobre a do dente — sem corpo (Digital, aguada)
@@ -192,41 +197,85 @@ impl ReliefFields<'_> {
             if a <= 0.0 {
                 continue;
             }
-            let src = match l.mat {
-                Some(mt) => mt[i],
-                // A layer with relief but no material entry is a document from before materials existed:
-                // it reads as the neutral material, which IS the pass as it shaded then.
-                None => neutral,
-            };
-            if a >= 1.0 {
-                // Opaque paint: `over` is a COPY, not a blend — and taking that path skips the whole
-                // per-channel lerp, which is 7 multiply-adds since the Wax filter widened the plane.
-                //
-                // **Measured: it buys nothing** (3.99 ms/move against 3.97 — noise). Kept anyway,
-                // because it is byte-exact and because the measurement is the interesting part: the
-                // fold is **bandwidth-bound on the 7-byte plane, not ALU-bound**, so shaving arithmetic
-                // off it is shaving the wrong thing. Anyone reaching for a faster material fold should
-                // reach for fewer BYTES, or for the GPU — which is the pass's next stop anyway.
-                m = src.map(f32::from);
-                continue;
-            }
-            for (c, v) in m.iter_mut().enumerate() {
-                *v += (f32::from(src[c]) - *v) * a;
-            }
+            // A layer with relief but no material entry is a document from before materials existed:
+            // it reads as the neutral material, which IS the pass as it shaded then.
+            sobre(&mut m, l.mat.map_or(neutral, |mt| mt[i]), a);
         }
         // The live stroke is the topmost paint on the active layer: its material is the BRUSH's, and it
         // is what the artist is looking at while they turn the knob.
         if let Some(lc) = self.live_c {
             let a = f32::from(lc[i]) / 255.0;
-            if a >= 1.0 {
-                m = self.live_mat.map(f32::from);
-            } else if a > 0.0 {
-                for (c, v) in m.iter_mut().enumerate() {
-                    *v += (f32::from(self.live_mat[c]) - *v) * a;
-                }
+            if a > 0.0 {
+                sobre(&mut m, self.live_mat, a);
             }
         }
         m.map(|v| (v + 0.5) as u8)
+    }
+
+    /// ⭐ **B15.6 — a dobra de UMA LINHA, a porta das duas pistas** (a luz da CPU em faixas e os planos da placa): a
+    /// altura ([`Self::height_at`]), o corpo f32 ([`Self::cover_at`]) e o material ([`Self::material_at`]) de
+    /// `x0..x0 + alt.len()` na linha `y`, com o índice e o corpo de cada camada lidos UMA vez por texel (os três
+    /// amostradores liam-nos quatro vezes). Ao bit com eles (`a_dobra_da_linha_e_a_dos_tres_amostradores_ao_bit`).
+    pub(super) fn dobra_da_linha(
+        &self,
+        y: i64,
+        x0: i64,
+        alt: &mut [f32],
+        cob: &mut [f32],
+        mat: &mut [MaterialBytes],
+    ) {
+        debug_assert!(alt.len() == cob.len() && cob.len() == mat.len());
+        let cy = y.clamp(0, self.height as i64 - 1);
+        let linha = cy as usize * self.width;
+        for (k, ((a, c), mt)) in alt
+            .iter_mut()
+            .zip(cob.iter_mut())
+            .zip(mat.iter_mut())
+            .enumerate()
+        {
+            let cx = (x0 + k as i64).clamp(0, self.width as i64 - 1);
+            let i = linha + cx as usize;
+            let live = self.live_c.map_or(0.0, |l| f32::from(l[i]) / 255.0);
+            let (mut cover_max, mut corpo) = (0.0f32, live);
+            let mut m = self.neutral.map(f32::from);
+            for l in &self.layers {
+                if let Some(cv) = l.cover {
+                    corpo = corpo.max(f32::from(cv[i]) / 255.0);
+                }
+                let la = self.layer_cover_at(l, i);
+                cover_max = cover_max.max(la);
+                if la > 0.0 {
+                    sobre(&mut m, l.mat.map_or(self.neutral, |v| v[i]), la);
+                }
+            }
+            if live > 0.0 {
+                sobre(&mut m, self.live_mat, live);
+            }
+            *mt = m.map(|v| (v + 0.5) as u8);
+            let h = match &self.folded {
+                Some((f, cf)) => {
+                    corpo = cf[i];
+                    f[i]
+                }
+                None => {
+                    let mut h = crate::layers::RELIEF_FOLD_SEED;
+                    for l in &self.layers {
+                        let cover = self.layer_cover_at(l, i);
+                        h = crate::layers::fold_relief_step(
+                            h,
+                            self.own_at(l, i),
+                            l.depth,
+                            l.composite,
+                            cover,
+                            cover_max,
+                        );
+                    }
+                    h
+                }
+            };
+            *c = corpo.clamp(0.0, 1.0);
+            *a = self.com_o_papel(super::impasto_ceiling::soft_ceiling(h), i, cx, cy);
+        }
     }
 
     /// Paint coverage at a canvas pixel (`0..1`) — the MAX over the layers, not the sum: it is a
@@ -319,6 +368,19 @@ impl crate::layers::ReliefSamples for Amostras<'_, '_> {
     }
     fn mask(&self, id: crate::layers::LayerId) -> Option<Vec<f32>> {
         self.mascaras.get(&id).cloned()
+    }
+}
+
+/// Um passo do `over` do material com o peso `a > 0`: a tinta opaca COPIA (sem o lerp de 7 canais — mede-se
+/// igual, a dobra é limitada pela banda do plano de 7 bytes, não pela aritmética); a translúcida mistura.
+#[inline]
+fn sobre(m: &mut [f32; 7], src: MaterialBytes, a: f32) {
+    if a >= 1.0 {
+        *m = src.map(f32::from);
+        return;
+    }
+    for (c, v) in m.iter_mut().enumerate() {
+        *v += (f32::from(src[c]) - *v) * a;
     }
 }
 

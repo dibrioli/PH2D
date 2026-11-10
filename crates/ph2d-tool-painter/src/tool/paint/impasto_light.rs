@@ -342,6 +342,8 @@ impl PainterTool {
         // do papel, amostrado 4× por píxel pelas diferenças centrais, num fio só). Cada faixa lê a altura UMA vez por
         // píxel numa moldura de 1 px e difere dentro dela: o mesmo `height_at` nos mesmos píxeis, logo o mesmo bit
         // (`as_faixas_dao_o_passe_por_pixel_ao_bit`). Píxeis independentes; a cache do material é por faixa.
+        // B15.6: as linhas da faixa vêm da MESMA dobra que os planos da placa ([`ReliefFields::dobra_da_linha`]):
+        // altura, corpo e material num passeio só; as duas linhas de moldura só precisam da altura.
         let paper_body = fields.paper_body();
         let (x0, y0) = (i64::from(region.x), i64::from(region.y));
         rgba[..w * h * 4]
@@ -352,30 +354,36 @@ impl PainterTool {
                 let gy0 = y0 + (b * FAIXA_LINHAS) as i64;
                 let fw = w + 2;
                 let mut alt = vec![0.0f32; fw * (n + 2)];
+                let mut cob = vec![0.0f32; fw * n];
+                let mut mats: Vec<MaterialBytes> = vec![[0; 7]; fw * n];
                 for (j, linha) in alt.chunks_exact_mut(fw).enumerate() {
                     let gy = gy0 - 1 + j as i64;
-                    for (i, a) in linha.iter_mut().enumerate() {
-                        *a = fields.height_at(x0 - 1 + i as i64, gy);
+                    if j == 0 || j == n + 1 {
+                        for (i, a) in linha.iter_mut().enumerate() {
+                            *a = fields.height_at(x0 - 1 + i as i64, gy);
+                        }
+                    } else {
+                        let r = (j - 1) * fw..j * fw;
+                        fields.dobra_da_linha(gy, x0 - 1, linha, &mut cob[r.clone()], &mut mats[r]);
                     }
                 }
                 let mut mat =
                     light.resolve(ph2d_painter_brush::material::Material::NEUTRAL.to_bytes());
                 for ry in 0..n {
-                    let gy = gy0 + ry as i64;
                     let c = (ry + 1) * fw + 1; // o píxel (0, ry) na moldura
                     for rx in 0..w {
-                        let gx = x0 + rx as i64;
                         let k = c + rx;
+                        let q = ry * fw + 1 + rx; // o mesmo píxel nas linhas da dobra
                         let dhx = (alt[k + 1] - alt[k - 1]) * 0.5;
                         let dhy = (alt[k + fw] - alt[k - fw]) * 0.5;
-                        let cover = fields.cover_at(gx, gy);
+                        let cover = cob[q];
                         let i = (ry * w + rx) * 4;
                         let albedo = [
                             f32::from(faixa[i]) / 255.0,
                             f32::from(faixa[i + 1]) / 255.0,
                             f32::from(faixa[i + 2]) / 255.0,
                         ];
-                        let key = fields.material_at(gx, gy);
+                        let key = mats[q];
                         if key != mat.key {
                             mat = light.resolve(key);
                         }
@@ -507,6 +515,10 @@ impl PainterTool {
             .unzip()
     }
 }
+
+#[cfg(test)]
+#[path = "dobra_da_linha_tests.rs"]
+mod dobra_da_linha_tests; // B15.6: a dobra de uma linha das duas pistas, ao bit com os laços de antes
 
 #[cfg(test)]
 mod tests {

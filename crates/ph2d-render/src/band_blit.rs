@@ -431,12 +431,12 @@ impl BandBlit {
         gpu: &GpuContext,
         target: &wgpu::TextureView,
         src: &wgpu::TextureView,
-        normal: &wgpu::TextureView,
+        normal: Option<&wgpu::TextureView>,
         rampa: (&wgpu::TextureView, &wgpu::TextureView),
         source: BandSource,
         rect: Option<[u32; 4]>,
     ) {
-        self.colar(gpu, target, src, Some(normal), Some(rampa), source, rect);
+        self.colar(gpu, target, src, normal, Some(rampa), source, rect);
     }
 
     #[allow(clippy::too_many_arguments)]

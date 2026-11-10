@@ -394,7 +394,7 @@ impl super::LuzDoQuadro {
     /// banda nasce).
     pub fn normais_do_quadro(&mut self) -> (&mut crate::NormaisDasFaixas, Option<&[Entity]>) {
         let acesa = self.acesa();
-        self.normais.cenas.clear();
+        self.normais.limpar();
         (
             &mut self.normais,
             acesa.then_some(&self.cena.nao_recebem[..]),

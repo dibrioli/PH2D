@@ -31,6 +31,7 @@ pub use grade::{
     grade_do_quadro, regiao_da_janela, tela_para_mundo,
 };
 pub use normais::NormaisDasFaixas;
+pub use ph2d_render::luz_rampa_faixas::{RampaDaFaixa, RampasDasFaixas};
 pub use quadro::{LuzDoQuadro, config_da_vista, config_do_entorno};
 
 /// A declaração da família à shell.

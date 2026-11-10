@@ -388,3 +388,65 @@ fn g6_o_pixel_sem_normal_a_vista_nao_aloca_nada() {
     assert_eq!(momento, 0, "o momento não nasce sem normal à vista");
     assert_eq!(banda, 0, "a textura da banda não nasce sem normal à vista");
 }
+
+/// ⭐ P13 L — **«Light: Palette»: o sprite aceso fica na rampa.** A fixture com uma rampa de 4
+/// degraus (a cor dela é o 2.º) e a lâmpada à esquerda: todo píxel do miolo do sprite sai numa cor
+/// da RAMPA (nunca o `rgb × luz`), e o lado aceso fica num degrau ≥ o do lado escuro.
+#[test]
+fn a_luz_na_rampa_no_quadro_fica_na_rampa() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sem GPU — gate saltado");
+        return;
+    };
+    let rampa = [
+        [20, 40, 90, 255],
+        [70, 120, 200, 255],
+        [150, 190, 240, 255],
+        [230, 240, 255, 255],
+    ];
+    let mut s = ph2d_pixel_cena::fixture::heroi_p14();
+    let op = ph2d_pixel_rampa::op_rampa_nova(&s, "r", &rampa).expect("rampa nova");
+    ph2d_pixel_core::apply(&mut s, op).unwrap();
+    let mut w = World::new();
+    lampada(&mut w, None);
+    let t = translacao_para(&s, [0.0, 0.0]);
+    let (tr, g) = pose(t[0], t[1]);
+    let e = w.spawn((tr, g)).id();
+    let objetos = [objeto(&w, e, &s, false)];
+    let mut c = Cadeia::nova(&gpu);
+    let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
+    assentar(&gpu, &c, &mut l, &w, &objetos, false);
+    let (cena, lut) = ph2d_pixel_luz::banda_rampa(&objetos, &[true], afim()).expect("Palette");
+    l.normais_mut().cenas = vec![banda_normal(&objetos, afim())];
+    l.normais_mut().rampas.cenas = vec![Some(ph2d_app_light2d::RampaDaFaixa {
+        cena,
+        lut: lut.texeis(),
+        tamanho_lut: (lut.largura() as u32, lut.rampas.len() as u32),
+    })];
+    let bgra = colar(&gpu, &mut c, &mut l, &cena_de_cor(&objetos), true);
+    let degrau = |p: (u32, u32)| {
+        let i = ((p.1 * W + p.0) * 4) as usize;
+        let rgb = [bgra[i + 2], bgra[i + 1], bgra[i]];
+        rampa.iter().position(|r| r[..3] == rgb)
+    };
+    let (mut na_rampa, mut fora) = (0, 0);
+    for y in -4..=4 {
+        for x in -4..=4 {
+            let p = px_de([f64::from(x) * 0.05, f64::from(y) * 0.05]);
+            match degrau(p) {
+                Some(_) => na_rampa += 1,
+                None => fora += 1,
+            }
+        }
+    }
+    let (claro, escuro) = (degrau(px_de([-0.3, 0.0])), degrau(px_de([0.3, 0.0])));
+    eprintln!(
+        "luz na rampa no quadro: miolo {na_rampa} na rampa / {fora} fora · degrau aceso {claro:?} · escuro {escuro:?} · banda {} B",
+        l.normais_mut().bytes()
+    );
+    assert_eq!(fora, 0, "o miolo do sprite aceso tem de ficar na rampa");
+    let (Some(a), Some(b)) = (claro, escuro) else {
+        panic!("os dois lados têm de estar na rampa: {claro:?} {escuro:?}");
+    };
+    assert!(a >= b, "mais luz nunca escurece o degrau: {a} contra {b}");
+}

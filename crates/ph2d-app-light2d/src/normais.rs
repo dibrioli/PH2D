@@ -10,6 +10,8 @@ use ph2d_vector::VectorScene;
 #[derive(Default)]
 pub struct NormaisDasFaixas {
     pub cenas: Vec<Option<VectorScene>>,
+    /// P13 L: as bandas de RAMPA das mesmas faixas.
+    pub rampas: ph2d_render::luz_rampa_faixas::RampasDasFaixas,
     textura: Option<(wgpu::Texture, wgpu::TextureView, (u32, u32))>,
 }
 
@@ -26,6 +28,13 @@ impl NormaisDasFaixas {
         self.textura
             .as_ref()
             .map_or(0, |(_, _, (w, h))| u64::from(*w) * u64::from(*h) * 4)
+            + self.rampas.bytes()
+    }
+
+    /// Esvazia as bandas do quadro (normais e de rampa).
+    pub fn limpar(&mut self) {
+        self.cenas.clear();
+        self.rampas.cenas.clear();
     }
 
     /// ⭐ Cola a faixa `i` (`cena`, a cor) sobre `alvo`: com banda normal, ela vai primeiro ao
@@ -47,39 +56,29 @@ impl NormaisDasFaixas {
                 eprintln!("[zorder] banda normal falhou: {e}");
             }
             let (tex, vista) = self.textura_de(gpu, tamanho, vello.intermediate_texture().format());
-            let mut enc = gpu
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("ph2d-app-pixel banda normal"),
-                });
-            enc.copy_texture_to_texture(
-                vello.intermediate_texture().as_image_copy(),
-                tex.as_image_copy(),
-                wgpu::Extent3d {
-                    width: tamanho.0,
-                    height: tamanho.1,
-                    depth_or_array_layers: 1,
-                },
-            );
-            gpu.queue.submit([enc.finish()]);
+            ph2d_render::luz_rampa_faixas::copia_do_intermediario(gpu, vello, &tex, tamanho);
             vista
         });
         if let Some(n) = normal {
             self.cenas[i] = Some(n);
         }
+        let rampa = self.rampas.preparar(gpu, vello, i, tamanho);
         if let Err(e) = vello.render_to_intermediate(gpu, cena.inner(), tamanho, transparente) {
             eprintln!("[zorder] faixa de vetor falhou: {e}");
         }
         let fonte = ph2d_render::BandSource::Vector;
-        match vista {
-            Some(n) => {
-                colagem.blit_com_normal(gpu, alvo, vello.intermediate_view(), &n, fonte, None)
+        let src = vello.intermediate_view();
+        match (vista, rampa) {
+            (n, Some((r, lut))) => {
+                colagem.blit_com_rampa(gpu, alvo, src, n.as_ref(), (&r, &lut), fonte, None);
             }
-            None => colagem.blit(gpu, alvo, vello.intermediate_view(), fonte),
+            (Some(n), None) => colagem.blit_com_normal(gpu, alvo, src, &n, fonte, None),
+            (None, None) => colagem.blit(gpu, alvo, src, fonte),
         }
         if !self.alguma() {
             self.textura = None;
         }
+        self.rampas.larga_se_vazia();
     }
 
     fn textura_de(
@@ -93,20 +92,12 @@ impl NormaisDasFaixas {
             .as_ref()
             .is_none_or(|(t, _, s)| *s != tamanho || t.format() != formato)
         {
-            let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
-                label: Some("ph2d-app-pixel banda normal"),
-                size: wgpu::Extent3d {
-                    width: tamanho.0,
-                    height: tamanho.1,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: formato,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                view_formats: &[],
-            });
+            let tex = ph2d_render::luz_rampa_faixas::textura_da_banda(
+                gpu,
+                tamanho,
+                formato,
+                "ph2d-app-pixel banda normal",
+            );
             let vista = tex.create_view(&wgpu::TextureViewDescriptor::default());
             self.textura = Some((tex, vista, tamanho));
         }

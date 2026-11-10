@@ -78,6 +78,7 @@ pub mod leitura_rgba8;
 /// A lente da câmera sobre o acumulador do mundo (Motion ciclo 20, doc 129).
 pub mod lens;
 pub mod luz_rampa;
+pub mod luz_rampa_faixas;
 pub mod luz_recebida;
 pub mod mipgen;
 mod renasce;

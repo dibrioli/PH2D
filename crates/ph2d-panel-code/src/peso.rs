@@ -17,6 +17,22 @@ pub const TITULO: FontWeight = FontWeight::SEMI_BOLD;
 /// Os botões, as teclas e os cabeçalhos das colunas (`.btn`, `kbd`, `th`, `h4`, `500`).
 pub const BOTAO: FontWeight = FontWeight::MEDIUM;
 
+/// Os pesos das tabelas da aba (`td` `400`, `th` `500`, `tr.grp` `600`).
+pub(crate) const TABELA: ph2d_ui_table::Look = ph2d_ui_table::Look::Exact {
+    body: CORPO,
+    head: BOTAO,
+    group: TITULO,
+};
+
+/// As medidas das tabelas da aba: as da casa com os pesos de [`TABELA`].
+#[must_use]
+pub fn metricas() -> ph2d_ui_table::Metrics {
+    ph2d_ui_table::Metrics {
+        look: TABELA,
+        ..ph2d_ui_table::Metrics::standard()
+    }
+}
+
 /// O [`ph2d_editor_core::paint::paint_text`] no peso do corpo.
 #[allow(clippy::too_many_arguments)]
 #[track_caller]
@@ -82,12 +98,7 @@ pub(crate) fn largura(ts: &mut TextSystem, text: &str, font_size: f32) -> f32 {
 }
 
 /// A largura de `text` em `weight`, no peso exacto em que os pintores daqui o pintam.
-pub(crate) fn largura_em(
-    ts: &mut TextSystem,
-    text: &str,
-    font_size: f32,
-    weight: FontWeight,
-) -> f32 {
+pub fn largura_em(ts: &mut TextSystem, text: &str, font_size: f32, weight: FontWeight) -> f32 {
     ph2d_text::com_peso_exato(|| ts.prefix_width_weighted(text, font_size, weight))
 }
 

@@ -17,6 +17,8 @@ pub struct Metrics {
     pub handle: f32,
     /// A largura natural de um traço.
     pub spark_w: f32,
+    /// Os pesos do texto (os da casa por omissão).
+    pub look: crate::Look,
 }
 
 impl Metrics {
@@ -30,6 +32,7 @@ impl Metrics {
             min_col: ROW_H_PX * 2.0,
             handle: Spacing::Xs.px(),
             spark_w: ROW_H_PX * 4.0, // LITERAL-PX-OK: quatro alturas de linha (token)
+            look: crate::Look::House,
         }
     }
 

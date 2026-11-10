@@ -3,6 +3,7 @@
 //! ([`Column`], [`Row`], [`Cell`]), o **estado** ([`TableState`]) e a **geometria** pura
 //! ([`layout`] → [`Layout`], [`Layout::hit`]) que a pintura ([`paint`]) e o clique partilham.
 
+mod look;
 mod marks;
 mod measure;
 mod paint;
@@ -15,6 +16,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::ColorToken;
 
+pub use look::{Look, Role};
 pub use marks::{paint_cell_frames, paint_row_frames, swatch_side};
 pub use measure::{Metrics, bar_gutter, dot_radius, min_width, natural_height, natural_widths};
 pub use paint::{
@@ -177,6 +179,7 @@ struct Drag {
     key: Key,
     x0: f32,
     w0: f32,
+    floor: f32,
 }
 
 /// O que a tabela lembra entre quadros.
@@ -271,11 +274,15 @@ impl TableState {
                 self.bar.is_some()
             }
             Hit::Resize(key) => {
-                let w0 = lay.col(key).map_or(0.0, |c| c.w);
+                // Uma coluna justa (um ícone) não se arrasta.
+                let Some(c) = lay.col(key).filter(|c| !c.fixed) else {
+                    return false;
+                };
                 self.drag = Some(Drag {
                     key: key.clone(),
                     x0: x,
-                    w0,
+                    w0: c.w,
+                    floor: c.floor,
                 });
                 true
             }
@@ -314,13 +321,13 @@ impl TableState {
     }
 
     /// O rato moveu-se com o botão premido. `true` = a largura (ou a rolagem) mudou.
-    pub fn drag_to(&mut self, (x, y): (f32, f32), m: &Metrics) -> bool {
+    pub fn drag_to(&mut self, (x, y): (f32, f32), _m: &Metrics) -> bool {
         if let Some(b) = self.bar {
             let before = std::mem::replace(&mut self.scroll, b.scroll_at(y));
             return (self.scroll - before).abs() > f32::EPSILON;
         }
         let Some(d) = &self.drag else { return false };
-        let w = (d.w0 + x - d.x0).max(m.min_col);
+        let w = (d.w0 + x - d.x0).max(d.floor);
         self.widths.insert(d.key.clone(), w) != Some(w)
     }
 
@@ -377,6 +384,10 @@ pub struct ColSpan {
     pub index: usize,
     pub x: f32,
     pub w: f32,
+    /// O piso da largura ([`Column::floor`]).
+    pub floor: f32,
+    /// Sem puxador (uma coluna [`Column::snug`]).
+    pub fixed: bool,
 }
 
 /// Uma linha à vista na geometria.
@@ -435,7 +446,7 @@ impl Layout {
         // Sem cabeçalho (`header_h = 0`) a borda de cima é do corpo.
         if self.header.h > 0.0 && self.header.contains(x, y) {
             for (i, c) in self.cols.iter().enumerate() {
-                if i < last && (x - (c.x + c.w)).abs() <= m.handle {
+                if i < last && !c.fixed && (x - (c.x + c.w)).abs() <= m.handle {
                     return Some(Hit::Resize(c.key.clone()));
                 }
             }
@@ -530,6 +541,8 @@ pub fn layout(
                 index: i,
                 x,
                 w,
+                floor: cols[i].floor(m),
+                fixed: cols[i].snug,
             };
             x += w;
             s

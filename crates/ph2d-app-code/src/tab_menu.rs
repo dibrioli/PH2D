@@ -73,7 +73,8 @@ pub fn split(doc_r: Rect) -> (Rect, Rect) {
 }
 
 pub(crate) fn width_of(ts: &mut TextSystem, s: &str) -> f32 {
-    ts.layout(s, font(), f32::INFINITY).width()
+    use ph2d_panel_code::peso::{CORPO, largura_em};
+    largura_em(ts, s, font(), CORPO)
 }
 
 pub(crate) fn label(

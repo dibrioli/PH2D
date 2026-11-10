@@ -1,15 +1,15 @@
 //! A pintura da tabela sobre a [`crate::Layout`]: listras → estado (rato, mudou) → texto, depois o
 //! cabeçalho e as divisórias, e a barra de rolagem quando o corpo transborda.
 
-use crate::{Align, Cell, ColSpan, Column, Ink, Layout, Row, TableState};
+use crate::{Align, Cell, ColSpan, Column, Ink, Layout, Look, Role, Row, TableState};
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, frame_radius, paint_icon, paint_text_in_weight, rect_to_vello,
-    resolve, stroke_polyline, token_to_vello,
+    fill_circle, fill_rounded_rect, frame_radius, paint_icon, rect_to_vello, resolve,
+    stroke_polyline, token_to_vello,
 };
 use ph2d_editor_core::widget::{RowHighlight, paint_row_highlight};
 use ph2d_editor_core::zones::Rect;
-use ph2d_text::{FontWeight, TextSystem};
+use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
@@ -32,17 +32,10 @@ pub trait CellText {
     );
 }
 
-/// O peso do corpo da tabela (`td`, a contagem do grupo: `400`, maquete 14); o cabeçalho (`th`)
-/// fica no `500` da casa e o título do grupo no `600`.
-pub const BODY: FontWeight = FontWeight::NORMAL;
-/// O cabeçalho das colunas (`th`, `500`).
-pub const HEAD: FontWeight = FontWeight::MEDIUM;
-/// A linha de grupo (`tr.grp`, `600`).
-pub const GROUP: FontWeight = FontWeight::SEMI_BOLD;
-
-/// O texto da interface (sem mono própria): os tons dos tokens.
+/// O texto da interface (sem mono própria): os tons dos tokens, nos pesos de `look`.
 pub struct UiText {
     pub theme: Theme,
+    pub look: Look,
 }
 
 impl UiText {
@@ -84,8 +77,7 @@ pub fn ui_font(ink: Ink) -> f32 {
 
 impl CellText for UiText {
     fn width(&mut self, ts: &mut TextSystem, text: &str, _mono: bool) -> f32 {
-        ts.layout_with_weight(text, TypeToken::Sm.px(), f32::INFINITY, BODY)
-            .width()
+        self.look.width(ts, text, TypeToken::Sm.px(), Role::Body)
     }
 
     fn paint(
@@ -102,11 +94,13 @@ impl CellText for UiText {
         let font = ui_font(ink);
         // Centrado pela caixa que o texto OCUPA (a linha da letra), como a mono ao lado.
         let th = ts
-            .layout_with_weight(text, font, f32::INFINITY, BODY)
+            .layout_with_weight(text, font, f32::INFINITY, self.look.weight(Role::Body))
             .height();
         let at = [x, y + (h - th) * 0.5];
         let ink = ink_color(ink, self.theme);
-        paint_text_in_weight(ts, scene, text, at, font, (right - x).max(0.0), ink, BODY);
+        let room = (right - x).max(0.0);
+        self.look
+            .paint(ts, scene, text, at, font, room, ink, Role::Body);
     }
 }
 
@@ -177,9 +171,9 @@ pub fn paint(
             chev(scene, x);
             let tx = x + m.chevron();
             let title = row.cells.first().map_or("", |c| c.text.as_str());
-            let tw = ph2d_text::com_peso_exato(|| ts.prefix_width_weighted(title, small, GROUP));
+            let tw = m.look.width(ts, title, small, Role::Group);
             let right = r.x + r.w - m.pad;
-            paint_text_in_weight(
+            m.look.paint(
                 ts,
                 scene,
                 title,
@@ -187,21 +181,14 @@ pub fn paint(
                 small,
                 (right - tx).max(0.0),
                 ink(ColorToken::Text2),
-                GROUP,
+                Role::Group,
             );
             let cx = tx + tw + m.pad * 0.5;
             let at = [cx, ty_small(r.y, r.h)];
             let room = (right - cx).max(0.0);
-            paint_text_in_weight(
-                ts,
-                scene,
-                count,
-                at,
-                small,
-                room,
-                ink(ColorToken::Text3),
-                BODY,
-            );
+            let muted = ink(ColorToken::Text3);
+            m.look
+                .paint(ts, scene, count, at, small, room, muted, Role::Body);
             continue;
         }
         for (k, c) in lay.cols.iter().enumerate() {
@@ -347,14 +334,12 @@ fn paint_header(
     for c in &lay.cols {
         let col = &cols[c.index];
         let right = c.x + c.w - m.pad;
-        let tw = ts
-            .layout_with_weight(&col.title, small, f32::INFINITY, HEAD)
-            .width();
+        let tw = m.look.width(ts, &col.title, small, Role::Head);
         let x = match col.align {
             Align::Start => c.x + m.pad,
             Align::End => (right - tw).max(c.x + m.pad),
         };
-        paint_text_in_weight(
+        m.look.paint(
             ts,
             scene,
             &col.title,
@@ -366,7 +351,7 @@ fn paint_header(
             } else {
                 ColorToken::Text3
             }),
-            HEAD,
+            Role::Head,
         );
         if c.x > lay.area.x {
             stroke_polyline(

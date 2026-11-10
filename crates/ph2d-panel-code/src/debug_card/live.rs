@@ -92,7 +92,7 @@ pub(super) fn body_height(st: &DebugCardView, c: &DebugCard, area_w: f32) -> f32
     match st.style {
         CardStyle::Sheet => {
             let rows = live_sheet_rows(c, st.graph.as_deref());
-            ph2d_ui_table::natural_height(&rows, &st.table, &Metrics::standard()) + rh
+            ph2d_ui_table::natural_height(&rows, &st.table, &crate::peso::metricas()) + rh
         }
         CardStyle::Cards => {
             let (per, pitch) = gauge_grid(area_w);
@@ -114,7 +114,7 @@ fn open_row<'a>(st: &DebugCardView, c: &'a DebugCard) -> Option<&'a LiveRow> {
 /// Quantos mostradores cabem numa fila de `w` e o passo vertical de uma fila.
 fn gauge_grid(w: f32) -> (usize, f32) {
     let gap = Spacing::Md.px();
-    let least = Metrics::standard().spark_w * GAUGE_SPARKS + super::inset() * 2.0;
+    let least = crate::peso::metricas().spark_w * GAUGE_SPARKS + super::inset() * 2.0;
     let per = (((w - gap) / (least + gap)).floor() as usize).max(1);
     (per, ph2d_tokens::row_pitch_px() * GAUGE_ROWS + gap)
 }
@@ -184,7 +184,7 @@ fn sheet(
     theme: Theme,
 ) {
     let rh = ph2d_tokens::row_pitch_px();
-    let (cols, m) = (live_columns(), Metrics::standard());
+    let (cols, m) = (live_columns(), crate::peso::metricas());
     let rows = live_sheet_rows(c, st.graph.as_deref());
     let mut text = CodeCells { view, theme };
     let natural = natural_widths(&cols, &rows, &m, ts, &mut text);
@@ -381,7 +381,7 @@ fn gauge(
     let spark = Rect::new(field.x, y + rh, field.w, rh);
     match &r.trail {
         Some(s) => {
-            ph2d_ui_table::paint_spark(scene, s, spark, &Metrics::standard(), theme);
+            ph2d_ui_table::paint_spark(scene, s, spark, &crate::peso::metricas(), theme);
             st.painted.sparks.push((r.var.key.clone(), spark));
         }
         None => {
@@ -415,7 +415,7 @@ fn strip(
     let rh = ph2d_tokens::row_pitch_px();
     let pad = Spacing::Sm.px();
     let small = TypeToken::Xs.px();
-    let spark_w = Metrics::standard().spark_w;
+    let spark_w = crate::peso::metricas().spark_w;
     let mut cells: Vec<(&LiveRow, String, String, f32, f32)> = Vec::new();
     let mut used = 0.0;
     for r in &c.live {
@@ -467,7 +467,7 @@ fn strip(
         if let Some(s) = &r.trail {
             let sx = kx + vw + pad;
             let at = Rect::new(sx, row.0, (right - sx).max(0.0).min(spark_w), rh);
-            ph2d_ui_table::paint_spark(scene, s, at, &Metrics::standard(), theme);
+            ph2d_ui_table::paint_spark(scene, s, at, &crate::peso::metricas(), theme);
             st.painted.sparks.push((r.var.key.clone(), at));
         }
         st.painted.values.push((r.var.value.clone(), cell));
@@ -530,7 +530,7 @@ fn graph(r: &LiveRow, at: Rect, scene: &mut VectorScene, ts: &mut TextSystem, th
     paint_text(ts, scene, &r.var.name, lx, my, font, label_w, name);
     let m = Metrics {
         pad: 0.0,
-        ..Metrics::standard()
+        ..crate::peso::metricas()
     };
     ph2d_ui_table::paint_spark(scene, samples, plot, &m, theme);
     let ty = at.y + at.h - rh + (rh - font) * 0.5;

@@ -124,7 +124,7 @@ impl BancadaView {
         let s = Spacing::Sm.px();
         let m = Metrics {
             header_h: 0.0,
-            ..Metrics::standard()
+            ..crate::peso::metricas()
         };
         let mut text = CodeCells {
             view,

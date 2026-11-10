@@ -361,3 +361,46 @@ fn num_corpo_baixo_as_linhas_cortadas_nao_tomam_o_clique() {
     assert_eq!(card.pressed, None);
     assert_eq!(card.look(x, y), None);
 }
+
+/// Com a letra Large e a faixa de cima como a linha mais larga, o nome do script cabe inteiro: o
+/// cartão mede o título no peso em que se pinta (o `600`).
+#[test]
+fn com_a_letra_grande_o_nome_do_script_na_faixa_de_cima_nao_se_corta() {
+    use ph2d_tokens::{TextRendering, UiTextSize, UiTextStyle};
+    let antes = ph2d_text::active_text_style();
+    ph2d_text::set_active_text_style(UiTextStyle {
+        size: UiTextSize::Large,
+        ..antes
+    });
+    ph2d_editor_core::paint::set_text_rendering(TextRendering::CrispHeavyPlus);
+    let script = "the_main_character_movement_and_collisions_controller.luau";
+    let f = OptionsFrame {
+        id: NodeId(9),
+        script,
+        rows: &ROWS,
+        assist: None,
+        restart: NodeId(4),
+    };
+    let mut ts = TextSystem::without_system_fonts();
+    let mut card = OptionsCard {
+        open: true,
+        ..OptionsCard::default()
+    };
+    card.paint(ABA, &f, &mut VectorScene::new(), &mut ts, &Theme::Forge);
+    let font = ph2d_tokens::TypeToken::Sm.px();
+    let inteiro =
+        ph2d_panel_code::peso::largura_em(&mut ts, script, font, ph2d_panel_code::peso::CORPO);
+    ph2d_editor_core::paint::set_text_rendering(TextRendering::Default);
+    ph2d_text::set_active_text_style(antes);
+    let name = card.painted.name.expect("o nome pintado");
+    let cartao = card.painted.card.expect("o cartão");
+    assert!(
+        cartao.w < ABA.w,
+        "o cartão não bateu na aba (a faixa é que manda)"
+    );
+    assert!(
+        name.w >= inteiro - 0.5,
+        "o nome coube em {} de {inteiro}: cortado",
+        name.w
+    );
+}

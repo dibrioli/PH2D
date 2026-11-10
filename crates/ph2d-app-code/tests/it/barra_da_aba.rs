@@ -241,3 +241,33 @@ fn o_menu_edit_tem_uma_linha_toggle_fold_que_faz_o_que_o_alt_f_faz() {
     let _ = m.docs().command(id.0, CMD_TOGGLE_FOLD);
     assert_eq!(m.docs().closed_folds(id), Vec::<(usize, usize)>::new());
 }
+
+/// No preset de fábrica, a caixa de cada título do menu é a largura em que ele se PINTA (o corpo
+/// `400` no peso exacto) e o recuo dos dois lados.
+#[test]
+fn a_caixa_de_cada_titulo_do_menu_e_a_largura_pintada() {
+    use ph2d_tokens::{Spacing, TextRendering, TypeToken};
+    ph2d_editor_core::paint::set_text_rendering(TextRendering::CrispHeavyPlus);
+    let (mut m, _) = aberta();
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    for menu in TabMenu::ALL {
+        let caixa = titulo(&mut m, menu);
+        let tinta = ph2d_text::com_peso_exato(|| {
+            ts.layout_for_rendering(
+                menu.title(),
+                TypeToken::Sm.px(),
+                f32::INFINITY,
+                ph2d_text::FontWeight::NORMAL,
+                TextRendering::CrispHeavyPlus,
+            )
+        })
+        .width();
+        let quer = tinta + Spacing::Sm.px() * 2.0;
+        assert!(
+            (caixa.w - quer).abs() <= 1.0,
+            "{menu:?}: a caixa tem {} e o título pintado pede {quer}",
+            caixa.w
+        );
+    }
+    ph2d_editor_core::paint::set_text_rendering(TextRendering::Default);
+}

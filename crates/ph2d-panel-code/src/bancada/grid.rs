@@ -130,7 +130,7 @@ impl BancadaView {
         self.map_hits.clear();
         let map = self.map_on && !self.folded && !who.holders.is_empty();
         // Cada lado guarda ao menos duas colunas mínimas da tabela (os nomes e uma propriedade).
-        let min = Metrics::standard().min_col * 2.0;
+        let min = crate::peso::metricas().min_col * 2.0;
         let split = map.then(|| Split::measure(self.split.side_w, area.w, min, min));
         let side = split.map_or(0.0, |s| s.side_w + band());
         let grid_r = Rect::new(area.x, area.y, (area.w - side).max(0.0), area.h);
@@ -221,7 +221,7 @@ impl BancadaView {
         ts: &mut TextSystem,
         theme: &Theme,
     ) {
-        let (cols, rows, m) = (columns(who), rows(who), Metrics::standard());
+        let (cols, rows, m) = (columns(who), rows(who), crate::peso::metricas());
         let mut text = CodeCells {
             view,
             theme: *theme,
@@ -313,7 +313,7 @@ impl BancadaView {
             return true;
         }
         self.table.dragging() && {
-            self.table.drag_to((x, y), &Metrics::standard());
+            self.table.drag_to((x, y), &crate::peso::metricas());
             true
         }
     }

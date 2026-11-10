@@ -139,7 +139,7 @@ impl DebugCardView {
         let body = match self.style {
             _ if !c.stopped() => live::body_height(self, c, area.w),
             CardStyle::Sheet => {
-                let table = natural_height(&sheet_rows(c), &self.table, &Metrics::standard());
+                let table = natural_height(&sheet_rows(c), &self.table, &crate::peso::metricas());
                 let side = rh * (2 + c.stack.len() + c.waiting.len()) as f32;
                 table.max(side) + rh
             }
@@ -337,7 +337,7 @@ impl DebugCardView {
             return true;
         }
         self.table.dragging() && {
-            self.table.drag_to((x, y), &Metrics::standard());
+            self.table.drag_to((x, y), &crate::peso::metricas());
             true
         }
     }

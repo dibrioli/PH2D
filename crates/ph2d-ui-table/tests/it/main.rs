@@ -5,6 +5,7 @@ use ph2d_ui_table::{
     Cell, Column, Hit, Ink, Layout, Metrics, Row, TableState, layout, natural_height, spark_points,
 };
 
+mod pesos;
 mod reserva_e_fios;
 
 fn cols() -> Vec<Column> {
@@ -422,7 +423,10 @@ fn pinta(st: &mut TableState, rows: &[Row], m: &Metrics) -> (Vec<u32>, Vec<u32>,
     let l = layout(&c, rows, &natural(m), st, a, m);
     let (mut scene, mut ts) = (VectorScene::new(), TextSystem::without_system_fonts());
     let tones = (ColorToken::PanelBg, ColorToken::Bg3);
-    let mut text = UiText { theme: TEMA };
+    let mut text = UiText {
+        theme: TEMA,
+        look: ph2d_ui_table::Look::House,
+    };
     paint(
         &l, &c, rows, st, tones, &mut scene, &mut ts, &mut text, TEMA,
     );
@@ -521,7 +525,10 @@ fn o_quadrado_de_cor_toma_o_lugar_do_texto_e_a_largura_e_a_dele() {
     let (data, ..) = pinta(&mut TableState::default(), &r, &m);
     assert!(data.contains(&tinta(ph2d_vector::Color::new(cor))));
     let mut ts = TextSystem::without_system_fonts();
-    let mut text = UiText { theme: TEMA };
+    let mut text = UiText {
+        theme: TEMA,
+        look: ph2d_ui_table::Look::House,
+    };
     let n = ph2d_ui_table::natural_widths(&cols(), &r, &m, &mut ts, &mut text);
     let want = (ph2d_ui_table::swatch_side() + m.pad * 2.0).max(m.min_col);
     assert!((n[1] - want).abs() < 1e-3, "{} vs {want}", n[1]);

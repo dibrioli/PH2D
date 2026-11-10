@@ -57,7 +57,7 @@ pub(super) struct Table {
 impl Table {
     /// A roda: `dy` px (positivo = para cima), em linhas inteiras (o `layout` prende ao fim).
     pub(super) fn scroll_by(&mut self, dy: f32) {
-        let rh = Metrics::standard().row_h;
+        let rh = crate::peso::metricas().row_h;
         let n = (dy / rh).round();
         let n = if n == 0.0 && dy != 0.0 {
             dy.signum()
@@ -174,7 +174,7 @@ impl ConsoleView {
             t.steady.reset();
             return;
         }
-        let (cols, trows, m) = (columns(), table_rows(rows), Metrics::standard());
+        let (cols, trows, m) = (columns(), table_rows(rows), crate::peso::metricas());
         if current != t.last_current {
             if let Some(c) = current {
                 let fit = ((body.h - m.header_h) / m.row_h).floor().max(1.0);
@@ -260,7 +260,7 @@ impl ConsoleView {
     /// O rato com o botão em baixo: arrasta a barra ↕ da lista. `true` = havia arrasto.
     pub fn drag_to(&mut self, y: f32) -> bool {
         self.list.state.bar_dragging() && {
-            let _ = self.list.state.drag_to((0.0, y), &Metrics::standard());
+            let _ = self.list.state.drag_to((0.0, y), &crate::peso::metricas());
             true
         }
     }

@@ -54,7 +54,7 @@ fn buttons(
         .into_iter()
         .map(|(ask, label, key)| {
             let lw = text_w(ts, label, crate::peso::BOTAO);
-            let kw = ts.layout(key, small, f32::INFINITY).width();
+            let kw = crate::peso::largura_em(ts, key, small, crate::peso::BOTAO);
             (ask, label, key, lw, kw, lw + kw + gap + pad * 2.0)
         })
         .collect();

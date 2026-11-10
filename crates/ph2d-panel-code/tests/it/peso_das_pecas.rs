@@ -159,3 +159,62 @@ fn cada_peca_do_quadro_parado_pinta_no_peso_da_maquete() {
         );
     }
 }
+
+/// A largura de `text` como o pintor de peso exacto a pinta, no preset de fábrica.
+fn pintada(ts: &mut TextSystem, text: &str, px: f32, w: FontWeight) -> f32 {
+    ph2d_text::com_peso_exato(|| {
+        ts.layout_for_rendering(text, px, f32::INFINITY, w, TextRendering::CrispHeavyPlus)
+    })
+    .width()
+}
+
+#[test]
+fn cada_botao_do_quadro_reserva_o_rotulo_e_a_tecla_na_largura_pintada() {
+    use ph2d_tokens::{Spacing, TypeToken};
+    let c = DebugCard {
+        state: CardState::Paused,
+        line: 18,
+        function: "update".into(),
+        can_step: true,
+        ..DebugCard::default()
+    };
+    let (mut scene, mut ts) = (VectorScene::new(), TextSystem::without_system_fonts());
+    let mut v = DebugCardView::default();
+    let aba = Rect::new(0.0, 0.0, 1100.0, 900.0);
+    let h = v.height(&c, aba);
+    let r = Rect::new(0.0, aba.h - h, aba.w, h);
+    let mut view = CodeView::new();
+    set_text_rendering(TextRendering::CrispHeavyPlus);
+    v.paint(
+        &c,
+        [NodeId(1), NodeId(2)],
+        r,
+        &mut view,
+        &mut scene,
+        &mut ts,
+        Theme::default(),
+    );
+    let pares = [
+        ("code.debug.continue", "code.debug.continue_key"),
+        ("code.debug.next_line", "code.debug.next_line_key"),
+    ];
+    let (pad, gap) = (Spacing::Md.px(), Spacing::Sm.px());
+    let esperado: Vec<f32> = pares
+        .iter()
+        .map(|(l, k)| {
+            pintada(&mut ts, tr(l), TypeToken::Sm.px(), CSS_500)
+                + pintada(&mut ts, tr(k), TypeToken::Xs.px(), CSS_500)
+                + gap
+                + pad * 2.0
+        })
+        .collect();
+    set_text_rendering(TextRendering::Default);
+    assert_eq!(v.painted.buttons.len(), 2, "Continue e Next line");
+    for ((_, b), want) in v.painted.buttons.iter().zip(esperado) {
+        assert!(
+            (b.w - want).abs() <= 0.5,
+            "o botão tem {} e o rótulo com a tecla pintados pedem {want}",
+            b.w
+        );
+    }
+}

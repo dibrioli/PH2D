@@ -59,6 +59,8 @@ pub struct OptionsPainted {
     /// O único realce pintado: o fundo da linha debaixo do rato ou carregada, e a tinta dele.
     pub highlight: Option<(Rect, ph2d_vector::Color)>,
     pub pin: Option<Rect>,
+    /// O nome do script na faixa de cima: a caixa em que coube.
+    pub name: Option<Rect>,
     /// A tinta das caixas: a da superfície do próprio popover, nunca a do cartão à volta.
     pub check_ink: Option<CardInk>,
 }
@@ -192,7 +194,9 @@ impl OptionsCard {
         let one = |ts: &mut TextSystem, s: &str, px: f32| measure(ts, s, px, f32::INFINITY).0;
         let restart_w = one(ts, restart, font()) + lg * 2.0;
         let title = ph2d_i18n::tr("code.options.title");
-        let mut need = one(ts, title, font()) + lg + one(ts, f.script, font()) + md + rh;
+        let title_w = crate::peso::largura_em(ts, title, font(), crate::peso::TITULO);
+        // A faixa de cima como o `paint_head` a reparte: título · md · nome · md · alfinete.
+        let mut need = title_w + md + one(ts, f.script, font()) + md + rh;
         for o in f.rows {
             let text = one(ts, o.title, font()).max(one(ts, o.says, small()));
             need = need.max(text + lg + sw);
@@ -332,6 +336,7 @@ impl OptionsCard {
         let nw = crate::peso::largura(ts, script, font());
         let room = (inner_w - rh - md - tw - md).max(0.0);
         let nx = inner + inner_w - rh - md - nw.min(room);
+        self.painted.name = Some(Rect::new(nx, y, nw.min(room), rh));
         crate::peso::paint_text_elided(
             ts,
             scene,

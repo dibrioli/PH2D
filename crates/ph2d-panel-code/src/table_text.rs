@@ -38,7 +38,11 @@ impl CellText for CodeCells<'_> {
         if mono {
             text.chars().count() as f32 * self.view.metrics().advance
         } else {
-            UiText { theme: self.theme }.width(ts, text, false)
+            UiText {
+                theme: self.theme,
+                look: crate::peso::TABELA,
+            }
+            .width(ts, text, false)
         }
     }
 
@@ -54,7 +58,11 @@ impl CellText for CodeCells<'_> {
         right: f32,
     ) {
         if !mono {
-            UiText { theme: self.theme }.paint(ts, scene, text, ink, false, x, (y, h), right);
+            UiText {
+                theme: self.theme,
+                look: crate::peso::TABELA,
+            }
+            .paint(ts, scene, text, ink, false, x, (y, h), right);
             return;
         }
         let mut pal = Palette::new(self.theme);

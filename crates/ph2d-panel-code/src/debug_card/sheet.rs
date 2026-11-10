@@ -58,7 +58,7 @@ pub(super) fn paint(
 ) {
     let rh = ph2d_tokens::row_pitch_px();
     let pad = Spacing::Sm.px();
-    let (cols, rows, m) = (columns(), sheet_rows(c), Metrics::standard());
+    let (cols, rows, m) = (columns(), sheet_rows(c), crate::peso::metricas());
     let mut text = CodeCells { view, theme };
     let natural = natural_widths(&cols, &rows, &m, ts, &mut text);
     // A coluna do lado nunca esconde o título «Call stack»; a tabela nunca corta Value nem Type.

@@ -53,11 +53,14 @@ fn the_gpu_extra_draw_loops_the_runs_binding_material_bg() {
     let bind = block
         .find("material_bg(r.texture_id")
         .expect("checked above");
-    let draw = block[per_run..]
+    // The slice draw is searched AFTER the `material_bg` bind: the P14 normal-map branch
+    // (`normais.do_run`) draws its own slice earlier in the same loop body.
+    let draw = block[bind..]
         .find("r.start..r.end")
         .expect("each run must draw its own [start, end) slice, not the whole buffer");
+    let next_branch = block[per_run..].find("} else {").map(|o| per_run + o);
     assert!(
-        bind > per_run && per_run + draw > bind,
+        bind > per_run && next_branch.is_none_or(|e| bind + draw < e),
         "the per-run bind and its slice draw must live INSIDE the run loop"
     );
 }

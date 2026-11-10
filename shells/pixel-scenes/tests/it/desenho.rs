@@ -77,6 +77,7 @@ fn every_aseprite_shortcut_picks_its_tool_and_the_same_key_never_switches_to_a_f
         (KeyCode::KeyP, true, Tool::Gradient),
         (KeyCode::KeyR, false, Tool::Blur),
         (KeyCode::KeyR, false, Tool::Jumble),
+        (KeyCode::KeyR, false, Tool::Push),
         (KeyCode::KeyR, false, Tool::Blur),
         (KeyCode::KeyT, false, Tool::Text),
         (KeyCode::KeyC, true, Tool::Slice),
@@ -87,9 +88,9 @@ fn every_aseprite_shortcut_picks_its_tool_and_the_same_key_never_switches_to_a_f
     }
     assert_eq!(
         Tool::ALL.len(),
-        21 + ph2d_tool_vector::shapes::SHAPES.len(),
+        22 + ph2d_tool_vector::shapes::SHAPES.len(),
         "10 de desenho + 5 de selecção + Transform (P6c: sem Move nem as cheias) + Gradient, Blur, \
-         Jumble e Text (P8) + Slice (P11) + as formas do Vector (P6e: o catálogo inteiro)"
+         Jumble e Text (P8) + Slice (P11) + Push (P13) + as formas do Vector (P6e: o catálogo inteiro)"
     );
     assert_eq!(PIXEL_MAX_BRUSH, ph2d_pixel_core::brush::MAX_BRUSH);
 }

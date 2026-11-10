@@ -68,82 +68,13 @@ impl App {
         } else {
             drop_world_raw
         };
-        // **AS FOLHAS hand-packed saem da fila antes do filtro de imagem**: o roteador emite
-        // *"Skipped …"* por arquivo que não reconhece, e um `.json` de folha largado com a folha
-        // produziria um aviso de que foi ignorado.
-        //
-        // ⚠️ E a imagem que a folha referencia é retirada da leva também — senão largar
-        // `folha.png` + `folha.json` daria a folha **e** um sprite avulso com a folha inteira
-        // desenhada nele, os dois no mesmo sítio, um por cima do outro.
-        let (sheet_metas, rest) = crate::sheet_import::partition_sheet_metadata(paths);
-        let mut sheet_bits: Vec<u64> = Vec::new();
-        let paths: Vec<std::path::PathBuf> = if sheet_metas.is_empty() {
-            rest
-        } else {
-            let consumed: Vec<std::path::PathBuf> = sheet_metas
-                .iter()
-                .filter_map(|j| crate::sheet_import::referenced_image(j))
-                .collect();
-            for json in &sheet_metas {
-                if std::fs::read(json).is_ok_and(|b| ph2d_sprite_ase_import::e_folha_animada(&b)) {
-                    let porta = ph2d_sprite_ase_import::Porta {
-                        sim: &mut gfx.sim,
-                        renderer: &mut gfx.renderer,
-                        asset_db: &gfx.asset_db,
-                        next_cell: &mut gfx.next_import_cell,
-                        atlas_asset_map: &mut gfx.atlas_asset_map,
-                        anchor_world: drop_world,
-                        pixels_per_meter,
-                        escolher_normal: ph2d_app_sprite_anim::normal_map::escolher_normal,
-                    };
-                    let r = ph2d_sprite_ase_import::import_folha(porta, json);
-                    let (toast, bits) = ph2d_sprite_ase_import::frases_do_import(r);
-                    for (erro, t) in toast {
-                        gfx.toasts.push(if erro {
-                            Toast::error(t)
-                        } else {
-                            Toast::success(t)
-                        });
-                    }
-                    sheet_bits.extend(bits);
-                    self.title_dirty = true;
-                    continue;
-                }
-                match crate::sheet_import::import_sheet(
-                    &mut gfx.sim,
-                    &mut gfx.renderer,
-                    &gfx.asset_db,
-                    &mut gfx.sheets,
-                    &mut gfx.sheet_textures,
-                    &mut gfx.next_sheet_id,
-                    json,
-                    drop_world,
-                    pixels_per_meter,
-                ) {
-                    crate::sheet_import::SheetImportResult::Ok {
-                        name,
-                        regions,
-                        bits,
-                    } => {
-                        gfx.toasts.push(Toast::success(tr_with(
-                            "shell.input_drop.sheet_sprites",
-                            &[("name", &name), ("regions", &regions)],
-                        )));
-                        sheet_bits.extend(bits);
-                    }
-                    crate::sheet_import::SheetImportResult::Err { name, error } => {
-                        gfx.toasts.push(Toast::error(tr_with(
-                            "shell.input_drop.sheet",
-                            &[("name", &name), ("error", &error)],
-                        )));
-                    }
-                }
-                self.title_dirty = true;
-            }
-            rest.into_iter()
-                .filter(|p| !consumed.iter().any(|c| c == p))
-                .collect()
-        };
+        let (paths, mut sheet_bits) = import_dropped_sheets(
+            gfx,
+            paths,
+            drop_world,
+            pixels_per_meter,
+            &mut self.title_dirty,
+        );
         let paths: &[std::path::PathBuf] = &paths;
         // ⚠️ **UMA porta para o que este app importa** (`crate::import_router`, Enio 2026-08-23:
         // *«.ase não aparece no dialog de import»*). Este sítio filtrava por
@@ -223,6 +154,89 @@ impl App {
             gfx.toasts.push(Toast::warning(note));
         }
     }
+}
+
+/// **AS FOLHAS hand-packed saem da fila antes do filtro de imagem**: o roteador emite *"Skipped …"*
+/// por arquivo que não reconhece. ⚠️ E a imagem que a folha referencia sai da leva também — senão
+/// largar `folha.png` + `folha.json` daria a folha **e** um sprite avulso por cima dela.
+/// Devolve o resto dos caminhos e os sprites das folhas.
+fn import_dropped_sheets(
+    gfx: &mut crate::AppGfx,
+    paths: &[std::path::PathBuf],
+    drop_world: [f32; 2],
+    pixels_per_meter: f32,
+    title_dirty: &mut bool,
+) -> (Vec<std::path::PathBuf>, Vec<u64>) {
+    let (sheet_metas, rest) = crate::sheet_import::partition_sheet_metadata(paths);
+    let mut sheet_bits: Vec<u64> = Vec::new();
+    let paths: Vec<std::path::PathBuf> = if sheet_metas.is_empty() {
+        rest
+    } else {
+        let consumed: Vec<std::path::PathBuf> = sheet_metas
+            .iter()
+            .filter_map(|j| crate::sheet_import::referenced_image(j))
+            .collect();
+        for json in &sheet_metas {
+            if std::fs::read(json).is_ok_and(|b| ph2d_sprite_ase_import::e_folha_animada(&b)) {
+                let porta = ph2d_sprite_ase_import::Porta {
+                    sim: &mut gfx.sim,
+                    renderer: &mut gfx.renderer,
+                    asset_db: &gfx.asset_db,
+                    next_cell: &mut gfx.next_import_cell,
+                    atlas_asset_map: &mut gfx.atlas_asset_map,
+                    anchor_world: drop_world,
+                    pixels_per_meter,
+                    escolher_normal: ph2d_app_sprite_anim::normal_map::escolher_normal,
+                };
+                let r = ph2d_sprite_ase_import::import_folha(porta, json);
+                let (toast, bits) = ph2d_sprite_ase_import::frases_do_import(r);
+                for (erro, t) in toast {
+                    gfx.toasts.push(if erro {
+                        Toast::error(t)
+                    } else {
+                        Toast::success(t)
+                    });
+                }
+                sheet_bits.extend(bits);
+                *title_dirty = true;
+                continue;
+            }
+            match crate::sheet_import::import_sheet(
+                &mut gfx.sim,
+                &mut gfx.renderer,
+                &gfx.asset_db,
+                &mut gfx.sheets,
+                &mut gfx.sheet_textures,
+                &mut gfx.next_sheet_id,
+                json,
+                drop_world,
+                pixels_per_meter,
+            ) {
+                crate::sheet_import::SheetImportResult::Ok {
+                    name,
+                    regions,
+                    bits,
+                } => {
+                    gfx.toasts.push(Toast::success(tr_with(
+                        "shell.input_drop.sheet_sprites",
+                        &[("name", &name), ("regions", &regions)],
+                    )));
+                    sheet_bits.extend(bits);
+                }
+                crate::sheet_import::SheetImportResult::Err { name, error } => {
+                    gfx.toasts.push(Toast::error(tr_with(
+                        "shell.input_drop.sheet",
+                        &[("name", &name), ("error", &error)],
+                    )));
+                }
+            }
+            *title_dirty = true;
+        }
+        rest.into_iter()
+            .filter(|p| !consumed.iter().any(|c| c == p))
+            .collect()
+    };
+    (paths, sheet_bits)
 }
 
 // O receptor de «soltar» do Wayland (o winit 0.30 não entrega `DroppedFile` lá, MiroClone W14): estado

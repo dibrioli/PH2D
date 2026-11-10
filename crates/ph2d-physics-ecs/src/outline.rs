@@ -114,7 +114,7 @@ pub fn outline_rings_world(
     let o = world
         .get::<ColliderOutline>(e)
         .filter(|o| !o.rings.is_empty())?;
-    let (s, c) = rotation.sin_cos();
+    let (s, c) = libm::sincosf(rotation);
     let mut rings = o.rings_m([half_x, half_y], scale);
     for p in rings.iter_mut().flatten() {
         *p = [at[0] + p[0] * c - p[1] * s, at[1] + p[0] * s + p[1] * c];

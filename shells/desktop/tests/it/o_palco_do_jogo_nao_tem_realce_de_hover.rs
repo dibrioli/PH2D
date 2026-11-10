@@ -23,7 +23,7 @@ fn o_palco_do_jogo_nao_tem_realce_de_hover() {
         .expect("o quadro deixou de escolher o objecto apontado");
     let linha = &src[at..at + src[at..].find(';').expect("a atribuição fecha")];
     assert!(
-        linha.contains("pick_hovered_object") && linha.contains("(!palco)"),
+        linha.contains("pick_hovered_object") && linha.contains("(!palco"),
         "o objecto apontado escolhe-se também com o palco aberto — o contorno de hover desenha-se \
          por cima do jogo:\n{linha}"
     );

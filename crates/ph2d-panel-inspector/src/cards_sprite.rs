@@ -130,6 +130,7 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
     crate::sections::ordering::prepara_opcoes(store);
     crate::cards_anim::prepara();
     crate::cards_pixel_pivot::prepara(store);
+    crate::cards_pixel_luz::prepara(store);
     crate::cards_sprite_folhas::prepara(store);
     crate::cards_sprite_normal::prepara(store);
     semeia_do_objeto(store);
@@ -195,7 +196,8 @@ pub(crate) fn imagem_do_pixel(card: PixelSpriteCard) -> CardDef<'static> {
         summary: (!nome.is_empty()).then(|| nome.clone()),
         body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
             let y = cabeca_do_pixel(c, y, &card, &nome);
-            crate::cards_pixel_pivot::linha(c, y + m::FIELD_ROW_GAP, &card)
+            let y = crate::cards_pixel_pivot::linha(c, y + m::FIELD_ROW_GAP, &card);
+            crate::cards_pixel_luz::linha(c, y + m::FIELD_ROW_GAP, &card)
         })),
     }
 }
@@ -444,6 +446,7 @@ pub(crate) fn evento(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
         || sections::look::evento_dos_cantos(host, ev)
         || evento_do_pivot(host, ev)
         || crate::cards_pixel_pivot::evento(host, ev)
+        || crate::cards_pixel_luz::evento(host, ev)
     {
         return true;
     }

@@ -389,9 +389,12 @@ fn g6_o_pixel_sem_normal_a_vista_nao_aloca_nada() {
     assert_eq!(banda, 0, "a textura da banda não nasce sem normal à vista");
 }
 
-/// ⭐ P13 L — **«Light: Palette»: o sprite aceso fica na rampa.** A fixture com uma rampa de 4
-/// degraus (a cor dela é o 2.º) e a lâmpada à esquerda: todo píxel do miolo do sprite sai numa cor
-/// da RAMPA (nunca o `rgb × luz`), e o lado aceso fica num degrau ≥ o do lado escuro.
+/// ⭐ P13 L — **«Light: Palette»: o sprite aceso fica na rampa**, pelo caminho do artista: o
+/// `set_luz_na_paleta` que o cartão grava, e as bandas como a família as dá à shell
+/// (`banda_rampa_da_faixa` ⇒ `RampaDaFaixa::from` ⇒ `NormaisDasFaixas::empurra`). A fixture com uma
+/// rampa de 4 degraus (a cor dela é o 2.º) e a lâmpada à esquerda: todo píxel do miolo do sprite sai
+/// numa cor da RAMPA (nunca o `rgb × luz`), e o lado aceso fica num degrau ≥ o do lado escuro. Com
+/// *Smooth* o quadro é o de antes da L byte a byte. Mede o custo do passe (mínimo de 20, intercalado).
 #[test]
 fn a_luz_na_rampa_no_quadro_fica_na_rampa() {
     let Some(gpu) = gpu() else {
@@ -407,23 +410,48 @@ fn a_luz_na_rampa_no_quadro_fica_na_rampa() {
     let mut s = ph2d_pixel_cena::fixture::heroi_p14();
     let op = ph2d_pixel_rampa::op_rampa_nova(&s, "r", &rampa).expect("rampa nova");
     ph2d_pixel_core::apply(&mut s, op).unwrap();
+    let suave = s.clone();
+    let op = ph2d_pixel_core::ramp::set_luz_na_paleta(&s, true).expect("o passo do cartão");
+    ph2d_pixel_core::apply(&mut s, op).unwrap();
     let mut w = World::new();
     lampada(&mut w, None);
     let t = translacao_para(&s, [0.0, 0.0]);
     let (tr, g) = pose(t[0], t[1]);
     let e = w.spawn((tr, g)).id();
     let objetos = [objeto(&w, e, &s, false)];
+    let objetos_suaves = [objeto(&w, e, &suave, false)];
     let mut c = Cadeia::nova(&gpu);
     let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
     assentar(&gpu, &c, &mut l, &w, &objetos, false);
-    let (cena, lut) = ph2d_pixel_luz::banda_rampa(&objetos, &[true], afim()).expect("Palette");
-    l.normais_mut().cenas = vec![banda_normal(&objetos, afim())];
-    l.normais_mut().rampas.cenas = vec![Some(ph2d_app_light2d::RampaDaFaixa {
-        cena,
-        lut: lut.texeis(),
-        tamanho_lut: (lut.largura() as u32, lut.rampas.len() as u32),
-    })];
-    let bgra = colar(&gpu, &mut c, &mut l, &cena_de_cor(&objetos), true);
+    let cor = cena_de_cor(&objetos);
+    let quadro = |l: &mut LuzDoQuadro, c: &mut Cadeia, o: &[ObjetoPixel<'_>], rampa: bool| {
+        l.normais_mut().limpar();
+        let banda = ph2d_pixel_luz::banda_rampa_da_faixa(o, afim()).map(Into::into);
+        assert_eq!(
+            banda.is_some(),
+            rampa,
+            "a banda de rampa nasce só com Palette"
+        );
+        l.normais_mut().empurra((banda_normal(o, afim()), banda));
+        let t0 = std::time::Instant::now();
+        let bgra = colar(&gpu, c, l, &cor, true);
+        (bgra, t0.elapsed())
+    };
+    let (hoje, _) = {
+        l.normais_mut().limpar();
+        l.normais_mut().cenas = vec![banda_normal(&objetos_suaves, afim())];
+        let t0 = std::time::Instant::now();
+        (colar(&gpu, &mut c, &mut l, &cor, true), t0.elapsed())
+    };
+    let (smooth, _) = quadro(&mut l, &mut c, &objetos_suaves, false);
+    assert!(smooth == hoje, "Smooth: o quadro de hoje byte a byte");
+    let (mut com, mut sem) = (std::time::Duration::MAX, std::time::Duration::MAX);
+    for _ in 0..20 {
+        com = com.min(quadro(&mut l, &mut c, &objetos, true).1);
+        sem = sem.min(quadro(&mut l, &mut c, &objetos_suaves, false).1);
+    }
+    eprintln!("custo do passe (colar + leitura, mínimo de 20): Palette {com:?} · Smooth {sem:?}");
+    let (bgra, _) = quadro(&mut l, &mut c, &objetos, true);
     let degrau = |p: (u32, u32)| {
         let i = ((p.1 * W + p.0) * 4) as usize;
         let rgb = [bgra[i + 2], bgra[i + 1], bgra[i]];

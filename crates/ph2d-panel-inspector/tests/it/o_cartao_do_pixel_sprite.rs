@@ -32,6 +32,7 @@ fn cartao(rgba: &Arc<Vec<u8>>, size: [u32; 2]) -> PixelSpriteCard {
         doc: 7,
         pivots: vec![(3, "feet".to_owned())],
         pivot: None,
+        luz_na_paleta: false,
     }
 }
 
@@ -298,4 +299,38 @@ fn o_pivot_do_cartao_pede_a_slice_ao_documento() {
     assert!(dropdown::on_click(INSP_PIXEL_PIVOT_DD), "a lista declarada");
     assert_eq!(dropdown::open(), Some(INSP_PIXEL_PIVOT_DD));
     let _ = dropdown::on_click(INSP_PIXEL_PIVOT_DD);
+}
+
+/// ⭐ **Light** (P13 L): *Smooth* · *Palette* pintados no cartão, aceso o do documento; o clique real
+/// em *Palette* pede ao documento do objecto a luz na rampa, e *Smooth* a de sempre. O passo no
+/// documento (e o Ctrl+Z) prova-se em `shells/pixel-scenes` (`luz_rampa_cartao`).
+#[test]
+fn a_light_do_cartao_pede_a_rampa_ao_documento() {
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::pixel_panel::PixelRequest;
+    let (mut host, mut st, _) = cena([32, 32]);
+    let r = pinta(&mut host, &mut st);
+    assert_eq!(ph2d_i18n::tr("card.insp.pixel_light"), "Light");
+    let _ = host.drained_actions();
+    for (id, on) in [
+        (INSP_PIXEL_LIGHT_PALETTE, true),
+        (INSP_PIXEL_LIGHT_SMOOTH, false),
+    ] {
+        let q = rect_de(&r, id).expect("o segmento pintado");
+        let mut ev = Vec::new();
+        for kind in [PointerKind::Move, PointerKind::Down, PointerKind::Up] {
+            ev.extend(host.dispatch_pointer_event(evento(q.x + q.w * 0.5, q.y + q.h * 0.5, kind)));
+        }
+        assert!(ev.contains(&WidgetEvent::Click(id)), "{ev:?}");
+        for e in ev {
+            let _ = host.apply_panel_event::<InspectorPanel>(&mut st, e);
+        }
+        assert_eq!(
+            host.drained_actions(),
+            [EditorAction::Pixel(PixelRequest::LuzNaPaleta {
+                doc: 7,
+                on
+            })]
+        );
+    }
 }

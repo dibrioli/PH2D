@@ -67,9 +67,11 @@ impl crate::App {
             marca,
             vista,
         });
+        self.jogador_entra();
     }
 
     fn jogo_sai(&mut self, foto: FotoDoJogo) {
+        self.jogador_sai();
         self.apply_project_with(&foto.estado, Some(&foto.marca));
         if let Some(v) = foto.vista {
             self.palco_sai(v);

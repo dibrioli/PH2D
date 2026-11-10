@@ -18,11 +18,19 @@ fn game() -> InputMap {
 }
 
 fn row_of(map: &InputMap, name: &str) -> usize {
-    rows(map).iter().position(|r| r.action == name).expect("na tela")
+    rows(map)
+        .iter()
+        .position(|r| r.action == name)
+        .expect("na tela")
 }
 
 fn keys_of(map: &InputMap, name: &str) -> Vec<Binding> {
-    map.actions().iter().find(|a| a.name == name).expect("acção").bindings.clone()
+    map.actions()
+        .iter()
+        .find(|a| a.name == name)
+        .expect("acção")
+        .bindings
+        .clone()
 }
 
 /// Abre e desce até `jump`.
@@ -50,7 +58,11 @@ fn enter_then_j_replaces_up_on_jump_and_keeps_the_rest() {
     let eff = k.apply_over(&g);
     assert!(keys_of(&eff, "jump").contains(&Binding::Key(J)));
     assert!(!keys_of(&eff, "jump").contains(&Binding::Key(UP)));
-    assert_eq!(keys_of(&g, "jump")[0], Binding::Key(UP), "o mapa do jogo não muda");
+    assert_eq!(
+        keys_of(&g, "jump")[0],
+        Binding::Key(UP),
+        "o mapa do jogo não muda"
+    );
 }
 
 #[test]
@@ -183,7 +195,11 @@ fn the_session_map_is_the_project_outside_play() {
     let g = game();
     let mut s = PlaySession::default();
     assert!(std::ptr::eq(s.map(&g), &g));
-    assert_eq!(s.key(F1, true, &g), Outcome::Ignored, "fora do Play a tecla não abre");
+    assert_eq!(
+        s.key(F1, true, &g),
+        Outcome::Ignored,
+        "fora do Play a tecla não abre"
+    );
     s.start_with(&g, PlayerKeys::new(), None);
     assert!(s.running());
     s.stop();

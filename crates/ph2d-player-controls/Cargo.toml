@@ -23,5 +23,11 @@ ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }
 
+# As provas do Play: o mapa efectivo chega à resolução do jogador e ao Luau (plano InputMap W7).
+[dev-dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-script = { path = "../ph2d-script" }
+
 [lints]
 workspace = true

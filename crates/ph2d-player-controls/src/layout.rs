@@ -61,7 +61,14 @@ impl Layout {
                 let name = Rect::new(x0 + m::SEG_INSET, band.y, NAME_W - m::SEG_INSET, ROW_H);
                 let ky = band.y + (ROW_H - KEY_H) * 0.5;
                 let slots = (0..r.slots())
-                    .map(|i| Rect::new(x0 + NAME_W + (SLOT_W + m::FIELD_GAP) * i as f32, ky, SLOT_W, KEY_H))
+                    .map(|i| {
+                        Rect::new(
+                            x0 + NAME_W + (SLOT_W + m::FIELD_GAP) * i as f32,
+                            ky,
+                            SLOT_W,
+                            KEY_H,
+                        )
+                    })
                     .collect();
                 RowLayout { band, name, slots }
             })

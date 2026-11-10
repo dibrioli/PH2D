@@ -103,6 +103,12 @@ impl App {
         {
             return;
         }
+        // A tela «Controls» do jogador (plano InputMap §4): a tecla que a abre e, aberta, todas — antes do jogo.
+        if let PhysicalKey::Code(c) = physical_key
+            && self.controles_do_jogador(c, state.is_pressed(), repeat)
+        {
+            return;
+        }
 
         self.handler.on_key(KeyEvent {
             keycode,

@@ -113,7 +113,11 @@ impl App {
             )
         });
         let host = gfx.and_then(|g| g.script.as_ref());
-        let actions = hero.map(|h| (&h.input_map, &self.input_actions));
+        let jogador = &self.components.jogador;
+        let actions = hero.map(|h| {
+            let mapa = crate::input_dispatch::controles_do_jogador::play_map(jogador, h);
+            (mapa, &self.input_actions)
+        });
         ph2d_app_components::script_input::frame(host, &mut self.input, rato, actions);
     }
 }

@@ -52,9 +52,12 @@ impl crate::App {
         }
         // ⭐ A porta é da CRATE desde a Fase C, e leva os três campos em vez de `self`: o
         // empréstimo disjunto é feito AQUI, que é onde os campos vivem.
-        let player_input = ph2d_app_physics::player_input::resolve_player_input(
+        let mapa = (self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref())).map(|h| {
+            crate::input_dispatch::controles_do_jogador::play_map(&self.components.jogador, h)
+        });
+        let player_input = ph2d_physics_ecs::player_input::resolve_player_input(
             &mut self.input_actions,
-            self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()),
+            mapa,
             &self.input,
         );
         let pointer = self.last_pointer;

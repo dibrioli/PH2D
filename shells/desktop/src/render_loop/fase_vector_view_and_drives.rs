@@ -87,7 +87,13 @@ impl crate::App {
             &mut self.morph_machines,
             sim,
             &self.vec.entities,
-            &ph2d_input::Input::new(&hero.input_map, &self.input_actions),
+            &ph2d_input::Input::new(
+                crate::input_dispatch::controles_do_jogador::play_map(
+                    &self.components.jogador,
+                    hero,
+                ),
+                &self.input_actions,
+            ),
             // ⛔⛔ **O sistema de States tem PRECEDÊNCIA** (W11e, 2.º report do Enio): ordenar
             // os dois motores dentro do quadro não bastava, porque a transição só fala no
             // MEIO — no repouso e na chegada quem escrevia era a máquina de teclas, parada

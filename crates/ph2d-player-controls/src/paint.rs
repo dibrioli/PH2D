@@ -26,7 +26,13 @@ pub fn paint(
     let c = |t: ColorToken| resolve(t, theme);
     let line = StrokeToken::Hairline.px();
     fill_rounded_rect(scene, lay.panel, m::CARD_RADIUS, c(ColorToken::Bg1));
-    stroke_rounded_rect(scene, lay.panel, m::CARD_RADIUS, line, c(ColorToken::Border));
+    stroke_rounded_rect(
+        scene,
+        lay.panel,
+        m::CARD_RADIUS,
+        line,
+        c(ColorToken::Border),
+    );
     paint_text_centered(
         text,
         scene,
@@ -53,7 +59,15 @@ pub fn paint(
         );
         for (s, r) in rl.slots.iter().enumerate() {
             let here = selected && s == screen.slot();
-            paint_slot(scene, text, *r, row.keys.get(s).copied(), here, screen.listening(), theme);
+            paint_slot(
+                scene,
+                text,
+                *r,
+                row.keys.get(s).copied(),
+                here,
+                screen.listening(),
+                theme,
+            );
         }
     }
     let on_reset = screen.selected() >= rows.len();
@@ -66,7 +80,11 @@ pub fn paint(
         &tr("player_controls.reset"),
         lay.reset,
         m::VALUE_PX,
-        c(if on_reset { ColorToken::Text1 } else { ColorToken::Text2 }),
+        c(if on_reset {
+            ColorToken::Text1
+        } else {
+            ColorToken::Text2
+        }),
     );
     let hint = if rows.is_empty() {
         "player_controls.none"
@@ -75,7 +93,14 @@ pub fn paint(
     } else {
         "player_controls.hint_choose"
     };
-    paint_text_centered(text, scene, &tr(hint), lay.hint, m::LABEL_PX, c(ColorToken::Text2));
+    paint_text_centered(
+        text,
+        scene,
+        &tr(hint),
+        lay.hint,
+        m::LABEL_PX,
+        c(ColorToken::Text2),
+    );
     lay
 }
 
@@ -93,7 +118,14 @@ fn paint_slot(
     let radius = m::FIELD_RADIUS;
     if here && listening {
         fill_rounded_rect(scene, r, radius, c(ColorToken::Warn));
-        paint_text_centered(text, scene, &tr("player_controls.listening"), r, m::VALUE_PX, c(ColorToken::Bg0));
+        paint_text_centered(
+            text,
+            scene,
+            &tr("player_controls.listening"),
+            r,
+            m::VALUE_PX,
+            c(ColorToken::Bg0),
+        );
         return;
     }
     let (label, ink) = match key {
@@ -102,7 +134,13 @@ fn paint_slot(
     };
     fill_rounded_rect(scene, r, radius, c(ColorToken::Bg3));
     if here {
-        stroke_rounded_rect(scene, r, radius, StrokeToken::Thick.px(), c(ColorToken::FocusRing));
+        stroke_rounded_rect(
+            scene,
+            r,
+            radius,
+            StrokeToken::Thick.px(),
+            c(ColorToken::FocusRing),
+        );
     }
     paint_text_centered(text, scene, &label, r, m::VALUE_PX, c(ink));
 }

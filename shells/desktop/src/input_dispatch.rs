@@ -49,6 +49,8 @@ mod keyboard_bind_capture;
 mod keyboard_board; // o teclado de um QUADRO activo (MiroClone) -- antes dos atalhos da cena
 mod trackpad_board; // W23 -- os dois dedos e a pinça num QUADRO activo
 
+/// A tela «Controls» do jogador no Play (InputMap §4).
+pub(crate) mod controles_do_jogador;
 /// **As teclas que ENCERRAM um gesto em curso** (Esc cancela, Enter confirma) — irmão do
 /// `keyboard`, cortado dele pelo cap de LOC. A ORDEM entre elas é a lei, e é por isso que
 /// viajam juntas em vez de por dono.
@@ -411,9 +413,13 @@ impl App {
             return;
         }
         self.ramo_arrasto_biblioteca(state, button);
-        // O rato do JOGO (itens 6–7): com a cena a correr o clique na cena é SÓ dele (`posse_do_jogo`).
-        if self.rato_do_jogo(mapped_button, state == ElementState::Pressed) {
-            self.clique_so_do_jogo(mapped_button, state == ElementState::Pressed);
+        // O rato do JOGO (itens 6–7): com a cena a correr o clique na cena é SÓ dele (`posse_do_jogo`). Antes dele, a
+        // tela «Controls» do jogador aberta é dona do clique (InputMap §4).
+        let controles = self.clique_dos_controles(state == ElementState::Pressed);
+        if controles || self.rato_do_jogo(mapped_button, state == ElementState::Pressed) {
+            if !controles {
+                self.clique_so_do_jogo(mapped_button, state == ElementState::Pressed);
+            }
             return;
         }
         // ⭐ No palco não há editor: o que não é do jogo só pode ser dos botões do jogo (dono 07/11). Os ramos abaixo são

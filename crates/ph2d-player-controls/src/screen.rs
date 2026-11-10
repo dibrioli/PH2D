@@ -78,7 +78,10 @@ pub enum Outcome {
 /// Onde caiu um clique dentro do painel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Hit {
-    Slot { row: usize, slot: usize },
+    Slot {
+        row: usize,
+        slot: usize,
+    },
     Reset,
     /// No painel, fora de um alvo.
     Panel,

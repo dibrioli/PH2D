@@ -27,7 +27,9 @@ pub struct PlaySession {
 impl PlaySession {
     /// O Play começou: lê o ficheiro do jogador (se há) e põe as trocas por cima do mapa do jogo.
     pub fn start(&mut self, game: &InputMap, file: Option<PathBuf>) {
-        let keys = file.as_deref().map_or_else(PlayerKeys::new, crate::file::load);
+        let keys = file
+            .as_deref()
+            .map_or_else(PlayerKeys::new, crate::file::load);
         self.start_with(game, keys, file);
     }
 
@@ -92,13 +94,17 @@ impl PlaySession {
         self.after(out, game)
     }
 
-    /// Guarda se o relógio corria ao abrir; o fecho devolve-o ([`Self::take_resume_clock`]).
-    pub fn set_resume_clock(&mut self, was_playing: bool) {
-        self.resume_clock = was_playing;
-    }
-
-    pub fn take_resume_clock(&mut self) -> bool {
-        std::mem::take(&mut self.resume_clock)
+    /// O relógio do jogo depois de um gesto (`playing` = corre agora): `Some(false)` = pare (abriu), `Some(true)` =
+    /// retome (fechou e corria ao abrir), `None` = deixe.
+    pub fn clock_after(&mut self, out: Outcome, playing: bool) -> Option<bool> {
+        match out {
+            Outcome::Opened => {
+                self.resume_clock = playing;
+                Some(false)
+            }
+            Outcome::Closed if std::mem::take(&mut self.resume_clock) => Some(true),
+            _ => None,
+        }
     }
 
     /// Pinta o painel se a tela está aberta; a disposição fica para o clique.
@@ -115,7 +121,14 @@ impl PlaySession {
             return;
         }
         let rows = self.rows(project);
-        self.last = Some(crate::paint::paint(area, &rows, &self.screen, scene, text, theme));
+        self.last = Some(crate::paint::paint(
+            area,
+            &rows,
+            &self.screen,
+            scene,
+            text,
+            theme,
+        ));
     }
 
     fn after(&mut self, out: Outcome, game: &InputMap) -> Outcome {

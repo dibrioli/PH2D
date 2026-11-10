@@ -26,7 +26,10 @@ impl crate::App {
         self.gfx.as_ref().map_or_else(Default::default, |g| {
             g.hero_screen.as_ref().map_or_else(Default::default, |h| {
                 ph2d_app_components::trigger_bridge::amostras_das_accoes(
-                    &h.input_map,
+                    crate::input_dispatch::controles_do_jogador::play_map(
+                        &self.components.jogador,
+                        h,
+                    ),
                     &self.input_actions,
                 )
             })

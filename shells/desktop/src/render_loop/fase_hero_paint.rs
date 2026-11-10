@@ -42,6 +42,7 @@ impl crate::App {
         // ⭐ Na ESCALA da interface (`ph2d_editor_core::ui_scale`): o chrome numa cena lógica,
         //    colada sob `Affine::scale(s)`; a `100 %` o caminho de sempre. A forma de onda do Audio
         //    Editor é chrome — pinta-se na MESMA cena, com o viewport lógico.
+        let jogador = &mut self.components.jogador;
         ph2d_editor_core::screens::hero::paint_hero_screen_na_escala(
             hero,
             viewport,
@@ -52,6 +53,8 @@ impl crate::App {
                 if let Some(audio) = self.audio.as_mut() {
                     audio_overlay::draw_audio_overlay(_hero, audio, _vp, _scene, _text);
                 }
+                // A tela «Controls» do jogador, por cima do jogo (InputMap §4).
+                jogador.paint(_vp, &_hero.input_map, _scene, _text, paint_ctx.theme);
             },
         );
         // A janela de candidatos do IME segue o caret do campo focado.

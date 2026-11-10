@@ -20,4 +20,6 @@ pub use screen::{ControlsScreen, Hit, Outcome, Row, SLOTS, readable_name, rebind
 pub use session::PlaySession;
 
 #[cfg(test)]
+mod play_tests;
+#[cfg(test)]
 mod tests;

@@ -67,9 +67,10 @@ fn the_whole_finger_is_handed_to_the_physics_dispatch() {
     // que a `App` por acaso segurava. ⭐ **A agulha nova é MELHOR**, e é a §2.13 do HOWTO a
     // funcionar: ela nomeia a PORTA e a propriedade — *um binding, um valor, no topo do quadro* —
     // em vez de nomear quem a chama. Um `self.` na agulha mede o receptor, e o receptor é
-    // exactamente o que uma fronteira nova muda por construção.
+    // exactamente o que uma fronteira nova muda por construção. (InputMap R3b) A porta é a da
+    // `ph2d_physics_ecs`, sobre o MAPA EFECTIVO do Play (`controles_do_jogador::play_map`).
     assert!(
-        src.contains("let player_input = ph2d_app_physics::player_input::resolve_player_input("),
+        src.contains("let player_input = ph2d_physics_ecs::player_input::resolve_player_input("),
         "o `render_loop` tem de RESOLVER o dedo do jogador a partir do Input Map, no topo do quadro"
     );
 }

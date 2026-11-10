@@ -7705,6 +7705,7 @@ dependencies = [
  "ph2d-pixel-cena",
  "ph2d-pixel-crt",
  "ph2d-pixel-keys",
+ "ph2d-player-controls",
  "ph2d-poly2d",
  "ph2d-preview-drive",
  "ph2d-preview-slot",
@@ -11154,9 +11155,12 @@ name = "ph2d-player-controls"
 version = "0.0.0"
 dependencies = [
  "ph2d-card-stack",
+ "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-i18n",
  "ph2d-input",
+ "ph2d-physics-ecs",
+ "ph2d-script",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-vector",

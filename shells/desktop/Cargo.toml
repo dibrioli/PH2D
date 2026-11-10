@@ -58,6 +58,8 @@ ph2d-app-components = { path = "../../crates/ph2d-app-components" }
 ph2d-app-sprite-anim = { path = "../../crates/ph2d-app-sprite-anim" }
 # A aba Input Map (docs/InputMap/01_plano.md).
 ph2d-app-input-map = { path = "../../crates/ph2d-app-input-map" }
+# A tela «Controls» do jogador no Play (docs/InputMap/01_plano.md §4).
+ph2d-player-controls = { path = "../../crates/ph2d-player-controls" }
 # O Painter na folha extra visível (plano GEF 26 F13).
 ph2d-anim-sheets = { path = "../../crates/ph2d-anim-sheets" }
 # As MACROS (ADR-0186, W5d): Gravar ▸ Parar, as etapas e as edições delas.

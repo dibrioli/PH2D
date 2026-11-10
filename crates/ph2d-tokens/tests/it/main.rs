@@ -17,4 +17,5 @@ mod the_ground_stands_under_every_panel;
 mod the_leaf_stays_dep_free;
 mod the_modern_family_derives_every_token;
 mod the_oled_theme_separates_by_border;
+mod the_switch_knob_is_light_in_every_theme;
 mod toda_recusa_desta_crate_e_uma_chave;

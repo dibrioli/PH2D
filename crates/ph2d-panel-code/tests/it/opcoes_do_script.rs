@@ -187,19 +187,45 @@ fn o_hover_e_um_fundo_unico_na_linha_e_nada_no_interruptor() {
     assert_eq!(card.painted.highlight, None);
     card.hover = Some(NodeId(2));
     assert_eq!(caminhos(&mut card), quieto + 1, "hover = um caminho a mais");
-    assert_eq!(
-        card.painted.highlight,
-        Some(p.rows[1].1),
-        "o fundo é a linha inteira"
-    );
+    let (r, ink) = card.painted.highlight.expect("o hover pintou");
+    assert_eq!(r, p.rows[1].1, "o fundo é a linha inteira");
     assert_eq!(card.painted.thumbs, p.thumbs, "a pílula não muda");
+    // A camada do Material 3: translúcida e mais clara que o cartão do Forge (escuro) ⇒ CLAREIA.
+    let [r8, g8, b8, _] = ink.to_rgba8().to_u8_array();
+    let rgb = ph2d_tokens::Color {
+        r: r8,
+        g: g8,
+        b: b8,
+        a: 255,
+    };
+    let fundo = ph2d_tokens::ColorToken::BgElev.resolve(Theme::Forge);
+    assert!((ink.components[3] - ph2d_tokens::HOVER_LAYER_ALPHA).abs() < 1e-3);
+    assert!(
+        rgb.relative_luminance() > fundo.relative_luminance(),
+        "o hover clareia o cartão"
+    );
     card.pressed = Some(NodeId(2));
     assert_eq!(
         caminhos(&mut card),
         quieto + 1,
         "carregado = um caminho a mais"
     );
-    assert_eq!(card.painted.highlight, Some(p.rows[1].1));
+    assert_eq!(card.painted.highlight.map(|h| h.0), Some(p.rows[1].1));
+}
+
+/// Smoke 09/11: o disco da pílula LIGADA é claro nos dois temas (o do macOS), nunca o `AccentFg`.
+#[test]
+fn o_disco_da_pilula_ligada_e_claro_no_tema_escuro_e_no_claro() {
+    use ph2d_editor_core::widget::switch_inks;
+    for theme in [Theme::Forge, Theme::Sunstone] {
+        let (track, knob) = switch_inks(true, theme);
+        let lum = |c: ph2d_vector::Color| {
+            let [r, g, b, _] = c.to_rgba8().to_u8_array();
+            ph2d_tokens::Color { r, g, b, a: 255 }.relative_luminance()
+        };
+        assert!(lum(knob) > 0.5, "{theme:?}: o disco lê claro");
+        assert!(lum(knob) > lum(track), "{theme:?}: mais claro que o trilho");
+    }
 }
 
 /// O alfinete: carregar nele segura o cartão (um clique fora já não o fecha) e não corre comando.

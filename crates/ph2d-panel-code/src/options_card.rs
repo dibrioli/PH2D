@@ -56,8 +56,8 @@ pub struct OptionsPainted {
     pub thumbs: Vec<(f32, f32, f32)>,
     /// A frase de cada opção: a caixa onde foi pintada (a altura é a do texto quebrado).
     pub says: Vec<Rect>,
-    /// O único realce pintado: o fundo da linha debaixo do rato ou carregada.
-    pub highlight: Option<Rect>,
+    /// O único realce pintado: o fundo da linha debaixo do rato ou carregada, e a tinta dele.
+    pub highlight: Option<(Rect, ph2d_vector::Color)>,
     pub pin: Option<Rect>,
 }
 
@@ -278,18 +278,19 @@ impl OptionsCard {
         self.painted.card = Some(card);
     }
 
-    /// O fundo da linha debaixo do rato (o hover das listas da casa) ou carregada (um degrau mais
-    /// forte): o ÚNICO realce — sem moldura, e a pílula não muda.
+    /// O fundo da linha debaixo do rato ou carregada (mais forte): o ÚNICO realce — sem moldura, e a
+    /// pílula não muda. O hover é a camada do Material 3: a tinta do título, translúcida
+    /// ([`ph2d_tokens::HOVER_LAYER_ALPHA`]) — clareia o cartão num tema escuro.
     fn paint_highlight(&mut self, cmd: NodeId, r: Rect, scene: &mut VectorScene, theme: &Theme) {
-        let token = if self.pressed == Some(cmd) {
-            ColorToken::AccentSoft
+        let ink = if self.pressed == Some(cmd) {
+            tinta(ColorToken::AccentSoft, *theme)
         } else if self.hover == Some(cmd) {
-            ColorToken::Bg2
+            resolve(ColorToken::Text1, *theme).with_alpha(ph2d_tokens::HOVER_LAYER_ALPHA)
         } else {
             return;
         };
-        fill_rounded_rect(scene, r, 0.0, tinta(token, *theme));
-        self.painted.highlight = Some(r);
+        fill_rounded_rect(scene, r, 0.0, ink);
+        self.painted.highlight = Some((r, ink));
     }
 
     /// A faixa de cima: «Script options» à esquerda, o nome do script à direita e o alfinete.

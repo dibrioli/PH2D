@@ -73,6 +73,13 @@
 | onda 7 | B16b | parcial (12ddb9b8cf): RewetCache com planos esparsos por ladrilho 64²: 3,1 MB contra 201 MB (Spread 12); 4096²: 37,8 contra 738 MB. Mas o traço fica mais lento (9,1–10,0 → 12,6–12,8 ms); falta caminho híbrido. |
 | onda 7 | B14b-cont | parcial (11a7100349): Dabber na cena Composite já liga o Real Oil, sem .rs; wet6 ganhou gesto longo e --ciclos a tabela. A × B, load 10–28: nenhum ganho decisivo. Falta log da óptica por quadro (.rs). |
 | onda 7 | verificação | verde |
+| onda 8 | B15b | feito (fb010927be): Placa: o knob da lâmpada não redobra a tela; dobra do tique 4K 21,6 → 0,01 ms (load 18–26, só o sentido). Gate novo red → green, mutações vermelhas; Radeon verde. |
+| onda 8 | B12a-cont | parcial (070d3480dc): B12.1 anel: a grade nova nasce com o anel de dreno selado; gate do undo do 1.º traço red → green, 20+37 verdes. Falta pen-down Wet na Radeon e B12.2 (Ctrl+Z Wet 4K). |
+| onda 8 | B17b-cont | parcial (7f7c1813a3): 2.ª cópia de tela do Ctrl+Z atribuída (undo_journal.rs:180) e removida: Digital undo 11,6 → 7,8 ms, Impasto 20,0 → 12,6; cópias 2 → 1 / 5 → 4. Falta B17.4 (dono único da tela). |
+| onda 8 | B17c | feito (d6c5c94513): B17.6: Blur e carimbo de cor assado passam a pegada própria; journal 512² Tiling 1 048 576 → 262 144 B. Dois gates novos red → green; alarmes de pincel verdes. Ganho só em debug/test. |
+| onda 8 | B11-cont3 | parcial (84d9650d36): B11.3 passo 2: o compositor da óptica corre o laço de píxel e o fio da tela só cola (sem Real Oil, razão 1). otica_no_tique 10/10. Nada medido no app; falta Smooth Edges/razão > 1. |
+| onda 8 | B14b-cont2 | feito (4fce3b6b3b): Fecho medido no app, Radeon: luz Simples × Cheia −13 % / −9 % em ciclos de casa (load 14–44, contagem); óptica 0 imagens nos 27 gestos; aguada 4K 11–26 img/s. Sem .rs. |
+| onda 8 | verificação | verde |
 
 ## Fatos medidos que mudam a ordem
 

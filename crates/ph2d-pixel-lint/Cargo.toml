@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-pixel-lint"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# P13 bloco A (`docs/PixelArt/P13_plano.md` §4 «Que vícios tem este cel?»): o linter de pixel art,
+# uma função pura sobre o cel composto do quadro. Só o núcleo; sem OKLab (a quase-igualdade de cor
+# fica de fora, ver `regra::cores`).
+[dependencies]
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+
+[lints]
+workspace = true

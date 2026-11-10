@@ -93,14 +93,33 @@ impl Dirty {
     }
 }
 
+/// A orla que o rasto veste FORA da caixa que declara (`trail/transfer.rs`: `*::veste_virgens`, o maior dos três
+/// alcances): o campo de altura do Real Oil lê-a, logo o espelho tem de a levar (B11.2: sem as linhas inteiras do
+/// sujo, a imagem do espelho divergia da da grade).
+const ORLA_DO_ESPELHO: i32 = {
+    let (a, b) = (
+        crate::grid::material::ORLA_VIRGEM,
+        crate::grid::aparencia::ORLA_VIRGEM,
+    );
+    if a > b { a } else { b }
+};
+
 impl Engine {
+    /// Junta a caixa de uma porta ao sujo do espelho, com a [`ORLA_DO_ESPELHO`].
+    pub(super) fn suja_o_espelho(&mut self, (x0, y0, x1, y1): (i32, i32, i32, i32)) {
+        let r = ORLA_DO_ESPELHO;
+        self.espelho_sujo
+            .une((x0 - r, y0 - r, x1 + r, y1 + r), self.width, self.height);
+    }
+
     /// Tira e limpa o sujo do espelho (independente de [`Engine::take_dirty`]).
     pub fn take_espelho_sujo(&mut self) -> Dirty {
         std::mem::replace(&mut self.espelho_sujo, Dirty::Clean)
     }
 
-    /// Põe em `e` a óptica de hoje: só as LINHAS do [`Engine::take_espelho_sujo`]; `Full` copia tudo no lugar;
-    /// outro nº de camadas ou outro tamanho reconstrói. Um plano que mudou de tamanho copia-se inteiro.
+    /// Põe em `e` a óptica de hoje: com `Rect`, só a CAIXA do [`Engine::take_espelho_sujo`] (uma célula de folga) e
+    /// o anel, e só na camada activa (as outras mudam por `Full` — B11.2); `Full` copia tudo no lugar; outro nº de
+    /// camadas ou outro tamanho reconstrói. Um plano que mudou de tamanho copia-se inteiro, em qualquer camada.
     pub fn copia_para(&mut self, e: &mut Espelho) {
         let sujo = self.take_espelho_sujo();
         let mesma_forma = e.camadas.len() == self.layers.len()
@@ -120,32 +139,52 @@ impl Engine {
                 .collect();
             return;
         }
-        for (c, l) in e.camadas.iter_mut().zip(&self.layers) {
+        for (k, (c, l)) in e.camadas.iter_mut().zip(&self.layers).enumerate() {
             c.opacity = l.opacity;
             c.visible = l.visible;
             escalares(&mut c.grid, &l.grid);
             let g = &l.grid;
             let faixas = match sujo {
+                Dirty::Rect { .. } if k != self.active_layer => Vec::new(),
                 Dirty::Clean => Vec::new(),
                 Dirty::Full => std::iter::once(0..usize::MAX).collect(),
-                // Uma linha de folga de cada lado, e o ANEL que `solver::apply_boundaries` reescreve a cada passo
-                // fora do sujo (as linhas `0, 1, h, h+1` e as colunas `0, 1, w, w+1`).
-                Dirty::Rect { y0, y1, .. } => {
-                    let a = (y0.max(1) as usize) - 1;
-                    let b = (y1.max(0) as usize + 1).min(g.rows - 1);
-                    let mut f: Vec<_> = std::iter::once(a * g.s..(b + 1) * g.s).collect();
-                    for y in [0, 1, g.h, g.h + 1].into_iter().filter(|&y| y < g.rows) {
-                        f.push(y * g.s..(y + 1) * g.s);
-                    }
-                    for y in 0..g.rows {
-                        f.extend([y * g.s..y * g.s + 2, y * g.s + g.w..y * g.s + g.w + 2]);
-                    }
-                    f
-                }
+                Dirty::Rect { x0, y0, x1, y1 } => faixas_da_caixa(g, (x0, y0, x1, y1)),
             };
             copia_faixas(&mut c.grid, g, &faixas);
         }
     }
+}
+
+/// Os índices de um `Rect` do sujo: a caixa com uma célula de folga de cada lado (o menisco lê `film[i ± 1]`,
+/// `film[i ± s]`), recortada em X, e o ANEL que `solver::apply_boundaries` reescreve a cada passo fora do sujo (as
+/// linhas `0, 1, h, h+1` inteiras; as colunas `w, w+1` de uma linha e `0, 1` da seguinte são contíguas).
+fn faixas_da_caixa(
+    g: &Grid,
+    (x0, y0, x1, y1): (i32, i32, i32, i32),
+) -> Vec<std::ops::Range<usize>> {
+    let s = g.s;
+    let (a, b) = (
+        (y0.max(1) as usize) - 1,
+        (y1.max(0) as usize + 1).min(g.rows - 1),
+    );
+    let (xa, xb) = (
+        (x0.max(1) as usize) - 1,
+        (x1.max(0) as usize + 1).min(s - 1),
+    );
+    let mut f: Vec<_> = (a..=b).map(|y| y * s + xa..y * s + xb + 1).collect();
+    for y in [0, 1, g.h, g.h + 1].into_iter().filter(|&y| y < g.rows) {
+        f.push(y * s..(y + 1) * s);
+    }
+    if s == g.w + 2 {
+        f.push(0..2);
+        f.extend((0..g.rows - 1).map(|y| y * s + g.w..(y + 1) * s + 2));
+        f.push((g.rows - 1) * s + g.w..g.rows * s);
+    } else {
+        for y in 0..g.rows {
+            f.extend([y * s..y * s + 2, y * s + g.w..y * s + g.w + 2]);
+        }
+    }
+    f
 }
 
 /// Os escalares da grade (todos `Copy`; os da dinâmica vão também — custam nada e o padrão sem `..` obriga).

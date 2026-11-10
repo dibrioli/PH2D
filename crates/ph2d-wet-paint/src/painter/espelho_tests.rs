@@ -279,3 +279,6 @@ fn mede_copia_para_full() {
         std::mem::size_of::<crate::grid::tinta::pigmento::LadoEspectral>(),
     );
 }
+
+#[path = "espelho_estreito_tests.rs"]
+mod estreito; // B11.2: a cópia estreita contra a de linhas inteiras

@@ -620,8 +620,7 @@ impl Engine {
     #[track_caller]
     pub fn merge_dirty(&mut self, x0: i32, y0: i32, x1: i32, y1: i32) {
         self.revisao = nova_revisao();
-        self.espelho_sujo
-            .une((x0, y0, x1, y1), self.width, self.height);
+        self.suja_o_espelho((x0, y0, x1, y1));
         self.merge_dirty_otica(x0, y0, x1, y1);
     }
 

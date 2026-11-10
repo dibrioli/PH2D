@@ -1,7 +1,7 @@
 # HANDOFF DE INTEGRAÇÃO — line/ScriptEditor: acabamento 10/11 (tabelas da casa, caixa de marcar, molduras, rodada do dono)
 
 > Leitor: o agente integrador. Antecessor: [Onda B + plano 14 Q1–Q4](HANDOFF_INTEGRACAO_line_ScriptEditor_2026-11-09_PLANO14_Q1_A_Q4.md)
-> (**se ainda não estiver no main, integre-o primeiro**; esta linha assenta nele). Mecanismo e diário:
+> (já no main desde `bc4a6ce930`, a base desta linha). Mecanismo e diário:
 > [handoff de continuação do acabamento](HANDOFF_line_ScriptEditor_2026-11-10_ACABAMENTO.md) (§A e o smoke de lá estão
 > **superados** por este: a pílula saiu). Decisões do dono: [00_decisoes_do_dono.md](../00_decisoes_do_dono.md).
 

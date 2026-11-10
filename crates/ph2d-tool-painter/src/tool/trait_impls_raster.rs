@@ -64,6 +64,11 @@ impl RasterEditTool for PainterTool {
         self.layers_revision = self.layers_revision.wrapping_add(1);
         // A different working canvas — undo/redo over the OLD model is meaningless on the NEW one.
         self.undo.clear();
+        // A história recomeça aqui, e a janela com ela: o acesso que a troca do plano acima abriu não descreve
+        // passo nenhum (sem isto o 1.º traço depois de cada bind varria a tela no commit).
+        let mut w = self.undo.write_state.get();
+        w.reset(self.undo_writes);
+        self.undo.write_state.set(w);
         // O orçamento do histórico é função do DOCUMENTO (ADR-0117: `2×clipe + 256` no áudio). Aqui é o
         // único ponto em que o tamanho do canvas é decidido, e o histórico acabou de ser esvaziado —
         // dimensioná-lo em qualquer outro lugar seria um segundo dono do mesmo número.

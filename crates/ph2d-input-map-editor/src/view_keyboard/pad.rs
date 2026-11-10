@@ -64,6 +64,20 @@ fn body(at: &dyn Fn(f32, f32) -> (f64, f64)) -> BezPath {
     path
 }
 
+/// O ponto mais alto do contorno `outline` entre `x0` e `x1` (o meio do traço).
+fn outline_top(outline: &BezPath, x0: f32, x1: f32) -> f32 {
+    let mut top = f64::MAX;
+    let (a, b) = (f64::from(x0), f64::from(x1));
+    ph2d_vector::flatten(outline, 0.1, |el| {
+        if let ph2d_vector::PathEl::LineTo(p) | ph2d_vector::PathEl::MoveTo(p) = el
+            && (a..=b).contains(&p.x)
+        {
+            top = top.min(p.y);
+        }
+    });
+    top as f32
+}
+
 /// Os quatro cantos de `r` dentro do contorno `outline` (o censo: nenhuma parte sai do corpo).
 fn inside(outline: &BezPath, r: Rect) -> bool {
     use ph2d_vector::Shape;
@@ -169,7 +183,7 @@ pub(super) fn paint(
         );
     }
     for p in &parts {
-        let (mut cx, cy) = at(p.cx, p.cy);
+        let (mut cx, mut cy) = at(p.cx, p.cy);
         let (mut hw, hh) = (p.hw * bh, p.hh * bh);
         if let PadShape::Half(icon, _) = p.shape {
             // R1: a seta da manche tem a largura de uma tecla de letra — o glifo das setas e as barras à vista dos
@@ -187,6 +201,17 @@ pub(super) fn paint(
             // O nome e as barras de cada lado dele cabem dentro das pontas redondas.
             let ends = hh * (1.0 - std::f32::consts::FRAC_1_SQRT_2);
             hw = hw.max(ts.prefix_width(tr(p.short_key), m::LABEL_PX) * 0.5 + LEGEND_MARGIN + ends);
+        }
+        let trigger = matches!(
+            p.binding,
+            ph2d_input::Binding::PadButton(
+                ph2d_input::GamepadButton::LeftTrigger | ph2d_input::GamepadButton::RightTrigger
+            )
+        );
+        if trigger {
+            // Dono 10/11: LT e RT ACIMA do contorno, com um vão à vista (`SEG_INSET`) do traço por baixo da pílula.
+            let top = outline_top(&outline, cx - hw, cx + hw) - m::FIELD_BORDER;
+            cy = top - m::SEG_INSET - hh;
         }
         let r = Rect::new(cx - hw, cy - hh, hw * 2.0, hh * 2.0);
         let who = users(doc, p.binding);
@@ -224,6 +249,8 @@ pub(super) fn paint(
             face,
             ink: fg_tok,
             inside_body: inside(&outline, r),
+            gap_above_body: trigger
+                .then(|| outline_top(&outline, r.x, r.x + r.w) - m::FIELD_BORDER - (r.y + r.h)),
         });
         // As barras por TRÁS do nome, numa plaquinha (a lei da tecla); o nome no centro com 0 ou N barras.
         let plate_face = face_of(pressed, None, hover);

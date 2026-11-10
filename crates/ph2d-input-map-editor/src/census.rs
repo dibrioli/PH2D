@@ -62,6 +62,9 @@ pub struct PartLook {
     pub ink: ph2d_tokens::ColorToken,
     /// Os quatro cantos dentro do corpo do comando (os gatilhos assentam na aresta: ficam fora).
     pub inside_body: bool,
+    /// Os gatilhos (LT, RT), que ficam ACIMA do contorno: o vão à vista entre o fundo da pílula e o traço do contorno
+    /// por baixo dela (o ponto mais alto dele na largura da pílula). `None` nas outras partes.
+    pub gap_above_body: Option<f32>,
 }
 
 /// Como um controlo da A se pintou: o fundo, a aresta (e se é tracejada), a tinta e a marca do acento à esquerda.

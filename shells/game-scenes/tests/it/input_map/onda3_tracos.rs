@@ -533,10 +533,16 @@ fn a_seta_da_manche_ligada_le_se_como_as_outras_partes() {
                 let look = (doc.census.parts.iter())
                     .find(|p| p.rect == r)
                     .expect("o olhar");
-                assert!(
-                    gatilho || look.inside_body,
-                    "{at}: {b:?} {r:?} sai do corpo"
-                );
+                // Toda parte dentro do corpo; os gatilhos FORA e acima dele, com o vão (`os_gatilhos_ficam_acima_do_contorno`).
+                if gatilho {
+                    assert!(!look.inside_body, "{at}: {b:?} {r:?} dentro do corpo");
+                    assert!(
+                        look.gap_above_body.is_some_and(|g| g > 0.0),
+                        "{at}: {b:?} toca o contorno"
+                    );
+                } else {
+                    assert!(look.inside_body, "{at}: {b:?} {r:?} sai do corpo");
+                }
             }
             // As setas não tocam o anel da sua manche (o traço do anel aceso tem 3 px: metade para fora).
             for (nome, eixos) in [
@@ -720,5 +726,47 @@ fn o_contorno_da_accao_aberta_nunca_come_as_barras_do_comando() {
                 );
             }
         }
+    }
+}
+
+/// ⭐ Rodada 7 (dono 10/11: «afaste um pouco LT e RT do contorno do controle»): os gatilhos ficam ACIMA do contorno com
+/// um vão à vista igual dos dois lados — `SEG_INSET` (6 px), ≥ 4 px mesmo a 1280 — sem subir para cima do
+/// `Keyboard | Gamepad`, nas áreas reais.
+#[test]
+fn os_gatilhos_ficam_acima_do_contorno_com_um_vao() {
+    for a in &AREAS[..2] {
+        let m = pinta(View::Keyboard, Sub::Gamepad, onze(), *a);
+        let doc = &m.tab().doc;
+        let seg = doc
+            .rect_of(KbHit::Sub(Sub::Gamepad).id())
+            .expect("o Gamepad");
+        let mut vaos = Vec::new();
+        for g in [GamepadButton::LeftTrigger, GamepadButton::RightTrigger] {
+            let r = doc
+                .rect_of(KbHit::Pad(Binding::PadButton(g)).id())
+                .expect("o gatilho");
+            let look = (doc.census.parts.iter())
+                .find(|p| p.rect == r)
+                .expect("o olhar");
+            let vao = look.gap_above_body.expect("o vão medido");
+            eprintln!(
+                "{} {g:?}: vão {vao:.2} px; topo {:.1} (o Gamepad acaba em {:.1})",
+                a.w,
+                r.y,
+                seg.y + seg.h
+            );
+            assert!(vao >= 6.0 - 0.01, "{} {g:?}: o vão {vao:.2} < 6 px", a.w); // LITERAL-PX-OK: SEG_INSET
+            assert!(
+                r.y > seg.y + seg.h,
+                "{} {g:?}: sobe para cima do Gamepad",
+                a.w
+            );
+            vaos.push((vao, r.y));
+        }
+        assert!(
+            (vaos[0].0 - vaos[1].0).abs() < 0.01 && (vaos[0].1 - vaos[1].1).abs() < 0.01,
+            "{}: LT e RT simétricos {vaos:?}",
+            a.w
+        );
     }
 }

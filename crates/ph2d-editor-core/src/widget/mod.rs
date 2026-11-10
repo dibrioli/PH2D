@@ -276,6 +276,7 @@ pub use text_input::{
     paint_text_input_with_buffer, text_origin_x as text_input_text_origin_x,
 };
 pub use toggle::{Toggle, ToggleState, paint_toggle};
+pub use toggle_classic::paint_switch;
 pub use tool_rail::{
     CHIP_X_OFFSET_PX, COMPOUND_TOTAL_H_PX, DIVIDER_GAP_PX, EntrySlot, LABEL_TO_CHIP_GAP_PX,
     LABEL_VISUAL_EXTENT_PX, RailAxis, RailButtonSize, TOOL_CHIP_PX, ToolRail, ToolRailEntry,

@@ -124,10 +124,10 @@ fn strict_poe_e_tira_a_linha_num_passo_e_o_rotulo_diz_o_que_faz() {
             .unwrap()
             .label
     };
-    assert_eq!(rotulo(&mut m), "Strict Types (--!strict): Off");
+    assert_eq!(rotulo(&mut m), "Strict Type Checking: Off");
     assert!(m.docs().command(id.0, CMD_STRICT));
     assert_eq!(m.docs().text_of(id), Some(format!("--!strict\n{BOB}")));
-    assert_eq!(rotulo(&mut m), "Strict Types (--!strict): On");
+    assert_eq!(rotulo(&mut m), "Strict Type Checking: On");
     m.tecla(id, Key::Char('z'), ctrl(), Some("z"));
     assert_eq!(
         m.docs().text_of(id).as_deref(),

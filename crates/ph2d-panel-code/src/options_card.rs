@@ -1,23 +1,26 @@
-//! ⭐ **O cartão «Script options»** (13 §4 item 12; plano 14 Q4 passo D): a faixa de cima (título, o
-//! nome do script, o alfinete), uma linha por opção — título, interruptor à direita, e a frase do que
-//! ela faz por baixo — e no pé a frase do assistente com «Restart». A linha inteira é o alvo (mão e
-//! moldura); sem alfinete fecha-se com um clique fora. Os comandos e o estado são da família.
+//! ⭐ **O cartão «Script options»** (13 §4 item 12; plano 14 Q4 passo D; dono 09/11): uma lista de
+//! definições à macOS System Settings / VS Code Settings — a faixa de cima (título, o nome do script,
+//! o alfinete), uma linha por opção (título, a frase por baixo que quebra mas nunca se corta, a
+//! pílula à direita), um fio entre as opções, e no pé a frase do assistente com «Restart». A linha
+//! inteira é o alvo (mão e UM fundo de realce, nada no interruptor); sem alfinete fecha-se com um
+//! clique fora. Os comandos e o estado são da família.
 
 use crate::frame::Assist;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::doc_surface::PointerLook;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{
-    folga_do_texto, frame_radius, paint_icon, paint_text_elided, paint_text_title_elided, resolve,
-    stroke_rounded_rect,
+    fill_rounded_rect, folga_do_texto, paint_icon, paint_text_block, paint_text_title_elided,
+    resolve, text_rendering,
 };
+use ph2d_editor_core::widget::card_ink::tinta;
 use ph2d_editor_core::widget::{
-    Button, CHECKBOX_BOX_PX, Popover, Toggle, ToggleState, paint_button, paint_popover,
-    paint_toggle, pop_popover_clip, push_popover_clip,
+    Button, CHECKBOX_BOX_PX, Popover, paint_button, paint_popover, paint_switch, pop_popover_clip,
+    push_popover_clip,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_text::{FontWeight, TextSystem};
+use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// Uma opção: o comando, o título, a frase do que faz, e se está ligada.
@@ -46,11 +49,15 @@ pub struct OptionsPainted {
     pub card: Option<Rect>,
     /// A linha inteira de cada opção (o alvo do clique) e o «Restart»: o comando e a caixa.
     pub rows: Vec<(NodeId, Rect)>,
-    /// O interruptor de cada opção (a borda direita dele é a do «Restart»), e se mostra «ligado».
+    /// A pílula de cada opção (a borda direita dela é a do «Restart»), e se mostra «ligado».
     pub marks: Vec<Rect>,
     pub on: Vec<bool>,
-    /// A frase de cada opção: a caixa onde foi pintada.
+    /// O disco de cada pílula: centro e raio.
+    pub thumbs: Vec<(f32, f32, f32)>,
+    /// A frase de cada opção: a caixa onde foi pintada (a altura é a do texto quebrado).
     pub says: Vec<Rect>,
+    /// O único realce pintado: o fundo da linha debaixo do rato ou carregada.
+    pub highlight: Option<Rect>,
     pub pin: Option<Rect>,
 }
 
@@ -59,7 +66,7 @@ pub struct OptionsCard {
     pub open: bool,
     pub pinned: bool,
     pub painted: OptionsPainted,
-    /// A linha debaixo do rato e a carregada (a moldura de hover e a de clique).
+    /// A linha debaixo do rato e a carregada (o fundo de hover e o de clique).
     pub hover: Option<NodeId>,
     pub pressed: Option<NodeId>,
 }
@@ -72,9 +79,16 @@ fn small() -> f32 {
     TypeToken::Xs.px()
 }
 
-/// A altura da frase de uma opção, debaixo do título.
-fn says_h() -> f32 {
-    small() + Spacing::Sm.px()
+/// A pílula: duas caixas de largura por uma de altura.
+fn switch_size() -> (f32, f32) {
+    (CHECKBOX_BOX_PX * 2.0, CHECKBOX_BOX_PX)
+}
+
+/// A largura de `s` numa linha só, e a altura dele quebrado em `w` — a mesma passada de layout que o
+/// [`paint_text_block`] faz ao pintar.
+fn measure(ts: &mut TextSystem, s: &str, px: f32, w: f32) -> (f32, f32) {
+    let l = ts.layout_for_rendering(s, px, w, FontWeight::MEDIUM, text_rendering());
+    (l.width(), l.height())
 }
 
 /// A frase do assistente de código no pé do cartão.
@@ -165,48 +179,56 @@ impl OptionsCard {
         if !self.open {
             return;
         }
-        // Uma grelha (dono 04/11): os títulos à esquerda (`inner`); interruptores, alfinete e
-        // «Restart» com a borda direita em `inner + inner_w`.
-        let md = Spacing::Md.px();
-        let pad = ph2d_tokens::card_pad_px() + md;
-        let rh = ph2d_tokens::row_pitch_px();
+        // Uma grelha: os textos começam em `inner`; pílulas, alfinete e «Restart» acabam em
+        // `inner + inner_w`. A largura é a que põe cada frase numa linha; sem ela, quebra.
+        let (md, lg) = (Spacing::Md.px(), Spacing::Lg.px());
+        let (side, rh) = (lg, ph2d_tokens::row_pitch_px());
+        let (sw, sh) = switch_size();
         let sentence = assist_sentence(f.assist);
         let restart = ph2d_i18n::tr("code.options.restart");
-        let width = |ts: &mut TextSystem, s: &str, px: f32| ts.layout(s, px, f32::INFINITY).width();
-        let restart_w = width(ts, restart, font()) + Spacing::Lg.px() * 2.0;
-        let (sw, sh) = (CHECKBOX_BOX_PX * 2.0, CHECKBOX_BOX_PX);
+        let one = |ts: &mut TextSystem, s: &str, px: f32| measure(ts, s, px, f32::INFINITY).0;
+        let restart_w = one(ts, restart, font()) + lg * 2.0;
         let title = ph2d_i18n::tr("code.options.title");
-        let mut need = width(ts, title, font()) + md + width(ts, f.script, font()) + md + rh;
+        let mut need = one(ts, title, font()) + lg + one(ts, f.script, font()) + md + rh;
         for o in f.rows {
-            need = need.max(width(ts, o.title, font()) + md + sw);
-            need = need.max(width(ts, o.says, small()));
+            let text = one(ts, o.title, font()).max(one(ts, o.says, small()));
+            need = need.max(text + lg + sw);
         }
-        need = need.max(width(ts, sentence, font()) + Spacing::Xl.px() + restart_w);
-        let w = (need + pad * 2.0).min(under.w);
-        let n = f.rows.len() as f32;
-        let h = rh * (n + 2.0) + says_h() * n + Spacing::Xs.px() + pad * 2.0;
+        need = need.max(one(ts, sentence, font()) + lg + restart_w);
         let g = crate::cards::gap();
+        let w = (need + side * 2.0).min((under.w - g * 2.0).max(0.0));
+        let inner_w = (w - side * 2.0).max(0.0);
+        let tw = (inner_w - sw - lg).max(0.0);
+        let hair = StrokeToken::Thin.px();
+        // As alturas, medidas na largura em que se pintam (a frase quebra, nunca se corta).
+        let blocks: Vec<(f32, f32)> = f
+            .rows
+            .iter()
+            .map(|o| {
+                (
+                    measure(ts, o.title, font(), tw).1,
+                    measure(ts, o.says, small(), tw).1,
+                )
+            })
+            .collect();
+        let row_h = |b: (f32, f32)| (b.0 + Spacing::Xxs.px() + b.1 + md * 2.0).max(sh + md * 2.0);
+        let foot_tw = (inner_w - restart_w - lg).max(0.0);
+        let foot_h = measure(ts, sentence, font(), foot_tw).1.max(rh) + md * 2.0;
+        let head_h = rh + md + Spacing::Xs.px();
+        let rows_h: f32 = blocks.iter().map(|&b| row_h(b) + hair).sum();
+        let h = head_h + rows_h + foot_h;
         let card = Rect::new(under.x + under.w - w - g, under.y + g, w, h.min(under.h));
         paint_popover(&Popover::new(f.id), card, scene, *theme);
         push_popover_clip(card, scene);
-        let inner = card.x + pad;
-        let inner_w = (card.w - pad * 2.0).max(0.0);
-        let mut y = card.y + pad;
-        self.paint_head(f.script, (inner, inner_w, y), scene, ts, theme);
-        y += rh;
-        for o in f.rows {
-            let r = Rect::new(inner - md, y, inner_w + md * 2.0, rh + says_h());
-            let state = if self.pressed == Some(o.cmd) {
-                ToggleState::Pressed
-            } else if self.hover == Some(o.cmd) {
-                ToggleState::Hovered
-            } else {
-                ToggleState::Normal
-            };
+        let inner = card.x + side;
+        self.paint_head(f.script, (inner, inner_w, card.y + md), scene, ts, theme);
+        let mut y = card.y + head_h;
+        for (o, &b) in f.rows.iter().zip(&blocks) {
+            let r = Rect::new(card.x, y, card.w, row_h(b));
+            self.paint_highlight(o.cmd, r, scene, theme);
+            let ty = r.y + (r.h - b.0 - Spacing::Xxs.px() - b.1) * 0.5;
             let ink = |t| resolve(t, *theme);
-            let ty = y + folga_do_texto(rh, font());
-            let tw = inner_w - sw - md;
-            paint_text_elided(
+            paint_text_block(
                 ts,
                 scene,
                 o.title,
@@ -216,48 +238,57 @@ impl OptionsCard {
                 tw,
                 ink(ColorToken::Text1),
             );
-            let sy = y + rh + folga_do_texto(says_h(), small()) - Spacing::Xs.px();
-            let says = Rect::new(inner, y + rh - Spacing::Xs.px(), inner_w, says_h());
-            paint_text_elided(
+            let says = Rect::new(inner, ty + b.0 + Spacing::Xxs.px(), tw, b.1);
+            paint_text_block(
                 ts,
                 scene,
                 o.says,
                 inner,
-                sy,
+                says.y,
                 small(),
-                inner_w,
+                tw,
                 ink(ColorToken::Text3),
             );
-            let mark = Rect::new(inner + inner_w - sw, y + (rh - sh) * 0.5, sw, sh);
-            let t = Toggle::new(o.cmd, o.title).on(o.on).state(state);
-            paint_toggle(&t, mark, scene, *theme);
-            self.paint_frame(o.cmd, r, scene, theme);
+            let mark = Rect::new(inner + inner_w - sw, r.y + (r.h - sh) * 0.5, sw, sh);
+            self.painted
+                .thumbs
+                .push(paint_switch(o.on, mark, scene, *theme));
             self.painted.marks.push(mark);
-            self.painted.on.push(t.on);
+            self.painted.on.push(o.on);
             self.painted.says.push(says);
             self.painted.rows.push((o.cmd, r));
-            y += rh + says_h();
+            y += r.h;
+            let fio = Rect::new(inner, y, inner_w, hair);
+            fill_rounded_rect(scene, fio, 0.0, resolve(ColorToken::Border, *theme));
+            y += hair;
         }
-        // A frase do assistente e o «Restart».
-        y += Spacing::Xs.px();
-        let ink = resolve(ColorToken::Text2, *theme);
-        let sx = inner_w - restart_w - md;
-        paint_text_elided(
-            ts,
-            scene,
-            sentence,
-            inner,
-            y + folga_do_texto(rh, font()),
-            font(),
-            sx,
-            ink,
-        );
+        // O pé: a frase do assistente (quebra) e o «Restart», centrados um no outro.
         let bh = rh - ph2d_tokens::control_gap_px();
-        let br = Rect::new(inner + inner_w - restart_w, y, restart_w, bh);
+        let foot = Rect::new(inner, y + md, inner_w, foot_h - md * 2.0);
+        let sentence_h = measure(ts, sentence, font(), foot_tw).1;
+        let sy = foot.y + (foot.h - sentence_h) * 0.5;
+        let ink = resolve(ColorToken::Text2, *theme);
+        paint_text_block(ts, scene, sentence, inner, sy, font(), foot_tw, ink);
+        let by = foot.y + (foot.h - bh) * 0.5;
+        let br = Rect::new(inner + inner_w - restart_w, by, restart_w, bh);
         paint_button(&Button::new(f.restart, restart), br, scene, ts, *theme);
         self.painted.rows.push((f.restart, br));
         pop_popover_clip(scene);
         self.painted.card = Some(card);
+    }
+
+    /// O fundo da linha debaixo do rato (o hover das listas da casa) ou carregada (um degrau mais
+    /// forte): o ÚNICO realce — sem moldura, e a pílula não muda.
+    fn paint_highlight(&mut self, cmd: NodeId, r: Rect, scene: &mut VectorScene, theme: &Theme) {
+        let token = if self.pressed == Some(cmd) {
+            ColorToken::AccentSoft
+        } else if self.hover == Some(cmd) {
+            ColorToken::Bg2
+        } else {
+            return;
+        };
+        fill_rounded_rect(scene, r, 0.0, tinta(token, *theme));
+        self.painted.highlight = Some(r);
     }
 
     /// A faixa de cima: «Script options» à esquerda, o nome do script à direita e o alfinete.
@@ -288,7 +319,7 @@ impl OptionsCard {
         let nw = ts.layout(script, font(), f32::INFINITY).width();
         let room = (inner_w - rh - md - tw - md).max(0.0);
         let nx = inner + inner_w - rh - md - nw.min(room);
-        paint_text_elided(
+        ph2d_editor_core::paint::paint_text_elided(
             ts,
             scene,
             script,
@@ -319,25 +350,5 @@ impl OptionsCard {
             StrokeToken::Default.px(),
         );
         self.painted.pin = Some(pin);
-    }
-
-    /// A moldura da linha carregada (`Accent`, grossa) ou debaixo do rato (`BorderStrong`, fina).
-    fn paint_frame(&self, cmd: NodeId, r: Rect, scene: &mut VectorScene, theme: &Theme) {
-        let (token, stroke) = if self.pressed == Some(cmd) {
-            (ColorToken::Accent, StrokeToken::Thick)
-        } else if self.hover == Some(cmd) {
-            (ColorToken::BorderStrong, StrokeToken::Thin)
-        } else {
-            return;
-        };
-        let d = Spacing::Xxs.px();
-        let f = Rect::new(
-            r.x + d,
-            r.y + d,
-            (r.w - d * 2.0).max(0.0),
-            (r.h - d * 2.0).max(0.0),
-        );
-        let radius = frame_radius(*theme, Radius::Sm.px());
-        stroke_rounded_rect(scene, f, radius, stroke.px(), resolve(token, *theme));
     }
 }

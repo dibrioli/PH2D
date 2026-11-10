@@ -90,6 +90,32 @@ pub(super) fn paint_classic_toggle(
     );
 }
 
+/// ⭐ **A PÍLULA de definições** (dono 09/11, cartão «Script options»): o interruptor de efeito
+/// imediato do estado da arte (macOS/iOS, Windows 11, Material 3, VS Code), nos DOIS modos da UI.
+/// Ligado = trilho `Accent`, disco `AccentFg` à direita; desligado = trilho `BorderStrong`, disco
+/// `Text1` à esquerda. ⛔ Sem hover nem moldura própria: quem a usa realça a LINHA inteira.
+/// Devolve o disco (centro, raio).
+pub fn paint_switch(
+    on: bool,
+    rect: Rect,
+    scene: &mut VectorScene,
+    theme: Theme,
+) -> (f32, f32, f32) {
+    let (track, knob) = if on {
+        (ColorToken::Accent, ColorToken::AccentFg)
+    } else {
+        (ColorToken::BorderStrong, ColorToken::Text1)
+    };
+    fill_rounded_rect(scene, rect, rect.h * 0.5, resolve(track, theme));
+    let (cx, cy, r) = thumb_circle(rect, on);
+    let disc = Circle::new(Point::new(f64::from(cx), f64::from(cy)), f64::from(r));
+    let ink = Brush::Solid(resolve(knob, theme));
+    scene
+        .inner_mut()
+        .fill(Fill::NonZero, Affine::IDENTITY, &ink, None, &disc);
+    (cx, cy, r)
+}
+
 /// Pill body + circular thumb (left=off, right=on). Focus ring is
 /// **O disco do thumb** — centro e raio, e ele NUNCA sai do corpo.
 ///

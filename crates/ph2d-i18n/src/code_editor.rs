@@ -234,8 +234,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // estado dela (escolher troca-o).
         "code.cmd.type_hints" => "Type Hints: Off",
         "code.cmd.type_hints_off" => "Type Hints: On",
-        "code.cmd.strict" => "Strict Types (--!strict): Off",
-        "code.cmd.strict_off" => "Strict Types (--!strict): On",
+        "code.cmd.strict" => "Strict Type Checking: Off",
+        "code.cmd.strict_off" => "Strict Type Checking: On",
         "code.cmd.format_on_save" => "Format on Save: Off",
         "code.cmd.format_on_save_off" => "Format on Save: On",
         // 13 §4 item 11: o menu PRÓPRIO da aba (File · Edit · Find · Go To · Run).
@@ -265,7 +265,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.ctx.fix_keys" => "Alt+Enter",
         // 13 §4 item 12: o cartão «Script options».
         "code.options.title" => "Script options",
-        "code.options.strict" => "Strict types",
+        "code.options.strict" => "Strict type checking",
         "code.options.format_on_save" => "Format on save",
         "code.options.type_hints" => "Type hints",
         "code.options.strict_says" => "Adds --!strict on line 1, so every type is checked",

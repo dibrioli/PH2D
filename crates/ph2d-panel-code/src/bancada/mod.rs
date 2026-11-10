@@ -23,9 +23,9 @@ use ph2d_tokens::{ROW_H_PX, Spacing};
 
 pub use phrase::say;
 
-/// Quanto o rato pára num nome antes de a cena aparecer: a pausa do balão do código (o
-/// `tooltip_delay_sec` do Godot 4.7.2, 0,5 s — `ph2d-app-code` `hint.rs` `HOVER_PAUSE_NS`).
-pub const PEEK_PAUSE_NS: u128 = 500_000_000;
+/// Quanto o rato pára num nome antes de a cena aparecer: 1 s (dono 09/11 — os 0,5 s do balão do
+/// código disparavam sem querer, e a cena tira o editor da frente; o balão continua a 0,5 s).
+pub const PEEK_PAUSE_NS: u128 = 1_000_000_000;
 
 /// Abaixo disto (o título e três linhas) o «In this script» não aparece: a lista fica com a coluna.
 const OUTLINE_MIN_ROWS: usize = 3;

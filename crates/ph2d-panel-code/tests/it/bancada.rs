@@ -499,6 +499,21 @@ fn espiar_a_cena_comeca_na_pausa_e_acaba_ao_sair_do_nome() {
     assert_eq!(v.peeking(), None, "fora do nome a aba volta");
 }
 
+/// Dono 09/11: o espiar espera 1 s — o rato parado 0,9 s não tira o editor da frente; 1,1 s sim.
+#[test]
+fn espiar_a_cena_espera_um_segundo_parado() {
+    let (who, mut ts) = (quem(), ts());
+    let mut v = BancadaView::default();
+    pinta_grade(&mut v, &who, &mut ts);
+    let t = 1_000_000_000;
+    let (x, y) = alvo(&v, Aim::Holder(1));
+    v.hover(x, y, t);
+    v.tick(t + 900_000_000);
+    assert_eq!(v.peeking(), None, "0,9 s parado: o editor fica");
+    v.tick(t + 1_100_000_000);
+    assert_eq!(v.peeking(), Some(1), "1,1 s parado: a cena aparece");
+}
+
 #[test]
 fn com_o_espiar_desligado_a_cena_nunca_aparece() {
     let (who, mut ts) = (quem(), ts());

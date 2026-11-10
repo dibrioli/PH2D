@@ -70,6 +70,46 @@ fn o_editor_mostra_a_folha_escolhida() {
     assert_eq!(d.snap.sheet.as_ref().map(|s| (s.w, s.h)), Some((64, 32)));
 }
 
+/// ⭐ Depois de um Ctrl+Z o editor continua na folha que estava à vista (handoff GEF 09/11, ABERTO 2: voltava à
+/// «idle»). O restauro respawna o objecto com bits novos pelo registado; a porta da shell guarda a folha antes e
+/// devolve-a logo a seguir (`ph2d_host_presos::AntesDoRestauro::repoe_a_sessao`).
+/// *Mutação: tirar o `depois` ⇒ o editor volta à folha 0.*
+#[test]
+fn o_editor_continua_na_folha_a_vista_depois_do_restauro() {
+    let mut m = duas_folhas();
+    ph2d_ecs::assign_missing_stable_ids(m.sim.world_mut());
+    mostra(&mut m, 1);
+    let antes = ph2d_ecs::FolhasAVista::antes(m.sim.world());
+    let w = m.sim.world_mut();
+    let velha = Entity::from_bits(m.e);
+    let registado = (
+        *w.get::<ph2d_ecs::StableId>(velha).expect("com identidade"),
+        w.get::<SpriteSheets>(velha)
+            .cloned()
+            .expect("as duas folhas"),
+        w.get::<ph2d_ecs::SpriteAnimations>(velha)
+            .cloned()
+            .expect("a biblioteca"),
+        w.get::<ph2d_ecs::SpriteGrid>(velha)
+            .cloned()
+            .expect("a grelha"),
+        w.get::<ph2d_ecs::SpriteAnimator>(velha)
+            .cloned()
+            .expect("o tocador"),
+        ph2d_ecs::Name("Hero".into()),
+    );
+    w.despawn(velha);
+    let sprite = ph2d_render::Sprite::atlas(ph2d_render::HERO_SHEET_KEY, [1.0, 1.0], [1.0; 4]);
+    let nova = w
+        .spawn((ph2d_ecs::Transform::default(), sprite, registado))
+        .id();
+    antes.depois(w);
+    m.e = nova.to_bits();
+    m.frame();
+    assert_eq!(m.docs().docs.len(), 1, "a aba sobrevive ao restauro");
+    assert_eq!(m.doc().snap.shown_sheet, 1, "e continua na folha 1");
+}
+
 /// Trocar de folha e continuar a clicar junta quadros da folha nova à MESMA animação aberta.
 /// *Mutação: o clique ignora a folha mostrada (`frame_of` com `sheet: 0`) ⇒ o quadro novo é `(0, 1)`.*
 #[test]

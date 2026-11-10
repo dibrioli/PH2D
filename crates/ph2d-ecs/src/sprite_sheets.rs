@@ -137,6 +137,41 @@ impl SpriteSheets {
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ShownSheet(pub u8);
 
+/// **As folhas à vista que atravessam o restauro** (Ctrl+Z, Ctrl+Y, o Stop do jogo): o restauro respawna o mundo a
+/// partir do registado, e o [`ShownSheet`] fica fora dele. [`Self::antes`] guarda-as pela identidade durável e
+/// [`Self::depois`] devolve-as a quem voltou; [`shown_sheet`] prende a que o passo tirou.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct FolhasAVista(BTreeMap<u64, u8>);
+
+impl FolhasAVista {
+    /// Antes do restauro: a folha à vista de cada objecto com identidade (a `0` é a de omissão, não se guarda).
+    #[must_use]
+    pub fn antes(world: &World) -> Self {
+        let Some(mut q) = world.try_query::<(&crate::StableId, &ShownSheet)>() else {
+            return Self::default();
+        };
+        let vistas = q.iter(world).filter(|(s, k)| !s.is_none() && k.0 > 0);
+        Self(vistas.map(|(s, k)| (s.0, k.0)).collect())
+    }
+
+    /// Depois do restauro: a folha volta a quem tem a mesma identidade.
+    pub fn depois(&self, world: &mut World) {
+        if self.0.is_empty() {
+            return;
+        }
+        let Some(mut q) = world.try_query::<(Entity, &crate::StableId)>() else {
+            return;
+        };
+        let voltaram: Vec<(Entity, u8)> = q
+            .iter(world)
+            .filter_map(|(e, s)| self.0.get(&s.0).map(|&k| (e, k)))
+            .collect();
+        for (e, k) in voltaram {
+            world.entity_mut(e).insert(ShownSheet(k));
+        }
+    }
+}
+
 /// A folha visível de `entity`, presa às que existem (um undo pode ter tirado a que estava à vista).
 #[must_use]
 pub fn shown_sheet(world: &World, entity: Entity) -> u8 {

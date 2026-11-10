@@ -344,20 +344,16 @@ pub(super) fn drain_section_edits(
         if ph2d_app_sprite_anim::editor::request_open(sim, *entity_bits, edit) {
             continue;
         }
-        ph2d_app_sprite_anim::previa::nota_o_gesto(sim.world_mut(), *entity_bits, edit);
-        if let Some(t) = ph2d_app_sprite_anim::inspector::apply_anim_edit(
-            sim,
-            *entity_bits,
-            edit,
-            editor_queue,
-            component_registry,
-        ) {
-            toasts.push(t);
-            continue;
-        }
-        if let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry) {
-            toasts.push(failed("shell.inspector_commits.animation_commit", &e));
-            title_dirty = true;
+        use ph2d_app_sprite_anim::inspector::{Commit, commit_anim_edit};
+        match commit_anim_edit(sim, *entity_bits, edit, editor_queue, component_registry) {
+            Commit::Feito => {}
+            Commit::Recusado(t) => {
+                toasts.push(t);
+            }
+            Commit::Falhou(e) => {
+                toasts.push(failed("shell.inspector_commits.animation_commit", &e));
+                title_dirty = true;
+            }
         }
     }
     // ⭐ **A secção TIMERS** (TOP-20 #2, W3). ⚠️ Recusa com aviso, como as duas acima — um nome

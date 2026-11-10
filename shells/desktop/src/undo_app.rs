@@ -189,6 +189,7 @@ impl crate::App {
         let reg = &gfx.component_registry;
         let (vec, map, flip, flip_map) =
             (gfx.painter_reata).em_volta(&mut gfx.sim, &mut gfx.tools, |s| state.restore(s, reg));
+        antes.repoe_a_sessao(gfx.sim.world_mut());
         crate::app_edicao_de_imagem::reconcilia_achatados(gfx);
         gfx.vec_scene = vec;
         gfx.flip = flip;

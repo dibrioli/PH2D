@@ -399,8 +399,9 @@ fn the_scale_chain_of_an_object_survives_the_respawn() {
 
 /// ⛔ `App` sem placa não tem `gfx`, e o `apply_project_with` volta na guarda dele: nenhum teste chega
 /// lá. O que se pode provar sem placa é a forma: a única porta do restauro na shell lê o `antes` ANTES
-/// do `restore`, e chama `depois_do_restauro` DEPOIS de o mapa novo e a seleção voltarem. A lei de cada
-/// metade está nos testes acima. *Mutação: tirar a chamada, ou movê-la para antes do `pen.select_many`.*
+/// do `restore`, devolve o estado de sessão (a folha à vista, `ph2d_ecs::FolhasAVista`) logo a seguir a ele, e chama
+/// `depois_do_restauro` DEPOIS de o mapa novo e a seleção voltarem. A lei de cada metade está nos testes acima e em
+/// `a_folha_a_vista_atravessa_o_respawn_pela_identidade`. *Mutação: tirar uma chamada, ou movê-la de sítio.*
 #[test]
 fn the_only_restore_door_of_the_shell_calls_the_two_halves_in_order() {
     let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../shells/desktop/src");
@@ -420,6 +421,7 @@ fn the_only_restore_door_of_the_shell_calls_the_two_halves_in_order() {
     let ordem = [
         "ph2d_host_presos::antes_do_restauro(gfx.sim.world())",
         "state.restore(s, reg)",
+        "antes.repoe_a_sessao(gfx.sim.world_mut());",
         "self.vec.entities = map;",
         "self.vec.pen.select_many(&alive);",
         "ph2d_host_presos::depois_do_restauro(",

@@ -11,9 +11,10 @@ pub use ph2d_anim_editor::{
 
 use std::collections::BTreeMap;
 
+use crate::inspector::Commit;
 use doc::{AnimDoc, EditorSnapshot};
 use ph2d_asset::{AssetDb, AssetId};
-use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue, apply_editor_commands};
+use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{Entity, Resource, SimWorld};
 use ph2d_editor_core::doc_surface::{
     Compose, DocTab, DocumentSurface, Key, KeyInput, KeyOutcome, PointerInput, PointerLook,
@@ -387,19 +388,7 @@ pub fn frame(
         for edit in sheet_edits {
             ph2d_anim_sheets::apply::apply(sim.world_mut(), e, db, atlas, ppm, edit);
         }
-        let mut edits: Vec<AnimFieldEdit> = std::mem::take(&mut d.pending);
-        edits.reverse();
-        while let Some(edit) = edits.pop() {
-            // O «+» escolhe a nova E põe-na no ecrã: o cartão e o editor mostram a mesma. O nome é o
-            // que a biblioteca dá ANTES de a receber; o SetCurrent vai depois de o Add pegar.
-            let added = (edit == AnimFieldEdit::Add).then(|| {
-                sim.world()
-                    .get::<ph2d_ecs::SpriteAnimations>(Entity::from_bits(d.entity))
-                    .map_or_else(
-                        || ph2d_ecs::SpriteAnimations::new().next_free_name(),
-                        ph2d_ecs::SpriteAnimations::next_free_name,
-                    )
-            });
+        for edit in std::mem::take(&mut d.pending) {
             // Cols/Rows de uma folha extra visível editam o corte DELA (plano GEF 26 §3.4).
             let side = |n: u32| n.clamp(1, crate::card::GRID_SIDE_MAX);
             if let AnimFieldEdit::Grid(h, v) = edit
@@ -410,25 +399,24 @@ pub fn frame(
                 continue;
             }
             let queue = EditorCommandQueue::new();
-            crate::previa::nota_o_gesto(sim.world_mut(), d.entity, &edit);
-            if let Some(t) =
-                crate::inspector::apply_anim_edit(sim, d.entity, &edit, &queue, registry)
-            {
-                toasts.push(t);
-                continue;
-            }
-            if let Err(e) = apply_editor_commands(sim.world_mut(), &queue, registry) {
-                toasts.push(Toast::error(ph2d_i18n::tr_with(
-                    "anim_editor.commit_failed",
-                    &[("e", &format!("{e:?}"))],
-                )));
-                continue;
+            match crate::inspector::commit_anim_edit(sim, d.entity, &edit, &queue, registry) {
+                Commit::Feito => {}
+                Commit::Recusado(t) => {
+                    toasts.push(t);
+                    continue;
+                }
+                Commit::Falhou(e) => {
+                    toasts.push(Toast::error(ph2d_i18n::tr_with(
+                        "anim_editor.commit_failed",
+                        &[("e", &format!("{e:?}"))],
+                    )));
+                    continue;
+                }
             }
             // O corte é da imagem: quem a mostra segue, e os quadros de fora viram buraco (plano GEF 26).
             if matches!(edit, AnimFieldEdit::Grid(..)) {
                 crate::image_use::recut_users(sim.world_mut(), e);
             }
-            edits.extend(added.map(AnimFieldEdit::SetCurrent));
         }
         d.set_snapshot(snapshot(sim, d.entity, ppm));
         if let Some(p) = d.pivot_follow(moved) {

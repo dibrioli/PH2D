@@ -296,6 +296,8 @@ fn foto(m: &mut impl Mesa, foto: Option<a::Foto>, bits: Option<u64>) {
                 a::Foto::Editor
                 | a::Foto::FolhasEditor
                 | a::Foto::FolhasApagada
+                | a::Foto::FolhasDesfaz
+                | a::Foto::TiraRolada
                 | a::Foto::Alinhar
                 | a::Foto::AlinharEscala
                 | a::Foto::AlinharDesfaz

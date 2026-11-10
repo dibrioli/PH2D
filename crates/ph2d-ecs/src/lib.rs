@@ -306,8 +306,8 @@ pub use sprite_region::SpriteRegion;
 pub use sprite_sheet_frame::SpriteSheetFrame;
 pub use sprite_sheet_ref::SpriteSheetRef;
 pub use sprite_sheets::{
-    CellOffsets, ExtraSheet, SHEETS_MAX, SheetNames, ShownSheet, SpriteSheets, cell_offset,
-    cells_per_sheet, sheet_assets, sheet_cells_of, sheet_name, shown_sheet,
+    CellOffsets, ExtraSheet, FolhasAVista, SHEETS_MAX, SheetNames, ShownSheet, SpriteSheets,
+    cell_offset, cells_per_sheet, sheet_assets, sheet_cells_of, sheet_name, shown_sheet,
 };
 pub use stable_id::{
     ReataPorIdentidade, StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id,

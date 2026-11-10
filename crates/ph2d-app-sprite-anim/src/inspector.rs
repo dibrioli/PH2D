@@ -183,6 +183,54 @@ pub fn build_anim_info(
     })
 }
 
+/// O desfecho de [`commit_anim_edit`].
+#[derive(Debug)]
+pub enum Commit {
+    Feito,
+    /// A edição foi recusada, com o aviso em palavras do artista.
+    Recusado(Toast),
+    /// A fila não aplicou (um defeito de registo, não do artista).
+    Falhou(ph2d_ecs::scene::ApplyError),
+}
+
+/// ⭐ **Uma edição de animação com o commit dela**, a porta única do cartão Animation e do editor de animações. O «+»
+/// escolhe a nova nas duas (handoff GEF 09/11, ABERTO 4: o do cartão não a escolhia): o nome é o que a biblioteca dá
+/// ANTES de a receber, e o `SetCurrent` vai depois de o Add pegar, porque ele lê a animação no mundo.
+pub fn commit_anim_edit(
+    sim: &mut SimWorld,
+    entity_bits: u64,
+    edit: &AnimFieldEdit,
+    queue: &EditorCommandQueue,
+    registry: &ComponentRegistry,
+) -> Commit {
+    let nova = (*edit == AnimFieldEdit::Add).then(|| {
+        let lib = sim
+            .world()
+            .get::<SpriteAnimations>(Entity::from_bits(entity_bits));
+        lib.map_or_else(
+            || SpriteAnimations::new().next_free_name(),
+            SpriteAnimations::next_free_name,
+        )
+    });
+    crate::previa::nota_o_gesto(sim.world_mut(), entity_bits, edit);
+    if let Some(t) = apply_anim_edit(sim, entity_bits, edit, queue, registry) {
+        return Commit::Recusado(t);
+    }
+    if let Err(e) = ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), queue, registry) {
+        return Commit::Falhou(e);
+    }
+    match nova {
+        Some(n) => commit_anim_edit(
+            sim,
+            entity_bits,
+            &AnimFieldEdit::SetCurrent(n),
+            queue,
+            registry,
+        ),
+        None => Commit::Feito,
+    }
+}
+
 /// Aplica uma [`AnimFieldEdit`]. Devolve um aviso quando a edição foi **recusada**.
 pub fn apply_anim_edit(
     sim: &SimWorld,

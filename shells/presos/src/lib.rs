@@ -62,8 +62,20 @@ pub fn publica(
     );
 }
 
-/// O que só se lê ANTES do respawn: a chave durável dos objectos com proporção do Scale guardada.
-pub struct AntesDoRestauro(Vec<(u64, ph2d_ecs::StableId)>);
+/// O que só se lê ANTES do respawn: a chave durável dos objectos com proporção do Scale guardada, e a folha à vista
+/// de cada Sprite com várias (estado de sessão, fora do registado).
+pub struct AntesDoRestauro {
+    travas: Vec<(u64, ph2d_ecs::StableId)>,
+    folhas: ph2d_ecs::FolhasAVista,
+}
+
+impl AntesDoRestauro {
+    /// ⭐ **Logo a seguir ao `restore`**, antes de quem lê o mundo: o estado de sessão dos objectos que voltaram
+    /// (a folha à vista do cartão Image e do editor de animações).
+    pub fn repoe_a_sessao(&self, world: &mut ph2d_ecs::World) {
+        self.folhas.depois(world);
+    }
+}
 
 fn anota_travas(world: &ph2d_ecs::World) {
     ph2d_panel_inspector::anota_chaves_de_trava(
@@ -93,12 +105,13 @@ pub fn antes_do_restauro(world: &ph2d_ecs::World) -> AntesDoRestauro {
             .filter(|s| !s.is_none())?;
         Some((bits, *id))
     };
-    AntesDoRestauro(
-        ph2d_panel_inspector::travas_de_escala()
+    AntesDoRestauro {
+        travas: ph2d_panel_inspector::travas_de_escala()
             .into_iter()
             .filter_map(chave)
             .collect(),
-    )
+        folhas: ph2d_ecs::FolhasAVista::antes(world),
+    }
 }
 
 /// ⭐ **Logo depois de um restauro** (Ctrl+Z, Ctrl+Y, abrir): o gizmo, os alfinetes e a proporção do
@@ -117,7 +130,7 @@ pub fn depois_do_restauro(
     antes: &AntesDoRestauro,
 ) {
     ph2d_panel_inspector::reata_travas_de_escala(|bits| {
-        let (_, id) = antes.0.iter().find(|(b, _)| *b == bits)?;
+        let (_, id) = antes.travas.iter().find(|(b, _)| *b == bits)?;
         ph2d_ecs::entity_with_stable_id(sim.world(), *id).map(ph2d_ecs::Entity::to_bits)
     });
     let vector_active = !hero.store.family_owns_canvas()

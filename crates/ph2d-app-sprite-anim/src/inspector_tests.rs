@@ -104,6 +104,38 @@ fn the_whole_authoring_path_lands_in_the_scene() {
     assert_eq!(i.progress(), None, "sem quadros nao ha barra");
 }
 
+/// ⭐ **O «+» escolhe a nova** (handoff GEF 09/11, ABERTO 4): pela porta única das duas superfícies, o cartão
+/// Animation e o editor; o cartão segue o `current`. E o jogo continua a começar na de antes, a lei do `SetCurrent`.
+/// *Mutação: `commit_anim_edit` sem o `SetCurrent` da nova ⇒ o `current` fica na primeira.*
+#[test]
+fn o_mais_escolhe_a_animacao_nova() {
+    let mut sim = SimWorld::new();
+    let reg = registry();
+    let e = sprite(&mut sim, 8);
+    edit(&mut sim, e, &reg, AnimFieldEdit::AddPlayer);
+    let commit = |sim: &mut SimWorld| {
+        let queue = EditorCommandQueue::new();
+        commit_anim_edit(sim, e.to_bits(), &AnimFieldEdit::Add, &queue, &reg)
+    };
+    assert!(matches!(commit(&mut sim), Commit::Feito));
+    let primeira = info(&sim, e).rows[0].name.clone();
+    assert_eq!(info(&sim, e).current, primeira, "a primeira fica escolhida");
+    assert!(matches!(commit(&mut sim), Commit::Feito));
+    let i = info(&sim, e);
+    assert_eq!(i.rows.len(), 2);
+    assert_eq!(i.current, i.rows[1].name, "a nova fica escolhida");
+    assert_eq!(i.current_index(), Some(1));
+    let inicio = sim
+        .world()
+        .get::<SpriteAnimator>(e)
+        .and_then(|p| p.start.clone());
+    assert_eq!(
+        inicio,
+        Some(primeira),
+        "o jogo continua a começar na de antes"
+    );
+}
+
 /// **A velocidade fecha o círculo: o que o artista escreve é o que ele volta a ler.**
 ///
 /// ⚠️ E o motor guarda `Q16.16` — a conversão mora numa ponta só do ficheiro.

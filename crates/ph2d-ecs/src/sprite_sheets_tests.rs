@@ -54,3 +54,32 @@ fn duplicar_leva_as_folhas() {
     assert_ne!(copia, e);
     assert_eq!(w.get::<SpriteSheets>(copia), Some(&folhas));
 }
+
+/// ⭐ O restauro do undo apaga o mundo e respawna-o do registado: a folha à vista atravessa-o pela identidade, presa às
+/// folhas que o objecto ainda tem. *Mutações: `depois` vazio ⇒ volta a 0 (o defeito do handoff de 09/11); casar pelos
+/// bits em vez da identidade ⇒ ninguém volta (o respawn dá bits novos).*
+#[test]
+fn a_folha_a_vista_atravessa_o_respawn_pela_identidade() {
+    let duas = || SpriteSheets([folha(1, 6, 2), folha(2, 3, 1)].into_iter().collect());
+    let mut w = World::new();
+    let a = w.spawn((crate::StableId(7), duas(), ShownSheet(2))).id();
+    let b = w.spawn((crate::StableId(8), duas())).id();
+    let antes = FolhasAVista::antes(&w);
+    w.despawn(a);
+    w.despawn(b);
+    // Os bits trocam: `b` volta primeiro, a sem folha à vista.
+    let b2 = w.spawn((crate::StableId(8), duas())).id();
+    let a2 = w.spawn((crate::StableId(7), duas())).id();
+    antes.depois(&mut w);
+    assert_eq!(shown_sheet(&w, a2), 2, "a folha 2 volta ao mesmo objecto");
+    assert_eq!(shown_sheet(&w, b2), 0, "o vizinho fica na de omissão");
+    // Um restauro que tirou a folha: a que estava à vista cai na 0.
+    let mut w = World::new();
+    let a = w.spawn((crate::StableId(7), duas(), ShownSheet(2))).id();
+    let antes = FolhasAVista::antes(&w);
+    w.despawn(a);
+    let uma = SpriteSheets([folha(1, 6, 2)].into_iter().collect());
+    let a2 = w.spawn((crate::StableId(7), uma)).id();
+    antes.depois(&mut w);
+    assert_eq!(shown_sheet(&w, a2), 0, "presa às folhas que existem");
+}

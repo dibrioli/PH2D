@@ -288,3 +288,31 @@ fn na_animacao_nova_a_tira_nasce_vazia_e_a_marca_anda_com_os_cliques() {
     assert_eq!(m.world_frames("anim_0"), Some(Vec::new()));
     assert!(m.doc().layout.frames.is_empty());
 }
+
+/// ⭐ A ranhura «INSERT HERE» nunca cobre um quadro (handoff GEF 09/11, ABERTO 3: com a tira rolada cobria a ponta do
+/// último), a toda largura, rolada ao começo e ao fim, com a marca no fim e no meio.
+#[test]
+fn a_ranhura_nunca_cobre_um_quadro() {
+    for w in [1200.0, 700.0, 560.0, 420.0, 360.0] {
+        // LITERAL-PX-OK: a janela do teste
+        for marca in [None, Some(2)] {
+            for rolada in [0.0, f32::MAX] {
+                let mut m = Mesa::new();
+                m.doc().insert_at = marca;
+                let area = Rect::new(0.0, 0.0, w, AREA.h);
+                m.paint_in(area);
+                m.doc().strip_scroll = rolada;
+                m.paint_in(area);
+                let l = m.doc().layout.clone();
+                let r = l.playhead;
+                for (i, (f, _)) in l.frames.iter().enumerate() {
+                    let pisa = r.x < f.x + f.w && f.x < r.x + r.w;
+                    assert!(
+                        !pisa,
+                        "a {w} px, marca {marca:?}, rolada {rolada}: a ranhura {r:?} pisa o quadro {i} {f:?}"
+                    );
+                }
+            }
+        }
+    }
+}

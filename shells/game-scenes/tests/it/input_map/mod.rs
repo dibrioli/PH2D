@@ -15,6 +15,7 @@ mod lista_acabamento;
 mod lista_censo;
 mod lista_r7a;
 mod mutacao_r13;
+mod mutacao_w2;
 mod polimento_b;
 mod polimento_c;
 mod polimento_f3;

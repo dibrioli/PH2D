@@ -551,12 +551,49 @@ fn blend_window(
     opacity: f32,
     sample: impl Fn(u32, u32) -> [f32; 4],
 ) {
+    let salta = mode == BlendMode::Normal && salto_ligado();
     for ly in 0..rh {
         for lx in 0..rw {
             let mut s = sample(rx + lx, ry + ly);
             s[3] *= opacity;
             let i = (ly * rw + lx) as usize;
+            if salta && s[3] <= 0.0 && normal_transparente_e_identidade(acc[i], s) {
+                continue;
+            }
             acc[i] = apply_blend(mode, acc[i], s);
         }
     }
 }
+
+/// B19.10/B19.11: a `Normal` source with α ≤ 0 leaves `dst` **to the bit** over an opaque normalised
+/// pixel (each channel in `[+0, 1]`: not −0, NaN nor out of range — the bit compare does all three)
+/// with a finite source colour, or over `[+0; 4]`. Gate `o_salto_alfa_zero_e_o_apply_ao_bit`.
+#[inline]
+fn normal_transparente_e_identidade(d: [f32; 4], s: [f32; 4]) -> bool {
+    let norm = |c: f32| c.to_bits() <= 1.0f32.to_bits();
+    (d[3].to_bits() == 1.0f32.to_bits()
+        && norm(d[0])
+        && norm(d[1])
+        && norm(d[2])
+        && s[0].is_finite()
+        && s[1].is_finite()
+        && s[2].is_finite())
+        || d.map(f32::to_bits) == [0; 4]
+}
+
+/// The α = 0 skip, off only for the gate's and the probe's same-process A/B.
+#[cfg(not(test))]
+#[inline]
+fn salto_ligado() -> bool {
+    true
+}
+#[cfg(test)]
+pub(super) static SEM_SALTO: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+#[cfg(test)]
+fn salto_ligado() -> bool {
+    !SEM_SALTO.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+#[cfg(test)]
+mod salto_tests;

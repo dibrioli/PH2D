@@ -86,7 +86,7 @@ fn tinta(w: u32, h: u32, semente: u32) -> LayerImage {
     img
 }
 
-/// Below the anchor: a base, a per-pixel adjustment, a masked Multiply, a clipping Screen, Halftone
+/// Below the anchor: a base, a per-pixel adjustment, a masked Multiply, a clipping Screen, Noise
 /// (absolute coordinates), `extra`, then a group (Overlay) holding a child under the anchor; a layer
 /// above the anchor must not show. Returns the stack, the pixels and the anchor.
 fn pilha(w: u32, h: u32, extra: Option<AdjustmentKind>) -> (LayerStack, MapPixelSource, LayerId) {
@@ -115,7 +115,15 @@ fn pilha(w: u32, h: u32, extra: Option<AdjustmentKind>) -> (LayerStack, MapPixel
     s.get_mut(clip).unwrap().clipping = true;
     s.set_blend_mode(clip, BlendMode::Screen);
     src.insert(clip, tinta(w, h, 4));
-    let _ = s.add_adjustment(AdjustmentKind::Halftone).unwrap();
+    // Noise reads the ABSOLUTE coordinate and is band-safe (Halftone would force the one walk).
+    let ruido = s.add_adjustment(AdjustmentKind::Noise).unwrap();
+    s.adjustment_mut(ruido).unwrap().params = {
+        use ph2d_painter_effects::adjustments::{AdjustmentParams, NoiseParams};
+        AdjustmentParams::Noise(NoiseParams {
+            amount: 0.3,
+            ..Default::default()
+        })
+    };
     if let Some(k) = extra {
         let _ = s.add_adjustment(k).unwrap();
     }
@@ -142,6 +150,8 @@ fn o_chao_em_faixas_e_o_da_rota_antiga_ao_bit() {
     let chao = [231u8, 222, 200];
     for (w, h) in [(1u32, 1u32), (7, 3), (513, 300), (3840, 64)] {
         let (s, src, ancora) = pilha(w, h, None);
+        // CONTROLO: no spatial adjustment, or every split below would silently be the one walk.
+        assert!(!super::super::compose::has_spatial_adjustment(&s, s.root()));
         let antigo = composite_below_antigo(&s, &src, w, h, ancora, chao);
         assert_ne!(
             antigo,
@@ -222,4 +232,64 @@ fn mede_o_composite_below_4k() {
         "[B19.11] 3840x2160, 3 camadas por baixo: antiga {:.2} ms | faixas {:.2} ms | banda inteira {:.2} ms",
         best[0], best[1], best[2]
     );
+}
+
+/// Sonda do salto α = 0 (`--ignored`, `--profile smoke`, SOZINHA: liga e desliga o salto global):
+/// 3840×2160, base opaca + 2 camadas — `tinta` (¼ de α = 0), traços (~10 % pintado) e vazias (o
+/// pen-down de `mede_o_pen_down_da_aguada_4k`) —, sem salto
+/// (A) × com salto (B), intercaladas ABBA, o mínimo de 8 de cada; a saída é a mesma ao bit.
+#[test]
+#[ignore]
+fn mede_o_salto_alfa_zero_4k() {
+    use super::super::compose::SEM_SALTO;
+    use std::sync::atomic::Ordering::Relaxed;
+    let (w, h) = (3840u32, 2160u32);
+    for cena in ["tinta", "tracos", "vazias"] {
+        let mut s = LayerStack::new();
+        let mut src = MapPixelSource::default();
+        let base = s.add_raster("base", w, h).unwrap();
+        src.insert(
+            base,
+            LayerImage {
+                width: w,
+                height: h,
+                rgba8: vec![255; (w * h * 4) as usize],
+            },
+        );
+        for k in 1..3u32 {
+            let id = s.add_raster(format!("L{k}"), w, h).unwrap();
+            let mut img = tinta(w, h, k);
+            if cena == "vazias" {
+                img = LayerImage::transparent(w, h);
+            } else if cena == "tracos" {
+                for (i, p) in img.rgba8.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+                    let (x, y) = (i as u32 % w, i as u32 / w);
+                    p[3] = if (x / 48 + y / 48 + k) % 10 == 0 {
+                        255
+                    } else {
+                        0
+                    };
+                }
+            }
+            src.insert(id, img);
+        }
+        let ancora = s.add_raster("ancora", w, h).unwrap();
+        let chao = [231u8, 222, 200];
+        let mut best = [f64::MAX; 2];
+        let mut saidas: [Option<Vec<u8>>; 2] = [None, None];
+        for i in 0..16usize {
+            let v = [0usize, 1, 1, 0][i % 4];
+            SEM_SALTO.store(v == 0, Relaxed);
+            let t0 = std::time::Instant::now();
+            let out = composite_below(&s, &src, w, h, ancora, chao);
+            best[v] = best[v].min(t0.elapsed().as_secs_f64() * 1e3);
+            saidas[v] = Some(out);
+        }
+        SEM_SALTO.store(false, Relaxed);
+        assert!(saidas[0] == saidas[1], "{cena}: o salto mudou a saída");
+        println!(
+            "[B19.11 salto] 3840x2160, {cena}: sem salto {:.2} ms | com salto {:.2} ms",
+            best[0], best[1]
+        );
+    }
 }

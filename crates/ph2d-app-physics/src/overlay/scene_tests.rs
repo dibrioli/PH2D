@@ -141,7 +141,8 @@ fn a_sensor_is_dashed_in_its_layer_colour_and_brightens_when_triggered() {
         Tinta::Camada {
             camada: 3,
             marca: Marca::SensorVazio,
-            corpo: Some(BodyKind::Static)
+            corpo: Some(BodyKind::Static),
+            tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
         }
     );
     assert_eq!(
@@ -149,7 +150,8 @@ fn a_sensor_is_dashed_in_its_layer_colour_and_brightens_when_triggered() {
         Tinta::Camada {
             camada: 3,
             marca: Marca::SensorAceso,
-            corpo: Some(BodyKind::Static)
+            corpo: Some(BodyKind::Static),
+            tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
         }
     );
     let (tv, cv) = tinta_do_contorno(vazio, Theme::Forge);
@@ -204,7 +206,8 @@ fn a_triggered_sensor_outline_uses_the_active_colour() {
         Tinta::Camada {
             camada: 0,
             marca: Marca::SensorVazio,
-            corpo: Some(BodyKind::Static)
+            corpo: Some(BodyKind::Static),
+            tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
         },
         "an empty sensor is drawn idle"
     );
@@ -215,7 +218,8 @@ fn a_triggered_sensor_outline_uses_the_active_colour() {
         Tinta::Camada {
             camada: 0,
             marca: Marca::SensorAceso,
-            corpo: Some(BodyKind::Static)
+            corpo: Some(BodyKind::Static),
+            tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
         },
         "a triggered sensor is drawn active"
     );
@@ -517,7 +521,8 @@ fn a_part_of_a_compound_body_is_drawn_in_the_owners_colour() {
             Tinta::Camada {
                 camada: 0,
                 marca: Marca::Solida,
-                corpo: Some(BodyKind::Dynamic)
+                corpo: Some(BodyKind::Dynamic),
+                tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
             },
             "a peça não herdou a cor do dono — ela não tem tipo próprio, ela É o \
              corpo dele"
@@ -550,7 +555,8 @@ fn a_collider_with_no_body_above_it_is_marked_loose_never_as_a_body() {
         Tinta::Camada {
             camada: 0,
             marca: Marca::Solta,
-            corpo: None
+            corpo: None,
+            tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
         },
         "uma forma que o solver ignora ganhou a tinta de um corpo — a marca afirmaria que ela \
          é simulada"

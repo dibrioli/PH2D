@@ -150,4 +150,6 @@ pub const INSP_SHAPE_PIVOT_XY: [NodeId; 2] = [
     hash_node_id("insp_shape_pivot_y"),
 ];
 pub const INSP_SHAPE_OPACITY: NodeId = hash_node_id("insp_shape_opacity");
+/// A amostra Color (abre o seletor de cor; a cor vive na tabela `widget_colors`).
+pub const INSP_SHAPE_TINT_SWATCH: NodeId = hash_node_id("insp_shape_tint_swatch");
 pub const INSP_SHAPE_OPACITY_CHIP: NodeId = hash_node_id("insp_shape_opacity_chip");

@@ -53,24 +53,9 @@ pub(crate) fn cartao() -> Option<CardDef<'static>> {
 }
 
 fn corpo(c: &mut CardCtx<'_>, y: f32, bits: u64, f: ShapeLookFacts) -> f32 {
-    let y = crate::cards_objeto::com_corpo(c, y, |t, _theme, store, x, w, y| {
-        ph2d_editor_core::panel::cards::corpo::bar_field(
-            t.scene,
-            t.text,
-            store,
-            t.hit,
-            ph2d_editor_core::widget::card_ink::card_body().expect("só num cartão"),
-            x,
-            w,
-            y,
-            tr("card.insp.opacity"),
-            ids::INSP_SHAPE_OPACITY_CHIP,
-            ids::INSP_SHAPE_OPACITY,
-            ph2d_editor_core::widget::card_field::CardFieldSpec {
-                step: 1.0,
-                scrub: 1.0,
-                default: Some(POR_CENTO),
-            },
+    let y = crate::cards_objeto::com_corpo(c, y, |t, theme, store, x, w, y| {
+        crate::sections::look::paint_cor_da_forma(
+            t.scene, t.text, theme, t.hit, store, x, w, y, f.tint,
         )
     });
     let fim = c.row(
@@ -138,6 +123,8 @@ pub(crate) fn prepara(host: &mut dyn PanelHostInternal) {
             0.0,
         );
         store.set_number_range(ids::INSP_SHAPE_OPACITY_CHIP, 0.0, POR_CENTO, 1.0);
+        // `Plain`: focável, o Down arma e o Up dá `Click` (a cor vive em `widget_colors`).
+        store.register(ids::INSP_SHAPE_TINT_SWATCH, InteractiveState::Plain);
         for id in ids::INSP_SHAPE_PIVOT_XY {
             store.register(
                 id,
@@ -195,6 +182,25 @@ pub(crate) fn prepara(host: &mut dyn PanelHostInternal) {
             crate::unidade_mundo::semeia(host, id, f64::from(f.metros[i]));
         }
     }
+    // A Color: com o seletor nela, a cor escolhida vira edição; senão a amostra espelha a gravada.
+    let gravada = crate::state_tint::tint_f32_to_u8(f.tint);
+    let do_seletor = host.store().picker_target() == Some(ids::INSP_SHAPE_TINT_SWATCH)
+        && host
+            .store()
+            .picker_subject()
+            .is_none_or(|p| p == info.entity_bits);
+    match host.store().widget_color(ids::INSP_SHAPE_TINT_SWATCH) {
+        Some(escolhida) if do_seletor && escolhida != gravada => {
+            host.bus_mut().push(EditorAction::InspectorPhysicsEdit {
+                entity_bits: info.entity_bits,
+                edit: PhysicsFieldEdit::LookTint(crate::state_tint::tint_u8_to_f32(escolhida)),
+            });
+        }
+        _ if !do_seletor => host
+            .store_mut()
+            .set_widget_color(ids::INSP_SHAPE_TINT_SWATCH, gravada),
+        _ => {}
+    }
 }
 
 /// Os cliques e os números do Look da forma. `true` = consumido.
@@ -203,6 +209,12 @@ pub(crate) fn evento(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
         return false;
     };
     let edit = match ev {
+        WidgetEvent::Click(id) if id == ids::INSP_SHAPE_TINT_SWATCH => {
+            let semente = crate::state_tint::tint_f32_to_u8(info.look.tint);
+            host.store_mut().set_widget_color(id, semente);
+            host.store_mut().open_picker_on(id);
+            return true;
+        }
         WidgetEvent::Click(id) if id == ids::INSP_SHAPE_PIVOT_NOME => {
             ABERTO.with(|a| {
                 let mut a = a.borrow_mut();

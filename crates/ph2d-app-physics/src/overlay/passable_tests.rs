@@ -13,6 +13,7 @@ const CHAO: Tinta = Tinta::Camada {
     camada: 0,
     marca: Marca::Solida,
     corpo: Some(ph2d_physics_ecs::BodyKind::Static),
+    tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
 };
 
 /// **Uma prancha que o player está a atravessar NÃO se desenha como chão.**
@@ -59,7 +60,8 @@ fn a_platform_being_passed_through_is_not_drawn_as_solid_ground() {
         Tinta::Camada {
             camada: 0,
             marca: Marca::Atravessavel,
-            corpo: Some(BodyKind::Static)
+            corpo: Some(BodyKind::Static),
+            tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
         },
         "com uma descida em curso ela tem de dizer que NAO esta' la'"
     );

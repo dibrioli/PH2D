@@ -89,6 +89,60 @@ pub(crate) fn paint_cores(
     y
 }
 
+/// ⭐ A linha Color + Opacity do Look da forma de colisão (GEF02 onda 8): a gémea da de cima, com os ids da forma.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_cor_da_forma(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    tint: [f32; 4],
+) -> f32 {
+    let rotulo = TextKey::new("component.field.shape_look.1");
+    let sec = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[tr("component.field.shape_look.1")],
+    );
+    let [(xa, wa), (xb, wb)] = ph2d_editor_core::panel::cards::corpo::colunas_iguais(x, w);
+    let fim = super::color_tint::paint_tint_swatch_cell(
+        Rect::new(xa, y, wa, ROW_H_PX),
+        rotulo,
+        ids::INSP_SHAPE_TINT_SWATCH,
+        crate::state_tint::tint_f32_to_u8(tint),
+        false,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+        sec,
+    );
+    ph2d_editor_core::panel::cards::corpo::bar_field(
+        scene,
+        text_system,
+        store,
+        hit_index,
+        ph2d_editor_core::widget::card_ink::card_body().expect("só num cartão"),
+        xb,
+        wb,
+        y,
+        tr("card.insp.opacity"),
+        ids::INSP_SHAPE_OPACITY_CHIP,
+        ids::INSP_SHAPE_OPACITY,
+        ph2d_editor_core::widget::card_field::CardFieldSpec {
+            step: 1.0,
+            scrub: 1.0,
+            default: Some(OPACIDADE_CHEIA),
+        },
+    )
+    .max(fim)
+}
+
 /// Os cantos estão em uso: algum deles não é branco, ou a mão ligou a caixa.
 pub(crate) fn cantos_ligados(info: &InspectorSpriteInfo) -> bool {
     info.mixed.per_corner

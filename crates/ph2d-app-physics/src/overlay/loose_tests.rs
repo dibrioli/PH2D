@@ -8,11 +8,13 @@ const SOLTA: Tinta = Tinta::Camada {
     camada: 0,
     marca: Marca::Solta,
     corpo: None,
+    tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
 };
 const SOLIDA: Tinta = Tinta::Camada {
     camada: 0,
     marca: Marca::Solida,
     corpo: Some(BodyKind::Static),
+    tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
 };
 use ph2d_core::Vec2;
 use ph2d_ecs::{ChildOf, SimWorld, Transform};
@@ -103,6 +105,7 @@ fn a_tinta_da_solta_e_tracejada_na_cor_da_camada_e_a_simulada_nao() {
             camada: 5,
             marca: Marca::Solta,
             corpo: None,
+            tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
         };
         let (traco, cor) = tinta_do_contorno(solta, theme);
         assert!(!traco.dash_pattern.is_empty(), "a solta é tracejada");
@@ -111,6 +114,7 @@ fn a_tinta_da_solta_e_tracejada_na_cor_da_camada_e_a_simulada_nao() {
             camada: 5,
             marca: Marca::SensorVazio,
             corpo: Some(BodyKind::Static),
+            tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
         };
         let (_, sensor) = tinta_do_contorno(vazio, theme);
         assert!(cor.components[3] > 0.0 && cor.components[3] < sensor.components[3]);
@@ -119,6 +123,7 @@ fn a_tinta_da_solta_e_tracejada_na_cor_da_camada_e_a_simulada_nao() {
                 camada: 5,
                 marca: Marca::Solida,
                 corpo: Some(BodyKind::Dynamic),
+                tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
             },
             theme,
         );
@@ -141,4 +146,45 @@ fn a_forma_solta_nao_leva_anotacao_de_corpo() {
     ));
     let saiu = outlines(true, true, &mut sim, &[], false, &camera(), window());
     assert_eq!(saiu.len(), 1, "só o contorno: saíram {}", saiu.len());
+}
+
+/// ⭐ **O Look da forma pinta o contorno** (GEF02 onda 8): o Color multiplica a cor do tema e a Opacity o alfa, no
+/// contorno e na sombra dele; sem `ShapeLook`, a cor do tema intacta. E o contorno fica onde o pivô põe a forma.
+#[test]
+fn o_look_da_forma_tinge_o_contorno_e_o_pivo_o_move() {
+    let theme = Theme::Dark;
+    let corre = |look: Option<ph2d_physics_ecs::ShapeLook>| {
+        let mut sim = SimWorld::new();
+        let e = sim
+            .world_mut()
+            .spawn((forma(), Transform::from_translation(Vec2::new(0.0, 2.0))))
+            .id();
+        if let Some(l) = look {
+            sim.world_mut().entity_mut(e).insert(l);
+        }
+        let out = outlines(true, false, &mut sim, &[], false, &camera(), window());
+        assert_eq!(out.len(), 1);
+        let xs: Vec<f64> = points(&out[0].0).iter().map(|p| p.0).collect();
+        (tinta_do_contorno(out[0].1, theme).1, xs)
+    };
+    let (tema, xs0) = corre(None);
+    let (tinto, xs1) = corre(Some(ph2d_physics_ecs::ShapeLook {
+        pivot: [-1.0, 0.0],
+        tint: [1.0, 0.0, 0.0, 1.0],
+        opacity: 0.5,
+    }));
+    let (t, k) = (tema.components, tinto.components);
+    assert_eq!(k[0], t[0], "o vermelho fica");
+    assert_eq!((k[1], k[2]), (0.0, 0.0), "o verde e o azul saem");
+    assert!(
+        (k[3] - t[3] * 0.5).abs() < 1e-6,
+        "metade do alfa: {} × {}",
+        k[3],
+        t[3]
+    );
+    let menor = |v: &[f64]| v.iter().copied().fold(f64::INFINITY, f64::min);
+    assert!(
+        menor(&xs1) > menor(&xs0) + 1.0,
+        "o pivô na borda esquerda empurra a forma para a direita"
+    );
 }

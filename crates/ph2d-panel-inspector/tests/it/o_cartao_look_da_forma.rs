@@ -119,3 +119,24 @@ fn a_opacidade_em_percentagem_chega_como_fracao() {
     );
     sai();
 }
+
+/// ⭐ A Color: clicar na amostra abre o seletor nela; a cor escolhida no seletor chega à física no quadro seguinte.
+#[test]
+fn a_cor_escolhida_no_seletor_chega_como_edicao() {
+    let (mut host, mut st) = cena(forma(ligado()), [1.0, 1.0]);
+    let r = pinta(&mut host, &mut st);
+    let q = achado(&r, INSP_SHAPE_TINT_SWATCH).expect("a amostra Color");
+    let _ = clica(&mut host, &mut st, q);
+    assert_eq!(
+        host.store().picker_target(),
+        Some(INSP_SHAPE_TINT_SWATCH),
+        "o seletor abriu nela"
+    );
+    host.store_mut()
+        .set_widget_color(INSP_SHAPE_TINT_SWATCH, [255, 0, 0, 255]);
+    let _ = host.drained_actions();
+    let _ = pinta(&mut host, &mut st);
+    let e = edicoes(&host.drained_actions());
+    assert!(e.contains(&E::LookTint([1.0, 0.0, 0.0, 1.0])), "{e:?}");
+    sai();
+}

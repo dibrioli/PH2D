@@ -30,6 +30,7 @@ fn cada_contorno_da_camada_tem_uma_sombra_escura_mais_larga_com_o_mesmo_padrao()
                     camada: 3,
                     marca,
                     corpo,
+                    tom: ph2d_panel_physics::tinta_canvas::TOM_NEUTRO,
                 };
                 let (traco, cor) = tinta_do_contorno(tinta, theme);
                 let (sombra, escura) =

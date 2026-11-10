@@ -34,6 +34,9 @@ pub enum Tinta {
         camada: u8,
         marca: Marca,
         corpo: Option<BodyKind>,
+        /// Multiplica a cor resolvida da camada: o Color × Opacity do Look da forma (GEF02 onda 8).
+        /// [`TOM_NEUTRO`] = a cor do tema.
+        tom: [f32; 4],
     },
     /// ⭐ Uma linha de sensor (o traço fino de [`SONDA_PX`]). Com `camada` (o `RaySensor` do objecto, emenda 4, dono
     /// 08/11) a matiz é a da camada e o estado fica na opacidade `rgba[3]` (parado · nada · viu), com a sombra do
@@ -43,6 +46,9 @@ pub enum Tinta {
         rgba: [f32; 4],
     },
 }
+
+/// O `tom` que não muda a cor da camada.
+pub const TOM_NEUTRO: [f32; 4] = [1.0; 4];
 
 /// A espessura de uma linha de sensor, mais fina que o contorno (`OUTLINE_PX` da `ph2d-app-physics`).
 pub const SONDA_PX: f64 = 1.25; // LITERAL-PX-OK: chrome de overlay
@@ -95,13 +101,33 @@ pub fn marca(col: &Collider, corpo: Option<BodyKind>, aceso: bool, atravessavel:
         camada: col.layer,
         marca,
         corpo,
+        tom: TOM_NEUTRO,
+    }
+}
+
+/// A tinta com o `tom` do Look da forma (só a da camada o leva; as anotações de cor fixa ficam).
+#[must_use]
+pub fn com_tom(tinta: Tinta, tom: [f32; 4]) -> Tinta {
+    match tinta {
+        Tinta::Camada {
+            camada,
+            marca,
+            corpo,
+            ..
+        } => Tinta::Camada {
+            camada,
+            marca,
+            corpo,
+            tom,
+        },
+        outra => outra,
     }
 }
 
 /// O traço e a cor finais, com a cor da camada resolvida pelo tema.
 #[must_use]
 pub fn tinta_do_contorno(tinta: Tinta, theme: Theme) -> (Stroke, Color) {
-    let (camada, marca, corpo) = match tinta {
+    let (camada, marca, corpo, tom) = match tinta {
         Tinta::Fixa(rgba) => {
             return (
                 Stroke::new(f64::from(StrokeToken::Default.px())),
@@ -112,7 +138,8 @@ pub fn tinta_do_contorno(tinta: Tinta, theme: Theme) -> (Stroke, Color) {
             camada,
             marca,
             corpo,
-        } => (camada, marca, corpo),
+            tom,
+        } => (camada, marca, corpo, tom),
         Tinta::Sonda { camada, rgba } => {
             let cor = camada.map_or(Color::new(rgba), |j| {
                 let mut c =
@@ -136,6 +163,9 @@ pub fn tinta_do_contorno(tinta: Tinta, theme: Theme) -> (Stroke, Color) {
         traco = traco.with_dashes(0.0, p);
     }
     c.components[3] *= alfa;
+    for (k, m) in c.components.iter_mut().zip(tom) {
+        *k *= m;
+    }
     (traco, c)
 }
 

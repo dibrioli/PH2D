@@ -103,14 +103,17 @@ pub fn outlines(
             camera,
             window,
         );
+        let tinta = crate::overlay::tinta::marca(
+            col,
+            kind,
+            triggered.contains(&e),
+            ghost && one_way.is_some(),
+        );
+        // O Color × Opacity do Look da forma (GEF02 onda 8); sem Look, a cor do tema.
+        let look = world.get::<ph2d_physics_ecs::ShapeLook>(e);
         out.push((
             path,
-            crate::overlay::tinta::marca(
-                col,
-                kind,
-                triggered.contains(&e),
-                ghost && one_way.is_some(),
-            ),
+            look.map_or(tinta, |l| crate::overlay::tinta::com_tom(tinta, l.tom())),
         ));
         // Sem corpo acima o solver não a vê: nenhuma anotação de corpo.
         if kind.is_none() {

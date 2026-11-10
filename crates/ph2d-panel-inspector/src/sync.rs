@@ -463,6 +463,7 @@ fn is_sprite_color_swatch(id: ph2d_a11y::NodeId) -> bool {
             | crate::ids::INSP_SPRITE_CORNER_TR
             | crate::ids::INSP_SPRITE_CORNER_BL
             | crate::ids::INSP_SPRITE_CORNER_BR
+            | crate::ids::INSP_SHAPE_TINT_SWATCH
     ) || crate::ids::INSP_SCRIPT_COLOR.contains(&id)
         || crate::ids::INSP_BARRA_CORES.contains(&id)
 }

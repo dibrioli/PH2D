@@ -35,6 +35,13 @@ impl Default for ShapeLook {
 }
 
 impl ShapeLook {
+    /// O multiplicador da cor do overlay: o Tint com a Opacity no alfa.
+    #[must_use]
+    pub fn tom(&self) -> [f32; 4] {
+        let [r, g, b, a] = self.tint;
+        [r, g, b, a * self.opacity]
+    }
+
     /// Números finitos; cor e opacidade em `0..=1`. O pivô não tem faixa (fora da forma é legal).
     pub fn sanitize(&mut self) {
         let fin = |v: f32, d: f32| if v.is_finite() { v } else { d };

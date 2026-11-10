@@ -203,10 +203,11 @@ impl crate::App {
                     d.layout.align.pivot_grid,
                     d.layout.align.by_hand,
                     d.layout.align.pivot_follow,
+                    d.layout.align.preview,
                 ),
             ))
         });
-        let Some((toggle, pes, p, (grade, mao, segue))) = doc else {
+        let Some((toggle, pes, p, (grade, mao, segue, previa))) = doc else {
             return eprintln!("[animado-prova] align: o editor não está aberto");
         };
         let c = |r: ph2d_editor_core::zones::Rect| (r.x + r.w / 2.0, r.y + r.h / 2.0);
@@ -221,6 +222,16 @@ impl crate::App {
             // O Pivot (GEF 29): «Bottom» é a casa do meio da última fila da grade 5 × 5.
             (10, _) => self.smoke_pointer_down(grade.x + grade.w / 2.0, grade.y + grade.h * 0.9),
             (12, _) => self.smoke_pointer_down(c(mao).0, c(mao).1),
+            // A folha arrastada para o lado, o soltar noutro quadro (o Follow, smoke do dono 09/11).
+            (20, _) => self.smoke_pointer_down(c(previa).0, c(previa).1),
+            (21 | 22, _) => {
+                let (x, y) = (c(previa).0 + previa.w * 0.2, c(previa).1);
+                if fase == 21 {
+                    self.smoke_pointer_move(x, y);
+                } else {
+                    self.smoke_pointer_up();
+                }
+            }
             (14..=16, _) => {
                 let (Some((ox, oy)), Some(r)) = (p.pivot, p.all_frames) else {
                     return eprintln!("[animado-prova] pivô: sem cruz ou sem caixa");

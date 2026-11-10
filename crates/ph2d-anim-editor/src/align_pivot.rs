@@ -30,6 +30,9 @@ pub struct PivotUi {
     pub follow: bool,
     /// Onde o Pivot está na caixa de todos os quadros, em frações dela desde baixo-esquerda (medido fora de gestos).
     frac: Option<[f32; 2]>,
+    /// O desenho mexeu desde a última fração medida: um arrasto espalha as edições por vários quadros, e o último
+    /// pode não trazer nenhuma (smoke do dono 09/11: arrastou a folha e o Pivot não seguiu).
+    dirty: bool,
     boxes: BTreeMap<CellKey, Option<[f32; 4]>>,
 }
 
@@ -177,6 +180,7 @@ impl AnimDoc {
     /// o passo do Pivot que o leva ao mesmo lugar da caixa de todos os quadros onde estava antes do gesto: a família
     /// aplica-o no mesmo quadro, e o Ctrl+Z desfaz os dois juntos.
     pub fn pivot_follow(&mut self, moved: bool) -> Option<[f32; 2]> {
+        self.align.pivot.dirty |= moved;
         if self.align_gesture_active() {
             return None; // a meio do gesto, a fração de antes fica guardada
         }
@@ -185,7 +189,7 @@ impl AnimDoc {
         if size[0] <= 0.0 || size[1] <= 0.0 {
             return None;
         }
-        if moved
+        if std::mem::take(&mut self.align.pivot.dirty)
             && self.align.pivot.follow
             && let Some(f) = self.align.pivot.frac
         {

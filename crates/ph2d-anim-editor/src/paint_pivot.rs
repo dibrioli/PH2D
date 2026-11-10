@@ -9,7 +9,7 @@ use super::paint_align::{Look, chip};
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, frame_radius, paint_text, stroke_polyline,
+    fill_circle, fill_rounded_rect, frame_radius, paint_text, stroke_polyline, stroke_rounded_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -33,6 +33,12 @@ pub(super) fn paint_pivot_column(
         return;
     }
     let on = doc.align.on;
+    // A submoldura: o Pivot é um assunto à parte dentro do Align.
+    let sub = l.pivot_frame;
+    let raio = frame_radius(theme, m::FIELD_RADIUS);
+    fill_rounded_rect(scene, sub, raio, tom(ColorToken::Bg1, theme));
+    let fio = StrokeToken::Thin.px();
+    stroke_rounded_rect(scene, sub, raio, fio, tom(ColorToken::Bg3, theme));
     let font = TypeToken::Base.px();
     let t = l.pivot_title;
     let title_c = if on {
@@ -74,7 +80,6 @@ pub(super) fn paint_pivot_column(
         }
     }
     let hand = (IconId::Move, tr("anim_editor.pivot_by_hand"));
-    let fio = StrokeToken::Thin.px();
     chip(
         scene,
         text,

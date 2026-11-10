@@ -283,7 +283,9 @@ impl AnimDoc {
         ]) + row;
         // A coluna do Pivot (GEF 29): a grade 5 × 5 com a altura das duas filas, e o «By hand» ao lado.
         let pivot_side = row + gap + row;
-        let pivot_w = gap + pivot_side + gap + align_button;
+        // A submoldura do Pivot (dono 09/11): um recuo de cada lado.
+        let sub = Spacing::Xs.px();
+        let pivot_w = gap + sub + pivot_side + gap + align_button + sub;
         let three = 3.0 * align_button + 2.0 * group_pad + 2.0 * gap; // LITERAL-PX-OK: três botões, as margens e os vãos
         // Numa aba estreita a coluna do Pivot desce para baixo dos botões: a moldura nunca sai da aba.
         let pivot_under = three + pivot_w > card_w;
@@ -306,7 +308,11 @@ impl AnimDoc {
         };
         let align_below = align_w > 0.0 && !cabe(beside);
         let align_h = 2.0 * group_pad + line + row + gap + row // LITERAL-PX-OK: as margens e as duas filas
-            + if pivot_under { gap + line + pivot_side } else { 0.0 };
+            + if pivot_under {
+                gap + line + pivot_side + 2.0 * sub // LITERAL-PX-OK: o recuo de cima e o de baixo
+            } else {
+                0.0
+            };
         let left_w = if align_w > 0.0 && !align_below {
             beside
         } else {
@@ -425,15 +431,22 @@ impl AnimDoc {
             let col3 = bx + 2.0 * (align_button + gap); // LITERAL-PX-OK: a terceira coluna
             l.align.by_feet = Rect::new(col3, fila(0.0), align_button, row);
             l.align.by_centre = Rect::new(col3, fila(1.0), align_button, row);
-            let (col4, py) = if pivot_under {
-                (bx, fila(2.0))
+            let (sub_x, py) = if pivot_under {
+                (bx, fila(2.0) + sub)
             } else {
                 (col3 + align_button + gap, by)
             };
+            let col4 = sub_x + sub;
+            l.align.pivot_frame = Rect::new(
+                sub_x,
+                py - sub,
+                pivot_side + gap + align_button + 2.0 * sub, // LITERAL-PX-OK: os dois recuos
+                line + pivot_side + 2.0 * sub,               // LITERAL-PX-OK: os dois recuos
+            );
             let titulo_w = if pivot_under {
                 f.w - 2.0 * group_pad
             } else {
-                col4 - gap - bx
+                sub_x - gap - bx
             }; // LITERAL-PX-OK: as duas margens
             l.align.title = Rect::new(bx, by, titulo_w.max(0.0), line);
             l.align.pivot_title = Rect::new(col4, py, pivot_side + gap + align_button, line);

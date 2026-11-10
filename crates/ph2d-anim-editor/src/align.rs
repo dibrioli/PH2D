@@ -34,6 +34,7 @@ pub struct AlignLayout {
     pub by_feet: Rect,
     pub by_centre: Rect,
     /// A coluna do Pivot (GEF 29): o rótulo, a grade 5 × 5, o «By hand» e o «Follow».
+    pub pivot_frame: Rect,
     pub pivot_title: Rect,
     pub pivot_grid: Rect,
     pub by_hand: Rect,

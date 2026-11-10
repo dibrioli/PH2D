@@ -243,7 +243,14 @@ fn com_o_follow_o_pivot_acompanha_o_redimensionamento() {
         m.paint();
         let pv = m.doc().layout.align.preview;
         let c = centre(pv);
-        m.drag(c, (c.0 + pv.w * 0.3, c.1), Modifiers::default());
+        // Como na mão do dono: o movimento num quadro da tela, o soltar noutro, sem movimento novo.
+        let longe = (c.0 + pv.w * 0.3, c.1);
+        let b = ph2d_host::PointerButton::Primary;
+        m.pointer_with(ph2d_host::PointerKind::Down, b, c, Modifiers::default());
+        m.pointer_with(ph2d_host::PointerKind::Move, b, longe, Modifiers::default());
+        m.frame();
+        m.paint();
+        m.pointer_with(ph2d_host::PointerKind::Up, b, longe, Modifiers::default());
         assert!(
             !m.sheet_edits()
                 .iter()

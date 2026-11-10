@@ -212,7 +212,7 @@ fn cada_botao_do_quadro_reserva_o_rotulo_e_a_tecla_na_largura_pintada() {
     assert_eq!(v.painted.buttons.len(), 2, "Continue e Next line");
     for ((_, b), want) in v.painted.buttons.iter().zip(esperado) {
         assert!(
-            (b.w - want).abs() <= 0.5,
+            (b.w - want).abs() <= 0.01,
             "o botão tem {} e o rótulo com a tecla pintados pedem {want}",
             b.w
         );

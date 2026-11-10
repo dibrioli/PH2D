@@ -83,10 +83,11 @@ fn pinta(
     ph2d_ui_table::Layout,
     Metrics,
 ) {
-    let m = Metrics {
-        look,
-        ..Metrics::standard()
-    };
+    // A casa é a de omissão: o `standard()` sem nada por cima.
+    let mut m = Metrics::standard();
+    if look != Look::House {
+        m.look = look;
+    }
     let (c, r) = (cols(), rows());
     let (mut scene, mut ts) = (VectorScene::new(), TextSystem::without_system_fonts());
     set_text_rendering(TextRendering::CrispHeavyPlus);

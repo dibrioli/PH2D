@@ -207,6 +207,8 @@ pub(crate) const PARTILHADO: &[&str] = &[
     "canvas_wet_rect",
     "canvas_wet_snapshot",
     "canvas_wet_carry",
+    "canvas_wet_rev",
+    "wet_veu",
     "dry_rate_per_s",
     "wet_preview_intensity",
     "wet_session_wetness",

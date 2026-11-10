@@ -12,6 +12,8 @@ use super::*;
 use crate::compositor::composite_below;
 use rayon::prelude::*;
 
+pub(crate) mod veu;
+
 /// How fast the parked brush pours dwell into [`PaintState::wet_soak`]: a held nib saturates its
 /// disc in ~2 s (`255 / 2 s`). Moving strokes soak too (each tick pours at the current dab), but the
 /// dt spreads across positions, so a sweep stays light — only LINGERING builds a deep soak.
@@ -496,6 +498,7 @@ impl PainterTool {
             Some((rx0, ry0, rx1, ry1)) => (rx0.min(x0), ry0.min(y0), rx1.max(x1), ry1.max(y1)),
             None => (x0, y0, x1, y1),
         });
+        self.paint.canvas_wet_rev = veu::nova_revisao();
     }
 
     /// EDGE-1 (doc 13 #9): END the wet session NOW — the atomic teardown (drop the moisture map +
@@ -507,6 +510,7 @@ impl PainterTool {
         self.paint.canvas_wet = Vec::new();
         self.paint.canvas_wet_rect = None;
         self.paint.canvas_wet_carry = 0.0;
+        self.paint.canvas_wet_rev = veu::nova_revisao();
         self.paint.wet_session_base = None;
         self.paint.wet_session_canvas = None;
         self.paint.stroke_coverage = Vec::new();
@@ -598,6 +602,7 @@ impl PainterTool {
         }
         self.paint.canvas_wet = vec![255u8; n];
         self.paint.canvas_wet_rect = Some((0, 0, fw as usize, fh as usize));
+        self.paint.canvas_wet_rev = veu::nova_revisao();
         self.paint.canvas_wet_carry = 0.0;
         if !self.watercolor_render_active() {
             return;

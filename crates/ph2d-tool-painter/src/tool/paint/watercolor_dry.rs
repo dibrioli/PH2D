@@ -43,6 +43,7 @@ impl PainterTool {
         if self.paint.canvas_wet.len() != fw * (fh as usize) {
             self.paint.canvas_wet = Vec::new();
             self.paint.canvas_wet_rect = None;
+            self.paint.canvas_wet_rev = super::watercolor_backdrop::veu::nova_revisao();
             return;
         }
         self.paint.canvas_wet_carry += dt_s.max(0.0) * self.paint.dry_rate_per_s.max(0.0);
@@ -51,6 +52,7 @@ impl PainterTool {
             return;
         }
         self.paint.canvas_wet_carry -= f32::from(step);
+        self.paint.canvas_wet_rev = super::watercolor_backdrop::veu::nova_revisao();
         self.paint.wet_pour_marca = None; // B16.11: a umidade baixou, o pour volta ao traço
         // O gap de 4 vizinhos tem de ler a umidade PRÉ-passo (a lei é independente de ordem); fora do
         // rect conta como seco (0), então a frente molhada recua também na borda do rect.

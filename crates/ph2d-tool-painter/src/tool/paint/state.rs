@@ -490,6 +490,9 @@ pub(crate) struct PaintState {
     pub(super) canvas_wet_snapshot: Vec<u8>,
     /// Fractional drying carry between whole-byte decay steps (heartbeat dt accumulator).
     pub(super) canvas_wet_carry: f32,
+    /// B16.10: a revisão de `canvas_wet` (nova a cada escrita) e o véu da prévia guardado por ela.
+    pub(super) canvas_wet_rev: u64,
+    pub(super) wet_veu: super::watercolor_backdrop::veu::VeuGuardado,
     /// EDGE-1 (doc 13 #11): paper drying RATE in wetness-bytes/second — CANVAS-level (not per-brush,
     /// so it never varies by paint mode). The Wetness card's Drying-Time slider drives it
     /// (`set_dry_time_s`, seconds → `255/seconds`); default `CANVAS_WET_DRY_DEFAULT` (~10 s).

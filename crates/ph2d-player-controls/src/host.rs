@@ -1,4 +1,4 @@
-//! **O que a shell pergunta à sessão num evento do Play** — a tecla e o clique da tela «Controls», e o relógio
+//! **O que a shell pergunta à sessão num evento do Play** — a tecla, o clique e o movimento da tela «Controls», e o relógio
 //! que eles pedem. A shell só traduz o evento e toca no relógio do jogo (saiu dela pela catraca
 //! `the_shell_only_shrinks`, R10a).
 
@@ -33,7 +33,8 @@ pub fn key(
     (out != Outcome::Ignored, s.clock_after(out, playing))
 }
 
-/// O clique: aberta, a tela é dona do rato (`.0`), e o botão que DESCE em `at` (lógico) escolhe nela.
+/// O clique: aberta, a tela é dona do rato (`.0`). O Down em `at` (lógico) escolhe nela; o Up dispara o botão
+/// premido se cai dentro dele (fora cancela).
 #[must_use]
 pub fn click(
     s: &mut PlaySession,
@@ -44,11 +45,23 @@ pub fn click(
     if !s.screen().is_open() {
         return (false, None);
     }
-    match at.filter(|_| down) {
-        Some(((x, y), map)) => {
-            let out = s.click(x, y, map);
-            (true, s.clock_after(out, playing))
-        }
-        None => (true, None),
+    let Some(((x, y), map)) = at else {
+        return (true, None);
+    };
+    let out = if down {
+        s.click(x, y, map)
+    } else {
+        s.release(x, y, map)
+    };
+    (true, s.clock_after(out, playing))
+}
+
+/// O movimento do ponteiro em `at` (lógico): aberta, a tela é dona dele. `(dela, repinta)` — `repinta` = o alvo
+/// sob o ponteiro mudou (o hover acende no quadro, D32).
+#[must_use]
+pub fn pointer_move(s: &mut PlaySession, at: Option<(f32, f32)>) -> (bool, bool) {
+    if !s.screen().is_open() {
+        return (false, false);
     }
+    (true, at.is_some_and(|(x, y)| s.pointer_move(x, y)))
 }

@@ -8,7 +8,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::{FontWeight, TextSystem};
 
-use crate::screen::{ControlsScreen, Hit, Row};
+use crate::screen::{ControlsScreen, Hit, Hover, Row};
 
 const KEY_H: f32 = m::FIELD_H - m::SEG_INSET;
 const ROW_H: f32 = m::FIELD_H;
@@ -288,6 +288,16 @@ impl Layout {
             reset,
             hint,
         }
+    }
+
+    /// O que acende sob `(x, y)`: a faixa de uma linha à vista ou o «Reset to defaults»; `None` = nenhum alvo.
+    #[must_use]
+    pub fn hover(&self, x: f32, y: f32) -> Option<Hover> {
+        if self.reset.contains(x, y) {
+            return Some(Hover::Reset);
+        }
+        let i = self.rows.iter().position(|r| r.band.contains(x, y))?;
+        Some(Hover::Row(self.first + i))
     }
 
     /// O alvo sob `(x, y)`; `None` = fora do painel.

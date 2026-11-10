@@ -161,7 +161,10 @@ impl App {
         self.last_pointer = (evt.x, evt.y);
         // M14.4e: o `DroppedFile` do winit não traz posição — projecta-se o último cursor visto.
         self.last_cursor = self.last_pointer;
-        // No palco só os botões do jogo reagem ao ponteiro.
+        // A tela «Controls» do jogador aberta é dona do ponteiro (o hover dela); no palco, só os botões do jogo.
+        if self.movimento_dos_controles() {
+            return;
+        }
         if self.no_palco() {
             let _ = forward_to_hero(self.gfx.as_mut(), evt);
             return;

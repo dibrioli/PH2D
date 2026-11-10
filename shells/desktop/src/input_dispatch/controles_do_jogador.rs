@@ -49,6 +49,14 @@ impl crate::App {
         dela
     }
 
+    /// Aberta, a tela é dona do movimento: `true` = é dela. O hover acende no quadro seguinte (D32; o laço é
+    /// contínuo, `ControlFlow::Poll`, por isso o «repinta» do host não precisa de pedir quadro).
+    pub(super) fn movimento_dos_controles(&mut self) -> bool {
+        let h = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref());
+        let em = h.map(|h| h.escala().to_logical(self.last_pointer));
+        host::pointer_move(&mut self.components.jogador, em).0
+    }
+
     /// Abrir pausa o relógio do jogo; fechar retoma-o se corria (o mesmo relógio do F5).
     fn relogio_dos_controles(&mut self, relogio: host::Clock) {
         match relogio {

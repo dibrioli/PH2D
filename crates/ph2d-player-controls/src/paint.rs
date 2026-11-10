@@ -13,12 +13,15 @@ use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 use ph2d_vector::{Affine, VectorScene};
 
 use crate::layout::{FOOT_PX, HINT_LINE_H, Layout, TITLE_PX, foot_lines, slot_label};
-use crate::screen::{ControlsScreen, Row};
+use crate::screen::{ControlsScreen, Hover, Row};
 
 /// A faixa da linha escolhida, o fundo do botão «Reset to defaults» (o das caixas de tecla) e a dica (texto
 /// secundário).
 pub const ROW_INK: ColorToken = ColorToken::AccentSoft;
 pub const RESET_INK: ColorToken = ColorToken::Bg3;
+/// O hover (D32: no quadro, sem fade) da linha e do botão, e o botão premido — os mesmos da lista da aba.
+pub const HOVER_INK: ColorToken = ColorToken::CardFieldHover;
+pub const PRESS_INK: ColorToken = ColorToken::AccentSoft;
 pub const HINT_INK: ColorToken = ColorToken::Text2;
 /// A caixa vazia («Add»): sem fundo cheio, um contorno TRACEJADO e o texto secundário, legível mas recuado.
 pub const ADD_INK: ColorToken = ColorToken::Text2;
@@ -120,6 +123,8 @@ pub(crate) fn paint_with(
         // A linha escolhida acende no acento suave, também à escuta (a caixa amarela diz qual das teclas).
         if selected {
             fill_rounded_rect(scene, rl.band, m::FIELD_RADIUS, c(ROW_INK));
+        } else if !preview && screen.hovered() == Some(Hover::Row(i)) {
+            fill_rounded_rect(scene, rl.band, m::FIELD_RADIUS, c(HOVER_INK));
         }
         let ty = rl.name.y + folga_do_texto(rl.name.h, m::VALUE_PX);
         paint_text_title_elided(
@@ -165,7 +170,12 @@ pub(crate) fn paint_with(
     // dica no texto secundário.
     fill_rounded_rect(scene, lay.rule, 0.0, c(ColorToken::Border));
     let on_reset = !preview && screen.selected() >= rows.len();
-    fill_rounded_rect(scene, lay.reset, m::FIELD_RADIUS, c(RESET_INK));
+    let reset_ink = match (preview, screen.reset_pressed(), screen.hovered()) {
+        (false, true, _) => PRESS_INK,
+        (false, false, Some(Hover::Reset)) => HOVER_INK,
+        _ => RESET_INK,
+    };
+    fill_rounded_rect(scene, lay.reset, m::FIELD_RADIUS, c(reset_ink));
     if on_reset {
         stroke_rounded_rect(
             scene,

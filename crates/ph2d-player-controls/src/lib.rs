@@ -19,7 +19,7 @@ pub use file::{home_base, player_file, player_file_of};
 pub use layout::Layout;
 pub use paint::{paint, paint_preview};
 pub use screen::{
-    ControlsScreen, Hit, Outcome, Row, SLOTS, readable_name, rebind, rows, rows_marked,
+    ControlsScreen, Hit, Hover, Outcome, Row, SLOTS, readable_name, rebind, rows, rows_marked,
 };
 pub use session::PlaySession;
 
@@ -54,6 +54,8 @@ pub fn game_id_of(world: &mut bevy_ecs::world::World) -> u64 {
 
 #[cfg(test)]
 mod f3_tests;
+#[cfg(test)]
+mod onda3_hover_tests;
 #[cfg(test)]
 mod play_tests;
 #[cfg(test)]

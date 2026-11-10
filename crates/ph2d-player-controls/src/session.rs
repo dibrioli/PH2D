@@ -140,6 +140,23 @@ impl PlaySession {
         self.after(out, game)
     }
 
+    /// O Up do botão em coordenadas da pintura: só o Up dentro do «Reset to defaults» premido dispara.
+    pub fn release(&mut self, x: f32, y: f32, game: &InputMap) -> Outcome {
+        if !self.screen.is_open() {
+            return Outcome::Ignored;
+        }
+        self.follow(game);
+        let hit = self.last.as_ref().and_then(|l| l.hit(x, y));
+        let out = self.screen.release(hit, &mut self.keys);
+        self.after(out, game)
+    }
+
+    /// O ponteiro mexeu (coordenadas da pintura): `true` = o alvo sob ele mudou e o quadro tem de se repintar.
+    pub fn pointer_move(&mut self, x: f32, y: f32) -> bool {
+        let hover = self.last.as_ref().and_then(|l| l.hover(x, y));
+        self.screen.pointer_move(hover)
+    }
+
     /// O relógio do jogo depois de um gesto (`playing` = corre agora): `Some(false)` = pare (abriu), `Some(true)` =
     /// retome (fechou e corria ao abrir), `None` = deixe.
     pub fn clock_after(&mut self, out: Outcome, playing: bool) -> Option<bool> {

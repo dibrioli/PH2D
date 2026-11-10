@@ -140,6 +140,17 @@ pub struct ControlsScreen {
     listening: bool,
     /// A primeira linha à vista (a lista rola quando não cabe; a pintura acerta-a).
     top: usize,
+    /// O alvo sob o ponteiro (D32 do dono: acende no quadro, sem fade); `Hit::Panel` nunca fica aqui.
+    hover: Option<Hover>,
+    /// O Down caiu no «Reset to defaults»: o Up DENTRO dispara, fora cancela (o idioma do `interact` da aba).
+    reset_down: bool,
+}
+
+/// O que está sob o ponteiro: uma linha (a faixa inteira, caixas incluídas) ou o botão «Reset to defaults».
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Hover {
+    Row(usize),
+    Reset,
 }
 
 impl ControlsScreen {
@@ -162,6 +173,34 @@ impl ControlsScreen {
     #[must_use]
     pub fn top(&self) -> usize {
         self.top
+    }
+
+    #[must_use]
+    pub fn hovered(&self) -> Option<Hover> {
+        self.hover.filter(|_| self.open)
+    }
+    /// O «Reset to defaults» premido: só enquanto o ponteiro continua nele (sair dele mostra o cancelamento).
+    #[must_use]
+    pub fn reset_pressed(&self) -> bool {
+        self.open && self.reset_down && self.hover == Some(Hover::Reset)
+    }
+
+    /// O ponteiro mexeu: guarda o alvo sob ele. `true` = mudou (a pintura tem de refazer o quadro).
+    pub fn pointer_move(&mut self, hover: Option<Hover>) -> bool {
+        let before = self.hover;
+        self.hover = hover.filter(|_| self.open);
+        before != self.hover
+    }
+
+    /// O Up do botão: só o Up DENTRO do «Reset to defaults» premido dispara; fora cancela.
+    pub fn release(&mut self, hit: Option<Hit>, keys: &mut PlayerKeys) -> Outcome {
+        if !self.open {
+            return Outcome::Ignored;
+        }
+        match (std::mem::take(&mut self.reset_down), hit) {
+            (true, Some(Hit::Reset)) => reset(keys),
+            _ => Outcome::Consumed,
+        }
     }
 
     /// A primeira linha à vista, como a pintura a deixou (a escolhida sempre à vista).
@@ -252,7 +291,8 @@ impl ControlsScreen {
         }
     }
 
-    /// Um clique no painel (o `Hit` vem do [`crate::layout::Layout::hit`]); `None` = fora do painel.
+    /// O Down no painel (o `Hit` vem do [`crate::layout::Layout::hit`]); `None` = fora do painel. Numa caixa escuta já;
+    /// no «Reset to defaults» só o captura ([`Self::release`] dispara).
     pub fn click(&mut self, hit: Option<Hit>, keys: &mut PlayerKeys) -> Outcome {
         if !self.open {
             return Outcome::Ignored;
@@ -265,7 +305,10 @@ impl ControlsScreen {
                 self.listening = true;
                 Outcome::Consumed
             }
-            Some(Hit::Reset) => reset(keys),
+            Some(Hit::Reset) => {
+                self.reset_down = true;
+                Outcome::Consumed
+            }
             Some(Hit::Panel) | None => Outcome::Consumed,
         }
     }

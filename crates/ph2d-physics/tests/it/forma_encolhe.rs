@@ -32,6 +32,7 @@ fn caixa(meia_h_px: f32, off_y_px: f32) -> BodyDesc {
         lock_y: false,
         mass_override: None,
         dominance: 0,
+        shape_off: false,
         material: Default::default(),
         damping: None,
         one_way: false,

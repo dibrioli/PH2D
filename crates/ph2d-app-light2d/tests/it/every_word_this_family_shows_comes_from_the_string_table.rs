@@ -31,6 +31,11 @@ const NOT_LANGUAGE: &[Excecao] = &[
         "calibração",
         "a etiqueta da linha do instrumento no TERMINAL (`PH2D_LIGHT2D_MEMORIA`, W5y) — nunca pintada",
     ),
+    (
+        "normais.rs",
+        "ph2d-app-pixel banda normal",
+        "o rótulo de DEPURAÇÃO da textura da banda normal (o inspetor da GPU) — nunca pintado",
+    ),
 ];
 
 #[test]

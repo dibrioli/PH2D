@@ -623,6 +623,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.sprite_sheets.name" => "Sprite Sheets",
         "component.cell_offsets.name" => "Frame Offsets",
         "component.sprite_cells.name" => "Per-Cell Pivots and Shapes",
+        "component.segue_slice.name" => "Follows Slice",
+        "component.segue_celula.name" => "Follows Cell",
         "component.sprite_anim_markers.name" => "Frame Markers",
         "component.sound_set.name" => "Sound List",
         "component.image_use_memory.name" => "Image Use Memory",

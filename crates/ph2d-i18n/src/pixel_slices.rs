@@ -61,9 +61,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.slices.menu_duplicate" => "Duplicate Slice",
         "panel.pixel.slices.menu_delete" => "Delete Slice",
         "panel.pixel.slices.menu_remove_key" => "Remove Change on This Frame",
-        // P14b: a «Collision Shape» que segue uma slice (o descritor do componente).
-        "component.segue_slice.name" => "Follows Slice",
-        "component.segue_celula.name" => "Follows Cell",
         _ => {
             return history::tr(key)
                 .or_else(|| user_data::tr(key))

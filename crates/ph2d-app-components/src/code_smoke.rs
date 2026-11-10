@@ -219,7 +219,7 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
     }
     if nivel == 15 {
         println!(
-            "[code-smoke] =15 oito formas correm o arena.luau (sete propriedades, seis com valor \
+            "[code-smoke] =15 catorze formas correm o arena.luau (sete propriedades, dez com valor \
              próprio em âmbar na grelha Who has what) e o script tem uns dez problemas na lista."
         );
         return None;

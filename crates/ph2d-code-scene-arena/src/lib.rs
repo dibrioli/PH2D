@@ -37,7 +37,7 @@ fn proprio(i: usize) -> Option<(&'static str, ScriptValue)> {
     })
 }
 
-/// Monta a cena 15; devolve as oito formas, pela ordem da cena.
+/// Monta a cena 15; devolve as catorze formas, pela ordem da cena.
 pub fn monta(sim: &mut SimWorld, cena: &mut VecScene, mapa: &mut VecEntityMap) -> Vec<Entity> {
     let script = sim
         .world_mut()

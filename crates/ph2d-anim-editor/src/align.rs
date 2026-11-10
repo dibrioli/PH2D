@@ -131,81 +131,16 @@ pub struct AlignUi {
     drag: AlignDrag,
     /// A caixa do desenho de uma célula, em frações dela `[x0, y0, x1, y1]` a partir do canto de cima (chave: folha,
     /// célula, corte, imagem).
-    floor_cache: Option<((u8, u32, u32, u32, usize), Option<Arc<Silhueta>>)>,
+    floor_cache: Option<(SilKey, Option<Arc<Silhueta>>)>,
     pub painted: AlignPaint,
     /// O Pivot do objeto (GEF 29): a grade de 25 pontos e o «By hand».
     pub pivot: super::align_pivot::PivotUi,
 }
 
-/// O desenho de uma célula (os píxeis com alfa), em frações dela a partir do canto de cima: a caixa `[x0, y0, x1,
-/// y1]` e as arestas da silhueta `[xa, ya, xb, yb]` (as bordas entre um píxel com alfa e um sem), fundidas em corridas.
-#[derive(Debug, PartialEq)]
-pub struct Silhueta {
-    pub caixa: [f32; 4],
-    pub arestas: Vec<[f32; 4]>,
-}
+pub use super::silhueta::Silhueta;
 
-impl Silhueta {
-    /// `None` = a célula não tem desenho.
-    #[must_use]
-    pub fn of(px: &[u8], w: usize, h: usize) -> Option<Self> {
-        let on = |x: isize, y: isize| {
-            x >= 0
-                && y >= 0
-                && (x as usize) < w
-                && (y as usize) < h
-                && px[(y as usize * w + x as usize) * 4 + 3] > 0
-        };
-        let mut caixa: Option<[usize; 4]> = None;
-        for y in 0..h {
-            for x in (0..w).filter(|x| on(*x as isize, y as isize)) {
-                let o = caixa.get_or_insert([x, y, x, y]);
-                *o = [o[0].min(x), o[1].min(y), o[2].max(x), o[3].max(y)];
-            }
-        }
-        let [a, t, r, d] = caixa?;
-        let (fw, fh) = (w.max(1) as f32, h.max(1) as f32);
-        let mut arestas = Vec::new();
-        // As bordas horizontais (por cima de cada linha `y`, entre `y - 1` e `y`) e as verticais, em corridas.
-        for y in 0..=h as isize {
-            let mut run: Option<usize> = None;
-            for x in 0..=w {
-                let borda = x < w && on(x as isize, y) != on(x as isize, y - 1);
-                match (borda, run) {
-                    (true, None) => run = Some(x),
-                    (false, Some(x0)) => {
-                        arestas.push([x0 as f32 / fw, y as f32 / fh, x as f32 / fw, y as f32 / fh]);
-                        run = None;
-                    }
-                    _ => {}
-                }
-            }
-        }
-        for x in 0..=w as isize {
-            let mut run: Option<usize> = None;
-            for y in 0..=h {
-                let borda = y < h && on(x, y as isize) != on(x - 1, y as isize);
-                match (borda, run) {
-                    (true, None) => run = Some(y),
-                    (false, Some(y0)) => {
-                        arestas.push([x as f32 / fw, y0 as f32 / fh, x as f32 / fw, y as f32 / fh]);
-                        run = None;
-                    }
-                    _ => {}
-                }
-            }
-        }
-        Some(Self {
-            caixa: [
-                a as f32 / fw,
-                t as f32 / fh,
-                (r + 1) as f32 / fw,
-                (d + 1) as f32 / fh,
-            ],
-            arestas,
-        })
-    }
-}
+/// A chave da silhueta guardada: folha, célula, corte e a imagem.
+type SilKey = (u8, u32, u32, u32, usize);
 
 type FitKey = ([u32; 4], usize, Option<AnimFrameRef>, usize, u8);
 
@@ -372,12 +307,28 @@ impl AnimDoc {
         frac: [f32; 4],
     ) -> Option<([f32; 2], [f32; 2])> {
         let (c, s) = self.frame_quad(f)?;
+        let frac = self.flipped_box(frac);
         let (sw, sh) = (s[0].abs(), s[1].abs());
         let (left, top) = (c[0] - sw / 2.0, c[1] + sh / 2.0);
         Some((
             [left + frac[0] * sw, top - frac[3] * sh],
             [left + frac[2] * sw, top - frac[1] * sh],
         ))
+    }
+
+    /// Um ponto `(x, y)` em frações da célula (desde o canto de cima) onde o jogo o mostra: o flip do `Sprite` vira os
+    /// píxeis dentro do quad (`ph2d_sprite_edit::pivot::ponto_local`), não o quad.
+    #[must_use]
+    pub fn flipped_point(&self, x: f32, y: f32) -> (f32, f32) {
+        let [fx, fy] = self.snap.flip;
+        (if fx { 1.0 - x } else { x }, if fy { 1.0 - y } else { y })
+    }
+
+    /// A caixa `[x0, y0, x1, y1]` em frações da célula, virada como o jogo a mostra.
+    fn flipped_box(&self, [x0, y0, x1, y1]: [f32; 4]) -> [f32; 4] {
+        let (a, b) = self.flipped_point(x0, y0);
+        let (c, d) = self.flipped_point(x1, y1);
+        [a.min(c), b.min(d), a.max(c), b.max(d)]
     }
 
     /// A silhueta do desenho da referência (guardada enquanto a célula, o corte e a imagem forem os mesmos).
@@ -460,6 +411,12 @@ impl AnimDoc {
     #[must_use]
     pub fn align_gesture_active(&self) -> bool {
         self.align.drag != AlignDrag::None || self.align.pivot.hand.is_some()
+    }
+
+    /// O arrasto da quina (a escala da folha) está em curso.
+    #[must_use]
+    pub fn align_scaling(&self) -> bool {
+        matches!(self.align.drag, AlignDrag::Scale { .. })
     }
 
     /// O quadro `f` tem acerto próprio (a marca na tira).

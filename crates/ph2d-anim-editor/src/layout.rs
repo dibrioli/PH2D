@@ -289,13 +289,38 @@ impl AnimDoc {
         let sub_h = line + row + gap + row + 2.0 * sub_edge; // LITERAL-PX-OK: os dois recuos
         let pivot_side = sub_h - 2.0 * sub_pad - sub_title; // LITERAL-PX-OK: os dois respiros
         let sub_row = ((pivot_side - Spacing::Xs.px()) / 2.0).min(row); // LITERAL-PX-OK: duas filas
-        let sub_w = sub_pad + pivot_side + sub_pad + align_button + sub_pad;
-        let pivot_w = gap + sub_w;
-        let three = 3.0 * align_button + 2.0 * group_pad + 2.0 * gap; // LITERAL-PX-OK: três botões, as margens e os vãos
-        // Numa aba estreita a coluna do Pivot desce para baixo dos botões: a moldura nunca sai da aba.
-        let pivot_under = three + pivot_w > card_w;
+        let sub_full = sub_pad + pivot_side + sub_pad + align_button + sub_pad;
+        // Os seis botões em três colunas; numa aba estreita em duas, ou numa só (nenhuma palavra se corta), e só se nem
+        // uma coluna couber o botão encolhe: a moldura nunca sai do cartão.
+        let cols_w = |n: u8| f32::from(n) * align_button + f32::from(n.saturating_sub(1)) * gap;
+        let cols: u8 = [3, 2]
+            .into_iter()
+            .find(|n| cols_w(*n) + 2.0 * group_pad <= card_w) // LITERAL-PX-OK: as duas margens
+            .unwrap_or(1);
+        let align_button = if cols == 1 {
+            align_button.min((card_w - 2.0 * group_pad).max(0.0)) // LITERAL-PX-OK: as duas margens
+        } else {
+            align_button
+        };
+        let buttons_w = cols_w(cols);
+        // A coluna do Pivot ao lado dos três; senão desce para baixo dos botões, e a moldura vai para uma fila própria.
+        let pivot_under = cols < 3 || buttons_w + 2.0 * group_pad + gap + sub_full > card_w; // LITERAL-PX-OK: as margens
+        let inner_w = if pivot_under {
+            buttons_w
+                .max(sub_full)
+                .min((card_w - 2.0 * group_pad).max(0.0)) // LITERAL-PX-OK: as duas margens
+        } else {
+            buttons_w + gap + sub_full
+        };
+        let sub_w = if pivot_under {
+            sub_full.min(inner_w)
+        } else {
+            sub_full
+        };
+        let sub_button = (sub_w - 3.0 * sub_pad - pivot_side).clamp(0.0, align_button); // LITERAL-PX-OK: três respiros
+        let button_rows = f32::from(6_u8.div_ceil(cols)); // LITERAL-PX-OK: os seis botões
         let align_w = if self.snap.sheet.is_some() {
-            if pivot_under { three } else { three + pivot_w }
+            inner_w + 2.0 * group_pad // LITERAL-PX-OK: as duas margens
         } else {
             0.0
         };
@@ -311,8 +336,9 @@ impl AnimDoc {
             (w - PER_GROUP * group_pad - gap) / PER_GROUP >= label_need
                 && w >= needs.iter().sum::<f32>()
         };
-        let align_below = align_w > 0.0 && !cabe(beside);
-        let align_h = 2.0 * group_pad + line + row + gap + row // LITERAL-PX-OK: as margens e as duas filas
+        // A altura ao lado dos campos não conta a coluna do Pivot por baixo: com ela, a moldura desce sempre.
+        let align_below = align_w > 0.0 && (pivot_under || !cabe(beside));
+        let align_h = 2.0 * group_pad + line + button_rows * row + (button_rows - 1.0) * gap // LITERAL-PX-OK: as margens e as filas
             + if pivot_under {
                 gap + sub_h
             } else {
@@ -429,17 +455,30 @@ impl AnimDoc {
             let (bx, by) = (f.x + group_pad, f.y + group_pad);
             l.align.frame = f;
             let fila = |k: f32| by + line + k * (row + gap);
-            l.align.toggle = Rect::new(bx, fila(0.0), align_button, row);
-            l.align.pick = Rect::new(bx + align_button + gap, fila(0.0), align_button, row);
-            l.align.show_prev = Rect::new(bx, fila(1.0), align_button, row);
-            l.align.show_ref = Rect::new(bx + align_button + gap, fila(1.0), align_button, row);
-            let col3 = bx + 2.0 * (align_button + gap); // LITERAL-PX-OK: a terceira coluna
-            l.align.by_feet = Rect::new(col3, fila(0.0), align_button, row);
-            l.align.by_centre = Rect::new(col3, fila(1.0), align_button, row);
+            // `[toggle, pick, previous, reference, by feet, by centre]`: em três colunas, os de alinhar na terceira.
+            let celula = |i: u8| -> Rect {
+                let (c, r) = match cols {
+                    3 if i >= 4 => (2, i - 4),
+                    1 => (0, i),
+                    _ => (i % 2, i / 2),
+                };
+                Rect::new(
+                    bx + f32::from(c) * (align_button + gap),
+                    fila(f32::from(r)),
+                    align_button,
+                    row,
+                )
+            };
+            l.align.toggle = celula(0);
+            l.align.pick = celula(1);
+            l.align.show_prev = celula(2);
+            l.align.show_ref = celula(3);
+            l.align.by_feet = celula(4);
+            l.align.by_centre = celula(5);
             let (sub_x, sub_y) = if pivot_under {
-                (bx, fila(2.0))
+                (bx, fila(button_rows))
             } else {
-                (col3 + align_button + gap, by - sub_edge)
+                (bx + buttons_w + gap, by - sub_edge)
             };
             l.align.pivot_frame = Rect::new(sub_x, sub_y, sub_w, sub_h);
             let (ix, iy) = (sub_x + sub_pad, sub_y + sub_pad);
@@ -453,9 +492,9 @@ impl AnimDoc {
             l.align.pivot_title = Rect::new(ix, iy, sub_w - 2.0 * sub_pad, sub_title); // LITERAL-PX-OK: os dois respiros
             l.align.pivot_grid = Rect::new(ix, corpo, pivot_side, pivot_side);
             let col5 = ix + pivot_side + sub_pad;
-            l.align.by_hand = Rect::new(col5, corpo, align_button, sub_row);
+            l.align.by_hand = Rect::new(col5, corpo, sub_button, sub_row);
             let fim = corpo + pivot_side - sub_row;
-            l.align.pivot_follow = Rect::new(col5, fim, align_button, sub_row);
+            l.align.pivot_follow = Rect::new(col5, fim, sub_button, sub_row);
         } else {
             self.align.on = false;
         }

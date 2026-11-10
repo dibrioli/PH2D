@@ -40,6 +40,8 @@ pub struct EditorSnapshot {
     pub sheets: Vec<ph2d_anim_sheets::editor_ui::EditorSheet>,
     /// A geometria de cada folha (GEF 28): o que a prévia Align desenha e o que o rato mede.
     pub geo: Vec<ph2d_anim_sheets::align::SheetGeo>,
+    /// `[flip_x, flip_y]` do `Sprite`: o jogo vira os píxeis dentro do quad, e a prévia, as caixas e a grade também.
+    pub flip: [bool; 2],
 }
 
 /// Um campo de texto aberto.

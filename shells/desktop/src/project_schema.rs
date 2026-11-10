@@ -379,5 +379,6 @@
 /// # `225 → 226` — **o acerto de cada quadro** (`line/GameEngineFuncional`, GEF 28 Align, onda A)
 ///
 /// `ExtraSheet.offsets: CellOffsets` no FIM; o componente `CellOffsets` (o da folha `0`) entra no registo. SEM leitura
-/// dos anteriores (§0.11). ⚠️ **A tripla NÃO vê este degrau.**
+/// dos anteriores (§0.11). `SpriteAnimFrames` `Some(vec![])` passa a querer dizer «não toca nada» (guarda-se, não se
+/// apaga), sem mudar o formato. ⚠️ **A tripla NÃO vê este degrau.**
 pub(crate) const PROJECT_SCHEMA: u32 = 226;

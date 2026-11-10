@@ -12,6 +12,7 @@ pub mod paint;
 mod paint_align;
 mod paint_pivot;
 pub mod paint_sheet;
+mod silhueta;
 pub mod strip_bar;
 pub use ph2d_anim_sheets::split;
 

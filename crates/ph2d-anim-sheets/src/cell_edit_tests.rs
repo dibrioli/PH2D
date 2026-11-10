@@ -316,13 +316,130 @@ fn o_pivot_que_anda_e_o_da_folha_editada() {
         (a - 0.31).abs() < 1e-5 && (b - 0.42).abs() < 1e-5,
         "uma célula na folha 0"
     );
-    keep_drawing(&mut w, e, 1, [0.5, -0.5]);
+    keep_drawing(&mut w, e, 1, &corte, [0.5, -0.5]);
     assert_eq!(w.get::<SpriteSheets>(e).unwrap().0[0].anchor, [0.6, -0.3]);
     assert_eq!(w.get::<ph2d_render::Sprite>(e).unwrap().anchor, [0.0, 0.0]);
     assert_eq!(
         w.get::<Transform>(e).unwrap().translation,
         Transform::default().translation
     );
-    keep_drawing(&mut w, e, 0, [0.5, -0.5]);
+    keep_drawing(&mut w, e, 0, &corte, [0.5, -0.5]);
     assert_eq!(w.get::<ph2d_render::Sprite>(e).unwrap().anchor, [0.5, -0.5]);
+}
+
+/// Folha 0 = o `Sprite` 2 × 2 com Pivot no centro; folha 1 = um quad 3 × 3 com Pivot fora do centro, à vista.
+fn animada_de_duas_folhas(w: &mut World, animada: bool) -> Entity {
+    let extra = ExtraSheet {
+        asset: ph2d_asset::AssetId::from_digest([7; 32]),
+        size: [3.0, 3.0],
+        anchor: [0.3, 0.1],
+        hframes: 1,
+        vframes: 1,
+        offsets: Default::default(),
+    };
+    let mut t = Transform::default();
+    (t.translation.x, t.translation.y) = (5.0, 7.0);
+    let e = w
+        .spawn((
+            ph2d_render::Sprite::atlas(0, [2.0, 2.0], [1.0; 4]),
+            t,
+            SpriteSheets([extra].into_iter().collect()),
+            ShownSheet(1),
+        ))
+        .id();
+    if animada {
+        w.entity_mut(e).insert(ph2d_ecs::SpriteAnimations::new());
+    }
+    e
+}
+
+/// O centro do quad da folha 0 no mundo (sem rotação nem escala).
+fn centro_da_folha_0(w: &World, e: Entity) -> [f32; 2] {
+    let t = w.get::<Transform>(e).unwrap().translation;
+    let a = w
+        .get::<ph2d_render::Sprite>(e)
+        .unwrap()
+        .resolve_anchor(100.0);
+    [t.x + a[0], t.y + a[1]]
+}
+
+/// ⭐ **Padding + Recenter numa Animated Sprite de várias folhas não mexe em desenho nenhum** (GEF 29: o Pivot de uma
+/// Animated só se edita no editor de animações). Com a folha 1 à vista, o `set_pivot` antigo levava a origem e o
+/// desenho da folha 0 saltava no mundo. Controlo: num Still a mesma chamada ainda centra o Pivot da folha visível.
+#[test]
+fn o_recenter_numa_animated_nao_mexe_em_folha_nenhuma() {
+    let (db, atlas) = (
+        ph2d_asset::AssetDb::default(),
+        std::collections::BTreeMap::new(),
+    );
+    let mut w = World::new();
+    let e = animada_de_duas_folhas(&mut w, true);
+    let antes = centro_da_folha_0(&w, e);
+    let extra_antes = w.get::<SpriteSheets>(e).unwrap().0[0].anchor;
+    recenter(&mut w, e, &db, &atlas, 100.0);
+    let depois = centro_da_folha_0(&w, e);
+    assert!(
+        (antes[0] - depois[0]).abs() < 1e-5 && (antes[1] - depois[1]).abs() < 1e-5,
+        "a folha 0 andou no mundo: {antes:?} → {depois:?}"
+    );
+    assert_eq!(w.get::<SpriteSheets>(e).unwrap().0[0].anchor, extra_antes);
+    let mut w = World::new();
+    let e = animada_de_duas_folhas(&mut w, false);
+    assert!(
+        recenter(&mut w, e, &db, &atlas, 100.0),
+        "controlo: o Still centra"
+    );
+    assert_eq!(w.get::<SpriteSheets>(e).unwrap().0[0].anchor, [0.0, 0.0]);
+}
+
+/// ⭐ **A folha 0 sem `centered` (ou com `offset`): Trim/Padding/Make Square deixam cada quadro no lugar.** O
+/// `pivot_shift` conta um quad centrado; sem normalizar, o `Sprite.size` novo levava cada quadro (novo − velho) / 2.
+#[test]
+fn a_folha_0_sem_centered_fica_no_lugar() {
+    let px = folha();
+    let ppm = 100.0;
+    for ch in [
+        trim(&px, 16, &CORTE).unwrap(),
+        padding(&px, 16, &CORTE, PaddingSpec::uniform(2)).unwrap(),
+    ] {
+        for (centered, offset) in [
+            (false, [0.0, 0.0]),
+            (true, [3.0, -2.0]),
+            (false, [3.0, -2.0]),
+        ] {
+            let mut w = World::new();
+            let mut s = ph2d_render::Sprite::atlas(0, [0.16, 0.08], [1.0; 4]);
+            (s.centered, s.offset, s.anchor) = (centered, offset, [0.03, -0.02]);
+            let e = w.spawn((s, Transform::default())).id();
+            // A folha é 2 × 1: o `Sprite.size` é UMA célula.
+            w.get_mut::<ph2d_render::Sprite>(e).unwrap().size = [0.08, 0.08];
+            let antes = no_lugar(
+                &px,
+                16,
+                &CORTE,
+                w.get::<ph2d_render::Sprite>(e).unwrap().resolve_anchor(ppm),
+                [false, false],
+            );
+            // O funil de gravação: o tamanho novo, depois o Pivot anda.
+            w.get_mut::<ph2d_render::Sprite>(e).unwrap().size = commit_size(&CORTE, ch, 0);
+            keep_drawing(
+                &mut w,
+                e,
+                0,
+                &CORTE,
+                pivot_shift(&CORTE, ch, [false, false]),
+            );
+            let (novo, nw, _) = recompose(&px, 16, &CORTE, ch);
+            let novo_corte = Cut {
+                cell: ch.cell,
+                ..CORTE
+            };
+            let a = w.get::<ph2d_render::Sprite>(e).unwrap().resolve_anchor(ppm);
+            let depois = no_lugar(&novo, nw, &novo_corte, a, [false, false]);
+            assert!(
+                perto(&antes, &depois),
+                "{ch:?} centered={centered} offset={offset:?}: os quadros andaram"
+            );
+        }
+    }
 }

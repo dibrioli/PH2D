@@ -8,7 +8,7 @@ use bevy_ecs::world::EntityWorldMut;
 use ph2d_app_components::script_image;
 use ph2d_ecs::GlobalTransform;
 use ph2d_render::TextureAtlas;
-use ph2d_render::sprite::{inset_half_texel, region_subrect, sprite_sheet_subrect, sprite_wraps};
+use ph2d_render::sprite::{CellSource, CellUvInput, sprite_wraps};
 
 /// A sprite `spr` desta entidade: resolve a instância e põe os quads dela no `present`. Sai cedo, sem emitir nada,
 /// quando a textura cozida ainda não subiu — como o `return` do closure fazia.
@@ -54,12 +54,12 @@ pub(super) fn sprite(
     // sprites use the full (0..1) UV rect and carry
     // the renderer-side texture_id so the batcher
     // can pick the right bind group at draw time.
-    let (atlas_uv, texture_id) = match spr.source {
+    let (source, texture_id) = match spr.source {
         ph2d_render::SpriteSource::Atlas { key } => (
-            atlas.region_uv_exact(key),
+            CellSource::atlas(atlas, key),
             ph2d_render::RenderInstance::ATLAS_TEXTURE_ID,
         ),
-        ph2d_render::SpriteSource::Individual { texture_id } => ([0.0, 0.0, 1.0, 1.0], texture_id),
+        ph2d_render::SpriteSource::Individual { texture_id } => (CellSource::Own, texture_id),
         // W2.T4: resolve the tier-agnostic logical id to the
         // cooked `texture_id` the loader pass uploaded. The id
         // is in the `COOKED_TEXTURE_ID_BIT` namespace so the
@@ -68,7 +68,7 @@ pub(super) fn sprite(
         // this frame (no RenderInstance, invisible).
         ph2d_render::SpriteSource::CookedTexture { logical_id } => {
             match renderer.cooked_texture_id(logical_id) {
-                Some(id) => ([0.0, 0.0, 1.0, 1.0], id),
+                Some(id) => (CellSource::Own, id),
                 None => return,
             }
         }
@@ -87,18 +87,18 @@ pub(super) fn sprite(
         (cut.grid, cut.sheet_grid, cut.region) = (g, Some(g), None);
     }
     let law = cut.image.and_then(|s| s.law);
-    let (atlas_uv, texture_id, premultiplied_flag) = if let Some(ov) = override_for_entity {
-        ([0.0, 0.0, 1.0, 1.0], ov.texture_id, ov.premultiplied)
+    let (source, texture_id, premultiplied_flag) = if let Some(ov) = override_for_entity {
+        (CellSource::Own, ov.texture_id, ov.premultiplied)
     } else if let Some(key) = law.and_then(|l| l.atlas_key) {
         (
-            atlas.region_uv_exact(key),
+            CellSource::atlas(atlas, key),
             ph2d_render::RenderInstance::ATLAS_TEXTURE_ID,
             false,
         )
     } else if let Some(s) = cut.image {
-        ([0.0, 0.0, 1.0, 1.0], s.texture_id, s.premultiplied)
+        (CellSource::Own, s.texture_id, s.premultiplied)
     } else {
-        (atlas_uv, texture_id, spr.premultiplied)
+        (source, texture_id, spr.premultiplied)
     };
     // ⚠️ **E NUMA FOLHA, O QUAD DESDOBRA-SE** (Enio, 2026-08-23, com foto). A UV
     // acima passou a ser o rect INTEIRO da textura de pré-visualização — que é o
@@ -150,31 +150,18 @@ pub(super) fn sprite(
     // ADR-0164 F1 passo 6: janela e grelha são componentes; ausentes = a
     // textura inteira e uma célula, que é o que os campos v4 significavam.
     let (region, grid) = (cut.region.filter(|_| aberta.is_none()), cut.grid);
-    let (atlas_uv, clip) = region_uv(atlas_uv, region, override_for_entity, src_dims, spr, atlas);
-    // Sprite-sheet sub-UV (anatomia §03 §3.4): divide the
-    // (possibly region-narrowed) atlas_uv rect into an
-    // hframes×vframes grid and select `frame`'s cell. The
-    // default 1×1 grid is a no-op, so legacy sprites render
-    // unchanged. Skipped under a tool preview override
-    // (audit E-3): the transient preview texture is a
-    // full-frame bake, not a sheet, so slicing it would
-    // show only one cell.
-    // ⚠️ **A UV da GRELHA INTEIRA**, guardada antes de a célula ser escolhida —
-    // é ela que a folha aberta percorre. Derivá-la de volta a partir da célula
-    // seria multiplicar por `hframes` uma conta que este sítio já tem exacta.
-    let sheet_uv = atlas_uv;
-    let cell = if inteira {
-        atlas_uv
-    } else {
-        sprite_sheet_subrect(atlas_uv, grid.hframes, grid.vframes, grid.frame)
-    };
-    // The cell is cut from the EXACT rect; a half-texel inset (filter_clip, or an atlas sprite that wraps and so
-    // skips the shader's in-rect clamp) moves only the FINAL rect, the same for every frame.
-    let wraps_atlas =
-        texture_id == RenderInstance::ATLAS_TEXTURE_ID && sprite_wraps(flip_uv, uv_xform);
-    let atlas_ht = 0.5 / atlas.size_px.max(1) as f32;
-    let clip = clip.or(wraps_atlas.then_some((atlas_ht, atlas_ht)));
-    let atlas_uv = clip.map_or(cell, |ht| inset_half_texel(cell, ht));
+    // A região (fora de uma pré-visualização de ferramenta, cuja textura é o bake inteiro), a grelha (fora da imagem
+    // inteira) e o meio-texel: a lei é do motor. ⚠️ O `sheet` é a UV da GRELHA INTEIRA — é ela que a folha aberta
+    // percorre; derivá-la de volta da célula multiplicaria por `hframes` uma conta que já é exacta.
+    let uv = ph2d_render::sprite::sprite_cell_uv(CellUvInput {
+        source,
+        region: region
+            .filter(|_| override_for_entity.is_none())
+            .zip(src_dims),
+        grid: (!inteira).then_some(grid),
+        wraps: sprite_wraps(flip_uv, uv_xform),
+    });
+    let (sheet_uv, atlas_uv) = (uv.sheet, uv.cell);
     let base = RenderInstance {
         world_pos,
         // LOCAL size — the basis applies world scale. ⚠️ Numa folha sob
@@ -371,53 +358,6 @@ fn spawn(
                 ));
             }
         }
-    }
-}
-
-/// A janela da região estreitada na UV da fonte, e o meio-texel do `filter_clip` (que o chamador aplica à célula
-/// final) — fora de uma pré-visualização de ferramenta, cuja textura é o bake inteiro.
-fn region_uv(
-    atlas_uv: [f32; 4],
-    region: Option<ph2d_ecs::SpriteRegion>,
-    override_for_entity: Option<PreviewOverride>,
-    src_dims: Option<(u32, u32)>,
-    spr: &Sprite,
-    atlas: &TextureAtlas,
-) -> ([f32; 4], Option<(f32, f32)>) {
-    if let Some(region) = region.filter(|_| override_for_entity.is_none()) {
-        match src_dims {
-            Some((sw, sh)) => {
-                // Half-texel size in the SAMPLED texture's UV
-                // space: atlas sprites sample the shared atlas
-                // (1 / size_px); individual sprites sample
-                // their own texture (1 / w, 1 / h).
-                let half_texel = if region.filter_clip {
-                    let (tw, th) = match spr.source {
-                        ph2d_render::SpriteSource::Atlas { .. } => {
-                            let s = atlas.size_px.max(1) as f32;
-                            (s, s)
-                        }
-                        // Cooked + Individual both sample their
-                        // OWN native-resolution texture, so the
-                        // half-texel is `1 / (w, h)` (W2.T4).
-                        ph2d_render::SpriteSource::Individual { .. }
-                        | ph2d_render::SpriteSource::CookedTexture { .. } => {
-                            (sw.max(1) as f32, sh.max(1) as f32)
-                        }
-                    };
-                    Some((0.5 / tw, 0.5 / th))
-                } else {
-                    None
-                };
-                (
-                    region_subrect(atlas_uv, region.rect, sw as f32, sh as f32, None),
-                    half_texel,
-                )
-            }
-            None => (atlas_uv, None),
-        }
-    } else {
-        (atlas_uv, None)
     }
 }
 

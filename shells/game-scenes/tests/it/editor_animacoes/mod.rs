@@ -667,41 +667,83 @@ impl Mesa {
     }
 }
 
-/// Os controlos fixos da tela.
-fn controlos(l: &doc::Layout) -> [Rect; 8] {
+/// Os controlos fixos da tela, cada grupo com a moldura que o contém: `(moldura, controlos que nenhum pisa outro)`.
+fn controlos(l: &doc::Layout) -> [(Rect, Vec<Rect>); 4] {
+    let a = &l.align;
     [
-        l.align.frame,
-        l.fps,
-        l.this_frame,
-        l.modes[0],
-        l.modes[1],
-        l.modes[2],
-        l.cols,
-        l.rows,
+        (
+            l.area,
+            vec![
+                a.frame,
+                l.fps,
+                l.this_frame,
+                l.modes[0],
+                l.modes[1],
+                l.modes[2],
+                l.cols,
+                l.rows,
+                l.list,
+            ],
+        ),
+        (
+            a.frame,
+            vec![
+                a.toggle,
+                a.pick,
+                a.show_prev,
+                a.show_ref,
+                a.by_feet,
+                a.by_centre,
+                a.pivot_frame,
+            ],
+        ),
+        (a.pivot_frame, vec![a.pivot_grid, a.by_hand, a.pivot_follow]),
+        (l.list, vec![l.add, l.remove]),
     ]
 }
 
+fn dentro(r: Rect, f: Rect) -> bool {
+    let e = 1e-3; // LITERAL-PX-OK: arredondamento
+    r.x >= f.x - e && r.y >= f.y - e && r.x + r.w <= f.x + f.w + e && r.y + r.h <= f.y + f.h + e
+}
+
 /// ⭐ Report do dono (foto 03): Repeat · Once · Ping-pong e as colunas/linhas saíam «…». Cada controlo cabe, e
-/// nenhum pisa outro nem sai da aba, até numa aba estreita.
+/// nenhum pisa outro nem sai da aba, até numa aba estreita. A moldura do Align (os seis botões e a do Pivot, com a
+/// grade, «By hand» e «Follow») fica dentro do cartão da animação a toda largura (audit 09/11: a 360 px saía por
+/// cima da lista, e com o Pivot por baixo ao lado dos campos a altura não o contava).
+/// *Mutações: a moldura sem encolher quando nem três botões cabem · o Pivot por baixo sem a fila própria ⇒ vermelho.*
 #[test]
 fn os_controlos_cabem_e_nenhum_pisa_outro() {
-    for w in [1200.0, 700.0, 420.0] {
+    for w in [1200.0, 700.0, 560.0, 520.0, 420.0, 360.0] {
         // LITERAL-PX-OK: a janela do teste
         let mut m = Mesa::new();
         let area = Rect::new(0.0, 0.0, w, AREA.h);
         let cut = m.paint_in(area);
         let d = m.doc();
-        assert!(cut.is_empty(), "nada da aba se corta a {w} px: {cut:?}");
-        let rects = controlos(&d.layout);
-        for (i, r) in rects.iter().enumerate() {
-            assert!(
-                r.x >= area.x && r.x + r.w <= area.x + area.w,
-                "{i} fora da aba a {w}"
-            );
-            for o in &rects[i + 1..] {
-                let apart =
-                    r.x + r.w <= o.x || o.x + o.w <= r.x || r.y + r.h <= o.y || o.y + o.h <= r.y;
-                assert!(apart, "{r:?} pisa {o:?} a {w} px");
+        // A 360 px os campos da aba («This frame», os modos) já cortam a palavra: lá só a geometria conta.
+        if w >= 420.0 {
+            // LITERAL-PX-OK: a janela do teste
+            assert!(cut.is_empty(), "nada da aba se corta a {w} px: {cut:?}");
+        }
+        let l = &d.layout;
+        assert!(l.align.frame.w > 0.0, "a moldura do Align a {w}");
+        assert!(
+            dentro(l.align.frame, l.frames_card),
+            "a moldura do Align {:?} sai do cartão {:?} a {w} px",
+            l.align.frame,
+            l.frames_card
+        );
+        for (moldura, rects) in controlos(l) {
+            for (i, r) in rects.iter().enumerate() {
+                assert!(r.w > 0.0 && r.h > 0.0, "{i} vazio a {w}: {r:?}");
+                assert!(dentro(*r, moldura), "{r:?} fora de {moldura:?} a {w} px");
+                for o in &rects[i + 1..] {
+                    let apart = r.x + r.w <= o.x
+                        || o.x + o.w <= r.x
+                        || r.y + r.h <= o.y
+                        || o.y + o.h <= r.y;
+                    assert!(apart, "{r:?} pisa {o:?} a {w} px");
+                }
             }
         }
     }

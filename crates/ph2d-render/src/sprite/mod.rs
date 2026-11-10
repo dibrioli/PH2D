@@ -14,6 +14,8 @@
 //! into `RenderInstance.world_pos` so the renderer stays a pure
 //! PresentWorld consumer.
 
+/// A UV final de uma sprite: de que rect do atlas a célula se corta e onde cai o meio-texel.
+mod cell_uv;
 mod component;
 mod image_of;
 mod instance;
@@ -30,6 +32,7 @@ mod vertex;
 #[cfg(test)]
 mod tests;
 
+pub use cell_uv::{CellSource, CellUv, CellUvInput, sprite_cell_uv};
 pub use component::{Sprite, SpriteSource};
 pub use image_of::{OverrideLaw, drawn_texture, images_of, texture_of, texture_of_entity};
 pub use instance::{GpuTexRun, RenderInstance};

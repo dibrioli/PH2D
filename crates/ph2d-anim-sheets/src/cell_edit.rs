@@ -212,10 +212,21 @@ pub fn commit_size(cut: &Cut, ch: CellChange, sheet: u8) -> [f32; 2] {
 }
 
 /// ⭐ Depois de gravar: o Pivot da folha `sheet` anda `d` (de [`pivot_shift`]) e nada mais se mexe. Numa folha extra o
-/// Pivot é arte e sobe com ela ([`ph2d_ecs::linked_art_chain`]), como no [`crate::shown_edit::place`].
-pub fn keep_drawing(world: &mut World, e: Entity, sheet: u8, d: [f32; 2]) {
+/// Pivot é arte e sobe com ela ([`ph2d_ecs::linked_art_chain`]), como no [`crate::shown_edit::place`]. O `d` conta um
+/// quad CENTRADO: uma folha `0` com `centered = false` passa a centrada sobre a célula velha de `cut` (como o
+/// `ph2d_sprite_edit::pivot` a normaliza), senão o tamanho novo levava cada quadro (novo − velho) / 2. O `offset` não
+/// depende do tamanho e fica.
+pub fn keep_drawing(world: &mut World, e: Entity, sheet: u8, cut: &Cut, d: [f32; 2]) {
     if sheet == 0 {
         if let Some(mut s) = world.get_mut::<ph2d_render::Sprite>(e) {
+            if !s.centered {
+                let velho = [
+                    cut.cell[0] as f32 * cut.m_per_px[0],
+                    cut.cell[1] as f32 * cut.m_per_px[1],
+                ];
+                s.anchor = [s.anchor[0] + velho[0] * 0.5, s.anchor[1] - velho[1] * 0.5];
+                s.centered = true;
+            }
             s.anchor = [s.anchor[0] + d[0], s.anchor[1] + d[1]];
         }
         return;
@@ -225,6 +236,24 @@ pub fn keep_drawing(world: &mut World, e: Entity, sheet: u8, d: [f32; 2]) {
             s.anchor = [s.anchor[0] + d[0], s.anchor[1] + d[1]];
         });
     }
+}
+
+/// O «Recenter» da Padding numa folha cortada: o Pivot da folha visível vai ao centro da célula nova. `false` se nada
+/// mudou. ⛔ Numa Animated Sprite não age: o Pivot dela só se edita no editor de animações (GEF 29), e o
+/// `set_pivot` leva a origem com a folha visível — o desenho das OUTRAS folhas saltava no mundo. O Padding já deixou
+/// cada quadro no lugar ([`keep_drawing`]); é tudo o que a lei pede.
+pub fn recenter(
+    world: &mut World,
+    e: Entity,
+    db: &ph2d_asset::AssetDb,
+    atlas: &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
+    ppm: f32,
+) -> bool {
+    if crate::uso::image_use(world, e) == Some(crate::uso::ImageUse::Animated) {
+        return false;
+    }
+    let centro = ph2d_editor_core::SpritePivot::Px([0.0, 0.0]);
+    ph2d_sprite_edit::pivot::set_pivot(world, e, db, atlas, ppm, centro)
 }
 
 #[cfg(test)]

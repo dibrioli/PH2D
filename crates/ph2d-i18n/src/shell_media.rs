@@ -63,7 +63,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Equalize Sizes: no eligible sprites in selection"
         }
         "shell.cells.every_frame" => {
-            "{label} · every frame is now {width} × {height} px · Cmd+Z to undo"
+            "{label} · every frame is now {width} × {height} px · Ctrl+Z to undo"
         }
         "shell.cells.too_big" => {
             "all the frames together would be {width} × {height} px, more than the graphics card's {max_dim}"

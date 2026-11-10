@@ -15,7 +15,7 @@ use ph2d_editor_core::{AnimFrameRef, IconId};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
-use ph2d_vector::{Color, Compose, Mix, VectorScene, VelloBlend};
+use ph2d_vector::{Affine, Color, Compose, Mix, VectorScene, VelloBlend};
 
 /// A opacidade do quadro anterior (ténue: o idioma do onion skin).
 const PREVIOUS_ALPHA: f32 = 0.3; // LITERAL-PX-OK: opacidade
@@ -43,7 +43,21 @@ fn layer(
     let vr = rect_to_vello(r);
     scene.push_object_layer(&vr, VelloBlend::default(), alpha);
     let cut = (sheet.hframes, sheet.vframes, f.cell);
-    paint_sheet_cell_with(scene, img, cut, r, ph2d_editor_core::ui_image_quality());
+    let quality = ph2d_editor_core::ui_image_quality();
+    if doc.snap.flip == [false, false] {
+        paint_sheet_cell_with(scene, img, cut, r, quality);
+    } else {
+        // O flip do jogo vira os píxeis dentro do quad, em volta do centro dele.
+        let mut cell = VectorScene::new();
+        paint_sheet_cell_with(&mut cell, img, cut, r, quality);
+        let (cx, cy) = (f64::from(r.x + r.w / 2.0), f64::from(r.y + r.h / 2.0));
+        let s = |on: bool| if on { -1.0 } else { 1.0 };
+        let [fx, fy] = doc.snap.flip;
+        let t = Affine::translate((cx, cy))
+            * Affine::scale_non_uniform(s(fx), s(fy))
+            * Affine::translate((-cx, -cy));
+        scene.append_transformed(&cell, t);
+    }
     if let Some(c) = tint {
         scene.push_object_layer(
             &vr,
@@ -123,7 +137,10 @@ pub(super) fn paint_align(
         && let Some(q) = doc.frame_quad(f)
     {
         let r = v.quad(q);
-        let at = |fx: f32, fy: f32| (r.x + fx * r.w, r.y + fy * r.h);
+        let at = |fx: f32, fy: f32| {
+            let (fx, fy) = doc.flipped_point(fx, fy);
+            (r.x + fx * r.w, r.y + fy * r.h)
+        };
         let c = tom(ColorToken::Info, theme);
         for e in &sil.arestas {
             stroke_polyline(scene, &[at(e[0], e[1]), at(e[2], e[3])], thin, c);

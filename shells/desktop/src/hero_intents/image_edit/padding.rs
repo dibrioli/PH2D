@@ -74,17 +74,15 @@ pub(crate) fn drain_padding(
                     toasts,
                     undo,
                 );
-                // Recenter: o Pivot da folha vai ao centro da célula nova, o desenho fica (a lei do Pivot).
+                // Recenter: o Pivot da folha vai ao centro da célula nova, o desenho fica (numa Animated, nada: GEF 29).
                 if feito && recenter_pivot {
-                    let centro = ph2d_editor_core::SpritePivot::Px([0.0, 0.0]);
                     let w = sim.world_mut();
-                    ph2d_sprite_edit::pivot::set_pivot(
+                    ph2d_anim_sheets::cell_edit::recenter(
                         w,
                         entity,
                         asset_db,
                         atlas_asset_map,
                         px_per_m,
-                        centro,
                     );
                 }
             }

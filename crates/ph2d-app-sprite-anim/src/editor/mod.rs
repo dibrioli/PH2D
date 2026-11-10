@@ -300,6 +300,9 @@ pub fn snapshot(sim: &SimWorld, bits: u64, ppm: f32) -> EditorSnapshot {
         geo: Entity::try_from_bits(bits)
             .map(|e| ph2d_anim_sheets::align::sheet_geos(sim.world(), e, ppm))
             .unwrap_or_default(),
+        flip: Entity::try_from_bits(bits)
+            .and_then(|e| sim.world().get::<ph2d_render::Sprite>(e))
+            .map_or([false, false], |s| [s.flip_x, s.flip_y]),
     }
 }
 

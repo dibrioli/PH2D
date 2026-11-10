@@ -65,7 +65,7 @@ pub(super) fn grava(
         .get::<ph2d_render::Sprite>(entity)
         .map_or([false, false], |s| [s.flip_x, s.flip_y]);
     let d = cell_edit::pivot_shift(&cut, ch, flip);
-    cell_edit::keep_drawing(sim.world_mut(), entity, src.sheet, d);
+    cell_edit::keep_drawing(sim.world_mut(), entity, src.sheet, &cut, d);
     if src.sheet == 0 {
         pending_undo_entries.push(ImageEditSnapshot {
             entity_bits,

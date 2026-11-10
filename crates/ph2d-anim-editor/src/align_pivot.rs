@@ -15,6 +15,13 @@ pub const SIDE: u8 = 5; // LITERAL-PX-OK: contagem, não geometria
 const SNAP_ROWS: f32 = 0.35; // LITERAL-PX-OK: fração do token de linha
 /// Sem folha com imagem, o Pivot conta em milímetros locais (o arredondamento de `f32`, não geometria).
 const NO_PIXEL_M: f32 = 1.0e-3; // LITERAL-PX-OK: metros
+/// O passo do Pivot que o mundo ignora (`ph2d_sprite_edit::pivot::move_origin`, `MESMO_PONTO_M`): a prévia também.
+const SAME_POINT_M: f32 = 1.0e-3; // LITERAL-PX-OK: metros
+
+/// `p` é um passo que o mundo aplica (finito e fora do mesmo ponto).
+fn world_moves(p: [f32; 2]) -> bool {
+    p.iter().all(|v| v.is_finite()) && (p[0].abs() >= SAME_POINT_M || p[1].abs() >= SAME_POINT_M)
+}
 
 /// A chave da caixa de uma célula: folha, célula, corte e a imagem.
 type CellKey = (u8, u32, u32, u32, usize);
@@ -153,7 +160,7 @@ impl AnimDoc {
     /// ⭐ O Pivot vai a `p` (metros locais desde o de agora): uma edição, um Ctrl+Z. A prévia e a linha do chão seguem
     /// o desenho, que não anda no ecrã. Devolve se pediu a edição.
     pub fn move_pivot(&mut self, p: [f32; 2]) -> bool {
-        if !p.iter().all(|v| v.is_finite()) || p == [0.0, 0.0] {
+        if !world_moves(p) {
             return false;
         }
         self.sheet_ui.pending.push(ImageUseEdit::MovePivot(p));
@@ -182,20 +189,24 @@ impl AnimDoc {
     pub fn pivot_follow(&mut self, moved: bool) -> Option<[f32; 2]> {
         self.align.pivot.dirty |= moved;
         let gesture = self.align_gesture_active();
+        // A quina mede a escala contra o Pivot no ecrã e escala em volta dele: segui-lo a meio realimentava o gesto.
+        // O Follow da escala espera pelo quadro em que o gesto acaba.
+        let live = !self.align_scaling();
         let (lo, hi) = self.all_frames_box()?;
         let size = [hi[0] - lo[0], hi[1] - lo[1]];
         if size[0] <= 0.0 || size[1] <= 0.0 {
             return None;
         }
         // Em tempo real (smoke do dono 09/11): a cada quadro em que o desenho mexeu, mesmo a meio do arrasto.
-        if self.align.pivot.dirty
+        if live
+            && self.align.pivot.dirty
             && self.align.pivot.follow
             && let Some(f) = self.align.pivot.frac
         {
             self.align.pivot.dirty = false;
             let p = [lo[0] + f[0] * size[0], lo[1] + f[1] * size[1]];
             let tol = self.pivot_pixel() / 2.0;
-            if p[0].abs() > tol || p[1].abs() > tol {
+            if (p[0].abs() > tol || p[1].abs() > tol) && world_moves(p) {
                 self.pivot_moved(p);
                 return Some(p);
             }

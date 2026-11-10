@@ -188,8 +188,8 @@ impl crate::App {
     /// A prévia Align pelas portas do rato, uma fase por quadro: `0`/`1` o botão Align; `2` a pega do canto, `3..=6` o
     /// caminho até `2/3` da distância ao Pivot, `7` soltar.
     fn alinha_do_animado(&mut self, fase: u8, bits: u64) {
-        static PEGA: std::sync::Mutex<Option<((f32, f32), (f32, f32))>> =
-            std::sync::Mutex::new(None);
+        type Pega = Option<((f32, f32), (f32, f32))>;
+        static PEGA: std::sync::Mutex<Pega> = std::sync::Mutex::new(None);
         let doc = self.gfx.as_mut().and_then(|g| {
             let d = g.hero_screen.as_mut()?.documents.surfaces_mut();
             let d = d

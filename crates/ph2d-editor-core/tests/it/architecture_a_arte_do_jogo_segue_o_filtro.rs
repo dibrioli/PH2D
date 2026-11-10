@@ -27,7 +27,10 @@ fn os_paineis_que_pintam_a_arte_do_jogo_nao_fixam_o_filtro() {
     let mut fixos = Vec::new();
     for f in PINTAM_ARTE {
         let fonte = std::fs::read_to_string(raiz.join(f)).unwrap_or_else(|e| panic!("{f}: {e}"));
-        assert!(fonte.contains("ui_image_quality"), "{f} não lê o filtro do app");
+        assert!(
+            fonte.contains("ui_image_quality"),
+            "{f} não lê o filtro do app"
+        );
         for (n, l) in fonte.lines().enumerate() {
             if l.contains("ImageQuality::Medium") || l.contains("ImageQuality::High") {
                 fixos.push(format!("{f}:{}", n + 1));

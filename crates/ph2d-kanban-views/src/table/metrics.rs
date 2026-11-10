@@ -45,6 +45,3 @@ pub(crate) const POP_PAD: f32 = 8.0;
 pub(crate) const POP_ROW_H: f32 = 36.0;
 pub(crate) const POP_RADIUS: f32 = 8.0;
 pub(crate) const POP_GAP: f32 = 4.0;
-/// A roda: uma linha de roda (`16` px do hero) rola `48` px — a do quadro.
-pub(crate) const WHEEL_STEP: f32 = 48.0;
-pub(crate) const WHEEL_LINE_PX: f32 = 16.0;

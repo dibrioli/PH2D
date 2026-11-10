@@ -135,8 +135,8 @@ impl Views {
         }
     }
 
-    /// A roda em `(x, y)` do ECRÃ: `dy` vertical, `shift` = horizontal (o idioma do hero), `ctrl` =
-    /// zoom (a linha do tempo).
+    /// A roda em `(x, y)` do ECRÃ: `dy` px da vista (positivo = ver mais abaixo; a família converte a roda
+    /// UMA vez), `shift` = horizontal, `ctrl` = zoom (a linha do tempo).
     pub fn wheel(
         &mut self,
         set: &KanbanSet,

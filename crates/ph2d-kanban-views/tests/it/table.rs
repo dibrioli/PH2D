@@ -340,12 +340,12 @@ fn table_virtual_scroll_paints_only_the_visible_rows() {
         w.id,
         &w.cx(),
         (400.0, 400.0),
-        -16.0 * 100.0,
+        48.0 * 100.0,
         (false, false),
     );
     paint(&mut v, &w, &mut ts);
     let d = v.table.drawn();
-    assert_eq!(d.start, 120, "100 linhas de roda × 48 px / 40 px");
+    assert_eq!(d.start, 120, "4 800 px da vista / 40 px");
     assert!(d.len() <= fits + 1);
 }
 

@@ -443,17 +443,17 @@ pub fn pointer(
     }
 }
 
-/// A roda: `dy` do hero (positivo = para cima); `shift` rola na horizontal.
+/// A roda: `dy` px da vista, já convertido pela família (positivo = ver mais abaixo, ou à direita com o
+/// `shift`) — a MESMA unidade e o mesmo sentido do quadro, do Calendário e da Linha do tempo.
 pub fn wheel(st: &mut TableState, at: (f32, f32), dy: f32, shift: bool) -> Reply {
     let g = &st.painted.grid;
     if !g.sheet.contains(at.0, at.1) || st.pop.is_some() {
         return Reply::default();
     }
-    let px = -dy / m::WHEEL_LINE_PX * m::WHEEL_STEP;
     if shift {
-        st.scroll.0 = (st.scroll.0 + px).max(0.0);
+        st.scroll.0 = (st.scroll.0 + dy).max(0.0);
     } else {
-        st.scroll.1 = (st.scroll.1 + px).clamp(0.0, g.max_scroll_y());
+        st.scroll.1 = (st.scroll.1 + dy).clamp(0.0, g.max_scroll_y());
     }
     Reply::taken()
 }

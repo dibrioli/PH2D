@@ -346,8 +346,7 @@ impl KanbanDocs {
         crate::pointer::moved(self, id, input.text, x, y)
     }
 
-    /// `[dx, dy]`: o `dx` (o deslizar de lado) só o lêem as camadas que rolam de lado; nas só-verticais o
-    /// `dy` dele é zero e elas tomam-no sem mexer.
+    /// `[dx, dy]`: o `dx` (de lado) só o lêem as camadas que rolam de lado; as outras recebem `dy` = 0.
     fn route_wheel(&mut self, id: u64, x: f32, y: f32, [dx, dy]: [f32; 2], shift: bool) -> bool {
         let (h, v) = (crate::pointer::wheel_px(dx), crate::pointer::wheel_px(dy));
         let io = crate::io::wheel(self, id, v);

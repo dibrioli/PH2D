@@ -6,7 +6,7 @@ use ph2d_editor_core::interaction::{InteractiveState, dispatch_key, dispatch_tex
 use ph2d_host::{KeyEvent, KeyKind};
 use ph2d_input::Key;
 
-use super::state::{Scrub, Zone};
+use super::state::{Scrub, Typing, Zone};
 use crate::doc::InputMapDoc;
 use crate::edit::InputMapEdit;
 use crate::ids::{self, ListHit};
@@ -74,6 +74,7 @@ fn commit_add(doc: &mut InputMapDoc) {
 }
 
 pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
+    commit_typing(doc);
     let hit = doc.hits.hit(x, y);
     let listen = hit.and_then(|id| hit_of(doc, id));
     if doc.snap.listening.is_some() && !matches!(listen, Some(ListHit::Listen(_))) {
@@ -118,6 +119,7 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
                         start_x: x,
                         start,
                         width,
+                        moved: false,
                     });
                 }
                 _ => {}
@@ -129,24 +131,76 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
 
 /// O ponteiro anda: com um arrasto de número em curso, o valor segue-o (a lei do `set_zone` na família).
 pub(crate) fn drag(doc: &mut InputMapDoc, x: f32) -> bool {
-    let Some(s) = doc.list.scrub else {
+    let Some(s) = doc.list.scrub.as_mut() else {
         return false;
     };
-    let Some(a) = doc.snap.map.get(s.action) else {
+    s.moved |= (x - s.start_x).abs() > f32::EPSILON;
+    let s = *s;
+    set_zone(doc, s.action, s.zone, s.start + (x - s.start_x) / s.width)
+}
+
+/// Um dos dois números passa a `v`, na lei do `set_zone` (Press at nunca abaixo da zona morta).
+fn set_zone(doc: &mut InputMapDoc, action: ph2d_input::ActionId, zone: Zone, v: f32) -> bool {
+    let Some(a) = doc.snap.map.get(action) else {
         return false;
     };
-    let v = (s.start + (x - s.start_x) / s.width).clamp(0.0, 1.0);
-    let (dead, press) = match s.zone {
+    let v = v.clamp(0.0, 1.0);
+    let (dead, press) = match zone {
         Zone::Dead => (v, a.press_point.max(v)),
         Zone::Press => (a.dead_zone.min(v), v),
     };
-    doc.pending
-        .push(InputMapEdit::SetZone(s.action, dead, press));
+    doc.pending.push(InputMapEdit::SetZone(action, dead, press));
     true
 }
 
+/// Soltar: acaba o arrasto; um clique sem arrasto abre o número para escrever.
 pub(crate) fn release(doc: &mut InputMapDoc) -> bool {
-    doc.list.scrub.take().is_some()
+    let Some(s) = doc.list.scrub.take() else {
+        return false;
+    };
+    if !s.moved {
+        let buffer = format!("{:.2}", s.start);
+        doc.list.typing = Some(Typing {
+            action: s.action,
+            zone: s.zone,
+            buffer,
+        });
+    }
+    true
+}
+
+/// Aplica o número escrito (o que não for número é ignorado).
+fn commit_typing(doc: &mut InputMapDoc) {
+    if let Some(t) = doc.list.typing.take()
+        && let Ok(v) = t.buffer.trim().parse::<f32>()
+    {
+        set_zone(doc, t.action, t.zone, v);
+    }
+}
+
+/// A tecla para o número aberto: dígitos e ponto escrevem, `Enter` aplica, `Esc` desiste.
+fn key_typing(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
+    let Some(t) = doc.list.typing.as_mut() else {
+        return false;
+    };
+    if !input.pressed {
+        return true;
+    }
+    match input.key {
+        DocKey::Enter => commit_typing(doc),
+        DocKey::Escape => doc.list.typing = None,
+        DocKey::Backspace => {
+            t.buffer.pop();
+        }
+        _ => t.buffer.extend(
+            input
+                .text
+                .unwrap_or("")
+                .chars()
+                .filter(|c| c.is_ascii_digit() || *c == '.'),
+        ),
+    }
+    true
 }
 
 pub(crate) fn wheel(doc: &mut InputMapDoc, dy: f32) -> bool {
@@ -183,6 +237,9 @@ fn code(name: &str) -> Option<u32> {
 
 /// A tecla para o campo focado (nome novo ou busca), pelas portas do `WidgetStore` do cartão.
 pub(crate) fn key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
+    if key_typing(doc, input) {
+        return true;
+    }
     let Some(f) = doc
         .store
         .focus_id()

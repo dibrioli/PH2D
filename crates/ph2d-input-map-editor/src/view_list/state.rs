@@ -18,6 +18,16 @@ pub struct Scrub {
     pub start: f32,
     /// A largura do campo: arrastar a largura inteira percorre 0 → 1.
     pub width: f32,
+    /// O ponteiro andou: soltar sem andar abre o campo para escrever.
+    pub moved: bool,
+}
+
+/// O número a ser escrito (clique sem arrasto): `Enter` ou clicar fora aplica, `Esc` desiste.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Typing {
+    pub action: ActionId,
+    pub zone: Zone,
+    pub buffer: String,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -27,6 +37,7 @@ pub struct ListState {
     /// O porquê de o último Add ter sido recusado (chave i18n).
     pub refused: Option<&'static str>,
     pub scrub: Option<Scrub>,
+    pub typing: Option<Typing>,
     /// A linha sob o ponteiro (mostra × nas teclas e o lixo).
     pub hover_row: Option<ActionId>,
     /// O alvo sob o ponteiro (a dica).

@@ -338,7 +338,14 @@ fn paint_zones(
         if live {
             ring(scene, f, ink);
         }
-        let v = format!("{value:.2}");
+        let typing = doc.list.typing.as_ref().filter(|t| {
+            t.action == a.id
+                && (t.zone == super::state::Zone::Dead) == matches!(hit, ListHit::Dead(_))
+        });
+        if typing.is_some() {
+            ring(scene, f, ink);
+        }
+        let v = typing.map_or_else(|| format!("{value:.2}"), |t| t.buffer.clone());
         let vr = Rect::new(f.x + m::SEG_INSET, f.y, f.w - m::SEG_INSET * 2.0, f.h);
         text::line(
             &mut doc.census,

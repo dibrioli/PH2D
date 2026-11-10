@@ -284,3 +284,45 @@ fn cada_controlo_da_lista_tem_dica_em_ingles_simples() {
         m.hover(row);
     }
 }
+
+#[test]
+fn clicar_sem_arrastar_abre_o_numero_para_escrever_e_enter_aplica_na_lei() {
+    let mut m = Mesa::aberta(View::List);
+    m.hero.input_map = onze();
+    m.frame();
+    let ml = id(&m, "move_left");
+    let dead = m.at(ListHit::Dead(ml).id());
+    m.click(dead);
+    m.release();
+    assert!(
+        !ph2d_app_input_map::gesture_in_progress(&m.hero),
+        "escrever não é arrasto"
+    );
+    for _ in 0..4 {
+        m.key(DocKey::Backspace, None);
+    }
+    m.type_text("0.7");
+    m.key(DocKey::Enter, None);
+    let a = m.hero.input_map.get(ml).expect("move_left").clone();
+    assert!(
+        (a.dead_zone - 0.7).abs() < 1e-4,
+        "a zona morta escrita: {}",
+        a.dead_zone
+    );
+    assert!(
+        a.press_point >= a.dead_zone,
+        "Press at subiu com ela: {}",
+        a.press_point
+    );
+    // Esc desiste sem mudar.
+    let press = m.at(ListHit::Press(ml).id());
+    m.click(press);
+    m.release();
+    m.type_text("9");
+    m.key(DocKey::Escape, None);
+    let b = m.hero.input_map.get(ml).expect("move_left");
+    assert!(
+        (b.press_point - a.press_point).abs() < 1e-6,
+        "Esc não aplicou"
+    );
+}

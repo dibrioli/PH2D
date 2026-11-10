@@ -963,6 +963,9 @@ impl ApplicationHandler for App {
             self.host.as_ref().map(PlatformHost::request_redraw);
         }
     }
+    fn user_event(&mut self, _: &ActiveEventLoop, (): ()) {
+        self.host.as_ref().map(PlatformHost::request_redraw);
+    }
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         self.recovery_tick();
         self.pede_o_quadro(event_loop);
@@ -989,6 +992,10 @@ fn main() {
     ph2d_token_math::install();
     let event_loop = EventLoop::new().expect("create EventLoop");
     event_loop.set_control_flow(ControlFlow::Wait);
+    let proxy = std::sync::Mutex::new(event_loop.create_proxy());
+    ph2d_app_host::quadro::instala_o_despertador(std::sync::Arc::new(move || {
+        let _ = proxy.lock().map(|p| p.send_event(()));
+    }));
 
     let mut app = App::new();
     init::banner();

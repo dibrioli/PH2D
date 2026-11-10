@@ -278,6 +278,23 @@ pub fn no_laco<R>(f: impl FnOnce(&mut Laco) -> R) -> R {
     LACO.with_borrow_mut(f)
 }
 
+/// Acorda o laço a dormir de QUALQUER fio (B23.2): a shell instala-o com o `EventLoopProxy`.
+pub type Despertador = std::sync::Arc<dyn Fn() + Send + Sync>;
+
+static DESPERTADOR: std::sync::OnceLock<Despertador> = std::sync::OnceLock::new();
+
+/// A shell, uma vez, antes do laço. Uma segunda instalação é ignorada (o laço é um só).
+pub fn instala_o_despertador(f: Despertador) {
+    let _ = DESPERTADOR.set(f);
+}
+
+/// Um trabalho de fundo (a rede do Quadro) acabou: o laço desenha já, sem esperar o [`PRAZO`].
+pub fn acorda_o_laco() {
+    if let Some(f) = DESPERTADOR.get() {
+        f();
+    }
+}
+
 #[cfg(test)]
 #[path = "quadro_tests.rs"]
 mod tests;

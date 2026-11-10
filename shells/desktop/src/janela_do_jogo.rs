@@ -63,6 +63,7 @@ impl crate::App {
         tem.push((voa, P::Animacao));
         if let Some(g) = self.gfx.as_mut() {
             ph2d_app_painter::painter_bridge_queries::quer_quadro(&mut g.tools, &mut ativos);
+            ph2d_app_motion::motion_quadro::quer_quadro(&g.motion, &mut ativos);
             let docs = g.hero_screen.as_ref().map(|h| &h.documents);
             tem.push((docs.is_some_and(|d| d.surfaces().wants_frame()), P::Aba));
             tem.push((!g.toasts.is_empty() || !g.jobs.is_empty(), P::Toast));

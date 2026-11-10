@@ -68,6 +68,37 @@ fn a_folha_devida_pede_quadro() {
     );
 }
 
+/// B23-cont3: o Motion parado anima o eco de uma largada e recolhe a leitura dos cartões no quadro seguinte.
+#[test]
+fn a_sim_do_motion_parada_pede_quadro() {
+    assert!(
+        corpo_do_leitor().contains("motion_quadro::quer_quadro"),
+        "o `pede_o_quadro` não lê o Motion parado: o eco e os cartões andam a 4 q/s"
+    );
+}
+
+/// B23-cont3: desfocada ou oculta a sessão do Quadro dorme; o que chega da rede acorda o laço pelo
+/// `EventLoopProxy` (o `user_event` pede o quadro), não pelo despertador de 250 ms.
+#[test]
+fn a_rede_acorda_o_laco_pelo_proxy() {
+    let main = fs::read_to_string(shell_src().join("main.rs")).unwrap();
+    assert!(
+        main.contains("instala_o_despertador") && main.contains("fn user_event"),
+        "a shell não instala o despertador do laço: a rede espera o prazo de 250 ms"
+    );
+}
+
+/// B23.1 (mutação): o pedido passa pela lei ANTES do redraw; um `pede_o_quadro` incondicional (sem o
+/// `acorda` e o `WaitUntil`) é o laço contínuo de antes com outro nome.
+#[test]
+fn o_pedido_de_quadro_passa_pela_lei() {
+    let c = corpo_do_leitor();
+    let lei = c.find(".acorda(").expect("o `pede_o_quadro` não consulta a lei (`Laco::acorda`)");
+    let dorme = c.find("WaitUntil").expect("o `pede_o_quadro` nunca dorme");
+    let desenha = c.find("request_redraw").expect("o `pede_o_quadro` nunca desenha");
+    assert!(lei < dorme && dorme < desenha, "o redraw vem antes da lei: o laço é contínuo");
+}
+
 fn corpo_do_leitor() -> String {
     let src = fs::read_to_string(shell_src().join("janela_do_jogo.rs")).unwrap();
     let corpo = src.split("fn pede_o_quadro").nth(1).expect("o leitor");

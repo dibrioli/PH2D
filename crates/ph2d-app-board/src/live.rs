@@ -90,8 +90,9 @@ fn random() -> u64 {
 }
 
 fn waker() -> net::Waker {
-    // A sessão viva segura o laço a pedido por [`ao_vivo`] (B23.2): não há nada a acordar.
-    Arc::new(|| {})
+    // B23.2: com foco a sessão viva segura o laço por [`ao_vivo`]; desfocada ou oculta o laço dorme, e o que
+    // chega da rede acorda-o já (o `EventLoopProxy` da shell), sem esperar 100/250 ms.
+    Arc::new(ph2d_app_host::quadro::acorda_o_laco)
 }
 
 /// B23.2: uma sessão ao vivo ou uma procura na rede: o laço a pedido não dorme sobre a rede.

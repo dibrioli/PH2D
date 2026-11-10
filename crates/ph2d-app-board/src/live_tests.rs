@@ -504,3 +504,20 @@ fn measure_drag_latency_with_2_4_and_8_people() {
         service(&mut host);
     }
 }
+
+/// B23.2: o que chega da rede acorda o laço a pedido pelo despertador da shell (o `EventLoopProxy`), não pelo
+/// prazo de 250 ms. *Vermelho com o `waker` vazio.*
+#[test]
+fn o_que_chega_da_rede_acorda_o_laco() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static TOQUES: AtomicUsize = AtomicUsize::new(0);
+    ph2d_app_host::quadro::instala_o_despertador(Arc::new(|| {
+        TOQUES.fetch_add(1, Ordering::SeqCst);
+    }));
+    let antes = TOQUES.load(Ordering::SeqCst);
+    waker()();
+    assert!(
+        TOQUES.load(Ordering::SeqCst) > antes,
+        "o waker da rede não acorda o laço: a mensagem espera o despertador de 250 ms"
+    );
+}

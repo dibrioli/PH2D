@@ -38,6 +38,8 @@ pub mod macro_track;
 pub mod motion_objeto;
 /// ⭐ As partículas que a pilha de constraints prende (o ponto de simulação).
 pub mod motion_particulas;
+/// B23.2: o que o Motion parado pede ao quadro a pedido.
+pub mod motion_quadro;
 /// O mundo da 1.ª cópia da placa para `PH2D_PAN_DIAG` (doc 123 §8).
 pub mod pan_diag_tap;
 pub mod ponto_gizmo;

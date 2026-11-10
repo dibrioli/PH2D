@@ -27,6 +27,7 @@ mod accessory_width_ops;
 pub use accessory_width_ops::AccessoryWidths;
 mod asset_drag_ops;
 mod dock_width_ops;
+mod floating_card_ops;
 mod graph_ops;
 pub use graph_ops::WordFinder;
 mod hier_rows_ops;

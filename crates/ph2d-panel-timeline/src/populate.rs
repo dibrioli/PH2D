@@ -65,6 +65,16 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     // The X. Its handler has always been in `event.rs`; this line is what lets a
     // click reach it.
     button(store, crate::ids::TIMELINE_CLOSE);
+    // O cartão (dono 10/11): o «encaixar» é um botão; o título arrasta pelo despacho dos painéis
+    // flutuantes (`BlenderHit`), nunca pelo `Click`.
+    button(store, ids::TIMELINE_CARD_DOCK);
+    store.register(
+        ids::TIMELINE_CARD_DRAG,
+        InteractiveState::BlenderHit {
+            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
+            kind: ph2d_editor_core::interaction::BlenderHitKind::DragHandle,
+        },
+    );
     button(store, crate::ids::TIMELINE_GO_START);
     button(store, crate::ids::TIMELINE_PREV_FRAME);
     button(store, crate::ids::TIMELINE_PLAY);

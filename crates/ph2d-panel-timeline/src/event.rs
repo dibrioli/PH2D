@@ -94,6 +94,10 @@ pub(crate) fn apply_event(
             host.set_panel_visible(TimelinePanel::ID, false);
             EventOutcome::Consumed
         }
+        WidgetEvent::Click(id) if id == crate::ids::TIMELINE_CARD_DOCK => {
+            crate::cartao_solto::encaixa(host.store_mut());
+            EventOutcome::Consumed
+        }
         // Ruler scrub: the slider value (0..1 over the visible span) maps back to
         // an absolute time via the span `paint` stored; forward it as a Scrub.
         WidgetEvent::ValueChanged(id) if id == TIMELINE_RULER => {

@@ -83,3 +83,5 @@ mod timeline_entry;
 pub use timeline_entry::*;
 mod timeline_barra;
 pub use timeline_barra::*;
+mod timeline_cartao;
+pub use timeline_cartao::*;

@@ -282,6 +282,9 @@ impl WidgetStore {
         {
             self.mark_section_prefs_dirty();
         }
+        if let Some((p, ..)) = self.blender_drag_anchor {
+            self.floating_card_drag_ended(p);
+        }
         self.blender_drag_anchor = None;
     }
 

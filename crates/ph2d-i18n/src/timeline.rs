@@ -17,6 +17,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // English by canon (feedback_app_ui_english_only); routed through tr() so
         // the strings live in one table for the eventual Fluent migration.
         "panel.timeline.title" => "Timeline",
+        "panel.timeline.dock" => "Snap back to its place",
         "panel.timeline.summary" => "Summary",
         // A linha das etapas da macro do clipe activo (ADR-0186, W5d).
         "panel.timeline.macro_steps" => "Macro steps",

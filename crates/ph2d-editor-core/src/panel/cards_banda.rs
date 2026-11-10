@@ -15,6 +15,8 @@ pub struct Moldura {
     pub lista: Rect,
     pub cab: Rect,
     pub corpo: Rect,
+    /// A caixa do ícone encostado à esquerda do «×» (o «encaixar» da Timeline).
+    pub vizinha_do_fecho: Rect,
 }
 
 /// A geometria de [`pinta_moldura`] sem pintar: quem resolve gestos antes da pintura precisa dela.
@@ -39,7 +41,14 @@ pub fn geometria(slot: Rect) -> Moldura {
         corpo.w,
         m::FIELD_H,
     );
-    Moldura { lista, cab, corpo }
+    let vizinha_do_fecho =
+        menu::vizinha_do_fecho(Rect::new(lista.x, lista.y, lista.w, m::LIST_HEAD_H));
+    Moldura {
+        lista,
+        cab,
+        corpo,
+        vizinha_do_fecho,
+    }
 }
 
 /// A moldura flutuante, o título e o «×» (`mark_card_list_close`), como numa lista de cartões. Sem o

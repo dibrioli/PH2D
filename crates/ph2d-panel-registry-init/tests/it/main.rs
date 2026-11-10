@@ -20,6 +20,7 @@ mod a_panel_paints_where_its_tab_says;
 mod a_roda_e_o_transform_da_imagem;
 mod a_slot_with_two_panels_shows_tabs;
 mod a_tab_dragged_to_another_dock_moves_the_panel;
+mod a_timeline_arrasta_e_encaixa;
 mod a_tinta_de_base_no_cartao;
 mod cartoes_mao;
 mod censo_estados;

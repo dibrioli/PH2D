@@ -48,12 +48,7 @@ pub fn apply_list_menu_click(
 /// O «×» de `panel`, na ponta do cabeçalho `cab`, como em toda janela, se foi declarado. Devolve a caixa
 /// do ícone seguinte, que se encosta a ele.
 pub(super) fn pinta_fecho(ctx: &mut PaintCtx, panel: NodeId, theme: Theme, cab: Rect) -> Rect {
-    let ponta = Rect::new(
-        cab.x + cab.w - m::LIST_PAD_X - m::HEAD_ICON_BOX,
-        cab.y + (m::LIST_HEAD_H - m::HEAD_ICON_BOX) * 0.5,
-        m::HEAD_ICON_BOX,
-        m::HEAD_ICON_BOX,
-    );
+    let ponta = ponta_do_fecho(cab);
     let Some(f) = ctx.host.store().card_list_close(panel) else {
         return ponta;
     };
@@ -84,7 +79,23 @@ pub(super) fn pinta_fecho(ctx: &mut PaintCtx, panel: NodeId, theme: Theme, cab: 
         resolve(ColorToken::KanbanListFg, theme),
         StrokeToken::Default.px(),
     );
-    Rect::new(ponta.x - m::HEAD_ICON_BOX, ponta.y, ponta.w, ponta.h)
+    vizinha_do_fecho(cab)
+}
+
+/// A caixa do «×» na ponta do cabeçalho `cab`.
+pub(super) fn ponta_do_fecho(cab: Rect) -> Rect {
+    Rect::new(
+        cab.x + cab.w - m::LIST_PAD_X - m::HEAD_ICON_BOX,
+        cab.y + (m::LIST_HEAD_H - m::HEAD_ICON_BOX) * 0.5,
+        m::HEAD_ICON_BOX,
+        m::HEAD_ICON_BOX,
+    )
+}
+
+/// A caixa do ícone que se encosta à esquerda do «×».
+pub(super) fn vizinha_do_fecho(cab: Rect) -> Rect {
+    let p = ponta_do_fecho(cab);
+    Rect::new(p.x - m::HEAD_ICON_BOX, p.y, p.w, p.h)
 }
 
 /// Os ícones do cabeçalho da lista `cab` (x, topo, largura, altura do cabeçalho): «…» e, se o pé o

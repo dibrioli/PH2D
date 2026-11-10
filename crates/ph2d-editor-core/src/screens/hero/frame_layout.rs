@@ -88,7 +88,7 @@ pub(super) fn frame_layout(
     // ⭐ D24: a lista de cartões FLUTUA — não reserva a coluna, mas a costura vai para a beirada dela.
     let (docks, float_lists) =
         crate::screens::layout::DockSides::from_published(left_col, right_col, published)
-            .with_floating(left_col, right_col, hero.store.floating_panel_rects());
+            .with_floating(left_col, right_col, hero.store.column_floating_rects());
     if !hero.view.legacy_chrome {
         // ⛔⛔ **UMA linha, sempre** (Enio, 2026-08-31: *«não podemos ir perdendo espaço»*). A faixa
         // crescia para `108 px` no iPad 11 e no mini com o pincel em mãos — `−3,3` pontos de área
@@ -140,7 +140,10 @@ pub(super) fn frame_layout(
         hero.is_panel_visible("flip_frames") || hero.is_panel_visible(super::PANEL_PIXEL_TIMELINE);
     if fundo_docado || (hero.is_panel_visible(super::PANEL_TIMELINE) && !flutua) {
         layout.reserve_bottom_strip(layout.timeline);
-    } else if hero.is_panel_visible(super::PANEL_TIMELINE) {
+    } else if hero.is_panel_visible(super::PANEL_TIMELINE)
+        && !hero.store.floating_card_away(crate::ids::TIMELINE_PANEL)
+    {
+        // Arrastada para longe da origem, a pílula volta ao lugar dela.
         layout.lift_hud_over(layout.timeline);
     }
     // ⭐⭐ **E as ABAS saem do encaixe, por último.** Depois da docagem do timeline e das faixas do

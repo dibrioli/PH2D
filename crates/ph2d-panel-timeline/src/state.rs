@@ -256,7 +256,15 @@ pub struct ResizeDrag {
     pub start_h: f32,
     /// O `y` do ponteiro quando o arrasto começou.
     pub start_y: f32,
+    /// O `x` do ponteiro quando o arrasto começou.
+    pub start_x: f32,
+    /// Nos cartões fora da origem (ou por outra borda que não o topo): o desvio do cartão e o
+    /// tamanho visível no Begin — o arrasto redimensiona o CARTÃO, não a banda.
+    pub cartao: Option<CartaoNoBegin>,
 }
+
+/// O desvio do cartão (posição, tamanho) e o tamanho visível, capturados no Begin.
+pub type CartaoNoBegin = (((f32, f32), (f32, f32)), (f32, f32));
 
 /// An in-progress bézier-handle drag. The pointer is recorded in global px; the
 /// band's value↔pixel mapping only exists during `paint`, so `graph::resolve_drag`

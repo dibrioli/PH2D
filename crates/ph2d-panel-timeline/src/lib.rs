@@ -45,6 +45,7 @@ mod anchor_drag;
 mod barra_clips;
 mod barra_menus;
 mod box_select;
+mod cartao_solto;
 mod clip_rename;
 mod container_list;
 mod duration_drag;

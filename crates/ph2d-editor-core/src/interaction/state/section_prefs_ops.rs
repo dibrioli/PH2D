@@ -250,6 +250,7 @@ pub fn section_prefs_text(store: &WidgetStore) -> String {
     }
     tema_custom::escreve(store, &mut s);
     super::picker_pin_ops::escreve_posicao(store, &mut s);
+    super::floating_card_ops::escreve(store, &mut s);
     super::card_loose_ops::escreve(store, &mut s);
     super::chrome_ops::escreve_recentes(store, &mut s);
     super::accessory_width_ops::escreve(store, &mut s);
@@ -283,6 +284,7 @@ pub fn restore_section_prefs_text(store: &mut WidgetStore, text: &str) {
         {
             epochs.insert(NodeId(id), e);
         } else if !super::picker_pin_ops::le_posicao(store, k, v)
+            && !super::floating_card_ops::le(store, k, v)
             && !super::card_loose_ops::le(store, k, v)
             && !super::chrome_ops::le_recentes(store, k, v)
             && !super::accessory_width_ops::le(store, k, v)

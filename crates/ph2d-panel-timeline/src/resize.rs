@@ -72,6 +72,13 @@ pub(crate) fn apply_resize(
     edges: u8,
     g: TimelineGesture,
 ) {
+    // Nos cartões o cartão redimensiona-se por qualquer borda (`cartao_solto`); só o topo na
+    // origem chega aqui abaixo.
+    if ph2d_editor_core::panel::cards::ferramenta::cards_on()
+        && crate::cartao_solto::apply_resize(state, store, rect, edges, g)
+    {
+        return;
+    }
     if edges & geom::EDGE_T == 0 {
         return; // uma borda que já não existe; ver o doc acima
     }
@@ -80,6 +87,8 @@ pub(crate) fn apply_resize(
             state.resize = Some(ResizeDrag {
                 start_h: rect.h,
                 start_y: g.y,
+                start_x: g.x,
+                cartao: None,
             });
         }
         GesturePhase::Update => {

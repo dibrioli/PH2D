@@ -151,7 +151,15 @@ fn paint_barra(
             TimelinePanel::TITLE.tr(),
             rect,
         );
-        let b = transport::cartoes::paint_bar(ctx, theme, mol.cab, mol.corpo, snapshot, barra);
+        crate::cartao_solto::pinta_encaixe(ctx, &mol);
+        // A barra acaba antes do «encaixar», como acabava antes do «×».
+        let cab = Rect::new(
+            mol.cab.x,
+            mol.cab.y,
+            (mol.cab.w - mol.vizinha_do_fecho.w).max(0.0),
+            mol.cab.h,
+        );
+        let b = transport::cartoes::paint_bar(ctx, theme, cab, mol.corpo, snapshot, barra);
         return (
             b.depois,
             b.clip,
@@ -198,14 +206,20 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // Pass 1: drain this frame's wheel + gestures against the rect we start with.
     // ⭐ **A faixa é a do layout, sempre.** O arrasto do topo mudou a ALTURA dela (uma medida
     // autorada), nunca o rect — ver `resize::apply_resize`.
+    let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
     let rect0 = geom::clamp_to(docked, viewport);
+    // Nos cartões o rect é o do cartão: o encaixe mais o desvio arrastado (`cartao_solto`).
+    let rect0 = if cartoes {
+        crate::cartao_solto::lugar(ctx.host.store_mut(), rect0, ctx.layout)
+    } else {
+        rect0
+    };
     // The label column's floor depends on what it HOLDS — which is what the TAB
     // shows: a lane row carries controls a track row does not (`geom::min_label_w`).
     let min_label = {
         let ts = &mut *ctx.text_system;
         geom::min_label_w_medido(&snapshot, state.tab, &mut |t, px| ts.prefix_width(t, px))
     };
-    let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
     // Nos cartões a folha mora no interior da moldura; as contas de `geom` servem-se dele.
     let folha = if cartoes { area_da_folha(rect0) } else { rect0 };
     let time_x0 = geom::time_x(folha, state.label_w, min_label);
@@ -229,7 +243,11 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     }
     // Resize grippers FIRST, so every later hit (close button, lanes, keys) wins
     // over the border strips where they overlap.
-    register_resize_grips(ctx, rect);
+    if cartoes {
+        crate::cartao_solto::registra_alcas(ctx, rect);
+    } else {
+        register_resize_grips(ctx, rect);
+    }
 
     crate::barra_menus::fecha_pelo_clique_de_fora(state, ctx);
     let (after_transport, clip_dd_chip, anim_dd_chip, body, janelinhas) =

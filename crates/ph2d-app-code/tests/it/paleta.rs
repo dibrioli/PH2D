@@ -250,8 +250,14 @@ fn paleta_comandos_mostram_o_atalho() {
             .map(|i| split_shortcut(&i.label).1.map(str::to_owned))
             .unwrap_or_else(|| panic!("{want} na paleta"))
     };
-    assert_eq!(find("Save Script"), Some("Cmd+S".to_owned()));
-    assert_eq!(find("Toggle Comment"), Some("Cmd+/".to_owned()));
+    assert_eq!(
+        find("Save Script"),
+        Some(ph2d_i18n::atalho::atalho("Ctrl+S").into_owned())
+    );
+    assert_eq!(
+        find("Toggle Comment"),
+        Some(ph2d_i18n::atalho::atalho("Ctrl+/").into_owned())
+    );
     assert_eq!(find("Find References"), Some("Shift+F12".to_owned()));
     assert_eq!(find("Fold All"), None, "sem atalho, sem coluna");
     m.hero.store.close_command_palette();

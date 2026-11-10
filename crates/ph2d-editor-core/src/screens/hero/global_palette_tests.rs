@@ -341,5 +341,8 @@ fn the_palette_label_drops_the_indent_dash_and_nothing_else() {
     assert_eq!(palette_label("\u{2014} Corners: Sharp"), "Corners: Sharp");
     assert_eq!(palette_label("Forge (dark)"), "Forge (dark)");
     // O atalho é informação que um command palette MOSTRA — não é ruído a limpar.
-    assert_eq!(palette_label("Save \u{00b7} Cmd+S"), "Save \u{00b7} Cmd+S");
+    assert_eq!(
+        palette_label("Save \u{00b7} Ctrl+S"),
+        "Save \u{00b7} Ctrl+S"
+    );
 }

@@ -4,7 +4,7 @@
 
 use super::doc::AnimDoc;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, label_column_width, paint_text_rotated_ccw, resolve,
+    fill_rounded_rect, folga_do_texto, label_column_width, paint_text_rotated_ccw, resolve,
     stroke_rounded_rect_dashed,
 };
 use ph2d_editor_core::widget::{SCROLLBAR_W, ScrollbarState, scrollbar_thumb_color};
@@ -23,6 +23,23 @@ pub fn thumb(track: Rect, scroll: f32, content: f32, visible: f32) -> Option<Rec
     let max = content - visible;
     let x = track.x + (track.w - w) * (scroll / max).clamp(0.0, 1.0);
     Some(Rect::new(x, track.y, w, track.h))
+}
+
+/// As colunas do rótulo da ranhura (texto, largura): a frase inteira se cabe na altura `vao.1`; senão uma palavra por
+/// coluna, se as colunas cabem na largura `vao.0` e cada palavra na altura; senão a frase, cortada.
+pub(crate) fn colunas_da_ranhura<'a>(
+    inteira: (&'a str, f32),
+    palavras: Vec<(&'a str, f32)>,
+    vao: (f32, f32),
+    font: f32,
+) -> Vec<(&'a str, f32)> {
+    let partida =
+        palavras.len() as f32 * font <= vao.0 && palavras.iter().all(|(_, w)| *w <= vao.1);
+    if inteira.1 > vao.1 && partida {
+        palavras
+    } else {
+        vec![inteira]
+    }
 }
 
 fn hit(r: Rect, x: f32, y: f32) -> bool {
@@ -138,9 +155,24 @@ impl AnimDoc {
         stroke_rounded_rect_dashed(scene, r, radius, StrokeToken::Thick.px(), dash, accent);
         let font = TypeToken::Sm.px();
         let label = ph2d_i18n::tr("anim_editor.insert_here");
-        let tw = label_column_width(text, font, [label]).min(r.h);
-        let (ax, ay) = (r.x + r.w / 2.0, r.y + (r.h + tw) / 2.0);
-        paint_text_rotated_ccw(text, scene, label, ax, ay, font, r.h, accent);
+        // Quadros baixos (janela estreita, foto fotos_31): sem caber numa coluna, uma palavra por coluna, se a largura
+        // do vão as levar; senão a coluna única, cortada.
+        fn medida<'a>(text: &mut TextSystem, font: f32, p: &'a str) -> (&'a str, f32) {
+            (p, label_column_width(text, font, [p]))
+        }
+        let inteira = medida(text, font, label);
+        let palavras: Vec<(&str, f32)> = label
+            .split_whitespace()
+            .map(|p| medida(text, font, p))
+            .collect();
+        let colunas = colunas_da_ranhura(inteira, palavras, (r.w, r.h), font);
+        // Rodado, a âncora é o TOPO da linha e o texto desce para +x: cada coluna centra-se na sua fatia do vão.
+        let fatia = r.w / colunas.len() as f32;
+        for (i, (c, w)) in colunas.into_iter().enumerate() {
+            let ax = r.x + i as f32 * fatia + folga_do_texto(fatia, font);
+            let ay = r.y + (r.h + w.min(r.h)) / 2.0;
+            paint_text_rotated_ccw(text, scene, c, ax, ay, font, r.h, accent);
+        }
         scene.pop_layer();
     }
 }

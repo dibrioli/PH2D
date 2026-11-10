@@ -104,6 +104,12 @@ const FORA: &[Isento] = &[
 /// Um literal isento, com o mecanismo — nomes que são DADO.
 const NOT_LANGUAGE: &[Excecao] = &[
     (
+        "main.rs",
+        "Ctrl+Q",
+        "o ATALHO de sair na linha de arranque do terminal, dito pelo sistema pela porta `ph2d_i18n::atalho` \
+         (Cmd+Q no macOS) — nome de tecla, não frase, e nunca pintado",
+    ),
+    (
         "render_loop/autokey_pass.rs",
         "[autokey] painel={panel_open} armado={armed} populacao={pop:x?}",
         "a sonda `PH2D_AUTOKEY_LOG` (plano 34): pares `chave=valor` no terminal, só com a env \

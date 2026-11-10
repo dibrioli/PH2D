@@ -237,7 +237,7 @@ fn no_tofu_glyphs_in_ui_strings() {
         "Out-of-font (tofu) glyph(s) in UI string literal(s):\n  {}\n\n\
          Inter (bundled) doesn't cover the arrow / technical-symbol \
          blocks — these render as a tofu box on screen. Use ASCII \
-         (`Cmd+S`, `->`) or `·` (U+00B7). See docs/UI_Bugs §9.19.",
+         (`Ctrl+S`, `->`) or `·` (U+00B7). See docs/UI_Bugs §9.19.",
         violations.join("\n  ")
     );
 }

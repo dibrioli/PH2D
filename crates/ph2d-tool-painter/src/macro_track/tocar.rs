@@ -37,7 +37,9 @@ pub enum ErroDaMacro {
 }
 
 pub struct TocadorDoPainter {
-    tool: PainterTool,
+    /// Em caixa: o `PainterTool` pesa ~270 KB, e o tocador viaja por valor (canais da medição do tutorial,
+    /// `Option`, instantâneos) — em debug cada movimento era uma cópia na pilha do fio (2 MiB estourados).
+    tool: Box<PainterTool>,
     fita: FitaPartilhada,
     /// Um passo de pré-visualização viu a tela mudar desde o último [`Self::toma_a_tela`] (nasce
     /// `true`: a tela inicial também se mostra).
@@ -159,7 +161,7 @@ impl TocadorDoPainter {
         }));
         tool.wet_instala_fita(Some(Arc::clone(&fita)));
         Ok(Self {
-            tool,
+            tool: Box::new(tool),
             fita,
             mudou: true,
             respostas,
@@ -182,7 +184,7 @@ impl TocadorDoPainter {
             .wet_fita()
             .unwrap_or_else(|| Arc::new(Mutex::new(fita::trava(&self.fita).clone())));
         Ok(Self {
-            tool,
+            tool: Box::new(tool),
             fita,
             mudou: true,
             respostas: Arc::clone(&self.respostas),

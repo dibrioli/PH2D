@@ -2,12 +2,31 @@
 //! compõe: diz se a cena está armada (`ph2d_app_game::smoke::armed_level`) e responde às portas.
 
 use crate::{self as a, Passo as P};
-pub use ph2d_anim_editor::doc::AnimDoc;
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::object_mode::{ModeRequest, ObjectMode};
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{AnimFieldEdit, ImageUseEdit, NodeId};
+
+/// O que as provas leem do editor de animações, como VALOR: a folha não depende do documento do editor (a
+/// `ph2d-app-game` chegava a ele só por aqui). Os botões do layout, o que o Align pintou e a tira, neste quadro.
+#[derive(Debug, Clone, Copy)]
+pub struct AlvosDoEditor {
+    pub toggle: Rect,
+    pub by_feet: Rect,
+    pub grade: Rect,
+    pub by_hand: Rect,
+    pub follow: Rect,
+    pub previa: Rect,
+    pub pivo: Option<(f32, f32)>,
+    pub caixa: Option<Rect>,
+    /// A pega do canto de baixo à direita.
+    pub pega: Option<Rect>,
+    /// O trilho da barra da tira, a ranhura «INSERT HERE» e o último quadro.
+    pub barra: Rect,
+    pub ranhura: Rect,
+    pub ultimo: Option<Rect>,
+}
 
 /// Um gesto do rato pelas portas da shell (`smoke_pointer_*`).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -47,8 +66,8 @@ pub trait Mesa {
     fn ctrl(&mut self, seguro: bool);
     /// Um ponto do mundo no ecrã, pela câmara e pela janela da cena.
     fn ao_ecra(&self, ponto: [f32; 2]) -> Option<(f32, f32)>;
-    /// O documento aberto do editor de animações de `bits`.
-    fn editor<R>(&mut self, bits: u64, ler: impl FnOnce(&AnimDoc) -> R) -> Option<R>;
+    /// Onde está o que a prova do Align carrega, no editor de animações aberto de `bits` (`None` = fechado).
+    fn alvos(&mut self, bits: u64) -> Option<AlvosDoEditor>;
     /// A câmara: centro e altura do mundo à vista.
     fn camara(&mut self, vista: ([f32; 2], f32));
     fn seleciona(&mut self, bits: Option<u64>);
@@ -88,6 +107,7 @@ fn passo(m: &mut impl Mesa, p: P) {
         | P::Edita(n)
         | P::Pivo(n, _)
         | P::Alinha(n, _)
+        | P::RolaATira(n, _)
         | P::Relata(_, n) => n,
         P::Foto(f) => f.map_or(a::PLAYER, a::Foto::alvo),
         P::RelataRegra => a::PLAYER,
@@ -135,6 +155,7 @@ fn passo(m: &mut impl Mesa, p: P) {
         ))),
         (P::Pivo(_, fase), Some(b)) => pivo(m, fase, b),
         (P::Alinha(_, fase), Some(b)) => alinha(m, fase, b),
+        (P::RolaATira(_, fase), Some(b)) => rola_a_tira(m, fase, b),
         (P::Entrada, _) => m.entrada(),
         (P::Desfaz, _) => m.desfaz(),
         (P::Relata(t, n), Some(b)) => {
@@ -200,6 +221,29 @@ fn achar(m: &impl Mesa, id: NodeId, o_que: &str) -> Option<(f32, f32)> {
     p
 }
 
+/// A tira rolada pela BARRA, como a mão (o `SetStep` não rola): `0` o botão no fim do trilho (o polegar centra-se no
+/// ponteiro e fica agarrado), `1` um arrasto para lá do fim, `2` soltar, `3` relatar se a ranhura cobre o último quadro.
+fn rola_a_tira(m: &mut impl Mesa, fase: u8, bits: u64) {
+    let Some(v) = m.alvos(bits) else {
+        return eprintln!("[animado-prova] tira: o editor não está aberto");
+    };
+    let (b, y) = (v.barra, v.barra.y + v.barra.h / 2.0);
+    match fase {
+        0 => m.rato(Rato::Abaixo(b.x + b.w - 1.0, y)),
+        1 => m.rato(Rato::Move(b.x + b.w + b.h * 4.0, y)),
+        2 => m.rato(Rato::Acima),
+        _ => {
+            let cobre = v
+                .ultimo
+                .is_some_and(|u| v.ranhura.x < u.x + u.w && u.x < v.ranhura.x + v.ranhura.w);
+            eprintln!(
+                "[animado-prova] tira: barra={b:?} ranhura={:?} ultimo={:?} cobre={cobre}",
+                v.ranhura, v.ultimo
+            );
+        }
+    }
+}
+
 type Pega = Option<((f32, f32), (f32, f32))>;
 
 /// A pega do canto e o Pivot da fase `2`, para o caminho das fases seguintes.
@@ -208,12 +252,19 @@ static PEGA: std::sync::Mutex<Pega> = std::sync::Mutex::new(None);
 /// A prévia Align pelas portas do rato, uma fase por quadro: `0`/`1` o botão Align; `2` a pega do canto, `3..=6` o
 /// caminho até `2/3` da distância ao Pivot, `7` soltar; daí até `22`, By feet, a grelha, By hand, Follow e o arrasto.
 fn alinha(m: &mut impl Mesa, fase: u8, bits: u64) {
-    let doc = m.editor(bits, |d| {
-        let l = &d.layout.align;
-        let alvos = (l.pivot_grid, l.by_hand, l.pivot_follow, l.preview);
-        (l.toggle, l.by_feet, d.align.painted, alvos)
-    });
-    let Some((toggle, pes, p, (grade, mao, segue, previa))) = doc else {
+    let Some(AlvosDoEditor {
+        toggle,
+        by_feet: pes,
+        grade,
+        by_hand: mao,
+        follow: segue,
+        previa,
+        pivo,
+        caixa,
+        pega: canto,
+        ..
+    }) = m.alvos(bits)
+    else {
         return eprintln!("[animado-prova] align: o editor não está aberto");
     };
     let c = |r: Rect| (r.x + r.w / 2.0, r.y + r.h / 2.0);
@@ -237,7 +288,7 @@ fn alinha(m: &mut impl Mesa, fase: u8, bits: u64) {
         (21, _) => m.rato(Rato::Move(c(previa).0 + previa.w * 0.2, c(previa).1)),
         (22, _) => m.rato(Rato::Acima),
         (14..=16, _) => {
-            let (Some((ox, oy)), Some(r)) = (p.pivot, p.all_frames) else {
+            let (Some((ox, oy)), Some(r)) = (pivo, caixa) else {
                 return eprintln!("[animado-prova] pivô: sem cruz ou sem caixa");
             };
             let s = f32::from(fase - 14) / 2.0;
@@ -250,11 +301,8 @@ fn alinha(m: &mut impl Mesa, fase: u8, bits: u64) {
             });
         }
         (2, _) => {
-            *pega = p.handles[3].map(c).zip(p.pivot);
-            eprintln!(
-                "[animado-prova] align: pega={:?} pivô={:?}",
-                p.handles[3], p.pivot
-            );
+            *pega = canto.map(c).zip(pivo);
+            eprintln!("[animado-prova] align: pega={canto:?} pivô={pivo:?}");
             if let Some((h, _)) = *pega {
                 m.rato(abaixo(h));
             }

@@ -27,20 +27,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.forwarding.gimp_palette" => "GIMP palette",
         "shell.forwarding.colour_palette" => "Color palette",
         "shell.bgremoval.bg_removal_island_s_2" => {
-            "Bg Removal · {islands} {islands?island|islands}, {spawned} spawned, {spawn_failed} failed · Cmd+Z restores"
+            "Bg Removal · {islands} {islands?island|islands}, {spawned} spawned, {spawn_failed} failed · Ctrl+Z restores"
         }
         "shell.bgremoval.bg_removal_island_s" => {
-            "Bg Removal · {islands} {islands?island|islands}, {spawned} spawned · Cmd+Z restores"
+            "Bg Removal · {islands} {islands?island|islands}, {spawned} spawned · Ctrl+Z restores"
         }
         "shell.bgremoval.island_acquire_failed" => "Island {n} acquire failed: {e}",
         "shell.bgremoval.bg_removal_separate" => "Bg Removal · Separate Islands",
         "shell.bgremoval.bg_removal_failed" => "Bg Removal failed: {err}",
-        "shell.bgremoval.bg_removal_applied_cmd" => "Bg Removal applied · Cmd+Z to undo",
+        "shell.bgremoval.bg_removal_applied_cmd" => "Bg Removal applied · Ctrl+Z to undo",
         "shell.bgremoval.bg_removal" => "Bg Removal",
         "shell.bgremoval.bg_removal_source" => {
             "Bg Removal: source unavailable (Atlas key missing or readback failed)"
         }
-        "shell.color_equalization.color_eq_applied_cmd_z" => "Color EQ applied · Cmd+Z to undo",
+        "shell.color_equalization.color_eq_applied_cmd_z" => "Color EQ applied · Ctrl+Z to undo",
         "shell.color_equalization.color_eq" => "Color EQ",
         "shell.color_equalization.color_eq_failed" => "Color EQ failed: {err}",
         "shell.color_equalization.color_eq_source" => {
@@ -52,11 +52,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Equalize Sizes: target exceeds GPU texture limit ({max_dim} px max, would need {width} × {height} px)"
         }
         "shell.equalize_sizes.equalize_sizes_sprites" => {
-            "Equalize Sizes · {applied} {applied?sprite|sprites} · Cmd+Z to undo"
+            "Equalize Sizes · {applied} {applied?sprite|sprites} · Ctrl+Z to undo"
         }
-        "shell.equalize_sizes.equalize_sizes_applied" => "Equalize Sizes applied · Cmd+Z to undo",
+        "shell.equalize_sizes.equalize_sizes_applied" => "Equalize Sizes applied · Ctrl+Z to undo",
         "shell.equalize_sizes.equalize_sizes_sprite" => {
-            "Equalize Sizes · {applied} {applied?sprite|sprites}, {skipped} skipped · Cmd+Z to undo"
+            "Equalize Sizes · {applied} {applied?sprite|sprites}, {skipped} skipped · Ctrl+Z to undo"
         }
         "shell.equalize_sizes.equalize_sizes_nothing" => "Equalize Sizes: nothing to change",
         "shell.equalize_sizes.equalize_sizes_no" => {
@@ -69,14 +69,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "all the frames together would be {width} × {height} px, more than the graphics card's {max_dim}"
         }
         "shell.make_square.made_square_px_cmd_z" => {
-            "Made square · {size} × {size2} px · Cmd+Z to undo"
+            "Made square · {size} × {size2} px · Ctrl+Z to undo"
         }
         "shell.make_square.make_square" => "Make square",
         "shell.make_square.make_square_failed" => "Make Square failed: {err}",
         "shell.make_square.make_square_would" => {
             "Make Square would exceed GPU texture limit ({max_texture_dimension_2d} px max, would need {size} px)"
         }
-        "shell.padding.padded_px_cmd_z_to" => "Padded · {width} × {height} px · Cmd+Z to undo",
+        "shell.padding.padded_px_cmd_z_to" => "Padded · {width} × {height} px · Ctrl+Z to undo",
         "shell.padding.padding" => "Padding",
         "shell.padding.padding_failed" => "Padding failed: {err}",
         "shell.padding.padding_would_exceed" => {
@@ -85,7 +85,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.padding.padding_nothing" => "Padding: nothing changed",
         "shell.padding.padding_unavailable" => "Padding unavailable for this sprite",
         "shell.padding.padding_nothing_to" => "Padding: nothing to apply (all edges 0)",
-        "shell.painter.painter_applied_cmd_z" => "Painter applied · Cmd+Z to undo",
+        "shell.painter.painter_applied_cmd_z" => "Painter applied · Ctrl+Z to undo",
         "shell.painter.painter" => "Painter",
         "shell.painter.painter_failed" => "Painter failed: {err}",
         "shell.painter.painter_empty_canvas" => "Painter: empty canvas (no source pushed)",
@@ -93,7 +93,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Painter: source unavailable (Atlas key missing or readback failed)"
         }
         "shell.rasterize.rasterized_px_cmd_z_to" => {
-            "Rasterized · {width} × {height} px · Cmd+Z to undo"
+            "Rasterized · {width} × {height} px · Ctrl+Z to undo"
         }
         "shell.rasterize.rasterize" => "Rasterize",
         "shell.rasterize.rasterize_failed" => "Rasterize failed: {err}",
@@ -107,12 +107,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "shell.rasterize.rasterize_unavailable" => "Rasterize unavailable for this sprite",
         "shell.trim_transparency.trimmed_px_cmd_z_to" => {
-            "Trimmed · {width} × {height} px · Cmd+Z to undo"
+            "Trimmed · {width} × {height} px · Ctrl+Z to undo"
         }
         "shell.trim_transparency.trim" => "Trim",
         "shell.trim_transparency.trim_failed" => "Trim failed: {err}",
         "shell.undo.sprites" => "{toast_done} · {label} ({n} {n?sprite|sprites})",
-        "shell.upscale.upscaled_px_cmd_z_to" => "Upscaled · {out_w} × {out_h} px · Cmd+Z to undo",
+        "shell.upscale.upscaled_px_cmd_z_to" => "Upscaled · {out_w} × {out_h} px · Ctrl+Z to undo",
         "shell.upscale.upscale" => "Upscale",
         "shell.upscale.upscale_failed" => "Upscale failed: {err}",
         "shell.upscale.upscale_would_exceed" => {

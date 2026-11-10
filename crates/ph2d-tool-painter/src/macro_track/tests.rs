@@ -336,3 +336,15 @@ fn um_estado_inicial_de_antes_da_w6c_reproduz_o_mesmo_splash() {
         "o estado de antes da W6c reproduz outra tela"
     );
 }
+
+/// O tocador viaja por VALOR (canais da medição do tutorial, `Option`, instantâneos) e cada movimento é uma cópia na
+/// pilha em debug. Com o `PainterTool` dentro (~270 KB) quatro cópias encheram os 2 MiB do fio `macro-referencias`
+/// (`ph2d-app-macros tutorial_painter::outra_tela_diz_o_tamanho_gravado`, estouro de pilha, 10/11).
+#[test]
+fn o_tocador_e_leve_para_viajar_por_valor() {
+    let n = std::mem::size_of::<super::tocar::TocadorDoPainter>();
+    assert!(
+        n <= 4096,
+        "TocadorDoPainter = {n} bytes: o PainterTool voltou para dentro dele?"
+    );
+}

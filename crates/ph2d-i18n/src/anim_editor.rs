@@ -78,6 +78,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Drag the cross to place the pivot \u{b7} it snaps to the 25 points \u{b7} the game object stays put"
         }
         "anim_editor.commit_failed" => "The animation edit did not apply: {e}",
+        "anim_editor.new_not_selected" => {
+            "The new animation was added, but it could not be selected: {e}"
+        }
         // O editor de Region (plano GEF 16 D2): a área que o objecto mostra.
         "region_editor.tab" => "Region \u{2014} {name}",
         "region_editor.columns" => "Columns",

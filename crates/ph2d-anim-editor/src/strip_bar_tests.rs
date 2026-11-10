@@ -47,3 +47,23 @@ fn arrastar_o_polegar_e_clicar_no_trilho_rolam_a_tira() {
     d.bar_press(150.0, 195.0);
     assert_eq!((d.strip_scroll, d.bar_grab), (0.0, None));
 }
+
+/// O rótulo da ranhura num quadro baixo (janela 1366 × 768, `fotos_31`): «INSERT HERE» não cabe em 58 px, as duas palavras
+/// cabem lado a lado nos 28 px do vão. *Mutação: sempre a frase inteira ⇒ vermelho.*
+#[test]
+fn o_rotulo_da_ranhura_parte_se_quando_nao_cabe() {
+    let (inteira, palavras) = (
+        ("INSERT HERE", 80.0),
+        vec![("INSERT", 45.0), ("HERE", 36.0)],
+    );
+    let baixo = super::colunas_da_ranhura(inteira, palavras.clone(), (28.0, 57.8), 12.0);
+    assert_eq!(baixo, palavras, "partido em duas colunas");
+    let alto = super::colunas_da_ranhura(inteira, palavras.clone(), (28.0, 137.8), 12.0);
+    assert_eq!(alto, vec![inteira], "cabe numa coluna");
+    let estreito = super::colunas_da_ranhura(inteira, palavras, (20.0, 57.8), 12.0);
+    assert_eq!(
+        estreito,
+        vec![inteira],
+        "duas colunas não cabem: a frase, cortada"
+    );
+}

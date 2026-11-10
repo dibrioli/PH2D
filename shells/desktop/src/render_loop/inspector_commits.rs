@@ -347,7 +347,7 @@ pub(super) fn drain_section_edits(
         use ph2d_app_sprite_anim::inspector::{Commit, commit_anim_edit};
         match commit_anim_edit(sim, *entity_bits, edit, editor_queue, component_registry) {
             Commit::Feito => {}
-            Commit::Recusado(t) => {
+            Commit::Recusado(t) | Commit::FeitoComAviso(t) => {
                 toasts.push(t);
             }
             Commit::Falhou(e) => {

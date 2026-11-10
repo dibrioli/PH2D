@@ -200,9 +200,9 @@ pub fn paint_lists_body(
         // ASCII shortcut — the Command glyph U+2318 (⌘) isn't in the
         // editor's font fallback chain (parley GenericFamily::SansSerif
         // resolves to system fonts that don't include the Unicode
-        // technical-symbol block). Showing `Cmd+O` instead of the
-        // tofu `□O` for the keyboard hint.
-        .value("Cmd+O")
+        // technical-symbol block). Showing `Ctrl+O` (`Cmd+O` on macOS,
+        // `ph2d_i18n::atalho`) instead of the tofu `□O` for the keyboard hint.
+        .value(ph2d_i18n::atalho::atalho("Ctrl+O"))
         .chevron(true)
         .state(li_state);
     paint_list_item(&item, r, scene, text_system, theme);

@@ -402,6 +402,12 @@ pub fn frame(
             match crate::inspector::commit_anim_edit(sim, d.entity, &edit, &queue, registry) {
                 Commit::Feito if edit == AnimFieldEdit::Add => d.align_off(), // já neste quadro
                 Commit::Feito => {}
+                Commit::FeitoComAviso(t) => {
+                    if edit == AnimFieldEdit::Add {
+                        d.align_off();
+                    }
+                    toasts.push(t);
+                }
                 Commit::Recusado(t) => {
                     toasts.push(t);
                     continue;

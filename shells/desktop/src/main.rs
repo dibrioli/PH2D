@@ -1021,7 +1021,10 @@ fn main() {
     event_loop.set_control_flow(ControlFlow::Poll);
 
     let mut app = App::new();
-    println!("PH2D desktop shell starting (close window or Cmd+Q to exit)…");
+    println!(
+        "PH2D desktop shell starting (close window or {} to exit)…",
+        ph2d_i18n::atalho::atalho("Ctrl+Q")
+    );
     event_loop.run_app(&mut app).expect("event loop crashed");
     println!("PH2D desktop shell exited cleanly.");
 }

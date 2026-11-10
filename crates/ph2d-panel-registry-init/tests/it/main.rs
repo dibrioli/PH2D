@@ -33,6 +33,7 @@ mod nenhum_botao_das_barras_de_modulo_sumiu;
 mod nenhum_nome_carrega_uma_regra;
 mod nenhum_nome_por_cima_do_controlo;
 mod nenhum_rotulo_do_app_pinta_nada;
+mod o_add_que_pegou_e_feito;
 mod o_alcance_e_as_alcas_do_bones;
 mod o_alfinete_com_corda;
 mod o_alfinete_da_sprite;

@@ -75,8 +75,8 @@ mod tests {
 
     #[test]
     fn defaults_match_spec() {
-        let t = Tooltip::new(NodeId(1), "Save (Cmd+S)");
-        assert_eq!(t.message, "Save (Cmd+S)");
+        let t = Tooltip::new(NodeId(1), "Save (Ctrl+S)");
+        assert_eq!(t.message, "Save (Ctrl+S)");
     }
 
     #[test]
@@ -90,7 +90,7 @@ mod tests {
         let mut scene = VectorScene::new();
         let mut text = TextSystem::without_system_fonts();
         paint_tooltip(
-            &Tooltip::new(NodeId(1), "Save (Cmd+S)"),
+            &Tooltip::new(NodeId(1), "Save (Ctrl+S)"),
             Rect::new(0.0, 0.0, 120.0, 24.0),
             &mut scene,
             &mut text,

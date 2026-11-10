@@ -33,7 +33,10 @@ fn a_paleta_lista_go_to_line_com_a_aba_activa_e_escolher_abre_o_campo() {
     m.pede(ids[0]);
     segue(&mut m);
     let goto = ph2d_i18n::tr("code.cmd.goto");
-    assert!(goto.contains("Cmd+G"), "o atalho no rótulo: {goto}");
+    assert!(
+        goto.contains(&*ph2d_i18n::atalho::atalho("Ctrl+G")),
+        "o atalho no rótulo: {goto}"
+    );
     // 13 §4 item 11 (D3): os comandos do código moram no menu PRÓPRIO da aba — o File/Edit do app
     // não muda com ela.
     for menu in [ContextMenuKind::MenuBarEdit, ContextMenuKind::MenuBarFile] {

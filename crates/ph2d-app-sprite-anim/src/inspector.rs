@@ -187,6 +187,8 @@ pub fn build_anim_info(
 #[derive(Debug)]
 pub enum Commit {
     Feito,
+    /// A edição pegou, e o passo que vinha DEPOIS dela não (o Add sem conseguir escolher a nova): o aviso diz isso.
+    FeitoComAviso(Toast),
     /// A edição foi recusada, com o aviso em palavras do artista.
     Recusado(Toast),
     /// A fila não aplicou (um defeito de registo, não do artista).
@@ -227,16 +229,25 @@ pub fn commit_anim_edit(
             .0
             .push(off);
     }
-    match nova {
-        Some(n) => commit_anim_edit(
-            sim,
-            entity_bits,
-            &AnimFieldEdit::SetCurrent(n),
-            queue,
-            registry,
-        ),
-        None => Commit::Feito,
-    }
+    let Some(n) = nova else {
+        return Commit::Feito;
+    };
+    // O Add já pegou: o que falhar agora é só escolher a nova.
+    let porque = match commit_anim_edit(
+        sim,
+        entity_bits,
+        &AnimFieldEdit::SetCurrent(n),
+        queue,
+        registry,
+    ) {
+        Commit::Feito => return Commit::Feito,
+        Commit::Recusado(t) | Commit::FeitoComAviso(t) => t.message,
+        Commit::Falhou(e) => format!("{e:?}"),
+    };
+    Commit::FeitoComAviso(Toast::warning(tr_with(
+        "anim_editor.new_not_selected",
+        &[("e", &porque)],
+    )))
 }
 
 /// Aplica uma [`AnimFieldEdit`]. Devolve um aviso quando a edição foi **recusada**.

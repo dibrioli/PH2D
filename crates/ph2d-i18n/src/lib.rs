@@ -199,6 +199,8 @@ mod topdown;
 /// ⭐ **Os grupos avançados do Tuning do Wet Paint** (25/10) — irmã do bloco `panel.wet_tuning.*`.
 mod wet_tuning_avancado;
 
+/// ⭐ **A tecla dos atalhos por sistema** — `Ctrl+` na tabela, `Cmd+` no macOS.
+pub mod atalho;
 /// ⭐⭐ **A substituição de MARCADORES** — `tr_with`, a lei que lê um modelo.
 pub mod formato;
 /// ⭐⭐⭐ **QUAL IDIOMA ESTÁ A FALAR** — o estado que esta crate não teve durante nove fatias.
@@ -254,11 +256,11 @@ fn tr_ingles(key: &str) -> &'static str {
             if let Some(v) = lidas.get(key) {
                 return *v;
             }
-            let v = tabela(key);
+            let v = atalho::da_tabela(atalho::Sistema::DESTE, key);
             lidas.insert(key.into(), v);
             v
         })
-        .unwrap_or_else(|_| tabela(key))
+        .unwrap_or_else(|_| atalho::da_tabela(atalho::Sistema::DESTE, key))
 }
 
 /// A tabela, tal como está escrita.

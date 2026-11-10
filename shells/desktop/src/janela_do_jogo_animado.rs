@@ -5,7 +5,7 @@ use ph2d_ecs::Entity;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::{ImageUseEdit, NodeId};
-use ph2d_sprite_anim_scene::mesa::{AnimDoc, Cartao, Mesa, Rato};
+use ph2d_sprite_anim_scene::mesa::{AlvosDoEditor, Cartao, Mesa, Rato};
 
 impl crate::App {
     /// Um por quadro, na fase das cenas.
@@ -82,11 +82,26 @@ impl Mesa for crate::App {
         )
     }
 
-    fn editor<R>(&mut self, bits: u64, ler: impl FnOnce(&AnimDoc) -> R) -> Option<R> {
+    fn alvos(&mut self, bits: u64) -> Option<AlvosDoEditor> {
         let docs = self.heroi_da_cena()?.documents.surfaces_mut();
-        docs.find_mut::<ph2d_app_sprite_anim::editor::AnimDocs>()?
-            .doc(bits)
-            .map(ler)
+        let d = docs
+            .find_mut::<ph2d_app_sprite_anim::editor::AnimDocs>()?
+            .doc(bits)?;
+        let (l, p) = (&d.layout.align, &d.align.painted);
+        Some(AlvosDoEditor {
+            toggle: l.toggle,
+            by_feet: l.by_feet,
+            grade: l.pivot_grid,
+            by_hand: l.by_hand,
+            follow: l.pivot_follow,
+            previa: l.preview,
+            pivo: p.pivot,
+            caixa: p.all_frames,
+            pega: p.handles[3],
+            barra: d.layout.strip_bar,
+            ranhura: d.layout.playhead,
+            ultimo: d.layout.frames.last().map(|f| f.0),
+        })
     }
 
     fn camara(&mut self, (centro, altura): ([f32; 2], f32)) {

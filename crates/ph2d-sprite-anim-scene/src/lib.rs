@@ -283,6 +283,8 @@ pub enum Passo {
     /// `8`/`9` o botão «By feet»; o Pivot (GEF 29): `10`/`11` o ponto «Bottom» da grade, `12`/`13` o «By hand»,
     /// `14` a cruz agarrada, `15`/`16` o caminho até o meio da direita, `17` soltar.
     Alinha(&'static str, u8),
+    /// A fase `0..=3` da tira rolada ao fim pela barra ([`Foto::TiraRolada`]): o trilho, o arrasto, soltar, relatar.
+    RolaATira(&'static str, u8),
     /// A entrada do artista, que fecha o passo de desfazer.
     Entrada,
     Desfaz,

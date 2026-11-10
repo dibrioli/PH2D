@@ -140,6 +140,7 @@ pub(super) fn folhas_desfaz(q: u32, foto: Option<Foto>) -> Vec<Passo> {
             P::Anim(DUAS, Ed::Playing(false)),
             P::Anim(DUAS, Ed::SetStep(11)),
         ],
+        (Some(Foto::TiraRolada), 30..=33) => vec![P::RolaATira(DUAS, (q - 30) as u8)],
         _ => Vec::new(),
     }
 }

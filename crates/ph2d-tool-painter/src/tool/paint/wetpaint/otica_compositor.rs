@@ -158,11 +158,39 @@ fn recorta(plano: &[u8], bpp: usize, gw: usize, (x0, y0, x1, y1): CaixaCel) -> V
     v
 }
 
-/// O inverso de [`recorta`].
-pub(super) fn cola(plano: &mut [u8], bpp: usize, gw: usize, (x0, y0, x1, y1): CaixaCel, b: &[u8]) {
+/// A caixa a partir da qual a [`cola`] vai por faixas no pool (ADR-0109, o mesmo laço por linha da composição).
+/// Recurso: a largura de banda da memória (a caixa que já não cabe na cache) contra o custo de acordar o pool;
+/// `mede_cola_por_faixa`, smoke, mín 9: 1 MB 0,6× · 4 MB 0,9–1,3× (o empate) · 33 MB 1,3× (tabela no BACKLOG B11.4).
+const COLA_EM_FAIXAS_BYTES: usize = 1 << 22;
+
+/// O inverso de [`recorta`] (B11.4): numa caixa grande as linhas copiam-se no pool — cada uma escreve só a sua,
+/// logo o mesmo byte em qualquer número de fios.
+pub(super) fn cola(plano: &mut [u8], bpp: usize, gw: usize, caixa: CaixaCel, b: &[u8]) {
+    if b.len() < COLA_EM_FAIXAS_BYTES {
+        return cola_serial(plano, bpp, gw, caixa, b);
+    }
+    cola_em_faixas(plano, bpp, gw, caixa, b);
+}
+
+fn cola_em_faixas(plano: &mut [u8], bpp: usize, gw: usize, (x0, y0, x1, y1): CaixaCel, b: &[u8]) {
+    use rayon::prelude::*;
+    let (cw, linha) = ((x1 + 1 - x0) * bpp, gw * bpp);
+    let col = (x0 - 1) * bpp;
+    plano[(y0 - 1) * linha..y1 * linha]
+        .par_chunks_mut(linha)
+        .zip(b.par_chunks(cw))
+        .for_each(|(dst, src)| dst[col..col + cw].copy_from_slice(src));
+}
+
+/// A cola de uma linha de cada vez (a de antes do B11.4, verbatim): caixa pequena e o oráculo do teste.
+fn cola_serial(plano: &mut [u8], bpp: usize, gw: usize, (x0, y0, x1, y1): CaixaCel, b: &[u8]) {
     let cw = (x1 + 1 - x0) * bpp;
     for (k, cy) in (y0..=y1).enumerate() {
         let o = (cy - 1) * gw * bpp + (x0 - 1) * bpp;
         plano[o..o + cw].copy_from_slice(&b[k * cw..(k + 1) * cw]);
     }
 }
+
+#[cfg(test)]
+#[path = "otica_compositor_tests.rs"]
+mod tests;

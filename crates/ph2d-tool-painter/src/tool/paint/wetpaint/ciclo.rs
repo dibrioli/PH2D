@@ -188,7 +188,8 @@ impl PainterTool {
             .is_some_and(WetSession::compositor_morto);
         let fora = self.wet_otica_fora();
         if fora {
-            self.wet_recebe_imagens();
+            // B11.4: no pool, como a composição de casa (`no_pool`) — a cola e o laço de píxel são passes paralelos.
+            self.no_pool(Self::wet_recebe_imagens);
         }
         let facts = self.wet_facts();
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {

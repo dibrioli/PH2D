@@ -33,3 +33,17 @@ fn sem_laco_continuo_alguem_le_o_pedido_de_quadro() {
         "o laço deixou de ser contínuo e nenhum sítio da shell lê `Documents::wants_frame`"
     );
 }
+
+/// B23-cont: o voo de uma máquina de Morph anda por quadro (`MorphMachine::is_flying`); sem leitor no
+/// `pede_o_quadro`, o laço a pedido deixa-o a 4 q/s (o despertador) depois do prazo da tecla.
+#[test]
+fn o_voo_do_morph_pede_quadro() {
+    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/janela_do_jogo.rs");
+    let src = fs::read_to_string(src).unwrap();
+    let corpo = src.split("fn pede_o_quadro").nth(1).expect("o leitor do quadro");
+    let corpo = corpo.split("\n    }\n").next().unwrap();
+    assert!(
+        corpo.contains(".is_flying()"),
+        "o `pede_o_quadro` não lê o voo do Morph: a transição congela entre os despertadores"
+    );
+}

@@ -31,6 +31,13 @@
 | onda 1 | B14a | parcial (e8d383f451): sonda `sonda_a_caixa_do_passo_e_a_que_mudou` acha o mecanismo (`step_simulation` suja a caixa do fluido com 0 células mudadas); sem cura. Falta o corte em painter.rs, composite_otica.rs e o gate |
 | onda 1 | B17a | feito (ac36447bef): o collect do par_clone copia em blocos de 256 KiB; tela 4K 7,72→1,67 ms, 4096² 3,43, u8 4K 0,97→0,29; limiares → 7,5 MiB; gates red→green, igualdade ao bit verde |
 | onda 1 | verificação | 3 alvos sem prova: `o_tique_do_balde_a_4k_e_dez_vezes_o_antigo` e `sonda_o_corpo_sob_a_borracha_no_wet` não existem (0 correram); `prancha_b06a_a_borracha_leva_o_corpo` é só `#[ignore]` |
+| onda 2 | B02-cont | parcial (3ea1c16e2f): B02.5: o registo de cada passo guarda a caixa dos seus dabs; desfazer além do tecto enterra só ali (+32). Gate casco_tests: sem a caixa 55 694 valores longe a zero (red) → 0. Falta B02.2, B02.A3 e a prancha. |
+| onda 2 | B41a | feito (5454a67f2c): Inpaint: se a placa falha num nível, o pedido todo passa ao inpaint_cpu, igual ao byte (antes 4 expect fechavam o programa). diag → stamp_banded/diag.rs, 636→506 linhas. Red por injeção nos 5 → green. |
+| onda 2 | B23-cont | parcial (5a5aac2f52): catraca painter 24 760→24 382 (tecto 24 429); novos produtores (voo do Morph, som, folha devida); shell 189 054→189 009. CPU parado: pedido 3 % × contínuo 57–70 %. Falta janela oculta não apresentar. |
+| onda 2 | B10a+B15.6 | parcial (8d5fadff95): Ctrl+Z 4K no app (Água, Radeon): ciclos 1920/1714/1981→904/955 M (−52 %), toque 4437/3835/4341→3665/3521 M. Ao bit: 4 gates, 2 mutações. Falta a libc (14–20 % do quadro): reusar ImpastoPlanes. |
+| onda 2 | B14a-cont | parcial (03510a42ef): medido no app (2880²): 12,0→0,8 img/s, óptica 60→953 ms; a caixa mudada é 0,92 da união (faixas anteriores seguem vivas). Falta a óptica por várias caixas (caixa_do_passo.rs, composite_otica.rs). |
+| onda 2 | B16a+B16.9 | parcial (7c4bd3cc7a): B16.9: pen-down repõe o NaN do substrato só na caixa preenchida (4K, 3 camadas 1152,8→1132,4 ms); B16.A2: chão uniforme guardado por cor e tamanho. Gates red→green. Falta partir apply_watercolor_inner e B16.2. |
+| onda 2 | verificação | verde |
 
 ## Fatos medidos que mudam a ordem
 

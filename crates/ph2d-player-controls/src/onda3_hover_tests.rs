@@ -32,7 +32,7 @@ fn aberta(g: &InputMap, ts: &mut TextSystem) -> (PlaySession, Layout) {
     s.keep_off_disk();
     s.start(g, None);
     let abre = host::key(&mut s, Some(F1), (true, false), true, (Some(g), true));
-    assert_eq!(abre.0, true, "F1 abre a tela");
+    assert!(abre.0, "F1 abre a tela");
     s.paint(AREA, g, &mut VectorScene::new(), ts, Theme::default());
     let lay = Layout::scrolled(AREA, &s.rows(g), s.screen(), ts);
     (s, lay)

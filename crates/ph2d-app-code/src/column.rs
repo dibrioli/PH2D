@@ -3,14 +3,15 @@
 //! grelha ([`ph2d_panel_code::splitter`]): ↔ no vão, a linha de acento por cima ou a arrastar, Esc
 //! devolve a largura do carregar. A largura vive na vista (a sessão), como a do mapa.
 //!
-//! Limites (medidos na cena 11 do smoke, `TextSystem` sem fontes do sistema, 10/11):
+//! Limites (medidos 10/11 no teste `divisor`, área 1000 × 700, `TextSystem` sem fontes do sistema:
+//! mínimo 95,6 px — o «In this script» de `speed`/`on_update` —, documento 263,2 px — a barra):
 //! - **mínimo** = a largura em que a lista ([`ScriptListView::fit_w`]: nome · contagem · lixo) e o
 //!   «In this script» ([`BancadaView::outline_fit_w`]: nome · `ln N`) cabem sem cortar, nunca acima
 //!   da de fábrica ([`ScriptListView::width`], `PANEL_MIN_W_PX` = 220): um nome mais longo que ela
 //!   continua a elidir-se como antes, e o artista pode alargar para o ler.
 //! - **máximo** = o que deixa à coluna do documento o seu mínimo: os menus e a engrenagem da barra
 //!   ([`crate::tab_menu::BarPainted::min_w`]), nunca menos que o painel mais estreito
-//!   (`PANEL_MIN_W_PX`).
+//!   (`PANEL_MIN_W_PX`). Na cena 11 a coluna nasce com 220 px e o arrasto real de 120 px dá 340.
 
 use crate::docs::CodeDocs;
 use ph2d_editor_core::math::safe_clamp;

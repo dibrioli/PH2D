@@ -19,8 +19,8 @@ pub enum Ink {
     CopyAlphaColor,
     /// Mistura a cor por cima mas guarda o alfa de destino: só pinta onde já há tinta.
     LockAlpha,
-    /// Anda um degrau na rampa (as cores escolhidas da paleta): a célula que não está na rampa
-    /// fica intacta.
+    /// Anda um degrau na rampa do documento que contém a célula ([`shade_in_document`]); fora de
+    /// toda rampa, na selecção da paleta; fora das duas, a célula fica intacta.
     Shading,
 }
 
@@ -40,7 +40,7 @@ impl Ink {
 pub fn apply(sprite: &Sprite, ink: Ink, value: u32, dest: u32, ramp: &[u32], dir: i8) -> u32 {
     match ink {
         Ink::CopyAlphaColor => value,
-        Ink::Shading => shade(ramp, dest, dir),
+        Ink::Shading => shade_in_document(sprite, ramp, dest, dir),
         Ink::Simple | Ink::AlphaCompositing | Ink::LockAlpha => {
             let src = sprite.rgba_of_value(value);
             let dst = sprite.rgba_of_value(dest);
@@ -60,6 +60,30 @@ pub fn apply(sprite: &Sprite, ink: Ink, value: u32, dest: u32, ramp: &[u32], dir
             }
         }
     }
+}
+
+/// **O Shading do documento** (P13 R2): a rampa de `sprite.ramps()` que contém `dest` manda (um
+/// degrau, parado nas pontas; a de um degrau não anda); `dest` fora de toda rampa do documento ⇒
+/// a `selection` (a lei de antes, byte a byte). Fora de Indexed a rampa são as cores da paleta.
+#[must_use]
+pub fn shade_in_document(sprite: &Sprite, selection: &[u32], dest: u32, dir: i8) -> u32 {
+    let val = |i: u8| match sprite.mode() {
+        crate::sprite::ColorMode::Indexed => u32::from(i),
+        _ => sprite.value_of_rgba(
+            sprite
+                .palette()
+                .get(usize::from(i))
+                .copied()
+                .unwrap_or_default(),
+        ),
+    };
+    for r in &sprite.ramps().ramps {
+        if let Some(p) = r.indices.iter().position(|&i| val(i) == dest) {
+            let q = (p as i64 + i64::from(dir)).clamp(0, r.indices.len() as i64 - 1) as usize;
+            return val(r.indices[q]);
+        }
+    }
+    shade(selection, dest, dir)
 }
 
 /// O degrau seguinte da rampa (parado nas pontas); fora da rampa, o próprio valor.

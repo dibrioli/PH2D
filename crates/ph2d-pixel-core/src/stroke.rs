@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use crate::brush::{Brush, SplitMix32, spray_seed};
-use crate::dither::Dither;
+use crate::dither::{Dither, PincelDither};
 use crate::dynamics::Dab;
 use crate::fill::{Bucket, bucket_cells};
 use crate::ink::{self, Ink};
@@ -55,6 +55,8 @@ pub struct Stroke {
     /// O Gradient da dinâmica: o valor de fundo, a matriz e os degraus dela que o carimbo actual
     /// acende na cor de frente ([`Self::set_dab`]).
     grad: Option<(u32, Dither, u32)>,
+    /// O pincel de dither: a secundária e o padrão ([`Self::with_dither`]).
+    dith: Option<(u32, PincelDither)>,
 }
 
 impl Stroke {
@@ -79,6 +81,7 @@ impl Stroke {
             src: BTreeMap::new(),
             start: (0, 0),
             grad: None,
+            dith: None,
         }
     }
 
@@ -149,6 +152,14 @@ impl Stroke {
     #[must_use]
     pub fn with_gradient(mut self, bg: u32, dither: Dither) -> Self {
         self.grad = Some((bg, dither, dither.lit(1.0)));
+        self
+    }
+
+    /// **O ink Dither**: cada célula tocada leva a cor do gesto ou `secondary` pelo padrão preso ao
+    /// canvas ([`PincelDither::primaria`]) — lápis, formas, spray e balde, pelo mesmo funil.
+    #[must_use]
+    pub fn with_dither(mut self, secondary: u32, d: PincelDither) -> Self {
+        self.dith = Some((secondary, d));
         self
     }
 
@@ -350,14 +361,12 @@ impl Stroke {
             return v;
         }
         let dest = sprite.value_at((self.layer, self.frame), x, y);
-        ink::apply(
-            sprite,
-            self.paint.ink,
-            self.src.get(&(x, y)).copied().unwrap_or(self.value),
-            dest,
-            &self.ramp,
-            self.dir,
-        )
+        let value = match self.dith {
+            Some((sec, d)) if !d.primaria(x, y) => sec,
+            Some(_) => self.value,
+            None => self.src.get(&(x, y)).copied().unwrap_or(self.value),
+        };
+        ink::apply(sprite, self.paint.ink, value, dest, &self.ramp, self.dir)
     }
 
     /// As células tocadas, em ordem.

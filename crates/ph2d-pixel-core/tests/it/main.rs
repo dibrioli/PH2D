@@ -29,6 +29,7 @@ mod line_parity;
 mod mede_compose;
 mod normal_map;
 mod normal_map_fusao;
+mod pintura_r2;
 mod play_oracle;
 mod pure_core;
 mod rampas;

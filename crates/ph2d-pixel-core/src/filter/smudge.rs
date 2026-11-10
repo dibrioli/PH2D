@@ -14,6 +14,11 @@ pub enum Kind {
     #[default]
     Blur,
     Jumble,
+    /// Empurra: cada célula do carimbo recebe a cor da célula ANTERIOR do traço (o mesmo desvio que
+    /// o cursor andou), misturada em RGBA com a força `forca / 255`; em Indexed volta à paleta.
+    Push {
+        forca: u8,
+    },
 }
 
 /// O gesto: a imagem de trabalho do cel e as células que já mudaram.
@@ -22,6 +27,8 @@ pub struct Smudge {
     img: Source,
     touched: Vec<bool>,
     rng: SplitMix32,
+    /// O centro do carimbo anterior (o Push lê o desvio a partir dele).
+    last: Option<Cell>,
 }
 
 impl Smudge {
@@ -34,6 +41,7 @@ impl Smudge {
             img,
             touched,
             rng: SplitMix32::new(seed),
+            last: None,
         }
     }
 
@@ -62,6 +70,7 @@ impl Smudge {
                         let (dx, dy) = ((r % 3) as i32 - 1, (r / 3) as i32 - 1);
                         before.at_edge(x + dx, y + dy, Edge::Clamp)
                     }
+                    Kind::Push { .. } => return None,
                 };
                 Some((y as usize * before.width() as usize + x as usize, c))
             })
@@ -69,6 +78,44 @@ impl Smudge {
         for (i, c) in new {
             self.img.set_index(i, c);
             self.touched[i] = true;
+        }
+    }
+
+    /// Um carimbo centrado em `at`: o Push arrasta do carimbo anterior; Blur e Jumble são [`Self::dab`].
+    pub fn arrasta(&mut self, s: &Sprite, at: Cell, cells: &[Cell]) {
+        let Kind::Push { forca } = self.kind else {
+            self.dab(cells);
+            return;
+        };
+        let Some(prev) = self.last.replace(at) else {
+            return;
+        };
+        let (dx, dy) = (at.0 - prev.0, at.1 - prev.1);
+        let f = u32::from(forca);
+        let before = &self.img;
+        let new: Vec<(usize, [u8; 4])> = cells
+            .iter()
+            .filter_map(|&(x, y)| {
+                let cur = before.get(x, y)?;
+                let from = before.at_edge(x - dx, y - dy, Edge::Clamp);
+                let mut c = [0u8; 4];
+                for k in 0..4 {
+                    c[k] = ((u32::from(from[k]) * f + u32::from(cur[k]) * (255 - f) + 127) / 255)
+                        as u8;
+                }
+                let c = s.rgba_of_value(s.value_of_rgba(c));
+                Some((y as usize * before.width() as usize + x as usize, c))
+            })
+            .collect();
+        for (i, c) in new {
+            if self.img.get(
+                (i % self.img.width() as usize) as i32,
+                (i / self.img.width() as usize) as i32,
+            ) != Some(c)
+            {
+                self.touched[i] = true;
+            }
+            self.img.set_index(i, c);
         }
     }
 

@@ -68,3 +68,24 @@ fn bayer(k: u32, i: u32, j: u32) -> u32 {
         acc + digit * 4u32.pow(k - 1 - b)
     })
 }
+
+/// **O pincel de dither** (P13 R2): `nivel ∈ 0..=64` sobre a matriz. A célula `(x, y)` do CANVAS
+/// pinta a primária se o degrau dela, levado à escala 64 (`level · 64 / side²`), fica abaixo do
+/// nível — senão a secundária. Posição absoluta: o padrão não nada com o traço nem com o cel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PincelDither {
+    pub nivel: u8,
+    pub matriz: Dither,
+}
+
+impl PincelDither {
+    /// O nível máximo (tudo primária).
+    pub const MAX: u8 = 64;
+
+    /// `true` = a célula `(x, y)` do canvas leva a cor primária.
+    #[must_use]
+    pub fn primaria(self, x: i32, y: i32) -> bool {
+        let n2 = self.matriz.side() * self.matriz.side();
+        self.matriz.level(x, y) * (u32::from(Self::MAX) / n2) < u32::from(self.nivel)
+    }
+}

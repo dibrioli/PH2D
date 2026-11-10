@@ -186,3 +186,70 @@ fn o_tab_rola_a_regiao_ate_ao_controlo_focado_inteiro() {
     }
     assert!(revelados > 0, "o teste viu algum controlo da região");
 }
+
+/// ⭐ Lei 6 (o caso que EXIGE a rolagem): a 1280 a B empilha e, com muitas acções, a lista passa do recorte; o Tab
+/// desce linha a linha e cada controlo focado numa linha que o recorte escondia tem de ficar INTEIRO dentro dele.
+/// Sem `reveal_control` o foco pousa abaixo do recorte e o anel não se vê.
+#[test]
+fn o_tab_traz_para_a_vista_a_linha_que_o_recorte_escondia() {
+    use super::teclado_censo::AREAS;
+    use ph2d_editor_core::doc_surface::Key as DocKey;
+    let area = AREAS[1];
+    let mut m = Mesa::aberta(View::Keyboard);
+    let mut map = ph2d_input::InputMap::with_player_defaults();
+    for i in 0..40 {
+        map.create(&format!("acao_{i:02}"));
+    }
+    m.hero.input_map = map;
+    m.frame();
+    m.click(m.at(KbHit::Sub(Sub::Gamepad).id()));
+    m.paint_in(area);
+    assert!(m.tab().doc.kb.stacked, "a 1280 a B empilha");
+    let mut fundo_visto = 0;
+    let mut maior_scroll = 0.0_f32;
+    for i in 0..120 {
+        m.key(DocKey::Tab, None);
+        m.paint_in(area);
+        let doc = &m.tab().doc;
+        maior_scroll = maior_scroll.max(doc.kb.scroll);
+        let (Some(f), Some(clip)) = (doc.focused(), doc.census.clip) else {
+            continue;
+        };
+        let r = doc.rect_of(f).expect("o foco tem alvo");
+        let na_coluna = r.x >= clip.x && r.x + r.w <= clip.x + clip.w;
+        if !na_coluna || r.y + r.h <= clip.y {
+            continue;
+        }
+        fundo_visto += 1;
+        assert!(
+            r.y >= clip.y - 0.5 && r.y + r.h <= clip.y + clip.h + 0.5,
+            "Tab n.º {i}: o foco {f:?} {r:?} ficou fora do recorte {clip:?}"
+        );
+    }
+    assert!(fundo_visto > 20, "o Tab percorreu a região: {fundo_visto}");
+    assert!(maior_scroll > 0.0, "a lista passou do recorte e rolou");
+}
+
+/// Hole F5: o F5 é o Play/Stop do editor; com a acção aberta e sem ligações («press one») ele passa ao editor e não
+/// liga, e a mesma acção aceita uma tecla do jogo logo a seguir (o controlo: a porta estava aberta). A escuta
+/// EXPLÍCITA do ladrilho «Listen» é outra lei (a escuta partilhada toma tudo menos Esc e o sistema): não entra aqui.
+#[test]
+fn o_f5_em_press_one_nunca_liga_e_fica_como_tecla_do_editor() {
+    let f5 = Key::named_in_script("f5").expect("f5")[0];
+    let mut m = Mesa::aberta(View::Keyboard);
+    m.hero.input_map = super::lista::onze();
+    m.frame();
+    let reload = m.hero.input_map.id("reload").expect("reload");
+    m.click(m.at(KbHit::Row(reload).id()));
+    assert!(m.hero.store.input_map_listening().is_none(), "sem escuta");
+    assert!(!m.physical(f5), "o F5 segue para o editor");
+    assert!(
+        m.hero.input_map.get(reload).expect("a").bindings.is_empty(),
+        "o F5 ligou-se"
+    );
+    assert!(
+        m.physical(Key(u32::from('J'))),
+        "o controlo: «press one» liga"
+    );
+    assert_eq!(m.hero.input_map.get(reload).expect("a").bindings.len(), 1);
+}

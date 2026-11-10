@@ -460,7 +460,9 @@ fn what_a_diagonal_ctrl_z_copies_at_4k() {
         let donos = std::sync::Arc::strong_count(&t.canvas_rgba);
         eprintln!("  variantes do topo: {:?}", t.undo.probe_top_variants());
         let (mut un, mut re, mut cu, mut cr) = (f64::MAX, f64::MAX, 0, 0);
+        let (mut su, mut sr) = (Vec::new(), Vec::new());
         for _ in 0..5 {
+            let _ = crate::plane_copy::par_clone_sites_desde_a_ultima();
             let c0 = crate::plane_copy::par_clones_nesta_thread();
             let t0 = Instant::now();
             assert!(
@@ -476,6 +478,9 @@ fn what_a_diagonal_ctrl_z_copies_at_4k() {
             );
             re = re.min(t1.elapsed().as_secs_f64() * 1e3);
             let c2 = crate::plane_copy::par_clones_nesta_thread();
+            let sites = crate::plane_copy::par_clone_sites_desde_a_ultima();
+            let (a, b) = sites.split_at(c1 - c0);
+            (su, sr) = (a.to_vec(), b.to_vec());
             (cu, cr) = (c1 - c0, c2 - c1);
             assert!(
                 cu >= 1,
@@ -485,5 +490,6 @@ fn what_a_diagonal_ctrl_z_copies_at_4k() {
         eprintln!(
             "impasto={impasto} donos da tela {donos} · undo {un:.2} ms ({cu} copias) · redo {re:.2} ms ({cr} copias)"
         );
+        eprintln!("  sitios do undo: {su:?}\n  sitios do redo: {sr:?}");
     }
 }

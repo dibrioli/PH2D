@@ -196,7 +196,7 @@ impl PainterTool {
         // undone ones. The canvas is replaced on the very next line, so nothing here could survive as a
         // valid base — dropping it makes the next gated batch re-seed from the restored truth.
         self.end_gate_session();
-        self.replace_canvas(m.canvas_rgba);
+        self.instala_a_tela_do_restauro(m.canvas_rgba);
         self.selection = m.selection;
         // Reinstate the Mask brush scratch + target so an undo/redo across a mask stroke restores the
         // live mask-in-progress in lock-step with the pixels (the composite rebuild below reads it).

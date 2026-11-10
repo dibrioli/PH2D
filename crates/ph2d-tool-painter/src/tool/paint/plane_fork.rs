@@ -233,6 +233,14 @@ impl crate::tool::PainterTool {
         open_access(&self.undo.write_state);
         self.canvas_rgba = new;
     }
+
+    /// [`Self::replace_canvas`] SEM a captura: só para o restauro de um undo/redo, que reseta o journal
+    /// no fim (`restore_model_confined`) — a cópia do plano inteiro nele era jogada fora (B17b-cont).
+    pub(crate) fn instala_a_tela_do_restauro(&mut self, new: Arc<Vec<u8>>) {
+        self.undo.write_state.a_tela_sai(&self.canvas_rgba);
+        open_access(&self.undo.write_state);
+        self.canvas_rgba = new;
+    }
 }
 
 /// **A porta de um plano que NÃO é documento** — a base congelada da aquarela, que o Smudge arrasta e o

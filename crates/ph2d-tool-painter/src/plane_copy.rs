@@ -66,6 +66,7 @@ pub(crate) const fn worth_parallel_fill<T>(len: usize) -> bool {
 }
 
 /// Clona um plano, em paralelo quando [`worth_parallel`] diz que vale.
+#[cfg_attr(test, track_caller)]
 pub(crate) fn par_clone<T>(src: &[T]) -> Vec<T>
 where
     T: Copy + Default + Send + Sync,
@@ -74,7 +75,11 @@ where
         return src.to_vec();
     }
     #[cfg(test)]
-    PAR_CLONES.with(|c| c.set(c.get() + 1));
+    {
+        PAR_CLONES.with(|c| c.set(c.get() + 1));
+        let onde = std::panic::Location::caller();
+        PAR_CLONE_SITES.with(|s| s.borrow_mut().push((onde.file(), onde.line())));
+    }
     // Em BLOCOS de `memcpy`: o `collect` do rayon escreve elemento a elemento (ver a Z1 acima). O
     // destino nasce por `alloc_zeroed` (páginas do SO, sem escrita) e cada fio falta as suas.
     let bloco = (COPY_BLOCK_BYTES / size_of::<T>()).max(1);
@@ -125,6 +130,14 @@ where
 thread_local! {
     static PAR_FILLS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     static PAR_CLONES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    static PAR_CLONE_SITES: std::cell::RefCell<Vec<(&'static str, u32)>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Os sítios (`file`, `line`) das cópias em blocos desta thread desde a última chamada — a atribuição
+/// de uma sonda (B17b-cont: de onde vem cada plano inteiro que um Ctrl+Z copia).
+#[cfg(test)]
+pub(crate) fn par_clone_sites_desde_a_ultima() -> Vec<(&'static str, u32)> {
+    PAR_CLONE_SITES.with(|s| std::mem::take(&mut *s.borrow_mut()))
 }
 
 /// Quantas cópias o [`par_clone`] fez em blocos **nesta thread** (o gate de quem tem de nascer por ele).

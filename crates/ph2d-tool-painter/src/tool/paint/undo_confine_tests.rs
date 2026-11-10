@@ -479,3 +479,35 @@ fn um_undo_confinado_so_sobe_a_versao_da_camada_que_mudou() {
         "as camadas que o passo não tocou não sobem de versão"
     );
 }
+
+/// **Um Ctrl+Z copia só os planos que o passo mudou** (B17b-cont). O `restore` reseta o journal no fim,
+/// então a captura do plano inteiro que a troca da tela fazia nele era jogada fora (debug/test: a rede).
+#[test]
+fn um_ctrl_z_copia_so_os_planos_que_o_passo_mudou() {
+    // 1536² RGBA = 9,4 MB: acima do limiar das cópias em blocos, que são as que se contam.
+    for impasto in [false, true] {
+        let mut t = armed(1536);
+        t.paint.brush.impasto = impasto;
+        let b = t.paint.brush;
+        t.paint.brush_by_mode.fill(b);
+        stroke(&mut t, 300.0);
+        let _ = t.take_preview_arc();
+        for desfaz in [true, false] {
+            let _ = crate::plane_copy::par_clone_sites_desde_a_ultima();
+            assert!(if desfaz { t.undo_last() } else { t.redo_last() });
+            let sitios = crate::plane_copy::par_clone_sites_desde_a_ultima();
+            assert!(
+                sitios.iter().any(|s| s.0.ends_with("undo_delta.rs")),
+                "CONTROLO (impasto={impasto}, desfaz={desfaz}): o lado do delta copia o plano — {sitios:?}"
+            );
+            let alheias: Vec<_> = sitios
+                .iter()
+                .filter(|s| !s.0.ends_with("undo_delta.rs"))
+                .collect();
+            assert!(
+                alheias.is_empty(),
+                "impasto={impasto}, desfaz={desfaz}: cópias que não são o lado do delta — {alheias:?}"
+            );
+        }
+    }
+}

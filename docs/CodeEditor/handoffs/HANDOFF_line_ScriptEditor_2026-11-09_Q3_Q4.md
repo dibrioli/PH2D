@@ -3,7 +3,8 @@
 > Plano: [14_plano_quadros.md](../14_plano_quadros.md) · maquete
 > [14_quadros_do_depurador.html](../maquetes/14_quadros_do_depurador.html) · antes:
 > [Q1+Q2](HANDOFF_line_ScriptEditor_2026-11-09_Q1_Q2.md) (smoke aprovado 09/11). **Não integrado, sem push.**
-> Q3: commit `4960f77ba5`, smoke do dono **pendente** (cena 14, passos 7–10). Q4: **por fazer** (§4).
+> Q3: commit `4960f77ba5`, smoke do dono **pendente** (cena 14, passos 7–10). Q4: feita (commits `a4852bd071`,
+> `0a31976fab`, `a3259bc58d`, `3d62984e3d`, §6), smoke do dono **pendente** (cena 13 + Script options + Problems).
 
 ## 1. Q3 — o «Live values» em tabela (feito)
 
@@ -115,3 +116,68 @@ Verdes também: `quadro_do_depurador` 5; `ph2d-app-code` `depurador` 13, `barra_
 `ph2d-editor-core` `shell_only_shrinks`, `workspace_file_loc_cap`, `panel_loc_cap`, `no_magic_numeric`,
 `no_literal_color`, `hr15`. Fotos: `ferramentas/smoke/cena14/passo_7.png` (molduras no código e a tabela),
 `passo_7_pairar_line.png` (`RATO="568 533"`: moldura à volta do «17»), `passo_10.png` (Strip).
+
+## 6. Q4 — a mesma família na tabela da casa (feito, smoke do dono pendente)
+
+Quatro commits sobre `32b7bf216e`. Maquete: «A mesma família nos outros quadros» (linhas 261–316).
+
+1. **`a4852bd071` — a tabela** (`ph2d-ui-table`): `Key = Cow<'static, str>` em `Column/ColSpan/Hit/TableState.widths/hidden`
+   (a grelha tem uma coluna por `ph2d.property`); `TableState.selected` (vence changed e hover); `lit_col` (AccentSoft +
+   título Text1) e `soft_col`; `Cell.changed` (banda `changed_tint` recuada `Xxs`, texto `Ink::Changed`) e `Cell.swatch`;
+   `Metrics.header_h = 0` = sem cabeçalho (nem pintura nem clique); `paint_cell_frames`/`Layout::cell_frame` movidos de
+   `live_marks`; `StableWidths` (por chave, só crescem) substitui `Steady::cols`.
+2. **`0a31976fab` — a grelha «Who has what»** (`bancada/grid.rs`) passa a `ph2d_ui_table::layout/paint`: coluna `@name`
+   (`Cell.dot = ColorToken::layer`) + uma por propriedade (números `end`+mono); hover = linha sob o rato/espiada/em edição;
+   `lit_col` = `Aim::Column/Cell/edição`; `text_field` da edição sobre `lay.cell_frame`; `grid_hits` saem da MESMA `Layout`.
+   Tecto ⅓ da coluna em linhas inteiras, roda, barra ↕ arrastável, puxadores de coluna. `splitter.rs`: a lei do separador da
+   Sheet passa a comum (`Splitter` serve grelha|mapa; `debug_card/split.rs` delega). `BancadaView::{release, look}`.
+   `fotos_q3.sh` ganhou `CENA`.
+3. **`a3259bc58d` — «Script options»**: pintura e estado (`OptionsCard`, `OptionsPainted`) da `ph2d-app-code` para
+   `ph2d-panel-code/src/options_card.rs`; a app fica com a cola. Por opção: título, `Toggle` à direita, frase (Text3/Xs); a
+   linha inteira é o alvo (mão; moldura de hover BorderStrong/Thin e de clique Accent/Thick, recuadas `Xxs`). Frases
+   `code.options.{strict,format,hints}_says`.
+4. **`3d62984e3d` — balão ◆ e Problems**: balão (`bancada/popover.rs`) = faixa «**speed** · line 1 … default 220» («heard by»
+   no sinal ouvido) + tabela sem cabeçalho (ponto+nome · valor end/mono · estado Muted); `Row.changed` âmbar; `pop_hits` de
+   `lay.rows`. Problems (`console/problems.rs`) = Problem (flex) · On (Muted) · Line (end, mono); F8 = `TableState.selected`
+   e rola em linhas inteiras; barra ↕; `PaintedProblem`/a11y de `lay.rows`. `Layout::row_frame` + `paint_row_frames`.
+   `Problem.on` (`ph2d-code-viewmodel`): o merge dá «Circle, Star +1»; a mensagem guarda «· ×N» / «— in Play» / «— ×N in Play».
+
+### Provas (cada lei com vermelho por mutação)
+
+| Teste | Mutação → resultado |
+|---|---|
+| `ph2d-ui-table`: 7 testes novos (chaves dinâmicas, coluna acesa, célula mudada, selecção, cor, sem cabeçalho, molduras, larguras estáveis) | 15 mutações, todas vermelhas ✓ |
+| `ph2d-panel-code` `bancada::grelha` (5) | 8 mutações, todas vermelhas ✓ |
+| costura da app na grelha (o Up larga o arrasto; `tab_pointer_look` pergunta `bench.look`): teste TEMPORÁRIO em `onda_b`, retirado (sem folga na catraca) | 2 mutações vermelhas ✓ |
+| balão: sonda `popover_table()`; Problems: sonda `problems_table()` | verdes (mensagem do commit C) |
+
+### Folgas finais (medidas 09/11, `wc -l` e a mesma contagem da catraca)
+
+- `ph2d-app-code` **26 451 / 26 628** (folga 177; D: 26 628 → 26 455, C: −4).
+- `ph2d-code-viewmodel` **304 / 304 — CHEIO** (qualquer linha nova aqui exige corte).
+- `ph2d-panel-code` (cap 600 por ficheiro): `popover.rs` 220 · `problems.rs` 330 · `options_card.rs` 343 · `grid.rs` 366 ·
+  `splitter.rs` 128 · maior da crate `help/layout.rs` 591 (não tocado) · `debug_card/live.rs` 557.
+- `ph2d-ui-table/src/lib.rs` 685 / 700 (cap do workspace); `paint.rs` 435.
+
+### Fotos e lado a lado
+
+`ferramentas/smoke/cena13/q4_balao.png`, `q4_passo_1..3.png`, `q4_separador_rato.png` ·
+`ferramentas/smoke/q4_options.png`, `q4_options_hover.png`, `q4_problems.png`, `q4_problems_hover.png` ·
+**lado a lado** `ferramentas/smoke/maquete_lado_a_lado_q4.png` (Firefox headless `--screenshot --window-size=1500,2600` da
+maquete + recortes: balão, Script options, Problems, grelha). Na maquete o Problems sai cortado na coluna Line (a grelha do
+HTML estreita a coluna) e a grelha «Who has what» não existe lá: o par é o quadro A (planilha).
+
+### Desvios conhecidos (para o dono ver no smoke)
+
+- O interruptor sai como a **marca quadrada da casa** (`PH2D_UI_NEW`), não a pílula da maquete.
+- «Strict types» mantém o nome da paleta e a frase **verdadeira** («Adds --!strict on line 1, so every type is checked»);
+  a da maquete («Warn about names the script never declared») era falsa.
+- **«On» só nos erros de corrida** («Circle, Star +1»); «—» nos do assistente (medido: os diagnósticos não sabem o objecto).
+- A grelha não usa a mono (`UiText`); a linha acesa da grelha é a linha inteira; os fios das colunas descem pelo vazio
+  abaixo da última linha; o ponto da gravidade/do balão fica deslocado pela reserva do ▸ na 1.ª coluna.
+- **Nenhum teste corre a cena 13 passo 1** (só a foto).
+- `fotos_q3.sh` ganhou `CENA` (display `:60+CENA+passo`): cenas com a mesma soma podem colidir.
+
+### Aberto
+
+Smoke do dono da Q4 (cena 13 passos 1–3 + cartão Script options + painel Problems). Sem integração nem push.

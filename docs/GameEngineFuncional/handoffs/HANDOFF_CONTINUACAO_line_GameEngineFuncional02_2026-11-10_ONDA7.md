@@ -13,7 +13,14 @@ Branch `line/GameEngineFuncional02`, worktree `/home/enio/Documentos/Projetos/PH
 
 ## 2. Decisões do dono (10/11)
 
-Smoke da onda 7 = **OK** (cena `PH2D_PHYSICS_SMOKE=66 PH2D_PHYSICS_SMOKE_ANIMA=1`). Falta a decisão da §7.1.
+Smoke da onda 7 = **OK** (cena `PH2D_PHYSICS_SMOKE=66 PH2D_PHYSICS_SMOKE_ANIMA=1`).
+
+**Respostas ao §7 (dono 10/11)** — todas as 5 perguntas respondidas; a lista da ONDA 8 está na §7.
+1. Crescer a partir do centro ou de âncora: «Cresce com o pivot da shape como centro se a shape sofre a transformação. Se o objeto (sprite, vector, etc) é transformado, cresce como filho do objeto (já está assim). O que ainda não temos é a possibilidade de mudar o pivot do collision shape. Vc pode implementar a seção Look completa do sprite para o collision shape.»
+2. Penetração durante a rampa: «Se conseguir fazer melhor que a Godot faça. Desde que não perca performance e precisão.»
+3. Width/Height 1×/quadro: «Meça»
+4. Motor da junta na Timeline: «Corrija para graus»
+5. Herdados do OUTLINE_E_F3 §11.5: «Corrija»
 
 ## 3. O que mudou
 
@@ -53,14 +60,15 @@ Prefixo: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncio
 
 Armadilha das fotos: `docs/Components/ferramentas/fotografa_cena.sh` — env vars TODAS no 1.º argumento; casos de física com prefixo `fisica_`.
 
-## 7. ABERTO (por ordem)
+## 7. ONDA 8 (por ordem; o dono já decidiu, §2)
 
-1. **Decisão do dono:** a forma de colisão cresce a partir do CENTRO (como Godot/Unity) e por isso passa do pino ao alargar — manter, ou crescer a partir de uma âncora/lado? Perguntar ao Enio primeiro.
-2. Opcional: penetração ~0,5–1 cm durante uma rampa de altura (Box2D/Godot iguais).
-3. Width/Height pelo cartão (canais FISICA) só chegam ao componente 1×/quadro (o `TimelineScene.put` por tique escreve `CanaisEscritos`, mas `canais_corpo::aplicar` só corre no quadro); a escala já é por tique. Medir se vale.
-4. `PropKind::JointMotorTarget/Speed` em graus e no referencial do objeto na Timeline (toca `ph2d-timeline` + shell `timeline_bridge_keys.rs`; coordenar com a linha Timeline).
-5. Herdados do OUTLINE_E_F3 §11.5: censo de sinais, O(pontos²) do traço, ponte de navegação, macro que muda o nº de pontos sem modal, painel `PH2D_CARDS=0`.
-6. Fecho da linha (clippy, handoff de integração) só por ordem do Enio.
+1. **Secção Look completa na forma de colisão.** Dar ao objeto-filho Collision Shape ([ADR-0199](../../architecture/decisions/0199-a-forma-de-colisao-e-um-objeto-filho-do-corpo.md)) a secção Look COMPLETA que a Sprite tem no Inspector (inclui Pivot e Align; ver [ALIGN_E_PIVOT](HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-09_ALIGN_E_PIVOT.md)); o tamanho animado da forma cresce em volta do PIVOT dela (objeto transformado: cresce como filho do objeto, já é assim). **Primeiro passo:** inventariar a secção Look da Sprite no código (cartão, campos, canais/Auto Key, gates) antes de desenhar.
+2. **Penetração de ~0,5–1 cm numa rampa de altura/escala:** melhorar além de Godot/Box2D sem perder desempenho nem precisão. Medir antes; tabela de medição ao lado.
+3. **Medir** se Width/Height pelo cartão (canais FISICA) chegarem só 1×/quadro ao componente (o `TimelineScene.put` por tique escreve `CanaisEscritos`, mas `canais_corpo::aplicar` só corre no quadro) fazem diferença visível/medível; curar só se medir.
+4. **Graus:** `PropKind::JointMotorTarget/Speed` em graus e no referencial do objeto na Timeline (`ph2d-timeline` `apply_prop` `JointField` + `shells/desktop/src/timeline_bridge_keys.rs`; coordenar com a linha Timeline viva — se o rebase conflitar fora dos ficheiros da linha, PARAR e reportar ao Enio).
+5. **Herdados** do [OUTLINE_E_F3](HANDOFF_INTEGRACAO_line_GameEngineFuncional02_2026-11-09_OUTLINE_E_F3.md) §11.5 (censo de sinais, O(pontos²) do traço, ponte de navegação, macro que muda o nº de pontos sem modal, painel `PH2D_CARDS=0`): ler a §11.5 e corrigir cada um com teste nascido vermelho.
+
+O fecho da linha (clippy, handoff de integração) e a integração continuam só por ordem do Enio.
 
 **Riscos:** ficheiros `.log` das fotos por rastrear em `docs/GameEngineFuncional/handoffs/fotos_fisica/` — NUNCA `-A`; comite por path. `physics_apply.rs` 599/600. Integração só por ordem do Enio; smoke do dono não é aprovação.
 
@@ -72,17 +80,21 @@ Armadilha das fotos: `docs/Components/ferramentas/fotografa_cena.sh` — env var
 Worktree: /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02
 Antes de ler: cd lá, `pwd`, `git branch --show-current` (tem de dar line/GameEngineFuncional02).
 HEAD = o commit do handoff docs/GameEngineFuncional/handoffs/HANDOFF_CONTINUACAO_line_GameEngineFuncional02_2026-11-10_ONDA7.md
-(confira com `git log --oneline -3`). Leia esse handoff (§7 ABERTO) e CLAUDE.md.
+(confira com `git log --oneline -3`). Leia esse handoff (§2 respostas do dono e §7 ONDA 8) e CLAUDE.md.
 
 Estado: onda 7 feita; smoke do dono OK em 10/11 (cena PH2D_PHYSICS_SMOKE=66 PH2D_PHYSICS_SMOKE_ANIMA=1):
 a física ficou fluida com limites de junta e tamanhos de forma animados (junta de mundo no referencial
-do objeto, formas reafinadas no lugar e por tique, corpo acorda). Nada integrado, nada com push.
-PROJECT_SCHEMA = 231.
+do objeto, formas reafinadas no lugar e por tique, corpo acorda). O dono já respondeu às 5 perguntas
+do ABERTO (estão na §2/§7 do handoff). Nada integrado, nada com push. PROJECT_SCHEMA = 231.
 
-Missão: o ABERTO da §7. PRIMEIRO peça ao Enio a decisão (1), em linguagem simples: a forma de colisão
-cresce a partir do CENTRO (como Godot/Unity) e por isso passa do pino ao alargar — manter, ou crescer a
-partir de um lado/âncora? Só depois os itens 2–5 por ordem (medir antes de curar); o fecho da linha
-(clippy, handoff de integração) só por ordem do Enio.
+Missão (onda 8), os 5 itens da §7 por ordem, sem pedir de novo a decisão ao Enio:
+(1) começando pelo INVENTÁRIO da secção Look da Sprite no código (cartão, campos, canais/Auto Key,
+gates), depois dar à forma de colisão a secção Look completa (Pivot e Align incluídos), com o tamanho
+animado a crescer em volta do pivot dela; (2) penetração na rampa: melhorar além de Godot sem perder
+desempenho nem precisão; (3) medir se Width/Height por tique fazem diferença, curar só se medir;
+(4) motor da junta (JointMotorTarget/Speed) em graus e no referencial do objeto na Timeline;
+(5) herdados do OUTLINE_E_F3 §11.5, cada um com teste nascido vermelho. Medir antes de curar; o fecho
+da linha (clippy, handoff de integração) só por ordem do Enio.
 
 Regras de sempre: UI só em inglês, por tokens/i18n (zero hex, zero string solta); teste por NOME,
 nascido vermelho, com prova de mutação; inner loop = cargo-check-narrow; comando pesado por

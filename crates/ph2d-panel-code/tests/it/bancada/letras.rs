@@ -398,6 +398,74 @@ fn a_frase_sem_propriedades_e_o_texto_dos_problemas_tem_a_letra_de_alive() {
     );
 }
 
+/// (4b) Dono 10/11, «a letra do script igual à dos problemas»: uma linha do código, o texto de um
+/// problema e «alive» saem na MESMA corrida (fonte, índice, corpo, eixo do peso) em Small, Normal
+/// e Large, e o corpo é o mostrado do `Base`.
+#[test]
+fn a_linha_do_codigo_tem_a_letra_do_texto_dos_problemas() {
+    use ph2d_tokens::{UiTextSize, UiTextStyle};
+    let antes = ph2d_text::active_text_style();
+    let mut falhas = Vec::new();
+    for size in [UiTextSize::Small, UiTextSize::Normal, UiTextSize::Large] {
+        ph2d_text::set_active_text_style(UiTextStyle { size, ..antes });
+        let mut ts = TextSystem::without_system_fonts();
+        let texto = "alive";
+        let mut code = CodeView::new();
+        let aba = Rect::new(0.0, 0.0, 600.0, 400.0);
+        let cena = corridas(&crate::pinta(
+            &mut code,
+            &Buffer::new("alive\n"),
+            &mut ts,
+            aba,
+            &crate::Deco::default(),
+        ));
+        let linha = letra(achar(&cena, &ids_mono(&mut ts, texto), "a linha do código"));
+        let problemas = [ProblemRow {
+            severity: Severity::Error,
+            text: texto,
+            line: 1,
+            on: "",
+        }];
+        let band = Band {
+            open: true,
+            tab: BandTab::Problems,
+            console: &Vazia,
+            problem_count: 1,
+            problems: &problemas,
+            current: None,
+            tab_width: 4,
+        };
+        let (mut c, mut s) = (ConsoleView::default(), VectorScene::new());
+        let faixa = Rect::new(0.0, 0.0, 800.0, ROW_H_PX * 6.0);
+        c.paint(band, faixa, &mut code, &mut s, &mut ts, &Theme::default());
+        let p = letra(achar(
+            &corridas(&s),
+            &ids_mono(&mut ts, texto),
+            "o problema",
+        ));
+        let alive = letra(achar(
+            &quadro(&mut ts),
+            &ids_mono(&mut ts, texto),
+            "«alive»",
+        ));
+        eprintln!(
+            "{size:?}: código {} px · problema {} px · alive {} px · linha {} px",
+            linha.2,
+            p.2,
+            alive.2,
+            code.metrics().line_h
+        );
+        let quer = ph2d_text::displayed_font_px(TypeToken::Base.px());
+        if linha != p || p != alive || (linha.2 - quer).abs() > 1e-4 {
+            falhas.push(format!(
+                "{size:?}: código {linha:?} · problema {p:?} · alive {alive:?}"
+            ));
+        }
+    }
+    ph2d_text::set_active_text_style(antes);
+    assert!(falhas.is_empty(), "{falhas:#?}");
+}
+
 /// A grelha de `quem()` pintada com a mono medida em `theme`: as corridas e a tinta de cada uma
 /// (ids, a cor que o Vello codificou à frente da corrida, RGBA pré-multiplicado).
 fn grelha(ts: &mut TextSystem, theme: Theme) -> (Vec<Corrida>, Vec<(Vec<u32>, u32)>) {

@@ -110,6 +110,7 @@ fn populate_player_boxes(store: &mut WidgetStore) {
     // As dobras nascem fechadas; depois manda o que o artista abriu. `PH2D_PLAYER_DOBRAS=1` abre-as para a foto.
     let abertas = std::env::var_os("PH2D_PLAYER_DOBRAS").is_some();
     for id in ids::INSP_PLAYER_FOLDS {
+        store.mark_collapsible_section(id);
         store.set_collapsed_if_unchosen(id, !abertas);
     }
 }

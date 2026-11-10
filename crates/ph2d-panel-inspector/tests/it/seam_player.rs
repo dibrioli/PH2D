@@ -1578,3 +1578,37 @@ fn the_live_readout_takes_room_only_where_there_is_a_player() {
     assert!(emit(&with), "a caixa da saída é pintada com o player vivo");
     assert!(!emit(&empty_face), "e não na face vazia");
 }
+
+/// ⭐ **Cada dobra do Platform Player abre pelo CLIQUE no título** — o smoke do dono (10/11) achou-as
+/// todas mortas: pintadas e registadas, mas o store não as marcava como secção dobrável.
+#[test]
+fn cada_dobra_do_player_abre_pelo_clique_no_titulo() {
+    for id in ph2d_panel_inspector::ids::INSP_PLAYER_FOLDS {
+        let mut host = crate::host_em_metros();
+        for outra in ph2d_panel_inspector::ids::INSP_PLAYER_FOLDS {
+            host.set_collapsed(outra, outra != id);
+        }
+        // A Wall Sensor mora dentro de Walls: Walls aberta para ela aparecer.
+        if id == ph2d_panel_inspector::ids::INSP_PLAYER_FOLD_WALL_SENSOR {
+            host.set_collapsed(ph2d_panel_inspector::ids::INSP_PLAYER_CARD_WALL, false);
+        }
+        host.set_collapsed(id, true);
+        let mut state = InspectorState::default();
+        set_current_inspector_player(Some(player()));
+        let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        let rect = rects
+            .iter()
+            .find(|(n, _)| *n == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("a dobra {id:?} não foi pintada"));
+        for ev in host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5) {
+            let _ = host.apply_panel_event::<InspectorPanel>(&mut state, ev);
+        }
+        let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+        set_current_inspector_player(None);
+        assert!(
+            !host.store().is_collapsed(id),
+            "clicar no título de {id:?} não a abriu"
+        );
+    }
+}

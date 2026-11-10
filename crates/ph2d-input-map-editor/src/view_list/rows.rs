@@ -173,12 +173,13 @@ fn paint_row(
     let head = Rect::new(r.x, r.y, r.w, ROW_H);
     fill_rounded_rect(scene, r, m::FIELD_RADIUS, ink.color(ColorToken::KanbanCard));
     if doc.snap.listening == Some(a.id) {
+        // A linha à escuta: o acento vivo no traço do cartão (maquete A2), mais forte que o anel do foco.
         stroke_rounded_rect(
             scene,
             r,
             m::FIELD_RADIUS,
-            m::FIELD_BORDER,
-            ink.color(ColorToken::FocusRing),
+            StrokeToken::Default.px(),
+            ink.color(ColorToken::Accent),
         );
         doc.census.outlined.push(r);
     }
@@ -351,6 +352,8 @@ fn paint_plus(
         let msg = tr(key);
         let w = (ts.prefix_width(msg, m::VALUE_PX) + m::SEG_INSET * 2.0).min(room.w);
         let r = Rect::new(room.x, room.y, w, room.h);
+        // A caixa à escuta tingida de azul por baixo do tracejado (maquete A2).
+        fill_rounded_rect(scene, r, m::SEG_RADIUS, ink.color(ColorToken::AccentSoft));
         super::listening_ring(&mut doc.census, scene, r, ink);
         let inner = Rect::new(r.x + m::SEG_INSET, r.y, r.w - m::SEG_INSET * 2.0, r.h);
         text::line(
@@ -360,7 +363,7 @@ fn paint_plus(
             msg,
             inner,
             m::VALUE_PX,
-            ink.color(ColorToken::Text2),
+            ink.color(ColorToken::Text1),
         );
         doc.hits.register(ListHit::Listen(id).id(), r);
         return;

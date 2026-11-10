@@ -87,6 +87,10 @@ pub struct InputMapDoc {
     pub(crate) layout: Layout,
     /// O segmento sob o ponteiro (a dica).
     pub(crate) hover: Option<View>,
+    /// O ponteiro está sobre a faixa do Play (a dica dela, em todas as vistas).
+    pub(crate) banner_hover: bool,
+    /// O mapa como ficou depois do último `end_frame`: outro no quadro seguinte = trocado lá fora.
+    applied: Option<ph2d_input::InputMap>,
     /// O estado da vista A.
     pub list: ListState,
     /// O estado da vista B.
@@ -108,6 +112,8 @@ impl InputMapDoc {
             store: text_fields(),
             layout: Layout::default(),
             hover: None,
+            banner_hover: false,
+            applied: None,
             list: ListState::default(),
             kb: crate::view_keyboard::state::KbState::default(),
             tryit: crate::view_try::state::TryState::new(),
@@ -120,9 +126,68 @@ impl InputMapDoc {
         self.view
     }
 
+    /// Trocar de vista desarma a escuta da aba: a próxima tecla na vista nova nunca vira ligação em silêncio.
     pub fn set_view(&mut self, view: View) {
         self.tryit.reread |= view == View::TryIt && self.view != view;
+        if self.view != view {
+            self.stop_listening();
+        }
         self.view = view;
+    }
+
+    /// Pede à família que desarme a escuta da aba (a do Trigger, que troca, nunca chega ao snapshot).
+    pub fn stop_listening(&mut self) {
+        if self.snap.listening.is_some() || self.list.listen_request.is_some() {
+            self.list.listen_request = Some(None);
+        }
+    }
+
+    /// O mapa mudou fora da aba (load, undo/redo, o «Create this action» do Trigger): os `ActionId` são por
+    /// mapa, então o número a meio, o arrasto, a escuta e os pedidos por aplicar caem; a acção aberta da B
+    /// fica só se o mapa novo ainda a tem.
+    pub fn map_swapped(&mut self, map: &ph2d_input::InputMap) {
+        self.list.typing = None;
+        self.list.scrub = None;
+        self.list.listen_request = None;
+        self.pending.clear();
+        if self.kb.open.is_some_and(|a| map.get(a).is_none()) {
+            self.kb.open = None;
+        }
+    }
+
+    /// Antes dos pedidos do quadro: o mapa mudou fora da aba desde o último [`Self::end_frame`]?
+    pub fn begin_frame(&mut self, map: &ph2d_input::InputMap) -> bool {
+        let swapped = self.applied.as_ref().is_some_and(|m| m != map);
+        if swapped {
+            self.map_swapped(map);
+        }
+        swapped
+    }
+
+    /// Depois dos pedidos: guarda o mapa aplicado e arma/desarma a escuta pedida; sem `keep` (aba fechada, outra
+    /// à frente, mapa trocado) a escuta da aba cai — a do Trigger, que troca, fica.
+    pub fn end_frame(
+        &mut self,
+        map: &ph2d_input::InputMap,
+        store: &mut WidgetStore,
+        listen: Option<Option<ph2d_input::ActionId>>,
+        keep: bool,
+    ) {
+        self.applied = Some(map.clone());
+        match listen {
+            Some(Some(id)) => store.listen_for_binding(id),
+            Some(None) => store.stop_listening(),
+            None => {}
+        }
+        if !keep && store.input_map_listening().is_some() && !store.input_map_listen_replaces() {
+            store.stop_listening();
+        }
+    }
+
+    /// O Play está a correr (o mapa da aba é provado ao vivo e desfeito no Stop).
+    #[must_use]
+    pub const fn play_running(&self) -> bool {
+        self.snap.play_running
     }
 
     /// O segmento sob o ponteiro.
@@ -176,6 +241,13 @@ impl InputMapDoc {
 
     /// O ponteiro passou: guarda o segmento para a dica. `true` = mudou (pede quadro).
     pub fn motion(&mut self, x: f32, y: f32) -> bool {
+        let banner = self.layout.banner.is_some_and(|r| r.contains(x, y));
+        let banner_changed = banner != self.banner_hover;
+        self.banner_hover = banner;
+        self.motion_in_view(x, y) || banner_changed
+    }
+
+    fn motion_in_view(&mut self, x: f32, y: f32) -> bool {
         if self.view == View::Keyboard {
             let h = self.hits.hit(x, y).and_then(View::of_id);
             let changed = h != self.hover;

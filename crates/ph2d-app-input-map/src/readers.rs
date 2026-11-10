@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use ph2d_ecs::{Name, SignalOnAction, World};
 use ph2d_input::readers::{Reader, ReaderFacts, readers};
 
-/// Os factos da cena e da biblioteca de scripts deste quadro.
+/// Os factos da cena e dos scripts deste quadro, por NOME (a ordem dos arquétipos muda com um componente).
 #[must_use]
 pub fn facts(world: &World) -> ReaderFacts {
     let mut f = ReaderFacts::default();
@@ -24,6 +24,8 @@ pub fn facts(world: &World) -> ReaderFacts {
             f.scripts.push((doc.name.clone(), doc.text.clone()));
         }
     }
+    f.triggers.sort();
+    f.scripts.sort_by(|a, b| a.0.cmp(&b.0));
     f
 }
 

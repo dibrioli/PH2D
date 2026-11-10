@@ -214,10 +214,27 @@ fn a_tecla_procurada_enche_se_do_amarelo_sem_mudar_de_tamanho() {
         .filter(|f| f.1 == ColorToken::InputMapHighlight)
         .collect();
     assert_eq!(lit.len(), 2, "o Up Arrow do jump e do move_up: {lit:?}");
+    // A tecla procurada é texto regular DENTRO do campo (maquete A3, R9a): o chip mede-se nas linhas, abaixo dele.
+    let field = me.tab().doc.rect_of(ids::SEARCH).expect("a busca");
+    let ups: Vec<_> = me
+        .tab()
+        .doc
+        .census
+        .texts
+        .iter()
+        .filter(|t| t.1 == "Up Arrow")
+        .collect();
     assert!(
-        (text_rect(&me, "Up Arrow").expect("o chip").w - before).abs() < 0.5,
-        "o mesmo tamanho"
+        ups.iter()
+            .any(|t| field.contains(t.0.x, t.0.y + t.0.h * 0.5)),
+        "o nome no campo"
     );
+    let chip = ups
+        .iter()
+        .find(|t| t.0.y >= field.y + field.h)
+        .expect("o chip")
+        .0;
+    assert!((chip.w - before).abs() < 0.5, "o mesmo tamanho");
 }
 
 #[test]

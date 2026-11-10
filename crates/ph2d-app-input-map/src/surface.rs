@@ -124,6 +124,7 @@ impl DocumentSurface for InputMapTab {
 
     fn close(&mut self, _id: u64) {
         self.open = false;
+        self.doc.stop_listening();
     }
 
     fn undo(&mut self, _id: u64, _redo: bool) -> bool {

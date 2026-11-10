@@ -50,23 +50,23 @@ pub fn frame(
     (live, jogador): Live<'_>,
 ) {
     let open = hero.store.take_input_map_tab_request();
+    let shown = ph2d_input_map_editor::active_is::<InputMapTab>(hero);
     let Some(tab) = hero.documents.surfaces_mut().find_mut::<InputMapTab>() else {
         return;
     };
     if open {
         tab.open();
     }
+    let swapped = tab.doc.begin_frame(&hero.input_map);
     let edits = tab.doc.take_pending();
     let listen = tab.doc.take_listen_request();
     let file = tab.doc.player_file();
     for e in edits {
         ph2d_input_map_editor::edit::apply(&mut hero.input_map, e, file.as_deref());
     }
-    match listen {
-        Some(Some(id)) => hero.store.listen_for_binding(id),
-        Some(None) => hero.store.stop_listening(),
-        None => {}
-    }
+    let keep = !swapped && tab.is_open() && (shown || open);
+    tab.doc
+        .end_frame(&hero.input_map, &mut hero.store, listen, keep);
     // A tecla (ou o comando) apanhada vira ligação no braço `INPUT_MAP_BIND_CAPTURED` do editor-core.
     let listening = hero
         .store

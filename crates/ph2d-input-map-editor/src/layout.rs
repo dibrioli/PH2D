@@ -11,12 +11,14 @@ pub struct Layout {
     pub area: Rect,
     /// O segmentado List · Keyboard · Try it, com a largura natural das três palavras.
     pub selector: Rect,
+    /// A faixa do Play (só com o jogo a correr), entre o seletor e a vista.
+    pub banner: Option<Rect>,
     /// O cartão da vista.
     pub body: Rect,
 }
 
 #[must_use]
-pub fn lay_out(area: Rect, text: &mut TextSystem) -> Layout {
+pub fn lay_out(area: Rect, text: &mut TextSystem, play_running: bool) -> Layout {
     let gap = m::CARD_GAP;
     let segs: f32 = View::ALL
         .iter()
@@ -27,7 +29,12 @@ pub fn lay_out(area: Rect, text: &mut TextSystem) -> Layout {
     let n = View::ALL.len() as f32;
     let w = (segs + m::SEG_PAD * (n + 1.0)).min(area.w - gap * 2.0);
     let selector = Rect::new(area.x + gap, area.y + gap, w.max(0.0), m::FIELD_H);
-    let top = selector.y + selector.h + gap;
+    let mut top = selector.y + selector.h + gap;
+    let banner = play_running.then(|| {
+        let r = Rect::new(area.x + gap, top, (area.w - gap * 2.0).max(0.0), m::FIELD_H);
+        top = r.y + r.h + gap;
+        r
+    });
     let body = Rect::new(
         area.x + gap,
         top,
@@ -37,6 +44,7 @@ pub fn lay_out(area: Rect, text: &mut TextSystem) -> Layout {
     Layout {
         area,
         selector,
+        banner,
         body,
     }
 }

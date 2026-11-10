@@ -22,7 +22,7 @@ pub fn paint_doc(
     text: &mut TextSystem,
     theme: Theme,
 ) {
-    let l = lay_out(area, text);
+    let l = lay_out(area, text, doc.play_running());
     doc.layout = l;
     let ink = CardInk::of_list(theme);
     fill_rounded_rect(scene, area, 0.0, ink.color(ColorToken::KanbanList));
@@ -49,6 +49,9 @@ pub fn paint_doc(
         l.selector.w,
     );
     c.full(None, Widget::Choice(&segs), l.selector.y);
+    if let Some(r) = l.banner {
+        paint_play_banner(doc, r, scene, text, ink);
+    }
     // A A é a superfície MAIS FUNDA e as linhas sobem dela (maquete A: painel ≈ kanban-list, linhas ≈ kanban-card).
     let body = if doc.view() == View::List {
         ColorToken::KanbanList
@@ -64,6 +67,43 @@ pub fn paint_doc(
     paint_hover_tip(doc, scene, text, theme);
 }
 
+/// O alvo da faixa do Play (a dica).
+pub const PLAY_BANNER: ph2d_a11y::NodeId =
+    ph2d_editor_core::registry::hash_node_id("input_map_tab.play_banner");
+
+/// A faixa do Play: o mapa da aba é provado ao vivo e o Stop devolve o documento inteiro, o mapa incluído.
+fn paint_play_banner(
+    doc: &mut InputMapDoc,
+    r: Rect,
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    ink: CardInk,
+) {
+    fill_rounded_rect(
+        scene,
+        r,
+        m::FIELD_RADIUS,
+        ink.color(ColorToken::InputMapWarningBg),
+    );
+    doc.census.filled.push((r, ColorToken::InputMapWarningBg));
+    let inner = Rect::new(
+        r.x + m::CARD_PAD_X,
+        r.y,
+        (r.w - m::CARD_PAD_X * 2.0).max(0.0),
+        r.h,
+    );
+    crate::view_list::text::line(
+        &mut doc.census,
+        text,
+        scene,
+        tr("input_map_tab.play_banner"),
+        inner,
+        m::VALUE_PX,
+        ink.color(ColorToken::InputMapWarning),
+    );
+    doc.hits.register(PLAY_BANNER, r);
+}
+
 /// A dica do segmento sob o ponteiro, por baixo dele.
 fn paint_hover_tip(
     doc: &InputMapDoc,
@@ -73,6 +113,7 @@ fn paint_hover_tip(
 ) {
     let (id, msg) = match doc.hover {
         Some(v) => (v.id(), tr(v.tip_key())),
+        None if doc.banner_hover => (PLAY_BANNER, tr("input_map_tab.play_banner_tip")),
         None if doc.view() == View::Keyboard => {
             let Some(t) = crate::view_keyboard::tip_here(doc) else {
                 return;

@@ -19,3 +19,10 @@ pub mod view_try;
 pub use doc::{InputMapDoc, View};
 pub use edit::InputMapEdit;
 pub use snapshot::Snapshot;
+
+/// A aba de família activa é uma `T`?
+pub fn active_is<T: 'static>(hero: &mut ph2d_editor_core::HeroScreen) -> bool {
+    hero.documents
+        .active_surface_mut()
+        .is_some_and(|(f, _)| f.as_any().is::<T>())
+}

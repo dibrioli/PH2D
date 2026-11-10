@@ -25,6 +25,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "input_map_tab.reader.top_down_player" => "Top-Down Player",
         "input_map_tab.view.keyboard" => "Keyboard",
         "input_map_tab.view.try" => "Try it",
+        "input_map_tab.play_banner" => {
+            "The game is running. Changes here are tried live and undone when you stop."
+        }
+        "input_map_tab.play_banner_tip" => {
+            "While the game runs you can change keys and try them at once. When you press Stop, the whole project goes back to how it was before Play, these keys included."
+        }
         "input_map_tab.view.list_tip" => "See every action as a list, with its keys and buttons.",
         "input_map_tab.view.keyboard_tip" => {
             "See which keys and gamepad buttons each action uses, on a drawn keyboard and gamepad."

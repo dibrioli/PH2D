@@ -6,6 +6,7 @@ mod abrir;
 mod acabamento_r5b;
 mod acabamento_r6a;
 mod auditoria_fios;
+mod auditoria_r9a;
 mod cenas_do_smoke;
 mod lista;
 mod lista_acabamento;

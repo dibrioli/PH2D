@@ -166,25 +166,14 @@ fn paint_search(
         );
     };
     doc.hits.register(ids::SEARCH, r);
+    // A tecla procurada é o texto do campo, regular (maquete A3): o amarelo fica nas teclas das linhas.
     let label = k.label();
-    let chip_w = ts.prefix_width(&label, m::VALUE_PX) + m::SEG_INSET * 2.0;
-    let chip = Rect::new(
-        r.x + indent + m::SEG_INSET,
-        r.y + m::SEG_PAD * 2.0,
-        chip_w,
-        r.h - m::SEG_PAD * 4.0,
-    );
-    fill_rounded_rect(
-        scene,
-        chip,
-        m::SEG_RADIUS,
-        ink.color(ColorToken::InputMapHighlight),
-    );
+    let x_box = Rect::new(r.x + r.w - g - m::SEG_INSET, r.y + (r.h - g) * 0.5, g, g);
     let inner = Rect::new(
-        chip.x + m::SEG_INSET,
-        chip.y,
-        chip.w - m::SEG_INSET * 2.0,
-        chip.h,
+        r.x + indent + m::SEG_INSET,
+        r.y,
+        (x_box.x - r.x - indent - m::SEG_INSET * 2.0).max(0.0),
+        r.h,
     );
     text::line(
         &mut doc.census,
@@ -193,16 +182,19 @@ fn paint_search(
         &label,
         inner,
         m::VALUE_PX,
-        on_highlight(ink),
+        ink.color(ColorToken::Text1),
     );
-    let x_box = Rect::new(r.x + r.w - g - m::SEG_INSET, r.y + (r.h - g) * 0.5, g, g);
-    paint_icon(
-        scene,
-        IconId::Close,
-        x_box,
-        ink.color(ColorToken::Text2),
-        StrokeToken::Default.px(),
-    );
+    // O × só com o campo focado ou sob o ponteiro; o alvo fica registado sempre.
+    let here = |id: ph2d_a11y::NodeId| id == ids::SEARCH || id == ids::SEARCH_CLEAR;
+    if doc.store.focus_id() == Some(ids::SEARCH) || doc.list.hover_target.is_some_and(here) {
+        paint_icon(
+            scene,
+            IconId::Close,
+            x_box,
+            ink.color(ColorToken::Text2),
+            StrokeToken::Default.px(),
+        );
+    }
     doc.hits.register(ids::SEARCH_CLEAR, x_box);
     r.y + r.h
 }

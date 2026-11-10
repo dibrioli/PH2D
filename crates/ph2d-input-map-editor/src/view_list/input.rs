@@ -233,9 +233,18 @@ pub(crate) fn wheel(doc: &mut InputMapDoc, dy: f32) -> bool {
     (doc.list.scroll - before).abs() > f32::EPSILON
 }
 
-/// A tecla física com a busca focada: a que não escreve (setas, Space, F, Shift…) vira o filtro por tecla.
+/// A tecla física com a busca focada e VAZIA: a que não escreve (setas, F, Shift…) e o Space (nenhum nome de
+/// acção tem espaço) vira o filtro por tecla. Com texto, o campo é só texto: o Shift de uma maiúscula, o Ctrl
+/// e as setas seguem para ele.
 pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool, writes_text: bool) -> bool {
-    if !pressed || writes_text || doc.store.focus_id() != Some(ids::SEARCH) {
+    if !pressed
+        || doc.store.focus_id() != Some(ids::SEARCH)
+        || !doc.store.text(ids::SEARCH).unwrap_or("").is_empty()
+    {
+        return false;
+    }
+    let space = Key::named_in_script("space").is_some_and(|k| k.contains(&key));
+    if writes_text && !space {
         return false;
     }
     let editing = ["backspace", "delete", "enter", "escape", "tab"];

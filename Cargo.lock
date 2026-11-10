@@ -10895,12 +10895,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-pixel-crt"
+version = "0.0.0"
+dependencies = [
+ "ph2d-gpu",
+ "wgpu",
+]
+
+[[package]]
 name = "ph2d-pixel-formas"
 version = "0.0.0"
 dependencies = [
  "ph2d-editor-core",
  "ph2d-pixel-core",
  "ph2d-vec-scene",
+]
+
+[[package]]
+name = "ph2d-pixel-guia"
+version = "0.0.0"
+dependencies = [
+ "ph2d-pixel-core",
 ]
 
 [[package]]
@@ -10929,6 +10944,13 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-i18n",
  "winit",
+]
+
+[[package]]
+name = "ph2d-pixel-lint"
+version = "0.0.0"
+dependencies = [
+ "ph2d-pixel-core",
 ]
 
 [[package]]

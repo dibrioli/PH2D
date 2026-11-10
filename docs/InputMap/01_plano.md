@@ -300,3 +300,22 @@ Tecla FÍSICA (o `KeyCode` do winit, nunca a lógica): o numérico liga igual co
   frase da B) e o cursor fica a seta. Num Lock desenha-se sem luz.
 - B e C usam o MESMO pintor. «Also:» só para o que não está no desenho.
 
+### 13.3 · W3–W5 — o polimento pro (a infraestrutura primeiro, as vistas depois)
+
+- **Um registo de controlos por pintura** (`ph2d-input-map-editor/src/interact.rs`): `doc.control(Control { id,
+  rect, role, label, look, disabled_why, focusable })` regista o alvo de clique E o controlo — pintou ⟹ clicável,
+  focável, com nó de acessibilidade e cursor. `ControlRole` → o papel accesskit. Daí saem `is_hovered`,
+  `is_pressed`, `is_focused`, `look_at(x,y)`, a ordem do Tab e `a11y_nodes`.
+- **Premido nativo:** o Down captura; o botão/tecla/linha/chip dispara no Up DENTRO; arrastar para fora apaga o
+  premido e cancela. Gestos de arrasto (alças Dead/Press, polegares, scrub) continuam a começar no Down.
+- **Foco:** Tab / Shift+Tab percorrem os controlos focáveis pela ordem da pintura; Enter/Space activam; Esc larga.
+  Um só anel: `ColorToken::FocusRing` (helper único).
+- **Hover = D32 do dono (02/11): o fundo acende e apaga NO QUADRO, sem fade** (`docs/CartoesUI/01_decisoes_do_dono.md`;
+  o «fade do hover» do prompt da onda 2 é a coisa que o dono recusou ao vê-la). Só o polegar da barra desvanece
+  (`Role::Fade`, como `screens/hero/live.rs::tick_hover`). A aba passa a alimentar o `hover_live` do seu
+  `WidgetStore` (sem isso, um widget do cartão sem registo lê `SETTLED = 1.0` e pinta-se SEMPRE em hover).
+- **Movimento só pelo `UiMotion` do `hero`** (a família anima no `frame`, a pintura lê os valores; `wants_frame`
+  enquanto há voo): o pulso da escuta tracejada é `Role::Decoration` (ausente em Discreto e no reduced motion, como
+  a lei manda); o caret pisca pelo relógio do substrato (`UiMotion::elapsed`) e fica fixo com reduced motion. Os
+  medidores do Try it são `Role::Number` (um valor lido não balança).
+

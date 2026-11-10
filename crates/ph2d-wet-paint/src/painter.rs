@@ -490,31 +490,6 @@ impl Engine {
         self.stroke_down
     }
 
-    pub fn step_simulation(&mut self) -> bool {
-        let idx = self.active_layer;
-        let had_fluid = self.layers[idx].grid.has_fluid;
-        let pre = if had_fluid {
-            let g = &self.layers[idx].grid;
-            Some((g.bx0, g.by0, g.bx1, g.by1))
-        } else {
-            None
-        };
-        self.marca_passo();
-        let ran = sim_step(&mut self.sim, &mut self.layers[idx].grid, &self.tuning);
-        self.layers[idx].agua_nova = None;
-        if ran || had_fluid {
-            if let Some((x0, y0, x1, y1)) = pre {
-                self.merge_dirty(x0, y0, x1, y1);
-            }
-            let g = &self.layers[idx].grid;
-            if g.has_fluid {
-                let (x0, y0, x1, y1) = (g.bx0, g.by0, g.bx1, g.by1);
-                self.merge_dirty(x0, y0, x1, y1);
-            }
-        }
-        ran
-    }
-
     // -----------------------------------------------------------------------
     // Canvas-wide actions (SPEC §12) — each captures history first.
     // -----------------------------------------------------------------------

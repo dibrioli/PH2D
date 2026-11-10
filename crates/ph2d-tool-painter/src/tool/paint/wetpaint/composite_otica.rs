@@ -6,7 +6,7 @@
 #[cfg(test)]
 use super::composite_contagem as contagem;
 use super::grid_map;
-use ph2d_wet_paint::oleo_real::{CacheCampo, OleoReal};
+use ph2d_wet_paint::oleo_real::{CacheCampo, OleoReal, RascunhoCampo};
 use ph2d_wet_paint::render::{RenderLayer, render_pigment_row_visual};
 use rayon::prelude::*;
 
@@ -29,6 +29,8 @@ pub(super) struct PlanosDaOtica {
     /// **O campo de altura do Óleo Real guardado por dependência** (W3, `oleo_real::CacheCampo`): a varredura do
     /// cartão (Specular, fenda, material sem Subsurface, Transparency) reusa-o enquanto as grades e a chave ficam.
     pub(super) campo_cache: Option<CacheCampo>,
+    /// Os planos `f64` de rascunho do campo (B14.A1): ficam entre imagens; largados com a `campo_cache` sem óleo.
+    pub(super) rascunho: RascunhoCampo,
 }
 
 impl PlanosDaOtica {
@@ -48,6 +50,7 @@ impl PlanosDaOtica {
             grao: self.grao.clone(),
             suave: self.suave.clone(),
             campo_cache: None,
+            rascunho: RascunhoCampo::default(),
         }
     }
 }
@@ -227,8 +230,10 @@ fn compoe_a_caixa(
     let proprio = oleo.filter(|_| guardado.is_none()).map(|o| {
         let grades: Vec<_> = layers.iter().map(|l| (l.grid, l.visible)).collect();
         let janela = (cx0, cy0, cx1, cy1);
+        let ras = &mut planos.rascunho;
         if campo_em_serie {
-            ph2d_wet_paint::oleo_real::CampoAltura::de_com(
+            ph2d_wet_paint::oleo_real::CampoAltura::de_com_em(
+                ras,
                 &ph2d_wet_paint::oleo_real::EmSerie,
                 &grades,
                 &o,
@@ -236,7 +241,8 @@ fn compoe_a_caixa(
                 janela,
             )
         } else {
-            ph2d_wet_paint::oleo_real::CampoAltura::de_com(
+            ph2d_wet_paint::oleo_real::CampoAltura::de_com_em(
+                ras,
                 &super::oleo_plano::EmFaixas,
                 &grades,
                 &o,
@@ -343,6 +349,7 @@ fn compoe_a_caixa(
     if oleo.is_none() {
         // Sem tinta com óleo na tela o campo guardado só ocupava memória (~28 B por célula, 230 MB a 4K).
         planos.campo_cache = None;
+        planos.rascunho = RascunhoCampo::default();
     }
     if let (Some(c), Some(k)) = (proprio.as_ref(), chave) {
         CacheCampo::guarda(

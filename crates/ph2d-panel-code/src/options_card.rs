@@ -120,8 +120,9 @@ impl OptionsCard {
         self.open && self.painted.card.is_some_and(|c| c.contains(x, y))
     }
 
+    /// Só dentro do cartão: num corpo baixo ele corta-se e as linhas de baixo não se vêem.
     fn row_at(&self, x: f32, y: f32) -> Option<NodeId> {
-        if !self.open {
+        if !self.contains(x, y) {
             return None;
         }
         let r = self.painted.rows.iter().find(|r| r.1.contains(x, y));

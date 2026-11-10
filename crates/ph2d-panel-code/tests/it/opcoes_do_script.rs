@@ -221,3 +221,36 @@ fn o_alfinete_do_cartao_de_opcoes_o_segura_aberto() {
     card.click_outside();
     assert!(!card.open, "sem alfinete fecha");
 }
+
+/// Num corpo baixo o cartão corta-se: a linha que ficou de fora (e o «Restart») não toma o clique
+/// nem a mão por baixo do cartão.
+#[test]
+fn num_corpo_baixo_as_linhas_cortadas_nao_tomam_o_clique() {
+    let mut card = OptionsCard {
+        open: true,
+        ..OptionsCard::default()
+    };
+    let f = OptionsFrame {
+        id: NodeId(9),
+        script: "player.luau",
+        rows: &ROWS,
+        assist: None,
+        restart: NodeId(4),
+    };
+    let mut ts = TextSystem::without_system_fonts();
+    let baixo = Rect::new(0.0, 0.0, ABA.w, 120.0);
+    card.paint(baixo, &f, &mut VectorScene::new(), &mut ts, &Theme::Forge);
+    let p = card.painted.clone();
+    let c = p.card.expect("o cartão");
+    let fora = p
+        .rows
+        .iter()
+        .find(|(_, r)| r.y + r.h * 0.5 > c.y + c.h)
+        .copied()
+        .expect("controlo: uma linha cortada abaixo do cartão");
+    let (x, y) = (fora.1.x + fora.1.w * 0.5, fora.1.y + fora.1.h * 0.5);
+    assert!(!c.contains(x, y), "controlo: o ponto está fora do cartão");
+    assert_eq!(card.press(x, y), None, "{fora:?}");
+    assert_eq!(card.pressed, None);
+    assert_eq!(card.look(x, y), None);
+}

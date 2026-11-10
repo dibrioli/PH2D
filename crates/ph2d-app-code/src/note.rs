@@ -58,9 +58,12 @@ impl CodeDoc {
             Some(Note::Gutter(line)) => problems
                 .iter()
                 .filter(|p| p.line == *line)
-                .map(|p| match &p.explanation {
-                    Some(e) => (Some(e.title.clone()), e.why.clone()),
-                    None => (Some(p.message.clone()), String::new()),
+                .map(|p| {
+                    let (title, why) = match &p.explanation {
+                        Some(e) => (e.title.clone(), e.why.clone()),
+                        None => (p.message.clone(), String::new()),
+                    };
+                    (Some(title), with_on(why, &p.on))
                 })
                 .collect(),
             Some(Note::Culprit) => problems
@@ -70,6 +73,16 @@ impl CodeDoc {
                 .collect(),
             None => Vec::new(),
         }
+    }
+}
+
+/// O texto do balão com «On: Circle, Star» por baixo, se o Play o viu em alguém.
+fn with_on(why: String, on: &str) -> String {
+    let line = ph2d_i18n::tr_with("code.problems.note_on", &[("who", &on)]);
+    match (on.is_empty(), why.is_empty()) {
+        (true, _) => why,
+        (false, true) => line,
+        (false, false) => format!("{why}\n{line}"),
     }
 }
 

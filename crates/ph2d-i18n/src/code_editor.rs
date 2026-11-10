@@ -83,6 +83,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.problems.in_play" => "{text} — in Play",
         "code.problems.times_in_play" => "{text} — ×{count} in Play",
         "code.problems.more" => "{names} +{count}",
+        "code.problems.objects" => "{count} {count?object|objects}",
+        "code.problems.note_on" => "On: {who}",
         // Onda A (doc 13 §4.2): quem disse o `print` e quando (o relógio do jogo).
         "code.console.tag" => "{who} · {time}",
         "code.console.time" => "{min}:{sec}",
@@ -92,6 +94,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.problems.a11y_error" => "Error: {text}, line {line}",
         "code.problems.a11y_warning" => "Warning: {text}, line {line}",
         "code.problems.a11y_info" => "Info: {text}, line {line}",
+        "code.problems.a11y_on" => "{label}, on {who}",
         // Os problemas vivos do texto (E7), enquanto se escreve.
         "code.problem.syntax" => "Syntax error",
         "code.problem.missing" => "Missing {sym}",
@@ -173,6 +176,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.debug.stopped" => "Stopped at line {line} \u{2014} on {who}",
         "code.debug.stopped_error" => "Stopped on error at line {line} \u{2014} on {who}",
         "code.debug.waiting" => "{count} more waiting",
+        "code.debug.was_row" => "{key} = {value} (was {old})",
+        "code.debug.waiting_row" => "waiting {name}",
         "code.debug.more_vars" => "+{count} more",
         "code.debug.top_level" => "(top of script)",
         "code.debug.frame" => "{function} \u{00b7} {line}",

@@ -59,3 +59,15 @@ linha/coluna, célula alterada) — sem cabeçalho fixo nem colunas redimension�
 [handoff Q3/Q4](handoffs/HANDOFF_line_ScriptEditor_2026-11-09_Q3_Q4.md); Q4 feita (balão ◆, Problems, Script options e a grelha na tabela da casa, §6 do handoff; lado a lado `ferramentas/smoke/maquete_lado_a_lado_q4.png`), smoke do dono pendente.
 
 Cada onda: foto e maquete lado a lado ANTES do smoke do dono (`project-memory/feedback_a_mockup_is_compared_side_by_side_before_the_smoke.md`).
+
+## 6. Cor de «mudou» e dos números (medida)
+
+- **Âmbar** (`crates/ph2d-tokens/src/changed.rs`): o `warn` dos temas derivados do Godot é o
+  `warning` dele, `(0,83 0,78 0,62)` — um caqui pálido (`oklch 0,83 0,057 93`) que, a
+  `ROW_SELECTED_ALPHA` sobre o cartão, lê-se CINZENTO (medido na foto da cena 14: `99,100,96`). A
+  maquete aprovada usa o âmbar do `tokens.json` (`forge`: `warn` `oklch 0,795 0,125 80`, `warn-soft`
+  `oklch 0,310 0,036 80`). Lei: matiz e croma do âmbar canónico (`forge`) à luminosidade do tema
+  activo (num tema claro o `warn` desce a `0,56`); no `forge` é a identidade.
+- **Números** (`value_ink`): a maquete escreveu `#9fd0ff`, o azul claro da família do acento; no
+  `dark` do Godot a lei (luminosidade e croma do `info`, matiz do acento) dá `168,208,253` — o `info`
+  dele, `179,204,255`, lê-se quase branco ao lado do texto, e o `info` canónico, matiz 235, ciano.

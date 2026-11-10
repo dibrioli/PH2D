@@ -11,12 +11,14 @@ use ph2d_panel_code::Problem;
 /// Os nomes que o «On» mostra; o resto conta-se.
 const ON_SHOWN: usize = 2;
 
-/// O «On»: «Circle», «Circle, Star» ou «Circle, Star +1»; vazio sem objectos (o topo do script).
+/// O «On»: «Circle», «Circle, Star» ou «Circle, Star +1»; só sem nome, «2 objects»; vazio sem
+/// objectos (o topo do script).
 fn who(p: &PlayProblem) -> String {
     let rest = p.names.len().saturating_sub(ON_SHOWN) + p.more();
     let names = p.names[..p.names.len().min(ON_SHOWN)].join(", ");
     match rest {
         0 => names,
+        n if names.is_empty() => tr_with("code.problems.objects", &[("count", &n)]),
         n => tr_with("code.problems.more", &[("names", &names), ("count", &n)]),
     }
 }
@@ -162,5 +164,34 @@ pub(crate) struct PlayAt {
 impl PlayAt {
     fn is(&self, g: &crate::console::PlayProblem, line: u32) -> bool {
         self.kind == g.kind && self.line == line && self.message == g.message
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ph2d_script::{ConsoleKind, ConsoleLine, DiagnosticKind, ScriptDiagnostic, ScriptId};
+
+    /// O «On» de objectos sem nome conta-os («2 objects»), nunca « +2» sozinho.
+    #[test]
+    fn o_on_sem_nomes_conta_os_objectos() {
+        let mut s = crate::console::Store::default();
+        for bits in [7, 8] {
+            let d = ScriptDiagnostic {
+                kind: DiagnosticKind::Runtime,
+                line: Some(2),
+                message: "boom".to_owned(),
+                traceback: None,
+            };
+            let l = ConsoleLine {
+                script: ScriptId(1),
+                entity: Some(ph2d_ecs::Entity::from_bits(bits)),
+                text: String::new(),
+                kind: ConsoleKind::RuntimeError(d),
+                at_us: 0,
+            };
+            s.push(&l, None);
+        }
+        assert_eq!(s.play().len(), 1, "controlo: um problema agrupado");
+        assert_eq!(super::who(&s.play()[0]), "2 objects");
     }
 }

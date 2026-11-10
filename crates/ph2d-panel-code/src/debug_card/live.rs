@@ -141,7 +141,7 @@ pub(super) fn paint(
         CardStyle::Cards => gauge_grid(body.w).1 + Spacing::Md.px(),
         CardStyle::Strip => rh * 2.0 + Spacing::Sm.px(),
     };
-    let room = (body.h - least).clamp(0.0, rh * GRAPH_ROWS as f32);
+    let room = ph2d_editor_core::math::safe_clamp(body.h - least, 0.0, rh * GRAPH_ROWS as f32);
     let graph_h = if st.graph.is_some() && room >= rh * 2.0 {
         room
     } else {

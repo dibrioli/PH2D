@@ -7,6 +7,7 @@ use super::{GRADE, LIVES, SPEED, TINT, alvo, celula, meio, pinta_grade, quem};
 use crate::ts;
 use ph2d_code_viewmodel::{Holder, Who};
 use ph2d_editor_core::doc_surface::PointerLook;
+use ph2d_editor_core::zones::Rect;
 use ph2d_panel_code::bancada::{Aim, BancadaView};
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 use ph2d_vector::VectorScene;
@@ -168,4 +169,40 @@ fn o_separador_da_grelha_muda_a_largura_do_mapa() {
     v.map_on = false;
     pinta_grade(&mut v, &who, &mut ts);
     assert!(v.split().is_none(), "sem mapa, sem separador");
+}
+
+/// Seis propriedades num cartão estreito com o mapa ao lado: as colunas que transbordam são
+/// cortadas, e o rato sobre o mapa nunca acerta numa célula ou cabeçalho da grelha.
+#[test]
+fn as_celulas_cortadas_da_grelha_nao_tomam_o_rato_sobre_o_mapa() {
+    let (who, mut ts) = (quem(), ts());
+    let mut v = BancadaView::default();
+    let area = Rect::new(0.0, 0.0, 420.0, GRADE.h);
+    let mut scene = VectorScene::new();
+    v.paint_bench(&who, area, None, &mut scene, &mut ts, &Theme::default());
+    let s = v.split().expect("com o mapa há separador");
+    let (lay, ..) = v.grid_table().unwrap();
+    let last = lay.cols.last().unwrap();
+    assert!(
+        last.x + last.w > s.hit.x + s.hit.w,
+        "controlo: a grelha transborda para debaixo do mapa"
+    );
+    let x0 = s.hit.x + s.hit.w + 1.0;
+    let mut tocou = 0;
+    for i in 0..40 {
+        for j in 0..26 {
+            let (x, y) = (x0 + i as f32 * 4.0, j as f32 * 10.0);
+            if x >= area.w {
+                continue;
+            }
+            let _ = v.hover(x, y, 0);
+            let a = v.aim();
+            assert!(
+                !matches!(a, Aim::Cell(..) | Aim::Column(_)),
+                "({x}, {y}) → {a:?}"
+            );
+            tocou += usize::from(matches!(a, Aim::Holder(_)));
+        }
+    }
+    assert!(tocou > 0, "controlo: o mapa tem objectos sob o rato");
 }

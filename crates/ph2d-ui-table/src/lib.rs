@@ -1,13 +1,7 @@
-//! ⭐ **A tabela da casa** (plano 14, Onda Q1 — `docs/CodeEditor/14_plano_quadros.md`): a planilha dos
-//! quadros do depurador e da Bancada, no idioma das janelas Locals/Watch do Visual Studio —
-//! cabeçalho fixo, colunas arrastáveis e ocultáveis (botão direito no cabeçalho), grupos e tabelas
-//! aninhadas que dobram (▸), números à direita na mono, linhas listradas, rolagem por dentro, a linha
-//! que MUDOU em âmbar com o valor antigo riscado, e o traço dos últimos segundos numa célula.
-//!
-//! Três peças: o **modelo** ([`Column`], [`Row`], [`Cell`]) que o anfitrião escreve a cada quadro, o
-//! **estado** ([`TableState`]: larguras, colunas escondidas, dobras, rolagem, arrasto) que vive com
-//! ele, e a **geometria** pura ([`layout`] → [`Layout`], [`Layout::hit`]) que a pintura
-//! ([`paint`]) e o clique partilham — o mesmo rectângulo desenha e recebe.
+//! ⭐ **A tabela da casa** (`docs/CodeEditor/14_plano_quadros.md`): a planilha dos quadros do
+//! depurador e da Bancada, no idioma Locals/Watch do Visual Studio. Três peças: o **modelo**
+//! ([`Column`], [`Row`], [`Cell`]), o **estado** ([`TableState`]) e a **geometria** pura
+//! ([`layout`] → [`Layout`], [`Layout::hit`]) que a pintura ([`paint`]) e o clique partilham.
 
 mod marks;
 mod paint;
@@ -186,7 +180,7 @@ impl Metrics {
             indent: Spacing::Lg.px(),
             min_col: ROW_H_PX * 2.0,
             handle: Spacing::Xs.px(),
-            spark_w: ROW_H_PX * 4.0,
+            spark_w: ROW_H_PX * 4.0, // LITERAL-PX-OK: quatro alturas de linha (token)
         }
     }
 

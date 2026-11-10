@@ -97,7 +97,11 @@ pub(super) fn tip(
     let pad = Spacing::Sm.px();
     let font = TypeToken::Xs.px();
     let w = ts.layout(&s, font, f32::INFINITY).width() + pad * 2.0;
-    let x = (at.x + at.w - w).clamp(body.x, (body.x + body.w - w).max(body.x));
+    let x = ph2d_editor_core::math::safe_clamp(
+        at.x + at.w - w,
+        body.x,
+        (body.x + body.w - w).max(body.x),
+    );
     let y = if at.y - rh >= body.y {
         at.y - rh
     } else {

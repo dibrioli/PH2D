@@ -256,9 +256,16 @@ impl BancadaView {
         {
             chrome::text_field(scene, ts, &e.buf, "", r, true, &Ui::new(*theme));
         }
+        // Os alvos cortados ao que se vê (cabeçalho, corpo): fora do cartão não tomam o clique.
+        let mut push = |aim, r: Rect, b: Rect| {
+            let r = clip(r, b);
+            if r.w > 0.0 && r.h > 0.0 {
+                self.grid_hits.push((aim, r));
+            }
+        };
         for c in lay.cols.iter().filter(|c| c.index > 0) {
             let r = Rect::new(c.x, lay.header.y, c.w, lay.header.h);
-            self.grid_hits.push((Aim::Column(c.index - 1), r));
+            push(Aim::Column(c.index - 1), r, lay.header);
         }
         for span in &lay.rows {
             let h = span.index;
@@ -269,7 +276,7 @@ impl BancadaView {
                     _ => continue,
                 };
                 if let Some(r) = lay.cell_rect(h, &c.key) {
-                    self.grid_hits.push((aim, r));
+                    push(aim, r, lay.body);
                 }
             }
         }
@@ -360,6 +367,9 @@ impl BancadaView {
 
 /// `r` cortada a `b` (um alvo meio rolado só responde na parte à vista).
 pub(super) fn clip(r: Rect, b: Rect) -> Rect {
+    if r.x >= b.x && r.y >= b.y && r.x + r.w <= b.x + b.w && r.y + r.h <= b.y + b.h {
+        return r; // inteira à vista: o mesmo rect, sem o arredondamento de x1 − x0
+    }
     let (x0, y0) = (r.x.max(b.x), r.y.max(b.y));
     let (x1, y1) = ((r.x + r.w).min(b.x + b.w), (r.y + r.h).min(b.y + b.h));
     Rect::new(x0, y0, (x1 - x0).max(0.0), (y1 - y0).max(0.0))

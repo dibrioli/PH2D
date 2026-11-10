@@ -83,9 +83,8 @@ pub struct StackEntry {
     pub line: u32,
 }
 
-/// ⭐ **O quadro de baixo do código** (plano 14): parado (faixa com o estado, a linha, a função, o
-/// objecto e os botões; Locals e self em árvore com o tipo; Call stack e Waiting here) ou de quem
-/// são os valores ao vivo.
+/// ⭐ **O quadro de baixo do código** (plano 14): parado (a faixa, Locals e self, Call stack e
+/// Waiting here) ou de quem são os valores ao vivo.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct DebugCard {
     pub state: CardState,
@@ -124,21 +123,27 @@ impl DebugCard {
         ]
     }
 
-    /// O quadro em texto (as sondas e a árvore de acessibilidade): quem espera, cada variável
-    /// (`chave = valor (was antigo)`), a pilha (com o rótulo `stack`) e quem espera, um a um.
+    /// O quadro em texto (sondas, acessibilidade): as variáveis, a pilha (`stack`), quem espera.
     #[must_use]
     pub fn text_rows(&self, stack: &str) -> Vec<String> {
         let mut rows: Vec<String> = self.waiting_text().into_iter().collect();
         rows.extend(self.locals.iter().chain(&self.this).map(|r| {
             let v = crate::shown_value(r);
             match &r.old {
-                Some(old) => format!("{} = {v} (was {old})", r.key),
+                Some(old) => tr_with(
+                    "code.debug.was_row",
+                    &[("key", &r.key), ("value", &v), ("old", old)],
+                ),
                 None => format!("{} = {v}", r.key),
             }
         }));
         let frames = self.stack.iter();
         rows.extend(frames.map(|s| format!("{stack}  {} {}", s.function, s.line)));
-        rows.extend(self.waiting.iter().map(|w| format!("waiting {}", w.name)));
+        rows.extend(
+            self.waiting
+                .iter()
+                .map(|w| tr_with("code.debug.waiting_row", &[("name", &w.name)])),
+        );
         rows.extend(
             self.live
                 .iter()
@@ -206,9 +211,8 @@ pub fn shown_value(r: &VarRow) -> String {
     }
 }
 
-/// ⭐ **«Mudou desde o passo anterior»**: a memória dos valores do objecto parado. Enquanto o jogo
-/// está parado os valores não mudam, logo valores diferentes do MESMO objecto e script = um passo
-/// (Next line, ou o Continue que voltou a parar); outro objecto começa de novo.
+/// ⭐ **«Mudou desde o passo anterior»**: valores diferentes do MESMO objecto e script parado = um
+/// passo (Next line, ou o Continue que voltou a parar); outro objecto começa de novo.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct StepMemory {
     owner: Option<(u64, u64)>,

@@ -276,3 +276,25 @@ fn uma_linha_acima_leva_o_erro_do_play_para_baixo() {
     assert_eq!(ps[0].0, 4, "seguiu o texto: {ps:?}");
     assert!(ps[0].1.ends_with("— ×2 in Play"), "{ps:?}");
 }
+
+/// O ◆ da calha no erro do Play fundido no do texto diz em quem: «On: Circle, Star» (a coluna «On»
+/// dos Problems, plano 14 Q4 C, não o tirou do balão).
+#[test]
+fn o_balao_da_calha_diz_em_quem_o_play_viu_o_erro() {
+    let (mut m, id) = typo_no_play();
+    let t = crate::completar::T0 + 5_000_000_000;
+    crate::completar::quadro_em(&mut m, t);
+    m.pinta(id);
+    let (x, y) = m.docs().problem_dot(id, 3).expect("a linha 4 à vista");
+    m.rato(id, x, y);
+    let balao = |m: &mut Mesa| {
+        let p = m.docs().hints_painted(id).0;
+        p.map(|p| p.lines.join(" ")).unwrap_or_default()
+    };
+    crate::dicas::ate(&mut m, id, t + 500_000_000, "a calha não abriu", |m| {
+        !balao(m).is_empty()
+    });
+    let texto = balao(&mut m);
+    assert!(texto.contains("in Play"), "controlo: {texto}");
+    assert!(texto.contains("On: Circle, Star"), "{texto}");
+}

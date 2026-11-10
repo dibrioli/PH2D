@@ -135,15 +135,19 @@ pub fn problems_title(count: usize) -> String {
     }
 }
 
-/// O que o leitor de ecrã diz de uma linha da lista (o molde do VS Code).
+/// O que o leitor de ecrã diz de uma linha da lista (o molde do VS Code), com o «On» se há quem.
 #[must_use]
-pub fn problem_label(severity: Severity, text: &str, line: usize) -> String {
+pub fn problem_label(severity: Severity, text: &str, on: &str, line: usize) -> String {
     let key = match severity {
         Severity::Error => "code.problems.a11y_error",
         Severity::Warning => "code.problems.a11y_warning",
         Severity::Info => "code.problems.a11y_info",
     };
-    tr_with(key, &[("text", &text), ("line", &line)])
+    let label = tr_with(key, &[("text", &text), ("line", &line)]);
+    if on.is_empty() {
+        return label;
+    }
+    tr_with("code.problems.a11y_on", &[("label", &label), ("who", &on)])
 }
 
 impl ConsoleView {
@@ -217,7 +221,7 @@ impl ConsoleView {
                 on: on_text(&row),
                 line: row.line,
                 selected: current == Some(i),
-                label: problem_label(row.severity, row.text, row.line),
+                label: problem_label(row.severity, row.text, row.on, row.line),
             });
         }
         t.painted = Some((lay, trows));

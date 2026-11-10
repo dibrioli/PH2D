@@ -54,7 +54,7 @@ impl OwnBar {
         let scroll0 = if y < thumb.y || y > thumb.y + thumb.h {
             super::scroll_for_track_press(track, y, self.content_h, self.visible_h)
         } else {
-            scroll.clamp(0.0, (self.content_h - self.visible_h).max(0.0))
+            crate::math::safe_clamp(scroll, 0.0, (self.content_h - self.visible_h).max(0.0))
         };
         let drag = BarDrag {
             y0: y,

@@ -1,13 +1,7 @@
-//! ⭐ **O quadro do depurador na aba** (plano 14 — decisão do dono 13): a faixa de cima (estado com a
-//! cor, `line N · fn()`, o objecto com o ponto da cor dele, Continue / Next line) e o corpo numa das
-//! três aparências do `View ▸ Card Style`:
-//!
-//! - **Sheet** (padrão, [`sheet`]): a tabela da casa Name · Value · Type, Locals e self dobráveis, as
-//!   tabelas aninhadas com ▸; ao lado a Call stack (clicar vai à linha) e Waiting here;
-//! - **Cards** ([`boxes`]): um cartão por grupo, cada valor numa caixa de campo, como o Inspector;
-//! - **Strip** ([`boxes`]): uma célula por variável, nome pequeno em cima e valor em baixo.
-//!
-//! «Mudou desde o passo anterior» é âmbar com o valor antigo riscado nas três.
+//! ⭐ **O quadro do depurador na aba** (`docs/CodeEditor/14_plano_quadros.md`): a faixa de cima
+//! (estado, `line N · fn()`, o objecto, Continue / Next line) e o corpo numa das três aparências do
+//! `View ▸ Card Style` — **Sheet** ([`sheet`]), **Cards** e **Strip** ([`boxes`]); «mudou desde o
+//! passo anterior» é âmbar com o valor antigo riscado.
 
 mod boxes;
 mod head;

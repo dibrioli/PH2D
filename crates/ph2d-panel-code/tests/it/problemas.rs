@@ -89,6 +89,12 @@ fn as_colunas_sao_fixas_e_a_linha_encosta_a_direita() {
     assert!(trows[0].cells[0].dot.is_some(), "a gravidade é um ponto");
     let p = &v.probe().problems;
     assert_eq!(p[1].on, "\u{2014}");
+    // O leitor de ecrã diz em quem (e nada quando ninguém).
+    assert_eq!(
+        p[0].label,
+        "Error: Unknown global «math.sinn», line 8, on Circle, Star +1"
+    );
+    assert_eq!(p[1].label, "Warning: «speed» is never used, line 2");
 }
 
 #[test]

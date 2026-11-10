@@ -213,7 +213,7 @@ pub fn paint(
                 x += m.chevron();
             }
             if let Some(dot) = cell.dot {
-                let rad = m.row_h * 0.15;
+                let rad = m.row_h * 0.15; // LITERAL-PX-OK: fracção da altura da linha (token)
                 fill_circle(scene, x + rad, r.y + r.h * 0.5, rad, ink(dot));
                 x += m.row_h * 0.5;
             }
@@ -406,7 +406,8 @@ pub fn paint_spark(
         stroke_polyline(scene, &pts, StrokeToken::Default.px(), c);
     }
     if let Some(&(x, y)) = pts.last() {
-        fill_circle(scene, x, y, StrokeToken::Default.px() * 1.5, c);
+        let rad = StrokeToken::Default.px() * 1.5; // LITERAL-PX-OK: múltiplo do traço (token)
+        fill_circle(scene, x, y, rad, c);
     }
 }
 

@@ -260,3 +260,10 @@ impl ph2d_light2d_gpu::CamadaDeOclusao for OclusaoDoPixel<'_> {
 #[cfg(test)]
 #[path = "testes.rs"]
 mod testes;
+
+pub mod rampa;
+pub use rampa::banda_rampa;
+
+#[cfg(test)]
+#[path = "testes_rampa.rs"]
+mod testes_rampa;

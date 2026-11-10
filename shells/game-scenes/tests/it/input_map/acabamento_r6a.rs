@@ -57,7 +57,10 @@ fn a_manche_diz_a_direccao_por_icone_marca_os_campos_e_so_o_pressed_e_verde() {
             .filter(|i| {
                 let (cx, cy) = (i.0.x + i.0.w * 0.5, i.0.y + i.0.h * 0.5);
                 !(m.tab().doc.kb.bars.iter()).any(|(h, _)| {
-                    m.tab().doc.rect_of(h.id()).is_some_and(|r| r.contains(cx, cy))
+                    m.tab()
+                        .doc
+                        .rect_of(h.id())
+                        .is_some_and(|r| r.contains(cx, cy))
                 })
             })
             .map(|i| i.1)

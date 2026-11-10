@@ -176,23 +176,23 @@ impl AnimDoc {
     }
 
     /// ⭐ **Follow** (dono 09/11): chamado pela família depois de aplicar as edições do quadro e refazer a geometria.
-    /// `moved` = alguma delas mexeu no desenho (tamanho, folha, quadro). Com o Follow ligado e o gesto acabado, devolve
-    /// o passo do Pivot que o leva ao mesmo lugar da caixa de todos os quadros onde estava antes do gesto: a família
-    /// aplica-o no mesmo quadro, e o Ctrl+Z desfaz os dois juntos.
+    /// `moved` = alguma delas mexeu no desenho (tamanho, folha, quadro). Com o Follow ligado devolve, a cada quadro em
+    /// que o desenho mexeu (a meio do arrasto também), o passo do Pivot que o leva ao mesmo lugar da caixa de todos os
+    /// quadros onde estava antes do gesto: a família aplica-o no mesmo quadro, e o Ctrl+Z desfaz tudo junto.
     pub fn pivot_follow(&mut self, moved: bool) -> Option<[f32; 2]> {
         self.align.pivot.dirty |= moved;
-        if self.align_gesture_active() {
-            return None; // a meio do gesto, a fração de antes fica guardada
-        }
+        let gesture = self.align_gesture_active();
         let (lo, hi) = self.all_frames_box()?;
         let size = [hi[0] - lo[0], hi[1] - lo[1]];
         if size[0] <= 0.0 || size[1] <= 0.0 {
             return None;
         }
-        if std::mem::take(&mut self.align.pivot.dirty)
+        // Em tempo real (smoke do dono 09/11): a cada quadro em que o desenho mexeu, mesmo a meio do arrasto.
+        if self.align.pivot.dirty
             && self.align.pivot.follow
             && let Some(f) = self.align.pivot.frac
         {
+            self.align.pivot.dirty = false;
             let p = [lo[0] + f[0] * size[0], lo[1] + f[1] * size[1]];
             let tol = self.pivot_pixel() / 2.0;
             if p[0].abs() > tol || p[1].abs() > tol {
@@ -200,7 +200,17 @@ impl AnimDoc {
                 return Some(p);
             }
         }
-        self.align.pivot.frac = Some([-lo[0] / size[0], -lo[1] / size[1]]);
+        if gesture {
+            return None; // a meio do gesto, a fração de antes dele fica guardada
+        }
+        self.align.pivot.dirty = false;
+        // Num dos 25 pontos guarda-se o PONTO, não a medida: dentro do meio pixel de folga a medida pode estar torta, e o
+        // erro cresce com a caixa no gesto seguinte (sonda do smoke 09/11: 0,5096 em vez de 0,5, e o ponto apagava).
+        let t = |i: u8| f32::from(i) / f32::from(SIDE - 1);
+        self.align.pivot.frac = Some(match self.pivot_on_grid() {
+            Some([c, r]) => [t(c), 1.0 - t(r)],
+            None => [-lo[0] / size[0], -lo[1] / size[1]],
+        });
         None
     }
 

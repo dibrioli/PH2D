@@ -238,9 +238,29 @@ fn com_o_follow_o_pivot_acompanha_o_redimensionamento() {
         let h = centre(p.handles[2].expect("a pega de baixo à esquerda"));
         let (ox, oy) = p.pivot.unwrap();
         let perto = (ox + (h.0 - ox) * 0.6, oy + (h.1 - oy) * 0.6);
-        m.drag(h, perto, Modifiers::default());
+        // Em quadros distintos, como a mão: o Follow age a meio do gesto.
+        let b = ph2d_host::PointerButton::Primary;
+        m.pointer_with(ph2d_host::PointerKind::Down, b, h, Modifiers::default());
+        for i in 1..=3 {
+            let t = i as f32 / 3.0; // LITERAL-PX-OK: passos do arrasto
+            let at = (h.0 + (perto.0 - h.0) * t, h.1 + (perto.1 - h.1) * t);
+            m.pointer_with(ph2d_host::PointerKind::Move, b, at, Modifiers::default());
+            m.frame();
+            m.paint();
+            if follow {
+                assert_eq!(
+                    m.doc().pivot_on_grid(),
+                    Some([4, 0]),
+                    "a meio da escala, passo {i}"
+                );
+            }
+        }
+        m.pointer_with(ph2d_host::PointerKind::Up, b, perto, Modifiers::default());
         m.frame();
         m.paint();
+        if follow {
+            assert_eq!(m.doc().pivot_on_grid(), Some([4, 0]), "depois da escala");
+        }
         let pv = m.doc().layout.align.preview;
         let c = centre(pv);
         // Como na mão do dono: o movimento num quadro da tela, o soltar noutro, sem movimento novo.
@@ -250,6 +270,13 @@ fn com_o_follow_o_pivot_acompanha_o_redimensionamento() {
         m.pointer_with(ph2d_host::PointerKind::Move, b, longe, Modifiers::default());
         m.frame();
         m.paint();
+        if follow {
+            assert_eq!(
+                m.doc().pivot_on_grid(),
+                Some([4, 0]),
+                "em tempo real, a meio do arrasto"
+            );
+        }
         m.pointer_with(ph2d_host::PointerKind::Up, b, longe, Modifiers::default());
         assert!(
             !m.sheet_edits()

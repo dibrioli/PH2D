@@ -9,7 +9,8 @@ use super::paint_align::{Look, chip};
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, frame_radius, paint_text, stroke_polyline, stroke_rounded_rect,
+    fill_circle, fill_rounded_rect, frame_radius, paint_icon, paint_text, stroke_polyline,
+    stroke_rounded_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -33,40 +34,47 @@ pub(super) fn paint_pivot_column(
         return;
     }
     let on = doc.align.on;
-    // A submoldura: o Pivot é um assunto à parte dentro do Align.
+    // A submoldura (dono 09/11): o Pivot é um assunto à parte dentro do Align, no MESMO tom da moldura (um fundo mais
+    // escuro lia-se como apagado), com um fio de acento e um respiro por dentro.
     let sub = l.pivot_frame;
     let raio = frame_radius(theme, m::FIELD_RADIUS);
-    fill_rounded_rect(scene, sub, raio, tom(ColorToken::Bg1, theme));
     let fio = StrokeToken::Thin.px();
-    stroke_rounded_rect(scene, sub, raio, fio, tom(ColorToken::Bg3, theme));
-    let font = TypeToken::Base.px();
+    fill_rounded_rect(scene, sub, raio, tom(ColorToken::Bg2, theme));
+    let borda = if on {
+        ColorToken::AccentSoft
+    } else {
+        ColorToken::Bg3
+    };
+    stroke_rounded_rect(scene, sub, raio, fio, tom(borda, theme));
+    // O título na tinta do título do Align («Reference: …»), pequeno, com o ícone do Pivot.
     let t = l.pivot_title;
     let title_c = if on {
-        ColorToken::Text2
+        ColorToken::Info
     } else {
         ColorToken::TextDisabled
     };
+    let font = TypeToken::Sm.px();
+    let icone = Rect::new(t.x, t.y, font, font);
+    paint_icon(scene, IconId::Pivot, icone, tom(title_c, theme), fio);
+    let tx = t.x + font + Spacing::Xs.px();
     paint_text(
         text,
         scene,
         tr("anim_editor.pivot"),
-        t.x,
+        tx,
         t.y,
         font,
-        t.w,
+        (t.x + t.w - tx).max(0.0),
         tom(title_c, theme),
     );
+    // A grade num poço: os pontos claros, o escolhido em acento com um anel.
     let g = l.pivot_grid;
-    fill_rounded_rect(
-        scene,
-        g,
-        frame_radius(theme, m::FIELD_RADIUS),
-        tom(ColorToken::Bg3, theme),
-    );
+    fill_rounded_rect(scene, g, raio, tom(ColorToken::Bg1, theme));
+    stroke_rounded_rect(scene, g, raio, fio, tom(ColorToken::Bg3, theme));
     let here = if on { doc.pivot_on_grid() } else { None };
     let step = g.w / f32::from(SIDE);
     let dot = if on {
-        ColorToken::Text3
+        ColorToken::Text2
     } else {
         ColorToken::TextDisabled
     };
@@ -74,6 +82,13 @@ pub(super) fn paint_pivot_column(
         let cx = g.x + (f32::from(q[0]) + 0.5) * step; // LITERAL-PX-OK: o meio da casa
         let cy = g.y + (f32::from(q[1]) + 0.5) * step; // LITERAL-PX-OK: o meio da casa
         if here == Some(q) {
+            fill_circle(
+                scene,
+                cx,
+                cy,
+                step * DOT_ON + fio,
+                tom(ColorToken::Bg0, theme),
+            );
             fill_circle(scene, cx, cy, step * DOT_ON, tom(ColorToken::Accent, theme));
         } else {
             fill_circle(scene, cx, cy, step * DOT, tom(dot, theme));

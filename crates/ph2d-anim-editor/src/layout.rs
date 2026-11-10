@@ -281,11 +281,16 @@ impl AnimDoc {
             ph2d_i18n::tr("anim_editor.pivot_by_hand"),
             ph2d_i18n::tr("anim_editor.pivot_follow"),
         ]) + row;
-        // A coluna do Pivot (GEF 29): a grade 5 × 5 com a altura das duas filas, e o «By hand» ao lado.
-        let pivot_side = row + gap + row;
-        // A submoldura do Pivot (dono 09/11): um recuo de cada lado.
-        let sub = Spacing::Xs.px();
-        let pivot_w = gap + sub + pivot_side + gap + align_button + sub;
+        // A submoldura do Pivot (GEF 29, dono 09/11): da fila do título ao fim das duas filas, com um respiro por dentro;
+        // o título pequeno em cima, a grade 5 × 5 à esquerda e «By hand» / «Follow» à direita, na altura dela.
+        let sub_edge = Spacing::Xs.px();
+        let sub_pad = Spacing::Sm.px();
+        let sub_title = TypeToken::Sm.px() + Spacing::Xs.px();
+        let sub_h = line + row + gap + row + 2.0 * sub_edge; // LITERAL-PX-OK: os dois recuos
+        let pivot_side = sub_h - 2.0 * sub_pad - sub_title; // LITERAL-PX-OK: os dois respiros
+        let sub_row = ((pivot_side - Spacing::Xs.px()) / 2.0).min(row); // LITERAL-PX-OK: duas filas
+        let sub_w = sub_pad + pivot_side + sub_pad + align_button + sub_pad;
+        let pivot_w = gap + sub_w;
         let three = 3.0 * align_button + 2.0 * group_pad + 2.0 * gap; // LITERAL-PX-OK: três botões, as margens e os vãos
         // Numa aba estreita a coluna do Pivot desce para baixo dos botões: a moldura nunca sai da aba.
         let pivot_under = three + pivot_w > card_w;
@@ -309,7 +314,7 @@ impl AnimDoc {
         let align_below = align_w > 0.0 && !cabe(beside);
         let align_h = 2.0 * group_pad + line + row + gap + row // LITERAL-PX-OK: as margens e as duas filas
             + if pivot_under {
-                gap + line + pivot_side + 2.0 * sub // LITERAL-PX-OK: o recuo de cima e o de baixo
+                gap + sub_h
             } else {
                 0.0
             };
@@ -431,29 +436,26 @@ impl AnimDoc {
             let col3 = bx + 2.0 * (align_button + gap); // LITERAL-PX-OK: a terceira coluna
             l.align.by_feet = Rect::new(col3, fila(0.0), align_button, row);
             l.align.by_centre = Rect::new(col3, fila(1.0), align_button, row);
-            let (sub_x, py) = if pivot_under {
-                (bx, fila(2.0) + sub)
+            let (sub_x, sub_y) = if pivot_under {
+                (bx, fila(2.0))
             } else {
-                (col3 + align_button + gap, by)
+                (col3 + align_button + gap, by - sub_edge)
             };
-            let col4 = sub_x + sub;
-            l.align.pivot_frame = Rect::new(
-                sub_x,
-                py - sub,
-                pivot_side + gap + align_button + 2.0 * sub, // LITERAL-PX-OK: os dois recuos
-                line + pivot_side + 2.0 * sub,               // LITERAL-PX-OK: os dois recuos
-            );
+            l.align.pivot_frame = Rect::new(sub_x, sub_y, sub_w, sub_h);
+            let (ix, iy) = (sub_x + sub_pad, sub_y + sub_pad);
             let titulo_w = if pivot_under {
                 f.w - 2.0 * group_pad
             } else {
                 sub_x - gap - bx
             }; // LITERAL-PX-OK: as duas margens
             l.align.title = Rect::new(bx, by, titulo_w.max(0.0), line);
-            l.align.pivot_title = Rect::new(col4, py, pivot_side + gap + align_button, line);
-            l.align.pivot_grid = Rect::new(col4, py + line, pivot_side, pivot_side);
-            let col5 = col4 + pivot_side + gap;
-            l.align.by_hand = Rect::new(col5, py + line, align_button, row);
-            l.align.pivot_follow = Rect::new(col5, py + line + row + gap, align_button, row);
+            let corpo = iy + sub_title;
+            l.align.pivot_title = Rect::new(ix, iy, sub_w - 2.0 * sub_pad, sub_title); // LITERAL-PX-OK: os dois respiros
+            l.align.pivot_grid = Rect::new(ix, corpo, pivot_side, pivot_side);
+            let col5 = ix + pivot_side + sub_pad;
+            l.align.by_hand = Rect::new(col5, corpo, align_button, sub_row);
+            let fim = corpo + pivot_side - sub_row;
+            l.align.pivot_follow = Rect::new(col5, fim, align_button, sub_row);
         } else {
             self.align.on = false;
         }

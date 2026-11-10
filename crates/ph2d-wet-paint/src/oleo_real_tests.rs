@@ -499,8 +499,8 @@ fn o_hdri_uniforme_da_o_ganho_um_em_toda_a_celula() {
         for cx in 2..W {
             let (x, y) = (cx as isize, cy as isize);
             let n = normal(&c, x, y);
-            let (v, d) = visibilidade_e_ceu(&c, x, y, n, 1.0, Some(&ceu));
-            let (v0, _) = visibilidade_e_ceu(&c, x, y, n, 1.0, None);
+            let (v, d) = visibilidade_e_ceu(&c, x, y, n, (1.0, o.qualidade), Some(&ceu));
+            let (v0, _) = visibilidade_e_ceu(&c, x, y, n, (1.0, o.qualidade), None);
             assert_eq!(
                 v.to_bits(),
                 v0.to_bits(),

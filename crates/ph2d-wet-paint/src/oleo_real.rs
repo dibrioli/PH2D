@@ -86,6 +86,47 @@ pub struct OleoReal {
     /// D1 W3b (não é knob, idem): o raio (px) do **Smooth Edges** da TELA — a silhueta amaciada antes do campo
     /// ([`amacia_a_silhueta`]): a cobertura, as três alturas, a normal e a sombra seguem-na. `0` = desligado, ao bit.
     pub suave_px: f64,
+    /// B14.2 (decisão 2 do dono; não é knob: a óptica põe-na por imagem): a luz [`QualidadeDaLuz::Simples`] com o
+    /// pincel na tela, a [`QualidadeDaLuz::Cheia`] no repouso — a de fábrica, ao bit.
+    pub qualidade: QualidadeDaLuz,
+}
+
+/// Quantas amostras a luz do Óleo Real paga por célula (B14.2): as fatias do horizonte, as distâncias dele e os passos
+/// da marcha da sombra. A `Simples` corta-as a metade DENTRO do mesmo alcance ([`MARGEM`] e [`ALCANCE_FENDA_MAX`] não
+/// mudam: a região suja e a costura são as mesmas).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum QualidadeDaLuz {
+    #[default]
+    Cheia,
+    Simples,
+}
+
+impl QualidadeDaLuz {
+    /// As fatias do horizonte ([`FATIAS`] ou metade; `FATIAS` divide-se por elas).
+    #[must_use]
+    pub const fn fatias(self) -> usize {
+        match self {
+            Self::Cheia => FATIAS,
+            Self::Simples => FATIAS / 2,
+        }
+    }
+
+    /// As distâncias do horizonte: as de [`HORIZONTE`], ou uma sim, uma não (a primeira e a última ficam).
+    #[must_use]
+    pub const fn horizonte(self) -> &'static [f64] {
+        match self {
+            Self::Cheia => &HORIZONTE,
+            Self::Simples => &HORIZONTE_SIMPLES,
+        }
+    }
+
+    /// As distâncias `t` (células) da marcha da sombra: `1..=`[`PASSOS_SOMBRA`], ou uma sim, uma não.
+    pub fn marcha(self) -> core::iter::StepBy<core::ops::RangeInclusive<usize>> {
+        (1..=PASSOS_SOMBRA).step_by(match self {
+            Self::Cheia => 1,
+            Self::Simples => 2,
+        })
+    }
 }
 
 impl Default for OleoReal {
@@ -105,6 +146,7 @@ impl Default for OleoReal {
             papel: [1.0; 3],
             dente_papel: 0.0,
             suave_px: 0.0,
+            qualidade: QualidadeDaLuz::Cheia,
         }
     }
 }
@@ -189,6 +231,9 @@ pub const PASSOS_SOMBRA: usize = 24;
 /// +0,068 × +0,064); 64 células só ajudam o papel ao pé de paredes altas (a pirâmide de máximos da placa).
 const HORIZONTE: [f64; 9] = [1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0];
 const FATIAS: usize = 4;
+/// As de [`HORIZONTE`] da [`QualidadeDaLuz::Simples`]: uma sim, uma não.
+const HORIZONTE_SIMPLES: [f64; 5] = [1.0, 3.0, 6.0, 12.0, 24.0];
+const _: () = assert!(FATIAS % 2 == 0 && HORIZONTE_SIMPLES[4] == ALCANCE_FENDA_MAX);
 /// O tecto do [`OleoReal::alcance_fenda`] = o horizonte de fábrica: além dele a amostra sai da
 /// [`MARGEM`] da região suja (a costura no recompor) — mais longe é a pirâmide de máximos da placa
 /// (`oraculo/README.md`, recusa «64 células na CPU»).
@@ -364,3 +409,7 @@ mod oleo_real_tests;
 #[cfg(test)]
 #[path = "oleo_borda_w3b_tests.rs"]
 mod oleo_borda_w3b_tests;
+
+#[cfg(test)]
+#[path = "oleo_luz_simples_tests.rs"]
+mod oleo_luz_simples_tests;

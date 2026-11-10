@@ -59,6 +59,13 @@
 | onda 5 | B12a | parcial (58f6a1cde7): B12.4 veneno do rascunho do solver (cfg(test)): grade igual ao bit à do rascunho limpo; mutação vermelha, sem ela verde. Falta B12.1 marca_dab no pouso, B12.3 tile esparso, B52.R11. |
 | onda 5 | B14-cont3 | feito (f00ea17138): B14.4 o emboss da tinta sem óleo segue o Light angle do cartão (Sim::luz_do_relevo); 225° igual ao bit. Gate o_emboss_segue_a_luz_do_cartao red→green; mutação red. Alarmes verdes. |
 | onda 5 | verificação | verde |
+| onda 6 | B11-cont2 | feito (ffc2605130): B11.A1: worker morto em pânico → perde_o_motor nas 3 portas, motor vazio e SimWorker.perdido; a sessão acaba sem tocar a tela. Gate worker_morto_acaba_a_sessao_sem_tocar_a_tela red→green; regressão verde. |
+| onda 6 | B29a | feito (f981cf4a89): R26 parte: bandas do carimbo movidas p/ stamp_color/bandas.rs (accumulate_batch 510→336), ao bit; A2 nível da pirâmide por carimbo; A3 GraoCache (serial 1200→300). Alarmes verdes. |
+| onda 6 | B14c | parcial (1eddf51ce4): silhueta base da ponta guardada à parte (SilMemo::nova_base): Flat Bristle 240 a 4K, 7,11 M → 1,89 M avaliações por dab, ao bit; gate red→green. Falta A/B no app, caixa do memo, pow, Drag. |
+| onda 6 | B10c-cont3 | recusa medida (3614bf29ea): só BACKLOG. B10.4 Wet 2880² na Radeon: quadro por relógio de parede sem forma comum entre rodadas; CPU por janela constante, sem acúmulo. Sem defeito nem gate; B10.5 já feito. |
+| onda 6 | B06b | parcial (473854fefa): B06.A5: risca da malha curada (homografias em coordenadas locais; folga em distância 1e-3 texel); texels sem dono 3 → 0; 54 testes do warp verdes. B06.7 bloqueado; falta resto de relevo e estrias. |
+| onda 6 | B23-cont4 | feito (aa64a921ee): B23.1 minflt por fase na linha [quadro]; shell 189 015 → 189 015. 4096²: 1 camada a traçar 1,6 faltas/quadro, p50 42 ms; 12 camadas 0,0, 16 ms. Gates verdes; commit levou linhas B06.2/B06.3 do BACKLOG. |
+| onda 6 | verificação | verde |
 
 ## Fatos medidos que mudam a ordem
 

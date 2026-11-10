@@ -107,7 +107,7 @@ pub(super) fn controls(
         m::FIELD_RADIUS,
         ink.color(ColorToken::Success),
     );
-    let rows = ph2d_player_controls::rows(&doc.snap.map);
+    let rows = ph2d_player_controls::rows(doc.snap.read_map());
     let screen = ph2d_player_controls::ControlsScreen::default();
     ph2d_player_controls::paint(back, &rows, &screen, scene, ts, doc.tryit.theme);
     y += ph + GAP;

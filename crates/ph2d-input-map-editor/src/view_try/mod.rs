@@ -61,7 +61,7 @@ pub(crate) fn tick(doc: &mut InputMapDoc, live: &InputState) {
     } else {
         &t.bench
     };
-    t.actions.tick(&doc.snap.map, dev);
+    t.actions.tick(doc.snap.read_map(), dev);
 }
 
 /// Lê o ficheiro do jogador (ao abrir a vista, ao trocar de jogo, depois do Forget) — nunca a cada quadro.
@@ -316,6 +316,11 @@ pub fn paint(
     let overflow = (bottom - m::CARD_GAP - (inner.y + inner.h)).max(0.0);
     doc.tryit.scroll = doc.tryit.scroll.min(overflow);
     let mut ys = [inner.y - doc.tryit.scroll; 2];
+    // A vista rola: os cartões cortam-se na linha do enchimento (a 1280×720 o último descia ao HUD, foto A1).
+    let clip = Rect::new(body.x, inner.y, body.w, inner.h);
+    scene.push_clip(&ph2d_editor_core::paint::rect_to_vello(clip));
+    doc.hits.push_clip(clip);
+    doc.census.clip = Some(clip);
     for (i, (_, p)) in order.iter().enumerate() {
         let c = col_of(i);
         let r = Rect::new(
@@ -328,4 +333,6 @@ pub fn paint(
         p(doc, r, scene, ts, ink);
         ys[c] += heights[i] + m::CARD_GAP;
     }
+    doc.hits.pop_clip();
+    scene.pop_layer();
 }

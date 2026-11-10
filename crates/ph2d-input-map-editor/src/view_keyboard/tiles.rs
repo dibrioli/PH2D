@@ -2,9 +2,7 @@
 //! que escuta, a frase da tecla repetida, o aviso de quem ninguém lê e — com manche — a barra do curso.
 
 use ph2d_card_stack::metrics as m;
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_icon, stroke_rounded_rect, stroke_rounded_rect_dashed,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, stroke_rounded_rect_dashed};
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -254,13 +252,15 @@ pub(super) fn paint(
     };
     let tile = Rect::new(lx, ly, lw.max(TILE_H).min(w), TILE_H);
     if listening {
-        stroke_rounded_rect(
+        stroke_rounded_rect_dashed(
             scene,
             tile,
             m::FIELD_RADIUS,
             m::FIELD_BORDER * 2.0,
+            m::LOOSE_DASH,
             ink.color(ColorToken::FocusRing),
         );
+        doc.census.dashed.push(tile);
     } else {
         stroke_rounded_rect_dashed(
             scene,

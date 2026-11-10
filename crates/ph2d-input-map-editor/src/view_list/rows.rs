@@ -336,7 +336,7 @@ fn paint_plus(
         let msg = tr(key);
         let w = (ts.prefix_width(msg, m::VALUE_PX) + m::SEG_INSET * 2.0).min(room.w);
         let r = Rect::new(room.x, room.y, w, room.h);
-        ring(scene, r, ink);
+        super::listening_ring(&mut doc.census, scene, r, ink);
         let inner = Rect::new(r.x + m::SEG_INSET, r.y, r.w - m::SEG_INSET * 2.0, r.h);
         text::line(
             &mut doc.census,

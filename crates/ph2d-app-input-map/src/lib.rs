@@ -10,10 +10,16 @@ pub mod listen;
 pub mod readers;
 mod surface;
 
-pub use surface::{InputMapTab, TAB_ID};
 pub use ph2d_player_controls;
+pub use surface::{InputMapTab, TAB_ID};
 
 use ph2d_editor_core::HeroScreen;
+
+/// O que a shell passa ao [`frame`] do que está vivo: o `InputState` e a sessão do jogador (o mapa que o Play lê).
+pub type Live<'a> = (
+    &'a ph2d_input::InputState,
+    &'a ph2d_player_controls::PlaySession,
+);
 
 /// A declaração da família à shell.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
@@ -41,7 +47,7 @@ pub fn frame(
     world: &ph2d_ecs::World,
     hero: &mut HeroScreen,
     gamepad_connected: bool,
-    live: &ph2d_input::InputState,
+    (live, jogador): Live<'_>,
 ) {
     let open = hero.store.take_input_map_tab_request();
     let Some(tab) = hero.documents.surfaces_mut().find_mut::<InputMapTab>() else {
@@ -66,10 +72,12 @@ pub fn frame(
         .store
         .input_map_listening()
         .filter(|_| !hero.store.input_map_listen_replaces());
+    let play_running = ph2d_ecs::run_is_on_copy(world);
     let snap = Snapshot {
         map: hero.input_map.clone(),
         gamepad_connected,
-        play_running: ph2d_ecs::run_is_on_copy(world),
+        play_running,
+        play_map: play_running.then(|| jogador.map(&hero.input_map).clone()),
         readers: readers::of_world(world),
         listening,
         game_id: world

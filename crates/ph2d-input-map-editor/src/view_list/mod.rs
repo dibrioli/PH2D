@@ -176,6 +176,24 @@ fn paint_search(
     r.y + r.h
 }
 
+/// A caixa à escuta: o anel do foco TRACEJADO (maquete A2), contado no censo.
+pub(crate) fn listening_ring(
+    census: &mut crate::census::Census,
+    scene: &mut VectorScene,
+    r: Rect,
+    ink: CardInk,
+) {
+    ph2d_editor_core::paint::stroke_rounded_rect_dashed(
+        scene,
+        r,
+        m::SEG_RADIUS,
+        m::FIELD_BORDER,
+        m::LOOSE_DASH,
+        ink.color(ColorToken::FocusRing),
+    );
+    census.dashed.push(r);
+}
+
 /// A moldura de um alvo focado ou à escuta (o anel do foco).
 pub(crate) fn ring(scene: &mut VectorScene, r: Rect, ink: CardInk) {
     stroke_rounded_rect(

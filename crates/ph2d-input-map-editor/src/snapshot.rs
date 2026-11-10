@@ -19,4 +19,14 @@ pub struct Snapshot {
     pub listening: Option<ActionId>,
     /// A identidade do jogo (`ph2d_player_controls::GameId`); `0` = ainda sem mundo.
     pub game_id: u64,
+    /// Com o Play a correr, o mapa que o jogo LÊ (o efectivo do jogador, `PlaySession::map`); parado, `None`.
+    pub play_map: Option<InputMap>,
+}
+
+impl Snapshot {
+    /// O mapa que o Try it lê: o do jogador com o jogo a correr, o do projecto parado.
+    #[must_use]
+    pub fn read_map(&self) -> &InputMap {
+        self.play_map.as_ref().unwrap_or(&self.map)
+    }
 }

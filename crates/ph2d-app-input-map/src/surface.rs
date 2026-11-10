@@ -17,6 +17,8 @@ pub struct InputMapTab {
     pub doc: InputMapDoc,
     open: bool,
     focus: Option<u64>,
+    /// A faixa do HUD de baixo que o hero pinta POR CIMA da área (`chrome_over`).
+    over: Option<Rect>,
 }
 
 impl InputMapTab {
@@ -26,6 +28,7 @@ impl InputMapTab {
             doc: InputMapDoc::new(view),
             open: false,
             focus: None,
+            over: None,
         }
     }
 
@@ -61,7 +64,12 @@ impl DocumentSurface for InputMapTab {
         text: &mut TextSystem,
         theme: &Theme,
     ) {
+        let area = above_the_hud(area, self.over);
         ph2d_input_map_editor::paint::paint_doc(&mut self.doc, area, scene, text, *theme);
+    }
+
+    fn chrome_over(&mut self, _id: u64, over: Option<Rect>) {
+        self.over = over;
     }
 
     fn pointer(
@@ -138,4 +146,15 @@ impl DocumentSurface for InputMapTab {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
+}
+
+/// A área sem a faixa do HUD que o hero pinta por cima (a 1280×720 tapava a última linha do pé, foto A1):
+/// a aba pára no topo dele, como o SFX Lab e o Kanban.
+#[must_use]
+pub fn above_the_hud(area: Rect, over: Option<Rect>) -> Rect {
+    let Some(o) = over.filter(|o| o.x < area.x + area.w && o.x + o.w > area.x) else {
+        return area;
+    };
+    let bottom = o.y.clamp(area.y, area.y + area.h);
+    Rect::new(area.x, area.y, area.w, bottom - area.y)
 }

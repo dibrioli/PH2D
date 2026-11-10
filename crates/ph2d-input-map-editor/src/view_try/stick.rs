@@ -22,7 +22,7 @@ const SIDES: usize = 64;
 
 /// A acção da manche: a aberta na vista B se usa manche, senão a primeira que usa.
 pub(crate) fn stick_action(doc: &InputMapDoc) -> Option<ActionId> {
-    let map = &doc.snap.map;
+    let map = doc.snap.read_map();
     doc.kb
         .open
         .and_then(|a| map.get(a))
@@ -67,7 +67,7 @@ pub(super) fn stick(
     );
     y += line_h(m::LABEL_PX);
     let Some(a) = stick_action(doc)
-        .and_then(|id| doc.snap.map.get(id))
+        .and_then(|id| doc.snap.read_map().get(id))
         .cloned()
     else {
         para(

@@ -3,6 +3,7 @@
 //! pintura e o ponteiro da aba activa. As ondas seguintes (A · List, B · Keyboard, C · Try it) usam-no.
 
 mod abrir;
+mod acabamento_r5b;
 mod cenas_do_smoke;
 mod lista;
 mod lista_acabamento;
@@ -40,6 +41,8 @@ pub(super) struct Mesa {
     pub gamepad: bool,
     /// O `InputState` da shell (o comando ao vivo; o estado do jogo com o Play a correr).
     pub live: ph2d_input::InputState,
+    /// A sessão do jogador da shell (o mapa que o Play lê).
+    pub jogador: ph2d_app_input_map::ph2d_player_controls::PlaySession,
 }
 
 impl Mesa {
@@ -53,6 +56,7 @@ impl Mesa {
             ts: TextSystem::without_system_fonts(),
             gamepad: false,
             live: ph2d_input::InputState::default(),
+            jogador: Default::default(),
         }
     }
 
@@ -72,7 +76,8 @@ impl Mesa {
 
     /// Um quadro: a família, o hero a seguir as abas, a pintura da aba activa.
     pub fn frame(&mut self) {
-        ph2d_app_input_map::frame(self.sim.world(), &mut self.hero, self.gamepad, &self.live);
+        let live = (&self.live, &self.jogador);
+        ph2d_app_input_map::frame(self.sim.world(), &mut self.hero, self.gamepad, live);
         self.hero.documents.follow_surfaces();
         self.paint();
     }

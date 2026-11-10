@@ -259,6 +259,12 @@ impl InputMapDoc {
         self.hits.rect_for(id)
     }
 
+    /// O cartão da vista da última pintura (tudo o que a vista pinta mora nele).
+    #[must_use]
+    pub const fn body(&self) -> ph2d_editor_core::zones::Rect {
+        self.layout.body
+    }
+
     #[must_use]
     pub fn take_pending(&mut self) -> Vec<InputMapEdit> {
         std::mem::take(&mut self.pending)

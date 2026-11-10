@@ -10,6 +10,10 @@ pub struct Census {
     pub texts: Vec<(Rect, String, bool)>,
     /// Cada campo numérico, pela acção dona.
     pub numbers: Vec<ActionId>,
+    /// Cada caixa pintada TRACEJADA (a escuta da A e o ladrilho da B, maquete A2).
+    pub dashed: Vec<Rect>,
+    /// O recorte da vista que rola (a C): o que sai dele não se pinta nem se clica.
+    pub clip: Option<Rect>,
 }
 
 impl Census {

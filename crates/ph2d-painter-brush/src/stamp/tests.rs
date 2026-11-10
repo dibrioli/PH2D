@@ -507,7 +507,7 @@ fn the_write_bounds_door_contains_what_both_blit_routes_touch() {
                     impasto,
                     ..Default::default()
                 };
-                let promised = dab_write_bounds(center, radius, w, h);
+                let promised = dab_write_bounds(center, radius, [1.0, 1.0], w, h);
 
                 let mask = render_stamp_mask(&spec, None, None, None, 64);
                 let mut a = solid(w, h, [255, 255, 255, 255]);
@@ -539,6 +539,55 @@ fn the_write_bounds_door_contains_what_both_blit_routes_touch() {
     assert!(
         checked >= 40,
         "o gate exercitou pouco: {checked} pares (rota, dab) de fato escreveram"
+    );
+}
+
+/// **B25.2 — a porta do DAB contém o kernel com a ponta reta rodada.** A quina a 45° chega a `√2·r`; a
+/// porta do disco (`[1, 1]`, a de antes) não a contém — o controlo exige que ela FALHE em algum caso, senão
+/// a fixture não tem o fenómeno.
+#[test]
+fn a_porta_do_dab_contem_a_quina_rodada() {
+    let (w, h) = (96u32, 96u32);
+    let contains = |big: DirtyRect, small: DirtyRect| {
+        big.x <= small.x
+            && big.y <= small.y
+            && big.x + big.w >= small.x + small.w
+            && big.y + big.h >= small.y + small.h
+    };
+    let (mut checked, mut disco_falha) = (0usize, 0usize);
+    for quina in [0.0f32, 0.6, 1.0] {
+        for angle in [0u16, 30, 45] {
+            for radius in [3.5f32, 12.0, 40.0] {
+                for center in [[48.0f32, 48.0], [2.25, 93.75], [-5.0, 20.0]] {
+                    let spec = BrushSpec {
+                        radius_px: radius,
+                        hardness: 1.0,
+                        dab_quina: quina,
+                        dab_angle_deg: angle,
+                        ..Default::default()
+                    };
+                    let mut b = solid(w, h, [255, 255, 255, 255]);
+                    let Some(got) = stamp_dab(&mut b, w, h, center, &spec, 1.0, false) else {
+                        continue;
+                    };
+                    let porta = dab_write_bounds_of(&spec, center, [1.0, 0.0], w, h)
+                        .expect("o kernel escreveu: a porta não pode dizer nada");
+                    assert!(
+                        contains(porta, got),
+                        "o kernel escreveu {got:?} FORA da porta {porta:?} \
+                         (quina={quina}, {angle}°, r={radius}, c={center:?})"
+                    );
+                    let disco = dab_write_bounds(center, radius, [1.0, 1.0], w, h);
+                    disco_falha += usize::from(!disco.is_some_and(|d| contains(d, got)));
+                    checked += 1;
+                }
+            }
+        }
+    }
+    assert!(checked >= 60, "o gate exercitou pouco: {checked}");
+    assert!(
+        disco_falha > 0,
+        "controlo: a porta do disco tinha de cortar a quina rodada em algum caso"
     );
 }
 

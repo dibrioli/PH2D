@@ -53,7 +53,7 @@
 //! avança. Isso é uma pergunta própria, e **entra quando for medida**, não por simetria.
 
 use ph2d_painter_brush::{
-    BrushSpec, Dab, DirtyRect, dab_write_bounds, stamp_dab_textured_masked,
+    BrushSpec, Dab, DirtyRect, dab_write_bounds_of, stamp_dab_textured_masked,
     stamp_dab_textured_masked_with,
 };
 
@@ -76,34 +76,55 @@ pub(super) const BATCH_MIN_AREA: usize = ph2d_painter_brush::PARALLEL_MIN_AREA;
 
 /// A união dos retângulos de escrita declarados do lote — `None` se nenhum dab escreve.
 ///
-/// ⚠️ Usa [`dab_write_bounds`], o **superconjunto declarado** que o journal já consome, e não a janela
-/// exata do kernel. Para a rejeição por banda a direção segura é o superconjunto: rejeitar de menos
-/// custa uma chamada que não desenha nada; rejeitar de mais **some com tinta em silêncio**.
-pub(super) fn batch_bounds(dabs: &[Dab], w: u32, h: u32) -> Option<DirtyRect> {
-    dabs.iter()
-        .filter_map(|d| dab_write_bounds(d.center, d.radius_px, w, h))
+/// ⚠️ Usa as [`caixas`], o **superconjunto declarado** de cada dab, e não a janela exata do kernel. Para
+/// a rejeição por banda a direção segura é o superconjunto: rejeitar de menos custa uma chamada que não
+/// desenha nada; rejeitar de mais **some com tinta em silêncio**.
+pub(super) fn batch_bounds(caixas: &[Option<DirtyRect>]) -> Option<DirtyRect> {
+    caixas
+        .iter()
+        .flatten()
+        .copied()
         .fold(None, |acc: Option<DirtyRect>, r| {
             Some(acc.map_or(r, |a| union(a, r)))
         })
 }
 
+/// ⭐ **O retângulo de escrita de cada dab** (B25.2), uma vez por lote: o pincel DESTE dab pela porta do
+/// kernel ([`dab_write_bounds_of`]) — a quina rodada chega a `√2·r` e a caneta deitada estica. Com o raio
+/// cru a banda que só a quina alcançava rejeitava o dab e o canto saía cortado num sítio que dependia dos fios.
+pub(super) fn caixas(dabs: &[Dab], brush: &BrushSpec, w: u32, h: u32) -> Vec<Option<DirtyRect>> {
+    dabs.iter()
+        .map(|d| {
+            #[cfg(test)]
+            if PORTA_DO_DISCO.with(std::cell::Cell::get) {
+                return ph2d_painter_brush::dab_write_bounds(
+                    d.center,
+                    d.radius_px,
+                    [1.0, 1.0],
+                    w,
+                    h,
+                );
+            }
+            let s = brush.at_dab(d);
+            dab_write_bounds_of(&s, d.center, s.dab_rotor(d), w, h)
+        })
+        .collect()
+}
+
 /// **O trabalho de cada LINHA da união**, em visitas de texel.
 ///
-/// Usa o MESMO [`dab_write_bounds`] do [`batch_bounds`] e do laço de rejeição por banda — a largura
+/// Usa as MESMAS [`caixas`] do [`batch_bounds`] e do laço de rejeição por banda — a largura
 /// declarada do dab naquelas linhas. ⚠️ Uma segunda estimativa aqui (o raio, a área do círculo) diria
 /// um número diferente do que a banda de fato executa, e o corte passaria a equilibrar uma grandeza
 /// que ninguém paga.
 ///
 /// Custo: `Σ altura(dab)` incrementos — ~67 k para uma figura de 700 dabs de raio 48, contra os
 /// milhões de visitas do carimbo que ele vai distribuir.
-pub(super) fn row_work(dabs: &[Dab], w: u32, h: u32, bounds: DirtyRect) -> Vec<u32> {
+pub(super) fn row_work(caixas: &[Option<DirtyRect>], bounds: DirtyRect) -> Vec<u32> {
     let mut rows = vec![0u32; bounds.h as usize];
     let top = bounds.y;
     let bot = bounds.y + bounds.h;
-    for d in dabs {
-        let Some(b) = dab_write_bounds(d.center, d.radius_px, w, h) else {
-            continue;
-        };
+    for b in caixas.iter().flatten() {
         let y0 = b.y.max(top) - top;
         let y1 = (b.y + b.h).min(bot) - top;
         for r in &mut rows[y0 as usize..y1 as usize] {
@@ -123,7 +144,7 @@ pub(super) fn row_work(dabs: &[Dab], w: u32, h: u32, bounds: DirtyRect) -> Vec<u
 /// * **a última banda leva o resto**, então o corte nunca perde nem duplica uma linha, aconteça o que
 ///   acontecer com a aritmética dos quantis.
 ///
-/// ⚠️ **Trabalho ZERO devolve uma banda só.** Um lote cujo `dab_write_bounds` não escreve nada não tem
+/// ⚠️ **Trabalho ZERO devolve uma banda só.** Um lote cujas `caixas` não escreve nada não tem
 /// o que equilibrar, e dividi-lo seria abrir threads para não fazer nada — o oposto do que esta função
 /// existe para evitar.
 pub(super) fn work_bands(rows: &[u32], bands: usize) -> Vec<usize> {
@@ -189,9 +210,10 @@ fn union(a: DirtyRect, b: DirtyRect) -> DirtyRect {
 /// do pincel, então um log que traz `dabs` e omite o raio convida a uma aritmética infundada — eu
 /// derivei um `ns/visita` de um raio ASSUMIDO antes de escrever isto. A soma das pegadas não
 /// assume nada: ela É o trabalho.
-pub(super) fn batch_work(dabs: &[Dab], w: u32, h: u32) -> usize {
-    dabs.iter()
-        .filter_map(|d| dab_write_bounds(d.center, d.radius_px, w, h))
+pub(super) fn batch_work(caixas: &[Option<DirtyRect>]) -> usize {
+    caixas
+        .iter()
+        .flatten()
         .map(|b| (b.w as usize) * (b.h as usize))
         .sum()
 }
@@ -208,11 +230,11 @@ pub(super) fn batch_work(dabs: &[Dab], w: u32, h: u32) -> usize {
 /// irmã deixou a `wants_bands` **sem chamador de produção, só de gate**, que é exatamente a "segunda
 /// resposta esperando alguém chamá-la" que este módulo combate. Com o trabalho no argumento há uma
 /// função só, e a régua fica VISÍVEL no sítio de chamada.
-pub(super) fn wants_bands(work: usize, dabs: &[Dab], w: u32, h: u32, min_area: usize) -> bool {
-    if dabs.len() < 2 {
+pub(super) fn wants_bands(work: usize, caixas: &[Option<DirtyRect>], min_area: usize) -> bool {
+    if caixas.len() < 2 {
         return false;
     }
-    let Some(bounds) = batch_bounds(dabs, w, h) else {
+    let Some(bounds) = batch_bounds(caixas) else {
         return false;
     };
     ph2d_painter_brush::band_count(work, bounds.h as usize, min_area) >= 2
@@ -278,8 +300,9 @@ fn banded_com_forca(
     // `wants_bands`, aqui para o balde, e outra vez para a contagem de bandas) — 700 dabs × 3 é ruído
     // contra o carimbo, mas é a mesma pergunta feita a três lugares, que é como as três respostas
     // começam a divergir.
-    let work = batch_work(dabs, w, h);
-    let bands = wants_bands(work, dabs, w, h, min_area);
+    let caixas = caixas(dabs, brush, w, h);
+    let work = batch_work(&caixas);
+    let bands = wants_bands(work, &caixas, min_area);
     let t0 = std::time::Instant::now();
     let out = stamp_plain_dabs_banded_run(
         buf,
@@ -289,8 +312,8 @@ fn banded_com_forca(
         brush,
         alpha_locked,
         (mask, forca),
-        bands,
-        work,
+        (bands, work),
+        &caixas,
     );
     #[allow(clippy::cast_possible_truncation)]
     diag::note(bands, dabs.len(), work, t0.elapsed().as_micros() as u64);
@@ -350,13 +373,13 @@ fn stamp_plain_dabs_banded_run(
     brush: &BrushSpec,
     alpha_locked: bool,
     (mask, forca): Planos<'_>,
-    bands: bool,
-    work: usize,
+    (bands, work): (bool, usize),
+    caixas: &[Option<DirtyRect>],
 ) -> Option<DirtyRect> {
     if dabs.len() < 2 {
         return stamp_plain_serial(buf, w, h, dabs, brush, alpha_locked, (mask, forca));
     }
-    let bounds = batch_bounds(dabs, w, h)?;
+    let bounds = batch_bounds(caixas)?;
     let rows = bounds.h as usize;
     if !bands {
         return stamp_plain_serial(buf, w, h, dabs, brush, alpha_locked, (mask, forca));
@@ -365,6 +388,10 @@ fn stamp_plain_dabs_banded_run(
     // pergunta, e a medição de 2026-08-04 provou que ela tem a mesma resposta: os dois break-even
     // caem em ~25 k visitas. O `wants_bands` acima já aplicou o piso; aqui só falta *em quantas*.
     let threads = ph2d_painter_brush::band_count(work, rows, 0);
+    #[cfg(test)]
+    let threads = FIOS
+        .with(std::cell::Cell::get)
+        .map_or(threads, |n| n.min(rows));
     if threads < 2 {
         return stamp_plain_serial(buf, w, h, dabs, brush, alpha_locked, (mask, forca));
     }
@@ -386,7 +413,7 @@ fn stamp_plain_dabs_banded_run(
     // diferença, e ⚠️ **ela não é exótica**: Tiling embrulha cópias para a borda oposta e Symmetry as
     // espelha para o outro lado do canvas — as duas produzem exatamente esta união rala com UMA
     // figura só.
-    let band_rows = work_bands(&row_work(dabs, w, h, bounds), threads);
+    let band_rows = work_bands(&row_work(caixas, bounds), threads);
     let y_top = bounds.y as usize;
     let region = &mut buf[y_top * stride..(y_top + rows) * stride];
     let mask_region = mask.map(|m| &mut m[y_top * mrow..(y_top + rows) * mrow]);
@@ -407,8 +434,8 @@ fn stamp_plain_dabs_banded_run(
         let band_h = (chunk.len() / stride) as u32;
         let band_y1 = band_y0 + band_h;
         let mut touched: Option<DirtyRect> = None;
-        for d in dabs {
-            let Some(b) = dab_write_bounds(d.center, d.radius_px, w, h) else {
+        for (d, b) in dabs.iter().zip(caixas) {
+            let Some(b) = b else {
                 continue;
             };
             if b.y + b.h <= band_y0 || b.y >= band_y1 {
@@ -508,3 +535,14 @@ pub mod diag;
 
 #[cfg(test)]
 mod panico_tests;
+
+#[cfg(test)]
+mod quina_tests;
+
+#[cfg(test)]
+thread_local! {
+    /// Os fios do lote forçados pelo teste (`None` = os da máquina), para o mesmo lote a 2 e a 32 fios.
+    static FIOS: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
+    /// `true` = a porta de ANTES (o raio cru, `[1, 1]`), para o vermelho do B25.2 correr no mesmo processo.
+    static PORTA_DO_DISCO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}

@@ -17,7 +17,7 @@
 //! transcreve. Todo caso fora da lista cai na rota em banda, que é testada e continua sendo o
 //! caminho de tudo o que não é o quente: **o modo de falha de um caso novo é lento, nunca errado.**
 
-use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab, DirtyRect, dab_write_bounds};
+use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab, DirtyRect};
 
 /// Nós da tabela do perfil — **medido, não escolhido** (gate `the_device_paints_what_the_cpu_paints`,
 /// varredura com todo o resto igual): 1 024 REPROVA por dois níveis · 16 384 → 71 bytes · 65 536 →
@@ -179,10 +179,13 @@ pub fn device_dabs(dabs: &[Dab], brush: &BrushSpec) -> Vec<DeviceDab> {
         .collect()
 }
 
-/// A união dos retângulos de escrita declarados — a mesma porta que o lote em banda consulta.
-fn bounds(dabs: &[Dab], w: u32, h: u32) -> Option<DirtyRect> {
-    dabs.iter()
-        .filter_map(|d| dab_write_bounds(d.center, d.radius_px, w, h))
+/// A união dos retângulos de escrita declarados — as mesmas [`super::stamp_banded::caixas`] do lote em
+/// banda (a caneta deitada estica a pegada: o raio cru cortava-a na borda da região).
+fn bounds(caixas: &[Option<DirtyRect>]) -> Option<DirtyRect> {
+    caixas
+        .iter()
+        .flatten()
+        .copied()
         .fold(None, |acc: Option<DirtyRect>, r| {
             Some(acc.map_or(r, |a| {
                 let x = a.x.min(r.x);
@@ -226,8 +229,8 @@ pub(super) const MIN_REDUNDANCY: f32 = 4.0;
 ///
 /// ⚠️ Ela pergunta o TRABALHO à mesma função que a rota em banda usa (`batch_work`): duas contas do
 /// que um lote custa divergiriam, e cada rota decidiria por um número diferente.
-pub(super) fn wants_device(dabs: &[Dab], w: u32, h: u32) -> bool {
-    let Some(r) = bounds(dabs, w, h) else {
+pub(super) fn wants_device(caixas: &[Option<DirtyRect>]) -> bool {
+    let Some(r) = bounds(caixas) else {
         return false;
     };
     let region = (r.w as usize) * (r.h as usize);
@@ -236,7 +239,7 @@ pub(super) fn wants_device(dabs: &[Dab], w: u32, h: u32) -> bool {
     }
     #[allow(clippy::cast_precision_loss)]
     let (work, region) = (
-        super::stamp_banded::batch_work(dabs, w, h) as f32,
+        super::stamp_banded::batch_work(caixas) as f32,
         region as f32,
     );
     work >= MIN_REDUNDANCY * region
@@ -265,10 +268,10 @@ pub(super) fn stamp(
     h: u32,
     dabs: &[DeviceDab],
     lut: &[f32],
-    src: &[Dab],
+    caixas: &[Option<DirtyRect>],
     preserve_alpha: bool,
 ) -> Option<DirtyRect> {
-    let r = bounds(src, w, h)?;
+    let r = bounds(caixas)?;
     let (rw, rh) = (r.w as usize, r.h as usize);
     if rw == 0 || rh == 0 {
         return None;

@@ -319,13 +319,15 @@ impl PainterTool {
             && self.device_stamp.is_some()
             && super::stamp_device::eligible(brush)
             // A dureza por dab (a velocidade, J4 efeitos): a tabela de queda do device é uma por traço.
-            && !ph2d_painter_brush::pen::any_dureza(dabs)
-            && super::stamp_device::wants_device(dabs, w, h))
-        .then(|| {
+            && !ph2d_painter_brush::pen::any_dureza(dabs))
+        .then(|| super::stamp_banded::caixas(dabs, brush, w, h))
+        .filter(|caixas| super::stamp_device::wants_device(caixas))
+        .map(|caixas| {
             (
                 super::stamp_device::device_dabs(dabs, brush),
                 self.lut_cache.get(brush),
                 self.device_stamp.as_ref().expect("checado no predicado"),
+                caixas,
             )
         });
         let buf = super::plane_fork::fork_canvas(
@@ -347,10 +349,10 @@ impl PainterTool {
             // e aí o MESMO lote cai na rota em banda — o modo de falha é lento, nunca errado.
             let mut touched = None;
             let mut dev_us = 0u64;
-            if let Some((dev, lut, bridge)) = device.as_ref() {
+            if let Some((dev, lut, bridge, caixas)) = device.as_ref() {
                 let t0 = std::time::Instant::now();
                 touched =
-                    super::stamp_device::stamp(bridge, buf, w, h, dev, lut, dabs, alpha_locked);
+                    super::stamp_device::stamp(bridge, buf, w, h, dev, lut, caixas, alpha_locked);
                 #[allow(clippy::cast_possible_truncation)]
                 {
                     dev_us = t0.elapsed().as_micros() as u64;
@@ -363,7 +365,9 @@ impl PainterTool {
                 // gastos tentando são pagos pela rota da CPU, que os cronometra dentro dela.
                 super::stamp_banded::diag::note_device(
                     dabs.len(),
-                    super::stamp_banded::batch_work(dabs, w, h),
+                    device
+                        .as_ref()
+                        .map_or(0, |(.., caixas)| super::stamp_banded::batch_work(caixas)),
                     dev_us,
                 );
             }

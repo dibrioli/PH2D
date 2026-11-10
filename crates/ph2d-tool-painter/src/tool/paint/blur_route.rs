@@ -35,7 +35,8 @@ fn blur_bounds(
         };
         for off in &offs[..n] {
             let c = [d.center[0] + off[0], d.center[1] + off[1]];
-            let Some(r) = ph2d_painter_brush::dab_write_bounds(c, d.radius_px.max(0.5), w, h)
+            let Some(r) =
+                ph2d_painter_brush::dab_write_bounds(c, d.radius_px.max(0.5), [1.0, 1.0], w, h)
             else {
                 continue;
             };

@@ -11,6 +11,11 @@ use ph2d_painter_brush::{BrushSpec, Dab};
 pub(super) const W: u32 = 512;
 pub(super) const H: u32 = 512;
 
+/// As caixas do lote pela porta do produto, com o pincel da fixture.
+pub(super) fn caixas_de(dabs: &[Dab]) -> Vec<Option<ph2d_painter_brush::DirtyRect>> {
+    super::stamp_banded::caixas(dabs, &brush(), W, H)
+}
+
 pub(super) fn canvas() -> Vec<u8> {
     vec![255u8; (W as usize) * (H as usize) * 4]
 }
@@ -169,20 +174,16 @@ fn a_freehand_sized_batch_stays_serial_and_a_figure_sized_one_does_not() {
     // recomputava a regra por conta própria e teria ficado verde com o produto decidindo outra coisa.
     assert!(
         !wants_bands(
-            batch_work(&arc(2, 3.0), W, H),
-            &arc(2, 3.0),
-            W,
-            H,
+            batch_work(&caixas_de(&arc(2, 3.0))),
+            &caixas_de(&arc(2, 3.0)),
             BATCH_MIN_AREA
         ),
         "um lote que não enche duas bandas tem de ficar SERIAL"
     );
     assert!(
         !wants_bands(
-            batch_work(&arc(1, 20.0), W, H),
-            &arc(1, 20.0),
-            W,
-            H,
+            batch_work(&caixas_de(&arc(1, 20.0))),
+            &caixas_de(&arc(1, 20.0)),
             BATCH_MIN_AREA
         ),
         "um dab só nunca vale uma divisão"
@@ -191,20 +192,16 @@ fn a_freehand_sized_batch_stays_serial_and_a_figure_sized_one_does_not() {
     // agora TEM de dividir — sem ela, restaurar o piso antigo passaria aqui em silêncio.
     assert!(
         wants_bands(
-            batch_work(&arc(6, 20.0), W, H),
-            &arc(6, 20.0),
-            W,
-            H,
+            batch_work(&caixas_de(&arc(6, 20.0))),
+            &caixas_de(&arc(6, 20.0)),
             BATCH_MIN_AREA
         ),
         "um lote de mão livre de 6 dabs paga a divisão (medido 1,5-2,0x) e tem de DIVIDIR"
     );
     assert!(
         wants_bands(
-            batch_work(&arc(525, 200.0), W, H),
-            &arc(525, 200.0),
-            W,
-            H,
+            batch_work(&caixas_de(&arc(525, 200.0))),
+            &caixas_de(&arc(525, 200.0)),
             BATCH_MIN_AREA
         ),
         "a figura do report tem de DIVIDIR"
@@ -215,7 +212,7 @@ fn a_freehand_sized_batch_stays_serial_and_a_figure_sized_one_does_not() {
     // para 3 232 o literal passou a ficar ACIMA dele — a asserção virou falsa sem que a propriedade
     // que ela afirma tivesse mudado. Perguntar ao `batch_bounds` mantém as duas metades honestas.
     let tight = arc(400, 14.0);
-    let bbox = super::stamp_banded::batch_bounds(&tight, W, H)
+    let bbox = super::stamp_banded::batch_bounds(&caixas_de(&tight))
         .map_or(0, |b| (b.w as usize) * (b.h as usize));
     assert!(
         bbox < BATCH_MIN_AREA,
@@ -223,7 +220,11 @@ fn a_freehand_sized_batch_stays_serial_and_a_figure_sized_one_does_not() {
          ({bbox} vs {BATCH_MIN_AREA})"
     );
     assert!(
-        wants_bands(batch_work(&tight, W, H), &tight, W, H, BATCH_MIN_AREA),
+        wants_bands(
+            batch_work(&caixas_de(&tight)),
+            &caixas_de(&tight),
+            BATCH_MIN_AREA
+        ),
         "uma figura de caixa pequena e muito trabalho tem de DIVIDIR"
     );
 }
@@ -545,7 +546,7 @@ fn the_capped_batch_is_byte_identical_whether_its_rows_are_split_or_not() {
         // `wants_bands` DEVOLVE a decisão real (quantas bandas, não *"passou do piso"*), então esta
         // linha falha alto quando a fixture deixa de conter o fenômeno — foi ela que pegou o `n = 2`.
         assert!(
-            wants_bands(batch_work(&dabs, W, H), &dabs, W, H, 0),
+            wants_bands(batch_work(&caixas_de(&dabs)), &caixas_de(&dabs), 0),
             "n={n}: sem divisão as duas chamadas são o MESMO código e o verde é vácuo"
         );
         let (par_buf, par_mask) = capped_batch(&dabs, 0);

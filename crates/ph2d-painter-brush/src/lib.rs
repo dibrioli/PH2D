@@ -210,7 +210,10 @@ pub use spec::{
     AIRBRUSH_RATE_MAX_S, AIRBRUSH_RATE_MIN_S, BrushSpec, FLOW_KINDS, FLOW_SIZE_MAX, FLOW_SIZE_MIN,
     GraoAplicado, PAPER_TOOTH_MAX, PONTAS_ALEM_MAX, PONTAS_ESBATE_MAX,
 };
-pub use stamp::{StampMask, blit_canvas_cached, blit_stamp, dab_write_bounds, render_stamp_mask};
+pub use stamp::{
+    StampMask, blit_canvas_cached, blit_stamp, dab_write_bounds, dab_write_bounds_of,
+    render_stamp_mask,
+};
 pub use stamp_color::{
     ColorStampMask, DynDab, FusedDab, accumulate_color_stamp_coverage,
     accumulate_color_stamps_fused, accumulate_color_stamps_fused_batch,

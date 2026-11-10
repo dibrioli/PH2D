@@ -15,6 +15,9 @@ use crate::dab::{DirtyRect, encode};
 use crate::spec::BrushSpec;
 use crate::texture::ImageMask;
 
+mod piramide;
+pub(crate) use piramide::{indice_do_nivel, piramide};
+
 /// A rendered brush stamp: per-texel coverage (falloff × baked View texture) over the dab's bounding
 /// square `[-1, 1]²`, as `u8` alpha (`0` = no paint, `255` = full). Scale-invariant, so one mask
 /// serves every dab size via [`blit_stamp`].
@@ -66,43 +69,6 @@ impl StampMask {
             .collect();
         self
     }
-}
-
-/// ⭐ A pirâmide de uma máscara quadrada de `canais` bytes por texel: `size/2`, `size/4`… por caixa 2×2 (a média
-/// arredondada), enquanto o lado for par. Premultiplicada, a caixa do RGBA é a média certa da cor.
-pub(crate) fn piramide(data: &[u8], size: u32, canais: usize) -> Vec<(Vec<u8>, u32)> {
-    let mut niveis: Vec<(Vec<u8>, u32)> = Vec::new();
-    let mut size = size;
-    while size >= 2 && size.is_multiple_of(2) {
-        let src = niveis.last().map_or(data, |(d, _)| d.as_slice());
-        let (s, h) = (size as usize, (size / 2) as usize);
-        let mut meio = vec![0u8; h * h * canais];
-        for j in 0..h {
-            for i in 0..h {
-                for c in 0..canais {
-                    let at = |x: usize, y: usize| u32::from(src[(y * s + x) * canais + c]);
-                    let soma = at(2 * i, 2 * j)
-                        + at(2 * i + 1, 2 * j)
-                        + at(2 * i, 2 * j + 1)
-                        + at(2 * i + 1, 2 * j + 1);
-                    meio[(j * h + i) * canais + c] = ((soma + 2) / 4) as u8;
-                }
-            }
-        }
-        size /= 2;
-        niveis.push((meio, size));
-    }
-    niveis
-}
-
-/// O índice do nível de uma pirâmide de lados `topo, topo/2, …` (`0` = o topo) para um dab que percorre
-/// `lado_px` píxeis: o MENOR com lado `≥ lado_px` (a redução bilinear ≤ 2:1); `n` = quantos níveis há abaixo do topo.
-pub(crate) fn indice_do_nivel(topo: u32, n: usize, lado_px: f32) -> usize {
-    let mut k = 0;
-    while k < n && (topo >> (k + 1)) as f32 >= lado_px {
-        k += 1;
-    }
-    k
 }
 
 /// Render the unit brush stamp (**silhouette × Grain**) at `size`×`size`. The silhouette is the Shape
@@ -313,10 +279,14 @@ pub fn blit_stamp(
 /// ⚠️ O `pad` é o teto de [`crate::height_film::FilmAa::pad_px`] (0 ou 1 px). Ele é uma **constante**,
 /// não um palpite: se aquele teto subir, este número tem de subir junto, e o gate de contenção falha
 /// primeiro.
+///
+/// `reach` é o alcance por eixo em raios (`[1, 1]` = o disco): quem tem o pincel do dab pergunta a
+/// [`dab_write_bounds_of`], que o tira da mesma geometria do kernel (a quina, a caneta deitada, a ponta).
 #[must_use]
 pub fn dab_write_bounds(
     center: [f32; 2],
     radius: f32,
+    reach: [f32; 2],
     width: u32,
     height: u32,
 ) -> Option<DirtyRect> {
@@ -329,11 +299,14 @@ pub fn dab_write_bounds(
         return None;
     }
     let (cx, cy) = (center[0], center[1]);
-    let reach = radius + AA_PAD_MAX;
-    let x0 = (cx - reach).floor().max(0.0) as i64;
-    let y0 = (cy - reach).floor().max(0.0) as i64;
-    let x1 = ((cx + reach).ceil() as i64 + 1).min(width as i64);
-    let y1 = ((cy + reach).ceil() as i64 + 1).min(height as i64);
+    let (rx, ry) = (
+        radius * reach[0] + AA_PAD_MAX,
+        radius * reach[1] + AA_PAD_MAX,
+    );
+    let x0 = (cx - rx).floor().max(0.0) as i64;
+    let y0 = (cy - ry).floor().max(0.0) as i64;
+    let x1 = ((cx + rx).ceil() as i64 + 1).min(width as i64);
+    let y1 = ((cy + ry).ceil() as i64 + 1).min(height as i64);
     if x0 >= x1 || y0 >= y1 {
         return None;
     }
@@ -343,6 +316,29 @@ pub fn dab_write_bounds(
         w: (x1 - x0) as u32,
         h: (y1 - y0) as u32,
     })
+}
+
+/// ⭐ **O retângulo de escrita de UM dab pela geometria do kernel** (B25.2): o raio do pincel DESTE dab
+/// (`spec` = o `at_dab`, com a orla), a caixa da pegada rodada por `dab_rotation` — a quina chega a `√2·r` a
+/// 45°, a caneta deitada estica — e, com Shape, a ponta de imagem em qualquer rotação. Sem nada disso é
+/// [`dab_write_bounds`] com `[1, 1]`, ao bit. A cápsula (Continuous) não entra: quem a tem usa
+/// [`BrushSpec::tip_reach`] com os dois centros.
+#[must_use]
+pub fn dab_write_bounds_of(
+    spec: &BrushSpec,
+    center: [f32; 2],
+    dab_rotation: [f32; 2],
+    width: u32,
+    height: u32,
+) -> Option<DirtyRect> {
+    let mut e = spec.dab_footprint(dab_rotation).extent();
+    e = [e[0].max(1.0), e[1].max(1.0)];
+    if spec.shape.is_active()
+        && let Some(t) = crate::texture::image_tip_radius(&spec.shape)
+    {
+        e = [e[0].max(t), e[1].max(t)];
+    }
+    dab_write_bounds(center, spec.clamped_radius(), e, width, height)
 }
 
 /// Blit the cached mask into the full-width row band `dst` (first row `band_y0`).

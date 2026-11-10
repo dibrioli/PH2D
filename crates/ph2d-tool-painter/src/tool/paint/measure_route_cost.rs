@@ -497,14 +497,15 @@ fn what_the_banded_batch_buys_when_the_cap_is_on() {
         };
         for n in ns.iter().copied() {
             let dabs = batch(figure, n, r);
-            let work = batch_work(&dabs, SIZE, SIZE);
+            let caixas = super::stamp_banded::caixas(&dabs, &brush, SIZE, SIZE);
+            let work = batch_work(&caixas);
             assert!(
-                wants_bands(batch_work(&dabs, SIZE, SIZE), &dabs, SIZE, SIZE, 0),
+                wants_bands(work, &caixas, 0),
                 "com piso 0 o lote de {n} dabs TEM de tomar a banda, senão as duas colunas são a \
                  mesma rota e a razão é 1,00x por construção"
             );
             assert!(
-                !wants_bands(batch_work(&dabs, SIZE, SIZE), &dabs, SIZE, SIZE, usize::MAX),
+                !wants_bands(work, &caixas, usize::MAX),
                 "com piso usize::MAX o lote TEM de ficar serial — é a rota de ablação"
             );
 
@@ -528,7 +529,7 @@ fn what_the_banded_batch_buys_when_the_cap_is_on() {
             // colunas rodaram a mesma rota.
             let nb = ph2d_painter_brush::band_count(
                 work,
-                batch_bounds(&dabs, SIZE, SIZE).map_or(0, |b| b.h as usize),
+                batch_bounds(&caixas).map_or(0, |b| b.h as usize),
                 BATCH_MIN_AREA,
             );
             println!(
@@ -564,7 +565,7 @@ fn what_the_banded_batch_buys_when_the_cap_is_on() {
             radius_px: r,
             ..brush
         };
-        let work = batch_work(&one, SIZE, SIZE);
+        let work = batch_work(&super::stamp_banded::caixas(&one, &spec, SIZE, SIZE));
         let (mut par, mut ser) = (Vec::new(), Vec::new());
         for _ in 0..SAMPLES {
             for (dst, min_area) in [(&mut par, 0usize), (&mut ser, usize::MAX)] {

@@ -96,8 +96,9 @@ fn the_bands_split_the_work_not_the_height() {
 #[test]
 fn the_row_profile_is_the_declared_width_of_each_dab() {
     let dabs = arc(40, 90.0);
-    let bounds = batch_bounds(&dabs, W, H).expect("a fixture escreve");
-    let rows = row_work(&dabs, W, H, bounds);
+    let caixas = super::stamp_banded_tests::caixas_de(&dabs);
+    let bounds = batch_bounds(&caixas).expect("a fixture escreve");
+    let rows = row_work(&caixas, bounds);
     assert_eq!(
         rows.len(),
         bounds.h as usize,
@@ -105,7 +106,9 @@ fn the_row_profile_is_the_declared_width_of_each_dab() {
     );
     let declared: u64 = dabs
         .iter()
-        .filter_map(|d| ph2d_painter_brush::dab_write_bounds(d.center, d.radius_px, W, H))
+        .filter_map(|d| {
+            ph2d_painter_brush::dab_write_bounds(d.center, d.radius_px, [1.0, 1.0], W, H)
+        })
         .map(|b| u64::from(b.w) * u64::from(b.h))
         .sum();
     let profiled: u64 = rows.iter().map(|&x| u64::from(x)).sum();

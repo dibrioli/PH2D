@@ -317,7 +317,7 @@ pub(super) fn dabs_bounds(dabs: &[Dab], w: u32, h: u32, reach: f32) -> Option<Re
             .into_iter()
             .chain((d.step != [0.0, 0.0]).then(|| atras(d)))
     }) {
-        let Some(r) = ph2d_painter_brush::dab_write_bounds(c, raio * reach, w, h) else {
+        let Some(r) = ph2d_painter_brush::dab_write_bounds(c, raio, [reach, reach], w, h) else {
             continue;
         };
         let r = Region {

@@ -455,19 +455,22 @@ fn a_spread_out_batch_stays_on_the_cpu_and_a_stacked_one_does_not() {
             dab([800.0 + t.cos() * 620.0, 800.0 + t.sin() * 620.0], 100.0)
         })
         .collect();
+    let caixas = |d: &[Dab]| {
+        super::super::stamp_banded::caixas(d, &ph2d_painter_brush::BrushSpec::default(), 1600, 1600)
+    };
     assert!(
-        super::wants_device(&stacked, 1600, 1600),
+        super::wants_device(&caixas(&stacked)),
         "um lote empilhado (muita visita sobre pouca região) TEM de subir — é o caso do report"
     );
     assert!(
-        !super::wants_device(&spread, 1600, 1600),
+        !super::wants_device(&caixas(&spread)),
         "um lote espalhado sobe a mesma região por muito menos trabalho: no device ele PERDE, \
          medido em 4,5× no pior caso da varredura"
     );
     // E o mesmo trabalho nos dois: o que difere é a REGIÃO, não a quantidade de tinta.
     let (a, b) = (
-        super::super::stamp_banded::batch_work(&stacked, 1600, 1600),
-        super::super::stamp_banded::batch_work(&spread, 1600, 1600),
+        super::super::stamp_banded::batch_work(&caixas(&stacked)),
+        super::super::stamp_banded::batch_work(&caixas(&spread)),
     );
     // ⚠️ **Essencialmente o mesmo, não idêntico:** `dab_write_bounds` devolve uma caixa INTEIRA, e
     // dois arcos de raios diferentes pousam os centros em frações distintas de pixel — as caixas

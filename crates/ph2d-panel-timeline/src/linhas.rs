@@ -317,8 +317,8 @@ pub(crate) fn paint_grupo(
         } else {
             ColorToken::TimelineKey
         };
-        crate::tracks::paint_chave(ctx, theme, kx, cy, tok);
         let id = ids::timeline_group_key_id(handle, c.t_bits());
+        crate::alca_estado::chave_da_folha(ctx, theme, id, (kx, cy), tok, c.t_seconds);
         ctx.host.store_mut().register(
             id,
             InteractiveState::TimelineSurface {

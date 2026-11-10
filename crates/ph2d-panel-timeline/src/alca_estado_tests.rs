@@ -118,11 +118,13 @@ fn snap_duas_pecas() -> TimelineViewSnapshot {
     snap
 }
 
+type Alvos = Vec<(NodeId, ph2d_editor_core::interaction::TimelineHitKind)>;
+
 /// Pinta a faixa nos cartões com o store preparado por `prepara`: (gravação, hits registados).
 fn pinta_faixa(
     theme: Theme,
     prepara: impl FnOnce(&mut WidgetStore),
-) -> (Vec<DrawOp>, Vec<(NodeId, Rect)>) {
+) -> (Vec<DrawOp>, Vec<(NodeId, Rect)>, Alvos) {
     let snap = snap_duas_pecas();
     ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(true));
     let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::TimelinePanel>();
@@ -161,9 +163,14 @@ fn pinta_faixa(
     ctx.scene.record();
     crate::stack_lane_paint::paint(&mut ctx, theme, &g, view, &state, &snap);
     let ops = ctx.scene.take_record();
-    let hits = ctx.host.hit_index_mut().iter_registrations().collect();
+    let hits: Vec<(NodeId, Rect)> = ctx.host.hit_index_mut().iter_registrations().collect();
+    let store = ctx.host.store();
+    let alvos = hits
+        .iter()
+        .filter_map(|(id, _)| store.timeline_surface_at_id(*id).map(|(_, k)| (*id, k)))
+        .collect();
     ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(None);
-    (ops, hits)
+    (ops, hits, alvos)
 }
 
 fn cores(ops: &[DrawOp]) -> Vec<[f32; 4]> {
@@ -202,7 +209,7 @@ fn as_alcas_da_strip_mudam_de_estado_e_os_hits_nao() {
     let halo = acento(theme)
         .multiply_alpha(ph2d_tokens::TIMELINE_ALCA_HALO_ALPHA)
         .components;
-    let (ops0, hits0) = pinta_faixa(theme, |_| {});
+    let (ops0, hits0, _) = pinta_faixa(theme, |_| {});
     let verde = resolve(ColorToken::Success, theme);
     let quente = cor(EstadoAlca::Hover, verde, theme).components;
     let playhead = resolve(ColorToken::TimelinePlayhead, theme);
@@ -210,15 +217,15 @@ fn as_alcas_da_strip_mudam_de_estado_e_os_hits_nao() {
     assert!(!cores(&ops0).contains(&azul), "em repouso nada é azul");
     for (edge, quente) in [(5u8, quente), (EASE_IN_CODE, fade_quente)] {
         let id = id_de(&snap, edge);
-        let (h, hits_h) = pinta_faixa(theme, |s| s.set_hot(Some(id)));
+        let (h, hits_h, _) = pinta_faixa(theme, |s| s.set_hot(Some(id)));
         assert!(cores(&h).contains(&quente), "edge {edge}: o hover acende");
-        let (p, hits_p) = pinta_faixa(theme, |s| s.set_active(Some(id)));
+        let (p, hits_p, _) = pinta_faixa(theme, |s| s.set_active(Some(id)));
         assert!(cores(&p).contains(&azul), "edge {edge}: o aperto é azul");
         assert!(
             !cores(&p).contains(&halo),
             "edge {edge}: sem halo no aperto"
         );
-        let (d, hits_d) = pinta_faixa(theme, |s| arrasta(s, id));
+        let (d, hits_d, _) = pinta_faixa(theme, |s| arrasta(s, id));
         assert!(cores(&d).contains(&halo), "edge {edge}: o arrasto tem halo");
         for hits in [hits_h, hits_p, hits_d] {
             assert_eq!(hits, hits0, "edge {edge}: o estado não mexe nos hits");
@@ -287,4 +294,154 @@ fn a_leitura_e_o_tempo_em_segundos_sem_menos_zero() {
     assert!(r.x > 100.0, "à direita da alça");
     let r = leitura_rect(30.0, 100.0, 50.0, true);
     assert!(r.x + r.w < 100.0, "à esquerda da alça");
+}
+
+/// Pinta `pinta` nos cartões com o store preparado: (gravação, hits).
+fn nos_cartoes(
+    prepara: impl FnOnce(&mut WidgetStore),
+    pinta: impl FnOnce(&mut PaintCtx),
+) -> (Vec<DrawOp>, Vec<(NodeId, Rect)>) {
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(true));
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::TimelinePanel>();
+    prepara(host.store_mut());
+    let layout = HeroLayout::for_viewport(Rect::new(0.0, 0.0, 800.0, 300.0));
+    let mut ops = Vec::new();
+    let hits = host.paint_fn(&layout, |ctx| {
+        ctx.scene.record();
+        pinta(ctx);
+        ops = ctx.scene.take_record();
+    });
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(None);
+    (ops, hits)
+}
+
+/// Os três estados numa alça pintada por `pinta`: hover sai do repouso, aperto azul sem halo,
+/// arrasto com halo; `repouso` é a cor que só o repouso pinta. Os hits nunca mudam.
+fn tres_estados(
+    nome: &str,
+    repouso: [f32; 4],
+    hover: impl Fn(&mut WidgetStore),
+    aperta: impl Fn(&mut WidgetStore),
+    arrasta: impl Fn(&mut WidgetStore),
+    pinta: impl Fn(&mut PaintCtx),
+) {
+    let theme = Theme::Forge;
+    let azul = acento(theme).components;
+    let halo = acento(theme)
+        .multiply_alpha(ph2d_tokens::TIMELINE_ALCA_HALO_ALPHA)
+        .components;
+    let (r, hits0) = nos_cartoes(|_| {}, &pinta);
+    assert!(
+        cores(&r).contains(&repouso) && !cores(&r).contains(&azul),
+        "{nome}: repouso"
+    );
+    let (h, hits_h) = nos_cartoes(hover, &pinta);
+    assert!(!cores(&h).contains(&repouso), "{nome}: o hover acende");
+    let (p, hits_p) = nos_cartoes(aperta, &pinta);
+    assert!(
+        cores(&p).contains(&azul) && !cores(&p).contains(&halo),
+        "{nome}: aperto azul"
+    );
+    let (d, hits_d) = nos_cartoes(arrasta, &pinta);
+    assert!(cores(&d).contains(&halo), "{nome}: o arrasto tem halo");
+    for hits in [hits_h, hits_p, hits_d] {
+        assert_eq!(hits, hits0, "{nome}: o estado não mexe nos hits");
+    }
+}
+
+fn regista_regua(s: &mut WidgetStore, state: ph2d_editor_core::widget::SliderState) {
+    s.register(
+        crate::ids::TIMELINE_RULER,
+        ph2d_editor_core::interaction::InteractiveState::Slider {
+            state,
+            value: 0.0,
+            orientation: ph2d_editor_core::widget::SliderOrientation::Horizontal,
+        },
+    );
+}
+
+/// O playhead, as bandeiras dos marcadores, o losango do Summary e o da linha de grupo: a mesma
+/// porta, os mesmos três estados.
+#[test]
+fn o_playhead_os_marcadores_e_as_chaves_mestras_mudam_de_estado() {
+    use ph2d_editor_core::widget::SliderState as S;
+    let theme = Theme::Forge;
+    let ruler = crate::ids::TIMELINE_RULER;
+    let line = Rect::new(200.0, 0.0, 2.0, 200.0);
+    tres_estados(
+        "playhead",
+        tinta(TimelineTinta::Cursor, theme).components,
+        |s| s.set_hot(Some(ruler)),
+        |s| {
+            regista_regua(s, S::Normal);
+            s.set_active(Some(ruler));
+        },
+        |s| regista_regua(s, S::Dragging),
+        |ctx| playhead(ctx, theme, line, 1.0, 10.0),
+    );
+    let mut snap = TimelineViewSnapshot::default();
+    snap.markers.push((1.0, "M".into(), None));
+    let marca = crate::ids::timeline_marker_hit_id(0);
+    let regiao = Rect::new(100.0, 0.0, 600.0, 22.0);
+    let x = |t: f64| 100.0 + t as f32 * 100.0;
+    tres_estados(
+        "marcador",
+        resolve(ColorToken::TimelineMarker, theme).components,
+        |s| s.set_hot(Some(marca)),
+        |s| s.set_active(Some(marca)),
+        |s| arrasta(s, marca),
+        |ctx| crate::ruler::paint_markers(ctx, theme, regiao, &x, &snap),
+    );
+    let mestre = crate::ids::timeline_summary_hit_id(7);
+    let miolo = resolve(ColorToken::TimelineSummaryKey, theme);
+    let anel = (2.0, resolve(ColorToken::BorderStrong, theme));
+    tres_estados(
+        "summary",
+        miolo.components,
+        |s| s.set_hot(Some(mestre)),
+        |s| s.set_active(Some(mestre)),
+        |s| arrasta(s, mestre),
+        |ctx| losango_mestre(ctx, theme, mestre, (50.0, 50.0, 5.0), anel, miolo, 1.0),
+    );
+    let grupo = crate::ids::timeline_group_key_id(3, 7);
+    let tok = ColorToken::TimelineKey;
+    tres_estados(
+        "grupo",
+        tinta(TimelineTinta::FitaPropriedade, theme).components,
+        |s| s.set_hot(Some(grupo)),
+        |s| s.set_active(Some(grupo)),
+        |s| arrasta(s, grupo),
+        |ctx| chave_da_folha(ctx, theme, grupo, (50.0, 50.0), tok, 1.0),
+    );
+}
+
+/// ⭐ O cursor pelo MESMO alvo do clique, na faixa REAL: as pontas e os fades pedem `↔`, o corpo a
+/// mão aberta (fechada no aperto), e o fundo sem alvo fica na seta.
+#[test]
+fn o_cursor_da_faixa_sai_do_alvo_registado() {
+    use ph2d_editor_core::doc_surface::PointerLook as L;
+    use ph2d_editor_core::interaction::TimelineHitKind as K;
+    let (_, _, alvos) = pinta_faixa(Theme::Forge, |_| {});
+    let olha = |edge: u8, apertado: bool| {
+        alvos
+            .iter()
+            .find(|(_, k)| matches!(k, K::Strip { edge: e, .. } if *e == edge))
+            .unwrap_or_else(|| panic!("edge {edge} registado"))
+            .1
+            .pointer_look(apertado)
+    };
+    for edge in [0u8, 1, 5, 6, EASE_IN_CODE] {
+        assert_eq!(olha(edge, false), Some(L::ResizeEw), "edge {edge}");
+    }
+    assert_eq!(olha(2, false), Some(L::Grab));
+    assert_eq!(olha(2, true), Some(L::Grabbing));
+    assert_eq!(
+        K::Lane.pointer_look(false),
+        None,
+        "o fundo da folha: a seta"
+    );
+    assert!(
+        alvos.iter().all(|(_, k)| !matches!(k, K::Lane)),
+        "a faixa não regista fundo"
+    );
 }

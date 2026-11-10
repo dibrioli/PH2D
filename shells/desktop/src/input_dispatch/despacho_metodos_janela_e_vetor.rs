@@ -229,7 +229,9 @@ impl crate::App {
         let Some(win) = self.window.as_ref() else {
             return;
         };
+        use ph2d_editor_core::screens::hero::board_view as bv;
         use winit::window::CursorIcon;
+        let (x, y) = self.last_pointer;
         let escolha = self
             .gfx
             .as_ref()
@@ -248,9 +250,7 @@ impl crate::App {
                         }
                     } else if let Some(icon) = self.timeline_resize_cursor(h) {
                         icon
-                    } else if let Some(icon) =
-                        self.dock_seam_cursor(self.last_pointer.0, self.last_pointer.1)
-                    {
+                    } else if let Some(icon) = self.dock_seam_cursor(x, y) {
                         // ⭐ A borda de uma coluna docada — a MESMA porta que o arrasto pergunta.
                         icon
                     } else if let Some(f) = self.forma_figura() {
@@ -261,12 +261,8 @@ impl crate::App {
                         icon
                     } else if let Some((icon, ..)) = self.pixel.slice_cursor(h, self.last_pointer) {
                         icon
-                    } else if let Some(c) = ph2d_editor_core::screens::hero::board_view::cursor(
-                        h,
-                        self.last_pointer.0,
-                        self.last_pointer.1,
-                    ) {
-                        use ph2d_editor_core::screens::hero::board_view::BoardCursor as B;
+                    } else if let Some(c) = bv::cursor(h, x, y) {
+                        use bv::BoardCursor as B;
                         match c {
                             B::ResizeNs => CursorIcon::NsResize,
                             B::ResizeEw => CursorIcon::EwResize,
@@ -275,18 +271,7 @@ impl crate::App {
                             B::Rotate => CursorIcon::Grab,
                         }
                     } else {
-                        use ph2d_editor_core::doc_surface::PointerLook;
-                        let (x, y) = self.last_pointer;
-                        match ph2d_editor_core::screens::hero::board_view::pointer_look(h, x, y) {
-                            Some(PointerLook::Text) => CursorIcon::Text,
-                            Some(PointerLook::Hand) => CursorIcon::Pointer,
-                            Some(PointerLook::Grab) => CursorIcon::Grab,
-                            Some(PointerLook::Grabbing) => CursorIcon::Grabbing,
-                            Some(PointerLook::ResizeEw) => CursorIcon::EwResize,
-                            Some(PointerLook::ResizeNs) => CursorIcon::NsResize,
-                            Some(PointerLook::Pick) => CursorIcon::Crosshair,
-                            Some(PointerLook::Arrow) | None => CursorIcon::Default,
-                        }
+                        icone_de(bv::pointer_look(h, x, y))
                     },
                 )
             })
@@ -307,30 +292,23 @@ impl crate::App {
         ph2d_pen::porta::cursor(icone);
     }
 
-    /// The double-arrow cursor for the timeline grab band under the pointer, if
-    /// any. Resolves the last pointer through the hit index to a `TimelineSurface`
-    /// hit — the same channel the drag uses, so the cursor and the gesture always
-    /// agree on where the band is (mirror of `over_motion_split_divider`).
+    /// The timeline target's cursor (`TimelineHitKind::pointer_look`): the PRESSED target while held
+    /// (grabbing follows the drag off the hit), else the hit under the pointer; borders keep diagonals.
     pub(super) fn timeline_resize_cursor(
         &self,
         hero: &ph2d_editor_core::HeroScreen,
     ) -> Option<winit::window::CursorIcon> {
         use ph2d_editor_core::interaction::TimelineHitKind;
-        use winit::window::CursorIcon;
         let (x, y) = self.last_pointer;
-        let (_, kind) = hero
-            .chrome_hit(x, y)
-            .and_then(|id| hero.store.timeline_surface_at_id(id))?;
-        Some(match kind {
-            // The names column widens sideways; the graph band grows downward.
-            TimelineHitKind::LabelSplitter => CursorIcon::EwResize,
-            TimelineHitKind::GraphResize => CursorIcon::NsResize,
-            TimelineHitKind::ResizeEdge { edges } => resize_cursor_for_edges(edges),
-            // The veil's duration grip resizes the composition sideways (Enio,
-            // 2026-07-23: the ↔ over the ruler at the veil edge).
-            TimelineHitKind::DurationHandle => CursorIcon::EwResize,
-            _ => return None,
-        })
+        let s = &hero.store;
+        let preso = s
+            .active_id()
+            .filter(|a| s.timeline_surface_at_id(*a).is_some());
+        let (_, kind) = s.timeline_surface_at_id(preso.or_else(|| hero.chrome_hit(x, y))?)?;
+        if let TimelineHitKind::ResizeEdge { edges } = kind {
+            return Some(resize_cursor_for_edges(edges));
+        }
+        Some(icone_de(Some(kind.pointer_look(preso.is_some())?)))
     }
 
     /// Is the cursor over the Motion graph's draggable split divider? Resolves
@@ -572,6 +550,22 @@ impl crate::App {
             self.title_dirty = true;
         }
         moved
+    }
+}
+
+/// The OS cursor for what a surface asks (`PointerLook`); `None` is the arrow.
+fn icone_de(look: Option<ph2d_editor_core::doc_surface::PointerLook>) -> winit::window::CursorIcon {
+    use ph2d_editor_core::doc_surface::PointerLook as L;
+    use winit::window::CursorIcon as C;
+    match look {
+        Some(L::Text) => C::Text,
+        Some(L::Hand) => C::Pointer,
+        Some(L::Grab) => C::Grab,
+        Some(L::Grabbing) => C::Grabbing,
+        Some(L::ResizeEw) => C::EwResize,
+        Some(L::ResizeNs) => C::NsResize,
+        Some(L::Pick) => C::Crosshair,
+        Some(L::Arrow) | None => C::Default,
     }
 }
 

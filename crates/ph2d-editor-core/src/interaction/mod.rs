@@ -45,6 +45,7 @@ pub mod pixel_timeline_surface;
 pub mod press_slop;
 pub mod roda_lateral;
 pub mod state;
+mod timeline_cursor;
 pub mod toggle_paint;
 mod tool_bars;
 pub mod touch;

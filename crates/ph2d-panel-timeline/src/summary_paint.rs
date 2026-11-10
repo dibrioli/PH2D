@@ -21,7 +21,6 @@ use crate::graph::TimeView;
 use crate::ids;
 use crate::state::TimelinePanelState;
 use crate::summary::{Column, columns};
-use crate::tracks::paint_diamond;
 
 /// Half-size of a Summary diamond. Larger than a track's ([`crate::tracks`]'s
 /// `DIAMOND_H`) so the master row reads as the one you grab to move a column.
@@ -200,16 +199,16 @@ fn paint_column(
     } else {
         ColorToken::BorderStrong
     };
-    paint_diamond(ctx, x, cy, SUMMARY_DIAMOND_H + RING_W, resolve(ring, theme));
-    paint_diamond(
-        ctx,
-        x,
-        cy,
-        SUMMARY_DIAMOND_H,
-        resolve(ColorToken::TimelineSummaryKey, theme),
-    );
-
     let id = ids::timeline_summary_hit_id(c.t_bits());
+    crate::alca_estado::losango_mestre(
+        ctx,
+        theme,
+        id,
+        (x, cy, SUMMARY_DIAMOND_H),
+        (RING_W, resolve(ring, theme)),
+        resolve(ColorToken::TimelineSummaryKey, theme),
+        c.t_seconds,
+    );
     let hit = Rect::new(x - SUMMARY_HIT_HW, row.y, SUMMARY_HIT_HW * 2.0, row.h);
     ctx.host.store_mut().register(
         id,

@@ -137,3 +137,15 @@ um teste de 1100 px (curado com `textos_em`); a contagem `pintados + n == total`
   (`fill_shape`/`stroke_path`, a mesma codificação).
 - Isenção de quina do `ruler_veil.rs` viajou para `alca_estado.rs` (o véu já não escreve raio). `stack_lane_paint_tests.rs` estava a 605 LOC no HEAD: comentários encurtados (599).
 - Foto offscreen `17_alcas_estados.png`: não feita (o painel não tem rasterizador CPU; só GPU) — falta.
+
+## Rodada 3d (10/11): o resto das alças + o cursor do rato
+
+- Porta `alca_estado` estendida: playhead (`playhead`/`estado_do_playhead` — a régua inteira é a pega; arrasto = slider `TIMELINE_RULER` em `Dragging`),
+  bandeiras dos marcadores (`ruler::paint_markers`, leitura à esquerda), losango do Summary (`losango_mestre`) e chaves de grupo (`chave_da_folha`).
+  Repouso nos cartões e `PH2D_CARDS=0` pintam o mesmo de antes (a porta só entra fora do repouso).
+- Cursor: o mecanismo JÁ existia (`timeline_resize_cursor` na shell, única `set_cursor`, por `TimelineHitKind` do hit). A tabela mudou-se para
+  `TimelineHitKind::pointer_look(apertado)` (`crates/ph2d-editor-core/src/interaction/timeline_cursor.rs`): `↔` nas pontas/fades/stretch, chaves do loop,
+  ⟷, splitter, escala; mão aberta/fechada no corpo da strip, linha do loop, chaves, marcadores, âncoras; `None` no fundo. Enquanto há aperto vale o alvo
+  APERTADO (o `grabbing` segue o arrasto fora do hit). Shell: `icone_de(PointerLook)` partilhado com a aba — shell líquido −5 LOC.
+- Portões: `o_playhead_os_marcadores_e_as_chaves_mestras_mudam_de_estado` (3 estados × 4 alças, hits idênticos), `o_cursor_da_faixa_sai_do_alvo_registado`
+  (faixa REAL), `as_pontas_esticam_o_corpo_agarra_o_fundo_e_a_seta` (editor-core). Corrigido o `clippy::unnecessary_operation` do `nest_smoke.rs:258`.

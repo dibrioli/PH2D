@@ -148,16 +148,12 @@ pub(crate) fn paint(
         let px = time_to_x(now);
         if px >= region.x && px <= region.x + region.w {
             let line = Rect::new(px - PLAYHEAD_W * 0.5, region.y, PLAYHEAD_W, region.h);
-            fill_rounded_rect(
-                ctx.scene,
-                line,
-                Radius::Xs.px(),
-                if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
-                    crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::Cursor, theme)
-                } else {
-                    resolve(ColorToken::TimelinePlayhead, theme)
-                },
-            );
+            if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+                crate::alca_estado::playhead(ctx, theme, line, now, region.y + RULER_H * 0.5);
+            } else {
+                let cor = resolve(ColorToken::TimelinePlayhead, theme);
+                fill_rounded_rect(ctx.scene, line, Radius::Xs.px(), cor);
+            }
         }
     }
 
@@ -353,7 +349,7 @@ fn paint_loop_braces(
 
 /// Paint a pennant + label per marker at the top of the ruler, and register each
 /// as a `Marker` hit (keyed by storage index). Culls markers scrolled off-screen.
-fn paint_markers(
+pub(crate) fn paint_markers(
     ctx: &mut PaintCtx,
     theme: Theme,
     region: Rect,
@@ -369,24 +365,24 @@ fn paint_markers(
             continue;
         }
         let color = resolve(ColorToken::TimelineMarker, theme);
-        // The stem: a 1px line down the ruler strip, marking the exact time.
-        fill_rounded_rect(
-            ctx.scene,
-            Rect::new(x - 0.5, region.y, 1.0, RULER_H), // LITERAL-PX-OK: 1px marker stem
-            Radius::Xs.px(),
-            color,
-        );
-        // The pennant: a triangle whose apex points DOWN to the stem, base along
-        // the top of the ruler — a flag pinned at the time.
-        fill_triangle(
-            ctx,
-            [
-                (x - half, region.y),
-                (x + half, region.y),
-                (x, region.y + MARKER_H),
-            ],
-            color,
-        );
+        let id = ids::timeline_marker_hit_id(index);
+        // The stem (a 1px line down the ruler, the exact time) and the pennant (apex DOWN to
+        // the stem, base along the ruler top — a flag pinned at the time).
+        let stem = Rect::new(x - 0.5, region.y, 1.0, RULER_H); // LITERAL-PX-OK: 1px marker stem
+        let flag = [
+            (x - half, region.y),
+            (x + half, region.y),
+            (x, region.y + MARKER_H),
+        ];
+        let e = EstadoAlca::nos_cartoes(ctx, id);
+        if e == EstadoAlca::Repouso {
+            fill_rounded_rect(ctx.scene, stem, Radius::Xs.px(), color);
+            fill_triangle(ctx, flag, color);
+        } else {
+            crate::alca_estado::pinta(ctx, theme, e, color, &[stem], &[flag]);
+            let cy = region.y + MARKER_H * 0.5;
+            crate::alca_estado::pinta_leitura(ctx, theme, e, *t, x - half, cy, true);
+        }
         // A marker that carries a SIGNAL (ADR-0143) wears a distinct glyph: a dot
         // punched into the pennant, so an emitter reads apart from a plain
         // annotation (the way Unity draws a Signal Emitter apart from a marker).
@@ -419,7 +415,6 @@ fn paint_markers(
             MARKER_W + MARKER_HIT_PAD * 2.0,
             MARKER_H,
         );
-        let id = ids::timeline_marker_hit_id(index);
         ctx.host.store_mut().register(
             id,
             InteractiveState::TimelineSurface {

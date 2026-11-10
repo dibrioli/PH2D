@@ -299,6 +299,54 @@ pub(crate) fn chave_da_folha(
     pinta_leitura(ctx, theme, estado, segundos, kx + alcance, cy, false);
 }
 
+/// O estado do playhead: a régua inteira é a pega dele (um clique em qualquer ponto o leva), e o
+/// arrasto é o do slider `TIMELINE_RULER`, armado já no aperto.
+#[must_use]
+pub(crate) fn estado_do_playhead(store: &WidgetStore) -> EstadoAlca {
+    let id = crate::ids::TIMELINE_RULER;
+    match store.slider(id) {
+        Some((ph2d_editor_core::widget::SliderState::Dragging, _)) => EstadoAlca::Arrasto,
+        _ => EstadoAlca::de(store, id),
+    }
+}
+
+/// O playhead nos cartões: a linha na tinta do cursor; fora do repouso pela porta, com a leitura
+/// do tempo à direita, à altura `cy` da régua.
+pub(crate) fn playhead(ctx: &mut PaintCtx, theme: Theme, line: Rect, now: f64, cy: f32) {
+    let repouso = tinta(TimelineTinta::Cursor, theme);
+    let e = estado_do_playhead(ctx.host.store());
+    if e == EstadoAlca::Repouso {
+        fill_rounded_rect(ctx.scene, line, Radius::Xs.px(), repouso);
+        return;
+    }
+    pinta(ctx, theme, e, repouso, &[line], &[]);
+    pinta_leitura(ctx, theme, e, now, line.x + line.w, cy, false);
+}
+
+/// O losango do Summary (ou de outra linha-mestra) no estado dele: anel `anel`, miolo `repouso`;
+/// fora dos cartões o estado é sempre o repouso e a pintura é a de antes.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn losango_mestre(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    id: NodeId,
+    (cx, cy, h): (f32, f32, f32),
+    anel: (f32, Color),
+    repouso: Color,
+    segundos: f64,
+) {
+    let e = EstadoAlca::nos_cartoes(ctx, id);
+    let d = e.cresce();
+    if e == EstadoAlca::Arrasto {
+        let halo = acento(theme).multiply_alpha(ph2d_tokens::TIMELINE_ALCA_HALO_ALPHA);
+        let r = h + anel.0 + d + StrokeToken::Heavy.px();
+        crate::tracks::paint_diamond(ctx, cx, cy, r, halo);
+    }
+    crate::tracks::paint_diamond(ctx, cx, cy, h + anel.0 + d, anel.1);
+    crate::tracks::paint_diamond(ctx, cx, cy, h + d, cor(e, repouso, theme));
+    pinta_leitura(ctx, theme, e, segundos, cx + h + anel.0, cy, false);
+}
+
 #[cfg(test)]
 #[path = "alca_estado_tests.rs"]
 mod tests;

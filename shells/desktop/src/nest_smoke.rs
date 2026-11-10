@@ -255,7 +255,8 @@ pub(crate) fn build_montagem(doc: &mut TimelineDoc, bits: u64) {
         doc.set_clip_length_override(c, Some(len));
         ix[i] = u16::try_from(c).expect("cabe");
     }
-    (doc.set_active(0), doc.set_scene_length(Some(MONTAGEM_END))); // senão o véu de 4 s listra [4, 6)
+    doc.set_active(0);
+    doc.set_scene_length(Some(MONTAGEM_END)); // senão o véu de 4 s listra [4, 6)
     doc.set_active_loop_for(false, Some((0.0, MONTAGEM_END)));
     let [idle, walk, jump, swing, shake] = ix.map(StripSource::Clip);
     let [run, pack, step] =

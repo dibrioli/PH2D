@@ -12,7 +12,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
-use ph2d_vector::{ImageQuality, VectorScene};
+use ph2d_vector::VectorScene;
 
 /// A opacidade das faixas das animações que não estão abertas.
 const OTHER_BAND_ALPHA: f32 = 0.85; // LITERAL-PX-OK: opacidade

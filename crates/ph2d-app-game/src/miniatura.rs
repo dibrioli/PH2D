@@ -8,7 +8,7 @@ use ph2d_render::Camera2d;
 
 use ph2d_camera_frame::Moldura;
 use ph2d_tokens::{ColorToken, Theme};
-use ph2d_vector::{Affine, ImageQuality, Rect, StableImage, Stroke, VectorScene};
+use ph2d_vector::{Affine, Rect, StableImage, Stroke, VectorScene};
 
 const LARGURA_DO_CANVAS: f32 = 0.28; // LITERAL-PX-OK: fracção do canvas que a miniatura ocupa
 const MARGEM_PX: f32 = 12.0; // LITERAL-PX-OK: da miniatura à borda do canvas

@@ -15,7 +15,7 @@ use ph2d_editor_core::{AnimFrameRef, IconId};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
-use ph2d_vector::{Color, Compose, ImageQuality, Mix, VectorScene, VelloBlend};
+use ph2d_vector::{Color, Compose, Mix, VectorScene, VelloBlend};
 
 /// A opacidade do quadro anterior (ténue: o idioma do onion skin).
 const PREVIOUS_ALPHA: f32 = 0.3; // LITERAL-PX-OK: opacidade

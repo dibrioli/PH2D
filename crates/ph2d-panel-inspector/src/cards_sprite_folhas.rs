@@ -22,7 +22,7 @@ use ph2d_editor_core::{IconId, ImageUseEdit, InspectorImageUse};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
-use ph2d_vector::{ImageQuality, VectorScene};
+use ph2d_vector::VectorScene;
 use std::cell::{Cell as Celula, RefCell};
 
 /// A miniatura de um item do dropdown mede dois botões: a folha inteira lê-se, e cinco itens cabem num ecrã baixo.

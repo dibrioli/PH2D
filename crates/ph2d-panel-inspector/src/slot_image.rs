@@ -6,7 +6,7 @@ use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme, TypeToken};
-use ph2d_vector::{ImageQuality, StableImage, VectorScene};
+use ph2d_vector::{StableImage, VectorScene};
 use std::cell::RefCell;
 use std::sync::Arc;
 

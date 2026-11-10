@@ -23,6 +23,30 @@ pub fn paint(
     text: &mut TextSystem,
     theme: Theme,
 ) -> Layout {
+    paint_with(area, rows, screen, scene, text, theme, false)
+}
+
+/// **A prévia** (aba Input Map, vista C): o mesmo painel do topo da lista, sem linha escolhida e sem anel de foco —
+/// ninguém está a jogar, por isso nada acende.
+pub fn paint_preview(
+    area: Rect,
+    rows: &[Row],
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+) -> Layout {
+    paint_with(area, rows, &ControlsScreen::default(), scene, text, theme, true)
+}
+
+fn paint_with(
+    area: Rect,
+    rows: &[Row],
+    screen: &ControlsScreen,
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+    preview: bool,
+) -> Layout {
     let lay = Layout::scrolled(area, rows, screen, text);
     let c = |t: ColorToken| resolve(t, theme);
     let line = StrokeToken::Hairline.px();
@@ -48,7 +72,7 @@ pub fn paint(
         c(ColorToken::Text1),
     );
     for ((i, row), rl) in rows.iter().enumerate().skip(lay.first).zip(&lay.rows) {
-        let selected = i == screen.selected();
+        let selected = !preview && i == screen.selected();
         // A linha escolhida acende baixinho; à escuta quem fala é a caixa amarela, a faixa apaga-se.
         if selected && !screen.listening() {
             fill_rounded_rect(scene, rl.band, m::FIELD_RADIUS, c(ColorToken::Bg2));
@@ -95,7 +119,7 @@ pub fn paint(
     }
     // O pé: um fio, e por baixo o «Reset to defaults» e a dica, pequenos e apagados.
     fill_rounded_rect(scene, lay.rule, 0.0, c(ColorToken::Border));
-    let on_reset = screen.selected() >= rows.len();
+    let on_reset = !preview && screen.selected() >= rows.len();
     if on_reset {
         fill_rounded_rect(scene, lay.reset, m::FIELD_RADIUS, c(ColorToken::Bg2));
     }

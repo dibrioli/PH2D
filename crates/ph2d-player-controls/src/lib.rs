@@ -15,7 +15,7 @@ pub mod session;
 
 pub use file::{home_base, player_file};
 pub use layout::Layout;
-pub use paint::paint;
+pub use paint::{paint, paint_preview};
 pub use screen::{
     ControlsScreen, Hit, Outcome, Row, SLOTS, readable_name, rebind, rows, rows_marked,
 };

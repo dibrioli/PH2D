@@ -12,7 +12,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::doc_surface::PointerLook;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, folga_do_texto, paint_icon, paint_text_title_elided, resolve, text_rendering,
+    fill_rounded_rect, folga_do_texto, paint_icon, resolve, text_rendering,
 };
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::widget::lista_flutuante::Superficie;
@@ -84,7 +84,9 @@ fn small() -> f32 {
 /// A largura de `s` numa linha só, e a altura dele quebrado em `w` — a mesma passada de layout que o
 /// [`paint_text_block`] faz ao pintar.
 fn measure(ts: &mut TextSystem, s: &str, px: f32, w: f32) -> (f32, f32) {
-    let l = ts.layout_for_rendering(s, px, w, crate::peso::CORPO, text_rendering());
+    let l = ph2d_text::com_peso_exato(|| {
+        ts.layout_for_rendering(s, px, w, crate::peso::CORPO, text_rendering())
+    });
     (l.width(), l.height())
 }
 
@@ -315,8 +317,8 @@ impl OptionsCard {
         let ty = y + folga_do_texto(rh, font());
         let title = ph2d_i18n::tr("code.options.title");
         let ink = |t| resolve(t, *theme);
-        let tw = ts.prefix_width_weighted(title, font(), crate::peso::TITULO);
-        paint_text_title_elided(
+        let tw = crate::peso::largura_em(ts, title, font(), crate::peso::TITULO);
+        crate::peso::paint_text_title_elided(
             ts,
             scene,
             title,

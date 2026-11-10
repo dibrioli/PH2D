@@ -6,8 +6,8 @@ use crate::metrics::top_on_baseline;
 use crate::peso::paint_text;
 use ph2d_code_debugcard::{Ask, CardState, CardStyle, DebugCard, WhoTag};
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, folga_do_texto, frame_radius, paint_text_in_weight,
-    paint_text_title, resolve, token_to_vello,
+    fill_circle, fill_rounded_rect, folga_do_texto, frame_radius, paint_text_in_weight, resolve,
+    token_to_vello,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
@@ -16,7 +16,7 @@ use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 fn text_w(ts: &mut TextSystem, s: &str, w: ph2d_text::FontWeight) -> f32 {
-    ts.prefix_width_weighted(s, TypeToken::Sm.px(), w)
+    crate::peso::largura_em(ts, s, TypeToken::Sm.px(), w)
 }
 
 /// Os botões à direita, a tecla DENTRO de cada um (maquete 14): Continue cheio no acento, Next
@@ -136,8 +136,8 @@ fn place(
         let room = (limit - x).max(0.0);
         if strong {
             let tone = resolve(ColorToken::Text1, theme);
-            paint_text_title(ts, scene, &s, x, ty, font, room, tone);
-            x += ts.prefix_width_weighted(&s, font, crate::peso::TITULO);
+            crate::peso::paint_text_title(ts, scene, &s, x, ty, font, room, tone);
+            x += crate::peso::largura_em(ts, &s, font, crate::peso::TITULO);
         } else {
             paint_text(
                 ts,
@@ -212,7 +212,7 @@ pub(super) fn paint(
     fill_rounded_rect(scene, mark, corner, tone);
     x += sq + Spacing::Xs.px() * 2.0;
     let ww = text_w(ts, word, crate::peso::TITULO);
-    paint_text_title(ts, scene, word, x, ty, font, (limit - x).max(0.0), tone);
+    crate::peso::paint_text_title(ts, scene, word, x, ty, font, (limit - x).max(0.0), tone);
     x += ww + gap;
     if c.stopped() {
         x = place(c, x, ty, limit, scene, ts, theme) + pad;

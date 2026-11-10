@@ -7,13 +7,14 @@
 
 use super::{Aim, BancadaView, Who};
 use crate::chrome::{self, Ui};
+use crate::peso::paint_text_title;
 use crate::splitter::{Split, band};
 use crate::table_text::CodeCells;
 use crate::view::CodeView;
 use ph2d_code_viewmodel::{CellKind, Holder};
 use ph2d_editor_core::doc_surface::PointerLook;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::paint::{paint_text_title, rect_to_vello};
+use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
@@ -177,7 +178,7 @@ impl BancadaView {
                 ("props", &who.columns.len()),
             ],
         );
-        let tw = ts.prefix_width_weighted(title, font, crate::peso::TITULO) + Spacing::Md.px();
+        let tw = crate::peso::largura_em(ts, title, font, crate::peso::TITULO) + Spacing::Md.px();
         chrome::label_in(
             scene,
             ts,

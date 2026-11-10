@@ -7,9 +7,7 @@ use crate::peso::paint_text;
 use crate::table_text::CodeCells;
 use crate::view::CodeView;
 use ph2d_code_debugcard::{DebugCard, VarGroup, VarRow, shown_value, value_ink};
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, frame_radius, paint_text_title, resolve, token_to_vello,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, frame_radius, resolve, token_to_vello};
 use ph2d_editor_core::widget::scroll_area::OwnBar;
 use ph2d_editor_core::widget::{ScrollbarState, paint_scrollbar, scrollbar_track_rect};
 use ph2d_editor_core::zones::Rect;
@@ -40,7 +38,7 @@ pub(super) fn card_head(
     let ty = card.y + (rh - font) * 0.5;
     let tw = crate::peso::largura(ts, count, font);
     let ink = resolve(ColorToken::Text2, theme);
-    paint_text_title(ts, scene, title, card.x + pad, ty, font, card.w, ink);
+    crate::peso::paint_text_title(ts, scene, title, card.x + pad, ty, font, card.w, ink);
     let cx = card.x + card.w - pad - tw;
     paint_text(
         ts,

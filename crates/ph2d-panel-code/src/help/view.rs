@@ -272,7 +272,7 @@ pub(super) fn x_in_run(ts: &mut TextSystem, m: &Metrics, r: &Run, k: usize) -> f
         head.chars().count() as f32 * m.advance
     } else {
         let (px, w) = face(r.font);
-        ts.prefix_width_weighted(head, px, w)
+        crate::peso::largura_em(ts, head, px, w)
     }
 }
 

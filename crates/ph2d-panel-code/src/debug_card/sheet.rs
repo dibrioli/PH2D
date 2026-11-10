@@ -62,7 +62,8 @@ pub(super) fn paint(
     let mut text = CodeCells { view, theme };
     let natural = natural_widths(&cols, &rows, &m, ts, &mut text);
     // A coluna do lado nunca esconde o título «Call stack»; a tabela nunca corta Value nem Type.
-    let title_w = ts.prefix_width_weighted(
+    let title_w = crate::peso::largura_em(
+        ts,
         tr("code.debug.stack"),
         TypeToken::Xs.px(),
         crate::peso::BOTAO,

@@ -482,7 +482,7 @@ fn effective_weight(
     rendering: ph2d_tokens::TextRendering,
 ) -> FontWeight {
     let boost = ph2d_tokens::crisp_weight_boost_for(rendering.params(), font_size);
-    if boost == 0 {
+    if boost == 0 || crate::peso_exato::ativo() {
         return nominal;
     }
     let raw = nominal.value() + boost as f32;

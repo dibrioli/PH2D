@@ -10,12 +10,13 @@
 
 use super::{Aim, BancadaView, Who};
 use crate::chrome;
+use crate::peso::paint_text_title;
 use crate::table_text::CodeCells;
 use crate::view::CodeView;
 use ph2d_a11y::NodeId;
 use ph2d_code_viewmodel::Holder;
 use ph2d_editor_core::motion::SETTLED;
-use ph2d_editor_core::paint::{paint_text_title, resolve};
+use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::widget::{
     Button, ButtonState, Popover, paint_button, paint_popover, pop_popover_clip, push_popover_clip,
 };
@@ -138,7 +139,7 @@ impl BancadaView {
         let natural = steady.widths(&cols, &natural);
         let f = chrome::font();
         let gap = s * 0.5;
-        let title_w = ts.prefix_width_weighted(&title, f, FontWeight::SEMI_BOLD) + gap;
+        let title_w = crate::peso::largura_em(ts, &title, f, crate::peso::TITULO) + gap;
         let (line_w, hint_w) = (chrome::label_w(ts, &line), chrome::label_w(ts, &hint));
         let strip_w = title_w + line_w + s * 2.0 + hint_w;
         let select =

@@ -122,7 +122,8 @@ pub(crate) fn label_w(ts: &mut TextSystem, text: &str) -> f32 {
 /// A largura de um [`text_button`] com `text`: a lei inversa do orçamento com que ele o pinta
 /// (`rect_for_label`) — a folga somada à mão cortava «Word» em «W…» na barra de busca.
 pub(crate) fn button_w(ts: &mut TextSystem, text: &str) -> f32 {
-    ph2d_editor_core::paint::rect_for_label(label_w(ts, text))
+    let w = crate::peso::largura_em(ts, text, font(), crate::peso::BOTAO);
+    ph2d_editor_core::paint::rect_for_label(w)
 }
 
 /// Um rótulo centrado na vertical de `r` pelas maiúsculas ([`folga_do_texto`]), na cor `color`.
@@ -171,14 +172,9 @@ pub(crate) fn text_button(
         frame_radius(ui.theme, Radius::Sm.px()),
         if on { ui.button_on } else { ui.button },
     );
-    paint_text_centered(
-        ts,
-        scene,
-        text,
-        r,
-        font(),
-        if on { ui.text1 } else { ui.text2 },
-    );
+    let ink = if on { ui.text1 } else { ui.text2 };
+    // O `.btn` da maquete 14 é `500`, o `Medium` do pintor, sem o reforço do preset.
+    ph2d_text::com_peso_exato(|| paint_text_centered(ts, scene, text, r, font(), ink));
 }
 
 /// O x (relativo ao início do texto) do byte `byte`.

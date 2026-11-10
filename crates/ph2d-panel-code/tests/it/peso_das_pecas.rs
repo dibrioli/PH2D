@@ -1,10 +1,13 @@
 //! O peso de cada peça do quadro do depurador, a maquete 14 (`docs/CodeEditor/maquetes/
 //! 14_quadros_do_depurador.html`): procura-se na cena a corrida de glifos de cada texto e lê-se o eixo
 //! variável dela (onde o peso viaja), contra o mesmo texto pintado no peso que o CSS pede.
+//! ⚠️ O quadro pinta-se no preset de nitidez de FÁBRICA do app (`CrispHeavyPlus`, que soma `+300` ao
+//! peso a `≤ 12 px`) e a referência no `Default`, sem reforço: no `Default` dos dois lados a régua
+//! via `400` onde o app pintava `700`.
 
 use ph2d_a11y::NodeId;
 use ph2d_code_debugcard::{CardState, DebugCard, StackEntry, ValueKind, VarRow, WhoTag};
-use ph2d_editor_core::paint::paint_text_in_weight;
+use ph2d_editor_core::paint::{paint_text_in_weight, set_text_rendering};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_panel_code::CodeView;
@@ -15,7 +18,7 @@ use ph2d_text::{FontWeight, TextSystem};
 const CSS_400: FontWeight = FontWeight::NORMAL;
 const CSS_500: FontWeight = FontWeight::MEDIUM;
 const CSS_600: FontWeight = FontWeight::SEMI_BOLD;
-use ph2d_tokens::Theme;
+use ph2d_tokens::{TextRendering, Theme};
 use ph2d_vector::{Color, VectorScene};
 
 /// Cada corrida de glifos da cena: os ids, o corpo e os eixos variáveis.
@@ -96,6 +99,7 @@ fn cada_peca_do_quadro_parado_pinta_no_peso_da_maquete() {
     let h = v.height(&c, aba);
     let r = Rect::new(0.0, aba.h - h, aba.w, h);
     let mut view = CodeView::new();
+    set_text_rendering(TextRendering::CrispHeavyPlus);
     v.paint(
         &c,
         [NodeId(1), NodeId(2)],
@@ -105,10 +109,11 @@ fn cada_peca_do_quadro_parado_pinta_no_peso_da_maquete() {
         &mut ts,
         Theme::default(),
     );
+    set_text_rendering(TextRendering::Default);
     let cena = corridas(&scene);
     let waiting = tr_with("code.debug.waiting_here", &[("count", &1)]);
     // (o papel no CSS, o texto, o peso da maquete)
-    let pecas: [(&str, &str, FontWeight); 9] = [
+    let pecas: [(&str, &str, FontWeight); 11] = [
         (".status", tr("code.debug.paused"), CSS_600),
         (".btn", tr("code.debug.continue"), CSS_500),
         (".btn", tr("code.debug.next_line"), CSS_500),
@@ -118,6 +123,8 @@ fn cada_peca_do_quadro_parado_pinta_no_peso_da_maquete() {
         (".tbl th", tr("code.debug.col.name"), CSS_500),
         (".tbl tr.grp", tr("code.debug.group.locals"), CSS_600),
         (".tbl td.t", tr("code.debug.kind.number"), CSS_400),
+        (".queue (corpo)", "Star", CSS_400),
+        (".ft", tr("code.debug.foot"), CSS_400),
     ];
     for (papel, text, peso) in pecas {
         let (ids, _) = referencia(&mut ts, text, 12.0, CSS_400);

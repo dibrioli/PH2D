@@ -1,6 +1,7 @@
 //! Os pintores de texto com o PESO explícito: para uma superfície cujo desenho pede outro peso de
 //! corpo que o `Medium` da casa (a aba de scripts, maquete 14: corpo 400). Medem e pintam no mesmo
-//! peso, como as irmãs; o padrão de [`super::paint_text`] não muda.
+//! peso, como as irmãs; o padrão de [`super::paint_text`] não muda. O peso é o FINAL, sem o reforço
+//! do preset de nitidez ([`ph2d_text::com_peso_exato`]); quem mede para elas mede no mesmo âmbito.
 
 use super::{Lines, paint_elided_weighted, paint_text_lines};
 use ph2d_text::{FontWeight, TextSystem};
@@ -20,9 +21,11 @@ pub fn paint_text_in_weight(
     weight: FontWeight,
 ) {
     let one = Lines::ElideToOne;
-    paint_text_lines(
-        ts, scene, text, x, y, font_size, max_width, color, weight, one,
-    );
+    ph2d_text::com_peso_exato(|| {
+        paint_text_lines(
+            ts, scene, text, x, y, font_size, max_width, color, weight, one,
+        );
+    });
 }
 
 /// [`super::paint_text_block`] em `weight`: quebra e devolve a altura.
@@ -40,9 +43,11 @@ pub fn paint_text_block_in_weight(
 ) -> f32 {
     let text = super::cola_o_separador(text);
     let wrap = Lines::Wrap;
-    paint_text_lines(
-        ts, scene, &text, x, y, font_size, max_width, color, weight, wrap,
-    )
+    ph2d_text::com_peso_exato(|| {
+        paint_text_lines(
+            ts, scene, &text, x, y, font_size, max_width, color, weight, wrap,
+        )
+    })
 }
 
 /// [`super::paint_text_elided`] em `weight`.
@@ -58,7 +63,9 @@ pub fn paint_text_elided_in_weight(
     color: Color,
     weight: FontWeight,
 ) {
-    paint_elided_weighted(
-        ts, scene, text, x, y, font_size, max_width, color, weight, 0.0,
-    );
+    ph2d_text::com_peso_exato(|| {
+        paint_elided_weighted(
+            ts, scene, text, x, y, font_size, max_width, color, weight, 0.0,
+        );
+    });
 }

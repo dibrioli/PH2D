@@ -37,6 +37,7 @@ mod onda_a;
 mod onda_b;
 mod oraculo_lsp;
 mod paleta;
+mod peso_na_placa;
 mod problemas_lista;
 mod projecto;
 mod promover;

@@ -230,24 +230,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // banda nova aparece no quadro seguinte, como toda medida de chrome autorada (é a mesma
     // latência de um quadro da largura das colunas).
     let rect = rect0;
-    // Nos cartões a Timeline flutua sobre o canvas (como a lista de cartões): o rect é o alvo do
-    // clique, sem reservar a área.
-    if cartoes {
-        ctx.host
-            .store_mut()
-            .set_floating_panel_rect(ph2d_editor_core::ids::TIMELINE_PANEL, rect);
-    } else {
-        ctx.host
-            .store_mut()
-            .set_panel_rect(ph2d_editor_core::ids::TIMELINE_PANEL, rect);
-    }
-    // Resize grippers FIRST, so every later hit (close button, lanes, keys) wins
-    // over the border strips where they overlap.
-    if cartoes {
-        crate::cartao_solto::registra_alcas(ctx, rect);
-    } else {
-        register_resize_grips(ctx, rect);
-    }
+    registra_o_rect_e_as_alcas(ctx, rect, cartoes);
 
     crate::barra_menus::fecha_pelo_clique_de_fora(state, ctx);
     let (after_transport, clip_dd_chip, anim_dd_chip, body, janelinhas) =
@@ -390,6 +373,20 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     set_last_content_h(content_h);
     set_last_visible_h(g.rows.h);
+}
+
+/// O rect do painel e as alças de redimensionar. Nos cartões a Timeline flutua sobre o canvas
+/// (como a lista de cartões): o rect é o alvo do clique, sem reservar a área. As alças vêm
+/// PRIMEIRO, para que todo hit posterior (fechar, faixas, chaves) vença as bordas onde se sobrepõem.
+fn registra_o_rect_e_as_alcas(ctx: &mut PaintCtx, rect: Rect, cartoes: bool) {
+    let id = ph2d_editor_core::ids::TIMELINE_PANEL;
+    if cartoes {
+        ctx.host.store_mut().set_floating_panel_rect(id, rect);
+        crate::cartao_solto::registra_alcas(ctx, rect);
+    } else {
+        ctx.host.store_mut().set_panel_rect(id, rect);
+        register_resize_grips(ctx, rect);
+    }
 }
 
 /// **The label column's header strip: whichever ADD this level is made of, and only that

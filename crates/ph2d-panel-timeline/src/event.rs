@@ -146,25 +146,7 @@ pub(crate) fn apply_event(
         // HERE and shared with the painter (`transport::length_scope`), so what
         // you read and what your typing edits cannot diverge. 0 clears.
         WidgetEvent::ValueChanged(id) if id == ids::TIMELINE_LENGTH_NUM => {
-            let v = host.store().number_value(id).unwrap_or(0.0);
-            let len = (v > 0.0).then_some(v);
-            let snap = crate::state::current_snapshot();
-            // `snap.keys_mode`, NOT `state.tab`: the same number the box READ
-            // (`view_end_seconds(keys_mode)`), so reading and writing cannot diverge —
-            // which they did on a single-clip Keys tab (box showed the scene, typed the
-            // clip).
-            let intent = match crate::transport::length_scope(snap.container_open, snap.keys_mode) {
-                crate::transport::LengthScope::Container(c) => {
-                    ph2d_timeline::TimelineIntent::SetContainerLength { container: c, len }
-                }
-                crate::transport::LengthScope::Clip => {
-                    ph2d_timeline::TimelineIntent::SetClipLength { len }
-                }
-                crate::transport::LengthScope::Scene => {
-                    ph2d_timeline::TimelineIntent::SetSceneLength { len }
-                }
-            };
-            crate::state::push_intent(intent);
+            push_length(host.store().number_value(id).unwrap_or(0.0));
             EventOutcome::Consumed
         }
         WidgetEvent::ValueChanged(id) if is_chip(id) => {
@@ -279,6 +261,25 @@ pub(crate) fn apply_event(
         }
         _ => EventOutcome::Ignored,
     }
+}
+
+/// The Dur(s) chip's typed value `v` (0 clears) as the length intent of the view on screen.
+fn push_length(v: f64) {
+    let len = (v > 0.0).then_some(v);
+    let snap = crate::state::current_snapshot();
+    // `snap.keys_mode`, NOT `state.tab`: the same number the box READ
+    // (`view_end_seconds(keys_mode)`), so reading and writing cannot diverge —
+    // which they did on a single-clip Keys tab (box showed the scene, typed the clip).
+    let intent = match crate::transport::length_scope(snap.container_open, snap.keys_mode) {
+        crate::transport::LengthScope::Container(c) => {
+            ph2d_timeline::TimelineIntent::SetContainerLength { container: c, len }
+        }
+        crate::transport::LengthScope::Clip => ph2d_timeline::TimelineIntent::SetClipLength { len },
+        crate::transport::LengthScope::Scene => {
+            ph2d_timeline::TimelineIntent::SetSceneLength { len }
+        }
+    };
+    crate::state::push_intent(intent);
 }
 
 /// Everything the clip stack answers: its chrome, its two right-click menus, and

@@ -640,6 +640,7 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
             || k.starts_with("kanban-")
             // Os cartões (CartoesUI) moram com o Kanban: emprestados como ele.
             || k.starts_with("card-")
+            || k.starts_with("categorical-")
             || k == "wire-fire-glow"
             || k == "attr-write" =>
         {

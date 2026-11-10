@@ -327,7 +327,19 @@ impl ColorToken {
             | T::KanbanShadowRim
             | T::KanbanShadowHover
             | T::KanbanShadowFlight
-            | T::KanbanFlightNear => Role::Graphic,
+            | T::KanbanFlightNear
+            | T::Categorical01
+            | T::Categorical02
+            | T::Categorical03
+            | T::Categorical04
+            | T::Categorical05
+            | T::Categorical06
+            | T::Categorical07
+            | T::Categorical08
+            | T::Categorical09
+            | T::Categorical10
+            | T::Categorical11
+            | T::Categorical12 => Role::Graphic,
         }
     }
 }

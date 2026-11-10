@@ -19,7 +19,7 @@ pub(crate) struct Familia {
 }
 
 /// As famílias de DADO, pela ordem em que aparecem na tabela.
-pub(crate) const FAMILIAS: [Familia; 7] = [
+pub(crate) const FAMILIAS: [Familia; 8] = [
     Familia {
         prefixos: &["node-cat-"],
         id: crate::ids::TOKENS_SEC_NODE_CAT,
@@ -55,6 +55,11 @@ pub(crate) const FAMILIAS: [Familia; 7] = [
         prefixos: &["kanban-", "card-"],
         id: crate::ids::TOKENS_SEC_KANBAN,
         rotulo: "panel.tokens.family.kanban",
+    },
+    Familia {
+        prefixos: &["categorical-"],
+        id: crate::ids::TOKENS_SEC_CATEGORICAL,
+        rotulo: "panel.tokens.family.categorical",
     },
 ];
 

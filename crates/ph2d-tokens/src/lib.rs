@@ -49,6 +49,8 @@
 
 mod alias_walk;
 mod camadas_de_colisao;
+/// ⭐ A paleta categórica (`categorical-01..12`): uma cor por categoria, pelo índice.
+pub mod categorical;
 mod changed;
 pub mod chrome;
 pub mod color;
@@ -99,6 +101,7 @@ pub(crate) mod generated {
 }
 
 pub use camadas_de_colisao::{LAYER_OUTLINE_OFF_ALPHA, OUTLINE_SHADOW_ALPHA};
+pub use categorical::{CATEGORICAL, categorical};
 pub use changed::{changed_band, changed_ink, value_ink};
 pub use chrome::{
     CHECKBOX_BOX_PX, DIVIDER_GAP_PX, DRAG_GHOST_ALPHA, DRAG_GHOST_SCALE, EDGE_PAD_PX,

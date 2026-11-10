@@ -9,12 +9,7 @@
 //! - Easy theme variants (keep structure, change `H`).
 //! - WCAG contrast still computed in linear sRGB space (per spec).
 //!
-//! **Source-of-truth: `docs/design/tokens.json`** (Wave 2 PR 11.1.0 sync,
-//! 2026-05-16). Round 9 color study values were lifted from this file
-//! into tokens.json as authoritative. The literals in `resolve_forge` /
-//! `resolve_workshop` / `resolve_sunstone` / `resolve_blueprint` below
-//! are now a manual mirror — Wave 2 PR 11.1 will replace them with
-//! build.rs codegen from tokens.json so divergence becomes impossible.
+//! **Source-of-truth: `docs/design/tokens.json`**, turned into per-theme tables by `build.rs`.
 
 // ⭐ **O endereço não muda com o corte:** quem escrevia `ph2d_tokens::color::srgb_to_oklch`
 // continua a escrevê-lo, e este ficheiro usa-as na mesma linha.
@@ -566,6 +561,10 @@ color_tokens! {
     KanbanAvatarInk => "kanban-avatar-ink",
     // Cartões UI (docs/CartoesUI): a caixa de um campo, um degrau abaixo do cartão, e o rótulo dele.
     CardField => "card-field", CardFieldHover => "card-field-hover", CardLabel => "card-label",
+    // ⭐ Paleta CATEGÓRICA (Input Map: uma cor por acção), pelo índice: `categorical.rs`.
+    Categorical01 => "categorical-01", Categorical02 => "categorical-02", Categorical03 => "categorical-03", Categorical04 => "categorical-04",
+    Categorical05 => "categorical-05", Categorical06 => "categorical-06", Categorical07 => "categorical-07", Categorical08 => "categorical-08",
+    Categorical09 => "categorical-09", Categorical10 => "categorical-10", Categorical11 => "categorical-11", Categorical12 => "categorical-12",
 }
 
 impl ColorToken {

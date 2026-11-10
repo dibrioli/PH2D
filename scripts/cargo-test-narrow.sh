@@ -200,6 +200,15 @@ fail=$(grep -oE '[0-9]+ failed' "$out" | grep -oE '[0-9]+' | awk '{s+=$1} END{pr
 ign=$(grep -oE '[0-9]+ ignored' "$out" | grep -oE '[0-9]+' | awk '{s+=$1} END{print s+0}')
 
 if [ "$rc" -eq 0 ] && [ "$pass" -eq 0 ]; then
+  # O nome casou só sondas `#[ignore]` (medido 10/11: seis sondas da missão 4K lidas como «falha»): o
+  # defeito é a chamada, não o código nem o nome — diga como se corre, sem mudar o exit.
+  if [ "${ign:-0}" -gt 0 ] && ! printf '%s\n' "${orig[@]}" | grep -qxE -- '--(include-)?ignored'; then
+    sep="-- "; printf '%s\n' "${orig[@]}" | grep -qx -- '--' && sep=""
+    echo "✗ $crate — 0 correram: o nome casou ${ign} teste(s) #[ignore] (sonda). Não é vermelho; corra-o"
+    echo "  (sonda pesada: com --profile smoke):"
+    echo "  bash scripts/cargo-test-narrow.sh $crate ${orig[*]} ${sep}--ignored"
+    exit 4
+  fi
   echo "✗ $crate — o filtro não casou NENHUM teste (0 correram · ${ign} ignorados): confira o nome"
   exit 4
 fi

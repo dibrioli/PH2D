@@ -135,14 +135,8 @@ pub const AUTHORED_SCROLLBAR_ID: NodeId = NodeId(839);
 /// número se CONTA a partir do `main` do dia, nunca se escolhe.
 pub const MOTION_PARAMS_SCROLLBAR_ID: NodeId = NodeId(841);
 
-/// **A janela flutuante do INPUT MAP** (plano 30) — a lista de acções transborda o cartão assim que
-/// o projecto passa de meia dúzia delas.
-///
-/// ⛔ Auditoria de 2026-08-24: a barra era pintada e **nunca registada** — não arrastava, não fazia
-/// hover, e não tinha id nenhum. *Uma barra que não se pode agarrar é um enfeite que promete um
-/// gesto.* Thumb próprio pelo mesmo motivo dos irmãos acima. Next free id is `843`; re-read the
-/// collision note above before taking it.
-pub const INPUT_MAP_SCROLLBAR_ID: NodeId = NodeId(842);
+// ⛔ `842` foi da barra da janela flutuante do Input Map, que saiu na R2a (10/11): a aba central
+// tomou-lhe o lugar. RETIRADO, como o `840`: nunca se reusa.
 
 // ⛔ `843` foi da barra do painel de modelagem 3D, que saiu com o 3D (ADR-0179). RETIRADO, como o
 // `840`: nunca se reusa.
@@ -249,7 +243,6 @@ mod tests {
             ("TOKENS", TOKENS_SCROLLBAR_ID),
             ("AUTHORED", AUTHORED_SCROLLBAR_ID),
             ("MOTION_PARAMS", MOTION_PARAMS_SCROLLBAR_ID),
-            ("INPUT_MAP", INPUT_MAP_SCROLLBAR_ID),
             ("ASSET_CATALOG", ASSET_CATALOG_SCROLLBAR_ID),
             ("LAB", LAB_SCROLLBAR_ID),
             ("ASSET_BROWSER", ASSET_BROWSER_SCROLLBAR_ID),

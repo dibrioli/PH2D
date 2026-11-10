@@ -47,7 +47,9 @@ impl crate::App {
         // ⚠️ **A escuta do comando ANTES da resolução**: se o botão que o artista acabou de ligar
         // fosse resolvido no mesmo quadro, ele dispararia a acção que acabou de nascer — o gesto de
         // LIGAR viraria também o gesto de ACCIONAR.
-        self.poll_input_map_pad_binding();
+        if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            ph2d_app_input_map::listen::deliver_pad(h, &self.input.gamepad);
+        }
         // ⭐ A porta é da CRATE desde a Fase C, e leva os três campos em vez de `self`: o
         // empréstimo disjunto é feito AQUI, que é onde os campos vivem.
         let player_input = ph2d_app_physics::player_input::resolve_player_input(

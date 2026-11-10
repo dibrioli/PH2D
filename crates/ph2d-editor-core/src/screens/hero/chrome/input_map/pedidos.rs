@@ -4,11 +4,7 @@
 //! O mapa é estado do EDITOR (vive no [`HeroScreen`]): não viaja num `ComponentBlob` nem passa pelo
 //! `Ctrl+Z` do documento. O painel pede pelo barramento, a shell drena os pedidos do quadro e chama
 //! [`aplica_pedidos_do_mapa`] — a lei mora aqui, ao lado do mapa, e não na shell.
-//!
-//! ⚠️ As linhas da janela do mapa são RE-SINCRONIZADAS: sem isso, com a janela aberta, ela mostraria
-//! a lista antiga.
 
-use super::sync_input_map_rows;
 use crate::screens::hero::HeroScreen;
 
 /// Um pedido da fileira do gatilho. O nome vem cru do campo; aqui ele é aparado.
@@ -41,6 +37,4 @@ pub fn aplica_pedidos_do_mapa(hero: &mut HeroScreen, pedidos: Vec<PedidoDoMapa>)
             hero.store.listen_for_binding_replacing(id);
         }
     }
-    let mapa = hero.input_map.clone();
-    sync_input_map_rows(&mut hero.store, &mapa);
 }

@@ -208,7 +208,6 @@ mod input_dispatch;
 mod input_drop;
 mod input_handlers;
 mod input_log;
-mod input_map_drag;
 /// ⭐ **A lei da F3 num sítio só** — o Inspector mostra o que o objeto TEM (ADR-0166).
 #[cfg(test)]
 #[path = "inspector_presence_tests.rs"]

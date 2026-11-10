@@ -616,29 +616,6 @@ pub fn paint_hero_screen(
         &hero.tether,
         viewport,
     );
-    // A JANELA DO INPUT MAP (plano 30 §0.2) — flutuante sobre o canvas, à la Godot. No-op quando
-    // fechada. Mesma camada de diálogo flutuante que o Fill modal, e pintada DEPOIS do menu de
-    // contexto pelo mesmo motivo: os hit rects dela ficam acima do canvas.
-    //
-    // ⭐ Desde 2026-09-29 o corpo dela passa pela PORTA da rolagem: o que o pintor devolve é a
-    // metade que precisa do store mutável (alturas, clamp, dono da barra) e o rect do cartão, que se
-    // publica como rect de painel — é ele que dá à janela a roda, o arrasto no corpo e a inércia
-    // pelo mesmo caminho de todo painel, sem o caso especial que a shell tinha. Fechada, o rect sai.
-    match chrome::paint_input_map_window(
-        scene,
-        text_system,
-        hero.theme,
-        &mut hero.hit_index,
-        &hero.store,
-        &hero.input_map,
-        viewport,
-    ) {
-        Some((card, pending)) => {
-            pending.publish(&mut hero.store);
-            hero.store.set_panel_rect(ids::INPUT_MAP_SURFACE, card);
-        }
-        None => hero.store.clear_panel_rect(ids::INPUT_MAP_SURFACE),
-    }
     // Onion settings modal (ADR-0142 W3b): the timeline's floating card, same layer as Fill's.
     chrome::paint_onion_modal(
         scene,

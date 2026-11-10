@@ -186,11 +186,6 @@ impl crate::App {
         }
         // Fill "Fill adjust" modal title-band drag (SHELL-only): while the card is grabbed, motion moves
         // it. Early-return so it doesn't pan / drive a gizmo. No-ops unless a modal drag is armed.
-        // ⚠️ A janela do Input Map ANTES do Fill: as duas são cartões flutuantes, e quem está a
-        // arrastar um não pode ver o outro reclamar o movimento.
-        if self.input_map_drag_move(self.last_pointer.0, self.last_pointer.1) {
-            return true;
-        }
         if self.fill_modal_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return true;
         }

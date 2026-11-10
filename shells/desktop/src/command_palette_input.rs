@@ -56,3 +56,14 @@ impl App {
         }
     }
 }
+
+impl App {
+    /// ⭐ **A roda pertence à PALETA enquanto ela estiver aberta** — ver
+    /// [`ph2d_app_components::component_attach::palette_wheel`], onde mora o porquê.
+    pub(crate) fn command_palette_wheel(&mut self, dy: f32) -> bool {
+        let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) else {
+            return false;
+        };
+        ph2d_app_components::component_attach::palette_wheel(hero, dy)
+    }
+}

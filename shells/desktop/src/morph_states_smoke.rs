@@ -117,7 +117,10 @@ fn announce(app: &crate::App) {
             .map(|a| {
                 a.bindings
                     .iter()
-                    .map(|b| ph2d_editor_core::screens::hero::chrome::binding_label(*b).0)
+                    .filter_map(|b| match b {
+                        ph2d_input::Binding::Key(k) => Some(k.label()),
+                        _ => None,
+                    })
                     .collect::<Vec<_>>()
                     .join(" ou ")
             })

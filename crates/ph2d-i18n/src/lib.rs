@@ -102,8 +102,6 @@ mod grid_snap;
 mod hier_rows;
 /// As strings dos cinco painéis das ferramentas de imagem.
 mod image_tools;
-/// ⭐ **A JANELA do Input Map** — irmã por ASSUNTO, cortada do pai pelo tecto de LOC em 2026-09-17.
-mod input_map;
 /// A ABA Input Map e as suas vistas (`docs/InputMap/01_plano.md` §7).
 mod input_map_tab;
 /// O que o KANBAN diz (TrelloClone W2).
@@ -619,7 +617,6 @@ fn tabela(key: &str) -> &'static str {
             .or_else(|| node_params::tr(k))
             .or_else(|| node_options::tr(k))
             .or_else(|| chrome::tr(k))
-            .or_else(|| input_map::tr(k))
             .or_else(|| input_map_tab::tr(k))
             .or_else(|| painter_layers::tr(k))
             .or_else(|| painter_marca::tr(k))

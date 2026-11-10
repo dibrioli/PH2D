@@ -201,34 +201,15 @@ mod chrome_claims_tests {
         ));
     }
 
-    /// ⭐⭐⭐ **A SUPERFÍCIE DE FUNDO DE UMA JANELA FLUTUANTE É UM CONSUMIDOR — e este é o consumidor
-    /// dela.**
-    ///
-    /// ⚠️ **Registo do achado (2026-08-30).** O instrumento
-    /// `ph2d-editor-core/tests/it/the_painted_control_reaches_a_consumer.rs` acusou
-    /// `ids::INPUT_MAP_SURFACE` de *«registada e consultada por ninguém»*. **É um FALSO POSITIVO**,
-    /// e o mecanismo do engano está no cabeçalho do próprio instrumento: a régua dele procura um
-    /// sítio que **NOMEIE** o id (`id == ids::X`, um braço de `match`, uma tabela com o id por
-    /// chave). Esta superfície nunca é nomeada — e não pode ser: o término dela é uma **AUSÊNCIA**
-    /// (o canvas só recebe o clique quando o índice de acerto responde «nada»), e uma régua que só
-    /// vê términos POSITIVOS é cega a todo despacho genérico.
-    ///
-    /// ⚠️ **São DUAS metades, em duas árvores, e esta é a de baixo.** A de cima — *«o rect cobre
-    /// mesmo a janela inteira»* — é da linha que possui o `ph2d-editor-core` e tem gate lá
-    /// (`the_input_map_window_is_painted_where_it_says::no_point_inside_the_window_falls_through_to_the_canvas`,
-    /// que mediu 1189 de 1600 pontos a cair no canvas com o `register` apagado). Esta é a de
-    /// baixo: **o que a shell FAZ com o acerto** — e o `ph2d-editor-core` não pode gateá-la, porque
-    /// ele não depende da shell. Sem ela, o rect podia continuar registado e o canvas pintar na
-    /// mesma.
-    ///
-    /// E o que ela impede é isto: clicar no espaço vazio ENTRE dois controlos da janela do Input
-    /// Map cai no canvas por baixo — *com o pincel na mão, o artista pinta enquanto arruma os
-    /// controlos* (auditoria de 2026-08-24, o achado mais grave dela).
+    /// ⭐⭐⭐ **Um id de janela flutuante que a shell nunca NOMEIA é um consumidor na mesma**: o
+    /// término dele é a AUSÊNCIA (o canvas só recebe o clique quando o índice de acerto responde
+    /// «nada»). Achado de 2026-08-30 sobre o fundo da janela do Input Map, que saiu na R2a (10/11);
+    /// a lei fica, medida agora sobre a faixa do título do modal do Onion.
     ///
     /// **Mutação:** trocar o `widget.is_some_and(..)` de [`chrome_claims`] por `false` ⇒ RED.
     #[test]
     fn a_floating_windows_background_surface_reaches_its_consumer_without_ever_being_named() {
-        let surface = NodeId(ph2d_editor_core::ids::INPUT_MAP_SURFACE.0);
+        let surface = NodeId(ph2d_editor_core::ids::TIMELINE_ONION_MODAL_HANDLE.0);
         assert!(
             !on_artwork(surface),
             "fixture: a superficie foi classificada como gizmo, e entao este gate nao mede a \
@@ -236,8 +217,8 @@ mod chrome_claims_tests {
         );
         assert!(
             chrome_claims(None, Some(surface), on_artwork),
-            "o fundo da janela do Input Map deixou de absorver o clique: ele cai no canvas por \
-             baixo e, com o pincel na mao, o artista pinta enquanto arruma os controlos"
+            "a janela flutuante deixou de absorver o clique: ele cai no canvas por baixo e, com \
+             o pincel na mao, o artista pinta enquanto arruma os controlos"
         );
     }
 }

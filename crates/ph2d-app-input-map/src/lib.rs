@@ -5,6 +5,7 @@
 pub use ph2d_input_map_editor::{InputMapDoc, InputMapEdit, Snapshot, View};
 
 mod apply;
+pub mod listen;
 mod surface;
 
 pub use surface::{InputMapTab, TAB_ID};

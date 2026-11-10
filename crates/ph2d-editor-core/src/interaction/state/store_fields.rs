@@ -319,12 +319,6 @@ pub struct WidgetStore {
     /// band offsets it. Its threshold slider's value lives in the `PAINTER_FILL_MODAL_SLIDER` widget.
     /// `(posição, âncora)` — as duas no MESMO campo, ver `open_fill_modal`.
     pub(in crate::interaction) fill_modal: Option<((f32, f32), (f32, f32))>,
-    /// **A janela do INPUT MAP**: onde ela está, ou `None` se estiver fechada (plano 30 §0.2).
-    ///
-    /// ⚠️ **Uma só posição, e não a âncora dupla do `fill_modal` acima:** aquele nasce no ponto em
-    /// que o dedo largou a tinta e precisa de lembrar onde foi; esta abre-se por um gesto de menu e
-    /// só tem *onde está agora*.
-    pub(in crate::interaction) input_map_window: Option<(f32, f32)>,
     /// O menu pediu a ABA do Input Map; a família (`ph2d-app-input-map`) drena-o no `frame`.
     pub(in crate::interaction) input_map_tab_request: bool,
     /// **Qual acção está à ESCUTA de uma tecla** (o gesto *press-to-bind*).
@@ -333,19 +327,17 @@ pub struct WidgetStore {
     /// teclado que tem de perguntar primeiro. Sem essa ordem, ligar `S` a uma acção salva o
     /// projecto e a ligação nunca acontece.
     pub(in crate::interaction) input_map_listening: Option<ph2d_input::ActionId>,
-    /// **A tecla que a escuta acabou de apanhar**, à espera de quem a saiba ligar.
+    /// **A ligação que a escuta acabou de apanhar** (tecla ou comando), à espera de quem a ligue.
     ///
-    /// ⚠️ Ela vive um instante: o despacho de teclado escreve-a e o handler de chrome **drena-a**
+    /// ⚠️ Ela vive um instante: a escuta escreve-a e o handler de chrome **drena-a**
     /// no mesmo quadro. Guardá-la sem drenar faria a mesma tecla ligar-se outra vez ao gesto
     /// seguinte — a família do canal que se lê com `take`, que este repo já pinou noutro sítio.
-    pub(in crate::interaction) input_map_captured: Option<ph2d_input::Key>,
+    pub(in crate::interaction) input_map_captured: Option<ph2d_input::Binding>,
     /// A escuta armada pelo cartão do Trigger **troca** as teclas de teclado da acção (dono 09/11);
-    /// a da janela do mapa acrescenta.
+    /// a da aba do mapa acrescenta.
     pub(in crate::interaction) input_map_listen_replaces: bool,
     /// O último `Down` cancelou a escuta do cartão — o clique que ele começa não a re-arma.
     pub(in crate::interaction) input_map_listen_cancelled_by_down: bool,
-    // ⚠️ A rolagem da lista da janela NÃO mora aqui desde 2026-09-29: ela passou às tabelas de
-    // rolagem de todo painel, com a chave `ids::INPUT_MAP_SURFACE` (a porta `widget::scroll_area`).
     /// Onion settings floating modal (ADR-0142 W3b): `Some((x, y))` = the card's top-left in screen
     /// px (open); `None` = closed. Opened by the timeline's Onion-settings button (shell-side, so it
     /// can seed the widgets from `TimelineState::onion`); dragging the title band offsets it. Its

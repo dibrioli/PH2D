@@ -65,8 +65,8 @@
 //!   catraca, com o motivo.
 //! - **O término que é uma AUSÊNCIA.** Um id registado no `HitIndex` só para o canvas **não**
 //!   receber o clique (o fundo de um cartão flutuante) é consumido por `hit(..).is_none()`, que
-//!   não é um uso do id em lado nenhum. Ele lê como morto e está vivo — o `INPUT_MAP_SURFACE` da
-//!   catraca é essa espécie, medida em 2026-08-30. ⛔ Ensinar a régua a aceitar *«registado num
+//!   não é um uso do id em lado nenhum. Ele lê como morto e está vivo — o fundo da janela do Input
+//!   Map (saiu na R2a, 10/11) foi essa espécie, medida em 2026-08-30. ⛔ Ensinar a régua a aceitar *«registado num
 //!   `HitIndex` e mais nada»* **branquearia os seis cabeçalhos mortos** que têm a mesma forma: o
 //!   que os separa é a INTENÇÃO, e nenhuma varredura de fonte a lê.
 //! - **Braço que existe e não faz nada** (`X => {}`): mede alcance, não efeito.
@@ -142,7 +142,7 @@ const NO_CONSUMER_PENDING: &[(&str, &str)] = &[
          `both_bars_swallow_every_pixel_they_paint`, que sangra se o `hit_index.register` sair. O \
          consumidor positivo (o gizmo 3D, via `CHROME_BACKDROPS`) saiu com o 3D (ADR-0179).",
     ),
-    // ⚠️⚠️ **`INPUT_MAP_SURFACE` saiu daqui em 2026-08-30, e a história vale mais que a linha.**
+    // ⚠️⚠️ **O fundo da janela do Input Map saiu daqui em 2026-08-30 (e a janela na R2a, 10/11).**
     // Ele entrou como MORTO, foi RECLASSIFICADO como *vivo por um término que esta régua não tem*
     // — o término dele é a **AUSÊNCIA**: todo caminho de canvas do shell só corre com o índice de
     // hit VAZIO sob o cursor, então **estar registado É a resposta** (medido: apagando o

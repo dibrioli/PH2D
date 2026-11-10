@@ -53,11 +53,6 @@ const NOT_THIS_QUESTION: &[(&str, &str)] = &[
         "ICONE -> ICONE: a fileira de botoes do cabecalho. O vao entre duas PECAS de um controlo \
          e' a lei do grupo (wave 20), nao a legenda de um icone",
     ),
-    (
-        "crates/ph2d-editor-core/src/screens/hero/chrome/input_map.rs",
-        "COLUNA RESERVADA: o `icon_w` ali e' a largura que a linha guarda para o botao de apagar \
-         na ponta direita, e a soma que a regua ve^ e' OUTRO argumento da mesma chamada",
-    ),
     // ⛔ `ph2d-panel-vector/src/paint_effects.rs` saiu (F43, 01/11): os efeitos viraram a lista do
     // Figma (`paint_fx_list.rs`) e a fileira de encaixes de ícone deixou de existir.
     // ⛔ e o irmão `paint_filters.rs` pela mesma razão (a lista `paint_fx_list.rs`).

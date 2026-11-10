@@ -129,9 +129,6 @@ impl crate::App {
             }
             // A Primary Down on the Fill modal's title band starts a modal-move (the card follows the
             // cursor via CursorMoved) — consume it so it doesn't click through / start anything else.
-            if self.arm_input_map_drag_if_on_handle(evt.x, evt.y) {
-                return true;
-            }
             if self.arm_fill_modal_drag_if_on_handle(evt.x, evt.y) {
                 return true;
             }
@@ -259,7 +256,6 @@ impl crate::App {
                 // on the Fill button). No-op when no fill drag is armed.
                 self.fill_drag_up();
                 // End a Fill "Fill adjust" modal title-band drag. No-op when not dragging the modal.
-                self.input_map_drag_up();
                 self.fill_modal_drag_up();
                 // End an onion settings modal title-band drag (ADR-0142 W3b). No-op when not dragging.
                 self.onion_modal_drag_up();

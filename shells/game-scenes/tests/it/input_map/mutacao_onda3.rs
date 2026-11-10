@@ -147,7 +147,9 @@ fn na_lista_o_deslize_de_lado_ignora_o_campo_que_o_teclado_deixou() {
 }
 
 /// Uma família que PEDE o lado: conta o que a roda e o deslize lhe trazem, `(dy, shift)` e `dx`.
-struct Lado(Rc<RefCell<(Vec<(f32, bool)>, Vec<f32>)>>);
+/// O que a espia ouviu: as rodas (dy, shift) e os deslizes de lado (dx).
+type Ouvido = Rc<RefCell<(Vec<(f32, bool)>, Vec<f32>)>>;
+struct Lado(Ouvido);
 
 impl DocumentSurface for Lado {
     fn tabs(&self) -> Vec<DocTab> {

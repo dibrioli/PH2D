@@ -1,73 +1,97 @@
-//! ⭐ **«Who has what»** (plano 13 Onda B, item 8) — a grelha objectos × propriedades no pé do
-//! código, dobrável, no idioma da grelha «Who bumps into whom» da aba Collision Layers: os nomes nas
-//! duas bordas, a linha e a coluna sob o rato acesas (`AccentSoft`), a coluna da propriedade sob o
-//! cursor do texto acesa de leve, e a célula ALTERADA acesa na cor do objecto (D2). O clique edita
-//! pelo MESMO comando do cartão Script do Inspector (a família vira o [`super::Intent`] nele).
+//! ⭐ **«Who has what»** (plano 13 Onda B, item 8; plano 14 Q4 B) — a grelha objectos × propriedades no
+//! pé do código, dobrável, sobre a tabela da casa (`ph2d-ui-table`): a coluna dos nomes (o ponto da cor
+//! do objecto) e uma por propriedade; a linha e a coluna sob o rato acesas (`AccentSoft`), a coluna do
+//! cursor do texto de leve, a célula ALTERADA em âmbar (dono 09/11: âmbar = mudou). O clique edita
+//! pelo MESMO comando do cartão Script do Inspector ([`super::Intent`]); a barra ↕ rola em linhas
+//! inteiras e o separador ↔ ([`crate::splitter`]) dá a largura ao mapa «Where» do lado.
 
 use super::{Aim, BancadaView, Who};
 use crate::chrome::{self, Ui};
+use crate::splitter::{Split, band};
+use ph2d_code_viewmodel::{CellKind, Holder};
+use ph2d_editor_core::doc_surface::PointerLook;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, frame_radius, paint_text, paint_text_title, rect_to_vello,
-    resolve, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{paint_text_title, rect_to_vello};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{
-    ColorToken, PANEL_MIN_W_PX, ROW_H_PX, ROW_SELECTED_ALPHA, Radius, Spacing, StrokeToken, Theme,
-    TypeToken,
-};
-use ph2d_vector::{Color, VectorScene};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, Theme, TypeToken};
+use ph2d_ui_table::{Cell, Column, Hit, Ink, Key, Layout, Metrics, Row, UiText, natural_widths};
+use ph2d_vector::VectorScene;
 
 /// A parte da coluna do código que a grelha pode tomar: o código manda, a grelha rola.
 const BENCH_SHARE: f32 = 1.0 / 3.0; // LITERAL-PX-OK: fração da coluna (um terço), não píxeis
 
-/// As medidas da grelha num quadro: a coluna dos nomes e as das propriedades.
-struct Cols {
-    x: f32,
-    name_w: f32,
-    widths: Vec<f32>,
+/// A chave da coluna dos nomes: não é um nome de Luau, nunca colide com uma propriedade.
+const NAME: &str = "@name";
+
+/// O que a grelha pintou no último quadro: a geometria e as linhas (o clique, a roda e o ponteiro
+/// lêem-nas — o mesmo rectângulo desenha e recebe).
+pub(super) struct Painted {
+    lay: Layout,
+    rows: Vec<Row>,
 }
 
-impl Cols {
-    fn of(ts: &mut TextSystem, who: &Who, x: f32, w: f32) -> Self {
-        let pad = Spacing::Md.px();
-        let dot = chrome::font();
-        let name_w = who
-            .holders
-            .iter()
-            .map(|h| chrome::label_w(ts, &h.name))
-            .fold(0.0f32, f32::max)
-            + dot
-            + pad * 2.0;
-        let name_w = ph2d_editor_core::math::safe_clamp(name_w, ROW_H_PX * 2.0, w * 0.5);
-        let n = who.columns.len().max(1);
-        let share = ((w - name_w) / n as f32).max(0.0);
-        let widths = who
-            .columns
-            .iter()
-            .enumerate()
-            .map(|(c, col)| {
-                let head = chrome::label_w(ts, &col.name);
-                let cells = (0..who.holders.len())
-                    .filter_map(|h| who.cell(h, c))
-                    .map(|cell| chrome::label_w(ts, &cell.text))
-                    .fold(head, f32::max);
-                (cells + pad * 2.0).max(ROW_H_PX * 2.0).min(share)
-            })
-            .collect();
-        Self { x, name_w, widths }
-    }
+/// As colunas: os nomes e uma por propriedade (os números à direita, na mono).
+fn columns(who: &Who) -> Vec<Column> {
+    let props = who.columns.iter().map(|c| {
+        let col = Column::new(c.name.clone(), c.name.clone());
+        if c.kind == Some(CellKind::Number) {
+            col.end().mono()
+        } else {
+            col
+        }
+    });
+    std::iter::once(Column::new(NAME, String::new()))
+        .chain(props)
+        .collect()
+}
 
-    fn col_x(&self, c: usize) -> f32 {
-        self.x + self.name_w + self.widths[..c].iter().sum::<f32>()
+/// Uma linha por objecto (chave = o índice): o nome com o ponto da cor dele e as células.
+fn rows(who: &Who) -> Vec<Row> {
+    let ink = |c: usize| match who.columns[c].kind {
+        Some(CellKind::Number) => Ink::Number,
+        _ => Ink::Plain,
+    };
+    let row = |(h, holder): (usize, &Holder)| {
+        let name = Cell {
+            dot: Some(ColorToken::layer(holder.color)),
+            ..Cell::new(holder.name.clone(), Ink::Name)
+        };
+        let cells = (0..who.columns.len()).map(|c| {
+            who.cell(h, c).map_or_else(Cell::default, |x| Cell {
+                changed: x.changed,
+                swatch: x.swatch,
+                ..Cell::new(x.text.clone(), ink(c))
+            })
+        });
+        Row {
+            key: h.to_string(),
+            cells: std::iter::once(name).chain(cells).collect(),
+            ..Row::default()
+        }
+    };
+    who.holders.iter().enumerate().map(row).collect()
+}
+
+/// A célula de um alvo da grelha, `(chave da linha, coluna)`: a moldura assenta nela.
+fn pair(who: &Who, aim: Aim) -> Option<(String, String)> {
+    match aim {
+        Aim::Cell(h, c) => Some((h.to_string(), who.columns.get(c)?.name.clone())),
+        Aim::Holder(h) => Some((h.to_string(), NAME.to_owned())),
+        _ => None,
     }
+}
+
+/// A chave da coluna da propriedade `c`.
+fn key(who: &Who, c: Option<usize>) -> Option<Key> {
+    Some(Key::from(who.columns.get(c?)?.name.clone()))
 }
 
 impl BancadaView {
     /// A altura do cartão da grelha (e do mapa ao lado) para `who`, com `avail` de altura na coluna
-    /// do documento: dobrada, só o título; aberta, o cabeçalho e uma linha por objecto, até um terço.
+    /// do documento: dobrada, só o título; aberta, o cabeçalho e uma linha por objecto, até um terço
+    /// em linhas inteiras (o resto rola).
     #[must_use]
     pub fn bench_height(&self, who: &Who, avail: f32) -> f32 {
         let s = Spacing::Sm.px();
@@ -80,12 +104,12 @@ impl BancadaView {
         } else {
             1 + who.holders.len()
         };
-        let body = (ROW_H_PX * rows as f32).min((avail * BENCH_SHARE - title).max(ROW_H_PX * 2.0));
-        title + body + s
+        let fit = ((avail * BENCH_SHARE - title) / ROW_H_PX).floor().max(2.0);
+        title + ROW_H_PX * (rows as f32).min(fit) + s
     }
 
-    /// Pinta a grelha (e o mapa ao lado, ligado e com objectos) em `area`, cada um no seu cartão.
-    /// `caret` = a coluna da propriedade sob o cursor do texto.
+    /// Pinta a grelha (e o mapa ao lado, ligado e com objectos, depois do separador ↔) em `area`,
+    /// cada um no seu cartão. `caret` = a coluna da propriedade sob o cursor do texto.
     #[allow(clippy::too_many_arguments)]
     pub fn paint_bench(
         &mut self,
@@ -98,31 +122,27 @@ impl BancadaView {
     ) {
         self.grid_hits.clear();
         self.map_hits.clear();
-        let g = crate::cards::gap();
         let map = self.map_on && !self.folded && !who.holders.is_empty();
-        let map_w = if map {
-            PANEL_MIN_W_PX.min(area.w * 0.5)
-        } else {
-            0.0
-        };
-        let grid_r = Rect::new(
-            area.x,
-            area.y,
-            (area.w - if map { map_w + g } else { 0.0 }).max(0.0),
-            area.h,
-        );
+        // Cada lado guarda ao menos duas colunas mínimas da tabela (os nomes e uma propriedade).
+        let min = Metrics::standard().min_col * 2.0;
+        let split = map.then(|| Split::measure(self.split.side_w, area.w, min, min));
+        let side = split.map_or(0.0, |s| s.side_w + band());
+        let grid_r = Rect::new(area.x, area.y, (area.w - side).max(0.0), area.h);
         crate::cards::open(scene, grid_r, theme);
         self.paint_grid(who, grid_r, caret, scene, ts, theme);
         crate::cards::close(scene);
-        if map {
-            let m = Rect::new(area.x + area.w - map_w, area.y, map_w, area.h);
-            crate::cards::open(scene, m, theme);
-            self.paint_map(who, m, scene, ts, theme);
-            crate::cards::close(scene);
-        }
+        let Some(s) = split else {
+            self.split.painted = None;
+            return;
+        };
+        let sx = grid_r.x + grid_r.w;
+        self.split.paint(s, (sx, area.y, area.h), scene, *theme);
+        let m = Rect::new(sx + band(), area.y, s.side_w, area.h);
+        crate::cards::open(scene, m, theme);
+        self.paint_map(who, m, scene, ts, theme);
+        crate::cards::close(scene);
     }
 
-    #[allow(clippy::too_many_lines)]
     fn paint_grid(
         &mut self,
         who: &Who,
@@ -134,6 +154,7 @@ impl BancadaView {
     ) {
         let ui = Ui::new(*theme);
         scene.fill_rect(rect_to_vello(area), ui.bg);
+        self.painted = None;
         let s = Spacing::Sm.px();
         let x = area.x + s;
         let w = (area.w - s * 2.0).max(0.0);
@@ -167,11 +188,10 @@ impl BancadaView {
         };
         chrome::icon_button(scene, icon, chev, &ui);
         if self.folded {
-            self.grid.rows = crate::chrome::NO_RECT;
+            self.steady.reset();
             return;
         }
         let top = title_r.y + ROW_H_PX;
-        let body = Rect::new(area.x, top, area.w, (area.y + area.h - s - top).max(0.0));
         if who.holders.is_empty() || who.columns.is_empty() {
             let key = if who.holders.is_empty() {
                 "code.bancada.grid.no_objects"
@@ -179,141 +199,160 @@ impl BancadaView {
                 "code.bancada.grid.no_props"
             };
             chrome::label_in(scene, ts, tr(key), Rect::new(x, top, w, ROW_H_PX), ui.text3);
-            self.grid.rows = crate::chrome::NO_RECT;
             return;
         }
-        let cols = Cols::of(ts, who, x, w);
-        let radius = frame_radius(*theme, Radius::Sm.px());
+        let table_r = Rect::new(x, top, w, (area.y + area.h - s - top).max(0.0));
+        self.paint_table(who, table_r, caret, scene, ts, theme);
+    }
+
+    /// A tabela da grelha em `table_r`, e os alvos dela saídos da MESMA geometria.
+    fn paint_table(
+        &mut self,
+        who: &Who,
+        table_r: Rect,
+        caret: Option<usize>,
+        scene: &mut VectorScene,
+        ts: &mut TextSystem,
+        theme: &Theme,
+    ) {
+        let (cols, rows, m) = (columns(who), rows(who), Metrics::standard());
+        let mut text = UiText { theme: *theme };
+        let natural = natural_widths(&cols, &rows, &m, ts, &mut text);
+        let natural = self.steady.widths(&cols, &natural);
+        let editing = self.editing.as_ref().map(|e| (e.holder, e.column));
         let lit_row = match self.aim {
             Aim::Cell(h, _) | Aim::Holder(h) | Aim::Select(h) => Some(h),
             _ => self.peeking,
         }
-        .or(self.editing.as_ref().map(|e| e.holder));
+        .or(editing.map(|e| e.0));
         let lit_col = match self.aim {
             Aim::Cell(_, c) | Aim::Column(c) => Some(c),
-            _ => self.editing.as_ref().map(|e| e.column),
+            _ => editing.map(|e| e.1),
         };
-        // As linhas rolam por baixo do cabeçalho (que fica).
-        self.grid.rows = Rect::new(body.x, top + ROW_H_PX, body.w, (body.h - ROW_H_PX).max(0.0));
-        self.grid.content_h = ROW_H_PX * who.holders.len() as f32;
-        self.grid.clamp();
-        // As faixas das colunas por baixo de tudo: a acesa e a do cursor do texto.
-        for (c, cw) in cols.widths.iter().enumerate() {
-            let band = if lit_col == Some(c) {
-                Some(resolve(ColorToken::AccentSoft, *theme))
-            } else if caret == Some(c) {
-                Some(ui.hover)
-            } else {
-                None
-            };
-            if let Some(color) = band {
-                let r = Rect::new(
-                    cols.col_x(c),
-                    top,
-                    *cw,
-                    (self.grid.rows.y + self.grid.content_h.min(self.grid.rows.h)) - top,
-                );
-                fill_rounded_rect(scene, r, radius, color);
-            }
+        self.table.hover = lit_row.map(|h| h.to_string());
+        self.table.lit_col = key(who, lit_col);
+        self.table.soft_col = key(who, caret);
+        let lay = ph2d_ui_table::layout(&cols, &rows, &natural, &mut self.table, table_r, &m);
+        let tones = (crate::cards::card_tone(), crate::cards::ground_tone());
+        ph2d_ui_table::paint(
+            &lay,
+            &cols,
+            &rows,
+            &self.table,
+            tones,
+            scene,
+            ts,
+            &mut text,
+            *theme,
+        );
+        let hover = pair(who, self.aim);
+        let pressed = self.pressed.and_then(|a| pair(who, a));
+        let h = hover.as_ref().map(|(r, c)| (r.as_str(), c.as_str()));
+        let p = pressed.as_ref().map(|(r, c)| (r.as_str(), c.as_str()));
+        ph2d_ui_table::paint_cell_frames(&lay, &rows, h, p, scene, *theme);
+        if let Some(e) = self.editing.as_ref()
+            && let Some((row, col)) = pair(who, Aim::Cell(e.holder, e.column))
+            && let Some(r) = lay.cell_frame(&rows, &row, &col)
+        {
+            chrome::text_field(scene, ts, &e.buf, "", r, true, &Ui::new(*theme));
         }
-        // O cabeçalho: os nomes das propriedades (a acesa em negrito); o clique salta para a linha.
-        let gf = chrome::font();
-        for (c, col) in who.columns.iter().enumerate() {
-            let r = Rect::new(cols.col_x(c), top, cols.widths[c], ROW_H_PX);
-            let lit = lit_col == Some(c);
-            let paint = if lit { paint_text_title } else { paint_text };
-            let tx = r.x + Spacing::Md.px();
-            paint(
-                ts,
-                scene,
-                &col.name,
-                tx,
-                r.y + (r.h - gf) * 0.5,
-                gf,
-                (r.w - Spacing::Md.px() * 2.0).max(0.0),
-                if lit { ui.text1 } else { ui.text2 },
-            );
-            self.grid_hits.push((Aim::Column(c), r));
+        for c in lay.cols.iter().filter(|c| c.index > 0) {
+            let r = Rect::new(c.x, lay.header.y, c.w, lay.header.h);
+            self.grid_hits.push((Aim::Column(c.index - 1), r));
         }
-        scene.push_clip(&rect_to_vello(self.grid.rows));
-        for (h, holder) in who.holders.iter().enumerate() {
-            let y = self.grid.rows.y + ROW_H_PX * h as f32 - self.grid.y;
-            if y + ROW_H_PX < self.grid.rows.y || y > self.grid.rows.y + self.grid.rows.h {
-                continue;
-            }
-            let color = resolve(ColorToken::layer(holder.color), *theme);
-            let lit = lit_row == Some(h);
-            let name_r = Rect::new(area.x + s * 0.5, y, cols.name_w + s * 0.5, ROW_H_PX);
-            if lit {
-                fill_rounded_rect(
-                    scene,
-                    name_r,
-                    radius,
-                    resolve(ColorToken::AccentSoft, *theme),
-                );
-            }
-            let dot = super::chip_r();
-            fill_circle(scene, x + dot, y + ROW_H_PX * 0.5, dot, color);
-            let nx = x + dot * 2.0 + Spacing::Sm.px();
-            let paint = if lit { paint_text_title } else { paint_text };
-            paint(
-                ts,
-                scene,
-                &holder.name,
-                nx,
-                y + (ROW_H_PX - gf) * 0.5,
-                gf,
-                (cols.x + cols.name_w - nx).max(0.0),
-                if lit { ui.text1 } else { ui.text2 },
-            );
-            self.grid_hits
-                .push((Aim::Holder(h), clip(name_r, self.grid.rows)));
-            for (c, cw) in cols.widths.iter().enumerate() {
-                let Some(cell) = who.cell(h, c) else { continue };
-                let r = Rect::new(cols.col_x(c), y, *cw, ROW_H_PX);
-                let inner = Rect::new(
-                    r.x + Spacing::Xxs.px(),
-                    r.y + Spacing::Xxs.px(),
-                    (r.w - Spacing::Xxs.px() * 2.0).max(0.0),
-                    (r.h - Spacing::Xxs.px() * 2.0).max(0.0),
-                );
-                self.grid_hits
-                    .push((Aim::Cell(h, c), clip(r, self.grid.rows)));
-                if let Some(e) = self
-                    .editing
-                    .as_ref()
-                    .filter(|e| e.holder == h && e.column == c)
-                {
-                    chrome::text_field(scene, ts, &e.buf, "", inner, true, &ui);
-                    continue;
-                }
-                if cell.changed {
-                    fill_rounded_rect(scene, inner, radius, color.with_alpha(ROW_SELECTED_ALPHA));
-                }
-                let tx = r.x + Spacing::Md.px();
-                if let Some(sw) = cell.swatch {
-                    let side = gf;
-                    let q = Rect::new(tx, r.y + (r.h - side) * 0.5, side, side);
-                    fill_rounded_rect(scene, q, Spacing::Xxs.px(), Color::new(sw));
-                } else {
-                    let ink = if cell.changed { ui.text1 } else { ui.text2 };
-                    paint_text(
-                        ts,
-                        scene,
-                        &cell.text,
-                        tx,
-                        r.y + (r.h - gf) * 0.5,
-                        gf,
-                        (r.w - Spacing::Md.px() * 2.0).max(0.0),
-                        ink,
-                    );
-                }
-                if self.aim == Aim::Cell(h, c) {
-                    stroke_rounded_rect(scene, inner, radius, StrokeToken::Default.px(), ui.text1);
+        for span in &lay.rows {
+            let h = span.index;
+            for c in &lay.cols {
+                let aim = match c.index {
+                    0 => Aim::Holder(h),
+                    i if who.cell(h, i - 1).is_some() => Aim::Cell(h, i - 1),
+                    _ => continue,
+                };
+                if let Some(r) = lay.cell_rect(h, &c.key) {
+                    self.grid_hits.push((aim, r));
                 }
             }
         }
-        scene.pop_layer();
+        self.painted = Some(Painted { lay, rows });
+    }
+
+    /// Carregar na barra ↕, num puxador de coluna ou no separador ↔ começa um arrasto. `true` = tomado.
+    pub(super) fn grid_press(&mut self, x: f32, y: f32) -> bool {
+        if self.split.press(x, y) {
+            return true;
+        }
+        let Some(p) = &self.painted else { return false };
+        match p.lay.hit(&p.rows, x, y) {
+            Some(hit @ (Hit::Bar | Hit::Resize(_))) => {
+                let (lay, rows) = (p.lay.clone(), p.rows.clone());
+                self.table.press(&hit, (x, y), &lay, &rows)
+            }
+            _ => false,
+        }
+    }
+
+    /// O rato moveu-se com um arrasto da grelha em curso. `true` = havia um (tomado).
+    pub(super) fn grid_drag(&mut self, x: f32, y: f32) -> bool {
+        if self.split.drag_to(x) {
+            return true;
+        }
+        self.table.dragging() && {
+            self.table.drag_to((x, y), &Metrics::standard());
+            true
+        }
+    }
+
+    /// Largar o botão: acaba o arrasto (barra, coluna, separador) e a moldura do clique. `true` =
+    /// havia arrasto.
+    pub fn release(&mut self) -> bool {
+        self.pressed = None;
+        self.split.dragging.take().is_some() | self.table.release()
+    }
+
+    /// O ponteiro: ↔ no separador, ↕ na barra (e a arrastá-la), a mão no que se clica da grelha
+    /// (nomes, células, cabeçalhos). `None` = fora da grelha.
+    #[must_use]
+    pub fn look(&self, x: f32, y: f32) -> Option<PointerLook> {
+        if self.split.look(x, y) {
+            return Some(PointerLook::ResizeEw);
+        }
+        if self.pop_rect.is_some_and(|r| r.contains(x, y)) {
+            return None;
+        }
+        let p = self.painted.as_ref();
+        let hit = p.and_then(|p| p.lay.hit(&p.rows, x, y));
+        if self.table.bar_dragging() || hit == Some(Hit::Bar) {
+            return Some(PointerLook::ResizeNs);
+        }
+        if matches!(hit, Some(Hit::Resize(_))) {
+            return Some(PointerLook::ResizeEw);
+        }
+        let over = self.grid_hits.iter().any(|(_, r)| r.contains(x, y));
+        over.then_some(PointerLook::Hand)
+    }
+
+    /// A roda sobre o corpo da grelha: rola em linhas inteiras. `true` = sobre o corpo (tomada).
+    pub(super) fn grid_wheel(&mut self, x: f32, y: f32, dy: f32) -> bool {
+        let Some(p) = &self.painted else { return false };
+        if !p.lay.body.contains(x, y) {
+            return false;
+        }
+        let lay = p.lay.clone();
+        let _ = self.table.wheel(&lay, x, y, dy);
+        true
+    }
+
+    /// A tabela da grelha no último quadro: a geometria, as linhas e o estado (o que acende).
+    #[must_use]
+    pub fn grid_table(&self) -> Option<(&Layout, &[Row], &ph2d_ui_table::TableState)> {
+        let p = self.painted.as_ref()?;
+        Some((&p.lay, p.rows.as_slice(), &self.table))
+    }
+
+    /// O separador ↔ entre a grelha e o mapa no último quadro (`None` = sem mapa).
+    #[must_use]
+    pub fn split(&self) -> Option<Split> {
+        self.split.painted
     }
 }
 

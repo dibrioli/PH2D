@@ -215,6 +215,7 @@ impl DocumentSurface for CodeDocs {
             return self.help_pointer(page, input, kind, button, (x, y));
         }
         // O largar só é da aba se o carregar foi (a lei do quadro): o de um clique no chrome não.
+        let _ = matches!(kind, PointerKind::Up) && self.bench.release();
         let was_pressed = matches!(kind, PointerKind::Up) && std::mem::take(&mut self.pressed);
         let in_area = self.area.contains(x, y);
         let Some((doc, store)) = self.split(id) else {

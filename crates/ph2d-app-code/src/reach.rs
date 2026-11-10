@@ -279,6 +279,6 @@ impl crate::docs::CodeDocs {
             return None;
         }
         let d = self.docs.iter().find(|d| d.script.0 == id)?;
-        Some(d.pointer_look(x, y))
+        Some(self.bench.look(x, y).unwrap_or_else(|| d.pointer_look(x, y)))
     }
 }

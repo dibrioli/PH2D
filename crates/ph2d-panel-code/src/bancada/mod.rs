@@ -87,7 +87,14 @@ pub struct BancadaView {
     fold_rect: Rect,
     pop_rect: Option<Rect>,
     outline: outline::Scroll,
-    grid: outline::Scroll,
+    /// A tabela da grelha: a rolagem, as larguras arrastadas e o que ela acende.
+    table: ph2d_ui_table::TableState,
+    steady: ph2d_ui_table::StableWidths,
+    painted: Option<grid::Painted>,
+    /// O separador ↔ entre a grelha e o mapa.
+    split: crate::splitter::Splitter,
+    /// O alvo da grelha premido (a moldura do clique), até largar.
+    pressed: Option<Aim>,
     said: String,
 }
 
@@ -115,7 +122,11 @@ impl Default for BancadaView {
             fold_rect: crate::chrome::NO_RECT,
             pop_rect: None,
             outline: outline::Scroll::default(),
-            grid: outline::Scroll::default(),
+            table: ph2d_ui_table::TableState::default(),
+            steady: ph2d_ui_table::StableWidths::default(),
+            painted: None,
+            split: crate::splitter::Splitter::default(),
+            pressed: None,
             said: String::new(),
         }
     }
@@ -271,6 +282,9 @@ impl BancadaView {
     /// O rato em `(x, y)`. `true` = está sobre uma peça da Bancada.
     pub fn hover(&mut self, x: f32, y: f32, now: u128) -> bool {
         self.pointer = (x, y);
+        if self.grid_drag(x, y) {
+            return true;
+        }
         if self.peeking.is_some() {
             if self.aim_rect.contains(x, y) {
                 return true;
@@ -330,6 +344,10 @@ impl BancadaView {
             self.folded = !self.folded;
             return true;
         }
+        if self.grid_press(x, y) {
+            self.commit();
+            return true;
+        }
         let Some((aim, rect)) = self.hit(x, y) else {
             self.blur();
             return false;
@@ -340,6 +358,7 @@ impl BancadaView {
             self.commit();
         }
         self.focus = true;
+        self.pressed = Some(aim);
         match aim {
             Aim::Nothing => {}
             Aim::Entry(line) => self.intents.push(Intent::Jump(line)),
@@ -447,7 +466,7 @@ impl BancadaView {
 
     /// A roda sobre o «In this script» ou a grelha. `true` = tomada.
     pub fn wheel(&mut self, x: f32, y: f32, dy: f32) -> bool {
-        self.outline.wheel(x, y, dy) || self.grid.wheel(x, y, dy)
+        self.outline.wheel(x, y, dy) || self.grid_wheel(x, y, dy)
     }
 }
 

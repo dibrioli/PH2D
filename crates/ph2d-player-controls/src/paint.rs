@@ -2,7 +2,7 @@
 
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text_centered, paint_text_elided, paint_text_title,
+    fill_rounded_rect, folga_do_texto, paint_text_centered, paint_text_elided, paint_text_title,
     paint_text_title_elided, resolve, stroke_rounded_rect, token_to_vello,
 };
 use ph2d_editor_core::zones::Rect;
@@ -85,7 +85,7 @@ fn paint_with(
         if selected && !screen.listening() {
             fill_rounded_rect(scene, rl.band, m::FIELD_RADIUS, c(ColorToken::Bg2));
         }
-        let ty = rl.name.y + (rl.name.h - m::VALUE_PX) * 0.5;
+        let ty = rl.name.y + folga_do_texto(rl.name.h, m::VALUE_PX);
         paint_text_title_elided(
             text,
             scene,
@@ -106,7 +106,7 @@ fn paint_with(
                 && *slot == s
             {
                 stroke_rounded_rect(scene, *r, m::FIELD_RADIUS, line, c(ColorToken::Warn));
-                let ny = rl.note.y + (rl.note.h - m::LABEL_PX) * 0.5;
+                let ny = rl.note.y + folga_do_texto(rl.note.h, m::LABEL_PX);
                 paint_text_elided(
                     text,
                     scene,

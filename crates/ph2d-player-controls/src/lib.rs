@@ -5,9 +5,11 @@
 //! - [`screen`]: o estado e os gestos (↑/↓, Enter ou clique escuta, Esc cancela ou fecha, «Reset to defaults»).
 //! - [`layout`] + [`paint`]: o painel, puro (a aba Input Map reusa-o na prévia).
 //! - [`file`]: `<base>/players/<game_id>.txt`.
+//! - [`host`]: a tecla e o clique que a shell passa à sessão, e o relógio que eles pedem.
 //! - [`session`]: uma corrida do Play — o mapa EFECTIVO que os quatro leitores do Play lêem.
 
 pub mod file;
+pub mod host;
 pub mod layout;
 pub mod paint;
 pub mod screen;
@@ -27,8 +29,28 @@ pub use session::PlaySession;
 #[derive(bevy_ecs::prelude::Resource, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct GameId(pub u64);
 
+/// **Um `game_id` novo, nunca `0`** — o acaso do SO (a chave da `RandomState` da std, sem dependência nova)
+/// misturado com o relógio.
+#[must_use]
+pub fn new_game_id() -> u64 {
+    use std::hash::{BuildHasher, Hasher};
+    let agora = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH);
+    let mut h = std::collections::hash_map::RandomState::new().build_hasher();
+    h.write_u128(agora.map_or(0, |d| d.as_nanos()));
+    h.finish().max(1)
+}
+
+/// O `game_id` deste mundo; um projecto novo sorteia-o UMA vez e guarda-o (o load semeia o do ficheiro).
+pub fn game_id_of(world: &mut bevy_ecs::world::World) -> u64 {
+    world
+        .get_resource_or_insert_with(|| GameId(new_game_id()))
+        .0
+}
+
 #[cfg(test)]
 mod play_tests;
+#[cfg(test)]
+mod r10a_tests;
 #[cfg(test)]
 mod r5c_tests;
 #[cfg(test)]

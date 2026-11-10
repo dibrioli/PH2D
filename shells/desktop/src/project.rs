@@ -180,36 +180,20 @@ pub(crate) struct ProjectFile {
     pub(crate) sfx_lab: Vec<u8>,
     /// **Os nomes das camadas de colisão** (v218, ficha f1): `ph2d_physics_ecs::LayerNames`, com versão PRÓPRIA.
     pub(crate) physics_layers: Vec<u8>,
-    /// **A identidade do JOGO** (v232, plano InputMap §4): sorteada uma vez quando o projecto NASCE
-    /// ([`new_game_id`]) e mantida por save/load. Chaveia o ficheiro de teclas do jogador. Fora do
-    /// `ProjectState`: um undo não troca de jogo. ⚠️ O último campo (postcard é posicional).
+    /// **A identidade do JOGO** (v232, plano InputMap §4): sorteada quando o projecto NASCE
+    /// ([`ph2d_player_controls::new_game_id`]) e mantida por save/load; chaveia o ficheiro do jogador.
+    /// Fora do `ProjectState`: um undo não troca de jogo. ⚠️ O último campo (postcard é posicional).
     pub(crate) game_id: u64,
 }
 
 /// A identidade do jogo, no mundo (mora em `ph2d_player_controls`, que a aba Input Map também lê).
 pub(crate) use ph2d_player_controls::GameId;
 
-/// **Um `game_id` novo, nunca `0`** — o acaso do SO (a chave da `RandomState` da std, sem dependência
-/// nova) misturado com o relógio.
-#[must_use]
-pub(crate) fn new_game_id() -> u64 {
-    use std::hash::{BuildHasher, Hasher};
-    let mut h = std::collections::hash_map::RandomState::new().build_hasher();
-    h.write_u128(crate::App::timestamp_ns());
-    h.finish().max(1)
-}
-
-/// O `game_id` deste mundo; um projecto novo sorteia-o UMA vez e guarda-o.
-pub(crate) fn game_id_of(world: &mut bevy_ecs::world::World) -> u64 {
-    let id = world.get_resource_or_insert_with(|| GameId(new_game_id()));
-    id.0
-}
-
 impl crate::App {
     /// A identidade do jogo deste projecto (ver [`ProjectFile::game_id`]); `0` só sem mundo.
     pub(crate) fn game_id(&mut self) -> u64 {
         let g = self.gfx.as_mut();
-        g.map_or(0, |g| game_id_of(g.sim.world_mut()))
+        g.map_or(0, |g| ph2d_player_controls::game_id_of(g.sim.world_mut()))
     }
 }
 
@@ -272,12 +256,7 @@ mod settings_tests;
 #[path = "project_schema_tests.rs"]
 mod schema_tests;
 
-/// **O INPUT MAP no undo e o `game_id`** (v232) — irmão de `settings_tests`, cortado por assunto.
+/// **O INPUT MAP no undo** (v232): cada pedido da aba, pelo `frame` real, é UM passo, bit a bit.
 #[cfg(test)]
 #[path = "project_input_map_tests.rs"]
 mod input_map_tests;
-
-/// Auditoria (determinismo e persistência): cada pedido da aba, pelo `frame` real, é UM passo e o undo é bit a bit.
-#[cfg(test)]
-#[path = "project_input_map_audit_det_tests.rs"]
-mod input_map_audit_det_tests;

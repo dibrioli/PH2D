@@ -214,11 +214,10 @@ impl InputMapDoc {
         crate::view_try::tick(self, live);
     }
 
-    /// O ficheiro do jogador deste jogo neste computador (o `ForgetPlayerKeys` apaga-o).
+    /// O ficheiro do jogador deste jogo neste computador (o `ForgetPlayerKeys` apaga-o); `game_id` 0 não tem.
     #[must_use]
     pub fn player_file(&self) -> Option<std::path::PathBuf> {
-        let base = self.tryit.base.as_ref()?;
-        (self.snap.game_id != 0).then(|| ph2d_player_controls::player_file(base, self.snap.game_id))
+        ph2d_player_controls::player_file_of(self.tryit.base.as_deref(), self.snap.game_id)
     }
 
     /// Carregar em `(x, y)`: um segmento troca a vista. `true` = dentro da aba (tomado).
@@ -359,3 +358,7 @@ fn text_fields() -> WidgetStore {
     }
     s
 }
+
+#[cfg(test)]
+#[path = "doc_tests.rs"]
+mod tests;

@@ -349,6 +349,10 @@ impl PainterTool {
 }
 
 #[cfg(test)]
+#[path = "impasto_luz_tique_tests.rs"]
+mod impasto_luz_tique_tests; // B15.3: o tique da lâmpada = a recomposição inteira ao bit
+
+#[cfg(test)]
 #[path = "dobra_da_linha_tests.rs"]
 mod dobra_da_linha_tests; // B15.6: a dobra de uma linha das duas pistas, ao bit com os laços de antes
 

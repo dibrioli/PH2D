@@ -207,6 +207,10 @@ pub struct PainterTool {
     /// Cached composite output (non-trivial stacks only), behind an `Arc` so the
     /// bridge drain is zero-copy. Invalidated (`None`) on any layer edit.
     composited: Option<Arc<Vec<u8>>>,
+    /// B15.3: a tela composta ANTES da luz, válida por lista branca (só os knobs da lâmpada a deixam viva).
+    luz_nao_aceso: Option<Arc<Vec<u8>>>,
+    /// B15.3: desde a última drenagem, só um knob da lâmpada sujou a prévia.
+    luz_so_lampada: bool,
     /// The dirty bbox the LAST `take_preview_arc` recomposed (`Some` for a
     /// partial fast-lane update the bridge may upload as a sub-rect).
     preview_upload_bbox: Option<Region>,
@@ -367,6 +371,8 @@ pub enum DrainBranch {
     PartialComposite,
     /// Full recompose + full-canvas impasto light — O(N×W×H), full upload. The expensive arm.
     FullComposite,
+    /// Só a lâmpada mudou (B15.3): a luz sobre a composição não acesa guardada, sem recompor as camadas.
+    Luz,
 }
 
 impl DrainBranch {
@@ -379,6 +385,7 @@ impl DrainBranch {
             DrainBranch::TrivialFast => "trivial-fast",
             DrainBranch::PartialComposite => "partial-composite",
             DrainBranch::FullComposite => "FULL-composite",
+            DrainBranch::Luz => "light-only",
         }
     }
 }
@@ -407,6 +414,8 @@ impl Default for PainterTool {
             gate: None,
             mask_scratch_gen: 0,
             composited: None,
+            luz_nao_aceso: None,
+            luz_so_lampada: false,
             preview_upload_bbox: None,
             last_drain_branch: DrainBranch::Idle,
             layers_revision: 0,

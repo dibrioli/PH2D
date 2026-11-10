@@ -106,6 +106,9 @@ impl PainterTool {
         }
         let dirty = self.dirty_rect.take();
         let stroke_dirtied = dirty.is_some();
+        if self.reacende_pela_luz_guardada(dirty) {
+            return (Arc::clone(self.composited.as_ref().expect("just set")), w, h);
+        }
         // A live Mask scratch does NOT force the full path. Its protection-overlay tint is PER-PIXEL
         // (`apply_mask_overlay`: a texel's tint depends only on its own coverage + colour, no global
         // term), and a mask dab changes coverage only inside its `dirty_rect` (the stamp edits the
@@ -172,6 +175,7 @@ impl PainterTool {
                     // transparência por canal).
                     self.adjustment_cache_pending = false;
                     self.compositor_cache.invalidate_from(active, &self.layers);
+                    self.larga_a_luz_guardada();
                     v
                 } else {
                     let mut c = if std::mem::take(&mut self.adjustment_cache_pending)
@@ -186,6 +190,7 @@ impl PainterTool {
                         composite(&self.layers, &src, w, h)
                     };
                     self.compoe_sobre_o_papel(&mut c, full);
+                    self.guarda_o_nao_aceso(&c);
                     c
                 };
                 // Impasto: light the whole freshly-composited canvas (see the dirty-rect lane above).

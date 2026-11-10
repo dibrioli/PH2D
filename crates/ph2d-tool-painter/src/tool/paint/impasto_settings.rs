@@ -370,29 +370,29 @@ impl PainterTool {
         self.paint.brush.impasto_draw_to = DrawTo::from_u8(wire);
     }
 
-    /// **Show Impasto** — light the relief (canvas-level). Invalidates the composite, since the whole
-    /// preview changes.
+    /// **Show Impasto** — light the relief (canvas-level). Only the light changes: the lamp knobs below relight the
+    /// unlit composite the last full recompose kept ([`super::impasto_luz_tique`], B15.3).
     pub fn toggle_impasto_show(&mut self) {
         self.paint.impasto_show = !self.paint.impasto_show;
-        self.invalidate_composite();
+        self.so_a_lampada_mudou();
     }
 
     /// **Light Angle** (azimuth, whole degrees; wraps) — of the SELECTED lamp.
     pub fn set_impasto_light_angle(&mut self, v: f32) {
         self.paint.impasto_rig.current_mut().angle_deg = (v.clamp(0.0, ANGLE_MAX) as u16) % 360;
-        self.invalidate_composite();
+        self.so_a_lampada_mudou();
     }
 
     /// **Elevation** (whole degrees above the canvas plane) — of the SELECTED lamp.
     pub fn set_impasto_light_elevation(&mut self, v: f32) {
         self.paint.impasto_rig.current_mut().elev_deg = v.clamp(ELEV_MIN, ELEV_MAX) as u16;
-        self.invalidate_composite();
+        self.so_a_lampada_mudou();
     }
 
     /// **Intensity** of the selected lamp (`0..2`). A fill at 0.3 against a key at 1 is the everyday rig.
     pub fn set_impasto_light_intensity(&mut self, v: f32) {
         self.paint.impasto_rig.current_mut().intensity = v.clamp(0.0, LIGHT_INTENSITY_MAX);
-        self.invalidate_composite();
+        self.so_a_lampada_mudou();
     }
 
     /// The selected lamp's **colour** (linear RGB). White is neutral; the shading is relative, so a
@@ -403,7 +403,7 @@ impl PainterTool {
             rgb[1].clamp(0.0, 1.0),
             rgb[2].clamp(0.0, 1.0),
         ];
-        self.invalidate_composite();
+        self.so_a_lampada_mudou();
     }
 
     /// Pick which lamp the Lighting card edits. Changes no pixel — it is editing state — so it does NOT
@@ -421,7 +421,7 @@ impl PainterTool {
         }
         let l = self.paint.impasto_rig.current_mut();
         l.on = !l.on;
-        self.invalidate_composite();
+        self.so_a_lampada_mudou();
     }
 
     /// **Adjust Last Stroke** — whether the sliders reach the paint already on the canvas.

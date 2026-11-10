@@ -12,9 +12,9 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{LineHeight, ROW_H_PX, Radius, Theme};
 use ph2d_vector::VectorScene;
 
-/// O passo de uma ENTRADA (`speed`, `init`): a linha folgada do texto, sem a caixa de um controlo —
-/// dono 10/11: «os espaços entre as propriedades e as funções podem ser menores». Os títulos das
-/// secções ficam em [`ROW_H_PX`].
+/// O passo de uma ENTRADA (`speed`, `init`): a linha folgada do texto, sem a caixa de um controlo
+/// (porquê: o handoff `HANDOFF_INTEGRACAO_line_ScriptEditor_2026-11-10_ACABAMENTO.md`). Os títulos
+/// das secções ficam em [`ROW_H_PX`].
 #[must_use]
 pub fn outline_entry_h() -> f32 {
     ph2d_editor_core::ui_scale::ao_pixel(chrome::font_shown() * LineHeight::Loose.ratio())

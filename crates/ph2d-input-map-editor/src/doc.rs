@@ -319,7 +319,7 @@ impl InputMapDoc {
     /// Uma tecla para o campo focado da aba. `true` = tomada.
     pub fn key(&mut self, input: &KeyInput<'_>) -> bool {
         // O número aberto da lista é dono do Tab, do Enter e do Esc (aplica e segue, aplica, devolve).
-        if self.view == View::List && self.list.typing.is_some() {
+        if matches!(self.view, View::List | View::Keyboard) && self.list.typing.is_some() {
             return crate::view_list::key(self, input);
         }
         if self.focus_text_key(input) {
@@ -334,7 +334,7 @@ impl InputMapDoc {
 
     /// A tecla física (`DocumentSurface::raw_key`): a busca por tecla. `true` = tomada.
     pub fn raw_key(&mut self, key: Key, pressed: bool, writes_text: bool) -> bool {
-        let editing = self.view == View::List && self.list.typing.is_some();
+        let editing = matches!(self.view, View::List | View::Keyboard) && self.list.typing.is_some();
         if !editing && self.focus_raw_key(key, pressed) {
             return true;
         }

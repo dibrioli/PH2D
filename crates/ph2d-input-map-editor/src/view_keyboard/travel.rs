@@ -173,14 +173,26 @@ pub(crate) fn zone_fields(
     .enumerate()
     {
         let x = r.x + (half + m::FIELD_GAP) * i as f32;
+        let zone = if matches!(hit, ListHit::Dead(_)) {
+            crate::view_list::state::Zone::Dead
+        } else {
+            crate::view_list::state::Zone::Press
+        };
+        // O aviso do limite toma o lugar do rótulo (como a A), até à próxima edição válida.
+        let warn = (doc.list.warn)
+            .filter(|(w, z, _)| *w == a.id && *z == zone)
+            .map(|(_, _, c)| c);
+        let (above, tint) = warn.map_or((tr(label), ColorToken::CardLabel), |c| {
+            (tr(c.i18n_key()), ColorToken::Warn)
+        });
         line(
             &mut doc.census,
             ts,
             scene,
-            tr(label),
+            above,
             Rect::new(x, y, half, m::LABEL_PX),
             m::LABEL_PX,
-            ink.color(ColorToken::CardLabel),
+            ink.color(tint),
         );
         let f = Rect::new(x, y + LABEL_H, half, m::FIELD_H);
         fill_rounded_rect(scene, f, m::FIELD_RADIUS, ink.color(ColorToken::CardField));
@@ -194,8 +206,25 @@ pub(crate) fn zone_fields(
         }
         let v = typing.map_or_else(|| format!("{value:.2}"), |t| t.buffer.clone());
         let dead = matches!(hit, ListHit::Dead(_));
+        let fid = hit.id();
+        // Na B o campo é o de `field.rs` (como a A): tudo seleccionado ao focar, caret que pisca.
+        let b = doc.view() == crate::View::Keyboard;
+        if b && typing.is_some() {
+            let mark = tr(if dead { "input_map_try.dead_mark" } else { "input_map_try.press_mark" });
+            let vx = f.x + m::SEG_INSET * 2.0 + ts.prefix_width(mark, m::VALUE_PX);
+            let vr = Rect::new(vx, f.y, (f.x + f.w - m::SEG_INSET - vx).max(0.0), f.h);
+            let c = doc.list.caret;
+            let on = doc.caret_on(fid);
+            crate::field::paint_edit(scene, ts, ink, vr, vx, &v, c.caret, c.anchor, on);
+        }
         zone_value(doc, ts, scene, ink, f, dead, &v);
-        doc.hits.register(hit.id(), f);
+        if b {
+            let mut body = Control::new(fid, f, ControlRole::NumberField, tr(label));
+            body.look = ph2d_editor_core::doc_surface::PointerLook::Text;
+            doc.control(body);
+        } else {
+            doc.hits.register(fid, f);
+        }
         doc.census.numbers.push(a.id);
     }
 }

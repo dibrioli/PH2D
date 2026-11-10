@@ -439,6 +439,11 @@ impl InputMapDoc {
             crate::view_list::act(self, id);
             return;
         }
+        // Os números Dead/Press da B são os da A (`field.rs`): abrem pelo id.
+        if c.role == ControlRole::NumberField {
+            crate::view_list::open_number(self, id);
+            return;
+        }
         let r = c.rect;
         self.press_legacy(r.x + r.w * 0.5, r.y + r.h * 0.5);
     }
@@ -487,7 +492,7 @@ impl InputMapDoc {
         self.store.set_focus(None);
         match role {
             Some(ControlRole::TextField) => self.store.set_focus(Some(id)),
-            Some(ControlRole::NumberField) if self.view() == View::List => {
+            Some(ControlRole::NumberField) if matches!(self.view(), View::List | View::Keyboard) => {
                 crate::view_list::open_number(self, id);
             }
             _ => self.ui.focus = Some(id),

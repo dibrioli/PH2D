@@ -184,3 +184,97 @@ fn clicar_no_remove_com_accao_aberta_apaga_a_aberta() {
     assert!(m.hero.input_map.get(open).is_none(), "a aberta ficou");
     assert_eq!(m.hero.input_map.actions().len(), n - 1);
 }
+
+// ── Os números Dead/Press da B: o campo de `field.rs`, como a A ──────────────────────────────────────────────────
+
+fn key_mods(m: &mut Mesa, key: DocKey, mods: ph2d_host::Modifiers) {
+    let input = ph2d_editor_core::doc_surface::KeyInput {
+        key,
+        mods,
+        pressed: true,
+        text: None,
+        paste: None,
+    };
+    let ts = &mut m.ts;
+    if let Some((f, id)) = m.hero.documents.active_surface_mut() {
+        let _ = f.key(id, ts, input);
+    }
+    m.frame();
+}
+
+/// A B com uma acção de manche aberta (a barra do curso e os dois números).
+fn b_com_manche() -> (Mesa, ph2d_input::ActionId) {
+    let mut m = Mesa::aberta(View::Keyboard);
+    let mut map = ph2d_input::InputMap::new();
+    let a = map.create("steer");
+    if let Some(act) = map.get_mut(a) {
+        act.bindings.push(ph2d_input::Binding::PadAxis {
+            axis: ph2d_input::GamepadAxis::LeftStickX,
+            positive: true,
+        });
+        act.set_zone(0.2, 0.5);
+    }
+    m.hero.input_map = map;
+    m.frame();
+    (m, a)
+}
+
+#[test]
+fn os_numeros_da_b_editam_como_os_da_a() {
+    use ph2d_app_input_map::ids::ListHit;
+    let (mut m, a) = b_com_manche();
+    let open = |m: &Mesa| m.tab().doc.list.typing.as_ref().map(|t| t.buffer.clone());
+    let dead = |m: &Mesa| m.hero.input_map.get(a).expect("a").dead_zone;
+    let id = ListHit::Dead(a).id();
+    let at = m.at(id);
+    assert_eq!(m.tab().doc.look_at(at.0, at.1), Some(PointerLook::Text), "cursor de texto");
+    let node = m.tab().doc.a11y().into_iter().find(|(n, _)| *n == id).expect("nó").1;
+    assert_eq!(node.role(), ph2d_a11y::Role::SpinButton);
+    m.click(at);
+    assert_eq!(open(&m).as_deref(), Some("0.20"), "abre com o valor");
+    assert!(m.tab().doc.list.caret.selection().is_some(), "tudo seleccionado");
+    assert!(m.tab().doc.wants_frame(), "o caret vivo pede quadro (pisca)");
+    m.key(DocKey::Up, None);
+    assert_eq!(open(&m).as_deref(), Some("0.21"), "↑ um passo");
+    let shift = ph2d_host::Modifiers { shift: true, ..Default::default() };
+    key_mods(&mut m, DocKey::Up, shift);
+    assert_eq!(open(&m).as_deref(), Some("0.31"), "Shift+↑ ×10");
+    let alt = ph2d_host::Modifiers { alt: true, ..Default::default() };
+    key_mods(&mut m, DocKey::Down, alt);
+    assert_eq!(open(&m).as_deref(), Some("0.309"), "Alt+↓ ×0,1");
+    assert_eq!(dead(&m), 0.2, "o passo ainda não aplica");
+    m.key(DocKey::Escape, None);
+    assert_eq!((open(&m), dead(&m)), (None, 0.2), "Esc devolve");
+    m.click(m.at(id));
+    m.key(DocKey::Up, None);
+    m.key(DocKey::Enter, None);
+    assert_eq!(open(&m), None, "Enter aplica e larga");
+    assert!((dead(&m) - 0.21).abs() < 1e-5, "Enter aplica: {}", dead(&m));
+    // Tab aplica e segue para o Press; o limite diz a frase no lugar do rótulo.
+    m.click(m.at(id));
+    m.key(DocKey::Tab, None);
+    assert_eq!(open(&m).as_deref(), Some("0.50"), "Tab chega ao Press aberto");
+    m.type_text("7");
+    m.key(DocKey::Enter, None);
+    assert_eq!(m.hero.input_map.get(a).expect("a").press_point, 1.0);
+    let all: String = m.tab().doc.census.texts.iter().map(|t| t.1.clone()).collect();
+    assert!(all.contains(ph2d_i18n::tr("input_map_list.kept_max")), "a frase do limite: {all}");
+}
+
+#[test]
+fn o_tab_abre_o_numero_da_b() {
+    use ph2d_app_input_map::ids::ListHit;
+    let (mut m, a) = b_com_manche();
+    let mut opened = false;
+    for _ in 0..200 {
+        m.key(DocKey::Tab, None);
+        if m.tab().doc.list.typing.is_some() {
+            opened = true;
+            break;
+        }
+    }
+    assert!(opened, "o Tab abre um número da B");
+    let t = m.tab().doc.list.typing.as_ref().expect("aberto");
+    assert_eq!(t.action, a);
+    let _ = ListHit::Dead(a);
+}

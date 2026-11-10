@@ -60,6 +60,7 @@ impl SimWorker {
             steps,
             ritmo: ui,
             otica,
+            perdido: false,
         }
     }
 }

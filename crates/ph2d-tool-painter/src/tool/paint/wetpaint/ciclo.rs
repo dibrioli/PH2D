@@ -268,19 +268,28 @@ impl PainterTool {
     /// address is sound *because* it is weak (the handle pins the allocation,
     /// so the address it names can never be re-issued to a different canvas).
     pub(in crate::tool::paint) fn wetpaint_guard(&mut self) {
-        if self.wet_tela_alheia() && !self.wet_atravessa_a_troca() {
+        // B11.A1: o motor que morreu com o worker não atravessa nada — a sessão acaba com a tela como está.
+        let perdido = self
+            .paint
+            .wetpaint
+            .session
+            .as_ref()
+            .is_some_and(WetSession::perdeu_o_motor);
+        if perdido || (self.wet_tela_alheia() && !self.wet_atravessa_a_troca()) {
             self.paint.wetpaint.session = None;
             self.undo.write_state.vigia_a_tela(None);
             self.undo.marca.acaba_a_molhada();
         }
     }
 
-    /// A sessão viva já não pintou a tela de agora.
+    /// A sessão viva já não pintou a tela de agora — ou perdeu o motor com o worker (B11.A1).
     pub(super) fn wet_tela_alheia(&self) -> bool {
-        self.paint
-            .wetpaint
-            .session
-            .as_ref()
-            .is_some_and(|s| !std::ptr::eq(s.canvas.as_ptr(), Arc::as_ptr(&self.canvas_rgba)))
+        self.paint.wetpaint.session.as_ref().is_some_and(|s| {
+            s.perdeu_o_motor() || !std::ptr::eq(s.canvas.as_ptr(), Arc::as_ptr(&self.canvas_rgba))
+        })
     }
 }
+
+#[cfg(test)]
+#[path = "motor_perdido_tests.rs"]
+mod motor_perdido_tests; // B11.A1: o worker morto em pânico não leva a tela nem pendura a sessão

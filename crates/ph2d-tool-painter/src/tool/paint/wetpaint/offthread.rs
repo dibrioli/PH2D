@@ -46,7 +46,7 @@ mod placa; // a água na PLACA no worker (LIGACAO_PLACA.md)
 use ph2d_wet_paint::painter::Engine;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::time::Duration;
 
 /// A sim é 40 Hz (SPEC §5) — o worker se ritma nisso, e ficar para trás é câmera lenta (a política
@@ -115,6 +115,8 @@ pub(in crate::tool::paint) struct SimWorker {
     ritmo: Option<Ritmado>,
     /// `Some` = o compositor da óptica existe ([`otica`]: só ao relógio e com `PH2D_WET_OTICA_FORA`).
     otica: Option<otica::DoFioPrincipal>,
+    /// B11.A1: o worker morreu em pânico e levou o motor ([`super::WetSession::perde_o_motor`]).
+    perdido: bool,
 }
 
 /// Copia o motor que está nesta thread; um motor com o worker não se alcança por `&self` e PANICA
@@ -195,6 +197,17 @@ impl Drop for SimWorker {
     }
 }
 
+#[cfg(test)]
+impl SimWorker {
+    /// O worker MORRE com o motor (o pânico de um estágio): o motor some e os dois canais fecham.
+    pub(in crate::tool::paint) fn mata_no_teste(&mut self) {
+        self.want.store(true, Ordering::Release);
+        drop(self.back.recv());
+        self.to_worker = std::sync::mpsc::channel().0;
+        self.back = std::sync::mpsc::channel().1;
+    }
+}
+
 impl super::WetSession {
     /// **Traz o motor para casa** — a porta que TODO caminho que alcança a
     /// sessão chama antes de tocar o engine. No-op quando ele já está aqui
@@ -221,10 +234,11 @@ impl super::WetSession {
             .as_ref()
             .expect("o slot so fica Away depois de um hand_off, que cria o worker");
         w.want.store(true, Ordering::Release);
-        // A thread só sai quando o canal de IDA fecha, e esse canal vive no `SimWorker` desta
-        // sessão — logo, enquanto o worker existe o `recv` tem resposta. O `expect` documenta o
-        // invariante em vez de o esconder.
-        let engine = w.back.recv().expect("o worker devolve o engine");
+        // A thread só sai sem devolver se morrer em pânico (o canal de ida vive no `SimWorker`).
+        let Ok(engine) = w.back.recv() else {
+            self.perde_o_motor();
+            return;
+        };
         self.engine = EngineSlot::Here(engine);
         self.grava_que_voltou();
     }
@@ -257,7 +271,11 @@ impl super::WetSession {
         w.want.store(true, Ordering::Release);
         // Se ele ainda não chegou, o motor está no canal — o `try_recv` do
         // próximo frame o encontra. Nada se perde: `want` já está armado.
-        let voltou = w.back.recv_timeout(TICK_WAIT).ok();
+        let voltou = match w.back.recv_timeout(TICK_WAIT) {
+            Ok(e) => Some(e),
+            Err(RecvTimeoutError::Timeout) => None,
+            Err(RecvTimeoutError::Disconnected) => return self.perde_o_motor(),
+        };
         self.recebe(voltou)
     }
 
@@ -277,8 +295,28 @@ impl super::WetSession {
             return false;
         };
         w.want.store(true, Ordering::Release);
-        let voltou = w.back.try_recv().ok();
+        let voltou = match w.back.try_recv() {
+            Ok(e) => Some(e),
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => return self.perde_o_motor(),
+        };
         self.recebe(voltou)
+    }
+
+    /// **O worker morreu em pânico e levou o motor** (B11.A1): nenhuma porta pendura nem panica. Um motor VAZIO
+    /// da mesma grade fica no lugar só para quem já abriu a porta; [`Self::perdeu_o_motor`] faz a tela da sessão
+    /// alheia (nenhum composite pinta o vazio) e o guarda seguinte acaba a sessão — a tela fica com a última imagem.
+    fn perde_o_motor(&mut self) -> bool {
+        self.engine = EngineSlot::new_here(Engine::new(self.grid.0, self.grid.1));
+        if let Some(w) = self.worker.as_mut() {
+            w.perdido = true;
+        }
+        true
+    }
+
+    /// O motor desta sessão morreu com o worker ([`Self::perde_o_motor`]).
+    pub(in crate::tool::paint) fn perdeu_o_motor(&self) -> bool {
+        self.worker.as_ref().is_some_and(|w| w.perdido)
     }
 
     /// O pedido sem espera a um worker RITMADO ([`offthread_ritmo::Ritmado::pede`]). `None` = o worker anda ao
@@ -377,6 +415,7 @@ impl super::WetSession {
             return;
         }
         if !matches!(self.engine, EngineSlot::Here(_))
+            || self.perdeu_o_motor()
             || (self.stroke_open && !self.engine.sim.sim_while_painting)
         {
             return;

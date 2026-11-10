@@ -34,7 +34,6 @@ impl PainterTool {
             );
         }
         self.composited = None;
-        self.aplicada.esquece();
         // Drop any accumulated dirty-rect: a structural edit (opacity / blend /
         // visibility / reorder / add / select) can change the composite OUTSIDE
         // the stamped region, so the next drain must do a FULL recompose.

@@ -31,7 +31,6 @@ impl RasterEditTool for PainterTool {
         let active = self.layers.active();
         self.bump_layer_pixels(active);
         self.composited = None;
-        self.aplicada.esquece();
         // The compositor's cut-point cache is DOCUMENT-scoped: each entry is the accumulator BELOW an
         // Adjustment layer, a buffer sized for THAT canvas — and `LayerStack::new()` above restarts
         // `next_id` at 1, so the fresh stack's ids COLLIDE with the old document's by construction. The

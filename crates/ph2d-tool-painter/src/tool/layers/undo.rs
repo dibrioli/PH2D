@@ -192,6 +192,7 @@ impl PainterTool {
         // Reinstate the Deform session (displacement + `pre` + active) in lock-step with the pixels, so
         // undoing a deform stroke rolls the warp back AND keeps Reconstruct able to un-warp what remains.
         self.restore_deform(m.deform);
+        let antes = (self.layers_revision, self.pixel_clock);
         self.bump_all_layer_pixels();
         match confined {
             // O caminho de sempre: um passo que pode ter mudado QUALQUER coisa (opacidade, blend,
@@ -210,9 +211,9 @@ impl PainterTool {
                 self.edited_since_bind = true;
                 self.compositor_cache
                     .invalidate_from(crate::layers::LayerId(0), &self.layers);
-                let antes = self.layers_revision;
                 self.bump_layers_revision();
-                self.aplicada.segue_a_revisao(antes, self.layers_revision);
+                let depois = (self.layers_revision, self.pixel_clock);
+                self.aplicada.segue_o_passo_confinado(antes, depois);
             }
         }
         // Watercolor: the canvas identity just changed under the wet session — its moisture map (+ frozen

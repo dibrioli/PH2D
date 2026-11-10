@@ -11,6 +11,8 @@ use std::sync::{Mutex, PoisonError};
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) struct ChaveAplicada {
     rev: u64,
+    /// O `pixel_clock` depois da última escrita MARCADA: outro escritor move-o sem caixa ⇒ inteira.
+    relogio: u64,
     tam: (u32, u32),
     doc: Option<u64>,
     ativa: Option<RtLayerId>,
@@ -27,7 +29,12 @@ struct Estado {
 
 /// A última imagem aplicada e a caixa marcada desde ela. Clonar dá-a vazia (a cópia lê inteira 1×).
 #[derive(Default)]
-pub(crate) struct CacheAplicada(Mutex<Estado>);
+pub(crate) struct CacheAplicada(
+    Mutex<Estado>,
+    /// Leituras pela caixa (só para o gate: a pista tem de ser tomada).
+    #[cfg(test)]
+    std::sync::atomic::AtomicU32,
+);
 
 impl Clone for CacheAplicada {
     fn clone(&self) -> Self {
@@ -40,15 +47,21 @@ impl CacheAplicada {
         self.0.get_mut().unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// A figura mudou em `r` (a porta única: `mark_dirty`).
-    pub(crate) fn marca(&mut self, r: Region) {
+    /// A figura mudou em `r` (a porta única: `mark_dirty`), e o `pixel_clock` andou `antes → depois`.
+    pub(crate) fn marca(&mut self, r: Region, antes: u64, depois: u64) {
         let e = self.estado();
         e.sujo = Some(e.sujo.map_or(r, |a| une(a, r)));
+        if let Some((k, _)) = e.feita.as_mut() {
+            if k.relogio == antes {
+                k.relogio = depois;
+            }
+        }
     }
 
-    /// Mudou fora de qualquer caixa: a leitura seguinte é inteira.
-    pub(crate) fn esquece(&mut self) {
-        *self.estado() = Estado::default();
+    /// Quantas leituras foram pela caixa (só para o gate).
+    #[cfg(test)]
+    pub(crate) fn pistas(&self) -> u32 {
+        self.1.load(std::sync::atomic::Ordering::Relaxed)
     }
 
     /// A caixa marcada desde a última leitura (só para o gate).
@@ -57,11 +70,11 @@ impl CacheAplicada {
         self.0.lock().unwrap_or_else(PoisonError::into_inner).sujo
     }
 
-    /// Um passo confinado sobe a revisão sem mudar nada fora da caixa que marcou: a guardada segue-a.
-    pub(crate) fn segue_a_revisao(&mut self, antes: u64, depois: u64) {
+    /// Um passo confinado move `(revisão, relógio)` sem mudar nada fora da caixa que marcou: a guardada segue-o.
+    pub(crate) fn segue_o_passo_confinado(&mut self, antes: (u64, u64), depois: (u64, u64)) {
         if let Some((k, _)) = self.estado().feita.as_mut() {
-            if k.rev == antes {
-                k.rev = depois;
+            if (k.rev, k.relogio) == antes {
+                (k.rev, k.relogio) = depois;
             }
         }
     }
@@ -71,6 +84,7 @@ impl PainterTool {
     fn chave_da_aplicada(&self) -> ChaveAplicada {
         ChaveAplicada {
             rev: self.layers_revision,
+            relogio: self.pixel_clock,
             tam: self.source_size,
             doc: self.bound_document(),
             ativa: self.layers.active(),
@@ -90,6 +104,10 @@ impl PainterTool {
         let Estado { feita, sujo } = std::mem::take(&mut *self.trava());
         let rgba = match feita {
             Some((k, mut px)) if k == chave && px.len() == (w as usize) * (h as usize) * 4 => {
+                #[cfg(test)]
+                self.aplicada
+                    .1
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 if let Some(r) = sujo.map(|r| moldura(r, w, h)) {
                     let caixa = self.imagem_aplicada_na_caixa((r.x, r.y, r.w, r.h))?;
                     blit_region(&mut px, w, &caixa, r);

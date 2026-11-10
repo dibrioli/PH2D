@@ -298,6 +298,10 @@ pub struct PainterTool {
     /// `None` até a primeira drenagem: um documento que ninguém tocou não pode contar como editado só
     /// por ter sido olhado. Ver [`PainterTool::reconcile_substrate`], que é quem a lê e a escreve.
     lit_substrate: Option<crate::tool::paint::SubstrateKey>,
+    /// O dente do papel amostrado 1× por (substrato, tamanho), em cargas: refeito no
+    /// [`PainterTool::reconcile_substrate`].
+    plano_do_dente:
+        Option<std::sync::Arc<(crate::tool::paint::SubstrateKey, (u32, u32), Vec<f32>)>>,
     /// Multi-selection — the set of layer rows highlighted in the panel. Plain
     /// click collapses to one; Cmd/Ctrl-click toggles; Shift-click selects a run.
     selection: BTreeSet<RtLayerId>,
@@ -418,6 +422,7 @@ impl Default for PainterTool {
             preview_dirty_region: None,
             gpu_lane_stale: false,
             lit_substrate: None,
+            plano_do_dente: None,
             selection: BTreeSet::new(),
             compositor_cache: CompositorCache::new(),
             adjustment_cache_pending: false,

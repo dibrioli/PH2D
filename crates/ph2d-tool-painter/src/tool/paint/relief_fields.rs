@@ -114,7 +114,7 @@ impl ReliefFields<'_> {
                 let enche = (h / (CORPO_QUE_ENCHE * s.amplitude_em_cargas())).clamp(0.0, 1.0);
                 let (molhada, outra) = self.papel_a_vista(i);
                 let v = molhada * (1.0 - enche * (1.0 - outra));
-                h + s.tooth_loads(cx, cy) * v + s.meio_do_dente() * (1.0 - v)
+                h + s.dente_na_tela(cx, cy) * v + s.meio_do_dente() * (1.0 - v)
             }
             None => h,
         }

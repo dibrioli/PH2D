@@ -252,3 +252,32 @@ fn the_gpu_preview_times_the_fold_where_its_window_is_resolved() {
          sem a pergunta que decide a cura (retangulo x canvas dobrado)"
     );
 }
+
+/// ⭐ B10.1: **o `[pen-up]` dá o PIOR quadro do segundo depois do soltar** — a mediana da janela escondia-o (Impasto
+/// 4K: 15/15 quadros de 64–74 ms com p50 18,5). *Mutação: `max` → o último quadro ⇒ 5,0 em vez de 70,0.*
+#[test]
+fn o_pen_up_da_o_pior_quadro_do_segundo_depois_do_soltar() {
+    let mut p = super::PenUp {
+        up_ms: 3.0,
+        ..super::PenUp::default()
+    };
+    let mut fim = 0;
+    for n in 1..=super::QUADROS_DEPOIS_DO_UP {
+        let (q, i) = if n == 7 { (70.0, 74.0) } else { (5.0, 16.6) };
+        if p.quadro(q, i) {
+            fim = n;
+            break;
+        }
+    }
+    assert_eq!(
+        fim,
+        super::QUADROS_DEPOIS_DO_UP,
+        "a vigia acaba no 60.º quadro"
+    );
+    assert_eq!((p.max_quadro_ms, p.max_intervalo_ms), (70.0, 74.0));
+    let l = p.linha();
+    assert!(
+        l.starts_with("[pen-up] parede=") && l.contains("max_quadro=70.0"),
+        "{l}"
+    );
+}

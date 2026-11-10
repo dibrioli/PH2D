@@ -83,6 +83,48 @@ struct Agg {
     input_hist: [Vec<f32>; 3],
     /// Window start, for the real frame PERIOD (`span / frames`); `frame p50` measures work only.
     window_start: Option<std::time::Instant>,
+    /// B10.1: o soltar sob vigia ([`PenUp`]) e o fim do quadro anterior (o intervalo de parede).
+    pen_up: Option<PenUp>,
+    last_end: Option<std::time::Instant>,
+}
+
+/// Quadros que o `[pen-up]` vigia depois de cada soltar (~1 s a 60 q/s): o quadro lento do pen-up 4K cai neles e a
+/// mediana da janela de 90 escondia-o (Impasto: 15/15 quadros de 64–74 ms com p50 18,5).
+const QUADROS_DEPOIS_DO_UP: u32 = 60;
+
+/// B10.1: o pior quadro e o pior intervalo nos [`QUADROS_DEPOIS_DO_UP`] quadros depois de um soltar.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub(super) struct PenUp {
+    /// O relógio de parede do soltar (ns desde a época, o do `[quadro-lento]` e do `date +%s%N`).
+    pub parede_ns: u128,
+    /// O custo do `Up` no tratamento da entrada (fora do quadro).
+    pub up_ms: f32,
+    pub quadros: u32,
+    pub max_quadro_ms: f32,
+    pub max_intervalo_ms: f32,
+}
+
+impl PenUp {
+    /// Conta um quadro; `true` quando a vigia acabou.
+    pub(super) fn quadro(&mut self, quadro_ms: f32, intervalo_ms: f32) -> bool {
+        self.quadros += 1;
+        self.max_quadro_ms = self.max_quadro_ms.max(quadro_ms);
+        self.max_intervalo_ms = self.max_intervalo_ms.max(intervalo_ms);
+        self.quadros >= QUADROS_DEPOIS_DO_UP
+    }
+
+    pub(super) fn linha(&self) -> String {
+        format!(
+            "[pen-up] parede={} up={:.1} max_quadro={:.1} max_intervalo={:.1} em {} quadros",
+            self.parede_ns, self.up_ms, self.max_quadro_ms, self.max_intervalo_ms, self.quadros
+        )
+    }
+}
+
+fn parede_ns() -> u128 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos())
 }
 
 thread_local! {
@@ -123,7 +165,21 @@ pub fn record_input(ms: f32, phase: InputPhase) {
     if !on() {
         return;
     }
-    AGG.with(|cell| cell.borrow_mut().input_ms[phase as usize] += ms);
+    AGG.with(|cell| {
+        let a = &mut *cell.borrow_mut();
+        a.input_ms[phase as usize] += ms;
+        if matches!(phase, InputPhase::Up) {
+            // Um soltar antes de a vigia do anterior acabar fecha-a com o que viu.
+            if let Some(p) = a.pen_up.take() {
+                eprintln!("{}", p.linha());
+            }
+            a.pen_up = Some(PenUp {
+                parede_ns: parede_ns(),
+                up_ms: ms,
+                ..PenUp::default()
+            });
+        }
+    });
 }
 
 /// A fase de um evento de ponteiro, para o balde de INPUT. Um `Down` abre um traço (e paga o clone de
@@ -190,9 +246,7 @@ fn quadro_lento(total_ms: f32) {
         if let (Some(n), Some(a)) = (limiar, antes) {
             let intervalo = agora.duration_since(a).as_secs_f32() * 1e3;
             if intervalo > n {
-                let parede = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map_or(0, |d| d.as_nanos());
+                let parede = parede_ns();
                 eprintln!(
                     "[quadro-lento] parede={parede} intervalo={intervalo:.1} quadro={total_ms:.1}"
                 );
@@ -208,6 +262,17 @@ pub fn end_frame(total_ms: f32) {
     quadro_lento(total_ms);
     AGG.with(|cell| {
         let a = &mut *cell.borrow_mut();
+        let agora = std::time::Instant::now();
+        let intervalo = a
+            .last_end
+            .replace(agora)
+            .map_or(total_ms, |t| agora.duration_since(t).as_secs_f32() * 1e3);
+        if let Some(p) = a.pen_up.as_mut()
+            && p.quadro(total_ms, intervalo)
+        {
+            eprintln!("{}", p.linha());
+            a.pen_up = None;
+        }
         let Some(cur) = a.cur.take() else { return };
         if a.window_start.is_none() {
             a.window_start = Some(std::time::Instant::now());
@@ -279,12 +344,13 @@ fn emit(a: &Agg) {
         })
         .unwrap_or_default();
     eprintln!(
-        "[paint-perf] {n}f GPU {}/CPU {} | frame p50={:.1} | dispatch p50={:.1} max={:.1} \
+        "[paint-perf] {n}f GPU {}/CPU {} | frame p50={:.1} max={:.1} | dispatch p50={:.1} max={:.1} \
          [preview {:.1} panel {:.1} overlay {:.1} (tol {:.1} sel {:.1} chrome {:.1}) upload {:.1}] | \
          WORST: {} {}x{} branch={} impasto={} mask_scratch={} gray={} mask={} lane={} trivial={}",
         a.gpu,
         a.cpu,
         p50(&a.frame_ms),
+        a.frame_ms.iter().fold(0.0f32, |m, v| m.max(*v)),
         phase(|f| f.dispatch_ms),
         worst.dispatch_ms,
         phase(|f| f.preview_ms),

@@ -104,6 +104,9 @@ pub(super) struct Substrate<'a> {
     /// A média do dente de quem não é papel assado, nas cargas do [`Self::tooth_loads`]: medida uma vez
     /// ([`Self::meio_do_dente`]).
     media_do_dente: std::sync::OnceLock<f32>,
+    /// ⭐ B10.2: o dente da tela inteira já amostrado (as cargas por píxel, largura = a da tela), quando o plano do tool
+    /// serve a este substrato e a este tamanho ([`PainterTool::substrate`]). `None` = amostra por píxel, o mesmo bit.
+    plano: Option<(&'a [f32], usize)>,
 }
 
 /// As amostras da média do dente, 1× por [`Substrate`], e só se o relevo a pedir: `.is_some()` não paga.
@@ -167,7 +170,31 @@ impl<'a> Substrate<'a> {
             rough: rough.clamp(0.0, 1.0),
             image,
             media_do_dente: std::sync::OnceLock::new(),
+            plano: None,
         })
+    }
+
+    /// O dente no texel `(cx, cy)` JÁ clampado à tela, em cargas: o plano do tool quando há, senão a amostra
+    /// ([`Self::tooth_loads`]) — o mesmo bit (`o_plano_do_dente_e_o_dente_amostrado_ao_bit`).
+    #[inline]
+    pub(super) fn dente_na_tela(&self, cx: i64, cy: i64) -> f32 {
+        match self.plano {
+            Some((cargas, w)) => cargas[cy as usize * w + cx as usize],
+            None => self.tooth_loads(cx, cy),
+        }
+    }
+
+    /// O dente da tela `w × h` inteira, em cargas, por linhas em paralelo (cada texel é a sua amostra: o mesmo bit
+    /// em qualquer número de fios).
+    fn amostra_a_tela(&self, w: usize, h: usize) -> Vec<f32> {
+        use rayon::prelude::*;
+        let mut cargas = vec![0.0f32; w * h];
+        cargas.par_chunks_mut(w).enumerate().for_each(|(y, linha)| {
+            for (x, c) in linha.iter_mut().enumerate() {
+                *c = self.tooth_loads(x as i64, y as i64);
+            }
+        });
+        cargas
     }
 
     /// A altura do dente naquele texel, em PIXELS de relevo.
@@ -311,12 +338,37 @@ impl crate::tool::PainterTool {
     /// documento que não tem `heights` nenhum — que é literalmente o caso do Digital, o meio para o
     /// qual isto foi pedido.
     pub(super) fn substrate(&self) -> Option<Substrate<'_>> {
-        Substrate::resolve(
+        let mut s = Substrate::resolve(
             self.paint.brush.paper,
             self.paint.substrate_depth,
             self.paint.substrate_rough,
             self.paint.paper_image.as_ref().map(|i| i.as_mask()),
-        )
+        )?;
+        s.plano = self
+            .plano_do_dente_em_dia()
+            .map(|c| (c, self.source_size.0 as usize));
+        Some(s)
+    }
+
+    /// O plano do dente, só se ele é o deste substrato e deste tamanho de tela (um resize ou um knob antes do
+    /// próximo reconcile caem na amostra por píxel, nunca num plano velho).
+    fn plano_do_dente_em_dia(&self) -> Option<&[f32]> {
+        let (chave, tam, cargas) = self.plano_do_dente.as_deref()?;
+        (*chave == self.substrate_key() && *tam == self.source_size).then_some(cargas.as_slice())
+    }
+
+    /// ⭐ B10.2: refaz o plano do dente quando o substrato ou o tamanho mudou; sem substrato, larga-o.
+    fn reconcilia_o_plano_do_dente(&mut self) {
+        if self.plano_do_dente_em_dia().is_some() {
+            return;
+        }
+        let (w, h) = self.source_size;
+        let novo = self
+            .substrate()
+            .filter(|_| w > 0 && h > 0)
+            .map(|s| s.amostra_a_tela(w as usize, h as usize));
+        self.plano_do_dente =
+            novo.map(|c| std::sync::Arc::new((self.substrate_key(), self.source_size, c)));
     }
 
     /// **O que o substrato É, em forma comparável** — a chave do reconcile.
@@ -368,6 +420,8 @@ impl crate::tool::PainterTool {
             }
             None => self.lit_substrate = Some(now),
         }
+        self.reconcilia_o_plano_do_dente();
+        aquece_as_alturas_de_fabrica();
         // W3b: a tinta do Óleo Real assa o dente e tinge pelo papel — segue-os também (`wetpaint/grao_no_filme.rs`).
         self.reconcilia_o_grao_do_oleo();
     }
@@ -480,6 +534,18 @@ pub(super) fn alturas_do_papel_de_fabrica() -> std::sync::Arc<ph2d_wet_paint::pa
     }))
 }
 
+/// ⭐ B10.A2: as [`alturas_do_papel_de_fabrica`] custam 23,0 ms na 1.ª chamada (`smoke`, `sonda_alturas_de_fabrica_1a_chamada`);
+/// o preparo do toque (Bug #72) só as adianta se armar antes do pen-down. Aquecidas 1× por processo num fio próprio (não é
+/// job do pool: quem as pedir a meio só espera a conta serial, nunca um job).
+fn aquece_as_alturas_de_fabrica() {
+    static UMA_VEZ: std::sync::Once = std::sync::Once::new();
+    UMA_VEZ.call_once(|| {
+        let _ = std::thread::Builder::new()
+            .name("ph2d-alturas-do-papel".into())
+            .spawn(|| drop(alturas_do_papel_de_fabrica()));
+    });
+}
+
 /// O índice `0..n` de uma célula, ao acaso mas determinístico (o mesmo papel em cada sessão e em cada
 /// máquina): um misturador de 64 bits das duas coordenadas.
 #[must_use]
@@ -495,3 +561,6 @@ pub(super) fn celula_ao_acaso(cx: i64, cy: i64, n: usize) -> usize {
 #[cfg(test)]
 #[path = "meio_do_dente_tests.rs"]
 mod meio_do_dente_tests;
+#[cfg(test)]
+#[path = "plano_do_dente_tests.rs"]
+mod plano_do_dente_tests;

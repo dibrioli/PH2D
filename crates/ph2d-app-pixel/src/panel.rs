@@ -159,6 +159,9 @@ pub fn frame(
     crate::tiles::frame(app, hero);
     crate::slices::frame(app, hero, world, editing);
     historia(app);
+    let doc = app.chave.and_then(|k| Some((k, app.docs.get(&k)?)));
+    let doc = doc.map(|(k, d)| (k, &d.sprite, d.frame, d.stamp));
+    ph2d_panel_pixel_lint::canal::corre(doc, app.gesture.is_none());
     if let Some(c) = hero.store.take_pixel_edit_request() {
         app.aplica_dialogo(c);
     }

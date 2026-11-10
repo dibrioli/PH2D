@@ -62,6 +62,7 @@ ph2d-pixel-slices = { path = "../ph2d-pixel-slices" }
 ph2d-pixel-keys = { path = "../ph2d-pixel-keys" }
 ph2d-panel-pixel-keys = { path = "../ph2d-panel-pixel-keys" }
 ph2d-panel-pixel-history = { path = "../ph2d-panel-pixel-history" }
+ph2d-panel-pixel-lint = { path = "../ph2d-panel-pixel-lint" }
 bumpalo = "3"
 # P14c-pixel 2: o Pixel Sprite na luz 2D (a banda normal por faixa, a oclusão).
 ph2d-pixel-luz = { path = "../ph2d-pixel-luz" }

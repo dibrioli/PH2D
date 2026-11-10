@@ -21,6 +21,7 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         x if x == ids::TOPBAR_PIXEL_HISTORY => crate::screens::hero::PANEL_PIXEL_HISTORY,
         x if x == ids::TOPBAR_PIXEL_KEYS => crate::screens::hero::PANEL_PIXEL_KEYS,
         x if x == ids::TOPBAR_PIXEL_PREFS => crate::screens::hero::PANEL_PIXEL_PREFS,
+        x if x == ids::TOPBAR_PIXEL_LINT => crate::screens::hero::PANEL_PIXEL_LINT,
         _ => return false,
     };
     let visible = !hero.is_panel_visible(panel);

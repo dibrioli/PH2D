@@ -1243,6 +1243,10 @@ const PAINEIS_COM_ID_DERIVADO: &[(&str, &str)] = &[
         "ph2d_panel_pixel_history::ids::row(i) — `pixel_history.row.{i}`, uma por passo da Undo History",
     ),
     (
+        "pixel_lint",
+        "ph2d_panel_pixel_lint::ids — `rule`/`group` por regra e `issue.{regra}.{i}` por aviso da corrida",
+    ),
+    (
         "pixel_keys",
         "ph2d_panel_pixel_keys::ids — `add`/`reset` por acção e `ficha` por tecla de cada acção",
     ),

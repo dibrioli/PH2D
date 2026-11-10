@@ -6178,6 +6178,7 @@ dependencies = [
  "ph2d-panel-pixel-export",
  "ph2d-panel-pixel-history",
  "ph2d-panel-pixel-keys",
+ "ph2d-panel-pixel-lint",
  "ph2d-panel-pixel-preview",
  "ph2d-panel-pixel-slices",
  "ph2d-panel-pixel-tiles",
@@ -10304,6 +10305,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-pixel-lint"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-pixel-core",
+ "ph2d-pixel-lint",
+ "ph2d-pixel-render",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-ui-testkit",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-panel-pixel-prefs"
 version = "0.0.0"
 dependencies = [
@@ -10445,6 +10462,7 @@ dependencies = [
  "ph2d-panel-pixel-export",
  "ph2d-panel-pixel-history",
  "ph2d-panel-pixel-keys",
+ "ph2d-panel-pixel-lint",
  "ph2d-panel-pixel-prefs",
  "ph2d-panel-pixel-preview",
  "ph2d-panel-pixel-slices",

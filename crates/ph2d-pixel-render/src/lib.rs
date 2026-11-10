@@ -7,6 +7,7 @@
 //! transform de um `stroke` do Vello multiplica a espessura).
 
 pub mod desenhados;
+mod lint_marks;
 pub mod guias;
 mod overlay;
 pub mod prefs_canal;
@@ -14,6 +15,7 @@ pub mod prefs_view;
 mod view;
 pub mod zoom;
 
+pub use lint_marks::draw_lint_marks;
 pub use overlay::{
     ANTS_DASH_PX, SliceMark, draw_marching_ants, draw_slice, mask_edges, rect_edges,
 };

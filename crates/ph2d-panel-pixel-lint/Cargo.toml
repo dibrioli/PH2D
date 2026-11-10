@@ -1,0 +1,34 @@
+[package]
+name = "ph2d-panel-pixel-lint"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A janela LINT do Pixel Art (P13 U-Lint): os avisos do `ph2d-pixel-lint` agrupados por regra, cada
+# regra liga/desliga, o Color limit; clicar num aviso pede à família que centre o canvas nele. O painel
+# não vê a família: ela entrega o sprite pelo canal e drena o foco.
+[dependencies]
+ph2d-a11y          = { path = "../ph2d-a11y" }
+ph2d-editor-core   = { path = "../ph2d-editor-core" }
+ph2d-i18n          = { path = "../ph2d-i18n" }
+ph2d-pixel-core    = { path = "../ph2d-pixel-core" }
+ph2d-pixel-lint    = { path = "../ph2d-pixel-lint" }
+ph2d-pixel-render  = { path = "../ph2d-pixel-render" }
+ph2d-tokens        = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-vector        = { path = "../ph2d-vector" }
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[dev-dependencies]
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

@@ -51,6 +51,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::TOPBAR_PIXEL_HISTORY,
         ids::TOPBAR_PIXEL_KEYS,
         ids::TOPBAR_PIXEL_PREFS,
+        ids::TOPBAR_PIXEL_LINT,
         ids::TOPBAR_TOKENS,
         ids::TOPBAR_AUTHORED,
         ids::TOPBAR_WIDGET_GALLERY,

@@ -42,6 +42,8 @@ mod pixel;
 mod pixel_edit;
 /// Os diálogos de filtro do Pixel P8 (Invert, Despeckle, Outline).
 mod pixel_filter;
+/// A janela LINT do Pixel P13.
+mod pixel_lint;
 /// **Os ids da BARRA DO MODO de edição de receita** — chrome do canvas, não de um painel.
 mod prefab;
 mod rail;
@@ -77,6 +79,7 @@ pub use physics::*;
 pub use pixel::*;
 pub use pixel_edit::*;
 pub use pixel_filter::*;
+pub use pixel_lint::*;
 pub use prefab::*;
 pub use rail::*;
 pub use rail_painter::*;

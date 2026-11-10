@@ -222,6 +222,8 @@ pub fn draw(
         scene,
     );
     crate::slices::desenha(app, key, m, LINE_PX, scene);
+    let aviso = resolve(ColorToken::Warn, theme);
+    ph2d_panel_pixel_lint::canal::desenha(key, m, aviso, LINE_PX, scene);
     #[expect(clippy::cast_precision_loss, reason = "tamanho de janela")]
     let janela = (window.width as f32, window.height as f32);
     crate::viva::draw(app, key, m, (theme, janela), scene);

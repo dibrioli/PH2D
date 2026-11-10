@@ -95,6 +95,10 @@ impl PixelApp {
                 self.fit_in(sim.world(), camera, window, ppm, bits, area);
             }
         }
+        let d = ph2d_panel_pixel_lint::canal::foca([area.x, area.y, area.w, area.h], |p| {
+            camera.screen_to_world(p, window)
+        });
+        camera.center = [camera.center[0] + d[0], camera.center[1] + d[1]];
         self.was_editing = editing;
         self.spray_tick();
         let tela = editing.and_then(|bits| {

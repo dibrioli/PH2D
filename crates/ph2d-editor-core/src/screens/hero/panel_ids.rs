@@ -37,6 +37,8 @@ pub(super) fn default_panel_visibility() -> std::collections::BTreeMap<&'static 
     map.insert(PANEL_PIXEL_HISTORY, false);
     // A janela GRID & BACKGROUND (P12 P): abre pelo menu Edit ou pelo Run Command.
     map.insert(PANEL_PIXEL_PREFS, false);
+    // A janela LINT (P13 U-Lint): abre pelo menu Window.
+    map.insert(PANEL_PIXEL_LINT, false);
     map
 }
 
@@ -70,6 +72,8 @@ pub const PANEL_PIXEL_KEYS: &str = "pixel_keys";
 pub const PANEL_PIXEL_HISTORY: &str = "pixel_history";
 /// A janela GRID & BACKGROUND do Pixel (P12 P) — o `Panel::ID` da `ph2d-panel-pixel-prefs`.
 pub const PANEL_PIXEL_PREFS: &str = "pixel_prefs";
+/// A janela LINT do Pixel (P13 U-Lint) — o `Panel::ID` da `ph2d-panel-pixel-lint`.
+pub const PANEL_PIXEL_LINT: &str = "pixel_lint";
 
 /// Canonical `&'static str` for known panel ids — keeps the
 /// visibility HashMap keys stable across calls without leaking.
@@ -95,6 +99,7 @@ pub(super) fn canonical_panel_id(id: &str) -> Option<&'static str> {
         PANEL_PIXEL_KEYS => Some(PANEL_PIXEL_KEYS),
         PANEL_PIXEL_HISTORY => Some(PANEL_PIXEL_HISTORY),
         PANEL_PIXEL_PREFS => Some(PANEL_PIXEL_PREFS),
+        PANEL_PIXEL_LINT => Some(PANEL_PIXEL_LINT),
         _ => None,
     }
 }

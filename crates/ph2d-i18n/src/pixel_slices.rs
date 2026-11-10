@@ -2,6 +2,8 @@
 
 /// As da janela UNDO HISTORY (P12 H), outra janela flutuante do Pixel.
 mod history;
+/// As da janela LINT (P13 U-Lint), outra janela flutuante do Pixel.
+mod lint;
 mod prefs;
 /// As do cartão USER DATA (P12 U).
 mod user_data;
@@ -65,7 +67,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         _ => {
             return history::tr(key)
                 .or_else(|| user_data::tr(key))
-                .or_else(|| prefs::tr(key));
+                .or_else(|| prefs::tr(key))
+                .or_else(|| lint::tr(key));
         }
     })
 }

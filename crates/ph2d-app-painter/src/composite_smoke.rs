@@ -17,6 +17,8 @@
 //! Uma IMAGEM gerada, e não papel branco: numa tela chapada o borrão e o esfregão não têm o que
 //! mostrar (medido: numa tela uniforme o borrão é um no-op). Ela tem um degradê de cor, uma grelha
 //! escura a cada `64 px` (o esfregão arrasta-a, o borrão amolece-a) e discos de cor.
+//! `PH2D_COMPOSITE_FUNDO=branco|papel` troca-a (a régua 4K mede por fundo); `PH2D_COMPOSITE_TELA=<w>x<h>` vale
+//! para os três.
 //!
 //! ## A pilha (a da foto, posição `1` = o TOPO)
 //!
@@ -46,7 +48,7 @@ pub const NIVEIS: u32 = 1;
 pub const LADO: u32 = 1024;
 
 /// O tamanho da tela: `LADO²`, ou `PH2D_COMPOSITE_TELA=<w>x<h>` (sonda do pen-up a 4K, dono 10/11: o tamanho que
-/// trava; só com o papel do *Textured Paper*, a imagem gerada é quadrada).
+/// trava), com qualquer fundo.
 fn tela() -> (u32, u32) {
     std::env::var("PH2D_COMPOSITE_TELA")
         .ok()
@@ -62,34 +64,73 @@ pub fn enabled() -> bool {
     std::env::var_os("PH2D_COMPOSITE_SMOKE").is_some()
 }
 
-/// A tela gerada: degradê de cor, grelha escura a cada `64 px`, e discos de cor.
+/// O fundo da tela, `PH2D_COMPOSITE_FUNDO=blocos|branco|papel` (missão 4K, B08.2: o «antes» separa o papel do
+/// tamanho). Omissão: os blocos; `PH2D_COMPOSITE_PAPEL=1` continua a ser o papel.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Fundo {
+    /// A [`imagem`] gerada (degradê, grelha, discos).
+    Blocos,
+    /// Branco opaco, sem papel.
+    Branco,
+    /// O *New Image ▸ Textured Paper* (o bind reconhece-o e serve o papel).
+    Papel,
+}
+
+fn fundo() -> Fundo {
+    match std::env::var("PH2D_COMPOSITE_FUNDO").as_deref() {
+        Ok("branco") => Fundo::Branco,
+        Ok("papel") => Fundo::Papel,
+        Ok("blocos") => Fundo::Blocos,
+        _ if std::env::var_os("PH2D_COMPOSITE_PAPEL").is_some() => Fundo::Papel,
+        _ => Fundo::Blocos,
+    }
+}
+
+/// Os píxeis RGBA8 da tela `w×h` com o `fundo` pedido.
 #[must_use]
-pub fn imagem(lado: u32) -> Vec<u8> {
-    let l = lado as f32;
-    let mut px = vec![0u8; (lado * lado * 4) as usize];
+pub fn pixeis_da_tela(fundo: Fundo, w: u32, h: u32) -> Vec<u8> {
+    match fundo {
+        Fundo::Blocos => imagem(w, h),
+        Fundo::Branco => vec![255u8; (w as usize) * (h as usize) * 4],
+        Fundo::Papel => crate::paint_mode::pixeis_da_imagem_nova(
+            [w, h],
+            ph2d_editor_core::ids::NEW_IMAGE_BG_PAPER,
+        )
+        .unwrap_or_else(|| imagem(w, h)),
+    }
+}
+
+/// A tela gerada `w×h`: degradê de cor, grelha escura a cada `64 px`, e discos de cor (redondos: o raio conta-se
+/// no lado menor; quadrada = a imagem de sempre, ao bit).
+#[must_use]
+pub fn imagem(w: u32, h: u32) -> Vec<u8> {
+    let (lw, lh) = (w as f32, h as f32);
+    let m = lw.min(lh);
+    let (ex, ey) = (lw / m, lh / m);
+    let mut px = vec![0u8; (w as usize) * (h as usize) * 4];
     let discos = [
         (0.25f32, 0.30f32, 0.09f32, [230u8, 60, 60]),
         (0.70, 0.28, 0.12, [60, 120, 230]),
         (0.45, 0.70, 0.10, [250, 200, 40]),
         (0.80, 0.75, 0.07, [40, 170, 90]),
     ];
-    for y in 0..lado {
-        for x in 0..lado {
-            let (u, v) = (x as f32 / l, y as f32 / l);
+    for y in 0..h {
+        for x in 0..w {
+            let (u, v) = (x as f32 / lw, y as f32 / lh);
             let mut c = [
                 (70.0 + 150.0 * u) as u8,
                 (120.0 + 80.0 * (1.0 - v)) as u8,
                 (200.0 - 120.0 * u) as u8,
             ];
             for &(cx, cy, r, cor) in &discos {
-                if (u - cx).hypot(v - cy) < r {
+                if ((u - cx) * ex).hypot((v - cy) * ey) < r {
                     c = cor;
                 }
             }
             if x % 64 < 3 || y % 64 < 3 {
                 c = [30, 30, 40];
             }
-            let i = ((y * lado + x) * 4) as usize;
+            let i = ((y as usize) * (w as usize) + x as usize) * 4;
             px[i..i + 3].copy_from_slice(&c);
             px[i + 3] = 255;
         }
@@ -166,13 +207,7 @@ pub fn spawn_if_enabled(
         cell_idx,
         tw,
         th,
-        // `PH2D_COMPOSITE_PAPEL=1`: a tela do *New Image ▸ Textured Paper* (o bind reconhece-a e serve o papel).
-        std::env::var_os("PH2D_COMPOSITE_PAPEL")
-            .and_then(|_| {
-                let papel = ph2d_editor_core::ids::NEW_IMAGE_BG_PAPER;
-                crate::paint_mode::pixeis_da_imagem_nova([tw, th], papel)
-            })
-            .unwrap_or_else(|| imagem(LADO)),
+        pixeis_da_tela(fundo(), tw, th),
         Vec2::new(0.0, 0.0),
         pixels_per_meter,
         atlas_asset_map,
@@ -468,7 +503,7 @@ mod tests {
     /// A tela tem textura — num campo uniforme o borrão e o esfregão não têm o que mostrar.
     #[test]
     fn a_tela_nao_e_chapada() {
-        let px = super::imagem(128);
+        let px = super::imagem(128, 128);
         let cores: std::collections::BTreeSet<[u8; 3]> = px
             .as_chunks::<4>()
             .0
@@ -484,5 +519,78 @@ mod tests {
             px.as_chunks::<4>().0.iter().all(|c| c[3] == 255),
             "a tela é opaca"
         );
+    }
+
+    /// Oráculo verbatim da `imagem(lado)` quadrada de antes do B08.2.
+    fn imagem_quadrada_de_antes(lado: u32) -> Vec<u8> {
+        let l = lado as f32;
+        let mut px = vec![0u8; (lado * lado * 4) as usize];
+        let discos = [
+            (0.25f32, 0.30f32, 0.09f32, [230u8, 60, 60]),
+            (0.70, 0.28, 0.12, [60, 120, 230]),
+            (0.45, 0.70, 0.10, [250, 200, 40]),
+            (0.80, 0.75, 0.07, [40, 170, 90]),
+        ];
+        for y in 0..lado {
+            for x in 0..lado {
+                let (u, v) = (x as f32 / l, y as f32 / l);
+                let mut c = [
+                    (70.0 + 150.0 * u) as u8,
+                    (120.0 + 80.0 * (1.0 - v)) as u8,
+                    (200.0 - 120.0 * u) as u8,
+                ];
+                for &(cx, cy, r, cor) in &discos {
+                    if (u - cx).hypot(v - cy) < r {
+                        c = cor;
+                    }
+                }
+                if x % 64 < 3 || y % 64 < 3 {
+                    c = [30, 30, 40];
+                }
+                let i = ((y * lado + x) * 4) as usize;
+                px[i..i + 3].copy_from_slice(&c);
+                px[i + 3] = 255;
+            }
+        }
+        px
+    }
+
+    /// A tela quadrada de blocos é a de sempre, ao bit (o «antes» a 1024² continua comparável).
+    #[test]
+    fn a_tela_de_blocos_quadrada_e_a_de_antes_ao_bit() {
+        for lado in [128, 1024] {
+            assert!(
+                super::pixeis_da_tela(super::Fundo::Blocos, lado, lado)
+                    == imagem_quadrada_de_antes(lado),
+                "lado {lado}"
+            );
+        }
+    }
+
+    /// Blocos e branco obedecem ao `PH2D_COMPOSITE_TELA` (B08.2: antes os blocos eram sempre 1024² e não havia
+    /// branco); os discos ficam redondos na tela retangular.
+    #[test]
+    fn os_fundos_obedecem_ao_tamanho_pedido() {
+        let (w, h) = (640u32, 360u32);
+        let blocos = super::pixeis_da_tela(super::Fundo::Blocos, w, h);
+        assert_eq!(blocos.len(), (w * h * 4) as usize, "blocos {w}x{h}");
+        let branco = super::pixeis_da_tela(super::Fundo::Branco, w, h);
+        assert_eq!(branco.len(), (w * h * 4) as usize, "branco {w}x{h}");
+        assert!(branco.iter().all(|&b| b == 255), "branco opaco");
+        // O disco vermelho (centro 0,25·w × 0,30·h, raio 0,09 do lado menor): dentro a 0,08·h na horizontal e
+        // na vertical, fora a 0,10·h.
+        let px = |x: f32, y: f32| {
+            let i = ((y as usize) * (w as usize) + x as usize) * 4;
+            [blocos[i], blocos[i + 1], blocos[i + 2]]
+        };
+        let (cx, cy, m) = (0.25 * w as f32, 0.30 * h as f32, h as f32);
+        for (dx, dy) in [(0.08, 0.0), (0.0, 0.08), (-0.08, 0.0), (0.0, -0.08)] {
+            assert_eq!(
+                px(cx + dx * m, cy + dy * m),
+                [230, 60, 60],
+                "dentro ({dx},{dy})"
+            );
+        }
+        assert_ne!(px(cx + 0.10 * m, cy), [230, 60, 60], "fora na horizontal");
     }
 }

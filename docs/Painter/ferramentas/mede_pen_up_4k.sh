@@ -8,13 +8,13 @@ R="$(cd "$(dirname "$0")/../../.." && pwd)"
 S=${SAIDA:-$R/target/mede-pen-up}; mkdir -p "$S"
 
 # ── MATRIZ (10/11, missão 4K, medição «antes»/«depois») ──────────────────────────────────────────────────────────
-# uso: bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/mede_pen_up_4k.sh matriz <WxH> <papel|blocos> [binario]
+# uso: bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/mede_pen_up_4k.sh matriz <WxH> <papel|blocos|branco> [binario]
 #      [pincel:painel …]   (sem pincéis = a lista PINCEIS abaixo; «omissão:<painel>» = o pincel de fábrica do painel;
 #      «Composite Brush:digital» = a pilha da cena, PH2D_COMPOSITE_PILHA=1)
 # Um lançamento por pincel, SEM perf; cada quadro com PH2D_QUADRO_LENTO_MS=0 (relógio de parede). Roteiro por fases:
 # parado 3 s (CPU de /proc/<pid>/stat) · toque (mousedown parado 0,4 s) · traço (125 eventos × 8 ms ≈ 1 s, 400 px) ·
-# soltar · 3 s (Wet: imagens/s) · Ctrl+Z · parado 3 s. `blocos` = a imagem da cena (degradê, grelha, discos), que o
-# roteador só monta a 1024² (sem PH2D_COMPOSITE_PAPEL a tela ignora PH2D_COMPOSITE_TELA). `papel` = Textured Paper,
+# soltar · 3 s (Wet: imagens/s) · Ctrl+Z · parado 3 s. `blocos` = a imagem da cena (degradê, grelha, discos) a WxH;
+# `branco` = tela branca sem papel (PH2D_COMPOSITE_FUNDO, B08.2). `papel` = Textured Paper,
 # relief 0,5 do papel do dono. Saída: $S/matriz/<rotulo>.{log,marcas,meta}; resumo: mede_pen_up_4k.py --matriz $S/matriz.
 if [ "$1" = matriz ]; then
   TELA=$2; FUNDO=$3; BIN=${4:-$R/target/smoke/ph2d-host-desktop}; shift 4 2>/dev/null || shift $#
@@ -38,8 +38,10 @@ if [ "$1" = matriz ]; then
     EXTRA=(PH2D_COMPOSITE_PILHA=0)
     [ "$PIN" = "Composite Brush" ] && EXTRA=(PH2D_COMPOSITE_PILHA=1)
     [ "$PIN" != omissão ] && [ "$PIN" != "Composite Brush" ] && EXTRA+=("PH2D_COMPOSITE_PRESET=$PIN")
-    if [ "$FUNDO" = papel ]; then EXTRA+=(PH2D_COMPOSITE_PAPEL=1 "PH2D_COMPOSITE_TELA=$TELA"); else TELA_REAL=1024x1024; fi
-    printf '{"pincel":"%s","painel":"%s","tela":"%s","fundo":"%s","carga":"%s"}\n' "$PIN" "$PAINEL" "${TELA_REAL:-$TELA}" \
+    # B08.2: `PH2D_COMPOSITE_FUNDO` (papel|blocos|branco) e a tela WxH em qualquer fundo; o PAPEL=1 serve o binário antigo.
+    EXTRA+=("PH2D_COMPOSITE_FUNDO=$FUNDO" "PH2D_COMPOSITE_TELA=$TELA")
+    [ "$FUNDO" = papel ] && EXTRA+=(PH2D_COMPOSITE_PAPEL=1)
+    printf '{"pincel":"%s","painel":"%s","tela":"%s","fundo":"%s","carga":"%s"}\n' "$PIN" "$PAINEL" "$TELA" \
       "$FUNDO" "$(cut -d' ' -f1-3 /proc/loadavg)" > "$M/$TAG.meta"
     : > "$M/$TAG.marcas"
     env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$M/home_$TAG PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PAINEL=$PAINEL \

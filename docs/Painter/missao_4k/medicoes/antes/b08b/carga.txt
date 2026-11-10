@@ -1,0 +1,7 @@
+inicio 08:18:11 9.77 16.52 12.67
+4K branco (fim) 08:25:12 6.77 8.26 10.01
+4K blocos 08:32:21 13.95 12.16 11.15
+oleo 1440 08:33:48 17.69 13.98 11.89
+1080p branco 08:37:01 2.05 8.11 9.96
+FEITO
+binario: git archive cd02ac77ef + composite_smoke.rs (B08b); CARGO_TARGET_DIR=target/b08b-limpo; Radeon 610M

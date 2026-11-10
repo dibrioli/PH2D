@@ -177,21 +177,10 @@ mod painter_ponta;
 mod painter_preview;
 /// Os knobs do motor que o cartão Wet Paint também mostra — irmã da `painter_layers`.
 mod painter_wet_cartao;
-/// O PIXEL ART (ADR-0196): o menu Add, as ferramentas e os avisos da família.
-mod pixel;
-/// O PIXEL ART, P6: os diálogos Color Range, Modify, Canvas Size e Sprite Size.
-mod pixel_dialogos;
-/// O PIXEL ART, P13: Layer Properties ▸ Effects ▸ Outline.
-mod pixel_efeitos;
-mod pixel_export;
-/// O PIXEL ART, P13: View ▸ Guides (perspectiva e iso 2:1).
-mod pixel_guias;
-/// O PIXEL ART, P6: a selecção, a moldura solta e os menus Select/Edit/Sprite do painel.
-mod pixel_pincel;
-mod pixel_selecao;
 mod pixel_slices;
+/// O PIXEL ART (ADR-0196): as tabelas da família sem pasta própria.
+mod pixel_tabelas;
 mod pixel_teclas;
-mod pixel_tiles;
 /// ⭐⭐ **A COR, a CURVA, o COMANDO e as RECUSAS da timeline** — quatro motores numa fatia.
 mod quatro_motores;
 /// ⭐ **As strings do painel TAGS** (TOP-20 #9) — irmão de tabela, por assunto.
@@ -638,14 +627,7 @@ fn tabela(key: &str) -> &'static str {
             .or_else(|| inspector_nav::tr(k))
             .or_else(|| luz2d::tr(k))
             .or_else(|| constraints::tr(k))
-            .or_else(|| pixel::tr(k))
-            .or_else(|| pixel_selecao::tr(k))
-            .or_else(|| pixel_pincel::tr(k))
-            .or_else(|| pixel_dialogos::tr(k))
-            .or_else(|| pixel_efeitos::tr(k))
-            .or_else(|| pixel_export::tr(k))
-            .or_else(|| pixel_tiles::tr(k))
-            .or_else(|| pixel_guias::tr(k))
+            .or_else(|| pixel_tabelas::tr(k))
             .or_else(|| pixel_slices::tr(k))
             .or_else(|| pixel_teclas::tr(k))
             .or_else(|| inspector_motion_input::tr(k))

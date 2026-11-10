@@ -202,11 +202,12 @@ fn paint_slot(
     }
     fill_rounded_rect(scene, r, radius, c(ColorToken::Bg3));
     if here {
+        // O anel de foco no MESMO traço do da aba (`interact::paint_focus_ring`): um anel, uma espessura.
         stroke_rounded_rect(
             scene,
             r,
             radius,
-            StrokeToken::Hairline.px(),
+            StrokeToken::Default.px(),
             c(ColorToken::FocusRing),
         );
     }

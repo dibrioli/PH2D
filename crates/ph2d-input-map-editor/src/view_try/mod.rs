@@ -160,8 +160,8 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
         Some(TryHit::Recipe(r)) if map.is_empty() => doc.pending.push(InputMapEdit::StartFrom(r)),
         Some(TryHit::Recipe(r)) => {
             doc.tryit.confirm = Some(r);
-            // O foco nasce no Cancel, o botão seguro (o Enter continua a ser o Replace de omissão).
-            doc.ui.focus = Some(TryHit::Cancel.id());
+            // ⚠️ O foco no Cancel (o seguro) só quando o `doc.rs` chamar o `modal_key` ANTES do foco: hoje o Esc
+            // com foco só larga o foco e a pergunta ficava aberta.
         }
         Some(TryHit::Replace) => {
             if let Some(r) = doc.tryit.confirm.take() {

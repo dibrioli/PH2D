@@ -46,23 +46,26 @@ fn a_receita_pede_confirmacao_e_substitui_num_passo() {
     m.physical(key("escape"));
     assert_eq!(m.tab().doc.tryit.confirm, None, "Esc fecha a pergunta");
     m.click(m.at(TryHit::Recipe(Recipe::Platformer).id()));
-    // Replace: UM pedido, aplicado no mesmo quadro (o undo por diff faz dele UM passo).
+    // Replace: UM pedido, aplicado no mesmo quadro (o undo por diff faz dele UM passo). R3-C: o botão do registo
+    // dispara no Up dentro (o Down só captura).
     let at = m.at(TryHit::Replace.id());
     let ts = &mut m.ts;
     if let Some((f, id)) = m.hero.documents.active_surface_mut() {
-        let input = ph2d_editor_core::doc_surface::PointerInput {
-            text: ts,
-            mods: ph2d_host::Modifiers::default(),
-            now_ns: 0,
-        };
-        f.pointer(
-            id,
-            input,
-            ph2d_host::PointerKind::Down,
-            ph2d_host::PointerButton::Primary,
-            at.0,
-            at.1,
-        );
+        for kind in [ph2d_host::PointerKind::Down, ph2d_host::PointerKind::Up] {
+            let input = ph2d_editor_core::doc_surface::PointerInput {
+                text: &mut *ts,
+                mods: ph2d_host::Modifiers::default(),
+                now_ns: 0,
+            };
+            f.pointer(
+                id,
+                input,
+                kind,
+                ph2d_host::PointerButton::Primary,
+                at.0,
+                at.1,
+            );
+        }
     }
     let pending = m.tab().doc.pending.clone();
     assert_eq!(pending, vec![InputMapEdit::StartFrom(Recipe::Platformer)]);

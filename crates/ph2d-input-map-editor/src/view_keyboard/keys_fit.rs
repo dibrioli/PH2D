@@ -263,7 +263,7 @@ fn group_level(ts: &mut TextSystem, a: Arrangement, p: f32, grp: Group) -> Optio
     [false, true].into_iter().find_map(|sys_icon| {
         LEVELS
             .into_iter()
-            // O numérico nunca desce ao símbolo: as irmãs dele são glifos, o cadeado e o ↵ leriam-se como outra coisa.
+            // O símbolo só quando toda palavra do grupo tem o seu ISO/IEC 9995-7 (o numérico: ⇭ e ↵).
             .filter(|l| *l != Level::Icon || icons_all)
             .find(|l| {
                 caps.iter().all(|c| {

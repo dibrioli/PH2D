@@ -8,6 +8,7 @@ use ph2d_app_input_map::view_keyboard::geometry::{Arrangement, drawn_keys};
 use ph2d_app_input_map::view_keyboard::keys_fit::{MIN_LEGEND_PX, bars_top, fit_for_width};
 use ph2d_app_input_map::view_keyboard::state::{KbHit, Sub};
 use ph2d_app_input_map::{InputMapEdit, View};
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::zones::Rect;
 use ph2d_input::{Binding, Key};
 
@@ -494,8 +495,8 @@ fn k2_a_face_cheia_nao_engole_as_barras() {
     }
 }
 
-/// K2 #3 e #4: o Enter do numérico diz «Enter» como o principal; o Num Lock nunca é o cadeado; a pontuação pinta-se
-/// maior que `VALUE_PX` quando cabe (o ` nunca parece vazio).
+/// K2 #3 e #4: o Enter do numérico diz «Enter» quando cabe, senão o ↵; o Num Lock é palavra quando cabe, senão o
+/// símbolo ISO/IEC 9995-7 ⇭ (nunca outro ícone); a pontuação pinta-se maior que `VALUE_PX` quando cabe.
 #[test]
 fn k2_o_numerico_fala_e_a_pontuacao_pesa() {
     use ph2d_app_input_map::view_keyboard::keys_fit::{PUNCT_PX, is_punct};
@@ -504,21 +505,24 @@ fn k2_o_numerico_fala_e_a_pontuacao_pesa() {
             for (v, m) in [("B", pinta_b(area)), ("C", pinta_c(area))] {
                 let at = format!("{v} {}", area.w);
                 let txt = |k: Key| olhar_de(&m, k).text.map(|t| t.0);
-                // O Enter do numérico diz «Enter» quando cabe; sem lugar, o ↵ (o de muitos numéricos reais).
-                let kp = txt(Key::NUMPAD_ENTER);
-                assert!(
-                    kp.is_none() || kp.as_deref() == Some("Enter"),
-                    "{at}: {kp:?}"
-                );
+                // O ícone pintado dentro da tecla `k` (`None` = legenda em texto).
+                let icon = |k: Key| {
+                    let r = olhar_de(&m, k).rect;
+                    (m.tab().doc.census.icons.iter())
+                        .find(|(ir, _)| r.contains(ir.x + ir.w * 0.5, ir.y + ir.h * 0.5))
+                        .map(|(_, id)| *id)
+                };
+                let word_or = |k: Key, word: &str, iso: IconId| match txt(k) {
+                    Some(t) => assert!(t.starts_with(word), "{at}: {k:?} «{t}»"),
+                    None => assert_eq!(icon(k), Some(iso), "{at}: {k:?} só o símbolo ISO"),
+                };
+                word_or(Key::NUMPAD_ENTER, "Enter", IconId::KbdEnter);
+                word_or(tecla("numlock"), "Num", IconId::KbdNumLock);
                 assert_eq!(
                     m.tab().doc.kb.fit.map(|f| f.arrangement),
                     Some(Arrangement::Wide),
                     "{at}: o numérico fica à vista"
                 );
-                // O Num Lock fala SEMPRE em texto: nunca o cadeado.
-                let num = txt(tecla("numlock"))
-                    .unwrap_or_else(|| panic!("{at}: Num Lock em texto, nunca o cadeado"));
-                assert!(num.starts_with("Num"), "{at}: {num}");
                 for l in &m.tab().doc.census.keys {
                     if let Some((s, px)) = &l.text
                         && is_punct(s)

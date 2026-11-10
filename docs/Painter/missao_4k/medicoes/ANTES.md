@@ -424,3 +424,98 @@ O mesmo desabamento da 2880, mais lento: 7,2 → 1,0 img/s, a óptica 95 → 642
    22–25 ms em todos (o guardado não reabre a tela inteira).
 5. O resto repete a continuação: 4K papel ~100 ms por clique/toque/Ctrl+Z; 4K blocos 43–59; 1080p 16–19.
 6. Fora ainda: os 10 mais lentos (dependem do B08.3) e o Oil Wash (B36).
+
+## B08b continuação 3 — a placa nos 56 Wet (B08.4), os 100 pincéis à velocidade do dono (B08.3), os 10 mais lentos no app (B08.2)
+
+- **Árvore:** LIMPA = `git archive cd02ac77ef` em `target/b08b-fonte` + só o `tests/it/sonda_custo_no_app.rs` deste commit
+  (a sonda nova `sonda_placa_sabe_nos_wet`; a `sonda_custo_no_app` é a de antes, igual ao bit), `CARGO_TARGET_DIR=target/b08b-limpo`,
+  `--profile smoke`. Os presets de fábrica da base = os de hoje (`git diff cd02ac77ef HEAD -- assets/brushes` vazio).
+- Cru: [`antes/b08b/continuacao3/`](antes/b08b/continuacao3/).
+
+### B08.4 — os 56 Wet de fábrica e a placa: **0/56** passam `placa_sabe`
+
+```
+CARGO_TARGET_DIR=$W/target/b08b-limpo bash $W/scripts/ph2d-run.sh cargo test --manifest-path $W/target/b08b-fonte/Cargo.toml \
+  -p ph2d-tool-painter --features gpu --profile smoke --test it sonda_placa_sabe_nos_wet -- --ignored --nocapture
+```
+
+Cada Wet de fábrica num `PainterTool` 256², um traço curto (6 quadros), e `ph2d_wet_gpu::passo::placa_sabe` sobre o motor da
+sessão (a função REAL, `crates/ph2d-wet-gpu/src/passo.rs:19-45`, igual na base e hoje); ao lado, cada condição dela que reprova.
+Determinístico (não é relógio). Sem a RTX não importa (decisão 2): fica o registo.
+
+| reprova por | Wet |
+|---|---|
+| K–M (`pigmentMixing`) | **53** (todos menos Wet Liner, Wet Wash e Gouache Opaque) |
+| lei/óleo da grade (`LeiDaTinta::Velha` com `g.oleo` não vazio depois do traço) | 21 (os 14 Real Oil, Express Oil, Oil Pastel, Wax Crayon, Wax Scrape, Wet Liner, Wet Wash, Gouache Opaque) |
+| Real Oil (`p.oleo ≠ 0`) | 14 (Dabber, Dabber 4, Filbert, Filbert Dry, Flat Bristle, Thick Impasto, Tilted Shade, os 6 Knife, Metallic Flat) |
+| Opaque / opaca na grade | 3 (Fan Brush, Gouache Flat, Gouache Opaque) |
+| fingering/backrun/difusão | 1 (Ink Brush) |
+| ordem · passo pendente · ecrã ≠ Cobre · gota | 0 |
+
+Os 3 sem K–M (Wet Liner, Wet Wash, Gouache Opaque) caem só no óleo da grade (e o Gouache Opaque também na opaca): nenhum
+Wet de fábrica chega à placa hoje. Lista por pincel: [`placa_sabe_56_wet.txt`](antes/b08b/continuacao3/placa_sabe_56_wet.txt).
+
+### B08.3 — os 100 pincéis à velocidade do dono: **49/100 passam de 16,7 ms/quadro**
+
+```
+CARGO_TARGET_DIR=$W/target/b08b-limpo PH2D_SONDA_PRESETS=todos PH2D_SONDA_EVQ=9 PH2D_SONDA_VELS=40 PH2D_SONDA_TELA=1024 \
+  PH2D_SONDA_RODADAS=2 bash $W/scripts/ph2d-run.sh cargo test --manifest-path $W/target/b08b-fonte/Cargo.toml \
+  -p ph2d-tool-painter --profile smoke --test it sonda_custo_no_app -- --ignored --nocapture     # 455 s
+```
+
+Tela 1024² branca, o tamanho do preset, 9 eventos × 40 px por quadro (360 px/quadro = a caneta do dono num traço rápido,
+`Pinceis/COMO_ACELERAR_UM_PINCEL.md` §1), 40 quadros por bloco, 2 rodadas intercaladas; ms = o MÍNIMO das medianas.
+⚠️ **load 13,4 → 18,0** (outros agentes a compilar; o build do B08.4 nos 2 primeiros minutos): leia como TECTO — a
+ordem dos pincéis vale, o número absoluto pode descer com a máquina calma. Tabela inteira (100 linhas, depósito ×
+composite × tique): [`sonda_100_pinceis.md`](antes/b08b/continuacao3/sonda_100_pinceis.md).
+
+| # | pincel | pasta | diâm | depósito | composite | TOTAL ms/quadro |
+|---|---|---|---|---|---|---|
+| 1 | Filbert | Wet | 64 | 151,6 | 55,3 | **209,2** |
+| 2 | Knife Oily | Wet | 51 | 99,2 | 63,9 | **164,3** |
+| 3 | Filbert Dry | Wet | 34 | 105,4 | 44,3 | **149,9** |
+| 4 | Flat Bristle | Wet | 46 | 74,5 | 67,9 | **142,5** |
+| 5 | Tilted Shade | Wet | 40 | 85,2 | 56,3 | **141,0** |
+| 6 | Knife Dry | Wet | 51 | 87,2 | 48,6 | **136,9** |
+| 7 | Scratch | Wet | 248 | 125,9 | 4,0 | **130,9** |
+| 8 | Metallic Flat | Wet | 40 | 81,6 | 43,9 | **127,7** |
+| 9 | Thick Impasto | Wet | 64 | 88,9 | 31,5 | **121,2** |
+| 10 | Express Oil | Wet | 64 | 93,6 | 4,2 | **99,5** |
+| 11–20 | Dabber 96 · Knife Smooth 3 92 · Knife Stain 85 · **Oil Paint 84** · **Gouache 83** · Knife Textured 80 · **Dry Gouache 80** · Knife Grainy 77 · Wax Scrape 70 · Dabber 4 61 | | | | | |
+| 21–34 | Water Brush 51 · Pastel Side 49 · Ink Brush 46 · **Round Mixing 43** · Charcoal 39 · Square Hard 38 · Soft Pastel 36 · Fan Brush 35 · **Paint And Apply 34** · Oil Pastel 34 · **Thick Oil Paint 34** · Broad Nib 31 · Marker Chisel 29 · Compressed Charcoal 26 | | | | | |
+| 35–49 | **Wet Wash Mix 22** · Wet Dry Brush 22 · Wet Drip 21 · **Brush Pen 20** · Wax Crayon 20 · Wet Round 20 · Graphite HB 20 · Marker Bullet 20 · Graphite 2B 20 · **Gouache Blender 19** · Wet Liner 19 · Graphite 2H 19 · **Finger Tip 18** · Wet Wash 18 · Ink Bullet 18 | | | | | |
+
+(**negrito** = Digital; o resto é Wet.) Leitura:
+1. **Os 10 mais lentos são todos Wet**: 8 dos 14 Real Oil (fora Dabber, Dabber 4 e 4 Knife), o Scratch e o Express Oil;
+   99–209 ms/quadro = 5–10 fps à velocidade do dono, numa tela de 1024². Nos Real Oil ~metade é o **composite**
+   (31–68 ms: a óptica do Real Oil), metade o **depósito**; o Scratch (248 px) e o Express Oil são quase só depósito.
+2. **39 dos 56 Wet** passam de 16,7; **10 dos 43 Digital** (Oil Paint, Gouache, Dry Gouache, Round Mixing, Paint And
+   Apply, Thick Oil Paint, Wet Wash Mix, Brush Pen, Gouache Blender, Finger Tip: os de mistura/véu = os candidatos da
+   meia definição, NA-3 passo 2). O Watercolor Basic (7,6) passa.
+3. O Wet Wash Mix já tem a meia definição na base (`31e59443d1`): 22 ms aqui sob load ~15 (24 no doc da cura 6).
+
+### B08.2 — os 10 mais lentos no app: 4K papel, 1080p papel, 4K branco (30 lançamentos)
+
+Binário `target/b08b-limpo/smoke/ph2d-host-desktop` (o da continuação 2, árvore limpa), Radeon 610M nos 30 (`.placa` sem
+`nvidia`), roteiro da matriz inteiro (`mede_pen_up_4k.sh matriz <WxH> <fundo> $B "Filbert:wet" "Knife Oily:wet" …`, sem
+fotos). ⚠️ **Carga** (`carga.txt`): 4K papel 13:18–13:25 load 14 · 1080p papel 13:25–13:32 load 10–18 · 4K branco
+13:32–13:40 load **28** — TECTO, não base. Falharam sem janela: Filbert 1080p papel, Express Oil 4K branco (cortado pelo
+prazo). Fora (o prazo do agente): 1080p branco, 4K e 1080p blocos — o mesmo comando, `branco`/`blocos`. Tabelas
+inteiras (fases + camadas + régua): [`tabela_matriz.md`](antes/b08b/continuacao3/tabela_matriz.md); cru `matriz.jsonl`, `quadros/`.
+
+| fase (ms; mín–máx dos 10) | 4K papel | 1080p papel | 4K branco |
+|---|---|---|---|
+| toque | 74–127 | 38–173 | 113–942 |
+| traço p50 | 14–242 | 17–114 | 39–218 |
+| traço p95 | 33–313 | 21–439 | 56–495 |
+| soltar / +1 s máx | 31–317 / 99–317 | 19–122 / 34–122 | 37–227 / 46–227 |
+| Ctrl+Z | 112–288 | 48–205 | 116–676 |
+| + camada · trocar | 153–419 · 108–424 | — (ver tabela) | — (ver tabela) |
+| parado CPU % | 59–73 | 42–72 | 33–79 |
+| água img/s | 21–40 | — | — |
+
+Leitura: com os pincéis lentos o quadro fixo de ~100 ms a 4K (o da tela + papel, §B08b) vira **o piso**, não o
+tecto: Tilted Shade traça a 242 ms/quadro (4 fps), Knife Oily 114, e o Ctrl+Z chega a 288 (papel) / 676 (branco, sob
+load 28). A 1080p o traço p50 dos Real Oil fica 22–50 ms (Scratch 114, Metallic Flat 80 sob carga). Parado a CPU fica
+em 60–70 % em todos (o Wet a correr). A régua: o controlo de 250 ms lê 258–284 com trava, 14–37 sem (distingue).
+**Oil Wash:** não existe na fábrica (`assets/brushes` sem ele): o «antes» é do B36.

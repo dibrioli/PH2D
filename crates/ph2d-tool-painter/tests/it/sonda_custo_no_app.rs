@@ -285,3 +285,70 @@ fn sonda_custo_no_app() {
     }
     println!("[sonda] load {}", carga());
 }
+
+/// SONDA (ignored, `--features gpu`): quantos Wet de fábrica a placa sabe (`ph2d_wet_gpu::passo::placa_sabe`) depois de
+/// um traço curto, e cada condição que reprova (missão 4K B08.4; `medicoes/ANTES.md` §B08.4).
+#[cfg(feature = "gpu")]
+#[test]
+#[ignore = "sonda: placa_sabe nos Wet de fábrica"]
+fn sonda_placa_sabe_nos_wet() {
+    use ph2d_tool_painter::PaintMedia;
+    use ph2d_wet_paint::assenta::Ecra;
+    use ph2d_wet_paint::sim::LeiDaTinta;
+    use ph2d_wet_paint::tuning::Knob;
+    let lado = 256u32;
+    let (mut wet, mut sabe) = (0usize, 0usize);
+    let mut contagem: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
+    for p in pinceis(&std::env::var("PH2D_SONDA_PRESETS").unwrap_or_else(|_| "todos".into())) {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (lado * lado * 4) as usize], lado, lado);
+        p.aplica(&mut t, false);
+        if t.paint_media() != PaintMedia::WetPaint {
+            continue;
+        }
+        wet += 1;
+        let _ = traco(&mut t, lado, 6.0, 3, 6, 60.0);
+        let (mut ok, mut porque) = (false, Vec::new());
+        t.wet_sonda_motor(|e| {
+            let (sim, g, tu) = (&e.sim, &e.layers[e.active_layer].grid, &e.tuning);
+            ok = ph2d_wet_gpu::passo::placa_sabe(sim, g, tu);
+            let k = sim.gather_params(tu);
+            let lei = match sim.tinta {
+                LeiDaTinta::Velha => g.oleo.is_empty(),
+                LeiDaTinta::Pigmento => {
+                    k.pigment_mix == 0.0
+                        && g.pigmento.is_empty()
+                        && g.chao.is_empty()
+                        && k.k(Knob::Dissolve) == 0.0
+                        && k.k(Knob::EdgeSoftMass) == 0.0
+                }
+            };
+            let ext = sim.ext_bypass
+                || (k.k(Knob::ExtFingering) == 0.0
+                    && k.k(Knob::ExtBackrun) == 0.0
+                    && k.k(Knob::ExtDiffusion) == 0.0);
+            for (falha, nome) in [
+                (!sim.order_invariant, "ordem"),
+                (!lei, "lei/óleo da grade"),
+                (sim.step_pending(), "passo pendente"),
+                (!matches!(k.ecra, Ecra::Cobre { .. }), "ecrã ≠ Cobre"),
+                (k.km_mixing, "K–M"),
+                (k.oleo != 0.0, "Real Oil"),
+                (sim.drip_head != 0.0, "gota"),
+                (k.k(Knob::Opaque) != 0.0, "Opaque"),
+                (g.aparencia.iter().any(|a| a.opaca != 0.0), "opaca na grade"),
+                (!ext, "fingering/backrun/difusão"),
+            ] {
+                if falha {
+                    porque.push(nome);
+                }
+            }
+        });
+        sabe += usize::from(ok);
+        for n in &porque {
+            *contagem.entry(*n).or_default() += 1;
+        }
+        println!("[placa] {:<24} sabe={ok:<5} {}", p.nome, porque.join(" · "));
+    }
+    println!("[placa] {sabe}/{wet} Wet a placa sabe · reprovam por: {contagem:?}");
+}

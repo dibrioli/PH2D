@@ -1,0 +1,304 @@
+▸ linha line_painterwatercolor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1500s
+   Compiling proc-macro2 v1.0.107
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling bitflags v2.13.2
+   Compiling foldhash v0.2.0
+   Compiling arrayvec v0.7.8
+   Compiling rustc-hash v1.1.0
+   Compiling byteorder v1.5.0
+   Compiling log v0.4.34
+   Compiling num-traits v0.2.19
+   Compiling libc v0.2.191
+   Compiling lock_api v0.4.14
+   Compiling naga v30.0.1
+   Compiling wayland-sys v0.31.11
+   Compiling heapless v0.7.17
+   Compiling pulp v0.21.5
+   Compiling wgpu-hal v30.0.1
+   Compiling indexmap v2.14.2
+   Compiling flate2 v1.1.10
+   Compiling profiling v1.0.18
+   Compiling blake3 v1.8.7
+   Compiling wgpu-core v30.0.1 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-gpu/vendor/wgpu-core)
+   Compiling wgpu v30.0.1
+   Compiling crypto-common v0.2.2
+   Compiling yeslogic-fontconfig-sys v6.0.1
+   Compiling nano-gemm-f64 v0.1.0
+   Compiling nano-gemm-c64 v0.1.0
+   Compiling nano-gemm-f32 v0.1.0
+   Compiling nano-gemm-c32 v0.1.0
+   Compiling zstd-sys v2.1.2+zstd.1.5.7
+   Compiling uuid v1.29.0
+   Compiling either v1.19.0
+   Compiling gimli v0.34.0
+   Compiling object v0.40.0
+   Compiling rustc-demangle v0.1.28
+   Compiling mintex v0.1.4
+   Compiling ph2d-inpaint v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-inpaint)
+   Compiling thousands v0.2.0
+   Compiling hashbrown v0.17.1
+   Compiling hashbrown v0.16.1
+   Compiling spirv v0.4.0+sdk-1.4.341.0
+   Compiling raw-cpuid v11.6.0
+   Compiling polycool v0.4.0
+   Compiling rayon v1.12.0
+   Compiling pulldown-cmark v0.13.6
+   Compiling spin v0.9.9
+   Compiling hash32 v0.2.1
+   Compiling pdf-writer v0.15.0
+   Compiling accesskit v0.25.2
+   Compiling zstd-safe v8.2.0
+   Compiling png v0.18.1
+   Compiling digest v0.11.3
+   Compiling sha2 v0.11.1
+   Compiling zstd v0.14.3
+   Compiling quote v1.0.47
+   Compiling ph2d-a11y v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-a11y)
+   Compiling ordered-float v5.5.1
+   Compiling euclid v0.22.14
+   Compiling moxcms v0.8.1
+   Compiling khronos-egl v6.0.0
+   Compiling num_cpus v1.17.0
+   Compiling memmap2 v0.9.12
+   Compiling syn v3.0.9
+   Compiling syn v2.0.119
+   Compiling syn v1.0.109
+   Compiling guillotiere v0.7.0
+   Compiling ph2d-kanban-md v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-kanban-md)
+   Compiling glam v0.30.10
+   Compiling serde_json v1.0.154
+   Compiling ph2d-wet-paint v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-wet-paint)
+   Compiling addr2line v0.27.1
+   Compiling synstructure v0.14.0
+   Compiling serde_derive v1.0.229
+   Compiling bytemuck_derive v1.12.1
+   Compiling thiserror-impl v2.0.21
+   Compiling zerovec-derive v0.11.7
+   Compiling displaydoc v0.2.7
+   Compiling zerofrom-derive v0.1.8
+   Compiling yoke-derive v0.8.4
+   Compiling interpol v0.2.1
+   Compiling zerofrom v0.1.8
+   Compiling private-gemm-x86 v0.1.22
+   Compiling yoke v0.8.4
+   Compiling zerovec v0.11.9
+   Compiling zerotrie v0.2.5
+   Compiling thiserror v2.0.21
+   Compiling bytemuck v1.25.2
+   Compiling cobs v0.3.0
+   Compiling naga-types v30.0.1
+   Compiling gpu-allocator v0.28.0
+   Compiling num-complex v0.4.6
+   Compiling font-types v0.12.7
+   Compiling wgpu-types v30.0.1
+   Compiling dyn-stack v0.13.2
+   Compiling image v0.25.10
+   Compiling zerocopy-derive v0.8.63
+   Compiling equator-macro v0.2.1
+   Compiling equator-macro v0.4.2
+   Compiling faer-macros v0.22.1
+   Compiling read-fonts v0.41.0
+   Compiling equator v0.2.2
+   Compiling equator v0.4.2
+   Compiling backtrace v0.3.77
+   Compiling tinystr v0.8.5
+   Compiling potential_utf v0.1.6
+   Compiling icu_collections v2.4.0
+   Compiling smallvec v1.16.4
+   Compiling ph2d-color v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-color)
+   Compiling ph2d-blend-mode v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-blend-mode)
+   Compiling ph2d-frac v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-frac)
+   Compiling ph2d-item-id v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-item-id)
+   Compiling ph2d-asset-id v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-asset-id)
+   Compiling ph2d-warp-style v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-warp-style)
+   Compiling ph2d-vec-pattern v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-vec-pattern)
+   Compiling ph2d-symmetry v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-symmetry)
+   Compiling ph2d-stroke-width v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-stroke-width)
+   Compiling ph2d-guides v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-guides)
+   Compiling ph2d-vec-connect v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-vec-connect)
+   Compiling ph2d-spring v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-spring)
+   Compiling icu_locale_core v2.4.0
+   Compiling ph2d-input v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-input)
+   Compiling ph2d-brush-presets v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-brush-presets)
+   Compiling zerocopy v0.8.63
+   Compiling ph2d-card-stack v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-card-stack)
+   Compiling parking_lot_core v0.9.12
+   Compiling kurbo v0.13.1
+   Compiling parking_lot v0.12.5
+   Compiling postcard v1.1.3
+   Compiling ph2d-imageio v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-imageio)
+   Compiling ph2d-painter-effects v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-painter-effects)
+   Compiling futures-intrusive v0.5.0
+   Compiling dhat v0.3.3
+   Compiling ph2d-kanban-model v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-kanban-model)
+   Compiling ph2d-vec-scene v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-vec-scene)
+   Compiling ph2d-painter-brush v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-painter-brush)
+   Compiling icu_provider v2.4.0
+   Compiling peniko v0.6.1
+   Compiling icu_properties v2.4.0
+   Compiling icu_locale_fallback v2.4.0
+   Compiling icu_normalizer v2.4.0
+   Compiling gemm-common v0.18.2
+   Compiling qd v0.7.7
+   Compiling faer-traits v0.23.2
+   Compiling gemm-c32 v0.18.2
+   Compiling gemm-f32 v0.18.2
+   Compiling gemm-c64 v0.18.2
+   Compiling gemm-f64 v0.18.2
+   Compiling icu_segmenter v2.4.0
+   Compiling ph2d-vector-traits v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-vector-traits)
+   Compiling ph2d-core v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-core)
+   Compiling ph2d-vector-doc v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-vector-doc)
+   Compiling ph2d-anim v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-anim)
+   Compiling parley_data v0.12.0
+   Compiling icu_casemap v2.4.0
+   Compiling gemm v0.18.2
+   Compiling ph2d-label-fold v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-label-fold)
+   Compiling half v2.7.1
+   Compiling ph2d-board-words v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-board-words)
+   Compiling ph2d-board-model v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-board-model)
+   Compiling ph2d-light v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-light)
+   Compiling ph2d-tween v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-tween)
+   Compiling nano-gemm v0.1.3
+   Compiling skrifa v0.44.0
+   Compiling harfrust v0.12.0
+   Compiling fontique v0.12.0
+   Compiling faer v0.23.2
+   Compiling ph2d-board-embed v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-board-embed)
+   Compiling ph2d-kanban-links v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-kanban-links)
+   Compiling vello_encoding v0.11.0
+   Compiling parley_engine v0.12.0
+   Compiling vello_shaders v0.11.0
+   Compiling parley v0.12.0
+   Compiling ph2d-text v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-text)
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-core-deps-windows-linux-android v30.0.1
+   Compiling vello v0.11.0
+   Compiling ph2d-gpu v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-gpu)
+   Compiling ph2d-vector v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-vector)
+   Compiling ph2d-vec-render v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-vec-render)
+   Compiling ph2d-board-layout v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-board-layout)
+   Compiling ph2d-tool-registry v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-tool-registry)
+   Compiling ph2d-board-geom v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-board-geom)
+   Compiling ph2d-board-route v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-board-route)
+   Compiling kcl-ezpz v0.2.18
+   Compiling ph2d-vec-constraints v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-vec-constraints)
+   Compiling ph2d-vec-edit v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-vec-edit)
+   Compiling ph2d-board-edit v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-board-edit)
+   Compiling ph2d-board-render v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-board-render)
+   Compiling ph2d-board-export v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-board-export)
+   Compiling ph2d-editor-core v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-editor-core)
+   Compiling ph2d-tool-painter v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/target/b08b-fonte/crates/ph2d-tool-painter)
+    Finished `smoke` profile [optimized] target(s) in 1m 01s
+     Running tests/it/main.rs (target/b08b-limpo/smoke/deps/it-b6657e3546f4134f)
+
+running 1 test
+[sonda] load 13.40 5.81 4.20 18/2359 3497009 · tela 1024² · 9 eventos/quadro
+test sonda_custo_no_app::sonda_custo_no_app has been running for over 60 seconds
+[sonda] pincel            diam  px/qd   piso |     dep   comp   tick   dren |   TOTAL med.rod     p95   >16,7
+[sonda] Soft Airbrush      150    360   35us |    4.54   0.00   0.00   0.00 |    4.54    4.54    5.12   0/80 
+[sonda] Blur Basic          20    360   35us |    2.81   0.00   0.00   0.00 |    2.82    2.82    9.64   1/80 
+[sonda] Clone Basic         20    360   35us |    0.04   0.00   0.00   0.00 |    0.04    0.04    0.08   0/80 
+[sonda] Flat Block-in       35    360   35us |   11.79   0.00   0.00   0.00 |   11.79   11.79   13.65   0/80 
+[sonda] Glaze Round         14    360   35us |    1.08   0.00   0.00   0.00 |    1.09    1.09    1.75   0/80 
+[sonda] Hard Round          84    360   35us |    8.92   0.00   0.00   0.00 |    8.93    8.93   14.47   2/80 
+[sonda] Pixel 1px            1    360   35us |    0.22   0.00   0.00   0.00 |    0.23    0.23    0.28   0/80 
+[sonda] Smear Basic         20    360   35us |    8.22   0.00   0.00   0.00 |    8.23    8.23  187.97  26/80 
+[sonda] Soft Round         163    360   35us |    3.34   0.00   0.00   0.00 |    3.34    3.34   67.04  35/80 
+[sonda] Finger Tip          30    360   35us |   18.33   0.00   0.00   0.00 |   18.33   18.33   72.29  80/80 
+[sonda] Burn                20    360   35us |    3.44   0.00   0.00   0.00 |    3.44    3.44   58.91  20/80 
+[sonda] Color Glaze         20    360   35us |    1.75   0.00   0.00   0.00 |    1.75    1.75   47.26   7/80 
+[sonda] Dodge               20    360   35us |    3.14   0.00   0.00   0.00 |    3.14    3.14   14.43   1/80 
+[sonda] Hard Eraser         20    360   35us |    6.76   0.00   0.00   0.00 |    6.77    6.77   14.57   2/80 
+[sonda] Kneaded Eraser      20    360   35us |    1.69   0.00   0.00   0.00 |    1.70    1.70    9.17   0/80 
+[sonda] Texture Eraser      20    360   35us |    3.22   0.00   0.00   0.00 |    3.23    3.23    7.00   0/80 
+[sonda] Ballpoint            5    360   35us |    1.07   0.00   0.00   0.00 |    1.07    1.07    3.06   0/80 
+[sonda] Brush Pen           70    360   35us |   20.34   0.00   0.00   0.00 |   20.37   20.37   27.07  51/80 
+[sonda] G-Pen               10    360   35us |    1.50   0.00   0.00   0.00 |    1.50    1.50    2.92   0/80 
+[sonda] Mapping Pen          3    360   35us |    0.34   0.00   0.00   0.00 |    0.35    0.35    0.66   0/80 
+[sonda] Turnip Pen           8    360   35us |    1.14   0.00   0.00   0.00 |    1.15    1.15    6.06   1/80 
+[sonda] Marker Liner        20    360   35us |    3.06   0.00   0.00   0.00 |    3.06    3.06    3.49   0/80 
+[sonda] Dry Gouache         80    360   35us |   79.77   0.00   0.00   0.00 |   79.77   79.77   91.74  80/80 
+[sonda] Gouache             80    360   35us |   82.50   0.00   0.00   0.00 |   82.51   82.51  123.91  80/80 
+[sonda] Gouache Blender     80    360   35us |   19.31   0.00   0.00   0.00 |   19.31   19.31   21.68  76/80 
+[sonda] Oil Paint           80    360   35us |   84.29   0.00   0.00   0.00 |   84.29   84.29   90.31  80/80 
+[sonda] Paint And Apply     40    360   35us |   34.46   0.00   0.00   0.00 |   34.46   34.46   36.45  80/80 
+[sonda] Round Mixing        50    360   35us |   42.89   0.00   0.00   0.00 |   42.89   42.89   47.22  80/80 
+[sonda] Thick Oil Paint     60    360   35us |   33.73   0.00   0.00   0.00 |   33.73   33.73   34.95  80/80 
+[sonda] Thin Gouache        20    360   35us |    6.45   0.00   0.00   0.00 |    6.45    6.45    8.06   0/80 
+[sonda] Chalk               42    360   35us |   13.33   0.00   0.00   0.00 |   13.33   13.33   14.78   1/80 
+[sonda] Crayon              30    360   35us |    9.25   0.00   0.00   0.00 |    9.25    9.25    9.92   0/80 
+[sonda] Pastel              40    360   35us |   14.84   0.00   0.00   0.00 |   14.84   14.84   16.35   3/80 
+[sonda] Charcoal Stick      20    360   35us |    3.97   0.00   0.00   0.00 |    3.97    3.97    4.52   0/80 
+[sonda] Sketch Pencil       10    360   35us |    2.41   0.00   0.00   0.00 |    2.41    2.41    3.16   0/80 
+[sonda] Splatter            84    360   35us |    9.47   0.00   0.00   0.00 |    9.47    9.47   11.83   0/80 
+[sonda] Bokeh               20    360   35us |    0.66   0.00   0.00   0.00 |    0.67    0.67    1.31   0/80 
+[sonda] Stars              108    360   35us |    2.31   0.00   0.00   0.00 |    2.32    2.32    3.60   0/80 
+[sonda] Pointillism         80    360   35us |    5.55   0.00   0.00   0.00 |    5.55    5.55   10.45   0/80 
+[sonda] Halftone            40    360   35us |    3.11   0.00   0.00   0.00 |    3.11    3.11    4.98   0/80 
+[sonda] Round Watercolor    80    360   35us |   12.40   0.00   0.00   0.00 |   12.40   12.40   40.89  36/80 
+[sonda] Watercolor Splash   300    360   35us |    5.87   0.00   0.00   0.00 |    5.87    5.87   35.39   8/80 
+[sonda] Wet Wash Mix        30    360   35us |   22.22   0.00   0.00   0.00 |   22.23   22.23   70.80  80/80 
+[sonda] Watercolor Basic    20    360   35us |    3.61   0.00   3.97   0.00 |    7.58    7.58   39.47   9/80 
+[sonda] Fan Brush           48    360   35us |   34.21   0.33   0.00   0.00 |   34.77   34.77  138.37  80/80 
+[sonda] Airbrush            20    360   35us |   15.87   0.34   0.00   0.00 |   16.57   16.57   39.79  47/80 
+[sonda] Blender Dots        20    360   35us |    5.07   0.36   0.00   0.00 |    5.68    5.68    7.63   0/80 
+[sonda] Blender Hard        20    360   35us |    7.03   0.37   0.00   0.00 |    7.80    7.80    9.48   0/80 
+[sonda] Blender Soft        20    360   35us |    7.04   0.34   0.00   0.00 |    7.53    7.53    9.52   0/80 
+[sonda] Blender Textured    20    360   35us |    3.49   0.56   0.00   0.00 |    4.40    4.40   30.56   7/80 
+[sonda] Relief Eraser       20    360   35us |    4.36   0.00   0.00   0.00 |    4.37    4.37   12.32   2/80 
+[sonda] Express Oil         64    360   35us |   93.61   4.17   0.01   0.00 |   99.48   99.48  193.00  80/80 
+[sonda] Ink Brush           20    360   35us |   44.23   0.51   0.00   0.00 |   46.40   46.40   75.66  80/80 
+[sonda] Broad Nib           28    360   35us |   29.96   0.32   0.00   0.00 |   30.66   30.66   87.12  80/80 
+[sonda] Dip Pen             20    360   35us |   14.98   0.35   0.00   0.00 |   15.53   15.53   77.00  50/80 
+[sonda] Ink Bullet          20    360   35us |   17.21   0.36   0.00   0.00 |   17.85   17.85   66.91  68/80 
+[sonda] Marker Bullet       20    360   35us |   19.15   0.34   0.00   0.00 |   19.79   19.79   57.04  80/80 
+[sonda] Marker Chisel       30    360   35us |   28.13   0.31   0.00   0.00 |   28.72   28.72   86.25  80/80 
+[sonda] Dabber              51    360   35us |   37.90  57.93   0.01   0.00 |   96.24   96.24 1119.10  80/80 
+[sonda] Dabber 4            51    360   35us |    8.06  52.28   0.01   0.00 |   61.24   61.24  420.89  80/80 
+[sonda] Filbert             64    360   35us |  151.60  55.31   0.01   0.00 |  209.16  209.16 1095.85  80/80 
+[sonda] Filbert Dry         34    360   35us |  105.38  44.26   0.01   0.00 |  149.86  149.86  699.66  80/80 
+[sonda] Flat Bristle        46    360   35us |   74.49  67.87   0.01   0.00 |  142.50  142.50  388.97  80/80 
+[sonda] Thick Impasto       64    360   35us |   88.87  31.52   0.01   0.00 |  121.21  121.21  408.35  80/80 
+[sonda] Tilted Shade        40    360   35us |   85.24  56.31   0.01   0.00 |  141.03  141.03  409.59  80/80 
+[sonda] Knife Dry           51    360   35us |   87.17  48.64   0.01   0.00 |  136.88  136.88  590.79  80/80 
+[sonda] Knife Grainy        51    360   35us |   36.26  39.92   0.00   0.00 |   76.56   76.56  402.13  80/80 
+[sonda] Knife Oily          51    360   35us |   99.19  63.92   0.00   0.00 |  164.29  164.29  284.84  80/80 
+[sonda] Knife Smooth 3      51    360   35us |   51.86  39.81   0.00   0.00 |   92.33   92.33  166.39  80/80 
+[sonda] Knife Stain         51    360   35us |   39.90  43.39   0.00   0.00 |   85.01   85.01  162.20  80/80 
+[sonda] Knife Textured      51    360   35us |   36.85  42.79   0.00   0.00 |   80.45   80.45   91.03  80/80 
+[sonda] Metallic Flat       40    360   35us |   81.55  43.94   0.00   0.00 |  127.71  127.71  136.47  80/80 
+[sonda] Pastel Side         20    360   35us |   48.71   0.35   0.00   0.00 |   49.37   49.37   55.74  80/80 
+[sonda] Soft Pastel         29    360   35us |   35.60   0.34   0.00   0.00 |   36.18   36.18   38.82  80/80 
+[sonda] Square Hard         35    360   35us |   38.00   0.30   0.00   0.00 |   38.38   38.38   42.84  80/80 
+[sonda] Oil Pastel          77    360   35us |   33.43   0.50   0.00   0.00 |   34.12   34.12   38.55  80/80 
+[sonda] Wax Crayon          20    360   35us |   19.93   0.24   0.00   0.00 |   20.36   20.36   21.81  80/80 
+[sonda] Wax Scrape         141    360   35us |   68.67   0.88   0.00   0.00 |   69.82   69.82   80.30  80/80 
+[sonda] Charcoal            37    360   35us |   38.16   0.46   0.00   0.00 |   38.95   38.95   47.15  80/80 
+[sonda] Compressed Charcoal    30    360   35us |   25.51   0.41   0.00   0.00 |   26.07   26.07   39.69  80/80 
+[sonda] Colored 4B           6    360   35us |   12.93   0.25   0.00   0.00 |   14.24   14.24   17.10   7/80 
+[sonda] Graphite 2H          6    360   35us |   12.99   0.20   0.00   0.00 |   18.56   18.56   22.26  77/80 
+[sonda] Graphite HB          6    360   35us |   13.80   0.23   0.00   0.00 |   19.81   19.81   56.93  80/80 
+[sonda] Graphite 2B          6    360   35us |   13.64   0.23   0.00   0.00 |   19.61   19.61   58.14  79/80 
+[sonda] Graphite 8B          6    360   35us |   10.05   0.31   0.00   0.00 |   11.59   11.59   13.97   1/80 
+[sonda] Scratch            248    360   35us |  125.89   4.01   0.01   0.00 |  130.91  130.91  246.30  80/80 
+[sonda] Smear Flat          20    360   35us |    7.46   0.74   0.00   0.00 |    9.12    9.12   17.64  10/80 
+[sonda] Smear Shattered     20    360   35us |    7.72   0.72   0.00   0.00 |    9.23    9.23   24.90  11/80 
+[sonda] Smear Soft          20    360   35us |    7.46   0.73   0.00   0.00 |    8.81    8.81   13.15   0/80 
+[sonda] Smear Spikey        20    360   35us |    7.03   0.68   0.00   0.00 |    8.37    8.37   10.36   0/80 
+[sonda] Smear Wet           20    360   35us |   12.29   0.74   0.00   0.00 |   13.67   13.67   23.02  16/80 
+[sonda] Water Brush         20    360   35us |   49.43   0.60   0.00   0.00 |   50.53   50.53   90.66  80/80 
+[sonda] Wet Drip            20    360   35us |   20.76   0.27   0.00   0.00 |   21.23   21.23   62.19  80/80 
+[sonda] Wet Dry Brush       20    360   35us |   21.37   0.31   0.00   0.00 |   22.08   22.08   28.88  80/80 
+[sonda] Wet Flat            20    360   35us |   13.88   0.32   0.00   0.00 |   14.45   14.45   17.20   7/80 
+[sonda] Wet Liner           29    360   35us |   16.50   1.95   0.00   0.00 |   18.77   18.77   22.91  80/80 
+[sonda] Wet Round           20    360   35us |   19.69   0.26   0.00   0.00 |   20.12   20.12   23.08  80/80 
+[sonda] Wet Wash            20    360   35us |   16.02   1.34   0.00   0.00 |   18.07   18.07   19.71  69/80 
+[sonda] Gouache Flat        20    360   35us |   13.18   0.25   0.00   0.00 |   13.73   13.73   16.09   3/80 
+[sonda] Gouache Opaque      20    360   35us |   16.10   0.32   0.00   0.00 |   16.63   16.63   19.11  43/80 
+[sonda] load 18.01 18.41 10.62 3/2472 3574679
+test sonda_custo_no_app::sonda_custo_no_app ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 424 filtered out; finished in 455.24s
+

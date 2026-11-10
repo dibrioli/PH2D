@@ -83,17 +83,61 @@ pub fn normal_needs_rgb(sprite: &Sprite, mode: ColorMode) -> bool {
     mode != ColorMode::Rgba && sprite.layers.iter().any(|l| l.normal)
 }
 
+/// A porta da cor → índice (P13 R3): a cor da paleta que `c` recebe entre `candidates` (não
+/// vazio, por ordem crescente). O núcleo só traz [`Rgb`]; a OKLab e as rampas moram na
+/// `ph2d-pixel-rampa` (este núcleo não tem dependências, ADR-0196). Tem de ser determinista por cor.
+pub trait Metrica {
+    fn mais_proxima(&self, palette: &[[u8; 4]], candidates: &[u8], c: [u8; 4]) -> u8;
+}
+
+/// Distância euclidiana RGBA, empate → o menor índice (a paridade com o ImageMagick `-remap`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Rgb;
+
+impl Metrica for Rgb {
+    fn mais_proxima(&self, palette: &[[u8; 4]], candidates: &[u8], c: [u8; 4]) -> u8 {
+        let mut best = (u32::MAX, candidates[0]);
+        for &i in candidates {
+            let d = dist(c, palette[usize::from(i)]);
+            if d < best.0 {
+                best = (d, i);
+            }
+        }
+        best.1
+    }
+}
+
+fn dist(a: [u8; 4], b: [u8; 4]) -> u32 {
+    (0..4)
+        .map(|k| {
+            let d = i32::from(a[k]) - i32::from(b[k]);
+            (d * d) as u32
+        })
+        .sum()
+}
+
 /// O sprite convertido para `mode` (a paleta fica; o transparente fica). `None` se já está nele ou
 /// se [`normal_needs_rgb`].
 #[must_use]
 pub fn convert(sprite: &Sprite, mode: ColorMode, opt: Convert) -> Option<Whole> {
+    convert_com(sprite, mode, opt, &Rgb)
+}
+
+/// [`convert`] com a métrica da cor → índice dada (só pesa na ida para Indexed).
+#[must_use]
+pub fn convert_com(
+    sprite: &Sprite,
+    mode: ColorMode,
+    opt: Convert,
+    metrica: &dyn Metrica,
+) -> Option<Whole> {
     if sprite.mode == mode || normal_needs_rgb(sprite, mode) {
         return None;
     }
     let tilesets: Vec<Tileset> = sprite
         .tilesets
         .iter()
-        .map(|t| convert_tileset(sprite, mode, opt, t))
+        .map(|t| convert_tileset(sprite, mode, opt, metrica, t))
         .collect();
     let mut cels = BTreeMap::new();
     for (&key, cel) in &sprite.cels {
@@ -115,7 +159,7 @@ pub fn convert(sprite: &Sprite, mode: ColorMode, opt: Convert) -> Option<Whole> 
             continue;
         }
         let background = sprite.layer(key.0).is_some_and(|l| l.background);
-        let data = convert_cel(sprite, mode, opt, cel, background);
+        let data = convert_cel(sprite, mode, opt, metrica, cel, background);
         cels.insert(
             key,
             Cel {
@@ -134,12 +178,21 @@ pub fn convert(sprite: &Sprite, mode: ColorMode, opt: Convert) -> Option<Whole> 
 }
 
 /// O tileset no modo `mode`, tile a tile. O tile vazio fica vazio em qualquer modo.
-fn convert_tileset(sprite: &Sprite, mode: ColorMode, opt: Convert, t: &Tileset) -> Tileset {
+fn convert_tileset(
+    sprite: &Sprite,
+    mode: ColorMode,
+    opt: Convert,
+    metrica: &dyn Metrica,
+    t: &Tileset,
+) -> Tileset {
     let caixa = Rect::new(0, 0, u32::from(t.tile_w), u32::from(t.tile_h));
     let tiles = t
         .tiles
         .iter()
-        .map(|px| convert_cel(sprite, mode, opt, &Cel::image(caixa, px.clone()), false))
+        .map(|px| {
+            let cel = Cel::image(caixa, px.clone());
+            convert_cel(sprite, mode, opt, metrica, &cel, false)
+        })
         .collect();
     Tileset { tiles, ..t.clone() }
 }
@@ -149,6 +202,7 @@ fn convert_cel(
     sprite: &Sprite,
     mode: ColorMode,
     opt: Convert,
+    metrica: &dyn Metrica,
     cel: &Cel,
     background: bool,
 ) -> Vec<u8> {
@@ -164,7 +218,7 @@ fn convert_cel(
             .flat_map(|&c| [opt.to_gray.of(c), c[3]])
             .collect(),
         ColorMode::Indexed => {
-            let mut m = Mapper::new(&sprite.palette, sprite.transparent, background);
+            let mut m = Mapper::new(&sprite.palette, sprite.transparent, background, metrica);
             to_indexed(&mut m, &rgba, cel, opt.dither)
         }
     }
@@ -244,6 +298,7 @@ fn floyd(m: &mut Mapper, rgba: &[[u8; 4]], w: usize) -> Vec<u8> {
 /// A procura da cor mais próxima, com memória por cor (o resultado é o mesmo sem ela).
 struct Mapper<'a> {
     palette: &'a [[u8; 4]],
+    metrica: &'a dyn Metrica,
     transparent: u8,
     /// Os índices que uma célula opaca pode receber.
     candidates: Vec<u8>,
@@ -254,7 +309,12 @@ struct Mapper<'a> {
 const MEMO_BITS: u32 = 14;
 
 impl<'a> Mapper<'a> {
-    fn new(palette: &'a [[u8; 4]], transparent: u8, background: bool) -> Self {
+    fn new(
+        palette: &'a [[u8; 4]],
+        transparent: u8,
+        background: bool,
+        metrica: &'a dyn Metrica,
+    ) -> Self {
         let candidates = (0..palette.len() as u16)
             .map(|i| i as u8)
             .filter(|&i| background || i != transparent)
@@ -266,35 +326,11 @@ impl<'a> Mapper<'a> {
         };
         Self {
             palette,
+            metrica,
             transparent,
             candidates,
             memo: vec![(0, 0); 1 << MEMO_BITS],
         }
-    }
-
-    fn dist(a: [u8; 4], b: [u8; 4]) -> u32 {
-        (0..4)
-            .map(|k| {
-                let d = i32::from(a[k]) - i32::from(b[k]);
-                (d * d) as u32
-            })
-            .sum()
-    }
-
-    /// As duas mais próximas (a segunda = a melhor das outras).
-    fn two_nearest(&self, c: [u8; 4]) -> (u8, u8) {
-        let mut best = (u32::MAX, self.candidates[0]);
-        let mut second = (u32::MAX, self.candidates[0]);
-        for &i in &self.candidates {
-            let d = Self::dist(c, self.palette[usize::from(i)]);
-            if d < best.0 {
-                second = best;
-                best = (d, i);
-            } else if d < second.0 {
-                second = (d, i);
-            }
-        }
-        (best.1, second.1)
     }
 
     fn index(&mut self, c: [u8; 4]) -> u8 {
@@ -306,7 +342,7 @@ impl<'a> Mapper<'a> {
         if self.memo[slot].0 == u64::from(key) + 1 {
             return self.memo[slot].1;
         }
-        let i = self.two_nearest(c).0;
+        let i = self.metrica.mais_proxima(self.palette, &self.candidates, c);
         self.memo[slot] = (u64::from(key) + 1, i);
         i
     }
@@ -369,7 +405,7 @@ impl<'a> Mapper<'a> {
         }
         let (pa, pb) = (self.palette[usize::from(a)], self.palette[usize::from(b)]);
         let d = |p: [u8; 4], q: [u8; 4]| {
-            f64::from(Self::dist([p[0], p[1], p[2], 0], [q[0], q[1], q[2], 0])).sqrt()
+            f64::from(dist([p[0], p[1], p[2], 0], [q[0], q[1], q[2], 0])).sqrt()
         };
         let n2 = (m.side() * m.side()) as f64;
         if f64::from(m.at(x, y)) / n2 < d(c, pa) / d(pb, pa) {

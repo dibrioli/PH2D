@@ -145,3 +145,13 @@ pub fn op_rampa_nova(s: &ph2d_pixel_core::Sprite, nome: &str, cores: &[[u8; 4]])
         Op::Doc(Box::new(add)),
     ]))
 }
+
+pub mod quantiza;
+pub use quantiza::{Oklab, PreservaRampas, converte_oklab, converte_preservando_rampas};
+
+/// OKLCH → sRGB de 8 bits, sem corte de gama (o chamador garante a gama).
+#[must_use]
+pub fn srgb8_de_oklch(p: OklchColor) -> [u8; 4] {
+    let [r, g, b] = rgb_linear(p).map(|v| byte(linear_to_srgb_unit(v.clamp(0.0, 1.0))));
+    [r, g, b, byte(p.a)]
+}

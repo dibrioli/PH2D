@@ -234,6 +234,61 @@ def perfil(base, top=15):
         tabela(a, b, f"{fase} (sem entrada)", int((b - a) / 1e6 / p50) if p50 else None)
 
 
+def lote(pasta):
+    """`--lote <SAIDA>` (o modo `lote` do .sh): o óleo 2880 por rodada (img/s e óptica ms, as 6 rodadas da fase
+    «corre») e os seis traços de cada wet6 (pen-down = o maior intervalo até 150 ms depois do 1.º movimento; depois de
+    soltar: o maior intervalo em 3 s e as imagens compostas / passos da água por segundo dos `[frame]` desse tempo)."""
+    import glob
+    import json
+    import os
+    import re
+
+    print("| corrida | carga | rodada: img/s · óptica ms (fase corre) |\n|---|---|---|")
+    for d in sorted(glob.glob(os.path.join(pasta, "lote", "*_*"))):
+        f = os.path.join(d, "oleo_2880.log")
+        if not os.path.exists(f):
+            continue
+        rod = [re.search(r"imagens ([\d.]+)/s óptica ([\d.]+)/", l) for l in open(f, errors="replace")
+               if l.startswith("[fps] rodada") and " corre " in l]
+        carga = " → ".join(l.split()[0] for l in open(os.path.join(d, "carga_oleo")))
+        print(f"| {os.path.basename(d)} | {carga} | " + " · ".join(f"{m[1]}/{m[2]}" for m in rod if m) + " |")
+    # O `composite xN` do [frame] é o do fio da tela: com o compositor fora do fio (omissão) lê 0 — não é imagens/s.
+    print("\n| corrida | pincel | teclas `]` | carga | pen-down ms ×6 | soltar máx 3 s ms ×6 "
+          "| passos água/s ×6 |\n|---|---|---|---|---|---|---|")
+    for meta_f in sorted(glob.glob(os.path.join(pasta, "wet6", "*.meta"))):
+        tag = meta_f[:-5]
+        meta = json.loads(open(meta_f).read())
+        marcas = {p[0]: int(p[1]) for p in (l.split() for l in open(tag + ".marcas")) if len(p) >= 2}
+        quadros, frames, ultimo = [], [], 0
+        for linha in open(tag + ".log", errors="replace"):
+            if linha.startswith("[quadro-lento]"):
+                q = dict(kv.split("=") for kv in linha.split()[1:])
+                ultimo = int(q["parede"])
+                quadros.append((ultimo, float(q["intervalo"])))
+            elif "composite media" in linha and ultimo:
+                m = re.search(r"composite media [\d.]+ms pico [\d.]+ms x(\d+)", linha)
+                frames.append([ultimo, int(m[1]) if m else 0, None, None])
+            elif "TAXA DA AGUA" in linha and frames:
+                m = re.search(r"\((\d+) passos em ([\d.]+)s\)", linha)
+                frames[-1][2:] = [int(m[1]), float(m[2])] if m else [None, None]
+        pd, so, ci, pa = [], [], [], []
+        for t in range(1, 7):
+            if f"fim{t}" not in marcas:
+                break
+            tr, up = marcas[f"traco{t}"], marcas[f"up{t}"]
+            pd.append(max((i for p, i in quadros if marcas[f"down{t}"] < p <= tr + 150_000_000), default=0))
+            so.append(max((i for p, i in quadros if up < p <= marcas[f"fim{t}"]), default=0))
+            fr = [f for f in frames if up < f[0] <= marcas[f"fim{t}"] + 500_000_000 and f[3]]
+            pa.append(sum(f[2] for f in fr) / max(sum(f[3] for f in fr), 1e-9) if fr else None)
+        fmt = lambda v: " · ".join("—" if x is None else f"{x:.1f}" for x in v)
+        print(f"| {os.path.basename(tag).split('_')[0]}_{os.path.basename(tag).split('_')[1]} | {meta['pincel']} "
+              f"| {meta['teclas']} | {meta['carga']} | {fmt(pd)} | {fmt(so)} | {fmt(pa)} |")
+
+
+if len(sys.argv) > 1 and sys.argv[1] == "--lote":
+    lote(sys.argv[2])
+    sys.exit(0)
+
 if len(sys.argv) > 1 and sys.argv[1] == "--perf":
     import os
 

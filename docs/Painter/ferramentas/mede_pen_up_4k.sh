@@ -374,6 +374,76 @@ if [ "$1" = wayland ]; then
   exit 0
 fi
 
+# ── WET6 (B12.5/B11.1, 10/11): SEIS traços num só lançamento da cena Composite no painel wet (Textured, WxH), cada
+# um com as suas marcas: toque (mousedown parado 0,4 s) · traço (60 eventos × 8 ms, 192 px) · soltar · 3 s parado. O
+# pen-down de cada traço = o maior intervalo de quadro até 150 ms depois do 1.º movimento (O2-38: 1.º/2.º/3.º toque).
+# TECLAS=n carrega `]` n vezes antes do 1.º traço (×1,15 o raio por tecla): a «aguada grande» do B11.1.
+# uso: … mede_pen_up_4k.sh wet6 <WxH> <preset|omissão> <teclas> [binario] [rotulo]   resumo: mede_pen_up_4k.py --wet6 $S/wet6
+if [ "$1" = wet6 ]; then
+  TELA=$2; PIN=$3; TECLAS=${4:-0}; BIN=${5:-$R/target/smoke/ph2d-host-desktop}; ROT=${6:-x}; D=${DISPLAY_MATRIZ:-:97}
+  W6=$S/wet6; mkdir -p "$W6"; TAG="$(echo "${ROT}_${PIN}_t${TECLAS}_${TELA}" | tr ' ' '-' | tr -cd 'A-Za-z0-9_.-')"
+  PLACA_ENV=(VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.json VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
+    MESA_VK_WSI_DEBUG=sw __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
+  EXTRA=(PH2D_COMPOSITE_PILHA=0 PH2D_COMPOSITE_FUNDO=papel PH2D_COMPOSITE_PAPEL=1 "PH2D_COMPOSITE_TELA=$TELA")
+  [ "$PIN" != omissão ] && EXTRA+=("PH2D_COMPOSITE_PRESET=$PIN")
+  # O Xvfb da corrida anterior pode ainda segurar o ecrã: sem o socket o app panica no `XOpenDisplay` (medido 10/11).
+  for _ in $(seq 1 40); do [ -e "/tmp/.X11-unix/X${D#:}" ] || break; sleep 0.25; done
+  Xvfb $D -screen 0 1600x1000x24 >/dev/null 2>&1 & XV=$!
+  for _ in $(seq 1 40); do [ -e "/tmp/.X11-unix/X${D#:}" ] && break; sleep 0.25; done
+  cd "$R"
+  printf '{"pincel":"%s","teclas":%s,"tela":"%s","bin":"%s","carga":"%s"}\n' "$PIN" "$TECLAS" "$TELA" "$BIN" \
+    "$(cut -d' ' -f1-3 /proc/loadavg)" > "$W6/$TAG.meta"
+  : > "$W6/$TAG.marcas"
+  env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$W6/home_$TAG PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PAINEL=wet \
+    PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=0 PH2D_EXIT_AFTER_FRAMES=1000000 "${PLACA_ENV[@]}" "${EXTRA[@]}" "$BIN" \
+    > "$W6/$TAG.log" 2>&1 &
+  APP=$!; WIN=
+  marca() { echo "$1 $(date +%s%N) $(awk '{print $14+$15}' /proc/$APP/stat 2>/dev/null)" >> "$W6/$TAG.marcas"; }
+  for _ in $(seq 1 120); do
+    grep -q "pilha armada" "$W6/$TAG.log" && WIN=$(DISPLAY=$D xdotool search --pid $APP 2>/dev/null | tail -1)
+    [ -n "$WIN" ] && break; sleep 0.5
+  done
+  echo "[wet6] $TAG app $APP win ${WIN:-NENHUMA}"
+  if [ -n "$WIN" ]; then
+    grep -oE '[^/ ]*(nvidia|radeon|swrast|llvmpipe|lvp|gallium|dri)[^/ ]*\.so[^ ]*' /proc/$APP/maps | sort -u \
+      | tr '\n' ' ' > "$W6/$TAG.placa"
+    DISPLAY=$D xdotool windowsize $WIN 1600 1000 windowmove $WIN 0 0 2>/dev/null; sleep 4
+    DISPLAY=$D xdotool windowfocus --sync $WIN 2>/dev/null; DISPLAY=$D xdotool mousemove 560 300; sleep 0.3
+    for _ in $(seq 1 "$TECLAS"); do DISPLAY=$D xdotool key bracketright; sleep 0.05; done; sleep 1
+    for t in 1 2 3 4 5 6; do
+      y=$((260 + t * 70)); DISPLAY=$D xdotool mousemove 520 $y; sleep 0.3
+      marca down$t; DISPLAY=$D xdotool mousedown 1; sleep 0.4
+      cmd=""; for i in $(seq 1 60); do cmd="$cmd mousemove $((520 + i * 32 / 10)) $((y + (i % 7))) sleep 0.008"; done
+      marca traco$t; DISPLAY=$D xdotool $cmd
+      marca up$t; DISPLAY=$D xdotool mouseup 1; sleep 3; marca fim$t
+    done
+    [ -n "$PNG" ] && DISPLAY=$D import -window root "$W6/$TAG.png" 2>/dev/null
+  fi
+  kill -INT $APP 2>/dev/null
+  for _ in $(seq 1 40); do kill -0 $APP 2>/dev/null || break; sleep 0.25; done
+  kill -KILL $APP 2>/dev/null; wait $APP 2>/dev/null; kill $XV
+  exit 0
+fi
+
+# ── LOTE (B14b-cont, 10/11): o único lote de medição da onda, A × B INTERCALADOS (rodada i: A depois B, rodada i+1
+# a mesma ordem; nunca todos os A primeiro): `oleo 2880` (B14.2) · wet6 Wet Round e Wet Wash (B12.5) · wet6 Wet Wash
+# com TECLAS_AGUADA `]` (B11.1). Cada corrida grava o load. uso: … mede_pen_up_4k.sh lote <rodadas> <binA> <binB>
+# Saída: $S/lote/<A|B>_<i>/oleo_2880.log e $S/wet6/<A|B>_<i>_*.{log,marcas,meta}; resumo: mede_pen_up_4k.py --lote $S
+if [ "$1" = lote ]; then
+  N=${2:-2}; BA=$3; BB=$4; AG=${TECLAS_AGUADA:-20}
+  for i in $(seq 1 "$N"); do for v in A B; do
+    [ $v = A ] && B=$BA || B=$BB
+    mkdir -p "$S/lote/${v}_$i"; cut -d' ' -f1-3 /proc/loadavg > "$S/lote/${v}_$i/carga_oleo"
+    SAIDA=$S/lote/${v}_$i bash "$0" oleo 2880 "$B" > /dev/null 2>&1
+    cut -d' ' -f1-3 /proc/loadavg >> "$S/lote/${v}_$i/carga_oleo"
+    SAIDA=$S bash "$0" wet6 3840x2160 "Wet Round" 0 "$B" "${v}_$i"
+    SAIDA=$S bash "$0" wet6 3840x2160 "Wet Wash" 0 "$B" "${v}_$i"
+    SAIDA=$S bash "$0" wet6 3840x2160 "Wet Wash" "$AG" "$B" "${v}_$i"
+  done; done
+  echo "[lote] feito: $S"
+  exit 0
+fi
+
 # ── ÓLEO (10/11): o Real Oil não tem porta na cena Composite; mede-se pela cena do FPS (PH2D_WETPAINT_SMOKE=3, o app
 # risca sozinho: Dabber com Real Oil, seca, Wet Drip, corre; 6 rodadas; período e imagens da água por segundo).
 # uso: bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/mede_pen_up_4k.sh oleo <lado> [binario]

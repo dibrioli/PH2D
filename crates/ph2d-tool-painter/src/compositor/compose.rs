@@ -40,6 +40,17 @@ pub fn composite_region(
 
 pub(super) fn encode(acc: &[[f32; 4]]) -> Vec<u8> {
     let mut out = vec![0u8; acc.len() * 4];
+    encode_slice(acc, &mut out);
+    out
+}
+
+/// [`encode`] into `out`, resized (never cleared: every byte is written) — B19.12 reuses the buffer.
+pub(super) fn encode_into(acc: &[[f32; 4]], out: &mut Vec<u8>) {
+    out.resize(acc.len() * 4, 0);
+    encode_slice(acc, out);
+}
+
+fn encode_slice(acc: &[[f32; 4]], out: &mut [u8]) {
     // Pure per-pixel map → split across the cores for large buffers (bit-identical: disjoint chunks,
     // no cross-pixel state). Small buffers stay serial (thread spawn would cost more than it saves).
     let threads = parallel_threads(acc.len(), acc.len());
@@ -52,8 +63,8 @@ pub(super) fn encode(acc: &[[f32; 4]]) -> Vec<u8> {
         }
     };
     if threads <= 1 {
-        encode_chunk(&mut out, acc);
-        return out;
+        encode_chunk(out, acc);
+        return;
     }
     std::thread::scope(|s| {
         let handles: Vec<_> = out
@@ -65,7 +76,6 @@ pub(super) fn encode(acc: &[[f32; 4]]) -> Vec<u8> {
             h.join().expect("encode chunk panicked");
         }
     });
-    out
 }
 
 /// How many worker threads a per-pixel pass of `area` px (with `rows` splittable units) should use:

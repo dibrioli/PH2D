@@ -138,7 +138,9 @@ mod oraculo_vizinhanca_tests;
 mod tests;
 pub mod vidro;
 pub use abaixo::composite_below;
-pub use cache::{CompositorCache, composite_with_cache};
+#[cfg(test)]
+pub(crate) use cache::SAIDAS_REUSADAS;
+pub use cache::{CompositorCache, composite_with_cache, composite_with_cache_into};
 pub use compose::{composite, composite_region};
 pub use gpu_ops::flatten_for_gpu;
 pub(crate) use vidro::composite_region_sobre_o_papel;

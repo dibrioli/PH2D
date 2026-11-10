@@ -22,7 +22,7 @@ use ph2d_painter_effects::BlendMode;
 
 use crate::compositor::{
     CompositorCache, LayerImage, LayerPixelSource, Region, composite, composite_region,
-    composite_with_cache,
+    composite_with_cache_into,
 };
 use crate::layers::{LayerId as RtLayerId, LayerKind, LayerStack};
 use crate::params::PainterParams;

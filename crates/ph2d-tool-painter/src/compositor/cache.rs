@@ -22,6 +22,11 @@ pub struct CompositorCache {
     /// (a fresh canvas-sized `Vec` per frame is ~65 k page faults at 4K). Scratch: never cloned.
     pub(crate) acc: Vec<[f32; 4]>,
     pub(crate) ajustado: Vec<[f32; 4]>,
+    /// B19.6/B19.10: one `ajustado` per row band of the banded walk. Scratch: never cloned.
+    pub(crate) ajustado_por_faixa: Vec<Vec<[f32; 4]>>,
+    /// B19.12: the previous frame's output, handed back by [`Self::recicla`] for the next
+    /// [`composite_with_cache_into`]. Scratch: never cloned.
+    pub(crate) saida: Vec<u8>,
 }
 
 impl Clone for CompositorCache {
@@ -31,6 +36,8 @@ impl Clone for CompositorCache {
             dirty_rect: self.dirty_rect,
             acc: Vec::new(),
             ajustado: Vec::new(),
+            ajustado_por_faixa: Vec::new(),
+            saida: Vec::new(),
         }
     }
 }
@@ -68,6 +75,19 @@ impl CompositorCache {
             .retain(|&k, _| pos(k).is_some_and(|p| p >= adj_pos));
     }
 
+    /// B19.12: keep a stale output for reuse when nobody else holds it (the shell copies the drained
+    /// frame into its own buffer and drops it).
+    pub fn recicla(&mut self, velha: Option<std::sync::Arc<Vec<u8>>>) {
+        if let Some(v) = velha.and_then(|a| std::sync::Arc::try_unwrap(a).ok()) {
+            self.saida = v;
+        }
+    }
+
+    /// The recycled output buffer (empty when there is none).
+    pub fn toma_a_saida(&mut self) -> Vec<u8> {
+        std::mem::take(&mut self.saida)
+    }
+
     /// Mark the sub-rect to recompose next drain.
     pub fn mark_dirty(&mut self, region: Region) {
         self.dirty_rect = Some(region);
@@ -90,11 +110,48 @@ impl CompositorCache {
 #[must_use]
 pub fn composite_with_cache(
     stack: &LayerStack,
-    src: &impl LayerPixelSource,
+    src: &(impl LayerPixelSource + Sync),
     width: u32,
     height: u32,
     cache: &mut CompositorCache,
 ) -> Vec<u8> {
+    let mut out = Vec::new();
+    composite_with_cache_into(stack, src, width, height, cache, &mut out);
+    out
+}
+
+/// [`composite_with_cache`] into `out` (B19.12): resized, never cleared — every byte is written, so a
+/// buffer of the same size is reused with no allocation and no page faults.
+pub fn composite_with_cache_into(
+    stack: &LayerStack,
+    src: &(impl LayerPixelSource + Sync),
+    width: u32,
+    height: u32,
+    cache: &mut CompositorCache,
+    out: &mut Vec<u8>,
+) {
+    compor_com_cache(stack, src, width, height, cache);
+    #[cfg(test)]
+    if out.capacity() >= cache.acc.len() * 4 && !cache.acc.is_empty() {
+        SAIDAS_REUSADAS.with(|n| n.set(n.get() + 1));
+    }
+    super::compose::encode_into(&cache.acc, out);
+}
+
+#[cfg(test)]
+thread_local! {
+    /// B19.12: outputs composed into a buffer that already had the room (no allocation).
+    pub(crate) static SAIDAS_REUSADAS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Leaves the composite in `cache.acc` (straight encoded).
+fn compor_com_cache(
+    stack: &LayerStack,
+    src: &(impl LayerPixelSource + Sync),
+    width: u32,
+    height: u32,
+    cache: &mut CompositorCache,
+) {
     let root = stack.root();
     // Highest root adjustment (smallest index = MOST below-layers cached) whose
     // cut is still valid. Its cut is the composite of everything below it.
@@ -128,23 +185,127 @@ pub fn composite_with_cache(
             root
         }
     };
-    super::compose::composite_into(
-        &mut acc,
-        ids,
-        stack,
-        src,
-        (width, height),
-        0,
-        0,
-        width,
-        height,
-        0,
-        Some(&mut *cache),
-        None,
-    );
-    let out = super::compose::encode(&acc);
+    // B19.6/B19.10: per-pixel work over `ids` (the cut already holds whatever is spatial below the
+    // restart) splits into the row bands of `compor_regiao`; the old serial walk is `fios = 1`.
+    let fios = if copias_antigas() || super::compose::has_spatial_adjustment(stack, ids) {
+        1
+    } else {
+        fios_do_cache(acc.len(), height as usize)
+    };
+    if fios <= 1 {
+        super::compose::composite_into(
+            &mut acc,
+            ids,
+            stack,
+            src,
+            (width, height),
+            0,
+            0,
+            width,
+            height,
+            0,
+            Some(&mut *cache),
+            None,
+        );
+    } else {
+        em_faixas(&mut acc, ids, stack, src, (width, height), fios, cache);
+    }
     cache.acc = acc;
-    out
+}
+
+/// The walk of [`compor_com_cache`] in `fios` row bands, each with its own cut map (the cuts already
+/// in `cache` enter as empty placeholders, so the restart cut is never recopied); the new cuts are
+/// stitched back by concatenation in band order — the same bytes as the serial walk's.
+fn em_faixas(
+    acc: &mut [[f32; 4]],
+    ids: &[LayerId],
+    stack: &LayerStack,
+    src: &(impl LayerPixelSource + Sync),
+    canvas: (u32, u32),
+    fios: usize,
+    cache: &mut CompositorCache,
+) {
+    let width = canvas.0;
+    let rpb = (canvas.1 as usize).div_ceil(fios);
+    let band_px = rpb * (width as usize);
+    let n = acc.len().div_ceil(band_px);
+    cache.ajustado_por_faixa.resize_with(n, Vec::new);
+    let mut faixas: Vec<CompositorCache> = cache
+        .ajustado_por_faixa
+        .iter_mut()
+        .map(|a| CompositorCache {
+            cuts: cache.cuts.keys().map(|&k| (k, Vec::new())).collect(),
+            dirty_rect: None,
+            acc: Vec::new(),
+            ajustado: std::mem::take(a),
+            ajustado_por_faixa: Vec::new(),
+            saida: Vec::new(),
+        })
+        .collect();
+    std::thread::scope(|s| {
+        let handles: Vec<_> = acc
+            .chunks_mut(band_px)
+            .zip(faixas.iter_mut())
+            .enumerate()
+            .map(|(bi, (band, fc))| {
+                let band_ry = (bi * rpb) as u32;
+                let band_rh = (band.len() / (width as usize)) as u32;
+                s.spawn(move || {
+                    super::compose::composite_into(
+                        band,
+                        ids,
+                        stack,
+                        src,
+                        canvas,
+                        0,
+                        band_ry,
+                        width,
+                        band_rh,
+                        0,
+                        Some(fc),
+                        None,
+                    );
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().expect("cache band panicked");
+        }
+    });
+    let novos: Vec<LayerId> = faixas[0]
+        .cuts
+        .iter()
+        .filter(|(_, v)| !v.is_empty())
+        .map(|(&k, _)| k)
+        .collect();
+    for id in novos {
+        let mut corte = Vec::with_capacity(acc.len());
+        for f in &faixas {
+            corte.extend_from_slice(&f.cuts[&id]);
+        }
+        cache.cuts.insert(id, corte);
+    }
+    for (a, f) in cache.ajustado_por_faixa.iter_mut().zip(faixas) {
+        *a = f.ajustado;
+    }
+}
+
+#[cfg(not(test))]
+#[inline]
+fn fios_do_cache(area: usize, rows: usize) -> usize {
+    super::compose::parallel_threads(area, rows)
+}
+/// Test override of the band count (`0` = the production rule).
+#[cfg(test)]
+pub(super) static FIOS_DO_CACHE: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+#[cfg(test)]
+fn fios_do_cache(area: usize, rows: usize) -> usize {
+    match FIOS_DO_CACHE.load(std::sync::atomic::Ordering::Relaxed) {
+        0 => super::compose::parallel_threads(area, rows),
+        _ if area == 0 => 1,
+        n => n.clamp(1, rows),
+    }
 }
 
 /// B19.9: the three canvas copies per drag frame, back on only for the probe's same-process A/B.

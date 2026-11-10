@@ -533,7 +533,6 @@ fn cache_hit_skips_below_layers() {
     // The bandwidth win: a param-only change of an adjustment must NOT re-read
     // the layers below its cut (only the adjustment + layers above recompose).
     use ph2d_painter_effects::adjustments::AdjustmentKind;
-    use std::cell::RefCell;
     use std::collections::BTreeMap;
 
     /// Counts `layer_rgba` reads per layer. Interior mutability keeps the
@@ -541,11 +540,11 @@ fn cache_hit_skips_below_layers() {
     /// there is no borrow conflict.
     struct CountingSource<'a> {
         inner: &'a MapPixelSource,
-        reads: RefCell<BTreeMap<LayerId, usize>>,
+        reads: std::sync::Mutex<BTreeMap<LayerId, usize>>,
     }
     impl LayerPixelSource for CountingSource<'_> {
         fn layer_rgba(&self, id: LayerId) -> Option<&[u8]> {
-            *self.reads.borrow_mut().entry(id).or_default() += 1;
+            *self.reads.lock().unwrap().entry(id).or_default() += 1;
             self.inner.layer_rgba(id)
         }
     }
@@ -566,23 +565,23 @@ fn cache_hit_skips_below_layers() {
     inner.insert(top, varied(w, h, 3));
     let src = CountingSource {
         inner: &inner,
-        reads: RefCell::new(BTreeMap::new()),
+        reads: std::sync::Mutex::new(BTreeMap::new()),
     };
 
     // Cold compose reads every raster ≥ once.
     let mut cache = CompositorCache::new();
     let _ = composite_with_cache(&s, &src, w, h, &mut cache);
-    assert!(src.reads.borrow().get(&base).copied().unwrap_or(0) >= 1);
-    assert!(src.reads.borrow().get(&mid).copied().unwrap_or(0) >= 1);
-    assert!(src.reads.borrow().get(&top).copied().unwrap_or(0) >= 1);
+    assert!(src.reads.lock().unwrap().get(&base).copied().unwrap_or(0) >= 1);
+    assert!(src.reads.lock().unwrap().get(&mid).copied().unwrap_or(0) >= 1);
+    assert!(src.reads.lock().unwrap().get(&top).copied().unwrap_or(0) >= 1);
 
     // Param-only change → cache hit restarts from the adjustment's cut; the
     // below-layers (base, mid) are not re-read, the above-layer (top) is.
-    src.reads.borrow_mut().clear();
+    src.reads.lock().unwrap().clear();
     s.adjustment_mut(adj).unwrap().params = bc(0.5, -0.2);
     cache.invalidate_above(adj, &s);
     let _ = composite_with_cache(&s, &src, w, h, &mut cache);
-    let reads = src.reads.borrow();
+    let reads = src.reads.lock().unwrap();
     assert_eq!(
         reads.get(&base).copied().unwrap_or(0),
         0,

@@ -387,3 +387,34 @@ fn desfazer_um_parametro_de_ajuste_devolve_o_valor_de_antes() {
         "o Ctrl+Z não devolveu o valor de antes do arrasto"
     );
 }
+
+/// B19.12 — o arrasto de um ajuste compõe no buffer do quadro anterior (a shell copia o quadro e
+/// larga-o), com os mesmos bytes que sem reuso (a shell a segurar cada quadro).
+#[test]
+fn o_arrasto_de_um_ajuste_reusa_a_saida_com_os_mesmos_bytes() {
+    use crate::compositor::SAIDAS_REUSADAS;
+    let arrasto = |t: &mut PainterTool, adj: RtLayerId, segura: bool| {
+        SAIDAS_REUSADAS.with(|n| n.set(0));
+        let mut quadros = Vec::new();
+        let mut seguradas = Vec::new();
+        for k in 1..=6 {
+            t.set_adjustment_param(adj, 0, 0.5 + 0.04 * k as f32);
+            let (a, ..) = t.take_preview_arc().expect("o quadro do arrasto");
+            quadros.push(a.to_vec());
+            if segura {
+                seguradas.push(a);
+            }
+        }
+        (quadros, SAIDAS_REUSADAS.with(std::cell::Cell::get))
+    };
+    let (mut t, ids) = doc(K::HueSaturationBrightness);
+    let (reusados, n) = arrasto(&mut t, ids.adj, false);
+    let (mut t2, ids2) = doc(K::HueSaturationBrightness);
+    let (segurados, n2) = arrasto(&mut t2, ids2.adj, true);
+    assert_eq!(
+        n2, 0,
+        "controlo: com a shell a segurar cada quadro não há reuso"
+    );
+    assert_eq!(n, 5, "o arrasto não reusou a saída do quadro anterior");
+    assert!(reusados == segurados, "o reuso mudou os bytes");
+}

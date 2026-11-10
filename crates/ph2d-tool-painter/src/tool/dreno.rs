@@ -107,7 +107,11 @@ impl PainterTool {
         let dirty = self.dirty_rect.take();
         let stroke_dirtied = dirty.is_some();
         if self.reacende_pela_luz_guardada(dirty) {
-            return (Arc::clone(self.composited.as_ref().expect("just set")), w, h);
+            return (
+                Arc::clone(self.composited.as_ref().expect("just set")),
+                w,
+                h,
+            );
         }
         // A live Mask scratch does NOT force the full path. Its protection-overlay tint is PER-PIXEL
         // (`apply_mask_overlay`: a texel's tint depends only on its own coverage + colour, no global
@@ -178,17 +182,26 @@ impl PainterTool {
                     self.larga_a_luz_guardada();
                     v
                 } else {
-                    let mut c = if std::mem::take(&mut self.adjustment_cache_pending)
-                        && !stroke_dirtied
-                    {
-                        // Adjustment slider-drag: restart from the cut-point cache —
-                        // bit-identical to a full `composite` (gate
-                        // `cache_matches_full_recompose`).
-                        composite_with_cache(&self.layers, &src, w, h, &mut self.compositor_cache)
-                    } else {
-                        self.compositor_cache.invalidate_from(active, &self.layers);
-                        composite(&self.layers, &src, w, h)
-                    };
+                    let mut c =
+                        if std::mem::take(&mut self.adjustment_cache_pending) && !stroke_dirtied {
+                            // Adjustment slider-drag: restart from the cut-point cache —
+                            // bit-identical to a full `composite` (gate
+                            // `cache_matches_full_recompose`). B19.12: into the buffer `ajuste_mudou`
+                            // recycled (no canvas-sized alloc nor page faults per frame).
+                            let mut c = self.compositor_cache.toma_a_saida();
+                            composite_with_cache_into(
+                                &self.layers,
+                                &src,
+                                w,
+                                h,
+                                &mut self.compositor_cache,
+                                &mut c,
+                            );
+                            c
+                        } else {
+                            self.compositor_cache.invalidate_from(active, &self.layers);
+                            composite(&self.layers, &src, w, h)
+                        };
                     self.compoe_sobre_o_papel(&mut c, full);
                     self.guarda_o_nao_aceso(&c);
                     c

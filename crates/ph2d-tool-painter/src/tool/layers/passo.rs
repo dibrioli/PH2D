@@ -61,7 +61,7 @@ impl PainterTool {
         gesto: Option<CoalesceKind>,
     ) {
         self.compositor_cache.invalidate_above(id, &self.layers);
-        self.composited = None;
+        self.compositor_cache.recicla(self.composited.take());
         self.dirty_rect = None;
         self.adjustment_cache_pending = true;
         self.preview_dirty = true;

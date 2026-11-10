@@ -88,10 +88,10 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     >());
     #[cfg(feature = "panel-pixel-keys")]
     reg.push(ErasedPanel::new::<ph2d_panel_pixel_keys::PixelKeysPanel>());
-    #[cfg(feature = "panel-pixel-prefs")]
-    reg.push(ErasedPanel::new::<ph2d_panel_pixel_prefs::PixelPrefsPanel>());
     #[cfg(feature = "panel-pixel-lint")]
     reg.push(ErasedPanel::new::<ph2d_panel_pixel_lint::PixelLintPanel>());
+    #[cfg(feature = "panel-pixel-prefs")]
+    reg.push(ErasedPanel::new::<ph2d_panel_pixel_prefs::PixelPrefsPanel>());
     #[cfg(feature = "panel-pixel-preview")]
     reg.push(ErasedPanel::new::<
         ph2d_panel_pixel_preview::PixelPreviewPanel,

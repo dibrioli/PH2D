@@ -3,7 +3,7 @@
 /// A tradução de uma chave daqui, ou `None`.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
-        "pixel.lint" => "Lint",
+        "panel.pixel_lint.title" => "Lint",
         "pixel.lint.sec_rules" => "Rules",
         "pixel.lint.sec_issues" => "Issues",
         "pixel.lint.rule.orphan" => "Orphan pixels",

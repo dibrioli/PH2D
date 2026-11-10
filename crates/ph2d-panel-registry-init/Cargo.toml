@@ -33,8 +33,8 @@ ph2d-panel-physics = { path = "../ph2d-panel-physics", optional = true }
 ph2d-panel-pixel-export = { path = "../ph2d-panel-pixel-export", optional = true }
 ph2d-panel-pixel-history = { path = "../ph2d-panel-pixel-history", optional = true }
 ph2d-panel-pixel-keys = { path = "../ph2d-panel-pixel-keys", optional = true }
-ph2d-panel-pixel-prefs = { path = "../ph2d-panel-pixel-prefs", optional = true }
 ph2d-panel-pixel-lint = { path = "../ph2d-panel-pixel-lint", optional = true }
+ph2d-panel-pixel-prefs = { path = "../ph2d-panel-pixel-prefs", optional = true }
 ph2d-panel-pixel-preview = { path = "../ph2d-panel-pixel-preview", optional = true }
 ph2d-panel-pixel-slices = { path = "../ph2d-panel-pixel-slices", optional = true }
 ph2d-panel-pixel-tiles = { path = "../ph2d-panel-pixel-tiles", optional = true }
@@ -119,8 +119,8 @@ panel-physics = ["dep:ph2d-panel-physics"]
 panel-pixel-export = ["dep:ph2d-panel-pixel-export"]
 panel-pixel-history = ["dep:ph2d-panel-pixel-history"]
 panel-pixel-keys = ["dep:ph2d-panel-pixel-keys"]
-panel-pixel-prefs = ["dep:ph2d-panel-pixel-prefs"]
 panel-pixel-lint = ["dep:ph2d-panel-pixel-lint"]
+panel-pixel-prefs = ["dep:ph2d-panel-pixel-prefs"]
 panel-pixel-preview = ["dep:ph2d-panel-pixel-preview"]
 panel-pixel-slices = ["dep:ph2d-panel-pixel-slices"]
 panel-pixel-tiles = ["dep:ph2d-panel-pixel-tiles"]

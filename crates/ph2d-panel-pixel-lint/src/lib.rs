@@ -30,7 +30,7 @@ impl Panel for PixelLintPanel {
     const NODE_ID: NodeId = ids::PANEL;
     /// Nasce FECHADO: abre por Window ▸ Lint.
     const DEFAULT_VISIBLE: bool = false;
-    const TITLE: TextKey = TextKey::new("pixel.lint");
+    const TITLE: TextKey = TextKey::new("panel.pixel_lint.title");
     const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Bug;
     const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
         ph2d_editor_core::screens::slot::SlotSet::SIDES;

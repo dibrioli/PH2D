@@ -3,7 +3,7 @@
 //! coluna (a régua da janela UNDO HISTORY).
 
 use ph2d_editor_core::panel::cards::banda::metrics as m;
-use ph2d_editor_core::panel::cards::ferramenta::{caixa, cartao};
+use ph2d_editor_core::panel::cards::ferramenta::{caixas_aos_pares, cartao};
 use ph2d_editor_core::panel::cards::linhas_extra::ListRow;
 use ph2d_editor_core::panel::cards::{CardDef, Cell, Widget, borda, paint_card_list};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
@@ -60,15 +60,11 @@ fn cartao_regras(r: Regras) -> CardDef<'static> {
         tr("pixel.lint.sec_rules"),
         None,
         move |c, mut y| {
-            for regra in Regra::TODAS {
-                y = caixa(
-                    c,
-                    ids::regra(regra),
-                    chave_da_regra(regra),
-                    r.ligada(regra),
-                    y,
-                );
-            }
+            let caixas: Vec<_> = Regra::TODAS
+                .iter()
+                .map(|&regra| (ids::regra(regra), chave_da_regra(regra), r.ligada(regra)))
+                .collect();
+            y = caixas_aos_pares(c, &caixas, y);
             let limite = Cell::new(Widget::Field {
                 id: ids::COLOR_LIMIT,
                 glyph: Glyph::Icon(ph2d_editor_core::icons::IconId::Info),

@@ -124,32 +124,8 @@ pub(crate) struct ProjectFile {
     /// entidades com o mesmo `StableId` corrompem tudo o que aponta para um objeto (uma
     /// junta, um binding, um override). Ele só sobe.
     pub(crate) stable_id_counter: u64,
-    /// **O INPUT MAP** (v97) — as acções nomeadas deste projecto, com as ligações de cada uma.
-    ///
-    /// ⚠️ **É AUTORIA do projecto, e não preferência de utilizador.** `jump` existir é uma decisão
-    /// do jogo; *qual tecla* um jogador prefere é dele, e isso mora fora do repo (`~/.ph2d/`), como
-    /// o `motion_character`. É a mesma divisão que o Godot faz entre as project settings e o remap
-    /// em runtime — e é o que impede que abrir o projecto de outra pessoa reescreva os controlos
-    /// dela.
-    ///
-    /// ⚠️ **Fora do `ProjectState`** pelo motivo de `motion`/`timeline`/`physics`: aquele é a
-    /// unidade do undo GLOBAL, e um Ctrl+Z do canvas não pode rebobinar o mapa de controlos.
-    ///
-    /// ⚠️ **Tipo da crate-folha, e aqui isso é seguro** — ao contrário do `tokens` e do `settings`,
-    /// que ganharam tipo próprio do arquivo porque herdavam o layout de um tipo de *runtime*. O
-    /// `InputMap` **é** o documento: ele não tem forma de runtime a divergir dele, e serializá-lo é
-    /// a razão de a folha ter `serde`.
-    ///
-    /// Vazio num projecto onde ninguém declarou acção nenhuma — e um mapa vazio devolve silêncio
-    /// em toda leitura, que é exactamente o comportamento de todo arquivo ≤ v96.
-    ///
-    /// ⚠️⚠️ **A POSIÇÃO É O FORMATO, e este campo é o ÚLTIMO** (integração de 2026-08-24). O
-    /// postcard é posicional: `input_map` vem **depois** do `stable_id_counter`, que a linha
-    /// irmã apendou na mesma jornada. As duas linhas escreveram o literal `96` de forma
-    /// independente e o valor certo não estava em nenhum dos dois lados — **contou-se**:
-    /// 95 (base) + 1 (identidade) + 1 (input map) = **97**. Trocar estes dois campos de
-    /// ordem não dá erro nenhum: dá dois campos a ler os bytes um do outro.
-    pub(crate) input_map: ph2d_input::InputMap,
+    // ⚠️ O INPUT MAP viaja no `state` desde a v232 (undo e ficheiro, um só dono); o `game_id` é o
+    // último campo.
     /// **A ARTE DOS PADRÕES de textura** (plano 33, W4) — os pixels que cada `Paint::Pattern` da
     /// cena vectorial nomeia por `AssetId`.
     ///
@@ -162,7 +138,7 @@ pub(crate) struct ProjectFile {
     /// dentro não voltar a bumpar o `PROJECT_SCHEMA`.
     ///
     /// ⚠️⚠️ **A POSIÇÃO É O FORMATO, e este campo é o ÚLTIMO** — o postcard é posicional. Ver o
-    /// aviso do `input_map` acima: trocar dois campos de ordem não dá erro nenhum, dá dois campos a
+    /// aviso do `stable_id_counter`: trocar dois campos de ordem não dá erro nenhum, dá dois campos a
     /// ler os bytes um do outro.
     ///
     /// Vazio num projecto sem padrão nenhum. Ver [`crate::project_texture_pattern`].
@@ -203,8 +179,40 @@ pub(crate) struct ProjectFile {
     /// **As RECEITAS DE SOM e o material** (v217, SFX Lab W2): `ph2d_sfx_recipe::SfxLibrary`, com versão PRÓPRIA.
     pub(crate) sfx_lab: Vec<u8>,
     /// **Os nomes das camadas de colisão** (v218, ficha f1): `ph2d_physics_ecs::LayerNames`, com versão PRÓPRIA.
-    /// ⚠️ **O último campo:** `falta_no_fim` e os braços `189`..`192` acrescentam o `0` deste `Vec` vazio.
     pub(crate) physics_layers: Vec<u8>,
+    /// **A identidade do JOGO** (v232, plano InputMap §4): sorteada uma vez quando o projecto NASCE
+    /// ([`new_game_id`]) e mantida por save/load. Chaveia o ficheiro de teclas do jogador. Fora do
+    /// `ProjectState`: um undo não troca de jogo. ⚠️ O último campo (postcard é posicional).
+    pub(crate) game_id: u64,
+}
+
+/// **A identidade do jogo, no mundo** — recurso como o `StableIdCounter` (campo do ficheiro, fora do
+/// `ProjectState`): o load semeia-o e o projecto que nasce sorteia-o na primeira pergunta.
+#[derive(bevy_ecs::prelude::Resource, Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) struct GameId(pub(crate) u64);
+
+/// **Um `game_id` novo, nunca `0`** — o acaso do SO (a chave da `RandomState` da std, sem dependência
+/// nova) misturado com o relógio.
+#[must_use]
+pub(crate) fn new_game_id() -> u64 {
+    use std::hash::{BuildHasher, Hasher};
+    let mut h = std::collections::hash_map::RandomState::new().build_hasher();
+    h.write_u128(crate::App::timestamp_ns());
+    h.finish().max(1)
+}
+
+/// O `game_id` deste mundo; um projecto novo sorteia-o UMA vez e guarda-o.
+pub(crate) fn game_id_of(world: &mut bevy_ecs::world::World) -> u64 {
+    let id = world.get_resource_or_insert_with(|| GameId(new_game_id()));
+    id.0
+}
+
+impl crate::App {
+    /// A identidade do jogo deste projecto (ver [`ProjectFile::game_id`]); `0` só sem mundo.
+    pub(crate) fn game_id(&mut self) -> u64 {
+        let g = self.gfx.as_mut();
+        g.map_or(0, |g| game_id_of(g.sim.world_mut()))
+    }
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que
@@ -266,7 +274,7 @@ mod settings_tests;
 #[path = "project_schema_tests.rs"]
 mod schema_tests;
 
-/// **A costura do INPUT MAP** (v97) — irmão de `settings_tests`, cortado por assunto.
+/// **O INPUT MAP no undo e o `game_id`** (v232) — irmão de `settings_tests`, cortado por assunto.
 #[cfg(test)]
 #[path = "project_input_map_tests.rs"]
 mod input_map_tests;

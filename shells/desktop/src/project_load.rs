@@ -364,16 +364,10 @@ impl crate::App {
         // descreveria uma corrida que ninguém deu — o irmão exato do que o
         // `project_forget` faz com o relógio, a fila de undo e a timeline.
         self.player_tape = ph2d_physics_ecs::InputTape::from_wire(&file.player_tape);
-        // **O INPUT MAP** (v96). Instalado, nunca fundido — pelo motivo da fita logo acima: um
-        // load é uma troca de DOCUMENTO, e costurar o mapa do projecto novo com o do anterior
-        // deixaria acções de um jogo a viver dentro de outro. Um projecto ≤ v95 nunca chega aqui
-        // (o schema recusa antes), então o vazio que isto instala é sempre um vazio autorado.
-        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.input_map = file.input_map.clone();
-            // ⛔ **E a ESCUTA morre com o documento.** O `ActionId` é um contador POR-MAPA: uma
-            // escuta armada em `jump` do projecto anterior re-aponta, no mapa novo, para **outra
-            // acção** com o mesmo número — e a próxima tecla ligar-se-ia a ela, em silêncio.
-            hero.store.stop_listening();
+        // O jogo é o do ficheiro (v232). O INPUT MAP já voltou no `state` (`apply_project`, que
+        // também cala a escuta armada no mapa anterior).
+        if let Some(gfx) = self.gfx.as_mut() {
+            (gfx.sim.world_mut()).insert_resource(crate::project::GameId(file.game_id));
         }
         // ⚠️ E o estado RESOLVIDO zera junto: ele guarda um tique atrás, e o tique atrás de um
         // documento que acabou de fechar é de outro jogo — uma borda `just_pressed` fantasma no

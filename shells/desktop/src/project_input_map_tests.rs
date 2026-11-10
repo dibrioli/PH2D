@@ -1,103 +1,145 @@
-//! **O INPUT MAP ATRAVESSA O ARQUIVO** (v97) — os gates da costura.
+//! **O INPUT MAP é documento** (v232, plano InputMap §3–§4): viaja no `ProjectState` (undo e
+//! ficheiro, um só dono) e o projecto tem um `game_id` próprio.
 //!
-//! ⚠️ **Por que estes gates são de TEXTO e não de comportamento:** a ida-e-volta *serializada* já é
-//! provada em [`super::tests`], que monta um `ProjectFile` **à mão** — e é precisamente isso que
-//! deixa um buraco: uma mutação no `project_save.rs` que gravasse um mapa **vazio** em vez do vivo
-//! passaria por aquele gate sem o acordar, porque ele nunca chama o save. Um teste de comportamento
-//! aqui exigiria uma `App` inteira (GPU, janela, atlas), que é o que o irmão da **fita** também não
-//! pôde fazer.
-//!
-//! ⇒ a forma é a dele, controle positivo incluído: ler a **CONSTRUÇÃO**, e falhar alto se ela mudar
-//! de forma. *Um scanner que deixa de encontrar o que mede tem de gritar, não passar.*
+//! O quadro do undo é simulado sem GPU pela MESMA porta da `App`: `do_hero` na fotografia, o diff,
+//! `push_undo`, e `ao_hero` no restauro (`undo_app` só as chama — gate de texto abaixo).
 
-/// **O SAVE grava o mapa VIVO da sessão**, e não um mapa vazio.
-///
-/// ⚠️ **Ancorado na CONSTRUÇÃO, não no nome do campo.** A primeira ocorrência de `input_map:` na
-/// família é a **declaração** do struct, e um gate que a lesse ficaria verde afirmando uma coisa
-/// sobre a outra — o defeito que o irmão da fita nomeia palavra por palavra.
-///
-/// ⚠️ **A FAMÍLIA, não um endereço:** o `project.rs` já foi partido **duas** vezes por teto de LOC.
-/// O `include_str!` é o controle — se um membro sumir, isto vira **erro de compilação** em vez de um
-/// `.expect()` que ninguém sabe ler.
-#[test]
-fn the_save_writes_the_live_input_map() {
-    let src = concat!(include_str!("project.rs"), include_str!("project_save.rs"));
-    let at = src
-        .find("let file = ProjectFile {")
-        .expect("o save constroi um `ProjectFile`");
-    let rest = &src[at..];
-    let body = &rest[..rest.find("\n        };").expect("a construcao fecha")];
-    // O CONTROLE POSITIVO: se a construcao mudar de forma, o scanner le' pouco e este gate tem de
-    // gritar em vez de passar a afirmar sobre uma janela vazia.
-    assert!(
-        body.len() > 200,
-        "o scanner leu {} bytes: a construcao mudou de forma e este gate parou de olhar para o \
-         produto",
-        body.len()
-    );
-    assert!(
-        (body.contains("input_map: self") || body.contains("input_map: (self.gfx"))
-            && body.contains("h.input_map.clone()"),
-        "o save nao grava o Input Map VIVO da sessao -- o artista autora as accoes e elas nao \
-         chegam ao ficheiro. Construcao:\n{body}"
-    );
+use super::tests::empty_state;
+use crate::undo::{ProjectState, ProjectUndo, SelectionMark};
+use ph2d_editor_core::HeroScreen;
+
+/// A fotografia do quadro: o resto do documento vazio, o hero tal como está.
+fn foto(hero: &HeroScreen) -> ProjectState {
+    let mut s = empty_state();
+    s.do_hero(hero);
+    s
 }
 
-/// **O LOAD instala o mapa do arquivo, e INSTALA — nunca funde.**
-///
-/// ⚠️ Um load é uma **troca de documento**. Fundir o mapa do projecto novo com o da sessão anterior
-/// deixaria acções de um jogo a viver dentro de outro — é o mesmo argumento que faz o
-/// `project_forget` deitar fora o relógio, a fila de undo e a timeline, e que o irmão da fita
-/// escreve como *"uma fita costurada com a da sessão anterior descreveria uma corrida que ninguém
-/// deu"*.
-#[test]
-fn the_load_installs_the_map_and_never_merges_it() {
-    let src = include_str!("project_load.rs");
-    assert!(
-        src.contains("hero.input_map = file.input_map.clone();"),
-        "o load nao instala o Input Map do arquivo: abrir um projecto deixaria as accoes da sessao \
-         anterior no lugar das dele"
-    );
-    // ⛔ A forma que NAO pode aparecer: qualquer coisa que ACRESCENTE ao mapa vivo em vez de o
-    // substituir. Um `extend`/`insert` sobre o mapa da sessao seria a fusao que este gate proibe.
-    assert!(
-        !src.contains("hero.input_map.insert(") && !src.contains("hero.input_map.create("),
-        "o load esta' a FUNDIR o mapa do arquivo com o da sessao anterior, em vez de o instalar"
-    );
-    // ⚠️ E o estado RESOLVIDO tem de ser zerado junto: ele guarda um tique atras, e o tique atras
-    // de um documento que acabou de fechar e' de outro jogo -- uma borda `just_pressed` fantasma
-    // no primeiro quadro depois do load.
-    assert!(
-        src.contains("self.input_actions = ph2d_input::ActionState::new();"),
-        "o load nao zera o estado resolvido: a borda do documento ANTERIOR sobreviveria ao load"
-    );
+/// O `post_frame_undo` em miniatura: um passo quando a fotografia difere da base.
+fn fecha_o_quadro(undo: &mut ProjectUndo, base: &mut ProjectState, hero: &HeroScreen) {
+    let agora = foto(hero);
+    if agora != *base {
+        undo.push_undo(std::mem::replace(base, agora), SelectionMark::default());
+    }
 }
 
-/// **O mapa é do PROJECTO, não do `ProjectState`** — e portanto não entra no undo.
-///
-/// ⚠️ Se ele estivesse dentro do `ProjectState`, cada Ctrl+Z do canvas rebobinaria o mapa de
-/// controlos junto — o motivo, palavra por palavra, que mantém `motion`, `timeline`, `physics` e a
-/// fita fora dele.
-#[test]
-fn the_map_is_not_part_of_the_undo_unit() {
-    let src = concat!(include_str!("undo.rs"), include_str!("undo_app.rs"));
-    assert!(
-        !src.contains("input_map"),
-        "o Input Map entrou no `ProjectState`: um Ctrl+Z do canvas passa a rebobinar os controlos"
-    );
+fn hero() -> HeroScreen {
+    HeroScreen::new(ph2d_editor_core::NodeId(7))
 }
 
-/// ⛔⛔ **O MAPA TEM UM DONO SÓ.**
-///
-/// ⚠️ Ele nasceu na `App` (W2) e mudou-se para o `HeroScreen` na W3, quando a janela flutuante
-/// mostrou que o pintor só recebe o hero. Guardá-lo nos **dois** seria duas memórias do mesmo
-/// facto — e a segunda divergiria no primeiro `load`, com o artista a ver as acções antigas numa
-/// janela e o jogo a obedecer às novas.
+/// Ctrl+Z devolve o mapa de antes de uma ligação nova, e o Ctrl+Shift+Z volta a pô-la.
+#[test]
+fn a_new_binding_is_undone_and_redone() {
+    let mut h = hero();
+    let fabrica = h.input_map.clone();
+    let (mut undo, mut base) = (ProjectUndo::default(), foto(&h));
+    let jump = h
+        .input_map
+        .id("jump")
+        .expect("o mapa de fábrica tem `jump`");
+    let b = ph2d_input::Binding::PadButton(ph2d_input::GamepadButton::South);
+    h.input_map.get_mut(jump).unwrap().bindings.push(b);
+    let editado = h.input_map.clone();
+    fecha_o_quadro(&mut undo, &mut base, &h);
+    assert_eq!(undo.depth(), 1, "a ligação nova é UM passo");
+    assert_eq!(base.parts_that_differ(&foto(&hero())), vec!["input_map"]);
+
+    h.store.listen_for_binding(jump);
+    let (antes, _) = undo.undo(foto(&h), SelectionMark::default()).unwrap();
+    antes.ao_hero(&mut h);
+    assert_eq!(h.input_map, fabrica, "o Ctrl+Z devolveu o mapa de antes");
+    assert_eq!(
+        h.store.input_map_listening(),
+        None,
+        "e calou a escuta armada"
+    );
+    let (depois, _) = undo.redo(foto(&h), SelectionMark::default()).unwrap();
+    depois.ao_hero(&mut h);
+    assert_eq!(h.input_map, editado, "o redo repôs a ligação");
+}
+
+/// «Start from… Shooter» sobre o mapa de fábrica é UM passo, e o Ctrl+Z devolve a fábrica inteira.
+#[test]
+fn starting_from_a_recipe_is_one_undo_step() {
+    let mut h = hero();
+    let fabrica = h.input_map.clone();
+    let (mut undo, mut base) = (ProjectUndo::default(), foto(&h));
+    h.input_map.start_from(ph2d_input::Recipe::Shooter);
+    assert_ne!(h.input_map, fabrica, "a receita mudou o mapa");
+    fecha_o_quadro(&mut undo, &mut base, &h);
+    fecha_o_quadro(&mut undo, &mut base, &h);
+    assert_eq!(undo.depth(), 1, "a receita inteira é UM passo");
+    let (antes, _) = undo.undo(foto(&h), SelectionMark::default()).unwrap();
+    antes.ao_hero(&mut h);
+    assert_eq!(h.input_map, fabrica);
+}
+
+/// O «Create this action» do Trigger (`fase_criar_accao_do_mapa`) desfaz-se como qualquer edição.
+#[test]
+fn the_triggers_create_this_action_is_undoable() {
+    use ph2d_editor_core::screens::hero::chrome::{PedidoDoMapa, aplica_pedidos_do_mapa};
+    let mut h = hero();
+    let (mut undo, mut base) = (ProjectUndo::default(), foto(&h));
+    aplica_pedidos_do_mapa(&mut h, vec![PedidoDoMapa::Criar("open_door".into())]);
+    assert!(
+        h.input_map.id("open_door").is_some(),
+        "a fábrica não tinha esta acção"
+    );
+    fecha_o_quadro(&mut undo, &mut base, &h);
+    assert_eq!(undo.depth(), 1);
+    let (antes, _) = undo.undo(foto(&h), SelectionMark::default()).unwrap();
+    antes.ao_hero(&mut h);
+    assert!(
+        h.input_map.id("open_door").is_none(),
+        "o Ctrl+Z tirou a acção criada pelo Trigger"
+    );
+    let fase = include_str!("render_loop/fase_criar_accao_do_mapa.rs");
+    assert!(fase.contains("aplica_pedidos_do_mapa(hero, pedidos)"));
+}
+
+/// A `App` usa a MESMA porta que os testes acima: a fotografia e o restauro passam pelo hero.
+#[test]
+fn the_app_captures_and_restores_the_map_through_the_hero() {
+    let src = include_str!("undo_app.rs");
+    assert!(
+        src.contains("foto.do_hero(h);"),
+        "a fotografia não leva o mapa"
+    );
+    assert!(
+        src.contains("state.ao_hero(h);"),
+        "o restauro não devolve o mapa"
+    );
+    let load = include_str!("project_load.rs");
+    assert!(load.contains("self.apply_project(&file.state);"));
+    assert!(load.contains("insert_resource(crate::project::GameId(file.game_id))"));
+    assert!(load.contains("self.input_actions = ph2d_input::ActionState::new();"));
+}
+
+/// Um projecto novo nasce com um `game_id` não-zero, e dois projectos novos não partilham jogo.
+#[test]
+fn a_new_project_draws_its_own_game_id() {
+    use crate::project::{GameId, game_id_of};
+    let (mut a, mut b) = (bevy_ecs::world::World::new(), bevy_ecs::world::World::new());
+    let id = game_id_of(&mut a);
+    assert_ne!(id, 0);
+    assert_eq!(
+        game_id_of(&mut a),
+        id,
+        "sorteado UMA vez: a segunda pergunta dá o mesmo"
+    );
+    assert_ne!(
+        game_id_of(&mut b),
+        id,
+        "dois projectos novos partilhariam as teclas do jogador"
+    );
+    // O load manda: o mundo passa a ter o do ficheiro.
+    a.insert_resource(GameId(42));
+    assert_eq!(game_id_of(&mut a), 42);
+}
+
+/// ⛔⛔ **O MAPA TEM UM DONO SÓ**: o `HeroScreen`. A `App` guarda só o RESOLVIDO (`input_actions`).
 #[test]
 fn the_authored_map_has_exactly_one_holder() {
-    // ⚠️ O `AppGfx`, os tipos das ferramentas de imagem e o `HeroLive` mudaram-se para irmãos do
-    // `app_state.rs` (`line/loc-caps`, 2026-09-13): a agulha lê TODAS as structs que moravam no
-    // ficheiro único, senão um segundo dono escrito numa delas passava mudo.
     let src = [
         include_str!("app_state.rs"),
         include_str!("app_state_gfx.rs"),
@@ -105,36 +147,17 @@ fn the_authored_map_has_exactly_one_holder() {
         include_str!("app_state_hero_live.rs"),
     ]
     .concat();
-    // ⚠️ **A agulha tem sintaxe que so' o CODIGO tem.** Procurar `input_map` cru acusaria o
-    // doc-comment ao lado do `input_actions`, que EXPLICA porque o mapa nao mora aqui -- e' o
-    // segundo gate desta linha a quase reprovar sobre PROSA (o primeiro foi removido em 24/08 por
-    // acusar um comentario do `keyboard.rs`). *Um gate de texto cuja agulha e' um identificador nu
-    // le' documentacao.*
     let declares_field = src
         .lines()
         .filter(|l| !l.trim_start().starts_with("//"))
         .any(|l| l.contains("input_map:"));
-    assert!(
-        !declares_field,
-        "a `App` voltou a DECLARAR o Input Map. O dono e' o `HeroScreen` (o pintor da janela so' \
-         recebe o hero); o que fica na App e' o RESOLVIDO (`input_actions`), que e' derivado."
-    );
-    // O controle POSITIVO: se o campo derivado tambem sumir, este gate deixou de olhar para o
-    // ficheiro certo e passaria verde a afirmar sobre nada.
-    assert!(
-        src.contains("input_actions:"),
-        "o `input_actions` sumiu da App: ou o desenho mudou, ou este gate esta' a ler o ficheiro \
-         errado -- em nenhum dos casos ele esta' a provar que ha' um dono so'"
-    );
+    assert!(!declares_field, "a `App` voltou a DECLARAR o Input Map");
+    // O controle POSITIVO: sem o campo derivado, este gate lê o ficheiro errado.
+    assert!(src.contains("input_actions:"));
 }
 
-/// **Um Input Map AUTORADO**, e cada campo dele é deliberadamente **não-default**.
-///
-/// ⚠️ Uma fixtura com o mapa vazio faria a ida-e-volta passar sobre o `Default` do serde em vez de
-/// sobre os bytes que o campo de facto escreve — foi exactamente assim que uma mutação sobreviveu a
-/// **10.503** testes na auditoria de 2026-08-23 desta linha. Aqui: nomes, **duas** ligações de
-/// dispositivos **diferentes** na mesma acção, e os dois números da zona longe do default
-/// (`0,0` / `0,5`).
+/// **Um Input Map AUTORADO**, cada campo deliberadamente não-default (a tela do jogador incluída):
+/// um mapa vazio faria a ida-e-volta passar sobre o `Default` do serde.
 pub(super) fn authored_input_map() -> ph2d_input::InputMap {
     use ph2d_input::{Binding, GamepadAxis, GamepadButton, InputMap, Key};
     let mut m = InputMap::new();
@@ -151,5 +174,9 @@ pub(super) fn authored_input_map() -> ph2d_input::InputMap {
             axis: GamepadAxis::LeftStickX,
             positive: true,
         });
+    let c = m.controls_mut();
+    c.players_can_change_keys = true;
+    c.open_key = Key(0x50);
+    c.set_shown_in_game(right, false);
     m
 }

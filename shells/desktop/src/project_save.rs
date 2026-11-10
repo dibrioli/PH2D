@@ -195,11 +195,6 @@ impl crate::App {
             stable_id_counter: (self.gfx.as_ref())
                 .and_then(|g| g.sim.world().get_resource::<ph2d_ecs::StableIdCounter>())
                 .map_or(ph2d_ecs::StableId::FIRST, |c| c.next_free()),
-            // O Input Map por VALOR (v97); dono: o `HeroScreen` (sem hero, o vazio).
-            input_map: (self.gfx.as_ref())
-                .and_then(|g| g.hero_screen.as_ref())
-                .map(|h| h.input_map.clone())
-                .unwrap_or_default(),
             pattern_art,
             boards,
             scripts: (self.gfx.as_ref())
@@ -234,7 +229,8 @@ impl crate::App {
             physics_layers: self.gfx.as_ref().map_or_else(Vec::new, |g| {
                 ph2d_physics_ecs::LayerNames::of(g.sim.world()).to_bytes()
             }),
-            // ⚠️ A taxonomia NÃO está aqui (v105): viaja no `state` ([`crate::project_library`]).
+            game_id: self.game_id(),
+            // ⚠️ A taxonomia (v105) e o Input Map (v232) NÃO estão aqui: viajam no `state`.
         };
         Some((file, pixel))
     }

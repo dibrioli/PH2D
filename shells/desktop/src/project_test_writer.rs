@@ -60,7 +60,6 @@ pub(crate) fn bare_file(state: ProjectState) -> ProjectFile {
         player_tape: ph2d_physics_ecs::TapeWire::default(),
         sprite_pixels: Vec::new(),
         stable_id_counter: ph2d_ecs::StableId::FIRST,
-        input_map: ph2d_input::InputMap::new(),
         pattern_art: Vec::new(),
         boards: Vec::new(),
         scripts: Vec::new(),
@@ -72,6 +71,7 @@ pub(crate) fn bare_file(state: ProjectState) -> ProjectFile {
         sounds: Vec::new(),
         sfx_lab: Vec::new(),
         physics_layers: Vec::new(),
+        game_id: 1,
     }
 }
 

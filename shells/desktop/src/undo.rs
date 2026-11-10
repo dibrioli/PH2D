@@ -96,6 +96,8 @@ pub(crate) struct ProjectState {
     /// ⚠️ Bytes e não a árvore: a [`ph2d_tags::TagTree`] vive numa folha sem `serde`, de propósito.
     /// Eles são codificados uma vez por mutação pela [`crate::app_state_gfx::AppGfx::tags_cache`].
     pub(crate) tags: Vec<u8>,
+    /// ⭐ **O INPUT MAP** (v232): autoria, logo cada edição é um passo. Dono vivo: o `HeroScreen`.
+    pub(crate) input_map: ph2d_input::InputMap,
     /// ⭐ **As regras do mundo e da mesa** (F30 §6 item 8, F41): vivem fora do mundo ECS (na ponte da
     /// física e no recurso da mesa), então entram aqui — mudar a gravidade ou um bus é autoria e
     /// desfaz-se. ⚠️ `skip`: o ficheiro leva-as nos campos `physics` e `mesa` do `ProjectFile` (o load
@@ -176,9 +178,7 @@ impl ProjectState {
     /// ([`crate::preview_drive`]). Sem condução nenhuma (`PreviewDrive::default()`, o caso normal)
     /// o custo é zero e o resultado é byte-a-byte o de antes.
     ///
-    /// ⚠️ Onze argumentos, e eles são **onze fatos independentes** — o ledger, o mundo, as três
-    /// geometrias, a biblioteca, o registro e o scratch. Agrupá-los num struct só para agradar ao lint criaria
-    /// um tipo cuja única razão de existir é a contagem, e todo chamador passaria a montá-lo.
+    /// ⚠️ Onze argumentos = onze fatos independentes; um struct só para o lint existiria pela contagem.
     #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub(crate) fn capture(
@@ -195,10 +195,8 @@ impl ProjectState {
         cache: &mut ph2d_ecs::scene::incremental::CaptureCache,
         // ⭐⭐ **O passo ANTERIOR, para lhe reaproveitar a cena** — ver o campo [`Self::vec`].
         //
-        // ⚠️ **A comparação de conteúdo que isto faz já era paga**: o `post_frame_undo` compara o
-        // estado inteiro com o baseline logo a seguir. ⇒ a partilha troca *clonar e depois
-        // comparar* por *comparar e clonar só se diferir* — estritamente mais barato, e não só em
-        // memória.
+        // ⚠️ A comparação já era paga (o `post_frame_undo` compara com o baseline): partilhar troca
+        // *clonar e comparar* por *comparar e clonar só se diferir*.
         prev: Option<&Self>,
     ) -> Self {
         // O mundo passa ao estado AUTORADO só durante a fotografia, e volta ao vivo a seguir.
@@ -228,9 +226,7 @@ impl ProjectState {
                 Some(p) if *p.vec == *vec => std::sync::Arc::clone(&p.vec),
                 _ => std::sync::Arc::new(vec.clone()),
             },
-            // ⚠️ **A comparação já era paga** — o `post_frame_undo` compara o estado inteiro com
-            // o baseline logo a seguir. ⇒ trocou-se *clonar e depois comparar* por *comparar e
-            // clonar só se diferir*: estritamente mais barato, e não só em memória.
+            // A mesma partilha da `vec` (ver o `prev`).
             flip: match prev {
                 Some(p) if *p.flip == *flip => std::sync::Arc::clone(&p.flip),
                 _ => std::sync::Arc::new(flip.clone()),
@@ -243,7 +239,8 @@ impl ProjectState {
             // ⚠️ **Um `clone` de bytes já codificados**, pela mesma razão da biblioteca: quem
             // codifica é a `TagsCache`, uma vez por mutação da árvore.
             tags: tags.to_vec(),
-            // As regras vêm da ponte e do recurso, fora do mundo: põe-nas quem as tem (`undo_app`).
+            // O mapa, as regras e o formato vêm de fora do mundo: põe-nos quem os tem (`undo_app`).
+            input_map: ph2d_input::InputMap::default(),
             regras: Regras::default(),
             formato_do_jogo: None,
         }
@@ -319,6 +316,9 @@ impl ProjectState {
         }
         if self.tags != other.tags {
             v.push("tags");
+        }
+        if self.input_map != other.input_map {
+            v.push("input_map");
         }
         if self.regras != other.regras {
             v.push("regras");

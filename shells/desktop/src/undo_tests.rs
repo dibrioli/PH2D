@@ -129,6 +129,7 @@ fn push_undo_then_undo_redo_alternate() {
         ui_states: ph2d_ui_state::StateSets::default(),
         library: crate::project_library::LibraryDoc::default(),
         tags: Vec::new(),
+        input_map: ph2d_input::InputMap::new(),
         regras: Default::default(),
         formato_do_jogo: None,
     };

@@ -43,6 +43,7 @@ fn the_library_travels_in_the_file() {
         ui_states: ph2d_ui_state::StateSets::default(),
         library,
         tags: Vec::new(),
+        input_map: ph2d_input::InputMap::new(),
         regras: Default::default(),
         formato_do_jogo: None,
     };

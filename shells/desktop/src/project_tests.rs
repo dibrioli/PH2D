@@ -35,6 +35,7 @@ pub(super) fn empty_state() -> ProjectState {
         ui_states: ph2d_ui_state::StateSets::default(),
         library: crate::project_library::LibraryDoc::default(),
         tags: Vec::new(),
+        input_map: ph2d_input::InputMap::new(),
         regras: Default::default(),
         formato_do_jogo: None,
     }
@@ -340,6 +341,7 @@ fn the_ui_states_travel_in_the_file() {
         ui_states: states.clone(),
         library: crate::project_library::LibraryDoc::default(),
         tags: Vec::new(),
+        input_map: ph2d_input::InputMap::new(),
         regras: Default::default(),
         formato_do_jogo: None,
     };
@@ -389,6 +391,8 @@ fn project_file_round_trips_through_postcard() {
         ui_states: ph2d_ui_state::StateSets::default(),
         library: crate::project_library::LibraryDoc::default(),
         tags: Vec::new(),
+        // ⚠️ NAO-DEFAULT de proposito: vazio, a ida-e-volta passaria sobre o `Default` do serde.
+        input_map: super::input_map_tests::authored_input_map(),
         regras: Default::default(),
         formato_do_jogo: None,
     };
@@ -405,9 +409,7 @@ fn project_file_round_trips_through_postcard() {
         }],
         motion: motion.clone(),
         timeline: animation_of_hero(),
-        // ⚠️ NAO-DEFAULT de proposito: vazio, a ida-e-volta passaria sobre o `Default` do serde e
-        // nao sobre os bytes do campo -- assim uma mutacao sobreviveu a 10.503 testes (23/08).
-        input_map: super::input_map_tests::authored_input_map(),
+        game_id: 0x5EED_0F_6A3E,
         // NÃO-vazio pela razão do `input_map` acima: dois quadros com nome.
         boards: two_boards().to_bytes().unwrap(),
         ..bare_file(state.clone())
@@ -420,13 +422,15 @@ fn project_file_round_trips_through_postcard() {
         two_boards(),
         "os QUADROS atravessaram o arquivo (v185)"
     );
-    // ⭐ **O INPUT MAP atravessa o arquivo** (v97) — e a afirmação é CAMPO A CAMPO, não um
-    // `assert_eq!` do mapa inteiro: um igual de estrutura passaria se os dois lados fossem o
-    // default, e é precisamente esse o modo de falha que esta linha já pagou.
+    assert_eq!(back.game_id, 0x5EED_0F_6A3E, "o game_id (v232)");
+    // ⭐ **O INPUT MAP atravessa o arquivo** (no `state` desde a v232), CAMPO A CAMPO: um igual de
+    // estrutura passaria se os dois lados fossem o default.
     let want = super::input_map_tests::authored_input_map();
-    assert_eq!(back.input_map.len(), want.len(), "as duas accoes voltaram");
-    let jump = back.input_map.id("jump").expect("`jump` voltou pelo NOME");
-    let ja = back.input_map.get(jump).expect("e a accao dela existe");
+    let m = &back.state.input_map;
+    assert_eq!(m.len(), want.len(), "as duas accoes voltaram");
+    assert_eq!(m.controls(), want.controls(), "a tela do jogador voltou");
+    let jump = m.id("jump").expect("`jump` voltou pelo NOME");
+    let ja = m.get(jump).expect("e a accao dela existe");
     assert_eq!(ja.bindings.len(), 2, "as DUAS ligacoes voltaram");
     assert!(
         ja.bindings
@@ -447,7 +451,7 @@ fn project_file_round_trips_through_postcard() {
     // ⚠️ E o ID sobreviveu: e' ele que uma gravacao guarda, entao um mapa que volta com os ids
     // trocados reescreveria o passado em silencio.
     assert_eq!(
-        back.input_map.id("move_right"),
+        m.id("move_right"),
         want.id("move_right"),
         "o ID estavel atravessou o arquivo"
     );
@@ -456,7 +460,7 @@ fn project_file_round_trips_through_postcard() {
     // porque elas so' olham para as accoes que ja' existem. O contador e' privado, entao a
     // pergunta faz-se pela PORTA: a proxima accao criada no mapa que voltou nao pode receber um id
     // que ja' esta' em uso -- se recebesse, uma gravacao antiga passaria a accionar outra coisa.
-    let mut reloaded = back.input_map.clone();
+    let mut reloaded = m.clone();
     let fresh = reloaded.create("dash");
     for a in want.actions() {
         assert_ne!(

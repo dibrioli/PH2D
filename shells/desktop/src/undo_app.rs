@@ -103,10 +103,9 @@ impl crate::App {
         camadas.repor(&gfx.sim, &mut gfx.flip, vivo_flip);
         corpos.repor(&mut gfx.sim, &gfx.component_registry, vivo_corpos);
         foto.regras = crate::undo::Regras::de(&gfx.physics, &gfx.sim);
-        foto.formato_do_jogo = gfx
-            .hero_screen
-            .as_ref()
-            .map(|h| crate::project_settings::FormatoDoJogo::de(&h.project));
+        if let Some(h) = gfx.hero_screen.as_ref() {
+            foto.do_hero(h);
+        }
         Some(foto)
     }
 
@@ -199,8 +198,8 @@ impl crate::App {
         if state.regras.repor(&mut gfx.physics, &mut gfx.sim) {
             self.physics.mundo = Default::default();
         }
-        if let (Some(f), Some(h)) = (state.formato_do_jogo, gfx.hero_screen.as_mut()) {
-            f.instala(&mut h.project);
+        if let Some(h) = gfx.hero_screen.as_mut() {
+            state.ao_hero(h);
         }
         // ⭐ A seleção que não é caminho volta com os bits NOVOS, depois de o mundo ter sido reconstruído.
         let field_back = field_selection_back(gfx.sim.world_mut(), &was_field);
@@ -573,5 +572,23 @@ impl crate::App {
             }
         }
         self.empurra(current);
+    }
+}
+
+impl ProjectState {
+    /// O que a fotografia tira do `HeroScreen`: o formato do jogo e o Input Map.
+    pub(crate) fn do_hero(&mut self, h: &ph2d_editor_core::HeroScreen) {
+        self.formato_do_jogo = Some(crate::project_settings::FormatoDoJogo::de(&h.project));
+        self.input_map = h.input_map.clone();
+    }
+
+    /// Devolve-os ao hero. O mapa volta inteiro e a escuta morre com ele: o `ActionId` é por mapa, e
+    /// uma escuta armada no de antes ligaria a próxima tecla a outra acção (o load passa por aqui).
+    pub(crate) fn ao_hero(&self, h: &mut ph2d_editor_core::HeroScreen) {
+        if let Some(f) = self.formato_do_jogo {
+            f.instala(&mut h.project);
+        }
+        h.input_map = self.input_map.clone();
+        h.store.stop_listening();
     }
 }

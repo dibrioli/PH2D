@@ -436,4 +436,11 @@
 /// `PlatformPlayer` ganha `show_jump_arc: bool` no FIM (a caixa «Show Jump Arc»; só o editor a lê). Ficha
 /// `docs/GameEngineFuncional/componentes/04_curva_do_pulo.md`. SEM leitura dos anteriores (§0.11). Registos: `0`.
 /// ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 234;
+///
+/// # `234 → 235` — **o Input Map é documento** (`line/InputMap`, R2c, 2026-11-10)
+///
+/// `InputMap.controls: PlayerControls` (a tela do jogador) no FIM do mapa; o mapa sai do `ProjectFile` e entra
+/// no `ProjectState` depois de `tags` (undo e ficheiro, um só dono); `game_id: u64` no FIM do `ProjectFile`
+/// (sorteado quando o projecto nasce). SEM leitura dos anteriores (§0.11). Gates: `input_map_tests::`,
+/// `project_file_round_trips_through_postcard`. Registos: `0`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 235;

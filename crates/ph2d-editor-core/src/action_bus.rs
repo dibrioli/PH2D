@@ -382,15 +382,15 @@ pub enum EditorAction {
     /// ⭐⭐⭐ **CRIAR uma acção do Input Map a partir do sítio onde ela FALTA** (suplente #24).
     ///
     /// ⛔ **NÃO é uma `ComponentEdit`:** o que nasce é uma linha do
-    /// [`crate::screens::hero::HeroScreen::input_map`], estado do EDITOR — fora do `Ctrl+Z` do
-    /// documento. A lei (aparar, recusar vazio) é `chrome::aplica_pedidos_do_mapa`.
+    /// [`crate::screens::hero::HeroScreen::input_map`], documento do projecto — o `Ctrl+Z` desfá-la
+    /// pelo diff da shell (v232). A lei (aparar, recusar vazio) é `chrome::aplica_pedidos_do_mapa`.
     CreateInputAction {
         /// O nome que a fileira do gatilho mostra.
         name: String,
     },
 
     /// ⭐ **O botão Key do cartão do Trigger** (dono 09/11): cria a acção se faltar e arma a escuta que
-    /// TROCA as teclas de teclado dela. Estado do EDITOR, como o irmão acima.
+    /// TROCA as teclas de teclado dela. Documento do projecto, como o irmão acima.
     ListenForTriggerKey {
         /// O nome que a fileira do gatilho mostra.
         name: String,

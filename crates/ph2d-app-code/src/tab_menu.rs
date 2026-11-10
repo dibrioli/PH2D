@@ -88,17 +88,8 @@ pub(crate) fn label(
 ) {
     let y = r.y + folga_do_texto(r.h, font());
     let w = r.w.max(0.0) + Spacing::Xs.px();
-    let corpo = ph2d_panel_code::peso::CORPO;
-    paint_text_in_weight(
-        ts,
-        scene,
-        s,
-        [r.x, y],
-        font(),
-        w,
-        resolve(ink, *theme),
-        corpo,
-    );
+    let (c, corpo) = (resolve(ink, *theme), ph2d_panel_code::peso::CORPO);
+    paint_text_in_weight(ts, scene, s, [r.x, y], font(), w, c, corpo);
 }
 
 /// O caminho até o cursor: o script, a função que o contém (nome, linha e coluna da definição) e a

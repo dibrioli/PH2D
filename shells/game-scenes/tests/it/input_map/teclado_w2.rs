@@ -345,6 +345,10 @@ fn as_teclas_do_sistema_tem_o_mesmo_olhar_desligado_na_b_e_na_c() {
             assert_eq!(olhar(&b), want, "B {}: {}", area.w, k.label());
             assert_eq!(olhar(&c), want, "C {}: {}", area.w, k.label());
         }
+        // O relatório da PrtSc: duas linhas («PrtSc» no censo) ou o símbolo (`None`).
+        let prt = Key(0xF72E);
+        let leg = |m: &Mesa| olhar_de(m, prt).text;
+        eprintln!("PrtSc {}: B {:?} · C {:?}", area.w, leg(&b), leg(&c));
     }
 }
 

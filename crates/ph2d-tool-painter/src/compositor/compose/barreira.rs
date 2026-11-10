@@ -83,27 +83,18 @@ fn em_faixas(
         Some(tt) => tt.chunks_mut(band_px).map(Some).collect(),
         None => (0..acc.len().div_ceil(band_px)).map(|_| None).collect(),
     };
-    std::thread::scope(|s| {
-        let handles: Vec<_> = acc
-            .chunks_mut(band_px)
-            .zip(t_bands.iter_mut())
-            .enumerate()
-            .map(|(bi, (band, tb))| {
-                let band_ry = r.y + (bi * rpb) as u32;
-                let band_rh = (band.len() / (r.w as usize)) as u32;
-                let tb = tb.take();
-                s.spawn(move || {
-                    let v = vidros.zip(tb);
-                    composite_into(
-                        band, ids, stack, src, canvas, r.x, band_ry, r.w, band_rh, 0, None, v,
-                    );
-                })
-            })
-            .collect();
-        for h in handles {
-            h.join().expect("composite band panicked");
-        }
-    });
+    use rayon::prelude::*;
+    acc.par_chunks_mut(band_px)
+        .zip(t_bands.par_iter_mut())
+        .enumerate()
+        .for_each(|(bi, (band, tb))| {
+            let band_ry = r.y + (bi * rpb) as u32;
+            let band_rh = (band.len() / (r.w as usize)) as u32;
+            let v = vidros.zip(tb.take());
+            composite_into(
+                band, ids, stack, src, canvas, r.x, band_ry, r.w, band_rh, 0, None, v,
+            );
+        });
 }
 
 /// The band count of a region of `area` px and `rows` rows.

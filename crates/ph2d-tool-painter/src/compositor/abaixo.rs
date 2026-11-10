@@ -148,45 +148,39 @@ fn abaixo_em_faixas(
     let rpb = (height as usize).div_ceil(fios);
     // A strip never exceeds its band: `faixa_px = usize::MAX` (the whole band) cannot overflow.
     let linhas = (faixa_px / w).clamp(1, rpb);
-    std::thread::scope(|s| {
-        let handles: Vec<_> = out
-            .chunks_mut(rpb * w * 4)
+    {
+        use rayon::prelude::*;
+        out.par_chunks_mut(rpb * w * 4)
             .enumerate()
-            .map(|(bi, banda)| {
-                s.spawn(move || {
-                    let mut acc = Vec::new();
-                    for (k, faixa) in banda.chunks_mut(linhas * w * 4).enumerate() {
-                        let fh = faixa.len() / (w * 4);
-                        let y0 = (bi * rpb + k * linhas) as u32;
-                        acc.clear();
-                        acc.resize(fh * w, g);
-                        for ids in slices {
-                            composite_into(
-                                &mut acc,
-                                ids,
-                                stack,
-                                src,
-                                (width, height),
-                                0,
-                                y0,
-                                width,
-                                fh as u32,
-                                0,
-                                None,
-                                None,
-                            );
-                        }
-                        for (o, a) in faixa.as_chunks_mut::<4>().0.iter_mut().zip(&acc) {
-                            *o = a.map(super::encode_byte);
-                        }
+            .for_each(|(bi, banda)| {
+                let mut acc = Vec::new();
+                for (k, faixa) in banda.chunks_mut(linhas * w * 4).enumerate() {
+                    let fh = faixa.len() / (w * 4);
+                    let y0 = (bi * rpb + k * linhas) as u32;
+                    acc.clear();
+                    acc.resize(fh * w, g);
+                    for ids in slices {
+                        composite_into(
+                            &mut acc,
+                            ids,
+                            stack,
+                            src,
+                            (width, height),
+                            0,
+                            y0,
+                            width,
+                            fh as u32,
+                            0,
+                            None,
+                            None,
+                        );
                     }
-                })
-            })
-            .collect();
-        for h in handles {
-            h.join().expect("below band panicked");
-        }
-    });
+                    for (o, a) in faixa.as_chunks_mut::<4>().0.iter_mut().zip(&acc) {
+                        *o = a.map(super::encode_byte);
+                    }
+                }
+            });
+    }
     out
 }
 
@@ -213,15 +207,10 @@ fn flat_fill(width: u32, height: u32, px: [u8; 4]) -> Vec<u8> {
         return out;
     }
     let cpb = n.div_ceil(threads) * 4;
-    std::thread::scope(|s| {
-        let handles: Vec<_> = out
-            .chunks_mut(cpb)
-            .map(|c| s.spawn(move || fill(c)))
-            .collect();
-        for h in handles {
-            h.join().expect("flat fill chunk panicked");
-        }
-    });
+    {
+        use rayon::prelude::*;
+        out.par_chunks_mut(cpb).for_each(fill);
+    }
     out
 }
 

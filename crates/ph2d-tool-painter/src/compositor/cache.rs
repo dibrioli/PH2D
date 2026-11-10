@@ -288,36 +288,30 @@ fn em_faixas(
             saida: Vec::new(),
         })
         .collect();
-    std::thread::scope(|s| {
-        let handles: Vec<_> = acc
-            .chunks_mut(band_px)
-            .zip(faixas.iter_mut())
+    {
+        use rayon::prelude::*;
+        acc.par_chunks_mut(band_px)
+            .zip(faixas.par_iter_mut())
             .enumerate()
-            .map(|(bi, (band, fc))| {
+            .for_each(|(bi, (band, fc))| {
                 let band_ry = (bi * rpb) as u32;
                 let band_rh = (band.len() / (width as usize)) as u32;
-                s.spawn(move || {
-                    super::compose::composite_into(
-                        band,
-                        ids,
-                        stack,
-                        src,
-                        canvas,
-                        0,
-                        band_ry,
-                        width,
-                        band_rh,
-                        0,
-                        Some(fc),
-                        None,
-                    );
-                })
-            })
-            .collect();
-        for h in handles {
-            h.join().expect("cache band panicked");
-        }
-    });
+                super::compose::composite_into(
+                    band,
+                    ids,
+                    stack,
+                    src,
+                    canvas,
+                    0,
+                    band_ry,
+                    width,
+                    band_rh,
+                    0,
+                    Some(fc),
+                    None,
+                );
+            });
+    }
     let novos: Vec<LayerId> = faixas[0]
         .cuts
         .iter()

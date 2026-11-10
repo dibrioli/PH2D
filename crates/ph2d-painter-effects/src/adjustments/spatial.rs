@@ -318,7 +318,7 @@ pub fn apply_gaussian(p: &GaussianBlurParams, acc: &mut [[f32; 4]], win: AdjustW
 /// premultiplied ([`premultiply`]); the output stays premultiplied. Shared by
 /// Gaussian + the blur stage of Sharpen.
 /// Compute the `h` rows of a `w`-wide output buffer, splitting them across the
-/// available CPUs via SCOPED THREADS (no new deps). `row(y, out_row)` fills one
+/// available CPUs on the rayon pool (B19.7, ADR-0201). `row(y, out_row)` fills one
 /// output row from shared input it captures — each thread owns a disjoint
 /// `&mut` band, so it is data-race-free, and the per-pixel work is independent of
 /// thread count, so the result is BIT-IDENTICAL regardless of CPU count (keeps
@@ -339,22 +339,20 @@ where
         }
         return;
     }
+    use rayon::prelude::*;
     let rows_per = h.div_ceil(threads);
-    std::thread::scope(|s| {
-        for (band_idx, band) in out.chunks_mut(rows_per * w).enumerate() {
-            let row = &row;
+    out.par_chunks_mut(rows_per * w)
+        .enumerate()
+        .for_each(|(band_idx, band)| {
             let y0 = band_idx * rows_per;
-            s.spawn(move || {
-                for (i, r) in band.chunks_mut(w).enumerate() {
-                    row(y0 + i, r);
-                }
-            });
-        }
-    });
+            for (i, r) in band.chunks_mut(w).enumerate() {
+                row(y0 + i, r);
+            }
+        });
 }
 
 /// Parallel in-place map over a flat buffer for COORDINATE-INDEPENDENT per-pixel
-/// ops (each element transformed from itself only). Scoped threads, bit-identical
+/// ops (each element transformed from itself only). On the rayon pool, bit-identical
 /// (element order irrelevant), serial for small buffers. (Siblings — e.g. the
 /// Color Lookup grade in `lut` — reuse this; hence `pub(super)`.)
 pub(super) fn par_pixels<T, F>(buf: &mut [T], f: F)
@@ -371,13 +369,9 @@ where
         buf.iter_mut().for_each(&f);
         return;
     }
-    let chunk = n.div_ceil(threads);
-    std::thread::scope(|s| {
-        for band in buf.chunks_mut(chunk) {
-            let f = &f;
-            s.spawn(move || band.iter_mut().for_each(f));
-        }
-    });
+    use rayon::prelude::*;
+    buf.par_chunks_mut(n.div_ceil(threads))
+        .for_each(|band| band.iter_mut().for_each(&f));
 }
 
 fn separable_blur_premul(radius: f32, acc: &mut [[f32; 4]], win: AdjustWindow) {

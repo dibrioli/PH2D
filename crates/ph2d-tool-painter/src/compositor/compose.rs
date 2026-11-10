@@ -66,16 +66,10 @@ fn encode_slice(acc: &[[f32; 4]], out: &mut [u8]) {
         encode_chunk(out, acc);
         return;
     }
-    std::thread::scope(|s| {
-        let handles: Vec<_> = out
-            .chunks_mut(cpb * 4)
-            .zip(acc.chunks(cpb))
-            .map(|(oc, lc)| s.spawn(move || encode_chunk(oc, lc)))
-            .collect();
-        for h in handles {
-            h.join().expect("encode chunk panicked");
-        }
-    });
+    use rayon::prelude::*;
+    out.par_chunks_mut(cpb * 4)
+        .zip(acc.par_chunks(cpb))
+        .for_each(|(oc, lc)| encode_chunk(oc, lc));
 }
 
 /// How many worker threads a per-pixel pass of `area` px (with `rows` splittable units) should use:
@@ -598,6 +592,8 @@ fn salto_ligado() -> bool {
 mod barreira;
 #[cfg(test)]
 mod barreira_tests;
+#[cfg(test)]
+mod fios_tests;
 #[cfg(test)]
 mod janela_tests;
 #[cfg(test)]

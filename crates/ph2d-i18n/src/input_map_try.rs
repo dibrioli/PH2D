@@ -79,6 +79,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "input_map_try.forget_tip" => {
             "Delete the keys a player picked on this computer. The game's keys stay."
         }
+        "input_map_try.forget_off" => {
+            "Nothing to forget: no player changed a key on this computer."
+        }
+        "input_map_try.start_from_named" => "Start from {recipe}",
+        "input_map_try.opens_with_named" => "Opens with {key}",
+        "input_map_try.scrollbar" => "Scroll the Try it view",
         _ => return None,
     })
 }

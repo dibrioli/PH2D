@@ -21,6 +21,7 @@ use ph2d_vector::{Color, VectorScene};
 
 use crate::doc::InputMapDoc;
 use crate::edit::InputMapEdit;
+use crate::interact::{Control, ControlRole};
 use crate::view_list::text::line;
 use state::TryHit;
 
@@ -92,9 +93,7 @@ pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool) -> bool {
         }
         return true;
     }
-    let esc = Key::named_in_script("escape").unwrap_or_default();
-    if pressed && doc.tryit.confirm.is_some() && esc.contains(&key) {
-        doc.tryit.confirm = None;
+    if modal_key(doc, key, pressed) {
         return true;
     }
     let kb = &mut doc.tryit.bench.keyboard;
@@ -121,7 +120,7 @@ fn take_open_key(doc: &mut InputMapDoc, key: Key) {
 
 /// A porta do texto: os números Dead/Press abertos (os da vista A).
 pub(crate) fn key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
-    crate::view_list::key(doc, input)
+    modal_text_key(doc, input) || crate::view_list::key(doc, input)
 }
 
 pub(crate) fn wheel(doc: &mut InputMapDoc, dy: f32) -> bool {
@@ -159,13 +158,18 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
     let map = &doc.snap.map;
     match doc.tryit.hit_of(id) {
         Some(TryHit::Recipe(r)) if map.is_empty() => doc.pending.push(InputMapEdit::StartFrom(r)),
-        Some(TryHit::Recipe(r)) => doc.tryit.confirm = Some(r),
+        Some(TryHit::Recipe(r)) => {
+            doc.tryit.confirm = Some(r);
+            // O foco nasce no Cancel, o botão seguro (o Enter continua a ser o Replace de omissão).
+            doc.ui.focus = Some(TryHit::Cancel.id());
+        }
         Some(TryHit::Replace) => {
             if let Some(r) = doc.tryit.confirm.take() {
                 doc.pending.push(InputMapEdit::StartFrom(r));
             }
+            doc.ui.focus = None;
         }
-        Some(TryHit::Cancel) => doc.tryit.confirm = None,
+        Some(TryHit::Cancel) => close_confirm(doc),
         Some(TryHit::PlayersCanChange) => {
             let on = map.controls().players_can_change_keys;
             doc.pending.push(InputMapEdit::SetPlayersCanChange(!on));
@@ -207,10 +211,103 @@ pub fn tip_of(doc: &InputMapDoc, id: ph2d_a11y::NodeId) -> Option<&'static str> 
     Some(ph2d_i18n::tr(key))
 }
 
-/// Regista um alvo da vista C.
-pub(crate) fn target(doc: &mut InputMapDoc, h: TryHit, r: Rect) {
+/// O papel de um alvo da vista C no registo de controlos.
+const fn role_of(h: TryHit) -> ControlRole {
+    match h {
+        TryHit::Recipe(_) | TryHit::Replace | TryHit::Cancel | TryHit::OpenKey => {
+            ControlRole::Button
+        }
+        TryHit::PlayersCanChange | TryHit::Shown(_) => ControlRole::Check,
+        TryHit::Forget => ControlRole::Link,
+    }
+}
+
+/// Regista um alvo da vista C pintado à mão: o alvo de clique E o controlo (premido, foco, a11y, cursor).
+pub(crate) fn target(
+    doc: &mut InputMapDoc,
+    h: TryHit,
+    r: Rect,
+    label: impl Into<String>,
+    off: Option<&'static str>,
+) {
     doc.hits.register(h.id(), r);
     doc.tryit.targets.push(h);
+    doc.control(Control::new(h.id(), r, role_of(h), label).disabled(off));
+}
+
+/// Regista como controlo um alvo que o `CardCtx` acabou de pintar (o rect é o que ele registou); premido, o anel.
+pub(crate) fn card_target(
+    doc: &mut InputMapDoc,
+    h: TryHit,
+    label: impl Into<String>,
+    scene: &mut VectorScene,
+    ink: CardInk,
+) {
+    doc.tryit.targets.push(h);
+    if let Some(r) = doc.hits.rect_for(h.id()) {
+        if doc.is_pressed(h.id()) {
+            crate::view_list::ring(scene, r, ink);
+        }
+        doc.control(Control::new(h.id(), r, role_of(h), label));
+    }
+}
+
+/// O fundo de um alvo pintado à mão: premido = `AccentSoft`, pairado (instantâneo, D32) ou aceso = `CardFieldHover`.
+pub(crate) fn face(doc: &InputMapDoc, id: ph2d_a11y::NodeId, on: bool) -> ColorToken {
+    if doc.is_pressed(id) {
+        ColorToken::AccentSoft
+    } else if on || doc.is_hovered(id) {
+        ColorToken::CardFieldHover
+    } else {
+        ColorToken::CardField
+    }
+}
+
+/// O polegar da barra da vista C.
+pub const THUMB: ph2d_a11y::NodeId =
+    ph2d_editor_core::registry::hash_node_id("input_map_try.thumb");
+
+/// A tecla do diálogo da receita, ANTES do foco: Esc = Cancel, Enter = Replace (o botão de omissão, como no
+/// diálogo do SO); o Space continua a activar o focado (o Cancel, onde o foco nasce). `true` = tomada.
+/// ⚠️ O `doc.rs::raw_key` tem de a chamar antes do `focus_raw_key` (senão o Esc só larga o foco do Cancel).
+pub(crate) fn modal_key(doc: &mut InputMapDoc, key: Key, pressed: bool) -> bool {
+    if doc.view() != crate::doc::View::TryIt || doc.tryit.confirm.is_none() || !pressed {
+        return false;
+    }
+    let esc = Key::named_in_script("escape").unwrap_or_default();
+    if esc.contains(&key) {
+        close_confirm(doc);
+        return true;
+    }
+    if key.is_enter_like() {
+        if let Some(r) = doc.tryit.confirm.take() {
+            doc.pending.push(InputMapEdit::StartFrom(r));
+        }
+        doc.ui.focus = None;
+        return true;
+    }
+    false
+}
+
+/// A porta do texto do mesmo diálogo (Esc / Enter pelo caminho do `key`).
+pub(crate) fn modal_text_key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
+    use ph2d_editor_core::doc_surface::Key as K;
+    let raw = match input.key {
+        K::Escape => Key::named_in_script("escape"),
+        K::Enter => Key::named_in_script("enter"),
+        _ => None,
+    };
+    raw.and_then(|v| v.first().copied())
+        .is_some_and(|k| modal_key(doc, k, input.pressed))
+}
+
+/// Fecha a confirmação; o foco que estava nos botões dela sai com ela.
+fn close_confirm(doc: &mut InputMapDoc) {
+    doc.tryit.confirm = None;
+    let ids = [TryHit::Replace.id(), TryHit::Cancel.id()];
+    if doc.ui.focus.is_some_and(|f| ids.contains(&f)) {
+        doc.ui.focus = None;
+    }
 }
 
 /// Quebra `s` em linhas que cabem em `w` (palavra a palavra).
@@ -361,7 +458,7 @@ pub fn paint(
 }
 
 /// A barra discreta do cartão (a da vista A): só o polegar fino, sem trilho, na margem direita da vista.
-fn scrollbar(doc: &InputMapDoc, view: Rect, total: f32, scene: &mut VectorScene, ink: CardInk) {
+fn scrollbar(doc: &mut InputMapDoc, view: Rect, total: f32, scene: &mut VectorScene, ink: CardInk) {
     use ph2d_editor_core::widget::{
         scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
     };
@@ -382,6 +479,14 @@ fn scrollbar(doc: &InputMapDoc, view: Rect, total: f32, scene: &mut VectorScene,
         m::BAR_TRACK * 0.5,
         ink.color(ColorToken::BorderEmph),
     );
+    // Quente, o polegar acende por cima no tom do texto secundário, pelo desvanecer do registo (`Role::Fade`).
+    let fade = doc.thumb_fade(THUMB);
+    if fade > 0.0 {
+        let hot = ink.color(ColorToken::Text2).multiply_alpha(fade);
+        fill_rounded_rect(scene, pill, m::BAR_TRACK * 0.5, hot);
+    }
+    let label = ph2d_i18n::tr("input_map_try.scrollbar");
+    doc.control(Control::new(THUMB, thumb, ControlRole::ScrollThumb, label));
 }
 
 impl InputMapDoc {

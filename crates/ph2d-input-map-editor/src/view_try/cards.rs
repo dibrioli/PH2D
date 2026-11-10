@@ -13,7 +13,7 @@ use ph2d_tokens::ColorToken;
 use ph2d_vector::VectorScene;
 
 use super::state::TryHit;
-use super::{line_h, para, para_h, target, wrap};
+use super::{card_target, line_h, para, para_h, target, wrap};
 use crate::doc::InputMapDoc;
 use crate::view_list::text::line;
 
@@ -154,11 +154,7 @@ pub(super) fn recipes(
         let ty = y + (th + GAP) * (i / cols) as f32;
         let tile = Rect::new(tx, ty, tw, th);
         let on = doc.tryit.confirm == Some(*rc);
-        let bg = if on {
-            ColorToken::CardFieldHover
-        } else {
-            ColorToken::CardField
-        };
+        let bg = super::face(doc, TryHit::Recipe(*rc).id(), on);
         fill_rounded_rect(scene, tile, m::FIELD_RADIUS, ink.color(bg));
         let ix = tx + m::SEG_INSET;
         let iw = tw - m::SEG_INSET * 2.0;
@@ -181,7 +177,8 @@ pub(super) fn recipes(
             m::LABEL_PX,
             ink.color(ColorToken::CardLabel),
         );
-        target(doc, TryHit::Recipe(*rc), tile);
+        let named = tr("input_map_try.start_from_named").replace("{recipe}", tr(rc.label_key()));
+        target(doc, TryHit::Recipe(*rc), tile, named, None);
     }
     y += (th + GAP) * recipe_rows(r.w) as f32;
     if let Some(rc) = doc.tryit.confirm {
@@ -214,7 +211,7 @@ pub(super) fn recipes(
                 },
                 y,
             );
-            doc.tryit.targets.push(h);
+            card_target(doc, h, tr(k), scene, ink);
         }
         y += ROW + GAP;
     }
@@ -365,8 +362,19 @@ pub(super) fn live(
     );
     let held = doc.tryit.held_keys();
     use crate::view_keyboard::keys::{KeysAlign, Lit, paint_keys};
-    let style = (Lit::Fill, KeysAlign::Spread, crate::view_keyboard::keys::PITCH_CAP_C);
+    let style = (
+        Lit::Fill,
+        KeysAlign::Spread,
+        crate::view_keyboard::keys::PITCH_CAP_C,
+    );
+    let from = doc.ui.controls.len();
     paint_keys(doc, draw, scene, ts, ink, style, &|k| held.contains(&k));
+    // Aqui as teclas só MOSTRAM o que está em baixo: um nó a11y cada, fora da ordem do Tab.
+    for c in &mut doc.ui.controls[from..] {
+        if c.role == crate::interact::ControlRole::Key {
+            c.focusable = false;
+        }
+    }
     y += dh + GAP;
     let cols = bar_cols(r.w);
     let cw = (w - m::FIELD_GAP * (cols as f32 - 1.0)) / cols as f32;
@@ -436,6 +444,8 @@ fn bar_row(
     ts: &mut TextSystem,
     ink: CardInk,
 ) {
+    // Um valor LIDO nunca se atrasa: o número e a barra mostram a força deste quadro, sem tween
+    // (o `Role::Number` do substrato é a identidade).
     let s = doc.tryit.actions.sample(id).strength;
     let color = ink.color(crate::palette::of_action(id));
     let sq = SWATCH;

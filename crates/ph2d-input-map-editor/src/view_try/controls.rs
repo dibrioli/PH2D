@@ -21,7 +21,7 @@ use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_input::{ActionId, PlayerControls};
 
 use super::state::TryHit;
-use super::target;
+use super::{card_target, target};
 
 /// A tela do jogo da prévia (maquete C4): 16:9, o painel ao centro do céu, a faixa do chão por baixo.
 const SCREEN_W: f32 = ROW * 16.0;
@@ -136,7 +136,8 @@ pub(super) fn controls(
             y,
         ) + GAP;
     }
-    doc.tryit.targets.push(TryHit::PlayersCanChange);
+    let label = tr("input_map_try.players_can_change");
+    card_target(doc, TryHit::PlayersCanChange, label, scene, ink);
     if let Some(k) = doc.tryit.refused {
         let esc = ph2d_input::Key::named_in_script("escape").unwrap_or_default();
         let why = tr(if esc.contains(&k) {
@@ -259,7 +260,7 @@ fn shown(
             },
             y,
         );
-        doc.tryit.targets.push(TryHit::Shown(id));
+        card_target(doc, TryHit::Shown(id), name.as_str(), scene, ink);
         cx += cw + m::FIELD_GAP;
     }
     y + ROW + GAP
@@ -290,12 +291,35 @@ fn open_key(
         tw + m::SEG_INSET * 2.0,
         ch,
     );
-    let (bg, fg) = if doc.tryit.listening_open_key {
+    let id = TryHit::OpenKey.id();
+    let listening = doc.tryit.listening_open_key;
+    let (bg, fg) = if listening {
         (ColorToken::Accent, ColorToken::Text1)
     } else {
-        (ColorToken::CardField, ColorToken::Text2)
+        (super::face(doc, id, false), ColorToken::Text2)
     };
     fill_rounded_rect(scene, chip, m::FIELD_RADIUS, ink.color(bg));
+    if listening {
+        // À escuta, o anel tracejado do foco (o da caixa à escuta da vista A) respira pelo pulso do registo;
+        // estático (inteiro) em Discreto e com reduced motion.
+        let k = doc.pulse(id).map_or(1.0, |p| 0.5 + 0.5 * p);
+        let ring = ink.color(ColorToken::FocusRing).multiply_alpha(k);
+        let outer = Rect::new(
+            chip.x - m::FIELD_BORDER,
+            chip.y - m::FIELD_BORDER,
+            chip.w + m::FIELD_BORDER * 2.0,
+            chip.h + m::FIELD_BORDER * 2.0,
+        );
+        ph2d_editor_core::paint::stroke_rounded_rect_dashed(
+            scene,
+            outer,
+            m::FIELD_RADIUS,
+            m::FIELD_BORDER,
+            m::LOOSE_DASH,
+            ring,
+        );
+        doc.census.dashed.push(outer);
+    }
     line(
         &mut doc.census,
         ts,
@@ -305,7 +329,8 @@ fn open_key(
         SUBTLE_PX,
         ink.color(fg),
     );
-    target(doc, TryHit::OpenKey, chip);
+    let named = tr("input_map_try.opens_with_named").replace("{key}", &key_text);
+    target(doc, TryHit::OpenKey, chip, named, None);
     y + ROW
 }
 
@@ -325,5 +350,13 @@ fn forget(
     let fw = ts.prefix_width(text, SUBTLE_PX).min((x + w - fx).max(0.0));
     let link = ink.color(ColorToken::Accent);
     word(doc, ts, scene, text, (fx, y, fw), SUBTLE_PX, link);
-    target(doc, TryHit::Forget, Rect::new(fx, y, fw, ROW));
+    let id = TryHit::Forget.id();
+    let off = (doc.tryit.player_changed == 0).then_some("input_map_try.forget_off");
+    if off.is_none() && (doc.is_hovered(id) || doc.is_pressed(id)) {
+        // A ligação sublinha sob o ponteiro (no quadro, D32): o fio no pé da letra.
+        let base = y + (ROW + SUBTLE_PX) * 0.5;
+        let rule = Rect::new(fx, base, fw, StrokeToken::Hairline.px());
+        fill_rounded_rect(scene, rule, 0.0, link);
+    }
+    target(doc, TryHit::Forget, Rect::new(fx, y, fw, ROW), text, off);
 }

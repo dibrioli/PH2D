@@ -361,14 +361,9 @@ impl PainterTool {
                 }
             };
             let rows = bb.h as usize;
-            /// Below this bbox area (px) the serial sweep beats spawning scoped threads.
-            const PARALLEL_MIN_AREA: usize = 1 << 17;
-            let threads = std::thread::available_parallelism()
-                .map(std::num::NonZero::get)
-                .unwrap_or(1)
-                .clamp(1, rows.max(1));
+            let threads = crate::compositor::parallel_threads(rows * bb.w as usize, rows);
             let (by0, by1) = (bb.y as usize, (bb.y + bb.h) as usize);
-            if (rows * bb.w as usize) < PARALLEL_MIN_AREA || threads == 1 || rows <= 1 {
+            if threads <= 1 {
                 let mut covfull: Vec<&mut [u8]> = cov
                     .iter_mut()
                     .map(|m| &mut m[by0 * wus..by1 * wus])
@@ -397,21 +392,12 @@ impl PainterTool {
                         rest = tail;
                     }
                 }
-                let recomposite_band = &recomposite_band;
-                std::thread::scope(|s| {
-                    let handles: Vec<_> = bufbands
-                        .into_iter()
-                        .zip(covbands)
-                        .enumerate()
-                        .map(|(bi, (bband, mut cband))| {
-                            let band_y0 = bb.y + (bi * rpb) as u32;
-                            s.spawn(move || recomposite_band(bband, &mut cband, band_y0))
-                        })
-                        .collect();
-                    for h in handles {
-                        h.join().expect("per-layer recomposite band panicked");
-                    }
-                });
+                use rayon::prelude::*;
+                bufbands.into_par_iter().zip(covbands).enumerate().for_each(
+                    |(bi, (bband, mut cband))| {
+                        recomposite_band(bband, &mut cband, bb.y + (bi * rpb) as u32);
+                    },
+                );
             }
         }
         self.mark_dirty(bb);

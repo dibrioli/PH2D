@@ -58,30 +58,40 @@ pub(super) fn lift_colour(
     };
     let mut patch = vec![0u8; n * 4];
     let cur = &cur[..];
-    let caixas = faixas2(&mut patch, &mut base, 4, 4, wu, sb.y, sb.h, sb.w, |y0, p, b| {
-        let mut cx: Caixa = None;
-        for ry in 0..(p.len() / (4 * wu)) as u32 {
-            let y = y0 + ry;
-            for x in sb.x..sb.x + sb.w {
-                let m = f32::from(mask.get((y * w + x) as usize).copied().unwrap_or(0)) / 255.0;
-                if m <= 0.0 {
-                    continue;
-                }
-                let gi = ((y * w + x) as usize) * 4;
-                let i = (ry as usize * wu + x as usize) * 4;
-                let a = f32::from(cur[gi + 3]);
-                p[i] = cur[gi];
-                p[i + 1] = cur[gi + 1];
-                p[i + 2] = cur[gi + 2];
-                p[i + 3] = (a * m).round() as u8;
-                b[i + 3] = (a * (1.0 - m)).round() as u8;
-                if p[i + 3] > 0 {
-                    cx = juntar(cx, Some((x, y, x, y)));
+    let caixas = faixas2(
+        &mut patch,
+        &mut base,
+        4,
+        4,
+        wu,
+        sb.y,
+        sb.h,
+        sb.w,
+        |y0, p, b| {
+            let mut cx: Caixa = None;
+            for ry in 0..(p.len() / (4 * wu)) as u32 {
+                let y = y0 + ry;
+                for x in sb.x..sb.x + sb.w {
+                    let m = f32::from(mask.get((y * w + x) as usize).copied().unwrap_or(0)) / 255.0;
+                    if m <= 0.0 {
+                        continue;
+                    }
+                    let gi = ((y * w + x) as usize) * 4;
+                    let i = (ry as usize * wu + x as usize) * 4;
+                    let a = f32::from(cur[gi + 3]);
+                    p[i] = cur[gi];
+                    p[i + 1] = cur[gi + 1];
+                    p[i + 2] = cur[gi + 2];
+                    p[i + 3] = (a * m).round() as u8;
+                    b[i + 3] = (a * (1.0 - m)).round() as u8;
+                    if p[i + 3] > 0 {
+                        cx = juntar(cx, Some((x, y, x, y)));
+                    }
                 }
             }
-        }
-        cx
-    });
+            cx
+        },
+    );
     let src = regiao(caixas.into_iter().fold(None, juntar))?;
     Some((Arc::new(patch), Arc::new(base), src))
 }
@@ -157,20 +167,17 @@ fn faixas2<A: Send, B: Send, R: Send>(
     let jobs: Vec<_> = a.chunks_mut(rpb * ra).zip(b.chunks_mut(rpb * rb)).collect();
     let y_de = |i: usize| y0 + (i * rpb) as u32;
     if jobs.len() <= 1 {
-        return jobs.into_iter().enumerate().map(|(i, (ca, cb))| f(y_de(i), ca, cb)).collect();
-    }
-    let f = &f;
-    std::thread::scope(|s| {
-        let hs: Vec<_> = jobs
+        return jobs
             .into_iter()
             .enumerate()
-            .map(|(i, (ca, cb))| {
-                let y = y_de(i);
-                s.spawn(move || f(y, ca, cb))
-            })
+            .map(|(i, (ca, cb))| f(y_de(i), ca, cb))
             .collect();
-        hs.into_iter().map(|h| h.join().expect("transform lift band panicked")).collect()
-    })
+    }
+    use rayon::prelude::*;
+    jobs.into_par_iter()
+        .enumerate()
+        .map(|(i, (ca, cb))| f(y_de(i), ca, cb))
+        .collect()
 }
 
 /// A régua da cor (`for_dirty_rows_parallel`): série abaixo de 2^17 texels.
@@ -179,14 +186,7 @@ fn n_faixas(rows: u32, cols: u32) -> usize {
     if let Some(n) = tests::faixas_forcadas() {
         return n;
     }
-    const PARALLEL_MIN_AREA: usize = 1 << 17;
-    if (rows as usize * cols as usize) < PARALLEL_MIN_AREA || rows <= 1 {
-        return 1;
-    }
-    std::thread::available_parallelism()
-        .map(std::num::NonZero::get)
-        .unwrap_or(1)
-        .clamp(1, rows as usize)
+    crate::compositor::parallel_threads(rows as usize * cols as usize, rows as usize)
 }
 
 #[cfg(test)]

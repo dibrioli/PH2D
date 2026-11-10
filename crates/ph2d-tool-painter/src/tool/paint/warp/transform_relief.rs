@@ -228,12 +228,8 @@ impl PainterTool {
         if jobs.len() <= 1 {
             jobs.into_iter().for_each(run);
         } else {
-            std::thread::scope(|s| {
-                let hs: Vec<_> = jobs.into_iter().map(|j| s.spawn(move || run(j))).collect();
-                for h in hs {
-                    h.join().expect("transform relief band panicked");
-                }
-            });
+            use rayon::prelude::*;
+            jobs.into_par_iter().for_each(run);
         }
         // A luz lê a VIZINHANÇA de um texel (a normal é diferença central), então um texel logo fora da
         // caixa é iluminado por uma inclinação que mudou dentro dela — o mesmo crescimento de 1 que o
@@ -262,14 +258,7 @@ fn bands_for(dirty: Region) -> usize {
     if let Some(n) = oracle_tests::faixas_forcadas() {
         return n;
     }
-    const PARALLEL_MIN_AREA: usize = 1 << 17;
-    if (dirty.w as usize * dirty.h as usize) < PARALLEL_MIN_AREA || dirty.h <= 1 {
-        return 1;
-    }
-    std::thread::available_parallelism()
-        .map(std::num::NonZero::get)
-        .unwrap_or(1)
-        .clamp(1, dirty.h as usize)
+    crate::compositor::parallel_threads(dirty.w as usize * dirty.h as usize, dirty.h as usize)
 }
 
 /// Um texel do `over` do corpo, com a COBERTURA no lugar do alfa — a mesma lei que a cor usa.

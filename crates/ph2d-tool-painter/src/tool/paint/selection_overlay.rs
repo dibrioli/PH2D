@@ -6,6 +6,10 @@
 
 use super::PainterTool;
 
+#[cfg(test)]
+#[path = "fios_do_so_tests.rs"]
+mod fios_do_so_tests;
+
 impl PainterTool {
     /// Build the on-canvas selection **overlay**: semi-transparent diagonal **hatching** over the DESELECTED
     /// area + animated **marching ants** on the boundary. `phase` (a shell frame counter) animates the ants
@@ -86,28 +90,8 @@ impl PainterTool {
                 }
             }
         };
-        /// Below this canvas area the serial loop beats spawning scoped threads.
-        const PARALLEL_MIN_AREA: usize = 1 << 17;
-        let threads = std::thread::available_parallelism()
-            .map(std::num::NonZero::get)
-            .unwrap_or(1)
-            .clamp(1, hu.max(1));
-        if wu * hu < PARALLEL_MIN_AREA || threads <= 1 || hu <= 1 {
-            overlay_rows(&mut out, 0);
-        } else {
-            let rpb = hu.div_ceil(threads);
-            let overlay_rows = &overlay_rows;
-            std::thread::scope(|s| {
-                let handles: Vec<_> = out
-                    .chunks_mut(rpb * wu * 4)
-                    .enumerate()
-                    .map(|(bi, band)| s.spawn(move || overlay_rows(band, bi * rpb)))
-                    .collect();
-                for h in handles {
-                    h.join().expect("selection overlay band panicked");
-                }
-            });
-        }
+        let threads = crate::compositor::parallel_threads(wu * hu, hu);
+        crate::compositor::em_faixas_de_linhas(&mut out, wu * 4, threads, overlay_rows);
         Some((out, w, h))
     }
 

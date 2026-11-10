@@ -141,6 +141,9 @@ pub use abaixo::composite_below;
 #[cfg(test)]
 pub(crate) use cache::SAIDAS_REUSADAS;
 pub use cache::{CompositorCache, composite_with_cache, composite_with_cache_into};
+#[cfg(test)]
+pub(crate) use compose::FIOS_FORCADOS;
 pub use compose::{composite, composite_region};
+pub(crate) use compose::{em_faixas_de_linhas, parallel_threads};
 pub use gpu_ops::flatten_for_gpu;
 pub(crate) use vidro::composite_region_sobre_o_papel;

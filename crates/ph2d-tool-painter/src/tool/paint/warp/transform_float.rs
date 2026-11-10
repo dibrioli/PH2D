@@ -324,30 +324,9 @@ where
     let stride = (w as usize) * 4;
     let region = &mut buf[(dirty.y as usize) * stride..((dirty.y + dirty.h) as usize) * stride];
     let rows = dirty.h as usize;
-    /// Below this dirty-rect area (px) the serial loop wins over spawning scoped threads.
-    const PARALLEL_MIN_AREA: usize = 1 << 17;
-    if (rows * dirty.w as usize) < PARALLEL_MIN_AREA || rows <= 1 {
-        f(region, dirty.y);
-        return;
-    }
-    let threads = std::thread::available_parallelism()
-        .map(std::num::NonZero::get)
-        .unwrap_or(1)
-        .clamp(1, rows);
-    let rpb = rows.div_ceil(threads);
-    let f = &f;
-    std::thread::scope(|s| {
-        let handles: Vec<_> = region
-            .chunks_mut(rpb * stride)
-            .enumerate()
-            .map(|(bi, chunk)| {
-                let band_y0 = dirty.y + (bi * rpb) as u32;
-                s.spawn(move || f(chunk, band_y0))
-            })
-            .collect();
-        for h in handles {
-            h.join().expect("transform composite band panicked");
-        }
+    let threads = crate::compositor::parallel_threads(rows * dirty.w as usize, rows);
+    crate::compositor::em_faixas_de_linhas(region, stride, threads, |band, r0| {
+        f(band, dirty.y + r0 as u32);
     });
 }
 

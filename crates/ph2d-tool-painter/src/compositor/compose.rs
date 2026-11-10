@@ -72,11 +72,16 @@ fn encode_slice(acc: &[[f32; 4]], out: &mut [u8]) {
         .for_each(|(oc, lc)| encode_chunk(oc, lc));
 }
 
-/// How many worker threads a per-pixel pass of `area` px (with `rows` splittable units) should use:
-/// `1` (serial) below the minimum area, else the core count clamped to the unit count.
-pub(super) fn parallel_threads(area: usize, rows: usize) -> usize {
-    /// Below this area the serial loop beats spawning scoped threads.
+/// How many row bands a per-pixel pass of `area` px (with `rows` splittable units) should use:
+/// `1` (serial) below the minimum area, else the core count clamped to the unit count. The ONE floor
+/// of the tool's row-band passes (compositor, selection overlay, transform, per-layer stamp).
+pub(crate) fn parallel_threads(area: usize, rows: usize) -> usize {
+    /// Below this area the serial loop beats waking the pool.
     const PARALLEL_MIN_AREA: usize = 1 << 17;
+    #[cfg(test)]
+    if let Some(n) = FIOS_FORCADOS.with(std::cell::Cell::get) {
+        return n.clamp(1, rows.max(1));
+    }
     if area < PARALLEL_MIN_AREA || rows <= 1 {
         return 1;
     }
@@ -84,6 +89,32 @@ pub(super) fn parallel_threads(area: usize, rows: usize) -> usize {
         .map(std::num::NonZero::get)
         .unwrap_or(1)
         .clamp(1, rows)
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Test override of `parallel_threads` on THIS thread (any area), read before the pool is entered.
+    pub(crate) static FIOS_FORCADOS: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
+}
+
+/// `f(band, first_row)` over `region` (full rows of `row_bytes`) in `threads` disjoint row bands on the
+/// rayon pool (ADR-0201): no reduction, so the bytes do not depend on the band count. No blocking wait
+/// inside a job (#66).
+pub(crate) fn em_faixas_de_linhas<F>(region: &mut [u8], row_bytes: usize, threads: usize, f: F)
+where
+    F: Fn(&mut [u8], usize) + Sync,
+{
+    let rows = region.len() / row_bytes.max(1);
+    if threads <= 1 || rows <= 1 {
+        f(region, 0);
+        return;
+    }
+    use rayon::prelude::*;
+    let rpb = rows.div_ceil(threads);
+    region
+        .par_chunks_mut(rpb * row_bytes)
+        .enumerate()
+        .for_each(|(bi, band)| f(band, bi * rpb));
 }
 
 /// `true` when any VISIBLE adjustment in `ids` (recursing into groups) is a SPATIAL kind — its result

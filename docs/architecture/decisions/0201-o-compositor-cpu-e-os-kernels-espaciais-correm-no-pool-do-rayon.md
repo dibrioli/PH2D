@@ -42,3 +42,11 @@ pool aquecido = 0): vermelho 1 044 antes, verde depois.
 
 Acordar o pool custa 1–2 ms quando um operário está desagendado (ADR-0173); abaixo de `1 << 17` px (e `1 << 14` nos
 kernels) tudo continua num núcleo, como antes.
+
+## Extensão (B19b-cont 3) — a mesma família fora do compositor
+
+O overlay da seleção, `for_dirty_rows_parallel` (cor do Transform e malha), o levante e o corpo do Transform e a
+recomposição por camada do carimbo colorido (`stamp_color_cache`, `stamp_color_dynamic`) passam ao mesmo pool, com a
+mesma partição; o piso `1 << 17` passa a ter UM dono (`compositor::parallel_threads`). Gate
+`ph2d-tool-painter as_faixas_fora_do_compositor_nao_abrem_fios_do_so` (vermelho 72 · 128 · 96 fios → o controlo serial)
+e `as_faixas_fora_do_compositor_dao_o_serial_ao_bit`. Fica de fora: os `thread::scope` do `ph2d-painter-brush`.

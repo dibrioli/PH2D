@@ -360,21 +360,12 @@ impl PainterTool {
                         rest = tail;
                     }
                 }
-                let recomposite_band = &recomposite_band;
-                std::thread::scope(|s| {
-                    let handles: Vec<_> = bufbands
-                        .into_iter()
-                        .zip(covbands)
-                        .enumerate()
-                        .map(|(bi, (bband, mut cband))| {
-                            let band_y0 = bb.y + (bi * rpb) as u32;
-                            s.spawn(move || recomposite_band(bband, &mut cband, band_y0))
-                        })
-                        .collect();
-                    for h in handles {
-                        h.join().expect("dynamic recomposite band panicked");
-                    }
-                });
+                use rayon::prelude::*;
+                bufbands.into_par_iter().zip(covbands).enumerate().for_each(
+                    |(bi, (bband, mut cband))| {
+                        recomposite_band(bband, &mut cband, bb.y + (bi * rpb) as u32);
+                    },
+                );
             }
         }
         self.mark_dirty(bb);

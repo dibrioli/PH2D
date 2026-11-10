@@ -63,6 +63,18 @@ pub(crate) fn box_radii(k: usize) -> [usize; 3] {
     std::array::from_fn(|i| if i < m { (wu - 1) / 2 } else { (wl - 1) / 2 })
 }
 
+/// **A saída de uma caixa volta a ser um INTEIRO** (B24.1, DF-20): o avental entra em inteiros
+/// (`c·α` e `α·255`, `≤ 65 025`) e cada caixa sai arredondada, logo toda soma corrente é EXACTA em
+/// `f32` (`Σ ≤ 65 025 · lado < 2²⁴` enquanto `lado ≤ 258`) e o valor de um pixel é função só da
+/// janela dele — nunca de onde a REGIÃO pedida começa, que muda com a entrega dos eventos.
+#[inline]
+pub(crate) fn inteiro(x: f32) -> f32 {
+    x.round_ties_even()
+}
+
+/// O maior lado de caixa cuja soma de inteiros `≤ 65 025` ainda é exacta em `f32` (`< 2²⁴`).
+pub(crate) const LADO_MAXIMO_EXACTO: usize = (1 << 24) / 65_025;
+
 /// Uma passagem de caixa HORIZONTAL por soma corrente: a saída perde `r` de cada lado.
 ///
 /// ⚠️ **Ela é o ORÁCULO da [`caixa_h3`] E o caminho da porta de bissecção** (ver [`sem_fusao`]):
@@ -96,7 +108,7 @@ fn caixa_h(
         }
         for i in 0..ow {
             for c in 0..4 {
-                dest[i][c] = acc[c] * inv;
+                dest[i][c] = inteiro(acc[c] * inv);
             }
             if i + 1 < ow {
                 let sai = src[base + i];
@@ -188,7 +200,7 @@ fn caixa_h3_de(
         let n = dest.len();
         for i in 0..n {
             for c in 0..4 {
-                dest[i][c] = acc[c] * inv;
+                dest[i][c] = inteiro(acc[c] * inv);
             }
             if i + 1 < n {
                 for c in 0..4 {
@@ -518,6 +530,7 @@ pub(crate) fn blur_region_caixa_com(
     paralelo: bool,
 ) -> Vec<[f32; 4]> {
     let raios = box_radii(k);
+    debug_assert!(raios.iter().all(|r| 2 * r < LADO_MAXIMO_EXACTO), "k={k}: soma inexacta");
     let r_total: usize = raios.iter().sum();
     let ap_w = bw + 2 * r_total;
     let ap_h = bh + 2 * r_total;
@@ -596,9 +609,9 @@ pub(crate) fn blur_region_caixa_separado(
     debug_assert_eq!((w, h), (bw, bh));
     if paralelo {
         use rayon::prelude::*;
-        cur.par_iter_mut().for_each(desfaz);
+        cur.par_iter_mut().for_each(desfaz(r_total));
     } else {
-        cur.iter_mut().for_each(desfaz);
+        cur.iter_mut().for_each(desfaz(r_total));
     }
     cur
 }

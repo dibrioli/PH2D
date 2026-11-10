@@ -83,19 +83,76 @@ pub fn blur_region_borrado(
     )
 }
 
-/// **A mistura de volta de UMA linha:** `px ← px + (borrado − px)·(peso/255)`, canal a canal, com o
-/// arredondamento de sempre. `dst` é a linha RGBA na tela (`4·n` bytes), `borrada` e `peso` os `n`
-/// píxeis dela. ⚠️ É a mesma conta, bit a bit, do [`crate::blur::blend_blurred`] com o peso
-/// `f32::from(p)/255` — um pixel de peso `0` não é tocado.
+/// **A mistura de volta de UMA linha:** `px ← lerp(px, borrado, peso/255)` em alfa
+/// PRÉ-MULTIPLICADO ([`crate::mistura`]). `dst` é a linha RGBA na tela (`4·n` bytes), `borrada`
+/// (recta, `0..=255`) e `peso` os `n` píxeis dela. É a mesma conta, bit a bit, do
+/// [`crate::blur::blend_blurred`] com o peso `f32::from(p)/255` — um pixel de peso `0` não é tocado.
+/// Até B24.2 era a recta nos 4 canais: o vazio `0,0,0,0` puxava o RGB para o preto (orla escura).
 pub fn mistura_linha_por_peso(dst: &mut [u8], borrada: &[[f32; 4]], peso: &[u8]) {
     for ((px, src), &p) in dst.as_chunks_mut::<4>().0.iter_mut().zip(borrada).zip(peso) {
         let w = f32::from(p) / 255.0;
         if w <= 0.0 {
             continue;
         }
-        for c in 0..4 {
-            let d = f32::from(px[c]);
-            px[c] = (d + (src[c] - d) * w).round().clamp(0.0, 255.0) as u8;
+        crate::mistura::mistura_premultiplicada(px, *src, w);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const AMARELO: [u8; 4] = [250, 225, 20, 160];
+    const W: u32 = 40;
+    const H: u32 = 16;
+
+    /// Vazio à esquerda, tinta amarela de α INTERMÉDIO à direita (T1-06, GT-44).
+    fn camada() -> Vec<u8> {
+        let mut b = vec![0u8; (W * H * 4) as usize];
+        for y in 0..H {
+            for x in 20..W {
+                let i = ((y * W + x) * 4) as usize;
+                b[i..i + 4].copy_from_slice(&AMARELO);
+            }
+        }
+        b
+    }
+
+    fn escurecidos(b: &[u8]) -> (usize, usize) {
+        let (mut tocados, mut escuros) = (0, 0);
+        for p in b.as_chunks::<4>().0 {
+            if p[3] > 0 {
+                tocados += 1;
+                escuros += usize::from((0..3).any(|c| i32::from(p[c]) < i32::from(AMARELO[c]) - 1));
+            }
+        }
+        (tocados, escuros)
+    }
+
+    /// ⭐ **B24.2 (DF-46, IN-22): o borrão da pilha numa camada transparente não escurece a tinta.**
+    /// O controlo é a mistura RECTA de antes, escrita à letra: na mesma fixtura ela escurece.
+    #[test]
+    fn o_borrao_da_pilha_em_alfa_intermedio_nao_escurece_a_orla() {
+        let (bw, bh) = (W as usize, H as usize);
+        let peso = vec![128u8; bw * bh];
+        for nucleo in [BlurKernel::Caixa, BlurKernel::Binomial] {
+            let tela = camada();
+            let borrada = blur_region_borrado(&tela, W, H, 0, 0, bw, bh, 6, [false; 2], nucleo);
+            let mut nova = tela.clone();
+            blur_region_por_peso(&mut nova, W, H, 0, 0, bw, bh, 6, &peso, [false; 2], nucleo);
+            let mut recta = tela.clone();
+            for ((px, src), &p) in recta.as_chunks_mut::<4>().0.iter_mut().zip(&borrada).zip(&peso) {
+                let w = f32::from(p) / 255.0;
+                for c in 0..4 {
+                    let d = f32::from(px[c]);
+                    px[c] = (d + (src[c] - d) * w).round().clamp(0.0, 255.0) as u8;
+                }
+            }
+            let (tocados, escuros) = escurecidos(&nova);
+            let (_, escuros_recta) = escurecidos(&recta);
+            assert!(tocados > bh * 20, "{nucleo:?}: CONTROLO — o borrão não chegou ao vazio");
+            assert!(escuros_recta > bh, "{nucleo:?}: CONTROLO — a recta já não escurece ({escuros_recta})");
+            assert_eq!(escuros, 0, "{nucleo:?}: {escuros} de {tocados} texels mais escuros que a tinta");
         }
     }
 }

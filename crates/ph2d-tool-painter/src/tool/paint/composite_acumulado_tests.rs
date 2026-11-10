@@ -508,10 +508,18 @@ fn a_mistura_do_borrao_em_paralelo_da_o_byte_da_serie() {
             }
             let i = (r.y as usize + row) * stride + (r.x as usize + col) * 4;
             let src = borrada[row * r.w as usize + col];
-            for c in 0..4 {
-                let d = f32::from(serie[i + c]);
-                serie[i + c] = (d + (src[c] - d) * w).round().clamp(0.0, 255.0) as u8;
+            // Pré-multiplicada (B24.2): a recta nos 4 canais escurecia a orla.
+            let da = f32::from(serie[i + 3]) / 255.0;
+            let sa = src[3] / 255.0;
+            let na = da + (sa - da) * w;
+            if na > 0.0 {
+                for c in 0..3 {
+                    let pd = f32::from(serie[i + c]) * da;
+                    let ps = src[c] * sa;
+                    serie[i + c] = ((pd + (ps - pd) * w) / na).round().clamp(0.0, 255.0) as u8;
+                }
             }
+            serie[i + 3] = (na * 255.0).round().clamp(0.0, 255.0) as u8;
         }
     }
     let mut porta = tela.clone();

@@ -461,7 +461,7 @@ mod fatias_tests {
                         );
                         let (mut antes, _, _) =
                             super::super::as_seis_caixas(apron, ap_w, ap_h, raios, paralelo, true);
-                        antes.iter_mut().for_each(super::super::desfaz);
+                        antes.iter_mut().for_each(super::super::desfaz(r_total));
                         let agora = super::super::rota_fundida(
                             &buf,
                             fw,

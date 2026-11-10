@@ -337,14 +337,15 @@ fn o_byte_do_borrao_em_lotes_e_anterior_a_cura() {
     let (_, com_antes, pior_antes, _) = mede(CURA_REVERTIDA);
     assert_eq!(casos, 82, "o corpus mudou");
     assert!(
-        pior_cura <= 1 && bytes_cura <= 16,
-        "a cura: o borrão em lotes passou do último byte (pior {pior_cura}, {bytes_cura} bytes)"
+        pior_cura == 0 && bytes_cura == 0,
+        "a cura: o borrão em lotes mudou bytes (pior {pior_cura}, {bytes_cura} bytes) — B24.1"
     );
-    // A PREMISSA, agora medida: o código de antes também sorteava o byte.
+    // A PREMISSA, medida: o byte sorteado era do BORRÃO (somas f32 desde a borda da região), não
+    // da cura — com as caixas em inteiros (B24.1) o código de antes também deixa de o ter.
     assert!(
-        pior_antes == 1 && com_antes >= 10,
-        "a premissa morreu: o código de antes da cura deixou de ter o byte \
-         (pior {pior_antes}, {com_antes} casos) — reveja a barra do `a_ordem_…`"
+        pior_antes == 0 && com_antes == 0,
+        "o código de antes da cura voltou a sortear o byte (pior {pior_antes}, {com_antes} \
+         casos): o borrão voltou a depender da região do lote"
     );
     assert!(
         com_cura <= com_antes,

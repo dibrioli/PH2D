@@ -249,13 +249,10 @@ fn diag_onde_o_borrao_gasta() {
 /// soma corrente da caixa carrega o sítio onde COMEÇOU e o resultado passa a depender da região
 /// pedida — que é a não-associatividade do `f32` que a cerca das bandas desta crate já nomeia.
 ///
-/// ⚠️ **Gate desde a auditoria de 2026-09-23** (o nome `diag_` fica porque o handoff e três docs
-/// o citam): ele corria na suíte sem afirmar NADA, e é a premissa sobre que a barra `pior ≤ 1`
-/// do `a_ordem_e_da_pilha_e_nao_da_taxa_do_rato` assenta. As duas metades:
-/// * **não é idêntico** — se um dia for (outra soma, outra ordem), aquela barra pode voltar a
-///   `pior == 0`, e isso tem de ser dito;
-/// * **difere menos de `1e-2`** (numa escala `0..255`) — o bastante para mudar um byte só quando o
-///   valor exacto cai junto a uma fronteira de arredondamento, e nunca dois.
+/// ⭐ **B24.1 (DF-20): a resposta é SIM, ao bit.** As caixas somam inteiros (avental em `c·α`,
+/// `α·255`; cada caixa sai arredondada), logo a soma corrente é exacta e o pixel é função só da
+/// janela dele. É a premissa da barra `pior == 0 && bytes == 0` de
+/// `a_ordem_e_da_pilha_e_nao_da_taxa_do_rato` e do `o_byte_do_borrao_em_lotes_e_anterior_a_cura`.
 #[test]
 fn diag_o_borrao_de_uma_sub_regiao_e_o_miolo_do_maior() {
     let (fw, fh) = (512i64, 512i64);
@@ -286,12 +283,11 @@ fn diag_o_borrao_de_uma_sub_regiao_e_o_miolo_do_maior() {
             sw * sh
         );
         assert!(
-            pior > 0.0 && iguais < sw * sh,
-            "k={k}: a sub-região saiu IDÊNTICA ao miolo — a premissa do byte tolerado morreu"
-        );
-        assert!(
-            pior < 1e-2,
-            "k={k}: a sub-região difere do miolo mais do que o arredondamento explica ({pior:.3e})"
+            pior == 0.0 && iguais == sw * sh,
+            "k={k}: a sub-região difere do miolo (pior {pior:.3e}, {} de {} píxeis): o borrão \
+             depende de onde a REGIÃO começa",
+            sw * sh - iguais,
+            sw * sh
         );
     }
 }
@@ -431,9 +427,9 @@ fn diag_a_rota_fundida_de_ponta_a_ponta() {
                 let (mut v, _, _) = super::as_seis_caixas(apron, ap_w, ap_h, raios, paralelo, true);
                 if paralelo {
                     use rayon::prelude::*;
-                    v.par_iter_mut().for_each(super::desfaz);
+                    v.par_iter_mut().for_each(super::desfaz(r_total));
                 } else {
-                    v.iter_mut().for_each(super::desfaz);
+                    v.iter_mut().for_each(super::desfaz(r_total));
                 }
                 std::hint::black_box(&v);
                 antes = antes.min(t0.elapsed().as_secs_f64() * 1e3);

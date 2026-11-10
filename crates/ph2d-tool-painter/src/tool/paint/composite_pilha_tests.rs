@@ -273,10 +273,10 @@ fn a_ordem_e_da_pilha_e_nao_da_taxa_do_rato() {
                         (n + usize::from(d > 0), p.max(d))
                     });
             assert!(
-                pior <= 1 && bytes <= 16,
+                pior == 0 && bytes == 0,
                 "{topo:?} em passos de {passo}: a entrega em lotes MUDOU a imagem \
-                 ({bytes} bytes diferentes, pior {pior}) — a barra é o último byte da \
-                 quantização, e o defeito que esta régua apanha mede `41,59` de médio"
+                 ({bytes} bytes diferentes, pior {pior}) — as caixas somam inteiros (B24.1), \
+                 o borrão não depende da região do lote"
             );
         }
     }

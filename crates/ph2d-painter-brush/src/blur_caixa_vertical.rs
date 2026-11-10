@@ -50,7 +50,7 @@ pub(super) fn caixa_v3_com(
     if r_total == 0 {
         let mut out = src.to_vec();
         if desfaz {
-            out.iter_mut().for_each(super::desfaz);
+            out.iter_mut().for_each(super::desfaz(r_total));
         }
         return (out, h);
     }
@@ -91,7 +91,7 @@ pub(super) fn caixa_v3_com(
         for j in 0..oh_l {
             for i in 0..largura {
                 for c in 0..4 {
-                    dest[j * largura + i][c] = acc[i][c] * inv;
+                    dest[j * largura + i][c] = super::inteiro(acc[i][c] * inv);
                 }
             }
             if j + 1 < oh_l {
@@ -130,7 +130,7 @@ pub(super) fn caixa_v3_com(
         for (j, linha) in dest.iter_mut().enumerate() {
             linha.copy_from_slice(&t3[j * largura..][..largura]);
             if desfaz {
-                linha.iter_mut().for_each(super::desfaz);
+                linha.iter_mut().for_each(super::desfaz(r_total));
             }
         }
     };
@@ -212,7 +212,7 @@ pub(super) fn caixa_v(
         for j in 0..oh {
             for i in 0..largura {
                 for c in 0..4 {
-                    dest[j][i][c] = acc[i][c] * inv;
+                    dest[j][i][c] = super::inteiro(acc[i][c] * inv);
                 }
             }
             if j + 1 < oh {

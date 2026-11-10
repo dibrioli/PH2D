@@ -73,25 +73,41 @@ pub(crate) fn linha_do_avental(
     dest: &mut [[f32; 4]],
 ) {
     let sy = src_coord(min_y + j as i64 - r_total as i64, fh, wrap[1]);
+    let s = escala_do_avental(r_total);
     for (i, d) in dest.iter_mut().enumerate() {
         let sx = src_coord(min_x + i as i64 - r_total as i64, fw, wrap[0]);
         let si = ((sy * fw + sx) * 4) as usize;
-        let a = f32::from(buf[si + 3]);
-        let af = a / 255.0;
+        // Em INTEIROS (`c·α·s`, `α·255·s`): a soma corrente das caixas fica exacta (B24.1).
+        let a = f32::from(buf[si + 3]) * s;
         *d = [
-            f32::from(buf[si]) * af,
-            f32::from(buf[si + 1]) * af,
-            f32::from(buf[si + 2]) * af,
-            a,
+            f32::from(buf[si]) * a,
+            f32::from(buf[si + 1]) * a,
+            f32::from(buf[si + 2]) * a,
+            a * 255.0,
         ];
     }
 }
 
-/// **Desfazer a premultiplicação de um pixel** — a porta ÚNICA, com dois chamadores: a passagem
-/// inteira da rota separada e a escrita final da vertical fundida ([`caixa_v3_com`]).
-#[inline]
-pub(crate) fn desfaz(p: &mut [f32; 4]) {
-    let a = p[3];
-    let inv = if a > 1e-4 { 255.0 / a } else { 0.0 };
-    *p = [p[0] * inv, p[1] * inv, p[2] * inv, a];
+/// **A escala INTEIRA do avental** de um borrão de alcance `r_total` (B24.1): a maior `s` que deixa
+/// a soma de uma caixa — `lado ≤ 2⌈r_total/3⌉ + 1` valores `≤ 65 025·s` — abaixo de `2²⁴`, onde o
+/// `f32` soma inteiros sem erro. Quanto maior `s`, mais fino o arredondamento de cada caixa.
+#[must_use]
+pub(crate) fn escala_do_avental(r_total: usize) -> f32 {
+    let lado = 2 * r_total.div_ceil(3) + 1;
+    #[allow(clippy::cast_precision_loss)]
+    let s = ((1usize << 24) / (65_025 * lado)).max(1) as f32;
+    s
+}
+
+/// **Desfazer a premultiplicação** — a porta ÚNICA, com dois chamadores: a passagem inteira da
+/// rota separada e a escrita final da vertical fundida ([`caixa_v3_com`]). Da escala do avental
+/// (cor `c·α·s`, alfa `α·255·s`) de volta a recto `0..=255`.
+#[must_use]
+pub(crate) fn desfaz(r_total: usize) -> impl Fn(&mut [f32; 4]) + Sync + Send {
+    let s = escala_do_avental(r_total);
+    move |p: &mut [f32; 4]| {
+        let a = p[3] / (255.0 * s);
+        let inv = if a > 1e-4 { 1.0 / (a * s) } else { 0.0 };
+        *p = [p[0] * inv, p[1] * inv, p[2] * inv, a];
+    }
 }

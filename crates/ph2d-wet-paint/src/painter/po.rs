@@ -3,6 +3,9 @@
 
 use super::*;
 
+#[cfg(test)]
+mod po_tests;
+
 impl Engine {
     /// Pousa UM grão de pó solto em `(x, y)` com raio `r` (células) e a silhueta `sil` do hospedeiro, pela lei do
     /// dab ([`Trail::accumulate_paint_shaped_cor`]: o portão do papel, a carga, o pouso e a recolha da cor) — mas num
@@ -35,7 +38,8 @@ impl Engine {
         let tex = self.brush_tex.take().unwrap();
         trail.start_stroke(x, y, color, TrailMode::Paint);
         let lisa = |_: i32, _: i32| -> f64 { 1.0 };
-        self.marca_tudo();
+        // B12.1: só o alcance do grão (a silhueta com a orla), não a tela.
+        self.marca_dab(dab.x, dab.y, dab.r * dab.reach);
         let layer = &mut self.layers[self.active_layer];
         let acc = trail.accumulate_paint_shaped_cor(
             &mut layer.grid,

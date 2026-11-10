@@ -15,7 +15,7 @@ fn h<T: std::fmt::Debug>(st: &mut Vec<u64>, v: &[T]) {
 }
 
 /// O hash de TODO o estado que o histórico promete devolver (o mesmo conjunto do `GridSnapshot`).
-fn hash_grid(g: &Grid) -> Vec<u64> {
+pub(crate) fn hash_grid(g: &Grid) -> Vec<u64> {
     let s = snapshot_grid(g);
     let mut st = Vec::new();
     h(&mut st, &s.film);
@@ -46,7 +46,7 @@ fn hash_grid(g: &Grid) -> Vec<u64> {
     st
 }
 
-fn traco(e: &mut Engine, x: f64, y: f64, frames: usize) {
+pub(crate) fn traco(e: &mut Engine, x: f64, y: f64, frames: usize) {
     e.pointer_down(x, y, None);
     for i in 0..frames {
         e.pointer_frame(x + 6.0 * i as f64, y + 2.0 * i as f64);
@@ -56,7 +56,7 @@ fn traco(e: &mut Engine, x: f64, y: f64, frames: usize) {
     while e.release_frame(last.0, last.1) {}
 }
 
-fn corre(e: &mut Engine, passos: usize) {
+pub(crate) fn corre(e: &mut Engine, passos: usize) {
     for _ in 0..passos {
         e.step_simulation();
     }

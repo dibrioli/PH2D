@@ -45,6 +45,9 @@ fn faixas_do_passo(g: &Grid, f: i64) -> Vec<[i64; 4]> {
 /// caminho do Real Oil e o tecto do Smooth Edges (o alcance da óptica).
 type FormaGlobal = ([usize; 9], bool, u32);
 
+#[cfg(test)]
+mod enterro_tests;
+
 fn forma_global(g: &Grid) -> FormaGlobal {
     (
         [
@@ -175,22 +178,28 @@ impl Engine {
             return;
         };
         let ultima = tocada.iter().rposition(|t| *t).unwrap_or(primeira);
-        let (mut x0, mut x1) = (gw, 0);
-        for (k, _) in tocada.iter().enumerate().filter(|(_, t)| **t) {
-            x0 = x0.min(k % gw);
-            x1 = x1.max(k % gw);
-        }
-        self.marca_ret(
-            x0 as i64 + 1,
-            (primeira / gw) as i64 + 1,
-            x1 as i64 + 2,
-            (ultima / gw) as i64 + 2,
-        );
+        // B12.2: só as linhas de `primeira` a `ultima`; em cada uma, as colunas da primeira à última tocada.
+        let (ya, yb) = (primeira / gw, ultima / gw);
+        let linhas: Vec<(usize, usize, usize)> = (ya..=yb)
+            .filter_map(|y| {
+                let l = &tocada[y * gw..(y + 1) * gw];
+                let a = l.iter().position(|t| *t)?;
+                let b = l.iter().rposition(|t| *t).unwrap_or(a);
+                Some((y, a, b))
+            })
+            .collect();
+        let x0 = linhas.iter().map(|l| l.1).min().unwrap_or(0);
+        let x1 = linhas.iter().map(|l| l.2).max().unwrap_or(0);
+        self.marca_ret(x0 as i64 + 1, ya as i64 + 1, x1 as i64 + 2, yb as i64 + 2);
         // ⛔ `active_grid_mut` marcaria a grade inteira: 662 MB por enterro a 4096×2560.
         let g = &mut self.layers[self.active_layer].grid;
         let s = g.s;
-        for (k, _) in tocada.iter().enumerate().filter(|(_, t)| **t) {
-            crate::grid::enterra_celula(g, (k / gw + 1) * s + k % gw + 1);
+        for &(y, a, b) in &linhas {
+            #[cfg(test)]
+            enterro_tests::VISITADAS.with(|v| v.set(v.get() + gw + b + 1 - a));
+            for x in (a..=b).filter(|x| tocada[y * gw + x]) {
+                crate::grid::enterra_celula(g, (y + 1) * s + x + 1);
+            }
         }
     }
 

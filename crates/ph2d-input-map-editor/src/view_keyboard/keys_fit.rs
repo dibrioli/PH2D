@@ -29,6 +29,8 @@ pub(crate) const PLATE_RADIUS: f32 = m::SEG_RADIUS - m::FIELD_BORDER;
 /// O recuo das barras às arestas da tecla: de lado, uma aresta dupla; em cima e em baixo, o raio (as barras nunca
 /// entram nos cantos redondos).
 pub(crate) const BAR_INSET_X: f32 = m::FIELD_BORDER * 2.0;
+/// Quanto de cada barra se quer à vista de cada lado da plaquinha.
+pub(crate) const BAR_PEEK: f32 = m::SEG_INSET;
 
 /// O menor tamanho de legenda: o menor texto que a app já tem (`TypeToken::Xxs`), nada menor (a porta dos testes).
 pub const MIN_LEGEND_PX: f32 = ph2d_tokens::TypeToken::Xxs.px();
@@ -38,8 +40,8 @@ fn bar_band(kh: f32) -> f32 {
     (kh - m::SEG_RADIUS * 2.0).max(0.0)
 }
 
-/// Quantas barras cabem na tecla de altura `kh` à espessura cheia (`BAR_H`, vão `BAR_GAP`). A tecla mais baixa
-/// possível (`KEY_MIN_H` = 25) leva 4.
+/// Quantas barras cabem na tecla de altura `kh` à espessura cheia (`BAR_H`, vão `BAR_GAP`). Medido 10/11 nas
+/// áreas reais: a tecla mede 25 a 1280 (4 barras cheias) e 26,5–30,5 a 1600 (4–5).
 #[must_use]
 pub fn bars_full(kh: f32) -> usize {
     ((bar_band(kh) + BAR_GAP) / (BAR_H + BAR_GAP)) as usize
@@ -68,14 +70,21 @@ pub fn bar_stack(r: ph2d_editor_core::zones::Rect, n: usize) -> Vec<ph2d_editor_
 }
 
 /// A plaquinha da legenda `l` (a caixa da legenda) na tecla `kr`: a legenda mais a folga, nunca além de
-/// [`LEGEND_PAD`] das arestas (as barras espreitam de cada lado) nem fora da tecla em altura.
+/// [`LEGEND_PAD`] das arestas (as barras espreitam de cada lado) nem fora da tecla em altura. `icon`: a caixa do
+/// ícone já traz a folga dele ([`super::keys::ARROW_BOX`]), a de lado pode ir a zero.
 #[must_use]
 pub fn plate_of(
     kr: ph2d_editor_core::zones::Rect,
     l: ph2d_editor_core::zones::Rect,
+    icon: bool,
 ) -> ph2d_editor_core::zones::Rect {
-    let x0 = (l.x - PLATE_PAD_X).max(kr.x + LEGEND_PAD).min(l.x);
-    let x1 = (l.x + l.w + PLATE_PAD_X)
+    // A folga de lado cede para as barras espreitarem `BAR_PEEK` de cada lado: nas setas e nas letras a 1280 a
+    // folga cheia deixava 1–3 px de barra (fotos b1_1600/b1_1280, 10/11).
+    let room = (kr.w - BAR_INSET_X * 2.0 - BAR_PEEK * 2.0 - l.w) * 0.5;
+    let floor = if icon { 0.0 } else { PLATE_PAD_Y };
+    let pad = room.clamp(floor, PLATE_PAD_X);
+    let x0 = (l.x - pad).max(kr.x + LEGEND_PAD).min(l.x);
+    let x1 = (l.x + l.w + pad)
         .min(kr.x + kr.w - LEGEND_PAD)
         .max(l.x + l.w);
     let y0 = (l.y - PLATE_PAD_Y).max(kr.y);

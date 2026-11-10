@@ -498,7 +498,7 @@ fn paint_key(
     // ⭐ A legenda fica SEMPRE no centro da tecla, numa plaquinha opaca da face dela (dono 10/11: «como aqueles
     // adesivos que colocamos no teclado»), com a aresta fina que a lê como colada; a do sistema, apagada também.
     let lb = legend_box(ts, kr, &legend);
-    let plate = fit::plate_of(kr, lb);
+    let plate = fit::plate_of(kr, lb, matches!(legend, Legend::Icon(_)));
     if system {
         let c = ink.color(bg).multiply_alpha(SYSTEM_FACE_ALPHA);
         fill_rounded_rect(scene, plate, fit::PLATE_RADIUS, c);

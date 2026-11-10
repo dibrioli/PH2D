@@ -298,6 +298,34 @@ impl<T: Copy + Default + Send + Sync> TileJournal<T> {
         self.whole.as_deref()
     }
 
+    /// **Devolve `out` (o plano de agora) ao estado do último reset**: escreve por cima os bytes velhos de cada tile
+    /// capturado. `false` = o journal descreve um plano de outra forma (`out` fica como estava).
+    pub(crate) fn rewind_into(&self, out: &mut [T]) -> bool {
+        if let Some(w) = &self.whole {
+            if w.len() != out.len() {
+                return false;
+            }
+            out.copy_from_slice(w);
+            return true;
+        }
+        if self.taken == 0 {
+            return true;
+        }
+        if self.stride * self.rows != out.len() {
+            return false;
+        }
+        for (t, tile) in self.data.iter().enumerate() {
+            let Some(tile) = tile else { continue };
+            let (tx, ty) = (t % self.tiles_x, t / self.tiles_x);
+            let tw = self.tile_w(tx);
+            for (r, row) in tile.chunks_exact(tw).enumerate() {
+                let o = (ty * TILE + r) * self.stride + tx * TILE;
+                out[o..o + tw].copy_from_slice(row);
+            }
+        }
+        true
+    }
+
     /// O valor que o elemento `i` tinha no início do passo, se o tile dele foi capturado.
     ///
     /// ⚠️ **Ele carrega o MESMO `cfg` dos chamadores desde a §5.70.** O caminho de commit deixou de

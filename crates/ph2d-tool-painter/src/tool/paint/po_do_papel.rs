@@ -19,10 +19,7 @@ impl PainterTool {
         }
         let (w, h) = (w as usize, h as usize);
         let base = self
-            .paint
-            .stroke_undo
-            .as_ref()
-            .map(|s| std::sync::Arc::clone(&s.canvas_rgba))
+            .tela_de_antes_do_traco(true)
             .filter(|b| w > 0 && b.len() == w * h * 4);
         let plano = base.map_or_else(Vec::new, |b| po_da_tela(&b, w, h));
         self.paint.po_do_papel = Some(plano);

@@ -110,6 +110,9 @@ pub struct ModelSnapshot {
     /// relevo**, e o delta gravaria `OnlyAfter` = *"não existia antes"* ⇒ **o undo apagaria o relevo**
     /// (medido, doc 28 §5.60).
     pub(crate) relief_elided: elide::ElidedRelief,
+    /// **A tela DESCRITA sem ser segurada** (B17.4, o molde do [`ElidedRelief`]): `Some` = `canvas_rgba` está
+    /// vazio e o lado de antes é `journal.rewind(vivo)`, válido enquanto o vivo for o objeto da testemunha.
+    pub(crate) canvas_elided: Option<std::sync::Weak<Vec<u8>>>,
     pub canvas_rgba: Arc<Vec<u8>>,
     /// A forma do canvas quando o snapshot foi tirado — o que dá o **stride** de cada plano ao motor de
     /// delta ([`crate::undo_delta::Strides`]). Um snapshot que não sabe a largura do que carrega só pode
@@ -459,8 +462,10 @@ impl UndoController {
     /// recebê-lo não acrescenta trabalho.
     pub fn undo(&mut self, live: &ModelSnapshot) -> Option<Box<ModelSnapshot>> {
         let entry = self.undo.last()?;
+        // A tela elidida do cursor volta pelo journal sobre o vivo (B17.4).
         let cursor = self.cursor.as_deref()?;
-        let Some(restore) = entry.materialize(cursor, live, true) else {
+        let held = self.with_canvas_held(cursor, &live.canvas_rgba);
+        let Some(restore) = held.and_then(|c| entry.materialize(&c, live, true)) else {
             // O cursor não descreve mais o plano que a entrada deltou (o canvas mudou de forma sob o
             // histórico). Um undo que devolve pixels quase-certos é pior que um que se recusa: descarta.
             eprintln!("[painter-undo] o cursor nao casa com o delta: historico descartado");
@@ -485,8 +490,10 @@ impl UndoController {
     /// Ver [`Self::undo`] quanto ao `live`.
     pub fn redo(&mut self, live: &ModelSnapshot) -> Option<Box<ModelSnapshot>> {
         let entry = self.redo.last()?;
+        // A tela elidida do cursor volta pelo journal sobre o vivo (B17.4).
         let cursor = self.cursor.as_deref()?;
-        let Some(restore) = entry.materialize(cursor, live, false) else {
+        let held = self.with_canvas_held(cursor, &live.canvas_rgba);
+        let Some(restore) = held.and_then(|c| entry.materialize(&c, live, false)) else {
             eprintln!("[painter-undo] o cursor nao casa com o delta: historico descartado (redo)");
             debug_assert!(
                 false,
@@ -531,7 +538,7 @@ impl UndoController {
     /// pré-condição que a porta confere.
     #[cfg(test)]
     fn live_from_cursor(&self) -> Option<ModelSnapshot> {
-        let live = self.base_for_top();
+        let live = self.base_for_top(None);
         assert!(
             live.is_some(),
             "o cursor nao pode oferecer base de relevo: ou uma testemunha morreu, ou alguem escreveu \

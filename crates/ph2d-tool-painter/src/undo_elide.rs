@@ -119,3 +119,84 @@ pub(crate) fn witness<T>(
     let w = elided.get(&k)?;
     Some(w.upgrade().is_some_and(|p| Arc::ptr_eq(&p, live)))
 }
+
+impl super::ModelSnapshot {
+    /// **A tela passa a ser DESCRITA** (B17.4): fica a testemunha, o `Arc` forte sai — no mesmo passo, pela razão do
+    /// [`ElidedRelief::of`]. O lado de antes é o journal da tela sobre o plano vivo.
+    pub(crate) fn elide_canvas(&mut self) {
+        if self.canvas_elided.is_none() && !self.canvas_rgba.is_empty() {
+            self.canvas_elided = Some(Arc::downgrade(&self.canvas_rgba));
+            self.canvas_rgba = Arc::new(Vec::new());
+        }
+    }
+}
+
+impl super::UndoController {
+    /// **A tela que `s` descreve, SEGURADA**: a dele quando a segura; elidida, o plano vivo devolvido pelo journal ao
+    /// último reset (o próprio `Arc` vivo quando nada foi capturado). `None` = a testemunha não é o plano vivo (alguém o
+    /// trocou por inteiro): o antes não existe, e quem pergunta recusa.
+    pub(crate) fn canvas_held(
+        &self,
+        s: &super::ModelSnapshot,
+        live: &Arc<Vec<u8>>,
+    ) -> Option<Arc<Vec<u8>>> {
+        let Some(w) = &s.canvas_elided else {
+            return Some(Arc::clone(&s.canvas_rgba));
+        };
+        // A 1.ª escrita depois da elisão MUDA o plano de alocação (`make_mut` com só um `Weak` move, sem copiar) e a
+        // testemunha morre: com o journal a falar, quem responde é ele; calado, a testemunha tem de ser o vivo.
+        if self.write_state.canvas_untouched() {
+            let w_live = w.upgrade().is_some_and(|p| Arc::ptr_eq(&p, live));
+            return w_live.then(|| Arc::clone(live));
+        }
+        let mut v = live.as_ref().clone();
+        self.write_state.rewind_canvas(&mut v).then(|| Arc::new(v))
+    }
+
+    /// `s` com a tela segurada ([`Self::canvas_held`]).
+    pub(crate) fn with_canvas_held(
+        &self,
+        s: &super::ModelSnapshot,
+        live: &Arc<Vec<u8>>,
+    ) -> Option<super::ModelSnapshot> {
+        let mut m = s.clone();
+        if m.canvas_elided.is_some() {
+            m.canvas_rgba = self.canvas_held(s, live)?;
+            m.canvas_elided = None;
+        }
+        Some(m)
+    }
+
+    /// **Um passo abre — e é AQUI que o cursor larga a tela** (B17.4): só quando a tela dele É o objeto vivo e nada a
+    /// escreveu desde o reset (a identidade prova os bytes). Elidir no `set_cursor` erraria: os editores de forma
+    /// reinstalam outra tela depois do commit (sem captura), e o cursor tem de segurar a de antes. Se o journal tem
+    /// bytes que a absorção não levou, o cursor elidido segura-os ANTES de o reset os esquecer.
+    pub(crate) fn begin_step(&mut self, writes: u64, live: &Arc<Vec<u8>>) {
+        #[cfg(test)]
+        let elide = self.elide_cursor;
+        #[cfg(not(test))]
+        let elide = true;
+        if elide
+            && self.write_state.canvas_untouched()
+            && !self.write_state.on_foreign_plane()
+            && let Some(c) = self.cursor.as_deref_mut()
+            && Arc::ptr_eq(&c.canvas_rgba, live)
+        {
+            c.elide_canvas();
+        } else if !self.write_state.canvas_untouched()
+            && let Some(c) = self.cursor.as_deref()
+            && c.canvas_elided.is_some()
+        {
+            match self.with_canvas_held(c, live) {
+                Some(held) => self.cursor = Some(Box::new(held)),
+                None => {
+                    eprintln!(
+                        "[painter-undo] o cursor elidido perdeu a tela: historico descartado"
+                    );
+                    self.clear();
+                }
+            }
+        }
+        self.write_state.begin_step(writes);
+    }
+}

@@ -202,7 +202,7 @@ impl PainterTool {
         self.absorb_foreign_writes_now();
         self.undo.marca.comeca_o_passo();
         self.audit_cursor_is_reconstructible();
-        self.undo.write_state.begin_step(self.undo_writes);
+        self.undo.begin_step(self.undo_writes, &self.canvas_rgba);
     }
 
     /// `true` if there is at least one edit to undo (an open in-flight shape transaction counts).

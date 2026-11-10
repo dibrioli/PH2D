@@ -66,6 +66,32 @@ impl UndoController {
         // `split` esvazia o que recebe, então ele come CÓPIAS — e uma cópia de `ModelSnapshot` é um
         // punhado de refcounts.
         let (mut a, mut b) = (cursor.clone(), before.clone());
+        // A TELA elidida (B17.4): o mesmo reset dos dois lados ⇒ a mesma tela, sem a ler; senão ela volta pelo journal.
+        let live = before
+            .canvas_elided
+            .as_ref()
+            .and_then(std::sync::Weak::upgrade)
+            .unwrap_or_else(|| Arc::clone(&before.canvas_rgba));
+        let mesma_tela = matches!(
+            (&cursor.canvas_elided, &before.canvas_elided),
+            (Some(x), Some(y)) if x.ptr_eq(y)
+        );
+        if mesma_tela {
+            let p = Arc::new(Vec::new());
+            a.canvas_rgba = Arc::clone(&p);
+            b.canvas_rgba = p;
+        } else {
+            let (Some(ca), Some(cb)) = (
+                self.canvas_held(cursor, &live),
+                self.canvas_held(before, &live),
+            ) else {
+                return; // a testemunha morreu: não há o que comparar honestamente
+            };
+            a.canvas_rgba = ca;
+            b.canvas_rgba = cb;
+        }
+        a.canvas_elided = None;
+        b.canvas_elided = None;
         // ⚠️ **O RELEVO não participa do detector, e a razão é medida.** O cursor o ELIDE (degrau 4),
         // então ele não tem como testemunhar sobre bytes que não segura: comparado com um `before` que
         // os segura, toda camada sai como `OnlyAfter` = *"apareceu agora"*, `heap_bytes()` nunca é
@@ -120,12 +146,19 @@ impl UndoController {
         // (degrau 4) e materializar contra ele devolveria `None`, matando a absorção em silêncio. Ela
         // recusa quando alguém escreveu relevo desde o commit, e aí a absorção sai calada — que é a
         // mesma resposta que ela já dava quando o cursor não descrevia o topo.
-        let Some(base) = self.base_for_top() else {
+        let Some(base) = self.base_for_top(Some(&live)) else {
             return;
         };
         let Some(cursor) = self.cursor.as_deref() else {
             return;
         };
+        let (Some(cursor), Some(before_h)) = (
+            self.with_canvas_held(cursor, &live),
+            self.with_canvas_held(before, &live),
+        ) else {
+            return;
+        };
+        let cursor = &cursor;
         let Some(mut top) = self.undo.pop() else {
             return;
         };
@@ -140,7 +173,7 @@ impl UndoController {
         let stride = crate::undo_delta::Strides::of(top.before.canvas_size.0).rgba;
         let cheap = top.planes.canvas().absorbed(
             &cursor.canvas_rgba,
-            &before.canvas_rgba,
+            &before_h.canvas_rgba,
             detected.canvas(),
             stride,
         );
@@ -162,7 +195,7 @@ impl UndoController {
         };
         if cheap.is_some() {
             // O mesmo `Arc` dos dois lados: o `split` vê-os idênticos e não varre o canvas.
-            first_before.canvas_rgba = Arc::clone(&before.canvas_rgba);
+            first_before.canvas_rgba = Arc::clone(&before_h.canvas_rgba);
         }
         #[cfg(test)]
         ABSORB_FIRED.with(|c| c.set(c.get() + 1));
@@ -171,7 +204,7 @@ impl UndoController {
             CHEAP_FIRED.with(|c| c.set(c.get() + 1));
         }
         self.bytes -= old_bytes;
-        let mut entry = UndoEntry::split(*first_before, before.clone(), kind, None, None);
+        let mut entry = UndoEntry::split(*first_before, before_h, kind, None, None);
         entry.transacao = transacao;
         // A água absorvida não é do artista — salvo a da sessão dele (W12): a tinta que ela espalhou
         // depois do registo é deste passo.

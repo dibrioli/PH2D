@@ -619,3 +619,35 @@ impl PainterTool {
         }
     }
 }
+
+impl PainterTool {
+    /// **A tela de antes do traço aberto** (o `before` elidido a descreve, B17.4). `fugaz` = quem pede larga-a antes da
+    /// próxima escrita: aí o próprio vivo serve quando nada foi escrito. Senão ela é materializada uma vez e guardada no
+    /// `before` (um dono a mais do VIVO forkaria a tela no dab seguinte).
+    pub(crate) fn tela_de_antes_do_traco(
+        &mut self,
+        fugaz: bool,
+    ) -> Option<std::sync::Arc<Vec<u8>>> {
+        let s = self.paint.stroke_undo.as_ref()?;
+        if s.canvas_elided.is_none() {
+            return Some(std::sync::Arc::clone(&s.canvas_rgba));
+        }
+        // Numa troca de plano de pé, a tela está guardada fora do campo: é a da testemunha.
+        let live = if self.undo.write_state.on_foreign_plane() {
+            s.canvas_elided.as_ref()?.upgrade()?
+        } else {
+            std::sync::Arc::clone(&self.canvas_rgba)
+        };
+        let mut c = self.undo.canvas_held(s, &live)?;
+        if std::sync::Arc::ptr_eq(&c, &live) {
+            if fugaz {
+                return Some(c);
+            }
+            c = std::sync::Arc::new(live.as_ref().clone());
+        }
+        let s = self.paint.stroke_undo.as_mut()?;
+        s.canvas_rgba = std::sync::Arc::clone(&c);
+        s.canvas_elided = None;
+        Some(c)
+    }
+}

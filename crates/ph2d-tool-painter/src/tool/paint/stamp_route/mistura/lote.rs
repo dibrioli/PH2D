@@ -34,12 +34,7 @@ impl PainterTool {
                 .mistura_opaca
                 .base_do_plano
                 .clone()
-                .or_else(|| {
-                    self.paint
-                        .stroke_undo
-                        .as_ref()
-                        .map(|b| Arc::clone(&b.canvas_rgba))
-                })
+                .or_else(|| self.tela_de_antes_do_traco(false))
                 .filter(|b| b.len() == n4)
         } else {
             None

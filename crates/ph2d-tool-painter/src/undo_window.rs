@@ -161,9 +161,7 @@ pub struct WriteState {
     /// dele) davam paridade par — o journal capturava o plano do traço como «antes» da tela. A pilha sabe se
     /// uma troca ENTRA (guarda um plano novo) ou SAI (devolve o do topo) sem mudar a porta.
     foreign_plane: std::cell::RefCell<Vec<usize>>,
-    /// Os bytes velhos do CANVAS, por tile. ⚠️ **Só em debug/test** enquanto o journal for uma REDE de
-    /// verificação e não a fonte do undo: capturar *e* forkar seria pagar as duas coisas (doc 28 §7).
-    #[cfg(any(test, debug_assertions))]
+    /// Os bytes velhos do CANVAS, por tile — o lado `before` da tela elidida (B17.4).
     canvas: std::cell::RefCell<crate::undo::journal::TileJournal<u8>>,
     /// **A PROVENIÊNCIA do journal** — o valor do contador de escritas quando ele foi zerado, ou `None`
     /// se ninguém abriu passo desde o último commit.
@@ -354,18 +352,14 @@ impl WriteState {
 
     /// `true` enquanto o campo `canvas_rgba` hospeda um plano que não é a tela.
     ///
-    /// Consumidor: a captura, que é debug-only — daí o `cfg`. O `toggle` acima **não** é gateado: ele é
-    /// chamado pela porta de troca em qualquer perfil, e um contador que só existe em debug faria a
-    /// porta ter duas formas.
-    #[cfg(any(test, debug_assertions))]
     #[must_use]
     pub(crate) fn on_foreign_plane(&self) -> bool {
         !self.foreign_plane.borrow().is_empty()
     }
 
     /// **Captura o canvas antes de ele ser escrito** — `area` em ELEMENTOS (`x*4` para RGBA), `None`
-    /// quando o sítio não sabe onde vai escrever.
-    #[cfg(any(test, debug_assertions))]
+    /// quando o sítio não sabe onde vai escrever. Em todo perfil: o journal é o lado `before` da tela
+    /// elidida (B17.4).
     pub(crate) fn capture_canvas(
         &self,
         buf: &[u8],
@@ -378,21 +372,24 @@ impl WriteState {
         self.canvas.borrow_mut().capture(buf, stride, area);
     }
 
-    #[cfg(not(any(test, debug_assertions)))]
-    #[expect(
-        clippy::unused_self,
-        reason = "no-op em release; o journal é rede de debug"
-    )]
-    pub(crate) fn capture_canvas(
-        &self,
-        _buf: &[u8],
-        _stride: usize,
-        _area: Option<(usize, usize, usize, usize)>,
-    ) {
+    /// `true` se nada da tela foi capturado desde o último reset.
+    #[must_use]
+    pub(crate) fn canvas_untouched(&self) -> bool {
+        self.canvas.borrow().is_empty()
     }
 
-    /// O byte que o elemento `i` do canvas tinha no início do passo, se o tile dele foi capturado.
-    #[cfg(any(test, debug_assertions))]
+    /// Devolve `out` (a tela de agora) ao estado do último reset do journal. `false` = outra forma.
+    pub(crate) fn rewind_canvas(&self, out: &mut [u8]) -> bool {
+        self.canvas.borrow().rewind_into(out)
+    }
+
+    /// O journal da tela, para o lado `before` de um passo que a elidiu.
+    pub(crate) fn canvas_journal(
+        &self,
+    ) -> std::cell::Ref<'_, crate::undo::journal::TileJournal<u8>> {
+        self.canvas.borrow()
+    }
+
     /// **Os bytes que os quatro journals de fato retêm neste passo** — canvas + os três de relevo.
     ///
     /// É o número que decide se o journal pode sair do `cfg(debug)` para o release: a troca do S3
@@ -414,24 +411,19 @@ impl WriteState {
         self.canvas.borrow().get(i)
     }
 
-    /// **Os bytes que os journals retêm e uma cópia deste estado copia** — o do canvas só existe em debug/test
-    /// (a rede de verificação), então em release contam só os de relevo. É o que um instantâneo do tocador
-    /// de uma macro declara ao razão da RAM.
+    /// **Os bytes que os journals retêm e uma cópia deste estado copia** — tela + os três de relevo. É o que
+    /// um instantâneo do tocador de uma macro declara ao razão da RAM.
     #[must_use]
     pub(crate) fn journal_bytes_retidos(&self) -> usize {
         let r = self.relief.borrow();
-        #[cfg(any(test, debug_assertions))]
-        let canvas = self.canvas.borrow().heap_bytes();
-        #[cfg(not(any(test, debug_assertions)))]
-        let canvas = 0;
-        canvas + r.heights.heap_bytes() + r.covers.heap_bytes() + r.mats.heap_bytes()
+        self.canvas.borrow().heap_bytes()
+            + r.heights.heap_bytes()
+            + r.covers.heap_bytes()
+            + r.mats.heap_bytes()
     }
 
     /// O passo fechou: o journal esquece o que capturou.
     pub(crate) fn reset_journal(&self) {
-        // O journal do CANVAS segue sendo rede de debug: o `before` do canvas não é elidido, então
-        // capturar dele em release seria custo sem contrapartida (a fase B promoveu só o RELEVO).
-        #[cfg(any(test, debug_assertions))]
         self.canvas.borrow_mut().reset();
         self.relief.borrow_mut().reset();
         self.journal_since.set(None);

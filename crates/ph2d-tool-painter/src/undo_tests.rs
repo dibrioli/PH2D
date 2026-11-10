@@ -11,6 +11,7 @@ fn model(active_px: u8) -> ModelSnapshot {
         vidros: BTreeMap::new(),
         covers: BTreeMap::new(),
         relief_elided: crate::undo::elide::ElidedRelief::default(),
+        canvas_elided: None,
         canvas_rgba: Arc::new(vec![active_px; 16]),
         writes: 0,
         canvas_size: (4, 4),

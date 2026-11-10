@@ -27,6 +27,7 @@ impl PainterTool {
             // Este snapshot SEGURA o relevo; quem o descreve sem segurar é
             // [`Self::snapshot_model_eliding_relief`].
             relief_elided: crate::undo::elide::ElidedRelief::default(),
+            canvas_elided: None,
             canvas_rgba: Arc::clone(&self.canvas_rgba),
             // A forma do que o snapshot carrega — o stride de cada plano para o motor de delta.
             canvas_size: self.source_size,
@@ -86,6 +87,10 @@ impl PainterTool {
         m.heights.clear();
         m.covers.clear();
         m.mats.clear();
+        // E a TELA (B17.4): o lado de antes é o journal dela, então o 1.º dab escreve no lugar.
+        if !self.undo.write_state.on_foreign_plane() {
+            m.elide_canvas();
+        }
         m
     }
 
@@ -364,23 +369,28 @@ mod donos_entre_gestos {
         t.on_canvas_pointer(cp([200.0, y], PointerPhase::Up));
     }
 
-    /// **B17.4 (PX-19/PP-01) SEGUE ABERTO, e este é o número dele:** em repouso a tela tem DOIS donos
-    /// fortes (o tool e o `cursor` do histórico); o 2.º faz o 1.º dab copiar a tela (33 MB a 4K). RED visto
-    /// com `n == 1`. Quando a cura (cursor e `before` elidindo a tela) chegar, isto fica vermelho: troque-o
-    /// pelo irmão `between_gestures_every_canvas_plane_has_one_strong_owner` (`n == 1`).
+    /// **B17.4 (PX-19/PP-01):** no pen-down a tela tem UM dono forte — o cursor e o `before` do traço a DESCREVEM
+    /// (testemunha + journal), então o 1.º dab escreve no lugar em vez de copiar 33 MB a 4K. Entre gestos o cursor
+    /// ainda a segura (os editores de forma reinstalam outra tela depois do commit, ver `UndoController::begin_step`).
+    /// RED visto: antes da cura o pen-down tinha 3 donos (tool + cursor + `before`). E o undo do traço volta ao byte.
     #[test]
-    fn between_gestures_the_canvas_still_has_two_owners_and_this_is_its_number() {
+    fn at_pen_down_every_canvas_plane_has_one_strong_owner() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; 256 * 256 * 4], 256, 256);
         traco(&mut t, 80.0);
         traco(&mut t, 160.0);
-        let n = std::sync::Arc::strong_count(&t.canvas_rgba);
-        t.undo.clear();
-        let sem_historia = std::sync::Arc::strong_count(&t.canvas_rgba);
-        assert_eq!(sem_historia, 1, "sem história só o tool segura a tela");
-        assert_eq!(
-            n, 2,
-            "a tela tem {n} donos entre gestos: se é 1, o B17.4 curou — inverta o gate"
-        );
+        let entre = std::sync::Arc::strong_count(&t.canvas_rgba);
+        let antes: Vec<u8> = t.canvas_rgba.as_ref().clone();
+        t.on_canvas_pointer(cp([40.0, 220.0], PointerPhase::Down));
+        let no_pen_down = std::sync::Arc::strong_count(&t.canvas_rgba);
+        for k in 1..=4u8 {
+            t.on_canvas_pointer(cp([40.0 + f32::from(k) * 30.0, 220.0], PointerPhase::Move));
+        }
+        t.on_canvas_pointer(cp([200.0, 220.0], PointerPhase::Up));
+        assert_ne!(*t.canvas_rgba, antes, "o 3.º traço pintou");
+        assert!(t.undo_last(), "o 3.º traço desfaz-se");
+        assert_eq!(*t.canvas_rgba, antes, "o undo volta ao byte");
+        assert_eq!(entre, 2, "entre gestos o cursor segura a tela");
+        assert_eq!(no_pen_down, 1, "no pen-down a tela tem {no_pen_down} donos");
     }
 }

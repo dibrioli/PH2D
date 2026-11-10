@@ -5,6 +5,20 @@
 use super::{CoalesceKind, ModelSnapshot, UndoController, UndoEntry};
 
 impl UndoController {
+    /// A marca do passo lê a tela de antes: elidida, ela volta pelo journal — só quando a marca está ligada.
+    fn marca_do_passo_held(
+        &mut self,
+        before: &ModelSnapshot,
+        after: &ModelSnapshot,
+        hint: Option<crate::compositor::Region>,
+    ) -> Option<crate::macro_track::marca::DeltaDaMarca> {
+        if before.canvas_elided.is_none() || !self.marca.ativa() {
+            return self.marca_do_passo(before, after, hint);
+        }
+        let held = self.with_canvas_held(before, &after.canvas_rgba)?;
+        self.marca_do_passo(&held, after, hint)
+    }
+
     /// **De onde o RELEVO tira o lado `before`** — dos journals do passo, quando eles o descrevem (doc
     /// 28 §5.58.2, degrau 2).
     ///
@@ -80,8 +94,19 @@ impl UndoController {
     /// ([`relief_untouched`](crate::undo::window::WriteState::relief_untouched)) — uma única captura
     /// derruba a oferta, e as duas rotas caem nos seus early-outs de sempre (a absorção sai calada, o
     /// run coalescido começa uma entrada nova). *Menos esperto nunca, errado jamais.*
-    pub(super) fn base_for_top(&self) -> Option<ModelSnapshot> {
-        let mut base = self.cursor.as_deref()?.clone();
+    ///
+    /// A TELA elidida (B17.4) volta pelo journal sobre `live` (o plano vivo); sem ele (os gates sem tool), pela
+    /// própria testemunha.
+    pub(super) fn base_for_top(
+        &self,
+        live: Option<&std::sync::Arc<Vec<u8>>>,
+    ) -> Option<ModelSnapshot> {
+        let cursor = self.cursor.as_deref()?;
+        let mut base = match (&cursor.canvas_elided, live) {
+            (None, _) => cursor.clone(),
+            (Some(_), Some(l)) => self.with_canvas_held(cursor, l)?,
+            (Some(w), None) => self.with_canvas_held(cursor, &w.upgrade()?)?,
+        };
         if base.relief_elided.is_empty() {
             return Some(base); // nada elidido: o cursor já É a base
         }
@@ -135,7 +160,7 @@ impl UndoController {
         hint: Option<crate::compositor::Region>,
     ) {
         self.absorb_foreign_writes(&before);
-        let marca = self.marca_do_passo(&before, &after, hint);
+        let marca = self.marca_do_passo_held(&before, &after, hint);
         // O cursor tem de ser o `after` COMPLETO, então ele é tirado ANTES do split (que o esvazia). É
         // um clone de `Arc`s, não de pixels.
         let cursor = after.clone();
@@ -168,7 +193,7 @@ impl UndoController {
         after: ModelSnapshot,
     ) {
         self.absorb_foreign_writes(&before);
-        let marca = self.marca_do_passo(&before, &after, None);
+        let marca = self.marca_do_passo_held(&before, &after, None);
         if self.redo.is_empty()
             && let Some(top) = self.undo.last()
             && top.kind == Some(kind)
@@ -176,9 +201,8 @@ impl UndoController {
             // materializado do cursor ANTIGO (que é o `after` de que o delta partiu) e re-partido contra
             // o `after` novo. Concatenar os dois deltas seria a alternativa, e ela erra quando as duas
             // janelas se sobrepõem — o segundo passo escreveria por cima do primeiro na ordem errada.
-            && let Some(base) = self.base_for_top()
-            && let Some(cursor) = self.cursor.as_deref()
-            && let Some(first_before) = top.materialize(cursor, &base, true)
+            && let Some(base) = self.base_for_top(Some(&after.canvas_rgba))
+            && let Some(first_before) = top.materialize(&base, &base, true)
         {
             let old = self.undo.pop().expect("o topo que acabamos de ler");
             self.bytes -= old.heap_bytes();

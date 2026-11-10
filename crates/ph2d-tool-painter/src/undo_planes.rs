@@ -190,17 +190,30 @@ impl PlaneDeltas {
         let win_scalar =
             hint.and_then(|r| crate::undo_delta::PlaneWindow::from_region(r, cw, s.scalar));
         let tiles = relief.as_ref().and_then(|r| r.state.tiles_for(hint));
+        let (canvas_rgba, canvas_lost) = match &before.canvas_elided {
+            None => (
+                StoredPlane::split_tiled(
+                    &mut before.canvas_rgba,
+                    &mut after.canvas_rgba,
+                    s.rgba,
+                    win_rgba,
+                    tiles.as_deref().map(|t| (t, cw)),
+                ),
+                false,
+            ),
+            Some(_) => Self::canvas_from_journal(
+                before,
+                after,
+                (s.rgba, win_rgba),
+                tiles.as_deref().map(|t| (t, cw)),
+                relief.as_ref(),
+            ),
+        };
         let (heights, covers, mats, relief_indescribable) =
             Self::relief_maps(before, after, s.scalar, win_scalar, relief);
         Self {
-            relief_indescribable,
-            canvas_rgba: StoredPlane::split_tiled(
-                &mut before.canvas_rgba,
-                &mut after.canvas_rgba,
-                s.rgba,
-                win_rgba,
-                tiles.as_deref().map(|t| (t, cw)),
-            ),
+            relief_indescribable: relief_indescribable || canvas_lost,
+            canvas_rgba,
             images: StoredImages::split(&mut before.images, &mut after.images),
             vidros: StoredMap::split(&mut before.vidros, &mut after.vidros, s.scalar, win_scalar),
             heights,
@@ -310,6 +323,48 @@ impl PlaneDeltas {
     /// de sempre, porque o journal ainda é `cfg(debug)`"* — verdade no degrau 2, falsa depois da
     /// promoção), e foi ele que fez uma investigação de posse mirar a porta errada e publicar um
     /// veredito falso (doc 28 §5.67).
+    /// **A tela de um `before` ELIDIDO** (B17.4): o lado de antes é o journal da tela, válido quando ele descreve
+    /// ESTE passo e a testemunha é o plano do `after` (o vivo). Senão `(_, true)`: o antes não existe em lugar
+    /// nenhum, e quem chama descarta a história (o molde do relevo, `discard_if_relief_is_lost`).
+    fn canvas_from_journal(
+        before: &mut crate::undo::ModelSnapshot,
+        after: &mut crate::undo::ModelSnapshot,
+        (stride, win): (usize, Option<crate::undo_delta::PlaneWindow>),
+        tiles: Option<(&[crate::compositor::Region], u32)>,
+        src: Option<&ReliefSource<'_>>,
+    ) -> (StoredPlane<u8>, bool) {
+        let ok = src.is_some_and(|src| {
+            src.state.journal_describes_step_at(src.writes) && !src.state.on_foreign_plane()
+        }) && (src.is_some_and(|s| !s.state.canvas_untouched())
+            || before
+                .canvas_elided
+                .as_ref()
+                .and_then(std::sync::Weak::upgrade)
+                .is_some_and(|p| std::sync::Arc::ptr_eq(&p, &after.canvas_rgba)));
+        let built = ok
+            .then(|| {
+                src.and_then(|src| {
+                    let j = src.state.canvas_journal();
+                    // Captura INTEIRA (quem não sabia onde ia escrever): o antes já está completo, e a janela
+                    // declarada + os tiles marcados guardam só o que mudou, como o `split` de um antes segurado.
+                    if let Some(w) = j.whole().filter(|w| w.len() == after.canvas_rgba.len()) {
+                        let mut b = std::sync::Arc::new(w.to_vec());
+                        let mut a = std::sync::Arc::clone(&after.canvas_rgba);
+                        return Some(StoredPlane::split_tiled(&mut b, &mut a, stride, win, tiles));
+                    }
+                    StoredPlane::from_journal(&after.canvas_rgba, &j, win)
+                })
+            })
+            .flatten();
+        before.canvas_elided = None;
+        before.canvas_rgba = std::sync::Arc::new(Vec::new());
+        after.canvas_rgba = std::sync::Arc::new(Vec::new());
+        match built {
+            Some(p) => (p, false),
+            None => (StoredPlane::Unchanged, true),
+        }
+    }
+
     fn relief_maps(
         before: &mut crate::undo::ModelSnapshot,
         after: &mut crate::undo::ModelSnapshot,

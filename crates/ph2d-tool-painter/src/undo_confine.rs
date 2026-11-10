@@ -73,6 +73,7 @@ impl ModelSnapshot {
             //   `writes` é PROVENIÊNCIA (a janela declarada serve a este endpoint?). Nenhum dos dois
             //   muda um pixel, e exigir igualdade deles recusaria todo passo elidido — que é o comum.
             relief_elided: _,
+            canvas_elided: _,
             writes: _,
             // — a MARCA do Wet: muda a luz do papel só onde a camada tem alfa; quem a julga é o
             //   [`UndoEntry::confined_region`], pela janela da tinta —

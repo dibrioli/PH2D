@@ -94,14 +94,13 @@ impl PainterTool {
         {
             return None;
         }
-        let tecto = (self.paint.stroke_mask.len() == n).then_some(&self.paint.stroke_mask);
-        let cor = self.paint.brush.color;
-        let antes = self.paint.stroke_undo.as_ref()?;
-        let (vantes, pantes) = (antes.vidros.get(&camada)?, &antes.canvas_rgba);
+        let vantes = Arc::clone(self.paint.stroke_undo.as_ref()?.vidros.get(&camada)?);
+        let pantes = self.tela_de_antes_do_traco(true)?;
         if vantes.len() != n || pantes.len() != n * 4 {
             return None;
         }
-        let (vantes, pantes) = (Arc::clone(vantes), Arc::clone(pantes));
+        let tecto = (self.paint.stroke_mask.len() == n).then_some(&self.paint.stroke_mask);
+        let cor = self.paint.brush.color;
         // Sem região pedida, a janela que o traço declarou ao desfazer; sem ela, a tela inteira.
         let r = regiao
             .or_else(|| self.undo.write_state.get().declarada())

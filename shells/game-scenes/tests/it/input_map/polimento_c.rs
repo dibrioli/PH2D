@@ -553,7 +553,10 @@ fn a_manche_tem_o_ponto_da_maquete_e_o_titulo_respira() {
         0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b)
     };
     let ratio = (lum(DEAD_INK) + 0.05) / (lum(OUTER_INK) + 0.05);
-    assert!(ratio >= 1.5, "o disco Dead lê-se sobre o círculo: {ratio}");
+    assert!(
+        ratio >= 2.2,
+        "o disco Dead destaca-se do círculo (F3): {ratio}"
+    );
     let m = super::try_it_censo::cena("C3");
     let doc = &m.tab().doc;
     let a = (m.hero.input_map.actions().iter())
@@ -608,6 +611,50 @@ fn o_negrito_da_c_e_so_dos_destaques_e_dos_nomes_de_accao() {
                 );
             }
             assert_eq!(c.elided(), Vec::<&str>::new(), "{area:?}: texto cortado");
+        }
+    });
+}
+
+/// F3 (C2): a grelha dos medidores tem uma calha de verdade entre colunas — o valor de uma coluna fica a pelo menos
+/// o vão dos cartões do quadradinho da coluna seguinte. Nas duas áreas reais, nos dois modos de texto.
+#[test]
+fn os_medidores_tem_uma_calha_entre_colunas() {
+    use ph2d_app_input_map::view_try::{METER_GUTTER, METER_NAME_X};
+    super::em_cada_modo_de_texto(|| {
+        for area in areas() {
+            let mut m = mesa();
+            m.paint_in(area);
+            let c = &m.tab().doc.census;
+            let names: Vec<String> = (m.hero.input_map.actions().iter())
+                .map(|a| a.name.clone())
+                .collect();
+            let find = |s: &str| -> Vec<ph2d_editor_core::zones::Rect> {
+                (c.texts.iter()).filter(|t| t.1 == s).map(|t| t.0).collect()
+            };
+            let values = find("0.00");
+            assert!(
+                values.len() >= names.len(),
+                "{area:?}: um valor por acção (mais os 0.00 da manche)"
+            );
+            let mut seguintes = 0;
+            for n in &names {
+                for nr in find(n) {
+                    let dot = nr.x - METER_NAME_X;
+                    let antes = (values.iter())
+                        .filter(|v| (v.y - nr.y).abs() < 0.5 && v.x < nr.x)
+                        .map(|v| v.x + v.w)
+                        .fold(f32::NEG_INFINITY, f32::max);
+                    if antes.is_finite() {
+                        seguintes += 1;
+                        assert!(
+                            dot - antes >= METER_GUTTER - 0.5,
+                            "{area:?}: «{n}» — o ponto a {} px do valor à esquerda",
+                            dot - antes
+                        );
+                    }
+                }
+            }
+            assert!(seguintes > 0, "{area:?}: há mais de uma coluna");
         }
     });
 }

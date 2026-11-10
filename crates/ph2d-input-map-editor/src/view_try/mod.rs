@@ -6,7 +6,9 @@ mod controls;
 pub mod state;
 pub mod stick;
 
-pub use cards::{METER_TRACK, meter_fill, recipe_cols, tile_w};
+pub use cards::{
+    METER_GUTTER, METER_NAME_X, METER_SWATCH, METER_TRACK, meter_fill, recipe_cols, tile_w,
+};
 pub use controls::{KEY_CHIP_H, SHOWN_GAP, preview_frame_h};
 
 use ph2d_card_stack::metrics as m;

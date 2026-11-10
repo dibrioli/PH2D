@@ -233,7 +233,13 @@ pub(super) fn recipes(
 }
 
 /// A amostra da cor (8 px) e a altura da barra da força (6 px) do medidor (maquete C2).
-const SWATCH: f32 = m::BAR_TRACK * 2.0;
+/// O quadradinho da cor da acção à esquerda de cada medidor.
+pub const METER_SWATCH: f32 = m::BAR_TRACK * 2.0;
+const SWATCH: f32 = METER_SWATCH;
+/// O vão ENTRE colunas de medidores: o dos cartões, para o valor de uma coluna nunca colar no ponto da seguinte.
+pub const METER_GUTTER: f32 = m::CARD_GAP;
+/// Da borda esquerda da coluna ao nome da acção: o quadradinho e o seu vão.
+pub const METER_NAME_X: f32 = METER_SWATCH + m::SEG_ICON_GAP;
 const METER_H: f32 = m::SEG_INSET;
 /// As colunas dos medidores: quatro na janela larga (maquete C2), menos só quando não cabem.
 const METER_COLS: usize = 4;
@@ -375,7 +381,7 @@ pub(super) fn live(
     }
     y += dh + GAP;
     let cols = bar_cols(r.w);
-    let cw = (w - m::FIELD_GAP * (cols as f32 - 1.0)) / cols as f32;
+    let cw = (w - METER_GUTTER * (cols as f32 - 1.0)) / cols as f32;
     let actions: Vec<(ActionId, String)> = doc
         .snap
         .map
@@ -384,7 +390,7 @@ pub(super) fn live(
         .map(|a| (a.id, a.name.clone()))
         .collect();
     for (i, (id, name)) in actions.iter().enumerate() {
-        let cx = x + (cw + m::FIELD_GAP) * (i % cols) as f32;
+        let cx = x + (cw + METER_GUTTER) * (i % cols) as f32;
         let cy = y + line_h(m::LABEL_PX) * (i / cols) as f32;
         bar_row(
             doc,
@@ -453,7 +459,7 @@ fn bar_row(
         m::FIELD_BORDER * 2.0,
         color,
     );
-    let nx = r.x + sq + m::SEG_ICON_GAP;
+    let nx = r.x + METER_NAME_X;
     let lit = s > 0.0;
     let fg = ink.color(if lit {
         ColorToken::Text1

@@ -25,8 +25,9 @@ const SIDES: usize = 64;
 /// raio até ele no destaque da aba. O disco é o cinza neutro do Kanban (69 79 89 no escuro, um degrau claro e
 /// menos azul que o `kanban-card-raised`, que mal se via): os `bg-3`/`bg-elev` mudam com o tema e no Forge ficam
 /// MAIS ESCUROS que o cartão, que é sempre o do Kanban.
+/// F3: o tom do meio do cinza do Kanban (`kanban-black`, um degrau acima do `-subtle`), que se destaca do círculo.
 pub const OUTER_INK: ColorToken = ColorToken::KanbanCard;
-pub const DEAD_INK: ColorToken = ColorToken::KanbanBlackSubtle;
+pub const DEAD_INK: ColorToken = ColorToken::KanbanBlack;
 pub const DOT_INK: ColorToken = ColorToken::InputMapHighlight;
 
 /// O raio do ponto ao vivo em fracção do raio do círculo (maquete C3, medido: ponto de 14 px num círculo de 138 px).

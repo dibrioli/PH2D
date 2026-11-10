@@ -357,6 +357,14 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
+        "sections/nav_desligados.rs::paint",
+        NaoAnimavel,
+        &[],
+        "os botões da NAV REGION, um por corpo de formas desligadas: SELECIONAM o corpo, não guardam valor (o `grupo` só \
+         declara a fila composta)",
+    ),
+    (
+        "ph2d-panel-inspector",
         "sections/physics_cartao_contorno.rs::fundir",
         NaoAnimavel,
         &["INSP_PHYS_OUTLINE_MERGE_DIST"],

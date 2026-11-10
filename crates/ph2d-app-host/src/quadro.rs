@@ -149,6 +149,8 @@ pub struct Laco {
     ultima_entrada: Option<Instant>,
     smoke: bool,
     oculta: bool,
+    /// `PH2D_OCULTA_APRESENTA=0|1`: força o present com a janela oculta (A × B no mesmo binário, `mede_pen_up_4k.sh oculto`).
+    forca_oculta: Option<bool>,
 }
 
 /// Um smoke conta quadros ou conduz a cena: qualquer `PH2D_*SMOKE*`/`*DEMO*`,
@@ -168,6 +170,7 @@ impl Laco {
             ultima_entrada: None,
             smoke,
             oculta: false,
+            forca_oculta: None,
         }
     }
 
@@ -176,7 +179,13 @@ impl Laco {
     pub fn do_ambiente() -> Self {
         let smoke =
             std::env::vars_os().any(|(k, v)| e_smoke(&k.to_string_lossy(), &v.to_string_lossy()));
-        Self::novo(smoke)
+        let forca_oculta = std::env::var("PH2D_OCULTA_APRESENTA")
+            .ok()
+            .map(|v| v != "0");
+        Self {
+            forca_oculta,
+            ..Self::novo(smoke)
+        }
     }
 
     pub fn foco(&mut self, focada: bool) {
@@ -218,6 +227,15 @@ impl Laco {
             },
             _ => lei,
         }
+    }
+
+    /// B23.3: a janela oculta não apresenta (ninguém a vê); o smoke apresenta sempre (fotografa e conta quadros).
+    /// O quadro corre na mesma: o documento avança, e o quadro saltado faz `queue.submit([])` para o upload sair do staging.
+    #[must_use]
+    pub const fn apresenta(&self) -> bool {
+        !self.oculta
+            || matches!(self.forca_oculta, Some(true))
+            || (self.smoke && self.forca_oculta.is_none())
     }
 
     /// A tradução para o laço: `None` = desenhar já; `Some(t)` = dormir até `t` (ou um evento).

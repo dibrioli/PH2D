@@ -17,14 +17,9 @@ use std::time::Instant;
 mod title;
 
 impl crate::App {
-    /// Acquires the swap-chain frame, encodes + submits the 4-pass
-    /// pipeline, advances `frame_cpu_ms_ewma`, refreshes the window
-    /// title when dirty, requests the next redraw.
-    ///
-    /// `cpu_start` is the [`Instant`] captured at the top of
-    /// `run_render_frame` — used to bound the raw-fps measurement
-    /// across the encode work (excluding the vsync-blocking
-    /// `acquire_frame` call).
+    /// Adquire o quadro, codifica e submete as 4 passagens e refresca o título; `cpu_start` (o topo do
+    /// `run_render_frame`) mede o trabalho sem a espera do `acquire_frame`. Oculta (B23.3), não apresenta:
+    /// só o `submit([])`, que tira do staging o upload da prévia (`write_texture` da ponte).
     pub(super) fn run_present_phase(&mut self, cpu_start: Instant, r: f64, g: f64, b: f64) {
         // ADR-0114 W2: GPU-data do traço Flip em curso (preview ao vivo), construída
         // ANTES do borrow de `self.gfx` (lê a câmera + o gesto; devolve owned).
@@ -46,6 +41,10 @@ impl crate::App {
         // A janela tem de existir para o quadro se apresentar; o título e o pedido do quadro seguinte re-derivam-na.
         if self.host.is_none() {
             return;
+        }
+        if !ph2d_app_host::quadro::no_laco(|l| l.apresenta()) {
+            gfx.surface.gpu().queue.submit([]);
+            return self.present_title_and_redraw();
         }
         // Só o que o `acquire` e o sub-retângulo da cena usam: cada passagem abaixo re-deriva o seu.
         let AppGfx {

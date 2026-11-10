@@ -202,6 +202,58 @@ if [ "$1" = parado ]; then
   exit 0
 fi
 
+# ── OCULTO (B23.3/B23.5, 10/11): q/s, quadro p50 e CPU com a janela à vista, desfocada e oculta (uma janela Tk por
+# cima: o X manda VisibilityNotify FullyObscured = `Occluded(true)`). Variantes intercaladas no MESMO binário:
+# `salta` = smoke 4K Textured (a omissão: oculta não apresenta) · `apresenta` = o mesmo com PH2D_OCULTA_APRESENTA=1
+# (o present de antes) · `pedido` = o app sem smoke (a lei a pedido). Resumo por fase no fim de cada lançamento.
+# uso: bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/mede_pen_up_4k.sh oculto [rodadas] [segundos] [binario]
+if [ "$1" = oculto ]; then
+  N=${2:-2}; SEG=${3:-5}; BIN=${4:-$R/target/smoke/ph2d-host-desktop}; D=${DISPLAY_MATRIZ:-:97}; O=$S/oculto
+  mkdir -p "$O"
+  PLACA_ENV=(VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.json VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
+    MESA_VK_WSI_DEBUG=sw __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
+  Xvfb $D -screen 0 1600x1000x24 >/dev/null 2>&1 & XV=$!
+  sleep 1
+  cd "$R"
+  tapa() { DISPLAY=$D python3 -I -c "import tkinter as t; r=t.Tk(); r.overrideredirect(1); r.geometry('$1'); r.mainloop()" & TK=$!; sleep 1.5; }
+  for i in $(seq 1 "$N"); do for modo in salta apresenta pedido; do
+    TAG=${modo}_$i; L=$O/$TAG.log; : > "$O/$TAG.marcas"
+    VAR=(PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PAINEL=wet PH2D_COMPOSITE_PILHA=0 PH2D_COMPOSITE_FUNDO=papel
+      PH2D_COMPOSITE_TELA=3840x2160 PH2D_COMPOSITE_PAPEL=1 PH2D_EXIT_AFTER_FRAMES=1000000)
+    [ $modo = apresenta ] && VAR+=(PH2D_OCULTA_APRESENTA=1)
+    [ $modo = pedido ] && VAR=()
+    env -u WAYLAND_DISPLAY DISPLAY=$D HOME=$O/home_$TAG PH2D_PAINT_PERF=1 PH2D_QUADRO_LENTO_MS=0 "${PLACA_ENV[@]}" "${VAR[@]}" "$BIN" \
+      > "$L" 2>&1 &
+    APP=$!; WIN=
+    for _ in $(seq 1 120); do
+      { [ $modo = pedido ] || grep -q "pilha armada" "$L"; } && WIN=$(DISPLAY=$D xdotool search --pid $APP 2>/dev/null | tail -1)
+      [ -n "$WIN" ] && break; sleep 0.5
+    done
+    marca() { echo "$1 $(date +%s%N) $(awk '{print $14+$15}' /proc/$APP/stat 2>/dev/null)" >> "$O/$TAG.marcas"; }
+    if [ -n "$WIN" ]; then
+      DISPLAY=$D xdotool windowsize $WIN 1600 1000 windowmove $WIN 0 0 windowfocus --sync $WIN 2>/dev/null; sleep 4
+      marca visivel_ini; sleep "$SEG"; marca visivel_fim
+      tapa 160x90+1440+910; DISPLAY=$D xdotool search --pid $TK 2>/dev/null | tail -1 | xargs -r -I{} env DISPLAY=$D xdotool windowfocus {}
+      marca desfocado_ini; sleep "$SEG"; marca desfocado_fim; kill $TK; wait $TK 2>/dev/null
+      tapa 1600x1000+0+0
+      marca oculto_ini; sleep "$SEG"; marca oculto_fim; kill $TK; wait $TK 2>/dev/null
+    fi
+    kill -INT $APP 2>/dev/null
+    for _ in $(seq 1 40); do kill -0 $APP 2>/dev/null || break; sleep 0.25; done
+    kill -KILL $APP 2>/dev/null; wait $APP 2>/dev/null
+    # Por fase: quadros/s, quadro p50 (ms, o relógio do quadro), CPU % de um núcleo (tiques do processo).
+    awk -v hz="$(getconf CLK_TCK)" -v tag="$TAG" -v win="${WIN:-NENHUMA}" '
+      FNR == NR { split($1, f, "_"); if (f[2] == "ini") { a[f[1]] = $2; ta[f[1]] = $3; ordem[++n] = f[1] } else { b[f[1]] = $2; tb[f[1]] = $3 }; next }
+      /^\[quadro-lento\]/ { sub("parede=", "", $2); sub("quadro=", "", $4); for (k in a) if ($2 >= a[k] && $2 <= b[k]) q[k, ++c[k]] = $4 + 0 }
+      END { for (j = 1; j <= n; j++) { k = ordem[j]; s = (b[k] - a[k]) / 1e9; m = c[k] + 0
+        for (x = 1; x <= m; x++) v[x] = q[k, x]; asort(v); p50 = m ? v[int((m + 1) / 2)] : 0; delete v
+        printf "[oculto] %s win=%s %s q/s=%.1f p50=%.1f ms cpu=%d%%\n", tag, win, k, m / s, p50, (tb[k] - ta[k]) * 100 / hz / s } }
+    ' "$O/$TAG.marcas" "$L" | tee -a "$O/resumo.txt"
+  done; done
+  kill $XV
+  exit 0
+fi
+
 # ── ÓLEO (10/11): o Real Oil não tem porta na cena Composite; mede-se pela cena do FPS (PH2D_WETPAINT_SMOKE=3, o app
 # risca sozinho: Dabber com Real Oil, seca, Wet Drip, corre; 6 rodadas; período e imagens da água por segundo).
 # uso: bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/mede_pen_up_4k.sh oleo <lado> [binario]

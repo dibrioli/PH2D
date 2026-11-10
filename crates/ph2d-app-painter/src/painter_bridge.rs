@@ -440,7 +440,6 @@ pub fn dispatch(
             camera,
             window_size,
             vector_scene,
-            cursor,
         );
         ph_ov_selection = elapsed_ms(m_ov_sel);
         let m_ov_chrome = perf_t0.map(|_| std::time::Instant::now());

@@ -28,8 +28,6 @@ pub(super) fn draw_selection_overlay(
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
-    // A mira saiu para [`draw_selection_cursor`] (B51.1); o argumento cai quando `painter_bridge.rs` mudar.
-    _cursor: (f32, f32),
 ) {
     let Some(bits) = hero.gizmo.selection else {
         return;

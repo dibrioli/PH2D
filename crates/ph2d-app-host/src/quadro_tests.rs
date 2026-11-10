@@ -107,3 +107,26 @@ fn a_janela_oculta_so_acorda_pelo_documento_e_pelo_play() {
     l.oculta(false);
     assert_eq!(l.pedido(&[], t0), Pedido::Ja(Produtor::Entrada));
 }
+
+/// B23.3: oculta, o quadro não apresenta (o documento avança na mesma); visível ou num smoke, apresenta.
+#[test]
+fn a_janela_oculta_nao_apresenta_salvo_o_smoke() {
+    for smoke in [false, true] {
+        let mut l = Laco::novo(smoke);
+        assert!(l.apresenta(), "visível, smoke={smoke}");
+        l.foco(false);
+        assert!(l.apresenta(), "desfocada mas à vista, smoke={smoke}");
+        l.oculta(true);
+        assert_eq!(l.apresenta(), smoke, "oculta, smoke={smoke}");
+        l.oculta(false);
+        assert!(l.apresenta(), "de volta à vista, smoke={smoke}");
+    }
+    for (forca, apresenta) in [(Some(true), true), (Some(false), false)] {
+        let mut l = Laco {
+            forca_oculta: forca,
+            ..Laco::novo(true)
+        };
+        l.oculta(true);
+        assert_eq!(l.apresenta(), apresenta, "PH2D_OCULTA_APRESENTA={forca:?}");
+    }
+}

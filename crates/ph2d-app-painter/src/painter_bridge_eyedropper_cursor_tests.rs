@@ -208,7 +208,7 @@ fn o_anel_some_com_o_ponteiro_fora_da_janela() {
     let inteiro = |dentro| {
         let mut vs = quadro_com(&c, &sel, borda, dentro);
         crate::painter_bridge_selection_overlay::draw_selection_overlay(
-            &sel, &c.hero, &c.sim, &c.camera, JANELA, &mut vs, borda,
+            &sel, &c.hero, &c.sim, &c.camera, JANELA, &mut vs,
         );
         vs
     };

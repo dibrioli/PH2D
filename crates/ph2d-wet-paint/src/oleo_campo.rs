@@ -442,3 +442,7 @@ mod oleo_campo_sonda;
 #[cfg(test)]
 #[path = "oleo_campo_rascunho_tests.rs"]
 mod oleo_campo_rascunho_tests;
+
+#[cfg(test)]
+#[path = "oleo_caixa_sonda.rs"]
+mod oleo_caixa_sonda;

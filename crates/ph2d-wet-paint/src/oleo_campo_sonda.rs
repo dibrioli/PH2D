@@ -53,7 +53,7 @@ fn sonda_o_campo_custa_pela_janela() {
 }
 
 /// As faixas do composite (`ph2d-tool-painter` `oleo_plano::EmFaixas`): uma linha por tarefa do rayon.
-struct Faixas;
+pub(super) struct Faixas;
 
 impl Reparte for Faixas {
     fn por_linhas<A: Send, B: Send>(

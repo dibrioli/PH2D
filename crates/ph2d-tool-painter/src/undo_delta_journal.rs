@@ -62,7 +62,7 @@ impl PlaneWindow {
     /// caixa do journal arredonda o traço para fora em até 127 de cada lado: com ela sozinha o passo
     /// típico saltou de **2,51 para 8,23 MB a 1024²** e o `measure_undo_capacity` reprovou na hora — o
     /// delta comprava 3,9× mais passos que um documento por endpoint, contra os ~13× que a §5.28 mediu.
-    fn intersect(self, other: Self) -> Option<Self> {
+    pub(super) fn intersect(self, other: Self) -> Option<Self> {
         if self.stride != other.stride || self.plane_len != other.plane_len {
             return None;
         }
@@ -198,6 +198,25 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
             Some(h) => jwin.intersect(h)?,
             None => jwin,
         };
+        let rects: Vec<PlaneWindow> = j
+            .captured()
+            .into_iter()
+            .filter_map(|t| t.intersect(win))
+            .collect();
+        if super::tiles::worth(&rects, &win) {
+            let out = Self::tiles_from(
+                win,
+                rects,
+                |r, b| b.extend_from_slice(&r.extract_journal(j, live)),
+                live,
+            );
+            if let Self::Tiles { before, after, .. } = &out
+                && before == after
+            {
+                return Some(Self::Unchanged);
+            }
+            return Some(out);
+        }
         let before = win.extract_journal(j, live);
         let after = win.extract(live);
         if before == after {

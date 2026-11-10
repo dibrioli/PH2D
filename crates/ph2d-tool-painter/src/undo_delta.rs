@@ -162,6 +162,14 @@ pub(crate) enum StoredPlane<T> {
         before: Box<[T]>,
         after: Box<[T]>,
     },
+    /// Diferem só nestas caixas (os tiles que o passo tocou, recortados a `win`); os DOIS lados delas,
+    /// concatenados na ordem de `rects` (B17.5, [`tiles`]).
+    Tiles {
+        win: PlaneWindow,
+        rects: Box<[PlaneWindow]>,
+        before: Box<[T]>,
+        after: Box<[T]>,
+    },
     /// Diferem em forma, ou a janela não compensa: os dois buffers inteiros.
     Whole {
         before: Arc<Vec<T>>,
@@ -189,6 +197,18 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
         stride: usize,
         hint: Option<PlaneWindow>,
     ) -> Self {
+        Self::split_tiled(before, after, stride, hint, None)
+    }
+
+    /// [`Self::split`] com os tiles que o passo marcou (`px`, em pixels de uma tela de `canvas_w`): uma
+    /// janela declarada grande guarda só eles ([`tiles`]).
+    pub(crate) fn split_tiled(
+        before: &mut Arc<Vec<T>>,
+        after: &mut Arc<Vec<T>>,
+        stride: usize,
+        hint: Option<PlaneWindow>,
+        px: Option<(&[crate::compositor::Region], u32)>,
+    ) -> Self {
         if Arc::ptr_eq(before, after) {
             *before = drained();
             *after = drained();
@@ -215,6 +235,25 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
                     "a janela declarada nao contem a verdadeira: declarada {win:?}, real {real:?} — o \
                      undo perderia esses texels (ver crate::undo::window)"
                 );
+            }
+            if let Some(rects) = px.and_then(|(px, cw)| win.rects_within(px, cw))
+                && tiles::worth(&rects, &win)
+                && 2 * rects.iter().map(PlaneWindow::elems).sum::<usize>() < before.len()
+            {
+                let out = Self::tiles_from(
+                    win,
+                    rects,
+                    |r, b| b.extend_from_slice(&r.extract(before)),
+                    after,
+                );
+                #[cfg(debug_assertions)]
+                debug_assert!(
+                    out.side(after, true).is_some_and(|b| *b == **before),
+                    "os tiles marcados nao cobrem o que mudou — o undo perderia texels (B17.5)"
+                );
+                *before = drained();
+                *after = drained();
+                return out;
             }
             return Self::from_window(win, before, after);
         }
@@ -275,6 +314,19 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
                 win.blit(if want_before { before } else { after }, &mut v);
                 Some(Arc::new(v))
             }
+            Self::Tiles {
+                win,
+                rects,
+                before,
+                after,
+            } => {
+                if cursor.len() != win.plane_len {
+                    return None;
+                }
+                let mut v = crate::plane_copy::par_clone(cursor);
+                Self::blit_tiles(rects, if want_before { before } else { after }, &mut v);
+                Some(Arc::new(v))
+            }
         }
     }
 
@@ -287,6 +339,15 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
         match self {
             Self::Unchanged => 0,
             Self::Patch { before, after, .. } => (before.len() + after.len()) * size_of::<T>(),
+            Self::Tiles {
+                rects,
+                before,
+                after,
+                ..
+            } => {
+                (before.len() + after.len()) * size_of::<T>()
+                    + rects.len() * size_of::<PlaneWindow>()
+            }
             Self::Whole { before, after } => (before.len() + after.len()) * size_of::<T>(),
         }
     }
@@ -555,6 +616,9 @@ pub(crate) mod confine;
 /// **Re-partir um plano do topo sem materializar a tela** — filho pelo mesmo motivo (a janela).
 #[path = "undo_delta_absorb.rs"]
 mod absorb_route;
+
+#[path = "undo_delta_tiles.rs"]
+pub(crate) mod tiles;
 
 #[path = "undo_delta_copiado.rs"]
 mod copiado;

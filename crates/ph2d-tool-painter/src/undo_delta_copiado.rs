@@ -8,7 +8,9 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
     /// os segura de qualquer forma.
     pub(crate) fn copiado_bytes(&self) -> usize {
         match self {
-            Self::Patch { before, after, .. } => (before.len() + after.len()) * size_of::<T>(),
+            Self::Patch { before, after, .. } | Self::Tiles { before, after, .. } => {
+                (before.len() + after.len()) * size_of::<T>()
+            }
             Self::Unchanged | Self::Whole { .. } => 0,
         }
     }

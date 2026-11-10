@@ -104,7 +104,7 @@ impl<T> StoredPlane<T> {
     pub(crate) fn reach(&self) -> PlaneReach {
         match self {
             Self::Unchanged => PlaneReach::Untouched,
-            Self::Patch { win, .. } => PlaneReach::Window(*win),
+            Self::Patch { win, .. } | Self::Tiles { win, .. } => PlaneReach::Window(*win),
             Self::Whole { before, after } if before.is_empty() && after.is_empty() => {
                 PlaneReach::Untouched
             }
@@ -328,6 +328,7 @@ impl<T> StoredPlane<T> {
         match self {
             Self::Unchanged => "-",
             Self::Patch { .. } => "patch",
+            Self::Tiles { .. } => "tiles",
             Self::Whole { .. } => "WHOLE",
         }
     }

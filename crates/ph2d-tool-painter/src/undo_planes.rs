@@ -189,15 +189,17 @@ impl PlaneDeltas {
             hint.and_then(|r| crate::undo_delta::PlaneWindow::from_region(r, cw, s.rgba));
         let win_scalar =
             hint.and_then(|r| crate::undo_delta::PlaneWindow::from_region(r, cw, s.scalar));
+        let tiles = relief.as_ref().and_then(|r| r.state.tiles_for(hint));
         let (heights, covers, mats, relief_indescribable) =
             Self::relief_maps(before, after, s.scalar, win_scalar, relief);
         Self {
             relief_indescribable,
-            canvas_rgba: StoredPlane::split(
+            canvas_rgba: StoredPlane::split_tiled(
                 &mut before.canvas_rgba,
                 &mut after.canvas_rgba,
                 s.rgba,
                 win_rgba,
+                tiles.as_deref().map(|t| (t, cw)),
             ),
             images: StoredImages::split(&mut before.images, &mut after.images),
             vidros: StoredMap::split(&mut before.vidros, &mut after.vidros, s.scalar, win_scalar),

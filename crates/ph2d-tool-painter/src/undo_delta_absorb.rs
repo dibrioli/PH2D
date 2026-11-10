@@ -133,12 +133,12 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
         let topo = match self {
             Self::Unchanged => None,
             Self::Patch { win, before, .. } if serve(win) => Some((*win, before)),
-            Self::Patch { .. } | Self::Whole { .. } => return None,
+            Self::Patch { .. } | Self::Tiles { .. } | Self::Whole { .. } => return None,
         };
         let pinga = match drip {
             Self::Unchanged => None,
             Self::Patch { win, .. } if serve(win) => Some(*win),
-            Self::Patch { .. } | Self::Whole { .. } => return None,
+            Self::Patch { .. } | Self::Tiles { .. } | Self::Whole { .. } => return None,
         };
         let u = match (topo.map(|(w, _)| w), pinga) {
             // Os dois lados são o cursor: o re-split veria o mesmo conteúdo e guardaria nada.

@@ -38,6 +38,9 @@ pub struct WriteWindow {
     /// a janela não é oferecida e o commit varre, como sempre fez. Zera no `reset` de cada commit, então
     /// um sítio esquecido degrada aquele passo e nada além dele.
     undeclared: u32,
+    /// Quantos `mark` com região desde o último commit — o que diz aos tiles do [`WriteState`] se
+    /// viram todos (B17.5).
+    marks: u32,
 }
 
 impl WriteWindow {
@@ -54,6 +57,7 @@ impl WriteWindow {
         self.undeclared = self.undeclared.saturating_sub(1);
         if let Some(r) = r {
             self.rect = Some(self.rect.map_or(r, |acc| union(acc, r)));
+            self.marks = self.marks.wrapping_add(1);
         }
     }
 
@@ -94,6 +98,7 @@ impl WriteWindow {
         self.since = writes;
         self.rect = None;
         self.undeclared = 0;
+        self.marks = 0;
     }
 
     /// A janela que um commit pode usar para um `before` capturado com o contador em `snapshot_writes` —
@@ -146,6 +151,8 @@ const fn union(a: Region, b: Region) -> Region {
 #[derive(Clone, Debug, Default)]
 pub struct WriteState {
     win: std::cell::Cell<WriteWindow>,
+    /// Os tiles de 128² que os `mark` desde o último commit tocaram (B17.5).
+    tiles: std::cell::RefCell<crate::undo_delta::tiles::TileMarks>,
     /// As trocas de plano DE PÉ, como uma PILHA — o endereço do plano que cada uma guardou fora. Enquanto não
     /// estiver vazia, o campo `canvas_rgba` do tool hospeda um plano que **não é a tela** e o journal do canvas
     /// não pode capturar dele.
@@ -284,9 +291,27 @@ impl WriteState {
         self.win.get()
     }
 
-    /// Reescreve a janela.
+    /// Reescreve a janela. Uma janela zerada esquece os tiles marcados.
     pub fn set(&self, w: WriteWindow) {
+        if w.rect.is_none() {
+            self.tiles.borrow_mut().clear();
+        }
         self.win.set(w);
+    }
+
+    /// Um acesso aberto declara a região que escreveu — na janela e nos tiles (B17.5).
+    pub fn mark(&self, r: Option<Region>) {
+        let mut w = self.win.get();
+        w.mark(r);
+        if let Some(r) = r {
+            self.tiles.borrow_mut().mark(r);
+        }
+        self.win.set(w);
+    }
+
+    /// Os tiles marcados, em pixels, quando descrevem exactamente a janela `hint`.
+    pub(crate) fn tiles_for(&self, hint: Option<Region>) -> Option<Vec<Region>> {
+        self.tiles.borrow().for_hint(hint, self.win.get().marks)
     }
 
     /// Uma troca de plano começou — ou terminou. Ver

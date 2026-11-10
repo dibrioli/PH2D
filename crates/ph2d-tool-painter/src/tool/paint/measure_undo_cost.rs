@@ -410,5 +410,15 @@ fn what_a_diagonal_step_retains_at_4k() {
             tiles.len(),
             por_tiles as f64 / 1e6
         );
+        // Antes do B17.5: 66,4 MB (Digital) e 265,4 MB (Impasto) — a união-retângulo guardada inteira.
+        let teto = if impasto {
+            5 * por_tiles
+        } else {
+            2 * por_tiles
+        };
+        assert!(
+            passo <= teto,
+            "impasto={impasto}: o passo retém {passo} B > {teto} B dos tiles"
+        );
     }
 }

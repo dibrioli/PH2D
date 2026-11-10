@@ -266,6 +266,30 @@ impl<T: Copy + Default + Send + Sync> TileJournal<T> {
         )
     }
 
+    /// Cada tile capturado como uma janela (B17.5) — vazio quando a [`Self::window`] se cala.
+    pub(crate) fn captured(&self) -> Vec<crate::undo_delta::PlaneWindow> {
+        if self.whole.is_some() || self.stride == 0 {
+            return Vec::new();
+        }
+        let len = self.stride * self.rows;
+        self.data
+            .iter()
+            .enumerate()
+            .filter(|(_, slot)| slot.is_some())
+            .filter_map(|(t, _)| {
+                let (row, col) = ((t / self.tiles_x) * TILE, (t % self.tiles_x) * TILE);
+                crate::undo_delta::PlaneWindow::tiles(
+                    row,
+                    (row + TILE).min(self.rows) - row,
+                    col,
+                    (col + TILE).min(self.stride) - col,
+                    self.stride,
+                    len,
+                )
+            })
+            .collect()
+    }
+
     /// O plano INTEIRO, quando a captura foi de plano inteiro (o sítio não sabia onde ia escrever).
     ///
     /// Ele é o lado `before` COMPLETO, então quem o tem não precisa de janela nenhuma — e é por isso

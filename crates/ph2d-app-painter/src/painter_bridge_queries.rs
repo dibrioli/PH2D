@@ -143,3 +143,16 @@ pub fn apply_layer_reparent(
         painter.handle_layer_reparent(dragged, drop);
     }
 }
+
+/// B23.2: os produtores do quadro que o Painter tem vivos (o laço a pedido não dorme sobre eles).
+pub fn quer_quadro(tools: &mut ToolRegistry, fora: &mut Vec<ph2d_app_host::quadro::Produtor>) {
+    use ph2d_app_host::quadro::Produtor as P;
+    let Some(p) = o_painter(tools) else { return };
+    let de = [P::TracoAberto, P::PapelMolhado, P::SimWet, P::UiAnima];
+    fora.extend(
+        de.into_iter()
+            .zip(p.quer_quadro())
+            .filter(|(_, s)| *s)
+            .map(|(q, _)| q),
+    );
+}

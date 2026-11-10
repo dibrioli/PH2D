@@ -414,6 +414,19 @@ impl PainterTool {
         self.paint_tick_do_traco(dt_s);
     }
 
+    /// B23.2: o que o [`Self::paint_tick`] ainda faz SEM evento, ramo a ramo — o laço não dorme
+    /// enquanto um for verdade: `[traço aberto, papel a secar, sessão Wet Paint, prévia do Stencil]`.
+    /// O papel seca por `carry.min(255)` num passo: dormir mudaria o byte.
+    #[must_use]
+    pub fn quer_quadro(&self) -> [bool; 4] {
+        [
+            self.traco_aberto() || self.paint.tracos_fora > 0,
+            self.paint.canvas_wet_rect.is_some(),
+            self.paint.wetpaint.session.is_some(),
+            self.paint.stencil_preview_s > 0.0,
+        ]
+    }
+
     /// O quadro do traço aberto no tool — o resto do `paint_tick`, sem o que é do quadro inteiro (W16: o
     /// tocador corre-o também em cada traço guardado, [`super::tracos`]).
     pub(super) fn paint_tick_do_traco(&mut self, dt_s: f32) {

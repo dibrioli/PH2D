@@ -1,4 +1,5 @@
 use super::*;
+use std::time::Instant;
 
 fn pede(ativos: &[Produtor], focada: bool) -> Pedido {
     quer_quadro(&Estado { ativos, focada })
@@ -49,4 +50,41 @@ fn o_sono_e_parada_nomeada() {
     }
     assert!(DESFOCADA > Duration::ZERO && DESFOCADA <= PRAZO);
     assert_eq!(Produtor::TODOS.len(), 14);
+}
+
+/// O laço: a entrada segura o quadro só o [`PRAZO`]; depois dorme com a parada nomeada.
+#[test]
+fn a_entrada_segura_o_laco_so_o_prazo() {
+    let t0 = Instant::now();
+    let mut l = Laco::novo(false);
+    l.entrada(t0);
+    let antes = t0 + PRAZO / 2;
+    assert_eq!(l.pedido(&[], antes), Pedido::Ja(Produtor::Entrada));
+    assert_eq!(l.acorda(&[], antes), None);
+    let depois = t0 + PRAZO * 2;
+    assert_eq!(l.acorda(&[], depois), Some(depois + PRAZO));
+    l.foco(false);
+    assert_eq!(l.acorda(&[], antes), Some(antes + DESFOCADA));
+    assert_eq!(
+        l.pedido(&[Produtor::PapelMolhado], depois),
+        Pedido::Ja(Produtor::PapelMolhado)
+    );
+}
+
+/// Um smoke (que conta quadros) nunca dorme, nem desfocado: `PH2D_EXIT_AFTER_FRAMES` não pendura.
+#[test]
+fn o_smoke_nao_dorme_nem_desfocado() {
+    let mut l = Laco::novo(true);
+    l.foco(false);
+    assert_eq!(l.pedido(&[], Instant::now()), Pedido::Ja(Produtor::Smoke));
+    for (k, v) in [
+        ("PH2D_EXIT_AFTER_FRAMES", "120"),
+        ("PH2D_COMPOSITE_SMOKE", "1"),
+        ("PH2D_GPU_COOK_DEMO", "3"),
+        ("PH2D_QUADRO_A_PEDIDO", "0"),
+    ] {
+        assert!(e_smoke(k, v), "{k}");
+    }
+    assert!(!e_smoke("PH2D_QUADRO_A_PEDIDO", "1"));
+    assert!(!e_smoke("PH2D_CARDS", "0"));
 }

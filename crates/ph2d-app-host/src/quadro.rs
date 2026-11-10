@@ -8,7 +8,7 @@
 //! PX-25). **UI**: com foco, desenha já; desfocada, a [`DESFOCADA`] por quadro.
 //! Sem ninguém a pedir, dorme [`PRAZO`]: o despertador que olha relógios e trabalhos de fundo.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 /// Quanto um trabalho de fundo (autosave, capa a descodificar, mensagem da rede) espera, no pior
 /// caso, para ser visto com o laço a dormir (estudo X-02, «prazo 250 ms»). Latência, não recurso.
@@ -136,6 +136,80 @@ pub fn quer_quadro(e: &Estado<'_>) -> Pedido {
             prazo: PRAZO,
             porque: Parada::Ocioso,
         },
+    }
+}
+
+/// O que a shell guarda entre quadros e a lei não sabe: o foco, a última entrada e se este
+/// processo é um smoke. A shell só lhe dá os eventos e os produtores do documento.
+#[derive(Clone, Copy, Debug)]
+pub struct Laco {
+    focada: bool,
+    ultima_entrada: Option<Instant>,
+    smoke: bool,
+}
+
+/// Um smoke conta quadros ou conduz a cena: qualquer `PH2D_*SMOKE*`/`*DEMO*`,
+/// `PH2D_EXIT_AFTER_FRAMES`, ou `PH2D_QUADRO_A_PEDIDO=0` (o laço contínuo de antes, para comparar).
+#[must_use]
+pub fn e_smoke(nome: &str, valor: &str) -> bool {
+    let p = nome.strip_prefix("PH2D_");
+    p.is_some_and(|r| r.contains("SMOKE") || r.contains("DEMO") || r == "EXIT_AFTER_FRAMES")
+        || (nome == "PH2D_QUADRO_A_PEDIDO" && valor == "0")
+}
+
+impl Laco {
+    #[must_use]
+    pub const fn novo(smoke: bool) -> Self {
+        Self {
+            focada: true,
+            ultima_entrada: None,
+            smoke,
+        }
+    }
+
+    /// O laço deste processo, com o smoke lido do ambiente uma vez.
+    #[must_use]
+    pub fn do_ambiente() -> Self {
+        let smoke =
+            std::env::vars_os().any(|(k, v)| e_smoke(&k.to_string_lossy(), &v.to_string_lossy()));
+        Self::novo(smoke)
+    }
+
+    pub fn foco(&mut self, focada: bool) {
+        self.focada = focada;
+    }
+
+    pub fn entrada(&mut self, agora: Instant) {
+        self.ultima_entrada = Some(agora);
+    }
+
+    /// A lei sobre os produtores da shell mais os do laço (smoke, entrada há menos de [`PRAZO`]).
+    #[must_use]
+    pub fn pedido(&self, documento: &[Produtor], agora: Instant) -> Pedido {
+        let mut ativos = [Produtor::Entrada; 16];
+        let mut n = 0;
+        let recente = self
+            .ultima_entrada
+            .is_some_and(|t| agora.saturating_duration_since(t) < PRAZO);
+        let deste = [(self.smoke, Produtor::Smoke), (recente, Produtor::Entrada)];
+        let extra = deste.iter().filter(|(sim, _)| *sim).map(|(_, p)| *p);
+        for p in documento.iter().copied().chain(extra).take(ativos.len()) {
+            ativos[n] = p;
+            n += 1;
+        }
+        quer_quadro(&Estado {
+            ativos: &ativos[..n],
+            focada: self.focada,
+        })
+    }
+
+    /// A tradução para o laço: `None` = desenhar já; `Some(t)` = dormir até `t` (ou um evento).
+    #[must_use]
+    pub fn acorda(&self, documento: &[Produtor], agora: Instant) -> Option<Instant> {
+        match self.pedido(documento, agora) {
+            Pedido::Ja(_) => None,
+            Pedido::Ate { prazo, .. } => Some(agora + prazo),
+        }
     }
 }
 

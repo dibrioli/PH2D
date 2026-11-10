@@ -154,6 +154,7 @@ impl WidgetStore {
             timeline_gestures: Vec::new(),
             timeline_slop: crate::interaction::PressSlop::default(),
             timeline_double: false,
+            timeline_tinta_do_cursor: None,
             timeline_wheel: BTreeMap::new(),
             timeline_canvas: BTreeMap::new(),
             flip_strip: Default::default(),

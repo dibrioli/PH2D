@@ -7138,6 +7138,7 @@ dependencies = [
 name = "ph2d-cursor-art"
 version = "0.0.0"
 dependencies = [
+ "image",
  "ph2d-tokens",
  "winit",
 ]

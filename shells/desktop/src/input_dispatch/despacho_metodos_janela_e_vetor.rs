@@ -221,10 +221,9 @@ impl crate::App {
         }
     }
 
-    /// Reflect the hover context in the OS cursor (each CursorMoved and frame, deduped: Wayland resends
-    /// every call), the only `set_cursor` of the shell. Priority: an armed eyedropper (crosshair), the
-    /// Motion split divider (↕/↔), a timeline grab band, a dock seam, the camera frame, the Pixel Slice
-    /// Tool's handle/line, the board, what the family tab asks (`pointer_look`), else the arrow.
+    /// The hover context in the OS cursor (each move and frame, deduped), the shell's only `set_cursor`.
+    /// Priority: armed eyedropper, Motion split divider, timeline handle, dock seam, camera frame, Pixel
+    /// Slice handle/line, the board, what the family tab asks (`pointer_look`), else the arrow.
     pub(crate) fn update_eyedropper_cursor(&self) {
         let Some(win) = self.window.as_ref() else {
             return;
@@ -236,7 +235,7 @@ impl crate::App {
             .gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .map(|h| -> Result<CursorIcon, ph2d_cursor_art::Figura> {
+            .map(|h| -> Result<CursorIcon, ph2d_cursor_art::Tingida> {
                 Ok(
                     if h.store.eyedropper_pending().is_some() || ph2d_app_painter::mira_na_tela() {
                         CursorIcon::Crosshair
@@ -249,12 +248,11 @@ impl crate::App {
                             CursorIcon::NsResize
                         }
                     } else if let Some(icon) = self.timeline_resize_cursor(h) {
-                        icon
+                        icon?
                     } else if let Some(icon) = self.dock_seam_cursor(x, y) {
-                        // ⭐ A borda de uma coluna docada — a MESMA porta que o arrasto pergunta.
-                        icon
+                        icon // ⭐ A borda de uma coluna docada — a MESMA porta que o arrasto pergunta.
                     } else if let Some(f) = self.forma_figura() {
-                        return Err(f);
+                        return Err((f, None));
                     } else if let Some(icon) =
                         self.forma_cursor().or_else(|| self.camera_frame_cursor())
                     {
@@ -276,11 +274,11 @@ impl crate::App {
                 )
             })
             .unwrap_or(Ok(CursorIcon::Default));
-        // A figura desenhada (pontos do Outline) ou o ícone do sistema; a caneta leva o ícone mais próximo.
+        // A figura desenhada (pontos do Outline, alças tingidas) ou o do sistema; a caneta leva o mais próximo.
         let (cursor, icone): (winit::window::Cursor, _) = match (escolha, self.gfx.as_ref()) {
             (Ok(i), _) => (i.into(), i),
-            (Err(f), Some(g)) => (g.cursores.cursor(f), f.do_sistema()),
-            (Err(f), None) => (f.do_sistema().into(), f.do_sistema()),
+            (Err(t), Some(g)) => (g.cursores.cursor_de(t), t.0.do_sistema()),
+            (Err((f, _)), None) => (f.do_sistema().into(), f.do_sistema()),
         };
         let novo = self
             .gfx
@@ -292,23 +290,25 @@ impl crate::App {
         ph2d_pen::porta::cursor(icone);
     }
 
-    /// The timeline target's cursor (`TimelineHitKind::pointer_look`): the PRESSED target while held
-    /// (grabbing follows the drag off the hit), else the hit under the pointer; borders keep diagonals.
+    /// The timeline target's cursor (`pointer_look`), tinted by the handle (`Figura::da_alca`): the PRESSED
+    /// target while held, else the hit under the pointer; borders keep diagonals.
     pub(super) fn timeline_resize_cursor(
         &self,
         hero: &ph2d_editor_core::HeroScreen,
-    ) -> Option<winit::window::CursorIcon> {
-        use ph2d_editor_core::interaction::TimelineHitKind;
+    ) -> Option<Result<winit::window::CursorIcon, ph2d_cursor_art::Tingida>> {
+        use {ph2d_cursor_art::Figura, ph2d_editor_core::interaction::TimelineHitKind};
         let (x, y) = self.last_pointer;
         let s = &hero.store;
         let preso = s
             .active_id()
             .filter(|a| s.timeline_surface_at_id(*a).is_some());
-        let (_, kind) = s.timeline_surface_at_id(preso.or_else(|| hero.chrome_hit(x, y))?)?;
+        let id = preso.or_else(|| hero.chrome_hit(x, y))?;
+        let (_, kind) = s.timeline_surface_at_id(id)?;
         if let TimelineHitKind::ResizeEdge { edges } = kind {
-            return Some(resize_cursor_for_edges(edges));
+            return Some(Ok(resize_cursor_for_edges(edges)));
         }
-        Some(icone_de(Some(kind.pointer_look(preso.is_some())?)))
+        let icone = icone_de(Some(kind.pointer_look(preso.is_some())?));
+        Some(Figura::da_alca(icone, s.timeline_cursor_tint(id)))
     }
 
     /// Is the cursor over the Motion graph's draggable split divider? Resolves

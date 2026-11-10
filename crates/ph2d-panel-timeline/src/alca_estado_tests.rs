@@ -125,8 +125,19 @@ fn pinta_faixa(
     theme: Theme,
     prepara: impl FnOnce(&mut WidgetStore),
 ) -> (Vec<DrawOp>, Vec<(NodeId, Rect)>, Alvos) {
+    let (ops, hits, alvos, ()) = pinta_faixa_lendo(theme, true, prepara, |_| ());
+    (ops, hits, alvos)
+}
+
+/// [`pinta_faixa`] com ou sem os `cartoes`, e `le` sobre o store DEPOIS da pintura.
+fn pinta_faixa_lendo<R>(
+    theme: Theme,
+    cartoes: bool,
+    prepara: impl FnOnce(&mut WidgetStore),
+    le: impl FnOnce(&WidgetStore) -> R,
+) -> (Vec<DrawOp>, Vec<(NodeId, Rect)>, Alvos, R) {
     let snap = snap_duas_pecas();
-    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(true));
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(cartoes));
     let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::TimelinePanel>();
     prepara(host.store_mut());
     let area = Rect::new(0.0, 0.0, 1280.0, 800.0);
@@ -169,8 +180,9 @@ fn pinta_faixa(
         .iter()
         .filter_map(|(id, _)| store.timeline_surface_at_id(*id).map(|(_, k)| (*id, k)))
         .collect();
+    let lido = le(store);
     ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(None);
-    (ops, hits, alvos)
+    (ops, hits, alvos, lido)
 }
 
 fn cores(ops: &[DrawOp]) -> Vec<[f32; 4]> {
@@ -445,3 +457,6 @@ fn o_cursor_da_faixa_sai_do_alvo_registado() {
         "a faixa não regista fundo"
     );
 }
+
+#[path = "alca_cursor_tests.rs"]
+mod cursor;

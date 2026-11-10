@@ -32,6 +32,22 @@ impl WidgetStore {
         }
     }
 
+    /// A alça pinta-se fora do repouso: publica a cor de REPOUSO dela para o id quente/apertado
+    /// (o mesmo que [`Self::active_id`]/[`Self::hot_id`] e o clique), para o cursor se tingir.
+    pub fn publish_timeline_cursor_tint(&mut self, rgba: [u8; 4]) {
+        if let Some(id) = self.active_id().or_else(|| self.hot_id()) {
+            self.timeline_tinta_do_cursor = Some((id, rgba));
+        }
+    }
+
+    /// A cor publicada para `id`; `None` quando o alvo é neutro (corpo, faixa vazia, outra alça).
+    #[must_use]
+    pub fn timeline_cursor_tint(&self, id: NodeId) -> Option<[u8; 4]> {
+        self.timeline_tinta_do_cursor
+            .filter(|(i, _)| *i == id)
+            .map(|(_, c)| c)
+    }
+
     /// Arm a fresh timeline capture at the Down point: not yet a drag, and this
     /// is the origin the slop is measured from. `double` is whether this Down was
     /// the second of a double-click (from [`WidgetStore::record_pointer_down`]);

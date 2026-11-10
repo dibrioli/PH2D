@@ -4,7 +4,10 @@
 //! anti-serrilhado analítico, ao factor de escala da janela (o winit trata o buffer como píxeis físicos).
 //!
 //! Quem edita escolhe a [`Figura`]; o [`Jogo`] guarda os `CustomCursor` já criados e devolve o `Cursor` do winit.
-//! Arrastar usa a mão fechada do SISTEMA ([`Figura::Agarrando`]), a única que não se desenha aqui.
+//! Arrastar um ponto usa a mão fechada do SISTEMA ([`Figura::Agarrando`]), a única que não se desenha aqui.
+//!
+//! As alças da Timeline levam o cursor TINGIDO da cor delas ([`Figura::da_alca`], [`Jogo::cursor_de`]):
+//! `↔`, a mão aberta e a fechada, corpo na cor da alça e o mesmo halo `Bg0`, lido sobre qualquer fundo.
 
 use ph2d_tokens::{ColorToken, Theme};
 use winit::event_loop::ActiveEventLoop;
@@ -34,10 +37,16 @@ pub enum Figura {
     Funde,
     /// `Shift` sobre um ponto: a seta com «±» (alterna na seleção).
     Alterna,
+    /// Uma ponta que estica na horizontal: `↔` (ponto quente no centro).
+    Estica,
+    /// O que se agarra e move: a mão aberta.
+    Mao,
+    /// A arrastar uma alça: a mão fechada (desenhada, para levar a cor da alça).
+    MaoFechada,
 }
 
 impl Figura {
-    pub const TODAS: [Figura; 7] = [
+    pub const TODAS: [Figura; 10] = [
         Figura::Seta,
         Figura::SetaPonto,
         Figura::Agarrando,
@@ -45,6 +54,9 @@ impl Figura {
         Figura::PenaMenos,
         Figura::Funde,
         Figura::Alterna,
+        Figura::Estica,
+        Figura::Mao,
+        Figura::MaoFechada,
     ];
 
     /// O ícone do sistema que mais se aproxima (a caneta Wayland e as plataformas sem cursor próprio).
@@ -54,9 +66,35 @@ impl Figura {
             Figura::Seta | Figura::SetaPonto | Figura::Alterna => CursorIcon::Default,
             Figura::Agarrando => CursorIcon::Grabbing,
             Figura::PenaMais | Figura::PenaMenos | Figura::Funde => CursorIcon::Crosshair,
+            Figura::Estica => CursorIcon::EwResize,
+            Figura::Mao => CursorIcon::Grab,
+            Figura::MaoFechada => CursorIcon::Grabbing,
+        }
+    }
+
+    /// ⭐ O cursor de uma alça: com a cor dela (`cor`), a figura desenhada que diz o mesmo que o
+    /// ícone do sistema (`↔`, mão aberta, mão fechada); sem cor, ou sem figura, o ícone do sistema.
+    pub fn da_alca(icone: CursorIcon, cor: Option<[u8; 4]>) -> Result<CursorIcon, Tingida> {
+        let f = match icone {
+            CursorIcon::EwResize => Figura::Estica,
+            CursorIcon::Grab => Figura::Mao,
+            CursorIcon::Grabbing => Figura::MaoFechada,
+            _ => return Ok(icone),
+        };
+        cor.map_or(Ok(icone), |c| Err((f, Some(c))))
+    }
+
+    /// O ponto quente na grelha: o bico da seta e da pena, o centro do `↔` e da palma.
+    fn quente(self) -> [f32; 2] {
+        match self {
+            Figura::Estica | Figura::Mao | Figura::MaoFechada => [LADO / 2.0, LADO / 2.0],
+            _ => BICO,
         }
     }
 }
+
+/// Uma figura desenhada e, se a tem, a cor do corpo (a da alça); `None` = a tinta do tema.
+pub type Tingida = (Figura, Option<[u8; 4]>);
 
 /// As cores de uma figura, já resolvidas.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -185,6 +223,47 @@ struct Camada {
     cor: [u8; 4],
 }
 
+/// O `↔`: a haste e as duas pontas, centrado na grelha.
+fn estica() -> Vec<Forma> {
+    // LITERAL-PX-OK: o desenho do ↔ na grelha de 24
+    vec![
+        Forma::Traco([6.0, 12.0], [18.0, 12.0], 2.2),
+        Forma::Poligono(vec![[3.0, 12.0], [8.0, 7.2], [8.0, 16.8]]),
+        Forma::Poligono(vec![[21.0, 12.0], [16.0, 7.2], [16.0, 16.8]]),
+    ]
+}
+
+/// A mão: a palma, o polegar e os quatro dedos (estendidos ou dobrados). O halo de cada dedo
+/// cobre a folga entre eles — os riscos escuros que separam os dedos.
+fn mao(aberta: bool) -> Vec<Forma> {
+    // LITERAL-PX-OK: o desenho da mão na grelha de 24
+    let palma = Forma::Poligono(vec![
+        [6.8, 11.0],
+        [17.6, 11.0],
+        [17.6, 17.0],
+        [15.4, 21.0],
+        [9.0, 21.0],
+        [6.8, 17.0],
+    ]);
+    let dedos: [(f32, f32); 4] = if aberta {
+        [(8.2, 6.2), (11.0, 4.2), (13.8, 4.6), (16.4, 7.0)]
+    } else {
+        [(8.2, 9.6), (11.0, 9.0), (13.8, 9.0), (16.4, 9.6)]
+    };
+    let polegar = if aberta {
+        Forma::Traco([7.6, 16.0], [4.2, 12.4], 2.4)
+    } else {
+        Forma::Traco([7.6, 16.0], [9.6, 13.6], 2.4)
+    };
+    let mut v = vec![palma, polegar];
+    v.extend(
+        dedos
+            .iter()
+            .map(|&(x, topo)| Forma::Traco([x, 12.0], [x, topo], 2.2)),
+    );
+    v
+}
+
 fn camadas(f: Figura, c: &Cores) -> Vec<Camada> {
     let [sx, sy] = SELO;
     let corpo = |formas| Camada {
@@ -215,6 +294,9 @@ fn camadas(f: Figura, c: &Cores) -> Vec<Camada> {
     };
     match f {
         Figura::Seta | Figura::Agarrando => vec![corpo(vec![seta()])],
+        Figura::Estica => vec![corpo(estica())],
+        Figura::Mao => vec![corpo(mao(true))],
+        Figura::MaoFechada => vec![corpo(mao(false))],
         Figura::SetaPonto => vec![
             corpo(vec![seta()]),
             Camada {
@@ -291,10 +373,11 @@ pub fn desenha(f: Figura, escala: f64, c: &Cores) -> Imagem {
         }
     }
     let q = |v: f32| (v * s).round() as u16;
+    let [qx, qy] = f.quente();
     Imagem {
         lado,
         rgba,
-        quente: (q(BICO[0]), q(BICO[1])),
+        quente: (q(qx), q(qy)),
     }
 }
 
@@ -302,6 +385,7 @@ pub fn desenha(f: Figura, escala: f64, c: &Cores) -> Imagem {
 #[derive(Default)]
 pub struct Jogo {
     feitos: Vec<(Figura, CustomCursor)>,
+    tingidos: Tingidos<CustomCursor>,
     chave: Option<(u64, Theme)>,
 }
 
@@ -309,19 +393,22 @@ impl Jogo {
     /// Cria (ou refaz) as figuras para esta escala e tema. Barato quando nada mudou.
     pub fn prepara(&mut self, el: &ActiveEventLoop, escala: f64, theme: Theme) {
         let chave = Some((escala.to_bits(), theme));
+        let cores = Cores::do_tema(theme);
+        let cria = |f, c: &Cores| {
+            let im = desenha(f, escala, c);
+            let src = CustomCursor::from_rgba(im.rgba, im.lado, im.lado, im.quente.0, im.quente.1);
+            src.ok().map(|s| el.create_custom_cursor(s))
+        };
         if self.chave == chave {
+            self.tingidos
+                .cumpre(|(f, cor)| cria(f, &cores.com_corpo(cor)));
             return;
         }
-        let cores = Cores::do_tema(theme);
+        self.tingidos = Tingidos::default();
         self.feitos = Figura::TODAS
             .into_iter()
             .filter(|f| *f != Figura::Agarrando)
-            .filter_map(|f| {
-                let im = desenha(f, escala, &cores);
-                let src =
-                    CustomCursor::from_rgba(im.rgba, im.lado, im.lado, im.quente.0, im.quente.1);
-                src.ok().map(|s| (f, el.create_custom_cursor(s)))
-            })
+            .filter_map(|f| cria(f, &cores).map(|c| (f, c)))
             .collect();
         self.chave = chave;
     }
@@ -334,7 +421,26 @@ impl Jogo {
             .find(|(g, _)| *g == f)
             .map_or_else(|| f.do_sistema().into(), |(_, c)| c.clone().into())
     }
+
+    /// O cursor de uma figura TINGIDA: o já criado, ou (pedido para o próximo [`Self::prepara`]) o
+    /// do tema até lá — um evento depois, o ponteiro já leva a cor da alça.
+    #[must_use]
+    pub fn cursor_de(&self, (f, cor): Tingida) -> Cursor {
+        cor.and_then(|c| self.tingidos.pega((f, c)))
+            .map_or_else(|| self.cursor(f), Into::into)
+    }
 }
+
+impl Cores {
+    /// As mesmas cores com o corpo em `cor` (a cor da alça); o contorno continua o `Bg0`.
+    #[must_use]
+    pub fn com_corpo(self, cor: [u8; 4]) -> Self {
+        Self { corpo: cor, ..self }
+    }
+}
+
+mod tingidos;
+pub use tingidos::{TECTO_DE_TINGIDOS, Tingidos};
 
 #[cfg(test)]
 mod tests;

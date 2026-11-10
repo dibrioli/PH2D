@@ -648,6 +648,8 @@ pub struct WidgetStore {
     /// Whether the active timeline capture began as the second Down of a
     /// double-click — read on Up so a marker tap can open its rename field.
     pub(in crate::interaction) timeline_double: bool,
+    /// A cor de repouso da alça quente/apertada da Timeline, pelo id dela (o cursor tingido).
+    pub(in crate::interaction) timeline_tinta_do_cursor: Option<(NodeId, [u8; 4])>,
     /// Per-surface accumulated wheel (anchored zoom + pan + row scroll), drained
     /// by the timeline panel. Mirror of `graph_zoom`.
     pub(in crate::interaction) timeline_wheel: BTreeMap<NodeId, TimelineWheel>,

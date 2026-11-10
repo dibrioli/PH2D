@@ -153,6 +153,7 @@ pub(crate) fn pinta(
         }
     }
     crate::strip_paint::pinta_sombra_de_alca(ctx, &rects, &tris);
+    publica_cor(ctx, estado, repouso);
     let c = cor(estado, repouso, theme);
     for r in rects {
         fill_rounded_rect(ctx.scene, r, Radius::Xs.px(), c);
@@ -161,6 +162,17 @@ pub(crate) fn pinta(
     for t in tris {
         ctx.scene
             .fill_shape(Fill::NonZero, Affine::IDENTITY, &b, &tri_path(t));
+    }
+}
+
+/// ⭐ Fora do repouso a alça publica a cor de REPOUSO dela (a que o olho associa à alça): o cursor
+/// do sistema tinge-se dela (`ph2d_cursor_art::Figura::da_alca`). Só os cartões chegam aqui.
+fn publica_cor(ctx: &mut PaintCtx, estado: EstadoAlca, repouso: Color) {
+    if estado != EstadoAlca::Repouso {
+        let u = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+        let k = repouso.components;
+        let rgba = [u(k[0]), u(k[1]), u(k[2]), u8::MAX];
+        ctx.host.store_mut().publish_timeline_cursor_tint(rgba);
     }
 }
 
@@ -270,6 +282,7 @@ pub(crate) fn pinta_chave(
         crate::tracks::paint_diamond(ctx, cx, cy, anel + StrokeToken::Heavy.px(), halo);
     }
     let repouso = tinta(t, theme);
+    publica_cor(ctx, estado, repouso);
     let mut fundo = tinta(TimelineTinta::FitaPropriedade, theme);
     // A chave em repouso já é a tinta mais clara: o hover dela acende também o ANEL (a borda).
     if estado == EstadoAlca::Hover {
@@ -336,6 +349,7 @@ pub(crate) fn losango_mestre(
     segundos: f64,
 ) {
     let e = EstadoAlca::nos_cartoes(ctx, id);
+    publica_cor(ctx, e, repouso);
     let d = e.cresce();
     if e == EstadoAlca::Arrasto {
         let halo = acento(theme).multiply_alpha(ph2d_tokens::TIMELINE_ALCA_HALO_ALPHA);

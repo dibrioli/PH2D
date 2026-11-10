@@ -167,3 +167,11 @@ um teste de 1100 px (curado com `textos_em`); a contagem `pintados + n == total`
 - **Chips a 1290 px**: fileira inteira precisa 897 px, há 857 (−40). Não há regra de compactar «used 2×»; o único ganho seria apertar os vãos de 6 px dos chips para ~2 px (desenho pior) — não feito; a dobra única «+2 more» fica.
 - Testes: `nos_cartoes_o_laco_e_uma_faixa_fina_no_topo_da_regua`, `a_faixa_do_laco_le_se_sobre_a_regua_em_todo_tema`, `a_fita_abre_com_o_fim_e_a_folga_a_vista_mesmo_se_a_area_muda` (mutações: altura `RULER_H`/sem o reenquadrar ⇒ vermelho).
 - §5 do CLAUDE.md: `PH2D_NEST_SMOKE=1..5`. Fotos `docs/Timeline/fotos/19_regua_e_chips.png`, `19_keys.png`.
+
+## Rodada 3g (10/11): o cursor da cor da alça
+
+- Dono: «consegue fazer o cursor ficar da cor da alça que está sobre?». Nos cartões, `alca_estado::publica_cor` (dentro de `pinta`, `pinta_chave`, `losango_mestre`): fora do repouso a alça publica a cor de REPOUSO dela em `WidgetStore::publish_timeline_cursor_tint` (chave = `active_id`/`hot_id`, o mesmo id do clique); `timeline_cursor_tint(id)` só responde para esse id — corpo da strip, faixa vazia e `PH2D_CARDS=0` = `None` = ícone do sistema.
+- `ph2d-cursor-art`: figuras `Estica` (↔), `Mao`, `MaoFechada` (desenhada, para levar a cor; `Agarrando` dos pontos continua do sistema), ponto quente no centro; `Figura::da_alca(icone, cor)`; `Jogo::cursor_de` + `Tingidos` (cache por (figura, rgba), criado no `prepara` seguinte, tecto 32 handles, sai o mais velho; limpa ao mudar escala/tema). Corpo = cor da alça, halo `Bg0`.
+- Shell: `timeline_resize_cursor` devolve `Result<CursorIcon, Tingida>`; LOC líquido 0.
+- Testes: `o_corpo_tem_a_cor_da_alca_e_o_halo_e_escuro`, `so_a_alca_com_cor_troca_o_icone_do_sistema`, `o_cache_devolve_o_mesmo_e_tem_tecto`, `a_alca_sob_o_ponteiro_publica_a_cor_dela` (verde/vermelho/fade, corpo e vazio nada, clássico nada), `a_faixa_do_laco_e_a_chave_publicam_a_cor_de_repouso`. Mutação: `publica_cor` mudo ⇒ 2 vermelhos.
+- O cursor não sai na foto: `PH2D_CURSOR_PNG=<png>` grava a folha → `docs/Timeline/fotos/20_cursores.png` (7 cores × 3 figuras, fundo claro e escuro).

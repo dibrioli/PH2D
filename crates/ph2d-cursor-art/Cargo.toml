@@ -14,5 +14,9 @@ authors.workspace = true
 ph2d-tokens = { path = "../ph2d-tokens" }
 winit = "0.30"
 
+[dev-dependencies]
+# Só o portão que grava a folha dos cursores tingidos em PNG (`PH2D_CURSOR_PNG`) para olhar.
+image = { version = "0.25", default-features = false, features = ["png"] }
+
 [lints]
 workspace = true

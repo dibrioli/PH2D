@@ -1,0 +1,18 @@
+[package]
+name = "ph2d-pixel-tween"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# P13 bloco T (`docs/PixelArt/P13_plano.md` §4 «Quadros do meio», §11.1): o tween de cel GERA
+# quadros de verdade que se retocam. A curva vem do `ph2d-ease`; a rotação é o RotSprite do núcleo.
+# Puro: sem ECS, sem UI. A `ph2d-app-pixel` chega à curva só por esta porta (`Facilidade`).
+[dependencies]
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+ph2d-ease       = { path = "../ph2d-ease" }
+
+[lints]
+workspace = true

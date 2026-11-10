@@ -215,6 +215,122 @@ fn o_ctrl_z_de_um_traco_no_papel_e_confinado_em_cada_meio() {
     assert!(falhas.is_empty(), "não confinados: {falhas:#?}");
 }
 
+/// As texturas de planos da pista da PLACA: persistem e cada quadro escreve só a janela dobrada
+/// (`compose_light_premul` em `ph2d-app-painter`). Vazia até a 1.ª dobra da tela (`planes_seeded`).
+#[derive(Default)]
+struct TexturasDaPlaca {
+    relevo: Vec<u32>,
+    cobertura: Vec<u8>,
+    mat0: Vec<u8>,
+    mat1: Vec<u8>,
+}
+
+impl TexturasDaPlaca {
+    /// Um quadro da pista: drena o sujo, dobra a janela (a tela se ainda não semeada) e escreve-a.
+    /// Devolve a janela dobrada.
+    fn quadro(&mut self, t: &mut PainterTool) -> (u32, u32, u32, u32) {
+        let _ = t.take_preview_dirty();
+        let (w, h) = t.source_size;
+        let janela = t
+            .preview_gpu_region()
+            .filter(|_| !self.relevo.is_empty())
+            .unwrap_or((0, 0, w, h));
+        let Some(p) = t.impasto_gpu_planes_in(janela) else {
+            return janela;
+        };
+        if self.relevo.is_empty() {
+            let n = (w * h) as usize;
+            *self = Self {
+                relevo: vec![0; n],
+                cobertura: vec![0; n],
+                mat0: vec![0; n * 4],
+                mat1: vec![0; n * 4],
+            };
+        }
+        let (x, y, pw, ph) = p.region;
+        for r in 0..ph as usize {
+            let (de, para) = (r * pw as usize, (y as usize + r) * w as usize + x as usize);
+            let n = pw as usize;
+            for (d, s) in self.relevo[para..para + n]
+                .iter_mut()
+                .zip(&p.relief[de..de + n])
+            {
+                *d = s.to_bits();
+            }
+            self.cobertura[para..para + n].copy_from_slice(&p.cover[de..de + n]);
+            self.mat0[para * 4..(para + n) * 4].copy_from_slice(&p.mat0[de * 4..(de + n) * 4]);
+            self.mat1[para * 4..(para + n) * 4].copy_from_slice(&p.mat1[de * 4..(de + n) * 4]);
+        }
+        janela
+    }
+
+    /// O que a placa ilumina é a dobra da tela inteira, ao bit (quando há luz).
+    fn e_a_dobra_inteira(&self, t: &PainterTool, caso: &str) {
+        let Some(p) = t.impasto_gpu_planes() else {
+            return;
+        };
+        let bits: Vec<u32> = p.relief.iter().map(|v| v.to_bits()).collect();
+        assert!(
+            bits == self.relevo,
+            "{caso}: relevo da placa ≠ dobra inteira"
+        );
+        assert!(
+            p.cover == self.cobertura,
+            "{caso}: cobertura da placa ≠ dobra inteira"
+        );
+        assert!(p.mat0 == self.mat0, "{caso}: mat0 da placa ≠ dobra inteira");
+        assert!(p.mat1 == self.mat1, "{caso}: mat1 da placa ≠ dobra inteira");
+    }
+}
+
+/// **B10c: a pista da PLACA no Ctrl+Z do 1.º traço Impasto** (com e sem papel): a janela que ela dobra é a do
+/// traço, não a tela (o quadro de 80 ms), e as texturas persistentes remendadas por ela são a dobra inteira ao
+/// bit, no undo e no redo. Reivindicar de menos (uma linha de relevo fora da janela) reprova aqui.
+#[test]
+fn a_placa_dobra_so_a_janela_do_ctrl_z_do_1o_traco_impasto() {
+    use crate::tool::paint::media::PaintMedia::Impasto;
+    for papel in [true, false] {
+        let mut t = if papel {
+            let mut t = PainterTool::default();
+            t.abre_a_sprite_nova(
+                7,
+                PainterTool::pixeis_do_papel_texturizado(512, 512),
+                512,
+                512,
+            );
+            t
+        } else {
+            armed(512)
+        };
+        t.set_paint_media(Impasto);
+        t.set_brush_size_px(9.0);
+        let mut placa = TexturasDaPlaca::default();
+        placa.quadro(&mut t);
+        stroke(&mut t, 120.0);
+        placa.quadro(&mut t);
+        placa.e_a_dobra_inteira(&t, &format!("papel={papel} traço"));
+        assert!(
+            !placa.relevo.is_empty(),
+            "papel={papel}: o traço Impasto acende a luz"
+        );
+        for passo in ["undo", "redo"] {
+            let feito = if passo == "undo" {
+                t.undo_last()
+            } else {
+                t.redo_last()
+            };
+            assert!(feito, "papel={papel}: há {passo}");
+            let (w, h) = t.source_size;
+            let (_, _, jw, jh) = placa.quadro(&mut t);
+            assert!(
+                u64::from(jw) * u64::from(jh) * 4 < u64::from(w) * u64::from(h),
+                "papel={papel} {passo}: a placa dobra a TELA ({jw}x{jh})"
+            );
+            placa.e_a_dobra_inteira(&t, &format!("papel={papel} {passo}"));
+        }
+    }
+}
+
 /// **Dois planos VAZIOS não azedam o veredito** — a lição que custou a wave (doc 28 §5.63).
 ///
 /// O `split` manda para `Whole` tudo o que não sabe medir, e comprimento zero não é medível; as seis

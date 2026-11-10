@@ -149,3 +149,77 @@ fn a_opacidade_e_a_cor_nao_mexem_na_forma() {
     assert_eq!(*w.get::<Collider>(f).expect("c"), col);
     assert_eq!(*w.get::<ph2d_ecs::Transform>(f).expect("t"), t);
 }
+
+/// ⭐ **A ferramenta Pivot do canvas sobre a forma**: o mesmo cálculo do gesto (`move_pivot_transform`, o que a shell
+/// faz a cada `CursorMoved`) e o `arrasta_pivo` — a forma fica nos quatro cantos, a origem vai para o ponto largado,
+/// e o pivô guardado é o que o campo X/Y do cartão lê.
+#[test]
+fn arrastar_o_pivo_no_canvas_deixa_a_forma_e_leva_a_origem_ao_cursor() {
+    let (mut sim, f) = corpo_com_forma();
+    let antes = cantos(&sim, f);
+    let w = sim.world();
+    let t = *w.get::<ph2d_ecs::Transform>(f).expect("t");
+    let pw = ph2d_ecs::parent_world_transform(w, f);
+    let snap = |t: ph2d_ecs::Transform| ph2d_editor_core::TransformSnapshot {
+        translation: [t.translation.x, t.translation.y],
+        rotation: t.rotation,
+        scale: [t.scale.x, t.scale.y],
+    };
+    let (anchor, _) = anchor_half(w, f).expect("é uma forma");
+    let mundo = ph2d_ecs::world_transform(w, f).expect("mundo");
+    let (s, c) = libm::sincosf(mundo.rotation);
+    let (ax, ay) = (anchor[0] * mundo.scale.x, anchor[1] * mundo.scale.y);
+    let centro = [
+        mundo.translation.x + c * ax - s * ay,
+        mundo.translation.y + s * ax + c * ay,
+    ];
+    let alvo = antes[2];
+    let (origem, nova) = ph2d_editor_core::move_pivot_transform(snap(t), centro, alvo, snap(pw));
+    assert!(arrasta_pivo(sim.world_mut(), f, origem, nova));
+    let depois = cantos(&sim, f);
+    for (a, b) in antes.iter().zip(&depois) {
+        assert!(
+            (a[0] - b[0]).abs() < 1e-4 && (a[1] - b[1]).abs() < 1e-4,
+            "{antes:?} → {depois:?}"
+        );
+    }
+    let o = ph2d_ecs::world_transform(sim.world(), f)
+        .expect("mundo")
+        .translation;
+    assert!(
+        (o.x - alvo[0]).abs() < 1e-4 && (o.y - alvo[1]).abs() < 1e-4,
+        "a origem no cursor: {o:?} {alvo:?}"
+    );
+    let p = sim.world().get::<ShapeLook>(f).expect("o look").pivot;
+    assert!(
+        (p[0] - 1.0).abs() < 1e-4 && (p[1] - 1.0).abs() < 1e-4,
+        "o canto de cima à direita: {p:?}"
+    );
+    let col = *sim.world().get::<Collider>(f).expect("c");
+    let fa = fatos(sim.world(), f, &col, true);
+    assert_eq!(fa.ponto, Some([2, 0]), "o cartão acende o ponto do canto");
+}
+
+/// O clique da ferramenta agarra DENTRO da forma (girada e esticada), não fora; e só numa forma de colisão.
+#[test]
+fn o_clique_agarra_dentro_da_forma() {
+    let (sim, f) = corpo_com_forma();
+    let k = cantos(&sim, f);
+    let meio = [(k[0][0] + k[2][0]) * 0.5, (k[0][1] + k[2][1]) * 0.5];
+    assert!(contem(sim.world(), f, meio), "o centro");
+    // Rente à borda do lado longe da origem (o Offset põe a forma de um lado): só cai dentro com a rotação certa.
+    let borda = [(k[1][0] + k[2][0]) * 0.5, (k[1][1] + k[2][1]) * 0.5];
+    let rente = [
+        borda[0] + (meio[0] - borda[0]) * 0.1,
+        borda[1] + (meio[1] - borda[1]) * 0.1,
+    ];
+    assert!(contem(sim.world(), f, rente), "rente à borda, por dentro");
+    let fora = [k[2][0] + (k[2][0] - meio[0]), k[2][1] + (k[2][1] - meio[1])];
+    assert!(!contem(sim.world(), f, fora), "além do canto");
+    let corpo = sim
+        .world()
+        .get::<ph2d_ecs::ChildOf>(f)
+        .expect("filha")
+        .parent();
+    assert!(!contem(sim.world(), corpo, meio), "o corpo não é a forma");
+}

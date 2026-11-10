@@ -94,6 +94,98 @@ pub fn aplica(
     true
 }
 
+/// `e` é um objeto «Collision Shape» (um `Collider` sem corpo nem desenho): o alvo do Look e da ferramenta Pivot.
+#[must_use]
+pub fn e_forma(world: &World, e: Entity) -> bool {
+    world.get::<Collider>(e).is_some()
+        && world.get::<ph2d_physics_ecs::RigidBody>(e).is_none()
+        && world.get::<ph2d_render::Sprite>(e).is_none()
+}
+
+/// ⭐ A ferramenta Pivot do canvas: a âncora (o centro da forma a partir da origem, local, antes da escala) e a
+/// meia-extensão de uma forma de colisão — o par que a Sprite dá do quad. `None` fora de uma forma.
+#[must_use]
+pub fn anchor_half(world: &World, e: Entity) -> Option<([f32; 2], [f32; 2])> {
+    if !e_forma(world, e) {
+        return None;
+    }
+    let col = world.get::<Collider>(e)?;
+    let r = ph2d_physics_ecs::forma_resolvida(world, e, col);
+    Some((r.offset, meia_extensao(r.shape)))
+}
+
+/// O ponto de mundo `p` cai dentro da forma `e`? (o clique da ferramenta Pivot agarra a forma, não só o ponto).
+#[must_use]
+pub fn contem(world: &World, e: Entity, p: [f32; 2]) -> bool {
+    let (Some((c, h)), Some(col), Some(t)) = (
+        anchor_half(world, e),
+        world.get::<Collider>(e),
+        ph2d_ecs::world_transform(world, e),
+    ) else {
+        return false;
+    };
+    if t.scale.x.abs() < MEIA_MINIMA || t.scale.y.abs() < MEIA_MINIMA {
+        return false;
+    }
+    let (s, cs) = libm::sincosf(-t.rotation);
+    let (dx, dy) = (p[0] - t.translation.x, p[1] - t.translation.y);
+    let q = [
+        (cs * dx - s * dy) / t.scale.x - c[0],
+        (s * dx + cs * dy) / t.scale.y - c[1],
+    ];
+    match col.shape {
+        ColliderShape::Ball { radius } => q[0] * q[0] + q[1] * q[1] <= radius * radius,
+        ColliderShape::Capsule {
+            half_height,
+            radius,
+        } => {
+            let y = q[1].clamp(-half_height, half_height);
+            q[0] * q[0] + (q[1] - y) * (q[1] - y) <= radius * radius
+        }
+        ColliderShape::Cuboid { .. } | ColliderShape::Outline { .. } => {
+            q[0].abs() <= h[0] && q[1].abs() <= h[1]
+        }
+    }
+}
+
+/// ⭐ O arrasto da ferramenta Pivot sobre uma forma: a `origem` (no pai) e a `anchor` nova (o centro da forma a
+/// partir dela, local) que o gesto calculou. O pivô é `−anchor / meia-extensão`, o Offset dobra-se, os filhos ficam
+/// no mundo. `false` se `e` não é uma forma (o chamador segue com a Sprite).
+pub fn arrasta_pivo(world: &mut World, e: Entity, origem: [f32; 2], anchor: [f32; 2]) -> bool {
+    let Some((antes, h)) = anchor_half(world, e) else {
+        return false;
+    };
+    let mut l = world.get::<ShapeLook>(e).copied().unwrap_or_default();
+    let mut offset = [0.0; 2];
+    for i in 0..2 {
+        if h[i] > MEIA_MINIMA {
+            l.pivot[i] = -anchor[i] / h[i];
+        } else {
+            l.pivot[i] = 0.0;
+            offset[i] = anchor[i];
+        }
+    }
+    let d = [antes[0] - anchor[0], antes[1] - anchor[1]];
+    let filhos: Vec<Entity> = world
+        .get::<ph2d_ecs::Children>(e)
+        .map(|f| f.iter().copied().collect())
+        .unwrap_or_default();
+    for f in filhos {
+        if let Some(mut tf) = world.get_mut::<Transform>(f) {
+            tf.translation.x -= d[0];
+            tf.translation.y -= d[1];
+        }
+    }
+    if let Some(mut t) = world.get_mut::<Transform>(e) {
+        t.translation = ph2d_core::Vec2::new(origem[0], origem[1]);
+    }
+    if let Some(mut c) = world.get_mut::<Collider>(e) {
+        c.offset = offset;
+    }
+    world.entity_mut(e).insert(l);
+    true
+}
+
 /// A origem de `e` vai para o pivô `novo` com a forma parada: `d` = centro de antes − centro de agora (local, antes
 /// da escala) é o passo da origem; a translação anda `R·(S ⊙ d)` no pai e os filhos `−d`.
 fn poe_o_pivo(

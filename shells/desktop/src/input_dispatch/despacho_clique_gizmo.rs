@@ -244,7 +244,8 @@ impl crate::App {
                             entity,
                             world_pos,
                             ph2d_app_flip::gizmo_view::stroke_hit_r(&gfx.camera, window_size),
-                        );
+                        )
+                        || ph2d_shape_handles::look::contem(gfx.sim.world(), entity, world_pos);
                 // Numa Animated Sprite o Pivot mora no editor de animações: o clique só dá o aviso (GEF 29).
                 began_pivot = (on_pivot_dot || on_object)
                     && ph2d_app_sprite_anim::editor::pivot_tool_refused(

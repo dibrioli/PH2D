@@ -355,12 +355,11 @@ impl crate::App {
                 drag.parent_world,
                 new_translation,
             );
-            ph2d_sprite_edit::pivot::arrasta(
-                gfx.sim.world_mut(),
-                entity,
-                new_translation,
-                new_anchor,
-            );
+            // A forma de colisão (GEF02 onda 8) guarda o pivô no `ShapeLook`; o resto, na Sprite.
+            let w = gfx.sim.world_mut();
+            if !ph2d_shape_handles::look::arrasta_pivo(w, entity, new_translation, new_anchor) {
+                ph2d_sprite_edit::pivot::arrasta(w, entity, new_translation, new_anchor);
+            }
         }
     }
 }

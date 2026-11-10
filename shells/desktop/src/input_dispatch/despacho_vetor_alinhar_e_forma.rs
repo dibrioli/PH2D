@@ -273,7 +273,9 @@ pub(super) fn gizmo_anchor_half(
     // `sim`/`vec_scene`/`flip` chegam separados (e não via `AppGfx`) porque
     // `hero_screen` está emprestado mutável no Down — campos irmãos, borrows
     // disjuntos. Vetor OU objeto Flip (ADR-0111): a bbox local + `Transform`.
-    if let Some(ah) = ph2d_app_vec::vec_gizmo_view::anchor_half(sim, vec_scene, entity) {
+    if let Some(ah) = ph2d_app_vec::vec_gizmo_view::anchor_half(sim, vec_scene, entity)
+        .or_else(|| ph2d_shape_handles::look::anchor_half(sim.world(), entity))
+    {
         return ah;
     }
     ph2d_app_flip::gizmo_view::anchor_half(sim, flip, entity).unwrap_or(([0.0, 0.0], [0.0, 0.0]))

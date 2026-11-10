@@ -231,7 +231,12 @@ fn arrastar_o_polegar_da_a_rola_a_lista() {
     let thumb = m.tab().doc.list.thumb().expect("a aba baixa tem barra");
     let (x, y) = (thumb.x + thumb.w * 0.5, thumb.y + thumb.h * 0.5);
     assert!(m.tab_mut().doc.press(x, y), "o polegar agarra");
-    assert!(m.tab_mut().doc.motion(x, y + thumb.h), "arrastar rola");
+    // Um quarto do polegar: com o pé de UMA frase (R7a) o polegar passa de meia barra, e arrastá-lo a altura
+    // inteira já o levava ao fundo.
+    assert!(
+        m.tab_mut().doc.motion(x, y + thumb.h * 0.25),
+        "arrastar rola"
+    );
     m.paint_in(short);
     let rolled = m.tab().doc.list.scroll;
     assert!(rolled > 0.0, "a lista rolou: {rolled}");

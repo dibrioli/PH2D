@@ -16,6 +16,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "input_map_list.search_tip" => {
             "Type part of a name, or click here and press a key to see which actions use that key."
         }
+        "input_map_list.pad_tag" => "Pad",
+        "input_map_list.left_stick" => "Left Stick",
+        "input_map_list.right_stick" => "Right Stick",
         "input_map_list.listen_pad" => "Press a key or a gamepad button. Esc cancels.",
         "input_map_list.listen_key" => "Press a key. Esc cancels.",
         "input_map_list.listening" => "Listening for {action}.",

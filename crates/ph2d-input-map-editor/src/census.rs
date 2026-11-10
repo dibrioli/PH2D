@@ -22,6 +22,12 @@ pub struct Census {
     pub runs: Vec<(String, ph2d_tokens::ColorToken, bool)>,
     /// Cada texto pintado em SemiBold (o nome da acção na A, o título da receita na C).
     pub semibold: Vec<String>,
+    /// A A: cada frase do pé (o fundo dela) — UMA por vez.
+    pub foot: Vec<Rect>,
+    /// A A: cada linha contornada no acento (a que está à escuta, maquete A2).
+    pub outlined: Vec<Rect>,
+    /// A A: cada «+» que escuta DESENHADO (sob o ponteiro, ou numa linha sem ligação).
+    pub plus: Vec<ActionId>,
 }
 
 impl Census {

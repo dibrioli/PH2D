@@ -58,9 +58,31 @@ fn name_of(map: &InputMap, id: ActionId) -> String {
     map.get(id).map_or_else(String::new, |a| a.name.clone())
 }
 
-/// O resumo do mapa e, por baixo, um aviso por tecla repetida por engano.
-pub(crate) fn summary(snap: &Snapshot) -> Vec<Phrase> {
+/// Onde a ligação `b` aparece primeiro no mapa (acção, posição): a ordem em que o artista a lê na lista.
+fn map_order(map: &InputMap, b: Binding) -> (usize, usize) {
+    map.actions()
+        .iter()
+        .enumerate()
+        .find_map(|(i, a)| a.bindings.iter().position(|x| *x == b).map(|j| (i, j)))
+        .unwrap_or((usize::MAX, usize::MAX))
+}
+
+/// O resumo do mapa, com as teclas repetidas de propósito explicadas pela ordem do mapa («Up Arrow, Down Arrow and
+/// S»); uma tecla repetida por ENGANO toma-lhe o lugar (o aviso âmbar), porque o pé diz uma frase só.
+pub(crate) fn summary(snap: &Snapshot) -> Phrase {
     let map = &snap.map;
+    let mut shared = shared_bindings(map, &snap.readers);
+    shared.sort_by_key(|s| map_order(map, s.binding));
+    if let Some(s) = shared.iter().find(|s| !s.on_purpose) {
+        let names: Vec<String> = s.actions.iter().map(|a| name_of(map, *a)).collect();
+        return Phrase {
+            lead: tr("input_map_list.shared_warn_lead")
+                .replace("{key}", &binding_label(s.binding))
+                .replace("{actions}", &and_list(&names)),
+            rest: tr("input_map_list.shared_warn_rest").to_owned(),
+            warn: true,
+        };
+    }
     let keys = map
         .actions()
         .iter()
@@ -70,33 +92,17 @@ pub(crate) fn summary(snap: &Snapshot) -> Vec<Phrase> {
     let lead = tr("input_map_list.summary")
         .replace("{n}", &map.len().to_string())
         .replace("{k}", &keys.to_string());
-    let shared = shared_bindings(map, &snap.readers);
-    let fine: Vec<String> = shared
-        .iter()
-        .filter(|s| s.on_purpose)
-        .map(|s| binding_label(s.binding))
-        .collect();
+    let fine: Vec<String> = shared.iter().map(|s| binding_label(s.binding)).collect();
     let rest = match fine.len() {
         0 => String::new(),
         1 => tr("input_map_list.shared_one").replace("{keys}", &fine[0]),
         _ => tr("input_map_list.shared_many").replace("{keys}", &and_list(&fine)),
     };
-    let mut out = vec![Phrase {
+    Phrase {
         lead,
         rest,
         warn: false,
-    }];
-    for s in shared.iter().filter(|s| !s.on_purpose) {
-        let names: Vec<String> = s.actions.iter().map(|a| name_of(map, *a)).collect();
-        out.push(Phrase {
-            lead: tr("input_map_list.shared_warn_lead")
-                .replace("{key}", &binding_label(s.binding))
-                .replace("{actions}", &and_list(&names)),
-            rest: tr("input_map_list.shared_warn_rest").to_owned(),
-            warn: true,
-        });
     }
-    out
 }
 
 /// «Up Arrow is in 2 of 11 actions. jump is read by Platform Player, move_up by Top-Down Player.»

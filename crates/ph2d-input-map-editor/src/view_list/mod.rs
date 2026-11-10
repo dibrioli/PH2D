@@ -2,6 +2,7 @@
 //! por tecla), uma linha por acção com as teclas em chips de nome inteiro, a escuta no próprio lugar, os dois
 //! números só nas linhas com manche ou gatilho, e o pé que explica.
 
+mod foot;
 pub(crate) mod footer;
 mod input;
 mod rows;
@@ -15,7 +16,7 @@ pub(crate) use input::{commit_typing, drag, drag_thumb, key, press, raw_key, rel
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, stroke_rounded_rect};
-use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget};
+use ph2d_editor_core::panel::cards::{CardCtx, Widget};
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -70,22 +71,34 @@ pub fn paint(
     let w = (body.w - m::CARD_PAD_X * 2.0).max(0.0);
     let mut y = body.y + m::CARD_PAD_TOP;
     let (new_name, add) = (tr("input_map_list.new_name"), tr("input_map_list.add"));
+    // O Add é um botão pequeno à direita do nome (maquete A1), nunca meia linha.
+    let add_w = (text::title_width(ts, add, m::VALUE_PX)
+        + (m::BUTTON_TEXT_PAD + m::FIELD_PAD_R) * 2.0)
+        .max(m::FIELD_VALUE_MIN_W)
+        .min(w);
+    let name_w = (w - add_w - m::FIELD_GAP).max(0.0);
     {
-        let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, x, w);
-        y = c.row(
-            &[
-                Cell::new(Widget::Text {
-                    id: ids::NEW_NAME,
-                    placeholder: new_name,
-                }),
-                Cell::new(Widget::Button {
-                    id: ids::ADD,
-                    text: add,
-                    primary: false,
-                }),
-            ],
-            y,
+        let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, x, name_w);
+        let text = Widget::Text {
+            id: ids::NEW_NAME,
+            placeholder: new_name,
+        };
+        let below = c.full(None, text, y);
+        let mut c = CardCtx::flutuante(
+            scene,
+            ts,
+            &doc.store,
+            &mut doc.hits,
+            ink,
+            x + w - add_w,
+            add_w,
         );
+        let button = Widget::Button {
+            id: ids::ADD,
+            text: add,
+            primary: false,
+        };
+        y = below.max(c.full(None, button, y));
     }
     if let Some(why) = doc.list.refused {
         let r = Rect::new(x, y + m::FIELD_ROW_GAP, w, m::FIELD_H);
@@ -120,9 +133,29 @@ fn paint_search(
     ts: &mut TextSystem,
     ink: CardInk,
 ) -> f32 {
+    // A lupa à cabeça do campo, e o texto (ou o chip da tecla) recuado depois dela (maquete A1).
+    let g = m::KEY_MARK_BOX;
+    fill_rounded_rect(scene, r, m::FIELD_RADIUS, ink.color(ColorToken::CardField));
+    let lupa = Rect::new(r.x + m::SEG_INSET, r.y + (r.h - g) * 0.5, g, g);
+    paint_icon(
+        scene,
+        IconId::Search,
+        lupa,
+        ink.color(ColorToken::Text2),
+        StrokeToken::Default.px(),
+    );
+    let indent = m::SEG_INSET + g;
     let Some(k) = doc.list.search_key else {
         let ph = tr("input_map_list.search");
-        let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, r.x, r.w);
+        let mut c = CardCtx::flutuante(
+            scene,
+            ts,
+            &doc.store,
+            &mut doc.hits,
+            ink,
+            r.x + indent,
+            r.w - indent,
+        );
         return c.full(
             None,
             Widget::Search {
@@ -132,12 +165,11 @@ fn paint_search(
             r.y,
         );
     };
-    fill_rounded_rect(scene, r, m::FIELD_RADIUS, ink.color(ColorToken::CardField));
     doc.hits.register(ids::SEARCH, r);
     let label = k.label();
     let chip_w = ts.prefix_width(&label, m::VALUE_PX) + m::SEG_INSET * 2.0;
     let chip = Rect::new(
-        r.x + m::SEG_INSET,
+        r.x + indent + m::SEG_INSET,
         r.y + m::SEG_PAD * 2.0,
         chip_w,
         r.h - m::SEG_PAD * 4.0,
@@ -146,7 +178,7 @@ fn paint_search(
         scene,
         chip,
         m::SEG_RADIUS,
-        ink.color(ColorToken::CardFieldHover),
+        ink.color(ColorToken::InputMapHighlight),
     );
     let inner = Rect::new(
         chip.x + m::SEG_INSET,
@@ -161,9 +193,8 @@ fn paint_search(
         &label,
         inner,
         m::VALUE_PX,
-        ink.color(ColorToken::Text1),
+        on_highlight(ink),
     );
-    let g = m::KEY_MARK_BOX;
     let x_box = Rect::new(r.x + r.w - g - m::SEG_INSET, r.y + (r.h - g) * 0.5, g, g);
     paint_icon(
         scene,
@@ -174,6 +205,12 @@ fn paint_search(
     );
     doc.hits.register(ids::SEARCH_CLEAR, x_box);
     r.y + r.h
+}
+
+/// A tinta que se lê sobre o amarelo do destaque (escura no tema escuro, a do tema no claro).
+pub(crate) fn on_highlight(ink: CardInk) -> ph2d_vector::Color {
+    let under = ColorToken::InputMapHighlight.resolve(ink.theme);
+    ph2d_editor_core::paint::token_to_vello(ph2d_tokens::skin_body::readable_on(under, ink.theme))
 }
 
 /// A caixa à escuta: o anel do foco TRACEJADO (maquete A2), contado no censo.

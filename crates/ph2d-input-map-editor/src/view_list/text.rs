@@ -62,6 +62,29 @@ pub(crate) fn wrap(ts: &mut TextSystem, s: &str, px: f32, w: f32) -> Vec<String>
     out
 }
 
+/// `s` partido pelas palavras: a 1.ª linha tem `first` (o que sobra ao lado de um destaque), as outras `w`. Uma
+/// 1.ª linha onde nem a primeira palavra cabe fica vazia (o resto começa por baixo), nunca cortada.
+pub(crate) fn wrap_after(ts: &mut TextSystem, s: &str, px: f32, first: f32, w: f32) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut cur = String::new();
+    let mut budget = first;
+    for word in s.split(' ').filter(|w| !w.is_empty()) {
+        let next = if cur.is_empty() {
+            word.to_owned()
+        } else {
+            format!("{cur} {word}")
+        };
+        if ts.prefix_width(&next, px) <= budget {
+            cur = next;
+        } else {
+            out.push(std::mem::replace(&mut cur, word.to_owned()));
+            budget = w;
+        }
+    }
+    out.push(cur);
+    out
+}
+
 /// A largura de `s` em SemiBold (o peso de [`title`]).
 pub(crate) fn title_width(ts: &mut TextSystem, s: &str, px: f32) -> f32 {
     ts.prefix_width_weighted(s, px, FontWeight::SEMI_BOLD)

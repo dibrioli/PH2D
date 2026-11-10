@@ -9,8 +9,10 @@ mod cenas_do_smoke;
 mod lista;
 mod lista_acabamento;
 mod lista_censo;
+mod lista_r7a;
 mod teclado;
 mod teclado_censo;
+mod teclado_r7b;
 mod try_it;
 mod try_it_censo;
 

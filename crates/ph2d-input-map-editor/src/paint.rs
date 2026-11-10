@@ -49,12 +49,13 @@ pub fn paint_doc(
         l.selector.w,
     );
     c.full(None, Widget::Choice(&segs), l.selector.y);
-    fill_rounded_rect(
-        scene,
-        l.body,
-        m::CARD_RADIUS,
-        ink.color(ColorToken::KanbanCard),
-    );
+    // A A é a superfície MAIS FUNDA e as linhas sobem dela (maquete A: painel ≈ kanban-list, linhas ≈ kanban-card).
+    let body = if doc.view() == View::List {
+        ColorToken::KanbanList
+    } else {
+        ColorToken::KanbanCard
+    };
+    fill_rounded_rect(scene, l.body, m::CARD_RADIUS, ink.color(body));
     match doc.view() {
         View::List => crate::view_list::paint(doc, l.body, scene, text, theme),
         View::Keyboard => crate::view_keyboard::paint(doc, l.body, scene, text, theme),

@@ -24,7 +24,10 @@ fn lista(map: ph2d_input::InputMap) -> Mesa {
 fn a_frase_das_zonas_aparece_so_com_uma_linha_de_manche() {
     let lead = tr("input_map_list.zones_lead");
     let m = lista(ph2d_input::InputMap::with_player_defaults());
-    assert!(!painted(&m, lead), "sem manche nem gatilho, nada a explicar");
+    assert!(
+        !painted(&m, lead),
+        "sem manche nem gatilho, nada a explicar"
+    );
     let m = lista(onze());
     assert!(painted(&m, lead), "o move_left tem a manche: o pé explica");
     assert!(painted(&m, tr("input_map_list.zones_rest")));
@@ -56,7 +59,7 @@ fn a_lista_que_rola_desenha_a_barra_ao_lado_das_linhas() {
 #[test]
 fn o_chip_da_manche_leva_o_nome_inteiro_ao_lado_da_seta() {
     let m = lista(onze());
-    let stick = tr(ph2d_input::GamepadAxis::LeftStickX.label_key());
+    let stick = tr("input_map_list.left_stick");
     let t = m.tab().doc.census.texts.iter().find(|t| t.1 == stick);
     let t = t.expect("o chip da manche pintado");
     assert!(!t.2, "«{stick}» cabe inteiro no chip, com a seta");

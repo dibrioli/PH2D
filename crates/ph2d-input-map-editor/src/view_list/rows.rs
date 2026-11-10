@@ -1,28 +1,32 @@
-//! As linhas das acções: o ponto da cor, o nome, os chips (nome inteiro + ícone do aparelho), o «+» que escuta no
-//! lugar, o lixo, os dois números só com manche, e o pé.
+//! As linhas das acções (maquete A): o nome, os chips (o nome inteiro da tecla; o do comando com a etiqueta «Pad»
+//! e a seta da metade da manche), o «+» que escuta no lugar, o lixo, os dois números só com manche, e o pé.
 
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, stroke_rounded_rect};
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::widget::{
-    SCROLLBAR_W, ScrollbarState, paint_scrollbar, scrollbar_is_needed, scrollbar_track_rect,
+    SCROLLBAR_W, scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_input::{ActionId, Binding, InputAction};
+use ph2d_input::{ActionId, Binding, GamepadAxis, InputAction};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
 
-use super::{footer, ring, text};
+use super::{foot, footer, ring, text};
 use crate::doc::InputMapDoc;
 use crate::ids::ListHit;
 
 const ROW_H: f32 = m::FIELD_H + m::SEG_INSET;
 const CHIP_H: f32 = m::FIELD_H - m::SEG_INSET;
+/// O nome da acção: o corpo de título da lista, maior que o texto dos chips (maquete A1).
+const NAME_PX: f32 = m::LIST_TITLE_PX;
 /// A linha dos números: o rótulo por cima e o campo.
-const ZONE_H: f32 = m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H + m::FIELD_ROW_GAP;
+const ZONE_H: f32 = m::VALUE_PX + m::LABEL_BOTTOM + m::FIELD_H + m::FIELD_ROW_GAP;
+/// A folga de cada lado do texto de um chip: cabe o «×» do hover sem o texto sair do centro.
+const CHIP_SIDE: f32 = m::KEY_MARK_BOX + m::SEG_INSET + m::SEG_PAD * 2.0;
 
 fn row_h(a: &InputAction) -> f32 {
     if a.is_analog() { ROW_H + ZONE_H } else { ROW_H }
@@ -42,35 +46,13 @@ pub(super) fn paint_rows(
         .collect();
     let name_w = actions
         .iter()
-        .map(|a| text::title_width(ts, &a.name, m::VALUE_PX))
+        .map(|a| text::title_width(ts, &a.name, NAME_PX))
         .fold(0.0_f32, f32::max)
-        + m::KEY_MARK_BOX
+        + m::LIST_PAD_X
         + m::CARD_PAD_X * 2.0;
-    let mut phrases = foot(doc);
-    if doc.snap.listening.is_none() && actions.iter().any(InputAction::is_analog) {
-        phrases.push(footer::zones());
-    }
-    // A frase que não cabe numa linha (a aba estreita, 1280×720 com os painéis) parte o resto pelas palavras,
-    // nas linhas de baixo.
-    let room = area.w - m::SEG_INSET * 2.0;
-    let wrapped: Vec<Option<Vec<String>>> = phrases
-        .iter()
-        .map(|p| {
-            let one = text::title_width(ts, &p.lead, m::VALUE_PX)
-                + m::SEG_ICON_GAP
-                + ts.prefix_width(&p.rest, m::VALUE_PX);
-            (!p.rest.is_empty() && one > room).then(|| text::wrap(ts, &p.rest, m::VALUE_PX, room))
-        })
-        .collect();
-    let lines: Vec<f32> = wrapped
-        .iter()
-        .map(|w| w.as_ref().map_or(1, |v| v.len() + 1) as f32)
-        .collect();
-    let foot_h: f32 = lines
-        .iter()
-        .map(|n| m::FIELD_H * n + m::FIELD_ROW_GAP)
-        .sum();
-    let list_h = (area.h - foot_h).max(0.0);
+    let analog = actions.iter().any(InputAction::is_analog);
+    let laid = foot::lay(ts, foot(doc, analog), area.w);
+    let list_h = (area.h - laid.h() - m::FIELD_ROW_GAP).max(0.0);
     let total: f32 = actions.iter().map(|a| row_h(a) + m::FIELD_ROW_GAP).sum();
     doc.list.scroll_max = (total - list_h).max(0.0);
     doc.list.scroll = doc.list.scroll.clamp(0.0, doc.list.scroll_max);
@@ -84,93 +66,98 @@ pub(super) fn paint_rows(
     };
     doc.list.bar = None;
     if bar {
-        let state = if doc.list.thumb_drag.is_some() {
-            ScrollbarState::Dragging
+        // A barra discreta do cartão: só o polegar, fino, sem trilho; agarra-se pela faixa inteira; o acento
+        // só enquanto se arrasta.
+        let track = scrollbar_track_rect(view);
+        let thumb = scrollbar_thumb_rect(track, doc.list.scroll, total, list_h);
+        let color = if doc.list.thumb_drag.is_some() {
+            ColorToken::Accent
         } else {
-            ScrollbarState::Normal
+            ColorToken::BorderEmph
         };
-        let thumb = paint_scrollbar(
-            view,
-            doc.list.scroll,
-            total,
-            list_h,
-            (state, 0.0),
-            scene,
-            ink.theme,
+        let pill = Rect::new(
+            thumb.x + thumb.w - m::BAR_TRACK,
+            thumb.y,
+            m::BAR_TRACK,
+            thumb.h,
         );
-        doc.list.bar = thumb.map(|thumb| super::state::Bar {
+        fill_rounded_rect(scene, pill, m::BAR_TRACK * 0.5, ink.color(color));
+        doc.list.bar = Some(super::state::Bar {
             thumb,
-            track_h: scrollbar_track_rect(view).h,
+            track_h: track.h,
             content_h: total,
             visible_h: list_h,
         });
     }
-    let mut y = area.y - doc.list.scroll;
+    // A lista rola por LINHAS: a 1.ª pintada é a 1.ª que começa no deslocamento, encostada ao topo; o pé encosta
+    // na última que coube inteira — nenhuma faixa vazia por cima nem por baixo.
+    let mut top = 0.0_f32;
+    let mut y = area.y;
     for a in &actions {
         let h = row_h(a);
-        let r = Rect::new(area.x, y, row_w, h);
-        y += h + m::FIELD_ROW_GAP;
-        if r.y < area.y - f32::EPSILON || r.y + r.h > area.y + list_h + f32::EPSILON {
+        let starts = top;
+        top += h + m::FIELD_ROW_GAP;
+        if starts + f32::EPSILON < doc.list.scroll {
             continue;
         }
-        paint_row(doc, a, r, name_w, scene, ts, ink);
-    }
-    let mut fy = area.y + total.min(list_h);
-    for ((p, n), wrap) in phrases.into_iter().zip(lines).zip(wrapped) {
-        let bg = Rect::new(area.x, fy, area.w, m::FIELD_H * n);
-        fill_rounded_rect(scene, bg, m::FIELD_RADIUS, ink.color(ColorToken::CardField));
-        let r = Rect::new(area.x, fy, area.w, m::FIELD_H);
-        let (lead_c, rest_c) = if p.warn {
-            (ColorToken::Warn, ColorToken::Warn)
-        } else {
-            (ColorToken::Text1, ColorToken::Text2)
-        };
-        let inner = Rect::new(r.x + m::SEG_INSET, r.y, r.w - m::SEG_INSET * 2.0, r.h);
-        let lead_w = text::title_width(ts, &p.lead, m::VALUE_PX);
-        text::title(
-            &mut doc.census,
-            ts,
-            scene,
-            &p.lead,
-            Rect::new(inner.x, r.y, lead_w.min(inner.w), r.h),
-            m::VALUE_PX,
-            ink.color(lead_c),
-        );
-        let rx = inner.x + lead_w + m::SEG_ICON_GAP;
-        let parts = wrap.map_or_else(
-            || vec![(rx, r.y, p.rest.clone())],
-            |v| {
-                let ys = (1..).map(|i| r.y + m::FIELD_H * i as f32);
-                v.into_iter()
-                    .zip(ys)
-                    .map(|(s, y)| (inner.x, y, s))
-                    .collect()
-            },
-        );
-        for (x, y, s) in parts.iter().filter(|_| !p.rest.is_empty()) {
-            let rw = (inner.x + inner.w - x).max(0.0);
-            text::line(
-                &mut doc.census,
-                ts,
-                scene,
-                s,
-                Rect::new(*x, *y, rw, r.h),
-                m::VALUE_PX,
-                ink.color(rest_c),
-            );
+        if y + h > area.y + list_h + f32::EPSILON {
+            break;
         }
-        fy += m::FIELD_H * n + m::FIELD_ROW_GAP;
+        paint_row(
+            doc,
+            a,
+            Rect::new(area.x, y, row_w, h),
+            name_w,
+            scene,
+            ts,
+            ink,
+        );
+        y += h + m::FIELD_ROW_GAP;
     }
+    foot::paint(
+        doc,
+        &laid,
+        Rect::new(area.x, y, area.w, laid.h()),
+        scene,
+        ts,
+        ink,
+    );
 }
 
-fn foot(doc: &InputMapDoc) -> Vec<footer::Phrase> {
+/// A frase do pé, UMA, pela prioridade: a escuta > a busca por tecla > a nota das zonas (com uma linha de manche à
+/// vista) > o resumo (ou, no lugar dele, o aviso de uma tecla repetida por engano).
+fn foot(doc: &InputMapDoc, analog: bool) -> footer::Phrase {
     if let Some(id) = doc.snap.listening {
-        return vec![footer::listening(&doc.snap, id)];
+        return footer::listening(&doc.snap, id);
     }
     if let Some(k) = doc.list.search_key {
-        return vec![footer::search(&doc.snap, k, &super::shown(doc))];
+        return footer::search(&doc.snap, k, &super::shown(doc));
+    }
+    if analog {
+        return footer::zones();
     }
     footer::summary(&doc.snap)
+}
+
+/// O texto de um chip: a etiqueta do aparelho (só o comando) e o nome. A metade da manche diz só a manche
+/// («Left Stick»): a direcção vai na seta desenhada ao lado.
+fn chip_text(b: Binding) -> (Option<&'static str>, String) {
+    match b {
+        Binding::Key(_) => (None, footer::binding_label(b)),
+        Binding::PadButton(_) => (Some(tr("input_map_list.pad_tag")), footer::binding_label(b)),
+        Binding::PadAxis { axis, .. } => {
+            let name = match axis {
+                GamepadAxis::LeftStickX | GamepadAxis::LeftStickY => {
+                    tr("input_map_list.left_stick").to_owned()
+                }
+                GamepadAxis::RightStickX | GamepadAxis::RightStickY => {
+                    tr("input_map_list.right_stick").to_owned()
+                }
+                _ => footer::binding_label(b),
+            };
+            (Some(tr("input_map_list.pad_tag")), name)
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -184,26 +171,24 @@ fn paint_row(
     ink: CardInk,
 ) {
     let head = Rect::new(r.x, r.y, r.w, ROW_H);
-    fill_rounded_rect(scene, r, m::FIELD_RADIUS, ink.color(ColorToken::CardField));
+    fill_rounded_rect(scene, r, m::FIELD_RADIUS, ink.color(ColorToken::KanbanCard));
+    if doc.snap.listening == Some(a.id) {
+        stroke_rounded_rect(
+            scene,
+            r,
+            m::FIELD_RADIUS,
+            m::FIELD_BORDER,
+            ink.color(ColorToken::FocusRing),
+        );
+        doc.census.outlined.push(r);
+    }
     doc.hits.register(ListHit::Row(a.id).id(), r);
     let hover = doc.list.hover_row == Some(a.id);
-    let dot = m::KEY_MARK_PX;
-    let dot_r = Rect::new(
-        head.x + m::SEG_INSET,
-        head.y + (head.h - dot) * 0.5,
-        dot,
-        dot,
-    );
-    fill_rounded_rect(
-        scene,
-        dot_r,
-        dot * 0.5,
-        ink.color(crate::palette::of_action(a.id)),
-    );
+    let name_x = head.x + m::LIST_PAD_X;
     let name_r = Rect::new(
-        dot_r.x + dot + m::SEG_INSET,
+        name_x,
         head.y,
-        name_w - dot - m::SEG_INSET * 2.0,
+        name_w - m::LIST_PAD_X - m::CARD_PAD_X,
         head.h,
     );
     text::title(
@@ -212,66 +197,30 @@ fn paint_row(
         scene,
         &a.name,
         name_r,
-        m::VALUE_PX,
+        NAME_PX,
         ink.color(ColorToken::Text1),
     );
     let trash_w = m::ICON_CELL;
     let right = head.x + head.w - trash_w - m::SEG_INSET;
     let mut x = head.x + name_w;
     let cy = head.y + (head.h - CHIP_H) * 0.5;
-    let g = m::KEY_MARK_BOX;
     for (n, b) in a.bindings.iter().enumerate() {
-        let label = footer::binding_label(*b);
-        let tw = ts.prefix_width(&label, m::VALUE_PX);
-        // A metade da manche leva a direcção desenhada («Left Stick ←»), nunca um glifo.
-        let arrow = crate::view_keyboard::half_icon(*b);
-        let aw = if arrow.is_some() {
-            g + m::SEG_ICON_GAP
-        } else {
-            0.0
-        };
-        let w = m::SEG_INSET * 3.0 + g * 2.0 + m::SEG_ICON_GAP + tw + aw;
-        let chip = Rect::new(x, cy, w.min((right - x).max(0.0)), CHIP_H);
-        let lit = doc.list.search_key.is_some_and(|k| *b == Binding::Key(k));
-        let (bg, fg) = if lit {
-            (ColorToken::Warn, ColorToken::KanbanBtnOnFg)
-        } else {
-            (ColorToken::KanbanList, ColorToken::Text1)
-        };
-        fill_rounded_rect(scene, chip, m::SEG_RADIUS, ink.color(bg));
-        let icon = match b {
-            Binding::Key(_) => IconId::Kbd,
-            Binding::PadButton(_) | Binding::PadAxis { .. } => IconId::Player,
-        };
-        let ir = Rect::new(chip.x + m::SEG_INSET, chip.y + (chip.h - g) * 0.5, g, g);
-        paint_icon(
+        let chip = paint_chip(
+            doc,
+            *b,
+            Rect::new(x, cy, (right - x).max(0.0), CHIP_H),
             scene,
-            icon,
-            ir,
-            ink.color(ColorToken::Text2),
-            StrokeToken::Default.px(),
-        );
-        let tr_r = Rect::new(
-            ir.x + g + m::SEG_ICON_GAP,
-            chip.y,
-            tw.min((chip.x + chip.w - ir.x - g - m::SEG_ICON_GAP - aw).max(0.0)),
-            chip.h,
-        );
-        let used = text::line(
-            &mut doc.census,
             ts,
-            scene,
-            &label,
-            tr_r,
-            m::VALUE_PX,
-            ink.color(fg),
+            ink,
         );
-        if let Some(icon) = arrow {
-            let ar = Rect::new(tr_r.x + used + m::SEG_ICON_GAP, ir.y, g, g);
-            paint_icon(scene, icon, ar, ink.color(fg), StrokeToken::Default.px());
-        }
-        let xr = Rect::new(chip.x + chip.w - g - m::SEG_INSET, ir.y, g, g);
         if hover {
+            let g = m::KEY_MARK_BOX;
+            let xr = Rect::new(
+                chip.x + chip.w - g - m::SEG_INSET,
+                chip.y + (chip.h - g) * 0.5,
+                g,
+                g,
+            );
             paint_icon(
                 scene,
                 IconId::Close,
@@ -283,15 +232,18 @@ fn paint_row(
         }
         x += chip.w + m::SEG_PAD * 2.0;
     }
+    let plus = Rect::new(x, cy, (right - x).max(0.0), CHIP_H);
     paint_plus(
         doc,
         a.id,
-        Rect::new(x, cy, (right - x).max(0.0), CHIP_H),
+        plus,
+        hover || a.bindings.is_empty(),
         scene,
         ts,
         ink,
     );
     if hover {
+        let g = m::KEY_MARK_BOX;
         let tr_box = Rect::new(right, head.y + (head.h - g) * 0.5, trash_w, g);
         let gl = Rect::new(tr_box.x + (trash_w - g) * 0.5, tr_box.y, g, g);
         paint_icon(
@@ -315,11 +267,76 @@ fn paint_row(
     }
 }
 
-/// O «+» fantasma, ou — à escuta — a caixa no lugar onde a tecla vai cair.
+/// Um chip dentro de `room` (x, y e altura; a largura é o que sobra): o texto centrado, com a etiqueta «Pad» antes
+/// e a seta da manche depois. A tecla que a busca procura enche-se do amarelo do destaque, sem mudar de tamanho.
+fn paint_chip(
+    doc: &mut InputMapDoc,
+    b: Binding,
+    room: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    ink: CardInk,
+) -> Rect {
+    let g = m::KEY_MARK_BOX;
+    let (tag, label) = chip_text(b);
+    let tag_w = tag.map_or(0.0, |t| ts.prefix_width(t, m::LABEL_PX));
+    let tag_gap = if tag.is_some() { m::SEG_ICON_GAP } else { 0.0 };
+    let tw = ts.prefix_width(&label, m::VALUE_PX);
+    let arrow = crate::view_keyboard::half_icon(b);
+    let aw = if arrow.is_some() {
+        m::SEG_ICON_GAP + g
+    } else {
+        0.0
+    };
+    let content = tag_w + tag_gap + tw + aw;
+    let chip = Rect::new(
+        room.x,
+        room.y,
+        (content + CHIP_SIDE * 2.0).min(room.w),
+        room.h,
+    );
+    let lit = doc.list.search_key.is_some_and(|k| b == Binding::Key(k));
+    let bg = if lit {
+        ColorToken::InputMapHighlight
+    } else {
+        ColorToken::CardField
+    };
+    let (fg, dim) = if lit {
+        (super::on_highlight(ink), super::on_highlight(ink))
+    } else {
+        (
+            ink.color(ColorToken::Text1),
+            ink.color(ColorToken::CardLabel),
+        )
+    };
+    fill_rounded_rect(scene, chip, m::SEG_RADIUS, ink.color(bg));
+    if lit {
+        doc.census.filled.push((chip, bg));
+    }
+    let mut cx = chip.x + ((chip.w - content) * 0.5).max(0.0);
+    let end = chip.x + chip.w;
+    if let Some(t) = tag {
+        let tr_r = Rect::new(cx, chip.y, tag_w.min((end - cx).max(0.0)), chip.h);
+        cx += text::line(&mut doc.census, ts, scene, t, tr_r, m::LABEL_PX, dim) + tag_gap;
+    }
+    let lr = Rect::new(cx, chip.y, tw.min((end - cx - aw).max(0.0)), chip.h);
+    cx += text::line(&mut doc.census, ts, scene, &label, lr, m::VALUE_PX, fg);
+    if let Some(icon) = arrow {
+        let ar = Rect::new(cx + m::SEG_ICON_GAP, chip.y + (chip.h - g) * 0.5, g, g);
+        paint_icon(scene, icon, ar, fg, StrokeToken::Default.px());
+        doc.census.icons.push((ar, icon));
+    }
+    chip
+}
+
+/// O «+» fantasma (só sob o ponteiro, ou numa linha ainda sem ligação), ou — à escuta — a caixa tracejada no lugar
+/// onde a tecla vai cair.
+#[allow(clippy::too_many_arguments)]
 fn paint_plus(
     doc: &mut InputMapDoc,
     id: ActionId,
     room: Rect,
+    visible: bool,
     scene: &mut VectorScene,
     ts: &mut TextSystem,
     ink: CardInk,
@@ -349,6 +366,11 @@ fn paint_plus(
         return;
     }
     let r = Rect::new(room.x, room.y, (g + m::SEG_INSET * 2.0).min(room.w), room.h);
+    // O alvo fica registado mesmo invisível: só se chega a ele com o ponteiro na linha, e aí ele desenha-se.
+    doc.hits.register(ListHit::Listen(id).id(), r);
+    if !visible {
+        return;
+    }
     if doc.list.hover_row == Some(id) {
         fill_rounded_rect(
             scene,
@@ -365,10 +387,11 @@ fn paint_plus(
         ink.color(ColorToken::Text2),
         StrokeToken::Default.px(),
     );
-    doc.hits.register(ListHit::Listen(id).id(), r);
+    doc.census.plus.push(id);
 }
 
-/// «Dead zone (0 to 1)» e «Press at (0 to 1)»: dois campos lado a lado, arrastáveis.
+/// «Dead zone (0 to 1)» e «Press at (0 to 1)»: dois campos lado a lado, arrastáveis, com a marca «D»/«P».
+/// Sem o ◆ da maquete: o losango é a marca do Auto Key, e aqui não há o que animar — seria um controlo morto.
 fn paint_zones(
     doc: &mut InputMapDoc,
     a: &InputAction,
@@ -377,7 +400,7 @@ fn paint_zones(
     ts: &mut TextSystem,
     ink: CardInk,
 ) {
-    let pad = m::SEG_INSET;
+    let pad = m::LIST_PAD_X;
     let half = (r.w - pad * 2.0 - m::FIELD_GAP) * 0.5;
     for (i, (hit, label, value)) in [
         (ListHit::Dead(a.id), "input_map_list.dead", a.dead_zone),
@@ -387,14 +410,14 @@ fn paint_zones(
     .enumerate()
     {
         let x = r.x + pad + (half + m::FIELD_GAP) * i as f32;
-        let lr = Rect::new(x, r.y, half, m::LABEL_PX + m::LABEL_BOTTOM);
+        let lr = Rect::new(x, r.y, half, m::VALUE_PX + m::LABEL_BOTTOM);
         text::line(
             &mut doc.census,
             ts,
             scene,
             tr(label),
             lr,
-            m::LABEL_PX,
+            m::VALUE_PX,
             ink.color(ColorToken::CardLabel),
         );
         let f = Rect::new(x, lr.y + lr.h, half, m::FIELD_H);
@@ -402,16 +425,12 @@ fn paint_zones(
             ListHit::Dead(s.action) == hit && s.zone == super::state::Zone::Dead
                 || ListHit::Press(s.action) == hit && s.zone == super::state::Zone::Press
         });
-        fill_rounded_rect(
-            scene,
-            f,
-            m::FIELD_RADIUS,
-            ink.color(if live {
-                ColorToken::CardFieldHover
-            } else {
-                ColorToken::KanbanList
-            }),
-        );
+        let fill = if live {
+            ColorToken::CardFieldHover
+        } else {
+            ColorToken::CardField
+        };
+        fill_rounded_rect(scene, f, m::FIELD_RADIUS, ink.color(fill));
         if live {
             ring(scene, f, ink);
         }

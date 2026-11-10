@@ -39,6 +39,8 @@ if [ -n "${RATO:-}" ]; then
   xdotool mousemove $RATO
   sleep 1
   [ -n "${CLIQUE:-}" ] && { xdotool click 1; sleep 1; }
+  # `RODA=n`: n voltas da roda para baixo onde o rato está (a grelha da cena 15 rola até ao fim).
+  [ -n "${RODA:-}" ] && { xdotool click --repeat "$RODA" --delay 120 5; sleep 1; }
 fi
 if [ -n "${ARRASTA:-}" ]; then
   read -r AX1 AY1 AX2 AY2 <<<"$ARRASTA"

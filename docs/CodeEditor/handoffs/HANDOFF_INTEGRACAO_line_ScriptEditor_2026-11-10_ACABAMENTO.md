@@ -126,6 +126,10 @@ Os passos 1–3 vêm das rondas aprovadas (ficam para o próximo testador); **4�
    regular, títulos e estado mais carregados), não negrito. Errado se: o corpo parecer a negrito como antes. Fotos:
    [ah_final.png](../ferramentas/smoke/ah_final.png) · [ah_parado.png](../ferramentas/smoke/ah_parado.png) ·
    [lado a lado com a maquete](../ferramentas/smoke/ag_peso_lado_a_lado.png).
+7. **Cena 15 (NOVO).** `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-ScriptEditor && PH2D_CODE_SMOKE=15 cargo run --profile smoke -p ph2d-host-desktop` →
+   (1) a aba `arena.luau` com «Problems (10)» e a grelha «Who has what» (14 objects × 7 properties), células âmbar;
+   (2) rato na célula âmbar `6` do Jumper: o pé diz «Jumper · speed is 6 here (2 in the script)»; (3) roda sobre a grelha: até Rover.
+   Errado se: lista vazia, grelha sem âmbar ou sem rolar.
 6. Mude o tamanho da letra da interface (Small/Large) e confira que o cursor e a seleção do campo de busca/rename acompanham a altura da letra.
 
 ## 7. Aberto
@@ -165,6 +169,18 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   o título «Who has what» pelo `card_title` (maiúsculas espaçadas); «Console | Problems» no corpo da faixa «Paused», a
   aba aberta a 600 e a outra a 400. Testes `bancada::letras` (3) e `barra_da_aba::os_menus_da_barra_tem_a_letra_do_codigo`;
   6 mutações vermelhas. Foto `smoke/aj_letras.png`.
+
+- **Cena 15 — muitos problemas e muitos donos (dono 10/11, `0582e4c755`):** contada pelo roteador da família
+  (`ph2d_code_scenes::CENAS` e `ph2d_app_code::smoke::CENAS` 14 → 15; `steps(15)` = `STEPS_15`). `ph2d-code-scenes/src/arena.rs`:
+  14 formas correm o `arena.luau` (`ferramentas/smoke/arena_crowd.luau`; 7 propriedades: number com min/max, int, bool, text,
+  color, vec2, choice), 10 com valor próprio (âmbar), a grelha rola (14 > o terço da coluna). Problemas sem o `luau-lsp` (10):
+  `self.X is never set — did you mean` ×6, `No component has a property` ×2, `No master` (`Bulet`), `No object` (`Runer`); o
+  `self.sped` do Play (aritmética com `nil`) funde-se na linha 26 com «×14 in Play» e pára no Runner (o cartão Stopped aparece).
+  Com o `luau-lsp` somam-se `local` sem uso, sombra de global (`local math`) e argumentos a mais (`clamp`). Teste
+  `o_passo_1_da_cena_15_mostra_muitos_problemas_e_a_grelha_com_celulas_mudadas` (`ph2d-host-code-scenes`: o `ph2d-app-code`
+  está no tecto, e os testes contam): ≥ 8 problemas, ≥ 8 linhas, ≥ 2 âmbar; mutação (sem valores próprios) → vermelho.
+  `cena14/fotos_q3.sh` ganhou `RODA=n`. Fotos [passo 1](../ferramentas/smoke/cena15/passo_1.png) ·
+  [passo 2](../ferramentas/smoke/cena15/passo_2.png) · [passo 3](../ferramentas/smoke/cena15/passo_3.png).
 
 Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,35 s, já construído pelas fotos); a 2.ª:
 

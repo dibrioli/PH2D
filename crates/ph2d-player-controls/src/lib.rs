@@ -16,7 +16,9 @@ pub mod session;
 pub use file::{home_base, player_file};
 pub use layout::Layout;
 pub use paint::paint;
-pub use screen::{ControlsScreen, Hit, Outcome, Row, SLOTS, readable_name, rebind, rows};
+pub use screen::{
+    ControlsScreen, Hit, Outcome, Row, SLOTS, readable_name, rebind, rows, rows_marked,
+};
 pub use session::PlaySession;
 
 /// **A identidade do jogo, no mundo** — recurso como o `StableIdCounter` (campo do ficheiro, fora do undo): o load
@@ -27,5 +29,7 @@ pub struct GameId(pub u64);
 
 #[cfg(test)]
 mod play_tests;
+#[cfg(test)]
+mod r5c_tests;
 #[cfg(test)]
 mod tests;

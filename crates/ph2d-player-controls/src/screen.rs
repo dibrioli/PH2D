@@ -19,6 +19,8 @@ pub struct Row {
     pub action: String,
     pub label: String,
     pub keys: Vec<Key>,
+    /// A tecla REPETIDA que o jogador criou: `(caixa, nome legível da outra acção)` — «J is also Fire.».
+    pub also: Option<(usize, String)>,
 }
 
 impl Row {
@@ -26,6 +28,18 @@ impl Row {
     #[must_use]
     pub fn slots(&self) -> usize {
         self.keys.len().max(SLOTS)
+    }
+
+    /// O aviso da linha, em palavras: «J is also Fire.».
+    #[must_use]
+    pub fn note(&self) -> Option<String> {
+        let (slot, other) = self.also.as_ref()?;
+        let key = self.keys.get(*slot)?;
+        Some(
+            ph2d_i18n::tr("player_controls.also")
+                .replace("{key}", &key.label())
+                .replace("{action}", other),
+        )
     }
 }
 
@@ -58,8 +72,39 @@ pub fn rows(effective: &InputMap) -> Vec<Row> {
                     _ => None,
                 })
                 .collect(),
+            also: None,
         })
         .collect()
+}
+
+/// ⭐ As linhas com o AVISO da tecla repetida. Escolha (estado da arte, XAG 107 / The Last of Us II / a demo de
+/// remapeamento do Godot): AVISAR na linha, nunca trocar sozinho — aqui uma tecla em duas acções é autoria legítima
+/// (a fábrica põe ↑ em `jump` e `move_up`), e trocar tiraria em silêncio a tecla da outra acção; a troca com
+/// confirmação pedia um passo modal a mais. Só avisa o que o JOGADOR criou: a partilha que já vem do jogo cala-se.
+#[must_use]
+pub fn rows_marked(effective: &InputMap, game: &InputMap) -> Vec<Row> {
+    let mut out = rows(effective);
+    let theirs = rows(game);
+    let in_game = |action: &str, k: Key| {
+        theirs
+            .iter()
+            .any(|r| r.action == action && r.keys.contains(&k))
+    };
+    for i in 0..out.len() {
+        let me = &out[i];
+        let also = me.keys.iter().enumerate().find_map(|(slot, &k)| {
+            out.iter()
+                .enumerate()
+                .find(|(j, o)| {
+                    *j != i
+                        && o.keys.contains(&k)
+                        && !(in_game(&me.action, k) && in_game(&o.action, k))
+                })
+                .map(|(_, o)| (slot, o.label.clone()))
+        });
+        out[i].also = also;
+    }
+    out
 }
 
 /// O que um gesto fez — a shell decide o resto (gravar, pausar, retomar).
@@ -94,6 +139,8 @@ pub struct ControlsScreen {
     selected: usize,
     slot: usize,
     listening: bool,
+    /// A primeira linha à vista (a lista rola quando não cabe; a pintura acerta-a).
+    top: usize,
 }
 
 impl ControlsScreen {
@@ -112,6 +159,21 @@ impl ControlsScreen {
     #[must_use]
     pub fn listening(&self) -> bool {
         self.open && self.listening
+    }
+    #[must_use]
+    pub fn top(&self) -> usize {
+        self.top
+    }
+
+    /// A primeira linha à vista, como a pintura a deixou (a escolhida sempre à vista).
+    pub fn scroll_to(&mut self, top: usize) {
+        self.top = top;
+    }
+
+    /// As linhas mudaram por fora (o autor editou o mapa no Play): a escolha não passa de «Reset to defaults».
+    pub fn fit(&mut self, rows: &[Row]) {
+        self.selected = self.selected.min(rows.len());
+        self.clamp_slot(rows);
     }
 
     /// Abre na primeira linha, sem escutar.

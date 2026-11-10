@@ -2,11 +2,12 @@
 
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text_centered, paint_text_elided, resolve, stroke_rounded_rect,
+    fill_rounded_rect, paint_text_centered, paint_text_elided, paint_text_title,
+    paint_text_title_elided, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_text::TextSystem;
+use ph2d_text::{FontWeight, TextSystem};
 use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
@@ -22,7 +23,7 @@ pub fn paint(
     text: &mut TextSystem,
     theme: Theme,
 ) -> Layout {
-    let lay = Layout::of(area, rows);
+    let lay = Layout::scrolled(area, rows, screen.selected(), screen.top());
     let c = |t: ColorToken| resolve(t, theme);
     let line = StrokeToken::Hairline.px();
     fill_rounded_rect(scene, lay.panel, m::CARD_RADIUS, c(ColorToken::Bg1));
@@ -33,21 +34,26 @@ pub fn paint(
         line,
         c(ColorToken::Border),
     );
-    paint_text_centered(
+    // O título e os nomes em negrito, como no molde C·4.
+    let title = tr("player_controls.title");
+    let tw = text.prefix_width_weighted(title, m::CARD_TITLE_PX, FontWeight::SEMI_BOLD);
+    paint_text_title(
         text,
         scene,
-        &tr("player_controls.title"),
-        lay.title,
+        title,
+        lay.title.x + ((lay.title.w - tw) * 0.5).max(0.0),
+        lay.title.y + (lay.title.h - m::CARD_TITLE_PX) * 0.5,
         m::CARD_TITLE_PX,
+        lay.title.w,
         c(ColorToken::Text1),
     );
-    for (i, (row, rl)) in rows.iter().zip(&lay.rows).enumerate() {
+    for ((i, row), rl) in rows.iter().enumerate().skip(lay.first).zip(&lay.rows) {
         let selected = i == screen.selected();
         if selected {
             fill_rounded_rect(scene, rl.band, m::FIELD_RADIUS, c(ColorToken::Bg2));
         }
         let ty = rl.name.y + (rl.name.h - m::VALUE_PX) * 0.5;
-        paint_text_elided(
+        paint_text_title_elided(
             text,
             scene,
             &row.label,
@@ -59,16 +65,30 @@ pub fn paint(
         );
         for (s, r) in rl.slots.iter().enumerate() {
             let here = selected && s == screen.slot();
-            paint_slot(
-                scene,
-                text,
-                *r,
-                row.keys.get(s).copied(),
-                here,
-                screen.listening(),
-                theme,
-            );
+            let key = row.keys.get(s).copied();
+            paint_slot(scene, text, *r, key, here, screen.listening(), theme);
+            if let (Some((slot, _)), Some(note)) = (&row.also, row.note())
+                && *slot == s
+            {
+                stroke_rounded_rect(scene, *r, m::FIELD_RADIUS, line, c(ColorToken::Warn));
+                let ny = rl.note.y + (rl.note.h - m::LABEL_PX) * 0.5;
+                paint_text_elided(
+                    text,
+                    scene,
+                    &note,
+                    rl.note.x,
+                    ny,
+                    m::LABEL_PX,
+                    rl.note.w,
+                    c(ColorToken::Warn),
+                );
+            }
         }
+    }
+    if let Some((track, thumb)) = lay.bar {
+        let r = track.w * 0.5;
+        fill_rounded_rect(scene, track, r, c(ColorToken::Bg2));
+        fill_rounded_rect(scene, thumb, r, c(ColorToken::Text3));
     }
     let on_reset = screen.selected() >= rows.len();
     if on_reset {

@@ -12,13 +12,15 @@ use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
 use crate::layout::Layout;
-use crate::screen::{ControlsScreen, Outcome, Row, rows};
+use crate::screen::{ControlsScreen, Outcome, Row, rows_marked};
 
 #[derive(Debug, Default)]
 pub struct PlaySession {
     screen: ControlsScreen,
     keys: PlayerKeys,
     effective: Option<InputMap>,
+    /// O mapa do projecto de que o efectivo nasceu: o autor muda-o no Play ⇒ o efectivo refaz-se ([`Self::follow`]).
+    base: InputMap,
     file: Option<PathBuf>,
     resume_clock: bool,
     last: Option<Layout>,
@@ -39,6 +41,7 @@ impl PlaySession {
     pub fn start_with(&mut self, game: &InputMap, keys: PlayerKeys, file: Option<PathBuf>) {
         *self = Self {
             effective: Some(keys.apply_over(game)),
+            base: game.clone(),
             keys,
             file,
             ..Self::default()
@@ -71,10 +74,24 @@ impl PlaySession {
         self.effective.as_ref().unwrap_or(project)
     }
 
-    /// As linhas da tela, do mapa efectivo.
+    /// As linhas da tela, do mapa efectivo, com o aviso da tecla repetida.
     #[must_use]
     pub fn rows(&self, project: &InputMap) -> Vec<Row> {
-        rows(self.map(project))
+        rows_marked(self.map(project), project)
+    }
+
+    /// ⭐ O autor editou o mapa no Play (a aba): o efectivo segue JÁ, com as trocas do jogador por cima. Uma
+    /// comparação por quadro (o mapa é pequeno); corre dentro de [`Self::paint`], [`Self::key`] e [`Self::click`].
+    /// `true` = refez.
+    pub fn follow(&mut self, project: &InputMap) -> bool {
+        if !self.running() || self.base == *project {
+            return false;
+        }
+        self.base = project.clone();
+        self.effective = Some(self.keys.apply_over(project));
+        let rows = self.rows(project);
+        self.screen.fit(&rows);
+        true
     }
 
     /// Uma tecla física no Play. Fora da corrida, nada.
@@ -82,6 +99,7 @@ impl PlaySession {
         if !self.running() {
             return Outcome::Ignored;
         }
+        self.follow(game);
         let out = self.screen.handle_key(key, pressed, game, &mut self.keys);
         self.after(out, game)
     }
@@ -91,6 +109,7 @@ impl PlaySession {
         if !self.screen.is_open() {
             return Outcome::Ignored;
         }
+        self.follow(game);
         let hit = self.last.as_ref().and_then(|l| l.hit(x, y));
         let out = self.screen.click(hit, &mut self.keys);
         self.after(out, game)
@@ -109,7 +128,7 @@ impl PlaySession {
         }
     }
 
-    /// Pinta o painel se a tela está aberta; a disposição fica para o clique.
+    /// Pinta o painel se a tela está aberta; a disposição fica para o clique. Antes, por quadro, [`Self::follow`].
     pub fn paint(
         &mut self,
         area: Rect,
@@ -118,19 +137,15 @@ impl PlaySession {
         text: &mut TextSystem,
         theme: Theme,
     ) {
+        self.follow(project);
         if !self.screen.is_open() {
             self.last = None;
             return;
         }
         let rows = self.rows(project);
-        self.last = Some(crate::paint::paint(
-            area,
-            &rows,
-            &self.screen,
-            scene,
-            text,
-            theme,
-        ));
+        let lay = crate::paint::paint(area, &rows, &self.screen, scene, text, theme);
+        self.screen.scroll_to(lay.first);
+        self.last = Some(lay);
     }
 
     fn after(&mut self, out: Outcome, game: &InputMap) -> Outcome {

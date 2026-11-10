@@ -80,6 +80,13 @@
 | onda 8 | B11-cont3 | parcial (84d9650d36): B11.3 passo 2: o compositor da óptica corre o laço de píxel e o fio da tela só cola (sem Real Oil, razão 1). otica_no_tique 10/10. Nada medido no app; falta Smooth Edges/razão > 1. |
 | onda 8 | B14b-cont2 | feito (4fce3b6b3b): Fecho medido no app, Radeon: luz Simples × Cheia −13 % / −9 % em ciclos de casa (load 14–44, contagem); óptica 0 imagens nos 27 gestos; aguada 4K 11–26 img/s. Sem .rs. |
 | onda 8 | verificação | verde |
+| onda 9 | B25a | feito (b078044bb7): B25.1: a_ordem_e_da_pilha_e_nao_da_taxa_do_rato e a_macro_da_o_mesmo_byte rodam a 1/2/32 fios, ao byte do serial; porta antiga diverge 270 bytes a 32 fios, a nova 0. Prancha B25.2: 0 píxeis mudam. |
+| onda 9 | B40a | feito (c307063bd7): B52.R16: paste_patch.rs 687→286 linhas (compose, input), 13 testes verdes. B40.A1: guarda_da_escrita_direta no Color Fill, Cut e Colar; red 6/6 → 7/7 verdes pelo oráculo CAMINHO_ANTIGO. Prancha 12 PNG. |
+| onda 9 | B17b-cont2 | parcial (5a5ab43746): cura B17.4: journal da tela em release, ModelSnapshot.canvas_elided; 3 donos → 1 no pen-down (gate at_pen_down_every_canvas_plane_has_one_strong_owner), undo ao byte. Falta medir 4K e a rede audit_journal (known=0). |
+| onda 9 | B12b-cont | feito (8dbd53c477): Grid::aparencia em CampoEsparso (pedaços de 4096): tela 3840×600, dab r30 64,8 MB → ≤6,8 MB. Gate novo vermelho no Vec denso, verde no esparso; ao bit: historia, espelho, desfaz, caixa, w3b, Radeon. |
+| onda 9 | B19a | parcial (9471ab7518): B19.2: janela suja sob ajuste espacial compõe a área alargada pelos halos; Bloom r>16 tela inteira; CA no modelo da placa. janela_tests vermelho 32/32 → verde. Falta B19.4 (Bloom cor>1 CPU×GPU); B19.5 schema. |
+| onda 9 | B06c | parcial (71138ad644): B06.A2: casos Uniform+sel e Distort+sel; mutação li dx→rx red→green. B06.A4: levante 4096² 66,8–77,4 → 14,3–18,9 ms; begin_transform 17,9 ms (alvo 60). Falta a sonda do relevo e B06.A3 (apply.rs). |
+| onda 9 | verificação | 1 alvo sem prova: `between_gestures_the_canvas_still_has_two_owners_and_this_is_its_number` não casou nenhum teste (0 correram); o nome não existe, só `at_pen_down_every_canvas_plane_has_one_strong_owner` (undo.rs:377), verde. |
 
 ## Fatos medidos que mudam a ordem
 

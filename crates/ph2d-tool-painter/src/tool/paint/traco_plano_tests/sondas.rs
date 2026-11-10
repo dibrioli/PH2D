@@ -1,5 +1,6 @@
 //! As SONDAS (`#[ignore]`) da cauda do plano do traço — filho de `traco_plano_tests` por LOC.
 
+use super::taxa::{eixo_do_recto, envoltoria, recto_translucido};
 use super::*;
 
 /// Sonda (dono 25/10): a cauda com o Continuous, o Accumulate desligado e o Flow baixo «buga de vários modos» — discos

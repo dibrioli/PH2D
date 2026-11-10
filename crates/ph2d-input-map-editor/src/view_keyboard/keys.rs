@@ -15,7 +15,8 @@ use ph2d_vector::VectorScene;
 use super::geometry::{self as g, Arrangement, KeyCap};
 use super::keys_fit::{self as fit, Legend};
 use super::state::{KbHit, Sub};
-use super::{target, users};
+use super::users;
+use crate::interact::{Control, ControlRole};
 use crate::doc::InputMapDoc;
 use crate::view_list::footer::{binding_label, reader_names, readers_of};
 use crate::view_list::text::{line, title};
@@ -379,7 +380,9 @@ fn paint_key(
     }
     paint_bars(scene, ink, kr, &who);
     doc.kb.bars.push((KbHit::Key(key), who));
-    target(doc, KbHit::Key(key), kr);
+    // O registo de controlos (plano §13.3): premido nativo, foco, a11y e cursor; a do sistema desligada com o porquê.
+    doc.control(Control::new(KbHit::Key(key).id(), kr, ControlRole::Key, key.label()).disabled(key.system_owned()));
+    doc.kb.targets.push(KbHit::Key(key));
 }
 
 /// O contorno branco do hover, distinto do da acção aberta (POR FORA dele quando os dois se juntam, maquete B1).
@@ -454,7 +457,8 @@ fn paint_also(
             Binding::Key(k) => KbHit::Key(*k),
             other => KbHit::Pad(*other),
         };
-        target(doc, hit, chip);
+        doc.control(Control::new(hit.id(), chip, ControlRole::Chip, label));
+        doc.kb.targets.push(hit);
         x += chip.w + m::FIELD_GAP;
     }
 }

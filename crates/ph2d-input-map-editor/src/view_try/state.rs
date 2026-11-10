@@ -60,6 +60,8 @@ pub struct TryState {
     pub player_changed: usize,
     /// Ler o ficheiro do jogador no próximo snapshot.
     pub(crate) reread: bool,
+    /// As teclas do jogador postas pelo smoke em MEMÓRIA, no lugar do ficheiro (a cena nunca escreve no disco).
+    pub(crate) player_override: Option<ph2d_input::PlayerKeys>,
     /// A rolagem da coluna (janela estreita).
     pub scroll: f32,
     pub(crate) targets: Vec<TryHit>,

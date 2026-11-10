@@ -16,7 +16,7 @@ mod try_it_censo;
 use ph2d_a11y::NodeId;
 use ph2d_app_input_map::{InputMapTab, TAB_ID, View};
 use ph2d_ecs::SimWorld;
-use ph2d_editor_core::doc_surface::{DocumentSurface, PointerInput};
+use ph2d_editor_core::doc_surface::PointerInput;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{HeroScreen, ids};

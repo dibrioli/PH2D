@@ -170,11 +170,7 @@ pub fn arma(doc: &mut InputMapDoc, cena: &str) -> Option<InputMap> {
     });
     match cena {
         "C2" => doc.smoke_bench_key(up_arrow()),
-        "C4" => {
-            if let Err(e) = doc.smoke_player_keys(GAME_ID, &troca_do_jogador(&map)) {
-                eprintln!("[game-smoke] C4: o ficheiro do jogador não se gravou ({e})");
-            }
-        }
+        "C4" => doc.smoke_player_keys(troca_do_jogador(&map)),
         "A2" => reload.into_iter().for_each(|r| doc.smoke_listen(r)),
         "A3" => doc.smoke_search_key(up_arrow()),
         "B1" => doc.smoke_open(jump),

@@ -49,18 +49,10 @@ impl InputMapDoc {
         ph2d_player_controls::GameId(id)
     }
 
-    /// Grava as teclas de um jogador deste jogo na pasta das prefs da aba (a frase «a player changed…» da C·4).
-    ///
-    /// # Errors
-    /// Sem pasta das prefs, ou o erro do sistema de ficheiros.
-    pub fn smoke_player_keys(&mut self, game_id: u64, keys: &PlayerKeys) -> std::io::Result<()> {
-        let base = self
-            .tryit
-            .base
-            .as_ref()
-            .ok_or(std::io::ErrorKind::NotFound)?;
-        ph2d_player_controls::file::save(&ph2d_player_controls::player_file(base, game_id), keys)?;
+    /// As teclas de um jogador deste computador, em MEMÓRIA (a frase «a player changed…» da C·4): a vista lê-as no
+    /// lugar do ficheiro e o «Forget» larga-as. Nada se escreve no disco — a cena corre fora da caixa das fotos.
+    pub fn smoke_player_keys(&mut self, keys: PlayerKeys) {
+        self.tryit.player_override = Some(keys);
         self.tryit.reread = true;
-        Ok(())
     }
 }

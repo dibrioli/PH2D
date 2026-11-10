@@ -70,9 +70,12 @@ pub(crate) fn reread_player_file(doc: &mut InputMapDoc) {
         return;
     }
     doc.tryit.reread = false;
-    doc.tryit.player_changed = doc.player_file().map_or(0, |p| {
-        ph2d_player_controls::file::load(&p).changed(&doc.snap.map)
-    });
+    doc.tryit.player_changed = match &doc.tryit.player_override {
+        Some(keys) => keys.changed(&doc.snap.map),
+        None => doc.player_file().map_or(0, |p| {
+            ph2d_player_controls::file::load(&p).changed(&doc.snap.map)
+        }),
+    };
 }
 
 fn is_modifier(k: Key) -> bool {
@@ -182,6 +185,7 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
         }
         Some(TryHit::Forget) => {
             doc.pending.push(InputMapEdit::ForgetPlayerKeys);
+            doc.tryit.player_override = None;
             doc.tryit.reread = true;
         }
         None => {}

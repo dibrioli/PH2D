@@ -11,8 +11,6 @@ use ph2d_input::readers::Reader;
 /// A composição da shell (`janela_do_jogo.rs::game_smoke`): arma a aba, instala o mapa e pede a aba.
 fn armada(cena: &str) -> Mesa {
     let mut m = Mesa::new(View::Keyboard);
-    let base = std::env::temp_dir().join(format!("ph2d-cenas-{}-{cena}", std::process::id()));
-    m.tab_mut().doc.tryit.base = Some(base); // a C4 grava o ficheiro do jogador: nunca no HOME de quem corre
     let map = arma(&mut m.tab_mut().doc, cena).expect("código do roteiro");
     m.hero.input_map = map;
     m.hero.store.request_input_map_tab();
@@ -116,6 +114,25 @@ fn as_cenas_do_try_it_e_do_play_poem_a_tecla_a_manche_e_a_tela_do_jogador() {
     assert!(tela.is_open() && tela.listening(), "P1: aberta e à escuta");
     assert_eq!(m.jogador.rows(&map)[tela.selected()].action, "fire");
     assert_eq!(tela.slot(), 1, "a 2.ª tecla do Fire");
+}
+
+/// A C4 põe «a player changed 1 key» em MEMÓRIA: nenhuma cena escreve sob a pasta das prefs (a do `$HOME`, a que a
+/// aba usa por omissão), corra ela dentro ou fora do `fotografa_cena.sh`.
+#[test]
+fn a_cena_c4_mostra_a_troca_do_jogador_sem_escrever_no_home() {
+    use ph2d_app_game::smoke::input_map::GAME_ID;
+    use ph2d_app_input_map::ph2d_player_controls::{home_base, player_file};
+    let carimbo = |p: &std::path::Path| std::fs::metadata(p).ok().map(|m| (m.len(), m.modified().ok()));
+    let ficheiro = home_base().map(|b| player_file(&b, GAME_ID));
+    let antes = ficheiro.as_deref().map(carimbo);
+    for c in CENAS {
+        let m = armada(c);
+        assert_eq!(m.tab().doc.tryit.base, home_base(), "{c}: a pasta é a de omissão");
+        if c == "C4" {
+            assert_eq!(m.tab().doc.tryit.player_changed, 1, "C4: 1 troca, lida da memória");
+        }
+    }
+    assert_eq!(ficheiro.as_deref().map(carimbo), antes, "nenhuma cena tocou no ficheiro do jogador no HOME");
 }
 
 #[test]

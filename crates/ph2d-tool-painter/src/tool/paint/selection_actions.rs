@@ -4,6 +4,9 @@
 //! pixels). Every mutation that changes pixels or the mask records ONE structural undo entry, so it joins
 //! the single interleaved queue. Split from `selection` for the LOC cap.
 
+#[path = "escrita_direta.rs"]
+pub(in crate::tool::paint) mod escrita_direta;
+
 use super::selection_shapes::{SelectionEntry, SelectionShape};
 use super::{PainterTool, Region};
 use ph2d_painter_brush::material::MaterialBytes;
@@ -88,6 +91,7 @@ impl PainterTool {
         // (`fill_selection_keep`) devolve a máscara verbatim no digital — byte-idêntico, o mesmo `Arc` —
         // e, com corpo em mãos, a borda da seleção com o perfil do Falloff que o artista escolheu.
         let mask = self.fill_selection_keep();
+        let guarda = self.guarda_da_escrita_direta();
         let buf = crate::tool::paint::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
@@ -101,12 +105,23 @@ impl PainterTool {
                 continue;
             }
             let b = i * 4;
+            let orig = [buf[b], buf[b + 1], buf[b + 2], buf[b + 3]];
             for c in 0..4 {
                 let dst = f32::from(buf[b + c]);
                 let src = f32::from(color[c]);
                 buf[b + c] = (src * cov + dst * (1.0 - cov)).round().clamp(0.0, 255.0) as u8;
             }
+            if !guarda.neutra() {
+                guarda.assenta(i, orig, &mut buf[b..b + 4]);
+            }
         }
+        // O corpo pela cobertura que de facto chegou (com o trinco o alfa de depois É o de antes).
+        let mask = if guarda.neutra() {
+            mask
+        } else {
+            let tela = &self.canvas_rgba;
+            Arc::new(guarda.cobertura_que_deposita(&mask, |i| tela.get(i * 4 + 3).copied().unwrap_or(0)))
+        };
         self.mark_dirty(Region {
             x: 0,
             y: 0,
@@ -166,6 +181,7 @@ impl PainterTool {
         }
         let before = self.snapshot_model();
         let mask = Arc::clone(&self.paint.selection_mask);
+        let guarda = self.guarda_da_escrita_direta();
         let buf = crate::tool::paint::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
@@ -179,10 +195,14 @@ impl PainterTool {
                 continue;
             }
             let b = i * 4;
+            let orig = [buf[b], buf[b + 1], buf[b + 2], buf[b + 3]];
             // Straight-alpha erase: a cobertura RETIRA alfa, e a cor fica onde está (o que sobra de
             // um texel meio cortado é a metade que não foi levada, com a cor dela).
             let a = f32::from(buf[b + 3]);
             buf[b + 3] = (a * (1.0 - cov)).round().clamp(0.0, 255.0) as u8;
+            if !guarda.neutra() {
+                guarda.assenta(i, orig, &mut buf[b..b + 4]);
+            }
         }
         self.mark_dirty(Region {
             x: 0,
@@ -190,7 +210,11 @@ impl PainterTool {
             w: w as u32,
             h: h as u32,
         });
-        self.erase_relief(&mask);
+        if guarda.neutra() {
+            self.erase_relief(&mask);
+        } else {
+            self.erase_relief(&guarda.cobertura_que_retira(&mask));
+        }
         self.commit_structural_edit(before);
     }
 
@@ -332,3 +356,10 @@ impl PainterTool {
         self.arm_paste_patch();
     }
 }
+
+#[cfg(test)]
+#[path = "escrita_direta_tests.rs"]
+mod escrita_direta_tests;
+#[cfg(test)]
+#[path = "prancha_b40a_tests.rs"]
+mod prancha_b40a_tests;

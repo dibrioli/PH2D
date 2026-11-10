@@ -169,7 +169,7 @@ pub(crate) fn pinta(
 /// do sistema tinge-se dela (`ph2d_cursor_art::Figura::da_alca`). Só os cartões chegam aqui.
 fn publica_cor(ctx: &mut PaintCtx, estado: EstadoAlca, repouso: Color) {
     if estado != EstadoAlca::Repouso {
-        let u = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+        let u = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8; // LITERAL-PX-OK: sRGB byte normalize
         let k = repouso.components;
         let rgba = [u(k[0]), u(k[1]), u(k[2]), u8::MAX];
         ctx.host.store_mut().publish_timeline_cursor_tint(rgba);
@@ -209,6 +209,30 @@ pub(crate) fn leitura_rect(texto_w: f32, x: f32, cy: f32, a_esquerda: bool) -> R
     Rect::new(x0, cy - h * 0.5, w, h)
 }
 
+thread_local! {
+    /// A faixa `(x0, x1)` em que as etiquetas da régua cabem (a área de tempo, nos cartões).
+    static FAIXA: std::cell::Cell<Option<(f32, f32)>> = const { std::cell::Cell::new(None) };
+}
+
+/// Põe (ou tira, com `None`) a faixa das etiquetas — a régua, enquanto recorta a área de tempo.
+pub(crate) fn poe_faixa(faixa: Option<(f32, f32)>) {
+    FAIXA.with(|f| f.set(faixa));
+}
+
+/// A etiqueta que sairia da faixa vira para o outro lado de `x` (dono 10/11: nada fora do cartão).
+fn dentro_da_faixa(r: Rect, tw: f32, x: f32, cy: f32) -> Rect {
+    let Some((x0, x1)) = FAIXA.with(std::cell::Cell::get) else {
+        return r;
+    };
+    if r.x + r.w > x1 {
+        leitura_rect(tw, x, cy, true)
+    } else if r.x < x0 {
+        leitura_rect(tw, x, cy, false)
+    } else {
+        r
+    }
+}
+
 /// ⭐ A leitura do arrasto (a etiqueta de tempo à Figma): azul, o texto na tinta de mais contraste.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn pinta_leitura(
@@ -226,7 +250,7 @@ pub(crate) fn pinta_leitura(
     let texto = leitura_str(segundos);
     let font = TypeToken::Xs.px();
     let tw = ctx.text_system.prefix_width(&texto, font);
-    let r = leitura_rect(tw, x, cy, a_esquerda);
+    let r = dentro_da_faixa(leitura_rect(tw, x, cy, a_esquerda), tw, x, cy);
     let fundo = acento(theme);
     fill_rounded_rect(ctx.scene, r, Radius::Xs.px(), fundo);
     let pad = Spacing::Xs.px();

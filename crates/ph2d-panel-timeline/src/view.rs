@@ -86,7 +86,14 @@ pub(crate) fn apply_fit_clip(
         (Some((a, b)), Some((c, d))) => Some((a.min(c), b.max(d))),
         (x, y) => x.or(y),
     };
-    fit_to(state, time_area_w, extent);
+    // Com fim autorado, a ⟷ dele cabe inteira à direita (dono 10/11: o cartão estreito pintava-a
+    // fora): o enquadrar usa a área menos o que ela pede, nunca menos de metade.
+    let reserva = if snap.view_length_explicit {
+        crate::ruler::veil::DUR_ARROW_ROOM.min(time_area_w * 0.5)
+    } else {
+        0.0
+    };
+    fit_to(state, time_area_w - reserva, extent);
 }
 
 /// ⭐ **O enquadrar ao abrir** (cartões): abrir a fita ou trocar de clipe faz o [`apply_fit_clip`]; e

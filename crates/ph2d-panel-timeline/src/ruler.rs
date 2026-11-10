@@ -27,7 +27,7 @@ use crate::ids;
 #[path = "ruler_fim.rs"]
 pub(crate) mod fim;
 #[path = "ruler_veil.rs"]
-mod veil;
+pub(crate) mod veil;
 
 pub(crate) const RULER_H: f32 = 22.0; // LITERAL-PX-OK: ruler strip height
 const TICK_MAJOR_H: f32 = 10.0; // LITERAL-PX-OK: labelled second tick height
@@ -68,6 +68,7 @@ pub(crate) fn paint(
 ) {
     let span = f64::from(region.w) / px_per_s;
     let time_to_x = |t: f64| region.x + ((t - view_start) * px_per_s) as f32;
+    let recorte = fim::abre_recorte(ctx, region);
 
     // Ruler strip background.
     let strip = Rect::new(region.x, region.y, region.w, RULER_H);
@@ -210,6 +211,7 @@ pub(crate) fn paint(
     if clock.markers {
         paint_markers(ctx, theme, region, &time_to_x, snap);
     }
+    fim::fecha_recorte(ctx, recorte);
 }
 
 /// Paint just the loop range's shaded band. Called BEFORE the ticks so the

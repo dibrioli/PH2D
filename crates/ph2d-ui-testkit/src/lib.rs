@@ -501,6 +501,16 @@ impl MockPanelHost {
         scene.inner().encoding().draw_data.clone()
     }
 
+    /// ⭐ **A cena que a pintura DESENHOU** — para a régua «nada se pinta fora do rect»
+    /// (`caixas_pintadas` lê os caminhos dela com os recortes).
+    pub fn paint_vector_scene<P: Panel>(
+        &mut self,
+        state: &mut P::State,
+        viewport: Rect,
+    ) -> VectorScene {
+        self.paint_scene::<P>(state, HeroLayout::for_viewport(viewport), viewport)
+    }
+
     fn paint_scene<P: Panel>(
         &mut self,
         state: &mut P::State,
@@ -600,8 +610,10 @@ impl MockPanelHost {
 /// ⭐⭐ **Os GESTOS sintéticos** (o clique, o arrasto e «que id é que isto acerta») vivem no
 /// irmão — ver [`gestures`]. Saíram daqui na integração de 2026-09-04, quando a soma de duas
 /// linhas levou este ficheiro a `714 / 700`.
+mod caixas;
 mod gestures;
 pub mod mesa;
+pub use caixas::caixas_pintadas;
 
 /// ⭐⭐ **A prova de que uma lista de dropdown longa ROLA** — ver [`lista_longa`].
 mod lista_longa;

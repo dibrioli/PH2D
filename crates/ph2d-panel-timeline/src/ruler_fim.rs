@@ -27,6 +27,26 @@ pub(crate) fn tons_alem(theme: Theme) -> (Color, Color) {
     )
 }
 
+/// ⭐ **Nada da régua sai do cartão** (dono 10/11, cartão estreito: a ⟷ pintava-se fora da borda).
+/// Nos cartões tudo o que a régua desenha por cima das faixas — véu, fim, laço, playhead, ⟷,
+/// marcadores e as etiquetas — fica recortado na área de tempo `region`; `true` = abriu o recorte.
+pub(super) fn abre_recorte(ctx: &mut PaintCtx, region: Rect) -> bool {
+    if !ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        return false;
+    }
+    ctx.scene.push_clip(&rect_to_vello(region));
+    crate::alca_estado::poe_faixa(Some((region.x, region.x + region.w)));
+    true
+}
+
+/// Fecha o recorte de [`abre_recorte`].
+pub(super) fn fecha_recorte(ctx: &mut PaintCtx, aberto: bool) {
+    if aberto {
+        crate::alca_estado::poe_faixa(None);
+        ctx.scene.pop_layer();
+    }
+}
+
 /// O véu e as listras `\` de «além do fim» dentro de `shade`.
 pub(super) fn pinta_alem(ctx: &mut PaintCtx, theme: Theme, shade: Rect) {
     if shade.w <= 0.0 || shade.h <= 0.0 {

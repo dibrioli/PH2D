@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use crate::checker::Checker;
 use ph2d_pixel_core::{
     FrameId, LayerId, Onion, Purpose, Rect, Sprite, Stroke, compose_window_em,
     compose_with_onion_em, instante_do_quadro,
@@ -10,15 +11,6 @@ use ph2d_pixel_core::{
 use ph2d_vector::{
     Affine, BezPath, Color, ImageQuality, Point, StableImage, Stroke as Pen, VectorScene,
 };
-
-/// O lado de uma casa do xadrez, em células do sprite (Aseprite: *Background ▸ Checked size* 16×16,
-/// com *Apply Zoom*).
-pub const CHECKER_CELLS: u32 = 16;
-
-// O xadrez de transparência: cinza sobre cinza, invariante ao tema (a convenção da casa em
-// `ph2d-editor-core/src/widget/color_swatch.rs`).
-const CHECKER_LIGHT: [u8; 4] = [204, 204, 204, 255]; // LITERAL-COLOR-OK: casa clara do xadrez de transparência (invariante ao tema)
-const CHECKER_DARK: [u8; 4] = [153, 153, 153, 255]; // LITERAL-COLOR-OK: casa escura do xadrez de transparência (invariante ao tema)
 
 /// O que a RAM guarda de frames já compostos para o tocar não recompor (o recurso é a RAM; além
 /// disto um frame recompõe-se, ~65 ms em 1024² × 20 camadas nas faixas — `mede_compose`).
@@ -71,7 +63,11 @@ impl SpriteImage {
     /// quadro é `instante + voltas inteiras da animação tocadas` (o mesmo índice por quadro dentro
     /// de uma volta); só refaz a imagem quando a volta muda. Chamar só com ciclos no documento.
     pub fn avanca_ciclo(&mut self, sprite: &Sprite, dt_ms: u32) {
-        let total: u64 = sprite.frames().iter().map(|f| u64::from(f.duration_ms)).sum();
+        let total: u64 = sprite
+            .frames()
+            .iter()
+            .map(|f| u64::from(f.duration_ms))
+            .sum();
         let tocado = self.relogio.0.wrapping_add(u64::from(dt_ms));
         let voltas = tocado - tocado % total.max(1);
         if voltas != self.relogio.1 {
@@ -143,7 +139,15 @@ impl SpriteImage {
             (Some(a), Some(b)) if pronto => {
                 let o = onion.map(|o| (o, self.ghost_layer));
                 let r = a.union(b);
-                region_into(sprite, frame, pending, r, o, &mut self.scratch, self.relogio.1);
+                region_into(
+                    sprite,
+                    frame,
+                    pending,
+                    r,
+                    o,
+                    &mut self.scratch,
+                    self.relogio.1,
+                );
             }
             _ => {
                 let o = onion.map(|o| (o, self.ghost_layer));
@@ -193,37 +197,6 @@ impl SpriteImage {
         to_screen: Affine,
     ) {
         self.checker.draw_under(scene, w, h, to_screen);
-    }
-}
-
-/// **O xadrez de transparência** de um sprite (casas de [`CHECKER_CELLS`] células), em cache: a
-/// imagem só se refaz quando o número de casas muda. O canvas e a janela Preview pintam o MESMO.
-#[derive(Clone, Default)]
-pub struct Checker(Option<(u32, u32, StableImage)>);
-
-impl Checker {
-    /// O xadrez por baixo de um sprite `w × h` posto por `to_screen` (célula → ecrã).
-    pub fn draw_under(&mut self, scene: &mut VectorScene, w: u32, h: u32, to_screen: Affine) {
-        let cols = w.div_ceil(CHECKER_CELLS);
-        let rows = h.div_ceil(CHECKER_CELLS);
-        if self
-            .0
-            .as_ref()
-            .is_none_or(|(c, r, _)| (*c, *r) != (cols, rows))
-        {
-            let mut px = Vec::with_capacity(cols as usize * rows as usize * 4);
-            for y in 0..rows {
-                for x in 0..cols {
-                    px.extend_from_slice(if (x + y) % 2 == 0 {
-                        &CHECKER_LIGHT
-                    } else {
-                        &CHECKER_DARK
-                    });
-                }
-            }
-            self.0 = StableImage::from_rgba(Arc::new(px), cols, rows).map(|img| (cols, rows, img));
-        }
-        draw_checker(scene, self.0.as_ref().map(|c| &c.2), w, h, to_screen);
     }
 }
 
@@ -310,26 +283,6 @@ pub fn compose_bands_em(
             .collect()
     });
     parts.concat()
-}
-
-/// O xadrez `img` (uma célula por casa) recortado ao canvas `w × h`.
-pub fn draw_checker(
-    scene: &mut VectorScene,
-    img: Option<&StableImage>,
-    w: u32,
-    h: u32,
-    to_screen: Affine,
-) {
-    let Some(img) = img else {
-        return;
-    };
-    let k = f64::from(CHECKER_CELLS);
-    let clip = ph2d_vector::Rect::new(0.0, 0.0, f64::from(w), f64::from(h));
-    scene
-        .inner_mut()
-        .push_clip_layer(ph2d_vector::Fill::NonZero, to_screen, &clip);
-    scene.draw_stable_image_transformed(img, to_screen * Affine::scale(k), ImageQuality::Low);
-    scene.inner_mut().pop_layer();
 }
 
 /// ⭐ **A porta ÚNICA imagem → mundo** (P14 §4: «onde está a origem?»): o ponto `pivo` (píxeis do

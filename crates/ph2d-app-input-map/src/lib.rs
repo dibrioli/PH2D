@@ -8,7 +8,6 @@ pub use ph2d_input_map_editor::{
 
 pub mod listen;
 pub mod readers;
-pub mod smoke;
 mod surface;
 
 pub use surface::{InputMapTab, TAB_ID};

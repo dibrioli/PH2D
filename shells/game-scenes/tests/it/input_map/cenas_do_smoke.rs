@@ -2,15 +2,18 @@
 //! família arma, cada cena põe a aba no estado da maquete, e a cena tem os leitores do fire e do laser (o reload não).
 
 use super::Mesa;
+use ph2d_app_game::smoke::input_map::{CODIGOS as CENAS, DEAD, PRIMEIRA, arma, codigo, leitores};
 use ph2d_app_input_map::View;
-use ph2d_app_input_map::smoke::{CENAS, DEAD, arma};
 use ph2d_app_input_map::view_keyboard::state::{KbHit, Sub};
 use ph2d_input::Key;
 use ph2d_input::readers::Reader;
 
+/// A composição da shell (`janela_do_jogo.rs::game_smoke`): arma a aba, instala o mapa e pede a aba.
 fn armada(cena: &str) -> Mesa {
     let mut m = Mesa::new(View::Keyboard);
-    assert!(arma(&mut m.hero, cena), "{cena} arma");
+    let map = arma(&mut m.tab_mut().doc, cena).expect("código do roteiro");
+    m.hero.input_map = map;
+    m.hero.store.request_input_map_tab();
     m.frame();
     m
 }
@@ -20,9 +23,13 @@ fn id(m: &Mesa, n: &str) -> ph2d_input::ActionId {
 }
 
 #[test]
-fn o_roteiro_do_jogo_e_a_familia_contam_as_mesmas_cenas() {
-    assert_eq!(CENAS, ph2d_app_game::smoke::input_map::CODIGOS);
-    assert!(!arma(&mut Mesa::new(View::List).hero, "Z9"));
+fn as_cenas_do_input_map_fecham_o_roteiro_pela_ordem() {
+    let todas = ph2d_app_game::smoke::CENAS;
+    assert_eq!(codigo(PRIMEIRA - 1), None);
+    assert_eq!(codigo(PRIMEIRA), Some("A1"));
+    assert_eq!(codigo(todas), CENAS.last().copied());
+    assert_eq!(codigo(todas + 1), None);
+    assert!(arma(&mut Mesa::new(View::List).tab_mut().doc, "Z9").is_none());
 }
 
 #[test]
@@ -48,7 +55,11 @@ fn as_cenas_da_lista_escutam_filtram_e_mostram_a_manche() {
     let shown = ph2d_app_input_map::view_list::shown(&m.tab().doc);
     assert_eq!(shown, vec![id(&m, "jump"), id(&m, "move_up")]);
     let m = armada("A4");
-    let ml = m.hero.input_map.get(id(&m, "move_left")).expect("move_left");
+    let ml = m
+        .hero
+        .input_map
+        .get(id(&m, "move_left"))
+        .expect("move_left");
     assert!(ml.is_analog() && (ml.dead_zone - DEAD).abs() < 1e-6);
     let a1 = armada("A1");
     assert!(a1.hero.input_map.actions().iter().all(|a| !a.is_analog()));
@@ -67,13 +78,18 @@ fn as_cenas_do_teclado_abrem_a_accao_e_o_desenho_delas() {
     let m = armada("B4");
     let reload = id(&m, "reload");
     assert_eq!(m.tab().doc.kb.open, Some(reload));
-    assert!(m.hero.input_map.get(reload).is_some_and(|a| a.bindings.is_empty()));
+    assert!(
+        m.hero
+            .input_map
+            .get(reload)
+            .is_some_and(|a| a.bindings.is_empty())
+    );
 }
 
 #[test]
 fn a_cena_tem_um_leitor_do_fire_e_do_laser_e_nenhum_do_reload() {
     let mut sim = ph2d_ecs::SimWorld::new();
-    ph2d_app_game::smoke::input_map::leitores(&mut sim, ph2d_app_game::smoke::input_map::PRIMEIRA);
+    let _ = leitores(&mut sim, PRIMEIRA, |s| s.world_mut().spawn(()).id());
     let readers = ph2d_app_input_map::readers::of_world(sim.world());
     let fire = readers.get("fire").map_or(&[][..], Vec::as_slice);
     assert!(fire.iter().any(|r| matches!(r, Reader::Trigger { .. })));

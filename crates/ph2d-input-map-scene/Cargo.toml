@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-input-map-scene"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ As cenas da aba Input Map no `PH2D_GAME_SMOKE` (6..13) como FOLHA, pela catraca
+# `the_shell_only_shrinks_and_every_app_crate_too`: o mapa do dono, os leitores da cena e o estado da aba moram
+# aqui; a `ph2d-app-game` só as numera e a shell só as compõe.
+[dependencies]
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-input = { path = "../ph2d-input" }
+ph2d-input-map-editor = { path = "../ph2d-input-map-editor" }
+ph2d-script = { path = "../ph2d-script" }
+
+[lints]
+workspace = true

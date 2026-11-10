@@ -20,11 +20,8 @@ use ph2d_render::{
 use ph2d_script::{LuauScript, ProjectScripts};
 use std::sync::OnceLock;
 
-/// 1..5 o jogo; 6..13 a aba Input Map (A1..A4, B1..B4 — a ordem e as próximas em [`input_map`]).
-pub const CENAS: u32 = 13;
-
-#[path = "smoke_input_map.rs"]
-pub mod input_map;
+pub const CENAS: u32 = 13; // 6..13 = a aba Input Map, A1..B4 (a ordem e as próximas: `input_map`)
+pub use ph2d_input_map_scene as input_map;
 
 /// A cena 4 (plano 12): o nível 2 com duas imagens na biblioteca do projecto para trocar pelo Inspector — a
 /// folha do herói azul e os montes ao pôr do sol (`docs/GameEngineFuncional/ferramentas/arte_trocar.py`).
@@ -318,11 +315,7 @@ pub fn montar(sim: &mut SimWorld, portas: Portas<'_>, nivel: u32) -> Entity {
             println!("{}", ph2d_sprite_anim_scene::MENSAGEM);
             jogador
         }
-        n if input_map::codigo(n).is_some() => {
-            let jogador = nivel_2(sim, portas);
-            input_map::leitores(sim, n);
-            jogador
-        }
+        n if input_map::codigo(n).is_some() => input_map::leitores(sim, n, |s| nivel_2(s, portas)),
         _ => nivel_1(sim.world_mut()),
     }
 }

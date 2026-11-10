@@ -5866,6 +5866,7 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-game-dicas",
  "ph2d-input",
+ "ph2d-input-map-scene",
  "ph2d-physics-ecs",
  "ph2d-physics-scene",
  "ph2d-render",
@@ -8205,6 +8206,17 @@ dependencies = [
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-input-map-scene"
+version = "0.0.0"
+dependencies = [
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-input",
+ "ph2d-input-map-editor",
+ "ph2d-script",
 ]
 
 [[package]]

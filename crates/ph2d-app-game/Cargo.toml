@@ -40,6 +40,8 @@ ph2d-game-dicas = { path = "../ph2d-game-dicas" }
 # A cena do `PH2D_SFX_SMOKE`, por cima do nível 2.
 ph2d-sfx-scene = { path = "../ph2d-sfx-scene" }
 ph2d-sprite-anim-scene = { path = "../ph2d-sprite-anim-scene" }
+# As cenas da aba Input Map (6..13): o mapa do dono, os leitores e o estado da aba, como folha.
+ph2d-input-map-scene = { path = "../ph2d-input-map-scene" }
 
 [lints]
 workspace = true

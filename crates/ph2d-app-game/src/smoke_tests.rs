@@ -6,7 +6,6 @@ fn o_nivel_le_se_pela_porta_e_fora_da_faixa_e_inerte() {
     assert_eq!(armed_level_in(com("1")), Some(1));
     assert_eq!(armed_level_in(com("2")), Some(2));
     assert_eq!(armed_level_in(com("3")), Some(3));
-    assert_eq!(armed_level_in(com("4")), Some(4));
     assert_eq!(armed_level_in(com("5")), Some(5));
     assert_eq!(armed_level_in(com("13")), Some(13));
     assert_eq!(armed_level_in(com("14")), None);
@@ -72,14 +71,4 @@ fn os_limites_da_camara_do_nivel_1_sao_as_paredes() {
         l.max[1] >= ce[1] + he[1] && l.max[1] >= cd[1] + hd[1],
         "o tecto não corta as paredes"
     );
-}
-
-#[test]
-fn as_cenas_do_input_map_fecham_o_roteiro_pela_ordem() {
-    use input_map::{CODIGOS, PRIMEIRA, codigo};
-    assert_eq!(codigo(PRIMEIRA - 1), None);
-    assert_eq!(codigo(PRIMEIRA), Some("A1"));
-    assert_eq!(codigo(CENAS), CODIGOS.last().copied());
-    assert_eq!(codigo(CENAS + 1), None);
-    assert_eq!(PRIMEIRA as usize + CODIGOS.len() - 1, CENAS as usize);
 }

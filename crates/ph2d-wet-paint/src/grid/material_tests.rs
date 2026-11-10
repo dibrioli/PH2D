@@ -115,3 +115,35 @@ fn o_neutro_do_material_e_o_default_dos_knobs() {
     );
     assert_eq!(d(Knob::LockMaterial), 0.0);
 }
+
+/// B12c: o 1.º dab com material (raio 30) aloca os pedaços das linhas dele, não a tela (era `plano_cheio`, 52 B por
+/// célula). O veste_virgens da caixa do dab também não acorda a tela.
+#[test]
+fn o_primeiro_dab_com_material_aloca_o_campo_das_linhas_dele() {
+    let mut g = Grid::new(3840, 600);
+    let (cx, cy, r) = (1900i32, 300i32, 30i32);
+    for y in cy - r..=cy + r {
+        for x in cx - r..=cx + r {
+            if (x - cx).pow(2) + (y - cy).pow(2) <= r * r {
+                let i = x as usize + y as usize * g.s;
+                pousa(&mut g, i, 0.0, metal(), 1.0, false);
+            }
+        }
+    }
+    veste_virgens(&mut g, (cx - r, cy - r, cx + r, cy + r), metal());
+    let pedaco = super::super::campo_esparso::PEDACO;
+    let tam = std::mem::size_of::<MaterialCelula>();
+    let denso = g.cells * tam;
+    let linhas = (2 * (r + ORLA_VIRGEM) + 1) as usize;
+    let teto = ((linhas * g.s).div_ceil(pedaco) + 1) * pedaco * tam;
+    let vivos = bytes_alocados(&g);
+    assert!(
+        vivos > 0 && vivos <= teto && vivos * 8 < denso,
+        "{vivos} B: as linhas do dab cabem em {teto} B, o denso {denso} B"
+    );
+    assert_eq!(
+        g.material_da_celula(cx as usize + cy as usize * g.s),
+        metal()
+    );
+    assert_eq!(g.material_da_celula(3 + 3 * g.s), MaterialCelula::NEUTRO);
+}

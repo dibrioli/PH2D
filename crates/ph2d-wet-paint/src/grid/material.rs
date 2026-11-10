@@ -5,16 +5,70 @@
 //! A advecção do fluxo NÃO o move (como o relevo e o glaze: o material é da tinta POUSADA).
 
 use super::Grid;
+use super::campo_esparso::CampoEsparso;
 use crate::material::MaterialCelula;
 use crate::sim::Params;
 use crate::tuning::Knob;
 
-/// O campo, alocado a NEUTRO se ainda não existia.
-pub fn garante(g: &mut Grid) -> &mut [MaterialCelula] {
+/// O campo da grade (B12c): pedaços esparsos, o ausente lê [`MaterialCelula::NEUTRO`].
+pub type CampoMaterial = CampoEsparso<MaterialCelula>;
+
+/// O campo que ainda não existe (o `Vec::new()` de antes).
+#[must_use]
+pub fn sem_campo() -> CampoMaterial {
+    CampoEsparso::vazio(MaterialCelula::NEUTRO)
+}
+
+/// O denso `v` como campo (os testes, a tinta que volta).
+#[must_use]
+pub fn campo_de(v: &[MaterialCelula]) -> CampoMaterial {
+    CampoEsparso::de_vec(MaterialCelula::NEUTRO, v, mesmo_bit)
+}
+
+/// Igualdade ao bit (o `==` de `f32` iguala `-0.0` e `0.0`).
+#[must_use]
+pub fn mesmo_bit(a: &MaterialCelula, b: &MaterialCelula) -> bool {
+    let f = |c: &MaterialCelula| {
+        [
+            c.metal,
+            c.rugosidade,
+            c.nivel_ior,
+            c.verniz,
+            c.verniz_rugosidade,
+            c.veludo,
+            c.subsuperficie,
+            c.raio_subsuperficie,
+            c.transparencia,
+            c.transmissao,
+            c.relevo_papel,
+            c.vidro_claro,
+            c.amassa_papel,
+        ]
+        .map(f32::to_bits)
+    };
+    f(a) == f(b)
+}
+
+/// Os bytes que o campo ocupa (o gate do 1.º toque, B12c).
+#[must_use]
+pub fn bytes_alocados(g: &Grid) -> usize {
+    g.material.bytes_vivos()
+}
+
+/// O campo, criado (sem pedaço vivo) se ainda não existia: a 1.ª escrita de cada célula aloca só o pedaço dela.
+pub fn garante(g: &mut Grid) -> &mut CampoMaterial {
     if g.material.is_empty() {
-        g.material = crate::par::plano_cheio(MaterialCelula::NEUTRO, g.cells);
+        g.material = CampoEsparso::novo(MaterialCelula::NEUTRO, g.cells);
     }
     &mut g.material
+}
+
+/// Mexe todas as células (as sondas e os testes; o `iter_mut().enumerate()` do `Vec` de antes): aloca o campo inteiro.
+pub fn para_cada(g: &mut Grid, mut f: impl FnMut(usize, &mut MaterialCelula)) {
+    let c = garante(g);
+    for i in 0..c.len() {
+        f(i, &mut c[i]);
+    }
 }
 
 /// O material que o pincel pousa: os 12 knobs do grupo Material ([`Knob::Metallic`]…).
@@ -118,7 +172,8 @@ pub fn recorte(g: &Grid, x0: i32, y0: i32, x1: i32, y1: i32) -> Vec<MaterialCelu
     let mut out = Vec::with_capacity(((x1 - x0 + 1) * (y1 - y0 + 1)) as usize);
     for y in y0..=y1 {
         let o = y as usize * g.s;
-        out.extend_from_slice(&g.material[o + x0 as usize..=o + x1 as usize]);
+        g.material
+            .copia_intervalo(o + x0 as usize, o + x1 as usize, &mut out);
     }
     out
 }
@@ -126,7 +181,7 @@ pub fn recorte(g: &Grid, x0: i32, y0: i32, x1: i32, y1: i32) -> Vec<MaterialCelu
 /// O Smear borra o material da célula `i` para a amostra bilinear do [`recorte`] `amostra` (texels `ls`, pesos de
 /// massa `ws`) na fracção `t` da cor. Sem o campo, nada.
 pub fn borra(
-    campo: &mut [MaterialCelula],
+    campo: &mut CampoMaterial,
     amostra: &[MaterialCelula],
     i: usize,
     ls: [usize; 4],
@@ -144,14 +199,7 @@ pub fn borra(
 /// Devolve a janela de um recorte (`linhas`); vazio = a grade não tinha o campo ⇒ a janela volta a NEUTRO.
 pub fn restaura_janela(g: &mut Grid, janela: (i32, i32, i32, i32), linhas: &[MaterialCelula]) {
     let (n, s) = (g.cells, g.s);
-    super::altura::restaura_campo(
-        &mut g.material,
-        n,
-        s,
-        janela,
-        linhas,
-        MaterialCelula::NEUTRO,
-    );
+    super::altura::restaura_campo_esparso(&mut g.material, n, s, janela, linhas, mesmo_bit);
 }
 
 #[cfg(test)]

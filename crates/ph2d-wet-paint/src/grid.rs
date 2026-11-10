@@ -91,7 +91,7 @@ pub struct Grid {
     pub vela: Vec<f32>,
     /// **O MATERIAL da tinta** (Óleo Real W2 E3, [`material`]): o Principled que o pincel pousou, pela massa. VAZIO
     /// (= NEUTRO) até o primeiro pincel com material pintar; lê-se por [`Grid::material_da_celula`].
-    pub material: Vec<crate::material::MaterialCelula>,
+    pub material: material::CampoMaterial,
     /// **A APARÊNCIA da tinta** (W3b, [`aparencia`]): os controlos do pincel que o ecrã lê, guardados no pouso. VAZIA
     /// (= NEUTRA) até o primeiro pincel fora da fábrica pintar.
     pub aparencia: aparencia::CampoAparencia,
@@ -262,7 +262,7 @@ impl Grid {
     #[inline]
     #[must_use]
     pub fn material_da_celula(&self, i: usize) -> crate::material::MaterialCelula {
-        self.material.get(i).copied().unwrap_or_default()
+        self.material.get(i).unwrap_or_default()
     }
 
     /// A grade com a de fluxo COLADA nela (`rf = 1`) — o motor que sempre
@@ -295,7 +295,7 @@ impl Grid {
             crista: Vec::new(),
             nivelado: Vec::new(),
             vela: vec![0.0; n],
-            material: Vec::new(),
+            material: material::sem_campo(),
             aparencia: aparencia::sem_campo(),
             suave_teto: 0.0,
             borda_fundo: -1.0,

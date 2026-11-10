@@ -238,7 +238,7 @@ fn o_material_da_camada_chega_ao_sombreado() {
     let c0 = campo(&g, &o);
     assert_eq!(c0.material_em(30, 30), MaterialCelula::NEUTRO);
     let metal = mat(|m| m.metal = 1.0);
-    g.material = vec![MaterialCelula::NEUTRO; g.sett.len()];
+    g.material = crate::grid::material::campo_de(&vec![MaterialCelula::NEUTRO; g.sett.len()]);
     let i = 30 + 30 * g.s;
     g.material[i] = metal;
     let c = campo(&g, &o);
@@ -277,14 +277,11 @@ fn a_subsuperficie_zero_e_a_imagem_de_antes() {
     let base = OleoReal::default();
     let g0 = muro();
     let mut g1 = muro();
-    for (i, m) in crate::grid::material::garante(&mut g1)
-        .iter_mut()
-        .enumerate()
-    {
+    crate::grid::material::para_cada(&mut g1, |i, m| {
         if i % g0.s < 40 {
             m.raio_subsuperficie = 12.0;
         }
-    }
+    });
     let mut k = MaterialCartao::NEUTRO;
     k.raio_subsuperficie = 16.0;
     let o = com(k);
@@ -445,10 +442,7 @@ fn a_subsuperficie_e_a_gaussiana_por_canal_do_raio_da_celula() {
         }
     });
     let s = g.s;
-    for (i, m) in crate::grid::material::garante(&mut g)
-        .iter_mut()
-        .enumerate()
-    {
+    crate::grid::material::para_cada(&mut g, |i, m| {
         let (x, y) = (i % s, i / s);
         m.raio_subsuperficie = if (29..=33).contains(&x) && (29..=33).contains(&y) {
             30.0
@@ -457,7 +451,7 @@ fn a_subsuperficie_e_a_gaussiana_por_canal_do_raio_da_celula() {
         } else {
             8.0
         };
-    }
+    });
     let mut k = MaterialCartao::NEUTRO;
     k.subsuperficie = 1.0;
     let o = com(k);

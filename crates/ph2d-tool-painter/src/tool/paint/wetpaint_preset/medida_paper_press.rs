@@ -77,9 +77,7 @@ fn com_press(t: &mut PainterTool, p: f32) {
     let s = t.paint.wetpaint.session.as_mut().expect("sessão");
     s.bring_home();
     for l in &mut s.engine.layers {
-        for m in ph2d_wet_paint::grid::material::garante(&mut l.grid) {
-            m.amassa_papel = p;
-        }
+        ph2d_wet_paint::grid::material::para_cada(&mut l.grid, |_, m| m.amassa_papel = p);
     }
     t.wet_recomposite_full();
 }

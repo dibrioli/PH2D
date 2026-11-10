@@ -23,7 +23,7 @@ pub struct GridSnapshot {
     pub crista: Vec<f32>,
     pub nivelado: Vec<f32>,
     pub vela: Vec<f32>,
-    pub material: Vec<crate::material::MaterialCelula>,
+    pub material: super::material::CampoMaterial,
     pub aparencia: aparencia::CampoAparencia,
     pub oleo: oleo_celula::CampoOleo,
     /// [`Grid::tinta`] (F4-2 E3): vazia com a lei velha.
@@ -189,6 +189,12 @@ trait MesmoBit: Copy {
 impl MesmoBit for aparencia::AparenciaCelula {
     fn mesmo_bit(a: &Self, b: &Self) -> bool {
         aparencia::mesmo_bit(a, b)
+    }
+}
+
+impl MesmoBit for crate::material::MaterialCelula {
+    fn mesmo_bit(a: &Self, b: &Self) -> bool {
+        super::material::mesmo_bit(a, b)
     }
 }
 
@@ -479,7 +485,7 @@ impl Registo {
         ajusta(&mut g.espessura, v[1], a1.as_ref());
         ajusta(&mut g.crista, v[2], a2.as_ref());
         ajusta(&mut g.nivelado, v[3], a3.as_ref());
-        ajusta(&mut g.material, v[4], a5.as_ref());
+        ajusta_campo(&mut g.material, v[4], a5.is_some());
         ajusta_campo(&mut g.aparencia, v[5], a6.is_some());
         ajusta_campo(&mut g.oleo, v[6], a7.is_some());
         let a8 = amostra!(tinta);

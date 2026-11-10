@@ -129,7 +129,7 @@ fn smear_com(
         paper,
         ..
     } = g;
-    let borra = |m: &mut [crate::material::MaterialCelula],
+    let borra = |m: &mut crate::grid::material::CampoMaterial,
                  niv: &mut [f32],
                  i: usize,
                  ls: [usize; 4],

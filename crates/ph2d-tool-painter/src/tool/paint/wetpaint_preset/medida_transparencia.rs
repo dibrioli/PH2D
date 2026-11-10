@@ -18,7 +18,7 @@ pub(super) fn com_material(t: &mut PainterTool, k: usize, v: f64) {
     let s = t.paint.wetpaint.session.as_mut().expect("sessão");
     s.bring_home();
     for l in &mut s.engine.layers {
-        for m in ph2d_wet_paint::grid::material::garante(&mut l.grid) {
+        ph2d_wet_paint::grid::material::para_cada(&mut l.grid, |_, m| {
             let alvo = match k {
                 8 => &mut m.transparencia,
                 9 => &mut m.transmissao,
@@ -27,7 +27,7 @@ pub(super) fn com_material(t: &mut PainterTool, k: usize, v: f64) {
                 _ => panic!("peso {k}"),
             };
             *alvo = v as f32;
-        }
+        });
     }
     t.wet_recomposite_full();
 }

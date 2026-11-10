@@ -6,8 +6,8 @@ use super::*;
 use ph2d_wet_paint::grid::Grid;
 use ph2d_wet_paint::grid::aparencia::{self, CampoAparencia};
 use ph2d_wet_paint::grid::celula_bytes::{Celula, de_bytes, para_bytes};
+use ph2d_wet_paint::grid::material::{self as material_celula, CampoMaterial};
 use ph2d_wet_paint::grid::oleo_celula::{self, CampoOleo};
-use ph2d_wet_paint::material::MaterialCelula;
 use rayon::prelude::*;
 
 const NIVEL: i32 = 1;
@@ -88,11 +88,24 @@ fn volta_oleo(b: &Bloco, v: &mut CampoOleo) {
     }
 }
 
+fn encolhe_material(v: &mut CampoMaterial) -> Bloco {
+    let c = std::mem::replace(v, material_celula::sem_campo());
+    let mut denso = c.para_vec();
+    drop(c);
+    encolhe(&mut denso)
+}
+
+fn volta_material(b: &Bloco, v: &mut CampoMaterial) {
+    if b.n > 0 {
+        *v = material_celula::campo_de(&de_bytes(&b.bytes(b.n)));
+    }
+}
+
 /// Um plano da grade, pelo tipo da célula.
 enum Plano<'a> {
     F(&'a mut Vec<f32>),
     F3(&'a mut Vec<[f32; 3]>),
-    M(&'a mut Vec<MaterialCelula>),
+    M(&'a mut CampoMaterial),
     A(&'a mut CampoAparencia),
     O(&'a mut CampoOleo),
     B(&'a mut Vec<u8>),
@@ -103,7 +116,7 @@ impl Plano<'_> {
         match self {
             Plano::F(v) => encolhe(v),
             Plano::F3(v) => encolhe(v),
-            Plano::M(v) => encolhe(v),
+            Plano::M(v) => encolhe_material(v),
             Plano::A(v) => encolhe_campo(v),
             Plano::O(v) => encolhe_oleo(v),
             Plano::B(v) => encolhe_u8(v),
@@ -114,7 +127,7 @@ impl Plano<'_> {
         match self {
             Plano::F(v) => volta(b, v),
             Plano::F3(v) => volta(b, v),
-            Plano::M(v) => volta(b, v),
+            Plano::M(v) => volta_material(b, v),
             Plano::A(v) => volta_campo(b, v),
             Plano::O(v) => volta_oleo(b, v),
             Plano::B(v) => volta_u8(b, v),

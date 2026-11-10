@@ -158,9 +158,9 @@ pub(super) fn raio_subsuperficie_max(
             continue;
         }
         for y in y0..=y1 {
-            for c in &g.material[x0 + y * g.s..=x1 + y * g.s] {
+            for c in (x0 + y * g.s..=x1 + y * g.s).map(|i| g.material[i]) {
                 if c.subsuperficie > 0.0 || k.subsuperficie > 0.0 {
-                    let e = crate::material::efectivo(c, k).raio_subsuperficie;
+                    let e = crate::material::efectivo(&c, k).raio_subsuperficie;
                     r = Some(r.map_or(e, |r: f64| r.max(e)));
                 }
             }

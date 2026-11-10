@@ -28,9 +28,7 @@ fn tinta() -> Grid {
 /// A grade `g` com o material de cada célula mexido por `f` (o do pincel: o cartão não tem os três pesos).
 pub(super) fn cel(g: &Grid, f: impl Fn(&mut crate::material::MaterialCelula)) -> Grid {
     let mut g = g.clone();
-    for m in crate::grid::material::garante(&mut g) {
-        f(m);
-    }
+    crate::grid::material::para_cada(&mut g, |_, m| f(m));
     g
 }
 
@@ -321,10 +319,10 @@ fn a_transmissao_e_um_vidro_colorido_claro() {
 #[test]
 fn o_grao_do_papel_atraves_da_tinta_e_o_da_transmissao() {
     let mut g = tinta();
-    for m in crate::grid::material::garante(&mut g) {
+    crate::grid::material::para_cada(&mut g, |_, m| {
         m.transmissao = 0.5;
         m.relevo_papel = 1.0;
-    }
+    });
     let c = CampoAltura::de(&[(&g, true)], &OleoReal::default(), 1, 1, 1, W, W);
     let d = |o: &OleoReal| grao_do_papel(o, &c, 24, 24);
     assert!((d(&OleoReal::default()) - 0.5).abs() < 1e-3);
@@ -438,9 +436,7 @@ fn a_sombra_da_tinta_do_pincel_atravessa_no_papel_nu() {
     let opaca = tinta();
     let com = |f: &dyn Fn(&mut crate::material::MaterialCelula)| {
         let mut g = tinta();
-        for m in crate::grid::material::garante(&mut g) {
-            f(m);
-        }
+        crate::grid::material::para_cada(&mut g, |_, m| f(m));
         g
     };
     let soma = |g: &Grid| {

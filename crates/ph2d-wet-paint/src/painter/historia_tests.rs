@@ -29,7 +29,7 @@ pub(crate) fn hash_grid(g: &Grid) -> Vec<u64> {
     h(&mut st, &s.crista);
     h(&mut st, &s.nivelado);
     h(&mut st, &s.vela);
-    h(&mut st, &s.material);
+    h(&mut st, &s.material.para_vec());
     h(&mut st, &s.aparencia.para_vec());
     h(&mut st, &s.oleo.para_vec());
     h(&mut st, &s.vel_x);
@@ -559,12 +559,13 @@ fn celulas_que_diferem(a: &crate::grid::GridSnapshot, b: &crate::grid::GridSnaps
     };
     let (apa, apb) = (a.aparencia.para_vec(), b.aparencia.para_vec());
     let (ola, olb) = (a.oleo.para_vec(), b.oleo.para_vec());
+    let (maa, mab) = (a.material.para_vec(), b.material.para_vec());
     (0..a.film.len())
         .filter(|&i| {
             f32s(i)
                 || bits(&a.susp_rgb, i) != bits(&b.susp_rgb, i)
                 || bits(&a.sett_rgb, i) != bits(&b.sett_rgb, i)
-                || bits(&a.material, i) != bits(&b.material, i)
+                || bits(&maa, i) != bits(&mab, i)
                 || bits(&apa, i) != bits(&apb, i)
                 || bits(&ola, i) != bits(&olb, i)
                 || bits(&a.tinta, i) != bits(&b.tinta, i)

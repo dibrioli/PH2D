@@ -87,7 +87,10 @@ fn difere(a: &Grid, b: &Grid, m: &Grid) -> Option<&'static str> {
         ("vela", f32s(&a.vela, &b.vela)),
         ("paper", f32s(&a.paper, &b.paper)),
         ("wet", a.wet == b.wet),
-        ("material", fora_das_virgens(&a.material, &b.material, m)),
+        (
+            "material",
+            fora_das_virgens(&a.material.para_vec(), &b.material.para_vec(), m),
+        ),
         (
             "aparencia",
             fora_das_virgens(&a.aparencia.para_vec(), &b.aparencia.para_vec(), m),

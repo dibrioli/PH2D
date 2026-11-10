@@ -273,7 +273,7 @@ fn difere_em(g: &Grid, e: &Grid, i: usize) -> bool {
         || f(&g.vela, &e.vela, i)
         || f(&g.paper, &e.paper, i)
         || g.wet.get(i) != e.wet.get(i)
-        || c(&g.material, &e.material, i)
+        || g.material.get(i) != e.material.get(i)
         || g.aparencia.get(i) != e.aparencia.get(i)
         || g.oleo.get(i) != e.oleo.get(i)
         || c(&g.tinta, &e.tinta, i)

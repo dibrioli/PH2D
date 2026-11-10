@@ -189,7 +189,7 @@ pub fn snapshot_grid_region(g: &Grid, x0: i32, y0: i32, x1: i32, y1: i32) -> Opt
         material: if g.material.is_empty() {
             Vec::new()
         } else {
-            take_rows(&g.material, s, x0, y0, x1, y1)
+            linhas_do_campo(&g.material, s, x0, y0, x1, y1)
         },
         aparencia: if g.aparencia.is_empty() {
             Vec::new()

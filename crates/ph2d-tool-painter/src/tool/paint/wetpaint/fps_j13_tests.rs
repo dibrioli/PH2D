@@ -170,7 +170,7 @@ pub(super) fn gancho(
             }
             let ex = |a: bool| (a, a);
             campo(
-                &g.material,
+                &g.material.para_vec(),
                 &mut gs.material,
                 jan,
                 (&mut rel, &mut bit),

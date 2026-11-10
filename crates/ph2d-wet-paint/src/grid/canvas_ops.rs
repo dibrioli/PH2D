@@ -185,7 +185,7 @@ pub fn clear_canvas(g: &mut Grid) {
     g.crista = Vec::new();
     g.nivelado = Vec::new();
     g.vela.fill(0.0);
-    g.material = Vec::new();
+    g.material = super::material::sem_campo();
     g.aparencia = super::aparencia::sem_campo();
     g.suave_teto = 0.0;
     g.oleo = super::oleo_celula::sem_campo();

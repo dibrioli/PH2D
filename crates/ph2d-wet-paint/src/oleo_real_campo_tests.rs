@@ -72,7 +72,7 @@ fn o_material_neutro_e_bit_identico_a_de_antes() {
 /// e fios em metade da tela, com a crista de uma faca num quarto — a cena dos gates das duas curas de custo.
 pub(super) fn relevo_com_material() -> Grid {
     let mut g = relevo_variado();
-    g.material = vec![MaterialCelula::NEUTRO; g.sett.len()];
+    g.material = crate::grid::material::campo_de(&vec![MaterialCelula::NEUTRO; g.sett.len()]);
     g.altura = vec![0.0; g.sett.len()];
     g.crista = vec![0.0; g.sett.len()];
     for y in 1..=W {

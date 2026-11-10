@@ -26,9 +26,7 @@ fn tinta() -> Grid {
 /// A grade `g` com a Transparency `t` em toda a célula (a do pincel: o cartão não a tem, W3b ronda 3).
 fn com_t(g: &Grid, t: f32) -> Grid {
     let mut g = g.clone();
-    for m in crate::grid::material::garante(&mut g) {
-        m.transparencia = t;
-    }
+    crate::grid::material::para_cada(&mut g, |_, m| m.transparencia = t);
     g
 }
 

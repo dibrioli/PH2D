@@ -54,13 +54,13 @@ mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeli
 mod impasto_ceiling; // Impasto: the glass ceiling — how the paint TOPS OUT (a compression, not a clamp)
 /// A SESSAO da borracha de impasto: o `pre` da massa e a devolucao que um re-carimbo faz.
 mod impasto_erase_session;
+mod impasto_fields; // Impasto: os campos que a luz lê (a dobra, e através dos ajustes de vizinhança)
 mod impasto_fill; // o Fill no Impasto: cor + CORPO, borda no perfil do Falloff (Enio 2026-08-07)
 pub mod impasto_gpu; // Impasto: the composed relief, materialised for the GPU light pass
-mod impasto_fields; // Impasto: os campos que a luz lê (a dobra, e através dos ajustes de vizinhança)
 mod impasto_light; // Impasto: the light pass — normal from the height field + Lambert/Blinn-Phong
-mod impasto_luz_tique; // Impasto: o tique da lâmpada reacende a composição não acesa guardada (B15.3)
-pub(crate) mod impasto_luz_dobra; // Impasto: o G-buffer da dobra — o tique da lâmpada só sombreia (B15.3)
 mod impasto_live; // Impasto: the stroke's commit + the Body card's live re-derivation (LOC split)
+pub(crate) mod impasto_luz_dobra; // Impasto: o G-buffer da dobra — o tique da lâmpada só sombreia (B15.3)
+mod impasto_luz_tique; // Impasto: o tique da lâmpada reacende a composição não acesa guardada (B15.3)
 mod impasto_material; // Impasto: the paint's MATERIAL on the canvas (deposit + the live re-bake)
 mod impasto_settings; // Impasto: section setters + the panel-event route (mirrors watercolor_settings)
 mod impasto_settle; // Impasto: the deposit settling under its own weight + the material constants
@@ -299,6 +299,8 @@ pub mod impasto_rig;
 /// The stamp route dispatcher (Shape + Grain → which of the 4 stamp paths); split for the LOC cap.
 mod plane_fork;
 pub(super) mod relief_state;
+#[cfg(test)]
+mod selection_arrasto_tests; // B16.7: o arrasto da selecao nao recompoe por Move
 #[cfg(test)]
 mod selection_gizmo_mods_tests; // Shift/Ctrl no gizmo de selecao
 /// Selection creation input: mode/op/threshold setters + on-canvas pointer gestures (marquee/lasso/flood). [LOC split].

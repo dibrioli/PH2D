@@ -9,6 +9,12 @@ use super::selection_shapes::SelectionShape;
 use ph2d_editor_core::tool::{CanvasPointer, PointerPhase};
 use std::sync::Arc;
 
+#[cfg(test)]
+thread_local! {
+    /// O oráculo do B16.7: cada Move do arrasto invalida a composição (o de antes).
+    pub(super) static INVALIDA_POR_MOVE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 /// `PH2D_SEL_GIZMO_DIAG=1` — a UMA pergunta *"o diagnóstico da seleção está ligado?"*, feita por todos os
 /// seus gestos (aqui o de desenhar, em `selection_gizmo_drag` o de editar) e pelo lado do shell
 /// (`painter_canvas_mods`). Um segundo `OnceLock` sobre a mesma variável seria uma segunda resposta —
@@ -291,7 +297,7 @@ impl PainterTool {
                 let (anchor, pos) = marquee_corners(anchor, pos, self.paint.gizmo_mods);
                 let region = self.raster_marquee(anchor, pos, ellipse);
                 self.apply_selection_region(&region);
-                self.invalidate_composite();
+                self.invalida_no_arrasto();
             }
             Move::Lasso => {
                 // Fold the raw sample through the **selection** stabilizer (its own knob — the Free-selection
@@ -308,7 +314,7 @@ impl PainterTool {
                 };
                 let region = self.raster_lasso(&pts);
                 self.apply_selection_region(&region);
-                self.invalidate_composite();
+                self.invalida_no_arrasto();
             }
             Move::Auto(seed, thresh0) => {
                 let w = self.source_size.0;
@@ -393,6 +399,15 @@ impl PainterTool {
     fn auto_reflood(&mut self, seed: [f32; 2]) {
         let region = self.raster_flood(seed);
         self.apply_selection_region(&region);
-        self.invalidate_composite();
+        self.invalida_no_arrasto();
+    }
+
+    /// B16.7: o compositor não lê a seleção (o tracejado é overlay do shell, por quadro), logo o arrasto
+    /// não recompõe; o Up, que grava a entrada estrutural, invalida uma vez.
+    fn invalida_no_arrasto(&mut self) {
+        #[cfg(test)]
+        if INVALIDA_POR_MOVE.get() {
+            self.invalidate_composite();
+        }
     }
 }

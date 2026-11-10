@@ -303,6 +303,7 @@ impl InputMapDoc {
 
     pub fn release_at(&mut self, x: f32, y: f32) -> bool {
         let fired = self.release_control(x, y).unwrap_or(false);
+        self.kb.thumb_drag = None;
         crate::view_list::release(self) || fired
     }
 
@@ -311,7 +312,7 @@ impl InputMapDoc {
         match self.view {
             View::List => crate::view_list::wheel(self, dy),
             View::TryIt => crate::view_try::wheel(self, dy),
-            View::Keyboard => false,
+            View::Keyboard => crate::view_keyboard::wheel(self, dy),
         }
     }
 
@@ -387,7 +388,7 @@ impl InputMapDoc {
 
 /// O `WidgetStore` da aba: os dois campos de texto do cartão (nome novo e busca).
 fn text_fields() -> WidgetStore {
-    let mut s = WidgetStore::with_capacity(3);
+    let mut s = WidgetStore::with_capacity(4);
     for id in [ids::NEW_NAME, ids::SEARCH] {
         s.register(
             id,
@@ -399,12 +400,14 @@ fn text_fields() -> WidgetStore {
             },
         );
     }
-    s.register(
-        ids::ADD,
-        InteractiveState::Button {
-            state: ph2d_editor_core::widget::ButtonState::Normal,
-        },
-    );
+    for id in [ids::ADD, crate::view_keyboard::state::KbHit::Remove.id()] {
+        s.register(
+            id,
+            InteractiveState::Button {
+                state: ph2d_editor_core::widget::ButtonState::Normal,
+            },
+        );
+    }
     s
 }
 

@@ -17,7 +17,8 @@ use ph2d_vector::{Affine, BezPath, Circle, Stroke, VectorScene};
 use super::geometry::{self as g, BodySeg, PadShape};
 use super::keys::{BAR_GAP, BAR_H, hover_ring, paint_bars};
 use super::state::KbHit;
-use super::{target, users};
+use super::users;
+use crate::interact::{Control, ControlRole};
 use crate::doc::InputMapDoc;
 use crate::view_list::text::line;
 
@@ -227,6 +228,12 @@ pub(super) fn paint(
             bars_under(scene, ink, r, &who);
         }
         doc.kb.bars.push((KbHit::Pad(p.binding), who));
-        target(doc, KbHit::Pad(p.binding), r);
+        let id = KbHit::Pad(p.binding).id();
+        if doc.is_pressed(id) {
+            crate::view_list::ring(scene, r, ink);
+        }
+        doc.kb.targets.push(KbHit::Pad(p.binding));
+        let label = crate::view_list::footer::binding_label(p.binding);
+        doc.control(Control::new(id, r, ControlRole::Key, label));
     }
 }

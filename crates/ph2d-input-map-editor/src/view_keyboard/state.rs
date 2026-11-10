@@ -28,6 +28,8 @@ pub enum KbHit {
     Listen,
     BarDead,
     BarPress,
+    /// O polegar da lista das acções (empilhada a 1280, quando as linhas não cabem).
+    Thumb,
 }
 
 const BASE: NodeId = hash_node_id("input_map_kb.target");
@@ -59,6 +61,7 @@ impl KbHit {
             Self::Listen => off(7, 0),
             Self::BarDead => off(7, 1),
             Self::BarPress => off(7, 2),
+            Self::Thumb => off(7, 3),
         }
     }
 }
@@ -88,6 +91,14 @@ pub struct KbState {
     pub live_dot: Option<ph2d_editor_core::zones::Rect>,
     /// O arranjo e o passo do teclado na última pintura (plano §13.2).
     pub fit: Option<super::keys_fit::Fit>,
+    /// A vista empilhada (o teclado na largura inteira, a lista e a acção aberta por baixo; plano §13.2).
+    pub stacked: bool,
+    /// Quanto a lista das acções rolou (px) e a sua altura total na última pintura.
+    pub scroll: f32,
+    pub(crate) list_total: f32,
+    pub(crate) list_view_h: f32,
+    /// O arrasto do polegar: (y do Down, rolagem no Down).
+    pub(crate) thumb_drag: Option<(f32, f32)>,
 }
 
 impl KbState {

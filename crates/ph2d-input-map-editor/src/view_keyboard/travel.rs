@@ -13,7 +13,7 @@ use ph2d_tokens::ColorToken;
 use ph2d_vector::VectorScene;
 
 use super::state::KbHit;
-use super::target;
+use crate::interact::{Control, ControlRole};
 use crate::doc::InputMapDoc;
 use crate::ids::ListHit;
 use crate::view_list::text::line;
@@ -59,9 +59,9 @@ pub(super) fn paint(
         hx += bar.h * 0.5;
     }
     doc.kb.bar = Some((bar.x, bar.w));
-    for (hit, v, tok) in [
-        (KbHit::BarDead, a.dead_zone, ColorToken::CardLabel),
-        (KbHit::BarPress, a.press_point, ColorToken::Accent),
+    for (hit, v, tok, label) in [
+        (KbHit::BarDead, a.dead_zone, ColorToken::CardLabel, "input_map_keyboard.bar_dead"),
+        (KbHit::BarPress, a.press_point, ColorToken::Accent, "input_map_keyboard.bar_press"),
     ] {
         let mx = bar.x + bar.w * v;
         let mark = Rect::new(
@@ -72,7 +72,8 @@ pub(super) fn paint(
         );
         fill_rounded_rect(scene, mark, m::FIELD_BORDER, ink.color(tok));
         let grab = Rect::new(mx - m::BAR_THUMB * 0.5, bar.y, m::BAR_THUMB, bar.h);
-        target(doc, hit, grab);
+        doc.kb.targets.push(hit);
+        doc.control(Control::new(hit.id(), grab, ControlRole::DragHandle, tr(label)));
     }
     y += bar.h + m::SEG_PAD;
     let ticks = [

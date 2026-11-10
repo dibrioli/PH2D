@@ -127,12 +127,18 @@ pub fn paint(
         (body.h - m::CARD_PAD_TOP - m::CARD_PAD_BOTTOM).max(0.0),
     );
     let list_w = list::width(doc, ts).min(inner.w * 0.5);
-    let list_r = Rect::new(inner.x, inner.y, list_w, inner.h);
-    fitted(scene, ink, list_r, |s| list::paint(doc, list_r, s, ts, ink));
-    let rx = list_r.x + list_r.w + m::CARD_GAP;
-    let rw = (inner.x + inner.w - rx).max(0.0);
-    let top_h = keys::top_height(doc, ts, rw);
-    let top = Rect::new(rx, inner.y, rw, top_h);
+    let side_w = (inner.w - list_w - m::CARD_GAP).max(0.0);
+    // ⭐ Plano §13.2 (a 1280): a coluna do teclado não segura o arranjo Wide legível ⟹ empilha — o teclado na
+    // largura inteira por cima, a lista e a acção aberta lado a lado por baixo. A mesma regra no comando.
+    let stacked = !wide_fits(ts, side_w);
+    doc.kb.stacked = stacked;
+    let (top, below) = if stacked {
+        let top = Rect::new(inner.x, inner.y, inner.w, keys::top_height(doc, ts, inner.w));
+        (top, top.y + top.h + m::CARD_GAP)
+    } else {
+        let x = inner.x + list_w + m::CARD_GAP;
+        (Rect::new(x, inner.y, side_w, keys::top_height(doc, ts, side_w)), inner.y)
+    };
     fill_rounded_rect(
         scene,
         top,
@@ -140,11 +146,58 @@ pub fn paint(
         ink.color(ColorToken::KanbanCard),
     );
     keys::paint_top(doc, top, scene, ts, ink);
-    let by = top.y + top.h + m::CARD_GAP;
+    let list_r = Rect::new(inner.x, below, list_w, (inner.y + inner.h - below).max(0.0));
+    scrolled_list(doc, list_r, scene, ts, ink);
+    let rx = list_r.x + list_r.w + m::CARD_GAP;
+    let rw = (inner.x + inner.w - rx).max(0.0);
+    let by = if stacked { below } else { top.y + top.h + m::CARD_GAP };
     let bottom = Rect::new(rx, by, rw, (inner.y + inner.h - by).max(0.0));
     fitted(scene, ink, bottom, |s| {
         tiles::paint(doc, bottom, s, ts, ink)
     });
+}
+
+/// A coluna de largura `w` segura o teclado Wide com toda legenda inteira (a medida do `keys_fit`, com os dois
+/// recuos do cartão e do desenho que o `top_height` desconta).
+fn wide_fits(ts: &mut TextSystem, w: f32) -> bool {
+    let f = keys_fit::fit(ts, w - m::CARD_PAD_X * 4.0, None, geometry::PITCH_MAX_ROWS_B);
+    f.arrangement == geometry::Arrangement::Wide && f.legible
+}
+
+/// A lista das acções no rect `r`: rola quando as linhas não cabem (recorte + polegar discreto, como a A).
+fn scrolled_list(
+    doc: &mut InputMapDoc,
+    r: Rect,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    ink: CardInk,
+) {
+    doc.kb.scroll = doc.kb.scroll.clamp(0.0, (doc.kb.list_total - r.h).max(0.0));
+    let shifted = Rect::new(r.x, r.y - doc.kb.scroll, r.w, r.h);
+    doc.hits.push_clip(r);
+    let mut over = VectorScene::new();
+    over.push_clip(&ph2d_editor_core::paint::rect_to_vello(r));
+    let end = list::paint(doc, shifted, &mut over, ts, ink);
+    over.pop_layer();
+    doc.hits.pop_clip();
+    let total = end - shifted.y;
+    doc.kb.list_total = total;
+    doc.kb.list_view_h = r.h;
+    let card = Rect::new(r.x, r.y, r.w, (end - r.y).clamp(0.0, r.h));
+    fill_rounded_rect(scene, card, m::CARD_RADIUS, ink.color(ColorToken::KanbanCard));
+    scene.append_scene(&over);
+    if total > r.h + f32::EPSILON {
+        doc.census.clip = Some(r);
+        list::scrollbar(doc, r, total, scene, ink);
+    }
+}
+
+/// A roda rola a lista das acções (só quando ela não cabe). `true` = rolou.
+pub(crate) fn wheel(doc: &mut InputMapDoc, dy: f32) -> bool {
+    let before = doc.kb.scroll;
+    let max = (doc.kb.list_total - doc.kb.list_view_h).max(0.0);
+    doc.kb.scroll = (doc.kb.scroll - dy).clamp(0.0, max);
+    (doc.kb.scroll - before).abs() > f32::EPSILON
 }
 
 /// Um cartão que cabe no conteúdo: `f` pinta numa cena à parte e devolve onde acabou; o fundo entra por baixo.

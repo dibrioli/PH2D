@@ -12,9 +12,10 @@ use ph2d_tokens::ColorToken;
 use ph2d_vector::VectorScene;
 
 use super::state::KbHit;
-use super::{Group, group_of, target};
+use super::{Group, group_of};
 use crate::doc::InputMapDoc;
 use crate::ids;
+use crate::interact::{Control, ControlRole};
 use crate::view_list::text::line;
 
 const ROW_H: f32 = m::FIELD_H - m::SEG_PAD;
@@ -112,8 +113,12 @@ pub(super) fn paint(
         for (id, name, n) in rows {
             let row = Rect::new(x, y, w, ROW_H);
             y += ROW_H;
-            let hover = doc.kb.hover == Some(KbHit::Row(id));
-            if open == Some(id) {
+            let rid = KbHit::Row(id).id();
+            let hover = doc.is_hovered(rid);
+            if doc.is_pressed(rid) {
+                fill_rounded_rect(scene, row, m::SEG_RADIUS, ink.color(ColorToken::AccentSoft));
+                crate::view_list::ring(scene, row, ink);
+            } else if open == Some(id) {
                 fill_rounded_rect(scene, row, m::SEG_RADIUS, ink.color(ColorToken::AccentSoft));
             } else if hover {
                 fill_rounded_rect(
@@ -154,7 +159,8 @@ pub(super) fn paint(
                 m::VALUE_PX,
                 ink.color(ColorToken::Text3),
             );
-            target(doc, KbHit::Row(id), row);
+            doc.kb.targets.push(KbHit::Row(id));
+            doc.control(Control::new(rid, row, ControlRole::ListItem, name));
         }
     }
     // Logo abaixo do último grupo (maquete B1), nunca presos ao fundo de um cartão alto.
@@ -177,6 +183,16 @@ pub(super) fn paint(
     }
     // «+ Add» e «Remove» compactos, na largura do texto (maquete B1), encostados à esquerda.
     let (mut bx, mut end) = (x, y);
+    let remove_off = open.is_none().then_some("input_map_keyboard.remove_off_none");
+    if let Some(ph2d_editor_core::interaction::InteractiveState::Button { state }) =
+        doc.store.get_mut(KbHit::Remove.id())
+    {
+        *state = if remove_off.is_some() {
+            ph2d_editor_core::widget::ButtonState::Disabled
+        } else {
+            ph2d_editor_core::widget::ButtonState::Normal
+        };
+    }
     for (h, text) in [(KbHit::Add, add), (KbHit::Remove, remove)] {
         let bw = button_w(ts, text).min((x + w - bx).max(0.0));
         let mut c = CardCtx::flutuante(scene, ts, &doc.store, &mut doc.hits, ink, bx, bw);
@@ -188,6 +204,13 @@ pub(super) fn paint(
         end = c.full(None, widget, y);
         bx += bw + m::FIELD_GAP;
         doc.kb.targets.push(h);
+        if let Some(r) = doc.hits.rect_for(h.id()) {
+            if doc.is_pressed(h.id()) {
+                crate::view_list::ring(scene, r, ink);
+            }
+            let off = if h == KbHit::Remove { remove_off } else { None };
+            doc.control(Control::new(h.id(), r, ControlRole::Button, text).disabled(off));
+        }
     }
     end + m::LIST_PAD_BOTTOM
 }
@@ -196,4 +219,21 @@ pub(super) fn paint(
 #[must_use]
 pub fn button_w(ts: &mut TextSystem, text: &str) -> f32 {
     ts.prefix_width(text, m::VALUE_PX) + m::CARD_PAD_X * 2.0
+}
+
+/// O polegar discreto da lista que rola (o da A e da C): sem trilho, na margem direita; desvanece quente.
+pub(super) fn scrollbar(doc: &mut InputMapDoc, view: Rect, total: f32, scene: &mut VectorScene, ink: CardInk) {
+    use ph2d_editor_core::widget::{scrollbar_thumb_rect, scrollbar_track_rect};
+    let lane = Rect::new(view.x, view.y, view.w - m::SEG_INSET, view.h);
+    let thumb = scrollbar_thumb_rect(scrollbar_track_rect(lane), doc.kb.scroll, total, view.h);
+    let pill = Rect::new(thumb.x + thumb.w - m::BAR_TRACK, thumb.y, m::BAR_TRACK, thumb.h);
+    fill_rounded_rect(scene, pill, m::BAR_TRACK * 0.5, ink.color(ColorToken::BorderEmph));
+    let fade = doc.thumb_fade(KbHit::Thumb.id());
+    if fade > 0.0 {
+        let hot = ink.color(ColorToken::Text2).multiply_alpha(fade);
+        fill_rounded_rect(scene, pill, m::BAR_TRACK * 0.5, hot);
+    }
+    doc.kb.targets.push(KbHit::Thumb);
+    let label = tr("input_map_keyboard.scrollbar");
+    doc.control(Control::new(KbHit::Thumb.id(), thumb, ControlRole::ScrollThumb, label));
 }

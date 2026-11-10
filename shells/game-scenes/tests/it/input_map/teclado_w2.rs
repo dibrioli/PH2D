@@ -114,7 +114,12 @@ fn clicar_cada_tecla_liga_exactamente_essa_e_a_do_sistema_nada() {
             m.tab_mut().doc.pending.clear();
             let r = m.tab().doc.rect_of(KbHit::Key(k).id()).expect("alvo");
             // As teclas de duas filas ligam de qualquer ponto: clica-se no FUNDO.
-            m.click((r.x + r.w * 0.5, r.y + r.h - 2.0)); // LITERAL-PX-OK: dentro da aresta de baixo
+            // O clique INTEIRO na pintura desta área: o quadro do Down repinta a `AREA` da mesa, e o Up tem de cair
+            // no rect que a área pintou (senão é «arrastar para fora», que cancela — o Esc era só a primeira tecla).
+            let at = (r.x + r.w * 0.5, r.y + r.h - 2.0); // LITERAL-PX-OK: dentro da aresta de baixo
+            m.down(at);
+            m.paint_in(area);
+            m.up(at);
             let pend = m.tab().doc.pending.clone();
             let want: Vec<InputMapEdit> = if k.system_owned().is_some()
                 || m.hero.input_map.get(open).is_some_and(|a| a.bindings.contains(&Binding::Key(k)))

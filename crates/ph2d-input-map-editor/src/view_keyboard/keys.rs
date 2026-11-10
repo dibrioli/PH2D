@@ -155,6 +155,15 @@ pub(super) fn paint_top(
     doc.kb
         .targets
         .extend([KbHit::Sub(Sub::Keyboard), KbHit::Sub(Sub::Gamepad)]);
+    for (s, k) in [
+        (Sub::Keyboard, "input_map_keyboard.sub.keyboard"),
+        (Sub::Gamepad, "input_map_keyboard.sub.gamepad"),
+    ] {
+        let id = KbHit::Sub(s).id();
+        if let Some(sr) = doc.hits.rect_for(id) {
+            doc.control(Control::new(id, sr, ControlRole::Segment, tr(k)));
+        }
+    }
     let dh = drawing_h(doc, ts, w);
     let draw = Rect::new(x, y, w, dh);
     fill_rounded_rect(

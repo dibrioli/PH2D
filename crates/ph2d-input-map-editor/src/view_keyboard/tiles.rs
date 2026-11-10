@@ -13,7 +13,8 @@ use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
 
 use super::state::{KbHit, Sub};
-use super::{geometry as g, target};
+use super::geometry as g;
+use crate::interact::{Control, ControlRole};
 use crate::doc::InputMapDoc;
 use crate::view_list::footer::{and_list, binding_label, reader_names, readers_of};
 use crate::view_list::text::{line, title as semibold, title_width, wrap_after};
@@ -267,7 +268,16 @@ pub(super) fn paint(
         );
         let s = m::KEY_MARK_BOX;
         let xr = Rect::new(tile.x + tile.w - s - m::SEG_PAD, tile.y + m::SEG_PAD, s, s);
-        if doc.kb.pointer.is_some_and(|(px, py)| tile.contains(px, py)) {
+        let xid = KbHit::TileX(n).id();
+        if doc.kb.pointer.is_some_and(|(px, py)| tile.contains(px, py)) || doc.is_focused(xid) {
+            if doc.is_pressed(xid) || doc.is_hovered(xid) {
+                let bg = if doc.is_pressed(xid) {
+                    ColorToken::AccentSoft
+                } else {
+                    ColorToken::CardFieldHover
+                };
+                fill_rounded_rect(scene, xr, m::SEG_RADIUS, ink.color(bg));
+            }
             paint_icon(
                 scene,
                 ph2d_editor_core::icons::IconId::Close,
@@ -275,7 +285,10 @@ pub(super) fn paint(
                 ink.color(ColorToken::Text2),
                 StrokeToken::Default.px(),
             );
-            target(doc, KbHit::TileX(n), xr);
+            doc.kb.targets.push(KbHit::TileX(n));
+            let name = binding_label(*b);
+            let label = tr("input_map_keyboard.tile_x").replace("{key}", &name);
+            doc.control(Control::new(xid, xr, ControlRole::Button, label));
         }
         tx += tile.w + m::FIELD_GAP;
     }
@@ -302,14 +315,27 @@ pub(super) fn paint(
     };
     let tile = Rect::new(lx, ly, lw.max(TILE_H).min(w), TILE_H);
     // À escuta, ou a acção ainda sem ligação (maquete B4): o tracejado do acento.
+    let lid = KbHit::Listen.id();
+    if doc.is_pressed(lid) || doc.is_hovered(lid) {
+        let bg = if doc.is_pressed(lid) {
+            ColorToken::AccentSoft
+        } else {
+            ColorToken::CardFieldHover
+        };
+        fill_rounded_rect(scene, tile, m::FIELD_RADIUS, ink.color(bg));
+    }
     if listening || a.bindings.is_empty() {
+        // À escuta, o tracejado pulsa (o relógio do registo); estático com reduced motion ou no Discreto.
+        let pulse = if listening { doc.pulse(lid) } else { None };
+        let accent = ink.color(ColorToken::Accent);
+        let color = pulse.map_or(accent, |p| accent.multiply_alpha(0.5 + 0.5 * p)); // LITERAL-PX-OK: alfa do pulso, não px
         stroke_rounded_rect_dashed(
             scene,
             tile,
             m::FIELD_RADIUS,
             m::FIELD_BORDER * 2.0,
             m::LOOSE_DASH,
-            ink.color(ColorToken::Accent),
+            color,
         );
         if listening {
             doc.census.dashed.push(tile);
@@ -338,7 +364,8 @@ pub(super) fn paint(
         m::LABEL_PX,
         ink.color(ColorToken::CardLabel),
     );
-    target(doc, KbHit::Listen, tile);
+    doc.kb.targets.push(KbHit::Listen);
+    doc.control(Control::new(lid, tile, ControlRole::Button, tr("input_map_keyboard.listen_label")));
     y = tile.y + tile.h + m::FIELD_ROW_GAP;
     for (s, warn) in phrases(doc, &a) {
         y += phrase(doc, &s, warn, (x, y, w), scene, ts, ink) + m::FIELD_ROW_GAP;

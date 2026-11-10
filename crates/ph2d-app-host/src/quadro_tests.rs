@@ -88,3 +88,22 @@ fn o_smoke_nao_dorme_nem_desfocado() {
     assert!(!e_smoke("PH2D_QUADRO_A_PEDIDO", "1"));
     assert!(!e_smoke("PH2D_CARDS", "0"));
 }
+
+/// B23.3: oculta, a UI (a entrada incluída) dorme o [`PRAZO`]; o documento e o Play não param.
+#[test]
+fn a_janela_oculta_so_acorda_pelo_documento_e_pelo_play() {
+    let t0 = Instant::now();
+    let mut l = Laco::novo(false);
+    l.oculta(true);
+    l.entrada(t0);
+    let oculta = Pedido::Ate {
+        prazo: PRAZO,
+        porque: Parada::Oculta,
+    };
+    assert_eq!(l.pedido(&[Produtor::UiAnima, Produtor::Toast], t0), oculta);
+    for p in [Produtor::PapelMolhado, Produtor::Play, Produtor::Som] {
+        assert_eq!(l.pedido(&[Produtor::Toast, p], t0), Pedido::Ja(p));
+    }
+    l.oculta(false);
+    assert_eq!(l.pedido(&[], t0), Pedido::Ja(Produtor::Entrada));
+}

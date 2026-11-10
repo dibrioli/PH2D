@@ -146,8 +146,17 @@ pub fn apply_layer_reparent(
 
 /// B23.2: os produtores do quadro que o Painter tem vivos (o laço a pedido não dorme sobre eles).
 pub fn quer_quadro(tools: &mut ToolRegistry, fora: &mut Vec<ph2d_app_host::quadro::Produtor>) {
+    if let Some(p) = o_painter(tools) {
+        produtores(p, fora);
+    }
+}
+
+/// Os produtores de um [`ph2d_tool_painter::PainterTool`] (ver [`quer_quadro`]).
+pub(crate) fn produtores(
+    p: &ph2d_tool_painter::PainterTool,
+    fora: &mut Vec<ph2d_app_host::quadro::Produtor>,
+) {
     use ph2d_app_host::quadro::Produtor as P;
-    let Some(p) = o_painter(tools) else { return };
     let de = [P::TracoAberto, P::PapelMolhado, P::SimWet, P::UiAnima];
     fora.extend(
         de.into_iter()
@@ -155,4 +164,8 @@ pub fn quer_quadro(tools: &mut ToolRegistry, fora: &mut Vec<ph2d_app_host::quadr
             .filter(|(_, s)| *s)
             .map(|(q, _)| q),
     );
+    // As formigas da Seleção andam um passo por quadro desenhado (`SELECTION_ANIM_PHASE`).
+    if p.selection_active() {
+        fora.push(P::UiAnima);
+    }
 }

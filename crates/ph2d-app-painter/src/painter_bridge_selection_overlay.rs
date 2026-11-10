@@ -28,19 +28,12 @@ pub(super) fn draw_selection_overlay(
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
-    cursor: (f32, f32),
+    // A mira saiu para [`draw_selection_cursor`] (B51.1); o argumento cai quando `painter_bridge.rs` mudar.
+    _cursor: (f32, f32),
 ) {
     let Some(bits) = hero.gizmo.selection else {
         return;
     };
-    // Crosshair cursor while the Selection tool is active (over the canvas, not a panel) — coherent with
-    // selecting rather than the brush ring.
-    if painter.is_selection_mode() {
-        let (cx, cy) = cursor;
-        if hero.chrome_panel_at(cx, cy).is_none() {
-            draw_crosshair(vector_scene, cx, cy);
-        }
-    }
     if !painter.selection_active() {
         return;
     }
@@ -76,6 +69,25 @@ pub(super) fn draw_selection_overlay(
     vector_scene.draw_image_rgba_transformed(&rgba, w, h, affine, ph2d_vector::ImageQuality::Low);
 }
 
+/// The Selection tool's crosshair (over the canvas, not a panel), in place of the brush ring. Drawn with
+/// the other cursor-following chrome, so it hides once the pointer leaves the window (AU-AU13-7).
+pub(super) fn draw_selection_cursor(
+    painter: &PainterTool,
+    hero: &HeroScreen,
+    vector_scene: &mut VectorScene,
+    (cx, cy): (f32, f32),
+) {
+    if hero.gizmo.selection.is_some()
+        && painter.is_selection_mode()
+        && hero.chrome_panel_at(cx, cy).is_none()
+    {
+        draw_crosshair(vector_scene, cx, cy);
+    }
+}
+
+/// A cor da mira da Seleção.
+pub(crate) const COR_DA_MIRA: [f32; 4] = [0.12, 0.12, 0.12, 0.9]; // LITERAL-COLOR-OK: overlay cursor crosshair
+
 /// A small screen-space crosshair (target `+` with a centre gap) at the cursor — the Selection tool's
 /// cursor, in place of the brush ring.
 fn draw_crosshair(vector_scene: &mut VectorScene, cx: f32, cy: f32) {
@@ -83,7 +95,7 @@ fn draw_crosshair(vector_scene: &mut VectorScene, cx: f32, cy: f32) {
     const ARM: f64 = 9.0; // arm length (px)
     const GAP: f64 = 3.0; // centre gap (px)
     let (cx, cy) = (f64::from(cx), f64::from(cy));
-    let color = Color::new([0.12, 0.12, 0.12, 0.9]); // LITERAL-COLOR-OK: overlay cursor crosshair
+    let color = Color::new(COR_DA_MIRA);
     let mut path = BezPath::new();
     path.move_to(Point::new(cx - ARM, cy));
     path.line_to(Point::new(cx - GAP, cy));

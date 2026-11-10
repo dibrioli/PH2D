@@ -899,6 +899,7 @@ impl ApplicationHandler for App {
         ph2d_app_host::quadro::no_laco(|l| match event {
             WindowEvent::RedrawRequested => {}
             WindowEvent::Focused(f) => l.foco(f),
+            WindowEvent::Occluded(o) => l.oculta(o),
             _ => l.entrada(Instant::now()),
         });
         if self.da_outra_janela(id, &event) {

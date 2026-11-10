@@ -92,6 +92,12 @@ pub fn draw_overlays(
             vector_scene,
             cursor,
         );
+        crate::painter_bridge_selection_overlay::draw_selection_cursor(
+            painter,
+            hero,
+            vector_scene,
+            cursor,
+        );
     }
     mark(&mut perf[1], &mut t);
     crate::painter_bridge_curve_overlay::draw_curve_overlay(

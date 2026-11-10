@@ -101,6 +101,8 @@ pub enum Parada {
     Ocioso,
     /// Só a UI pediu, com a janela desfocada: [`DESFOCADA`].
     Desfocada,
+    /// A janela está oculta (`WindowEvent::Occluded`): a UI não tem quem a veja, dorme o [`PRAZO`].
+    Oculta,
 }
 
 /// A resposta da lei.
@@ -146,6 +148,7 @@ pub struct Laco {
     focada: bool,
     ultima_entrada: Option<Instant>,
     smoke: bool,
+    oculta: bool,
 }
 
 /// Um smoke conta quadros ou conduz a cena: qualquer `PH2D_*SMOKE*`/`*DEMO*`,
@@ -164,6 +167,7 @@ impl Laco {
             focada: true,
             ultima_entrada: None,
             smoke,
+            oculta: false,
         }
     }
 
@@ -177,6 +181,11 @@ impl Laco {
 
     pub fn foco(&mut self, focada: bool) {
         self.focada = focada;
+    }
+
+    /// A janela ficou oculta (minimizada / coberta) ou voltou a ver-se.
+    pub fn oculta(&mut self, oculta: bool) {
+        self.oculta = oculta;
     }
 
     pub fn entrada(&mut self, agora: Instant) {
@@ -197,10 +206,18 @@ impl Laco {
             ativos[n] = p;
             n += 1;
         }
-        quer_quadro(&Estado {
+        let lei = quer_quadro(&Estado {
             ativos: &ativos[..n],
             focada: self.focada,
-        })
+        });
+        match lei {
+            Pedido::Ja(p) if p.classe() != Classe::Ui => lei,
+            _ if self.oculta => Pedido::Ate {
+                prazo: PRAZO,
+                porque: Parada::Oculta,
+            },
+            _ => lei,
+        }
     }
 
     /// A tradução para o laço: `None` = desenhar já; `Some(t)` = dormir até `t` (ou um evento).

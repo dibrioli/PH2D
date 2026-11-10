@@ -198,6 +198,44 @@ fn o_anel_some_com_o_ponteiro_fora_da_janela() {
         !tem(&vs, rgb(PINCEL)) && !mira_na_tela(),
         "fora da janela o conta-gotas não mostra a caixa nem a mira"
     );
+    // A mira da Seleção, na ordem do quadro real (`painter_bridge.rs`: a Seleção, depois os overlays).
+    let mut sel = painter(false);
+    sel.handle_panel_event(PanelEvent::SelectOption(
+        ph2d_editor_core::ids::PAINTER_PAINT_MODE,
+        "selection".to_string(),
+    ));
+    let mira = Color::new(crate::painter_bridge_selection_overlay::COR_DA_MIRA);
+    let inteiro = |dentro| {
+        let mut vs = quadro_com(&c, &sel, borda, dentro);
+        crate::painter_bridge_selection_overlay::draw_selection_overlay(
+            &sel, &c.hero, &c.sim, &c.camera, JANELA, &mut vs, borda,
+        );
+        vs
+    };
+    assert!(
+        tem(&inteiro(true), mira),
+        "dentro, a mira da Seleção está lá"
+    );
+    assert!(
+        !tem(&inteiro(false), mira),
+        "fora da janela a mira da Seleção sai"
+    );
+}
+
+/// B23.2: as formigas da Seleção andam um passo por quadro desenhado — a Seleção viva segura o laço a pedido.
+#[test]
+fn as_formigas_da_selecao_pedem_quadro() {
+    use ph2d_app_host::quadro::Produtor;
+    let mut p = painter(false);
+    let pede = |p: &PainterTool| {
+        let mut v = Vec::new();
+        crate::painter_bridge_queries::produtores(p, &mut v);
+        v.contains(&Produtor::UiAnima)
+    };
+    assert!(!pede(&p), "sem Seleção nada anima");
+    p.set_rect_selection(4, 4, 20, 20);
+    assert!(p.selection_active(), "a Seleção ficou viva");
+    assert!(pede(&p), "a Seleção viva não deixa o laço dormir");
 }
 
 /// A caixa nunca cobre o pixel amostrado, e vira para o outro lado na borda da janela.

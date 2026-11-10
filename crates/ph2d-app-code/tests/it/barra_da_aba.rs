@@ -181,7 +181,11 @@ fn clicar_a_frase_de_uma_opcao_alterna_a_e_o_interruptor_mostra_o() {
     assert_eq!(p.on[i], antes, "o interruptor diz o estado");
     let (x, y) = (p.says[i].x + 1.0, p.says[i].y + p.says[i].h * 0.5);
     m.rato(id, x, y);
-    assert_eq!(m.docs().options_card().hover, Some(fmt), "a moldura de hover");
+    assert_eq!(
+        m.docs().options_card().hover,
+        Some(fmt),
+        "a moldura de hover"
+    );
     assert_eq!(m.docs().pointer_look(id.0, x, y), Some(PointerLook::Hand));
     m.clica(id, x, y, Modifiers::default());
     m.pinta(id);

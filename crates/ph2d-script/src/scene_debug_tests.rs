@@ -492,7 +492,10 @@ end
     let a = &pos.fields[0].fields[0];
     assert_eq!(a.name, "a");
     let b = &a.fields[0];
-    assert_eq!((b.kind, b.fields.len(), b.field_count), (ValueKind::Table, 0, 1));
+    assert_eq!(
+        (b.kind, b.fields.len(), b.field_count),
+        (ValueKind::Table, 0, 1)
+    );
     let trail = field("trail");
     let idx: Vec<(&str, &str)> = trail
         .fields

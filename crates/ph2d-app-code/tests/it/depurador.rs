@@ -327,10 +327,12 @@ fn parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador() {
     vai(&mut m, id, 32);
     m.tecla(id, Key::F(9), Modifiers::default(), None);
     let passo = |m: &mut Mesa| {
-        (m.quadro(), m.pinta(id));
+        m.quadro();
+        m.pinta(id);
         m.docs().debug_view_of(id).expect("o quadro").clone()
     };
-    (passo(&mut m), m.cena());
+    passo(&mut m);
+    m.cena();
     let card = passo(&mut m).painted.card.expect("o Stopped");
     assert!(card.h <= crate::AREA.h / 3.0 + 1.0, "um terço: {card:?}");
     let sy = |m: &mut Mesa| m.docs().scroll_of(id).expect("vista").1;
@@ -397,8 +399,10 @@ fn ao_vivo_a_tabela_tem_o_traco_e_o_clique_abre_o_grafico() {
     let mut m = m.com_cena(id, 1);
     for k in 1..=12u128 {
         m.hero.store.note_clock(k * 400_000_000);
-        (m.cena(), m.host.as_mut().unwrap().debug_end_frame());
-        (m.quadro(), m.pinta(id));
+        m.cena();
+        m.host.as_mut().unwrap().debug_end_frame();
+        m.quadro();
+        m.pinta(id);
     }
     let tabela = |m: &mut Mesa| {
         m.docs()
@@ -428,7 +432,8 @@ fn ao_vivo_a_tabela_tem_o_traco_e_o_clique_abre_o_grafico() {
     let hand = Some(ph2d_editor_core::doc_surface::PointerLook::Hand);
     assert_eq!(m.docs().pointer_look(id.0, sx, sy), hand);
     m.clica(id, sx, sy, Modifiers::default());
-    (m.quadro(), m.pinta(id));
+    m.quadro();
+    m.pinta(id);
     let (lay, aberto, _) = tabela(&mut m);
     let graph = ph2d_panel_code::debug_card::live::GRAPH_ROWS;
     assert_eq!(

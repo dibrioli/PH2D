@@ -18,3 +18,8 @@ da #78; o dono prioriza integrar a linha.
 **How to apply:** na retomada pós-integração, o Pastel é o 1.º item: perguntar o produto de referência, oráculo
 CORRIDO com 3 fundos ([[feedback_brush_oracle_must_include_blank_canvas]]), simular antes de construir, o dono faz a
 triagem ([[feedback_brush_method_owner_triage_and_simulate_before_building]]).
+
+**09/11:** perguntado o produto de referência, o dono: «com os três (Clip Studio, Krita, MyPaint) e veja o mais realista».
+Feito (`docs/Painter/handoffs/material_2026-11-09_pastel/`, commit `ca286ea315` da linha): o mais realista medido é o
+**Krita h) Chalk Soft** (grão preso à tela, corpo contínuo); o nosso = spray (41 % do miolo em papel limpo, grão sorteado
+por carimbo); a **simulação 2** (corpo contínuo + grão do papel) é a mais perto. À espera da triagem do dono antes de construir.

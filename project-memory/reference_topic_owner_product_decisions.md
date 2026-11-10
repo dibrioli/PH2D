@@ -1,8 +1,11 @@
 ---
 name: reference_topic_owner_product_decisions
-description: Decisões de produto do Enio (já vigentes, por módulo) — dobradas do índice, verbatim, uma linha por memória
+description: "Decisões de produto do Enio (já vigentes, por módulo) — dobradas do índice, verbatim, uma linha por memória"
 metadata:
+  node_type: memory
   type: reference
+  originSessionId: 4ff5a426-8a7d-4b9c-b2d4-fe26c9ffc4b4
+  modified: 2026-11-09T11:11:03.530Z
 ---
 
 # Decisões de produto do dono — dobradas do índice (2026-11-05)
@@ -55,6 +58,7 @@ metadata:
 - ⭐⭐ [Dono 07/11: acima de Size 60 fica como está; a escovada do Dabber é o Bristle relief; Bristle Size até 16](project_dabber_brushed_look_is_bristle_relief_2026_11_07.md)
 - ⭐⭐ [Dono 07/11: P11 Slices — a slice segue a arte, 4 extras, corte nos 2 lugares da exportação](project_pixel_slices_owner_decisions_2026_11_07.md)
 - ⭐⭐ [Dono 08/11: sem duplo clique no Layer do Inspector; Rename/Open in tab sobem para baixo de Layer](project_layer_chip_no_double_click_buttons_above_collides_2026_11_08.md)
+- ⭐⭐ [Dono 10/11: o Wet Wash Mix a MEIA definição aprovado (~1,8× em traço rápido); outro pincel só se largo, macio e aprovado lado a lado](project_wet_wash_mix_half_resolution_approved_2026_11_10.md)
 - ⭐ [Dono 05/11: próxima fase Painter (redo · mescla aguada/óleo · travamento · Clip Studio)](project_next_phase_painter_2026_11_06.md)
 - ⭐⭐ [Dono 05/11: cartão da Sprite — sem Replace, miniatura 72 px, W×H na mesma linha, Transform do Vector = o do Object](project_sprite_card_owner_decisions_2026_11_05.md)
 - ⭐⭐ [Dono 07/11: aba Scene, a aba acompanha o objeto; menu Run vira 5 botões no centro da barra](project_scene_tab_follows_object_transport_in_bar_2026_11_07.md)
@@ -73,11 +77,20 @@ metadata:
 - ⭐⭐ [Dono 08/11: Grain «Same as Paper» com Paper: None = sem grão (revoga 28/10)](project_same_as_paper_without_paper_has_no_grain_2026_11_08.md)
 - ⭐⭐ [Dono 08/11: polígono pelo contorno — 1 contorno no Animated, reentrâncias sólidas; aviso de corpo sem forma; GEF02 integra à noite](project_outline_polygon_owner_decisions_2026_11_08.md) · ⭐⭐ [«Collides with» por forma = exceção sobre a tabela da camada (Unity)](project_collides_with_override_per_shape_2026_11_08.md)
 - ⭐⭐ [Dono 08/11: P12 Pixel — as 6 recomendações; nenhum atalho do Pixel choca com global do app](project_pixel_p12_ergonomics_owner_decisions_2026_11_08.md)
+- ⭐⭐ [Dono 09/11: Pixel — NÃO comprar o Aseprite; Trial + apps gratuitos como oráculo; nome «Pixel Sprite»](project_pixel_no_aseprite_license_trial_plus_free_oracles_2026_11_09.md)
+- ⭐ [Dono 09/11: Pixel sem a exceção do modo (volta a Object); × na Hierarchy e no Inspector](project_pixel_no_mode_exception_and_close_on_hierarchy_inspector_2026_11_09.md)
 - ⭐⭐ [Dono 08/11: editor de scripts = a Bancada (Godot + grelha Who has what + frase do pé); cor por objecto; menu da aba; depurar sob medição](project_script_editor_bancada_owner_decisions_2026_11_08.md)
 - ⭐⭐ [Dono 08/11: o multiplicador do papel na tinta É o Tooth (Relief × Tooth); não há desenhos antigos a preservar](project_tooth_is_the_paper_effect_multiplier_2026_11_08.md)
 - ⭐⭐ [Dono 08/11 (3.º smoke): no Digital o relevo do papel tem de se ver na tinta SEM o Grain; Relief×Tooth e busca OK](project_digital_paper_relief_must_show_on_paint_2026_11_08.md)
 - ⭐⭐ [Dono 08/11: ferramentas de imagem agem na folha VISÍVEL; consertar tudo da auditoria antes de integrar a GEF 26](project_image_tools_act_on_visible_sheet_2026_11_08.md)
 - ⭐⭐ [Dono 08/11: modo Edit volta a sprite a Still; mudar tamanho/margem avisa — DEPOIS da integração GEF 26](project_edit_mode_turns_sprite_still_2026_11_08.md)
+- ⭐⭐ [Dono 09/11: imagem nova no cartão Image troca a folha À VISTA, não a 1.ª](project_new_image_replaces_the_shown_sheet_2026_11_09.md)
 - ⭐⭐ [Dono 08/11: Pastel «parece ruim», mas fica para DEPOIS da integração; referência por perguntar](project_pastel_after_integration_2026_11_08.md)
 - **Dono 09/11 — Pastel:** a receita K1 (motor `softness` + `tip_depth`, folha `material_2026-11-09_pastel/folha_motor.png`) SERVE; e repassar ENCHE o dente do papel «paulatinamente em várias repassadas» (além do Krita, que não enche).
 - ⭐⭐ [Dono 09/11: ferramenta Align — folha + quadro, SEM giro; onion = anterior + referência](project_align_tool_owner_decisions_2026_11_09.md)
+- ⭐⭐ [Dono 09/11: editor de scripts — espiar a cena E mapa na Bancada, os dois ligados, botões no menu View da aba](project_bancada_peek_and_map_both_on_2026_11_09.md)
+- (09/11, CodeEditor plano 14) Quadros acessórios (Stopped, Live values, balão ◆, Script options, Problems): **as três aparências — Sheet (padrão), Cards, Strip — escolhidas em `View ▸ Card Style`**; coluna Type e traço dos últimos segundos «pelo estado da arte, sem olhar custos»; âmbar = mudou. Plano: `docs/CodeEditor/14_plano_quadros.md` (na `line/ScriptEditor`).
+- ⭐⭐ [Dono 09/11: Outline à mão trava Detail/Alpha/Specks fora do Edit shape; pontos animados + AutoKey off = modal para apagar a trilha](project_outline_locks_and_animated_points_2026_11_09.md)
+- (09/11, GEF 28 Align B) Controlos do Align numa moldura própria embaixo à direita do editor de animações; 4 quinas; silhueta da referência POR CIMA; conta-gotas «Pick»; botões com ícone e nome centrados; Previous/Reference apagados até ligar o Align. **Filtro de pixel nítido NÃO vira padrão das sprites** — já está nas configurações. Handoff: `docs/GameEngineFuncional/handoffs/HANDOFF_CONTINUACAO_2026-11-09_ALIGN_ONDA_B.md` (line/GameEngineFuncional).
+- (09/11, Pixel P14 smoke) **Play NÃO liga a física sozinho — «ainda não»**: o herói só cai com o interruptor Physics ligado antes (ADR-0131). Reperguntar só se o dono reabrir. A luz da cena 26 «comporta-se bem».
+- (09/11, Pixel P14 smoke OK) No EDITOR, o Sprite do motor importado anima e o Pixel Sprite fica parado — **«deixe como está»**; no Play os dois partem do quadro 0 no mesmo tique. Smoke P14 (cenas 26–27) aprovado; próxima onda = P13.

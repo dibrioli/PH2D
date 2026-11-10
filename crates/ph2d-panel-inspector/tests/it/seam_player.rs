@@ -1612,3 +1612,174 @@ fn cada_dobra_do_player_abre_pelo_clique_no_titulo() {
         );
     }
 }
+
+/// ⭐ **A fechar, nenhum campo de uma dobra fica por cima do que sobe** (smoke do dono 10/11): o campo curto
+/// que o fluxo dos cartões guarda «à espera» do vizinho era pintado depois do `finish` da dobra, fora do
+/// recorte, e ficava parado sobre o título seguinte durante a animação.
+#[test]
+fn a_fechar_nenhum_campo_da_dobra_passa_por_cima_do_titulo_seguinte() {
+    use ph2d_a11y::NodeId;
+    use ph2d_editor_core::panel::PanelHostInternal;
+    use ph2d_editor_core::screens::layout::{CenterSplit, ChromeBands, DockSides, HeroLayout};
+    use ph2d_panel_inspector::ids as i;
+    // Cada dobra, as rows de dentro e o título que vem logo abaixo dela.
+    let dobras: [(NodeId, &[NodeId], NodeId); 11] = [
+        (
+            i::INSP_PLAYER_FOLD_WALK_MORE,
+            &[
+                i::INSP_PLAYER_AIR_ACCEL,
+                i::INSP_PLAYER_BRAKE,
+                i::INSP_PLAYER_MAX_SLOPE,
+            ],
+            i::INSP_PLAYER_FOLD_JUMP_MORE,
+        ),
+        (
+            i::INSP_PLAYER_FOLD_JUMP_MORE,
+            &[
+                i::INSP_PLAYER_AIR_JUMP_H,
+                i::INSP_PLAYER_TAKEOFF_G,
+                i::INSP_PLAYER_TAKEOFF_SPEED,
+                i::INSP_PLAYER_PEAK_G,
+                i::INSP_PLAYER_PEAK_SPEED,
+                i::INSP_PLAYER_FALL_G,
+                i::INSP_PLAYER_CUT_G,
+            ],
+            i::INSP_PLAYER_CARD_WALL,
+        ),
+        (
+            i::INSP_PLAYER_CARD_WALL,
+            &[
+                i::INSP_PLAYER_WALL_SLIDE,
+                i::INSP_PLAYER_WALL_JUMP,
+                i::INSP_PLAYER_WALL_PUSH,
+                i::INSP_PLAYER_WALL_LOCK,
+                i::INSP_PLAYER_WALL_GRAB,
+            ],
+            i::INSP_PLAYER_CARD_DASH,
+        ),
+        (
+            i::INSP_PLAYER_CARD_DASH,
+            &[
+                i::INSP_PLAYER_DASH_SPEED,
+                i::INSP_PLAYER_DASH_TIME,
+                i::INSP_PLAYER_DASH_COOL,
+            ],
+            i::INSP_PLAYER_CARD_CROUCH,
+        ),
+        (
+            i::INSP_PLAYER_CARD_CROUCH,
+            &[i::INSP_PLAYER_CROUCH_HEIGHT, i::INSP_PLAYER_CROUCH_SPEED],
+            i::INSP_PLAYER_CARD_SWIM,
+        ),
+        (
+            i::INSP_PLAYER_CARD_SWIM,
+            &[
+                i::INSP_PLAYER_SWIM_SPEED,
+                i::INSP_PLAYER_SWIM_ACCEL,
+                i::INSP_PLAYER_SWIM_ENTER,
+            ],
+            i::INSP_PLAYER_CARD_LEDGE,
+        ),
+        (
+            i::INSP_PLAYER_CARD_LEDGE,
+            &[
+                i::INSP_PLAYER_LEDGE_GRAB,
+                i::INSP_PLAYER_LEDGE_REACH_Y,
+                i::INSP_PLAYER_LEDGE_SPAN,
+                i::INSP_PLAYER_LEDGE_OFFSET_Y,
+                i::INSP_PLAYER_LEDGE_SPEED,
+            ],
+            i::INSP_PLAYER_CARD_GLIDE,
+        ),
+        (
+            i::INSP_PLAYER_CARD_GLIDE,
+            &[i::INSP_PLAYER_GLIDE_FALL],
+            i::INSP_PLAYER_CARD_FORGIVE,
+        ),
+        (
+            i::INSP_PLAYER_CARD_FORGIVE,
+            &[
+                i::INSP_PLAYER_COYOTE,
+                i::INSP_PLAYER_BUFFER,
+                i::INSP_PLAYER_CORNER,
+                i::INSP_PLAYER_CORNER_SAMPLES,
+                i::INSP_PLAYER_CORNER_AHEAD,
+                i::INSP_PLAYER_LIFT,
+            ],
+            i::INSP_PLAYER_CARD_LEG,
+        ),
+        (
+            i::INSP_PLAYER_CARD_LEG,
+            &[
+                i::INSP_PLAYER_FLOAT,
+                i::INSP_PLAYER_CLING,
+                i::INSP_PLAYER_STIFFNESS,
+                i::INSP_PLAYER_DAMPING,
+                i::INSP_PLAYER_FOOT_SAMPLES,
+                i::INSP_PLAYER_FOOT_SPREAD,
+            ],
+            i::INSP_PLAYER_FOLD_ADVANCED,
+        ),
+        (
+            i::INSP_PLAYER_FOLD_ADVANCED,
+            &[i::INSP_PLAYER_MAX_FALL, i::INSP_PLAYER_REACT_SUPPORT],
+            i::INSP_PLAYER_REMOVE,
+        ),
+    ];
+    let janela = Rect::new(0.0, 0.0, 1600.0, 3200.0);
+    let layout = || {
+        HeroLayout::for_viewport_bands(
+            janela,
+            false,
+            ChromeBands::DEFAULT,
+            CenterSplit::None,
+            DockSides::BOTH,
+        )
+    };
+    ph2d_panel_inspector::set_cards_on(true);
+    let mut vistos = 0;
+    let mut falhas = Vec::new();
+    for (dobra, dentro, seguinte) in dobras {
+        let mut host = crate::host_em_metros();
+        host.store_mut()
+            .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_PLAYER_SECTION, false);
+        for id in i::INSP_PLAYER_FOLDS {
+            host.set_collapsed(id, id != dobra);
+        }
+        let mut state = InspectorState::default();
+        set_current_inspector_player(Some(player()));
+        // Aberta e assentada: a dobra lembra a altura do corpo, que é a régua do recorte.
+        let _ = crate::o_cartao_da_fisica::pinta(&mut host, &mut state);
+        for t in [0.75, 0.5, 0.25] {
+            host.set_collapsed(dobra, true);
+            host.store_mut().set_section_open_live(dobra, t);
+            let rects = host.paint_with_layout::<InspectorPanel>(&mut state, layout(), janela);
+            let Some(titulo) = crate::o_cartao_da_fisica::achado(&rects, seguinte) else {
+                falhas.push(format!(
+                    "{dobra:?}: o título seguinte {seguinte:?} não foi pintado"
+                ));
+                continue;
+            };
+            for &id in dentro {
+                let Some(r) = crate::o_cartao_da_fisica::achado(&rects, id) else {
+                    continue;
+                };
+                vistos += 1;
+                if r.y + r.h > titulo.y + 0.5 {
+                    falhas.push(format!(
+                        "{dobra:?} a {t:.2}: o campo {id:?} (fim {:.1}) passa o título seguinte ({:.1})",
+                        r.y + r.h,
+                        titulo.y
+                    ));
+                }
+            }
+        }
+        set_current_inspector_player(None);
+    }
+    ph2d_panel_inspector::set_cards_on(false);
+    assert!(
+        vistos > 0,
+        "a régua não viu campo nenhum: está a ler o sítio errado"
+    );
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}

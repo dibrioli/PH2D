@@ -241,7 +241,9 @@ pub use scrollbar_ids::{
     TAGS_SCROLLBAR_ID, TOKENS_SCROLLBAR_ID, UPSCALE_SCROLLBAR_ID, VECTOR_SCROLLBAR_ID,
     WET_TUNING_SCROLLBAR_ID,
 };
-pub use section_header::body::{SectionFold, folded_gap, has_body as section_has_body};
+pub use section_header::body::{
+    SectionFold, corte_da_dobra, folded_gap, has_body as section_has_body,
+};
 /// ⭐ A geometria e o pintor da PEGA de secção (2026-09-29) — lidos pelo painel que regista o alvo.
 pub use section_header::grip as section_grip;
 pub use section_header::grupo::{group_header_h, paint_group_header};

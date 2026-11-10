@@ -352,6 +352,26 @@ struct Espera {
     w: f32,
     y: f32,
     fim: f32,
+    /// A banda da dobra onde o pedido nasceu: ele é pintado com ela, mesmo depois de a dobra fechar.
+    corte: Option<crate::zones::Rect>,
+}
+
+/// Pinta `f` dentro do recorte `corte` (a banda da dobra em que o pedido nasceu), se houver.
+fn no_corte<R>(
+    scene: &mut VectorScene,
+    hit: &mut HitIndex,
+    corte: Option<crate::zones::Rect>,
+    f: impl FnOnce(&mut VectorScene, &mut HitIndex) -> R,
+) -> R {
+    let Some(b) = corte else {
+        return f(scene, hit);
+    };
+    scene.push_clip(&crate::paint::rect_to_vello(b));
+    hit.push_clip(b);
+    let r = f(scene, hit);
+    hit.pop_clip();
+    scene.pop_layer();
+    r
 }
 
 struct Fluxo {
@@ -384,16 +404,11 @@ pub fn fluir(c: &mut CardCtx<'_>, f: impl FnOnce(&mut CardCtx<'_>) -> f32) -> f3
             }
         }
         marca_spec(c.store, &e.curto);
-        ctx_de_fora(
-            c.scene,
-            c.text_system,
-            c.store,
-            c.hit_index,
-            c.ink,
-            e.x,
-            e.w,
-        )
-        .row_inteira(&[e.curto.celula(&e.curto.segs())], e.y);
+        let (ts, store, ink) = (&mut *c.text_system, c.store, c.ink);
+        no_corte(c.scene, c.hit_index, e.corte, |scene, hit| {
+            ctx_de_fora(scene, ts, store, hit, ink, e.x, e.w)
+                .row_inteira(&[e.curto.celula(&e.curto.segs())], e.y);
+        });
     }
     fim
 }
@@ -424,14 +439,21 @@ fn pede(
         marca_spec(store, &e.curto);
         let mesma_coluna = (e.x - x).abs() < 0.5 && (e.w - w).abs() < 0.5;
         let vizinho = y >= e.fim - 0.5 && y <= e.fim + m::LABEL_TOP + m::FIELD_ROW_GAP;
-        let mut c = ctx_de_fora(scene, ts, store, hit, ink, e.x, e.w);
+        // Só se juntam pedidos da MESMA dobra: o par herda o recorte dela.
+        let mesma_dobra = e.corte == crate::widget::corte_da_dobra();
         let (sa, sb) = (e.curto.segs(), novo.segs());
         let par = [e.curto.celula(&sa), novo.celula(&sb)];
-        if mesma_coluna && vizinho && c.tudo_cabe(&par) {
+        let junta = mesma_coluna
+            && vizinho
+            && mesma_dobra
+            && ctx_de_fora(scene, ts, store, hit, ink, e.x, e.w).tudo_cabe(&par);
+        if junta {
             marca_spec(store, &novo);
-            return Some(c.row_inteira(&par, e.y));
+            return Some(ctx_de_fora(scene, ts, store, hit, ink, e.x, e.w).row_inteira(&par, e.y));
         }
-        c.row_inteira(&par[..1], e.y);
+        no_corte(scene, hit, e.corte, |scene, hit| {
+            ctx_de_fora(scene, ts, store, hit, ink, e.x, e.w).row_inteira(&par[..1], e.y)
+        });
     }
     let fim = novo.fundo_sozinho(ts, w, y);
     FLUXO.with(|g| {
@@ -442,6 +464,7 @@ fn pede(
                 w,
                 y,
                 fim,
+                corte: crate::widget::corte_da_dobra(),
             });
         }
     });

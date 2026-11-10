@@ -49,6 +49,20 @@ const FULL: f32 = 0.999; // LITERAL-PX-OK: epsilon sobre um `t` NORMALIZADO, nã
 /// Abaixo disto a secção conta como FECHADA e parada: nada é pintado.
 const SHUT: f32 = 0.001; // LITERAL-PX-OK: epsilon sobre um `t` NORMALIZADO, não medida de design
 
+thread_local! {
+    /// As bandas das dobras a animar, de fora para dentro (a de dentro é a última).
+    static CORTES: core::cell::RefCell<Vec<Rect>> = const { core::cell::RefCell::new(Vec::new()) };
+}
+
+/// ⭐ **O recorte da dobra mais de dentro que está a animar**, ou `None`. O campo curto que o fluxo
+/// dos cartões guarda «à espera» do vizinho é pintado DEPOIS do `finish` desta dobra; sem levar o
+/// recorte consigo ele escapava à banda e, a fechar, ficava parado por cima das secções que sobem
+/// (smoke do dono 10/11, Platform Player).
+#[must_use]
+pub fn corte_da_dobra() -> Option<Rect> {
+    CORTES.with(|c| c.borrow().last().copied())
+}
+
 /// **O escopo da dobra do corpo de UMA secção.** Ver o módulo para o desenho.
 ///
 /// ⚠️ `#[must_use]` e um `Drop` que grita em debug: quem abre o escopo e não o fecha deixa uma
@@ -130,6 +144,7 @@ impl SectionFold {
                 (band.y + band.h) as f64,
             ));
             hit_index.push_clip(band);
+            CORTES.with(|c| c.borrow_mut().push(band));
         }
         Some(Self {
             id,
@@ -165,6 +180,7 @@ impl SectionFold {
         if self.clipped {
             scene.pop_layer();
             hit_index.pop_clip();
+            CORTES.with(|c| c.borrow_mut().pop());
         }
         let measured = (cur_y - self.body_top).max(0.0);
         store.remember_section_body_h(self.id, measured);

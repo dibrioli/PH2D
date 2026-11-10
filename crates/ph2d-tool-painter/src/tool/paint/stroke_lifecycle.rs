@@ -59,6 +59,8 @@ impl PainterTool {
         // Pinceladas sobrepostas (W16): o grupo inteiro é UM passo, aberto no primeiro pen-down.
         let sozinho = self.paint.tracos_fora == 0;
         if sozinho {
+            // B16.3: o meio (aguada ou não) decide-se aqui e vale até ao pen-up do grupo.
+            self.paint.aguada_do_traco = Some(self.paint.brush.watercolor);
             self.begin_undo_step();
             if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
                 if self.paint.wetpaint.session.is_none() {
@@ -597,6 +599,7 @@ impl PainterTool {
         // ⚠️ NOT the protection epoch: it outlives the stroke on purpose, so the next stroke through the
         // same protection converges on `keep` instead of eroding past it (§13.13).
         self.paint.stroke = None;
+        self.paint.aguada_do_traco = None; // B16.3: o interruptor volta a valer
         // ⭐ A pilha morre com o traço — o `pre` é uma tela inteira, e segurá-la depois do pen-up
         // custaria `w·h·4` bytes por gesto sem ninguém a ler.
         self.paint.pilha.fecha();

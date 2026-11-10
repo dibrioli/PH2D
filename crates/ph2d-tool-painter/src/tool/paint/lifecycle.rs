@@ -24,6 +24,7 @@ impl PainterTool {
         self.discard_open_shape(); // Curve / Ellipse / Line / Polygon point editors
         self.abandon_pending_fill(); // Fill ColorDrop: fill_seed / fill_snapshot / fill_last_rect
         self.paint.stroke = None; // an in-progress brush stroke (mid-gesture rebind)
+        self.paint.aguada_do_traco = None; // B16.3: o meio desse traço morre com ele
         self.paint.stroke_undo = None; // its pending undo snapshot (of the OLD document)
         self.paint.dual.abandona_o_traco(); // a máscara da 2.ª ponta (33 MB a 4K) é da tela velha (B02.4)
         self.paint.drag_preview = None; // Drag-Dot restore record — holds OLD-canvas pixels

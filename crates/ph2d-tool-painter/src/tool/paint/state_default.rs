@@ -333,6 +333,7 @@ impl Default for PaintState {
             wet_shape_active: false,
             wet_session_base: None,
             wet_session_canvas: None,
+            aguada_do_traco: None,
             wet_editable_base: None,
             wet_editable_backdrop: None,
             wet_editable_region: None,

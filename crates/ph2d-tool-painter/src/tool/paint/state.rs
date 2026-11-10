@@ -532,6 +532,9 @@ pub(crate) struct PaintState {
     /// foreign mutation (undo, layer switch, fill, resize, other tools) swaps the canvas Arc, so a
     /// failed `Arc::ptr_eq` at pen-down ends the session — no per-site invalidation hooks needed.
     pub(super) wet_session_canvas: Option<Arc<Vec<u8>>>,
+    /// B16.3 (BUGS #13): o interruptor da aguada no pen-down do grupo de traços; enquanto o grupo
+    /// está aberto, [`PainterTool::watercolor_render_active`] lê ESTE, não o pincel. `None` = sem traço.
+    pub(super) aguada_do_traco: Option<bool>,
     /// **Live-editable wash** (Enio 2026-07-11): the LAST committed wash stays re-renderable while the
     /// paper is still wet (until the next stroke or Dry), so changing a Grain/Paper texture param
     /// (Size/Angle/Offset/kind/…) re-renders the whole wash — central AND every Tiling copy — instead of

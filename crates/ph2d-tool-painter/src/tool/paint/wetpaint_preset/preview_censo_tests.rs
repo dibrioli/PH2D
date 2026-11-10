@@ -181,6 +181,7 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("stroke_water", SESSAO),
     ("wet_session_base", SESSAO),
     ("wet_session_canvas", SESSAO),
+    ("aguada_do_traco", TRACO),
     ("wet_editable_base", SESSAO),
     ("wet_editable_backdrop", SESSAO),
     ("wet_editable_region", SESSAO),

@@ -218,6 +218,7 @@ pub(crate) const PARTILHADO: &[&str] = &[
     "stroke_water",
     "wet_session_base",
     "wet_session_canvas",
+    "aguada_do_traco",
     "wet_editable_base",
     "wet_editable_backdrop",
     "wet_editable_region",

@@ -21,7 +21,9 @@ impl PainterTool {
     /// plain brush (the whole path is skipped, deposit + composite alike). Split from `watercolor_render`
     /// (workspace LOC cap); the gate on the render path lives with the per-pixel terms it guards.
     pub(in crate::tool) fn watercolor_render_active(&self) -> bool {
-        self.paint.brush.watercolor
+        self.paint
+            .aguada_do_traco
+            .unwrap_or(self.paint.brush.watercolor)
             && matches!(self.paint.paint_mode, PaintMode::Paint)
             && !self.paint.eraser
     }

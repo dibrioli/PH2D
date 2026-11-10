@@ -267,6 +267,7 @@ mod texture_and_tiling;
 mod watercolor_agua_capsula; // o Rewet com o Continuous não lê fora da caixa da água (23/10)
 mod watercolor_arrasto_molhado; // o Smudge arrasta a tinta MOLHADA da sessão (2026-09-29)
 mod watercolor_flow; // o Ragged Edge com FLUXO e PAPEL (BUGS #31, 2026-10-02)
+mod watercolor_liga_a_meio; // B16.3 (BUGS #13): ligar a aguada com a caneta em baixo
 mod watercolor_look;
 mod watercolor_mistura_molhada; // o Pigment mistura molhado sobre molhado, e nunca com o papel (2026-09-24)
 mod watercolor_papel_nos_vales; // o Tooth e a granulação assentam nos vales (BUGS #30, 2026-10-02)

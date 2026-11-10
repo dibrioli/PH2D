@@ -285,11 +285,6 @@ pub(crate) fn tip_reach(r: f32) -> f32 {
     r + TIP_GAP + TIP.1
 }
 
-/// A meia altura da seta de uma metade (fracção da altura).
-pub(crate) const fn pad_tip_h() -> f32 {
-    TIP.1
-}
-
 /// Os alvos do comando. As metades de manche são as quatro setas à volta de cada anel.
 pub(crate) fn pad() -> Vec<PadPart> {
     use GamepadAxis as A;

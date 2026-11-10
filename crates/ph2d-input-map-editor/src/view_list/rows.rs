@@ -15,7 +15,7 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
 
-use super::{foot, footer, ring, text};
+use super::{foot, footer, text};
 use crate::doc::InputMapDoc;
 use crate::ids::{self, ListHit};
 use crate::interact::{Control, ControlRole};

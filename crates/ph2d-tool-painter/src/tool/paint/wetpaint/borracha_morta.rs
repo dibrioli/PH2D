@@ -231,6 +231,7 @@ impl PainterTool {
             w: esc.w() as u32,
             h: esc.h() as u32,
         };
+        let antes = super::relevo_da_borracha::alfa_na_caixa(&self.canvas_rgba, esc, tam.0);
         let tela = crate::tool::paint::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
@@ -238,8 +239,12 @@ impl PainterTool {
             Some(regiao),
         );
         escreve_o_sulco(sulco, caixa, tam, parede, forca, tela, &|_| (1.0, 0.0));
+        let razao = super::relevo_da_borracha::razao_do_alfa(&antes, tela, esc, tam.0);
         self.declare_wrote(Some(regiao));
         self.mark_dirty(regiao);
+        if let Some(r) = razao {
+            self.relevo_segue_o_alfa(esc, &r);
+        }
     }
 }
 

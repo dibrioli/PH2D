@@ -3,6 +3,7 @@
 //! como a do Composite ([`Self::aplica_borracha_do_traco`]); o undo devolve a base pela chave do passo (`undo_vivo`).
 
 use super::borracha_morta::{Caixa, Sulco, caixa_de_escrita, escreve_o_sulco, parede_dos_dabs};
+use super::relevo_da_borracha::{alfa_na_caixa, razao_do_alfa};
 use super::*;
 use crate::tool::paint::region::dabs_bounds;
 
@@ -129,8 +130,16 @@ impl PainterTool {
         if let Some(s) = sulco.as_mut() {
             s.acumula(&plano, dabs, caixa, tam.0);
         }
+        let mut relevo = None;
         if linhas().any(|i| sess.base[i + 3] > 0 && keep(i) < 1.0) {
             let forca = self.forca_do_sulco();
+            let parede = parede_dos_dabs(dabs);
+            let esc = if sulco.is_some() {
+                caixa_de_escrita(caixa, parede, tam)
+            } else {
+                caixa
+            };
+            let antes = alfa_na_caixa(&sess.base, esc, tam.0);
             let base = Arc::make_mut(&mut sess.base);
             if sulco.is_none() {
                 for i in linhas() {
@@ -141,11 +150,8 @@ impl PainterTool {
                     }
                 }
             }
-            let (mut x0, mut y0, mut x1, mut y1) = (caixa.x0, caixa.y0, caixa.x1, caixa.y1);
+            let (x0, y0, x1, y1) = (esc.x0, esc.y0, esc.x1, esc.y1);
             if let Some(s) = &sulco {
-                let parede = parede_dos_dabs(dabs);
-                let esc = caixa_de_escrita(caixa, parede, tam);
-                (x0, y0, x1, y1) = (esc.x0, esc.y0, esc.x1, esc.y1);
                 let viva = PesoDaViva::novo(s, esc, q, sess.grid);
                 escreve_o_sulco(s, caixa, tam, parede, forca, base, &|p| {
                     // Sem nada na base sob a tinta, não há o que escrever: o óleo vivo sozinho fica ao bit.
@@ -156,6 +162,7 @@ impl PainterTool {
                     (g * (1.0 - v), g * v)
                 });
             }
+            relevo = razao_do_alfa(&antes, &sess.base, esc, tam.0).map(|r| (esc, r));
             let q = q as i32;
             sess.engine.merge_dirty_otica(
                 x0 as i32 / q + 1,
@@ -167,6 +174,9 @@ impl PainterTool {
         self.paint.pilha.escudo = plano;
         self.paint.wetpaint.sulco = sulco;
         self.paint.wetpaint.session = Some(sess);
+        if let Some((esc, razao)) = relevo {
+            self.relevo_segue_o_alfa(esc, &razao);
+        }
     }
 }
 

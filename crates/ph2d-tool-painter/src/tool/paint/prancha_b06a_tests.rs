@@ -54,8 +54,9 @@ fn fundo(w: u32, h: u32, blocos: bool) -> Vec<u8> {
     v
 }
 
-/// O recorte quadrado do centro (lado `h/2`) da imagem iluminada, depois da Borracha.
-fn cena(w: u32, h: u32, qual: u8, antigo: bool) -> (Vec<u8>, u32) {
+/// O recorte quadrado do centro (lado `h/2`) da imagem iluminada, depois da Borracha (`wet`: a do Wet Paint, sobre a
+/// tinta morta).
+fn cena(w: u32, h: u32, qual: u8, antigo: bool, wet: bool) -> (Vec<u8>, u32) {
     let mut t = PainterTool::default();
     if qual == 2 {
         t.agenda_papel_texturizado(7);
@@ -75,6 +76,9 @@ fn cena(w: u32, h: u32, qual: u8, antigo: bool) -> (Vec<u8>, u32) {
     t.paint.brush.radius_px = 28.0 * s;
     t.paint.brush.color = [0.75, 0.2, 0.15];
     risca(&mut t, [cx - l, cy], [cx + l, cy], 40);
+    if wet {
+        media(&mut t, crate::tool::PaintMedia::WetPaint);
+    }
     t.handle_panel_event(PanelEvent::SelectOption(
         ph2d_editor_core::ids::PAINTER_PAINT_MODE,
         "eraser".to_string(),
@@ -105,10 +109,21 @@ fn prancha_b06a_a_borracha_leva_o_corpo() {
         "/../../docs/Painter/missao_4k/pranchas/B06a"
     );
     std::fs::create_dir_all(dir).expect("pasta");
+    let so_wet = std::env::var_os("PH2D_PRANCHA_SO_WET").is_some();
     for (w, h, res) in [(1920u32, 1080u32, "1080p"), (3840, 2160, "4k")] {
-        for (qual, nome) in [(0u8, "branco"), (1, "blocos"), (2, "papel")] {
-            let (a, lado) = cena(w, h, qual, true);
-            let (d, _) = cena(w, h, qual, false);
+        for (qual, nome, wet) in [
+            (0u8, "branco", false),
+            (1, "blocos", false),
+            (2, "papel", false),
+            (0, "wet_branco", true),
+            (1, "wet_blocos", true),
+            (2, "wet_papel", true),
+        ] {
+            if so_wet && !wet {
+                continue;
+            }
+            let (a, lado) = cena(w, h, qual, true, wet);
+            let (d, _) = cena(w, h, qual, false, wet);
             let gap = 8u32;
             let larg = lado * 2 + gap;
             let mut par = image::RgbaImage::from_pixel(larg, lado, image::Rgba([40, 40, 40, 255]));

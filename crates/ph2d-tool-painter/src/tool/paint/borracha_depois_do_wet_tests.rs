@@ -393,29 +393,51 @@ fn corpo_em(t: &PainterTool) -> (f64, f64) {
 /// sem Wet (105,97 → 105,97 sob tinta 0,0). O relevo segue a CAMADA, não o pincel.
 #[test]
 fn a_borracha_do_trilho_apaga_o_corpo_do_impasto() {
-    corpo_sob_a_borracha(false, 1);
+    corpo_sob_a_borracha(Wet::Sem, 1);
 }
 
-/// B06.1 no Wet: a Borracha apaga a `base` pela lei gradual (`borracha_na_base`), que não leva o relevo.
+/// B06.1 no Wet: a Borracha apaga a `base` (viva) ou a tela (morta) pela lei gradual, e o relevo segue o alfa
+/// (`relevo_da_borracha`). Red visto: altura 105,97 → 105,97 e cobertura 42 760 → 42 760 sob a tinta apagada.
 #[test]
-#[ignore = "B06.1 Wet aberto: o relevo não segue a lei gradual da base"]
-fn sonda_o_corpo_sob_a_borracha_no_wet() {
-    corpo_sob_a_borracha(true, 5);
+fn a_borracha_do_wet_apaga_o_corpo_do_impasto() {
+    corpo_sob_a_borracha(Wet::Viva, 5);
 }
 
-fn corpo_sob_a_borracha(com_wet: bool, vezes: usize) {
+/// O mesmo na tinta morta (Wet sem sessão, `borracha_morta`).
+#[test]
+fn a_borracha_da_tinta_morta_apaga_o_corpo_do_impasto() {
+    corpo_sob_a_borracha(Wet::Morta, 5);
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Wet {
+    Sem,
+    Viva,
+    Morta,
+}
+
+fn corpo_sob_a_borracha(wet: Wet, vezes: usize) {
     {
         let mut m = Mesa::nova();
         m.meio(PaintMedia::Impasto);
         m.pinta(40.0);
         let (h0, c0) = corpo_em(&m.t);
         assert!(h0 > 10.0 && c0 > 100.0, "fixture: corpo ({h0:.2}, {c0:.0})");
-        if com_wet {
+        if wet != Wet::Sem {
             m.meio(PaintMedia::WetPaint);
+        }
+        if wet == Wet::Viva {
             m.pinta(90.0);
             m.quadros(20);
         }
         m.trilho("eraser");
+        if wet == Wet::Morta {
+            assert!(
+                m.t.borracha_morta_assume(),
+                "fixture: a Borracha da tinta morta"
+            );
+        }
+        let com_wet = wet;
         assert!(
             !m.t.paint.brush.impasto,
             "fixture: a Borracha do trilho sem Impasto"
@@ -426,12 +448,58 @@ fn corpo_sob_a_borracha(com_wet: bool, vezes: usize) {
         let tinta = tinta_em(&m.t.canvas_rgba, VELHO);
         assert!(
             tinta < 1.0,
-            "Wet {com_wet}: CONTROLO, a cor saiu ({tinta:.1})"
+            "Wet {com_wet:?}: CONTROLO, a cor saiu ({tinta:.1})"
         );
         let (h1, c1) = corpo_em(&m.t);
         assert!(
             h1 <= h0 * 0.01 && c1 <= c0 * 0.01,
-            "Wet {com_wet}: a tinta saiu e o corpo ficou: altura {h0:.2} → {h1:.2}, cobertura {c0:.0} → {c1:.0}"
+            "Wet {com_wet:?}: a tinta saiu e o corpo ficou: altura {h0:.2} → {h1:.2}, cobertura {c0:.0} → {c1:.0}"
+        );
+    }
+}
+
+/// Os planos de relevo da camada activa, inteiros.
+fn relevo_de(t: &PainterTool) -> (Vec<f32>, Vec<u8>) {
+    let l = t.layers.active().expect("camada activa");
+    (
+        t.heights.get(&l).map(|p| p.to_vec()).unwrap_or_default(),
+        t.covers.get(&l).map(|p| p.to_vec()).unwrap_or_default(),
+    )
+}
+
+/// O Ctrl+Z do passo vivo (e da tinta morta) devolve o relevo que a Borracha do Wet levou, e o refazer leva-o outra vez.
+#[test]
+fn desfazer_a_borracha_do_wet_devolve_o_corpo() {
+    for wet in [Wet::Viva, Wet::Morta] {
+        let mut m = Mesa::nova();
+        m.meio(PaintMedia::Impasto);
+        m.pinta(40.0);
+        m.meio(PaintMedia::WetPaint);
+        if wet == Wet::Viva {
+            m.pinta(90.0);
+            m.quadros(20);
+        }
+        let (antes, h0) = (relevo_de(&m.t), corpo_em(&m.t).0);
+        m.trilho("eraser");
+        m.t.paint.brush.radius_px = 10.0;
+        m.t.paint.brush.strength = 1.0;
+        m.risca([64.0, 20.0], [64.0, 108.0], 44);
+        let (apagado, h1) = (relevo_de(&m.t), corpo_em(&m.t).0);
+        assert!(
+            h1 < h0 * 0.9,
+            "{wet:?}: a Borracha levou o corpo ({h0:.2} → {h1:.2})"
+        );
+        assert!(m.t.undo_last(), "{wet:?}: desfez");
+        m.quadros(2);
+        assert!(
+            relevo_de(&m.t) == antes,
+            "{wet:?}: o Ctrl+Z devolve o corpo"
+        );
+        assert!(m.t.redo_last(), "{wet:?}: refez");
+        m.quadros(2);
+        assert!(
+            relevo_de(&m.t) == apagado,
+            "{wet:?}: o refazer leva-o outra vez"
         );
     }
 }

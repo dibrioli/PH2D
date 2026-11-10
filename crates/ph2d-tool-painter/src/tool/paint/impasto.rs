@@ -633,8 +633,9 @@ impl PainterTool {
 #[path = "prancha_b06a_tests.rs"]
 mod prancha_b06a_tests;
 
-/// B06.1: apagar segue a camada; o teste da prancha liga o caminho antigo (seguia o pincel).
-fn apagar_segue_a_camada() -> bool {
+/// B06.1: apagar segue a camada (aqui e na Borracha do Wet, `wetpaint/relevo_da_borracha.rs`); o teste da prancha
+/// liga o caminho antigo (seguia o pincel).
+pub(super) fn apagar_segue_a_camada() -> bool {
     #[cfg(test)]
     if prancha_b06a_tests::pelo_pincel() {
         return false;

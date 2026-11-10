@@ -475,6 +475,7 @@ mod opcoes_tests; // as opções da W1g: desligadas = o traço de hoje ao byte
 mod pastel_seco_tests; // o Soft Pastel não se mexe depois do traço e não depende da altura (prompt 35)
 #[cfg(test)]
 mod queda_na_ladeira_tests; // smoke do dono 30/10: a queda na ladeira do óleo pela diluição e com o Real Oil
+mod relevo_da_borracha; // o relevo segue o alfa que a Borracha do Wet deixa (B06.1)
 #[cfg(test)]
 mod remolha_tests; // J10 (dono 30/10): a aguada re-molha o óleo solúvel (Re-wet × Solubility)
 #[cfg(test)]

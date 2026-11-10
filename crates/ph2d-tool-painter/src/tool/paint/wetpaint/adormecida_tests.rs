@@ -124,6 +124,7 @@ const PASSADAS_ATE_O_PAPEL: usize = 8;
 fn a_borracha_leva_o_traco_e_o_oleo_juntos() {
     let vermelho = |p: &[u8]| p[0] > 150 && p[1] < 90 && p[3] > 40;
     let azul = |p: &[u8]| p[2] > 120 && p[0] < 110 && p[3] > 40;
+    let mut alfa_digital: Option<Vec<[u8; 4]>> = None;
     for meio in OUTROS {
         let mut t = com_oleo();
         t.set_paint_media(meio);
@@ -157,7 +158,23 @@ fn a_borracha_leva_o_traco_e_o_oleo_juntos() {
         let resto = rasto(&r);
         let v = resto.iter().filter(|c| vermelho(&c[..])).count();
         let a = resto.iter().filter(|c| azul(&c[..])).count();
-        assert_eq!((v, a), (0, 0), "{meio:?}: restou tinta no rasto");
+        let alfa = rasto(&t.paint.wetpaint.session.as_ref().expect("sessão").base);
+        if matches!(meio, PaintMedia::Impasto) {
+            // O vermelho mostrado sob o Impasto passa pela luz do relevo, que agora segue o alfa (B06.1): a mesma
+            // tinta que no Digital (alfa ao bit, medido) lia-se «vermelha» por 1 nível (G 89 × 90). Mede-se a tinta.
+            let dig = alfa_digital.as_ref().expect("o Digital vem antes");
+            let d = alfa.iter().zip(dig).map(|(p, q)| p[3].abs_diff(q[3])).max();
+            assert!(
+                d <= Some(2),
+                "Impasto: o rasto fica com a tinta do Digital (Δα {d:?})"
+            );
+            assert_eq!(a, 0, "Impasto: restou azul no rasto");
+        } else {
+            assert_eq!((v, a), (0, 0), "{meio:?}: restou tinta no rasto");
+        }
+        if matches!(meio, PaintMedia::Digital) {
+            alfa_digital = Some(alfa);
+        }
     }
 }
 

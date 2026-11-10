@@ -1,22 +1,4 @@
 //! Display gates — **what the artist SEES is what the tool painted** (phase D, 2026-07-15).
-//!
-//! Enio's 2026-07-14 smoke reported two display bugs with impasto on screen: (a) the **Anchored**
-//! method's relief vanishes at pen-up, (b) a **jittered** stroke's relief comes out stretched. The
-//! tool was proven innocent the same day (its own gate holds the pen-up frame byte-equal to a full
-//! recompose, *inside* the tool). So the defect — if it is reachable without a window — lives in
-//! the seam these tests own: the shell's preview drain → upload plan → slot texture, the bytes the
-//! sprite shader actually samples.
-//!
-//! Everything here is the REAL pipeline: the real `PainterTool` under the smoke's arming, the real
-//! drain (`take_preview_arc` / `take_preview_upload_bbox`), the real decision ([`plan_upload`]),
-//! the real gather ([`extract_region`]) and the real `premultiply_rgba8`. The only substitution is
-//! the wgpu copy at the very end, modelled as what a texture upload is — a byte copy into an array
-//! ([`Screen::frame`]). That is not a mirror of the product; it is the product minus the driver.
-//!
-//! The oracle models the APPEARANCE, never the mechanism: after any frame, the slot's bytes must
-//! equal the premultiplied composite the tool just claimed; after a whole gesture, they must equal
-//! a from-scratch recompose of the document. Anything the protocol drops, misplaces or staleness
-//! leaks — vanished relief, displaced patch rects, missed settle frames — is a byte diff here.
 
 use crate::painter_bridge_upload::{UploadPlan, extract_region, plan_upload};
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
@@ -39,8 +21,6 @@ pub(super) fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
 }
 
 /// A white canvas + the impasto smoke's exact arming (`impasto_smoke::arm_brush_once`: size 40,
-/// impasto ON, everything else the shipped default) — the brush in Enio's hand when he saw both
-/// symptoms.
 pub(super) fn impasto_tool(size: u32) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
@@ -50,8 +30,6 @@ pub(super) fn impasto_tool(size: u32) -> PainterTool {
 }
 
 /// The screen's half of the CPU preview lane, run exactly as `painter_bridge::dispatch` runs it
-/// each frame: drain if dirty (a clean frame keeps the previous cache), plan, apply the plan to
-/// the slot bytes, update the bookkeeping.
 struct Screen {
     cache: Option<PainterPreview>,
     gpu: Option<PainterPreviewGpu>,
@@ -61,9 +39,6 @@ struct Screen {
     /// The content version last drained (an idle frame reads the same one → the plan Skips).
     version: u64,
     /// The tool's composite for the last drained frame, kept WHOLE and INDEPENDENT of the shell's
-    /// mirror — the oracle. `assert_shows_the_cache` compares the slot against this, so a bug in
-    /// `own_preview_buffer`'s region patch (the shell's mirror diverging from the tool's composite)
-    /// shows up as a mismatch instead of hiding behind a slot derived from the same mirror.
     truth: Option<Vec<u8>>,
 }
 
@@ -89,8 +64,6 @@ impl Screen {
             // consumed by the shell buffer helper.
             self.truth = Some((*drained).clone());
             // The shell's OWN buffer — the REAL function, driven exactly as `dispatch` drives it. It
-            // patches the dirty region into the prior buffer (or seeds a fresh one) and drops
-            // `drained`, so the tool is left the sole owner of its canvas.
             let mirror = crate::painter_bridge_upload::own_preview_buffer(
                 self.cache.take(),
                 ENTITY,
@@ -167,14 +140,9 @@ impl Screen {
     }
 
     /// The pair oracle: the slot must hold exactly the premultiplied form of the composite the
-    /// tool most recently handed the bridge. On a Full frame that is trivially the upload; on a
-    /// Partial frame it additionally asserts the *untouched* slot pixels still match — i.e. the
-    /// tool's dirty bbox really covered everything that changed, lighting included.
     fn assert_shows_the_cache(&self, ctx: &str) {
         let preview = self.cache.as_ref().expect("a drained composite");
         // Compare against the INDEPENDENT truth (the tool's composite), not the shell's mirror the
-        // slot was patched from — so a region-patch bug in `own_preview_buffer` can't hide behind a
-        // slot and mirror that agree with each other while both diverge from what the tool produced.
         let mut expected = self.truth.clone().expect("a drained composite");
         premultiply_rgba8(&mut expected);
         assert_screen_equals(self.shown(), &expected, preview.width, ctx);
@@ -182,10 +150,6 @@ impl Screen {
 }
 
 /// What the artist SHOULD be seeing: the document composited from scratch (the public structural
-/// door forces the full lane — re-setting the active layer's opacity to its CURRENT value is a
-/// byte-neutral `invalidate_composite`; reading it first matters, or the oracle would silently
-/// EDIT a half-opacity layer to 1.0 and compare the screen against a different document — it did,
-/// for one red run of the handoff gate), premultiplied the way the upload premultiplies.
 pub(super) fn screen_truth(painter: &mut PainterTool) -> Vec<u8> {
     let active = painter.layers().active().expect("a layer");
     let current = painter
@@ -228,14 +192,6 @@ pub(super) fn assert_screen_equals(shown: &[u8], truth: &[u8], width: u32, ctx: 
 }
 
 /// **D(a) — the Anchored stroke's relief must still be on screen after pen-up.**
-///
-/// The symptom (Enio, live app): drag with the Anchored method — the drag sizes one disc from the
-/// press point — and the lit relief is there; lift the pen and it vanishes. The tool keeps it (its
-/// own pen-up gate, `impasto_smoothing_settles_every_stroke_...`, holds the post-up frame equal to
-/// a full recompose). Here the SAME gesture runs through the shell's drain → plan → slot protocol,
-/// frame by frame at the app's cadence, and the slot is held to the from-scratch truth after the
-/// up — plus one idle frame, because a one-frame lag is invisible but a slot nobody updates again
-/// IS the bug.
 #[test]
 fn the_screen_shows_the_anchored_strokes_relief_after_pen_up() {
     let size = 240u32;
@@ -271,11 +227,6 @@ fn the_screen_shows_the_anchored_strokes_relief_after_pen_up() {
 }
 
 /// **The relief the screen shows is LIT relief — the presence sibling.**
-///
-/// Every equality above is vacuous if the composite never carried shading in the first place (an
-/// unlit pipeline agrees with an unlit truth). So: the same committed Anchored stroke must render
-/// DIFFERENTLY with the light pass on vs off. This is the anti-vacuity anchor for the whole file
-/// ([[feedback_absence_gate_needs_a_presence_sibling]]).
 #[test]
 fn the_anchored_strokes_screen_pixels_carry_the_light() {
     let size = 240u32;
@@ -303,15 +254,6 @@ fn the_anchored_strokes_screen_pixels_carry_the_light() {
 }
 
 /// **D(b) — a jittered stroke's screen must track the tool frame by frame.**
-///
-/// The symptom (Enio, live app): with per-dab Jitter armed the relief comes out stretched. Jitter
-/// Scale + Rotate churn small, scattered rects all along the stroke — the heaviest client of the
-/// B.1 partial-upload lane. A patch rect that is displaced, undersized, or that misses pixels the
-/// LIGHT changed (shading reaches past the stamped bbox: the normal reads neighbours) leaves stale
-/// bytes standing next to fresh ones — which on a relief reads exactly as smearing/stretching.
-/// The pair oracle after every frame holds every slot byte, patched and untouched alike, to the
-/// composite the tool just handed over; the end oracle holds the final screen to a from-scratch
-/// recompose.
 #[test]
 fn the_screen_tracks_the_tool_through_a_jittered_stroke_frame_by_frame() {
     let size = 240u32;
@@ -341,14 +283,6 @@ fn the_screen_tracks_the_tool_through_a_jittered_stroke_frame_by_frame() {
 }
 
 /// **Every stroke method's screen survives its own commit path — the table.**
-///
-/// The tool's pen-up bug lived in the paths nobody connected (the five shape methods never
-/// committed), and its gate is a table over all ten methods for exactly that reason. The screen's
-/// gate takes the same shape: for every method, the same drain-per-event cadence, the pair oracle
-/// on every frame and the from-scratch truth at the end — through pen-up for the freehand five,
-/// and through the OPEN shape for the editor five (an open shape is a live preview with an Apply
-/// button; the screen must show it too). A method whose commit forgets to tell the preview — or
-/// tells it with a bbox smaller than what the settle re-lit — goes red here by name.
 #[test]
 fn the_screen_tracks_every_stroke_method_through_its_commit() {
     let size = 240u32;
@@ -397,9 +331,6 @@ fn the_screen_tracks_every_stroke_method_through_its_commit() {
 }
 
 /// Deposit two thick ridges (relief for the spatula to work), then enter **Sculpt** — the actual
-/// context of the 2026-07-14 smoke: both display symptoms were reported while SCULPTING, and the
-/// sculpt's commit path (`sculpt_session`, per-stroke law, settle-at-up) is entirely different
-/// plumbing from the deposit's. Every event is followed by a frame, at the app's cadence.
 fn sculpted_setup(size: u32, screen: &mut Screen) -> PainterTool {
     let mut t = impasto_tool(size);
     screen.frame(&mut t);
@@ -420,10 +351,6 @@ fn sculpted_setup(size: u32, screen: &mut Screen) -> PainterTool {
 }
 
 /// **D(a), in the smoke's own context: a SCULPT stroke through the Anchored method must still be
-/// on screen after pen-up.** The sculpt re-renders from a frozen `pre` and commits at the up — a
-/// commit that swaps buffers without touching a pixel of pigment is exactly the shape of bug that
-/// leaves the tool's buffers right and the screen stale (the tool's own 19601 lesson, one path
-/// over). Frame-per-event cadence; pair oracle mid-gesture; from-scratch truth after the up.
 #[test]
 fn the_screen_shows_the_sculpted_relief_after_an_anchored_pen_up() {
     let size = 240u32;
@@ -454,9 +381,6 @@ fn the_screen_shows_the_sculpted_relief_after_an_anchored_pen_up() {
 }
 
 /// **D(b), in the smoke's own context: a JITTERED sculpt tracks the tool frame by frame.** Jitter
-/// Scale/Rotate on the spatula churns the same scattered small rects as on the brush, but through
-/// the sculpt's own render (memo tiles + light). Any patch displaced or under-covering what the
-/// light re-shaded reads as smeared/stretched relief on screen.
 #[test]
 fn the_screen_tracks_a_jittered_sculpt_frame_by_frame() {
     let size = 240u32;
@@ -488,8 +412,6 @@ fn the_screen_tracks_a_jittered_sculpt_frame_by_frame() {
 }
 
 /// **The plan itself refuses the stale-skip and the mismatched patch** — the two protocol
-/// mutations that would silently freeze or misplace the screen. Pure-decision checks (no tool):
-/// a newer content version must never plan `Skip`; a dims change must never plan `Partial`.
 #[test]
 fn the_upload_plan_never_skips_a_new_composite_nor_patches_a_mismatched_slot() {
     let rgba = Arc::new(vec![0u8; 16 * 16 * 4]);
@@ -508,8 +430,6 @@ fn the_upload_plan_never_skips_a_new_composite_nor_patches_a_mismatched_slot() {
         entity_bits: ENTITY,
     };
     // Same version → Skip (the idle-frame no-op). The buffer's pointer is irrelevant now — the shell
-    // patches its mirror in place, so the pointer never changes even as the pixels do; only the
-    // version says whether the content moved.
     assert_eq!(
         plan_upload(&preview, Some(seeded), None, 1, false),
         UploadPlan::Skip

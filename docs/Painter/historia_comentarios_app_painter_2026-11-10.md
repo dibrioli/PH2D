@@ -1470,3 +1470,239 @@ Comentários históricos tirados do código de `ph2d-app-painter` (catraca the_s
 // perfeitamente e o gate passaria por vácuo — que é exatamente o estado que ele existe para
 // reprovar. O dente TEM de ter acendido alguma coisa.
 ```
+
+## B20.1 — preview tests (verbatim, 2026-11-10)
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 1–19 no original)
+
+```text
+//! Display gates — **what the artist SEES is what the tool painted** (phase D, 2026-07-15).
+//!
+//! Enio's 2026-07-14 smoke reported two display bugs with impasto on screen: (a) the **Anchored**
+//! method's relief vanishes at pen-up, (b) a **jittered** stroke's relief comes out stretched. The
+//! tool was proven innocent the same day (its own gate holds the pen-up frame byte-equal to a full
+//! recompose, *inside* the tool). So the defect — if it is reachable without a window — lives in
+//! the seam these tests own: the shell's preview drain → upload plan → slot texture, the bytes the
+//! sprite shader actually samples.
+//!
+//! Everything here is the REAL pipeline: the real `PainterTool` under the smoke's arming, the real
+//! drain (`take_preview_arc` / `take_preview_upload_bbox`), the real decision ([`plan_upload`]),
+//! the real gather ([`extract_region`]) and the real `premultiply_rgba8`. The only substitution is
+//! the wgpu copy at the very end, modelled as what a texture upload is — a byte copy into an array
+//! ([`Screen::frame`]). That is not a mirror of the product; it is the product minus the driver.
+//!
+//! The oracle models the APPEARANCE, never the mechanism: after any frame, the slot's bytes must
+//! equal the premultiplied composite the tool just claimed; after a whole gesture, they must equal
+//! a from-scratch recompose of the document. Anything the protocol drops, misplaces or staleness
+//! leaks — vanished relief, displaced patch rects, missed settle frames — is a byte diff here.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 41–43 no original)
+
+```text
+/// A white canvas + the impasto smoke's exact arming (`impasto_smoke::arm_brush_once`: size 40,
+/// impasto ON, everything else the shipped default) — the brush in Enio's hand when he saw both
+/// symptoms.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 52–54 no original)
+
+```text
+/// The screen's half of the CPU preview lane, run exactly as `painter_bridge::dispatch` runs it
+/// each frame: drain if dirty (a clean frame keeps the previous cache), plan, apply the plan to
+/// the slot bytes, update the bookkeeping.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 63–66 no original)
+
+```text
+    /// The tool's composite for the last drained frame, kept WHOLE and INDEPENDENT of the shell's
+    /// mirror — the oracle. `assert_shows_the_cache` compares the slot against this, so a bug in
+    /// `own_preview_buffer`'s region patch (the shell's mirror diverging from the tool's composite)
+    /// shows up as a mismatch instead of hiding behind a slot derived from the same mirror.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 91–93 no original)
+
+```text
+            // The shell's OWN buffer — the REAL function, driven exactly as `dispatch` drives it. It
+            // patches the dirty region into the prior buffer (or seeds a fresh one) and drops
+            // `drained`, so the tool is left the sole owner of its canvas.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 169–172 no original)
+
+```text
+    /// The pair oracle: the slot must hold exactly the premultiplied form of the composite the
+    /// tool most recently handed the bridge. On a Full frame that is trivially the upload; on a
+    /// Partial frame it additionally asserts the *untouched* slot pixels still match — i.e. the
+    /// tool's dirty bbox really covered everything that changed, lighting included.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 175–177 no original)
+
+```text
+        // Compare against the INDEPENDENT truth (the tool's composite), not the shell's mirror the
+        // slot was patched from — so a region-patch bug in `own_preview_buffer` can't hide behind a
+        // slot and mirror that agree with each other while both diverge from what the tool produced.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 184–188 no original)
+
+```text
+/// What the artist SHOULD be seeing: the document composited from scratch (the public structural
+/// door forces the full lane — re-setting the active layer's opacity to its CURRENT value is a
+/// byte-neutral `invalidate_composite`; reading it first matters, or the oracle would silently
+/// EDIT a half-opacity layer to 1.0 and compare the screen against a different document — it did,
+/// for one red run of the handoff gate), premultiplied the way the upload premultiplies.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 230–238 no original)
+
+```text
+/// **D(a) — the Anchored stroke's relief must still be on screen after pen-up.**
+///
+/// The symptom (Enio, live app): drag with the Anchored method — the drag sizes one disc from the
+/// press point — and the lit relief is there; lift the pen and it vanishes. The tool keeps it (its
+/// own pen-up gate, `impasto_smoothing_settles_every_stroke_...`, holds the post-up frame equal to
+/// a full recompose). Here the SAME gesture runs through the shell's drain → plan → slot protocol,
+/// frame by frame at the app's cadence, and the slot is held to the from-scratch truth after the
+/// up — plus one idle frame, because a one-frame lag is invisible but a slot nobody updates again
+/// IS the bug.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 273–278 no original)
+
+```text
+/// **The relief the screen shows is LIT relief — the presence sibling.**
+///
+/// Every equality above is vacuous if the composite never carried shading in the first place (an
+/// unlit pipeline agrees with an unlit truth). So: the same committed Anchored stroke must render
+/// DIFFERENTLY with the light pass on vs off. This is the anti-vacuity anchor for the whole file
+/// ([[feedback_absence_gate_needs_a_presence_sibling]]).
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 305–314 no original)
+
+```text
+/// **D(b) — a jittered stroke's screen must track the tool frame by frame.**
+///
+/// The symptom (Enio, live app): with per-dab Jitter armed the relief comes out stretched. Jitter
+/// Scale + Rotate churn small, scattered rects all along the stroke — the heaviest client of the
+/// B.1 partial-upload lane. A patch rect that is displaced, undersized, or that misses pixels the
+/// LIGHT changed (shading reaches past the stamped bbox: the normal reads neighbours) leaves stale
+/// bytes standing next to fresh ones — which on a relief reads exactly as smearing/stretching.
+/// The pair oracle after every frame holds every slot byte, patched and untouched alike, to the
+/// composite the tool just handed over; the end oracle holds the final screen to a from-scratch
+/// recompose.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 343–351 no original)
+
+```text
+/// **Every stroke method's screen survives its own commit path — the table.**
+///
+/// The tool's pen-up bug lived in the paths nobody connected (the five shape methods never
+/// committed), and its gate is a table over all ten methods for exactly that reason. The screen's
+/// gate takes the same shape: for every method, the same drain-per-event cadence, the pair oracle
+/// on every frame and the from-scratch truth at the end — through pen-up for the freehand five,
+/// and through the OPEN shape for the editor five (an open shape is a live preview with an Apply
+/// button; the screen must show it too). A method whose commit forgets to tell the preview — or
+/// tells it with a bbox smaller than what the settle re-lit — goes red here by name.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 399–402 no original)
+
+```text
+/// Deposit two thick ridges (relief for the spatula to work), then enter **Sculpt** — the actual
+/// context of the 2026-07-14 smoke: both display symptoms were reported while SCULPTING, and the
+/// sculpt's commit path (`sculpt_session`, per-stroke law, settle-at-up) is entirely different
+/// plumbing from the deposit's. Every event is followed by a frame, at the app's cadence.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 422–426 no original)
+
+```text
+/// **D(a), in the smoke's own context: a SCULPT stroke through the Anchored method must still be
+/// on screen after pen-up.** The sculpt re-renders from a frozen `pre` and commits at the up — a
+/// commit that swaps buffers without touching a pixel of pigment is exactly the shape of bug that
+/// leaves the tool's buffers right and the screen stale (the tool's own 19601 lesson, one path
+/// over). Frame-per-event cadence; pair oracle mid-gesture; from-scratch truth after the up.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 456–459 no original)
+
+```text
+/// **D(b), in the smoke's own context: a JITTERED sculpt tracks the tool frame by frame.** Jitter
+/// Scale/Rotate on the spatula churns the same scattered small rects as on the brush, but through
+/// the sculpt's own render (memo tiles + light). Any patch displaced or under-covering what the
+/// light re-shaded reads as smeared/stretched relief on screen.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 490–492 no original)
+
+```text
+/// **The plan itself refuses the stale-skip and the mismatched patch** — the two protocol
+/// mutations that would silently freeze or misplace the screen. Pure-decision checks (no tool):
+/// a newer content version must never plan `Skip`; a dims change must never plan `Partial`.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_pipeline_tests.rs` (linhas 510–512 no original)
+
+```text
+    // Same version → Skip (the idle-frame no-op). The buffer's pointer is irrelevant now — the shell
+    // patches its mirror in place, so the pointer never changes even as the pixels do; only the
+    // version says whether the content moved.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_undo_tests.rs` (linhas 1–11 no original)
+
+```text
+//! **O que a tela mostra DEPOIS de um undo** — o report de resquício do smoke `PH2D_IMPASTO_SMOKE=2`.
+//!
+//! Enio, 2026-07-25, com foto: *"UNDO deixa resquícios na tela"* — um retângulo branco, axis-aligned,
+//! recortado no traço perto do cursor. Um retângulo na saída é a impressão digital de trabalho limitado
+//! por REGIÃO, e a pista GPU tem três: o upload por-camada (Onda 5b), o fold do relevo (esta wave) e o
+//! `dirty` que os dois leem.
+//!
+//! Este módulo reproduz a sequência no caminho REAL (o mesmo `app_frame` que o gate de paridade usa:
+//! `try_drive` de verdade, compositor de verdade, passe de luz de verdade, slot de verdade, readback do
+//! device) e confronta o que o produtor GPU mostra com o que o produtor CPU mostraria para o MESMO
+//! documento — o único oráculo que responde à pergunta que o report faz.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_undo_tests.rs` (linhas 20–31 no original)
+
+```text
+/// **Um undo deixa a tela idêntica ao que o outro produtor desenharia.**
+///
+/// A hipótese que este gate testa é a que a foto sugere: o undo troca o canvas INTEIRO
+/// (`restore_model` reinstala `canvas_rgba`, `heights`, `covers`, `mats`), então qualquer upload ou fold
+/// que ainda esteja limitado ao retângulo do último dab mostraria a arte nova dentro dele e a VELHA
+/// fora — um retângulo, exatamente como o da foto.
+///
+/// ⚠️ O fixture tem de conter DOIS traços e desfazer o segundo: desfazer o único traço de um canvas
+/// deixa a tela branca, e branco casa com branco por qualquer caminho errado
+/// ([[feedback_a_fixture_only_proves_what_it_contains]]).
+///
+/// `#[ignore]`: precisa de adapter; rode com `--release --ignored`.
+```
+
+### `crates/ph2d-app-painter/src/painter_preview_undo_tests.rs` (linhas 136–149 no original)
+
+```text
+/// **O produtor devolve o frame para a GPU depois de a CPU ter sido dona — e os planos têm de estar
+/// atuais.** Report do Enio (2026-07-25, smoke 4096²): o retângulo «aparece pintando» e fica até nova
+/// pintura, depois de alternar Digital ↔ Impasto.
+///
+/// Mecanismo (bisseção; cura `gpu_lane_stale`): o `dirty_rect` é compartilhado pelas duas pistas e
+/// consumido por quem drena; enquanto a CPU é dona ela o leva, e no frame em que a GPU retoma o rect
+/// descreve só o ÚLTIMO frame da CPU. Os dois consumidores de `preview_dirty_region` (compositor e fold)
+/// adoeciam juntos. A cura espelha a da Fase D: toda drenagem da CPU levanta `gpu_lane_stale` e a
+/// próxima da GPU o consome declarando não-confinado (`None` = faça inteiro).
+///
+/// Mutação que sangra: `self.gpu_lane_stale = true` → `false` em `take_preview_arc` devolve os 197.172
+/// bytes exatos. O oráculo é o OUTRO produtor (re-derivar o esperado concordaria com o bug).
+///
+/// `#[ignore]`: precisa de adapter; rode com `--release --ignored`.
+```

@@ -47,6 +47,48 @@ pub struct PainterGpuPreview {
     a_entregar: Vec<(u64, u64)>,
     /// B20.A1: a tela `(w, h)` que a placa recusou nesta geração — a CPU produz, sem nova tentativa nem aviso.
     recusou: Option<(u32, u32)>,
+    /// B20.1: as entradas globais (ops, LUTs, papel) do último quadro; mudou uma ⇒ semente inteira.
+    entradas: (Vec<LayerOp>, Vec<f32>, Option<[u8; 3]>),
+    /// B20.1: lâmpadas e papel da última luz (`None` = sem luz); mudou ⇒ a luz reacende a tela inteira.
+    luz: Option<(Vec<ImpastoLamp>, f32)>,
+}
+
+#[cfg(test)]
+thread_local! {
+    /// O caminho antigo (semente inteira em todo quadro), o oráculo de `a_regiao_suja_e_a_tela_inteira_ao_bit`.
+    pub(crate) static SEMPRE_INTEIRA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// B20.1: o retângulo sujo + 1 px, ou `None` = semente inteira (1.º quadro, renasce, a CPU foi dona,
+/// slot de outro tamanho, ou mudou uma entrada global).
+fn regiao_suja(
+    s: Option<&mut PainterGpuPreview>,
+    painter: &PainterTool,
+    (ops, luts): (&[LayerOp], &[f32]),
+    (w, h): (u32, u32),
+    slot: Option<PainterPreviewGpu>,
+) -> Option<(u32, u32, u32, u32)> {
+    let s = s?;
+    let mesmas = s.entradas.0 == ops && s.entradas.1 == luts && s.entradas.2 == painter.papel();
+    s.entradas.0.clear();
+    s.entradas.0.extend_from_slice(ops);
+    s.entradas.1.clear();
+    s.entradas.1.extend_from_slice(luts);
+    s.entradas.2 = painter.papel();
+    #[cfg(test)]
+    if SEMPRE_INTEIRA.get() {
+        return None;
+    }
+    let r = painter.preview_gpu_region()?;
+    let mesmo_slot = slot.is_some_and(|g| (g.width, g.height) == (w, h));
+    (s.dona && mesmas && mesmo_slot).then(|| halo(r, w, h))
+}
+
+/// O retângulo alargado 1 texel para cada lado, preso à tela.
+fn halo((x, y, rw, rh): (u32, u32, u32, u32), w: u32, h: u32) -> (u32, u32, u32, u32) {
+    let (x0, y0) = (x.saturating_sub(1), y.saturating_sub(1));
+    let (x1, y1) = ((x + rw + 1).min(w), (y + rh + 1).min(h));
+    (x0, y0, x1.saturating_sub(x0), y1.saturating_sub(y0))
 }
 
 /// Builds the session BEFORE the first stroke needs it (doc 28 §4.8): its passes compile
@@ -115,6 +157,8 @@ impl PainterGpuPreview {
             entregue: Vec::new(),
             a_entregar: Vec::new(),
             recusou: None,
+            entradas: (Vec::new(), Vec::new(), None),
+            luz: None,
         }
     }
 }
@@ -170,7 +214,13 @@ pub(super) fn try_drive(
     }
     let renasce = session_slot.as_ref().is_some_and(|s| s.geracao != geracao);
     if painter.take_preview_dirty() || renasce {
-        // CPU/hover path: a full recomposite, seeding the whole canvas.
+        let sujo = regiao_suja(
+            session_slot.as_mut().filter(|_| !renasce),
+            painter,
+            (&ops, &adj_luts),
+            (w, h),
+            *painter_preview_gpu,
+        );
         if !drive(
             session_slot,
             renderer,
@@ -180,8 +230,8 @@ pub(super) fn try_drive(
             adj_luts,
             w,
             h,
-            (0, 0, w, h),
-            true,
+            sujo.unwrap_or((0, 0, w, h)),
+            sujo.is_none(),
             painter_preview_gpu,
             toasts,
         ) {
@@ -270,26 +320,28 @@ pub(super) fn drive(
     };
 
     // 1-3) Composite, light, premultiply — everything that turns the layer stack into the bytes the
-    if let Err(e) = compose_light_premul(session, tool, &ops, &adj_luts, width, height, region) {
-        toasts.push(Toast::error(ph2d_i18n::tr_with(
-            "app.painter.painter_gpu_preview.gpu_preview_failed",
-            &[("e", &e)],
-        )));
-        release_slot(renderer, painter_preview_gpu);
-        return false;
-    }
+    let tocada = match compose_light_premul(session, tool, &ops, &adj_luts, width, height, region) {
+        Ok(r) => r,
+        Err(e) => {
+            toasts.push(Toast::error(ph2d_i18n::tr_with(
+                "app.painter.painter_gpu_preview.gpu_preview_failed",
+                &[("e", &e)],
+            )));
+            release_slot(renderer, painter_preview_gpu);
+            return false;
+        }
+    };
 
     // 4) Ensure a right-sized slot, then COPY the premultiplied result in: the whole canvas on a
     let slot = ensure_slot(renderer, painter_preview_gpu, entity_bits, width, height);
     let Some(premul_tex) = session.premul.output_texture() else {
         return false;
     };
-    let copy = if seed_full {
+    let copy = if tocada == Region::full(width, height) {
         renderer.copy_texture_into_individual(slot, premul_tex, width, height)
     } else {
-        renderer.copy_texture_region_into_individual(
-            slot, premul_tex, rect.0, rect.1, rect.0, rect.1, rect.2, rect.3,
-        )
+        let Region { x, y, w, h } = tocada;
+        renderer.copy_texture_region_into_individual(slot, premul_tex, x, y, x, y, w, h)
     };
     if let Err(e) = copy {
         toasts.push(Toast::error(ph2d_i18n::tr_with(
@@ -311,7 +363,7 @@ fn compose_light_premul(
     width: u32,
     height: u32,
     region: Region,
-) -> Result<(), String> {
+) -> Result<Region, String> {
     // 1) GPU composite into the PERSISTENT canvas-sized `out`, writing at canvas
     let mut novas = std::mem::take(&mut session.a_entregar);
     novas.clear();
@@ -358,8 +410,15 @@ fn compose_light_premul(
             plane_win == (0, 0, width, height),
         );
     }
+    let inteira = Region::full(width, height);
+    let mut tocada = region;
     let finished: &wgpu::Texture = match planes {
-        None => comp_out,
+        None => {
+            if session.luz.take().is_some() {
+                tocada = inteira; // a luz apagou-se: o slot tinha a tela acesa
+            }
+            comp_out
+        }
         Some(planes) => {
             let lamps: Vec<ImpastoLamp> = planes
                 .lamps
@@ -370,11 +429,21 @@ fn compose_light_premul(
                     tint: l.tint,
                 })
                 .collect();
+            let mesma_luz = session
+                .luz
+                .as_ref()
+                .is_some_and(|(l, p)| *l == lamps && *p == planes.paper_body);
+            // O relevo de fora da janela do fold não mudou: a luz só muda até 1 texel dela (a diferença central).
+            if region != inteira && plane_win != (0, 0, width, height) && mesma_luz {
+                let (x, y, w, h) = halo((region.x, region.y, region.w, region.h), width, height);
+                tocada = Region { x, y, w, h };
+            } else {
+                tocada = inteira;
+            }
             let input = ImpastoLightInput {
                 width,
                 height,
-                // The WHOLE canvas: the light owns a second persistent canvas, so its freshness
-                region: Region::full(width, height),
+                region: tocada,
                 // …but the PLANES are only the fold's window (the textures persist).
                 plane_region: Region {
                     x: planes.region.0,
@@ -394,6 +463,7 @@ fn compose_light_premul(
             };
             // Falling through UNLIT would silently drop the shading.
             let lit = session.light.run(&session.gpu, comp_out, &input);
+            session.luz = Some((lamps, planes.paper_body));
             session.planos = Some(planes);
             lit.map_err(|e| {
                 ph2d_i18n::tr_with(
@@ -411,7 +481,7 @@ fn compose_light_premul(
         .ok_or(ph2d_i18n::tr(
             "app.painter.painter_gpu_preview.premultiply_produced_no_texture",
         ))?;
-    Ok(())
+    Ok(tocada)
 }
 
 /// Ensure a `width × height` slot (reuse on matching dims, else release + acquire EMPTY);

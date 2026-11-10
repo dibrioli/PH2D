@@ -460,3 +460,55 @@ fn a_falha_da_placa_entrega_o_quadro_a_cpu() {
         );
     }
 }
+
+/// **B20.1 — a região suja (+1 px, e a luz +1 texel) dá o slot da semente inteira, ao bit.** Duas pistas
+/// com o mesmo documento e os mesmos toques: a do caminho antigo (`SEMPRE_INTEIRA`) é o oráculo.
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn a_regiao_suja_e_a_tela_inteira_ao_bit() {
+    use crate::painter_preview_pipeline_tests::{assert_screen_equals, cp, impasto_tool};
+    use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
+    let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
+        return;
+    };
+    for camadas in [1usize, 4] {
+        let pista = || {
+            let mut t = impasto_tool(240);
+            for i in 1..camadas {
+                t.add_raster_layer(format!("c{i}"));
+            }
+            let r = SpriteRenderer::new(
+                gpu.clone(),
+                ph2d_render::GameRt::FORMAT,
+                ph2d_render::TextureAtlas::dummy(&gpu),
+                8,
+            );
+            (t, r, None, None, ToastQueue::default())
+        };
+        let (mut pistas, mut parciais) = ([pista(), pista()], 0);
+        for (y, x0) in [(90.0f32, 40.0f32), (150.0, 60.0), (100.0, 30.0)] {
+            for passo in 0u8..=7 {
+                let fase = match passo {
+                    0 => PointerPhase::Down,
+                    7 => PointerPhase::Up,
+                    _ => PointerPhase::Move,
+                };
+                let mut telas = Vec::new();
+                for (antigo, (t, r, s, g, toasts)) in pistas.iter_mut().enumerate() {
+                    SEMPRE_INTEIRA.set(antigo == 1);
+                    let dona = s.as_ref().is_some_and(|s: &PainterGpuPreview| s.dona);
+                    t.on_canvas_pointer(cp([x0 + 24.0 * f32::from(passo), y], fase));
+                    assert!(try_drive(s, r, t, Some(1), g, toasts), "a placa é dona");
+                    parciais +=
+                        usize::from(antigo == 0 && dona && t.preview_gpu_region().is_some());
+                    let id = g.expect("o slot da placa").texture_id;
+                    telas.push(r.individual().readback(&gpu, id).expect("readback").2);
+                }
+                SEMPRE_INTEIRA.set(false);
+                let ctx = format!("{camadas} camadas, traço y={y}, passo {passo}");
+                assert_screen_equals(&telas[0], &telas[1], 240, &ctx);
+            }
+        }
+        assert!(parciais > 10, "controlo: só {parciais} quadros pela região");
+    }
+}

@@ -232,7 +232,7 @@ fn o_tab_traz_para_a_vista_a_linha_que_o_recorte_escondia() {
 
 /// Hole F5: o F5 é o Play/Stop do editor; com a acção aberta e sem ligações («press one») ele passa ao editor e não
 /// liga, e a mesma acção aceita uma tecla do jogo logo a seguir (o controlo: a porta estava aberta). A escuta
-/// EXPLÍCITA do ladrilho «Listen» é outra lei (a escuta partilhada toma tudo menos Esc e o sistema): não entra aqui.
+/// EXPLÍCITA do ladrilho «Listen» tem o teste irmão logo abaixo.
 #[test]
 fn o_f5_em_press_one_nunca_liga_e_fica_como_tecla_do_editor() {
     let f5 = Key::named_in_script("f5").expect("f5")[0];
@@ -252,4 +252,33 @@ fn o_f5_em_press_one_nunca_liga_e_fica_como_tecla_do_editor() {
         "o controlo: «press one» liga"
     );
     assert_eq!(m.hero.input_map.get(reload).expect("a").bindings.len(), 1);
+}
+
+/// Hole F5 na escuta partilhada: à escuta do ladrilho «Listen», o F5 físico NÃO liga (no Play ele é o transporte e
+/// a ligação nunca chegaria ao jogo) e a escuta continua armada; uma letra a seguir liga (o controlo).
+#[test]
+fn o_f5_sob_a_escuta_do_listen_nao_liga_e_a_escuta_continua() {
+    let f5 = Key::named_in_script("f5").expect("f5")[0];
+    let mut m = Mesa::aberta(View::Keyboard);
+    m.hero.input_map = super::lista::onze();
+    m.frame();
+    let reload = m.hero.input_map.id("reload").expect("reload");
+    m.click(m.at(KbHit::Row(reload).id()));
+    m.click(m.at(KbHit::Listen.id()));
+    assert!(m.hero.store.input_map_listening().is_some(), "à escuta");
+    m.physical(f5);
+    assert!(
+        m.hero.input_map.get(reload).expect("a").bindings.is_empty(),
+        "o F5 ligou-se sob a escuta"
+    );
+    assert!(
+        m.hero.store.input_map_listening().is_some(),
+        "a escuta continua depois do F5"
+    );
+    m.physical(Key(u32::from('J')));
+    assert_eq!(
+        m.hero.input_map.get(reload).expect("a").bindings,
+        vec![ph2d_input::Binding::Key(Key(u32::from('J')))],
+        "o controlo: a letra liga"
+    );
 }

@@ -116,8 +116,13 @@ pub fn capture_if_listening(
     /// O `Esc` no espaço de keycode normalizado do app.
     const ESCAPE: u32 = 0x1B;
     store.input_map_listening()?;
-    // ⛔ Uma tecla do SISTEMA (Windows, Fn, Print Screen) não é capturada: segue, e a aba recusa-a (InputMap W1).
-    if ph2d_input::Key(keycode).system_owned().is_some() {
+    // ⛔ O que a aba nunca liga não é capturado: segue e a escuta continua (InputMap W1/W2b). Uma tecla do SISTEMA,
+    // o F5 (no Play é o transporte: a ligação nunca chegaria ao jogo), Ctrl/Alt e o acorde com o Ctrl em baixo.
+    let held = store
+        .cmd_held()
+        .then(|| ph2d_input::Key::named_in_script("ctrl").unwrap_or_default())
+        .unwrap_or_default();
+    if ph2d_input::editor_keys::never_binds(ph2d_input::Key(keycode), held) {
         return None;
     }
     if keycode == ESCAPE {

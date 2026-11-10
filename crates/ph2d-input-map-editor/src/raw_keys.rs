@@ -4,37 +4,12 @@
 //! `Key` (só como modificador do host), por isso não há o que filtrar aqui. O Shift NÃO entra: sozinho é uma
 //! ligação legítima (correr) e com uma letra é a maiúscula.
 
+//!
+//! A lei mora em [`ph2d_input::editor_keys`], a folha que a escuta partilhada do editor também lê; aqui só se
+//! reexporta, para as vistas continuarem a chamar `raw_keys::never_binds`.
+
 use ph2d_input::Key;
-
-fn named(name: &str) -> Vec<Key> {
-    Key::named_in_script(name).unwrap_or_default()
-}
-
-/// Ctrl ou Alt, de qualquer lado.
-#[must_use]
-pub fn is_modifier(key: Key) -> bool {
-    ["ctrl", "alt"].iter().any(|n| named(n).contains(&key))
-}
-
-/// O F5: o transporte (Play/Stop) do editor.
-#[must_use]
-pub fn is_transport(key: Key) -> bool {
-    named("f5").contains(&key)
-}
-
-/// `true` = o premir é um acorde do editor: a tecla é um modificador, ou há um em `held` (as teclas em baixo; pode
-/// incluir a própria `key`).
-#[must_use]
-pub fn is_chord_or_modifier(key: Key, held: impl IntoIterator<Item = Key>) -> bool {
-    is_modifier(key) || held.into_iter().any(is_modifier)
-}
-
-/// `true` = nunca vira ligação: o acorde ([`is_chord_or_modifier`]), o F5, ou uma tecla do SISTEMA
-/// (Windows, Fn, Print Screen: `Key::system_owned`, plano §13.1 — o jogo nunca as recebe).
-#[must_use]
-pub fn never_binds(key: Key, held: impl IntoIterator<Item = Key>) -> bool {
-    key.system_owned().is_some() || is_transport(key) || is_chord_or_modifier(key, held)
-}
+pub use ph2d_input::editor_keys::{is_chord_or_modifier, is_modifier, is_transport, never_binds};
 
 /// Os modificadores em baixo, para quem não tem um `KeyboardState` (a vista B): só Ctrl/Alt, ordenados.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

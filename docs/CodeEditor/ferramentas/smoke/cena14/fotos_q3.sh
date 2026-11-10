@@ -4,7 +4,9 @@
 # janela. Com `RATO="x y"` o rato real (xdotool) pára ali antes da foto (a dica sobre um traço); com
 # `TECLAS="ctrl+z"` teclas reais (xdotool key) chegam à app depois do rato e antes da foto. Com
 # `ARRASTA="x1 y1 x2 y2"` um arrasto real (carregar em x1 y1, mover a x2 y2 em passos, largar) corre
-# depois do rato e antes das teclas (o divisor da coluna da esquerda, 10/11).
+# depois do rato e antes das teclas (o divisor da coluna da esquerda, 10/11). Com `DUPLO="x y"` um
+# duplo-clique real (dois cliques a 80 ms, sem mover) corre depois do arrasto (o divisor volta à
+# largura de fábrica).
 # Uso (da raiz da worktree, binário `target/smoke` feito):
 #   [CENA=13] bash docs/CodeEditor/ferramentas/smoke/cena14/fotos_q3.sh <passo> <saida.png> [espera_s]
 set -uo pipefail
@@ -46,6 +48,11 @@ if [ -n "${ARRASTA:-}" ]; then
     xdotool mousemove $((AX1 + (AX2 - AX1) * i / 4)) $((AY1 + (AY2 - AY1) * i / 4)); sleep 0.2
   done
   xdotool mouseup 1; sleep 1
+fi
+if [ -n "${DUPLO:-}" ]; then
+  # shellcheck disable=SC2086
+  xdotool mousemove $DUPLO; sleep 0.5
+  xdotool click --repeat 2 --delay 80 1; sleep 1
 fi
 if [ -n "${TECLAS:-}" ]; then
   # Teclas reais (XTest) na janela da app, depois do passo e antes da foto: na Xvfb chegam (medido 10/11,

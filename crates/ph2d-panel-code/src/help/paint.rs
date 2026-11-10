@@ -10,12 +10,13 @@ use crate::find_bar::FindBarView;
 use crate::glyphs::paint_mono;
 use crate::metrics::Metrics;
 use crate::palette::Palette;
+use crate::peso::{paint_text, paint_text_elided};
 use crate::style::Ink;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::motion::SETTLED;
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, frame_radius, paint_text, paint_text_elided, paint_text_title,
-    paint_text_title_elided, rect_to_vello, resolve,
+    fill_circle, fill_rounded_rect, frame_radius, paint_text_title, paint_text_title_elided,
+    rect_to_vello, resolve,
 };
 use ph2d_editor_core::ui_scale::ao_pixel;
 use ph2d_editor_core::widget::{

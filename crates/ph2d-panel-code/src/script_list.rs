@@ -4,11 +4,10 @@
 //! responde «onde caiu o clique»; a lei (nome único, recusa de apagar um script em uso) é da família.
 
 use crate::chrome::{self, Ui};
+use crate::peso::{paint_text_block, paint_text_elided};
 use ph2d_code_buffer::Buffer;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text_block, paint_text_elided, rect_to_vello,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, rect_to_vello};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;

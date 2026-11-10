@@ -11,13 +11,13 @@ use crate::geom;
 use crate::glyphs::add_work;
 use crate::metrics::Metrics;
 use crate::palette::Palette;
+use crate::peso::{label_column_width, paint_text};
 use crate::style::Ink;
 use crate::view::{CodeView, Row, Underline};
 use ph2d_code_buffer::Buffer;
 use ph2d_editor_core::math::safe_clamp_ord;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, frame_radius, label_column_width, paint_text, rect_to_vello,
-    stroke_polyline, stroke_rect,
+    fill_rounded_rect, frame_radius, rect_to_vello, stroke_polyline, stroke_rect,
 };
 use ph2d_editor_core::ui_scale::ao_pixel;
 use ph2d_editor_core::zones::Rect;

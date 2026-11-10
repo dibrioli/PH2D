@@ -7,7 +7,7 @@ use super::{Aim, BancadaView, Who};
 use crate::chrome::{self, Ui};
 use ph2d_code_viewmodel::CellKind;
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, folga_do_texto, frame_radius, paint_text_title, resolve,
+    fill_circle, fill_rounded_rect, folga_do_texto, frame_radius, resolve,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
@@ -175,7 +175,7 @@ impl BancadaView {
         let f = chrome::font();
         let s = Spacing::Sm.px();
         let ui = Ui::new(*theme);
-        paint_text_title(
+        crate::peso::paint_text(
             ts,
             scene,
             &self.said,

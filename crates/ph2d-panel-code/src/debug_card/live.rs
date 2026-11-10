@@ -6,11 +6,12 @@
 use super::live_marks::tip;
 pub use super::live_marks::{short_number, span_text};
 use super::{CardBox, DebugCardView};
+use crate::peso::paint_text;
 use crate::table_text::CodeCells;
 use crate::view::CodeView;
 use ph2d_code_debugcard::{CardStyle, DebugCard, LIVE_WINDOW_S, LiveRow, shown_value, value_ink};
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, frame_radius, paint_text, resolve, stroke_polyline, token_to_vello,
+    fill_rounded_rect, frame_radius, resolve, stroke_polyline, token_to_vello,
 };
 use ph2d_editor_core::widget::scroll_area::OwnBar;
 use ph2d_editor_core::widget::{ScrollbarState, paint_scrollbar, scrollbar_track_rect};
@@ -423,7 +424,7 @@ fn strip(
             &[("name", &r.var.name), ("line", &r.line)],
         );
         let value = shown_value(&r.var);
-        let kw = ts.layout(&key, small, f32::INFINITY).width();
+        let kw = crate::peso::largura(ts, &key, small);
         // A largura do valor só cresce enquanto o Live dura: o traço e a célula seguinte não mexem.
         let vw = st.steady.strip(
             &r.var.key,
@@ -497,7 +498,7 @@ fn graph(r: &LiveRow, at: Rect, scene: &mut VectorScene, ts: &mut TextSystem, th
     let (hi, lo) = (short_number(span.max), short_number(span.min));
     let label_w = [&hi, &lo, &r.var.name]
         .iter()
-        .map(|s| ts.layout(s, font, f32::INFINITY).width())
+        .map(|s| crate::peso::largura(ts, s, font))
         .fold(0.0f32, f32::max)
         + pad * 2.0;
     let plot = Rect::new(
@@ -536,7 +537,7 @@ fn graph(r: &LiveRow, at: Rect, scene: &mut VectorScene, ts: &mut TextSystem, th
     let ago = tr_with("code.debug.ago", &[("seconds", &LIVE_WINDOW_S)]);
     paint_text(ts, scene, &ago, plot.x, ty, font, plot.w, tone);
     let now = tr("code.debug.now");
-    let nw = ts.layout(now, font, f32::INFINITY).width();
+    let nw = crate::peso::largura(ts, now, font);
     paint_text(
         ts,
         scene,

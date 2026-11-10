@@ -3,8 +3,9 @@
 //! Value (copia) da Sheet, e a dica mín · máx · actual de um traço.
 
 use super::CardPainted;
+use crate::peso::paint_text;
 use ph2d_code_debugcard::LiveRow;
-use ph2d_editor_core::paint::{fill_rounded_rect, frame_radius, paint_text, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, frame_radius, resolve};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr_with;
 use ph2d_text::TextSystem;
@@ -94,7 +95,7 @@ pub(super) fn tip(
     let rh = ph2d_tokens::row_pitch_px();
     let pad = Spacing::Sm.px();
     let font = TypeToken::Xs.px();
-    let w = ts.layout(&s, font, f32::INFINITY).width() + pad * 2.0;
+    let w = crate::peso::largura(ts, &s, font) + pad * 2.0;
     let x = ph2d_editor_core::math::safe_clamp(
         at.x + at.w - w,
         body.x,

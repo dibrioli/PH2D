@@ -65,7 +65,7 @@ pub(super) fn pad() -> f32 {
 pub(super) fn face(f: Font) -> (f32, FontWeight) {
     let px = |t: TypeToken| t.px();
     match f {
-        Font::Prose => (px(TypeToken::Base), FontWeight::MEDIUM),
+        Font::Prose => (px(TypeToken::Base), crate::peso::CORPO),
         Font::Strong => (px(TypeToken::Base), FontWeight::SEMI_BOLD),
         Font::Heading => (px(TypeToken::Lg), FontWeight::SEMI_BOLD),
         Font::Title => (px(TypeToken::Xl), FontWeight::SEMI_BOLD),

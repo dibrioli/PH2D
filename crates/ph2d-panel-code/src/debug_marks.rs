@@ -4,8 +4,9 @@
 use crate::frame::CodeFrame;
 use crate::geom;
 use crate::palette::Palette;
+use crate::peso::paint_text;
 use crate::view::CodeView;
-use ph2d_editor_core::paint::{fill_circle, frame_radius, paint_text, rect_to_vello};
+use ph2d_editor_core::paint::{fill_circle, frame_radius, rect_to_vello};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{Radius, Spacing, StrokeToken, TypeToken};
@@ -133,7 +134,7 @@ impl CodeView {
             // faltam contam como «0»): o valor muda e ela não mexe.
             let short = g.min_chars.saturating_sub(g.text.chars().count());
             let widest = format!("{}{}", g.text, "0".repeat(short));
-            let shaped = ts.layout(&widest, font, f32::INFINITY);
+            let shaped = ts.layout_with_weight(&widest, font, f32::INFINITY, crate::peso::CORPO);
             let w = shaped.width().min(room);
             // Na linha de base do código ao lado (centrar a caixa da letra descia-o ~2 px; foto 09/11).
             let base = shaped.lines().next().map_or(font, |l| l.metrics().baseline);

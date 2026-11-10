@@ -665,6 +665,9 @@ fn paint_elided_weighted(
 #[path = "paint_text_rotated.rs"]
 mod rotated;
 pub use rotated::paint_text_rotated_ccw;
+#[path = "paint_text_weight.rs"]
+mod weight;
+pub use weight::{paint_text_block_in_weight, paint_text_elided_in_weight, paint_text_in_weight};
 
 #[cfg(test)]
 #[path = "paint_text_spans_tests.rs"]

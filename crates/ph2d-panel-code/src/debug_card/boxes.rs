@@ -3,11 +3,12 @@
 //! valor em baixo, a altura de antes).
 
 use super::{CardBox, DebugCardView};
+use crate::peso::paint_text;
 use crate::table_text::CodeCells;
 use crate::view::CodeView;
 use ph2d_code_debugcard::{DebugCard, VarGroup, VarRow, shown_value, value_ink};
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, frame_radius, paint_text, paint_text_title, resolve, token_to_vello,
+    fill_rounded_rect, frame_radius, paint_text_title, resolve, token_to_vello,
 };
 use ph2d_editor_core::widget::scroll_area::OwnBar;
 use ph2d_editor_core::widget::{ScrollbarState, paint_scrollbar, scrollbar_track_rect};
@@ -37,7 +38,7 @@ pub(super) fn card_head(
     let ground = resolve(crate::cards::ground_tone(), theme);
     fill_rounded_rect(scene, card, radius, ground);
     let ty = card.y + (rh - font) * 0.5;
-    let tw = ts.layout(count, font, f32::INFINITY).width();
+    let tw = crate::peso::largura(ts, count, font);
     let ink = resolve(ColorToken::Text2, theme);
     paint_text_title(ts, scene, title, card.x + pad, ty, font, card.w, ink);
     let cx = card.x + card.w - pad - tw;
@@ -245,7 +246,7 @@ pub(super) fn paint_strip(
             v.key.clone()
         };
         let value = shown_value(v);
-        let kw = ts.layout(&key, small, f32::INFINITY).width();
+        let kw = crate::peso::largura(ts, &key, small);
         let cw = (value.chars().count() as f32 * adv).max(kw) + super::inset() * 2.0;
         if used + cw > body.w && !cells.is_empty() {
             break;

@@ -10,10 +10,11 @@ mod live_marks;
 mod sheet;
 pub mod split;
 
+use crate::peso::paint_text;
 use crate::view::CodeView;
 use ph2d_a11y::NodeId;
 use ph2d_code_debugcard::{Ask, CardStyle, DebugCard, columns, sheet_rows};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
 use ph2d_editor_core::widget::scroll_area::{BarDrag, OwnBar};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;

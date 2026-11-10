@@ -26,6 +26,7 @@ mod metrics;
 pub mod options_card;
 mod paint;
 mod palette;
+pub mod peso;
 mod popup;
 mod rename_box;
 pub mod script_list;

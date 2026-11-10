@@ -6,9 +6,10 @@
 use crate::chrome::{Ui, font, text_field};
 use crate::frame::{COMPLETION_MAX_CHARS, CodeFrame};
 use crate::palette::Palette;
+use crate::peso::paint_text;
 use crate::view::CodeView;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
-use ph2d_editor_core::paint::paint_text;
+
 use ph2d_editor_core::widget::{Popover, paint_popover};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;

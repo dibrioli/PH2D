@@ -9,7 +9,7 @@ use crate::docs::CodeDocs;
 use crate::help::page_of;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::paint::{folga_do_texto, paint_icon, paint_text, resolve};
+use ph2d_editor_core::paint::{folga_do_texto, paint_icon, paint_text_in_weight, resolve};
 use ph2d_editor_core::widget::{
     Popover, paint_popover, paint_popover_row_highlight, pop_popover_clip, push_popover_clip,
 };
@@ -85,15 +85,17 @@ pub(crate) fn label(
     theme: &Theme,
 ) {
     let y = r.y + folga_do_texto(r.h, font());
-    paint_text(
+    let w = r.w.max(0.0) + Spacing::Xs.px();
+    let corpo = ph2d_panel_code::peso::CORPO;
+    paint_text_in_weight(
         ts,
         scene,
         s,
-        r.x,
-        y,
+        [r.x, y],
         font(),
-        r.w.max(0.0) + Spacing::Xs.px(),
+        w,
         resolve(ink, *theme),
+        corpo,
     );
 }
 

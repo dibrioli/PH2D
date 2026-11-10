@@ -149,6 +149,7 @@ fn a_frase_da_opcao_quebra_e_nunca_se_corta() {
         says: longa,
         ..ROWS[1]
     }];
+    use ph2d_panel_code::peso::CORPO;
     let mut ts = TextSystem::without_system_fonts();
     for (largura, quebra) in [(900.0, false), (240.0, true)] {
         let mut card = OptionsCard {
@@ -167,8 +168,10 @@ fn a_frase_da_opcao_quebra_e_nunca_se_corta() {
         let p = &card.painted;
         let says = p.says[0];
         let px = ph2d_tokens::TypeToken::Xs.px();
-        let uma = ts.layout(longa, px, f32::INFINITY).height();
-        let toda = ts.layout(longa, px, says.w).height();
+        let uma = ts
+            .layout_with_weight(longa, px, f32::INFINITY, CORPO)
+            .height();
+        let toda = ts.layout_with_weight(longa, px, says.w, CORPO).height();
         assert!(
             says.h + 0.5 >= toda,
             "{largura}: a caixa {says:?} corta o texto ({toda})"

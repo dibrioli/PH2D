@@ -7,12 +7,12 @@
 //! família.
 
 use crate::frame::Assist;
+use crate::peso::paint_text_block;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::doc_surface::PointerLook;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, folga_do_texto, paint_icon, paint_text_block, paint_text_title_elided,
-    resolve, text_rendering,
+    fill_rounded_rect, folga_do_texto, paint_icon, paint_text_title_elided, resolve, text_rendering,
 };
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::widget::lista_flutuante::Superficie;
@@ -21,7 +21,7 @@ use ph2d_editor_core::widget::{
     pop_popover_clip, push_popover_clip,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_text::{FontWeight, TextSystem};
+use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
@@ -84,7 +84,7 @@ fn small() -> f32 {
 /// A largura de `s` numa linha só, e a altura dele quebrado em `w` — a mesma passada de layout que o
 /// [`paint_text_block`] faz ao pintar.
 fn measure(ts: &mut TextSystem, s: &str, px: f32, w: f32) -> (f32, f32) {
-    let l = ts.layout_for_rendering(s, px, w, FontWeight::MEDIUM, text_rendering());
+    let l = ts.layout_for_rendering(s, px, w, crate::peso::CORPO, text_rendering());
     (l.width(), l.height())
 }
 
@@ -315,7 +315,7 @@ impl OptionsCard {
         let ty = y + folga_do_texto(rh, font());
         let title = ph2d_i18n::tr("code.options.title");
         let ink = |t| resolve(t, *theme);
-        let tw = ts.layout(title, font(), f32::INFINITY).width();
+        let tw = ts.prefix_width_weighted(title, font(), crate::peso::TITULO);
         paint_text_title_elided(
             ts,
             scene,
@@ -327,10 +327,10 @@ impl OptionsCard {
             ink(ColorToken::Text1),
         );
         let md = Spacing::Md.px();
-        let nw = ts.layout(script, font(), f32::INFINITY).width();
+        let nw = crate::peso::largura(ts, script, font());
         let room = (inner_w - rh - md - tw - md).max(0.0);
         let nx = inner + inner_w - rh - md - nw.min(room);
-        ph2d_editor_core::paint::paint_text_elided(
+        crate::peso::paint_text_elided(
             ts,
             scene,
             script,

@@ -1,10 +1,11 @@
 //! As peças pequenas da barra de busca e do console: fundo, rótulo, botão, campo de uma linha. Cores
 //! por tokens, medidas por tokens, texto na fonte da interface.
 
+use crate::peso::paint_text;
 use ph2d_code_buffer::Buffer;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, folga_do_texto, frame_radius, paint_icon, paint_text, paint_text_centered,
+    fill_rounded_rect, folga_do_texto, frame_radius, paint_icon, paint_text_centered,
     rect_to_vello, resolve, stroke_frame,
 };
 use ph2d_editor_core::widget::section_cards::CardDepth;
@@ -115,7 +116,7 @@ pub(crate) fn panel_bg(scene: &mut VectorScene, area: Rect, ui: &Ui, edge_below:
 }
 
 pub(crate) fn label_w(ts: &mut TextSystem, text: &str) -> f32 {
-    ph2d_editor_core::paint::label_column_width(ts, font(), [text])
+    crate::peso::label_column_width(ts, font(), [text])
 }
 
 /// A largura de um [`text_button`] com `text`: a lei inversa do orçamento com que ele o pinta
@@ -187,7 +188,7 @@ pub(crate) fn x_of(ts: &mut TextSystem, text: &str, byte: usize) -> f32 {
         .rev()
         .find(|&i| text.is_char_boundary(i))
         .unwrap_or(0);
-    ts.prefix_width(&text[..b], font())
+    crate::peso::largura(ts, &text[..b], font())
 }
 
 /// O byte mais próximo de `dx` (relativo ao início do texto): o meio de cada carácter decide.
@@ -199,7 +200,7 @@ pub(crate) fn byte_at_x(ts: &mut TextSystem, text: &str, dx: f32) -> usize {
         .skip(1)
         .chain(std::iter::once(text.len()));
     for i in bounds {
-        let x = ts.prefix_width(&text[..i], font());
+        let x = crate::peso::largura(ts, &text[..i], font());
         if dx < (prev.1 + x) * 0.5 {
             return prev.0;
         }

@@ -177,7 +177,7 @@ impl BancadaView {
                 ("props", &who.columns.len()),
             ],
         );
-        let tw = ts.prefix_width(title, font) + Spacing::Md.px();
+        let tw = ts.prefix_width_weighted(title, font, crate::peso::TITULO) + Spacing::Md.px();
         chrome::label_in(
             scene,
             ts,

@@ -3,10 +3,11 @@
 
 use super::{ButtonIds, DebugCardView};
 use crate::metrics::top_on_baseline;
+use crate::peso::paint_text;
 use ph2d_code_debugcard::{Ask, CardState, CardStyle, DebugCard, WhoTag};
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, folga_do_texto, frame_radius, paint_text, paint_text_title,
-    resolve, token_to_vello,
+    fill_circle, fill_rounded_rect, folga_do_texto, frame_radius, paint_text_in_weight,
+    paint_text_title, resolve, token_to_vello,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
@@ -14,8 +15,8 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
-fn text_w(ts: &mut TextSystem, s: &str) -> f32 {
-    ts.layout(s, TypeToken::Sm.px(), f32::INFINITY).width()
+fn text_w(ts: &mut TextSystem, s: &str, w: ph2d_text::FontWeight) -> f32 {
+    ts.prefix_width_weighted(s, TypeToken::Sm.px(), w)
 }
 
 /// Os botões à direita, a tecla DENTRO de cada um (maquete 14): Continue cheio no acento, Next
@@ -52,7 +53,7 @@ fn buttons(
     let sized: Vec<_> = list
         .into_iter()
         .map(|(ask, label, key)| {
-            let lw = text_w(ts, label);
+            let lw = text_w(ts, label, crate::peso::BOTAO);
             let kw = ts.layout(key, small, f32::INFINITY).width();
             (ask, label, key, lw, kw, lw + kw + gap + pad * 2.0)
         })
@@ -87,10 +88,20 @@ fn buttons(
         }
         // O rótulo centrado pelas maiúsculas; a tecla na linha de base DELE (dono 10/11).
         let ty = br.y + folga_do_texto(br.h, font);
-        paint_text(ts, scene, label, br.x + pad, ty, font, lw + gap, ink(fg));
+        let bw_ = crate::peso::BOTAO;
+        paint_text_in_weight(
+            ts,
+            scene,
+            label,
+            [br.x + pad, ty],
+            font,
+            lw + gap,
+            ink(fg),
+            bw_,
+        );
         let kx = br.x + pad + lw + gap;
         let ky = top_on_baseline(ts, ty, (label, font), (key, small));
-        paint_text(ts, scene, key, kx, ky, small, kw + gap, ink(key_ink));
+        paint_text_in_weight(ts, scene, key, [kx, ky], small, kw + gap, ink(key_ink), bw_);
         st.painted.buttons.push((ask, br));
         bx += bw + gap;
     }
@@ -126,7 +137,7 @@ fn place(
         if strong {
             let tone = resolve(ColorToken::Text1, theme);
             paint_text_title(ts, scene, &s, x, ty, font, room, tone);
-            x += ts.layout(&s, font, f32::INFINITY).width();
+            x += ts.prefix_width_weighted(&s, font, crate::peso::TITULO);
         } else {
             paint_text(
                 ts,
@@ -138,7 +149,7 @@ fn place(
                 room,
                 resolve(ColorToken::Text2, theme),
             );
-            x += text_w(ts, &s);
+            x += text_w(ts, &s, crate::peso::CORPO);
         }
         x += space;
     }
@@ -166,7 +177,7 @@ pub(super) fn paint(
         // O ritmo da amostra à direita (a maquete: «2.5×/s»).
         let rate = crate::live_sampler::rate_text();
         let small = TypeToken::Xs.px();
-        let rw = ts.layout(&rate, small, f32::INFINITY).width();
+        let rw = crate::peso::largura(ts, &rate, small);
         let rx = (r.x + r.w - rw).max(r.x);
         let tone = ink(ColorToken::Text3);
         paint_text(
@@ -200,7 +211,7 @@ pub(super) fn paint(
     let mark = Rect::new(x, r.y + (r.h - sq) * 0.5, sq, sq);
     fill_rounded_rect(scene, mark, corner, tone);
     x += sq + Spacing::Xs.px() * 2.0;
-    let ww = text_w(ts, word);
+    let ww = text_w(ts, word, crate::peso::TITULO);
     paint_text_title(ts, scene, word, x, ty, font, (limit - x).max(0.0), tone);
     x += ww + gap;
     if c.stopped() {
@@ -220,7 +231,7 @@ pub(super) fn paint(
         && x < limit
     {
         let small = TypeToken::Xs.px();
-        let chip_w = ts.layout(&chip, small, f32::INFINITY).width();
+        let chip_w = crate::peso::largura(ts, &chip, small);
         let cw = (chip_w + pad * 2.0).min(limit - x);
         let cr = Rect::new(x, r.y + (r.h - bh) * 0.5, cw, bh);
         fill_rounded_rect(
@@ -252,7 +263,8 @@ fn who_pill(
     let pad = Spacing::Sm.px();
     let bh = r.h - ph2d_tokens::control_gap_px() * 2.0;
     let dot = TypeToken::Sm.px() * 0.5;
-    let pw = (dot + super::inset() + pad + text_w(ts, &who.name)).min(limit - x);
+    let pw =
+        (dot + super::inset() + pad + text_w(ts, &who.name, crate::peso::CORPO)).min(limit - x);
     let pill = Rect::new(x, r.y + (r.h - bh) * 0.5, pw, bh);
     fill_rounded_rect(
         scene,

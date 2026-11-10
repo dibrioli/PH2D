@@ -2,10 +2,11 @@
 
 use super::DebugCardView;
 use super::split::{self, Split};
+use crate::peso::paint_text;
 use crate::table_text::CodeCells;
 use crate::view::CodeView;
 use ph2d_code_debugcard::{DebugCard, columns, sheet_rows};
-use ph2d_editor_core::paint::{fill_rounded_rect, frame_radius, paint_text, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, frame_radius, resolve};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
@@ -57,9 +58,11 @@ pub(super) fn paint(
     let mut text = CodeCells { view, theme };
     let natural = natural_widths(&cols, &rows, &m, ts, &mut text);
     // A coluna do lado nunca esconde o título «Call stack»; a tabela nunca corta Value nem Type.
-    let title_w = ts
-        .layout(tr("code.debug.stack"), TypeToken::Xs.px(), f32::INFINITY)
-        .width();
+    let title_w = ts.prefix_width_weighted(
+        tr("code.debug.stack"),
+        TypeToken::Xs.px(),
+        crate::peso::CORPO,
+    );
     let table_min = ph2d_ui_table::min_width(&cols, &natural, &st.table, &m);
     let s = Split::measure(
         st.side_w,
@@ -170,7 +173,7 @@ fn side(
             s.function.clone()
         };
         let ln = tr_with("code.debug.stack_line", &[("line", &s.line)]);
-        let lw = ts.layout(&ln, TypeToken::Xs.px(), f32::INFINITY).width();
+        let lw = crate::peso::largura(ts, &ln, TypeToken::Xs.px());
         line(
             ts,
             scene,

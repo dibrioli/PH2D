@@ -4,10 +4,11 @@
 
 use crate::frame::{Assist, Badge, CodeFrame, Severity};
 use crate::palette::Palette;
+use crate::peso::{label_column_width, paint_text_elided};
 use crate::view::CodeView;
 use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::paint::{label_column_width, paint_icon, paint_text_elided, rect_to_vello};
+use ph2d_editor_core::paint::{paint_icon, rect_to_vello};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;

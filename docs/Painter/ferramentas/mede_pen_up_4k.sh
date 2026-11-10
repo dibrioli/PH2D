@@ -14,7 +14,10 @@ S=${SAIDA:-$R/target/mede-pen-up}; mkdir -p "$S"
 # Um lançamento por pincel, SEM perf; cada quadro com PH2D_QUADRO_LENTO_MS=0 (relógio de parede). Roteiro por fases:
 # parado 3 s (CPU de /proc/<pid>/stat) · toque (mousedown parado 0,4 s) · traço (125 eventos × 8 ms ≈ 1 s, 400 px) ·
 # soltar · 3 s (Wet: imagens/s) · Ctrl+Z · parado 3 s · CONTROLO (SIGSTOP 250 ms: a régua tem de o ver) · trocar de
-# camada (aba Layers · «+» · a de baixo · a de cima; CAMADA_ABA/MAIS/OUTRA/VOLTA="x y", fotos por passo com PNG=1;
+# camada (aba Layers · «+» · a de baixo · a de cima · duplicar · apagar · grupo; CAMADA_*="x y", fotos com PNG=1) ·
+# slider de luz (painel impasto; LUZ="x0 y x1" arrasta a PEGA de um número, LUZ_ROLA cliques da roda: 80 = o fundo do
+# cartão, onde a pega do Intensity fica em 1332,193) · abrir doc (ABRIR="x y" = «Composite 2» na Hierarquia, 117 301;
+# REABRIR volta à «Composite»; PH2D_COMPOSITE_SEGUNDA);
 # as coordenadas de omissão são as da janela 1600x1000, ver ANTES.md §B08b). `blocos` = a imagem da cena (degradê, grelha, discos) a WxH;
 # `branco` = tela branca sem papel (PH2D_COMPOSITE_FUNDO, B08.2). `papel` = Textured Paper,
 # relief 0,5 do papel do dono. Saída: $S/matriz/<rotulo>.{log,marcas,meta}; resumo: mede_pen_up_4k.py --matriz $S/matriz.
@@ -43,6 +46,7 @@ if [ "$1" = matriz ]; then
     # B08.2: `PH2D_COMPOSITE_FUNDO` (papel|blocos|branco) e a tela WxH em qualquer fundo; o PAPEL=1 serve o binário antigo.
     EXTRA+=("PH2D_COMPOSITE_FUNDO=$FUNDO" "PH2D_COMPOSITE_TELA=$TELA")
     [ "$FUNDO" = papel ] && EXTRA+=(PH2D_COMPOSITE_PAPEL=1)
+    [ -n "$ABRIR" ] && EXTRA+=(PH2D_COMPOSITE_SEGUNDA=1)
     printf '{"pincel":"%s","painel":"%s","tela":"%s","fundo":"%s","carga":"%s"}\n' "$PIN" "$PAINEL" "$TELA" \
       "$FUNDO" "$(cut -d' ' -f1-3 /proc/loadavg)" > "$M/$TAG.meta"
     : > "$M/$TAG.marcas"
@@ -87,7 +91,30 @@ if [ "$1" = matriz ]; then
       marca camada_volta; DISPLAY=$D xdotool mousemove ${CAMADA_VOLTA:-1430 306} click 1; sleep 1.5; foto camada4_volta
       marca camada_dup; DISPLAY=$D xdotool mousemove ${CAMADA_DUP:-1389 233} click 1; sleep 1.5; foto camada5_dup
       marca camada_apaga; DISPLAY=$D xdotool mousemove ${CAMADA_APAGA:-1417 233} click 1; sleep 1.5; foto camada6_apaga
+      marca camada_grupo; DISPLAY=$D xdotool mousemove ${CAMADA_GRUPO:-1361 233} click 1; sleep 1.5; foto camada7_grupo
       marca camada_fim
+      # B08.1, o slider de luz do Impasto (só no painel impasto): aba Brush, rolar o cartão até «Lighting» (LUZ_ROLA
+      # cliques da roda), arrastar o número da luz (LUZ="x0 y x1": 30 passos × 16 ms). LUZ_SONDA=n: n fotos a cada 5
+      # cliques da roda, para achar as coordenadas.
+      if [ "$PAINEL" = impasto ]; then
+        DISPLAY=$D xdotool mousemove ${LUZ_ABA:-1376 159} click 1; sleep 1; DISPLAY=$D xdotool mousemove ${LUZ_ROLA_EM:-1440 600}
+        for _ in $(seq 1 "${LUZ_ROLA:-0}"); do DISPLAY=$D xdotool click 5; sleep 0.05; done; sleep 1; foto luz1_cartao
+        for k in $(seq 1 "${LUZ_SONDA:-0}"); do
+          for _ in 1 2 3 4 5; do DISPLAY=$D xdotool click 5; sleep 0.05; done; sleep 0.7; foto "luz_sonda$k"
+        done
+        if [ -n "$LUZ" ]; then
+          read -r LX0 LY LX1 <<< "$LUZ"; cmd="mousemove $LX0 $LY mousedown 1"
+          for i in $(seq 1 30); do cmd="$cmd mousemove $((LX0 + (LX1 - LX0) * i / 30)) $LY sleep 0.016"; done
+          marca luz; DISPLAY=$D xdotool $cmd mouseup 1; marca luz_solta; sleep 1; marca luz_fim; foto luz2_arrasto
+        fi
+      fi
+      # B08.1, abrir doc WxH: ABRIR="x y" = a linha «Composite 2» na Hierarquia (a 2.ª tela, PH2D_COMPOSITE_SEGUNDA)
+      # liga um doc novo no Painter; REABRIR="x y" = a «Composite» (volta ao doc guardado). 2 s cada.
+      if [ -n "$ABRIR" ]; then
+        marca abrir; DISPLAY=$D xdotool mousemove $ABRIR click 1; sleep 2; foto abrir1_novo
+        marca reabrir; DISPLAY=$D xdotool mousemove ${REABRIR:-117 278} click 1; sleep 2; foto abrir2_volta
+        marca abrir_fim
+      fi
     fi
     kill -INT $APP 2>/dev/null
     for _ in $(seq 1 40); do kill -0 $APP 2>/dev/null || break; sleep 0.25; done

@@ -18,7 +18,7 @@
 //! mostrar (medido: numa tela uniforme o borrão é um no-op). Ela tem um degradê de cor, uma grelha
 //! escura a cada `64 px` (o esfregão arrasta-a, o borrão amolece-a) e discos de cor.
 //! `PH2D_COMPOSITE_FUNDO=branco|papel` troca-a (a régua 4K mede por fundo); `PH2D_COMPOSITE_TELA=<w>x<h>` vale
-//! para os três.
+//! para os três. `PH2D_COMPOSITE_SEGUNDA=1` monta uma 2.ª tela igual ao lado (a régua mede abrir um doc).
 //!
 //! ## A pilha (a da foto, posição `1` = o TOPO)
 //!
@@ -57,6 +57,11 @@ fn tela() -> (u32, u32) {
             Some((w.parse().ok()?, h.parse().ok()?))
         })
         .unwrap_or((LADO, LADO))
+}
+
+/// O centro (metros) da 2.ª tela de `PH2D_COMPOSITE_SEGUNDA`: à direita da 1.ª (centrada na origem), sem se tocarem.
+fn centro_da_segunda(w: u32, pixels_per_meter: f32) -> Vec2 {
+    Vec2::new(1.5 * w as f32 / pixels_per_meter.max(1e-3), 0.0)
 }
 
 /// Se a cena está armada. Barato o bastante para ser perguntado por quadro.
@@ -243,6 +248,31 @@ pub fn spawn_if_enabled(
   8) Mude o Size do pincel para 0.2 e para 0.6 e risque: mais pequeno tem de ser mais leve, e \
      nenhum dos dois pode deixar rectangulos."
             );
+            if std::env::var_os("PH2D_COMPOSITE_SEGUNDA").is_some() {
+                // B08.1 «abrir doc 4K»: clicar nesta na Hierarquia liga um doc WxH novo no Painter. A célula é a
+                // seguinte à da 1.ª (o contador da shell só anda 1: medição, nunca produto).
+                let segunda = ph2d_image_import::spawn_rgba(
+                    sim,
+                    renderer,
+                    asset_db,
+                    cell_idx.saturating_add(1),
+                    tw,
+                    th,
+                    pixeis_da_tela(fundo(), tw, th),
+                    centro_da_segunda(tw, pixels_per_meter),
+                    pixels_per_meter,
+                    atlas_asset_map,
+                    "Composite 2",
+                );
+                match segunda {
+                    Ok((l, _)) => {
+                        println!("PH2D_COMPOSITE_SMOKE: segunda tela '{l}' ({tw}x{th}) ao lado")
+                    }
+                    Err(e) => {
+                        eprintln!("PH2D_COMPOSITE_SMOKE: nao consegui montar a segunda tela: {e}")
+                    }
+                }
+            }
             Some(bits)
         }
         Err(e) => {
@@ -592,5 +622,15 @@ mod tests {
             );
         }
         assert_ne!(px(cx + 0.10 * m, cy), [230, 60, 60], "fora na horizontal");
+    }
+
+    /// A 2.ª tela (B08.1, abrir doc) nasce fora da 1.ª: o traço da matriz só cai na 1.ª.
+    #[test]
+    fn a_segunda_tela_nasce_fora_da_primeira() {
+        for (w, ppm) in [(3840u32, 100.0f32), (1920, 100.0), (1024, 32.0)] {
+            let meia = 0.5 * w as f32 / ppm;
+            let c = super::centro_da_segunda(w, ppm);
+            assert!(c.x - meia >= meia, "w {w} ppm {ppm}: centro {}", c.x);
+        }
     }
 }

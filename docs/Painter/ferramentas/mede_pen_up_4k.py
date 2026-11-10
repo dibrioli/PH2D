@@ -6,7 +6,7 @@ import collections
 import subprocess
 import sys
 
-CAMADA = ("camada_aba", "camada_mais", "camada_troca", "camada_volta", "camada_dup", "camada_apaga")
+CAMADA = ("camada_aba", "camada_mais", "camada_troca", "camada_volta", "camada_dup", "camada_apaga", "camada_grupo")
 
 
 def matriz(pasta, saida=None):
@@ -87,6 +87,12 @@ def matriz(pasta, saida=None):
         for k in ("controlo",) + CAMADA:
             if k in marcas:
                 r[k] = round(max(janela(marcas[k][0], marcas[k][0] + 1_000_000_000), default=0), 1)
+        if "luz" in marcas:  # o slider de luz do Impasto: o pior quadro do arrasto até 1 s depois, e a mediana do arrasto
+            r["luz"] = round(max(janela(marcas["luz"][0], marcas["luz_fim"][0]), default=0), 1)
+            r["luz_p50"] = pct(janela(marcas["luz"][0], marcas["luz_solta"][0]), 0.5)
+        for k, fim in (("abrir", "reabrir"), ("reabrir", "abrir_fim")):  # abrir doc novo / voltar ao guardado
+            if k in marcas and fim in marcas:
+                r[k] = round(max(janela(marcas[k][0], marcas[fim][0]), default=0), 1)
         if "controlo" in marcas:  # o mesmo critério no segundo ANTES (sem trava): tem de reprovar, senão não distingue
             r["controlo_sem"] = round(max(janela(marcas["controlo"][0] - 1_000_000_000, marcas["controlo"][0]), default=0), 1)
         linhas.append(r)
@@ -126,8 +132,8 @@ def matriz(pasta, saida=None):
     com = [r for r in linhas if "controlo" in r]
     if com:
         print("\n| pincel | painel | tela | fundo | controlo sem/com trava de 250 ms | aba Layers ms | + camada ms "
-              "| trocar ms | voltar ms | duplicar ms | apagar ms |")
-        print("|---|---|---|---|---|---|---|---|---|---|---|")
+              "| trocar ms | voltar ms | duplicar ms | apagar ms | grupo ms | luz máx / p50 ms | abrir doc / voltar ms |")
+        print("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
 
         def regua(c):
             return c if 250 <= c <= 250 + 2 * lim_extra else f"**{c} ✗ régua**"
@@ -140,6 +146,9 @@ def matriz(pasta, saida=None):
                     f"| {marca(r[k], r[k] <= lim_extra) if k in r else '—'}"
                     for k in CAMADA
                 )
+                + (f" | {marca(r['luz'], r['luz'] <= lim_extra)} / {r['luz_p50']}" if "luz" in r else " | —")
+                + (f" | {marca(r['abrir'], r['abrir'] <= lim_extra)} / {marca(r['reabrir'], r['reabrir'] <= lim_extra)}"
+                   if "abrir" in r and "reabrir" in r else " | —")
                 + " |"
             )
 

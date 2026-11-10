@@ -34,6 +34,13 @@ SAIDA=$S bash $W/scripts/ph2d-run.sh bash $T matriz 1920x1080 branco $B "Round M
   "Wet Liner:wet" "Pastel:digital" "Chalk:digital" "Crayon:digital" "Finger Tip:digital" "Composite Brush:digital"
 PNG=1 SAIDA=$S bash $W/scripts/ph2d-run.sh bash $T matriz 1920x1080 blocos $B
 PNG=1 SAIDA=$S bash $W/scripts/ph2d-run.sh bash $T matriz 3840x2160 blocos $B
+# B08b continuação 2: o roteiro traz também o GRUPO (todos), o slider de luz (só no painel impasto: LUZ_ROLA cliques
+# da roda + arrastar o Angle) e abrir doc WxH (ABRIR = a linha «Composite 2» da Hierarquia; PH2D_COMPOSITE_SEGUNDA)
+SAIDA=$S bash $W/scripts/ph2d-run.sh bash $T matriz 1920x1080 branco $B "Round Mixing:digital" "Wet Wash Mix:digital" \
+  "Composite Brush:digital"
+for tf in "3840x2160 papel" "3840x2160 blocos" "1920x1080 blocos"; do read -r TELA FUNDO <<< "$tf"   # bash: o zsh não parte
+  PNG=1 LUZ="1345 753 1435" LUZ_ROLA=30 ABRIR="117 301" SAIDA=$S bash $W/scripts/ph2d-run.sh bash $T matriz $TELA $FUNDO $B \
+    "omissão:impasto" "omissão:digital"; done
 ```
 
 ⚠️ O «depois» só compara com o B08b num binário que TENHA o `PH2D_COMPOSITE_FUNDO` (o `cd02ac77ef` puro não o tem:
@@ -366,3 +373,54 @@ O mesmo desabamento da 2880, mais lento: 7,2 → 1,0 img/s, a óptica 95 → 642
    84, soltar 177), Wet Wash Mix (toque 86) e Composite reprovam, mas com load 9–50: TECTO, por repetir.
 6. **Parado: 50–67 % de um núcleo** em todos os 42 — o mesmo do B08b (B23).
 7. Fora ainda: slider de luz, abrir doc 4K, grupo de camadas, os 10 mais lentos (dependem do B08.3) e o Oil Wash (B36).
+   (Os três primeiros: continuação 2, abaixo.)
+
+## B08b continuação 2 — grupo, slider de luz, abrir doc; 1080p branco repetido com load < 1
+
+- **Binário:** o de árvore LIMPA (`git archive cd02ac77ef`), com o `composite_smoke.rs` DESTE commit (+ a 2.ª tela de
+  `PH2D_COMPOSITE_SEGUNDA`; o binário foi compilado antes de uma linha de doc-comment e do `rustfmt`, código igual),
+  `CARGO_TARGET_DIR=target/b08b-limpo`, `--profile smoke`, `STRIP=none`. Radeon 610M em todos os 9 (`.placa` sem `nvidia`).
+- **Roteiro novo**, depois de apagar a camada: **grupo** (`New group`, 1361,233: a camada ativa entra num `Group`, foto
+  `camada7_grupo`) · **slider de luz** (só no painel impasto: aba Brush, 80 cliques da roda = o fundo do cartão, arrastar
+  a PEGA «I» do `Intensity` da luz 90 px em 30 passos × 16 ms: 1.00 → 1.67 nas fotos `luz1`/`luz2`; coluna = o pior
+  quadro do arrasto até 1 s depois / a mediana do arrasto) · **abrir doc WxH** (a 2.ª tela igual, `Composite 2`, na
+  Hierarquia, 117,301: o Painter liga um doc NOVO; depois volta à `Composite`, o doc guardado; 2 s cada).
+  ⚠️ O roteiro com `ABRIR` tem 2 telas na cena (a 2.ª fora da vista): as fases de antes leem-se com isso.
+- **Régua:** o controlo de 250 ms lê 260–265 nos 9; sem trava 11–15: reprova (distingue).
+- **Carga** (`carga.txt`, por lançamento no jsonl): 1080p branco 09:13–09:15, load 1 min **0,5–0,8** · 4K papel
+  09:26–09:28, 2,6–5,8 · 4K blocos 09:28–09:30, 1,9–2,8 · 1080p blocos 09:30–09:32, 1,1–2,8.
+- Cru: [`antes/b08b/continuacao2/`](antes/b08b/continuacao2/) (`matriz.jsonl`, `quadros/`, `branco1080/`, 4 fotos).
+
+| pincel | painel | tela | fundo | base ms | toque ms | traço p50/p95 ms | soltar ms | +1 s máx ms | Ctrl+Z ms | parado CPU % (antes/depois) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Composite Brush | digital | 1920x1080 | branco | 10.2 | 26.1 | 11.9 / **16.8 ✗** | 17.0 | 19.8 | 18.8 | **53.0 ✗** / **53.3 ✗** |
+| Round Mixing | digital | 1920x1080 | branco | 10.0 | 21.8 | 12.0 / 12.9 | 10.9 | 20.1 | 23.0 | **51.0 ✗** / **52.6 ✗** |
+| Wet Wash Mix | digital | 1920x1080 | branco | 11.0 | 21.0 | 12.8 / 13.9 | 13.0 | 23.1 | 20.9 | **52.3 ✗** / **51.6 ✗** |
+| omissão | digital | 1920x1080 | blocos | 10.1 | 12.9 | 10.4 / 11.1 | 11.8 | 12.2 | 12.8 | **51.3 ✗** / **55.0 ✗** |
+| omissão | digital | 3840x2160 | blocos | 10.8 | 17.8 | 9.9 / 10.2 | 10.1 | 13.0 | 17.7 | **52.3 ✗** / **53.0 ✗** |
+| omissão | digital | 3840x2160 | papel | 10.9 | **96.9 ✗** | 23.0 / **23.2 ✗** | 23.0 | **105.2 ✗** | **98.9 ✗** | **51.9 ✗** / **50.6 ✗** |
+| omissão | impasto | 1920x1080 | blocos | 10.0 | 23.7 | 11.0 / 11.2 | 15.4 | 18.9 | 15.9 | **50.6 ✗** / **49.6 ✗** |
+| omissão | impasto | 3840x2160 | blocos | 10.0 | **60.1 ✗** | 17.2 / **18.0 ✗** | 24.0 | **41.0 ✗** | **34.1 ✗** | **51.3 ✗** / **52.6 ✗** |
+| omissão | impasto | 3840x2160 | papel | 10.2 | **98.1 ✗** | 23.1 / **24.0 ✗** | 30.1 | **111.4 ✗** | **95.8 ✗** | **50.0 ✗** / **50.6 ✗** |
+
+| pincel | painel | tela | fundo | controlo sem/com | + camada | trocar | voltar | duplicar | apagar | grupo ms | luz máx / p50 ms | abrir doc / voltar ms |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| omissão | digital | 1920x1080 | blocos | 11.8 / 265.2 | 19.1 | 17.9 | 18.0 | 17.0 | 15.9 | 19.0 | — | 24.4 / 21.9 |
+| omissão | digital | 3840x2160 | blocos | 12.9 / 260.4 | **43.0 ✗** | **44.2 ✗** | **46.0 ✗** | **46.9 ✗** | **46.9 ✗** | **67.1 ✗** | — | **96.0 ✗** / 25.1 |
+| omissão | digital | 3840x2160 | papel | 12.8 / 260.1 | **109.1 ✗** | **103.2 ✗** | **104.1 ✗** | **111.0 ✗** | **102.1 ✗** | **126.1 ✗** | — | **154.8 ✗** / 23.9 |
+| omissão | impasto | 1920x1080 | blocos | 11.0 / 261.7 | 18.9 | 17.2 | 17.9 | 16.9 | 15.8 | 19.0 | 19.1 / 13.9 | 27.7 / 22.0 |
+| omissão | impasto | 3840x2160 | blocos | 15.1 / 265.5 | **44.1 ✗** | **58.9 ✗** | **42.8 ✗** | **49.2 ✗** | **43.8 ✗** | **60.9 ✗** | **55.8 ✗** / 27.2 | **97.4 ✗** / 23.8 |
+| omissão | impasto | 3840x2160 | papel | 12.0 / 265.4 | **100.9 ✗** | **100.1 ✗** | **102.9 ✗** | **104.9 ✗** | **101.1 ✗** | **122.9 ✗** | **118.3 ✗** / **69.3 ✗** | **148.1 ✗** / 22.1 |
+
+### Leitura (o que a continuação 2 acrescenta)
+
+1. **1080p branco com load < 1: Round Mixing e Wet Wash Mix PASSAM** (traço p95 84 → 12,9; soltar 177 → 10,9; toque
+   86 → 21): os ✗ da continuação eram a carga 9–50. O Composite fica a 0,1 ms do quadro no traço p95 (16,8).
+2. **Grupo** custa o mesmo quadro fixo de trocar de camada e um pouco mais: 1080p 19 ms; 4K sem papel 61–67; 4K papel
+   123–126.
+3. **Slider de luz do Impasto:** a 1080p passa (pior 19, mediana 14); a 4K CADA passo do arrasto paga a recomposição —
+   sem papel pior 56 / mediana 27, com papel pior 118 / **mediana 69 ms** (≈ 14 img/s enquanto se arrasta).
+4. **Abrir doc:** um doc NOVO custa 1080p 24–28 ms, 4K sem papel **96–97**, 4K papel **148–155**; VOLTAR ao doc guardado
+   22–25 ms em todos (o guardado não reabre a tela inteira).
+5. O resto repete a continuação: 4K papel ~100 ms por clique/toque/Ctrl+Z; 4K blocos 43–59; 1080p 16–19.
+6. Fora ainda: os 10 mais lentos (dependem do B08.3) e o Oil Wash (B36).

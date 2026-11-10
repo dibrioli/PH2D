@@ -585,6 +585,8 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
         "danger-soft" => r.error.over(r.base, HIGHLIGHT_A).color(),
         // Premido desce para o preto nos dois temas: o `mono_inv` do `accent-press` clareia no claro.
         "danger-press" => r.error.lerp(Rgb::BLACK, 0.15).color(),
+        // A camada de estado neutra: o `mono` com o alfa ESCRITO no `tokens.json` (o do clássico emprestado).
+        "row-hover" => r.mono.with_alpha(f32::from(borrow().a) / 255.0),
         "success" => r.success.color(),
         "success-soft" => r.success.over(r.base, HIGHLIGHT_A).color(),
         "warn" => r.warning.color(),

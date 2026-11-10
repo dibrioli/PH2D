@@ -166,12 +166,11 @@ color_tokens! {
     BgElev => "bg-elev",
     /// `bg-scrim` — modal backdrop (heavy alpha).
     BgScrim => "bg-scrim",
-    /// `rail-bg` — semi-transparent "frosted glass" backing for chrome
-    /// strips that sit directly on the canvas (LeftRail labels). Lower
-    /// alpha than `BgScrim` so canvas content stays partially visible
-    /// underneath; dark in dark themes, light in light themes to keep
-    /// the existing chrome text colors readable on top.
+    /// `rail-bg` — "frosted glass" backing for chrome strips on the canvas (LeftRail labels): less alpha
+    /// than `BgScrim`, dark in dark themes and light in light ones so the chrome text stays readable.
     RailBg => "rail-bg",
+    /// `row-hover` — a camada de estado NEUTRA de uma linha pairada (`mono` com o alfa do `tokens.json`).
+    RowHover => "row-hover",
     /// `panel-bg` — surface fill for floating side panels (Inspector,
     /// Hierarchy). Same hue as `BgElev` but slightly translucent (~8 %
     /// alpha bleed) so panels feel "floated over canvas" instead of

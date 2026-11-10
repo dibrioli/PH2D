@@ -20,7 +20,7 @@ use crate::screen::{ControlsScreen, Hover, Row};
 pub const ROW_INK: ColorToken = ColorToken::AccentSoft;
 pub const RESET_INK: ColorToken = ColorToken::Bg3;
 /// O hover (D32: no quadro, sem fade) da linha e do botão, e o botão premido — os mesmos da lista da aba.
-pub const HOVER_INK: ColorToken = ColorToken::CardFieldHover;
+pub const HOVER_INK: ColorToken = ColorToken::RowHover;
 pub const PRESS_INK: ColorToken = ColorToken::AccentSoft;
 pub const HINT_INK: ColorToken = ColorToken::Text2;
 /// A caixa vazia («Add»): sem fundo cheio, um contorno TRACEJADO e o texto secundário, legível mas recuado.

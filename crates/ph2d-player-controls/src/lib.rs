@@ -55,6 +55,8 @@ pub fn game_id_of(world: &mut bevy_ecs::world::World) -> u64 {
 #[cfg(test)]
 mod f3_tests;
 #[cfg(test)]
+mod onda3_hover_contraste_tests;
+#[cfg(test)]
 mod onda3_hover_r2_tests;
 #[cfg(test)]
 mod onda3_hover_tests;

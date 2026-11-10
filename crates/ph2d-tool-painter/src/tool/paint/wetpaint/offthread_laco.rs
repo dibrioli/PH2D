@@ -17,7 +17,11 @@ use std::time::Instant;
 /// rajada**, que é precisamente o que a política do `max_substeps` da física
 /// recusa. A 0,05 s o pior catch-up é de dois passos — o bastante para absorver
 /// um round trip, curto o bastante para nunca virar rajada.
-const MAX_BEHIND_S: f64 = 2.0 * STEP_S;
+///
+/// ⚠️ Com o passo mais caro que `STEP_S` (4K: ~45 ms) o `acc` vive no tecto e, ao
+/// fechar cada passo, fica em `STEP_S`: folga ZERO. Quem serve a imagem não pode
+/// perguntar só pela folga (DF-52: 161–175 passos sem imagem) — ver `otica::agenda`.
+pub(super) const MAX_BEHIND_S: f64 = 2.0 * STEP_S;
 
 impl SimWorker {
     /// Sobe a thread — ao relógio, ou no ritmo escrito de um gate.

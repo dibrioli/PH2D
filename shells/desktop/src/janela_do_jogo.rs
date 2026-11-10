@@ -132,7 +132,6 @@ impl crate::App {
                 hero.gizmo.replace_selection(Some(jogador)); // o Inspector abre no personagem
                 hero.store
                     .set_collapsed(ph2d_sfx_scene::cartao_que_abre(), false);
-                // GEF 20 C7: a vista abre sobre ele (antes abria na origem, com o jogador fora).
                 hero.bus
                     .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
                         kind: ph2d_editor_core::ViewFocusKind::Selected,
@@ -230,14 +229,15 @@ impl crate::App {
             return;
         };
         let quadro = s::proximo_quadro();
-        if let Some(k) = s::input_map::tecla_do_p1(nivel, quadro) {
-            let h = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref());
-            let out = h.map(|h| self.components.jogador.key(k, true, &h.input_map));
-            let tocando = self.playhead.is_playing();
-            if out.and_then(|o| self.components.jogador.clock_after(o, tocando)) == Some(false) {
+        let h = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref());
+        let (jogador, mapa) = (&mut self.components.jogador, h.map(|h| &h.input_map));
+        if let (Some(k), Some(mapa)) = (s::input_map::tecla_do_p1(nivel, quadro), mapa) {
+            let out = jogador.key(k, true, mapa);
+            if jogador.clock_after(out, self.playhead.is_playing()) == Some(false) {
                 self.playhead.pause();
             }
         }
+        let _ = mapa.and_then(|m| s::input_map::rato_do_p(nivel, quadro, jogador, m));
         match s::gesto_no_quadro(nivel, stage, quadro) {
             Some(Gesto::Joga(stage)) => {
                 if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {

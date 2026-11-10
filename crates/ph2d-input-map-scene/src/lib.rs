@@ -4,7 +4,7 @@
 //! o aviso âmbar da B4) e o estado da aba de cada cena, posto pelas portas `InputMapDoc::smoke_*`. A shell compõe:
 //! acha a aba, chama [`arma`], instala o mapa e pede a aba (`request_input_map_tab`, o caminho do menu).
 //!
-//! **Numeração** (contada no roteiro, `CENAS` = 19; uma cena nova conta-o de novo e entra ao fim de [`CODIGOS`]):
+//! **Numeração** (contada no roteiro, `CENAS` = 22; uma cena nova conta-o de novo e entra ao fim de [`CODIGOS`]):
 //!
 //! | `PH2D_GAME_SMOKE` | Cena | Estado |
 //! |---|---|---|
@@ -22,25 +22,31 @@
 //! | 17 | C4 | Try it: «Players can change keys», só [`NA_TELA`] no jogo, um ficheiro do jogador com 1 troca |
 //! | 18 | P1 | Play (com `PH2D_GAME_SMOKE_DRIVE=editor`): a tela Controls aberta, Fire, 2.ª tecla à escuta ([`tecla_do_p1`]) |
 //! | 19 | B5 | Keyboard: o numérico — fire também no Numpad 0, move_up no Numpad 8; fire aberto, o ponteiro no Numpad 0 |
+//! | 20 | P2 | Play (`DRIVE=editor`): a tela Controls aberta, o ponteiro sobre a linha Jump ([`rato_do_p`]) |
+//! | 21 | P3 | Play: o «Reset to defaults» premido (Down sem Up) |
+//! | 22 | P4 | Play: o «Reset to defaults» premido e arrastado para fora (o premido apaga) |
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{ActionEdge, ActionTriggerRow, Entity, Name, SignalOnAction, SimWorld, Transform};
+use ph2d_editor_core::zones::Rect;
 use ph2d_input::{Binding, GamepadAxis, InputMap, Key, PlayerKeys};
 use ph2d_input_map_editor::view_keyboard::state::Sub;
 use ph2d_input_map_editor::view_try::state::TryCard;
 use ph2d_input_map_editor::{InputMapDoc, View};
+use ph2d_player_controls::{PlaySession, host};
 use ph2d_script::{LuauScript, ProjectScripts};
 
 /// A primeira cena da aba no roteiro `PH2D_GAME_SMOKE`.
 pub const PRIMEIRA: u32 = 6;
 
 /// O código de cada cena, pela ordem do roteiro.
-pub const CODIGOS: [&str; 14] = [
-    "A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4", "C1", "C2", "C3", "C4", "P1", "B5",
+pub const CODIGOS: [&str; 17] = [
+    "A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4", "C1", "C2", "C3", "C4", "P1", "B5", "P2", "P3",
+    "P4",
 ];
 
 /// O que cada cena mostra (o terminal do smoke).
-const O_QUE: [&str; 14] = [
+const O_QUE: [&str; 17] = [
     "A · List: as 11 acções do dono (fábrica + fire J, reload sem tecla, laser H)",
     "A · List: a escutar no reload (o chip tracejado espera a próxima tecla)",
     "A · List: busca pela seta ↑ (só jump e move_up; o pé diz quem as lê)",
@@ -55,6 +61,9 @@ const O_QUE: [&str; 14] = [
     "C · Try it: a tela do jogador (Players can change keys; jump, move_left e fire à vista; 1 tecla trocada)",
     "P · Play: a tela Controls aberta no jogo, à escuta na 2.ª tecla do Fire (`PH2D_GAME_SMOKE_DRIVE=editor`)",
     "B · Keyboard: o numérico (fire também no Numpad 0, move_up no Numpad 8; fire aberto, o ponteiro no Numpad 0)",
+    "P · Play: a tela Controls aberta, o ponteiro sobre a linha Jump (a linha acende)",
+    "P · Play: a tela Controls aberta, o botão esquerdo premido sobre «Reset to defaults» (sem soltar)",
+    "P · Play: o «Reset to defaults» premido e o ponteiro arrastado para fora dele (o premido apaga; soltar ali cancela)",
 ];
 
 /// A manche esquerda das cenas C3: empurrada a 0.62 para a esquerda (maquete C·3: força (0.62 − 0.15) ÷ 0.85).
@@ -137,7 +146,7 @@ pub fn leitores(
         Transform::from_translation(Vec2::new(-7.0, 1.0)),
         LuauScript::library(laser),
     ));
-    if matches!(codigo(nivel), Some("C4" | "P1")) {
+    if codigo(nivel).is_some_and(|c| c == "C4" || no_play(c)) {
         w.insert_resource(InputMapDoc::smoke_game_id(GAME_ID));
     }
     ph2d_ecs::assign_missing_stable_ids(w);
@@ -161,7 +170,7 @@ pub fn arma(doc: &mut InputMapDoc, cena: &str) -> Option<InputMap> {
         return None;
     }
     let mut map = owner_map(matches!(cena, "A4" | "B3" | "C3"));
-    if matches!(cena, "C4" | "P1") {
+    if cena == "C4" || no_play(cena) {
         tela_do_jogador(&mut map);
     }
     let id = |n: &str| map.id(n);
@@ -231,10 +240,15 @@ pub fn troca_do_jogador(map: &InputMap) -> PlayerKeys {
     keys
 }
 
-/// A aba abre-se por cima da vista? Na P1 não: o jogo corre na vista da cena.
+/// A aba abre-se por cima da vista? Nas do Play (P1..P4) não: o jogo corre na vista da cena.
 #[must_use]
 pub fn abre_a_aba(cena: &str) -> bool {
-    cena != "P1"
+    !no_play(cena)
+}
+
+/// As cenas do Play (P1..P4): a tela Controls do jogador, no jogo.
+fn no_play(cena: &str) -> bool {
+    cena.starts_with('P')
 }
 
 /// O eixo e o valor que a cena empurra no comando ao vivo (só a C3; o smoke não tem comando de verdade).
@@ -253,15 +267,59 @@ const TECLAS_P1: [(u32, &str); 5] = [
     (190, "enter"),
 ];
 
-/// A tecla que o condutor da P1 prime no `quadro` (`""` = a que abre a tela, a da fábrica).
+/// A tecla que o condutor da P1 prime no `quadro` (`""` = a que abre a tela, a da fábrica); nas P2..P4 só a que abre.
 #[must_use]
 pub fn tecla_do_p1(nivel: u32, quadro: u32) -> Option<Key> {
-    if codigo(nivel) != Some("P1") {
-        return None;
-    }
-    let (_, nome) = TECLAS_P1.iter().find(|(q, _)| *q == quadro)?;
+    let teclas = match codigo(nivel)? {
+        "P1" => &TECLAS_P1[..],
+        c if no_play(c) => &TECLAS_P1[..1],
+        _ => return None,
+    };
+    let (_, nome) = teclas.iter().find(|(q, _)| *q == quadro)?;
     if nome.is_empty() {
         return Some(ph2d_input::controls::PlayerControls::default().open_key);
     }
     Key::named_in_script(nome).and_then(|v| v.first().copied())
+}
+
+/// O quadro em que o condutor das P2..P4 põe o ponteiro (a tela abriu ao 150 e já foi pintada) e o da P4 o arrasta.
+const RATO_P: (u32, u32) = (160, 170);
+
+/// O ponteiro do condutor das P2..P4, pela porta do host (a do rato real, coordenadas lógicas): a P2 pousa-o no
+/// centro da linha Jump; a P3 prime o botão principal no «Reset to defaults» (sem soltar); a P4 prime-o lá e, um
+/// passo depois, arrasta-o para fora do botão, uma largura dele à direita. Devolve o ponto posto (o log da foto).
+pub fn rato_do_p(
+    nivel: u32,
+    quadro: u32,
+    s: &mut PlaySession,
+    map: &InputMap,
+) -> Option<(f32, f32)> {
+    let c = codigo(nivel).filter(|c| matches!(*c, "P2" | "P3" | "P4"))?;
+    let lay = s.layout()?;
+    let centro = |r: Rect| (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    let jump = s.rows(map).iter().position(|r| r.action == "jump");
+    let linha = jump.and_then(|i| lay.rows.get(i.checked_sub(lay.first)?));
+    let (reset, fora) = (centro(lay.reset), lay.reset.x + lay.reset.w * 1.5);
+    let ponto = match (c, quadro) {
+        ("P2", q) if q == RATO_P.0 => {
+            let at = centro(linha?.band);
+            let _ = host::pointer_move(s, Some(at));
+            at
+        }
+        ("P3" | "P4", q) if q == RATO_P.0 => {
+            let _ = host::click(s, (true, true), Some((reset, map)), false);
+            reset
+        }
+        ("P4", q) if q == RATO_P.1 => {
+            let at = (fora, reset.1);
+            let _ = host::pointer_move(s, Some(at));
+            at
+        }
+        _ => return None,
+    };
+    println!(
+        "[game-smoke] ={nivel} ({c}) o ponteiro em ({:.0}, {:.0})",
+        ponto.0, ponto.1
+    );
+    Some(ponto)
 }

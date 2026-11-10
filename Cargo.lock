@@ -8215,8 +8215,10 @@ version = "0.0.0"
 dependencies = [
  "ph2d-core",
  "ph2d-ecs",
+ "ph2d-editor-core",
  "ph2d-input",
  "ph2d-input-map-editor",
+ "ph2d-player-controls",
  "ph2d-script",
 ]
 

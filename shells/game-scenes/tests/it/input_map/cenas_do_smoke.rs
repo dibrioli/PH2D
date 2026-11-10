@@ -201,3 +201,66 @@ fn a_cena_tem_um_leitor_do_fire_e_do_laser_e_nenhum_do_reload() {
     assert!(laser.iter().any(|r| matches!(r, Reader::Script { .. })));
     assert!(readers.get("reload").is_none_or(Vec::is_empty));
 }
+
+/// As P2..P4 abrem a tela só com a tecla dela e põem o ponteiro pela porta do host, depois de a tela pintada: P2 =
+/// a linha Jump acesa; P3 = o «Reset to defaults» premido; P4 = premido e arrastado para fora (o premido apaga).
+#[test]
+fn as_cenas_p2_a_p4_poem_o_ponteiro_pela_porta_do_host() {
+    use ph2d_app_game::smoke::input_map::{abre_a_aba, rato_do_p, tecla_do_p1, troca_do_jogador};
+    use ph2d_app_input_map::ph2d_player_controls::Hover;
+    let p2 = PRIMEIRA + 14;
+    for (n, c) in [(p2, "P2"), (p2 + 1, "P3"), (p2 + 2, "P4")] {
+        assert_eq!(codigo(n), Some(c));
+        assert!(!abre_a_aba(c), "{c}: o jogo na vista da cena");
+        let mut m = armada(c);
+        let map = m.hero.input_map.clone();
+        m.jogador.start_with(&map, troca_do_jogador(&map), None);
+        let teclas: Vec<_> = (0..400).filter_map(|q| tecla_do_p1(n, q)).collect();
+        assert_eq!(teclas.len(), 1, "{c}: só a tecla que abre");
+        assert!(
+            rato_do_p(n, 160, &mut m.jogador, &map).is_none(),
+            "{c}: fechada, nada"
+        );
+        for k in teclas {
+            let _ = m.jogador.key(k, true, &map);
+        }
+        let pinta = |m: &mut Mesa| {
+            let mut scene = ph2d_vector::VectorScene::new();
+            let t = ph2d_tokens::Theme::default();
+            m.jogador.paint(super::AREA, &map, &mut scene, &mut m.ts, t);
+        };
+        pinta(&mut m);
+        let pontos: Vec<_> = (0..400)
+            .filter_map(|q| rato_do_p(n, q, &mut m.jogador, &map))
+            .collect();
+        pinta(&mut m);
+        let tela = m.jogador.screen();
+        assert!(
+            tela.is_open() && !tela.listening(),
+            "{c}: aberta, sem escutar"
+        );
+        let jump = m.jogador.rows(&map).iter().position(|r| r.action == "jump");
+        match c {
+            "P2" => assert_eq!(
+                tela.hovered(),
+                jump.map(Hover::Row),
+                "P2: a linha Jump acesa"
+            ),
+            "P3" => assert!(tela.reset_pressed() && tela.hovered() == Some(Hover::Reset)),
+            _ => assert!(
+                !tela.reset_pressed() && tela.hovered().is_none(),
+                "P4: o premido apaga"
+            ),
+        }
+        assert_eq!(pontos.len(), if c == "P4" { 2 } else { 1 }, "{c}");
+    }
+    assert!(
+        rato_do_p(
+            PRIMEIRA + 12,
+            160,
+            &mut Mesa::new(View::List).jogador,
+            &Default::default()
+        )
+        .is_none()
+    );
+}

@@ -77,6 +77,12 @@ impl PlaySession {
         &self.screen
     }
 
+    /// A disposição do último [`Self::paint`] (a do clique); `None` = fechada ou ainda por pintar.
+    #[must_use]
+    pub fn layout(&self) -> Option<&Layout> {
+        self.last.as_ref()
+    }
+
     #[must_use]
     pub fn keys(&self) -> &PlayerKeys {
         &self.keys

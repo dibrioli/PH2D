@@ -1,5 +1,5 @@
-//! **O que o cartão do Trigger pede ao Input Map** — criar a acção que falta, ou criá-la e esperar a
-//! tecla dela (onda 4 do F3, dono 09/11).
+//! **O que o cartão do Trigger pede ao Input Map** — criar a acção se faltar e esperar a tecla dela
+//! (onda 4 do F3, dono 09/11; o botão que só criava saiu a 10/11: era o mesmo gesto, duas vezes).
 //!
 //! O mapa é estado do EDITOR (vive no [`HeroScreen`]): não viaja num `ComponentBlob` nem passa pelo
 //! `Ctrl+Z` do documento. O painel pede pelo barramento, a shell drena os pedidos do quadro e chama
@@ -10,9 +10,8 @@ use crate::screens::hero::HeroScreen;
 /// Um pedido da fileira do gatilho. O nome vem cru do campo; aqui ele é aparado.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PedidoDoMapa {
-    /// Só criar (o botão «Create this action» do aviso).
-    Criar(String),
     /// Criar se faltar e armar a escuta que TROCA as teclas de teclado (o botão da linha Key).
+    /// `Esc` depois deixa a acção criada, sem tecla.
     CriarEEscutar(String),
 }
 
@@ -24,17 +23,12 @@ pub fn aplica_pedidos_do_mapa(hero: &mut HeroScreen, pedidos: Vec<PedidoDoMapa>)
     if pedidos.is_empty() {
         return;
     }
-    for pedido in pedidos {
-        let (nome, escuta) = match &pedido {
-            PedidoDoMapa::Criar(n) => (n.trim(), false),
-            PedidoDoMapa::CriarEEscutar(n) => (n.trim(), true),
-        };
+    for PedidoDoMapa::CriarEEscutar(nome) in pedidos {
+        let nome = nome.trim();
         if nome.is_empty() {
             continue;
         }
         let id = hero.input_map.create(nome);
-        if escuta {
-            hero.store.listen_for_binding_replacing(id);
-        }
+        hero.store.listen_for_binding_replacing(id);
     }
 }

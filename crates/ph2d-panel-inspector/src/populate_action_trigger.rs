@@ -24,7 +24,6 @@ pub(crate) fn populate_action_trigger(store: &mut WidgetStore) {
         &[
             crate::ids::INSP_TRIGGER_ADD,
             crate::ids::INSP_TRIGGER_REMOVE,
-            crate::ids::INSP_TRIGGER_CREATE_ACTION,
             crate::ids::INSP_TRIGGER_SET_KEY,
         ],
     );

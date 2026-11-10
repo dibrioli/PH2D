@@ -78,12 +78,18 @@ fn o_pedido_cria_a_accao_que_falta_e_espera_a_tecla() {
     );
 }
 
+/// ⭐ Dono 10/11: o «Create and set key» é o único botão que cria — e `Esc` depois deixa a acção criada,
+/// sem tecla (o que o «Create this action» fazia sozinho).
+///
+/// Mutação que deve sangrar: o `Esc` da escuta do cartão apagar a acção que o pedido criou.
 #[test]
-fn so_criar_nao_arma_a_escuta() {
+fn criar_e_esc_deixa_a_accao_criada_sem_tecla() {
     let mut h = HeroScreen::new(NodeId(1));
-    aplica_pedidos_do_mapa(&mut h, vec![PedidoDoMapa::Criar(NOME.into())]);
-    assert!(h.input_map.id(NOME).is_some());
-    assert!(h.store.input_map_listening().is_none());
+    assert!(h.input_map.id(NOME).is_none());
+    aplica_pedidos_do_mapa(&mut h, vec![PedidoDoMapa::CriarEEscutar(NOME.into())]);
+    carrega(&mut h, KEY_ESCAPE);
+    assert!(h.store.input_map_listening().is_none(), "o Esc desarmou");
+    assert_eq!(ligacoes(&h), Vec::new(), "a acção ficou criada, sem tecla");
 }
 
 #[test]

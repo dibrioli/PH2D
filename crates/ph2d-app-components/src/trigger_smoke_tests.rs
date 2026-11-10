@@ -147,18 +147,18 @@ fn quem_nasce_escolhido_e_o_heroi_e_ele_tem_gatilho() {
 #[test]
 fn o_roteiro_nomeia_o_botao_que_o_painel_de_facto_pinta() {
     let roteiro = include_str!("trigger_smoke.rs");
-    let rotulo = ph2d_i18n::tr("panel.inspector.trigger.create_this_action");
+    let rotulo = ph2d_i18n::tr("panel.inspector.trigger.create_and_set_key");
     assert!(
         roteiro.contains(rotulo),
         "o roteiro manda carregar num botao com outro nome: o painel pinta «{rotulo}»"
     );
 
-    // ⛔ **E a metade NEGATIVA, que é a lei do botão:** o roteiro tem de dizer que ele NÃO existe
-    // sobre uma acção que já existe. Sem ela o dono lê *«carregue no botão»* e conclui que o app
-    // está partido quando ele não aparece — que é o defeito de que a secção inteira se defende.
+    // ⛔ **E a metade NEGATIVA, que é a lei do botão:** o roteiro tem de dizer o que ele diz sobre uma
+    // acção que já existe. Sem ela o dono lê *«carregue no botão»* e conclui que o app está partido
+    // quando o rótulo é outro — que é o defeito de que a secção inteira se defende.
     assert!(
-        roteiro.contains("so' existe onde a accao NAO"),
-        "o roteiro deixou de dizer que o botao so' aparece onde a accao FALTA — e' a metade que \
-         impede o dono de ler a ausencia dele como avaria"
+        roteiro.contains(ph2d_i18n::tr("panel.inspector.trigger.set_key")),
+        "o roteiro deixou de dizer o que o botao diz onde a accao JA' existe — e' a metade que \
+         impede o dono de ler o outro rotulo como avaria"
     );
 }

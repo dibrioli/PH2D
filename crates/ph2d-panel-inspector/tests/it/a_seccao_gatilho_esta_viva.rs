@@ -286,76 +286,36 @@ fn o_aviso_da_accao_sem_tecla_chega_a_pixel() {
     );
 }
 
-/// ⭐⭐⭐ **A CURA está ao lado da QUEIXA: o botão que CRIA a acção que falta.**
+/// ⭐ **Sobre a acção que falta, o cartão tem UM botão que cria: o da linha Key** (dono 10/11).
 ///
-/// ⚠️⚠️ **As DUAS metades são a lei, e cada uma sozinha mente:** sem a primeira o aviso nomeia uma
-/// cura que vive noutra janela e o artista tem de a descobrir (*meia queixa*); sem a segunda o
-/// botão aparece sobre uma acção que JÁ existe e criar outra com o mesmo nome é ruído.
+/// O «Create this action» do aviso era o mesmo gesto duas vezes (o «Create and set key» já cria e
+/// espera a tecla; `Esc` deixa-a criada). ⇒ a fileira DESCONHECIDA pinta exactamente os mesmos
+/// alvos que a LIGADA — só o rótulo e o aviso mudam —, e a linha Key está lá.
 ///
-/// ⛔ **E a terceira metade é o estado `SemTecla`**, onde a cura é **outra** (ligar uma tecla):
-/// oferecer este botão ali mandaria o artista resolver a metade errada — a lei que o próprio
-/// `NoMapa` existe para separar.
+/// Mutação que deve sangrar: voltar a pintar um botão de criar no estado `Desconhecida`.
 #[test]
-fn o_botao_que_cria_a_accao_so_existe_onde_ela_falta() {
-    // (1) A linha ÓRFÃ está aberta por omissão (`trigger_selected` nasce em `0`).
+fn sobre_a_accao_que_falta_so_a_linha_key_cria() {
+    let alvos = |rects: &[(ph2d_a11y::NodeId, Rect)]| {
+        rects
+            .iter()
+            .filter(|(_, r)| r.w > 0.0)
+            .map(|(n, _)| *n)
+            .collect::<std::collections::BTreeSet<_>>()
+    };
     let (mut h, mut st) = host(Some(info()));
-    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
-    assert!(
-        rect_de(&rects, ids::INSP_TRIGGER_CREATE_ACTION).is_some(),
-        "sobre uma accao que o mapa nao conhece o botao TEM de estar la'"
-    );
-
-    // (2) O CONTROLO: com a linha SÃ aberta, ele não é pintado.
+    // A fileira ÓRFÃ está aberta por omissão (`trigger_selected` nasce em `0`).
+    let desconhecida = alvos(&h.paint::<InspectorPanel>(&mut st, VIEWPORT));
     st.trigger_selected = ALVO;
-    let rects_sao = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
+    let ligada = alvos(&h.paint::<InspectorPanel>(&mut st, VIEWPORT));
     assert!(
-        rect_de(&rects_sao, ids::INSP_TRIGGER_CREATE_ACTION).is_none(),
-        "sobre uma accao LIGADA o botao seria ruido — e criaria uma segunda linha com o mesmo nome"
+        desconhecida.contains(&ids::INSP_TRIGGER_SET_KEY),
+        "a linha Key é a cura da acção que falta"
     );
-
-    // (3) O CONTROLO da terceira leitura: `SemTecla` tem outra cura.
-    set_current_inspector_action_trigger(Some(InspectorActionTriggerInfo {
-        entity_bits: BITS,
-        rows: vec![linha("reload", NoMapa::SemTecla)],
-        clock_playing: true,
-        selected_count: 1,
-    }));
-    let mut st_sem = InspectorState::default();
-    let rects_sem = h.paint::<InspectorPanel>(&mut st_sem, VIEWPORT);
-    assert!(
-        rect_de(&rects_sem, ids::INSP_TRIGGER_CREATE_ACTION).is_none(),
-        "no `SemTecla` a accao EXISTE — a cura e' ligar-lhe uma tecla, nao criar outra"
-    );
-    set_current_inspector_action_trigger(None);
-}
-
-/// ⭐⭐⭐ **E o clique REAL chega ao barramento com o NOME da fileira aberta.**
-///
-/// ⚠️ **Ele não é uma `ComponentEdit`**: o que nasce é uma linha do Input Map, que é estado do
-/// EDITOR — não viaja num `ComponentBlob`, não passa pelo ledger e não é do `Ctrl+Z` do documento.
-/// ⇒ a régua é a `EditorAction::CreateInputAction`, e a metade negativa afirma que **nada** de
-/// componente foi empurrado junto.
-#[test]
-fn criar_a_accao_leva_o_nome_da_fileira_aberta_ao_barramento() {
-    let (mut h, mut st) = host(Some(info()));
-    let rects = h.paint::<InspectorPanel>(&mut st, VIEWPORT);
-    let acoes = clica(&mut h, &mut st, &rects, ids::INSP_TRIGGER_CREATE_ACTION);
-
-    let pedidos: Vec<&str> = acoes
-        .iter()
-        .filter_map(|a| match a {
-            EditorAction::CreateInputAction { name } => Some(name.as_str()),
-            _ => None,
-        })
-        .collect();
     assert_eq!(
-        pedidos,
-        vec!["fier"],
-        "o pedido tem de carregar o nome da fileira ABERTA — ler o store manda o do objecto anterior"
+        desconhecida.difference(&ligada).collect::<Vec<_>>(),
+        Vec::<&ph2d_a11y::NodeId>::new(),
+        "a acção que falta não ganha outro botão de criar"
     );
-    assert!(
-        edicoes(&acoes).is_empty(),
-        "criar uma accao do mapa nao e' uma edicao do documento"
-    );
+    assert_eq!(desconhecida, ligada, "os mesmos alvos nos dois estados");
     set_current_inspector_action_trigger(None);
 }

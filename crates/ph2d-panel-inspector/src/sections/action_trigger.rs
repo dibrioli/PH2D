@@ -340,56 +340,8 @@ fn editor(
             .placeholder(tr("panel.inspector.trigger.signal_name_empty_mute")),
         seccao,
     );
-    let cur_y = avisos(scene, text_system, theme, x, w, cur_y, info, row);
-    // ⭐⭐⭐ **A CURA ao lado da QUEIXA** — e só onde ela aparece.
-    botao_criar_a_accao(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        cur_y,
-        row,
-    )
-}
-
-/// ⭐⭐⭐ **O botão que CRIA a acção que falta**, ali mesmo.
-///
-/// ⚠️⚠️ **Ele só existe no estado `Desconhecida`, e as duas metades são a lei:** *uma queixa que
-/// nomeia a cura e não a alcança é meia queixa* (o artista tem de descobrir sozinho a outra janela),
-/// e *um botão que oferece criar uma acção que já existe é ruído* — pior, ele criaria uma segunda
-/// linha com o mesmo nome. ⛔ No estado `SemTecla` a cura é **outra** (ligar uma tecla), e oferecer
-/// este botão ali mandaria o artista resolver a metade errada.
-#[allow(clippy::too_many_arguments)]
-fn botao_criar_a_accao(
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    x: f32,
-    w: f32,
-    y: f32,
-    row: &InspectorTriggerRow,
-) -> f32 {
-    if row.no_mapa != NoMapa::Desconhecida || row.action.trim().is_empty() {
-        return y;
-    }
-    let rotulo = tr("panel.inspector.trigger.create_this_action");
-    let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, y, rotulo);
-    hit_index.register(ids::INSP_TRIGGER_CREATE_ACTION, rect);
-    paint_button(
-        &Button::new(ids::INSP_TRIGGER_CREATE_ACTION, rotulo)
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_TRIGGER_CREATE_ACTION)),
-        rect,
-        scene,
-        text_system,
-        theme,
-    );
-    ph2d_editor_core::property_row::abaixo_do_botao(rect)
+    // A cura da acção que falta é o «Create and set key» da linha Key (dono 10/11): um botão só.
+    avisos(scene, text_system, theme, x, w, cur_y, info, row)
 }
 
 /// ⚠️⚠️ **A LINHA QUE RESPONDE AO «nada acontece»** — da mais específica para a mais geral.

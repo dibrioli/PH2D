@@ -3,11 +3,11 @@
 //!
 //! # ⚠️ Porquê sobre o TEXTO do quadro, e não por comportamento
 //!
-//! O gate de costura do Inspector (`o_botao_que_cria_a_accao_so_existe_onde_ela_falta` +
-//! `criar_a_accao_leva_o_nome_da_fileira_aberta_ao_barramento`) prova o caminho até ao
-//! **barramento** e pára ali. O consumidor mora numa fase que pede `self.gfx` e o `HeroScreen`, que
-//! nenhum teste de unidade alcança — *um gate de unidade é cego à fiação da shell*, a lição que
-//! esta casa pagou com vinte gates verdes sobre um `draw` cravado em `true`.
+//! O gate de costura do Inspector (`a_linha_key_do_gatilho` +
+//! `sobre_a_accao_que_falta_so_a_linha_key_cria`) prova o caminho até ao **barramento** e pára ali.
+//! O consumidor mora numa fase que pede `self.gfx` e o `HeroScreen`, que nenhum teste de unidade
+//! alcança — *um gate de unidade é cego à fiação da shell*, a lição que esta casa pagou com vinte
+//! gates verdes sobre um `draw` cravado em `true`.
 //!
 //! ⇒ o que se afirma é a **CORRENTE**: o braço do dreno guarda o pedido, o quadro drena-o, e a fase
 //! cria a acção **e** re-sincroniza as linhas do painel do mapa.
@@ -51,10 +51,16 @@ fn o_quadro_drena_o_pedido_cria_a_accao_e_re_sincroniza_o_painel() {
 fn o_braco_do_barramento_guarda_o_pedido_e_nao_o_trata_como_documento() {
     let src = include_str!("../../src/render_loop/fase_bus_inspector.rs");
     let braco = src
-        .find("EditorAction::CreateInputAction")
+        .find("EditorAction::ListenForTriggerKey")
         .expect("o dreno do barramento conhece o pedido");
+    // O rustfmt parte a cadeia: `pd.create_input_actions` e o `.push(` podem ficar em linhas vizinhas.
     let guarda = src[braco..]
-        .find("create_input_actions.push(")
+        .find("create_input_actions")
+        .filter(|&i| {
+            src[braco + i + "create_input_actions".len()..]
+                .trim_start()
+                .starts_with(".push(")
+        })
         .expect("e guarda-o no pendente que o quadro drena");
     assert!(
         guarda < 400,

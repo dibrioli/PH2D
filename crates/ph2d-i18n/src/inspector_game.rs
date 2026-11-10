@@ -382,15 +382,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️⚠️ **A frase mais valiosa das quatro:** a lei CALA uma acção que o mapa não conhece
         // (senão um `Release` sobre ela dispararia em todo quadro), e sem esta linha o artista lê
         // esse silêncio como «o gatilho não funciona».
-        // ⭐ A CURA ao lado da queixa — o botao so' aparece no estado `Desconhecida`.
-        "panel.inspector.trigger.create_this_action" => "Create this action",
+        // ⭐ A CURA é o botão da linha Key (`create_and_set_key`) — o único que cria (dono 10/11).
         "panel.inspector.trigger.key_label" => "Key",
         "panel.inspector.trigger.set_key" => "Set key",
         "panel.inspector.trigger.create_and_set_key" => "Create and set key",
         "panel.inspector.trigger.press_a_key" => "Press a key\u{2026} (Esc cancels)",
         "panel.inspector.trigger.key_also_used_by" => "{key} is also used by {action}",
         "panel.inspector.trigger.there_is_no_action_called" => {
-            "There is no action called \u{201c}{name}\u{201d} yet \u{2014} create it below."
+            "There is no action called \u{201c}{name}\u{201d} yet \u{2014} press Create and set key."
         }
         // ⭐⭐⭐ **O SEGUNDO silêncio, e a cura dele é OUTRA.** Uma acção declarada e sem ligação
         // nenhuma resolve para `Sample::default()`, logo o gatilho fica tão calado como com um

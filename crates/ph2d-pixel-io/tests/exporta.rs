@@ -425,3 +425,54 @@ fn o_repeat_acha_a_tag_pelo_nome() {
     let lido = exporta::o_ultimo(&s).expect("tem").0.expect("lê");
     assert_eq!(quadros_de(&lido), Quadros::Tag(1));
 }
+
+/// **A folha leva o áudio** (P13 T): `meta.audio` com as faixas do sprite (a referência, nunca as
+/// amostras); sem som, o JSON de hoje sem a chave.
+#[test]
+fn a_folha_leva_o_audio() {
+    let d = pasta("audio");
+    let mut s = sprite(ColorMode::Rgba);
+    let e = Export::Folha(ExportFolha {
+        opcoes: OpcoesFolha::default(),
+        json: Some(OpcoesJson::default()),
+    });
+    exporta::gravar(&s, &e, &d.join("sem.png")).expect("grava");
+    let sem = std::fs::read_to_string(d.join("sem.json")).expect("lê");
+    assert!(!sem.contains("\"audio\""), "{sem}");
+    let faixas = vec![
+        ph2d_pixel_core::FaixaDeAudio {
+            asset: "sfx/step.ogg".into(),
+            inicio_ms: -40,
+            ganho: 0.5,
+            mudo: false,
+        },
+        ph2d_pixel_core::FaixaDeAudio {
+            asset: "music.wav".into(),
+            inicio_ms: 100,
+            ganho: 1.0,
+            mudo: true,
+        },
+    ];
+    let op = Op::Doc(Box::new(ph2d_pixel_core::DocOp::SetAudio(faixas)));
+    ph2d_pixel_core::apply(&mut s, op).expect("aplica");
+    exporta::gravar(&s, &e, &d.join("com.png")).expect("grava");
+    let j: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(d.join("com.json")).expect("lê"))
+            .expect("json");
+    let a = &j["meta"]["audio"];
+    assert_eq!(a.as_array().map(Vec::len), Some(2), "{j}");
+    assert_eq!(a[0]["asset"], "sfx/step.ogg");
+    assert_eq!(a[0]["start_ms"], -40);
+    assert_eq!(a[0]["gain"], 0.5);
+    assert_eq!(a[0]["muted"], false);
+    assert_eq!(a[1]["asset"], "music.wav");
+    assert_eq!(a[1]["muted"], true);
+    // O resto do `meta` é o mesmo de sem som (os nomes dos quadros seguem o ficheiro).
+    let sem_v: serde_json::Value = serde_json::from_str(&sem).expect("json");
+    let (mut m_sem, mut m_com) = (sem_v["meta"].clone(), j["meta"].clone());
+    m_com.as_object_mut().expect("meta").remove("audio");
+    for m in [&mut m_sem, &mut m_com] {
+        m.as_object_mut().expect("meta").remove("image");
+    }
+    assert_eq!(m_sem, m_com);
+}

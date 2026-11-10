@@ -121,6 +121,34 @@ struct Shared {
     /// would.
     loop_start: AtomicU64,
     loop_end: AtomicU64,
+    /// The voice's cursor in source frames, published once per mixer block (P13 T): what a
+    /// [`StreamPlayhead`] reads on the control thread.
+    played: AtomicU64,
+}
+
+/// The **control-thread** view of where a stream is playing (P13 T): the voice's cursor in source
+/// frames, published once per mixer block. Precision: one block, without the output latency.
+#[derive(Clone)]
+pub struct StreamPlayhead {
+    shared: Arc<Shared>,
+    rate: u32,
+}
+
+impl StreamPlayhead {
+    /// Source frames played so far (the cursor, wrapped at the loop point as the voice wraps it).
+    pub fn frame(&self) -> u64 {
+        self.shared.played.load(Ordering::Relaxed)
+    }
+
+    /// [`StreamPlayhead::frame`] in milliseconds of the source.
+    pub fn ms(&self) -> f64 {
+        self.frame() as f64 * 1000.0 / f64::from(self.rate)
+    }
+
+    /// Whether the stream's source is exhausted (the producer called `finish`).
+    pub fn source_finished(&self) -> bool {
+        self.shared.eof.load(Ordering::Acquire)
+    }
 }
 
 /// The **audio-thread** half of a stream: pop frames, recycle chunks. Never allocates, never
@@ -155,6 +183,20 @@ impl StreamHandle {
                 self.shared.loop_start.load(Ordering::Relaxed) as usize,
                 end as usize,
             )),
+        }
+    }
+
+    /// Publish the voice's cursor (source frames). Audio thread, once per block: a store, no alloc.
+    pub(crate) fn publicar(&self, f: u64) {
+        self.shared.played.store(f, Ordering::Relaxed);
+    }
+
+    /// The control-thread playhead of this stream — take it **before** the handle moves to
+    /// `AudioEngine::play_stream`.
+    pub fn playhead(&self) -> StreamPlayhead {
+        StreamPlayhead {
+            shared: Arc::clone(&self.shared),
+            rate: self.rate,
         }
     }
 
@@ -278,6 +320,7 @@ pub fn stream(rate: u32) -> (StreamFeeder, StreamHandle) {
         underruns: AtomicU64::new(0),
         loop_start: AtomicU64::new(0),
         loop_end: AtomicU64::new(0),
+        played: AtomicU64::new(0),
     });
     (
         StreamFeeder {

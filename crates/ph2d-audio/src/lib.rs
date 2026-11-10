@@ -58,7 +58,9 @@ pub use command::{LoopRegion, PlayParams};
 pub use engine::{AudioEngine, AudioRenderer};
 pub use format::{AudioFormat, ChannelLayout, Sample};
 pub use meter::AudioMeter;
-pub use stream::{Chunk, STREAM_CHUNK_FRAMES, STREAM_DEPTH, StreamFeeder, StreamHandle, stream};
+pub use stream::{
+    Chunk, STREAM_CHUNK_FRAMES, STREAM_DEPTH, StreamFeeder, StreamHandle, StreamPlayhead, stream,
+};
 pub use voice::VoiceId;
 
 use ph2d_core::MemoryBudget;

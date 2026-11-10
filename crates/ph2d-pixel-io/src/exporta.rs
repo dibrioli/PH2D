@@ -190,6 +190,7 @@ pub fn gravar_com(
                 } else {
                     t
                 };
+                let t = crate::folha_audio::com_audio(s, &t);
                 let c = caminho.with_extension("json");
                 escreve(&c, t.as_bytes())?;
                 ficheiros.push(c);

@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-pixel-audio"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# P13 T (`docs/PixelArt/P13_plano.md` §4): a ponte do som do sprite. Toca as faixas do
+# `Sprite.audio` em sincronia a partir de `t` pelo mixer foundational (`ph2d-audio`, stream com
+# `StreamPlayhead`), expõe o `Relogio` que o Play usa como `dt` quando há som, e o cache de picos
+# da onda (uma vez por asset). Folha: nunca vê `ph2d-app-audio` (família não depende de família).
+[dependencies]
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+ph2d-audio = { path = "../ph2d-audio" }
+ph2d-audio-decode = { path = "../ph2d-audio-decode" }
+
+[lints]
+workspace = true

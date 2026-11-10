@@ -444,6 +444,7 @@ impl Voice {
             }
         }
 
+        h.publicar(self.cursor.max(0.0) as u64);
         self.source = Some(Source::Streamed(h));
         None
     }

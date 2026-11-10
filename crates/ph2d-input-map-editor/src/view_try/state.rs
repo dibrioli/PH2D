@@ -40,6 +40,15 @@ impl TryHit {
     }
 }
 
+/// Os quatro cartões da vista, pela ordem da pintura.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TryCard {
+    Recipes,
+    Live,
+    Stick,
+    Controls,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct TryState {
     /// ⭐ A bancada: só o teclado da aba (com o jogo parado) e o comando ao vivo. Nunca o `InputState` do jogo.
@@ -64,6 +73,10 @@ pub struct TryState {
     pub(crate) player_override: Option<ph2d_input::PlayerKeys>,
     /// A rolagem da coluna (janela estreita).
     pub scroll: f32,
+    /// O cartão que a rolagem mantém inteiro à vista (as cenas C3/C4); a roda larga-o.
+    pub reveal: Option<TryCard>,
+    /// O «Forget them» à espera de chegar à sessão do Play ([`crate::InputMapDoc::forget_reaches`]).
+    pub(crate) forget_session: bool,
     pub(crate) targets: Vec<TryHit>,
     /// O tema da última pintura (a prévia da tela do jogador pinta com ele).
     pub(crate) theme: ph2d_tokens::Theme,

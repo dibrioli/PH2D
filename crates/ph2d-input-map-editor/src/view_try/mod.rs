@@ -78,14 +78,6 @@ pub(crate) fn reread_player_file(doc: &mut InputMapDoc) {
     };
 }
 
-fn is_modifier(k: Key) -> bool {
-    ["left_ctrl", "right_ctrl", "left_alt", "right_alt"]
-        .iter()
-        .filter_map(|n| Key::named_in_script(n))
-        .flatten()
-        .any(|x| x == k)
-}
-
 /// A tecla física: à escuta da tecla que abre a tela, ela; senão, com o jogo parado, o bench (desce E sobe).
 pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool) -> bool {
     if doc.snap.play_running || doc.store.focus_id().is_some() || doc.list.typing.is_some() {
@@ -108,9 +100,8 @@ pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool) -> bool {
     } else {
         kb.handle_key_up(key);
     }
-    // Ctrl/Alt e os acordes passam: o Ctrl+Z desfaz mesmo com o Try it aberto.
-    let chord = kb.iter_held().any(is_modifier);
-    !is_modifier(key) && !chord
+    // Ctrl/Alt, os acordes e o F5 passam: o Ctrl+Z desfaz e o F5 dá Play mesmo com o Try it aberto.
+    !crate::raw_keys::never_binds(key, kb.iter_held())
 }
 
 fn take_open_key(doc: &mut InputMapDoc, key: Key) {
@@ -132,6 +123,7 @@ pub(crate) fn key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
 
 pub(crate) fn wheel(doc: &mut InputMapDoc, dy: f32) -> bool {
     let before = doc.tryit.scroll;
+    doc.tryit.reveal = None;
     doc.tryit.scroll = (doc.tryit.scroll - dy).max(0.0);
     (doc.tryit.scroll - before).abs() > f32::EPSILON
 }
@@ -185,6 +177,7 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
         }
         Some(TryHit::Forget) => {
             doc.pending.push(InputMapEdit::ForgetPlayerKeys);
+            doc.tryit.forget_session = true;
             doc.tryit.player_override = None;
             doc.tryit.reread = true;
         }
@@ -318,6 +311,14 @@ pub fn paint(
         bottom = bottom.max(tops[col_of(i)]);
     }
     let overflow = (bottom - m::CARD_GAP - (inner.y + inner.h)).max(0.0);
+    if let Some(i) = doc.tryit.reveal.map(|c| c as usize) {
+        // O cartão inteiro à vista: o fundo dele no fundo da vista, sem passar do topo.
+        let top: f32 = (0..i)
+            .filter(|&j| col_of(j) == col_of(i))
+            .map(|j| heights[j] + m::CARD_GAP)
+            .sum();
+        doc.tryit.scroll = (top + heights[i] - inner.h).clamp(0.0, top);
+    }
     doc.tryit.scroll = doc.tryit.scroll.min(overflow);
     let mut ys = [inner.y - doc.tryit.scroll; 2];
     // A vista rola: os cartões cortam-se na linha do enchimento (a 1280×720 o último descia ao HUD, foto A1).
@@ -339,4 +340,44 @@ pub fn paint(
     }
     doc.hits.pop_clip();
     scene.pop_layer();
+    scrollbar(doc, clip, bottom - m::CARD_GAP - inner.y, scene, ink);
+}
+
+/// A barra discreta do cartão (a da vista A): só o polegar fino, sem trilho, na margem direita da vista.
+fn scrollbar(doc: &InputMapDoc, view: Rect, total: f32, scene: &mut VectorScene, ink: CardInk) {
+    use ph2d_editor_core::widget::{
+        scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
+    };
+    if !scrollbar_is_needed(total, view.h) {
+        return;
+    }
+    let lane = Rect::new(view.x, view.y, view.w - m::SEG_INSET, view.h);
+    let thumb = scrollbar_thumb_rect(scrollbar_track_rect(lane), doc.tryit.scroll, total, view.h);
+    let pill = Rect::new(
+        thumb.x + thumb.w - m::BAR_TRACK,
+        thumb.y,
+        m::BAR_TRACK,
+        thumb.h,
+    );
+    fill_rounded_rect(
+        scene,
+        pill,
+        m::BAR_TRACK * 0.5,
+        ink.color(ColorToken::BorderEmph),
+    );
+}
+
+impl InputMapDoc {
+    /// ⭐ O «Forget them» com o Play a correr chega à SESSÃO: o mapa que o jogo lê volta ao do projecto e a próxima
+    /// troca do jogador já não regrava as esquecidas. A shell chama-a depois do `frame` da família (ela só vê a
+    /// sessão por `&`). Fora do Play, nada: o ficheiro já saiu.
+    pub fn forget_reaches(
+        &mut self,
+        session: &mut ph2d_player_controls::PlaySession,
+        project: &ph2d_input::InputMap,
+    ) {
+        if std::mem::take(&mut self.tryit.forget_session) && session.running() {
+            session.start_with(project, ph2d_input::PlayerKeys::new(), self.player_file());
+        }
+    }
 }

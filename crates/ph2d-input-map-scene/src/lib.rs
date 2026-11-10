@@ -26,6 +26,7 @@ use ph2d_core::Vec2;
 use ph2d_ecs::{ActionEdge, ActionTriggerRow, Entity, Name, SignalOnAction, SimWorld, Transform};
 use ph2d_input::{Binding, GamepadAxis, InputMap, Key, PlayerKeys};
 use ph2d_input_map_editor::view_keyboard::state::Sub;
+use ph2d_input_map_editor::view_try::state::TryCard;
 use ph2d_input_map_editor::{InputMapDoc, View};
 use ph2d_script::{LuauScript, ProjectScripts};
 
@@ -170,7 +171,11 @@ pub fn arma(doc: &mut InputMapDoc, cena: &str) -> Option<InputMap> {
     });
     match cena {
         "C2" => doc.smoke_bench_key(up_arrow()),
-        "C4" => doc.smoke_player_keys(troca_do_jogador(&map)),
+        "C3" => doc.smoke_reveal(TryCard::Stick),
+        "C4" => {
+            doc.smoke_player_keys(troca_do_jogador(&map));
+            doc.smoke_reveal(TryCard::Controls);
+        }
         "A2" => reload.into_iter().for_each(|r| doc.smoke_listen(r)),
         "A3" => doc.smoke_search_key(up_arrow()),
         "B1" => doc.smoke_open(jump),

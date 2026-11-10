@@ -132,14 +132,25 @@ pub(super) fn stick(
         .find(|b| matches!(b, Binding::PadAxis { .. } | Binding::PadButton(_)));
     let title = tr("input_map_try.stick_of")
         .replace("{action}", &a.name)
-        .replace("{stick}", &half.map_or_else(String::new, |b| stick_name(*b)));
+        .replace(
+            "{stick}",
+            &half.map_or_else(String::new, |b| stick_name(*b)),
+        );
     // «move_left · Left Stick ←»: a direcção é um ÍCONE (a mesma porta do ladrilho da B), nunca um glifo.
     let icon = half.and_then(|b| crate::view_keyboard::half_icon(*b));
     let iw = icon.map_or(0.0, |_| m::LABEL_PX + m::SEG_PAD);
     let tw = ts.prefix_width(&title, m::LABEL_PX).min((rw - iw).max(0.0));
     let lh = line_h(m::LABEL_PX);
     let fg = ink.color(ColorToken::Text2);
-    line(&mut doc.census, ts, scene, &title, Rect::new(rx, y, tw, lh), m::LABEL_PX, fg);
+    line(
+        &mut doc.census,
+        ts,
+        scene,
+        &title,
+        Rect::new(rx, y, tw, lh),
+        m::LABEL_PX,
+        fg,
+    );
     if let Some(icon) = icon {
         let s = m::LABEL_PX;
         let ir = Rect::new(rx + tw + m::SEG_PAD, y + (lh - s) * 0.5, s, s);
@@ -166,9 +177,17 @@ pub(super) fn stick(
         ColorToken::Text2
     };
     let runs = [
-        (tr("input_map_try.pushed").to_owned(), ColorToken::Text2, false),
+        (
+            tr("input_map_try.pushed").to_owned(),
+            ColorToken::Text2,
+            false,
+        ),
         (format!("{raw:.2}"), ColorToken::Text1, true),
-        (tr("input_map_try.strength").to_owned(), ColorToken::Text2, false),
+        (
+            tr("input_map_try.strength").to_owned(),
+            ColorToken::Text2,
+            false,
+        ),
         (format!("{s:.2}"), ColorToken::Text1, true),
         (pressed.to_owned(), state, p),
     ];

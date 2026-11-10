@@ -43,6 +43,11 @@ impl InputMapDoc {
             .for_each(|k| self.tryit.bench.keyboard.handle_key_down(k));
     }
 
+    /// A vista C rola até `card` ficar inteiro à vista (a 1280×720 o The stick e o Controls nascem abaixo da dobra).
+    pub fn smoke_reveal(&mut self, card: crate::view_try::state::TryCard) {
+        self.tryit.reveal = Some(card);
+    }
+
     /// O `game_id` do mundo da cena (o recurso que o `Snapshot` lê); o tipo fica na tela do jogador.
     #[must_use]
     pub fn smoke_game_id(id: u64) -> ph2d_player_controls::GameId {

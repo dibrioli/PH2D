@@ -12,6 +12,7 @@ use ph2d_app_sprite_anim::editor::frame as anim_editor;
 /// `render_loop/mod.rs` não crescer acima do tecto dele).
 #[path = "fase_snapshot_readouts.rs"]
 mod readouts;
+use ph2d_app_input_map::{InputMapTab, ph2d_player_controls::PlaySession};
 use readouts::SnapshotReadouts;
 
 /// ⭐ **Os instantâneos que o `publish` não pode calcular** (SCRIPT e PARTICLES) — fase-filha, num
@@ -214,8 +215,8 @@ impl crate::App {
         let filed = self.recovery.project_path.is_some();
         ph2d_app_code::frame(sim, script.as_mut(), hero, toasts, filed);
         let tl = (&self.timeline.doc, &mut self.timeline_intents);
-        let io = (self.gilrs.as_ref(), (&self.input, &self.components.jogador));
-        document_families(sim, hero, tl, toasts, io);
+        let io = (self.gilrs.as_ref(), &self.input);
+        document_families(sim, hero, tl, toasts, io, &mut self.components.jogador);
         // ⭐ **A LUZ** (Luz 2D): a secção do Inspector e a recusa do solver, que sobe como aviso.
         let (timeline, playhead) = (&self.timeline, &self.playhead);
         let mut ultimas = |sim: &mut ph2d_ecs::SimWorld, (b, n): (Option<u64>, usize)| {
@@ -278,11 +279,17 @@ fn document_families(
         &mut Vec<ph2d_timeline::TimelineIntent>,
     ),
     toasts: &mut ph2d_editor_core::ToastQueue,
-    (gilrs, live): (Option<&gilrs::Gilrs>, ph2d_app_input_map::Live<'_>),
+    (gilrs, input): (Option<&gilrs::Gilrs>, &ph2d_input::InputState),
+    jogador: &mut PlaySession,
 ) {
     ph2d_app_components::kanban_scene::frame(sim, hero, tl, intents);
     ph2d_app_kanban::frame(hero);
     ph2d_app_planner::frame(hero, toasts);
     let pad = gilrs.is_some_and(|g| g.gamepads().next().is_some());
-    ph2d_app_input_map::frame(sim.world(), hero, pad, live);
+    ph2d_app_input_map::frame(sim.world(), hero, pad, (input, jogador));
+    // O «Forget them» no Play chega à sessão (a família só a vê por `&`).
+    let tab = hero.documents.surfaces_mut().find_mut::<InputMapTab>();
+    if let Some(t) = tab {
+        t.doc.forget_reaches(jogador, &hero.input_map);
+    }
 }

@@ -212,18 +212,32 @@ pub(super) fn recipes(
     );
 }
 
+/// A amostra da cor (8 px) e a altura da barra da força (6 px) do medidor (maquete C2).
+const SWATCH: f32 = m::BAR_TRACK * 2.0;
+const METER_H: f32 = m::SEG_INSET;
+/// As colunas dos medidores: quatro na janela larga (maquete C2), menos só quando não cabem.
+const METER_COLS: usize = 4;
+
 fn bar_cols(w: f32) -> usize {
-    ((inner_w(w) / (ROW * 8.0)) as usize).clamp(1, 3)
+    ((inner_w(w) / (ROW * 6.0)) as usize).clamp(1, METER_COLS)
 }
 
 /// O pé do Try it: «You are pressing Up Arrow: jump and move_up are on. …».
 pub(crate) fn footer(doc: &InputMapDoc) -> String {
+    match footer_parts(doc) {
+        (Some(lead), rest) => format!("{lead} {rest}"),
+        (None, rest) => rest,
+    }
+}
+
+/// O pé em duas partes: o destaque em SemiBold («You are pressing Up Arrow:») e o resto em regular.
+fn footer_parts(doc: &InputMapDoc) -> (Option<String>, String) {
     if doc.snap.play_running {
-        return tr("input_map_try.idle_running").to_owned();
+        return (None, tr("input_map_try.idle_running").to_owned());
     }
     let keys = doc.tryit.held_keys();
     if keys.is_empty() {
-        return tr("input_map_try.idle").to_owned();
+        return (None, tr("input_map_try.idle").to_owned());
     }
     let names: Vec<String> = keys.iter().map(|k| k.label()).collect();
     let lead =
@@ -241,17 +255,31 @@ pub(crate) fn footer(doc: &InputMapDoc) -> String {
         1 => tr("input_map_try.on_one").replace("{actions}", on[0]),
         _ => tr("input_map_try.on_many").replace("{actions}", &on.join(tr("input_map_try.and"))),
     };
-    format!("{lead} {rest}")
+    (Some(lead), rest)
+}
+
+/// As linhas do pé em `w`: o destaque, a largura dele com o espaço, e o resto partido a seguir (wrap_after).
+fn foot_lines(
+    doc: &InputMapDoc,
+    ts: &mut TextSystem,
+    w: f32,
+) -> (Option<String>, f32, Vec<String>) {
+    let (lead, rest) = footer_parts(doc);
+    let px = m::VALUE_PX;
+    let lw = lead.as_deref().map_or(0.0, |l| {
+        crate::view_list::text::title_width(ts, l, px) + ts.prefix_width(" ", px)
+    });
+    let lines = crate::view_list::text::wrap_after(ts, &rest, px, (w - lw).max(0.0), w);
+    (lead, lw, lines)
+}
+
+fn foot_h(doc: &InputMapDoc, ts: &mut TextSystem, w: f32) -> f32 {
+    foot_lines(doc, ts, w).2.len() as f32 * line_h(m::VALUE_PX)
 }
 
 pub(super) fn live_h(doc: &mut InputMapDoc, ts: &mut TextSystem, w: f32) -> f32 {
     let n = doc.snap.map.len().div_ceil(bar_cols(w)) as f32;
-    let foot = para_h(
-        ts,
-        &footer(doc),
-        m::VALUE_PX,
-        inner_w(w) - m::SEG_INSET * 2.0,
-    );
+    let foot = foot_h(doc, ts, inner_w(w) - m::SEG_INSET * 2.0);
     m::CARD_PAD_TOP
         + ROW
         + crate::view_keyboard::keys::keyboard_h(inner_w(w))
@@ -344,23 +372,41 @@ pub(super) fn live(
         );
     }
     y += line_h(m::LABEL_PX) * actions.len().div_ceil(cols) as f32 + GAP;
-    let foot = footer(doc);
-    let fh = para_h(ts, &foot, m::VALUE_PX, w - m::SEG_INSET * 2.0);
+    let fw = w - m::SEG_INSET * 2.0;
+    let (lead, lw, lines) = foot_lines(doc, ts, fw);
+    let lh = line_h(m::VALUE_PX);
     fill_rounded_rect(
         scene,
-        Rect::new(x, y, w, fh),
+        Rect::new(x, y, w, lines.len() as f32 * lh),
         m::FIELD_RADIUS,
         ink.color(ColorToken::CardField),
     );
-    para(
-        doc,
-        ts,
-        scene,
-        &foot,
-        (x + m::SEG_INSET, y, w - m::SEG_INSET * 2.0),
-        m::VALUE_PX,
-        ink.color(ColorToken::Text1),
-    );
+    let fx = x + m::SEG_INSET;
+    if let Some(l) = lead {
+        let r = Rect::new(fx, y, lw, lh);
+        crate::view_list::text::title(
+            &mut doc.census,
+            ts,
+            scene,
+            &l,
+            r,
+            m::VALUE_PX,
+            ink.color(ColorToken::Text1),
+        );
+    }
+    for (i, l) in lines.iter().enumerate() {
+        let indent = if i == 0 { lw } else { 0.0 };
+        let r = Rect::new(fx + indent, y + lh * i as f32, fw - indent, lh);
+        line(
+            &mut doc.census,
+            ts,
+            scene,
+            l,
+            r,
+            m::VALUE_PX,
+            ink.color(ColorToken::Text2),
+        );
+    }
 }
 
 /// Uma acção: a amostra da cor, o nome, a barra da força 0.00–1.00 e o número.
@@ -374,29 +420,37 @@ fn bar_row(
 ) {
     let s = doc.tryit.actions.sample(id).strength;
     let color = ink.color(crate::palette::of_action(id));
-    let sq = m::SEG_PAD * 2.0;
+    let sq = SWATCH;
     fill_rounded_rect(
         scene,
         Rect::new(r.x, r.y + (r.h - sq) * 0.5, sq, sq),
-        m::FIELD_BORDER,
+        m::FIELD_BORDER * 2.0,
         color,
     );
     let nx = r.x + sq + m::SEG_ICON_GAP;
-    let nw = ts.prefix_width(name, m::LABEL_PX);
-    let fg = ink.color(if s > 0.0 {
+    let lit = s > 0.0;
+    let fg = ink.color(if lit {
         ColorToken::Text1
     } else {
         ColorToken::Text2
     });
-    line(
-        &mut doc.census,
-        ts,
-        scene,
-        name,
-        Rect::new(nx, r.y, nw, r.h),
-        m::LABEL_PX,
-        fg,
-    );
+    // A acção acesa em SemiBold claro (maquete C2): o que acendeu salta à vista.
+    let nw = if lit {
+        let nw = crate::view_list::text::title_width(ts, name, m::LABEL_PX);
+        let nr = Rect::new(nx, r.y, nw, r.h);
+        crate::view_list::text::title(&mut doc.census, ts, scene, name, nr, m::LABEL_PX, fg)
+    } else {
+        let nw = ts.prefix_width(name, m::LABEL_PX);
+        line(
+            &mut doc.census,
+            ts,
+            scene,
+            name,
+            Rect::new(nx, r.y, nw, r.h),
+            m::LABEL_PX,
+            fg,
+        )
+    };
     let v = format!("{s:.2}");
     let vw = ts.prefix_width(&v, m::LABEL_PX);
     line(
@@ -410,17 +464,11 @@ fn bar_row(
     );
     let bx = nx + nw + m::SEG_ICON_GAP;
     let bw = (r.x + r.w - vw - m::SEG_ICON_GAP - bx).max(0.0);
-    let bar = Rect::new(bx, r.y + (r.h - m::SEG_PAD) * 0.5, bw, m::SEG_PAD);
-    fill_rounded_rect(
-        scene,
-        bar,
-        m::SEG_PAD * 0.5,
-        ink.color(ColorToken::CardField),
-    );
-    fill_rounded_rect(
-        scene,
-        Rect::new(bx, bar.y, bw * s, bar.h),
-        m::SEG_PAD * 0.5,
-        color,
-    );
+    // O trilho cinza à vista mesmo a 0.00 (maquete C2), a força por cima na cor da acção.
+    let bar = Rect::new(bx, r.y + (r.h - METER_H) * 0.5, bw, METER_H);
+    fill_rounded_rect(scene, bar, METER_H * 0.5, ink.color(ColorToken::BorderEmph));
+    if s > 0.0 {
+        let fill = Rect::new(bx, bar.y, (bw * s).max(METER_H), bar.h);
+        fill_rounded_rect(scene, fill, METER_H * 0.5, color);
+    }
 }

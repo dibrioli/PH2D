@@ -100,6 +100,9 @@ pub fn paint(
     theme: Theme,
 ) {
     let ink = CardInk::of_list(theme);
+    // A B como a A: o fundo é a superfície MAIS FUNDA (kanban-list), os cartões sobem (kanban-card) e as teclas
+    // sobem mais (kanban-card-raised). Da cor do quadro, o fundo não deixa faixa vazia por baixo do conteúdo.
+    fill_rounded_rect(scene, body, m::CARD_RADIUS, ink.color(ColorToken::KanbanList));
     doc.kb.targets.clear();
     doc.kb.bars.clear();
     doc.kb.live_dot = None;
@@ -128,7 +131,7 @@ pub fn paint(
         scene,
         top,
         m::CARD_RADIUS,
-        ink.color(ColorToken::KanbanList),
+        ink.color(ColorToken::KanbanCard),
     );
     keys::paint_top(doc, top, scene, ts, ink);
     let by = top.y + top.h + m::CARD_GAP;
@@ -147,7 +150,7 @@ fn fitted(scene: &mut VectorScene, ink: CardInk, r: Rect, f: impl FnOnce(&mut Ve
         scene,
         card,
         m::CARD_RADIUS,
-        ink.color(ColorToken::KanbanList),
+        ink.color(ColorToken::KanbanCard),
     );
     scene.append_scene(&over);
 }

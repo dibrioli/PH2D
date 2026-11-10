@@ -120,6 +120,8 @@ pub(super) fn paint_top(
     let w = (r.w - m::CARD_PAD_X * 2.0).max(0.0);
     let mut y = r.y + m::CARD_PAD_TOP;
     let cap_r = Rect::new(x, y, w, CAPTION_H);
+    // Desvio documentado da maquete (que põe a frase numa linha de baixo): a frase do hover SUBSTITUI a legenda,
+    // na mesma altura — o cartão não salta ao passar o ponteiro pelas teclas.
     if let Some((lead, rest)) = hover_text(doc) {
         let lw = title(
             &mut doc.census,
@@ -180,7 +182,7 @@ pub(super) fn paint_top(
         scene,
         draw,
         m::FIELD_RADIUS,
-        ink.color(ColorToken::KanbanCard),
+        ink.color(ColorToken::CardField),
     );
     match doc.kb.sub {
         Sub::Keyboard => paint_keyboard(doc, draw, scene, ts, ink),
@@ -319,8 +321,8 @@ pub(crate) fn paint_keys(
         // Sem acção a tecla apaga-se (face e letra); com acção a face clareia e a letra acende.
         let bg = match filled {
             Some(c) => c,
-            None if lit || !who.is_empty() => ColorToken::CardFieldHover,
-            None => ColorToken::CardField,
+            None if hover => ColorToken::AccentSoft,
+            None => ColorToken::KanbanCardRaised,
         };
         fill_rounded_rect(scene, kr, m::SEG_RADIUS, ink.color(bg));
         if let Some(c) = filled {
@@ -362,9 +364,9 @@ pub(crate) fn paint_keys(
     }
 }
 
-/// O contorno branco do hover, distinto do da acção aberta (por dentro dele quando os dois se juntam).
-pub(super) fn hover_ring(scene: &mut VectorScene, ink: CardInk, r: Rect, inside: bool) {
-    let d = if inside { m::FIELD_BORDER * 2.0 } else { 0.0 };
+/// O contorno branco do hover, distinto do da acção aberta (POR FORA dele quando os dois se juntam, maquete B1).
+pub(super) fn hover_ring(scene: &mut VectorScene, ink: CardInk, r: Rect, outlined: bool) {
+    let d = if outlined { -m::FIELD_BORDER * 3.0 } else { 0.0 };
     let rr = Rect::new(
         r.x + d,
         r.y + d,

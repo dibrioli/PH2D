@@ -24,7 +24,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "input_map_keyboard.also" => "Also:",
         "input_map_keyboard.unused" => "no action uses it.",
-        "input_map_keyboard.users" => "{key}: {list}.",
         "input_map_keyboard.user" => "{action} ({who})",
         "input_map_keyboard.nobody" => "nobody reads it",
         "input_map_keyboard.sep" => " · ",

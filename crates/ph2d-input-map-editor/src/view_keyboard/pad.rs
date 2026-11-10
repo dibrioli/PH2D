@@ -1,6 +1,8 @@
 //! O comando desenhado (maquete B3): o corpo em curvas com as pegas, gatilhos e ombros ACIMA dele, as duas
 //! manches como anéis (as quatro metades são setas pequenas à volta: clicar numa liga essa metade), ABXY em
 //! losango, a cruz, Back e Start. Por baixo de cada alvo, uma barra por acção — a mesma lei das teclas.
+//! Desvio documentado da maquete B3 (que só desenha LT/RT, as manches e ABXY): LB/RB, Back/Start e a cruz ficam
+//! no desenho porque são botões que se ligam — sem eles, uma ligação a um deles não teria onde se clicar.
 
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, stroke_rounded_rect};
@@ -100,7 +102,7 @@ pub(super) fn paint(
         Rect::new(cx - half_w, cy - reach, half_w * 2.0, reach * 2.0),
         Rect::new(cx - reach, cy - half_w, reach * 2.0, half_w * 2.0),
     ] {
-        fill_rounded_rect(scene, r, m::SEG_RADIUS, ink.color(ColorToken::CardField));
+        fill_rounded_rect(scene, r, m::SEG_RADIUS, ink.color(ColorToken::KanbanCardRaised));
     }
     // Os anéis das manches: aceso inteiro quando a aberta usa uma metade dele; as barras por baixo da seta de baixo.
     for (i, ((fx, fy), key, fr)) in g::STICKS.into_iter().enumerate() {
@@ -122,11 +124,7 @@ pub(super) fn paint(
             }
         }
         let ring = Circle::new((f64::from(cx), f64::from(cy)), f64::from(r));
-        let face = if who.is_empty() {
-            ColorToken::CardField
-        } else {
-            ColorToken::CardFieldHover
-        };
+        let face = ColorToken::KanbanCardRaised;
         scene.inner_mut().fill(
             ph2d_vector::Fill::NonZero,
             Affine::IDENTITY,
@@ -182,8 +180,8 @@ pub(super) fn paint(
         let face = match p.shape {
             PadShape::Arm(_) | PadShape::Half(..) if lit => Some(ColorToken::AccentSoft),
             PadShape::Arm(_) | PadShape::Half(..) => None,
-            _ if who.is_empty() => Some(ColorToken::CardField),
-            _ => Some(ColorToken::CardFieldHover),
+            _ if hover => Some(ColorToken::AccentSoft),
+            _ => Some(ColorToken::KanbanCardRaised),
         };
         if let Some(f) = face {
             fill_rounded_rect(scene, r, radius, ink.color(f));

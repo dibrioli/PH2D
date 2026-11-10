@@ -16,7 +16,7 @@ use super::state::{KbHit, Sub};
 use super::{geometry as g, target};
 use crate::doc::InputMapDoc;
 use crate::view_list::footer::{and_list, binding_label, reader_names, readers_of};
-use crate::view_list::text::{line, wrap};
+use crate::view_list::text::{line, title as semibold, title_width, wrap_after};
 
 const TITLE_H: f32 = m::FIELD_H;
 const TILE_H: f32 = m::FIELD_H * 2.0;
@@ -77,7 +77,17 @@ fn phrase(
 ) -> f32 {
     let tx = x + m::SEG_INSET * 2.0;
     let tw = (w - m::SEG_INSET * 3.0).max(0.0);
-    let lines = wrap(ts, s, m::VALUE_PX, tw);
+    // Dois pesos (maquete B1): a 1.ª frase em SemiBold clara, o resto regular apagado a um espaço, na mesma linha.
+    let (lead, rest) = match s.split_once(". ").filter(|_| !warn) {
+        Some((l, r)) => (format!("{l}."), r),
+        None => (String::new(), s),
+    };
+    let lead_w = if lead.is_empty() {
+        0.0
+    } else {
+        (title_width(ts, &lead, m::VALUE_PX) + ts.prefix_width(" ", m::VALUE_PX)).min(tw)
+    };
+    let lines = wrap_after(ts, rest, m::VALUE_PX, (tw - lead_w).max(0.0), tw);
     let h = PHRASE_LINE_H * lines.len() as f32 + (m::FIELD_H - PHRASE_LINE_H);
     let r = Rect::new(x, y, w, h);
     let bg = if warn {
@@ -96,16 +106,35 @@ fn phrase(
         );
     }
     let mut ly = y + (m::FIELD_H - PHRASE_LINE_H) * 0.5;
-    for l in &lines {
-        line(
+    if !lead.is_empty() {
+        semibold(
             &mut doc.census,
             ts,
             scene,
-            l,
-            Rect::new(tx, ly, tw, PHRASE_LINE_H),
+            &lead,
+            Rect::new(tx, ly, lead_w, PHRASE_LINE_H),
             m::VALUE_PX,
             ink.color(ColorToken::Text1),
         );
+    }
+    let rest_ink = ink.color(if lead.is_empty() {
+        ColorToken::Text1
+    } else {
+        ColorToken::Text2
+    });
+    for (i, l) in lines.iter().enumerate() {
+        let lx = if i == 0 { tx + lead_w } else { tx };
+        if !l.is_empty() {
+            line(
+                &mut doc.census,
+                ts,
+                scene,
+                l,
+                Rect::new(lx, ly, (tx + tw - lx).max(0.0), PHRASE_LINE_H),
+                m::VALUE_PX,
+                rest_ink,
+            );
+        }
         ly += PHRASE_LINE_H;
     }
     h
@@ -161,7 +190,7 @@ pub(super) fn paint(
         &right,
         Rect::new(x + w - rw, y, rw, TITLE_H),
         m::LABEL_PX,
-        ink.color(ColorToken::Text2),
+        ink.color(ColorToken::CardLabel),
     );
     y += TITLE_H + m::FIELD_ROW_GAP;
     let mut tx = x;
@@ -193,7 +222,7 @@ pub(super) fn paint(
             scene,
             key,
             m::SEG_RADIUS,
-            ink.color(ColorToken::CardFieldHover),
+            ink.color(ColorToken::KanbanCardRaised),
         );
         let mut kx = key.x + m::SEG_INSET;
         if !big.is_empty() {
@@ -232,7 +261,7 @@ pub(super) fn paint(
             &cap,
             cr,
             m::LABEL_PX,
-            ink.color(ColorToken::Text2),
+            ink.color(ColorToken::CardLabel),
         );
         let s = m::KEY_MARK_BOX;
         let xr = Rect::new(tile.x + tile.w - s - m::SEG_PAD, tile.y + m::SEG_PAD, s, s);
@@ -305,11 +334,7 @@ pub(super) fn paint(
         msg,
         Rect::new(tile.x + (tile.w - mw) * 0.5, my, mw, CAP),
         m::LABEL_PX,
-        ink.color(if listening || a.bindings.is_empty() {
-            ColorToken::Accent
-        } else {
-            ColorToken::Text2
-        }),
+        ink.color(ColorToken::CardLabel),
     );
     target(doc, KbHit::Listen, tile);
     y = tile.y + tile.h + m::FIELD_ROW_GAP;

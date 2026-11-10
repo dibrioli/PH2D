@@ -50,7 +50,7 @@ pub(super) fn paint(
         scene,
         live,
         m::SEG_RADIUS,
-        ink.color(ColorToken::CardFieldHover),
+        ink.color(ColorToken::KanbanCardRaised),
     );
     let mut hx = bar.x;
     while hx < bar.x + dead_w {
@@ -60,7 +60,7 @@ pub(super) fn paint(
     }
     doc.kb.bar = Some((bar.x, bar.w));
     for (hit, v, tok) in [
-        (KbHit::BarDead, a.dead_zone, ColorToken::Text1),
+        (KbHit::BarDead, a.dead_zone, ColorToken::CardLabel),
         (KbHit::BarPress, a.press_point, ColorToken::Accent),
     ] {
         let mx = bar.x + bar.w * v;
@@ -97,7 +97,7 @@ pub(super) fn paint(
             &s,
             Rect::new(tx, y, tw, LABEL_H),
             m::LABEL_PX,
-            ink.color(ColorToken::Text2),
+            ink.color(ColorToken::CardLabel),
         );
     }
     // O comando AO VIVO: a marca de onde a manche está agora (o mesmo cru que o resolvedor lê).

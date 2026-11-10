@@ -97,6 +97,7 @@ impl crate::App {
         if self.gfx.is_none() || !ph2d_app_game::smoke::monta_agora() {
             return;
         }
+        self.components.jogador.keep_off_disk(); // as teclas do jogador do dono ficam no disco
         if let Some(mut cx) = self.components_ctx() {
             use ph2d_app_components::{component_attach, object_add};
             let (reg, seeds) = (cx.registry, ph2d_app_physics::physics_seed::COMPONENT_SEEDS);

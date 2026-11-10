@@ -2,7 +2,7 @@
 //! C4: «J» é uma caixa estreita, «Press a key» uma larga), por isso a disposição mede com o `TextSystem` da pintura.
 
 use ph2d_card_stack::metrics as m;
-use ph2d_editor_core::paint::rect_for_label;
+use ph2d_editor_core::paint::{label_budget, rect_for_label};
 use ph2d_editor_core::widget::scrollbar_thumb_rect;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -19,8 +19,8 @@ pub const TITLE_PX: f32 = m::LIST_TITLE_PX;
 /// O pé («Reset to defaults» e a dica): menor e apagado, separado das linhas por um fio.
 pub const FOOT_PX: f32 = m::LABEL_PX;
 const FOOT_H: f32 = m::FIELD_H - m::SEG_INSET;
-/// As três frases que a dica pode dizer: o painel tem a largura da MAIOR, para não mudar de largura ao escutar.
-const HINTS: [&str; 3] = [
+/// As três frases que a dica pode dizer: o pé reserva as linhas da MAIOR, para não mudar de altura ao escutar.
+pub(crate) const HINTS: [&str; 3] = [
     "player_controls.hint_choose",
     "player_controls.hint_listening",
     "player_controls.none",
@@ -40,6 +40,7 @@ pub struct Layout {
     /// O fio entre as linhas e o pé.
     pub rule: Rect,
     pub reset: Rect,
+    /// A dica, partida na largura das linhas ([`foot_lines`]): uma faixa de `FOOT_H` por linha.
     pub hint: Rect,
 }
 
@@ -61,6 +62,29 @@ pub fn slot_label(row: &Row, slot: usize, listening_here: bool) -> String {
     row.keys
         .get(slot)
         .map_or_else(|| tr("player_controls.add").to_owned(), |k| k.label())
+}
+
+/// A frase do pé partida pelas palavras na largura `w` do painel (maquete C4: o painel abraça as linhas, o pé
+/// não o alarga). Uma palavra maior que a linha fica sozinha nela; o painel nunca é mais estreito que a maior.
+#[must_use]
+pub fn foot_lines(text: &mut TextSystem, s: &str, w: f32) -> Vec<String> {
+    let budget = label_budget(w);
+    let mut out = Vec::new();
+    let mut cur = String::new();
+    for word in s.split(' ').filter(|x| !x.is_empty()) {
+        let next = if cur.is_empty() {
+            word.to_owned()
+        } else {
+            format!("{cur} {word}")
+        };
+        if cur.is_empty() || text.prefix_width(&next, FOOT_PX) <= budget {
+            cur = next;
+        } else {
+            out.push(std::mem::replace(&mut cur, word.to_owned()));
+        }
+    }
+    out.push(cur);
+    out
 }
 
 /// A largura de uma caixa de tecla: o texto inteiro com o respiro do rótulo, nunca mais estreita que alta.
@@ -110,11 +134,17 @@ impl Layout {
             .filter_map(Row::note)
             .map(|n| text.prefix_width(&n, m::LABEL_PX).ceil() + m::FIELD_GAP)
             .fold(0.0_f32, f32::max);
-        let foot_w = HINTS
+        // O pé não alarga o painel: só o «Reset to defaults» (curto, uma linha) e a maior palavra da dica.
+        let reset_w = rect_for_label(
+            text.prefix_width(tr("player_controls.reset"), FOOT_PX)
+                .ceil(),
+        );
+        let word_w = HINTS
             .iter()
-            .chain(std::iter::once(&"player_controls.reset"))
-            .map(|k| rect_for_label(text.prefix_width(tr(k), FOOT_PX).ceil()))
+            .flat_map(|k| tr(k).split(' '))
+            .map(|w| rect_for_label(text.prefix_width(w, FOOT_PX).ceil()))
             .fold(0.0_f32, f32::max);
+        let foot_w = reset_w.max(word_w);
         let title_w = text
             .prefix_width_weighted(tr("player_controls.title"), TITLE_PX, FontWeight::SEMI_BOLD)
             .ceil();
@@ -123,10 +153,16 @@ impl Layout {
             .max(foot_w)
             .max(title_w);
         let w = (inner_w + m::CARD_PAD_X * 2.0).min(area.w);
+        let iw = w - m::CARD_PAD_X * 2.0;
+        let hint_n = HINTS
+            .iter()
+            .map(|k| foot_lines(text, tr(k), iw).len())
+            .max()
+            .unwrap_or(1);
         let fixed = m::CARD_PAD_TOP
             + m::CARD_HEAD_H
             + m::FIELD_ROW_GAP * 2.0
-            + FOOT_H * 2.0
+            + FOOT_H * (1 + hint_n) as f32
             + m::CARD_PAD_BOTTOM;
         let fit = (((area.h - fixed) / ROW_H).floor().max(1.0)) as usize;
         let visible = rows.len().min(fit);
@@ -147,7 +183,6 @@ impl Layout {
             h,
         );
         let x0 = panel.x + m::CARD_PAD_X;
-        let iw = panel.w - m::CARD_PAD_X * 2.0;
         let title = Rect::new(x0, panel.y + m::CARD_PAD_TOP, iw, m::CARD_HEAD_H);
         let list_y = title.y + title.h;
         let mut y = list_y;
@@ -176,7 +211,7 @@ impl Layout {
         let rule_y = y + m::FIELD_ROW_GAP;
         let rule = Rect::new(x0, rule_y, iw, ph2d_tokens::StrokeToken::Hairline.px());
         let reset = Rect::new(x0, rule_y + m::FIELD_ROW_GAP, iw, FOOT_H);
-        let hint = Rect::new(x0, reset.y + FOOT_H, iw, FOOT_H);
+        let hint = Rect::new(x0, reset.y + FOOT_H, iw, FOOT_H * hint_n as f32);
         Self {
             panel,
             title,
@@ -214,7 +249,11 @@ impl RowLayout {
     fn of(band: Rect, name_w: f32, lead: f32, widths: &[f32], note_w: f32) -> Self {
         let name = Rect::new(band.x + m::SEG_INSET, band.y, name_w, ROW_H);
         let ky = band.y + (ROW_H - KEY_H) * 0.5;
-        let mut x = band.x + lead;
+        // As caixas encostam à DIREITA (maquete C4): a última acaba antes do aviso e do recuo.
+        let keys_w: f32 =
+            widths.iter().sum::<f32>() + m::SEG_INSET * widths.len().saturating_sub(1) as f32;
+        let right = band.x + band.w - m::SEG_INSET - note_w;
+        let mut x = (right - keys_w).max(band.x + lead);
         let slots = widths
             .iter()
             .map(|&w| {

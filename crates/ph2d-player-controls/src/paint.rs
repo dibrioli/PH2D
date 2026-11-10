@@ -11,7 +11,7 @@ use ph2d_text::{FontWeight, TextSystem};
 use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 use ph2d_vector::VectorScene;
 
-use crate::layout::{FOOT_PX, Layout, TITLE_PX, slot_label};
+use crate::layout::{FOOT_PX, Layout, TITLE_PX, foot_lines, slot_label};
 use crate::screen::{ControlsScreen, Row};
 
 /// Pinta o painel em `area` (a vista do jogo). Devolve a disposição, para o clique usar a MESMA.
@@ -35,7 +35,15 @@ pub fn paint_preview(
     text: &mut TextSystem,
     theme: Theme,
 ) -> Layout {
-    paint_with(area, rows, &ControlsScreen::default(), scene, text, theme, true)
+    paint_with(
+        area,
+        rows,
+        &ControlsScreen::default(),
+        scene,
+        text,
+        theme,
+        true,
+    )
 }
 
 fn paint_with(
@@ -142,14 +150,16 @@ fn paint_with(
     } else {
         "player_controls.hint_choose"
     };
-    paint_text_centered(
-        text,
-        scene,
-        tr(hint),
-        lay.hint,
-        FOOT_PX,
-        c(ColorToken::Text3),
-    );
+    let line_h = lay.reset.h;
+    for (i, l) in foot_lines(text, tr(hint), lay.hint.w).iter().enumerate() {
+        let r = Rect::new(
+            lay.hint.x,
+            lay.hint.y + line_h * i as f32,
+            lay.hint.w,
+            line_h,
+        );
+        paint_text_centered(text, scene, l, r, FOOT_PX, c(ColorToken::Text3));
+    }
     lay
 }
 

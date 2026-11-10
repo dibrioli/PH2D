@@ -13,7 +13,7 @@ pub mod paint;
 pub mod screen;
 pub mod session;
 
-pub use file::{home_base, player_file};
+pub use file::{home_base, player_file, player_file_of};
 pub use layout::Layout;
 pub use paint::{paint, paint_preview};
 pub use screen::{
@@ -33,5 +33,7 @@ mod play_tests;
 mod r5c_tests;
 #[cfg(test)]
 mod r7c_tests;
+#[cfg(test)]
+mod r9d_tests;
 #[cfg(test)]
 mod tests;

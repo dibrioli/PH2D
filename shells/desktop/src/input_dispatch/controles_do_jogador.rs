@@ -7,7 +7,7 @@ use ph2d_player_controls::{Outcome, PlaySession};
 use winit::keyboard::KeyCode;
 
 /// ⭐ **O mapa que o Play lê** — o EFECTIVO (o do jogo com as teclas do jogador) na corrida, o do projecto fora
-/// dela. A porta ÚNICA dos quatro leitores: o jogador, o Luau, a máquina de morph e os gatilhos.
+/// dela. A porta ÚNICA dos cinco leitores: o jogador, o Luau, a máquina de morph, os gatilhos e o personagem.
 pub(crate) fn play_map<'a>(jogador: &'a PlaySession, hero: &'a HeroScreen) -> &'a InputMap {
     jogador.map(&hero.input_map)
 }
@@ -15,12 +15,8 @@ pub(crate) fn play_map<'a>(jogador: &'a PlaySession, hero: &'a HeroScreen) -> &'
 impl crate::App {
     /// O Play começou: as teclas deste computador para este jogo, por cima do mapa.
     pub(crate) fn jogador_entra(&mut self) {
-        let base = if cfg!(test) {
-            None
-        } else {
-            ph2d_player_controls::home_base()
-        };
-        let file = base.map(|b| ph2d_player_controls::player_file(&b, self.game_id()));
+        let base = (!cfg!(test)).then(ph2d_player_controls::home_base).flatten();
+        let file = ph2d_player_controls::player_file_of(base.as_deref(), self.game_id());
         if let Some(h) = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref()) {
             self.components.jogador.start(&h.input_map, file);
         }

@@ -11,10 +11,10 @@ impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_physics_step(&mut self, player_input: ph2d_physics_ecs::PlayerInput) {
         let hero = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref());
-        let premidas = ph2d_app_game::personagem::acoes_premidas(
-            hero.map(|h| &h.input_map),
-            &self.input_actions,
-        );
+        let mapa = hero.map(|h| {
+            crate::input_dispatch::controles_do_jogador::play_map(&self.components.jogador, h)
+        });
+        let premidas = ph2d_app_game::personagem::acoes_premidas(mapa, &self.input_actions);
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;

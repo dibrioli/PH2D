@@ -24,12 +24,15 @@ pub struct PlaySession {
     file: Option<PathBuf>,
     resume_clock: bool,
     last: Option<Layout>,
+    /// O smoke: nunca lê nem grava o ficheiro do jogador (sobrevive ao `start`/`stop`; só o smoke o liga).
+    off_disk: bool,
 }
 
 impl PlaySession {
     /// O Play começou: lê o ficheiro do jogador (se há) e põe as trocas por cima do mapa do jogo. Com «Players can
     /// change keys» desligado, as teclas do jogo valem sozinhas (o ficheiro fica, intacto).
     pub fn start(&mut self, game: &InputMap, file: Option<PathBuf>) {
+        let file = file.filter(|_| !self.off_disk);
         let keys = match file.as_deref() {
             Some(f) if game.controls().players_can_change_keys => crate::file::load(f),
             _ => PlayerKeys::new(),
@@ -43,14 +46,23 @@ impl PlaySession {
             effective: Some(keys.apply_over(game)),
             base: game.clone(),
             keys,
-            file,
+            file: file.filter(|_| !self.off_disk),
+            off_disk: self.off_disk,
             ..Self::default()
         };
     }
 
+    /// **O smoke**: daqui em diante esta sessão joga em memória — o ficheiro do jogador real nem se lê nem se grava.
+    pub fn keep_off_disk(&mut self) {
+        self.off_disk = true;
+    }
+
     /// O Play acabou: tudo esquece-se (o ficheiro já está gravado).
     pub fn stop(&mut self) {
-        *self = Self::default();
+        *self = Self {
+            off_disk: self.off_disk,
+            ..Self::default()
+        };
     }
 
     #[must_use]

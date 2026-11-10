@@ -195,6 +195,14 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   `letras::a_frase_sem_propriedades_e_o_texto_dos_problemas_tem_a_letra_de_alive`; mutações (grelha de volta a `label_in`; coluna
   sem `.mono()`) → vermelho as 2. Fotos [cena15/passo_1.png](../ferramentas/smoke/cena15/passo_1.png) (refeita) ·
   [ak_letras.png](../ferramentas/smoke/ak_letras.png) (cena 12: a frase inteira na mono).
+- **A grelha «Who has what» na letra e na tinta de «alive» (dono 10/11, `0f410f6505`):** todas as colunas `.mono()` (cabeçalhos
+  na letra da interface); nomes e valores que não são números em `TEXT_INK = Ink::Name` → `Hint` da mono = `Text2` (os valores
+  de texto estavam em `Text1`; os nomes já em `Text2`, só mudam de letra). Números ficam no `value_ink` (fora da rampa de texto),
+  o «mudou» no âmbar. Contraste do `Text2` sobre as duas listras, com e sem cartões: Forge ≥ 5,96, Light ≥ 7,86 (o `Text3`
+  reprova: 3,39–4,97). Testes `letras::a_grelha_tem_a_letra_e_a_tinta_de_alive` e `a_tinta_da_grelha_tem_contraste_nos_dois_temas`;
+  mutações (nomes sem `.mono()`; propriedades sem `.mono()`; `TEXT_INK = Plain`; `changed: false`) → vermelho as 4. Fotos
+  [passo_1.png](../ferramentas/smoke/cena15/passo_1.png) · [passo_1_claro.png](../ferramentas/smoke/cena15/passo_1_claro.png) ·
+  [al_grelha_zoom.png](../ferramentas/smoke/cena15/al_grelha_zoom.png) (2×, grelha ao lado dos problemas, escuro e claro).
 
 Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,35 s, já construído pelas fotos); a 2.ª:
 

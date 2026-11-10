@@ -94,7 +94,7 @@ impl Quadro<'_> {
             style_owner,
             halo,
             has_style,
-            cur_style,
+            ref cur_style,
             substrate_session,
             soaked,
             soak_buf,

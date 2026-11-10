@@ -21,6 +21,8 @@
 //! integer-hash value noise in [`super::watercolor_field`]; no transcendental runs in the hot loop.
 
 mod aparencia; // a óptica de um texel como função do chão (LOC split; o vidro a avalia 2×)
+#[cfg(test)]
+pub(super) use aparencia::APARENCIA_PELA_CONTA;
 mod diag; // o envelope de diagnóstico do composite (LOC split)
 mod dono; // o dono do halo: o texel sem dono pelo dono mais próximo no alcance (B16.2)
 mod pigment; // a COR do pigmento por pixel (LOC split, por assunto)

@@ -30,6 +30,29 @@ pub(super) struct Aparencia {
 
 const LUM: [f32; 3] = [0.2126, 0.7152, 0.0722];
 
+/// O oráculo do B16.6: `true` ⇒ todo tom pela conta (`srgb_to_linear_unit`, o de antes). Global (o
+/// laço corre no pool); o caminho novo dá o mesmo bit, logo virá-lo não muda os testes vizinhos.
+#[cfg(test)]
+pub(in crate::tool::paint) static APARENCIA_PELA_CONTA: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+/// O tom de ecrã `v` em luz linear. Um tom que É um byte (`k/255` com os MESMOS bits: a base opaca, a
+/// vazia, o chão) lê `lut.s2l[k]`, que guarda o mesmo `srgb_to_linear_unit(k/255)`; o resto (a orla
+/// de alfa, o chão preto do vidro, `-0.0`, NaN) faz a conta. Ao bit por construção (B16.6).
+#[inline]
+pub(super) fn tom_linear(v: f32, lut: &Luts) -> f32 {
+    #[cfg(test)]
+    if APARENCIA_PELA_CONTA.load(std::sync::atomic::Ordering::Relaxed) {
+        return ph2d_color::srgb::srgb_to_linear_unit(v);
+    }
+    let k = (v * 255.0 + 0.5) as u8;
+    if (f32::from(k) / 255.0).to_bits() == v.to_bits() {
+        lut.s2l[k as usize]
+    } else {
+        ph2d_color::srgb::srgb_to_linear_unit(v)
+    }
+}
+
 /// A aparência de `o` sobre o chão `chao` (bytes sRGB), com a base da camada já posta sobre esse
 /// chão (`base_sobre`, em tons de ecrã `0..1`).
 #[inline]
@@ -40,7 +63,7 @@ pub(super) fn aparencia(o: &Optica, base_sobre: [f32; 3], chao: [u8; 3], lut: &L
         lut.s2l[chao[2] as usize],
     ];
     let ground_enc = chao.map(|g| f32::from(g) / 255.0);
-    let mut sb = base_sobre.map(ph2d_color::srgb::srgb_to_linear_unit);
+    let mut sb = base_sobre.map(|v| tom_linear(v, lut));
     // Wet-on-wet LIFT ([`apply_wet_lift`]): rewetting walks the base's pigment toward the
     // LOCAL ground in log space (`lift` already moisture-scaled — a dried spot won't lift).
     apply_wet_lift(&mut sb, &ground_lin, o.lift, lut);
@@ -102,3 +125,7 @@ pub(super) fn aparencia(o: &Optica, base_sobre: [f32; 3], chao: [u8; 3], lut: &L
     }
     Aparencia { rgb, t_min, a_body }
 }
+
+#[cfg(test)]
+#[path = "aparencia_tests.rs"]
+mod tests;

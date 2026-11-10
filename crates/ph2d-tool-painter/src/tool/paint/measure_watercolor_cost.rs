@@ -45,7 +45,7 @@ fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
 /// ⚠️ `..Default::default()` não é atalho aqui: `reset_brush_watercolor` restaura exatamente de
 /// `BrushSpec::default()`, então os defaults do spec **são** o pincel que o botão Reset entrega. Uma
 /// fixture que montasse os knobs à mão mediria uma aquarela que ninguém pinta.
-fn wash(size: u32, radius: f32) -> PainterTool {
+pub(super) fn wash(size: u32, radius: f32) -> PainterTool {
     let mut t = PainterTool::default();
     t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
     let b = BrushSpec {
@@ -70,7 +70,7 @@ fn wash(size: u32, radius: f32) -> PainterTool {
 /// dele é grátis. É o caminho otimista de propósito (mede a aquarela, não a costura de preview), e a
 /// diferença contra o app está nomeada no doc 28 §4.8.3 — citar este número como *"o que o artista
 /// sente"* seria vender o que a sonda não mede.
-fn move_ms(t: &mut PainterTool, size: u32, radius: f32) -> f64 {
+pub(super) fn move_ms(t: &mut PainterTool, size: u32, radius: f32) -> f64 {
     let mid = f64::from(size / 2) as f32;
     let x0 = radius + 20.0;
     const STEP_PX: f32 = 40.0;

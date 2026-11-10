@@ -386,16 +386,16 @@ impl StyleField {
 /// already RESOLVED (B16.2: the halo takes the nearest owner in reach, `watercolor_render::dono`);
 /// `0` (nobody in reach) / no style map ⇒ the current brush's style, the exact pre-style path.
 #[inline]
-pub(super) fn style_at(
+pub(super) fn style_at<'a>(
     has_style: bool,
     dono: Dono,
-    table: &[WetStrokeStyle],
-    cur: WetStrokeStyle,
-) -> WetStrokeStyle {
+    table: &'a [WetStrokeStyle],
+    cur: &'a WetStrokeStyle,
+) -> &'a WetStrokeStyle {
     if has_style {
         match dono {
             0 => cur,
-            o => table[(o as usize - 1).min(table.len() - 1)],
+            o => &table[(o as usize - 1).min(table.len() - 1)],
         }
     } else {
         cur

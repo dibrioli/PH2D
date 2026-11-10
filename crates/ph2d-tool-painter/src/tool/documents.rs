@@ -44,6 +44,17 @@ pub(crate) struct StashedDoc {
     selection: BTreeSet<RtLayerId>,
     /// O olho de cinza da máscara (B02.A1): os ids colidem entre documentos, então ele é do documento.
     mask_view: Option<RtLayerId>,
+    /// A tinta por assar, o pedido de Apply e o assado adiado (B02.2): a sprite não os tem, são do documento.
+    por_assar: PorAssar,
+}
+
+/// O que o documento deve à sprite (B02.2, IN-8). A mancha do Solid, a cadência da aguada e a tabela do falloff ficam
+/// no tool: a mancha descreve os planos que o `dry_session_now` do rebind larga, as outras duas são do pincel.
+#[derive(Clone, Copy, Default)]
+struct PorAssar {
+    editado: bool,
+    commit: bool,
+    adiado: bool,
 }
 
 impl StashedDoc {
@@ -104,6 +115,7 @@ impl StashedDoc {
             undo: crate::undo::UndoController::default(),
             selection: BTreeSet::new(),
             mask_view: None,
+            por_assar: PorAssar::default(),
         }
     }
 }
@@ -164,6 +176,9 @@ impl PainterTool {
                 self.shape_source_preview_dirty = true;
             }
         }
+        // O Apply e o assado adiado de um documento descartado não disparam no seguinte (B02.2).
+        self.pending_commit = false;
+        self.deferred_bake = false;
         self.bound_doc = Some(entity);
         self.mask_view_grayscale = None; // o olho do documento descartado não acende o do seguinte (B02.A1)
         match self.doc_cache.remove(&entity) {
@@ -247,6 +262,11 @@ impl PainterTool {
             undo: std::mem::take(&mut self.undo),
             selection: std::mem::take(&mut self.selection),
             mask_view: self.mask_view_grayscale.take(),
+            por_assar: PorAssar {
+                editado: std::mem::take(&mut self.edited_since_bind),
+                commit: std::mem::take(&mut self.pending_commit),
+                adiado: std::mem::take(&mut self.deferred_bake),
+            },
         }
     }
 
@@ -301,7 +321,9 @@ impl PainterTool {
         self.preview_upload_bbox = None;
         // The GPU-lane twin — same reason as its sibling above, and the impasto fold reads it.
         self.preview_dirty_region = None;
-        self.edited_since_bind = false;
+        self.edited_since_bind = doc.por_assar.editado;
+        self.pending_commit = doc.por_assar.commit;
+        self.deferred_bake = doc.por_assar.adiado;
         self.layers_revision = self.layers_revision.wrapping_add(1);
     }
 

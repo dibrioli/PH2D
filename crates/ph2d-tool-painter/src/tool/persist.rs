@@ -275,7 +275,7 @@ impl PainterTool {
                 let tintas = self.wet_sai_do_documento();
                 let doc = self.stash_current_doc(tintas);
                 self.doc_cache.insert(d, doc);
-                (d, self.edited_since_bind)
+                d
             });
         if volta.is_some() {
             self.bound_doc = None;
@@ -285,9 +285,8 @@ impl PainterTool {
         self.bind_document(entity, Vec::new(), w, h);
         self.preview_dirty = true; // um documento recém-restaurado ainda não foi composto nesta sessão
         let lido = self.take_preview_arc();
-        if let Some((d, editado)) = volta {
-            self.bind_document(d, Vec::new(), w, h);
-            self.edited_since_bind = editado;
+        if let Some(d) = volta {
+            self.bind_document(d, Vec::new(), w, h); // a tinta por assar volta com ele (B02.2)
         }
         let (px, pw, ph) = lido?;
         Some((px.as_ref().clone(), pw, ph))

@@ -4,8 +4,55 @@
 
 use super::*;
 
+#[cfg(test)]
+#[path = "enterro_tests.rs"]
+mod tests;
+
 /// A falta de cobertura que conta na orla do enterro: menos do que isto é o arredondar da tela.
 const ORLA_QUE_DESTAPA: f32 = 2.0 / 255.0;
+
+#[cfg(test)]
+thread_local! {
+    /// Os píxeis que os laços do enterro visitaram (B02.A3): o gate `o_enterro_visita_so_a_caixa_tocada`.
+    pub(super) static VISITAS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+#[inline]
+fn visita(_n: usize) {
+    #[cfg(test)]
+    VISITAS.with(|v| v.set(v.get() + _n as u64));
+}
+
+/// A caixa (0-based, inclusiva) das células marcadas, ou `None`.
+fn caixa_das(
+    marcadas: impl Iterator<Item = bool>,
+    gw: usize,
+) -> Option<(usize, usize, usize, usize)> {
+    let mut caixa: Option<(usize, usize, usize, usize)> = None;
+    for (k, _) in marcadas.enumerate().filter(|(_, m)| *m) {
+        let (x, y) = (k % gw, k / gw);
+        caixa = Some(match caixa {
+            None => (x, y, x, y),
+            Some((x0, y0, x1, y1)) => (x0.min(x), y0.min(y), x1.max(x), y1.max(y)),
+        });
+    }
+    caixa
+}
+
+/// Os píxeis de uma caixa de células (0-based, inclusiva): a última linha/coluna da grade leva o resto da tela, como o
+/// `min(g - 1)` da amostra.
+fn pixeis_da_caixa(
+    (cx0, cy0, cx1, cy1): (usize, usize, usize, usize),
+    q: usize,
+    (gw, gh): (usize, usize),
+    (w, h): (usize, usize),
+) -> (std::ops::Range<usize>, std::ops::Range<usize>) {
+    let fim = |c: usize, g: usize, n: usize| if c + 1 >= g { n } else { ((c + 1) * q).min(n) };
+    (
+        (cx0 * q).min(w)..fim(cx1, gw, w),
+        (cy0 * q).min(h)..fim(cy1, gh, h),
+    )
+}
 
 /// A tela no instante de um enterro, com os planos e a `base` de que ela saiu. ⛔ Medido: recompor uma caixa à volta de
 /// células enterradas re-ilumina a orla delas, numa linha que acaba na borda da caixa (1 345 px com Δ ≥ 10); a orla só
@@ -83,6 +130,8 @@ impl PainterTool {
         let q = usize::from(sess.ratio);
         let (gw, gh) = sess.grid;
         let mut tocada = vec![false; gw * gh];
+        // A caixa (0-based) das células tocadas sai da 1.ª passagem: os laços de píxel seguintes só andam nela (B02.A3).
+        let (mut x0, mut y0, mut x1, mut y1) = (gw, gh, 0, 0);
         let (cx0, cy0, cx1, cy1) = casco.unwrap_or((1, 1, gw, gh));
         let (px0, px1) = (((cx0 - 1) * q).min(w), (cx1 * q).min(w));
         for y in ((cy0 - 1) * q).min(h)..(cy1 * q).min(h) {
@@ -93,28 +142,33 @@ impl PainterTool {
             for x in px0..px1 {
                 let p = o + x * 4;
                 if velha[p..p + 4] != nova[p..p + 4] {
-                    tocada[(y / q) * gw + x / q] = true;
+                    let (gx, gy) = (x / q, y / q);
+                    tocada[gy * gw + gx] = true;
+                    (x0, y0, x1, y1) = (x0.min(gx), y0.min(gy), x1.max(gx), y1.max(gy));
                 }
             }
         }
-        let base = Arc::make_mut(&mut sess.base);
-        for y in 0..h {
-            let o = y * w * 4;
-            for x in 0..w {
-                if tocada[(y / q) * gw + x / q] {
-                    let p = o + x * 4;
-                    base[p..p + 4].copy_from_slice(&nova[p..p + 4]);
+        if x0 <= x1 {
+            let base = Arc::make_mut(&mut sess.base);
+            let (xs, ys) = pixeis_da_caixa((x0, y0, x1, y1), q, (gw, gh), (w, h));
+            for y in ys {
+                let o = y * w * 4;
+                visita(xs.len());
+                for x in xs.clone() {
+                    if tocada[(y / q) * gw + x / q] {
+                        let p = o + x * 4;
+                        base[p..p + 4].copy_from_slice(&nova[p..p + 4]);
+                    }
                 }
             }
         }
         sess.engine.enterra_celulas(&tocada, gw);
-        let (mut x0, mut y0, mut x1, mut y1) = (gw, gh, 0, 0);
-        for (k, _) in tocada.iter().enumerate().filter(|(_, t)| **t) {
-            x0 = x0.min(k % gw + 1);
-            y0 = y0.min(k / gw + 1);
-            x1 = x1.max(k % gw + 1);
-            y1 = y1.max(k / gw + 1);
-        }
+        // A caixa 1-based do resto: `x1 == 0` = nada tocou.
+        let (x0, y0, x1, y1) = if x0 <= x1 {
+            (x0 + 1, y0 + 1, x1 + 1, y1 + 1)
+        } else {
+            (gw, gh, 0, 0)
+        };
         let (pigmento, sombra) = (sess.planos.pigment.clone(), sess.planos.sombra.clone());
         if x1 > 0 {
             self.wet_planos_em_dia(sess, (x0, y0, x1, y1));
@@ -151,10 +205,16 @@ impl PainterTool {
         let amostra = super::grid_map::SampleU::new(sess.ratio, gw, gh);
         let (pigment, sombra) = (&sess.planos.pigment, &sess.planos.sombra);
         let base = &mut sess.base;
-        for y in 0..h {
+        // Só a caixa da orla (as células que mudaram sem ser tocadas): fora dela o laço só fazia `continue` (B02.A3).
+        let Some(caixa) = caixa_das(mudou.iter().zip(tocada).map(|(m, t)| *m && !*t), gw) else {
+            return;
+        };
+        let (xs, ys) = pixeis_da_caixa(caixa, q, (gw, gh), (w, h));
+        for y in ys {
             let linha = amostra.row(y);
             let cy = (y / q).min(gh - 1);
-            for x in 0..w {
+            visita(xs.len());
+            for x in xs.clone() {
                 let c = cy * gw + (x / q).min(gw - 1);
                 if !mudou[c] || tocada[c] {
                     continue;

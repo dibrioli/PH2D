@@ -12,7 +12,10 @@ use ph2d_editor_core::doc_surface::{Key as DocKey, PointerLook};
 use ph2d_editor_core::zones::Rect;
 
 fn inside(r: Rect, a: Rect) -> bool {
-    r.x >= a.x - 0.01 && r.y >= a.y - 0.01 && r.x + r.w <= a.x + a.w + 0.01 && r.y + r.h <= a.y + a.h + 0.01
+    r.x >= a.x - 0.01
+        && r.y >= a.y - 0.01
+        && r.x + r.w <= a.x + a.w + 0.01
+        && r.y + r.h <= a.y + a.h + 0.01
 }
 
 fn mesa_b() -> Mesa {
@@ -43,14 +46,23 @@ fn a_1280_a_b_empilha_e_tudo_se_alcanca() {
                 assert_eq!(doc.kb.stacked, i == 1, "{}: empilha só a 1280", area.w);
                 if sub == Sub::Keyboard {
                     let f = fit.expect("o teclado pintado");
-                    assert_eq!(f.arrangement, Arrangement::Wide, "{}: o arranjo da foto", area.w);
+                    assert_eq!(
+                        f.arrangement,
+                        Arrangement::Wide,
+                        "{}: o arranjo da foto",
+                        area.w
+                    );
                     let rs: Vec<Rect> = drawn_keys()
                         .into_iter()
                         .map(|k| doc.rect_of(KbHit::Key(k).id()).expect("tecla pintada"))
                         .collect();
                     let top = rs.iter().map(|r| r.y).fold(f32::INFINITY, f32::min);
                     let bot = rs.iter().map(|r| r.y + r.h).fold(0.0, f32::max);
-                    eprintln!("  pitch {:.1} · altura do teclado {:.1}", f.pitch, bot - top);
+                    eprintln!(
+                        "  pitch {:.1} · altura do teclado {:.1}",
+                        f.pitch,
+                        bot - top
+                    );
                     for r in &rs {
                         assert!(inside(*r, body), "tecla {r:?} fora de {body:?}");
                     }
@@ -59,7 +71,10 @@ fn a_1280_a_b_empilha_e_tudo_se_alcanca() {
                 for (r, s, _) in &doc.census.texts {
                     let cut = doc.census.clip.filter(|c| r.x >= c.x && r.x < c.x + c.w);
                     if cut.is_none() {
-                        assert!(r.y + r.h <= body.y + body.h + 0.01, "«{s}» {r:?} abaixo de {body:?}");
+                        assert!(
+                            r.y + r.h <= body.y + body.h + 0.01,
+                            "«{s}» {r:?} abaixo de {body:?}"
+                        );
                     }
                 }
                 // Cada linha alcança-se: rola até ela caber no recorte.
@@ -71,16 +86,24 @@ fn a_1280_a_b_empilha_e_tudo_se_alcanca() {
                         m.paint_in(area);
                         let doc = &m.tab().doc;
                         let view = doc.census.clip.unwrap_or(body);
-                        if doc.rect_of(KbHit::Row(a).id()).is_some_and(|r| inside(r, view)) {
+                        if doc
+                            .rect_of(KbHit::Row(a).id())
+                            .is_some_and(|r| inside(r, view))
+                        {
                             seen = true;
                             break;
                         }
-                        if !m.tab_mut().doc.wheel(-24.0) // LITERAL-PX-OK: um entalhe da roda
- {
+                        if !m.tab_mut().doc.wheel(-24.0)
+                        // LITERAL-PX-OK: um entalhe da roda
+                        {
                             break;
                         }
                     }
-                    assert!(seen, "{}×{} {sub:?}: a linha {a:?} nunca se alcança", area.w, area.h);
+                    assert!(
+                        seen,
+                        "{}×{} {sub:?}: a linha {a:?} nunca se alcança",
+                        area.w, area.h
+                    );
                 }
             }
         }
@@ -92,7 +115,10 @@ fn kinds(m: &Mesa) -> Vec<(&'static str, KbHit, ph2d_a11y::Role)> {
     use ph2d_a11y::Role as R;
     let doc = &m.tab().doc;
     let open = doc.kb.open.expect("aberta");
-    let key = drawn_keys().into_iter().find(|k| k.system_owned().is_none()).expect("tecla");
+    let key = drawn_keys()
+        .into_iter()
+        .find(|k| k.system_owned().is_none())
+        .expect("tecla");
     vec![
         ("segment", KbHit::Sub(Sub::Gamepad), R::Tab),
         ("row", KbHit::Row(open), R::ListItem),
@@ -113,12 +139,27 @@ fn cada_controlo_da_b_paira_preme_cancela_dispara_e_tem_no() {
         m.hover(at);
         let doc = &m.tab().doc;
         assert!(doc.is_hovered(id), "{what}: pairado");
-        assert!((doc.hover_live(id) - 1.0).abs() < f32::EPSILON, "{what}: hover instantâneo");
+        assert!(
+            (doc.hover_live(id) - 1.0).abs() < f32::EPSILON,
+            "{what}: hover instantâneo"
+        );
         for (_, o, _) in all.iter().filter(|o| o.1 != h) {
-            assert!(doc.hover_live(o.id()) < f32::EPSILON, "{what}: {o:?} também acende");
+            assert!(
+                doc.hover_live(o.id()) < f32::EPSILON,
+                "{what}: {o:?} também acende"
+            );
         }
-        assert_eq!(doc.look_at(at.0, at.1), Some(PointerLook::Hand), "{what}: cursor");
-        let node = doc.a11y().into_iter().find(|(n, _)| *n == id).expect("nó a11y").1;
+        assert_eq!(
+            doc.look_at(at.0, at.1),
+            Some(PointerLook::Hand),
+            "{what}: cursor"
+        );
+        let node = doc
+            .a11y()
+            .into_iter()
+            .find(|(n, _)| *n == id)
+            .expect("nó a11y")
+            .1;
         assert_eq!(node.role(), role, "{what}: papel");
         assert!(node.label().is_some_and(|l| !l.is_empty()), "{what}: nome");
         // Premido com o botão em baixo; fora do alvo apaga e o Up lá fora não dispara.
@@ -127,11 +168,21 @@ fn cada_controlo_da_b_paira_preme_cancela_dispara_e_tem_no() {
         assert!(m.tab().doc.is_pressed(id), "{what}: premido");
         let far = (at.0, m.tab().doc.body().y + m.tab().doc.body().h - 1.0); // LITERAL-PX-OK: dentro da aresta
         m.hover(far);
-        assert!(!m.tab().doc.is_pressed(id), "{what}: arrastar para fora apaga o premido");
+        assert!(
+            !m.tab().doc.is_pressed(id),
+            "{what}: arrastar para fora apaga o premido"
+        );
         let before = (m.tab().doc.kb.sub, m.tab().doc.kb.adding);
         m.up(far);
-        assert!(m.tab().doc.pending.is_empty(), "{what}: o Up fora não dispara");
-        assert_eq!((m.tab().doc.kb.sub, m.tab().doc.kb.adding), before, "{what}: nada mudou");
+        assert!(
+            m.tab().doc.pending.is_empty(),
+            "{what}: o Up fora não dispara"
+        );
+        assert_eq!(
+            (m.tab().doc.kb.sub, m.tab().doc.kb.adding),
+            before,
+            "{what}: nada mudou"
+        );
     }
 }
 
@@ -161,7 +212,11 @@ fn o_remove_sem_accao_aberta_fica_desligado_e_diz_porque() {
     let at = m.at(id);
     m.hover(at);
     let doc = &m.tab().doc;
-    assert_eq!(doc.look_at(at.0, at.1), Some(PointerLook::Arrow), "desligado: seta");
+    assert_eq!(
+        doc.look_at(at.0, at.1),
+        Some(PointerLook::Arrow),
+        "desligado: seta"
+    );
     assert_eq!(
         doc.disabled_why_here().map(|w| w.1),
         Some("input_map_keyboard.remove_off_none")
@@ -169,7 +224,11 @@ fn o_remove_sem_accao_aberta_fica_desligado_e_diz_porque() {
     m.tab_mut().doc.pending.clear();
     m.click(at);
     assert!(
-        !m.tab().doc.pending.iter().any(|e| matches!(e, InputMapEdit::Remove(_))),
+        !m.tab()
+            .doc
+            .pending
+            .iter()
+            .any(|e| matches!(e, InputMapEdit::Remove(_))),
         "o desligado não dispara"
     );
 }
@@ -227,19 +286,42 @@ fn os_numeros_da_b_editam_como_os_da_a() {
     let dead = |m: &Mesa| m.hero.input_map.get(a).expect("a").dead_zone;
     let id = ListHit::Dead(a).id();
     let at = m.at(id);
-    assert_eq!(m.tab().doc.look_at(at.0, at.1), Some(PointerLook::Text), "cursor de texto");
-    let node = m.tab().doc.a11y().into_iter().find(|(n, _)| *n == id).expect("nó").1;
+    assert_eq!(
+        m.tab().doc.look_at(at.0, at.1),
+        Some(PointerLook::Text),
+        "cursor de texto"
+    );
+    let node = m
+        .tab()
+        .doc
+        .a11y()
+        .into_iter()
+        .find(|(n, _)| *n == id)
+        .expect("nó")
+        .1;
     assert_eq!(node.role(), ph2d_a11y::Role::SpinButton);
     m.click(at);
     assert_eq!(open(&m).as_deref(), Some("0.20"), "abre com o valor");
-    assert!(m.tab().doc.list.caret.selection().is_some(), "tudo seleccionado");
-    assert!(m.tab().doc.wants_frame(), "o caret vivo pede quadro (pisca)");
+    assert!(
+        m.tab().doc.list.caret.selection().is_some(),
+        "tudo seleccionado"
+    );
+    assert!(
+        m.tab().doc.wants_frame(),
+        "o caret vivo pede quadro (pisca)"
+    );
     m.key(DocKey::Up, None);
     assert_eq!(open(&m).as_deref(), Some("0.21"), "↑ um passo");
-    let shift = ph2d_host::Modifiers { shift: true, ..Default::default() };
+    let shift = ph2d_host::Modifiers {
+        shift: true,
+        ..Default::default()
+    };
     key_mods(&mut m, DocKey::Up, shift);
     assert_eq!(open(&m).as_deref(), Some("0.31"), "Shift+↑ ×10");
-    let alt = ph2d_host::Modifiers { alt: true, ..Default::default() };
+    let alt = ph2d_host::Modifiers {
+        alt: true,
+        ..Default::default()
+    };
     key_mods(&mut m, DocKey::Down, alt);
     assert_eq!(open(&m).as_deref(), Some("0.309"), "Alt+↓ ×0,1");
     assert_eq!(dead(&m), 0.2, "o passo ainda não aplica");
@@ -253,12 +335,26 @@ fn os_numeros_da_b_editam_como_os_da_a() {
     // Tab aplica e segue para o Press; o limite diz a frase no lugar do rótulo.
     m.click(m.at(id));
     m.key(DocKey::Tab, None);
-    assert_eq!(open(&m).as_deref(), Some("0.50"), "Tab chega ao Press aberto");
+    assert_eq!(
+        open(&m).as_deref(),
+        Some("0.50"),
+        "Tab chega ao Press aberto"
+    );
     m.type_text("7");
     m.key(DocKey::Enter, None);
     assert_eq!(m.hero.input_map.get(a).expect("a").press_point, 1.0);
-    let all: String = m.tab().doc.census.texts.iter().map(|t| t.1.clone()).collect();
-    assert!(all.contains(ph2d_i18n::tr("input_map_list.kept_max")), "a frase do limite: {all}");
+    let all: String = m
+        .tab()
+        .doc
+        .census
+        .texts
+        .iter()
+        .map(|t| t.1.clone())
+        .collect();
+    assert!(
+        all.contains(ph2d_i18n::tr("input_map_list.kept_max")),
+        "a frase do limite: {all}"
+    );
 }
 
 #[test]
@@ -295,10 +391,21 @@ fn o_tab_chega_ao_x_do_ladrilho_e_enter_tira_a_ligacao() {
         }
     }
     assert!(reached, "o Tab chega ao × do 1.º ladrilho");
-    let node = m.tab().doc.a11y().into_iter().find(|(i, _)| *i == want).expect("nó").1;
+    let node = m
+        .tab()
+        .doc
+        .a11y()
+        .into_iter()
+        .find(|(i, _)| *i == want)
+        .expect("nó")
+        .1;
     assert_eq!(node.role(), ph2d_a11y::Role::Button);
     m.key(DocKey::Enter, None);
-    assert_eq!(m.hero.input_map.get(open).expect("a").bindings.len(), n - 1, "Enter tira a ligação");
+    assert_eq!(
+        m.hero.input_map.get(open).expect("a").bindings.len(),
+        n - 1,
+        "Enter tira a ligação"
+    );
 }
 
 #[test]
@@ -307,7 +414,14 @@ fn o_segmento_gamepad_escolhido_diz_se_seleccionado() {
     m.click(m.at(KbHit::Sub(Sub::Gamepad).id()));
     let sel = |m: &Mesa, s: Sub| {
         let id = KbHit::Sub(s).id();
-        m.tab().doc.a11y().into_iter().find(|(i, _)| *i == id).expect("nó").1.is_selected()
+        m.tab()
+            .doc
+            .a11y()
+            .into_iter()
+            .find(|(i, _)| *i == id)
+            .expect("nó")
+            .1
+            .is_selected()
     };
     assert_eq!(sel(&m, Sub::Gamepad), Some(true), "Gamepad seleccionado");
     assert_ne!(sel(&m, Sub::Keyboard), Some(true), "Keyboard não");
@@ -328,4 +442,22 @@ fn a_accao_recem_aberta_rola_para_a_vista_a_1280() {
     let view = doc.census.clip.expect("a região rola");
     let r = doc.rect_of(KbHit::Row(first.id).id()).expect("linha");
     assert!(inside(r, view), "a linha aberta {r:?} à vista em {view:?}");
+}
+
+/// R4: o número da B abre no DOWN, todo seleccionado (como na A); a alça D/P continua a arrastar.
+#[test]
+fn o_numero_da_b_foca_no_down() {
+    use ph2d_app_input_map::ids::ListHit;
+    let (mut m, a) = b_com_manche();
+    let id = ListHit::Press(a).id();
+    m.down(m.at(id));
+    let open = m.tab().doc.list.typing.as_ref().map(|t| t.buffer.clone());
+    assert_eq!(open.as_deref(), Some("0.50"), "aberto no Down");
+    assert_eq!(
+        m.tab().doc.list.caret.selection(),
+        Some((0, 4)),
+        "tudo seleccionado"
+    );
+    m.up(m.at(id));
+    assert!(m.tab().doc.list.typing.is_some(), "o Up mantém-no aberto");
 }

@@ -12,8 +12,8 @@ pub(crate) mod text;
 pub use footer::binding_label;
 pub use input::tip_of;
 pub(crate) use input::{
-    act, commit_typing, drag, drag_text, drag_thumb, key, open_number, press, press_text, raw_key,
-    release, wheel,
+    act, commit_typing, drag, drag_text, drag_thumb, is_typing, key, open_number, press,
+    press_text, raw_key, release, wheel,
 };
 
 /// Antes de o cartão pintar um campo de texto: a fase do piscar do caret (só o focado pisca e pede quadro).
@@ -23,17 +23,17 @@ fn blink(doc: &mut InputMapDoc, id: ph2d_a11y::NodeId) {
 }
 
 /// Depois de o cartão pintar o campo `id`: onde cai cada fronteira de byte, pela lei do pintor que o desenhou
-/// (o focado: `text_input_text_origin_x` a `TypeToken::Base`; o em repouso: `FIELD_PAD_R` a `VALUE_PX`).
-fn record_stops(doc: &mut InputMapDoc, ts: &mut TextSystem, id: ph2d_a11y::NodeId) {
+/// (o focado: `text_input_text_origin_x` a `TypeToken::Base`, menos o quanto a linha deslizou para o caret caber;
+/// o em repouso: `FIELD_PAD_R` a `VALUE_PX`).
+fn record_stops(doc: &mut InputMapDoc, ts: &mut TextSystem, id: ph2d_a11y::NodeId, theme: Theme) {
     let Some(r) = doc.hits.rect_for(id) else {
         return;
     };
     let text = doc.store.text(id).unwrap_or("").to_owned();
     let (x0, px) = if doc.store.focus_id() == Some(id) {
-        (
-            ph2d_editor_core::widget::text_input_text_origin_x(r),
-            ph2d_tokens::TypeToken::Base.px(),
-        )
+        let px = ph2d_tokens::TypeToken::Base.px();
+        let x0 = ph2d_editor_core::widget::text_input_text_origin_x(r);
+        (x0 - text_scroll(doc, ts, id, r, &text, px, theme), px)
     } else {
         (r.x + m::FIELD_PAD_R, m::VALUE_PX)
     };
@@ -45,6 +45,34 @@ fn record_stops(doc: &mut InputMapDoc, ts: &mut TextSystem, id: ph2d_a11y::NodeI
         .collect();
     doc.list.text_stops.retain(|(o, _)| *o != id);
     doc.list.text_stops.push((id, stops));
+}
+
+/// Quanto a linha do campo focado deslizou para a esquerda (a lei do `caret_scroll` do `TextInput`): o caret
+/// passa da largura de dentro (menos a reserva do «×» e do sufixo) ⟹ desliza o que passa mais o próprio caret.
+fn text_scroll(
+    doc: &InputMapDoc,
+    ts: &mut TextSystem,
+    id: ph2d_a11y::NodeId,
+    r: Rect,
+    text: &str,
+    px: f32,
+    theme: Theme,
+) -> f32 {
+    use ph2d_editor_core::widget::field_suffix;
+    let caret = match doc.store.get(id) {
+        Some(ph2d_editor_core::interaction::InteractiveState::TextInput { caret, .. }) => *caret,
+        _ => 0,
+    };
+    let border = ph2d_tokens::visuals::Chrome::of(theme).field_focus.width;
+    let mut reserve = if id == ids::SEARCH && !text.is_empty() {
+        ph2d_editor_core::panel::cards::busca::reserva(r, border)
+    } else {
+        0.0
+    };
+    reserve += field_suffix::de(id, text).map_or(0.0, |s| field_suffix::largura(ts, &s));
+    let inner_w = (r.w - ph2d_editor_core::widget::field_pad_x() * 2.0 - reserve).max(0.0);
+    let caret_w = ts.prefix_width(&text[..caret.min(text.len())], px);
+    (caret_w - (inner_w - StrokeToken::Thin.px())).max(0.0)
 }
 
 use ph2d_card_stack::metrics as m;
@@ -159,7 +187,7 @@ pub fn paint(
         };
         y = below.max(c.full(None, button, y));
     }
-    record_stops(doc, ts, ids::NEW_NAME);
+    record_stops(doc, ts, ids::NEW_NAME, theme);
     if let Some(r) = doc.hits.rect_for(ids::NEW_NAME) {
         doc.control(Control::new(
             ids::NEW_NAME,
@@ -238,7 +266,7 @@ fn paint_search(
             },
             r.y,
         );
-        record_stops(doc, ts, ids::SEARCH);
+        record_stops(doc, ts, ids::SEARCH, ink.theme);
         let field = doc.hits.rect_for(ids::SEARCH).unwrap_or(r);
         doc.control(Control::new(ids::SEARCH, field, ControlRole::TextField, ph));
         // O × só com texto: limpa e o foco fica na busca.

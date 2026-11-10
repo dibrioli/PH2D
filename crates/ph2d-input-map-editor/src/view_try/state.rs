@@ -75,6 +75,10 @@ pub struct TryState {
     pub scroll: f32,
     /// O cartão que a rolagem mantém inteiro à vista (as cenas C3/C4); a roda larga-o.
     pub reveal: Option<TryCard>,
+    /// O polegar agarrado: o y do ponteiro e o rolar ao carregar.
+    pub thumb_drag: Option<(f32, f32)>,
+    /// A barra da última pintura: (altura do trilho, conteúdo, vista); `None` = a coluna cabe.
+    pub(crate) bar: Option<(f32, f32, f32)>,
     /// O «Forget them» à espera de chegar à sessão do Play ([`crate::InputMapDoc::forget_reaches`]).
     pub(crate) forget_session: bool,
     pub(crate) targets: Vec<TryHit>,

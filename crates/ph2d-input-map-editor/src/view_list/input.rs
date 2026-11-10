@@ -216,6 +216,18 @@ fn open_zone(doc: &mut InputMapDoc, action: ph2d_input::ActionId, zone: Zone) {
     });
 }
 
+/// O número `id` já está aberto para escrever.
+pub(crate) fn is_typing(doc: &InputMapDoc, id: ph2d_a11y::NodeId) -> bool {
+    doc.list.typing.as_ref().is_some_and(|t| {
+        let h = if t.zone == Zone::Dead {
+            ListHit::Dead(t.action)
+        } else {
+            ListHit::Press(t.action)
+        };
+        h.id() == id
+    })
+}
+
 /// O foco (clique ou Tab) chega ao número `id`.
 pub(crate) fn open_number(doc: &mut InputMapDoc, id: ph2d_a11y::NodeId) {
     commit_typing(doc);
@@ -253,13 +265,20 @@ fn stop_at(doc: &InputMapDoc, id: ph2d_a11y::NodeId, x: f32) -> usize {
         .unwrap_or(0)
 }
 
-/// O Down num campo de texto (nativo): foca JÁ e o caret cai onde se carregou; arrastar selecciona.
-pub(crate) fn press_text(doc: &mut InputMapDoc, id: ph2d_a11y::NodeId, x: f32) {
+/// O Down num campo de texto (nativo): foca JÁ e o caret cai onde se carregou; arrastar selecciona; o duplo
+/// clique selecciona tudo.
+pub(crate) fn press_text(doc: &mut InputMapDoc, id: ph2d_a11y::NodeId, x: f32, double: bool) {
     commit_typing(doc);
     if doc.snap.listening.is_some() {
         doc.list.listen_request = Some(None);
     }
     focus(doc, Some(id));
+    if double {
+        let len = doc.store.text(id).map_or(0, str::len);
+        set_text_caret(doc, id, len, Some(0));
+        doc.list.text_drag = None;
+        return;
+    }
     let b = stop_at(doc, id, x);
     set_text_caret(doc, id, b, None);
     doc.list.text_drag = Some((id, b));

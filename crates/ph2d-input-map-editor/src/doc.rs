@@ -286,7 +286,8 @@ impl InputMapDoc {
         });
         let dragged = crate::view_list::drag(self, x)
             | crate::view_list::drag_thumb(self, y)
-            | crate::view_list::drag_text(self, x);
+            | crate::view_list::drag_text(self, x)
+            | crate::view_try::drag_thumb(self, y);
         let changed = h != self.hover || row != self.list.hover_row || dragged;
         let target = self.hits.hit(x, y).filter(|_| h.is_none());
         let changed = changed || target != self.list.hover_target;
@@ -306,7 +307,8 @@ impl InputMapDoc {
     pub fn release_at(&mut self, x: f32, y: f32) -> bool {
         let fired = self.release_control(x, y).unwrap_or(false);
         self.kb.thumb_drag = None;
-        crate::view_list::release(self) || fired
+        let thumb = self.tryit.thumb_drag.take().is_some();
+        crate::view_list::release(self) || fired || thumb
     }
 
     /// A roda: rola a lista.
@@ -320,22 +322,42 @@ impl InputMapDoc {
 
     /// Uma tecla para o campo focado da aba. `true` = tomada.
     pub fn key(&mut self, input: &KeyInput<'_>) -> bool {
-        // O número aberto da lista é dono do Tab, do Enter e do Esc (aplica e segue, aplica, devolve).
-        if matches!(self.view, View::List | View::Keyboard) && self.list.typing.is_some() {
-            return crate::view_list::key(self, input);
-        }
-        if self.focus_text_key(input) {
+        // A escuta e o diálogo ANTES do foco: o Esc cancela-os; à escuta, o Tab é uma tecla.
+        if crate::view_try::before_focus_text(self, input) {
             return true;
         }
-        match self.view {
-            View::List => crate::view_list::key(self, input),
-            View::Keyboard => crate::view_keyboard::key(self, input),
-            View::TryIt => crate::view_try::key(self, input),
+        if self.snap.listening.is_some() {
+            return false;
         }
+        // O número aberto da lista é dono do Tab, do Enter e do Esc (aplica e segue, aplica, devolve).
+        let typing = matches!(self.view, View::List | View::Keyboard) && self.list.typing.is_some();
+        let took = if typing {
+            crate::view_list::key(self, input)
+        } else {
+            self.focus_text_key(input)
+                || match self.view {
+                    View::List => crate::view_list::key(self, input),
+                    View::Keyboard => crate::view_keyboard::key(self, input),
+                    View::TryIt => crate::view_try::key(self, input),
+                }
+        };
+        if took {
+            // O caret acende a cada tecla e o piscar recomeça dali (o do SO).
+            self.restart_caret();
+        }
+        took
     }
 
     /// A tecla física (`DocumentSurface::raw_key`): a busca por tecla. `true` = tomada.
     pub fn raw_key(&mut self, key: Key, pressed: bool, writes_text: bool) -> bool {
+        self.track_shift(key, pressed);
+        // A escuta (C) e o diálogo da receita ANTES do foco; à escuta da A/B a tecla é da escuta partilhada.
+        if crate::view_try::before_focus(self, key, pressed) {
+            return true;
+        }
+        if self.snap.listening.is_some() {
+            return false;
+        }
         let editing =
             matches!(self.view, View::List | View::Keyboard) && self.list.typing.is_some();
         if !editing && self.focus_raw_key(key, pressed) {

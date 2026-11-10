@@ -87,15 +87,6 @@ pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool) -> bool {
     if doc.snap.play_running || doc.store.focus_id().is_some() || doc.list.typing.is_some() {
         return false;
     }
-    if doc.tryit.listening_open_key {
-        if pressed {
-            take_open_key(doc, key);
-        }
-        return true;
-    }
-    if modal_key(doc, key, pressed) {
-        return true;
-    }
     let kb = &mut doc.tryit.bench.keyboard;
     if pressed {
         kb.handle_key_down(key);
@@ -104,6 +95,29 @@ pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool) -> bool {
     }
     // Ctrl/Alt, os acordes e o F5 passam: o Ctrl+Z desfaz e o F5 dá Play mesmo com o Try it aberto.
     !crate::raw_keys::never_binds(key, kb.iter_held())
+}
+
+/// **Antes do foco da aba** (o `doc.rs` chama-a primeiro): à escuta da tecla que abre a tela, TODA tecla é dela
+/// (o Tab também; o Esc e o F5 ficam recusados com o porquê — a lei de `try_it.rs` — e a escuta continua); com a pergunta da receita aberta, o diálogo. `true` = tomada.
+pub(crate) fn before_focus(doc: &mut InputMapDoc, key: Key, pressed: bool) -> bool {
+    if doc.view() != crate::doc::View::TryIt || doc.snap.play_running {
+        return false;
+    }
+    if doc.tryit.listening_open_key {
+        if pressed {
+            take_open_key(doc, key);
+        }
+        return true;
+    }
+    modal_key(doc, key, pressed)
+}
+
+/// A mesma porta pelo caminho do texto (a escuta já tomou a tecla física; aqui só não deixa o foco mexer).
+pub(crate) fn before_focus_text(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
+    if doc.view() != crate::doc::View::TryIt || doc.snap.play_running {
+        return false;
+    }
+    doc.tryit.listening_open_key || modal_text_key(doc, input)
 }
 
 fn take_open_key(doc: &mut InputMapDoc, key: Key) {
@@ -120,7 +134,20 @@ fn take_open_key(doc: &mut InputMapDoc, key: Key) {
 
 /// A porta do texto: os números Dead/Press abertos (os da vista A).
 pub(crate) fn key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
-    modal_text_key(doc, input) || crate::view_list::key(doc, input)
+    crate::view_list::key(doc, input)
+}
+
+/// O polegar agarrado segue o ponteiro (a conversão da barra do cartão, como na A).
+pub(crate) fn drag_thumb(doc: &mut InputMapDoc, y: f32) -> bool {
+    let (Some((y0, s0)), Some((track_h, total, view_h))) = (doc.tryit.thumb_drag, doc.tryit.bar)
+    else {
+        return false;
+    };
+    let d = ph2d_editor_core::widget::scrollbar_delta_for_drag(y - y0, track_h, total, view_h);
+    let before = doc.tryit.scroll;
+    doc.tryit.reveal = None;
+    doc.tryit.scroll = (s0 + d).clamp(0.0, (total - view_h).max(0.0));
+    (doc.tryit.scroll - before).abs() > f32::EPSILON
 }
 
 pub(crate) fn wheel(doc: &mut InputMapDoc, dy: f32) -> bool {
@@ -137,6 +164,10 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
         doc.tryit.listening_open_key = false;
         return true;
     };
+    if id == THUMB {
+        doc.tryit.thumb_drag = Some((y, doc.tryit.scroll));
+        return true;
+    }
     if let Some(a) = stick::stick_action(doc) {
         for (h, zone) in [
             (
@@ -160,8 +191,9 @@ pub(crate) fn press(doc: &mut InputMapDoc, x: f32, y: f32) -> bool {
         Some(TryHit::Recipe(r)) if map.is_empty() => doc.pending.push(InputMapEdit::StartFrom(r)),
         Some(TryHit::Recipe(r)) => {
             doc.tryit.confirm = Some(r);
-            // ⚠️ O foco no Cancel (o seguro) só quando o `doc.rs` chamar o `modal_key` ANTES do foco: hoje o Esc
-            // com foco só larga o foco e a pergunta ficava aberta.
+            // O foco nasce no Cancel (o seguro), como no diálogo do SO; o Enter continua a ser o Replace.
+            doc.store.set_focus(None);
+            doc.ui.focus = Some(TryHit::Cancel.id());
         }
         Some(TryHit::Replace) => {
             if let Some(r) = doc.tryit.confirm.take() {
@@ -268,10 +300,21 @@ pub const THUMB: ph2d_a11y::NodeId =
     ph2d_editor_core::registry::hash_node_id("input_map_try.thumb");
 
 /// A tecla do diálogo da receita, ANTES do foco: Esc = Cancel, Enter = Replace (o botão de omissão, como no
-/// diálogo do SO); o Space continua a activar o focado (o Cancel, onde o foco nasce). `true` = tomada.
-/// ⚠️ O `doc.rs::raw_key` tem de a chamar antes do `focus_raw_key` (senão o Esc só larga o foco do Cancel).
+/// diálogo do SO), Tab/Shift+Tab giram só entre Replace e Cancel (o foco preso); o Space continua a activar o
+/// focado (o Cancel, onde o foco nasce). `true` = tomada.
 pub(crate) fn modal_key(doc: &mut InputMapDoc, key: Key, pressed: bool) -> bool {
-    if doc.view() != crate::doc::View::TryIt || doc.tryit.confirm.is_none() || !pressed {
+    if doc.view() != crate::doc::View::TryIt || doc.tryit.confirm.is_none() {
+        return false;
+    }
+    let tab = Key::named_in_script("tab").unwrap_or_default();
+    if tab.contains(&key) {
+        if pressed {
+            let back = doc.ui.shift;
+            doc.trap_focus(&[TryHit::Replace.id(), TryHit::Cancel.id()], back);
+        }
+        return true;
+    }
+    if !pressed {
         return false;
     }
     let esc = Key::named_in_script("escape").unwrap_or_default();
@@ -292,6 +335,13 @@ pub(crate) fn modal_key(doc: &mut InputMapDoc, key: Key, pressed: bool) -> bool 
 /// A porta do texto do mesmo diálogo (Esc / Enter pelo caminho do `key`).
 pub(crate) fn modal_text_key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
     use ph2d_editor_core::doc_surface::Key as K;
+    if input.key == K::Tab && doc.tryit.confirm.is_some() {
+        if input.pressed {
+            let ids = [TryHit::Replace.id(), TryHit::Cancel.id()];
+            doc.trap_focus(&ids, input.mods.shift);
+        }
+        return true;
+    }
     let raw = match input.key {
         K::Escape => Key::named_in_script("escape"),
         K::Enter => Key::named_in_script("enter"),
@@ -462,11 +512,14 @@ fn scrollbar(doc: &mut InputMapDoc, view: Rect, total: f32, scene: &mut VectorSc
     use ph2d_editor_core::widget::{
         scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
     };
+    doc.tryit.bar = None;
     if !scrollbar_is_needed(total, view.h) {
         return;
     }
     let lane = Rect::new(view.x, view.y, view.w - m::SEG_INSET, view.h);
-    let thumb = scrollbar_thumb_rect(scrollbar_track_rect(lane), doc.tryit.scroll, total, view.h);
+    let track = scrollbar_track_rect(lane);
+    doc.tryit.bar = Some((track.h, total, view.h));
+    let thumb = scrollbar_thumb_rect(track, doc.tryit.scroll, total, view.h);
     let pill = Rect::new(
         thumb.x + thumb.w - m::BAR_TRACK,
         thumb.y,

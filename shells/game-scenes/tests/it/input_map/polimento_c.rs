@@ -275,3 +275,120 @@ fn o_censo_da_c_fica_a_zero_nas_areas_reais() {
         }
     });
 }
+
+// ── R4: a precedência das teclas (o diálogo e a escuta antes do foco) e o polegar que se arrasta ────────────────
+
+/// A pergunta da receita nasce com o foco no Cancel (o seguro); o Tab e o Shift+Tab giram SÓ entre Replace e
+/// Cancel; o Esc com o foco lá fecha a pergunta (antes, só largava o foco); o Enter é o Replace mesmo no Cancel.
+#[test]
+fn o_dialogo_da_receita_prende_o_foco_e_nasce_no_cancel() {
+    let mut m = mesa();
+    let before = m.hero.input_map.clone();
+    let (replace, cancel) = (TryHit::Replace.id(), TryHit::Cancel.id());
+    m.click(m.at(TryHit::Recipe(Recipe::Shooter).id()));
+    assert_eq!(
+        m.tab().doc.focused(),
+        Some(cancel),
+        "o foco nasce no Cancel"
+    );
+    for want in [replace, cancel, replace] {
+        m.physical(key("tab"));
+        assert_eq!(
+            m.tab().doc.focused(),
+            Some(want),
+            "o Tab gira só no diálogo"
+        );
+    }
+    m.key(K::Tab, None);
+    assert_eq!(
+        m.tab().doc.focused(),
+        Some(cancel),
+        "pela porta do texto também"
+    );
+    m.physical(key("left_shift"));
+    m.physical(key("tab"));
+    assert_eq!(m.tab().doc.focused(), Some(replace), "Shift+Tab volta");
+    let _ = m.tab_mut().doc.raw_key(key("left_shift"), false, false);
+    m.physical(key("escape"));
+    assert_eq!(
+        m.tab().doc.tryit.confirm,
+        None,
+        "o Esc com foco fecha a pergunta"
+    );
+    assert_eq!(m.tab().doc.focused(), None, "o foco sai com ela");
+    assert_eq!(m.hero.input_map, before);
+    m.click(m.at(TryHit::Recipe(Recipe::Shooter).id()));
+    assert_eq!(m.tab().doc.focused(), Some(cancel));
+    m.physical(key("enter"));
+    m.frame();
+    assert_eq!(m.tab().doc.tryit.confirm, None);
+    assert_ne!(
+        m.hero.input_map, before,
+        "o Enter é o Replace, com o foco no Cancel"
+    );
+    m.click(m.at(TryHit::Recipe(Recipe::Platformer).id()));
+    m.physical(key("space"));
+    assert_eq!(
+        m.tab().doc.tryit.confirm,
+        None,
+        "o Space activa o focado: o Cancel"
+    );
+}
+
+/// À escuta do «Opens with», a escuta vem antes do foco: o Tab é uma tecla (vira a tecla que abre a tela) e
+/// o foco não anda.
+#[test]
+fn a_escuta_do_opens_with_toma_o_tab_antes_do_foco() {
+    let mut m = mesa();
+    let id = TryHit::OpenKey.id();
+    for _ in 0..64 {
+        m.key(K::Tab, None);
+        if m.tab().doc.focused() == Some(id) {
+            break;
+        }
+    }
+    assert_eq!(m.tab().doc.focused(), Some(id), "o Tab chega ao Opens with");
+    m.key(K::Enter, None);
+    assert!(m.tab().doc.tryit.listening_open_key, "à escuta");
+    m.physical(key("escape"));
+    assert!(
+        m.tab().doc.tryit.listening_open_key,
+        "o Esc é recusado pela escuta (com o porquê), não larga o foco"
+    );
+    assert_eq!(m.tab().doc.focused(), Some(id));
+    m.physical(key("tab"));
+    assert!(
+        !m.tab().doc.tryit.listening_open_key,
+        "a escuta tomou o Tab"
+    );
+    assert_eq!(m.hero.input_map.controls().open_key, key("tab"));
+    assert_eq!(m.tab().doc.focused(), Some(id), "e o foco não andou");
+}
+
+/// O polegar da C arrasta como o da A e o da B: na área real a 1280×720 a coluna rola com o ponteiro.
+#[test]
+fn o_polegar_da_c_arrasta() {
+    use ph2d_editor_core::zones::Rect;
+    let mut m = mesa();
+    let area = Rect::new(297.0, 28.0, 690.0, 604.0); // LITERAL-PX-OK: a área real da aba a 1280×720
+    m.paint_in(area);
+    let thumb = m
+        .tab()
+        .doc
+        .rect_of(ph2d_app_input_map::view_try::THUMB)
+        .expect("a 1280 a coluna rola");
+    let (x, y) = (thumb.x + thumb.w * 0.5, thumb.y + thumb.h * 0.5);
+    let doc = &mut m.tab_mut().doc;
+    assert!(doc.press(x, y));
+    assert_eq!(doc.tryit.scroll, 0.0);
+    assert!(doc.motion(x, y + thumb.h), "arrastar rola");
+    let s = doc.tryit.scroll;
+    assert!(s > 0.0, "a coluna desceu: {s}");
+    doc.release_at(x, y + thumb.h);
+    assert_eq!(doc.tryit.thumb_drag, None, "soltar larga o polegar");
+    assert!(
+        !doc.motion(x, y + thumb.h * 2.0),
+        "sem botão, mover não rola"
+    );
+    assert_eq!(doc.tryit.scroll, s);
+}

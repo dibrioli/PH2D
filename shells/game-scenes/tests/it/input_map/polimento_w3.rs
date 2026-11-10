@@ -538,3 +538,112 @@ fn cada_controlo_da_lista_tem_no_com_papel_e_nome() {
         "um nó por controlo, sem repetidos"
     );
 }
+
+// ── R4: o número foca no Down, o caret recomeça a cada tecla, duplo clique, campo rolado ────────────────────────
+
+/// Foca o nome novo pelo Tab (sem Down: nenhum duplo clique a contar).
+fn foca_o_nome_pelo_tab(m: &mut Mesa) {
+    for _ in 0..64 {
+        if m.tab().doc.focus() == Some(ids::NEW_NAME) {
+            return;
+        }
+        m.key(ph2d_editor_core::doc_surface::Key::Tab, None);
+    }
+    panic!("o Tab não chegou ao nome");
+}
+
+/// O número da zona abre no DOWN, todo seleccionado (como o campo de texto); a alça continua a arrastar.
+#[test]
+fn o_numero_da_a_foca_no_down_e_a_alca_arrasta() {
+    use ph2d_app_input_map::ids::ListHit;
+    let (mut m, a, _) = mesa_com_manche();
+    m.down(m.at(ListHit::Dead(a).id()));
+    let t = m.tab().doc.list.typing.as_ref().map(|t| t.buffer.clone());
+    assert_eq!(t.as_deref(), Some("0.20"), "aberto no Down, antes do Up");
+    assert_eq!(
+        m.tab().doc.list.caret.selection(),
+        Some((0, 4)),
+        "tudo seleccionado"
+    );
+    m.up(m.at(ListHit::Dead(a).id()));
+    assert_eq!(
+        m.tab().doc.list.caret.selection(),
+        Some((0, 4)),
+        "o Up não desfaz"
+    );
+    m.key(ph2d_editor_core::doc_surface::Key::Escape, None);
+    m.down(m.at(ListHit::DeadHandle(a).id()));
+    assert!(m.tab().doc.list.typing.is_none(), "a alça não abre o texto");
+    assert!(m.tab().doc.gesture_in_progress(), "a alça arrasta");
+    m.release();
+}
+
+/// O caret acende a cada tecla e o piscar recomeça dali, no campo de texto e no número.
+#[test]
+fn o_caret_recomeca_a_piscar_a_cada_tecla() {
+    use ph2d_app_input_map::ids::ListHit;
+    use ph2d_editor_core::doc_surface::Key as K;
+    let (mut m, a, _) = mesa_com_manche();
+    foca_o_nome_pelo_tab(&mut m);
+    let on = |m: &Mesa| m.tab().doc.field_caret(ids::NEW_NAME).expect("campo").2;
+    assert!(on(&m), "aceso ao focar");
+    m.hero.motion.advance(0.6);
+    m.frame();
+    assert!(!on(&m), "meio período depois, apagado");
+    m.type_text("x");
+    assert!(on(&m), "a tecla acende-o já");
+    m.hero.motion.advance(0.3);
+    m.frame();
+    assert!(on(&m), "e o período recomeçou da tecla");
+    m.hero.motion.advance(0.3);
+    m.frame();
+    assert!(!on(&m), "um meio período depois da tecla, apaga");
+    m.click(m.at(ListHit::Dead(a).id()));
+    m.hero.motion.advance(0.6);
+    m.frame();
+    let id = ListHit::Dead(a).id();
+    assert!(!m.tab_mut().doc.caret_on(id), "o do número também pisca");
+    m.key(K::Up, None);
+    assert!(m.tab_mut().doc.caret_on(id), "a tecla acende o do número");
+}
+
+/// O duplo clique no campo de texto selecciona tudo.
+#[test]
+fn o_duplo_clique_no_campo_selecciona_tudo() {
+    let mut m = Mesa::aberta(View::List);
+    foca_o_nome_pelo_tab(&mut m);
+    m.type_text("taunt");
+    let r = m.tab().doc.rect_of(ids::NEW_NAME).expect("pintado");
+    let esq = (r.x + 1.0, r.y + r.h * 0.5); // LITERAL-PX-OK: dentro da borda
+    m.click(esq);
+    assert_eq!(
+        m.tab().doc.field_caret(ids::NEW_NAME).map(|c| (c.0, c.1)),
+        Some((0, None))
+    );
+    m.click(esq);
+    assert_eq!(
+        m.tab().doc.field_caret(ids::NEW_NAME).map(|c| (c.0, c.1)),
+        Some((5, Some(0))),
+        "o duplo clique selecciona tudo"
+    );
+}
+
+/// Com o texto focado maior que a caixa, a linha desliza para o caret caber: o clique junto à ponta direita
+/// cai junto ao FIM do texto (as fronteiras levam o deslize), não a meio.
+#[test]
+fn o_clique_no_campo_rolado_cai_onde_o_texto_esta() {
+    let mut m = Mesa::aberta(View::List);
+    foca_o_nome_pelo_tab(&mut m);
+    let long = "w".repeat(80);
+    m.type_text(&long);
+    let r = m.tab().doc.rect_of(ids::NEW_NAME).expect("pintado");
+    let pad = ph2d_editor_core::widget::field_pad_x();
+    m.down((r.x + r.w - pad, r.y + r.h * 0.5));
+    let c = m.tab().doc.field_caret(ids::NEW_NAME).expect("campo").0;
+    assert!(
+        c + 2 >= long.len(),
+        "o clique na ponta cai no fim: {c} de {}",
+        long.len()
+    );
+    m.up((r.x + r.w - pad, r.y + r.h * 0.5));
+}

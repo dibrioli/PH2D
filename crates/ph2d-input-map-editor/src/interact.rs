@@ -139,6 +139,14 @@ pub struct Ui {
     /// Pulsos e carets pedidos pela última pintura (pedem quadro).
     pub(crate) pulses: BTreeSet<NodeId>,
     pub(crate) carets: BTreeSet<NodeId>,
+    /// O instante do relógio em que o piscar do caret recomeçou (cada tecla e cada Down num campo).
+    pub(crate) caret_epoch: f64,
+}
+
+/// O relógio do duplo clique (ns desde o primeiro pedido; a porta do ponteiro da aba não traz o instante).
+fn now_ns() -> u128 {
+    static T0: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    T0.get_or_init(std::time::Instant::now).elapsed().as_nanos()
 }
 
 /// Um ciclo do pulso da escuta (s) — o de um indicador «à espera» de SO (macOS ≈ 1–1,5 s).
@@ -323,7 +331,13 @@ impl InputMapDoc {
             return true;
         }
         self.ui.carets.insert(id);
-        (self.ui.elapsed / CARET_HALF_S).floor() % 2.0 < 1.0
+        let t = (self.ui.elapsed - self.ui.caret_epoch).max(0.0);
+        (t / CARET_HALF_S).floor() % 2.0 < 1.0
+    }
+
+    /// O caret acende já e o piscar recomeça daqui (cada tecla, cada Down num campo — o do SO).
+    pub(crate) fn restart_caret(&mut self) {
+        self.ui.caret_epoch = self.ui.elapsed;
     }
 
     /// O desvanecer de um polegar (`ControlRole::ScrollThumb`): `0` frio, `1` quente.
@@ -399,20 +413,38 @@ impl InputMapDoc {
     pub(crate) fn press_control(&mut self, x: f32, y: f32) -> Option<bool> {
         self.ui.pointer = Some((x, y));
         let c = self.control_at(x, y)?;
-        // O campo de texto foca no Down e o caret cai onde se carregou (o arrasto selecciona), como no SO.
-        if c.role == ControlRole::TextField && c.enabled() && self.view() == View::List {
-            let id = c.id;
+        let (cid, role, on) = (c.id, c.role, c.enabled());
+        let double = self.store.record_pointer_down(Some(cid), now_ns());
+        let _ = self.store.take_pending_double_click();
+        // O campo de texto foca no Down e o caret cai onde se carregou (o arrasto selecciona; o duplo clique
+        // selecciona tudo), como no SO.
+        if role == ControlRole::TextField && on && self.view() == View::List {
             self.ui.focus = None;
             self.ui.pressed = None;
-            crate::view_list::press_text(self, id, x);
+            crate::view_list::press_text(self, cid, x, double);
+            self.restart_caret();
             return Some(true);
         }
-        if c.role.drags() {
+        // O número (A e B) também foca no Down, todo seleccionado; o arrasto mora na alça D/P.
+        if role == ControlRole::NumberField
+            && on
+            && matches!(self.view(), View::List | View::Keyboard)
+        {
+            self.ui.focus = None;
+            self.ui.pressed = None;
+            self.store.set_focus(None);
+            if !crate::view_list::is_typing(self, cid) {
+                crate::view_list::open_number(self, cid);
+            }
+            self.restart_caret();
+            return Some(true);
+        }
+        if role.drags() {
             return None;
         }
-        let (id, live) = (c.id, c.enabled() && c.role.clickable());
+        let live = on && role.clickable();
         self.ui.focus = None;
-        self.ui.pressed = live.then_some(id);
+        self.ui.pressed = live.then_some(cid);
         Some(true)
     }
 
@@ -495,7 +527,9 @@ impl InputMapDoc {
         self.store.set_focus(None);
         match role {
             Some(ControlRole::TextField) => self.store.set_focus(Some(id)),
-            Some(ControlRole::NumberField) if matches!(self.view(), View::List | View::Keyboard) => {
+            Some(ControlRole::NumberField)
+                if matches!(self.view(), View::List | View::Keyboard) =>
+            {
                 crate::view_list::open_number(self, id);
             }
             _ => self.ui.focus = Some(id),
@@ -505,10 +539,6 @@ impl InputMapDoc {
     /// A tecla física para o foco (Tab, Shift, Enter, Space, Esc), pelos nomes do vocabulário do app
     /// (`Key::named_in_script`). `true` = tomada.
     pub(crate) fn focus_raw_key(&mut self, key: ph2d_input::Key, pressed: bool) -> bool {
-        if is_named(key, &["left_shift", "right_shift"]) {
-            self.ui.shift = pressed;
-            return false;
-        }
         if !pressed {
             return false;
         }
@@ -526,6 +556,40 @@ impl InputMapDoc {
             return false;
         };
         self.focus_key(k)
+    }
+
+    /// O Shift físico (a porta física não traz modificadores).
+    pub(crate) fn track_shift(&mut self, key: ph2d_input::Key, pressed: bool) {
+        if is_named(key, &["left_shift", "right_shift"]) {
+            self.ui.shift = pressed;
+        }
+    }
+
+    /// O foco preso a `ids` (um diálogo aberto): Tab/Shift+Tab giram só entre eles, pela ordem da pintura.
+    pub(crate) fn trap_focus(&mut self, ids: &[NodeId], back: bool) {
+        let order: Vec<NodeId> = self
+            .ui
+            .controls
+            .iter()
+            .filter(|c| ids.contains(&c.id) && c.enabled())
+            .map(|c| c.id)
+            .collect();
+        let n = order.len();
+        if n == 0 {
+            return;
+        }
+        let at = self
+            .ui
+            .focus
+            .and_then(|f| order.iter().position(|o| *o == f));
+        let i = match (at, back) {
+            (Some(i), false) => (i + 1) % n,
+            (Some(i), true) => (i + n - 1) % n,
+            (None, false) => 0,
+            (None, true) => n - 1,
+        };
+        self.store.set_focus(None);
+        self.ui.focus = Some(order[i]);
     }
 
     /// A tecla de texto para o foco. `true` = tomada.

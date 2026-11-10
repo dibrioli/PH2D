@@ -85,8 +85,8 @@ const OUTSIDE_THE_DOOR: &[(&str, &str)] = &[
         "CANVAS: a regua de uma timeline",
     ),
     (
-        "crates/ph2d-panel-timeline/src/ruler_veil.rs",
-        "CANVAS: o veu da regua",
+        "crates/ph2d-panel-timeline/src/alca_estado.rs",
+        "CANVAS: as alças da timeline nos seus estados (a pintura do véu e da régua viajou para cá)",
     ),
     (
         "crates/ph2d-panel-timeline/src/strip_paint.rs",

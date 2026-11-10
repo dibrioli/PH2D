@@ -133,6 +133,13 @@ pub const TIMELINE_FAIXA_H_PX: f32 = 30.0; // LITERAL-PX-OK: altura da faixa med
 pub const TIMELINE_PECA_MARGEM_PX: f32 = 4.0; // LITERAL-PX-OK: margem vertical da peça na faixa
 /// A barra do tamanho de um container na lista (3 px, raio 2).
 pub const TIMELINE_LISTA_BARRA_PX: f32 = 3.0; // LITERAL-PX-OK: altura da barra do container na lista
+/// ⭐ **Os estados de uma alça da Timeline** (dono 10/11). O hover aproxima a alça da tinta da chave
+/// (a mais clara da folha) por esta fracção: acesa sem perder a cor da operação.
+pub const TIMELINE_ALCA_HOVER_MIX: f32 = 0.5; // LITERAL-PX-OK: fracção da mistura repouso → tinta da chave
+/// O halo do arrasto: o acento sob a alça, alargado, a esta opacidade.
+pub const TIMELINE_ALCA_HALO_ALPHA: f32 = 0.35; // LITERAL-PX-OK: opacidade do halo do arrasto
+/// A guia do arrasto (o fio de acento no tempo arrastado).
+pub const TIMELINE_ALCA_GUIA_ALPHA: f32 = 0.8; // LITERAL-PX-OK: opacidade da guia do arrasto
 
 /// ⭐ **O FANTASMA de um cartão arrastado — a opacidade dele.** Meio transparente: a marca da
 /// queda (a barra de acento entre dois cartões) tem de se ver através dele.

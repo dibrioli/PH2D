@@ -445,12 +445,8 @@ fn the_corner_highlight_asks_for_the_edge_the_hit_plan_registers() {
 
 // ── As FAIXAS de fade: a superfície do menu de easing (Enio, 2026-07-31) ────
 
-/// **Uma faixa de fade GANHA do corpo e PERDE para as quinas.**
-///
-/// As duas metades importam e são o desenho inteiro da ordem: ganhar do corpo é a razão de a
-/// faixa ser clicável (o menu do fade em vez do menu do strip), e perder para as quinas é o
-/// que impede a faixa de roubar o aparar/esticar — que são alvos de precisão nas beiras, e
-/// que o artista acerta muito mais vezes por dia.
+/// **Uma faixa de fade GANHA do corpo e PERDE para as quinas**: ganhar do corpo abre o menu do
+/// fade em vez do do strip; perder para as quinas não rouba o aparar/esticar das beiras.
 #[test]
 fn a_fade_band_outranks_the_body_and_yields_to_the_corners() {
     let body = Rect::new(150.0, 60.0, 240.0, 20.0);
@@ -468,9 +464,7 @@ fn a_fade_band_outranks_the_body_and_yields_to_the_corners() {
     );
 }
 
-/// **A faixa é recortada à banda de tempo, como tudo o mais.**
-///
-/// Uma cunha de um strip que começa fora da tela à esquerda não pode registrar hit sobre a
+/// **A faixa é recortada à banda de tempo, como tudo o mais.** Uma cunha de um strip que começa fora da tela à esquerda não pode registrar hit sobre a
 /// coluna de labels — é lá que moram os nomes das lanes.
 #[test]
 fn a_fade_band_is_clipped_to_the_time_band() {

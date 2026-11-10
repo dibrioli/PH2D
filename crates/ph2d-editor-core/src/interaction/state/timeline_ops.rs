@@ -52,6 +52,13 @@ impl WidgetStore {
         self.timeline_slop.note(x, y);
     }
 
+    /// Is the live timeline capture already a DRAG (past the slop)? Read-only — the panel's
+    /// handles paint the dragging state from it; [`Self::take_timeline_moved`] still consumes it.
+    #[must_use]
+    pub fn timeline_dragging(&self) -> bool {
+        self.timeline_slop.moved()
+    }
+
     /// Read + reset the "timeline capture moved" flag (Up chooses End vs Click).
     pub fn take_timeline_moved(&mut self) -> bool {
         self.timeline_slop.take_moved()

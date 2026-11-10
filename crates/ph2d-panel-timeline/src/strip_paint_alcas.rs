@@ -10,7 +10,14 @@ use super::*;
 ///
 /// The horizontal arm is the grab region's own width (`EDGE_W`, what `hit_plan` registers),
 /// so what is drawn and what is clickable start at the same pixel.
-pub(super) fn paint_corner(ctx: &mut PaintCtx, body: Rect, left: bool, top: bool, color: Color) {
+pub(super) fn paint_corner(
+    ctx: &mut PaintCtx,
+    (theme, estado): (Theme, EstadoAlca),
+    body: Rect,
+    left: bool,
+    top: bool,
+    color: Color,
+) {
     let arm = CORNER_ARM.min(body.w * 0.5).min(body.h * 0.5);
     let w = CORNER_W.min(arm);
     let (x_out, x_edge) = if left {
@@ -28,10 +35,23 @@ pub(super) fn paint_corner(ctx: &mut PaintCtx, body: Rect, left: bool, top: bool
         Rect::new(x_out, y_edge, arm, w),
         Rect::new(x_edge, y_out, w, arm),
     ];
-    pinta_sombra_de_alca(ctx, &bracos, &[]);
-    for r in bracos {
-        fill_rounded_rect(ctx.scene, r, Radius::Xs.px(), color);
-    }
+    crate::alca_estado::pinta(ctx, theme, estado, color, &bracos, &[]);
+}
+
+/// A guia (a altura da strip, `Xs` além de cada lado) e a leitura de `segundos` junto de `x`,
+/// do lado de dentro quando `a_esquerda` — só no arrasto (`alca_estado`).
+pub(super) fn guia_e_leitura(
+    ctx: &mut PaintCtx,
+    (theme, estado): (Theme, EstadoAlca),
+    body: Rect,
+    x: f32,
+    segundos: f64,
+    a_esquerda: bool,
+) {
+    let m = Spacing::Xs.px();
+    crate::alca_estado::pinta_guia(ctx, theme, estado, x, body.y - m, body.y + body.h + m);
+    let cy = body.y - m - TypeToken::Xs.px();
+    crate::alca_estado::pinta_leitura(ctx, theme, estado, segundos, x, cy, a_esquerda);
 }
 
 /// A sombra de uma alça feita de `rects` e `tris`, pintada ANTES dela, só nos cartões (a lei da
@@ -56,7 +76,14 @@ pub(crate) fn pinta_sombra_de_alca(ctx: &mut PaintCtx, rects: &[Rect], tris: &[[
 }
 
 /// The fade handle: a vertical line centred at `xc` plus a ◀ ▶ arrow pair at mid-height.
-pub(super) fn paint_fade_handle(ctx: &mut PaintCtx, xc: f32, y: f32, h: f32, color: Color) {
+pub(super) fn paint_fade_handle(
+    ctx: &mut PaintCtx,
+    (theme, estado): (Theme, EstadoAlca),
+    xc: f32,
+    y: f32,
+    h: f32,
+    color: Color,
+) {
     let barra = Rect::new(xc - EASE_BAR_W * 0.5, y, EASE_BAR_W, h);
     let my = y + h * 0.5;
     let gap = EASE_BAR_W * 0.5 + 1.0; // LITERAL-PX-OK: clear of the line
@@ -73,11 +100,7 @@ pub(super) fn paint_fade_handle(ctx: &mut PaintCtx, xc: f32, y: f32, h: f32, col
             (xc + gap, my + ARROW_SZ),
         ],
     ];
-    pinta_sombra_de_alca(ctx, &[barra], &setas);
-    fill_rounded_rect(ctx.scene, barra, Radius::Xs.px(), color);
-    for pts in setas {
-        fill_tri(ctx, pts, color);
-    }
+    crate::alca_estado::pinta(ctx, theme, estado, color, &[barra], &setas);
 }
 
 fn tri(pts: [(f32, f32); 3]) -> BezPath {
@@ -87,12 +110,4 @@ fn tri(pts: [(f32, f32); 3]) -> BezPath {
     p.line_to((f64::from(pts[2].0), f64::from(pts[2].1)));
     p.close_path();
     p
-}
-
-/// Fill a triangle through three points.
-fn fill_tri(ctx: &mut PaintCtx, pts: [(f32, f32); 3], color: Color) {
-    let p = tri(pts);
-    ctx.scene
-        .inner_mut()
-        .fill(Fill::NonZero, Affine::IDENTITY, color, None, &p);
 }

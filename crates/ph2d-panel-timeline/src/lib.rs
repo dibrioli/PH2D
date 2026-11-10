@@ -16,6 +16,7 @@
 
 #![forbid(unsafe_code)]
 
+mod alca_estado;
 mod breadcrumb;
 mod folha_tinta;
 mod ruler_clock;

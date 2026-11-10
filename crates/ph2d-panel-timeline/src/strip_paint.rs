@@ -15,7 +15,7 @@ use ph2d_editor_core::paint::{fill_rounded_rect, rect_to_vello, resolve, stroke_
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
-use ph2d_vector::{Affine, BezPath, Color, Fill, Stroke};
+use ph2d_vector::{Affine, BezPath, Color, Stroke};
 
 use crate::graph::TimeView;
 use crate::pecas_cartoes::fator_str;
@@ -139,8 +139,16 @@ pub(crate) fn paint_strip(
     // own answer to "what is under the pointer", the same one the click will use, so the
     // highlight cannot disagree with what actually gets grabbed.
     let hot = ctx.host.store().hot_id();
-    let is_hot = |edge: u8| -> bool {
-        !dim && hot == Some(crate::ids::timeline_strip_hit_id(lane as u64, s.id.0, edge))
+    let id_de = |edge: u8| crate::ids::timeline_strip_hit_id(lane as u64, s.id.0, edge);
+    // Nos cartões o destaque é o dos três estados (`alca_estado`); o Accent no hover é o clássico.
+    let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
+    let is_hot = |edge: u8| -> bool { !dim && !cartoes && hot == Some(id_de(edge)) };
+    let estado_de = |ctx: &PaintCtx, edge: u8| {
+        if dim {
+            EstadoAlca::Repouso
+        } else {
+            EstadoAlca::nos_cartoes(ctx, id_de(edge))
+        }
     };
     let peca = crate::pecas_cartoes::peca_do_strip(s, tinta, dim, theme);
     if fase == Fase::Topo {
@@ -215,7 +223,21 @@ pub(crate) fn paint_strip(
         } else {
             corner_token(stretch)
         };
-        paint_corner(ctx, body, edge == 0, stretch, resolve(colour, theme));
+        let e = estado_de(ctx, corner_hit_edge(stretch, edge));
+        paint_corner(
+            ctx,
+            (theme, e),
+            body,
+            edge == 0,
+            stretch,
+            resolve(colour, theme),
+        );
+        let (x, t) = if edge == 0 {
+            (body.x, s.t_start)
+        } else {
+            (body.x + body.w, s.t_end)
+        };
+        alcas::guia_e_leitura(ctx, (theme, e), body, x, t, edge != 0);
     }
 
     // **The fade handle: a traço with two little arrows** (Enio, 2026-07-16) — a vertical
@@ -246,7 +268,20 @@ pub(crate) fn paint_strip(
                 theme,
             );
             let x = if at_left { g.x } else { g.x + g.w - EASE_BAR_W };
-            paint_fade_handle(ctx, x + EASE_BAR_W * 0.5, g.y, g.h, color);
+            let e = if locked {
+                EstadoAlca::Repouso
+            } else {
+                estado_de(ctx, edge)
+            };
+            let xc = x + EASE_BAR_W * 0.5;
+            paint_fade_handle(ctx, (theme, e), xc, g.y, g.h, color);
+            // A leitura do fade é o COMPRIMENTO dele (o que o arrasto muda).
+            let len = if at_left {
+                s.lead_in.max(s.blend_in)
+            } else {
+                s.lead_out.max(s.blend_out)
+            };
+            alcas::guia_e_leitura(ctx, (theme, e), g, xc, len, !at_left);
         }
     }
 
@@ -531,6 +566,7 @@ pub(crate) fn paint_hatch(ctx: &mut PaintCtx, rect: Rect, color: Color, crossed:
 
 #[path = "strip_paint_alcas.rs"]
 mod alcas;
+use crate::alca_estado::EstadoAlca;
 pub(crate) use alcas::pinta_sombra_de_alca;
 use alcas::{paint_corner, paint_fade_handle};
 

@@ -21,6 +21,7 @@ use crate::ruler_clock::RulerClock;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Affine, BezPath, Brush, Fill};
 
+use crate::alca_estado::EstadoAlca;
 use crate::ids;
 
 #[path = "ruler_veil.rs"]
@@ -301,13 +302,11 @@ fn paint_loop_braces(
         // to drag rather than dead space. Drawn only where the grab exists — an
         // affordance you can see but not use is a lie.
         let linha = Rect::new(x0, region.y, x1 - x0, LOOP_MOVE_LINE_H);
-        crate::strip_paint::pinta_sombra_de_alca(ctx, &[linha], &[]);
-        fill_rounded_rect(
-            ctx.scene,
-            linha,
-            Radius::Xs.px(),
-            resolve(ColorToken::TimelineLoopBrace, theme),
-        );
+        let e = EstadoAlca::nos_cartoes(ctx, ids::timeline_loop_brace_id(2));
+        let cor = resolve(ColorToken::TimelineLoopBrace, theme);
+        crate::alca_estado::pinta(ctx, theme, e, cor, &[linha], &[]);
+        let cy = region.y + RULER_H * 0.5;
+        crate::alca_estado::pinta_leitura(ctx, theme, e, a, x0, cy, false);
     }
     // The two brace bars + their grab targets.
     for (edge, x, onscreen) in [
@@ -337,15 +336,11 @@ fn paint_loop_braces(
             Rect::new(clamped - BRACE_W * 0.5, region.y, BRACE_W, RULER_H),
             Rect::new(tick_x, region.y, BRACE_W, StrokeToken::Thick.px()),
         ];
-        crate::strip_paint::pinta_sombra_de_alca(ctx, &partes, &[]);
-        for r in partes {
-            fill_rounded_rect(
-                ctx.scene,
-                r,
-                Radius::Xs.px(),
-                resolve(ColorToken::TimelineLoopBrace, theme),
-            );
-        }
+        let e = EstadoAlca::nos_cartoes(ctx, ids::timeline_loop_brace_id(edge));
+        let cor = resolve(ColorToken::TimelineLoopBrace, theme);
+        crate::alca_estado::pinta(ctx, theme, e, cor, &partes, &[]);
+        let (t, cy) = (if edge == 0 { a } else { b }, region.y + RULER_H * 0.5);
+        crate::alca_estado::pinta_leitura(ctx, theme, e, t, clamped, cy, edge == 0);
         let hit = Rect::new(
             clamped - BRACE_HIT_HW,
             region.y,

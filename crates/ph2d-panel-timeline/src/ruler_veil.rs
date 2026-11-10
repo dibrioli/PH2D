@@ -76,11 +76,11 @@ pub(super) fn paint_duration_handle(
             (gx + half, cy + DUR_ARROW_HEAD),
         ],
     ];
-    crate::strip_paint::pinta_sombra_de_alca(ctx, &[haste], &pontas);
-    fill_rounded_rect(ctx.scene, haste, Radius::Xs.px(), color);
-    for pts in pontas {
-        fill_triangle(ctx, pts, color);
-    }
+    let e = crate::alca_estado::EstadoAlca::nos_cartoes(ctx, ids::TIMELINE_DUR_HANDLE);
+    crate::alca_estado::pinta(ctx, theme, e, color, &[haste], &pontas);
+    let ponta = gx + half + DUR_ARROW_HEAD;
+    let t = snap.view_length_seconds;
+    crate::alca_estado::pinta_leitura(ctx, theme, e, t, ponta, cy, false);
     // The grab target: ONLY the ↔ glyph (Enio, 2026-07-26 — reversed the whole-veil
     // grab). Clicking the dark veil to the right must NOT resize the duration; only
     // the arrow does.

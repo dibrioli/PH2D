@@ -37,6 +37,12 @@ impl PressSlop {
         self.moved
     }
 
+    /// A folga já foi passada neste aperto? (lê sem zerar: o pintor pergunta, o soltar consome.)
+    #[must_use]
+    pub const fn moved(&self) -> bool {
+        self.moved
+    }
+
     /// Lê e zera — o soltar escolhe `End` contra `Click`.
     pub fn take_moved(&mut self) -> bool {
         std::mem::take(&mut self.moved)

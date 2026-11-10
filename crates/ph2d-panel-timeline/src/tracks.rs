@@ -74,17 +74,12 @@ pub(crate) fn chave_hit_hw() -> f32 {
 
 /// ⭐ **A chave pintada** (doc 15 onda 2, dono 09/11): nos cartões, o losango do tamanho da maquete
 /// com contorno escuro (`Bg0`) por baixo, para se ler sobre a barra; no clássico, o de sempre.
+/// Nos cartões, no estado de alça dela: [`crate::alca_estado::chave_da_folha`].
 pub(crate) fn paint_chave(ctx: &mut PaintCtx, theme: Theme, cx: f32, cy: f32, tok: ColorToken) {
     if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
-        let h = ph2d_tokens::TIMELINE_KEY_HALF_PX;
-        let anel = h + ph2d_tokens::TIMELINE_KEY_RING_PX;
-        let t = match tok {
-            ColorToken::TimelineKeySelected => ph2d_tokens::TimelineTinta::ChaveEscolhida,
-            _ => ph2d_tokens::TimelineTinta::Chave,
-        };
-        let fundo = crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::FitaPropriedade, theme);
-        paint_diamond(ctx, cx, cy, anel, fundo);
-        paint_diamond(ctx, cx, cy, h, crate::folha_tinta::tinta(t, theme));
+        let escolhida = tok == ColorToken::TimelineKeySelected;
+        let repouso = crate::alca_estado::EstadoAlca::Repouso;
+        crate::alca_estado::pinta_chave(ctx, theme, cx, cy, escolhida, repouso);
     } else {
         paint_diamond(ctx, cx, cy, DIAMOND_H, resolve(tok, theme));
     }
@@ -365,12 +360,14 @@ fn paint_lane_keys(
                 ROVE_DOT_R,
                 resolve(tok, theme),
             );
-        } else {
-            paint_chave(ctx, theme, kx, cy, tok);
         }
         // Hit target keyed by identity (stable across frames/reorders). The grab
         // rect follows the drawn (previewed) position.
         let id = ids::timeline_key_hit_id(track.target.get(), k.id.get());
+        if !k.roving {
+            let t = k.t_seconds + f64::from(kx - base_x) / view.px_per_s;
+            crate::alca_estado::chave_da_folha(ctx, theme, id, (kx, cy), tok, t);
+        }
         let hit = Rect::new(kx - chave_hit_hw(), y, chave_hit_hw() * 2.0, ROW_H_PX);
         ctx.host.store_mut().register(
             id,
@@ -568,13 +565,8 @@ pub(crate) fn paint_diamond(
     p.line_to((cx, cy + h));
     p.line_to((cx - h, cy));
     p.close_path();
-    ctx.scene.inner_mut().fill(
-        Fill::NonZero,
-        Affine::IDENTITY,
-        &Brush::Solid(color),
-        None,
-        &p,
-    );
+    ctx.scene
+        .fill_shape(Fill::NonZero, Affine::IDENTITY, &Brush::Solid(color), &p);
 }
 
 /// A subtle zebra fill for alternate rows.

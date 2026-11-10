@@ -117,3 +117,23 @@ um teste de 1100 px (curado com `textos_em`); a contagem `pintados + n == total`
   não se grava, o rótulo conta pelo ícone na cor `cores().texto`.
 - Fotos: `docs/Timeline/fotos/16_timeline_flutua.png`, `16_alcas_com_sombra_zoom.png` (2×).
 - **Aberto:** as listras além do fim da cena (véu) parecem listras de mistura — o dono pode querer outra textura para «fora da cena».
+
+## Rodada 3c (dono 10/11): estados das alças
+
+- Porta única `crates/ph2d-panel-timeline/src/alca_estado.rs` (`EstadoAlca::{Repouso,Hover,Apertada,Arrasto}`), só nos cartões
+  (`PH2D_CARDS=0` byte a byte: o clássico mantém o Accent no hover dos cantos/fade).
+- Estado sai do store: `hot_id` (hover só sem nada apertado), `active_id` (aperto) e a folga da captura
+  (`WidgetStore::timeline_dragging` → `PressSlop::moved`, novos, só leitura) = arrasto. Sem tween: o `hover_live` só é publicado pelo hero.
+- Hover = mistura com `TimelineTinta::Chave` (`TIMELINE_ALCA_HOVER_MIX` 0,5); na chave da folha acende o ANEL.
+  Aperto = `ChaveEscolhida` + forma `Thin` maior. Arrasto = + halo de acento (`TIMELINE_ALCA_HALO_ALPHA` 0,35, `Heavy` mais largo) sob a sombra.
+- Guia de acento (`TIMELINE_ALCA_GUIA_ALPHA`) na altura da strip + etiqueta de leitura (segundos `{:.2}`, `zero_sem_sinal`):
+  cantos = tempo da borda, fade = comprimento do fade, loop = início/fim, linha de mover = início, ⟷ = duração, chave = tempo ao vivo.
+- Alças cobertas: cantos e fade das strips, chaves e linha de mover do loop, ⟷ da duração, chaves da folha (não as de grupo).
+  ⛔ Não feitos: grip do playhead, bandeiras dos marcadores, cursor do rato (o app não tem API de cursor no painel), «lift» da strip em hover.
+- Pisos MEDIDOS em `Theme::ALL` (OKLab): hover ≥ 0,054 (fade/duração, pior tema); acento ≥ 0,017 — num tema o playhead JÁ é
+  azul, aí o tamanho e o halo dizem o estado. Portão `os_estados_das_alcas_leem_se_em_todo_tema` (pisos 0,05/0,015).
+- Portões novos (`alca_estado_tests.rs`): estados no store; strip REAL (canto 5 e fade-in) hover/aperto/arrasto com os hits
+  idênticos ao repouso (seam); loop e chave nos quatro estados; leitura. `paint_diamond` e triângulos passaram à porta que grava
+  (`fill_shape`/`stroke_path`, a mesma codificação).
+- Isenção de quina do `ruler_veil.rs` viajou para `alca_estado.rs` (o véu já não escreve raio). `stack_lane_paint_tests.rs` estava a 605 LOC no HEAD: comentários encurtados (599).
+- Foto offscreen `17_alcas_estados.png`: não feita (o painel não tem rasterizador CPU; só GPU) — falta.

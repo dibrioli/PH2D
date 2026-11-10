@@ -134,23 +134,23 @@ pub(super) fn box_blur(field: &mut [f32], w: u32, h: u32, r: u32) {
     if r < 1 || wi == 0 || hi == 0 || field.len() < wi * hi {
         return;
     }
-    let mut tmp = vec![0.0f32; wi * hi];
+    let n = wi * hi;
+    // ONE scratch buffer: once the horizontal pass has read `field`, `field` itself holds the transpose
+    // (B15.A1; era 3 alocações da caixa por tique).
+    let mut tmp = vec![0.0f32; n];
     // Horizontal.
-    blur_rows(&field[..wi * hi], &mut tmp, wi, hi, r as usize);
+    blur_rows(&field[..n], &mut tmp, wi, hi, r as usize);
     // Vertical — done as a HORIZONTAL pass on the transpose, then transposed back.
     //
     // The arithmetic is untouched — the same taps, summed in the same order — so this changes no bit of
     // the output; what it changes is the MEMORY. The obvious vertical pass reads `tmp[y*w + x]` for 2r+1
-    // values of `y`: one cache line per tap, 25 of them per texel at the displacement's radius. That
-    // stride was almost the whole cost of Push (**+22 ms on the pen-up at 4096², now +10**). Transposed,
+    // values of `y`: one cache line per tap, 25 of them per texel at the displacement's radius. Transposed,
     // every read is sequential. (What is GATED here is the property that depends on it: the blur of a
     // WINDOW is bit-for-bit the blur of the CANVAS, §11 — which is why a sliding sum, which drifts along
     // the row, was rejected and this, which does not, was not.)
-    let mut t2 = vec![0.0f32; wi * hi];
-    transpose(&tmp, &mut t2, wi, hi);
-    let mut t3 = vec![0.0f32; wi * hi];
-    blur_rows(&t2, &mut t3, hi, wi, r as usize);
-    transpose(&t3, &mut field[..wi * hi], hi, wi);
+    transpose(&tmp, &mut field[..n], wi, hi);
+    blur_rows(&field[..n], &mut tmp, hi, wi, r as usize);
+    transpose(&tmp, &mut field[..n], hi, wi);
 }
 
 /// **O CORPO de uma linha** — a aritmética inteira do passe separável, num lugar só.
@@ -198,11 +198,41 @@ fn blur_rows(src: &[f32], dst: &mut [f32], w: usize, h: usize, r: usize) {
     }
 }
 
-/// Transpose a `w × h` buffer into an `h × w` one.
+/// Lado do ladrilho da transposição: 64×64 `f32` lidos + escritos = 32 KiB, cabe no L1.
+const TRANSPOSE_TILE: usize = 64;
+
+/// Transpose a `w × h` buffer into an `h × w` one, by 64×64 tiles.
+///
+/// Só move dados (nenhuma conta), então qualquer ordem dá o mesmo bit. Uma faixa de saída = 64 colunas
+/// `x` da entrada; as faixas são disjuntas e a entrada é só-leitura (ADR-0109), e acima de
+/// [`PAR_ROWS_MIN_CELLS`] elas vão ao pool. Os dois walkers chamam o mesmo [`transpose_band`].
 fn transpose(src: &[f32], dst: &mut [f32], w: usize, h: usize) {
-    for y in 0..h {
-        for x in 0..w {
-            dst[x * h + y] = src[y * w + x];
+    let n = w * h;
+    let band = TRANSPOSE_TILE * h;
+    if n >= PAR_ROWS_MIN_CELLS {
+        use rayon::prelude::*;
+        dst[..n]
+            .par_chunks_mut(band)
+            .enumerate()
+            .for_each(|(b, out)| transpose_band(src, out, b * TRANSPOSE_TILE, w, h));
+        return;
+    }
+    for (b, out) in dst[..n].chunks_mut(band).enumerate() {
+        transpose_band(src, out, b * TRANSPOSE_TILE, w, h);
+    }
+}
+
+/// As linhas de saída `x0 .. x0 + out.len()/h` da transposição, ladrilho a ladrilho.
+#[inline]
+fn transpose_band(src: &[f32], out: &mut [f32], x0: usize, w: usize, h: usize) {
+    let x1 = x0 + out.len() / h;
+    for y0 in (0..h).step_by(TRANSPOSE_TILE) {
+        let y1 = (y0 + TRANSPOSE_TILE).min(h);
+        for y in y0..y1 {
+            let row = &src[y * w + x0..y * w + x1];
+            for (dx, &v) in row.iter().enumerate() {
+                out[dx * h + y] = v;
+            }
         }
     }
 }

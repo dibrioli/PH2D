@@ -186,3 +186,100 @@ fn the_parallel_settle_is_faster_than_the_serial_one() {
          confira se o BLUR_PAR_MIN_TAPS ainda cabe sob esta fixture"
     );
 }
+
+/// A rota do box blur ATÉ o B15.A1, **verbatim**: linhas pelo pool, transposição ingénua em série,
+/// três buffers da caixa. É a régua de tempo da sonda abaixo (o bit já o dá o [`serial_box_blur`]).
+fn box_blur_antes_do_ladrilho(field: &mut [f32], w: u32, h: u32, r: u32) {
+    let (wi, hi) = (w as usize, h as usize);
+    if r < 1 || wi == 0 || hi == 0 || field.len() < wi * hi {
+        return;
+    }
+    let t = |src: &[f32], dst: &mut [f32], w: usize, h: usize| {
+        for y in 0..h {
+            for x in 0..w {
+                dst[x * h + y] = src[y * w + x];
+            }
+        }
+    };
+    let mut tmp = vec![0.0f32; wi * hi];
+    blur_rows(&field[..wi * hi], &mut tmp, wi, hi, r as usize);
+    let mut t2 = vec![0.0f32; wi * hi];
+    t(&tmp, &mut t2, wi, hi);
+    let mut t3 = vec![0.0f32; wi * hi];
+    blur_rows(&t2, &mut t3, hi, wi, r as usize);
+    t(&t3, &mut field[..wi * hi], hi, wi);
+}
+
+/// **B15.A1 — o assentamento ladrilhado (e paralelo) é o da rota antiga, ao BIT.**
+///
+/// Tamanhos que caem DENTRO de um ladrilho, na borda dele (63/64/65), faixas finas nos dois eixos e a tela
+/// 4K (cruza o piso do pool da transposição); r 1..4. O campo tem uma cauda além de `w·h` que o blur não
+/// pode tocar. Mutação vista vermelha: `out[dx * h + y]` → `out[dx * h + y0]` (o ladrilho colapsa).
+#[test]
+fn o_assentamento_paralelo_e_ladrilhado_e_o_da_rota_antiga_ao_bit() {
+    let tamanhos = [
+        (1usize, 1usize),
+        (1, 9),
+        (9, 1),
+        (63, 64),
+        (64, 63),
+        (65, 65),
+        (130, 67),
+        (640, 3),
+        (3, 640),
+        (1000, 700),
+        (4096, 2160),
+    ];
+    assert!(
+        4096 * 2160 >= PAR_ROWS_MIN_CELLS,
+        "a tela 4K tem de cruzar o piso da transposicao, senao o pool nunca corre"
+    );
+    for (w, h) in tamanhos {
+        let mut src = ridged(w, h);
+        src.extend_from_slice(&[7.25, -3.5, 1e-7]);
+        for r in 1u32..=4 {
+            let (mut novo, mut antigo) = (src.clone(), src.clone());
+            let (w32, h32) = (u32::try_from(w).unwrap(), u32::try_from(h).unwrap());
+            box_blur(&mut novo, w32, h32, r);
+            serial_box_blur(&mut antigo, w32, h32, r);
+            let bad = novo
+                .iter()
+                .zip(&antigo)
+                .filter(|(a, b)| a.to_bits() != b.to_bits())
+                .count();
+            assert_eq!(
+                bad, 0,
+                "{w}x{h} r={r}: {bad} texels divergiram da rota antiga"
+            );
+        }
+    }
+}
+
+/// **B15.A1 — sonda**: a caixa de um traço diagonal 4K com Smoothing 1,0 (r 4) e a de 1080p, rota antiga
+/// × ladrilhada, intercaladas no MESMO processo, o mínimo de 7.
+#[test]
+#[ignore = "medicao — rode com --profile smoke --ignored --nocapture"]
+fn sonda_assentamento_ladrilhado_4k() {
+    use std::time::Instant;
+    for (w, h) in [(3848usize, 2168usize), (1928, 1088)] {
+        let src = ridged(w, h);
+        let (w32, h32) = (u32::try_from(w).unwrap(), u32::try_from(h).unwrap());
+        let (mut antes, mut depois) = (f64::MAX, f64::MAX);
+        for i in 0..14 {
+            let mut f = src.clone();
+            let t0 = Instant::now();
+            if i % 2 == 0 {
+                box_blur_antes_do_ladrilho(&mut f, w32, h32, 4);
+            } else {
+                box_blur(&mut f, w32, h32, 4);
+            }
+            let ms = t0.elapsed().as_secs_f64() * 1e3;
+            if i % 2 == 0 {
+                antes = antes.min(ms);
+            } else {
+                depois = depois.min(ms);
+            }
+        }
+        eprintln!("[B15.A1] settle r4 {w}x{h}: antes {antes:.2} ms -> ladrilhado {depois:.2} ms");
+    }
+}

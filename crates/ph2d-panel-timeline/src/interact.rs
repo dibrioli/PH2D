@@ -64,6 +64,10 @@ pub(crate) fn process(
     let px_per_s = state.px_per_s;
     crate::macro_steps::envelhece_a_largada(state, snap);
     crate::strip_drag::esquece_a_sumida(state, snap);
+    // O Esc sem dono larga a peça escolhida (doc 17 item 1); quem o tinha (menu, campo) ficou com ele.
+    if ph2d_editor_core::interaction::dispatch::key::take_esc_livre() {
+        state.strip_escolhida = None;
+    }
     let gestures: Vec<TimelineGesture> = ctx.host.store_mut().drain_timeline_gestures().collect();
     for g in gestures {
         // Resize grippers own the gesture whatever the button.

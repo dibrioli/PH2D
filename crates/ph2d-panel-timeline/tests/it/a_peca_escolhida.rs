@@ -71,7 +71,11 @@ fn o_clique_no_corpo_escolhe_arrastar_nao_e_o_vazio_larga() {
 
     // O vazio da faixa, à direita da strip.
     let (vx, vy) = (r.x + r.w + 30.0, cy);
-    assert_eq!(m.host.hit_at(vx, vy), Some(ids::TIMELINE_LANES), "o vazio é a faixa");
+    assert_eq!(
+        m.host.hit_at(vx, vy),
+        Some(ids::TIMELINE_LANES),
+        "o vazio é a faixa"
+    );
     let ev = m.host.click_at(vx, vy);
     let _ = m.aplica(ev);
     m.assenta_em(JANELA);
@@ -84,6 +88,43 @@ fn o_clique_no_corpo_escolhe_arrastar_nao_e_o_vazio_larga() {
     set_current_timeline(Some(documento(false)));
     m.assenta_em(JANELA);
     assert_eq!(m.st.strip_escolhida, None, "a sumida larga");
+    let _ = drain_intents();
+    ferramenta::force_cards_on_this_thread(None);
+}
+
+/// O Esc sem dono larga a peça escolhida; com um menu aberto, o Esc é do menu e a peça fica.
+#[test]
+fn o_esc_larga_a_peca_e_o_menu_aberto_fica_com_o_esc() {
+    use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest};
+    use ph2d_editor_core::panel::PanelHostInternal;
+    let (mut m, id) = mesa();
+    let _ = m.clica(corpo(id));
+    m.assenta_em(JANELA);
+    assert_eq!(m.st.strip_escolhida, Some(id), "o clique no corpo escolhe");
+
+    m.host.store_mut().open_context_menu(ContextMenuRequest {
+        x: 10.0,
+        y: 10.0,
+        kind: ContextMenuKind::CreateNote {
+            panel: ids::TIMELINE_LANES,
+            section: None,
+        },
+    });
+    let _ = m.esc();
+    m.assenta_em(JANELA);
+    assert!(
+        m.host.store_mut().context_menu().is_none(),
+        "o Esc fecha o menu"
+    );
+    assert_eq!(
+        m.st.strip_escolhida,
+        Some(id),
+        "o Esc do menu não larga a peça"
+    );
+
+    let _ = m.esc();
+    m.assenta_em(JANELA);
+    assert_eq!(m.st.strip_escolhida, None, "o Esc sem dono larga a peça");
     let _ = drain_intents();
     ferramenta::force_cards_on_this_thread(None);
 }

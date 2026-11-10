@@ -198,19 +198,9 @@ pub(crate) fn paint(
     if clock.loop_band {
         paint_loop_braces(ctx, theme, region, &time_to_x, snap);
     }
-    // Os vãos entre marcadores ganham à faixa de mover do laço (só na banda das bandeirolas; as
-    // pontas do laço continuam por baixo dela) — doc 17 item 2.
-    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
-        crate::ruler_trecho::paint(
-            ctx,
-            theme,
-            region,
-            &time_to_x,
-            snap,
-            clock,
-            (MARKER_W, MARKER_H),
-        );
-    }
+    // Nos cartões, os vãos entre marcadores ganham à faixa do laço (doc 17 item 2).
+    let marker = (MARKER_W, MARKER_H);
+    crate::ruler_trecho::paint(ctx, theme, region, &time_to_x, snap, clock, marker);
     // The DURATION handle at the veil's left edge — drag it to resize the composition
     // (Enio, 2026-07-23). Registered AFTER the braces (topmost) so grabbing the comp
     // end wins over a loop brace parked at the same instant, and gated the same way as

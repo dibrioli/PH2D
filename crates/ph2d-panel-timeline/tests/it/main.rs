@@ -7,8 +7,8 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod a_coluna_do_toggle_mede_a_lista;
-mod a_peca_escolhida;
 mod a_fita_abre_enquadrada;
+mod a_peca_escolhida;
 mod add_clip_full_seam;
 mod animation_chip_seam;
 mod arrange_sources_seam;
@@ -27,6 +27,7 @@ mod nesting_seam;
 mod o_cartao_estreito;
 mod o_lado_da_dobra_chega_a_lista;
 mod o_tempo_da_macro_chega_a_lista;
+mod o_trecho_entre_marcadores;
 mod one_door_names_the_channel;
 mod os_cartoes;
 mod os_chips_da_barra;
@@ -37,4 +38,3 @@ mod transport_motion_path_seam;
 mod transport_onion_seam;
 mod transport_physics_seam;
 mod view_tabs_seam;
-mod o_trecho_entre_marcadores;

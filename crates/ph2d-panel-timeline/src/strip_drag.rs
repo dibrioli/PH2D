@@ -272,7 +272,11 @@ fn snapped(state: &TimelinePanelState, snap: &TimelineViewSnapshot, t: f64) -> f
 /// A peça escolhida que deixou de existir larga a escolha.
 pub(crate) fn esquece_a_sumida(state: &mut TimelinePanelState, snap: &TimelineViewSnapshot) {
     if let Some(id) = state.strip_escolhida
-        && !snap.lanes.iter().flat_map(|l| &l.strips).any(|s| s.id == id)
+        && !snap
+            .lanes
+            .iter()
+            .flat_map(|l| &l.strips)
+            .any(|s| s.id == id)
     {
         state.strip_escolhida = None;
     }

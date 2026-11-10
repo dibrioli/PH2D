@@ -30,6 +30,13 @@ use ph2d_host::{KeyEvent, KeyKind};
 
 thread_local! {
     static ESC_FECHA: std::cell::Cell<Option<ph2d_a11y::NodeId>> = const { std::cell::Cell::new(None) };
+    static ESC_LIVRE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// O Esc que chegou ao fim da cadeia sem dono (nem modal, menu, campo, arrasto): é o «larga a
+/// escolha» de quem tiver uma (a peça escolhida da Timeline). Lê-se e apaga-se; a tecla seguinte apaga-o.
+pub fn take_esc_livre() -> bool {
+    ESC_LIVRE.replace(false)
 }
 
 /// O modal aberto diz o X dele (`Some`) enquanto está aberto, e `None` ao fechar: Esc sem foco clica-o.
@@ -53,6 +60,7 @@ pub fn dispatch_key<'frame>(
         return events.into_bump_slice();
     }
     store.note_card_key();
+    ESC_LIVRE.set(false);
     // ⭐⭐ **A ESCUTA DO INPUT MAP VEM PRIMEIRO** — mas ⚠️ **este não é o topo da cadeia REAL**: a
     // shell tem ~20 `return` no `key_input` dela antes de chegar aqui, e é por isso que ela chama a
     // MESMA lei ([`crate::interaction::capture_if_listening`]) no topo do dela. Este ramo cobre o
@@ -288,8 +296,10 @@ pub fn dispatch_key<'frame>(
             // (which is supposed to revert) would no longer work.
             // Cleared unconditionally — these `end_*` calls are no-ops
             // when nothing is in flight.
-            let _ = store.end_number_input_drag();
+            let arrasto =
+                store.end_number_input_drag().is_some() || store.number_stepper_hold().is_some();
             store.end_number_stepper_hold();
+            ESC_LIVRE.set(!arrasto && store.focus_id().is_none());
             if let Some(id) = store.focus_id() {
                 // Dropdowns close on ESC instead of losing focus.
                 if let Some(InteractiveState::Dropdown { open, .. }) = store.get_mut(id)

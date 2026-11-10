@@ -83,8 +83,8 @@ pub mod state;
 mod strip_edge_edit;
 pub mod topologia;
 pub mod track_values;
-mod view_clock;
 pub mod trecho;
+mod view_clock;
 pub use trecho::Trecho;
 
 pub use apply::{

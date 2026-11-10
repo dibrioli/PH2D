@@ -44,7 +44,7 @@ pub(crate) fn vizinhos(snap: &TimelineViewSnapshot) -> Vec<(usize, usize)> {
         .collect()
 }
 
-/// A régua: confere o espelho, pinta o trecho e regista um alvo por vão. Depois do laço (o vão ganha à
+/// A régua (só nos cartões): confere o espelho, pinta o trecho e regista um alvo por vão. Depois do laço (o vão ganha à
 /// faixa de mover, na banda das bandeirolas) e antes delas e da alça da duração, que ganham ao vão.
 pub(crate) fn paint(
     ctx: &mut PaintCtx,
@@ -55,6 +55,9 @@ pub(crate) fn paint(
     clock: RulerClock,
     marker: (f32, f32),
 ) {
+    if !ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        return;
+    }
     let vista = clock.markers
         && clock.scrub
         && vista_com_trecho(snap.keys_mode, snap.stacked(), snap.container_open, false);

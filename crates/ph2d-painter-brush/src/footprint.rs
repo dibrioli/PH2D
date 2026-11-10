@@ -42,6 +42,9 @@ pub const DAB_FLATTEN_MAX: f32 = 0.95;
 pub struct FootprintCurve {
     /// Uma linha por eixo de saída; as colunas são `x²`, `x·y`, `y²`, `x³`, `x²·y`, `x·y²`, `y³`.
     rows: [[f32; 7]; 2],
+    /// Todos os coeficientes `== 0.0` (o `-0.0` incluído), contado UMA vez na construção: o [`Self::is_flat`] é lido
+    /// por texel de cada dab (B14c: as 14 comparações eram ~5 % do Flat Bristle a Size 240).
+    plana: bool,
 }
 
 impl Default for FootprintCurve {
@@ -56,13 +59,20 @@ impl FootprintCurve {
     pub const fn flat() -> Self {
         Self {
             rows: [[0.0; 7]; 2],
+            plana: true,
         }
     }
 
     /// Os sete coeficientes de cada eixo, na ordem `x²`, `x·y`, `y²`, `x³`, `x²·y`, `x·y²`, `y³`.
     #[must_use]
     pub const fn from_rows(rows: [[f32; 7]; 2]) -> Self {
-        Self { rows }
+        let mut plana = true;
+        let mut k = 0;
+        while k < 14 {
+            plana &= rows[k / 7][k % 7] == 0.0;
+            k += 1;
+        }
+        Self { rows, plana }
     }
 
     /// Ver [`Self::from_rows`].
@@ -72,9 +82,10 @@ impl FootprintCurve {
     }
 
     /// Nenhum coeficiente ⇒ o caminho linear de sempre.
+    #[inline]
     #[must_use]
     pub fn is_flat(self) -> bool {
-        self.rows.iter().flatten().all(|c| *c == 0.0)
+        self.plana
     }
 
     /// Acrescenta os termos de grau `2` e `3` avaliados em `r` (o ponto no referencial da elipse).
@@ -153,8 +164,9 @@ impl FootprintDeform {
 
     /// Whether this deform changes a footprint at all (any flatten or any rotation) — lets hot paths
     /// skip the transform entirely for a plain round dab.
+    #[inline]
     #[must_use]
-    pub fn is_identity(self) -> bool {
+    pub fn is_identity(&self) -> bool {
         self.inv_minor == 1.0
             && self.cos == 1.0
             && self.sin == 0.0
@@ -254,8 +266,9 @@ impl FootprintDeform {
     /// Apply to a footprint unit coord `[u, v]` (pixel offset ÷ radius): rotate by `-angle` into the
     /// ellipse frame, then stretch the minor axis. The falloff reads [`Self::falloff_t`]; the Shape /
     /// Grain samplers feed `apply(f)` into their own Size/rotation/offset.
+    #[inline]
     #[must_use]
-    pub fn apply(self, p: [f32; 2]) -> [f32; 2] {
+    pub fn apply(&self, p: [f32; 2]) -> [f32; 2] {
         if self.is_identity() {
             return p;
         }
@@ -535,8 +548,9 @@ impl FootprintDeform {
     /// The deformed radial distance `length(apply([u, v]))` — the falloff index for an elliptical dab.
     /// At identity this is the plain `sqrt(u² + v²)`. Rotation alone preserves it (a circle is
     /// rotation-invariant); only the flatten makes it elliptical.
+    #[inline]
     #[must_use]
-    pub fn falloff_t(self, u: f32, v: f32) -> f32 {
+    pub fn falloff_t(&self, u: f32, v: f32) -> f32 {
         let d = self.apply([u, v]);
         let l2 = (d[0] * d[0] + d[1] * d[1]).sqrt();
         if self.quina == 0.0 {

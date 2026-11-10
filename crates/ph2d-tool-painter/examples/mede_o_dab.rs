@@ -13,8 +13,10 @@
 //! ```text
 //! CARGO_PROFILE_SMOKE_STRIP=none CARGO_PROFILE_SMOKE_DEBUG=line-tables-only bash scripts/ph2d-run.sh \
 //!   env PH2D_RELEASE="mede velocidade" cargo build --profile smoke -p ph2d-tool-painter --example mede_o_dab
-//! target/smoke/examples/mede_o_dab [rondas] [so: raios|facas]
+//! target/smoke/examples/mede_o_dab [rondas] [so: raios|facas|janela]
+//! target/smoke/examples/mede_o_dab 3 preset "WetPainter/Oil/Flat/Flat Bristle" 240   # MOVES_PRESET, PASSO_PRESET
 //! ```
+//! Ao relógio acima de `load ~5` falta valor: compare o `perf stat -e instructions:u` e o hash.
 
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
 use ph2d_tool_painter::{PaintMedia, PainterTool, wet_diag};
@@ -161,6 +163,64 @@ fn facas(presets: &[ph2d_brush_presets::Preset], quadro: bool) -> (f64, u64, u64
     (ms, dabs, hash_da_tela(&mut t))
 }
 
+/// `so = preset <relativo a assets/brushes> <Size>`: um pincel de fábrica (Wet, por quadro) num traço de
+/// `MOVES_PRESET` movimentos (omissão 12) por ronda, cada ronda numa faixa nova; `µs/move` (mín. e mediana) e o hash.
+fn preset(rondas: usize) {
+    let rel = std::env::args().nth(3).expect("preset <relativo> <Size>");
+    let size: f32 = std::env::args()
+        .nth(4)
+        .and_then(|s| s.parse().ok())
+        .expect("preset <relativo> <Size>");
+    let moves: usize = std::env::var("MOVES_PRESET")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(12);
+    // O passo de cada movimento, px (omissão 40: um rato rápido; o Flat a 240 tem espaço de dab de ~100 px).
+    let passo: f32 = std::env::var("PASSO_PRESET")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(40.0);
+    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let f = raiz.join(format!("{rel}.ph2d-brush.png"));
+    let bytes = std::fs::read(&f).unwrap_or_else(|e| panic!("{}: {e}", f.display()));
+    let p = ph2d_brush_presets::ler(&bytes).expect("preset");
+    let mut t = tela(Motor::Wet, true);
+    let falhas = t.wet_preset_aplicar(&p);
+    assert!(falhas.is_empty(), "texturas por ler: {falhas:?}");
+    t.set_brush_size_px(size);
+    t.set_brush_color_srgb8([20, 150, 230]);
+    let mut am = Vec::new();
+    for ronda in 0..=rondas {
+        let (x0, y) = (300.0, 300.0 + (500.0 * ronda as f32) % 1600.0);
+        let _ = wet_diag::take_stamp();
+        t.on_canvas_pointer(cp([x0, y], PointerPhase::Down));
+        let t0 = Instant::now();
+        let mut x = x0;
+        for _ in 0..moves {
+            x += passo;
+            t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
+            let _ = t.take_preview_arc();
+        }
+        let ms = t0.elapsed().as_secs_f64() * 1e3;
+        t.on_canvas_pointer(cp([x, y], PointerPhase::Up));
+        let _ = t.take_preview_arc();
+        let (dabs, dep, comp, _) = wet_diag::take_stamp();
+        // A ronda 0 aquece (texturas, caches) e fica fora da régua.
+        if ronda > 0 {
+            am.push((1e3 * ms / moves as f64, dabs, dep, comp));
+        }
+    }
+    let (mn, md) = min_med(&am.iter().map(|a| a.0).collect::<Vec<_>>());
+    let (dp, _) = min_med(&am.iter().map(|a| a.2).collect::<Vec<_>>());
+    let (cm, _) = min_med(&am.iter().map(|a| a.3).collect::<Vec<_>>());
+    println!(
+        "preset {rel} Size {size}: {mn:.0} µs/move min ({md:.0} med) · dabs/traço {} · depósito {dp:.1} ms · composite {cm:.1} ms · hash {:016x} · loadavg {}",
+        am[0].1,
+        hash_da_tela(&mut t),
+        loadavg()
+    );
+}
+
 fn min_med(v: &[f64]) -> (f64, f64) {
     let mut s = v.to_vec();
     s.sort_by(f64::total_cmp);
@@ -195,6 +255,10 @@ fn main() {
         loadavg()
     );
 
+    if so == "preset" {
+        preset(rondas);
+        return;
+    }
     // Variantes: (motor, modo) — cada uma na sua tela; modo `quadro` = a tela compõe na drenagem.
     let modos = [false, true];
     if so != "facas" && so != "janela" {

@@ -25,6 +25,21 @@ pub fn composite_below(
     anchor: LayerId,
     ground: [u8; 3],
 ) -> Vec<u8> {
+    composite_below_com(stack, src, width, height, anchor, ground, None, FAIXA_PX)
+}
+
+/// [`composite_below`] with the split forced (`fios`: `None` = the core count) — the gate's door.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn composite_below_com(
+    stack: &LayerStack,
+    src: &(impl LayerPixelSource + Sync),
+    width: u32,
+    height: u32,
+    anchor: LayerId,
+    ground: [u8; 3],
+    fios: Option<usize>,
+    faixa_px: usize,
+) -> Vec<u8> {
     // The below-slices along the root→anchor path, outermost first.
     let mut slices: Vec<&[LayerId]> = Vec::new();
     fn descend<'a>(
@@ -76,14 +91,85 @@ pub fn composite_below(
         super::decode_byte(ground[2]),
         1.0f32,
     ];
-    let mut acc = vec![g; (width as usize) * (height as usize)];
-    for ids in slices {
-        composite_into(
-            &mut acc, ids, stack, src, width, 0, 0, width, height, 0, None, None,
-        );
-    }
-    encode(&acc)
+    // A spatial adjustment below reads neighbours across the canvas: those stacks stay one walk.
+    let espacial = slices
+        .iter()
+        .any(|s| super::compose::has_spatial_adjustment(stack, s));
+    let n = (width as usize) * (height as usize);
+    let fios = if espacial {
+        1
+    } else {
+        fios.unwrap_or_else(|| parallel_threads(n, height as usize))
+    };
+    abaixo_em_faixas(stack, src, width, height, &slices, g, fios, faixa_px)
 }
+
+/// Pixels of one cache strip of the banded walk (`[f32;4]` = 256 KiB, L2-resident): 4 rows at UHD.
+/// Measured (B19.11, `mede_o_composite_below_4k`): see the BACKLOG row.
+const FAIXA_PX: usize = 1 << 14;
+
+/// The below-walk over `fios` row bands, each band in strips of `faixa_px` pixels seeded with the
+/// ground, composited and encoded in place — no canvas-sized `[f32;4]` accumulator (133 MB at UHD).
+/// Per-pixel compositing is spatially independent, so every split is the one walk to the bit
+/// (gate `o_chao_em_faixas_e_o_da_rota_antiga_ao_bit`); `fios <= 1` is that one walk.
+#[allow(clippy::too_many_arguments)]
+fn abaixo_em_faixas(
+    stack: &LayerStack,
+    src: &(impl LayerPixelSource + Sync),
+    width: u32,
+    height: u32,
+    slices: &[&[LayerId]],
+    g: [f32; 4],
+    fios: usize,
+    faixa_px: usize,
+) -> Vec<u8> {
+    let w = width as usize;
+    if fios <= 1 || w == 0 {
+        let mut acc = vec![g; w * (height as usize)];
+        for ids in slices {
+            composite_into(
+                &mut acc, ids, stack, src, width, 0, 0, width, height, 0, None, None,
+            );
+        }
+        return encode(&acc);
+    }
+    let mut out = vec![0u8; w * (height as usize) * 4];
+    let rpb = (height as usize).div_ceil(fios);
+    let linhas = (faixa_px / w).max(1);
+    std::thread::scope(|s| {
+        let handles: Vec<_> = out
+            .chunks_mut(rpb * w * 4)
+            .enumerate()
+            .map(|(bi, banda)| {
+                s.spawn(move || {
+                    let mut acc = Vec::new();
+                    for (k, faixa) in banda.chunks_mut(linhas * w * 4).enumerate() {
+                        let fh = faixa.len() / (w * 4);
+                        let y0 = (bi * rpb + k * linhas) as u32;
+                        acc.clear();
+                        acc.resize(fh * w, g);
+                        for ids in slices {
+                            composite_into(
+                                &mut acc, ids, stack, src, width, 0, y0, width, fh as u32, 0, None,
+                                None,
+                            );
+                        }
+                        for (o, a) in faixa.as_chunks_mut::<4>().0.iter_mut().zip(&acc) {
+                            *o = a.map(super::encode_byte);
+                        }
+                    }
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().expect("below band panicked");
+        }
+    });
+    out
+}
+
+#[cfg(test)]
+mod tests;
 
 /// A canvas-sized plane of ONE pixel value, filled across the cores (the split of [`encode`]).
 ///

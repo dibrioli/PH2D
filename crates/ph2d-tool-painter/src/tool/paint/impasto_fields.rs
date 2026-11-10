@@ -6,6 +6,12 @@ use super::relief_fields::{Dobrada, ReliefFields};
 use crate::tool::PainterTool;
 use ph2d_painter_effects::adjustments::AdjustWindow;
 
+#[cfg(test)]
+std::thread_local! {
+    /// O tamanho da última janela dobrada através dos ajustes, neste fio (o gate dos planos da placa a lê).
+    pub(super) static DOBRA_JANELA: std::cell::Cell<Option<(u32, u32)>> = const { std::cell::Cell::new(None) };
+}
+
 /// A janela da dobra filtrada para acender `region` (`None` = a tela): a região + 1 px (a diferença central) + a
 /// SOMA dos halos dos filtros do plano, cortada pela tela.
 fn janela_da_dobra(
@@ -177,6 +183,8 @@ impl PainterTool {
         let plan = self.layers.relief_plan();
         if crate::layers::relief_plan_filters(&plan) {
             let win = janela_da_dobra(&plan, region, w, h);
+            #[cfg(test)]
+            DOBRA_JANELA.with(|c| c.set(Some((win.width, win.height))));
             let mascaras = self.relief_filter_masks(&plan, win);
             let folded = crate::layers::fold_relief_through(
                 &plan,

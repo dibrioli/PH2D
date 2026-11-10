@@ -187,8 +187,6 @@ impl PainterTool {
         if !self.impasto_visible() {
             return None;
         }
-        let fields = self.impasto_fields()?;
-        let lamps = super::impasto_shade::Rig::new(&self.paint.impasto_rig)?.export_lamps();
         let (w, h) = self.source_size;
         if (w as usize) * (h as usize) == 0 {
             return None;
@@ -202,6 +200,14 @@ impl PainterTool {
         if n == 0 {
             return None;
         }
+        // B15.5: com Gaussiano/Nitidez a dobra é a da janela dilatada pela soma dos halos, não a da tela.
+        let fields = self.impasto_fields_para(super::Region {
+            x: rx,
+            y: ry,
+            w: rw,
+            h: rh,
+        })?;
+        let lamps = super::impasto_shade::Rig::new(&self.paint.impasto_rig)?.export_lamps();
         let (mut relief, mut cover, mut mat0, mut mat1) =
             prev.map_or_else(Default::default, |p| (p.relief, p.cover, p.mat0, p.mat1));
         // `resize` só escreve o que CRESCE: com a janela do quadro anterior (o caso do Ctrl+Z) não toca num byte.

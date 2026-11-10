@@ -150,3 +150,109 @@ fn a_dobra_filtrada_da_janela_dilatada_e_a_da_tela() {
         }
     }
 }
+
+/// ⭐ **Os planos da placa dobram a janela dilatada, e são os da tela ao bit** (B15.5-cont): `impasto_gpu_planes_in`
+/// de uma região pequena com Gaussiano/Nitidez não materializa a dobra da tela inteira, e cada texel da janela (altura,
+/// corpo, material) é o do plano da tela inteira.
+#[test]
+fn os_planos_da_placa_dobram_a_janela_dilatada_e_sao_os_da_tela() {
+    let (w, h) = (600u32, 560u32);
+    let r = Region {
+        x: 290,
+        y: 270,
+        w: 24,
+        h: 18,
+    };
+    let casos: [(&str, Vec<AdjustmentParams>); 2] = [
+        ("gauss r20", vec![gauss(20.0)]),
+        (
+            "empilhados",
+            vec![gauss(20.0), nitidez(7.0, 2.0), gauss(1.5)],
+        ),
+    ];
+    for (caso, ajustes) in casos {
+        let mut t = cristas(w, h);
+        for p in ajustes {
+            ajuste(&mut t, p);
+        }
+        let tela = t
+            .impasto_gpu_planes_in((0, 0, w, h))
+            .expect("planos da tela");
+        super::DOBRA_JANELA.with(|c| c.set(None));
+        let jan = t
+            .impasto_gpu_planes_in((r.x, r.y, r.w, r.h))
+            .expect("planos da janela");
+        let (dw, dh) = super::DOBRA_JANELA
+            .with(std::cell::Cell::get)
+            .expect("o ajuste não dobrou");
+        assert!(
+            dw < w && dh < h,
+            "{caso}: os planos de {r:?} dobraram a tela inteira ({dw}×{dh})"
+        );
+        assert_eq!(jan.region, (r.x, r.y, r.w, r.h));
+        assert_eq!(jan.paper_body.to_bits(), tela.paper_body.to_bits());
+        for row in 0..r.h {
+            for col in 0..r.w {
+                let i = (row * r.w + col) as usize;
+                let j = ((r.y + row) * w + r.x + col) as usize;
+                let at = (r.x + col, r.y + row);
+                assert_eq!(
+                    jan.relief[i].to_bits(),
+                    tela.relief[j].to_bits(),
+                    "{caso}: altura em {at:?}"
+                );
+                assert_eq!(jan.cover[i], tela.cover[j], "{caso}: corpo em {at:?}");
+                assert_eq!(
+                    jan.mat0[i * 4..i * 4 + 4],
+                    tela.mat0[j * 4..j * 4 + 4],
+                    "{caso}: mat0 em {at:?}"
+                );
+                assert_eq!(
+                    jan.mat1[i * 4..i * 4 + 4],
+                    tela.mat1[j * 4..j * 4 + 4],
+                    "{caso}: mat1 em {at:?}"
+                );
+            }
+        }
+    }
+}
+
+/// Sonda (B15.5): 4K, papel + 2 cristas + Gaussiano r20, região 64² — a dobra da tela (o caminho de antes) × a da janela,
+/// para os planos da placa e para a luz da CPU; intercalados, o MÍNIMO de 5.
+/// `bash scripts/cargo-test-narrow.sh ph2d-tool-painter --profile smoke -- --ignored sonda_dobra_filtrada_4k --nocapture`
+#[test]
+#[ignore = "sonda de custo"]
+fn sonda_dobra_filtrada_4k() {
+    let (w, h) = (3840u32, 2160u32);
+    let mut t = cristas(w, h);
+    ajuste(&mut t, gauss(20.0));
+    let r = Region {
+        x: 1900,
+        y: 1000,
+        w: 64,
+        h: 64,
+    };
+    let base = [180u8, 170, 160, 255].repeat((r.w * r.h) as usize);
+    let ms = |t0: std::time::Instant| t0.elapsed().as_secs_f64() * 1e3;
+    let mut m = [f64::MAX; 4];
+    for _ in 0..5 {
+        let t0 = std::time::Instant::now();
+        drop(t.impasto_fields());
+        m[0] = m[0].min(ms(t0));
+        let t0 = std::time::Instant::now();
+        drop(t.impasto_gpu_planes_in((r.x, r.y, r.w, r.h)));
+        m[1] = m[1].min(ms(t0));
+        let mut px = base.clone();
+        let t0 = std::time::Instant::now();
+        t.apply_impasto_light_por_pixel(&mut px, r);
+        m[2] = m[2].min(ms(t0));
+        let mut px = base.clone();
+        let t0 = std::time::Instant::now();
+        t.apply_impasto_light(&mut px, r);
+        m[3] = m[3].min(ms(t0));
+    }
+    eprintln!(
+        "[dobra filtrada 4K r20, 64²] planos: dobra da tela {:.1} → planos da janela {:.2} ms · luz CPU: tela {:.1} → janela {:.2} ms",
+        m[0], m[1], m[2], m[3]
+    );
+}

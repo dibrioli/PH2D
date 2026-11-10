@@ -235,14 +235,9 @@ pub fn fold_relief_through(
                     .enumerate()
                     .for_each(|(i, (hh, b))| {
                         let (own, c) = src.at(id, i);
-                        *hh = fold_relief_step(
-                            *hh,
-                            own,
-                            depth,
-                            composite,
-                            c.clamp(0.0, 1.0),
-                            cover_max[i],
-                        );
+                        // B15.8: o corpo lê a cobertura com o MESMO clamp que a altura (e que `dobra_da_linha`).
+                        let c = c.clamp(0.0, 1.0);
+                        *hh = fold_relief_step(*hh, own, depth, composite, c, cover_max[i]);
                         *b = b.max(c);
                     });
             }

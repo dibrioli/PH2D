@@ -325,3 +325,41 @@ fn quem_age_no_relevo_e_quem_nao() {
         AdjustmentParams::GaussianBlur(GaussianBlurParams { radius: 0.0 });
     assert!(!relief_plan_filters(&s.relief_plan()));
 }
+
+/// B15.8 — **o corpo da dobra lê a cobertura com o MESMO clamp que a altura** (e que `dobra_da_linha`): uma amostra
+/// fora de `0..1` (1,7 · −0,4) dá, através de um Gaussiano, o corpo e a altura da dobra dos planos já clampados, ao bit.
+#[test]
+fn a_cobertura_fora_de_0_a_1_dobra_como_a_clampada() {
+    let mut s = LayerStack::new();
+    let a = s.add_raster("a", W, H).expect("a");
+    let b = s.add_raster("b", W, H).expect("b");
+    s.set_impasto_composite(b, ReliefComposite::Level);
+    let (ha, mut ca) = lomba(2, 14, 0.5);
+    let (hb, mut cb) = lomba(8, 20, 0.3);
+    for i in 0..N {
+        if i % 3 == 0 {
+            ca[i] *= 1.7;
+        }
+        if i % 5 == 0 {
+            cb[i] = -0.4;
+        }
+    }
+    let clampa = |v: &[f32]| v.iter().map(|x| x.clamp(0.0, 1.0)).collect::<Vec<_>>();
+    let mut fora = Planos::default();
+    fora.camadas.insert(a, (ha.clone(), ca.clone()));
+    fora.camadas.insert(b, (hb.clone(), cb.clone()));
+    let mut dentro = Planos::default();
+    dentro.camadas.insert(a, (ha, clampa(&ca)));
+    dentro.camadas.insert(b, (hb, clampa(&cb)));
+    gaussiano(&mut s, 2.0);
+    let plan = s.relief_plan();
+    let (h1, c1) = fold_relief_through(&plan, &fora, &grelha()).expect("há relevo");
+    let (h2, c2) = fold_relief_through(&plan, &dentro, &grelha()).expect("há relevo");
+    let bits = |v: &[f32]| v.iter().map(|x| x.to_bits()).collect::<Vec<_>>();
+    assert_eq!(bits(&h1), bits(&h2), "altura");
+    assert_eq!(
+        bits(&c1),
+        bits(&c2),
+        "corpo: a cobertura fora de 0..1 vazou pelo Gaussiano"
+    );
+}

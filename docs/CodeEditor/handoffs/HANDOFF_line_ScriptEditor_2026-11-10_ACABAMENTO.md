@@ -1,5 +1,7 @@
 # Handoff de continuação — `line/ScriptEditor`, acabamento 10/11 (A, B, C)
 
+> ⚠️ Superado pelo handoff de integração [HANDOFF_INTEGRACAO_line_ScriptEditor_2026-11-10_ACABAMENTO.md](HANDOFF_INTEGRACAO_line_ScriptEditor_2026-11-10_ACABAMENTO.md): a pílula/disco descritos em §A e no smoke daqui saíram (dono 10/11: o padrão do app é a caixa de marcar); os passos de smoke válidos estão lá.
+
 > Antes: [Q3+Q4](HANDOFF_line_ScriptEditor_2026-11-09_Q3_Q4.md) · maquete
 > [14_quadros_do_depurador.html](../maquetes/14_quadros_do_depurador.html). Base `main` `bc4a6ce930`; cinco commits
 > `12f2ea316e`, `a3317290c2`, `df71f85c63`, `e4416a14d8`, `a3ebed165a`. **Não integrado, sem push.** Smoke do dono desta

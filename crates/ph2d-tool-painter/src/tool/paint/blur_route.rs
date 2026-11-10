@@ -13,6 +13,44 @@ use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{BlurKernel, BrushSpec, Dab};
 
+/// A região que o lote de Blur escreve, **com as cópias do Tiling** (o wrap é feito AQUI, não na lista):
+/// a união das pegadas `[c ± r]` de cada dab em cada deslocamento. `r ≥ 0,5` porque o `blur_dab` sobe o
+/// raio a esse piso (`clamped_radius`); o `dab_write_bounds` soma o pad, logo é superconjunto do que os
+/// três núcleos escrevem (`footprint_bbox`).
+fn blur_bounds(
+    dabs: &[Dab],
+    w: u32,
+    h: u32,
+    source_size: (u32, u32),
+    tiling: [bool; 2],
+) -> Option<Region> {
+    let mut acc: Option<Region> = None;
+    let mut offs = [[0.0f32; 2]; 9];
+    for d in dabs {
+        let n = if tiling[0] || tiling[1] {
+            super::tiling::tiled_offsets_into(d.center, d.radius_px, source_size, tiling, &mut offs)
+        } else {
+            offs[0] = [0.0, 0.0];
+            1
+        };
+        for off in &offs[..n] {
+            let c = [d.center[0] + off[0], d.center[1] + off[1]];
+            let Some(r) = ph2d_painter_brush::dab_write_bounds(c, d.radius_px.max(0.5), w, h)
+            else {
+                continue;
+            };
+            let r = Region {
+                x: r.x,
+                y: r.y,
+                w: r.w,
+                h: r.h,
+            };
+            acc = Some(acc.map_or(r, |a| union_region(a, r)));
+        }
+    }
+    acc
+}
+
 impl PainterTool {
     /// Blur every dab's footprint into `canvas_rgba`, routed like the paint path (see the module doc).
     /// Blur amount = brush Strength × per-dab coverage (pressure). The engine snapshots each dab's
@@ -96,7 +134,7 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            None,
+            blur_bounds(dabs, w, h, source_size, tiling),
         );
         let mut touched: Option<Region> = None;
         for d in dabs {

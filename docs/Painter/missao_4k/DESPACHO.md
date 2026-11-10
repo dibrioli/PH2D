@@ -87,6 +87,13 @@
 | onda 9 | B19a | parcial (9471ab7518): B19.2: janela suja sob ajuste espacial compõe a área alargada pelos halos; Bloom r>16 tela inteira; CA no modelo da placa. janela_tests vermelho 32/32 → verde. Falta B19.4 (Bloom cor>1 CPU×GPU); B19.5 schema. |
 | onda 9 | B06c | parcial (71138ad644): B06.A2: casos Uniform+sel e Distort+sel; mutação li dx→rx red→green. B06.A4: levante 4096² 66,8–77,4 → 14,3–18,9 ms; begin_transform 17,9 ms (alvo 60). Falta a sonda do relevo e B06.A3 (apply.rs). |
 | onda 9 | verificação | 1 alvo sem prova: `between_gestures_the_canvas_still_has_two_owners_and_this_is_its_number` não casou nenhum teste (0 correram); o nome não existe, só `at_pen_down_every_canvas_plane_has_one_strong_owner` (undo.rs:377), verde. |
+| onda 10 | B16b-cont | feito (b1e5eda70b): B16.7: o arrasto de seleção só reescreve a máscara e o Up invalida 1× (antes, tela recomposta por Move). Gate 8 Moves×4 modos: 8 recomposições → 0, máscara e prévia ao byte. |
+| onda 10 | B19b | parcial (c25a32cfbb): arrasto de ajuste em faixas sem espacial, quadro reciclado no CompositorCache. 4K ABBA mín.: 1149,5→133,9 ms (load ~30), 611,0→90,1 (load ~13). Falta B19.6 barreira espacial e B19.12. |
+| onda 10 | B12c | feito (9e1a58c783): os 4 vermelhos da óptica na tool-painter são carga (load 26–34), não o B12c: sozinho 23/23 e conjunto 92/92 no HEAD. B12.3 explicado, B12.4 feito. Só BACKLOG. |
+| onda 10 | B20a | parcial (77b7014395): premul da prévia só na região tocada (run_region) e mips por retângulo (run_rect). Gates da Radeon vermelhos no caminho inteiro, verdes com a cura; ms não medidos. Falta interruptor e medir. |
+| onda 10 | B17b-cont3 | bloqueado (1f4d83ec45): B17.5, 2 tiles opostos no 4K publicam 8 294 400 px sujos contra 30 720 restaurados (270×); número fixado em gate. Bloqueio: dirty é 1 rect, leitor é a lane GPU (B20a) e dreno.rs alheio. |
+| onda 10 | B08b-cont2 | feito (779d578163): medido a 4K na Radeon (load 10–81, só tecto). W9 p95 308→380 ms; W14 30→53 ms; W1, W7, W13 sem custo; W17 sem veredito (load 80). Só medição, sem gate. |
+| onda 10 | verificação | verde. |
 
 ## Fatos medidos que mudam a ordem
 

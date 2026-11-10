@@ -284,7 +284,9 @@ impl InputMapDoc {
                 .rect_for(crate::ids::ListHit::Row(*a).id())
                 .is_some_and(|r| r.contains(x, y))
         });
-        let dragged = crate::view_list::drag(self, x) | crate::view_list::drag_thumb(self, y);
+        let dragged = crate::view_list::drag(self, x)
+            | crate::view_list::drag_thumb(self, y)
+            | crate::view_list::drag_text(self, x);
         let changed = h != self.hover || row != self.list.hover_row || dragged;
         let target = self.hits.hit(x, y).filter(|_| h.is_none());
         let changed = changed || target != self.list.hover_target;
@@ -334,7 +336,8 @@ impl InputMapDoc {
 
     /// A tecla física (`DocumentSurface::raw_key`): a busca por tecla. `true` = tomada.
     pub fn raw_key(&mut self, key: Key, pressed: bool, writes_text: bool) -> bool {
-        let editing = matches!(self.view, View::List | View::Keyboard) && self.list.typing.is_some();
+        let editing =
+            matches!(self.view, View::List | View::Keyboard) && self.list.typing.is_some();
         if !editing && self.focus_raw_key(key, pressed) {
             return true;
         }
@@ -360,6 +363,19 @@ impl InputMapDoc {
     #[must_use]
     pub fn field_text(&self, id: NodeId) -> &str {
         self.store.text(id).unwrap_or("")
+    }
+
+    /// O caret e a âncora da selecção de um campo de texto, e se o caret está aceso nesta fase do piscar.
+    #[must_use]
+    pub fn field_caret(&self, id: NodeId) -> Option<(usize, Option<usize>, bool)> {
+        match self.store.get(id)? {
+            ph2d_editor_core::interaction::InteractiveState::TextInput {
+                caret,
+                selection_anchor,
+                ..
+            } => Some((*caret, *selection_anchor, self.store.caret_visible(id))),
+            _ => None,
+        }
     }
 
     /// O campo focado.

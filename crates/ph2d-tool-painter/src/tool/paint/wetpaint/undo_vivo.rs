@@ -15,33 +15,17 @@
 
 use super::foto_em_tiles::PlanoEmTiles;
 use super::*;
-use ph2d_wet_paint::painter::{Dirty, Engine};
+use ph2d_wet_paint::painter::Dirty;
 
 mod casco;
 #[cfg(test)]
 mod casco_tests;
 pub(crate) use casco::Cascos;
 pub(super) use casco::casco_de;
-
-/// O estado do motor fora das grades que a física lê entre dois traços (a cadência da secagem, o nº do traço).
-#[derive(Clone, Copy)]
-pub(crate) struct Relogio {
-    frame: u64,
-    dry_every: u64,
-    evap_scale: f64,
-    rewet_base: f64,
-    semente_do_po: u32,
-}
-
-/// O motor num instante, FORA das grades (essas voltam pelo histórico do motor): a ladeira do óleo, o fluxo e o
-/// relógio.
-#[derive(Clone)]
-pub(crate) struct FotoDoMotor {
-    oleo_antes: Vec<PlanoEmTiles>,
-    /// O fluxo do último passo: o restauro zera-o, mas o Jacobi parte dele (medido: 13 B na aguada seguinte).
-    fluxo: Vec<(PlanoEmTiles, PlanoEmTiles)>,
-    relogio: Relogio,
-}
+mod foto;
+mod orla;
+pub(crate) use foto::FotoDoMotor;
+use orla::{caixa_dos_planos, perto_de, CaixaDeCelulas, ALCANCE_DA_ORLA};
 
 /// Um passo de undo com a tinta viva de antes (e, depois de desfeito, a de depois para o redo).
 #[derive(Clone)]
@@ -176,174 +160,6 @@ fn esquece_os_passos(sess: &mut WetSession) {
     casco::guarda_o_casco(sess, 0, usize::MAX);
     sess.antes_do_passo.clear();
     sess.engine.esquece_a_historia();
-}
-
-/// O alcance do enterro da orla, em células: a tinta invisível de um traço desfeito fica até 7 células do que a tela
-/// mudou (`sonda_alcance_da_orla`: Wet Flat de 20 a 160 px, até 3000 quadros de água). 32 é a folga sobre o medido.
-const ALCANCE_DA_ORLA: usize = 32;
-
-/// Uma caixa de células: `(x0, y0, x1, y1)`, 1-based e inclusiva.
-type CaixaDeCelulas = (usize, usize, usize, usize);
-
-/// As células a até `r` (Chebyshev) de uma marcada, e a caixa delas.
-fn perto_de(
-    marcadas: &[bool],
-    gw: usize,
-    gh: usize,
-    r: usize,
-) -> (Vec<bool>, Option<CaixaDeCelulas>) {
-    let mut fora = vec![false; gw * gh];
-    let (Some(a), Some(b)) = (
-        marcadas.iter().position(|m| *m),
-        marcadas.iter().rposition(|m| *m),
-    ) else {
-        return (fora, None);
-    };
-    let (y0, y1) = ((a / gw).saturating_sub(r), (b / gw + r).min(gh - 1));
-    // Por linha, depois por coluna: cada passada é linear.
-    let mut por_linha = vec![false; gw * gh];
-    for y in a / gw..=b / gw {
-        let (linha, saida) = (
-            &marcadas[y * gw..(y + 1) * gw],
-            &mut por_linha[y * gw..(y + 1) * gw],
-        );
-        let mut d = usize::MAX;
-        for x in 0..gw {
-            d = if linha[x] { 0 } else { d.saturating_add(1) };
-            saida[x] = d <= r;
-        }
-        d = usize::MAX;
-        for x in (0..gw).rev() {
-            d = if linha[x] { 0 } else { d.saturating_add(1) };
-            saida[x] |= d <= r;
-        }
-    }
-    let mut d = vec![usize::MAX; gw];
-    for y in y0..=y1 {
-        for x in 0..gw {
-            d[x] = if por_linha[y * gw + x] {
-                0
-            } else {
-                d[x].saturating_add(1)
-            };
-            fora[y * gw + x] = d[x] <= r;
-        }
-    }
-    d.fill(usize::MAX);
-    for y in (y0..=y1).rev() {
-        for x in 0..gw {
-            d[x] = if por_linha[y * gw + x] {
-                0
-            } else {
-                d[x].saturating_add(1)
-            };
-            fora[y * gw + x] |= d[x] <= r;
-        }
-    }
-    let (mut cx0, mut cx1) = (gw, 0);
-    for y in y0..=y1 {
-        let l = &fora[y * gw..(y + 1) * gw];
-        if let Some(x) = l.iter().position(|m| *m) {
-            cx0 = cx0.min(x);
-        }
-        if let Some(x) = l.iter().rposition(|m| *m) {
-            cx1 = cx1.max(x);
-        }
-    }
-    (fora, Some((cx0 + 1, y0 + 1, cx1 + 1, y1 + 1)))
-}
-
-/// A caixa a recompor nos planos: a grade inteira só em teste, para comparar.
-fn caixa_dos_planos(
-    c: (usize, usize, usize, usize),
-    gw: usize,
-    gh: usize,
-) -> (usize, usize, usize, usize) {
-    #[cfg(test)]
-    if super::undo_auditoria_tests::grade_inteira::get() {
-        return (1, 1, gw, gh);
-    }
-    let _ = (gw, gh);
-    c
-}
-
-impl FotoDoMotor {
-    /// Fotografa o motor, partilhando com `anterior` os tiles que não mudaram.
-    fn de(e: &Engine, anterior: Option<&Self>) -> Self {
-        let s = &e.sim;
-        let ate = |i: usize| anterior.and_then(|a| a.oleo_antes.get(i));
-        let fluxo = |i: usize| anterior.and_then(|a| a.fluxo.get(i));
-        Self {
-            oleo_antes: e
-                .layers
-                .iter()
-                .enumerate()
-                .map(|(i, l)| PlanoEmTiles::de(&l.grid.oleo_antes, l.grid.s, ate(i)))
-                .collect(),
-            fluxo: e
-                .layers
-                .iter()
-                .enumerate()
-                .map(|(i, l)| {
-                    (
-                        // O fluxo mora na grade de FLUXO: outra largura que a fina, se `flow_ratio` > 1.
-                        PlanoEmTiles::de(&l.grid.flow_x, l.grid.flow.s, fluxo(i).map(|f| &f.0)),
-                        PlanoEmTiles::de(&l.grid.flow_y, l.grid.flow.s, fluxo(i).map(|f| &f.1)),
-                    )
-                })
-                .collect(),
-            relogio: Relogio {
-                frame: s.frame,
-                dry_every: s.dry_every,
-                evap_scale: s.evap_scale,
-                rewet_base: s.rewet_base,
-                semente_do_po: s.semente_do_po,
-            },
-        }
-    }
-
-    /// Repõe o que fica fora das grades — DEPOIS do `undo`/`redo` do motor (que zera o fluxo). Nada disto é lido pela
-    /// óptica (o espelho ignora `oleo_antes` e o fluxo): o sujo é o que o restauro do motor marcou (B12.2).
-    fn repoe(&self, e: &mut Engine) {
-        for (l, o) in e.layers.iter_mut().zip(&self.oleo_antes) {
-            o.repoe(&mut l.grid.oleo_antes);
-        }
-        for (l, (fx, fy)) in e.layers.iter_mut().zip(&self.fluxo) {
-            fx.repoe(&mut l.grid.flow_x);
-            fy.repoe(&mut l.grid.flow_y);
-        }
-        let (r, s) = (self.relogio, &mut e.sim);
-        s.frame = r.frame;
-        s.dry_every = r.dry_every;
-        s.evap_scale = r.evap_scale;
-        s.rewet_base = r.rewet_base;
-        s.semente_do_po = r.semente_do_po;
-    }
-
-    fn planos(&self) -> impl Iterator<Item = &PlanoEmTiles> {
-        self.oleo_antes
-            .iter()
-            .chain(self.fluxo.iter().flat_map(|(x, y)| [x, y]))
-    }
-
-    /// Os bytes da fotografia sozinha.
-    pub(crate) fn bytes(&self) -> usize {
-        self.planos().map(PlanoEmTiles::bytes).sum()
-    }
-
-    /// Os bytes que ela não partilha com a anterior.
-    fn bytes_novos(&self) -> usize {
-        self.planos().map(PlanoEmTiles::bytes_novos).sum()
-    }
-
-    fn planos_mut(&mut self) -> Vec<&mut PlanoEmTiles> {
-        let mut v: Vec<&mut PlanoEmTiles> = self.oleo_antes.iter_mut().collect();
-        for (x, y) in &mut self.fluxo {
-            v.push(x);
-            v.push(y);
-        }
-        v
-    }
 }
 
 impl PassoVivo {
@@ -563,27 +379,4 @@ impl PainterTool {
 #[cfg(test)]
 pub(super) fn bytes_reais_dos_passos(sess: &WetSession) -> usize {
     bytes_retidos_nos_passos(&sess.antes_do_passo, &sess.base, sess.congelada.as_ref())
-}
-
-#[cfg(test)]
-impl FotoDoMotor {
-    pub(crate) fn de_para_sonda(e: &ph2d_wet_paint::painter::Engine) -> Self {
-        Self::de(e, None)
-    }
-
-    pub(crate) fn repoe_para_sonda(&self, e: &mut ph2d_wet_paint::painter::Engine) {
-        self.repoe(e);
-    }
-
-    /// Os bytes que a fotografia do motor `e` seguraria, sem a tirar.
-    pub(crate) fn bytes_de_para_sonda(e: &ph2d_wet_paint::painter::Engine) -> usize {
-        use std::mem::size_of_val as b;
-        e.layers
-            .iter()
-            .map(|l| {
-                let g = &l.grid;
-                b(&g.oleo_antes[..]) + b(&g.flow_x[..]) + b(&g.flow_y[..])
-            })
-            .sum()
-    }
 }

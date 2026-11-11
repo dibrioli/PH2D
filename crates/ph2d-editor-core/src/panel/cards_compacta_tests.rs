@@ -629,3 +629,15 @@ fn a_choice_alone_in_a_pair_or_compact_row_still_wraps() {
         );
     }
 }
+
+/// ⭐⭐ Dono 10/11 (*«a real é … na label ao estreitar o painel … é regra»*, a regra de 06/09): o rótulo que não cabe
+/// fica numa linha com reticências — a linha de um rótulo longo tem a altura da de um curto.
+/// *Mutação: voltar a quebrar o rótulo em duas linhas.*
+#[test]
+fn a_label_that_does_not_fit_stays_on_one_line() {
+    let mut f = mesa();
+    let mut c = ctx(&mut f, 120.0);
+    let curta = c.row(&[campo(A, "Pivot")], 0.0);
+    let longa = c.row(&[campo(B, "Pivot from the very far centre")], 0.0);
+    assert_eq!(longa, curta, "a linha não cresce: o rótulo não quebra");
+}

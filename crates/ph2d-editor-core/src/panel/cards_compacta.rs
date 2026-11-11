@@ -322,26 +322,14 @@ impl Curto {
         }
     }
 
-    fn fundo_sozinho(&self, ts: &mut TextSystem, w: f32, y: f32) -> f32 {
+    /// O fundo do curto sozinho na linha: o rótulo é sempre UMA linha (com reticências se não couber).
+    fn fundo_sozinho(&self, y: f32) -> f32 {
         match self {
             Self::Marca { .. } => y + m::FIELD_ROW_GAP + m::FIELD_H,
-            Self::Numero { rotulo, .. }
-            | Self::Amostra { rotulo, .. }
-            | Self::Fato { rotulo, .. }
-            | Self::Escolha { rotulo, .. } => {
-                let reserva = if matches!(self, Self::Fato { .. }) {
-                    0.0
-                } else {
-                    m::KEY_MARK_BOX
-                };
-                let (_, duas) = rotulos::linhas(ts, rotulo, w - reserva);
-                let extra = if duas.is_some() {
-                    m::LABEL_PX + m::LABEL_BOTTOM
-                } else {
-                    0.0
-                };
-                y + m::LABEL_TOP + m::LABEL_PX + m::LABEL_BOTTOM + extra + m::FIELD_H
-            }
+            Self::Numero { .. }
+            | Self::Amostra { .. }
+            | Self::Fato { .. }
+            | Self::Escolha { .. } => y + m::LABEL_TOP + m::LABEL_PX + m::LABEL_BOTTOM + m::FIELD_H,
         }
     }
 }
@@ -456,7 +444,7 @@ fn pede(
             ctx_de_fora(scene, ts, store, hit, ink, e.x, e.w).row_inteira(&par[..1], e.y)
         });
     }
-    let fim = novo.fundo_sozinho(ts, w, y);
+    let fim = novo.fundo_sozinho(y);
     FLUXO.with(|g| {
         if let Some(f) = g.borrow_mut().as_mut() {
             f.espera = Some(Espera {

@@ -1,31 +1,11 @@
-//! A faixa dos rótulos de uma linha de cartão. Um rótulo que não cabe na coluna QUEBRA em duas
-//! linhas («Opacity» / «(%)», maquete F) em vez de virar «Opacity…»; a faixa cresce uma linha só
-//! quando algum rótulo da linha precisa, e os de uma linha centram-se nela.
+//! A faixa dos rótulos de uma linha de cartão. ⭐ Um rótulo que não cabe fica numa linha com reticências, antes da
+//! marca de animação da sua célula (dono 06/09 e 10/11: *«a real é … na label ao estreitar o painel … é regra»*);
+//! a quebra em duas linhas da maquete F saiu.
 
 use super::{CardCtx, Cell, Widget};
 use crate::widget::card_field;
 use ph2d_card_stack::metrics as m;
 use ph2d_text::TextSystem;
-
-/// O passo entre as duas linhas de um rótulo quebrado.
-const PASSO: f32 = m::LABEL_PX + m::LABEL_BOTTOM;
-
-/// As (no máximo) duas linhas de `l` na largura `w`: quebra na última palavra que cabe; a 2.ª
-/// linha leva o resto (e o pintor elide-a, se ainda não couber).
-pub(super) fn linhas<'l>(ts: &mut TextSystem, l: &'l str, w: f32) -> (&'l str, Option<&'l str>) {
-    if ts.prefix_width(l, m::LABEL_PX) <= w {
-        return (l, None);
-    }
-    let corte = l
-        .match_indices(' ')
-        .map(|(i, _)| i)
-        .filter(|&i| ts.prefix_width(&l[..i], m::LABEL_PX) <= w)
-        .last();
-    match corte {
-        Some(i) => (&l[..i], Some(l[i + 1..].trim_start())),
-        None => (l, None),
-    }
-}
 
 /// `l` sem a unidade entre parênteses.
 fn sem_unidade(l: &str) -> &str {
@@ -64,14 +44,16 @@ pub(super) fn reserva(c: &Cell<'_>) -> f32 {
 }
 
 /// O rótulo da célula `i` é o do grupo: vai até à próxima célula com rótulo («Per-corner Tint» sobre
-/// quatro amostras, que numa coluna só quebrava), menos a marca que mora nesse troço.
+/// quatro amostras), e pára antes da primeira marca de animação desse troço — nunca a pinta por cima.
 fn largura_do_rotulo(cells: &[Cell<'_>], cols: &[(f32, f32)], i: usize) -> f32 {
     let fim = (i + 1..cells.len())
         .find(|&j| cells[j].label.is_some())
         .unwrap_or(cells.len());
-    let marca = cells[i..fim].iter().map(reserva).fold(0.0, f32::max);
-    let (x0, (xf, wf)) = (cols[i].0, cols[fim - 1]);
-    xf + wf - x0 - marca
+    let ate = (i..fim)
+        .find(|&j| cells[j].key.is_some())
+        .unwrap_or(fim - 1);
+    let (xf, wf) = cols[ate];
+    xf + wf - cols[i].0 - reserva(&cells[ate])
 }
 
 /// Pinta os rótulos (e as marcas de animação) de uma linha a partir de `y`; devolve a altura da
@@ -81,33 +63,13 @@ pub(super) fn faixa(cx: &mut CardCtx<'_>, cells: &[Cell<'_>], cols: &[(f32, f32)
     let larguras: Vec<f32> = (0..cells.len())
         .map(|i| largura_do_rotulo(cells, cols, i))
         .collect();
-    let quebras: Vec<_> = cells
-        .iter()
-        .zip(&larguras)
-        .map(|(c, w)| {
-            c.label.map(|l| {
-                // No par de eixos a unidade sai antes de o nome quebrar; a dica do campo continua a dizê-la.
-                let cabe = cx.text_system.prefix_width(l, m::LABEL_PX) <= *w;
-                let l = if de_eixos && !cabe { sem_unidade(l) } else { l };
-                linhas(cx.text_system, l, *w)
-            })
-        })
-        .collect();
-    let duas = quebras.iter().flatten().any(|(_, b)| b.is_some());
-    let extra = if duas { PASSO } else { 0.0 };
-    for (i, ((c, r), q)) in cells.iter().zip(cols).zip(&quebras).enumerate() {
+    for (i, (c, r)) in cells.iter().zip(cols).enumerate() {
         let w = larguras[i];
-        match q {
-            Some((a, Some(b))) => {
-                for (t, ty) in [(a, y), (b, y + PASSO)] {
-                    card_field::paint_label(cx.scene, cx.text_system, cx.ink, r.0, ty, w, t);
-                }
-            }
-            Some((a, None)) => {
-                let ty = y + extra;
-                card_field::paint_label(cx.scene, cx.text_system, cx.ink, r.0, ty, w, a);
-            }
-            None => {}
+        if let Some(l) = c.label {
+            // No par de eixos a unidade sai antes das reticências; a dica do campo continua a dizê-la.
+            let cabe = cx.text_system.prefix_width(l, m::LABEL_PX) <= w;
+            let l = if de_eixos && !cabe { sem_unidade(l) } else { l };
+            card_field::paint_label(cx.scene, cx.text_system, cx.ink, r.0, y, w, l);
         }
         if let Some(k) = c.key {
             card_field::paint_key_mark(
@@ -115,12 +77,12 @@ pub(super) fn faixa(cx: &mut CardCtx<'_>, cells: &[Cell<'_>], cols: &[(f32, f32)
                 cx.ink,
                 cx.hit_index,
                 r.0 + r.1 - m::KEY_MARK_BOX * 0.5,
-                y + (m::LABEL_PX + extra) * 0.5,
+                y + m::LABEL_PX * 0.5,
                 k,
             );
         }
     }
-    extra + m::LABEL_PX + m::LABEL_BOTTOM
+    m::LABEL_PX + m::LABEL_BOTTOM
 }
 
 /// A faixa de uma linha sem nomes mas com marcas (as camadas de uma pilha abaixo da 1.ª): só a altura
@@ -168,6 +130,17 @@ mod tests {
         assert_eq!(largura_do_rotulo(&cells, &cols, 2), 86.0);
     }
 
+    /// ⭐ Dono 10/11: o rótulo nunca passa por cima da marca da SUA célula — «Stroke width (px)» seguia pela coluna da
+    /// caixa «Dashed» e pintava por cima da marca do campo. *Mutação: a marca descontada no fim do troço.*
+    #[test]
+    fn a_label_stops_before_the_key_mark_of_its_cell() {
+        use super::super::Widget;
+        let a = Cell::new(Widget::Readout { text: "" }).label("A").key(&[]);
+        let b = Cell::new(Widget::Readout { text: "" });
+        let cols = [(0.0, 40.0), (46.0, 40.0)];
+        assert_eq!(largura_do_rotulo(&[a, b], &cols, 0), 40.0 - m::KEY_MARK_BOX);
+    }
+
     /// ⭐ Só o eixo faz o par: o nome igual menos uma palavra, e ela é o eixo.
     /// *Mutações: comparar só a primeira palavra · aceitar duas palavras diferentes.*
     #[test]
@@ -199,16 +172,5 @@ mod tests {
         ] {
             assert!(!par(a, b), "{a} × {b}");
         }
-    }
-
-    /// ⭐ Maquete F: «Opacity (%)» numa coluna estreita quebra em «Opacity» / «(%)», inteiros.
-    #[test]
-    fn a_label_that_does_not_fit_wraps_onto_two_lines() {
-        let mut ts = TextSystem::without_system_fonts();
-        let l = "Opacity (%)";
-        let w = ts.prefix_width("Opacity", m::LABEL_PX) + 1.0;
-        assert_eq!(linhas(&mut ts, l, w), ("Opacity", Some("(%)")));
-        let largo = ts.prefix_width(l, m::LABEL_PX) + 1.0;
-        assert_eq!(linhas(&mut ts, l, largo), (l, None));
     }
 }

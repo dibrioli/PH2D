@@ -60,6 +60,8 @@ if [ -n "$TECLAS" ]; then
   echo "        Use: TECLAS=\"$TECLAS\" bash docs/CodeEditor/ferramentas/smoke/cena14/fotos_q3.sh <passo> <saida.png>" >&2
   exit 3
 fi
+# FOTO_LAYOUT=<ficheiro> (caminho absoluto): a arrumação dos painéis com que o app abre, no formato do
+#   `~/.ph2d/layout.txt` (ex.: `dock_w_right=210` = o Inspector no piso, para a foto de um painel estreito).
 # FOTO_ESCOLHA=head: fotografa a 1.ª janela do app (o editor atrás da janela do jogo), não a última.
 # FOTO_JANELA_A_CADA=1: cada foto da rajada reescolhe a janela (a ÚLTIMA do app) — para um app que
 # abre uma 2.ª janela a meio (a janela do jogo, GameEngineFuncional R0c).
@@ -204,6 +206,7 @@ if [ -z "\$DISPLAY" ] || [ "\$DISPLAY" = ":0" ] || [ "\$DISPLAY" = "${DISPLAY:-:
 fi
 cd "$RAIZ"
 mkdir -p "$TMP/home"
+[ -z "${FOTO_LAYOUT:-}" ] || { mkdir -p "$TMP/home/.ph2d"; cp "${FOTO_LAYOUT}" "$TMP/home/.ph2d/layout.txt"; }
 env -u WAYLAND_DISPLAY HOME="$TMP/home" __GL_SHADER_DISK_CACHE_SIZE=17179869184 \
   __GL_SHADER_DISK_CACHE_PATH="$CACHE" MESA_SHADER_CACHE_DIR="$CACHE/mesa" $ENV_KV \
   PH2D_EXIT_AFTER_FRAMES=100000 "$BIN" > "$TMP/app.log" 2>&1 &

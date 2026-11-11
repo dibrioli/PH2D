@@ -107,6 +107,13 @@ fn cada_linha_do_tuning_aceita_o_rato_e_o_valor_chega_a_ferramenta() {
                 continue;
             };
             mesa.host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5)
+        } else if row.interruptor() {
+            // B35.7: a caixa de marcar (o id do chip); o clique inverte.
+            let Some(r) = mesa.rect(row.chip) else {
+                falhas.push(format!("{}: a caixa não foi pintada", row.key));
+                continue;
+            };
+            mesa.host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5)
         } else {
             let Some(r) = mesa.rect(row.slider) else {
                 falhas.push(format!(
@@ -139,7 +146,7 @@ fn cada_linha_do_tuning_aceita_o_rato_e_o_valor_chega_a_ferramenta() {
             ));
             continue;
         }
-        if row.options.is_none() {
+        if row.options.is_none() && !row.interruptor() {
             let visto = mesa.host.store().slider(row.slider).map(|(_, v)| v);
             if visto.is_none_or(|v| (v - row.track_of(depois)).abs() > 1e-3) {
                 falhas.push(format!(

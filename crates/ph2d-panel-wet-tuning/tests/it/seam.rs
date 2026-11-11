@@ -350,6 +350,15 @@ fn paint_offers_the_table_and_no_paper_row_lives_here() {
                     row.key
                 );
             }
+            // B35.7: um interruptor é a caixa de marcar (o id do chip), nunca a barra.
+            None if row.interruptor() => {
+                assert!(has(&plain, row.chip), "row {} checkbox missing", row.key);
+                assert!(
+                    !has(&plain, row.slider),
+                    "row {} is a switch: no slider",
+                    row.key
+                );
+            }
             None => assert!(has(&plain, row.slider), "row {} slider missing", row.key),
         }
         assert!(has(&plain, row.reset), "row {} reset missing", row.key);

@@ -36,9 +36,23 @@ pub struct TuneRow {
     pub unit: Option<ph2d_editor_core::widget::Unit>,
 }
 
-/// Os knobs com grandeza física, pela chave do registo; os outros são fracções, ganhos ou expoentes sem unidade.
-pub const UNIDADES: [(&str, ph2d_editor_core::widget::Unit); 1] =
-    [("textureSizeRef", ph2d_editor_core::widget::Unit::Px)];
+/// Os knobs com grandeza física, pela chave do registo (B35.7: os que o doc do `Knob` diz em px de tela ou de caminho);
+/// os outros são fracções, ganhos, expoentes ou células sem unidade.
+pub const UNIDADES: [(&str, ph2d_editor_core::widget::Unit); 10] = {
+    use ph2d_editor_core::widget::Unit::Px;
+    [
+        ("textureSizeRef", Px),
+        ("knifeRidge", Px),
+        ("subsurfaceRadius", Px),
+        ("wetOpenEdge", Px),
+        ("bristleNoiseLength", Px),
+        ("bristleWaveLength", Px),
+        ("bristleOscillation", Px),
+        ("bristleSpan", Px),
+        ("bristleSpanLength", Px),
+        ("bristleStreakLength", Px),
+    ]
+};
 
 /// The knobs painted as a 2-way CHOICE (dono 28/10: the Transmission mode — Blender · Clear glass — is a selector,
 /// never a slider nor a checkbox). Each is `0..1` with step `1` in the registry.

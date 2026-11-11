@@ -374,6 +374,11 @@ fn paint_row(
             ph2d_editor_core::property_row::Seccao::apenas_campos(1),
         );
         used = Some(fim - y - ph2d_tokens::control_gap_px());
+    } else if row.interruptor() {
+        // B35.7: o interruptor é a caixa de marcar da casa, com o id do chip (o clique → a ferramenta inverte).
+        let label = tr(row.label.as_str());
+        let fim = checkbox_row(ctx, theme, x, row_w, y, row.chip, label, value >= 0.5);
+        used = Some(fim - y - ph2d_tokens::control_gap_px());
     }
     let track = row.track_of(value);
     let text = match row.unit {
@@ -495,7 +500,8 @@ fn checkbox_row(
     on: bool,
 ) -> f32 {
     let rect = Rect::new(x, y, w, ROW_H_PX);
-    let rotulos: Vec<&str> = CAIXAS.iter().map(|k| tr(k)).collect();
+    let mut rotulos: Vec<&str> = CAIXAS.iter().map(|k| tr(k)).collect();
+    rotulos.push(label);
     let seccao = ph2d_editor_core::widget::Seccao::medida(ctx.text_system, 1, &rotulos);
     let cb = Checkbox::new(id, label)
         .visual(ctx.host.store().checkbox_visual(id))

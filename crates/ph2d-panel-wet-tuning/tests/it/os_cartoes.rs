@@ -562,14 +562,13 @@ fn no_knob_label_is_cut_at_the_owners_width() {
 /// A unidade mora no rótulo, nunca na caixa (D13).
 #[test]
 fn the_unit_lives_in_the_label_not_in_the_box() {
-    let mesa = Mesa::nova(ferramenta(WetTool::Paint, true));
-    let row = rows::rows()
-        .iter()
-        .find(|r| r.key == "textureSizeRef")
-        .expect("linha");
-    assert!(mesa.rect(row.chip).is_some());
-    let d = dicas::field_hint(mesa.host.store(), row.chip).expect("marcado");
-    assert!(d.contains("(px)"), "{d}");
+    for (k, u) in rows::UNIDADES {
+        let row = rows::rows().iter().find(|r| r.key == k).expect("linha");
+        let mesa = Mesa::nova(ferramenta(dona(row), true));
+        assert!(mesa.rect(row.chip).is_some(), "{k}: não pintado");
+        let d = dicas::field_hint(mesa.host.store(), row.chip).expect("marcado");
+        assert!(d.contains(&format!("({})", u.suffix())), "{k}: {d}");
+    }
 }
 
 /// `PH2D_CARDS=0`: o corpo de antes, com as barras e sem campos de cartão.
@@ -602,9 +601,81 @@ fn a_caixa_do_interruptor_liga_e_desliga_pelo_rato() {
         let antes = t.brush_settings().wet_knobs.knobs[row.knob];
         let mut mesa = Mesa::nova(t);
         mesa.clica(row.chip);
-        assert_eq!(mesa.t.brush_settings().wet_knobs.knobs[row.knob], 1.0 - antes, "{}", row.key);
+        assert_eq!(
+            mesa.t.brush_settings().wet_knobs.knobs[row.knob],
+            1.0 - antes,
+            "{}",
+            row.key
+        );
         let mut mesa = Mesa::nova(mesa.t);
         mesa.clica(row.chip);
-        assert_eq!(mesa.t.brush_settings().wet_knobs.knobs[row.knob], antes, "{}", row.key);
+        assert_eq!(
+            mesa.t.brush_settings().wet_knobs.knobs[row.knob],
+            antes,
+            "{}",
+            row.key
+        );
+    }
+}
+
+/// B35.7: `PH2D_CARDS=0` também pinta cada interruptor como caixa de marcar (o id do chip, nunca a barra), e o
+/// clique real inverte o knob.
+#[test]
+fn o_corpo_de_antes_pinta_o_interruptor_como_caixa() {
+    for row in rows::rows().iter().filter(|r| r.interruptor()) {
+        cards::force_cards_on_this_thread(Some(false));
+        let mut t = ferramenta(dona(row), true);
+        let antes = t.brush_settings().wet_knobs.knobs[row.knob];
+        set_current_brush(Some(t.brush_settings()));
+        let mut host = MockPanelHost::with_panel::<WetTuningPanel>();
+        host.set_panel_visible(WetTuningPanel::ID, true);
+        for s in rows::SECTIONS {
+            host.store_mut().set_collapsed(s.header, false);
+        }
+        let mut st = state::WetTuningPanelState;
+        let rects = host.paint::<WetTuningPanel>(&mut st, JANELA);
+        assert!(
+            !rects.iter().any(|(id, _)| *id == row.slider),
+            "{}: barra",
+            row.key
+        );
+        let r = rects
+            .iter()
+            .rev()
+            .find(|(id, r)| *id == row.chip && r.w > 0.0)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("{}: caixa não pintada", row.key));
+        let ev = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+        for e in ev {
+            let _ = host.apply_panel_event::<WetTuningPanel>(&mut st, e);
+        }
+        for a in host.drained_actions() {
+            if let EditorAction::ToolPanelEvent(pe) = a {
+                t.handle_panel_event(pe);
+            }
+        }
+        assert_eq!(
+            t.brush_settings().wet_knobs.knobs[row.knob],
+            1.0 - antes,
+            "{}",
+            row.key
+        );
+        cards::force_cards_on_this_thread(None);
+    }
+}
+
+/// B35.7: cada knob com unidade tem o rótulo de cartão com ela, e só esses.
+#[test]
+fn cada_unidade_tem_rotulo_de_cartao() {
+    let u: Vec<&str> = rows::UNIDADES.iter().map(|(k, _)| *k).collect();
+    let c: Vec<&str> = cards::COM_UNIDADE.iter().map(|(k, _)| *k).collect();
+    assert_eq!(u, c);
+    for ((_, unit), (k, chave)) in rows::UNIDADES.iter().zip(cards::COM_UNIDADE) {
+        let base = ph2d_i18n::tr(&format!("panel.wet_tuning.knob.{k}"));
+        assert_eq!(
+            ph2d_i18n::tr(chave),
+            format!("{base} ({})", unit.suffix()),
+            "{k}"
+        );
     }
 }

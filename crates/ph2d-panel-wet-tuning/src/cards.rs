@@ -10,9 +10,9 @@ use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, HeadAction, Seg, Widget};
 use ph2d_editor_core::panel::{PaintCtx, TextKey};
+use ph2d_editor_core::widget::CheckboxValue;
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_editor_core::widget::key_mark::Rotulo;
-use ph2d_editor_core::widget::CheckboxValue;
 use ph2d_editor_core::widget::panel_chrome::{
     paint_panel_corner_dot, paint_panel_corner_dot_bl, panel_drag_handle_rect,
     panel_resize_handle_rect, panel_resize_handle_rect_bl,
@@ -45,7 +45,22 @@ pub fn force_cards_on_this_thread(on: Option<bool>) {
 }
 
 /// O rótulo de cartão dos knobs com unidade (D13): a unidade mora no rótulo, nunca na caixa.
-const COM_UNIDADE: &[(&str, &str)] = &[("textureSizeRef", "card.wet_tuning.texture_size_ref")];
+/// As chaves são as de [`rows::UNIDADES`] (gate `cada_unidade_tem_rotulo_de_cartao`).
+pub const COM_UNIDADE: [(&str, &str); 10] = [
+    ("textureSizeRef", "card.wet_tuning.texture_size_ref"),
+    ("knifeRidge", "card.wet_tuning.knife_ridge"),
+    ("subsurfaceRadius", "card.wet_tuning.subsurface_radius"),
+    ("wetOpenEdge", "card.wet_tuning.wet_open_edge"),
+    ("bristleNoiseLength", "card.wet_tuning.bristle_noise_length"),
+    ("bristleWaveLength", "card.wet_tuning.bristle_wave_length"),
+    ("bristleOscillation", "card.wet_tuning.bristle_oscillation"),
+    ("bristleSpan", "card.wet_tuning.bristle_span"),
+    ("bristleSpanLength", "card.wet_tuning.bristle_span_length"),
+    (
+        "bristleStreakLength",
+        "card.wet_tuning.bristle_streak_length",
+    ),
+];
 
 fn rotulo(row: &'static TuneRow) -> &'static str {
     COM_UNIDADE

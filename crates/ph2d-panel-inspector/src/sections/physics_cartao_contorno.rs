@@ -39,18 +39,12 @@ pub(super) fn controlos(
     .into_iter()
     .zip(tres)
     {
-        // Nos cartões o campo parado não regista alvo; a face de referência pinta já, num índice que se deita fora.
-        let mut sem_alvo = HitIndex::default();
-        let alvos = if parado && ph2d_editor_core::widget::card_ink::card_body().is_none() {
-            &mut sem_alvo
-        } else {
-            &mut *hit
-        };
+        // O campo parado não regista alvo nem nos cartões nem na face de referência (`num_row_unit`).
         y = num_row_unit(
             scene,
             text,
             theme,
-            alvos,
+            hit,
             store,
             x,
             w,

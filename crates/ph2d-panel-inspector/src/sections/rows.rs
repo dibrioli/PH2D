@@ -312,9 +312,18 @@ pub(super) fn num_row_unit<'a>(
         row.label.w,
         resolve(ColorToken::Text2, theme),
     );
-    hit_index.register(id, row.control);
+    // Parado (ver `card_field::parados`): sem alvo e apagado, como nos cartões.
+    let parado = ph2d_editor_core::widget::card_field::parado(id);
+    if !parado {
+        hit_index.register(id, row.control);
+    }
     let (state, value, buffer, caret, anchor) = read_number_input(store, id);
-    let input = NumberInput::new(id, "", value).visual((state, store.hover_live(id)));
+    let visual = if parado {
+        (ph2d_editor_core::widget::TextInputState::Disabled, 0.0)
+    } else {
+        (state, store.hover_live(id))
+    };
+    let input = NumberInput::new(id, "", value).visual(visual);
     // ⭐⭐ **A unidade é um SUFIXO colado ao número, dentro da caixa** — ordem do dono,
     //    2026-09-14: *«não ficou legal. Melhor junto ao número dentro da caixa»*. A 1.ª entrega
     //    punha-a num chip com fundo próprio encostado à direita, e com o campo já afundado isso

@@ -410,7 +410,7 @@ pub use conta::eval_number;
 #[path = "card_field/valor.rs"]
 mod valor;
 use valor::texto_do_valor;
-pub use valor::{paint_amostra, parados};
+pub use valor::{paint_amostra, parado, parados};
 
 #[cfg(test)]
 #[path = "card_field/tests.rs"]

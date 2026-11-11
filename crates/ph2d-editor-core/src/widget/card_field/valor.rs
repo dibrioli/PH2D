@@ -78,6 +78,8 @@ pub fn parados(ids: &[super::NodeId]) {
     PARADOS.with(|s| *s.borrow_mut() = ids.to_vec());
 }
 
-pub(crate) fn parado(id: super::NodeId) -> bool {
+/// O campo `id` está PARADO (ver [`parados`])? O painel de antes também o apaga.
+#[must_use]
+pub fn parado(id: super::NodeId) -> bool {
     PARADOS.with(|s| s.borrow().contains(&id))
 }

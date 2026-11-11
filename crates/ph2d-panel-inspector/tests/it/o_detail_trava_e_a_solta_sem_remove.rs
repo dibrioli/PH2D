@@ -178,3 +178,44 @@ fn a_forma_solta_nao_oferece_remove_shape_e_a_peca_guarda_o_dela() {
     assert!(achado(&pinta(&mut host, &mut st), INSP_PHYS_REMOVE).is_some());
     sai();
 }
+
+/// Quantos desenhos na cor `TextDisabled` o painel de antes (`PH2D_CARDS=0`) pinta com o Outline `info`.
+/// Junto, quantos dos três têm alvo.
+fn apagados_no_painel_de_antes(info: InspectorPhysicsInfo) -> (i64, usize) {
+    use ph2d_editor_core::paint::resolve;
+    use ph2d_tokens::{ColorToken, Theme};
+    let (mut host, mut st) = cena(info, [1.0, 1.0]);
+    ph2d_panel_inspector::set_cards_on(false);
+    let r = pinta(&mut host, &mut st);
+    let alvos = TRES.iter().filter(|&&id| achado(&r, id).is_some()).count();
+    let cor = resolve(ColorToken::TextDisabled, Theme::default())
+        .premultiply()
+        .to_rgba8()
+        .to_u32();
+    let janela = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 3200.0);
+    let n = host
+        .paint_draw_data::<ph2d_panel_inspector::InspectorPanel>(&mut st, janela)
+        .into_iter()
+        .filter(|&c| c == cor)
+        .count();
+    sai();
+    (i64::try_from(n).expect("cabe"), alvos)
+}
+
+/// **No painel de antes, os três travados também se APAGAM** (GEF02 5.6): Outline à mão fora de «Edit shape
+/// on canvas» ⇒ Detail, Alpha cutoff e Ignore specks under pintam o número em `TextDisabled`, como os cartões
+/// (que os pintam em `Text3`). Controlo: o mesmo Outline DENTRO da edição.
+#[test]
+fn no_painel_de_antes_os_tres_travados_tambem_se_apagam() {
+    let (livre, alvos_livres) = apagados_no_painel_de_antes(contorno(true, true));
+    let (travado, alvos_travados) = apagados_no_painel_de_antes(contorno(false, true));
+    assert_eq!(
+        alvos_livres, 3,
+        "controlo: dentro da edição os três têm alvo"
+    );
+    assert_eq!(alvos_travados, 0, "travados, os três ficam sem alvo");
+    assert!(
+        travado - livre >= 3,
+        "os três números travados apagam-se: {travado} desenhos apagados contra {livre} livres"
+    );
+}

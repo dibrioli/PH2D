@@ -646,7 +646,7 @@ const GRAO_DAS_FACAS_W3: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Nois
 const ESTUQUE_DO_DABBER_2: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Stucci", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.55, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [120, 120], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// As lascas do Dabber 3 (`Flakes` 18 px, lei de profundidade 1).
-const LASCAS_DO_DABBER_3: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Flakes", "lei": {"mode": 1}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.75, 0.3, 0.9, 1.0], "rake": false, "size": [18, 18], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+const LASCAS_DO_DABBER_3: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Flakes", "lei": {"mode": "Subtract"}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.75, 0.3, 0.9, 1.0], "rake": false, "size": [18, 18], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// O leque do Fan (a ponta 0,3 × 1 a 90°).
 const LEQUE_DO_FAN: &str = r#"{"angle_deg": 90, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [0.3, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;

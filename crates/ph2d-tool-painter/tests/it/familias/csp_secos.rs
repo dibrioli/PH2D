@@ -11,13 +11,13 @@ pub const WET: &[Receita] = &[];
 
 /// O papel áspero NOSSO do Crayon (o «Rough textured» do CSP não foi copiado): `Noise` 48 px preso à tela. Dono
 /// 10/11 (variante `Cr_H10`): enche o dente — lido pelo Height com maciez, ponta afundada e `fill` 0,5.
-const PAPEL_DO_CRAYON: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.5, "depth_min": 0.0, "depth_pressure": true, "mode": 4, "softness": 0.3, "tip_depth": true, "fill": 0.5}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [48.0, 48.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+const PAPEL_DO_CRAYON: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.5, "depth_min": 0.0, "depth_pressure": true, "mode": "Height", "softness": 0.3, "tip_depth": true, "fill": 0.5}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [48.0, 48.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 /// O papel do Pastel — o grão do dono 10/11 (variante `P_dono`): `Noise` 120 px, contraste e brilho 0,55, detalhe 0,3,
 /// lido pelo Height com maciez, ponta afundada e `fill` 0,5.
-const PAPEL_DO_PASTEL: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.8, "depth_min": 0.0, "depth_pressure": true, "mode": 4, "softness": 0.3, "tip_depth": true, "fill": 0.5}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.55, 0.55, 0.3, 0.5, 0.5, 0.5], "rake": false, "size": [120.0, 120.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+const PAPEL_DO_PASTEL: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.8, "depth_min": 0.0, "depth_pressure": true, "mode": "Height", "softness": 0.3, "tip_depth": true, "fill": 0.5}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.55, 0.55, 0.3, 0.5, 0.5, 0.5], "rake": false, "size": [120.0, 120.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 /// O papel de desenho do Chalk (mais grosso, 80 px). Dono 10/11 (variante `Ch_H10`): enche o dente — Height com
 /// maciez, ponta afundada e `fill` 0,5.
-const PAPEL_DO_GIZ: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.3, "depth_min": 0.0, "depth_pressure": true, "mode": 4, "softness": 0.3, "tip_depth": true, "fill": 0.5}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [80.0, 80.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+const PAPEL_DO_GIZ: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.3, "depth_min": 0.0, "depth_pressure": true, "mode": "Height", "softness": 0.3, "tip_depth": true, "fill": 0.5}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [80.0, 80.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 /// A nuvem manchada das aguadas (o «Dappled cloud» do CSP não foi copiado): `Clouds` procedural.
 const NUVEM: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Clouds", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [160.0, 160.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
@@ -191,7 +191,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("shape", PONTA_IMG),
             (
                 "hose",
-                r#"{"n": 3, "mode": 0, "pesos": [1, 1, 1, 1, 1, 1, 1, 1]}"#,
+                r#"{"n": 3, "mode": "Random", "pesos": [1, 1, 1, 1, 1, 1, 1, 1]}"#,
             ),
             ("texture", NUVEM),
             ("grain_depth", "0.3"),

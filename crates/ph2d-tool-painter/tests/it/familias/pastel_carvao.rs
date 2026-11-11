@@ -474,7 +474,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
 /// A orla do Charcoal Stick: a 2.ª ponta (dual Multiply) de três marcas a 0,5 do diâmetro, espalhadas e rodadas.
 const ORLA_DO_PAU: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dureza": 0.2, "escala": 0.5, "espalhar": 0.5, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": "Multiply", "passo": 0.25, "rotacao": 1.0}"#;
 /// O papel do Charcoal Stick: o `Noise` procedural preso à tela; a profundidade segue a pressão (10 % → 100 %).
-const PAPEL_DO_PAU: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.9, "depth_min": 0.0, "depth_pressure": true, "mode": 0}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [64.0, 64.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+const PAPEL_DO_PAU: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.9, "depth_min": 0.0, "depth_pressure": true, "mode": "Multiply"}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [64.0, 64.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 // O Cruzamento do Wax Scrape não entra (0,166 do controlo, abaixo de 3× o ruído desta régua); o raio do Wax por grelha.
 #[rustfmt::skip]

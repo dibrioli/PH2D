@@ -71,7 +71,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
     },
     // A-5 — o píxel exacto (L18, «pixel-perfect»): binário, alinhado à grelha, sem pressão; 1 px (MyPaint `1pixel`).
     ReceitaMeio {
-        pincel: &[("hardness", "1.0"), ("pixel", "2")],
+        pincel: &[("hardness", "1.0"), ("pixel", "\"Perfect\"")],
         mao: &[("pressureSize", 0.0)],
         size_px: Some(1.0),
         opacity: Some(1.0),

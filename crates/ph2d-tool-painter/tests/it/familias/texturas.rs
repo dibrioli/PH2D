@@ -109,7 +109,7 @@ pub const EM_ESTUDO: &[ReceitaMeio] = &[
             ("shape", IMAGEM_AREA),
             (
                 "hose",
-                r#"{"n": 3, "mode": 0, "pesos": [1, 1, 1, 1, 1, 1, 1, 1]}"#,
+                r#"{"n": 3, "mode": "Random", "pesos": [1, 1, 1, 1, 1, 1, 1, 1]}"#,
             ),
             ("spray_count", "1"),
             ("spacing", "0.75"),
@@ -415,7 +415,7 @@ const HALFTONE: &str = r#"{"angle_deg": 45, "flow": false, "kind": "Dots", "mapp
 pub(crate) const IMAGEM: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Image", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// A Shape de IMAGEM lida pela ÁREA do píxel (J4 «Motor J4», `GrainLaw::area`): a 5 px a média da imagem, não pontos.
-const IMAGEM_AREA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Image", "lei": {"area": true, "depth_jitter": 0.0, "depth_min": 0.0, "depth_pressure": false, "mode": 0}, "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+const IMAGEM_AREA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Image", "lei": {"area": true, "depth_jitter": 0.0, "depth_min": 0.0, "depth_pressure": false, "mode": "Multiply"}, "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// O perfil do disco de bokeh (x = a distância ao centro ÷ o raio): miolo 0,28 do aro, o aro a 0,95 e a queda
 /// em 1,5 % do raio — o disco de 150 px do Krita: 47 · 52–75 (o brilho de dentro) · 166 · 0 em 255.

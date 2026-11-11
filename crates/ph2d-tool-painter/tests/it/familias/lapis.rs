@@ -105,7 +105,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
 /// A orla do Sketch Pencil: a 2.ª ponta (dual Multiply) de duas marcas a 0,7 do diâmetro, espalhadas 0,3.
 const ORLA_DO_SKETCH: &str = r#"{"angulo": 0, "atraves": 0.2, "contagem": 2, "dureza": 0.4, "escala": 0.7, "espalhar": 0.3, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": "Multiply", "passo": 0.25, "rotacao": 0.0}"#;
 /// O papel do Sketch Pencil: o `Grain` procedural preso à tela; a profundidade segue a pressão (30 % → 100 %).
-const PAPEL_DO_SKETCH: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Grain", "lei": {"depth_jitter": 0.7, "depth_min": 0.0, "depth_pressure": true, "mode": 0}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+const PAPEL_DO_SKETCH: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Grain", "lei": {"depth_jitter": 0.7, "depth_min": 0.0, "depth_pressure": true, "mode": "Multiply"}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// Os REPROVADOS do Digital (B-6, B-9, B-7; o porquê e o que falta: `exames/lapis.md`): receitas medidas, fora da
 /// fábrica (nenhum ficheiro); os portões medem-nas pela receita ([`portoes`]).

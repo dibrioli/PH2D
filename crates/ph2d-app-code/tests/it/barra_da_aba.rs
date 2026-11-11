@@ -331,162 +331,32 @@ fn um_fio_separa_a_barra_do_codigo_e_a_linha_1_respira_abaixo_dele() {
     assert!(mid > f.y + f.h + ph2d_tokens::Spacing::Md.px(), "{mid}");
 }
 
-/// ⭐ Dono 10/11: `View ▸ Text rendering ▸` é um SUBMENU com os quatro modos, o `✓` no em vigor (de
-/// fábrica, Default); pairar na linha abre-o, escolher um muda a letra do CÓDIGO e fecha tudo.
+/// ⭐ `View ▸ Card Style ▸` e `View ▸ Text rendering ▸` (dono 10/11 e 11/11) são submenus: as escolhas
+/// saíram das linhas soltas; pairar na mãe abre-o à direita com o ✓ no em vigor; escolher muda o estilo
+/// do quadro / a letra do código, fecha tudo e o ✓ segue; o Esc da aba fecha um nível de cada vez.
+/// (A mecânica fina — outra linha, a mira, clicar fora, a posição — está em `ph2d-panel-code`, `submenu`.)
 #[test]
-fn o_submenu_text_rendering_do_view_escolhe_a_letra_do_codigo() {
-    use ph2d_app_code::tab_menu::ROW_TEXT_RENDERING;
-    use ph2d_panel_code::code_text::{ROWS, mode, set_mode};
-    let (mut m, id) = aberta();
-    for (i, want) in ph2d_tokens::TextRendering::ALL.into_iter().enumerate() {
-        let view = titulo(&mut m, TabMenu::View);
-        clica(&mut m, id, view);
-        let p = m.docs().bar_painted().clone();
-        assert!(
-            ROWS.iter().all(|t| p.rows.iter().all(|r| r.0 != t.0)),
-            "nada solto"
-        );
-        assert!(p.sub.is_none(), "fechado até pairar");
-        let parent = p
-            .rows
-            .iter()
-            .find(|r| r.0 == ROW_TEXT_RENDERING)
-            .expect("a linha");
-        let (x, y) = centro(parent.1);
-        m.rato(id, x, y);
-        m.pinta(id);
-        let sub = m
-            .docs()
-            .bar_painted()
-            .sub
-            .clone()
-            .expect("pairar abre o submenu");
-        assert_eq!(sub.parent, ROW_TEXT_RENDERING);
-        assert!(sub.popup.x >= p.popup.expect("o menu").x + p.popup.expect("o menu").w - 0.5);
-        let ids: Vec<_> = sub.rows.iter().map(|r| r.0).collect();
-        assert_eq!(ids, ROWS.map(|r| r.0), "os quatro, pela ordem");
-        let antes = ROWS[ph2d_tokens::TextRendering::ALL
-            .iter()
-            .position(|&t| t == mode())
-            .unwrap_or(0)]
-        .0;
-        assert_eq!(sub.checked, [antes], "o ✓ no em vigor");
-        let (x, y) = centro(sub.rows[i].1);
-        m.rato(id, x, y);
-        clica(&mut m, id, sub.rows[i].1);
-        assert_eq!(mode(), want);
-        let p = m.docs().bar_painted();
-        assert!(p.popup.is_none() && p.sub.is_none(), "escolher fecha tudo");
-    }
-    set_mode(ph2d_tokens::TextRendering::Default);
-}
-
-/// O submenu: pairar noutra linha fecha-o; o Esc fecha um nível (o submenu, depois o menu); clicar na
-/// linha-mãe também o abre; fora de tudo fecha os dois.
-#[test]
-fn o_submenu_fecha_por_outra_linha_pelo_esc_e_por_fora() {
-    use ph2d_app_code::tab_menu::ROW_TEXT_RENDERING;
-    let (mut m, id) = aberta();
-    let view = titulo(&mut m, TabMenu::View);
-    clica(&mut m, id, view);
-    let p = m.docs().bar_painted().clone();
-    let parent = p
-        .rows
-        .iter()
-        .find(|r| r.0 == ROW_TEXT_RENDERING)
-        .expect("a linha")
-        .1;
-    clica(&mut m, id, parent);
-    assert!(m.docs().bar_painted().sub.is_some(), "clicar abre");
-    let (x, y) = centro(p.rows[0].1);
-    m.rato(id, x, y);
-    m.pinta(id);
-    assert!(m.docs().bar_painted().sub.is_none(), "outra linha fecha");
-    let (x, y) = centro(parent);
-    m.rato(id, x, y);
-    m.pinta(id);
-    assert!(m.docs().bar_painted().sub.is_some());
-    m.tecla(
-        id,
-        ph2d_editor_core::doc_surface::Key::Escape,
-        Modifiers::default(),
-        None,
-    );
-    m.pinta(id);
-    let p2 = m.docs().bar_painted();
-    assert!(
-        p2.sub.is_none() && p2.popup.is_some(),
-        "o Esc fecha só o submenu"
-    );
-    m.tecla(
-        id,
-        ph2d_editor_core::doc_surface::Key::Escape,
-        Modifiers::default(),
-        None,
-    );
-    m.pinta(id);
-    assert!(
-        m.docs().bar_painted().popup.is_none(),
-        "o 2.º Esc fecha o menu"
-    );
-    clica(&mut m, id, view);
-    let (x, y) = centro(parent);
-    m.rato(id, x, y);
-    m.pinta(id);
-    let far = Rect::new(p.header.x + p.header.w - 40.0, p.header.y + 300.0, 4.0, 4.0);
-    clica(&mut m, id, far);
-    let p3 = m.docs().bar_painted();
-    assert!(p3.popup.is_none() && p3.sub.is_none(), "fora fecha os dois");
-}
-
-/// ⭐ 11/11: `View ▸ Card Style ▸` é o 2.º submenu (Sheet, Cards, Strip; ✓ no em vigor, de fábrica Sheet);
-/// escolher muda o estilo e o ✓ segue-o. As linhas soltas «Card Style: …» saíram do View.
-#[test]
-fn o_submenu_card_style_do_view_escolhe_o_estilo() {
+fn os_submenus_do_view_escolhem_o_estilo_e_a_letra() {
     use ph2d_app_code::commands::{CMD_CARD_CARDS, CMD_CARD_SHEET, CMD_CARD_STRIP};
-    use ph2d_app_code::tab_menu::ROW_CARD_STYLE;
+    use ph2d_app_code::tab_menu::{ROW_CARD_STYLE, ROW_TEXT_RENDERING};
+    use ph2d_code_debugcard::CardStyle::{Cards, Sheet, Strip};
+    use ph2d_panel_code::code_text::{ROWS, mode, set_mode};
+    use ph2d_tokens::TextRendering;
     let (mut m, id) = aberta();
-    let abre = |m: &mut Mesa| {
+    let abre = |m: &mut Mesa, mae| {
         let view = titulo(m, TabMenu::View);
         clica(m, id, view);
         let p = m.docs().bar_painted().clone();
-        let mae = p
-            .rows
-            .iter()
-            .find(|r| r.0 == ROW_CARD_STYLE)
-            .expect("a linha")
-            .1;
-        let (x, y) = centro(mae);
+        assert!(p.sub.is_none(), "fechado até pairar");
+        let (x, y) = centro(p.rows.iter().find(|r| r.0 == mae).expect("a mãe").1);
         m.rato(id, x, y);
         m.pinta(id);
-        (p, m.docs().bar_painted().sub.clone().expect("o submenu"))
+        let sub = m.docs().bar_painted().sub.clone().expect("pairar abre");
+        let menu = p.popup.expect("o menu");
+        assert!(sub.popup.x >= menu.x + menu.w - 0.5, "à direita");
+        (p, sub)
     };
-    let (p, sub) = abre(&mut m);
-    let estilos = [CMD_CARD_SHEET, CMD_CARD_CARDS, CMD_CARD_STRIP];
-    assert!(
-        estilos.iter().all(|c| p.rows.iter().all(|r| r.0 != *c)),
-        "nada solto"
-    );
-    assert_eq!(sub.rows.iter().map(|r| r.0).collect::<Vec<_>>(), estilos);
-    assert_eq!(sub.checked, [CMD_CARD_SHEET], "de fábrica");
-    for i in [1, 2, 0] {
-        let (_, sub) = if i == 1 {
-            (p.clone(), sub.clone())
-        } else {
-            abre(&mut m)
-        };
-        let (x, y) = centro(sub.rows[i].1);
-        m.rato(id, x, y);
-        clica(&mut m, id, sub.rows[i].1);
-        assert!(m.docs().bar_painted().popup.is_none(), "fechou");
-        let (_, depois) = abre(&mut m);
-        assert_eq!(depois.checked, [estilos[i]]);
-        m.tecla(
-            id,
-            ph2d_editor_core::doc_surface::Key::Escape,
-            Modifiers::default(),
-            None,
-        );
+    let esc = |m: &mut Mesa| {
         m.tecla(
             id,
             ph2d_editor_core::doc_surface::Key::Escape,
@@ -494,5 +364,41 @@ fn o_submenu_card_style_do_view_escolhe_o_estilo() {
             None,
         );
         m.pinta(id);
+        m.docs().bar_painted().clone()
+    };
+    let estilos = vec![CMD_CARD_SHEET, CMD_CARD_CARDS, CMD_CARD_STRIP];
+    for (mae, ids) in [
+        (ROW_CARD_STYLE, estilos),
+        (ROW_TEXT_RENDERING, ROWS.map(|r| r.0).to_vec()),
+    ] {
+        let (p, sub) = abre(&mut m, mae);
+        assert!(
+            ids.iter().all(|c| p.rows.iter().all(|r| r.0 != *c)),
+            "nada solto"
+        );
+        assert_eq!(sub.rows.iter().map(|r| r.0).collect::<Vec<_>>(), ids);
+        assert_eq!(sub.checked, [ids[0]], "de fábrica");
+        let _ = (esc(&mut m), esc(&mut m));
+        for i in (0..ids.len()).rev() {
+            let (_, sub) = abre(&mut m, mae);
+            let (x, y) = centro(sub.rows[i].1);
+            m.rato(id, x, y);
+            clica(&mut m, id, sub.rows[i].1);
+            let q = m.docs().bar_painted();
+            assert!(q.popup.is_none() && q.sub.is_none(), "escolher fecha tudo");
+            if mae == ROW_TEXT_RENDERING {
+                assert_eq!(mode(), TextRendering::ALL[i]);
+            } else {
+                assert_eq!(m.docs().card_style, [Sheet, Cards, Strip][i]);
+            }
+            assert_eq!(abre(&mut m, mae).1.checked, [ids[i]], "o ✓ segue");
+            let um = esc(&mut m);
+            assert!(
+                um.sub.is_none() && um.popup.is_some(),
+                "o Esc fecha só o submenu"
+            );
+            assert!(esc(&mut m).popup.is_none(), "o 2.º Esc fecha o menu");
+        }
     }
+    set_mode(TextRendering::Default);
 }

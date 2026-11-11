@@ -157,6 +157,7 @@ fn a_linha_mae_nao_corre_nada_e_o_esc_fecha_um_nivel() {
         .1;
     let (x, y) = centro(parent);
     assert_eq!(bar.press(x, y), Some(MenuPress::Taken), "a mãe só abre");
+    assert_eq!(bar.sub, Some(SUB), "clicar na mãe abre o submenu");
     assert!(bar.escape() && bar.open.is_some() && bar.sub.is_none());
     assert!(bar.escape() && bar.open.is_none());
     assert!(!bar.escape());
@@ -192,8 +193,10 @@ fn a_caminho_do_submenu_a_linha_de_baixo_nao_o_troca() {
         bar.paint(r, &[(0u8, "View")], &crumb, &mut scene, ts, &theme);
         bar.paint_popup(&its, &mut scene, ts, &theme, (0, 0));
     };
-    let mut bar = TabBar::<u8>::default();
-    bar.open = Some(0);
+    let mut bar = TabBar::<u8> {
+        open: Some(0),
+        ..TabBar::default()
+    };
     pinta(&mut bar, &mut ts);
     let row = |bar: &TabBar<u8>, id| bar.painted.rows.iter().find(|r| r.0 == id).expect("mãe").1;
     let (cima, baixo) = (row(&bar, SUB), row(&bar, S2));
@@ -213,11 +216,23 @@ fn a_caminho_do_submenu_a_linha_de_baixo_nao_o_troca() {
     assert_eq!(bar.sub, Some(SUB), "a mira segura o submenu");
     pinta(&mut bar, &mut ts);
     // A direito para baixo (fora do triângulo): troca.
-    let mut bar = TabBar::<u8>::default();
-    bar.open = Some(0);
+    let mut bar = TabBar::<u8> {
+        open: Some(0),
+        ..TabBar::default()
+    };
     pinta(&mut bar, &mut ts);
     assert!(bar.hover_move(p0.0, p0.1));
     pinta(&mut bar, &mut ts);
     assert!(bar.hover_move(p0.0 - 30.0, baixo.y + baixo.h * 0.5));
     assert_eq!(bar.sub, Some(S2), "fora da mira troca");
+}
+
+/// Clicar fora do menu e do submenu fecha os dois (o clique é da barra: nada corre).
+#[test]
+fn clicar_fora_fecha_o_menu_e_o_submenu() {
+    let mut ts = TextSystem::without_system_fonts();
+    let mut bar = abre(900.0, &mut ts);
+    assert!(bar.sub.is_some(), "controlo: aberto");
+    assert_eq!(bar.press(860.0, 400.0), Some(MenuPress::Taken));
+    assert!(bar.open.is_none() && bar.sub.is_none());
 }

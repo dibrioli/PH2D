@@ -386,3 +386,5 @@ vertical com o swipe de lado; o diagonal perdia o dy. Só o Input Map (Keyboard,
 **Aberto (escolha, não regressão):** Code/Kanban/grelha da física sem swipe lateral.
 
 **Tectos:** `ph2d-app-input-map` 449/449 e `ph2d-tokens/src/color.rs` 700/700, por comentários encurtados (c6bcd5b484).
+
+**14.8 Onda 4 — o aberto desta secção fechou** (Kanban Calendar/Dashboard sem swipe: medido, não rolam; AltGr: lei `chord_keys`; Planner: roda convertida 1×; legendas do numérico; Inspector da aba). O que ainda sobra está no §10 de [HANDOFF_INTEGRACAO_line_InputMap_2026-11-10_ONDA4.md](handoffs/HANDOFF_INTEGRACAO_line_InputMap_2026-11-10_ONDA4.md).

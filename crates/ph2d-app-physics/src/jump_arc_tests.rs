@@ -125,3 +125,35 @@ fn o_nome_aparece_sobre_a_curva_e_nao_longe_dela() {
     assert_eq!(sob_o_cursor(&d, &cam, win, topo), Some(Curva::Full));
     assert_eq!(sob_o_cursor(&d, &cam, win, (topo.0, topo.1 - 200.0)), None);
 }
+
+#[test]
+fn a_caixa_e_o_feel_do_cartao_chegam_ao_componente_e_ao_canvas() {
+    use crate::inspector::player::apply_player_edit_in;
+    use ph2d_editor_core::screens::hero::PlayerFieldEdit as E;
+    let (mut sim, e) = cena(false);
+    let bits = e.to_bits();
+    apply_player_edit_in(&mut sim, bits, E::ShowJumpArc(true), &s());
+    assert!(
+        desenho(&sim, &s(), Some(bits), true).is_some(),
+        "marcar liga a curva"
+    );
+    apply_player_edit_in(&mut sim, bits, E::ShowJumpArc(false), &s());
+    assert!(
+        desenho(&sim, &s(), Some(bits), true).is_none(),
+        "desmarcar desliga"
+    );
+    apply_player_edit_in(&mut sim, bits, E::ShowJumpArc(true), &s());
+    let antes = desenho(&sim, &s(), Some(bits), true).unwrap().apice();
+    apply_player_edit_in(&mut sim, bits, E::Feel(2), &s());
+    let p = sim.world().get::<PlatformPlayer>(e).unwrap();
+    let heavy = ph2d_physics_ecs::jump_feel::Feel::Heavy.gravity();
+    assert_eq!(
+        p.fall_gravity, heavy.fall_gravity,
+        "Heavy escreve as gravidades"
+    );
+    let depois = desenho(&sim, &s(), Some(bits), true).unwrap().apice();
+    assert!(
+        (depois[1] - antes[1]).abs() < 0.01,
+        "o topo fica: {antes:?} → {depois:?}"
+    );
+}

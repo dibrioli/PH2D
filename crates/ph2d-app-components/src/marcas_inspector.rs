@@ -1,8 +1,8 @@
 //! ⭐⭐ **O losango de cada campo do Inspector** (plano 35 §5): os `PropKind` de sempre e as famílias
 //! OBJETO, JUNTA e FISICA; estado e clique por [`ph2d_timeline::estado_do_grupo`] / `clique_no_grupo`.
 //!
-//! ⚠️ A swatch do Tint mostra o RGB (OBJETO) E o alfa, que é o `PropKind::Opacity` (`tint[3]`); o
-//! slider Opacity é a opacidade FINAL (`Sprite::opacity`), um campo OBJETO à parte.
+//! ⚠️ A swatch do Tint é o grupo OBJETO do tint inteiro (RGB e alfa); o slider Opacity é o
+//! `PropKind::Opacity` (`Sprite::opacity`, a opacidade FINAL) — o nome do canal é o do campo.
 //!
 //! ⚠️ A POSIÇÃO de um objecto numa trajectória é o canal `Position` (a K grava um `AddPathKey`) e a
 //! de um objecto livre são `TranslationX/Y`: o clique grava a do modo em que o objecto está, nunca
@@ -55,12 +55,9 @@ const CAMPOS: &[(NodeId, &[PropKind])] = &[
     (insp::INSP_TRANSFORM_SCALE_Y, ESCALA),
     (insp::INSP_TRANSFORM_SKEW_X, &[ob(o::SKEW_X)]),
     (insp::INSP_TRANSFORM_SKEW_Y, &[ob(o::SKEW_X)]),
-    (insp::INSP_SPRITE_OPACITY, &[ob(o::OPACIDADE)]),
-    (insp::INSP_SPRITE_OPACITY_CHIP, &[ob(o::OPACIDADE)]),
-    (
-        insp::INSP_SPRITE_TINT_SWATCH,
-        &[ob(o::TINTA), PropKind::Opacity],
-    ),
+    (insp::INSP_SPRITE_OPACITY, &[PropKind::Opacity]),
+    (insp::INSP_SPRITE_OPACITY_CHIP, &[PropKind::Opacity]),
+    (insp::INSP_SPRITE_TINT_SWATCH, &[ob(o::TINTA)]),
     (insp::INSP_SPRITE_SELF_TINT_SWATCH, &[ob(o::AUTO_TINTA)]),
     (insp::INSP_SPRITE_CORNER_TL, &[ob(o::CANTOS)]),
     (insp::INSP_SPRITE_CORNER_TR, &[ob(o::CANTOS)]),

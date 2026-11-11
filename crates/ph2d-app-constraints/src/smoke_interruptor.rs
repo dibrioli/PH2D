@@ -1,7 +1,7 @@
 //! Cena 13 — **Interruptor e lâmpada** (F41, o Follow Value sobre uma CAIXA depois do `TimelineDoc` v25:
 //! `0` = desmarcada, `1` = marcada). O SWITCH tem a caixa «Enable 9-slice» animada (desmarcada no 0,
 //! marcada no 30, desmarcada no 60, em degrau) e sobe enquanto ela está marcada. A LAMP segue as duas:
-//! a opacidade lê a caixa do Switch (Follow Value caixa → opacidade, 0,2 … 1) e a caixa dela própria lê a
+//! o alfa do Tint lê a caixa do Switch (Follow Value caixa → Tint A, 0,2 … 1) e a caixa dela própria lê a
 //! altura do Switch (Follow Value altura → caixa). Abre com a Lamp escolhida.
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -12,7 +12,7 @@ use ph2d_anim::RationalTime;
 use ph2d_constraints::{Canal, Kind, Prop, Valor};
 use ph2d_core::Playhead;
 use ph2d_ecs::canal::familia::OBJETO;
-use ph2d_ecs::canal_objeto::OPACIDADE;
+use ph2d_ecs::canal_objeto::TINTA;
 use ph2d_ecs::slice_nine::SliceNine;
 use ph2d_ecs::{FieldKey, Name, SimWorld};
 use ph2d_editor_core::panel::PanelHostInternal;
@@ -59,7 +59,7 @@ pub(crate) fn interruptor(world: &mut World) -> Entity {
     let luz = Valor {
         fonte: prop(caixa()),
         de_faixa: [0.0, 1.0],
-        destino: Prop::Campo([OBJETO, OPACIDADE, 0, 0]),
+        destino: Prop::Campo([OBJETO, TINTA + 3, 0, 0]),
         para_faixa: LUZ,
         mola: None,
         ..Valor::default()

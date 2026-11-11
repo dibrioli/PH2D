@@ -22,8 +22,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum Canal {
-    /// **A opacidade** — o `tint[3]` do `Sprite`, o modulate HERDADO (ADR-0071), que cascateia
-    /// para os descendentes.
+    /// **A opacidade** — o `Sprite::opacity`, a opacidade FINAL (o slider «Opacity» do Inspector).
     ///
     /// ⭐ É o canal que a timeline também escreve (`PropKind::Opacity`), e é de propósito: o
     /// ledger já tem a entrada dele, e um fade autorado e um fade por componente escrevem o

@@ -65,7 +65,7 @@ impl Driven {
             }
             Driver::SolverPose => Some(Self::SolverPose(*sim.world().get::<Transform>(entity)?)),
             Driver::SpriteAlpha => Some(Self::SpriteAlpha(
-                sim.world().get::<Sprite>(entity)?.tint[3],
+                sim.world().get::<Sprite>(entity)?.opacity,
             )),
             Driver::MorphT => Some(Self::MorphT(
                 sim.world().get::<ph2d_ecs::VecMorph>(entity)?.t,
@@ -97,8 +97,7 @@ impl Driven {
                 let w = sim.world();
                 let s = w.get::<Sprite>(entity)?;
                 Some(Self::SpriteCor {
-                    tint: [s.tint[0], s.tint[1], s.tint[2]],
-                    opacidade: s.opacity,
+                    tint: s.tint,
                     cantos: w.get::<ph2d_ecs::SpriteCornerTint>(entity).map(|c| c.0),
                     emissao: w.get::<ph2d_ecs::SpriteEmissive>(entity).map(|e| e.0),
                 })
@@ -171,9 +170,9 @@ impl Driven {
             }
             Self::SpriteAlpha(a) => {
                 if let Some(mut s) = sim.world_mut().get_mut::<Sprite>(entity)
-                    && s.tint[3] != a
+                    && s.opacity != a
                 {
-                    s.tint[3] = a;
+                    s.opacity = a;
                 }
             }
             Self::TweenPose(pose) => {
@@ -193,15 +192,13 @@ impl Driven {
             }
             Self::SpriteCor {
                 tint,
-                opacidade,
                 cantos,
                 emissao,
             } => {
                 if let Some(mut s) = sim.world_mut().get_mut::<Sprite>(entity)
-                    && (s.tint[..3] != tint || s.opacity != opacidade)
+                    && s.tint != tint
                 {
-                    s.tint[..3].copy_from_slice(&tint);
-                    s.opacity = opacidade;
+                    s.tint = tint;
                 }
                 let w = sim.world_mut();
                 if w.get_entity(entity).is_err() {

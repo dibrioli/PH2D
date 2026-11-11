@@ -30,7 +30,7 @@
 //! corresse por último ganhava. *Duas granularidades sobre o mesmo componente é uma divergência à
 //! espera de acontecer.*
 //!
-//! ⭐ **A cura foi olhar o que a curva de facto escreve:** `sprite.tint[3] = f` — **um** número. Os
+//! ⭐ **A cura foi olhar o que a curva de facto escreve:** `sprite.opacity = f` — **um** número. Os
 //! outros dois não-`Transform` são iguais (`morph.t = f`, e um campo do joint). ⇒ o ledger ganhou
 //! factos **tão estreitos quanto a escrita** (`SpriteAlpha`, `MorphT`), e a colisão dissolveu-se em
 //! vez de ser contornada. *Quando duas granularidades colidem, a pergunta é qual delas é grosseira
@@ -132,7 +132,7 @@ pub fn state_of_bindings(world: &World, doc: &TimelineDoc) -> Vec<BoundBefore> {
             Some(BoundBefore {
                 entity,
                 pose: world.get::<Transform>(entity).copied(),
-                alpha: world.get::<ph2d_render::Sprite>(entity).map(|s| s.tint[3]),
+                alpha: world.get::<ph2d_render::Sprite>(entity).map(|s| s.opacity),
                 morph_t: world.get::<ph2d_ecs::VecMorph>(entity).map(|m| m.t),
                 joint: world.get::<ph2d_physics_ecs::PhysicsJoint>(entity).copied(),
                 bone: world.get::<ph2d_skeleton_ecs::Bone>(entity).copied(),
@@ -176,7 +176,7 @@ pub fn declare_timeline_writes(world: &World, before: &[BoundBefore], drive: &mu
         }
         if let (Some(was), Some(now)) = (
             b.alpha,
-            world.get::<ph2d_render::Sprite>(e).map(|s| s.tint[3]),
+            world.get::<ph2d_render::Sprite>(e).map(|s| s.opacity),
         ) && was != now
         {
             drive.driven(e, Driven::SpriteAlpha(was), Driven::SpriteAlpha(now));

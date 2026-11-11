@@ -8,7 +8,7 @@
 //!
 //! | o canal escreve em | o driver | porquê |
 //! |---|---|---|
-//! | `Sprite::tint[3]` | **`SpriteAlpha`**, que já existia | é o **mesmo facto vindo de outro motor** — a curva de `Opacity` da timeline escreve ali. Um driver novo sobre o mesmo campo seria duas entradas para um valor, e o `authored` de uma apagaria o da outra |
+//! | `Sprite::opacity` | **`SpriteAlpha`**, que já existia | é o **mesmo facto vindo de outro motor** — a curva de `Opacity` da timeline escreve ali. Um driver novo sobre o mesmo campo seria duas entradas para um valor, e o `authored` de uma apagaria o da outra |
 //! | `Sprite::self_tint` + `tint_fill` | `TweenTint` | ninguém os conduzia; e eles são **um** facto (*«a silhueta está acesa nesta cor»*) |
 //! | `Transform` | `TweenPose` | a pose tem outros donos (o solver, a timeline, um script, o palco), e a chave do ledger é `(entidade, driver)` |
 //!
@@ -68,7 +68,7 @@ pub fn drive_tweens(
                 e,
                 Antes {
                     pose,
-                    alfa: sprite.map(|s| s.tint[3]),
+                    alfa: sprite.map(|s| s.opacity),
                     tinta: sprite.map(|s| (s.self_tint, s.tint_fill)),
                 },
             )
@@ -136,8 +136,8 @@ fn escreve(sim: &mut SimWorld, p: &ph2d_ecs::Escrita) -> bool {
             let Some(mut s) = sim.world_mut().get_mut::<Sprite>(p.entity) else {
                 return false;
             };
-            if s.tint[3] != v[0] {
-                s.tint[3] = v[0];
+            if s.opacity != v[0] {
+                s.opacity = v[0];
             }
         }
         Canal::Tint | Canal::Silhueta => {
@@ -193,7 +193,7 @@ fn declara(sim: &SimWorld, drive: &mut PreviewDrive, e: Entity, era: Antes) {
             e,
             Driver::SpriteAlpha,
             Driven::SpriteAlpha(antes),
-            Driven::SpriteAlpha(s.tint[3]),
+            Driven::SpriteAlpha(s.opacity),
         );
     }
     if let Some((self_tint, fill)) = era.tinta {

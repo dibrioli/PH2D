@@ -8,7 +8,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // O objecto no Inspector (`ph2d_ecs::canal_objeto`).
         "canal.objeto.skew" => "Skew",
         "canal.objeto.emissao" => "Emissive",
-        "canal.objeto.opacidade" => "Sprite Opacity",
         "canal.objeto.tinta" => "Tint",
         "canal.objeto.auto_tinta" => "Self Tint",
         "canal.objeto.cantos" => "Corner Tint",

@@ -163,7 +163,7 @@ pub(crate) fn write_prop(
         && let AnimValue::Float(f) = v
         && let Some(mut sprite) = world.get_mut::<ph2d_render::Sprite>(entity)
     {
-        sprite.tint[3] = f.clamp(0.0, 1.0);
+        sprite.opacity = f.clamp(0.0, 1.0);
     }
     #[cfg(not(feature = "render"))]
     let _ = (world, entity, prop);
@@ -313,7 +313,7 @@ pub(crate) fn read_prop_kind(world: &World, entity: Entity, prop: PropKind) -> O
     if prop == PropKind::Opacity {
         return world
             .get::<ph2d_render::Sprite>(entity)
-            .map(|sprite| sprite.tint[3]);
+            .map(|sprite| sprite.opacity);
     }
     let _ = (world, entity);
     None

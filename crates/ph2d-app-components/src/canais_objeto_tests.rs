@@ -22,8 +22,8 @@ fn cada_campo_le_o_que_escreveu() {
     let todos = campos(sim.world(), e);
     assert_eq!(
         todos.len(),
-        2 + 3 + 3 + 4 + 16,
-        "skew, emissão/opacidade/silhueta, cores"
+        2 + 2 + 4 + 4 + 16,
+        "skew, emissão/silhueta, cores"
     );
     for kk in todos {
         let alvo = if kk.info().is_some_and(|i| i.discreto()) {
@@ -38,9 +38,9 @@ fn cada_campo_le_o_que_escreveu() {
     }
     let s = sim.world().get::<Sprite>(e).unwrap();
     assert_eq!(
-        s.tint,
-        [0.25, 0.25, 0.25, 1.0],
-        "o alfa do tint é do `Opacity`"
+        (s.tint, s.opacity),
+        ([0.25; 4], 1.0),
+        "o alfa do tint é do Tint; a opacidade final é do `Opacity`"
     );
     assert!(s.tint_fill);
     let t = sim.world().get::<Transform>(e).unwrap();
@@ -57,8 +57,9 @@ fn a_escrita_prende_ao_dominio() {
     assert_eq!(ler(w, e, k(o::SKEW_X, 0)), Some(Transform::SKEW_LIMIT));
     escrever(w, e, k(o::TINTA, 0), 3.0);
     assert_eq!(ler(w, e, k(o::TINTA, 0)), Some(1.0));
-    escrever(w, e, k(o::OPACIDADE, 0), -1.0);
-    assert_eq!(ler(w, e, k(o::OPACIDADE, 0)), Some(0.0));
+    escrever(w, e, k(o::TINTA + 3, 0), -1.0);
+    assert_eq!(ler(w, e, k(o::TINTA + 3, 0)), Some(0.0));
+    assert_eq!(ler(w, e, k(11, 0)), None, "a opacidade final é o `PropKind::Opacity`");
     escrever(w, e, k(o::EMISSAO, 0), 1.0e9);
     assert_eq!(ler(w, e, k(o::EMISSAO, 0)), Some(ph2d_ecs::EMISSIVE_MAX));
     escrever(w, e, k(o::SILHUETA, 0), 0.4);
@@ -128,7 +129,7 @@ fn a_curva_chega_ao_componente_e_nao_ao_documento() {
     let Some(Driven::SpriteCor { tint, emissao, .. }) = drive.authored(b, Driver::SpriteCor) else {
         panic!("a cor não foi declarada à pré-visualização");
     };
-    assert_eq!((tint, emissao), ([1.0, 1.0, 1.0], None));
+    assert_eq!((tint, emissao), ([1.0, 1.0, 1.0, 1.0], None));
     // O eco: o documento ficou o que a curva mandou; a publicação lê-o de volta.
     publicar(&mut sim, &[b]);
     let l = sim.world().resource::<CanaisLidos>();

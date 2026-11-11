@@ -45,7 +45,7 @@ fn um_fade_chega_a_alfa_do_sprite() {
     anda(&mut sim, e, 500_000);
     let mut drive = PreviewDrive::default();
     assert_eq!(drive_tweens(&mut sim, &mut drive, &[]), 1);
-    let a = sim.world().get::<Sprite>(e).unwrap().tint[3];
+    let a = sim.world().get::<Sprite>(e).unwrap().opacity;
     assert!((a - 0.5).abs() < 1e-6, "a alfa leu {a}");
 }
 
@@ -61,7 +61,7 @@ fn o_fade_nao_entra_no_undo() {
     let mut drive = PreviewDrive::default();
     drive_tweens(&mut sim, &mut drive, &[]);
     assert!(
-        (sim.world().get::<Sprite>(e).unwrap().tint[3] - 0.5).abs() < 1e-6,
+        (sim.world().get::<Sprite>(e).unwrap().opacity - 0.5).abs() < 1e-6,
         "controlo: o valor VIVO tem de ter mudado"
     );
     assert!(

@@ -11,7 +11,7 @@ use ph2d_ecs::canal_constraint::{
     CANAIS, DE, DE_MAX, DE_MIN, DURACAO, EXTRAPOLA, MISTURA, MOLA_LIGADA, PARA, PARA_MAX, PARA_MIN,
     RESSALTO,
 };
-use ph2d_ecs::canal_objeto::OPACIDADE;
+use ph2d_ecs::canal_objeto::TINTA;
 use ph2d_ecs::{CanaisLidos, FieldKey, SimWorld, StableId, Transform};
 use ph2d_editor_core::constraint_edits::{ConstraintFieldEdit as E, Peca, PropriedadeDoValor as P};
 
@@ -19,7 +19,7 @@ use ph2d_editor_core::constraint_edits::{ConstraintFieldEdit as E, Peca, Proprie
 const VALOR: u8 = 20;
 
 fn opacidade() -> FieldKey {
-    FieldKey::new(OBJETO, OPACIDADE, 0, 0)
+    FieldKey::new(OBJETO, TINTA + 3, 0, 0)
 }
 
 /// O alvo (id 1) publica a opacidade; o dono (id 2) tem um Follow Value que segue o alvo.

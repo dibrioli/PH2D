@@ -73,8 +73,8 @@ fn o_catalogo_nao_publica_o_que_o_objeto_ja_e() {
     assert_eq!(da_sprite, 7, "{publicados:?}");
 }
 
-/// Os donos `PropKind` existem e o Auto Key varre-os; o alfa do tint é o `PropKind::Opacity`
-/// (`Sprite::tint[3]`, o mesmo número que o catálogo lê). Declarativo para a junta: o leitor dos
+/// Os donos `PropKind` existem e o Auto Key varre-os; a opacidade final é o `PropKind::Opacity`
+/// (`Sprite::opacity`, o mesmo número que o catálogo lê). Declarativo para a junta: o leitor dos
 /// quatro `PropKind` dela mora na `ph2d-app-physics`.
 #[test]
 fn os_donos_prop_kind_sao_canais_do_auto_key() {
@@ -85,10 +85,10 @@ fn os_donos_prop_kind_sao_canais_do_auto_key() {
         assert!(PropKind::AUTOKEYED.contains(&pk), "{c}.{fid}.{x} ↔ {pk:?}");
     }
     let (mut sim, e) = cena();
-    sim.world_mut().get_mut::<Sprite>(e).unwrap().tint[3] = 0.375;
-    let alfa = cc::ler_pelo_catalogo(&reg, sim.world(), e, "ph2d::render::Sprite", 1, 3);
+    sim.world_mut().get_mut::<Sprite>(e).unwrap().opacity = 0.375;
+    let alfa = cc::ler_pelo_catalogo(&reg, sim.world(), e, "ph2d::render::Sprite", 7, 0);
     assert_eq!(alfa, Some(0.375));
-    let dono = cc::dono("ph2d::render::Sprite", 1, 3);
+    let dono = cc::dono("ph2d::render::Sprite", 7, 0);
     assert_eq!(dono, Some(Dono::Prop(PropKind::Opacity.target().get())));
 }
 
@@ -100,10 +100,6 @@ fn o_rotulo_do_catalogo_aponta_o_canal_da_tabela() {
             "component.field.sprite.8",
             vec![PropKind::Field(FieldKey::new(OBJETO, o::SILHUETA, 0, 0))],
         ),
-        (
-            "component.field.sprite.7",
-            vec![PropKind::Field(FieldKey::new(OBJETO, o::OPACIDADE, 0, 0))],
-        ),
     ] {
         let ks: Vec<PropKind> = (cc::chaves_do_rotulo(rotulo).iter())
             .map(|&k| PropKind::Field(k))
@@ -113,9 +109,11 @@ fn o_rotulo_do_catalogo_aponta_o_canal_da_tabela() {
     let tinta: Vec<FieldKey> = cc::chaves_do_rotulo("component.field.sprite.1").to_vec();
     assert_eq!(
         tinta,
-        (0..3)
+        (0..4)
             .map(|c| FieldKey::new(OBJETO, o::TINTA + c, 0, 0))
             .collect::<Vec<_>>()
     );
-    assert_eq!(cc::props_do_rotulo("component.field.sprite.1"), &[5]);
+    assert!(cc::props_do_rotulo("component.field.sprite.1").is_empty());
+    assert!(cc::chaves_do_rotulo("component.field.sprite.7").is_empty());
+    assert_eq!(cc::props_do_rotulo("component.field.sprite.7"), &[5]);
 }

@@ -13,7 +13,6 @@ fn o_vocabulario_do_objeto_nao_renumera() {
         (SKEW_X, 1),
         (SKEW_Y, 2),
         (EMISSAO, 10),
-        (OPACIDADE, 11),
         (TINTA, 20),
         (AUTO_TINTA, 30),
         (CANTOS, 40),
@@ -36,13 +35,10 @@ fn cada_campo_do_objeto_diz_o_que_e() {
         k(SKEW_X, 0).mesmo_grupo(k(SKEW_Y, 0)),
         "X e Y são uma linha"
     );
-    for off in 0..3 {
+    for off in 0..4 {
         assert!(k(TINTA, 0).mesmo_grupo(k(TINTA + off, 0)));
     }
-    assert!(
-        k(TINTA + 3, 0).info().is_none(),
-        "o alfa do tint é o `Opacity`"
-    );
+    assert!(k(11, 0).info().is_none(), "a opacidade final é o `Opacity`");
     for off in 0..4 {
         assert!(k(AUTO_TINTA, 0).mesmo_grupo(k(AUTO_TINTA + off, 0)));
         for canto in 0..N_CANTOS {
@@ -53,7 +49,6 @@ fn cada_campo_do_objeto_diz_o_que_e() {
         }
     }
     assert!(k(SILHUETA, 0).info().is_some_and(|i| i.discreto()));
-    assert!(!k(EMISSAO, 0).mesmo_grupo(k(OPACIDADE, 0)));
     assert!(!k(TINTA, 0).mesmo_grupo(k(AUTO_TINTA, 0)));
     assert_eq!(k(TINTA + 1, 0).membro(), Some("canal.m.g"));
     assert_eq!(k(SKEW_Y, 0).membro(), Some("canal.m.y"));

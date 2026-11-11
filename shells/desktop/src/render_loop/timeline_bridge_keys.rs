@@ -59,7 +59,7 @@ pub(crate) fn sample_prop_value<'a>(
         PropKind::ScaleX => Float(xf()?.scale.x),
         PropKind::ScaleY => Float(xf()?.scale.y),
         // ⭐ **A opacidade tem DOIS substratos**, e a entidade é um ou o outro, nunca os dois: uma
-        // sprite guarda-a no `tint[3]`; um caminho vetorial não tem campo nenhum para ela e a
+        // sprite guarda-a no `opacity`; um caminho vetorial não tem campo nenhum para ela e a
         // recebe pela projecção do quadro (`ph2d_ecs::VecDrivenStyle` → `BoundStyle::alpha`).
         //
         // ⚠️ **Num vetor ainda não conduzido a resposta é a opacidade GRAVADA**, nunca `None` nem
@@ -75,7 +75,7 @@ pub(crate) fn sample_prop_value<'a>(
                 })
                 .unwrap_or(1.0),
         ),
-        PropKind::Opacity => Float(world.get::<ph2d_render::Sprite>(e)?.tint[3]),
+        PropKind::Opacity => Float(world.get::<ph2d_render::Sprite>(e)?.opacity),
         // The morph `t`: unlike the clock below, this IS a scene value, so K captures it the same
         // way it captures a pose — the artist parks the slider where the shape looks right and
         // presses K. (No `VecMorph` on the entity ⇒ nothing to capture, and the `?` refuses.)

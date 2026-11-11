@@ -82,7 +82,7 @@ pub enum Driver {
     /// ⭐ O **PALCO** do *Edit Prefab*: enquanto a receita está aberta, a pose de mundo dela é da
     /// VISTA. Ver [`Driven::StagePose`].
     PrefabStage,
-    /// A **opacidade** que uma curva de `Opacity` escreve (`Sprite::tint[3]`).
+    /// A **opacidade** que uma curva de `Opacity` escreve (`Sprite::opacity`, a final).
     SpriteAlpha,
     /// O `t` de um `VecMorph` que uma curva de `Morph` escreve.
     MorphT,
@@ -137,15 +137,15 @@ pub enum Driver {
     /// está acesa nesta cor»* — e separá-los deixaria um `Rewind` a devolver a cor e a esquecer o
     /// interruptor, o que pinta o objecto como uma silhueta BRANCA em vez de o devolver à arte.
     ///
-    /// ⛔ **E NÃO há uma entrada para a OPACIDADE**, que é o achado desta wave: o `tint[3]` já tem
+    /// ⛔ **E NÃO há uma entrada para a OPACIDADE**, que é o achado desta wave: o `opacity` já tem
     /// dono — o [`Self::SpriteAlpha`], que a curva de `Opacity` da timeline escreve. Um driver novo
     /// sobre o **mesmo campo** seria duas entradas para um valor, e o `authored` de uma apagaria o
     /// da outra; usar o que existe é a leitura certa, porque é o **mesmo facto vindo de outro
     /// motor** — exactamente o que o doc daquele driver já declara para o solver e a timeline.
     TweenTint,
     /// ⭐⭐ **A cor da sprite que as curvas da família OBJETO escrevem** (`ph2d_ecs::canal_objeto`):
-    /// o RGB do `tint`, a opacidade final, o degradê dos cantos e a emissão. ⚠️ Os campos são
-    /// DISJUNTOS dos outros drivers da sprite: o `tint[3]` é do [`Self::SpriteAlpha`] e o
+    /// o `tint` inteiro (alfa incluído), o degradê dos cantos e a emissão. ⚠️ Os campos são
+    /// DISJUNTOS dos outros drivers da sprite: o `opacity` é do [`Self::SpriteAlpha`] e o
     /// `self_tint`/`tint_fill` do [`Self::TweenTint`] (a curva usa-o — o mesmo facto, outro motor).
     SpriteCor,
     /// ⭐ **O lado B de uma junta preso ao MUNDO** que um canal JUNTA escreve — a presença do
@@ -194,7 +194,7 @@ pub enum Driven {
     /// ⚠️ **Um `f32`, e não o `Sprite` inteiro.** A §11 já conduz aquele componente pelo `frame`,
     /// e duas granularidades sobre o mesmo componente escreveriam por cima uma da outra — a que
     /// corresse por último ganhava. O que a curva de `Opacity` escreve é **um** número
-    /// (`tint[3]`), então é um número que se guarda.
+    /// (`Sprite::opacity`), então é um número que se guarda.
     SpriteAlpha(f32),
     /// O `t` de um `VecMorph` — também **um** número, pela mesma razão.
     MorphT(f32),
@@ -238,10 +238,8 @@ pub enum Driven {
     /// componentes opcionais vão como `Option`: repor um autorado AUSENTE é remover o componente
     /// (ausência = identidade, e o quadro volta byte-idêntico).
     SpriteCor {
-        /// `Sprite::tint` r, g, b (o alfa é o [`Driven::SpriteAlpha`]).
-        tint: [f32; 3],
-        /// `Sprite::opacity`.
-        opacidade: f32,
+        /// `Sprite::tint` r, g, b, a (a opacidade final é o [`Driven::SpriteAlpha`]).
+        tint: [f32; 4],
         /// `SpriteCornerTint`.
         cantos: Option<[[f32; 4]; 4]>,
         /// `SpriteEmissive`.

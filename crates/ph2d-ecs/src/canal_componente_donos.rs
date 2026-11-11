@@ -38,7 +38,7 @@ const fn ju(campo: u16) -> Dono {
     Dono::Canal(FieldKey::new(JUNTA, campo, 0, 0))
 }
 
-/// `PropKind::Opacity` (o alfa do `Sprite::tint`) e os quatro números da junta.
+/// `PropKind::Opacity` (a opacidade final, `Sprite::opacity`) e os quatro números da junta.
 pub const PROP_OPACIDADE: u64 = 5;
 pub const PROP_MOTOR_ALVO: u64 = 9;
 pub const PROP_MOTOR_TAXA: u64 = 10;
@@ -58,12 +58,12 @@ pub const DONOS: &[(&str, u16, u16, Dono)] = &[
     (SPRITE, 1, 0, ob(o::TINTA, 0)),
     (SPRITE, 1, 1, ob(o::TINTA + 1, 0)),
     (SPRITE, 1, 2, ob(o::TINTA + 2, 0)),
-    (SPRITE, 1, 3, Dono::Prop(PROP_OPACIDADE)),
+    (SPRITE, 1, 3, ob(o::TINTA + 3, 0)),
     (SPRITE, 6, 0, ob(o::AUTO_TINTA, 0)),
     (SPRITE, 6, 1, ob(o::AUTO_TINTA + 1, 0)),
     (SPRITE, 6, 2, ob(o::AUTO_TINTA + 2, 0)),
     (SPRITE, 6, 3, ob(o::AUTO_TINTA + 3, 0)),
-    (SPRITE, 7, 0, ob(o::OPACIDADE, 0)),
+    (SPRITE, 7, 0, Dono::Prop(PROP_OPACIDADE)),
     (SPRITE, 8, 0, ob(o::SILHUETA, 0)),
     ("ph2d::ecs::SpriteEmissive", 1, 0, ob(o::EMISSAO, 0)),
     // Os quatro cantos: o campo `n` é o canto `j = n - 1`.

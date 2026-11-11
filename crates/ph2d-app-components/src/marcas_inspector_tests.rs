@@ -160,7 +160,6 @@ fn cada_campo_novo_mostra_o_seu_grupo() {
         (insp::INSP_TRANSFORM_SKEW_X, obj(o::SKEW_Y, 0)),
         (insp::INSP_TRANSFORM_SKEW_Y, obj(o::SKEW_X, 0)),
         (insp::INSP_SPRITE_EMISSIVE_CHIP, obj(o::EMISSAO, 0)),
-        (insp::INSP_SPRITE_OPACITY, obj(o::OPACIDADE, 0)),
         (insp::INSP_SPRITE_TINT_SWATCH, obj(o::TINTA + 2, 0)),
         (
             insp::INSP_SPRITE_SELF_TINT_SWATCH,
@@ -199,11 +198,11 @@ fn cada_campo_novo_mostra_o_seu_grupo() {
         assert!(grupo(id).is_some());
     }
     assert_eq!(
-        canal_do_campo(insp::INSP_SPRITE_TINT_SWATCH)[1],
-        PropKind::Opacity,
-        "o alfa da swatch é o `tint[3]`"
+        &*canal_do_campo(insp::INSP_SPRITE_OPACITY),
+        &[PropKind::Opacity],
+        "o slider Opacity é a opacidade final"
     );
-    assert!(!canal_do_campo(insp::INSP_SPRITE_OPACITY).contains(&PropKind::Opacity));
+    assert!(!canal_do_campo(insp::INSP_SPRITE_TINT_SWATCH).contains(&PropKind::Opacity));
 }
 
 /// ⭐ O clique num grupo de família grava o grupo INTEIRO que ela publicou (os 16 campos dos
@@ -245,7 +244,7 @@ fn o_clique_num_grupo_de_familia_grava_o_que_ela_publicou() {
     assert_eq!(gravados(&i), vec![PropKind::Field(jun(j::RIGIDEZ))]);
 }
 
-/// A swatch do Tint grava o RGB publicado E o alfa (`Opacity`) — a cor inteira.
+/// A swatch do Tint grava o grupo do tint publicado, alfa incluído — e nunca o `Opacity`.
 #[test]
 fn a_swatch_do_tint_grava_a_cor_e_o_alfa() {
     let d = TimelineDoc::new();
@@ -254,13 +253,14 @@ fn a_swatch_do_tint_grava_a_cor_e_o_alfa() {
         &[insp::INSP_SPRITE_TINT_SWATCH],
         &[E],
         em(0.5),
-        |_| (0..3).map(|c| obj(o::TINTA + c, 0)).collect(),
+        |_| (0..4).map(|c| obj(o::TINTA + c, 0)).collect(),
         na_curva,
         add,
     );
     let g = gravados(&i);
     assert_eq!(g.len(), 4, "{g:?}");
-    assert!(g.contains(&PropKind::Opacity));
+    assert!(g.contains(&PropKind::Field(obj(o::TINTA + 3, 0))));
+    assert!(!g.contains(&PropKind::Opacity));
 }
 
 /// ⭐ **A tabela id → grupo da §11 Physics Body**: todo campo do vocabulário FISICA tem um controlo

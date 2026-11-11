@@ -416,4 +416,11 @@
 /// do motor, o padrão da Unity; o da folha é o padrão) e `ph2d::pixel::SegueCelula` (a filha que segue a célula;
 /// `shape`/`offset` do `Collider` derivados, como o `SegueSlice`). SEM leitura dos anteriores (§0.11). Gates:
 /// `ph2d-pixel-cena inspector_abre::`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 231;
+///
+/// # `231 → 232` — **«Opacity» numa Sprite é o `Sprite::opacity`** (`line/TimelinePrincipal`, doc 17 onda 2, 2026-11-10)
+///
+/// O sentido gravado muda: a curva `PropKind::Opacity` de uma sprite conduz `Sprite::opacity` (era o `tint[3]`); o
+/// canal OBJETO `11` sai (não se reusa) e o grupo OBJETO do tint leva o alfa (`TINTA + 3`). SEM leitura dos
+/// anteriores (§0.11). Gates: `cada_campo_novo_mostra_o_seu_grupo`, `a_swatch_do_tint_grava_a_cor_e_o_alfa`, `cada_campo_le_o_que_escreveu`. Registos: `0`.
+/// ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 232;

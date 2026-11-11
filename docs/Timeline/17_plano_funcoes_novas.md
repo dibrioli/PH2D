@@ -67,3 +67,91 @@ Cura escolhida (a): numa Sprite «Opacity» conduz `Sprite::opacity`; o alfa do 
 8. `PROJECT_SCHEMA` sobe (`python3 scripts/schema-recount.py`); sem migração (§0.11).
 9. Portão novo: por tipo de objeto, o nome de cada canal na Timeline = o rótulo do campo do Inspector cujo escritor o grava
    (junta `the_channel_says_the_inspectors_word` com `escritores()`).
+
+## Onda 2 — desenho medido
+
+> Maquetes a 1300 px, escala 1, `.ph` isolado em chrome headless (método do [doc 16](16_onda3_containers_arrange.md)); rects por
+> `getBoundingClientRect`, estilos por `getComputedStyle`. Fotos: [B1](fotos/maquete_B1.png) · [B2](fotos/maquete_B2.png) ·
+> [B4](fotos/maquete_B4.png) · [C3](fotos/maquete_C3.png) · [C4](fotos/maquete_C4.png). Leitura de código, 10/11.
+
+### 5 — Keys | Curves (B1, B2)
+
+- **Maquete.** Segmentado `.seg.sm` na 1.ª fileira, à direita, antes do dono «Hero»: 100,4×25,6, raio 6, fundo
+  `oklch(.235 .028 267)`, folga 2; células 42,6 / 53,8 × 21,6, raio 4, texto 10,5 px; ligada = fundo branco 14 % + texto
+  `oklch(.916 .01 248)`, desligada = `oklch(.70 .02 255)`. Só na aba Keys. **Curves troca a ÁREA das faixas inteira**
+  (735×150; nomes ficam): curva da linha escolhida (Position Y) `#B79CFF` 2 px, eixo esquerdo nas unidades dela (96/0, mono
+  9,5 px `oklch(.56 .02 255)`); a outra visível (Position X) `#5FBFF2` 1,5 px tracejado 4/4 a 60 %, **normalizada 0–1 no eixo
+  direito** (1/0 em `#5FBFF2` a 80 %); Scale Y (sem olho) não se desenha. Chaves 9 px a 45° (`#DCE2F5`; escolhida no acento, anel
+  1,5 escuro), alças: fio branco 45 % 1 px, ponta 7 px anel 1,5. Grelha 1 px branco 5 %. Legenda por baixo. Inset 14 px × 12 px.
+- **Existe.** Grafo POR TRILHA numa banda sob a linha aberta pelo twirl (`interact.rs:232` → `state.rs:373 toggle_expanded`;
+  `state.expanded`, `graph_h` 132 px, `graph.rs:28`); encaixe vertical por trilha (`graph_paint.rs:85`, `graph::band_for`);
+  velocidade `speed_view` (`state.rs:172`), ligada no menu de opções (`barra_menus.rs:191`, `event.rs:198`). Nenhum eixo direito,
+  nenhuma normalização entre trilhas, nenhum botão de vista na barra (`transport_cartoes.rs:313 dono_e_opcoes`).
+- **Desenho.** `TimelinePanelState.vista: {Keys, Curves}` — sessão, como `speed_view` (não grava, não desfaz). Ids
+  `TIMELINE_VIEW_KEYS`/`_CURVES`, i18n `panel.timeline.view.{keys,curves}` (chave própria, não a da aba). Pinta-se em
+  `dono_e_opcoes` (`f.a_direita`) com o mesmo `Seg` das abas, só com `tab == Keys`. Em Curves, `linhas` pinta os nomes e a área
+  vira UMA banda: `paint_curve/anchors/handles` reaproveitados sobre a trilha escolhida; as outras trilhas visíveis só curva,
+  normalizadas pelo próprio intervalo (eixo direito); `speed_view` vale também aqui. Editar só na escolhida (os mesmos
+  `CurveAnchor/CurveHandle`, `BeginEdit/EndEdit`). Mudar de aba, de clipe ou abrir a lista larga gestos e volta a Keys.
+  `PH2D_CARDS=0`: sem botão; o twirl continua.
+- **Provas.** Clicar o id pintado `_CURVES` → a área tem `CurveAnchor` e zero `Key`; arrastar a âncora pintada = 1 Ctrl+Z; o eixo
+  direito lê 0/1 e a curva secundária toca as duas bordas; fora de Keys o id não existe; clássico sem o id. **Custo M.**
+
+### 6 — Arrastar um chip para uma faixa (B4)
+
+- **Maquete.** O chip na mão fica `.dr`: fundo `#FF9F5A` 25 % + anel interno 1,5 `#FF9F5A` (92,9×20,3, pílula). Na faixa sob o
+  ponteiro, o FANTASMA da peça no lugar exato da largada: 244,3×22 (= 2 s × 122 px/s), topo da faixa + 4, fundo `#FF9F5A` 22 %,
+  borda 1 px TRACEJADA `#FF9F5A`, raio 5, ícone + nome 10,5/600. Começa em 4 s; a agulha não mexe. Dica «Drop: a new instance of
+  Run & jump, 2 s long». Largar = a 2.ª instância com a duração da fonte.
+- **Existe.** Chips = `Button` no hit index (`barra_clips.rs:146`). O «+» da faixa já manda `AddStrip{lane, source, t_start, t_end}`
+  (`event.rs:432–458`, intent `intent.rs:545`, aplica em `intent_apply_stack.rs:73`): fonte = container escolhido (duração
+  `containers[c].length`) ou `transport_sources::placed_clip`; vazio → `MIN_NEW_STRIP_S` 1 s (`event.rs:28`); tempo = AGULHA.
+  Arrasto de strip entre faixas e snap: `strip_drag.rs:217 lane_at`, `:262 snapped` (quadro com `frame_snap`). Arrasto entre painéis
+  `DragPayload`/`InFlightDrag` (`editor-core/interaction/drag_payload.rs:30,107`) — exige cola do shell; **não serve aqui**.
+- **Desenho.** Painel-local: o chip passa a registar `TimelineSurface{kind: TimelineHitKind::SourceChip{opcao}}` (variante nova,
+  append-only, `types.rs:302`) no lugar do `Button`; `Click` = o clique de hoje (escolhe), `Begin/Move` passado o limiar da casa
+  arma `state.chip_drag {fonte, len, cursor}`. Por quadro: faixa = a da altura do ponteiro (só sobre a área das faixas), `t =
+  snapped(ponteiro)`. `stack_lane_paint` pinta o fantasma; o chip pinta-se `.dr`. Up sobre faixa = o MESMO `AddStrip` do «+»
+  (função partilhada que devolve `(source, len)`); fora = nada; Esc cancela. Arrange e Containers (no Containers só fontes que não
+  criam ciclo — a recusa que `add_strip_to` já faz). `PH2D_CARDS=0`: sem chips, só o «+».
+- **Provas.** Arrastar do id pintado do chip até x da faixa 0 → `AddStrip{lane 0, Container(i), t, t+2}` e 1 Ctrl+Z; clique parado
+  continua a escolher; largar no vazio sob as faixas não cria nada; fantasma = rect que a peça nova pinta. **Custo M.**
+
+### 7 — Arrastar a chave no canvas (C3, C4)
+
+- **Maquete.** Pontos das chaves de posição no canvas: losango 9 px a 45° (`#DCE2F5`; o arrastado no acento) com anel 1,5 escuro;
+  no arrastado, anel 26 px 1,5 px acento + brilho 14 px a 60 %. Caminho NOVO branco 70 % 1,5 px traço 3/4; o de ANTES branco 25 %
+  1 px traço 2/4. Fantasmas (onion) 72,9 px a 32 %, saturação 0,4, sobem junto. Na fita a linha Position Y diz **104** (mono 10 px)
+  e a chave do quadro 12 fica escolhida (anel 3 px acento 55 %). Agulha parada.
+- **Existe.** Só o modo **Path** (ADR-0141) desenha trajetória: `motion_path_overlay.rs:163 active_path` exige `clip_path` (só Keys,
+  `keys_tab`); âncoras e alças agarráveis (`:444 motion_path_hit`, `:479 _curve_hit`; `MarkRole::Dot/Anchor` em `_marks.rs:74`). O
+  arrasto: press `despacho_metodos_modos_e_alcas.rs:201` (`history.begin`), move `:320` (`move_path_anchor`), Up
+  `despacho_clique_select.rs:64` (`commit_if_changed`) = 1 passo. **Eixos separados (`TranslationX/Y`, `prop.rs:22`) — o caso da
+  C4 — não desenham nada no canvas.** Onion: `ph2d_timeline_onion::collect_onion_ghosts` (`fase_canvas_overlays.rs:55`) relê o doc
+  a cada quadro (seguem a edição de graça). Escrever valor: `SetKeyValue` (`intent.rs:216`).
+- **Desenho.** Em `ph2d-app-motion` (shell não cresce): `key_points(keys_tab, doc, sel)` = um ponto por tempo com chave em
+  `TranslationX` OU `Y` do clipe ativo, posição = a MESMA amostragem do apply nesse tempo (não a pose ao vivo), só sem caminho
+  Path. Caminho tracejado amostrado (mesma porta). `MotionPathGrab::Key{t, x: Option<KeyId>, y: Option<KeyId>}` — reusa o
+  `path_drag` e o par `begin/commit_if_changed` do shell (1 passo); no Down guarda-se a polilinha de antes para o traço fraco.
+  Move: mundo→valor pela inversa do apply (pai e px/m incluídos) e escreve só os eixos que TÊM chave nesse quadro. A agulha e a
+  seleção do objeto ficam; a chave vira a escolhida na fita. Prioridade: ponto (7 px) > alça do gizmo. Modo Path inalterado.
+  `PH2D_CARDS=0`: igual (é do canvas).
+- **Provas.** Ponto pintado = posição do objeto com a agulha nesse quadro (para cada chave); arrastar o ponto do quadro 12 → só
+  a chave Y muda, `time` igual, 1 Ctrl+Z devolve; Arrange/Containers sem pontos (irmão de
+  `the_motion_path_is_offered_only_on_the_keys_tab`); objeto com pai cai onde o ponteiro largou. **Custo M–G.**
+
+### Perguntas para o dono (produto)
+
+1. **Curves:** a curva aberta por linha (twirl) continua em Keys, ou some agora que Curves existe?
+2. **Curves:** que curvas aparecem além da escolhida — todas as linhas com chaves, ou só as que você marcar com o olho (a maquete
+   mostra um olho «Shown» no topo)?
+3. **Arrastar a chave:** se nesse quadro só Y tem chave e você puxa o ponto para o lado, cria-se a chave de X (como o Auto Key)
+   ou o ponto só anda na vertical?
+4. **Arrastar o chip:** largar ABAIXO da última faixa cria uma faixa nova, ou só vale em faixa que já existe (como na maquete)?
+
+### Onda 2 — respostas de produto (10/11; o dono delegou: «escolha e siga»; ele pode vetar)
+
+1. A curva aberta por linha na aba Keys FICA; «Curves» acrescenta a vista da área inteira (nada some — regra do plano 15).
+2. No Curves aparecem todas as linhas com chaves; o olho de cada linha («Shown» da B2) esconde a que não se quer ver.
+3. Arrastar o ponto no canvas num quadro onde só Y tem chave CRIA a chave de X (como o Auto Key; Rive/Roblox: mexer grava).
+4. Largar um chip abaixo da última faixa cria uma faixa nova (Unity Timeline / Premiere).

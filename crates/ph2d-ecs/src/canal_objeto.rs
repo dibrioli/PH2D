@@ -1,6 +1,6 @@
 //! **O vocabulário de canais do OBJECTO** ([`crate::canal::familia::OBJETO`]) — o que o Inspector
 //! edita num objecto e não é um dos `PropKind` de sempre: o skew do `Transform` e a aparência da
-//! sprite (tint, self tint, cantos, silhueta, opacidade final, emissão). Quem lê e escreve é
+//! sprite (tint, self tint, cantos, silhueta, emissão). Quem lê e escreve é
 //! `ph2d-app-components` (`canais_objeto.rs`); aqui só mora o vocabulário
 //! ([plano 35 §3.0](../../../docs/UI_New_and_Simple/vetor_nova_ui/35_plano_F24_o_auto_key_grava_tudo.md)).
 //!
@@ -10,8 +10,9 @@
 //! O valor é o do DOCUMENTO: o skew em radianos; as cores em `0..=1` (o `Sprite` guarda `f32`);
 //! a emissão é o multiplicador (`0` = o componente ausente, que é o que o render lê).
 //!
-//! ⚠️ O alfa do `tint` é o `PropKind::Opacity` de sempre (`Sprite::tint[3]`): o grupo do tint tem
-//! só o RGB, e quem pinta a swatch junta-lhe a `Opacity` (`marcas_inspector`).
+//! ⚠️ A opacidade FINAL da sprite (`Sprite::opacity`, o slider «Opacity») é o `PropKind::Opacity` de
+//! sempre, não um campo daqui; o grupo do tint leva os QUATRO componentes, alfa incluído — o que a
+//! swatch do Tint grava (Timeline doc 17, onda 2). O `11` (a antiga opacidade) não se reusa.
 
 use crate::canal::{CampoInfo, Especie};
 
@@ -20,9 +21,7 @@ pub const SKEW_X: u16 = 1;
 pub const SKEW_Y: u16 = 2;
 /// `SpriteEmissive` (o multiplicador; `0` = ausente).
 pub const EMISSAO: u16 = 10;
-/// `Sprite::opacity` — a opacidade FINAL (o slider), ortogonal ao `tint[3]`.
-pub const OPACIDADE: u16 = 11;
-/// `Sprite::tint` r, g, b (`TINTA + 0..3`).
+/// `Sprite::tint` r, g, b, a (`TINTA + 0..4`).
 pub const TINTA: u16 = 20;
 /// `Sprite::self_tint` r, g, b, a (`AUTO_TINTA + 0..4`).
 pub const AUTO_TINTA: u16 = 30;
@@ -33,7 +32,7 @@ pub const CANTOS: u16 = 40;
 pub const SILHUETA: u16 = 50;
 
 /// O fim (exclusivo) de cada bloco de cor.
-pub const TINTA_FIM: u16 = TINTA + 3;
+pub const TINTA_FIM: u16 = TINTA + 4;
 pub const AUTO_TINTA_FIM: u16 = AUTO_TINTA + 4;
 pub const CANTOS_FIM: u16 = CANTOS + 4;
 
@@ -55,7 +54,6 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
     Some(match campo {
         SKEW_X | SKEW_Y => c("canal.objeto.skew", SKEW_X),
         EMISSAO => c("canal.objeto.emissao", campo),
-        OPACIDADE => c("canal.objeto.opacidade", campo),
         TINTA..TINTA_FIM => c("canal.objeto.tinta", TINTA),
         AUTO_TINTA..AUTO_TINTA_FIM => c("canal.objeto.auto_tinta", AUTO_TINTA),
         CANTOS..CANTOS_FIM => c("canal.objeto.cantos", CANTOS),

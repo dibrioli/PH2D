@@ -293,7 +293,7 @@ fn the_arm_scene_turns_the_hand_below_the_ik() {
 fn the_dial_scene_points_the_needle_by_the_float_and_lights_the_lamp() {
     use ph2d_app_constraints::smoke_mostrador::{BOIA, PONTEIRO_GRAUS};
     use ph2d_ecs::canal::familia::OBJETO;
-    use ph2d_ecs::canal_objeto::OPACIDADE;
+    use ph2d_ecs::canal_objeto::TINTA;
     use ph2d_ecs::{CanaisEscritos, CanaisLidos, FieldKey};
     let (mut sim, mut drive) = cena(9);
     let (boia, ponteiro, lampada) = (
@@ -301,7 +301,7 @@ fn the_dial_scene_points_the_needle_by_the_float_and_lights_the_lamp() {
         chamada(&mut sim, "Ponteiro"),
         chamada(&mut sim, "Lâmpada"),
     );
-    let k = FieldKey::new(OBJETO, OPACIDADE, 0, 0);
+    let k = FieldKey::new(OBJETO, TINTA + 3, 0, 0);
     sim.world_mut()
         .get_resource_or_insert_with(CanaisLidos::default)
         .publicar(lampada.to_bits(), k, 1.0);
@@ -709,7 +709,7 @@ fn the_switch_scene_lights_the_lamp_and_ticks_its_box_while_the_switch_box_is_ti
     use ph2d_app_constraints::smoke_interruptor::{LAMP, LUZ, SWITCH, caixa, chaves_do_switch};
     use ph2d_core::Playhead;
     use ph2d_ecs::canal::familia::OBJETO;
-    use ph2d_ecs::canal_objeto::OPACIDADE;
+    use ph2d_ecs::canal_objeto::TINTA;
     use ph2d_ecs::{CanaisEscritos, CanaisLidos, FieldKey};
     use ph2d_timeline::TimelineState;
     let (mut sim, _) = cena(13);
@@ -718,7 +718,7 @@ fn the_switch_scene_lights_the_lamp_and_ticks_its_box_while_the_switch_box_is_ti
     for i in chaves_do_switch(switch.to_bits(), tl.doc.fps_display) {
         ph2d_timeline::apply_intent(&mut tl, &mut ph, i);
     }
-    let (luz, k) = (FieldKey::new(OBJETO, OPACIDADE, 0, 0), caixa());
+    let (luz, k) = (FieldKey::new(OBJETO, TINTA + 3, 0, 0), caixa());
     for (quadro, ligado) in [(10, false), (45, true)] {
         let t = f64::from(quadro) / tl.doc.fps_display;
         let w = sim.world_mut();

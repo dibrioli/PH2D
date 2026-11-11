@@ -6,7 +6,7 @@
 //! `TweenTint` — o mesmo facto, outro motor).
 //!
 //! As escritas seguem a fronteira do commit do Inspector: o skew pelo `Transform::clamp_skew`, a
-//! opacidade e as cores presas a `0..=1` (o domínio do selector), a emissão pelo
+//! as cores presas a `0..=1` (o domínio do selector), a emissão pelo
 //! `SpriteEmissive::clamped` e **zero REMOVE o componente** (a ausência é o que o render lê como
 //! «não emite», byte-idêntico); os cantos ausentes são branco.
 
@@ -32,8 +32,8 @@ pub fn campos(w: &World, e: Entity) -> Vec<FieldKey> {
         out.extend([k(o::SKEW_X, 0), k(o::SKEW_Y, 0)]);
     }
     if w.get::<Sprite>(e).is_some() {
-        out.extend([k(o::EMISSAO, 0), k(o::OPACIDADE, 0), k(o::SILHUETA, 0)]);
-        out.extend((0..3).map(|c| k(o::TINTA + c, 0)));
+        out.extend([k(o::EMISSAO, 0), k(o::SILHUETA, 0)]);
+        out.extend((0..4).map(|c| k(o::TINTA + c, 0)));
         out.extend((0..4).map(|c| k(o::AUTO_TINTA + c, 0)));
         out.extend((0..o::N_CANTOS).flat_map(|j| (0..4).map(move |c| k(o::CANTOS + c, j))));
     }
@@ -66,7 +66,6 @@ pub fn ler(w: &World, e: Entity, kk: FieldKey) -> Option<f32> {
         o::CANTOS..o::CANTOS_FIM => canto(w, e).0.get(usize::from(kk.j)).map(|cor| cor[c]),
         _ if kk.j != 0 => None,
         o::EMISSAO => Some(w.get::<SpriteEmissive>(e).map_or(0.0, |em| em.clamped())),
-        o::OPACIDADE => Some(s.opacity),
         o::TINTA..o::TINTA_FIM => Some(s.tint[c]),
         o::AUTO_TINTA..o::AUTO_TINTA_FIM => Some(s.self_tint[c]),
         o::SILHUETA => Some(if s.tint_fill { 1.0 } else { 0.0 }),
@@ -140,7 +139,6 @@ pub fn escrever(w: &mut World, e: Entity, kk: FieldKey, v: f32) {
                 return;
             };
             let (alvo, novo) = match kk.campo {
-                o::OPACIDADE => (&mut s.opacity, cor(v)),
                 o::TINTA..o::TINTA_FIM => (&mut s.tint[c], cor(v)),
                 o::AUTO_TINTA..o::AUTO_TINTA_FIM => (&mut s.self_tint[c], cor(v)),
                 o::SILHUETA => {

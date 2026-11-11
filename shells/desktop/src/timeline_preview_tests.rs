@@ -162,7 +162,7 @@ fn a_dangling_binding_does_not_break_the_census() {
 /// de fora, e que uma animação de *fade* produz o tempo todo.
 ///
 /// ⚠️ **A colisão que o justificava DISSOLVEU-SE, e a cura foi olhar o que a curva escreve:**
-/// `sprite.tint[3] = f` é **um número**, não o `Sprite` inteiro. O facto do ledger passou a ser tão
+/// `sprite.opacity = f` é **um número**, não o `Sprite` inteiro. O facto do ledger passou a ser tão
 /// estreito quanto a escrita, e deixou de disputar o componente com o `frame` da §11. *Quando duas
 /// granularidades colidem, a pergunta é qual delas é grosseira demais para o que o motor faz.*
 ///
@@ -206,7 +206,7 @@ fn a_fading_opacity_is_not_an_edit_either() {
     }
     // CONTROLO POSITIVO: a opacidade DESCEU de facto.
     assert!(
-        sim.world().get::<ph2d_render::Sprite>(e).unwrap().tint[3] < 0.9,
+        sim.world().get::<ph2d_render::Sprite>(e).unwrap().opacity < 0.9,
         "a curva nao mexeu na opacidade — o gate acima nao mediu nada"
     );
 }
@@ -214,7 +214,7 @@ fn a_fading_opacity_is_not_an_edit_either() {
 /// **A OPACIDADE E O FRAME COEXISTEM na mesma sprite** — e é isto que a 1.ª versão não conseguia.
 ///
 /// ⚠️ Duas conduções sobre o **mesmo componente**, com granularidades diferentes: a §11 possui o
-/// `frame`, a timeline possui o `tint[3]`. Elas só coexistem porque **nenhuma das duas escreve o
+/// `frame`, a timeline possui o `opacity`. Elas só coexistem porque **nenhuma das duas escreve o
 /// `Sprite` inteiro** — se uma o fizesse, a substituição escreveria por cima da outra e a que
 /// corresse por último ganhava.
 ///
@@ -267,18 +267,18 @@ fn the_frame_and_the_alpha_are_driven_side_by_side() {
         g.frame = 2;
     }
     if let Some(mut s) = sim.world_mut().get_mut::<ph2d_render::Sprite>(e) {
-        s.tint[3] = 0.4;
+        s.opacity = 0.4;
     }
     let live = drive.substitute_authored(&mut sim);
     let doc_sprite = *sim.world().get::<ph2d_render::Sprite>(e).unwrap();
     let doc_grid = *sim.world().get::<ph2d_ecs::SpriteGrid>(e).unwrap();
     assert_eq!(doc_grid.frame, 0, "o documento guarda a celula autorada");
-    assert_eq!(doc_sprite.tint[3], 1.0, "…E a opacidade autorada, as DUAS");
+    assert_eq!(doc_sprite.opacity, 1.0, "…E a opacidade autorada, as DUAS");
     PreviewDrive::restore_live(&mut sim, &live);
     let back = *sim.world().get::<ph2d_render::Sprite>(e).unwrap();
     let back_grid = *sim.world().get::<ph2d_ecs::SpriteGrid>(e).unwrap();
     assert_eq!(
-        (back_grid.frame, back.tint[3]),
+        (back_grid.frame, back.opacity),
         (2, 0.4),
         "e o vivo volta inteiro"
     );
@@ -372,7 +372,7 @@ fn the_timeline_drivers_list_is_what_the_declaration_writes() {
             t.translation.x += 1.0;
         }
         if let Some(mut s) = em.get_mut::<ph2d_render::Sprite>() {
-            s.tint[3] = 0.5;
+            s.opacity = 0.5;
         }
         if let Some(mut m) = em.get_mut::<ph2d_ecs::VecMorph>() {
             m.t = 0.25; // ⚠️ o nascimento é `0.5` — um `0.5` aqui NÃO muda nada, e o facto não se declara

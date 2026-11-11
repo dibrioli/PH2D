@@ -99,3 +99,36 @@ Meça no app, com `PH2D_COMPOSITE_PAPEL=1`.
 6. **Cura de passe sobre a tela inteira:** faixas no pool que leem o campo UMA vez por píxel (moldura de 1 px), o passe antigo
    guardado como oráculo `#[cfg(test)]` e um gate ao bit (inteira e sub-região). Foi 1 776,5 → 153,9 ms (`sonda_luz_4k`).
 Aberto: a leitura incremental ([prompt 10f](../handoffs/PROMPT_CONTINUACAO_2026-11-10f_pen_up_incremental.md)).
+
+## 7. Missão 4K (10–11/11): técnicas que funcionaram
+
+Medidas a 4K na Radeon integrada (nunca a RTX), A×B no mesmo binário; o detalhe por item no [BACKLOG](../missao_4k/BACKLOG.md).
+
+| Técnica | Onde | Antes → depois |
+|---|---|---|
+| **Custar pela CAIXA, não pela tela**: cada passe recebe a região mudada (dabs do passo, união dos sujos) e o antigo fica como oráculo `#[cfg(test)]` | balde (B48), aguada pen-up (B16.2), enterro do Wet (B02.A3), premul/mips da prévia (B20a), planos Gaussiano/Nitidez (B15.5) | 11,3→3,2 ms · 48,5→1,95 ms · visitas 77 473→12 100 · planos 434→3 ms |
+| **Campo esparso por pedaços** (`CampoEsparso<T>`, 4096 células; tiles mudados no undo) | `Grid::aparencia` (B12b), `StoredPlane::changed_tiles` (B17b), RewetCache 64² (B16b) | Wet dab r30 897→26 MB · undo Impasto diagonal 265→32 MB · Rewet 201→3,1 MB |
+| **Pool do rayon com a mesma partição** (faixas de linhas, sem redução: o byte não depende do nº de fios) | compositor e ajustes (ADR-0201), Feather em janela deslizante (B40.A2), cópia do par_clone em blocos de 256 KiB (B17a) | 1 044 fios do SO → 0 · Feather r64 11 121→16,8 ms · cópia 7,72→1,67 ms |
+| **Pó/dente por ladrilho 256²** em vez da tela | `po_do_papel` (B49.1) | pen-down Pastel 4K 6,65→2,62 ms |
+| **Memória própria do dente** no `GraoCache` (sem reamostrar) | B26.A2 | 0,149→0,045 ms/dab |
+| **Silhueta base da ponta memorizada** | Flat Bristle 240 (B14c) | 7,11 M→1,89 M avaliações/dab (mas só −4,9 % no traço: a silhueta já não é a alavanca) |
+| **Uma cópia de tela a menos no Ctrl+Z** (journal com dono único) | B17b-cont/B17.4 | Digital undo 11,6→7,8 ms; Impasto 20,0→12,6 |
+| **Saltar a camada Normal com α≤0** quando o bit é o mesmo | `blend_window` (B19.11) | 4K vazias 38,1→19,2 ms |
+| **Recompor só o que o arrasto muda** (quadro reciclado no `CompositorCache`; a seleção só reescreve a máscara) | B19b, B16.7 | arrasto de ajuste 4K 1 149→134 ms; 8 recomposições→0 |
+| **Prévia inteira sob interruptor** (`PH2D_PREVIA_INTEIRA=1` volta ao antigo) | B20a-cont | quadro 4K 38,8→10,2 ms; toque/traço/Ctrl+Z 32–38→15–17 ms |
+| **A CPU compõe o papel desde o armar do Watercolor** (a troca GPU→CPU sai do quadro do toque) | B16c | toque 4K 186→32 ms |
+| **Quadro a pedido** (`quadro::Laco`) | B23 | janela oculta 97–100 %→44–46 % de CPU |
+
+## 8. ⛔ Recusas MEDIDAS da missão 4K (não reconstruir)
+
+| Proposta | Medição | Porquê |
+|---|---|---|
+| Faixa de 64 linhas na luz do Impasto (B15.1) | 2× mais lenta que 32 | a faixa de 32 fica |
+| Cache de afim/ECS por quadro na fila da caneta (B27.3) | mesh_uv 4,2 µs/evento (1 sprite), carimbo 2,7–4,4 ms | ≤ 1 % do evento |
+| Registo do dab no worker Wet (B12.1) | 2 rodadas A·B: fora do topo do perfil; `marca_dab` no pouso já existe | sem alvo |
+| `Publicado<T>` para o caso (e) do quadro a pedido (B23.4) | ≤ 0,3 ms < 1 ms | não paga a peça nova |
+| Ladrilho 512 do papel no Wet (B33.2) | o Wet do app usa o papel comum (`sample_tiled_rot_wrapped`) | o defeito não existe no produto |
+| Limiar de «célula mudou» na óptica do Wet (B14-cont2) | 85–88 % das células mudam ao bit | a margem não é a causa |
+| Tabela de `hash2` por composite (B16d) | ganho < 0,1 ms | não paga |
+| Rewet esparso SEM caminho híbrido (B16b) | memória 201→3,1 MB, mas traço 9,1–10,0→12,6–12,8 ms | só com caminho híbrido (aberto) |
+| Relógio de parede a load > 5 como gate (B10.4, B27.1) | sem forma comum entre rodadas | contar ciclos/instruções ou medir a load ≤ 5 |

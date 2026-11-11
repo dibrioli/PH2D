@@ -216,10 +216,11 @@
 | [0200](0200-o-carimbo-de-mistura-e-o-kernel-em-faixas-no-pool-do-rayon.md) | Accepted — desempenho pedido pelo dono (10/11, «muito mais lento que o aceitável…… | O carimbo de mistura e o kernel correm em faixas no pool do `rayon` |
 | [0201](0201-a-montagem-de-juntas-e-um-objeto-e-o-gabarito-e-dado-puro.md) | Accepted — produto do dono (12/11, versão B da crítica «Joint Editor»); … | A montagem de juntas é um objeto, e o gabarito é dado puro |
 | [0201](0201-o-compositor-cpu-e-os-kernels-espaciais-correm-no-pool-do-rayon.md) | Accepted — missão Painter 4K (dono 10/11, «todas as recomendações dos estudos»); … | O compositor da CPU e os kernels espaciais correm no pool do `rayon` |
+| [0202](0202-o-app-desenha-a-pedido-e-o-winit-vendorizado-diz-a-janela-oculta-no-wayland.md) | Accepted — missão Painter 4K (dono 10/11, «todas as recomendações dos estudos»); … | O app desenha a pedido (`quadro::Laco`) e o `winit` vendorizado diz a janela oculta no Wayland |
 
 ---
 
-**207 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**208 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

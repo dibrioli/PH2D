@@ -1118,6 +1118,48 @@ Conferidos sem defeito: JSON da meia/softness/tip_depth/fill, constantes do selo
 «×» da busca, remoções sem id órfão, Save as New/Default (clique→disco→vista; sem teste de cadeia inteira), miniatura = motor.
 Lacunas de teste baixas: Save as Default sem verificação da vista; Paint Mixing sem teste de troca de preset.
 
+## Bugs #86–#113 (CURADOS 10–11/11, missão Painter 4K) — perda de dados, pânicos, estado que vaza
+
+Índice só com o MECANISMO (o post-mortem está no commit e na linha do [BACKLOG](missao_4k/BACKLOG.md) com o id). Todos red-first
+(gate visto vermelho antes da cura). Os de desempenho puro não são defeitos: estão no [handoff da missão](handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-10_MISSAO_4K.md) §4.
+
+| # | Mecanismo (BACKLOG) | Commit | Gate |
+|---|---|---|---|
+| #86 | os mapas por camada não seguiam a pilha: apagar o grupo da activa misturava píxeis (B01) | `5651d764d4` | `apagar_o_grupo_da_activa_nao_mistura_pixels` · `a_activa_nunca_e_um_grupo` |
+| #87 | a troca do plano herdava a janela da forma; a camada com píxeis escrevia fora do passo (B01.5) | `59c452380e` `966e12940e` | `todo_setter_de_camada_e_de_ajuste_marca_sobe_a_revisao_e_cria_um_passo` |
+| #88 | o Up perdido (Alt+Tab, botão solto fora da janela) deixava o traço aberto e o Down seguinte apagava o passo anterior (B03) | `a5b636178c` | `um_down_sobre_traco_aberto_nao_apaga_o_passo_anterior` |
+| #89 | o dono do estilo da aguada era `u8`: a 256.ª pincelada repintava as antigas (B04.1) | `2f4d162120` | `ate_255_tracos_o_dono_u16_e_o_u8_antigo_dao_o_mesmo_bit` |
+| #90 | ajustes e 12 setters da Texture mudavam sem passo de undo (B05, B05.3) | `966e12940e` `2326780d34` | `desfazer_um_parametro_de_ajuste_devolve_o_valor_de_antes` |
+| #91 | a tinta Wet e a tinta por assar ficavam no documento ERRADO ao trocar de aba (B02.1, B02.A2, B02.2) | `b4c5ffc165` `6d4277997a` | `um_documento_com_edicao_nao_assada_nunca_e_descartavel` · `ler_os_pixeis_de_outro_documento_nao_troca_o_que_se_pinta` |
+| #92 | o conta-gotas no Wet adormecia a água; o Dual e o olho da máscara iam para outro documento (B02.3/.4/.A1) | `e767a2eabf` | `o_conta_gotas_no_wet_nao_adormece_a_agua` · `a_recusa_de_acordar_nao_perde_a_adormecida` |
+| #93 | desfazer além do tecto enterrava a água que corria LONGE do traço desfeito (riscas congeladas) (B02.5) | `3ea1c16e2f` | `para_la_do_tecto_a_agua_que_corre_longe_fica_ao_bit` |
+| #94 | o relevo do Impasto ficava depois da Borracha/Grid apagar, com e sem Wet (era o ABERTO do #70) (B06a, B06.1) | `d295dbe499` `13f483823f` | `a_borracha_do_trilho_apaga_o_corpo_do_impasto` · `a_borracha_do_wet_apaga_o_corpo_do_impasto` |
+| #95 | Warp em malha: homografias em coordenadas globais deixavam uma costura de texels sem dono; o corpo não ia com o box movido (B06.A5, B06b) | `473854fefa` `dfd4ae740d` | `a_malha_dobrada_nao_tem_costura_sem_dono` · `the_transform_carries_the_body_where_it_carries_the_colour` |
+| #96 | 2.º balde com o 1.º pendente perdia o «antes» do 1.º (B48.1/.3) | `da8d1480c3` | `um_segundo_balde_com_o_primeiro_pendente_nao_perde_o_antes` |
+| #97 | Inpaint: 4 `expect` da placa fechavam o programa (B41a) | `5454a67f2c` | `um_nivel_que_a_placa_recusa_cai_na_cpu_sem_panico` |
+| #98 | worker da sim Wet morto em pânico congelava a sessão; o compositor morto não caía para o de casa (B11.A1/.A2) | `ffc2605130` `0300434425` | `worker_morto_acaba_a_sessao_sem_tocar_a_tela` · `compositor_morto_cai_para_o_composite_de_casa` |
+| #99 | backrun do óleo em `rf>1` saía da grade na última linha (pânico de borda) (B13.2) | `88001a09fb` | `o_backrun_na_ultima_linha_nao_sai_da_grade` |
+| #100 | o meio do traço (aguada ou não) decidia-se a meio do traço e vazava para o seguinte (B16.3) | `587b613510` | `ligar_a_aguada_a_meio_do_traco_nao_deixa_estado_para_o_seguinte` |
+| #101 | Rewet de Spread largo dependia da janela de leitura (grelha `ds>1` estreita) (B16.4) | `afe80ecf7c` | `o_rewet_de_spread_largo_nao_depende_da_janela` |
+| #102 | a janela suja sob ajuste espacial era a do traço, não a alargada pelo halo (B19.2); recorte sobre base escondida, Shadows/Highlights sobre ruído, direção do Motion Blur na placa (B19a) | `9471ab7518` `4f3ebbaef2` | `a_janela_suja_sob_um_ajuste_espacial_e_o_recorte_da_tela` · `sombras_sobre_ruido_quase_preto_nao_viram_cor` |
+| #103 | a falha da placa perdia o quadro; o sujo remendava camada não entregue (B20.A1/.A2); o sujo do envio era sobrescrito em vez de unido (B20.7) | `68e20ae858` `fad04b99be` | `a_falha_da_placa_entrega_o_quadro_a_cpu` · `a_textura_e_o_espelho` |
+| #104 | Composite Brush: borrão em inteiros não pré-multiplicados escurecia a orla; figura aberta; Smear depois do Enter (B24.1–.4) | `fbb668383b` `b2bc9e02b0` | `o_borrao_da_pilha_em_alfa_intermedio_nao_escurece_a_orla` · `toda_porta_do_composite_fecha_a_figura_aberta` |
+| #105 | a porta do carimbo usava o raio cru: a quina rodada caía fora e o lote em bandas mudava de byte com o nº de fios (B25.1) | `6ff3bc616b` | `a_ponta_reta_rodada_da_o_mesmo_byte_a_1_2_e_32_fios` |
+| #106 | o mapa da aguada vazava para o traço seguinte; o lote fechava com o pincel do cartão, não o seu (B25.3/.4) | `d338b49547` | `o_mesmo_traco_da_o_mesmo_byte_depois_de_uma_aguada` · `mexer_o_tooth_e_o_grain_a_meio_do_traco_nao_muda_o_pincel_do_lote` |
+| #107 | lote Per-Layer de tamanhos mistos não pintava numa rota (B29a) | `f981cf4a89` | `lote_de_tamanhos_mistos_pinta_igual_nas_duas_rotas` |
+| #108 | Color Fill, Cut e Colar ignoravam alfa travado e máscara (B40.A1) | `c307063bd7` | `color_fill_com_alfa_travado_nao_muda_o_alfa` · `cut_com_alfa_travado_nao_muda_o_alfa` |
+| #109 | Trim com Offset 0 apagava o laço; captura a mão livre perdia pontos a 4K (B40.2/.7); formas no Mask não protegiam, 1.º dab sem espelho (B40b) | `d9de1bf431` `39168824c3` | `o_trim_com_offset_zero_nao_apaga_o_laco_da_curva` · `uma_forma_no_modo_mask_protege_o_que_cobre` |
+| #110 | macros: estado meio-aplicado, textura ilegível estragava a ferramenta, prazo em segundos (B41b) | `3a20d8fce9` `6fd9e4b23d` | `uma_textura_que_nao_se_le_deixa_a_ferramenta_intacta` · `o_prazo_da_espera_pela_agua_conta_quadros_e_nao_segundos` |
+| #111 | papel trocado com a sessão Wet viva não chegava ao espelho nem à tela (B11.5) | `157d472d21` | `trocar_o_papel_com_a_sessao_viva_chega_ao_espelho` |
+| #112 | spray/aerógrafo parados: densidade seguia o fps do monitor (quadro preso despejava o atraso) (B22.2) | `c7a8208d0c` | `spray_parado_a_30_e_144_fps_da_a_mesma_densidade` · `aerografo_a_30_e_144_fps_da_a_mesma_densidade` |
+| #113 | os enums do pincel gravavam-se pela ORDEM (reordenar trocava presets); a captura herdava campo opcional desligado (B50.1/.2) | `9c76d12521` `d45efad74e` | `os_enums_do_preset_gravam_o_nome` · `a_captura_nao_herda_o_campo_opcional_desligado` |
+
+**Lições generalizáveis:** (1) todo estado «por documento/camada/traço» que vive fora do objecto dono vaza na troca — o gate é
+trocar de aba/camada/traço a meio e comparar ao byte (#86, #91, #100, #106); (2) um pânico de fio de trabalho tem de acabar a
+sessão com a tela como está, nunca congelar (#97, #98); (3) uma partição em bandas só é determinística se a porta usar o alcance
+REAL do dab (#105); (4) as mutações que sobreviveram (`funde_as_caixas` acima do tecto, rejeição por banda com folga 1) são gates em
+falta — [mutacao_A](missao_4k/mutacao_A.md), [mutacao_B](missao_4k/mutacao_B.md).
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

@@ -358,9 +358,14 @@ pub fn aplicar(
 /// ⭐ **O que a curva manda num TIQUE chega ao corpo nesse tique** (GEF02 onda 8 item 3): o passo
 /// por tique (`TimelineScene`: Play com vários tiques por quadro e o replay do scrub) aplica-o pelo
 /// mesmo funil. Medido antes: Height 1 → 2 → 1 → 2, 3 tiques por quadro contra 1 = 4,3 cm de desvio
-/// do caixote. Sem o livro de autoria: o do quadro guarda o primeiro valor da corrida
-/// (`ConducaoDosCanais::conduziu`), e o registo é o dos componentes que a §11 escreve.
-pub fn aplicar_do_tique(sim: &mut SimWorld, doc: &ph2d_timeline::TimelineDoc, t: f64) {
+/// do caixote. O livro do tique é descartável; o que ele tirou à curva passa ao `livro` do quadro
+/// (`conduziu`: o primeiro valor da corrida fica). O registo é o dos componentes que a §11 escreve.
+pub fn aplicar_do_tique(
+    sim: &mut SimWorld,
+    doc: &ph2d_timeline::TimelineDoc,
+    t: f64,
+    livro: Option<&mut ConducaoFisica>,
+) {
     static REGISTO: std::sync::OnceLock<ComponentRegistry> = std::sync::OnceLock::new();
     let reg = REGISTO.get_or_init(|| {
         let mut r = ComponentRegistry::new();
@@ -371,6 +376,14 @@ pub fn aplicar_do_tique(sim: &mut SimWorld, doc: &ph2d_timeline::TimelineDoc, t:
     let mut descartavel = ConducaoFisica::default();
     descartavel.no_tempo(t);
     let _ = aplicar(sim, reg, &mut descartavel, doc);
+    if let Some(livro) = livro {
+        for (e, kk, antes) in descartavel.autorado() {
+            livro.conduziu(e, kk, antes);
+        }
+        for (e, foto) in descartavel.1 {
+            livro.1.entry(e).or_insert(foto);
+        }
+    }
 }
 
 /// Os pontos (51/52) que a curva mandou a UMA forma; a fotografia autorada e o eco.

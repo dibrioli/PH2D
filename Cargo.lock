@@ -10951,6 +10951,7 @@ version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "libm",
+ "ph2d-anim",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-physics-ecs",

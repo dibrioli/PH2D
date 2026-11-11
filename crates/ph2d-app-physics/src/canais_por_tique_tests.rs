@@ -63,7 +63,12 @@ fn quadro(
     let reg = registry();
     ph2d_timeline::apply_from_doc(sim.world_mut(), doc, alvo as f64 * DT);
     aplicar(sim, &reg, cond, doc);
-    let mut cena = TimelineScene { doc, fixed_dt: DT };
+    let livro = Some(cond);
+    let mut cena = TimelineScene {
+        doc,
+        fixed_dt: DT,
+        livro,
+    };
     b.dispatch_with_scene(sim, joga, alvo, &mut cena);
 }
 
@@ -120,4 +125,74 @@ fn o_scrub_da_curva_da_forma_da_a_pose_do_play() {
             "o salto a {alvo}"
         );
     }
+}
+
+/// Os tiques até ao 100 pela entrada do quadro do app (`dispatch`), ANTES de qualquer dreno do
+/// quadro (o arranque do Play, a cena montada a meio do quadro); depois o quadro 101.
+fn tiques_e_depois_o_quadro(sim: &mut SimWorld, doc: &mut TimelineDoc) -> ConducaoFisica {
+    let mut b = PhysicsBridge::new();
+    let mut cond = ConducaoFisica::default();
+    cond.a_tocar(true);
+    let mut relogio = ph2d_core::Playhead::new(DT);
+    relogio.seek(100.0 * DT);
+    relogio.play();
+    let fita = &mut ph2d_physics_ecs::InputTape::new();
+    let entrada = ph2d_physics_ecs::PlayerInput::default();
+    let livro = (&mut ph2d_preview_drive::PreviewDrive::default(), &mut cond);
+    crate::bridge::dispatch::dispatch(&mut b, sim, &relogio, DT, doc, true, entrada, fita, livro);
+    quadro(sim, doc, &mut b, &mut cond, 101, true);
+    cond
+}
+
+/// O autorado da Height sobrevive aos tiques que correm antes do dreno do quadro: o livro guarda
+/// 1 m, nunca o que a curva já deixou. Medido no app (cena 122, 10/11): guardava 1,13 m.
+#[test]
+fn os_tiques_antes_do_quadro_nao_trocam_o_autorado_da_forma() {
+    let (mut sim, _, mut doc) = cena();
+    let cond = tiques_e_depois_o_quadro(&mut sim, &mut doc);
+    let autorado: Vec<f32> = cond
+        .autorado()
+        .filter(|&(_, kk, _)| kk.campo == f::MEIO_Y)
+        .map(|(.., v)| v)
+        .collect();
+    assert_eq!(autorado, [1.0], "o livro guarda a Height do documento");
+}
+
+/// O mesmo para o traço do «Outline»: a fotografia autorada do contorno é a de antes da curva.
+#[test]
+fn os_tiques_antes_do_quadro_nao_trocam_o_contorno_autorado() {
+    use ph2d_physics_ecs::ColliderOutline;
+    let (mut sim, c, _) = cena();
+    let forma = Entity::from_bits(ph2d_physics_ecs::dono_do_campo(
+        sim.world(),
+        c.to_bits(),
+        f::CONTORNO_DETALHE,
+    ));
+    let outline = ColliderShape::Outline {
+        half_x: 0.5,
+        half_y: 0.5,
+    };
+    let pedido = ColliderOutline {
+        detail_q4: 32,
+        ..ColliderOutline::default()
+    };
+    let mut w = sim.world_mut().entity_mut(forma);
+    w.get_mut::<Collider>().expect("a forma").shape = outline;
+    w.insert(pedido.clone());
+    let prop = PropKind::Field(FieldKey::new(FISICA, f::CONTORNO_DETALHE, 0, 0));
+    let mut doc = TimelineDoc::new();
+    for (t, v) in [(1.0, 2.0), (1.5, 6.0)] {
+        let (t, v) = (
+            ph2d_anim::RationalTime::from_seconds(t),
+            ph2d_anim::AnimValue::Float(v),
+        );
+        doc.insert_key(forma.to_bits(), prop, t, v, ph2d_anim::Interp::Linear);
+    }
+    let cond = tiques_e_depois_o_quadro(&mut sim, &mut doc);
+    let foto = cond.1.get(&forma.to_bits()).map(|(_, o)| o.detail_q4);
+    assert_eq!(
+        foto,
+        Some(pedido.detail_q4),
+        "a fotografia é a do documento"
+    );
 }

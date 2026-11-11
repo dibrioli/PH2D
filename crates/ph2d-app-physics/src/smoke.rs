@@ -1,53 +1,17 @@
-//! ⭐⭐ **O ROTEADOR DAS CENAS DE FÍSICA** — `PH2D_PHYSICS_SMOKE=<n>`, lido AQUI.
-//!
-//! Ele viveu na `shells/desktop` até 2026-09-11 porque era um `impl App`: cada braço
-//! chamava um método, e um método precisa da `App`. A Fase B converteu as 118 cenas em
-//! funções livres sobre um [`crate::SceneCtx`], e o que sobrou do `match` é o que ele
-//! sempre foi — uma tabela de `n → cena`, que não precisa de shell nenhuma.
-//!
-//! ⚠️ **O que NÃO veio, e de propósito:** o prólogo (rebobinar, armar o toggle de física,
-//! abrir a timeline, decidir play/pause) continua na shell. Ele mexe no `Playhead`, nas
-//! `flags` da timeline e no `HeroScreen` — três coisas que são da composição, não da
-//! família. *O que sai são os CORPOS; o que decide a ordem do quadro fica.*
+//! ⭐⭐ **O ROTEADOR DAS CENAS DE FÍSICA** — `PH2D_PHYSICS_SMOKE=<n>`, lido AQUI: uma tabela
+//! `n → cena` sobre um [`crate::SceneCtx`]. O prólogo (rebobinar, armar a física, play/pause)
+//! fica na shell: mexe no `Playhead`, nas `flags` e no `HeroScreen`, que são da composição.
 
-/// **As cenas que abrem PARADAS.** Uma cena que espera um gesto do artista
-/// (adicionar um corpo, assar, arrastar um rig) não pode ter meio caído antes de
-/// ele chegar ao mouse.
-///
-/// Uma TABELA e não uma cadeia de `|`: com vinte e poucas entradas o `matches!`
-/// gastava uma linha por cena e comia o teto de LOC deste arquivo — e a lista é
-/// exatamente o tipo de coisa que só cresce.
-/// ⚠️ **Uma cena que pede um GESTO DE ALÇA tem de estar aqui.** As alças de ponto
-/// (âncora de joint, centro/aro de roldana) são publicadas **rest-only** — durante
-/// o play o overlay desenha a geometria do SOLVER, e elas autoram a AUTORADA —,
-/// então uma cena que nasce tocando simplesmente **não tem alça nenhuma**, e o
-/// artista relata a feature como quebrada (foi o que aconteceu com a 63).
-///
-/// ⚠️ **E isto é uma ENUMERAÇÃO escrita à mão**, ou seja exatamente a forma que a
-/// próxima cena nasce fora. O gate `handle_scenes_start_paused` varre as mensagens
-/// das cenas e exige que quem manda arrastar uma alça esteja nesta lista.
+/// **As cenas que abrem PARADAS**: uma cena que espera um gesto do artista não pode ter meio caído
+/// antes de ele chegar ao mouse. ⚠️ Toda cena que manda arrastar uma ALÇA tem de estar aqui (as
+/// alças são publicadas só em repouso); o gate `handle_scenes_start_paused` varre as mensagens.
 pub const PAUSED_SCENES: &[&str] = &[
     "3", "7", "14", "15", "16", "17", "21", "22", "23", "24", "37", "38", "39", "40", "41", "43",
     "44", "45", "46", "47", "51", "54", "58", "63", "64", "65", "66", "67", "68", "69", "70", "71",
     "72", "73", "74", "75",
-    // ⚠️ A cena 82 (W5) nasce PAUSADA pela razão da 3: ela espera o artista
-    // fazer alguma coisa, e um corpo que já caiu meio metro é um corpo cujo
-    // gesto de autoria começa no lugar errado.
-    "82",
-    // ⚠️ A cena 96 (W17) nasce PAUSADA pela razão exata da 95: ela pede uma
-    // corrida JOGADA, e com o relógio já a andar o começo da fita descreveria
-    // segundos em que ninguém tinha o teclado.
-    "96",
-    // ⚠️ A cena 95 (W16) nasce PAUSADA pela razão da 7, e mais uma: ela pede ao
-    // artista que JOGUE uma corrida, e é essa corrida que vai ser assada. Com o
-    // relógio já a andar, o começo da fita descreve segundos em que ninguém
-    // tinha o teclado — o bake gravaria um personagem parado antes de gravar o
-    // que o artista fez.
-    "95",
-    // A 120 (ficha f1) espera o Play do artista: o Crate e a bola têm de cair à vista.
-    "120",
-    // A 121 (sinais, GEF02 onda 1) mostra o Inspector de uma moeda: nada tem de cair antes da foto.
-    "121",
+    // Esperam um gesto (82), uma corrida jogada que se grava ou assa (95, 96), o Play do artista
+    // (120) ou mostram o Inspector antes de cair (121); o porquê de cada uma: `git log -S`.
+    "82", "95", "96", "120", "121",
 ];
 
 /// A cena nasce parada? `PH2D_PHYSICS_SMOKE_TOCA=1` é a foto do Play, numa tela onde a mão não chega.
@@ -62,10 +26,7 @@ pub fn nasce_parada(which: &str) -> bool {
 /// da próxima cena de smoke CONTA-SE lendo o roteador»*). O gate
 /// `o_roteador_responde_por_todo_nivel_que_promete` mede-o pelas DUAS pontas: a cena
 /// `CENAS` tem de ser dela própria, e a `CENAS + 1` tem de cair no `_`.
-///
-/// ⚠️ Esta nota do `CLAUDE.md` já esteve parada em `97` com cenas até `102` noutro módulo —
-/// é exactamente por isso que o número vive ao lado do `match` e tem gate.
-pub const CENAS: u32 = 121;
+pub const CENAS: u32 = 122;
 
 /// **O nível que o dono pediu, lido DENTRO da crate.**
 ///
@@ -91,6 +52,7 @@ pub fn armed_scene_in(env: impl Fn(&str) -> Option<String>) -> Option<String> {
 /// ⚠️ Um `n` que ninguém reclama cai na cena 1 (`_`), que é a que ensina o básico — nunca
 /// num ecrã vazio.
 pub fn scene(which: &str, ctx: &mut crate::SceneCtx<'_>) {
+    use ph2d_physics_smoke_scenes as cenas;
     match which {
         "2" => crate::physics_smoke_base::physics_smoke_pile(ctx),
         "3" => crate::physics_smoke_base::physics_smoke_author(ctx),
@@ -138,7 +100,7 @@ pub fn scene(which: &str, ctx: &mut crate::SceneCtx<'_>) {
         "45" => crate::physics_smoke_joint_pose::physics_smoke_joint_pose(ctx),
         "46" => crate::physics_smoke_joint_draw::physics_smoke_joint_draw(ctx),
         "47" => crate::physics_smoke_joint_slider::physics_smoke_joint_slider(ctx),
-        "48" => crate::physics_smoke_joint_motor::physics_smoke_joint_motor(ctx),
+        "48" => cenas::physics_smoke_joint_motor::physics_smoke_joint_motor(ctx),
         "49" => crate::physics_smoke_joint_break::physics_smoke_joint_break(ctx),
         "50" => crate::physics_smoke_joint_pair::physics_smoke_joint_pair(ctx),
         "51" => crate::physics_smoke_joint_rig::physics_smoke_joint_rig(ctx),
@@ -209,19 +171,13 @@ pub fn scene(which: &str, ctx: &mut crate::SceneCtx<'_>) {
         "113" => crate::physics_smoke_out::physics_smoke_out(ctx),
         "114" => crate::physics_smoke_brake::physics_smoke_brake(ctx),
         "115" => crate::physics_smoke_surface::physics_smoke_surface(ctx),
-        // ⚠️ **O NUMERO E' CONTADO, nunca escolhido** — lido deste `match`,
-        // que e' a fonte; a nota da §5 do CLAUDE.md dava a `=105` como a
-        // proxima livre e tinha envelhecido em onze cenas.
         "116" => crate::physics_smoke_terminal::physics_smoke_terminal(ctx),
         "117" => crate::physics_smoke_blast::physics_smoke_blast(ctx),
-        // ⚠️ **O NUMERO E' CONTADO, nunca escolhido** — lido deste `match`,
-        // que e' a fonte. O compilador e' o gate: um segundo braco com o
-        // mesmo literal e' `unreachable`.
         "118" => crate::physics_smoke_leave::physics_smoke_leave(ctx),
-        // ⚠️ **O NUMERO E' CONTADO, nunca escolhido** — lido deste `match`.
         "119" => crate::physics_smoke_brink::physics_smoke_brink(ctx),
         "120" => crate::physics_smoke_ficha::physics_smoke_ficha(ctx),
         "121" => crate::physics_smoke_signal_ends::physics_smoke_signal_ends(ctx),
+        "122" => cenas::physics_smoke_grow::physics_smoke_grow(ctx),
         _ => crate::physics_smoke_base::physics_smoke_drop(ctx),
     }
 }

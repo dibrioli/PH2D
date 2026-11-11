@@ -40,7 +40,6 @@ pub mod physics_smoke_joint_custom;
 pub mod physics_smoke_joint_draw;
 pub mod physics_smoke_joint_glyphs;
 pub mod physics_smoke_joint_handles;
-pub mod physics_smoke_joint_motor;
 pub mod physics_smoke_joint_pair;
 pub mod physics_smoke_joint_pose;
 pub mod physics_smoke_joint_rig;

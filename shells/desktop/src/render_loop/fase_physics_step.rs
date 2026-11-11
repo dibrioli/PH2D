@@ -53,7 +53,7 @@ impl crate::App {
             &mut self.player_tape,
             // ⚠️ **A pose que o solver escreve é pré-visualização** — o ledger que a separa do
             // documento (a folha `ph2d-preview-drive`, Enio 2026-08-23: *«corrigir o CtrlZ para ambas»*).
-            &mut self.preview_drive,
+            (&mut self.preview_drive, &mut self.physics.conducao),
         );
         // ⭐ **O IMPACTO ouve os golpes deste dispatch** (plano 28, W5): a pausa pedida e os números
         // que nascem. Depois do dispatch, que é quem os produz.

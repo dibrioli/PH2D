@@ -49,7 +49,11 @@ fn play(
 ) -> Vec<[f32; 3]> {
     let mut out = vec![pose(sim, watch)];
     for t in 1..=ticks {
-        let mut scene = TimelineScene { doc, fixed_dt: DT };
+        let mut scene = TimelineScene {
+            doc,
+            fixed_dt: DT,
+            livro: None,
+        };
         bridge.dispatch_with_scene(sim, true, t, &mut scene);
         out.push(pose(sim, watch));
     }
@@ -72,6 +76,7 @@ fn scrubbing_the_ruler_shows_the_pose_of_that_tick() {
         let mut scene = TimelineScene {
             doc: &mut doc,
             fixed_dt: DT,
+            livro: None,
         };
         bridge.dispatch_with_scene(&mut sim, false, t, &mut scene);
         let got = pose(&mut sim, "ServoArm");

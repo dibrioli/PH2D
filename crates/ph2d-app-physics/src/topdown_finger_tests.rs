@@ -87,7 +87,7 @@ fn corre(sim: &mut SimWorld, input: PlayerInput, frames: u64) -> Vec2 {
             true,
             input,
             &mut tape,
-            &mut drive,
+            (&mut drive, &mut Default::default()),
         );
     }
     let mut q = sim.world().try_query::<&Transform>().expect("query");
@@ -228,7 +228,7 @@ fn a_ultima_seta_manda_e_a_memoria_atravessa_os_tiques() {
                 true,
                 entrada,
                 &mut tape,
-                &mut drive,
+                (&mut drive, &mut Default::default()),
             );
         }
     };

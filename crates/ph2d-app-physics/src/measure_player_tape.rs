@@ -75,7 +75,7 @@ fn run(sim: &mut SimWorld, simulate: bool, frames: u64, held: PlayerInput) -> In
             simulate,
             held,
             &mut tape,
-            &mut ph2d_preview_drive::PreviewDrive::default(),
+            (&mut Default::default(), &mut Default::default()),
         );
     }
     tape

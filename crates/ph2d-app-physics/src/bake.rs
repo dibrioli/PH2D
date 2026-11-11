@@ -88,13 +88,15 @@ impl BakeChannels {
 pub(crate) struct TimelineScene<'a> {
     pub doc: &'a mut ph2d_timeline::TimelineDoc,
     pub fixed_dt: f64,
+    /// O livro do quadro, que recebe o autorado que o tique tira à curva.
+    pub livro: Option<&'a mut crate::canais_corpo::ConducaoFisica>,
 }
 
 impl SceneAtTick for TimelineScene<'_> {
     fn put(&mut self, sim: &mut SimWorld, tick: u64) -> bool {
         let t = tick as f64 * self.fixed_dt;
         ph2d_timeline::apply_from_doc(sim.world_mut(), self.doc, t);
-        crate::canais_corpo::aplicar_do_tique(sim, self.doc, t);
+        crate::canais_corpo::aplicar_do_tique(sim, self.doc, t, self.livro.as_deref_mut());
         true
     }
 }
@@ -226,6 +228,7 @@ pub fn bake_selection(
         let mut scene = TimelineScene {
             doc: &mut timeline.doc,
             fixed_dt,
+            livro: None,
         };
         bake_trajectories_with_scene_and_tape(
             physics, sim, entities, ticks, fixed_dt, &mut scene, tape,

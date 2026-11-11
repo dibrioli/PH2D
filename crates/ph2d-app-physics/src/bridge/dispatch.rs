@@ -1,14 +1,6 @@
-//! Shell-side driver for the ECS physics bridge (ADR-0131 W1).
-//!
-//! Thin by design: it reads the ONE clock (`ph2d_core::Playhead`, the same
-//! one Motion stands on since W4.T7) and hands the primitive `(playing,
-//! target tick)` to the crate's [`PhysicsBridge`]. The play-vs-settle split
-//! lives inside `PhysicsBridge::dispatch` (the physics analog of
-//! `motion_bridge::ticks_owed`), so there is no second clock and no second
-//! copy of the tick logic.
-//!
-//! Called each frame BETWEEN the timeline apply and `sim_extract`, so a
-//! body's readback `Transform` renders the same frame it was computed.
+//! Shell-side driver for the ECS physics bridge (ADR-0131 W1): reads the ONE clock (`Playhead`) and
+//! hands `(playing, target tick)` to [`PhysicsBridge`]. Called each frame between the timeline apply
+//! and `sim_extract`, so a body's readback `Transform` renders the same frame it was computed.
 
 use ph2d_core::Playhead;
 use ph2d_ecs::{Entity, SimWorld};
@@ -30,11 +22,7 @@ fn physics_tick(playhead: &Playhead, fixed_dt: f64) -> u64 {
 /// (`TimelineFlags::simulate_physics`, off by default). Disarmed, the world is
 /// HELD rather than skipped — see [`PhysicsBridge::hold`], which explains why
 /// those are different things.
-// ⚠️ **Oito argumentos, e o 8º é a FITA** (W7). Agrupá-los custaria um tipo com
-// um chamador só; o precedente desta linha é o `body_desc` do W-LockRot, que
-// levou o mesmo `allow` pela mesma razão. Os pares que agrupariam bem — o
-// relógio `(playhead, fixed_dt)` e o dedo `(input, tape)` — são dois, então o
-// agrupamento honesto tiraria 2 e ainda deixaria 6.
+// ⚠️ Nove argumentos: os pares que agrupariam bem são dois; o agrupamento honesto ainda deixaria 7.
 #[allow(clippy::too_many_arguments)]
 pub fn dispatch(
     bridge: &mut PhysicsBridge,
@@ -45,7 +33,10 @@ pub fn dispatch(
     simulate: bool,
     input: ph2d_physics_ecs::PlayerInput,
     tape: &mut InputTape,
-    drive: &mut ph2d_preview_drive::PreviewDrive,
+    (drive, livro): (
+        &mut ph2d_preview_drive::PreviewDrive,
+        &mut crate::canais_corpo::ConducaoFisica,
+    ),
 ) {
     // ⭐ A marca de MESTRE em dia ANTES da ponte (ADR-0164 / F4.1): as consultas da ponte filtram
     // `Without<MasterPiece>`, e um mestre novo simularia um quadro. Único ponto de entrada; idempotente.
@@ -65,13 +56,14 @@ pub fn dispatch(
         bridge.hold(sim, target);
         return;
     }
-    // ⚠️ The bridge is told where the timeline puts scene-driven bodies at each
-    // tick it runs. It matters on the REWIND path above all: a scrub replays
-    // ticks, and a kinematic body frozen at its rest pose through that replay is
-    // a platform that is not where it was, so a scrub and a play disagree about
-    // the same instant. Passing `FrozenScene` here would compile and would be
-    // that bug (see `bake_and_scrub_agree_with_play`).
-    let mut scene = crate::bake::TimelineScene { doc, fixed_dt };
+    // ⚠️ The bridge is told where the timeline puts scene-driven bodies at each tick, the rewind
+    // replay above all (`FrozenScene` here would compile and be `bake_and_scrub_agree_with_play`'s bug).
+    let livro = Some(livro);
+    let mut scene = crate::bake::TimelineScene {
+        doc,
+        fixed_dt,
+        livro,
+    };
     // **A POSE DE ANTES**, para o ledger de pré-visualização saber o que foi o solver que escreveu.
     let before = body_poses(sim);
     // ⚠️ **A FITA entra aqui, e é ela que torna o replay reproduzível** (W7): o
@@ -82,12 +74,7 @@ pub fn dispatch(
 }
 
 /// A pose de todo corpo rígido, agora — a fotografia contra a qual se lê **o que o solver
-/// escreveu** neste quadro.
-///
-/// ⚠️ Uma varredura por quadro, e só com a simulação armada. É o preço de saber com EXACTIDÃO
-/// quais poses são do solver: perguntá-lo à ponte exigiria abrir o dentro da crate, e alargar a
-/// declaração a «todo corpo» engoliria uma pose que o artista tivesse acabado de escrever num
-/// corpo estático — que o solver nunca toca.
+/// escreveu** neste quadro (uma varredura por quadro, só com a simulação armada).
 fn body_poses(sim: &SimWorld) -> Vec<(Entity, ph2d_ecs::Transform)> {
     let Some(mut q) = sim
         .world()
@@ -98,16 +85,8 @@ fn body_poses(sim: &SimWorld) -> Vec<(Entity, ph2d_ecs::Transform)> {
     q.iter(sim.world()).map(|(e, t, _)| (e, *t)).collect()
 }
 
-/// **O que o solver mexeu é pré-visualização, não autoria** (a folha `ph2d-preview-drive`).
-///
-/// Sem isto, um clique dado enquanto o mundo corre empilhava um passo de undo cujo conteúdo era só
-/// a pose de uma bola a cair — e o Ctrl+Z do artista gastava-se a desfazer nada. Com isto a corrida
-/// inteira colapsa em **UM** passo, registado quando ela pára: *«desfaz a corrida»*, que é o passo
-/// que faz sentido pedir.
-///
-/// ⚠️ **Declara só quem de facto MUDOU.** Um corpo parado (ou um estático) não está a ser
-/// conduzido, e mantê-lo no ledger deixaria o `settle` sem nada para esquecer — a corrida nunca
-/// acabaria aos olhos do undo.
+/// **O que o solver mexeu é pré-visualização, não autoria** (`ph2d-preview-drive`): a corrida
+/// colapsa em UM passo de undo quando pára. ⚠️ Declara só quem MUDOU, senão o `settle` nunca a acaba.
 fn declare_solver_writes(
     sim: &SimWorld,
     before: &[(Entity, ph2d_ecs::Transform)],
@@ -124,22 +103,9 @@ fn declare_solver_writes(
     }
 }
 
-/// **Entrega o dedo do jogador a todo player da cena** (W3).
-///
-/// ⚠️ **Todo player recebe a MESMA entrada, e isso é honesto hoje:** há um
-/// teclado, logo um dedo. Quando houver um segundo jogador (ou um agente), o que
-/// muda é a FONTE — a fita por-player da W7 —, não este laço nem a lei.
-///
-/// ⚠️ E ele roda **antes** do `hold`, não só do `dispatch`: com a simulação
-/// desarmada o mundo é segurado e ninguém anda, mas a entrada continua a ser
-/// ENTREGUE, então armar o Physics retoma do que o dedo está fazendo em vez de
-/// engolir a primeira tecla. (⚠️ Entregar não é GRAVAR: a fita é gatilhada
-/// separadamente no chamador, e a diferença é a correção da W17.)
-///
-/// Devolve **quantos players a cena tem** — a pergunta que o chamador precisa
-/// para decidir se este tique descreve uma corrida, respondida pela consulta que
-/// ele já faz. Perguntá-la de novo lá em cima seria uma segunda varredura do
-/// mundo para o mesmo fato.
+/// **Entrega o dedo do jogador a todo player da cena** (W3): a MESMA entrada a todos (um teclado),
+/// e antes do `hold` (armar o Physics não engole a 1.ª tecla; entregar não é GRAVAR, W17). Devolve
+/// quantos players a cena tem, que o chamador usa para decidir se o tique descreve uma corrida.
 fn hand_input_to_players(
     bridge: &mut PhysicsBridge,
     sim: &mut SimWorld,

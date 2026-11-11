@@ -1,5 +1,6 @@
 //! **Os ▾ do Follow Value** (`docs/BlenderConstraints/06_W5_resto.md` §3.1): que propriedades um
-//! objecto tem — as cinco da pose e cada campo que ele publica em `CanaisLidos` —, com o nome do
+//! objecto tem — as cinco da pose, a opacidade final (se ele a tem) e cada campo que ele publica em
+//! `CanaisLidos` —, com o nome do
 //! dope-sheet (o rótulo do grupo `CampoInfo::rotulo`, o número da entrada e o `FieldKey::membro`), a
 //! ordem das peças do cartão e a escrita da escolha.
 
@@ -17,6 +18,9 @@ use ph2d_i18n::tr;
 use crate::campos::CANAIS_DO_TIPO;
 use crate::valor::chave;
 
+/// O nome da opacidade final no ▾: a palavra do Inspector («Opacity»).
+pub const OPACIDADE: &str = "panel.inspector.constraint.channel.opacity";
+
 /// O espelho do painel de um [`Prop`].
 #[must_use]
 pub fn espelho(p: Prop) -> P {
@@ -24,6 +28,7 @@ pub fn espelho(p: Prop) -> P {
         #[expect(clippy::cast_possible_truncation, reason = "cinco canais")]
         Prop::Pose(c) => P::Canal(CANAIS_DO_TIPO.iter().position(|&x| x == c).unwrap_or(0) as u8),
         Prop::Campo(k) => P::Campo(k),
+        Prop::Opacidade => P::Opacidade,
     }
 }
 
@@ -33,6 +38,7 @@ pub fn prop(p: P) -> Option<Prop> {
     Some(match p {
         P::Canal(i) => Prop::Pose(*CANAIS_DO_TIPO.get(usize::from(i))?),
         P::Campo(k) => Prop::Campo(k),
+        P::Opacidade => Prop::Opacidade,
     })
 }
 
@@ -53,8 +59,14 @@ fn campos(w: &World, e: Option<Entity>) -> Vec<FieldKey> {
         *tamanho.entry(k.grupo()).or_default() += 1;
     }
     ks.sort_by_key(|k| (tamanho[&k.grupo()], *k));
-    ks.truncate(MAX_PROPRIEDADES - CANAIS.len());
+    let opacidade = usize::from(tem_opacidade(w, Some(e)));
+    ks.truncate(MAX_PROPRIEDADES - CANAIS.len() - opacidade);
     ks
+}
+
+/// A entidade tem a opacidade final (uma sprite ou um caminho vetorial).
+fn tem_opacidade(w: &World, e: Option<Entity>) -> bool {
+    e.is_some_and(|e| ph2d_timeline::read_opacity(w, e).is_some())
 }
 
 /// ⭐ O nome de um campo como o dope-sheet o escreve: o grupo («Fill», com o número da entrada se o
@@ -86,6 +98,7 @@ fn rotulo_de(p: P, todos: &[FieldKey]) -> String {
     match p {
         P::Canal(i) => tr(CANAIS.get(usize::from(i)).copied().unwrap_or(CANAIS[0])).to_owned(),
         P::Campo(k) => nome(chave(k), todos),
+        P::Opacidade => tr(OPACIDADE).to_owned(),
     }
 }
 
@@ -95,8 +108,10 @@ pub fn opcoes(w: &World, e: Option<Entity>) -> Vec<OpcaoPropriedade> {
     let ks = campos(w, e);
     #[expect(clippy::cast_possible_truncation, reason = "cinco canais")]
     let pose = (0..CANAIS.len()).map(|i| P::Canal(i as u8));
+    let opacidade = tem_opacidade(w, e).then_some(P::Opacidade);
     let campos = ks.iter().map(|k| P::Campo([k.familia, k.campo, k.i, k.j]));
-    pose.chain(campos)
+    pose.chain(opacidade)
+        .chain(campos)
         .map(|prop| OpcaoPropriedade {
             prop,
             rotulo: rotulo_de(prop, &ks),

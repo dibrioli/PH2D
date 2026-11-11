@@ -170,6 +170,11 @@ pub struct TimelinePanelState {
     /// (`d(value)/dt`) instead of the value curve, toggled from the transport
     /// bar. Panel-local view state — never undoable, never saved.
     pub speed_view: bool,
+    /// «Keys | Curves» (doc 17, item 5): a vista da área das faixas na aba Keys. Sessão — não grava,
+    /// não desfaz; mudar de aba volta a Keys.
+    pub vista: crate::curvas_vista::Vista,
+    /// As linhas cujo olho escondeu a curva na vista Curves (por `AnimTarget` cru). Sessão.
+    pub curvas_escondidas: Vec<u64>,
     /// Which half of the document is on screen: the clip's keys, or the clip
     /// stack ([`crate::tab::Tab`]). Panel-local VIEW state — never undoable,
     /// never saved, and never the meaning of an edit.
@@ -327,6 +332,8 @@ impl Default for TimelinePanelState {
             expanded: Vec::new(),
             grupos_abertos: Vec::new(),
             speed_view: false,
+            vista: crate::curvas_vista::Vista::Keys,
+            curvas_escondidas: Vec::new(),
             tab: crate::tab::Tab::default(),
             source_container: None,
             source_clip: None,

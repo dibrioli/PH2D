@@ -87,7 +87,7 @@ fn palavra_do_inspector(p: PropKind) -> &'static str {
 /// Um canal de família cujo grupo se parte por entrada (a tinta e o traço da camada `i` da pilha)
 /// leva o número da entrada — «Fill 2» —, senão a camada e a base liam-se iguais.
 pub(crate) fn track_label(name: Option<&str>, entity: u64, prop: PropKind) -> String {
-    compoe(dono(name, prop), entity, rotulo(prop))
+    compoe(dono(name, prop), entity, nome_do_canal(prop))
 }
 
 /// O nome do dono do canal: o do objecto, ou «Scene» para um canal do mundo (F30 §B).
@@ -96,8 +96,9 @@ fn dono(name: Option<&str>, prop: PropKind) -> Option<&str> {
     name.or(cena.then(|| ph2d_i18n::tr("canal.mundo.cena")))
 }
 
-/// Só a propriedade («Fill 2», «Rotation») — o que a faixa diz sob o cabeçalho do objecto.
-fn rotulo(prop: PropKind) -> String {
+/// Só a propriedade («Fill 2», «Rotation») — o que a faixa diz sob o cabeçalho do objecto. Pública
+/// para o portão «o canal diz o nome do campo do Inspector» (`ph2d-app-components`).
+pub fn nome_do_canal(prop: PropKind) -> String {
     match prop {
         PropKind::Field(k) => match k.grupo() {
             // Com `item` o sub é o id, nunca um número de linha (o nome vem de `channel_names`).
@@ -118,7 +119,7 @@ pub(crate) fn propriedade_snap(
 ) -> String {
     let base = snap
         .channel_name(prop)
-        .map_or_else(|| rotulo(prop), str::to_owned);
+        .map_or_else(|| nome_do_canal(prop), str::to_owned);
     match crate::tracks_value::sufixo_da_unidade(prop, u) {
         Some(su) => format!("{base} ({})", su.trim()),
         None => base,

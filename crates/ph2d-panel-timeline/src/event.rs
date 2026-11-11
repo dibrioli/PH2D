@@ -169,6 +169,7 @@ pub(crate) fn apply_event(
         // The arm walks `tab::TABS` rather than naming ids, so a third tab is a row
         // in that table and nothing else — a hand-written match here would paint a
         // tab that clicks into the void.
+        WidgetEvent::Click(id) if crate::curvas_vista::route(state, id) => EventOutcome::Consumed,
         WidgetEvent::Click(id) if crate::tab::TABS.iter().any(|(tid, _)| *tid == id) => {
             let want = crate::tab::TABS
                 .iter()

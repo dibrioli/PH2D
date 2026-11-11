@@ -433,6 +433,7 @@ mod tests {
         let view = |tab, c| crate::transport::BarView {
             tab,
             speed_view: false,
+            curvas: false,
             source_container: c,
             source_clip: None,
         };

@@ -631,7 +631,7 @@ mod render_tests {
     use ph2d_render::Sprite;
 
     #[test]
-    fn opacity_drives_sprite_tint_alpha() {
+    fn opacity_drives_sprite_opacity() {
         let mut w = World::new();
         let e = w
             .spawn(Sprite::atlas(0, [10.0, 10.0], [1.0, 1.0, 1.0, 1.0]))
@@ -653,11 +653,13 @@ mod render_tests {
             Interp::Hold,
         );
 
-        apply_from_doc(&mut w, &mut doc, 1.0); // midpoint → alpha 0.5
-        let a = w.get::<Sprite>(e).unwrap().tint[3];
+        apply_from_doc(&mut w, &mut doc, 1.0); // midpoint → opacity 0.5
+        let s = *w.get::<Sprite>(e).unwrap();
         assert!(
-            (a - 0.5).abs() < 1e-5,
-            "opacity animated tint alpha to 0.5, got {a}"
+            (s.opacity - 0.5).abs() < 1e-5,
+            "opacity animated Sprite::opacity to 0.5, got {}",
+            s.opacity
         );
+        assert_eq!(s.tint[3], 1.0, "the Tint alpha is its own channel");
     }
 }

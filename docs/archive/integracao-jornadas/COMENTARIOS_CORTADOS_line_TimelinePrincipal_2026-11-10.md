@@ -124,3 +124,27 @@ O tecto de `ph2d-app-components` em `the_shell_only_shrinks` soma entre linhas; 
     /// ⛔ **E não havia gesto que o desfizesse:** o `Make` recusa com `AlreadyAMaster`, o `Detach` exige
     /// `InstanceOf`. A cópia era um fantasma sem cura por verbo — só Ctrl+Z ou Delete.
     ///
+
+## `crates/ph2d-app-components/src/tween_bridge.rs:7` (onda 2, cura do Opacity)
+
+    //! # ⭐⭐⭐ Três drivers para oito canais, e a conta não é arbitrária
+    //!
+    //! | o canal escreve em | o driver | porquê |
+    //! |---|---|---|
+    //! | `Sprite::opacity` | **`SpriteAlpha`**, que já existia | é o **mesmo facto vindo de outro motor** — a curva de `Opacity` da timeline escreve ali. Um driver novo sobre o mesmo campo seria duas entradas para um valor, e o `authored` de uma apagaria o da outra |
+    //! | `Sprite::self_tint` + `tint_fill` | `TweenTint` | ninguém os conduzia; e eles são **um** facto (*«a silhueta está acesa nesta cor»*) |
+    //! | `Transform` | `TweenPose` | a pose tem outros donos (o solver, a timeline, um script, o palco), e a chave do ledger é `(entidade, driver)` |
+    //!
+    //! # ⚠️ UM censo por entidade, e não um por escrita
+    //!
+    //! Dois tweens de pose no mesmo objecto (`PositionX` e `PositionY`) escrevem o **mesmo**
+    //! `Transform`. A fotografia do ANTES é tirada uma vez, as escritas todas acontecem, e só então o
+    //! facto é declarado — senão a segunda declaração leria a saída da primeira como *«outra mão
+    //! escreveu»* e promoveria a pré-visualização a documento. *É a mesma frase que o `fase_sequences`
+    //! escreve para duas cutscenes na mesma entidade.*
+
+## `crates/ph2d-app-components/src/tween_bridge.rs` (doc de `drive_tweens`)
+
+    ///
+    /// ⚠️ **Zero custo quando não há nenhum:** a lista vem vazia e a função devolve `0` antes de tirar
+    /// censo nenhum, que é o caso de toda cena que já existe.

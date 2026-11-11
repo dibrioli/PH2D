@@ -189,10 +189,22 @@ pub fn field_at(
     k: ph2d_ecs::FieldKey,
     clip_t: f64,
 ) -> Option<f32> {
+    prop_at(world, doc, entity, PropKind::Field(k), clip_t)
+}
+
+/// O [`field_at`] de qualquer canal escalar (a `Opacity` do Follow Value, `ph2d_constraints::Prop`).
+#[must_use]
+pub fn prop_at(
+    world: &World,
+    doc: &TimelineDoc,
+    entity: u64,
+    prop: PropKind,
+    clip_t: f64,
+) -> Option<f32> {
     let b = doc
         .bindings()
         .iter()
-        .find(|b| b.entity == entity && !b.missing && b.prop == PropKind::Field(k))?;
+        .find(|b| b.entity == entity && !b.missing && b.prop == prop)?;
     let (t_entity, links) = instante(world, doc, entity, clip_t);
     crate::stack_eval::solo_source_value(
         doc,

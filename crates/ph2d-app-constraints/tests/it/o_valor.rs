@@ -43,7 +43,7 @@ fn por_y(sim: &mut SimWorld, y: f32) {
 }
 
 fn quadro_em(sim: &mut SimWorld, drive: &mut PreviewDrive, r: Option<Relogio<'_>>) {
-    valores(sim, r);
+    valores(sim, r, drive);
     quadro(sim, &mut ph2d_vec_scene::VecScene::new(), drive, None);
 }
 

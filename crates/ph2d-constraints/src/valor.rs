@@ -7,12 +7,17 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Canal, Mix, Pose2, wrap_pi};
 
-/// O endereço de um número: um canal da pose, ou um campo animável pelo endereço durável da casa
-/// (`familia`, `campo`, `i`, `j` do `ph2d_ecs::FieldKey` — esta crate é folha e não vê o ECS).
+/// O endereço de um número: um canal da pose, um campo animável pelo endereço durável da casa
+/// (`familia`, `campo`, `i`, `j` do `ph2d_ecs::FieldKey` — esta crate é folha e não vê o ECS), ou a
+/// opacidade FINAL do objecto.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Prop {
     Pose(Canal),
     Campo([u16; 4]),
+    /// A opacidade final (`0..=1`): o `PropKind::Opacity` da Timeline e o «Opacity» do Inspector —
+    /// `Sprite::opacity` numa sprite, o alfa conduzido num vetor. Não é campo de família: não tem
+    /// `FieldKey`.
+    Opacidade,
 }
 
 impl Default for Prop {
@@ -88,7 +93,7 @@ impl Valor {
         match self.fonte {
             Prop::Pose(Canal::Rot) => Some(wrap_pi(alvo.rot)),
             Prop::Pose(c) => Some(c.of(alvo)),
-            Prop::Campo(_) => None,
+            Prop::Campo(_) | Prop::Opacidade => None,
         }
     }
 

@@ -274,6 +274,23 @@ impl Sprite {
         ]
     }
 
+    /// `Π(opacity)` of this sprite and its sprite ancestors (`ChildOf`): a parent's «Opacity» fades
+    /// the whole subtree (Rive, Figma, Unity `CanvasGroup`) —
+    /// [doc 04](../../../../docs/Sprite_projeto/04_color_tint_canais.md). O(depth), no allocation.
+    pub fn cascaded_opacity(
+        &self,
+        world: &bevy_ecs::world::World,
+        entity: bevy_ecs::entity::Entity,
+    ) -> f32 {
+        let pai = |e| world.get::<ph2d_ecs::ChildOf>(e).map(|c| c.parent());
+        let (mut opacity, mut cur) = (self.opacity, pai(entity));
+        while let Some(p) = cur {
+            opacity *= world.get::<Self>(p).map_or(1.0, |s| s.opacity);
+            cur = pai(p);
+        }
+        opacity
+    }
+
     /// Resolve the effective quad-center offset from the pivot, in LOCAL
     /// meters — the value the extract stamps into `RenderInstance.anchor`
     /// (the shader/picking position the quad center there, see
@@ -314,3 +331,7 @@ impl Sprite {
 }
 
 impl SimComponent for Sprite {}
+
+#[cfg(test)]
+#[path = "component_opacity_tests.rs"]
+mod opacity_tests;

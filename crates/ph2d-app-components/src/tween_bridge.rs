@@ -4,21 +4,7 @@
 //! escreve agora é **pré-visualização** — vê-se, não se guarda nem se desfaz.* Sem o ledger, um
 //! fade de meio segundo seria **trinta passos de `Ctrl+Z`**.
 //!
-//! # ⭐⭐⭐ Três drivers para oito canais, e a conta não é arbitrária
-//!
-//! | o canal escreve em | o driver | porquê |
-//! |---|---|---|
-//! | `Sprite::opacity` | **`SpriteAlpha`**, que já existia | é o **mesmo facto vindo de outro motor** — a curva de `Opacity` da timeline escreve ali. Um driver novo sobre o mesmo campo seria duas entradas para um valor, e o `authored` de uma apagaria o da outra |
-//! | `Sprite::self_tint` + `tint_fill` | `TweenTint` | ninguém os conduzia; e eles são **um** facto (*«a silhueta está acesa nesta cor»*) |
-//! | `Transform` | `TweenPose` | a pose tem outros donos (o solver, a timeline, um script, o palco), e a chave do ledger é `(entidade, driver)` |
-//!
-//! # ⚠️ UM censo por entidade, e não um por escrita
-//!
-//! Dois tweens de pose no mesmo objecto (`PositionX` e `PositionY`) escrevem o **mesmo**
-//! `Transform`. A fotografia do ANTES é tirada uma vez, as escritas todas acontecem, e só então o
-//! facto é declarado — senão a segunda declaração leria a saída da primeira como *«outra mão
-//! escreveu»* e promoveria a pré-visualização a documento. *É a mesma frase que o `fase_sequences`
-//! escreve para duas cutscenes na mesma entidade.*
+//! Porquê três drivers e um censo por entidade: [cortado](../../../docs/archive/integracao-jornadas/COMENTARIOS_CORTADOS_line_TimelinePrincipal_2026-11-10.md).
 
 use ph2d_ecs::{Entity, SimWorld, Transform};
 use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
@@ -35,9 +21,6 @@ struct Antes {
 
 /// ⭐⭐⭐ **Um quadro de tweens.** Devolve **quantas escritas** foram feitas — o número que um
 /// diagnóstico imprime e que um gate lê.
-///
-/// ⚠️ **Zero custo quando não há nenhum:** a lista vem vazia e a função devolve `0` antes de tirar
-/// censo nenhum, que é o caso de toda cena que já existe.
 pub fn drive_tweens(
     sim: &mut SimWorld,
     drive: &mut PreviewDrive,

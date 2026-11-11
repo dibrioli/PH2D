@@ -95,17 +95,10 @@ fn os_donos_prop_kind_sao_canais_do_auto_key() {
 /// ⭐ O losango pintado pelo rótulo do catálogo aponta o MESMO grupo que a tabela por id.
 #[test]
 fn o_rotulo_do_catalogo_aponta_o_canal_da_tabela() {
-    for (rotulo, quer) in [
-        (
-            "component.field.sprite.8",
-            vec![PropKind::Field(FieldKey::new(OBJETO, o::SILHUETA, 0, 0))],
-        ),
-    ] {
-        let ks: Vec<PropKind> = (cc::chaves_do_rotulo(rotulo).iter())
-            .map(|&k| PropKind::Field(k))
-            .collect();
-        assert_eq!(ks, quer, "{rotulo}");
-    }
+    assert_eq!(
+        cc::chaves_do_rotulo("component.field.sprite.8"),
+        [FieldKey::new(OBJETO, o::SILHUETA, 0, 0)]
+    );
     let tinta: Vec<FieldKey> = cc::chaves_do_rotulo("component.field.sprite.1").to_vec();
     assert_eq!(
         tinta,

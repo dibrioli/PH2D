@@ -85,6 +85,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.constraint.channel.rotation" => "Rotation",
         "panel.inspector.constraint.channel.scale_x" => "Scale X",
         "panel.inspector.constraint.channel.scale_y" => "Scale Y",
+        "panel.inspector.constraint.channel.opacity" => "Opacity",
         "panel.inspector.constraint.extrapolate" => "Extrapolate",
         "panel.inspector.constraint.fit" => "Fit",
         "panel.inspector.constraint.fit.none" => "Keep Length",

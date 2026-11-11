@@ -172,6 +172,8 @@ fn unidade_da_prop(p: Prop) -> Unidade {
             U::Angulo => Unidade::Graus,
             U::Nenhuma => Unidade::Nenhuma,
         },
+        // A fracção, em por cento como o «Opacity (%)» do Inspector.
+        Prop::Opacidade => Unidade::Porcento,
     }
 }
 
@@ -179,7 +181,7 @@ fn unidade_da_prop(p: Prop) -> Unidade {
 fn no_cartao_prop(p: Prop, v: f64) -> f32 {
     match p {
         Prop::Pose(c) => no_cartao(c, v),
-        Prop::Campo(_) => f32_de(v),
+        Prop::Campo(_) | Prop::Opacidade => f32_de(v),
     }
 }
 
@@ -187,7 +189,7 @@ fn no_cartao_prop(p: Prop, v: f64) -> f32 {
 fn do_cartao_prop(p: Prop, v: f32) -> f64 {
     match p {
         Prop::Pose(c) => do_cartao(c, v),
-        Prop::Campo(_) => f64::from(v),
+        Prop::Campo(_) | Prop::Opacidade => f64::from(v),
     }
 }
 

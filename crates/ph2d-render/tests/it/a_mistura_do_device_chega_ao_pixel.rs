@@ -340,3 +340,50 @@ fn dois_runs_com_misturas_diferentes_desenham_cada_um_na_sua() {
         "a metade em Multiply leu {escura}, esperado ~12"
     );
 }
+
+/// ⭐ **`RenderInstance.opacity` 0,5 pinta metade** (plano Timeline 17, onda 2): o fim da costura
+/// canal Opacity da Timeline → `Sprite::opacity` (`ph2d-timeline`, `prop_readback`) → a instância
+/// (`cascade_opacity_with_ancestors` da shell) → o pixel. Branco sobre preto: 255 a 1,0, ~128 a 0,5.
+#[test]
+fn a_opacidade_da_instancia_pinta_metade_do_alfa() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("sem adaptador headless — saltando");
+        return;
+    };
+    let atlas = TextureAtlas::new(&gpu, 256);
+    let mut renderer = SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 64);
+    let branco = renderer
+        .acquire_individual(8, 8, &solid_rgba(8, 8, [255, 255, 255, 255]))
+        .expect("textura branca");
+    let target = make_target(&gpu);
+    let view = target.create_view(&wgpu::TextureViewDescriptor::default());
+    let camera = Camera2d::new([0.0, 0.0], 4.0);
+    let vazio = LiftedInstances::default();
+    let mut pinta = |opacity: f32| -> u8 {
+        let mut present = PresentWorld::new();
+        let mut inst = instance(branco, 0, 0);
+        inst.opacity = opacity;
+        present.world_mut().spawn(inst);
+        let window = WindowSize::new(W, H);
+        renderer.render_with_streams(
+            &view,
+            &mut present,
+            &camera,
+            window,
+            BLACK,
+            &vazio,
+            None,
+            None,
+            None,
+            None,
+        );
+        channel(&readback(&gpu, &target), 32, 32)
+    };
+    let (cheio, metade) = (pinta(1.0), pinta(0.5));
+    assert!(cheio >= 250, "opacidade 1,0 pinta {cheio}, esperado 255");
+    let esperado = i32::from(cheio) / 2;
+    assert!(
+        (i32::from(metade) - esperado).abs() <= 4,
+        "opacidade 0,5 pinta {metade}, esperado ~{esperado}"
+    );
+}

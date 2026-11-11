@@ -213,6 +213,8 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         ids::TIMELINE_END_STOP,
         ids::TIMELINE_END_LOOP,
         ids::TIMELINE_END_PINGPONG,
+        ids::TIMELINE_VIEW_KEYS,
+        ids::TIMELINE_VIEW_CURVES,
     ] {
         button(store, id);
     }

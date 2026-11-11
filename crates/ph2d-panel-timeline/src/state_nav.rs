@@ -53,6 +53,7 @@ pub(crate) fn set_tab(state: &mut TimelinePanelState, want: crate::tab::Tab) {
         return;
     }
     state.tab = want;
+    state.vista = crate::curvas_vista::Vista::Keys;
     drop_row_gestures(state);
 }
 

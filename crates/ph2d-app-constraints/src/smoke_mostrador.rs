@@ -1,7 +1,7 @@
 //! Cena 9 — **Mostrador** (`docs/BlenderConstraints/06_W5_resto.md` §6, a primeira peça): a BÓIA sobe e
 //! desce (curva da timeline, em laço); o PONTEIRO do mostrador segue a altura dela com mola (Follow Value
-//! → rotação: passa, volta e assenta), e a LÂMPADA acende com ela sem mola (Follow Value → o alfa do Tint,
-//! um campo que não é pose). Abre com o ponteiro escolhido.
+//! → rotação: passa, volta e assenta), e a LÂMPADA acende com ela sem mola (Follow Value → «Opacity», a
+//! opacidade final do Inspector, que não é pose). Abre com o ponteiro escolhido.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -10,8 +10,6 @@ use bevy_ecs::world::World;
 use ph2d_anim::RationalTime;
 use ph2d_constraints::{Canal, Kind, Mola, Prop, Valor};
 use ph2d_core::Playhead;
-use ph2d_ecs::canal::familia::OBJETO;
-use ph2d_ecs::canal_objeto::TINTA;
 use ph2d_ecs::{ChildOf, GlobalTransform, Name, SimWorld, Transform};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::HeroScreen;
@@ -74,7 +72,7 @@ pub(crate) fn mostrador(world: &mut World) -> Entity {
     let lampada_segue = Valor {
         fonte: Prop::Pose(Canal::Y),
         de_faixa: [baixo, cima],
-        destino: Prop::Campo([OBJETO, TINTA + 3, 0, 0]),
+        destino: Prop::Opacidade,
         para_faixa: [0.15, 1.0],
         mola: None,
         ..Valor::default()

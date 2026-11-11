@@ -78,11 +78,12 @@ pub const MAX_PROPRIEDADES: usize = 256;
 
 /// O endereço de um número que o Follow Value lê ou escreve — o espelho, sem ECS, do
 /// `ph2d_constraints::Prop`: um canal da pose (índice em `canal_constraint::CANAIS`) ou um campo
-/// animável (`familia`, `campo`, `i`, `j` do `ph2d_ecs::FieldKey`).
+/// animável (`familia`, `campo`, `i`, `j` do `ph2d_ecs::FieldKey`), ou a opacidade final.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PropriedadeDoValor {
     Canal(u8),
     Campo([u16; 4]),
+    Opacidade,
 }
 
 /// Uma opção do ▾: o endereço e o nome já traduzido (o do dope-sheet).

@@ -497,3 +497,22 @@ fn reading_a_property_back_is_the_inverse_of_writing_it() {
          em silencio, que e' exactamente como o `IkBendSide` passou a primeira vez"
     );
 }
+
+/// ⭐ **Numa Sprite o canal «Opacity» conduz `Sprite::opacity`** (o slider «Opacity (%)»), nunca o alfa
+/// do Tint (plano 17, achado da onda 1): a chave a 0,25 chega à opacidade e o `tint[3]` fica intacto.
+#[cfg(feature = "render")]
+#[test]
+fn the_opacity_channel_drives_the_sprite_opacity_not_the_tint_alpha() {
+    let mut sim = SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn(ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]))
+        .id();
+    let mut doc = TimelineDoc::new();
+    key(&mut doc, e.to_bits(), PropKind::Opacity, 0.0, 0.25);
+    key(&mut doc, e.to_bits(), PropKind::Opacity, 1.0, 0.25);
+    apply_from_doc(sim.world_mut(), &mut doc, 0.5);
+    let s = sim.world().get::<ph2d_render::Sprite>(e).unwrap();
+    assert_eq!(s.opacity, 0.25);
+    assert_eq!(s.tint[3], 1.0, "o alfa do Tint é do canal do Tint");
+}

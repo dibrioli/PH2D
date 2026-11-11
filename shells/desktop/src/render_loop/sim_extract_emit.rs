@@ -185,7 +185,7 @@ pub(super) fn sprite(
         per_corner_tint: sim
             .get::<ph2d_ecs::SpriteCornerTint>(sim_entity)
             .map_or(ph2d_ecs::SpriteCornerTint::IDENTITY.0, |c| c.0),
-        opacity: spr.opacity,
+        opacity: spr.cascaded_opacity(sim, sim_entity),
         flip_uv,
         z_order,
         sampling,
@@ -382,8 +382,7 @@ fn style(
     // folds in the inherited modulate chain (W2 — so a parent's
     // `tint` actually tints its children, while `self_tint` does
     // not). Skipped under a preview override (the override emits
-    // the SAME tint as the source). per_corner_tint + opacity
-    // pass through unchanged.
+    // the SAME tint as the source). per_corner_tint passes through.
     let cascade_tint = cascade_tint_with_ancestors(sim, sim_entity, spr);
     // Packed flags (amendment-3/-6): bit0=flip_x · bit1=flip_y ·
     // bit2=tint_fill · bits3-4=resolved repeat (single-sourced

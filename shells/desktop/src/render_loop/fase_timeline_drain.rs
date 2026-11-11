@@ -112,7 +112,7 @@ impl crate::App {
         ];
         let r = ph2d_app_constraints::relogio::Relogio::da_vista(&self.timeline, relogios);
         // O «Valor» lê a fonte como a curva a deixou e escreve antes dos drenos (06_W5 §3.1).
-        ph2d_app_constraints::valor::valores(sim, Some(r));
+        ph2d_app_constraints::valor::valores(sim, Some(r), &mut self.preview_drive);
         // A tocar, o campo que a curva escreveu continua conduzido mesmo sem mudar de valor (o
         // relógio repete o instante): `ph2d_ecs::canal_conducao`. Lido DEPOIS do dreno das intents.
         let relogio = vista.pick(

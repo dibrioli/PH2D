@@ -13,7 +13,7 @@ use ph2d_editor_core::widget::card_ink::CardInk;
 /// A largura do chip do dono.
 const ANIM_W: f32 = 168.0; // LITERAL-PX-OK: «Animation: Scene» + seta, medido na foto; nomes longos cortam
 
-const DICAS: [(ph2d_a11y::NodeId, &str); 17] = [
+const DICAS: [(ph2d_a11y::NodeId, &str); 18] = [
     (TIMELINE_GO_START, "panel.timeline.tip.go_start"),
     (TIMELINE_PREV_FRAME, "panel.timeline.tip.prev_frame"),
     (TIMELINE_PLAY, "panel.timeline.tip.play"),
@@ -32,6 +32,7 @@ const DICAS: [(ph2d_a11y::NodeId, &str); 17] = [
     ),
     (ids::TIMELINE_ONION_MODE, "panel.timeline.tip.onion_keys"),
     (ids::TIMELINE_OPTIONS, "panel.timeline.tip.options"),
+    (ids::TIMELINE_VIEW_CURVES, "panel.timeline.view.tip"),
     (ids::TIMELINE_CLIP_MENU, "panel.timeline.tip.clip_menu"),
     (
         ids::TIMELINE_CLIP_AUTOPLAY,
@@ -314,12 +315,23 @@ fn dono_e_opcoes(
     ctx: &mut PaintCtx,
     theme: Theme,
     f: &mut Fluxo,
-    snap: &TimelineViewSnapshot,
+    (snap, view): (&TimelineViewSnapshot, BarView),
     body: Rect,
 ) -> (ClipChip, Rect) {
     let ink = CardInk::of_list(theme);
-    let (x, y) = f.a_direita(ANIM_W + m::FIELD_GAP + banda::icones_w(1));
     let mut c = cartao(ctx, ink, body);
+    // «Keys | Curves» (doc 17, item 5): só na aba Keys, antes do dono (maquete B1).
+    let segs = crate::curvas_vista::segs(view.curvas);
+    let vw = if view.tab == crate::tab::Tab::Keys {
+        c.segmentos_em_fila_w(&segs) + m::FIELD_GAP
+    } else {
+        0.0
+    };
+    let (x0, y) = f.a_direita(vw + ANIM_W + m::FIELD_GAP + banda::icones_w(1));
+    if vw > 0.0 {
+        c.segmentos_em_fila(&segs, x0, y);
+    }
+    let x = x0 + vw;
     let rect = Rect::new(x, y, ANIM_W, m::FIELD_H);
     let open = matches!(
         c.store.get(ids::TIMELINE_ANIM_DD),
@@ -480,7 +492,7 @@ pub(crate) fn paint_bar(
     let mut f = Fluxo::novo(strip, body);
     abas_e_migalha(ctx, theme, &mut f, (snap, view), body);
     grupo_de_tocar(ctx, theme, &mut f, (snap, view), body);
-    let (anim, opcoes) = dono_e_opcoes(ctx, theme, &mut f, snap, body);
+    let (anim, opcoes) = dono_e_opcoes(ctx, theme, &mut f, (snap, view), body);
     f.quebra();
     grupo_de_gravar(ctx, theme, &mut f, snap, body);
     let clips = crate::barra_clips::paint(ctx, theme, &mut f, (snap, view), body);

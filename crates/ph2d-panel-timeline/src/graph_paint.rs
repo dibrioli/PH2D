@@ -68,12 +68,7 @@ pub(crate) fn paint_track(
 ) {
     // Aligned with the lanes above it: the curve for `t = view_start` lands on
     // the band's left edge, clear of the splitter grip.
-    let band_rect = Rect::new(
-        view.time_x,
-        rect.y + BAND_INSET,
-        (rect.x + rect.w - view.time_x).max(0.0),
-        (rect.h - BAND_INSET * 2.0).max(0.0),
-    );
+    let band_rect = banda_de(rect, view);
     let target = track.target.get();
     // Fit to everything the row DRAWS — the curve (overshoot and all) and the
     // visible handles, not just the key values: fitting the keys alone let a
@@ -136,8 +131,21 @@ pub(crate) fn paint_track(
     if !state.speed_view {
         anchor_drag::resolve_drag(state, &band, track);
     }
-    paint_height_grip(ctx, theme, state, rect, target);
+    // O grafo grande da vista Curves ocupa a área inteira: não tem altura para arrastar.
+    if !crate::curvas_vista::ativa(state) {
+        paint_height_grip(ctx, theme, state, rect, target);
+    }
     graph_buffer::paint_buffer_buttons(ctx, theme, band_rect, track);
+}
+
+/// The band inside `rect`, aligned with the lanes (`t = view_start` on its left edge).
+pub(crate) fn banda_de(rect: Rect, view: TimeView) -> Rect {
+    Rect::new(
+        view.time_x,
+        rect.y + BAND_INSET,
+        (rect.x + rect.w - view.time_x).max(0.0),
+        (rect.h - BAND_INSET * 2.0).max(0.0),
+    )
 }
 
 /// The grip along the bottom of an expanded row: a short centred bar plus a

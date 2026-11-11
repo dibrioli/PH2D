@@ -157,6 +157,8 @@ ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
 ph2d-timeline = { path = "../ph2d-timeline" }
 
 [dev-dependencies]
+# O portão «o canal diz o nome do campo»: a palavra que a faixa da Timeline mostra (`nome_do_canal`).
+ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
 # ⚠️ **As duas que só os TESTES dos assets pedem, e só o `--all-targets` as revelou** (HOWTO §2.5):
 # o `prefab_stage_tests` pergunta ao ledger se a condução continua viva (`PreviewDrive::is_empty`,
 # que mora atrás de `test-support` na crate dele — a shell liga-a pela mesma via), e o

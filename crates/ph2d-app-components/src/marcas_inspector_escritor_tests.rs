@@ -95,3 +95,44 @@ fn o_mapa_e_o_clique_leem_o_mesmo_grupo() {
     }
     assert!(vistos.len() > CAMPOS.len() / 2, "a régua varreu os campos");
 }
+
+/// A chave do rótulo que o Inspector pinta ao lado do campo (`sections/look.rs`, `cards_*`).
+fn rotulo_do_inspector(id: NodeId) -> &'static str {
+    use insp::*;
+    match id {
+        INSP_TRANSFORM_POS_X | INSP_TRANSFORM_POS_Y => "card.insp.position_px",
+        INSP_TRANSFORM_ROT => "card.insp.rotation_deg",
+        INSP_SPRITE_TINT_SWATCH => "component.field.sprite.1",
+        INSP_SPRITE_SELF_TINT_SWATCH => "component.field.sprite.6",
+        INSP_SPRITE_OPACITY | INSP_SPRITE_OPACITY_CHIP => "card.insp.opacity",
+        INSP_SPRITE_TINT_FILL => "card.insp.silhouette",
+        INSP_SPRITE_FLIP_X | INSP_SPRITE_FLIP_Y => "card.insp.flip",
+        id if INSP_SPRITE_PIVOT_XY.contains(&id) => "card.insp.pivot_px",
+        _ => "component.field.sprite_corner_tint.5",
+    }
+}
+
+/// ⭐ **O canal diz o nome do campo cujo escritor o grava** (plano Timeline 17, item 9), sem a unidade
+/// e sem o eixo. *Mutação: `DONOS` sprite.7 volta a canal OBJETO ⇒ a faixa do slider não diz «Opacity».*
+#[test]
+fn o_canal_diz_o_nome_do_campo_que_o_grava() {
+    let sem_unidade = |s: &str| s.split(" (").next().unwrap_or_default().to_owned();
+    let mentiras: Vec<String> = escritores()
+        .into_iter()
+        .flat_map(|(id, grava, _)| {
+            let campo = sem_unidade(ph2d_i18n::tr(rotulo_do_inspector(id)));
+            let faixas = grava
+                .into_iter()
+                .map(|p| sem_unidade(&ph2d_panel_timeline::nome_do_canal(p)));
+            let mente =
+                move |f: String| (!f.starts_with(&campo)).then(|| format!("«{campo}» × «{f}»"));
+            faixas.filter_map(mente)
+        })
+        .collect();
+    // ⚠️ Do dono (10/11): «Flip image» + ícones H/V lê-se «Flip H/V» na faixa; resolvido, a lista esvazia.
+    let pendentes = ["«Flip image» × «Flip H»", "«Flip image» × «Flip V»"];
+    assert_eq!(
+        mentiras, pendentes,
+        "o canal mente sobre o campo que o grava"
+    );
+}

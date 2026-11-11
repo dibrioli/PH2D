@@ -7,7 +7,7 @@
 | **Tint** (`Sprite.tint`) | campo do struct | ✅ SIM (multiplicativo) | Cascade na hierarquia | WHITE |
 | **Self Tint** (`Sprite.self_tint`) | campo do struct | ❌ NÃO | Aplicado SÓ neste sprite | WHITE |
 | **Per-corner Tint** (`Sprite.per_corner_tint[4]`) | campo do struct | ❌ NÃO (vertex color) | Aplicado SÓ neste sprite, por-canto | [WHITE; 4] |
-| **Opacity** (`Sprite.opacity`) | campo do struct | ❌ NÃO | Multiplicador FINAL local | 1.0 |
+| **Opacity** (`Sprite.opacity`) | campo do struct | ✅ SIM (10/11: o Opacity de um pai apaga a subárvore, como Rive/Figma/`CanvasGroup`; `cascade_opacity_with_ancestors`) | Multiplicador FINAL | 1.0 |
 
 **Razão de TER os 4 (não 1):**
 

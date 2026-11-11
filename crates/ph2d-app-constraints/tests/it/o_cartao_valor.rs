@@ -1,6 +1,6 @@
 //! ⭐ **O cartão do Follow Value** (`docs/BlenderConstraints/06_W5_resto.md` §3.1): o Follow lista as
-//! propriedades do ALVO (a pose e os campos que ele publica), o Drive as do DONO, e cada peça do
-//! cartão escreve o `Valor` do item.
+//! propriedades do ALVO (a pose, a «Opacity» de uma sprite e os campos que ele publica), o Drive as do
+//! DONO, e cada peça do cartão escreve o `Valor` do item.
 
 use bevy_ecs::entity::Entity;
 use ph2d_app_constraints::inspector::{apply_all, info};
@@ -14,24 +14,31 @@ use ph2d_ecs::canal_constraint::{
 use ph2d_ecs::canal_objeto::TINTA;
 use ph2d_ecs::{CanaisLidos, FieldKey, SimWorld, StableId, Transform};
 use ph2d_editor_core::constraint_edits::{ConstraintFieldEdit as E, Peca, PropriedadeDoValor as P};
+use ph2d_render::Sprite;
 
 /// O índice do Follow Value no menu.
 const VALOR: u8 = 20;
 
-fn opacidade() -> FieldKey {
+/// O alfa do Tint — um campo de família, que NÃO é a opacidade final.
+fn tinta_a() -> FieldKey {
     FieldKey::new(OBJETO, TINTA + 3, 0, 0)
 }
 
-/// O alvo (id 1) publica a opacidade; o dono (id 2) tem um Follow Value que segue o alvo.
+/// O alvo (id 1) é uma sprite e publica o alfa do Tint; o dono (id 2) tem um Follow Value que segue
+/// o alvo.
 fn mundo() -> (SimWorld, Entity, u32) {
     let mut sim = SimWorld::new();
     let alvo = sim
         .world_mut()
-        .spawn((StableId(1), Transform::IDENTITY))
+        .spawn((
+            StableId(1),
+            Transform::IDENTITY,
+            Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+        ))
         .id();
     sim.world_mut()
         .get_resource_or_insert_with(CanaisLidos::default)
-        .publicar(alvo.to_bits(), opacidade(), 0.5);
+        .publicar(alvo.to_bits(), tinta_a(), 0.5);
     let mut c = Constraints::default();
     let id = c.push(Kind::Valor(Valor::default()), Some(StableId(1)));
     let dono = sim
@@ -55,8 +62,9 @@ fn valor(sim: &SimWorld, dono: Entity, id: u32) -> Valor {
     }
 }
 
-/// O Follow lista as cinco da pose e o campo do alvo, com os nomes da porta única (o canal do
-/// Transformation; o grupo do campo, como o dope-sheet). O Drive é sobre o dono: só a pose.
+/// O Follow lista as cinco da pose, a «Opacity» (a palavra do Inspector) e o campo do alvo, com os
+/// nomes da porta única (o canal do Transformation; o grupo do campo, como o dope-sheet: «Tint», que
+/// não é a opacidade). O Drive é sobre o dono, sem sprite: só a pose.
 #[test]
 fn the_value_card_lists_the_targets_properties() {
     let (sim, dono, _) = mundo();
@@ -72,11 +80,13 @@ fn the_value_card_lists_the_targets_properties() {
     assert_eq!((follow.campo, drive.campo), (DE, PARA));
     let nomes: Vec<&str> = follow.opcoes.iter().map(|o| o.rotulo.as_str()).collect();
     let mut esperados: Vec<&str> = CANAIS.iter().map(|k| ph2d_i18n::tr(k)).collect();
-    esperados.push(ph2d_i18n::tr(opacidade().info().unwrap().rotulo));
+    esperados.push("Opacity");
+    esperados.push(ph2d_i18n::tr(tinta_a().info().unwrap().rotulo));
     assert_eq!(nomes, esperados);
-    let k = opacidade();
+    let k = tinta_a();
+    assert_eq!(follow.opcoes[5].prop, P::Opacidade);
     assert_eq!(
-        follow.opcoes[5].prop,
+        follow.opcoes[6].prop,
         P::Campo([k.familia, k.campo, k.i, k.j])
     );
     assert_eq!(
@@ -126,8 +136,7 @@ fn the_value_card_lists_the_targets_properties() {
 fn editing_the_value_card_writes_the_item() {
     let (mut sim, dono, id) = mundo();
     let b = dono.to_bits();
-    let k = opacidade();
-    let campo = P::Campo([k.familia, k.campo, k.i, k.j]);
+    let campo = P::Opacidade;
     assert!(apply_all(&mut sim, &[(b, E::Propriedade(id, DE, campo))]));
     assert!(!apply_all(&mut sim, &[(b, E::Propriedade(id, DE, campo))]));
     assert!(apply_all(
@@ -158,7 +167,7 @@ fn editing_the_value_card_writes_the_item() {
     assert!(apply_all(&mut sim, &[(b, E::Campo(id, DURACAO, 1.5))]));
     assert!(apply_all(&mut sim, &[(b, E::Campo(id, RESSALTO, 0.25))]));
     let v = valor(&sim, dono, id);
-    assert_eq!(v.fonte, Prop::Campo([k.familia, k.campo, k.i, k.j]));
+    assert_eq!(v.fonte, Prop::Opacidade);
     assert_eq!(v.destino, Prop::Pose(Canal::X));
     let perto = |a: f64, b: f64| (a - b).abs() < 1e-6;
     assert!(
@@ -179,11 +188,8 @@ fn editing_the_value_card_writes_the_item() {
             ressalto: 0.25
         })
     );
-    // O Follow mostra a escolha pelo nome do campo.
+    // O Follow mostra a escolha pela palavra do Inspector.
     let row = &info(&sim, b, 1).unwrap().rows[0];
     assert_eq!(row.propriedades[0].valor, campo);
-    assert_eq!(
-        row.propriedades[0].atual,
-        ph2d_i18n::tr(k.info().unwrap().rotulo)
-    );
+    assert_eq!(row.propriedades[0].atual, "Opacity");
 }

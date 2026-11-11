@@ -8,10 +8,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // O objecto no Inspector (`ph2d_ecs::canal_objeto`).
         "canal.objeto.skew" => "Skew",
         "canal.objeto.emissao" => "Emissive",
-        "canal.objeto.tinta" => "Tint",
-        "canal.objeto.auto_tinta" => "Self Tint",
-        "canal.objeto.cantos" => "Corner Tint",
-        "canal.objeto.silhueta" => "Tint Fill",
         // A camada do Flip (`ph2d_ecs::canal_flip`).
         "canal.flip.visivel" => "Layer Visible",
         "canal.script.propriedade" => "Script Property",

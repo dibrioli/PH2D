@@ -96,7 +96,7 @@ pub use apply::{
 /// a explica são os DOIS leitores dela.
 #[cfg(feature = "skeleton")]
 pub use apply_prop::bone_bend_refusal;
-pub use apply_prop::clear_macro_clocks;
+pub use apply_prop::{clear_macro_clocks, read_opacity, write_opacity};
 pub use apply_views::{apply_active_clip, apply_container};
 pub use autokey::{
     AutokeyPlan, PoseSample, autokey_props, autokey_props_solo, curve_seen,
@@ -136,7 +136,8 @@ pub use path_convert::{ConversionReport, PositionKeyMode};
 pub use persist::{refresh_and_heal_bindings, resolve_entities, stamp_wire_ids};
 pub use place_owner::{PLACE_PROPS, PlaceMove, PlaceMoveRefusal, rehome_moved_places};
 pub use pose::{
-    animated_entities, entity_key_times, field_at, pose_at, world_pose_at, world_pose_at_into,
+    animated_entities, entity_key_times, field_at, pose_at, prop_at, world_pose_at,
+    world_pose_at_into,
 };
 pub use prop::{Algebra, PropKind};
 pub use refusal::{ClipRefusal, KeyRefusal, NestRefusal};

@@ -48,18 +48,19 @@ const fn c(rotulo: &'static str, grupo: u16) -> CampoInfo {
     }
 }
 
-/// O que o campo `campo` do objecto é.
+/// O que o campo `campo` do objecto é. Os da Sprite nomeiam-se pela chave do rótulo do Inspector
+/// (portão `o_canal_diz_o_nome_do_campo_que_o_grava`): renomear lá renomeia a faixa.
 #[must_use]
 pub fn info(campo: u16) -> Option<CampoInfo> {
     Some(match campo {
         SKEW_X | SKEW_Y => c("canal.objeto.skew", SKEW_X),
         EMISSAO => c("canal.objeto.emissao", campo),
-        TINTA..TINTA_FIM => c("canal.objeto.tinta", TINTA),
-        AUTO_TINTA..AUTO_TINTA_FIM => c("canal.objeto.auto_tinta", AUTO_TINTA),
-        CANTOS..CANTOS_FIM => c("canal.objeto.cantos", CANTOS),
+        TINTA..TINTA_FIM => c("component.field.sprite.1", TINTA),
+        AUTO_TINTA..AUTO_TINTA_FIM => c("component.field.sprite.6", AUTO_TINTA),
+        CANTOS..CANTOS_FIM => c("component.field.sprite_corner_tint.5", CANTOS),
         SILHUETA => CampoInfo {
             especie: Especie::Ligado,
-            ..c("canal.objeto.silhueta", campo)
+            ..c("card.insp.silhouette", campo)
         },
         _ => return None,
     })

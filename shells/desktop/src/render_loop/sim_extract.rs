@@ -35,8 +35,7 @@ mod emit;
 /// transforms) contribute nothing. Walks `ChildOf` bottom-up (O(depth));
 /// the common no-parent case is one component miss + the per-sprite
 /// `collapsed_tint`. No allocation (HR-3). Alpha cascades too (spec §4.4
-/// `Π(modulate_ancestors.a)`); `opacity` stays per-sprite and is NOT
-/// folded here.
+/// `Π(modulate_ancestors.a)`); `opacity` cascades too (`Sprite::cascaded_opacity`).
 fn cascade_tint_with_ancestors(world: &World, entity: Entity, sprite: &Sprite) -> [f32; 4] {
     let mut tint = sprite.collapsed_tint(); // self_tint × own tint
     let mut cur = world.get::<ChildOf>(entity).map(|c| c.parent());

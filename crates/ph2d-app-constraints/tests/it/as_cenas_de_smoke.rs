@@ -287,24 +287,20 @@ fn the_arm_scene_turns_the_hand_below_the_ik() {
     );
 }
 
-/// ⭐ Cena 9: com a BÓIA em baixo o ponteiro aponta 225° e a lâmpada fica a 0,15; em cima, −45° e
-/// 1 (os números que a mensagem ao dono promete). Sem relógio: sem mola, o valor final.
+/// ⭐ Cena 9: com a BÓIA em baixo o ponteiro aponta 225° e a lâmpada fica a 0,15 de «Opacity»
+/// (`Sprite::opacity`, o tint intacto); em cima, −45° e 1 (os números que a mensagem ao dono promete).
+/// Sem relógio: sem mola, o valor final.
 #[test]
 fn the_dial_scene_points_the_needle_by_the_float_and_lights_the_lamp() {
     use ph2d_app_constraints::smoke_mostrador::{BOIA, PONTEIRO_GRAUS};
-    use ph2d_ecs::canal::familia::OBJETO;
-    use ph2d_ecs::canal_objeto::TINTA;
-    use ph2d_ecs::{CanaisEscritos, CanaisLidos, FieldKey};
+    use ph2d_render::Sprite;
     let (mut sim, mut drive) = cena(9);
     let (boia, ponteiro, lampada) = (
         chamada(&mut sim, "Bóia"),
         chamada(&mut sim, "Ponteiro"),
         chamada(&mut sim, "Lâmpada"),
     );
-    let k = FieldKey::new(OBJETO, TINTA + 3, 0, 0);
-    sim.world_mut()
-        .get_resource_or_insert_with(CanaisLidos::default)
-        .publicar(lampada.to_bits(), k, 1.0);
+    let tint = sim.world().get::<Sprite>(lampada).unwrap().tint;
     for (y, graus, luz) in [
         (BOIA[0].1, PONTEIRO_GRAUS[0], 0.15),
         (BOIA[1].1, PONTEIRO_GRAUS[1], 1.0),
@@ -314,11 +310,8 @@ fn the_dial_scene_points_the_needle_by_the_float_and_lights_the_lamp() {
             .unwrap()
             .translation
             .y = y;
-        ph2d_app_constraints::valor::valores(&mut sim, None);
-        let escrito = sim
-            .world()
-            .resource::<CanaisEscritos>()
-            .valor(lampada.to_bits(), k);
+        ph2d_app_constraints::valor::valores(&mut sim, None, &mut drive);
+        let s = *sim.world().get::<Sprite>(lampada).unwrap();
         ph2d_app_constraints::quadro(
             &mut sim,
             &mut ph2d_vec_scene::VecScene::new(),
@@ -330,11 +323,8 @@ fn the_dial_scene_points_the_needle_by_the_float_and_lights_the_lamp() {
             (rot - graus.to_radians()).abs() < 1e-5,
             "{rot} contra {graus}°"
         );
-        assert!(
-            escrito.is_some_and(|v| (v - luz).abs() < 1e-6),
-            "{escrito:?}"
-        );
-        let _ = sim.world_mut().remove_resource::<CanaisEscritos>();
+        assert!((s.opacity - luz).abs() < 1e-6, "{}", s.opacity);
+        assert_eq!(s.tint, tint, "o Follow conduz a opacidade, não o tint");
     }
 }
 
@@ -702,23 +692,25 @@ fn the_fountain_name_and_particle_are_the_same_in_motion_and_constraints() {
 }
 
 /// ⭐ Cena 13 (o Follow Value sobre uma caixa, v25): pelas chaves da cena, no quadro 10 a caixa do
-/// Switch está desmarcada, ele em baixo, a Lamp a 0,2 e a caixa dela desmarcada; no 45 tudo ligado
-/// (a Lamp a 1 e a caixa dela marcada).
+/// Switch está desmarcada, ele em baixo, a Lamp a 0,2 de «Opacity» (`Sprite::opacity`; o tint não se
+/// mexe) e a caixa dela desmarcada; no 45 tudo ligado (a Lamp a 1 e a caixa dela marcada). A escrita
+/// é pré-visualização: vai ao `PreviewDrive` como `SpriteAlpha`.
 #[test]
 fn the_switch_scene_lights_the_lamp_and_ticks_its_box_while_the_switch_box_is_ticked() {
     use ph2d_app_constraints::smoke_interruptor::{LAMP, LUZ, SWITCH, caixa, chaves_do_switch};
     use ph2d_core::Playhead;
-    use ph2d_ecs::canal::familia::OBJETO;
-    use ph2d_ecs::canal_objeto::TINTA;
-    use ph2d_ecs::{CanaisEscritos, CanaisLidos, FieldKey};
+    use ph2d_ecs::{CanaisEscritos, CanaisLidos};
+    use ph2d_preview_drive::Driver;
+    use ph2d_render::Sprite;
     use ph2d_timeline::TimelineState;
-    let (mut sim, _) = cena(13);
+    let (mut sim, mut drive) = cena(13);
     let (switch, lamp) = (chamada(&mut sim, SWITCH), chamada(&mut sim, LAMP));
     let (mut tl, mut ph) = (TimelineState::default(), Playhead::default());
     for i in chaves_do_switch(switch.to_bits(), tl.doc.fps_display) {
         ph2d_timeline::apply_intent(&mut tl, &mut ph, i);
     }
-    let (luz, k) = (FieldKey::new(OBJETO, TINTA + 3, 0, 0), caixa());
+    let k = caixa();
+    let tint = sim.world().get::<Sprite>(lamp).unwrap().tint;
     for (quadro, ligado) in [(10, false), (45, true)] {
         let t = f64::from(quadro) / tl.doc.fps_display;
         let w = sim.world_mut();
@@ -737,16 +729,25 @@ fn the_switch_scene_lights_the_lamp_and_ticks_its_box_while_the_switch_box_is_ti
         esc.escrever(switch.to_bits(), k, marcada);
         w.insert_resource(esc);
         let mut lidos = CanaisLidos::default();
-        lidos.publicar(lamp.to_bits(), luz, 0.5);
         lidos.publicar(lamp.to_bits(), k, 0.0);
         w.insert_resource(lidos);
-        ph2d_app_constraints::valor::valores(&mut sim, None);
-        let e = sim.world().resource::<CanaisEscritos>();
-        let (opaca, caixa_dela) = (e.valor(lamp.to_bits(), luz), e.valor(lamp.to_bits(), k));
+        w.get_mut::<Sprite>(lamp).unwrap().opacity = 0.5;
+        ph2d_app_constraints::valor::valores(&mut sim, None, &mut drive);
+        let s = *sim.world().get::<Sprite>(lamp).unwrap();
+        let caixa_dela = sim
+            .world()
+            .resource::<CanaisEscritos>()
+            .valor(lamp.to_bits(), k);
         let quer = LUZ[usize::from(ligado)];
         assert!(
-            opaca.is_some_and(|v| (f64::from(v) - quer).abs() < 1e-6),
-            "q{quadro}: a Lamp {opaca:?}, devia {quer}"
+            (f64::from(s.opacity) - quer).abs() < 1e-6,
+            "q{quadro}: a Lamp {}, devia {quer}",
+            s.opacity
+        );
+        assert_eq!(s.tint, tint, "q{quadro}: o tint da Lamp não se mexe");
+        assert!(
+            drive.still_driving(lamp, Driver::SpriteAlpha),
+            "q{quadro}: a opacidade conduzida é pré-visualização"
         );
         assert_eq!(
             caixa_dela,

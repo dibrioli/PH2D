@@ -519,7 +519,7 @@ pub fn timeline_strip_hit_id(lane: u64, strip: u64, edge: u8) -> NodeId {
     dynamic_id("timeline.strip", &[lane, strip, u64::from(edge)])
 }
 
-pub(super) fn dynamic_id(domain: &'static str, parts: &[u64]) -> NodeId {
+pub(in crate::ids) fn dynamic_id(domain: &'static str, parts: &[u64]) -> NodeId {
     const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
     let mut h = hash_node_id(domain).0;
     for b in parts.iter().flat_map(|p| p.to_le_bytes()) {

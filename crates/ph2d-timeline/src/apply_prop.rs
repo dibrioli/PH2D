@@ -126,6 +126,17 @@ pub(crate) fn write_prop(
         }
         return;
     }
+    if prop == PropKind::Opacity
+        && let AnimValue::Float(f) = v
+    {
+        write_opacity(world, entity, f);
+    }
+}
+
+/// ⭐ **A opacidade FINAL de um objecto** (`PropKind::Opacity`), o único sítio que a escreve: a curva
+/// da Timeline e o Follow Value das constraints (`ph2d_constraints::Prop::Opacidade`) passam aqui.
+/// `false` = a entidade não tem substrato (nem caminho vetorial, nem sprite).
+pub fn write_opacity(world: &mut World, entity: Entity, f: f32) -> bool {
     // ⭐⭐⭐ **A OPACIDADE DE UM CAMINHO VETORIAL** — o mesmo canal, o outro substrato.
     //
     // ⛔⛔ Até 2026-09-04 este canal era **MUDO** num vetor: o braço abaixo exige um
@@ -142,10 +153,7 @@ pub(crate) fn write_prop(
     // empilha undo. Sem isso uma reprodução de 3 s a 60 fps seria **180 passos de undo**, que é o
     // defeito que o `preview_drive` da shell existe para curar. O detalhe está no doc do
     // [`ph2d_ecs::VecDrivenStyle`].
-    if prop == PropKind::Opacity
-        && let AnimValue::Float(f) = v
-        && world.get::<ph2d_ecs::VecPathRef>(entity).is_some()
-    {
+    if world.get::<ph2d_ecs::VecPathRef>(entity).is_some() {
         let alpha = f.clamp(0.0, 1.0);
         if let Some(mut d) = world.get_mut::<ph2d_ecs::VecDrivenStyle>(entity) {
             d.alpha = Some(alpha);
@@ -154,19 +162,22 @@ pub(crate) fn write_prop(
                 .entity_mut(entity)
                 .insert(ph2d_ecs::VecDrivenStyle { alpha: Some(alpha) });
         }
-        return;
+        return true;
     }
     // Non-Transform properties. `Opacity` needs the render crate (Sprite lives
     // there); gated so the base timeline runtime stays GPU-free.
     #[cfg(feature = "render")]
-    if prop == PropKind::Opacity
-        && let AnimValue::Float(f) = v
-        && let Some(mut sprite) = world.get_mut::<ph2d_render::Sprite>(entity)
-    {
+    if let Some(mut sprite) = world.get_mut::<ph2d_render::Sprite>(entity) {
         sprite.opacity = f.clamp(0.0, 1.0);
+        return true;
     }
-    #[cfg(not(feature = "render"))]
-    let _ = (world, entity, prop);
+    false
+}
+
+/// O inverso de [`write_opacity`] (`None` = sem substrato).
+#[must_use]
+pub fn read_opacity(world: &World, entity: Entity) -> Option<f32> {
+    read_prop_kind(world, entity, PropKind::Opacity)
 }
 
 /// ⭐ **Apaga todo `ph2d_ecs::MacroTempo`** — chamado UMA vez por quadro, ANTES de a Timeline

@@ -147,6 +147,8 @@ pub(crate) struct BarView {
     pub tab: Tab,
     /// Expanded graph bands plot velocity instead of value.
     pub speed_view: bool,
+    /// A vista «Curves» está ligada (doc 17, item 5): o segmentado da barra acende-a.
+    pub curvas: bool,
     /// The container half of the source selection (`TimelinePanelState::source_container`).
     ///
     /// **What the lane's `+` would place**, never where the view is looking: those are two

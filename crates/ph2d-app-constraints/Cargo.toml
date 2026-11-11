@@ -32,7 +32,8 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
 # Os nomes das propriedades do ▾ do Follow Value (os do dope-sheet), já traduzidos.
 ph2d-i18n = { path = "../ph2d-i18n" }
-ph2d-timeline = { path = "../ph2d-timeline" }
+# `render`: a opacidade final (`write_opacity`/`read_opacity`) do `Prop::Opacidade`.
+ph2d-timeline = { path = "../ph2d-timeline", features = ["render"] }
 # O instante da chave de compensação (`compensa`).
 ph2d-anim = { path = "../ph2d-anim" }
 # A cena 1 conduzida (`smoke_pega`): o relógio que ela arrasta.

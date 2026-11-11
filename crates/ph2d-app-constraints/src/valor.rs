@@ -1,7 +1,8 @@
 //! **Valor segue valor, lado da família** (`docs/BlenderConstraints/06_W5_resto.md` §3.1). Corre logo
 //! depois do apply da timeline e ANTES do dreno das famílias: lê a fonte como a curva a deixou, corre a
 //! mola, e escreve o destino — um campo vai para `CanaisEscritos` (o dreno da família dona aplica-o em
-//! pré-visualização), a pose fica em [`Valores`] e a pilha aplica-a na posição do item.
+//! pré-visualização), a pose fica em [`Valores`] e a pilha aplica-a na posição do item, e a opacidade
+//! final vai pela porta da Timeline (`ph2d_timeline::write_opacity`), declarada ao `PreviewDrive`.
 
 use bevy_ecs::entity::Entity;
 use ph2d_constraints::{Kind, Prop, Valor};
@@ -13,6 +14,8 @@ use ph2d_ecs::{
     CanaisEscritos, CanaisLidos, FieldKey, LeitoresDosCanais, SimWorld, StableId, World,
     world_transform,
 };
+
+use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 
 use crate::relogio::Relogio;
 
@@ -33,6 +36,7 @@ fn agora(w: &World, e: Entity, prop: Prop) -> Option<f64> {
                 .or_else(|| w.get_resource::<CanaisLidos>()?.valor(b, k))
                 .map(f64::from)
         }
+        Prop::Opacidade => ph2d_timeline::read_opacity(w, e).map(f64::from),
     }
 }
 
@@ -49,13 +53,16 @@ fn pela_curva(w: &World, r: &Relogio<'_>, v: &Valor, b: u64, t: f64) -> Option<f
             .flatten()
             .and_then(|p| v.da_pose(pose(&p))),
         Prop::Campo(c) => ph2d_timeline::field_at(w, r.doc, b, chave(c), t).map(f64::from),
+        Prop::Opacidade => {
+            ph2d_timeline::prop_at(w, r.doc, b, ph2d_timeline::PropKind::Opacity, t).map(f64::from)
+        }
     }
 }
 
 /// ⭐ **A porta do quadro.** Para cada Valor ligado, pela ordem da pilha: a saída (já na faixa do
 /// destino, com a mola) em [`Valores`], e o campo de destino em `CanaisEscritos`. Sem relógio, ou sem
-/// mola, segue no mesmo quadro.
-pub fn valores(sim: &mut SimWorld, relogio: Option<Relogio<'_>>) {
+/// mola, segue no mesmo quadro. A opacidade escrita declara-se a `preview` (não é autoria).
+pub fn valores(sim: &mut SimWorld, relogio: Option<Relogio<'_>>, preview: &mut PreviewDrive) {
     let w = sim.world_mut();
     let mut vs = w.remove_resource::<Valores>().unwrap_or_default();
     vs.saidas.clear();
@@ -150,15 +157,32 @@ pub fn valores(sim: &mut SimWorld, relogio: Option<Relogio<'_>>) {
             }
             vs.saidas.insert(chave_item, out);
             // Escrito já: um Valor mais abaixo na ordem que lê este campo vê-o neste quadro.
-            if let Prop::Campo(k) = v.destino {
-                #[expect(clippy::cast_possible_truncation, reason = "o canal da casa é f32")]
-                let x = v.compoe(destino, out, influence) as f32;
-                w.get_resource_or_insert_with(CanaisEscritos::default)
-                    .escrever(e.to_bits(), chave(k), x);
+            #[expect(clippy::cast_possible_truncation, reason = "o canal da casa é f32")]
+            let x = v.compoe(destino, out, influence) as f32;
+            match v.destino {
+                Prop::Campo(k) => w
+                    .get_resource_or_insert_with(CanaisEscritos::default)
+                    .escrever(e.to_bits(), chave(k), x),
+                Prop::Opacidade => opacidade(w, e, x, preview),
+                Prop::Pose(_) => {}
             }
         }
     }
     w.insert_resource(vs);
     w.get_resource_or_insert_with(LeitoresDosCanais::default)
         .publicar(CONSTRAINT, lidos);
+}
+
+/// Escreve a opacidade final de `e` e declara-a: o mesmo facto (`SpriteAlpha`) que a curva da
+/// Timeline conduz, também quando o valor não mudou mas o Follow continua a conduzir.
+fn opacidade(w: &mut World, e: Entity, x: f32, preview: &mut PreviewDrive) {
+    let antes = w.get::<ph2d_render::Sprite>(e).map(|s| s.opacity);
+    ph2d_timeline::write_opacity(w, e, x);
+    let (Some(antes), Some(agora)) = (antes, w.get::<ph2d_render::Sprite>(e).map(|s| s.opacity))
+    else {
+        return;
+    };
+    if antes != agora || preview.still_driving(e, Driver::SpriteAlpha) {
+        preview.driven(e, Driven::SpriteAlpha(antes), Driven::SpriteAlpha(agora));
+    }
 }

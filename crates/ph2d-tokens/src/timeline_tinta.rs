@@ -86,6 +86,8 @@ pub enum TimelineTinta {
     Mudado,
     /// O contorno do campo mudado (maquete B1: o laranja a ~58 % sobre o cartão, amostra da moda).
     MudadoContorno,
+    /// Doc 17, item 5: a curva de outra linha na vista Curves, normalizada no eixo direito (maquete B2: `#5FBFF2`).
+    CurvaSecundaria,
 }
 
 /// As cores das peças de clipe, na ordem da maquete; o clipe `i` veste `PECAS[i % PECAS.len()]`.
@@ -132,6 +134,7 @@ impl TimelineTinta {
             Self::MudadoContorno => (T::KanbanList, [162, 107, 71]),
             Self::PesoPilula => (T::KanbanList, [33, 37, 52]),
             Self::OlhoMudo => (T::KanbanList, [137, 83, 87]),
+            Self::CurvaSecundaria => (T::KanbanBlueBold, [95, 191, 242]),
         }
     }
 

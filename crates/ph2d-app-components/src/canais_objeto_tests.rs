@@ -59,7 +59,11 @@ fn a_escrita_prende_ao_dominio() {
     assert_eq!(ler(w, e, k(o::TINTA, 0)), Some(1.0));
     escrever(w, e, k(o::TINTA + 3, 0), -1.0);
     assert_eq!(ler(w, e, k(o::TINTA + 3, 0)), Some(0.0));
-    assert_eq!(ler(w, e, k(11, 0)), None, "a opacidade final é o `PropKind::Opacity`");
+    assert_eq!(
+        ler(w, e, k(11, 0)),
+        None,
+        "a opacidade final é o `PropKind::Opacity`"
+    );
     escrever(w, e, k(o::EMISSAO, 0), 1.0e9);
     assert_eq!(ler(w, e, k(o::EMISSAO, 0)), Some(ph2d_ecs::EMISSIVE_MAX));
     escrever(w, e, k(o::SILHUETA, 0), 0.4);

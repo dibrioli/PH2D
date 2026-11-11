@@ -10,11 +10,11 @@
 //! | 6 | **Régua de desenho** — um perfil de dentes no VETOR com regras de desenho técnico (H/V, topos e folgas iguais, um canto preso): no modo Edit arraste um canto e o resto obedece; dê Play e a ALTURA do dente do meio estica e volta sem desfazer as outras regras (a medida animada, `smoke_regua`) |
 //! | 7 | **Caixa com tampa** — abre no Edit com a tool **Rules** na mão: o corpo e a tampa com dez regras, cada uma à vista (selos `|` `—` `=1` 🔒 ⊙, cotas da largura, da altura e do ângulo); o Play abre e fecha a tampa pelo ÂNGULO animado (`smoke_caixa`) |
 //! | 8 | **Braço articulado** — chão com cadeado, manivela, biela e balancim presos por 4 pinos e uma MÃO soldada na ponta: arraste a manivela, o balancim, a mão (`smoke_braco`) |
-//! | 9 | **Mostrador** — a BÓIA sobe e desce (curva da timeline); o PONTEIRO segue a altura dela com mola (Follow Value → rotação) e a LÂMPADA acende com ela (Follow Value → opacidade) (`smoke_mostrador`) |
+//! | 9 | **Mostrador** — a BÓIA sobe e desce (curva da timeline); o PONTEIRO segue a altura dela com mola (Follow Value → rotação) e a LÂMPADA acende com ela (Follow Value → «Opacity», a opacidade final) (`smoke_mostrador`) |
 //! | 10 | **Recreio** — os *behaviours*: o ÍMAN vai e volta (curva da timeline) e a LIMALHA é atraída por ele (Attract); a MOEDA treme mais quando o íman passa perto (Shake com Weight By); o BALÃO flutua (Float); a LUA orbita o PLANETA (Orbit) (`smoke_recreio`) |
 //! | 11 | **Painel do jogo** — o HUD que se arruma: a PONTUAÇÃO sobe com o Play e a MOEDA fica colada ao lado; estreite a janela e a pontuação ENCOLHE antes de a moeda invadir o MINIMAPA; a ferramenta **HUD Layout** do Vetor mostra e edita as setas (`smoke_painel`) |
 //! | 12 | **Partículas e mola** — a BOLA anda montada numa partícula da FONTE (Motion: formas, gravidade e um redemoinho; Copy Particle) e fica na pose dela quando a partícula morre; com a timeline PARADA, arraste o CORPO da antena e a PONTA balança e assenta (a mola ao vivo) (`smoke_particula`) |
-//! | 13 | **Interruptor e lâmpada** — a caixa «Enable 9-slice» do SWITCH liga no 30 e desliga no 60 (e ele sobe enquanto ela está marcada): a LAMP acende com a caixa (Follow Value caixa → opacidade, 0,2 … 1) e a caixa DELA marca-se com a altura do Switch (Follow Value altura → caixa) (`smoke_interruptor`) |
+//! | 13 | **Interruptor e lâmpada** — a caixa «Enable 9-slice» do SWITCH liga no 30 e desliga no 60 (e ele sobe enquanto ela está marcada): a LAMP acende com a caixa (Follow Value caixa → «Opacity», 0,2 … 1) e a caixa DELA marca-se com a altura do Switch (Follow Value altura → caixa) (`smoke_interruptor`) |
 
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Resource;

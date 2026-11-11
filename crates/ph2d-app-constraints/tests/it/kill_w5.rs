@@ -156,7 +156,7 @@ fn w5_pieces_under_half_a_millisecond_per_thousand() {
             };
             sobe(&mut sv, alvo, f);
             let t0 = Instant::now();
-            valores(&mut sv, Some(r));
+            valores(&mut sv, Some(r), &mut PreviewDrive::default());
             valor = valor.min(t0.elapsed());
             // O quadro INTEIRO da família (preparar + a pilha), não só a lei.
             sobe(&mut sc, alvo_c, f);

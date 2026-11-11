@@ -177,6 +177,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // escrevia no fonte).
         "panel.timeline.buffer.swap" => "Swap",
         "panel.timeline.buffer.store" => "Store",
+        // Doc 17, item 5 — a vista «Keys | Curves» da aba Keys (maquetes B1/B2).
+        "panel.timeline.view.keys" => "Keys",
+        "panel.timeline.view.curves" => "Curves",
+        "panel.timeline.view.tip" => {
+            "Keys shows each row's keys; Curves shows every curve in one big graph"
+        }
+        "panel.timeline.view.normalized" => "{name} · normalized, right axis",
         _ => return None,
     })
 }

@@ -331,11 +331,13 @@ fn paint_offers_the_table_and_no_paper_row_lives_here() {
             .iter()
             .any(|(w, r)| *w == id && r.w > 0.0 && r.h > 0.0)
     };
-    let plain = paint_with(PainterTool::default().brush_settings());
-    // A linha de um knob que só outra ferramenta da água lê não aparece com o Pincel na mão
-    // (`pela_porta_do_rato::a_linha_de_uma_ferramenta_so_aparece_com_ela_na_mao`).
-    let pincel = PainterTool::default().brush_settings();
-    for row in rows::rows().iter().filter(|r| r.na_mao(&pincel)) {
+    // Com os pais ligados (B35.3); a linha de um knob que só outra ferramenta da água lê não aparece com o Pincel
+    // na mão (`pela_porta_do_rato::a_linha_de_uma_ferramenta_so_aparece_com_ela_na_mao`).
+    let mut t = PainterTool::default();
+    crate::liga_os_pais(&mut t);
+    let pincel = t.brush_settings();
+    let plain = paint_with(pincel);
+    for row in rows::rows().iter().filter(|r| r.visivel(&pincel)) {
         match &row.options {
             // A CHOICE row paints its options and NO slider (a selector, never a slider, dono 28/10).
             Some(opts) => {

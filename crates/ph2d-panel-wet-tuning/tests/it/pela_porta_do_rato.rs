@@ -35,6 +35,7 @@ fn ferramenta(ferramenta: WetTool, oleo: bool) -> PainterTool {
         ferramenta,
         "a ferramenta não ficou na mão"
     );
+    crate::liga_os_pais(&mut t);
     t
 }
 
@@ -195,10 +196,10 @@ fn a_linha_de_uma_ferramenta_so_aparece_com_ela_na_mao() {
     set_current_brush(None);
 }
 
-/// O expoente através só age com o seletor em «Own exponent» (R23): em «Same as along» a linha leva a dica; o seletor
+/// O expoente através só age com o seletor em «Own exponent» (R23): em «Same as along» a linha some (B35.3); o seletor
 /// fica logo acima e nunca esmaece.
 #[test]
-fn o_expoente_atraves_esmaece_sem_o_seletor() {
+fn o_expoente_atraves_some_sem_o_seletor() {
     let dica = ph2d_i18n::tr(ph2d_tool_painter::Dependente::ExpoenteAtravesSemProprio.dica());
     let linha = |chave: &str| {
         rows::rows()
@@ -213,21 +214,22 @@ fn o_expoente_atraves_esmaece_sem_o_seletor() {
         // A rota do clique na opção (`event.rs`): o `SetValue` no slider da linha, ao índice da opção.
         t.handle_panel_event(PanelEvent::SetValue(seletor.slider, proprio));
         let mesa = Mesa::nova(&t);
-        assert!(mesa.rect(expoente.slider).is_some(), "o expoente pintado");
+        // B35.3: inerte = escondida (decisão 4, 10/11); à vista, sem a dica da inércia.
+        assert_eq!(
+            mesa.rect(expoente.slider).is_none(),
+            esperado,
+            "o expoente com o seletor em {proprio}"
+        );
         for id in [expoente.slider, expoente.chip] {
-            assert_eq!(
-                mesa.host.store().tooltip_for(id).is_some_and(|t| t == dica),
-                esperado,
-                "o expoente com o seletor em {proprio}"
-            );
+            assert!(!mesa.host.store().tooltip_for(id).is_some_and(|t| t == dica) || esperado);
         }
     }
     set_current_brush(None);
 }
 
-/// Depth, Gloss e Paper Press só agem com o Real Oil: desligado, a linha leva a dica (e o véu); ligado, nenhuma.
+/// Depth, Gloss e Paper Press só agem com o Real Oil: desligado, a linha some (B35.3); ligado, à vista sem dica.
 #[test]
-fn o_material_do_oleo_esmaece_sem_o_real_oil() {
+fn o_material_do_oleo_some_sem_o_real_oil() {
     let dica = ph2d_i18n::tr(ph2d_tool_painter::Dependente::MaterialSemOleo.dica());
     for (oleo, esperado) in [(false, true), (true, false)] {
         let mesa = Mesa::nova(&ferramenta(WetTool::Paint, oleo));
@@ -236,13 +238,14 @@ fn o_material_do_oleo_esmaece_sem_o_real_oil() {
                 .iter()
                 .find(|r| r.key == chave)
                 .expect("a linha existe");
-            assert!(mesa.rect(row.slider).is_some(), "{chave} pintada");
+            // B35.3: sem o Real Oil a linha some (decisão 4, 10/11); com ele, à vista e sem a dica.
+            assert_eq!(
+                mesa.rect(row.slider).is_none(),
+                esperado,
+                "{chave} com o Real Oil {oleo}"
+            );
             for id in [row.slider, row.chip] {
-                assert_eq!(
-                    mesa.host.store().tooltip_for(id).is_some_and(|t| t == dica),
-                    esperado,
-                    "{chave} com o Real Oil {oleo}"
-                );
+                assert!(!mesa.host.store().tooltip_for(id).is_some_and(|t| t == dica) || esperado);
             }
         }
     }

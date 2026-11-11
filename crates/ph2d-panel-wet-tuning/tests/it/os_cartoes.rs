@@ -33,6 +33,7 @@ fn ferramenta(na_mao: WetTool, oleo: bool) -> PainterTool {
         eids::PAINTER_PAINT_MODE,
         na_mao.fio().to_owned(),
     ));
+    crate::liga_os_pais(&mut t);
     t
 }
 
@@ -509,9 +510,9 @@ fn the_advanced_groups_are_born_folded_and_the_list_scrolls() {
     );
 }
 
-/// Todo ícone mudo tem dica; a linha inerte continua com a dica do que a acorda e editável.
+/// Todo ícone mudo tem dica; a linha inerte não se pinta (B35.3).
 #[test]
-fn every_mute_control_has_a_tooltip_and_an_inert_row_says_what_wakes_it() {
+fn every_mute_control_has_a_tooltip_and_an_inert_row_is_hidden() {
     let mesa = Mesa::nova(ferramenta(WetTool::Paint, false));
     let store = mesa.host.store();
     let panel = eids::WET_TUNING_PANEL;
@@ -524,24 +525,16 @@ fn every_mute_control_has_a_tooltip_and_an_inert_row_says_what_wakes_it() {
         .filter(|id| store.tooltip_for(*id).is_none())
         .collect();
     assert!(mudos.is_empty(), "sem dica: {mudos:?}");
-    let dica = ph2d_i18n::tr(ph2d_tool_painter::Dependente::MaterialSemOleo.dica());
+    // B35.3 (decisão 4, 10/11): a linha inerte não se pinta — o Depth sem o Real Oil some, com ele volta.
     let row = rows::rows()
         .iter()
         .find(|r| r.key == "oilDepth")
         .expect("linha");
-    assert_eq!(store.tooltip_for(row.chip), Some(dica));
-    let mut mesa = mesa;
-    let ev = mesa.arrasta_a_pega(row.chip, 60.0);
-    let antes = mesa.t.brush_settings().wet_knobs.knobs[row.knob];
-    mesa.entrega(ev);
-    assert_ne!(
-        mesa.t.brush_settings().wet_knobs.knobs[row.knob],
-        antes,
-        "inerte, mas editável"
-    );
+    assert!(mesa.rect(row.chip).is_none(), "inerte ⇒ escondida");
     assert!(
-        dicas::field_hint(mesa.host.store(), row.chip).is_some_and(|d| d.contains("Depth")),
-        "a dica do campo nomeia-o"
+        Mesa::nova(ferramenta(WetTool::Paint, true))
+            .rect(row.chip)
+            .is_some()
     );
 }
 

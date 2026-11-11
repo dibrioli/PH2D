@@ -56,6 +56,12 @@ impl TuneRow {
             .is_none_or(|dona| dona == brush.wet_tool && !brush.eraser)
     }
 
+    /// A linha pinta-se: da ferramenta na mão e com o controlo-pai ligado (B35.3, [`crate::pais`]).
+    #[must_use]
+    pub fn visivel(&self, brush: &ph2d_tool_painter::BrushSettings) -> bool {
+        self.na_mao(brush) && crate::pais::pai_ligado(self.key, brush)
+    }
+
     /// Slider track (`0..=1`) → the value it means.
     pub fn value_of(&self, track: f32) -> f64 {
         self.min + f64::from(track) * (self.max - self.min)

@@ -224,7 +224,7 @@ fn corpo_do_grupo(
     let mut pendentes: Vec<&'static TuneRow> = Vec::new();
     for row in rows::rows()
         .iter()
-        .filter(|r| r.group == group && r.na_mao(brush))
+        .filter(|r| r.group == group && r.visivel(brush))
     {
         match &row.options {
             Some(opcoes) => {

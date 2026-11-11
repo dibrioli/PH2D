@@ -19,6 +19,7 @@
 //! panel-local hide would fight the bridge and lose.
 
 pub mod cards;
+pub mod pais;
 pub mod rows;
 pub mod state;
 

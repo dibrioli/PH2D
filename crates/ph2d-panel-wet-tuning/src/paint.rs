@@ -73,7 +73,7 @@ pub(crate) fn paint(_state: &mut WetTuningPanelState, ctx: &mut PaintCtx) {
     if crate::cards::cards_on() {
         let store = ctx.host.store_mut();
         crate::cards::prepare(store, &brush);
-        for row in rows::rows().iter().filter(|r| r.na_mao(&brush)) {
+        for row in rows::rows().iter().filter(|r| r.visivel(&brush)) {
             dica_da_inercia(store, &brush, row);
         }
         let cartoes = crate::cards::cards(&brush);
@@ -222,7 +222,7 @@ fn paint_group(
     let mut inner = y;
     for row in rows::rows()
         .iter()
-        .filter(|r| r.group == section.group && r.na_mao(brush))
+        .filter(|r| r.group == section.group && r.visivel(brush))
     {
         let value = brush.wet_knobs.knobs[row.knob];
         let topo = inner;

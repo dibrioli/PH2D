@@ -13,3 +13,33 @@ mod os_cartoes;
 mod panel_chrome;
 mod pela_porta_do_rato;
 mod seam;
+
+/// B35.3: liga todo controlo-pai de [`ph2d_panel_wet_tuning::pais::PAIS`] (salvo o Real Oil, que é do chamador),
+/// pela rota do painel — com eles a zero as filhas não se pintam.
+pub(crate) fn liga_os_pais(t: &mut ph2d_tool_painter::PainterTool) {
+    use ph2d_editor_core::Tool;
+    use ph2d_editor_core::tool::PanelEvent;
+    use ph2d_panel_wet_tuning::pais::{PAIS, Pai};
+    for (_, pai) in PAIS {
+        match pai {
+            // O Brush dust e o Wet bloom moram no cartão Wet Paint (a rota do Tuning não os escreve).
+            Pai::Knob("dust") => t.handle_panel_event(PanelEvent::SetValue(
+                ph2d_tool_painter::ids::PAINTER_WETPAINT_DUST,
+                1.0,
+            )),
+            Pai::Knob("wetOpen") => t.handle_panel_event(PanelEvent::SetValue(
+                ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_BLOOM,
+                1.0,
+            )),
+            Pai::Knob(chave) => t.handle_panel_event(PanelEvent::SetValue(
+                ph2d_tool_painter::ids::wet_tuning_slider_id(chave),
+                1.0,
+            )),
+            Pai::CerdasNoShape => t.handle_panel_event(PanelEvent::SelectOption(
+                ph2d_tool_painter::ids::PAINTER_SHAPE_KIND,
+                ph2d_tool_painter::TextureKind::Bristles.to_u8().to_string(),
+            )),
+            Pai::OleoReal => continue,
+        };
+    }
+}

@@ -33,6 +33,7 @@
 | **`ph2d-code-scene-arena` (crate NOVA, 2)** | **A** `Cargo.toml`, `src/lib.rs` (a cena 15 e o `STEPS_15`, vindos de `ph2d-code-scenes`/`ph2d-code-smoke`); consumidores `ph2d-app-code` (`smoke_drive.rs`, `Cargo.toml`) e `ph2d-app-components` (`code_smoke.rs`, `Cargo.toml`); linha nova em `TETOS_DAS_CRATES_DA_FAMILIA`; `Cargo.lock` tocado |
 | Ronda «stem darkening» (`07d722387f`) | `ph2d-tokens/src/{typography,lib}.rs` (variante 4.ª de `TextRendering`, `ALL` = 4, campo `stem_darkening`, `stem_darkening_px`) · `ph2d-text`: nada · `ph2d-editor-core`: `published.rs` (+**A** `published_embolden_tests.rs`), `paint.rs`, `paint_text.rs` (692/700), `paint_text_rotated.rs`, `ids/menus_settings.rs`, `screens/hero/{chrome/settings_text,menu_row_mark,menu_tables_settings,pre_populate}.rs` · `ph2d-i18n/src/chrome_menus.rs` (`chrome.menu.crisp_stem_darkening`) · `ph2d-vector/src/lib.rs` (re-export `FontEmbolden`, `Diagonal2`; o contrato congelado vive em `ph2d-vector-doc`, intocado) · `ph2d-panel-code/src/glyphs.rs`, `tests/it/nitidez.rs`. ⚠️ Quem faça `match` exaustivo sobre `TextRendering` noutra linha parte aqui. |
 | **Ronda 11/11** (`89ac2897e9..c67465ff6e`) | `ph2d-panel-code`: **A** `src/tab_bar.rs`, `src/tab_bar/menu.rs`, `tests/it/{submenu,fundo_real}.rs`; M `mono_label` (`paint` → `paint_on(.., bg, ..)`, ⚠️ quem chame `mono_label::paint` parte), `palette` (`link_ink`, `#[derive(Clone)]`), `code_text` (`choices`), `help/paint`, `script_list`, `bancada/{grid,outline}`, `lib`, `tests/it/main` · `ph2d-app-code`: `tab_menu` (a barra saiu; `Bar`/`BarPainted` = alias genéricos; `menu_items`/`menu_titles`/`ROW_TEXT_RENDERING`), `commands` (os 4 modos só na paleta), `surface`, `smoke_drive`, `tests/it/{barra_da_aba,divisor,ajuda,arrastar,bancada,main,onda_b}` · **`ph2d-editor-core` (foundational, ADITIVO):** `doc_surface.rs` **`PointerInput.primary_held`** (⚠️ campo novo num literal: quem construa `PointerInput` noutra linha não compila — 17 sítios preenchidos aqui), `documents.rs`/`documents_surface.rs` (`note_button`, `primary_held()`), `widget/lista_flutuante.rs` (`Superficie::fundo`), `screens/hero/surface_input.rs`, `published_embolden_tests.rs` · `shells/desktop/src/input_dispatch.rs` (+2 linhas: `note_button` no topo de `pointer_button`) · `shells/game-scenes/tests/it/` (5 ficheiros, o campo) · `ph2d-i18n/src/code_bancada.rs` (5 chaves `code.menu.text*`) |
+| **Ronda 11/11 (3.ª)** (`e040ad604c..491e4e1294`, base da ronda `d137ddac68`; nenhuma crate foundational) | `ph2d-panel-code`: **A** `src/stack.rs`, `tests/it/{pilha,barras_e_caminho}.rs`; M `src/{tab_bar,console,script_list,view,paint,lib}.rs`, `tab_bar/menu.rs`, `debug_card/mod.rs`, `bancada/{grid,outline}.rs`, `tests/it/{submenu,problemas,virtualizacao,main}` · `ph2d-app-code`: `src/{doc,surface,debug_card,tab_menu}.rs`, `tests/it/{depurador,linha_longa}` (⚠️ `CodeDoc.bench_h` passou a `Want`; `TabBar::hover_move_at(x,y,now)` é a entrada nova do movimento — `bar_move` passa o relógio do chrome) · `docs/CodeEditor/ferramentas/smoke/`: `cena14/{fotos_q3.sh,caminho_diagonal_card_style.txt}`, `ax_*.png`, `ay_*.png` |
 | Docs / fotos | 2 handoffs em `docs/CodeEditor/handoffs/`; fotos em `docs/CodeEditor/ferramentas/smoke/` (+`cena13/`); `cena14/fotos_q3.sh` (`ARRASTA=`, `DUPLO=`) |
 
 **Provas de contrato:**
@@ -95,11 +96,12 @@ corre é o do primário; a cura só vale depois da integração.
 - **Auditoria, lentes independentes:** sem violação de regra; correcção curada (item F); a lente de ratchet gerou o aviso do §2.
 - **Binário do smoke:** ver o fim do §8.
 
-## 5. Folgas medidas (recontar na integração; `wc -l` no HEAD `d137ddac68`, 11/11)
+## 5. Folgas medidas (recontar na integração; `wc -l` no HEAD `491e4e1294`, 11/11, 3.ª ronda)
 
 | Ficheiro / crate | Medido / tecto | Folga |
 |---|---|---|
-| crate `ph2d-app-code` (catraca `the_shell_only_shrinks`) | **26 584** / 26 628 | 44 (era 2: a barra saiu −259; voltaram testes, o largar perdido, o Card Style e o `tab_leaf`; a mecânica fina do submenu foi testada na `ph2d-panel-code`) |
+| crate `ph2d-app-code` (catraca `the_shell_only_shrinks`) | **26 617** / 26 628 | 11 (era 44 em `d137ddac68`; a pilha da aba e o recorte do quadro entraram, a pilha compacta sem `debug_card_h` devolveu 15) |
+| maiores ficheiros tocados na 3.ª ronda | `doc.rs` 668 · `surface.rs` 646 · `script_list.rs` 591 · `ph2d-panel-code/src/paint.rs` 575 / 700 | — |
 | crate `ph2d-code-smoke` | 614 / 614 | **0** (não tocada) |
 | crate `ph2d-panel-code` | 22 129 | sem tecto de crate |
 | `ph2d-editor-core/src/paint.rs` | 700 / 700 | **0** (não tocado) |
@@ -149,9 +151,13 @@ Os passos 1–3 vêm das rondas aprovadas (ficam para o próximo testador); **4�
 2. `ph2d-editor-core/src/paint.rs` 700/700 e `screens/hero/paint.rs` 700/700 — **não tocados de propósito**: nada desta linha
    precisa deles, e partir ficheiros foundational que outras linhas editam só fabrica conflitos no merge; quem precisar de
    crescer lá cura movendo. `paint_text.rs` 692/700.
-3. O integrador reconta a catraca (`ph2d-app-code` 26 584 × tecto 26 628; `ph2d-code-assist` 4 188).
+3. O integrador reconta a catraca (`ph2d-app-code` 26 617 × tecto 26 628, folga 11; `ph2d-code-assist` 4 188).
 4. **Memória no primário `project-memory/`, NÃO comitada** (as do dono de 10/11) — o integrador funde-as.
 5. **Smoke do dono: PENDENTE** (esta ronda e as anteriores).
+6. (3.ª ronda) A linha de 64 KB colada: o `reveal` leva agora de facto a vista ao fim, que cai no troço NÃO pintado (limite pré-existente de 2 000 bytes pintados por linha). Aberto.
+7. (3.ª ronda) O recorte do corpo do quadro do depurador ao seu rect (`cd1b7d7504`) não tem teste unitário: só foto (teste de píxel pede a placa).
+8. (3.ª ronda) Autocomplete, página de ajuda, go-to e popups de hover NÃO passaram pela auditoria de layout (o assistente de código — `luau-lsp` — falta neste ambiente).
+9. (3.ª ronda) `cena14/fotos_q3.sh` usa um número de ecrã fixo (`:73`) que colide com outras sessões; a auditoria correu uma cópia em `:187`.
 
 Fechados em 11/11 (2.ª ronda, §8): o caminho do herói (`surface_input`) e a linha acesa (`row_bg`) com teste e mutação vermelha; os
 fundos reais da lista, do «In this script», da grelha e da ajuda com teste por sítio; o Card Style em submenu; a mira até ao submenu.
@@ -402,7 +408,57 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   [av_submenu.png](../ferramentas/smoke/av_submenu.png) (`"752 42;790 146"`) ·
   [av_submenu_escolhido.png](../ferramentas/smoke/av_submenu_escolhido.png) · [av_submenu_zoom.png](../ferramentas/smoke/av_submenu_zoom.png).
 
+- **Ronda 11/11 (3.ª) — a mira do submenu com o rato real, a auditoria de layout e as curas do fecho (`e040ad604c..491e4e1294`).**
+  Causa: o smoke do dono (passo 4) falhou — «o submenu trocou no caminho».
+  (1) **Mira** (`e040ad604c`, `2e68dc0736`, `c59a87ca9d`): o triângulo da mira refazia-se a cada evento a partir do passo ANTERIOR; o
+  rato real anda em passos de 1–2 px com tremor (passos só para baixo, um passo atrás), um passo caía fora e o submenu trocava.
+  Agora `TabBar::hover_move_at(x,y,now)` mantém uma ÂNCORA fixa (`TabBar.last` = o último ponto fora da mira; actualiza-se também
+  dentro do submenu); a borda do submenu alarga meia linha (`aims_at`, folga `height()*0.5`); parar > `AIM_REST_NS` (300 ms, o
+  atraso dos menus do sistema) a caminho acaba a mira (`TabBar.moved_at`; `CodeDocs::bar_move` passa o relógio do chrome). Teste
+  `submenu::a_diagonal_com_tremor_da_mao_segura_o_submenu_e_a_pausa_troca` (percurso de passos com tremor, pausa, folga de meia
+  linha, sair do submenu de volta para a mãe de baixo troca). **Mutações 4/4 vermelhas:** âncora por passo · sem pausa · folga 0 ·
+  âncora sem actualizar dentro do submenu. Foto de rato real em Xvfb (135 passos de 1–3 px a 8 ms; `CAMINHO=` novo no `fotos_q3.sh`,
+  ficheiro `cena14/caminho_diagonal_card_style.txt`): [ax_diagonal.png](../ferramentas/smoke/ax_diagonal.png) ·
+  [zoom](../ferramentas/smoke/ax_diagonal_zoom.png) — «Strip» acesa e o submenu do Card Style seguro.
+  (2) **Auditoria de layout a 1280×720 e 1930×1040 (cenas 1–15): 5 defeitos, todos curados.**
+  a) *O código ia a ZERO e os cartões sobrepunham-se* (cada cartão tirava o seu terço; a Bancada posta de baixo caía sobre o quadro do
+  depurador posto de cima). `ph2d_panel_code::stack` novo (`Want{h,least}`, `fit`, `code_least`, `CODE_LEAST_ROWS = 4`): os cartões
+  encolhem pela ordem Bancada → quadro do depurador → faixa até ao mínimo de cada um para o código guardar 4 linhas;
+  `CodeDoc::stack` (`ph2d-app-code/src/debug_card.rs`) alimenta `cards`/`bench_rect`/`debug_rect`; `BancadaView::bench_least`
+  (título + cabeçalho da grelha + 1 linha), `DebugCardView::least` (barra + linha do erro), `ConsoleView::want`; `CodeDoc.bench_h` é
+  `Want`. Commits `eb420f131f`, `23c553b7a0`, `1ed719c43e` (stack/`debug_rect` para `debug_card.rs`: `doc.rs` 706 → 668, o tecto de
+  700), `cd1b7d7504` (o corpo do quadro recorta-se ao seu rect: no mínimo o corpo pintava a frase cinzenta por cima da linha do erro;
+  só por foto). Testes `pilha::*` (2) e `depurador::numa_aba_curta_o_codigo_guarda_as_linhas_e_os_cartoes_nao_se_cruzam` (alturas 400,
+  340, 300). Mutações: `fit` desligado → os 2 vermelhos; `debug_rect` sem a pilha → vermelho.
+  b) *A faixa Problems tomava um terço com 1 linha:* `ConsoleView::want` = o que a lista pinta (cabeçalho + cabeçalho da tabela +
+  linhas, ou a frase vazia) até ao terço; a aba Console mantém o terço. Teste `problemas::a_faixa_no_problems_quer_so_as_linhas_que_tem`
+  (`c237a8f863`); mutação vermelha.
+  c) *Linha parada fora do ecrã a 1280×720 (cena 12):* `goto_line`+`reveal()` rolava contra a área do quadro anterior, antes de o
+  cartão do depurador tirar a sua altura. Cura em `ph2d-panel-code` view/paint (`26e48c35ad`, `e13f1268b3`): `ensure_visible` grava
+  também um pedido pendente (byte + revisão do texto) reaplicado no `prepare` contra a área FINAL; a linha do cursor à vista fica à
+  vista quando a área muda de altura; roda/barra cancelam o pedido; filas de outra revisão limpam-se. Teste
+  `virtualizacao::o_pedido_de_vista_resolve_se_contra_a_area_que_encolheu`; 4 mutações vermelhas. `linha_longa.rs` carrega Home antes de
+  medir (ver §7 item 6).
+  d) *O caminho (breadcrumb) passava por cima da engrenagem:* `fit_crumb` em `tab_bar.rs` corta com «…» o nome do script, depois a
+  função, depois o caminho todo, e guarda «line N»; `BarPainted::crumb`. Testes `barras_e_caminho::{o_caminho_largo_sai_inteiro,
+  o_caminho_estreito_corta_em_reticencias_antes_da_engrenagem}`.
+  e) *«In this script» e SCRIPTS rolavam sem barra:* `paint_scrollbar` e as linhas acabam antes da pista (`BancadaView::outline_bar`,
+  `ScriptListView::painted_bar`). Testes `barras_e_caminho::{o_in_this_script_mostra_a_barra_quando_transborda,
+  a_lista_de_scripts_mostra_a_barra_quando_transborda}`. d)+e) entraram por engano em `eb420f131f` (estavam em stage); registo em
+  `073201dde7`. Mutações 5/5 vermelhas (a reserva da pista do «In this script» não foi mutada).
+  Fotos: [ay_aba_curta_antes.png](../ferramentas/smoke/ay_aba_curta_antes.png) · [ay_aba_curta_depois.png](../ferramentas/smoke/ay_aba_curta_depois.png)
+  (cena 3 a 1280×720). A foto da cena 12 parada (linha à vista) não foi gravada no repositório.
+  (3) **Curas do fecho** (`491e4e1294`): `#[must_use]` duplicado, `+=` no corte do caminho, `CODE_LEAST_ROWS` inteiro (`usize`),
+  `LITERAL-PX-OK` nas duas larguras `pad * 4.0` dos menus (pré-existentes, HR-15), o laço do teste da aba curta em instruções (clippy),
+  a pilha compacta sem `debug_card_h` (catraca `ph2d-app-code` 26 632 → 26 617 / 26 628).
+  **Prova de fecho (árvore = `491e4e1294`):** fmt ✓ · clippy `-D warnings` `ph2d-panel-code` + `ph2d-app-code` `--all-targets` ✓ ·
+  crates inteiras (motivo: código movido entre crates) `ph2d-panel-code` 165 ✓ (2 ign.) · `ph2d-app-code` 281 ✓ (3 ign.) ·
+  `architecture_workspace_file_loc_cap` ✓ · `the_shell_only_shrinks` ✓ (26 617 / 26 628, folga 11) · HR-15 `commit-barato` 0 violações ·
+  `cargo check -p ph2d-host-desktop` ✓. Smoke: o mesmo do §6 (passo 4 é o que falhou; refazer com o rato real).
+
 Binário de smoke depois de `rm -rf target/*/incremental` (11/11, HEAD `d137ddac68`; 1.ª: 14,27 s); a 2.ª:
+
+Binário de smoke depois de `rm -rf target/*/incremental` (11/11, 3.ª ronda, HEAD `491e4e1294` + este commit); a 2.ª: <<BIN2>>
 
 ```
 ▸ linha line_scripteditor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s

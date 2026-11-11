@@ -201,6 +201,9 @@ pub(super) struct Ctx<'a> {
     spans_enabled: bool,
     bx0: i32,
     bx1: i32,
+    row_tiles: &'a [u64],
+    tw: usize,
+    tiles_on: bool,
     gw: i32,
     max_v: f64,
     /// A bbox na grade de FLUXO ([`crate::flow::flow_bbox`]).
@@ -218,6 +221,14 @@ impl Ctx<'_> {
             self.bx1,
             y,
         )
+    }
+
+    /// Os troços da faixa da linha `y` pelos tiles de 64 ([`crate::grid::faixa_tiles`]).
+    #[inline]
+    fn runs(&self, y: i32) -> crate::grid::faixa_tiles::Runs<'_> {
+        let (lo, hi) = self.span(y);
+        let t = crate::grid::faixa_tiles::tiles_row_of(self.row_tiles, self.tw, self.tiles_on, y);
+        crate::grid::faixa_tiles::span_runs(t, lo, hi)
     }
 }
 
@@ -237,6 +248,7 @@ pub(super) fn split_vel<'a>(
     let fb = crate::flow::flow_bbox((g.bx0, g.by0, g.bx1, g.by1), g.flow.rf);
     let (by0, by1, bx0, bx1) = (g.by0, g.by1, g.bx0, g.bx1);
     let (spans_enabled, geom) = (g.spans_enabled, g.flow);
+    let (tw, tiles_on) = (g.tile_words, g.spans_enabled && g.tiles_enabled);
     let Grid {
         scratch,
         film,
@@ -247,6 +259,7 @@ pub(super) fn split_vel<'a>(
         flow_y,
         row_lo,
         row_hi,
+        row_tiles,
         vel_x,
         vel_y,
         ..
@@ -272,6 +285,9 @@ pub(super) fn split_vel<'a>(
         spans_enabled,
         bx0,
         bx1,
+        row_tiles,
+        tw,
+        tiles_on,
         gw,
         max_v: p.k(Knob::MaxVelocity),
         fb,
@@ -308,106 +324,35 @@ pub(super) fn prepare_row(c: &Ctx, y: i32, row: &mut [[f32; 2]], bt: &mut [i8]) 
     }
     let mut sampler = crate::flow::FlowRowSampler::new(&c.geom, y);
     let mut vmax = 0.0f64;
-    let mut i = lo as usize + y as usize * c.s;
-    for x in lo..=hi {
-        let (ux, uy) = sampler.at(c.flow_x, c.flow_y, x, i, c.geom.s);
-        let uvf = [ux as f32, uy as f32];
-        row[x as usize] = uvf;
-        // A linha-base do retro-traço, do `uv` JÁ arredondado — o que o `outflow_rows` lê.
-        bt[x as usize] = match backtrace(x, y, f64::from(uvf[0]), f64::from(uvf[1]), c.wf, c.hf) {
-            Some((_, _, y0, _)) if c.active[i] != 0 => {
-                i8::try_from(i64::from(y) - y0).unwrap_or(SolverScratch::BT_NADA)
+    for (ra, rb) in c.runs(y) {
+        let mut i = ra as usize + y as usize * c.s;
+        for x in ra..=rb {
+            let (ux, uy) = sampler.at(c.flow_x, c.flow_y, x, i, c.geom.s);
+            let uvf = [ux as f32, uy as f32];
+            row[x as usize] = uvf;
+            // A linha-base do retro-traço, do `uv` JÁ arredondado — o que o `outflow_rows` lê.
+            bt[x as usize] = match backtrace(x, y, f64::from(uvf[0]), f64::from(uvf[1]), c.wf, c.hf)
+            {
+                Some((_, _, y0, _)) if c.active[i] != 0 => {
+                    i8::try_from(i64::from(y) - y0).unwrap_or(SolverScratch::BT_NADA)
+                }
+                _ => SolverScratch::BT_NADA,
+            };
+            // O `vmax` é o do SERIAL: só célula ativa, e antes da checagem de sair da folha.
+            if c.active[i] != 0 {
+                let axv = ux.abs();
+                let ayv = uy.abs();
+                if axv > vmax {
+                    vmax = axv;
+                }
+                if ayv > vmax {
+                    vmax = ayv;
+                }
             }
-            _ => SolverScratch::BT_NADA,
-        };
-        // O `vmax` é o do SERIAL: só célula ativa, e antes da checagem de sair da folha.
-        if c.active[i] != 0 {
-            let axv = ux.abs();
-            let ayv = uy.abs();
-            if axv > vmax {
-                vmax = axv;
-            }
-            if ayv > vmax {
-                vmax = ayv;
-            }
+            i += 1;
         }
-        i += 1;
     }
     vmax
-}
-
-/// **A velocidade persistente**, na grade de FLUXO: o fluxo amostrado na
-/// origem do retro-traço mais a gravidade, escalada pela água daqui.
-///
-/// Quem escreve uma célula de fluxo é a célula fina **PROBE** dela (plano 30),
-/// e cada linha de fluxo tem exatamente uma linha fina probe ⇒ as linhas são
-/// disjuntas.
-fn momentum_rows(g: &mut Grid, p: &Params, gx: f64, gy: f64, mode: Rows) {
-    let (c, _, vel_x, vel_y) = split_vel(g, p);
-    let (_, fby0, _, fby1) = c.fb;
-    if fby0 > fby1 || c.fb.0 > c.fb.2 {
-        return;
-    }
-    let band = fby0 as usize * c.geom.s..(fby1 as usize + 1) * c.geom.s;
-    par::walk_rows2(
-        mode,
-        &mut vel_x[band.clone()],
-        &mut vel_y[band],
-        c.geom.s,
-        |r, vx, vy| momentum_row(&c, fby0 + r as i32, vx, vy, gx, gy),
-    );
-}
-
-/// Uma linha de FLUXO `cy` do [`momentum_rows`]; `vx`/`vy` são a linha inteira. Lê `film`/`active` só na
-/// linha fina probe dela e o fluxo no retro-traço — nada do que as outras fases escrevem.
-pub(super) fn momentum_row(c: &Ctx, cy: i32, vx: &mut [f32], vy: &mut [f32], gx: f64, gy: f64) {
-    let (fbx0, _, fbx1, _) = c.fb;
-    let (s, geom, max_v) = (c.s, &c.geom, c.max_v);
-    let py = crate::flow::flow_probe(cy, c.gh, geom.rf);
-    if py < c.by0 || py > c.by1 {
-        return;
-    }
-    let (lo, hi) = c.span(py);
-    if lo > hi {
-        return;
-    }
-    for cx in fbx0..=fbx1 {
-        let px = crate::flow::flow_probe(cx, c.gw, geom.rf);
-        if px < lo || px > hi {
-            continue;
-        }
-        let i = px as usize + py as usize * s;
-        let col = cx as usize;
-        if c.active[i] == 0 {
-            vx[col] = 0.0;
-            vy[col] = 0.0;
-            continue;
-        }
-        let (ux, uy) = flow_at_cell(c.flow_x, c.flow_y, geom, px, py, i);
-        // Sai da folha ⇒ o serial faz `continue` ANTES de escrever a
-        // velocidade: uma gota que alcança a borda mantém o momento.
-        if backtrace(px, py, ux, uy, c.wf, c.hf).is_none() {
-            continue;
-        }
-        let sx = f64::from(px) - ux;
-        let sy = f64::from(py) - uy;
-        let f = c.film[i] as f64;
-        let (sfx, sfy) = flow_at_point(c.flow_x, c.flow_y, geom, sx, sy);
-        let mut nvx = sfx + gx * f;
-        let mut nvy = sfy + gy * f;
-        if nvx > max_v {
-            nvx = max_v;
-        } else if nvx < -max_v {
-            nvx = -max_v;
-        }
-        if nvy > max_v {
-            nvy = max_v;
-        } else if nvy < -max_v {
-            nvy = -max_v;
-        }
-        vx[col] = nvx as f32;
-        vy[col] = nvy as f32;
-    }
 }
 
 /// **Quanto sai de cada célula** — a soma dos pesos com que os destinos da
@@ -459,14 +404,10 @@ pub(super) fn outflow_row(
     let (lo_u, hi_u) = (lo as usize, hi as usize);
     row[lo_u..=hi_u].fill(0.0);
     for ny in (y - c.reach).max(ny_lo)..=(y + c.reach).min(ny_hi) {
-        let (slo, shi) = c.span(ny);
-        if slo > shi {
-            continue;
-        }
         // O destino puxa desta linha se a base dele é `y` (`ny − y0 = ny − y`) ou `y − 1`.
         let (d_base, d_cima) = ((ny - y) as i8, (ny - y + 1) as i8);
         let rowbase = ny as usize * c.s - ubase;
-        for nx in slo..=shi {
+        for nx in c.runs(ny).flat_map(|(a, b)| a..=b) {
             let di = nx as usize + rowbase;
             let d = bt[di];
             if d != d_base && d != d_cima {
@@ -542,114 +483,119 @@ pub(super) fn transport_row(
     let mut km_colors = [0.0f64; 12];
     let mut km_weights = [0.0f64; 4];
     let mut km_out = [0.0f64; 3];
-    let mut i = lo as usize + y as usize * s;
-    for x in lo..=hi {
-        let f0 = film[i] as f64;
-        let m0 = susp[i] as f64;
-        // O que SAI (vale para toda célula com massa, ativa ou não —
-        // um canto inativo é drenado por quem o alcança).
-        let of = outflow[i - obase] as f64;
-        let leave = if of > 1.0 { 1.0 } else { of };
-        let mut new_film = f0 - f0 * leave;
-        let mut new_susp = m0 - m0 * leave;
-        let mut new_rgb = susp_rgb[i];
-        // O que ENTRA (só quem é ativo puxa).
-        if c.active[i] != 0 {
-            let uvc = uv[i - ubase];
-            let (ux, uy) = (f64::from(uvc[0]), f64::from(uvc[1]));
-            if let Some((x0, fx, y0, fy)) = backtrace(x, y, ux, uy, c.wf, c.hf) {
-                let i00 = x0 as usize + y0 as usize * s;
-                let i10 = i00 + 1;
-                let i01 = i00 + s;
-                let i11 = i01 + 1;
-                let w00 = (1.0 - fx) * (1.0 - fy);
-                let w10 = fx * (1.0 - fy);
-                let w01 = (1.0 - fx) * fy;
-                let w11 = fx * fy;
-                // ⚠️ A escala é a da FONTE — ver o módulo. Com as quatro saídas ≤ 1 (o caso
-                // comum) a escala é `1` e `w · 1 == w` ao bit: um teste em vez de quatro.
-                let (o00, o10, o01, o11) = (
-                    outflow[i00 - obase],
-                    outflow[i10 - obase],
-                    outflow[i01 - obase],
-                    outflow[i11 - obase],
-                );
-                let (k00, k10, k01, k11) = if o00.max(o10).max(o01.max(o11)) <= 1.0 {
-                    (w00, w10, w01, w11)
-                } else {
-                    (
-                        w00 * take_scale(o00 as f64),
-                        w10 * take_scale(o10 as f64),
-                        w01 * take_scale(o01 as f64),
-                        w11 * take_scale(o11 as f64),
-                    )
-                };
-                let p00 = susp[i00] as f64 * k00;
-                let p10 = susp[i10] as f64 * k10;
-                let p01 = susp[i01] as f64 * k01;
-                let p11 = susp[i11] as f64 * k11;
-                let want = p00 + p10 + p01 + p11;
-                if want > 0.0 {
-                    let inv = 1.0 / want;
-                    let c00 = susp_rgb[i00];
-                    let c10 = susp_rgb[i10];
-                    let c01 = susp_rgb[i01];
-                    let c11 = susp_rgb[i11];
-                    let (r_in, g_in, b_in);
-                    if c.km_mean {
-                        km_colors[0] = c00[0] as f64;
-                        km_colors[1] = c00[1] as f64;
-                        km_colors[2] = c00[2] as f64;
-                        km_colors[3] = c10[0] as f64;
-                        km_colors[4] = c10[1] as f64;
-                        km_colors[5] = c10[2] as f64;
-                        km_colors[6] = c01[0] as f64;
-                        km_colors[7] = c01[1] as f64;
-                        km_colors[8] = c01[2] as f64;
-                        km_colors[9] = c11[0] as f64;
-                        km_colors[10] = c11[1] as f64;
-                        km_colors[11] = c11[2] as f64;
-                        km_weights[0] = p00;
-                        km_weights[1] = p10;
-                        km_weights[2] = p01;
-                        km_weights[3] = p11;
-                        km_weighted_mean_color(&km_colors, &km_weights, 4, inv, &mut km_out);
-                        r_in = km_out[0];
-                        g_in = km_out[1];
-                        b_in = km_out[2];
+    for (ra, rb) in c.runs(y) {
+        let mut i = ra as usize + y as usize * s;
+        for x in ra..=rb {
+            let f0 = film[i] as f64;
+            let m0 = susp[i] as f64;
+            // O que SAI (vale para toda célula com massa, ativa ou não —
+            // um canto inativo é drenado por quem o alcança).
+            let of = outflow[i - obase] as f64;
+            let leave = if of > 1.0 { 1.0 } else { of };
+            let mut new_film = f0 - f0 * leave;
+            let mut new_susp = m0 - m0 * leave;
+            let mut new_rgb = susp_rgb[i];
+            // O que ENTRA (só quem é ativo puxa).
+            if c.active[i] != 0 {
+                let uvc = uv[i - ubase];
+                let (ux, uy) = (f64::from(uvc[0]), f64::from(uvc[1]));
+                if let Some((x0, fx, y0, fy)) = backtrace(x, y, ux, uy, c.wf, c.hf) {
+                    let i00 = x0 as usize + y0 as usize * s;
+                    let i10 = i00 + 1;
+                    let i01 = i00 + s;
+                    let i11 = i01 + 1;
+                    let w00 = (1.0 - fx) * (1.0 - fy);
+                    let w10 = fx * (1.0 - fy);
+                    let w01 = (1.0 - fx) * fy;
+                    let w11 = fx * fy;
+                    // ⚠️ A escala é a da FONTE — ver o módulo. Com as quatro saídas ≤ 1 (o caso
+                    // comum) a escala é `1` e `w · 1 == w` ao bit: um teste em vez de quatro.
+                    let (o00, o10, o01, o11) = (
+                        outflow[i00 - obase],
+                        outflow[i10 - obase],
+                        outflow[i01 - obase],
+                        outflow[i11 - obase],
+                    );
+                    let (k00, k10, k01, k11) = if o00.max(o10).max(o01.max(o11)) <= 1.0 {
+                        (w00, w10, w01, w11)
                     } else {
-                        r_in = (c00[0] as f64 * p00
-                            + c10[0] as f64 * p10
-                            + c01[0] as f64 * p01
-                            + c11[0] as f64 * p11)
-                            * inv;
-                        g_in = (c00[1] as f64 * p00
-                            + c10[1] as f64 * p10
-                            + c01[1] as f64 * p01
-                            + c11[1] as f64 * p11)
-                            * inv;
-                        b_in = (c00[2] as f64 * p00
-                            + c10[2] as f64 * p10
-                            + c01[2] as f64 * p01
-                            + c11[2] as f64 * p11)
-                            * inv;
+                        (
+                            w00 * take_scale(o00 as f64),
+                            w10 * take_scale(o10 as f64),
+                            w01 * take_scale(o01 as f64),
+                            w11 * take_scale(o11 as f64),
+                        )
+                    };
+                    let p00 = susp[i00] as f64 * k00;
+                    let p10 = susp[i10] as f64 * k10;
+                    let p01 = susp[i01] as f64 * k01;
+                    let p11 = susp[i11] as f64 * k11;
+                    let want = p00 + p10 + p01 + p11;
+                    if want > 0.0 {
+                        let inv = 1.0 / want;
+                        let c00 = susp_rgb[i00];
+                        let c10 = susp_rgb[i10];
+                        let c01 = susp_rgb[i01];
+                        let c11 = susp_rgb[i11];
+                        let (r_in, g_in, b_in);
+                        if c.km_mean {
+                            km_colors[0] = c00[0] as f64;
+                            km_colors[1] = c00[1] as f64;
+                            km_colors[2] = c00[2] as f64;
+                            km_colors[3] = c10[0] as f64;
+                            km_colors[4] = c10[1] as f64;
+                            km_colors[5] = c10[2] as f64;
+                            km_colors[6] = c01[0] as f64;
+                            km_colors[7] = c01[1] as f64;
+                            km_colors[8] = c01[2] as f64;
+                            km_colors[9] = c11[0] as f64;
+                            km_colors[10] = c11[1] as f64;
+                            km_colors[11] = c11[2] as f64;
+                            km_weights[0] = p00;
+                            km_weights[1] = p10;
+                            km_weights[2] = p01;
+                            km_weights[3] = p11;
+                            km_weighted_mean_color(&km_colors, &km_weights, 4, inv, &mut km_out);
+                            r_in = km_out[0];
+                            g_in = km_out[1];
+                            b_in = km_out[2];
+                        } else {
+                            r_in = (c00[0] as f64 * p00
+                                + c10[0] as f64 * p10
+                                + c01[0] as f64 * p01
+                                + c11[0] as f64 * p11)
+                                * inv;
+                            g_in = (c00[1] as f64 * p00
+                                + c10[1] as f64 * p10
+                                + c01[1] as f64 * p01
+                                + c11[1] as f64 * p11)
+                                * inv;
+                            b_in = (c00[2] as f64 * p00
+                                + c10[2] as f64 * p10
+                                + c01[2] as f64 * p01
+                                + c11[2] as f64 * p11)
+                                * inv;
+                        }
+                        new_susp += want;
+                        new_rgb = [r_in as f32, g_in as f32, b_in as f32]; // REPLACE
                     }
-                    new_susp += want;
-                    new_rgb = [r_in as f32, g_in as f32, b_in as f32]; // REPLACE
+                    new_film += film[i00] as f64 * k00
+                        + film[i10] as f64 * k10
+                        + film[i01] as f64 * k01
+                        + film[i11] as f64 * k11;
                 }
-                new_film += film[i00] as f64 * k00
-                    + film[i10] as f64 * k10
-                    + film[i01] as f64 * k01
-                    + film[i11] as f64 * k11;
             }
+            fr[x as usize] = new_film as f32;
+            sr[x as usize] = new_susp as f32;
+            cr[x as usize] = new_rgb;
+            i += 1;
         }
-        fr[x as usize] = new_film as f32;
-        sr[x as usize] = new_susp as f32;
-        cr[x as usize] = new_rgb;
-        i += 1;
     }
 }
 
+#[path = "advect_momentum.rs"]
+mod momentum;
+pub(super) use momentum::{momentum_row, momentum_rows};
 #[path = "advect_commit.rs"]
 mod commit;
 use commit::{commit_rows, walk_rows2_reduce};

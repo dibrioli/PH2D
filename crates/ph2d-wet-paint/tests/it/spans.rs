@@ -267,6 +267,17 @@ fn a_mascara_de_tiles_da_faixa_reproduz_a_faixa_de_um_intervalo_ao_bit() {
             panic!("sessao {kind}: a mascara de tiles mudou o estado no byte {at}");
         }
     }
+    // As duas manchas longe com cada rota do commit forçada (1 = cópia dos troços, 2 = troca + complemento).
+    use std::sync::atomic::Ordering::Relaxed;
+    for rota in [1u8, 2] {
+        ph2d_wet_paint::flow::COMMIT_ROTA.store(rota, Relaxed);
+        let um = digest(run_tiles(SESSIONS, false).active_grid());
+        let tiles = digest(run_tiles(SESSIONS, true).active_grid());
+        ph2d_wet_paint::flow::COMMIT_ROTA.store(0, Relaxed);
+        if let Some(at) = first_difference(&um, &tiles) {
+            panic!("rota do commit {rota}: a mascara de tiles mudou o estado no byte {at}");
+        }
+    }
     // A máscara não é vazia de efeito: nas duas manchas longe ela salta o seco do meio.
     let e = run_tiles(SESSIONS, true);
     let g = e.active_grid();

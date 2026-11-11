@@ -225,28 +225,36 @@ fn measure_the_dry_gap_between_two_blobs_on_the_same_rows() {
         );
         estado.push((snapshot_grid(g), e.sim.clone()));
     }
-    let mut best = [f64::MAX; 2];
-    for _ in 0..REPS {
-        for (k, e) in cenas.iter_mut().enumerate() {
-            let (snap, sim0) = &estado[k];
-            e.sim = sim0.clone();
-            e.sim.frame = 0;
-            let idx = e.active_layer;
-            restore_grid(&mut e.layers[idx].grid, snap);
-            let t0 = Instant::now();
-            for _ in 0..12 {
-                while sim_step_stage(&mut e.sim, &mut e.layers[idx].grid, &e.tuning).is_none() {}
+    // [tiles][cena]: a máscara de tiles de 64 (B13.2) desligada (a faixa de um intervalo) × ligada, intercalado.
+    let mut best = [[f64::MAX; 2]; 2];
+    for rep in 0..REPS {
+        for t in [rep % 2, 1 - rep % 2] {
+            for (k, e) in cenas.iter_mut().enumerate() {
+                let (snap, sim0) = &estado[k];
+                e.sim = sim0.clone();
+                e.sim.frame = 0;
+                let idx = e.active_layer;
+                restore_grid(&mut e.layers[idx].grid, snap);
+                e.layers[idx].grid.tiles_enabled = t == 1;
+                let t0 = Instant::now();
+                for _ in 0..12 {
+                    while sim_step_stage(&mut e.sim, &mut e.layers[idx].grid, &e.tuning).is_none() {
+                    }
+                }
+                best[t][k] = best[t][k].min(t0.elapsed().as_secs_f64() * 1e3);
             }
-            best[k] = best[k].min(t0.elapsed().as_secs_f64() * 1e3);
         }
     }
-    println!(
-        "  ciclo de 12 quadros (min): longe {:.2} ms · perto {:.2} ms · vao {:.2} ms/quadro ({:.0} %)",
-        best[0],
-        best[1],
-        (best[0] - best[1]) / 12.0,
-        100.0 * (best[0] - best[1]) / best[0]
-    );
+    for (t, b) in best.iter().enumerate() {
+        println!(
+            "  tiles {}: ciclo de 12 quadros (min): longe {:.2} ms · perto {:.2} ms · vao {:.2} ms/quadro ({:.0} %)",
+            ["off", "on"][t],
+            b[0],
+            b[1],
+            (b[0] - b[1]) / 12.0,
+            100.0 * (b[0] - b[1]) / b[0]
+        );
+    }
     let la = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("  loadavg fim: {}", la.trim());
 }

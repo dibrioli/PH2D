@@ -2,6 +2,7 @@
 //! pelo tecto de LOC do pai.
 
 use super::*;
+use crate::grid::faixa_tiles::{span_runs, tiles_row_of};
 
 /// **O rascunho vira o grid.** Com a faixa viva a cobrir quase a folha (o wash), TROCA os três planos com o
 /// rascunho e copia de volta só o COMPLEMENTO (o que a faixa não reescreveu); senão copia a faixa. As duas
@@ -9,6 +10,7 @@ use super::*;
 /// A rota lê [`crate::flow::COMMIT_ROTA`] (0 = pela faixa, o produto; 1/2 forçam, gates e sonda).
 pub(super) fn commit_rows(g: &mut Grid, mode: Rows) {
     let s = g.s;
+    let (tw, tiles_on) = (g.tile_words, g.spans_enabled && g.tiles_enabled);
     let (by0, by1) = (g.by0, g.by1);
     let viva: usize = (by0..=by1)
         .map(|y| {
@@ -34,6 +36,7 @@ pub(super) fn commit_rows(g: &mut Grid, mode: Rows) {
         susp_rgb,
         row_lo,
         row_hi,
+        row_tiles,
         spans_enabled,
         bx0,
         bx1,
@@ -43,6 +46,7 @@ pub(super) fn commit_rows(g: &mut Grid, mode: Rows) {
     std::mem::swap(susp, &mut scratch.dst_susp);
     std::mem::swap(susp_rgb, &mut scratch.dst_rgb);
     let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
+    let row_tiles: &[u64] = row_tiles;
     let (of, os, oc): (&[f32], &[f32], &[[f32; 3]]) =
         (&scratch.dst_film, &scratch.dst_susp, &scratch.dst_rgb);
     par::walk_rows3(mode, film, susp, susp_rgb, s, |r, fr, sr, cr| {
@@ -58,18 +62,22 @@ pub(super) fn commit_rows(g: &mut Grid, mode: Rows) {
             sr[a..b].copy_from_slice(&os[base + a..base + b]);
             cr[a..b].copy_from_slice(&oc[base + a..base + b]);
         };
-        if lo > hi {
-            volta(0, s);
-        } else {
-            volta(0, lo as usize);
-            volta(hi as usize + 1, s);
+        // O COMPLEMENTO dos troços que o advect reescreveu.
+        let mut ate = 0usize;
+        if lo <= hi {
+            for (a, b) in span_runs(tiles_row_of(row_tiles, tw, tiles_on, y), lo, hi) {
+                volta(ate, a as usize);
+                ate = b as usize + 1;
+            }
         }
+        volta(ate, s);
     });
 }
 
 /// A rota de cópia do [`commit_rows`]: três cópias contíguas de plano por linha da faixa.
 fn commit_copia(g: &mut Grid, mode: Rows) {
     let s = g.s;
+    let (tw, tiles_on) = (g.tile_words, g.spans_enabled && g.tiles_enabled);
     let (by0, by1) = (g.by0, g.by1);
     let Grid {
         scratch,
@@ -78,12 +86,14 @@ fn commit_copia(g: &mut Grid, mode: Rows) {
         susp_rgb,
         row_lo,
         row_hi,
+        row_tiles,
         spans_enabled,
         bx0,
         bx1,
         ..
     } = g;
     let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
+    let row_tiles: &[u64] = row_tiles;
     let (df, ds, dc): (&[f32], &[f32], &[[f32; 3]]) =
         (&scratch.dst_film, &scratch.dst_susp, &scratch.dst_rgb);
     let band = by0 as usize * s..(by1 as usize + 1) * s;
@@ -96,14 +106,13 @@ fn commit_copia(g: &mut Grid, mode: Rows) {
         |ri, fr, sr, cr| {
             let y = by0 + ri as i32;
             let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
-            if lo > hi {
-                return;
+            for (lo, hi) in span_runs(tiles_row_of(row_tiles, tw, tiles_on, y), lo, hi) {
+                let (lo, hi) = (lo as usize, hi as usize);
+                let (a, b) = (y as usize * s + lo, y as usize * s + hi);
+                fr[lo..=hi].copy_from_slice(&df[a..=b]);
+                sr[lo..=hi].copy_from_slice(&ds[a..=b]);
+                cr[lo..=hi].copy_from_slice(&dc[a..=b]);
             }
-            let (lo, hi) = (lo as usize, hi as usize);
-            let (a, b) = (y as usize * s + lo, y as usize * s + hi);
-            fr[lo..=hi].copy_from_slice(&df[a..=b]);
-            sr[lo..=hi].copy_from_slice(&ds[a..=b]);
-            cr[lo..=hi].copy_from_slice(&dc[a..=b]);
         },
     );
 }

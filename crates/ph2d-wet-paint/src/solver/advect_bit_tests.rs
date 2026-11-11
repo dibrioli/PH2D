@@ -89,10 +89,10 @@ fn hash_da_advecao(max_v: f64, km: bool, mode: Rows) -> (u64, f64) {
     hash_rota(max_v, km, mode, None)
 }
 
-/// `fundida = None`: a rota de fases, rascunho incluído no hash; `Some(linhas)`: a fundida com esse
+/// `fundida = None`: a rota de fases (a faixa de UM intervalo: o rascunho no vão seco é o de antes de B13.2), rascunho incluído no hash; `Some(linhas)`: a fundida com esse
 /// bloco, e o hash só da GRELHA (o rascunho da grelha inteira ela não escreve).
 fn hash_rota(max_v: f64, km: bool, mode: Rows, fundida: Option<usize>) -> (u64, f64) {
-    hash_rota_com(max_v, km, mode, fundida, fundida.is_none(), 1)
+    hash_rota_com(max_v, km, mode, fundida, fundida.is_none(), 1, false)
 }
 
 fn hash_rota_com(
@@ -102,9 +102,13 @@ fn hash_rota_com(
     fundida: Option<usize>,
     rascunho: bool,
     rf: usize,
+    tiles: bool,
 ) -> (u64, f64) {
     let _fases = Fases::new();
     let mut e = cena_rf(rf);
+    for l in &mut e.layers {
+        l.grid.tiles_enabled = tiles;
+    }
     e.tuning.set(Knob::MaxVelocity, max_v);
     let mut p = e.sim.gather_params(&e.tuning);
     p.km_mixing = km;
@@ -197,15 +201,15 @@ fn advect_jacobi_fundida_bits_equal_the_phases() {
         (3.0, false, Rows::Medida(0), 3),
     ];
     for (mv, km, mode, rf) in casos {
-        let fases = hash_rota_com(mv, km, mode, None, false, rf).0;
+        let fases = hash_rota_com(mv, km, mode, None, false, rf, true).0;
         for linhas in [1, 3, 7, 32] {
-            let fundida = hash_rota_com(mv, km, mode, Some(linhas), false, rf).0;
+            let fundida = hash_rota_com(mv, km, mode, Some(linhas), false, rf, true).0;
             assert_eq!(
                 fundida, fases,
                 "tecto {mv} km {km} {mode:?} bloco {linhas}: a fundida mudou bits"
             );
             let _dentro = MomentoDentro::new();
-            let fundida = hash_rota_com(mv, km, mode, Some(linhas), false, rf).0;
+            let fundida = hash_rota_com(mv, km, mode, Some(linhas), false, rf, true).0;
             assert_eq!(
                 fundida, fases,
                 "tecto {mv} km {km} {mode:?} bloco {linhas}: a fundida mudou bits"
@@ -284,6 +288,7 @@ fn advect_jacobi_commit_writes_exactly_the_live_span() {
         let (s, n) = (g.s, g.cells);
         g.scratch.ensure(n);
         (g.bx0, g.bx1, g.by0, g.by1) = (2, 19, 2, 8);
+        g.fill_tiles_all(); // B13.2: todo tile marcado, a faixa inteira
         for y in 2..=8usize {
             (g.row_lo[y], g.row_hi[y]) = if y == 5 {
                 (i32::MAX, i32::MIN)
@@ -320,6 +325,24 @@ fn advect_jacobi_commit_writes_exactly_the_live_span() {
                     (g.film[i], g.susp[i], g.susp_rgb[i]),
                     (f, su, c),
                     "rota {rota}: célula ({x}, {y}) faixa [{lo}, {hi}]"
+                );
+            }
+        }
+    }
+}
+
+/// **B13.2 — a advecção pelos tiles de 64 dá a GRELHA da faixa de um intervalo ao bit**, com o fluxo sorteado
+/// em toda célula (também no vão seco): fases e fundida, `rf` 1 e 2, tecto 1 e 3, K–M ou não, série e paralela.
+#[test]
+fn advect_jacobi_tiles_bits_equal_the_one_interval_span() {
+    for rf in [1, 2] {
+        for (mv, km, mode) in [(1.0, false, Rows::Serial), (3.0, true, Rows::Parallel)] {
+            for fundida in [None, Some(7)] {
+                let um = hash_rota_com(mv, km, mode, fundida, false, rf, false).0;
+                let tiles = hash_rota_com(mv, km, mode, fundida, false, rf, true).0;
+                assert_eq!(
+                    um, tiles,
+                    "rf {rf} · tecto {mv} · km {km} · {mode:?} · fundida {fundida:?}"
                 );
             }
         }

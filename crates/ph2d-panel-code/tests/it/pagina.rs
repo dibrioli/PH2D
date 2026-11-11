@@ -362,6 +362,8 @@ fn cada_cor_pintada_vem_de_um_token() {
     aceites.extend([
         CardDepth::Section.fill(theme),
         CardDepth::Subsection.fill(theme),
+        // A selecção nos cartões: a lei do `selection` (o acento a `BAND_INK`) sobre o cartão.
+        resolve(ColorToken::Accent, theme).with_alpha(ph2d_panel_code::BAND_INK),
     ]);
     let (mut v, mut ts) = (HelpView::new(), ts());
     v.scroll_to_member(3);
@@ -397,8 +399,12 @@ fn cada_cor_pintada_vem_de_um_token() {
         vistas.push(c);
     }
     // Controlo: a gravação viu as marcas e o sublinhado.
+    let selecao = resolve(ColorToken::Accent, theme).with_alpha(ph2d_panel_code::BAND_INK);
+    assert!(
+        vistas.contains(&selecao) || vistas.contains(&resolve(ColorToken::Selection, theme)),
+        "a selecção não se viu"
+    );
     for t in [
-        ColorToken::Selection,
         ColorToken::InfoSoft,
         ColorToken::WarnSoft,
         ColorToken::Accent,

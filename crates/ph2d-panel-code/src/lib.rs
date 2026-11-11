@@ -28,6 +28,7 @@ pub mod mono_label;
 pub mod options_card;
 mod paint;
 mod palette;
+pub use palette::BAND_INK;
 pub mod peso;
 mod popup;
 mod rename_box;

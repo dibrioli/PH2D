@@ -8,7 +8,7 @@ use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_vector::{Affine, BezPath, Brush, Color, VectorScene};
 
 /// A fracção de tinta da faixa parada e da selecção nos cartões (o `HIGHLIGHT_A` dos `*-soft` do tema).
-const BAND_INK: f32 = 0.275; // LITERAL-PX-OK: opacidade de realce, a do tema, não uma medida
+pub const BAND_INK: f32 = 0.275; // LITERAL-PX-OK: opacidade de realce, a do tema, não uma medida
 
 pub(crate) struct Palette {
     inks: [Color; Ink::ALL.len()],

@@ -213,6 +213,23 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   letra da interface) → vermelho as 3. Fotos [am_codigo.png](../ferramentas/smoke/am_codigo.png) (cena 13) ·
   [passo_1.png](../ferramentas/smoke/cena15/passo_1.png) · [am_codigo_zoom.png](../ferramentas/smoke/am_codigo_zoom.png)
   (2×, linha do código ao lado de um problema).
+- **O poço do código no tom das linhas de Problems (dono 10/11, `99620647d7`):** o glifo já era o mesmo; a diferença era o
+  fundo. Nos cartões `palette::Well`: fundo `code-bg` → `card_tone()` (`kanban-card`), calha `code-gutter` → `card-field`,
+  linha do cursor → `kanban-card-raised`, selecção → `accent` a `BAND_INK` sobre o cartão (o `selection` sobre o painel
+  ficava a 1,00:1 do cartão no Oled), ocorrências → `kanban-slot`, pílula e caixa de exemplo da ajuda → `card-field`;
+  `PH2D_CARDS=0` = os `code-*` de sempre (o `CodeBg` só tem este consumidor, e o campo clássico do cromo fica nele).
+  Fundo: Dark (14,17,23) → (34,41,58) · Forge (39,27,42) → (34,41,58) · Light (255,244,225) → (255,255,255) · Sunstone
+  (255,249,239) → (255,255,255). Contraste nos 12 temas: toda tinta ≥ 4,5:1 no fundo e na linha do cursor (pior 4,66
+  Forge), comentário/dica ≥ 3:1, `text-3` na calha ≥ 3,51 (Oled), texto na selecção ≥ 5,11, selecção 1,49–2,01 do fundo.
+  Fora da régua: `Link` (o acento sob Ctrl, sublinhado) 4,29 Oled e 4,41 Sunstone na linha do cursor (era 4,21 Sunstone e
+  3,98 Candy antes). Nitidez na placa (franja sRGB / franja em luz / borda), mesma frase: Dark código antigo 0,387 / 0,469
+  / 1,917 · novo 0,395 / 0,465 / 1,920 · problema 0,363 / 0,366 / 1,945 — a geometria do glifo não muda com o fundo (a
+  cobertura normalizada é a mesma); o ganho é o par de contraste igual ao dos Problems. Testes
+  `palette::tests::{o_poco_do_codigo_e_o_tom_do_cartao, as_tintas_leem_se_no_poco_dos_cartoes}`,
+  `nitidez::a_letra_do_codigo_tem_o_fundo_dos_problemas` (placa; sem placa não mede; afirma o fundo lido = `kanban-card`);
+  `pagina::cada_cor_pintada_vem_de_um_token` aceita o acento a `BAND_INK`. Mutação (o ramo dos cartões nunca entra) →
+  vermelho. Fotos [ao_fundo.png](../ferramentas/smoke/ao_fundo.png) · [ao_fundo_claro.png](../ferramentas/smoke/ao_fundo_claro.png) ·
+  [ao_nitidez_zoom.png](../ferramentas/smoke/ao_nitidez_zoom.png) (3×, linha 17 do código sobre a linha 17 da tabela).
 
 Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,35 s, já construído pelas fotos); a 2.ª:
 

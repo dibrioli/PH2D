@@ -6,7 +6,9 @@
 # `ARRASTA="x1 y1 x2 y2"` um arrasto real (carregar em x1 y1, mover a x2 y2 em passos, largar) corre
 # depois do rato e antes das teclas (o divisor da coluna da esquerda, 10/11). Com `DUPLO="x y"` um
 # duplo-clique real (dois cliques a 80 ms, sem mover) corre depois do arrasto (o divisor volta à
-# largura de fábrica).
+# largura de fábrica). Com `CLIQUES="x1 y1;x2 y2;…"` cliques reais em sequência (mover, 1 s, clicar,
+# 1 s), depois do `RATO` e antes do arrasto: abrir um menu e escolher num submenu (Settings ▸ Text
+# rendering ▸ …, 10/11).
 # Uso (da raiz da worktree, binário `target/smoke` feito):
 #   [CENA=13] bash docs/CodeEditor/ferramentas/smoke/cena14/fotos_q3.sh <passo> <saida.png> [espera_s]
 set -uo pipefail
@@ -41,6 +43,14 @@ if [ -n "${RATO:-}" ]; then
   [ -n "${CLIQUE:-}" ] && { xdotool click 1; sleep 1; }
   # `RODA=n`: n voltas da roda para baixo onde o rato está (a grelha da cena 15 rola até ao fim).
   [ -n "${RODA:-}" ] && { xdotool click --repeat "$RODA" --delay 120 5; sleep 1; }
+fi
+if [ -n "${CLIQUES:-}" ]; then
+  IFS=';' read -ra PONTOS <<<"$CLIQUES"
+  for P in "${PONTOS[@]}"; do
+    # shellcheck disable=SC2086
+    xdotool mousemove $P; sleep 1
+    xdotool click 1; sleep 1
+  done
 fi
 if [ -n "${ARRASTA:-}" ]; then
   read -r AX1 AY1 AX2 AY2 <<<"$ARRASTA"

@@ -6,6 +6,7 @@
 //! sozinho custa 10,26 ms e cabe na folga ⇒ [`crate::sim::StepCursor`].
 
 use super::*;
+use crate::grid::TILE;
 
 impl Engine {
     pub fn step_simulation(&mut self) -> bool {
@@ -21,14 +22,7 @@ impl Engine {
         let ran = sim_step(&mut self.sim, &mut self.layers[idx].grid, &self.tuning);
         self.layers[idx].agua_nova = None;
         if ran || had_fluid {
-            if let Some((x0, y0, x1, y1)) = pre {
-                self.merge_dirty_do_passo(x0, y0, x1, y1);
-            }
-            let g = &self.layers[idx].grid;
-            if g.has_fluid {
-                let (x0, y0, x1, y1) = (g.bx0, g.by0, g.bx1, g.by1);
-                self.merge_dirty_do_passo(x0, y0, x1, y1);
-            }
+            self.suja_do_passo(pre);
         }
         ran
     }
@@ -70,15 +64,63 @@ impl Engine {
         // O dirty é marcado a cada estágio: um estágio JÁ mexeu no grid, e o host composita quando o
         // passo completa — mas a bbox pode ter crescido em qualquer um deles.
         if done.is_some_and(|ran| ran) || had_fluid {
-            if let Some((x0, y0, x1, y1)) = pre {
-                self.merge_dirty_do_passo(x0, y0, x1, y1);
-            }
-            let g = &self.layers[idx].grid;
-            if g.has_fluid {
-                let (x0, y0, x1, y1) = (g.bx0, g.by0, g.bx1, g.by1);
-                self.merge_dirty_do_passo(x0, y0, x1, y1);
-            }
+            self.suja_do_passo(pre);
         }
         done
+    }
+
+    /// O sujo de um passo (ou estágio) que correu: a caixa do fluido de antes e a de depois no `dirty` e no sujo da
+    /// óptica; no do espelho, B13.1, só os tiles que [`Self::marca_passo`] declarou ([`Self::espelho_tiles`]) — a
+    /// caixa de um traço em diagonal é a tela inteira. Sem fluido antes, o `marca_passo` não declarou: a caixa.
+    fn suja_do_passo(&mut self, pre: Option<(i32, i32, i32, i32)>) {
+        let g = &self.layers[self.active_layer].grid;
+        let pos = g.has_fluid.then_some((g.bx0, g.by0, g.bx1, g.by1));
+        let declarou = pre.is_some();
+        for c in [pre, pos].into_iter().flatten() {
+            if declarou {
+                self.merge_dirty_do_passo_pela_mascara(c);
+            } else {
+                self.merge_dirty_do_passo(c.0, c.1, c.2, c.3);
+            }
+        }
+    }
+
+    /// [`Self::merge_dirty_do_passo`] sem a caixa no sujo do espelho: lá vão os tiles declarados.
+    fn merge_dirty_do_passo_pela_mascara(&mut self, (x0, y0, x1, y1): (i32, i32, i32, i32)) {
+        self.revisao = nova_revisao();
+        #[cfg(test)]
+        {
+            let r = super::espelho::ORLA_DO_ESPELHO;
+            self.espelho_passo
+                .une((x0 - r, y0 - r, x1 + r, y1 + r), self.width, self.height);
+        }
+        conta_sujo::regista((i64::from(x1 - x0 + 1).max(0) * i64::from(y1 - y0 + 1).max(0)) as u64);
+        self.dirty.une((x0, y0, x1, y1), self.width, self.height);
+        self.sujo_da_otica
+            .passo
+            .une((x0, y0, x1, y1), self.width, self.height);
+    }
+
+    /// Junta ao [`Self::espelho_tiles`] os tiles de [`TILE`]² (a grelha do undo) que tocam o retângulo (células finas
+    /// com o pad, meio-aberto).
+    pub(super) fn declara_tiles_do_passo(&mut self, x0: i64, y0: i64, x1: i64, y1: i64) {
+        let g = &self.layers[self.active_layer].grid;
+        let cl = |v: i64, n: usize| v.clamp(0, n as i64) as usize;
+        let (ax0, ax1, ay0, ay1) = (cl(x0, g.s), cl(x1, g.s), cl(y0, g.rows), cl(y1, g.rows));
+        if ax0 >= ax1 || ay0 >= ay1 {
+            return;
+        }
+        let tw = g.s.div_ceil(TILE);
+        let n = (tw * g.rows.div_ceil(TILE)).div_ceil(64);
+        let m = &mut self.espelho_tiles;
+        if m.len() != n {
+            m.clear();
+            m.resize(n, 0);
+        }
+        for ty in ay0 / TILE..=(ay1 - 1) / TILE {
+            for k in ty * tw + ax0 / TILE..=ty * tw + (ax1 - 1) / TILE {
+                m[k / 64] |= 1 << (k % 64);
+            }
+        }
     }
 }

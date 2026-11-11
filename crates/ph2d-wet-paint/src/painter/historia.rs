@@ -154,12 +154,15 @@ impl Engine {
             }
             (Some(r), None) if !g.spans_enabled => r,
             (None, Some(r)) => r,
-            (None, None) => return self.marca_tudo(),
+            (None, None) => {
+                let (s, rows) = (g.s as i64, g.rows as i64);
+                return self.marca_do_passo(0, 0, s, rows);
+            }
             (Some(_), dabs) => {
                 // B12.1: a faixa viva (`{film, susp, vel ≠ 0} ⊆ faixa`, `verify_spans`) por banda de tiles; o casco
                 // levava as linhas paradas entre pinceladas afastadas.
                 for [x0, y0, x1, y1] in faixas_do_passo(g, f) {
-                    self.marca_ret(x0, y0, x1, y1);
+                    self.marca_do_passo(x0, y0, x1, y1);
                 }
                 match dabs {
                     Some(r) => r,
@@ -167,7 +170,13 @@ impl Engine {
                 }
             }
         };
-        self.marca_ret(r[0] - f, r[1] - f, r[2] + f, r[3] + f);
+        self.marca_do_passo(r[0] - f, r[1] - f, r[2] + f, r[3] + f);
+    }
+
+    /// O que o passo marca no registo é o que ele DECLARA ao espelho (B13.1: a mesma grelha de tiles).
+    fn marca_do_passo(&mut self, x0: i64, y0: i64, x1: i64, y1: i64) {
+        self.marca_ret(x0, y0, x1, y1);
+        self.declara_tiles_do_passo(x0, y0, x1, y1);
     }
 
     /// Enterra as células marcadas em `tocada` (`gw` por linha, sem o pad): ver [`crate::grid::enterra_celula`]. O

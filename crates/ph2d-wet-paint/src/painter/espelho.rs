@@ -96,7 +96,7 @@ impl Dirty {
 /// A orla que o rasto veste FORA da caixa que declara (`trail/transfer.rs`: `*::veste_virgens`, o maior dos três
 /// alcances): o campo de altura do Real Oil lê-a, logo o espelho tem de a levar (B11.2: sem as linhas inteiras do
 /// sujo, a imagem do espelho divergia da da grade).
-const ORLA_DO_ESPELHO: i32 = {
+pub(super) const ORLA_DO_ESPELHO: i32 = {
     let (a, b) = (
         crate::grid::material::ORLA_VIRGEM,
         crate::grid::aparencia::ORLA_VIRGEM,
@@ -117,11 +117,21 @@ impl Engine {
         std::mem::replace(&mut self.espelho_sujo, Dirty::Clean)
     }
 
+    /// Tira e limpa os tiles que o passo declarou ([`Self::espelho_tiles`], B13.1).
+    pub(super) fn take_espelho_tiles(&mut self) -> Vec<u64> {
+        #[cfg(test)]
+        {
+            self.espelho_passo = Dirty::Clean;
+        }
+        std::mem::take(&mut self.espelho_tiles)
+    }
+
     /// Põe em `e` a óptica de hoje: com `Rect`, só a CAIXA do [`Engine::take_espelho_sujo`] (uma célula de folga) e
     /// o anel, e só na camada activa (as outras mudam por `Full` — B11.2); `Full` copia tudo no lugar; outro nº de
     /// camadas ou outro tamanho reconstrói. Um plano que mudou de tamanho copia-se inteiro, em qualquer camada.
     pub fn copia_para(&mut self, e: &mut Espelho) {
         let sujo = self.take_espelho_sujo();
+        let tiles = self.take_espelho_tiles();
         let mesma_forma = e.camadas.len() == self.layers.len()
             && e.camadas.iter().zip(&self.layers).all(|(c, l)| {
                 (c.grid.w, c.grid.h, c.grid.s, c.grid.rows)
@@ -144,11 +154,15 @@ impl Engine {
             c.visible = l.visible;
             escalares(&mut c.grid, &l.grid);
             let g = &l.grid;
+            let declarou = tiles.iter().any(|b| *b != 0);
             let faixas = match sujo {
-                Dirty::Rect { .. } if k != self.active_layer => Vec::new(),
-                Dirty::Clean => Vec::new(),
                 Dirty::Full => std::iter::once(0..usize::MAX).collect(),
-                Dirty::Rect { x0, y0, x1, y1 } => faixas_da_caixa(g, (x0, y0, x1, y1)),
+                _ if k != self.active_layer => Vec::new(),
+                Dirty::Clean if !declarou => Vec::new(),
+                Dirty::Clean => faixas_da_caixa(g, None, &tiles),
+                Dirty::Rect { x0, y0, x1, y1 } => {
+                    faixas_da_caixa(g, Some((x0, y0, x1, y1)), &tiles)
+                }
             };
             copia_faixas(&mut c.grid, g, &faixas);
         }
@@ -158,20 +172,28 @@ impl Engine {
 /// Os índices de um `Rect` do sujo: a caixa com uma célula de folga de cada lado (o menisco lê `film[i ± 1]`,
 /// `film[i ± s]`), recortada em X, e o ANEL que `solver::apply_boundaries` reescreve a cada passo fora do sujo (as
 /// linhas `0, 1, h, h+1` inteiras; as colunas `w, w+1` de uma linha e `0, 1` da seguinte são contíguas).
+///
+/// B13.1: mais as linhas de cada corrida de `tiles` (a grelha do undo, [`crate::grid::TILE`]²) que o passo declarou;
+/// as faixas saem ordenadas e sem sobreposição (cada célula copia-se uma vez).
 fn faixas_da_caixa(
     g: &Grid,
-    (x0, y0, x1, y1): (i32, i32, i32, i32),
+    caixa: Option<(i32, i32, i32, i32)>,
+    tiles: &[u64],
 ) -> Vec<std::ops::Range<usize>> {
     let s = g.s;
-    let (a, b) = (
-        (y0.max(1) as usize) - 1,
-        (y1.max(0) as usize + 1).min(g.rows - 1),
-    );
-    let (xa, xb) = (
-        (x0.max(1) as usize) - 1,
-        (x1.max(0) as usize + 1).min(s - 1),
-    );
-    let mut f: Vec<_> = (a..=b).map(|y| y * s + xa..y * s + xb + 1).collect();
+    let mut f: Vec<std::ops::Range<usize>> = Vec::new();
+    if let Some((x0, y0, x1, y1)) = caixa {
+        let (a, b) = (
+            (y0.max(1) as usize) - 1,
+            (y1.max(0) as usize + 1).min(g.rows - 1),
+        );
+        let (xa, xb) = (
+            (x0.max(1) as usize) - 1,
+            (x1.max(0) as usize + 1).min(s - 1),
+        );
+        f.extend((a..=b).map(|y| y * s + xa..y * s + xb + 1));
+    }
+    faixas_dos_tiles(g, tiles, &mut f);
     for y in [0, 1, g.h, g.h + 1].into_iter().filter(|&y| y < g.rows) {
         f.push(y * s..(y + 1) * s);
     }
@@ -184,7 +206,45 @@ fn faixas_da_caixa(
             f.extend([y * s..y * s + 2, y * s + g.w..y * s + g.w + 2]);
         }
     }
-    f
+    f.sort_unstable_by_key(|r| r.start);
+    let mut out: Vec<std::ops::Range<usize>> = Vec::with_capacity(f.len());
+    for r in f {
+        match out.last_mut() {
+            Some(u) if r.start <= u.end => u.end = u.end.max(r.end),
+            _ => out.push(r),
+        }
+    }
+    out
+}
+
+/// As faixas (uma por linha de cada corrida de tiles ligados) da máscara do passo; máscara de outra grelha = tudo.
+fn faixas_dos_tiles(g: &Grid, tiles: &[u64], f: &mut Vec<std::ops::Range<usize>>) {
+    use crate::grid::TILE;
+    let (s, rows) = (g.s, g.rows);
+    let (tw, th) = (s.div_ceil(TILE), rows.div_ceil(TILE));
+    if !tiles.iter().any(|b| *b != 0) {
+        return;
+    }
+    if tiles.len() != (tw * th).div_ceil(64) {
+        f.push(0..s * rows);
+        return;
+    }
+    let liga = |k: usize| tiles[k / 64] >> (k % 64) & 1 == 1;
+    for ty in 0..th {
+        let mut tx = 0;
+        while tx < tw {
+            if !liga(ty * tw + tx) {
+                tx += 1;
+                continue;
+            }
+            let a = tx;
+            while tx < tw && liga(ty * tw + tx) {
+                tx += 1;
+            }
+            let (xa, xb) = (a * TILE, (tx * TILE).min(s));
+            f.extend((ty * TILE..((ty + 1) * TILE).min(rows)).map(|y| y * s + xa..y * s + xb));
+        }
+    }
 }
 
 /// Os escalares da grade (todos `Copy`; os da dinâmica vão também — custam nada e o padrão sem `..` obriga).

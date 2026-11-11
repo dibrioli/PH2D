@@ -96,11 +96,12 @@ fn a_copia_estreita_e_a_de_linhas_inteiras_ao_bit() {
                 );
             }
         }
-        let sujo = e.espelho_sujo;
+        let (sujo, do_passo) = (e.espelho_sujo, e.espelho_passo);
         rects += usize::from(matches!(sujo, Dirty::Rect { .. }));
         camadas_max = camadas_max.max(e.layers.len());
         e.copia_para(&mut nova);
-        e.espelho_sujo = sujo;
+        // B13.1: o antigo levava a caixa do fluido no sujo; a máscara do passo não vive nele.
+        e.espelho_sujo = super::mascara::uniao(sujo, do_passo);
         copia_para_antiga(&mut e, &mut antiga);
         for (k, l) in e.layers.iter().enumerate() {
             let (n, a) = (&nova.camadas[k].grid, &antiga.camadas[k].grid);

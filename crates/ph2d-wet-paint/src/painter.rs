@@ -149,6 +149,12 @@ pub struct Engine {
     revisao: u64,
     /// O sujo do ESPELHO da óptica ([`espelho`]): as mesmas portas da [`Self::revisao`], à parte do `dirty`.
     espelho_sujo: Dirty,
+    /// B13.1: os tiles da grelha do undo que o PASSO da sim pode ter escrito na camada activa ([`stage`]); somam-se
+    /// ao [`Self::espelho_sujo`] na cópia do espelho, no lugar da caixa do fluido.
+    espelho_tiles: Vec<u64>,
+    /// O oráculo do B13.1: a caixa do fluido que o passo punha no sujo do espelho.
+    #[cfg(test)]
+    espelho_passo: Dirty,
     /// O sujo do `dirty` partido para a óptica fora ([`caixa_do_passo`], B14.1): o do passo da sim × o das outras portas.
     sujo_da_otica: caixa_do_passo::SujoDaOtica,
     /// A razao da grade de FLUXO desta engine (plano 30). `1` = a grade de
@@ -201,6 +207,9 @@ impl Engine {
             dirty: Dirty::Clean,
             revisao: nova_revisao(),
             espelho_sujo: Dirty::Full,
+            espelho_tiles: Vec::new(),
+            #[cfg(test)]
+            espelho_passo: Dirty::Clean,
             sujo_da_otica: caixa_do_passo::SujoDaOtica::default(),
         };
         engine.layers.push(Layer {

@@ -284,7 +284,10 @@ fn trocar_o_papel_com_a_sessao_viva_chega_ao_espelho() {
                 imagem(&e, &camadas_do_motor(&e)),
                 "lei {k} · {porta}: a imagem do espelho ≠ a da grade"
             );
-            assert_eq!(tela_suja, mudou, "lei {k} · {porta}: a tela não sabe que o papel mudou");
+            assert_eq!(
+                tela_suja, mudou,
+                "lei {k} · {porta}: a tela não sabe que o papel mudou"
+            );
         }
     }
 }
@@ -308,7 +311,9 @@ fn mede_conferir_o_papel_4k() {
         e.instala_papel(plano);
         confere = confere.min(t.elapsed().as_secs_f64() * 1e3);
     }
-    println!("4K instala_papel: sujo Full {salta:.3} ms · a conferir (mesmo papel) {confere:.3} ms");
+    println!(
+        "4K instala_papel: sujo Full {salta:.3} ms · a conferir (mesmo papel) {confere:.3} ms"
+    );
 }
 
 /// O custo de `copia_para` com `Dirty::Full` (no lugar, e a reconstrução) e os bytes por célula. Medida: `--ignored`.
@@ -369,3 +374,5 @@ fn mede_copia_para_full() {
 
 #[path = "espelho_estreito_tests.rs"]
 mod estreito; // B11.2: a cópia estreita contra a de linhas inteiras
+#[path = "espelho_mascara_tests.rs"]
+mod mascara; // B13.1: os tiles que o passo declara contra a caixa do fluido

@@ -105,11 +105,16 @@ fn wrapped_ndl(ndl: f32, wax: f32) -> f32 {
     return max((ndl + w) / (1.0 + w), 0.0);
 }
 
-// pow(ndh, exponent(roughness)), from the table the CPU baked and uploaded. The index truncates, exactly
-// as the CPU's `as usize` does.
+// pow(ndh, exponent(roughness)), from the table the CPU baked and uploaded, LINEAR between the two entries
+// around ndh (B31.2) -- the CPU's `SpecLut::spec`, op for op.
 fn spec_at(level: i32, ndh: f32) -> f32 {
-    let i = i32(clamp(ndh, 0.0, 1.0) * SPEC_LUT_LAST);
-    return textureLoad(spec_lut, vec2<i32>(i, min(level, ROUGH_LAST)), 0).r;
+    let t = clamp(ndh, 0.0, 1.0) * SPEC_LUT_LAST;
+    let i = min(i32(t), i32(SPEC_LUT_LAST) - 1);
+    let f = t - f32(i);
+    let l = min(level, ROUGH_LAST);
+    let a = textureLoad(spec_lut, vec2<i32>(i, l), 0).r;
+    let b = textureLoad(spec_lut, vec2<i32>(i + 1, l), 0).r;
+    return a + (b - a) * f;
 }
 
 // The composed height, clamped to the CANVAS — so the central difference reads across the lit region's

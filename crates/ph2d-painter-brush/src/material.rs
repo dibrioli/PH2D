@@ -191,12 +191,17 @@ impl SpecLut {
         })
     }
 
-    /// `pow(ndh, exponent(roughness))`, from the table.
+    /// `pow(ndh, exponent(roughness))`, from the table, LINEAR between the two entries around `ndh` (B31.2: read by
+    /// truncation the highlight stepped 32 % per entry at exponent 96 — rings on the crest). The shader's `spec_at` is
+    /// this same arithmetic.
     #[inline]
     #[must_use]
     pub fn spec(&self, level: usize, ndh: f32) -> f32 {
-        let i = (ndh.clamp(0.0, 1.0) * (SPEC_LUT - 1) as f32) as usize;
-        self.table[level.min(ROUGH_LEVELS - 1) * SPEC_LUT + i]
+        let t = ndh.clamp(0.0, 1.0) * (SPEC_LUT - 1) as f32;
+        let i = (t as usize).min(SPEC_LUT - 2);
+        let f = t - i as f32;
+        let row = &self.table[level.min(ROUGH_LEVELS - 1) * SPEC_LUT..];
+        row[i] + (row[i + 1] - row[i]) * f
     }
 
     /// The whole table, row-major `ROUGH_LEVELS x SPEC_LUT` — the shape the GPU port uploads.
@@ -330,3 +335,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "material_lut_tests.rs"]
+mod material_lut_tests; // B31.2: o realce sem anéis

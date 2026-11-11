@@ -12,6 +12,9 @@ pub const DEFAULT_SHAPE_GRAB_TOL_PX: f32 = 8.0;
 pub const BRUSH_SIZE_MIN_PX: f32 = 1.0;
 /// Largest brush radius the size UI maps to (image px); the interactive range, not the engine's hard cap.
 pub const BRUSH_SIZE_MAX_PX: f32 = 512.0;
+/// Tecto do **Spread** (raio, px de tela) — o molhado, o seco, o setter e a caixa do preview leem este.
+/// Recurso: o custo do borrão da orla, O(r²) por píxel tocado; o histórico do composite (IN-112).
+pub const BRUSH_SPREAD_MAX_PX: f32 = 48.0;
 /// Max spacing the slider reaches, as a fraction of diameter (`1.0` = one full diameter between dabs).
 pub const BRUSH_SPACING_MAX: f32 = 1.0;
 /// Max absolute jitter the slider reaches, in pixels (View unit).

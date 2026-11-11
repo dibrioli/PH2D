@@ -27,7 +27,10 @@ use super::watercolor_mistura::PlanosDaMistura;
 /// tinta seca. Uma porta, dois leitores — escrito duas vezes, o molhado e o seco dissolveriam a
 /// distâncias diferentes no dia em que um deles mudasse o tecto.
 pub(super) fn raio_da_agua(brush: &ph2d_painter_brush::BrushSpec) -> usize {
-    brush.edge_spread.round().clamp(0.0, 48.0) as usize // LITERAL-PX-OK: tecto histórico do Spread do composite
+    brush
+        .edge_spread
+        .round()
+        .clamp(0.0, super::BRUSH_SPREAD_MAX_PX) as usize
 }
 
 /// A tinta de antes do traço, dissolvida na vizinhança de um lote de dabs.

@@ -51,7 +51,7 @@ use std::time::Duration;
 
 /// A sim é 40 Hz (SPEC §5) — o worker se ritma nisso, e ficar para trás é câmera lenta (a política
 /// do `max_substeps` da física, que este módulo herda).
-pub(super) const STEP_S: f64 = 1.0 / 40.0;
+pub(super) const STEP_S: f64 = 1.0 / ph2d_wet_paint::sim::SIM_HZ;
 
 /// Quanto o worker dorme quando não há nada a simular. Curto o bastante para a água acordar sem
 /// atraso perceptível, longo o bastante para não ocupar um núcleo à toa.

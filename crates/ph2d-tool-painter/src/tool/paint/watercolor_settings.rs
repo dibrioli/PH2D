@@ -261,7 +261,7 @@ impl PainterTool {
 
     /// Set the **Spread** (edge-darkening blur radius in canvas px), clamped to `1..=48`.
     pub fn set_brush_edge_spread(&mut self, v: f32) {
-        self.paint.brush.edge_spread = v.clamp(1.0, 48.0);
+        self.paint.brush.edge_spread = v.clamp(1.0, super::BRUSH_SPREAD_MAX_PX);
     }
 
     /// Set the **Granulation** amount (paper-tooth deposit gate), clamped to `0..=1`.

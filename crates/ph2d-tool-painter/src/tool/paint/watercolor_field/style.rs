@@ -142,7 +142,10 @@ impl WetStrokeStyle {
         spec: &ph2d_painter_brush::BrushSpec,
         forced_wet: f32,
     ) -> Self {
-        let spread_px = spec.edge_spread.round().clamp(0.0, 48.0) as usize;
+        let spread_px = spec
+            .edge_spread
+            .round()
+            .clamp(0.0, crate::tool::paint::BRUSH_SPREAD_MAX_PX) as usize;
         let core_r = spread_px.min(((spec.radius_px * 0.5).round() as usize).max(1));
         let wet = spec.wet_rewet.max(forced_wet).clamp(0.0, 1.0);
         Self {

@@ -542,7 +542,7 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
             }
             if c.p.tinta == LeiDaTinta::Pigmento && n.is_multiple_of(crate::drying::PASSOS_DA_CURA)
             {
-                crate::drying::cura(g, crate::drying::PASSOS_DA_CURA as f32 / 40.0);
+                crate::drying::cura(g, crate::drying::PASSOS_DA_CURA as f32 / SIM_HZ as f32);
             }
         }
         2 => {

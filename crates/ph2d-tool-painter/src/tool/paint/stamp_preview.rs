@@ -413,7 +413,9 @@ impl PainterTool {
     fn alcance_do_rascunho_da_aguada(&self) -> f32 {
         let b = &self.paint.brush;
         // Match `apply_watercolor`'s max reach (`spread * 2` when watered/soaked) + warp + slack.
-        b.edge_spread.round().clamp(0.0, 48.0) * 2.0 + b.warp.max(0.0).ceil() + 4.0
+        b.edge_spread.round().clamp(0.0, super::BRUSH_SPREAD_MAX_PX) * 2.0
+            + b.warp.max(0.0).ceil()
+            + 4.0
     }
 
     /// Stamp the dabs a `begin`/`extend` produced. Drag Dot, Anchored AND Line are interactive

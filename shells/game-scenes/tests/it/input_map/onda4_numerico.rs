@@ -7,7 +7,7 @@ use ph2d_app_input_map::View;
 use ph2d_app_input_map::view_keyboard::keys_fit::{LEGEND_MARGIN, REST_FACE};
 use ph2d_app_input_map::view_keyboard::state::{KbHit, Sub};
 use ph2d_app_input_map::view_keyboard::sub_legend::{
-    SUB_PAD, SUB_PX, SubLegend, SubLook, clear_of_corners, nav_of, sub_ink, sub_of,
+    SUB_PAD, SUB_PX, SubLegend, SubLook, cap_height_px, clear_of_corners, nav_of, sub_ink, sub_of,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_input::{Binding, Key};
@@ -76,15 +76,16 @@ fn dentro(a: Rect, b: Rect) -> bool {
 }
 
 /// ⭐ Item 7a, no arranjo da foto do dono: nas áreas reais e nos dois modos de texto, cada segunda legenda à vista
-/// está inteira (nunca cortada), na faixa de baixo à direita, por baixo do número, dentro da tecla, menor que ele e sem
-/// barra nenhuma na faixa dela; cada uma AUSENTE tem a razão medida (não cabe na largura útil, ou a tecla ligada tem
-/// barras na faixa — a `KP8`, o controlo, até 1600). A 1600 e a 1280 aparecem; a 1920 a `KP8` já tem lugar.
+/// está inteira (nunca cortada), na faixa de baixo à direita, por baixo do número, dentro da tecla e fora da curva do
+/// canto, menor que ele e sem barra na faixa dela. As de TEXTO são um conjunto e as SETAS outro: nunca um subconjunto,
+/// salvo a tecla ligada com barra na faixa (a `KP8`). Controlo da coerência: a 1280 o «End» caberia SOZINHO (18 px +
+/// 2 × `SUB_PAD` < 28,1) e mesmo assim falta, porque o «Home» não cabe.
 #[test]
 fn as_segundas_legendas_do_numerico_cabem_inteiras_ou_somem() {
-    // MEDIDO (Default e CrispHeavyPlus): 1600 = 9 (só a KP8 ligada); 1280 e estreita = 6 (Home 28,8–29,5 px é mais
-    // larga que a tecla de 28,1; PgUp/PgDn 25,9–26,2 + 2 × SUB_PAD > 28,1, e sem folga entram na curva do canto);
+    // MEDIDO (Default e CrispHeavyPlus): 1600 = 9 (6 palavras + 3 setas; a ↑ da KP8 ligada perde a faixa para as
+    // barras); 1280 e estreita = 3 (só as setas: «Home» 28,8–29,5 px > a tecla de 28,1, logo nenhuma palavra);
     // 1920 = 10.
-    const CONTAGEM: [usize; 4] = [9, 6, 6, 10];
+    const CONTAGEM: [usize; 4] = [9, 3, 3, 10];
     em_cada_modo_de_texto(|| {
         for (a, conta) in AREAS.into_iter().zip(CONTAGEM) {
             let mut m = pinta(a);
@@ -97,24 +98,31 @@ fn as_segundas_legendas_do_numerico_cabem_inteiras_ou_somem() {
             let at = format!("área {}", a.w);
             eprintln!("{at}: {} segundas legendas", looks.len());
             assert_eq!(looks.len(), conta, "{at}: a tabela medida");
+            if a.w < 700.0 && a.w > 600.0 {
+                // LITERAL-PX-OK: 1280 — o CONTROLO da coerência: o «End» sozinho caberia na largura útil.
+                let end = keys
+                    .iter()
+                    .find(|k| k.key == Key(0xF741))
+                    .expect("Numpad 1");
+                let w = m.ts.prefix_width("End", SUB_PX);
+                assert!(w + SUB_PAD * 2.0 <= end.rect.w, "{at}: o End sozinho cabe");
+                assert!(
+                    looks.iter().all(|l| l.key != end.key),
+                    "{at}: e falta, pelo conjunto"
+                );
+            }
             for k in keys.iter().filter(|k| nav_of(k.key).is_some()) {
                 let kr = k.rect;
                 let Some(s) = looks.iter().find(|s| s.key == k.key) else {
-                    // Ausente: tem de ser pela medida.
-                    let largura = match sub_of(k.key).expect("tem segunda") {
-                        SubLegend::Text(t) => m.ts.prefix_width(&t, SUB_PX),
-                        SubLegend::Icon(_) => SUB_PX,
-                    };
-                    let nao_cabe = largura + SUB_PAD * 2.0 > kr.w;
+                    // Ausente: o conjunto dela está fora (nenhuma do mesmo tipo à vista), ou as barras na faixa.
+                    let texto = matches!(sub_of(k.key), Some(SubLegend::Text(_)));
+                    let mesmo = |l: &&SubLook| matches!(l.legend, SubLegend::Text(_)) == texto;
+                    let conjunto_fora = !looks.iter().any(|l| mesmo(&l));
                     let faixa = kr.y + kr.h * 0.5;
                     let barras = bars.iter().any(|b| dentro(*b, kr) && b.y + b.h > faixa);
-                    eprintln!(
-                        "{at}: {:?} ausente (largura {largura:.1} · tecla {:.1})",
-                        k.key, kr.w
-                    );
                     assert!(
-                        nao_cabe || barras,
-                        "{at}: {:?} ausente sem razão medida",
+                        conjunto_fora || barras,
+                        "{at}: {:?} ausente com o conjunto à vista e sem barras — um subconjunto",
                         k.key
                     );
                     continue;
@@ -222,4 +230,38 @@ fn na_vista_keyboard_altgr_mais_f_liga_e_o_alt_esquerdo_nao() {
             (m.hero.input_map.get(reload)).is_some_and(|a| a.bindings.contains(&Binding::Key(f)));
         assert_eq!(ligou, liga, "{modificador} + F");
     }
+}
+
+/// ⭐ As setas da segunda legenda pesam como a palavra ao lado (foto o4_numerico_1600: «quase não se veem»): a caixa de
+/// TINTA de cada seta mede ≥ a altura de maiúscula do texto secundário a `SUB_PX`, nas áreas reais e nos dois modos.
+/// Controlo: a maiúscula medida é de uma fonte de verdade (entre metade e o corpo inteiro).
+#[test]
+fn as_setas_da_segunda_legenda_tem_a_altura_da_maiuscula() {
+    em_cada_modo_de_texto(|| {
+        let cap = cap_height_px(SUB_PX);
+        assert!(
+            cap > SUB_PX * 0.5 && cap < SUB_PX,
+            "maiúscula {cap:.2} a {SUB_PX}"
+        );
+        for a in AREAS {
+            let m = pinta(a);
+            let setas: Vec<&SubLook> = (m.tab().doc.kb.subs.iter())
+                .filter(|l| matches!(l.legend, SubLegend::Icon(_)))
+                .collect();
+            assert!(!setas.is_empty(), "área {}: há setas", a.w);
+            for l in setas {
+                let tinta = l.sub.w.max(l.sub.h);
+                eprintln!(
+                    "área {}: {:?} tinta {tinta:.2} · maiúscula {cap:.2}",
+                    a.w, l.key
+                );
+                assert!(
+                    tinta >= cap - 0.01,
+                    "área {}: {:?} tinta {tinta:.2} < {cap:.2}",
+                    a.w,
+                    l.key
+                );
+            }
+        }
+    });
 }

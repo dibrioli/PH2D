@@ -376,6 +376,7 @@ pub(crate) fn paint_keys(
     // O degrau da legenda por GRUPO (nunca por tecla): a B e a C, na mesma caixa, dão o mesmo.
     let levels = fit::levels(ts, f);
     doc.kb.subs.clear();
+    let sets = super::sub_legend::sets(ts, f);
     let p = f.pitch;
     let (cols, _) = g::extent();
     let spare = (inner.w - cols * p).max(0.0);
@@ -406,7 +407,8 @@ pub(crate) fn paint_keys(
             .iter()
             .find(|(g, _)| *g == fit::group_of(key))
             .map_or(Level::ShortSmall, |l| l.1);
-        paint_key(doc, scene, ts, ink, (style, kr), (key, lit_of(key), level));
+        let look = (key, lit_of(key), level, sets);
+        paint_key(doc, scene, ts, ink, (style, kr), look);
     }
     if let Some(c) = clip {
         doc.hits.pop_clip();
@@ -429,7 +431,7 @@ fn paint_key(
     ts: &mut TextSystem,
     ink: CardInk,
     (style, kr): (Lit, Rect),
-    (key, lit, level): (ph2d_input::Key, bool, Level),
+    (key, lit, level, sets): (ph2d_input::Key, bool, Level, super::sub_legend::SubSets),
 ) {
     let system = key.system_owned().is_some();
     let b = Binding::Key(key);
@@ -484,7 +486,8 @@ fn paint_key(
     // colocamos no teclado»), com a aresta fina que a lê como colada. Só se vê quando há barras por trás dela ou um
     // estado (D2: sem acção, nada de contorno à volta da legenda); acesa, a aresta escura separa-a das barras.
     // O numérico no arranjo da foto do dono (7a): o número no canto de cima, a segunda na faixa de baixo.
-    let (legend, lb, sub) = match super::sub_legend::corner_of(ts, kr, key, &legend, &bars) {
+    let (legend, lb, sub) = match super::sub_legend::corner_of(ts, (kr, key), &legend, &bars, sets)
+    {
         Some(c) => (c.legend, c.main, c.sub),
         None => {
             let lb = fit::legend_box(ts, kr, &legend);

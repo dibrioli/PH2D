@@ -31,7 +31,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.paperRelief" => "Paper Relief",
         // Dono 28/10 (PT-BR «Amassar o papel»): 1 = a tinta prensa o dente do papel; 0 = segue-o.
         "panel.wet_tuning.knob.paperPress" => "Paper Press",
-        "panel.wet_tuning.knob.lockMaterial" => "Lock material (off · on)",
+        "panel.wet_tuning.knob.lockMaterial" => "Lock material",
         "panel.wet_tuning.knob.knifeRidge" => "Knife ridge",
         "panel.wet_tuning.knob.knifeLevel" => "Knife leveling",
         // Bristles — os fios com física própria (lidos quando a Shape é Bristles).
@@ -62,7 +62,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.extWetSoften" => "Softer on wet paint",
         "panel.wet_tuning.knob.tipReservoir" => "Tip picks up and smears",
         "panel.wet_tuning.knob.pressureGrain" => "Light pressure breaks into grain",
-        "panel.wet_tuning.knob.strokeFilm" => "Smooth wash body (off · on)",
+        "panel.wet_tuning.knob.strokeFilm" => "Smooth wash body",
         "panel.wet_tuning.knob.strokeFilmDome" => "Wash body: loaded centre, soft sides",
         "panel.wet_tuning.knob.strokeFilmEnds" => "Wash body: soft ends",
         "panel.wet_tuning.knob.dustDrop" => "Dust grain size",

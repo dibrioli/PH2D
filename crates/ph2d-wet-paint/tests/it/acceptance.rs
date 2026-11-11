@@ -301,8 +301,11 @@ fn t08_tuning_registry() {
             && t.get(Knob::MaxVelocity) == KNOB_DEFS[Knob::MaxVelocity as usize].default,
         "group reset did not restore defaults"
     );
-    t.set_by_key("waterCap", 999.0); // free numeric input beyond the slider range
-    assert_eq!(t.get(Knob::WaterCap), 999.0, "out-of-range value rejected");
+    // B35.6: one write law with the app's `WetKnobs::set` — out-of-range input clamps to the def (the JS port let 999
+    // through; the app never could, so a probe on the engine saw a value the artist cannot reach).
+    t.set_by_key("waterCap", 999.0);
+    let cap = KNOB_DEFS[Knob::WaterCap as usize].max;
+    assert_eq!(t.get(Knob::WaterCap), cap, "out-of-range value not clamped");
     t.set_by_key("waterCap", f64::NAN);
     assert_eq!(
         t.get(Knob::WaterCap),

@@ -479,11 +479,11 @@ impl Tuning {
         KNOB_DEFS.iter().find(|d| d.key == key)
     }
 
-    /// Set a knob. NaN (a garbled numeric input) falls back to the default.
+    /// Set a knob by [`KnobDef::na_lei`] (faixa + degrau); NaN (a garbled numeric input) falls back to the default.
     /// Returns the def when the stored value actually changed.
     pub fn set(&mut self, knob: Knob, v: f64) -> Option<&'static KnobDef> {
         let d = &KNOB_DEFS[knob as usize];
-        let nv = if v.is_nan() { d.default } else { v };
+        let nv = if v.is_nan() { d.default } else { d.na_lei(v) };
         if self.values[knob as usize] == nv {
             return None;
         }

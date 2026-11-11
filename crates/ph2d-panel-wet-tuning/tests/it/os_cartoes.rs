@@ -153,6 +153,7 @@ fn every_id_of_the_old_panel_is_registered_and_painted_in_cards() {
         inv.push(row.reset);
         match &row.options {
             Some(o) => inv.extend(o.iter().map(|(_, id)| *id)),
+            None if row.interruptor() => inv.push(row.chip),
             None => {
                 inv.push(row.chip);
                 barras.push(row.slider);
@@ -212,7 +213,10 @@ fn every_id_of_the_old_panel_is_registered_and_painted_in_cards() {
 #[test]
 fn scrubbing_each_knob_reaches_the_tool_and_escape_gives_it_back() {
     use ph2d_editor_core::interaction::dispatch_key;
-    for row in rows::rows().iter().filter(|r| r.options.is_none()) {
+    for row in rows::rows()
+        .iter()
+        .filter(|r| r.options.is_none() && !r.interruptor())
+    {
         let t = ferramenta(dona(row), true);
         let antes = t.brush_settings().wet_knobs.knobs;
         let dx = if row.track_of(antes[row.knob]) >= 0.5 {
@@ -588,4 +592,19 @@ fn cards_off_paints_the_old_body() {
         "o corpo de antes publica o rect da janela"
     );
     cards::force_cards_on_this_thread(None);
+}
+
+/// B35.7: cada interruptor é uma caixa de marcar pintada com o id do chip; o clique liga e o segundo desliga.
+#[test]
+fn a_caixa_do_interruptor_liga_e_desliga_pelo_rato() {
+    for row in rows::rows().iter().filter(|r| r.interruptor()) {
+        let t = ferramenta(dona(row), true);
+        let antes = t.brush_settings().wet_knobs.knobs[row.knob];
+        let mut mesa = Mesa::nova(t);
+        mesa.clica(row.chip);
+        assert_eq!(mesa.t.brush_settings().wet_knobs.knobs[row.knob], 1.0 - antes, "{}", row.key);
+        let mut mesa = Mesa::nova(mesa.t);
+        mesa.clica(row.chip);
+        assert_eq!(mesa.t.brush_settings().wet_knobs.knobs[row.knob], antes, "{}", row.key);
+    }
 }

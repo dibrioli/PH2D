@@ -23,6 +23,15 @@ impl PainterTool {
             self.paint.wetpaint.knobs.set(def.knob, WetKnobs::fabrica(def.knob));
             return true;
         }
+        // O interruptor (B35.7): a caixa de marcar (o id do chip) de um knob liga/desliga inverte-o.
+        if let Some(&(idx, TuneWidget::Chip)) = wet_tuning_id_map().get(&id) {
+            let def = &KNOB_DEFS[idx];
+            if def.min == 0.0 && def.max == 1.0 && def.step == 1.0 {
+                let v = 1.0 - self.paint.wetpaint.knobs.get(def.knob).round();
+                self.paint.wetpaint.knobs.set(def.knob, v);
+                return true;
+            }
+        }
         false
     }
 

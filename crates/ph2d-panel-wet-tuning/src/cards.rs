@@ -12,6 +12,7 @@ use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, HeadAction, Seg, Wi
 use ph2d_editor_core::panel::{PaintCtx, TextKey};
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_editor_core::widget::key_mark::Rotulo;
+use ph2d_editor_core::widget::CheckboxValue;
 use ph2d_editor_core::widget::panel_chrome::{
     paint_panel_corner_dot, paint_panel_corner_dot_bl, panel_drag_handle_rect,
     panel_resize_handle_rect, panel_resize_handle_rect_bl,
@@ -65,7 +66,7 @@ pub(crate) fn prepare(store: &mut WidgetStore, brush: &BrushSettings) {
                 tr_with("card.wet_tuning.reset_knob", &[("knob", &rotulo(row))]),
             );
         }
-        if row.options.is_some() {
+        if row.options.is_some() || row.interruptor() {
             continue;
         }
         store.mark_card_field(
@@ -178,6 +179,32 @@ fn escolha(
     fim
 }
 
+/// Um interruptor (B35.7): a caixa de marcar com o nome dela e o repor; o clique é o `Click` do chip (o id do slider é uma barra no store).
+fn caixa(c: &mut CardCtx<'_>, row: &'static TuneRow, brush: &BrushSettings, y: f32) -> f32 {
+    let value = if brush.wet_knobs.knobs[row.knob] > 0.5 {
+        CheckboxValue::Checked
+    } else {
+        CheckboxValue::Unchecked
+    };
+    let seg = repor(row);
+    let fim = c.row(
+        &[
+            Cell::new(Widget::Check {
+                id: row.chip,
+                label: Rotulo::vista_de(rotulo(row)),
+                value,
+                off: false,
+            }),
+            Cell::new(Widget::Bare(&seg)),
+        ],
+        y,
+    );
+    if brush.inercias.dica_de(row.slider).is_some() {
+        veu(c, Rect::new(c.x, y, c.w, fim - y));
+    }
+    fim
+}
+
 /// O rótulo cabe, inteiro, nas duas linhas de meia coluna? Quebra como a faixa dos rótulos: na última
 /// palavra que cabe. O que não cabe ganha a linha toda: nome de controlo nunca vira «...».
 fn cabe_em_duas_linhas(c: &mut CardCtx<'_>, label: &'static str) -> bool {
@@ -231,6 +258,11 @@ fn corpo_do_grupo(
                 y = numeros(c, &pendentes, brush, y);
                 pendentes.clear();
                 y = escolha(c, row, opcoes, brush, y);
+            }
+            None if row.interruptor() => {
+                y = numeros(c, &pendentes, brush, y);
+                pendentes.clear();
+                y = caixa(c, row, brush, y);
             }
             None if !cabe_em_duas_linhas(c, rotulo(row)) => {
                 y = numeros(c, &pendentes, brush, y);

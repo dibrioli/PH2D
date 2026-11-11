@@ -44,7 +44,17 @@ pub const UNIDADES: [(&str, ph2d_editor_core::widget::Unit); 1] =
 /// never a slider nor a checkbox). Each is `0..1` with step `1` in the registry.
 pub const CHOICES: [&str; 2] = ["transmissionMode", "textureAcrossOwn"];
 
+/// Os INTERRUPTORES (liga/desliga, `0..1` de degrau `1`): uma caixa de marcar, nunca slider nem pílula (dono 10/11).
+/// O clique manda `Click(chip)` e a ferramenta inverte o valor.
+pub const INTERRUPTORES: [&str; 2] = ["strokeFilm", "lockMaterial"];
+
 impl TuneRow {
+    /// A linha é uma caixa de marcar ([`INTERRUPTORES`]).
+    #[must_use]
+    pub fn interruptor(&self) -> bool {
+        INTERRUPTORES.contains(&self.key)
+    }
+
     /// ⭐ **A linha é da ferramenta na MÃO?** — a de um knob que só uma ferramenta da água lê
     /// ([`ph2d_tool_painter::WetKnobs::dona_do_knob`]) só aparece com ela: o slot dela guarda o valor, e editado com
     /// outra na mão ele voltava atrás sozinho ao trocar para ela (auditoria J6, 28/10).
@@ -284,6 +294,18 @@ mod tests {
     use super::*;
     use ph2d_editor_core::ids;
     use std::collections::BTreeSet;
+
+    /// B35.7: todo knob liga/desliga visível (`0..1`, degrau `1`) que não é uma ESCOLHA é uma caixa de marcar.
+    #[test]
+    fn interruptor_nao_e_slider() {
+        for r in rows() {
+            let liga_desliga = r.min == 0.0 && r.max == 1.0 && r.step == 1.0 && r.options.is_none();
+            assert_eq!(r.interruptor(), liga_desliga, "{}", r.key);
+        }
+        for k in INTERRUPTORES {
+            assert!(rows().iter().any(|r| r.key == k), "{k} não é linha visível");
+        }
+    }
 
     /// B35.5: o ↺ da linha (o `default` da linha) é a fábrica da ferramenta, nunca o boot do motor (Edge 50 × 12).
     #[test]

@@ -17,6 +17,20 @@ pub struct KnobDef {
     pub rebuild: Option<Rebuild>,
 }
 
+impl KnobDef {
+    /// ⭐ **A lei de escrita de um knob** (B35.6): preso à faixa e, no `Medium`, o degrau Water · Oil (`> 0,5` = Oil).
+    /// A ÚNICA: `Tuning::set` e o `WetKnobs::set` da ferramenta passam por ela (o NaN cai na fábrica de cada um).
+    #[must_use]
+    pub fn na_lei(&self, v: f64) -> f64 {
+        let v = v.clamp(self.min, self.max);
+        match self.knob {
+            Knob::Medium if v > 0.5 => 1.0,
+            Knob::Medium => 0.0,
+            _ => v,
+        }
+    }
+}
+
 const fn k(
     knob: Knob,
     group: KnobGroup,

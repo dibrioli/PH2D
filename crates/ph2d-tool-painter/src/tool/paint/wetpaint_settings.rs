@@ -228,7 +228,7 @@ impl WetKnobs {
             // means the product value the artist opened with (== SPEC for every knob but Enio's five).
             Self::fabrica(knob)
         } else {
-            controlos_e10::no_degrau(knob, v.clamp(def.min, def.max))
+            def.na_lei(v)
         };
     }
 

@@ -63,6 +63,12 @@ const NOT_LANGUAGE: &[(&str, &str)] = &[(
 /// `ph2d_label_census::gate::excecoes_mortas`.
 const NOT_LANGUAGE_TEXT: &[ph2d_label_census::gate::Excecao] = &[
     (
+        "widget/tooltip.rs",
+        "Ag",
+        "a AMOSTRA de `passo_da_linha`: mede a altura de uma linha (ascendente + descendente) e nunca \
+         se pinta; a dica pintada vem sempre da tabela de strings",
+    ),
+    (
         "panel/cards_corpo.rs",
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
         "a TABELA de onde `letra_da_grandeza` fatia a letra (um `&str` que vive sem alocar): nunca \

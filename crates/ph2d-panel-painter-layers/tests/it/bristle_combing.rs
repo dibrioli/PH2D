@@ -44,6 +44,31 @@ fn os_quatro_fios_estao_no_shape_abaixo_do_tapete_em_todo_modo() {
     }
 }
 
+/// ⭐ B35.13 (dono 07/11): as cerdas moram no Shape, abaixo do penteado, em todo modo — só com a ponta Bristles, e a
+/// filha cujo pai está a zero não aparece (B35.3).
+#[test]
+fn todas_as_cerdas_moram_no_shape() {
+    let filhas: Vec<&str> = p::PAIS_DAS_CERDAS.iter().map(|(f, _)| *f).collect();
+    for meio in MODOS {
+        for kind in [TextureKind::Bristles, TextureKind::None] {
+            let (mut b, _) = pincel(meio, "brush");
+            b.shape_kind = kind.to_u8();
+            let mut m = Mesa::nova(true, b, false);
+            m.so_abertos(&[p::PAINTER_SHAPE_SECTION]);
+            m.assenta();
+            let fundo = m.rect(chips()[3]).map(|r| r.y);
+            for k in p::CERDAS_NO_SHAPE {
+                let r = m.rect(p::wet_tuning_chip_id(k));
+                let deve = kind == TextureKind::Bristles && !filhas.contains(&k);
+                assert_eq!(r.is_some(), deve, "{meio:?} {kind:?}: {k}");
+                if let (Some(r), Some(y)) = (r, fundo) {
+                    assert!(r.y > y, "{meio:?}: {k} acima do penteado");
+                }
+            }
+        }
+    }
+}
+
 /// O tapete não ganha linha nova: os quatro sliders de sempre continuam os do Shape, e são outros ids.
 #[test]
 fn o_tapete_e_o_penteado_nao_partilham_um_id() {

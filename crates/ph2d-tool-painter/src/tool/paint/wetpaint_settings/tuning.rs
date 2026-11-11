@@ -61,19 +61,42 @@ impl WetKnobs {
     /// As linhas de [`crate::ids::CERDAS_DO_PENTEADO`], por essa ordem.
     #[must_use]
     pub fn penteado(&self) -> [LinhaDoPenteado; 4] {
-        crate::ids::CERDAS_DO_PENTEADO.map(|chave| {
-            let d = KNOB_DEFS
-                .iter()
-                .find(|d| d.key == chave)
-                .expect("chave do motor");
-            LinhaDoPenteado {
-                chave,
-                valor: self.get(d.knob),
-                min: d.min,
-                max: d.max,
-                passo: d.step,
-            }
-        })
+        crate::ids::CERDAS_DO_PENTEADO.map(|chave| self.linha(chave))
+    }
+
+    /// As linhas de [`crate::ids::CERDAS_NO_SHAPE`] que se leem com o pincel `b` (B35.13): a ponta é Bristles e o
+    /// knob-pai de cada uma ([`crate::ids::PAIS_DAS_CERDAS`]) está ligado em `b`. Escondida, não esmaecida (B35.3).
+    /// Os valores são os de `self` (a fábrica, para o ↺, passa o pincel de fábrica com o `b` de agora).
+    #[must_use]
+    pub fn cerdas(&self, b: &crate::BrushSettings) -> Vec<LinhaDoPenteado> {
+        if b.shape_kind != crate::TextureKind::Bristles.to_u8() {
+            return Vec::new();
+        }
+        let ligado = |k: &'static str| b.wet_knobs.linha(k).valor > 0.0;
+        crate::ids::CERDAS_NO_SHAPE
+            .iter()
+            .filter(|c| {
+                crate::ids::PAIS_DAS_CERDAS
+                    .iter()
+                    .filter(|(f, _)| f == *c)
+                    .all(|(_, p)| ligado(p))
+            })
+            .map(|c| self.linha(c))
+            .collect()
+    }
+
+    fn linha(&self, chave: &'static str) -> LinhaDoPenteado {
+        let d = KNOB_DEFS
+            .iter()
+            .find(|d| d.key == chave)
+            .expect("chave do motor");
+        LinhaDoPenteado {
+            chave,
+            valor: self.get(d.knob),
+            min: d.min,
+            max: d.max,
+            passo: d.step,
+        }
     }
 }
 

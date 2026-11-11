@@ -38,19 +38,14 @@ pub struct TuneRow {
 
 /// Os knobs com grandeza física, pela chave do registo (B35.7: os que o doc do `Knob` diz em px de tela ou de caminho);
 /// os outros são fracções, ganhos, expoentes ou células sem unidade.
-pub const UNIDADES: [(&str, ph2d_editor_core::widget::Unit); 10] = {
+/// As seis cerdas em px foram com elas ao Shape (B35.13), onde o rótulo leva a unidade, como o Bristle width (px).
+pub const UNIDADES: [(&str, ph2d_editor_core::widget::Unit); 4] = {
     use ph2d_editor_core::widget::Unit::Px;
     [
         ("textureSizeRef", Px),
         ("knifeRidge", Px),
         ("subsurfaceRadius", Px),
         ("wetOpenEdge", Px),
-        ("bristleNoiseLength", Px),
-        ("bristleWaveLength", Px),
-        ("bristleOscillation", Px),
-        ("bristleSpan", Px),
-        ("bristleSpanLength", Px),
-        ("bristleStreakLength", Px),
     ]
 };
 
@@ -132,7 +127,11 @@ pub fn rows() -> &'static [TuneRow] {
                     ph2d_tool_painter::ids::WET_TUNING_RELEVO.contains(&d.key)
                         && !ph2d_tool_painter::ids::NO_INSPECTOR.contains(&d.key)
                 }
-                _ => !ph2d_tool_painter::ids::NO_INSPECTOR.contains(&d.key),
+                // B35.13: as cerdas moram no cartão Shape.
+                _ => {
+                    !ph2d_tool_painter::ids::NO_INSPECTOR.contains(&d.key)
+                        && !ph2d_tool_painter::ids::CERDAS_NO_SHAPE.contains(&d.key)
+                }
             })
             .map(|(i, d)| TuneRow {
                 key: d.key,

@@ -13,13 +13,6 @@ fn liga(b: &mut BrushSettings, pai: Pai, on: bool) {
             let i = KNOB_DEFS.iter().position(|d| d.key == chave).expect(chave);
             b.wet_knobs.knobs[i] = if on { KNOB_DEFS[i].max.min(1.0) } else { 0.0 };
         }
-        Pai::CerdasNoShape => {
-            b.shape_kind = if on {
-                ph2d_tool_painter::TextureKind::Bristles.to_u8()
-            } else {
-                ph2d_tool_painter::TextureKind::None.to_u8()
-            }
-        }
         Pai::OleoReal => b.wet_oleo_real = on,
     }
 }

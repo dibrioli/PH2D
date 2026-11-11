@@ -382,11 +382,7 @@ pub(crate) fn prepare(ctx: &mut PaintCtx, b: &BrushSettings) {
         &todos(b, &paint_brush::fabrica_do_pincel(b)),
     );
     if le_a_forma(b) {
-        crate::cards_wet::arma_numeros(
-            store,
-            &cards_penteado::numeros(b),
-            &cards_penteado::numeros(&paint_brush::fabrica_do_pincel(b)),
-        );
+        cards_penteado::arma(store, b);
     }
     for id in [
         pids::PAINTER_SHAPE_WATERCOLOR_AUTO,

@@ -12,39 +12,13 @@ use ph2d_wet_paint::tuning::KNOB_DEFS;
 pub enum Pai {
     /// Outro knob do registo, ligado com valor `> 0`.
     Knob(&'static str),
-    /// A ponta do Shape é Bristles (`dab_route.rs`: sem ela a ponta é LISA e os fios não se leem).
-    CerdasNoShape,
     /// O Real Oil ligado ([`ph2d_tool_painter::Dependente::MaterialSemOleo`]).
     OleoReal,
 }
 
 /// `(filha, pai)`. Uma filha pode ter vários pais: aparece só com TODOS ligados.
-pub const PAIS: [(&str, Pai); 38] = [
-    // As cerdas: sem a ponta Bristles nenhuma se lê.
-    ("bristlePressure", Pai::CerdasNoShape),
-    ("bristleNoiseLength", Pai::CerdasNoShape),
-    ("bristleWave", Pai::CerdasNoShape),
-    ("bristleWaveLength", Pai::CerdasNoShape),
-    ("bristleOscillation", Pai::CerdasNoShape),
-    ("bristleSpan", Pai::CerdasNoShape),
-    ("bristleSpanLength", Pai::CerdasNoShape),
-    ("bristleNoiseHue", Pai::CerdasNoShape),
-    ("bristleNoiseSat", Pai::CerdasNoShape),
-    ("bristleNoiseLight", Pai::CerdasNoShape),
-    ("bristleLift", Pai::CerdasNoShape),
-    ("bristleRemove", Pai::CerdasNoShape),
-    ("bristleStreak", Pai::CerdasNoShape),
-    ("bristleStreakLight", Pai::CerdasNoShape),
-    ("bristleStreakLength", Pai::CerdasNoShape),
-    ("bristleStreakCut", Pai::CerdasNoShape),
-    ("tuftArc", Pai::CerdasNoShape),
-    // …e os pais internos delas.
-    ("bristleWaveLength", Pai::Knob("bristleWave")),
-    ("bristleSpanLength", Pai::Knob("bristleSpan")),
-    ("bristleStreakLight", Pai::Knob("bristleStreak")),
-    ("bristleStreakLength", Pai::Knob("bristleStreak")),
-    ("bristleStreakCut", Pai::Knob("bristleStreak")),
-    ("bristleRemove", Pai::Knob("bristleHeight")),
+/// As cerdas (e os pais internos delas) moram no cartão Shape desde o B35.13: [`ph2d_tool_painter::ids::PAIS_DAS_CERDAS`].
+pub const PAIS: [(&str, Pai); 15] = [
     // O Material: os três do Real Oil e os pais internos.
     ("oilDepth", Pai::OleoReal),
     ("oilGloss", Pai::OleoReal),
@@ -72,9 +46,6 @@ impl Pai {
                 .iter()
                 .position(|d| d.key == chave)
                 .is_some_and(|i| brush.wet_knobs.knobs[i] > 0.0),
-            Pai::CerdasNoShape => {
-                brush.shape_kind == ph2d_tool_painter::TextureKind::Bristles.to_u8()
-            }
             Pai::OleoReal => brush.wet_oleo_real,
         }
     }

@@ -100,16 +100,17 @@ fn wet_tuning_ids_dont_collide() {
 /// Menos 1 (B35.9): o Eraser fundiu-se no Erase Strength do cartão (Tools 6 → 5; 69 → 68).
 /// Menos 1 (B35.10): o Base evaporation fundiu-se no Dry Speed (Water 5 → 4; 68 → 67).
 /// Menos 2 (B35.12): Paint drag e Emboss subiram ao cartão Wet (Paint 2 → 1, Paper/Relief 1 → 0; 67 → 65).
+/// Menos 17 (B35.13, dono 07/11): as cerdas moram no cartão Shape (Bristles 17 → 0; 65 → 48).
 #[test]
 fn every_visible_knob_has_a_row() {
-    assert_eq!(rows().len(), 65);
+    assert_eq!(rows().len(), 48);
     for g in [
         (KnobGroup::Paint, 1),
         (KnobGroup::Water, 4),
         (KnobGroup::Physics, 6),
         (KnobGroup::Tools, 5),
         (KnobGroup::Paper, 0),
-        (KnobGroup::Bristles, 17),
+        (KnobGroup::Bristles, 0),
         (KnobGroup::Stroke, 12),
         (KnobGroup::WetEffects, 4),
         (KnobGroup::Material, 16),
@@ -301,5 +302,40 @@ fn o_repor_de_cada_seccao_repoe_o_grupo_dela() {
     for s in SECTIONS {
         let i = resets.iter().position(|r| *r == s.reset).expect("reset");
         assert_eq!(ph2d_tool_painter::ids::WET_TUNING_RESET_GROUPS[i], s.group);
+    }
+}
+
+/// ⭐ B35.13 (dono 07/11: «tudo o que importa das cerdas mora no Shape»): nenhuma cerda tem linha no Tuning.
+#[test]
+fn todas_as_cerdas_moram_no_shape() {
+    let no_tuning: Vec<&str> = rows()
+        .iter()
+        .filter(|r| r.group == KnobGroup::Bristles || r.key.starts_with("bristle"))
+        .map(|r| r.key)
+        .collect();
+    assert!(no_tuning.is_empty(), "cerdas no Tuning: {no_tuning:?}");
+    let do_motor: BTreeSet<&str> = KNOB_DEFS
+        .iter()
+        .filter(|d| d.group == KnobGroup::Bristles)
+        .map(|d| d.key)
+        .collect();
+    let no_shape: BTreeSet<&str> = ph2d_tool_painter::ids::CERDAS_NO_SHAPE
+        .into_iter()
+        .collect();
+    assert_eq!(do_motor, no_shape, "toda cerda do motor mora no Shape");
+    // A regra do pai (B35.3) mudou-se com elas: sem a ponta Bristles nenhuma; filha só com o pai > 0.
+    let mut b = ph2d_tool_painter::PainterTool::default().brush_settings();
+    b.shape_kind = ph2d_tool_painter::TextureKind::None.to_u8();
+    assert!(b.wet_knobs.cerdas(&b).is_empty());
+    b.shape_kind = ph2d_tool_painter::TextureKind::Bristles.to_u8();
+    for (filha, pai) in ph2d_tool_painter::ids::PAIS_DAS_CERDAS {
+        let i = KNOB_DEFS.iter().position(|d| d.key == pai).expect(pai);
+        let a_mostra = |b: &ph2d_tool_painter::BrushSettings| {
+            b.wet_knobs.cerdas(b).iter().any(|l| l.chave == filha)
+        };
+        b.wet_knobs.knobs[i] = 0.0;
+        assert!(!a_mostra(&b), "{filha}: {pai} a zero ⇒ escondida");
+        b.wet_knobs.knobs[i] = KNOB_DEFS[i].max.min(1.0);
+        assert!(a_mostra(&b), "{filha}: {pai} ligado ⇒ à vista");
     }
 }

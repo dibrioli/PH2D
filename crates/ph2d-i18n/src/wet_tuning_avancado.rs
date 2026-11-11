@@ -57,6 +57,44 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.bristleStreakCut" => "Streak rarity",
         // O leque (31/10): os tufos abrem-se num arco.
         "panel.wet_tuning.knob.tuftArc" => "Tufts fan out in an arc",
+        // B35.13: as dicas das cerdas no cartão Shape, em Plain English.
+        "card.painter.shape.bristle_noise_length" => "Pressure change length (px)",
+        "card.painter.shape.bristle_wave_length" => "Width wave length (px)",
+        "card.painter.shape.bristle_oscillation" => "Brush wobble (px)",
+        "card.painter.shape.bristle_span" => "Random span (px)",
+        "card.painter.shape.bristle_span_length" => "Random span length (px)",
+        "card.painter.shape.bristle_streak_length" => "Streak length (px)",
+        "panel.wet_tuning.tip.bristlePressure" => {
+            "How much each bristle presses on its own. Higher gives uneven, streaky paint."
+        }
+        "panel.wet_tuning.tip.bristleNoiseLength" => {
+            "How far you paint before each bristle's pressure changes."
+        }
+        "panel.wet_tuning.tip.bristleWave" => "Bristles get wider and thinner as you paint.",
+        "panel.wet_tuning.tip.bristleWaveLength" => "How far you paint for one wide-thin wave.",
+        "panel.wet_tuning.tip.bristleOscillation" => "The brush wobbles side to side as you paint.",
+        "panel.wet_tuning.tip.bristleSpan" => "Bristles drift apart and back at random.",
+        "panel.wet_tuning.tip.bristleSpanLength" => "How far you paint before the drift changes.",
+        "panel.wet_tuning.tip.bristleNoiseHue" => "Each bristle shifts the colour's hue a little.",
+        "panel.wet_tuning.tip.bristleNoiseSat" => {
+            "Each bristle makes the colour a little more or less vivid."
+        }
+        "panel.wet_tuning.tip.bristleNoiseLight" => {
+            "Each bristle makes the colour a little lighter or darker."
+        }
+        "panel.wet_tuning.tip.bristleLift" => {
+            "With a light touch, some bristles leave the paper and skip."
+        }
+        "panel.wet_tuning.tip.bristleRemove" => {
+            "Bristles dig into the paint below. Needs Bristle relief."
+        }
+        "panel.wet_tuning.tip.bristleStreak" => "Some bristles leave darker lines in the stroke.",
+        "panel.wet_tuning.tip.bristleStreakLight" => {
+            "Some bristles leave lighter lines in the stroke."
+        }
+        "panel.wet_tuning.tip.bristleStreakLength" => "How long each streak runs before it fades.",
+        "panel.wet_tuning.tip.bristleStreakCut" => "Higher means fewer streaks.",
+        "panel.wet_tuning.tip.tuftArc" => "Tufts spread out in a fan instead of a straight row.",
         // Stroke — como o traço pousa a tinta.
         "panel.wet_tuning.knob.extDryBrush" => "Dry brush",
         "panel.wet_tuning.knob.extWetSoften" => "Softer on wet paint",

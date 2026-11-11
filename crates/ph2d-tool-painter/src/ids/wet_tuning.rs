@@ -77,6 +77,39 @@ pub const CERDAS_DO_PENTEADO: [&str; 4] = [
     "bristleLaneSizeExp",
 ];
 
+/// ⭐ B35.13 (dono 07/11): as cerdas com física própria (o grupo `Bristles` do motor) moram no cartão Shape, num grupo
+/// abaixo do penteado, e saem do Tuning. Ids os do Tuning (macros gravadas pelo número); só a ponta Bristles as lê.
+pub const CERDAS_NO_SHAPE: [&str; 17] = [
+    "bristlePressure",
+    "bristleNoiseLength",
+    "bristleWave",
+    "bristleWaveLength",
+    "bristleOscillation",
+    "bristleSpan",
+    "bristleSpanLength",
+    "bristleNoiseHue",
+    "bristleNoiseSat",
+    "bristleNoiseLight",
+    "bristleLift",
+    "bristleRemove",
+    "bristleStreak",
+    "bristleStreakLight",
+    "bristleStreakLength",
+    "bristleStreakCut",
+    "tuftArc",
+];
+
+/// `(filha, pai)` entre as [`CERDAS_NO_SHAPE`] (B35.3 → B35.13): a filha só aparece com o knob-pai `> 0` — a mesma
+/// pergunta que o leitor do motor faz.
+pub const PAIS_DAS_CERDAS: [(&str, &str); 6] = [
+    ("bristleWaveLength", "bristleWave"),
+    ("bristleSpanLength", "bristleSpan"),
+    ("bristleStreakLight", "bristleStreak"),
+    ("bristleStreakLength", "bristleStreak"),
+    ("bristleStreakCut", "bristleStreak"),
+    ("bristleRemove", "bristleHeight"),
+];
+
 /// Os knobs que já têm linha no Inspector e por isso não se repetem no Tuning (R3 do dono, 25/10; B35.1): os 15 da
 /// caneta (cartão Pen, [`crate::LINHAS_DA_MAO`]), os 4 do cartão Wet (Pickup · Dry Speed · Edge Darkening · Gravity) e
 /// os 2 que o B35.12 subiu ao cartão (Paint drag · Emboss; a secção Relief do Tuning fica sem linhas e não se pinta).

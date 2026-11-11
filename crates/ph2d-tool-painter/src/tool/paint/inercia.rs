@@ -397,12 +397,13 @@ fn material_do_oleo() -> &'static [NodeId] {
     })
 }
 
-/// As quatro linhas do penteado: só o chip, o que o cartão pinta (o slider antigo não se pinta mais).
+/// As linhas do penteado e as cerdas do Shape (B35.13): só o chip, o que o cartão pinta.
 fn penteado() -> &'static [NodeId] {
     static IDS: std::sync::OnceLock<Vec<NodeId>> = std::sync::OnceLock::new();
     IDS.get_or_init(|| {
         ids::CERDAS_DO_PENTEADO
             .iter()
+            .chain(&ids::CERDAS_NO_SHAPE)
             .map(|k| ids::wet_tuning_chip_id(k))
             .collect()
     })

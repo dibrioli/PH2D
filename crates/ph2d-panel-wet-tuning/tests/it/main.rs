@@ -35,10 +35,6 @@ pub(crate) fn liga_os_pais(t: &mut ph2d_tool_painter::PainterTool) {
                 ph2d_tool_painter::ids::wet_tuning_slider_id(chave),
                 1.0,
             )),
-            Pai::CerdasNoShape => t.handle_panel_event(PanelEvent::SelectOption(
-                ph2d_tool_painter::ids::PAINTER_SHAPE_KIND,
-                ph2d_tool_painter::TextureKind::Bristles.to_u8().to_string(),
-            )),
             Pai::OleoReal => continue,
         };
     }

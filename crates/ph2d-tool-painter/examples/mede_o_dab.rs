@@ -24,7 +24,19 @@ use std::time::Instant;
 
 const W: u32 = 3840;
 const H: u32 = 2160;
-const RAIOS: [f32; 4] = [10.0, 30.0, 60.0, 120.0];
+const RAIOS_DE_SEMPRE: [f32; 4] = [10.0, 30.0, 60.0, 120.0];
+
+/// `RAIOS=512,1024` troca a varredura (B42.5: o raio grande a 4K); sem ela, a de sempre.
+fn raios() -> Vec<f32> {
+    std::env::var("RAIOS").map_or_else(
+        |_| RAIOS_DE_SEMPRE.to_vec(),
+        |v| {
+            v.split(',')
+                .map(|r| r.trim().parse().expect("RAIOS=a,b,…"))
+                .collect()
+        },
+    )
+}
 /// Uma amostra de (µs/move, µs/dab, depósito µs/dab, composite µs/move, dabs).
 type Amostra = (f64, f64, f64, f64, f64);
 /// Um traço da varredura por raio: os MESMOS 150 movimentos de 3 px das facas.
@@ -291,12 +303,13 @@ fn main() {
             })
             .collect();
         let mut telas: Vec<PainterTool> = telas_de.iter().map(|&(m, q)| tela(m, q)).collect();
-        let n = telas.len() * RAIOS.len();
+        let raios_v = raios();
+        let n = telas.len() * raios_v.len();
         // (tela, raio) → amostras de (µs/move, µs/dab, depósito µs/dab, composite µs/move, dabs)
         let mut am: Vec<Vec<Amostra>> = vec![Vec::new(); n];
         // Aquecimento fora da régua: um traço por variante, numa faixa só dele.
         for (ti, t) in telas.iter_mut().enumerate() {
-            for (ri, &r) in RAIOS.iter().enumerate() {
+            for (ri, &r) in raios_v.iter().enumerate() {
                 if std::env::var("RAIO").is_ok_and(|e| e != format!("{r}")) {
                     continue;
                 }
@@ -307,12 +320,12 @@ fn main() {
         for ronda in 0..rondas {
             for k in 0..n {
                 let v = (k + ronda) % n;
-                let (ti, ri) = (v / RAIOS.len(), v % RAIOS.len());
-                if std::env::var("RAIO").is_ok_and(|r| r != format!("{}", RAIOS[ri])) {
+                let (ti, ri) = (v / raios_v.len(), v % raios_v.len());
+                if std::env::var("RAIO").is_ok_and(|r| r != format!("{}", raios_v[ri])) {
                     continue;
                 }
                 let t = &mut telas[ti];
-                t.set_brush_size_px(RAIOS[ri]);
+                t.set_brush_size_px(raios_v[ri]);
                 // Cada (raio, ronda) pinta tela FRESCA: faixas de 300 px, colunas por raio.
                 let (x0, y) = (
                     40.0 + 900.0 * ri as f32,
@@ -332,7 +345,7 @@ fn main() {
             "motor   modo    raio | µs/move min (med) | dabs/traço | µs/dab | depósito µs/dab | composite µs/move"
         );
         for (v, a) in am.iter().enumerate().filter(|(_, a)| !a.is_empty()) {
-            let (ti, ri) = (v / RAIOS.len(), v % RAIOS.len());
+            let (ti, ri) = (v / raios_v.len(), v % raios_v.len());
             let col = |f: fn(&(f64, f64, f64, f64, f64)) -> f64| {
                 min_med(&a.iter().map(f).collect::<Vec<_>>())
             };
@@ -346,7 +359,7 @@ fn main() {
                 "{:<7} {:<7} {:>4} | {mv:9.1} ({mvm:9.1}) | {nd:>10} | {pd:7.1} | {dp:15.1} | {cm:10.1}",
                 format!("{m:?}"),
                 if q { "quadro" } else { "evento" },
-                RAIOS[ri],
+                raios_v[ri],
             );
         }
         for (ti, t) in telas.iter_mut().enumerate() {

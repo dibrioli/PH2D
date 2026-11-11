@@ -643,6 +643,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.brake" => "Brake",
         "panel.painter_layers.wetpaint.dust" => "Brush dust",
         "panel.painter_layers.wetpaint.erase_strength" => "Erase Strength",
+        "panel.painter_layers.wetpaint.erase_strength_tip" => {
+            "How much wet paint each pass of the eraser lifts. At the maximum it wipes the middle of the stroke clean."
+        }
         "panel.painter_layers.wetpaint.canvas_actions" => "Wet canvas actions",
         "panel.painter_layers.wetpaint.wet_canvas" => "Wet canvas",
         "panel.painter_layers.wetpaint.dry_canvas" => "Dry canvas",

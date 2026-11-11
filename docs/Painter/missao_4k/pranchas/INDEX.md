@@ -3,6 +3,14 @@
 Uma secção por mudança de aparência. Cada imagem: antes à esquerda, depois ao meio (ou à direita), diferença em vermelho quando há. Fundos: branco, blocos de cor, papel Textured; 1080p e 4K. Detalhe em cada `README.md`.
 Relatório dos pincéis de fábrica (antes/depois): `target/relatorio-pinceis/index.html` (gerado pelos dois alarmes; nada foi regravado).
 
+## B35.9 — A Borracha do Wet no máximo limpa o meio do traço
+
+Antes, com a Borracha do Wet no máximo, o meio do traço ficava pintado (só a borda saía), e havia dois controlos para a mesma força (Eraser no Tuning, Erase Strength no cartão). Agora há um só, o Erase Strength; no máximo a passada limpa o traço inteiro.
+
+![B35.9](B35.9/1080p_branco_antes_depois.png)
+
+Todas: [1080p_blocos_antes_depois](B35.9/1080p_blocos_antes_depois.png) · [1080p_branco_antes_depois](B35.9/1080p_branco_antes_depois.png) · [1080p_papel_antes_depois](B35.9/1080p_papel_antes_depois.png) · [4k_blocos_antes_depois](B35.9/4k_blocos_antes_depois.png) · [4k_branco_antes_depois](B35.9/4k_branco_antes_depois.png) · [4k_papel_antes_depois](B35.9/4k_papel_antes_depois.png) · [notas](B35.9/README.md)
+
 ## B06a — A Borracha tira o relevo junto com a tinta
 
 Antes ficava um «tubo» de relevo onde a cor já tinha saído. Agora, onde a cor sai, o relevo sai também (Impasto e Wet).

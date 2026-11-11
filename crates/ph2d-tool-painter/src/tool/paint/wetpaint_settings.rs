@@ -172,7 +172,7 @@ impl WetKnobs {
     /// the product values (panel showing 800 over an engine still at 600).
     pub const ENGINE_BOOT: Self = Self {
         water: 1.0,
-        erase: 0.4,
+        erase: ph2d_wet_paint::tools::ERASE_DE_FABRICA,
         knobs: knob_defaults(),
     };
 
@@ -185,7 +185,7 @@ impl WetKnobs {
     /// `FALLBACK_BRUSH` (a `const` item) can carry it.
     pub const DEFAULT: Self = Self {
         water: 1.0,
-        erase: 0.4,
+        erase: ph2d_wet_paint::tools::ERASE_DE_FABRICA,
         knobs: painter_default_knobs(),
     };
 

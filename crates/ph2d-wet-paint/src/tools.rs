@@ -22,7 +22,14 @@ mod smear; // o Smear: arrasta a tinta do dab anterior (Doc 23 P2) — filho por
 pub use smear::{apply_remolha_arrasto, apply_smear};
 mod arrasto_agua; // a água leva o que levantou pelo traço (31/10) — filho por LOC
 pub use arrasto_agua::apply_water_drag;
+#[cfg(test)]
+mod borracha_tests;
 pub(crate) mod tinta; // F4-2 E6b: a soma segue a massa nas ferramentas que relaxam
+
+/// O 0,4 de fábrica do antigo knob Eraser, fundido no Erase Strength (B35.9): `erase' = 0,4·erase`.
+pub const ERASER_DA_FABRICA: f64 = 0.4;
+/// O Erase Strength de fábrica: o produto de antes (`Eraser 0,4 · erase 0,4`), ao bit.
+pub const ERASE_DE_FABRICA: f64 = ERASER_DA_FABRICA * 0.4;
 
 /// Doc 23: the shared active-lift gain — `wetLift · stainingMultiplier`.
 /// Every active rewetter (Wet dissolve, wet Smear, wet Blend) derives its
@@ -105,7 +112,8 @@ fn apply_erase_impl(
 ) -> Option<TouchedRect> {
     let gate = p.k(Knob::PaperGate);
     let pig_cap = p.k(Knob::GateSaturation);
-    let force = p.k(Knob::Eraser) * erase_slider;
+    // B35.9: o Erase Strength é a força (o knob Eraser fundiu-se nele: `erase' = 0,4·erase`).
+    let force = erase_slider;
     // Doc 23 P4 — dried, staining paint resists the eraser: the settled
     // layer takes a weaker force (`force · (1 − 0.5·staining)`; staining 0
     // erases like the wet layers, staining 1 at half force). Suspended
@@ -142,10 +150,8 @@ fn apply_erase_impl(
         if gg > 1.0 {
             gg = 1.0;
         }
-        let k = 1.0 - force * gg;
-        if k <= 0.0 {
-            return; // never wipe a cell outright
-        }
+        // No máximo (força 1 sob o carimbo cheio) o miolo limpa: piso 0, nunca «deixa a célula intacta».
+        let k = (1.0 - force * gg).max(0.0);
         susp[i] = (susp[i] as f64 * k) as f32;
         film[i] = (film[i] as f64 * k) as f32;
         if (susp[i] as f64) < 1.0 {

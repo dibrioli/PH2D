@@ -86,6 +86,9 @@ fn todos_os_numeros(leis: &BrushSettings, valores: &BrushSettings) -> Vec<Numero
     n
 }
 
+/// A dica do Erase Strength (B35.9: o único controlo da borracha do Wet; o Eraser do Tuning fundiu-se nele).
+pub(crate) const DICA_DA_BORRACHA: &str = "panel.painter_layers.wetpaint.erase_strength_tip";
+
 /// O valor, a faixa, o passo, a fábrica e a dica da lei de cada número.
 pub(crate) fn arma_numeros(store: &mut WidgetStore, numeros: &[Numero], fabrica: &[Numero]) {
     for (n, f) in numeros.iter().zip(fabrica) {
@@ -98,7 +101,9 @@ pub(crate) fn arma_numeros(store: &mut WidgetStore, numeros: &[Numero], fabrica:
             },
         );
         number_field::arm_field(store, n.id, n.valor, n.min, n.max, n.passo, n.casas);
-        let _ = esmaecer::poe_dica(store, &[n.id]);
+        if esmaecer::poe_dica(store, &[n.id]).is_none() && n.id == pids::PAINTER_WETPAINT_ERASE {
+            store.set_tooltip(n.id, tr(DICA_DA_BORRACHA));
+        }
     }
 }
 

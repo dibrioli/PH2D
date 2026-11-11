@@ -57,7 +57,7 @@ impl Default for Sliders {
             size: 0.7,
             pressure: 0.7,
             water: 1.0,
-            erase: 0.4,
+            erase: crate::tools::ERASE_DE_FABRICA,
             pigmento: 1.0,
         }
     }
@@ -253,7 +253,7 @@ impl Engine {
         }
     }
 
-    fn texture(&mut self) -> &[f32] {
+    pub(crate) fn texture(&mut self) -> &[f32] {
         if self.brush_tex.is_none() {
             self.brush_tex = Some(build_bristle_texture(self.bristle_knobs()));
         }

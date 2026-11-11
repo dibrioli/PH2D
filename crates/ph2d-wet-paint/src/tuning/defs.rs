@@ -192,7 +192,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::Projection, KnobGroup::Physics, "projection", 0.0, 1.5, 0.01, 0.7, None),
     k(Knob::BrakeReach, KnobGroup::Physics, "brakeReach", 1.0, 12.0, 0.5, 4.0, None),
     k(Knob::CapillaryGate, KnobGroup::Physics, "capillaryGate", 100.0, 6000.0, 50.0, 2000.0, None),
-    k(Knob::Eraser, KnobGroup::Tools, "eraser", 0.0, 1.0, 0.01, 0.4, None),
+    k(Knob::Eraser, KnobGroup::Hidden, /* B35.9: fundido no Erase Strength */ "eraser", 0.0, 1.0, 0.01, 0.4, None),
     k(
         Knob::Dryer,
         KnobGroup::Hidden, // a linha da ferramenta no cartão Wet Paint (dono 25/10)

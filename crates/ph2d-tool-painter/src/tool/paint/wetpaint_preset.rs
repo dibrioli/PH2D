@@ -113,8 +113,10 @@ pub const MOTOR_DOS_PRESETS: &str = "WetPainter";
 /// A marca da lei da E4 no mapa `engine` (`1`): `pigmentPerDab` é a parte de pigmento da receita e `intensity` a
 /// carga (a quantidade). Ausente = um preset da lei velha, que [`migra_a_receita`] traduz ao carregar.
 pub(super) const CHAVE_RECEITA: &str = "receitaE4";
-/// A chave da borracha molhada no mapa `engine` (não é knob do registo: é o slider `erase` do motor).
-const CHAVE_ERASE: &str = "erase";
+/// A chave da borracha molhada no mapa `engine` (não é knob do registo: é o slider `erase` do motor). B35.9: a
+/// escala nova (`erase' = 0,4·erase`, o Eraser fundido) mora noutra chave; a velha `erase` (0,4 nos 57 de
+/// fábrica) fica sem leitor e o preset cai na fábrica 0,16 — a mesma força, ao bit. Limpa-a o B35.20.
+pub(super) const CHAVE_ERASE: &str = "eraseStrength";
 /// O **Glaze layering (K-M)** no mapa `engine` (não é knob do registo: é do traço, `km_glaze`). Gravado só LIGADO
 /// (`1`): ausente = desligado, o de fábrica — nenhuma receita de fábrica o liga, e os ficheiros dela ficam ao byte.
 pub(super) const CHAVE_GLAZE: &str = "glazeLayering";

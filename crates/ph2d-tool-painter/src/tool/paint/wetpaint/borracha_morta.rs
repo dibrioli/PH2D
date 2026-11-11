@@ -21,7 +21,7 @@ const LUZ: [f32; 2] = [0.85, -0.5];
 const CLAREIA_NO_MAXIMO: f32 = 1.1;
 /// O que uma passada de pressão cheia tira, com o Erase Strength de fábrica ([`ERASE_DE_FABRICA`]).
 const TIRA: f32 = 0.35;
-const ERASE_DE_FABRICA: f32 = 0.4;
+const ERASE_DE_FABRICA: f32 = ph2d_wet_paint::tools::ERASE_DE_FABRICA as f32;
 /// A pressão (o contacto da ponta com o papel) pesa assim, acima do [`PISO`].
 const EXPOENTE_DA_PRESSAO: i32 = 8;
 /// O que a pressão mais leve ainda tira, em fracção de uma passada plena (dono 06/11: também chega ao papel). Medido, mão
@@ -353,3 +353,7 @@ pub(super) fn escreve_o_sulco(
         }
     }
 }
+
+#[cfg(test)]
+#[path = "prancha_b35_9_tests.rs"]
+mod prancha_b35_9_tests;

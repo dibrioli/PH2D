@@ -163,7 +163,14 @@ fn every_id_of_the_old_panel_is_registered_and_painted_in_cards() {
     for s in rows::SECTIONS {
         inv.extend([s.header, s.reset]);
     }
-    inv.extend(tid::WET_TUNING_GROUP_HEADERS.iter().copied());
+    // O Relief saiu do Tuning no B35.12 (o emboss foi ao cartão Wet): o cabeçalho fica só nos ids (macros).
+    let relief = tid::WET_TUNING_GROUP_HEADERS[5];
+    inv.extend(
+        tid::WET_TUNING_GROUP_HEADERS
+            .iter()
+            .copied()
+            .filter(|h| *h != relief),
+    );
     inv.extend([
         tid::WET_TUNING_DRAG_HANDLE,
         tid::WET_TUNING_RESIZE_HANDLE,

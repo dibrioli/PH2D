@@ -46,20 +46,11 @@ pub fn force_cards_on_this_thread(on: Option<bool>) {
 
 /// O rótulo de cartão dos knobs com unidade (D13): a unidade mora no rótulo, nunca na caixa.
 /// As chaves são as de [`rows::UNIDADES`] (gate `cada_unidade_tem_rotulo_de_cartao`).
-pub const COM_UNIDADE: [(&str, &str); 10] = [
+pub const COM_UNIDADE: [(&str, &str); 4] = [
     ("textureSizeRef", "card.wet_tuning.texture_size_ref"),
     ("knifeRidge", "card.wet_tuning.knife_ridge"),
     ("subsurfaceRadius", "card.wet_tuning.subsurface_radius"),
     ("wetOpenEdge", "card.wet_tuning.wet_open_edge"),
-    ("bristleNoiseLength", "card.wet_tuning.bristle_noise_length"),
-    ("bristleWaveLength", "card.wet_tuning.bristle_wave_length"),
-    ("bristleOscillation", "card.wet_tuning.bristle_oscillation"),
-    ("bristleSpan", "card.wet_tuning.bristle_span"),
-    ("bristleSpanLength", "card.wet_tuning.bristle_span_length"),
-    (
-        "bristleStreakLength",
-        "card.wet_tuning.bristle_streak_length",
-    ),
 ];
 
 fn rotulo(row: &'static TuneRow) -> &'static str {

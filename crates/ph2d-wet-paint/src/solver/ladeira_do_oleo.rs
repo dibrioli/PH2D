@@ -192,6 +192,10 @@ pub(crate) struct LadeiraDoOleo {
     assente: Vec<f32>,
     /// A ladeira do óleo de ANTES com o óleo na mão: a que segura fica presa a `|dfilm|` ([`LadeiraDoOleo::termo`]).
     presa: bool,
+    /// Alguma célula das janelas tem altura (sem nenhuma, o passe corre sem a ladeira, ao bit).
+    alguma: bool,
+    /// Quantas células a construção visitou (o gate `a_ladeira_so_visita_a_faixa_viva`).
+    pub(crate) visitadas: usize,
 }
 
 /// O `film` do Wet Flat CHEIO sobre a crista do óleo (água ×1), MEDIDO pela sonda J11 (`diag_a_queda_pela_diluicao`):
@@ -202,46 +206,73 @@ pub(crate) struct LadeiraDoOleo {
 pub(crate) const FILM_CHEIO: f64 = 0.983;
 
 impl LadeiraDoOleo {
-    /// `None` sem o campo do óleo (nenhum traço com o Real Oil nesta grade) ou sem altura nenhuma nas linhas; `antes` =
-    /// a altura fotografada no início do traço ([`Grid::oleo_antes`]) em vez da de agora.
-    pub(crate) fn de(g: &Grid, r0: usize, r1: usize, antes: bool) -> Option<Self> {
-        if g.oleo.is_empty() || r1 < r0 || (antes && g.oleo_antes.len() != g.cells) {
-            return None;
-        }
+    /// `None` sem altura nenhuma nas janelas `jan` (uma por linha fina `r0..`, `lo > hi` = vazia); `antes` = a altura
+    /// fotografada no início do traço ([`Grid::oleo_antes`]) em vez da de agora. Fora das janelas os planos guardam
+    /// lixo de outro passe: o passe de fluxo só lê dentro delas ([`do_passe`]).
+    fn de(
+        g: &Grid,
+        (r0, jan): (usize, &[(i32, i32)]),
+        (mut h, mut assente): (Vec<f32>, Vec<f32>),
+        antes: bool,
+        mode: crate::par::Rows,
+    ) -> Self {
         let s = g.s;
-        let r1 = r1.min(g.cells / s - 1);
-        let mut h = vec![0f32; (r1 + 1 - r0) * s];
-        let mut assente = vec![1f32; (r1 + 1 - r0) * s];
-        let mut alguma = false;
-        for y in r0..=r1 {
-            for x in 0..s {
-                let i = y * s + x;
-                let k = (y - r0) * s + x;
-                match rota() {
-                    4 => assente[k] = fraccao_assente(g, i),
-                    5..=7 if antes => {
-                        assente[k] = g.oleo_antes_assente.get(i).copied().unwrap_or(1.0);
-                    }
-                    _ => {}
-                }
+        let n = jan.len() * s;
+        if h.len() < n {
+            h.resize(n, 0.0);
+            assente.resize(n, 1.0);
+        }
+        #[cfg(test)]
+        {
+            h.fill(f32::NAN);
+            assente.fill(f32::NAN);
+        }
+        let rt = rota();
+        let alguma = std::sync::atomic::AtomicBool::new(false);
+        crate::par::walk_rows2(mode, &mut h[..n], &mut assente[..n], s, |ri, hr, ar| {
+            let (lo, hi) = jan[ri];
+            if lo > hi {
+                return;
+            }
+            let base = (r0 + ri) * s;
+            for x in lo as usize..=hi as usize {
+                let i = base + x;
+                ar[x] = match rt {
+                    4 => fraccao_assente(g, i),
+                    5..=7 if antes => g.oleo_antes_assente.get(i).copied().unwrap_or(1.0),
+                    _ => 1.0,
+                };
                 let v = if antes {
                     g.oleo_antes[i]
                 } else {
                     altura(g, i, false)
                 };
-                if v > 0.0 {
-                    h[(y - r0) * s + x] = v;
-                    alguma = true;
-                }
+                hr[x] = if v > 0.0 {
+                    alguma.store(true, std::sync::atomic::Ordering::Relaxed);
+                    v
+                } else {
+                    0.0
+                };
             }
-        }
-        alguma.then_some(Self {
+        });
+        Self {
             r0,
             s,
             h,
             assente,
-            presa: antes && rota() == 7,
-        })
+            presa: antes && rt == 7,
+            alguma: alguma.into_inner(),
+            visitadas: jan
+                .iter()
+                .map(|&(lo, hi)| (hi - lo + 1).max(0) as usize)
+                .sum(),
+        }
+    }
+
+    /// Devolve os planos ao rascunho do solver (o passo seguinte não aloca).
+    pub(crate) fn devolve(self, g: &mut Grid) {
+        g.scratch.ladeira_h = self.h;
+        g.scratch.ladeira_assente = self.assente;
     }
 
     /// O termo de nivelamento de um eixo, já clampado: `dfilm` = a diferença de `film` entre os vizinhos, `o` = a da
@@ -294,18 +325,58 @@ impl LadeiraDoOleo {
     }
 }
 
-/// A ladeira das linhas finas que o passe de fluxo das linhas de FLUXO `by0..=by1` amostra. Sem o Real Oil na mão, a
-/// altura de agora; com ele (`oleo_na_mao`), só a do óleo de ANTES do traço — o óleo que se pinta corre como sempre
-/// (MEDIDO: com a ladeira também nele, as 10 miniaturas Oil/* mudavam 82–230 níveis; a miniatura é um traço só, a
-/// fotografia dela é vazia ⇒ `None`, ao bit).
-pub(crate) fn do_passe(g: &Grid, by0: i32, by1: i32, oleo_na_mao: bool) -> Option<LadeiraDoOleo> {
+/// A ladeira das linhas finas que o passe de fluxo das linhas de FLUXO `by0..=by1` (bbox `gbx0..=gbx1`, faixa viva
+/// `frow_lo/hi` já refrescada) amostra — só nas janelas que ele LÊ: por linha de fluxo `y`, as colunas
+/// `probe(bx0−1)..=probe(bx1+1)` das linhas finas `probe(y−1)`, `probe(y)`, `probe(y+1)` (B13.A1: era a folha inteira).
+/// Sem o Real Oil na mão, a altura de agora; com ele (`oleo_na_mao`), só a do óleo de ANTES do traço — o óleo que se
+/// pinta corre como sempre (MEDIDO: com a ladeira também nele, as 10 miniaturas Oil/* mudavam 82–230 níveis; a
+/// miniatura é um traço só, a fotografia dela é vazia ⇒ `None`, ao bit). Devolva-a com [`LadeiraDoOleo::devolve`].
+pub(crate) fn do_passe(
+    g: &mut Grid,
+    (gbx0, by0, gbx1, by1): (i32, i32, i32, i32),
+    oleo_na_mao: bool,
+    mode: crate::par::Rows,
+) -> Option<LadeiraDoOleo> {
     if g.oleo.is_empty() || rota() == 2 {
         return None;
     }
-    let (gh, rf) = (g.h as i32, g.flow.rf);
-    let r0 = crate::flow::flow_probe(by0 - 1, gh, rf).max(0) as usize;
-    let r1 = crate::flow::flow_probe(by1 + 1, gh, rf).max(0) as usize;
-    LadeiraDoOleo::de(g, r0, r1, oleo_na_mao)
+    let (gw, gh, rf) = (g.w as i32, g.h as i32, g.flow.rf);
+    let p = |c: i32, w: i32| crate::flow::flow_probe(c, w, rf).max(0) as usize;
+    let r0 = p(by0 - 1, gh);
+    let r1 = p(by1 + 1, gh).min(g.cells / g.s - 1);
+    if r1 < r0 || (oleo_na_mao && g.oleo_antes.len() != g.cells) {
+        return None;
+    }
+    let mut jan = std::mem::take(&mut g.scratch.ladeira_jan);
+    jan.clear();
+    jan.resize(r1 + 1 - r0, (i32::MAX, i32::MIN));
+    for y in by0..=by1 {
+        let (bx0, bx1) =
+            crate::grid::span_x_of(&g.frow_lo, &g.frow_hi, g.spans_enabled, gbx0, gbx1, y);
+        if bx0 > bx1 {
+            continue;
+        }
+        let (lo, hi) = (p(bx0 - 1, gw) as i32, p(bx1 + 1, gw) as i32);
+        for r in [p(y - 1, gh), p(y, gh), p(y + 1, gh)] {
+            if let Some(j) = r.checked_sub(r0).and_then(|k| jan.get_mut(k)) {
+                *j = (j.0.min(lo), j.1.max(hi));
+            }
+        }
+    }
+    let planos = (
+        std::mem::take(&mut g.scratch.ladeira_h),
+        std::mem::take(&mut g.scratch.ladeira_assente),
+    );
+    let l = LadeiraDoOleo::de(g, (r0, &jan), planos, oleo_na_mao, mode);
+    g.scratch.ladeira_jan = jan;
+    #[cfg(test)]
+    tests::observa(g, r0, r1, oleo_na_mao, &l);
+    if l.alguma {
+        Some(l)
+    } else {
+        l.devolve(g);
+        None
+    }
 }
 
 /// No início de um traço: com o Real Oil na mão e óleo na grade, fotografa a altura do óleo dos traços anteriores; senão
@@ -334,3 +405,7 @@ pub(crate) fn fraccao_assente(g: &Grid, i: usize) -> f32 {
     let (se, su) = (g.sett[i].max(0.0), g.susp[i]);
     if su > 0.0 { se / (se + su) } else { 1.0 }
 }
+
+#[cfg(test)]
+#[path = "ladeira_do_oleo_tests.rs"]
+mod tests;

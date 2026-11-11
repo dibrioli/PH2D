@@ -67,6 +67,12 @@ pub struct SolverScratch {
     /// nenhum passe leria. O irmão [`SolverScratch::ensure`] cobre os planos
     /// que todo passo materializa.
     pub bflags: Vec<u8>,
+    /// A altura e o peso da ladeira do óleo ([`crate::solver::ladeira_do_oleo`]), nas linhas da bbox × `s`; só as
+    /// janelas lidas são escritas a cada passe.
+    pub ladeira_h: Vec<f32>,
+    pub ladeira_assente: Vec<f32>,
+    /// A janela de colunas de cada linha fina que o passe de fluxo lê da ladeira.
+    pub ladeira_jan: Vec<(i32, i32)>,
 }
 
 /// A cópia de um rascunho é um rascunho VAZIO: o conteúdo é reescrito inteiro dentro de um passe, e o

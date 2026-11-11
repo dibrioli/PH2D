@@ -191,9 +191,10 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
     let ladeira = if super::chao_forca::tira_do_nivelamento(c.oleo_na_mao) {
         None
     } else {
-        super::ladeira_do_oleo::do_passe(g, by0, by1, c.oleo_na_mao)
+        super::ladeira_do_oleo::do_passe(g, (gbx0, by0, gbx1, by1), c.oleo_na_mao, mode)
     };
-    let ladeira = ladeira.as_ref();
+    let lad = ladeira;
+    let ladeira = lad.as_ref();
     let Grid {
         frow_lo: row_lo,
         frow_hi: row_hi,
@@ -462,6 +463,9 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
             }
         },
     );
+    if let Some(l) = lad {
+        l.devolve(g);
+    }
 }
 
 /// **O CARIMBO DE UMIDADE** — film fundo marca a folha úmida, os vales mais

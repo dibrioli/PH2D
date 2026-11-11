@@ -84,7 +84,12 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
     let (gbx0, by0, gbx1, by1) = crate::flow::flow_bbox((g.bx0, g.by0, g.bx1, g.by1), geom.rf);
     g.refresh_flow_spans();
     let spans_on = g.spans_enabled;
-    let ladeira = ladeira_do_oleo::do_passe(g, by0, by1, p.oleo > 0.0);
+    let ladeira = ladeira_do_oleo::do_passe(
+        g,
+        (gbx0, by0, gbx1, by1),
+        p.oleo > 0.0,
+        crate::par::Rows::Serial,
+    );
     let pigmento = tinta_transporte::liga(p, g);
     // Split-borrow the fields once — the loop body reads/writes through
     // locals instead of re-projecting `g.` per access.
@@ -393,6 +398,9 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
             flow_y[i] = clamp_sym(ey, max_v) as f32;
             i += 1;
         }
+    }
+    if let Some(l) = ladeira {
+        l.devolve(g);
     }
 }
 

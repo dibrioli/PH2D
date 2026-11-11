@@ -52,7 +52,7 @@ struct Tones {
     text: Color,
     muted: Color,
     heading: Color,
-    /// O fundo de um exemplo: o degrau da escala ao lado do `CodeBg`.
+    /// O fundo de um exemplo: o degrau ao lado do fundo do poço ([`crate::palette::Well`]).
     code_box: Color,
 }
 
@@ -63,7 +63,11 @@ impl Tones {
             text: c(ColorToken::Text1),
             muted: c(ColorToken::Text2),
             heading: c(ColorToken::Accent),
-            code_box: c(ColorToken::Bg3),
+            code_box: crate::palette::Well::new(
+                theme,
+                ph2d_editor_core::panel::cards::ferramenta::cards_on(),
+            )
+            .pill,
         }
     }
 }

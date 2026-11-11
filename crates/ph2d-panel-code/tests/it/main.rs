@@ -9,6 +9,7 @@ mod cronometro;
 mod estado;
 mod ligaduras;
 mod medicoes_do_fecho;
+mod nitidez;
 mod opcoes_do_script;
 mod pagina;
 mod peso_das_pecas;

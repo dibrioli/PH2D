@@ -28,6 +28,6 @@ Branch `line/GameEngineFuncional02`, worktree `/home/enio/Documentos/Projetos/PH
 2. **Dash e largura do stroke no Look** (dono 10/11): dois controlos novos no cartão (`cards_forma_look.rs`, `sections/look.rs`), campos em `ShapeLook` (`ph2d-shape-handles` / `ph2d-physics-ecs`), edição `PhysicsFieldEdit::Look*`, pintura do contorno (`ph2d-app-physics/src/overlay/outline.rs`); formato gravado ⇒ **subir `PROJECT_SCHEMA`** (`python3 scripts/schema-recount.py`); canal da Timeline se o resto do Look o tiver; checkbox para liga/desliga (padrão da casa, nunca toggle); UI só em inglês. Foto do cartão ao lado da Sprite antes do smoke.
 3. **Item 5** do [ONDA8_ITENS_2_A_4 §7](HANDOFF_CONTINUACAO_line_GameEngineFuncional02_2026-11-10_ONDA8_ITENS_2_A_4.md): 5.1, 5.3, 5.4, 5.5, 5.6 + medir canais de JUNTA e MUNDO por tique.
 
-Smoke das cenas 122 e 78 entregue (fotos `fotos_fisica/onda8/04_*`, `05_*`); o dono respondeu só sobre o Look.
+Smoke das cenas 122 e 78 (fotos `fotos_fisica/onda8/04_*`, `05_*`): **aprovado pelo dono 10/11** («demais smoke parece OK»).
 
 O fecho da linha e a integração continuam só por ordem do Enio.

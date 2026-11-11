@@ -25,6 +25,7 @@
 //! be visible.
 
 pub mod cards;
+pub mod curva_do_pulo;
 pub mod ids;
 pub mod interact;
 mod paint;

@@ -28,11 +28,13 @@ ph2d-vector = { path = "../ph2d-vector" }
 # A altura e o vão dos botões da aba (`FIELD_H`, `FIELD_GAP`): os do editor de animações (onda 9g); e a
 # geometria do cartão nos testes do gesto.
 ph2d-card-stack = { path = "../ph2d-card-stack" }
+# O desenho da curva do pulo (`curva_do_pulo`, GEF 04): o player no mundo e a câmara do canvas.
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-render = { path = "../ph2d-render" }
 
 [dev-dependencies]
 # As duas bolas do gate do quadro de «Collides with».
 ph2d-core = { path = "../ph2d-core" }
-ph2d-ecs = { path = "../ph2d-ecs" }
 # A régua do HR-15 — dev-dep só: o produto não conhece o censo dele.
 ph2d-label-census = { path = "../ph2d-label-census" }
 # `architecture_interactive_crate_has_behavioral_test`: a panel with an

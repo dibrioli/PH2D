@@ -436,6 +436,8 @@ impl PainterTool {
     }
 
     fn take_preview_upload_bbox_corpo(&mut self) -> Option<(u32, u32, u32, u32)> {
+        self.preview_upload_por_tomar = false;
+        self.preview_upload_caixas.clear();
         self.preview_upload_bbox
             .take()
             .map(|r| (r.x, r.y, r.w, r.h))

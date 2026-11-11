@@ -79,7 +79,7 @@ impl PainterTool {
         }
         self.apply_mask_overlay(&mut px);
         self.composited = Some(Arc::new(px));
-        self.preview_upload_bbox = None;
+        self.publica_o_envio(None, Vec::new());
         self.last_drain_branch = DrainBranch::Luz;
         true
     }

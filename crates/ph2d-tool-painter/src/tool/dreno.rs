@@ -25,6 +25,33 @@ impl PainterTool {
         (r, caixas)
     }
 
+    /// **O envio que um dreno publica** (B20.7): enquanto ninguém o tomou
+    /// ([`Self::take_preview_upload_bbox`]), o novo SOMA-SE por união ao anterior — um dreno cujo sujo
+    /// ninguém consumiu não apaga o que a textura ainda não recebeu. `None` (a tela inteira) absorve.
+    pub(crate) fn publica_o_envio(&mut self, bbox: Option<Region>, caixas: Vec<Region>) {
+        if !std::mem::replace(&mut self.preview_upload_por_tomar, true) {
+            self.preview_upload_bbox = bbox;
+            self.preview_upload_caixas = caixas;
+            return;
+        }
+        let (Some(a), Some(b)) = (self.preview_upload_bbox, bbox) else {
+            self.preview_upload_bbox = None;
+            self.preview_upload_caixas.clear();
+            return;
+        };
+        let mut todas = std::mem::take(&mut self.preview_upload_caixas);
+        if todas.is_empty() {
+            todas.push(a);
+        }
+        if caixas.is_empty() {
+            todas.push(b);
+        } else {
+            todas.extend(caixas);
+        }
+        self.preview_upload_bbox = Some(paint::region::union_region(a, b));
+        self.preview_upload_caixas = crate::undo_delta::confine::funde_as_caixas(todas);
+    }
+
     /// **A tela composta para a CENA** (o palco de uma macro, ADR-0186): a MESMA composição que o editor
     /// mostra, UMA vez, sobre tudo o que os passos `Preview` drenaram desde a última leitura
     /// ([`Self::drena_sem_compor`] deixou o retângulo sujo a acumular: a composição é parcial quando a
@@ -137,7 +164,8 @@ impl PainterTool {
             // texture with one full upload; paint frames then patch just the dab
             // footprint. If the texture isn't seeded yet the bridge's guard falls
             // back to a full upload anyway, so an early bbox can never desync it.
-            (self.preview_upload_bbox, self.preview_upload_caixas) = self.toma_o_sujo();
+            let (bbox, caixas) = self.toma_o_sujo();
+            self.publica_o_envio(bbox, caixas);
             self.last_drain_branch = crate::tool::DrainBranch::TrivialFast;
             return (Arc::clone(&self.canvas_rgba), w, h);
         }
@@ -186,12 +214,11 @@ impl PainterTool {
                 // it is ~6 ms, well under the 16.7 ms frame budget (measured: dispatch ~8 ms, 60 fps).
                 // Follow-up (doc 25 §13): isolate the partial-upload device seam so the fast path is
                 // clean too (matters at 4096², where a full upload would overrun the budget).
-                (self.preview_upload_bbox, self.preview_upload_caixas) =
-                    if self.mask_scratch_active() {
-                        (None, Vec::new())
-                    } else {
-                        (Some(bbox), caixas)
-                    };
+                if self.mask_scratch_active() {
+                    self.publica_o_envio(None, Vec::new());
+                } else {
+                    self.publica_o_envio(Some(bbox), caixas);
+                }
                 self.last_drain_branch = crate::tool::DrainBranch::PartialComposite;
             }
             _ => {
@@ -240,8 +267,7 @@ impl PainterTool {
                 // Mask overlay: tint the composite by the active mask's coverage (no-op otherwise).
                 self.apply_mask_overlay(&mut composed);
                 self.composited = Some(Arc::new(composed));
-                self.preview_upload_bbox = None;
-                self.preview_upload_caixas.clear();
+                self.publica_o_envio(None, Vec::new());
                 self.last_drain_branch = crate::tool::DrainBranch::FullComposite;
             }
         }

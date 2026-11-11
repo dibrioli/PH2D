@@ -526,3 +526,39 @@ fn um_ctrl_z_em_caixas_pela_cpu_publica_so_as_caixas() {
         "o Ctrl+Z publicou {publicados} de {tela} texels em {caixas} caixas"
     );
 }
+
+/// **B20.7 — o sujo soma-se por UNIÃO até alguém o consumir.** Um dreno cujo sujo ninguém toma (um
+/// leitor que só quer a tela: `persist.rs`, as sondas, a cena de uma macro) não pode apagar o que a
+/// textura ainda não recebeu: o envio seguinte leva as DUAS pinceladas. Nas duas pistas do dreno
+/// (pilha trivial e composição parcial do relevo), a textura é o espelho é a tela, ao bit.
+#[test]
+fn a_textura_e_o_espelho() {
+    let lado = 256u32;
+    for relevo in [false, true] {
+        let mut t = PainterTool::default();
+        t.set_source(vec![255u8; (lado * lado * 4) as usize], lado, lado);
+        t.set_brush_size_px(10.0);
+        if relevo {
+            t.toggle_brush_impasto();
+        }
+        let mut screen = Screen::new();
+        screen.frame(&mut t);
+        let toque = |t: &mut PainterTool, p: [f32; 2]| {
+            t.on_canvas_pointer(cp(p, PointerPhase::Down));
+            t.on_canvas_pointer(cp([p[0] + 6.0, p[1]], PointerPhase::Move));
+            t.on_canvas_pointer(cp([p[0] + 6.0, p[1]], PointerPhase::Up));
+        };
+        toque(&mut t, [30.0, 30.0]);
+        let _ = t.take_preview_arc(); // um dreno cujo sujo ninguém toma
+        toque(&mut t, [200.0, 200.0]);
+        screen.frame(&mut t);
+        let ctx = if relevo { "relevo" } else { "trivial" };
+        screen.assert_shows_the_cache(ctx);
+        let espelho = screen.cache.as_ref().expect("um espelho").rgba.clone();
+        let mut espelho = (*espelho).clone();
+        premultiply_rgba8(&mut espelho);
+        assert_screen_equals(screen.shown(), &espelho, lado, ctx);
+        let truth = screen_truth(&mut t);
+        assert_screen_equals(screen.shown(), &truth, lado, ctx);
+    }
+}

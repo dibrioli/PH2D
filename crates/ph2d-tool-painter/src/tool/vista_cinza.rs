@@ -29,14 +29,14 @@ impl PainterTool {
             (true, Some(r)) => {
                 let cache = Arc::make_mut(self.composited.as_mut().expect("quente"));
                 cinza_na_caixa(src, w, cache, r);
-                self.preview_upload_bbox = Some(r);
+                self.publica_o_envio(Some(r), Vec::new());
             }
             // Sem caixa (uma mudança que não marcou região) a tela inteira, como sempre foi.
             _ => {
                 let mut out = vec![0u8; (w as usize) * (h as usize) * 4];
                 cinza_na_caixa(src, w, &mut out, Region { x: 0, y: 0, w, h });
                 self.composited = Some(Arc::new(out));
-                self.preview_upload_bbox = None;
+                self.publica_o_envio(None, Vec::new());
             }
         }
         self.composited_cinza = Some(mv);

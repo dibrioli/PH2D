@@ -219,6 +219,8 @@ pub struct PainterTool {
     preview_upload_bbox: Option<Region>,
     /// B17.5: as caixas desse bbox (a união delas é ele; vazia = ele sozinho).
     preview_upload_caixas: Vec<Region>,
+    /// B20.7: um dreno publicou e ninguém tomou ainda — o próximo soma-se por união ([`Self::publica_o_envio`]).
+    preview_upload_por_tomar: bool,
     /// Which arm the LAST `take_preview_arc` took — a `PH2D_PAINT_PERF` diagnostic so the shell can
     /// name the exact cost (the trivial fast lane vs the full O(W×H) composite+light), which the
     /// coarse `is_trivial_stack` flag cannot (a trivial stack still falls to the full arm under
@@ -429,6 +431,7 @@ impl Default for PainterTool {
             luz_placa: None,
             preview_upload_bbox: None,
             preview_upload_caixas: Vec::new(),
+            preview_upload_por_tomar: false,
             last_drain_branch: DrainBranch::Idle,
             layers_revision: 0,
             layer_pixel_versions: BTreeMap::new(),

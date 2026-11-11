@@ -97,6 +97,8 @@ pub(crate) struct WetPaintState {
     /// The authored knob values (W3) — survive the session, the mode and the
     /// tool round-trips; the section reset restores [`WetKnobs::default`].
     pub(super) knobs: WetKnobs,
+    /// Os knobs do pincel que abriu (B35.8): o ↺ da linha e do grupo do Tuning voltam a ELE; a fábrica até um preset.
+    pub(super) preset_base: WetKnobs,
     /// Doc 21 (deposit-at-commit): the commit-deposit STASH — the exact batch
     /// the last flat authoring preview painted (`stamp_drag_preview`'s own
     /// parameter, untiled/mirrored; the dispatcher re-tiles at deposit
@@ -229,6 +231,7 @@ impl Default for WetPaintState {
             na_miniatura: false,
             live_gesture: false,
             knobs: WetKnobs::default(),
+            preset_base: WetKnobs::default(),
             pending_deposit: Vec::new(),
             deposit_pass: false,
             tool: WetTool::default(),

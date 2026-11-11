@@ -10,17 +10,17 @@ impl PainterTool {
             .iter()
             .position(|g| *g == id)
         {
-            self.paint
-                .wetpaint
-                .knobs
-                .reset_group(crate::ids::WET_TUNING_RESET_GROUPS[gi]);
+            let w = &mut self.paint.wetpaint;
+            w.knobs
+                .reset_group_a(crate::ids::WET_TUNING_RESET_GROUPS[gi], &w.preset_base);
             return true;
         }
         if let Some(&(idx, kind)) = wet_tuning_id_map().get(&id)
             && kind == TuneWidget::Reset
         {
             let def = &KNOB_DEFS[idx];
-            self.paint.wetpaint.knobs.set(def.knob, WetKnobs::fabrica(def.knob));
+            let w = &mut self.paint.wetpaint;
+            w.knobs.set(def.knob, w.preset_base.get(def.knob));
             return true;
         }
         // O interruptor (B35.7): a caixa de marcar (o id do chip) de um knob liga/desliga inverte-o.
@@ -134,3 +134,5 @@ impl WetKnobs {
 
 #[cfg(test)]
 mod fabrica_tests;
+#[cfg(test)]
+mod preset_base_tests; // B35.8

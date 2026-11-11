@@ -242,6 +242,13 @@ impl WetKnobs {
         }
     }
 
+    /// O ↺ do grupo para `base` (o pincel que abriu, B35.8).
+    pub fn reset_group_a(&mut self, group: KnobGroup, base: &Self) {
+        for def in KNOB_DEFS.iter().filter(|d| d.group == group) {
+            self.knobs[def.knob as usize] = base.get(def.knob);
+        }
+    }
+
     // The W3 curated accessors — the basic section's five knob rows read the
     // SAME array the Tuning panel edits.
     /// Pigment per dab (`Knob::PigmentPerDab`) — ⛔ sem leitor na receita desde a E10 (a [`Self::dilution`]); a

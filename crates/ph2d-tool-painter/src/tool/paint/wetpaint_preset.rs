@@ -435,6 +435,7 @@ impl PainterTool {
             };
             self.wet_preset_aplicar_volumes(&v);
             self.set_mao_do_preset(Some(prm));
+            self.paint.wetpaint.preset_base = self.paint.wetpaint.knobs;
             return falhas;
         }
         self.paint.wetpaint.knobs = k;
@@ -480,6 +481,8 @@ impl PainterTool {
         self.paint.wetpaint.largura = Some(largura_do_preset(prm));
         self.wet_preset_aplicar_volumes(&prm.volumes);
         self.set_mao_do_preset(Some(prm));
+        // B35.8: o ↺ do Tuning volta a ESTE pincel.
+        self.paint.wetpaint.preset_base = self.paint.wetpaint.knobs;
         falhas
     }
 

@@ -44,7 +44,11 @@ pub fn physics_smoke_ficha(ctx: &mut crate::SceneCtx<'_>) {
                 });
         }
     }
-    ctx.want.select = excecao.or(outline.map(|o| o.0)).map(Entity::to_bits);
+    let traco = ph2d_physics_scene::ficha::traco_para_as_fotos(ctx.world);
+    ctx.want.select = excecao
+        .or(outline.map(|o| o.0))
+        .or(traco)
+        .map(Entity::to_bits);
     if let Ok(nome) = std::env::var("PH2D_PHYSICS_SMOKE_SELECT") {
         let mut q = ctx.world.query::<(Entity, &Name)>();
         ctx.want.select = q

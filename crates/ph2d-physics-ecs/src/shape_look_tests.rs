@@ -48,11 +48,20 @@ fn o_sanitize_poe_cor_e_opacidade_na_faixa() {
         tint: [2.0, -1.0, 0.5, f32::INFINITY],
         opacity: 7.0,
         cor_propria: true,
+        largura: 0.0,
+        tracejado: true,
+        traco: [f32::NAN, -3.0],
+        traco_proprio: true,
     };
     l.sanitize();
     assert_eq!(l.pivot, [0.0, 3.0]);
     assert_eq!(l.tint, [1.0, 0.0, 0.5, 1.0]);
     assert_eq!(l.opacity, 1.0);
+    assert_eq!(
+        (l.largura, l.traco),
+        (TRACO_MINIMO, [6.0, TRACO_MINIMO]),
+        "o traço nunca some"
+    );
     l.opacity = 0.0;
     l.sanitize();
     assert_eq!(l.opacity, OPACIDADE_MINIMA, "a forma nunca some de todo");
@@ -65,6 +74,10 @@ fn look_do_artista() -> ShapeLook {
         tint: [0.2, 0.9, 0.1, 1.0],
         opacity: 0.5,
         cor_propria: true,
+        largura: 5.0,
+        tracejado: true,
+        traco: [2.0, 9.0],
+        traco_proprio: true,
     }
 }
 

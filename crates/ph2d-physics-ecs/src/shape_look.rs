@@ -20,12 +20,25 @@ pub struct ShapeLook {
     pub tint: [f32; 4],
     /// Multiplica a opacidade do overlay da forma, [`OPACIDADE_MINIMA`]`..=1` (dono 10/11: nunca some de todo).
     pub opacity: f32,
-    /// A forma usa a cor `tint` em vez da cor da camada. `false` = a do tema (o Reset da Color).
+    /// A forma usa a cor `tint` em vez da cor da camada. `false` = a do tema.
     pub cor_propria: bool,
+    /// A largura do contorno, em px de tela (o overlay traça na tela), quando [`ShapeLook::traco_proprio`].
+    pub largura: f32,
+    /// O contorno tracejado, com `traco = [traço, vão]` em px de tela, quando [`ShapeLook::traco_proprio`].
+    pub tracejado: bool,
+    pub traco: [f32; 2],
+    /// A forma usa este traço (dono 10/11: Dash e a largura no Look); `false` = o do tipo do corpo.
+    pub traco_proprio: bool,
 }
 
 /// A opacidade mínima do overlay de uma forma de colisão (dono 10/11: 25 %).
 pub const OPACIDADE_MINIMA: f32 = 0.25;
+/// O piso da largura e de cada pedaço do tracejado, px de tela: abaixo disto o contorno deixa de se ler (a mesma lei
+/// da [`OPACIDADE_MINIMA`]: a forma nunca some). Não há teto: o Vello traça qualquer largura.
+pub const TRACO_MINIMO: f32 = 0.5;
+/// O traço de quem ainda não tem o seu (só a semente: com `traco_proprio = false` o overlay usa o do corpo).
+const LARGURA_PADRAO: f32 = 2.0;
+const TRACO_PADRAO: [f32; 2] = [6.0, 4.0];
 
 impl SimComponent for ShapeLook {}
 
@@ -36,6 +49,10 @@ impl Default for ShapeLook {
             tint: [1.0; 4],
             opacity: 1.0,
             cor_propria: false,
+            largura: LARGURA_PADRAO,
+            tracejado: false,
+            traco: TRACO_PADRAO,
+            traco_proprio: false,
         }
     }
 }
@@ -60,6 +77,10 @@ impl ShapeLook {
             *c = fin(*c, 1.0).clamp(0.0, 1.0);
         }
         self.opacity = fin(self.opacity, 1.0).clamp(OPACIDADE_MINIMA, 1.0);
+        self.largura = fin(self.largura, LARGURA_PADRAO).max(TRACO_MINIMO);
+        for (v, d) in self.traco.iter_mut().zip(TRACO_PADRAO) {
+            *v = fin(*v, d).max(TRACO_MINIMO);
+        }
     }
 
     /// O Look que a forma veste ao entrar num corpo: o padrão do corpo, só o pivô fica (é geometria).

@@ -39,7 +39,7 @@ pub const OUTLINE_PX: f64 = 1.5; // LITERAL-PX-OK: chrome de overlay, espessura 
 /// is readable at, and the path is rebuilt per frame anyway.
 pub const CIRCLE_SEGS: u32 = 32;
 
-pub use crate::overlay::tinta::{Marca, Tinta, sombra_do_contorno, tinta_do_contorno};
+pub use crate::overlay::tinta::{Marca, Tinta, com_tom, sombra_do_contorno, tinta_do_contorno};
 
 /// **What to draw, decided once** — pure, returned as data (the `hit_plan` shape). `show_velocity`
 /// adds the armed launch arrow, true only at the AUTHORED rest (the caller passes `false` while the
@@ -109,18 +109,9 @@ pub fn outlines(
             triggered.contains(&e),
             ghost && one_way.is_some(),
         );
-        // O Color × Opacity do Look da forma (GEF02 onda 8); sem Look, a cor do tema.
+        // O Look da forma (GEF02 onda 8): cor, opacidade e traço; sem Look, os do tema e do corpo.
         let look = world.get::<ph2d_physics_ecs::ShapeLook>(e);
-        out.push((
-            path,
-            look.map_or(tinta, |l| {
-                let (cor, alfa) = l.tom();
-                crate::overlay::tinta::com_tom(
-                    tinta,
-                    ph2d_panel_physics::tinta_canvas::Tom { cor, alfa },
-                )
-            }),
-        ));
+        out.push((path, look.map_or(tinta, |l| com_tom(tinta, l.into()))));
         // Sem corpo acima o solver não a vê: nenhuma anotação de corpo.
         if kind.is_none() {
             continue;

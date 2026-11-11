@@ -470,6 +470,27 @@ pub fn olho_para_as_fotos(world: &mut World) {
     }
 }
 
+/// A foto do traço do Look (`PH2D_PHYSICS_SMOKE_TRACEJADO=<corpo>`, dono 10/11: Dash e a largura do stroke): a forma
+/// principal desse corpo nasce com o traço próprio, 4 px e tracejado `[12, 6]`. Devolve a forma, que nasce selecionada.
+pub fn traco_para_as_fotos(world: &mut World) -> Option<Entity> {
+    let nome = std::env::var("PH2D_PHYSICS_SMOKE_TRACEJADO").ok()?;
+    let mut q = world.query::<(Entity, &Name)>();
+    let corpo = q.iter(world).find(|(_, n)| n.0 == nome.trim())?.0;
+    let forma = ph2d_physics_ecs::main_shape(world, corpo)?;
+    let l = world
+        .get::<ph2d_physics_ecs::ShapeLook>(forma)
+        .copied()
+        .unwrap_or_default();
+    world.entity_mut(forma).insert(ph2d_physics_ecs::ShapeLook {
+        largura: 4.0,
+        tracejado: true,
+        traco: [12.0, 6.0],
+        traco_proprio: true,
+        ..l
+    });
+    Some(forma)
+}
+
 /// As regras do mundo da cena: a matriz das quatro camadas.
 #[must_use]
 pub fn regras(base: PhysicsSettings) -> PhysicsSettings {

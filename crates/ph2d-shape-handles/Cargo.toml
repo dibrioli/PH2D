@@ -22,6 +22,8 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-inspector-ordering = { path = "../ph2d-inspector-ordering" }
+# O traço que o tipo do corpo dá ao contorno (`tinta_canvas::traco_do_corpo`): o cartão Look mostra o que o canvas pinta.
+ph2d-panel-physics = { path = "../ph2d-panel-physics" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 ph2d-render = { path = "../ph2d-render" }
 ph2d-tokens = { path = "../ph2d-tokens" }

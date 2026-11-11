@@ -16,11 +16,19 @@ pub struct ShapeLookFacts {
     /// A forma tem cor própria; senão a amostra mostra a cor da `camada` (a do tema).
     pub cor_propria: bool,
     pub camada: u8,
+    /// O traço que o canvas pinta, em px de tela: o próprio (`traco_proprio`) ou o do tipo do corpo; o tracejado é
+    /// `traco = [traço, vão]`.
+    pub largura: f32,
+    pub tracejado: bool,
+    pub traco: [f32; 2],
+    pub traco_proprio: bool,
 }
 
 impl ShapeLookFacts {
+    /// O piso da largura e do tracejado (px de tela); o mesmo de `ph2d_physics_ecs::shape_look::TRACO_MINIMO`.
+    pub const TRACO_MINIMO: f32 = 0.5; // LITERAL-PX-OK: piso de legibilidade do contorno
     /// O piso da Opacity do cartão (dono 10/11: 25 %); o mesmo de `ph2d_physics_ecs::shape_look::OPACIDADE_MINIMA`
-    /// (gate `o_piso_da_opacidade_e_um_so` na `ph2d-shape-handles`).
+    /// (gate `os_pisos_do_look_sao_um_so` na `ph2d-shape-handles`).
     pub const OPACIDADE_MINIMA: f32 = 0.25; // LITERAL-PX-OK: piso de opacidade do dono, não geometria
     pub const NONE: Self = Self {
         on: false,
@@ -30,6 +38,10 @@ impl ShapeLookFacts {
         opacity: 1.0,
         cor_propria: false,
         camada: 0,
+        largura: 2.0, // LITERAL-PX-OK: semente do traço, o retrato real vem da forma
+        tracejado: false,
+        traco: [6.0, 4.0], // LITERAL-PX-OK: semente do tracejado
+        traco_proprio: false,
     };
 }
 

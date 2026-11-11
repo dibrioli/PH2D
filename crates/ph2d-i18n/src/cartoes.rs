@@ -272,6 +272,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.pivot" => "Pivot",
         "card.insp.pivot_px" => "Pivot (px)",
         "card.insp.shape_pivot_xy" => "Pivot from centre",
+        "card.insp.shape_stroke" => "Stroke width (px)",
+        "card.insp.shape_stroke_tip" => "How thick the outline of this shape is drawn on the canvas",
+        "card.insp.shape_dashed" => "Dashed",
+        "card.insp.shape_dashed_tip" => "Draw the outline of this shape as dashes",
+        "card.insp.shape_dash_gap" => "Dash and gap (px)",
+        "card.insp.shape_dash_tip" => "How long each dash of the outline is",
+        "card.insp.shape_gap_tip" => "How long the space between two dashes is",
         "card.insp.pivot_nome_tip" => "Show the exact pivot position",
         "card.insp.pivot_in_editor" => "Edit in Animations",
         "card.insp.pivot_in_editor_tip" => {

@@ -8,7 +8,7 @@
 //! Mora no painel (e não no overlay da `ph2d-app-physics`) porque a paleta das camadas é dele e a
 //! crate do overlay está no tecto de linhas (onda 9g).
 
-use ph2d_physics_ecs::{BodyKind, Collider};
+use ph2d_physics_ecs::{BodyKind, Collider, ShapeLook};
 use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme};
 use ph2d_vector::{Color, Stroke};
 
@@ -47,18 +47,53 @@ pub enum Tinta {
     },
 }
 
-/// O Look da forma no contorno: `cor` substitui o RGB da camada (`None` = a do tema); `alfa` multiplica a opacidade.
+/// O Look da forma no contorno: `cor` substitui o RGB da camada (`None` = a do tema); `alfa` multiplica a opacidade;
+/// `traco` substitui o traço do tipo do corpo (`None` = o do corpo).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Tom {
     pub cor: Option<[f32; 3]>,
     pub alfa: f32,
+    pub traco: Option<Traco>,
+}
+
+/// Um traço de contorno em px de tela: a largura e o `[traço, vão]` do tracejado (`None` = contínuo).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Traco {
+    pub largura: f64,
+    pub padrao: Option<[f64; 2]>,
 }
 
 /// O `tom` que não muda a cor da camada.
 pub const TOM_NEUTRO: Tom = Tom {
     cor: None,
     alfa: 1.0,
+    traco: None,
 };
+
+/// ⭐ O Look da forma como o contorno o pinta: a cor, a opacidade e o traço próprio.
+impl From<&ShapeLook> for Tom {
+    fn from(l: &ShapeLook) -> Self {
+        let (cor, alfa) = l.tom();
+        let traco = l.traco_proprio.then(|| Traco {
+            largura: f64::from(l.largura),
+            padrao: l.tracejado.then(|| l.traco.map(f64::from)),
+        });
+        Self { cor, alfa, traco }
+    }
+}
+
+/// ⭐ O traço que o tipo do corpo dono (`governing_kind`) dá à forma em repouso: o que o cartão Look mostra sem traço
+/// próprio.
+#[must_use]
+pub fn traco_do_corpo(col: &Collider, corpo: Option<BodyKind>) -> Traco {
+    let Tinta::Camada { marca, .. } = marca(col, corpo, false, false) else {
+        unreachable!("a marca de uma forma é sempre da camada")
+    };
+    Traco {
+        largura: espessura(corpo),
+        padrao: padrao(marca, corpo),
+    }
+}
 
 /// A espessura de uma linha de sensor, mais fina que o contorno (`OUTLINE_PX` da `ph2d-app-physics`).
 pub const SONDA_PX: f64 = 1.25; // LITERAL-PX-OK: chrome de overlay
@@ -168,8 +203,12 @@ pub fn tinta_do_contorno(tinta: Tinta, theme: Theme) -> (Stroke, Color) {
         Marca::Atravessavel => ALFA_ATRAVESSAVEL,
         Marca::Solta => ALFA_SOLTA,
     };
-    let mut traco = Stroke::new(espessura(corpo));
-    if let Some(p) = padrao(marca, corpo) {
+    let t = tom.traco.unwrap_or(Traco {
+        largura: espessura(corpo),
+        padrao: padrao(marca, corpo),
+    });
+    let mut traco = Stroke::new(t.largura);
+    if let Some(p) = t.padrao {
         traco = traco.with_dashes(0.0, p);
     }
     c.components[3] *= alfa;

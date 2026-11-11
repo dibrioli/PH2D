@@ -33,6 +33,10 @@ pub fn fatos(world: &World, e: Entity, col: &Collider, on: bool) -> ShapeLookFac
             let f = fracao_do_ponto(*q);
             (f[0] - l.pivot[0]).abs() < MESMO_PONTO && (f[1] - l.pivot[1]).abs() < MESMO_PONTO
         });
+    let corpo = ph2d_physics_ecs::governing_kind(world, e);
+    let traco = ph2d_panel_physics::tinta_canvas::Tom::from(&l)
+        .traco
+        .unwrap_or_else(|| ph2d_panel_physics::tinta_canvas::traco_do_corpo(col, corpo));
     ShapeLookFacts {
         on,
         ponto,
@@ -41,6 +45,10 @@ pub fn fatos(world: &World, e: Entity, col: &Collider, on: bool) -> ShapeLookFac
         opacity: l.opacity,
         cor_propria: l.cor_propria,
         camada: col.layer,
+        largura: traco.largura as f32,
+        tracejado: traco.padrao.is_some(),
+        traco: traco.padrao.map_or(l.traco, |p| p.map(|v| v as f32)),
+        traco_proprio: l.traco_proprio,
     }
 }
 
@@ -67,6 +75,7 @@ pub fn aplica(
                 | PhysicsFieldEdit::LookPivotY(_)
                 | PhysicsFieldEdit::LookOpacity(_)
                 | PhysicsFieldEdit::LookTint(_)
+                | PhysicsFieldEdit::LookStroke { .. }
         );
     };
     let h = meia_extensao(col.shape);
@@ -82,6 +91,15 @@ pub fn aplica(
         PhysicsFieldEdit::LookTint(c) => {
             l.tint = c;
             l.cor_propria = true;
+            None
+        }
+        PhysicsFieldEdit::LookStroke {
+            width,
+            dashed,
+            dash,
+        } => {
+            (l.largura, l.tracejado, l.traco) = (width, dashed, dash);
+            l.traco_proprio = true;
             None
         }
         _ => return false,

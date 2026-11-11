@@ -224,11 +224,46 @@ fn o_clique_agarra_dentro_da_forma() {
     assert!(!contem(sim.world(), corpo, meio), "o corpo não é a forma");
 }
 
-/// O piso da Opacity mora em dois sítios (o cartão não vê a física): têm de ser o mesmo número.
+/// Os pisos da Opacity e do traço moram em dois sítios (o cartão não vê a física): têm de ser o mesmo número.
 #[test]
-fn o_piso_da_opacidade_e_um_so() {
+fn os_pisos_do_look_sao_um_so() {
     assert_eq!(
         ShapeLookFacts::OPACIDADE_MINIMA,
         ph2d_physics_ecs::shape_look::OPACIDADE_MINIMA
+    );
+    assert_eq!(
+        ShapeLookFacts::TRACO_MINIMO,
+        ph2d_physics_ecs::shape_look::TRACO_MINIMO
+    );
+}
+
+/// ⭐ Dono 10/11: sem traço próprio o cartão mostra o do corpo (o Static grosso); a edição do traço grava-o e torna-o
+/// próprio, e o cartão passa a mostrar o gravado.
+#[test]
+fn o_traco_editado_fica_proprio_e_o_cartao_mostra_o_que_o_canvas_pinta() {
+    let (mut sim, f) = corpo_com_forma();
+    let col = *sim.world().get::<Collider>(f).expect("c");
+    let fa = fatos(sim.world(), f, &col, true);
+    let grosso =
+        ph2d_panel_physics::tinta_canvas::espessura(Some(ph2d_physics_ecs::BodyKind::Static));
+    assert_eq!(
+        (fa.largura, fa.tracejado, fa.traco_proprio),
+        (grosso as f32, false, false)
+    );
+    let edit = PhysicsFieldEdit::LookStroke {
+        width: 4.0,
+        dashed: true,
+        dash: [3.0, 5.0],
+    };
+    aplica_ja(&mut sim, f, edit);
+    let l = sim.world().get::<ShapeLook>(f).copied().expect("o look");
+    assert_eq!(
+        (l.largura, l.tracejado, l.traco, l.traco_proprio),
+        (4.0, true, [3.0, 5.0], true)
+    );
+    let fa = fatos(sim.world(), f, &col, true);
+    assert_eq!(
+        (fa.largura, fa.tracejado, fa.traco),
+        (4.0, true, [3.0, 5.0])
     );
 }

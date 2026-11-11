@@ -187,7 +187,7 @@ fn the_top_down_smoke_scene_actually_walks() {
                 true,
                 dedo,
                 &mut tape,
-                &mut drive,
+                (&mut drive, &mut Default::default()),
             );
         }
 

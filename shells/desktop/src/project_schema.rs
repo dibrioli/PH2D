@@ -449,4 +449,11 @@
 /// O componente `ph2d::physics::ShapeLook { pivot, tint, opacity }` entra no registo (`+1`) no lado-forma: o pivô da
 /// forma em fração da meia-extensão (a forma cresce em volta dele) e a cor do overlay. SEM leitura dos anteriores
 /// (§0.11). Gates: `ph2d-physics-ecs forma_pivot::`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 236;
+///
+/// # `236 → 237` — **o traço da forma de colisão** (`line/GameEngineFuncional02`, onda 8.6, 2026-11-10)
+///
+/// `ShapeLook` ganha `largura`, `tracejado`, `traco: [traço, vão]` (px de tela) e `traco_proprio` (dono 10/11: Dash e
+/// a largura do stroke no Look); sem `traco_proprio` vale o traço do tipo do corpo. Registos: `0`. SEM leitura dos
+/// anteriores (§0.11). Gates: `ph2d-physics-ecs shape_look::`, `ph2d-panel-physics o_traco_proprio`. ⚠️ **A tripla NÃO
+/// vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 237;

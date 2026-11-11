@@ -74,7 +74,7 @@ fn a_falling_ball_is_not_an_undo_step() {
             true,
             PlayerInput::default(),
             &mut InputTape::new(),
-            &mut drive,
+            (&mut drive, &mut Default::default()),
         );
         drive.settle(); // o que o `post_frame_undo` faz no fim de cada quadro
         assert_eq!(

@@ -4,9 +4,8 @@
 //! ⚠️ A swatch do Tint é o grupo OBJETO do tint inteiro (RGB e alfa); o slider Opacity é o
 //! `PropKind::Opacity` (`Sprite::opacity`, a opacidade FINAL) — o nome do canal é o do campo.
 //!
-//! ⚠️ A POSIÇÃO de um objecto numa trajectória é o canal `Position` (a K grava um `AddPathKey`) e a
-//! de um objecto livre são `TranslationX/Y`: o clique grava a do modo em que o objecto está, nunca
-//! as duas.
+//! ⚠️ A POSIÇÃO numa trajectória é o canal `Position` (`AddPathKey`); livre, `TranslationX/Y`: o clique grava a do
+//! modo em que o objecto está, nunca as duas.
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -44,9 +43,8 @@ const fn fi(c: u16) -> PropKind {
     PropKind::Field(FieldKey::new(FISICA, c, 0, 0))
 }
 
-/// ⭐ **A tabela campo → grupo do Inspector.** O gate `architecture_every_editable_field_is_a_channel`
-/// lê-a: um campo do Inspector pintado com coluna de losango tem de estar aqui ou na tabela
-/// `⛔ não-animável` / de dívida do gate.
+/// ⭐ **A tabela campo → grupo do Inspector.** O gate `architecture_every_editable_field_is_a_channel` lê-a: um campo
+/// pintado com coluna de losango tem de estar aqui ou na tabela `⛔ não-animável` / de dívida do gate.
 const CAMPOS: &[(NodeId, &[PropKind])] = &[
     (insp::INSP_TRANSFORM_POS_X, POSICAO),
     (insp::INSP_TRANSFORM_POS_Y, POSICAO),
@@ -236,18 +234,18 @@ fn mascara() -> &'static [(NodeId, Box<[PropKind]>)] {
         // O losango do Pivot é o do pivô; a posição e o collider que o escritor também move entram só no
         // clique ([`ARRASTA_DO_PIVO`]).
         let pivo: Box<[PropKind]> = [chave(4, 0), chave(4, 1)].into_iter().flatten().collect();
-        // O pivô da forma de colisão (onda 8) anda com a posição e o Offset que se dobra nela.
-        let look = |campo, faixa| {
-            ph2d_ecs::canal_componente::chave("ph2d::physics::ShapeLook", campo, faixa)
-                .map(PropKind::Field)
+        // O Look da forma de colisão (onda 8), `(campo, faixa)`; o pivô anda com a posição e o Offset que se dobra nele.
+        let look = |cs: &[(u16, u16)]| -> Vec<PropKind> {
+            let sl = "ph2d::physics::ShapeLook";
+            cs.iter()
+                .filter_map(|&(c, f)| {
+                    ph2d_ecs::canal_componente::chave(sl, c, f).map(PropKind::Field)
+                })
+                .collect()
         };
-        let pivo_da_forma: Box<[PropKind]> = [look(0, 0), look(0, 1)]
-            .into_iter()
-            .flatten()
-            .chain(POSICAO.iter().copied())
-            .chain([fi(fs::DESLOC_X)])
-            .collect();
-        let opacidade_da_forma: Box<[PropKind]> = look(2, 0).into_iter().collect();
+        let mut pivo_da_forma = look(&[(0, 0), (0, 1)]);
+        pivo_da_forma.extend(POSICAO.iter().copied().chain([fi(fs::DESLOC_X)]));
+        let cor = look(&[(1, 0), (1, 1), (1, 2), (1, 3), (3, 0)]);
         (insp::INSP_CAMERA_CULL_BIT.iter())
             .chain([&insp::INSP_CAMERA_CULL_HEADER])
             .map(|&id| (id, reps.clone()))
@@ -255,8 +253,14 @@ fn mascara() -> &'static [(NodeId, Box<[PropKind]>)] {
                 [insp::INSP_SPRITE_FLIP_X, insp::INSP_SPRITE_FLIP_Y].map(|id| (id, flip.clone())),
             )
             .chain(insp::INSP_SPRITE_PIVOT_XY.map(|id| (id, pivo.clone())))
-            .chain(insp::INSP_SHAPE_PIVOT_XY.map(|id| (id, pivo_da_forma.clone())))
-            .chain([(insp::INSP_SHAPE_OPACITY_CHIP, opacidade_da_forma.clone())])
+            .chain(insp::INSP_SHAPE_PIVOT_XY.map(|id| (id, pivo_da_forma.clone().into())))
+            .chain([
+                (insp::INSP_SHAPE_TINT_SWATCH, cor.into()),
+                (insp::INSP_SHAPE_OPACITY_CHIP, look(&[(2, 0)]).into()),
+                (insp::INSP_SHAPE_STROKE_W, look(&[(4, 0)]).into()),
+                (insp::INSP_SHAPE_DASH_GAP[0], look(&[(6, 0)]).into()),
+                (insp::INSP_SHAPE_DASH_GAP[1], look(&[(6, 1)]).into()),
+            ])
             .collect()
     })
 }
@@ -271,9 +275,8 @@ const ARRASTA_DO_PIVO: &[PropKind] = &[
     fi(fs::DESLOC_X),
 ];
 
-/// ⭐ **O grupo de um rótulo do catálogo** (F27 B2): a linha pintada com o `label_key` de um campo
-/// mostra o canal dele — `ph2d_ecs::canal_componente::chaves_do_rotulo`, uma vez por rótulo.
-/// Uma faixa com dono mostra o canal do DONO (a família à mão, ou o `PropKind` de sempre).
+/// ⭐ **O grupo de um rótulo do catálogo** (F27 B2): a linha com o `label_key` de um campo mostra o canal dele
+/// (`canal_componente::chaves_do_rotulo`); uma faixa com dono mostra o do DONO (a família, ou o `PropKind`).
 fn do_rotulo(rotulo: &str) -> &'static [PropKind] {
     static D: std::sync::OnceLock<BTreeMap<&'static str, Box<[PropKind]>>> =
         std::sync::OnceLock::new();
@@ -299,8 +302,7 @@ fn do_rotulo(rotulo: &str) -> &'static [PropKind] {
     .map_or(&[], |g| g)
 }
 
-/// Os campos do quadro: as tabelas, os pintados com um rótulo do catálogo, e os que a pintura
-/// registou com a chave (as propriedades que o script declara, `key_mark::regista_canal`).
+/// Os campos do quadro: as tabelas, os rótulos do catálogo e os registados pela pintura (`key_mark::regista_canal`).
 fn todos() -> impl Iterator<Item = (NodeId, Cow<'static, [PropKind]>)> {
     CAMPOS
         .iter()
@@ -376,11 +378,9 @@ pub fn marcas(
     out
 }
 
-/// ⭐ **O que o clique num losango do Inspector escreve.** Numa chave, apaga o grupo neste quadro;
-/// senão grava-o pela porta da K, cada objecto no modo que a K escolheria
-/// (`TimelineDoc::position_key_mode`: `Position` na trajectória, `TranslationX/Y` nos eixos
-/// separados). Um grupo de família grava os campos que ela publicou (`lidos`). Fora da tabela,
-/// nada.
+/// ⭐ **O que o clique num losango do Inspector escreve.** Numa chave, apaga o grupo neste quadro; senão grava-o pela
+/// porta da K, no modo que a K escolheria (`TimelineDoc::position_key_mode`). Um grupo de família grava os campos que
+/// ela publicou (`lidos`). Fora da tabela, nada.
 #[must_use]
 pub fn clique(
     doc: &TimelineDoc,

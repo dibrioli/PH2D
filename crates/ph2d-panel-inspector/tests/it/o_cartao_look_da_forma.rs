@@ -161,7 +161,10 @@ fn os_campos_do_pivo_estao_sempre_a_vista_ao_lado_da_grade() {
     let fundo = achado(&r, INSP_SHAPE_PIVOT[6]).expect("o canto de baixo à esquerda");
     assert!((g.y - x.y).abs() < 0.5, "a grade começa no X: {g:?} {x:?}");
     let (fg, fy) = (fundo.y + fundo.h, y.y + y.h);
-    assert!((fg - fy).abs() < 0.5, "a grade acaba no Y: {fg} contra {fy}");
+    assert!(
+        (fg - fy).abs() < 0.5,
+        "a grade acaba no Y: {fg} contra {fy}"
+    );
     sai();
 }
 
@@ -179,6 +182,70 @@ fn sem_resets_e_o_piso_da_opacidade() {
         e.iter()
             .all(|x| matches!(x, E::LookOpacity(v) if *v >= ShapeLookFacts::OPACIDADE_MINIMA)),
         "{e:?}"
+    );
+    sai();
+}
+
+/// ⭐ Dono 10/11: Dash e a largura do stroke no Look. A largura e a caixa «Dashed» estão sempre à vista; o traço e o
+/// vão só com o tracejado. Cada controlo manda o traço inteiro que o cartão mostra, com o seu número trocado.
+#[test]
+fn o_traco_do_contorno_largura_dashed_traco_e_vao() {
+    let liso = ShapeLookFacts {
+        largura: 3.0,
+        traco: [6.0, 4.0],
+        ..ligado()
+    };
+    let (mut host, mut st) = cena(forma(liso), [1.0, 1.0]);
+    let r = pinta(&mut host, &mut st);
+    assert!(
+        achado(&r, INSP_SHAPE_DASH_GAP[0]).is_none(),
+        "sem tracejado, sem o traço e o vão"
+    );
+    let caixa = achado(&r, INSP_SHAPE_DASHED).expect("a caixa Dashed");
+    let a = clica(&mut host, &mut st, caixa);
+    let ligar = E::LookStroke {
+        width: 3.0,
+        dashed: true,
+        dash: [6.0, 4.0],
+    };
+    assert_eq!(edicoes(&a), vec![ligar], "ligar o tracejado");
+    let _ = host.drained_actions();
+    for ev in host.type_into_number(INSP_SHAPE_STROKE_W, "5") {
+        let _ = host.apply_panel_event::<InspectorPanel>(&mut st, ev);
+    }
+    let e = edicoes(&host.drained_actions());
+    assert!(
+        e.contains(&E::LookStroke {
+            width: 5.0,
+            dashed: false,
+            dash: [6.0, 4.0]
+        }),
+        "{e:?}"
+    );
+    sai();
+    let tracejado = ShapeLookFacts {
+        tracejado: true,
+        ..liso
+    };
+    let (mut host, mut st) = cena(forma(tracejado), [1.0, 1.0]);
+    let r = pinta(&mut host, &mut st);
+    assert!(
+        achado(&r, INSP_SHAPE_DASH_GAP[1]).is_some(),
+        "o vão à vista"
+    );
+    let _ = host.drained_actions();
+    for ev in host.type_into_number(INSP_SHAPE_DASH_GAP[1], "0") {
+        let _ = host.apply_panel_event::<InspectorPanel>(&mut st, ev);
+    }
+    let e = edicoes(&host.drained_actions());
+    let piso = ShapeLookFacts::TRACO_MINIMO;
+    assert!(
+        e.contains(&E::LookStroke {
+            width: 3.0,
+            dashed: true,
+            dash: [6.0, piso]
+        }),
+        "o vão nunca some: {e:?}"
     );
     sai();
 }

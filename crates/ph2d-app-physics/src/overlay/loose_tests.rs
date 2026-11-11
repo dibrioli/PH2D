@@ -173,6 +173,7 @@ fn o_look_da_forma_tinge_o_contorno_e_o_pivo_o_move() {
         tint: [1.0, 0.0, 0.0, 1.0],
         opacity: 0.5,
         cor_propria: true,
+        ..Default::default()
     }));
     let (t, k) = (tema.components, tinto.components);
     assert_eq!(

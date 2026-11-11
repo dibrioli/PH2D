@@ -151,5 +151,12 @@ pub const INSP_SHAPE_PIVOT_XY: [NodeId; 2] = [
 pub const INSP_SHAPE_OPACITY: NodeId = hash_node_id("insp_shape_opacity");
 /// A amostra Color (abre o seletor de cor; a cor vive na tabela `widget_colors`).
 pub const INSP_SHAPE_TINT_SWATCH: NodeId = hash_node_id("insp_shape_tint_swatch");
-/// Os resets da Color (a cor da camada) e da Opacity (100 %).
+/// O chip em % da Opacity.
 pub const INSP_SHAPE_OPACITY_CHIP: NodeId = hash_node_id("insp_shape_opacity_chip");
+/// O traço do contorno (dono 10/11): a largura, a caixa «Dashed» e o traço e o vão do tracejado (px de tela).
+pub const INSP_SHAPE_STROKE_W: NodeId = hash_node_id("insp_shape_stroke_w");
+pub const INSP_SHAPE_DASHED: NodeId = hash_node_id("insp_shape_dashed");
+pub const INSP_SHAPE_DASH_GAP: [NodeId; 2] = [
+    hash_node_id("insp_shape_dash"),
+    hash_node_id("insp_shape_gap"),
+];

@@ -29,7 +29,9 @@ fn pouso(ys: &[[f32; 2]]) -> usize {
         .enumerate()
         .max_by(|a, b| a.1[1].total_cmp(&b.1[1]))
         .map_or(0, |(i, _)| i);
-    (top..ys.len()).find(|&i| ys[i][1] < POUSO).unwrap_or(ys.len() - 1)
+    (top..ys.len())
+        .find(|&i| ys[i][1] < POUSO)
+        .unwrap_or(ys.len() - 1)
 }
 
 fn medir(pts: &[[f32; 2]]) -> Medido {
@@ -39,7 +41,12 @@ fn medir(pts: &[[f32; 2]]) -> Medido {
         .max_by(|a, b| a[1].total_cmp(&b[1]))
         .unwrap();
     let i = pouso(pts);
-    Medido { apex_up: top[1], apex_side: top[0], air_ticks: i, reach: pts[i][0] }
+    Medido {
+        apex_up: top[1],
+        apex_side: top[0],
+        air_ticks: i,
+        reach: pts[i][0],
+    }
 }
 
 fn do_arco(a: &JumpArc) -> Medido {
@@ -58,8 +65,18 @@ fn do_jogo(sim: &mut SimWorld, bridge: &mut PhysicsBridge, player: Entity, como:
     let mut tick = 0_u64;
     // Assenta na perna; correndo, já chega à velocidade máxima antes do salto.
     for _ in 0..60 {
-        let d = if matches!(como, Como::Parado) { 0.0 } else { drive };
-        bridge.set_player_input(player, PlayerInput { drive: d, ..PlayerInput::default() });
+        let d = if matches!(como, Como::Parado) {
+            0.0
+        } else {
+            drive
+        };
+        bridge.set_player_input(
+            player,
+            PlayerInput {
+                drive: d,
+                ..PlayerInput::default()
+            },
+        );
         tick += 1;
         bridge.dispatch(sim, true, tick);
     }
@@ -70,7 +87,14 @@ fn do_jogo(sim: &mut SimWorld, bridge: &mut PhysicsBridge, player: Entity, como:
             Como::Curto => i == 0,
             _ => true,
         };
-        bridge.set_player_input(player, PlayerInput { drive, jump, ..PlayerInput::default() });
+        bridge.set_player_input(
+            player,
+            PlayerInput {
+                drive,
+                jump,
+                ..PlayerInput::default()
+            },
+        );
         tick += 1;
         bridge.dispatch(sim, true, tick);
         let (x, y) = pose(sim);
@@ -102,10 +126,23 @@ fn caso(feel: Option<Feel>, como: Como) -> (Medido, Medido) {
 #[test]
 fn o_arco_do_desenho_e_o_do_jogo() {
     let mut falhas = Vec::new();
-    for feel in [None, Some(Feel::Floaty), Some(Feel::Snappy), Some(Feel::Heavy)] {
-        for (nome, como) in [("correndo", Como::Correndo), ("parado", Como::Parado), ("curto", Como::Curto)] {
+    for feel in [
+        None,
+        Some(Feel::Floaty),
+        Some(Feel::Snappy),
+        Some(Feel::Heavy),
+    ] {
+        for (nome, como) in [
+            ("correndo", Como::Correndo),
+            ("parado", Como::Parado),
+            ("curto", Como::Curto),
+        ] {
             let (a, j) = caso(feel, como);
-            eprintln!("{feel:?} {nome}: desenho {a:?}\n{:>w$}jogo    {j:?}", "", w = 0);
+            eprintln!(
+                "{feel:?} {nome}: desenho {a:?}\n{:>w$}jogo    {j:?}",
+                "",
+                w = 0
+            );
             // Altura: 1,3 cm medido (o sub-passo do rapier e o nosso diferem na ordem). Lado do
             // ápice: um tique de corrida (6 m/s · 1/60), porque num topo achatado dois tiques empatam.
             let ok = (a.apex_up - j.apex_up).abs() < 0.02

@@ -24,7 +24,10 @@ fn o_arco_inteiro_sobe_a_altura_e_volta_ao_chao() {
     let a = full_arc(&cfg(), W);
     // Com Peak G 0,5 o topo alonga: um pouco acima dos 2 m autorados (2,04 m simulados).
     assert!((2.0..2.1).contains(&rise(&a)), "ápice {}", rise(&a));
-    assert!(a.points.last().unwrap()[1] <= 0.0, "termina na linha dos pés");
+    assert!(
+        a.points.last().unwrap()[1] <= 0.0,
+        "termina na linha dos pés"
+    );
     assert!((1.40..1.50).contains(&a.air_time), "no ar {}", a.air_time);
     // Correndo a 6 m/s, o alcance é a velocidade vezes o tempo no ar.
     let reach = a.points.last().unwrap()[0];
@@ -34,7 +37,10 @@ fn o_arco_inteiro_sobe_a_altura_e_volta_ao_chao() {
 #[test]
 fn o_pulo_curto_corta_e_o_parado_vai_menos_longe() {
     let arcs = jump_arcs(&cfg(), W);
-    assert!(rise(&arcs.short) < 0.5 * rise(&arcs.full), "o corte baixa o pulo");
+    assert!(
+        rise(&arcs.short) < 0.5 * rise(&arcs.full),
+        "o corte baixa o pulo"
+    );
     let far = |a: &JumpArc| a.points.last().unwrap()[0];
     assert!(far(&arcs.standing) < far(&arcs.full));
     assert!(far(&arcs.standing) > 0.0, "a direcção presa acelera no ar");
@@ -48,7 +54,10 @@ fn cada_pulo_do_ar_sai_do_apice_do_anterior() {
     let arcs = jump_arcs(&c, W);
     assert_eq!(arcs.air.len(), 2);
     let first = arcs.air[0].points[0];
-    assert!((first[1] - rise(&arcs.full)).abs() < 0.05, "do ápice: {first:?}");
+    assert!(
+        (first[1] - rise(&arcs.full)).abs() < 0.05,
+        "do ápice: {first:?}"
+    );
     assert!(rise(&arcs.air[1]) > rise(&arcs.air[0]), "a corrente sobe");
 }
 
@@ -130,5 +139,8 @@ fn custo_das_curvas() {
         }
         best = best.min(t.elapsed().as_secs_f64() / 200.0);
     }
-    eprintln!("jump_arcs (Air Jumps 1): {:.1} µs por chamada (mínimo de 5 blocos)", best * 1e6);
+    eprintln!(
+        "jump_arcs (Air Jumps 1): {:.1} µs por chamada (mínimo de 5 blocos)",
+        best * 1e6
+    );
 }

@@ -3,8 +3,8 @@
 //! Valores e porquê: `docs/GameEngineFuncional/componentes/04_curva_do_pulo.md` §Valores.
 
 use crate::JumpConfig;
-use crate::arc::{ArcWorld, full_arc, height_for_apex};
 use crate::PlayerConfig;
+use crate::arc::{ArcWorld, full_arc, height_for_apex};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Feel {

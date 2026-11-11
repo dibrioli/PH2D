@@ -39,7 +39,7 @@ impl Curva {
             Self::Full => ColorToken::ObjPlayer,
             Self::Short => ColorToken::Warn,
             Self::Standing => ColorToken::Info,
-            Self::Air => ColorToken::Accent,
+            Self::Air => ColorToken::ObjMacro,
         }
     }
 
@@ -192,7 +192,11 @@ fn caminho(pts: &[[f32; 2]], camera: &Camera2d, window: WindowSize) -> BezPath {
     for (i, p) in pts.iter().enumerate() {
         let (x, y) = camera.world_to_screen(*p, window);
         let q = (f64::from(x), f64::from(y));
-        if i == 0 { path.move_to(q) } else { path.line_to(q) }
+        if i == 0 {
+            path.move_to(q)
+        } else {
+            path.line_to(q)
+        }
     }
     path
 }
@@ -204,7 +208,11 @@ fn distancia(pts: &[(f32, f32)], p: (f32, f32)) -> f32 {
             let (a, b) = (w[0], w[1]);
             let (dx, dy) = (b.0 - a.0, b.1 - a.1);
             let l2 = dx * dx + dy * dy;
-            let t = if l2 > 0.0 { (((p.0 - a.0) * dx + (p.1 - a.1) * dy) / l2).clamp(0.0, 1.0) } else { 0.0 };
+            let t = if l2 > 0.0 {
+                (((p.0 - a.0) * dx + (p.1 - a.1) * dy) / l2).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
             let (qx, qy) = (a.0 + t * dx - p.0, a.1 + t * dy - p.1);
             (qx * qx + qy * qy).sqrt()
         })
@@ -213,10 +221,18 @@ fn distancia(pts: &[(f32, f32)], p: (f32, f32)) -> f32 {
 
 /// A curva sob o cursor, se alguma está a [`HOVER_PX`]. A forte ganha num empate (é pintada por cima).
 #[must_use]
-pub fn sob_o_cursor(d: &Desenho, camera: &Camera2d, window: WindowSize, pointer: (f32, f32)) -> Option<Curva> {
+pub fn sob_o_cursor(
+    d: &Desenho,
+    camera: &Camera2d,
+    window: WindowSize,
+    pointer: (f32, f32),
+) -> Option<Curva> {
     d.curvas()
         .filter_map(|(c, pts)| {
-            let s: Vec<_> = pts.iter().map(|p| camera.world_to_screen(*p, window)).collect();
+            let s: Vec<_> = pts
+                .iter()
+                .map(|p| camera.world_to_screen(*p, window))
+                .collect();
             let dist = distancia(&s, pointer);
             (dist <= HOVER_PX).then_some((c, dist))
         })
@@ -254,34 +270,50 @@ pub fn draw(
             Stroke::new(fino).with_dashes(0.0, traco)
         };
         let path = caminho(&pts, camera, window);
-        scene.inner_mut().stroke(&stroke, Affine::IDENTITY, &Brush::Solid(cor), None, &path);
+        scene
+            .inner_mut()
+            .stroke(&stroke, Affine::IDENTITY, &Brush::Solid(cor), None, &path);
     }
-    let rotulo = |texto: &str, at: (f32, f32), cor: ColorToken, scene: &mut VectorScene, text: &mut _| {
-        let rect = ph2d_editor_core::zones::Rect::new(
-            at.0 + HOVER_PX,
-            at.1 - HOVER_PX - LABEL_H_PX,
-            LABEL_W_PX,
-            LABEL_H_PX,
-        );
-        ph2d_editor_core::paint::paint_text_centered(
-            text,
-            scene,
-            texto,
-            rect,
-            LABEL_FONT_PX,
-            ph2d_editor_core::paint::resolve(cor, theme),
-        );
-    };
+    let rotulo =
+        |texto: &str, at: (f32, f32), cor: ColorToken, scene: &mut VectorScene, text: &mut _| {
+            let rect = ph2d_editor_core::zones::Rect::new(
+                at.0 + HOVER_PX,
+                at.1 - HOVER_PX - LABEL_H_PX,
+                LABEL_W_PX,
+                LABEL_H_PX,
+            );
+            ph2d_editor_core::paint::paint_text_centered(
+                text,
+                scene,
+                texto,
+                rect,
+                LABEL_FONT_PX,
+                ph2d_editor_core::paint::resolve(cor, theme),
+            );
+        };
     if dragging {
         let u = project.display_unit;
         let ppm = project.pixels_per_meter;
-        let altura = d.arcos.full.apex.iter().zip(up(d)).map(|(a, b)| a * b).sum::<f32>();
+        let altura = d
+            .arcos
+            .full
+            .apex
+            .iter()
+            .zip(up(d))
+            .map(|(a, b)| a * b)
+            .sum::<f32>();
         let fmt = |m: f32| format!("{:.0} {}", u.from_meters(m, ppm), u.suffix());
         let s = ph2d_i18n::tr_with(
             "app.physics.jump_arc.readout",
             &[("height", &fmt(altura)), ("speed", &fmt(d.speed))],
         );
-        rotulo(&s, camera.world_to_screen(d.apice(), window), ColorToken::Text1, scene, text);
+        rotulo(
+            &s,
+            camera.world_to_screen(d.apice(), window),
+            ColorToken::Text1,
+            scene,
+            text,
+        );
     } else if let Some(c) = sob_o_cursor(d, camera, window, pointer) {
         rotulo(ph2d_i18n::tr(c.chave()), pointer, c.cor(), scene, text);
     }

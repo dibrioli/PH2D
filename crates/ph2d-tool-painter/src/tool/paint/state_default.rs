@@ -130,7 +130,8 @@ impl Default for PaintState {
             tracos_fora: 0,
             eraser: false,
             paint_mode: PaintMode::default(),
-            mask_brush: 0,         // Paint (conceal) — the default mask sub-brush
+            mask_brush: 0, // Paint (conceal) — the default mask sub-brush
+            mask_spacing_saved: None,
             mask_overlay_color: 0, // dark gray overlay by default
             eyedropper_armed: false,
             falloff_armed: false,

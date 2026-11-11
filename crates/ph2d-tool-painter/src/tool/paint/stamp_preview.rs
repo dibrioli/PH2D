@@ -11,6 +11,8 @@ use super::*;
 pub(super) struct DragPreview {
     pub(super) rect: Region,
     pub(super) pixels: Vec<u8>,
+    /// B40.3: no modo Mask a figura pinta o RASCUNHO; o mesmo recorte dele, para o re-carimbo repor.
+    pub(super) mascara: Option<Vec<u8>>,
 }
 
 impl PainterTool {
@@ -99,6 +101,7 @@ impl PainterTool {
         let t_restore = std::time::Instant::now();
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
+            self.restore_mask_region(&prev.rect, prev.mascara.as_deref());
         }
         // A marca do artista (W9): os discos da pré-visualização anterior saem com ela.
         self.undo.marca.recomeca_os_discos();
@@ -170,6 +173,7 @@ impl PainterTool {
             Some(rect) => {
                 let t_save = std::time::Instant::now();
                 let pixels = self.save_region(&rect);
+                let mascara = self.save_mask_region(&rect);
                 save_us = t_save.elapsed().as_micros() as u64;
                 let t_stamp = std::time::Instant::now();
                 self.stamp_dabs(dabs);
@@ -177,7 +181,11 @@ impl PainterTool {
                     self.stamp_solid(&solid_loops, r);
                 }
                 stamp_us = t_stamp.elapsed().as_micros() as u64;
-                self.paint.drag_preview = Some(DragPreview { rect, pixels });
+                self.paint.drag_preview = Some(DragPreview {
+                    rect,
+                    pixels,
+                    mascara,
+                });
             }
             None => {
                 save_us = 0;
@@ -217,6 +225,7 @@ impl PainterTool {
         self.peel_mancha_na_aguada();
         if let Some(prev) = self.paint.drag_preview.take() {
             self.restore_region(&prev.rect, &prev.pixels);
+            self.restore_mask_region(&prev.rect, prev.mascara.as_deref());
             self.wetpaint_rearm_after_own_write();
         }
         // ⛔ **A pilha do Composite NÃO é descascada aqui, e a razão é o CHAMADOR.** A 1.ª
@@ -348,7 +357,11 @@ impl PainterTool {
             rect = union_region(rect, r);
         }
         let pixels = self.save_region(&rect);
-        self.paint.drag_preview = Some(DragPreview { rect, pixels });
+        self.paint.drag_preview = Some(DragPreview {
+            rect,
+            pixels,
+            mascara: None,
+        });
         // Freeze the ground ONCE per shape session (expensive: `build_wet_backdrop` composites the layers
         // below; static within the session). Subsequent frames keep it; the base is re-pointed below.
         if !self.paint.wet_shape_active {

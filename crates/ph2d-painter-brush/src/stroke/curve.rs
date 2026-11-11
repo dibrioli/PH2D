@@ -46,8 +46,8 @@ impl Stroke {
         // First dab at the curve start (dash-gated), like `fill_segment`.
         if self.spec.dash_on(self.tot_samples) {
             let pr = self.method_pressure(1.0);
-            let d = self.dab_at(spine[0], pr, self.method_overlap(), self.arc_len);
-            out.push(d);
+            // B40.1: a porta única — Symmetry, spray, pó e Rough também no 1.º dab.
+            self.stamp_at(spine[0], pr, self.method_overlap(), self.arc_len, out);
         }
         self.tot_samples = self.tot_samples.wrapping_add(1);
         // Walk the flattened spine with continuous spacing (`walk_space` carries `accum`/dash/jitter
@@ -101,3 +101,7 @@ pub fn flatten_catmull_rom(pts: &[[f32; 2]], out: &mut Vec<[f32; 2]>) {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "forma_primeiro_dab_tests.rs"]
+mod forma_primeiro_dab_tests;

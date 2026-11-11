@@ -69,6 +69,8 @@ pub(crate) struct PaintState {
     pub(super) line_show_dimensions: bool,
     /// **Mask** sub-brush (Mask mode): `0` Paint (conceal/black) · `1` Erase (reveal/white) · `2` Blur · `3` Smear. [`mask`].
     pub(super) mask_brush: u8,
+    /// The Paint/Erase Spacing saved on entering Blur/Smear (they densify to 5%); restored on leaving.
+    pub(super) mask_spacing_saved: Option<f32>,
     /// **Mask** overlay tint index (`0` gray + 4 fluorescent) — tints the composite where a mask conceals. [`mask`].
     pub(super) mask_overlay_color: u8,
     /// **Eyedropper** armed: the next canvas Down samples the composited pixel into the brush colour, then disarms. [`eyedropper`].

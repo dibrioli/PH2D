@@ -30,11 +30,19 @@ const OVERLAY_STRENGTH: f32 = 0.8;
 
 impl PainterTool {
     /// Set the Mask sub-brush: `0` Paint (protect) · `1` Erase (unprotect) · `2` Blur · `3` Smear.
-    /// Entering Blur/Smear densifies Spacing to 5% (a sparse chain leaves gaps), only on the transition in.
+    /// Entering Blur/Smear densifies Spacing to 5% (a sparse chain leaves gaps); leaving them for
+    /// Paint/Erase gives the artist's Spacing back (B40.4).
     pub fn set_mask_brush(&mut self, v: u8) {
         let v = v.min(3);
-        if v != self.paint.mask_brush && (v == 2 || v == 3) {
+        let denso = |b: u8| b == 2 || b == 3;
+        if denso(v) && !denso(self.paint.mask_brush) {
+            self.paint.mask_spacing_saved = Some(self.paint.brush.spacing);
             self.paint.brush.spacing = 0.05;
+        } else if !denso(v)
+            && denso(self.paint.mask_brush)
+            && let Some(s) = self.paint.mask_spacing_saved.take()
+        {
+            self.paint.brush.spacing = s;
         }
         self.paint.mask_brush = v;
     }
@@ -603,6 +611,11 @@ pub(super) mod mask_probe; // a fixture de mascara serve tambem os gates do jour
 #[cfg(test)]
 #[path = "mask_probe_gate.rs"]
 mod mask_probe_gate;
+#[path = "mask_shape.rs"]
+mod mask_shape;
+#[cfg(test)]
+#[path = "mask_shape_tests.rs"]
+mod mask_shape_tests;
 #[cfg(test)]
 #[path = "mask_tests.rs"]
 mod mask_tests;

@@ -52,8 +52,8 @@ impl Stroke {
         // First dab at the perimeter start (dash-gated), like `fill_segment`.
         if self.spec.dash_on(self.tot_samples) {
             let pr = self.method_pressure(1.0);
-            let d = self.dab_at(perim[0], pr, self.method_overlap(), self.arc_len);
-            out.push(d);
+            // B40.1: a porta única — Symmetry, spray, pó e Rough também no 1.º dab.
+            self.stamp_at(perim[0], pr, self.method_overlap(), self.arc_len, out);
         }
         self.tot_samples = self.tot_samples.wrapping_add(1);
         // Walk the perimeter with continuous spacing, then close the loop back to the start.

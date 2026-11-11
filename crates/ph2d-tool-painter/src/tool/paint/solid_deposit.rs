@@ -330,7 +330,11 @@ impl PainterTool {
             }
         }
         tecto.repoe(&mut self.paint.stroke_mask, largura);
-        self.paint.drag_preview = Some(super::DragPreview { rect, pixels });
+        self.paint.drag_preview = Some(super::DragPreview {
+            rect,
+            pixels,
+            mascara: None,
+        });
     }
 
     /// **A região que a corda vai de facto escrever** — já replicada pelo Tiling, pelas MESMAS portas

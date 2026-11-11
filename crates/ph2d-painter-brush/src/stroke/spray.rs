@@ -340,11 +340,15 @@ impl Stroke {
         if self.tot_samples != self.por_traco.parado_marca {
             self.por_traco.parado_acum_s = 0.0;
         }
-        let n = super::tick::pulsos(
-            &mut self.por_traco.parado_acum_s,
-            dt,
-            periodo.max(super::PERIODO_MIN_S),
-        );
+        let acum = &mut self.por_traco.parado_acum_s;
+        #[cfg(test)]
+        let n = if super::ritmo_tests::RELOGIO_ANTIGO.get() {
+            super::ritmo_tests::pulsos_antigos(acum, dt, periodo)
+        } else {
+            super::tick::pulsos(acum, dt, periodo.max(super::PERIODO_MIN_S))
+        };
+        #[cfg(not(test))]
+        let n = super::tick::pulsos(acum, dt, periodo.max(super::PERIODO_MIN_S));
         for _ in 0..n {
             let pr = self.method_pressure(self.last_pressure);
             self.stamp_at(self.last_pos, pr, 1.0, self.arc_len, out);

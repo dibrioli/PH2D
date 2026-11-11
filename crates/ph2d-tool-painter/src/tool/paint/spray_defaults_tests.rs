@@ -85,3 +85,7 @@ fn staying_at_one_mark_arms_nothing() {
         "uma marca por ponto não é uma nuvem, e não pode mexer no espalhamento"
     );
 }
+
+/// B22.2: a prancha do spray parado a 30, 60 e 144 q/s.
+#[path = "prancha_b22_2_tests.rs"]
+mod prancha_b22_2_tests;

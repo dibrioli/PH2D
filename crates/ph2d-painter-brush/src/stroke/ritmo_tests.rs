@@ -94,3 +94,60 @@ fn spray_parado_nao_acumula() {
         );
     }
 }
+
+thread_local! {
+    /// O oráculo da prancha B22.2: `true` faz o [`Stroke::tick_parado`] correr o relógio VELHO (verbatim, abaixo).
+    pub(super) static RELOGIO_ANTIGO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// O relógio velho do spray parado, verbatim (antes do c7a8208d0c): o batente de 8 por tique sem descartar o atraso.
+pub(super) fn pulsos_antigos(acum: &mut f32, dt: f32, periodo: f32) -> u32 {
+    *acum += dt.max(0.0);
+    let mut n = 0;
+    while *acum >= periodo && n < 8 {
+        *acum -= periodo;
+        n += 1;
+    }
+    n
+}
+
+/// Os dabs, tique a tique, de um segundo parado a `dt`, pelo relógio velho ou pelo novo.
+fn dabs_parado(antigo: bool, dt: f32, ticks: usize) -> Vec<Vec<Dab>> {
+    RELOGIO_ANTIGO.set(antigo);
+    let mut sp = spec(0.0035, StrokeMethod::Space, 0.1);
+    sp.spray_count = 16;
+    sp.jitter = 0.7;
+    let mut s = Stroke::new(sp, sem_dinamica(), 7);
+    let mut out = Vec::new();
+    s.begin(
+        StrokePoint {
+            pos: [50.0, 50.0],
+            pressure: 1.0,
+        },
+        &mut out,
+    );
+    let v = (0..ticks)
+        .map(|_| {
+            s.tick(dt, &mut out);
+            out.clone()
+        })
+        .collect();
+    RELOGIO_ANTIGO.set(false);
+    v
+}
+
+/// A prancha B22.2 pinta o «antes» a 30 q/s pelo motor NOVO com `dt = 8 × período + ε` (o tool não vê o oráculo
+/// `cfg(test)` desta crate). A prova: o relógio velho a 1/30 s e o novo a esse `dt` pousam os MESMOS dabs, tique a
+/// tique, ao bit.
+#[test]
+fn o_antes_a_30_qs_e_o_motor_novo_a_8_periodos_por_tique() {
+    let velho = dabs_parado(true, 1.0 / 30.0, 30);
+    let novo = dabs_parado(false, DT_ANTES_30_QS, 30);
+    assert!(velho.iter().all(|t| !t.is_empty()));
+    assert_eq!(velho, novo);
+    // E o controlo: o novo a 1/30 s NÃO é o velho (a cura muda o desenho a 30 q/s).
+    assert_ne!(dabs_parado(false, 1.0 / 30.0, 30), velho);
+}
+
+/// O `dt` com que o motor novo repete o velho a 30 q/s: 8 períodos + um ε que em 30 tiques não chega a um período.
+const DT_ANTES_30_QS: f32 = 8.0 * 0.0035 + 1e-5;

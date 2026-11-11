@@ -329,7 +329,10 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredMap<T> {
             };
             entries.insert(k, e);
         }
-        Some(Self { entries })
+        Some(Self {
+            entries,
+            aparece: BTreeMap::new(),
+        })
     }
 }
 

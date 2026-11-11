@@ -1,0 +1,140 @@
+//! **A janela do plano que APARECE, achada no COMMIT** (B08c.M2) — filho de [`super`] (`#[path]`) para ler
+//! os campos de [`PlaneWindow`].
+//!
+//! O 1.º traço Impasto (ou aguada) numa camada faz `heights`/`covers`/`mats` (ou o vidro) aparecerem
+//! (`OnlyAfter`). O lado ausente é o neutro, então o Ctrl+Z alcança só os texels fora do neutro — e achá-los
+//! varria os planos INTEIROS a cada pergunta (4K: ~4 ms de largura de banda). Mas o passo só escreveu dentro
+//! da janela declarada (a mesma confiança do [`super::StoredPlane::split_tiled`], conferida em debug), logo a
+//! busca restrita a ela dá a mesma janela: faz-se uma vez, no commit, e o Ctrl+Z só a lê.
+
+use super::confine::{PlaneReach, janela_fora_do_neutro};
+use super::{PlaneWindow, StoredEntry, StoredMap};
+use crate::layers::LayerId as RtLayerId;
+
+impl<T> StoredMap<T> {
+    /// Guarda a janela fora do neutro de cada plano `OnlyAfter`, buscada só dentro de `hint`.
+    pub(crate) fn guarda_janelas_que_aparecem(
+        &mut self,
+        hint: Option<PlaneWindow>,
+        linha_neutra: impl Fn(&[T]) -> bool + Copy,
+        neutro: impl Fn(&T) -> bool + Copy,
+    ) {
+        let Some(h) = hint else { return };
+        for (k, e) in &self.entries {
+            let StoredEntry::OnlyAfter(p) = e else {
+                continue;
+            };
+            let Some(w) = h.fit_to(p.len()) else {
+                continue;
+            };
+            let r = janela_dentro(p, w, linha_neutra, neutro);
+            debug_assert_eq!(
+                r,
+                janela_fora_do_neutro(p, w.stride, linha_neutra, neutro),
+                "o plano que aparece tem texels fora do neutro FORA da janela declarada — o Ctrl+Z \
+                 confinado deixaria relevo na tela (B08c.M2)"
+            );
+            self.aparece.insert(*k, r);
+        }
+    }
+
+    /// A janela guardada no commit para a camada `k`, se o seu `stride` for o pedido.
+    pub(crate) fn janela_que_aparece(&self, k: RtLayerId, stride: usize) -> Option<PlaneReach> {
+        self.aparece.get(&k).copied().filter(|r| match r {
+            PlaneReach::Window(w) => w.stride == stride,
+            _ => true,
+        })
+    }
+}
+
+/// [`janela_fora_do_neutro`] restrita às linhas e colunas de `w`; a janela devolvida é do plano inteiro.
+fn janela_dentro<T>(
+    p: &[T],
+    w: PlaneWindow,
+    linha_neutra: impl Fn(&[T]) -> bool,
+    neutro: impl Fn(&T) -> bool,
+) -> PlaneReach {
+    let linha = |r: usize| &p[r * w.stride + w.col..r * w.stride + w.col + w.cols];
+    let rows = w.row..w.row + w.rows;
+    let Some(row) = rows.clone().find(|&r| !linha_neutra(linha(r))) else {
+        return PlaneReach::Untouched;
+    };
+    let last = rows.rev().find(|&r| !linha_neutra(linha(r))).unwrap_or(row);
+    let (mut col, mut end) = (w.stride, 0usize);
+    for r in row..=last {
+        let l = linha(r);
+        if let Some(c) = l.iter().position(|v| !neutro(v)) {
+            col = col.min(w.col + c);
+            end = end.max(w.col + l.iter().rposition(|v| !neutro(v)).unwrap_or(c) + 1);
+        }
+    }
+    PlaneReach::Window(PlaneWindow {
+        row,
+        rows: last - row + 1,
+        col,
+        cols: end.saturating_sub(col),
+        stride: w.stride,
+        plane_len: p.len(),
+    })
+}
+
+#[cfg(test)]
+mod sonda {
+    use super::super::confine::Confine;
+    use super::super::{PlaneWindow, StoredEntry, StoredMap};
+    use std::sync::Arc;
+    use std::time::Instant;
+
+    /// Sonda B08c.M2 (`--profile smoke -- --ignored`): a pergunta do Ctrl+Z sobre os três planos 4K que
+    /// aparecem, varrendo (A, o de antes) × lendo a janela do commit (B); e o custo da busca no commit.
+    #[test]
+    #[ignore = "sonda de tempo"]
+    fn sonda_ctrl_z_do_plano_que_aparece_4k() {
+        let (w, h) = (3840usize, 2160usize);
+        let (x0, y0, bw, bh) = (1664usize, 949usize, 448usize, 182usize);
+        let mut hs = vec![0f32; w * h];
+        let mut cs = vec![0u8; w * h];
+        for y in y0 + 10..y0 + bh - 10 {
+            for x in x0 + 10..x0 + bw - 10 {
+                hs[y * w + x] = 0.5;
+                cs[y * w + x] = 200;
+            }
+        }
+        let hint = Some(PlaneWindow::for_test(y0, bh, x0, bw, w));
+        let (mut ha, mut ca) = (StoredMap::<f32>::default(), StoredMap::<u8>::default());
+        let l7 = crate::layers::LayerId(7);
+        ha.entries.insert(l7, StoredEntry::OnlyAfter(Arc::new(hs)));
+        ca.entries.insert(l7, StoredEntry::OnlyAfter(Arc::new(cs)));
+        let (lh, nh) = (
+            |l: &[f32]| l.iter().fold(0u32, |a, v| a | v.to_bits()) == 0,
+            |v: &f32| v.to_bits() == 0,
+        );
+        let (lc, nc) = (
+            |l: &[u8]| l.iter().fold(0u8, |a, &b| a | b) == 0,
+            |v: &u8| *v == 0,
+        );
+        let pergunta = |ha: &StoredMap<f32>, ca: &StoredMap<u8>| {
+            let t = Instant::now();
+            let mut c = Confine::new(w as u32);
+            c.add_relevo(ha, lh, nh);
+            c.add_relevo(ca, lc, nc);
+            (t.elapsed().as_secs_f64() * 1e3, c.finish())
+        };
+        let (mut a, mut b, mut g) = (f64::MAX, f64::MAX, f64::MAX);
+        for _ in 0..5 {
+            ha.aparece.clear();
+            ca.aparece.clear();
+            let (ta, ra) = pergunta(&ha, &ca);
+            let t = Instant::now();
+            ha.guarda_janelas_que_aparecem(hint, lh, nh);
+            ca.guarda_janelas_que_aparecem(hint, lc, nc);
+            g = g.min(t.elapsed().as_secs_f64() * 1e3);
+            let (tb, rb) = pergunta(&ha, &ca);
+            assert_eq!(ra, rb);
+            (a, b) = (a.min(ta), b.min(tb));
+        }
+        eprintln!(
+            "B08c.M2 sonda 4K (heights+covers): Ctrl+Z varre {a:.3} ms × lê {b:.4} ms; commit busca {g:.3} ms"
+        );
+    }
+}

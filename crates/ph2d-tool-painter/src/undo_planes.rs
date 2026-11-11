@@ -145,16 +145,8 @@ impl PlaneDeltas {
         let mut c = Confine::new(canvas_w);
         c.add_plano(canvas_rgba);
         c.add_images(images);
-        c.add_relevo(
-            heights,
-            |l| l.iter().fold(0u32, |a, v| a | v.to_bits()) == 0,
-            |v| v.to_bits() == 0,
-        );
-        c.add_relevo(
-            covers,
-            |l| l.iter().fold(0u8, |a, &b| a | b) == 0,
-            |v| *v == 0,
-        );
+        c.add_relevo(heights, linha_de_altura_neutra, altura_neutra);
+        c.add_relevo(covers, linha_de_cobertura_neutra, cobertura_neutra);
         let neutro = ph2d_painter_brush::material::Material::NEUTRAL.to_bytes();
         let modelo = vec![neutro; canvas_w as usize];
         c.add_relevo(
@@ -218,13 +210,29 @@ impl PlaneDeltas {
                 relief.as_ref(),
             ),
         };
-        let (heights, covers, mats, relief_indescribable) =
+        let (mut heights, mut covers, mut mats, relief_indescribable) =
             Self::relief_maps(before, after, s.scalar, win_scalar, relief);
+        heights.guarda_janelas_que_aparecem(win_scalar, linha_de_altura_neutra, altura_neutra);
+        covers.guarda_janelas_que_aparecem(win_scalar, linha_de_cobertura_neutra, cobertura_neutra);
+        let neutro = ph2d_painter_brush::material::Material::NEUTRAL.to_bytes();
+        let modelo = vec![neutro; cw as usize];
+        mats.guarda_janelas_que_aparecem(
+            win_scalar,
+            |l| linha_de_material_neutra(l, &modelo),
+            move |m| *m == neutro,
+        );
+        let mut vidros =
+            StoredMap::split(&mut before.vidros, &mut after.vidros, s.scalar, win_scalar);
+        vidros.guarda_janelas_que_aparecem(
+            win_scalar,
+            crate::undo_delta::confine::linha_sem_vidro,
+            crate::undo_delta::confine::vidro_neutro,
+        );
         Self {
             relief_indescribable: relief_indescribable || canvas_lost,
             canvas_rgba,
             images: StoredImages::split(&mut before.images, &mut after.images),
-            vidros: StoredMap::split(&mut before.vidros, &mut after.vidros, s.scalar, win_scalar),
+            vidros,
             heights,
             covers,
             mats,
@@ -597,6 +605,22 @@ impl PlaneDeltas {
             + self.sculpt_pre_mats.copiado_bytes()
             + self.sculpt_pre_rgba.copiado_bytes()
     }
+}
+
+fn linha_de_altura_neutra(l: &[f32]) -> bool {
+    l.iter().fold(0u32, |a, v| a | v.to_bits()) == 0
+}
+
+fn altura_neutra(v: &f32) -> bool {
+    v.to_bits() == 0
+}
+
+fn linha_de_cobertura_neutra(l: &[u8]) -> bool {
+    l.iter().fold(0u8, |a, &b| a | b) == 0
+}
+
+const fn cobertura_neutra(v: &u8) -> bool {
+    *v == 0
 }
 
 /// A linha de material é a neutra: comparada em BYTES contra a linha-modelo (`memcmp`), não texel a texel —

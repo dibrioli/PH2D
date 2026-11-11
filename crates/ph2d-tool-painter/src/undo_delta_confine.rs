@@ -215,11 +215,14 @@ impl Confine {
     /// ([`crate::compositor::vidro::alfas`]). Então o lado que aparece (o 1.º traço de aguada numa camada)
     /// alcança só a janela dos texels selados, não a tela (B10c).
     pub(crate) fn add_vidros(&mut self, m: &StoredMap<crate::compositor::vidro::Vidro>) {
-        for e in m.entries() {
+        for (&k, e) in &m.entries {
             match e {
                 StoredEntry::Both(p) => self.add_plano(p),
                 StoredEntry::OnlyBefore(p) | StoredEntry::OnlyAfter(p) => {
-                    let r = janela_dos_selados(p, self.canvas_w as usize);
+                    let w = self.canvas_w as usize;
+                    let r = m
+                        .janela_que_aparece(k, w)
+                        .unwrap_or_else(|| janela_dos_selados(p, w));
                     self.add(r);
                 }
             }
@@ -236,11 +239,14 @@ impl Confine {
         linha_neutra: impl Fn(&[T]) -> bool + Copy,
         neutro: impl Fn(&T) -> bool + Copy,
     ) {
-        for e in m.entries() {
+        for (&k, e) in &m.entries {
             match e {
                 StoredEntry::Both(p) => self.add_plano(p),
                 StoredEntry::OnlyBefore(p) | StoredEntry::OnlyAfter(p) => {
-                    let r = janela_fora_do_neutro(p, self.canvas_w as usize, linha_neutra, neutro);
+                    let w = self.canvas_w as usize;
+                    let r = m
+                        .janela_que_aparece(k, w)
+                        .unwrap_or_else(|| janela_fora_do_neutro(p, w, linha_neutra, neutro));
                     self.add(r);
                 }
             }
@@ -321,13 +327,16 @@ pub(crate) fn funde_as_caixas(mut v: Vec<Region>) -> Vec<Region> {
 
 /// A janela dos texels não nulos de um plano de vidro de `stride` texels por linha; `Untouched` se nenhum.
 fn janela_dos_selados(p: &[crate::compositor::vidro::Vidro], stride: usize) -> PlaneReach {
-    // OR dos bytes da linha: vectoriza (o `any` com saída cedo não).
-    janela_fora_do_neutro(
-        p,
-        stride,
-        |l| l.as_flattened().iter().fold(0u8, |a, &b| a | b) == 0,
-        |v| *v == [0; 7],
-    )
+    janela_fora_do_neutro(p, stride, linha_sem_vidro, vidro_neutro)
+}
+
+/// A linha de vidro sem texel selado: OR dos bytes (vectoriza; o `any` com saída cedo não).
+pub(crate) fn linha_sem_vidro(l: &[crate::compositor::vidro::Vidro]) -> bool {
+    l.as_flattened().iter().fold(0u8, |a, &b| a | b) == 0
+}
+
+pub(crate) fn vidro_neutro(v: &crate::compositor::vidro::Vidro) -> bool {
+    *v == [0; 7]
 }
 
 /// A janela dos píxeis com alfa de um plano RGBA8 de `w` píxeis por linha; `Untouched` se nenhum. É onde virar
@@ -360,8 +369,14 @@ pub(crate) fn janela_da_tinta(rgba: &[u8], w: usize) -> PlaneReach {
     }
 }
 
+#[cfg(test)]
+thread_local! {
+    /// Texels que a busca do neutro varreu neste thread (o gate do B08c.M2 conta-os no Ctrl+Z).
+    pub(crate) static TEXELS_VARRIDOS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 /// A janela dos texels fora do neutro de um plano de `stride` texels por linha; `Untouched` se nenhum.
-fn janela_fora_do_neutro<T>(
+pub(super) fn janela_fora_do_neutro<T>(
     p: &[T],
     stride: usize,
     linha_neutra: impl Fn(&[T]) -> bool,
@@ -370,6 +385,8 @@ fn janela_fora_do_neutro<T>(
     if stride == 0 || p.is_empty() || !p.len().is_multiple_of(stride) {
         return PlaneReach::Whole;
     }
+    #[cfg(test)]
+    TEXELS_VARRIDOS.with(|c| c.set(c.get() + p.len()));
     let linhas: Vec<_> = p.chunks_exact(stride).collect();
     let Some(row) = linhas.iter().position(|l| !linha_neutra(l)) else {
         return PlaneReach::Untouched;

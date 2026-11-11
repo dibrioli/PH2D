@@ -411,6 +411,30 @@ fn a_placa_dobra_so_a_janela_do_ctrl_z_do_1o_traco_impasto() {
     }
 }
 
+/// B08c.M2: o Ctrl+Z (e o redo) do 1.º traço Impasto/aguada não varre os planos que APARECEM — a janela
+/// deles foi achada no commit, dentro da janela declarada. Antes: 3 planos inteiros por pergunta.
+#[test]
+fn o_ctrl_z_do_1o_traco_nao_varre_o_plano_que_aparece() {
+    use crate::tool::paint::media::PaintMedia::{Impasto, Watercolor};
+    let varridos = || crate::undo_delta::confine::TEXELS_VARRIDOS.with(|c| c.replace(0));
+    for meio in [Impasto, Watercolor] {
+        let mut t = armed(512);
+        t.set_brush_size_px(9.0);
+        t.set_paint_media(meio);
+        stroke(&mut t, 120.0);
+        varridos();
+        assert!(
+            t.regiao_do_proximo_passo(false).is_some(),
+            "{meio:?}: o Ctrl+Z é confinado"
+        );
+        assert_eq!(varridos(), 0, "{meio:?}: a pergunta do Ctrl+Z varreu");
+        assert!(t.undo_last(), "{meio:?}: há undo");
+        assert!(t.regiao_do_proximo_passo(true).is_some());
+        assert!(t.redo_last(), "{meio:?}: há redo");
+        assert_eq!(varridos(), 0, "{meio:?}: o undo/redo varreu");
+    }
+}
+
 /// **Dois planos VAZIOS não azedam o veredito** — a lição que custou a wave (doc 28 §5.63).
 ///
 /// O `split` manda para `Whole` tudo o que não sabe medir, e comprimento zero não é medível; as seis

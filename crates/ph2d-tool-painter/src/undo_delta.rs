@@ -366,6 +366,8 @@ pub(crate) enum StoredEntry<T> {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct StoredMap<T> {
     entries: BTreeMap<RtLayerId, StoredEntry<T>>,
+    /// A janela fora do neutro de cada plano que APARECE, achada no commit ([`aparece`]).
+    aparece: BTreeMap<RtLayerId, confine::PlaneReach>,
 }
 
 impl<T: Copy + Default + PartialEq + Send + Sync> StoredMap<T> {
@@ -395,7 +397,10 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredMap<T> {
         }
         before.clear();
         after.clear();
-        Self { entries }
+        Self {
+            entries,
+            aparece: BTreeMap::new(),
+        }
     }
 
     /// Reconstrói um dos lados a partir do mapa do cursor.
@@ -613,6 +618,9 @@ mod journal_route;
 pub(crate) mod confine;
 
 /// **Re-partir um plano do topo sem materializar a tela** — filho pelo mesmo motivo (a janela).
+#[path = "undo_delta_aparece.rs"]
+pub(crate) mod aparece;
+
 #[path = "undo_delta_absorb.rs"]
 mod absorb_route;
 

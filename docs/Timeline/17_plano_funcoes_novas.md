@@ -161,3 +161,47 @@ Cura escolhida (a): numa Sprite «Opacity» conduz `Sprite::opacity`; o alfa do 
 2. No Curves aparecem todas as linhas com chaves; o olho de cada linha («Shown» da B2) esconde a que não se quer ver.
 3. Arrastar o ponto no canvas num quadro onde só Y tem chave CRIA a chave de X (como o Auto Key; Rive/Roblox: mexer grava).
 4. Largar um chip abaixo da última faixa cria uma faixa nova (Unity Timeline / Premiere).
+
+## Onda 3 — desenho medido (10/11, leitura do código; maquetes [B5](fotos/maquete_B5.png) · [B7](fotos/maquete_B7.png))
+
+### 8 — Quem ouve um sinal (B5)
+
+**Medido.** O sinal é só o NOME exato (`ph2d-runtime` `Signal { name }`; marcador `Marker.signal`, `doc.rs:172`, publicado por
+`signals_crossed` → `timeline_bridge.rs:64`). Já existe o CENSO por nome: `ph2d-signal-census` (tabela `CAMPOS` do mundo, `FORA`
+dos documentos — Motion `value.input`, estados de UI —, e a varredura estática dos scripts Luau `luau.rs`), mas ele só CONTA
+(`SignalCensus.names: nome → {emit, listen}`) e só o Inspector o lê (`signal_hint.rs`). Ninguém responde «QUEM».
+⚠️ «Heard by Camera» da maquete não casa com o modelo: quem ouve é o `ShakeEmitter` (no objeto que treme a câmera), a câmera é alvo.
+
+**Desenho.**
+- `ph2d-signal-census`: o leitor de cada linha passa a entregar a ENTIDADE com o nome (`fn(&World, &mut dyn FnMut(Entity, &str))`);
+  `census` e `fingerprint` continuam a contar igual. Porta nova `listeners(world, fora, name) -> Vec<Listener>`:
+  `Listener { object: Option<String> (o `Name`), what: Quem }`, `Quem` = a linha da tabela (componente) ou `Fora` (Motion, UI state)
+  ou `Script`. Uma linha por (objeto, componente), sem repetidos, na ordem da tabela. Nome dinâmico de script ⇒ `script_may`.
+- O painel recebe a lista por uma porta de dados (thread-local, o idioma do `set_signal_census`): a shell só a calcula quando há
+  um sinal ABERTO no painel (`ph2d_panel_timeline::signal_asked()`), ~58 µs/quadro medidos para o censo inteiro.
+- **Gesto (cartões):** clique parado na alça de um marcador COM sinal = vai até ele (como hoje) **e abre o cartão** «Signal at frame
+  24 · land», «Name» (o nome, só leitura — renomear segue no botão direito) e a lista «Heard by»: uma linha por ouvinte
+  «Hero · Signal Actions», tinta normal; ninguém ⇒ «Nobody listens» na tinta de aviso; script com nome não literal ⇒ «A script
+  may listen». Fecha com Esc, clique fora, marcador apagado, ou outra aba. Marcador sem sinal: só vai até ele, como hoje.
+  `PH2D_CARDS=0`: igual a hoje (sem cartão).
+
+### 9 — Animating · Done (B7)
+
+**Medido.** Não há caminho «da agulha» no undo: o passo nasce do diff por quadro (`undo_app.rs:416`). O scrub escreve a pose da
+curva no mundo e declara-a pré-visualização (`declare_timeline_writes`, `ph2d-timeline-preview`); quando a agulha PARA, o `settle`
+esquece a entidade, a pose vira documento e o clique seguinte grava um passo. As chaves vivem no `TimelineDoc` (passos próprios,
+`history.rs` + `liga_gesto_da_cena`). O laranja (`Mudado`) não tem armazenamento: é o mundo ≠ curva (`channel_mark.rs:47`).
+
+**Desenho (o idioma do Construct, e o do «condutor persistente» que o ledger já tem — `ScriptPose`, `still_driving`).**
+- `ph2d-timeline-preview`: `Animating` — enquanto vive, guarda para cada (entidade, facto) que a Timeline conduziu o valor de
+  ANTES da primeira escrita (a pose da cena à entrada) e, a cada quadro, SEGURA essa condução no ledger com esse valor como
+  autorado (porta nova `PreviewDrive::hold`). Logo: a captura vê sempre a cena de entrada ⇒ ir e vir com a agulha, tocar, ou mexer
+  sem chave (laranja) **não grava passo**; as chaves (doc) gravam como hoje. **Done** = escreve a pose de entrada, larga a condução
+  (sem passo: o mundo volta ao que a base já diz). Os ossos (campos) pelo mesmo caminho do `FieldDrive`.
+- Começa sozinho na PRIMEIRA vez que a Timeline mexe a cena na aba Keys com um clipe (cartões). Barra: pílula «● Animating jump»
+  + botão «Done» à esquerda do transporte, e contorno azul na área das faixas (B7). Acaba com Done, trocar de clipe ou de aba,
+  esconder a Timeline, ou dar Play no jogo — sempre devolvendo a cena. `PH2D_CARDS=0`: como hoje (sem sessão).
+- O painel «Undo History» da B7 não existe no app (só o do Pixel): fica de fora, anotado.
+
+**Respostas de produto (escolhidas pela maquete e pelo Construct; o dono pode vetar):** começa sozinho (sem botão «Animate»);
+mudança laranja some no Done; trocar de clipe/aba = Done.

@@ -22,3 +22,5 @@ pub const TIMELINE_RESIZE_TR: NodeId = hash_node_id("timeline.resize.tr");
 pub const TIMELINE_RESIZE_BL: NodeId = hash_node_id("timeline.resize.bl");
 /// Canto de baixo, à direita.
 pub const TIMELINE_RESIZE_BR: NodeId = hash_node_id("timeline.resize.br");
+/// O cartão «quem ouve» do marcador com sinal (doc 17 item 8): a lista própria que o clique de fora fecha.
+pub const TIMELINE_SIGNAL_CARD: NodeId = hash_node_id("timeline.signal.card");

@@ -1,7 +1,7 @@
 //! Os sinais dos scripts Luau: `ph2d.emit("x")` emite, `ph2d.connect(obj, "x", …)` ouve, e o gancho
 //! `on_signal` ouve QUALQUER nome. Um nome que não é literal liga a flag «dinâmico» da direcção.
 
-use ph2d_ecs::World;
+use ph2d_ecs::{Entity, World};
 use ph2d_script::{LuauScript, ProjectScripts, ScriptSource};
 use ph2d_signal_ends::{Role, SignalCensus};
 
@@ -101,4 +101,28 @@ fn first_arg_literal(rest: &str, skip: usize) -> Option<Option<&str>> {
     } else {
         Some(None)
     }
+}
+
+/// Os objectos cujo script ouve `name` por literal (`put`); devolve se algum ouve um nome não literal.
+pub(crate) fn listeners(world: &World, name: &str, put: &mut dyn FnMut(Entity)) -> bool {
+    let Some(lib) = world.get_resource::<ProjectScripts>() else {
+        return false;
+    };
+    let Some(mut q) = world.try_query::<(Entity, &LuauScript)>() else {
+        return false;
+    };
+    let mut may = false;
+    for (e, s) in q.iter(world) {
+        if let ScriptSource::Library(id) = &s.source
+            && let Some(doc) = lib.0.get(*id)
+        {
+            let mut c = SignalCensus::default();
+            source(&doc.text, &mut c);
+            may |= c.dynamic_listen;
+            if c.ends(name).listen > 0 {
+                put(e);
+            }
+        }
+    }
+    may
 }

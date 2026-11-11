@@ -179,12 +179,33 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.timeline.buffer.store" => "Store",
         // Dono 10/11 — a caixa «Edit curves on canvas» da aba Keys (no lugar da vista Curves).
         "panel.timeline.curves_on_canvas" => "Edit curves on canvas",
+        // A pílula da sessão de animar (doc 17 item 9): «Animating jump» + «Done».
+        "panel.timeline.animating" => "Animating {clip}",
+        "panel.timeline.animating.done" => "Done",
+        "panel.timeline.animating.done.tip" => "Put the scene back as it was. Your keys stay",
         "panel.timeline.curves_on_canvas.tip" => {
             "Show handles on the canvas to bend the object's path"
         }
         // O eixo do Flip image na faixa («Flip image H»), os glifos dos ícones do cartão.
         "panel.timeline.glyph.h" => "H",
         "panel.timeline.glyph.v" => "V",
+        // O cartão «quem ouve» do marcador com sinal (doc 17 item 8, maquete B5).
+        "panel.timeline.signal.title" => "Signal at frame {frame} \u{b7} {name}",
+        "panel.timeline.signal.name" => "Name",
+        "panel.timeline.signal.heard_by" => "Heard by",
+        "panel.timeline.signal.row" => "{object} \u{b7} {what}",
+        "panel.timeline.signal.nobody" => "Nobody listens",
+        "panel.timeline.signal.script_may" => "A script may listen",
+        "panel.timeline.signal.who.signal_actions" => "Signal Actions",
+        "panel.timeline.signal.who.weapon_fire" => "Weapon",
+        "panel.timeline.signal.who.factory" => "Factory",
+        "panel.timeline.signal.who.state_machine" => "State Machine",
+        "panel.timeline.signal.who.shake_emitter" => "Camera Shake",
+        "panel.timeline.signal.who.particle_emitter" => "Particles",
+        "panel.timeline.signal.who.anim_rules" => "Animation Rules",
+        "panel.timeline.signal.who.motion_graph" => "Motion input",
+        "panel.timeline.signal.who.state_sets" => "UI state",
+        "panel.timeline.signal.who.script" => "Script",
         _ => return None,
     })
 }

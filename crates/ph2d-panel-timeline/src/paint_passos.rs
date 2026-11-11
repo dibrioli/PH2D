@@ -61,6 +61,7 @@ pub(super) fn pe_da_fita(
         r,
         ph2d_editor_core::panel::cards::banda::metrics::CARD_RADIUS,
         ph2d_tokens::TIMELINE_FRAME_PX,
-        crate::folha_tinta::tinta(cor, theme),
+        crate::animando::cor_da_moldura(theme)
+            .unwrap_or_else(|| crate::folha_tinta::tinta(cor, theme)),
     );
 }

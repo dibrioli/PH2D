@@ -91,6 +91,9 @@ impl crate::App {
             sim.world(),
             selected_now,
         );
+        let gesto = active_playhead.is_playing() || !self.timeline_intents.is_empty();
+        let sessao = ph2d_panel_timeline::sessao(vista_keys, gesto); // «Done» (doc 17 item 9)
+        self.timeline.animating = sessao;
         let timeline_reset = timeline_bridge::run(
             sim.world_mut(),
             &mut self.timeline,
@@ -120,7 +123,7 @@ impl crate::App {
             &self.clip_playhead,
             &self.container_playhead,
         );
-        let tocando = relogio.is_playing();
+        let tocando = relogio.is_playing() || sessao.0;
         self.physics.conducao.no_tempo(relogio.time());
         self.vec.conducao.a_tocar(tocando);
         self.flip_state.conducao.a_tocar(tocando);

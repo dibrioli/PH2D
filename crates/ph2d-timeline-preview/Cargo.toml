@@ -33,5 +33,8 @@ ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 ph2d-skeleton-ecs = { path = "../ph2d-skeleton-ecs" }
 serde_json = "1"
 
+[dev-dependencies]
+ph2d-anim = { path = "../ph2d-anim" }
+
 [lints]
 workspace = true

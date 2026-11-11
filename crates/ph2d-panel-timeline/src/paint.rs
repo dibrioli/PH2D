@@ -63,6 +63,7 @@ fn publish_view(state: &mut TimelinePanelState, snapshot: &ph2d_timeline::Timeli
     // that is a separate truth from the duration scope.)
     state::publish_keys_mode(state.tab.shows_keys());
     state::publish_curves_on_canvas(state.curves_on_canvas && state.tab.shows_keys());
+    crate::animando::publica(state.tab.shows_keys());
     // Arrange is always the SCENE's stack, so the breadcrumb trail does not apply there
     // however deep the animator walked (`tab::Tab::scene_root`).
     state::publish_scene_root(state.tab.scene_root());
@@ -99,6 +100,7 @@ fn release_everything_a_hidden_panel_must_not_hold(
     // As janelinhas da barra não voltam abertas com o painel.
     state.opcoes_abertas = false;
     state.menu_do_clip = false;
+    crate::signal_ouvintes::larga(state);
     // Drop any in-flight gesture: hiding the panel mid-drag must not leave a
     // marquee to resolve (or repaint) when it comes back — nor an undo
     // bracket open, which would swallow the next atomic edit.
@@ -108,6 +110,8 @@ fn release_everything_a_hidden_panel_must_not_hold(
     state::publish_keys_mode(false);
     // ...nor bending a path on the canvas.
     state::publish_curves_on_canvas(false);
+    // ...nor animating the scene (the shell gives the scene back).
+    crate::animando::larga();
     // ...and it is not showing the Containers list either — a stale `true`
     // here would keep refusing playback with no panel on screen to say why.
     state::publish_containers_list(false);

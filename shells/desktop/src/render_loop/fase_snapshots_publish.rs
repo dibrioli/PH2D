@@ -204,6 +204,7 @@ impl crate::App {
         );
         let fora = ph2d_signal_census::Fora::new(&motion.doc.graph, &self.timeline.doc, ui_states);
         fora.when_changed(sim.world(), ph2d_panel_inspector::set_signal_census); // censo de sinais
+        ph2d_panel_timeline::ouvintes(|n| ph2d_signal_census::listeners(sim.world(), &fora, n));
         #[cfg(feature = "panel-tags")]
         tags_snapshot::publica(sim, hero, tags, tags_problem.as_ref());
         // ⭐⭐ **As secções que o `publish` NÃO pode calcular** (leem a VM, o relógio, as partículas

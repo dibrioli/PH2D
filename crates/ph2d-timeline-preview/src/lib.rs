@@ -164,37 +164,83 @@ pub const DRIVERS: [Driver; 4] = [
 /// está plana naquele instante não está a ser conduzido, e mantê-lo no ledger deixaria a `settle`
 /// sem nada para esquecer: a reprodução nunca acabaria aos olhos do undo.
 pub fn declare_timeline_writes(world: &World, before: &[BoundBefore], drive: &mut PreviewDrive) {
+    declara(world, before, drive, false);
+}
+
+/// ⭐ **A sessão «Animating»** (doc 17 item 9, maquete B7) com `held`: o mesmo que
+/// [`declare_timeline_writes`], mas a Timeline é um condutor PERSISTENTE (o que não mudou continua
+/// conduzido) e a pose de entrada nunca é substituída pela «outra mão» ⇒ ir e vir com a agulha não
+/// grava passo; só as chaves são documento. O Done repõe a base do undo, que é essa pose.
+pub fn declare_timeline_writes_held(
+    world: &World,
+    before: &[BoundBefore],
+    drive: &mut PreviewDrive,
+    held: bool,
+) {
+    declara(world, before, drive, held);
+}
+
+fn fato(drive: &mut PreviewDrive, held: bool, e: Entity, was: Driven, now: Driven) {
+    if was != now {
+        if held {
+            drive.driven_held(e, was, now);
+        } else {
+            drive.driven(e, was, now);
+        }
+    } else if held {
+        drive.still_driving(e, now.driver());
+    }
+}
+
+fn declara(world: &World, before: &[BoundBefore], drive: &mut PreviewDrive, held: bool) {
     for b in before {
         let e = b.entity;
         // ⚠️ **Uma linha por facto, e o `zip` de `Option`s é o guarda**: um facto que a entidade
         // não tinha antes e não tem agora não se declara, e um que ela perdeu no meio do quadro
         // (o componente foi removido) também não — não há o que repor.
-        if let (Some(was), Some(now)) = (b.pose, world.get::<Transform>(e).copied())
-            && was != now
-        {
-            drive.driven(e, Driven::SolverPose(was), Driven::SolverPose(now));
+        if let (Some(was), Some(now)) = (b.pose, world.get::<Transform>(e).copied()) {
+            fato(
+                drive,
+                held,
+                e,
+                Driven::SolverPose(was),
+                Driven::SolverPose(now),
+            );
         }
         if let (Some(was), Some(now)) = (
             b.alpha,
             world.get::<ph2d_render::Sprite>(e).map(|s| s.opacity),
-        ) && was != now
-        {
-            drive.driven(e, Driven::SpriteAlpha(was), Driven::SpriteAlpha(now));
+        ) {
+            fato(
+                drive,
+                held,
+                e,
+                Driven::SpriteAlpha(was),
+                Driven::SpriteAlpha(now),
+            );
         }
         if let (Some(was), Some(now)) = (b.morph_t, world.get::<ph2d_ecs::VecMorph>(e).map(|m| m.t))
-            && was != now
         {
-            drive.driven(e, Driven::MorphT(was), Driven::MorphT(now));
+            fato(drive, held, e, Driven::MorphT(was), Driven::MorphT(now));
         }
         if let (Some(was), Some(now)) = (
             b.joint,
             world.get::<ph2d_physics_ecs::PhysicsJoint>(e).copied(),
-        ) && was != now
-        {
-            drive.driven(e, Driven::JointParams(was), Driven::JointParams(now));
+        ) {
+            fato(
+                drive,
+                held,
+                e,
+                Driven::JointParams(was),
+                Driven::JointParams(now),
+            );
         }
         if let (Some(was), Some(now)) = (b.bone, world.get::<ph2d_skeleton_ecs::Bone>(e)) {
             declara_osso(world, e, &was, now, &CHAVES_DAS_ALCAS, drive);
         }
     }
 }
+
+#[cfg(test)]
+#[path = "held_tests.rs"]
+mod held_tests;

@@ -2,7 +2,7 @@
 //! sinal por nome, e os scripts Luau, somados numa [`SignalCensus`]. A tabela única [`CAMPOS`] é a
 //! lista; o censo itera-a — campo novo de sinal = uma linha aqui.
 
-pub use ph2d_signal_ends::{Ends, Hint, Role, SignalCensus};
+pub use ph2d_signal_ends::{Ends, Hint, Listener, Quem, Role, SignalCensus, SignalListeners};
 
 pub mod fora;
 mod luau;
@@ -10,7 +10,6 @@ mod luau;
 pub use fora::{FORA, Fora, Origem};
 
 use ph2d_ecs::SpriteAnimMarkers;
-use ph2d_ecs::World;
 use ph2d_ecs::camera_shake::ShakeEmitter;
 use ph2d_ecs::counter_watch::CounterWatch;
 use ph2d_ecs::factory::Factory;
@@ -23,6 +22,7 @@ use ph2d_ecs::sprite_anim::SpriteAnimations;
 use ph2d_ecs::state_machine::StateMachine;
 use ph2d_ecs::timer::Timers;
 use ph2d_ecs::weapon::WeaponFire;
+use ph2d_ecs::{Entity, World};
 use ph2d_physics_ecs::{
     AnimRules, AnimWhen, Health, NavAgent, NavLink, RaySignals, SignalOnHit, SignalOnLeave,
 };
@@ -36,7 +36,7 @@ pub struct Campo {
 }
 
 /// Como uma linha de [`CAMPOS`] lê os nomes do mundo.
-pub type Leitor = fn(&World, &mut dyn FnMut(&str));
+pub type Leitor = fn(&World, &mut dyn FnMut(Entity, &str));
 
 macro_rules! campo {
     ($comp:ty, $field:literal, $role:ident, |$c:ident, $put:ident| $body:expr) => {
@@ -44,9 +44,10 @@ macro_rules! campo {
             component: stringify!($comp),
             field: $field,
             role: Role::$role,
-            read: |w, $put| {
-                if let Some(mut q) = w.try_query::<&$comp>() {
-                    for $c in q.iter(w) {
+            read: |w, put| {
+                if let Some(mut q) = w.try_query::<(Entity, &$comp)>() {
+                    for (e, $c) in q.iter(w) {
+                        let $put = &mut |n: &str| put(e, n);
                         $body;
                     }
                 }
@@ -147,7 +148,7 @@ pub static CAMPOS: &[Campo] = &[
 pub fn census(world: &World, fora: &Fora<'_>) -> SignalCensus {
     let mut out = SignalCensus::default();
     for c in CAMPOS {
-        (c.read)(world, &mut |n| out.add(n, c.role));
+        (c.read)(world, &mut |_, n| out.add(n, c.role));
     }
     for o in FORA {
         (o.read)(fora, &mut |n| out.add(n, o.role));
@@ -163,7 +164,7 @@ pub fn fingerprint(world: &World, fora: &Fora<'_>) -> u64 {
     let mut h = Fnv(0xcbf2_9ce4_8422_2325);
     for (i, c) in CAMPOS.iter().enumerate() {
         h.u64(i as u64);
-        (c.read)(world, &mut |n| {
+        (c.read)(world, &mut |_, n| {
             h.bytes(n.as_bytes());
             h.u64(u64::MAX);
         });
@@ -212,4 +213,38 @@ pub fn when_changed(world: &World, fora: &Fora<'_>, publish: impl FnOnce(SignalC
     if ULTIMA.with(|u| u.replace(Some(f))) != Some(f) {
         publish(census(world, fora));
     }
+}
+
+/// ⭐ **Quem ouve `name`** (doc Timeline 17 item 8, a lista «Heard by» do cartão do marcador): as
+/// linhas `Listen` de [`CAMPOS`] e de [`FORA`] e os scripts que fazem `ph2d.connect(obj, "name", …)`,
+/// uma por (objecto, o que ouve), na ordem das tabelas. Nome vazio = ninguém.
+#[must_use]
+pub fn listeners(world: &World, fora: &Fora<'_>, name: &str) -> SignalListeners {
+    let mut list: Vec<Listener> = Vec::new();
+    if name.is_empty() {
+        return SignalListeners::default();
+    }
+    let mut put = |object: Option<String>, what: Quem| {
+        let l = Listener { object, what };
+        if !list.contains(&l) {
+            list.push(l);
+        }
+    };
+    let nome = |e| ph2d_ecs::signal_actions::name_of(world, e);
+    for c in CAMPOS.iter().filter(|c| c.role == Role::Listen) {
+        (c.read)(world, &mut |e, n| {
+            if n == name {
+                put(nome(e), Quem::Component(c.component));
+            }
+        });
+    }
+    for o in FORA.iter().filter(|o| o.role == Role::Listen) {
+        (o.read)(fora, &mut |n| {
+            if n == name {
+                put(None, Quem::Doc(o.doc));
+            }
+        });
+    }
+    let script_may = luau::listeners(world, name, &mut |e| put(nome(e), Quem::Script));
+    SignalListeners { list, script_may }
 }

@@ -63,6 +63,18 @@ impl crate::App {
         }
     }
 
+    /// Acabada a sessão de animar, a cena volta à base do undo (a pose de entrada), sem passo.
+    pub(super) fn devolve_a_cena(&mut self) {
+        if ph2d_panel_timeline::take_ended()
+            && !self.undo.jogo.a_correr()
+            && let Some(base) = self.undo_baseline.take()
+        {
+            self.apply_project_with(&base, None);
+            self.undo_baseline = Some(base);
+            self.arma_o_restauro();
+        }
+    }
+
     pub(super) fn arma_o_restauro(&mut self) {
         self.undo.assenta_o_restauro = QUADROS_DO_RESTAURO;
     }

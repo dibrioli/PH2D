@@ -67,6 +67,7 @@ pub(crate) fn process(
     // O Esc sem dono larga a peça escolhida (doc 17 item 1); quem o tinha (menu, campo) ficou com ele.
     // O chip na mão é o primeiro a ouvir o Esc (doc 17 item 6): cancela sem efeito.
     if ph2d_editor_core::interaction::dispatch::key::take_esc_livre()
+        && !crate::signal_ouvintes::esc(state)
         && !crate::chip_drag::cancela(state)
     {
         state.strip_escolhida = None;

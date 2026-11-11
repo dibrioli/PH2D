@@ -13,7 +13,7 @@ use ph2d_editor_core::widget::card_ink::CardInk;
 /// A largura do chip do dono.
 const ANIM_W: f32 = 168.0; // LITERAL-PX-OK: «Animation: Scene» + seta, medido na foto; nomes longos cortam
 
-const DICAS: [(ph2d_a11y::NodeId, &str); 18] = [
+const DICAS: [(ph2d_a11y::NodeId, &str); 19] = [
     (TIMELINE_GO_START, "panel.timeline.tip.go_start"),
     (TIMELINE_PREV_FRAME, "panel.timeline.tip.prev_frame"),
     (TIMELINE_PLAY, "panel.timeline.tip.play"),
@@ -37,6 +37,10 @@ const DICAS: [(ph2d_a11y::NodeId, &str); 18] = [
         "panel.timeline.curves_on_canvas.tip",
     ),
     (ids::TIMELINE_CLIP_MENU, "panel.timeline.tip.clip_menu"),
+    (
+        ids::TIMELINE_ANIMATING_DONE,
+        "panel.timeline.animating.done.tip",
+    ),
     (
         ids::TIMELINE_CLIP_AUTOPLAY,
         "panel.timeline.tip.starts_with",
@@ -393,12 +397,18 @@ fn grupo_de_tocar(
     body: Rect,
 ) {
     let ink = CardInk::of_list(theme);
-    let mut c = cartao(ctx, ink, body);
     // O separador das abas (onda 1c) só entra se o tocar vem logo a seguir na MESMA fileira.
     if f.resta() >= banda::SEPARADOR_W + m::FIELD_GAP + banda::icones_w(TRANSPORT_BTNS) {
         let (x, y) = f.poe(banda::SEPARADOR_W);
-        c.separador_em(x, y);
+        cartao(ctx, ink, body).separador_em(x, y);
     }
+    // «● Animating jump [Done]» antes do tocar (doc 17 item 9, B7).
+    if let Some(texto) = crate::animando::rotulo(snap) {
+        let w = crate::animando::pilula_w(ctx, &texto);
+        let (x, y) = f.poe(w);
+        crate::animando::pilula(ctx, theme, Rect::new(x, y, w, m::FIELD_H), &texto);
+    }
+    let mut c = cartao(ctx, ink, body);
     let at = f.poe(banda::icones_w(TRANSPORT_BTNS));
     c.icones_em_fila(&fileira_do_transporte(snap, view), at.0, at.1);
     // Time e Frame são um grupo: não se partem entre fileiras.

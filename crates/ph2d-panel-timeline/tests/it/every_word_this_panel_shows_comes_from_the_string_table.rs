@@ -19,7 +19,20 @@ const TABLE: &str = "crates/ph2d-i18n/src/timeline.rs";
 const TABLES: &[&str] = &[TABLE, "crates/ph2d-i18n/src/lib.rs"];
 
 /// ⭐ As excepções, **com o mecanismo**.
-const NOT_LANGUAGE: &[Excecao] = &[];
+const NOT_LANGUAGE: &[Excecao] = &[
+    ("signal_ouvintes.rs", "SignalActions", QUEM),
+    ("signal_ouvintes.rs", "WeaponFire", QUEM),
+    ("signal_ouvintes.rs", "Factory", QUEM),
+    ("signal_ouvintes.rs", "StateMachine", QUEM),
+    ("signal_ouvintes.rs", "ShakeEmitter", QUEM),
+    ("signal_ouvintes.rs", "ParticleEmitter", QUEM),
+    ("signal_ouvintes.rs", "AnimRules", QUEM),
+    ("signal_ouvintes.rs", "MotionGraph", QUEM),
+    ("signal_ouvintes.rs", "StateSets", QUEM),
+];
+
+/// O mecanismo das isenções do `signal_ouvintes.rs` (doc 17 item 8).
+const QUEM: &str = "o NOME DE TIPO que o `ph2d-signal-census` entrega em `Quem` (o `stringify!` da tabela CAMPOS, o `doc` da FORA): o `rotulo` casa-o para escolher a chave do rótulo — identidade, nunca pintado";
 
 #[test]
 fn every_word_this_panel_shows_comes_from_the_string_table() {

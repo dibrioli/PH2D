@@ -221,7 +221,9 @@ pub(crate) fn run(
     // O tempo de cada macro é o que uma faixa escreve NESTE quadro (ADR-0186): limpo antes dos
     // três ramos e do `toca_os_objectos`, que são quem o reescreve.
     ph2d_timeline::clear_macro_clocks(world);
-    if let Some(c) = container {
+    let sessao = timeline.animating;
+    if sessao.1 {
+    } else if let Some(c) = container {
         ph2d_timeline::apply_container(world, &mut timeline.doc, c, playhead.time(), skip);
     } else if solo {
         ph2d_timeline::apply_active_clip(world, &mut timeline.doc, playhead.time(), skip);
@@ -235,7 +237,7 @@ pub(crate) fn run(
     }
     // E o que os três ramos escreveram é declarado por UM sítio — pô-lo dentro de cada braço seria
     // três cópias, e a que ficasse de fora é a que ninguém repara (o Arrange é o ramo comum).
-    crate::timeline_preview::declare_timeline_writes(world, &bound_before, drive);
+    crate::timeline_preview::declare_timeline_writes_held(world, &bound_before, drive, sessao.0);
     // ⭐⭐⭐ **OS OBJECTOS NO RELÓGIO DELES** — a Animação de cada objecto (a entrada, ou o clipe
     // pedido) e as cutscenes (TOP-20 #19, o container de um `SequencePlayer`). ⚠️ **Aqui, e as duas metades são load-bearing:** DEPOIS do apply da
     // cena (o ledger compõe `autorado → A → B`; antes dele, a cena escreveria por cima e o objecto

@@ -17,12 +17,16 @@
 #![forbid(unsafe_code)]
 
 mod alca_estado;
+mod animando;
+pub use animando::{animating, parked, resume, sessao, take_ended};
 mod breadcrumb;
 pub mod chip_drag;
 mod faixa_marcadores;
 mod folha_tinta;
 mod ruler_clock;
 mod ruler_trecho;
+pub mod signal_ouvintes;
+pub use signal_ouvintes::{ouvintes, set_signal_listeners, signal_asked};
 
 /// The ruler's resolved clock, for the seam gate that pins which one it measures.
 ///

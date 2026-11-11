@@ -48,6 +48,8 @@ pub(crate) fn apply(
                 if let Some(&(t, _, _)) = snap.markers.get(index) {
                     state::push_intent(TimelineIntent::Scrub(t));
                 }
+                // Com sinal, nos cartões: abre também o cartão «quem ouve» (doc 17 item 8).
+                crate::signal_ouvintes::abre(state, snap, index);
             }
         }
         GesturePhase::DoubleClick => {

@@ -133,6 +133,7 @@ pub(crate) fn fecha_pelo_clique_de_fora(state: &mut TimelinePanelState, ctx: &mu
     if store.take_own_list_dismissed(ids::TIMELINE_CLIP_MENU) {
         state.menu_do_clip = false;
     }
+    crate::signal_ouvintes::fecha_se_preciso(state, ctx);
 }
 
 fn tr(chave: &str) -> &'static str {
@@ -261,23 +262,8 @@ fn flutua(
     dentro: f32,
     corpo: &dyn Fn(&mut CardCtx<'_>, f32) -> f32,
 ) {
-    let ink = CardInk::of_list(theme);
     let w = dentro + m::CARD_PAD_X * 2.0;
-    let medida = {
-        let mut cena = VectorScene::new();
-        let mut alvos = HitIndex::new();
-        let mut c = CardCtx::flutuante(
-            &mut cena,
-            ctx.text_system,
-            ctx.host.store(),
-            &mut alvos,
-            ink,
-            m::CARD_PAD_X,
-            dentro,
-        );
-        card_ink::com(ink, || corpo(&mut c, m::CARD_PAD_TOP))
-    };
-    let h = medida + m::CARD_PAD_BOTTOM;
+    let h = altura(ctx, theme, dentro, corpo);
     let x = if a_esquerda {
         ancora.x
     } else {
@@ -290,6 +276,40 @@ fn flutua(
         h,
         ctx.viewport,
     );
+    flutua_em(ctx, theme, (dono, rect), dentro, corpo);
+}
+
+/// A altura de uma janelinha de cartão de `dentro` de largura com este `corpo` (medida sem pintar).
+pub(crate) fn altura(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    dentro: f32,
+    corpo: &dyn Fn(&mut CardCtx<'_>, f32) -> f32,
+) -> f32 {
+    let ink = CardInk::of_list(theme);
+    let mut cena = VectorScene::new();
+    let mut alvos = HitIndex::new();
+    let mut c = CardCtx::flutuante(
+        &mut cena,
+        ctx.text_system,
+        ctx.host.store(),
+        &mut alvos,
+        ink,
+        m::CARD_PAD_X,
+        dentro,
+    );
+    card_ink::com(ink, || corpo(&mut c, m::CARD_PAD_TOP)) + m::CARD_PAD_BOTTOM
+}
+
+/// Pinta a janelinha de `dono` em `rect`, por cima de tudo, e publica-a para o clique de fora a fechar.
+pub(crate) fn flutua_em(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    (dono, rect): (NodeId, Rect),
+    dentro: f32,
+    corpo: &dyn Fn(&mut CardCtx<'_>, f32) -> f32,
+) {
+    let ink = CardInk::of_list(theme);
     ctx.host.store_mut().publish_own_list(dono, Some(rect));
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -374,6 +394,7 @@ pub(crate) fn paint(
             .store_mut()
             .publish_own_list(ids::TIMELINE_CLIP_MENU, None),
     }
+    crate::signal_ouvintes::paint(ctx, theme, state, snap);
 }
 
 #[cfg(test)]

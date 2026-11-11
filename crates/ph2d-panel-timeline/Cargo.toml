@@ -37,6 +37,8 @@ ph2d-host = { path = "../ph2d-host" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 # A unidade de exibição de cada canal (`canal::unidade`) — já está no grafo pela `ph2d-timeline`.
 ph2d-ecs = { path = "../ph2d-ecs" }
+# Quem ouve um sinal (doc 17 item 8): os tipos da lista «Heard by», folha de dados sem deps.
+ph2d-signal-ends = { path = "../ph2d-signal-ends" }
 
 [dev-dependencies]
 # A régua lexical do HR-15, para o gate por crate.

@@ -390,6 +390,22 @@ impl PreviewDrive {
     /// ⇒ *para um condutor persistente, «não mudou» e «acabou» são factos diferentes com a mesma
     /// forma* — e é esta porta que os separa.
     ///
+    /// ⭐ **Como [`Self::driven`], SEM a «outra mão»**: o autorado de uma condução que já existe
+    /// nunca muda. É a sessão «Animating» da Timeline (doc 17 item 9, idioma do Construct): enquanto
+    /// se anima, só as CHAVES são documento — a pose de entrada fica autorada até ao Done.
+    pub fn driven_held(&mut self, entity: Entity, before: Driven, after: Driven) {
+        let e = self
+            .memo
+            .entry((entity.to_bits(), after.driver()))
+            .or_insert(Entry {
+                authored: before,
+                last_written: after,
+                seen: true,
+            });
+        e.last_written = after;
+        e.seen = true;
+    }
+
     /// ⛔ **Ela NUNCA cria uma entrada.** Sem entrada não há condução a manter: o motor está a
     /// escrever exactamente o que o documento já diz, e não há nada para devolver.
     pub fn still_driving(&mut self, entity: Entity, driver: Driver) -> bool {

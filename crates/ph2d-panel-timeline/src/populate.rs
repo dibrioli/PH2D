@@ -101,6 +101,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     }
     button(store, crate::ids::TIMELINE_ADD_MARKER);
     button(store, crate::ids::TIMELINE_STRETCH_CLEAR);
+    button(store, crate::ids::TIMELINE_ANIMATING_DONE);
     for (id, _) in ids::ADDPROP_BUTTONS {
         button(store, id);
     }

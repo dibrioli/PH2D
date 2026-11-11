@@ -86,6 +86,10 @@ pub(crate) fn apply_event(
             host.set_panel_visible(TimelinePanel::ID, false);
             EventOutcome::Consumed
         }
+        WidgetEvent::Click(id) if id == crate::ids::TIMELINE_ANIMATING_DONE => {
+            crate::animando::done();
+            EventOutcome::Consumed
+        }
         WidgetEvent::Click(id) if id == crate::ids::TIMELINE_STRETCH_CLEAR => {
             crate::ruler_trecho::larga();
             EventOutcome::Consumed

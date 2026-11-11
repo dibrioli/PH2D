@@ -421,6 +421,7 @@ impl crate::App {
         self.vec.conducao.settle();
         self.flip_state.conducao.settle();
         self.physics.conducao.settle();
+        self.devolve_a_cena(); // o «Done» da Timeline (doc 17 item 9)
         // ⭐⭐⭐ **A FOTOGRAFIA que o `Cancel` da sessão de receita repõe** — pedida quando a sessão
         // abriu, tirada aqui, onde o `self` está livre (a captura reconcilia o documento antes de
         // fotografar e leva o `&mut self` inteiro).

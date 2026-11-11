@@ -105,3 +105,27 @@ mod tests {
         assert_eq!(c.hint("coin_takn", Role::Listen), Hint::Nobody);
     }
 }
+
+/// QUEM ouve, numa linha de [`Listener`]: o componente (o nome do tipo), o documento de fora do mundo
+/// (`MotionGraph`, `StateSets`) ou um script Luau.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Quem {
+    Component(&'static str),
+    Doc(&'static str),
+    Script,
+}
+
+/// Um ouvinte de um nome: o objecto (o `Name` dele; `None` = sem nome, ou um documento) e o que ouve.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Listener {
+    pub object: Option<String>,
+    pub what: Quem,
+}
+
+/// Quem ouve um nome (doc Timeline 17 item 8): uma linha por (objecto, o que ouve), na ordem da tabela.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SignalListeners {
+    pub list: Vec<Listener>,
+    /// Um script ouve com um nome não literal (ou ouve tudo): pode ouvir este também.
+    pub script_may: bool,
+}

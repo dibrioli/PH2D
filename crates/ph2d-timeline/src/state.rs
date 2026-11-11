@@ -190,6 +190,10 @@ pub struct TimelineState {
     /// clip-switch sync) targets: the Keys-view clip-clock loop, or the Arrange
     /// timeline loop. Session state, like [`Self::flags`]; defaults to Arrange.
     pub keys_mode: bool,
+    /// **«Animating · Done»** (doc 17 item 9): `(a animar, parada)`, carimbado pela shell a cada quadro
+    /// de `ph2d_panel_timeline::sessao`. A animar, o que as curvas escrevem é pré-visualização segura
+    /// (a agulha não grava passo); parada (o Done), a aba Keys não põe o clipe na cena.
+    pub animating: (bool, bool),
     /// **The panel is showing the Containers LIST** (the Containers tab at its root
     /// level) — stamped by the shell each frame from
     /// `ph2d_panel_timeline::state::containers_list()`, the same channel

@@ -10604,6 +10604,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-label-census",
+ "ph2d-signal-ends",
  "ph2d-text",
  "ph2d-timeline",
  "ph2d-tokens",
@@ -11682,6 +11683,7 @@ dependencies = [
 name = "ph2d-timeline-preview"
 version = "0.0.0"
 dependencies = [
+ "ph2d-anim",
  "ph2d-ecs",
  "ph2d-physics-ecs",
  "ph2d-preview-drive",

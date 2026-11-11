@@ -92,7 +92,9 @@ pub(crate) struct TimelineScene<'a> {
 
 impl SceneAtTick for TimelineScene<'_> {
     fn put(&mut self, sim: &mut SimWorld, tick: u64) -> bool {
-        ph2d_timeline::apply_from_doc(sim.world_mut(), self.doc, tick as f64 * self.fixed_dt);
+        let t = tick as f64 * self.fixed_dt;
+        ph2d_timeline::apply_from_doc(sim.world_mut(), self.doc, t);
+        crate::canais_corpo::aplicar_do_tique(sim, self.doc, t);
         true
     }
 }

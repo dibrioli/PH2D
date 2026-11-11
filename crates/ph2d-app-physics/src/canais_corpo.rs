@@ -355,6 +355,24 @@ pub fn aplicar(
     mudou
 }
 
+/// ⭐ **O que a curva manda num TIQUE chega ao corpo nesse tique** (GEF02 onda 8 item 3): o passo
+/// por tique (`TimelineScene`: Play com vários tiques por quadro e o replay do scrub) aplica-o pelo
+/// mesmo funil. Medido antes: Height 1 → 2 → 1 → 2, 3 tiques por quadro contra 1 = 4,3 cm de desvio
+/// do caixote. Sem o livro de autoria: o do quadro guarda o primeiro valor da corrida
+/// (`ConducaoDosCanais::conduziu`), e o registo é o dos componentes que a §11 escreve.
+pub fn aplicar_do_tique(sim: &mut SimWorld, doc: &ph2d_timeline::TimelineDoc, t: f64) {
+    static REGISTO: std::sync::OnceLock<ComponentRegistry> = std::sync::OnceLock::new();
+    let reg = REGISTO.get_or_init(|| {
+        let mut r = ComponentRegistry::new();
+        ph2d_ecs::scene::register_ecs_components(&mut r);
+        ph2d_physics_ecs::register_physics_components(&mut r);
+        r
+    });
+    let mut descartavel = ConducaoFisica::default();
+    descartavel.no_tempo(t);
+    let _ = aplicar(sim, reg, &mut descartavel, doc);
+}
+
 /// Os pontos (51/52) que a curva mandou a UMA forma; a fotografia autorada e o eco.
 fn aplicar_pontos(
     sim: &mut SimWorld,
@@ -487,6 +505,10 @@ fn ordenar(it: impl Iterator<Item = (u64, FieldKey, f32)>) -> Vec<(u64, FieldKey
 #[cfg(test)]
 #[path = "canais_corpo_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "canais_por_tique_tests.rs"]
+mod por_tique_tests;
 
 #[cfg(test)]
 #[path = "canais_donos_tests.rs"]

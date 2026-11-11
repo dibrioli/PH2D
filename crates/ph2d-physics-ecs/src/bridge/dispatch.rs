@@ -117,6 +117,13 @@ impl PhysicsBridge {
         scene: &mut dyn SceneAtTick,
         tape: &mut dyn PlayerInputAtTick,
     ) {
+        // ⭐ A cena no 1.º tique devido ANTES do reconcile (GEF02 onda 8 item 3): no app o quadro já
+        // aplicou a curva no ALVO, e o reconcile afinava as formas pelo fim do quadro para o laço logo
+        // as voltar ao 1.º tique — um vai-e-vem que o empurrão do `reshape_push` não desfaz (medido,
+        // Height animada com 3 tiques por quadro contra 1: 0,65 cm de desvio sem isto, 0 com).
+        if target > self.last_stepped {
+            scene.put(sim, self.last_stepped + 1);
+        }
         self.prepare(sim);
         // Transitions are a fresh list per dispatch; the forward loop appends to it,
         // tick by tick. (Flashes are NOT cleared here — they outlive their tick.)

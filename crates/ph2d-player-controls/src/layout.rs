@@ -173,10 +173,20 @@ impl Layout {
             .map(|r| text.prefix_width_weighted(&r.label, m::VALUE_PX, FontWeight::SEMI_BOLD))
             .fold(0.0_f32, f32::max)
             .ceil();
-        let keys_w = widths
-            .iter()
-            .map(|w| w.iter().sum::<f32>() + m::SEG_INSET * w.len().saturating_sub(1) as f32)
-            .fold(0.0_f32, f32::max);
+        // ⭐ A largura do painel é a do MAIOR estado (onda 4: 228 → 272 px ao escutar): cada linha reserva, em
+        // repouso, o que a sua caixa mais estreita depois da 1.ª cresce para «Press a key» — só uma escuta de cada vez.
+        let mut keys_w = 0.0_f32;
+        for r in rows {
+            let resto: Vec<f32> = (1..r.slots())
+                .map(|s| chip_w(text, &slot_label(r, s, false)))
+                .collect();
+            let folga = resto
+                .iter()
+                .map(|w| (press_w - w).max(0.0))
+                .fold(0.0_f32, f32::max);
+            let gaps = m::SEG_INSET * resto.len() as f32;
+            keys_w = keys_w.max(first_w + resto.iter().sum::<f32>() + folga + gaps);
+        }
         let note_w = rows
             .iter()
             .filter_map(Row::note)

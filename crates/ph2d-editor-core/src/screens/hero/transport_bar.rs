@@ -84,13 +84,26 @@ pub fn movimento_com_a_tela(hero: &mut super::HeroScreen, x: f32, y: f32) -> boo
     if sobre_o_controls(hero, x, y) {
         return true;
     }
+    solta_o_controls(hero);
+    false
+}
+
+/// O hover do [`CONTROLS`] (e a dica dele) apaga-se: o ponteiro saiu dele para a tela aberta ou para fora da janela.
+pub fn solta_o_controls(hero: &mut super::HeroScreen) {
     if hero.store.hot_id() == Some(CONTROLS.0) {
         hero.store.set_hot(None);
         let state = ButtonState::Normal;
         hero.store
             .register(CONTROLS.0, InteractiveState::Button { state });
     }
-    false
+}
+
+/// O chão das barras do jogo: o da barra de menus (a tinta da lista em cartões, o `Bg1` no modo de antes) — a tela
+/// cheia pinta-o sob os seus botões, e o separador lê-se sobre ele com o mesmo contraste nas duas.
+#[must_use]
+pub fn chao_da_barra(theme: Theme) -> Color {
+    crate::widget::cromo_barra::Barra::de(theme)
+        .map_or_else(|| resolve(ColorToken::Bg1, theme), |b| b.chao())
 }
 
 /// A pílula do grupo do jogo: só os cinco — o [`CONTROLS`] tem a moldura dele.
@@ -159,7 +172,7 @@ pub fn paint_palco(
     let botoes = rects_palco(area);
     if let Some(u) = crate::widget::cromo_barra::uniao(botoes.iter().map(|(_, _, r)| *r)) {
         let raio = crate::paint::frame_radius(theme, Radius::Sm.px());
-        fill_rounded_rect(scene, u, raio, resolve(ColorToken::Bg1, theme));
+        fill_rounded_rect(scene, u, raio, chao_da_barra(theme));
     }
     paint(&botoes, run, scene, theme, hit_index, store);
     let _ = super::topbar::paint_hover_tooltip(scene, text_system, theme, hit_index, store, area);
@@ -182,6 +195,25 @@ pub fn aceso(id: NodeId, run: GameRun) -> bool {
     }
 }
 
+/// A caixa da moldura do «Controls» e o raio: o MESMO recuo e raio do realce de um segmento da pílula (o Pause aceso),
+/// nos quatro lados, para não encostar nas bordas da barra.
+#[must_use]
+pub fn caixa_do_controls(r: Rect, theme: Theme) -> (Rect, f32) {
+    use ph2d_card_stack::metrics as m;
+    let recuo = m::FIELD_BORDER + m::SEG_PAD;
+    let caixa = Rect::new(
+        r.x + recuo,
+        r.y + recuo,
+        r.w - recuo * 2.0,
+        r.h - recuo * 2.0,
+    );
+    let raio = crate::widget::cromo_barra::Barra::de(theme).map_or_else(
+        || crate::paint::frame_radius(theme, Radius::Sm.px()),
+        |_| m::SEG_RADIUS,
+    );
+    (caixa, raio)
+}
+
 /// ⭐ A moldura PRÓPRIA do «Controls»: um contorno (filete da casa, raio do campo) sem o chão da pílula do jogo, para
 /// ler como outro grupo. Aceso = o fundo escolhido e o glifo no acento; desligado = o glifo apagado. Devolve a cor do
 /// glifo.
@@ -194,11 +226,7 @@ fn moldura_controls(
 ) -> Color {
     let barra = crate::widget::cromo_barra::Barra::de(theme);
     let borda = StrokeToken::Thin.px();
-    let caixa = Rect::new(r.x, r.y + borda, r.w, r.h - borda * 2.0);
-    let raio = barra.map_or_else(
-        || crate::paint::frame_radius(theme, Radius::Sm.px()),
-        |_| ph2d_card_stack::metrics::FIELD_RADIUS,
-    );
+    let (caixa, raio) = caixa_do_controls(r, theme);
     let (ligado, on) = (run.controls_enabled(), run.controls_open);
     let cor = |t: ColorToken| barra.map_or_else(|| resolve(t, theme), |b| b.tinta().color(t));
     let fundo = if on {
@@ -209,14 +237,16 @@ fn moldura_controls(
     if let Some(f) = fundo {
         fill_rounded_rect(scene, caixa, raio, cor(f));
     }
-    let filete = if on {
-        ColorToken::Accent
+    // ⭐ Aceso e pairado sobe um degrau (onda 4): o acento de hover da casa (`AccentHover`, o do botão Accent).
+    let acento = if hover {
+        ColorToken::AccentHover
     } else {
-        ColorToken::Border
+        ColorToken::Accent
     };
+    let filete = if on { acento } else { ColorToken::Border };
     crate::paint::stroke_rounded_rect(scene, caixa, raio, borda, cor(filete));
     cor(if on {
-        ColorToken::Accent
+        acento
     } else if !ligado {
         ColorToken::TextDisabled
     } else if hover {

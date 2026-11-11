@@ -78,16 +78,22 @@ pub fn pointer_move(s: &mut PlaySession, at: Option<(f32, f32)>) -> (bool, bool)
 
 /// ⭐ Com a tela aberta o botão «Controls» da barra acende sob o ponteiro (dono 10/11, D32): sobre ele o movimento é
 /// da barra (`false`: a shell passa-o ao hero) e a tela solta o hover dela; fora dele é o [`pointer_move`], e o botão
-/// apaga-se ([`transport_bar::movimento_com_a_tela`]).
+/// apaga-se, também ao sair da janela ([`transport_bar::solta_o_controls`]).
 #[must_use]
 pub fn pointer_move_com_a_barra(
     s: &mut PlaySession,
     hero: Option<&mut HeroScreen>,
     at: Option<(f32, f32)>,
 ) -> (bool, bool) {
-    let barra = |(h, (x, y)): (&mut HeroScreen, _)| transport_bar::movimento_com_a_tela(h, x, y);
-    if s.screen().is_open() && hero.zip(at).is_some_and(barra) {
-        return (false, s.pointer_move(None));
+    if let Some(h) = hero.filter(|_| s.screen().is_open()) {
+        match at {
+            Some((x, y)) if transport_bar::movimento_com_a_tela(h, x, y) => {
+                return (false, s.pointer_move(None));
+            }
+            // Saiu da janela direto do botão: o hover e a dica dele não ficam presos.
+            None => transport_bar::solta_o_controls(h),
+            Some(_) => {}
+        }
     }
     pointer_move(s, at)
 }

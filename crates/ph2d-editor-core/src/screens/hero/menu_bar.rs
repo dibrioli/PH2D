@@ -371,8 +371,7 @@ pub fn paint_menu_bar(
     if bar.w <= 0.0 || bar.h <= 0.0 {
         return;
     }
-    let chao = crate::widget::cromo_barra::Barra::de(theme)
-        .map_or_else(|| resolve(ColorToken::Bg1, theme), |b| b.chao());
+    let chao = super::transport_bar::chao_da_barra(theme);
     scene.fill_rect(rect_to_vello(bar), chao);
     // ⛔⛔ **PRIMEIRO o fundo, e por isso ele PERDE para os títulos** — o `HitIndex` caminha de
     // trás para a frente, então o que se regista antes fica por baixo. Sem esta linha a barra

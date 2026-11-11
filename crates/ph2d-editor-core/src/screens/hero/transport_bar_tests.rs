@@ -434,3 +434,169 @@ fn com_a_tela_aberta_o_controls_acende_so_sob_o_ponteiro() {
         );
     }
 }
+
+/// Grava o que `f` pinta.
+fn gravado(f: impl FnOnce(&mut VectorScene)) -> Vec<ph2d_vector::DrawOp> {
+    let mut scene = VectorScene::new();
+    scene.record();
+    f(&mut scene);
+    scene.take_record()
+}
+
+/// A caixa (y de cima, y de baixo) de cada operação da cor `cor`.
+fn faixas(ops: &[ph2d_vector::DrawOp], cor: Color) -> Vec<(f64, f64)> {
+    use ph2d_vector::{Brush, DrawOp, Shape};
+    ops.iter()
+        .filter_map(|o| match o {
+            DrawOp::Fill {
+                brush: Brush::Solid(c),
+                path,
+                ..
+            }
+            | DrawOp::Stroke {
+                brush: Brush::Solid(c),
+                path,
+                ..
+            } if *c == cor => {
+                let b = path.bounding_box();
+                Some((b.y0, b.y1))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+fn loja_com(hover: bool) -> WidgetStore {
+    let mut store = WidgetStore::default();
+    let state = if hover {
+        ButtonState::Hovered
+    } else {
+        ButtonState::Normal
+    };
+    store.register(
+        CONTROLS.0,
+        crate::interaction::InteractiveState::Button { state },
+    );
+    store
+}
+
+/// ⭐ Onda 4: o «Controls» tem TRÊS estados que se veem — normal, aceso (a tela aberta) e aceso pairado (o acento de
+/// hover da casa): com a tela aberta, pairar muda o botão. Mutação: o acento ignorar o `hover` ⇒ aceso = aceso+hover.
+#[test]
+fn o_controls_normal_aceso_e_aceso_pairado_pintam_diferente() {
+    let r = rects(BARRA, 100.0, 800.0);
+    let ligado = GameRun {
+        stage: Some(GameStage::Editor),
+        playing: true,
+        has_controls_screen: true,
+        ..Default::default()
+    };
+    let aberto = GameRun {
+        controls_open: true,
+        ..ligado
+    };
+    let pinta = |run: GameRun, hover: bool| {
+        let store = loja_com(hover);
+        format!(
+            "{:?}",
+            gravado(|scene| paint(
+                &r,
+                run,
+                scene,
+                Theme::Dark,
+                &mut HitIndex::default(),
+                &store
+            ))
+        )
+    };
+    let (normal, aceso, aceso_hover) = (
+        pinta(ligado, false),
+        pinta(aberto, false),
+        pinta(aberto, true),
+    );
+    assert_ne!(normal, aceso, "aceso ≠ normal");
+    assert_ne!(aceso, aceso_hover, "pairar o aceso sobe um degrau");
+    assert_ne!(normal, aceso_hover);
+}
+
+/// ⭐ Onda 4: na tela cheia a moldura do «Controls» tem o recuo do realce do Pause (não encosta nas bordas da barra),
+/// o chão dos botões é o da barra de menus e o separador tem a cor do da barra do editor sobre ele (o mesmo contraste).
+/// Controlo: o Pause aceso pinta o realce, e a moldura fica dentro do quadrado dele nos quatro lados. Mutação: voltar a
+/// caixa ao recuo de 1 px ⇒ a faixa da moldura ≠ a do realce; voltar o chão a `Bg1` em cartões ⇒ reprova o chão.
+#[test]
+fn na_tela_cheia_a_moldura_e_o_separador_sao_os_da_barra_do_editor() {
+    let area = Rect::new(0.0, 0.0, 1600.0, 1000.0);
+    let theme = Theme::Dark;
+    crate::widget::lista_flutuante::force_cromo_on_this_thread(Some(true));
+    let run = GameRun {
+        stage: Some(GameStage::Fullscreen),
+        playing: false,
+        has_controls_screen: true,
+        controls_open: true,
+        ..Default::default()
+    };
+    let palco = rects_palco(area);
+    let store = loja_com(false);
+    let mut ts = ph2d_text::TextSystem::new();
+    let ops = gravado(|scene| {
+        paint_palco(
+            area,
+            run,
+            scene,
+            &mut ts,
+            theme,
+            &mut HitIndex::default(),
+            &store,
+        )
+    });
+    let chao = faixas(&ops, chao_da_barra(theme));
+    let u = crate::widget::cromo_barra::uniao(palco.iter().map(|(_, _, r)| *r)).expect("a união");
+    assert!(
+        chao.iter()
+            .any(|(y0, y1)| (*y0 - f64::from(u.y)).abs() < 0.5
+                && (*y1 - f64::from(u.y + u.h)).abs() < 0.5),
+        "o chão da tela cheia é o da barra: {chao:?}"
+    );
+    let ctl = palco[3].2;
+    let (caixa, _) = caixa_do_controls(ctl, theme);
+    assert!(
+        caixa.x > ctl.x
+            && caixa.y > ctl.y
+            && caixa.x + caixa.w < ctl.x + ctl.w
+            && caixa.y + caixa.h < ctl.y + ctl.h,
+        "a moldura não encosta: {caixa:?} em {ctl:?}"
+    );
+    {
+        let b = crate::widget::cromo_barra::Barra::de(theme).expect("em cartões");
+        let realce = faixas(&ops, b.tinta().color(ColorToken::KanbanCardRaised));
+        assert!(
+            !realce.is_empty(),
+            "o Pause aceso pinta o realce (controlo)"
+        );
+        let (y0, y1) = realce[0];
+        assert!(
+            (y0 - f64::from(caixa.y)).abs() < 0.5
+                && (y1 - f64::from(caixa.y + caixa.h)).abs() < 0.5,
+            "recuo da moldura {caixa:?} ≠ o do realce {realce:?}"
+        );
+        let normal = gravado(|scene| {
+            paint(
+                &rects(BARRA, 100.0, 800.0),
+                run,
+                scene,
+                theme,
+                &mut HitIndex::default(),
+                &store,
+            )
+        });
+        assert!(
+            !faixas(&normal, b.divisoria()).is_empty(),
+            "o separador da barra do editor"
+        );
+        assert!(
+            !faixas(&ops, b.divisoria()).is_empty(),
+            "o MESMO na tela cheia"
+        );
+    }
+    crate::widget::lista_flutuante::force_cromo_on_this_thread(None);
+}

@@ -180,3 +180,24 @@ fn sobre_o_botao_da_barra_o_movimento_sai_da_tela() {
     );
     assert_eq!(s.screen().hovered(), None);
 }
+
+/// ⭐ Onda 4 (auditoria): o ponteiro sai da JANELA direto do botão «Controls» com a tela aberta (`CursorLeft`) ⇒ o hover
+/// e a dica dele soltam-se. Controlo: um hot de OUTRO botão não é dele e fica. Mutação: tirar o ramo `None` ⇒ preso.
+#[test]
+fn sair_da_janela_pelo_botao_solta_o_hover_dele() {
+    use ph2d_editor_core::ids;
+    use ph2d_editor_core::screens::hero::{HeroScreen, transport_bar};
+    let (g, mut ts) = (game(), TextSystem::new());
+    let (mut s, _) = aberta(&g, &mut ts);
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
+    hero.store.set_hot(Some(transport_bar::CONTROLS.0));
+    let _ = host::pointer_move_com_a_barra(&mut s, Some(&mut hero), None);
+    assert_eq!(hero.store.hot_id(), None, "a dica não fica presa");
+    hero.store.set_hot(Some(ids::TOPBAR_PAUSE));
+    let _ = host::pointer_move_com_a_barra(&mut s, Some(&mut hero), None);
+    assert_eq!(
+        hero.store.hot_id(),
+        Some(ids::TOPBAR_PAUSE),
+        "só o do Controls"
+    );
+}

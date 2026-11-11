@@ -101,6 +101,8 @@ pub struct InputMapDoc {
     pub census: Census,
     /// O registo de controlos, o premido, o foco e os valores do movimento (`crate::interact`).
     pub(crate) ui: crate::interact::Ui,
+    /// A bandeira Alt do EDITOR na última tecla (o AltGr não a acende): `chord_keys` separa o Alt do AltGr.
+    pub alt: bool,
     /// A cena da pintura (repintada quando o hover instantâneo de um alvo novo muda).
     pub(crate) scratch: ph2d_vector::VectorScene,
 }
@@ -123,6 +125,7 @@ impl InputMapDoc {
             tryit: crate::view_try::state::TryState::new(),
             census: Census::default(),
             ui: crate::interact::Ui::default(),
+            alt: false,
             scratch: ph2d_vector::VectorScene::default(),
         }
     }

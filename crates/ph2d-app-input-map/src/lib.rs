@@ -2,8 +2,8 @@
 //! [`install`] com a vista das prefs e [`frame`] uma vez por quadro (abre a aba pedida pelo Settings ▸ Input Map…).
 
 pub use ph2d_input_map_editor::{
-    InputMapDoc, InputMapEdit, Snapshot, View, census, ids, interact, palette, view_keyboard,
-    view_list, view_try,
+    InputMapDoc, InputMapEdit, Snapshot, View, census, ids, interact, palette,
+    surface_key::surface_raw_key, view_keyboard, view_list, view_try,
 };
 
 pub mod listen;
@@ -65,7 +65,7 @@ pub fn frame(
     let keep = !swapped && tab.is_open() && (shown || open);
     tab.doc
         .end_frame(&hero.input_map, &mut hero.store, listen, keep);
-    // A tecla (ou o comando) apanhada vira ligação no braço `INPUT_MAP_BIND_CAPTURED` do editor-core.
+    ph2d_input_map_editor::inspect::publish(&tab.doc, tab.is_open() && (shown || open));
     let listening = hero
         .store
         .input_map_listening()
@@ -95,21 +95,4 @@ pub fn gesture_in_progress(hero: &HeroScreen) -> bool {
         .surfaces()
         .find::<InputMapTab>()
         .is_some_and(|t| t.doc.gesture_in_progress())
-}
-
-/// ⭐ **A tecla física para a aba de família activa** que tem o teclado (`DocumentSurface::raw_key`), depois da escuta
-/// e dos modais, antes de todo atalho. `code` = o `ph2d_input::Key` normalizado; `true` = consumida.
-pub fn surface_raw_key(
-    hero: &mut HeroScreen,
-    code: u32,
-    pressed: bool,
-    text: Option<&str>,
-) -> bool {
-    if !ph2d_editor_core::screens::hero::surface_input::owns_the_keyboard(Some(hero)) {
-        return false;
-    }
-    let writes = text.is_some_and(|t| t.chars().any(|c| !c.is_control()));
-    hero.documents
-        .active_surface_mut()
-        .is_some_and(|(f, id)| f.raw_key(id, ph2d_input::Key(code), pressed, writes))
 }

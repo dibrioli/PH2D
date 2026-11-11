@@ -26,6 +26,7 @@ pub mod controls;
 pub mod editor_keys;
 pub mod event;
 pub mod gamepad;
+pub mod inspected;
 pub mod keyboard;
 pub mod map;
 pub mod mouse;

@@ -52,3 +52,52 @@ fn the_click_path_refuses_a_system_key_without_the_disabled_control() {
         "a do jogo, no mesmo caminho, liga"
     );
 }
+
+fn key(n: &str) -> ph2d_input::Key {
+    ph2d_input::Key::named_in_script(n).expect("tecla")[0]
+}
+
+/// O Try it com `held` em baixo e a bandeira Alt do editor: a tecla F é do banco (`true`) ou passa ao editor?
+fn try_takes_f(held: &str, alt: bool) -> bool {
+    let mut d = InputMapDoc::new(View::TryIt);
+    d.alt = alt;
+    let _ = d.raw_key(key(held), true, false);
+    d.raw_key(key("f"), true, true)
+}
+
+/// ⭐ AltGr (onda 4, `chord_keys`): no `br(abnt2)` o Alt direito é o AltGr e não acende o Alt do editor ⇒ AltGr+F é do
+/// banco. Controlo: o Alt esquerdo acende-o ⇒ Alt+F é acorde do editor e passa (recusado pelo banco).
+#[test]
+fn altgr_f_is_tried_and_left_alt_f_is_the_editors() {
+    assert!(try_takes_f("right_alt", false), "AltGr+F");
+    assert!(!try_takes_f("left_alt", true), "Alt esquerdo+F");
+    // Sem a bandeira, o mesmo Alt direito volta a ser Alt (o `us` simples): a lei lê a bandeira, não o lado.
+    assert!(!try_takes_f("right_alt", true), "Alt direito que é Alt");
+}
+
+/// ⭐ 7b: o Inspector lê a acção aberta do MESMO snapshot. Keyboard ⇒ a aberta (ou a primeira); List sem escolha ⇒
+/// a frase; escolhida ⇒ ela, com as ligações e o grupo.
+#[test]
+fn the_inspector_pane_follows_the_open_action() {
+    use ph2d_input::InputMap;
+    use ph2d_input::inspected::InputMapPane;
+    let mut d = InputMapDoc::new(View::List);
+    d.snap.map = InputMap::with_player_defaults();
+    assert_eq!(crate::inspect::pane(&d), InputMapPane::Pick);
+    let jump = d.snap.map.id(ph2d_input::PLAYER_JUMP).expect("jump");
+    d.kb.open = Some(jump);
+    let InputMapPane::Action(a) = crate::inspect::pane(&d) else {
+        panic!("a acção");
+    };
+    assert_eq!(a.name, ph2d_input::PLAYER_JUMP);
+    assert!(!a.keys.is_empty());
+    d.set_view(View::Keyboard);
+    d.kb.open = None;
+    assert!(matches!(crate::inspect::pane(&d), InputMapPane::Action(_)));
+    // Publicar com a aba atrás apaga o que o Inspector mostra.
+    crate::inspect::publish(&d, false);
+    assert_eq!(ph2d_input::inspected::current_input_map(), None);
+    crate::inspect::publish(&d, true);
+    assert!(ph2d_input::inspected::current_input_map().is_some());
+    ph2d_input::inspected::set_current_input_map(None);
+}

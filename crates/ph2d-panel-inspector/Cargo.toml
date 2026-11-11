@@ -42,6 +42,8 @@ ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 # ⭐ **E as frases das TAGS** (TOP-20 #9) — o `hr15_no_hardcoded_ui_strings` mede `.placeholder("…")`
 # e o `Pick a tag…` estava escrito em três pintores desta crate. A tabela colapsa-os.
 ph2d-i18n        = { path = "../ph2d-i18n" }
+# Onda 4, 7b: a acção aberta da aba Input Map (o tipo mora na folha do assunto; a `ph2d-input` não tem dependências).
+ph2d-input       = { path = "../ph2d-input" }
 ph2d-a11y        = { path = "../ph2d-a11y" }
 # GEF02 onda 1: o sufixo «1 listens / nobody listens» lê a resposta do censo de sinais (folha pura).
 ph2d-signal-ends = { path = "../ph2d-signal-ends" }

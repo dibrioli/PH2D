@@ -341,9 +341,16 @@ pub trait DocumentSurface: Any {
     }
     /// ⭐ A tecla FÍSICA (Shift, F, setas…), antes de `tecla_do_jogo` e de todo atalho, só para a
     /// aba activa que tem o teclado (plano InputMap §3). `writes_text` = o evento traz texto
-    /// imprimível. `true` = consumida.
-    fn raw_key(&mut self, id: u64, key: ph2d_input::Key, pressed: bool, writes_text: bool) -> bool {
-        let _ = (id, key, pressed, writes_text);
+    /// imprimível; `alt` = a bandeira Alt do editor (o AltGr não a acende). `true` = consumida.
+    fn raw_key(
+        &mut self,
+        id: u64,
+        key: ph2d_input::Key,
+        pressed: bool,
+        writes_text: bool,
+        alt: bool,
+    ) -> bool {
+        let _ = (id, key, pressed, writes_text, alt);
         false
     }
     fn as_any(&self) -> &dyn Any;

@@ -97,7 +97,8 @@ pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool) -> bool {
         kb.handle_key_up(key);
     }
     // Ctrl/Alt, os acordes e o F5 passam: o Ctrl+Z desfaz e o F5 dá Play mesmo com o Try it aberto.
-    !crate::raw_keys::never_binds(key, kb.iter_held())
+    let chord = ph2d_input::editor_keys::chord_keys(kb.iter_held(), doc.alt);
+    !crate::raw_keys::never_binds(key, chord)
 }
 
 /// **Antes do foco da aba** (o `doc.rs` chama-a primeiro): à escuta da tecla que abre a tela, TODA tecla é dela

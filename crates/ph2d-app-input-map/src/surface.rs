@@ -134,7 +134,9 @@ impl DocumentSurface for InputMapTab {
         key: ph2d_input::Key,
         pressed: bool,
         writes_text: bool,
+        alt: bool,
     ) -> bool {
+        self.doc.alt = alt;
         self.doc.raw_key(key, pressed, writes_text)
     }
 

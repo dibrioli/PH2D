@@ -49,5 +49,5 @@ fn a_aba_e_do_projecto_no_undo_e_o_raw_key_de_outra_familia_nao_toma() {
     assert!(m.tab().undo_is_the_projects());
     // O `raw_key` de omissão (as outras famílias) devolve `false`; esta, por ora, também.
     let (f, id) = m.hero.documents.active_surface_mut().expect("a aba activa");
-    assert!(!f.raw_key(id, ph2d_input::Key(0x41), true, true));
+    assert!(!f.raw_key(id, ph2d_input::Key(0x41), true, true, false));
 }

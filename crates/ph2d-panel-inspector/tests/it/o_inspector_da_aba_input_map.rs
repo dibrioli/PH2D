@@ -58,19 +58,24 @@ fn outra_aba_a_frente_deixa_o_inspector_de_sempre() {
     assert_eq!(k, vec![CARD_EMPTY]);
 }
 
-/// Nenhum texto dos cartões cortado, do piso real do painel a bem largo.
+/// Nenhum texto dos cartões cortado, do piso real do painel a bem largo, nos dois modos de texto (o de fábrica é o
+/// `CrispHeavyPlus`).
 #[test]
 fn nada_dos_cartoes_da_aba_e_cortado_nas_larguras_do_inspector() {
     use ph2d_editor_core::screens::layout::{CenterSplit, ChromeBands, DockSides, HeroLayout};
     use ph2d_editor_core::text_elide::elisao;
     use ph2d_editor_core::widget::card_censo;
+    use ph2d_tokens::TextRendering;
     for largura in [
         WidgetStore::DOCK_W_MIN,
         ph2d_tokens::chrome::PANEL_MIN_W_PX,
         300.0,
         420.0,
     ] {
-        for pane in [InputMapPane::Pick, jump(true)] {
+        for (pane, modo) in [InputMapPane::Pick, jump(true)].into_iter().flat_map(|p| {
+            [TextRendering::Default, TextRendering::CrispHeavyPlus].map(|m| (p.clone(), m))
+        }) {
+            ph2d_text::set_active_text_rendering(modo);
             set_cards_on(true);
             set_current_input_map(Some(pane));
             let mut host = MockPanelHost::with_panel::<InspectorPanel>();
@@ -103,7 +108,7 @@ fn nada_dos_cartoes_da_aba_e_cortado_nas_larguras_do_inspector() {
                 .filter(|m| !m.coube())
                 .map(|m| m.texto.clone())
                 .collect();
-            assert!(cortados.is_empty(), "a {largura}: {cortados:?}");
+            assert!(cortados.is_empty(), "a {largura} {modo:?}: {cortados:?}");
             assert_eq!(censo.textos_cortados(), Vec::<String>::new(), "a {largura}");
             set_current_input_map(None);
         }

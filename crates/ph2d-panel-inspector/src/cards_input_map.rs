@@ -1,5 +1,5 @@
 //! ⭐ **O Inspector com a aba Input Map à frente** (onda 4, 7b): a acção aberta da aba em cartões só de leitura.
-//! A aba publica-a a cada quadro ([`set_current_input_map`]); quem edita é a aba (uma porta, um undo).
+//! A aba publica-a a cada quadro (`ph2d_input::inspected`); quem edita é a aba (uma porta, um undo).
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::cards::{CardDef, Widget};
@@ -12,39 +12,9 @@ pub const CARD_IM_KEYS: NodeId = hash_node_id("cards.insp.input_map.keys");
 pub const CARD_IM_STICK: NodeId = hash_node_id("cards.insp.input_map.stick");
 pub const CARD_IM_PICK: NodeId = hash_node_id("cards.insp.input_map.pick");
 
-/// A acção aberta, já em texto do artista (a aba resolve nomes de teclas e leitores).
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct InputMapAction {
-    pub name: String,
-    pub group: String,
-    /// Vazio = ninguém lê.
-    pub readers: Vec<String>,
-    pub keys: Vec<String>,
-    /// `(dead, press)` já formatados — só numa acção com manche.
-    pub stick: Option<(String, String)>,
-}
-
-/// O que o Inspector mostra com a aba à frente.
-#[derive(Clone, Debug, PartialEq)]
-pub enum InputMapPane {
-    /// Nenhuma acção aberta: a frase do que fazer.
-    Pick,
-    Action(InputMapAction),
-}
-
-thread_local! {
-    static CURRENT: std::cell::RefCell<Option<InputMapPane>> = const { std::cell::RefCell::new(None) };
-}
-
-/// `None` = a aba não está à frente (o Inspector de sempre).
-pub fn set_current_input_map(pane: Option<InputMapPane>) {
-    CURRENT.with(|c| *c.borrow_mut() = pane);
-}
-
-#[must_use]
-pub fn current_input_map() -> Option<InputMapPane> {
-    CURRENT.with(|c| c.borrow().clone())
-}
+pub use ph2d_input::inspected::{
+    InputMapAction, InputMapPane, current_input_map, set_current_input_map,
+};
 
 fn card(
     section: NodeId,

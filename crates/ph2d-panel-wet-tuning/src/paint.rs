@@ -261,7 +261,10 @@ fn dica_da_inercia(
     let dica = brush.inercias.dica_de(row.slider);
     for id in [row.slider, row.chip] {
         match dica {
-            Some(chave) => store.set_tooltip(id, tr(chave)),
+            Some(chave) if store.tooltip_for(id) != Some(tr(chave)) => {
+                store.set_tooltip(id, tr(chave))
+            }
+            Some(_) => {}
             None if store.tooltip_for(id).is_some_and(|t| {
                 [
                     ph2d_tool_painter::Dependente::MaterialSemOleo,

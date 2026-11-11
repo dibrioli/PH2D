@@ -180,9 +180,28 @@ fn escolha(
 
 /// O rótulo cabe, inteiro, nas duas linhas de meia coluna? Quebra como a faixa dos rótulos: na última
 /// palavra que cabe. O que não cabe ganha a linha toda: nome de controlo nunca vira «...».
-fn cabe_em_duas_linhas(c: &mut CardCtx<'_>, label: &str) -> bool {
+fn cabe_em_duas_linhas(c: &mut CardCtx<'_>, label: &'static str) -> bool {
     let w = (c.w - m::FIELD_GAP) * 0.5 - m::FIELD_GAP - m::FIELD_H;
-    let mut mede = |t: &str| c.text_system.prefix_width(t, m::LABEL_PX);
+    let ts = &mut *c.text_system;
+    cabe_memo(w, label, |t| ts.prefix_width(t, m::LABEL_PX))
+}
+
+/// A resposta de [`cabe`] por rótulo, à largura do último quadro: quadro parado não mede texto (B35.A3).
+fn cabe_memo(w: f32, label: &'static str, mede: impl FnMut(&str) -> f32) -> bool {
+    thread_local! {
+        static CABE: std::cell::RefCell<(u32, std::collections::HashMap<&'static str, bool>)> =
+            std::cell::RefCell::new((0, std::collections::HashMap::new()));
+    }
+    CABE.with_borrow_mut(|(largura, memo)| {
+        if *largura != w.to_bits() {
+            *largura = w.to_bits();
+            memo.clear();
+        }
+        *memo.entry(label).or_insert_with(|| cabe(w, label, mede))
+    })
+}
+
+fn cabe(w: f32, label: &str, mut mede: impl FnMut(&str) -> f32) -> bool {
     if mede(label) <= w {
         return true;
     }
@@ -282,4 +301,36 @@ pub(crate) fn chrome(ctx: &mut PaintCtx, lista: Rect) {
         tid::WET_TUNING_DRAG_HANDLE,
         panel_drag_handle_rect(lista, m::LIST_HEAD_H, reserva),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// B35.A3: o segundo quadro à mesma largura não mede texto; outra largura volta a medir.
+    #[test]
+    fn o_tuning_nao_mede_texto_em_quadro_parado() {
+        let rotulos: [&'static str; 3] = ["Pigment load", "Edge darkening strength", "Wet"];
+        let medidas = std::cell::Cell::new(0usize);
+        let mede = |t: &str| {
+            medidas.set(medidas.get() + 1);
+            t.len() as f32 * 7.0
+        };
+        let w = 80.0;
+        let primeiro: Vec<bool> = rotulos.iter().map(|r| cabe_memo(w, r, mede)).collect();
+        let antes = medidas.get();
+        assert!(antes > 0);
+        let segundo: Vec<bool> = rotulos.iter().map(|r| cabe_memo(w, r, mede)).collect();
+        assert_eq!(primeiro, segundo);
+        assert_eq!(medidas.get(), antes, "quadro parado voltou a medir texto");
+        let outro: Vec<bool> = rotulos
+            .iter()
+            .map(|r| cabe_memo(w * 3.0, r, mede))
+            .collect();
+        assert!(medidas.get() > antes, "outra largura tem de medir de novo");
+        assert_eq!(
+            outro,
+            rotulos.map(|r| cabe(w * 3.0, r, |t| t.len() as f32 * 7.0))
+        );
+    }
 }

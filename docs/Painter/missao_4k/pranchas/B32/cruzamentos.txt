@@ -1,0 +1,96 @@
+B32 1080p branco Express Oil vermelho→azul km: 26,50,66 croma 40
+B32 1080p branco Express Oil azul→vermelho km: 77,16,21 croma 61
+B32 1080p branco Express Oil vermelho→azul espectral: 33,79,144 croma 111
+B32 1080p branco Express Oil azul→vermelho espectral: 165,5,26 croma 160
+B32 1080p branco Fan Brush vermelho→azul km: 73,46,55 croma 27
+B32 1080p branco Fan Brush azul→vermelho km: 63,47,65 croma 18
+B32 1080p branco Fan Brush vermelho→azul espectral: 91,60,105 croma 45
+B32 1080p branco Fan Brush azul→vermelho espectral: 122,45,79 croma 77
+B32 1080p branco Knife Smooth 3 vermelho→azul km: 32,73,103 croma 71
+B32 1080p branco Knife Smooth 3 azul→vermelho km: 110,19,23 croma 91
+B32 1080p branco Knife Smooth 3 vermelho→azul espectral: 33,96,167 croma 134
+B32 1080p branco Knife Smooth 3 azul→vermelho espectral: 176,8,24 croma 168
+B32 1080p branco Marker Bullet vermelho→azul km: 17,1,14 croma 16
+B32 1080p branco Marker Bullet azul→vermelho km: 19,0,13 croma 19
+B32 1080p branco Marker Bullet vermelho→azul espectral: 17,1,14 croma 16
+B32 1080p branco Marker Bullet azul→vermelho espectral: 19,0,13 croma 19
+B32 1080p blocos Express Oil vermelho→azul km: 25,49,66 croma 41
+B32 1080p blocos Express Oil azul→vermelho km: 75,16,20 croma 59
+B32 1080p blocos Express Oil vermelho→azul espectral: 32,78,144 croma 112
+B32 1080p blocos Express Oil azul→vermelho espectral: 163,5,25 croma 158
+B32 1080p blocos Fan Brush vermelho→azul km: 46,37,45 croma 9
+B32 1080p blocos Fan Brush azul→vermelho km: 57,42,41 croma 16
+B32 1080p blocos Fan Brush vermelho→azul espectral: 68,51,94 croma 43
+B32 1080p blocos Fan Brush azul→vermelho espectral: 109,41,54 croma 68
+B32 1080p blocos Knife Smooth 3 vermelho→azul km: 29,71,101 croma 72
+B32 1080p blocos Knife Smooth 3 azul→vermelho km: 109,18,21 croma 91
+B32 1080p blocos Knife Smooth 3 vermelho→azul espectral: 31,94,167 croma 136
+B32 1080p blocos Knife Smooth 3 azul→vermelho espectral: 176,8,23 croma 168
+B32 1080p blocos Marker Bullet vermelho→azul km: 17,1,14 croma 16
+B32 1080p blocos Marker Bullet azul→vermelho km: 19,0,13 croma 19
+B32 1080p blocos Marker Bullet vermelho→azul espectral: 17,1,14 croma 16
+B32 1080p blocos Marker Bullet azul→vermelho espectral: 19,0,13 croma 19
+B32 1080p papel Express Oil vermelho→azul km: 26,50,66 croma 40
+B32 1080p papel Express Oil azul→vermelho km: 76,16,21 croma 60
+B32 1080p papel Express Oil vermelho→azul espectral: 33,79,144 croma 111
+B32 1080p papel Express Oil azul→vermelho espectral: 165,5,26 croma 160
+B32 1080p papel Fan Brush vermelho→azul km: 66,43,53 croma 23
+B32 1080p papel Fan Brush azul→vermelho km: 61,39,54 croma 22
+B32 1080p papel Fan Brush vermelho→azul espectral: 85,59,103 croma 44
+B32 1080p papel Fan Brush azul→vermelho espectral: 121,40,68 croma 81
+B32 1080p papel Knife Smooth 3 vermelho→azul km: 29,65,92 croma 63
+B32 1080p papel Knife Smooth 3 azul→vermelho km: 102,19,23 croma 83
+B32 1080p papel Knife Smooth 3 vermelho→azul espectral: 32,86,153 croma 121
+B32 1080p papel Knife Smooth 3 azul→vermelho espectral: 166,10,25 croma 156
+B32 1080p papel Marker Bullet vermelho→azul km: 17,1,14 croma 16
+B32 1080p papel Marker Bullet azul→vermelho km: 19,0,13 croma 19
+B32 1080p papel Marker Bullet vermelho→azul espectral: 17,1,14 croma 16
+B32 1080p papel Marker Bullet azul→vermelho espectral: 19,0,13 croma 19
+B32 4k branco Express Oil vermelho→azul km: 25,53,71 croma 46
+B32 4k branco Express Oil azul→vermelho km: 86,14,20 croma 72
+B32 4k branco Express Oil vermelho→azul espectral: 30,82,150 croma 120
+B32 4k branco Express Oil azul→vermelho espectral: 172,3,23 croma 169
+B32 4k branco Fan Brush vermelho→azul km: 47,54,68 croma 21
+B32 4k branco Fan Brush azul→vermelho km: 78,24,40 croma 54
+B32 4k branco Fan Brush vermelho→azul espectral: 58,75,134 croma 76
+B32 4k branco Fan Brush azul→vermelho espectral: 145,25,49 croma 120
+B32 4k branco Knife Smooth 3 vermelho→azul km: 35,100,163 croma 128
+B32 4k branco Knife Smooth 3 azul→vermelho km: 172,20,24 croma 152
+B32 4k branco Knife Smooth 3 vermelho→azul espectral: 35,103,177 croma 142
+B32 4k branco Knife Smooth 3 azul→vermelho espectral: 184,9,24 croma 175
+B32 4k branco Marker Bullet vermelho→azul km: 17,1,14 croma 16
+B32 4k branco Marker Bullet azul→vermelho km: 18,0,13 croma 18
+B32 4k branco Marker Bullet vermelho→azul espectral: 17,1,14 croma 16
+B32 4k branco Marker Bullet azul→vermelho espectral: 18,0,13 croma 18
+B32 4k blocos Express Oil vermelho→azul km: 25,53,71 croma 46
+B32 4k blocos Express Oil azul→vermelho km: 86,14,19 croma 72
+B32 4k blocos Express Oil vermelho→azul espectral: 30,82,150 croma 120
+B32 4k blocos Express Oil azul→vermelho espectral: 172,3,22 croma 169
+B32 4k blocos Fan Brush vermelho→azul km: 38,48,64 croma 26
+B32 4k blocos Fan Brush azul→vermelho km: 73,21,33 croma 52
+B32 4k blocos Fan Brush vermelho→azul espectral: 50,70,129 croma 79
+B32 4k blocos Fan Brush azul→vermelho espectral: 143,22,40 croma 121
+B32 4k blocos Knife Smooth 3 vermelho→azul km: 34,97,162 croma 128
+B32 4k blocos Knife Smooth 3 azul→vermelho km: 172,20,23 croma 152
+B32 4k blocos Knife Smooth 3 vermelho→azul espectral: 34,101,175 croma 141
+B32 4k blocos Knife Smooth 3 azul→vermelho espectral: 184,9,23 croma 175
+B32 4k blocos Marker Bullet vermelho→azul km: 17,1,14 croma 16
+B32 4k blocos Marker Bullet azul→vermelho km: 18,0,13 croma 18
+B32 4k blocos Marker Bullet vermelho→azul espectral: 17,1,14 croma 16
+B32 4k blocos Marker Bullet azul→vermelho espectral: 18,0,13 croma 18
+B32 4k papel Express Oil vermelho→azul km: 25,53,71 croma 46
+B32 4k papel Express Oil azul→vermelho km: 86,14,20 croma 72
+B32 4k papel Express Oil vermelho→azul espectral: 30,82,150 croma 120
+B32 4k papel Express Oil azul→vermelho espectral: 172,3,23 croma 169
+B32 4k papel Fan Brush vermelho→azul km: 47,52,65 croma 18
+B32 4k papel Fan Brush azul→vermelho km: 75,25,40 croma 50
+B32 4k papel Fan Brush vermelho→azul espectral: 58,73,130 croma 72
+B32 4k papel Fan Brush azul→vermelho espectral: 142,25,48 croma 117
+B32 4k papel Knife Smooth 3 vermelho→azul km: 25,93,154 croma 129
+B32 4k papel Knife Smooth 3 azul→vermelho km: 168,18,22 croma 150
+B32 4k papel Knife Smooth 3 vermelho→azul espectral: 25,96,171 croma 146
+B32 4k papel Knife Smooth 3 azul→vermelho espectral: 180,8,22 croma 172
+B32 4k papel Marker Bullet vermelho→azul km: 17,1,14 croma 16
+B32 4k papel Marker Bullet azul→vermelho km: 18,0,13 croma 18
+B32 4k papel Marker Bullet vermelho→azul espectral: 17,1,14 croma 16
+B32 4k papel Marker Bullet azul→vermelho espectral: 18,0,13 croma 18

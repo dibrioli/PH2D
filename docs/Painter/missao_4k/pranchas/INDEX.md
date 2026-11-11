@@ -163,6 +163,14 @@ Uma pincelada grossa (Impasto) sobre papel com relevo: antes, o papel nu logo ao
 
 Todas: 3 fundos (branco, blocos, papel) × 1080p/4K, em [B31.1/](B31.1/). Compare com [4K](B31.1/4k_papel_impasto_antes_depois.png).
 
+## B32 — Vermelho + azul no Wet dá violeta, não preto-oliva (decisão 7a)
+
+Onde vermelho e azul se misturam no Wet, antes saía um cinza-escuro quase preto; agora sai violeta, e a tinta de cima fica viva. Os quatro Wet de fábrica com «Pigment mixing»: Express Oil, Fan Brush e Knife Smooth 3 mudam; o Marker Bullet fica igual (o escuro dele vem do jeito como o marcador se sobrepõe, não da mistura). Esquerda = antes, direita = depois; em cima vermelho e depois azul, em baixo o contrário.
+
+![B32](B32/1080p_papel_express_oil_km_espectral.png)
+
+Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × os 4 pincéis, em [B32/](B32/); as cores do cruzamento em [cruzamentos.txt](B32/cruzamentos.txt) · [notas](B32/README.md)
+
 ## As 10 decisões do dono (§0 do prompt da missão)
 
 | # | Decisão | Bloco | Prancha |
@@ -173,7 +181,7 @@ Todas: 3 fundos (branco, blocos, papel) × 1080p/4K, em [B31.1/](B31.1/). Compar
 | 4 | Arrumar os controles do Wet | B35 | só controles; o que muda na tela (reset/rótulos) ainda aberto |
 | 5 | Pincel Oil Wash | B36 | [B36](#b36--pincel-oil-wash) |
 | 6 | Aparência acompanha o tamanho da tela | B34 | [B34](#b34--o-papel-acompanha-o-tamanho-da-tela-decisão-6) (o papel); a orla da aguada, warp, relevo e sombra do óleo ainda por escalar |
-| 7a | Mistura de cores do Wet (vermelho + azul) | B32 | lei trocada (B32.1: espectral de 10 bandas no Wet; vermelho+azul croma 14 → 54, violeta em vez de oliva); prancha antes/depois ainda por fazer |
+| 7a | Mistura de cores do Wet (vermelho + azul) | B32 | [B32](#b32--vermelho--azul-no-wet-dá-violeta-não-preto-oliva-decisão-7a) (B32.1: Express Oil, Fan Brush e Knife Smooth 3 mudam; Marker Bullet igual); B32.2–B32.4 abertos |
 | 7b | Papel sem repetição a 256 px | B33 | [B33](#b33--papel-sem-repetição-a-cada-256-px) |
 | 8 | Ritmo fixo a 60 e 144 Hz | B22 | [B22.2](#b222--spray-parado-igual-a-30-60-e-144-quadross) (spray); secagem B22.1 aberta |
 | 9 | A placa mostra a prévia, o processador dá o resultado | B20 | sem mudança visível ainda (B20.8 aberto) |

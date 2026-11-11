@@ -13,6 +13,34 @@
 //!
 //! A potência é por `log2`/`exp2` polinomiais (só `+ × ÷` e bits: o mesmo resultado em toda máquina, HR-5).
 
+use std::sync::atomic::{AtomicU8, Ordering};
+
+/// `0` = por ler · `1` = espectral · `2` = K–M de 3 canais (o antes, só para comparar no mesmo processo).
+static LEI_DO_WET: AtomicU8 = AtomicU8::new(0);
+
+/// ⭐ **A lei do «pigment mixing» do Wet**: a espectral; `PH2D_WET_MISTURA=km` (lido uma vez) ou
+/// [`fixa_lei_do_wet`] voltam ao K–M de antes — o interruptor das pranchas e do alarme A×B (B32.1).
+#[must_use]
+pub fn lei_do_wet() -> crate::ColorMix {
+    let mut v = LEI_DO_WET.load(Ordering::Relaxed);
+    if v == 0 {
+        let km = std::env::var("PH2D_WET_MISTURA").is_ok_and(|s| s.eq_ignore_ascii_case("km"));
+        v = if km { 2 } else { 1 };
+        LEI_DO_WET.store(v, Ordering::Relaxed);
+    }
+    if v == 2 {
+        crate::ColorMix::Km
+    } else {
+        crate::ColorMix::Espectral
+    }
+}
+
+/// Fixa a lei de [`lei_do_wet`] para o processo inteiro (sondas A×B; `Km` ou outra = espectral).
+pub fn fixa_lei_do_wet(lei: crate::ColorMix) {
+    let v = if lei == crate::ColorMix::Km { 2 } else { 1 };
+    LEI_DO_WET.store(v, Ordering::Relaxed);
+}
+
 /// O `WGM_EPSILON` do libmypaint: a reflectância nunca é zero (o `log` da média geométrica).
 const EPS: f32 = 0.001;
 

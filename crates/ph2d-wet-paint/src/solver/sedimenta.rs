@@ -6,6 +6,7 @@
 //! ⚠️ **Não move ÁGUA** e não tem decisão por célula: o peso é contínuo no filme (a W1f recusou toda a
 //! trava célula a célula na entrada do seco, 05 §4b). Conservativo (gather: quem recebe lê o que a
 //! fonte dá), independente de ordem, e `a = 0` ou `|g| = 0` não toca num byte.
+use crate::colorops::km_weighted_mean_color;
 use crate::grid::faixa_tiles::{span_runs, tiles_row_of};
 use crate::grid::{Grid, span_x_of};
 use crate::par::{self, Rows};
@@ -96,6 +97,7 @@ pub fn sedimenta_rows(g: &mut Grid, a: f64, gx: f64, gy: f64, km: bool, mode: Ro
         return;
     }
     let a = a.min(SEDIMENTA_MAX);
+    let lei_km = ph2d_pigment::espectral::lei_do_wet() == crate::colorops::ColorMix::Km;
     let p = Passo {
         ax: a * (gx / n).abs(),
         ay: a * (gy / n).abs(),
@@ -166,7 +168,11 @@ pub fn sedimenta_rows(g: &mut Grid, a: f64, gx: f64, gy: f64, km: bool, mode: Ro
                                 cores[3 * k..3 * k + 3].copy_from_slice(&cc.map(f64::from));
                                 pesos[k] = *w;
                             }
-                            media_pesada_255(&cores, &pesos, 3, inv, &mut km_out);
+                            if lei_km {
+                                km_weighted_mean_color(&cores, &pesos, 3, inv, &mut km_out);
+                            } else {
+                                media_pesada_255(&cores, &pesos, 3, inv, &mut km_out);
+                            }
                             km_out
                         } else {
                             let mut o = [0.0; 3];

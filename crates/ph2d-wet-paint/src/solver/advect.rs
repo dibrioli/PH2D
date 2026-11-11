@@ -1,6 +1,7 @@
 //! §6.5 Advection + gravity (child of [`super`] — split for the workspace
 //! file-LOC cap; pure code motion, the session fingerprint pins byte-identity).
 
+use crate::colorops::{ColorMix, km_weighted_mean_color};
 use crate::grid::Grid;
 use crate::sim::Params;
 use crate::tuning::Knob;
@@ -24,6 +25,7 @@ pub fn advect(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
     let max_v = p.k(Knob::MaxVelocity);
     let (by0, by1) = (g.by0, g.by1);
     let km_mean = p.km_mixing; // route the incoming mean through K–M
+    let lei = p.mix;
     let mut km_colors = [0.0f64; 12];
     let mut km_weights = [0.0f64; 4];
     let mut km_out = [0.0f64; 3];
@@ -184,7 +186,11 @@ pub fn advect(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
                     km_weights[1] = p10;
                     km_weights[2] = p01;
                     km_weights[3] = p11;
-                    media_pesada_255(&km_colors, &km_weights, 4, inv, &mut km_out);
+                    if lei == ColorMix::Km {
+                        km_weighted_mean_color(&km_colors, &km_weights, 4, inv, &mut km_out);
+                    } else {
+                        media_pesada_255(&km_colors, &km_weights, 4, inv, &mut km_out);
+                    }
                     r_in = km_out[0];
                     g_in = km_out[1];
                     b_in = km_out[2];

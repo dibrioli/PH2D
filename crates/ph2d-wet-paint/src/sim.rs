@@ -422,7 +422,7 @@ impl Sim {
         Params {
             values: tuning.snapshot(),
             mix: if self.km_mixing {
-                ColorMix::Espectral
+                ph2d_pigment::espectral::lei_do_wet()
             } else {
                 ColorMix::Plain
             },

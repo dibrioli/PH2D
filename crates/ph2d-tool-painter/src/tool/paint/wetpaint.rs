@@ -510,6 +510,8 @@ mod sonda_macro_tests; // as MACROS: reproduzir ao byte contando passos da sim, 
 #[cfg(test)]
 mod sonda_mistura; // a mistura em tempo real, molhado × seco (dono 09/10)
 #[cfg(test)]
+mod sonda_b32_espectral; // B32.1: K–M × espectral, prancha e custo no mesmo processo
+#[cfg(test)]
 mod sonda_mistura_wet_drip;
 #[cfg(test)]
 mod sonda_opcoes; // as opções da W1g numa rodada só

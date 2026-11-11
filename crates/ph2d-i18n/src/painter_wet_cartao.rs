@@ -50,6 +50,19 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_wet_cartao.dry_cover_tip" => {
             "How much this paint hides DRY paint of another color under it, like opaque gouache over a dried layer"
         }
+        // B35.12: o arrasto, o relevo e a guache saíram do Tuning.
+        "panel.painter_wet_cartao.drag" => "Paint drag",
+        "panel.painter_wet_cartao.drag_tip" => {
+            "How much the wet paint under the brush gets pulled along the stroke. 0 lays each dab where it lands"
+        }
+        "panel.painter_wet_cartao.emboss" => "Emboss",
+        "panel.painter_wet_cartao.emboss_tip" => {
+            "How tall thick paint stands on the canvas, so light and shadow show its ridges. 0 is flat"
+        }
+        "panel.painter_wet_cartao.opaque" => "Opaque",
+        "panel.painter_wet_cartao.opaque_tip" => {
+            "How much this paint hides a different color under it, like gouache, instead of letting it show through"
+        }
         "panel.painter_wet_cartao.wet_soften" => "Wet soften",
         "panel.painter_wet_cartao.wet_soften_tip" => {
             "How much the edge of the stroke softens on wet paper"

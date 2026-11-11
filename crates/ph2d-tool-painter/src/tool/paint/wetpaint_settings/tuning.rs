@@ -136,3 +136,5 @@ impl WetKnobs {
 mod fabrica_tests;
 #[cfg(test)]
 mod preset_base_tests; // B35.8
+#[cfg(test)]
+mod cartao_ou_tuning_tests; // B35.12

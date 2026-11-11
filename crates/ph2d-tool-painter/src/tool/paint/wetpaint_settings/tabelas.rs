@@ -120,12 +120,14 @@ pub(super) const KNOBS_DA_FERRAMENTA: [(ph2d_a11y::NodeId, Knob, WetTool, &str);
 /// o preset; o Pigment diffusion pedido no smoke) saíram também do Tuning: o que está no cartão não se repete lá
 /// (R3). O `ExtDryBrush` ficou de fora: o `dry_gate` é 0 nos 29 presets de fábrica (medido 25/10); só a cobertura
 /// que cai (a velocidade → opacidade) o abre (`o_extdrybrush_so_mexe_com_dry_gate_positivo`).
-pub(super) const KNOBS_NO_CARTAO: [(ph2d_a11y::NodeId, Knob); 18] = [
+pub(super) const KNOBS_NO_CARTAO: [(ph2d_a11y::NodeId, Knob); 21] = [
     (crate::ids::PAINTER_WETPAINT_LEVELING, Knob::Leveling),
     (crate::ids::PAINTER_WETPAINT_LEVEL_CLAMP, Knob::LevelClamp),
     (crate::ids::PAINTER_WETPAINT_CAPILLARY, Knob::Capillary),
     (crate::ids::PAINTER_WETPAINT_BRAKE, Knob::Brake),
     (crate::ids::PAINTER_WETPAINT_DUST, Knob::Dust),
+    // B35.12: o relevo da tinta grossa (15/56 pincéis o movem) e, abaixo, o arrasto e a guache — saem do Tuning.
+    (crate::ids::PAINTER_WETPAINT_EMBOSS, Knob::Emboss),
     (crate::ids::PAINTER_WETPAINT_BACKRUN, Knob::ExtBackrun),
     (
         crate::ids::PAINTER_WETPAINT_GRANULATION,
@@ -134,6 +136,7 @@ pub(super) const KNOBS_NO_CARTAO: [(ph2d_a11y::NodeId, Knob); 18] = [
     (crate::ids::PAINTER_WETPAINT_DIFFUSION, Knob::ExtDiffusion),
     (crate::ids::PAINTER_WETPAINT_WET_BLOOM, Knob::WetOpen),
     (crate::ids::PAINTER_WETPAINT_TIP_PICKUP, Knob::TipReservoir),
+    (crate::ids::PAINTER_WETPAINT_DRAG, Knob::Drag),
     // A água que re-molha e a tinta que se deixa dissolver (dono 30/10, J10: «no Inspector, não no Tuning»).
     (crate::ids::PAINTER_WETPAINT_REWET, Knob::Dissolve),
     (crate::ids::PAINTER_WETPAINT_REWET_DRAG, Knob::RewetDrag),
@@ -145,5 +148,6 @@ pub(super) const KNOBS_NO_CARTAO: [(ph2d_a11y::NodeId, Knob); 18] = [
     (crate::ids::PAINTER_WETPAINT_COVER, Knob::WetCover),
     // A guache que tapa a ASSENTE (31/10): o leitor é `trail/transfer/cobre.rs` `cobre_o_assentado`, no pouso.
     (crate::ids::PAINTER_WETPAINT_DRY_COVER, Knob::DryCover),
+    (crate::ids::PAINTER_WETPAINT_OPAQUE, Knob::Opaque),
     (crate::ids::PAINTER_WETPAINT_WET_SOFTEN, Knob::ExtWetSoften),
 ];

@@ -128,7 +128,10 @@ pub fn rows() -> &'static [TuneRow] {
             // O PAPER não tem linhas aqui (W1e, F2): o papel é o da secção Paper do painel — só o RELEVO.
             .filter(|(_, d)| match d.group {
                 KnobGroup::Hidden => false,
-                KnobGroup::Paper => ph2d_tool_painter::ids::WET_TUNING_RELEVO.contains(&d.key),
+                KnobGroup::Paper => {
+                    ph2d_tool_painter::ids::WET_TUNING_RELEVO.contains(&d.key)
+                        && !ph2d_tool_painter::ids::NO_INSPECTOR.contains(&d.key)
+                }
                 _ => !ph2d_tool_painter::ids::NO_INSPECTOR.contains(&d.key),
             })
             .map(|(i, d)| TuneRow {
@@ -245,8 +248,9 @@ pub struct Section {
 /// The knob groups shown, in the model's display order (o PAPER saiu na W1e, F2; o Relief é o grupo
 /// `Paper` do motor reduzido ao relevo da tinta), e depois os AVANÇADOS (25/10, dono: «os
 /// escondidos do Wet Paint podem mostrar dentro do Tuning»), que nascem dobrados — o Look saiu a 27/10 (W3b:
-/// controlos mortos). (Experimental is not a knob group — it is the two K–M checkboxes, painted after these.)
-pub const SECTIONS: [Section; 9] = [
+/// controlos mortos). O Relief (o `emboss`, único knob do `Paper`) subiu ao cartão Wet no B35.12: a secção saiu; o
+/// cabeçalho e o repor dela ficam nos ids (macros). (Experimental is not a knob group — it is the two K–M checkboxes, painted after these.)
+pub const SECTIONS: [Section; 8] = [
     Section {
         group: KnobGroup::Paint,
         header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[0],
@@ -264,12 +268,6 @@ pub const SECTIONS: [Section; 9] = [
         header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[3],
         reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[3],
         label: "panel.wet_tuning.group.tools",
-    },
-    Section {
-        group: KnobGroup::Paper,
-        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[5],
-        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[4],
-        label: "panel.wet_tuning.group.relief",
     },
     Section {
         group: KnobGroup::Bristles,
@@ -406,15 +404,16 @@ mod tests {
     /// Menos 19 a 10/11 (B35.1, [`ph2d_tool_painter::ids::NO_INSPECTOR`]): 88 → 69 (Paint 19 → 3, Water 7 → 5, Physics 6 → 5).
     /// Menos 1 (B35.9): o Eraser fundiu-se no Erase Strength do cartão (Tools 6 → 5; 69 → 68).
     /// Menos 1 (B35.10): o Base evaporation fundiu-se no Dry Speed (Water 5 → 4; 68 → 67).
+    /// Menos 2 (B35.12): Paint drag e Emboss subiram ao cartão Wet (Paint 2 → 1, Paper/Relief 1 → 0; 67 → 65).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 67);
+        assert_eq!(rows().len(), 65);
         for g in [
-            (KnobGroup::Paint, 2),
+            (KnobGroup::Paint, 1),
             (KnobGroup::Water, 4),
             (KnobGroup::Physics, 6),
             (KnobGroup::Tools, 5),
-            (KnobGroup::Paper, 1),
+            (KnobGroup::Paper, 0),
             (KnobGroup::Bristles, 17),
             (KnobGroup::Stroke, 12),
             (KnobGroup::WetEffects, 4),
@@ -436,7 +435,7 @@ mod tests {
                 _ => None,
             })
             .collect();
-        let cartao_wet = ["pickup", "evaporation", "edgeDarkening", "gravity"];
+        let cartao_wet = ["pickup", "evaporation", "edgeDarkening", "gravity", "drag", "emboss"];
         let no_inspector: BTreeSet<&str> = caneta.iter().copied().chain(cartao_wet).collect();
         let lista: BTreeSet<&str> = ph2d_tool_painter::ids::NO_INSPECTOR.into_iter().collect();
         assert_eq!(no_inspector, lista, "a lista é a caneta + o cartão Wet");
@@ -453,7 +452,10 @@ mod tests {
     /// esta lista: um knob novo nasce aqui (e alguém decide onde mora) ou num grupo à vista.
     #[test]
     fn os_escondidos_sao_so_os_de_outra_superficie_ou_de_calibracao() {
-        const NOUTRA_SUPERFICIE: [&str; 42] = [
+        const NOUTRA_SUPERFICIE: [&str; 44] = [
+            // fundidos noutro controlo do cartão Wet: Eraser no Erase Strength (B35.9), Base evaporation no Dry Speed (B35.10)
+            "eraser",
+            "baseEvaporation",
             // a Shape › Bristles (plano 27 W2)
             "felt",
             "bristleCount",
@@ -592,7 +594,8 @@ mod tests {
     #[test]
     fn o_repor_de_cada_seccao_repoe_o_grupo_dela() {
         let resets = ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS;
-        assert_eq!(SECTIONS.len(), resets.len());
+        // O repor do Relief (B35.12: a secção saiu) fica no id: as macros gravaram-no.
+        assert_eq!(SECTIONS.len() + 1, resets.len());
         for s in SECTIONS {
             let i = resets.iter().position(|r| *r == s.reset).expect("reset");
             assert_eq!(ph2d_tool_painter::ids::WET_TUNING_RESET_GROUPS[i], s.group);

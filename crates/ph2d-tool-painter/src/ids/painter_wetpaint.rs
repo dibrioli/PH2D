@@ -372,6 +372,16 @@ pub const PAINTER_WETPAINT_DRY_COVER: NodeId = hash_node_id("painter_brush.wetpa
 /// **Wet soften** — a orla do traço amacia sobre o papel molhado (knob `extWetSoften`; saiu do Tuning, dono 30/10).
 pub const PAINTER_WETPAINT_WET_SOFTEN: NodeId = hash_node_id("painter_brush.wetpaint_wet_soften");
 
+/// **Paint drag** — quanto a tinta molhada debaixo da ponta é arrastada pelo traço (knob `drag`; B35.12: saiu do Tuning).
+pub const PAINTER_WETPAINT_DRAG: NodeId = hash_node_id("painter_brush.wetpaint_drag");
+
+/// **Emboss** — a altura do relevo que a tinta grossa faz (knob `emboss`; B35.12: saiu do Tuning).
+pub const PAINTER_WETPAINT_EMBOSS: NodeId = hash_node_id("painter_brush.wetpaint_emboss");
+
+/// **Opaque** — quanto a tinta pousada esconde a de outra cor em vez de a deixar transparecer (knob `opaque`, B35.12:
+/// a guache).
+pub const PAINTER_WETPAINT_OPAQUE: NodeId = hash_node_id("painter_brush.wetpaint_opaque");
+
 /// **Erase Strength** — the wet eraser's lift per pass (engine `sliders.erase`, boot `0.4`).
 pub const PAINTER_WETPAINT_ERASE: NodeId = hash_node_id("painter_brush.wetpaint_erase");
 
@@ -396,7 +406,7 @@ pub const PAINTER_WETPAINT_BLOW_STRENGTH: NodeId =
 
 /// The Wet Paint **number-field** ids — ONE membership list for the panel's `SetValue` forward
 /// (`number_field::is_param_field`), the populate loop, and the tool's routing match.
-pub const PAINTER_WETPAINT_FIELDS: [NodeId; 40] = [
+pub const PAINTER_WETPAINT_FIELDS: [NodeId; 43] = [
     PAINTER_WETPAINT_GRID,
     PAINTER_WETPAINT_FLOW,
     PAINTER_WETPAINT_WATER,
@@ -425,6 +435,9 @@ pub const PAINTER_WETPAINT_FIELDS: [NodeId; 40] = [
     PAINTER_WETPAINT_COVER,
     PAINTER_WETPAINT_DRY_COVER,
     PAINTER_WETPAINT_WET_SOFTEN,
+    PAINTER_WETPAINT_DRAG,
+    PAINTER_WETPAINT_EMBOSS,
+    PAINTER_WETPAINT_OPAQUE,
     PAINTER_WETPAINT_ERASE,
     PAINTER_WETPAINT_SMEAR_STRENGTH,
     PAINTER_WETPAINT_SMEAR_WATER,

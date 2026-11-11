@@ -98,6 +98,18 @@ pub(crate) fn register_wetpaint(store: &mut WidgetStore) {
             ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_SOFTEN,
             "panel.painter_wet_cartao.wet_soften_tip",
         ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_DRAG,
+            "panel.painter_wet_cartao.drag_tip",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_EMBOSS,
+            "panel.painter_wet_cartao.emboss_tip",
+        ),
+        (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_OPAQUE,
+            "panel.painter_wet_cartao.opaque_tip",
+        ),
         // Os controlos de lei da E10 (F3 §9).
         (
             ph2d_tool_painter::ids::PAINTER_WETPAINT_MEDIUM,

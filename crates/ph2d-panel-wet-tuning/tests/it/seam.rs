@@ -214,7 +214,11 @@ fn os_grupos_avancados_nascem_dobrados() {
         let avancado = ph2d_tool_painter::ids::WET_TUNING_GRUPOS_AVANCADOS.contains(&s.group);
         assert_eq!(host.store().is_collapsed(s.header), avancado, "{}", s.label);
     }
-    let bristles = rows::SECTIONS[5].header;
+    let bristles = rows::SECTIONS
+        .iter()
+        .find(|s| s.group == ph2d_wet_paint::tuning::KnobGroup::Bristles)
+        .expect("a secção Bristles")
+        .header;
     let _ = click_header(&mut host, &mut st, bristles);
     assert!(!host.store().is_collapsed(bristles));
 }

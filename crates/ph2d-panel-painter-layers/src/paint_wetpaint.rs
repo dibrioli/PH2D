@@ -31,7 +31,7 @@ const FLOW_MAX: f32 = 16.0; // LITERAL-PX-OK: flow-grid ratio upper bound (flow:
 
 /// A borracha da água não pousa: o Pickup, o pó do pincel e os knobs que só agem a cada dab de tinta (Wet bloom, Tip
 /// pickup, Re-wet, Drag, Solubility, Glaze, Cover, Dry cover, Wet soften) saem (`DepositoMolhado`); os da E10 também.
-const DO_DEPOSITO: [ph2d_a11y::NodeId; 11] = [
+const DO_DEPOSITO: [ph2d_a11y::NodeId; 13] = [
     ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP,
     ph2d_tool_painter::ids::PAINTER_WETPAINT_DUST,
     ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_BLOOM,
@@ -43,6 +43,8 @@ const DO_DEPOSITO: [ph2d_a11y::NodeId; 11] = [
     ph2d_tool_painter::ids::PAINTER_WETPAINT_COVER,
     ph2d_tool_painter::ids::PAINTER_WETPAINT_DRY_COVER,
     ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_SOFTEN,
+    ph2d_tool_painter::ids::PAINTER_WETPAINT_DRAG,
+    ph2d_tool_painter::ids::PAINTER_WETPAINT_OPAQUE,
 ];
 
 /// **Os controlos NUMÉRICOS de lei da E10 no cartão** (F3 §9): `(depois de que linha, rótulo, id)`. A Hardness junto
@@ -247,7 +249,7 @@ fn em_porcento(
 }
 
 /// Quantos nomes de [`numeros_da_fisica`] são do grupo da espessura: os restantes são os do pigmento.
-const NOMES_DA_ESPESSURA: usize = 5;
+const NOMES_DA_ESPESSURA: usize = 6;
 
 /// Os números da física, pela ordem do cartão, por grupo: contacto e secagem · espessura · pigmento e camadas.
 /// Condições de `leis`, valores de `valores`: os cartões leem a fábrica pela mesma tabela.
@@ -314,11 +316,13 @@ pub(crate) fn numeros_da_fisica(leis: &BrushSettings, valores: &BrushSettings) -
         "panel.painter_layers.wetpaint.capillary",
         "panel.painter_layers.wetpaint.brake",
         "panel.painter_layers.wetpaint.dust",
+        "panel.painter_wet_cartao.emboss",
         "panel.painter_wet_cartao.backrun",
         "panel.painter_wet_cartao.granulation",
         "panel.painter_wet_cartao.diffusion",
         "panel.painter_wet_cartao.wet_bloom",
         "panel.painter_wet_cartao.tip_pickup",
+        "panel.painter_wet_cartao.drag",
         "panel.painter_wet_cartao.rewet",
         "panel.painter_wet_cartao.rewet_drag",
         "panel.painter_wet_cartao.solubility",
@@ -326,6 +330,7 @@ pub(crate) fn numeros_da_fisica(leis: &BrushSettings, valores: &BrushSettings) -
         "panel.painter_wet_cartao.glaze",
         "panel.painter_wet_cartao.cover",
         "panel.painter_wet_cartao.dry_cover",
+        "panel.painter_wet_cartao.opaque",
         "panel.painter_wet_cartao.wet_soften",
     ];
     for (i, (chave, (id, v, min, max, passo))) in

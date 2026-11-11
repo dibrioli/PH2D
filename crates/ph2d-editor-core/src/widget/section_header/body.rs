@@ -54,6 +54,20 @@ thread_local! {
     static CORTES: core::cell::RefCell<Vec<Rect>> = const { core::cell::RefCell::new(Vec::new()) };
 }
 
+/// ⭐ **A chave da altura lembrada de uma dobra, por MODO de pintura.** A mesma dobra pinta-se duas vezes por
+/// quadro, no levantamento fora do cartão (`cards_componentes::presentes`, outra largura) e no cartão; com uma
+/// memória só, cada passagem recortava com a altura da outra, e a abrir os últimos campos chegavam atrasados
+/// (Platform Player, Walls: 146 contra 180 px; smoke do dono 10/11).
+#[must_use]
+pub fn chave_da_altura(id: NodeId) -> NodeId {
+    const NO_CARTAO: u64 = 0x9e37_79b9_7f4a_7c15;
+    if crate::widget::card_ink::card_body().is_some() {
+        NodeId(id.0 ^ NO_CARTAO)
+    } else {
+        id
+    }
+}
+
 /// ⭐ **O recorte da dobra mais de dentro que está a animar**, ou `None`. O campo curto que o fluxo
 /// dos cartões guarda «à espera» do vizinho é pintado DEPOIS do `finish` desta dobra; sem levar o
 /// recorte consigo ele escapava à banda e, a fechar, ficava parado por cima das secções que sobem
@@ -135,7 +149,7 @@ impl SectionFold {
         }
         let clipped = t < FULL;
         if clipped {
-            let h = (store.section_body_h(id).unwrap_or(0.0) * t).max(0.0);
+            let h = (store.section_body_h(chave_da_altura(id)).unwrap_or(0.0) * t).max(0.0);
             let band = Rect::new(x, body_top, w, h);
             scene.push_clip(&ph2d_vector::Rect::new(
                 band.x as f64,
@@ -183,7 +197,7 @@ impl SectionFold {
             CORTES.with(|c| c.borrow_mut().pop());
         }
         let measured = (cur_y - self.body_top).max(0.0);
-        store.remember_section_body_h(self.id, measured);
+        store.remember_section_body_h(chave_da_altura(self.id), measured);
         if self.t >= FULL {
             // ⚠️ VERBATIM — ver o `f32` do doc do módulo.
             cur_y

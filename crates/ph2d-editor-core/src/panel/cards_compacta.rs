@@ -394,9 +394,10 @@ pub fn fluir(c: &mut CardCtx<'_>, f: impl FnOnce(&mut CardCtx<'_>) -> f32) -> f3
     let sobra = FLUXO.with(|g| g.borrow_mut().take()).and_then(|f| f.espera);
     if let Some(e) = sobra {
         let aberto = censo::secao_atual().map_or(1.0, |s| c.store.section_open_live(s));
-        let banda = censo::secao_atual()
-            .filter(|_| aberto < 1.0)
-            .map(|s| c.store.section_body_h(s).unwrap_or(0.0) * aberto);
+        let banda = censo::secao_atual().filter(|_| aberto < 1.0).map(|s| {
+            let chave = crate::widget::chave_da_altura(s);
+            c.store.section_body_h(chave).unwrap_or(0.0) * aberto
+        });
         if let Some(h) = banda {
             // O corpo está a abrir: o que passa da banda ainda não se vê.
             if e.y + m::FIELD_H > fim.min(e.y + h) {

@@ -1618,12 +1618,77 @@ fn cada_dobra_do_player_abre_pelo_clique_no_titulo() {
 /// recorte, e ficava parado sobre o título seguinte durante a animação.
 #[test]
 fn a_fechar_nenhum_campo_da_dobra_passa_por_cima_do_titulo_seguinte() {
-    use ph2d_a11y::NodeId;
     use ph2d_editor_core::panel::PanelHostInternal;
     use ph2d_editor_core::screens::layout::{CenterSplit, ChromeBands, DockSides, HeroLayout};
     use ph2d_panel_inspector::ids as i;
-    // Cada dobra, as rows de dentro e o título que vem logo abaixo dela.
-    let dobras: [(NodeId, &[NodeId], NodeId); 11] = [
+    let dobras = dobras_do_player();
+    let janela = Rect::new(0.0, 0.0, 1600.0, 3200.0);
+    let layout = || {
+        HeroLayout::for_viewport_bands(
+            janela,
+            false,
+            ChromeBands::DEFAULT,
+            CenterSplit::None,
+            DockSides::BOTH,
+        )
+    };
+    ph2d_panel_inspector::set_cards_on(true);
+    let mut vistos = 0;
+    let mut falhas = Vec::new();
+    for (dobra, dentro, seguinte) in dobras {
+        let mut host = crate::host_em_metros();
+        host.store_mut()
+            .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_PLAYER_SECTION, false);
+        for id in i::INSP_PLAYER_FOLDS {
+            host.set_collapsed(id, id != dobra);
+        }
+        let mut state = InspectorState::default();
+        set_current_inspector_player(Some(player()));
+        // Aberta e assentada: a dobra lembra a altura do corpo, que é a régua do recorte.
+        let _ = crate::o_cartao_da_fisica::pinta(&mut host, &mut state);
+        for t in [0.75, 0.5, 0.25] {
+            host.set_collapsed(dobra, true);
+            host.store_mut().set_section_open_live(dobra, t);
+            let rects = host.paint_with_layout::<InspectorPanel>(&mut state, layout(), janela);
+            let Some(titulo) = crate::o_cartao_da_fisica::achado(&rects, seguinte) else {
+                falhas.push(format!(
+                    "{dobra:?}: o título seguinte {seguinte:?} não foi pintado"
+                ));
+                continue;
+            };
+            for &id in dentro {
+                let Some(r) = crate::o_cartao_da_fisica::achado(&rects, id) else {
+                    continue;
+                };
+                vistos += 1;
+                if r.y + r.h > titulo.y + 0.5 {
+                    falhas.push(format!(
+                        "{dobra:?} a {t:.2}: o campo {id:?} (fim {:.1}) passa o título seguinte ({:.1})",
+                        r.y + r.h,
+                        titulo.y
+                    ));
+                }
+            }
+        }
+        set_current_inspector_player(None);
+    }
+    ph2d_panel_inspector::set_cards_on(false);
+    assert!(
+        vistos > 0,
+        "a régua não viu campo nenhum: está a ler o sítio errado"
+    );
+    assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// Cada dobra do player, as rows de dentro e o título que vem logo abaixo dela.
+fn dobras_do_player() -> [(
+    ph2d_a11y::NodeId,
+    &'static [ph2d_a11y::NodeId],
+    ph2d_a11y::NodeId,
+); 11] {
+    use ph2d_a11y::NodeId;
+    use ph2d_panel_inspector::ids as i;
+    let d: [(NodeId, &'static [NodeId], NodeId); 11] = [
         (
             i::INSP_PLAYER_FOLD_WALK_MORE,
             &[
@@ -1726,6 +1791,15 @@ fn a_fechar_nenhum_campo_da_dobra_passa_por_cima_do_titulo_seguinte() {
             i::INSP_PLAYER_REMOVE,
         ),
     ];
+    d
+}
+
+/// ⭐ **A abrir, todo campo que já cabe na banda aparece inteiro** (smoke do dono 10/11: «os últimos campos têm
+/// um pequeno delay para aparecer»).
+#[test]
+fn a_abrir_todo_campo_dentro_da_banda_aparece_inteiro() {
+    use ph2d_editor_core::panel::PanelHostInternal;
+    use ph2d_editor_core::screens::layout::{CenterSplit, ChromeBands, DockSides, HeroLayout};
     let janela = Rect::new(0.0, 0.0, 1600.0, 3200.0);
     let layout = || {
         HeroLayout::for_viewport_bands(
@@ -1739,35 +1813,46 @@ fn a_fechar_nenhum_campo_da_dobra_passa_por_cima_do_titulo_seguinte() {
     ph2d_panel_inspector::set_cards_on(true);
     let mut vistos = 0;
     let mut falhas = Vec::new();
-    for (dobra, dentro, seguinte) in dobras {
+    // O More do Walk tem o cartão Jump entre ele e o título seguinte: a régua do título não o mede.
+    for (dobra, dentro, seguinte) in dobras_do_player()
+        .into_iter()
+        .filter(|d| d.0 != ph2d_panel_inspector::ids::INSP_PLAYER_FOLD_WALK_MORE)
+    {
         let mut host = crate::host_em_metros();
         host.store_mut()
             .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_PLAYER_SECTION, false);
-        for id in i::INSP_PLAYER_FOLDS {
+        for id in ph2d_panel_inspector::ids::INSP_PLAYER_FOLDS {
             host.set_collapsed(id, id != dobra);
         }
         let mut state = InspectorState::default();
         set_current_inspector_player(Some(player()));
-        // Aberta e assentada: a dobra lembra a altura do corpo, que é a régua do recorte.
-        let _ = crate::o_cartao_da_fisica::pinta(&mut host, &mut state);
-        for t in [0.75, 0.5, 0.25] {
-            host.set_collapsed(dobra, true);
+        let aberto = crate::o_cartao_da_fisica::pinta(&mut host, &mut state);
+        let cheio: Vec<(ph2d_a11y::NodeId, Rect)> = dentro
+            .iter()
+            .filter_map(|&id| crate::o_cartao_da_fisica::achado(&aberto, id).map(|r| (id, r)))
+            .collect();
+        // Passos de quadro (2 %), como a animação real: o cartão mede-se no quadro anterior.
+        for n in 1..=48 {
+            let t = n as f32 * 0.02;
+            host.set_collapsed(dobra, false);
             host.store_mut().set_section_open_live(dobra, t);
             let rects = host.paint_with_layout::<InspectorPanel>(&mut state, layout(), janela);
             let Some(titulo) = crate::o_cartao_da_fisica::achado(&rects, seguinte) else {
-                falhas.push(format!(
-                    "{dobra:?}: o título seguinte {seguinte:?} não foi pintado"
-                ));
                 continue;
             };
-            for &id in dentro {
-                let Some(r) = crate::o_cartao_da_fisica::achado(&rects, id) else {
+            if n % 12 != 0 {
+                continue;
+            }
+            for &(id, r) in &cheio {
+                // O vão até ao título seguinte e um passo de quadro da revelação.
+                if r.y + r.h > titulo.y - 20.0 {
                     continue;
-                };
+                }
                 vistos += 1;
-                if r.y + r.h > titulo.y + 0.5 {
+                let agora = crate::o_cartao_da_fisica::achado(&rects, id);
+                if agora.is_none_or(|q| (q.h - r.h).abs() > 0.5) {
                     falhas.push(format!(
-                        "{dobra:?} a {t:.2}: o campo {id:?} (fim {:.1}) passa o título seguinte ({:.1})",
+                        "{dobra:?} a {t:.2}: o campo {id:?} (fim {:.1}) cabe na banda (título seguinte em {:.1}) e está {agora:?}",
                         r.y + r.h,
                         titulo.y
                     ));
@@ -1777,9 +1862,6 @@ fn a_fechar_nenhum_campo_da_dobra_passa_por_cima_do_titulo_seguinte() {
         set_current_inspector_player(None);
     }
     ph2d_panel_inspector::set_cards_on(false);
-    assert!(
-        vistos > 0,
-        "a régua não viu campo nenhum: está a ler o sítio errado"
-    );
+    assert!(vistos > 0, "a régua não viu campo nenhum");
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }

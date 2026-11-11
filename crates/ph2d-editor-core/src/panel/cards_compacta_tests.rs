@@ -477,7 +477,8 @@ fn what_waits_in_the_flow_stays_clipped_while_the_section_opens() {
     let pinta_a = |aberto: f32| {
         let mut f = mesa();
         f.store.set_section_open_live(A, aberto);
-        f.store.remember_section_body_h(A, 100.0);
+        let chave = crate::widget::chave_da_altura(A);
+        f.store.remember_section_body_h(chave, 100.0);
         censo::na_secao(Some(A));
         corre_fluxo(&mut f, 257.0, |c, y| c.check(B, "Region", true, y));
         censo::na_secao(None);

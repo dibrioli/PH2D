@@ -242,7 +242,7 @@ pub use scrollbar_ids::{
     WET_TUNING_SCROLLBAR_ID,
 };
 pub use section_header::body::{
-    SectionFold, corte_da_dobra, folded_gap, has_body as section_has_body,
+    SectionFold, chave_da_altura, corte_da_dobra, folded_gap, has_body as section_has_body,
 };
 /// ⭐ A geometria e o pintor da PEGA de secção (2026-09-29) — lidos pelo painel que regista o alvo.
 pub use section_header::grip as section_grip;

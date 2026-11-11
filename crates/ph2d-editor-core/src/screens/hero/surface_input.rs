@@ -267,3 +267,7 @@ pub fn sync_a11y(hero: &HeroScreen, tree: &mut ph2d_a11y::Tree, viewport: crate:
         }
     }
 }
+
+#[cfg(test)]
+#[path = "surface_input_tests.rs"]
+mod tests;

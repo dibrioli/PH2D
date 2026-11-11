@@ -167,3 +167,32 @@ fn a_coluna_do_ponto_e_o_ponto_e_as_folgas_como_na_maquete() {
         "a coluna do ponto mede {w}, quer {quer}"
     );
 }
+
+/// Auditoria 11/11: aberta no Problems, a faixa quer só o que a lista pinta (cabeçalho, a tabela e as
+/// linhas), não o terço da aba; com muitas, o terço; no Console, o terço.
+#[test]
+fn a_faixa_no_problems_quer_so_as_linhas_que_tem() {
+    let m = ph2d_panel_code::peso::metricas();
+    let third = ConsoleView::height(true, 900.0);
+    let mut v = ConsoleView::default();
+    pinta(
+        &mut v,
+        &[linha(Severity::Error, "Syntax error", 18, "—")],
+        None,
+    );
+    let um = v.want(true, 900.0);
+    assert!(
+        um.h >= ROW_H_PX + m.header_h + m.row_h && um.h < third * 0.6,
+        "{um:?}"
+    );
+    let muitas: Vec<_> = (0..40)
+        .map(|i| linha(Severity::Warning, "x", i, "—"))
+        .collect();
+    pinta(&mut v, &muitas, None);
+    assert_eq!(v.want(true, 900.0).h, third);
+    assert_eq!(
+        ConsoleView::default().want(true, 900.0).h,
+        third,
+        "o Console fica com o terço"
+    );
+}

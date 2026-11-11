@@ -86,8 +86,16 @@ fn todos_os_numeros(leis: &BrushSettings, valores: &BrushSettings) -> Vec<Numero
     n
 }
 
-/// A dica do Erase Strength (B35.9: o único controlo da borracha do Wet; o Eraser do Tuning fundiu-se nele).
-pub(crate) const DICA_DA_BORRACHA: &str = "panel.painter_layers.wetpaint.erase_strength_tip";
+/// As dicas em Plain English dos números do cartão: o Erase Strength (B35.9: o único controlo da borracha do Wet)
+/// e o Tooth fill (B35.11: o dente do papel, `paperGate`; o «Hardness» fica só o do Shape).
+const DICAS: [(NodeId, &str); 2] = [
+    (pids::PAINTER_WETPAINT_ERASE, "panel.painter_layers.wetpaint.erase_strength_tip"),
+    (pids::PAINTER_WETPAINT_HARDNESS, "panel.painter_layers.wetpaint.hardness_tip"),
+];
+
+#[cfg(test)]
+#[path = "cards_wet_rotulos_tests.rs"]
+mod rotulos_tests;
 
 /// O valor, a faixa, o passo, a fábrica e a dica da lei de cada número.
 pub(crate) fn arma_numeros(store: &mut WidgetStore, numeros: &[Numero], fabrica: &[Numero]) {
@@ -101,8 +109,10 @@ pub(crate) fn arma_numeros(store: &mut WidgetStore, numeros: &[Numero], fabrica:
             },
         );
         number_field::arm_field(store, n.id, n.valor, n.min, n.max, n.passo, n.casas);
-        if esmaecer::poe_dica(store, &[n.id]).is_none() && n.id == pids::PAINTER_WETPAINT_ERASE {
-            store.set_tooltip(n.id, tr(DICA_DA_BORRACHA));
+        if esmaecer::poe_dica(store, &[n.id]).is_none()
+            && let Some(&(_, dica)) = DICAS.iter().find(|(id, _)| *id == n.id)
+        {
+            store.set_tooltip(n.id, tr(dica));
         }
     }
 }

@@ -632,7 +632,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.paint_type_water" => "Water",
         "panel.painter_layers.wetpaint.paint_type_oil" => "Oil",
         "panel.painter_layers.wetpaint.body" => "Body",
-        "panel.painter_layers.wetpaint.hardness" => "Hardness",
+        "panel.painter_layers.wetpaint.hardness" => "Tooth fill",
+        "panel.painter_layers.wetpaint.hardness_tip" => {
+            "How deep the paint reaches into the paper's grain. Low leaves the dips white; high fills them too."
+        }
         "panel.painter_layers.wetpaint.pickup" => "Pickup (%)",
         "panel.painter_layers.wetpaint.dry_speed" => "Dry Speed",
         "panel.painter_layers.wetpaint.edge_darkening" => "Edge Darkening (%)",

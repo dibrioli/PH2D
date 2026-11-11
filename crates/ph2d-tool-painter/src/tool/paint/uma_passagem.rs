@@ -11,8 +11,8 @@
 //! num mapa que o carimbo sorteia (Random) ou recorta (Stencil), o máximo de sempre.
 
 use ph2d_det_math::DetMath as _;
-use ph2d_painter_brush::Dab;
-use ph2d_painter_brush::texture::TextureMapping;
+use ph2d_painter_brush::texture::{TexDabBasis, TextureMapping};
+use ph2d_painter_brush::{Dab, ImageMask};
 
 /// Os pontos da média do grão (sequência R2, sem aliasing com o período do grão).
 const AMOSTRAS_DO_GRAO: usize = 4096;
@@ -94,24 +94,41 @@ impl crate::tool::PainterTool {
             )
     }
 
-    /// O grão que o dab `d` aplica ao texel `(x, y)` — a base dele como o carimbo a tira (o sorteio não entra).
-    fn grao_do_dab(&self, d: &Dab, x: i64, y: i64) -> f32 {
+    /// A base do grão do dab `d` como o carimbo a tira (o sorteio não entra): função do dab, nunca do texel —
+    /// tira-se uma vez por dab e por leitura (B49.2: era uma por PAR de dabs, N²).
+    fn base_do_dab(&self, d: &Dab) -> TexDabBasis {
+        #[cfg(test)]
+        BASES_DO_GRAO.with(|n| n.set(n.get() + 1));
         let b = &self.paint.brush;
         let dims = [self.source_size.0 as f32, self.source_size.1 as f32];
-        let base = ph2d_painter_brush::texture::dab_basis(
-            &b.texture,
-            &mut 0u64,
-            dims,
-            b.dab_footprint_of(d),
-        );
-        let imagem = self.paint.texture_image.as_ref().map(|i| i.as_mask());
-        ph2d_painter_brush::dab::grain_at(b, &base, imagem.as_ref(), x, y, d.center, d.radius_px)
+        ph2d_painter_brush::texture::dab_basis(&b.texture, &mut 0u64, dims, b.dab_footprint_of(d))
+    }
+
+    /// O grão que o dab `d`, de base `base`, aplica ao texel `(x, y)`.
+    fn grao_na_base(
+        &self,
+        base: &TexDabBasis,
+        imagem: Option<&ImageMask<'_>>,
+        d: &Dab,
+        x: i64,
+        y: i64,
+    ) -> f32 {
+        ph2d_painter_brush::dab::grain_at(
+            &self.paint.brush,
+            base,
+            imagem,
+            x,
+            y,
+            d.center,
+            d.radius_px,
+        )
     }
 
     /// ⭐ **O grão médio `ḡ`** da textura: num grão preso à tela (Tiled) a média num quadrado de
-    /// [`LADO_DA_MEDIA_TILED`] px; num grão que anda com o dab (View) a média sob a ponta do dab `d`, pesada pelo
-    /// falloff.
-    fn grao_medio(&self, d: &Dab) -> f32 {
+    /// [`LADO_DA_MEDIA_TILED`] px; num grão que anda com o dab (View) a média sob a ponta do dab `d` (de base
+    /// `base`), pesada pelo falloff.
+    fn grao_medio(&self, d: &Dab, base: &TexDabBasis) -> f32 {
+        let imagem = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let b = &self.paint.brush;
         let tiled = b.texture.mapping == TextureMapping::Tiled;
         let r = d.radius_px.max(0.5);
@@ -130,7 +147,7 @@ impl crate::tool::PainterTool {
                 }
                 (d.center[0] + dx, d.center[1] + dy, b.falloff_weight(t))
             };
-            let g = self.grao_do_dab(d, x.floor() as i64, y.floor() as i64);
+            let g = self.grao_na_base(base, imagem.as_ref(), d, x.floor() as i64, y.floor() as i64);
             soma += f64::from(w * g);
             peso += f64::from(w);
         }
@@ -152,9 +169,11 @@ impl crate::tool::PainterTool {
         if !self.grao_que_o_nivel_le() || p.dabs.is_empty() {
             return None;
         }
+        let bases: Vec<TexDabBasis> = p.dabs.iter().map(|d| self.base_do_dab(d)).collect();
+        let imagem = self.paint.texture_image.as_ref().map(|i| i.as_mask());
         let medio = match p.grao_medio {
             Some(g) => g,
-            None => *p.grao_medio.insert(self.grao_medio(&p.dabs[0])),
+            None => *p.grao_medio.insert(self.grao_medio(&p.dabs[0], &bases[0])),
         };
         let b = &self.paint.brush;
         // O Flow como taxa até o tecto (`cover_add`): `v = g·tecto·S` é linear no grão; o Accumulate empilha.
@@ -173,11 +192,11 @@ impl crate::tool::PainterTool {
             // O grão do texel: a média do de cada dab que o alcança, pesada pelo falloff (Tiled: o mesmo em todos).
             let (px, py) = (x as f32 + 0.5, y as f32 + 0.5);
             let (mut soma, mut peso) = (0.0f32, 0.0f32);
-            for d in &p.dabs {
+            for (d, base) in p.dabs.iter().zip(&bases) {
                 let t = (px - d.center[0]).det_hypot(py - d.center[1]) / d.radius_px.max(0.5);
                 if t < 1.0 {
                     let k = b.falloff_weight(t);
-                    soma += k * self.grao_do_dab(d, x, y);
+                    soma += k * self.grao_na_base(base, imagem.as_ref(), d, x, y);
                     peso += k;
                 }
             }
@@ -229,3 +248,13 @@ impl crate::tool::PainterTool {
         (n > 0).then_some(u32::from(n))
     }
 }
+
+#[cfg(test)]
+std::thread_local! {
+    /// Quantas bases do grão (`texture::dab_basis`) a leitura do nível tirou neste fio.
+    static BASES_DO_GRAO: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+#[path = "uma_passagem_tests.rs"]
+mod tests;

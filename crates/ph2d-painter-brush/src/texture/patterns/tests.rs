@@ -319,8 +319,7 @@ fn texture_preview_colorizes_with_the_ramp_and_shows_alpha() {
 /// **GRAN-2 regression (doc 12, medido por FFT): o tooth dos papéis é MID-BAND, não blotch.**
 /// A métrica da auditoria: `std(médias de blocos 32px) / std(campo)` — o gerador antigo media
 /// **91,7%** (a energia era macro-mancha, λ > 32 px → o wash saía "mottled"); um tooth de verdade
-/// concentra energia em 2-32 px, então as médias de bloco são quase uniformes. Também pina a
-/// costura do tile (periódico por construção: amostra em u e u+1 idênticas).
+/// concentra energia em 2-32 px, então as médias de bloco são quase uniformes.
 #[test]
 fn paper_tiles_are_mid_band_tooth_not_low_frequency_blotch() {
     for kind in [
@@ -380,17 +379,77 @@ fn paper_tiles_are_mid_band_tooth_not_low_frequency_blotch() {
              measured 0.917); the tooth must live in the 2-32 px band",
             kind.name_key()
         );
-        // Seamless wrap: one full tile later the field repeats exactly.
-        for &(u, v) in &[(0.123f32, 0.456f32), (0.9, 0.05)] {
-            let a = sample_kind(kind, [u, v], params, None);
-            let b = sample_kind(kind, [u + 1.0, v], params, None);
-            let c = sample_kind(kind, [u, v + 1.0], params, None);
-            assert!(
-                (a - b).abs() < 1e-4 && (a - c).abs() < 1e-4,
-                "{} tile seam",
-                kind.name_key()
+    }
+}
+
+/// Correlação de Pearson do campo `f` (lado `n`) consigo mesmo deslocado `lag` px em x (`eixo 0`) ou y.
+fn autocorrelacao(f: &[f32], n: usize, lag: usize, eixo: u8) -> f64 {
+    let (mut sa, mut sb, mut saa, mut sbb, mut sab, mut c) = (0f64, 0f64, 0f64, 0f64, 0f64, 0f64);
+    for y in 0..n - if eixo == 1 { lag } else { 0 } {
+        for x in 0..n - if eixo == 0 { lag } else { 0 } {
+            let a = f64::from(f[y * n + x]);
+            let b = f64::from(if eixo == 0 {
+                f[y * n + x + lag]
+            } else {
+                f[(y + lag) * n + x]
+            });
+            (sa, sb, saa, sbb, sab, c) = (
+                sa + a,
+                sb + b,
+                saa + a * a,
+                sbb + b * b,
+                sab + a * b,
+                c + 1.0,
             );
         }
+    }
+    let cov = sab / c - (sa / c) * (sb / c);
+    cov / ((saa / c - (sa / c).powi(2)).sqrt() * (sbb / c - (sb / c).powi(2)).sqrt())
+}
+
+/// ⭐ **B33 (decisão 7b): o papel não se repete a 256 px.** Num campo de 1024² a Size 1, a autocorrelação nos
+/// desfasamentos 256 · 512 (o ladrilho) e 241 (a segunda leitura) fica longe de 1 em x e em y, e a média e o
+/// desvio (o fundo do dente) ficam os do preset. Controlo: a leitura única de antes mede ≥ 0,98 a 256 (o vermelho).
+#[test]
+fn o_papel_nao_se_repete_a_256_px() {
+    const N: usize = 1024;
+    let campo = |f: &dyn Fn(f32, f32) -> f32| -> Vec<f32> {
+        (0..N * N)
+            .map(|i| f((i % N) as f32 / 256.0, (i / N) as f32 / 256.0))
+            .collect()
+    };
+    let media_desvio = |f: &[f32]| {
+        let m = f.iter().map(|&v| f64::from(v)).sum::<f64>() / f.len() as f64;
+        let d =
+            (f.iter().map(|&v| (f64::from(v) - m).powi(2)).sum::<f64>() / f.len() as f64).sqrt();
+        (m, d)
+    };
+    for which in 0..3 {
+        let antes = campo(&|u, v| paper_tile::sample_uma_leitura(which, u, v));
+        let depois = campo(&|u, v| paper_tile::sample(which, u, v));
+        for eixo in [0u8, 1] {
+            let r0 = autocorrelacao(&antes, N, 256, eixo);
+            assert!(
+                r0 > 0.98,
+                "papel {which} eixo {eixo}: o controlo devia repetir a 256 (r = {r0:.3})"
+            );
+            for lag in [256usize, 512, 241] {
+                let r = autocorrelacao(&depois, N, lag, eixo);
+                assert!(
+                    r < 0.6,
+                    "papel {which} eixo {eixo}: repete a {lag} px (r = {r:.3}, antes {r0:.3})"
+                );
+            }
+        }
+        let ((ma, da), (md, dd)) = (media_desvio(&antes), media_desvio(&depois));
+        assert!(
+            (ma - md).abs() < 0.01,
+            "papel {which}: média {ma:.4} → {md:.4}"
+        );
+        assert!(
+            (dd / da - 1.0).abs() < 0.10,
+            "papel {which}: desvio {da:.4} → {dd:.4}"
+        );
     }
 }
 

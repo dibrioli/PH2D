@@ -1,0 +1,12 @@
+1080p branco eixo 0: autocorrelação a 256 px 1.000 → 0.464
+1080p branco eixo 1: autocorrelação a 256 px 1.000 → 0.457
+1080p blocos eixo 0: autocorrelação a 256 px 1.000 → 0.464
+1080p blocos eixo 1: autocorrelação a 256 px 1.000 → 0.457
+1080p papel eixo 0: autocorrelação a 256 px 1.000 → 0.443
+1080p papel eixo 1: autocorrelação a 256 px 1.000 → 0.443
+4k branco eixo 0: autocorrelação a 256 px 1.000 → 0.462
+4k branco eixo 1: autocorrelação a 256 px 1.000 → 0.457
+4k blocos eixo 0: autocorrelação a 256 px 1.000 → 0.462
+4k blocos eixo 1: autocorrelação a 256 px 1.000 → 0.457
+4k papel eixo 0: autocorrelação a 256 px 1.000 → 0.443
+4k papel eixo 1: autocorrelação a 256 px 1.000 → 0.442

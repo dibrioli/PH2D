@@ -258,12 +258,15 @@ fn tiles() -> &'static [Vec<f32>; 3] {
     })
 }
 
-/// Sample a paper preset's tile at pattern coords `(u, v)` (1 unit = one tile = [`TILE`] texels, so
-/// one texel ≈ one canvas px at Paper Size 1) — bilinear with seamless wrap. `which`: 0 Cold ·
-/// 1 Rough · 2 Hot.
-pub(super) fn sample(which: usize, u: f32, v: f32) -> f32 {
-    let tile = &tiles()[which.min(2)];
-    let (x, y) = (u * TILE as f32, v * TILE as f32);
+/// Side of the SECOND read, in canvas px at Paper Size 1 (B33, decisão 7b). Prime and coprime with
+/// [`TILE`], so the sum repeats only every `256 × 241 = 61 696` px — never on a 4K canvas (one read
+/// alone repeated 15 × 8,4 times there, autocorrelation 1,000 at lag 256).
+const TILE_B: f32 = 241.0;
+/// Texel offset of the second read: keeps both reads from starting on the same texel at the origin.
+const DESLOCA_B: [f32; 2] = [97.0, 53.0];
+
+/// Bilinear wrap-fetch of `tile` at texel `(x, y)`.
+fn fetch(tile: &[f32], x: f32, y: f32) -> f32 {
     let x0 = x.floor();
     let y0 = y.floor();
     let (tx, ty) = (x - x0, y - y0);
@@ -277,4 +280,27 @@ pub(super) fn sample(which: usize, u: f32, v: f32) -> f32 {
     let top = a + (b - a) * tx;
     let bot = c + (d - c) * tx;
     top + (bot - top) * ty
+}
+
+/// Sample a paper preset at pattern coords `(u, v)` (1 unit = [`TILE`] texels ≈ one canvas px per texel
+/// at Paper Size 1). `which`: 0 Cold · 1 Rough · 2 Hot.
+///
+/// **Two reads of the same tile** (B33): the 256-px read plus a second one at period [`TILE_B`],
+/// turned 180° (so the two never line up over a region: a straight second read would beat once every
+/// ~4 100 px into a patch of doubled tooth). Their sum is renormalised by `1/√2` around `0.5`, so the
+/// mean and the tooth depth (std) stay the preset's.
+pub(super) fn sample(which: usize, u: f32, v: f32) -> f32 {
+    let tile = &tiles()[which.min(2)];
+    let (x, y) = (u * TILE as f32, v * TILE as f32);
+    let a = fetch(tile, x, y);
+    let k = TILE as f32 / TILE_B;
+    let b = fetch(tile, DESLOCA_B[0] - x * k, DESLOCA_B[1] - y * k);
+    (0.5 + (a + b - 1.0) * core::f32::consts::FRAC_1_SQRT_2).clamp(0.0, 1.0)
+}
+
+/// The single 256-px read before B33, verbatim — the «antes» of the prancha and the red of the gate.
+#[cfg(test)]
+pub(super) fn sample_uma_leitura(which: usize, u: f32, v: f32) -> f32 {
+    let tile = &tiles()[which.min(2)];
+    fetch(tile, u * TILE as f32, v * TILE as f32)
 }

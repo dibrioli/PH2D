@@ -605,4 +605,6 @@ fn sample_image(img: &ImageMask, u: f32, v: f32) -> f32 {
 }
 
 #[cfg(test)]
+mod prancha_b33_tests;
+#[cfg(test)]
 mod tests;

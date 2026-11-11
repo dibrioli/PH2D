@@ -319,8 +319,9 @@ impl PreviewDrive {
                 // que ele deixou ⇒ alguém autorou por cima, e o documento passa a ser essa mão.
                 // Sem esta linha, editar a pose de um corpo a meio de uma corrida (ou o `frame`
                 // por um caminho que não pause) ficaria para sempre por baixo do memo do início.
+                // Num facto de vários campos só o que ela mudou ([`Driven::com_outra_mao`]).
                 if outra_mao {
-                    e.authored = before;
+                    e.authored = e.authored.com_outra_mao(e.last_written, before);
                 }
                 e.last_written = after;
                 e.seen = true;
@@ -594,6 +595,9 @@ pub use blobs::{BlobDrive, BlobRef};
 #[cfg(test)]
 #[path = "camadas_tests.rs"]
 mod camadas_tests;
+#[cfg(test)]
+#[path = "outra_mao_tests.rs"]
+mod outra_mao_tests;
 
 // ⚠️ **Os gates desta lei NÃO vivem aqui, e a ausência é a decisão** (HOWTO §1.2): cada um deles
 // passa pela `ProjectState::capture` e pelo `tick_sprite_animations` da shell — eles medem *a

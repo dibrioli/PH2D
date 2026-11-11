@@ -28,6 +28,20 @@ impl Driven {
         }
     }
 
+    /// ⭐ **O autorado depois de OUTRA MÃO** (`self` = o autorado): o que ela mudou (`before` ≠
+    /// `last_written`) passa a documento; o resto fica o do documento. Num facto de vários campos
+    /// o motor conduz uns e outra mão escreve outros — a ponte semeia as âncoras da junta por cima
+    /// da rigidez da curva, e a fotografia inteira faria da curva o documento.
+    #[must_use]
+    pub(crate) fn com_outra_mao(self, last_written: Self, before: Self) -> Self {
+        match (self, last_written, before) {
+            (Self::JointParams(doc), Self::JointParams(meu), Self::JointParams(dela)) => {
+                Self::JointParams(junta_campo_a_campo(doc, meu, dela))
+            }
+            _ => before,
+        }
+    }
+
     /// A pose que o facto guarda, quando o motor escreve o `Transform`.
     #[must_use]
     pub fn pose(self) -> Option<Transform> {
@@ -310,4 +324,52 @@ impl Driven {
             }
         }
     }
+}
+
+fn mudou<T: PartialEq>(a: &T, b: &T) -> bool {
+    a != b
+}
+
+/// O merge a três da junta, campo a campo — ver [`Driven::com_outra_mao`].
+fn junta_campo_a_campo(
+    doc: ph2d_physics_ecs::PhysicsJoint,
+    meu: ph2d_physics_ecs::PhysicsJoint,
+    dela: ph2d_physics_ecs::PhysicsJoint,
+) -> ph2d_physics_ecs::PhysicsJoint {
+    let mut out = doc;
+    macro_rules! campos {
+        ($($f:ident),* $(,)?) => {
+            // Exaustivo: um campo novo no `PhysicsJoint` não compila sem entrar aqui.
+            let ph2d_physics_ecs::PhysicsJoint { $($f: _),* } = dela;
+            $(if mudou(&dela.$f, &meu.$f) { out.$f = dela.$f; })*
+        };
+    }
+    campos!(
+        body_a,
+        body_b,
+        kind,
+        limits_enabled,
+        limit_min,
+        limit_max,
+        motor_enabled,
+        motor_speed,
+        motor_max_force,
+        rest_length,
+        stiffness,
+        damping,
+        max_length,
+        local_a,
+        local_b,
+        anchored,
+        motor_mode,
+        motor_target,
+        break_enabled,
+        break_force,
+        break_torque,
+        active,
+        collide_connected,
+        soft,
+        custom,
+    );
+    out
 }

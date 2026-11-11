@@ -9,7 +9,7 @@ use ph2d_ecs::canal::familia::{JUNTA, MUNDO};
 use ph2d_ecs::{Entity, FieldKey, Name, SimWorld, Transform};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, JointKind, PhysicsBridge};
 use ph2d_physics_ecs::{PhysicsJoint, RigidBody};
-use ph2d_preview_drive::PreviewDrive;
+use ph2d_preview_drive::{Driven, Driver, PreviewDrive};
 use ph2d_timeline::{PropKind, TimelineDoc};
 
 const DT: f64 = 1.0 / 60.0;
@@ -77,11 +77,12 @@ struct App {
     estado: PhysicsState,
     drive: PreviewDrive,
     e: Entity,
+    dono: u64,
 }
 
 impl App {
     fn novo(junta: bool) -> Self {
-        let (sim, e, _, doc) = cena(junta);
+        let (sim, e, dono, doc) = cena(junta);
         let (ponte, estado, drive) = Default::default();
         Self {
             sim,
@@ -90,6 +91,7 @@ impl App {
             estado,
             drive,
             e,
+            dono,
         }
     }
 
@@ -193,4 +195,20 @@ fn a_mao_ganha_a_curva_em_todos_os_tiques_do_quadro() {
         -1.5,
         "a mão no quadro em que mudou"
     );
+}
+
+/// ⭐ O ledger guarda a junta do DOCUMENTO (a rigidez 30), com as âncoras que a ponte semeou por cima.
+/// *Mutação: a outra mão a tomar a fotografia inteira ⇒ o autorado lê a rigidez da curva (5).*
+#[test]
+fn o_ledger_do_quadro_guarda_a_junta_do_documento() {
+    let (_, app) = corre(true, 3);
+    let Some(Driven::JointParams(pj)) = app.drive.authored(app.dono, Driver::JointParams) else {
+        panic!("a curva conduz a junta");
+    };
+    assert_eq!(
+        pj.stiffness,
+        PhysicsJoint::default().stiffness,
+        "a rigidez do documento"
+    );
+    assert!(pj.anchored, "a semente das âncoras fica");
 }

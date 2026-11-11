@@ -426,3 +426,168 @@ fn o_replay_veste_a_peca_que_saltou_depois_do_ponto_salvo() {
     bridge.dispatch_with_scene(&mut sim, false, 155, &mut cena);
     assert_eq!(bridge.body_pose(m).expect("mesa"), play[154]);
 }
+
+/// A curva de [`EscalaAnimada`] em `dur` tiques: altura (e largura, com `largura`) 1 → 2 desde o 60.
+struct Rampa {
+    forma: Entity,
+    dur: f32,
+    largura: bool,
+}
+
+impl ph2d_physics_ecs::SceneAtTick for Rampa {
+    fn put(&mut self, sim: &mut SimWorld, tick: u64) -> bool {
+        let f = ((tick as f32 - 60.0) / self.dur).clamp(0.0, 1.0);
+        let mut t = sim
+            .world_mut()
+            .get_mut::<Transform>(self.forma)
+            .expect("a forma");
+        t.scale.y = 1.0 + f;
+        if self.largura {
+            t.scale.x = 1.0 + f;
+        }
+        true
+    }
+}
+
+fn estatico(sim: &mut SimWorld, x: f32, y: f32, half_x: f32, half_y: f32) {
+    sim.world_mut().spawn((
+        Transform::from_translation(Vec2::new(x, y)),
+        ph2d_physics_ecs::RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid { half_x, half_y },
+            ..Collider::default()
+        },
+    ));
+}
+
+fn caixa_solta(sim: &mut SimWorld, nome: &str, y: f32) -> (Entity, Entity) {
+    let e = sim
+        .world_mut()
+        .spawn((
+            Name::new(nome),
+            Transform::from_translation(Vec2::new(0.0, y)),
+        ))
+        .id();
+    ph2d_physics_ecs::torna_corpo(sim.world_mut(), e, BodyKind::Dynamic, [0.5, 0.5], false);
+    let forma = ph2d_physics_ecs::main_shape(sim.world(), e).expect("a forma filha");
+    (e, forma)
+}
+
+/// O pior afundar (cm) de `a` sobre o plano `y = chao` (o AABB) ao longo de `tiques`.
+fn pior_afundar(
+    sim: &mut SimWorld,
+    cena: &mut Rampa,
+    tiques: u64,
+    mut medir: impl FnMut(&PhysicsBridge) -> f32,
+) -> f32 {
+    let mut bridge = PhysicsBridge::new();
+    let mut pior = 0.0f32;
+    for t in 1..=tiques {
+        bridge.dispatch_with_scene(sim, true, t, cena);
+        pior = pior.max(medir(&bridge));
+    }
+    pior
+}
+
+/// O afundar de repouso do caixote no chão, medido antes da rampa (0,002 cm): o tecto dos testes.
+const REPOUSO_CM: f32 = 0.01;
+
+/// ⭐ **A forma que cresce em volta do centro não atravessa o chão** (GEF02 onda 8 item 2). Medido
+/// antes da cura (afundar máximo): 0,30 cm em 120 tiques · 0,83 em 40 · 1,54 em 20 · 5,0 em 5 —
+/// depois, 0,002 em todas (o repouso).
+#[test]
+fn a_forma_que_cresce_no_chao_nao_o_atravessa() {
+    for dur in [120.0, 40.0, 20.0, 5.0] {
+        let (mut sim, c, forma) = caixote();
+        let mut cena = Rampa {
+            forma,
+            dur,
+            largura: false,
+        };
+        let pior = pior_afundar(&mut sim, &mut cena, 240, |b| {
+            -b.body_aabb(c).expect("caixote").0[1] * 100.0
+        });
+        assert!(
+            pior < REPOUSO_CM,
+            "rampa de {dur} tiques: {pior:.3} cm no chão"
+        );
+    }
+}
+
+/// No canto (chão + parede encostada), a forma que cresce nos dois eixos sai dos dois. Antes: 7,4 cm
+/// no chão e 7,6 na parede numa rampa de 5 tiques.
+#[test]
+fn a_forma_que_cresce_no_canto_sai_do_chao_e_da_parede() {
+    let (mut sim, c, forma) = caixote();
+    estatico(&mut sim, 1.0, 2.0, 0.5, 3.0);
+    let mut cena = Rampa {
+        forma,
+        dur: 5.0,
+        largura: true,
+    };
+    let pior = pior_afundar(&mut sim, &mut cena, 200, |b| {
+        let (mn, mx) = b.body_aabb(c).expect("caixote");
+        (-mn[1]).max(mx[0] - 0.5) * 100.0
+    });
+    assert!(pior < REPOUSO_CM, "{pior:.3} cm no canto");
+}
+
+/// A caixa SOLTA em cima sobe com a de baixo que cresce. Antes: afundava 45 cm e saltava 12 cm
+/// (rampa de 5 tiques).
+#[test]
+fn a_caixa_em_cima_sobe_com_a_forma_que_cresce() {
+    let (mut sim, c, forma) = caixote();
+    let (topo, _) = caixa_solta(&mut sim, "Top", 1.5);
+    let mut cena = Rampa {
+        forma,
+        dur: 5.0,
+        largura: false,
+    };
+    let pior = pior_afundar(&mut sim, &mut cena, 200, |b| {
+        let (mn, mx) = b.body_aabb(c).expect("caixote");
+        let (tmn, _) = b.body_aabb(topo).expect("topo");
+        (-mn[1]).max((mx[1] - tmn[1]).abs()) * 100.0
+    });
+    assert!(pior < REPOUSO_CM, "{pior:.3} cm entre o topo e a caixa");
+}
+
+/// A forma que cresce EM CIMA de uma caixa solta não a mete no chão: a de baixo segura como um chão e
+/// quem sobe é a forma. Antes: 2,34 cm no chão (o solver); empurrá-la para baixo dava 8,39.
+#[test]
+fn a_forma_que_cresce_em_cima_nao_mete_a_de_baixo_no_chao() {
+    let mut sim = SimWorld::new();
+    estatico(&mut sim, 0.0, -0.5, 5.0, 0.5);
+    let (baixo, _) = caixa_solta(&mut sim, "Below", 0.5);
+    let (_, forma) = caixa_solta(&mut sim, "Grows", 1.5);
+    let mut cena = Rampa {
+        forma,
+        dur: 5.0,
+        largura: false,
+    };
+    let pior = pior_afundar(&mut sim, &mut cena, 200, |b| {
+        -b.body_aabb(baixo).expect("baixo").0[1] * 100.0
+    });
+    assert!(pior < REPOUSO_CM, "{pior:.3} cm da caixa de baixo no chão");
+}
+
+/// O corpo com a posição Y travada não é teleportado em Y pela forma que cresce (a trava manda).
+#[test]
+fn a_forma_que_cresce_nao_salta_a_trava_do_eixo() {
+    let (mut sim, c, forma) = caixote();
+    sim.world_mut()
+        .entity_mut(c)
+        .insert(ph2d_physics_ecs::LockPositionY);
+    let mut cena = Rampa {
+        forma,
+        dur: 5.0,
+        largura: false,
+    };
+    let mut bridge = PhysicsBridge::new();
+    for t in 1..=100 {
+        bridge.dispatch_with_scene(&mut sim, true, t, &mut cena);
+    }
+    let (_, y, _) = bridge.body_pose(c).expect("caixote");
+    assert!((y - 0.5).abs() < 1e-4, "a trava segura o Y: {y}");
+}

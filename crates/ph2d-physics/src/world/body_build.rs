@@ -280,6 +280,7 @@ impl PhysicsWorld {
         let Some(c) = self.colliders.get_mut(ch) else {
             return;
         };
+        let velha = (c.shared_shape().clone(), *c.position());
         c.set_shape(fresh.shared_shape().clone());
         match desc.mass_override {
             Some(m) => c.set_mass(m),
@@ -294,6 +295,7 @@ impl PhysicsWorld {
         c.set_position_wrt_parent(pose);
         c.user_data = fresh.user_data;
         c.set_active_hooks(fresh.active_hooks());
+        self.afasta_dos_rigidos(ch, &velha.0, velha.1, pose);
     }
 }
 

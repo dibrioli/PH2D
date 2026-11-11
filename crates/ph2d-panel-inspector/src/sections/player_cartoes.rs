@@ -5,6 +5,8 @@
 
 #[path = "player_grupos.rs"]
 mod grupos;
+#[path = "player_pulo.rs"]
+mod pulo;
 
 use super::rows::{Campo, caixa_row, card_frame_with, num_row_unit, par_row, seg_row};
 use super::table::{PLAYER_CARDS, PlayerRow};
@@ -14,6 +16,7 @@ use ph2d_editor_core::widget::CheckboxValue;
 use ph2d_i18n::{TextKey, tr};
 
 use grupos::*;
+use pulo::cartao;
 
 fn row_of(id: NodeId) -> Option<&'static PlayerRow> {
     PLAYER_CARDS
@@ -279,35 +282,6 @@ pub(super) fn paint(p: &mut Pintor<'_>, mut y: f32) -> f32 {
     y = habilidades(p, y);
     y = perdao_e_perna(p, y);
     avancado(p, y)
-}
-
-fn cartao(p: &mut Pintor<'_>, y: f32, titulo: &'static str, lista: &[NodeId]) -> f32 {
-    let n = lista.iter().filter(|id| p.shown(**id)).count();
-    let (theme, x, w, store, info) = (p.theme, p.x, p.w, p.store, p.info);
-    let hit = &mut *p.hit;
-    card_frame_with(
-        p.scene,
-        p.text,
-        theme,
-        x,
-        w,
-        y,
-        TextKey::new(titulo).tr(),
-        n,
-        |scene, text, ix, iw, ry| {
-            let mut q = Pintor {
-                scene,
-                text,
-                theme,
-                hit,
-                store,
-                x: ix,
-                w: iw,
-                info,
-            };
-            q.rows(ix, iw, ry, lista)
-        },
-    )
 }
 
 fn habilidades(p: &mut Pintor<'_>, mut y: f32) -> f32 {

@@ -363,6 +363,9 @@ mod nav;
 mod overrides;
 /// O componente do player de plataforma (docs dele).
 mod player;
+/// A curva do pulo sobre o componente (ficha GEF 04).
+mod player_arc;
+pub use player_arc::arc_world;
 /// A lei do valor do player (`PlatformPlayer::sanitize`).
 mod player_law;
 /// ⭐ O PROJÉCTIL de arcade (TOP-20 #14) — a lei vive na folha [`ph2d_projectile`].

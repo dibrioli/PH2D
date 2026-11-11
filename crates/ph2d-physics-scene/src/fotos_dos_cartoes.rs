@@ -33,6 +33,8 @@ pub enum CasoFisica {
     Player,
     /// O Player com os cartões de cima dobrados, para Body e Shape caberem na foto.
     PlayerCartoes,
+    /// O mesmo com a curva do pulo no canvas (ficha GEF 04): «Show Jump Arc» marcado e um pulo do ar.
+    PlayerPulo,
     /// Uma forma sem corpo acima: a «Collision Shape» acabada de nascer do menu Add.
     Solta,
     /// Uma forma dentro de um corpo.
@@ -174,6 +176,7 @@ pub fn caso(nome: &str) -> Option<CasoFisica> {
         "esticada" => CasoFisica::Esticada,
         "player" => CasoFisica::Player,
         "player_cartoes" => CasoFisica::PlayerCartoes,
+        "player_pulo" => CasoFisica::PlayerPulo,
         "solta" => CasoFisica::Solta,
         "peca" => CasoFisica::Peca,
         "vazia" => CasoFisica::Vazia,
@@ -243,6 +246,14 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
         CasoFisica::Player | CasoFisica::PlayerCartoes | CasoFisica::FormaPlayer => {
             return por_nome(sim, "Player").map(|e| e.to_bits());
         }
+        CasoFisica::PlayerPulo => {
+            let e = por_nome(sim, "Player")?;
+            if let Some(mut p) = sim.world_mut().get_mut::<ph2d_physics_ecs::PlatformPlayer>(e) {
+                p.show_jump_arc = true;
+                p.air_jumps = 1;
+            }
+            return Some(e.to_bits());
+        }
         CasoFisica::Baixa | CasoFisica::Larga => {
             return por_nome(sim, "Platform Low").map(|e| e.to_bits());
         }
@@ -256,6 +267,7 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
         | CasoFisica::FormaFitFica
         | CasoFisica::Player
         | CasoFisica::PlayerCartoes
+        | CasoFisica::PlayerPulo
         | CasoFisica::FormaPlayer
         | CasoFisica::Baixa
         | CasoFisica::Larga => {

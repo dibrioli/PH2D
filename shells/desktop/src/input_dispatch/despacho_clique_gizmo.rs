@@ -323,9 +323,20 @@ impl crate::App {
                     (evt.x, evt.y),
                     kind,
                 );
-                if opened.is_some() {
-                    // Disjoint field write: `gfx`/`hero` borrow
-                    // `self.gfx`, this is `self.physics.joint_anchor_drag`.
+                let janela =
+                    crate::scene_mapping::janela(hero.view.center_split, gfx.surface.size());
+                let cursor = gfx.camera.screen_to_world((evt.x, evt.y), janela);
+                let s = gfx.physics.settings();
+                if ph2d_app_physics::jump_arc::open(
+                    &mut self.physics,
+                    &gfx.sim,
+                    &s,
+                    (joint, kind),
+                    cursor,
+                ) {
+                    began_joint_anchor = true;
+                } else if opened.is_some() {
+                    // Disjoint field write: `gfx`/`hero` borrow `self.gfx`, this is `self.physics`.
                     self.physics.joint_anchor_drag = opened;
                     began_joint_anchor = true;
                     // **Grabbing a handle SELECTS its joint**: the press also puts §12 (Physics

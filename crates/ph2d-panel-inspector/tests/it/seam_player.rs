@@ -23,8 +23,8 @@ use ph2d_panel_inspector::{
 };
 use ph2d_ui_testkit::MockPanelHost;
 
-const ENTITY: u64 = 0x5EED_0081;
-const VIEWPORT: Rect = Rect {
+pub(crate) const ENTITY: u64 = 0x5EED_0081;
+pub(crate) const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 320.0,
@@ -148,6 +148,8 @@ pub(crate) fn player() -> InspectorPlayerInfo {
         // capacidades LIGADAS acima: uma caixa desmarcada esconde rows (o Fall
         // Limit esconde o Max Fall), e a varredura não as alcançaria.
         abilities: [true; 7],
+        show_jump_arc: false,
+        feel: None,
     }
 }
 
@@ -183,7 +185,7 @@ fn empty() -> InspectorPlayerInfo {
     }
 }
 
-fn painted(info: InspectorPlayerInfo) -> Vec<(ph2d_a11y::NodeId, Rect)> {
+pub(crate) fn painted(info: InspectorPlayerInfo) -> Vec<(ph2d_a11y::NodeId, Rect)> {
     let mut host = host_aberto();
     let mut state = InspectorState::default();
     set_current_inspector_player(Some(info));
@@ -192,7 +194,7 @@ fn painted(info: InspectorPlayerInfo) -> Vec<(ph2d_a11y::NodeId, Rect)> {
     rects
 }
 
-fn click_real(info: InspectorPlayerInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
+pub(crate) fn click_real(info: InspectorPlayerInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
     let mut host = host_aberto();
     let mut state = InspectorState::default();
     set_current_inspector_player(Some(info));
@@ -231,7 +233,7 @@ fn commit(info: InspectorPlayerInfo, id: ph2d_a11y::NodeId, v: f64) -> Vec<Edito
 }
 
 #[track_caller]
-fn expect(actions: &[EditorAction], edit: PlayerFieldEdit, what: &str) {
+pub(crate) fn expect(actions: &[EditorAction], edit: PlayerFieldEdit, what: &str) {
     assert_eq!(
         actions,
         [EditorAction::InspectorPlayerEdit {
@@ -1434,7 +1436,7 @@ fn every_ability_box_reaches_the_bus_in_both_directions() {
 }
 
 /// O clique REAL numa caixa: tem de produzir o `Toggled` dela (focável e viva).
-fn toggle_real(info: InspectorPlayerInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
+pub(crate) fn toggle_real(info: InspectorPlayerInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
     let mut host = host_aberto();
     let mut state = InspectorState::default();
     set_current_inspector_player(Some(info));

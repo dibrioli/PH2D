@@ -114,7 +114,7 @@ impl App {
 
     /// Segue o cursor com o arrasto de âncora aberto. No-op quando não há um.
     pub(crate) fn advance_joint_anchor_drag(&mut self) {
-        if self.physics.joint_anchor_drag.is_none() {
+        if self.physics.joint_anchor_drag.is_none() && self.physics.jump_arc_drag.is_none() {
             return;
         }
         // Ctrl (Cmd no macOS) é o modificador de encaixe do editor — a mesma
@@ -133,6 +133,7 @@ impl App {
             toasts: &mut gfx.toasts,
             hero: gfx.hero_screen.as_mut(),
         };
+        ph2d_app_physics::jump_arc::advance(&self.physics, &mut ctx, pointer);
         joint_anchor_drag::advance_joint_anchor_drag(&mut self.physics, &mut ctx, ctrl, pointer);
     }
 }

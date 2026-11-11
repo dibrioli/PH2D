@@ -171,6 +171,7 @@ pub(super) const PLATFORM_PLAYER: &[FieldDesc] = &[
     f(59, "component.field.platform_player.59", K::Toggle).named_as("ledge", "ledge_on"),
     f(60, "component.field.platform_player.60", K::Toggle).named_as("glide", "glide_on"),
     f(61, "component.field.platform_player.61", K::Toggle).named_as("fall_limit", "fall_limit_on"),
+    f(62, "component.field.platform_player.62", K::Toggle).named("show_jump_arc"),
 ];
 
 /// **`PlayerMode`** — a linha «Body» da §14 (Dynamic · Kinematic · Pure): o valor inteiro.

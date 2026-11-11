@@ -101,6 +101,7 @@ impl crate::App {
             // are borrowed from `self.gfx` for the whole of this arm —
             // disjoint fields are fine, a second `&mut self` is not.
             self.physics.joint_anchor_drag = None;
+            self.physics.jump_arc_drag = None;
             // Fase 0f: resolve the rubber-band rect — pick every
             // sprite whose world bbox intersects, then apply
             // replace or add depending on `add_mode` (Shift held

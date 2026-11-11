@@ -32,6 +32,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.physics.joint_draw.joint_drawing_cancelled" => "Joint drawing cancelled",
         "app.physics.joint_readout.max" => "max {force}",
         "app.physics.joint_readout.no_route" => "no route",
+        "app.physics.jump_arc.full" => "Full jump",
+        "app.physics.jump_arc.short" => "Short hop",
+        "app.physics.jump_arc.standing" => "Standing jump",
+        "app.physics.jump_arc.air" => "Air jump",
+        "app.physics.jump_arc.readout" => "{height} high · {speed}/s",
         // ph2d-migrar-texto:end
         _ => return None,
     })

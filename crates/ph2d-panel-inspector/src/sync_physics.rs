@@ -267,7 +267,10 @@ pub(crate) fn sync_player_fields(host: &mut dyn PanelHostInternal) {
     let caixas = crate::ids::INSP_PLAYER_ABILITY
         .iter()
         .zip(info.abilities)
-        .chain([(&crate::ids::INSP_PLAYER_EMIT_BOX, info.emits_signals)]);
+        .chain([
+            (&crate::ids::INSP_PLAYER_EMIT_BOX, info.emits_signals),
+            (&crate::ids::INSP_PLAYER_SHOW_ARC, info.show_jump_arc),
+        ]);
     for (&id, on) in caixas {
         if let Some(ph2d_editor_core::interaction::InteractiveState::Checkbox { value, .. }) =
             host.store_mut().get_mut(id)

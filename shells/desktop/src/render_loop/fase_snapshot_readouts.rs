@@ -115,6 +115,13 @@ impl crate::App {
                 self.show_colliders,
                 at_rest,
             ));
+            let pulo = ph2d_app_physics::jump_arc::desenho(
+                sim,
+                &physics.settings(),
+                hero.gizmo.selection,
+                at_rest,
+            );
+            hs.extend(ph2d_app_physics::jump_arc::handles(pulo.as_ref()));
             hs
         };
         // The candidate a live anchor drag has caught (the crosshair).

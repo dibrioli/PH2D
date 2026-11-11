@@ -253,6 +253,10 @@ pub struct InspectorPlayerInfo {
     pub emits_signals: bool,
     /// A caixa de cada habilidade, na ordem de [`PlayerAbility::ALL`].
     pub abilities: [bool; PlayerAbility::ALL.len()],
+    /// A caixa «Show Jump Arc».
+    pub show_jump_arc: bool,
+    /// A sensação acesa (índice em Floaty · Snappy · Heavy); `None` se os números não batem com nenhuma.
+    pub feel: Option<u8>,
 }
 
 /// ⭐ **As habilidades com caixa** do Platform Player (ficha `componentes/03_character.md`).
@@ -457,4 +461,9 @@ pub enum PlayerFieldEdit {
     ReactionPush(f32),
     /// Marca ou desmarca a caixa de uma habilidade; os números ficam.
     Ability(PlayerAbility, bool),
+    /// A caixa «Show Jump Arc»: a curva do pulo no canvas (ficha GEF 04).
+    ShowJumpArc(bool),
+    /// A sensação do pulo, índice em `ph2d_platformer::feel::Feel::ALL` (Floaty · Snappy · Heavy):
+    /// escreve as seis gravidades e conserva o ápice.
+    Feel(u8),
 }

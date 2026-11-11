@@ -384,6 +384,9 @@ pub struct PlatformPlayer {
     pub glide_on: bool,
     /// Caixa do teto de queda (`max_fall_speed`).
     pub fall_limit_on: bool,
+    /// ⭐ **A curva do pulo no canvas** (ficha `docs/GameEngineFuncional/componentes/04_curva_do_pulo.md`).
+    /// Só o editor a lê; o jogo não.
+    pub show_jump_arc: bool,
 }
 
 impl PlatformPlayer {
@@ -551,6 +554,7 @@ impl Default for PlatformPlayer {
             ledge_on: false,
             glide_on: false,
             fall_limit_on: false,
+            show_jump_arc: false,
         }
     }
 }

@@ -185,6 +185,13 @@ pub fn build_player_info(
             p.glide_on,
             p.fall_limit_on,
         ],
+        show_jump_arc: p.show_jump_arc,
+        feel: ph2d_physics_ecs::jump_feel::feel_of(&p.config().jump).and_then(|f| {
+            ph2d_physics_ecs::jump_feel::Feel::ALL
+                .iter()
+                .position(|g| *g == f)
+                .and_then(|i| u8::try_from(i).ok())
+        }),
     })
 }
 
@@ -295,6 +302,21 @@ pub fn attach_player(sim: &mut SimWorld, entity_bits: u64) {
 
 /// **Aplica uma edição da §14.** Sem fan-out — a seção descreve UM personagem.
 pub fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: PlayerFieldEdit) {
+    apply_player_edit_in(
+        sim,
+        entity_bits,
+        edit,
+        &ph2d_physics_ecs::PhysicsSettings::default(),
+    );
+}
+
+/// O mesmo, no mundo do projeto: a sensação do pulo conserva o ápice SOB a gravidade dele.
+pub fn apply_player_edit_in(
+    sim: &mut SimWorld,
+    entity_bits: u64,
+    edit: PlayerFieldEdit,
+    settings: &ph2d_physics_ecs::PhysicsSettings,
+) {
     let entity = Entity::from_bits(entity_bits);
     let kind = sim.world().get::<RigidBody>(entity).map(|b| b.kind);
     let has_player = sim.world().get::<PlatformPlayer>(entity).is_some();
@@ -546,6 +568,12 @@ pub fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: PlayerField
                 && let Some(fit) = fitted_float(shape, p.max_slope_deg)
             {
                 p.crouch_height = fit.min(p.float_height);
+            }
+        }
+        PlayerFieldEdit::ShowJumpArc(v) => p.show_jump_arc = v,
+        PlayerFieldEdit::Feel(i) => {
+            if let Some(f) = ph2d_physics_ecs::jump_feel::Feel::ALL.get(usize::from(i)) {
+                p.set_feel(*f, ph2d_physics_ecs::arc_world(settings, 1.0));
             }
         }
     }

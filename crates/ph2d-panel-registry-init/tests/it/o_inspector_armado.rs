@@ -609,6 +609,8 @@ pub fn player_armado() -> InspectorPlayerInfo {
         discarded_run_seconds: 0.0,
         // Todas as caixas marcadas: armado é tudo à vista (o Fall Limit esconde o Max Fall).
         abilities: [true; 7],
+        show_jump_arc: false,
+        feel: None,
         live: Some(PlayerLive {
             footing_tag: 1,
             facing: 1.0,

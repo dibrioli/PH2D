@@ -188,6 +188,26 @@ impl crate::App {
             // chamada, que é exatamente o tempo de vida que o rótulo precisa.
             paint_ctx.text,
         );
+        // ⭐ A CURVA DO PULO do player selecionado (ficha GEF 04), por cima dos contornos.
+        let pulo = ph2d_app_physics::jump_arc::desenho(
+            sim,
+            &physics.settings(),
+            hero.gizmo.selection,
+            !self.playhead.is_playing(),
+        );
+        let arrastando = self.physics.jump_arc_drag.is_some();
+        let (proj, ponteiro) = (&hero.project, self.last_pointer);
+        ph2d_app_physics::jump_arc::draw(
+            pulo.as_ref(),
+            arrastando,
+            proj,
+            ponteiro,
+            camera,
+            janela_da_cena,
+            *theme,
+            vector_scene,
+            paint_ctx.text,
+        );
         // ⭐ **Os NÚMEROS de dano** (plano 28, W5) por cima da cena, pela MESMA banda e pelo mesmo
         // pintor de texto — depois do contorno, que é o último uso do `vector_scene` para traço.
         health_bars

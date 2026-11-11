@@ -346,6 +346,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.field.platform_player.59" => "Ledge",
         "component.field.platform_player.60" => "Glide",
         "component.field.platform_player.61" => "Fall Limit",
+        "component.field.platform_player.62" => "Show Jump Arc",
         "component.field.player_mode.0" => "Body",
         "component.field.pulley_wheel.1" => "Rope",
         "component.field.pulley_wheel.7" => "Mounted On",

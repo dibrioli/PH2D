@@ -481,3 +481,14 @@ pub const INSP_PLAYER_FOLDS: [NodeId; 12] = [
     INSP_PLAYER_CARD_LEG,
     INSP_PLAYER_FOLD_ADVANCED,
 ];
+
+/// ⭐ A caixa «Show Jump Arc» no cartão Jump — estado do EDITOR (ficha `componentes/04_curva_do_pulo.md`).
+pub const INSP_PLAYER_SHOW_ARC: NodeId = hash_node_id("insp.player.show_arc");
+/// O seletor «Feel» do cartão Jump (o grupo).
+pub const INSP_PLAYER_FEEL: NodeId = hash_node_id("insp.player.feel");
+/// As opções do «Feel». ⚠️ O índice É o de `ph2d_platformer::feel::Feel::ALL` (Floaty · Snappy · Heavy).
+pub const INSP_PLAYER_FEEL_IDS: [NodeId; 3] = [
+    hash_node_id("insp.player.feel.floaty"),
+    hash_node_id("insp.player.feel.snappy"),
+    hash_node_id("insp.player.feel.heavy"),
+];

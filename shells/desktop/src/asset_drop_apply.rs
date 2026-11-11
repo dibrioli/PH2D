@@ -341,7 +341,7 @@ impl crate::App {
             use ph2d_app_game::smoke::CasoFisica as C;
             use ph2d_app_physics::panel_bridge::{FotoCamadas as F, arruma_a_foto};
             let foto = match c {
-                C::PlayerCartoes | C::FormaPlayer => F::CartoesDobrados,
+                C::PlayerCartoes | C::PlayerPulo | C::FormaPlayer => F::CartoesDobrados,
                 C::Camadas => F::ListaAberta,
                 C::CamadaSozinha => F::Sozinha,
                 C::CamadaComPares => F::ComPares,

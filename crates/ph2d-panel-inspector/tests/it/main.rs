@@ -109,6 +109,7 @@ mod seam_orphan_list;
 mod seam_path_follow;
 mod seam_physics;
 mod seam_player;
+mod seam_player_pulo;
 mod seam_precision;
 mod seam_properties;
 mod seam_px_m;

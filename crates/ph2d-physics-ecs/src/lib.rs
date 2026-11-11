@@ -106,7 +106,7 @@ pub use components::{
     clip_de_entrada, kind_key, reseat_mounted_axle, reseat_wheel_geometry, rope_joint_of,
     segura_regra,
 };
-pub use components::{MIN_EXTENT, collider_box_or};
+pub use components::{MIN_EXTENT, arc_world, collider_box_or};
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
     MAX_HOLD_DAMPING_RATIO, MAX_HOLD_STIFFNESS, MIN_HOLD_STIFFNESS, WORLD_REACH_M,
@@ -159,6 +159,9 @@ pub use ph2d_platformer::{FootingKind, JumpKind, PlayerEvent, PlayerView};
 /// partida e do piso geométrico da altura de flutuação. Uma segunda cópia deles
 /// na shell seria a segunda resposta a *"com que números um player nasce?"*.
 pub use ph2d_platformer::{PlayerConfig, RideConfig, WalkConfig};
+/// A curva do pulo e as sensações (ficha GEF 04), pela mesma razão: a shell e o editor não dependem
+/// da `ph2d-platformer`.
+pub use ph2d_platformer::{arc as jump_arc, feel as jump_feel};
 pub use rig::{RIG_LIMIT_DEG, rig_edges, rig_limits, subtree_parts};
 pub use scale::scaled_shape;
 pub use seam::{ColliderPose, seam_between, seam_point};

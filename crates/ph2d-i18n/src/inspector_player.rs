@@ -30,12 +30,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Classic platformer: the same controller, but the physical world is \
          scenery. Everything stops him and he moves nothing."
         }
-        "panel.inspector.player.nobody_hears_him_he_lands" => {
-            "Nobody hears him: he lands and jumps in silence."
-        }
-        "panel.inspector.player.publish_what_he_does_as" => {
-            "Publish what he does as signals (player.landed, player.jumped.wall, ...)."
-        }
         "panel.inspector.player.jump_height_is_measured_against" => {
             "Jump height is measured against the PLATFORM: a rising lift launches \
          him higher, a descending one almost cancels the jump."
@@ -82,8 +76,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.player.kinematic" => "Kinematic",
         "panel.inspector.player.pure" => "Kinematic, pushes nothing",
         "panel.inspector.player.emit_signals" => "Emit Signals",
-        "panel.inspector.player.off" => "Off",
-        "panel.inspector.player.on" => "On",
         "panel.inspector.player.full" => "Full",
         "panel.inspector.player.up_only" => "Up Only",
         "panel.inspector.player.none" => "None",
@@ -307,6 +299,16 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.player.tip_emit" => {
             "Publish what he does (jumps, lands, dashes) as signals other objects can listen to."
+        }
+        "panel.inspector.player.feel" => "Feel",
+        "panel.inspector.player.floaty" => "Floaty",
+        "panel.inspector.player.snappy" => "Snappy",
+        "panel.inspector.player.heavy" => "Heavy",
+        "panel.inspector.player.tip_show_arc" => {
+            "Draw this player's jump on the canvas: the full jump, a short hop, the standing jump and air jumps. Drag the dot at the top to change height and speed."
+        }
+        "panel.inspector.player.tip_feel" => {
+            "How the jump feels. Floaty hangs at the top; Snappy rises fast and falls fast; Heavy drops like a stone. The jump height stays the same."
         }
         // ph2d-migrar-texto:end
         _ => return None,

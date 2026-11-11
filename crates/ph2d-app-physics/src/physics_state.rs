@@ -56,6 +56,9 @@ pub struct PhysicsState {
     /// Runtime-only: o arrasto não é o documento, a âncora que ele escreve é.
     pub joint_anchor_drag: Option<crate::joint_anchor_drag::JointAnchorDrag>,
 
+    /// O arrasto da alça do topo da curva do pulo, ou `None` ([`crate::jump_arc`]). Runtime-only.
+    pub jump_arc_drag: Option<crate::jump_arc::JumpArcDrag>,
+
     /// Armado pelo botão *Draw Joint* do §11, desarmado por uma criação
     /// completa — e deliberadamente NÃO por uma recusa, para que um release no
     /// vazio deixe o gesto pronto para outra tentativa (o precedente do

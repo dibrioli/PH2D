@@ -192,7 +192,8 @@ fn param_value(v: &ph2d_physics_ecs::JointView, kind: PointHandleKind) -> Option
         // Um limitador não é parâmetro do JOINT: ele mora no `RopeStops` da
         // corda, e o valor dele é lido por `stops_of`.
         | PointHandleKind::RopeStopA
-        | PointHandleKind::RopeStopB => None,
+        | PointHandleKind::RopeStopB
+        | PointHandleKind::JumpApex => None,
     }
 }
 

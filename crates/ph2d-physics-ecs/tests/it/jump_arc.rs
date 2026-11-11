@@ -6,7 +6,7 @@ use crate::platform_scene::{pose, scene};
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_physics_ecs::{PhysicsBridge, PlatformPlayer, PlayerInput};
 use ph2d_platformer::arc::{ArcWorld, JumpArc, jump_arcs};
-use ph2d_platformer::feel::{Feel, apply_feel};
+use ph2d_platformer::feel::Feel;
 
 const DT: f32 = 1.0 / 60.0;
 
@@ -81,23 +81,14 @@ fn do_jogo(sim: &mut SimWorld, bridge: &mut PhysicsBridge, player: Entity, como:
 
 fn caso(feel: Option<Feel>, como: Como) -> (Medido, Medido) {
     let (mut sim, mut bridge, player) = scene(0.0, -20.0);
-    let w = ArcWorld { gravity: [0.0, -9.81], dt: DT, facing: 1.0, substeps: 4 };
+    let w = ph2d_physics_ecs::arc_world(&bridge.settings(), 1.0);
     let cfg = {
         let mut e = sim.world_mut().entity_mut(player);
         let mut p = e.get_mut::<PlatformPlayer>().unwrap();
-        let mut c = p.config();
         if let Some(f) = feel {
-            apply_feel(&mut c, f, w);
-            p.jump_height = c.jump.jump_height;
-            let g = f.gravity();
-            p.takeoff_gravity = g.takeoff_gravity;
-            p.takeoff_speed = g.takeoff_speed;
-            p.peak_gravity = g.peak_gravity;
-            p.peak_speed = g.peak_speed;
-            p.fall_gravity = g.fall_gravity;
-            p.cut_gravity = g.cut_gravity;
+            p.set_feel(f, w);
         }
-        c
+        p.config()
     };
     let arcs = jump_arcs(&cfg, w);
     let arco = match como {

@@ -80,6 +80,11 @@ fn populate_player_chips(store: &mut WidgetStore) {
         ids::INSP_PLAYER_CROUCH_WALK_OFF_IDS[1],
         tr("panel.inspector.player.crouched_he_stops_at_the"),
     );
+    // O «Feel» do cartão Jump: a mesma dica nas três opções.
+    register_button_ids(store, &ids::INSP_PLAYER_FEEL_IDS);
+    for id in ids::INSP_PLAYER_FEEL_IDS {
+        store.set_tooltip(id, tr("panel.inspector.player.tip_feel"));
+    }
 }
 
 /// As caixas das habilidades e do Emit, e as dobras (nascem fechadas).
@@ -93,10 +98,16 @@ fn populate_player_boxes(store: &mut WidgetStore) {
         "panel.inspector.player.tip_glide",
         "panel.inspector.player.tip_fall_limit",
     ];
-    let caixas = ids::INSP_PLAYER_ABILITY.iter().zip(dicas).chain([(
-        &ids::INSP_PLAYER_EMIT_BOX,
-        "panel.inspector.player.tip_emit",
-    )]);
+    let caixas = ids::INSP_PLAYER_ABILITY.iter().zip(dicas).chain([
+        (
+            &ids::INSP_PLAYER_EMIT_BOX,
+            "panel.inspector.player.tip_emit",
+        ),
+        (
+            &ids::INSP_PLAYER_SHOW_ARC,
+            "panel.inspector.player.tip_show_arc",
+        ),
+    ]);
     for (&id, dica) in caixas {
         store.register(
             id,

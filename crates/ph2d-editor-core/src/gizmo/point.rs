@@ -112,6 +112,8 @@ pub enum PointHandleKind {
     RopeStopA,
     /// O mesmo na ponta B.
     RopeStopB,
+    /// ⭐ **O topo da curva do pulo** (ficha GEF 04): a chave é o player; cima = altura, lado = velocidade.
+    JumpApex,
 }
 
 impl PointHandleKind {
@@ -269,7 +271,8 @@ const ROPE_STOP_PX: f32 = 8.0;
 /// coincident pair stays two handles.
 const fn hit_half_px(kind: PointHandleKind) -> f32 {
     match kind {
-        PointHandleKind::AnchorA => JOINT_ANCHOR_DOT_PX,
+        // O topo do pulo é uma alça como as outras: o diâmetro PADRÃO de gizmo (o do ponto A).
+        PointHandleKind::AnchorA | PointHandleKind::JumpApex => JOINT_ANCHOR_DOT_PX,
         PointHandleKind::AnchorB => JOINT_ANCHOR_RING_PX,
         PointHandleKind::RopeStopA | PointHandleKind::RopeStopB => ROPE_STOP_PX,
         // A parameter grip gets a touch more than it draws: it sits on a thin
@@ -326,6 +329,7 @@ pub fn point_handle_id(key: u64, kind: PointHandleKind) -> NodeId {
         PointHandleKind::WheelRimOut => (ids::GIZMO_WHEEL_RIM_OUT, 0x_94D0_49BB_1331_11EB_u64),
         PointHandleKind::RopeStopA => (ids::GIZMO_ROPE_STOP_A, 0x_2545_F491_4F6C_DD1D_u64),
         PointHandleKind::RopeStopB => (ids::GIZMO_ROPE_STOP_B, 0x_D125_7B8D_5C63_9E7B_u64),
+        PointHandleKind::JumpApex => (ids::GIZMO_JUMP_APEX, 0x_FF51_AFD7_ED55_8CCD_u64),
     };
     NodeId(canonical.0 ^ key.wrapping_mul(mul))
 }
@@ -452,8 +456,8 @@ pub fn paint_point_gizmo(
                         &ring,
                     );
                 }
-                // Filled dot — the A end.
-                PointHandleKind::AnchorA => {
+                // Filled dot — the A end, and the top of the jump arc (the standard grabbable dot).
+                PointHandleKind::AnchorA | PointHandleKind::JumpApex => {
                     let dot = Circle::new(centre, f64::from(JOINT_ANCHOR_DOT_PX));
                     scene.inner_mut().fill(
                         ph2d_vector::Fill::NonZero,
@@ -549,6 +553,7 @@ const fn paint_rank(kind: PointHandleKind) -> u8 {
         // quando coincidem — que é o certo: a alça mais específica ganha.
         PointHandleKind::RopeStopA => 8,
         PointHandleKind::RopeStopB => 9,
+        PointHandleKind::JumpApex => 10,
     }
 }
 

@@ -38,6 +38,8 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
             Some(PlayerFieldEdit::Ability(a, marcada(host, id)))
         } else if id == crate::ids::INSP_PLAYER_EMIT_BOX {
             Some(PlayerFieldEdit::EmitSignals(marcada(host, id)))
+        } else if id == crate::ids::INSP_PLAYER_SHOW_ARC {
+            Some(PlayerFieldEdit::ShowJumpArc(marcada(host, id)))
         } else {
             None
         };
@@ -59,6 +61,14 @@ pub(crate) fn apply_player_event(host: &mut dyn PanelHostInternal, ev: WidgetEve
                 .position(|&o| o == id)
                 .unwrap_or(0);
             Some(PlayerFieldEdit::Mode(i as u8))
+        }
+        WidgetEvent::Click(id) if crate::ids::INSP_PLAYER_FEEL_IDS.contains(&id) => {
+            // O índice É o de `Feel::ALL` (Floaty · Snappy · Heavy).
+            let i = crate::ids::INSP_PLAYER_FEEL_IDS
+                .iter()
+                .position(|&o| o == id)
+                .unwrap_or(0);
+            Some(PlayerFieldEdit::Feel(i as u8))
         }
         WidgetEvent::Click(id) if crate::ids::INSP_PLAYER_LIFT_POLICY_IDS.contains(&id) => {
             // ⚠️ O índice É o `PlatformLift::tag`, sem remap — a tabela de

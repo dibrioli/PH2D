@@ -153,6 +153,7 @@ pub fn aplicar_canais(
     canais_mundo::aplicar(sim, ponte, &mut estado.mundo);
 }
 pub mod joint;
+pub mod jump_arc;
 pub mod joint_anchor_drag;
 pub mod joint_create;
 pub mod joint_draw;

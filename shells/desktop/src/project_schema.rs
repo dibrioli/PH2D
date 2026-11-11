@@ -430,4 +430,10 @@
 /// `glide_on`, `fall_limit_on`): desligada, a lei recebe a habilidade inerte e os números ficam guardados (antes
 /// `0` desligava). Ficha `docs/GameEngineFuncional/componentes/03_character.md`. SEM leitura dos anteriores (§0.11).
 /// Registos: `0`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 233;
+///
+/// # `233 → 234` — **a curva do pulo no canvas** (`line/GameEngineFuncional`, 2026-11-10)
+///
+/// `PlatformPlayer` ganha `show_jump_arc: bool` no FIM (a caixa «Show Jump Arc»; só o editor a lê). Ficha
+/// `docs/GameEngineFuncional/componentes/04_curva_do_pulo.md`. SEM leitura dos anteriores (§0.11). Registos: `0`.
+/// ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 234;

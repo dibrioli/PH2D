@@ -114,3 +114,21 @@ fn as_tres_sensacoes_se_distinguem_pelo_tempo_no_ar() {
     let (fl, sn, he) = (air(Feel::Floaty), air(Feel::Snappy), air(Feel::Heavy));
     assert!(fl > sn && sn > he, "Floaty {fl} > Snappy {sn} > Heavy {he}");
 }
+
+/// Sonda de custo: as curvas são simuladas DUAS vezes por quadro (alça e desenho).
+/// `PH2D_RELEASE="mede velocidade" cargo test --release -p ph2d-platformer custo_das_curvas -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda: imprime o custo"]
+fn custo_das_curvas() {
+    let mut c = cfg();
+    c.jump.air_jumps = 1;
+    let mut best = f64::MAX;
+    for _ in 0..5 {
+        let t = std::time::Instant::now();
+        for _ in 0..200 {
+            std::hint::black_box(jump_arcs(std::hint::black_box(&c), W));
+        }
+        best = best.min(t.elapsed().as_secs_f64() / 200.0);
+    }
+    eprintln!("jump_arcs (Air Jumps 1): {:.1} µs por chamada (mínimo de 5 blocos)", best * 1e6);
+}

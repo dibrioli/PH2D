@@ -159,4 +159,6 @@ pub mod ids {
     pub const GIZMO_SKEW_R: NodeId = NodeId(975);
     pub const GIZMO_SKEW_B: NodeId = NodeId(976);
     pub const GIZMO_SKEW_L: NodeId = NodeId(977);
+    /// A alça do topo da curva do pulo (ficha GEF 04).
+    pub const GIZMO_JUMP_APEX: NodeId = NodeId(978);
 }

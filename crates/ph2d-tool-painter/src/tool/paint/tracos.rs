@@ -49,6 +49,7 @@ campos_do_traco!(
     limite_do_smear,
     clone_offset,
     stroke_mask,
+    tecto_largo,
     per_layer_stroke,
     dab_groups,
     wet_smear_pos,

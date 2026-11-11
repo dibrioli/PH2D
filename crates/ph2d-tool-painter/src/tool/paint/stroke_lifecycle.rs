@@ -101,6 +101,7 @@ impl PainterTool {
         // Reset the Accumulate-OFF cap mask (re-grown by the first dab) + the per-layer-colour
         // accumulation (so the recomposite snapshots THIS stroke's pre-pixels) — both per stroke.
         self.paint.stroke_mask.clear();
+        self.paint.tecto_largo.clear();
         self.paint.po_do_papel = None; // o pó é o da tela deste pen-down
         self.paint.pixel_trilhos.zera(); // a ponta de píxel (L18) começa o trilho no traço novo
         // ⚠️ E o cap de CADA camada do composite com ele — eles são a mesma grandeza, só que por

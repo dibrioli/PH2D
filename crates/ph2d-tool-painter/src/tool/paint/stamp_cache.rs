@@ -75,7 +75,8 @@ pub(super) fn mask_size_for(radius: f32) -> u32 {
 }
 
 mod mascara;
-pub(crate) use mascara::MascaraDoTraco;
+mod tecto_largo;
+pub(crate) use mascara::{MascaraDoTraco, TectoDoTraco};
 
 impl PainterTool {
     /// Scale-blit the cached stamp for each dab (the cacheable path of [`Self::stamp_dabs`]).
@@ -258,6 +259,18 @@ impl PainterTool {
         self.prepara_o_po(brush, w, h, caixa);
         let textured = brush.texture.is_active();
         let papel = self.papel_como_grain(); // a imagem do slot que faz de Grain (`dab_spec`)
+        let accumulate_cap = self.cobertura_tapada(brush);
+        let tem_imagem = if papel {
+            self.paint.paper_image.is_some()
+        } else {
+            self.paint.texture_image.is_some()
+        };
+        let banded_ok = !textured
+            && !brush.shape_silhouette_active(self.paint.shape_image.is_some())
+            && !tem_imagem
+            && !brush.lays_capsules();
+        // B29.1: o carimbo por dab de cor constante leva o tecto largo; a banda e as outras rotas ficam no `u8`.
+        let largo = accumulate_cap && !banded_ok && self.quer_o_tecto_largo(brush, alpha_locked);
         let image = if papel {
             &self.paint.paper_image
         } else {
@@ -279,15 +292,23 @@ impl PainterTool {
         // Accumulate-OFF cap). `paint_begin` cleared it on pointer-down; grow it to canvas size (only
         // the first dab of a stroke actually zero-fills — later dabs/frames keep the accumulation, which
         // is what makes the cap per-STROKE).
-        let accumulate_cap = self.cobertura_tapada(brush);
         let caixa = super::region::dabs_bounds(dabs, w, h, brush.tip_reach());
+        debug_assert_eq!(
+            banded_ok,
+            !textured && !shape_active && image.is_none() && !brush.lays_capsules()
+        );
         if accumulate_cap {
-            self.paint.stroke_mask.prepara(
+            let (len, rects) = (
                 (w as usize) * (h as usize),
-                w as usize,
-                brush.stroke_method,
                 super::region::dabs_rects(dabs, w, h, brush.tip_reach()),
             );
+            if largo {
+                let m = &mut self.paint.tecto_largo.largo;
+                m.prepara(len, w as usize, brush.stroke_method, rects);
+            } else {
+                let m = &mut self.paint.stroke_mask;
+                m.prepara(len, w as usize, brush.stroke_method, rects);
+            }
         }
         // **O lote para o DISPOSITIVO**, resolvido antes de a tela ser forkada. Ele estreita o mesmo
         // pincel de falloff puro do ramo abaixo com mais três cláusulas — blend `Mix`, sem a mistura
@@ -301,7 +322,6 @@ impl PainterTool {
         // — que dispara em `strength < 1` e em TODO pincel de impasto pelo AA do filme — tirava o
         // lote da CPU paralela junto com o device, e um re-stamp de forma rodava num núcleo.
         // A cápsula (Continuous) é por dab e a banda e o dispositivo não a transcrevem.
-        let banded_ok = !textured && !shape_active && image.is_none() && !brush.lays_capsules();
         // A força medida (W10 das macros): o dispositivo não a devolve, a rota da CPU escreve-a.
         let mut plano = self.undo.marca.toma_o_plano((w, h));
         let device = (banded_ok
@@ -328,7 +348,8 @@ impl PainterTool {
             caixa,
         );
         let mut mask: Option<&mut [u8]> =
-            accumulate_cap.then_some(self.paint.stroke_mask.fatia_do_lote());
+            (accumulate_cap && !largo).then(|| self.paint.stroke_mask.fatia_do_lote());
+        let mut mask_largo = largo.then(|| self.paint.tecto_largo.largo.fatia_do_lote());
         // ⚠️ **O LOTE, não o dab** (doc 28 §5.78). Um pincel de falloff puro — sem Shape, sem Grain,
         // sem cap de Accumulate — não tem estado por-dab nem compartilhado, então a figura inteira pode
         // ser dividida por LINHAS entre os núcleos. É a rota que este dispatch nomeia para o pincel
@@ -435,23 +456,33 @@ impl PainterTool {
                     fp,
                 )
             });
-            if let Some(r) = ph2d_painter_brush::stamp_dab_textured_masked_po(
-                buf,
-                w,
-                h,
-                d.center,
-                &spec,
-                d.coverage,
-                alpha_locked,
-                basis.as_ref(),
-                image.as_ref(),
-                shape_in,
-                mask.as_deref_mut(),
-                plano.as_deref_mut(),
-                rotor,
-                d.capsula(&spec),
-                super::po_do_papel::po(self.paint.po_do_papel.as_ref(), w),
-            ) {
+            let po = super::po_do_papel::po(self.paint.po_do_papel.as_ref(), w);
+            let (cap, forca) = (d.capsula(&spec), plano.as_deref_mut());
+            let (b, t, i) = (basis.as_ref(), image.as_ref(), alpha_locked);
+            let r = match mask_largo.as_deref_mut() {
+                Some(ml) => ph2d_painter_brush::stamp_dab_textured_masked_po_largo(
+                    buf, w, h, d.center, &spec, d.coverage, i, b, t, shape_in, ml, forca, rotor,
+                    cap, po,
+                ),
+                None => ph2d_painter_brush::stamp_dab_textured_masked_po(
+                    buf,
+                    w,
+                    h,
+                    d.center,
+                    &spec,
+                    d.coverage,
+                    i,
+                    b,
+                    t,
+                    shape_in,
+                    mask.as_deref_mut(),
+                    forca,
+                    rotor,
+                    cap,
+                    po,
+                ),
+            };
+            if let Some(r) = r {
                 let rect = Region {
                     x: r.x,
                     y: r.y,

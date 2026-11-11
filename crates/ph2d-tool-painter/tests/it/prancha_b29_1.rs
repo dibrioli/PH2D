@@ -1,8 +1,8 @@
 //! **Prancha B29.1** (missão 4K, decisão 3): Flow baixo em CAMADAS — cinco traços pretos, cada um repassado mais
 //! vezes que o de cima, com o pincel de omissão (Strength 1). Com a tinta em `u8` os de baixo ficam IGUAIS: o
 //! traço estanca (Flow 2 % ≈ 25/255, Flow 0,2 % ≈ 250/255 no carimbo, `precisao_tests`). 3 fundos × 1080p/4K.
-//! Só o ANTES: a cura (tecto `u16` + a tela recomposta do pré-traço) está provada no modelo por texel e ainda não
-//! foi ligada à ferramenta — o DEPOIS grava-se aqui quando for.
+//! DEPOIS (onda 18, item AB): o tecto largo está ligado ao carimbo POR DAB de cor constante; o pincel de omissão
+//! vai pela banda (`u8`, por fazer), por isso o DEPOIS é o mesmo traço com Continuous (a cápsula: carimbo por dab).
 //!
 //! ```text
 //! cargo test -p ph2d-tool-painter --profile smoke --test it prancha_b29_1 -- --ignored
@@ -46,8 +46,11 @@ fn ponto(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
 }
 
 /// Cinco traços horizontais; o `k`-ésimo vai e volta `passes[k]` vezes num só pen-down.
-fn cena(flow: f32, passes: [u32; 5], w: u32, h: u32, qual: u8) -> Vec<u8> {
+fn cena(flow: f32, passes: [u32; 5], w: u32, h: u32, qual: u8, continuo: bool) -> Vec<u8> {
     let mut t = PainterTool::default();
+    if continuo {
+        t.toggle_brush_continuous_spacing();
+    }
     if qual == 2 {
         t.agenda_papel_texturizado(7);
         t.bind_document(7, fundo(w, h, false), w, h);
@@ -89,11 +92,21 @@ const FUNDOS: [(u8, &str); 3] = [(0, "branco"), (1, "blocos"), (2, "papel")];
 #[test]
 #[ignore = "prancha B29.1: grava o ANTES (Flow baixo em camadas) em pranchas/B29.1"]
 fn prancha_b29_1_flow_baixo_em_camadas() {
+    grava(false, "antes");
+}
+
+#[test]
+#[ignore = "prancha B29.1: grava o DEPOIS (Continuous: o carimbo por dab com o tecto largo) em pranchas/B29.1"]
+fn prancha_b29_1_depois_continuous() {
+    grava(true, "depois_continuous");
+}
+
+fn grava(continuo: bool, quando: &str) {
     std::fs::create_dir_all(DIR).expect("pasta");
     for (flow, passes, fl) in FLOWS {
         for (w, h, res) in RES {
             for (qual, fn_) in FUNDOS {
-                let img = cena(flow, passes, w, h, qual);
+                let img = cena(flow, passes, w, h, qual, continuo);
                 // O centro de cada traço, no meio da tela: a cor pousada (canal mais claro) por camada.
                 let niveis: Vec<u8> = (0..5)
                     .map(|k| {
@@ -102,12 +115,14 @@ fn prancha_b29_1_flow_baixo_em_camadas() {
                         img[i..i + 3].iter().copied().max().unwrap_or(0)
                     })
                     .collect();
-                println!("[b29.1] {fl:<6} {res:<5} {fn_:<6} passes {passes:?} → centro {niveis:?}");
+                println!(
+                    "[b29.1 {quando}] {fl:<6} {res:<5} {fn_:<6} passes {passes:?} → centro {niveis:?}"
+                );
                 // O recorte do meio (largura h/2, altura toda): as 5 camadas sem 10 MB de papel por PNG.
                 let rgba = image::RgbaImage::from_raw(w, h, img).expect("imagem");
                 image::imageops::crop_imm(&rgba, (w - h / 2) / 2, 0, h / 2, h)
                     .to_image()
-                    .save(format!("{DIR}/{res}_{fn_}_{fl}_antes.png"))
+                    .save(format!("{DIR}/{res}_{fn_}_{fl}_{quando}.png"))
                     .expect("png");
             }
         }

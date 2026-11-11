@@ -274,6 +274,7 @@ impl Default for PaintState {
             pilha_por_replay: std::env::var("PH2D_COMPOSITE_REPLAY").is_ok_and(|v| v == "1"),
             acumulando_no_plano: false,
             stroke_mask: Default::default(),
+            tecto_largo: Default::default(),
             plano_do_traco: None,
             po_do_papel: None,
             dual: Default::default(),

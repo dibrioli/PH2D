@@ -139,13 +139,19 @@ Chalk e Pastel com o Impasto ligado, um traço que vai e volta 4× no mesmo sít
 
 Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × Chalk/Pastel, em [B29/](B29/).
 
-## B29.1 — Flow baixo pára antes do preto (só o ANTES)
+## B29.1 — Flow baixo pára antes do preto (ANTES e DEPOIS)
 
 Cinco traços pretos com o pincel de omissão, cada um repassado mais vezes que o de cima. Com Flow 2 % os três de baixo (15, 40 e 80 passadas) ficam iguais: a tinta pára em 25 de 255 e nunca chega ao preto. Com Flow 0,2 % o traço quase não aparece: 320 passadas sobre o branco ficam em 250 (um tom abaixo do branco). A cura já está provada na conta (chega ao alvo com erro de 1 tom), mas ainda não está ligada ao pincel; o DEPOIS entra aqui quando estiver.
 
 ![B29.1](B29.1/1080p_branco_flow2_antes.png)
 
 Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × Flow 2 %/0,2 %, em [B29.1/](B29.1/).
+
+**DEPOIS (11/11):** a cura está ligada nos pincéis que pintam marca a marca com a mesma cor o traço inteiro (com textura, forma ou Continuous). Mesmos cinco traços com Continuous ligado: com Flow 2 % no branco o centro vai 170 → 76 → 10 → 0 → 0 (antes parava em 25); com Flow 0,2 % chega a 1 com 320 passadas (antes 250). No papel com relevo pára perto de 20 (o dente). O pincel liso de omissão ainda pinta como antes: a cura dele é o passo seguinte.
+
+![B29.1 depois](B29.1/1080p_branco_flow2_depois_continuous.png)
+
+Todas: `*_depois_continuous.png` em [B29.1/](B29.1/).
 
 ## B34 — O papel acompanha o tamanho da tela (decisão 6)
 

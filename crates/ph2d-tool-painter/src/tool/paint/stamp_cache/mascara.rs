@@ -11,7 +11,7 @@
 
 use super::super::Region;
 use crate::plane_copy::size_to;
-use ph2d_painter_brush::StrokeMethod;
+use ph2d_painter_brush::{StrokeMethod, TexelLargo};
 use std::ops::{Deref, DerefMut};
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -136,6 +136,27 @@ impl<T: Copy + Default + PartialEq + Send + Sync> MascaraDoTraco<T> {
     #[cfg(test)]
     pub(crate) fn zerados(&self) -> u64 {
         self.zerados
+    }
+}
+
+/// B29.1: o tecto em [`TexelLargo`] (cobertura `u16` + pré-traço; a tela recompõe), escolhido UMA vez por traço
+/// no 1.º lote do carimbo por dab ([`super::super::PainterTool::quer_o_tecto_largo`]). Com `Largo` o `stroke_mask`
+/// `u8` fica vazio o traço inteiro: só se escolhe onde nenhum leitor dele corre.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct TectoDoTraco {
+    /// `None` = por escolher; `Some(true)` = `Largo`; `Some(false)` = o `u8` que shipou.
+    pub(crate) escolha: Option<bool>,
+    pub(crate) largo: MascaraDoTraco<TexelLargo>,
+    /// Veto de TESTE: o mesmo traço no `u8` (o red do gate, no mesmo processo).
+    #[cfg(test)]
+    pub(crate) so_byte: bool,
+}
+
+impl TectoDoTraco {
+    /// O pen-down.
+    pub(crate) fn clear(&mut self) {
+        self.escolha = None;
+        self.largo.clear();
     }
 }
 

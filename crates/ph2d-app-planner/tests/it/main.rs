@@ -42,7 +42,7 @@ pub struct Mesa {
 
 impl Mesa {
     /// Um hero com a família do Planner (como a shell, `init.rs`), o relógio fixo e o fuso UTC.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let mut hero = HeroScreen::new(NodeId(1));
         ph2d_app_planner::install(&mut hero);
         let mut m = Self {

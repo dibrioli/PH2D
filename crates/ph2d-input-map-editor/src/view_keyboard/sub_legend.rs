@@ -218,7 +218,7 @@ pub fn sets(ts: &mut TextSystem, f: Fit) -> SubSets {
             continue;
         };
         let kr = Rect::new(x, y, w, h);
-        let Some((x, _, cap_top, bottom)) = geometry(kr) else {
+        let Some((_, _, cap_top, bottom)) = geometry(kr) else {
             return SubSets::default();
         };
         let at = (cap_top, bottom);

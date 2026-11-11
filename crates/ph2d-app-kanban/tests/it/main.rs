@@ -72,7 +72,7 @@ pub struct Mesa {
 
 impl Mesa {
     /// Um hero com a família instalada, como a shell (`init.rs`).
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let mut hero = HeroScreen::new(NodeId(1));
         hero.documents
             .install_surface(Box::new(KanbanDocs::default()));

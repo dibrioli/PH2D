@@ -256,3 +256,41 @@ fn o_digital_com_pigment_mistura_pela_lei_do_wet() {
         }
     }
 }
+
+/// ⭐ **B32.3 — o pastel claro é TINTA, não papel**: o papel é só o branco (os últimos 5 códigos, [`PAPEL_DO_PIGMENTO`]);
+/// um rosa, um creme ou um azul-bebé opacos (canal mais escuro 0,78–0,96) misturam a espectral INTEIRA com o azul.
+/// Antes (`min(canal) > 0,75` era papel) a mistura entrava a 63 %, 32 %, 16 %… e o pastel mais claro não misturava.
+#[test]
+fn o_pastel_claro_e_tinta_nao_papel() {
+    let azul = [23.0 / 255.0, 101.0 / 255.0, 179.0 / 255.0];
+    let pasteis: [[f32; 3]; 4] = [
+        [245.0 / 255.0, 215.0 / 255.0, 225.0 / 255.0],
+        [252.0 / 255.0, 240.0 / 255.0, 200.0 / 255.0],
+        [215.0 / 255.0, 232.0 / 255.0, 250.0 / 255.0],
+        [248.0 / 255.0, 245.0 / 255.0, 245.0 / 255.0],
+    ];
+    for p in pasteis {
+        for a in [0.25f32, 0.5, 0.75] {
+            let out = crate::espectral::blend_over_espectral(
+                BrushBlend::Mix,
+                [p[0], p[1], p[2], 1.0],
+                azul,
+                a,
+                1.0,
+            );
+            let lei = crate::espectral::mistura(p, azul, a);
+            for k in 0..3 {
+                assert!(
+                    (out[k] - lei[k]).abs() < 1e-5,
+                    "o pastel {p:?} a {a} não misturou inteiro: {out:?} × {lei:?}"
+                );
+            }
+        }
+    }
+    // O papel continua papel: o branco opaco é o over, ao bit.
+    let papel = [1.0, 1.0, 1.0, 1.0];
+    assert_eq!(
+        crate::espectral::blend_over_espectral(BrushBlend::Mix, papel, azul, 0.5, 1.0),
+        blend_over(BrushBlend::Mix, papel, azul, 0.5)
+    );
+}

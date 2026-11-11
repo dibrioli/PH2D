@@ -199,7 +199,8 @@ pub fn blend_over(mode: BrushBlend, dst: [f32; 4], color: [f32; 3], a: f32) -> [
 /// the mix is additionally scaled by the destination coverage `dst[3]` so a dab on bare paper just
 /// lands (there is no pigment there to mix with). Deterministic (RYB is min/max/mul only) — HR-5 safe.
 /// Onde o papel começa (o canal mais escuro do fundo, `0..1`): acima disto o fundo é papel e o pigmento não mistura.
-pub const PAPEL_DO_PIGMENTO: f32 = 0.75;
+/// B32.3: só os últimos 5 códigos do branco (`250/255`); a 0,75 todo pastel claro (rosa 245,215,225) era papel.
+pub const PAPEL_DO_PIGMENTO: f32 = 250.0 / 255.0;
 
 #[must_use]
 #[inline]

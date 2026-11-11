@@ -15,7 +15,7 @@ use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
     BrushSpec, ColorStampMask, Dab, Falloff, FalloffCurve, FusedDab, ImageRgb, StrokeMethod,
-    TextureSettings, accumulate_color_stamps_fused_batch, blend_over_modo, blit_color_stamp,
+    TextureSettings, accumulate_color_stamps_fused_batch, blend_over_pigment_modo, blit_color_stamp,
     render_color_stamp_mask, render_ramp_color_stamp,
 };
 use ph2d_painter_effects::{BlendMode, apply_blend};
@@ -255,6 +255,7 @@ impl PainterTool {
         let any_blend = blends.iter().any(|&b| b != 0);
         let blend = brush.blend;
         let vazio = brush.blend_sobre_vazio; // L7: o modo de cor sobre o vazio (W3C geral)
+        let pigmento = brush.pigmento(); // B32.4: a mesma mistura do caminho por píxel
         {
             let buf = crate::tool::paint::plane_fork::fork_canvas(
                 &mut self.canvas_rgba,
@@ -335,11 +336,12 @@ impl PainterTool {
                         // (2) Blend the stroke onto the base once via the Brush blend mode.
                         if stroke[3] > 0.0 {
                             let pre_alpha = acc[3];
-                            acc = blend_over_modo(
+                            acc = blend_over_pigment_modo(
                                 blend,
                                 acc,
                                 [stroke[0], stroke[1], stroke[2]],
                                 stroke[3],
+                                pigmento,
                                 vazio,
                             );
                             if alpha_locked {

@@ -23,6 +23,8 @@ struct RampedBlitCtx<'a> {
     blend: BrushBlend,
     /// O modo sobre o vazio (L7).
     vazio: bool,
+    /// A mistura de pigmento (B32.4): a mesma porta do caminho por píxel.
+    pigmento: crate::blend::Pigmento,
     cx: f32,
     cy: f32,
     inv_radius: f32,
@@ -78,6 +80,7 @@ pub fn blit_stamp_ramped(
         alpha_mode,
         blend: spec.blend,
         vazio: spec.blend_sobre_vazio,
+        pigmento: spec.pigmento(),
         cx,
         cy,
         inv_radius: 1.0 / radius,
@@ -146,7 +149,14 @@ fn blit_band_ramped(ctx: &RampedBlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
                 if a <= 0.0 {
                     continue;
                 }
-                crate::blend_vazio::blend_over_modo(ctx.blend, prev, color, a, ctx.vazio)
+                crate::blend_vazio::blend_over_pigment_modo(
+                    ctx.blend,
+                    prev,
+                    color,
+                    a,
+                    ctx.pigmento,
+                    ctx.vazio,
+                )
             };
             dst[i] = encode(out[0]);
             dst[i + 1] = encode(out[1]);
@@ -157,3 +167,7 @@ fn blit_band_ramped(ctx: &RampedBlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
     }
     touched
 }
+
+#[cfg(test)]
+#[path = "stamp_ramped/pigmento_rotas_tests.rs"]
+mod pigmento_rotas_tests;

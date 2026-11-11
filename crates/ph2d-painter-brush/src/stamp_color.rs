@@ -359,6 +359,8 @@ struct ColorBlitCtx<'a> {
     blend: BrushBlend,
     /// O modo sobre o vazio (L7).
     vazio: bool,
+    /// A mistura de pigmento (B32.4): a mesma porta do caminho por píxel.
+    pigmento: crate::blend::Pigmento,
     cx: f32,
     cy: f32,
     inv_radius: f32,
@@ -414,6 +416,7 @@ pub fn blit_color_stamp(
         stamp,
         blend: spec.blend,
         vazio: spec.blend_sobre_vazio,
+        pigmento: spec.pigmento(),
         cx,
         cy,
         inv_radius: 1.0 / radius,
@@ -467,7 +470,14 @@ fn blit_color_band(ctx: &ColorBlitCtx, dst: &mut [u8], band_y0: i64) -> bool {
                 continue;
             }
             let rgb = crate::jitter::apply_color_shift(rgb, ctx.shift);
-            let out = crate::blend_vazio::blend_over_modo(ctx.blend, prev, rgb, a, ctx.vazio);
+            let out = crate::blend_vazio::blend_over_pigment_modo(
+                ctx.blend,
+                prev,
+                rgb,
+                a,
+                ctx.pigmento,
+                ctx.vazio,
+            );
             dst[i] = encode(out[0]);
             dst[i + 1] = encode(out[1]);
             dst[i + 2] = encode(out[2]);

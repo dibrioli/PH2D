@@ -103,10 +103,15 @@ fn every_key_of_this_panel_exists_on_both_sides() {
         rows.contains("format!(\"panel.wet_tuning.option.{}.{i}\""),
         "a isenção das opções montadas já não descreve o código: o `format!` das opções saiu do `rows.rs`"
     );
+    // As dicas das cerdas (B35.13) moram no cartão Shape com a chave do knob (camelCase, que o censo não lê como
+    // chave): usadas só se o literal estiver lá.
+    let shape =
+        std::fs::read_to_string(repo.join(CARTAO_DAS_CERDAS)).expect("o cartão das cerdas existe");
     let orfas: Vec<&String> = c
         .orfas
         .iter()
         .filter(|k| !k.starts_with(MONTADA_EM_RUNTIME) && !k.starts_with(OPCAO_MONTADA))
+        .filter(|k| !(k.starts_with(DICA_DA_CERDA) && shape.contains(&format!("\"{k}\""))))
         .collect();
     assert!(
         orfas.is_empty(),
@@ -114,6 +119,9 @@ fn every_key_of_this_panel_exists_on_both_sides() {
     );
 }
 
+/// As dicas que o cartão Shape ([`CARTAO_DAS_CERDAS`]) usa pelo nome do knob.
+const DICA_DA_CERDA: &str = "panel.wet_tuning.tip.";
+const CARTAO_DAS_CERDAS: &str = "crates/ph2d-panel-painter-layers/src/cards_penteado.rs";
 /// ⛔⛔ O prefixo da família cujas chaves o painel MONTA em runtime — ver o cabeçalho.
 const MONTADA_EM_RUNTIME: &str = "panel.wet_tuning.knob.";
 /// As opções das linhas de escolha (`rows::CHOICES`), montadas por `format!("panel.wet_tuning.option.{}.{i}")`.

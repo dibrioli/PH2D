@@ -258,3 +258,33 @@ fn o_material_do_oleo_some_sem_o_real_oil() {
     }
     set_current_brush(None);
 }
+
+/// Secção sem linhas não se pinta (B35.12 o Relief, B35.13 as cerdas): nos cartões e no corpo de antes, cada cabeçalho
+/// pintado é de uma secção com pelo menos uma linha. O Experimental (índice 4) não é grupo de knobs: são as caixas K–M.
+#[test]
+fn nenhuma_seccao_vazia_pinta_o_cabecalho() {
+    let t = ferramenta(WetTool::Paint, true);
+    for cartoes in [true, false] {
+        ph2d_panel_wet_tuning::cards::force_cards_on_this_thread(Some(cartoes));
+        set_current_brush(Some(t.brush_settings()));
+        let mut host = MockPanelHost::with_panel::<WetTuningPanel>();
+        host.set_panel_visible(WetTuningPanel::ID, true);
+        let mut st = state::WetTuningPanelState;
+        let rects = host.paint::<WetTuningPanel>(&mut st, viewport());
+        let vazias: Vec<NodeId> = ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS
+            .into_iter()
+            .filter(|h| *h != ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[4])
+            .filter(|h| rects.iter().any(|(i, r)| i == h && r.w > 0.0 && r.h > 0.0))
+            .filter(|h| {
+                !rows::SECTIONS
+                    .iter()
+                    .any(|s| s.header == *h && rows::rows().iter().any(|r| r.group == s.group))
+            })
+            .collect();
+        assert!(
+            vazias.is_empty(),
+            "cartões {cartoes}: cabeçalhos sem linhas pintados: {vazias:?}"
+        );
+    }
+    ph2d_panel_wet_tuning::cards::force_cards_on_this_thread(None);
+}

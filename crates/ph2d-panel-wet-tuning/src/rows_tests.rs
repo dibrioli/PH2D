@@ -297,8 +297,8 @@ fn a_ordem_do_material_junta_os_pesos_e_o_lock_no_fim() {
 #[test]
 fn o_repor_de_cada_seccao_repoe_o_grupo_dela() {
     let resets = ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS;
-    // O repor do Relief (B35.12: a secção saiu) fica no id: as macros gravaram-no.
-    assert_eq!(SECTIONS.len() + 1, resets.len());
+    // Os repores do Relief (B35.12) e do Bristles (B35.13), secções que saíram, ficam nos ids: as macros gravaram-nos.
+    assert_eq!(SECTIONS.len() + 2, resets.len());
     for s in SECTIONS {
         let i = resets.iter().position(|r| *r == s.reset).expect("reset");
         assert_eq!(ph2d_tool_painter::ids::WET_TUNING_RESET_GROUPS[i], s.group);

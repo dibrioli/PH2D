@@ -248,8 +248,8 @@ pub struct Section {
 /// `Paper` do motor reduzido ao relevo da tinta), e depois os AVANÇADOS (25/10, dono: «os
 /// escondidos do Wet Paint podem mostrar dentro do Tuning»), que nascem dobrados — o Look saiu a 27/10 (W3b:
 /// controlos mortos). O Relief (o `emboss`, único knob do `Paper`) subiu ao cartão Wet no B35.12: a secção saiu; o
-/// cabeçalho e o repor dela ficam nos ids (macros). (Experimental is not a knob group — it is the two K–M checkboxes, painted after these.)
-pub const SECTIONS: [Section; 8] = [
+/// cabeçalho e o repor dela ficam nos ids (macros). O Bristles idem (B35.13: as cerdas moram no Shape). (Experimental is not a knob group — it is the two K–M checkboxes, painted after these.)
+pub const SECTIONS: [Section; 7] = [
     Section {
         group: KnobGroup::Paint,
         header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[0],
@@ -267,12 +267,6 @@ pub const SECTIONS: [Section; 8] = [
         header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[3],
         reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[3],
         label: "panel.wet_tuning.group.tools",
-    },
-    Section {
-        group: KnobGroup::Bristles,
-        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[6],
-        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[5],
-        label: "panel.wet_tuning.group.bristles",
     },
     Section {
         group: KnobGroup::Stroke,

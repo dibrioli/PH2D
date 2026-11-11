@@ -172,7 +172,9 @@ fn evento_sem_estado_manda_o_default() {
 /// authored fact; a panel-local hide would fight the bridge).
 #[test]
 fn commands_forward_and_close_is_the_tuning_toggle() {
-    for id in ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS {
+    // Só os repores das secções pintadas: os do Relief (B35.12) e do Bristles (B35.13) ficam nos ids para as macros,
+    // que os entregam à ferramenta, não ao painel.
+    for id in rows::SECTIONS.iter().map(|s| s.reset) {
         let (mut host, mut st) = host();
         assert_eq!(
             host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::Click(id)),
@@ -214,13 +216,13 @@ fn os_grupos_avancados_nascem_dobrados() {
         let avancado = ph2d_tool_painter::ids::WET_TUNING_GRUPOS_AVANCADOS.contains(&s.group);
         assert_eq!(host.store().is_collapsed(s.header), avancado, "{}", s.label);
     }
-    let bristles = rows::SECTIONS
+    let stroke = rows::SECTIONS
         .iter()
-        .find(|s| s.group == ph2d_wet_paint::tuning::KnobGroup::Bristles)
-        .expect("a secção Bristles")
+        .find(|s| s.group == ph2d_wet_paint::tuning::KnobGroup::Stroke)
+        .expect("a secção Stroke")
         .header;
-    let _ = click_header(&mut host, &mut st, bristles);
-    assert!(!host.store().is_collapsed(bristles));
+    let _ = click_header(&mut host, &mut st, stroke);
+    assert!(!host.store().is_collapsed(stroke));
 }
 
 /// ⭐ B35.2 (PA-3): os seis números internos do solver moram numa gaveta «Solver (advanced)» que nasce fechada, e

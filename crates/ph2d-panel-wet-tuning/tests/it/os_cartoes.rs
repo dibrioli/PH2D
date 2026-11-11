@@ -163,13 +163,17 @@ fn every_id_of_the_old_panel_is_registered_and_painted_in_cards() {
     for s in rows::SECTIONS {
         inv.extend([s.header, s.reset]);
     }
-    // O Relief saiu do Tuning no B35.12 (o emboss foi ao cartão Wet): o cabeçalho fica só nos ids (macros).
-    let relief = tid::WET_TUNING_GROUP_HEADERS[5];
+    // O Relief (B35.12, o emboss foi ao cartão Wet) e o Bristles (B35.13, as cerdas ao Shape) saíram do Tuning: os
+    // cabeçalhos ficam só nos ids (macros).
+    let fora = [
+        tid::WET_TUNING_GROUP_HEADERS[5],
+        tid::WET_TUNING_GROUP_HEADERS[6],
+    ];
     inv.extend(
         tid::WET_TUNING_GROUP_HEADERS
             .iter()
             .copied()
-            .filter(|h| *h != relief),
+            .filter(|h| !fora.contains(h)),
     );
     inv.extend([
         tid::WET_TUNING_DRAG_HANDLE,

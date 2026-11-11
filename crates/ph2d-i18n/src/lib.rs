@@ -354,7 +354,6 @@ fn tabela(key: &str) -> &'static str {
         "panel.wet_tuning.group.solver" => "Solver (advanced)",
         "panel.wet_tuning.group.tools" => "Tools",
         "panel.wet_tuning.group.experimental" => "Experimental",
-        "panel.wet_tuning.group.relief" => "Relief",
         "panel.wet_tuning.knob.emboss" => "Emboss",
         // O Glaze do PINCEL (prompt 42): guardado com o pincel, vale para a tinta dele — a nota do cartão Experimental
         // diz que as duas caixas valem para a tinta da OBRA inteira e que o do pincel age por cima delas.

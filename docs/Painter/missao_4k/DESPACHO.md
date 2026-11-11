@@ -94,6 +94,13 @@
 | onda 10 | B17b-cont3 | bloqueado (1f4d83ec45): B17.5, 2 tiles opostos no 4K publicam 8 294 400 px sujos contra 30 720 restaurados (270×); número fixado em gate. Bloqueio: dirty é 1 rect, leitor é a lane GPU (B20a) e dreno.rs alheio. |
 | onda 10 | B08b-cont2 | feito (779d578163): medido a 4K na Radeon (load 10–81, só tecto). W9 p95 308→380 ms; W14 30→53 ms; W1, W7, W13 sem custo; W17 sem veredito (load 80). Só medição, sem gate. |
 | onda 10 | verificação | verde. |
+| onda 11 | B41b | feito (6fd9e4b23d): B41.5 fechado: macro_estado_aplica lê as texturas antes de escrever; textura ilegível dá ErroDoEstado::Texturas e a ferramenta fica intacta. Gate red→green, 9 testes macro_estado verdes. |
+| onda 11 | B11-cont4 | feito (e1a29ca661): B11.5 papel trocado com a sessão viva suja espelho e tela (+0,8 ms a 4K). B12.A1/B11.6: motor longe, o tique pede sem esperar; gate de relógio 4,03 ms → 620 ns por quadro. |
+| onda 11 | B16d | parcial (03a854ee0c): B16.6 `aparencia` lê lut.s2l[k] (mesmo bit); 4096² r100 move+tique 3,530 → 3,429 ms. 2 gates red→green, alarmes verdes. Falta: tabela de hash2 por composite (ganho < 0,1 ms = recusa). |
+| onda 11 | B25b | feito (d338b49547): B52.R12 grupo Grain/papel saiu de dab_spec (679 → 486 linhas, verbatim). B25.4 porta lê o pincel passado (red→green). B25.3 aguada limpa dab_groups (468 → 0 bytes). Alarmes verdes. |
+| onda 11 | B19b-cont | feito (36a8563534): B19.7 resto: seis passadas em faixas passam do SO ao pool rayon; gate de fios 72/128/96 → 0, mutação vermelha, ao bit verde. Ms não medidos (load 20–38). |
+| onda 11 | B20a-cont | feito (92460d48e1): interruptor PH2D_PREVIA_INTEIRA=1. Quadro p50 4096² 1 camada 38,8→10,2 ms, 4 camadas 47,4→10,6. Pen-up 4K: toque 32,6→16,0, traço 32,0→14,6, Ctrl+Z 38,1→17,5 ms. |
+| onda 11 | verificação | verde. |
 
 ## Fatos medidos que mudam a ordem
 

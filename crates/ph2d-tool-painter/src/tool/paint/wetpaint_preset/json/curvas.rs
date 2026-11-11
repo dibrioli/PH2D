@@ -1,6 +1,6 @@
 //! As curvas do pincel em JSON: falloff, pegada e taper (filho de [`super`], LOC cap). Mesmas leis do pai.
 
-use super::{de_nome, f, inteiro, nome, num};
+use super::valores::{de_nome, f, inteiro, nome, num};
 use ph2d_painter_brush::{FalloffCurve, FalloffPoint, FootprintCurve, HandleType};
 use serde_json::{Value, json};
 

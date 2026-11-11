@@ -1,649 +1,100 @@
-//! Cada campo do `BrushSpec` para JSON e de volta, pelo NOME do campo: os do preset
-//! ([`super::CAMPOS_DO_PINCEL`]) aqui, e os que só a macro leva aqui e em [`meio`].
+//! Cada campo do `BrushSpec` para JSON e de volta, pelo NOME do campo, numa tabela ÚNICA: uma linha por campo com
+//! a ida, a volta e a condição de gravar ([`Campo`]). Os do preset ([`super::CAMPOS_DO_PINCEL`]) em
+//! [`tabela_preset`]; os que só a macro leva em [`tabela_obra`] e [`tabela_meio`].
 //!
 //! Leis: `f32` escreve-se pelo menor texto que volta ao mesmo `f32` (`0.1`, nunca
 //! `0.10000000149011612`); enums pelo NOME da variante (reordenar o enum não estraga um preset);
 //! chave ausente ou ilegível = o valor de `base` (o preset diz o que fixa, o resto é o de fábrica).
 
-use ph2d_painter_brush::line_kind::LineKind;
-use ph2d_painter_brush::{
-    BrushBlend, BrushSpec, ColorJitterScope, CorDaMao, DabJitter, Falloff, GrainLaw, GrainMode,
-    HOSE_MAX, HoseMode, ImageHose, JitterUnit, MAX_BRUSH_BLEND_MODES, MAX_TEX_PARAMS, MirrorAxis,
-    PixelTip, StrokeMethod, TextureKind, TextureMapping, TextureSettings,
-};
-use serde_json::{Value, json};
+use ph2d_painter_brush::BrushSpec;
+use serde_json::Value;
 use std::collections::BTreeMap;
-use std::fmt::Debug;
+use std::sync::OnceLock;
 
 mod curvas;
 #[cfg(test)]
 mod enums_tests;
-mod meio;
-use curvas::{curva_de_json, curva_para_json, pegada_de_json, pegada_para_json, taper_para_json};
+mod tabela_meio;
+mod tabela_obra;
+mod tabela_preset;
+mod valores;
 
-fn num(v: f32) -> Value {
-    format!("{v}")
-        .parse::<f64>()
-        .ok()
-        .and_then(serde_json::Number::from_f64)
-        .map_or(Value::Null, Value::Number)
+/// Um campo do pincel: o nome no ficheiro, a ida, a volta e se grava (o campo «só quando ligado» diz aqui a sua
+/// condição, ao lado do valor por omissão que a volta usa na ausência).
+pub(super) struct Campo {
+    nome: &'static str,
+    ler: fn(&BrushSpec) -> Value,
+    escrever: fn(&mut BrushSpec, Option<&Value>),
+    grava: fn(&BrushSpec) -> bool,
 }
 
-fn f(v: Option<&Value>, base: f32) -> f32 {
-    v.and_then(Value::as_f64).map_or(base, |x| x as f32)
+/// O campo que se grava sempre.
+const fn c(
+    nome: &'static str,
+    ler: fn(&BrushSpec) -> Value,
+    escrever: fn(&mut BrushSpec, Option<&Value>),
+) -> Campo {
+    Campo {
+        nome,
+        ler,
+        escrever,
+        grava: |_| true,
+    }
 }
 
-fn par(v: [f32; 2]) -> Value {
-    json!([num(v[0]), num(v[1])])
+/// O campo que só se grava quando `grava`: o preset sem ele é o de antes, ao byte.
+const fn so(
+    nome: &'static str,
+    ler: fn(&BrushSpec) -> Value,
+    escrever: fn(&mut BrushSpec, Option<&Value>),
+    grava: fn(&BrushSpec) -> bool,
+) -> Campo {
+    Campo {
+        nome,
+        ler,
+        escrever,
+        grava,
+    }
 }
 
-fn f2(v: Option<&Value>, base: [f32; 2]) -> [f32; 2] {
-    let a = v.and_then(Value::as_array);
-    [
-        f(a.and_then(|a| a.first()), base[0]),
-        f(a.and_then(|a| a.get(1)), base[1]),
-    ]
+/// Ligado = não `<= 0` (um NaN grava-se, como sempre se gravou).
+#[allow(clippy::neg_cmp_op_on_partial_ord)]
+fn ligado(x: f32) -> bool {
+    !(x <= 0.0)
 }
 
-fn inteiro<T: TryFrom<u64> + Copy>(v: Option<&Value>, base: T) -> T {
-    v.and_then(Value::as_u64)
-        .and_then(|x| T::try_from(x).ok())
-        .unwrap_or(base)
-}
-
-fn booleano(v: Option<&Value>, base: bool) -> bool {
-    v.and_then(Value::as_bool).unwrap_or(base)
-}
-
-fn nome<T: Debug>(v: T) -> Value {
-    Value::String(format!("{v:?}"))
-}
-
-/// A variante cujo NOME é o texto; ausente ou desconhecido ⇒ `base`.
-fn de_nome<T: Debug + Copy>(v: Option<&Value>, todos: impl IntoIterator<Item = T>, base: T) -> T {
-    let Some(s) = v.and_then(Value::as_str) else {
-        return base;
-    };
-    todos
-        .into_iter()
-        .find(|t| format!("{t:?}") == s)
-        .unwrap_or(base)
-}
-
-fn textura_para_json(t: &TextureSettings) -> Value {
-    let mut v = json!({
-        "kind": nome(t.kind),
-        "mapping": nome(t.mapping),
-        "angle_deg": t.angle_deg,
-        "rake": t.rake,
-        "flow": t.flow,
-        "offset": par(t.offset),
-        "size": par(t.size),
-        "stencil_offset": par(t.stencil_offset),
-        "stencil_size": par(t.stencil_size),
-        "stencil_angle_deg": t.stencil_angle_deg,
-        "params": t.params.iter().map(|&p| num(p)).collect::<Vec<_>>(),
-    });
-    // A lei do grão (L9) só quando não é a de sempre: o preset sem ela é o de antes, ao byte.
-    if t.lei != GrainLaw::NEUTRA
-        && let Some(o) = v.as_object_mut()
-    {
-        o.insert(
-            "lei".to_owned(),
-            json!({
-                "mode": nome(t.lei.mode),
-                "depth_min": num(t.lei.depth_min),
-                "depth_jitter": num(t.lei.depth_jitter),
-                "depth_pressure": t.lei.depth_pressure,
-            }),
-        );
-        // A imagem pela área (J4) só quando ligada: a lei gravada antes dela fica ao byte.
-        if t.lei.area
-            && let Some(l) = o.get_mut("lei").and_then(Value::as_object_mut)
+/// A linha do campo. Um nome que não é campo do `BrushSpec` é erro de quem chama.
+fn campo(nome: &str) -> &'static Campo {
+    static INDICE: OnceLock<BTreeMap<&'static str, &'static Campo>> = OnceLock::new();
+    let indice = INDICE.get_or_init(|| {
+        let mut m = BTreeMap::new();
+        for c in tabela_preset::CAMPOS
+            .iter()
+            .chain(tabela_obra::CAMPOS)
+            .chain(tabela_meio::CAMPOS)
         {
-            l.insert("area".to_owned(), json!(true));
+            assert!(
+                m.insert(c.nome, c).is_none(),
+                "campo do pincel repetido: {}",
+                c.nome
+            );
         }
-        // A maciez e a ponta na profundidade do Height (pastel, 09/11) só quando ligadas: a lei de antes fica ao byte.
-        if let Some(l) = o.get_mut("lei").and_then(Value::as_object_mut) {
-            if t.lei.softness > 0.0 {
-                l.insert("softness".to_owned(), json!(num(t.lei.softness)));
-            }
-            if t.lei.tip_depth {
-                l.insert("tip_depth".to_owned(), json!(true));
-            }
-            if t.lei.fill > 0.0 {
-                l.insert("fill".to_owned(), json!(num(t.lei.fill)));
-            }
-        }
-    }
-    v
-}
-
-/// A ponta de N imagens (L19) do JSON; AUSENTE = a imagem única.
-fn mangueira_de_json(v: Option<&Value>) -> ImageHose {
-    let Some(o) = v.and_then(Value::as_object) else {
-        return ImageHose::NEUTRA;
-    };
-    let mut h = ImageHose::NEUTRA;
-    h.n = inteiro(o.get("n"), 1u8).clamp(1, HOSE_MAX as u8);
-    h.mode = de_nome(
-        o.get("mode"),
-        (0..HoseMode::COUNT).map(HoseMode::from_u8),
-        HoseMode::Random,
-    );
-    if let Some(a) = o.get("pesos").and_then(Value::as_array) {
-        for (k, p) in h.pesos.iter_mut().enumerate() {
-            *p = inteiro(a.get(k), *p);
-        }
-    }
-    h
-}
-
-/// A lei do grão (L9) do JSON; AUSENTE = a de sempre (nunca a do pincel anterior: o preset sem ela é o de antes).
-fn lei_de_json(v: Option<&Value>) -> GrainLaw {
-    let Some(o) = v.and_then(Value::as_object) else {
-        return GrainLaw::NEUTRA;
-    };
-    let n = GrainLaw::NEUTRA;
-    GrainLaw {
-        mode: de_nome(
-            o.get("mode"),
-            (0..GrainMode::COUNT).map(GrainMode::from_u8),
-            n.mode,
-        ),
-        depth_min: f(o.get("depth_min"), n.depth_min),
-        depth_jitter: f(o.get("depth_jitter"), n.depth_jitter),
-        depth_pressure: booleano(o.get("depth_pressure"), n.depth_pressure),
-        area: booleano(o.get("area"), n.area),
-        contraste: n.contraste,
-        softness: f(o.get("softness"), n.softness).clamp(0.0, 1.0),
-        tip_depth: booleano(o.get("tip_depth"), n.tip_depth),
-        fill: f(o.get("fill"), n.fill).clamp(0.0, 1.0),
-    }
-}
-
-fn textura_de_json(v: Option<&Value>, base: TextureSettings) -> TextureSettings {
-    let Some(o) = v.and_then(Value::as_object) else {
-        return base;
-    };
-    let mut params = base.params;
-    if let Some(a) = o.get("params").and_then(Value::as_array) {
-        for (i, p) in params.iter_mut().enumerate().take(MAX_TEX_PARAMS) {
-            *p = f(a.get(i), *p);
-        }
-    }
-    TextureSettings {
-        kind: de_nome(
-            o.get("kind"),
-            (0..TextureKind::COUNT).map(TextureKind::from_u8),
-            base.kind,
-        ),
-        mapping: de_nome(
-            o.get("mapping"),
-            (0..TextureMapping::COUNT).map(TextureMapping::from_u8),
-            base.mapping,
-        ),
-        angle_deg: inteiro(o.get("angle_deg"), base.angle_deg),
-        rake: booleano(o.get("rake"), base.rake),
-        flow: booleano(o.get("flow"), base.flow),
-        offset: f2(o.get("offset"), base.offset),
-        size: f2(o.get("size"), base.size),
-        stencil_offset: f2(o.get("stencil_offset"), base.stencil_offset),
-        stencil_size: f2(o.get("stencil_size"), base.stencil_size),
-        stencil_angle_deg: inteiro(o.get("stencil_angle_deg"), base.stencil_angle_deg),
-        params,
-        lei: lei_de_json(o.get("lei")),
-    }
-}
-
-fn marca_para_json(j: &DabJitter) -> Value {
-    let mut v = json!({
-        "opacity": num(j.opacity),
-        "count": num(j.count),
-        "flip_x": num(j.flip_x),
-        "flip_y": num(j.flip_y),
-        "roundness": num(j.roundness),
-        "angle_per_stroke": num(j.angle_per_stroke),
-        "across": num(j.across),
-        "particle": num(j.particle),
+        m
     });
-    // A partícula em píxeis (J4) só ligada: o preset sem ela é o de antes, ao byte.
-    if j.particle_px > 0.0 {
-        v["particle_px"] = num(j.particle_px);
-        // A contagem que cresce com o pincel (dono 08/11) só ligada: o Pastel é o de antes, ao byte.
-        if j.particle_ref_px > 0.0 {
-            v["particle_ref_px"] = num(j.particle_ref_px);
-        }
-    }
-    // O tecto da partícula e o véu (J4) só ligados: idem.
-    if j.particle_max_px > 0.0 {
-        v["particle_max_px"] = num(j.particle_max_px);
-    }
-    if j.particle_min_px > 0.0 {
-        v["particle_min_px"] = num(j.particle_min_px);
-    }
-    if j.po > 0.0 {
-        v["po"] = num(j.po);
-        v["po_alcance"] = num(j.po_alcance);
-        v["po_px"] = num(j.po_px);
-        v["po_opacidade"] = num(j.po_opacidade);
-        // O lado do pó só ligado: o preset com pó de antes é o de antes, ao byte.
-        if j.po_lado != 0.0 {
-            v["po_lado"] = num(j.po_lado);
-        }
-    }
-    if j.veu > 0.0 {
-        v["veu"] = num(j.veu);
-        v["veu_escala"] = num(j.veu_escala);
-        v["veu_opacidade"] = num(j.veu_opacidade);
-    }
-    // A marca abaixo de meio píxel pela área (J6) só ligada: idem.
-    if j.subpixel_area {
-        v["subpixel_area"] = json!(true);
-    }
-    v
-}
-
-/// O jitter da marca (L4) do JSON; uma chave ausente (um preset de antes) = a de `base`.
-fn marca_de_json(v: Option<&Value>, base: DabJitter) -> DabJitter {
-    let Some(o) = v.and_then(Value::as_object) else {
-        return base;
-    };
-    DabJitter {
-        opacity: f(o.get("opacity"), base.opacity),
-        count: f(o.get("count"), base.count),
-        flip_x: f(o.get("flip_x"), base.flip_x),
-        flip_y: f(o.get("flip_y"), base.flip_y),
-        roundness: f(o.get("roundness"), base.roundness),
-        angle_per_stroke: f(o.get("angle_per_stroke"), base.angle_per_stroke),
-        across: f(o.get("across"), base.across),
-        particle: f(o.get("particle"), base.particle),
-        // AUSENTE = desligada (nunca a do pincel anterior: o preset sem ela é o de antes).
-        particle_px: f(o.get("particle_px"), 0.0).max(0.0),
-        particle_ref_px: f(o.get("particle_ref_px"), 0.0).max(0.0),
-        particle_max_px: f(o.get("particle_max_px"), 0.0).max(0.0),
-        particle_min_px: f(o.get("particle_min_px"), 0.0).max(0.0),
-        po: f(o.get("po"), 0.0).max(0.0),
-        po_alcance: f(o.get("po_alcance"), 1.0).max(0.0),
-        po_px: f(o.get("po_px"), 2.0).max(0.5),
-        po_opacidade: f(o.get("po_opacidade"), 0.3).clamp(0.0, 1.0),
-        po_lado: f(o.get("po_lado"), 0.0).clamp(-1.0, 1.0),
-        veu: f(o.get("veu"), 0.0).clamp(0.0, 1.0),
-        veu_escala: f(o.get("veu_escala"), 1.0).max(0.05),
-        veu_opacidade: f(o.get("veu_opacidade"), 1.0)
-            .clamp(0.0, ph2d_painter_brush::DabJitter::VEU_OPACIDADE_MAX),
-        subpixel_area: o
-            .get("subpixel_area")
-            .and_then(Value::as_bool)
-            .unwrap_or(false),
-    }
-}
-
-/// A cor pela mão (L11) do JSON; uma chave ausente = a de `base`.
-fn cor_mao_de_json(v: Option<&Value>, base: CorDaMao) -> CorDaMao {
-    let Some(o) = v.and_then(Value::as_object) else {
-        return base;
-    };
-    let sec = o.get("secondary").and_then(Value::as_array);
-    CorDaMao {
-        secondary: [0, 1, 2].map(|k| f(sec.and_then(|a| a.get(k)), base.secondary[k])),
-        secondary_jitter: f(o.get("secondary_jitter"), base.secondary_jitter),
-        pressure_secondary: f(o.get("pressure_secondary"), base.pressure_secondary),
-        pressure_hue: f(o.get("pressure_hue"), base.pressure_hue),
-        pressure_sat: f(o.get("pressure_sat"), base.pressure_sat),
-        pressure_val: f(o.get("pressure_val"), base.pressure_val),
-        // AUSENTE = desligado (nunca o do pincel anterior: o preset sem ele é o de antes).
-        vies: {
-            let a = o.get("vies").and_then(Value::as_array);
-            [0, 1, 2].map(|k| f(a.and_then(|a| a.get(k)), 0.0))
-        },
-    }
-}
-
-/// O valor JSON de UM campo do pincel. Um nome que não é campo do `BrushSpec` é erro de quem chama.
-fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
-    match campo {
-        "hardness" => num(b.hardness),
-        "falloff" => nome(b.falloff),
-        "custom_falloff" => curva_para_json(&b.custom_falloff),
-        "spacing" => num(b.spacing),
-        "jitter" => num(b.jitter),
-        "jitter_unit" => nome(b.jitter_unit),
-        "jitter_absolute_px" => num(b.jitter_absolute_px),
-        "jitter_scale" => num(b.jitter_scale),
-        "jitter_rotate" => num(b.jitter_rotate),
-        "jitter_spacing" => num(b.jitter_spacing),
-        "spray_count" => json!(b.spray_count),
-        "dab_jitter" => marca_para_json(&b.dab_jitter),
-        "pixel" => nome(b.pixel),
-        "hose" => json!({
-            "n": b.hose.n,
-            "mode": nome(b.hose.mode),
-            "pesos": b.hose.pesos.to_vec(),
-        }),
-        "cor_mao" => {
-            let mut v = json!({
-                "secondary": [num(b.cor_mao.secondary[0]), num(b.cor_mao.secondary[1]), num(b.cor_mao.secondary[2])],
-                "secondary_jitter": num(b.cor_mao.secondary_jitter),
-                "pressure_secondary": num(b.cor_mao.pressure_secondary),
-                "pressure_hue": num(b.cor_mao.pressure_hue),
-                "pressure_sat": num(b.cor_mao.pressure_sat),
-                "pressure_val": num(b.cor_mao.pressure_val),
-            });
-            // O viés (J4) só ligado: o preset sem ele é o de antes, ao byte.
-            if b.cor_mao.vies != [0.0; 3] {
-                v["vies"] = json!(b.cor_mao.vies.map(num));
-            }
-            v
-        }
-        "input_samples" => json!(b.input_samples),
-        "stabilizer" => num(b.stabilizer),
-        "size_max_px" => b.size_max_px.map_or(Value::Null, num),
-        "taper" => taper_para_json(&b.taper),
-        "texture" => textura_para_json(&b.texture),
-        "grain_depth" => num(b.grain_depth),
-        "grain_same_as_paper" => json!(b.grain_same_as_paper),
-        "grao_aplicado" => {
-            let mut v = textura_para_json(&b.grao_aplicado.grao);
-            v["media"] = json!(b.grao_aplicado.media);
-            v
-        }
-        "shape" => textura_para_json(&b.shape),
-        "dab_flatten" => num(b.dab_flatten),
-        "dab_angle_deg" => json!(b.dab_angle_deg),
-        "dab_quina" => num(b.dab_quina),
-        "dab_rotation_lag" => num(b.dab_rotation_lag),
-        "pontas_rectas" => json!(b.pontas_rectas),
-        "pontas_alem" => num(b.pontas_alem),
-        "pontas_esbate" => num(b.pontas_esbate),
-        "dab_curve" => pegada_para_json(b.dab_curve),
-        "color_jitter_enabled" => json!(b.color_jitter_enabled),
-        "continuous_spacing" => json!(b.continuous_spacing),
-        "color_jitter_hue" => num(b.color_jitter_hue),
-        "color_jitter_sat" => num(b.color_jitter_sat),
-        "color_jitter_val" => num(b.color_jitter_val),
-        "color_jitter_scope" => nome(b.color_jitter_scope),
-        "blend" => nome(b.blend),
-        "blend_sobre_vazio" => json!(b.blend_sobre_vazio),
-        "pigment" => json!(b.pigment),
-        "pigment_mix" => num(b.pigment_mix),
-        "pigment_espectral" => json!(b.pigment_espectral),
-        "paper_depth" => num(b.paper_depth),
-        outro => ler_campo_da_obra(b, outro),
-    }
-}
-
-/// Os campos da obra e do gesto, que o preset deixa de fora e a MACRO leva ([`super::campos_da_macro`]).
-fn ler_campo_da_obra(b: &BrushSpec, campo: &str) -> Value {
-    match campo {
-        "radius_px" => num(b.radius_px),
-        "strength" => num(b.strength),
-        "color" => json!([num(b.color[0]), num(b.color[1]), num(b.color[2])]),
-        "paper" => textura_para_json(&b.paper),
-        "symmetry" => json!({
-            "enabled": b.symmetry.enabled,
-            "circular": b.symmetry.circular,
-            "axis": nome(b.symmetry.axis),
-            "radial_segments": b.symmetry.radial_segments,
-            "center": par(b.symmetry.center),
-            "custom_dir": par(b.symmetry.custom_dir),
-        }),
-        "stroke_method" => nome(b.stroke_method),
-        "grid_cell_px" => par(b.grid_cell_px),
-        "grid_offset_px" => par(b.grid_offset_px),
-        "grid_fit" => num(b.grid_fit),
-        "edge_to_edge" => json!(b.edge_to_edge),
-        "line_kind" => nome(b.line_kind),
-        "style_solid" => json!(b.style_solid),
-        "sketchy_reach" => num(b.sketchy_reach),
-        "sketchy_density" => num(b.sketchy_density),
-        "thread_width_px" => num(b.thread_width_px),
-        "thread_opacity" => num(b.thread_opacity),
-        "sketchy_magnetify" => json!(b.sketchy_magnetify),
-        "wire_history" => num(b.wire_history),
-        "wire_connection_line" => json!(b.wire_connection_line),
-        "wire_sorteio" => json!(b.wire_sorteio),
-        "wire_cordas" => json!(b.wire_cordas),
-        "ribbon_weight" => num(b.ribbon_weight),
-        "ribbon_friction" => num(b.ribbon_friction),
-        "ribbon_gravity" => num(b.ribbon_gravity),
-        "ribbon_rungs" => num(b.ribbon_rungs),
-        "rough_amount" => num(b.rough_amount),
-        "rough_bowing" => num(b.rough_bowing),
-        "rough_passes" => json!(b.rough_passes),
-        "dash_ratio" => num(b.dash_ratio),
-        "dash_samples" => json!(b.dash_samples),
-        outro => meio::ler(b, outro),
-    }
-}
-
-fn escrever_campo_da_obra(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
-    match campo {
-        "radius_px" => b.radius_px = f(v, b.radius_px),
-        "strength" => b.strength = f(v, b.strength),
-        "color" => {
-            let a = v.and_then(Value::as_array);
-            for (i, c) in b.color.iter_mut().enumerate() {
-                *c = f(a.and_then(|a| a.get(i)), *c);
-            }
-        }
-        "paper" => b.paper = textura_de_json(v, b.paper),
-        "symmetry" => {
-            let o = v.and_then(Value::as_object);
-            let g = |k: &str| o.and_then(|o| o.get(k));
-            let s = &mut b.symmetry;
-            s.enabled = booleano(g("enabled"), s.enabled);
-            s.circular = booleano(g("circular"), s.circular);
-            s.axis = de_nome(g("axis"), (0..3).map(MirrorAxis::from_u8), s.axis);
-            s.radial_segments = inteiro(g("radial_segments"), s.radial_segments);
-            s.center = f2(g("center"), s.center);
-            s.custom_dir = f2(g("custom_dir"), s.custom_dir);
-        }
-        "stroke_method" => {
-            b.stroke_method = de_nome(
-                v,
-                (0..StrokeMethod::COUNT).map(StrokeMethod::from_u8),
-                b.stroke_method,
-            );
-        }
-        "grid_cell_px" => b.grid_cell_px = f2(v, b.grid_cell_px),
-        "grid_offset_px" => b.grid_offset_px = f2(v, b.grid_offset_px),
-        "grid_fit" => b.grid_fit = f(v, b.grid_fit),
-        "edge_to_edge" => b.edge_to_edge = booleano(v, b.edge_to_edge),
-        "line_kind" => b.line_kind = de_nome(v, (0..6).map(LineKind::from_wire), b.line_kind),
-        "style_solid" => b.style_solid = booleano(v, b.style_solid),
-        "sketchy_reach" => b.sketchy_reach = f(v, b.sketchy_reach),
-        "sketchy_density" => b.sketchy_density = f(v, b.sketchy_density),
-        "thread_width_px" => b.thread_width_px = f(v, b.thread_width_px),
-        "thread_opacity" => b.thread_opacity = f(v, b.thread_opacity),
-        "sketchy_magnetify" => b.sketchy_magnetify = booleano(v, b.sketchy_magnetify),
-        "wire_history" => b.wire_history = f(v, b.wire_history),
-        "wire_connection_line" => b.wire_connection_line = booleano(v, b.wire_connection_line),
-        // J4: ausente = desligado (só se grava ligado), nunca o do pincel anterior.
-        "wire_sorteio" => b.wire_sorteio = booleano(v, false),
-        "wire_cordas" => {
-            b.wire_cordas = v
-                .and_then(Value::as_u64)
-                .map_or(0, |c| c.min(u64::from(u8::MAX)) as u8)
-        }
-        "ribbon_weight" => b.ribbon_weight = f(v, b.ribbon_weight),
-        "ribbon_friction" => b.ribbon_friction = f(v, b.ribbon_friction),
-        "ribbon_gravity" => b.ribbon_gravity = f(v, b.ribbon_gravity),
-        "ribbon_rungs" => b.ribbon_rungs = f(v, b.ribbon_rungs),
-        "rough_amount" => b.rough_amount = f(v, b.rough_amount),
-        "rough_bowing" => b.rough_bowing = f(v, b.rough_bowing),
-        "rough_passes" => b.rough_passes = inteiro(v, b.rough_passes),
-        "dash_ratio" => b.dash_ratio = f(v, b.dash_ratio),
-        "dash_samples" => b.dash_samples = inteiro(v, b.dash_samples),
-        outro => meio::escrever(b, outro, v),
-    }
-}
-
-/// Escreve UM campo a partir do JSON; ilegível ⇒ fica o de `b`.
-fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
-    match campo {
-        "hardness" => b.hardness = f(v, b.hardness),
-        "falloff" => b.falloff = de_nome(v, Falloff::ALL, b.falloff),
-        "custom_falloff" => b.custom_falloff = curva_de_json(v, b.custom_falloff),
-        "spacing" => b.spacing = f(v, b.spacing),
-        "jitter" => b.jitter = f(v, b.jitter),
-        "jitter_unit" => {
-            b.jitter_unit = de_nome(v, [JitterUnit::Brush, JitterUnit::View], b.jitter_unit);
-        }
-        "jitter_absolute_px" => b.jitter_absolute_px = f(v, b.jitter_absolute_px),
-        "jitter_scale" => b.jitter_scale = f(v, b.jitter_scale),
-        "jitter_rotate" => b.jitter_rotate = f(v, b.jitter_rotate),
-        "jitter_spacing" => b.jitter_spacing = f(v, b.jitter_spacing),
-        "spray_count" => b.spray_count = inteiro(v, b.spray_count),
-        "dab_jitter" => b.dab_jitter = marca_de_json(v, b.dab_jitter),
-        // AUSENTE = desligada (só se grava ligada), nunca a do pincel anterior.
-        "pixel" => {
-            b.pixel = de_nome(
-                v,
-                (0..PixelTip::COUNT).map(PixelTip::from_u8),
-                PixelTip::Off,
-            )
-        }
-        // AUSENTE = a imagem única (só se grava com várias), nunca a ponta do pincel anterior.
-        "hose" => b.hose = mangueira_de_json(v),
-        "cor_mao" => b.cor_mao = cor_mao_de_json(v, b.cor_mao),
-        "input_samples" => b.input_samples = inteiro(v, b.input_samples),
-        "stabilizer" => b.stabilizer = f(v, b.stabilizer),
-        // AUSENTE = sem tecto (só se grava fixado), nunca o do pincel anterior.
-        "size_max_px" => {
-            b.size_max_px = v
-                .and_then(Value::as_f64)
-                .filter(|x| x.is_finite() && *x >= 1.0)
-                .map(|x| x as f32);
-        }
-        "taper" => {
-            let o = v.and_then(Value::as_object);
-            let g = |k: &str, base: f32| f(o.and_then(|o| o.get(k)), base);
-            b.taper.start = g("start", b.taper.start);
-            b.taper.tip_start = g("tip_start", b.taper.tip_start);
-            b.taper.opacity = g("opacity", b.taper.opacity);
-            // A cauda e o fall-off (L5): sub-chave AUSENTE = a de fábrica (o preset de antes não os tinha).
-            let z = |k: &str| f(o.and_then(|o| o.get(k)), 0.0);
-            b.taper.end = z("end");
-            b.taper.tip_end = z("tip_end");
-            b.taper.fall_off = z("fall_off");
-            b.taper.fall_off_start = z("fall_off_start");
-        }
-        "texture" => b.texture = textura_de_json(v, b.texture),
-        "grain_depth" => b.grain_depth = f(v, b.grain_depth),
-        // Ausente = desligado (a de fábrica): o preset de antes lê o grão de antes.
-        "grain_same_as_paper" => b.grain_same_as_paper = booleano(v, false),
-        "grao_aplicado" => {
-            if v.is_some() {
-                b.grao_aplicado = ph2d_painter_brush::GraoAplicado {
-                    grao: textura_de_json(v, TextureSettings::default()),
-                    media: v
-                        .and_then(|o| o.get("media"))
-                        .and_then(Value::as_f64)
-                        .and_then(media_do_ficheiro),
-                };
-            }
-        }
-        "shape" => b.shape = textura_de_json(v, b.shape),
-        "dab_flatten" => b.dab_flatten = f(v, b.dab_flatten),
-        "dab_angle_deg" => b.dab_angle_deg = inteiro(v, b.dab_angle_deg),
-        "dab_quina" => b.dab_quina = f(v, b.dab_quina).clamp(0.0, 1.0),
-        // Ausente = sem inércia (a de fábrica): o preset de antes lê o rumo de antes.
-        "dab_rotation_lag" => {
-            b.dab_rotation_lag =
-                f(v, 0.0).clamp(0.0, ph2d_painter_brush::heading::ROTATION_LAG_MAX);
-        }
-        // Ausente = desligadas (a de fábrica), como a lei espectral: o preset de antes lê o traço de antes.
-        "pontas_rectas" => b.pontas_rectas = booleano(v, false),
-        "pontas_alem" => {
-            b.pontas_alem = f(v, 0.0).clamp(0.0, ph2d_painter_brush::PONTAS_ALEM_MAX);
-        }
-        "pontas_esbate" => {
-            b.pontas_esbate = f(v, 0.0).clamp(
-                crate::ids::PAINTER_BRUSH_PONTAS_ESBATE_MIN,
-                ph2d_painter_brush::PONTAS_ESBATE_MAX,
-            );
-        }
-        "dab_curve" => b.dab_curve = pegada_de_json(v, b.dab_curve),
-        "color_jitter_enabled" => b.color_jitter_enabled = booleano(v, b.color_jitter_enabled),
-        "continuous_spacing" => b.continuous_spacing = booleano(v, b.continuous_spacing),
-        "color_jitter_hue" => b.color_jitter_hue = f(v, b.color_jitter_hue),
-        "color_jitter_sat" => b.color_jitter_sat = f(v, b.color_jitter_sat),
-        "color_jitter_val" => b.color_jitter_val = f(v, b.color_jitter_val),
-        "color_jitter_scope" => {
-            b.color_jitter_scope = de_nome(
-                v,
-                [ColorJitterScope::PerDab, ColorJitterScope::PerStroke],
-                b.color_jitter_scope,
-            );
-        }
-        "blend" => {
-            b.blend = de_nome(
-                v,
-                (0..MAX_BRUSH_BLEND_MODES).map(BrushBlend::from_u8),
-                b.blend,
-            );
-        }
-        "blend_sobre_vazio" => b.blend_sobre_vazio = booleano(v, b.blend_sobre_vazio),
-        "pigment" => b.pigment = booleano(v, b.pigment),
-        "pigment_mix" => b.pigment_mix = f(v, b.pigment_mix),
-        // J4: ausente = o K–M (só se grava ligado), nunca o do pincel anterior.
-        "pigment_espectral" => b.pigment_espectral = booleano(v, false),
-        "paper_depth" => b.paper_depth = f(v, b.paper_depth),
-        outro => escrever_campo_da_obra(b, outro, v),
-    }
+    indice
+        .get(nome)
+        .copied()
+        .unwrap_or_else(|| unreachable!("campo do pincel sem conversão: {nome}"))
 }
 
 /// O sub-conjunto do pincel que o preset leva, por nome.
 pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<String, Value> {
     campos
         .iter()
-        // A ponta de píxel (L18) só quando ligada: o preset sem ela é o de antes, ao byte.
-        .filter(|&&c| !(c == "pixel" && b.pixel == PixelTip::Off))
-        // A ponta de N imagens (L19) só quando não é a de sempre: o preset de imagem única é o de antes, ao byte.
-        .filter(|&&c| !(c == "hose" && b.hose == ImageHose::NEUTRA))
-        // O dual brush (L6) só armado: o preset sem ele é o de antes, ao byte.
-        .filter(|&&c| !(c == "dual" && b.dual.is_none()))
-        // O tecto de tamanho (J3) só fixado: idem.
-        .filter(|&&c| !(c == "size_max_px" && b.size_max_px.is_none()))
-        // A orla em píxeis e o sub-passo fino (J3) só ligados: idem.
-        .filter(|&&c| !(c == "borda_px" && b.borda_px <= 0.0))
-        .filter(|&&c| !(c == "sub_passo_fino" && !b.sub_passo_fino))
-        // O passo pela pressão (J4) só ligado: idem.
-        .filter(|&&c| !(c == "passo_pela_pressao" && !b.passo_pela_pressao))
-        .filter(|&&c| !(c == "parado_s" && b.parado_s <= 0.0))
-        .filter(|&&c| !(c == "tecto_por_dab" && !b.tecto_por_dab))
-        .filter(|&&c| !(c == "wash" && !b.wash))
-        .filter(|&&c| !(c == "smear_fio" && !b.smear_fio))
-        // A mistura opaca do Digital só ligada: o ficheiro de antes não muda.
-        .filter(|&&c| !(c == "mistura_opaca" && !b.mistura_opaca.ligada()))
-        // As cordas sorteadas do Wire (J4 efeitos) só ligadas: idem.
-        .filter(|&&c| !(c == "wire_sorteio" && !b.wire_sorteio))
-        .filter(|&&c| !(c == "wire_cordas" && b.wire_cordas == 0))
-        // A lei espectral do pigmento (J4 efeitos) só ligada: idem.
-        .filter(|&&c| !(c == "pigment_espectral" && !b.pigment_espectral))
-        // As pontas rectas (J6) só ligadas: idem.
-        .filter(|&&c| !(c == "pontas_rectas" && !b.pontas_rectas))
-        .filter(|&&c| !(c == "grain_same_as_paper" && !b.grain_same_as_paper))
-        // A referência do Grain (Bug #61) só quando o Grain já não é ela: a ausência diz «o Grain do ficheiro é ela».
-        .filter(|&&c| !(c == "grao_aplicado" && !b.grao_trocado()))
-        .filter(|&&c| !(c == "pontas_alem" && b.pontas_alem <= 0.0))
-        // O esbate negativo (as pontas que CARREGAM, R2-A) viaja: só o `0` sai.
-        .filter(|&&c| !(c == "pontas_esbate" && b.pontas_esbate == 0.0))
-        .filter(|&&c| !(c == "dab_rotation_lag" && b.dab_rotation_lag <= 0.0))
-        .map(|&c| ((*c).to_owned(), ler_campo(b, c)))
+        .map(|&n| campo(n))
+        .filter(|c| (c.grava)(b))
+        .map(|c| (c.nome.to_owned(), (c.ler)(b)))
         .collect()
-}
-
-/// A média do Grain aplicado que o ficheiro traz: abaixo do piso de `media_do_grao` (ou não finita) o pincel não pintava
-/// nada; vale a ausência, e diz-se (Bug #65 D4).
-fn media_do_ficheiro(m: f64) -> Option<f32> {
-    let media = m as f32;
-    if media.is_finite() && media >= 1e-3 {
-        return Some(media);
-    }
-    eprintln!("[painter-preset] grao_aplicado.media inválida ({m}): ignorada");
-    None
 }
 
 /// `base` com os campos que o JSON fixa. Chaves fora de `campos` (de ondas futuras) são ignoradas
@@ -654,8 +105,8 @@ pub(crate) fn pincel_de_json(
     base: BrushSpec,
 ) -> BrushSpec {
     let mut b = base;
-    for &c in campos {
-        escrever_campo(&mut b, c, m.get(c));
+    for &n in campos {
+        (campo(n).escrever)(&mut b, m.get(n));
     }
     if campos.contains(&"grao_aplicado") && !m.contains_key("grao_aplicado") {
         b.grao_aplicado = ph2d_painter_brush::GraoAplicado {

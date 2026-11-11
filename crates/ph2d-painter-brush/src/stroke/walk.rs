@@ -14,7 +14,7 @@ use super::*;
 use ph2d_det_math::DetMath as _;
 
 /// Max dabs a single [`Stroke::walk_space`] may emit — a **BATENTE de MEMÓRIA**, irmão do
-/// `MAX_AIRBRUSH_DABS_PER_TICK` e escrito pelo mesmo motivo.
+/// batente do relógio do traço (`DT_TIQUE_MAX_S`) e escrito pelo mesmo motivo.
 ///
 /// ⚠️ **De que recurso ele é:** o percurso empurra um `Dab` por passo num `Vec` que o chamador é
 /// dono, e o passo tem PISO de 1 px — então o número de iterações é o COMPRIMENTO da corda, sem

@@ -206,9 +206,13 @@ const STABILIZER_MIN_BLEND: f32 = 0.08;
 const SETTLE_BLEND_FLOOR: f32 = 0.3;
 /// Sub-pixel distance at which the stabilizer counts as caught up to the cursor (stops settling).
 const SETTLE_EPS_PX: f32 = 0.5;
-/// Max airbrush dabs a single [`Stroke::tick`] may emit, so a stalled frame's oversized `dt`
-/// can't dump a retroactive flood (Blender's async timer never catches up after a hitch).
-const MAX_AIRBRUSH_DABS_PER_TICK: u32 = 8;
+/// O maior `dt` que um tique do relógio do traço conta (aerógrafo e spray parado, B22.2): um quadro mais longo é
+/// um quadro PRESO (GC, resize, breakpoint) e o atraso cai, não é despejado (Blender não dispara retroactivo). Até
+/// 4 q/s a densidade é a mesma a qualquer ritmo; o batente de dabs por tique sai daqui: `⌈0,25 / período⌉ + 1`
+/// (≤ 251 ao período mínimo de 1 ms).
+const DT_TIQUE_MAX_S: f32 = 0.25;
+/// O período mínimo do relógio do traço (o do aerógrafo, e o do spray parado): o tecto de memória do tique.
+const PERIODO_MIN_S: f32 = 1e-3;
 
 /// O batente de MEMÓRIA do percurso (o porquê e a medição: [`walk::MAX_DABS_PER_WALK`]).
 #[cfg(test)]
@@ -664,6 +668,8 @@ mod warmup;
 
 mod abertura;
 
+#[cfg(test)]
+mod ritmo_tests;
 #[cfg(test)]
 mod rotacao_tests;
 #[cfg(test)]

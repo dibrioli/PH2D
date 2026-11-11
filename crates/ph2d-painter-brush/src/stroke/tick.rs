@@ -33,23 +33,28 @@ impl Stroke {
         if self.spec.stroke_method != StrokeMethod::Airbrush {
             return;
         }
-        let rate = self.spec.airbrush_rate_s.max(1e-3);
-        self.airbrush_accum_s += dt.max(0.0);
-        let mut emitted = 0u32;
-        while self.airbrush_accum_s >= rate {
-            self.airbrush_accum_s -= rate;
+        let rate = self.spec.airbrush_rate_s.max(PERIODO_MIN_S);
+        let mut acum = self.airbrush_accum_s;
+        // per-event: no spacing attenuation
+        let n = pulsos(&mut acum, dt, rate);
+        self.airbrush_accum_s = acum;
+        for _ in 0..n {
             let pr = self.method_pressure(self.last_pressure);
-            // per-event: no spacing attenuation
             self.stamp_at(self.last_pos, pr, 1.0, self.arc_len, out);
             self.tot_samples = self.tot_samples.wrapping_add(1);
-            emitted += 1;
-            // Stall guard: a frame-driven tick can hand us a huge `dt` after a hitch (GC/resize/
-            // breakpoint). Blender's async timer wouldn't fire retroactively, so cap the burst and
-            // drop the backlog rather than dump a flood of overlapping dabs at one spot.
-            if emitted >= MAX_AIRBRUSH_DABS_PER_TICK {
-                self.airbrush_accum_s = 0.0;
-                break;
-            }
         }
     }
+}
+
+/// O relógio do traço parado (aerógrafo e spray parado): soma `dt` (até [`DT_TIQUE_MAX_S`]; o resto de um quadro
+/// preso cai) a `acum` e devolve quantos `periodo` inteiros cabem, descontando-os. A densidade é a mesma a 30, 60 e
+/// 144 q/s, e o tique pousa no máximo `⌈DT_TIQUE_MAX_S / periodo⌉ + 1` eventos.
+pub(super) fn pulsos(acum: &mut f32, dt: f32, periodo: f32) -> u32 {
+    *acum += dt.clamp(0.0, DT_TIQUE_MAX_S);
+    let mut n = 0;
+    while *acum >= periodo {
+        *acum -= periodo;
+        n += 1;
+    }
+    n
 }

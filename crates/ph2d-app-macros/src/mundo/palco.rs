@@ -22,6 +22,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub(super) const TRANSFORM: &str = "ph2d::ecs::Transform";
 pub(super) const VISIBILIDADE: &str = "ph2d::ecs::Visibility";
 pub(super) const CORPO: &str = "ph2d::physics::RigidBody";
+const OUTLINE: &str = "ph2d::physics::ColliderOutline";
 
 /// Uma trilha «mundo» lida, com o que se deriva dela uma vez.
 pub(super) struct Trilha {
@@ -288,6 +289,12 @@ fn conduz(
                 };
                 let lado_forma = ph2d_physics_ecs::LADO_FORMA.contains(&n.as_str());
                 let alvo = forma.filter(|_| lado_forma).unwrap_or(e);
+                // Regra B: com trilha de pontos, o contorno tem um só escritor — a animação.
+                if n == OUTLINE
+                    && ph2d_shape_handles::travados::numero_travado(sim.world(), alvo.to_bits())
+                {
+                    continue;
+                }
                 drive.blobs.conduz(sim, alvo, p, v);
             }
         }
@@ -334,3 +341,7 @@ mod pilha;
 #[cfg(test)]
 #[path = "palco_sonda.rs"]
 mod sonda;
+
+#[cfg(test)]
+#[path = "palco_pontos_tests.rs"]
+mod pontos;

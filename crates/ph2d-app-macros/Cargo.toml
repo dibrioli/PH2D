@@ -30,6 +30,8 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 serde = { version = "1", features = ["derive"] }
 postcard = { version = "1", features = ["alloc"] }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+# Regra B: a forma com trilha de pontos tem um só escritor do contorno (a animação), nunca a macro.
+ph2d-shape-handles = { path = "../ph2d-shape-handles" }
 # A reprodução do mundo conduz `S(t)` pelo ledger do preview (os blobs): vê-se, não entra no undo.
 ph2d-preview-drive = { path = "../ph2d-preview-drive" }
 # A cena `=8`: o interruptor *Physics* da barra de transporte, pelo id do clique.

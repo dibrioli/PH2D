@@ -31,27 +31,47 @@
 //! from, which is the other half of GIMP's model (it applies constant-mode paint from the undo snapshot,
 //! never from the live drawable) — and we get it without keeping a copy of the canvas.
 
+/// Como o tecto lê a cobertura ([`cover_add`]): não como área, como a orla em píxeis do Digital, ou como a película
+/// com AA do Impasto (onde o grão é também tecto, B29.3).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum Area {
+    Nao,
+    Orla,
+    Filme,
+}
+
+impl Area {
+    /// A película manda sobre a orla (as duas leem área; só a película faz do grão tecto).
+    #[must_use]
+    pub(crate) fn de(filme: bool, orla: bool) -> Self {
+        match (filme, orla) {
+            (true, _) => Self::Filme,
+            (false, true) => Self::Orla,
+            (false, false) => Self::Nao,
+        }
+    }
+}
+
 /// How much of the stroke's paint this dab adds at one texel, given the texel's coverage so far `m`, the
 /// dab's silhouette weight `w`, its Grain weight `g`, the stroke's CEILING `tecto` (stroke coverage ×
-/// Strength — SEM o Flow), the per-dab RATE `flow` and whether the film's screen-space AA is live.
+/// Strength — SEM o Flow), the per-dab RATE `flow` and whether the coverage reads as AREA ([`Area`]).
 /// `None` = this dab adds nothing here (the caller skips the texel).
 ///
 /// ⭐ **Strength é o tecto, Flow é a taxa** (ordem do Enio 24/10, a lei do Photoshop/Krita): o Flow
 /// multiplica o passo de cada dab e o texel ACUMULA até `g·tecto` — antes o Flow entrava no tecto e um
 /// pincel de Flow `0,03` nunca passava de `3 %`. Com `flow = 1` é ao bit a aritmética que shipou.
 #[must_use]
-pub(crate) fn cover_add(
-    m: f32,
-    w: f32,
-    g: f32,
-    tecto: f32,
-    flow: f32,
-    film_aa: bool,
-) -> Option<f32> {
-    if film_aa {
+pub(crate) fn cover_add(m: f32, w: f32, g: f32, tecto: f32, flow: f32, area: Area) -> Option<f32> {
+    if area != Area::Nao {
         // The film's AA rim caps the texel at its fractional AREA while the per-dab opacity still
-        // builds WITHIN it (BUGS #16).
-        let cap = (w * tecto).min(1.0);
+        // builds WITHIN it (BUGS #16). Sob a película do Impasto o grão é TECTO (B29.3): sem ele o repasse
+        // apaga o dente. A orla em píxeis do Digital fica na lei que shipou (o grão é taxa: Brush Pen, Halftone).
+        let cap = if area == Area::Filme {
+            w * g * tecto
+        } else {
+            w * tecto
+        }
+        .min(1.0);
         if m >= cap {
             return None; // the film's area is fully laid here
         }

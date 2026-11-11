@@ -397,7 +397,7 @@ pub(in crate::dab) struct Invariantes {
     /// A taxa do tecto: a união da cápsula já leva a dos sub-dabs (`w·c_cap = 1 − Π(1 − c_cap·x_k)`).
     pub(in crate::dab) flow_do_tecto: f32,
     /// O tecto lê a cobertura como ÁREA (película com AA, ou a orla em píxeis).
-    pub(in crate::dab) area: bool,
+    pub(in crate::dab) area: crate::stroke_cover::Area,
 }
 
 impl Invariantes {
@@ -424,7 +424,7 @@ impl Invariantes {
             } else {
                 ctx.flow
             },
-            area: ctx.film_aa.is_some() || orla_area,
+            area: crate::stroke_cover::Area::de(ctx.film_aa.is_some(), orla_area),
         }
     }
 }

@@ -131,13 +131,21 @@ Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × Hard Round/Sketch Pencil,
 
 Todas: 3 fundos × 1080p/4K em [B36/](B36/).
 
+## B29.3 — O dente do papel resiste ao repasse no Impasto
+
+Chalk e Pastel com o Impasto ligado, um traço que vai e volta 4× no mesmo sítio. Antes o repasse enchia o dente (o grão era só ritmo); depois o grão é o tecto, como já era sem Impasto. Nenhum pincel de fábrica muda (as miniaturas são as mesmas). `antes | depois | Δ×32`.
+
+![B29.3](B29/1080p_papel_pastel_antes_depois.png)
+
+Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × Chalk/Pastel, em [B29/](B29/).
+
 ## As 10 decisões do dono (§0 do prompt da missão)
 
 | # | Decisão | Bloco | Prancha |
 |---|---|---|---|
 | 1 | Água do Wet que parou dorme (fotos 1, 4, 10 s) | B13 | ainda não feita (B13.3/B13.4 abertos) |
 | 2 | Luz simples do Óleo Real só com o pincel na tela | B14 | [B14b](#b14b--óleo-real-luz-simples-enquanto-o-pincel-está-na-tela) |
-| 3 | Guardar a tinta com mais precisão | B29 | ainda não feita (aberto) |
+| 3 | Guardar a tinta com mais precisão | B29 | [B29.3](#b293--o-dente-do-papel-resiste-ao-repasse-no-impasto) (o dente resiste ao repasse); B29.1 medido, B29.2/B29.4 abertos |
 | 4 | Arrumar os controles do Wet | B35 | só controles; o que muda na tela (reset/rótulos) ainda aberto |
 | 5 | Pincel Oil Wash | B36 | [B36](#b36--pincel-oil-wash) |
 | 6 | Aparência acompanha o tamanho da tela | B34 | ainda não feita: a imagem nova já guarda o seu tamanho de referência (B34.1, base), sem mudança visível; o papel e as orlas por escalar |

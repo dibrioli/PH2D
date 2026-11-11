@@ -56,6 +56,7 @@ mod os_fios;
 mod os_outros_meios_nao_mudam;
 mod pinceis_da_ponta;
 mod prancha_b28_3; // missão 4K B28.3: a amostra esparsa do Color mixing (prancha + relógio, ignored)
+mod prancha_b29_3; // missão 4K B29.3: o grão é tecto com o filme AA (prancha, ignored)
 mod presets_de_fabrica;
 mod presets_dos_meios;
 mod push_look_probe; // render-and-look do Push (veio do ph2d-app-painter, 10/11: só a API do PainterTool)

@@ -1,6 +1,6 @@
 //! Gate da aritmética do cap por-traço ([`super`]): ela tem de ser, termo a termo, a que shipou.
 
-use super::cover_add;
+use super::{Area, cover_add};
 
 #[test]
 fn the_cap_is_the_arithmetic_that_shipped() {
@@ -16,23 +16,31 @@ fn the_cap_is_the_arithmetic_that_shipped() {
                         if m >= cap { None } else { Some(w * (cap - m)) }
                     };
                     assert_eq!(
-                        cover_add(m, w, g, cov, 1.0, false),
+                        cover_add(m, w, g, cov, 1.0, Area::Nao),
                         want,
                         "non-AA branch drifted at m={m} w={w} g={g} cov={cov}"
                     );
-                    let want_aa = {
-                        let cap = (w * cov).min(1.0);
+                    let want_aa = |area: Area| {
+                        // B29.3: sob a película o grão entra no tecto (com g = 1 é ao bit o que shipou).
+                        let cap = if area == Area::Filme {
+                            w * g * cov
+                        } else {
+                            w * cov
+                        }
+                        .min(1.0);
                         if m >= cap {
                             None
                         } else {
                             Some((w * g * cov) * (1.0 - m / cap.max(1e-4)))
                         }
                     };
-                    assert_eq!(
-                        cover_add(m, w, g, cov, 1.0, true),
-                        want_aa,
-                        "AA branch drifted at m={m} w={w} g={g} cov={cov}"
-                    );
+                    for area in [Area::Orla, Area::Filme] {
+                        assert_eq!(
+                            cover_add(m, w, g, cov, 1.0, area),
+                            want_aa(area),
+                            "AA branch drifted at m={m} w={w} g={g} cov={cov} {area:?}"
+                        );
+                    }
                 }
             }
         }
@@ -46,7 +54,7 @@ fn the_cap_builds_toward_the_ceiling_and_never_past_it() {
     let mut m = 0.0_f32;
     let mut seen = Vec::new();
     for _ in 0..8 {
-        if let Some(add) = cover_add(m, 0.4, 1.0, 0.5, 1.0, false) {
+        if let Some(add) = cover_add(m, 0.4, 1.0, 0.5, 1.0, Area::Nao) {
             m += add;
             seen.push(m);
         }
@@ -67,13 +75,13 @@ fn o_flow_e_a_taxa_e_a_strength_o_tecto() {
     // deposita só `w·0,1` do caminho, e muitos dabs ACUMULAM até 0,6 — nunca até 0,06, nunca acima de 0,6.
     for film in [false, true] {
         let mut m = 0.0_f32;
-        let primeiro = cover_add(m, 1.0, 1.0, 0.6, 0.1, film).unwrap();
+        let primeiro = cover_add(m, 1.0, 1.0, 0.6, 0.1, Area::de(film, false)).unwrap();
         assert!(
             primeiro < 0.07,
             "um dab de Flow 0,1 é um passo pequeno (film={film}): {primeiro}"
         );
         for _ in 0..200 {
-            if let Some(add) = cover_add(m, 1.0, 1.0, 0.6, 0.1, film) {
+            if let Some(add) = cover_add(m, 1.0, 1.0, 0.6, 0.1, Area::de(film, false)) {
                 m += add;
             }
         }
@@ -82,5 +90,25 @@ fn o_flow_e_a_taxa_e_a_strength_o_tecto() {
             "converge à Strength, não a Strength×Flow (film={film}): {m}"
         );
         assert!(m <= 0.6 + 1e-6, "e nunca passa do tecto (film={film}): {m}");
+    }
+}
+
+#[test]
+fn com_o_filme_o_grao_e_tecto_ao_repassar() {
+    // B29.3 (DF-68): no Impasto (filme AA ligado) repassar o pincel apagava o dente do papel — o grão era só
+    // TAXA e o texel do vale subia ao tecto do pico. O grão é o TECTO nas duas ramas.
+    for film in [false, true] {
+        for &g in &[0.2_f32, 0.5, 0.8] {
+            let mut m = 0.0_f32;
+            for _ in 0..12 {
+                if let Some(add) = cover_add(m, 1.0, g, 1.0, 1.0, Area::de(film, false)) {
+                    m += add;
+                }
+            }
+            assert!(
+                m <= g + 1e-6,
+                "film={film} g={g}: o vale passou do grão ({m})"
+            );
+        }
     }
 }

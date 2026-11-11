@@ -243,7 +243,7 @@ pub(super) fn stamp_band_antiga(
                                 g,
                                 ctx.tecto,
                                 flow,
-                                ctx.film_aa.is_some() || orla_area,
+                                crate::stroke_cover::Area::de(ctx.film_aa.is_some(), orla_area),
                             )
                         };
                         let Some(add) = add else {

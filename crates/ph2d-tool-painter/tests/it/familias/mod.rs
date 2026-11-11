@@ -18,6 +18,7 @@ pub mod guache;
 pub mod lapis;
 pub mod mistura;
 pub mod oleo_acrilica;
+pub mod oleo_wash;
 pub mod pastel_carvao;
 pub mod texturas;
 pub mod tintas;
@@ -64,7 +65,7 @@ macro_rules! familia {
 pub const FERRAMENTAS_WET: &[&[crate::receitas_de_fabrica::ReceitaFerramenta]] =
     &[mistura::WET_FERRAMENTAS];
 
-pub const FAMILIAS: [Familia; 17] = [
+pub const FAMILIAS: [Familia; 18] = [
     familia!(basicos),
     familia!(grafite),
     familia!(lapis),
@@ -82,6 +83,7 @@ pub const FAMILIAS: [Familia; 17] = [
     familia!(cap01),
     familia!(csp_secos),
     familia!(csp_tinta_grossa),
+    familia!(oleo_wash),
 ];
 
 /// Cada família listada é um ficheiro `familias/<nome>.rs` e cada ficheiro uma família listada (o agregador não esquece

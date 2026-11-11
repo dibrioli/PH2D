@@ -13,8 +13,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.input_map.keys" => "Keys",
         "panel.inspector.input_map.no_keys" => "No keys yet.",
         "panel.inspector.input_map.stick" => "Stick",
-        "panel.inspector.input_map.dead" => "Dead zone",
-        "panel.inspector.input_map.press" => "Press point",
         _ => return None,
     })
 }

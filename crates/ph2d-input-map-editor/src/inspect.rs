@@ -1,10 +1,10 @@
 //! ⭐ **A acção aberta para o Inspector** (onda 4, 7b): lida do MESMO snapshot que a aba pinta, nunca uma cópia.
-//! Na vista Keyboard é a que ela mostra aberta; nas outras, só a que o artista escolheu (clique na linha).
+//! Nas três vistas é a acção aberta da aba (`view_keyboard::open`), a linha que a List e a Keyboard marcam.
 
 use ph2d_i18n::tr;
 use ph2d_input::inspected::{InputMapAction, InputMapPane};
 
-use crate::doc::{InputMapDoc, View};
+use crate::doc::InputMapDoc;
 use crate::view_keyboard::Group;
 use crate::view_list::footer::{binding_label, readers_of};
 
@@ -12,11 +12,8 @@ use crate::view_list::footer::{binding_label, readers_of};
 #[must_use]
 pub fn pane(doc: &InputMapDoc) -> InputMapPane {
     let map = &doc.snap.map;
-    let id = if doc.view() == View::Keyboard {
-        crate::view_keyboard::open(doc)
-    } else {
-        doc.kb.open.filter(|a| map.get(*a).is_some())
-    };
+    // UMA fonte nas três vistas: a acção aberta da aba (a escolhida, senão a primeira), a que a List e a Keyboard marcam.
+    let id = crate::view_keyboard::open(doc);
     let Some(a) = id.and_then(|id| map.get(id)) else {
         return InputMapPane::Pick;
     };

@@ -82,8 +82,11 @@ fn the_inspector_pane_follows_the_open_action() {
     use ph2d_input::InputMap;
     use ph2d_input::inspected::InputMapPane;
     let mut d = InputMapDoc::new(View::List);
-    d.snap.map = InputMap::with_player_defaults();
+    // Sem acções: a frase. Com acções e nenhuma escolhida: a primeira, a que a List marca (uma fonte nas três vistas).
     assert_eq!(crate::inspect::pane(&d), InputMapPane::Pick);
+    d.snap.map = InputMap::with_player_defaults();
+    let first = d.snap.map.actions()[0].name.clone();
+    assert!(matches!(crate::inspect::pane(&d), InputMapPane::Action(a) if a.name == first));
     let jump = d.snap.map.id(ph2d_input::PLAYER_JUMP).expect("jump");
     d.kb.open = Some(jump);
     let InputMapPane::Action(a) = crate::inspect::pane(&d) else {
@@ -102,8 +105,8 @@ fn the_inspector_pane_follows_the_open_action() {
     ph2d_input::inspected::set_current_input_map(None);
 }
 
-/// ⭐ 7b: a publicação vem DEPOIS do snapshot do quadro. A acção aberta é apagada no mapa novo ⇒ no MESMO quadro o
-/// Inspector já diz a frase. Controlo: publicar ANTES do snapshot (a ordem de antes) ainda mostra a acção velha.
+/// ⭐ 7b: a publicação vem DEPOIS do snapshot do quadro. O mapa novo fica sem acções ⇒ no MESMO quadro o Inspector já
+/// diz a frase. Controlo: publicar ANTES do snapshot (a ordem de antes) ainda mostra a acção velha.
 #[test]
 fn the_inspector_shows_the_new_snapshot_in_the_same_frame() {
     use ph2d_input::InputMap;
@@ -113,7 +116,7 @@ fn the_inspector_shows_the_new_snapshot_in_the_same_frame() {
     let jump = d.snap.map.id(ph2d_input::PLAYER_JUMP).expect("jump");
     d.kb.open = Some(jump);
     let mut sem_jump = d.snap.clone();
-    let _ = sem_jump.map.remove(jump);
+    sem_jump.map = InputMap::new();
     // Controlo: a ordem de antes publica o quadro velho.
     crate::inspect::publish(&d, true);
     assert!(matches!(current_input_map(), Some(InputMapPane::Action(_))));
@@ -122,8 +125,8 @@ fn the_inspector_shows_the_new_snapshot_in_the_same_frame() {
     ph2d_input::inspected::set_current_input_map(None);
 }
 
-/// ⭐ Auditoria 7b: o `ActionId` é um índice. Outro projecto com os MESMOS ids e outros nomes ⇒ a acção aberta cai
-/// (o Inspector diz a frase). Controlo: o mesmo mapa com uma ligação a menos (undo) mantém-na aberta.
+/// ⭐ Auditoria 7b: o `ActionId` é um índice. Outro projecto com os MESMOS ids e outros nomes ⇒ a escolha cai (o
+/// Inspector mostra a primeira do projecto novo, nunca a do mesmo número). Controlo: o mesmo mapa com uma ligação a menos (undo) mantém-na aberta.
 #[test]
 fn a_swapped_map_with_the_same_ids_closes_the_open_action() {
     use ph2d_input::InputMap;
@@ -144,7 +147,8 @@ fn a_swapped_map_with_the_same_ids_closes_the_open_action() {
     assert!(b.get(jump).is_some(), "o mesmo id existe no outro projecto");
     assert!(d.begin_frame(&b));
     d.snap.map = b;
-    assert_eq!(crate::inspect::pane(&d), InputMapPane::Pick);
+    assert_eq!(d.kb.open, None);
+    assert!(matches!(crate::inspect::pane(&d), InputMapPane::Action(a) if a.name == "other_0"));
     // Controlo: a mesma acção, com uma ligação a menos.
     fresh(&mut d);
     let mut a2 = a.clone();

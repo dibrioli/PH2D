@@ -202,10 +202,16 @@ fn paint_row_face(
     let id = ListHit::Row(a.id).id();
     let listening = doc.snap.listening == Some(a.id);
     let hover = doc.list.hover_row == Some(a.id);
+    // A acção aberta (a do Inspector e da Keyboard): o fundo da linha aberta da Keyboard.
+    let open = crate::view_keyboard::open(doc) == Some(a.id);
     let (fill, edge) = if doc.sunk(id) {
         (ColorToken::AccentSoft, Some(ColorToken::Border))
     } else if listening {
         (ColorToken::KanbanCardRaised, Some(ColorToken::Accent))
+    } else if open && hover {
+        (ColorToken::KanbanCardRaised, Some(ColorToken::Accent))
+    } else if open {
+        (ColorToken::AccentSoft, None)
     } else if hover {
         (ColorToken::KanbanCardRaised, Some(ColorToken::Border))
     } else {

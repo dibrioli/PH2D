@@ -108,8 +108,8 @@ pub(crate) fn cards(pane: &InputMapPane) -> Vec<CardDef<'static>> {
     )];
     if let Some((dead, press)) = &a.stick {
         let facts = vec![
-            (tr("panel.inspector.input_map.dead"), vec![dead.clone()]),
-            (tr("panel.inspector.input_map.press"), vec![press.clone()]),
+            (tr("input_map_list.dead"), vec![dead.clone()]),
+            (tr("input_map_list.press"), vec![press.clone()]),
         ];
         out.push(card(
             CARD_IM_STICK,

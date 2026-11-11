@@ -455,27 +455,17 @@ fn numa_aba_curta_o_codigo_guarda_as_linhas_e_os_cartoes_nao_se_cruzam() {
     m.cena();
     vai(&mut m, id, 7);
     m.tecla(id, Key::F(9), Modifiers::default(), None);
-    let curta = ph2d_editor_core::zones::Rect {
-        h: 400.0,
-        ..crate::AREA
-    };
-    for _ in 0..3 {
-        (m.quadro(), m.pinta_em(id, curta), m.cena());
+    for h in [400.0, 340.0, 300.0] {
+        let curta = ph2d_editor_core::zones::Rect { h, ..crate::AREA };
+        for _ in 0..3 {
+            (m.quadro(), m.pinta_em(id, curta), m.cena());
+        }
+        let [_, code, band] = m.docs().card_rects(id).expect("cartões");
+        let v = m.docs().debug_view_of(id).expect("quadro").clone();
+        let card = v.painted.card.expect("o Stopped");
+        let least = ph2d_panel_code::stack::code_least(0.0);
+        assert!(h < 400.0 || code.h >= least - 0.5, "{code:?}");
+        let ok = card.y >= code.y + code.h && card.y + card.h <= band.y + 0.5;
+        assert!(ok, "{h}: {code:?} {card:?} {band:?}");
     }
-    let [_, code, band] = m.docs().card_rects(id).expect("cartões");
-    let card = m
-        .docs()
-        .debug_view_of(id)
-        .expect("quadro")
-        .painted
-        .card
-        .expect("o Stopped");
-    assert!(
-        code.h >= ph2d_panel_code::stack::code_least(0.0) - 0.5,
-        "{code:?}"
-    );
-    assert!(
-        card.y >= code.y + code.h && card.y + card.h <= band.y + 0.5,
-        "{code:?} {card:?} {band:?}"
-    );
 }

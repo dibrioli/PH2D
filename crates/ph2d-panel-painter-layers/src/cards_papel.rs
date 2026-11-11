@@ -43,13 +43,7 @@ fn tem_padrao(b: &BrushSettings) -> bool {
 /// A prévia do padrão, na posição do quadro anterior.
 pub(crate) fn previa(w: f32, brush: &BrushSettings) -> Option<Previa> {
     tem_padrao(brush).then(|| {
-        crate::paint_texture::previa_do_padrao(
-            w,
-            papel::paper_preview_view(brush),
-            state::current_brush_paper_image(),
-            None,
-            ph2d_tool_painter::BRUSH_RAMP_ALPHA,
-        )
+        crate::paint_texture::previa_do_papel(w, brush, state::current_brush_paper_image())
     })
 }
 
@@ -226,4 +220,49 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, previa: Option<&Previa>, y: f32) -> f32
     resto.extend(do_fim(&b, &b));
     resto.extend(do_padrao(&b, &b));
     em_fila(c, resto, y)
+}
+
+#[cfg(test)]
+mod b39_6 {
+    use super::*;
+
+    /// Quantas vezes a linha do meio troca de lado do cinzento médio — a densidade do padrão na faixa.
+    fn trocas(p: &Previa) -> usize {
+        let y = p.h / 2;
+        let lum = |x: u32| p.px[((y * p.w + x) * 4) as usize] >= 128;
+        (1..p.w).filter(|&x| lum(x) != lum(x - 1)).count()
+    }
+
+    /// B39.6: a prévia do cartão Paper é o recorte da tela a 100 % que o motor pinta, ao píxel e à escala do documento.
+    #[test]
+    fn a_previa_do_papel_e_o_recorte_que_o_motor_pinta() {
+        let mut b = crate::paint_brush::FALLBACK_BRUSH;
+        b.paper_kind = TextureKind::Checker.to_u8();
+        b.paper_size = [4.0, 4.0];
+        for (w, fator) in [(140.0f32, 1.0f32), (280.0, 1.0), (280.0, 2.0)] {
+            b.paper_fator = fator;
+            let p = previa(w, &b).expect("papel");
+            let mut motor = vec![0u8; (p.w * p.h * 4) as usize];
+            ph2d_tool_painter::render_tiled_preview(
+                &b.papel_como_o_motor_o_le(),
+                None,
+                &mut motor,
+                p.w,
+                p.h,
+                w,
+            );
+            let m = Previa {
+                px: std::sync::Arc::new(motor),
+                w: p.w,
+                h: p.h,
+            };
+            eprintln!(
+                "w {w} fator {fator}: trocas prévia {} × motor {}",
+                trocas(&p),
+                trocas(&m)
+            );
+            assert_eq!(trocas(&p), trocas(&m), "w {w} fator {fator}: densidade");
+            assert_eq!(*p.px, *m.px, "w {w} fator {fator}: outro recorte");
+        }
+    }
 }

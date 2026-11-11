@@ -602,6 +602,7 @@ pub struct BrushSettings {
     pub paper_offset: [f32; 2],
     /// **Paper** slot Size (x, y), each `0.1..100`.
     pub paper_size: [f32; 2],
+    pub paper_fator: f32, // o fator de aparência do documento (B34): a prévia do papel lê-o como o motor
     /// **Paper Depth** (`0..1`) — how strongly the paper tooth textures the wash.
     pub paper_depth: f32,
     /// **Paper** per-pattern params (Contrast / Brightness / kind knobs).

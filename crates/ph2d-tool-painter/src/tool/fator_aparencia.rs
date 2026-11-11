@@ -52,6 +52,23 @@ impl PainterTool {
     }
 }
 
+impl crate::BrushSettings {
+    /// O papel como o motor o amostra neste documento (B39.6): o slot do Paper à escala do fator publicado — o que a
+    /// prévia do cartão passa a [`ph2d_painter_brush::render_tiled_preview`].
+    #[must_use]
+    pub fn papel_como_o_motor_o_le(&self) -> TextureSettings {
+        let p = TextureSettings {
+            kind: ph2d_painter_brush::TextureKind::from_u8(self.paper_kind),
+            angle_deg: self.paper_angle,
+            offset: self.paper_offset,
+            size: self.paper_size,
+            params: self.paper_params,
+            ..TextureSettings::default()
+        };
+        papel_a_escala(p, self.paper_fator.max(1.0))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

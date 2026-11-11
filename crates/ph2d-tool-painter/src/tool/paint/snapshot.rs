@@ -535,6 +535,7 @@ impl PainterTool {
             paper_angle: b.paper.angle_deg,
             paper_offset: b.paper.offset,
             paper_size: b.paper.size,
+            paper_fator: self.fator_aparencia(),
             paper_depth: b.paper_depth,
             paper_params: b.paper.params,
             granulation_use_paper: b.granulation_use_paper,

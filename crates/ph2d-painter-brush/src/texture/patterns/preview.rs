@@ -95,3 +95,54 @@ pub fn render_texture_preview(
         }
     }
 }
+
+/// A prévia de um padrão PRESO À TELA (o papel): o recorte `span_px` × (`span_px`·`h`/`w`) píxeis da tela a 100 %,
+/// lido pela MESMA [`crate::texture::sample_tiled`] que o motor amostra (B39.6) — a densidade é a da pintura, não
+/// «~3 tiles por faixa». Cinzento opaco. No-op se `out` for curto.
+pub fn render_tiled_preview(
+    s: &crate::texture::TextureSettings,
+    image: Option<&ImageMask>,
+    out: &mut [u8],
+    w: u32,
+    h: u32,
+    span_px: f32,
+) {
+    if w == 0 || h == 0 || out.len() < (w as usize) * (h as usize) * 4 {
+        return;
+    }
+    let passo = span_px.max(1.0) / w as f32;
+    let tela = |i: u32| ((i as f32 + 0.5) * passo).floor() as i64;
+    for py in 0..h {
+        for px in 0..w {
+            let v = crate::texture::sample_tiled(s, tela(px), tela(py), image);
+            let c = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            let i = ((py * w + px) * 4) as usize;
+            out[i..i + 4].copy_from_slice(&[c, c, c, 255]);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::texture::{TextureKind, TextureSettings, sample_tiled};
+
+    /// B39.6: cada píxel da prévia presa à tela é a amostra do motor no píxel da tela que ele cobre (recorte a 100 %).
+    #[test]
+    fn a_previa_presa_a_tela_e_o_recorte_que_o_motor_pinta() {
+        let s = TextureSettings {
+            kind: TextureKind::Noise,
+            size: [3.0, 3.0],
+            angle_deg: 30,
+            ..TextureSettings::default()
+        };
+        let (w, h, span) = (70u32, 20u32, 280.0f32);
+        let mut out = vec![0u8; (w * h * 4) as usize];
+        super::render_tiled_preview(&s, None, &mut out, w, h, span);
+        for (py, px) in [(0u32, 0u32), (7, 33), (19, 69)] {
+            let tela = |i: u32| ((i as f32 + 0.5) * span / w as f32).floor() as i64;
+            let v = sample_tiled(&s, tela(px), tela(py), None);
+            let c = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            assert_eq!(out[((py * w + px) * 4) as usize], c, "({px},{py})");
+        }
+    }
+}

@@ -365,6 +365,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     paper_angle: 0,
     paper_offset: [0.0, 0.0],
     paper_size: [1.0, 1.0], // LITERAL-PX-OK: default paper Size (one tile)
+    paper_fator: 1.0,       // LITERAL-PX-OK: sem documento, o fator de referência
     paper_depth: 1.0,       // LITERAL-PX-OK: default paper tooth depth
     paper_params: [0.5; 6], // LITERAL-PX-OK: neutral texture params
     granulation_use_paper: true,

@@ -142,6 +142,7 @@ pub use ph2d_painter_brush::{
     param_specs,
     render_shape_preview,
     render_texture_preview,
+    render_tiled_preview,
     // O teto do SPRAY (plano 38 W5) — o painel mapeia a pista `0..1` do slider nele.
     stroke::spray::SPRAY_COUNT_MAX,
     // The Taper (Procreate Touch Taper): the panel draws its preview with the ENGINE's own width

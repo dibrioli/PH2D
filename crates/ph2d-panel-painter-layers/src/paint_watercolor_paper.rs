@@ -35,23 +35,6 @@ fn seccao_dos_extras(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Secc
 /// Slider range bounds (parameter domains, not design tokens).
 pub(crate) const ANGLE_MAX: f32 = 360.0; // LITERAL-PX-OK: paper/granulation Angle range (degrees)
 
-/// Paint the **Paper** + **Granulation** canvas-anchored slots (substrate tooth + mineral settling).
-/// Paper: a kind picker + Size/Angle. Granulation: the amount, a "Same as Paper" checkbox, and — when
-/// off — its own kind + Size/Angle. Returns the next `y`.
-/// Build a `BrushSettings` view whose **texture** (Grain) fields are overwritten from the **Paper** slot,
-/// so the shared [`crate::paint_texture::paint_texture_preview`] renders the paper pattern. The Color Ramp
-/// is forced off (the substrate is a grayscale height-field) — a paper ramp is a follow-up.
-pub(crate) fn paper_preview_view(brush: &BrushSettings) -> BrushSettings {
-    let mut v = *brush;
-    v.texture_kind = brush.paper_kind;
-    v.texture_params = brush.paper_params;
-    v.texture_size = brush.paper_size;
-    v.texture_offset = brush.paper_offset;
-    v.texture_angle_deg = brush.paper_angle;
-    v.texture_ramp_enabled = false;
-    v
-}
-
 /// As duas rows do **SUBSTRATO** — Relief · Roughness. Devolve o próximo `y`.
 ///
 /// ⚠️ **Chamadas ANTES do portão de `TextureKind::None`, e a ordem é load-bearing.** O
@@ -193,15 +176,14 @@ pub(crate) fn paint_paper_section(
         return crate::paint_brush_top::end_fold(ctx, fold, y);
     }
     // ── Live preview of the paper pattern (grayscale; reads the Paper slot via a texture-field view) ──
-    y = crate::paint_texture::paint_texture_preview(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        paper_preview_view(&brush),
-        state::current_brush_paper_image(),
-    );
+    let ph = crate::paint_texture::altura_do_preview(content_w);
+    crate::paint_texture::previa_do_papel(content_w, &brush, state::current_brush_paper_image())
+        .pinta(
+            ctx.scene,
+            theme,
+            ph2d_editor_core::zones::Rect::new(x, y, content_w, ph),
+        );
+    y += ph + ph2d_tokens::control_gap_px();
     let sec = seccao_do_papel(ctx);
     y = number_field::paint_num_row(
         ctx,

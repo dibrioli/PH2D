@@ -20,7 +20,7 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Radius};
 use ph2d_tool_painter::{
     BrushSettings, ImageMask, RampAlphaMode, TEX_ANGLE_MAX_DEG, TextureKind, TextureLayer,
-    TextureMapping, linear_to_srgb_byte, render_texture_preview,
+    TextureMapping, linear_to_srgb_byte, render_texture_preview, render_tiled_preview,
 };
 use ph2d_vector::ImageQuality;
 
@@ -462,6 +462,45 @@ impl Previa {
     }
 }
 
+/// A prévia do PAPEL (B39.6): o recorte de `content_w` píxeis da tela a 100 %, pela função do motor e à escala do
+/// documento ([`BrushSettings::papel_como_o_motor_o_le`]) — nunca «~3 tiles por faixa».
+pub(crate) fn previa_do_papel(
+    content_w: f32,
+    brush: &BrushSettings,
+    image: Option<(std::sync::Arc<Vec<u8>>, u32, u32)>,
+) -> Previa {
+    let (bw, bh) = dimensoes_da_previa(content_w);
+    let mut buf = vec![0u8; (bw * bh * 4) as usize];
+    let mascara = image.as_ref().map(|(lum, w, h)| ImageMask {
+        lum: lum.as_slice(),
+        width: *w,
+        height: *h,
+    });
+    render_tiled_preview(
+        &brush.papel_como_o_motor_o_le(),
+        mascara.as_ref(),
+        &mut buf,
+        bw,
+        bh,
+        content_w,
+    );
+    Previa {
+        px: std::sync::Arc::new(buf),
+        w: bw,
+        h: bh,
+    }
+}
+
+/// O buffer de uma prévia de largura `content_w`: 140 de largura, a altura no aspecto da faixa.
+fn dimensoes_da_previa(content_w: f32) -> (u32, u32) {
+    let ph = altura_do_preview(content_w);
+    let bw = 140u32;
+    (
+        bw,
+        ((ph / content_w * bw as f32).round() as u32).clamp(8, 140),
+    )
+}
+
 /// O padrão desenhado para a faixa de largura `content_w`.
 pub(crate) fn previa_do_padrao(
     content_w: f32,
@@ -470,7 +509,6 @@ pub(crate) fn previa_do_padrao(
     desenha: Option<Desenhista<'_>>,
     alpha: RampAlphaMode,
 ) -> Previa {
-    let ph = altura_do_preview(content_w);
     // When the Color Ramp is on, bake the EXACT 256-entry sRGB-RGBA LUT the tool paints with (rebuild
     // the real `ColorRamp` + its Mode/Interpolation), so the preview is faithful to every ramp option
     // (Ease/Cardinal/B-Spline/Constant · RGB/HSV/HSL), alpha included. `None` → grayscale scalar.
@@ -488,8 +526,7 @@ pub(crate) fn previa_do_padrao(
     });
     // Render at the rect's aspect (bounded cost), then scale-blit to the rect.
     let kind = TextureKind::from_u8(brush.texture_kind);
-    let bw = 140u32;
-    let bh = ((ph / content_w * bw as f32).round() as u32).clamp(8, 140);
+    let (bw, bh) = dimensoes_da_previa(content_w);
     let mut buf = vec![0u8; (bw * bh * 4) as usize];
     if kind == TextureKind::Image
         && let Some((_, iw, ih)) = image.as_ref()

@@ -231,7 +231,7 @@ pub use stroke::{
 };
 pub use stroke_method::{JitterUnit, StrokeMethod};
 pub use symmetry::{MirrorAxis, SYMMETRY_MAX_SEGMENTS, SYMMETRY_MIN_SEGMENTS, SymmetrySettings};
-pub use texture::patterns::{render_texture_layer, render_texture_preview};
+pub use texture::patterns::{render_texture_layer, render_texture_preview, render_tiled_preview};
 pub use texture::{
     DEG_STEP, Escala, GrainLaw, GrainMode, ImageMask, ImageRgb, MAX_TEX_PARAMS, ParamSpec,
     TEX_ANGLE_MAX_DEG, TEX_OFFSET_MAX, TEX_OFFSET_MIN, TEX_SIZE_MAX, TEX_SIZE_MIN,

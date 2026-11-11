@@ -22,7 +22,7 @@ mod specs;
 mod tileable;
 pub use layer::render_texture_layer;
 use math::*;
-pub use preview::render_texture_preview;
+pub use preview::{render_texture_preview, render_tiled_preview};
 pub use specs::{Escala, ParamSpec, param_escala, param_inerte, param_specs};
 pub use tileable::{analytic_needs_hash_wrap, analytic_tile_period, lattice_tileable};
 

@@ -112,3 +112,20 @@ fn a_luz_do_dente_4k_reduzida_e_a_de_1080p() {
         "a luz do dente 4K reduzida tem de ser a de 1080p: {lb} × {la}"
     );
 }
+
+/// B39.6: o papel que o snapshot publica para a prévia é, ao píxel, o que o motor amostra neste documento (fator 1 e 2).
+#[test]
+fn o_papel_da_previa_e_o_que_o_motor_amostra_no_documento() {
+    for lado in [1080u32, 2160] {
+        let t = tela(lado);
+        let (w, h) = (64u32, 32u32);
+        let pinta = |s: &ph2d_painter_brush::TextureSettings| {
+            let mut o = vec![0u8; (w * h * 4) as usize];
+            ph2d_painter_brush::render_tiled_preview(s, None, &mut o, w, h, 300.0);
+            o
+        };
+        let previa = pinta(&t.brush_settings().papel_como_o_motor_o_le());
+        let motor = pinta(&t.papel_na_escala(t.paint.brush.paper));
+        assert_eq!(previa, motor, "lado {lado}: a prévia lê outro papel");
+    }
+}

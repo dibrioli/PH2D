@@ -289,6 +289,8 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   `barra_da_aba::o_menu_view_escolhe_a_letra_do_codigo`. Mutações exit 1: dica fixa · escurecimento do app · `geom` sem
   encaixe · pintura sem encaixe · linha do menu sem despacho. Fotos `ar_menu.png`/`ar_opcoes_zoom.png`: por tirar.
 
+- **Menu View ▸ Text rendering do script** (foto `smoke/ar_menu.png`): quatro linhas planas «Text rendering: …» (a barra da aba não tem submenu; ph2d-app-code no tecto). Clippy do workspace `-D warnings` verde depois de `0e1dc18d39`.
+
 Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,40 s, já construído pelas fotos); a 2.ª:
 
 ```

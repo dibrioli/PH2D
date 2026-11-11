@@ -252,7 +252,7 @@ fn route_value_changed(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) 
             && layer_is_channel_mixer(&stack, layer)
         {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
-            let out = state::active_mixer_channel(layer.0).min(2);
+            let out = mixer_edit_output(&stack, layer);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
                     ph2d_tool_painter::ids::PAINTER_MIXER_EDIT,
@@ -341,6 +341,14 @@ fn adj_param_slot(kind: PainterLayerWidget) -> Option<usize> {
         PainterLayerWidget::AdjParam7 => 7,
         _ => return None,
     })
+}
+
+/// The output row a Channel Mixer weight slider writes: the row the panel SHOWS (B39.1).
+fn mixer_edit_output(stack: &LayerStack, layer: LayerId) -> u8 {
+    match stack.get(layer).map(|l| &l.kind) {
+        Some(LayerKind::Adjustment(adj)) => crate::cards_ajustes::saida(layer.0, &adj.params),
+        _ => state::active_mixer_channel(layer.0).min(2),
+    }
 }
 
 /// `true` when `layer` is a Channel-Mixer adjustment (its weight sliders route

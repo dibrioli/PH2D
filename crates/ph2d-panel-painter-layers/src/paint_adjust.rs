@@ -299,11 +299,7 @@ fn paint_channel_mixer(
             tr("panel.painter_layers.adjust.blue"),
         ]
     };
-    let active = if mono {
-        0u8
-    } else {
-        state::active_mixer_channel(layer_id).min(2)
-    };
+    let active = crate::cards_ajustes::saida(layer_id, params);
     // ── Output-channel tab row ──
     let tab_w = w / tabs.len() as f32;
     for (ch, label) in tabs.iter().enumerate() {

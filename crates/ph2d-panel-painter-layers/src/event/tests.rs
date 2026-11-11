@@ -181,3 +181,38 @@ fn every_ramp_alpha_option_id_round_trips() {
         "the chip id is not an option id"
     );
 }
+
+/// B39.1 (DF-70, T1-16): with Monochrome on the panel shows ONE row (Gray = the engine's
+/// `red_out`), but the slider edit used the last picked tab — Gray's Red bar wrote the Blue row
+/// and nothing on the canvas moved.
+#[test]
+fn a_barra_do_gray_no_monochrome_escreve_a_linha_que_o_motor_le() {
+    use ph2d_tool_painter::{AdjustmentKind, AdjustmentParams, LayerKind, LayerStack};
+    let mut stack = LayerStack::new();
+    let id = stack
+        .add_adjustment(AdjustmentKind::ChannelMixer)
+        .expect("layer");
+    if let Some(l) = stack.get_mut(id)
+        && let LayerKind::Adjustment(adj) = &mut l.kind
+        && let AdjustmentParams::ChannelMixer(mx) = &mut adj.params
+    {
+        mx.monochromatic = true;
+    }
+    crate::state::set_active_mixer_channel(id.0, 2);
+    assert_eq!(
+        super::mixer_edit_output(&stack, id),
+        0,
+        "Monochrome: the Gray bars must write red_out (the row the engine reads), not the Blue tab"
+    );
+    if let Some(l) = stack.get_mut(id)
+        && let LayerKind::Adjustment(adj) = &mut l.kind
+        && let AdjustmentParams::ChannelMixer(mx) = &mut adj.params
+    {
+        mx.monochromatic = false;
+    }
+    assert_eq!(
+        super::mixer_edit_output(&stack, id),
+        2,
+        "colour: the picked tab"
+    );
+}

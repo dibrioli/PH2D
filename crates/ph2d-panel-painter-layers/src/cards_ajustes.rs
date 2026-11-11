@@ -64,7 +64,9 @@ fn monocromatico(p: &AdjustmentParams) -> bool {
         .is_some_and(|(_, on)| *on)
 }
 
-fn saida(layer: u64, p: &AdjustmentParams) -> u8 {
+/// The Channel Mixer output row the panel shows AND the weight sliders write (B39.1): Monochrome has
+/// a single Gray row — the engine's `red_out` — whatever tab was last picked.
+pub(crate) fn saida(layer: u64, p: &AdjustmentParams) -> u8 {
     if monocromatico(p) {
         0
     } else {

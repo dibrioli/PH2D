@@ -61,6 +61,15 @@ if [ -n "${ARRASTA:-}" ]; then
   done
   xdotool mouseup 1; sleep 1
 fi
+if [ -n "${RATO_DEPOIS:-}" ]; then
+  # `RATO_DEPOIS="x1 y1;x2 y2;…"`: o rato SEM botão por estes pontos depois do arrasto (o largar fora da
+  # aba, 11/11: o 1.º movimento sem botão acaba o arrasto; antes o divisor seguia o rato).
+  IFS=';' read -ra DEPOIS <<<"$RATO_DEPOIS"
+  for P in "${DEPOIS[@]}"; do
+    # shellcheck disable=SC2086
+    xdotool mousemove $P; sleep 0.5
+  done
+fi
 if [ -n "${DUPLO:-}" ]; then
   # shellcheck disable=SC2086
   xdotool mousemove $DUPLO; sleep 0.5

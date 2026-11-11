@@ -226,3 +226,77 @@ fn sonda_b29_1_miniaturas_largo_x_u8() {
         bib.entradas.len()
     );
 }
+
+/// O traço no PLANO do Digital (a cauda e um modo de cor, `traco_plano`) também leva o largo e chega ao alvo; a
+/// cauda limpa e repõe o largo como o `u8`. No mesmo teste o `u8` (o veto) estanca.
+#[test]
+fn no_plano_do_digital_o_flow_baixo_chega_ao_alvo() {
+    use ph2d_painter_brush::BrushBlend;
+    for (nome, blend, cauda) in [
+        ("cauda", BrushBlend::Mix, 3.0),
+        ("Multiply", BrushBlend::Multiply, 0.0),
+    ] {
+        let no_plano = |b: &mut BrushSpec| {
+            flow_baixo(b);
+            b.blend = blend;
+            b.taper.end = cauda;
+        };
+        let corre = |so_byte: bool| {
+            let mut t = ferramenta(no_plano);
+            t.set_paint_media(crate::PaintMedia::Digital);
+            t.paint.tecto_largo.so_byte = so_byte;
+            assert!(
+                t.traco_no_plano(),
+                "{nome}: a fixture TEM de pintar no plano"
+            );
+            passadas(&mut t, 80)
+        };
+        let ((v_largo, e_largo), (v_byte, e_byte)) = (corre(false), corre(true));
+        let leitura = format!("{nome}: largo {v_largo} ({e_largo:?}) · u8 {v_byte} ({e_byte:?})");
+        eprintln!("B29.1 plano: {leitura}");
+        assert_eq!((e_largo, e_byte), (Some(true), Some(false)), "{leitura}");
+        assert!(v_largo <= 1, "o largo devia chegar ao alvo: {leitura}");
+        assert!(v_byte > 10, "o u8 não estancou: {leitura}");
+    }
+}
+
+/// A ponta de PÍXEL fica no `u8` sem estancar (recusa medida): deposita UMA vez por traço (`pixel::carimba`, o tecto
+/// binário; o Flow é a opacidade do píxel) — 80 passadas = 2 passadas.
+#[test]
+fn a_ponta_de_pixel_nao_estanca_no_u8() {
+    let pixel = |b: &mut BrushSpec| {
+        flow_baixo(b);
+        b.pixel = ph2d_painter_brush::PixelTip::Aligned;
+    };
+    let corre = |n: usize| {
+        let mut t = ferramenta(pixel);
+        t.set_paint_media(crate::PaintMedia::Digital);
+        passadas(&mut t, n)
+    };
+    let (p2, p80) = (corre(2), corre(80));
+    eprintln!("B29.1 píxel: 2 {p2:?} · 80 {p80:?}");
+    assert!(
+        p2.0 < 255 && p2 == p80,
+        "a ponta de píxel deposita uma vez: 2 {p2:?} · 80 {p80:?}"
+    );
+}
+
+/// O traço SOLID fica no `u8`: a corda em rascunho e a mancha (`solid_deposit`, `Recorte` + `stamp_solid`) leem e
+/// repõem o `stroke_mask` `u8` — com o largo a mancha não via a cobertura da fita e as cordas não se descascavam.
+#[test]
+fn o_solid_fica_no_tecto_u8() {
+    let solid = |b: &mut BrushSpec| {
+        flow_baixo(b);
+        b.strength = 0.5;
+        b.style_solid = true;
+    };
+    let mut t = ferramenta(solid);
+    t.set_paint_media(crate::PaintMedia::Digital);
+    let (v, e) = passadas(&mut t, 80);
+    eprintln!("B29.1 Solid: 80 passadas {v} ({e:?})");
+    assert_eq!(
+        e,
+        Some(false),
+        "o Solid lê o tecto u8: não pode escolher o largo"
+    );
+}

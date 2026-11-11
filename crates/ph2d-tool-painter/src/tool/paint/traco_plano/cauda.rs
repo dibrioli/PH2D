@@ -181,17 +181,31 @@ impl PainterTool {
             Vec::new()
         };
         let mascara_len = self.paint.stroke_mask.len();
+        // B29.1: o tecto largo (`m` u16 + pré-traço) limpa-se e repõe-se como o `u8`.
+        let largo = &self.paint.tecto_largo.largo;
+        let com_largo = largo.len() * 4 == s.plano.len();
+        let largo_antes = if com_largo {
+            guarda(largo, w, c.tocados, 1)
+        } else {
+            Vec::new()
+        };
         #[cfg(test)]
         let ptr = Arc::as_ptr(&s.plano);
         let p: &mut Vec<u8> = Arc::make_mut(&mut s.plano);
         #[cfg(test)]
         conta_copia(
-            antes.len() + mascara_antes.len() + if std::ptr::eq(ptr, p) { 0 } else { p.len() },
+            antes.len()
+                + mascara_antes.len()
+                + largo_antes.len() * std::mem::size_of::<ph2d_painter_brush::TexelLargo>()
+                + if std::ptr::eq(ptr, p) { 0 } else { p.len() },
             c.tocados,
         );
         limpa_regiao(p, w, c.limpa, 4);
         if self.paint.stroke_mask.len() * 4 == s.plano.len() {
             limpa_regiao(&mut self.paint.stroke_mask, w, c.limpa, 1);
+        }
+        if com_largo {
+            limpa_regiao(&mut self.paint.tecto_largo.largo, w, c.limpa, 1);
         }
         // A sombra `f32` da mistura opaca era a do plano antes da limpeza: relê-se do plano.
         self.paint.mistura_opaca.sombra.recomeca();
@@ -228,6 +242,16 @@ impl PainterTool {
             repoe_fora(
                 &mut self.paint.stroke_mask,
                 &mascara_antes,
+                w,
+                c.tocados,
+                c.limpa,
+                1,
+            );
+        }
+        if com_largo && self.paint.tecto_largo.largo.len() * 4 == s.plano.len() {
+            repoe_fora(
+                &mut self.paint.tecto_largo.largo,
+                &largo_antes,
                 w,
                 c.tocados,
                 c.limpa,

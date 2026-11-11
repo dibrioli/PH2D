@@ -550,15 +550,15 @@ fn ralo(mut d: Dab, flow: f32, r: f32) -> Dab {
 }
 
 /// Zera `r` num plano de `canais` canais por texel e `w` de largura.
-fn limpa_regiao(p: &mut [u8], w: usize, r: Region, canais: usize) {
+fn limpa_regiao<T: Copy + Default>(p: &mut [T], w: usize, r: Region, canais: usize) {
     for y in r.y as usize..(r.y + r.h) as usize {
         let a = (y * w + r.x as usize) * canais;
-        p[a..a + r.w as usize * canais].fill(0);
+        p[a..a + r.w as usize * canais].fill(T::default());
     }
 }
 
 /// Os texels de `r` num plano de `canais` canais e `w` de largura, linha a linha (`r.w·canais` por linha).
-fn guarda(p: &[u8], w: usize, r: Region, canais: usize) -> Vec<u8> {
+fn guarda<T: Copy>(p: &[T], w: usize, r: Region, canais: usize) -> Vec<T> {
     let mut out = Vec::with_capacity(r.w as usize * r.h as usize * canais);
     for y in r.y as usize..(r.y + r.h) as usize {
         let a = (y * w + r.x as usize) * canais;
@@ -568,7 +568,14 @@ fn guarda(p: &[u8], w: usize, r: Region, canais: usize) -> Vec<u8> {
 }
 
 /// Repõe, em `tocados` menos `limpa`, os texels de `antes` (o que [`guarda`] tirou de `tocados`).
-fn repoe_fora(p: &mut [u8], antes: &[u8], w: usize, tocados: Region, limpa: Region, canais: usize) {
+fn repoe_fora<T: Copy>(
+    p: &mut [T],
+    antes: &[T],
+    w: usize,
+    tocados: Region,
+    limpa: Region,
+    canais: usize,
+) {
     let linha = tocados.w as usize * canais;
     for y in tocados.y as usize..(tocados.y + tocados.h) as usize {
         let dentro_y = y >= limpa.y as usize && y < (limpa.y + limpa.h) as usize;

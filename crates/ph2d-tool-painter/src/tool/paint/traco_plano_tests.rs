@@ -603,7 +603,8 @@ fn o_plano_compoe_uma_vez_por_quadro_e_da_a_mesma_tela() {
 }
 
 /// **B17.A1: o pen-up da cauda guarda só o que repõe** — as linhas de `tocados` do plano e da máscara, nunca o
-/// plano inteiro (33 MB a 4K) nem a máscara inteira (8 MB). A régua: bytes guardados ≤ 2·área(tocados)·4.
+/// plano inteiro (33 MB a 4K) nem a máscara inteira (8 MB). A régua: bytes guardados ≤ área(tocados)·(4 + 6) — o
+/// plano RGBA e o tecto do traço (`u8`, ou o largo do B29.1: `m` u16 + pré-traço, 6 B).
 #[test]
 fn a_cauda_nao_copia_o_plano_inteiro() {
     let mut b = pincel(10.0);
@@ -616,7 +617,7 @@ fn a_cauda_nao_copia_o_plano_inteiro() {
     let (bytes, area) = super::traco_plano::COPIA_DA_CAUDA.with(std::cell::Cell::get);
     assert!(area > 0, "fixtura: a cauda não foi re-pintada");
     assert!(
-        bytes <= 2 * area * 4,
+        bytes <= area * (4 + std::mem::size_of::<ph2d_painter_brush::TexelLargo>()),
         "a cauda guardou {bytes} B para repor {area} texels (o plano inteiro são {} B)",
         1200 * 600 * 4
     );

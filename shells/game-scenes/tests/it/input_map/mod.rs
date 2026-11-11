@@ -35,6 +35,7 @@ mod teclado_censo;
 mod teclado_piso;
 mod teclado_r7b;
 mod teclado_r9b;
+mod teclado_tampas;
 mod teclado_w2;
 mod teclas_w1;
 mod try_it;

@@ -634,7 +634,7 @@ fn paint_zones(
         } else {
             "input_map_try.press_mark"
         });
-        let mw = ts.prefix_width(mark, m::VALUE_PX);
+        let mw = crate::view_list::text::body_width(ts, mark, m::VALUE_PX);
         let handle = Rect::new(f.x, f.y, mw + m::SEG_INSET * 2.0, f.h);
         let mr = Rect::new(f.x + m::SEG_INSET, f.y, mw, f.h);
         let mark_tint = if live || doc.lit(handle_hit.id()) {

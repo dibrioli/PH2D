@@ -32,7 +32,7 @@ pub(super) fn word(
     px: f32,
     color: ph2d_vector::Color,
 ) -> f32 {
-    let w = ts.prefix_width(s, px).min(max_w);
+    let w = crate::view_list::text::body_width(ts, s, px).min(max_w);
     line(
         &mut doc.census,
         ts,

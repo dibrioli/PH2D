@@ -158,7 +158,7 @@ pub(super) fn stick(
     // «move_left · Left Stick ←»: a direcção é um ÍCONE (a mesma porta do ladrilho da B), nunca um glifo.
     let icon = half.and_then(|b| crate::view_keyboard::half_icon(*b));
     let iw = icon.map_or(0.0, |_| m::LABEL_PX + m::SEG_PAD);
-    let tw = ts.prefix_width(&title, m::LABEL_PX).min((rw - iw).max(0.0));
+    let tw = crate::view_list::text::body_width(ts, &title, m::LABEL_PX).min((rw - iw).max(0.0));
     let lh = line_h(m::LABEL_PX);
     let fg = ink.color(ColorToken::CardLabel);
     line(

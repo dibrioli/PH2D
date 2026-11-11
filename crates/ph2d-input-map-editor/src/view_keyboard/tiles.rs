@@ -39,6 +39,9 @@ fn title(a: &InputAction) -> String {
         .replace("{n}", &n.to_string())
 }
 
+/// ⛔ Toda medida de um ladrilho é `body_width`: o `line` corta e pinta no Regular, e medir no Medium apagava a tampa
+/// inteira (o «F» no `CrispHeavyPlus`: a reticência não cabe). Gate: `teclado_tampas`.
+///
 /// A frase grande e a legenda de um ladrilho: «↑» + «Up Arrow», «Z» + «Keyboard», «LS ←» + «Gamepad».
 fn face(b: Binding) -> (String, Option<ph2d_editor_core::icons::IconId>, String) {
     match b {
@@ -174,7 +177,7 @@ pub(super) fn paint(
     } else {
         tr("input_map_keyboard.read_by").replace("{who}", &reader_names(&rs))
     };
-    let rw = ts.prefix_width(&right, m::LABEL_PX);
+    let rw = body_width(ts, &right, m::LABEL_PX);
     let t = title(&a);
     let tw = title_width(ts, &t, m::CARD_TITLE_PX).min((w - rw - m::FIELD_GAP).max(0.0));
     semibold(
@@ -199,9 +202,9 @@ pub(super) fn paint(
     let mut tx = x;
     for (n, b) in a.bindings.iter().enumerate() {
         let (big, icon, cap) = face(*b);
-        let bw = ts.prefix_width(&big, m::VALUE_PX)
+        let bw = body_width(ts, &big, m::VALUE_PX)
             + icon.map_or(0.0, |_| super::keys::ARROW_BOX + m::SEG_PAD);
-        let cw = ts.prefix_width(&cap, m::LABEL_PX);
+        let cw = body_width(ts, &cap, m::LABEL_PX);
         let tile = Rect::new(
             tx,
             y,
@@ -234,7 +237,7 @@ pub(super) fn paint(
         );
         let mut kx = key.x + m::SEG_INSET;
         if !big.is_empty() {
-            let w0 = ts.prefix_width(&big, m::VALUE_PX);
+            let w0 = body_width(ts, &big, m::VALUE_PX);
             line(
                 &mut doc.census,
                 ts,
@@ -311,7 +314,7 @@ pub(super) fn paint(
     } else {
         tr("input_map_keyboard.press_key")
     };
-    let lw = ts.prefix_width(msg, m::LABEL_PX) + m::CARD_PAD_X * 2.0;
+    let lw = body_width(ts, msg, m::LABEL_PX) + m::CARD_PAD_X * 2.0;
     let room = (x + w - tx).max(0.0);
     let (lx, ly) = if lw > room && tx > x {
         (x, y + TILE_H + m::FIELD_ROW_GAP)

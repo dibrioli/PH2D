@@ -146,7 +146,7 @@ pub(crate) fn zone_value(
         "input_map_try.press_mark"
     });
     let x = f.x + m::SEG_INSET;
-    let mw = ts.prefix_width(mark, m::VALUE_PX);
+    let mw = crate::view_list::text::body_width(ts, mark, m::VALUE_PX);
     let mr = Rect::new(x, f.y, mw, f.h);
     line(
         &mut doc.census,

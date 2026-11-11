@@ -534,6 +534,12 @@ impl LayerCompositor {
         self.cache_budget_bytes
     }
 
+    /// Troca o orçamento de VRAM do cache — a pega de MEDIÇÃO do B42.1 (quantas fatias a placa
+    /// aguenta acima do orçamento escolhido). Invalida o array para o próximo `composite`.
+    pub fn set_cache_budget_bytes(&mut self, bytes: u64) {
+        self.cache_budget_bytes = bytes;
+    }
+
     /// Number of cached layer slices currently resident.
     #[must_use]
     pub fn cached_len(&self) -> usize {

@@ -10,6 +10,7 @@
 mod fx_stack_common;
 
 mod a_amostragem_do_device_chega_ao_pixel;
+mod a_camada_alem_do_orcamento;
 mod a_mistura_do_device_chega_ao_pixel;
 mod architecture_sprite_inspector_surface;
 mod band_blit_pousa_gpu;

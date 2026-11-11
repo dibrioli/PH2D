@@ -39,16 +39,13 @@ use ph2d_ecs::SimWorld;
 use ph2d_render::SpriteRenderer;
 use std::collections::BTreeMap;
 
-/// **O maior nível a que este roteador responde** — ele é de PRESENÇA (`var_os(..).is_some()`),
-/// como o do `taper_smoke`, logo o único nível com significado é o `1`.
+/// O maior nível do roteador: é de PRESENÇA (`var_os(..).is_some()`, como o `taper_smoke`), logo `1`.
 pub const NIVEIS: u32 = 1;
 
-/// O lado da tela, em píxeis — o mesmo `1024²` da bancada `diag_preco_da_pilha`, que mediu esta
-/// pilha, para o que o dono sente e o que a sonda mede serem o mesmo regime.
+/// O lado da tela (px): o `1024²` da bancada `diag_preco_da_pilha`, que mediu esta pilha.
 pub const LADO: u32 = 1024;
 
-/// O tamanho da tela: `LADO²`, ou `PH2D_COMPOSITE_TELA=<w>x<h>` (sonda do pen-up a 4K, dono 10/11: o tamanho que
-/// trava), com qualquer fundo.
+/// O tamanho da tela: `LADO²`, ou `PH2D_COMPOSITE_TELA=<w>x<h>` (sonda do pen-up a 4K, 10/11).
 fn tela() -> (u32, u32) {
     std::env::var("PH2D_COMPOSITE_TELA")
         .ok()
@@ -69,8 +66,7 @@ pub fn enabled() -> bool {
     std::env::var_os("PH2D_COMPOSITE_SMOKE").is_some()
 }
 
-/// O fundo da tela, `PH2D_COMPOSITE_FUNDO=blocos|branco|papel` (missão 4K, B08.2: o «antes» separa o papel do
-/// tamanho). Omissão: os blocos; `PH2D_COMPOSITE_PAPEL=1` continua a ser o papel.
+/// `PH2D_COMPOSITE_FUNDO=blocos|branco|papel` (B08.2); omissão blocos; `PH2D_COMPOSITE_PAPEL=1` = papel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Fundo {
     /// A [`imagem`] gerada (degradê, grelha, discos).
@@ -105,8 +101,7 @@ pub fn pixeis_da_tela(fundo: Fundo, w: u32, h: u32) -> Vec<u8> {
     }
 }
 
-/// A tela gerada `w×h`: degradê de cor, grelha escura a cada `64 px`, e discos de cor (redondos: o raio conta-se
-/// no lado menor; quadrada = a imagem de sempre, ao bit).
+/// A tela `w×h`: degradê, grelha a cada `64 px` e discos (raio pelo lado menor; quadrada = a de sempre).
 #[must_use]
 pub fn imagem(w: u32, h: u32) -> Vec<u8> {
     let (lw, lh) = (w as f32, h as f32);
@@ -143,8 +138,7 @@ pub fn imagem(w: u32, h: u32) -> Vec<u8> {
     px
 }
 
-/// A cena prepara a mão do artista: escolhe a tela que o [`spawn_if_enabled`] montou, enquadra-a
-/// e pega no Painter.
+/// A mão do artista: escolhe a tela que o [`spawn_if_enabled`] montou, enquadra-a e pega no Painter.
 ///
 /// ⚠️ Esta cena abre com o Painter NA MÃO (ordem do dono: «pronto para testarmos») — pelo MODO Paint
 /// da imagem, a porta do artista (spec/06 F2; o botão IMG saiu em 05/10).
@@ -349,7 +343,14 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
         // As linhas Hidden pela porta do produto: o cartão Wet Paint (Smooth Edges, Body, Paint type) e o Shape (cerdas).
         use ph2d_tool_painter::ids;
         // W7: a caixa Real Oil (alterna). W13/W14: a ferramenta da água na mão (0 Pincel · 2 Blend · 4 Dry).
-        const FIOS: [&str; 6] = ["wet_paint", "wet_smear", "wet_blend", "wet_water", "wet_dry", "wet_blow"];
+        const FIOS: [&str; 6] = [
+            "wet_paint",
+            "wet_smear",
+            "wet_blend",
+            "wet_water",
+            "wet_dry",
+            "wet_blow",
+        ];
         if k == "realOil" || k == "ferramenta" {
             if k == "realOil" {
                 let ev = ph2d_editor_core::tool::PanelEvent::Click(ids::PAINTER_WETPAINT_OLEO_REAL);
@@ -373,7 +374,9 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
                 ph2d_editor_core::tool::Tool::handle_panel_event(painter, ev);
             }
             // A ordem do `BRISTLE_UNIT_KNOBS` do motor: Count 0 · Strength 1 · Size 2 · Felt 3.
-            None => painter.set_brush_texture_param_shown(usize::from(k == "bristleSize") * 2, v as f32),
+            None => {
+                painter.set_brush_texture_param_shown(usize::from(k == "bristleSize") * 2, v as f32)
+            }
         }
         println!("PH2D_COMPOSITE_KNOBS: {k} = {v}");
     }

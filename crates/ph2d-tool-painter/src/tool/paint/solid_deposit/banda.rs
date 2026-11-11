@@ -1,5 +1,7 @@
 //! O kernel da mancha sólida: o `over` de uma linha e os dois walkers que o percorrem.
 
+use ph2d_painter_brush::{Tecto as _, TexelLargo, recompoe_bytes};
+
 /// O que uma linha do `over` da mancha precisa saber — agrupado porque o kernel tem **um corpo e
 /// dois walkers** e uma lista de sete argumentos repetida nos dois é como eles divergem.
 pub(in crate::tool::paint) struct SolidBand<'a> {
@@ -108,5 +110,54 @@ fn blend_solid_row(row: usize, dst: &mut [u8], mut mask: Option<&mut [u8]>, b: &
         {
             dst[p + 3] = (a + da * (255 - a) / 255) as u8;
         }
+    }
+}
+
+/// B29.1: a mancha sob o tecto LARGO — o mesmo alvo `cobertura × tecto`, mas `m` em `u16` e a tela RECOMPOSTA
+/// do pré-traço (`pré·(1 − m) + cor·m`, [`ph2d_painter_brush::recompoe_bytes`]): a lei do dab no tecto largo.
+/// O mesmo par de walkers (`par` muda quem percorre, nunca o que a linha responde).
+pub(in crate::tool::paint) fn blend_solid_rows_largo(
+    band: &mut [u8],
+    mask: &mut [TexelLargo],
+    b: &SolidBand<'_>,
+    cor: [f32; 3],
+    par: bool,
+) {
+    let largura = b.row_bytes / 4;
+    if par {
+        use rayon::prelude::*;
+        band.par_chunks_mut(b.row_bytes)
+            .zip(mask.par_chunks_mut(largura))
+            .enumerate()
+            .for_each(|(row, (d, m))| blend_solid_row_largo(row, d, m, b, cor));
+    } else {
+        band.chunks_mut(b.row_bytes)
+            .zip(mask.chunks_mut(largura))
+            .enumerate()
+            .for_each(|(row, (d, m))| blend_solid_row_largo(row, d, m, b, cor));
+    }
+}
+
+fn blend_solid_row_largo(
+    row: usize,
+    dst: &mut [u8],
+    mask: &mut [TexelLargo],
+    b: &SolidBand<'_>,
+    cor: [f32; 3],
+) {
+    for cx in 0..b.cols {
+        #[allow(clippy::cast_precision_loss)]
+        let alvo =
+            (u32::from(b.cov[row * b.cov_stride + cx]) * b.strength) as f32 / (255.0 * 255.0);
+        let t = &mut mask[b.x0 + cx];
+        if alvo <= t.m() {
+            continue;
+        }
+        let p = (b.x0 + cx) * 4;
+        let px = [dst[p], dst[p + 1], dst[p + 2], dst[p + 3]];
+        let Some(pre) = t.grava(alvo, px) else {
+            continue;
+        };
+        dst[p..p + 4].copy_from_slice(&recompoe_bytes(pre, cor, t.m()));
     }
 }

@@ -107,7 +107,7 @@ pub fn compoe_forca(f: &mut u16, a: f32) {
 
 mod tecto;
 pub(crate) use tecto::recompoe;
-pub use tecto::{Tecto, TexelLargo};
+pub use tecto::{Tecto, TexelLargo, recompoe_bytes};
 
 #[cfg(test)]
 #[path = "stroke_cover_tests.rs"]

@@ -650,6 +650,7 @@ impl PainterTool {
             &mut self.paint.stroke_mask,
             &mut self.paint.composite_mask[pos],
         );
+        self.paint.tecto_largo.troca_com_a_camada(pos);
         match layer.op {
             CompositeOp::Brush => self.aplica_deposito(dabs),
             CompositeOp::Erase => match layer.erase_scope {
@@ -665,6 +666,7 @@ impl PainterTool {
                 self.stamp_dabs_blur_com(dabs, w, h, ph2d_painter_brush::BlurKernel::Caixa);
             }
         }
+        self.paint.tecto_largo.troca_com_a_camada(pos);
         std::mem::swap(
             &mut self.paint.stroke_mask,
             &mut self.paint.composite_mask[pos],

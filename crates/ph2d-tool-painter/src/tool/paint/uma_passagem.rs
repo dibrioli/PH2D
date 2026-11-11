@@ -220,15 +220,26 @@ impl crate::tool::PainterTool {
         let w = self.source_size.0 as usize;
         let mut p = std::mem::take(&mut self.paint.solid_passagem);
         p.percorre(dabs);
-        if p.aberto() && self.paint.stroke_mask.len() == w * self.source_size.1 as usize {
-            let mask = &self.paint.stroke_mask;
-            let nivel = match self.nivel_no_grao_medio(&mut p, |i| f32::from(mask[i]) / 255.0) {
+        let n = w * self.source_size.1 as usize;
+        // B29.1: no tecto largo a cobertura do traço mora no `TexelLargo` (o `u8` fica vazio).
+        let largo =
+            self.paint.tecto_largo.escolha == Some(true) && self.paint.tecto_largo.largo.len() == n;
+        if p.aberto() && (largo || self.paint.stroke_mask.len() == n) {
+            let (mask, lg) = (&self.paint.stroke_mask, &self.paint.tecto_largo.largo);
+            let m8 = |i: usize| if largo { lg[i].m8() } else { mask[i] };
+            let cob = |i: usize| {
+                if largo {
+                    ph2d_painter_brush::Tecto::m(lg[i])
+                } else {
+                    f32::from(mask[i]) / 255.0
+                }
+            };
+            let nivel = match self.nivel_no_grao_medio(&mut p, cob) {
                 Some(n) => Some((n * 255.0 + 0.5) as u8),
                 None => self.tiled_chord_region(dabs).map(|r| {
                     let (x0, y0) = (r.x as usize, r.y as usize);
                     (y0..y0 + r.h as usize)
-                        .flat_map(|y| mask[y * w + x0..y * w + x0 + r.w as usize].iter())
-                        .copied()
+                        .flat_map(|y| (y * w + x0..y * w + x0 + r.w as usize).map(m8))
                         .max()
                         .unwrap_or(0)
                 }),

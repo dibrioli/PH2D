@@ -281,22 +281,95 @@ fn a_ponta_de_pixel_nao_estanca_no_u8() {
     );
 }
 
-/// O traço SOLID fica no `u8`: a corda em rascunho e a mancha (`solid_deposit`, `Recorte` + `stamp_solid`) leem e
-/// repõem o `stroke_mask` `u8` — com o largo a mancha não via a cobertura da fita e as cordas não se descascavam.
+/// `n` voltas a um quadrado (40..120) num traço só com Solid; devolve o R do contorno (40, 80), o do miolo
+/// (80, 80) e a escolha do tecto.
+fn voltas_solid(t: &mut PainterTool, n: usize) -> (u8, u8, Option<bool>) {
+    let cantos = [[120.0, 40.0], [120.0, 120.0], [40.0, 120.0], [40.0, 40.0]];
+    t.on_canvas_pointer(cpx([40.0, 40.0], PointerPhase::Down));
+    for _ in 0..n {
+        for c in cantos {
+            t.on_canvas_pointer(cpx(c, PointerPhase::Move));
+        }
+    }
+    let escolha = t.paint.tecto_largo.escolha;
+    t.on_canvas_pointer(cpx([40.0, 40.0], PointerPhase::Up));
+    let r = |x: u32, y: u32| t.canvas_rgba[((y * L + x) * 4) as usize];
+    (r(40, 80), r(80, 80), escolha)
+}
+
+/// ⭐ O traço SOLID leva o tecto largo: a fita (Flow 2 %, 60 voltas) chega ao alvo da Strength 0,5 (127) e a
+/// mancha recompõe o miolo ao nível de uma passagem lido do largo. No MESMO teste o `u8` (o veto) estanca a fita.
+/// Controlo: 1 volta — os dois tectos dão a mesma fita e o mesmo miolo a ≤ 2 níveis (os cantos já sobrepõem
+/// dabs: o `u8` começa a arredondar por dab).
 #[test]
-fn o_solid_fica_no_tecto_u8() {
+fn o_solid_leva_o_tecto_largo_e_chega_ao_alvo() {
     let solid = |b: &mut BrushSpec| {
         flow_baixo(b);
         b.strength = 0.5;
         b.style_solid = true;
     };
-    let mut t = ferramenta(solid);
-    t.set_paint_media(crate::PaintMedia::Digital);
-    let (v, e) = passadas(&mut t, 80);
-    eprintln!("B29.1 Solid: 80 passadas {v} ({e:?})");
+    let corre = |n: usize, so_byte: bool| {
+        let mut t = ferramenta(solid);
+        t.set_paint_media(crate::PaintMedia::Digital);
+        t.paint.tecto_largo.so_byte = so_byte;
+        voltas_solid(&mut t, n)
+    };
+    let ((cl1, ml1, _), (cb1, mb1, _)) = (corre(1, false), corre(1, true));
+    let ((cl, ml, el), (cb, mb, eb)) = (corre(60, false), corre(60, true));
+    let leitura = format!(
+        "1 volta: largo fita {cl1} miolo {ml1} · u8 fita {cb1} miolo {mb1} | 60: largo fita {cl} miolo {ml} \
+         ({el:?}) · u8 fita {cb} miolo {mb} ({eb:?})"
+    );
+    eprintln!("B29.1 Solid: {leitura}");
+    assert_eq!((el, eb), (Some(true), Some(false)), "{leitura}");
+    assert!(
+        cl1.abs_diff(cb1) <= 2 && ml1.abs_diff(mb1) <= 2,
+        "controlo: antes de estancar os dois tectos coincidem: {leitura}"
+    );
+    assert!(
+        cl.abs_diff(127) <= 1,
+        "a fita no largo devia chegar ao alvo 127: {leitura}"
+    );
+    assert!(
+        cb.abs_diff(127) > 10,
+        "o u8 não estancou: a fixture não contém o fenómeno: {leitura}"
+    );
+    assert!(
+        ml.abs_diff(127) <= 1,
+        "a mancha do largo devia recompor o miolo ao alvo 127: {leitura}"
+    );
+}
+
+/// ⭐ O COMPOSITE de UMA camada Brush leva o tecto largo (trocado por camada como o `u8`) e chega ao alvo; no MESMO
+/// teste o veto `u8` estanca. Com DUAS camadas fica no `u8`: a tela sob a 2.ª camada já não é o pré-traço (a 1.ª
+/// pintou por baixo no mesmo lote), e `recompoe` apagaria a camada de baixo.
+#[test]
+fn o_composite_de_uma_camada_leva_o_tecto_largo() {
+    let corre = |camadas: usize, so_byte: bool| {
+        let mut t = ferramenta(flow_baixo);
+        t.set_paint_media(crate::PaintMedia::Digital);
+        t.paint.composite_enabled = true;
+        for _ in 0..camadas {
+            t.acrescenta_camada(super::super::super::composite::CompositeOp::Brush.to_u8());
+            let pos = t.composite_len() - 1;
+            t.set_composite_layer_strength(pos, 1.0);
+        }
+        assert!(t.composite_active(), "a fixture tem de armar o Composite");
+        t.paint.tecto_largo.so_byte = so_byte;
+        passadas(&mut t, 80)
+    };
+    let ((v_largo, e_largo), (v_byte, e_byte)) = (corre(1, false), corre(1, true));
+    let (v_duas, e_duas) = corre(2, false);
+    let leitura = format!(
+        "1 camada: largo {v_largo} ({e_largo:?}) · u8 {v_byte} ({e_byte:?}) | 2 camadas: {v_duas} ({e_duas:?})"
+    );
+    eprintln!("B29.1 Composite: {leitura}");
+    assert_eq!((e_largo, e_byte), (Some(true), Some(false)), "{leitura}");
+    assert!(v_largo <= 1, "o largo devia chegar ao alvo (0): {leitura}");
+    assert!(v_byte > 10, "o u8 não estancou: {leitura}");
     assert_eq!(
-        e,
+        e_duas,
         Some(false),
-        "o Solid lê o tecto u8: não pode escolher o largo"
+        "com 2 camadas o traço fica no u8: {leitura}"
     );
 }

@@ -62,3 +62,10 @@ pub(crate) fn recompoe(pre: [u8; 4], cor: [f32; 3], m: f32) -> [f32; 4] {
     let c = |k: usize| (f32::from(pre[k]) / 255.0 * pa * (1.0 - m) + cor[k] * m) / ao;
     [c(0), c(1), c(2), ao]
 }
+
+/// [`recompoe`] já no byte da tela (o mesmo `encode` do carimbo): para quem escreve o tecto largo fora do dab
+/// (a mancha do Solid).
+#[must_use]
+pub fn recompoe_bytes(pre: [u8; 4], cor: [f32; 3], m: f32) -> [u8; 4] {
+    recompoe(pre, cor, m).map(crate::dab::encode)
+}

@@ -45,7 +45,7 @@
 
 mod banda;
 
-pub(super) use banda::{SolidBand, blend_solid_rows};
+pub(super) use banda::{SolidBand, blend_solid_rows, blend_solid_rows_largo};
 
 use super::Region;
 use crate::tool::PainterTool;
@@ -322,6 +322,7 @@ impl PainterTool {
         let largura = self.source_size.0 as usize;
         let texels = largura * self.source_size.1 as usize;
         let tecto = Recorte::de(&self.paint.stroke_mask, Some(rect), largura, texels);
+        let tecto_largo = Recorte::de(&self.paint.tecto_largo.largo, Some(rect), largura, texels);
         if carimbos.is_empty() {
             if !chord.is_empty() {
                 self.stamp_corda_em_rascunho(chord, chord_rect, false);
@@ -334,6 +335,7 @@ impl PainterTool {
             }
         }
         tecto.repoe(&mut self.paint.stroke_mask, largura);
+        tecto_largo.repoe(&mut self.paint.tecto_largo.largo, largura);
         self.paint.drag_preview = Some(super::DragPreview {
             rect,
             pixels,
@@ -379,6 +381,7 @@ impl PainterTool {
         let texels = largura * self.source_size.1 as usize;
         let rng = self.paint.tex_rng;
         let mascara = Recorte::de(&self.paint.stroke_mask, regiao, largura, texels);
+        let largo = Recorte::de(&self.paint.tecto_largo.largo, regiao, largura, texels);
         let camadas: Vec<Recorte> = self
             .paint
             .per_layer_stroke
@@ -393,6 +396,7 @@ impl PainterTool {
         self.paint.tex_rng = rng;
         if repoe {
             mascara.repoe(&mut self.paint.stroke_mask, largura);
+            largo.repoe(&mut self.paint.tecto_largo.largo, largura);
         }
         if tinha_camadas {
             for (c, r) in self.paint.per_layer_stroke.cov.iter_mut().zip(camadas) {
@@ -496,6 +500,38 @@ impl PainterTool {
         // alvo de um texel é `cobertura × o nível de UMA passagem do traço` ([`super::uma_passagem`]: os cantos acumulam
         // acima dele), e ela só leva `m` até ele. Sem nível medido (re-carimbo): o máximo na região.
         let n = w * h;
+        // B29.1: o traço no tecto LARGO — a mancha leva `m` (u16) até o mesmo alvo e recompõe a tela.
+        if self.paint.tecto_largo.escolha == Some(true) && self.paint.tecto_largo.largo.len() == n {
+            let largo = &mut self.paint.tecto_largo.largo;
+            let tecto = passagem.unwrap_or_else(|| {
+                let linhas = largo[y0 * w..y1 * w].chunks(w);
+                u32::from(
+                    linhas
+                        .flat_map(|l| &l[x0..x1])
+                        .map(|t| t.m8())
+                        .max()
+                        .unwrap_or(0),
+                )
+            });
+            if tecto > 0 {
+                let banda = SolidBand {
+                    cov: &cov,
+                    cov_stride: rect.w as usize,
+                    row_bytes: w * 4,
+                    x0,
+                    cols: x1 - x0,
+                    rgb,
+                    strength: tecto,
+                    no_tecto: true,
+                };
+                let cor = col.map(|c| c.clamp(0.0, 1.0));
+                let mask = &mut largo[y0 * w..y1 * w];
+                blend_solid_rows_largo(&mut canvas[y0 * w * 4..y1 * w * 4], mask, &banda, cor, par);
+                self.declare_wrote(Some(rect));
+                self.mark_dirty(rect);
+                return;
+            }
+        }
         let mascara = (self.paint.stroke_mask.len() == n).then(|| {
             let tecto = passagem.unwrap_or_else(|| {
                 let linhas = self.paint.stroke_mask[y0 * w..y1 * w].chunks(w);
@@ -536,8 +572,9 @@ impl PainterTool {
 const SOLID_PAR_MIN: usize = ph2d_painter_brush::PARALLEL_MIN_AREA;
 
 /// O que a corda em rascunho tem de devolver de UM acumulador por-texel do traço (a cobertura do
-/// cap, um mapa do Per-Layer Color): `bpp` bytes por texel, deduzidos do comprimento.
-enum Recorte {
+/// cap — `u8` ou o [`TexelLargo`] do B29.1 —, um mapa do Per-Layer Color): `bpp` elementos por texel, deduzidos
+/// do comprimento.
+enum Recorte<T = u8> {
     /// O plano estava vazio (o traço ainda não o tinha armado): volta vazio, e o próximo dab real
     /// arma-o como teria armado.
     Vazio,
@@ -548,12 +585,12 @@ enum Recorte {
         r: Region,
         bpp: usize,
         len: usize,
-        bytes: Vec<u8>,
+        bytes: Vec<T>,
     },
 }
 
-impl Recorte {
-    fn de(plano: &[u8], regiao: Option<Region>, largura: usize, texels: usize) -> Self {
+impl<T: Copy> Recorte<T> {
+    fn de(plano: &[T], regiao: Option<Region>, largura: usize, texels: usize) -> Self {
         if plano.is_empty() {
             return Self::Vazio;
         }
@@ -579,7 +616,7 @@ impl Recorte {
         }
     }
 
-    fn repoe(self, plano: &mut Vec<u8>, largura: usize) {
+    fn repoe(self, plano: &mut Vec<T>, largura: usize) {
         match self {
             Self::Vazio => plano.clear(),
             Self::Intocado => {}

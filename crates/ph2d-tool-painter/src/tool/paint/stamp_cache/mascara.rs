@@ -147,6 +147,10 @@ pub(crate) struct TectoDoTraco {
     /// `None` = por escolher; `Some(true)` = `Largo`; `Some(false)` = o `u8` que shipou.
     pub(crate) escolha: Option<bool>,
     pub(crate) largo: MascaraDoTraco<TexelLargo>,
+    /// O tecto largo de CADA camada do Composite, trocado para dentro de `largo` à volta do passe dela — como o
+    /// `composite_mask` com o `u8`. Só o Composite de UMA camada escolhe o largo (com ≥ 2 a tela sob cada camada
+    /// já não é o pré-traço: `recompoe` não vale).
+    pub(crate) por_camada: [MascaraDoTraco<TexelLargo>; super::super::composite::N_CAMADAS],
     /// Veto de TESTE: o mesmo traço no `u8` (o red do gate, no mesmo processo).
     #[cfg(test)]
     pub(crate) so_byte: bool,
@@ -157,6 +161,14 @@ impl TectoDoTraco {
     pub(crate) fn clear(&mut self) {
         self.escolha = None;
         self.largo.clear();
+        for m in &mut self.por_camada {
+            m.clear();
+        }
+    }
+
+    /// O passe da camada `pos` do Composite (ida e volta: a mesma chamada desfaz a troca).
+    pub(crate) fn troca_com_a_camada(&mut self, pos: usize) {
+        std::mem::swap(&mut self.largo, &mut self.por_camada[pos]);
     }
 }
 

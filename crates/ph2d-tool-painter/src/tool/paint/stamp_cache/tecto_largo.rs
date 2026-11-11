@@ -8,8 +8,9 @@ impl PainterTool {
     ///
     /// `Largo` só quando a tela pode recompor `pré·(1 − m) + cor·m` (a cor é a MESMA em todo o traço: sem
     /// Randomize Color, sem rampa nem cor do Shape; Mix sem pigmento; sem Preserve Alpha — as condições de
-    /// `Invariantes::recompoe`) e nenhum leitor do `stroke_mask` `u8` corre neste traço (Composite, aguada,
-    /// Solid, 2.ª ponta; nem outra rota que já o escreveu).
+    /// `Invariantes::recompoe`) e nenhum leitor do `stroke_mask` `u8` corre neste traço (Composite de ≥ 2 camadas, aguada,
+    /// 2.ª ponta; nem outra rota que já o escreveu). O Solid lê o largo (`solid_deposit`: `Recorte<T>`, a mancha
+    /// recompõe; `observa_a_passagem_do_solid`).
     pub(in crate::tool::paint) fn quer_o_tecto_largo(
         &mut self,
         brush: &BrushSpec,
@@ -38,8 +39,7 @@ impl PainterTool {
             && self.paint.plano_do_traco.is_none() // dentro do plano a sessão está tirada (`stamp_dabs_no_plano`)
             && !(self.traco_no_plano() && self.paint.brush.dual.is_some())
             && self.passagem_do_solid().is_none()
-            && !self.solid_owns_the_gesture() // a corda e a mancha leem o `u8` (`solid_deposit::Recorte`)
-            && !self.composite_active()
+            && !(self.composite_active() && self.camadas_activas() >= 2) // 1 camada: troca o largo por camada
             && !self.watercolor_render_active()
             && !self.dual_na_ferramenta();
         self.paint.tecto_largo.escolha = Some(e);

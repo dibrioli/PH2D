@@ -154,7 +154,7 @@ mod walk_bounds_tests; // o batente de MEMÓRIA do percurso (achado do OOM de 20
 /// e o footprint que estica o carimbo até as bordas. Uma porta, três consumidores (motor, tool, overlay).
 pub mod grid_stamp;
 pub(crate) mod stroke_cover;
-pub use stroke_cover::{Tecto, TexelLargo};
+pub use stroke_cover::{Tecto, TexelLargo, recompoe_bytes};
 pub mod stroke_method;
 pub mod symmetry;
 pub mod taper;

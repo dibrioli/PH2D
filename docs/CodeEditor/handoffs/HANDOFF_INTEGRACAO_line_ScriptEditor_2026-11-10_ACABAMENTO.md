@@ -258,6 +258,21 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   padrão/escurecido). Pixéis com diferença > 1 %: código 913 de 8 400 (luma média 53,4 → 54,2), Live 288 (47,7 → 47,9),
   Hierarchy 147. A 3× o traço do código lê-se um pouco mais cheio; a 1× e no Live é quase imperceptível — o ganho é pequeno
   por desenho (0,05 px).
+- **Fio da barra da aba e respiro acima da linha 1** (dono 10/11, `d8922bd4ee` · `1bb232ef94` · `6a05d635f9` · `1dc85ab264`).
+  Fio: `cards::bar_rule` = última fila de píxeis da barra, de lado a lado, `BorderStrong` a `StrokeToken::Thin` (o `Border`
+  medido somia no tom do cartão: 34→51 de luma no escuro; `BorderStrong` 34→78, o token «visible dividers», como o separador
+  da banda). Respiro: `Metrics::top_pad = Spacing::Md` (8 px ≈ 0,4 linha de 19 px; o VS Code/Zed usam ~meia linha; `Md` é a
+  margem dos cartões da aba), conteúdo que ROLA: `row_y`/`row_span`/`hit`/`ensure_visible`/`max_scroll_y`/barra lêem
+  `content_y`; o clique no respiro cai na linha 1 pela coluna do x; mostrar uma linha a subir deixa o respiro por cima (a
+  linha 1 volta à rolagem 0); a calha, o cursor, os sublinhados e a busca seguem `Row.y`. A barra de cima (altura, partição,
+  cartão, fio) mudou-se para `ph2d-panel-code::cards` (reexport em `tab_menu`): `ph2d-app-code` 26 628 / 26 628. Testes
+  `respiro.rs` (5) e `barra_da_aba::um_fio_separa_a_barra_do_codigo_e_a_linha_1_respira_abaixo_dele`; mudados:
+  `a11y::um_no_por_linha_visivel_e_rolar_troca_os_nos` e `virtualizacao::rolar_uma_linha_molda_no_maximo_uma` (rolam
+  `n·line_h + top_pad`), `sublinhado::o_culpado_e_sublinhado_nas_colunas_dele` (topo da fila + `top_pad`). Mutações, todas
+  exit 1: `row_y` sem respiro · clique sem respiro · `ensure_visible` sem respiro · `row_span` sem respiro · `max_scroll_y`
+  sem respiro · fio de área zero · `tab_menu` volta a `cards::close`. Fotos (cena 13 passo 1):
+  [aq_separador.png](../ferramentas/smoke/aq_separador.png) · [aq_separador_zoom.png](../ferramentas/smoke/aq_separador_zoom.png)
+  (3×) · [aq_separador_claro.png](../ferramentas/smoke/aq_separador_claro.png).
 
 Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,40 s, já construído pelas fotos); a 2.ª:
 

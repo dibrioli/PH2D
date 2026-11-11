@@ -35,6 +35,24 @@ pub(super) struct OticaDoTique {
     /// Imagens aplicadas com a luz `Simples`.
     #[cfg(test)]
     pub(super) simples_aplicadas: u32,
+    /// O A·B de B08c.M2: `Some(usize::MAX)` = a dívida Cheia em casa de uma vez (o caminho antigo).
+    #[cfg(test)]
+    pub(super) faixa_cheia_px: Option<usize>,
+}
+
+/// A dívida Cheia em casa (B08c.M2, [medição](../../../../../../docs/Painter/missao_4k/medicoes/ANTES_DEPOIS.md)):
+/// faixas de `FAIXA_CHEIA_PX` píxeis (~1–2 ms a 4K) até `ORCAMENTO_CHEIA` por quadro.
+const FAIXA_CHEIA_PX: usize = 1 << 16;
+const ORCAMENTO_CHEIA: std::time::Duration = std::time::Duration::from_millis(8);
+
+/// As linhas de cima de `c` com no máximo `area` células (pelo menos uma linha) e o resto.
+pub(super) fn faixa_de_cima(c: CaixaCel, area: usize) -> (CaixaCel, Option<CaixaCel>) {
+    let linhas = (area / (c.2 - c.0 + 1)).max(1);
+    let fim = c.1.saturating_add(linhas - 1);
+    if fim >= c.3 {
+        return (c, None);
+    }
+    ((c.0, c.1, c.2, fim), Some((c.0, fim + 1, c.2, c.3)))
 }
 
 pub(super) fn une(a: Option<CaixaCel>, b: CaixaCel) -> CaixaCel {
@@ -123,27 +141,45 @@ impl WetSession {
 
 impl PainterTool {
     /// B14.2 (decisão 2 do dono): com o pincel fora da tela, o que a luz `Simples` compôs volta a compor-se com a
-    /// `Cheia` — pelo compositor (a dívida: uma imagem) ou em casa (o pendente do quadro, com o motor cá).
+    /// `Cheia` — pelo compositor (a dívida: uma imagem, fora do quadro) ou em casa. Em casa vai por faixas até
+    /// [`ORCAMENTO_CHEIA`] por quadro (B08c.M2): a caixa inteira de uma vez era UM quadro de 41–50 ms no pen-up 4K.
     pub(super) fn wet_luz_cheia_no_repouso(&mut self) {
         if self.wet_pincel_na_tela() {
             return;
         }
         let fora = self.wet_otica_fora();
-        let Some(sess) = self.paint.wetpaint.session.as_mut() else {
-            return;
-        };
-        let Some(c) = sess.otica.simples else {
-            return;
-        };
-        if fora {
-            sess.otica.simples = None;
-            sess.otica.deve(c);
-        } else if matches!(sess.engine, offthread::EngineSlot::Here(_)) {
-            sess.otica.simples = None;
+        let t0 = std::time::Instant::now();
+        loop {
+            let Some(sess) = self.paint.wetpaint.session.as_mut() else {
+                return;
+            };
+            let Some(c) = sess.otica.simples else {
+                return;
+            };
+            if fora {
+                sess.otica.simples = None;
+                sess.otica.deve(c);
+                return;
+            }
+            if !matches!(sess.engine, offthread::EngineSlot::Here(_)) {
+                // Sem esperar: o motor chega num quadro seguinte e a faixa seguinte compõe-se nele.
+                sess.try_bring_home_now();
+                return;
+            }
+            #[cfg(test)]
+            let px = sess.otica.faixa_cheia_px.unwrap_or(FAIXA_CHEIA_PX);
+            #[cfg(not(test))]
+            let px = FAIXA_CHEIA_PX;
+            let (c, resto) = faixa_de_cima(c, px / usize::from(sess.ratio).pow(2).max(1));
+            sess.otica.simples = resto;
             let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
             sess.engine
                 .merge_dirty_otica(i(c.0), i(c.1), i(c.2), i(c.3));
             self.paint.wetpaint.composite_pendente = true;
+            self.wet_compoe_o_pendente();
+            if t0.elapsed() >= ORCAMENTO_CHEIA {
+                return;
+            }
         }
     }
 

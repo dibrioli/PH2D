@@ -485,3 +485,41 @@ fn a_conferencia_so_se_faz_sobre_o_mesmo_chao() {
         "outro chão: a conferência não acende"
     );
 }
+
+/// (GEF02 5.4) **A impressão do chão conta todas as formas do corpo**: um chão `Static` de duas formas
+/// filhas; mexer na 2.ª (a peça) é outro chão — a queda gravada não confere sobre ele. CONTROLO: mexer na
+/// principal também muda; a mesma cena dá a mesma impressão.
+#[test]
+fn a_impressao_do_chao_conta_todas_as_formas_do_corpo() {
+    let cena = |principal: f32, peca: f32| {
+        let mut sim = SimWorld::new();
+        let w = sim.world_mut();
+        let chao = w
+            .spawn((
+                RigidBody {
+                    kind: BodyKind::Static,
+                },
+                Transform::default(),
+            ))
+            .id();
+        for (x, meia) in [(0.0, principal), (3.0, peca)] {
+            w.spawn((
+                Collider {
+                    shape: ColliderShape::Cuboid {
+                        half_x: meia,
+                        half_y: 0.1,
+                    },
+                    ..Collider::default()
+                },
+                Transform::from_translation(Vec2::new(x, 0.0)),
+                ChildOf(chao),
+            ));
+        }
+        let dono = w.spawn(Transform::default()).id();
+        super::super::palco_fisica::impressao(sim.world(), dono)
+    };
+    let base = cena(1.0, 1.0);
+    assert_eq!(cena(1.0, 1.0), base, "a mesma cena, a mesma impressão");
+    assert_ne!(cena(2.0, 1.0), base, "CONTROLO: a principal mudou");
+    assert_ne!(cena(1.0, 2.0), base, "a peça mudou: é outro chão");
+}

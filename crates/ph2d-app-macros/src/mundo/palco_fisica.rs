@@ -211,12 +211,21 @@ pub fn impressao(w: &ph2d_ecs::World, dono: Entity) -> [u8; 32] {
         .filter(|e| !dentro_de(w, e.id(), dono))
         .map(|e| {
             let mut b = postcard::to_allocvec(&e.get::<RigidBody>()).unwrap_or_default();
-            let forma = ph2d_physics_ecs::main_shape(w, e.id()).unwrap_or(e.id());
-            let c = w.get::<ph2d_physics_ecs::Collider>(forma);
-            b.extend(postcard::to_allocvec(&c).unwrap_or_default());
             b.extend(
                 postcard::to_allocvec(&ph2d_ecs::world_transform(w, e.id())).unwrap_or_default(),
             );
+            // Todas as formas ligadas do corpo, pela ordem da árvore: a peça também é chão.
+            for (bits, _, _) in ph2d_physics_ecs::shapes_in_order(w, e.id()) {
+                let f = Entity::from_bits(bits);
+                if ph2d_physics_ecs::forma_desligada(w, f) {
+                    continue;
+                }
+                let c = w.get::<ph2d_physics_ecs::Collider>(f);
+                b.extend(postcard::to_allocvec(&c).unwrap_or_default());
+                b.extend(
+                    postcard::to_allocvec(&ph2d_ecs::world_transform(w, f)).unwrap_or_default(),
+                );
+            }
             b
         })
         .collect();

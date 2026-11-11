@@ -127,32 +127,37 @@ impl PhysicsBridge {
             }
         }
         for part in self.parts.values() {
-            let Some(dono) = self.bodies.get(&part.owner) else {
-                continue;
-            };
             if part.rest.is_sensor || movers.contains(&part.owner) {
                 continue;
             }
-            let Some((d_dono, (s, c))) = self.pose_de_obstaculo(dono.kind, dono.handle, &dono.rest)
-            else {
-                continue;
-            };
-            let [lx, ly, lr] = part.local;
-            let mut d = part.rest;
-            d.x = d_dono.x + c * lx - s * ly;
-            d.y = d_dono.y + s * lx + c * ly;
-            d.rotation = d_dono.rotation + lr;
-            // O estático pela rotação SOMADA (a resposta de sempre, ao bit); o cinemático compõe
-            // a do dono, que não tem ângulo.
-            let rot = if dono.kind == BodyKind::Static {
-                libm::sincosf(d.rotation)
-            } else {
-                let (sl, cl) = libm::sincosf(lr);
-                (s * cl + c * sl, c * cl - s * sl)
-            };
-            out.push((d.layer, forma(&d, rot)));
+            if let Some((d, rot)) = self.pose_da_peca(part) {
+                out.push((d.layer, forma(&d, rot)));
+            }
         }
         out
+    }
+
+    /// A peça COMO OBSTÁCULO, em MUNDO (a pose do dono composta com a local) — `None` se o dono não o é.
+    pub(super) fn pose_da_peca(
+        &self,
+        part: &crate::bridge::parts::PartRef,
+    ) -> Option<(BodyDesc, Rot)> {
+        let dono = self.bodies.get(&part.owner)?;
+        let (d_dono, (s, c)) = self.pose_de_obstaculo(dono.kind, dono.handle, &dono.rest)?;
+        let [lx, ly, lr] = part.local;
+        let mut d = part.rest;
+        d.x = d_dono.x + c * lx - s * ly;
+        d.y = d_dono.y + s * lx + c * ly;
+        d.rotation = d_dono.rotation + lr;
+        // O estático pela rotação SOMADA (a resposta de sempre, ao bit); o cinemático compõe
+        // a do dono, que não tem ângulo.
+        let rot = if dono.kind == BodyKind::Static {
+            libm::sincosf(d.rotation)
+        } else {
+            let (sl, cl) = libm::sincosf(lr);
+            (s * cl + c * sl, c * cl - s * sl)
+        };
+        Some((d, rot))
     }
 
     /// A pose de um corpo COMO OBSTÁCULO — `None` se ele não o é neste tique (anda, ou é dinâmico).

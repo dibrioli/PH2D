@@ -55,19 +55,17 @@ impl PhysicsBridge {
             if (area.is_none() && dano.is_none()) || b.rest.shape_off {
                 continue;
             }
-            let Some((d, rot)) = self.pose_de_obstaculo(b.kind, b.handle, &b.rest) else {
-                continue;
-            };
-            let f = forma(&d, rot);
-            if let Some(a) = area {
-                if a.forbidden {
-                    proibidas.push(f.clone());
-                } else {
-                    finitas.push((a.cost, e, f.clone()));
+            for f in self.formas_da_zona(e, b) {
+                if let Some(a) = area {
+                    if a.forbidden {
+                        proibidas.push(f.clone());
+                    } else {
+                        finitas.push((a.cost, e, f.clone()));
+                    }
                 }
-            }
-            if dano.is_some() {
-                ferem.push((e, f));
+                if dano.is_some() {
+                    ferem.push((e, f));
+                }
             }
         }
         // A mais cara primeiro (manda onde se sobrepõem); o empate pela ordem das entidades.
@@ -92,6 +90,21 @@ impl PhysicsBridge {
             proibidas,
             ferem,
         }
+    }
+
+    /// As formas da zona do corpo `e`, em MUNDO: a principal e as peças (todas as formas recortam). Vazio se
+    /// ele não é obstáculo neste tique.
+    fn formas_da_zona(&self, e: Entity, b: &crate::bridge::BodyRef) -> Vec<Shape> {
+        let principal = self
+            .pose_de_obstaculo(b.kind, b.handle, &b.rest)
+            .map(|(d, rot)| forma(&d, rot));
+        let pecas = self
+            .parts
+            .values()
+            .filter(|p| p.owner == e)
+            .filter_map(|p| self.pose_da_peca(p))
+            .map(|(d, rot)| forma(&d, rot));
+        principal.into_iter().chain(pecas).collect()
     }
 
     /// As zonas (índices em `custos.ferem`) que MAGOAM este agente — vazio se ele não as evita.
@@ -164,21 +177,27 @@ impl PhysicsBridge {
             if a.forbidden || a.cost >= 1.0 || b.rest.shape_off {
                 continue;
             }
-            let Some((d, rot)) = self.pose_de_obstaculo(b.kind, b.handle, &b.rest) else {
-                continue;
-            };
-            let area = Area {
-                shape: forma(&d, rot),
-                id: 1,
-                dentro: true,
-            };
-            let menor = raios.iter().map(|&r| r as f32 / RAIO_POR_METRO).find(|&r| {
-                let params = Params {
-                    agent_radius: f64::from(r),
-                    ..Params::default()
+            // Estreito = o corpo não cabe em NENHUMA das formas: o maior dos raios que as apagam.
+            let mut menor: Option<f32> = None;
+            for shape in self.formas_da_zona(e, b) {
+                let area = Area {
+                    shape,
+                    id: 1,
+                    dentro: true,
                 };
-                ph2d_navmesh::inflate::some_na_malha(&area, &params)
-            });
+                let r = raios.iter().map(|&r| r as f32 / RAIO_POR_METRO).find(|&r| {
+                    let params = Params {
+                        agent_radius: f64::from(r),
+                        ..Params::default()
+                    };
+                    ph2d_navmesh::inflate::some_na_malha(&area, &params)
+                });
+                let Some(r) = r else {
+                    menor = None;
+                    break;
+                };
+                menor = Some(menor.map_or(r, |m: f32| m.max(r)));
+            }
             if let Some(r) = menor {
                 estreitas.insert(e, r);
             }

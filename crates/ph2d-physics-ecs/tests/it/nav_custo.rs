@@ -619,3 +619,108 @@ fn um_scrub_depois_do_salto_devolve_a_mesma_corrida() {
         "o resto da corrida"
     );
 }
+
+/// O corpo estático de uma zona com DUAS formas filhas sensoras: a principal longe do caminho, em
+/// `(0, 4,5)`, e uma peça `meio` no caminho, em `c`. Devolve o corpo.
+fn zona_de_duas_formas(sim: &mut SimWorld, c: (f32, f32), meio: (f32, f32)) -> Entity {
+    let w = sim.world_mut();
+    let corpo = w
+        .spawn((
+            Name::new("Zona"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Transform::default(),
+        ))
+        .id();
+    for (em, h) in [((0.0, 4.5), (0.3, 0.3)), (c, meio)] {
+        w.spawn((
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: h.0,
+                    half_y: h.1,
+                },
+                is_sensor: true,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(em.0, em.1)),
+            ph2d_ecs::ChildOf(corpo),
+        ));
+    }
+    corpo
+}
+
+/// ⭐ (GEF02 5.4) **A zona é o corpo INTEIRO, todas as formas** — a proibida e a que fere recortam
+/// também pela peça (a 2.ª forma filha), como os obstáculos (`nav_malha::obstaculos`). Antes só a
+/// forma principal contava: o inimigo atravessava a peça. CONTROLO: o mesmo corpo sem zona, atravessa.
+#[test]
+fn a_zona_de_um_corpo_de_varias_formas_conta_todas_as_formas() {
+    let (c, h) = ((0.0, 0.0), (1.0, 2.0));
+    for (zona, deve_pisar, nome) in [
+        (Some(true), false, "a proibida"),
+        (Some(false), false, "a que fere"),
+        (None, true, "sem zona (CONTROLO)"),
+    ] {
+        let mut sim = SimWorld::new();
+        regiao(&mut sim);
+        let corpo = zona_de_duas_formas(&mut sim, c, h);
+        match zona {
+            Some(true) => {
+                sim.world_mut().entity_mut(corpo).insert(NavCostArea {
+                    cost: 1.0,
+                    forbidden: true,
+                });
+            }
+            Some(false) => {
+                sim.world_mut().entity_mut(corpo).insert(Damage {
+                    amount: 5.0,
+                    per_second: true,
+                    kind: "fogo".to_owned(),
+                    ..Damage::default()
+                });
+            }
+            None => {}
+        }
+        marco(&mut sim, "Alvo", (5.0, 0.0));
+        let quem = agente(&mut sim, (-5.0, 0.0), "Alvo");
+        sim.world_mut().entity_mut(quem).insert(Health::default());
+        if let Some(mut a) = sim.world_mut().get_mut::<NavAgent>(quem) {
+            a.avoid_harm = true;
+        }
+        let mut b = PhysicsBridge::new();
+        let caminho = corre(&mut sim, &mut b, quem, 600);
+        assert_eq!(
+            b.nav_agent(quem).map(|r| r.status),
+            Some(Status::Arrived),
+            "{nome}"
+        );
+        assert_eq!(pisou(&caminho, c, h), deve_pisar, "{nome}");
+    }
+}
+
+/// (GEF02 5.4) **A área barata estreita conta também a peça**: um corpo cuja forma principal é LARGA e
+/// a peça estreita não é «estreito»; um cuja principal e peça são estreitas é. Antes a peça não
+/// entrava: só a principal decidia.
+#[test]
+fn a_area_estreita_de_um_corpo_de_varias_formas_olha_todas_as_formas() {
+    let corre_com = |peca_larga: bool| {
+        let mut sim = SimWorld::new();
+        regiao(&mut sim);
+        let meio = if peca_larga { (4.0, 0.6) } else { (4.0, 0.2) };
+        let e = zona_de_duas_formas(&mut sim, (0.0, 2.0), meio);
+        sim.world_mut().entity_mut(e).insert(NavCostArea {
+            cost: 0.3,
+            forbidden: false,
+        });
+        marco(&mut sim, "Alvo", (5.0, -3.0));
+        agente(&mut sim, (-5.0, -3.0), "Alvo");
+        let mut b = PhysicsBridge::new();
+        corre(&mut sim, &mut b, e, 3);
+        sim.world()
+            .get::<ph2d_physics_ecs::NavCostAreaNow>(e)
+            .map(|n| n.too_narrow_for)
+    };
+    let raio_da_malha = (R * 256.0).ceil() / 256.0;
+    assert_eq!(corre_com(false), Some(raio_da_malha), "as duas estreitas");
+    assert_eq!(corre_com(true), None, "a peça larga: o corpo cabe nela");
+}

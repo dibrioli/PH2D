@@ -25,6 +25,7 @@ thread_local! {
     /// O que a última [`sessao`] respondeu, para ver a descida.
     static ANTES: Cell<bool> = const { Cell::new(false) };
     static ACABOU: Cell<bool> = const { Cell::new(false) };
+    static FEITO: Cell<bool> = const { Cell::new(false) };
 }
 
 /// **A Timeline está a animar a cena?** Lido pela shell a cada quadro: enquanto `true`, o que as
@@ -66,9 +67,16 @@ pub fn take_ended() -> bool {
     ACABOU.with(|c| c.replace(false))
 }
 
+/// **O Done foi clicado desde a última pergunta?** A shell desliga o Auto Key (dono 11/11): acabou de
+/// animar, arrastar o objecto volta a ser mexer na cena, não gravar chave.
+pub fn take_done() -> bool {
+    FEITO.with(|c| c.replace(false))
+}
+
 /// O clique no Done.
 pub(crate) fn done() {
     PARADO.with(|c| c.set(true));
+    FEITO.with(|c| c.set(true));
 }
 
 /// Publicado pelo `paint`: só nos cartões, só na aba Keys. Fora dela não há sessão nem paragem.

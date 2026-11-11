@@ -205,3 +205,10 @@ esquece a entidade, a pose vira documento e o clique seguinte grava um passo. As
 
 **Respostas de produto (escolhidas pela maquete e pelo Construct; o dono pode vetar):** começa sozinho (sem botão «Animate»);
 mudança laranja some no Done; trocar de clipe/aba = Done.
+
+### Onda 3 — respostas do dono ao smoke (11/11)
+
+- **O Done desliga o Auto Key** (a pergunta aberta): acabou de animar, arrastar o objecto volta a ser mexer na cena.
+  `ph2d_panel_timeline::take_done()` (aviso de uma vez) → a shell faz `flags.auto_key &= !…` no drain.
+- **O Done não larga a seleção** (defeito do smoke): o restauro usava `apply_project_with(&base, None)`, o caminho do
+  load, que só transporta a seleção de campo; passa agora `Some(&field_selection_mark())`, como um passo de undo.

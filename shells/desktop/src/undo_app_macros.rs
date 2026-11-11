@@ -69,8 +69,8 @@ impl crate::App {
             && !self.undo.jogo.a_correr()
             && let Some(base) = self.undo_baseline.take()
         {
-            self.apply_project_with(&base, None);
-            self.undo_baseline = Some(base);
+            let marca = self.field_selection_mark(); // o Done não larga a seleção (dono 11/11)
+            self.apply_project_with(&base, Some(&marca));
             self.arma_o_restauro();
         }
     }

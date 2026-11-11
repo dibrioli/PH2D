@@ -32,3 +32,15 @@ fn done_parks_and_resume_animates_again() {
     larga();
     assert!(!animating() && !parked(), "o painel escondido larga tudo");
 }
+
+/// O Done avisa a shell UMA vez (ela desliga o Auto Key); sem clique, nada.
+/// *Mutação: `done` sem o `FEITO` ⇒ o Auto Key fica ligado depois do Done.*
+#[test]
+fn done_tells_the_shell_once_to_turn_auto_key_off() {
+    let _ = take_done();
+    assert!(!take_done(), "sem clique não há aviso");
+    done();
+    assert!(take_done(), "o Done avisa a shell");
+    assert!(!take_done(), "e só uma vez");
+    larga();
+}

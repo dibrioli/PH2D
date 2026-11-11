@@ -18,7 +18,7 @@
 
 mod alca_estado;
 mod animando;
-pub use animando::{animating, parked, resume, sessao, take_ended};
+pub use animando::{animating, parked, resume, sessao, take_done, take_ended};
 mod breadcrumb;
 pub mod chip_drag;
 mod faixa_marcadores;

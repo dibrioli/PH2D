@@ -130,3 +130,4 @@
 - ⭐ [Dono 09/11: P13 do Pixel — tween = quadros reais, várias faixas de som, CRT na prévia e no jogo, pasta «Apps de Pixel»](project_pixel_p13_owner_decisions_2026_11_09.md)
 - ⛔⛔ [Sonda de custo sem o papel/relevo do dono não tem o fenómeno: 1,6 ms × 1,7 s no app (pen-up 4K, 10/11)](feedback_a_cost_probe_without_the_owners_paper_has_no_phenomenon.md)
 - [perf neste PC: ele ABRE o app, `-k` sem `-g`, `STRIP=none` no smoke](reference_perf_on_this_pc_opens_the_app_no_callgraph.md)
+- ⭐ [Dono 11/11: o Done da Timeline desliga o Auto Key e não larga a seleção](project_timeline_done_turns_off_autokey_2026_11_11.md)

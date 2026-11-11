@@ -1,13 +1,8 @@
-//! **Aplicar a trilha do mundo** (W19, `docs/Macros/17_W19_plano.md` §2.4): o FIM da gravação nasce no
-//! projecto de destino, num passo só com as outras famílias ([`crate::aplicar`]).
-//!
-//! - Quem faz nascer cada objecto local: `Macro` = o objecto Macro nascido; `Trilha(k)` = o objecto que o
-//!   aplicar fez nascer para a trilha `k` (por cima: o alvo); `Mundo` = nasce aqui, dentro do pai local.
-//! - Uma imagem importada (`SpritePixels` + `Sprite`) nasce pela porta de produto com os píxeis do
-//!   recurso embutido (PNG); o `Sprite` gravado guarda tudo menos a fonte (o atlas é do destino).
-//! - As referências entre objectos (`RefKind::Object`) reescrevem-se `original → StableId novo` pelo
-//!   remapeador da composição, no blob ANTES de entrar no mundo — e na trilha instalada também (a
-//!   reprodução escreve esses blobs), com cada `Objeto.original` já no `StableId` novo.
+//! **Aplicar a trilha do mundo** (`docs/Macros/17_W19_plano.md` §2.4): o FIM nasce no destino, num
+//! passo com as outras famílias ([`crate::aplicar`]). Quem nasce: `Macro` = a raiz · `Trilha(k)` = o
+//! objecto da trilha `k` (por cima: o alvo) · `Mundo` = aqui. Uma imagem nasce pela porta de produto com
+//! o PNG embutido; as `RefKind::Object` reescrevem-se para o `StableId` novo ANTES de entrar no mundo
+//! e na trilha instalada.
 
 use super::estado::{Lida, ObjetoEm};
 use super::formato::{Evento, Linha, Mudanca, Objeto, Quem, Recurso};
@@ -67,7 +62,6 @@ fn ilegivel() -> ErroDaMacroView {
 }
 
 /// **Exportar**: o inicial e cada evento leem-se.
-///
 /// # Errors
 /// [`m::MACRO_LIB_ILEGIVEL`].
 pub fn confere(t: &Track) -> Result<(), ErroDaMacroView> {
@@ -111,10 +105,8 @@ impl Rascunho<'_> {
     }
 }
 
-/// **A trilha do mundo de `doc` nasce no destino** (cada trilha `Mundo`): os objectos, os componentes,
-/// as referências; a trilha fica transposta e com o `target` no objecto Macro. Os nascidos entram em
+/// **A trilha do mundo nasce no destino**; fica transposta com `target` na raiz. Os nascidos entram em
 /// `nascidos` (o chamador desfá-los se algo falhar).
-///
 /// # Errors
 /// [`m::MACRO_LIB_ILEGIVEL`] · [`m::MACRO_MUNDO_COMPONENTE_DESCONHECIDO`] · [`m::MACRO_APLICAR_NAO_NASCE`].
 pub(crate) fn aplica(
@@ -149,8 +141,7 @@ fn sid(w: &World, e: Entity) -> u64 {
     w.get::<StableId>(e).map_or(0, |s| s.0)
 }
 
-/// A imagem que um objecto do mundo é (os píxeis do recurso embutido), se é uma. A porta de produto
-/// faz nascer alfa RECTO (o atlas): um recurso pré-multiplicado volta a recto antes de nascer.
+/// A imagem de um objecto do mundo, se é uma; a porta quer alfa RECTO (o pré-multiplicado desfaz-se).
 fn imagem_de(
     o: &ObjetoEm,
     recursos: &BTreeMap<[u8; 32], &Recurso>,
@@ -191,8 +182,8 @@ fn no_destino(
     }
 }
 
-/// ⭐ **As folhas extra noutro projeto** (plano GEF 26 F12): a imagem de cada uma entra na biblioteca do destino pela
-/// porta, e a folha passa ao id que ela lá tem. Sem o recurso embutido, a macro não nasce (o mesmo erro da imagem).
+/// ⭐ **As folhas extra noutro projeto**: cada imagem entra pela porta e a folha passa ao id do destino;
+/// sem o recurso embutido, a macro não nasce.
 fn folhas_no_destino(
     b: &[u8],
     recursos: &BTreeMap<[u8; 32], &Recurso>,
@@ -204,9 +195,8 @@ fn folhas_no_destino(
         let r = recursos
             .get(x.asset.as_bytes())
             .ok_or_else(|| falha(&"∅"))?;
-        // Sem desfazer a pré-multiplicação: a folha extra desenha-se em alfa recto, e o `premultiplicado` do recurso é
-        // o da sprite que o partilha pelo id (auditoria 08/11). Os bytes de uma folha são sempre rectos: o Add sheet
-        // de um recurso mostrado pré-multiplicado já guarda uma cópia recta (`ph2d_anim_sheets::apply::straight_id`).
+        // ⚠️ Sem desfazer a pré-multiplicação: os bytes de uma folha são sempre rectos
+        // (`ph2d_anim_sheets::apply::straight_id`); o `premultiplicado` é o da sprite que partilha o id.
         let px = de_png(&r.bytes).ok_or_else(|| falha(&"png"))?;
         x.asset = ph2d_asset_id::AssetId::from_digest(poe(px));
     }
@@ -300,8 +290,7 @@ fn nasce(
         }
     }
     ph2d_ecs::assign_missing_stable_ids(w);
-    // Um objecto que não chega vivo ao fim não nasceu aqui: `0` (nenhum) — nunca o `StableId` da
-    // gravação, que no destino pode ser de um objecto alheio.
+    // Não chegou vivo ao fim: `0`, nunca o `StableId` da gravação (no destino pode ser alheio).
     r.mapa = lida
         .objetos()
         .map(|o| (o.original, ents.get(&o.id).map_or(0, |e| sid(w, *e))))
@@ -388,9 +377,8 @@ mod tests {
         out.into_inner()
     }
 
-    /// ⭐ **As folhas extra chegam ao outro projeto** (plano GEF 26 F12): a imagem de cada uma entra pela porta e a
-    /// folha passa ao id que ela lá tem; sem o recurso, a macro não nasce. *Mutações: não chamar a porta ⇒ o id fica o
-    /// da gravação e `postos` vazio; aceitar sem recurso ⇒ o `Err` some.*
+    /// ⭐ As folhas extra chegam ao outro projeto (id do destino); sem o recurso, não nasce. *Mutações:
+    /// não chamar a porta ⇒ o id fica o gravado; aceitar sem recurso ⇒ o `Err` some.*
     #[test]
     fn as_folhas_extra_chegam_ao_outro_projeto_com_a_imagem() {
         let rgba = [9u8, 8, 7, 255, 1, 2, 3, 255];
@@ -432,10 +420,8 @@ mod tests {
         assert_eq!(postos.borrow().len(), 1);
     }
 
-    /// ⭐ Achado da auditoria 08/11: uma folha extra desenha-se SEMPRE em alfa recto (`ph2d_render::SheetTextures`), mas
-    /// o recurso dela é partilhado pelo id com a sprite pré-multiplicada que mostre a mesma imagem (o BG removal), e a
-    /// chegada desfazia-lhe a pré-multiplicação: a cor da folha mudava no outro projeto. Os bytes chegam como foram.
-    /// *Mutação: voltar a desfazer quando `premultiplicado` ⇒ os bytes da meia-transparência mudam.*
+    /// ⭐ Uma folha extra desenha-se SEMPRE em alfa recto: os bytes chegam como foram, mesmo com o id
+    /// partilhado por uma sprite pré-multiplicada. *Mutação: desfazer quando `premultiplicado` ⇒ mudam.*
     #[test]
     fn a_folha_extra_chega_com_a_mesma_cor_mesmo_partilhada_com_uma_premultiplicada() {
         let rgba = [200u8, 100, 50, 128, 1, 2, 3, 255];

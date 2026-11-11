@@ -1,10 +1,6 @@
-//! **O tutorial «fazer»** (W6, `docs/Macros/03_plano_W6.md`): o objecto com a `Macro` em modo
-//! `Fazer`, a família de cada trilha diz o que o aluno já fez ([`TutorialDaFamilia`]), e o balão mostra
-//! a 1.ª etapa por cumprir — função do estado, por isso o Ctrl+Z volta o passo sozinho. Os botões do
-//! balão chegam como `MacroRequest::{MostraMe, Recomeca}`.
-//!
-//! Cada etapa traz o PREPARO da família dela: o Motion pede o objecto em Edit; o Painter, a imagem
-//! da trilha em modo Paint e o meio da gravação (W6b).
+//! **O tutorial «fazer»** (`docs/Macros/03_plano_W6.md`): a `Macro` em `Fazer`; a família de cada trilha
+//! diz o que o aluno fez ([`TutorialDaFamilia`]) e o balão mostra a 1.ª etapa por cumprir — função do
+//! estado (o Ctrl+Z volta o passo sozinho). Cada etapa traz o PREPARO da família (Edit; Paint e o meio).
 
 use crate::Familias;
 use crate::etapas::da_trilha;
@@ -26,9 +22,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::thread::JoinHandle;
 
-/// A chave da avaliação do Painter: a versão da trilha, a imagem ligada, o tamanho da tela, a
-/// revisão do conteúdo ([`PainterTool::content_revision`]), as medidas chegadas e a idade da água
-/// ([`EnsinoDoPainter::idade_na_chave`]) — a mesma chave, o mesmo estado.
+/// A chave da avaliação do Painter (versão, imagem, tela, [`PainterTool::content_revision`], medidas,
+/// [`EnsinoDoPainter::idade_na_chave`]) — a mesma chave, o mesmo estado.
 type ChaveDoProgresso = (u64, Option<u64>, (u32, u32), (u64, u64), usize, u32);
 
 /// O que o fio do ensino manda ao quadro, por ordem.
@@ -39,10 +34,8 @@ enum Chegada {
     Erro(ErroDaMacro),
 }
 
-/// **O ensino de uma versão FORA do quadro** (W6c/W6d, `docs/Macros/03_plano_W6.md` §6.3): o fio
-/// `macro-referencias` lê a trilha ([`EnsinoDoPainter::de`]: 30–170 ms a 1024²) e depois mede cada
-/// pincelada — as curvas da gravada e da base, em poucos fios trabalhadores dele (W7). Até o ensino chegar o balão está «a
-/// preparar»; uma pincelada sem medida não se cumpre. Largar o trabalho pára o fio.
+/// **O ensino de uma versão FORA do quadro**: o fio `macro-referencias` lê a trilha
+/// ([`EnsinoDoPainter::de`]) e mede cada pincelada; até chegar, «a preparar» e nenhuma se cumpre.
 struct Trabalho {
     parar: Arc<AtomicBool>,
     chegadas: Receiver<Chegada>,
@@ -132,8 +125,7 @@ impl Ensino {
                 Err(TryRecvError::Disconnected) => break,
             }
         }
-        // O fio acabou: um pânico (ou um ensino que nunca chegou) diz-se no balão em vez de esperar
-        // para sempre.
+        // O fio acabou: um pânico diz-se no balão em vez de esperar para sempre.
         let panico = t.fio.take().is_some_and(|f| f.join().is_err());
         if panico || self.e.is_none() {
             self.e = Some(Err(crate::erros::erro(crate::erros::ESTRAGADA)));
@@ -150,17 +142,14 @@ pub(crate) struct Tutorial {
     erro: Option<(u64, ErroDaMacroView)>,
     /// O ensino do Painter, por versão da trilha (as trilhas do Painter da última avaliação).
     ensinos: BTreeMap<u64, Ensino>,
-    /// A 1.ª pincelada por cumprir no último estado avaliado: o progresso é função do estado, e um
-    /// estado igual não se reavalia (a cada quadro seriam todas as pinceladas cumpridas outra vez).
+    /// A 1.ª pincelada por cumprir no último estado avaliado (um estado igual não se reavalia).
     progresso: Option<(ChaveDoProgresso, usize)>,
-    /// A dica do autor na etapa corrente do Motion, por (hash dos bytes, trilha, k): lida uma vez — por
-    /// quadro seria descodificar a trilha inteira (o Painter lê-a no fio).
+    /// A dica do autor na etapa corrente do Motion, por (hash, trilha, k): lida uma vez.
     dica_do_motion: Option<((u64, usize, usize), Option<String>)>,
 }
 
-/// O objecto do tutorial: a imagem em que o Painter pinta (a `Macro` do Painter vive na imagem que
-/// gravou), senão o objecto em edição, se têm uma `Macro` em `Fazer`; senão o 1.º que tenha. Devolve
-/// os bits e o `StableId` (o dono das trilhas).
+/// O objecto do tutorial (bits, `StableId`): a imagem do Painter, senão o em edição, com `Macro` em
+/// `Fazer`; senão o 1.º que tenha.
 fn objeto(sim: &SimWorld, pintando: Option<u64>, em_edicao: Option<u64>) -> Option<(u64, u64)> {
     let w = sim.world();
     let mut todos: Vec<(u64, u64)> = w
@@ -238,10 +227,8 @@ impl Tutorial {
         Ok((*h, doc))
     }
 
-    /// As pinceladas da trilha no estado do aluno (com a dica do autor): cumpridas até à 1.ª por
-    /// cumprir (que só se avalia com o Painter na imagem, da tela da gravação); o meio pedido é o da
-    /// pincelada corrente. Só a corrente leva a área marcada. Antes de o ensino chegar do fio, uma etapa
-    /// só, «a preparar».
+    /// As pinceladas no estado do aluno: cumpridas até à 1.ª por cumprir (só com o Painter na imagem
+    /// da gravação); só a corrente leva a área e o meio. Sem ensino, uma etapa «a preparar».
     fn etapas_do_painter(
         &mut self,
         f: &mut Familias<'_>,

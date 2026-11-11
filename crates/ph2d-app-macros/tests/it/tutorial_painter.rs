@@ -1,7 +1,5 @@
-//! ⭐ **O tutorial «fazer» do Painter na família MACROS** (`docs/Macros/03_plano_W6.md` §6, W6b): o
-//! Splash gravado num papel branco, um aluno que abre a MESMA imagem pela porta do produto. O balão
-//! pede a imagem em modo Paint, depois o meio, depois cada pincelada com a área marcada; «Mostra-me»
-//! pinta-a, o Ctrl+Z volta o passo, «Recomeçar» volta ao início.
+//! ⭐ **O tutorial «fazer» do Painter** (`docs/Macros/03_plano_W6.md` §6): o balão pede a imagem em
+//! Paint, o meio e cada pincelada com a área; «Mostra-me» pinta, Ctrl+Z volta, «Recomeçar» recomeça.
 
 use ph2d_app_macros::{Cena, Familias, Macros};
 use ph2d_ecs::{Macro, ModoDaMacro, SimWorld, StableId};
@@ -43,8 +41,7 @@ struct Banca {
     bits: u64,
 }
 
-/// O meio do Splash da banca: Digital, sem água — medir a água custa 960 quadros por medida (W7) e
-/// estas bancas ensaiam o balão, não a água. As que medem a água ([`Banca::com_agua`]) dizem-no.
+/// O meio do Splash da banca: Digital, sem água (a água: [`Banca::com_agua`]).
 const MEIO: PaintMedia = PaintMedia::Digital;
 
 impl Banca {
@@ -210,9 +207,7 @@ fn o_balao_pede_a_imagem_em_paint_e_depois_o_meio() {
     assert!(x.pode_mostrar());
 }
 
-/// ⭐ Os botões só agem na imagem do TUTORIAL: com o Painter na mão aberto noutra imagem (Wet Paint
-/// armado), «Mostra-me» e «Recomeçar» não lhe tocam — nem um pixel, nem um passo de undo — e o balão
-/// continua a pedir a imagem.
+/// ⭐ Os botões só agem na imagem do TUTORIAL: noutra imagem não tocam nem um pixel nem um passo.
 #[test]
 fn os_botoes_nao_tocam_noutra_imagem() {
     let mut b = Banca::nova();
@@ -263,9 +258,7 @@ fn mostra_me_desfazer_e_recomecar_no_painter() {
     assert_eq!(b.quadro().passo, 2);
 }
 
-/// ⭐ **O meio pedido é o da pincelada corrente** (W6c): a 1.ª gravada em Wet Paint, a 2.ª em
-/// Watercolor (a troca é um passo do seletor do painel). Feita a 1.ª, o aluno em Watercolor tem o passo
-/// 2 por pintar; em Wet Paint, o balão pede o Watercolor.
+/// ⭐ **O meio pedido é o da pincelada corrente** (1.ª Wet Paint, 2.ª Watercolor).
 #[test]
 fn o_balao_pede_o_meio_da_pincelada_corrente() {
     let (doc, _) = ph2d_tool_painter::macro_track::roteiro::grava_no_papel_nos_meios(
@@ -332,8 +325,7 @@ fn o_balao_e_o_da_imagem_em_que_o_painter_pinta() {
     );
 }
 
-/// Uma imagem de outro tamanho que a gravada: o balão di-lo (com o tamanho gravado), em vez de pedir
-/// pinceladas que não se podem avaliar.
+/// Uma imagem de outro tamanho que a gravada: o balão di-lo em vez de pedir pinceladas.
 #[test]
 fn outra_tela_diz_o_tamanho_gravado() {
     let mut b = Banca::nova();
@@ -351,9 +343,8 @@ fn outra_tela_diz_o_tamanho_gravado() {
     assert!(!x.pode_mostrar());
 }
 
-/// ⭐ **O ensino prepara-se fora do quadro** (W6d, `03_plano_W6.md` §6.3): no 1.º quadro de uma versão
-/// o balão está «a preparar» — passo 0, total por saber, sem «Mostra-me» nem área — mesmo com a 1.ª
-/// pincelada já pintada; quando o trabalho chega, avança como antes. «Recomeçar» vale a preparar.
+/// ⭐ **O ensino prepara-se fora do quadro**: no 1.º quadro, «a preparar» (passo 0, sem «Mostra-me»);
+/// quando chega, avança. «Recomeçar» vale a preparar.
 #[test]
 fn uma_versao_nova_prepara_se_fora_do_quadro() {
     use ph2d_tool_painter::macro_track::tutorial::{mostra, regioes};
@@ -398,10 +389,8 @@ fn uma_versao_nova_prepara_se_fora_do_quadro() {
     assert_eq!(b.quadro().passo, 2);
 }
 
-/// ⭐ **A medição de uma versão velha larga-se** (W6d): a `Macro` muda ENQUANTO a versão anterior
-/// ainda se mede — o trabalho dela pára e sai da conta; só o da versão nova fica até chegar. Um
-/// trabalho velho guardado deixava o «a medir» aceso para sempre (ninguém o colhe) e o fio a medir
-/// uma versão que já não existe.
+/// ⭐ **A medição de uma versão velha larga-se**: a `Macro` muda a meio e só o trabalho novo fica (o
+/// velho deixava o «a medir» aceso para sempre).
 #[test]
 fn mudar_a_macro_a_meio_da_medicao_larga_a_versao_velha() {
     let mut b = Banca::com_agua();
@@ -432,9 +421,7 @@ fn mudar_a_macro_a_meio_da_medicao_larga_a_versao_velha() {
 // LITERAL-COLOR-OK: a cor GRAVADA do Fill da caixa (`roteiro::AZUL_DA_CAIXA`).
 const AZUL: [u8; 3] = [40, 110, 210];
 
-/// ⭐ W13: na etapa do Fill da caixa o balão pede a cor dele no C&F (o anel no botão, a amostra, o
-/// código no texto) enquanto o pincel não a tem; depois o soltar, com o alvo onde a cor caiu; o
-/// «Mostra-me» fá-lo e o passo segue para o traço por cima.
+/// ⭐ Na etapa do Fill o balão pede a cor no C&F enquanto o pincel não a tem, depois o soltar.
 #[test]
 fn na_etapa_do_fill_o_balao_pede_a_cor_e_depois_o_soltar() {
     use ph2d_editor_core::ids::PAINTER_RAIL_FILL;

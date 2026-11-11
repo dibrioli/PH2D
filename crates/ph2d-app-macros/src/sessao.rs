@@ -1,13 +1,8 @@
-//! **A gravação em curso**: o gravador, as trilhas abertas pelas famílias e o objecto que fica com a
-//! `Macro` ao Parar.
-//!
-//! Duas armações (`docs/Macros/16_W18_plano.md` §2.2): **o objecto Macro** (W18) — a sessão arma-o vazio
-//! e abre a trilha de uma família quando ela começa a trabalhar num objecto DENTRO dele (a imagem que o
-//! Painter pinta, o Motion em edição), com a ficha de nascimento desse objecto; e **a família** (antes
-//! da W18) — a sprite que o Painter pinta, ou o Motion em edição, é o próprio dono.
-//!
-//! W19: a família que passa a outro objecto dentro do objecto Macro fecha a trilha dele e abre a do
-//! novo; voltar a um objecto já gravado abre uma trilha que o CONTINUA (`Track::continua`).
+//! **A gravação em curso**: o gravador, as trilhas abertas e o objecto que fica com a `Macro` ao Parar.
+//! Duas armações (`docs/Macros/16_W18_plano.md` §2.2): **o objecto Macro** arma vazio e abre a trilha
+//! de uma família quando ela trabalha num objecto DENTRO dele (com a ficha de nascimento); **a família**
+//! — o objecto dela é o próprio dono. Passar a outro objecto fecha a trilha e abre a do novo; voltar a
+//! um já gravado abre uma que o CONTINUA (`Track::continua`).
 
 use crate::{Cena, Familias};
 use ph2d_ecs::{Entity, SimWorld, StableId};
@@ -50,8 +45,7 @@ struct Aberta {
     id: TrackId,
 }
 
-/// As trilhas de UMA família nesta gravação (W19: várias imagens e vários Motion por objecto Macro). A
-/// gravadora da família grava uma de cada vez: a `viva`.
+/// As trilhas de UMA família nesta gravação; a gravadora grava uma de cada vez: a `viva`.
 #[derive(Default)]
 struct Trilhas {
     abertas: Vec<Aberta>,
@@ -94,8 +88,7 @@ fn gravadora<'a>(f: &'a mut Familias<'_>, fam: FamiliaDaMacro) -> Option<&'a mut
     }
 }
 
-/// **O objecto Macro de `bits`**: ele mesmo ou o antepassado mais próximo com uma `Macro`. Uma sprite com
-/// `Macro` (as gravações de antes da W18) é um objecto Macro que é a sua própria imagem.
+/// **O objecto Macro de `bits`**: ele mesmo ou o antepassado mais próximo com uma `Macro`.
 #[must_use]
 pub fn objeto_macro_de(sim: &SimWorld, bits: u64) -> Option<u64> {
     let w = sim.world();
@@ -151,7 +144,6 @@ fn ficha(sim: &SimWorld, alvo: u64, dono: u64, inicio_us: u64) -> Result<Nascime
 
 impl Sessao {
     /// Arma `a`. O objecto Macro arma vazio; uma família abre já a trilha dela.
-    ///
     /// # Errors
     /// A chave da frase.
     pub fn abre(
@@ -256,8 +248,7 @@ impl Sessao {
         Ok(())
     }
 
-    /// **A família deixou o objecto que gravava** (o artista passou a outra imagem): a gravadora pára e
-    /// os últimos passos ficam nessa trilha.
+    /// A família deixou o objecto que gravava: a gravadora pára e os últimos passos ficam nessa trilha.
     fn fecha_a_viva(&mut self, fam: FamiliaDaMacro, f: &mut Familias<'_>, agora_us: u64) {
         let Some(a) = self
             .trilhas(fam)
@@ -310,9 +301,8 @@ impl Sessao {
         }
     }
 
-    /// **Um objecto nasceu**: a gravar um objecto Macro, ele nasce DENTRO dele, na origem dele (a
-    /// transformada local é a identidade: herda a posição, a rotação e a escala do objecto Macro), e o
-    /// instante entra na ficha. Devolve `true` se o pendurou.
+    /// Um objecto nasceu: a gravar um objecto Macro, pendura-o DENTRO dele com local identidade e o
+    /// instante entra na ficha (`true` se o pendurou).
     pub fn nasceu(&mut self, sim: &mut SimWorld, bits: u64, agora_us: u64) -> bool {
         let Armacao::Objeto(dono) = self.armacao else {
             return false;
@@ -332,8 +322,7 @@ impl Sessao {
         true
     }
 
-    /// **O objecto em que `fam` trabalha agora** entra (ou não) nesta gravação: abre a trilha, ou recusa
-    /// em voz alta. Devolve se os passos da família neste quadro são desta gravação.
+    /// O objecto em que `fam` trabalha entra (abre a trilha) ou recusa em voz alta; devolve o destino.
     fn segue_o_alvo(
         &mut self,
         fam: FamiliaDaMacro,
@@ -380,8 +369,7 @@ impl Sessao {
         }
     }
 
-    /// **O quadro**, depois de o Painter consumir a entrada: as trilhas que abrem (o Painter e o Motion,
-    /// cujos passos vêm em [`Self::passos_do_motion`]) e os passos do Painter, no instante `agora_us`.
+    /// O quadro: as trilhas que abrem e os passos do Painter (os do Motion: [`Self::passos_do_motion`]).
     pub fn quadro(&mut self, f: &mut Familias<'_>, sim: &mut SimWorld, agora_us: u64) {
         // Uma corrida da física que não andou desde o quadro anterior acabou.
         if let Some(g) = self.mundo.as_mut() {
@@ -423,8 +411,7 @@ impl Sessao {
         }
     }
 
-    /// **A ponte da física correu de `de` a `ate`** neste quadro (Physics armado e o relógio a andar):
-    /// os corpos da sub-árvore e a `fita` do projecto entram na corrida.
+    /// A física correu de `de` a `ate`: os corpos da sub-árvore e a `fita` entram na corrida.
     pub fn fisica_correu(
         &mut self,
         sim: &mut SimWorld,
@@ -487,9 +474,7 @@ impl Sessao {
         self.painter.viva().map(|a| a.alvo)
     }
 
-    /// **Parar**: os últimos passos, e o objecto fica com a `Macro` e o clipe. Devolve também os
-    /// componentes que a família «mundo» não gravou (o painel nomeia-os).
-    ///
+    /// **Parar**: o objecto fica com a `Macro` e o clipe; devolve também o que o «mundo» não gravou.
     /// # Errors
     /// A chave da frase (nada gravado; o clipe não coube na animação).
     pub fn para(
@@ -526,8 +511,7 @@ impl Sessao {
         crate::instala::instala(c, f.etapas, self.dono, &doc, modo).map(|k| (k, avisos))
     }
 
-    /// A trilha do mundo entra na gravação (depois das outras: elas dizem quem faz nascer cada
-    /// objecto); devolve o que o painel avisa.
+    /// A trilha do mundo entra por último (as outras dizem quem nasce); devolve o que o painel avisa.
     fn fecha_o_mundo(&mut self, f: &mut Familias<'_>, sim: &mut SimWorld) -> crate::mundo::Avisos {
         let Some(g) = self.mundo.take() else {
             return crate::mundo::Avisos::default();

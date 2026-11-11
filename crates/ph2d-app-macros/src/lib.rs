@@ -1,9 +1,6 @@
-//! **As macros como o artista as faz** (ADR-0186, W5d; `docs/Macros/02_plano_W5.md` §5): Gravar ▸
-//! Parar nas duas famílias, as etapas que o painel MACROS e a linha da Timeline mostram, e as edições
-//! delas. A shell compõe: drena os pedidos ([`Macros::pede`]), chama [`Macros::quadro`] uma vez por
-//! quadro, DEPOIS de as famílias consumirem a entrada, e publica [`Macros::info`].
-//!
-//! O estado é da família ([`com`], um `thread_local`), nunca um campo da `App` (ADR-0075).
+//! **As macros como o artista as faz** (ADR-0186): Gravar ▸ Parar, as etapas e as edições delas. A
+//! shell drena [`Macros::pede`], chama [`Macros::quadro`] 1×/quadro DEPOIS de as famílias consumirem a
+//! entrada e publica [`Macros::info`]. O estado é da família ([`com`], `thread_local`; ADR-0075).
 
 pub mod aplicar;
 pub mod biblioteca;
@@ -35,10 +32,8 @@ use ph2d_tool_painter::PainterTool;
 use sessao::Sessao;
 use std::cell::RefCell;
 
-/// As famílias que gravam, como a shell as tem neste quadro. O Painter chega SEMPRE (uma gravação
-/// em curso tem de receber o Parar mesmo depois de o artista trocar de ferramenta); só arma quando é
-/// a ferramenta activa (`painter_activo`). O Motion é outra família: a composição passa a gravadora
-/// dele, o objecto em edição e as etapas ([`etapas::Injectadas`]) — esta crate não depende dela.
+/// As famílias que gravam neste quadro. O Painter chega SEMPRE (o Parar chega-lhe após trocar de
+/// ferramenta) e só arma com `painter_activo`; o Motion chega pela composição ([`etapas::Injectadas`]).
 pub struct Familias<'a> {
     pub painter: Option<&'a mut PainterTool>,
     pub painter_activo: bool,
@@ -63,8 +58,7 @@ impl Familias<'_> {
         )
     }
 
-    /// **O que o Gravar arma agora**: o objecto Macro do escolhido; sem ele, a família que grava o seu
-    /// próprio objecto (antes da W18).
+    /// O que o Gravar arma: o objecto Macro do escolhido, senão a família que grava o próprio objecto.
     fn armacao(&self, sim: &SimWorld) -> Result<sessao::Armacao, &'static str> {
         if let Some(m) = self.escolhido.and_then(|b| sessao::objeto_macro_de(sim, b)) {
             return Ok(sessao::Armacao::Objeto(m));
@@ -86,17 +80,12 @@ pub struct Cena<'a> {
 pub use conferencia::Partidas;
 pub use gestos::{aplica_se_receita, e_receita, guarda_como_asset};
 
-/// As cenas de `PH2D_MACRO_SMOKE`: `=1` o Splash (Painter), `=2` o Motion nó a nó, `=3` o tutorial
-/// «fazer» do Motion, `=4` o do Painter, `=5` a imagem é do artista (W7 item 1), `=6` o caminho do dono
-/// na `=5`, feito pelo app sozinho (Gravar, 2 pinceladas, Parar, ⏮, ▷), `=7` a biblioteca do princípio ao
-/// fim, feita pelo app sozinho ([`cena_da_biblioteca`]), `=8` o player pintado que ganha um collider e cai
-/// ([`cena_do_mundo`]). Cada uma monta-se na família que grava; o clipe
-/// que conduz `=1`, `=2`, `=5` e `=6` monta-o a composição (`render_loop/macro_smoke.rs`).
+/// As cenas de `PH2D_MACRO_SMOKE`: 1 Splash · 2 Motion nó a nó · 3 tutorial «fazer» do Motion · 4 o do
+/// Painter · 5 a imagem é do artista · 6 a `=5` pelo app sozinho · 7 [`cena_da_biblioteca`] · 8
+/// [`cena_do_mundo`]. O clipe de 1, 2, 5 e 6 monta-o a composição (`render_loop/macro_smoke.rs`).
 pub const CENAS_DO_SMOKE: u32 = 8;
 
-/// **A cena abre PARADA?** — `=5` (`docs/Macros/04_plano_W7.md` item 1): o clipe sem Autoplay, a cena
-/// sem correr e a imagem em modo Paint, porque o 1.º passo do smoke é o artista pintar; `=6` é a mesma
-/// cena. As outras com clipe correm sozinhas.
+/// A cena abre PARADA (`=5`, `=6`: sem Autoplay, imagem em Paint — o artista pinta primeiro).
 #[must_use]
 pub fn a_cena_abre_parada(nivel: &str) -> bool {
     matches!(nivel, "5" | "6")
@@ -148,8 +137,7 @@ pub struct Macros {
     tutorial: tutorial::Tutorial,
     /// O relógio do quadro corrente (o de [`Macros::quadro`]).
     agora_us: u64,
-    /// A biblioteca do utilizador (W18): a pasta, a leitura dela (relida só depois de um gesto) e a
-    /// frase do último gesto.
+    /// A biblioteca do utilizador: pasta, leitura (relida após um gesto) e frase do último gesto.
     biblioteca: gestos::Casa,
 }
 
@@ -157,8 +145,7 @@ thread_local! {
     static MACROS: RefCell<Macros> = RefCell::new(Macros::do_utilizador());
 }
 
-/// **O relógio das macros**: microssegundos desde a 1.ª leitura (o núcleo nunca lê o de parede; a
-/// composição passa este a [`Macros::quadro`]).
+/// O relógio das macros: µs desde a 1.ª leitura (o núcleo nunca lê o de parede; vai a [`Macros::quadro`]).
 #[must_use]
 pub fn relogio_us() -> u64 {
     static INICIO: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
@@ -175,7 +162,6 @@ pub fn com<R>(f: impl FnOnce(&mut Macros) -> R) -> R {
 }
 
 /// **Quem grava se o artista carregar em Gravar agora** — ou a chave do porquê não.
-///
 /// # Errors
 /// A chave da frase ([`m::MACRO_RECUSA_SEM_TELA`], …).
 pub fn quem_grava(
@@ -199,8 +185,7 @@ impl Macros {
         self.pedidos.push(r);
     }
 
-    /// **Uma edição de valor está por conferir ou a conferir** (fora do quadro): o undo espera por ela,
-    /// como pelo recálculo do Colorize — a edição e a decisão da conferência são UM passo.
+    /// Uma edição de valor por conferir: o undo espera por ela (edição e conferência são UM passo).
     #[must_use]
     pub fn a_conferir(&self) -> bool {
         self.conferencias.a_conferir()
@@ -212,15 +197,13 @@ impl Macros {
         self.conferencias.a_conferir_em()
     }
 
-    /// **O tutorial do Painter mede as referências das pinceladas** (fora do quadro): até chegarem,
-    /// nenhuma se dá por feita.
+    /// O tutorial do Painter mede as referências: até chegarem, nenhuma pincelada se dá por feita.
     #[must_use]
     pub fn a_medir(&self) -> bool {
         self.tutorial.a_medir()
     }
 
-    /// **Depois de o Motion correr no quadro** (o lote do grafo, os params e o `Quadro`): os passos que
-    /// ele gravou NESTE quadro, no relógio dele — em [`Macros::quadro`] ainda não tinham acontecido.
+    /// Depois de o Motion correr: os passos que ele gravou NESTE quadro, no relógio dele.
     pub fn depois_do_motion(&mut self, motion: &mut dyn ph2d_macro::Gravadora) {
         let agora = self.agora_us;
         if let Some(s) = self.sessao.as_mut() {
@@ -228,8 +211,7 @@ impl Macros {
         }
     }
 
-    /// **O mundo passou de `antes` a `depois`** (W19, a família «mundo»): a shell chama-o a cada passo do
-    /// undo e depois de cada desfazer/refazer — é o mesmo grão do Ctrl+Z do artista.
+    /// O mundo passou de `antes` a `depois`: a cada passo do undo e desfazer/refazer (o grão do Ctrl+Z).
     pub fn mundo_mudou(
         &mut self,
         antes: &ph2d_ecs::scene::WorldSnapshot,
@@ -241,9 +223,8 @@ impl Macros {
         }
     }
 
-    /// **A ponte da física correu de `de` a `ate`** neste quadro (W19): «Simular» a gravar. `None` = o
-    /// Physics desarmado ou o relógio parado (a corrida acaba); `ate == de` = a andar, sem tique neste
-    /// quadro de render (a corrida continua).
+    /// A física correu de `de` a `ate` («Simular» a gravar). `None` = desarmada/parada (a corrida acaba);
+    /// `ate == de` = sem tique neste quadro (a corrida continua).
     pub fn fisica_correu(
         &mut self,
         sim: &mut SimWorld,
@@ -259,8 +240,7 @@ impl Macros {
         }
     }
 
-    /// **Um objecto nasceu** (o Add, uma imagem nova): a gravar um objecto Macro, ele nasce DENTRO dele
-    /// e a ficha guarda quando. Devolve `true` se o pendurou.
+    /// Um objecto nasceu: a gravar um objecto Macro, pendura-o DENTRO dele (`true`) e a ficha guarda-o.
     pub fn nasceu(&mut self, sim: &mut SimWorld, bits: u64) -> bool {
         let agora = self.agora_us;
         self.sessao
@@ -268,15 +248,13 @@ impl Macros {
             .is_some_and(|s| s.nasceu(sim, bits, agora))
     }
 
-    /// **A sprite que o Painter está a gravar**: o palco dela em cena cede-a ao traço vivo do editor
-    /// (uma 2.ª tomada sobre uma sprite com macro mostra o que o artista pinta, não a tomada antiga).
+    /// A sprite que o Painter grava: o palco dela cede-a ao traço vivo (não mostra a tomada antiga).
     #[must_use]
     pub fn sprite_gravada(&self) -> Option<u64> {
         self.sessao.as_ref().and_then(Sessao::sprite_gravada)
     }
 
-    /// A família da trilha que grava (o Painter primeiro); `None` também enquanto um objecto Macro está
-    /// armado sem nada aberto — ver [`Self::armado`].
+    /// A família que grava (Painter primeiro); `None` também com Macro armado sem trilha ([`Self::armado`]).
     #[must_use]
     pub fn gravando(&self) -> Option<FamiliaDaMacro> {
         self.sessao.as_ref().and_then(Sessao::familia)
@@ -288,8 +266,7 @@ impl Macros {
         self.sessao.is_some()
     }
 
-    /// **O quadro**: os pedidos por ordem, depois os passos que as famílias gravaram neste quadro.
-    /// `agora_us` é o relógio do chamador (o núcleo nunca lê o de parede).
+    /// O quadro: os pedidos por ordem, depois os passos gravados; `agora_us` é o relógio do chamador.
     pub fn quadro(&mut self, f: &mut Familias<'_>, c: &mut Cena<'_>, agora_us: u64) {
         self.agora_us = agora_us;
         for r in std::mem::take(&mut self.pedidos) {
@@ -299,8 +276,7 @@ impl Macros {
         if let Some(e) = self.conferencias.quadro(c) {
             self.erro_de_edicao = Some(e);
         }
-        // O Painter consumiu a entrada do quadro antes desta fase; o Motion corre DEPOIS dela
-        // ([`Macros::depois_do_motion`]).
+        // O Painter já consumiu a entrada; o Motion corre DEPOIS ([`Macros::depois_do_motion`]).
         if let Some(s) = self.sessao.as_mut() {
             s.quadro(f, c.sim, agora_us);
         }
@@ -311,11 +287,8 @@ impl Macros {
         ph2d_editor_core::kanban_links::publish_macros(nomes);
     }
 
-    /// **O clipe acompanha a macro**: a duração dele é DERIVADA da trilha que toca, e re-cronometra-se
-    /// a cada quadro enquanto ele tiver a forma que o Parar lhe deu
-    /// ([`TimelineDoc::macro_clip_identity_end`]). Uma só verdade (a `Macro`, no diff do mundo): o undo
-    /// do mundo devolve a macro antiga e o clipe segue-a no quadro seguinte, sem passo de undo
-    /// próprio que pudesse discordar.
+    /// O clipe acompanha a macro: duração DERIVADA, re-cronometrada enquanto tiver a forma do Parar
+    /// ([`TimelineDoc::macro_clip_identity_end`]). Uma só verdade (a `Macro`): sem undo próprio do clipe.
     fn sincroniza(&mut self, c: &mut Cena<'_>, outras: Injectadas<'_>) {
         let macros: Vec<(u64, Vec<u8>)> = {
             let mut q = c
@@ -401,9 +374,8 @@ impl Macros {
         }
     }
 
-    /// **A linha «Macro steps» da Timeline**: as etapas da `Macro` do dono do clipe activo, quando o
-    /// clipe activo é o da macro dele (o tempo do clipe é o da macro: a faixa Macro Time é a
-    /// identidade). Mesma cache do painel. `outras` = as etapas que a composição injecta.
+    /// A linha «Macro steps»: as etapas da `Macro` do dono do clipe activo quando é o clipe da macro
+    /// (Macro Time = identidade). Mesma cache do painel; `outras` = etapas injectadas.
     pub fn etapas_na_linha(
         &mut self,
         sim: &SimWorld,
@@ -448,9 +420,8 @@ impl Macros {
             .map(|(_, e)| e.clone())
     }
 
-    /// **O resumo do cartão MACRO do Inspector**: quantas etapas, a 1.ª editada e o erro — pela
-    /// MESMA cache e pela MESMA precedência do painel ([`Self::info`]: a edição recusada, depois a
-    /// reprodução em cena, depois a leitura). `None` = o objecto não tem `Macro`.
+    /// O resumo do cartão MACRO: mesma cache e precedência de [`Self::info`] (edição recusada ›
+    /// reprodução › leitura). `None` = sem `Macro`.
     pub fn resumo(
         &mut self,
         sim: &SimWorld,
@@ -471,8 +442,7 @@ impl Macros {
         })
     }
 
-    /// **O instantâneo do painel**. `escolhido` = os bits do objecto escolhido; `erro_em_cena` = o
-    /// erro do palco dele (a reprodução), que só a shell alcança.
+    /// O instantâneo do painel; `erro_em_cena` = o erro do palco do escolhido (só a shell o alcança).
     pub fn info(
         &mut self,
         f: &Familias<'_>,

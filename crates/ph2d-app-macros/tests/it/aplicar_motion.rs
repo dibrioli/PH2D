@@ -1,8 +1,5 @@
-//! W18 (`docs/Macros/16_W18_plano.md` §2.7): o lado MACROS de aplicar uma macro do Motion — novo e por
-//! cima. Nasce o mundo (o objecto Macro, o objecto Motion dentro dele), a porta do Motion
-//! (`TranspoeDaFamilia::aplica`) recebe o dono e a vida certos, a trilha que ela devolve é a instalada,
-//! e o clipe vive com o objecto Macro: o undo global tira-o, o refazer devolve-o. O lado do Motion (os
-//! nós no documento vivo, presos à vida) é de `ph2d-app-motion` (`macro_track/aplicar_tests.rs`).
+//! O lado MACROS de aplicar uma macro do Motion, novo e por cima (`docs/Macros/16_W18_plano.md` §2.7):
+//! `TranspoeDaFamilia::aplica` recebe dono e vida certos e o clipe vive com o objecto Macro.
 
 use ph2d_app_macros::aplicar::{self, Imagem, Portas};
 use ph2d_app_macros::{Cena, Familias};
@@ -207,9 +204,7 @@ fn registo() -> ComponentRegistry {
     reg
 }
 
-/// ⭐ Novo: o objecto Motion «Ondas» nasce dentro do objecto Macro, na pose da ficha; a porta do Motion
-/// recebe-o como dono e o objecto Macro como vida; a trilha dela é a instalada, e o clipe nasce sem
-/// passo próprio na Timeline. Um Ctrl+Z tira o clipe com o objecto, um Ctrl+Y devolve-o.
+/// ⭐ Novo: «Ondas» nasce dentro do objecto Macro (dono = ele, vida = a raiz); Ctrl+Z/Y tira e devolve.
 #[test]
 fn aplicar_novo_um_motion_faz_nascer_o_objecto_dentro_e_o_clipe_vive_com_ele() {
     let reg = registo();
@@ -263,8 +258,7 @@ fn aplicar_novo_um_motion_faz_nascer_o_objecto_dentro_e_o_clipe_vive_com_ele() {
     assert_eq!(p.clipes(), 1, "um Ctrl+Y devolve-o");
 }
 
-/// ⭐ Por cima de um objecto Motion: o objecto Macro é próprio, a porta recebe o ALVO como dono, a trilha
-/// toca nele; e um alvo que não é Motion recusa sem deixar nada no mundo.
+/// ⭐ Por cima: a porta recebe o ALVO como dono; um alvo não-Motion recusa sem deixar nada.
 #[test]
 fn aplicar_por_cima_um_motion_da_o_alvo_como_dono() {
     let mut p = Palco::default();
@@ -302,9 +296,7 @@ fn aplicar_por_cima_um_motion_da_o_alvo_como_dono() {
     assert_eq!(p.motion.0.len(), 1, "a porta do Motion não foi chamada");
 }
 
-/// ⭐ W19: uma continuação do Motion (`continua: Some(0)`) não passa outra vez pela porta de aplicar
-/// (que juntaria os nós de novo): vai à porta da continuação com o mesmo dono e a cadeia — a 1.ª
-/// trilha como veio e como ficou. Novo e por cima.
+/// ⭐ Uma continuação do Motion vai à porta da continuação (não junta os nós de novo). Novo e por cima.
 #[test]
 fn a_continuacao_do_motion_vai_a_porta_da_continuacao() {
     let mut fi = trilha(true);

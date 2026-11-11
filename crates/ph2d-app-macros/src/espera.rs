@@ -1,17 +1,12 @@
-//! **A edição de uma etapa que espera** (W14, `docs/Macros/12_W14_a_agua_depois_do_parar.md`): editar uma
-//! etapa pede uma conta que demora — a conferência da água gravada, ou a imagem do fim nova e a água do
-//! editor parada (W8 2b, até 120 s). A edição e o que essa conta escreve são UM passo do desfazer; o que o
-//! artista faz entretanto são os passos DELE.
-//!
-//! A shell chama isto em três sítios fixos do desfazer global: por quadro ([`EdicaoQueEspera::quadro`]),
-//! no que fotografa ([`EdicaoQueEspera::a_comparar`]) e em volta de um Ctrl+Z/Ctrl+Y
-//! ([`EdicaoQueEspera::antes_de_desfazer`], [`EdicaoQueEspera::restaurado`]).
+//! **A edição de uma etapa que espera** (`docs/Macros/12_W14_a_agua_depois_do_parar.md`): a conta que
+//! demora (até 120 s) e a edição são UM passo do desfazer; o que o artista faz entretanto é DELE. A shell
+//! chama-o por quadro ([`EdicaoQueEspera::quadro`]), no que fotografa ([`EdicaoQueEspera::a_comparar`])
+//! e no Ctrl+Z/Y ([`EdicaoQueEspera::antes_de_desfazer`], [`EdicaoQueEspera::restaurado`]).
 
 use std::collections::BTreeMap;
 
-/// O estado do projeto que o desfazer global fotografa, visto daqui: o `Macro` de cada objecto.
-/// **Os objectos (`StableId`) cuja edição de etapa espera a conta dela**: os `bits` que a composição
-/// alcança (a reescrita do Painter em cena) mais as conferências desta família, por ordem, sem repetir.
+/// Os objectos (`StableId`) cuja edição espera a conta: os `bits` da composição mais as conferências
+/// desta família, por ordem, sem repetir.
 #[must_use]
 pub fn os_que_esperam(world: &ph2d_ecs::World, bits: impl IntoIterator<Item = u64>) -> Vec<u64> {
     let conferir = crate::com(|m| m.a_conferir_em());
@@ -29,6 +24,7 @@ pub fn os_que_esperam(world: &ph2d_ecs::World, bits: impl IntoIterator<Item = u6
     ids
 }
 
+/// O estado do projeto que o desfazer global fotografa, visto daqui: o `Macro` de cada objecto.
 pub trait EstadoComMacros: Clone {
     /// Os bytes do componente `Macro` do objecto `id` (`StableId`), se ele o tem.
     fn macro_de(&self, id: u64) -> Option<Vec<u8>>;
@@ -36,11 +32,8 @@ pub trait EstadoComMacros: Clone {
     fn com_macro(&mut self, id: u64, m: Option<Vec<u8>>);
 }
 
-/// **As edições de etapa à espera da conta delas** — «a flutuar» por cima da pilha: o baseline e cada passo
-/// registado na espera são fotografados SEM elas (o `Macro` de antes), e quando a conta acaba a edição e o
-/// que ela escreveu entram num passo só, no topo. ⛔ Recusado: suprimir o desfazer na espera (W8) — o que o
-/// artista fazia fundia-se com a edição; e emendar os passos já registados com a imagem que chega (o
-/// Painter tem a pilha dele, e um passo dele por baixo de traços do artista não se desfaz fora de ordem).
+/// **As edições à espera** «a flutuar» sobre a pilha: tudo se fotografa SEM elas, e ao acabar a conta
+/// entram num passo só, no topo. ⛔ Recusado: suprimir o desfazer na espera, e emendar passos já feitos.
 #[derive(Debug, Default)]
 pub struct EdicaoQueEspera {
     /// O `Macro` de antes da edição, por objecto (`StableId`).
@@ -50,9 +43,8 @@ pub struct EdicaoQueEspera {
 }
 
 impl EdicaoQueEspera {
-    /// **Por quadro, antes do passo**: `esperam` = os objectos cuja edição ainda espera; `base` = o
-    /// baseline do desfazer. `true` = uma espera acabou e o passo regista-se já (mesmo sem entrada: senão
-    /// a edição fundia-se com a acção seguinte).
+    /// Por quadro, antes do passo: `true` = uma espera acabou e o passo regista-se já (mesmo sem
+    /// entrada: senão fundia-se com a acção seguinte).
     pub fn quadro<S: EstadoComMacros>(&mut self, esperam: &[u64], base: Option<&S>) -> bool {
         let n = self.antes.len();
         self.antes.retain(|id, _| esperam.contains(id));
@@ -95,8 +87,7 @@ impl EdicaoQueEspera {
         }
     }
 
-    /// **Antes de um Ctrl+Z** (`redo == false`) ou Ctrl+Y: `true` = o Ctrl+Z é da edição que espera (nada
-    /// se registou por cima dela) — a shell regista-a já como passo próprio e desfá-lo; a espera acaba.
+    /// Antes de um Ctrl+Z/Y: `true` = o Ctrl+Z é da edição que espera (a shell regista-a e desfá-la).
     pub fn antes_de_desfazer(&mut self, redo: bool) -> bool {
         if !self.espera() {
             return false;
@@ -113,8 +104,7 @@ impl EdicaoQueEspera {
         false
     }
 
-    /// **Depois de restaurar** `restaurado` (o passo que saiu da pilha), sendo `atual` o estado de antes
-    /// do Ctrl+Z: o estado a aplicar (com as edições que esperam, como estão) e o baseline novo (sem elas).
+    /// Depois de restaurar: o estado a aplicar (com as edições que esperam) e o baseline novo (sem elas).
     #[must_use]
     pub fn restaurado<S: EstadoComMacros>(&self, restaurado: &S, atual: &S) -> (S, S) {
         let mut aplica = restaurado.clone();

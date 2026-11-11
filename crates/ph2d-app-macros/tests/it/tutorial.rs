@@ -1,7 +1,5 @@
-//! ⭐ **O tutorial «fazer» na família MACROS** (`docs/Macros/03_plano_W6.md`, W6a): com uma família de
-//! brinquedo que ensina três etapas — o balão pede primeiro o modo Edit, depois a 1.ª etapa por
-//! cumprir; «Mostra-me» chega à família com a etapa corrente; o estado que volta (o Ctrl+Z) volta o
-//! balão; «Recomeçar» chega à família; uma `Macro` que não está em `Fazer` não tem balão.
+//! ⭐ **O tutorial «fazer»** (`docs/Macros/03_plano_W6.md`) com uma família de brinquedo de três
+//! etapas: Edit, a 1.ª por cumprir, «Mostra-me»/«Recomeçar», Ctrl+Z; sem `Fazer`, sem balão.
 
 use ph2d_a11y::NodeId;
 use ph2d_app_macros::{Cena, Familias, Macros};
@@ -264,9 +262,7 @@ fn fora_do_modo_fazer_nao_ha_balao() {
     }
 }
 
-/// ⭐ **A dica do Motion lê-se uma vez por versão** (W7; `03_plano_W6.md` §6.4 deixava-a por quadro):
-/// com o balão na etapa que tem o texto do autor, quadros com os mesmos bytes não descodificam a
-/// trilha; uma versão nova (outra dica) lê-se no quadro seguinte.
+/// ⭐ **A dica do Motion lê-se uma vez por versão**: os mesmos bytes não descodificam a trilha.
 #[test]
 fn a_dica_do_motion_le_se_uma_vez_por_versao() {
     let mut b = Banca::nova(ModoDaMacro::Fazer);

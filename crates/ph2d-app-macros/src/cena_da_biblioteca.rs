@@ -1,17 +1,8 @@
-//! `PH2D_MACRO_SMOKE=7` — **a biblioteca, o caminho inteiro, feito pelo app sozinho** (W18,
-//! `docs/Macros/16_W18_plano.md` §6): Add ▸ Macro, Gravar, uma imagem nova dentro dele e duas pinceladas
-//! de cores diferentes, Parar, Guardar na biblioteca, Exportar, apagar tudo, Importar, Aplicar ▸ Criar
-//! novo (toca), e uma imagem maior com Aplicar ▸ Por cima, o objecto Macro rodado e movido (toca).
-//!
-//! Só portas de produto: o «+» da Hierarchy e o clique no menu, o pedido do modal de imagem nova, o modo
-//! Paint, o seletor de cor do pincel, o ponteiro da tela, os mesmos [`MacroRequest`] que o painel MACROS
-//! envia (o diálogo de ficheiro responde-se pela porta [`ph2d_app_host::modal::responde_o_proximo`]), o
-//! `Delete` da Hierarchy, o Inspector (a pose) e o Play da barra de cima. Cada passo diz no ecrã o que é.
-//!
-//! O [`roteiro`] e os [`pedido`]/[`pose`] são os mesmos na shell e na sonda sem placa
-//! (`tests/it/cena_da_biblioteca.rs`, o gate `a_cena_7_percorre_o_caminho_inteiro`).
-//!
-//! A cena `=8` (W19, [`crate::cena_do_mundo`]) corre neste mesmo condutor, com o roteiro dela.
+//! `PH2D_MACRO_SMOKE=7` — **a biblioteca, o caminho inteiro, pelo app sozinho**
+//! (`docs/Macros/16_W18_plano.md` §6): gravar uma imagem com duas pinceladas, guardar, exportar, apagar,
+//! importar, aplicar novo e por cima (rodado e movido). Só portas de produto (os [`MacroRequest`] do
+//! painel; o diálogo por [`ph2d_app_host::modal::responde_o_proximo`]). O [`roteiro`], [`pedido`] e
+//! [`pose`] são os mesmos na sonda sem placa. A `=8` ([`crate::cena_do_mundo`]) usa este condutor.
 
 use crate::Macros;
 use ph2d_ecs::{Entity, SimWorld, Transform};
@@ -123,8 +114,7 @@ fn pincelada(r: &mut Vec<(u64, Passo)>, t0: u64, v: f32) {
     r.push((t0 + 900 + PASSO_MS, Passo::Sobe));
 }
 
-/// **O roteiro**: cada passo e o instante (ms do relógio da cena), por ordem. As pausas dão para ver;
-/// a gravação é curta (a reprodução dura o mesmo).
+/// **O roteiro**: cada passo e o instante (ms do relógio da cena), por ordem.
 #[must_use]
 pub fn roteiro() -> Vec<(u64, Passo)> {
     use Passo as P;
@@ -209,7 +199,7 @@ pub struct Estado {
     pub maior: Option<u64>,
     /// O nome com que o Importar a deixou na biblioteca (a que se aplica).
     pub importada: Option<String>,
-    /// A cor que o seletor aberto escolhe (o fecho escreve-a outra vez: o pincel lê-a no fecho).
+    /// A cor do seletor aberto (o fecho reescreve-a: o pincel lê-a no fecho).
     cor: Option<ph2d_tokens::ColorValue>,
 }
 
@@ -226,8 +216,7 @@ impl Estado {
     }
 }
 
-/// **O pedido ao painel MACROS de um passo** (o que o botão dele envia), com o diálogo respondido.
-/// `None` = o passo não é do painel.
+/// O pedido do botão do painel MACROS para o passo, com o diálogo respondido (`None` = não é dele).
 pub fn pedido(p: Passo, m: &mut Macros, e: &mut Estado) -> Option<MacroRequest> {
     // A importada: a frase do Importar diz o nome com que ficou (a lista ordena por nome).
     if let Some(a) = m.aviso().filter(|a| a.chave == m::MACRO_LIB_IMPORTADA) {
@@ -307,8 +296,7 @@ thread_local! {
     static CENA: std::cell::RefCell<Option<Condutor>> = const { std::cell::RefCell::new(None) };
 }
 
-/// **Os passos que vencem neste quadro** (o 1.º quadro arma a cena: a biblioteca numa pasta de teste,
-/// nunca a do dono, salvo `PH2D_MACROS_DIR`).
+/// Os passos que vencem neste quadro (a biblioteca é de teste, nunca a do dono, salvo `PH2D_MACROS_DIR`).
 pub fn vencidos() -> (u64, Vec<Passo>) {
     CENA.with(|c| {
         let mut c = c.borrow_mut();
@@ -358,8 +346,7 @@ impl Passo {
     }
 }
 
-/// **A imagem maior** (branca, [`MAIOR`]) ou **o chão** da `=8` ([`Passo::Chao`]) pela porta de produto
-/// do aplicar (`nasce`: o atlas e o `AssetDb`); devolve os bits e guarda-os.
+/// A imagem maior ([`MAIOR`]) ou o chão ([`Passo::Chao`]) pela porta de produto; guarda os bits.
 pub fn nasce_a_maior(
     p: Passo,
     sim: &mut SimWorld,
@@ -413,9 +400,7 @@ impl Passo {
     }
 }
 
-/// **O passo pelas portas que o `HeroScreen` tem** (o menu, o modal, o modo, o seletor, o painel, o
-/// Inspector, o transporte, a frase). Devolve o passo quando é da shell (o ponteiro, o `Delete`, a
-/// imagem maior).
+/// O passo pelas portas do `HeroScreen`; devolve-o quando é da shell (ponteiro, `Delete`, imagem).
 pub fn faz(
     p: Passo,
     hero: &mut HeroScreen,

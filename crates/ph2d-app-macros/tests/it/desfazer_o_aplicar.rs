@@ -1,8 +1,5 @@
-//! **Desfazer e refazer o aplicar devolve a pintura** (W18): o restauro do undo respawna o mundo do
-//! instantâneo (`ProjectState::restore` da shell: tira tudo o que tem `Transform`, `snapshot_to_world`)
-//! e a imagem volta com bits novos — o documento do Painter passa a eles pela identidade estável
-//! ([`ReataPorIdentidade`] e `PainterTool::reata_documentos`, as duas portas que o `Reata` da família
-//! Painter junta à volta do restauro da shell). Sem elas a imagem mostraria só o atlas.
+//! **Desfazer e refazer o aplicar devolve a pintura**: a imagem volta com bits novos e o documento
+//! passa a eles pela identidade estável ([`ReataPorIdentidade`], `PainterTool::reata_documentos`).
 
 use crate::aplicar::{banca, grava, pasta};
 use ph2d_ecs::scene::{ComponentRegistry, WorldSnapshot, incremental, snapshot_to_world};

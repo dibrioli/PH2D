@@ -1,13 +1,6 @@
-//! **Gravar de novo toca no Play de cima** (smoke do dono, 18/10, `docs/Macros/handoffs/
-//! HANDOFF_CONTINUACAO_W9_SMOKE_REPROVADO_2026-10-18.md`): o Play da barra de cima corre a cena e só toca os
-//! clipes em Autoplay. A 1.ª gravação de um objecto sem outra entrada cria o clipe em Autoplay; uma
-//! gravação sobre um objecto que já tem o clipe da macro re-cronometrava-o e deixava-lhe o Autoplay de
-//! antes — desligado (a cena `=5`, ou o artista que o desligou), o Play de cima não tocava a gravação
-//! nova e a tela mostrava a imagem final: «os dois traços aparecem de uma vez».
-//!
-//! **A entrada que o artista marcou fica** (decisão de 18/10, handoff W9 §8 item 4): o clipe da macro só
-//! ganha o Autoplay se nenhum OUTRO clipe do objecto já é a entrada — na 1.ª tomada e nas seguintes, no
-//! Painter e no Motion (as duas passam pelo mesmo `instala`).
+//! **Gravar de novo toca no Play de cima** (só toca clipes em Autoplay): cada tomada passa o Autoplay ao
+//! clipe da macro. **A entrada que o artista marcou fica**: só o ganha se nenhum OUTRO clipe do objecto
+//! é a entrada — em cada tomada, no Painter e no Motion (o mesmo `instala`).
 
 use crate::gate7::Banca;
 use ph2d_panel_macros::ids;
@@ -133,9 +126,7 @@ fn sem_outra_entrada_o_motion_tambem_sai_do_parar_em_autoplay() {
     }
 }
 
-/// O clipe da macro RENOMEADO (o artista dá-lhe outro nome) continua a tocar a macro do objecto: não é
-/// uma entrada «do artista» — o Parar seguinte cria o clipe novo e passa-lhe o Autoplay, para o Play de
-/// cima tocar a gravação nova com o tempo dela (auditoria do fecho de 18/10).
+/// O clipe da macro RENOMEADO não é entrada «do artista»: o Parar seguinte passa o Autoplay ao novo.
 #[test]
 fn o_clipe_da_macro_renomeado_nao_segura_a_entrada_contra_a_gravacao_nova() {
     let mut b = Banca::nova();

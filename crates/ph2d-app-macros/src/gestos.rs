@@ -1,6 +1,5 @@
-//! **Os gestos da biblioteca** (W18, `docs/Macros/16_W18_plano.md` §2.5–2.7): guardar, aplicar,
-//! renomear, apagar, exportar, importar, guardar como asset — e o que o painel mostra dela.
-//! A pasta e o disco são de [`crate::biblioteca`]; aplicar é de [`crate::aplicar`].
+//! **Os gestos da biblioteca** (`docs/Macros/16_W18_plano.md` §2.5–2.7) e o que o painel mostra dela;
+//! o disco é de [`crate::biblioteca`], aplicar de [`crate::aplicar`].
 
 use crate::aplicar::{self, Portas};
 use crate::biblioteca::{self as bib, Biblioteca};
@@ -18,8 +17,7 @@ use std::path::{Path, PathBuf};
 #[derive(Default)]
 pub(crate) struct Casa {
     pasta: Option<PathBuf>,
-    /// Sem pasta injectada, a do utilizador — só no `Macros` do app ([`Macros::do_utilizador`]): o
-    /// `Default` não tem disco, e um teste que não injecta nunca lista a biblioteca do dono.
+    /// Sem pasta injectada, a do utilizador — só em [`Macros::do_utilizador`] (o `Default` não tem disco).
     do_utilizador: bool,
     lida: Option<(Biblioteca, Vec<MacroDaBibliotecaView>)>,
     aviso: Option<ErroDaMacroView>,
@@ -70,9 +68,7 @@ fn vista(f: &Ficheiro, nome: &str) -> MacroDaBibliotecaView {
     }
 }
 
-/// **A receita de um objecto Macro nos assets do projecto** (ADR-0164, plano §2.6): uma entidade com
-/// `Name` + `Macro` + `MasterRoot` — o mestre de que o painel de Assets instancia. Devolve os bits.
-///
+/// **A receita de um objecto Macro nos assets** (ADR-0164): `Name` + `Macro` + `MasterRoot`; os bits.
 /// # Errors
 /// [`m::MACRO_LIB_SEM_GRAVACAO`].
 pub fn guarda_como_asset(sim: &mut SimWorld, bits: u64) -> Result<u64, ErroDaMacroView> {
@@ -96,8 +92,7 @@ pub fn guarda_como_asset(sim: &mut SimWorld, bits: u64) -> Result<u64, ErroDaMac
     Ok(r)
 }
 
-/// O objecto `bits` é uma receita de macro (um mestre com gravação) — o duplo-clique e o arrasto do
-/// painel de Assets aplicam-na em vez de instanciar.
+/// O objecto `bits` é uma receita de macro: o painel de Assets aplica-a em vez de instanciar.
 #[must_use]
 pub fn e_receita(sim: &SimWorld, bits: u64) -> bool {
     Entity::try_from_bits(bits)
@@ -107,9 +102,8 @@ pub fn e_receita(sim: &SimWorld, bits: u64) -> bool {
         })
 }
 
-/// **O verbo de USAR do painel de Assets sobre uma receita de macro** (duplo-clique, arrasto): aplica-a
-/// no próximo quadro — por cima de `sobre` se ele a recebe, senão nova em `em`. `false` = o `StableId`
-/// `sid` não é uma receita de macro (o verbo segue para o instanciar de sempre).
+/// O verbo USAR de Assets numa receita: aplica-a no próximo quadro (por cima de `sobre`, senão nova em
+/// `em`). `false` = `sid` não é receita (segue o instanciar).
 pub fn aplica_se_receita(
     sim: &mut SimWorld,
     sid: u64,
@@ -189,8 +183,7 @@ impl Macros {
     }
 
     fn ficheiro_da_biblioteca(&mut self, nome: &str) -> Result<Ficheiro, ErroDaMacroView> {
-        // O frame lê a biblioteca logo no 1.º quadro (as ligações do Kanban): um nome que a cache não
-        // tem relê o disco uma vez — o ficheiro posto lá por fora depois dessa leitura também conta.
+        // Um nome que a cache não tem relê o disco uma vez (o ficheiro posto por fora também conta).
         if self.lida().0.procura(nome).is_none() {
             self.biblioteca.lida = None;
         }
@@ -201,9 +194,7 @@ impl Macros {
             .ok_or_else(|| erro_com(m::MACRO_LIB_NAO_HA, nome.to_owned()))
     }
 
-    /// **Exportar** a macro `nome` para `destino` (o caminho que o diálogo deu): provada a tocar até ao
-    /// fim, a do Motion só com o grafo do dono. Devolve o caminho escrito.
-    ///
+    /// **Exportar** `nome` para `destino`, provada a tocar até ao fim; devolve o caminho escrito.
     /// # Errors
     /// O porquê — nada se escreve.
     pub fn exporta_para(
@@ -219,7 +210,6 @@ impl Macros {
     }
 
     /// **Importar** o ficheiro `origem` para a biblioteca; devolve o nome com que ficou.
-    ///
     /// # Errors
     /// O porquê.
     pub fn importa_de(&mut self, origem: &Path) -> Result<String, ErroDaMacroView> {
@@ -229,7 +219,6 @@ impl Macros {
     }
 
     /// **Guardar** a gravação do objecto Macro `bits` na biblioteca, com o nome dele (livre).
-    ///
     /// # Errors
     /// O porquê.
     pub fn guarda(&mut self, sim: &SimWorld, bits: u64) -> Result<String, ErroDaMacroView> {
@@ -241,14 +230,12 @@ impl Macros {
         Ok(nome)
     }
 
-    /// **A receita `bits` do painel de Assets** (duplo-clique ou arrasto): aplica-se no próximo quadro,
-    /// por cima de `sobre` se ele a recebe, senão nova em `em`.
+    /// A receita `bits` de Assets aplica-se no próximo quadro (por cima de `sobre`, senão em `em`).
     pub fn aplica_receita(&mut self, bits: u64, em: Option<[f32; 2]>, sobre: Option<u64>) {
         self.biblioteca.receitas.push((bits, em, sobre));
     }
 
-    /// **O objecto a escolher** depois do quadro: o objecto Macro que um aplicar fez nascer (novo ou
-    /// por cima). Uma vez.
+    /// O objecto a escolher depois do quadro: o Macro que um aplicar fez nascer (uma vez).
     pub fn toma_o_aplicado(&mut self) -> Option<u64> {
         self.biblioteca.aplicado.take()
     }

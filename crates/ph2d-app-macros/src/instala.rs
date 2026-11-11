@@ -1,5 +1,4 @@
-//! **O objecto fica com a `Macro` e o clipe** — o fim do Gravar ▸ Parar, e o que uma edição que muda
-//! a duração ressincroniza.
+//! **O objecto fica com a `Macro` e o clipe** — o fim do Parar, e a ressincronia de uma edição.
 
 use crate::Cena;
 use crate::etapas::Injectadas;
@@ -16,9 +15,8 @@ pub fn clipe_de(doc: &TimelineDoc, dono: u64) -> Option<usize> {
     doc.clip_named(dono, ph2d_i18n::tr(NOME_DO_CLIPE))
 }
 
-/// **A duração da macro QUE TOCA**, em segundos: o fim da trilha efectiva mais longa. ⚠️ Não é o
-/// `MacroDoc::duration`, que lê a gravação imutável — uma espera editada muda o que toca, não o que
-/// se gravou, e o clipe tem de acabar onde a reprodução acaba.
+/// **A duração da macro QUE TOCA** (s). ⚠️ Não é `MacroDoc::duration` (a gravação imutável): uma
+/// espera editada muda o que toca, e o clipe acaba onde a reprodução acaba.
 #[must_use]
 pub fn segundos(doc: &MacroDoc, outras: Injectadas<'_>) -> f64 {
     let fim = doc
@@ -40,7 +38,6 @@ pub fn segundos(doc: &MacroDoc, outras: Injectadas<'_>) -> f64 {
 }
 
 /// Grava `doc` no objecto `dono` (substitui a `Macro` que ele tinha) e cria ou re-cronometra o clipe.
-///
 /// # Errors
 /// A chave da frase: o clipe não coube na animação.
 pub fn instala(
@@ -50,18 +47,15 @@ pub fn instala(
     doc: &MacroDoc,
     modo: ModoDaMacro,
 ) -> Result<usize, &'static str> {
-    // Criar ou re-cronometrar o clipe é UM passo da pilha da Timeline (o undo dos clipes é o dela);
-    // a `Macro` entra no diff do mundo. O clipe da macro fica ACTIVO: a linha «Macro steps» mostra-se.
+    // O clipe é UM passo da pilha da Timeline; a `Macro` entra no diff do mundo. O clipe fica ACTIVO.
     c.timeline.history.begin(&c.timeline.doc);
     let r = instala_nascido(c, outras, dono, doc, modo);
     c.timeline.history.commit_if_changed(&c.timeline.doc);
     r
 }
 
-/// [`instala`] num objecto Macro que nasceu NESTE gesto (aplicar): o clipe sem passo próprio na
-/// Timeline — vive e morre com o dono (a purga e a ressurreição do cemitério dela), e o aplicar
-/// inteiro é UM Ctrl+Z do undo global.
-///
+/// [`instala`] num objecto Macro nascido NESTE gesto: o clipe sem passo próprio (vive e morre com o
+/// dono); o aplicar inteiro é UM Ctrl+Z.
 /// # Errors
 /// A chave da frase: o clipe não coube na animação.
 pub fn instala_nascido(
@@ -83,10 +77,8 @@ pub fn instala_nascido(
     r
 }
 
-/// **O laço que TOCA re-arma-se** (A4, W9): o documento guarda o laço do clipe, mas quem faz o laço é a
-/// cópia viva no relógio da vista — e essa só se arma por uma intenção. A mesma porta do arrasto da
-/// régua (`SetLoop`), com o laço que o documento já tem. O laço da macro é o da aba Keys; na Arrange a
-/// troca de aba re-arma o relógio do clipe (`sync_transport_loop`) e o laço do Arrange não é dela.
+/// **O laço que TOCA re-arma-se**: a cópia viva no relógio só se arma por intenção (`SetLoop`, a porta
+/// da régua) com o laço do documento. É o da aba Keys (na Arrange, `sync_transport_loop`).
 pub(crate) fn rearma_o_laco(tl: &TimelineState, intents: &mut Vec<TimelineIntent>) {
     if !tl.keys_mode {
         return;
@@ -113,9 +105,8 @@ fn clipe(tl: &mut TimelineDoc, dono: u64, d: f64) -> Result<usize, &'static str>
     Ok(clip)
 }
 
-/// **O clipe de uma cena de `PH2D_MACRO_SMOKE`** sobre a macro de `dono` com `d` segundos: activo, o
-/// laço `[0, d]`, e o Autoplay só se a cena não abre parada ([`crate::a_cena_abre_parada`]). `false` = o
-/// clipe não coube.
+/// O clipe de uma cena de smoke: activo, laço `[0, d]`, Autoplay salvo [`crate::a_cena_abre_parada`]
+/// (`false` = não coube).
 pub fn clipe_da_cena(tl: &mut TimelineDoc, dono: u64, d: f64, parada: bool) -> bool {
     let Ok(clip) = tl.add_macro_clip(ph2d_i18n::tr(NOME_DO_CLIPE).to_owned(), dono, d) else {
         return false;
@@ -126,10 +117,8 @@ pub fn clipe_da_cena(tl: &mut TimelineDoc, dono: u64, d: f64, parada: bool) -> b
     true
 }
 
-/// **O Autoplay do Parar não rouba a entrada do artista** (decisão de 18/10, handoff W9 §8 item 4): o clipe
-/// da macro passa a ser a entrada — o Play de cima toca a gravação nova, em qualquer tomada — só quando
-/// nenhum OUTRO clipe do objecto o é; o `set_autoplay` desligaria esse outro. Um clipe que toca a macro
-/// (uma tomada antiga renomeada) não é a escolha do artista: esse cede.
+/// **O Autoplay do Parar não rouba a entrada do artista**: o clipe da macro só é a entrada se nenhum
+/// OUTRO clipe do objecto o é; um que toca a macro (tomada antiga) não é escolha do artista e cede.
 fn entra_se_ninguem_entra(tl: &mut TimelineDoc, dono: u64, clip: usize) {
     if tl
         .entry_clip_of(dono)
@@ -148,8 +137,7 @@ fn toca_a_macro(tl: &TimelineDoc, c: usize, dono: u64) -> bool {
     })
 }
 
-/// As durações que tocam, por objecto — refeitas só quando os bytes da `Macro` mudam (a sincronização
-/// do clipe corre a cada quadro).
+/// As durações que tocam, por objecto — refeitas só quando os bytes da `Macro` mudam.
 #[derive(Default)]
 pub struct Duracoes(std::collections::BTreeMap<u64, (Vec<u8>, f64)>);
 

@@ -1,17 +1,11 @@
-//! **Aplicar uma macro** (W18, `docs/Macros/16_W18_plano.md` §2.5–2.7; decisões do dono 23/10, 3–6) —
-//! UMA porta para o painel MACROS (`MacroRequest::Aplica`) e para o painel de Assets (a receita largada
-//! ou aberta com duplo-clique): [`aplica`].
+//! **Aplicar uma macro** (`docs/Macros/16_W18_plano.md` §2.5–2.7): UMA porta, [`aplica`], para o painel
+//! MACROS e para o de Assets.
+//! - **Novo**: nasce o objecto Macro e, dentro dele, o que cada trilha com ficha criou (a imagem por
+//!   [`Portas::imagem`] com o documento do FIM; o Motion com os nós); os alvos reescrevem-se.
+//! - **Por cima**: nasce na pose do alvo; o Painter pinta no alvo (o tamanho gravado fica no inicial),
+//!   o Motion junta os nós aos do alvo.
 //!
-//! - **Novo**: nasce o objecto Macro (o `spawn_root` do Add) e, dentro dele, o que cada trilha com ficha
-//!   criou — a imagem pela porta de produto da composição ([`Portas::imagem`]) com o documento do FIM
-//!   da reprodução instalado no Painter; o objecto Motion com os nós da macro no documento vivo. Os
-//!   alvos das trilhas reescrevem-se para os objectos novos e a `Macro` instala-se com o clipe.
-//! - **Por cima**: o objecto Macro nasce na pose do alvo; a trilha do Painter passa a ter o alvo como
-//!   tela (o tamanho gravado fica no inicial, etiqueta 6 — o encaixe vivo lê o gizmo a cada quadro), a
-//!   do Motion junta os nós dela aos do alvo.
-//!
-//! E o ficheiro que sai ([`para_exportar`]): cada trilha provada a tocar até ao fim, a do Motion só com
-//! o grafo do dono. Falhou ⇒ nada se escreve, e o `aviso` diz porquê.
+//! [`para_exportar`]: cada trilha provada a tocar até ao fim; falhou ⇒ nada se escreve.
 
 use crate::{Cena, Familias};
 use ph2d_ecs::{ChildOf, Entity, Macro, ModoDaMacro, Name, SimWorld, StableId, Transform};
@@ -64,20 +58,16 @@ pub struct Portas<'a> {
     pub registo: &'a ph2d_ecs::scene::ComponentRegistry,
     /// Os bytes de um recurso pelo id de conteúdo (o `AssetDb`): o que a família «mundo» embute.
     pub recurso: &'a dyn Fn(&[u8; 32]) -> Option<Vec<u8>>,
-    /// Põe píxeis crus (RGBA reto) no `AssetDb` do destino e devolve o id que lá têm: as folhas extra de um Animated
-    /// (plano GEF 26 F12), que são só o nome de uma imagem.
+    /// Põe RGBA reto no `AssetDb` do destino e devolve o id (as folhas extra de um Animated).
     pub poe_recurso: &'a dyn Fn(Rgba) -> [u8; 32],
-    /// O remapeador das referências entre objectos (`StableId` antigo → novo) da composição — a tabela
-    /// da casa (`ph2d_app_components::instance_refs::remap_object_refs`); devolve quantos mudou.
+    /// O remapeador `StableId` antigo → novo (`instance_refs::remap_object_refs`); devolve quantos mudou.
     pub remapeia: &'a Remapeia,
 }
 
 /// O remapeador das referências entre objectos: o mundo, as entidades e o mapa de `StableId`.
 pub type Remapeia = dyn Fn(&mut ph2d_ecs::World, &[Entity], &BTreeMap<u64, u64>) -> usize;
 
-/// **A família de uma trilha**, pela chave: o Painter e o mundo são desta crate, as outras chegam pela
-/// composição (`outras`). Uma chave que ninguém conhece recusa-se pelo nome — nunca se toca como outra.
-///
+/// A família de uma trilha, pela chave (`outras` = da composição); chave desconhecida recusa-se.
 /// # Errors
 /// [`m::MACRO_FAMILIA_DESCONHECIDA`] com a chave.
 pub fn familia(
@@ -127,7 +117,6 @@ fn nao_toca(e: &ErroDaMacroView) -> ErroDaMacroView {
 }
 
 /// **A gravação do objecto `bits` como ficheiro**: o nome é o do objecto, o modo o do componente.
-///
 /// # Errors
 /// [`m::MACRO_LIB_SEM_GRAVACAO`] (sem `Macro` ou vazia) · o ficheiro não se lê.
 pub fn ficheiro_de(sim: &SimWorld, bits: u64) -> Result<Ficheiro, ErroDaMacroView> {
@@ -145,9 +134,8 @@ pub fn ficheiro_de(sim: &SimWorld, bits: u64) -> Result<Ficheiro, ErroDaMacroVie
     })
 }
 
-/// **O ficheiro que sai do PH2D**: cada trilha provada a tocar até ao fim num tocador limpo (o Painter
-/// pelo [`fim::documento_no_fim`], o Motion pela porta dele, que também a reduz ao grafo do dono).
-///
+/// O ficheiro que sai: cada trilha provada a tocar até ao fim ([`fim::documento_no_fim`]; o Motion
+/// reduzido ao grafo do dono).
 /// # Errors
 /// [`m::MACRO_LIB_NAO_TOCA`] com o porquê — nada se escreve.
 pub fn para_exportar(
@@ -223,9 +211,8 @@ fn desfaz(sim: &mut SimWorld, nascidos: &[u64]) {
     }
 }
 
-/// **As imagens que as trilhas do Painter do objecto Macro `raiz` pintam** (bits, cada uma uma vez: a
-/// continuação pinta a mesma). O documento do Painter é de 8 bits: a composição avisa a precisão de
-/// cada uma que seja de 16.
+/// As imagens que as trilhas do Painter de `raiz` pintam, cada uma 1× (o documento é de 8 bits: a
+/// composição avisa as de 16).
 #[must_use]
 pub fn imagens_que_pinta(sim: &SimWorld, raiz: u64) -> Vec<u64> {
     let Ok(fi) = ficheiro_de(sim, raiz) else {
@@ -242,10 +229,8 @@ pub fn imagens_que_pinta(sim: &SimWorld, raiz: u64) -> Vec<u64> {
     imagens.into_iter().collect()
 }
 
-/// **O alvo recebe esta macro por cima?** — `Ok(família)`, ou a chave do porquê não. As trilhas do
-/// mundo não contam para o «misto»: vão para dentro do objecto Macro; uma macro só do mundo serve
-/// qualquer objecto (`Ok(Mundo)`).
-///
+/// O alvo recebe esta macro por cima? As trilhas do mundo não contam para o «misto»; só do mundo
+/// serve qualquer objecto (`Ok(Mundo)`).
 /// # Errors
 /// [`m::MACRO_APLICAR_MISTO`] · [`m::MACRO_APLICAR_INCOMPATIVEL`] · [`m::MACRO_APLICAR_SEM_ALVO`] ·
 /// [`m::MACRO_FAMILIA_DESCONHECIDA`].
@@ -292,7 +277,6 @@ pub fn compativel(
 }
 
 /// **A porta única de aplicar**: devolve os bits do objecto Macro nascido.
-///
 /// # Errors
 /// A chave da frase (e o detalhe) — o mundo fica como estava.
 pub fn aplica(
@@ -321,8 +305,7 @@ pub fn aplica(
     Ok(raiz)
 }
 
-/// **Aplicar sem placa** (os gates que só a composição alcança): a imagem nasce como a porta de produto
-/// a deixa no mundo, sem o atlas — os píxeis são do documento do Painter.
+/// Aplicar sem placa (gates): a imagem nasce sem atlas; os píxeis são do documento do Painter.
 #[cfg(feature = "test-support")]
 pub fn sem_placa(
     fi: &Ficheiro,
@@ -399,8 +382,7 @@ fn ultima_da_imagem(doc: &MacroDoc, k: usize) -> &Track {
         .unwrap_or(&doc.tracks[k])
 }
 
-/// O que a trilha `k` do Painter cria: a imagem do FIM da reprodução (o da última continuação), com o
-/// documento no Painter.
+/// A imagem da trilha `k` do Painter: a do FIM (da última continuação), com o documento no Painter.
 fn nasce_a_imagem(
     doc: &MacroDoc,
     k: usize,
@@ -460,8 +442,7 @@ fn novo(
             .all(|(t, x)| *x == Mundo || (t.nasce.is_none() && t.continua.is_none()));
         let primeira = fams.iter().position(|x| *x != Mundo);
         let raiz = if legado && let Some(p) = primeira {
-            // Uma gravação de antes da W18 (sem fichas): o objecto Macro É o objecto da trilha — e só
-            // uma por família diz qual.
+            // Sem fichas: o objecto Macro É o da trilha (só uma por família diz qual).
             if [Painter, Motion]
                 .iter()
                 .any(|x| fams.iter().filter(|y| *y == x).count() > 1)
@@ -540,9 +521,8 @@ fn novo(
     }
 }
 
-/// A trilha a instalar com o alvo `sid`: o Painter só troca o `target`; o Motion junta os nós ao
-/// documento vivo (que passa ao fim dela, num passo preso à vida do objecto Macro `vida`) e devolve
-/// a trilha transposta. O mundo transpõe-se depois de tudo nascer ([`crate::mundo::aplica`]).
+/// A trilha com o alvo `sid`: o Painter troca o `target`; o Motion junta os nós (preso à `vida`) e
+/// devolve-a transposta; o mundo transpõe-se no fim ([`crate::mundo::aplica`]).
 fn muda_o_alvo(
     t: &Track,
     fam: FamiliaDaMacro,

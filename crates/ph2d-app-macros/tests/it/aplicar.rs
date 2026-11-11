@@ -1,7 +1,5 @@
-//! W18 (`docs/Macros/16_W18_plano.md` §2.5–2.7): guardar ▸ exportar ▸ importar ▸ aplicar — a macro
-//! sai de um mundo e faz nascer o que gravou noutro; por cima, toca na imagem de baixo no tamanho
-//! gravado; o que não toca até ao fim não se escreve; duas famílias por cima de um objecto recusam;
-//! a receita dos assets aplica-se pela mesma porta.
+//! Guardar ▸ exportar ▸ importar ▸ aplicar (`docs/Macros/16_W18_plano.md` §2.5–2.7): novo, por cima,
+//! o que não toca não se escreve, misto recusa, a receita dos assets pela mesma porta.
 
 use crate::gate7::Banca;
 use ph2d_app_macros::{aplicar, biblioteca};

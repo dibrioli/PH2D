@@ -1,7 +1,5 @@
-//! ⭐ **Gate 7** (`docs/Macros/02_plano_W5.md` §6, W5d): o painel MACROS de verdade, clicado —
-//! Gravar → pincelar → Parar ⇒ o objecto fica com a `Macro`, a Timeline com o clipe e o painel com uma
-//! etapa por pincelada; clicar numa etapa leva a cabeça de leitura ao fim dela; editar a cor de uma
-//! etapa pelo selector muda a tela.
+//! ⭐ **Gate 7** (`docs/Macros/02_plano_W5.md` §6): o painel MACROS clicado — Gravar → pincelar →
+//! Parar ⇒ `Macro`, clipe e uma etapa por pincelada; clicar leva a cabeça; editar a cor muda a tela.
 
 use ph2d_a11y::NodeId;
 use ph2d_app_macros::{Cena, Familias, Macros};
@@ -25,8 +23,7 @@ const VIEWPORT: Rect = Rect {
     w: 320.0,
     h: 1600.0,
 };
-/// A Timeline docka-se em baixo: numa coluna de 320 px a barra de transporte quebra e come a altura
-/// das faixas inteira (medido: região das faixas com 0 px).
+/// A Timeline docka-se em baixo (numa coluna de 320 px as faixas ficavam com 0 px).
 const VIEWPORT_TIMELINE: Rect = Rect {
     x: 0.0,
     y: 0.0,
@@ -43,8 +40,7 @@ pub(crate) struct Banca {
     pub(crate) painter: PainterTool,
     /// O objecto escolhido (W18: dentro de um objecto Macro, o Gravar arma-o).
     pub(crate) escolhido: Option<u64>,
-    /// O Motion como a composição o passa: a gravadora e o objecto em edição (esta crate não
-    /// depende da família dele).
+    /// O Motion como a composição o passa: a gravadora e o objecto em edição.
     motion: MotionDeBrinquedo,
     motion_em_edicao: Option<u64>,
     pub(crate) tl: TimelineState,
@@ -494,8 +490,7 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
         "o clipe acompanha a última etapa no tempo (a cauda anda com ela): {duracao} → {d}"
     );
 
-    // ⭐ O UNDO das duas pilhas. A macro é do diff do mundo: devolvê-la à de antes do arrasto (o
-    // que o Ctrl+Z global faz) devolve o clipe à duração antiga no quadro seguinte — ele é DERIVADO.
+    // ⭐ O UNDO das duas pilhas: devolver a macro de antes devolve o clipe à duração antiga (DERIVADO).
     let mut doc = ph2d_macro::codec::read(
         &b.sim
             .world()
@@ -519,8 +514,7 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
         (d - duracao).abs() < 1e-6,
         "desfeito o deslocamento, o clipe volta a {duracao}: {d}"
     );
-    // O clipe é da pilha da Timeline: o Parar foi UM passo dela; desfazê-lo tira o clipe e deixa a
-    // Macro (a do mundo desfaz-se pela pilha do mundo).
+    // O Parar foi UM passo da Timeline: desfazê-lo tira o clipe e deixa a Macro (é da pilha do mundo).
     assert!(
         b.tl.history.can_undo(),
         "o Parar é um passo da pilha da Timeline"
@@ -540,8 +534,7 @@ fn gate7_gravar_pincelar_parar_da_macro_clipe_e_etapas_e_editar_a_cor_muda_a_tel
     );
 }
 
-/// Trocar de ferramenta a meio de uma gravação do Painter não a deixa órfã: o Parar chega-lhe na
-/// mesma (a shell passa o Painter sempre; só ARMAR exige que ele seja o activo).
+/// Trocar de ferramenta a meio não deixa a gravação órfã (só ARMAR exige o Painter activo).
 #[test]
 fn gate7_parar_depois_de_trocar_de_ferramenta_fecha_a_gravacao_do_painter() {
     let mut b = Banca::nova();
@@ -573,9 +566,8 @@ fn gate7_parar_depois_de_trocar_de_ferramenta_fecha_a_gravacao_do_painter() {
     );
 }
 
-/// ⭐ **A conferência adiada corre, e só no quadro a seguir ao gesto** (sobrevivente M6/M8 da prova
-/// W5d). A gravação passa por uma porta recusada (ligar outra imagem a meio); uma edição de VALOR pede a
-/// conferência, que toca a trilha e pára na recusa — o erro chega ao painel no quadro SEGUINTE.
+/// ⭐ **A conferência adiada corre só no quadro a seguir ao gesto**: a edição de VALOR toca a trilha,
+/// pára na porta recusada e o erro chega ao painel no quadro SEGUINTE.
 #[test]
 fn gate7_a_edicao_de_valor_e_conferida_no_quadro_seguinte() {
     let mut b = Banca::nova();
@@ -632,8 +624,8 @@ fn gate7_a_edicao_de_valor_e_conferida_no_quadro_seguinte() {
     );
 }
 
-/// ⭐ **A câmara lenta do artista não é sobrescrita** (sobrevivente M17). Uma chave na faixa Macro
-/// Time tira ao clipe a forma do Parar: uma espera nova já não o re-cronometra nem apaga a chave.
+/// ⭐ **A câmara lenta do artista não é sobrescrita**: com uma chave em Macro Time, a espera não
+/// re-cronometra o clipe.
 #[test]
 fn gate7_o_clipe_com_a_camara_lenta_do_artista_nao_se_re_cronometra() {
     let mut b = Banca::nova();
@@ -696,9 +688,8 @@ fn gate7_o_clipe_com_a_camara_lenta_do_artista_nao_se_re_cronometra() {
     );
 }
 
-/// W15 — **o losango da etapa e o painel dizem o MESMO instante, e clicar leva a cabeça EXACTAMENTE
-/// lá** (smoke do dono 22/10: «a playhead não se desloca exatamente para o local do keyframe» — o
-/// painel levava ao FIM da etapa, o losango estava no INÍCIO, e o Scrub arredondava ao quadro).
+/// **O losango e o painel dizem o MESMO instante, e clicar leva a cabeça EXACTAMENTE lá** (sem
+/// arredondar ao quadro).
 #[test]
 fn gate7_clicar_numa_etapa_leva_a_cabeca_ao_losango_dela_sem_arredondar() {
     let mut b = Banca::nova();
@@ -736,8 +727,7 @@ fn gate7_clicar_numa_etapa_leva_a_cabeca_ao_losango_dela_sem_arredondar() {
         "clicar na etapa leva a cabeça ao losango, sem o arredondar ao quadro"
     );
 
-    // E o losango está PINTADO debaixo da linha da cabeça parada nesse instante: a régua espelha a
-    // cabeça no seu valor (`v` = a fracção da faixa), no mesmo eixo em que a linha é desenhada.
+    // E o losango está PINTADO debaixo da linha da cabeça, no mesmo eixo (`v` = fracção da faixa).
     let snap = ph2d_timeline::TimelineViewSnapshot {
         fps,
         frame_snap: true,
@@ -765,9 +755,8 @@ fn gate7_clicar_numa_etapa_leva_a_cabeca_ao_losango_dela_sem_arredondar() {
     );
 }
 
-/// W5e — **apagar uma etapa** (decisão do dono, 15/10: o tempo dela fecha-se): o painel e a linha da
-/// Timeline deixam de a mostrar, as outras não se renumeram, o clipe encurta a duração dela e o cartão
-/// diz «editada» desde a etapa que ficou no lugar.
+/// **Apagar uma etapa fecha o tempo dela**: some do painel e da linha, as outras não se renumeram, o
+/// clipe encurta e o cartão diz «editada» desde a que ficou no lugar.
 #[test]
 fn gate7_apagar_uma_etapa_fecha_o_tempo_dela_e_o_clipe_encurta() {
     let mut b = Banca::nova();
@@ -824,9 +813,8 @@ fn gate7_apagar_uma_etapa_fecha_o_tempo_dela_e_o_clipe_encurta() {
     );
 }
 
-/// W5e — **a conferência corre FORA do quadro e a decisão é dos BYTES**: a mesma `Macro` que volta (um
-/// desfazer devolve os bytes de antes) recebe a decisão já, sem conferir outra vez; uma versão nova
-/// confere-se de novo.
+/// **A conferência corre FORA do quadro e a decisão é dos BYTES**: os mesmos bytes que voltam têm a
+/// decisão já; uma versão nova confere-se de novo.
 #[test]
 fn gate7_a_conferencia_corre_fora_do_quadro_e_a_decisao_e_dos_bytes() {
     let mut b = Banca::nova();
@@ -948,8 +936,7 @@ impl ph2d_macro::Gravadora for Brinquedo {
     }
 }
 
-/// W5e — **os passos do Motion levam o relógio do quadro em que ele correu**: na shell o Motion corre
-/// DEPOIS da `fase_macros`, e drená-lo nela carimbava cada passo com o quadro seguinte.
+/// **Os passos do Motion levam o relógio do quadro em que ele correu** (corre DEPOIS da `fase_macros`).
 #[test]
 fn gate7_os_passos_do_motion_levam_o_relogio_do_quadro_em_que_correu() {
     let mut b = Banca::nova();
@@ -986,10 +973,8 @@ fn gate7_os_passos_do_motion_levam_o_relogio_do_quadro_em_que_correu() {
     );
 }
 
-/// A4 (W9, `docs/Macros/06_auditoria_W8_record.md`) — ⭐ **o laço que TOCA acompanha cada Parar**: o
-/// documento já re-cronometrava o laço do clipe, mas o relógio da aba Keys (a cópia viva que faz o laço)
-/// só se re-arma por uma intenção; a regravação mais longa tocava o laço antigo. O Parar arma o relógio
-/// com o laço do documento, pela porta da Timeline (`SetLoop`), em cada gravação.
+/// ⭐ **O laço que TOCA acompanha cada Parar**: o Parar re-arma o relógio da aba Keys com o laço do
+/// documento (`SetLoop`), senão a regravação mais longa tocava o laço antigo.
 #[test]
 fn o_laco_que_toca_acompanha_cada_parar() {
     let mut b = Banca::nova();
@@ -1040,11 +1025,8 @@ fn o_laco_que_toca_acompanha_cada_parar() {
     );
 }
 
-/// W15 — **uma espera que sobrepõe duas pinceladas não apaga nada** (smoke do dono 22/10: «arrastar
-/// keyframes de modo que as animações dos traços se sobreponham apaga os keyframes»). A espera que a
-/// trilha não toca gravava-se, a macro deixava de se ler e as três etapas sumiam. Agora a edição é
-/// recusada ANTES de se gravar: a macro fica a de antes e o painel diz porquê. (O losango da Timeline
-/// já não pede espera: pede o instante, e a etapa sobrepõe-se — `gate7_largar_o_losango_…`, W16.)
+/// **Uma espera que sobrepõe duas pinceladas não apaga nada**: a edição recusa-se ANTES de se gravar e
+/// o painel diz porquê (o losango pede o instante: `gate7_largar_o_losango_…`).
 #[test]
 fn gate7_sobrepor_duas_pinceladas_nunca_apaga_as_etapas() {
     let mut b = Banca::nova();
@@ -1090,11 +1072,8 @@ fn gate7_sobrepor_duas_pinceladas_nunca_apaga_as_etapas() {
     assert!(o.erro.is_some(), "o painel diz que o arrasto foi recusado");
 }
 
-/// W16 — **largar o losango leva SÓ aquela etapa para o instante dele** (o dono, 22/10: «mover key não
-/// deve empurrar outros» · «permita os keys serem colocados em qualquer lugar da timeline»): sobre a
-/// pincelada anterior é aceite e as outras ficam onde estavam; para lá do fim, o clipe acompanha.
-/// Mutações que sangram: `Instante` tratado como espera (as seguintes andariam) · a recusa da W15 no
-/// caminho do losango.
+/// **Largar o losango leva SÓ aquela etapa para o instante dele** (sobre a anterior é aceite; para lá
+/// do fim, o clipe estica). Mutações: `Instante` como espera · a recusa da W15 no losango.
 #[test]
 fn gate7_largar_o_losango_leva_so_aquela_etapa_e_sobrepoe() {
     let mut b = Banca::nova();

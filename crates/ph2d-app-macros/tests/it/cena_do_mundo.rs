@@ -1,9 +1,6 @@
-//! **A sonda da cena `PH2D_MACRO_SMOKE=8`** (W19, `docs/Macros/17_W19_plano.md` §7): o MESMO roteiro
-//! ([`roteiro`]) e os mesmos pedidos ([`pedido`]) sobre a banca sem placa. O que a shell faz por fora
-//! faz-se aqui pelas mesmas leis: o *Add Physics Body* põe `RigidBody` + a caixa da `Sprite` e o passo do
-//! undo chega a [`ph2d_app_macros::Macros::mundo_mudou`]; a ponte corre um tique por quadro com Physics
-//! armado e a tocar ([`ph2d_app_macros::Macros::fisica_correu`]); a Timeline escreve o `MacroTempo` e o
-//! palco ([`PalcosDoMundo`]) conduz. Imprime os números que o texto ao dono cita.
+//! **A sonda da cena `PH2D_MACRO_SMOKE=8`** (`docs/Macros/17_W19_plano.md` §7): o MESMO [`roteiro`] e
+//! [`pedido`] sobre a banca sem placa; o que a shell faz por fora faz-se aqui pelas mesmas leis
+//! ([`ph2d_app_macros::Macros::mundo_mudou`], [`ph2d_app_macros::Macros::fisica_correu`], [`PalcosDoMundo`]).
 
 use crate::gate7::{Banca, raiz};
 use ph2d_app_macros::cena_da_biblioteca::{Estado, Passo, Qual, pedido, pose};
@@ -423,10 +420,8 @@ fn percorre() -> f32 {
     fim_no_documento.expect("o aplicado tem pose")
 }
 
-/// #53 na gravação do «mundo»: o boneco pintado e ainda por assar (a textura da sprite é a de ANTES,
-/// branca) embute-se com a TINTA — a mesma porta dos verbos só-leitura (`PainterTool::imagem_por_assar`).
-/// Com o Painter na mão a trilha dele leva o documento vivo; noutra ferramenta (a tinta continua por
-/// assar até ao `fase_painter_persist`) é o recurso do mundo que a leva.
+/// #53: o boneco pintado e por assar embute-se com a TINTA (`PainterTool::imagem_por_assar`), com o
+/// Painter na mão ou noutra ferramenta.
 #[test]
 fn a_macro_mundo_leva_a_tinta_por_assar() {
     assert!(

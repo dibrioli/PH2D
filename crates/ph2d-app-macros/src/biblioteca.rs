@@ -1,6 +1,5 @@
-//! **A biblioteca do utilizador** (W18, `docs/Macros/16_W18_plano.md` §2.6): uma pasta, um
-//! `<nome>.ph2dmacro` por macro — o molde de `ph2d-brush-presets/src/biblioteca.rs`. O nome é o do
-//! ficheiro: nenhuma lista à parte que possa divergir do disco.
+//! **A biblioteca do utilizador** (`docs/Macros/16_W18_plano.md` §2.6): um `<nome>.ph2dmacro` por
+//! macro numa pasta; o nome é o do ficheiro (nenhuma lista à parte que divirja do disco).
 
 use ph2d_macro::ficheiro::{self, EXTENSAO, Ficheiro};
 use std::path::{Path, PathBuf};
@@ -32,8 +31,7 @@ pub struct Biblioteca {
     pub erros: Vec<(PathBuf, Erro)>,
 }
 
-/// A pasta: `PH2D_MACROS_DIR` (os testes, a cena de smoke) · `$XDG_DATA_HOME/ph2d/macros` ·
-/// `$HOME/.local/share/ph2d/macros`.
+/// A pasta: `PH2D_MACROS_DIR` · `$XDG_DATA_HOME/ph2d/macros` · `$HOME/.local/share/ph2d/macros`.
 #[must_use]
 pub fn pasta_do_utilizador() -> Option<PathBuf> {
     if let Some(d) = std::env::var_os("PH2D_MACROS_DIR") {
@@ -128,8 +126,7 @@ impl Biblioteca {
     }
 }
 
-/// Escreve `bytes` em `destino` por um ficheiro irmão e renomeia: um corte a meio nunca deixa uma macro
-/// truncada no lugar da boa.
+/// Escreve por um ficheiro irmão e renomeia: um corte a meio nunca trunca a macro boa.
 fn escreve_atomico(destino: &Path, bytes: &[u8]) -> Result<(), Erro> {
     if let Some(pai) = destino.parent() {
         std::fs::create_dir_all(pai).map_err(disco(destino))?;
@@ -140,7 +137,6 @@ fn escreve_atomico(destino: &Path, bytes: &[u8]) -> Result<(), Erro> {
 }
 
 /// **Guarda** `f` na biblioteca com o nome `nome` (limpo). Recusa um nome que já existe.
-///
 /// # Errors
 /// [`Erro`].
 pub fn grava(raiz: &Path, nome: &str, f: &Ficheiro) -> Result<PathBuf, Erro> {
@@ -159,7 +155,6 @@ pub fn grava(raiz: &Path, nome: &str, f: &Ficheiro) -> Result<PathBuf, Erro> {
 }
 
 /// **Renomeia** a macro `de` para `para` (o nome dentro do ficheiro acompanha o do ficheiro).
-///
 /// # Errors
 /// [`Erro`].
 pub fn renomeia(raiz: &Path, de: &str, para: &str) -> Result<PathBuf, Erro> {
@@ -184,7 +179,6 @@ pub fn renomeia(raiz: &Path, de: &str, para: &str) -> Result<PathBuf, Erro> {
 }
 
 /// **Apaga** a macro `nome`. Ausente não é erro.
-///
 /// # Errors
 /// [`Erro::Disco`].
 pub fn apaga(raiz: &Path, nome: &str) -> Result<(), Erro> {
@@ -196,10 +190,7 @@ pub fn apaga(raiz: &Path, nome: &str) -> Result<(), Erro> {
     }
 }
 
-/// **Importa** o ficheiro `origem` (de qualquer pasta) para a biblioteca: lê-o primeiro — um ficheiro
-/// que este build não toca recusa-se aqui, não na hora de aplicar. O nome é o de dentro do ficheiro (ou
-/// o do ficheiro), livre na biblioteca. Devolve o nome.
-///
+/// **Importa** `origem`: lê-o primeiro (o que este build não toca recusa-se aqui); devolve o nome livre.
 /// # Errors
 /// [`Erro`].
 pub fn importa(raiz: &Path, origem: &Path) -> Result<String, Erro> {
@@ -219,9 +210,7 @@ pub fn importa(raiz: &Path, origem: &Path) -> Result<String, Erro> {
     Ok(nome)
 }
 
-/// **Exporta** a macro para `destino` (o caminho que o artista escolheu; a extensão acrescenta-se se
-/// faltar). Devolve o caminho escrito.
-///
+/// **Exporta** a macro para `destino` (a extensão acrescenta-se se faltar); devolve o caminho escrito.
 /// # Errors
 /// [`Erro::Disco`].
 pub fn exporta(destino: &Path, f: &Ficheiro) -> Result<PathBuf, Erro> {

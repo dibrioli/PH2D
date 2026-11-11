@@ -214,7 +214,6 @@ impl Cache {
 
 /// **Edita a etapa `k` da trilha `trilha`** da `Macro` do objecto `bits`; o clipe acompanha a duração.
 /// Uma edição de VALOR do Painter é conferida fora do quadro (`conferencia`).
-///
 /// # Errors
 /// O porquê, para o painel o dizer.
 pub fn edita(
@@ -270,7 +269,6 @@ fn escreve(c: &mut Cena<'_>, bits: u64, doc: &MacroDoc) {
 
 /// **Apaga a etapa `k` da trilha `trilha`** da `Macro` de `bits`: o tempo dela fecha-se e o clipe
 /// encurta pela sincronização.
-///
 /// # Errors
 /// O porquê, para o painel o dizer.
 pub fn apaga(

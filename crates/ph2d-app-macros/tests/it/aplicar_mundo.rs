@@ -1,7 +1,5 @@
-//! W19 (`docs/Macros/17_W19_plano.md` §2.4, §2.7): aplicar uma macro com a família «mundo» — o FIM nasce
-//! com `StableId` novos e as referências entre objectos apontam os nascidos; por cima, o componente vai
-//! para o alvo; a continuação de uma imagem não a faz nascer outra vez; uma família desconhecida não se
-//! toca como outra; exportar lê a trilha do mundo.
+//! Aplicar com a família «mundo» (`docs/Macros/17_W19_plano.md` §2.4): `StableId` novos e referências
+//! nos nascidos; por cima, vai ao alvo; família desconhecida recusa-se; exportar lê a trilha.
 
 use crate::aplicar::{aviso, banca, composto, doc_de, grava, macros, pasta, px};
 use crate::gate7::Banca;
@@ -366,9 +364,8 @@ fn exportar_confere_a_trilha_do_mundo() {
     assert_eq!(r.map_err(|e| e.chave), Err(m::MACRO_LIB_ILEGIVEL));
 }
 
-/// ⭐ Plano §2.4: um objecto que nasce e é apagado a gravar não existe no FIM — não nasce no destino, e
-/// o `original` dele na trilha instalada é `0` (nenhum), nunca o `StableId` da gravação (aqui `10`, o da
-/// imagem da banca: o palco encontrá-la-ia). A referência que lhe apontava também fica em `0`.
+/// ⭐ Nascido e apagado a gravar não nasce no destino: o `original` e a referência a ele ficam `0`,
+/// nunca o `StableId` da gravação.
 #[test]
 fn o_apagado_na_gravacao_nao_nasce_nem_aponta_um_alheio() {
     let lib = pasta("mundo-apagado");
@@ -441,9 +438,7 @@ fn o_apagado_na_gravacao_nao_nasce_nem_aponta_um_alheio() {
     );
 }
 
-/// ⭐ Por cima com uma continuação do Painter: a 1.ª trilha pinta em cima (y = 10), a continuação em
-/// baixo (y = 50). A continuação começa onde a 1.ª acaba SOBRE O ALVO — o fim dela tem as duas
-/// pinceladas; antes começava da imagem do alvo e a de cima perdia-se.
+/// ⭐ Por cima com continuação: começa onde a 1.ª acaba SOBRE O ALVO (o fim tem as duas pinceladas).
 #[test]
 fn por_cima_a_continuacao_continua_as_pinceladas() {
     let lib = pasta("mundo-por-cima-continua");
@@ -477,9 +472,7 @@ fn por_cima_a_continuacao_continua_as_pinceladas() {
     );
 }
 
-/// ⭐ Ida e volta de uma imagem embutida semi-transparente: o recurso (PNG) faz nascer pela porta de
-/// produto os MESMOS píxeis, ao bit — e um recurso pré-multiplicado (uma textura editada) nasce em alfa
-/// recto (o atlas é recto): `rgb·255/a`, não os bytes escuros tomados por rectos.
+/// ⭐ Ida e volta semi-transparente: os MESMOS píxeis ao bit; o pré-multiplicado nasce recto (`rgb·255/a`).
 #[test]
 fn a_imagem_embutida_volta_igual_ao_bit() {
     let lib = pasta("mundo-recurso");
@@ -579,10 +572,8 @@ fn foto(sim: &mut ph2d_ecs::SimWorld, reg: &ComponentRegistry) -> ph2d_ecs::scen
     out
 }
 
-/// ⭐ Uma imagem importada de 8 bits é uma célula do ATLAS (sem `SpritePixels`): gravada só com a
-/// `Sprite`, noutro projecto apontaria a célula de outra imagem, calada. Ao Parar os píxeis dela
-/// embutem-se; aplicada noutro projecto, nasce pela porta de produto com os MESMOS píxeis, ao bit. Se a
-/// leitura falha, a `Sprite` fica de fora e o aviso nomeia-a (nunca a célula crua).
+/// ⭐ Uma imagem do ATLAS embute-se ao Parar e nasce noutro projecto com os MESMOS píxeis; se a leitura
+/// falha, a `Sprite` fica de fora e o aviso nomeia-a (nunca a célula crua).
 #[test]
 fn a_imagem_importada_do_atlas_volta_igual_noutro_projecto() {
     use ph2d_app_macros::mundo::{self, Leitores, grava::Gravacao};

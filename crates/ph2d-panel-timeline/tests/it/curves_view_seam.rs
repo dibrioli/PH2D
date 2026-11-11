@@ -190,3 +190,35 @@ fn fora_de_keys_e_no_classico_nao_ha_botao() {
     assert!(!tem(&c, ids::TIMELINE_VIEW_CURVES));
     ferramenta::force_cards_on_this_thread(None);
 }
+
+/// ⭐ Outro clipe na área, ou a lista de Containers, volta a Keys (como mudar de aba).
+/// *Mutação: `volta_a_keys` que só olha a lista ⇒ vermelho.*
+#[test]
+fn mudar_de_clipe_ou_abrir_a_lista_volta_a_keys() {
+    let com_clipes = |ativo: usize| TimelineViewSnapshot {
+        clips: vec!["Idle".into(), "Run".into()],
+        active_clip: ativo,
+        ..snap()
+    };
+    let mut m = mesa(true);
+    set_current_timeline(Some(com_clipes(0)));
+    pinta(&mut m);
+    m.clica(ids::TIMELINE_VIEW_CURVES);
+    pinta(&mut m);
+    assert_eq!(m.st.vista, Vista::Curves, "o mesmo clipe fica em Curves");
+    set_current_timeline(Some(com_clipes(1)));
+    pinta(&mut m);
+    assert_eq!(m.st.vista, Vista::Keys, "outro clipe volta a Keys");
+    assert!(tem(&m, ids::timeline_key_hit_id(Y, 2)));
+    m.clica(ids::TIMELINE_VIEW_CURVES);
+    pinta(&mut m);
+    assert_eq!(m.st.vista, Vista::Curves);
+    m.clica(ids::TIMELINE_TAB_CONTAINERS);
+    pinta(&mut m);
+    assert_eq!(
+        m.st.vista,
+        Vista::Keys,
+        "a lista de Containers volta a Keys"
+    );
+    ferramenta::force_cards_on_this_thread(None);
+}

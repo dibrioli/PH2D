@@ -119,6 +119,11 @@ pub enum MotionPathGrab {
         i: usize,
         out: bool,
     },
+    /// O ponto da chave de posição (eixos separados) no instante `t` — [`crate::motion_key_points`].
+    Key {
+        entity: u64,
+        t: ph2d_anim::RationalTime,
+    },
 }
 
 /// **O caminho que o clip ATIVO de fato anima** — `(alvo, caminho)`, ou `None`. **A porta

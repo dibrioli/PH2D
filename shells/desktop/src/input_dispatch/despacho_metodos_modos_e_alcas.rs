@@ -164,20 +164,9 @@ impl crate::App {
     /// cursor, arma o arrasto, abre UM passo de undo e devolve `true` — o host então PULA
     /// o picking/gizmo.
     ///
-    /// ⚠️ **Não é gateada por ferramenta**, ao contrário das alças do vetor: a trajetória
-    /// é do documento de ANIMAÇÃO, e o artista a molda com qualquer ferramenta na mão. O
-    /// que a gateia é ela estar VISÍVEL — a mesma pergunta que o desenho faz, e ela só é
-    /// verdadeira para o objeto selecionado com um binding Position.
-    ///
-    /// ⚠️ **Consequência honesta:** a âncora do primeiro key costuma cair EM CIMA do
-    /// sprite, onde o gizmo mora, então apertar exatamente ali agarra a âncora e não o
-    /// objeto. O alvo tem 7 px de raio e nada mais muda — é o mesmo trade que toda alça
-    /// deste app faz, e o desenho (um quadrado, a forma universal de "isto se arrasta")
-    /// é o que o anuncia.
-    ///
-    /// ⚠️ **Agarra a âncora OU uma alça de tangente** (`motion_path_hit`) — as duas são a
-    /// mesma pergunta ("o que está sob o cursor?"), e o gesto de move despacha sobre o
-    /// que veio.
+    /// ⚠️ Não é gateada por ferramenta: a trajetória é do documento de ANIMAÇÃO; gateia-a ela
+    /// estar VISÍVEL (a mesma pergunta do desenho). Sobre o sprite, o alvo de 7 px vence o gizmo.
+    /// Agarra a âncora, a alça ou o ponto de chave (`motion_path_hit_with_keys`).
     pub(super) fn motion_path_anchor_down(&mut self, x: f32, y: f32) -> bool {
         let Some(gfx) = self.gfx.as_ref() else {
             return false;
@@ -186,8 +175,9 @@ impl crate::App {
             .hero_screen
             .as_ref()
             .and_then(|h| h.gizmo.iter_selected().next());
-        let Some(hit) = ph2d_app_motion::motion_path_overlay::motion_path_hit(
+        let Some(hit) = ph2d_app_motion::motion_key_points::motion_path_hit_with_keys(
             self.timeline.keys_mode,
+            gfx.sim.world(),
             &self.timeline.doc,
             selected,
             &gfx.camera,
@@ -197,8 +187,7 @@ impl crate::App {
         ) else {
             return false;
         };
-        // UM passo de undo por GESTO, não por frame de arrasto: o `commit_if_changed` do
-        // release fecha o que este `begin` abriu.
+        // UM passo de undo por GESTO: o `commit_if_changed` do release fecha este `begin`.
         self.timeline.history.begin(&self.timeline.doc);
         self.motion_shell.path_drag = Some(hit);
         true
@@ -304,9 +293,8 @@ impl crate::App {
     /// Leva o que foi agarrado (âncora ou alça) para o cursor. No-op (`false`) sem um
     /// arrasto vivo — a mesma disciplina de early-return das alças do vetor.
     ///
-    /// Escreve pela porta ÚNICA de cada gesto: `move_path_anchor` translada a curva (e
-    /// re-suaviza as âncoras `auto`, senão a curva quebra), `move_path_tangent` a molda.
-    /// As duas reescrevem as distâncias que as keys guardam na MESMA operação.
+    /// Porta ÚNICA de cada gesto: `move_path_anchor` translada, `move_path_tangent` molda,
+    /// `drag_key` escreve as chaves de X/Y do quadro.
     pub(super) fn motion_path_anchor_move(&mut self, x: f32, y: f32) -> bool {
         use ph2d_app_motion::motion_path_overlay::MotionPathGrab;
         let Some(grab) = self.motion_shell.path_drag else {
@@ -329,6 +317,13 @@ impl crate::App {
                     .doc
                     .move_path_tangent(target, i, out, [w[0], w[1]])
             }
+            MotionPathGrab::Key { entity, t } => ph2d_app_motion::motion_key_points::drag_key(
+                &mut self.timeline,
+                gfx.sim.world(),
+                entity,
+                t,
+                [w[0], w[1]],
+            ),
         }
     }
 

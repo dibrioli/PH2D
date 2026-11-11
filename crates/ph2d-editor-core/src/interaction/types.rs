@@ -467,6 +467,12 @@ pub enum TimelineHitKind {
     GroupTwirl {
         group: u64,
     },
+    /// **A source chip in the timeline bar** (a clip or a container, doc 17 item 6): a Click picks
+    /// it, exactly as the chip's button did; a drag past the press slop carries it to a lane, where
+    /// the drop places a strip. `option` is the chip's raw `NodeId`, opaque here.
+    SourceChip {
+        option: u64,
+    },
 }
 
 /// Which per-band buffer-curve button was pressed ([`TimelineHitKind::GraphBufferButton`]):

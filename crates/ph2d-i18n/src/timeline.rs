@@ -184,6 +184,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Keys shows each row's keys; Curves shows every curve in one big graph"
         }
         "panel.timeline.view.normalized" => "{name} · normalized, right axis",
+        "panel.timeline.view.eye_tip" => "Show or hide this curve",
+        // O eixo do Flip image na faixa («Flip image H»), os glifos dos ícones do cartão.
+        "panel.timeline.glyph.h" => "H",
+        "panel.timeline.glyph.v" => "V",
         _ => return None,
     })
 }

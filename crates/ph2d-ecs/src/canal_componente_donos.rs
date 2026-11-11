@@ -175,6 +175,25 @@ pub fn dono(canonical: &str, field_id: u16, faixa: u16) -> Option<Dono> {
         .map(|&(.., d)| d)
 }
 
+/// ⭐ **Os campos do catálogo que o cartão do Inspector junta numa linha de glifos** —
+/// `(canonical_name, field_id, rótulo da linha, glifo do eixo)`: a faixa diz a palavra do Inspector
+/// mais o eixo («Flip image H»), como o Transform diz «Position X» (portão
+/// `o_canal_diz_o_nome_do_campo_que_o_grava`). O rótulo do catálogo («Flip H») fica o do Inspector
+/// clássico; o canal continua o do catálogo.
+pub const NOMES_DO_CARTAO: &[(&str, u16, &str, &str)] = &[
+    (SPRITE, 2, "card.insp.flip", "panel.timeline.glyph.h"),
+    (SPRITE, 3, "card.insp.flip", "panel.timeline.glyph.v"),
+];
+
+/// A linha de [`NOMES_DO_CARTAO`] que nomeia a faixa `k` do catálogo — `None` = o rótulo do catálogo.
+#[must_use]
+pub fn nome_do_cartao(k: FieldKey) -> Option<usize> {
+    let (d, f, _) = super::canal_componente::resolver(k)?;
+    NOMES_DO_CARTAO
+        .iter()
+        .position(|&(c, id, ..)| c == d.canonical_name && id == f.field_id)
+}
+
 /// ⭐ **O que o CATÁLOGO leria** da faixa no componente da entidade, com dono ou sem ele — o lado
 /// do catálogo nos gates dos donos (o funil do catálogo lê só as faixas sem dono).
 #[must_use]

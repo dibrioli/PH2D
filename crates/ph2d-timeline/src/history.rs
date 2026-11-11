@@ -44,6 +44,12 @@ impl TimelineHistory {
         self.pending = Some(doc.clone());
     }
 
+    /// The snapshot of the gesture in flight (the document as it was at [`begin`](Self::begin)).
+    #[must_use]
+    pub fn pending(&self) -> Option<&TimelineDoc> {
+        self.pending.as_ref()
+    }
+
     /// The keys this gesture has moved so far: they absorb what lies under them only where the
     /// gesture closes (`intent_apply`), never at a frame they merely crossed.
     pub(crate) fn note_moved(&mut self, keys: &[SelectedKey]) {

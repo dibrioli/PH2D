@@ -18,6 +18,7 @@
 
 mod alca_estado;
 mod breadcrumb;
+pub mod chip_drag;
 mod faixa_marcadores;
 mod folha_tinta;
 mod ruler_clock;

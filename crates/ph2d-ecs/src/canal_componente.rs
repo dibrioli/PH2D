@@ -16,7 +16,9 @@ use serde_json::Value;
 
 use crate::canal::familia::COMPONENTE;
 use crate::canal::{CampoInfo, Especie, FieldKey, TextosDosCanais};
-pub use crate::canal_componente_donos::{DONOS, Dono, dono, ler_pelo_catalogo};
+pub use crate::canal_componente_donos::{
+    DONOS, Dono, NOMES_DO_CARTAO, dono, ler_pelo_catalogo, nome_do_cartao,
+};
 use crate::scene::property_ref::{enter_option, same_option, shares_payload};
 use crate::scene::registry::stable_type_id;
 

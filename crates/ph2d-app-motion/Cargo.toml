@@ -82,6 +82,8 @@ ph2d-pan-diag = { path = "../ph2d-pan-diag" }
 ph2d-table = { path = "../ph2d-table" }
 ph2d-thumbnail = { path = "../ph2d-thumbnail" }
 ph2d-timeline = { path = "../ph2d-timeline", features = ["render", "physics"] }
+# As tintas da Timeline (os pontos de chave no canvas, doc 17 item 7).
+ph2d-tokens = { path = "../ph2d-tokens" }
 # doc 132 §2: a faixa da história gravada (a fita das entradas) publica-se ao painel da Timeline.
 ph2d-panel-timeline = { path = "../ph2d-panel-timeline" }
 ph2d-vec-art-live = { path = "../ph2d-vec-art-live" }
@@ -144,7 +146,6 @@ rayon = "1"
 # A régua lexical do HR-15, para o gate por crate (`tests/it/`).
 ph2d-label-census = { path = "../ph2d-label-census" }
 # ⚠️ HOWTO §1.3 — invisíveis dentro da shell, onde já eram dependência do binário.
-ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 bytemuck = { version = "1", features = ["extern_crate_alloc"] }
 # P4: o gate que valida o WGSL das imagens da placa sem adaptador.

@@ -175,6 +175,8 @@ pub struct TimelinePanelState {
     pub vista: crate::curvas_vista::Vista,
     /// As linhas cujo olho escondeu a curva na vista Curves (por `AnimTarget` cru). Sessão.
     pub curvas_escondidas: Vec<u64>,
+    /// O clipe em que Curves se ligou: outro clipe na área volta a Keys ([`crate::curvas_vista::volta_a_keys`]).
+    pub curvas_do_clip: Option<usize>,
     /// Which half of the document is on screen: the clip's keys, or the clip
     /// stack ([`crate::tab::Tab`]). Panel-local VIEW state — never undoable,
     /// never saved, and never the meaning of an edit.
@@ -219,6 +221,8 @@ pub struct TimelinePanelState {
     pub strip_drag: Option<StripDrag>,
     /// A peça escolhida (doc 17 item 1): estado do painel, nem grava nem desfaz.
     pub strip_escolhida: Option<ph2d_timeline::StripId>,
+    /// O chip da barra a caminho de uma faixa (doc 17 item 6), se há um.
+    pub chip_drag: Option<crate::chip_drag::ChipDrag>,
     /// A lane weight field is being edited (dragged or typed) and an undo bracket
     /// is open for it. Without it, dispatch's per-Move `ValueChanged` would make
     /// each frame of the drag its own atomic undo step — sliding the weight across
@@ -334,6 +338,7 @@ impl Default for TimelinePanelState {
             speed_view: false,
             vista: crate::curvas_vista::Vista::Keys,
             curvas_escondidas: Vec::new(),
+            curvas_do_clip: None,
             tab: crate::tab::Tab::default(),
             source_container: None,
             source_clip: None,
@@ -345,6 +350,7 @@ impl Default for TimelinePanelState {
             dur_drag: None,
             strip_drag: None,
             strip_escolhida: None,
+            chip_drag: None,
             weight_edit: None,
             marker_drag: None,
             marker_rename: None,

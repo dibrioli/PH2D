@@ -195,7 +195,11 @@ fn os_dois_grupos_moram_na_fileira_do_gravar() {
 
 /// O que um clique pediu: ao documento e à fonte do painel.
 fn efeito(mesa: &mut Mesa<TimelinePanel>, id: NodeId) -> String {
-    let acoes = mesa.clica(id);
+    let mut acoes = mesa.clica(id);
+    // O chip é uma superfície da Timeline (doc 17 item 6): o gesto lê-se na pintura seguinte; a lista
+    // de sempre pinta o mesmo quadro, para os dois lados compararem o mesmo.
+    mesa.assenta_em(JANELA);
+    acoes.extend(mesa.host.drained_actions());
     format!(
         "{acoes:?} | {:?} | {:?} | {:?}",
         drain_intents(),

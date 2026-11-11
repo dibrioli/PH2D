@@ -259,7 +259,7 @@ fn edge_move(
 }
 
 /// Frame-snap, when the panel is snapping. Never negative.
-fn snapped(state: &TimelinePanelState, snap: &TimelineViewSnapshot, t: f64) -> f64 {
+pub(crate) fn snapped(state: &TimelinePanelState, snap: &TimelineViewSnapshot, t: f64) -> f64 {
     let _ = state;
     let t = t.max(0.0);
     if snap.frame_snap && snap.fps > 0.0 {

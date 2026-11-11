@@ -68,9 +68,9 @@ fn publish_view(state: &mut TimelinePanelState, snapshot: &ph2d_timeline::Timeli
     // The Containers LIST has no playback mode (Enio, 2026-07-22) — same door the
     // painters and the ADD button read (`tab::rows`), so what the shell refuses and
     // what the bar paints as dead cannot be two different views.
-    state::publish_containers_list(
-        crate::tab::rows(state.tab, snapshot) == crate::tab::Rows::Containers,
-    );
+    let lista = crate::tab::rows(state.tab, snapshot) == crate::tab::Rows::Containers;
+    state::publish_containers_list(lista);
+    crate::curvas_vista::volta_a_keys(state, snapshot.active_clip, lista);
 }
 
 /// **What a hidden panel has to LET GO of.**
@@ -290,6 +290,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     // A box-select that ended this frame resolves HERE, where the rows' `y` is
     // finally known (the gesture only recorded the marquee).
     crate::box_select::commit(state, g.rows, view, &snapshot);
+    crate::chip_drag::alveja(state, &g, view, &snapshot);
 
     let preview_dx = crate::key_drag::preview_dx(state);
 
@@ -311,6 +312,7 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     );
     // Track rows (labels + key diamonds + expanded graph bands) below the ruler.
     tracks::paint_rows(ctx, theme, &g, view, preview_dx, state, &snapshot);
+    crate::chip_drag::paint_fantasma(ctx, theme, &g, view, state, &snapshot);
     // A handle or anchor drag whose row got culled (scrolled away, or its track
     // unbound) never reached its `resolve_drag`: close the undo bracket here so
     // the next atomic edit is not silently swallowed into it.

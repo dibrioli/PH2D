@@ -65,7 +65,10 @@ pub(crate) fn process(
     crate::macro_steps::envelhece_a_largada(state, snap);
     crate::strip_drag::esquece_a_sumida(state, snap);
     // O Esc sem dono larga a peça escolhida (doc 17 item 1); quem o tinha (menu, campo) ficou com ele.
-    if ph2d_editor_core::interaction::dispatch::key::take_esc_livre() {
+    // O chip na mão é o primeiro a ouvir o Esc (doc 17 item 6): cancela sem efeito.
+    if ph2d_editor_core::interaction::dispatch::key::take_esc_livre()
+        && !crate::chip_drag::cancela(state)
+    {
         state.strip_escolhida = None;
     }
     let gestures: Vec<TimelineGesture> = ctx.host.store_mut().drain_timeline_gestures().collect();
@@ -73,6 +76,13 @@ pub(crate) fn process(
         // Resize grippers own the gesture whatever the button.
         if let TimelineHitKind::ResizeEdge { edges } = g.kind {
             resize::apply_resize(state, ctx.host.store_mut(), rect, edges, g);
+            continue;
+        }
+        // O chip da barra precisa do host: o clique dele é o da lista (`transport_clips`).
+        if let TimelineHitKind::SourceChip { option } = g.kind {
+            if g.button == PointerButton::Primary {
+                crate::chip_drag::apply(state, ctx.host, option, g);
+            }
             continue;
         }
         match g.button {
@@ -83,6 +93,7 @@ pub(crate) fn process(
             PointerButton::Secondary => {}
         }
     }
+    crate::chip_drag::publica(state);
     if let Some(r) = state.macro_pedido.take() {
         ctx.host
             .bus_mut()
@@ -220,6 +231,8 @@ pub(crate) fn dispatch_primary(
             }
             box_select::apply_lane(state, g);
         }
+        // O chip da barra vai ao `chip_drag` antes do botão (precisa do host).
+        TimelineHitKind::SourceChip { .. } => {}
         TimelineHitKind::ResizeEdge { .. } => {
             unreachable!("resize edges are handled before the button match")
         }

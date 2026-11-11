@@ -18,14 +18,6 @@ use crate::ids::{
 use crate::state;
 use crate::{TimelinePanel, state::TimelinePanelState};
 use ph2d_a11y::NodeId;
-/// How long a strip of an EMPTY clip is: a clip with no keys has no duration, and
-/// a strip of zero seconds paints as nothing and cannot be grabbed to fix.
-///
-/// It floors ONLY the empty case. Padding a short clip's span to a second used to
-/// look harmless and was not: a 0.4 s clip in a 1 s box is a strip playing at 0.4x
-/// before anyone asked it to (`slice == span * speed`), and the first stretch would
-/// have snapped its rate to match.
-const MIN_NEW_STRIP_S: f64 = 1.0;
 
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
@@ -433,23 +425,10 @@ fn stack_click(
     if let Some(lane) = ids::TIMELINE_LANE_ADD_STRIP.iter().position(|&b| b == id) {
         let snap = crate::state::current_snapshot();
         if lane < snap.lanes.len() {
-            // **The ACTIVE SOURCE, dropped AT THE PLAYHEAD** — what the dropdown names, where
-            // you are looking. A clip or a container: placing is the one gesture both kinds
-            // share (ADR-0133), and it is what a container was missing.
+            // **The ACTIVE SOURCE, dropped AT THE PLAYHEAD** — what the bar names, where you are
+            // looking. The chip dragged to a lane places the SAME source (`chip_drag`).
             let t = snap.time_seconds.max(0.0);
-            let (source, len) = match state.source_container {
-                Some(c) => (
-                    ph2d_timeline::StripSource::Container(u16::try_from(c).unwrap_or(u16::MAX)),
-                    snap.containers.get(c).map_or(0.0, |v| v.length),
-                ),
-                // The clip — the active one, or one of ANOTHER animation picked in the Scene's
-                // Arrange (onda 4, item 5) — at its EFFECTIVE length (last key, not authored
-                // duration): the number `add_strip` sizes the slice to, so it is born at speed 1.
-                None => crate::transport_sources::placed_clip(state, &snap),
-            };
-            // Only an EMPTY source (no keys, no strips inside) falls back to a grabbable
-            // minimum: a zero-width strip is one nobody can grab to fix.
-            let len = if len > 0.0 { len } else { MIN_NEW_STRIP_S };
+            let (source, len) = crate::chip_drag::fonte_ativa(state, &snap);
             crate::state::push_intent(ph2d_timeline::TimelineIntent::AddStrip {
                 lane,
                 source,

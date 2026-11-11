@@ -190,3 +190,13 @@ pub const TIMELINE_VOLTA_ALPHA: f32 = 0.7; // LITERAL-PX-OK: opacidade do risco 
 /// Voltas mais juntas que isto não se pintam: a 1,5 px de risco e pontos de 1,5 px, abaixo de 4× a
 /// espessura sobram < 4,5 px de corpo entre riscos e a peça vira hachura (o zoom afastado da cena 4).
 pub const TIMELINE_VOLTA_MIN_PX: f32 = 6.0; // LITERAL-PX-OK: vão mínimo entre dois riscos de volta
+
+// ── onda 2 funções novas — chip arrastado para uma faixa (doc 17 item 6, maquete B4) ──
+/// ⭐ **O fantasma da peça que a largada cria** (`.ghost` da B4): a cor da fonte a 22 % por dentro.
+pub const TIMELINE_FANTASMA_ALPHA: f32 = 0.22; // LITERAL-PX-OK: opacidade do fantasma da largada
+/// O traço e o vão do contorno tracejado do fantasma (borda `1px dashed` medida).
+pub const TIMELINE_FANTASMA_TRACO_PX: f64 = 3.0; // LITERAL-PX-OK: traço e vão do tracejado
+/// O chip na mão (`.dr` da B4): a cor da fonte a 25 % por baixo…
+pub const TIMELINE_CHIP_ARRASTADO_ALPHA: f32 = 0.25; // LITERAL-PX-OK: opacidade do chip arrastado
+/// …e o anel de dentro, 1,5 px na cor da fonte.
+pub const TIMELINE_CHIP_ARRASTADO_ANEL_PX: f32 = 1.5; // LITERAL-PX-OK: anel do chip arrastado

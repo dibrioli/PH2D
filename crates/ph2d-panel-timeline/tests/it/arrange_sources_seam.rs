@@ -65,6 +65,8 @@ fn clica(host: &mut MockPanelHost, panel: &mut TimelinePanelState, id: NodeId) {
     for ev in host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5) {
         host.apply_panel_event::<TimelinePanel>(panel, ev);
     }
+    // O chip é uma superfície da Timeline (doc 17 item 6): o gesto lê-se na pintura seguinte.
+    let _ = host.paint::<TimelinePanel>(panel, VIEWPORT);
 }
 
 fn aberto(host: &MockPanelHost) -> bool {

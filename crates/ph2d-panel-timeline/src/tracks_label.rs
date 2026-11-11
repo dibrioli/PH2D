@@ -34,10 +34,27 @@ pub(crate) fn prop_label(p: PropKind) -> &'static str {
         PropKind::BoneBendOutY => ph2d_i18n::tr("panel.timeline.prop.bone_bend_out_y"),
         PropKind::MacroTime => ph2d_i18n::tr("panel.timeline.prop.macro_time"),
         // O rótulo do GRUPO, do vocabulário da família (a forma inteira lê-se «Forma»).
-        PropKind::Field(k) => {
-            ph2d_i18n::tr(k.info().map_or("panel.timeline.prop.field", |i| i.rotulo))
-        }
+        PropKind::Field(k) => match ph2d_ecs::canal_componente::nome_do_cartao(k) {
+            Some(i) => palavra_do_cartao(i),
+            None => ph2d_i18n::tr(k.info().map_or("panel.timeline.prop.field", |i| i.rotulo)),
+        },
     }
+}
+
+/// O campo do catálogo que o cartão junta numa linha de glifos diz a palavra da linha mais o eixo
+/// («Flip image H», `NOMES_DO_CARTAO`), como [`palavra_do_inspector`] diz «Position X».
+fn palavra_do_cartao(i: usize) -> &'static str {
+    use ph2d_i18n::tr;
+    static NOMES: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+    let n = NOMES.get_or_init(|| {
+        (ph2d_ecs::canal_componente::NOMES_DO_CARTAO.iter())
+            .map(|&(.., linha, eixo)| {
+                let linha = tr(linha).split(" (").next().unwrap_or_default();
+                format!("{linha} {}", tr(eixo))
+            })
+            .collect()
+    });
+    n.get(i).map_or("", String::as_str)
 }
 
 /// ⭐ **Dono 10/11: o canal do Transform diz a palavra do INSPECTOR** («Position X», nunca

@@ -350,6 +350,8 @@ fn os_chips_abrem_e_a_opcao_escolhe() {
         "a lista dos clipes virou chips: nenhum ▾ à vista"
     );
     let _ = m0.clica(ids::TIMELINE_CLIP_OPT[1]);
+    // O chip é uma superfície da Timeline (doc 17 item 6): o gesto lê-se na pintura seguinte.
+    m0.assenta_em(JANELA);
     let intents = drain_intents();
     assert!(
         intents

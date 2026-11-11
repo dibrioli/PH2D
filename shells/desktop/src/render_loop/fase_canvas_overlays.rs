@@ -25,18 +25,23 @@ impl crate::App {
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };
-        // A TRAJETÓRIA do objeto selecionado (ADR-0141): um binding Position guarda
-        // uma curva, e sem desenhá-la o artista vê o objeto aparecer noutro lugar a
-        // cada frame sem ter onde pegar o caminho. Os PONTOS são um por quadro, e o
-        // espaçamento entre eles é a velocidade. No-op sem seleção ou sem Position.
-        // ⚠️ **Só na aba Keys** (Enio, 2026-07-31) — a trajetória é do CLIP ATIVO, e
-        // fora dali quem dirige o objeto é a PILHA; o MESMO booleano que sola o clip
-        // (`keys_mode`) decide se há alça a oferecer. Um `true` literal aqui deixaria
-        // todo gate do overlay verde com a alça fantasma de volta na tela — daí o
-        // arch-gate `the_motion_path_is_offered_only_on_the_keys_tab`.
+        // A TRAJETÓRIA do selecionado (ADR-0141) e as chaves de X/Y (doc 17 item 7). ⚠️ Só na aba
+        // Keys (Enio, 2026-07-31): o MESMO `keys_mode` que sola o clip — arch-gate
+        // `the_motion_path_is_offered_only_on_the_keys_tab`.
         ph2d_app_motion::motion_path_overlay::draw(
             self.timeline.keys_mode,
             &self.timeline.doc,
+            hero.gizmo.iter_selected().next(),
+            camera,
+            window_size,
+            vector_scene,
+        );
+        ph2d_app_motion::motion_key_points::draw(
+            self.timeline.keys_mode,
+            sim.world(),
+            &self.timeline.doc,
+            &self.timeline.history,
+            self.motion_shell.path_drag,
             hero.gizmo.iter_selected().next(),
             camera,
             window_size,

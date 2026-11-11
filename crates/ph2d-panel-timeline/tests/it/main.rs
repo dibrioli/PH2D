@@ -15,6 +15,7 @@ mod arrange_sources_seam;
 mod as_faixas_nos_cartoes;
 mod autoplay_seam;
 mod buffer_curves_seam;
+mod chip_para_faixa;
 mod close_button_seam;
 mod containers_tab_seam;
 mod curves_view_seam;

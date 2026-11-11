@@ -129,10 +129,8 @@ fn o_canal_diz_o_nome_do_campo_que_o_grava() {
             faixas.filter_map(mente)
         })
         .collect();
-    // ⚠️ Do dono (10/11): «Flip image» + ícones H/V lê-se «Flip H/V» na faixa; resolvido, a lista esvazia.
-    let pendentes = ["«Flip image» × «Flip H»", "«Flip image» × «Flip V»"];
-    assert_eq!(
-        mentiras, pendentes,
-        "o canal mente sobre o campo que o grava"
+    assert!(
+        mentiras.is_empty(),
+        "o canal mente sobre o campo que o grava: {mentiras:?}"
     );
 }

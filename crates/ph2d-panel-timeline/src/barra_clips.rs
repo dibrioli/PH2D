@@ -16,6 +16,7 @@ use ph2d_editor_core::widget::DropdownOption;
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
+use ph2d_tokens::chrome::{TIMELINE_CHIP_ARRASTADO_ALPHA, TIMELINE_CHIP_ARRASTADO_ANEL_PX};
 use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 
 use crate::ids;
@@ -101,6 +102,8 @@ struct Chip<'a> {
     menu: bool,
     /// Onde o container é usado (`crate::uso::rotulo`); `None` num clipe.
     uso: Option<String>,
+    /// A cor da fonte quando este chip está na mão (`chip_drag`).
+    arrastado: Option<ph2d_tokens::TimelineTinta>,
 }
 
 /// A frase do uso, se a opção é um CONTAINER.
@@ -132,7 +135,20 @@ fn pinta_chip(ctx: &mut PaintCtx, ink: CardInk, r: Rect, ch: &Chip<'_>) -> Optio
         ink.color(fundo)
     };
     fill_rounded_rect(ctx.scene, r, raio, cor_fundo);
-    if ch.on {
+    if let Some(t) = ch.arrastado {
+        // O chip na mão (`.dr` da B4): a cor da fonte a 25 % e o anel dela por dentro.
+        let cor = crate::folha_tinta::tinta(t, ctx.host.theme());
+        fill_rounded_rect(
+            ctx.scene,
+            r,
+            raio,
+            cor.multiply_alpha(TIMELINE_CHIP_ARRASTADO_ALPHA),
+        );
+        let w = TIMELINE_CHIP_ARRASTADO_ANEL_PX;
+        let dentro = Rect::new(r.x + w * 0.5, r.y + w * 0.5, r.w - w, r.h - w);
+        // FRAME-RAW-OK: o anel do chip na mão É a marca do arrasto (`.dr`), na cor da fonte.
+        ph2d_editor_core::paint::stroke_rounded_rect(ctx.scene, dentro, raio - w * 0.5, w, cor);
+    } else if ch.on {
         // FRAME-RAW-OK: o contorno do acento É a marca do chip escolhido (como a célula sob a mão).
         ph2d_editor_core::paint::stroke_rounded_rect(
             ctx.scene,
@@ -142,12 +158,15 @@ fn pinta_chip(ctx: &mut PaintCtx, ink: CardInk, r: Rect, ch: &Chip<'_>) -> Optio
             ink.color(ColorToken::Accent),
         );
     }
-    // As linhas da lista agrupada da Cena só entram no store quando a lista se pinta (a faixa visível);
-    // um chip à vista tem de ser um `Button`, senão o clique nunca nasce.
-    ctx.host.store_mut().register_if_absent(
+    // ⭐ O chip é uma superfície da Timeline (doc 17 item 6): o clique escolhe como a lista escolhia,
+    // o arrasto leva-o a uma faixa (`chip_drag`). Registado sempre: a lista agrupada da Cena só põe as
+    // linhas dela no store quando se pinta.
+    ctx.host.store_mut().register(
         ch.opcao.id,
-        ph2d_editor_core::interaction::InteractiveState::Button {
-            state: ph2d_editor_core::widget::ButtonState::Normal,
+        ph2d_editor_core::interaction::InteractiveState::TimelineSurface {
+            parent: ph2d_editor_core::ids::TIMELINE_PANEL,
+            kind: crate::chip_drag::superficie(ch.opcao.id),
+            canvas: corpo,
         },
     );
     ctx.host.hit_index_mut().register(ch.opcao.id, corpo);
@@ -303,6 +322,7 @@ fn pecas<'a>(
                 estrela: comeca_com(snap, view, opcao),
                 menu: tem_menu(on, opcao),
                 uso: uso_de(snap, opcao),
+                arrastado: crate::chip_drag::tinta_do_chip(opcao.id, snap, &opcao.label),
             };
             let w = largura(ctx, &ch);
             Peca {

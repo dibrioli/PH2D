@@ -224,6 +224,8 @@ pub mod motion_glow_layer;
 pub mod motion_glow_passe;
 /// doc 132 §2: a história da fita dita na Timeline (a faixa) e no cartão das entradas.
 pub mod motion_historia;
+/// As chaves de posição (eixos separados) no canvas, agarráveis (doc 17, Onda 2, item 7).
+pub mod motion_key_points;
 pub mod motion_lens;
 /// ADR-0154: the shell half of `source.shape` — build each shape's `VecPath` from
 /// its node params, publish it into the cook, and draw the cooked instances as

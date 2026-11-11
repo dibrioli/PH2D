@@ -89,10 +89,20 @@ pub(crate) fn route(state: &mut TimelinePanelState, id: ph2d_a11y::NodeId) -> bo
     };
     if state.vista != want {
         state.vista = want;
+        state.curvas_do_clip = Some(crate::state::current_snapshot().active_clip);
         // A área muda por baixo de qualquer gesto: o mesmo fecho que mudar de aba.
         crate::state::drop_row_gestures(state);
     }
     true
+}
+
+/// ⭐ A vista volta a Keys quando a área deixa de ser a do clipe em que Curves se ligou: outro clipe
+/// ou a lista de Containers (mudar de aba é [`crate::state::set_tab`]). Chamado pelo `paint`.
+pub(crate) fn volta_a_keys(state: &mut TimelinePanelState, clip: usize, lista: bool) {
+    if state.vista == Vista::Curves && (lista || state.curvas_do_clip != Some(clip)) {
+        state.vista = Vista::Keys;
+        crate::state::drop_row_gestures(state);
+    }
 }
 
 /// A curva desta linha aparece no grafo grande?
@@ -137,6 +147,9 @@ pub(crate) fn paint_olho(
             state: ButtonState::Normal,
         },
     );
+    ctx.host
+        .store_mut()
+        .set_tooltip(id, ph2d_i18n::tr("panel.timeline.view.eye_tip"));
     ctx.host.hit_index_mut().register(id, hit);
 }
 
@@ -196,12 +209,12 @@ pub(crate) fn paint(
     if secundaria.is_some() {
         let cor_eixo = cor.multiply_alpha(EIXO_ALFA);
         let x = banda.x + banda.w - Spacing::Md.px();
-        for (txt, y) in [("1", banda.y), ("0", banda.y + banda.h - fonte)] {
-            // HR15-OK: axis digits
+        let digito = ph2d_editor_core::interaction::util::format_number;
+        for (v, y) in [(1.0, banda.y), (0.0, banda.y + banda.h - fonte)] {
             paint_text(
                 ctx.text_system,
                 ctx.scene,
-                txt,
+                &digito(v),
                 x,
                 y,
                 fonte,

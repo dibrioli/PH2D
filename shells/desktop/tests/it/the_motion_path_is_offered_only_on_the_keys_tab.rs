@@ -28,6 +28,8 @@ const LIVE_TAB: &str = "self.timeline.keys_mode";
 const DOORS: &[&str] = &[
     "motion_path_overlay::draw(",
     "motion_path_hit(",
+    "motion_path_hit_with_keys(",
+    "motion_key_points::draw(",
     "motion_path_curve_hit(",
     "anchor_screen(",
     "tangent_screen(",

@@ -41,6 +41,9 @@ impl TimelineHitKind {
             | Self::Marker { .. }
             | Self::CurveAnchor { .. }
             | Self::CurveHandle { .. } => mao,
+            // O chip da barra é um botão: a seta parado, a mão FECHADA só no arrasto (doc 17 item 6).
+            Self::SourceChip { .. } if apertado => PointerLook::Grabbing,
+            Self::SourceChip { .. } => return None,
             Self::Lane
             | Self::Twirl { .. }
             | Self::Row { .. }
@@ -92,6 +95,9 @@ mod tests {
         let key = TimelineHitKind::Key { target: 1, key: 2 };
         assert_eq!(key.pointer_look(false), Some(PointerLook::Grab));
         assert_eq!(TimelineHitKind::Lane.pointer_look(false), None);
+        let chip = TimelineHitKind::SourceChip { option: 7 };
+        assert_eq!(chip.pointer_look(false), None, "o chip parado é um botão");
+        assert_eq!(chip.pointer_look(true), Some(PointerLook::Grabbing));
         assert_eq!(
             TimelineHitKind::DurationHandle.pointer_look(false),
             Some(PointerLook::ResizeEw)

@@ -400,7 +400,7 @@ fn follow_value() -> InspectorConstraintsInfo {
     };
     let mut follow = pose(5);
     follow.push(OpcaoPropriedade {
-        prop: P::Campo([2, 11, 0, 0]),
+        prop: P::Opacidade,
         rotulo: "campo".into(),
     });
     let numero = |campo| AjusteNumero {
@@ -477,7 +477,7 @@ fn the_value_cards_follow_dropdown_writes_the_chosen_property() {
     host.set_dropdown_open(follow, true);
     let e = clica_em(&mut host, &mut state, ids::INSP_CONSTRAINT_PROP_OPCAO[5]);
     set_current_inspector_constraints(None);
-    assert_eq!(e, vec![E::Propriedade(9, 23, P::Campo([2, 11, 0, 0]))]);
+    assert_eq!(e, vec![E::Propriedade(9, 23, P::Opacidade)]);
     assert_eq!(
         host.dropdown_is_open(follow),
         Some(false),

@@ -11,8 +11,8 @@ use std::cell::RefCell;
 const WINDOW: usize = 90;
 
 /// Steps of the PANEL phase, in call order.
-pub(super) const PANEL_SUB: usize = 5;
-pub(super) const PANEL_LABELS: [&str; PANEL_SUB] =
+pub const PANEL_SUB: usize = 5;
+pub const PANEL_LABELS: [&str; PANEL_SUB] =
     ["commit", "layerclone", "brushsnap", "pub", "shapebake"];
 
 /// The twelve calls `draw_overlays` makes, in call order.
@@ -23,7 +23,7 @@ pub const CHROME_LABELS: [&str; CHROME_SUB] = [
 ];
 
 #[derive(Clone, Copy, Default)]
-pub(super) struct FrameInfo {
+pub struct FrameInfo {
     pub gpu: bool,
     pub dispatch_ms: f32,
     /// Sub-phases of dispatch (they sum to ~`dispatch_ms`): the preview drain (try_drive + the CPU
@@ -54,7 +54,7 @@ pub(super) struct FrameInfo {
     pub lane_partial: bool,
     pub trivial: bool,
     /// Which arm the drain took — the decisive signal (`FULL-composite` is the O(W×H) cost).
-    pub branch: ph2d_tool_painter::DrainBranch,
+    pub branch: crate::DrainBranch,
     /// WHY a trivial stack fell to the full arm: relief is lit / a mask brush scratch is live.
     pub impasto: bool,
     pub mask_scratch: bool,
@@ -94,7 +94,7 @@ const QUADROS_DEPOIS_DO_UP: u32 = 60;
 
 /// B10.1: o pior quadro e o pior intervalo nos [`QUADROS_DEPOIS_DO_UP`] quadros depois de um soltar.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub(super) struct PenUp {
+pub struct PenUp {
     /// O relógio de parede do soltar (ns desde a época, o do `[quadro-lento]` e do `date +%s%N`).
     pub parede_ns: u128,
     /// O custo do `Up` no tratamento da entrada (fora do quadro).
@@ -106,14 +106,14 @@ pub(super) struct PenUp {
 
 impl PenUp {
     /// Conta um quadro; `true` quando a vigia acabou.
-    pub(super) fn quadro(&mut self, quadro_ms: f32, intervalo_ms: f32) -> bool {
+    pub fn quadro(&mut self, quadro_ms: f32, intervalo_ms: f32) -> bool {
         self.quadros += 1;
         self.max_quadro_ms = self.max_quadro_ms.max(quadro_ms);
         self.max_intervalo_ms = self.max_intervalo_ms.max(intervalo_ms);
         self.quadros >= QUADROS_DEPOIS_DO_UP
     }
 
-    pub(super) fn linha(&self) -> String {
+    pub fn linha(&self) -> String {
         format!(
             "[pen-up] parede={} up={:.1} max_quadro={:.1} max_intervalo={:.1} em {} quadros",
             self.parede_ns, self.up_ms, self.max_quadro_ms, self.max_intervalo_ms, self.quadros
@@ -150,7 +150,7 @@ pub fn stamp_pointer() {
 
 /// Records the CPU fold cost of the relief planes (inside `try_drive`) and whether it walked the
 /// whole canvas; `record_dispatch` drains it into the frame's `FrameInfo`. No-op without the env.
-pub(crate) fn note_gpu_fold(ms: f32, full: bool) {
+pub fn note_gpu_fold(ms: f32, full: bool) {
     if !on() {
         return;
     }
@@ -213,7 +213,7 @@ pub fn on() -> bool {
 }
 
 /// Record this frame's painter dispatch. Call only when the painter is active.
-pub(super) fn record_dispatch(info: FrameInfo) {
+pub fn record_dispatch(info: FrameInfo) {
     AGG.with(|a| {
         let mut a = a.borrow_mut();
         // Drain the fold noted in this frame's `preview` phase; zeroing stops inheritance.
@@ -409,7 +409,7 @@ fn emit(a: &Agg) {
     eprintln!("[paint-perf]   CHROME p50/max:{chrome}");
     // The tool's watercolour half, when it painted this window (in the report the artist runs).
     // `ns/texel` constant = the work grew · rising = contention.
-    let wash = ph2d_tool_painter::wash_diag::take();
+    let wash = crate::wash_diag::take();
     if wash.composite.n > 0 || wash.stamp.n > 0 {
         eprintln!(
             "[paint-perf]   AQUARELA p50/max: composite {:.2}/{:.2} x{} | carimbo {:.2}/{:.2} x{} \
@@ -458,13 +458,13 @@ fn emit(a: &Agg) {
 }
 
 /// What the preview-diag trap reports: who owns the slot, and the CPU partial-upload bbox.
-pub(super) type PreviewDiagState = (bool, Option<(u32, u32, u32, u32)>);
+pub type PreviewDiagState = (bool, Option<(u32, u32, u32, u32)>);
 
 /// Has the preview-diag state CHANGED since the last frame? (`PH2D_PREVIEW_DIAG`.)
 ///
 /// Logs on CHANGE only (per frame it hid the transitions it exists to show); the state
 /// persists across frames here.
-pub(super) fn preview_diag_changed(now: PreviewDiagState) -> bool {
+pub fn preview_diag_changed(now: PreviewDiagState) -> bool {
     use std::sync::Mutex;
     static LAST: Mutex<Option<PreviewDiagState>> = Mutex::new(None);
     let Ok(mut last) = LAST.lock() else {
@@ -486,13 +486,13 @@ mod tests;
 ///
 /// `ON` is `thread_local`, so arming it directly avoids `set_var` (unsafe, racy in tests).
 #[cfg(test)]
-pub(super) fn force_on() {
+pub(crate) fn force_on() {
     ON.with(|c| c.set(1));
 }
 
 /// Só em teste: o custo do input por frame, na janela corrente.
 #[cfg(test)]
-pub(super) fn input_hist_by_phase() -> (Vec<f32>, Vec<f32>, Vec<f32>) {
+pub(crate) fn input_hist_by_phase() -> (Vec<f32>, Vec<f32>, Vec<f32>) {
     AGG.with(|a| {
         let h = &a.borrow().input_hist;
         (h[0].clone(), h[1].clone(), h[2].clone())
@@ -503,7 +503,7 @@ pub(super) fn input_hist_by_phase() -> (Vec<f32>, Vec<f32>, Vec<f32>) {
 ///
 /// `cfg(test)`: the report prints the three phases apart; only the gate sums.
 #[cfg(test)]
-pub(super) fn fold_hist() -> Vec<(f32, bool)> {
+pub(crate) fn fold_hist() -> Vec<(f32, bool)> {
     AGG.with(|a| {
         a.borrow()
             .samples
@@ -514,7 +514,7 @@ pub(super) fn fold_hist() -> Vec<(f32, bool)> {
 }
 
 #[cfg(test)]
-pub(super) fn input_hist() -> Vec<f32> {
+pub(crate) fn input_hist() -> Vec<f32> {
     // A soma das três fases — o que este leitor sempre quis dizer (*quanto o input custou neste frame*).
     AGG.with(|a| {
         let h = &a.borrow().input_hist;
@@ -526,12 +526,12 @@ pub(super) fn input_hist() -> Vec<f32> {
 
 /// Só em teste: quantos eventos a janela corrente viu.
 #[cfg(test)]
-pub(super) fn events_seen() -> u32 {
+pub(crate) fn events_seen() -> u32 {
     AGG.with(|a| a.borrow().events)
 }
 
 /// Só em teste: as amostras de latência acumuladas na janela corrente.
 #[cfg(test)]
-pub(super) fn latency_samples() -> Vec<f32> {
+pub(crate) fn latency_samples() -> Vec<f32> {
     AGG.with(|a| a.borrow().latency_ms.clone())
 }

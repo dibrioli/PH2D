@@ -604,3 +604,32 @@ fn um_ctrl_z_em_caixas_pela_placa_e_a_tela_inteira_ao_bit() {
         "controlo: o Ctrl+Z da diagonal chega à placa em {caixas_vistas} caixa(s), não em várias"
     );
 }
+
+/// **A anotação sai do sítio onde a JANELA é resolvida** — arch-gate, porque `compose_light_premul`
+/// exige um device e nenhum teste de unidade a alcança.
+///
+/// Duas afirmações, e a segunda é a que tem dentes: a chamada existe, **e** o `full` é derivado da
+/// comparação com a tela inteira. Um `false` cravado deixaria o relógio publicado e a pergunta que
+/// decide a cura sem resposta — verde, mudo, e pior que instrumento nenhum.
+#[test]
+fn the_gpu_preview_times_the_fold_where_its_window_is_resolved() {
+    let src = include_str!("painter_gpu_preview.rs");
+    let win = src
+        .find("let tela = (0, 0, width, height);")
+        .expect("o sitio que resolve a janela do fold sumiu");
+    let call = src[win..].find("note_gpu_fold(").expect(
+        "o fold do relevo deixou de ser cronometrado — o `preview` volta a ser um balde so'",
+    );
+    let matched = src[win..]
+        .find("let finished")
+        .expect("o consumidor dos planos sumiu");
+    assert!(
+        call < matched,
+        "a anotacao tem de cercar o fold, nao vir depois de quem consome os planos"
+    );
+    assert!(
+        src[win..win + matched].contains("plane_win == tela,"),
+        "o `full` parou de sair da comparacao com a tela inteira — um literal ali publica um relogio \
+         sem a pergunta que decide a cura (retangulo x canvas dobrado)"
+    );
+}

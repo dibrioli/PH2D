@@ -26,11 +26,6 @@ const FORA: &[Isento] = &[
          rótulo que o ecrã mostra sai só por `tr_em` (dono 22/10)",
     ),
     (
-        "paint_perf.rs",
-        "o RETRATO de performance impresso no terminal (`GPU`/`CPU`, `TELA`/`rect` numa linha de \
-         `println!`) — diagnóstico de quem caça um engasgo, nunca ecrã",
-    ),
-    (
         "macro_track/caminho.rs",
         "o REGISTO das cenas `PH2D_MACRO_SMOKE=5|6` (`regista`: a consola e `$TMPDIR/ph2d-macro-smoke.log`) \
          — as linhas de diagnóstico por quadro e o anúncio da cena, lidos por quem caça o defeito, nunca ecrã",

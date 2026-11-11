@@ -53,11 +53,8 @@ pub mod image_edit_mode;
 /// As macros do Painter em cena (ADR-0186, W4 item 5.5 D).
 pub mod macro_track;
 pub mod paint_mode;
-/// `PH2D_PAINT_PERF` aggregation (one summary line per window, not per frame).
-///
-/// `pub(crate)` porque a frente L do plano 26 carimba a chegada do evento de ponteiro lá do
-/// `input_dispatch` (a latência começa na ENTREGA, não no frame).
-pub mod paint_perf;
+/// `PH2D_PAINT_PERF` aggregation (one summary line per window), from the paint tool (`ph2d-tool-painter`).
+pub use ph2d_tool_painter::paint_perf;
 pub mod painter_bridge;
 /// Brush-image import helpers (Grain/Shape file pickers), split from
 /// `painter_bridge` for the HR-18 file-LOC cap.

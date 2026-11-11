@@ -91,6 +91,7 @@ if [ "$1" = matriz ]; then
       marca parado0_ini; sleep 3; marca parado0_fim
       # B17b-cont4: DIAG="x0 y0 x1 y1" = o traço é a RECTA de canto a canto (o Ctrl+Z diagonal: muitos tiles, união = a tela).
       if [ -n "$DIAG" ]; then read -r DX0 DY0 DX1 DY1 <<< "$DIAG"; else DX0=560; DY0=460; fi
+      if [ -n "$CANTOS" ]; then read -r DX0 DY0 _ _ <<< "$CANTOS"; DX1=$((DX0 + 40)); DY1=$((DY0 + 30)); DIAG=1; fi
       DISPLAY=$D xdotool mousemove $DX0 $DY0; sleep 0.3
       marca down; DISPLAY=$D xdotool mousedown 1; sleep 0.4
       cmd=""; for i in $(seq 1 125); do
@@ -99,7 +100,15 @@ if [ "$1" = matriz ]; then
       done
       marca traco_ini; DISPLAY=$D xdotool $cmd; marca traco_fim
       marca up; DISPLAY=$D xdotool mouseup 1; sleep 3; marca wet_fim
-      marca ctrlz; DISPLAY=$D xdotool key ctrl+z; sleep 1.5; marca ctrlz_fim
+      # B17.5: CANTOS="x0 y0 x1 y1" = traço curto em x0,y0 (a fase «traço») + toque curto em x1,y1 (canto oposto) e os
+      # DOIS Ctrl+Z seguidos no mesmo quadro (o sujo de dois tiles opostos; a união seria a tela).
+      if [ -n "$CANTOS" ]; then read -r _ _ CX1 CY1 <<< "$CANTOS"
+        marca toque2; DISPLAY=$D xdotool mousemove $CX1 $CY1 mousedown 1 mousemove $((CX1 + 6)) $((CY1 + 4)) sleep 0.05 \
+          mousemove $((CX1 + 12)) $((CY1 + 8)) mouseup 1; sleep 2; marca toque2_fim
+        marca ctrlz; DISPLAY=$D xdotool key ctrl+z key ctrl+z; sleep 1.5; marca ctrlz_fim
+      else
+        marca ctrlz; DISPLAY=$D xdotool key ctrl+z; sleep 1.5; marca ctrlz_fim
+      fi
       marca parado1_ini; sleep 3; marca parado1_fim
       # B08.1, o CONTROLO da régua: o app parado 250 ms por SIGSTOP (o processo é nosso). O intervalo de quadro desse
       # segundo tem de ler ≥ 250 ms; se não lê, a régua não vê uma trava e a matriz vale zero (mede_pen_up_4k.py ✗).

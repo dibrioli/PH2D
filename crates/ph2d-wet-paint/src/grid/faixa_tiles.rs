@@ -12,6 +12,10 @@ use super::{Grid, SPAN_PAD};
 
 /// Largura do tile da máscara, em células.
 pub const TILE_FAIXA: i32 = 64;
+const _: () = assert!(
+    SPAN_PAD + 2 < TILE_FAIXA,
+    "o alcance da faixa passa de um tile"
+);
 
 /// Palavras de máscara por linha numa grade de passo `s`.
 #[must_use]
@@ -137,10 +141,6 @@ impl Grid {
     /// Publica a máscara a partir do rascunho `live_tiles` (cabeçalho + palavras por linha): OR das linhas
     /// `y ± SPAN_PAD` e um tile de vizinho de cada lado.
     pub(crate) fn publish_tiles_from_live(&mut self) {
-        debug_assert!(
-            SPAN_PAD + 2 < TILE_FAIXA,
-            "o alcance da faixa passa de um tile"
-        );
         if self.row_tiles.is_empty() || self.live_tiles.is_empty() {
             return;
         }

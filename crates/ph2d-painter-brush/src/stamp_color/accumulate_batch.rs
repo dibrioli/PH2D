@@ -74,7 +74,6 @@ pub fn accumulate_color_stamps_fused_batch(
         dabs.len(),
         &lote,
         threads,
-        "fused accumulate band panicked",
         |maps, band_y0, band_y1, touched| {
             for b in &boxes {
                 if pinta_alfa(maps, wus, band_y0, b, b.y0.max(band_y0), b.y1.min(band_y1)) {
@@ -243,7 +242,6 @@ pub fn accumulate_shape_layers_rgba_batch(
         dabs.len(),
         &lote,
         threads,
-        "dynamic accumulate band panicked",
         |maps, band_y0, band_y1, touched| {
             for ((b, grao), dente) in boxes.iter().zip(&graos).zip(&dentes) {
                 let d = &dabs[b.di];

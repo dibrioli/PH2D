@@ -56,7 +56,7 @@ fn spray_parado_a_30_e_144_fps_da_a_mesma_densidade() {
     let sp = spec(0.0035, StrokeMethod::Space, 0.1);
     let alvo = (1.0 / 0.0035_f32).floor() as usize;
     for fps in [30, 60, 144] {
-        let n = um_segundo(sp.clone(), fps);
+        let n = um_segundo(sp, fps);
         assert!(
             n.abs_diff(alvo) <= 1,
             "{fps} q/s: {n} nuvens num segundo parado, o alvo é {alvo}"
@@ -69,7 +69,7 @@ fn spray_parado_a_30_e_144_fps_da_a_mesma_densidade() {
 fn aerografo_a_30_e_144_fps_da_a_mesma_densidade() {
     let sp = spec(0.0, StrokeMethod::Airbrush, 0.001);
     for fps in [30, 60, 144] {
-        let n = um_segundo(sp.clone(), fps);
+        let n = um_segundo(sp, fps);
         assert!(
             n.abs_diff(1000) <= 2,
             "{fps} q/s: {n} dabs num segundo, o alvo é 1000"

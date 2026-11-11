@@ -78,7 +78,7 @@ pub(super) fn uniao<B: Caixa>(boxes: &[B], tocado: impl Fn(usize) -> bool) -> Op
 
 /// Parte cada mapa (`bpp` bytes por píxel) nas MESMAS `threads` faixas de linhas de `lote`, corre
 /// `faixa(mapas_da_faixa, band_y0, band_y1, tocado)` numa thread por faixa e devolve a união das caixas
-/// tocadas em alguma faixa.
+/// tocadas em alguma faixa. O pânico de uma faixa sobe com a carga ORIGINAL (`resume_unwind`).
 #[allow(clippy::too_many_arguments)]
 pub(super) fn bandas_com_toque<B: Caixa>(
     maps: &mut [Vec<u8>],
@@ -88,7 +88,6 @@ pub(super) fn bandas_com_toque<B: Caixa>(
     ndabs: usize,
     lote: &Lote,
     threads: usize,
-    quem: &str,
     faixa: impl Fn(&mut [&mut [u8]], i64, i64, &mut [bool]) + Sync,
 ) -> Option<DirtyRect> {
     let (gy0, gy1) = (lote.gy0, lote.gy1);
@@ -123,7 +122,10 @@ pub(super) fn bandas_com_toque<B: Caixa>(
                 })
             })
             .collect();
-        handles.into_iter().map(|h| h.join().expect(quem)).collect()
+        handles
+            .into_iter()
+            .map(|h| h.join().unwrap_or_else(|p| std::panic::resume_unwind(p)))
+            .collect()
     });
     uniao(boxes, |di| touched_by_band.iter().any(|t| t[di]))
 }

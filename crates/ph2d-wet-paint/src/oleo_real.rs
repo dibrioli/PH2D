@@ -233,7 +233,7 @@ const HORIZONTE: [f64; 9] = [1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0];
 const FATIAS: usize = 4;
 /// As de [`HORIZONTE`] da [`QualidadeDaLuz::Simples`]: uma sim, uma não.
 const HORIZONTE_SIMPLES: [f64; 5] = [1.0, 3.0, 6.0, 12.0, 24.0];
-const _: () = assert!(FATIAS % 2 == 0 && HORIZONTE_SIMPLES[4] == ALCANCE_FENDA_MAX);
+const _: () = assert!(FATIAS.is_multiple_of(2) && HORIZONTE_SIMPLES[4] == ALCANCE_FENDA_MAX);
 /// O tecto do [`OleoReal::alcance_fenda`] = o horizonte de fábrica: além dele a amostra sai da
 /// [`MARGEM`] da região suja (a costura no recompor) — mais longe é a pirâmide de máximos da placa
 /// (`oraculo/README.md`, recusa «64 células na CPU»).

@@ -102,7 +102,6 @@ pub(crate) fn escala_do_avental(r_total: usize) -> f32 {
 /// **Desfazer a premultiplicação** — a porta ÚNICA, com dois chamadores: a passagem inteira da
 /// rota separada e a escrita final da vertical fundida ([`caixa_v3_com`]). Da escala do avental
 /// (cor `c·α·s`, alfa `α·255·s`) de volta a recto `0..=255`.
-#[must_use]
 pub(crate) fn desfaz(r_total: usize) -> impl Fn(&mut [f32; 4]) + Sync + Send {
     let s = escala_do_avental(r_total);
     move |p: &mut [f32; 4]| {

@@ -482,37 +482,6 @@ where
     red(r_meio, r)
 }
 
-/// [`walk_rows`] para um par de escalares POR LINHA (não uma fatia de canvas):
-/// o rascunho `live_lo`/`live_hi` do rebuild, um `i32` por linha.
-pub(crate) fn walk_row_scalars2<T, F>(mode: Rows, a: &mut [T], b: &mut [T], f: F)
-where
-    T: Send,
-    F: Fn(usize, &mut T, &mut T) + Send + Sync,
-{
-    debug_assert_eq!(
-        a.len(),
-        b.len(),
-        "os dois rascunhos tem tamanhos diferentes"
-    );
-    match mode {
-        Rows::Serial => a
-            .iter_mut()
-            .zip(b.iter_mut())
-            .enumerate()
-            .for_each(|(r, (ra, rb))| f(r, ra, rb)),
-        Rows::Parallel => a
-            .par_iter_mut()
-            .zip(b.par_iter_mut())
-            .enumerate()
-            .for_each(|(r, (ra, rb))| f(r, ra, rb)),
-        Rows::Medida(piso) => medida(
-            a.iter_mut().zip(b.iter_mut()).enumerate().collect(),
-            piso,
-            |(r, (ra, rb))| f(r, ra, rb),
-        ),
-    }
-}
-
 /// [`walk_rows`] para um passe que escreve **TRÊS** planos na mesma passada.
 ///
 /// O consumidor é o *commit* do [`crate::solver::advect_jacobi`]: `film`,

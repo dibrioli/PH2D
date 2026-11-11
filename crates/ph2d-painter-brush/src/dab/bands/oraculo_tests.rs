@@ -290,6 +290,16 @@ fn padrao(n: usize, mul: usize, modulo: usize) -> Vec<u8> {
     (0..n).map(|i| ((i * mul + 7) % modulo) as u8).collect()
 }
 
+/// O passe de uma banda sob prova: `(ctx, dst, liso, máscara, força, y0)`.
+type PasseDaBanda = fn(
+    &DabCtx,
+    &mut [u8],
+    Option<&mut [u8]>,
+    Option<&mut [u8]>,
+    Option<&mut [u16]>,
+    i64,
+) -> (bool, bool);
+
 /// Um dab pela banda de agora e pela antiga, sobre os mesmos buffers; devolve se algum texel foi pintado.
 #[allow(clippy::too_many_arguments)]
 fn compara(
@@ -339,14 +349,7 @@ fn compara(
     let dst0 = padrao(n * 4, 37, 251);
     let mask0 = padrao(n, 13, 200);
     let forca0: Vec<u16> = (0..n).map(|i| ((i * 911) % 60_000) as u16).collect();
-    let corre = |f: fn(
-        &DabCtx,
-        &mut [u8],
-        Option<&mut [u8]>,
-        Option<&mut [u8]>,
-        Option<&mut [u16]>,
-        i64,
-    ) -> (bool, bool)| {
+    let corre = |f: PasseDaBanda| {
         let (mut d, mut m, mut fo, mut l) = (
             dst0.clone(),
             mask0.clone(),
@@ -390,35 +393,29 @@ fn o_corte_do_carimbo_pinta_os_mesmos_bytes_que_a_banda_antiga() {
         ..Default::default()
     };
     let specs = [
-        ("liso", base.clone()),
+        ("liso", base),
         (
             "pelicula_aa",
             BrushSpec {
                 impasto: true,
                 impasto_depth: 0.5,
                 impasto_smooth_edges: true,
-                ..base.clone()
+                ..base
             },
         ),
         (
             "orla_px",
             BrushSpec {
                 borda_px: 2.0,
-                ..base.clone()
+                ..base
             },
         ),
-        (
-            "wash",
-            BrushSpec {
-                wash: true,
-                ..base.clone()
-            },
-        ),
+        ("wash", BrushSpec { wash: true, ..base }),
         (
             "quina",
             BrushSpec {
                 dab_quina: 0.6,
-                ..base.clone()
+                ..base
             },
         ),
     ];

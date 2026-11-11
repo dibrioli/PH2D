@@ -78,7 +78,7 @@ fn historia_o_enterro_por_linhas_da_o_bit_do_antigo() {
         z ^= z >> 17;
         z ^= z << 5;
         let y = k / gw;
-        t[k] = (y % 7 == 2 || (30..60).contains(&y)) && z % 5 == 0;
+        t[k] = (y % 7 == 2 || (30..60).contains(&y)) && z.is_multiple_of(5);
     }
     t[0] = true;
     t[gw * gh - 1] = true;

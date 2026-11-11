@@ -195,6 +195,7 @@ pub(crate) struct LadeiraDoOleo {
     /// Alguma célula das janelas tem altura (sem nenhuma, o passe corre sem a ladeira, ao bit).
     alguma: bool,
     /// Quantas células a construção visitou (o gate `a_ladeira_so_visita_a_faixa_viva`).
+    #[cfg(test)]
     pub(crate) visitadas: usize,
 }
 
@@ -262,6 +263,7 @@ impl LadeiraDoOleo {
             assente,
             presa: antes && rt == 7,
             alguma: alguma.into_inner(),
+            #[cfg(test)]
             visitadas: jan
                 .iter()
                 .map(|&(lo, hi)| (hi - lo + 1).max(0) as usize)

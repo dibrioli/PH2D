@@ -46,7 +46,6 @@ pub fn accumulate_color_stamps_rgba_batch(
         dabs.len(),
         &lote,
         threads,
-        "rgba accumulate band panicked",
         |maps, band_y0, band_y1, touched| {
             for b in &boxes {
                 if pinta_rgba(maps, wus, band_y0, b, b.y0.max(band_y0), b.y1.min(band_y1)) {

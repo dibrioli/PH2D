@@ -101,6 +101,13 @@
 | onda 11 | B19b-cont | feito (36a8563534): B19.7 resto: seis passadas em faixas passam do SO ao pool rayon; gate de fios 72/128/96 → 0, mutação vermelha, ao bit verde. Ms não medidos (load 20–38). |
 | onda 11 | B20a-cont | feito (92460d48e1): interruptor PH2D_PREVIA_INTEIRA=1. Quadro p50 4096² 1 camada 38,8→10,2 ms, 4 camadas 47,4→10,6. Pen-up 4K: toque 32,6→16,0, traço 32,0→14,6, Ctrl+Z 38,1→17,5 ms. |
 | onda 11 | verificação | verde. |
+| onda 12 | B35.A1+B50a | feito (a2cc8fc1f2): B52.R5 fecha o bloco: json.rs + meio.rs viram UMA tabela Campo{nome, ler, escrever, grava}. Paridade ao byte (67 757 B, 4 pincéis). Gates e 2 alarmes verdes. |
+| onda 12 | B40a | feito (d9de1bf431): B40.2 Trim só com Offset ≠ 0; B40.7 tecto da captura max(4096, 2(w+h)); B40.A2 Feather em janela deslizante nas faixas do pool, 4096² r=64: 11 121 → 16,8 ms, mesmo byte. |
+| onda 12 | B13a | parcial (14d244c0ae): B13.2 medido sem cura: vão seco custa 5,9 ms/quadro (88,6 vs 17,8 ms, 5,9× células). Vale a cura (spans da máscara de tiles 64²); código do produto intacto. |
+| onda 12 | B17b-cont4 | parcial (31babe408d): Ctrl+Z diagonal Impasto 4K na Radeon, A×B em 3 rodadas: 50,2 → 26,9 ms (−46 %); toque 27,3 → 13,9. Só medição; falta B20.7 (sujo por união, gate a_textura_e_o_espelho). |
+| onda 12 | B49 | bloqueado (cf846e49de): passo 2 do B49.1 (pó por ladrilho 256²) mexe em stamp_cache.rs e stamp_ramp_routes.rs, com mudanças do B26a por commitar. Pen-down 4K já 12,6 → 5,8 ms. Planeador decide. |
+| onda 12 | B26a | parcial (7d6ef9b53d): B26.A2 o t do dente do papel lido de memória própria do GraoCache: 0,149 → 0,045 ms/dab (3,31×), ao byte. Falta B26.1 (RLE da máscara) e a rota stamp.rs:644. |
+| onda 12 | verificação | verde. |
 
 ## Fatos medidos que mudam a ordem
 

@@ -10,6 +10,7 @@
 //! sempre e a água do traço novo respeita o relevo dos anteriores. Sonda: `queda_na_ladeira_tests`.
 
 use crate::grid::Grid;
+use crate::grid::faixa_tiles::{TILE_FAIXA, span_runs, tile_words_for};
 
 /// A rota da ladeira, em execução (sondas `sonda_oleo_derrete`, `sonda_oleo_furos`): `0` = o produto (= `7`), `1` = a de 30/10 sem peso,
 /// `2` = desligada, `3` = fotografia com a massa inteira (assente + suspensa), sem peso, `4` = peso pela fracção
@@ -212,7 +213,7 @@ impl LadeiraDoOleo {
     /// lixo de outro passe: o passe de fluxo só lê dentro delas ([`do_passe`]).
     fn de(
         g: &Grid,
-        (r0, jan): (usize, &[(i32, i32)]),
+        (r0, jan, tiles): (usize, &[(i32, i32)], Option<(&[u64], usize)>),
         (mut h, mut assente): (Vec<f32>, Vec<f32>),
         antes: bool,
         mode: crate::par::Rows,
@@ -230,30 +231,37 @@ impl LadeiraDoOleo {
         }
         let rt = rota();
         let alguma = std::sync::atomic::AtomicBool::new(false);
+        #[cfg(test)]
+        let visitadas = std::sync::atomic::AtomicUsize::new(0);
         crate::par::walk_rows2(mode, &mut h[..n], &mut assente[..n], s, |ri, hr, ar| {
             let (lo, hi) = jan[ri];
             if lo > hi {
                 return;
             }
             let base = (r0 + ri) * s;
-            for x in lo as usize..=hi as usize {
-                let i = base + x;
-                ar[x] = match rt {
-                    4 => fraccao_assente(g, i),
-                    5..=7 if antes => g.oleo_antes_assente.get(i).copied().unwrap_or(1.0),
-                    _ => 1.0,
-                };
-                let v = if antes {
-                    g.oleo_antes[i]
-                } else {
-                    altura(g, i, false)
-                };
-                hr[x] = if v > 0.0 {
-                    alguma.store(true, std::sync::atomic::Ordering::Relaxed);
-                    v
-                } else {
-                    0.0
-                };
+            let words = tiles.map(|(t, tw)| &t[ri * tw..(ri + 1) * tw]);
+            for (a, b) in span_runs(words, lo, hi) {
+                #[cfg(test)]
+                visitadas.fetch_add((b - a + 1) as usize, std::sync::atomic::Ordering::Relaxed);
+                for x in a as usize..=b as usize {
+                    let i = base + x;
+                    ar[x] = match rt {
+                        4 => fraccao_assente(g, i),
+                        5..=7 if antes => g.oleo_antes_assente.get(i).copied().unwrap_or(1.0),
+                        _ => 1.0,
+                    };
+                    let v = if antes {
+                        g.oleo_antes[i]
+                    } else {
+                        altura(g, i, false)
+                    };
+                    hr[x] = if v > 0.0 {
+                        alguma.store(true, std::sync::atomic::Ordering::Relaxed);
+                        v
+                    } else {
+                        0.0
+                    };
+                }
             }
         });
         Self {
@@ -264,10 +272,7 @@ impl LadeiraDoOleo {
             presa: antes && rt == 7,
             alguma: alguma.into_inner(),
             #[cfg(test)]
-            visitadas: jan
-                .iter()
-                .map(|&(lo, hi)| (hi - lo + 1).max(0) as usize)
-                .sum(),
+            visitadas: visitadas.into_inner(),
         }
     }
 
@@ -352,16 +357,34 @@ pub(crate) fn do_passe(
     let mut jan = std::mem::take(&mut g.scratch.ladeira_jan);
     jan.clear();
     jan.resize(r1 + 1 - r0, (i32::MAX, i32::MIN));
+    let tiles_on = g.spans_enabled && g.tiles_enabled;
+    let tw = tile_words_for(g.s);
+    let mut jt = std::mem::take(&mut g.scratch.ladeira_jan_tiles);
+    jt.clear();
+    if tiles_on {
+        jt.resize(jan.len() * tw, 0);
+    }
     for y in by0..=by1 {
         let (bx0, bx1) =
             crate::grid::span_x_of(&g.frow_lo, &g.frow_hi, g.spans_enabled, gbx0, gbx1, y);
         if bx0 > bx1 {
             continue;
         }
-        let (lo, hi) = (p(bx0 - 1, gw) as i32, p(bx1 + 1, gw) as i32);
-        for r in [p(y - 1, gh), p(y, gh), p(y + 1, gh)] {
-            if let Some(j) = r.checked_sub(r0).and_then(|k| jan.get_mut(k)) {
+        let rows = [p(y - 1, gh), p(y, gh), p(y + 1, gh)];
+        for (a, b) in span_runs(g.ftiles_row(y), bx0, bx1) {
+            let (lo, hi) = (p(a - 1, gw) as i32, p(b + 1, gw) as i32);
+            for r in rows {
+                let Some(k) = r.checked_sub(r0).filter(|&k| k < jan.len()) else {
+                    continue;
+                };
+                let j = &mut jan[k];
                 *j = (j.0.min(lo), j.1.max(hi));
+                if tiles_on {
+                    let row = &mut jt[k * tw..(k + 1) * tw];
+                    for t in (lo / TILE_FAIXA) as usize..=(hi / TILE_FAIXA) as usize {
+                        row[t >> 6] |= 1 << (t & 63);
+                    }
+                }
             }
         }
     }
@@ -369,8 +392,10 @@ pub(crate) fn do_passe(
         std::mem::take(&mut g.scratch.ladeira_h),
         std::mem::take(&mut g.scratch.ladeira_assente),
     );
-    let l = LadeiraDoOleo::de(g, (r0, &jan), planos, oleo_na_mao, mode);
+    let tiles = tiles_on.then_some((&jt[..], tw));
+    let l = LadeiraDoOleo::de(g, (r0, &jan, tiles), planos, oleo_na_mao, mode);
     g.scratch.ladeira_jan = jan;
+    g.scratch.ladeira_jan_tiles = jt;
     #[cfg(test)]
     tests::observa(g, r0, r1, oleo_na_mao, &l);
     if l.alguma {

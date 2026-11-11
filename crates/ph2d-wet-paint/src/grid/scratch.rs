@@ -73,6 +73,8 @@ pub struct SolverScratch {
     pub ladeira_assente: Vec<f32>,
     /// A janela de colunas de cada linha fina que o passe de fluxo lê da ladeira.
     pub ladeira_jan: Vec<(i32, i32)>,
+    /// Os tiles de 64 de cada linha fina que a janela cobre (B13.2: duas manchas nas mesmas linhas).
+    pub ladeira_jan_tiles: Vec<u64>,
 }
 
 /// A cópia de um rascunho é um rascunho VAZIO: o conteúdo é reescrito inteiro dentro de um passe, e o

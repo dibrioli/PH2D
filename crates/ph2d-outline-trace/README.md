@@ -137,6 +137,23 @@ and 5.0 µs (two stacked).
   after a merge only piece `i` is new) — byte-identical over 21 masks × 3 Details × 2 speck settings
   (16 107 pieces, one sha256), and `hero_union_outline_is_byte_stable` unchanged. 14× at 512 teeth.
 - ⛔ Not done: the remaining O(points²) (ear search, chord-conflict pass) — a lower order moves `MAX_POINTS`.
+- ⭐ **An attempt above the ceiling gives up early** (GEF02 5.3, 10/11). Probe first: the pieces were already
+  skipped above `MAX_POINTS`, the march is 8–12 % of a trace, and the cost of `trace_fitted` was the
+  simplifier re-run on every attempt (9–24 attempts): 1.18 s on a 256² noise, 10.8 s on 512². The kept
+  vertices only grow and each is one output vertex, so `simplify_capped` returns `None` as soon as they pass
+  the cap — after the first cut, before any conflict round. Under the cap the bytes are the same by
+  construction (gates `o_traco_com_tecto_e_o_traco_ou_nada`, `acima_do_tecto_a_tentativa_desiste_antes_da_varredura`;
+  the hero hashes unchanged). `tecto.rs::tempo_da_tentativa_acima_do_tecto`, 2 px, interleaved, minimum of 7,
+  `--profile smoke`, load 3.7:
+
+  | mask | one attempt, capped | one attempt, whole | `trace_fitted` |
+  |---|---|---|---|
+  | comb 200 | 1.12 ms | 1.40 ms | 17.7 ms |
+  | comb 512 | 6.63 ms | 7.41 ms | 60.8 ms |
+  | noise 256² | 1.72 ms | 99.9 ms | 39.7 ms (was 1.18 s) |
+  | noise 512² | 6.49 ms | 686 ms | 156 ms (was 10.8 s) |
+
+  The combs barely move: their attempts mostly fit, and a fitting attempt runs whole.
 - W2a (09/11): the measure now goes through the PRODUCT path (`register_outline` + a `ShapeDesc::Outline`
   body), and «build» is register + spawn in an empty world: 11 / 39 / 76 / 150 / 285 µs at 17 / 65 / 129 /
   257 / 513 pieces (the content hash and the body ride on top of the bare compound). The ticks are unchanged

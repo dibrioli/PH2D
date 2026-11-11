@@ -149,10 +149,7 @@ impl Fitted {
 
 /// [`trace`] then [`convex_pieces`] at `p`, if the result fits both ceilings.
 fn fits(mask: &Mask, p: Params) -> Option<Fitted> {
-    let outline = trace(mask, p);
-    if outline.vertex_count() > MAX_POINTS {
-        return None;
-    }
+    let outline = trace_within(mask, p, MAX_POINTS)?;
     let pieces = convex_pieces(&outline, p.detail_q4);
     (pieces.len() <= MAX_PIECES).then_some(Fitted {
         outline,
@@ -224,7 +221,21 @@ pub fn trace_fitted(mask: &Mask, asked: Params) -> Fitted {
 /// Mask → covering outline. See `README.md` for the steps.
 #[must_use]
 pub fn trace(mask: &Mask, params: Params) -> Outline {
-    trace_with(mask, params, false)
+    trace_with(mask, params, false, usize::MAX).unwrap_or_default()
+}
+
+/// [`trace`], or `None` when the outline has more than `cap` points (then the rest of the work is skipped).
+#[doc(hidden)]
+#[must_use]
+pub fn trace_within(mask: &Mask, params: Params, cap: usize) -> Option<Outline> {
+    trace_with(mask, params, false, cap)
+}
+
+/// The simplifier's conflict rounds run on this thread so far (the cost [`trace_within`] skips).
+#[doc(hidden)]
+#[must_use]
+pub fn sweeps_on_this_thread() -> u64 {
+    simplify::sweeps()
 }
 
 /// [`trace`] with the pixel-centre guard asking every ring instead of the row buckets: the reference
@@ -232,20 +243,20 @@ pub fn trace(mask: &Mask, params: Params) -> Outline {
 #[doc(hidden)]
 #[must_use]
 pub fn trace_reference_guard(mask: &Mask, params: Params) -> Outline {
-    trace_with(mask, params, true)
+    trace_with(mask, params, true, usize::MAX).unwrap_or_default()
 }
 
-fn trace_with(mask: &Mask, params: Params, brute: bool) -> Outline {
+fn trace_with(mask: &Mask, params: Params, brute: bool, cap: usize) -> Option<Outline> {
     let min2 = 2 * i64::from(params.min_island_px);
     let rings: Vec<Ring> = march::march(mask)
         .into_iter()
         .filter(|r| geom::area2(r).abs() >= min2)
         .map(|r| r.into_iter().map(|[x, y]| [x * Q4, y * Q4]).collect())
         .collect();
-    let mut rings = simplify::simplify_with(&rings, i64::from(params.detail_q4), brute);
+    let mut rings = simplify::simplify_capped(&rings, i64::from(params.detail_q4), brute, cap)?;
     for r in &mut rings {
         geom::rotate_to_smallest(r);
     }
     rings.sort();
-    Outline { rings }
+    Some(Outline { rings })
 }

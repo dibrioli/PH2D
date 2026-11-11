@@ -240,10 +240,38 @@ fn uncovered(
     out
 }
 
-/// `brute`: the pixel-centre guard asks every ring (the reference the row buckets must equal byte for byte).
-pub(crate) fn simplify_with(rings: &[Vec<P>], eps: i64, brute: bool) -> Vec<Vec<P>> {
-    let mut keeps: Vec<Vec<bool>> = rings.iter().map(|r| dp(r, eps)).collect();
+thread_local! {
+    static SWEEPS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// The conflict rounds this thread has run (each one: chords, corners, the edge sweep).
+pub(crate) fn sweeps() -> u64 {
+    SWEEPS.with(std::cell::Cell::get)
+}
+
+/// The simplified rings at `eps`, or `None` once the kept vertices pass `cap`. Each kept vertex is one
+/// output vertex and a round only ever keeps MORE, so the count after any round is a lower bound of the
+/// answer: past `cap` the answer is past it too, and the rest (the conflict rounds) is skipped. Under
+/// `cap`: the same bytes. `brute`: the pixel-centre guard asks every ring (the reference the row buckets
+/// must equal byte for byte).
+pub(crate) fn simplify_capped(
+    rings: &[Vec<P>],
+    eps: i64,
+    brute: bool,
+    cap: usize,
+) -> Option<Vec<Vec<P>>> {
+    let mut kept = 0usize;
+    let mut keeps: Vec<Vec<bool>> = Vec::with_capacity(rings.len());
+    for r in rings {
+        let k = dp(r, eps);
+        kept += k.iter().filter(|b| **b).count();
+        if kept > cap {
+            return None;
+        }
+        keeps.push(k);
+    }
     loop {
+        SWEEPS.with(|n| n.set(n.get() + 1));
         // Per ring: its chords and the polygon they make.
         let mut chords: Vec<(usize, Chord)> = Vec::new();
         let mut polys: Vec<Vec<P>> = Vec::with_capacity(rings.len());
@@ -330,20 +358,26 @@ pub(crate) fn simplify_with(rings: &[Vec<P>], eps: i64, brute: bool) -> Vec<Vec<
         if force.is_empty() {
             force = uncovered(rings, &chords, &polys, brute);
             if force.is_empty() {
-                return polys;
+                return Some(polys);
             }
         }
         let mut changed = false;
         for (ri, c) in force {
             if c.to > c.from + 1 {
                 let k = farthest(&rings[ri], c.from, c.to);
-                changed |= !keeps[ri][k];
+                if !keeps[ri][k] {
+                    changed = true;
+                    kept += 1;
+                }
                 keeps[ri][k] = true;
             }
         }
+        if kept > cap {
+            return None;
+        }
         if !changed {
             // Only staircase chords conflict now, which cannot happen; never loop.
-            return polys;
+            return Some(polys);
         }
     }
 }

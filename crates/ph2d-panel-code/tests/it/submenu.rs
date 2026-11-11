@@ -37,11 +37,7 @@ fn centro(r: Rect) -> (f32, f32) {
     (r.x + r.w * 0.5, r.y + r.h * 0.5)
 }
 
-/// Pinta a barra em `w` de largura (1.º título «File») e o menu aberto.
-fn pinta(bar: &mut TabBar<u8>, w: f32, ts: &mut TextSystem) {
-    pinta_com(bar, w, "File", ts);
-}
-
+/// Pinta a barra em `w` de largura (1.º título `first`) e o menu aberto.
 fn pinta_com(bar: &mut TabBar<u8>, w: f32, first: &str, ts: &mut TextSystem) {
     let (mut scene, theme) = (VectorScene::new(), Theme::default());
     let crumb = Crumb {

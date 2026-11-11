@@ -189,6 +189,13 @@ if [ "$1" = faixas ]; then
     "W7|omissão:wet|KNOBS=realOil=1|TECLAS=10 KNOBS=realOil=1"
     "W13|omissão:wet|PRE=${RAIL_DRY:-0,0} KNOBS=ferramenta=4,dryerLevel=1,ferramenta=0|PRE=${RAIL_DRY:-0,0} KNOBS=ferramenta=4,dryerLevel=2,ferramenta=0"
     "W14|omissão:wet|PRE=${RAIL_BLEND:-0,0} KNOBS=ferramenta=2,blendReach=0,ferramenta=0|PRE=${RAIL_BLEND:-0,0} KNOBS=ferramenta=2,blendReach=1,ferramenta=0"
+    # M2 (11/11): a regressão do soltar do Filbert — a mistura espectral (B32.1) × o K–M, o MESMO binário.
+    "M1|Filbert:wet|PH2D_WET_MISTURA=espectral|PH2D_WET_MISTURA=km"
+    "M2|omissão:water|PH2D_WET_MISTURA=espectral|PH2D_WET_MISTURA=km"
+    # M3: a luz do Óleo Real Simples no gesto e Cheia no repouso (B14.2) × Cheia sempre — o salto no pen-up.
+    "M3|Filbert:wet|PH2D_COMPOSITE_LUZ_GESTO=simples|PH2D_COMPOSITE_LUZ_GESTO=cheia"
+    # M4: o Ctrl+Z do Impasto 4K sem interruptor — A e B são o MESMO caminho (a dispersão do binário «depois»).
+    "M4|omissão:impasto|PH2D_M4=a|PH2D_M4=b"
   )
   [ -n "$SO" ] && mapfile -t CASOS < <(printf '%s\n' "${CASOS[@]}" | grep -E "^($SO)\|")
   for i in $(seq 1 "$N"); do for c in "${CASOS[@]}"; do
@@ -287,6 +294,8 @@ if [ "$1" = perf ]; then
   P=$S/perf; mkdir -p "$P"; D=${DISPLAY_MATRIZ:-:96}; LENTO=${LENTO_MS:-60}
   TAG="$(echo "${PIN}_${PAINEL}_${TELA}" | tr ' ' '-' | tr -cd 'A-Za-z0-9_.-')"
   EXTRA=(PH2D_COMPOSITE_PILHA=0 PH2D_COMPOSITE_PAPEL=1 "PH2D_COMPOSITE_TELA=$TELA")
+  # M2 (11/11): FUNDO=blocos|branco troca o papel pelo fundo da matriz (o rótulo ganha o fundo).
+  [ -n "$FUNDO" ] && EXTRA=(PH2D_COMPOSITE_PILHA=0 "PH2D_COMPOSITE_FUNDO=$FUNDO" "PH2D_COMPOSITE_TELA=$TELA") && TAG="${TAG}_$FUNDO"
   [ "$PIN" != omissão ] && EXTRA+=("PH2D_COMPOSITE_PRESET=$PIN")
   PLACA_ENV=(VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.json VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
     MESA_VK_WSI_DEBUG=sw __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)

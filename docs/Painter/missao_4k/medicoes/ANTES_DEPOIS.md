@@ -6,7 +6,8 @@
 - **Corrida:** 2026-11-11 09:43–10:13, `timeout 1800 bash scripts/ph2d-run.sh bash docs/Painter/ferramentas/corre_depois_b08c.sh`,
   SOZINHO na máquina (nenhum outro agente). Carga por grupo (`target/mede-depois/carga.txt`): 4K papel 09:43 **load 17,6**
   (o build acabara 1 min antes) → 09:53 0,66 · cantos 0,66–0,82 · 4K branco 0,82 → 0,49 · 1080p papel 0,49 → 0,60 ·
-  4K blocos 0,60 → 0,58 · 1024² blocos 0,58, **cortado pelo prazo de 1800 s**: faltam Filbert e Express Oil a 1024² blocos.
+  4K blocos 0,60 → 0,58 · 1024² blocos 0,58, cortado pelo prazo de 1800 s; Filbert e Express Oil a 1024² blocos medidos à
+  parte (M2, 10:27–10:29, load 0,54–0,67, o MESMO binário: `matriz 1024x1024 blocos … "Filbert:wet" "Express Oil:wet"`).
   Carga de cada lançamento no `.meta`. Quadros crus: [`depois/`](depois/).
 - **Parado ✗ em todas as células, antes E depois (~50 % de um núcleo):** o app parado sob Xvfb + WSI de software
   (`MESA_VK_WSI_DEBUG=sw`); não mudou com a missão.
@@ -15,6 +16,8 @@
 
 | pincel | painel | tela | fundo | toque | traço | soltar | +1 s | Ctrl+Z | parado | Wet |
 |---|---|---|---|---|---|---|---|---|---|---|
+| Express Oil | wet | 1024x1024 | blocos | 18.1 → 17.1 ✓ | 12.9 / 14.0 → 13.0 / 14.1 ✓ | 15.8 → 14.0 ✓ | 15.8 → 14.0 ✓ | 30.1 → 31.0 ✓ | 55.0 / 54.3 → 53.9 / 54.3 ✗ | 40.3 → 39.9 ✓ |
+| Filbert | wet | 1024x1024 | blocos | 22.9 → 20.9 ✓ | 19.8 / 23.0 → 17.7 / 20.9 ✗ | 18.9 → 43.2 ✗ | 18.9 → 43.2 ✗ | 35.0 → 34.0 ✗ | 54.9 / 54.3 → 54.6 / 54.6 ✗ | 40.0 → 39.5 ✓ |
 | Watercolor Basic | water | 1024x1024 | blocos | 21.9 → 22.9 ✓ | 14.0 / 17.3 → 13.0 / 14.1 ✓ | 22.2 → 20.8 ✓ | 23.3 → 20.8 ✓ | 16.8 → 11.8 ✓ | 62.9 / 67.9 → 52.9 / 52.3 ✗ | — |
 | omissão | digital | 1024x1024 | blocos | 13.9 → 10.8 ✓ | 11.0 / 12.3 → 9.8 / 10.4 ✓ | 10.9 → 10.8 ✓ | 11.7 → 11.0 ✓ | 14.0 → 11.0 ✓ | 66.6 / 56.0 → 53.3 / 53.9 ✗ | — |
 | omissão | impasto | 1024x1024 | blocos | 26.4 → 18.9 ✓ | 14.5 / 18.9 → 10.3 / 11.1 ✓ | 14.8 → 14.8 ✓ | 16.9 → 14.8 ✓ | 14.1 → 14.3 ✓ | 65.6 / 56.6 → 51.3 / 51.3 ✗ | — |
@@ -59,19 +62,44 @@
 
 | fase | passam antes | passam depois | células |
 |---|---|---|---|
-| toque | 6 | 26 | 41 |
-| traço | 9 | 31 | 41 |
-| soltar | 38 | 35 | 41 |
-| +1 s | 17 | 35 | 41 |
-| Ctrl+Z | 8 | 26 | 41 |
-| parado | 0 | 0 | 41 |
-| Wet | 14 | 14 | 14 |
+| toque | 8 | 28 | 43 |
+| traço | 10 | 32 | 43 |
+| soltar | 40 | 36 | 43 |
+| +1 s | 19 | 36 | 43 |
+| Ctrl+Z | 9 | 27 | 43 |
+| parado | 0 | 0 | 43 |
+| Wet | 16 | 16 | 16 |
 
 ## Regressões vistas (depois pior que antes, mesma célula; 1 amostra, load < 1 salvo 4K papel)
 
-- **Filbert (wet), soltar:** 4K papel 37,2 → 51,0 · 4K blocos 23,2 → 54,0 · 1080p papel 23,9 → 38,2 ms (traço e Ctrl+Z melhoraram).
+- **Filbert (wet), soltar:** 4K papel 37,2 → 51,0 · 4K blocos 23,2 → 54,0 · 1080p papel 23,9 → 38,2 · 1024² blocos 18,9 → 43,2 ms
+  (traço e Ctrl+Z melhoraram).
 - **Water (omissão e Watercolor Basic), soltar 4K:** 27,9 → 33–37 ms (✓ → ✗ no 4K papel/branco).
-- **Impasto 4K blocos, Ctrl+Z:** 33,5 → 42,1 ms. Confirmar por A×B intercalado antes de atribuir a um commit.
+- **Impasto 4K blocos, Ctrl+Z:** 33,5 → 42,1 ms.
+
+## M2 — as regressões por A×B no MESMO binário (11/11, `target/mede-depois/ph2d-host-desktop`, sozinho)
+
+`SO=M<n> … mede_pen_up_4k.sh faixas 3840x2160 blocos 5` (A·B intercalados por rodada; saída `target/mede-m2/matriz`).
+Mínimo de 5 por variante, ms; load 0,18–1,36.
+
+| caso | A | B | soltar A (5) | soltar B (5) | mín A × B | traço p50 mín A × B | veredito |
+|---|---|---|---|---|---|---|---|
+| M1 Filbert 4K blocos | espectral (de fábrica) | `PH2D_WET_MISTURA=km` | 50,9 · 48,4 · 48,0 · 54,9 · 49,9 | 50,1 · 56,0 · 49,0 · 50,0 · 48,0 | **48,0 × 48,0** | 18,8 × 18,8 | a mistura B32.1 **não** é a causa |
+| M3 Filbert 4K blocos | luz Simples no gesto, Cheia ao parar (de fábrica, B14.2) | `PH2D_COMPOSITE_LUZ_GESTO=cheia` | 54,9 · 49,0 · 47,8 · 48,2 · 49,1 | 20,0 · 26,0 · 19,9 · 21,8 · 21,9 | **47,8 × 19,9** | 18,2 × 18,9 | **culpado: o salto Simples→Cheia no pen-up** |
+
+- **Mecanismo (perf, `mede_pen_up_4k.sh perf 3840x2160 Filbert:wet`, `LENTO_MS=30`):** um único quadro de 41–50 ms a
+  +60 ms do mouse-up, ~55 % em `ph2d_wet_paint::oleo_real` (`oleo_horizonte::visibilidade_e_ceu` 11,8 %,
+  `oleo_sombra::rebote_no_papel` 8,9 %, `luz_directa` 6,0 %, `Sectores::ate` 5,9 %, `compoe_a_otica` 4,5 %): a 1.ª
+  imagem Cheia do repouso recompõe de uma vez o que o gesto compôs em Simples (`wet_luz_cheia_no_repouso`). No ANTES
+  (`b08b-cont4`, `mede-matriz-b08b3`) não havia quadro > 30 ms no 1 s depois do up: o trabalho ia espalhado a 16–29 ms.
+  Com a Cheia também no gesto o quadro do up some (máx 22 ms) e o traço não fica mais caro (p50 18,2 × 18,9, p95
+  21,2 × 21,2 mín.) — a Simples do gesto não paga aqui o que custa no pen-up.
+- **Water soltar 4K:** não confirmada. O quadro do up é 15,3 ms; os 36,8 ms são o `up` fora do quadro (20,5 ms), e no
+  antes esse mesmo `up` deu 11,3 · 17,2 · 22,5 ms em três corridas (`mede-matriz`, `b08b3`, `b103`): cabe na dispersão.
+- **Impasto 4K blocos Ctrl+Z (M4, A = B = o «depois», 3 rodadas):** 42,4 · 44,5 · 43,7 · 42,7 · 43,0 · 43,9 ms (mín 42,4) ×
+  antes 32,4 · 32,8 · 33,5 (`mede-matriz-b08b3`, `b08b-cont3`, ANTES.md) ⇒ **regressão real, +10 ms**, sem interruptor. perf
+  (`FUNDO=blocos … perf 3840x2160 omissão:impasto`): `premultiply_rgba8` 27 %, `Confine::add_relevo::<[u8;7]>`
+  (`PlaneDeltas::confined_sujo`) 16 %. Suspeitos e próximo passo: BACKLOG B08c.M2.
 
 ## B17.5 — Ctrl+Z de dois toques em cantos opostos do 4K (papel)
 

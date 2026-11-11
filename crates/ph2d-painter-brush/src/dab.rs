@@ -474,6 +474,10 @@ fn stamp_dab_inner_com(
     let tex = tex.filter(|_| spec.texture.is_active());
     let grao =
         tex.and_then(|b| crate::texture::grao_cache::para_o_dab(&spec.texture, b, width, height));
+    let dente = spec
+        .dente
+        .as_ref()
+        .and_then(|d| crate::texture::grao_cache::para_o_dente(d, width, height));
     let ctx = DabCtx {
         spec,
         // Texture frame, only when a texture is actually assigned (else the per-pixel sample is
@@ -506,6 +510,7 @@ fn stamp_dab_inner_com(
         lei: crate::capsula::lei(),
         po,
         grao,
+        dente,
     };
 
     // The per-pixel work is independent, so a LARGE dab (e.g. a big Anchored stamp re-drawn every

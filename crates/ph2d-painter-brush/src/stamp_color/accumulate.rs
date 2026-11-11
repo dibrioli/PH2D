@@ -219,6 +219,10 @@ pub fn accumulate_shape_layer_rgba(
     let grao = grain.and_then(|(gb, _)| {
         crate::texture::grao_cache::para_o_dab(&spec.texture, gb, width, height)
     });
+    let dente = spec
+        .dente
+        .as_ref()
+        .and_then(|d| crate::texture::grao_cache::para_o_dente(d, width, height));
     let mut touched = false;
     for py in y0..y1 {
         let v = ((py as f32 + 0.5) - cy) * inv_radius;
@@ -279,7 +283,7 @@ pub fn accumulate_shape_layer_rgba(
                 // Stencil: no paint outside the rect even when a ramp recolours `g = 0` (Enio 2026-06-28).
                 a *= crate::texture::stencil_gate(&spec.texture, gb, px, py);
             }
-            a *= crate::dente::dente_at(spec, a, px, py);
+            a *= crate::dente::dente_com(spec, dente.as_deref(), a, px, py);
             a *= coverage;
             if a <= 0.0 {
                 continue;

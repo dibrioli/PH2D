@@ -366,6 +366,8 @@ pub(super) struct DabCtx<'a> {
     pub(super) po: Option<crate::texture::PoDoPapel<'a>>,
     /// A memória do grão Tiled ([`crate::texture::grao_cache`]): o mesmo `sample`, lido uma vez por píxel do traço.
     pub(super) grao: Option<std::sync::Arc<crate::texture::grao_cache::GraoCache>>,
+    /// A memória do `t` do dente do papel ([`crate::texture::grao_cache::para_o_dente`], B26.A2).
+    pub(super) dente: Option<std::sync::Arc<crate::texture::grao_cache::GraoCache>>,
 }
 
 mod deposito;
@@ -490,6 +492,8 @@ pub(super) fn stamp_band(
 
 #[cfg(test)]
 mod oraculo_tests;
+#[cfg(test)]
+mod dente_tests;
 
 #[inline]
 pub(crate) fn encode(v: f32) -> u8 {

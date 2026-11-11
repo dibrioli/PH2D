@@ -223,6 +223,15 @@ pub fn accumulate_shape_layers_rgba_batch(
             })
         })
         .collect();
+    // E a do `t` do dente do papel (B26.A2).
+    let dentes: Vec<_> = boxes
+        .iter()
+        .map(|b| {
+            dabs[b.di].spec.dente.as_ref().and_then(|dt| {
+                crate::texture::grao_cache::para_o_dente(dt, width, height)
+            })
+        })
+        .collect();
     let wus = width as usize;
     bandas_com_toque(
         accs,
@@ -234,7 +243,7 @@ pub fn accumulate_shape_layers_rgba_batch(
         threads,
         "dynamic accumulate band panicked",
         |maps, band_y0, band_y1, touched| {
-            for (b, grao) in boxes.iter().zip(&graos) {
+            for ((b, grao), dente) in boxes.iter().zip(&graos).zip(&dentes) {
                 let d = &dabs[b.di];
                 let depth = d.spec.grain_depth();
                 let y0 = b.y0.max(band_y0);
@@ -314,7 +323,7 @@ pub fn accumulate_shape_layers_rgba_batch(
                                 a *= m[3];
                                 a *= gate;
                             }
-                            a *= crate::dente::dente_at(&d.spec, a, px, py);
+                            a *= crate::dente::dente_com(&d.spec, dente.as_deref(), a, px, py);
                             a *= b.coverage;
                             if a <= 0.0 {
                                 continue;

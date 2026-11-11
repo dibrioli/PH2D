@@ -43,6 +43,12 @@ static ESTADO: Mutex<Estado> = Mutex::new(Estado {
     vista: None,
     atual: None,
 });
+/// A do dente do papel ([`crate::dente`]): outra chave a cada dab que a do Grain, por isso outra vaga (uma só vaga
+/// alternaria as duas chaves e nenhuma memória nasceria).
+static ESTADO_DENTE: Mutex<Estado> = Mutex::new(Estado {
+    vista: None,
+    atual: None,
+});
 
 /// Se a amostra deste grão é função só do píxel (a premissa da memória).
 fn so_do_pixel(s: &TextureSettings) -> bool {
@@ -64,6 +70,33 @@ pub(crate) fn para_o_dab(
     if !so_do_pixel(s) || u64::from(w) * u64::from(h) > MAX_PX || w == 0 || h == 0 {
         return None;
     }
+    memoria(&ESTADO, s, b, w, h)
+}
+
+/// A memória do `t` do dente do papel ([`crate::dente::Dente`]) numa tela `w`×`h` (B26.A2). O dente amostra com
+/// centro e raio FIXOS, por isso o seu `t` é função só do píxel em qualquer mapeamento; fora ficam a imagem e as
+/// cerdas (que amostram pelo dab).
+pub(crate) fn para_o_dente(d: &crate::dente::Dente, w: u32, h: u32) -> Option<Arc<GraoCache>> {
+    let s = &d.papel;
+    if !s.is_active()
+        || s.kind == TextureKind::Image
+        || s.kind.samples_in_pixels()
+        || u64::from(w) * u64::from(h) > MAX_PX
+        || w == 0
+        || h == 0
+    {
+        return None;
+    }
+    memoria(&ESTADO_DENTE, s, &d.base, w, h)
+}
+
+fn memoria(
+    estado: &Mutex<Estado>,
+    s: &TextureSettings,
+    b: &TexDabBasis,
+    w: u32,
+    h: u32,
+) -> Option<Arc<GraoCache>> {
     let chave = Chave {
         s: *s,
         u: b.u,
@@ -73,7 +106,7 @@ pub(crate) fn para_o_dab(
         w,
         h,
     };
-    let mut e = ESTADO
+    let mut e = estado
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     if let Some(c) = e.atual.as_ref().filter(|c| c.chave == chave) {

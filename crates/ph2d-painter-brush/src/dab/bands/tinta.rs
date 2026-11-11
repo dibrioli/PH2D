@@ -59,7 +59,7 @@ pub(in crate::dab) fn em(
         }
     };
     let color = tinta.color.unwrap_or(ctx.spec.color);
-    let mut g = tinta.g * crate::dente::dente_at(ctx.spec, w, px, py);
+    let mut g = tinta.g * crate::dente::dente_com(ctx.spec, ctx.dente.as_deref(), w, px, py);
     if let Some(b) = ctx.tex {
         g *= crate::texture::stencil_gate(&ctx.spec.texture, b, px, py); // rect mask, ramp-safe
         if w * g <= 0.0 {

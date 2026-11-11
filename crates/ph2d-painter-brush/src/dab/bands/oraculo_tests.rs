@@ -3,7 +3,7 @@
 
 use super::*;
 
-fn stamp_band_antiga(
+pub(super) fn stamp_band_antiga(
     ctx: &DabCtx,
     dst: &mut [u8],
     mut liso: Option<&mut [u8]>,
@@ -333,6 +333,7 @@ fn compara(
         lei: crate::capsula::lei(),
         po: None,
         grao: None,
+        dente: None,
     };
     let n = LADO * LADO;
     let dst0 = padrao(n * 4, 37, 251);
@@ -507,6 +508,7 @@ fn sonda_o_carimbo_com_invariantes_icadas_custa_menos() {
             lei: crate::capsula::lei(),
             po: None,
             grao: None,
+        dente: None,
         };
         let mede = |f: Banda| {
             let (mut d, mut m) = (vec![0u8; L * L * 4], vec![0u8; L * L]);

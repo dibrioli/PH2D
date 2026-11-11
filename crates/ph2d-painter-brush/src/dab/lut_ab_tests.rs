@@ -51,6 +51,7 @@ fn stamp_once(spec: &BrushSpec, with_lut: bool) -> Vec<u8> {
         lei: crate::capsula::Lei::Uniao,
         po: None,
         grao: None,
+        dente: None,
     };
     let _ = stamp_band(&ctx, &mut dst, None, None, None, 0);
     dst

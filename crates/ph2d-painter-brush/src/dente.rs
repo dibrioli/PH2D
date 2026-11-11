@@ -47,9 +47,39 @@ impl Dente {
     #[inline]
     #[must_use]
     pub fn em(&self, w: f32, px: i64, py: i64) -> f32 {
-        let t = crate::texture::sample(&self.papel, &self.base, px, py, [0.0, 0.0], 1.0, None);
+        self.papel.lei.factor(w, self.t(px, py), self.profundidade, 0.0)
+    }
+
+    /// O `t` do papel no píxel: a única amostra do dente.
+    #[inline]
+    fn t(&self, px: i64, py: i64) -> f32 {
+        #[cfg(test)]
+        AMOSTRAS.with(|c| c.set(c.get() + 1));
+        crate::texture::sample(&self.papel, &self.base, px, py, [0.0, 0.0], 1.0, None)
+    }
+
+    /// [`Self::em`] lendo o `t` da memória `mem` ([`crate::texture::grao_cache::para_o_dente`], B26.A2): o mesmo
+    /// `f32`, amostrado uma vez por píxel do traço em vez de uma vez por dab.
+    #[inline]
+    pub(crate) fn em_com(
+        &self,
+        mem: Option<&crate::texture::grao_cache::GraoCache>,
+        w: f32,
+        px: i64,
+        py: i64,
+    ) -> f32 {
+        let t = match mem {
+            Some(m) => m.em(px, py, || self.t(px, py)),
+            None => self.t(px, py),
+        };
         self.papel.lei.factor(w, t, self.profundidade, 0.0)
     }
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Quantas vezes o papel do dente foi amostrado neste fio (o contador do gate B26.A2).
+    pub(crate) static AMOSTRAS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
 
 /// O fator do dente do `spec` no píxel `(px, py)` — `1` sem dente. A porta ÚNICA dos núcleos.
@@ -57,6 +87,19 @@ impl Dente {
 #[must_use]
 pub fn dente_at(spec: &crate::BrushSpec, w: f32, px: i64, py: i64) -> f32 {
     spec.dente.as_ref().map_or(1.0, |d| d.em(w, px, py))
+}
+
+/// [`dente_at`] com a memória do `t` ([`Dente::em_com`]).
+#[inline]
+#[must_use]
+pub(crate) fn dente_com(
+    spec: &crate::BrushSpec,
+    mem: Option<&crate::texture::grao_cache::GraoCache>,
+    w: f32,
+    px: i64,
+    py: i64,
+) -> f32 {
+    spec.dente.as_ref().map_or(1.0, |d| d.em_com(mem, w, px, py))
 }
 
 thread_local! {

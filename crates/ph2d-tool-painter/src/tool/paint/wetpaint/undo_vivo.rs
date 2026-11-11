@@ -20,6 +20,8 @@ use ph2d_wet_paint::painter::Dirty;
 mod casco;
 #[cfg(test)]
 mod casco_tests;
+#[cfg(test)]
+mod prancha_b02_tests;
 pub(crate) use casco::Cascos;
 pub(super) use casco::casco_de;
 mod foto;

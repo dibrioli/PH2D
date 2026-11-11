@@ -126,6 +126,7 @@ pub fn restore_grid(g: &mut Grid, s: &GridSnapshot) -> bool {
     // de volta seria uma segunda resposta à pergunta que o rebuild responde.
     g.row_lo.copy_from_slice(&s.row_lo);
     g.row_hi.copy_from_slice(&s.row_hi);
+    g.fill_tiles_all();
     let paper_changed = g.paper_preset != s.paper_preset || g.paper_sheet != s.paper_sheet;
     g.paper_preset = s.paper_preset;
     g.paper_sheet = s.paper_sheet;
@@ -519,6 +520,7 @@ impl Registo {
         g.has_fluid = b.has_fluid;
         g.row_lo.copy_from_slice(&b.row_lo);
         g.row_hi.copy_from_slice(&b.row_hi);
+        g.fill_tiles_all();
         let paper_changed = g.paper_preset != b.paper_preset || g.paper_sheet != b.paper_sheet;
         g.paper_preset = b.paper_preset;
         g.paper_sheet = b.paper_sheet;

@@ -186,6 +186,13 @@ pub struct Grid {
     /// dilatação que a publica. Mora no grid para o rebuild não alocar.
     pub live_lo: Vec<i32>,
     pub live_hi: Vec<i32>,
+    /// A máscara de tiles de 64 colunas da faixa (B13.2, [`faixa_tiles`]): `tile_words` palavras por linha.
+    pub row_tiles: Vec<u64>,
+    /// Rascunho do rebuild: por linha, o cabeçalho `(lo, hi)` vivo + as palavras dos tiles vivos.
+    pub live_tiles: Vec<u64>,
+    pub tile_words: usize,
+    /// Ablação da máscara: `false` varre o intervalo inteiro da linha (o oráculo do gate diferencial).
+    pub tiles_enabled: bool,
     /// Ablação da faixa: `false` faz [`Grid::span_x`] devolver a bbox inteira,
     /// isto é, exatamente o que o motor varria antes dela.
     ///
@@ -327,6 +334,10 @@ impl Grid {
             row_hi: vec![i32::MIN; rows],
             live_lo: vec![i32::MAX; rows],
             live_hi: vec![i32::MIN; rows],
+            row_tiles: vec![0; rows * faixa_tiles::tile_words_for(s)],
+            live_tiles: vec![0; rows * (faixa_tiles::tile_words_for(s) + 1)],
+            tile_words: faixa_tiles::tile_words_for(s),
+            tiles_enabled: true,
             spans_enabled: true,
             scratch: SolverScratch::default(),
             paper_preset: PaperPreset::Cold,
@@ -409,12 +420,14 @@ impl Grid {
                 self.row_hi[r] = x1;
             }
         }
+        self.note_tiles(x0, y0, x1, y1);
     }
 
     /// Esvazia a faixa viva em toda linha (nada a varrer).
     pub fn clear_spans(&mut self) {
         self.row_lo.fill(i32::MAX);
         self.row_hi.fill(i32::MIN);
+        self.row_tiles.fill(0);
     }
 
     /// A JANELA de varredura do rebuild: a faixa viva com margem ±2, clampada
@@ -623,6 +636,7 @@ pub use canvas_ops::{
     clear_canvas, dry_canvas, enterra_celula, settle_composite, wet_byte_from_paper, wet_canvas,
 };
 
+pub mod faixa_tiles; // a máscara de tiles da faixa (B13.2)
 #[path = "grid/snapshot.rs"]
 mod snapshot; // as fotografias do histórico (SPEC §15) — filho por LOC
 pub(crate) use snapshot::PassoEmVoo;

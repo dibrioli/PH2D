@@ -151,6 +151,10 @@ impl crate::grid::Grid {
             row_hi,
             live_lo,
             live_hi,
+            row_tiles,
+            live_tiles,
+            tile_words: _,
+            tiles_enabled: _,
             spans_enabled: _,
             scratch: _,
             paper_preset: _,
@@ -190,6 +194,8 @@ impl crate::grid::Grid {
             + de(row_hi)
             + de(live_lo)
             + de(live_hi)
+            + de(row_tiles)
+            + de(live_tiles)
     }
 }
 

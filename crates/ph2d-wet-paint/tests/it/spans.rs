@@ -203,3 +203,83 @@ fn on_a_diagonal_stroke_the_span_is_a_small_fraction_of_the_bounding_box() {
         100.0 * frac
     );
 }
+
+/// **B13.2 — a máscara de tiles da faixa reproduz a faixa de UM intervalo ao bit.** O oráculo é a mesma
+/// sessão com `tiles_enabled = false` (o intervalo inteiro da linha, o `span_x_of` de antes); as seis
+/// formas de cima e duas manchas nas MESMAS linhas, longe uma da outra, com a água a escorrer de lado
+/// (gravidade em x: cruza as costuras dos tiles de 64).
+fn run_tiles(kind: usize, tiles: bool) -> Engine {
+    if kind < SESSIONS {
+        run_session_tiles(kind, tiles)
+    } else {
+        let mut e = Engine::new(700, 160);
+        for l in &mut e.layers {
+            l.grid.tiles_enabled = tiles;
+        }
+        e.sliders.water = 1.0;
+        e.sim.gravity_override = Some([1.0, 0.3]);
+        drive_stroke(&mut e, 40.0, 30.0, 60.0, 130.0, 4.0, 10);
+        drive_stroke(&mut e, 620.0, 30.0, 640.0, 130.0, 4.0, 120);
+        e
+    }
+}
+
+fn run_session_tiles(kind: usize, tiles: bool) -> Engine {
+    // As formas de `run_session`, com a máscara ligada/desligada desde o 1.º passo.
+    let mut e = Engine::new(220, 180);
+    for l in &mut e.layers {
+        l.grid.tiles_enabled = tiles;
+    }
+    e.sliders.water = 1.0;
+    match kind {
+        0 => drive_stroke(&mut e, 20.0, 90.0, 200.0, 90.0, 4.0, 40),
+        1 => drive_stroke(&mut e, 20.0, 20.0, 200.0, 160.0, 4.0, 40),
+        2 => {
+            e.sim.gravity_override = Some([0.0, 1.0]);
+            drive_stroke(&mut e, 40.0, 30.0, 180.0, 30.0, 3.0, 120);
+        }
+        3 => {
+            drive_stroke(&mut e, 30.0, 40.0, 90.0, 40.0, 4.0, 200);
+            drive_stroke(&mut e, 30.0, 45.0, 190.0, 130.0, 4.0, 60);
+        }
+        4 => {
+            drive_stroke(&mut e, 30.0, 60.0, 190.0, 70.0, 4.0, 60);
+            e.tool = Tool::Wet;
+            drive_stroke(&mut e, 30.0, 62.0, 190.0, 100.0, 5.0, 30);
+            e.tool = Tool::Blend;
+            drive_stroke(&mut e, 60.0, 60.0, 160.0, 120.0, 5.0, 30);
+        }
+        _ => {
+            drive_stroke(&mut e, 20.0, 20.0, 20.0, 160.0, 4.0, 10);
+            drive_stroke(&mut e, 20.0, 160.0, 200.0, 160.0, 4.0, 40);
+        }
+    }
+    e
+}
+
+#[test]
+fn a_mascara_de_tiles_da_faixa_reproduz_a_faixa_de_um_intervalo_ao_bit() {
+    for kind in 0..=SESSIONS {
+        let um = digest(run_tiles(kind, false).active_grid());
+        let tiles = digest(run_tiles(kind, true).active_grid());
+        assert_eq!(um.len(), tiles.len());
+        if let Some(at) = first_difference(&um, &tiles) {
+            panic!("sessao {kind}: a mascara de tiles mudou o estado no byte {at}");
+        }
+    }
+    // A máscara não é vazia de efeito: nas duas manchas longe ela salta o seco do meio.
+    let e = run_tiles(SESSIONS, true);
+    let g = e.active_grid();
+    let (mut faixa, mut troços) = (0i64, 0i64);
+    for y in g.by0..=g.by1 {
+        let (lo, hi) = g.span_x(y);
+        faixa += (i64::from(hi) - i64::from(lo) + 1).max(0);
+        for (a, b) in ph2d_wet_paint::grid::faixa_tiles::span_runs(g.tiles_row(y), lo, hi) {
+            troços += i64::from(b - a + 1);
+        }
+    }
+    assert!(
+        troços * 2 < faixa,
+        "a mascara nao saltou o vao: {troços} de {faixa}"
+    );
+}

@@ -4,6 +4,7 @@
 //! sobrou no pai. Pure code motion; o fingerprint da sessão pina a identidade).
 
 use crate::grid::Grid;
+use crate::grid::faixa_tiles::{pack_live, span_runs, tiles_row_of, unpack_live};
 use crate::par::{self, Rows};
 
 // ---------------------------------------------------------------------------
@@ -63,22 +64,23 @@ pub fn rebuild_active_region_rows(g: &mut Grid, mode: Rows) {
     // célula fora dela já vale 0 e a limpeza seria escrever 0 sobre 0.
     {
         let spans_on = g.spans_enabled;
+        let (tw, tiles_on) = (g.tile_words, g.spans_enabled && g.tiles_enabled);
         let Grid {
             row_lo,
             row_hi,
+            row_tiles,
             active,
             ..
         } = g;
-        let (row_lo, row_hi): (&[i32], &[i32]) = (row_lo, row_hi);
+        let (row_lo, row_hi, row_tiles): (&[i32], &[i32], &[u64]) = (row_lo, row_hi, row_tiles);
         let band = cy0 as usize * s..(cy1 as usize + 1) * s;
         par::walk_rows(mode, &mut active[band], s, |r, row| {
             let y = cy0 + r as i32;
             let (wl, wh) = crate::grid::span_window_of(row_lo, row_hi, spans_on, s, y);
-            let (l, hgh) = (wl.max(cx0), wh.min(cx1));
-            if l > hgh {
-                return;
+            let tiles = tiles_row_of(row_tiles, tw, tiles_on, y);
+            for (a, b) in span_runs(tiles, wl.max(cx0), wh.min(cx1)) {
+                row[a as usize..=b as usize].fill(0);
             }
-            row[l as usize..=hgh as usize].fill(0);
         });
     }
     // A extensão VIVA desta passada — "há algo aqui que o solver ainda tem de
@@ -106,9 +108,9 @@ pub fn rebuild_active_region_rows(g: &mut Grid, mode: Rows) {
     // é o que lembra onde há velocidade fóssil, e a bbox de um traço NOVO não
     // tem por que cobrir o rastro de um antigo. O laço de linhas é O(altura)
     // e sai na hora nas vazias; o custo real é a janela, que é a faixa.
-    g.clear_live();
     {
         let spans_on = g.spans_enabled;
+        let (tw, tiles_on) = (g.tile_words, g.spans_enabled && g.tiles_enabled);
         // ⚠️ A velocidade mora na grade de FLUXO: a pergunta *"esta célula secou
         // mas ainda carrega velocidade?"* é feita à célula de fluxo que a
         // contém. Em `rf = 1` o índice é o próprio `i`.
@@ -120,48 +122,64 @@ pub fn rebuild_active_region_rows(g: &mut Grid, mode: Rows) {
             susp,
             vel_x,
             vel_y,
-            live_lo,
-            live_hi,
+            row_tiles,
+            live_tiles,
             ..
         } = g;
-        let (row_lo, row_hi): (&[i32], &[i32]) = (row_lo, row_hi);
+        let (row_lo, row_hi, row_tiles): (&[i32], &[i32], &[u64]) = (row_lo, row_hi, row_tiles);
         let (film, susp): (&[f32], &[f32]) = (film, susp);
         let (velx, vely): (&[f32], &[f32]) = (vel_x, vel_y);
-        par::walk_row_scalars2(mode, live_lo, live_hi, |ry, out_lo, out_hi| {
+        par::walk_rows(mode, live_tiles, tw + 1, |ry, out| {
             let y = ry as i32;
+            out[0] = pack_live(i32::MAX, i32::MIN);
+            out[1..].fill(0);
             let (wl, wh) = crate::grid::span_window_of(row_lo, row_hi, spans_on, s, y);
             let (l, r) = (wl.max(1), wh.min(w));
             if l > r {
                 return;
             }
+            let tiles = tiles_row_of(row_tiles, tw, tiles_on, y);
             let vel_rows = y >= 2 && y < h;
             let base = ry * s;
             let mut lo = i32::MAX;
             let mut hi = i32::MIN;
-            let mut i = l as usize + base;
             let fy = crate::flow::fine_to_flow(y, geom.rf);
-            for x in l..=r {
-                let vi = if geom.is_identity() {
-                    i
-                } else {
-                    geom.idx(crate::flow::fine_to_flow(x, geom.rf), fy)
-                };
-                let live = film[i] > 0.0
-                    || susp[i] > 0.0
-                    || (vel_rows && x >= 2 && x < w && (velx[vi] != 0.0 || vely[vi] != 0.0));
-                if live {
-                    if x < lo {
-                        lo = x;
+            for (ra, rb) in span_runs(tiles, l, r) {
+                let mut i = ra as usize + base;
+                for x in ra..=rb {
+                    let vi = if geom.is_identity() {
+                        i
+                    } else {
+                        geom.idx(crate::flow::fine_to_flow(x, geom.rf), fy)
+                    };
+                    let live = film[i] > 0.0
+                        || susp[i] > 0.0
+                        || (vel_rows && x >= 2 && x < w && (velx[vi] != 0.0 || vely[vi] != 0.0));
+                    if live {
+                        if x < lo {
+                            lo = x;
+                        }
+                        hi = x;
+                        let t = (x >> 6) as usize;
+                        out[1 + (t >> 6)] |= 1 << (t & 63);
                     }
-                    hi = x;
+                    i += 1;
                 }
-                i += 1;
             }
-            if lo <= hi {
-                *out_lo = lo;
-                *out_hi = hi;
-            }
+            out[0] = pack_live(lo, hi);
         });
+    }
+    {
+        let st = g.tile_words + 1;
+        let Grid {
+            live_lo,
+            live_hi,
+            live_tiles,
+            ..
+        } = g;
+        for (r, (lo, hi)) in live_lo.iter_mut().zip(live_hi.iter_mut()).enumerate() {
+            (*lo, *hi) = unpack_live(live_tiles[r * st]);
+        }
     }
 
     // Pass 1 — wet cells (one row/col inside the brushable area; the drain
@@ -178,14 +196,16 @@ pub fn rebuild_active_region_rows(g: &mut Grid, mode: Rows) {
         ident
     } else {
         let spans_on = g.spans_enabled;
+        let (tw, tiles_on) = (g.tile_words, g.spans_enabled && g.tiles_enabled);
         let Grid {
             row_lo,
             row_hi,
+            row_tiles,
             film,
             active,
             ..
         } = g;
-        let (row_lo, row_hi): (&[i32], &[i32]) = (row_lo, row_hi);
+        let (row_lo, row_hi, row_tiles): (&[i32], &[i32], &[u64]) = (row_lo, row_hi, row_tiles);
         let film: &[f32] = film;
         let band = sy0 as usize * s..(sy1 as usize + 1) * s;
         par::walk_rows_reduce(
@@ -206,28 +226,30 @@ pub fn rebuild_active_region_rows(g: &mut Grid, mode: Rows) {
                 }
                 let mut acc = ident;
                 let base = y as usize * s;
-                let mut i = rx0 as usize + base;
-                for x in rx0..=rx1 {
-                    if film[i - 1] as f64 + film[i] as f64 + film[i + 1] as f64 > 0.0 {
-                        let k = x as usize;
-                        row[k - 1] = 1;
-                        row[k] = 1;
-                        row[k + 1] = 1;
-                        acc.4 = true;
-                        if x < acc.0 {
-                            acc.0 = x;
+                for (ra, rb) in span_runs(tiles_row_of(row_tiles, tw, tiles_on, y), rx0, rx1) {
+                    let mut i = ra as usize + base;
+                    for x in ra..=rb {
+                        if film[i - 1] as f64 + film[i] as f64 + film[i + 1] as f64 > 0.0 {
+                            let k = x as usize;
+                            row[k - 1] = 1;
+                            row[k] = 1;
+                            row[k + 1] = 1;
+                            acc.4 = true;
+                            if x < acc.0 {
+                                acc.0 = x;
+                            }
+                            if x > acc.1 {
+                                acc.1 = x;
+                            }
+                            if y < acc.2 {
+                                acc.2 = y;
+                            }
+                            if y > acc.3 {
+                                acc.3 = y;
+                            }
                         }
-                        if x > acc.1 {
-                            acc.1 = x;
-                        }
-                        if y < acc.2 {
-                            acc.2 = y;
-                        }
-                        if y > acc.3 {
-                            acc.3 = y;
-                        }
+                        i += 1;
                     }
-                    i += 1;
                 }
                 acc
             },
@@ -257,6 +279,7 @@ pub fn rebuild_active_region_rows(g: &mut Grid, mode: Rows) {
     let mut ny0 = h + 1;
     let mut ny1 = 0;
     let mut any_fire = false;
+    let (tw, tiles_on) = (g.tile_words, g.spans_enabled && g.tiles_enabled);
     for y in ky0..=ky1 {
         // O trio VERTICAL só pode somar 1 onde alguma das três células é
         // ativa, e as ativas desta passada saíram do passe 1 — dentro da
@@ -266,29 +289,34 @@ pub fn rebuild_active_region_rows(g: &mut Grid, mode: Rows) {
         if rx0 > rx1 {
             continue;
         }
-        let mut i = rx0 as usize + y as usize * s;
-        for x in rx0..=rx1 {
-            if g.active[i - s] as u32 + g.active[i] as u32 + g.active[i + s] as u32 == 1 {
-                g.active[i - s] = 2;
-                g.active[i] = 2;
-                if g.active[i + s] == 0 {
-                    g.active[i + s] = 2;
+        let Grid {
+            active, row_tiles, ..
+        } = &mut *g;
+        for (ra, rb) in span_runs(tiles_row_of(row_tiles, tw, tiles_on, y), rx0, rx1) {
+            let mut i = ra as usize + y as usize * s;
+            for x in ra..=rb {
+                if active[i - s] as u32 + active[i] as u32 + active[i + s] as u32 == 1 {
+                    active[i - s] = 2;
+                    active[i] = 2;
+                    if active[i + s] == 0 {
+                        active[i + s] = 2;
+                    }
+                    any_fire = true;
+                    if x < nx0 {
+                        nx0 = x;
+                    }
+                    if x > nx1 {
+                        nx1 = x;
+                    }
+                    if y < ny0 {
+                        ny0 = y;
+                    }
+                    if y > ny1 {
+                        ny1 = y; // the fire row itself
+                    }
                 }
-                any_fire = true;
-                if x < nx0 {
-                    nx0 = x;
-                }
-                if x > nx1 {
-                    nx1 = x;
-                }
-                if y < ny0 {
-                    ny0 = y;
-                }
-                if y > ny1 {
-                    ny1 = y; // the fire row itself
-                }
+                i += 1;
             }
-            i += 1;
         }
     }
     if !any_fire {
@@ -306,4 +334,5 @@ pub fn rebuild_active_region_rows(g: &mut Grid, mode: Rows) {
     // Publica a faixa por-linha com o MESMO pad ±5 que a bbox acabou de levar
     // — é o análogo por-linha do casco, e é ele que mantém `active ⊆ faixa`.
     g.publish_spans_from_live();
+    g.publish_tiles_from_live();
 }

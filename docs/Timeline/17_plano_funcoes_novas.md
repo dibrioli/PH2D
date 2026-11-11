@@ -24,6 +24,9 @@ que clica o id PINTADO e confere o efeito. Fotos lado a lado com a maquete antes
 | 8 | Quem ouve um sinal (B5) | `Marker.signal` gravado (v13), `signals_crossed` | registo de ouvintes (componentes, Luau, câmera) — investigar `ph2d-runtime` primeiro | M–G |
 | 9 | Animating · Done (B7) | transporte não-desfazível (`intent.rs:14`) | confirmar ONDE a agulha vira passo de undo; capturar a pose à entrada e repô-la ao sair sem passo | G |
 | 10 | Container aberto no lugar (C2) | entrar = `nest.rs`, `container_open` | sanfona das lanes de dentro no tempo da cena, instâncias irmãs esmaecidas | G |
+| 11 | Curvas do canvas editáveis com a animação a TOCAR (dono 10/11) | alças/losangos (`motion_key_handles.rs`, `motion_key_points.rs`) | hoje o arrasto conta com a agulha parada; investigar o gesto sobre um quadro que anda (tempo da chave fixo, não o da agulha) | M |
+| 12 | O mouse só toca as curvas quando estão VISÍVEIS (dono 10/11) | hit e desenho pela mesma porta (`key_points`/`alcas`, `0c16f59992`) | provar a costura em TODA condição que esconde o desenho (painel oculto, outra aba, play, seleção, Path) — um gate por condição | P |
+| 13 | Mudar o easing DANIFICA a curva do canvas (dono 10/11) | a forma do arco e o ritmo vivem no MESMO `Interp` por canal (`BezierW` 1/3–2/3 = forma; mexer no easing na setinha muda a forma) | separar forma espacial de ritmo (o idioma do After Effects: tangentes espaciais + velocidade por tempo); pede investigação e talvez schema | G |
 
 Nenhum item toca contrato §6. Nenhum muda formato gravado por si (o 9 só se a pose for gravada — não será).
 
@@ -34,6 +37,7 @@ Nenhum item toca contrato §6. Nenhum muda formato gravado por si (o 9 só se a 
 - **Onda 3 (M–G):** 8 e 9 — cada um abre por uma investigação curta (onde mora o ouvinte; onde nasce o passo da agulha) que
   pode mudar o desenho; série só aí.
 - **Onda 4 (G):** 10, sozinho.
+- **Onda 5 (FIM DA FILA, dono 10/11):** 11, 12 e 13 — as curvas no canvas. O 13 abre por investigação (o modelo da chave muda?).
 
 Cada onda fecha com `/pd-onda-fechar` (smoke do dono, janela nova).
 

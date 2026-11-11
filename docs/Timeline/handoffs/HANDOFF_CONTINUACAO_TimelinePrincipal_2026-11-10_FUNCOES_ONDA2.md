@@ -1,4 +1,4 @@
-# Continuação — `line/TimelinePrincipal`, plano 17 (funções novas), onda 2 (itens 5–7 + cura do Opacity) + onda 2b — à espera do smoke da 2b
+# Continuação — `line/TimelinePrincipal`, plano 17 (funções novas), onda 2 (itens 5–7 + cura do Opacity) + onda 2b — FECHADA (smoke OK 10/11)
 
 - Worktree `Worktrees/line-TimelinePrincipal` · branch `line/TimelinePrincipal` · commits da onda sobre `5d5c0616ab`: `8acfdb5040` (fix do smoke da onda 1),
   `f52404c449` (parte 1), `0b7c8d058c` (parte 2), `b2438d11b1` (parte 3), `bd99e53549` (acabamento do Curves + fotos), `ab823f94ae` (onda 2b).
@@ -116,5 +116,11 @@ FOTO-HACK local revertido (`PH2D_FOTO_CURVES` em `paint.rs`, `PH2D_FOTO_CHIP` em
    Errado se: o arco não segue o ponteiro, o outro lado mexe, precisa de 2 Ctrl+Z, ou os pontinhos aparecem com a caixa desmarcada.
 2. A setinha ao lado de «Position Y (px)» ainda abre a curva daquela linha dentro da Timeline. Errado se não abrir.
 
+## Smoke da 2b — OK do dono (10/11), com uma cura
+- Cura `0c16f59992`: o caminho tracejado e os losangos também só aparecem com a caixa marcada (`key_points(keys_tab && curves)` no hit e no desenho;
+  teste `with_the_checkbox_off_the_key_diamonds_are_not_offered_either`, mutação sangra; foto `../fotos/30_caixa_desmarcada.png`). Dono: «OK».
+- Pedidos para o FIM da fila (plano 17, itens 11–13, onda 5): editar as curvas com a animação a tocar; o mouse só toca as curvas visíveis;
+  mudar o easing danifica a curva (forma e ritmo no mesmo `Interp`).
+
 ## Próximo
-Onda 3 do plano 17 (item 8 quem ouve um sinal; item 9 Animating · Done), cada um aberto por uma investigação curta — só depois do smoke OK da 2b.
+Onda 3 do plano 17: item 8 (quem ouve um sinal, B5) e item 9 (Animating · Done, B7), cada um aberto por uma investigação curta.

@@ -1,53 +1,27 @@
-//! **Os GLIFOS de um joint — uma figura por tipo (W-J1).**
+//! **Os GLIFOS de um joint — uma figura por tipo (W-J1, vocabulário do RUBE).**
 //!
-//! Um joint não tem geometria: é uma relação. Até esta wave os quatro tipos
-//! desenhavam a MESMA figura (segmento + dois anéis), então o canvas dizia
-//! *"há um joint aqui"* e nada mais — nem qual, nem com que alcance, nem se a
-//! restrição está trabalhando. Godot desenha uma cruz de 20 px, Fyrox não
-//! desenha nada, Unreal desenha um cone que ninguém arrasta; o RUBE desenha
-//! TODO fato como geometria, e é dele que este vocabulário vem.
-//!
-//! ## Duas réguas, e a diferença é FÍSICA, não gosto
-//!
-//! - **Comprimento é comprimento** ⇒ o anel de repouso/máximo é construído em
-//!   MUNDO e projetado: dar zoom dobra o raio dele, como dobra a bola que ele
-//!   descreve.
-//! - **Ângulo e ornamento não são comprimento** ⇒ o arco de limite, o quadrado
-//!   do weld, a amplitude do zigue-zague e as pontas são pixels de TELA
-//!   constantes. É a mesma lei que o [`crate::overlay::annotations`]
-//!   enuncia para a seta de força.
-//!
-//! ⚠️ **Toda figura angular é construída numa BASE derivada da câmera**
-//! (`û` = onde o +x de mundo cai na tela, `ŵ` = o +y), nunca em ângulos de tela
-//! escritos à mão: assim um limite anti-horário desenha o lado para o qual o
-//! corpo VISIVELMENTE gira, sob qualquer y-flip — a cicatriz que o glifo de
-//! torque da zona já pagou.
+//! Comprimento é MUNDO projetado (o anel cresce com o zoom); ângulo e ornamento
+//! são px de TELA constantes (a lei de [`crate::overlay::annotations`]).
+//! ⚠️ Figura angular usa a BASE da câmera (`û`, `ŵ`), nunca ângulos de tela à mão:
+//! assim honra qualquer y-flip.
 
 use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, Point};
 
-/// Cordas num arco — o mesmo número que o glifo de torque usa, pela mesma razão
-/// (270° têm de ler como curva, não como polígono).
-///
-/// ⚠️ Compartilhado com o arco da CORDA na roldana (`physics_overlay_pulley`):
-/// os dois desenham o mesmo círculo, e um arco mais grosseiro que o aro dele
-/// apareceria como a corda descolando da roda.
+/// Cordas num arco (como o glifo de torque). ⚠️ Partilhado com a corda na
+/// roldana (`physics_overlay_pulley`): o mesmo círculo.
 pub const ARC_SEGS: u32 = 24;
 
-/// Raio do anel do PINO, px de tela. Maior que a ponta (`JOINT_DOT_PX`) porque
-/// ele é o GLIFO — a figura que diz *dobradiça* — e não a marca de uma ponta.
+/// Raio do anel do PINO, px de tela (maior que a ponta `JOINT_DOT_PX`).
 pub const PIN_RING_PX: f64 = 6.5; // LITERAL-PX-OK: chrome de overlay
 
 /// Meia-diagonal do quadrado do WELD, px de tela.
 pub const WELD_HALF_PX: f64 = 5.5; // LITERAL-PX-OK: chrome de overlay
-/// Raio do hexágono do CUSTOM, px de tela. Entre o anel do pino e o quadrado da
-/// solda: os três têm de ser distinguíveis lado a lado no MESMO zoom.
+/// Raio do hexágono do CUSTOM, px de tela (distinguível do pino e da solda).
 pub const CUSTOM_HEX_PX: f64 = 7.0; // LITERAL-PX-OK: chrome de overlay
 
-/// Meia-largura da BARRA, px de tela. Menor que o anel do pino (`PIN_RING_PX`)
-/// para as duas paralelas passarem POR DENTRO dos anéis das pontas em vez de
-/// cruzá-los — a barra sai dos olhais, que é o que um elo faz.
+/// Meia-largura da BARRA, px de tela (< `PIN_RING_PX`: sai de dentro dos anéis).
 pub const ROD_HALF_PX: f64 = 2.5; // LITERAL-PX-OK: chrome de overlay
 
 /// Raio do arco de LIMITE, px de tela — fora do anel do pino, que ele cerca.
@@ -68,9 +42,8 @@ pub fn screen_of(camera: &Camera2d, window: WindowSize, w: [f32; 2]) -> Point {
     Point::new(f64::from(sx), f64::from(sy))
 }
 
-/// A base de tela da câmera: `(û, ŵ)` normalizados, onde `û` é o +x de mundo e
-/// `ŵ` o +y. Um ângulo de mundo `a` cai em `centro + R·(cos a·û + sen a·ŵ)`, e
-/// `a` crescente traça anti-horário DE MUNDO na tela — seja qual for o flip.
+/// A base de tela da câmera `(û, ŵ)` (+x e +y de mundo): ângulo `a` cai em
+/// `centro + R·(cos a·û + sen a·ŵ)`, seja qual for o flip.
 fn screen_basis(
     camera: &Camera2d,
     window: WindowSize,
@@ -94,8 +67,7 @@ fn screen_basis(
     )
 }
 
-/// Um ponto sobre um arco, dada a base de tela já resolvida — o primitivo de
-/// TODA figura angular deste módulo.
+/// Um ponto sobre um arco, na base de tela já resolvida.
 fn arc_point_in(c: Point, u: (f64, f64), v: (f64, f64), ang: f64, r: f64) -> Point {
     Point::new(
         c.x + r * (ang.cos() * u.0 + ang.sin() * v.0),
@@ -103,12 +75,8 @@ fn arc_point_in(c: Point, u: (f64, f64), v: (f64, f64), ang: f64, r: f64) -> Poi
     )
 }
 
-/// **Onde uma parede do arco de limite está, em px de tela** (W-J3).
-///
-/// A MESMA função que [`limit_arc`] usa para desenhar a marca radial — o grip
-/// que o artista arrasta e a parede que ele vê são um lugar só. Duas derivações
-/// desta posição seriam duas respostas a *"onde termina o alcance?"*, e a que
-/// discordasse seria justamente a invisível: o retângulo de hit.
+/// **Onde uma parede do arco de limite está, em px de tela** (W-J3) — a mesma
+/// conta de [`limit_arc`]: grip e parede são um lugar só.
 pub fn limit_end_screen(
     camera: &Camera2d,
     window: WindowSize,
@@ -120,30 +88,16 @@ pub fn limit_end_screen(
     arc_point_in(c, u, v, f64::from(angle_a) + f64::from(limit), LIMIT_ARC_PX)
 }
 
-/// Meia-extensão do trilho de um Slider SEM limites, px de tela — ele diz só uma
-/// DIREÇÃO, então o comprimento é do chrome. Um pouco maior que o arco de limite
-/// do Pin, porque uma reta precisa de mais extensão que um arco para ler como
-/// eixo em vez de risco.
+/// Meia-extensão do trilho de um Slider SEM limites, px de tela (só DIREÇÃO).
 const RAIL_PX: f64 = 26.0; // LITERAL-PX-OK: chrome de overlay
 
-/// Meio-comprimento dos tracinhos de fim de curso, px de tela — irmãos dos
-/// `LIMIT_TICK_PX` do arco (é a mesma figura: *o alcance termina aqui*), um
-/// pouco maiores porque cruzam uma reta e não a ponta de um arco.
+/// Meio-comprimento dos tracinhos de fim de curso, px de tela (irmão de `LIMIT_TICK_PX`).
 const RAIL_TICK_PX: f64 = 7.0; // LITERAL-PX-OK: chrome de overlay
 
-/// **O TRILHO de um Slider** (W-J5) — o desenho canônico do prismatic: uma reta
-/// pelo eixo, com tracinhos perpendiculares nos fins de curso.
+/// **O TRILHO de um Slider** (W-J5): reta pelo eixo, tracinhos nos fins de curso.
 ///
-/// ⚠️ **Os fins de curso são MUNDO, o resto é tela.** Um curso é uma distância em
-/// metros, então os tracinhos têm de sentar onde o corpo vai de fato parar — eles
-/// crescem com o zoom junto com a cena. Já a espessura, o comprimento dos
-/// tracinhos e a extensão de um trilho ILIMITADO são chrome: sem limites o eixo
-/// não tem comprimento nenhum a mostrar, e inventar um em metros seria desenhar
-/// um número que não existe.
-///
-/// `axis_w` é a direção unitária de mundo que a ponte resolveu
-/// (`JointView::axis`), nunca uma re-derivação daqui: duas respostas a *"para onde
-/// este trilho aponta?"* desenhariam um eixo que o solver não usa.
+/// ⚠️ Fins de curso são MUNDO (metros); espessura, tracinhos e trilho ILIMITADO
+/// são chrome. `axis_w` vem da ponte (`JointView::axis`), nunca re-derivado.
 pub fn slider_rail(
     camera: &Camera2d,
     window: WindowSize,
@@ -159,9 +113,7 @@ pub fn slider_rail(
             [anchor_w[0] + axis_w[0] * t, anchor_w[1] + axis_w[1] * t],
         )
     };
-    // A direção do eixo JÁ PROJETADA, de onde sai a perpendicular de tela. Sai de
-    // dois pontos do próprio eixo, então honra qualquer flip da câmera sem saber
-    // que ele existe.
+    // Eixo JÁ PROJETADO (dois pontos dele): honra qualquer flip.
     let c = along(0.0);
     let ahead = along(1.0);
     let (dx, dy) = (ahead.x - c.x, ahead.y - c.y);
@@ -182,19 +134,15 @@ pub fn slider_rail(
     };
     p.move_to(from);
     p.line_to(to);
-    // Os tracinhos existem só quando há fim de curso — sem limites não há onde
-    // parar, e um tracinho ali afirmaria um limite que não existe.
+    // Tracinhos só quando há fim de curso.
     if limits.is_some() {
         end_ticks([from, to], (perp_x, perp_y), &mut p);
     }
     p
 }
 
-/// **Os tracinhos de FIM DE CURSO**, perpendiculares ao eixo, em px de tela.
-///
-/// Porta única do trilho ([`slider_rail`]) e da suspensão ([`wheel_strut`]):
-/// os dois dizem a MESMA coisa — *o alcance termina aqui* — e duas cópias
-/// divergiriam no dia em que o comprimento do tracinho mudasse num só.
+/// **Os tracinhos de FIM DE CURSO** em px de tela — porta única de
+/// [`slider_rail`] e [`wheel_strut`].
 fn end_ticks(ends: [Point; 2], perp: (f64, f64), p: &mut BezPath) {
     for end in ends {
         p.move_to(Point::new(
@@ -211,21 +159,9 @@ fn end_ticks(ends: [Point; 2], perp: (f64, f64), p: &mut BezPath) {
 /// **O glifo da RODA** — o cubo (um anel) mais a MOLA da suspensão ao longo do
 /// eixo, e os batentes de curso quando eles existem.
 ///
-/// ⚠️ **É COMPOSTO de propósito, e é isso que o torna legível:** o anel é o
-/// mesmo do [`pin_glyph`] e significa a mesma coisa (*isto gira em torno deste
-/// ponto*), o zigue-zague é o mesmo idioma do [`spring_zigzag`] e diz *isto
-/// cede*, e os tracinhos são os do [`slider_rail`]. Uma roda é literalmente as
-/// três frases juntas, então inventar uma quarta figura seria pedir ao artista
-/// que decorasse um símbolo em vez de ler o que já sabe.
-///
-/// A distinção contra os vizinhos é de GEOMETRIA, não de nome (a cicatriz do
-/// par `Layer`/`Layers`): contra o Pin, existe uma polilinha que oscila fora do
-/// anel; contra a Spring, há um anel FECHADO e o zigue-zague não liga duas
-/// âncoras (as duas coincidem numa roda); contra o Slider, o traço ao longo do
-/// eixo não é reto.
-///
-/// Como o [`slider_rail`], o eixo vem da ponte (`JointView::axis`) e nunca é
-/// re-derivado aqui, e os fins de curso são MUNDO enquanto o resto é chrome.
+/// ⚠️ COMPOSTO de propósito: anel do [`pin_glyph`] + zigue-zague do
+/// [`spring_zigzag`] + tracinhos do [`slider_rail`]; distinto dos vizinhos por
+/// GEOMETRIA. Eixo da ponte; fins de curso em MUNDO.
 pub fn wheel_strut(
     camera: &Camera2d,
     window: WindowSize,
@@ -252,33 +188,19 @@ pub fn wheel_strut(
     let (perp_x, perp_y) = (-uy, ux);
     // O CUBO: o mesmo anel do pino, porque é a mesma afirmação.
     ring_px(c, PIN_RING_PX, &mut p);
-    // A MOLA: da borda do anel para fora, ao longo do eixo, num comprimento de
-    // chrome — o curso de uma suspensão é um número em metros e ele já tem
-    // desenho próprio (os tracinhos); esticar a mola até lá faria a figura
-    // sumir num curso curto.
+    // A MOLA: da borda do anel, ao longo do eixo, num comprimento de chrome.
     let base = Point::new(c.x + ux * PIN_RING_PX, c.y + uy * PIN_RING_PX);
     let tip = Point::new(c.x + ux * RAIL_PX, c.y + uy * RAIL_PX);
     p.extend(spring_zigzag(base, tip).iter());
-    // Os batentes: onde a suspensão de fato PARA, em metros. ⚠️ Comprimir é
-    // POSITIVO neste eixo (o cubo sobe em direção ao chassi), então o `max` é o
-    // batente de compressão e o `min` o de extensão — medido, porque uma faixa
-    // simétrica não distingue as duas convenções. O par inteiro é o que um rod
-    // não podia ter.
+    // Batentes em metros. ⚠️ Comprimir é POSITIVO: `max` = compressão, `min` = extensão (medido).
     if let Some([min, max]) = limits {
         end_ticks([along(min), along(max)], (perp_x, perp_y), &mut p);
     }
     p
 }
 
-/// **Onde o grip do anel de comprimento está, em MUNDO** (W-J3).
-///
-/// Sobre o anel, na direção de `toward` (a âncora B) — onde o artista já está
-/// olhando, e onde o próprio anel responde *"B está no comprimento?"*. Mundo, e
-/// não tela, porque um comprimento é um comprimento: o grip cresce com o zoom
-/// junto com o anel que ele agarra.
-///
-/// Degenerado (B sobre A) cai no ponto onde [`ring_px`] começa a desenhar o anel,
-/// que é o único lugar sem escolha arbitrária.
+/// **Onde o grip do anel de comprimento está, em MUNDO** (W-J3): sobre o anel,
+/// na direção de `toward` (B). Degenerado (B sobre A): onde [`ring_px`] começa.
 pub fn length_handle_world(centre_w: [f32; 2], toward: [f32; 2], length: f32) -> [f32; 2] {
     let (dx, dy) = (toward[0] - centre_w[0], toward[1] - centre_w[1]);
     let d = dx.hypot(dy);
@@ -302,21 +224,15 @@ pub fn ring_px(centre: Point, radius_px: f64, path: &mut BezPath) {
     }
 }
 
-/// **O glifo do PINO** — um anel: a dobradiça, a figura que todo editor 2D usa
-/// para "estes dois giram em torno deste ponto".
+/// **O glifo do PINO** — um anel: a dobradiça.
 pub fn pin_glyph(centre: Point) -> BezPath {
     let mut p = BezPath::new();
     ring_px(centre, PIN_RING_PX, &mut p);
     p
 }
 
-/// **O glifo do WELD** — um quadrado, girado com o corpo A.
-///
-/// Quadrado e não anel porque um weld **não gira**: a figura tem quinas, e as
-/// quinas seguem a rotação do corpo, então o artista vê o par travado virar
-/// junto. ⚠️ A distinção Pin×Weld é de GEOMETRIA, nunca de identificador — a
-/// cicatriz do par `Layer`/`Layers` da timeline, reprovado num smoke por serem
-/// a mesma figura com nomes diferentes.
+/// **O glifo do WELD** — um quadrado, girado com o corpo A (um weld não gira).
+/// ⚠️ Pin×Weld distinguem-se por GEOMETRIA, nunca por identificador.
 pub fn weld_glyph(
     camera: &Camera2d,
     window: WindowSize,
@@ -336,23 +252,10 @@ pub fn weld_glyph(
 }
 
 /// **O glifo do CUSTOM** — um HEXÁGONO, e um anel dentro dele quando o eixo de
-/// rotação está livre.
+/// rotação está livre (o anel interno é o vocabulário do PINO).
 ///
-/// O hexágono é a figura que diz *"a configuração deste é autorada"*: ele não é
-/// o anel do pino nem o quadrado da solda, e a distinção é de **geometria**, não
-/// de identificador (a cicatriz do par `Layer`/`Layers` que um smoke da timeline
-/// reprovou por serem a mesma figura com nomes diferentes).
-///
-/// ⚠️ **O anel interno reusa o vocabulário do PINO de propósito** — ali ele já
-/// significa *"estes dois giram em torno deste ponto"*, e é exatamente o que ele
-/// significa aqui. Um Custom com o angular travado não o ganha.
-///
-/// ⚠️ **E o glifo NÃO desenha as direções dos eixos lineares, o que seria a
-/// informação mais rica.** Elas vivem no frame do próprio joint (a rotação da
-/// entidade-joint, via `PhysicsWorld::axis_locals`), e a [`JointView`] não a
-/// carrega — desenhá-las a partir do ângulo do corpo A seria uma figura que
-/// MENTE em todo joint rotacionado. O que está desenhado é o que é verdade sem
-/// frame nenhum: *é um Custom* e *ele gira ou não*.
+/// ⚠️ NÃO desenha os eixos lineares: vivem no frame do joint, que a
+/// [`JointView`] não carrega — desenhá-los pelo corpo A MENTIRIA.
 ///
 /// [`JointView`]: ph2d_physics_ecs::JointView
 pub fn custom_glyph(centre: Point, rotation_free: bool) -> BezPath {
@@ -373,19 +276,15 @@ pub fn custom_glyph(centre: Point, rotation_free: bool) -> BezPath {
     p
 }
 
-/// **O glifo da MOLA** — o zigue-zague entre as âncoras.
-///
-/// Ele É o span (não há figura separada de âncora), e é isso que o distingue da
-/// corda: um zigue-zague inverte de direção a cada meia-onda, uma corda não
-/// inverte nunca. Um gate mede exatamente essa propriedade.
+/// **O glifo da MOLA** — o zigue-zague entre as âncoras (inverte a cada
+/// meia-onda; a corda nunca — um gate mede isso).
 pub fn spring_zigzag(a: Point, b: Point) -> BezPath {
     let (dx, dy) = (b.x - a.x, b.y - a.y);
     let len = dx.hypot(dy);
     let mut p = BezPath::new();
     p.move_to(a);
     if len < 1e-6 {
-        // Mola de span zero: nada a serpentear. As pontas do chamador é que
-        // mantêm o joint visível — a mesma razão dos anéis do desenho antigo.
+        // Span zero: as pontas do chamador mantêm o joint visível.
         return p;
     }
     let (ux, uy) = (dx / len, dy / len);
@@ -404,28 +303,19 @@ pub fn spring_zigzag(a: Point, b: Point) -> BezPath {
 
 /// **O glifo da CORDA** — reta quando TESA, curva quando FROUXA.
 ///
-/// A flecha (`sag`) sai da aproximação parabólica de um fio pendurado: uma
-/// parábola de flecha `s` sobre corda `d` tem comprimento `d·(1 + 8/3·(s/d)²)`,
-/// então igualar isso ao comprimento `L` da corda dá `s = d·√(3/8·(L/d − 1))`.
-/// É um READOUT da folga, não uma simulação: o rapier trata a corda como um
-/// LIMITE de distância e não pendura fio nenhum. ⚠️ **A direção da barriga é a
-/// da GRAVIDADE** — a mesma fonte que decide para onde é "para cima" no empuxo
-/// (W-Buoyancy); sem gravidade a corda desenha reta, degenerado que a física
-/// resolve sozinha.
+/// Flecha parabólica `s = d·√(3/8·(L/d − 1))` — um READOUT da folga, não simulação.
+/// ⚠️ A barriga segue a GRAVIDADE; sem gravidade, reta.
 pub fn rope_span(a: Point, b: Point, slack_ratio: f64, gravity_screen: (f64, f64)) -> BezPath {
     let (dx, dy) = (b.x - a.x, b.y - a.y);
     let d = dx.hypot(dy);
     let mut p = BezPath::new();
     p.move_to(a);
-    // Tesa (ou sem gravidade para pendurar): uma reta, que é o que uma corda
-    // sob carga é.
+    // Tesa (ou sem gravidade): reta.
     if slack_ratio <= 0.0 || d < 1e-6 || gravity_screen.0.hypot(gravity_screen.1) < 1e-9 {
         p.line_to(b);
         return p;
     }
-    // `slack_ratio` = L/d − 1, já calculado pelo chamador (que é quem tem os
-    // metros); o cap impede que uma corda muito frouxa desenhe uma barriga
-    // maior que ela mesma.
+    // `slack_ratio` = L/d − 1 (do chamador); o cap limita a barriga.
     let sag = (d * (0.375 * slack_ratio).sqrt()).min(d * 0.6);
     let mid = Point::new(
         (a.x + b.x) * 0.5 + gravity_screen.0 * sag,
@@ -435,29 +325,17 @@ pub fn rope_span(a: Point, b: Point, slack_ratio: f64, gravity_screen: (f64, f64
     p
 }
 
-/// **O glifo da BARRA** — duas linhas PARALELAS entre as âncoras.
-///
-/// A convenção de desenho mecânico para um elo rígido, e ela é escolhida por
-/// GEOMETRIA e não por nome: uma corda tesa desenha uma reta que passa
-/// exatamente sobre o segmento âncora→âncora, e uma barra desenha duas linhas
-/// que **nunca** o tocam. É essa a diferença que um gate consegue medir — a
-/// cicatriz do par `Layer`/`Layers` da timeline, reprovado num smoke por serem a
-/// mesma figura com identificadores diferentes.
-///
-/// As pontas (os anéis) são do chamador, como no Spring e na Rope: um rod é
-/// pinado nas duas extremidades, e é isso que os anéis dizem.
+/// **O glifo da BARRA** — duas PARALELAS que nunca tocam o segmento âncora→âncora
+/// (a corda tesa passa sobre ele; um gate mede). Os anéis são do chamador.
 pub fn rod_bar(a: Point, b: Point) -> BezPath {
     let (dx, dy) = (b.x - a.x, b.y - a.y);
     let len = dx.hypot(dy);
     let mut p = BezPath::new();
     if len < 1e-6 {
-        // Barra de span zero: as duas paralelas colapsariam numa só. Os anéis do
-        // chamador mantêm o joint visível, exatamente como na mola.
+        // Span zero: os anéis do chamador mantêm o joint visível.
         return p;
     }
-    // A perpendicular unitária, em px de TELA — a espessura de uma barra
-    // desenhada é chrome, não uma grandeza do mundo (a lição do traço de 1,5
-    // unidades que virou 150 px no Shape Builder).
+    // Perpendicular em px de TELA: a espessura é chrome, não mundo.
     let (nx, ny) = (-dy / len * ROD_HALF_PX, dx / len * ROD_HALF_PX);
     for s in [1.0, -1.0] {
         p.move_to(Point::new(a.x + nx * s, a.y + ny * s));
@@ -468,11 +346,7 @@ pub fn rod_bar(a: Point, b: Point) -> BezPath {
 
 /// **O arco de LIMITE de um pino** — as duas paredes e a agulha.
 ///
-/// O limite do rapier é sobre o ângulo RELATIVO (`θb − θa`), então o arco é
-/// desenhado no frame do corpo **A** (`angle_a + min ..= angle_a + max`) e a
-/// agulha aponta para `angle_b`, que é onde o corpo B de fato está. Ler as duas
-/// no mesmo desenho é o que responde *"quanto ainda posso girar?"* — a pergunta
-/// que o Unreal responde com um cone e o Unity só depois de entrar num modo.
+/// Limite RELATIVO (`θb − θa`): arco no frame do corpo A, agulha em `angle_b`.
 pub fn limit_arc(
     camera: &Camera2d,
     window: WindowSize,
@@ -491,8 +365,7 @@ pub fn limit_arc(
         let t = f64::from(i) / f64::from(ARC_SEGS);
         p.line_to(at(a0 + (a1 - a0) * t, LIMIT_ARC_PX));
     }
-    // As paredes: uma marca radial em cada extremo, para o fim do alcance ser
-    // um LUGAR e não o ponto onde a curva simplesmente parou.
+    // As paredes: uma marca radial em cada extremo.
     for a in [a0, a1] {
         p.move_to(at(a, LIMIT_ARC_PX - LIMIT_TICK_PX));
         p.line_to(at(a, LIMIT_ARC_PX + LIMIT_TICK_PX));
@@ -503,11 +376,7 @@ pub fn limit_arc(
     p
 }
 
-/// **O anel de COMPRIMENTO** — repouso da mola, máximo da corda.
-///
-/// Construído em MUNDO e projetado (o raio é uma distância real), então a
-/// âncora B pousada SOBRE o anel significa *no comprimento*, dentro dele
-/// *comprimida/frouxa*, fora *esticada*. É o número do §12 virando lugar.
+/// **O anel de COMPRIMENTO** — repouso da mola, máximo da corda; em MUNDO projetado.
 pub fn length_ring(
     camera: &Camera2d,
     window: WindowSize,
@@ -526,8 +395,7 @@ pub fn length_ring(
 
 /// Metade da largura da barra de chão do pino de MUNDO, em px de tela.
 const GROUND_HALF_PX: f64 = 9.0; // LITERAL-PX-OK: chrome de overlay
-/// Quanto a barra descansa ABAIXO da âncora, para não disputar pixel com o glifo
-/// do tipo (o anel do Pin mede [`PIN_RING_PX`]).
+/// Quanto a barra descansa ABAIXO da âncora (fora do [`PIN_RING_PX`]).
 const GROUND_GAP_PX: f64 = 7.5; // LITERAL-PX-OK: chrome de overlay
 /// O comprimento de cada risco da hachura.
 const GROUND_TICK_PX: f64 = 5.0; // LITERAL-PX-OK: chrome de overlay
@@ -535,45 +403,16 @@ const GROUND_TICK_PX: f64 = 5.0; // LITERAL-PX-OK: chrome de overlay
 const GROUND_TICKS: usize = 4;
 
 /// **A hachura de CHÃO** — a ponta deste joint é o CENÁRIO, não um corpo
-/// (W-WorldPinGlyph).
-///
-/// # Por que existia um vão
-///
-/// A geometria de um pino de mundo sempre esteve certa, e o overlay o desenhava
-/// **de graça** — cedo demais para alguém notar que o desenho não dizia nada.
-/// Medido: um pino de mundo e um pino entre dois corpos produzem caminhos
-/// **byte-idênticos** (3 camadas, `[22, 0, 50]` pontos, mesmas cores), porque
-/// nada no desenhista pergunta pelo lado B.
-///
-/// O que o produto entrega hoje é uma **ausência**: a ponte põe
-/// `centre_b == anchor_b` (medido: os dois em `[0,0; 2,0]`), então a linha
-/// tracejada de posse do lado B tem comprimento zero e não pinta. ⚠️ **E uma
-/// ausência é ambígua** — um joint entre dois corpos cujo B esteja centrado na
-/// própria âncora desenha exatamente a mesma coisa. *Não desenhar nada* não é
-/// uma frase; é a falta de uma.
-///
-/// # Por que a hachura
-///
-/// É a notação de **apoio fixo** dos diagramas de mecanismo — a mesma que todo
-/// livro de estática usa para dizer *"deste lado é o quadro, e ele não vai a
-/// lugar nenhum"*. Ela não precisa ser aprendida por quem já viu um desenho de
-/// mecanismo, e não colide com nenhuma outra figura deste overlay.
-///
-/// ⚠️ **Ela desce pela GRAVIDADE, não pelo −Y da tela**, e reusa o `g_screen`
-/// que o quadro já computou para a barriga da corda: *chão* é o lado para onde
-/// as coisas caem, e sob um flip de câmera — ou uma gravidade lateral, que este
-/// módulo suporta desde o W2b — uma hachura presa ao eixo da tela apontaria para
-/// cima com toda a convicção. Sem gravidade a marca **não é desenhada**: não há
-/// "para baixo" a afirmar, e inventar um seria o desenho escolhendo uma física
-/// que o mundo não tem.
+/// (W-WorldPinGlyph): a notação de apoio fixo. Sem ela o pino de mundo saía
+/// byte-idêntico ao de dois corpos.
+/// ⚠️ Desce pela GRAVIDADE (`g_screen`), nunca pelo −Y da tela; sem gravidade, nada.
 pub fn ground_hatch(at: Point, g_screen: (f64, f64)) -> BezPath {
     let mut p = BezPath::new();
     let (dx, dy) = g_screen;
     if dx.hypot(dy) < 1e-9 {
         return p;
     }
-    // O "direita" da marca é a perpendicular de "para baixo" — a barra deita
-    // ATRAVESSADA na gravidade, que é o que a faz ler como chão.
+    // A barra deita ATRAVESSADA na gravidade.
     let (rx, ry) = (-dy, dx);
     let base = Point::new(at.x + dx * GROUND_GAP_PX, at.y + dy * GROUND_GAP_PX);
     let end = |t: f64, l: f64| Point::new(base.x + rx * t + dx * l, base.y + ry * t + dy * l);

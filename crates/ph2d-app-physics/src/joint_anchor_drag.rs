@@ -1,30 +1,9 @@
 //! **Dragging a joint anchor** — one gesture, both ends (W-J2).
 //!
-//! The A dot used to open a generic `GizmoDragKind::Translate` of the joint
-//! entity, because the joint's `Transform` *was* its anchor. W-AnchorFollow made
-//! the anchor body-local and demoted the `Transform` to a derived display value,
-//! and W-J2 added a second handle for body B — which has no `Transform` at all.
-//! A Translate could never author it.
-//!
-//! So both handles now open **this** drag, and it speaks through the bridge's
-//! anchor door (`ph2d_physics_ecs::PhysicsBridge::set_joint_anchor_world`). The
-//! two ends run the same code with a different [`JointSide`], which is the point:
-//! *two handles, one behaviour*. Reaching the same result by two different paths
-//! is how they would come to disagree about snapping, about undo, about which
-//! frame the write lands in.
-//!
-//! # What this deliberately does NOT do any more
-//!
-//! It does not clear `PhysicsJoint::anchored`. That sentinel re-derives **both**
-//! locals from the seed policy, so dragging A would have thrown away a B anchor
-//! the artist had just placed. A reposition knows its side and its world point,
-//! so it writes that local directly (see `bridge::anchors`).
-//!
-//! # Undo
-//!
-//! Nothing here touches the undo queue: `post_frame_undo` suppresses while a
-//! pointer button is held and records the diff once on release, so a whole drag
-//! is one global step — the same way moving a sprite is.
+//! Both handles open this drag and write through the bridge's anchor door
+//! (`PhysicsBridge::set_joint_anchor_world`): two handles, one behaviour.
+//! It never clears `PhysicsJoint::anchored` (that re-derives BOTH locals).
+//! Undo: none here — `post_frame_undo` records the whole drag as one step.
 
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::gizmo::PointHandleKind;
@@ -48,71 +27,36 @@ pub struct JointAnchorDrag {
     pub(crate) kind: PointHandleKind,
     /// What the press was holding, in the coordinate the value lives in.
     grab: Grab,
-    /// The candidate the anchor snapped to this frame, for the gizmo to mark.
-    /// `None` while free, and always `None` for a parameter grip (see
-    /// `advance_joint_anchor_drag`).
+    /// The candidate snapped to this frame; `None` while free or on a parameter grip.
     pub snap: Option<[f32; 2]>,
 }
 
-/// The press-time offset between the cursor and the value, **in the value's own
-/// coordinate**.
-///
-/// Every handle in this editor is grab-relative — pressing 5 px off a dot must
-/// not teleport it 5 px — and for these three that means three different
-/// quantities, which is why this is an enum rather than a vector with two
-/// unused components. A limit is an angle, so its grab offset is an angle; a
-/// length is a radius, so its grab offset is a radius.
+/// The press-time offset cursor→value, **in the value's own coordinate**
+/// (grab-relative: pressing off a dot must not teleport it).
 #[derive(Copy, Clone, Debug)]
 pub enum Grab {
     /// Anchor: the world vector from the cursor to the anchor.
     World([f32; 2]),
     /// Limit wall: the angle (rad) from the cursor's bearing to the wall's.
     Angle(f32),
-    /// Length ring: the signed difference between the ring's radius and the
-    /// cursor's distance from the anchor.
+    /// Length ring: ring radius minus the cursor's distance from the anchor.
     Radius(f32),
-    /// **Stroke end of a rail:** the world vector from the cursor to the end,
-    /// exactly like [`Grab::World`] — because a rail's end is a POINT, free in
-    /// x and y, not a value on a line the artist cannot move.
-    ///
-    /// ⚠️ A Slider's limits are a *distance*, not an angle — the same split
-    /// `JointKind::limits_in_metres` makes for the §12 rows, arriving at the
-    /// canvas. Reusing [`Grab::Angle`] for them is what shipped a grip that
-    /// authored a bearing into a field read as metres (see `write_limit`).
+    /// Stroke end of a rail: world vector cursor→end (a free POINT, like [`Grab::World`]).
+    /// ⚠️ A Slider's limits are metres, never [`Grab::Angle`] (`limits_in_metres`).
     Rail([f32; 2]),
-    /// **Limitador de corda:** a diferença, em metros de corda, entre o número
-    /// autorado e o que a projeção do cursor sobre o trecho vale (W-RopeStop).
-    ///
-    /// Um escalar e não um ponto: a marca não é livre no plano — ela ANDA SOBRE A
-    /// CORDA, e o que o gesto autora é *quanta corda sobra*. Guardar um vetor
-    /// deixaria a alça sair do traço no primeiro pixel fora dele.
+    /// Limitador de corda: metros de corda entre o autorado e a projeção do
+    /// cursor (W-RopeStop). Escalar: a marca ANDA SOBRE a corda.
     Along(f32),
 }
 
-/// Snap radius in **screen** pixels, converted to world at the current zoom so
-/// the magnet feels the same however far in the artist is.
-///
-/// 14 px, which is not a fresh guess: it is the number the pivot handle's
-/// Ctrl-snap already uses (`input_dispatch::gizmo_drag`, the MovePivot branch).
-/// Two point handles in the same editor snapping at two different distances
-/// would be two answers to one question. It is also comfortably smaller than the
-/// gap between neighbouring candidates at any zoom a body is authored at — a
-/// 0.5 m box at the default camera puts its corners 50 px apart — so the free
-/// space between targets stays reachable.
+/// Snap radius in **screen** px (converted to world at the current zoom) — the
+/// same 14 px the pivot handle's Ctrl-snap uses (`input_dispatch::gizmo_drag`).
 pub const SNAP_PX: f32 = 14.0;
 
 /// Open a drag on `kind` of `joint`, or `None` if there is nothing to author
 /// (a locked entity, an end with no body, a parameter this joint does not have).
-///
-/// ⚠️ **The joint comes from the HIT, not from the selection** (W-J2b). Every
-/// joint publishes handles now, so "which joint" is answered by the map the
-/// painter filled while registering the dots — asking the selection instead
-/// would author the selected joint's value from a click on a different one's
-/// handle, silently.
-///
-/// ⚠️ Takes the four pieces of `AppGfx` it needs rather than `&AppGfx`, because
-/// the Down handler that calls it already holds a `&mut` into `gfx.hero_screen`
-/// — field-level borrows are disjoint, a whole-struct reborrow is not.
+/// ⚠️ The joint comes from the HIT, never the selection (W-J2b). Takes pieces of
+/// `AppGfx`, not `&AppGfx`: the caller holds a `&mut` into `gfx.hero_screen`.
 #[must_use]
 pub fn open_drag(
     physics: &PhysicsBridge,
@@ -133,25 +77,17 @@ pub fn open_drag(
     } else if kind.is_wheel() {
         wheel::open_grab(sim, joint, kind, cursor)?
     } else if let Some(side) = kind.rope_stop_side() {
-        // ⚠️ **A geometria vem da PONTE e o número, do ECS** — a mesma divisão de
-        // toda esta família: o solver sabe onde a corda está, o componente sabe o
-        // que o artista pediu. O `stop_at_point` é a inversa exata do `stop_mark`
-        // que desenhou a marca, então o agarre é relativo e ela não salta no
-        // clique.
+        // ⚠️ Geometria da PONTE, número do ECS; `stop_at_point` inverte `stop_mark`.
         let leg = physics.rope_stop_legs(joint)[side]?;
         let held = stops_of(sim, joint)[side];
         Grab::Along(held - ph2d_physics_ecs::stop_at_point(&leg, cursor))
     } else {
-        // A parameter grip measures against the joint's LIVE geometry, which is
-        // the same `JointView` the overlay drew the arc and the ring from.
+        // Measured against the same live `JointView` the overlay drew.
         let v = physics.joint_views().find(|v| v.entity == joint)?;
         let held = param_value(&v, kind)?;
         match kind {
             PointHandleKind::Length => Grab::Radius(held - distance(v.anchor_a, cursor)),
-            // A rail's stroke is a LENGTH along the axis, so the grab offset is
-            // one too. Asking `limits_in_metres` — the same door the row's label
-            // and the shell's conversion ask — is what keeps the three from
-            // disagreeing about what the number is.
+            // A rail's stroke is a LENGTH; `limits_in_metres` is the shared door.
             _ if v.kind.limits_in_metres() => {
                 let axis = v.axis?;
                 let end = [
@@ -160,8 +96,7 @@ pub fn open_drag(
                 ];
                 Grab::Rail([end[0] - cursor[0], end[1] - cursor[1]])
             }
-            // The wall's bearing minus the cursor's, so the wall does not jump
-            // to the cursor on press.
+            // Wall bearing minus cursor bearing: no jump on press.
             _ => Grab::Angle(wrap_pi((v.angle_a + held) - bearing(v.anchor_a, cursor))),
         }
     };
@@ -173,38 +108,26 @@ pub fn open_drag(
     })
 }
 
-/// The value a parameter grip currently sits at: a limit (rad, relative) or the
-/// ring's radius (m). `None` when this joint does not have that parameter — the
-/// same `JointView` fields the overlay asks before drawing them, so a grip can
-/// never be opened on something that is not on screen.
+/// A parameter grip's current value (limit rad / ring m); `None` when the joint
+/// lacks it — the same `JointView` fields the overlay draws from.
 fn param_value(v: &ph2d_physics_ecs::JointView, kind: PointHandleKind) -> Option<f32> {
     match kind {
         PointHandleKind::LimitMin => v.limits.map(|l| l[0]),
         PointHandleKind::LimitMax => v.limits.map(|l| l[1]),
         PointHandleKind::Length => v.length,
-        // Nem âncora nem parâmetro: uma roldana é um ponto de MUNDO, e o grab
-        // dela é o offset até o cursor, como o de uma âncora.
+        // Pontos de MUNDO (âncora, roldana) e limitadores (lidos por `stops_of`).
         PointHandleKind::AnchorA
         | PointHandleKind::AnchorB
         | PointHandleKind::WheelCentre
         | PointHandleKind::WheelRim
         | PointHandleKind::WheelRimOut
-        // Um limitador não é parâmetro do JOINT: ele mora no `RopeStops` da
-        // corda, e o valor dele é lido por `stops_of`.
         | PointHandleKind::RopeStopA
         | PointHandleKind::RopeStopB
         | PointHandleKind::JumpApex => None,
     }
 }
 
-/// World bearing of `p` seen from `from`, radians.
-///
-/// ⚠️ `libm`, the crate-wide convention — though the reason the rest of the
-/// engine has it does **not** apply here: this number is produced by a human
-/// gesture and stored as authored state, not derived per-tick inside the sim, so
-/// it never reaches the determinism hash by a path a replay repeats. Using the
-/// pinned one anyway costs nothing and keeps one answer to "how do we take an
-/// angle".
+/// World bearing of `p` seen from `from`, radians (`libm`, the crate convention).
 fn bearing(from: [f32; 2], p: [f32; 2]) -> f32 {
     libm::atan2f(p[1] - from[1], p[0] - from[0])
 }
@@ -225,35 +148,17 @@ fn wrap_pi(x: f32) -> f32 {
     v
 }
 
-/// `x` moved by whole turns to the nearest branch of `near`.
-///
-/// Without it a wall dragged across the ±pi cut jumps to the other side of the
-/// arc: the raw bearing wraps, the stored limit does not, and the drag would
-/// suddenly be authoring a value a full turn away from the one under the cursor.
+/// `x` moved by whole turns to the nearest branch of `near` (no jump at ±pi).
 fn unwrap_near(x: f32, near: f32) -> f32 {
     near + wrap_pi(x - near)
 }
-// ─────────────────────────────────────────────────────────────────────────
-// ⭐ **O CORPO, que era um `impl crate::App`** (W2/L2 Fase C, 2026-09-12).
-// Escrito em TIPOS ele pedia SEIS coisas e nenhuma era a `App`: o estado da
-// família, o modificador de encaixe, o ponteiro, e três peças da superfície de
-// canvas ([`CanvasCtx`]). ⛔ Zero sextos métodos no `AppHost` — um que devolvesse
-// o `gfx` seria um HANDLE, que o trait proíbe.
-// ─────────────────────────────────────────────────────────────────────────
+// ⛔ Era um `impl crate::App`; agora só [`CanvasCtx`] — nenhum método novo no `AppHost`.
 
 /// Follow the cursor with the open drag. A no-op when none is in flight.
 ///
-/// Three arms, one gesture. The **anchor** arm writes through the bridge's
-/// anchor door (the value is a place, and the bridge owns where a place is);
-/// the two **parameter** arms write the joint COMPONENT through the SAME
-/// funnel the §12 number rows use (`inspector_joint::joint_with_edit`), so
-/// posing a limit and typing one cannot disagree about clamping, about
-/// units, or about which field they mean.
-///
-/// ⚠️ **O `ctrl` chega RESOLVIDO, e não como um `ModifiersState`:** Ctrl (Cmd no
-/// macOS) é o modificador de encaixe do editor — a mesma tecla que a alça do
-/// pivô lê, para um gesto significar uma coisa —, e quem sabe traduzir a tecla
-/// no significado é a shell. Passar o estado cru poria a tradução em dois sítios.
+/// Anchors write through the bridge's anchor door; parameters write the joint
+/// through the §12 funnel (`joint_with_edit`), so posing and typing agree.
+/// ⚠️ `ctrl` chega RESOLVIDO pela shell (o modificador de encaixe), nunca cru.
 pub fn advance_joint_anchor_drag(
     st: &mut PhysicsState,
     ctx: &mut CanvasCtx<'_>,
@@ -269,19 +174,8 @@ pub fn advance_joint_anchor_drag(
     drag.snap = match drag.grab {
         Grab::World(off) => {
             let free = [cursor[0] + off[0], cursor[1] + off[1]];
-            // **O ÍMÃ é o mesmo para as duas coisas que se agarram no mundo**
-            // — a âncora de um joint e o eixo de uma roldana —, e o que muda
-            // é só de QUEM é o collider: o joint pergunta pela ponta, a
-            // roldana pelo corpo em que está MONTADA (W-Pulley W3).
-            //
-            // ⚠️ **A isenção que morava aqui dizia que uma roldana *"não
-            // pertence a corpo nenhum — não há a que colar"*, e era verdade
-            // quando foi escrita:** o W3 deu corpo a ela, e a frase virou uma
-            // condição que enumerava os donos de collider da época. Uma
-            // roldana de CENÁRIO segue sem candidato — a porta devolve zero e
-            // o `nearest_within` de uma fatia vazia é `None` —, então a
-            // recusa continua acontecendo, agora pela ARITMÉTICA em vez de um
-            // ramo que alguém tem de lembrar de atualizar.
+            // Um ímã para âncora e roldana; muda só de quem é o collider. Roldana
+            // de CENÁRIO não tem candidato: a porta devolve zero (sem ramo especial).
             let mut cands = [[0.0f32; 2]; ShapeDesc::MAX_SNAP_POINTS];
             let n = if !ctrl {
                 0
@@ -306,11 +200,7 @@ pub fn advance_joint_anchor_drag(
             }
             snap
         }
-        // ⚠️ No magnet on a parameter grip, and that is a gap with a name
-        // rather than an omission: an angle would want a STEP (15°, say) and
-        // a length would want the scene grid, and neither candidate set
-        // exists here. The anchor's nine collider points do not answer
-        // either question.
+        // ⚠️ No magnet on parameter grips: a named gap (would need a step/grid).
         Grab::Angle(off) => {
             let (anchor_a, angle_a) = anchor_of(ctx.bridge, entity);
             let raw = bearing(anchor_a, cursor) + off - angle_a;
@@ -318,11 +208,7 @@ pub fn advance_joint_anchor_drag(
             None
         }
         Grab::Radius(off) => {
-            // Duas alças, uma aritmética: o raio é a distância do cursor ao
-            // CENTRO daquilo que se dimensiona. O que muda é de quem é o
-            // centro e onde o número pousa — o anel de comprimento mede da
-            // âncora e escreve no joint; o aro mede do centro da roda e
-            // escreve no componente dela.
+            // Raio = distância do cursor ao CENTRO (âncora → joint; roda → roda).
             if drag.kind.is_wheel_radius() {
                 wheel::resize_wheel(ctx.sim, entity, drag.kind, cursor, off);
             } else {
@@ -333,9 +219,7 @@ pub fn advance_joint_anchor_drag(
             None
         }
         Grab::Rail(off) => {
-            // The anchor comes from the view the overlay DREW the rail from —
-            // a second derivation here would swing the rail about a pivot the
-            // artist cannot see.
+            // Anchor from the view the overlay DREW the rail from.
             if let Some(anchor) = ctx
                 .bridge
                 .joint_views()
@@ -347,13 +231,8 @@ pub fn advance_joint_anchor_drag(
             }
             None
         }
-        // **O LIMITADOR anda SOBRE a corda** (W-RopeStop). A perna é relida
-        // VIVA a cada frame — a corda se move, e uma perna congelada no press
-        // deixaria a marca para trás do traço que o artista está vendo.
-        //
-        // ⚠️ Sem ímã, e pelo mesmo motivo declarado no `Grab::Angle`: os nove
-        // pontos de collider de uma âncora não respondem *"que comprimento de
-        // corda é redondo?"*. É um vão com nome, não um esquecimento.
+        // O LIMITADOR anda SOBRE a corda; a perna é relida VIVA a cada frame.
+        // ⚠️ Sem ímã, como no `Grab::Angle`.
         Grab::Along(off) => {
             if let Some(side) = drag.kind.rope_stop_side()
                 && let Some(leg) = ctx.bridge.rope_stop_legs(entity)[side]
@@ -369,29 +248,10 @@ pub fn advance_joint_anchor_drag(
 
 /// **Aim the rail AND set its stroke, from one dragged point** (W-J6c).
 ///
-/// The two grips on a Slider are free in x and y, so between them they say
-/// everything a rail is: **the line through the anchor and the dragged end is
-/// the axis, and the distance to it is that end of the stroke.** Constraining a
-/// grip to the line it defines would have been a handle that can only shorten
-/// something it cannot aim — and the axis would have stayed typed-only, in a
-/// Rotation field the artist has to know is the rail's direction.
-///
-/// The rule in one sentence, sign and all: **the dragged end keeps the SIDE it
-/// was on.** `limit_max` is normally forward and `limit_min` behind, so the axis
-/// points at a dragged Max and away from a dragged Min — which is what makes the
-/// far end swing with the rail instead of the rail folding in half. An
-/// asymmetric stroke (both ends positive, a rail that only travels forward)
-/// keeps its shape: the sign comes from the value being dragged, not from which
-/// handle it is.
-///
-/// ⚠️ **The axis is the joint entity's own `Transform::rotation`** (W-J5), so
-/// this writes the same field the §0 Rotation row does — one authored quantity,
-/// two ways to say it. And `sync_joint_pivots` only ever writes *translation*,
-/// so nothing fights this back.
-///
-/// Degenerate: a grip dropped ON the anchor has no direction in it. The axis is
-/// left where it was and the stroke goes to zero, rather than handing `atan2` a
-/// zero vector and the solver a `NaN`.
+/// Anchor→end is the axis; its length is that end of the stroke. The dragged
+/// end keeps the SIDE (sign) its value had. ⚠️ The axis is the joint's own
+/// `Transform::rotation` (same field as the §0 Rotation row). Degenerate (end
+/// ON the anchor): axis kept, stroke → 0, never `atan2(0,0)`.
 fn write_rail_end(
     sim: &mut SimWorld,
     joint: ph2d_ecs::Entity,
@@ -407,8 +267,7 @@ fn write_rail_end(
     } else {
         current.limit_max
     };
-    // Which side of the anchor this end lives on. A zero value has no side of
-    // its own, so it takes the one its handle normally has.
+    // A zero value takes its handle's usual side.
     let side = if held < 0.0 || (held == 0.0 && matches!(kind, PointHandleKind::LimitMin)) {
         -1.0f32
     } else {
@@ -423,40 +282,16 @@ fn write_rail_end(
             t.rotation = ang;
         }
     }
-    // Through the same funnel a typed limit takes: the wall against the sibling,
-    // `clamped()`, and the kind's own unit.
     write_limit(sim, joint, kind, side * len);
 }
 
 /// **Pose one end of the range** — a wall of a hinge's arc (radians relative to
 /// body A) or an end of a rail's stroke (metres along the axis).
 ///
-/// `raw` arrives in the COMPONENT's own unit, whichever that is; the conversion
-/// to what the §12 row shows happens here, through
-/// [`crate::joint::limit_out`] — the same function the
-/// snapshot uses. Three decisions live here.
-///
-/// ⚠️ **The dragged wall is UNWRAPPED against the value it is replacing, and
-/// only when it is an ANGLE.** Crossing the ±pi cut has to move the wall by the
-/// small amount the cursor moved rather than jumping a whole turn to the other
-/// side of the arc — but a *stroke* has no turns, and unwrapping one would teleport
-/// a rail's end by 6.28 m at every 3.14 m of travel.
-///
-/// ⚠️ **An end STOPS at its sibling; it never passes it.** `PhysicsJoint::clamped`
-/// *swaps* inverted limits — correct for a typed pair (a hinge limited to
-/// `min > max` is a weld nobody asked for), and wrong for a gesture: the swap
-/// would hand the artist the OTHER end mid-drag, and the hand that was widening
-/// the range would start narrowing it with nothing on screen saying why. An end
-/// that stops is what every editor with a range does, and it is what the arc and
-/// the rail both show: the two ends cannot cross.
-///
-/// ⚠️ **The UNIT is the kind's, and getting that wrong is what this fixed.**
-/// Until 2026-07-26 this wrote `walled.to_degrees()` unconditionally, while the
-/// shell's `limit_in` takes a Slider's value **verbatim as metres** — so dragging
-/// a rail's grip wrote ~45 *metres* of stroke, which moved the grip, which the
-/// next frame re-read, which wrote more: a runaway that ended in a rail hundreds
-/// of metres long and an app that stopped answering (Enio, 2026-07-26: *"as alças
-/// de rotação se movidas criam um loop sem fim e quebra o app"*).
+/// `raw` is in the COMPONENT's unit; [`crate::joint::limit_out`] converts it.
+/// ⚠️ Unwrapped against the held value only when it is an ANGLE (a stroke has no turns).
+/// ⚠️ An end STOPS at its sibling — never the swap `clamped` does for typed pairs.
+/// ⚠️ The UNIT is the kind's: degrees written as metres was a runaway loop.
 fn write_limit(sim: &mut SimWorld, joint: ph2d_ecs::Entity, kind: PointHandleKind, raw: f32) {
     let Some(&current) = sim.world().get::<PhysicsJoint>(joint) else {
         return;
@@ -475,8 +310,7 @@ fn write_limit(sim: &mut SimWorld, joint: ph2d_ecs::Entity, kind: PointHandleKin
     } else {
         want.max(other)
     };
-    // Out through the SAME door the §12 row reads its value from, so a posed
-    // limit and a typed one cannot mean different things.
+    // The SAME door the §12 row reads from.
     let ui = crate::joint::limit_out(current.kind, walled);
     let edit = if matches!(kind, PointHandleKind::LimitMin) {
         JointFieldEdit::LimitMin(ui)
@@ -486,35 +320,22 @@ fn write_limit(sim: &mut SimWorld, joint: ph2d_ecs::Entity, kind: PointHandleKin
     write_edit(sim, joint, current, edit);
 }
 
-/// **Pose the length ring** — a spring's rest length or a rope's maximum, by
-/// KIND, because the ring is one geometry naming two fields (`JointView.length`
-/// is one field for the same reason: it is the same question to the drawing).
+/// **Pose the length ring** — rest or max length, by the kind's `length_field`.
 fn write_length(sim: &mut SimWorld, joint: ph2d_ecs::Entity, len: f32) {
     let Some(&current) = sim.world().get::<PhysicsJoint>(joint) else {
         return;
     };
-    // ⚠️ **`length_field`, nunca uma lista de tipos aqui.** A versão anterior
-    // enumerava `Spring | Rope` com um `_ => return` cujo comentário afirmava
-    // *"Pin/Weld não têm anel"* — verdade com cinco tipos, e falsa no instante
-    // em que o Rod chegou: o anel dele era PUBLICADO (o `JointView` carrega o
-    // comprimento), o grip pegava, o arrasto abria, e a escrita voltava em
-    // silêncio. A porta é a mesma que o desenho e o gesto de criar perguntam.
+    // ⚠️ `length_field`, nunca uma lista de tipos (o Rod ficava mudo assim).
     let edit = match current.kind.length_field() {
         Some(ph2d_physics_ecs::LengthField::Rest) => JointFieldEdit::RestLength(len),
         Some(ph2d_physics_ecs::LengthField::Max) => JointFieldEdit::MaxLength(len),
-        // Sem comprimento não há anel, logo nenhum grip é publicado; um arrasto
-        // que chegasse aqui estaria autorando um campo que o joint não usa.
+        // Sem comprimento não há anel nem grip.
         None => return,
     };
     write_edit(sim, joint, current, edit);
 }
 
-/// The write itself: through the §12 funnel, then IN PLACE.
-///
-/// In place — not the editor command queue — for the same reason `set_joint_body`
-/// is: this runs inside a pointer handler, mid-frame, and the global diff-based
-/// undo captures the result. The whole drag is one undo step because
-/// `post_frame_undo` suppresses while a button is held.
+/// The write itself: through the §12 funnel, then IN PLACE (the diff undo captures it).
 fn write_edit(
     sim: &mut SimWorld,
     joint: ph2d_ecs::Entity,
@@ -540,11 +361,7 @@ fn anchor_of(physics: &PhysicsBridge, joint: ph2d_ecs::Entity) -> ([f32; 2], f32
         .map_or(([0.0, 0.0], 0.0), |v| (v.anchor_a, v.angle_a))
 }
 
-/// The candidate closest to `p` within `threshold` world units, or `None`.
-///
-/// Nearest-wins rather than first-within-range: candidates crowd together on a
-/// small body at a low zoom, and "whichever was listed first" would make the
-/// magnet's choice depend on the order a shape happens to enumerate its corners.
+/// The candidate closest to `p` within `threshold` world units (nearest wins, not first).
 #[must_use]
 pub(crate) fn nearest_within(
     candidates: &[[f32; 2]],
@@ -565,13 +382,8 @@ pub(crate) fn nearest_within(
 
 impl JointAnchorDrag {
     /// The limit this drag is posing right now — `(joint, radians relative to
-    /// body A)` — or `None` when it is not a limit drag.
-    ///
-    /// Read from the COMPONENT rather than remembered on the drag: the write
-    /// already happened this frame and went through `clamped()` plus the wall
-    /// against the sibling, so the ghost shows the value the joint HAS, not the
-    /// one the cursor asked for. A ghost standing where the solver will not let
-    /// the body stop would be a promise the simulation breaks.
+    /// body A)` — or `None` when it is not a limit drag. Read from the COMPONENT
+    /// (post-clamp), so the ghost shows what the joint HAS.
     #[must_use]
     pub fn posed_limit(&self, sim: &SimWorld) -> Option<(ph2d_ecs::Entity, f32)> {
         let joint = ph2d_ecs::Entity::from_bits(self.joint_bits);
@@ -587,10 +399,7 @@ impl JointAnchorDrag {
 #[path = "joint_anchor_drag_wheel.rs"]
 mod wheel;
 
-/// **A metade do LIMITADOR do gesto de alça** (W-RopeStop) — filho pelo teto de
-/// 600 LOC, e o corte é o mesmo do irmão acima: lá o gesto autora um **JOINT**,
-/// no `wheel` uma **RODLANA**, e aqui o **`RopeStops` da CORDA**, que é uma
-/// terceira entidade com uma terceira porta de escrita.
+/// A metade do LIMITADOR (W-RopeStop): autora o `RopeStops` da CORDA.
 #[path = "joint_anchor_drag_stop.rs"]
 mod stop;
 

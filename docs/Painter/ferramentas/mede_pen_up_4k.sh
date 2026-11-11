@@ -86,10 +86,13 @@ if [ "$1" = matriz ]; then
         [ -n "$PNG" ] && DISPLAY=$D import -window root "$M/$TAG.pre.png" 2>/dev/null
       fi
       marca parado0_ini; sleep 3; marca parado0_fim
-      DISPLAY=$D xdotool mousemove 560 460; sleep 0.3
+      # B17b-cont4: DIAG="x0 y0 x1 y1" = o traço é a RECTA de canto a canto (o Ctrl+Z diagonal: muitos tiles, união = a tela).
+      if [ -n "$DIAG" ]; then read -r DX0 DY0 DX1 DY1 <<< "$DIAG"; else DX0=560; DY0=460; fi
+      DISPLAY=$D xdotool mousemove $DX0 $DY0; sleep 0.3
       marca down; DISPLAY=$D xdotool mousedown 1; sleep 0.4
       cmd=""; for i in $(seq 1 125); do
-        cmd="$cmd mousemove $((560 + i * 32 / 10)) $(awk -v i=$i 'BEGIN{printf "%d", 460+50*sin(i*0.05)}') sleep 0.008"
+        if [ -n "$DIAG" ]; then cmd="$cmd mousemove $((DX0 + (DX1 - DX0) * i / 125)) $((DY0 + (DY1 - DY0) * i / 125)) sleep 0.008"
+        else cmd="$cmd mousemove $((560 + i * 32 / 10)) $(awk -v i=$i 'BEGIN{printf "%d", 460+50*sin(i*0.05)}') sleep 0.008"; fi
       done
       marca traco_ini; DISPLAY=$D xdotool $cmd; marca traco_fim
       marca up; DISPLAY=$D xdotool mouseup 1; sleep 3; marca wet_fim

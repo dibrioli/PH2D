@@ -20,6 +20,8 @@ use std::collections::BTreeMap;
 pub const OPACIDADE_DE_FABRICA: f32 = 1.0;
 
 mod campos; // as listas dos campos do `BrushSpec` (dentro e fora do preset) — filho por LOC
+#[cfg(test)]
+mod captura_tests;
 pub(in crate::tool::paint) mod controlos_e10; // a migração da E10 por função — filho por LOC
 #[cfg(test)]
 mod controlos_e10_tests;
@@ -560,6 +562,9 @@ impl PainterTool {
         p.schema = SCHEMA;
         MEIO_DO_PRESET.clone_into(&mut p.media);
         p.brush.remove("grao_aplicado");
+        // O campo «só quando ligado» que o pincel de agora desligou não fica da base (B35.A1).
+        p.brush
+            .retain(|k, _| !CAMPOS_DO_PINCEL.contains(&k.as_str()));
         p.brush.extend(json::pincel_para_json(
             &self.pincel_a_gravar(),
             &CAMPOS_DO_PINCEL,

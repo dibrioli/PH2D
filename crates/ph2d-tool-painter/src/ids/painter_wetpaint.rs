@@ -279,11 +279,6 @@ pub const PAINTER_WETPAINT_FLOW: NodeId = hash_node_id("painter_brush.wetpaint_f
 /// **Water** — the brush's water load per dab (engine `sliders.water`, `0..1`, boot `1.0`).
 pub const PAINTER_WETPAINT_WATER: NodeId = hash_node_id("painter_brush.wetpaint_water");
 
-/// **Pigment** — ⛔ sem leitor desde a E10 (fundido na [`PAINTER_WETPAINT_DILUTION`]): a ferramenta já não o
-/// encaminha e o painel já não tem a linha (E10-B2, fora de [`PAINTER_WETPAINT_FIELDS`]). Fica só pela sonda
-/// `sonda_varredura_oleo` (no-op); sai com ela.
-pub const PAINTER_WETPAINT_PIGMENT: NodeId = hash_node_id("painter_brush.wetpaint_pigment");
-
 /// **Dilution** (E10, `F3_controlos.md` §9) — `1 − φ` da receita (knob `dilution`): Pigment + Water num controlo.
 pub const PAINTER_WETPAINT_DILUTION: NodeId = hash_node_id("painter_brush.wetpaint_dilution");
 

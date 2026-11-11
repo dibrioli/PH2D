@@ -9,6 +9,8 @@
 //! de slug vigia-as o censo DERIVADO (`ph2d-editor-core/tests/it/node_id_collisions.rs`), que lê os
 //! literais da workspace inteira — o id não precisa de morar ao lado dele.
 
+#[cfg(test)]
+mod censo_tests;
 mod painter;
 pub use painter::*;
 mod painter_brush_sections;

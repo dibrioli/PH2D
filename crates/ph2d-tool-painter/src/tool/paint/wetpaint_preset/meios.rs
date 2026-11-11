@@ -312,10 +312,11 @@ impl PainterTool {
             Parametros::novo(nome_do_meio(m), &base.group, &base.name)
         };
         p.schema = SCHEMA;
-        p.brush.extend(json::pincel_para_json(
-            &self.paint.brush,
-            &campos_do_meio(m),
-        ));
+        let campos = campos_do_meio(m);
+        // O campo «só quando ligado» que o pincel de agora desligou não fica da base (B35.A1).
+        p.brush.retain(|k, _| !campos.contains(&k.as_str()));
+        p.brush
+            .extend(json::pincel_para_json(&self.paint.brush, &campos));
         p.brush.remove("grao_aplicado"); // só o Wet Paint a lê (Bug #61)
         for l in LINHAS_DA_MAO {
             let v = mao::le(&self.paint.dynamics, &self.paint.brush.pen_tilt, l);

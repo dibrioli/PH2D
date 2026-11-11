@@ -64,7 +64,7 @@ fn todo_campo_do_pincel_tem_destino() {
 /// TODOS os campos mexidos. ⚠️ Sem `..default()`: um campo novo no `BrushSpec` não compila aqui até
 /// ter um valor (e um destino em `CAMPOS_*`). Os da OBRA, do GESTO e do MEIO ficam no de fábrica —
 /// são os mesmos nas duas ferramentas; todos os outros mudam.
-fn pincel_mexido() -> BrushSpec {
+pub(super) fn pincel_mexido() -> BrushSpec {
     let d = BrushSpec::default();
     let tex = |kind: u8, ang: u16| TextureSettings {
         kind: ph2d_painter_brush::TextureKind::from_u8(kind),

@@ -416,6 +416,10 @@ mod impasto_luz_tique_tests; // B15.3: o tique da lâmpada = a recomposição in
 mod dobra_da_linha_tests; // B15.6: a dobra de uma linha das duas pistas, ao bit com os laços de antes
 
 #[cfg(test)]
+#[path = "impasto_aro_tests.rs"]
+mod impasto_aro_tests; // B31.1: a sonda do aro branco do Impasto no papel
+
+#[cfg(test)]
 #[path = "impasto_light_poda_tests.rs"]
 mod impasto_light_poda_tests; // B15.2: a luz só dobra as colunas com relevo, ao bit com o passe inteiro
 

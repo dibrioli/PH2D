@@ -156,11 +156,11 @@ impl PlaneDeltas {
             |v| *v == 0,
         );
         let neutro = ph2d_painter_brush::material::Material::NEUTRAL.to_bytes();
-        let fora = move |m: &MaterialBytes| (0..7).fold(0u8, |a, k| a | (m[k] ^ neutro[k]));
+        let modelo = vec![neutro; canvas_w as usize];
         c.add_relevo(
             mats,
-            move |l| l.iter().fold(0u8, |a, m| a | fora(m)) == 0,
-            move |m| fora(m) == 0,
+            |l| linha_de_material_neutra(l, &modelo),
+            move |m| *m == neutro,
         );
         c.add_vidros(vidros);
         c.add_plano(mask_scratch);
@@ -596,5 +596,49 @@ impl PlaneDeltas {
             + self.sculpt_pre_cover.copiado_bytes()
             + self.sculpt_pre_mats.copiado_bytes()
             + self.sculpt_pre_rgba.copiado_bytes()
+    }
+}
+
+/// A linha de material é a neutra: comparada em BYTES contra a linha-modelo (`memcmp`), não texel a texel —
+/// o OR por texel de `[u8; 7]` não vectoriza e era 16 % do Ctrl+Z do 1.º traço Impasto a 4K (B08c.M2).
+fn linha_de_material_neutra(l: &[MaterialBytes], modelo: &[MaterialBytes]) -> bool {
+    l.as_flattened() == modelo[..l.len()].as_flattened()
+}
+
+#[cfg(test)]
+mod linha_neutra_tests {
+    use super::{MaterialBytes, linha_de_material_neutra};
+
+    /// O `memcmp` contra a linha-modelo responde o mesmo que o OR texel a texel (o oráculo de antes),
+    /// também quando só o ÚLTIMO byte do ÚLTIMO texel foge do neutro.
+    #[test]
+    fn a_linha_de_material_neutra_por_bytes_e_a_de_texel_a_texel() {
+        let neutro = ph2d_painter_brush::material::Material::NEUTRAL.to_bytes();
+        let velho = |l: &[MaterialBytes]| {
+            l.iter().fold(0u8, |a, m| {
+                a | (0..7).fold(0u8, |b, k| b | (m[k] ^ neutro[k]))
+            }) == 0
+        };
+        let w = 37;
+        let modelo = vec![neutro; w];
+        let mut casos = vec![modelo.clone()];
+        for i in [0, 18, w - 1] {
+            for k in 0..7 {
+                let mut l = modelo.clone();
+                l[i][k] ^= 1;
+                casos.push(l);
+            }
+        }
+        for l in &casos {
+            assert_eq!(linha_de_material_neutra(l, &modelo), velho(l));
+        }
+        assert!(linha_de_material_neutra(&casos[0], &modelo));
+        assert_eq!(
+            casos
+                .iter()
+                .filter(|l| !linha_de_material_neutra(l, &modelo))
+                .count(),
+            21
+        );
     }
 }

@@ -134,11 +134,23 @@ pub const WET_TUNING_RESET_GROUPS: [ph2d_wet_paint::tuning::KnobGroup; 9] = {
     ]
 };
 
-/// Os grupos avançados (25/10) — nascem DOBRADOS no Tuning: são para quem afina um preset novo.
-pub const WET_TUNING_GRUPOS_AVANCADOS: [ph2d_wet_paint::tuning::KnobGroup; 3] = {
+/// Os grupos avançados (25/10) — nascem DOBRADOS no Tuning: são para quem afina um preset novo. O Physics é a gaveta
+/// «Solver (advanced)» (B35.2): só os números internos do solver ficaram nele.
+pub const WET_TUNING_GRUPOS_AVANCADOS: [ph2d_wet_paint::tuning::KnobGroup; 4] = {
     use ph2d_wet_paint::tuning::KnobGroup as G;
-    [G::Bristles, G::Stroke, G::WetEffects]
+    [G::Bristles, G::Stroke, G::WetEffects, G::Physics]
 };
+
+/// ⭐ B35.2 (PA-3): os seis números internos do solver, pintados na gaveta «Solver (advanced)» (a secção do grupo
+/// Physics). Só a VISTA muda de lugar: o grupo do motor de cada um (tela × pincel, o repor) fica.
+pub const WET_TUNING_SOLVER_AVANCADO: [&str; 6] = [
+    "gateSaturation",
+    "viscosity",
+    "maxVelocity",
+    "projection",
+    "brakeReach",
+    "capillaryGate",
+];
 
 /// Experimental: Kubelka–Munk glaze layering (composite-side).
 pub const WET_TUNING_KM_GLAZE: NodeId = hash_node_id("wet_tuning.km_glaze");

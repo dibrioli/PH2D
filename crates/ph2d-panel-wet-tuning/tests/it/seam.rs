@@ -219,6 +219,45 @@ fn os_grupos_avancados_nascem_dobrados() {
     assert!(!host.store().is_collapsed(bristles));
 }
 
+/// ⭐ B35.2 (PA-3): os seis números internos do solver moram numa gaveta «Solver (advanced)» que nasce fechada, e
+/// as linhas guardam o valor do registo (a gaveta esconde, não apaga: D5 do dono).
+#[test]
+fn o_solver_avancado_nasce_fechado_e_guarda_os_seis_valores() {
+    let (host, _) = host();
+    let seis = [
+        "gateSaturation",
+        "viscosity",
+        "maxVelocity",
+        "projection",
+        "brakeReach",
+        "capillaryGate",
+    ];
+    let s = rows::SECTIONS
+        .iter()
+        .find(|s| s.label == "panel.wet_tuning.group.solver")
+        .expect("a gaveta do solver existe");
+    assert_eq!(ph2d_i18n::tr(s.label), "Solver (advanced)");
+    assert!(host.store().is_collapsed(s.header), "nasce fechada");
+    let mut chaves: Vec<&str> = rows::rows()
+        .iter()
+        .filter(|r| r.group == s.group)
+        .map(|r| r.key)
+        .collect();
+    chaves.sort_unstable();
+    let mut esperado = seis.to_vec();
+    esperado.sort_unstable();
+    assert_eq!(chaves, esperado);
+    for r in rows::rows().iter().filter(|r| seis.contains(&r.key)) {
+        let d = &ph2d_wet_paint::tuning::KNOB_DEFS[r.knob];
+        assert_eq!(
+            (r.default, r.min, r.max),
+            (d.default, d.min, d.max),
+            "{}",
+            r.key
+        );
+    }
+}
+
 /// ⭐⭐ **O clique vai pelo DESPACHO REAL, no centro do cabeçalho pintado** (27/10, o molde da Física):
 /// o cabeçalho é uma secção dobrável da casa (`mark_collapsible_section`), e quem dobra é o
 /// `apply_click` do despacho, ANTES de emitir o `Click`. Um `Click` empurrado à mão para o painel salta

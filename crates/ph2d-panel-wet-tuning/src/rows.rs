@@ -14,6 +14,8 @@ pub struct TuneRow {
     pub key: &'static str,
     /// Index into `KNOB_DEFS` (== `Knob as usize`).
     pub knob: usize,
+    /// O grupo da SECÇÃO que a pinta: o do motor, salvo os de [`ph2d_tool_painter::ids::WET_TUNING_SOLVER_AVANCADO`]
+    /// (a gaveta «Solver (advanced)», a secção do Physics).
     pub group: KnobGroup,
     /// i18n key for the label (`panel.wet_tuning.knob.<key>`).
     pub label: String,
@@ -102,7 +104,11 @@ pub fn rows() -> &'static [TuneRow] {
             .map(|(i, d)| TuneRow {
                 key: d.key,
                 knob: i,
-                group: d.group,
+                group: if ph2d_tool_painter::ids::WET_TUNING_SOLVER_AVANCADO.contains(&d.key) {
+                    KnobGroup::Physics
+                } else {
+                    d.group
+                },
                 label: format!("panel.wet_tuning.knob.{}", d.key),
                 slider: ph2d_tool_painter::ids::wet_tuning_slider_id(d.key),
                 chip: ph2d_tool_painter::ids::wet_tuning_chip_id(d.key),
@@ -224,12 +230,6 @@ pub const SECTIONS: [Section; 9] = [
         label: "panel.wet_tuning.group.water",
     },
     Section {
-        group: KnobGroup::Physics,
-        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[2],
-        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[2],
-        label: "panel.wet_tuning.group.physics",
-    },
-    Section {
         group: KnobGroup::Tools,
         header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[3],
         reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[3],
@@ -264,6 +264,12 @@ pub const SECTIONS: [Section; 9] = [
         header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[9],
         reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[8],
         label: "panel.wet_tuning.group.material",
+    },
+    Section {
+        group: KnobGroup::Physics,
+        header: ph2d_tool_painter::ids::WET_TUNING_GROUP_HEADERS[2],
+        reset: ph2d_tool_painter::ids::WET_TUNING_GROUP_RESETS[2],
+        label: "panel.wet_tuning.group.solver",
     },
 ];
 
@@ -345,14 +351,15 @@ mod tests {
     /// Wet effects (4 → 5). Mais 1 (J6 cerdas): os fios que crescem com o pincel no Bristles (19 → 20).
     /// Mais 1 a 28/10 (dono): o Paper Press no Material (15 → 16). Mais 1 a 31/10: a borda graduada no Water (7 → 8). Contagem refeita do código a 31/10: 98 → 95 (o cartão Wet Paint levou Staining, Glaze, Cover e Wet soften de Paint/Stroke/Wet effects para Hidden a 30/10 sem este teste; Paint 24 → 22, Stroke 13 → 12, Wet effects 5 → 4).
     /// Mais 1 a 31/10: o arco dos tufos do leque (`tuftArc`) no Bristles (20 → 21).
+    /// B35.2: o `gateSaturation` pinta-se na gaveta do solver (Paint 3 → 2, Physics 5 → 6).
     /// Menos 19 a 10/11 (B35.1, [`ph2d_tool_painter::ids::NO_INSPECTOR`]): 88 → 69 (Paint 19 → 3, Water 7 → 5, Physics 6 → 5).
     #[test]
     fn every_visible_knob_has_a_row() {
         assert_eq!(rows().len(), 69);
         for g in [
-            (KnobGroup::Paint, 3),
+            (KnobGroup::Paint, 2),
             (KnobGroup::Water, 5),
-            (KnobGroup::Physics, 5),
+            (KnobGroup::Physics, 6),
             (KnobGroup::Tools, 6),
             (KnobGroup::Paper, 1),
             (KnobGroup::Bristles, 17),

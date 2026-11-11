@@ -351,7 +351,7 @@ fn tabela(key: &str) -> &'static str {
         "panel.wet_tuning.title" => "Wet Paint",
         "panel.wet_tuning.group.paint" => "Paint",
         "panel.wet_tuning.group.water" => "Water",
-        "panel.wet_tuning.group.physics" => "Physics",
+        "panel.wet_tuning.group.solver" => "Solver (advanced)",
         "panel.wet_tuning.group.tools" => "Tools",
         "panel.wet_tuning.group.experimental" => "Experimental",
         "panel.wet_tuning.group.relief" => "Relief",

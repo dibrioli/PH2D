@@ -226,7 +226,7 @@ impl WetKnobs {
         self.knobs[knob as usize] = if v.is_nan() {
             // NaN (garbled input) falls back to the app DEFAULT, not the engine's SPEC boot — "default"
             // means the product value the artist opened with (== SPEC for every knob but Enio's five).
-            Self::DEFAULT.knobs[knob as usize]
+            Self::fabrica(knob)
         } else {
             controlos_e10::no_degrau(knob, v.clamp(def.min, def.max))
         };
@@ -237,7 +237,7 @@ impl WetKnobs {
     /// included (for every knob but Enio's five, `DEFAULT` and `KNOB_DEFS` agree, so this is a no-op change).
     pub fn reset_group(&mut self, group: KnobGroup) {
         for def in KNOB_DEFS.iter().filter(|d| d.group == group) {
-            self.knobs[def.knob as usize] = Self::DEFAULT.knobs[def.knob as usize];
+            self.knobs[def.knob as usize] = Self::fabrica(def.knob);
         }
     }
 

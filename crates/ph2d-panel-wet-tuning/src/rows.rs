@@ -122,7 +122,7 @@ pub fn rows() -> &'static [TuneRow] {
                 min: d.min,
                 max: d.max,
                 step: d.step,
-                default: d.default,
+                default: ph2d_tool_painter::WetKnobs::fabrica(d.knob),
                 decimals: decimals_for_step(d.step),
                 unit: UNIDADES.iter().find(|(k, _)| *k == d.key).map(|&(_, u)| u),
                 options: CHOICES.contains(&d.key).then(|| {
@@ -284,6 +284,15 @@ mod tests {
     use super::*;
     use ph2d_editor_core::ids;
     use std::collections::BTreeSet;
+
+    /// B35.5: o ↺ da linha (o `default` da linha) é a fábrica da ferramenta, nunca o boot do motor (Edge 50 × 12).
+    #[test]
+    fn a_linha_do_tuning_mostra_a_fabrica() {
+        for r in rows() {
+            let f = ph2d_tool_painter::WetKnobs::fabrica(KNOB_DEFS[r.knob].knob);
+            assert_eq!(r.default.to_bits(), f.to_bits(), "{}", r.key);
+        }
+    }
 
     /// Cada unidade nomeia uma linha VISÍVEL — uma chave com erro de grafia deixava o número sem unidade.
     #[test]

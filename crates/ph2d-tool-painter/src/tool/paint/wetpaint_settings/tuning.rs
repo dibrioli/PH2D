@@ -20,7 +20,7 @@ impl PainterTool {
             && kind == TuneWidget::Reset
         {
             let def = &KNOB_DEFS[idx];
-            self.paint.wetpaint.knobs.set(def.knob, def.default);
+            self.paint.wetpaint.knobs.set(def.knob, WetKnobs::fabrica(def.knob));
             return true;
         }
         false
@@ -113,3 +113,15 @@ pub(super) fn wet_tuning_id_map()
         m
     })
 }
+
+impl WetKnobs {
+    /// ⭐ **A fábrica de um knob** (B35.5): a ÚNICA que o ↺ da linha, o ↺ do grupo, o Reset do cartão Pen, o NaN e a
+    /// linha do Tuning leem — [`Self::DEFAULT`], nunca o `KNOB_DEFS[..].default` do motor (que é o boot da referência).
+    #[must_use]
+    pub const fn fabrica(knob: Knob) -> f64 {
+        Self::DEFAULT.knobs[knob as usize]
+    }
+}
+
+#[cfg(test)]
+mod fabrica_tests;

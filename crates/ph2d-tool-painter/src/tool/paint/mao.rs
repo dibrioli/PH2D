@@ -510,7 +510,7 @@ impl super::PainterTool {
         if self.paint.wetpaint.armed {
             for l in LINHAS_DA_MAO {
                 if let LinhaDaMao::Knob(kn) = l {
-                    let v = super::WetKnobs::DEFAULT.get(kn);
+                    let v = super::WetKnobs::fabrica(kn);
                     self.paint.wetpaint.knobs.set(kn, v);
                 }
             }

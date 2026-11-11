@@ -273,6 +273,21 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   sem respiro · fio de área zero · `tab_menu` volta a `cards::close`. Fotos (cena 13 passo 1):
   [aq_separador.png](../ferramentas/smoke/aq_separador.png) · [aq_separador_zoom.png](../ferramentas/smoke/aq_separador_zoom.png)
   (3×) · [aq_separador_claro.png](../ferramentas/smoke/aq_separador_claro.png).
+- **View ▸ Text rendering da aba (dono 10/11, `0e1dc18d39`)** — a letra do CÓDIGO tem o seu modo, separado do do app.
+  Antes: o código pintava sempre `hint(true)`, sem encaixe X, peso fixo `400` e letter-spacing 0, mas o escurecimento
+  vinha do preset do APP (`font_embolden_for`) — o único vazamento. Agora `ph2d-panel-code::code_text` (thread-local
+  `TextRendering`, fábrica `Default` = o de sempre, byte-idêntico) dá a dica, o encaixe (`snap_x_apply`, agora `pub`) e
+  o escurecimento (`font_embolden_with`) a `glyphs::draw`, ao texto, à calha e aos rótulos de `mono_label`; `geom::walk`
+  encaixa o x relativo igual (pintura = cursor = clique). Por modo: Default dica·sem encaixe·sem escurecer · Crisp Heavy
+  sem dica·encaixe 1 px · Crisp Heavy + dica·½ px · Crisp + stem darkening dica·½ px·escurece (tinta clara). Nunca o
+  reforço de peso nem o espaçamento (grelha da mono). Estado de sessão por app, como o Card Style (não gravado). Menu:
+  4 linhas planas `Text rendering: … ✓` no View (idioma do Card Style), não um submenu em cascata — a barra da aba não
+  tem cascata e o `ph2d-app-code` está no tecto (26 626/26 628 depois de encurtar `TABLE`/`ALL`). Testes:
+  `nitidez::a_letra_do_codigo_segue_o_modo_do_script_e_nao_o_do_app` (troca o antigo `a_aba_de_scripts_escurece_no_preset_escurecido`),
+  `nitidez::o_modo_do_script_nao_muda_a_letra_da_interface`, `clique::o_cursor_e_o_clique_seguem_o_x_encaixado_de_cada_modo`,
+  `letras::a_linha_do_codigo_tem_a_letra_do_texto_dos_problemas` (× 4 modos, dica e alargamento),
+  `barra_da_aba::o_menu_view_escolhe_a_letra_do_codigo`. Mutações exit 1: dica fixa · escurecimento do app · `geom` sem
+  encaixe · pintura sem encaixe · linha do menu sem despacho. Fotos `ar_menu.png`/`ar_opcoes_zoom.png`: por tirar.
 
 Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,40 s, já construído pelas fotos); a 2.ª:
 

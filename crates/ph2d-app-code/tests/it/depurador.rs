@@ -458,7 +458,9 @@ fn numa_aba_curta_o_codigo_guarda_as_linhas_e_os_cartoes_nao_se_cruzam() {
     for h in [400.0, 340.0, 300.0] {
         let curta = ph2d_editor_core::zones::Rect { h, ..crate::AREA };
         for _ in 0..3 {
-            (m.quadro(), m.pinta_em(id, curta), m.cena());
+            m.quadro();
+            m.pinta_em(id, curta);
+            m.cena();
         }
         let [_, code, band] = m.docs().card_rects(id).expect("cartões");
         let v = m.docs().debug_view_of(id).expect("quadro").clone();

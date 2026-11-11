@@ -4,7 +4,7 @@
 use crate::commands::{CMD_CONTINUE, CMD_NEXT_LINE};
 use crate::doc::CodeDoc;
 use ph2d_editor_core::zones::Rect;
-use ph2d_panel_code::debug_card::CardClick;
+use ph2d_panel_code::debug_card::{CardClick, DebugCardView};
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
@@ -14,23 +14,16 @@ impl CodeDoc {
     /// suas linhas ([`ph2d_panel_code::stack`]).
     pub(crate) fn stack(&self, area: Rect, open: bool) -> [f32; 3] {
         use ph2d_panel_code::stack::{Want, code_least, fit};
-        let least = self
-            .debug
-            .card
-            .as_ref()
-            .map_or(0.0, ph2d_panel_code::debug_card::DebugCardView::least);
-        let debug = Want {
-            h: self.debug_card_h(area),
-            least,
-        };
-        let band = self.console_view.want(open, area.h);
-        let code = code_least(self.find.bar_height());
-        fit(
-            area.h,
-            code,
-            crate::cards::margin(),
-            [self.bench_h, debug, band],
-        )
+        let (v, g) = (&self.debug.view, crate::cards::margin());
+        let debug = self.debug.card.as_ref().map_or(Want::default(), |c| Want {
+            h: v.height(c, area),
+            least: DebugCardView::least(c),
+        });
+        let (band, code) = (
+            self.console_view.want(open, area.h),
+            code_least(self.find.bar_height()),
+        );
+        fit(area.h, code, g, [self.bench_h, debug, band])
     }
 
     /// O cartão do depurador, entre o código e a faixa de baixo (`None` = nenhum).
@@ -46,14 +39,6 @@ impl CodeDoc {
             area.w,
             h,
         ))
-    }
-
-    /// A altura do quadro de baixo do código na aba `area` (0 = nenhum).
-    pub(crate) fn debug_card_h(&self, area: Rect) -> f32 {
-        self.debug
-            .card
-            .as_ref()
-            .map_or(0.0, |c| self.debug.view.height(c, area))
     }
 
     /// Pinta o quadro em `r` (dentro do seu molde, [`crate::cards::open`]).

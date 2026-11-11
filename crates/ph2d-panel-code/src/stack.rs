@@ -9,7 +9,7 @@ use ph2d_tokens::{Spacing, row_pitch_px};
 
 /// Quantas linhas o código guarda, por pequena que seja a aba (o que os cartões deixam abaixo disto
 /// sai deles, não do código).
-pub const CODE_LEAST_ROWS: f32 = 4.0;
+pub const CODE_LEAST_ROWS: usize = 4;
 
 /// A altura que um cartão quer e o mínimo a que encolhe (`h == 0` = o cartão não está).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -22,7 +22,7 @@ pub struct Want {
 /// respiro do poço.
 #[must_use]
 pub fn code_least(find_h: f32) -> f32 {
-    find_h + row_pitch_px() * CODE_LEAST_ROWS + Spacing::Sm.px() * 2.0
+    find_h + row_pitch_px() * CODE_LEAST_ROWS as f32 + Spacing::Sm.px() * 2.0
 }
 
 /// As alturas de `wants` (pela ordem em que encolhem) numa aba de altura `avail` que deixa

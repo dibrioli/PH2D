@@ -335,7 +335,7 @@ fn fit_crumb(
     for p in parts.iter_mut().take(n) {
         let w = width_of(ts, &p.0);
         p.0 = elided(ts, &p.0, (w - over).max(ell));
-        over = width(ts, std::slice::from_ref(p)) - w + over;
+        over += width(ts, std::slice::from_ref(p)) - w;
         if over <= 0.0 {
             break;
         }

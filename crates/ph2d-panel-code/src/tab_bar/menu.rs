@@ -139,7 +139,7 @@ impl<M: Copy + PartialEq> TabBar<M> {
                 MenuItem::Note(n) => note_w = note_w.max(width_of(ts, n)),
             }
         }
-        let w = (name_w + gap + keys_w).max(note_w) + pad * 4.0;
+        let w = (name_w + gap + keys_w).max(note_w) + pad * 4.0; // LITERAL-PX-OK: o respiro do realce e do texto, dos dois lados
         let rh = height();
         let popup = Rect::new(title.x, title.y + title.h, w, rh * items.len() as f32 + pad);
         paint_popover(&Popover::new(POPOVER_ID), popup, scene, *theme);
@@ -223,7 +223,7 @@ impl<M: Copy + PartialEq> TabBar<M> {
             .iter()
             .map(|r| mono_label::width(ts, &r.1))
             .fold(0.0, f32::max);
-        let w = check_w + name_w + pad * 4.0;
+        let w = check_w + name_w + pad * 4.0; // LITERAL-PX-OK: o respiro do realce e do texto, dos dois lados
         let h = rh * rows.len() as f32 + pad;
         let edge = self.painted.header.x + self.painted.header.w;
         let left = self.painted.header.x;

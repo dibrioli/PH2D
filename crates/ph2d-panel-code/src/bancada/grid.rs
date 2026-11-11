@@ -97,10 +97,6 @@ fn key(who: &Who, c: Option<usize>) -> Option<Key> {
 }
 
 impl BancadaView {
-    /// A altura do cartão da grelha (e do mapa ao lado) para `who`, com `avail` de altura na coluna
-    /// do documento: dobrada, só o título; aberta, o cabeçalho e uma linha por objecto, até um terço
-    /// em linhas inteiras (o resto rola).
-    #[must_use]
     /// O mínimo a que o cartão encolhe numa aba curta ([`crate::stack`]): o título, o cabeçalho da
     /// grelha e uma linha de objecto.
     #[must_use]
@@ -114,6 +110,9 @@ impl BancadaView {
         }
     }
 
+    /// A altura do cartão da grelha (e do mapa ao lado) para `who`, com `avail` de altura na coluna
+    /// do documento: dobrada, só o título; aberta, o cabeçalho e uma linha por objecto, até um terço
+    /// em linhas inteiras (o resto rola).
     #[must_use]
     pub fn bench_height(&self, who: &Who, avail: f32) -> f32 {
         let s = Spacing::Sm.px();

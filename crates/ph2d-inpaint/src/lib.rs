@@ -323,6 +323,7 @@ where
 
 /// A backend that refused a level hands the WHOLE request to [`inpaint_cpu`]: the answer is then the
 /// reference byte for byte, never a mix of the two backends' levels.
+#[cfg(any(feature = "gpu", test))]
 fn or_the_cpu<E: std::fmt::Display>(
     req: &InpaintRequest<'_>,
     attempt: Result<InpaintResult, E>,

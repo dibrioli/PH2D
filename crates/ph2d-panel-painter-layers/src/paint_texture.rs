@@ -368,11 +368,8 @@ pub(crate) fn altura_do_preview(content_w: f32) -> f32 {
 /// Um desenhista de pré-visualização no lugar do `render_texture_preview` — `(buffer RGBA, w, h)`.
 pub(crate) type Desenhista<'a> = &'a dyn Fn(&mut [u8], u32, u32);
 
-/// Real-time preview of the active texture pattern, re-rendered each frame from the published snapshot
-/// into a small buffer and scale-blitted (grayscale; ramp-coloured with the stop alpha when the Color
-/// Ramp is on). `image` is the slot's published luminance (Grain, Paper or Flow). `desenha` replaces
-/// the `render_texture_preview` for a pattern the `TextureKind` does not express (the Flow's Classic,
-/// BUGS #31); `None` draws the kind.
+/// Live preview of the texture pattern (`image` = the slot's Grain/Paper/Flow luminance); `desenha`
+/// draws a pattern the `TextureKind` does not express (the Flow's Classic, BUGS #31).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_texture_preview_com(
     ctx: &mut PaintCtx,

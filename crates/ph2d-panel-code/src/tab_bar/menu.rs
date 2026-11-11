@@ -4,8 +4,9 @@
 //! direita; **pairar** sobre ela abre o submenu ao lado (fica acesa enquanto ele está aberto);
 //! pairar noutra linha do menu fecha-o; o rato pode sair dos dois sem os fechar. As escolhas são
 //! um-entre-N: a em vigor leva o `✓` na coluna da esquerda (em acento). A caminho do submenu aberto
-//! (dentro do triângulo entre o ponto anterior e a borda dele) o rato passa por cima de outras linhas
-//! sem o fechar — a «mira» dos menus de sistema. Escolher fecha tudo; o Esc
+//! (dentro do triângulo entre a ÂNCORA — o último ponto fora da mira, que fica parada a caminho — e a
+//! borda dele, alargada meia linha) o rato passa por cima de outras linhas sem o fechar — a «mira»
+//! dos menus de sistema; parar mais de [`AIM_REST_NS`] a caminho acaba-a. Escolher fecha tudo; o Esc
 //! fecha **um** nível. O submenu abre à direita; se não cabe até à borda da barra, à esquerda; se
 //! nem assim, encosta à borda (fica sempre dentro da aba, onde o rato chega).
 
@@ -26,6 +27,10 @@ use ph2d_vector::VectorScene;
 /// O popover do menu aberto (e o das dicas).
 pub const POPOVER_ID: NodeId = hash_node_id("code_tab_menu_popover");
 const SUB_POPOVER_ID: NodeId = hash_node_id("code_tab_submenu_popover");
+
+/// Parado mais do que isto a caminho do submenu, o rato deixa de mirar: a linha onde está ganha (o
+/// atraso dos menus de sistema, ~300 ms no macOS e no GTK).
+pub const AIM_REST_NS: u128 = 300_000_000;
 
 /// Uma linha do menu aberto.
 #[derive(Clone, Debug, PartialEq)]
@@ -334,25 +339,34 @@ impl<M: Copy + PartialEq> TabBar<M> {
     /// linha fecha-o; dentro do submenu acende a escolha; outro título troca de menu. `false` = o
     /// menu está fechado (o rato é de outrem).
     pub fn hover_move(&mut self, x: f32, y: f32) -> bool {
+        self.hover_move_at(x, y, 0)
+    }
+
+    /// [`Self::hover_move`] no relógio `now` (ns): a mira até ao submenu parte da âncora (o último ponto
+    /// fora dela) e acaba se o rato parar mais de [`AIM_REST_NS`] a caminho.
+    pub fn hover_move_at(&mut self, x: f32, y: f32, now: u128) -> bool {
         if self.open.is_none() {
             return false;
         }
+        let rested = now.saturating_sub(std::mem::replace(&mut self.moved_at, now)) > AIM_REST_NS;
         if let Some(m) = self.title_at(x, y)
             && self.open != Some(m)
         {
             self.open = Some(m);
             self.sub = None;
         }
-        let from = self.last.replace((x, y));
         if let Some(at) = self.sub_row_at(x, y) {
             self.hover = at;
+            self.last = Some((x, y));
             return true;
         }
-        if let (Some(p), Some(s)) = (from, self.painted.sub.as_ref())
+        if let (Some(p), Some(s)) = (self.last, self.painted.sub.as_ref())
+            && !rested
             && aims_at(p, (x, y), s.popup)
         {
             return true;
         }
+        self.last = Some((x, y));
         self.hover = self.row_at(x, y);
         if let Some(h) = self.hover {
             self.sub = self.painted.sub_parents.contains(&h).then_some(h);
@@ -377,7 +391,8 @@ fn aims_at(from: (f32, f32), to: (f32, f32), sub: Rect) -> bool {
     } else {
         sub.x + sub.w
     };
-    let (a, b) = ((edge, sub.y), (edge, sub.y + sub.h));
+    let slack = height() * 0.5;
+    let (a, b) = ((edge, sub.y - slack), (edge, sub.y + sub.h + slack));
     let side = |p: (f32, f32), q: (f32, f32), r: (f32, f32)| {
         (q.0 - p.0) * (r.1 - p.1) - (q.1 - p.1) * (r.0 - p.0)
     };

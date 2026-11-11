@@ -233,7 +233,7 @@ impl CodeDocs {
     /// O rato sem botão: a dica, e no menu aberto a linha (e o submenu) sob ele.
     pub(crate) fn bar_move(&mut self, x: f32, y: f32) -> bool {
         self.bar.track_tip(x, y, self.clock.0);
-        self.bar.hover_move(x, y) || self.options.hover(x, y)
+        self.bar.hover_move_at(x, y, self.clock.0) || self.options.hover(x, y)
     }
 
     /// O Esc fecha um nível do menu aberto; sem menu, o cartão «Script options» sem alfinete.

@@ -228,6 +228,99 @@ fn a_caminho_do_submenu_a_linha_de_baixo_nao_o_troca() {
     assert_eq!(bar.sub, Some(S2), "fora da mira troca");
 }
 
+/// O smoke do dono 11/11 («o submenu trocou no caminho»): o rato REAL vai em passos de 1–2 px, com
+/// tremor (passos só para baixo, até um para trás). A mira parte da âncora, não do passo anterior: o
+/// caminho inteiro até «Cards» segura o submenu; parado na mãe de baixo mais do que a pausa, troca.
+#[test]
+fn a_diagonal_com_tremor_da_mao_segura_o_submenu_e_a_pausa_troca() {
+    use ph2d_panel_code::tab_bar::menu::AIM_REST_NS;
+    let mut ts = TextSystem::without_system_fonts();
+    let its = vec![
+        MenuItem::Sub {
+            id: SUB,
+            name: "Card Style".into(),
+            rows: vec![
+                (C1, "Sheet".into(), true),
+                (C2, "Cards".into(), false),
+                (A, "Strip".into(), false),
+            ],
+        },
+        MenuItem::Sub {
+            id: S2,
+            name: "Text rendering".into(),
+            rows: vec![(hash_node_id("t_d"), "Default".into(), true)],
+        },
+    ];
+    let pinta = |bar: &mut TabBar<u8>, ts: &mut TextSystem| {
+        let (mut scene, theme) = (VectorScene::new(), Theme::default());
+        let crumb = Crumb {
+            script: "a.luau".into(),
+            func: None,
+            line: 1,
+        };
+        let r = Rect::new(0.0, 0.0, 900.0, height());
+        bar.paint(r, &[(0u8, "View")], &crumb, &mut scene, ts, &theme);
+        bar.paint_popup(&its, &mut scene, ts, &theme, (0, 0));
+    };
+    let mut bar = TabBar::<u8> {
+        open: Some(0),
+        ..TabBar::default()
+    };
+    pinta(&mut bar, &mut ts);
+    let row = |bar: &TabBar<u8>, id| bar.painted.rows.iter().find(|r| r.0 == id).expect("mãe").1;
+    let (cima, baixo) = (row(&bar, SUB), row(&bar, S2));
+    let p0 = (cima.x + cima.w * 0.5, cima.y + cima.h * 0.8);
+    let mut t = 1_000_000_000u128;
+    assert!(bar.hover_move_at(p0.0, p0.1, t));
+    pinta(&mut bar, &mut ts);
+    let sub = bar.painted.sub.clone().expect("aberto");
+    let alvo = sub.rows[2].1;
+    let alvo = (alvo.x + alvo.w * 0.3, alvo.y + alvo.h * 0.5);
+    let (mut x, mut y) = p0;
+    let mut na_mae_de_baixo = 0;
+    let mut k = 0u32;
+    while x < alvo.0 {
+        // Passos de mão: a diagonal média, mas em rajadas — só para baixo, só para a direita, um recuo.
+        let (dx, dy) = match k % 5 {
+            0 => (0.0, 2.0),
+            1 => (2.0, 0.0),
+            2 => (-1.0, 1.0),
+            _ => (3.0, 1.0),
+        };
+        let slope = (alvo.1 - p0.1) / (alvo.0 - p0.0);
+        (x, y) = (x + dx, (y + dy).min(p0.1 + (x + dx - p0.0) * slope + 4.0));
+        k += 1;
+        t += 8_000_000;
+        assert!(bar.hover_move_at(x, y, t));
+        na_mae_de_baixo += usize::from(baixo.contains(x, y));
+        assert_eq!(
+            bar.sub,
+            Some(SUB),
+            "o tremor em ({x}, {y}) trocou o submenu"
+        );
+        pinta(&mut bar, &mut ts);
+    }
+    assert!(
+        na_mae_de_baixo > 3,
+        "controlo: o caminho passa pela mãe de baixo"
+    );
+    // Parado na mãe de baixo mais do que a pausa: troca.
+    let mut bar = TabBar::<u8> {
+        open: Some(0),
+        ..TabBar::default()
+    };
+    pinta(&mut bar, &mut ts);
+    assert!(bar.hover_move_at(p0.0, p0.1, t));
+    pinta(&mut bar, &mut ts);
+    let ey = baixo.y + baixo.h * 0.3;
+    let em = (p0.0 + (alvo.0 - p0.0) * (ey - p0.1) / (alvo.1 - p0.1), ey);
+    assert!(baixo.contains(em.0, em.1), "controlo: na mãe de baixo");
+    assert!(bar.hover_move_at(em.0, em.1, t + 8_000_000));
+    assert_eq!(bar.sub, Some(SUB), "controlo: a caminho ainda mira");
+    assert!(bar.hover_move_at(em.0 + 1.0, em.1, t + 8_000_000 + AIM_REST_NS + 1));
+    assert_eq!(bar.sub, Some(S2), "a pausa acaba a mira");
+}
+
 /// Clicar fora do menu e do submenu fecha os dois (o clique é da barra: nada corre).
 #[test]
 fn clicar_fora_fecha_o_menu_e_o_submenu() {

@@ -67,6 +67,9 @@ fn um_clique_no_respiro_cai_na_linha_1() {
     let l2 = buf.text().byte_of_line(1) + 3;
     let y2 = area.y + v.metrics().top_pad + v.metrics().line_h * 1.5;
     assert_eq!(v.hit(&buf, x, y2), Hit::Text(l2));
+    // O fundo da fila da linha 1 é ainda a linha 1 (sem o respiro, seria a 2).
+    let fundo = area.y + v.metrics().top_pad + v.metrics().line_h - 1.0;
+    assert_eq!(v.hit(&buf, x, fundo), Hit::Text(3));
 }
 
 /// (d) O cursor e o ponto da calha da linha 1 ficam na fila dela, não no respiro.
@@ -145,6 +148,14 @@ fn a_virtualizacao_conta_o_respiro() {
     let n = ((h - pad) / lh).ceil() as usize;
     assert_eq!(v.visible_lines(), 0..n);
     assert_eq!(v.cache().len(), n);
+    // Rolada uma linha, a fila 1 ainda mostra o pé por baixo do respiro: pinta-se.
+    v.scroll_by(lh);
+    pinta(&mut v, &buf, &mut ts, area, &Deco::default());
+    assert_eq!(v.visible_lines().start, 0);
+    // Rolado também o respiro, a linha 2 fica rente ao topo e a contagem é a mesma.
+    v.scroll_by(pad);
+    pinta(&mut v, &buf, &mut ts, area, &Deco::default());
+    assert_eq!(v.visible_lines(), 1..n + 1);
     v.scroll_by(1.0e9);
     pinta(&mut v, &buf, &mut ts, area, &Deco::default());
     let ultimo = topo(&v, &buf, 399).expect("a última linha pintada");

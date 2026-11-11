@@ -157,7 +157,7 @@ pub fn paint_hero_screen(
     super::painter_column::publish(hero);
     // Same pattern for the text-rendering strategy — read by
     // `paint_text*` via the `paint::text_rendering()` thread-local.
-    crate::paint::set_text_rendering(hero.text_rendering);
+    crate::published::publish_text(hero.text_rendering, hero.theme);
     // E o estilo do texto (fonte · peso · tamanho) — lido pela mesma porta que mede e pinta.
     ph2d_text::set_active_text_style(hero.text_style);
     // E a escala da interface inteira — a marca do menu lê-a (`crate::ui_scale`).

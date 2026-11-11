@@ -129,7 +129,7 @@ pub use theme::{PanelLayout, Theme};
 pub use timeline_tinta::TimelineTinta;
 pub use typography::{
     CODE_STEM_DARKENING_PX, FONT_DISPLAY, FONT_MONO, FONT_SANS, FontWeight, LetterSpacing,
-    LineHeight, STEM_DARKENING_INK_LUMINANCE, STEM_DARKENING_PX, SnapX, TextRendering,
+    LineHeight, STEM_DARKENING_PX, STEM_DARKENING_UI_SURFACE, SnapX, TextRendering,
     TextRenderingParams, TypeToken, code_stem_darkening_px, crisp_weight_boost_for,
     stem_darkening_px,
 };

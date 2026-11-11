@@ -257,6 +257,7 @@ impl VectorScene {
             .hint(false)
             .normalized_coords(run.coords)
             .glyph_transform(run.skew)
+            .font_embolden(run.embolden)
             .brush(run.brush)
             .transform(run.transform)
             .draw(Fill::NonZero, glyphs);
@@ -272,6 +273,8 @@ pub struct GlyphStyle<'a> {
     pub brush: Color,
     pub transform: Affine,
     pub text: &'a str,
+    /// O alargamento do contorno (o *stem darkening* do chrome); o conteúdo leva o `default()`.
+    pub embolden: vello::FontEmbolden,
 }
 
 #[cfg(test)]

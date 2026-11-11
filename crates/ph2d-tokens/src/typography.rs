@@ -366,26 +366,30 @@ impl TextRendering {
     }
 }
 
-/// Alargamento do contorno (px por lado) nos corpos ≤ 16 px, com `stem_darkening`.
-/// Recurso: a COBERTURA do rasterizador — a haste da mono a 12–13 px tem ~1 px, e cada 0,025 px
-/// por lado soma ~3,6 % de tinta. Medido na placa (`ph2d-panel-code/tests/it/nitidez.rs`,
-/// `o_escurecimento_aproxima_a_franja`, 10/11), linha do código no preset de fábrica com o
-/// contorno alargado; franja luz = fracção da tinta com cobertura 0,25–0,75 (o Problems ao lado);
-/// tinta = massa contra o fundo, relativa ao `+0`:
+/// Alargamento do contorno (px por lado) do CHROME nos corpos ≤ 16 px, com `stem_darkening`.
+/// Recurso: a COBERTURA do rasterizador — a haste da Inter a 11–15 px tem ~1 px. Medido na placa
+/// (`ph2d-panel-code/tests/it/escurecimento_da_ui.rs`, `a_quantidade_do_escurecimento_da_interface`,
+/// 10/11): um rótulo do chrome (`paint_text`) nas tintas Text1/Text2/Text3/Accent sobre PanelBg, Bg1,
+/// Bg2, BgElev, KanbanList e KanbanCard do Dark e do Forge (48 pares por corpo); mudam = píxeis da caixa
+/// do texto com algum canal > 4/255 contra o `+0` (média · pior); tinta = massa contra o fundo, relativa
+/// ao `+0` (média; o pior difere ≤ 0,1):
 ///
-/// | tema · px  | Problems | +0    | +0,025       | **+0,05**        | +0,075        | +0,1          | +0,2          |
-/// |------------|----------|-------|--------------|------------------|---------------|---------------|---------------|
-/// | Dark · 12  | 0,413    | 0,479 | 0,455 · +4 % | **0,444 · +7 %** | 0,450 · +14 % | 0,446 · +19 % | 0,362 · +38 % |
-/// | Dark · 13  | 0,365    | 0,474 | 0,444 · +4 % | **0,440 · +7 %** | 0,413 · +13 % | 0,425 · +18 % | 0,319 · +36 % |
-/// | Light · 12 | 0,284    | 0,233 | 0,240 · +4 % | 0,228 · +7 %     | 0,227 · +14 % | 0,218 · +19 % | 0,256 · +37 % |
-/// | Light · 13 | 0,326    | 0,207 | 0,200 · +3 % | 0,187 · +7 %     | 0,183 · +13 % | 0,183 · +18 % | 0,241 · +35 % |
+/// | px | +0,05          | **+0,075**          | +0,1            | +0,125          | +0,15           |
+/// |----|----------------|---------------------|-----------------|-----------------|-----------------|
+/// | 11 | 6,3 % · +6,1 % | **9,4 % · +11,6 %** | 10,4 % · +16,0 % | 10,9 % · +20,3 % | 11,3 % · +24,3 % |
+/// | 12 | 9,9 % · +4,7 % | **14,1 % · +8,7 %** | 15,1 % · +11,8 % | 15,6 % · +15,0 % | 16,2 % · +18,0 % |
+/// | 13 | 9,3 % · +5,2 % | **13,0 % · +9,3 %** | 14,0 % · +12,8 % | 14,7 % · +16,3 % | 15,1 % · +19,3 % |
+/// | 15 | 10,1 % · +4,4 % | **14,3 % · +7,9 %** | 15,1 % · +10,7 % | 15,9 % · +13,6 % | 16,3 % · +16,1 % |
 ///
-/// ⇒ `0,05`: o maior com a tinta ≤ +10 % (acima lê negrito); leva o código ~1/3 do caminho até ao
-/// Problems no escuro. No Light a franja do código já está ABAIXO da do Problems e o alargamento
-/// não a aproxima: só a tinta clara o recebe ([`STEM_DARKENING_INK_LUMINANCE`]).
-pub const STEM_DARKENING_PX: f32 = 0.05;
-/// A tinta que recebe o alargamento: luminância relativa (WCAG) acima do meio — letra clara.
-pub const STEM_DARKENING_INK_LUMINANCE: f32 = 0.5;
+/// ⇒ `0,075`: o maior com a tinta ≤ +15 % em TODOS os corpos da interface (o `0,1` passa a 16 % no
+/// corpo 11, onde a haste é mais fina). O dono não via o `0,05` (que só chegava às tintas com
+/// `Y > 0,5`: Text1 e, à justa, o Text2 do Dark). Quem o recebe: [`STEM_DARKENING_UI_SURFACE`].
+pub const STEM_DARKENING_PX: f32 = 0.075;
+/// A superfície de referência do chrome (o `paint_text` não sabe o fundo): num tema ESCURO, a tinta
+/// mais clara que ela recebe o alargamento; num claro, nenhuma (a escura sobre o claro não lê fina).
+/// O `BgElev` é a mais clara das superfícies do chrome em quase todos os temas escuros (Y 0,009–0,156;
+/// a tinta mais escura, o Text3 do Oled, tem 0,171) — `a_tabela_das_superficies_da_interface`.
+pub const STEM_DARKENING_UI_SURFACE: crate::ColorToken = crate::ColorToken::BgElev;
 /// Até este corpo o alargamento é o inteiro; acima desce linear até [`CRISP_BOOST_TIER_MID_MAX`].
 const STEM_DARKENING_FULL_MAX: f32 = CRISP_BOOST_TIER_DENSE_MAX;
 

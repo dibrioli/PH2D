@@ -110,18 +110,49 @@ pub fn text_rendering() -> ph2d_tokens::TextRendering {
     ph2d_text::active_text_rendering()
 }
 
+thread_local! {
+    static UI_THEME: std::cell::Cell<Option<ph2d_tokens::Theme>> = const { std::cell::Cell::new(None) };
+}
+
+/// Publica o preset de texto e o tema do chrome para o quadro. Chamado pelo shell.
+pub fn publish_text(mode: ph2d_tokens::TextRendering, theme: ph2d_tokens::Theme) {
+    set_text_rendering(mode);
+    set_ui_theme(theme);
+}
+
+/// O tema do chrome, lido pelo [`font_embolden_for`]. Sem publicação: o de abertura da aparência.
+pub fn set_ui_theme(theme: ph2d_tokens::Theme) {
+    UI_THEME.with(|c| c.set(Some(theme)));
+}
+
+/// O tema publicado (ou o de abertura da aparência activa).
+#[must_use]
+pub fn ui_theme() -> ph2d_tokens::Theme {
+    UI_THEME
+        .with(std::cell::Cell::get)
+        .unwrap_or_else(|| ph2d_tokens::Theme::default_for(ui_look()))
+}
+
 /// ⭐ O *stem darkening* do preset activo para um glifo de `font_size` px pintado com `ink`, no
-/// chrome (o `paint_text` não sabe o fundo): só a tinta CLARA em termos absolutos
-/// ([`ph2d_tokens::STEM_DARKENING_INK_LUMINANCE`]) — as superfícies da interface são escuras nos
-/// temas escuros e claras no Light. Lê só o preset — NÃO o `ph2d_text::com_peso_exato`, que tira o
-/// reforço de PESO; isto é a borda. Fora disso, o `FontEmbolden::default()` (zero) de sempre.
+/// chrome (o `paint_text` não sabe o fundo): num tema ESCURO ([`ui_theme`]), a tinta mais clara que a
+/// superfície de referência ([`ph2d_tokens::STEM_DARKENING_UI_SURFACE`]); num claro, nenhuma. Lê só o
+/// preset — NÃO o `ph2d_text::com_peso_exato`, que tira o reforço de PESO; isto é a borda.
 pub fn font_embolden_for(font_size: f32, ink: ph2d_vector::Color) -> ph2d_vector::FontEmbolden {
-    let claro =
-        ink.discard_alpha().relative_luminance() > ph2d_tokens::STEM_DARKENING_INK_LUMINANCE;
+    let theme = ui_theme();
+    let sim = theme.is_dark()
+        && lum(ink)
+            > lum(crate::paint::resolve(
+                ph2d_tokens::STEM_DARKENING_UI_SURFACE,
+                theme,
+            ));
     alarga_se(
         ph2d_tokens::stem_darkening_px(text_rendering().params(), font_size),
-        claro,
+        sim,
     )
+}
+
+fn lum(c: ph2d_vector::Color) -> f32 {
+    c.discard_alpha().relative_luminance()
 }
 
 /// O escurecimento quando o FUNDO é conhecido (a letra do código sobre o poço): a lei física do
@@ -134,7 +165,6 @@ pub fn font_embolden_on(
     ink: ph2d_vector::Color,
     bg: ph2d_vector::Color,
 ) -> ph2d_vector::FontEmbolden {
-    let lum = |c: ph2d_vector::Color| c.discard_alpha().relative_luminance();
     alarga_se(amount, lum(ink) > lum(bg))
 }
 

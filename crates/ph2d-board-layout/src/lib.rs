@@ -166,6 +166,7 @@ pub fn paint(
                 brush: color,
                 transform,
                 text: text.get(r.text_range()).unwrap_or_default(),
+                embolden: ph2d_vector::FontEmbolden::default(),
             };
             scene.glyph_run(
                 &gs,
@@ -236,6 +237,7 @@ pub fn paint_along(
                     brush: color,
                     transform: place(f64::from(g.x + half), f64::from(g.y)),
                     text: text.get(r.text_range()).unwrap_or_default(),
+                    embolden: ph2d_vector::FontEmbolden::default(),
                 };
                 let one = Glyph {
                     id: g.id,

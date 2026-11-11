@@ -245,9 +245,10 @@ fn alarga(s: &mut VectorScene, a: f64) {
     }
 }
 
-/// ⭐ **A tabela do `STEM_DARKENING_PX`** (dono 10/11): a linha do código a 12 e 13 px (Small e
-/// Normal; a mono não pinta a 11) com o contorno alargado 0–0,4 px, contra o texto do problema,
-/// no poço escuro e no Light. Afirma o tecto: no valor escolhido a tinta cresce ≤ 10 %.
+/// A tabela da FRANJA (dono 10/11): a linha do código a 12 e 13 px (Small e Normal; a mono não
+/// pinta a 11) com o contorno alargado 0–0,4 px, contra o texto do problema, no poço escuro e no
+/// Light (a 1.ª régua do escurecimento; a quantidade de hoje mede-se em `escurecimento.rs` e
+/// `escurecimento_da_ui.rs`). Só imprime.
 #[test]
 fn o_escurecimento_aproxima_a_franja() {
     use ph2d_editor_core::paint::set_text_rendering;
@@ -266,7 +267,6 @@ fn o_escurecimento_aproxima_a_franja() {
     set_text_rendering(TextRendering::CrispHeavyPlus);
     force_cards_on_this_thread(Some(true));
     let antes = ph2d_text::active_text_style();
-    let escolhido = f64::from(ph2d_tokens::STEM_DARKENING_PX);
     for size in [UiTextSize::Small, UiTextSize::Normal] {
         ph2d_text::set_active_text_style(ph2d_tokens::UiTextStyle { size, ..antes });
         let px = ph2d_panel_code::code_font_px();
@@ -292,12 +292,6 @@ fn o_escurecimento_aproxima_a_franja() {
                     "{theme:?} {px} px código +{a:.3}: franja sRGB {:.3} · luz {:.3} · borda {:.3} · tinta {:+.3}",
                     m.franja_srgb, m.franja_luz, m.borda, cresce
                 );
-                if (a - escolhido).abs() < 1e-6 {
-                    assert!(
-                        cresce <= 0.10,
-                        "{theme:?} {px} px: +{a} lê-se negrito ({cresce:+.3})"
-                    );
-                }
             }
         }
     }

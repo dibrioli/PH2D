@@ -8,6 +8,7 @@ mod clique;
 mod coluna_do_lado;
 mod cronometro;
 mod escurecimento;
+mod escurecimento_da_ui;
 mod estado;
 mod ligaduras;
 mod medicoes_do_fecho;

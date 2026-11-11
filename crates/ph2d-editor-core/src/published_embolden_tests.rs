@@ -1,9 +1,10 @@
 //! ⭐ O *stem darkening* chega à TINTA: os `glyph_runs` da codificação levam o `FontEmbolden`
 //! só no preset que o pede, também dentro do `com_peso_exato`, e os avanços não mudam.
 
+use crate::paint::resolve;
 use crate::paint::{paint_text, set_text_rendering};
 use ph2d_text::TextSystem;
-use ph2d_tokens::TextRendering;
+use ph2d_tokens::{ColorToken, TextRendering, Theme};
 use ph2d_vector::{Color, Glyph, VectorScene};
 
 /// Corpo da letra do chrome, abaixo do limiar do alargamento inteiro.
@@ -65,11 +66,45 @@ fn the_exact_weight_scope_keeps_the_stem_darkening() {
     assert!(!a.is_empty() && a.iter().all(|a| *a > 0.0), "{a:?}");
 }
 
-/// Só a letra CLARA: a escura (o tema Light) fica como estava — a medição não a aproxima.
+/// A tinta mais escura que a superfície de referência não alarga, nem num tema escuro.
 #[test]
 fn dark_ink_is_never_emboldened() {
+    super::set_ui_theme(Theme::Dark);
     let (a, _) = pinta(TextRendering::CrispPlusDarkened, false, ESCURA);
     assert!(!a.is_empty() && a.iter().all(|a| *a == 0.0), "{a:?}");
+}
+
+/// ⭐ Dono 10/11 («para a UI também não faz diferença»): num tema escuro TODA a tinta do chrome mais
+/// clara que o `BgElev` alarga — também o Text3 e o Accent (`Y < 0,5`), que a lei velha deixava de
+/// fora; num tema claro nenhuma, nem a branca.
+#[test]
+fn on_a_dark_theme_every_chrome_ink_lighter_than_the_surface_is_emboldened() {
+    let px = f64::from(ph2d_tokens::STEM_DARKENING_PX);
+    for theme in [Theme::Dark, Theme::Forge, Theme::Oled] {
+        super::set_ui_theme(theme);
+        for t in [
+            ColorToken::Text1,
+            ColorToken::Text2,
+            ColorToken::Text3,
+            ColorToken::Accent,
+        ] {
+            let (a, _) = pinta(TextRendering::CrispPlusDarkened, false, resolve(t, theme));
+            assert!(
+                !a.is_empty() && a.iter().all(|a| *a == px),
+                "{theme:?} {t:?}: {a:?}"
+            );
+        }
+    }
+    for theme in [Theme::Light, Theme::Sunstone] {
+        super::set_ui_theme(theme);
+        for ink in [resolve(ColorToken::Text1, theme), CLARA] {
+            let (a, _) = pinta(TextRendering::CrispPlusDarkened, false, ink);
+            assert!(
+                !a.is_empty() && a.iter().all(|a| *a == 0.0),
+                "{theme:?}: {a:?}"
+            );
+        }
+    }
 }
 
 /// Com o fundo conhecido decide o CONTRASTE: a tinta mais clara que o fundo alarga (mesmo com

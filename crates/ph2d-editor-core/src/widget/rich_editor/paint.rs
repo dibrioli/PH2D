@@ -58,6 +58,7 @@ fn paint_glyphs(scene: &mut VectorScene, b: &BlockBox, text: &str, theme: Theme)
                 brush: color,
                 transform,
                 text: text.get(r.text_range()).unwrap_or_default(),
+                embolden: crate::paint::font_embolden_for(r.font_size(), color),
             };
             scene.glyph_run(
                 &gs,

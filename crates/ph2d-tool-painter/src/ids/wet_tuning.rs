@@ -77,6 +77,31 @@ pub const CERDAS_DO_PENTEADO: [&str; 4] = [
     "bristleLaneSizeExp",
 ];
 
+/// Os knobs que já têm linha no Inspector e por isso não se repetem no Tuning (R3 do dono, 25/10; B35.1): os 15 da
+/// caneta (cartão Pen, [`crate::LINHAS_DA_MAO`]) e os 4 do cartão Wet (Pickup · Dry Speed · Edge Darkening · Gravity).
+/// Os ids continuam resolvidos pelo `wet_tuning_id_map` (macros gravadas pelo número), como os do penteado.
+pub const NO_INSPECTOR: [&str; 19] = [
+    "pressureSize",
+    "pressureOpacity",
+    "pressureOpacityCurve",
+    "pressureSizeCurve",
+    "pressureFloor",
+    "pressureCeiling",
+    "pressureSmoothing",
+    "pulledString",
+    "dabRotation",
+    "tiltStart",
+    "tiltFull",
+    "tiltWidth",
+    "tiltLength",
+    "tiltSmooth",
+    "tiltLag",
+    "pickup",
+    "evaporation",
+    "edgeDarkening",
+    "gravity",
+];
+
 /// Per-group reset buttons (the model's header `resetGroup`), same order as
 /// the four first headers, then Relief and the four advanced groups (Experimental has no reset — two
 /// checkboxes). Index `i` resets [`WET_TUNING_RESET_GROUPS`]`[i]`.

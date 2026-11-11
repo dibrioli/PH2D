@@ -110,6 +110,63 @@ fn a_chip_commit_forwards_its_number() {
     );
 }
 
+/// ⭐ B35.4 (PA-32): uma edição no chip chega UMA vez e com o número digitado. O despacho emite o `ValueChanged` do
+/// chip e logo o espelho da barra ligada (`push_mirrored_slider_event`); a barra guarda a pista em `f32`, e reenviada
+/// gravava `2.7500000596…`. Um arrasto real da barra depois continua a chegar.
+#[test]
+fn uma_edicao_no_chip_chega_uma_vez_com_o_valor_exacto() {
+    let v = 2.75;
+    let row = rows::rows()
+        .iter()
+        .find(|r| r.options.is_none() && r.min < v && v < r.max && r.value_of(r.track_of(v)) != v)
+        .expect("uma linha onde a pista f32 não devolve 2,75");
+    let (mut host, mut st) = host();
+    host.set_number_value(row.chip, v);
+    host.set_slider_value(row.slider, row.track_of(v));
+    host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::ValueChanged(row.chip));
+    host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::ValueChanged(row.slider));
+    let enviados: Vec<f64> = host
+        .drained_actions()
+        .iter()
+        .filter_map(|a| match a {
+            EditorAction::ToolPanelEvent(PanelEvent::SetValue(i, x))
+                if *i == row.chip || *i == row.slider =>
+            {
+                Some(*x)
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(enviados, [v], "{}: a edição chegou {enviados:?}", row.key);
+    host.set_slider_value(row.slider, 1.0);
+    host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::ValueChanged(row.slider));
+    assert_eq!(
+        drained_setvalue(&host.drained_actions(), row.slider),
+        Some(row.max),
+        "o arrasto depois da edição chega"
+    );
+}
+
+/// ⭐ B35.6 (PA-35): uma barra sem estado no store manda o DEFAULT da linha, não o meio da faixa.
+#[test]
+fn evento_sem_estado_manda_o_default() {
+    let row = rows::rows()
+        .iter()
+        .find(|r| r.options.is_none() && (r.value_of(0.5) - r.default).abs() > r.step)
+        .expect("uma linha cujo default não é o meio");
+    let mut host = MockPanelHost::new();
+    let mut st = state::WetTuningPanelState;
+    ph2d_panel_wet_tuning::cards::force_cards_on_this_thread(Some(false));
+    host.apply_panel_event::<WetTuningPanel>(&mut st, WidgetEvent::ValueChanged(row.slider));
+    let v = drained_setvalue(&host.drained_actions(), row.slider).expect("chegou");
+    assert!(
+        (v - row.default).abs() <= row.step,
+        "{}: {v} × default {}",
+        row.key,
+        row.default
+    );
+}
+
 /// Group resets, the K–M checkboxes and the close button all
 /// forward — and close forwards the BASIC section's Tuning toggle (the one
 /// authored fact; a panel-local hide would fight the bridge).

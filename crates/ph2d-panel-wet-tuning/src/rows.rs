@@ -97,7 +97,7 @@ pub fn rows() -> &'static [TuneRow] {
             .filter(|(_, d)| match d.group {
                 KnobGroup::Hidden => false,
                 KnobGroup::Paper => ph2d_tool_painter::ids::WET_TUNING_RELEVO.contains(&d.key),
-                _ => true,
+                _ => !ph2d_tool_painter::ids::NO_INSPECTOR.contains(&d.key),
             })
             .map(|(i, d)| TuneRow {
                 key: d.key,
@@ -345,13 +345,14 @@ mod tests {
     /// Wet effects (4 → 5). Mais 1 (J6 cerdas): os fios que crescem com o pincel no Bristles (19 → 20).
     /// Mais 1 a 28/10 (dono): o Paper Press no Material (15 → 16). Mais 1 a 31/10: a borda graduada no Water (7 → 8). Contagem refeita do código a 31/10: 98 → 95 (o cartão Wet Paint levou Staining, Glaze, Cover e Wet soften de Paint/Stroke/Wet effects para Hidden a 30/10 sem este teste; Paint 24 → 22, Stroke 13 → 12, Wet effects 5 → 4).
     /// Mais 1 a 31/10: o arco dos tufos do leque (`tuftArc`) no Bristles (20 → 21).
+    /// Menos 19 a 10/11 (B35.1, [`ph2d_tool_painter::ids::NO_INSPECTOR`]): 88 → 69 (Paint 19 → 3, Water 7 → 5, Physics 6 → 5).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 88);
+        assert_eq!(rows().len(), 69);
         for g in [
-            (KnobGroup::Paint, 19),
-            (KnobGroup::Water, 7),
-            (KnobGroup::Physics, 6),
+            (KnobGroup::Paint, 3),
+            (KnobGroup::Water, 5),
+            (KnobGroup::Physics, 5),
             (KnobGroup::Tools, 6),
             (KnobGroup::Paper, 1),
             (KnobGroup::Bristles, 17),
@@ -361,6 +362,30 @@ mod tests {
         ] {
             let n = rows().iter().filter(|r| r.group == g.0).count();
             assert_eq!(n, g.1, "group {:?} row count", g.0);
+        }
+    }
+
+    /// ⭐ B35.1 (R3 do dono, 25/10): um knob com linha no Inspector não tem segunda linha no Tuning — os 15 da caneta
+    /// são os `Knob` de [`ph2d_tool_painter::LINHAS_DA_MAO`] e os 4 do cartão Wet os que ele escreve.
+    #[test]
+    fn nenhum_knob_tem_duas_linhas_no_mesmo_painel() {
+        let caneta: BTreeSet<&str> = ph2d_tool_painter::LINHAS_DA_MAO
+            .iter()
+            .filter_map(|l| match l {
+                ph2d_tool_painter::LinhaDaMao::Knob(k) => Some(KNOB_DEFS[*k as usize].key),
+                _ => None,
+            })
+            .collect();
+        let cartao_wet = ["pickup", "evaporation", "edgeDarkening", "gravity"];
+        let no_inspector: BTreeSet<&str> = caneta.iter().copied().chain(cartao_wet).collect();
+        let lista: BTreeSet<&str> = ph2d_tool_painter::ids::NO_INSPECTOR.into_iter().collect();
+        assert_eq!(no_inspector, lista, "a lista é a caneta + o cartão Wet");
+        for r in rows() {
+            assert!(
+                !lista.contains(r.key),
+                "{}: já tem linha no Inspector",
+                r.key
+            );
         }
     }
 

@@ -20,18 +20,23 @@ pub(crate) fn apply_event(
     ev: WidgetEvent,
 ) -> EventOutcome {
     let consumed = match ev {
-        // A slider moved: read the track the drag left behind, map it to the
-        // row's REAL value, forward. The chip edit mirrors onto its linked
-        // slider (which fires its own ValueChanged) — swallow the chip's, or
-        // one edit notifies twice.
+        // A slider moved: read the track the drag left behind, map it to the row's REAL value, forward. The chip
+        // edit forwards the typed number and the dispatch then mirrors it onto the linked slider: that mirror is
+        // the SAME edit, and its f32 track would re-send `2.7500000596…` (B35.4) — swallow it.
         WidgetEvent::ValueChanged(id) => {
             if let Some(row) = rows::row_for(id) {
                 if id == row.chip {
                     let v = host.store().number_value(id).unwrap_or(row.default);
+                    crate::state::espera_espelho(row.slider, v);
                     forward(host, PanelEvent::SetValue(row.chip, v));
                 } else {
-                    let track = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.5);
-                    forward(host, PanelEvent::SetValue(row.slider, row.value_of(track)));
+                    let track = host
+                        .store()
+                        .slider(id)
+                        .map_or_else(|| row.track_of(row.default), |(_, v)| v);
+                    if !crate::state::e_o_espelho(row, track) {
+                        forward(host, PanelEvent::SetValue(row.slider, row.value_of(track)));
+                    }
                 }
                 true
             } else {

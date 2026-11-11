@@ -31,7 +31,7 @@ pub fn populate(store: &mut WidgetStore) {
             row.slider,
             InteractiveState::Slider {
                 state: SliderState::Normal,
-                value: 0.5,
+                value: row.track_of(row.default),
                 orientation: SliderOrientation::Horizontal,
             },
         );

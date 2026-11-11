@@ -181,9 +181,12 @@ impl PainterTool {
         self.paint.wetpaint.composta = Some(saida.marca);
         // W3b: o dente do papel que a Transmission assa na tinta ([`super::grao_no_filme`]); sem papel escolhido, o
         // papel de fábrica (U2). Só o laço de píxel o lê; a óptica só perguntou se há (`factos.tem_grao`).
+        let papel = self.papel_na_escala(super::super::substrate_relief::papel_do_documento(
+            self.paint.brush.paper,
+        ));
         let grao = oleo.and_then(|_| {
             super::grao_no_filme::GraoNoFilme::do_papel(
-                self.paint.brush.paper,
+                papel,
                 (self.paint.substrate_depth, self.paint.substrate_rough),
                 self.paint.paper_image.as_ref().map(|i| i.as_mask()),
                 &self.paint.impasto_rig,

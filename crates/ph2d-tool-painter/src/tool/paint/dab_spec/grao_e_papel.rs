@@ -18,7 +18,9 @@ impl PainterTool {
             // Relief 0, a crescer até 1), × a Depth do próprio Grain (smoke 28/10: «corresponde parcialmente»). A lei
             // do grão («Grain behaviour», que o painel mostra com a caixa ligada) continua a do pincel.
             let lei = brush.texture.lei;
-            brush.texture = super::super::substrate_relief::papel_do_documento(brush.paper);
+            brush.texture = self.papel_na_escala(
+                super::super::substrate_relief::papel_do_documento(brush.paper),
+            );
             brush.texture.lei = ph2d_painter_brush::texture::GrainLaw {
                 contraste: super::super::substrate_relief::ganho_do_dente(
                     self.paint.substrate_rough,
@@ -31,7 +33,7 @@ impl PainterTool {
                 ))
             .clamp(0.0, 1.0);
         } else if self.papel_como_grain_do(brush) {
-            brush.texture = brush.paper;
+            brush.texture = self.papel_na_escala(brush.paper);
             brush.grain_depth = self.mordida_do_papel(brush);
         } else if self.papel_pode_morder_do(brush)
             && brush.texture.is_active()
@@ -40,7 +42,7 @@ impl PainterTool {
             // Com um Grain do pincel (ou o Grain Colors), o papel MORDE por cima dele (dono 08/11: «a pintura
             // parecia chapada mesmo com paper com relevo»): o mesmo fator que ele dá como Grain, preso à tela.
             brush.dente = ph2d_painter_brush::dente::Dente::do_papel(
-                brush.paper,
+                self.papel_na_escala(brush.paper),
                 self.mordida_do_papel(brush),
             );
         }

@@ -20,12 +20,21 @@ pub(crate) struct WetEditableSig {
 }
 
 impl PainterTool {
+    /// O pincel de agora com o papel à escala do documento (B34.1, [`PainterTool::papel_na_escala`]) — para quem
+    /// guarda o pincel inteiro: o estilo do traço da aguada e o alcance do Paper Edge.
+    #[must_use]
+    pub(super) fn pincel_com_papel_na_escala(&self) -> ph2d_painter_brush::BrushSpec {
+        let mut b = self.paint.brush;
+        b.paper = self.papel_na_escala(b.paper);
+        b
+    }
+
     /// The current substrate signature (see [`WetEditableSig`]).
     pub(super) fn wet_editable_sig(&self) -> WetEditableSig {
         let b = &self.paint.brush;
         WetEditableSig {
             grain: b.texture,
-            paper: b.paper,
+            paper: self.papel_na_escala(b.paper),
             paper_depth: b.paper_depth,
             granulation: b.effective_granulation(),
             granulation_use_paper: b.granulation_use_paper,
@@ -34,3 +43,7 @@ impl PainterTool {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "fator_papel_tests.rs"]
+mod fator_papel_tests;

@@ -143,7 +143,7 @@ impl PainterTool {
     pub(super) fn chave_do_papel(&self, brush: &BrushSpec) -> PaperKey {
         let (w, h) = self.source_size;
         PaperKey {
-            tex: brush.paper,
+            tex: self.papel_na_escala(brush.paper),
             image_version: self.paint.paper_image_version,
             period: [
                 if self.paint.tiling[0] { w as f32 } else { 0.0 },

@@ -227,7 +227,7 @@ impl PainterTool {
                 .any(|s| s.paper_edge > 0.0)
         {
             super::super::watercolor_flow::alcance_do_papel(
-                &self.paint.brush,
+                &self.pincel_com_papel_na_escala(),
                 &self.paint.wet_styles.table,
                 self.imagens_da_borda(),
                 super::super::watercolor_noise::NoiseTile::NONE,

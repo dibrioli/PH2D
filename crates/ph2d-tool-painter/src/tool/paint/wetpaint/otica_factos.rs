@@ -72,7 +72,9 @@ impl crate::PainterTool {
     pub(super) fn factos_da_otica(&self) -> FactosDaOtica {
         let (w, h) = self.source_size;
         let tem_grao = super::grao_no_filme::GraoNoFilme::do_papel(
-            self.paint.brush.paper,
+            self.papel_na_escala(super::super::substrate_relief::papel_do_documento(
+                self.paint.brush.paper,
+            )),
             (self.paint.substrate_depth, self.paint.substrate_rough),
             self.paint.paper_image.as_ref().map(|i| i.as_mask()),
             &self.paint.impasto_rig,

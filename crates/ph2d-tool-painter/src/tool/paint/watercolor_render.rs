@@ -201,7 +201,7 @@ impl PainterTool {
         // #2b (doc 13): snap a BITMAP slot's Size (Image or a baked Paper preset) so a whole number of
         // tiles spans the sprite → it repeats seamlessly across the seam (matching the procedural noise).
         // Lattice procedurals aren't snapped (see `snap_slot_size`). No-op off-tiling ⇒ byte-identical.
-        let paper_tex = snap_slot_size(brush.paper, noise_tile);
+        let paper_tex = snap_slot_size(self.papel_na_escala(brush.paper), noise_tile);
         let paper_active = paper_tex.is_active();
         let paper_img = self.paint.paper_image.as_ref().map(|i| i.as_mask());
         // Precompute each slot's Angle rotation basis ONCE (the per-degree walk is not per-pixel-cheap).

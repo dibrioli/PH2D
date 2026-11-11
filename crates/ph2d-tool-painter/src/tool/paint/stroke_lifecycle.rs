@@ -189,9 +189,11 @@ impl PainterTool {
             // brush (Enio 2026-07-09).
             let forced_wet = self.paint.wet_session_wetness;
             let marcas = self.marcas_da_aguada();
-            self.paint
-                .wet_styles
-                .push_capture(&self.paint.brush, forced_wet, marcas);
+            self.paint.wet_styles.push_capture(
+                &self.pincel_com_papel_na_escala(),
+                forced_wet,
+                marcas,
+            );
             // Cada poça seca no seu tempo: a que secou longe da tinta molhada assa ANTES do primeiro
             // carimbo, para este traço velar sobre ela (o alcance já conta o estilo deste traço).
             if wet_session {

@@ -139,6 +139,14 @@ Chalk e Pastel com o Impasto ligado, um traço que vai e volta 4× no mesmo sít
 
 Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × Chalk/Pastel, em [B29/](B29/).
 
+## B34 — O papel acompanha o tamanho da tela (decisão 6)
+
+Numa imagem nova maior que 1080p, o desenho do papel cresce na mesma proporção (a 4K, 2× maior em pixels): a 4K o papel parece o mesmo que a 1080p, em vez de virar um chiado fino. Só imagens novas; até 1080p nada muda (diferença zero). Chalk (o papel como grão) e Wet Round, r40 a 1080p e r80 a 4K. Da esquerda: antes · depois · o que mudou (vermelho). O relevo do papel a 4K ainda fica mais raso que a 1080p (próximo passo).
+
+![B34](B34/4k_papel_chalk_antes_depois.png)
+
+Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × Chalk/Wet Round, em [B34/](B34/). Compare com [1080p](B34/1080p_papel_chalk_antes_depois.png).
+
 ## As 10 decisões do dono (§0 do prompt da missão)
 
 | # | Decisão | Bloco | Prancha |
@@ -148,7 +156,7 @@ Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × Chalk/Pastel, em [B29/](B
 | 3 | Guardar a tinta com mais precisão | B29 | [B29.3](#b293--o-dente-do-papel-resiste-ao-repasse-no-impasto) (o dente resiste ao repasse); B29.1 medido, B29.2/B29.4 abertos |
 | 4 | Arrumar os controles do Wet | B35 | só controles; o que muda na tela (reset/rótulos) ainda aberto |
 | 5 | Pincel Oil Wash | B36 | [B36](#b36--pincel-oil-wash) |
-| 6 | Aparência acompanha o tamanho da tela | B34 | ainda não feita: a imagem nova já guarda o seu tamanho de referência (B34.1, base), sem mudança visível; o papel e as orlas por escalar |
+| 6 | Aparência acompanha o tamanho da tela | B34 | [B34](#b34--o-papel-acompanha-o-tamanho-da-tela-decisão-6) (o papel); a orla da aguada, warp, relevo e sombra do óleo ainda por escalar |
 | 7a | Mistura de cores do Wet (vermelho + azul) | B32 | ainda não feita (aberto) |
 | 7b | Papel sem repetição a 256 px | B33 | [B33](#b33--papel-sem-repetição-a-cada-256-px) |
 | 8 | Ritmo fixo a 60 e 144 Hz | B22 | [B22.2](#b222--spray-parado-igual-a-30-60-e-144-quadross) (spray); secagem B22.1 aberta |

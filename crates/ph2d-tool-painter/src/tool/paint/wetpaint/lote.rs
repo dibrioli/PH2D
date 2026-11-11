@@ -44,7 +44,7 @@ impl PainterTool {
             }
             _ => {
                 let lei = super::preparo::lei_do_papel(
-                    brush.paper,
+                    chave.tex,
                     self.paint.paper_image.as_ref(),
                     period,
                     ratio,

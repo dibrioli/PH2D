@@ -339,7 +339,7 @@ impl crate::tool::PainterTool {
     /// qual isto foi pedido.
     pub(super) fn substrate(&self) -> Option<Substrate<'_>> {
         let mut s = Substrate::resolve(
-            self.paint.brush.paper,
+            self.papel_na_escala(self.paint.brush.paper),
             self.paint.substrate_depth,
             self.paint.substrate_rough,
             self.paint.paper_image.as_ref().map(|i| i.as_mask()),
@@ -381,7 +381,7 @@ impl crate::tool::PainterTool {
     /// o `PaperKey` do Wet Paint já toma (ADR-0124: um `Arc` novo pode nascer no endereço de um morto).
     pub(super) fn substrate_key(&self) -> SubstrateKey {
         SubstrateKey {
-            tex: self.paint.brush.paper,
+            tex: self.papel_na_escala(self.paint.brush.paper),
             depth: self.paint.substrate_depth,
             rough: self.paint.substrate_rough,
             image: self.paint.paper_image_version,

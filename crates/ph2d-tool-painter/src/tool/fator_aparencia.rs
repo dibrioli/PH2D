@@ -5,9 +5,11 @@
 //!
 //! Nasce do tamanho quando o documento nasce (`set_source`) e nunca mais muda: redimensionar a tela não
 //! re-escala a tinta que já está nela. Até 1080p o fator é `1` — o motor de sempre, ao bit.
-//! Os leitores das escalas entram item a item (B34.1..B34.7, `docs/Painter/missao_4k/BACKLOG.md`).
+//! O papel lê-o por [`PainterTool::papel_na_escala`] (B34.1); as outras escalas entram item a item (B34.2..B34.7,
+//! `docs/Painter/missao_4k/BACKLOG.md`).
 
 use crate::tool::PainterTool;
+use ph2d_painter_brush::TextureSettings;
 
 /// O lado CURTO da tela de referência, em píxeis: os pincéis foram aprovados a 1920×1080.
 pub const LADO_CURTO_DE_REFERENCIA: u32 = 1080;
@@ -19,11 +21,34 @@ pub fn do_tamanho(w: u32, h: u32) -> f32 {
     (w.min(h) as f32 / LADO_CURTO_DE_REFERENCIA as f32).max(1.0)
 }
 
+/// O papel `p` à escala de um documento de fator `fator`: o Size do papel é FREQUÊNCIA (células por
+/// `TEX_TILE_BASE_PX` píxeis), logo o dente fica `fator`× maior em píxeis quando o Size DIVIDE pelo fator — a 4K
+/// o papel cobre a mesma fração da tela que a 1080p. Fator 1 devolve `p` intacto (ao bit).
+#[must_use]
+pub fn papel_a_escala(mut p: TextureSettings, fator: f32) -> TextureSettings {
+    if fator != 1.0 {
+        p.size = p.size.map(|s| s / fator);
+    }
+    p
+}
+
 impl PainterTool {
     /// O fator de aparência do documento ligado (`1` = a tela de referência).
     #[must_use]
     pub fn fator_aparencia(&self) -> f32 {
         self.fator_aparencia
+    }
+
+    /// (Sondas e pranchas) Força o fator do documento ligado — o «antes» de uma tela grande é o fator 1.
+    #[doc(hidden)]
+    pub fn fixa_fator_aparencia_para_sonda(&mut self, fator: f32) {
+        self.fator_aparencia = fator;
+    }
+
+    /// ⭐ A porta ÚNICA do papel em píxeis (B34.1): todo leitor que amostra o papel na tela passa por aqui.
+    #[must_use]
+    pub(crate) fn papel_na_escala(&self, p: TextureSettings) -> TextureSettings {
+        papel_a_escala(p, self.fator_aparencia)
     }
 }
 

@@ -5,10 +5,8 @@ use crate::platform_scene::{pose, scene};
 
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_physics_ecs::{PhysicsBridge, PlatformPlayer, PlayerInput};
-use ph2d_platformer::arc::{ArcWorld, JumpArc, jump_arcs};
+use ph2d_platformer::arc::{JumpArc, jump_arcs};
 use ph2d_platformer::feel::Feel;
-
-const DT: f32 = 1.0 / 60.0;
 
 /// O que se compara de um pulo: o ápice (acima do arranque, para o lado), o tempo no ar e o alcance.
 #[derive(Debug)]

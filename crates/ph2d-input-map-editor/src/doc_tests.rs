@@ -179,3 +179,46 @@ fn keyboard_view_binds_altgr_f_and_not_left_alt_f() {
     assert!(keyboard_binds_f("right_alt", false), "AltGr+F");
     assert!(!keyboard_binds_f("left_alt", true), "Alt esquerdo+F");
 }
+
+/// ⭐ Foto o4 (cena 9): os rótulos Dead zone / Press at da linha ABERTA leem-se (≥ 4,5:1, texto pequeno) em todo
+/// tema, no repouso e no pairado, e ficam abaixo do valor (`Text1`). Controlo: a linha não aberta mantém o
+/// `CardLabel`; as cinco faces da linha diferem, e a aberta pairada é a pairada de toda linha (não a da escuta).
+#[test]
+fn the_open_row_labels_read_in_every_theme_and_its_face_is_its_own() {
+    use crate::view_list::rows::{row_face, zone_label_ink};
+    use ph2d_tokens::{ColorToken, Theme};
+    assert_eq!(zone_label_ink(false), ColorToken::CardLabel);
+    let mut falhas = Vec::new();
+    for hover in [false, true] {
+        let (fill, _) = row_face(false, false, true, hover);
+        for t in Theme::ALL {
+            let bg = fill.resolve(t);
+            let l = zone_label_ink(true).resolve(t).contrast_ratio(&bg);
+            let v = ColorToken::Text1.resolve(t).contrast_ratio(&bg);
+            if l < 4.5 || l >= v {
+                falhas.push(format!("{t:?} {fill:?}: rótulo {l:.2} · valor {v:.2}"));
+            }
+        }
+    }
+    assert!(falhas.is_empty(), "{falhas:?}");
+    assert_eq!(
+        row_face(false, false, true, true),
+        row_face(false, false, false, true)
+    );
+    assert_ne!(
+        row_face(false, false, true, true),
+        row_face(false, true, false, false)
+    );
+    let faces = [
+        row_face(true, false, false, false),
+        row_face(false, true, false, false),
+        row_face(false, false, true, false),
+        row_face(false, false, false, true),
+        row_face(false, false, false, false),
+    ];
+    for (i, a) in faces.iter().enumerate() {
+        for b in &faces[i + 1..] {
+            assert_ne!(a, b);
+        }
+    }
+}

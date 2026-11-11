@@ -190,6 +190,38 @@ fn row_active(doc: &InputMapDoc, a: &InputAction) -> bool {
             .any(|n| ListHit::Chip(a.id, n).id() == f || ListHit::RemoveBinding(a.id, n).id() == f)
 }
 
+/// ⭐ A face da linha `(fundo, aresta)` por estado: premida, à escuta, pairada, ABERTA (a do Inspector e da Keyboard),
+/// repouso — cinco faces diferentes; o repouso (aberta incluída) sem aresta. A aberta marca-se pelo FUNDO
+/// `CardFieldHover`: o `AccentSoft` deixava o texto a 3,18:1 no PlumberRed (até o `Text1`; medido nos 12 temas).
+pub(crate) fn row_face(
+    sunk: bool,
+    listening: bool,
+    open: bool,
+    hover: bool,
+) -> (ColorToken, Option<ColorToken>) {
+    if sunk {
+        (ColorToken::AccentSoft, Some(ColorToken::Border))
+    } else if listening {
+        (ColorToken::KanbanCardRaised, Some(ColorToken::Accent))
+    } else if hover {
+        (ColorToken::KanbanCardRaised, Some(ColorToken::Border))
+    } else if open {
+        (ColorToken::CardFieldHover, None)
+    } else {
+        (ColorToken::KanbanCard, None)
+    }
+}
+
+/// A tinta dos rótulos Dead zone / Press at: na linha aberta o `Text2` (≥ 6,38:1 nos 12 temas, abaixo do valor em
+/// `Text1`); nas outras o `CardLabel` de sempre.
+pub(crate) const fn zone_label_ink(open: bool) -> ColorToken {
+    if open {
+        ColorToken::Text2
+    } else {
+        ColorToken::CardLabel
+    }
+}
+
 /// O fundo da linha pelo estado: premida = o degrau premido; à escuta = levantada com o acento (aresta e barra à
 /// esquerda); sob o ponteiro = levantada com o fio da aresta; em repouso = o cartão.
 fn paint_row_face(
@@ -202,21 +234,8 @@ fn paint_row_face(
     let id = ListHit::Row(a.id).id();
     let listening = doc.snap.listening == Some(a.id);
     let hover = doc.list.hover_row == Some(a.id);
-    // A acção aberta (a do Inspector e da Keyboard): o fundo da linha aberta da Keyboard.
     let open = crate::view_keyboard::open(doc) == Some(a.id);
-    let (fill, edge) = if doc.sunk(id) {
-        (ColorToken::AccentSoft, Some(ColorToken::Border))
-    } else if listening {
-        (ColorToken::KanbanCardRaised, Some(ColorToken::Accent))
-    } else if open && hover {
-        (ColorToken::KanbanCardRaised, Some(ColorToken::Accent))
-    } else if open {
-        (ColorToken::AccentSoft, None)
-    } else if hover {
-        (ColorToken::KanbanCardRaised, Some(ColorToken::Border))
-    } else {
-        (ColorToken::KanbanCard, None)
-    };
+    let (fill, edge) = row_face(doc.sunk(id), listening, open, hover);
     fill_rounded_rect(scene, r, m::FIELD_RADIUS, ink.color(fill));
     if let Some(e) = edge {
         let w = if listening {
@@ -560,6 +579,7 @@ fn paint_zones(
 ) {
     let pad = m::LIST_PAD_X;
     let half = (r.w - pad * 2.0 - m::FIELD_GAP) * 0.5;
+    let open = crate::view_keyboard::open(doc) == Some(a.id);
     for (i, (hit, label, value)) in [
         (ListHit::Dead(a.id), "input_map_list.dead", a.dead_zone),
         (ListHit::Press(a.id), "input_map_list.press", a.press_point),
@@ -586,9 +606,7 @@ fn paint_zones(
         let warned = warn.map(|c| c.sentence(zone.max()));
         let (above, tint) = warned
             .as_deref()
-            .map_or((tr(label), ColorToken::CardLabel), |s| {
-                (s, ColorToken::Warn)
-            });
+            .map_or((tr(label), zone_label_ink(open)), |s| (s, ColorToken::Warn));
         text::body(
             &mut doc.census,
             ts,

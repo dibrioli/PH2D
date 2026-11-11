@@ -6,7 +6,7 @@ mod foot;
 pub(crate) mod footer;
 mod input;
 mod looks;
-mod rows;
+pub(crate) mod rows;
 pub mod state;
 pub(crate) mod text;
 

@@ -450,7 +450,7 @@ fn what_is_left_of_a_pair_takes_the_whole_line() {
     let m = so_o_wet(true, com_oleo());
     let r = |id| m.rect(id).expect("pintado");
     let (par, sobra) = (
-        r(p::PAINTER_WETPAINT_COVER),
+        r(p::PAINTER_WETPAINT_DRY_COVER),
         r(p::PAINTER_WETPAINT_WET_SOFTEN),
     );
     assert!((sobra.x - par.x).abs() < 0.5, "{sobra:?} × {par:?}");

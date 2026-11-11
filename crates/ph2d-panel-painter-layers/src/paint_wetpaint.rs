@@ -30,8 +30,8 @@ const FLOW_MIN: f32 = 1.0; // LITERAL-PX-OK: flow-grid ratio lower bound (flow::
 const FLOW_MAX: f32 = 16.0; // LITERAL-PX-OK: flow-grid ratio upper bound (flow::MAX_FLOW_RATIO)
 
 /// A borracha da água não pousa: o Pickup, o pó do pincel e os knobs que só agem a cada dab de tinta (Wet bloom, Tip
-/// pickup, Re-wet, Drag, Solubility, Glaze, Cover, Dry cover, Wet soften) saem (`DepositoMolhado`); os da E10 também.
-const DO_DEPOSITO: [ph2d_a11y::NodeId; 13] = [
+/// pickup, Re-wet, Drag, Solubility, Glaze, Cover, Dry cover, Wet soften, Opaque, Emboss) saem (`DepositoMolhado`); os da E10 também.
+const DO_DEPOSITO: [ph2d_a11y::NodeId; 14] = [
     ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP,
     ph2d_tool_painter::ids::PAINTER_WETPAINT_DUST,
     ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_BLOOM,
@@ -45,6 +45,7 @@ const DO_DEPOSITO: [ph2d_a11y::NodeId; 13] = [
     ph2d_tool_painter::ids::PAINTER_WETPAINT_WET_SOFTEN,
     ph2d_tool_painter::ids::PAINTER_WETPAINT_DRAG,
     ph2d_tool_painter::ids::PAINTER_WETPAINT_OPAQUE,
+    ph2d_tool_painter::ids::PAINTER_WETPAINT_EMBOSS,
 ];
 
 /// **Os controlos NUMÉRICOS de lei da E10 no cartão** (F3 §9): `(depois de que linha, rótulo, id)`. A Hardness junto
@@ -293,9 +294,10 @@ pub(crate) fn numeros_da_fisica(leis: &BrushSettings, valores: &BrushSettings) -
         ),
     ];
     for (chave, id, valor, min, max, passo, casas) in rows {
-        // O Edge Darkening é da célula que o PINCEL pousa (Bug #69): a Borracha apaga a tinta, não a desenha com borda.
-        let borda_da_borracha = leis.eraser && id == ph2d_tool_painter::ids::PAINTER_WETPAINT_EDGE;
-        if (pousa || !DO_DEPOSITO.contains(&id)) && !borda_da_borracha {
+        // O Edge Darkening é da célula que o PINCEL pousa (Bug #69): a Borracha e as ferramentas da água não a desenham.
+        let borda_sem_deposito =
+            (leis.eraser || !pousa) && id == ph2d_tool_painter::ids::PAINTER_WETPAINT_EDGE;
+        if (pousa || !DO_DEPOSITO.contains(&id)) && !borda_sem_deposito {
             grupos[0].push(Numero {
                 chave,
                 id,

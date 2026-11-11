@@ -169,9 +169,8 @@ struct BlitCtx<'a> {
     blend: BrushBlend,
     /// O modo sobre o vazio (L7, [`crate::blend_vazio`]).
     vazio: bool,
-    /// Pigment mix (`0` = plain blend, byte-identical) — the amount of the Kubelka–Munk paint mix
-    /// ([`crate::blend::blend_over_pigment`], the Wet Paint law since 2026-09-20; the note said RYB) — or the
-    /// spectral one ([`crate::espectral`], `BrushSpec::pigment_espectral`).
+    /// Pigment mix (`0` = plain blend, byte-identical) — the spectral paint mix ([`crate::espectral`], the one law
+    /// of the Wet and the Digital since B32.2).
     pigment_mix: crate::blend::Pigmento,
     cx: f32,
     cy: f32,

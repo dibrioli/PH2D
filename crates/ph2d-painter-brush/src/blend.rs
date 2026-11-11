@@ -242,9 +242,9 @@ pub fn blend_over_pigment(
     ]
 }
 
-/// **A mistura de pigmento de um pincel**: QUANTO (`mix`, o [`BrushSpec::effective_pigment_mix`]) e por que LEI — o
-/// K–M de sempre ([`blend_over_pigment`]) ou a média geométrica espectral do MyPaint
-/// ([`crate::espectral::blend_over_espectral`], `BrushSpec::pigment_espectral`). Um `f32` é o K–M a esse `mix`.
+/// **A mistura de pigmento de um pincel**: QUANTO (`mix`, o [`BrushSpec::effective_pigment_mix`]). A lei é uma só
+/// (B32.2): a espectral do Wet ([`crate::espectral::blend_over_espectral`]); `espectral` é `mix > 0` (a zero, o
+/// `plain`, o mesmo nas duas leis — as rotas em cache leem-no). O K–M ([`blend_over_pigment`]) fica só como régua.
 ///
 /// [`BrushSpec::effective_pigment_mix`]: crate::BrushSpec::effective_pigment_mix
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -257,7 +257,7 @@ impl From<f32> for Pigmento {
     fn from(mix: f32) -> Self {
         Self {
             mix,
-            espectral: false,
+            espectral: mix > 0.0,
         }
     }
 }

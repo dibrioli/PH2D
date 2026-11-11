@@ -52,8 +52,7 @@ fn a_captura_nao_herda_o_campo_opcional_desligado() {
                 "pontas_rectas",
                 "dual",
                 "hose",
-                "size_max_px",
-                "pigment_espectral"
+                "size_max_px"
             ]
             .iter()
             .all(|c| opcionais.iter().any(|o| o == c)),

@@ -204,14 +204,11 @@ impl BrushSpec {
         }
     }
 
-    /// A mistura de pigmento que o carimbo compõe: o [`Self::effective_pigment_mix`] e a lei
-    /// ([`Self::pigment_espectral`]).
+    /// A mistura de pigmento que o carimbo compõe: o [`Self::effective_pigment_mix`] pela lei ÚNICA, a espectral
+    /// (B32.2: a do Wet, `ph2d_pigment::espectral`).
     #[must_use]
     pub fn pigmento(&self) -> crate::blend::Pigmento {
-        crate::blend::Pigmento {
-            mix: self.effective_pigment_mix(),
-            espectral: self.pigment_espectral,
-        }
+        self.effective_pigment_mix().into()
     }
 
     /// Whether this brush's dabs deposit **height** (the impasto relief). The master switch must be on,

@@ -114,7 +114,6 @@ const GLOW: ReceitaMeio =
             // A mistura espectral do MyPaint 2 (2.ª ronda): o néon azul sobre o vermelho passa pelo grená escuro.
             ("pigment", "true"),
             ("pigment_mix", "1.0"),
-            ("pigment_espectral", "true"),
         ],
         mao: &[
             ("pressureSize", 0.37),
@@ -464,28 +463,19 @@ fn receita_em_estudo(nome: &str) -> &'static ReceitaMeio {
         .unwrap()
 }
 
-/// ⭐ **A mistura ESPECTRAL cruza como o MyPaint** (2.ª ronda; o `BrushSpec::pigment_espectral`): o Glow e a Ballpoint
-/// sobre o vermelho — o meio do cruzamento violeta-cinza e o anel grená (o néon ralo sobre o vermelho cheio), que o
-/// K–M de constante única pinta azul e claro. E a prova de mutação, permanente: a MESMA receita com a lei do K–M
-/// (`pigment_espectral` falso — a lei de antes, o vermelho visto antes da cura) tem de sangrar.
+/// ⭐ **A mistura ESPECTRAL cruza como o MyPaint** (2.ª ronda; desde o B32.2 a ÚNICA lei do Pigment): o Glow e a
+/// Ballpoint sobre o vermelho — o meio do cruzamento violeta-cinza e o anel grená (o néon ralo sobre o vermelho cheio),
+/// que o K–M de constante única pinta azul e claro. O controlo «com o K–M sangra» vive em `ph2d-painter-brush`
+/// (`o_digital_com_pigment_mistura_pela_lei_do_wet`): o pincel já não escolhe a lei.
 #[test]
 fn a_mistura_espectral_cruza_como_o_mypaint() {
-    use serde_json::json;
-    let casos: Vec<(&str, bool)> = CRUZAMENTOS_DO_MYPAINT
-        .iter()
-        .flat_map(|c| [(c.0, true), (c.0, false)])
-        .collect();
+    let casos: Vec<(&str, bool)> = CRUZAMENTOS_DO_MYPAINT.iter().map(|c| (c.0, true)).collect();
     let medidas: Vec<(&str, bool, Vec<String>)> = std::thread::scope(|s| {
         let hs: Vec<_> = casos
             .into_iter()
             .map(|(nome, espectral)| {
                 s.spawn(move || {
-                    let mut p = crate::presets_de_fabrica::preset_do_meio(receita_em_estudo(nome));
-                    if !espectral {
-                        p.parametros
-                            .brush
-                            .insert("pigment_espectral".to_owned(), json!(false));
-                    }
+                    let p = crate::presets_de_fabrica::preset_do_meio(receita_em_estudo(nome));
                     let escala = CRUZAMENTOS_DO_MYPAINT
                         .iter()
                         .find(|c| c.0 == nome)

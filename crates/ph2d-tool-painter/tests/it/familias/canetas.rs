@@ -39,8 +39,6 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("spacing", "0.16"),
             ("pigment", "true"),
             ("pigment_mix", "1.0"),
-            // A lei do MyPaint 2 (J4 efeitos, `exames/efeitos.md` 2.ª ronda): o azul sobre o vermelho em violeta-cinza.
-            ("pigment_espectral", "true"),
         ],
         // A dureza pela pressão (J4 efeitos, o `hardness 0,2 + 0,3·p` do `deevad/ballpen`; 0,15 na nossa queda —
         // a 0,3 o traço engordava 9 %): o cheio de 200 px não sai em contas (0,044 → 0,006), o leve continua em fiapos.

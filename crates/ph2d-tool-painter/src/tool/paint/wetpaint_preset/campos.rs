@@ -2,7 +2,7 @@
 //! de `wetpaint_preset` por LOC.
 
 /// Os campos do `BrushSpec` que o preset leva, pelo nome do campo.
-pub const CAMPOS_DO_PINCEL: [&str; 43] = [
+pub const CAMPOS_DO_PINCEL: [&str; 42] = [
     // O tecto de tamanho (J3, decisão 8): os quatro meios; gravado só quando o preset o fixa.
     "size_max_px",
     "hardness",
@@ -52,8 +52,6 @@ pub const CAMPOS_DO_PINCEL: [&str; 43] = [
     "blend_sobre_vazio",
     "pigment",
     "pigment_mix",
-    // A lei espectral do pigmento (J4 efeitos): gravada só ligada.
-    "pigment_espectral",
 ];
 
 /// **O pincel INTEIRO, pelo nome de cada campo** — o que o estado inicial de uma MACRO leva de cada

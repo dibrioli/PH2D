@@ -302,13 +302,6 @@ pub(super) static CAMPOS: &[Campo] = &[
         |b| num(b.pigment_mix),
         |b, v| b.pigment_mix = f(v, b.pigment_mix),
     ),
-    // A lei espectral do pigmento (J4 efeitos) só ligada; ausente = o K–M, nunca o do pincel anterior.
-    so(
-        "pigment_espectral",
-        |b| json!(b.pigment_espectral),
-        |b, v| b.pigment_espectral = booleano(v, false),
-        |b| b.pigment_espectral,
-    ),
     c(
         "paper_depth",
         |b| num(b.paper_depth),

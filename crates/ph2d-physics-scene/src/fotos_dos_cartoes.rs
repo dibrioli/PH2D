@@ -248,7 +248,10 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
         }
         CasoFisica::PlayerPulo => {
             let e = por_nome(sim, "Player")?;
-            if let Some(mut p) = sim.world_mut().get_mut::<ph2d_physics_ecs::PlatformPlayer>(e) {
+            if let Some(mut p) = sim
+                .world_mut()
+                .get_mut::<ph2d_physics_ecs::PlatformPlayer>(e)
+            {
                 p.show_jump_arc = true;
                 p.air_jumps = 1;
             }

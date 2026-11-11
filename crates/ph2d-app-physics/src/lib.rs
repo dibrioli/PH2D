@@ -153,7 +153,6 @@ pub fn aplicar_canais(
     canais_mundo::aplicar(sim, ponte, &mut estado.mundo);
 }
 pub mod joint;
-pub mod jump_arc;
 pub mod joint_anchor_drag;
 pub mod joint_create;
 pub mod joint_draw;
@@ -161,6 +160,7 @@ pub mod joint_rig;
 pub mod joint_rig_drag;
 pub mod joint_wheel;
 pub mod joint_world;
+pub mod jump_arc;
 
 // A §11 do Inspector aplicada ao ECS, e os seus vizinhos por assunto.
 pub mod physics_apply;

@@ -13,7 +13,7 @@ use ph2d_editor_core::tool::{
 };
 use ph2d_tool_painter::PainterTool;
 
-fn fundo(w: u32, h: u32, blocos: bool) -> Vec<u8> {
+pub(crate) fn fundo(w: u32, h: u32, blocos: bool) -> Vec<u8> {
     let cores = [
         [200u8, 60, 50],
         [60, 150, 210],
@@ -30,7 +30,7 @@ fn fundo(w: u32, h: u32, blocos: bool) -> Vec<u8> {
     v
 }
 
-fn ponto(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
+pub(crate) fn ponto(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
         pos,
         pressure: 1.0,
@@ -85,7 +85,7 @@ fn cena(nome: &str, w: u32, h: u32, qual: u8, fator1: bool) -> Vec<u8> {
 }
 
 /// `antes | depois | Δ×32`, recorte `[w/2 ± h/4] × [h/4, 3h/4]`, amostrado a 540 px de lado.
-fn monta(antes: &[u8], depois: &[u8], w: u32, h: u32) -> image::RgbaImage {
+pub(crate) fn monta(antes: &[u8], depois: &[u8], w: u32, h: u32) -> image::RgbaImage {
     let lado = h / 2;
     let passo = lado / 540;
     let out = lado / passo;

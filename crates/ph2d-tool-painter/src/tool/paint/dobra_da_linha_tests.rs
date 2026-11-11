@@ -45,9 +45,20 @@ impl PainterTool {
                     for rx in 0..w {
                         let gx = x0 + rx as i64;
                         let k = c + rx;
-                        let dhx = (alt[k + 1] - alt[k - 1]) * 0.5;
-                        let dhy = (alt[k + fw] - alt[k - fw]) * 0.5;
+                        let mut dhx = (alt[k + 1] - alt[k - 1]) * 0.5;
+                        let mut dhy = (alt[k + fw] - alt[k - fw]) * 0.5;
                         let cover = fields.cover_at(gx, gy);
+                        // B31.1: a lei nova da inclinação com papel (o oráculo guarda as FAIXAS, não a lei).
+                        if fields.substrate.is_some() {
+                            let p = |x: i64, y: i64| fields.altura_e_papel_at(x, y).1;
+                            let px = (p(gx + 1, gy) - p(gx - 1, gy)) * 0.5;
+                            let py = (p(gx, gy + 1) - p(gx, gy - 1)) * 0.5;
+                            (dhx, dhy) = super::super::impasto_luz_dobra::inclinacao_com_papel(
+                                (dhx, dhy),
+                                (px, py),
+                                cover,
+                            );
+                        }
                         let i = (ry * w + rx) * 4;
                         let albedo = [
                             f32::from(faixa[i]) / 255.0,
@@ -110,6 +121,20 @@ impl PainterTool {
                     m1row[i * 4..i * 4 + 4].copy_from_slice(&[m[4], m[5], m[6], 255]);
                 }
             });
+        // B31.1: o plano do papel, por texel.
+        let papel: Vec<f32> = if fields.substrate.is_some() {
+            (0..n)
+                .map(|i| {
+                    let (x, y) = (
+                        i64::from(rx) + (i % rww) as i64,
+                        i64::from(ry) + (i / rww) as i64,
+                    );
+                    fields.altura_e_papel_at(x, y).1
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
         let lut = ph2d_painter_brush::material::SpecLut::get();
         Some(ImpastoPlanes {
             width: w,
@@ -120,6 +145,7 @@ impl PainterTool {
             mat0,
             mat1,
             paper_body: fields.paper_body(),
+            papel,
             lamps,
             spec_lut: lut.table(),
             lut_width: ph2d_painter_brush::material::SPEC_LUT as u32,
@@ -237,6 +263,11 @@ fn pistas_iguais_aos_lacos_de_antes(mut t: PainterTool, caso: &str) -> PainterTo
             "{caso}: relevo dos planos {r:?}"
         );
         assert!(p.cover == q.cover, "{caso}: corpo dos planos {r:?}");
+        assert_eq!(
+            bits(&p.papel),
+            bits(&q.papel),
+            "{caso}: papel dos planos {r:?}"
+        );
         assert!(
             p.mat0 == q.mat0 && p.mat1 == q.mat1,
             "{caso}: material dos planos {r:?}"

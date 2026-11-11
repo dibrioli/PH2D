@@ -190,6 +190,7 @@ fn gpu_lit(gpu: &GpuContext, planes: &ImpastoPlanes, base: &[u8]) -> Vec<u8> {
         lut_width: planes.lut_width,
         rough_levels: planes.rough_levels,
         paper_body: 0.0,
+        papel: &[],
     };
     let out = pass.run(gpu, &src, &input).expect("a well-formed dispatch");
     readback(gpu, out)
@@ -511,6 +512,7 @@ fn a_partial_plane_upload_lands_where_it_belongs_at_any_width() {
                 lut_width: p.lut_width,
                 rough_levels: p.rough_levels,
                 paper_body: 0.0,
+                papel: &[],
             }
         }
         // Semeia cheio, depois re-sobe SÓ a janela (com os mesmos valores) — o resultado tem de ficar

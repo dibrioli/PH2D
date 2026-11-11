@@ -58,6 +58,10 @@ pub(super) struct ReliefFields<'a> {
     /// a TINTA que cobre o papel. O dente vê-se pela parte que a tinta deixa passar ([`Self::papel_a_vista`]).
     /// Vazio sem substrato. O `bool` diz se a camada recebeu tinta do Wet (`PainterTool::tintas_molhadas`).
     pub(super) tinta: Vec<(&'a [u8], f32, bool)>,
+    /// B34: o ganho do DECLIVE — o fator de aparência do documento. A 4K (fator 2) o dente e a pincelada têm o
+    /// período 2× e a mesma altura: sem ele o declive (e a luz) caía à metade. A altura que a luz lê sai × ganho;
+    /// fator 1 = `× 1,0`, o bit de sempre.
+    pub(super) ganho: f32,
     pub(super) width: usize,
     pub(super) height: usize,
 }
@@ -78,6 +82,13 @@ impl ReliefFields<'_> {
     /// [`crate::layers::fold_relief_step`] — the ONE fold.
     #[inline]
     pub(super) fn height_at(&self, x: i64, y: i64) -> f32 {
+        self.altura_e_papel_at(x, y).0
+    }
+
+    /// B31.1: [`Self::height_at`] e o PLANO DO PAPEL nele (`dente·v + meio·(1 − v)`, a parte da altura que é do papel),
+    /// os dois × [`Self::ganho`]. Sem substrato o plano é `0`.
+    #[inline]
+    pub(super) fn altura_e_papel_at(&self, x: i64, y: i64) -> (f32, f32) {
         let i = self.index(x, y);
         let cx = x.clamp(0, self.width as i64 - 1);
         let cy = y.clamp(0, self.height as i64 - 1);
@@ -85,13 +96,14 @@ impl ReliefFields<'_> {
             Some(d) => d.alt[d.at(cx, cy)],
             None => self.fold_at(i),
         };
-        self.com_o_papel(super::impasto_ceiling::soft_ceiling(h), i, cx, cy)
-    }
-
-    /// A altura da tinta já com o tecto, mais o dente do papel que a tinta deixa ver em `i` = `(cx, cy)` (clampados).
-    #[inline]
-    fn com_o_papel(&self, h: f32, i: usize, cx: i64, cy: i64) -> f32 {
-        self.com_o_papel_em(self.papel_da_linha().as_ref(), h, i, cx, cy)
+        let (a, p) = self.com_o_papel_em(
+            self.papel_da_linha().as_ref(),
+            super::impasto_ceiling::soft_ceiling(h),
+            i,
+            cx,
+            cy,
+        );
+        (a * self.ganho, p * self.ganho)
     }
 
     /// As constantes do papel que [`Self::com_o_papel_em`] lê, tiradas UMA vez por linha (por texel eram uma divisão e um
@@ -113,7 +125,7 @@ impl ReliefFields<'_> {
         i: usize,
         cx: i64,
         cy: i64,
-    ) -> f32 {
+    ) -> (f32, f32) {
         // ⚠️ **O dente do papel SOMA à altura da tinta, e entra DEPOIS do teto de vidro.** Depois,
         // porque o teto é uma propriedade de como a TINTA se empilha (`impasto_ceiling`) e um papel não
         // é tinta — comprimi-lo pelo peso de uma pilha que não é dele seria o dente sumir justamente
@@ -142,9 +154,10 @@ impl ReliefFields<'_> {
                 let enche = (h / enche_em).clamp(0.0, 1.0);
                 let (molhada, outra) = self.papel_a_vista(i);
                 let v = molhada * (1.0 - enche * (1.0 - outra));
-                h + s.dente_na_tela(cx, cy) * v + meio * (1.0 - v)
+                let (d, m) = (s.dente_na_tela(cx, cy) * v, meio * (1.0 - v));
+                (h + d + m, d + m)
             }
-            None => h,
+            None => (h, 0.0),
         }
     }
 
@@ -249,6 +262,19 @@ impl ReliefFields<'_> {
         cob: &mut [f32],
         mat: &mut [MaterialBytes],
     ) {
+        self.dobra_da_linha_com_papel(y, x0, alt, cob, mat, None);
+    }
+
+    /// [`Self::dobra_da_linha`] e, em `pap`, o plano do papel de cada texel (B31.1, [`Self::altura_e_papel_at`]).
+    pub(super) fn dobra_da_linha_com_papel(
+        &self,
+        y: i64,
+        x0: i64,
+        alt: &mut [f32],
+        cob: &mut [f32],
+        mat: &mut [MaterialBytes],
+        mut pap: Option<&mut [f32]>,
+    ) {
         debug_assert!(alt.len() == cob.len() && cob.len() == mat.len());
         let cy = y.clamp(0, self.height as i64 - 1);
         let linha = cy as usize * self.width;
@@ -301,13 +327,17 @@ impl ReliefFields<'_> {
                 }
             };
             *c = corpo.clamp(0.0, 1.0);
-            *a = self.com_o_papel_em(
+            let (al, pl) = self.com_o_papel_em(
                 papel.as_ref(),
                 super::impasto_ceiling::soft_ceiling(h),
                 i,
                 cx,
                 cy,
             );
+            *a = al * self.ganho;
+            if let Some(p) = pap.as_deref_mut() {
+                p[k] = pl * self.ganho;
+            }
         }
     }
 

@@ -66,3 +66,49 @@ fn mesmo_traco_1080p_e_4k_com_fator() {
         a.paint.brush.paper.size.map(|s| s / 2.0)
     );
 }
+
+/// O desvio médio da luz sobre papel branco (`|L − 255|`, 0..255) num canto `256²` à escala de 1080p: a 1080 é o
+/// canto, a 2160 o canto `512²` reduzido 2×2.
+fn luz_do_dente(t: &PainterTool, escala: u32) -> f64 {
+    let n = 256 * escala;
+    let mut rgba = vec![255u8; (n * n * 4) as usize];
+    t.apply_impasto_light(
+        &mut rgba,
+        crate::Region {
+            x: 0,
+            y: 0,
+            w: n,
+            h: n,
+        },
+    );
+    let l =
+        |i: usize| f64::from(rgba[i * 4]) + f64::from(rgba[i * 4 + 1]) + f64::from(rgba[i * 4 + 2]);
+    let mut soma = 0.0;
+    for y in 0..256usize {
+        for x in 0..256usize {
+            let mut v = 0.0;
+            for dy in 0..escala as usize {
+                for dx in 0..escala as usize {
+                    v += l((y * escala as usize + dy) * n as usize + x * escala as usize + dx);
+                }
+            }
+            soma += (765.0 - v / f64::from(escala * escala)).abs() / 3.0;
+        }
+    }
+    soma / 65536.0
+}
+
+/// ⭐ B34 (o relevo): o período do dente dobra a 4K e a altura não ⇒ o declive caía à metade e o papel saía raso. A luz
+/// lê o declive × fator: a luz do dente 4K (fator 2) reduzida 2×2 é a de 1080p; o controlo (sem o ganho) reprova.
+#[test]
+fn a_luz_do_dente_4k_reduzida_e_a_de_1080p() {
+    let a = tela(1080);
+    let b = tela(2160);
+    let (la, lb) = (luz_do_dente(&a, 1), luz_do_dente(&b, 2));
+    eprintln!("[B34 relevo] luz do dente: 1080p {la:.3} · 4K fator 2 reduzida {lb:.3}");
+    assert!(la > 1.0, "o dente tem de acender a 1080p: {la}");
+    assert!(
+        (lb / la - 1.0).abs() < 0.15,
+        "a luz do dente 4K reduzida tem de ser a de 1080p: {lb} × {la}"
+    );
+}

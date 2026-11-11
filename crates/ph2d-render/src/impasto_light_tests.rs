@@ -172,6 +172,7 @@ fn a_mis_shaped_request_is_refused_without_a_device() {
         lut_width: 4,
         rough_levels: 2,
         paper_body: 0.0,
+        papel: &[],
     };
     assert_eq!(base().check(), Ok(()), "a well-formed request passes");
 
@@ -210,4 +211,58 @@ fn a_mis_shaped_request_is_refused_without_a_device() {
         Err(ImpastoLightError::EmptyExtent),
         "an empty region would dispatch nothing and report success"
     );
+}
+
+/// B31.1 — a placa lê o plano do papel no binding 8 (o que o `bind_group` do [`ImpastoLightPass::run`] escreve) e
+/// inclina a luz pela MESMA aritmética da CPU (`impasto_luz_dobra::inclinacao_com_papel`).
+#[test]
+fn o_plano_do_papel_e_o_binding_8_e_a_inclinacao_e_a_da_cpu() {
+    let module = naga::front::wgsl::parse_str(IMPASTO_LIGHT_WGSL).expect("parse");
+    let papel = module
+        .global_variables
+        .iter()
+        .map(|(_, v)| v)
+        .find(|v| {
+            v.binding
+                == Some(naga::ResourceBinding {
+                    group: 0,
+                    binding: 8,
+                })
+        })
+        .expect("o binding 8 existe");
+    assert_eq!(papel.name.as_deref(), Some("papel"));
+    assert!(
+        IMPASTO_LIGHT_WGSL.contains(
+            "return vec2<f32>(pap.x + corpo * (alt.x - pap.x), pap.y + corpo * (alt.y - pap.y));"
+        ),
+        "a inclinação com papel da placa tem de ser a da CPU"
+    );
+    // Um pedido com papel e sem o plano dele é recusado (o shader leria um plano velho).
+    let lut = [0.0f32; 4];
+    let lamps = [ImpastoLamp {
+        dir: [0.0, 0.0, 1.0],
+        half: [0.0, 0.0, 1.0],
+        tint: [1.0; 3],
+    }];
+    let reg = crate::layer_compositor::Region::full(2, 2);
+    let (rel, cov, mat) = ([0.0f32; 4], [0u8; 4], [0u8; 16]);
+    let mut e = ImpastoLightInput {
+        width: 2,
+        height: 2,
+        region: reg,
+        plane_region: reg,
+        relief: &rel,
+        cover: &cov,
+        mat0: &mat,
+        mat1: &mat,
+        lamps: &lamps,
+        spec_lut: &lut,
+        lut_width: 4,
+        rough_levels: 1,
+        paper_body: 1.0,
+        papel: &[],
+    };
+    assert_eq!(e.check(), Err(ImpastoLightError::PlaneSize));
+    e.papel = &rel;
+    assert_eq!(e.check(), Ok(()));
 }

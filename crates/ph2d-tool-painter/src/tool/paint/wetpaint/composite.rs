@@ -192,6 +192,7 @@ impl PainterTool {
                 &self.paint.impasto_rig,
                 (w, h),
             )
+            .map(|g| g.com_ganho(self.fator_aparencia))
         });
         let Some(super::composite_otica::CaixasDaOtica {
             caixa_cel,

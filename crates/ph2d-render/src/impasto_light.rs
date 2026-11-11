@@ -119,6 +119,8 @@ pub struct ImpastoLightInput<'a> {
     /// 1"*: sem ela o dente que o `relief` já carrega seria multiplicado pela cobertura da TINTA, que
     /// num documento digital é zero. Escalar e não plano porque a presença é uniforme na tela.
     pub paper_body: f32,
+    /// B31.1: o plano do PAPEL (a parte de `relief` que é do dente), do tamanho de `relief`; vazio sem papel.
+    pub papel: &'a [f32],
 }
 
 impl ImpastoLightInput<'_> {
@@ -150,6 +152,8 @@ impl ImpastoLightInput<'_> {
             || self.cover.len() != n
             || self.mat0.len() != n * 4
             || self.mat1.len() != n * 4
+            || !(self.papel.is_empty() || self.papel.len() == n)
+            || (self.paper_body > 0.5 && self.papel.is_empty())
         {
             return Err(ImpastoLightError::PlaneSize);
         }
@@ -237,6 +241,8 @@ struct Canvas {
     cover: Plane,
     mat0: Plane,
     mat1: Plane,
+    /// B31.1: o plano do papel (R32F).
+    papel: Plane,
     out: Plane,
 }
 
@@ -291,6 +297,7 @@ impl ImpastoLightPass {
                     sampled(4), // mat0
                     sampled(5), // mat1
                     sampled(6), // spec LUT
+                    sampled(8), // B31.1: o plano do papel
                     wgpu::BindGroupLayoutEntry {
                         binding: 7,
                         visibility: wgpu::ShaderStages::COMPUTE,
@@ -384,6 +391,7 @@ impl ImpastoLightPass {
                 bind(4, &canvas.mat0.view),
                 bind(5, &canvas.mat1.view),
                 bind(6, &lut.view),
+                bind(8, &canvas.papel.view),
                 wgpu::BindGroupEntry {
                     binding: 7,
                     resource: self.globals.as_entire_binding(),
@@ -435,6 +443,7 @@ impl ImpastoLightPass {
             cover: plane(gpu, "cover", w, h, F::R8Unorm, read),
             mat0: plane(gpu, "mat0", w, h, F::Rgba8Unorm, read),
             mat1: plane(gpu, "mat1", w, h, F::Rgba8Unorm, read),
+            papel: plane(gpu, "papel", w, h, F::R32Float, read),
             out: plane(
                 gpu,
                 "out",
@@ -490,6 +499,9 @@ impl ImpastoLightPass {
         write_plane(gpu, &c.cover, input.cover, r.w, r);
         write_plane(gpu, &c.mat0, input.mat0, r.w * 4, r);
         write_plane(gpu, &c.mat1, input.mat1, r.w * 4, r);
+        if !input.papel.is_empty() {
+            write_plane(gpu, &c.papel, bytemuck::cast_slice(input.papel), r.w * 4, r);
+        }
     }
 
     /// **Do the plane textures for this canvas hold the artist's relief, everywhere?**

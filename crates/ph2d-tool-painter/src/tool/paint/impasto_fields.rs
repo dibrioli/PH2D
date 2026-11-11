@@ -178,6 +178,7 @@ impl PainterTool {
             live_c,
             live_mat: self.paint.brush.material().to_bytes(),
             neutral: ph2d_painter_brush::material::Material::NEUTRAL.to_bytes(),
+            ganho: self.fator_aparencia,
             width: w as usize,
             height: h as usize,
         };

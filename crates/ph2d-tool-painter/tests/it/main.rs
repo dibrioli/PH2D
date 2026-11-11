@@ -58,6 +58,7 @@ mod pinceis_da_ponta;
 mod prancha_b28_3; // missão 4K B28.3: a amostra esparsa do Color mixing (prancha + relógio, ignored)
 mod prancha_b29_1; // missão 4K B29.1: Flow baixo em camadas estanca (prancha do antes, ignored)
 mod prancha_b29_3; // missão 4K B29.3: o grão é tecto com o filme AA (prancha, ignored)
+mod prancha_b31_1; // B31.1: o aro branco do Impasto no papel, antes/depois
 mod prancha_b34; // missão 4K B34.1: o papel à escala do documento (prancha, ignored)
 mod presets_de_fabrica;
 mod presets_dos_meios;

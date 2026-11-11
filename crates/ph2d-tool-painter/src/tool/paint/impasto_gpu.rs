@@ -34,6 +34,7 @@
 
 use super::relief_fields::ReliefFields;
 use crate::tool::PainterTool;
+use ph2d_painter_brush::material::MaterialBytes;
 use rayon::prelude::*;
 
 /// One resolved lamp, in the form the shader consumes: direction, half-vector, and `intensity × colour`
@@ -91,6 +92,9 @@ pub struct ImpastoPlanes {
     /// com o dente somado, e sem esta presença o shader o multiplica pela cobertura da TINTA, que num
     /// documento digital é zero. Plano certo, apagado no device.
     pub paper_body: f32,
+    /// B31.1: o PLANO DO PAPEL (a parte da altura que é do dente, `ReliefFields::altura_e_papel_at`), `relief`-shaped;
+    /// VAZIO sem substrato (o shader não o lê: `paper_body` 0).
+    pub papel: Vec<f32>,
     /// `[wax_r, wax_g, wax_b, 255]` — the last 3, padded to a texel. Seven bytes do not fit a GPU
     /// format; four and four do, and the split falls exactly on the boundary between the scalar
     /// properties and the Wax filter's colour.
@@ -112,6 +116,31 @@ pub struct ImpastoPlanes {
     pub spec_lut: &'static [f32],
     pub lut_width: u32,
     pub rough_levels: u32,
+}
+
+/// O corpo em byte e o material em dois texels de uma linha da dobra (B15.6: só aqui o corpo vira byte).
+fn planos_da_linha(
+    crow: &mut [u8],
+    m0row: &mut [u8],
+    m1row: &mut [u8],
+    cob: &[f32],
+    mats: &[MaterialBytes],
+) {
+    // Byte a byte e não `copy_from_slice`: este não se alinhava (um `memcpy` de 4 bytes da libc por canal, 18 % do
+    // Ctrl+Z 4K, B15.6-cont). Os mesmos bytes.
+    let texels = crow.iter_mut().zip(cob.iter()).zip(mats.iter());
+    let planos = m0row
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
+        .zip(m1row.as_chunks_mut::<4>().0.iter_mut());
+    for (((c, cb), m), (m0, m1)) in texels.zip(planos) {
+        // Quantised the way the canvas already stores coverage, so the shader's unorm decode lands on the CPU's
+        // `f32::from(u8) / 255.0` and not merely near it.
+        *c = (cb * 255.0 + 0.5) as u8;
+        (m0[0], m0[1], m0[2], m0[3]) = (m[0], m[1], m[2], m[3]);
+        (m1[0], m1[1], m1[2], m1[3]) = (m[4], m[5], m[6], 255);
+    }
 }
 
 impl PainterTool {
@@ -208,8 +237,11 @@ impl PainterTool {
             h: rh,
         })?;
         let lamps = super::impasto_shade::Rig::new(&self.paint.impasto_rig)?.export_lamps();
-        let (mut relief, mut cover, mut mat0, mut mat1) =
-            prev.map_or_else(Default::default, |p| (p.relief, p.cover, p.mat0, p.mat1));
+        let (mut relief, mut cover, mut mat0, mut mat1, mut papel) = prev
+            .map_or_else(Default::default, |p| {
+                (p.relief, p.cover, p.mat0, p.mat1, p.papel)
+            });
+        papel.resize(if fields.substrate.is_some() { n } else { 0 }, 0.0);
         // `resize` só escreve o que CRESCE: com a janela do quadro anterior (o caso do Ctrl+Z) não toca num byte.
         relief.resize(n, 0.0);
         cover.resize(n, 0);
@@ -230,34 +262,32 @@ impl PainterTool {
         // B15.6: a linha vem da MESMA dobra que as faixas da luz da CPU ([`ReliefFields::dobra_da_linha`]); só aqui o
         // corpo vira byte, o do plano da placa.
         let rww = rw as usize;
-        relief
+        let linhas = relief
             .par_chunks_mut(rww)
             .zip(cover.par_chunks_mut(rww))
             .zip(mat0.par_chunks_mut(rww * 4))
             .zip(mat1.par_chunks_mut(rww * 4))
-            .enumerate()
-            .for_each_init(
-                || (vec![0f32; rww], vec![[0u8; 7]; rww]),
+            .enumerate();
+        let init = || (vec![0f32; rww], vec![[0u8; 7]; rww]);
+        if papel.is_empty() {
+            linhas.for_each_init(
+                init,
                 |(cob, mats), (row, (((rrow, crow), m0row), m1row))| {
                     let y = i64::from(ry) + row as i64;
                     fields.dobra_da_linha(y, i64::from(rx), rrow, cob, mats);
-                    // Byte a byte e não `copy_from_slice`: este não se alinhava (um `memcpy` de 4 bytes da libc por
-                    // canal, 18 % do Ctrl+Z 4K, B15.6-cont). Os mesmos bytes.
-                    let texels = crow.iter_mut().zip(cob.iter()).zip(mats.iter());
-                    let planos = m0row
-                        .as_chunks_mut::<4>()
-                        .0
-                        .iter_mut()
-                        .zip(m1row.as_chunks_mut::<4>().0.iter_mut());
-                    for (((c, cb), m), (m0, m1)) in texels.zip(planos) {
-                        // Quantised the way the canvas already stores coverage, so the shader's unorm decode
-                        // lands on the CPU's `f32::from(u8) / 255.0` and not merely near it.
-                        *c = (cb * 255.0 + 0.5) as u8;
-                        (m0[0], m0[1], m0[2], m0[3]) = (m[0], m[1], m[2], m[3]);
-                        (m1[0], m1[1], m1[2], m1[3]) = (m[4], m[5], m[6], 255);
-                    }
+                    planos_da_linha(crow, m0row, m1row, cob, mats);
                 },
             );
+        } else {
+            linhas.zip(papel.par_chunks_mut(rww)).for_each_init(
+                init,
+                |(cob, mats), ((row, (((rrow, crow), m0row), m1row)), prow)| {
+                    let y = i64::from(ry) + row as i64;
+                    fields.dobra_da_linha_com_papel(y, i64::from(rx), rrow, cob, mats, Some(prow));
+                    planos_da_linha(crow, m0row, m1row, cob, mats);
+                },
+            );
+        }
         let lut = ph2d_painter_brush::material::SpecLut::get();
         Some(ImpastoPlanes {
             width: w,
@@ -268,6 +298,7 @@ impl PainterTool {
             mat0,
             mat1,
             paper_body: fields.paper_body(),
+            papel,
             lamps,
             spec_lut: lut.table(),
             lut_width: ph2d_painter_brush::material::SPEC_LUT as u32,
@@ -555,11 +586,11 @@ mod tests {
         // forma que compila e regride é trocar TODOS, e contar é o que distingue "três de quatro".
         //
         // ⚠️ 2026-10-05: 6 -> 4 — o 3D sai do PH2D (ADR-0179): os planos de FORMA e de OCLUSÃO doados
-        // saíram com ele. Quem integrar conta o DELTA, nunca o literal.
+        // saíram com ele. Quem integrar conta o DELTA, nunca o literal. B31.1: 4 -> 5, o plano do papel.
         let par = body.matches("par_chunks_mut(").count();
         assert_eq!(
-            par, 4,
-            "o walk do fold tem de percorrer os QUATRO planos em paralelo (achei {par}) — as linhas sao \
+            par, 5,
+            "o walk do fold tem de percorrer os CINCO planos em paralelo (achei {par}) — as linhas sao \
              disjuntas (ADR-0109) e este e o mecanismo dos 201,5 -> 14,55 ms a 4096². Nenhum gate de \
              razao ou de bytes pega esta regressao: serial e paralelo dao os MESMOS bytes e os dois sao \
              limitados pela janela"

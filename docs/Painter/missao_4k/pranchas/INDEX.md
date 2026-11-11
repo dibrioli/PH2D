@@ -149,11 +149,19 @@ Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × Flow 2 %/0,2 %, em [B29.1
 
 ## B34 — O papel acompanha o tamanho da tela (decisão 6)
 
-Numa imagem nova maior que 1080p, o desenho do papel cresce na mesma proporção (a 4K, 2× maior em pixels): a 4K o papel parece o mesmo que a 1080p, em vez de virar um chiado fino. Só imagens novas; até 1080p nada muda (diferença zero). Chalk (o papel como grão) e Wet Round, r40 a 1080p e r80 a 4K. Da esquerda: antes · depois · o que mudou (vermelho). O relevo do papel a 4K ainda fica mais raso que a 1080p (próximo passo).
+Numa imagem nova maior que 1080p, o desenho do papel cresce na mesma proporção (a 4K, 2× maior em pixels): a 4K o papel parece o mesmo que a 1080p, em vez de virar um chiado fino. Só imagens novas; até 1080p nada muda (diferença zero). Chalk (o papel como grão) e Wet Round, r40 a 1080p e r80 a 4K. Da esquerda: antes · depois · o que mudou (vermelho). Agora o relevo também: a 4K o papel tem a mesma profundidade de luz que a 1080p (antes saía raso, metade da inclinação).
 
 ![B34](B34/4k_papel_chalk_antes_depois.png)
 
 Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × Chalk/Wet Round, em [B34/](B34/). Compare com [1080p](B34/1080p_papel_chalk_antes_depois.png).
+
+## B31.1 — Sem aro branco à volta do Impasto no papel
+
+Uma pincelada grossa (Impasto) sobre papel com relevo: antes, o papel nu logo ao lado da tinta acendia como se fosse a parede da tinta — uma linha branca em cima e uma sombra escura em baixo. Agora, fora da tinta só o grão do papel recebe luz. Da esquerda: antes · depois · o que mudou (vermelho). Papel 1080p: 7 899 → 457 píxeis brancos puros; 4K: 23 332 → 2 951.
+
+![B31.1](B31.1/1080p_papel_impasto_antes_depois.png)
+
+Todas: 3 fundos (branco, blocos, papel) × 1080p/4K, em [B31.1/](B31.1/). Compare com [4K](B31.1/4k_papel_impasto_antes_depois.png).
 
 ## As 10 decisões do dono (§0 do prompt da missão)
 

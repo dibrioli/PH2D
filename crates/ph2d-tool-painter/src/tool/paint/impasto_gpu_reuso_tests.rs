@@ -34,6 +34,7 @@ fn com_lixo(mut p: ImpastoPlanes) -> ImpastoPlanes {
     p.cover.fill(0xA5);
     p.mat0.fill(0x5A);
     p.mat1.fill(0xC3);
+    p.papel.fill(f32::from_bits(0x7fc0_beef));
     p
 }
 
@@ -44,6 +45,8 @@ fn iguais(a: &ImpastoPlanes, b: &ImpastoPlanes, caso: &str) {
     assert_eq!(a.cover, b.cover, "{caso}: cobertura");
     assert_eq!(a.mat0, b.mat0, "{caso}: mat0");
     assert_eq!(a.mat1, b.mat1, "{caso}: mat1");
+    let pb = |p: &ImpastoPlanes| p.papel.iter().map(|v| v.to_bits()).collect::<Vec<_>>();
+    assert_eq!(pb(a), pb(b), "{caso}: plano do papel");
     assert_eq!(
         a.paper_body.to_bits(),
         b.paper_body.to_bits(),

@@ -50,6 +50,8 @@ pub(super) struct GraoNoFilme<'a> {
     papel: Substrate<'a>,
     luz: Rig,
     mat: MatShade,
+    /// B34: o ganho do declive do dente (o fator de aparência do documento; 1 = o bit de sempre).
+    ganho: f32,
     w: i64,
     h: i64,
 }
@@ -72,6 +74,7 @@ impl<'a> GraoNoFilme<'a> {
             papel,
             luz,
             mat,
+            ganho: 1.0,
             w: w as i64,
             h: h as i64,
         })
@@ -88,6 +91,13 @@ impl<'a> GraoNoFilme<'a> {
         Self::de(papel_do_filme(tex, relief, rough, image), rig, tela)
     }
 
+    /// B34: o declive do dente × `ganho` (o fator de aparência: a 4K o período é 2× e a altura a mesma).
+    #[must_use]
+    pub(super) fn com_ganho(mut self, ganho: f32) -> Self {
+        self.ganho = ganho;
+        self
+    }
+
     /// A cor RECTA `cor` (`0..1`) do píxel `(x, y)` com o dente do papel × `d` (`0..1`, a fracção que a tinta
     /// mostra, [`ph2d_wet_paint::oleo_real::grao_do_papel`]): a luz do relevo sobre o papel nu, com a inclinação
     /// do dente escalada por `d`. `d = 0` não chega aqui (quem chama salta: ao bit).
@@ -97,8 +107,8 @@ impl<'a> GraoNoFilme<'a> {
                 .tooth_loads(x.clamp(0, self.w - 1), y.clamp(0, self.h - 1))
         };
         let (x, y) = (x as i64, y as i64);
-        let dhx = (at(x + 1, y) - at(x - 1, y)) * 0.5 * d;
-        let dhy = (at(x, y + 1) - at(x, y - 1)) * 0.5 * d;
+        let dhx = (at(x + 1, y) - at(x - 1, y)) * 0.5 * d * self.ganho;
+        let dhy = (at(x, y + 1) - at(x, y - 1)) * 0.5 * d * self.ganho;
         let (mul, add) = self.luz.shade(&self.mat, 1.0, 0.0, dhx, dhy, cor);
         [0, 1, 2].map(|c| super::super::impasto_light::light_pixel(cor[c], mul[c], add[c]))
     }

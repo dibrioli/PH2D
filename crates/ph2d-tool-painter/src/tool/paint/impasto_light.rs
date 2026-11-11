@@ -227,12 +227,14 @@ impl PainterTool {
                 let mut alt = vec![0.0f32; fw * (n + 2)];
                 let mut cob = vec![0.0f32; fw * n];
                 let mut mats: Vec<MaterialBytes> = vec![[0; 7]; fw * n];
+                let mut pap = super::impasto_luz_dobra::separa_o_papel(&fields).then(|| vec![0.0f32; alt.len()]);
                 dobra_da_faixa(
                     &fields,
                     gy0,
                     x0 + a as i64,
                     fw,
                     &mut alt,
+                    pap.as_deref_mut(),
                     &mut cob,
                     &mut mats,
                 );
@@ -240,13 +242,31 @@ impl PainterTool {
                     light.resolve(ph2d_painter_brush::material::Material::NEUTRAL.to_bytes());
                 let fonte = PorBytes { mats: &mats, cache };
                 if sw == w {
-                    sombreia_faixa(&light, paper_body, &alt, &cob, faixa, w, fonte);
+                    sombreia_faixa(
+                        &light,
+                        paper_body,
+                        &alt,
+                        pap.as_deref(),
+                        &cob,
+                        faixa,
+                        w,
+                        fonte,
+                    );
                 } else {
                     let mut sub: Vec<u8> = faixa
                         .chunks_exact(w * 4)
                         .flat_map(|l| l[a * 4..z * 4].iter().copied())
                         .collect();
-                    sombreia_faixa(&light, paper_body, &alt, &cob, &mut sub, sw, fonte);
+                    sombreia_faixa(
+                        &light,
+                        paper_body,
+                        &alt,
+                        pap.as_deref(),
+                        &cob,
+                        &mut sub,
+                        sw,
+                        fonte,
+                    );
                     for (l, s) in faixa.chunks_exact_mut(w * 4).zip(sub.chunks_exact(sw * 4)) {
                         l[a * 4..z * 4].copy_from_slice(s);
                     }
@@ -287,9 +307,16 @@ impl PainterTool {
                 // dirty-rect update lights its border exactly as a full recompose would.
                 // ⚠️ O dente do papel JÁ está dentro do `height_at` (porta única), então a diferença
                 // central o pega de graça — e o produtor de GPU, que dobra os MESMOS campos, também.
-                let dhx = (at(gx + 1, gy) - at(gx - 1, gy)) * 0.5;
-                let dhy = (at(gx, gy + 1) - at(gx, gy - 1)) * 0.5;
+                let mut dhx = (at(gx + 1, gy) - at(gx - 1, gy)) * 0.5;
+                let mut dhy = (at(gx, gy + 1) - at(gx, gy - 1)) * 0.5;
                 let cover = cover_at(gx, gy);
+                if super::impasto_luz_dobra::separa_o_papel(&fields) {
+                    let p = |x: i64, y: i64| fields.altura_e_papel_at(x, y).1;
+                    let px = (p(gx + 1, gy) - p(gx - 1, gy)) * 0.5;
+                    let py = (p(gx, gy + 1) - p(gx, gy - 1)) * 0.5;
+                    (dhx, dhy) =
+                        super::impasto_luz_dobra::inclinacao_com_papel((dhx, dhy), (px, py), cover);
+                }
                 let i = ((ry as usize) * (region.w as usize) + rx as usize) * 4;
                 // The pixel's own colour IS a metal's highlight, so it is an INPUT to the shade, not
                 // only the thing the shade multiplies.

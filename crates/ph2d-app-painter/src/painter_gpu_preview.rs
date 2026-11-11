@@ -522,6 +522,7 @@ fn compose_light_premul(
             lut_width: planes.lut_width,
             rough_levels: planes.rough_levels,
             paper_body: planes.paper_body,
+            papel: &planes.papel,
         };
         // Falling through UNLIT would silently drop the shading.
         let lit = session.light.run(&session.gpu, comp_out, &input);

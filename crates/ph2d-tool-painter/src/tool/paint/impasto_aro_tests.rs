@@ -53,7 +53,6 @@ fn clareia(t: &PainterTool) -> (Vec<u8>, Vec<i32>) {
 /// (160×120, papel 0,5): 2 494 píxeis vistos, pior +54 contra +29 do dente, 944 brancos puros. A cura é a inclinação do
 /// dente separada da da tinta (`∇dente + corpo·∇tinta`), na CPU e na placa (o shader só recebe a altura somada).
 #[test]
-#[ignore = "sonda B31.1: vermelha até a cura (o gradiente do dente separado, CPU e GPU) — BACKLOG B31.1"]
 fn fora_da_tinta_o_papel_so_acende_pelo_dente() {
     let (w, h) = (160, 120);
     let mut t = papel(w, h);

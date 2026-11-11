@@ -97,6 +97,8 @@ struct Globals {
 @group(0) @binding(5) var mat1: texture_2d<f32>;
 @group(0) @binding(6) var spec_lut: texture_2d<f32>;
 @group(0) @binding(7) var<uniform> u: Globals;
+// B31.1: the PAPER's share of `relief` (the tooth the paint lets show). Read only when `u.paper_body != 0`.
+@group(0) @binding(8) var papel: texture_2d<f32>;
 
 // Wrap lighting (`Wax`): Valve's half-Lambert. At w = 0 this is `max(N.L, 0)` exactly, which is what
 // makes the neutral material the pass as it shaded before materials existed.
@@ -122,6 +124,17 @@ fn spec_at(level: i32, ndh: f32) -> f32 {
 fn height_at(c: vec2<i32>, dims: vec2<i32>) -> f32 {
     let p = clamp(c, vec2<i32>(0, 0), dims - vec2<i32>(1, 1));
     return textureLoad(relief, p, 0).r;
+}
+
+fn papel_at(c: vec2<i32>, dims: vec2<i32>) -> f32 {
+    let p = clamp(c, vec2<i32>(0, 0), dims - vec2<i32>(1, 1));
+    return textureLoad(papel, p, 0).r;
+}
+
+// B31.1 — the slope with paper: `grad(tooth) + body * (grad(relief) - grad(tooth))`. Off the paint only the tooth
+// tilts the light (no white rim beside an Impasto wall). The CPU's `inclinacao_com_papel`, the same arithmetic.
+fn inclinacao_com_papel(alt: vec2<f32>, pap: vec2<f32>, corpo: f32) -> vec2<f32> {
+    return vec2<f32>(pap.x + corpo * (alt.x - pap.x), pap.y + corpo * (alt.y - pap.y));
 }
 
 // One channel's (multiply, glint) from its summed diffuse and specular — the shared core of the CPU's
@@ -162,11 +175,18 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let albedo = texel.rgb;
 
     // Central differences: a rising slope tilts the normal AGAINST the rise.
-    let dhx = (height_at(coord + vec2<i32>(1, 0), dims) - height_at(coord - vec2<i32>(1, 0), dims)) * 0.5;
-    let dhy = (height_at(coord + vec2<i32>(0, 1), dims) - height_at(coord - vec2<i32>(0, 1), dims)) * 0.5;
+    var dhx = (height_at(coord + vec2<i32>(1, 0), dims) - height_at(coord - vec2<i32>(1, 0), dims)) * 0.5;
+    var dhy = (height_at(coord + vec2<i32>(0, 1), dims) - height_at(coord - vec2<i32>(0, 1), dims)) * 0.5;
     // The weight IS the coverage: the pass multiplies a composited pixel, and at a stroke's translucent
     // edge that pixel is mostly paper showing through. Shading it in full means shading the paper.
     let cover_here = textureLoad(cover, coord, 0).r;
+    if (u.paper_body != 0u) {
+        let px = (papel_at(coord + vec2<i32>(1, 0), dims) - papel_at(coord - vec2<i32>(1, 0), dims)) * 0.5;
+        let py = (papel_at(coord + vec2<i32>(0, 1), dims) - papel_at(coord - vec2<i32>(0, 1), dims)) * 0.5;
+        let s = inclinacao_com_papel(vec2<f32>(dhx, dhy), vec2<f32>(px, py), cover_here);
+        dhx = s.x;
+        dhy = s.y;
+    }
     let body = max(cover_here, f32(u.paper_body));
     let gloss = cover_here;
 

@@ -36,6 +36,8 @@ pub(crate) struct DobraDaTela {
     idx: Vec<u16>,
     paletas: Vec<Vec<MaterialBytes>>,
     paper_body: f32,
+    /// B31.1: o plano do papel em moldura, como `alt` (só com substrato).
+    pap: Option<Vec<f32>>,
 }
 
 /// Onde o sombreado vai buscar o material do texel `q` (índice nas linhas da dobra).
@@ -74,12 +76,15 @@ impl MatFonte for PorPaleta<'_> {
 }
 
 /// Sombreia uma faixa de `n = faixa.len() / (w·4)` linhas: `alt` = as `n + 2` linhas em moldura, `cob` as `n`
-/// linhas da dobra (passo `w + 2`).
+/// linhas da dobra (passo `w + 2`). `pap` (com papel): o plano do papel na moldura de `alt` — B31.1, a inclinação é
+/// a do dente mais `corpo ×` a da tinta ([`inclinacao_com_papel`]).
 #[inline]
+#[allow(clippy::too_many_arguments)]
 pub(super) fn sombreia_faixa(
     light: &Rig,
     paper_body: f32,
     alt: &[f32],
+    pap: Option<&[f32]>,
     cob: &[f32],
     faixa: &mut [u8],
     w: usize,
@@ -92,9 +97,14 @@ pub(super) fn sombreia_faixa(
         for rx in 0..w {
             let k = c + rx;
             let q = ry * fw + 1 + rx; // o mesmo píxel nas linhas da dobra
-            let dhx = (alt[k + 1] - alt[k - 1]) * 0.5;
-            let dhy = (alt[k + fw] - alt[k - fw]) * 0.5;
+            let mut dhx = (alt[k + 1] - alt[k - 1]) * 0.5;
+            let mut dhy = (alt[k + fw] - alt[k - fw]) * 0.5;
             let cover = cob[q];
+            if let Some(p) = pap {
+                let px = (p[k + 1] - p[k - 1]) * 0.5;
+                let py = (p[k + fw] - p[k - fw]) * 0.5;
+                (dhx, dhy) = inclinacao_com_papel((dhx, dhy), (px, py), cover);
+            }
             let i = (ry * w + rx) * 4;
             let albedo = [
                 f32::from(faixa[i]) / 255.0,
@@ -115,26 +125,74 @@ pub(super) fn sombreia_faixa(
     }
 }
 
-/// A dobra das linhas `gy0 - 1 ..= gy0 + n` (moldura incluída) a partir de `x0 - 1`: as de moldura só a altura.
+/// ⭐ B31.1 — **a inclinação com papel**: `∇dente + corpo·(∇alt − ∇dente)`. Fora da tinta (corpo 0) só o dente
+/// inclina a luz — a parede da tinta não acende o papel nu ao lado dela (o aro branco); dentro (corpo 1), a da tinta.
+/// A placa faz a MESMA aritmética (`impasto_light.wgsl`, `inclinacao_com_papel`).
+#[inline]
+pub(super) fn inclinacao_com_papel(alt: (f32, f32), pap: (f32, f32), corpo: f32) -> (f32, f32) {
+    (
+        pap.0 + corpo * (alt.0 - pap.0),
+        pap.1 + corpo * (alt.1 - pap.1),
+    )
+}
+
+/// (Pranchas) A lei de antes do B31.1 — a inclinação só da altura somada — no MESMO processo: o «antes» da prancha.
+static LEI_ANTIGA_DO_ARO: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Há plano do papel a separar da inclinação da tinta (B31.1): há substrato e a prancha não pediu a lei antiga.
+#[inline]
+pub(super) fn separa_o_papel(fields: &ReliefFields<'_>) -> bool {
+    fields.substrate.is_some() && !LEI_ANTIGA_DO_ARO.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+impl PainterTool {
+    /// (Pranchas) `true` = a luz com a lei de antes do B31.1 (o aro branco), em todo o processo.
+    #[doc(hidden)]
+    pub fn prancha_b31_1_lei_antiga(on: bool) {
+        LEI_ANTIGA_DO_ARO.store(on, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+/// A dobra das linhas `gy0 - 1 ..= gy0 + n` (moldura incluída) a partir de `x0 - 1`: as de moldura só a altura (e o
+/// plano do papel, em `pap`, quando há).
+#[allow(clippy::too_many_arguments)]
 pub(super) fn dobra_da_faixa(
     fields: &ReliefFields<'_>,
     gy0: i64,
     x0: i64,
     fw: usize,
     alt: &mut [f32],
+    mut pap: Option<&mut [f32]>,
     cob: &mut [f32],
     mats: &mut [MaterialBytes],
 ) {
     let n = cob.len() / fw;
     for (j, linha) in alt.chunks_exact_mut(fw).enumerate() {
         let gy = gy0 - 1 + j as i64;
+        let pl = pap.as_deref_mut().map(|p| &mut p[j * fw..(j + 1) * fw]);
         if j == 0 || j == n + 1 {
-            for (i, a) in linha.iter_mut().enumerate() {
-                *a = fields.height_at(x0 - 1 + i as i64, gy);
+            match pl {
+                Some(pl) => {
+                    for (i, (a, p)) in linha.iter_mut().zip(pl.iter_mut()).enumerate() {
+                        (*a, *p) = fields.altura_e_papel_at(x0 - 1 + i as i64, gy);
+                    }
+                }
+                None => {
+                    for (i, a) in linha.iter_mut().enumerate() {
+                        *a = fields.height_at(x0 - 1 + i as i64, gy);
+                    }
+                }
             }
         } else {
             let r = (j - 1) * fw..j * fw;
-            fields.dobra_da_linha(gy, x0 - 1, linha, &mut cob[r.clone()], &mut mats[r]);
+            fields.dobra_da_linha_com_papel(
+                gy,
+                x0 - 1,
+                linha,
+                &mut cob[r.clone()],
+                &mut mats[r],
+                pl,
+            );
         }
     }
 }
@@ -173,7 +231,8 @@ impl PainterTool {
                     &dobra.alt[y * fw..(y + n + 2) * fw],
                     &dobra.cob[y * fw..(y + n) * fw],
                 );
-                sombreia_faixa(&light, dobra.paper_body, alt, cob, faixa, w, mats);
+                let pap = dobra.pap.as_ref().map(|p| &p[y * fw..(y + n + 2) * fw]);
+                sombreia_faixa(&light, dobra.paper_body, alt, pap, cob, faixa, w, mats);
             });
         true
     }
@@ -190,7 +249,9 @@ impl PainterTool {
         let fw = w + 2;
         let mut cob = vec![0.0f32; fw * h];
         let mut idx = vec![0u16; fw * h];
-        let faixas: Vec<Option<(Vec<f32>, Vec<MaterialBytes>)>> = cob
+        let com_papel = separa_o_papel(&fields);
+        #[allow(clippy::type_complexity)]
+        let faixas: Vec<Option<(Vec<f32>, Option<Vec<f32>>, Vec<MaterialBytes>)>> = cob
             .par_chunks_mut(fw * FAIXA_LINHAS)
             .zip(idx.par_chunks_mut(fw * FAIXA_LINHAS))
             .enumerate()
@@ -199,7 +260,17 @@ impl PainterTool {
                 let mut alt = vec![0.0f32; fw * (n + 2)];
                 let mut mats: Vec<MaterialBytes> = vec![[0; 7]; fw * n];
                 let gy0 = (b * FAIXA_LINHAS) as i64;
-                dobra_da_faixa(&fields, gy0, 0, fw, &mut alt, cob, &mut mats);
+                let mut pap = com_papel.then(|| vec![0.0f32; alt.len()]);
+                dobra_da_faixa(
+                    &fields,
+                    gy0,
+                    0,
+                    fw,
+                    &mut alt,
+                    pap.as_deref_mut(),
+                    cob,
+                    &mut mats,
+                );
                 let mut paleta = vec![Material::NEUTRAL.to_bytes()];
                 let mut ult = 0usize;
                 for (m, i) in mats.iter().zip(idx.iter_mut()) {
@@ -214,16 +285,20 @@ impl PainterTool {
                     }
                     *i = u16::try_from(ult).ok()?;
                 }
-                Some((alt, paleta))
+                Some((alt, pap, paleta))
             })
             .collect();
         let mut alt = vec![0.0f32; fw * (h + 2)];
+        let mut pap_tela = com_papel.then(|| vec![0.0f32; fw * (h + 2)]);
         let mut paletas = Vec::with_capacity(faixas.len());
         for (b, f) in faixas.into_iter().enumerate() {
-            let (a, paleta) = f?;
+            let (a, pap, paleta) = f?;
             let y = b * FAIXA_LINHAS;
             // As linhas da faixa (moldura de cima incluída); a de baixo é a de cima da faixa seguinte, ou a última.
             alt[y * fw..y * fw + a.len()].copy_from_slice(&a);
+            if let (Some(t), Some(p)) = (pap_tela.as_mut(), pap) {
+                t[y * fw..y * fw + p.len()].copy_from_slice(&p);
+            }
             paletas.push(paleta);
         }
         Some(DobraDaTela {
@@ -232,6 +307,7 @@ impl PainterTool {
             idx,
             paletas,
             paper_body: fields.paper_body(),
+            pap: pap_tela,
         })
     }
 }

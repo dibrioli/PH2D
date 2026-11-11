@@ -405,12 +405,13 @@ mod tests {
     /// B35.2: o `gateSaturation` pinta-se na gaveta do solver (Paint 3 → 2, Physics 5 → 6).
     /// Menos 19 a 10/11 (B35.1, [`ph2d_tool_painter::ids::NO_INSPECTOR`]): 88 → 69 (Paint 19 → 3, Water 7 → 5, Physics 6 → 5).
     /// Menos 1 (B35.9): o Eraser fundiu-se no Erase Strength do cartão (Tools 6 → 5; 69 → 68).
+    /// Menos 1 (B35.10): o Base evaporation fundiu-se no Dry Speed (Water 5 → 4; 68 → 67).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 68);
+        assert_eq!(rows().len(), 67);
         for g in [
             (KnobGroup::Paint, 2),
-            (KnobGroup::Water, 5),
+            (KnobGroup::Water, 4),
             (KnobGroup::Physics, 6),
             (KnobGroup::Tools, 5),
             (KnobGroup::Paper, 1),

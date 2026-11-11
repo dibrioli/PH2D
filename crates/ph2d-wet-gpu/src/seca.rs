@@ -60,7 +60,7 @@ impl SecaU {
             } else {
                 g.borda_fundo as f32
             },
-            base_evap: p.k(Knob::BaseEvaporation) as f32,
+            base_evap: ph2d_wet_paint::drying::EVAPORACAO_BASE as f32,
             ext_gran: p.k(Knob::ExtGranulation) as f32,
             ext_stain: p.k(Knob::ExtStaining) as f32,
             evap_base: evap_base as f32,

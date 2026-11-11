@@ -145,7 +145,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::Rewet, KnobGroup::Water, "rewet", 0.0, 8.0, 0.05, 1.0, None),
     k(Knob::Retention, KnobGroup::Water, "retention", 0.9, 1.0, 0.0005, 0.995, None),
     k(Knob::EdgeDarkening, KnobGroup::Water, "edgeDarkening", 0.0, 200.0, 1.0, 50.0, None),
-    k(Knob::BaseEvaporation, KnobGroup::Water, "baseEvaporation", 0.0, 20.0, 0.1, 2.0, None),
+    k(Knob::BaseEvaporation, KnobGroup::Hidden, /* B35.10: fundido no Dry Speed */ "baseEvaporation", 0.0, 20.0, 0.1, 2.0, None),
     k(
         Knob::Leveling,
         KnobGroup::Hidden, // no cartão Wet Paint do painel do Painter (dono 13/10)

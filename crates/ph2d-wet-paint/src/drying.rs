@@ -18,6 +18,8 @@ use crate::tuning::Knob;
 
 #[path = "drying/edge_window.rs"]
 mod edge_window;
+#[cfg(test)]
+mod evaporacao_base_tests;
 use edge_window::EdgeWindow;
 #[path = "drying/tinta.rs"]
 pub mod tinta;
@@ -103,6 +105,10 @@ pub(crate) fn lift_settled(
     *sett = (st - lift) as f32;
 }
 
+/// A evaporação de base da lei (B35.10): o knob Base evaporation fundiu-se no Dry Speed (`Evaporation`), que já
+/// escala o termo inteiro; fica a constante de fábrica, `2`.
+pub const EVAPORACAO_BASE: f64 = 2.0;
+
 /// As constantes do passe, colhidas UMA vez — o que o laço quente não pode
 /// re-perguntar por célula.
 pub(crate) struct DryConst {
@@ -128,7 +134,7 @@ impl DryConst {
             } else {
                 g.borda_fundo
             },
-            base_evaporation: p.k(Knob::BaseEvaporation),
+            base_evaporation: EVAPORACAO_BASE,
             ext_granulation: p.k(Knob::ExtGranulation),
             ext_staining: p.k(Knob::ExtStaining),
             evap_base,

@@ -32,6 +32,7 @@
 | Hook / scripts / roteador | `.claude/hooks/prazo-do-agente.sh`, `scripts/processo.prova.d/I.sh`, `docs/Components/ferramentas/fotografa_cena.sh`, `CLAUDE.md` (só a linha §5.1 do módulo: o link do handoff) |
 | **`ph2d-code-scene-arena` (crate NOVA, 2)** | **A** `Cargo.toml`, `src/lib.rs` (a cena 15 e o `STEPS_15`, vindos de `ph2d-code-scenes`/`ph2d-code-smoke`); consumidores `ph2d-app-code` (`smoke_drive.rs`, `Cargo.toml`) e `ph2d-app-components` (`code_smoke.rs`, `Cargo.toml`); linha nova em `TETOS_DAS_CRATES_DA_FAMILIA`; `Cargo.lock` tocado |
 | Ronda «stem darkening» (`07d722387f`) | `ph2d-tokens/src/{typography,lib}.rs` (variante 4.ª de `TextRendering`, `ALL` = 4, campo `stem_darkening`, `stem_darkening_px`) · `ph2d-text`: nada · `ph2d-editor-core`: `published.rs` (+**A** `published_embolden_tests.rs`), `paint.rs`, `paint_text.rs` (692/700), `paint_text_rotated.rs`, `ids/menus_settings.rs`, `screens/hero/{chrome/settings_text,menu_row_mark,menu_tables_settings,pre_populate}.rs` · `ph2d-i18n/src/chrome_menus.rs` (`chrome.menu.crisp_stem_darkening`) · `ph2d-vector/src/lib.rs` (re-export `FontEmbolden`, `Diagonal2`; o contrato congelado vive em `ph2d-vector-doc`, intocado) · `ph2d-panel-code/src/glyphs.rs`, `tests/it/nitidez.rs`. ⚠️ Quem faça `match` exaustivo sobre `TextRendering` noutra linha parte aqui. |
+| **Ronda 11/11** (`89ac2897e9..c67465ff6e`) | `ph2d-panel-code`: **A** `src/tab_bar.rs`, `src/tab_bar/menu.rs`, `tests/it/{submenu,fundo_real}.rs`; M `mono_label` (`paint` → `paint_on(.., bg, ..)`, ⚠️ quem chame `mono_label::paint` parte), `palette` (`link_ink`, `#[derive(Clone)]`), `code_text` (`choices`), `help/paint`, `script_list`, `bancada/{grid,outline}`, `lib`, `tests/it/main` · `ph2d-app-code`: `tab_menu` (a barra saiu; `Bar`/`BarPainted` = alias genéricos; `menu_items`/`menu_titles`/`ROW_TEXT_RENDERING`), `commands` (os 4 modos só na paleta), `surface`, `smoke_drive`, `tests/it/{barra_da_aba,divisor,ajuda,arrastar,bancada,main,onda_b}` · **`ph2d-editor-core` (foundational, ADITIVO):** `doc_surface.rs` **`PointerInput.primary_held`** (⚠️ campo novo num literal: quem construa `PointerInput` noutra linha não compila — 17 sítios preenchidos aqui), `documents.rs`/`documents_surface.rs` (`note_button`, `primary_held()`), `widget/lista_flutuante.rs` (`Superficie::fundo`), `screens/hero/surface_input.rs`, `published_embolden_tests.rs` · `shells/desktop/src/input_dispatch.rs` (+2 linhas: `note_button` no topo de `pointer_button`) · `shells/game-scenes/tests/it/` (5 ficheiros, o campo) · `ph2d-i18n/src/code_bancada.rs` (5 chaves `code.menu.text*`) |
 | Docs / fotos | 2 handoffs em `docs/CodeEditor/handoffs/`; fotos em `docs/CodeEditor/ferramentas/smoke/` (+`cena13/`); `cena14/fotos_q3.sh` (`ARRASTA=`, `DUPLO=`) |
 
 **Provas de contrato:**
@@ -94,16 +95,24 @@ corre é o do primário; a cura só vale depois da integração.
 - **Auditoria, lentes independentes:** sem violação de regra; correcção curada (item F); a lente de ratchet gerou o aviso do §2.
 - **Binário do smoke:** ver o fim do §8.
 
-## 5. Folgas medidas (recontar na integração; `wc -l` no HEAD `40df6a8502`)
+## 5. Folgas medidas (recontar na integração; `wc -l` no HEAD `c67465ff6e`, 11/11)
 
-| Ficheiro / crate | Medido / tecto |
-|---|---|
-| `ph2d-editor-core/src/paint_text.rs` | **693 / 700 — ⚠️ folga 7** |
-| `ph2d-app-code/src/doc.rs` | 689 / 700 |
-| `ph2d-app-code/src/surface.rs` | 630 / 700 |
-| `ph2d-ui-table/src/lib.rs` | 604 / 700 |
-| crate `ph2d-app-code` | **26 600** × tecto 26 628 (`find crates/ph2d-app-code -name '*.rs' \| xargs cat \| wc -l`) |
-| crate `ph2d-code-assist` | **4 088** × isenção 4 188 |
+| Ficheiro / crate | Medido / tecto | Folga |
+|---|---|---|
+| crate `ph2d-app-code` (catraca `the_shell_only_shrinks`) | **26 534** / 26 628 | 94 (era 2: a barra saiu −259, voltaram +167 de testes e do largar perdido) |
+| crate `ph2d-code-smoke` | 614 / 614 | **0** (não tocada) |
+| crate `ph2d-panel-code` | 21 725 | sem tecto de crate |
+| `ph2d-editor-core/src/paint.rs` | 700 / 700 | **0** (não tocado) |
+| `ph2d-editor-core/src/paint_text.rs` | 692 / 700 | 8 (não tocado) |
+| `ph2d-editor-core/src/screens/hero/paint.rs` | 700 / 700 | **0** (não tocado; o teste do `publish_text` vive em `published_embolden_tests.rs`) |
+| `ph2d-app-code/src/surface.rs` | 643 / 700 | 57 |
+| `ph2d-panel-code/src/tab_bar/menu.rs` · `tab_bar.rs` · `palette.rs` | 363 · 273 · 331 / 700 | — |
+| `ph2d-editor-core/src/documents_surface.rs` · `widget/lista_flutuante.rs` | 134 · 267 / 700 | — |
+| `shells/desktop/src/input_dispatch.rs` | 596 / 700 | 104 |
+| crate `ph2d-code-assist` | 4 088 × isenção 4 188 | — |
+
+`the_shell_only_shrinks` e `architecture_workspace_file_loc_cap` verdes (por nome, 11/11). O tecto 26 628 da `ph2d-app-code` não foi
+baixado (o integrador reconta).
 
 ## 6. Smokes (comando exacto)
 
@@ -136,14 +145,21 @@ Os passos 1–3 vêm das rondas aprovadas (ficam para o próximo testador); **4�
 
 ## 7. Aberto
 
-1. Um **simples MOVER do rato** depois de um largar perdido FORA da aba ainda redimensiona até ao carregar seguinte: o `PointerInput`
-   não leva o estado dos botões; precisa de suporte do host (**fora desta linha**).
+1. ~~Largar fora da aba~~ **feito 11/11** (§8): o 1.º movimento sem botão acaba o arrasto. ⚠️ Sem teste ao nível do herói: a mutação
+   «`surface_input` passa sempre `primary_held: true`» **sobrevive** (nenhum teste conduz o `surface_input` com uma aba de família);
+   verificado com o rato real na Xvfb (`aw_divisor_largado_fora.png`).
 2. A cura do hook só vale depois da integração (corre o do primário).
-3. `ph2d-editor-core/src/paint_text.rs` **693 / 700**.
-4. O integrador reconta a catraca (`ph2d-code-assist` 4 188; tecto de fonte `ph2d-app-code` 26 628 não baixado; teto total da família).
-5. **Memória no primário `project-memory/`, NÃO comitada:** `feedback_the_app_standard_is_a_checkbox_not_a_toggle.md`,
-   `project_script_tab_font_weight_follows_mockup_2026_11_10.md` e os ponteiros no `MEMORY.md` — o integrador funde-os.
-6. **Smoke do dono das últimas rondas (divisor, pesos, medidas): PENDENTE.**
+3. `paint.rs` 700/700 e `hero/paint.rs` 700/700 (não tocados); `paint_text.rs` 692/700.
+4. O integrador reconta a catraca (`ph2d-app-code` 26 534 × tecto 26 628; `ph2d-code-assist` 4 188).
+5. **Memória no primário `project-memory/`, NÃO comitada** (as do dono de 10/11) — o integrador funde-as.
+6. **Smoke do dono: PENDENTE** (o desta ronda e o das anteriores).
+7. A mutação «`row_bg` ignora a linha acesa» **sobrevive**: nos 12 temas `AccentFg` fica do mesmo lado de `Accent` e do popover, o
+   escurecimento sai igual — sem diferença visível hoje; o teste `fundo_real` guarda o título, a linha apagada e a etiqueta.
+8. A lista, o «In this script», a grelha e os exemplos da ajuda passam o fundo real, mas só a porta (`paint_on`) e a barra têm
+   teste; nenhum tema hoje separa esses fundos do poço para a tinta deles.
+9. Sugestão (não pedida): «Card Style: Sheet/Cards/Strip» são 3 linhas soltas no View, como eram os modos de letra — um 2.º
+   submenu deixava o View coerente (o dono decide; os passos 2–4 da cena 13 clicam nessas linhas por índice).
+10. O submenu não tem a «mira» diagonal (triângulo seguro): é a última linha do View, nenhuma linha fica no caminho.
 
 Mantém-se: altura de linha = da casa (decisão do dono). O peso da maquete foi **aplicado** (já não fica «de propósito» de fora). Os abertos
 de desenho da Onda B/Q3_Q4 continuam nos handoffs deles. O ramo `backup/line-ScriptEditor-2026-11-08` foi apagado com o sim do dono.
@@ -345,9 +361,35 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   comparação com a superfície · lei velha `Y > 0,5` · `STEM_DARKENING_PX = 0,1` (sonda de placa). Sem teste: a chamada
   `publish_text` do hero (o tema por omissão é o escuro). Clippy do workspace `-D warnings` verde.
 
-Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,49 s, já construído pelas fotos); a 2.ª:
+- **Ronda 11/11 — submenu, largar perdido, link, buracos de teste (`89ac2897e9`, `70aea86b73`, `da68460004`, `c67465ff6e`).**
+  (1) **`View ▸ Text rendering ▸`** em cascata: a barra da aba mudou-se para `ph2d_panel_code::tab_bar` (`TabBar<M>`, genérica; a
+  `ph2d-app-code` monta `MenuItem::{Cmd, Note, Sub}` e corre o comando). Pairar na linha-mãe abre o submenu (a mãe fica acesa),
+  outra linha fecha-o, clicar na mãe também abre, escolher fecha tudo, Esc fecha um nível; ✓ (`IconId::Check`, acento) à esquerda
+  do em vigor; à direita, senão à esquerda, senão encostado à borda da aba. Os 4 modos ficam também na paleta Ctrl+K. Sem teclado
+  (a barra não o tem). (2) **Largar fora da aba**: `PointerInput.primary_held`; a shell anota o primário no topo de `pointer_button`
+  (`Documents::note_button`); na aba, um movimento sem o botão com carregar/arrasto vivo é o largar perdido — divisor e selecção
+  acabam ali (pelo caminho do Up), o nome arrastado da lista cancela-se (marca apagada, nada cai). (3) **Link sob Ctrl**:
+  `palette::link_ink` = Accent, senão o 1.º degrau a ≥ 4,5:1 no poço e na linha do cursor (medido, linha do cursor: Oled Accent 4,29 →
+  Hover 5,10; Sunstone Accent 4,41 · Hover 3,59 → Press 5,43; os outros 10 no Accent, 4,66–8,60); sintaxe intacta; vale também com
+  `PH2D_CARDS=0`. (4) Buracos: `the_hero_painter_publishes_the_preset_and_the_theme`, `rotated_text_is_emboldened_only_in_the_darkened_preset`,
+  `mono_label::paint_on` com o fundo real (lista: linha corrente; «In this script»: entrada acesa; grelha/cartão; barra: cartão,
+  acento, popover = `Superficie::fundo`; ajuda: a caixa do exemplo). Testes novos: `barra_da_aba::{o_submenu_text_rendering_do_view_escolhe_a_letra_do_codigo,
+  o_submenu_fecha_por_outra_linha_pelo_esc_e_por_fora}`, `submenu::*` (3), `fundo_real::*` (2), `divisor::{o_primeiro_movimento_sem_botao_acaba_o_arrasto,
+  o_largar_perdido_acaba_a_seleccao_e_cancela_o_nome_da_lista}`, `documents_surface::tests::o_botao_primario_e_anotado_ate_largar`,
+  `palette::tests::o_link_le_se_no_poco_e_na_linha_do_cursor_nos_12_temas`, os 2 `embolden_tests`. Crates inteiras (motivo: código
+  movido): `ph2d-app-code` 280 ✓ · `ph2d-panel-code` 149 ✓; `ph2d-host-game-scenes` compila (scrub 5 ✓); clippy `-D warnings` das 6
+  crates tocadas ✓; fmt ✓. **Mutações 13/15 vermelhas** (uma a uma, `git checkout` depois): submenu (hover, mãe, Esc, posição, ✓),
+  `pal.bg`, `lost = false`, sem cancelar a lista, `note_button` sem guarda, sem `publish_text`, rodado sem escurecimento, sem
+  `link_ink`, ordem dos degraus → exit 1. Sobrevivem `row_bg` e `surface_input` (§7 itens 1 e 7). Fotos (cena 13 passo 1, rato
+  real): [av_submenu.png](../ferramentas/smoke/av_submenu.png) (`CLIQUES="752 42;790 195"`) ·
+  [av_submenu_escolhido.png](../ferramentas/smoke/av_submenu_escolhido.png) (escolheu «Crisp + stem darkening» e reabriu: ✓ mudou) ·
+  [av_submenu_zoom.png](../ferramentas/smoke/av_submenu_zoom.png) · [aw_divisor_largado_fora.png](../ferramentas/smoke/aw_divisor_largado_fora.png)
+  (`ARRASTA="541 300 1750 300" RATO_DEPOIS="1200 300;900 300;700 300"`: largado no Inspector, o rato volta sem botão e a coluna
+  não o segue; `RATO_DEPOIS` novo no `fotos_q3.sh`).
+
+Binário de smoke depois de `rm -rf target/*/incremental` (11/11, HEAD `c67465ff6e`; 1.ª: 48,69 s); a 2.ª:
 
 ```
-▸ linha line_scripteditor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1500s
-    Finished `smoke` profile [optimized] target(s) in 0.21s
+▸ linha line_scripteditor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+    Finished `smoke` profile [optimized] target(s) in 0.23s
 ```

@@ -59,8 +59,12 @@ pub(super) const SIMPLIFY_KEEP_FRACTION: f32 = 0.8;
 pub(super) const SIMPLIFY_MIN_POINTS: usize = 5;
 /// Free Hand: minimum squared spacing (px²) between captured path points — keeps the raw capture bounded.
 const MIN_CAPTURE_DIST_SQ: f32 = 4.0;
-/// Free Hand: hard cap on raw captured points during the drag (before the fit).
-const MAX_FREEHAND_CAPTURE: usize = 4096;
+/// Free Hand: cap on raw captured points during the drag (before the fit), from the canvas side — a
+/// path of TWO perimeters at the minimum spacing `2(w+h)`, never below the old `4096`. A fixed `4096`
+/// lost points past ~8 192 px (a 4K lasso is 12 000). Measured (B40.7, `docs/Painter/missao_4k/BACKLOG.md`).
+pub(super) fn freehand_capture_cap(size: (u32, u32)) -> usize {
+    (2 * (size.0 as usize + size.1 as usize)).max(4096)
+}
 /// In-progress Curve session: the shared editable [`CurveModel`] + the stroke-specific grab / phase state.
 /// In [`PaintState::curve`].
 #[derive(Clone)]
@@ -186,6 +190,7 @@ impl PainterTool {
     /// Pointer-move: drag the grabbed point (edit) or stretch the initial line preview (draw).
     fn curve_move(&mut self, pos: [f32; 2]) -> bool {
         let stabilizer = self.paint.brush.stabilizer;
+        let cap = freehand_capture_cap(self.source_size);
         let Some(ed) = self.paint.curve.as_mut() else {
             return false;
         };
@@ -196,8 +201,7 @@ impl PainterTool {
                 ed.stabilized = lazy_mouse_step(ed.stabilized, pos, stabilizer);
                 let p = ed.stabilized;
                 let last = *ed.model.points.last().unwrap_or(&ed.anchor);
-                if ed.model.points.len() < MAX_FREEHAND_CAPTURE
-                    && curve_geom::dist2(last, p) >= MIN_CAPTURE_DIST_SQ
+                if ed.model.points.len() < cap && curve_geom::dist2(last, p) >= MIN_CAPTURE_DIST_SQ
                 {
                     ed.model.points.push(p);
                 }
@@ -573,7 +577,10 @@ impl PainterTool {
         let (op, oh, _) = curve_offset::offset_curve_refined(points, handles, d, closed);
         let mut spine = Vec::new();
         curve_geom::flatten_spine(&op, &oh, closed, &mut spine);
-        if self.paint.offset_trim {
+        // Offset 0 is the drawn spine itself: its crossings are the artist's loops, not offset folds.
+        #[cfg(test)]
+        let d = if TRIM_SEM_GUARDA.get() { 1.0 } else { d };
+        if self.paint.offset_trim && d != 0.0 {
             spine = trim_offset_spine(&spine, closed);
         }
         spine
@@ -596,6 +603,15 @@ pub(super) fn trim_offset_spine(spine: &[[f32; 2]], closed: bool) -> Vec<[f32; 2
         super::curve_trim::trim_self_intersections(spine)
     }
 }
+
+#[cfg(test)]
+thread_local! {
+    /// O ORÁCULO do antes (prancha B40a): o Trim corre mesmo com Offset 0, como antes da guarda.
+    static TRIM_SEM_GUARDA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+#[cfg(test)]
+#[path = "curve_b40a_tests.rs"]
+mod b40a_tests;
 
 impl CurveEditor {
     /// Capture the editable state for the unified undo timeline (handle kinds → wire `u8`); the transient

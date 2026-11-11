@@ -137,11 +137,7 @@ impl PainterTool {
         if radius == 0 || w == 0 || h == 0 || crisp.len() != w * h {
             self.paint.selection_mask = crisp;
         } else {
-            // Three box-blur passes ≈ a Gaussian (central-limit): a smooth, regular feather ramp.
-            let mut m = box_blur(&crisp, w, h, radius);
-            m = box_blur(&m, w, h, radius);
-            m = box_blur(&m, w, h, radius);
-            self.paint.selection_mask = Arc::new(m);
+            self.paint.selection_mask = Arc::new(feather(&crisp, w, h, radius));
         }
         // NB: a selection-mask change does NOT touch the layer composite — the compositor is provably
         // selection-independent (zero selection refs), the marquee/hatching is a per-frame shell OVERLAY, and
@@ -152,37 +148,94 @@ impl PainterTool {
     }
 }
 
-/// Separable box blur of a single-channel `w*h` coverage buffer (Feather). Two 1-D averaging passes (H
-/// then V) with a `(2r+1)` window, clamping samples to the border — transcendental-free (HR-5).
-fn box_blur(src: &[u8], w: usize, h: usize, r: usize) -> Vec<u8> {
-    if r == 0 || w == 0 || h == 0 || src.len() != w * h {
-        return src.to_vec();
-    }
-    let win = (2 * r + 1) as u32;
-    let mut tmp = vec![0u8; w * h];
-    for y in 0..h {
-        let row = y * w;
-        for x in 0..w {
-            let mut acc = 0u32;
-            for k in 0..(2 * r + 1) {
-                let xx = (x + k).saturating_sub(r).min(w - 1);
-                acc += u32::from(src[row + xx]);
-            }
-            tmp[row + x] = (acc / win) as u8;
-        }
-    }
+/// Feather: three box-blur passes ≈ a Gaussian (central-limit), a smooth, regular ramp. Runs in the
+/// window = bbox(crisp) ⊕ 3r: outside it the three passes are 0, and inside it every clamped sample past
+/// the window edge is 0 too (pass k is nonzero only within bbox ⊕ k·r), so it equals the whole-canvas blur.
+fn feather(crisp: &[u8], w: usize, h: usize, r: usize) -> Vec<u8> {
     let mut out = vec![0u8; w * h];
-    for x in 0..w {
-        for y in 0..h {
-            let mut acc = 0u32;
-            for k in 0..(2 * r + 1) {
-                let yy = (y + k).saturating_sub(r).min(h - 1);
-                acc += u32::from(tmp[yy * w + x]);
-            }
-            out[y * w + x] = (acc / win) as u8;
-        }
+    let Some([bx0, by0, bx1, by1]) = nonzero_bbox(crisp, w, h) else {
+        return out;
+    };
+    let m = 3 * r;
+    let (x0, y0) = (bx0.saturating_sub(m), by0.saturating_sub(m));
+    let (x1, y1) = ((bx1 + m).min(w), (by1 + m).min(h));
+    let (ww, wh) = (x1 - x0, y1 - y0);
+    let mut a = vec![0u8; ww * wh];
+    for (y, row) in a.chunks_exact_mut(ww).enumerate() {
+        row.copy_from_slice(&crisp[(y0 + y) * w + x0..][..ww]);
+    }
+    let mut tmp = vec![0u8; ww * wh];
+    // Row bands on the pool (ADR-0201): every byte is its own exact sum, so no band count changes it.
+    let threads = crate::compositor::parallel_threads(ww * wh, wh);
+    for _ in 0..3 {
+        crate::compositor::em_faixas_de_linhas(&mut tmp, ww, threads, |band, y| {
+            blur_rows(&a[y * ww..][..band.len()], band, ww, r);
+        });
+        crate::compositor::em_faixas_de_linhas(&mut a, ww, threads, |band, y| {
+            blur_cols(&tmp, band, ww, wh, r, y);
+        });
+    }
+    for (y, row) in a.chunks_exact(ww).enumerate() {
+        out[(y0 + y) * w + x0..][..ww].copy_from_slice(row);
     }
     out
+}
+
+/// `[x0, y0, x1, y1)` of the nonzero texels, `None` when all are 0.
+fn nonzero_bbox(v: &[u8], w: usize, h: usize) -> Option<[usize; 4]> {
+    let (mut x0, mut x1) = (w, 0);
+    let (mut y0, mut y1) = (h, 0);
+    for (y, row) in v.chunks_exact(w).enumerate() {
+        let Some(a) = row.iter().position(|&p| p != 0) else {
+            continue;
+        };
+        let b = row.iter().rposition(|&p| p != 0).unwrap_or(a);
+        (x0, x1, y0, y1) = (x0.min(a), x1.max(b + 1), y0.min(y), y + 1);
+    }
+    (y1 > 0).then_some([x0, y0, x1, y1])
+}
+
+/// Horizontal box pass: a `(2r+1)` window clamped to the row ends, as a sliding u32 sum (O(1)/texel;
+/// the same integer sum as summing the window, so `/win` gives the same byte).
+fn blur_rows(src: &[u8], dst: &mut [u8], w: usize, r: usize) {
+    let win = (2 * r + 1) as u32;
+    let last = w - 1;
+    for (s, d) in src.chunks_exact(w).zip(dst.chunks_exact_mut(w)) {
+        let mut acc: u32 = (0..=2 * r)
+            .map(|k| u32::from(s[k.saturating_sub(r).min(last)]))
+            .sum();
+        for (x, o) in d.iter_mut().enumerate() {
+            *o = (acc / win) as u8;
+            acc = acc + u32::from(s[(x + r + 1).min(last)]) - u32::from(s[x.saturating_sub(r)]);
+        }
+    }
+}
+
+/// Vertical box pass over the band of `dst` that starts at row `y0`, row by row: one running sum per
+/// column (reads follow the stride, no column walk); the band seeds its own sum, so bands are independent.
+fn blur_cols(src: &[u8], dst: &mut [u8], w: usize, h: usize, r: usize, y0: usize) {
+    let win = (2 * r + 1) as u32;
+    let last = h - 1;
+    let row = |y: usize| &src[y * w..][..w];
+    let mut acc = vec![0u32; w];
+    for k in 0..=2 * r {
+        for (a, &v) in acc
+            .iter_mut()
+            .zip(row((y0 + k).saturating_sub(r).min(last)))
+        {
+            *a += u32::from(v);
+        }
+    }
+    for (i, d) in dst.chunks_exact_mut(w).enumerate() {
+        let y = y0 + i;
+        for (o, &a) in d.iter_mut().zip(&acc) {
+            *o = (a / win) as u8;
+        }
+        let (add, sub) = (row((y + r + 1).min(last)), row(y.saturating_sub(r)));
+        for ((a, &p), &q) in acc.iter_mut().zip(add).zip(sub) {
+            *a = *a + u32::from(p) - u32::from(q);
+        }
+    }
 }
 
 /// Scanline flood — like [`super::fill::flood_fill`] but WRITES a coverage buffer (255 in-region) instead
@@ -237,3 +290,7 @@ fn flood_coverage(px: &[u8], w: usize, h: usize, seed: (usize, usize), tol: u8, 
         }
     }
 }
+
+#[cfg(test)]
+#[path = "selection_raster_tests.rs"]
+mod tests;

@@ -143,3 +143,36 @@ fn a_impressao_digital_muda_com_cada_documento_de_fora() {
     });
     assert_eq!(vezes, 2);
 }
+
+/// Quem ouve de FORA do mundo (doc Timeline 17 item 8): a entrada do Motion e o estado de UI ouvem
+/// «land»; o pulso do Motion e o marcador da Timeline (que EMITEM) e outro nome não entram.
+/// *Mutação: tirar o filtro `Role::Listen` do ramo `FORA` ⇒ o pulso e o marcador entram; tirar a
+/// igualdade de nome ⇒ «jump» entra.*
+#[test]
+fn quem_ouve_de_fora_e_so_quem_ouve_aquele_nome() {
+    use ph2d_signal_census::{Listener, Quem, listeners};
+    let g = grafo(&[
+        (fora::VALUE_INPUT, "land"),
+        (fora::PULSE_SIGNAL, "land"),
+        (fora::VALUE_INPUT, "jump"),
+    ]);
+    let t = timeline("land");
+    let s = estados("land");
+    let f = Fora {
+        motion: Some(&g),
+        timeline: Some(&t),
+        ui_states: Some(&s),
+    };
+    let doc = |d| Listener {
+        object: None,
+        what: Quem::Doc(d),
+    };
+    assert_eq!(
+        listeners(&World::new(), &f, "land").list,
+        vec![doc("MotionGraph"), doc("StateSets")]
+    );
+    assert_eq!(
+        listeners(&World::new(), &f, "jump").list,
+        vec![doc("MotionGraph")]
+    );
+}

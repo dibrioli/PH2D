@@ -52,13 +52,17 @@ fn mesa() -> Mesa<TimelinePanel> {
 
 /// Clica a alça PINTADA do marcador `i`, num ponto onde ela é o alvo.
 fn clica_na_alca(m: &mut Mesa<TimelinePanel>, i: usize) {
+    clica_na_alca_em(m, i, JANELA);
+}
+
+fn clica_na_alca_em(m: &mut Mesa<TimelinePanel>, i: usize, janela: Rect) {
     let id = ids::timeline_marker_hit_id(i);
     let r = m.rect(id).expect("a alça pintada");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     assert_eq!(m.host.hit_at(cx, cy), Some(id), "o meio da alça é dela");
     let ev = m.host.click_at(cx, cy);
     let _ = m.aplica(ev);
-    m.assenta_em(JANELA); // o gesto drena-se na pintura
+    m.assenta_em(janela); // o gesto drena-se na pintura
 }
 
 fn pintados(m: &mut Mesa<TimelinePanel>) -> Vec<String> {
@@ -103,9 +107,10 @@ fn o_clique_no_marcador_com_sinal_abre_quem_o_ouve_e_o_esc_fecha() {
     let t = pintados(&mut m);
     for frase in [
         "Signal at frame 24 \u{b7} land",
-        "Heard by",
-        "Hero \u{b7} Signal Actions",
-        "Motion input",
+        // B5: «Heard by» e o objecto em negrito, o «· componente» na tinta do rótulo — duas pinturas.
+        "Heard by Hero",
+        "\u{b7} Signal Actions",
+        "Heard by Motion input",
         "A script may listen",
     ] {
         assert!(t.iter().any(|x| x == frase), "pinta «{frase}»: {t:?}");
@@ -141,6 +146,66 @@ fn ninguem_a_ouvir_pinta_nobody_listens() {
     let t = pintados(&mut m);
     assert!(t.iter().any(|x| x == "Nobody listens"), "{t:?}");
     assert!(!t.iter().any(|x| x == "A script may listen"));
+    let _ = drain_intents();
+    ferramenta::force_cards_on_this_thread(None);
+}
+
+/// ⭐ Painel baixo (foto 32, ~230 px): o cartão nunca sobe por cima da barra («Edit curves on canvas»,
+/// Animation) — o topo fica no fundo dela (o topo da régua), cabe no painel, e as linhas que não cabem
+/// dizem-se em «+N more». *Mutação: o último recurso de `lugar_y` voltar a `fundo - h` ⇒ o cartão
+/// sobe acima da régua.*
+#[test]
+fn num_painel_baixo_o_cartao_nao_cobre_a_barra() {
+    const BAIXA: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1600.0,
+        h: 230.0,
+    };
+    ferramenta::force_cards_on_this_thread(Some(true));
+    publica();
+    let mut m = Mesa::nova(TimelinePanelState {
+        tab: Tab::Keys,
+        ..TimelinePanelState::default()
+    });
+    m.assenta_em(BAIXA);
+    clica_na_alca_em(&mut m, 2, BAIXA);
+    let quem = [
+        "Hero", "Enemy", "Camera", "Door", "Coin", "Boss", "Lamp", "Gate",
+    ];
+    set_signal_listeners(
+        "land",
+        SignalListeners {
+            list: quem
+                .iter()
+                .map(|o| Listener {
+                    object: Some((*o).into()),
+                    what: Quem::Component("SignalActions"),
+                })
+                .collect(),
+            script_may: true,
+        },
+    );
+    m.assenta_em(BAIXA);
+    let regua = m.rect(ids::TIMELINE_RULER).expect("a régua pintada");
+    let cartao = m
+        .rect(ph2d_editor_core::ids::RAIL_BACKDROP)
+        .expect("o cartão pintado");
+    assert!(
+        cartao.y >= regua.y - 0.5,
+        "o cartão {cartao:?} sobe acima do fundo da barra {regua:?}"
+    );
+    assert!(cartao.y + cartao.h <= BAIXA.y + BAIXA.h + 0.5, "{cartao:?}");
+    let (h, st) = (&mut m.host, &mut m.st);
+    let t: Vec<String> = h
+        .medindo_a_pintura::<TimelinePanel>(st, BAIXA)
+        .into_iter()
+        .map(|t| t.texto)
+        .collect();
+    assert!(
+        t.iter().any(|x| x.starts_with('+') && x.ends_with(" more")),
+        "as linhas que não cabem dizem-se: {t:?}"
+    );
     let _ = drain_intents();
     ferramenta::force_cards_on_this_thread(None);
 }

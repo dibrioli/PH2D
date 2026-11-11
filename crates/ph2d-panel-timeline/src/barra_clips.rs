@@ -468,7 +468,14 @@ pub(crate) fn paint(
     // Depois do gravar (onda 1b) o grupo inteiro desce se não cabe no resto e cabe numa fileira.
     let nome = ph2d_i18n::tr("panel.timeline.card.clips");
     let nome_w = ctx.text_system.prefix_width(nome, m::LABEL_PX).ceil();
+    // Nem o 1.º chip cabe no resto (a pílula «Animating» abriu a fileira): desce, para o chip não
+    // sumir inteiro no «+N».
+    let um = pecas
+        .first()
+        .map_or(0.0, |p| p.w + m::FIELD_GAP + medida.mais + medida.reserva);
+    let minimo = medida.clipes.min(um.max(medida.mais));
     f.guarda_para(banda::SEPARADOR_W + m::FIELD_GAP + nome_w + m::FIELD_GAP + medida.clipes);
+    f.guarda_para(banda::SEPARADOR_W + m::FIELD_GAP + nome_w + m::FIELD_GAP + minimo);
     // O separador do Marker (onda 1c): nunca no início de uma fileira.
     if !f.no_inicio() {
         let (x, y) = f.poe(banda::SEPARADOR_W);

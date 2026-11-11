@@ -402,12 +402,6 @@ fn grupo_de_tocar(
         let (x, y) = f.poe(banda::SEPARADOR_W);
         cartao(ctx, ink, body).separador_em(x, y);
     }
-    // «● Animating jump [Done]» antes do tocar (doc 17 item 9, B7).
-    if let Some(texto) = crate::animando::rotulo(snap) {
-        let w = crate::animando::pilula_w(ctx, &texto);
-        let (x, y) = f.poe(w);
-        crate::animando::pilula(ctx, theme, Rect::new(x, y, w, m::FIELD_H), &texto);
-    }
     let mut c = cartao(ctx, ink, body);
     let at = f.poe(banda::icones_w(TRANSPORT_BTNS));
     c.icones_em_fila(&fileira_do_transporte(snap, view), at.0, at.1);
@@ -457,7 +451,7 @@ fn caixas_de_gravar(snap: &TimelineViewSnapshot) -> [Emoldurada<'static>; 2] {
     ]
 }
 
-/// 2.ª fileira, no início: Auto Key · Record while playing · Marker (os clipes vêm a seguir).
+/// 2.ª fileira, no início: [Animating · Done] · Auto Key · Record while playing · Marker (os clipes vêm a seguir).
 fn grupo_de_gravar(
     ctx: &mut PaintCtx,
     theme: Theme,
@@ -465,6 +459,13 @@ fn grupo_de_gravar(
     snap: &TimelineViewSnapshot,
     body: Rect,
 ) {
+    // «● Animating jump [Done]» abre a 2.ª fileira (doc 17 item 9, B7): na do título empurrava o
+    // Animation para baixo.
+    if let Some(texto) = crate::animando::rotulo(snap) {
+        let w = crate::animando::pilula_w(ctx, &texto);
+        let (x, y) = f.poe(w);
+        crate::animando::pilula(ctx, theme, Rect::new(x, y, w, m::FIELD_H), &texto);
+    }
     let ink = CardInk::of_list(theme);
     let mut c = cartao(ctx, ink, body);
     let tons = tons_da_barra(theme);

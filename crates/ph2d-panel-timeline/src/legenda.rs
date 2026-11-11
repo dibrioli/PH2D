@@ -28,8 +28,9 @@ const ENTRADAS: [(Interp, &str); 3] = [
     (Interp::Hold, "panel.timeline.card.legend_hold"),
 ];
 
-/// Pinta a legenda no canto de baixo à direita de `lanes` (a área das faixas, sem a barra de rolagem).
-pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, lanes: Rect) {
+/// Pinta a legenda no canto de baixo à direita de `lanes` (a área das faixas, sem a barra de rolagem);
+/// se ali está a faixa `evita` (a dos marcadores, a última linha da lista), sobe para cima dela.
+pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, lanes: Rect, evita: Option<Rect>) {
     let font = TypeToken::Xs.px();
     let (gap, pad) = (Spacing::Xs.px(), Spacing::Sm.px());
     let larguras: Vec<f32> = ENTRADAS
@@ -40,12 +41,15 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme, lanes: Rect) {
         + larguras.iter().map(|tw| AMOSTRA_W + gap + tw).sum::<f32>()
         + pad * (ENTRADAS.len() - 1) as f32;
     let h = font + gap * 2.0;
-    let pilula = Rect::new(
+    let mut pilula = Rect::new(
         lanes.x + lanes.w - w - gap,
         lanes.y + lanes.h - h - gap,
         w,
         h,
     );
+    if let Some(e) = evita.filter(|e| pilula.y < e.y + e.h && pilula.y + h > e.y) {
+        pilula.y = e.y - h - gap;
+    }
     if pilula.x < lanes.x || pilula.y < lanes.y {
         return;
     }

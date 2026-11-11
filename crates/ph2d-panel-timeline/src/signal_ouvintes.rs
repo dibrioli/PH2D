@@ -7,14 +7,18 @@
 
 use std::cell::RefCell;
 
-use ph2d_editor_core::paint::{folga_do_texto, paint_text_elided};
+use ph2d_editor_core::icons::IconId;
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, folga_do_texto, paint_icon, paint_text_elided, paint_text_title_elided,
+};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::banda::metrics as m;
 use ph2d_editor_core::panel::cards::{CardCtx, Widget};
+use ph2d_editor_core::text_elide::largura_do_titulo;
 use ph2d_editor_core::zones::Rect;
 use ph2d_signal_ends::{Quem, SignalListeners};
 use ph2d_timeline::TimelineViewSnapshot;
-use ph2d_tokens::{ColorToken, Theme};
+use ph2d_tokens::{ColorToken, StrokeToken, Theme};
 
 use crate::ids;
 use crate::state::{self, TimelinePanelState};
@@ -114,8 +118,15 @@ fn rotulo(q: Quem) -> &'static str {
     }
 }
 
+/// Uma linha da lista (maquete B5): «Heard by Camera» em negrito e o «· Camera Shake» na tinta do
+/// rótulo; sem objecto (um documento, um script) o rótulo vai no lugar do nome.
+struct Ouvinte {
+    forte: String,
+    resto: Option<String>,
+}
+
 /// As linhas «Heard by»: `None` = a shell ainda não respondeu por este nome.
-fn linhas(nome: &str) -> Option<(Vec<String>, bool)> {
+fn linhas(nome: &str) -> Option<(Vec<Ouvinte>, bool)> {
     OUVINTES.with(|o| {
         let o = o.borrow();
         let (n, l) = o.as_ref().filter(|(n, _)| n == nome)?;
@@ -123,12 +134,23 @@ fn linhas(nome: &str) -> Option<(Vec<String>, bool)> {
         let rows = l
             .list
             .iter()
-            .map(|x| match &x.object {
-                Some(obj) => ph2d_i18n::tr_with(
-                    "panel.timeline.signal.row",
-                    &[("object", obj), ("what", &rotulo(x.what))],
-                ),
-                None => rotulo(x.what).to_owned(),
+            .map(|x| {
+                let ouvido = |quem: &str| {
+                    ph2d_i18n::tr_with("panel.timeline.signal.heard_by", &[("who", &quem)])
+                };
+                match &x.object {
+                    Some(obj) => Ouvinte {
+                        forte: ouvido(obj),
+                        resto: Some(ph2d_i18n::tr_with(
+                            "panel.timeline.signal.row",
+                            &[("what", &rotulo(x.what))],
+                        )),
+                    },
+                    None => Ouvinte {
+                        forte: ouvido(rotulo(x.what)),
+                        resto: None,
+                    },
+                }
             })
             .collect();
         Some((rows, l.script_may))
@@ -151,6 +173,107 @@ fn linha_tinta(c: &mut CardCtx<'_>, text: &str, cor: ColorToken, y: f32) -> f32 
         tinta,
     );
     top + m::FIELD_H
+}
+
+/// A caixa de uma linha «Heard by» (maquete B5): o fundo dos campos, o ícone e o texto numa linha só.
+/// Devolve o `x` e a largura que sobram para o texto.
+fn caixa(c: &mut CardCtx<'_>, y: f32, icone: IconId, tinta: ColorToken) -> (f32, f32, f32) {
+    let r = Rect::new(c.x, y + m::FIELD_ROW_GAP, c.w, m::FIELD_H);
+    fill_rounded_rect(
+        c.scene,
+        r,
+        m::FIELD_RADIUS,
+        c.ink.color(ColorToken::CardField),
+    );
+    let g = m::CHECK_BOX;
+    let glifo = Rect::new(r.x + m::FIELD_PAD_R, r.y + (r.h - g) * 0.5, g, g);
+    let cor = c.ink.color(tinta);
+    paint_icon(c.scene, icone, glifo, cor, StrokeToken::Default.px());
+    let tx = glifo.x + g + m::CHECK_GAP;
+    (tx, (r.x + r.w - m::FIELD_PAD_R - tx).max(0.0), r.y)
+}
+
+/// A largura que uma linha em caixa pede além do texto.
+fn caixa_extra() -> f32 {
+    m::FIELD_PAD_R * 2.0 + m::CHECK_BOX + m::CHECK_GAP
+}
+
+/// «Inimigo · Signal Actions»: o objecto em negrito, o resto na tinta do rótulo, uma linha com «…».
+fn linha_ouvinte(c: &mut CardCtx<'_>, o: &Ouvinte, y: f32) -> f32 {
+    let (x, w, top) = caixa(c, y, IconId::Success, ColorToken::CardLabel);
+    let ty = top + folga_do_texto(m::FIELD_H, m::VALUE_PX);
+    let forte = c.ink.color(ColorToken::Text1);
+    let fw = largura_do_titulo(c.text_system, &o.forte, m::VALUE_PX).min(w);
+    paint_text_title_elided(
+        c.text_system,
+        c.scene,
+        &o.forte,
+        x,
+        ty,
+        m::VALUE_PX,
+        w,
+        forte,
+    );
+    if let Some(resto) = &o.resto {
+        let rx = x + fw + m::CHECK_GAP * 0.5;
+        let rw = (x + w - rx).max(0.0);
+        let tinta = c.ink.color(ColorToken::CardLabel);
+        paint_text_elided(
+            c.text_system,
+            c.scene,
+            resto,
+            rx,
+            ty,
+            m::VALUE_PX,
+            rw,
+            tinta,
+        );
+    }
+    top + m::FIELD_H
+}
+
+/// «Nobody listens»: a mesma caixa, o ícone e o texto na tinta do aviso.
+fn linha_ninguem(c: &mut CardCtx<'_>, y: f32) -> f32 {
+    let (x, w, top) = caixa(c, y, IconId::Warning, ColorToken::Warn);
+    let ty = top + folga_do_texto(m::FIELD_H, m::VALUE_PX);
+    let texto = ph2d_i18n::tr("panel.timeline.signal.nobody");
+    let tinta = c.ink.color(ColorToken::Warn);
+    paint_text_elided(c.text_system, c.scene, texto, x, ty, m::VALUE_PX, w, tinta);
+    top + m::FIELD_H
+}
+
+/// O topo do cartão de altura `h`, ou `None` se não cabe inteiro: nunca acima de `topo` (o fundo da
+/// barra, o topo da régua e das faixas); acima da alça se cabe, senão debaixo dela dentro do painel.
+fn lugar_y(painel: Rect, topo: f32, alca: Rect, h: f32) -> Option<f32> {
+    let fundo = painel.y + painel.h;
+    let acima = alca.y - m::FIELD_ROW_GAP - h;
+    let abaixo = alca.y + alca.h + m::FIELD_ROW_GAP;
+    if acima >= topo {
+        Some(acima)
+    } else if abaixo + h <= fundo {
+        Some(abaixo)
+    } else {
+        None
+    }
+}
+
+/// Uma linha da lista do cartão, pela ordem em que se pinta.
+#[derive(Copy, Clone)]
+enum Linha<'a> {
+    Ouvinte(&'a Ouvinte),
+    Ninguem,
+    Script,
+}
+
+fn lista(rows: &[Ouvinte], may: bool) -> Vec<Linha<'_>> {
+    let mut v: Vec<Linha<'_>> = rows.iter().map(Linha::Ouvinte).collect();
+    if rows.is_empty() {
+        v.push(Linha::Ninguem);
+    }
+    if may {
+        v.push(Linha::Script);
+    }
+    v
 }
 
 /// Pinta o cartão aberto por cima de tudo, acima da alça do marcador, alinhado à direita da linha
@@ -184,37 +307,40 @@ pub(crate) fn paint(
     );
     let ouvintes = linhas(&nome);
     let tr = ph2d_i18n::tr;
-    let corpo = |c: &mut CardCtx<'_>, y: f32| {
-        let mut y = c.full(None, Widget::Readout { text: &titulo }, y);
-        y = c.full(
-            Some(tr("panel.timeline.signal.name")),
-            Widget::Readout { text: &nome },
-            y,
-        );
-        let Some((rows, may)) = &ouvintes else {
-            return y;
-        };
-        y = linha_tinta(
-            c,
-            tr("panel.timeline.signal.heard_by"),
-            ColorToken::CardLabel,
-            y,
-        );
-        for r in rows {
-            y = c.full(None, Widget::Readout { text: r }, y);
-        }
-        if rows.is_empty() {
-            y = linha_tinta(c, tr("panel.timeline.signal.nobody"), ColorToken::Warn, y);
-        }
-        if *may {
-            y = linha_tinta(
-                c,
-                tr("panel.timeline.signal.script_may"),
-                ColorToken::CardLabel,
+    let todas = ouvintes
+        .as_ref()
+        .map_or_else(Vec::new, |(rows, may)| lista(rows, *may));
+    // `k` linhas da lista; as que não cabem dizem-se numa última «+N more».
+    let corpo_de = |k: usize| {
+        let todas = &todas;
+        let titulo = &titulo;
+        let nome = &nome;
+        move |c: &mut CardCtx<'_>, y: f32| {
+            let mut y = c.full(None, Widget::Readout { text: titulo }, y);
+            y = c.full(
+                Some(tr("panel.timeline.signal.name")),
+                Widget::Readout { text: nome },
                 y,
             );
+            for l in todas.iter().take(k) {
+                y = match l {
+                    Linha::Ouvinte(o) => linha_ouvinte(c, o, y),
+                    Linha::Ninguem => linha_ninguem(c, y),
+                    Linha::Script => linha_tinta(
+                        c,
+                        tr("panel.timeline.signal.script_may"),
+                        ColorToken::CardLabel,
+                        y,
+                    ),
+                };
+            }
+            if k < todas.len() {
+                let n = (todas.len() - k).to_string();
+                let mais = ph2d_i18n::tr_with("panel.timeline.signal.more", &[("n", &n)]);
+                y = linha_tinta(c, &mais, ColorToken::CardLabel, y);
+            }
+            y
         }
-        y
     };
     let painel = ctx
         .host
@@ -222,31 +348,63 @@ pub(crate) fn paint(
         .panel_rect(ph2d_editor_core::ids::TIMELINE_PANEL)
         .unwrap_or(ctx.viewport);
     let mut textos = vec![titulo.as_str(), nome.as_str()];
+    let mut larga: f32 = 0.0;
     if let Some((rows, _)) = &ouvintes {
-        textos.extend(rows.iter().map(String::as_str));
-        textos.extend([
-            tr("panel.timeline.signal.nobody"),
-            tr("panel.timeline.signal.script_may"),
-        ]);
+        textos.push(tr("panel.timeline.signal.script_may"));
+        let ts = &mut *ctx.text_system;
+        let nobody = ts.prefix_width(tr("panel.timeline.signal.nobody"), m::VALUE_PX);
+        larga = larga.max(nobody + caixa_extra());
+        for o in rows {
+            let resto = o.resto.as_deref().map_or(0.0, |r| {
+                m::CHECK_GAP * 0.5 + ts.prefix_width(r, m::VALUE_PX)
+            });
+            let forte = largura_do_titulo(ts, &o.forte, m::VALUE_PX);
+            larga = larga.max(forte + resto + caixa_extra());
+        }
     }
     let larga = textos
         .iter()
-        .map(|t| ctx.text_system.prefix_width(t, m::VALUE_PX).ceil())
-        .fold(0.0, f32::max);
+        .map(|t| largura_do_titulo(ctx.text_system, t, m::VALUE_PX))
+        .fold(larga, f32::max)
+        .ceil();
     let dentro = larga.min((painel.w - m::CARD_PAD_X * 4.0).max(0.0));
     let w = dentro + m::CARD_PAD_X * 2.0;
-    let h = crate::barra_menus::altura(ctx, theme, dentro, &corpo);
     let x_linha = alca.x + alca.w * 0.5;
     let x = (x_linha - w).min(painel.x + painel.w - w).max(painel.x);
-    let y = (alca.y - m::FIELD_ROW_GAP - h).max(painel.y);
+    let topo = topo_das_faixas(ctx, painel);
+    let mut k = todas.len();
+    let h = crate::barra_menus::altura(ctx, theme, dentro, &corpo_de(k));
+    let (y, h) = match lugar_y(painel, topo, alca, h) {
+        Some(y) => (y, h),
+        // Nem acima nem abaixo: colado à barra, até ao fundo do painel, as linhas que cabem.
+        None => {
+            let livre = (painel.y + painel.h - topo).max(0.0);
+            let mut h = h;
+            while k > 0 && h > livre {
+                k -= 1;
+                h = crate::barra_menus::altura(ctx, theme, dentro, &corpo_de(k));
+            }
+            (topo, h.min(livre))
+        }
+    };
     let rect = Rect::new(x, y, w, h);
     crate::barra_menus::flutua_em(
         ctx,
         theme,
         (ids::TIMELINE_SIGNAL_CARD, rect),
         dentro,
-        &corpo,
+        &corpo_de(k),
     );
+}
+
+/// O fundo da barra: o topo da régua e das faixas (o mais alto dos dois), ou o topo do painel.
+fn topo_das_faixas(ctx: &mut PaintCtx, painel: Rect) -> f32 {
+    let hits = ctx.host.hit_index_mut();
+    [ids::TIMELINE_RULER, ids::TIMELINE_LANES]
+        .into_iter()
+        .filter_map(|id| hits.rect_for(id).map(|r| r.y))
+        .reduce(f32::min)
+        .unwrap_or(painel.y)
 }
 
 /// ⭐ A porta da shell num gesto: com um cartão aberto, `calcula` quem ouve o nome dele e entrega-o.

@@ -51,7 +51,8 @@ pub(super) fn pe_da_fita(
     snapshot: &ph2d_timeline::TimelineViewSnapshot,
 ) {
     if tab.shows_keys() && !snapshot.tracks.is_empty() {
-        crate::legenda::paint(ctx, theme, crate::tracks::lane_rect(g, view));
+        let lanes = crate::tracks::lane_rect(g, view);
+        crate::legenda::paint(ctx, theme, lanes, crate::faixa_marcadores::pintada());
     }
     let (r, cor) = crate::linhas::moldura(g, snapshot.auto_key);
     // FRAME-RAW-OK: a moldura da fita É a mensagem — acende a vermelho com o Auto Key a gravar;

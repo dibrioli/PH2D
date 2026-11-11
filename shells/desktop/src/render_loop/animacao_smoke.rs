@@ -1,12 +1,8 @@
-//! `PH2D_ANIMACAO_SMOKE=1` — **a Animação por objecto** (doc ObjectsAndComponents 01 §6, onda 2):
-//! o Herói tem a animação DELE («andar», «pular»; o «andar» também gira a Espada, filha dele), o
-//! Inimigo mexe-se pela Animação da Cena («Main»), e o Inimigo não tem Animação — o ▾ oferece-a.
-//! A Timeline e a Hierarquia abrem com o Herói seleccionado (`=1`), ou com o Inimigo e o ▾ da
-//! Timeline aberto (`=2`: «Animation: Scene» e «Add animation to Inimigo»). `=4` (onda 5): o Herói
-//! com uma Signal Action «Play Clip» — o parâmetro é o ▾ com «andar» e «pular» — e a «Bandeira»,
-//! uma sprite com SKEW cuja caixa de gizmo é o paralelogramo desenhado (`=5`: a mesma cena, com a
-//! Bandeira seleccionada; `=6`: a Bandeira sem rotação e a Caixa, as duas seleccionadas — esticar o
-//! grupo na horizontal muda o ângulo da inclinação, como o desenho esticado).
+//! `PH2D_ANIMACAO_SMOKE=1` — **a Animação por objecto** (doc ObjectsAndComponents 01 §6): o Herói
+//! tem «andar» (gira também a Espada, filha) e «pular»; o Inimigo mexe-se pela Animação da Cena e
+//! ouve o sinal «land» do marcador do quadro 24 (Signal Actions; doc Timeline 17, B5). `=2`: o
+//! Inimigo e o ▾ da Timeline aberto. `=4`: o Herói com a Signal Action «Play Clip» e a «Bandeira»,
+//! sprite com SKEW (`=5`: seleccionada; `=6`: sem rotação, com a Caixa, as duas seleccionadas).
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_core::Vec2;
@@ -35,7 +31,6 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return; // ainda sem mundo; tenta no próximo quadro
         };
-        // A trava vive aqui e não na `App` (o tecto de campos dela só desce).
         if FEITO.swap(true, std::sync::atomic::Ordering::Relaxed) {
             return;
         }
@@ -62,6 +57,11 @@ impl crate::App {
                 Transform::from_translation(Vec2::new(2.5, 0.0)),
                 sprite(1.0, 1.0, [0.55, 0.3, 0.85, 1.0]),
                 Name::new("Inimigo"),
+                ph2d_ecs::SignalActions(vec![ph2d_ecs::SignalAction {
+                    on: "land".into(),
+                    verb: ph2d_ecs::SignalVerb::Show,
+                    ..Default::default()
+                }]),
             ))
             .id()
             .to_bits();
@@ -77,7 +77,6 @@ impl crate::App {
                 }]));
             let mut torta = Transform::from_translation(Vec2::new(0.5, -1.2));
             torta.skew_x = 0.5;
-            // Em `=6` sem rotação: rodada, a escala do grupo é uniforme e o skew não muda.
             torta.rotation = if nivel == "6" { 0.0 } else { 0.3 };
             bandeira = Some(
                 world
@@ -106,7 +105,6 @@ impl crate::App {
         let heroi = heroi.to_bits();
 
         let doc = &mut self.timeline.doc;
-        // A Animação da CENA: o clip de sempre, a mexer o Inimigo.
         key(doc, inimigo, PropKind::TranslationY, 0.0, 0.0);
         key(doc, inimigo, PropKind::TranslationY, 1.0, 0.8);
         key(doc, inimigo, PropKind::TranslationY, 2.0, 0.0);
@@ -129,6 +127,8 @@ impl crate::App {
         key(doc, heroi, PropKind::TranslationX, 0.0, -3.0);
         key(doc, heroi, PropKind::TranslationX, 1.0, -1.0);
         doc.set_clip_length_override(pular, Some(1.0));
+        let land = doc.add_marker(RationalTime::from_seconds(1.0), "land");
+        doc.set_marker_signal(land, Some("land".into()));
         doc.set_active(andar);
 
         if let Some(hero) = gfx.hero_screen.as_mut() {

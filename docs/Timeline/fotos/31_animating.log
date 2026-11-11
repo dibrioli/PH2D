@@ -1,0 +1,18 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   266ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   289ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   289ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   298ms] M11: VelloPass initialized (1024×768 intermediate)
+[   303ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   317ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   345ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   353ms] lifecycle: Foreground
+[   353ms] resize: 1024x768 @ 1.00x scale
+[animacao-smoke] Herói ▸ Clips (andar, pular) · Espada (filha) · Inimigo (Animação da Cena). A Timeline diz «Animation: Herói»; clique no Inimigo e ela mostra a da Cena.
+[ph2d-gpu] surface present mode → Immediate
+[   362ms] resize: 1930x956 @ 1.00x scale
+warn: dropproteiro: /tmp/claude-1000/-home-enio-Documentos-Projetos-PH2D/7b636136-8d53-4162-b592-d104569a983f/scratchpad/31.log

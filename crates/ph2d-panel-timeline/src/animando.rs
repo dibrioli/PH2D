@@ -7,10 +7,11 @@
 use std::cell::Cell;
 
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, folga_do_texto, label_column_width, paint_text_elided, resolve,
-    stroke_rounded_rect,
+    fill_rounded_rect, fill_rounded_rect_radii, folga_do_texto, label_column_width,
+    paint_text_elided, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::panel::cards::banda::metrics as m;
 use ph2d_editor_core::zones::Rect;
 use ph2d_timeline::TimelineViewSnapshot;
 use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
@@ -102,46 +103,61 @@ fn medidas() -> (f32, f32, f32) {
     (TypeToken::Sm.px(), Spacing::Sm.px(), Spacing::Xs.px())
 }
 
+/// A largura do segmento «Done», encostado à direita da pílula, de cima a baixo.
+fn done_w(ctx: &mut PaintCtx, done: &str) -> f32 {
+    let (font, pad, _) = medidas();
+    pad + label_column_width(ctx.text_system, font, [done]) + pad
+}
+
 /// A largura da pílula «● Animating jump [Done]».
 pub(crate) fn pilula_w(ctx: &mut PaintCtx, texto: &str) -> f32 {
     let (font, pad, gap) = medidas();
     let done = ph2d_i18n::tr("panel.timeline.animating.done");
     let tw = label_column_width(ctx.text_system, font, [texto]);
-    let dw = label_column_width(ctx.text_system, font, [done]);
-    pad + gap * 2.0 + tw + gap + dw + pad * 2.0 + gap
+    pad + gap * 2.0 + gap + tw + gap + done_w(ctx, done)
 }
 
-/// Pinta a pílula em `r` e regista o Done (o segmento cheio à direita).
+/// Pinta a pílula em `r` (o raio dos campos do cartão, B7) e regista o Done: o segmento cheio
+/// encostado à direita, da altura toda, redondo só do lado de fora.
 pub(crate) fn pilula(ctx: &mut PaintCtx, theme: Theme, r: Rect, texto: &str) {
     let (font, pad, gap) = medidas();
     let done = ph2d_i18n::tr("panel.timeline.animating.done");
     let azul = resolve(ColorToken::Accent, theme);
-    let raio = r.h * 0.5;
+    let raio = m::FIELD_RADIUS;
     fill_rounded_rect(ctx.scene, r, raio, resolve(ColorToken::AccentSoft, theme));
-    stroke_rounded_rect(ctx.scene, r, raio, StrokeToken::Thin.px(), azul);
     let ponto = gap * 2.0;
     let cy = r.y + r.h * 0.5;
     let bolinha = Rect::new(r.x + pad, cy - ponto * 0.5, ponto, ponto);
     fill_rounded_rect(ctx.scene, bolinha, ponto * 0.5, azul);
-    let tw = label_column_width(ctx.text_system, font, [texto]);
-    let ty = r.y + folga_do_texto(r.h, font);
+    let dw = done_w(ctx, done);
+    let botao = Rect::new(r.x + r.w - dw, r.y, dw, r.h);
     let tx = bolinha.x + ponto + gap;
+    let tw = label_column_width(ctx.text_system, font, [texto]).min((botao.x - tx).max(0.0));
+    let ty = r.y + folga_do_texto(r.h, font);
     let claro = resolve(ColorToken::Text1, theme);
     paint_text_elided(ctx.text_system, ctx.scene, texto, tx, ty, font, tw, claro);
-    let dw = label_column_width(ctx.text_system, font, [done]);
-    let bx = tx + tw + gap;
-    let botao = Rect::new(bx, r.y + gap * 0.5, r.x + r.w - bx - gap * 0.5, r.h - gap);
     let sob = ctx.host.store().hover_live(TIMELINE_ANIMATING_DONE) > 0.0;
     let fundo = if sob {
         ColorToken::AccentHover
     } else {
         ColorToken::Accent
     };
-    fill_rounded_rect(ctx.scene, botao, botao.h * 0.5, resolve(fundo, theme));
+    let raios = (0.0, raio, raio, 0.0);
+    fill_rounded_rect_radii(ctx.scene, botao, raios, resolve(fundo, theme));
+    stroke_rounded_rect(ctx.scene, r, raio, StrokeToken::Thin.px(), azul);
     let fg = resolve(ColorToken::AccentFg, theme);
-    let dx = botao.x + ((botao.w - dw) * 0.5).max(0.0);
+    let texto_done = botao.w - pad * 2.0;
     let dy = botao.y + folga_do_texto(botao.h, font);
-    paint_text_elided(ctx.text_system, ctx.scene, done, dx, dy, font, dw, fg);
+    paint_text_elided(
+        ctx.text_system,
+        ctx.scene,
+        done,
+        botao.x + pad,
+        dy,
+        font,
+        texto_done,
+        fg,
+    );
     ctx.host
         .hit_index_mut()
         .register(TIMELINE_ANIMATING_DONE, botao);

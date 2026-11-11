@@ -192,8 +192,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // O cartão «quem ouve» do marcador com sinal (doc 17 item 8, maquete B5).
         "panel.timeline.signal.title" => "Signal at frame {frame} \u{b7} {name}",
         "panel.timeline.signal.name" => "Name",
-        "panel.timeline.signal.heard_by" => "Heard by",
-        "panel.timeline.signal.row" => "{object} \u{b7} {what}",
+        "panel.timeline.signal.heard_by" => "Heard by {who}",
+        "panel.timeline.signal.more" => "+{n} more",
+        "panel.timeline.signal.row" => "\u{b7} {what}",
         "panel.timeline.signal.nobody" => "Nobody listens",
         "panel.timeline.signal.script_may" => "A script may listen",
         "panel.timeline.signal.who.signal_actions" => "Signal Actions",

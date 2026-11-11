@@ -24,6 +24,16 @@ use crate::alca_estado::EstadoAlca;
 use crate::graph::TimeView;
 use crate::{geom, ids, ruler_trecho, tab::Tab};
 
+thread_local! {
+    /// A faixa pintada neste quadro (o rect visível), para a legenda do pé da fita não a cobrir.
+    static PINTADA: std::cell::Cell<Option<Rect>> = const { std::cell::Cell::new(None) };
+}
+
+/// A faixa pintada no último [`paint`], ou `None` se não está à vista.
+pub(crate) fn pintada() -> Option<Rect> {
+    PINTADA.with(std::cell::Cell::get)
+}
+
 /// A faixa existe onde a régua mostraria os marcadores (Arrange; Keys sem pilha), com ≥ 1 marcador.
 pub(crate) fn mostra(snap: &TimelineViewSnapshot, tab: Tab) -> bool {
     ph2d_editor_core::panel::cards::ferramenta::cards_on()
@@ -100,9 +110,11 @@ pub(crate) fn paint(
     y: f32,
 ) {
     let region = g.rows;
+    PINTADA.with(|p| p.set(None));
     if !mostra(snap, tab) || y >= region.y + region.h || y + ROW_H_PX <= region.y {
         return;
     }
+    PINTADA.with(|p| p.set(Some(Rect::new(region.x, y, region.w, ROW_H_PX))));
     let amarelo = resolve(ColorToken::TimelineMarker, theme);
     // A coluna de nomes: o ícone da etiqueta e «Markers», na tinta dos marcadores (`.c13n.sg`).
     let x0 = region.x + Spacing::Sm.px();

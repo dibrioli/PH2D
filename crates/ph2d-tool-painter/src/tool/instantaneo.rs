@@ -63,9 +63,11 @@ impl PainterTool {
             dock_shows_layers,
             undo_writes,
             dirty_rect,
+            dirty_caixas,
             #[cfg(test)]
             marks,
             preview_dirty_region,
+            preview_dirty_caixas,
             gpu_lane_stale,
             lit_substrate,
             plano_do_dente,
@@ -135,9 +137,11 @@ impl PainterTool {
             dock_shows_layers: *dock_shows_layers,
             undo_writes: *undo_writes,
             dirty_rect: *dirty_rect,
+            dirty_caixas: dirty_caixas.clone(),
             #[cfg(test)]
             marks: marks.clone(),
             preview_dirty_region: *preview_dirty_region,
+            preview_dirty_caixas: preview_dirty_caixas.clone(),
             gpu_lane_stale: *gpu_lane_stale,
             lit_substrate: *lit_substrate,
             plano_do_dente: plano_do_dente.clone(),

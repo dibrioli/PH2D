@@ -160,10 +160,12 @@ impl ImageEntry {
 /// confinável. Existe como tipo (em vez de um `Option<Region>` passado à mão) porque o modo de falha de
 /// esquecer um plano é uma reivindicação de confinamento boa demais — e um acumulador que só sabe
 /// azedar não pode ser usado errado nessa direção.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Confine {
     canvas_w: u32,
     acc: Option<Region>,
+    /// Cada janela somada, sem união (B17.5): a união delas é o `acc`.
+    caixas: Vec<Region>,
     confined: bool,
 }
 
@@ -172,7 +174,18 @@ impl Confine {
         Self {
             canvas_w,
             acc: None,
+            caixas: Vec::new(),
             confined: true,
+        }
+    }
+
+    /// Um plano guardado: o passo por tiles soma CADA tile restaurado (a união é a mesma da `reach`).
+    pub(crate) fn add_plano<T>(&mut self, p: &StoredPlane<T>) {
+        match p {
+            StoredPlane::Tiles { rects, .. } if !rects.is_empty() => {
+                rects.iter().for_each(|&j| self.add(PlaneReach::Window(j)));
+            }
+            _ => self.add(p.reach()),
         }
     }
 
@@ -187,6 +200,7 @@ impl Confine {
                 // Uma janela que não vira retângulo de pixels é uma janela que não sabemos publicar.
                 None => self.confined = false,
                 Some(r) => {
+                    self.caixas.push(r);
                     self.acc = Some(
                         self.acc
                             .map_or(r, |a| crate::tool::paint::region::union_region(a, r)),
@@ -201,12 +215,13 @@ impl Confine {
     /// alcança só a janela dos texels selados, não a tela (B10c).
     pub(crate) fn add_vidros(&mut self, m: &StoredMap<crate::compositor::vidro::Vidro>) {
         for e in m.entries() {
-            self.add(match e {
-                StoredEntry::Both(p) => p.reach(),
+            match e {
+                StoredEntry::Both(p) => self.add_plano(p),
                 StoredEntry::OnlyBefore(p) | StoredEntry::OnlyAfter(p) => {
-                    janela_dos_selados(p, self.canvas_w as usize)
+                    let r = janela_dos_selados(p, self.canvas_w as usize);
+                    self.add(r);
                 }
-            });
+            }
         }
     }
 
@@ -221,12 +236,13 @@ impl Confine {
         neutro: impl Fn(&T) -> bool + Copy,
     ) {
         for e in m.entries() {
-            self.add(match e {
-                StoredEntry::Both(p) => p.reach(),
+            match e {
+                StoredEntry::Both(p) => self.add_plano(p),
                 StoredEntry::OnlyBefore(p) | StoredEntry::OnlyAfter(p) => {
-                    janela_fora_do_neutro(p, self.canvas_w as usize, linha_neutra, neutro)
+                    let r = janela_fora_do_neutro(p, self.canvas_w as usize, linha_neutra, neutro);
+                    self.add(r);
                 }
-            });
+            }
         }
     }
 
@@ -241,9 +257,65 @@ impl Confine {
     /// ⚠️ **Um passo confinado a NENHUM plano devolve `None`, não um retângulo vazio.** Um passo que
     /// não toca pixel nenhum (só metadados) não tem o que publicar, e um retângulo de área zero seria
     /// um pedido de repaint que não repinta nada — o chamador cai no caminho de sempre.
-    pub(crate) const fn finish(self) -> Option<Region> {
+    pub(crate) fn finish(&self) -> Option<Region> {
         if self.confined { self.acc } else { None }
     }
+
+    /// A região e as caixas que a cobrem (B17.5): vazia quando uma só basta. A união das caixas é a
+    /// região — o sujo publicado nunca encolhe, só deixa de ter buracos.
+    pub(crate) fn finish_caixas(self) -> Option<(Region, Vec<Region>)> {
+        let r = self.finish()?;
+        let caixas = funde_as_caixas(self.caixas);
+        Some((r, if caixas.len() > 1 { caixas } else { Vec::new() }))
+    }
+}
+
+/// Teto da lista: quem compõe cada caixa paga um despacho por caixa.
+pub(crate) const MAX_CAIXAS: usize = 16;
+/// Acima disto a fusão gulosa (O(n³)) custaria mais que a união: fica a caixa só.
+const MAX_ENTRADA: usize = 128;
+
+fn area(r: Region) -> u64 {
+    u64::from(r.w) * u64::from(r.h)
+}
+
+/// Funde as caixas até [`MAX_CAIXAS`], sempre o par que menos área acrescenta (as que se tocam ou
+/// sobrepõem fundem-se de graça). Determinista: ordem fixa, empate pelo primeiro par.
+pub(crate) fn funde_as_caixas(mut v: Vec<Region>) -> Vec<Region> {
+    use crate::tool::paint::region::union_region;
+    v.retain(|r| r.w > 0 && r.h > 0);
+    v.sort_unstable_by_key(|r| (r.y, r.x, r.h, r.w));
+    v.dedup();
+    // Os tiles vizinhos na mesma linha juntam-se num passo linear.
+    let mut linha: Vec<Region> = Vec::with_capacity(v.len());
+    for r in v {
+        match linha.last_mut() {
+            Some(p) if p.y == r.y && p.h == r.h && p.x + p.w >= r.x => *p = union_region(*p, r),
+            _ => linha.push(r),
+        }
+    }
+    let mut v = linha;
+    if v.len() > MAX_ENTRADA {
+        return Vec::new();
+    }
+    while v.len() > 1 {
+        let mut melhor = (u64::MAX, 0, 0);
+        for i in 0..v.len() {
+            for j in i + 1..v.len() {
+                let d = area(union_region(v[i], v[j])).saturating_sub(area(v[i]) + area(v[j]));
+                if d < melhor.0 {
+                    melhor = (d, i, j);
+                }
+            }
+        }
+        let (d, i, j) = melhor;
+        if d > 0 && v.len() <= MAX_CAIXAS {
+            break;
+        }
+        v[i] = union_region(v[i], v[j]);
+        v.remove(j);
+    }
+    v
 }
 
 /// A janela dos texels não nulos de um plano de vidro de `stride` texels por linha; `Untouched` se nenhum.
@@ -470,14 +542,13 @@ mod tests {
         assert_eq!((r.x, r.y, r.w, r.h), (t, t, 3 * t, 2 * t));
     }
 
-    /// **O NÚMERO do B17.5 que fica por curar: um Ctrl+Z de dois tiles em cantos opostos da tela 4K publica
-    /// a tela INTEIRA.** O sujo é um retângulo só (`Confine` → `mark_dirty` → dreno/placa), então a caixa
-    /// dos dois tiles restaurados é 3840×2160 = 8 294 400 px para 128² + 128×112 = 30 720 px (270×).
-    /// Fica VERMELHO quando o sujo passar a várias caixas: aí inverta-o para «suja só os dois».
+    /// **B17.5: um Ctrl+Z de dois tiles em cantos opostos da tela 4K publica só os dois tiles.** A união
+    /// continua a ser a tela (3840×2160 = 8 294 400 px), mas as caixas ao lado dela somam 128² + 128×112 =
+    /// 30 720 px. Red (o sujo era um retângulo só): 8 294 400 publicados.
     #[test]
-    fn um_ctrl_z_de_dois_tiles_opostos_publica_a_tela_4k_e_este_e_o_numero() {
+    fn um_ctrl_z_de_dois_tiles_opostos_publica_so_os_dois_tiles() {
         use super::super::tiles::TileMarks;
-        use super::{Confine, Region, StoredPlane};
+        use super::{Confine, Region, StoredPlane, area};
         use crate::undo::journal::TILE;
         use std::sync::Arc;
         let (w, h, t) = (3840u32, 2160u32, TILE as u32);
@@ -496,9 +567,14 @@ mod tests {
         let p = StoredPlane::split_tiled(&mut b, &mut d, w as usize, hint, Some((&px, w)));
         assert_eq!(p.variant(), "tiles");
         let mut c = Confine::new(w);
-        c.add(p.reach());
-        let r = c.finish().expect("um passo por tiles é confinado");
-        let sujo = u64::from(r.w) * u64::from(r.h);
+        c.add_plano(&p);
+        let (r, caixas) = c.finish_caixas().expect("um passo por tiles é confinado");
+        assert_eq!(
+            u64::from(r.w) * u64::from(r.h),
+            8_294_400,
+            "a união é a tela"
+        );
+        let sujo: u64 = caixas.iter().map(|&q| area(q)).sum();
         let StoredPlane::Tiles { rects, .. } = &p else {
             panic!("variant tiles");
         };
@@ -510,13 +586,58 @@ mod tests {
             })
             .sum();
         assert_eq!(
-            (sujo, mudou, rects.len()),
+            (sujo, mudou, rects.len(), caixas.len()),
             (
-                8_294_400,
                 u64::from(t) * u64::from(t) + u64::from(t) * 112,
+                u64::from(t) * u64::from(t) + u64::from(t) * 112,
+                2,
                 2
             ),
-            "o sujo publicado é a caixa dos dois tiles — a tela 4K"
+            "o sujo publicado são os dois tiles, não a tela 4K"
+        );
+    }
+
+    /// A fusão das caixas: a união nunca muda, os vizinhos juntam-se, o teto é [`MAX_CAIXAS`] e a resposta
+    /// não depende da ordem de entrada.
+    #[test]
+    fn as_caixas_fundidas_cobrem_a_mesma_uniao_e_nao_dependem_da_ordem() {
+        use super::{MAX_CAIXAS, Region, area, funde_as_caixas};
+        use crate::tool::paint::region::union_region;
+        let t = 128u32;
+        let tile = |c: u32, r: u32| Region {
+            x: c * t,
+            y: r * t,
+            w: t,
+            h: t,
+        };
+        // Uma diagonal de 30 tiles e uma linha de 4 vizinhos.
+        let mut v: Vec<Region> = (0..30).map(|i| tile(i, i / 2)).collect();
+        v.extend((0..4).map(|c| tile(c, 16)));
+        let uniao = v.iter().copied().reduce(union_region);
+        let a = funde_as_caixas(v.clone());
+        v.reverse();
+        let b = funde_as_caixas(v.clone());
+        assert_eq!(a, b, "a ordem de entrada não muda a resposta");
+        assert!(a.len() <= MAX_CAIXAS && a.len() > 1, "{} caixas", a.len());
+        assert_eq!(
+            a.iter().copied().reduce(union_region),
+            uniao,
+            "a união é a mesma"
+        );
+        for q in &v {
+            assert!(
+                a.iter().any(|c| c.x <= q.x
+                    && c.y <= q.y
+                    && c.x + c.w >= q.x + q.w
+                    && c.y + c.h >= q.y + q.h),
+                "o tile {q:?} fica coberto"
+            );
+        }
+        let area: u64 = a.iter().map(|&q| area(q)).sum();
+        let u = uniao.expect("há caixas");
+        assert!(
+            area * 4 < u64::from(u.w) * u64::from(u.h),
+            "a diagonal não vira a caixa dela: {area}"
         );
     }
 }

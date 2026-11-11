@@ -99,8 +99,16 @@ impl PainterTool {
     /// A região a que o próximo undo (ou redo) está confinado ([`crate::undo::UndoController::peek_confined_region`]),
     /// com a janela da tinta de cada camada cuja marca do Wet vira (o 1.º traço Wet dela, B10c).
     pub(crate) fn regiao_do_proximo_passo(&self, redo: bool) -> Option<crate::compositor::Region> {
+        self.sujo_do_proximo_passo(redo).map(|(r, _)| r)
+    }
+
+    /// [`Self::regiao_do_proximo_passo`] e as caixas que a cobrem (B17.5; vazia quando uma só basta).
+    pub(crate) fn sujo_do_proximo_passo(
+        &self,
+        redo: bool,
+    ) -> Option<(crate::compositor::Region, Vec<crate::compositor::Region>)> {
         self.undo
-            .peek_confined_region(redo, &|id| self.alcance_da_marca_molhada(id))
+            .peek_confined_sujo(redo, &|id| self.alcance_da_marca_molhada(id))
     }
 
     /// Onde virar a marca do Wet da camada `id` muda a luz: os píxeis com alfa dela (`papel_a_vista`). Nada onde
@@ -177,9 +185,11 @@ impl PainterTool {
     pub(crate) fn restore_model_confined(
         &mut self,
         m: crate::undo::ModelSnapshot,
-        confined: Option<crate::compositor::Region>,
+        confined: Option<(crate::compositor::Region, Vec<crate::compositor::Region>)>,
     ) {
-        let trocadas = confined.and_then(|_| self.camadas_que_o_passo_troca(&m));
+        let trocadas = confined
+            .as_ref()
+            .and_then(|_| self.camadas_que_o_passo_troca(&m));
         self.layers = m.layers;
         self.images = m.images;
         self.heights = m.heights;
@@ -279,8 +289,8 @@ impl PainterTool {
             // (o painel re-clona a pilha), o `edited_since_bind`, e o cache de CORTE dos ajustes — este
             // último é dropado inteiro de propósito, porque é um cache que se re-preenche a frio e
             // custa menos que raciocinar sobre quais cortes a região tocou.
-            Some(r) => {
-                self.mark_dirty(r);
+            Some((r, caixas)) => {
+                self.mark_dirty_caixas(r, caixas);
                 self.edited_since_bind = true;
                 self.compositor_cache
                     .invalidate_from(crate::layers::LayerId(0), &self.layers);

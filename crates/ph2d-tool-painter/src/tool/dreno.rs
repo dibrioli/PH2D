@@ -4,6 +4,27 @@
 use super::*;
 
 impl PainterTool {
+    /// **O sujo em várias caixas** (B17.5): o mesmo [`Self::mark_dirty`] da união, e as caixas ficam ao
+    /// lado só quando nada estava sujo antes (senão o sujo de antes não teria caixa que o cubra).
+    pub(crate) fn mark_dirty_caixas(&mut self, uniao: Region, caixas: Vec<Region>) {
+        let limpo = self.dirty_rect.is_none();
+        self.mark_dirty(uniao);
+        if limpo && caixas.len() > 1 {
+            self.dirty_caixas = caixas;
+        }
+    }
+
+    /// Toma o sujo e as caixas dele; as caixas só valem com o retângulo (vazia = ele sozinho).
+    pub(crate) fn toma_o_sujo(&mut self) -> (Option<Region>, Vec<Region>) {
+        let caixas = std::mem::take(&mut self.dirty_caixas);
+        let r = self.dirty_rect.take();
+        let caixas = if r.is_some() { caixas } else { Vec::new() };
+        debug_assert!(
+            caixas.is_empty() || caixas.iter().copied().reduce(paint::region::union_region) == r
+        );
+        (r, caixas)
+    }
+
     /// **A tela composta para a CENA** (o palco de uma macro, ADR-0186): a MESMA composição que o editor
     /// mostra, UMA vez, sobre tudo o que os passos `Preview` drenaram desde a última leitura
     /// ([`Self::drena_sem_compor`] deixou o retângulo sujo a acumular: a composição é parcial quando a
@@ -53,6 +74,30 @@ impl PainterTool {
         Some(self.compoe_a_saida(true))
     }
 
+    /// Uma caixa do braço parcial: compõe, acende, tinge e cola no cache (o `composited` está quente).
+    fn compoe_a_caixa(&mut self, active: RtLayerId, bbox: Region) {
+        let (w, h) = self.source_size;
+        let mut region = {
+            let src = ToolPixelSource {
+                active_id: active,
+                active_rgba: &self.canvas_rgba,
+                images: &self.images,
+            };
+            self.composto_pelo_vidro(&src, bbox).unwrap_or_else(|| {
+                let mut c = composite_region(&self.layers, &src, w, h, bbox);
+                self.compoe_sobre_o_papel(&mut c, bbox);
+                c
+            })
+        };
+        // Impasto: light the FRESHLY-composited region (never the cache — lighting is not idempotent).
+        // The normal reads across the region's edge into the full height field.
+        self.apply_impasto_light(&mut region, bbox);
+        // Mask overlay: re-tint ONLY this region (the partial twin of `apply_mask_overlay`).
+        self.apply_mask_overlay_region(&mut region, bbox);
+        let cache = Arc::make_mut(self.composited.as_mut().expect("checked is_some"));
+        blit_region(cache, w, &region, bbox);
+    }
+
     /// A composição do dreno, depois do portão. `segue_o_vidro` = o dreno do editor (o vidro segue o
     /// traço aberto); a cena de uma macro já o fez em cada `Preview` ([`Self::drena_sem_compor`]).
     pub(super) fn compoe_a_saida(&mut self, segue_o_vidro: bool) -> (Arc<Vec<u8>>, u32, u32) {
@@ -92,7 +137,7 @@ impl PainterTool {
             // texture with one full upload; paint frames then patch just the dab
             // footprint. If the texture isn't seeded yet the bridge's guard falls
             // back to a full upload anyway, so an early bbox can never desync it.
-            self.preview_upload_bbox = self.dirty_rect.take();
+            self.preview_upload_bbox = self.toma_o_sujo().0;
             self.last_drain_branch = crate::tool::DrainBranch::TrivialFast;
             return (Arc::clone(&self.canvas_rgba), w, h);
         }
@@ -104,7 +149,7 @@ impl PainterTool {
         if segue_o_vidro {
             self.segue_o_vidro_no_quadro();
         }
-        let dirty = self.dirty_rect.take();
+        let (dirty, caixas) = self.toma_o_sujo();
         let stroke_dirtied = dirty.is_some();
         if self.reacende_pela_luz_guardada(dirty) {
             return (
@@ -124,32 +169,17 @@ impl PainterTool {
         // drop Enio reported), when only a dab-sized rect changed.
         match (self.composited.is_some(), dirty) {
             (true, Some(bbox)) => {
-                let mut region = {
-                    let src = ToolPixelSource {
-                        active_id: active,
-                        active_rgba: &self.canvas_rgba,
-                        images: &self.images,
-                    };
-                    self.composto_pelo_vidro(&src, bbox).unwrap_or_else(|| {
-                        let mut c = composite_region(&self.layers, &src, w, h, bbox);
-                        self.compoe_sobre_o_papel(&mut c, bbox);
-                        c
-                    })
+                // B17.5: cada caixa compõe-se à parte (fora delas a figura não mudou); sem caixas, a união.
+                let caixas = if caixas.is_empty() {
+                    vec![bbox]
+                } else {
+                    caixas
                 };
-                // Impasto: light the FRESHLY-composited region (never the cache — lighting is not
-                // idempotent, and re-lighting the cached pixels would compound the shading a little
-                // more every frame). The normal reads across the region's edge into the full height
-                // field, so the border is lit exactly as a full recompose would light it.
-                self.apply_impasto_light(&mut region, bbox);
-                // Mask overlay: re-tint ONLY this region by the (dab-updated) scratch coverage — the
-                // partial twin of the full arm's `apply_mask_overlay`, same per-pixel kernel, no-op
-                // without a live scratch. This is what lets a mask stroke take the fast lane.
-                self.apply_mask_overlay_region(&mut region, bbox);
-                let region = region;
+                for caixa in caixas {
+                    self.compoe_a_caixa(active, caixa);
+                }
                 self.compositor_cache.invalidate_from(active, &self.layers);
                 self.adjustment_cache_pending = false;
-                let cache = Arc::make_mut(self.composited.as_mut().expect("checked is_some"));
-                blit_region(cache, w, &region, bbox);
                 // The COMPOSITE stays partial (the 17 ms → ~2 ms win). But the mask overlay is a
                 // TRANSLUCENT tint, and the shell's PARTIAL GPU upload of a sub-rect leaves visible
                 // seams for it on the real device (Enio smoke 2026-07-24) — even though the CPU cache

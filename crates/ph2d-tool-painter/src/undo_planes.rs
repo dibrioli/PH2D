@@ -106,6 +106,14 @@ impl PlaneDeltas {
     /// ⚠️ **`relief_indescribable` força `None`**: um passo cujo relevo não pôde ser descrito não pode
     /// prometer que só mexeu num retângulo.
     pub(crate) fn confined_region(&self, canvas_w: u32) -> Option<crate::compositor::Region> {
+        self.confined_sujo(canvas_w).map(|(r, _)| r)
+    }
+
+    /// [`Self::confined_region`] e as caixas que a cobrem (B17.5; vazia quando uma só basta).
+    pub(crate) fn confined_sujo(
+        &self,
+        canvas_w: u32,
+    ) -> Option<(crate::compositor::Region, Vec<crate::compositor::Region>)> {
         use crate::undo_delta::confine::Confine;
         let Self {
             canvas_rgba,
@@ -134,7 +142,7 @@ impl PlaneDeltas {
             return None;
         }
         let mut c = Confine::new(canvas_w);
-        c.add(canvas_rgba.reach());
+        c.add_plano(canvas_rgba);
         c.add_images(images);
         c.add_relevo(
             heights,
@@ -154,21 +162,21 @@ impl PlaneDeltas {
             move |m| fora(m) == 0,
         );
         c.add_vidros(vidros);
-        c.add(mask_scratch.reach());
-        c.add(selection_mask.reach());
-        c.add(selection_crisp.reach());
-        c.add(deform_disp.reach());
-        c.add(deform_pre.reach());
-        c.add(deform_pre_h.reach());
-        c.add(deform_pre_cover.reach());
-        c.add(deform_pre_mats.reach());
-        c.add(sculpt_pre.reach());
-        c.add(sculpt_amount.reach());
-        c.add(sculpt_plane_sum.reach());
-        c.add(sculpt_pre_cover.reach());
-        c.add(sculpt_pre_mats.reach());
-        c.add(sculpt_pre_rgba.reach());
-        c.finish()
+        c.add_plano(mask_scratch);
+        c.add_plano(selection_mask);
+        c.add_plano(selection_crisp);
+        c.add_plano(deform_disp);
+        c.add_plano(deform_pre);
+        c.add_plano(deform_pre_h);
+        c.add_plano(deform_pre_cover);
+        c.add_plano(deform_pre_mats);
+        c.add_plano(sculpt_pre);
+        c.add_plano(sculpt_amount);
+        c.add_plano(sculpt_plane_sum);
+        c.add_plano(sculpt_pre_cover);
+        c.add_plano(sculpt_pre_mats);
+        c.add_plano(sculpt_pre_rgba);
+        c.finish_caixas()
     }
 
     /// Extrai os deltas dos dois endpoints e **esvazia os dois**: depois disto os `ModelSnapshot`

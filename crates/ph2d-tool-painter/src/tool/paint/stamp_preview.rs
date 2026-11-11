@@ -33,6 +33,7 @@ impl PainterTool {
     pub(crate) fn mark_dirty(&mut self, rect: Region) {
         #[cfg(test)]
         self.marks.push(rect);
+        self.dirty_caixas.clear();
         self.dirty_rect = Some(self.dirty_rect.map_or(rect, |acc| union_region(acc, rect)));
         self.larga_a_luz_guardada();
         self.undo_writes = self.undo_writes.wrapping_add(1);

@@ -139,23 +139,32 @@ impl UndoEntry {
     /// A região a que este passo está confinado, ou `None` para *não confinado*. `marca(id)` diz onde virar
     /// a marca do Wet da camada `id` muda a figura (lido do estado VIVO: fora da janela dos planos ele é o
     /// do outro endpoint, então a janela dele ∪ a dos planos cobre os dois).
-    fn confined_region(&self, marca: &dyn Fn(RtLayerId) -> PlaneReach) -> Option<Region> {
+    fn confined_region(
+        &self,
+        marca: &dyn Fn(RtLayerId) -> PlaneReach,
+    ) -> Option<(Region, Vec<Region>)> {
         if !self.before.confined_to(&self.after) {
             return None;
         }
         let w = self.before.canvas_size.0;
-        let mut r = self.planes.confined_region(w)?;
+        let (mut r, mut caixas) = self.planes.confined_sujo(w)?;
         let (a, b) = (&self.before.tintas_molhadas, &self.after.tintas_molhadas);
         for &id in a.symmetric_difference(b) {
             match marca(id) {
                 PlaneReach::Untouched => {}
                 PlaneReach::Window(j) => {
-                    r = crate::tool::paint::region::union_region(r, j.to_region(w)?);
+                    let q = j.to_region(w)?;
+                    r = crate::tool::paint::region::union_region(r, q);
+                    // A marca do Wet entra como mais uma caixa, e a lista volta a fundir-se.
+                    if !caixas.is_empty() {
+                        caixas.push(q);
+                        caixas = crate::undo_delta::confine::funde_as_caixas(caixas);
+                    }
                 }
                 PlaneReach::Whole => return None,
             }
         }
-        Some(r)
+        Some((r, if caixas.len() > 1 { caixas } else { Vec::new() }))
     }
 
     /// Quantas camadas viram a marca do Wet neste passo — só para o diagnóstico.
@@ -204,6 +213,15 @@ impl UndoController {
         redo: bool,
         marca: &dyn Fn(RtLayerId) -> PlaneReach,
     ) -> Option<Region> {
+        self.peek_confined_sujo(redo, marca).map(|(r, _)| r)
+    }
+
+    /// [`Self::peek_confined_region`] e as caixas que a cobrem (B17.5; vazia quando uma só basta).
+    pub(crate) fn peek_confined_sujo(
+        &self,
+        redo: bool,
+        marca: &dyn Fn(RtLayerId) -> PlaneReach,
+    ) -> Option<(Region, Vec<Region>)> {
         #[cfg(test)]
         if !self.confine {
             return None; // a ablação do A/B — ver `UndoController::confine`

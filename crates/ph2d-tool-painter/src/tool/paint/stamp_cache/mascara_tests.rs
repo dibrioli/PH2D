@@ -98,3 +98,26 @@ fn a_mascara_com_caixa_e_a_do_clear_mais_resize() {
         }
     }
 }
+
+/// B29.1: o tecto LARGO (`TexelLargo`: `m` u16 + pré-traço) segue a mesma lei de zerar só o sujo — o pré-traço
+/// também volta a zero, senão o re-carimbo recompunha contra a tela de um traço anterior.
+#[test]
+fn o_tecto_largo_zera_o_sujo_como_o_u8() {
+    use ph2d_painter_brush::TexelLargo;
+    let (w, n) = (64usize, 64 * 32);
+    let a = caixa(4, 3, 20, 7);
+    let cheio = TexelLargo {
+        m: 40_000,
+        pre: [9, 8, 7, 6],
+    };
+    let mut m: MascaraDoTraco<TexelLargo> = MascaraDoTraco::default();
+    m.clear();
+    m.prepara(n, w, StrokeMethod::Line, [a]);
+    for y in a.y as usize..(a.y + a.h) as usize {
+        let i = y * w + a.x as usize;
+        m.fatia_do_lote()[i..i + a.w as usize].fill(cheio);
+    }
+    m.prepara(n, w, StrokeMethod::Line, [a]);
+    assert_eq!(m.zerados(), u64::from(a.w * a.h));
+    assert!(m.iter().all(|&t| t == TexelLargo::default()));
+}

@@ -23,29 +23,30 @@ enum Sujo {
     Todo,
 }
 
+/// `T` = o texel do tecto ([`ph2d_painter_brush::Tecto`], B29.1): `u8` = a lei que shipou.
 #[derive(Clone, Debug, Default)]
-pub(crate) struct MascaraDoTraco {
-    texels: Vec<u8>,
+pub(crate) struct MascaraDoTraco<T = u8> {
+    texels: Vec<T>,
     sujo: Sujo,
     /// Bytes que ESTE mapa zerou à mão (a régua do B26.A1; o `alloc_zeroed` não conta: ninguém escreve).
     zerados: u64,
 }
 
-impl Deref for MascaraDoTraco {
-    type Target = Vec<u8>;
-    fn deref(&self) -> &Vec<u8> {
+impl<T> Deref for MascaraDoTraco<T> {
+    type Target = Vec<T>;
+    fn deref(&self) -> &Vec<T> {
         &self.texels
     }
 }
 
-impl DerefMut for MascaraDoTraco {
-    fn deref_mut(&mut self) -> &mut Vec<u8> {
+impl<T> DerefMut for MascaraDoTraco<T> {
+    fn deref_mut(&mut self) -> &mut Vec<T> {
         self.sujo = Sujo::Todo;
         &mut self.texels
     }
 }
 
-impl MascaraDoTraco {
+impl<T: Copy + Default + PartialEq + Send + Sync> MascaraDoTraco<T> {
     /// O pen-down: o mapa do traço anterior volta ao SO; o 1.º lote recebe páginas zeradas.
     pub(crate) fn clear(&mut self) {
         self.texels = Vec::new();
@@ -70,12 +71,12 @@ impl MascaraDoTraco {
         if self.texels.len() != len {
             if incremental && !self.texels.is_empty() {
                 let antes = self.texels.len();
-                self.texels.resize(len, 0); // a tela mudou de tamanho a meio: o conteúdo manda
+                self.texels.resize(len, T::default()); // a tela mudou de tamanho a meio: o conteúdo manda
                 self.zerados += len.saturating_sub(antes) as u64;
                 self.sujo = Sujo::Todo;
             } else {
                 self.texels = Vec::new();
-                size_to(&mut self.texels, len, 0);
+                size_to(&mut self.texels, len, T::default());
                 self.sujo = Sujo::Limpo;
             }
         } else if !incremental {
@@ -85,7 +86,7 @@ impl MascaraDoTraco {
     }
 
     /// A fatia que o lote preparado escreve — SÓ dentro das footprints dadas a [`Self::prepara`].
-    pub(crate) fn fatia_do_lote(&mut self) -> &mut [u8] {
+    pub(crate) fn fatia_do_lote(&mut self) -> &mut [T] {
         &mut self.texels
     }
 
@@ -113,21 +114,21 @@ impl MascaraDoTraco {
         match std::mem::take(&mut self.sujo) {
             Sujo::Limpo => {}
             Sujo::Todo => {
-                self.texels.fill(0);
+                self.texels.fill(T::default());
                 self.zerados += self.texels.len() as u64;
             }
             Sujo::Linhas(linhas) => {
                 for (y, &[x0, x1]) in linhas.iter().enumerate() {
                     if x0 < x1 {
                         let i = y * largura;
-                        self.texels[i + x0 as usize..i + x1 as usize].fill(0);
+                        self.texels[i + x0 as usize..i + x1 as usize].fill(T::default());
                         self.zerados += u64::from(x1 - x0);
                     }
                 }
             }
         }
         debug_assert!(
-            self.texels.iter().all(|&b| b == 0),
+            self.texels.iter().all(|&b| b == T::default()),
             "B26.A1: alguém escreveu o tecto fora das footprints do lote"
         );
     }

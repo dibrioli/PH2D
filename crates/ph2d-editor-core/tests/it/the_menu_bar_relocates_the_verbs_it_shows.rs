@@ -562,6 +562,7 @@ fn every_topbar_verb_has_a_door_that_is_not_the_legacy_key() {
         .flat_map(|(_, _, k)| menu_rows(*k))
         .map(|(id, ..)| *id)
         .chain(ph2d_editor_core::screens::hero::transport_bar::BOTOES.map(|(id, _)| id))
+        .chain([ph2d_editor_core::screens::hero::transport_bar::CONTROLS.0])
         .collect();
     let mut doorless = Vec::new();
     for (name, id) in &declared {

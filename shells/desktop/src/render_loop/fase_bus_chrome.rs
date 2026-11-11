@@ -69,10 +69,7 @@ impl crate::App {
                     timeline_bridge::intent_for_transport(&ev, &self.timeline, &self.playhead)
                 {
                     self.timeline_intents.push(intent);
-                    // A jump to an absolute time may land outside the
-                    // visible span; pan the dope sheet after it (the
-                    // panel page-follows only while playing). Deferred
-                    // to the apply — see `timeline_reveal_after_apply`.
+                    // A jump may land off-span: pan the dope sheet after the apply (`timeline_reveal_after_apply`).
                     self.timeline_reveal_after_apply |= timeline_bridge::jumps_the_playhead(&ev);
                 }
             }
@@ -93,20 +90,9 @@ impl crate::App {
             tools, zen, toasts, ..
         } = FrameGfx::of(gfx);
         match action {
-            // ADR-0040 TG-B/TG-C: generic "cancel the active modal
-            // tool". Switch back to the default tool and tear down
-            // any image-tool shell-side preview caches. Bg Removal +
-            // Padding panels both raise this; the bgremoval cleanup
-            // is a no-op when padding (or any non-bgremoval tool)
-            // was active. Padding's shell-side state is purely
-            // tool-internal (no shell-cached preview), so no
-            // padding-specific cleanup is needed here.
+            // ADR-0040 TG-B/TG-C: back to the default tool, dropping the image-tool preview caches; the Pen's
+            // partial path stays in `vec_scene` (ADR-0108: `finish` only leaves drawing mode).
             EditorAction::CancelActiveTool => {
-                // ADR-0108: end any in-progress Vector draw cleanly when
-                // the tool is toggled off. The Pen lives on the shell, so
-                // the partial path PERSISTS in `vec_scene` (open) — no
-                // discard, no warning; `finish` just leaves drawing mode
-                // (a cheap no-op for any other tool being cancelled).
                 self.vec.pen.finish();
                 if let Some(default_id) = tools.default_tool_id()
                     && tools.set_active(&default_id)
@@ -158,9 +144,13 @@ impl crate::App {
                     wgpu::PresentMode::Immediate
                 });
             }
+            EditorAction::PlayerControlsToggle => {
+                let mapa = &hero_screen.as_ref()?.input_map;
+                let s = &mut self.components.jogador;
+                let r = ph2d_player_controls::host::toggle(s, mapa, self.playhead.is_playing());
+                Self::relogio_dos_controles(&mut self.playhead, r);
+            }
             EditorAction::Transport(cmd) => {
-                // TopBar Play/Pause/Reset drive the ONE clock (`Playhead`, W4.T7) every
-                // time-based subsystem rides; Reset only returns it to 0 (scrub-back is W1.5).
                 ph2d_transport::apply(cmd, &mut self.playhead);
                 // ⭐ O Play de CIMA põe a cena a CORRER (a Animação de cada objecto, em qualquer aba —
                 // o Autoplay do Godot); o Reset de cima sai. O Pause só pausa (onda 4, item 1).

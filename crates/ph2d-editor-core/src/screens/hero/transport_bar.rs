@@ -10,7 +10,7 @@ use crate::widget::ButtonState;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme};
-use ph2d_vector::VectorScene;
+use ph2d_vector::{Color, VectorScene};
 
 /// Os botões, pela ordem da barra. O dono os pediu nesta ordem.
 pub const BOTOES: [(NodeId, IconId); 5] = [
@@ -21,9 +21,12 @@ pub const BOTOES: [(NodeId, IconId); 5] = [
     (ids::TOPBAR_RESET, IconId::Stop),
 ];
 
+/// ⭐ O botão «Controls» (dono 10/11): à direita do Stop, depois de um separador, numa moldura própria.
+pub const CONTROLS: (NodeId, IconId) = (ids::TOPBAR_PLAYER_CONTROLS, IconId::Gamepad);
+
 /// Regista os botões. Chamado pelo `pre_populate` do hero.
 pub fn populate(store: &mut WidgetStore) {
-    for (id, _) in BOTOES {
+    for (id, _) in BOTOES.into_iter().chain([CONTROLS]) {
         store.register(
             id,
             InteractiveState::Button {
@@ -33,18 +36,26 @@ pub fn populate(store: &mut WidgetStore) {
     }
 }
 
-/// ⭐ **A porta da geometria:** centrados na barra e, se o centro cair sobre os vizinhos, no meio do vão
-/// entre `start_x` e `end_x`. Vazio se não couberem: um botão por cima de um menu rouba-lhe o clique.
+/// O vão de cada lado do separador entre o Stop e o «Controls».
+fn vao_do_separador() -> f32 {
+    Spacing::Sm.px()
+}
+
+/// ⭐ **A porta da geometria:** os cinco do jogo centrados na barra e, se o centro cair sobre os vizinhos, no meio do
+/// vão entre `start_x` e `end_x`; o [`CONTROLS`] por último, à direita deles depois do [`separador`]. Vazio se não
+/// couberem: um botão por cima de um menu rouba-lhe o clique.
 #[must_use]
 pub fn rects(bar: Rect, start_x: f32, end_x: f32) -> Vec<(NodeId, IconId, Rect)> {
     let lado = bar.h;
-    let total = lado * BOTOES.len() as f32;
+    let jogo = lado * BOTOES.len() as f32;
+    let total = jogo + vao_do_separador() * 2.0 + lado;
     let vao = Spacing::Sm.px();
     let (de, ate) = (start_x + vao, end_x - vao);
     if ate - de < total {
         return Vec::new();
     }
-    let x = crate::math::safe_clamp(bar.x + (bar.w - total) * 0.5, de, ate - total);
+    let x = crate::math::safe_clamp(bar.x + (bar.w - jogo) * 0.5, de, ate - total);
+    let controls = Rect::new(x + total - lado, bar.y, lado, bar.h);
     BOTOES
         .iter()
         .enumerate()
@@ -52,7 +63,46 @@ pub fn rects(bar: Rect, start_x: f32, end_x: f32) -> Vec<(NodeId, IconId, Rect)>
             let r = Rect::new(x + lado * i as f32, bar.y, lado, bar.h);
             (*id, *icon, r)
         })
+        .chain([(CONTROLS.0, CONTROLS.1, controls)])
         .collect()
+}
+
+/// A pílula do grupo do jogo: só os cinco — o [`CONTROLS`] tem a moldura dele.
+#[must_use]
+pub fn pilula(botoes: &[(NodeId, IconId, Rect)]) -> Option<Rect> {
+    let do_jogo = botoes.iter().filter(|(id, ..)| *id != CONTROLS.0);
+    crate::widget::cromo_barra::uniao(do_jogo.map(|(_, _, r)| *r))
+}
+
+/// O separador vertical entre o Stop e o «Controls» (o filete da casa, ao meio do vão); `None` sem o botão.
+#[must_use]
+pub fn separador(botoes: &[(NodeId, IconId, Rect)]) -> Option<Rect> {
+    let i = botoes.iter().position(|(id, ..)| *id == CONTROLS.0)?;
+    let (antes, r) = (botoes.get(i.checked_sub(1)?)?.2, botoes[i].2);
+    let w = StrokeToken::Thin.px();
+    let inset = Spacing::Xs.px();
+    let x = (antes.x + antes.w + r.x - w) * 0.5;
+    Some(Rect::new(x, r.y + inset, w, r.h - inset * 2.0))
+}
+
+/// ⭐ **A shell publica a corrida a cada quadro** (`palco_janela`): o hero completa-a com o mapa (o jogo tem a tela?)
+/// e reescreve a frase do «Controls» — o porquê de estar desligado e a tecla que o mapa dá à tela.
+pub fn publish(hero: &mut super::HeroScreen, run: GameRun) {
+    let c = hero.input_map.controls();
+    let run = GameRun {
+        has_controls_screen: c.players_can_change_keys,
+        ..run
+    };
+    let chave = if !run.has_controls_screen {
+        "input_map_try.bar_button_locked"
+    } else if run.controls_enabled() {
+        "input_map_try.bar_button"
+    } else {
+        "input_map_try.bar_button_off"
+    };
+    let frase = ph2d_i18n::tr(chave).replace("{key}", &c.open_key.label());
+    hero.view.game_run = run;
+    hero.store.set_tooltip(CONTROLS.0, frase);
 }
 
 /// ⭐ Os botões da tela cheia (dono 07/11: sem eles não havia como parar): no topo do jogo, centrados. Jogar é o da tela
@@ -105,8 +155,53 @@ pub fn aceso(id: NodeId, run: GameRun) -> bool {
     .find_map(|(botao, s)| (botao == id).then_some(s));
     match palco {
         Some(s) => run.stage == Some(s) && !run.paused(),
+        None if id == CONTROLS.0 => run.controls_open,
         None => id == ids::TOPBAR_PAUSE && run.paused(),
     }
+}
+
+/// ⭐ A moldura PRÓPRIA do «Controls»: um contorno (filete da casa, raio do campo) sem o chão da pílula do jogo, para
+/// ler como outro grupo. Aceso = o fundo escolhido e o glifo no acento; desligado = o glifo apagado. Devolve a cor do
+/// glifo.
+fn moldura_controls(
+    scene: &mut VectorScene,
+    r: Rect,
+    theme: Theme,
+    run: GameRun,
+    hover: bool,
+) -> Color {
+    let barra = crate::widget::cromo_barra::Barra::de(theme);
+    let borda = StrokeToken::Thin.px();
+    let caixa = Rect::new(r.x, r.y + borda, r.w, r.h - borda * 2.0);
+    let raio = barra.map_or_else(
+        || crate::paint::frame_radius(theme, Radius::Sm.px()),
+        |_| ph2d_card_stack::metrics::FIELD_RADIUS,
+    );
+    let (ligado, on) = (run.controls_enabled(), run.controls_open);
+    let cor = |t: ColorToken| barra.map_or_else(|| resolve(t, theme), |b| b.tinta().color(t));
+    let fundo = if on {
+        Some(ColorToken::AccentSoft)
+    } else {
+        (hover && ligado).then_some(ColorToken::BgElev)
+    };
+    if let Some(f) = fundo {
+        fill_rounded_rect(scene, caixa, raio, cor(f));
+    }
+    let filete = if on {
+        ColorToken::Accent
+    } else {
+        ColorToken::Border
+    };
+    crate::paint::stroke_rounded_rect(scene, caixa, raio, borda, cor(filete));
+    cor(if on {
+        ColorToken::Accent
+    } else if !ligado {
+        ColorToken::TextDisabled
+    } else if hover {
+        ColorToken::Text1
+    } else {
+        ColorToken::Text2
+    })
 }
 
 /// Pinta os botões e regista os alvos.
@@ -119,11 +214,12 @@ pub fn paint(
     store: &WidgetStore,
 ) {
     let barra = crate::widget::cromo_barra::Barra::de(theme);
-    if let (Some(b), Some(u)) = (
-        barra,
-        crate::widget::cromo_barra::uniao(botoes.iter().map(|(_, _, r)| *r)),
-    ) {
+    if let (Some(b), Some(u)) = (barra, pilula(botoes)) {
         b.pilula(scene, u);
+    }
+    if let Some(s) = separador(botoes) {
+        let cor = barra.map_or_else(|| resolve(ColorToken::Border, theme), |b| b.divisoria());
+        scene.fill_rect(crate::paint::rect_to_vello(s), cor);
     }
     for (id, icon, r) in botoes {
         let on = aceso(*id, run);
@@ -131,7 +227,9 @@ pub fn paint(
             store.button_state(*id).unwrap_or(ButtonState::Normal),
             ButtonState::Hovered | ButtonState::Focused | ButtonState::Pressed
         );
-        let cor = if let Some(b) = barra {
+        let cor = if *id == CONTROLS.0 {
+            moldura_controls(scene, *r, theme, run, hover)
+        } else if let Some(b) = barra {
             b.segmento(scene, *r, on, hover)
         } else {
             let fundo = if on {

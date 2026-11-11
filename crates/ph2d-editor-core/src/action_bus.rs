@@ -625,6 +625,8 @@ pub enum EditorAction {
     /// Physics, Motion, Timeline and Flip all ride the same clock, so these
     /// three chips drive every time-based subsystem at once.
     Transport(TransportCmd),
+    /// O botão «Controls» da barra: a tela do jogador abre/fecha pelo caminho da tecla dela.
+    PlayerControlsToggle,
 
     /// ⭐⭐ **Instanciar a partir da biblioteca**, no ponto de mundo `at`. ⚠️ Irmã da
     /// `HierInstantiate` e NÃO a mesma: ali chega uma `row`, aqui um `StableId`. A lei da

@@ -35,6 +35,12 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         }
     } else if id == ids::TOPBAR_RESET {
         TransportCmd::Reset
+    } else if id == ids::TOPBAR_PLAYER_CONTROLS {
+        // Fora do Play (ou sem tela no jogo) o botão está desligado: consome o clique e não faz nada.
+        if hero.view.game_run.controls_enabled() {
+            hero.bus.push(EditorAction::PlayerControlsToggle);
+        }
+        return true;
     } else {
         return false;
     };
@@ -55,6 +61,7 @@ mod tests {
         hero.view.game_run = crate::game_stage::GameRun {
             stage: Some(crate::game_stage::GameStage::Fullscreen),
             playing: false,
+            ..Default::default()
         };
         assert!(apply(&mut hero, WidgetEvent::Click(ids::TOPBAR_PAUSE)));
         assert!(matches!(

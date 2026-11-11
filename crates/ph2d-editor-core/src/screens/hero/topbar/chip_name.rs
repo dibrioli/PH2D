@@ -22,6 +22,7 @@ pub(super) fn topbar_chip_name(id: NodeId) -> Option<&'static str> {
         x if x == ids::MENUBAR_RUN_EDITOR => tr("chrome.menu.play_in_editor"),
         x if x == ids::TOPBAR_PAUSE => tr("chrome.topbar.name.pause"),
         x if x == ids::TOPBAR_RESET => tr("chrome.topbar.name.reset"),
+        x if x == ids::TOPBAR_PLAYER_CONTROLS => tr("input_map_try.bar_button_name"),
         x if x == ids::TOPBAR_RIGHT_LAYERS => tr("chrome.topbar.name.layers"),
         x if x == ids::TOPBAR_RIGHT_ASSETS => tr("chrome.topbar.name.assets"),
         x if x == ids::TOPBAR_RIGHT_SCRIPT => tr("chrome.topbar.name.script"),

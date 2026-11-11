@@ -342,6 +342,7 @@ const ALL_ICONS: &[IconId] = &[
     IconId::FxTwist,
     IconId::FxWave,
     IconId::FxZigzag,
+    IconId::Gamepad,
     IconId::Gizmo,
     IconId::Grid,
     IconId::GridSettings,

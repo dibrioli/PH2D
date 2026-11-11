@@ -234,6 +234,7 @@ pub enum IconId {
     FxTwist,
     FxWave,
     FxZigzag,
+    Gamepad,
     Gizmo,
     Grid,
     GridSettings,

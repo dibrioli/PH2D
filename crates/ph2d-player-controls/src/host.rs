@@ -33,6 +33,16 @@ pub fn key(
     (out != Outcome::Ignored, s.clock_after(out, playing))
 }
 
+/// O botão «Controls» da barra: a tecla que abre a tela (a do mapa), premida e solta pelo MESMO [`key`] — abre,
+/// fecha (ou larga a escuta) exactamente como ela. Conta como jogo à vista: o botão só age no Play.
+#[must_use]
+pub fn toggle(s: &mut PlaySession, map: &InputMap, playing: bool) -> Clock {
+    let open_key = Some(map.controls().open_key);
+    let (_, clock) = key(s, open_key, (true, false), true, (Some(map), playing));
+    let _ = key(s, open_key, (false, false), true, (Some(map), playing));
+    clock
+}
+
 /// O clique: aberta, a tela é dona do rato (`.0`, qualquer botão). Só o botão PRINCIPAL (`primary`) age: o Down em
 /// `at` (lógico) escolhe nela; o Up dispara o botão premido se cai dentro dele (fora cancela).
 #[must_use]

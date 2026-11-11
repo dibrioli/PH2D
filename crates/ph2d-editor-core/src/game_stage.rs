@@ -19,9 +19,30 @@ pub struct GameRun {
     pub stage: Option<GameStage>,
     /// O relógio anda?
     pub playing: bool,
+    /// A tela «Controls» do jogador está aberta (acende o botão dela na barra).
+    pub controls_open: bool,
+    /// O jogo tem a tela «Controls» (o mapa deixa o jogador trocar teclas); o hero preenche-o do mapa.
+    pub has_controls_screen: bool,
 }
 
 impl GameRun {
+    /// O que a shell publica: o palco, o relógio e a tela «Controls» (o resto, o hero completa do mapa).
+    #[must_use]
+    pub fn new(stage: Option<GameStage>, playing: bool, controls_open: bool) -> Self {
+        Self {
+            stage,
+            playing,
+            controls_open,
+            has_controls_screen: false,
+        }
+    }
+
+    /// O botão «Controls» da barra age: o jogo corre e tem a tela.
+    #[must_use]
+    pub fn controls_enabled(self) -> bool {
+        self.stage.is_some() && self.has_controls_screen
+    }
+
     /// O jogo está parado a meio?
     #[must_use]
     pub fn paused(self) -> bool {

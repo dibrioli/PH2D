@@ -6,7 +6,7 @@
 //! porta de resize de sempre. O quadro desenha-se uma só vez, lá; o editor fica com a última imagem
 //! (a vista dupla ao vivo é o R1 do plano).
 
-use ph2d_editor_core::game_stage::GameStage;
+use ph2d_editor_core::game_stage::{GameRun, GameStage};
 use ph2d_host::PlatformHost;
 use ph2d_pixel_crt::palco;
 use std::sync::Arc;
@@ -78,7 +78,8 @@ impl crate::App {
         let stage = self.undo.jogo.foto().and_then(|f| f.vista).map(|v| v.stage);
         let playing = self.playhead.is_playing();
         if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-            hero.view.game_run = ph2d_editor_core::game_stage::GameRun { stage, playing };
+            let run = GameRun::new(stage, playing, self.components.jogador.screen().is_open());
+            ph2d_editor_core::screens::hero::transport_bar::publish(hero, run);
         }
         let quer = stage == Some(GameStage::Window) && !largado;
         match (quer, self.undo.janela_do_jogo.is_some()) {

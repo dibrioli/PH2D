@@ -186,12 +186,13 @@ fn geometry(kr: Rect) -> Option<(f32, f32, f32, f32)> {
 }
 
 /// A caixa de TINTA `(w, h)` à direita na faixa de baixo (maiúscula a partir de `cap_top`, até `bottom`), e se cabe:
-/// a folga [`SUB_PAD`] à direita, nunca a começar à esquerda do número (`num_x`), fora da curva dos cantos.
-fn band(kr: Rect, (num_x, cap_top, bottom): (f32, f32, f32), (w, h): (f32, f32)) -> (Rect, bool) {
+/// a folga [`SUB_PAD`] dos dois lados e fora da curva dos cantos. Pode começar à esquerda do número (faixas diferentes;
+/// decisão do coordenador: as palavras do dono valem mais que o alinhamento).
+fn band(kr: Rect, (cap_top, bottom): (f32, f32), (w, h): (f32, f32)) -> (Rect, bool) {
     let cap_s = cap_height_px(SUB_PX);
     let r = Rect::new(kr.x + kr.w - SUB_PAD - w, cap_top + (cap_s - h) * 0.5, w, h);
     let whole = Rect::new(r.x, cap_top.min(r.y), w, bottom - cap_top.min(r.y));
-    (r, r.x >= num_x - 0.01 && clear_of_corners(whole, kr))
+    (r, w + SUB_PAD * 2.0 <= kr.w && clear_of_corners(whole, kr))
 }
 
 /// ⭐ Os conjuntos ao passo de `f`: o de texto se a MAIS LARGA das palavras cabe em TODA tecla com palavra; o das setas
@@ -220,7 +221,7 @@ pub fn sets(ts: &mut TextSystem, f: Fit) -> SubSets {
         let Some((x, _, cap_top, bottom)) = geometry(kr) else {
             return SubSets::default();
         };
-        let at = (x, cap_top, bottom);
+        let at = (cap_top, bottom);
         match s {
             SubLegend::Text(_) => out.text &= band(kr, at, (widest.0, cap_height_px(SUB_PX))).1,
             SubLegend::Icon(_) => out.icons &= band(kr, at, (widest.1, widest.2)).1,
@@ -264,7 +265,7 @@ pub(crate) fn corner_of(
             SubLegend::Text(_) => on.text,
             SubLegend::Icon(_) => on.icons,
         };
-        let (sr, fits) = band(kr, (x, cap_top, bottom), sub_size(ts, &sl));
+        let (sr, fits) = band(kr, (cap_top, bottom), sub_size(ts, &sl));
         let clear = bars.iter().all(|b| b.y + b.h <= cap_top || b.y >= bottom);
         (set && fits && clear).then_some((sl, sr))
     });

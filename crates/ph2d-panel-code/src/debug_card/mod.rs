@@ -223,12 +223,15 @@ impl DebugCardView {
             ink(ColorToken::Border),
         );
         let body = Rect::new(r.x, y, r.w, (r.y + r.h - y - pad).max(0.0));
+        // Numa aba curta a pilha encolhe o quadro até à barra ([`crate::stack`]): o corpo não sai dele.
+        scene.push_clip(&ph2d_editor_core::paint::rect_to_vello(body));
         match self.style {
             _ if !c.stopped() => live::paint(self, c, body, view, scene, ts, theme),
             CardStyle::Sheet => sheet::paint(self, c, body, view, scene, ts, theme),
             CardStyle::Cards => boxes::paint_cards(self, c, body, view, scene, ts, theme),
             CardStyle::Strip => boxes::paint_strip(self, c, body, view, scene, ts, theme),
         }
+        scene.pop_layer();
     }
 
     /// O puxador: a faixa da borda de cima recebe o arrasto; ao meio, um traço curto mostra-o.

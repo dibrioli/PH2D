@@ -64,6 +64,7 @@ mod joint_views;
 mod joint_wheel;
 mod joint_world_anchor;
 mod joints;
+mod jump_arc;
 mod kinematic;
 mod layers;
 mod lock_rotation;

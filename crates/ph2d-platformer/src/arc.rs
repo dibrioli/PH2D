@@ -1,0 +1,281 @@
+//! **A CURVA DO PULO** — o arco que o editor desenha, tirado da LEI e não de uma parábola.
+//!
+//! Corre [`crate::player_motor`] tique a tique, sem cena: o chão só no arranque, ar depois. A
+//! integração é a da ponte (`apply_player_motor`: `v += accel·dt`, `v += boost`) seguida da do
+//! mundo (`v += g·dt`, `x += v·dt`). O portão `o_arco_do_desenho_e_o_do_jogo`
+//! (`ph2d-physics-ecs`) mede-o contra o player REAL. Ficha:
+//! `docs/GameEngineFuncional/componentes/04_curva_do_pulo.md`.
+
+use crate::{
+    Buoyed, GroundSample, PlayerConfig, PlayerInput, PlayerState, Support, Vec2, player_motor,
+};
+
+/// Teto de tiques de UMA curva: 10 s a 60 Hz. Recurso: CPU do quadro do editor (uma curva de
+/// ~100 tiques custa microssegundos); só uma gravidade nula ou para cima chega aqui.
+pub const MAX_ARC_TICKS: usize = 600;
+
+/// Quantos pulos do ar se desenham. Recurso: o ECRÃ — com os números de partida cada um sobe 2 m,
+/// e 8 já passam dos ~11 m de altura da vista inicial.
+pub const AIR_JUMPS_DRAWN: u32 = 8;
+
+/// Uma curva: o caminho do CENTRO do corpo relativo ao ponto de partida, em metros.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct JumpArc {
+    pub points: Vec<Vec2>,
+    pub apex: Vec2,
+    pub apex_time: f32,
+    pub air_time: f32,
+}
+
+/// Todas as curvas que o canvas mostra.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct JumpArcs {
+    /// Botão preso, a correr à velocidade máxima. Leva a alça no ápice.
+    pub full: JumpArc,
+    /// Botão solto no tique seguinte ao salto (o corte).
+    pub short: JumpArc,
+    /// Parte parado, com a direcção presa desde o salto.
+    pub standing: JumpArc,
+    /// Os pulos do ar, cada um disparado no ápice do anterior.
+    pub air: Vec<JumpArc>,
+}
+
+/// O mundo em que a curva corre.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct ArcWorld {
+    pub gravity: Vec2,
+    pub dt: f32,
+    /// `+1` para a direita, `-1` para a esquerda.
+    pub facing: f32,
+    /// Os sub-passos do mundo por tique: a gravidade integra-se em cada um (`PhysicsWorld::step`).
+    pub substeps: u32,
+}
+
+/// O «cima» de um mundo: contra a gravidade.
+#[must_use]
+pub fn up_of_gravity(gravity: Vec2) -> Vec2 {
+    let n = (gravity[0] * gravity[0] + gravity[1] * gravity[1]).sqrt();
+    if n > 0.0 && n.is_finite() {
+        [-gravity[0] / n, -gravity[1] / n]
+    } else {
+        [0.0, 1.0]
+    }
+}
+
+fn dot(a: Vec2, b: Vec2) -> f32 {
+    a[0] * b[0] + a[1] * b[1]
+}
+
+/// O chão plano do arranque: a perna em repouso, sem quina.
+fn rest_ground(cfg: &PlayerConfig, up: Vec2) -> GroundSample {
+    GroundSample {
+        distance: cfg.ride.float_height,
+        normal: up,
+        ground_velocity: [0.0, 0.0],
+        one_way: false,
+        grip: GroundSample::NEUTRAL_GRIP,
+        brink: crate::Brink::NONE,
+    }
+}
+
+/// Quando o botão do pulo está preso.
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum Hold {
+    /// Preso o tempo todo; com `air` pulos do ar, solta um tique em cada ápice e volta a premir.
+    Full { air: u32 },
+    /// Só no tique do salto.
+    Tap,
+}
+
+struct Sim {
+    points: Vec<Vec2>,
+    /// Os índices em `points` onde cada pulo (o do chão e os do ar) começa.
+    starts: Vec<usize>,
+    apexes: Vec<(usize, f32)>,
+    dt: f32,
+}
+
+fn simulate(cfg: &PlayerConfig, w: ArcWorld, run: bool, hold: Hold) -> Sim {
+    let up = up_of_gravity(w.gravity);
+    let side = [up[1] * w.facing, -up[0] * w.facing];
+    let ground = rest_ground(cfg, up);
+    let speed = if run { cfg.walk.speed } else { 0.0 };
+    let mut v = [side[0] * speed, side[1] * speed];
+    let mut p = [0.0_f32, 0.0_f32];
+    let mut state = PlayerState::default();
+    let mut sim = Sim {
+        points: vec![p],
+        starts: vec![0],
+        apexes: Vec::new(),
+        dt: w.dt,
+    };
+    let air_left = match hold {
+        Hold::Full { air } => air,
+        Hold::Tap => 0,
+    };
+    let mut pressed_air = 0_u32;
+    let mut release_tick = false;
+    // Dois tiques de chão sem botão: a memória do chão e o coyote assentam como no jogo.
+    for tick in 0..MAX_ARC_TICKS + 2 {
+        let warm = tick < 2;
+        let first = tick == 2;
+        let rising = dot(v, up);
+        let held = match hold {
+            _ if warm => false,
+            Hold::Tap => first,
+            Hold::Full { .. } => !release_tick,
+        };
+        let input = PlayerInput {
+            drive: w.facing,
+            jump: held,
+            ..PlayerInput::default()
+        };
+        let sample = (warm || first).then_some(&ground);
+        let step = player_motor(
+            cfg,
+            sample,
+            None,
+            None,
+            None,
+            None,
+            input,
+            state,
+            v,
+            w.gravity,
+            up,
+            w.dt,
+            Buoyed::DRY,
+            Support::default(),
+        );
+        state = step.state;
+        if warm {
+            continue;
+        }
+        let m = step.motor;
+        let hold_g = step.gravity_hold;
+        let n = w.substeps.max(1);
+        let h = w.dt / n as f32;
+        for i in 0..2 {
+            v[i] += m.accel[i] * w.dt + m.boost[i];
+            for _ in 0..n {
+                v[i] += (w.gravity[i] + hold_g[i]) * h;
+                p[i] += v[i] * h;
+            }
+        }
+        if step.jump.is_some() && !first {
+            sim.starts.push(sim.points.len() - 1);
+        }
+        sim.points.push(p);
+        let now_rising = dot(v, up);
+        if rising > 0.0 && now_rising <= 0.0 {
+            sim.apexes.push((sim.points.len() - 1, dot(p, up)));
+            // No ápice: solta um tique e volta a premir, se ainda houver pulos do ar a desenhar.
+            if pressed_air < air_left {
+                release_tick = true;
+                pressed_air += 1;
+                continue;
+            }
+        }
+        release_tick = false;
+        if dot(p, up) <= 0.0 && !first {
+            break;
+        }
+    }
+    sim
+}
+
+fn arc_of(points: &[Vec2], up: Vec2, dt: f32) -> JumpArc {
+    let (i, _) = points
+        .iter()
+        .enumerate()
+        .fold((0, f32::MIN), |(bi, bh), (i, q)| {
+            let h = dot(*q, up);
+            if h > bh { (i, h) } else { (bi, bh) }
+        });
+    JumpArc {
+        apex: points.get(i).copied().unwrap_or_default(),
+        apex_time: i as f32 * dt,
+        air_time: points.len().saturating_sub(1) as f32 * dt,
+        points: points.to_vec(),
+    }
+}
+
+/// Uma curva só: botão preso, a correr, sem pulos do ar — a da alça.
+#[must_use]
+pub fn full_arc(cfg: &PlayerConfig, w: ArcWorld) -> JumpArc {
+    let up = up_of_gravity(w.gravity);
+    let s = simulate(cfg, w, true, Hold::Full { air: 0 });
+    arc_of(&s.points, up, s.dt)
+}
+
+/// Todas as curvas do canvas.
+#[must_use]
+pub fn jump_arcs(cfg: &PlayerConfig, w: ArcWorld) -> JumpArcs {
+    let up = up_of_gravity(w.gravity);
+    let short = simulate(cfg, w, true, Hold::Tap);
+    let standing = simulate(cfg, w, false, Hold::Full { air: 0 });
+    let full = full_arc(cfg, w);
+    let air_n = cfg.jump.air_jumps.min(AIR_JUMPS_DRAWN);
+    let air = if air_n == 0 {
+        Vec::new()
+    } else {
+        let s = simulate(cfg, w, true, Hold::Full { air: air_n });
+        let mut out = Vec::new();
+        for (k, &start) in s.starts.iter().enumerate().skip(1) {
+            let end = s.starts.get(k + 1).copied().unwrap_or(s.points.len() - 1);
+            out.push(arc_of(&s.points[start..=end], up, s.dt));
+        }
+        out
+    };
+    JumpArcs {
+        full,
+        short: arc_of(&short.points, up, short.dt),
+        standing: arc_of(&standing.points, up, standing.dt),
+        air,
+    }
+}
+
+/// O `jump_height` cujo ápice simulado sobe `apex` metros (bisseção; o ápice cresce com a altura).
+/// `None` se o mundo não deixa ninguém subir (gravidade nula) ou o alvo não é positivo.
+#[must_use]
+pub fn height_for_apex(cfg: &PlayerConfig, w: ArcWorld, apex: f32) -> Option<f32> {
+    if !(apex > 0.0 && apex.is_finite()) {
+        return None;
+    }
+    let up = up_of_gravity(w.gravity);
+    let rise = |h: f32| {
+        let mut c = *cfg;
+        c.jump.jump_height = h;
+        dot(full_arc(&c, w).apex, up)
+    };
+    let (mut lo, mut hi) = (0.0_f32, apex.max(0.01));
+    let mut grow = 0;
+    while rise(hi) < apex {
+        hi *= 2.0;
+        grow += 1;
+        if grow > 30 {
+            return None;
+        }
+    }
+    for _ in 0..32 {
+        let mid = 0.5 * (lo + hi);
+        if rise(mid) < apex {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    Some(hi)
+}
+
+/// A velocidade que leva o ápice a `ahead` metros para o lado (o tempo até ao topo só depende da
+/// vertical). `None` se o ápice é instantâneo.
+#[must_use]
+pub fn speed_for_apex(cfg: &PlayerConfig, w: ArcWorld, ahead: f32) -> Option<f32> {
+    let t = full_arc(cfg, w).apex_time;
+    (t > 0.0 && ahead.is_finite()).then(|| (ahead / t).max(0.0))
+}
+
+#[cfg(test)]
+#[path = "arc_tests.rs"]
+mod tests;

@@ -1,6 +1,8 @@
 # Curva do pulo no canvas (Platform Player, versão C no canvas)
 
-**Estado: `ficha — aguarda o dono`** (nada construído). Pedido do dono 10/11
+**Estado: `em obra`.** Dono 10/11: **«B, mas com linhas coloridas»** — pulo inteiro forte; Short, Standing e
+Air jump finos e tracejados, cada um na SUA cor (tokens), nome ao passar o mouse. O preset conserva a altura
+(recomendação da ficha; acabamento = estado da arte). Pedido do dono 10/11
 (`project-memory/project_jump_arc_on_canvas_2026_11_10.md`): a ideia C da crítica
 (`critica_ph2d.html#character`, «Puxe o pulo») entra, mas **no canvas**. No cartão: só o botão que liga a curva
 e o seletor **Floaty · Snappy · Heavy**. Base `bc4a6ce930`, sobre o Character versão B ([03](03_character.md)).

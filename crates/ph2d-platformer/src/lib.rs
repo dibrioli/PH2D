@@ -51,11 +51,13 @@
 mod contract;
 pub use contract::{PlayerConfig, PlayerState, PlayerStep, PlayerView};
 
+pub mod arc;
 pub mod corner;
 pub mod crouch;
 pub mod dash;
 pub mod descent;
 pub mod event;
+pub mod feel;
 pub mod glide;
 mod ground;
 pub mod jump;

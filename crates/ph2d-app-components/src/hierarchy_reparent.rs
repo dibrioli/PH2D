@@ -1,14 +1,12 @@
 //! ⭐⭐ **Largar linhas da Hierarquia sobre outra — a lei do reparentar, para UMA ou VÁRIAS.**
 //!
-//! Report do dono (25/10, F30 §F): *«não consigo colocar múltiplos objetos selecionados como filhos
-//! de outro de uma única vez»*. O arrasto levava um `NodeId` só e o dreno da shell aplicava esse um.
-//! A lei (Unity/Godot/Blender), escrita UMA vez aqui e chamada pelo dreno
-//! (`shells/desktop/src/hero_intents/hierarchy.rs`):
+//! A lei (Unity/Godot/Blender), UMA vez aqui, chamada pelo dreno `hero_intents/hierarchy.rs` da shell:
 //!
 //! * a linha agarrada **seleccionada** leva a selecção inteira; não seleccionada, vai sozinha;
 //! * um seleccionado com um antepassado também seleccionado vai JUNTO com ele (não se arranca);
 //! * o bloco mantém a ordem da Hierarquia ([`ph2d_ecs::list_order`]), não a do clique;
 //! * cada um fica onde está no MUNDO; o gesto inteiro é atómico — ou vão todos, ou nenhum.
+//! * a forma que entra num corpo veste o Look padrão dele ([`ph2d_physics_ecs::look_ao_associar`]).
 //!
 //! Plano e mecanismo: `docs/UI_New_and_Simple/F30_plano.md` §F.
 
@@ -114,6 +112,7 @@ pub fn reparentar(sim: &mut SimWorld, quem: &[Entity], queda: Queda) -> Desfecho
     }
     let into_a_recipe = pai.is_some_and(|p| ph2d_ecs::master_root_of(sim.world(), p).is_some());
     let world = sim.world_mut();
+    let looks = ph2d_physics_ecs::donos_dos_looks(world);
     // A pose de MUNDO de cada um, sob a cadeia ANTIGA — para não saltar ao mudar de pai.
     let mundo_antes: Vec<Option<Transform>> = quem
         .iter()
@@ -196,6 +195,7 @@ pub fn reparentar(sim: &mut SimWorld, quem: &[Entity], queda: Queda) -> Desfecho
             t.skew_y = antes.skew_y - pw.skew_y;
         }
     }
+    ph2d_physics_ecs::look_ao_associar(world, &looks);
     Desfecho::Movidos {
         quem: quem.to_vec(),
         into_a_recipe,

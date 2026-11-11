@@ -37,7 +37,7 @@ pub use migra_formas::{
 pub use outline::{ColliderOutline, Ring as OutlineRing, outline_rings_world};
 /// ⭐ O Look da forma de colisão (pivô, cor, opacidade) e a porta única do centro da forma.
 pub mod shape_look;
-pub use shape_look::{ShapeLook, forma_resolvida};
+pub use shape_look::{ShapeLook, donos_dos_looks, forma_resolvida, look_ao_associar};
 pub mod player_input;
 pub use layer_names::{
     LayerNames, ObjetoDaCamada, layers_in_use, objects_on_layers, objects_per_layer, visible_layers,

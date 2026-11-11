@@ -61,6 +61,51 @@ impl ShapeLook {
         }
         self.opacity = fin(self.opacity, 1.0).clamp(OPACIDADE_MINIMA, 1.0);
     }
+
+    /// O Look que a forma veste ao entrar num corpo: o padrão do corpo, só o pivô fica (é geometria).
+    #[must_use]
+    pub fn no_padrao_do_corpo(&self) -> Self {
+        Self {
+            pivot: self.pivot,
+            ..Self::default()
+        }
+    }
+}
+
+/// O corpo que governa a forma `e`: ela mesma se é corpo, senão o [`crate::owner_body`].
+fn dono(world: &World, e: Entity) -> Option<Entity> {
+    if world.get::<crate::RigidBody>(e).is_some() {
+        Some(e)
+    } else {
+        crate::owner_body(world, e)
+    }
+}
+
+/// O retrato de antes de um gesto que muda a Hierarquia: o dono de cada forma com Look.
+#[must_use]
+pub fn donos_dos_looks(world: &mut World) -> Vec<(Entity, Option<Entity>)> {
+    let formas: Vec<Entity> = world
+        .query_filtered::<Entity, (
+            bevy_ecs::query::With<ShapeLook>,
+            bevy_ecs::query::With<Collider>,
+        )>()
+        .iter(world)
+        .collect();
+    formas.into_iter().map(|e| (e, dono(world, e))).collect()
+}
+
+/// ⭐ **Ao associar a um corpo, o Look volta ao padrão do corpo** (dono 10/11): cada forma de `antes` cujo
+/// dono passou a ser OUTRO corpo veste [`ShapeLook::no_padrao_do_corpo`]; o que o artista mudar depois fica.
+pub fn look_ao_associar(world: &mut World, antes: &[(Entity, Option<Entity>)]) {
+    for &(e, era) in antes {
+        let agora = world.get_entity(e).ok().and_then(|_| dono(world, e));
+        if agora.is_some()
+            && agora != era
+            && let Some(mut l) = world.get_mut::<ShapeLook>(e)
+        {
+            *l = l.no_padrao_do_corpo();
+        }
+    }
 }
 
 /// A meia-extensão local da forma em cada eixo (m, antes da escala): a régua da fração do pivô.

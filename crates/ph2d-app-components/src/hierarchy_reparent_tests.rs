@@ -200,3 +200,29 @@ fn largar_varios_na_raiz_tira_os_todos_do_pai() {
     assert!((mundo_x(&sim, a) - antes[0]).abs() < 1e-3);
     assert!((mundo_x(&sim, c) - antes[1]).abs() < 1e-3);
 }
+
+#[test]
+fn largar_uma_forma_solta_num_corpo_veste_o_padrao_do_corpo() {
+    use ph2d_physics_ecs::{Collider, RigidBody, ShapeLook};
+    let (mut sim, p, [a, b, ..]) = cena();
+    let artista = ShapeLook {
+        opacity: 0.4,
+        cor_propria: true,
+        ..ShapeLook::default()
+    };
+    let w = sim.world_mut();
+    w.entity_mut(p).insert(RigidBody::default());
+    for e in [a, b] {
+        w.entity_mut(e).insert((Collider::default(), artista));
+    }
+    let _ = reparentar(
+        &mut sim,
+        &[a],
+        Queda {
+            new_parent: Some(p),
+            ..Queda::default()
+        },
+    );
+    assert_eq!(sim.world().get::<ShapeLook>(a), Some(&ShapeLook::default()));
+    assert_eq!(sim.world().get::<ShapeLook>(b), Some(&artista)); // B ficou solta
+}

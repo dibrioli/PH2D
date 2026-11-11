@@ -140,6 +140,21 @@ pub fn torna_corpo(
     caixa: [f32; 2],
     tem_imagem: bool,
 ) -> Entity {
+    let mut antes = crate::donos_dos_looks(world);
+    let corpo = torna_corpo_sem_look(world, e, kind, caixa, tem_imagem, &mut antes);
+    crate::look_ao_associar(world, &antes);
+    corpo
+}
+
+/// [`torna_corpo`] sem o Look; quem leva o lado-forma de `e` a uma filha re-chaveia `antes` para ela.
+fn torna_corpo_sem_look(
+    world: &mut World,
+    e: Entity,
+    kind: crate::BodyKind,
+    caixa: [f32; 2],
+    tem_imagem: bool,
+    antes: &mut [(Entity, Option<Entity>)],
+) -> Entity {
     // Um corpo que já existe mantém o tipo (o «Add Body» espalhado não torna Dynamic um Static).
     let corpo_de = world
         .get::<crate::RigidBody>(e)
@@ -157,6 +172,9 @@ pub fn torna_corpo(
         world.entity_mut(e).insert(corpo_de);
         let filha = filha_vazia(world, e);
         move_lado_forma(world, e, filha);
+        for par in antes.iter_mut().filter(|p| p.0 == e) {
+            par.0 = filha;
+        }
         ph2d_ecs::assign_missing_stable_ids(world);
         return e;
     }

@@ -5,6 +5,7 @@ mod a11y;
 mod a_caixa_fica_por_cima;
 mod bancada;
 mod clique;
+mod coluna_do_lado;
 mod cronometro;
 mod estado;
 mod ligaduras;

@@ -5,18 +5,18 @@ use super::split::{self, Split};
 use crate::table_text::CodeCells;
 use crate::view::CodeView;
 use ph2d_code_debugcard::{DebugCard, columns, sheet_rows};
-use ph2d_editor_core::paint::{fill_rounded_rect, frame_radius, paint_text_in_weight, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_in_weight, resolve};
 use ph2d_editor_core::zones::Rect;
-use ph2d_i18n::{tr, tr_with};
+use ph2d_i18n::tr;
 use ph2d_text::{FontWeight, TextSystem};
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_ui_table::{Metrics, Row, natural_widths};
 use ph2d_vector::VectorScene;
 
 /// Um texto numa linha `rh` a começar em `(x, y)`: `Text1`/`Text2` no corpo, o resto (títulos,
 /// notas, `ln N`) um degrau abaixo, como a maquete 14.
 #[allow(clippy::too_many_arguments)]
-fn line(
+pub(super) fn line(
     ts: &mut TextSystem,
     scene: &mut VectorScene,
     s: &str,
@@ -28,7 +28,7 @@ fn line(
 }
 
 /// O [`line`] num peso dado: os títulos do lado (`h4`) são `500`, medidos no mesmo peso.
-fn line_in(
+pub(super) fn line_in(
     ts: &mut TextSystem,
     scene: &mut VectorScene,
     s: &str,
@@ -99,7 +99,7 @@ pub(super) fn paint(
     let border = resolve(ColorToken::Border, theme);
     split::paint(st, s, (sx, body.y, table_r.h), scene, theme);
     let side_x = sx + split::band();
-    side(
+    super::side::paint(
         st,
         c,
         Rect::new(side_x, body.y, s.side_w, table_r.h),
@@ -141,67 +141,4 @@ fn reveal_changed(st: &mut DebugCardView, c: &DebugCard, rows: &[Row], body_h: f
         st.table.scroll = (y - (body_h - m.row_h) * 0.5).max(0.0);
     }
     st.revealed = Some(key);
-}
-
-/// A coluna do lado: Call stack (a do topo acesa; clicar vai à linha) e Waiting here.
-fn side(
-    st: &mut DebugCardView,
-    c: &DebugCard,
-    r: Rect,
-    scene: &mut VectorScene,
-    ts: &mut TextSystem,
-    theme: Theme,
-) {
-    let rh = ph2d_tokens::row_pitch_px();
-    let pad = Spacing::Sm.px();
-    let x = r.x + super::inset();
-    let w = (r.w - super::inset() - pad).max(0.0);
-    let mut y = r.y + pad;
-    let h4 = (ColorToken::Text3, crate::peso::BOTAO);
-    line_in(ts, scene, tr("code.debug.stack"), (x, y, w), h4, theme);
-    y += rh;
-    for (i, s) in c.stack.iter().enumerate() {
-        let rr = Rect::new(x - pad, y, w + pad, rh);
-        if i == 0 {
-            let radius = frame_radius(theme, Radius::Sm.px());
-            fill_rounded_rect(scene, rr, radius, resolve(ColorToken::AccentSoft, theme));
-        }
-        let name = if s.function.is_empty() {
-            tr("code.debug.top_level").to_owned()
-        } else {
-            s.function.clone()
-        };
-        let ln = tr_with("code.debug.stack_line", &[("line", &s.line)]);
-        let lw = crate::peso::largura(ts, &ln, TypeToken::Xs.px());
-        line(
-            ts,
-            scene,
-            &name,
-            (x, y, w - lw - pad),
-            ColorToken::Text1,
-            theme,
-        );
-        line(
-            ts,
-            scene,
-            &ln,
-            (x + w - lw, y, lw + pad),
-            ColorToken::Text3,
-            theme,
-        );
-        st.painted.stack.push((s.line, rr));
-        y += rh;
-    }
-    if c.waiting.is_empty() {
-        return;
-    }
-    y += pad;
-    let title = tr_with("code.debug.waiting_here", &[("count", &c.waiting.len())]);
-    line_in(ts, scene, &title, (x, y, w), h4, theme);
-    y += rh;
-    for who in &c.waiting {
-        let at = Rect::new(x, y, w, rh);
-        super::head::who_plain(who, at, ColorToken::Text2, scene, ts, theme);
-        y += rh;
-    }
 }

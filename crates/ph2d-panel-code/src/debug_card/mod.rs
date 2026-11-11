@@ -8,6 +8,7 @@ mod head;
 pub mod live;
 mod live_marks;
 mod sheet;
+mod side;
 pub mod split;
 
 use crate::peso::paint_text;
@@ -68,6 +69,10 @@ pub struct CardPainted {
     pub cards: Vec<CardBox>,
     /// O separador da Sheet entre a tabela e a coluna do lado.
     pub split: Option<split::Split>,
+    /// A coluna do lado da Sheet (Call stack e Waiting here): a caixa, a rolagem máxima, a barra.
+    pub side: Option<CardBox>,
+    /// Quem espera à vista na coluna do lado: `(nome, caixa)`.
+    pub waiting: Vec<(String, Rect)>,
     /// Os traços ao vivo (e o gráfico grande) à vista: `(chave, caixa)` — pairar e clicar.
     pub sparks: Vec<(String, Rect)>,
 }
@@ -102,6 +107,12 @@ pub struct DebugCardView {
     cards_drag: Option<(usize, BarDrag)>,
     /// A largura que o artista deu à coluna do lado da Sheet pelo separador (`None` = a de omissão).
     pub side_w: Option<f32>,
+    /// A rolagem da coluna do lado da Sheet (linhas inteiras; volta ao topo noutra paragem).
+    pub side_scroll: f32,
+    /// A paragem a que a rolagem do lado pertence.
+    side_stop: Option<String>,
+    /// O arrasto da barra da coluna do lado.
+    side_drag: Option<BarDrag>,
     /// O arrasto do separador: `(x onde começou, largura do lado de então)`.
     splitting: Option<(f32, f32)>,
     /// O rato sobre o separador (o `look` lembra-o; a pintura acende-o).
@@ -140,7 +151,7 @@ impl DebugCardView {
             _ if !c.stopped() => live::body_height(self, c, area.w),
             CardStyle::Sheet => {
                 let table = natural_height(&sheet_rows(c), &self.table, &crate::peso::metricas());
-                let side = rh * (2 + c.stack.len() + c.waiting.len()) as f32;
+                let side = side::natural_height(c);
                 table.max(side) + rh
             }
             CardStyle::Cards => {
@@ -236,7 +247,7 @@ impl DebugCardView {
             self.resizing = Some((y, r.h));
             return Some(CardClick::Taken);
         }
-        if self.split_press(x, y) {
+        if self.split_press(x, y) || self.side_press(x, y) {
             return Some(CardClick::Taken);
         }
         let p = &self.painted;
@@ -319,7 +330,8 @@ impl DebugCardView {
         let sheet = p.table.as_ref().and_then(|(lay, ..)| lay.bar().hit());
         let mut bars = sheet
             .into_iter()
-            .chain(p.cards.iter().filter_map(|b| b.track.hit()));
+            .chain(p.cards.iter().filter_map(|b| b.track.hit()))
+            .chain(p.side.and_then(|b| b.track.hit()));
         (self.bar_dragging() || bars.any(|b| b.contains(x, y))).then_some(ResizeNs)
     }
 
@@ -330,6 +342,10 @@ impl DebugCardView {
             return true;
         }
         if self.split_drag_to(x) {
+            return true;
+        }
+        if let Some(d) = self.side_drag {
+            self.side_scroll = d.scroll_at(y);
             return true;
         }
         if let Some((i, d)) = self.cards_drag {
@@ -346,6 +362,7 @@ impl DebugCardView {
     pub fn release(&mut self) -> bool {
         let resized = self.resizing.take().is_some()
             | self.cards_drag.take().is_some()
+            | self.side_drag.take().is_some()
             | self.splitting.take().is_some();
         self.cell_pressed = None;
         self.table.release() || resized
@@ -354,7 +371,7 @@ impl DebugCardView {
     /// Uma barra do quadro (Sheet ou um cartão) está a ser arrastada?
     #[must_use]
     pub fn bar_dragging(&self) -> bool {
-        self.cards_drag.is_some() || self.table.bar_dragging()
+        self.cards_drag.is_some() || self.side_drag.is_some() || self.table.bar_dragging()
     }
 
     /// A roda em `(x, y)`: sobre o quadro rola a tabela da Sheet ou o cartão debaixo dela. `true` = sobre o
@@ -362,6 +379,9 @@ impl DebugCardView {
     pub fn wheel(&mut self, x: f32, y: f32, dy: f32) -> bool {
         if !self.painted.card.is_some_and(|r| r.contains(x, y)) {
             return false;
+        }
+        if self.side_wheel(x, y, dy) {
+            return true;
         }
         if let Some((lay, ..)) = &self.painted.table {
             let lay = lay.clone();

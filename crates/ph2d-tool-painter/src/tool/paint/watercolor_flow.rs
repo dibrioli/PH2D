@@ -19,7 +19,7 @@
 //! cobertura tem 1-2 px, e é só isso que um limiar alcança.
 
 use super::watercolor_field::{Dono, WetStrokeStyle, box_blur, sample_bilinear};
-use super::watercolor_noise::{NoiseTile, paper_height, snap_slot_size, warp_offset};
+use super::watercolor_noise::{GradeDoWarp, NoiseTile, paper_height, snap_slot_size, warp_offset};
 use ph2d_painter_brush::texture::{ImageMask, angle_basis, sample_tiled_rot_wrapped};
 use ph2d_painter_brush::{TEX_TILE_BASE_PX, TextureKind, TextureSettings};
 use std::sync::{Mutex, OnceLock};
@@ -133,6 +133,8 @@ struct Fonte {
     /// O Classic com Flow Size / Angle fora do neutro (`None` com um padrão, ou no neutro: o
     /// [`warp_offset`] verbatim).
     classico: Option<Classico>,
+    /// Os `hash2` do Classic neutro na caixa (B16.6), com algum Ragged Edge `> 0`.
+    grade: Option<GradeDoWarp>,
     /// O mapa do papel e o fator `Paper Edge · amplitude da dobra` (px por unidade do mapa).
     papel: Option<(Mapa, f32)>,
 }
@@ -180,6 +182,12 @@ impl EdgeFlow {
             }
         }
         let papel = distintos.iter().any(|e| e.papel.is_some());
+        let com_warp = cur.warp > 0.0 || (owner.is_some() && table.iter().any(|s| s.warp > 0.0));
+        let (cx0, cy0) = (caixa.0 as f32 - 1.0, caixa.1 as f32 - 1.0);
+        let (cx1, cy1) = (
+            (caixa.0 + caixa.2) as f32 + 1.0,
+            (caixa.1 + caixa.3) as f32 + 1.0,
+        );
         let fontes = distintos
             .iter()
             .map(|e| Fonte {
@@ -188,6 +196,10 @@ impl EdgeFlow {
                     .flatten()
                     .map(|a| a.mapa(caixa)),
                 classico: Classico::de(&e.flow, tile),
+                grade: (com_warp
+                    && e.flow.kind == TextureKind::None
+                    && Classico::de(&e.flow, tile).is_none())
+                .then(|| GradeDoWarp::nova((cx0, cx1), (cy0, cy1), tile)),
                 papel: e.papel.map(|(p, k)| {
                     let a = Amostrador::papel(p, &imagens, tile);
                     let f = k.min(1.0) * a.estat().dobra;
@@ -328,7 +340,10 @@ impl Fonte {
             match (&self.flow, &self.classico) {
                 (Some(m), _) => m.le(x, y),
                 (None, Some(c)) => c.le(x, y),
-                (None, None) => warp_offset(x, y, tile),
+                (None, None) => match &self.grade {
+                    Some(g) => g.le(x, y),
+                    None => warp_offset(x, y, tile),
+                },
             }
         } else {
             (0.0, 0.0)

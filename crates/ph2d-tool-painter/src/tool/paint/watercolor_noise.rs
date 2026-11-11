@@ -212,6 +212,114 @@ pub(super) fn warp_offset(x: f32, y: f32, tile: NoiseTile) -> (f32, f32) {
     )
 }
 
+/// O oráculo do B16.6 (hash2 por composite): `true` ⇒ a [`GradeDoWarp`] cai sempre no
+/// [`warp_offset`] (o de antes). Global (o composite corre no pool); dá o mesmo bit.
+#[cfg(test)]
+pub(in crate::tool::paint) static WARP_PELA_CONTA: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+/// Uma oitava do warp com os `hash2` dos DOIS eixos guardados por nó da grelha que cobre a caixa.
+struct Oitava {
+    cx: f32,
+    cy: f32,
+    x0: i32,
+    y0: i32,
+    w: usize,
+    h: usize,
+    v: Vec<[f32; 2]>,
+}
+
+impl Oitava {
+    fn nova(cell: f32, seeds: (u32, u32), tile: NoiseTile, x: (f32, f32), y: (f32, f32)) -> Self {
+        let (cx, px) = tile.axis(cell, 0);
+        let (cy, py) = tile.axis(cell, 1);
+        let (x0, x1) = ((x.0 / cx).floor() as i32, (x.1 / cx).floor() as i32 + 1);
+        let (y0, y1) = ((y.0 / cy).floor() as i32, (y.1 / cy).floor() as i32 + 1);
+        let (w, h) = ((x1 - x0 + 1) as usize, (y1 - y0 + 1) as usize);
+        let mut v = Vec::with_capacity(w * h);
+        for iy in y0..=y1 {
+            let wy = wrap_cell(iy, py);
+            for ix in x0..=x1 {
+                let wx = wrap_cell(ix, px);
+                v.push([hash2(wx, wy, seeds.0), hash2(wx, wy, seeds.1)]);
+            }
+        }
+        Self {
+            cx,
+            cy,
+            x0,
+            y0,
+            w,
+            h,
+            v,
+        }
+    }
+
+    /// A conta de [`value_noise_pair`], na mesma ordem, com os `hash2` lidos da grelha; `None` fora dela.
+    #[inline]
+    fn par(&self, x: f32, y: f32) -> Option<(f32, f32)> {
+        let fx = x / self.cx;
+        let fy = y / self.cy;
+        let x0 = fx.floor();
+        let y0 = fy.floor();
+        let ix = (x0 as i32).checked_sub(self.x0)?;
+        let iy = (y0 as i32).checked_sub(self.y0)?;
+        if ix < 0 || iy < 0 || ix as usize + 1 >= self.w || iy as usize + 1 >= self.h {
+            return None;
+        }
+        let i = iy as usize * self.w + ix as usize;
+        let sx = smooth01(fx - x0);
+        let sy = smooth01(fy - y0);
+        let (a, b, c, d) = (
+            self.v[i],
+            self.v[i + 1],
+            self.v[i + self.w],
+            self.v[i + self.w + 1],
+        );
+        let lerp4 = |k: usize| {
+            let top = a[k] + (b[k] - a[k]) * sx;
+            let bot = c[k] + (d[k] - c[k]) * sx;
+            top + (bot - top) * sy
+        };
+        Some((lerp4(0), lerp4(1)))
+    }
+}
+
+/// **O [`warp_offset`] de uma caixa do composite** (B16.6): os 16 `hash2` por amostra saem de uma
+/// grelha preenchida 1× por composite (as duas oitavas, os dois eixos). Mesmo bit; fora da caixa,
+/// a conta.
+pub(super) struct GradeDoWarp {
+    grossa: Oitava,
+    fina: Oitava,
+    tile: NoiseTile,
+}
+
+impl GradeDoWarp {
+    /// `x`/`y` = o intervalo (inclusivo) das amostras, em texels do canvas.
+    pub(super) fn nova(x: (f32, f32), y: (f32, f32), tile: NoiseTile) -> Self {
+        Self {
+            grossa: Oitava::nova(22.0, (SEED_WARP_X_A, SEED_WARP_Y_A), tile, x, y),
+            fina: Oitava::nova(8.0, (SEED_WARP_X_B, SEED_WARP_Y_B), tile, x, y),
+            tile,
+        }
+    }
+
+    #[inline]
+    pub(super) fn le(&self, x: f32, y: f32) -> (f32, f32) {
+        #[cfg(test)]
+        if WARP_PELA_CONTA.load(std::sync::atomic::Ordering::Relaxed) {
+            return warp_offset(x, y, self.tile);
+        }
+        match (self.grossa.par(x, y), self.fina.par(x, y)) {
+            (Some((ax, ay)), Some((bx, by))) => (
+                (ax * 0.65 + bx * 0.35 - 0.5) * 2.0,
+                (ay * 0.65 + by * 0.35 - 0.5) * 2.0,
+            ),
+            _ => warp_offset(x, y, self.tile),
+        }
+    }
+}
+
 /// Paper-tooth granulation height at `(x, y)` in `[0, 1]` — the built-in fallback when no Paper
 /// slot is set. TWO octaves (5 px + 2.5 px, doc 12 GRAN-3): the audit measured the old single
 /// octave as mid-band and uniform (good) but mono-scale full-range — the "digital" side of the

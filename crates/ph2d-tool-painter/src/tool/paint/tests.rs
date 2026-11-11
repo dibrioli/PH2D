@@ -281,6 +281,7 @@ mod watercolor_selfseam; // a costura do retorno sobre o PROPRIO traco (doc 40):
 mod watercolor_session;
 mod watercolor_smudge_borda; // o Smudge na borda da tela nao abre transparencia (report 2026-09-24)
 mod watercolor_smudge_poca_seca; // o Smudge na poça seca numa camada transparente não escurece (smoke 23/10)
+mod watercolor_warp_grade; // B16.6: o warp pelos hash2 da grelha do composite, ao byte
 mod watercolor_water;
 
 use super::*;

@@ -325,8 +325,8 @@ fn pontos(scene: &ph2d_vector::VectorScene) -> Vec<(f32, f32)> {
         .collect()
 }
 
-/// ⭐ Dono 10/11: um fio separa a barra da aba do código — o da borda da calha (`Border`,
-/// `StrokeToken::Thin`), na última fila de píxeis da barra, de lado a lado do cartão; a linha 1
+/// ⭐ Dono 10/11: um fio separa a barra da aba do código — `BorderStrong` a
+/// `StrokeToken::Thin`, na última fila de píxeis da barra, de lado a lado do cartão; a linha 1
 /// começa abaixo dele, com o respiro de cima.
 #[test]
 fn um_fio_separa_a_barra_do_codigo_e_a_linha_1_respira_abaixo_dele() {

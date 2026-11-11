@@ -84,8 +84,9 @@ pub fn close(scene: &mut VectorScene) {
     scene.pop_layer();
 }
 
-/// Fecha o cartão da barra de cima com o fio que a separa do código (dono 10/11): o da borda da
-/// calha (`Border`, `StrokeToken::Thin`), na última fila de píxeis de `head`, de lado a lado.
+/// Fecha o cartão da barra de cima com o fio que a separa do código (dono 10/11): `BorderStrong`
+/// («visible dividers»; o `Border` some no tom do cartão, como no separador da banda) a
+/// `StrokeToken::Thin`, na última fila de píxeis de `head`, de lado a lado.
 pub fn close_bar(scene: &mut VectorScene, head: Rect, theme: &Theme) {
     let t = ph2d_tokens::StrokeToken::Thin.px();
     let fio = Rect::new(head.x, head.y + head.h - t, head.w, t);
@@ -93,7 +94,7 @@ pub fn close_bar(scene: &mut VectorScene, head: Rect, theme: &Theme) {
         scene,
         fio,
         0.0,
-        ph2d_editor_core::paint::resolve(ColorToken::Border, *theme),
+        ph2d_editor_core::paint::resolve(ColorToken::BorderStrong, *theme),
     );
     close(scene);
 }

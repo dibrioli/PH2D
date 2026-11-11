@@ -645,3 +645,35 @@ fn the_published_deformation_makes_the_brush_round_on_screen() {
 
 #[path = "picking_doors_tests.rs"]
 mod portas;
+
+/// Sonda B27.3 (`docs/Painter/missao_4k/BACKLOG.md`): custo por evento da porta da malha com N sprites
+/// no mundo de presente; o mínimo de 5 blocos. A resposta depende do cursor: só a busca é cacheável.
+#[test]
+#[ignore = "sonda B27.3"]
+fn sonda_b27_custo_do_mesh_uv_por_evento() {
+    for n in [1_usize, 100, 1000] {
+        let mut present = PresentWorld::new();
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let mut alvo = 0;
+        for i in 0..n {
+            let e = fresh_sim_entity(&mut sim);
+            alvo = spawn_at(&mut present, e, i as f32 * 3.0, 0.0, [2.0, 2.0]);
+        }
+        let mut melhor = f64::MAX;
+        for _ in 0..5 {
+            let t0 = std::time::Instant::now();
+            for k in 0..10_000 {
+                let x = (n as f32 - 1.0) * 3.0 + (k % 7) as f32 * 0.1;
+                std::hint::black_box(crate::mesh_uv(
+                    present.world_mut(),
+                    alvo,
+                    [x, 0.2],
+                    false,
+                    [0.01, 0.01],
+                ));
+            }
+            melhor = melhor.min(t0.elapsed().as_secs_f64() / 10_000.0 * 1e6);
+        }
+        eprintln!("B27.3 mesh_uv n={n}: {melhor:.3} us/evento");
+    }
+}

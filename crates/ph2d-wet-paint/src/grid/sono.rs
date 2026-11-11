@@ -1,6 +1,6 @@
 //! **A água parada DORME** (B13.3, decisão 1 do dono). Por tile de 64×64 (as colunas da
 //! [`super::faixa_tiles`], as linhas de 64 em 64), conta-se os passos seguidos com `|vel| ≤ ε`; um tile
-//! cuja ilha 3×3 está toda quieta há [`PASSOS_PARA_DORMIR`] passos sai da máscara nos estágios do
+//! cuja ilha (7×7 por omissão: a 3×3 não é ao bit, o fluxo anda mais de um tile por passo) está toda quieta há [`PASSOS_PARA_DORMIR`] passos sai da máscara nos estágios do
 //! fluxo (2..5). A secagem (estágio 1) e o rebuild (0) veem a máscara inteira: dormindo, só seca.
 //!
 //! Acorda (contador a zero): água nova pela [`Grid::note_tiles`] (pincel), restauro de histórico
@@ -15,8 +15,8 @@ pub const PASSOS_PARA_DORMIR: u8 = 20;
 /// O estado do sono de uma grade.
 #[derive(Clone, Debug, Default)]
 pub struct Sono {
-    /// DESLIGADO por omissão: com ε = 0 o salto NÃO é ao bit na tela do produto (sonda
-    /// `sonda_sono_ligado_e_desligado`: 365/400 passos diferem a 4K) — BACKLOG B13.3.
+    /// DESLIGADO por omissão: a ε = 0 com a ilha 7×7 é ao bit (0/400 a 1080p e 4K) mas não ganha
+    /// (4K: 23–37 × 21–31 ms/passo); ε > 0 espera a prancha — BACKLOG B13.3.
     pub ligado: bool,
     /// `|vel|` máximo que ainda conta como quieto.
     pub eps: f32,
@@ -24,8 +24,14 @@ pub struct Sono {
     pub quietos: Vec<u8>,
     pub ntx: usize,
     pub nty: usize,
+    /// Estágios (bit `k` = estágio `k`) que veem a máscara inteira mesmo com tiles a dormir.
+    pub fora: u8,
+    /// Raio da ilha em tiles além de 1 (0 = a ilha 3×3).
+    pub ilha_extra: usize,
     /// A máscara de tiles antes de o sono a recortar (reposta no fim do passo).
     cheia: Vec<u64>,
+    /// A máscara recortada (os estágios fora de [`Sono::fora`]).
+    cortada: Vec<u64>,
     aplicado: bool,
     chave: u64,
     /// Tiles-linha saltados desde o início (medida).
@@ -35,7 +41,10 @@ pub struct Sono {
 impl Sono {
     #[must_use]
     pub fn novo() -> Self {
-        Sono::default()
+        Sono {
+            ilha_extra: 2,
+            ..Sono::default()
+        }
     }
 }
 
@@ -77,15 +86,16 @@ pub(crate) fn inicio(g: &mut Grid, k: u64) {
     }
 }
 
-/// Antes do estágio 2: tira da máscara os tiles cuja ilha 3×3 dorme.
+/// Antes do estágio 2: tira da máscara os tiles cuja ilha dorme.
 pub(crate) fn adormece(g: &mut Grid) {
     if !ativo(g) || g.sono.quietos.is_empty() {
         return;
     }
     let (ntx, nty, tw) = (g.sono.ntx, g.sono.nty, g.tile_words);
+    let r = 1 + g.sono.ilha_extra;
     let dorme = |tx: usize, ty: usize, q: &[u8]| {
-        let (x0, x1) = (tx.saturating_sub(1), (tx + 1).min(ntx - 1));
-        let (y0, y1) = (ty.saturating_sub(1), (ty + 1).min(nty - 1));
+        let (x0, x1) = (tx.saturating_sub(r), (tx + r).min(ntx - 1));
+        let (y0, y1) = (ty.saturating_sub(r), (ty + r).min(nty - 1));
         (y0..=y1).all(|y| (x0..=x1).all(|x| q[y * ntx + x] >= PASSOS_PARA_DORMIR))
     };
     let mut corte = vec![0u64; tw];
@@ -117,6 +127,25 @@ pub(crate) fn adormece(g: &mut Grid) {
     }
     g.sono.cheia = cheia;
     g.sono.aplicado = algum;
+    if algum {
+        let mut c = std::mem::take(&mut g.sono.cortada);
+        c.clear();
+        c.extend_from_slice(&g.row_tiles);
+        g.sono.cortada = c;
+    }
+}
+
+/// No começo do estágio `k` (2..5): a máscara recortada, ou a inteira se `k` está em [`Sono::fora`].
+pub(crate) fn estagio(g: &mut Grid, k: u8) {
+    if !g.sono.aplicado {
+        return;
+    }
+    let src = if g.sono.fora & (1 << k) != 0 {
+        &g.sono.cheia
+    } else {
+        &g.sono.cortada
+    };
+    g.row_tiles.copy_from_slice(src);
 }
 
 /// Fim do passo: repõe a máscara e conta quem ficou quieto (só a velocidade: a secagem muda o filme).

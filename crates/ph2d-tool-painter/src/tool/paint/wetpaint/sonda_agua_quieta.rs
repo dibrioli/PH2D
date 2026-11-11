@@ -200,67 +200,81 @@ fn sonda_sono_ligado_e_desligado() {
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(0.0);
-    for (w, h) in [(1920usize, 1080usize), (3840, 2160)] {
-        let mut ts = [tela_pintada(&lib, w, h), tela_pintada(&lib, w, h)];
-        let mut ms = [Vec::new(), Vec::new()];
-        let mut dif = 0;
-        for step in 0..400u32 {
-            let mut hs = [0u64; 2];
-            for lado in [step as usize % 2, 1 - step as usize % 2] {
-                let e: &mut ph2d_wet_paint::painter::Engine = &mut ts[lado]
-                    .paint
-                    .wetpaint
-                    .session
-                    .as_mut()
-                    .expect("sessao")
-                    .engine;
-                let idx = e.active_layer;
-                let ph2d_wet_paint::painter::Engine {
-                    sim,
-                    layers,
-                    tuning,
-                    ..
-                } = &mut *e;
-                let g = &mut layers[idx].grid;
-                g.sono.ligado = lado == 0;
-                g.sono.eps = eps;
-                let a = Instant::now();
-                while sim_step_stage(sim, g, tuning).is_none() {}
-                ms[lado].push(a.elapsed().as_secs_f64() * 1e3);
-                let mut x = 0xcbf2_9ce4_8422_2325u64;
-                for c in [&g.film, &g.susp, &g.sett, &g.vel_x, &g.vel_y] {
-                    for v in c.iter() {
-                        x = (x ^ u64::from(v.to_bits())).wrapping_mul(0x0100_0000_01b3);
+    // fora = máscara de estágios (bits 2..5) + 64 × raio extra da ilha.
+    let foras: Vec<u8> = std::env::var("PH2D_SONO_FORA")
+        .ok()
+        .map(|v| v.split(',').filter_map(|x| x.trim().parse().ok()).collect())
+        .unwrap_or_else(|| vec![128]);
+    let res: Vec<(usize, usize)> = match std::env::var("PH2D_SONO_RES").as_deref() {
+        Ok("1080") => vec![(1920, 1080)],
+        Ok("4k") => vec![(3840, 2160)],
+        _ => vec![(1920, 1080), (3840, 2160)],
+    };
+    for fora in foras {
+        for &(w, h) in &res {
+            let mut ts = [tela_pintada(&lib, w, h), tela_pintada(&lib, w, h)];
+            let mut ms = [Vec::new(), Vec::new()];
+            let mut dif = 0;
+            for step in 0..400u32 {
+                let mut hs = [0u64; 2];
+                for lado in [step as usize % 2, 1 - step as usize % 2] {
+                    let e: &mut ph2d_wet_paint::painter::Engine = &mut ts[lado]
+                        .paint
+                        .wetpaint
+                        .session
+                        .as_mut()
+                        .expect("sessao")
+                        .engine;
+                    let idx = e.active_layer;
+                    let ph2d_wet_paint::painter::Engine {
+                        sim,
+                        layers,
+                        tuning,
+                        ..
+                    } = &mut *e;
+                    let g = &mut layers[idx].grid;
+                    g.sono.ligado = lado == 0;
+                    g.sono.eps = eps;
+                    g.sono.fora = fora % 64;
+                    g.sono.ilha_extra = usize::from(fora / 64);
+                    let a = Instant::now();
+                    while sim_step_stage(sim, g, tuning).is_none() {}
+                    ms[lado].push(a.elapsed().as_secs_f64() * 1e3);
+                    let mut x = 0xcbf2_9ce4_8422_2325u64;
+                    for c in [&g.film, &g.susp, &g.sett, &g.vel_x, &g.vel_y] {
+                        for v in c.iter() {
+                            x = (x ^ u64::from(v.to_bits())).wrapping_mul(0x0100_0000_01b3);
+                        }
                     }
+                    hs[lado] = x;
                 }
-                hs[lado] = x;
+                dif += usize::from(hs[0] != hs[1]);
             }
-            dif += usize::from(hs[0] != hs[1]);
-        }
-        let e: &ph2d_wet_paint::painter::Engine = &ts[0]
-            .paint
-            .wetpaint
-            .session
-            .as_ref()
-            .expect("sessao")
-            .engine;
-        let salt = e.layers[e.active_layer].grid.sono.saltados;
-        println!(
-            "\n  {w}x{h} · ε {eps:e} · passos que diferem {dif}/400 · tiles-linha saltados {salt}"
-        );
-        for j in 0..10 {
-            let m = |v: &[f64]| {
-                v[j * 40..(j + 1) * 40]
-                    .iter()
-                    .copied()
-                    .fold(f64::MAX, f64::min)
-            };
+            let e: &ph2d_wet_paint::painter::Engine = &ts[0]
+                .paint
+                .wetpaint
+                .session
+                .as_ref()
+                .expect("sessao")
+                .engine;
+            let salt = e.layers[e.active_layer].grid.sono.saltados;
             println!(
-                "    {:>4.1} s: com sono {:>6.2} ms · sem {:>6.2} ms (mín. de 40)",
-                (j + 1) as f64,
-                m(&ms[0]),
-                m(&ms[1])
+                "\n  {w}x{h} · ε {eps:e} · fora {fora:#08b} · passos que diferem {dif}/400 · tiles-linha saltados {salt}"
             );
+            for j in 0..10 {
+                let m = |v: &[f64]| {
+                    v[j * 40..(j + 1) * 40]
+                        .iter()
+                        .copied()
+                        .fold(f64::MAX, f64::min)
+                };
+                println!(
+                    "    {:>4.1} s: com sono {:>6.2} ms · sem {:>6.2} ms (mín. de 40)",
+                    (j + 1) as f64,
+                    m(&ms[0]),
+                    m(&ms[1])
+                );
+            }
         }
     }
 }

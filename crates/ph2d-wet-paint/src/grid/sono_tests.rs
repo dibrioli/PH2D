@@ -64,6 +64,7 @@ fn so_a_ilha_quieta_sai_da_mascara_e_volta_no_fim_do_passo() {
     let g = e.active_grid_mut();
     g.row_tiles.fill(u64::MAX);
     g.sono.ligado = true;
+    g.sono.ilha_extra = 0;
     super::inicio(g, 1);
     let ntx = g.sono.ntx;
     for ty in 1..4 {

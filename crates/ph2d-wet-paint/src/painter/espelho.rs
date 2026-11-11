@@ -426,7 +426,7 @@ fn so_a_otica(g: &Grid) -> Grid {
         live_tiles: Vec::new(),
         tile_words: 1,
         tiles_enabled: false,
-        sono: Default::default(),
+        sono: crate::grid::sono::Sono::novo(),
         spans_enabled: *spans_enabled,
         scratch: Default::default(),
         paper_preset: *paper_preset,

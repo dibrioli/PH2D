@@ -547,6 +547,7 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
         }
         2 => {
             crate::grid::sono::adormece(g);
+            crate::grid::sono::estagio(g, 2);
             if n.is_multiple_of(4) {
                 if sim.order_invariant {
                     crate::solver::build_flow_field_jacobi(
@@ -567,6 +568,7 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
             }
         }
         3 => {
+            crate::grid::sono::estagio(g, 3);
             c.vmax = if sim.order_invariant {
                 crate::solver::advect_jacobi(g, &c.p, c.grav[0], c.grav[1])
             } else {
@@ -579,8 +581,12 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
             }
             crate::estreito::arredonda(g);
         }
-        4 => apply_boundaries(g, false),
+        4 => {
+            crate::grid::sono::estagio(g, 4);
+            apply_boundaries(g, false);
+        }
         5 => {
+            crate::grid::sono::estagio(g, 5);
             if n.is_multiple_of(3) {
                 project(g, &c.p);
                 apply_boundaries(g, true);

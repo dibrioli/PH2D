@@ -10,6 +10,44 @@ use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
 impl CodeDoc {
+    /// As alturas da Bancada, do depurador e da faixa, encolhidas pela ordem até o código guardar as
+    /// suas linhas ([`ph2d_panel_code::stack`]).
+    pub(crate) fn stack(&self, area: Rect, open: bool) -> [f32; 3] {
+        use ph2d_panel_code::stack::{Want, code_least, fit};
+        let least = self
+            .debug
+            .card
+            .as_ref()
+            .map_or(0.0, ph2d_panel_code::debug_card::DebugCardView::least);
+        let debug = Want {
+            h: self.debug_card_h(area),
+            least,
+        };
+        let band = self.console_view.want(open, area.h);
+        let code = code_least(self.find.bar_height());
+        fit(
+            area.h,
+            code,
+            crate::cards::margin(),
+            [self.bench_h, debug, band],
+        )
+    }
+
+    /// O cartão do depurador, entre o código e a faixa de baixo (`None` = nenhum).
+    pub(crate) fn debug_rect(&self, area: Rect, console_open: bool) -> Option<Rect> {
+        let h = self.stack(area, console_open)[1];
+        if h <= 0.0 {
+            return None;
+        }
+        let (code, _) = self.cards(area, console_open);
+        Some(Rect::new(
+            area.x,
+            code.y + code.h + crate::cards::margin(),
+            area.w,
+            h,
+        ))
+    }
+
     /// A altura do quadro de baixo do código na aba `area` (0 = nenhum).
     pub(crate) fn debug_card_h(&self, area: Rect) -> f32 {
         self.debug

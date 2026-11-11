@@ -2,6 +2,7 @@
 //! que eles pedem. A shell só traduz o evento e toca no relógio do jogo (saiu dela pela catraca
 //! `the_shell_only_shrinks`, R10a).
 
+use ph2d_editor_core::screens::hero::{HeroScreen, transport_bar};
 use ph2d_input::{InputMap, Key};
 
 use crate::{Outcome, PlaySession};
@@ -73,4 +74,20 @@ pub fn click(
 pub fn pointer_move(s: &mut PlaySession, at: Option<(f32, f32)>) -> (bool, bool) {
     let repinta = s.pointer_move(at);
     (s.screen().is_open(), repinta)
+}
+
+/// ⭐ Com a tela aberta o botão «Controls» da barra acende sob o ponteiro (dono 10/11, D32): sobre ele o movimento é
+/// da barra (`false`: a shell passa-o ao hero) e a tela solta o hover dela; fora dele é o [`pointer_move`], e o botão
+/// apaga-se ([`transport_bar::movimento_com_a_tela`]).
+#[must_use]
+pub fn pointer_move_com_a_barra(
+    s: &mut PlaySession,
+    hero: Option<&mut HeroScreen>,
+    at: Option<(f32, f32)>,
+) -> (bool, bool) {
+    let barra = |(h, (x, y)): (&mut HeroScreen, _)| transport_bar::movimento_com_a_tela(h, x, y);
+    if s.screen().is_open() && hero.zip(at).is_some_and(barra) {
+        return (false, s.pointer_move(None));
+    }
+    pointer_move(s, at)
 }

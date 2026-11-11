@@ -64,7 +64,8 @@ fn a_tela_cheia_tem_jogar_pausar_e_parar_no_topo_ao_centro() {
         [
             ids::MENUBAR_RUN_FULLSCREEN,
             ids::TOPBAR_PAUSE,
-            ids::TOPBAR_RESET
+            ids::TOPBAR_RESET,
+            CONTROLS.0
         ]
     );
     let (inicio, fim) = (r[0].2.x, r[2].2.x + r[2].2.w);
@@ -302,4 +303,134 @@ fn a_dica_do_controls_nunca_corta_e_cabe_na_janela() {
         }
     }
     ph2d_text::set_active_text_rendering(TextRendering::Default);
+}
+
+fn centro(r: Rect) -> (f32, f32) {
+    (r.x + r.w * 0.5, r.y + r.h * 0.5)
+}
+
+/// ⭐ Onda 4: a barra da TELA CHEIA tem o «Controls» como a do Play — à direita do Stop, o separador entre eles, o
+/// clique pelo mesmo caminho (`PlayerControlsToggle` → `host::toggle`) e a dica da casa, inteira, nos dois modos de
+/// texto. Controlos: sem a mão sobre ele não há dica; num jogo sem a tela o clique não pede nada. Mutação: tirar o
+/// `com_controls` do `rects_palco` ⇒ o botão some; tirar a dica do `paint_palco` ⇒ o censo não a vê.
+#[test]
+fn a_tela_cheia_tem_o_controls_com_separador_clique_e_dica_inteira() {
+    use crate::action_bus::EditorAction;
+    use crate::interaction::WidgetEvent;
+    use crate::text_elide::elisao;
+    use ph2d_tokens::TextRendering;
+    let mut ts = ph2d_text::TextSystem::new();
+    for largura in [1600.0, 1280.0, 900.0] {
+        let area = Rect::new(0.0, 0.0, largura, 720.0);
+        let r = rects_palco(area);
+        assert_eq!(r.len(), 4, "os três do jogo e o Controls");
+        assert_eq!((r[2].0, r[3].0), (ids::TOPBAR_RESET, CONTROLS.0));
+        assert_eq!(r[3].1, IconId::Gamepad);
+        let s = separador(&r).expect("o separador");
+        assert!(s.x > r[2].2.x + r[2].2.w && s.x + s.w < r[3].2.x, "{s:?}");
+        for pode in [true, false] {
+            let mut hero = crate::screens::hero::HeroScreen::new(NodeId(1));
+            hero.input_map.controls_mut().players_can_change_keys = pode;
+            let run = GameRun {
+                stage: Some(GameStage::Fullscreen),
+                playing: true,
+                ..Default::default()
+            };
+            publish(&mut hero, run);
+            for modo in [TextRendering::Default, TextRendering::CrispHeavyPlus] {
+                ph2d_text::set_active_text_rendering(modo);
+                for mao in [None, Some(CONTROLS.0)] {
+                    hero.store.set_hot(mao);
+                    let mut scene = VectorScene::new();
+                    let ((), medidos) = elisao::medindo(|| {
+                        let (hits, store) = (&mut hero.hit_index, &hero.store);
+                        let run = hero.view.game_run;
+                        paint_palco(area, run, &mut scene, &mut ts, Theme::Dark, hits, store);
+                    });
+                    assert_eq!(medidos.is_empty(), mao.is_none(), "a dica só sob a mão");
+                    for m in &medidos {
+                        assert!(
+                            m.coube(),
+                            "{modo:?} {largura}: «{}» saiu «{}»",
+                            m.texto,
+                            m.pintado
+                        );
+                    }
+                }
+            }
+            let (x, y) = centro(r[3].2);
+            assert!(
+                sobre_o_controls(&hero, x, y),
+                "o alvo do clique é o desenho"
+            );
+            assert!(crate::screens::hero::chrome::dispatch_all(
+                &mut hero,
+                WidgetEvent::Click(CONTROLS.0)
+            ));
+            let pedidos: Vec<_> = hero.bus.drain().collect();
+            assert_eq!(
+                matches!(pedidos.as_slice(), [EditorAction::PlayerControlsToggle]),
+                pode,
+                "sem a tela no jogo o clique não pede nada: {pedidos:?}"
+            );
+        }
+    }
+    ph2d_text::set_active_text_rendering(TextRendering::Default);
+}
+
+/// ⭐ Onda 4: com a tela «Controls» aberta, o movimento SOBRE o botão é da barra e o acende (D32, no mesmo movimento);
+/// fora dele a tela fica com o movimento e o botão apaga, sem o hero o ver. Nas duas barras. Mutação: devolver sempre
+/// `false` ⇒ não acende; tirar o `set_hot(None)` ⇒ fica aceso com o ponteiro na tela.
+#[test]
+fn com_a_tela_aberta_o_controls_acende_so_sob_o_ponteiro() {
+    use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+    let mover = |x: f32, y: f32| PointerEvent {
+        x,
+        y,
+        pressure: 1.0,
+        kind: PointerKind::Move,
+        source: PointerSource::Mouse,
+        button: PointerButton::Primary,
+        timestamp_ns: 0,
+    };
+    for botoes in [rects(BARRA, 100.0, 800.0), rects_palco(BARRA)] {
+        let mut hero = crate::screens::hero::HeroScreen::new(NodeId(1));
+        let mut scene = VectorScene::new();
+        let (hits, store) = (&mut hero.hit_index, &hero.store);
+        paint(
+            &botoes,
+            GameRun::default(),
+            &mut scene,
+            Theme::Dark,
+            hits,
+            store,
+        );
+        let (x, y) = centro(botoes[botoes.len() - 1].2);
+        assert!(
+            movimento_com_a_tela(&mut hero, x, y),
+            "sobre o botão: da barra"
+        );
+        let arena = bumpalo::Bump::new();
+        let _ = crate::interaction::dispatch_pointer(
+            &mut hero.store,
+            &hero.hit_index,
+            mover(x, y),
+            &arena,
+        );
+        assert_eq!(hero.store.hot_id(), Some(CONTROLS.0));
+        assert_eq!(
+            hero.store.button_state(CONTROLS.0),
+            Some(ButtonState::Hovered)
+        );
+        let no_jogo = y + BARRA.h * 10.0;
+        assert!(
+            !movimento_com_a_tela(&mut hero, x, no_jogo),
+            "fora: da tela"
+        );
+        assert_eq!(hero.store.hot_id(), None);
+        assert_eq!(
+            hero.store.button_state(CONTROLS.0),
+            Some(ButtonState::Normal)
+        );
+    }
 }

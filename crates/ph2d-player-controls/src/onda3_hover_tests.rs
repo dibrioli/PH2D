@@ -138,3 +138,45 @@ fn fechada_a_tela_nao_e_dona_do_ponteiro() {
     );
     assert_eq!(s.screen().hovered(), None);
 }
+
+/// ⭐ Onda 4: com a tela aberta, sobre o botão «Controls» da barra o movimento sai da tela (ela solta o hover) e vai à
+/// barra (`false`); numa linha da tela ela fica com ele e acende-a (controlo). Mutação: ignorar o botão ⇒ a tela come
+/// o movimento e o botão nunca acende.
+#[test]
+fn sobre_o_botao_da_barra_o_movimento_sai_da_tela() {
+    use ph2d_editor_core::game_stage::GameRun;
+    use ph2d_editor_core::screens::hero::{HeroScreen, transport_bar};
+    let (g, mut ts) = (game(), TextSystem::new());
+    let (mut s, lay) = aberta(&g, &mut ts);
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
+    let bar = Rect::new(
+        AREA.x,
+        AREA.y,
+        AREA.w,
+        ph2d_editor_core::screens::hero::menu_bar::MENU_BAR_H,
+    );
+    let botoes = transport_bar::rects(bar, AREA.w * 0.25, AREA.w * 0.75);
+    let (hits, store) = (&mut hero.hit_index, &hero.store);
+    let mut scene = VectorScene::new();
+    transport_bar::paint(
+        &botoes,
+        GameRun::default(),
+        &mut scene,
+        Theme::default(),
+        hits,
+        store,
+    );
+    let (linha, botao) = (centre(lay.rows[1].band), centre(botoes[5].2));
+    assert_eq!(
+        host::pointer_move_com_a_barra(&mut s, Some(&mut hero), Some(linha)),
+        (true, true),
+        "na linha: da tela"
+    );
+    assert_eq!(s.screen().hovered(), Some(Hover::Row(lay.first + 1)));
+    assert_eq!(
+        host::pointer_move_com_a_barra(&mut s, Some(&mut hero), Some(botao)),
+        (false, true),
+        "no botão: da barra, e a linha apaga"
+    );
+    assert_eq!(s.screen().hovered(), None);
+}

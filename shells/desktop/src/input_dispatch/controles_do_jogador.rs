@@ -2,8 +2,7 @@
 //! `docs/InputMap/01_plano.md` §4, a porta em `host`). ⛔ O mapa do projecto (`hero.input_map`, no undo) nunca se
 //! escreve aqui. As costuras de texto desta composição provam-se em `ph2d-player-controls` (`r10a_tests.rs`).
 
-use ph2d_editor_core::ids::TOPBAR_PLAYER_CONTROLS;
-use ph2d_editor_core::screens::hero::HeroScreen;
+use ph2d_editor_core::screens::hero::{HeroScreen, transport_bar};
 use ph2d_input::InputMap;
 use ph2d_player_controls::{PlaySession, home_base, host, player_file_of};
 use winit::keyboard::KeyCode;
@@ -45,10 +44,9 @@ impl crate::App {
         let h = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref());
         let em = h.map(|h| (h.escala().to_logical(self.last_pointer), &h.input_map));
         // O botão «Controls» da barra fecha a tela que abriu: o clique nele é do hero.
-        let no_botao = |(h, ((x, y), _)): (&HeroScreen, _)| {
-            h.hit_index.hit(x, y) == Some(TOPBAR_PLAYER_CONTROLS)
-        };
-        if h.zip(em).is_some_and(no_botao) {
+        if h.zip(em)
+            .is_some_and(|(h, ((x, y), _))| transport_bar::sobre_o_controls(h, x, y))
+        {
             return false;
         }
         let tocando = self.playhead.is_playing();
@@ -57,14 +55,15 @@ impl crate::App {
         dela
     }
 
-    /// O ponteiro mexeu (`dentro`) ou saiu da janela (`CursorLeft`): aberta, a tela é dona do movimento (`true`). O
-    /// hover acende no quadro seguinte (D32; o laço é contínuo, `ControlFlow::Poll`, sem pedir quadro).
+    /// O ponteiro mexeu (`dentro`) ou saiu da janela (`CursorLeft`): aberta, a tela é dona do movimento (`true`), menos
+    /// sobre o botão «Controls», que acende (D32; o laço é contínuo, `ControlFlow::Poll`, sem pedir quadro).
     pub(crate) fn movimento_dos_controles(&mut self, dentro: bool) -> bool {
-        let h = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref());
+        let h = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut());
         let em = h
+            .as_ref()
             .filter(|_| dentro)
             .map(|h| h.escala().to_logical(self.last_pointer));
-        host::pointer_move(&mut self.components.jogador, em).0
+        host::pointer_move_com_a_barra(&mut self.components.jogador, h, em).0
     }
 
     /// Abrir pausa o relógio do jogo; fechar retoma-o se corria (o mesmo relógio do F5; a tecla, o clique e o botão).

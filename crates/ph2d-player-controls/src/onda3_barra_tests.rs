@@ -64,7 +64,7 @@ fn a_shell_traduz_o_botao_pelo_host_e_deixa_passar_o_clique_nele() {
     assert!(bus[arm..].contains("host::toggle("));
     let rato = include_str!("../../../shells/desktop/src/input_dispatch/controles_do_jogador.rs");
     let passa = rato
-        .find("TOPBAR_PLAYER_CONTROLS)")
+        .find("transport_bar::sobre_o_controls(")
         .expect("o clique no botão passa");
     assert!(passa < rato.find("host::click(").expect("o clique da tela"));
 }

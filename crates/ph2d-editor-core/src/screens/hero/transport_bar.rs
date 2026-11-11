@@ -55,16 +55,42 @@ pub fn rects(bar: Rect, start_x: f32, end_x: f32) -> Vec<(NodeId, IconId, Rect)>
         return Vec::new();
     }
     let x = crate::math::safe_clamp(bar.x + (bar.w - jogo) * 0.5, de, ate - total);
-    let controls = Rect::new(x + total - lado, bar.y, lado, bar.h);
-    BOTOES
-        .iter()
-        .enumerate()
-        .map(|(i, (id, icon))| {
-            let r = Rect::new(x + lado * i as f32, bar.y, lado, bar.h);
-            (*id, *icon, r)
-        })
-        .chain([(CONTROLS.0, CONTROLS.1, controls)])
-        .collect()
+    com_controls(BOTOES.iter().enumerate().map(|(i, (id, icon))| {
+        let r = Rect::new(x + lado * i as f32, bar.y, lado, bar.h);
+        (*id, *icon, r)
+    }))
+}
+
+/// ⭐ A MESMA regra nas duas barras (a do Play e a da tela cheia): o [`CONTROLS`] à direita do último botão do jogo,
+/// depois do vão do [`separador`], um quadrado da altura dele.
+fn com_controls(jogo: impl Iterator<Item = (NodeId, IconId, Rect)>) -> Vec<(NodeId, IconId, Rect)> {
+    let mut botoes: Vec<_> = jogo.collect();
+    if let Some((.., u)) = botoes.last().copied() {
+        let x = u.x + u.w + vao_do_separador() * 2.0;
+        botoes.push((CONTROLS.0, CONTROLS.1, Rect::new(x, u.y, u.h, u.h)));
+    }
+    botoes
+}
+
+/// O ponto (lógico) está sobre o [`CONTROLS`] pintado no último quadro — numa barra ou na outra.
+#[must_use]
+pub fn sobre_o_controls(hero: &super::HeroScreen, x: f32, y: f32) -> bool {
+    hero.hit_index.hit(x, y) == Some(CONTROLS.0)
+}
+
+/// ⭐ Com a tela «Controls» ABERTA (dono 10/11): o movimento sobre o botão é da barra (`true` — a shell passa-o ao hero,
+/// que o acende no quadro, D32); fora dele a tela fica com o movimento e o botão apaga-se aqui, porque o hero não o vê.
+pub fn movimento_com_a_tela(hero: &mut super::HeroScreen, x: f32, y: f32) -> bool {
+    if sobre_o_controls(hero, x, y) {
+        return true;
+    }
+    if hero.store.hot_id() == Some(CONTROLS.0) {
+        hero.store.set_hot(None);
+        let state = ButtonState::Normal;
+        hero.store
+            .register(CONTROLS.0, InteractiveState::Button { state });
+    }
+    false
 }
 
 /// A pílula do grupo do jogo: só os cinco — o [`CONTROLS`] tem a moldura dele.
@@ -105,32 +131,27 @@ pub fn publish(hero: &mut super::HeroScreen, run: GameRun) {
     hero.store.set_tooltip(CONTROLS.0, frase);
 }
 
-/// ⭐ Os botões da tela cheia (dono 07/11: sem eles não havia como parar): no topo do jogo, centrados. Jogar é o da tela
-/// cheia, a volta do Pause.
+/// ⭐ Os botões da tela cheia (dono 07/11: sem eles não havia como parar): no topo do jogo, os três do jogo centrados
+/// (jogar é o da tela cheia, a volta do Pause) e o [`CONTROLS`] à direita deles, como na barra do Play.
 #[must_use]
 pub fn rects_palco(area: Rect) -> Vec<(NodeId, IconId, Rect)> {
     let lado = super::menu_bar::MENU_BAR_H;
     let botoes = [BOTOES[1], BOTOES[3], BOTOES[4]];
     let inicio = area.x + (area.w - lado * botoes.len() as f32) * 0.5;
     let y = area.y + Spacing::Sm.px();
-    botoes
-        .iter()
-        .enumerate()
-        .map(|(i, (id, icon))| {
-            (
-                *id,
-                *icon,
-                Rect::new(inicio + lado * i as f32, y, lado, lado),
-            )
-        })
-        .collect()
+    com_controls(botoes.iter().enumerate().map(|(i, (id, icon))| {
+        let r = Rect::new(inicio + lado * i as f32, y, lado, lado);
+        (*id, *icon, r)
+    }))
 }
 
-/// Pinta os botões da tela cheia, com um fundo que os separa do jogo.
+/// Pinta os botões da tela cheia, com um fundo que os separa do jogo, e a dica do que está sob a mão (a da casa, que
+/// quebra em linhas: na tela cheia não há a barra de cima para a pintar).
 pub fn paint_palco(
     area: Rect,
     run: GameRun,
     scene: &mut VectorScene,
+    text_system: &mut ph2d_text::TextSystem,
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
@@ -141,6 +162,7 @@ pub fn paint_palco(
         fill_rounded_rect(scene, u, raio, resolve(ColorToken::Bg1, theme));
     }
     paint(&botoes, run, scene, theme, hit_index, store);
+    let _ = super::topbar::paint_hover_tooltip(scene, text_system, theme, hit_index, store, area);
 }
 
 /// Este botão está aceso? O Play do palco que corre, ou o Pause com o jogo parado a meio.

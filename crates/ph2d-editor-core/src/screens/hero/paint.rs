@@ -223,6 +223,7 @@ pub fn paint_hero_screen(
                 layout.draw_area,
                 hero.view.game_run,
                 scene,
+                text_system,
                 hero.theme,
                 &mut hero.hit_index,
                 &hero.store,

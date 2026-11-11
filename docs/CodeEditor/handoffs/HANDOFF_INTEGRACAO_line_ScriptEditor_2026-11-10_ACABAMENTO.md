@@ -243,10 +243,25 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   (`ph2d-vector/src/record.rs`) NÃO recebe (é do artista). Testes: `settings_text::tests::every_text_rendering_row_picks_its_mode_and_closes_the_menu`,
   `published::embolden_tests::*` (3), `typography::tests::{crisp_plus_darkened_is_crisp_heavy_plus_with_stem_darkening, stem_darkening_fades_with_size_and_only_in_its_mode}`,
   `nitidez::a_aba_de_scripts_escurece_no_preset_escurecido`.
+  Mutações (uma de cada vez, âncora única, `git checkout` depois; exit do `cargo-test-narrow.sh`):
 
-Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,35 s, já construído pelas fotos); a 2.ª:
+  | Mutação | Teste(s) | Exit |
+  |---|---|---|
+  | `font_embolden_for` devolve sempre o `default` | `embolden_tests` (2 de 3) · `a_aba_de_scripts_escurece_no_preset_escurecido` | 1 · 1 |
+  | a linha nova escolhe `CrispHeavyPlus` | `every_text_rendering_row_picks_its_mode_and_closes_the_menu` | 1 |
+  | sem o teste da tinta clara | `dark_ink_is_never_emboldened` | 1 |
+  | `stem_darkening_px` ignora a flag | `stem_darkening_fades_with_size_and_only_in_its_mode` | 1 |
+
+  Fotos (cena 13 passo 1, `CLIQUES` Edit ▸ Preferences… ▸ Text rendering ▸ item, o menu fecha):
+  [ap_padrao.png](../ferramentas/smoke/ap_padrao.png) (Crisp Heavy +) · [ap_escurecido.png](../ferramentas/smoke/ap_escurecido.png) ·
+  [ap_nitidez_zoom.png](../ferramentas/smoke/ap_nitidez_zoom.png) (3×: linha 11 do código padrão/escurecido, linha 17 do Live
+  padrão/escurecido). Pixéis com diferença > 1 %: código 913 de 8 400 (luma média 53,4 → 54,2), Live 288 (47,7 → 47,9),
+  Hierarchy 147. A 3× o traço do código lê-se um pouco mais cheio; a 1× e no Live é quase imperceptível — o ganho é pequeno
+  por desenho (0,05 px).
+
+Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,40 s, já construído pelas fotos); a 2.ª:
 
 ```
 ▸ linha line_scripteditor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.42s
+    Finished `smoke` profile [optimized] target(s) in 0.24s
 ```

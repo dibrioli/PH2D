@@ -244,7 +244,15 @@ fn moldura_controls(
         ColorToken::Accent
     };
     let filete = if on { acento } else { ColorToken::Border };
-    crate::paint::stroke_rounded_rect(scene, caixa, raio, borda, cor(filete));
+    // O traço centra-se no caminho: recuado meia espessura, a borda de FORA é a caixa (a do realce do Pause), sem 1 px a mais.
+    let meio = borda * 0.5;
+    let traco = Rect::new(
+        caixa.x + meio,
+        caixa.y + meio,
+        caixa.w - borda,
+        caixa.h - borda,
+    );
+    crate::paint::stroke_rounded_rect(scene, traco, raio - meio, borda, cor(filete));
     cor(if on {
         acento
     } else if !ligado {

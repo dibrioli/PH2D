@@ -112,7 +112,9 @@ fn as_caixas_tem_o_tamanho_da_tecla() {
 
 /// ⭐ Onda 4 (foto do dono-coordenador: 228 → 272 px ao entrar em «Press a key»): o painel tem a MESMA largura em
 /// repouso e à escuta, numa 2.ª caixa e numa «Add». Controlo: a caixa que escuta cresce de facto (o estado mudou).
-/// Mutação: voltar a somar as larguras do estado actual ⇒ o painel alarga ao escutar.
+/// E as linhas, as caixas e o Reset ficam no MESMO y (a dica de 2 linhas em repouso e 1 à escuta não as empurra);
+/// controlo: a dica muda mesmo de altura. Mutação: voltar a somar as larguras do estado actual ⇒ o painel alarga; voltar
+/// o `lift` ao título ⇒ o conteúdo salta.
 #[test]
 fn o_painel_nao_muda_de_largura_ao_escutar() {
     let g = game();
@@ -123,6 +125,7 @@ fn o_painel_nao_muda_de_largura_ao_escutar() {
         Rect::new(0.0, 0.0, 1280.0, 720.0),
     ] {
         let repouso = Layout::of(area, &r, &mut ts);
+        let mut dica_mudou = false;
         for (i, row) in r.iter().enumerate() {
             for slot in 1..row.slots() {
                 let mut s = ControlsScreen::default();
@@ -143,6 +146,23 @@ fn o_painel_nao_muda_de_largura_ao_escutar() {
                     "{}: a caixa à escuta mede «Press a key»",
                     row.action
                 );
+                let ys = |l: &Layout| {
+                    let mut v: Vec<f32> = l
+                        .rows
+                        .iter()
+                        .flat_map(|r| r.slots.iter().map(|c| c.y))
+                        .collect();
+                    v.extend(l.rows.iter().map(|r| r.band.y));
+                    v.extend([l.title.y, l.reset.y, l.panel.y, l.panel.h]);
+                    v
+                };
+                assert_eq!(
+                    ys(&escuta),
+                    ys(&repouso),
+                    "{} slot {slot}: o conteúdo saltou",
+                    row.action
+                );
+                dica_mudou |= (escuta.hint.h - repouso.hint.h).abs() > 0.01;
                 assert!(
                     (escuta.panel.w - repouso.panel.w).abs() < 0.01,
                     "{} slot {slot}: {} → {}",
@@ -152,5 +172,9 @@ fn o_painel_nao_muda_de_largura_ao_escutar() {
                 );
             }
         }
+        assert!(
+            dica_mudou,
+            "controlo: a dica muda de linhas ao escutar (o estado mudou)"
+        );
     }
 }

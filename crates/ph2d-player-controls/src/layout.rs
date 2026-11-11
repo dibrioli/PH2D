@@ -224,7 +224,8 @@ impl Layout {
             + FOOT_H
             + HINT_LINE_H * hint_n as f32
             + PAD_BOTTOM;
-        // A reserva da frase maior não fica como faixa vazia em baixo: o conteúdo centra-se na altura reservada.
+        // A reserva da frase maior não fica como faixa vazia em baixo: a DICA centra-se na altura reservada, e o resto
+        // fica ancorado em cima — as linhas e as caixas não saltam ao escutar (onda 4: desciam ~8 px).
         let shown_n = foot_lines(text, tr(hint_key(rows, screen)), iw)
             .len()
             .min(hint_n);
@@ -257,7 +258,7 @@ impl Layout {
             )
         };
         let x0 = panel.x + PAD;
-        let title = Rect::new(x0, panel.y + PAD_TOP + lift, iw, m::CARD_HEAD_H);
+        let title = Rect::new(x0, panel.y + PAD_TOP, iw, m::CARD_HEAD_H);
         let list_y = title.y + title.h;
         let mut y = list_y;
         let out_rows = (first..first + visible)
@@ -287,7 +288,12 @@ impl Layout {
         // «Reset to defaults» é um BOTÃO do tamanho do rótulo, ao centro (o alvo do clique é ele, não a faixa).
         let rw = reset_w.min(iw);
         let reset = Rect::new(x0 + (iw - rw) * 0.5, rule_y + m::FIELD_ROW_GAP, rw, FOOT_H);
-        let hint = Rect::new(x0, reset.y + FOOT_H, iw, HINT_LINE_H * shown_n as f32);
+        let hint = Rect::new(
+            x0,
+            reset.y + FOOT_H + lift,
+            iw,
+            HINT_LINE_H * shown_n as f32,
+        );
         Self {
             panel,
             title,

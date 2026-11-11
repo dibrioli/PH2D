@@ -83,8 +83,8 @@ fn a_previa_nunca_aumenta_o_painel() {
 }
 
 /// R13 · foto P1: a reserva da dica maior (para a caixa não saltar ao escutar) ficava como faixa vazia por baixo
-/// da última linha. Fechada e à escuta, o espaço por cima do título é o MESMO que por baixo da última linha da dica,
-/// e a caixa não muda.
+/// da última linha. Fechada, o espaço por cima do título é o MESMO que por baixo da última linha da dica; à escuta a
+/// caixa não muda (e o conteúdo não salta: onda 4).
 #[test]
 fn o_painel_tem_o_mesmo_espaco_em_cima_e_em_baixo_e_nao_salta_ao_escutar() {
     use crate::ControlsScreen;
@@ -103,15 +103,18 @@ fn o_painel_tem_o_mesmo_espaco_em_cima_e_em_baixo_e_nao_salta_ao_escutar() {
     let rest = Layout::scrolled(area, &r, &ControlsScreen::default(), &mut ts);
     let heard = Layout::scrolled(area, &r, &listening, &mut ts);
     assert_eq!(rest.panel, heard.panel, "a caixa não salta ao escutar");
-    for (at, l) in [("fechada", &rest), ("à escuta", &heard)] {
-        let above = l.title.y + (l.title.h - TITLE_PX) * 0.5 - l.panel.y;
-        let last = l.hint.y + l.hint.h - crate::layout::HINT_LINE_H * 0.5 + FOOT_PX * 0.5;
-        let below = l.panel.y + l.panel.h - last;
-        assert!(
-            (above - below).abs() < 0.5,
-            "{at}: {above} por cima do título × {below} por baixo da dica"
-        );
-    }
+    // Onda 4 (fotos da 2.ª rodada): à escuta a dica tem 1 linha e não 2, e o conteúdo NÃO sobe para a centrar — as
+    // linhas e as caixas ficam no mesmo y (`r7c_tests::o_painel_nao_muda_de_largura_ao_escutar`); a frase curta
+    // centra-se na reserva. O recuo igual em cima e em baixo mede-se na dica que enche a reserva.
+    let l = &rest;
+    let above = l.title.y + (l.title.h - TITLE_PX) * 0.5 - l.panel.y;
+    let last = l.hint.y + l.hint.h - crate::layout::HINT_LINE_H * 0.5 + FOOT_PX * 0.5;
+    let below = l.panel.y + l.panel.h - last;
+    assert!(
+        (above - below).abs() < 0.5,
+        "fechada: {above} por cima do título × {below} por baixo da dica"
+    );
+    assert_eq!(rest.title, heard.title, "à escuta o título não desce");
 }
 
 /// F2 · foto P1: o recuo é o MESMO nos quatro lados (`PAD`, das métricas): dos lados até às faixas, em cima até ao

@@ -533,7 +533,6 @@ fn na_tela_cheia_a_moldura_e_o_separador_sao_os_da_barra_do_editor() {
         playing: false,
         has_controls_screen: true,
         controls_open: true,
-        ..Default::default()
     };
     let palco = rects_palco(area);
     let store = loja_com(false);
@@ -573,12 +572,30 @@ fn na_tela_cheia_a_moldura_e_o_separador_sao_os_da_barra_do_editor() {
             !realce.is_empty(),
             "o Pause aceso pinta o realce (controlo)"
         );
-        let (y0, y1) = realce[0];
-        assert!(
-            (y0 - f64::from(caixa.y)).abs() < 0.5
-                && (y1 - f64::from(caixa.y + caixa.h)).abs() < 0.5,
-            "recuo da moldura {caixa:?} ≠ o do realce {realce:?}"
+        // Tolerância 0: o que se PINTA — a borda de fora do traço (o caminho ± meia espessura) e o fundo aceso — cai
+        // exactamente na faixa do realce do Pause (a 2.ª rodada de fotos: 8–25 contra 9–24).
+        let traco: Vec<(f64, f64)> = ops
+            .iter()
+            .filter_map(|o| match o {
+                ph2d_vector::DrawOp::Stroke {
+                    brush: ph2d_vector::Brush::Solid(c),
+                    path,
+                    style,
+                    ..
+                } if *c == b.tinta().color(ColorToken::Accent) => {
+                    let bb = ph2d_vector::Shape::bounding_box(path);
+                    Some((bb.y0 - style.width * 0.5, bb.y1 + style.width * 0.5))
+                }
+                _ => None,
+            })
+            .collect();
+        let fundo = faixas(&ops, b.tinta().color(ColorToken::AccentSoft));
+        assert_eq!(
+            traco.first(),
+            realce.first(),
+            "a moldura pintada (o 1.º traço; o 2.º é o glifo) ≠ o realce do Pause"
         );
+        assert_eq!(fundo, [realce[0]], "o fundo aceso ≠ o realce do Pause");
         let normal = gravado(|scene| {
             paint(
                 &rects(BARRA, 100.0, 800.0),

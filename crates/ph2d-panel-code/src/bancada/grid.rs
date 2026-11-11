@@ -101,6 +101,19 @@ impl BancadaView {
     /// do documento: dobrada, só o título; aberta, o cabeçalho e uma linha por objecto, até um terço
     /// em linhas inteiras (o resto rola).
     #[must_use]
+    /// O mínimo a que o cartão encolhe numa aba curta ([`crate::stack`]): o título e uma linha.
+    #[must_use]
+    pub fn bench_least(&self) -> f32 {
+        let s = Spacing::Sm.px();
+        let title = s * 2.0 + ROW_H_PX;
+        if self.folded {
+            title
+        } else {
+            title + ROW_H_PX + s
+        }
+    }
+
+    #[must_use]
     pub fn bench_height(&self, who: &Who, avail: f32) -> f32 {
         let s = Spacing::Sm.px();
         let title = s * 2.0 + ROW_H_PX;

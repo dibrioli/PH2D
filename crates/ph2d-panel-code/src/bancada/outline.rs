@@ -26,6 +26,8 @@ pub(super) struct Scroll {
     pub rows: Rect,
     pub content_h: f32,
     pub y: f32,
+    /// A barra de rolagem pintada no último quadro (`None` = tudo cabe).
+    pub bar: Option<Rect>,
 }
 
 impl Scroll {
@@ -84,6 +86,12 @@ impl BancadaView {
         self.outline_fit = 0.0;
     }
 
+    /// A barra de rolagem do «In this script» no último quadro (`None` = as entradas cabem).
+    #[must_use]
+    pub fn outline_bar(&self) -> Option<Rect> {
+        self.outline.bar
+    }
+
     /// Pinta o «In this script» em `area` (o cartão já aberto pela família).
     pub fn paint_outline(
         &mut self,
@@ -125,6 +133,15 @@ impl BancadaView {
             ROW_H_PX * shown as f32 + outline_entry_h() * entries as f32
         };
         self.outline.clamp();
+        let rows = self.outline.rows;
+        let normal = (ph2d_editor_core::widget::ScrollbarState::Normal, 0.0);
+        let (oy, ch) = (self.outline.y, self.outline.content_h);
+        self.outline.bar =
+            ph2d_editor_core::widget::paint_scrollbar(rows, oy, ch, rows.h, normal, scene, *theme);
+        // Com a barra, as entradas acabam antes do trilho (o `ln N` não fica por baixo).
+        let entry_right = self.outline.bar.map_or(area.x + area.w - g * 0.5, |_| {
+            ph2d_editor_core::widget::scrollbar_track_rect(rows).x
+        });
         scene.push_clip(&rect_to_vello(self.outline.rows));
         if shown == 0 {
             chrome::label_in(
@@ -152,7 +169,8 @@ impl BancadaView {
                 fit = fit.max(nw + chrome::label_w(ts, &ln) + folgas);
             }
         }
-        self.outline_fit = fit;
+        // Mais o trilho, quando há barra.
+        self.outline_fit = fit + (area.x + area.w - g * 0.5 - entry_right);
         for (key, entries) in sections.iter().filter(|s| !s.1.is_empty()) {
             chrome::label_in(
                 scene,
@@ -163,7 +181,8 @@ impl BancadaView {
             );
             y += ROW_H_PX;
             for Entry(name, line) in *entries {
-                let r = Rect::new(area.x + g * 0.5, y, (area.w - g).max(0.0), eh);
+                let rx = area.x + g * 0.5;
+                let r = Rect::new(rx, y, (entry_right - rx).max(0.0), eh);
                 if self.aim == Aim::Entry(*line) {
                     fill_rounded_rect(scene, r, radius, ui.hover);
                 }

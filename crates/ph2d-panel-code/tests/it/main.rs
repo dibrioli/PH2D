@@ -19,6 +19,7 @@ mod opcoes_do_script;
 mod pagina;
 mod peso_das_pecas;
 mod peso_na_placa;
+mod pilha;
 mod problemas;
 mod quadro_do_depurador;
 mod respiro;

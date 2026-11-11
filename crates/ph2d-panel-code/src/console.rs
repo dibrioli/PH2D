@@ -185,6 +185,34 @@ impl ConsoleView {
         }
     }
 
+    /// A altura que a faixa quer e o mínimo dela ([`crate::stack`]): fechada, o cabeçalho; aberta no
+    /// Problems, o que a lista pinta (cabeçalho, a tabela e as linhas, ou a frase vazia) até ao terço
+    /// de [`Self::height`]; no Console, o terço. O separador e a contagem são os do último quadro.
+    #[must_use]
+    pub fn want(&self, open: bool, area_h: f32) -> crate::stack::Want {
+        let third = Self::height(open, area_h);
+        if !open {
+            return crate::stack::Want {
+                h: third,
+                least: third,
+            };
+        }
+        let h = if self.tab == BandTab::Problems {
+            let m = crate::peso::metricas();
+            let list = match self.problem_total {
+                0 => row_h(),
+                n => m.header_h + m.row_h * n as f32,
+            };
+            (ROW_H_PX + list + Spacing::Sm.px()).min(third)
+        } else {
+            third
+        };
+        crate::stack::Want {
+            h,
+            least: ROW_H_PX * 2.0,
+        } // LITERAL-PX-OK: o cabeçalho e uma linha
+    }
+
     /// Rola `dy` px o separador à mostra (positivo = para trás no tempo / para cima na lista).
     pub fn scroll_by(&mut self, dy: f32, total: usize) {
         let n = (dy / row_h()).round() as isize;

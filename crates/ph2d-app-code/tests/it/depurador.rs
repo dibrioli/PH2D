@@ -445,3 +445,37 @@ fn ao_vivo_a_tabela_tem_o_traco_e_o_clique_abre_o_grafico() {
     m.clica(id, lx, ly, Modifiers::default());
     assert_eq!(m.docs().cursor_of(id).map(|c| c.0), Some(6), "a linha 7");
 }
+
+/// Auditoria 11/11 (1280×720): numa aba curta, parado, o código guarda as suas linhas e o quadro cabe
+/// entre ele e a faixa (antes o código ia a zero e os cartões caíam uns por cima dos outros).
+#[test]
+fn numa_aba_curta_o_codigo_guarda_as_linhas_e_os_cartoes_nao_se_cruzam() {
+    let (m, id) = aberto(MOVE);
+    let mut m = m.com_cena(id, 1);
+    m.cena();
+    vai(&mut m, id, 7);
+    m.tecla(id, Key::F(9), Modifiers::default(), None);
+    let curta = ph2d_editor_core::zones::Rect {
+        h: 400.0,
+        ..crate::AREA
+    };
+    for _ in 0..3 {
+        (m.quadro(), m.pinta_em(id, curta), m.cena());
+    }
+    let [_, code, band] = m.docs().card_rects(id).expect("cartões");
+    let card = m
+        .docs()
+        .debug_view_of(id)
+        .expect("quadro")
+        .painted
+        .card
+        .expect("o Stopped");
+    assert!(
+        code.h >= ph2d_panel_code::stack::code_least(0.0) - 0.5,
+        "{code:?}"
+    );
+    assert!(
+        card.y >= code.y + code.h && card.y + card.h <= band.y + 0.5,
+        "{code:?} {card:?} {band:?}"
+    );
+}

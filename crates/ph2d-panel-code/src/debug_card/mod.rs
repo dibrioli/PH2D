@@ -133,12 +133,18 @@ pub struct DebugCardView {
 pub type ButtonIds = [NodeId; 2];
 
 impl DebugCardView {
+    /// O mínimo a que o quadro encolhe numa aba curta ([`crate::stack`]): a barra (e a linha do erro).
+    #[must_use]
+    pub fn least(c: &DebugCard) -> f32 {
+        let rh = ph2d_tokens::row_pitch_px();
+        rh + Spacing::Sm.px() * 2.0 + if c.error.is_some() { rh } else { 0.0 }
+    }
+
     /// A altura do quadro de `c` na aba `area`.
     #[must_use]
     pub fn height(&self, c: &DebugCard, area: Rect) -> f32 {
-        let pad = Spacing::Sm.px();
-        let rh = ph2d_tokens::row_pitch_px();
-        let head = rh + pad * 2.0 + if c.error.is_some() { rh } else { 0.0 };
+        let (pad, rh) = (Spacing::Sm.px(), ph2d_tokens::row_pitch_px());
+        let head = Self::least(c);
         if !c.stopped() && c.live.is_empty() {
             return head;
         }

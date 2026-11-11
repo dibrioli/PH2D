@@ -35,6 +35,8 @@ pub struct BarPainted<M> {
     pub sub: Option<menu::SubPainted>,
     /// A parte «função» do caminho: a caixa, a linha e a coluna (0-based) da definição.
     pub crumb_fn: Option<(Rect, usize, usize)>,
+    /// O caminho como saiu: a caixa do primeiro ao último glifo e as partes pintadas (já com `…`).
+    pub crumb: Option<(Rect, Vec<String>)>,
     pub gear: Option<Rect>,
     /// As dicas do rato: a engrenagem, a função do caminho e o alfinete do cartão das opções.
     pub tips: Vec<(Rect, String)>,
@@ -52,6 +54,7 @@ impl<M> Default for BarPainted<M> {
             sub_parents: Vec::new(),
             sub: None,
             crumb_fn: None,
+            crumb: None,
             gear: None,
             tips: Vec::new(),
             min_w: 0.0,
@@ -210,9 +213,15 @@ impl<M: Copy + PartialEq> TabBar<M> {
         .collect();
         let sep_pad = Spacing::Xs.px();
         let sep_w = width_of(ts, sep) + sep_pad * 2.0;
+        let (left, right) = (x + sm, gear.x - sm);
+        let parts = fit_crumb(ts, parts, right - left, sep_w);
+        if parts.is_empty() {
+            return;
+        }
         let total: f32 = parts.iter().map(|p| width_of(ts, &p.0)).sum::<f32>()
             + sep_w * (parts.len() - 1) as f32;
-        let mut cx = (gear.x - sm - total).max(x + sm);
+        let mut cx = (right - total).max(left);
+        let start = cx;
         for (i, (s, is_fn)) in parts.iter().enumerate() {
             if i > 0 {
                 let sr = Rect::new(cx + sep_pad, r.y, sep_w - sep_pad * 2.0, r.h);
@@ -234,6 +243,8 @@ impl<M: Copy + PartialEq> TabBar<M> {
             }
             cx += w;
         }
+        let shown = parts.into_iter().map(|p| p.0).collect();
+        self.painted.crumb = Some((Rect::new(start, r.y, cx - start, r.h), shown));
     }
 
     /// A dica sob o rato, depois de `pause_ns` parado, por baixo da caixa dela.
@@ -276,5 +287,66 @@ impl<M: Copy + PartialEq> TabBar<M> {
             Some((j, since)) if j == i => (i, since),
             _ => (i, now),
         });
+    }
+}
+
+/// `text` como cabe em `w` na letra da barra: inteiro, ou o maior começo seguido de `…` (vazio se
+/// nem o `…` cabe).
+fn elided(ts: &mut TextSystem, text: &str, w: f32) -> String {
+    if width_of(ts, text) <= w {
+        return text.to_owned();
+    }
+    let mut ends: Vec<usize> = text.char_indices().map(|(i, _)| i).collect();
+    while let Some(end) = ends.pop() {
+        let s = format!("{}{ELLIPSIS}", &text[..end]);
+        if width_of(ts, &s) <= w {
+            return s;
+        }
+    }
+    String::new()
+}
+
+const ELLIPSIS: &str = "\u{2026}";
+
+/// As partes do caminho que cabem em `room` (dono: o rótulo que não cabe é UMA linha com `…`, nunca
+/// por cima de nada): encurta o script, depois a função, e guarda «line N»; se nem assim, o caminho
+/// inteiro numa só parte cortada em `…`.
+fn fit_crumb(
+    ts: &mut TextSystem,
+    mut parts: Vec<(String, bool)>,
+    room: f32,
+    sep_w: f32,
+) -> Vec<(String, bool)> {
+    let width = |ts: &mut TextSystem, ps: &[(String, bool)]| {
+        ps.iter().map(|p| width_of(ts, &p.0)).sum::<f32>() + sep_w * (ps.len() - 1) as f32
+    };
+    let mut over = width(ts, &parts) - room;
+    if over <= 0.0 {
+        return parts;
+    }
+    let ell = width_of(ts, ELLIPSIS);
+    let whole = parts
+        .iter()
+        .map(|p| p.0.as_str())
+        .collect::<Vec<_>>()
+        .join(" \u{203a} ");
+    // Todas menos a última («line N»), da primeira para a última.
+    let n = parts.len() - 1;
+    for p in parts.iter_mut().take(n) {
+        let w = width_of(ts, &p.0);
+        p.0 = elided(ts, &p.0, (w - over).max(ell));
+        over = width(ts, std::slice::from_ref(p)) - w + over;
+        if over <= 0.0 {
+            break;
+        }
+    }
+    if width(ts, &parts) <= room {
+        return parts;
+    }
+    let s = elided(ts, &whole, room.max(0.0));
+    if s.is_empty() {
+        Vec::new()
+    } else {
+        vec![(s, false)]
     }
 }

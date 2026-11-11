@@ -35,6 +35,7 @@ mod popup;
 mod rename_box;
 pub mod script_list;
 pub mod splitter;
+pub mod stack;
 mod status;
 pub mod style;
 pub mod tab_bar;

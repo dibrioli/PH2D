@@ -131,7 +131,7 @@ pub(crate) struct CodeDoc {
     /// O Ctrl+clique num nome de objecto: seleccioná-lo na cena (a família fá-lo no quadro).
     pub(crate) select_object: Option<String>,
     /// A altura do cartão da Bancada por cima da faixa de baixo (a do último quadro pintado).
-    pub(crate) bench_h: f32,
+    pub(crate) bench_h: ph2d_panel_code::stack::Want,
     /// A função do caminho até o cursor, por `(geração da árvore, linha)` (`tab_menu::crumb`).
     pub(crate) crumb_func: Option<(u64, usize, crate::tab_menu::CrumbFunc)>,
     /// O depurador (Onda D): os pontos de parada, a paragem, os valores ao vivo.
@@ -197,7 +197,7 @@ impl CodeDoc {
             dropping: None,
             scene: crate::scene_names::Shared::default(),
             select_object: None,
-            bench_h: 0.0,
+            bench_h: ph2d_panel_code::stack::Want::default(),
             crumb_func: None,
             debug: crate::debug::DocDebug::default(),
             derived: Derived::default(),
@@ -427,36 +427,53 @@ impl CodeDoc {
     /// baixo (Console | Problems) em baixo, com o vão de [`crate::cards::margin`] entre eles.
     pub(crate) fn cards(&self, area: Rect, console_open: bool) -> (Rect, Rect) {
         let g = crate::cards::margin();
-        let find_h = self.find.bar_height();
-        let console_h =
-            ConsoleView::height(console_open, area.h).min((area.h - find_h - g).max(0.0));
-        let card_h = self.debug_card_h(area);
-        let card = if card_h > 0.0 { card_h + g } else { 0.0 }
-            + if self.bench_h > 0.0 {
-                self.bench_h + g
-            } else {
-                0.0
-            };
-        let code = Rect::new(
-            area.x,
-            area.y,
-            area.w,
-            (area.h - console_h - g - card).max(0.0),
-        );
-        let console = Rect::new(area.x, area.y + area.h - console_h, area.w, console_h);
+        let [bench, debug, band] = self.stack(area, console_open);
+        let card: f32 = [bench, debug]
+            .iter()
+            .filter(|h| **h > 0.0)
+            .map(|h| h + g)
+            .sum();
+        let code = Rect::new(area.x, area.y, area.w, (area.h - band - g - card).max(0.0));
+        let console = Rect::new(area.x, area.y + area.h - band, area.w, band);
         (code, console)
+    }
+
+    /// As alturas da Bancada, do depurador e da faixa, encolhidas pela ordem até o código guardar as
+    /// suas linhas ([`ph2d_panel_code::stack`]).
+    fn stack(&self, area: Rect, open: bool) -> [f32; 3] {
+        use ph2d_panel_code::stack::{Want, code_least, fit};
+        let least = self
+            .debug
+            .card
+            .as_ref()
+            .map_or(0.0, ph2d_panel_code::debug_card::DebugCardView::least);
+        let debug = Want {
+            h: self.debug_card_h(area),
+            least,
+        };
+        let band = self.console_view.want(open, area.h);
+        let code = code_least(self.find.bar_height());
+        fit(
+            area.h,
+            code,
+            crate::cards::margin(),
+            [self.bench_h, debug, band],
+        )
     }
 
     /// O cartão da Bancada (a grelha e o mapa), por cima da faixa de baixo (`None` = nenhum).
     pub(crate) fn bench_rect(&self, area: Rect, console_open: bool) -> Option<Rect> {
-        let (_, band) = self.cards(area, console_open);
-        let y = band.y - crate::cards::margin() - self.bench_h;
-        (self.bench_h > 0.0).then(|| Rect::new(area.x, y, area.w, self.bench_h))
+        let (h, (_, band)) = (
+            self.stack(area, console_open)[0],
+            self.cards(area, console_open),
+        );
+        let y = band.y - crate::cards::margin() - h;
+        (h > 0.0).then(|| Rect::new(area.x, y, area.w, h))
     }
 
     /// O cartão do depurador, entre o código e a faixa de baixo (`None` = nenhum).
     pub(crate) fn debug_rect(&self, area: Rect, console_open: bool) -> Option<Rect> {
-        let h = self.debug_card_h(area);
+        let h = self.stack(area, console_open)[1];
         if h <= 0.0 {
             return None;
         }

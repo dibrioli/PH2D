@@ -88,6 +88,8 @@ pub struct ScriptListView {
     rows_rect: Rect,
     scroll: f32,
     content_h: f32,
+    /// A barra de rolagem das linhas do último quadro (`None` = tudo cabe).
+    bar: Option<Rect>,
     counts: Vec<PaintedCount>,
     tip: Option<String>,
     /// A largura em que o cabeçalho e cada linha cabem inteiros (nome, contagem, lixo).
@@ -103,6 +105,7 @@ impl Default for ScriptListView {
             rows_rect: chrome::NO_RECT,
             scroll: 0.0,
             content_h: 0.0,
+            bar: None,
             counts: Vec::new(),
             tip: None,
             fit_w: 0.0,
@@ -180,6 +183,7 @@ impl ScriptListView {
         self.fields.clear();
         self.counts.clear();
         self.tip = None;
+        self.bar = None;
         // A lista é um cartão (dono 08/11): o fundo dele, sem a linha de borda à direita.
         scene.fill_rect(rect_to_vello(area), ui.bg);
         let gap = Spacing::Sm.px();
@@ -259,6 +263,22 @@ impl ScriptListView {
         self.rows_rect = Rect::new(area.x, top, area.w, (bottom - top).max(0.0));
         self.content_h = ROW_H_PX * list.rows.len().max(1) as f32;
         self.clamp_scroll();
+        let normal = (ph2d_editor_core::widget::ScrollbarState::Normal, 0.0);
+        let (rr, ch) = (self.rows_rect, self.content_h);
+        self.bar = ph2d_editor_core::widget::paint_scrollbar(
+            rr,
+            self.scroll,
+            ch,
+            rr.h,
+            normal,
+            scene,
+            *theme,
+        );
+        // Com a barra, as linhas acabam antes do trilho (a contagem e o lixo não ficam por baixo).
+        let row_right = self.bar.map_or(area.x + area.w - gap * 0.5, |_| {
+            ph2d_editor_core::widget::scrollbar_track_rect(rr).x
+        });
+        self.fit_w += area.x + area.w - gap * 0.5 - row_right;
         scene.push_clip(&rect_to_vello(self.rows_rect));
         if list.rows.is_empty() {
             chrome::label_in(
@@ -274,7 +294,8 @@ impl ScriptListView {
             if ry + ROW_H_PX < top || ry > bottom {
                 continue;
             }
-            let r = Rect::new(area.x + gap * 0.5, ry, (area.w - gap).max(0.0), ROW_H_PX);
+            let rx = area.x + gap * 0.5;
+            let r = Rect::new(rx, ry, (row_right - rx).max(0.0), ROW_H_PX);
             self.row(scene, ts, list, row, r, &ui, *theme);
         }
         scene.pop_layer();
@@ -468,6 +489,12 @@ impl ScriptListView {
     #[must_use]
     pub fn painted_counts(&self) -> &[PaintedCount] {
         &self.counts
+    }
+
+    /// A barra de rolagem das linhas pintada no último quadro (`None` = as linhas cabem).
+    #[must_use]
+    pub fn painted_bar(&self) -> Option<Rect> {
+        self.bar
     }
 
     /// O balão da contagem pintado no último quadro.

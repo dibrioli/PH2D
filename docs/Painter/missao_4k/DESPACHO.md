@@ -115,6 +115,13 @@
 | onda 13 | B35a | parcial (87034db1d0): B35.A3 feito; o cartão do Tuning não mede texto em quadro parado (cabe_memo). Gate o_tuning_nao_mede_texto_em_quadro_parado: 16 → 8 medidas. Falta B35.3, .5, .6, .7. |
 | onda 13 | B12a-cont2 | recusa medida (d3b11719a0): só medição, 2.ª rodada A·B 4K. Ctrl+Z Wet: Round 54 → 30 ms, Wash 59 → 46; B12.2 feito. B12.1 recusado: bring_home/COW fora do topo do perfil. |
 | onda 13 | verificação | verde: ph2d-painter-brush passou no check; o alvo ph2d-paint-brush do pedido não existe (erro de nome, não do código). |
+| onda 14 | B17b-cont5+B20.7 | feito (628fac4546): sem código novo; dormente.rs compila desde 9f9028a31b; a_textura_e_o_espelho vermelho no fad04b99be, agora verde. Ctrl+Z diagonal Impasto 4K Radeon A/B: mín. 33,5 → 30,0 ms; a união não custa. |
+| onda 14 | B13a-cont2 | parcial (88001a09fb): gate de tiles com cena de óleo; advect anda por span_runs (take(1) vermelho). Pânico de borda do backrun em rf>1 curado (serial e Jacobi), gate novo vermelho→verde. Não medido; falta a jan da ladeira_do_oleo. |
+| onda 14 | B15.2 | feito (5d62bd7df8): sem código; remedido em 4K (load 30, só tectos): 1.º quadro de tela nova 376,9 → 39,9 ms; tique+dreno r200 18,76 → 1,5 ms; quadro p50 r200 21,7 → 4,4. Resto é um composite 4K, fora do bloco. B15.7 não começou. |
+| onda 14 | B27 | parcial (d2e9c788c2): B27.3 afim/ECS por quadro: recusa medida. mesh_uv 4,2 µs/evento com 1 sprite, 34,9 com 1000; o carimbo custa 2,7–4,4 ms, no máximo 1 %. Sem cache. Falta medir INPUT/p95 no app com load < 5; B27.2 após o portão dos lotes. |
+| onda 14 | B40b | feito (b6edd8dc8c): prancha em pranchas/B40b, 12 PNG (3 fundos, 1080p e 4K). Line com Mirror X: o 1.º dab agora espelha; Ellipse no Mask: o contorno protege. «Antes» por oráculos no mesmo processo. Gates verdes; devolveu 3 linhas do BACKLOG. |
+| onda 14 | B22.2 | feito (5272823994): prancha em pranchas/B22.2, 3 fundos × 1080p/4K. 30, 60 e 144 q/s iguais à vista; a 30 a nuvem cresce na borda (240→285/s). Gate o_antes_a_30_qs_e_o_motor_novo_a_8_periodos_por_tique ao bit. Sem código de produção. |
+| onda 14 | verificação | verde. |
 
 ## Fatos medidos que mudam a ordem
 

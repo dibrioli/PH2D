@@ -159,6 +159,7 @@ pub fn dispatch(
     // The downcast pulls the canvas as an `Arc` clone (`take_preview_arc`), bypassing the
     // per-drain `to_vec` of `drive_preview_cache`. Dirty bbox: `Some` = sub-rect, `None` = full.
     let mut painter_dirty_bbox: Option<(u32, u32, u32, u32)> = None;
+    let mut painter_dirty_caixas: Vec<(u32, u32, u32, u32)> = Vec::new();
     // The tool's canvas CONTENT version: the upload keys on it, not on the `Arc` pointer, so the
     // shell never holds a clone of the live canvas (which made every stamp copy the plane).
     let mut cache_version: u64 = 0;
@@ -244,11 +245,17 @@ pub fn dispatch(
             (hero.gizmo.selection, painter.take_preview_arc())
         {
             // B.1: the bbox the drain recomposed (Some = partial fast lane).
+            painter_dirty_caixas = painter.preview_upload_caixas().collect();
             painter_dirty_bbox = painter.take_preview_upload_bbox();
             // Published area (`painter-dispatch` divisor). ⚠️ bbox is `(x, y, w, h)`, not corners.
             note_preview_px(painter_dirty_bbox.map_or_else(
                 || u64::from(w) * u64::from(h),
-                |(_, _, bw, bh)| u64::from(bw) * u64::from(bh),
+                |r| {
+                    crate::painter_bridge_upload::janelas_do_upload(r, &painter_dirty_caixas)
+                        .iter()
+                        .map(|&(_, _, bw, bh)| u64::from(bw) * u64::from(bh))
+                        .sum()
+                },
             ));
             // `PH2D_PREVIEW_DUMP=<dir>`: dump each frame's CPU composite (pre-overlay) as PNG,
             // capped (BUGS_painter.md #11). Zero cost when unset.
@@ -270,6 +277,7 @@ pub fn dispatch(
                 h,
                 &drained,
                 painter_dirty_bbox,
+                &painter_dirty_caixas,
             );
             *painter_preview = Some(ph2d_tool_runtime::PreviewCache {
                 entity_bits: sel,
@@ -484,6 +492,7 @@ pub fn dispatch(
         renderer,
         painter_preview.as_ref().filter(|_| !gpu_owns_preview),
         painter_dirty_bbox,
+        &painter_dirty_caixas,
         cache_version,
         gpu_owns_preview,
         painter_preview_gpu,

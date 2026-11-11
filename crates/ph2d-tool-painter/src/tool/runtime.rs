@@ -414,6 +414,27 @@ impl PainterTool {
         })
     }
 
+    /// **As caixas do próximo [`Self::take_preview_upload_bbox`]** (B17.5): espie-as ANTES dele. Vazia =
+    /// o bbox sozinho; só valem se a união delas é esse bbox (um bbox posto por outro caminho as cala).
+    pub fn preview_upload_caixas(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (u32, u32, u32, u32)> + '_ {
+        let uniao = self
+            .preview_upload_caixas
+            .iter()
+            .copied()
+            .reduce(crate::tool::paint::region::union_region);
+        let caixas = if self.preview_upload_caixas.len() > 1
+            && uniao.is_some()
+            && uniao == self.preview_upload_bbox
+        {
+            self.preview_upload_caixas.as_slice()
+        } else {
+            &[]
+        };
+        caixas.iter().map(|r| (r.x, r.y, r.w, r.h))
+    }
+
     fn take_preview_upload_bbox_corpo(&mut self) -> Option<(u32, u32, u32, u32)> {
         self.preview_upload_bbox
             .take()

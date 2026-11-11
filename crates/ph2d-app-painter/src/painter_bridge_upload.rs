@@ -43,6 +43,7 @@ pub(crate) fn own_preview_buffer(
     height: u32,
     drained: &Arc<Vec<u8>>,
     dirty_bbox: Option<(u32, u32, u32, u32)>,
+    caixas: &[(u32, u32, u32, u32)],
 ) -> Arc<Vec<u8>> {
     match (prior, dirty_bbox) {
         (Some(p), Some((bx, by, bw, bh)))
@@ -57,15 +58,34 @@ pub(crate) fn own_preview_buffer(
         {
             let mut mirror = p.rgba;
             let m = Arc::make_mut(&mut mirror); // shell is the sole owner ⇒ in place, no copy
-            let row = (bw * 4) as usize;
-            for ry in 0..bh {
-                let off = (((by + ry) * width + bx) * 4) as usize;
-                m[off..off + row].copy_from_slice(&drained[off..off + row]);
+            for (bx, by, bw, bh) in janelas_do_upload((bx, by, bw, bh), caixas) {
+                let row = (bw * 4) as usize;
+                for ry in 0..bh {
+                    let off = (((by + ry) * width + bx) * 4) as usize;
+                    m[off..off + row].copy_from_slice(&drained[off..off + row]);
+                }
             }
             mirror
         }
         // Seed: no reusable prior buffer — take a full copy the shell then owns outright.
         _ => Arc::new((**drained).clone()),
+    }
+}
+
+/// **B17.5 — as janelas de um envio parcial:** as `caixas` do sujo (dentro de `rect`, a união delas), ou
+/// `rect` sozinho. Fora das caixas o drenado não mudou, então copiar só elas dá o mesmo slot.
+pub(crate) fn janelas_do_upload(
+    rect: (u32, u32, u32, u32),
+    caixas: &[(u32, u32, u32, u32)],
+) -> Vec<(u32, u32, u32, u32)> {
+    let (rx, ry, rw, rh) = rect;
+    let dentro = |&(x, y, w, h): &(u32, u32, u32, u32)| {
+        w > 0 && h > 0 && x >= rx && y >= ry && x + w <= rx + rw && y + h <= ry + rh
+    };
+    if caixas.len() > 1 && caixas.iter().all(dentro) {
+        caixas.to_vec()
+    } else {
+        vec![rect]
     }
 }
 
@@ -77,6 +97,7 @@ pub(crate) fn upload_cpu_preview(
     renderer: &mut SpriteRenderer,
     cpu_preview: Option<&PainterPreview>,
     painter_dirty_bbox: Option<(u32, u32, u32, u32)>,
+    caixas: &[(u32, u32, u32, u32)],
     cache_version: u64,
     gpu_owns_preview: bool,
     painter_preview_gpu: &mut Option<PainterPreviewGpu>,
@@ -98,17 +119,20 @@ pub(crate) fn upload_cpu_preview(
             );
             let upload_result: Option<Result<u32, _>> = match plan {
                 UploadPlan::Skip => None,
-                UploadPlan::Partial {
-                    texture_id,
-                    rect: (bx, by, bw, bh),
-                } => {
-                    // Gather + premultiply ONLY the bbox sub-rect (tightly
-                    // packed bw*bh*4) and upload it over the existing texture.
-                    let mut region = extract_region(&preview.rgba, preview.width, bx, by, bw, bh);
-                    premultiply_rgba8(&mut region);
+                UploadPlan::Partial { texture_id, rect } => {
+                    // Gather + premultiply ONLY each sub-rect (tightly packed bw*bh*4) and upload
+                    // it over the existing texture.
                     Some(
-                        renderer
-                            .replace_individual_pixels_region(texture_id, bx, by, bw, bh, &region)
+                        janelas_do_upload(rect, caixas)
+                            .into_iter()
+                            .try_for_each(|(bx, by, bw, bh)| {
+                                let mut region =
+                                    extract_region(&preview.rgba, preview.width, bx, by, bw, bh);
+                                premultiply_rgba8(&mut region);
+                                renderer.replace_individual_pixels_region(
+                                    texture_id, bx, by, bw, bh, &region,
+                                )
+                            })
                             .map(|()| texture_id),
                     )
                 }

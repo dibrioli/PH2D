@@ -40,6 +40,10 @@ struct Screen {
     version: u64,
     /// The tool's composite for the last drained frame, kept WHOLE and INDEPENDENT of the shell's
     truth: Option<Vec<u8>>,
+    /// Texels the partial uploads published (B17.5).
+    publicados: u64,
+    /// The boxes the last drain handed over (B17.5).
+    caixas: usize,
 }
 
 impl Screen {
@@ -51,13 +55,18 @@ impl Screen {
             next_texture_id: 0,
             version: 0,
             truth: None,
+            publicados: 0,
+            caixas: 0,
         }
     }
 
     /// One frame of the preview lane. Returns the plan it executed (for the gates' own asserts).
     fn frame(&mut self, painter: &mut PainterTool) -> UploadPlan {
         let mut dirty_bbox = None;
+        let mut caixas: Vec<(u32, u32, u32, u32)> = Vec::new();
         if let Some((drained, w, h)) = painter.take_preview_arc() {
+            caixas = painter.preview_upload_caixas().collect();
+            self.caixas = caixas.len();
             dirty_bbox = painter.take_preview_upload_bbox();
             self.version = painter.canvas_version();
             // The independent truth (the tool's full composite for this frame) BEFORE `drained` is
@@ -71,6 +80,7 @@ impl Screen {
                 h,
                 &drained,
                 dirty_bbox,
+                &caixas,
             );
             self.cache = Some(PainterPreview {
                 entity_bits: ENTITY,
@@ -86,12 +96,7 @@ impl Screen {
         let plan = plan_upload(preview, self.gpu, dirty_bbox, version, false);
         match plan {
             UploadPlan::Skip => {}
-            UploadPlan::Partial {
-                texture_id,
-                rect: (bx, by, bw, bh),
-            } => {
-                let mut region = extract_region(&preview.rgba, preview.width, bx, by, bw, bh);
-                premultiply_rgba8(&mut region);
+            UploadPlan::Partial { texture_id, rect } => {
                 let (id, w, bytes) = self
                     .slot
                     .as_mut()
@@ -100,11 +105,18 @@ impl Screen {
                     *id, texture_id,
                     "the plan patches the texture it was planned against"
                 );
-                let row_bytes = (bw * 4) as usize;
-                for row in 0..bh {
-                    let dst = (((by + row) * *w + bx) * 4) as usize;
-                    let src = (row * bw * 4) as usize;
-                    bytes[dst..dst + row_bytes].copy_from_slice(&region[src..src + row_bytes]);
+                for (bx, by, bw, bh) in
+                    crate::painter_bridge_upload::janelas_do_upload(rect, &caixas)
+                {
+                    let mut region = extract_region(&preview.rgba, preview.width, bx, by, bw, bh);
+                    premultiply_rgba8(&mut region);
+                    self.publicados += u64::from(bw) * u64::from(bh);
+                    let row_bytes = (bw * 4) as usize;
+                    for row in 0..bh {
+                        let dst = (((by + row) * *w + bx) * 4) as usize;
+                        let src = (row * bw * 4) as usize;
+                        bytes[dst..dst + row_bytes].copy_from_slice(&region[src..src + row_bytes]);
+                    }
                 }
                 self.gpu = Some(PainterPreviewGpu {
                     texture_id,
@@ -470,5 +482,47 @@ fn the_upload_plan_never_skips_a_new_composite_nor_patches_a_mismatched_slot() {
             texture_id: 7,
             rect: (4, 4, 8, 8)
         }
+    );
+}
+
+/// **B17.5 — o Ctrl+Z de uma diagonal Impasto pela pista CPU publica só as caixas, e a tela é a do
+/// motor ao bit.** A união do sujo é quase a tela; as caixas são os tiles restaurados.
+#[test]
+fn um_ctrl_z_em_caixas_pela_cpu_publica_so_as_caixas() {
+    let lado = 1024u32;
+    let mut t = impasto_tool(lado);
+    t.set_brush_size_px(12.0);
+    let mut screen = Screen::new();
+    screen.frame(&mut t);
+    let tracos: [&[[f32; 2]]; 2] = [
+        &[[400.0, 500.0], [520.0, 500.0]],
+        &[[20.0, 20.0], [500.0, 500.0], [1000.0, 1000.0]],
+    ];
+    for traco in tracos {
+        for (i, &p) in traco.iter().enumerate() {
+            let fase = if i == 0 {
+                PointerPhase::Down
+            } else {
+                PointerPhase::Move
+            };
+            t.on_canvas_pointer(cp(p, fase));
+            screen.frame(&mut t);
+        }
+        t.on_canvas_pointer(cp(traco[traco.len() - 1], PointerPhase::Up));
+        screen.frame(&mut t);
+    }
+    assert!(t.undo_last(), "há um passo");
+    screen.publicados = 0;
+    screen.frame(&mut t);
+    let caixas = screen.caixas;
+    screen.assert_shows_the_cache("Ctrl+Z");
+    let publicados = screen.publicados;
+    let truth = screen_truth(&mut t);
+    assert_screen_equals(screen.shown(), &truth, lado, "Ctrl+Z da diagonal");
+    let tela = u64::from(lado) * u64::from(lado);
+    assert!(caixas >= 2, "controlo: o Ctrl+Z chega em {caixas} caixa(s)");
+    assert!(
+        publicados > 0 && publicados * 2 < tela,
+        "o Ctrl+Z publicou {publicados} de {tela} texels em {caixas} caixas"
     );
 }

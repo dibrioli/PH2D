@@ -137,7 +137,7 @@ impl PainterTool {
             // texture with one full upload; paint frames then patch just the dab
             // footprint. If the texture isn't seeded yet the bridge's guard falls
             // back to a full upload anyway, so an early bbox can never desync it.
-            self.preview_upload_bbox = self.toma_o_sujo().0;
+            (self.preview_upload_bbox, self.preview_upload_caixas) = self.toma_o_sujo();
             self.last_drain_branch = crate::tool::DrainBranch::TrivialFast;
             return (Arc::clone(&self.canvas_rgba), w, h);
         }
@@ -170,12 +170,10 @@ impl PainterTool {
         match (self.composited.is_some(), dirty) {
             (true, Some(bbox)) => {
                 // B17.5: cada caixa compõe-se à parte (fora delas a figura não mudou); sem caixas, a união.
-                let caixas = if caixas.is_empty() {
-                    vec![bbox]
-                } else {
-                    caixas
-                };
-                for caixa in caixas {
+                if caixas.is_empty() {
+                    self.compoe_a_caixa(active, bbox);
+                }
+                for &caixa in &caixas {
                     self.compoe_a_caixa(active, caixa);
                 }
                 self.compositor_cache.invalidate_from(active, &self.layers);
@@ -188,11 +186,12 @@ impl PainterTool {
                 // it is ~6 ms, well under the 16.7 ms frame budget (measured: dispatch ~8 ms, 60 fps).
                 // Follow-up (doc 25 §13): isolate the partial-upload device seam so the fast path is
                 // clean too (matters at 4096², where a full upload would overrun the budget).
-                self.preview_upload_bbox = if self.mask_scratch_active() {
-                    None
-                } else {
-                    Some(bbox)
-                };
+                (self.preview_upload_bbox, self.preview_upload_caixas) =
+                    if self.mask_scratch_active() {
+                        (None, Vec::new())
+                    } else {
+                        (Some(bbox), caixas)
+                    };
                 self.last_drain_branch = crate::tool::DrainBranch::PartialComposite;
             }
             _ => {
@@ -242,6 +241,7 @@ impl PainterTool {
                 self.apply_mask_overlay(&mut composed);
                 self.composited = Some(Arc::new(composed));
                 self.preview_upload_bbox = None;
+                self.preview_upload_caixas.clear();
                 self.last_drain_branch = crate::tool::DrainBranch::FullComposite;
             }
         }

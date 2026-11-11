@@ -29,7 +29,7 @@ fn the_shell_owns_its_preview_buffer_never_the_tools_canvas() {
     let (w, h) = (8u32, 8u32);
     // Seed (no prior buffer): a full, INDEPENDENT copy of the composite.
     let drained: Arc<Vec<u8>> = Arc::new((0..w * h * 4).map(|i| i as u8).collect());
-    let seeded = own_preview_buffer(None, ENTITY, w, h, &drained, None);
+    let seeded = own_preview_buffer(None, ENTITY, w, h, &drained, None, &[]);
     assert!(
         !Arc::ptr_eq(&seeded, &drained),
         "the seed must be the shell's OWN buffer, not the tool's canvas Arc — holding the tool's Arc \
@@ -48,7 +48,7 @@ fn the_shell_owns_its_preview_buffer_never_the_tools_canvas() {
         height: h,
     };
     let next: Arc<Vec<u8>> = Arc::new(vec![9u8; (w * h * 4) as usize]);
-    let patched = own_preview_buffer(Some(prior), ENTITY, w, h, &next, Some((2, 2, 4, 4)));
+    let patched = own_preview_buffer(Some(prior), ENTITY, w, h, &next, Some((2, 2, 4, 4)), &[]);
     assert!(
         !Arc::ptr_eq(&patched, &next),
         "the partial frame must not alias the tool's canvas either"
@@ -108,7 +108,7 @@ fn a_plain_stroke_is_footprint_bound_when_the_shell_owns_its_buffer() {
         if let Some((d, w, h)) = t.take_preview_arc() {
             let bbox = t.take_preview_upload_bbox();
             let rgba = if own {
-                own_preview_buffer(held.take(), ENTITY, w, h, &d, bbox)
+                own_preview_buffer(held.take(), ENTITY, w, h, &d, bbox, &[])
             } else {
                 d
             };
@@ -130,7 +130,7 @@ fn a_plain_stroke_is_footprint_bound_when_the_shell_owns_its_buffer() {
             if let Some((d, w, h)) = drained {
                 let bbox = t.take_preview_upload_bbox();
                 let rgba = if own {
-                    own_preview_buffer(held.take(), ENTITY, w, h, &d, bbox)
+                    own_preview_buffer(held.take(), ENTITY, w, h, &d, bbox, &[])
                 } else {
                     d
                 };

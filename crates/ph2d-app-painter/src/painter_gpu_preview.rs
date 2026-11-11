@@ -321,9 +321,24 @@ pub(super) fn drive(
             h: rect.3,
         }
     };
+    // B17.5: o sujo em várias caixas (o `rect` é a união delas + 1 px): cada uma com o seu halo.
+    let caixas = janelas_das_caixas(tool, seed_full, width, height);
+    let regioes: Vec<Region> = if caixas.is_empty() {
+        vec![region]
+    } else {
+        caixas
+            .iter()
+            .map(|&c| {
+                let (x, y, w, h) = halo(c, width, height);
+                Region { x, y, w, h }
+            })
+            .collect()
+    };
 
     // 1-3) Composite, light, premultiply — everything that turns the layer stack into the bytes the
-    let tocada = match compose_light_premul(session, tool, &ops, &adj_luts, width, height, region) {
+    let tocadas = match compose_light_premul(
+        session, tool, &ops, &adj_luts, width, height, &regioes, &caixas,
+    ) {
         Ok(r) => r,
         Err(e) => {
             toasts.push(Toast::error(ph2d_i18n::tr_with(
@@ -340,12 +355,14 @@ pub(super) fn drive(
     let Some(premul_tex) = session.premul.output_texture() else {
         return false;
     };
-    let copy = if tocada == Region::full(width, height) {
-        renderer.copy_texture_into_individual(slot, premul_tex, width, height)
-    } else {
-        let Region { x, y, w, h } = tocada;
-        renderer.copy_texture_region_into_individual(slot, premul_tex, x, y, x, y, w, h)
-    };
+    let copy = tocadas.iter().try_for_each(|&tocada| {
+        if tocada == Region::full(width, height) {
+            renderer.copy_texture_into_individual(slot, premul_tex, width, height)
+        } else {
+            let Region { x, y, w, h } = tocada;
+            renderer.copy_texture_region_into_individual(slot, premul_tex, x, y, x, y, w, h)
+        }
+    });
     if let Err(e) = copy {
         toasts.push(Toast::error(ph2d_i18n::tr_with(
             "app.painter.painter_gpu_preview.gpu_preview_copy_failed",
@@ -357,7 +374,24 @@ pub(super) fn drive(
     true
 }
 
+/// B17.5: as caixas do sujo da ferramenta (vazia = a união sozinha, ou semente inteira).
+fn janelas_das_caixas(
+    tool: &PainterTool,
+    seed_full: bool,
+    width: u32,
+    height: u32,
+) -> Vec<(u32, u32, u32, u32)> {
+    if seed_full || tool.preview_gpu_caixas().len() < 2 {
+        return Vec::new();
+    }
+    tool.preview_gpu_caixas()
+        .filter(|&(x, y, w, h)| w > 0 && h > 0 && x + w <= width && y + h <= height)
+        .collect()
+}
+
 /// Composite, light, premultiply — everything that turns the layer stack into the bytes the preview
+/// slot shows. `regioes` = as janelas da composição (uma, ou o halo de cada caixa de `caixas`).
+#[allow(clippy::too_many_arguments)]
 fn compose_light_premul(
     session: &mut PainterGpuPreview,
     tool: &PainterTool,
@@ -365,8 +399,9 @@ fn compose_light_premul(
     adj_luts: &[f32],
     width: u32,
     height: u32,
-    region: Region,
-) -> Result<Region, String> {
+    regioes: &[Region],
+    caixas: &[(u32, u32, u32, u32)],
+) -> Result<Vec<Region>, String> {
     // 1) GPU composite into the PERSISTENT canvas-sized `out`, writing at canvas
     let mut novas = std::mem::take(&mut session.a_entregar);
     novas.clear();
@@ -377,15 +412,17 @@ fn compose_light_premul(
     };
     // O PAPEL do documento: o compositor compõe cada saída SOBRE ele com a lei inteira da CPU
     session.compositor.set_paper(tool.papel());
-    let composto = session.compositor.composite_region_into_canvas(
-        &session.gpu,
-        ops,
-        adj_luts,
-        &provider,
-        width,
-        height,
-        region,
-    );
+    let composto = regioes.iter().try_for_each(|&region| {
+        session.compositor.composite_region_into_canvas(
+            &session.gpu,
+            ops,
+            adj_luts,
+            &provider,
+            width,
+            height,
+            region,
+        )
+    });
     let mut feitas = provider.novas.into_inner();
     if composto.is_err() {
         feitas.clear();
@@ -400,92 +437,115 @@ fn compose_light_premul(
         "app.painter.painter_gpu_preview.composite_produced_no_texture",
     ))?;
     // Fold window: the tool's `preview_gpu_region` (Some only for a rect-confined change) AND the
-    let plane_win = tool
-        .preview_gpu_region()
-        .filter(|_| session.planos.is_some() && session.light.planes_seeded(width, height))
-        .unwrap_or((0, 0, width, height));
-    // The fold clock travels with its window (rect vs canvas).
-    let m_fold = crate::paint_perf::on().then(std::time::Instant::now);
-    let planes = tool.impasto_gpu_planes_reusing(plane_win, session.planos.take());
-    if let Some(t0) = m_fold {
-        crate::paint_perf::note_gpu_fold(
-            t0.elapsed().as_secs_f64() as f32 * 1e3,
-            plane_win == (0, 0, width, height),
-        );
-    }
+    // light's plane textures already seeded at this size; else the whole canvas. B17.5: with boxes,
+    // one fold per box (the planes outside them did not change).
     let inteira = Region::full(width, height);
-    let mut tocada = region;
-    let finished: &wgpu::Texture = match planes {
-        None => {
+    let tela = (0, 0, width, height);
+    let confinado = session.planos.is_some() && session.light.planes_seeded(width, height);
+    let janelas: Vec<(u32, u32, u32, u32)> = match tool.preview_gpu_region().filter(|_| confinado) {
+        None => vec![tela],
+        Some(_) if !caixas.is_empty() && regioes.len() == caixas.len() => caixas.to_vec(),
+        Some(r) => vec![r],
+    };
+    let mut tocadas: Vec<Region> = Vec::with_capacity(janelas.len());
+    let (mut acesa, mut tela_toda) = (false, false);
+    for (i, &plane_win) in janelas.iter().enumerate() {
+        // The fold clock travels with its window (rect vs canvas).
+        let m_fold = crate::paint_perf::on().then(std::time::Instant::now);
+        let planes = tool.impasto_gpu_planes_reusing(plane_win, session.planos.take());
+        if let Some(t0) = m_fold {
+            crate::paint_perf::note_gpu_fold(
+                t0.elapsed().as_secs_f64() as f32 * 1e3,
+                plane_win == tela,
+            );
+        }
+        let Some(planes) = planes else {
+            // Sem relevo: a composição sai sem luz (todas as janelas respondem igual).
+            tocadas = regioes.to_vec();
             if session.luz.take().is_some() {
-                tocada = inteira; // a luz apagou-se: o slot tinha a tela acesa
+                tocadas = vec![inteira]; // a luz apagou-se: o slot tinha a tela acesa
             }
-            comp_out
-        }
-        Some(planes) => {
-            let lamps: Vec<ImpastoLamp> = planes
-                .lamps
-                .iter()
-                .map(|l| ImpastoLamp {
-                    dir: l.dir,
-                    half: l.half,
-                    tint: l.tint,
-                })
-                .collect();
-            let mesma_luz = session
-                .luz
-                .as_ref()
-                .is_some_and(|(l, p)| *l == lamps && *p == planes.paper_body);
-            // O relevo de fora da janela do fold não mudou: a luz só muda até 1 texel dela (a diferença central).
-            if region != inteira && plane_win != (0, 0, width, height) && mesma_luz {
-                let (x, y, w, h) = halo((region.x, region.y, region.w, region.h), width, height);
-                tocada = Region { x, y, w, h };
-            } else {
-                tocada = inteira;
-            }
-            let input = ImpastoLightInput {
-                width,
-                height,
-                region: tocada,
-                // …but the PLANES are only the fold's window (the textures persist).
-                plane_region: Region {
-                    x: planes.region.0,
-                    y: planes.region.1,
-                    w: planes.region.2,
-                    h: planes.region.3,
-                },
-                relief: &planes.relief,
-                cover: &planes.cover,
-                mat0: &planes.mat0,
-                mat1: &planes.mat1,
-                lamps: &lamps,
-                spec_lut: planes.spec_lut,
-                lut_width: planes.lut_width,
-                rough_levels: planes.rough_levels,
-                paper_body: planes.paper_body,
-            };
-            // Falling through UNLIT would silently drop the shading.
-            let lit = session.light.run(&session.gpu, comp_out, &input);
-            session.luz = Some((lamps, planes.paper_body));
-            session.planos = Some(planes);
-            lit.map_err(|e| {
-                ph2d_i18n::tr_with(
-                    "app.painter.painter_gpu_preview.impasto_light",
-                    &[("e_", &format!("{:?}", e))],
-                )
-            })?
-        }
+            break;
+        };
+        let lamps: Vec<ImpastoLamp> = planes
+            .lamps
+            .iter()
+            .map(|l| ImpastoLamp {
+                dir: l.dir,
+                half: l.half,
+                tint: l.tint,
+            })
+            .collect();
+        let mesma_luz = session
+            .luz
+            .as_ref()
+            .is_some_and(|(l, p)| *l == lamps && *p == planes.paper_body);
+        // O relevo de fora da janela do fold não mudou: a luz só muda até 1 texel dela (a diferença central).
+        let region = regioes.get(i).copied().unwrap_or(inteira);
+        let tocada = if region != inteira && plane_win != tela && mesma_luz {
+            let (x, y, w, h) = halo((region.x, region.y, region.w, region.h), width, height);
+            Region { x, y, w, h }
+        } else {
+            inteira
+        };
+        let input = ImpastoLightInput {
+            width,
+            height,
+            region: tocada,
+            // …but the PLANES are only the fold's window (the textures persist).
+            plane_region: Region {
+                x: planes.region.0,
+                y: planes.region.1,
+                w: planes.region.2,
+                h: planes.region.3,
+            },
+            relief: &planes.relief,
+            cover: &planes.cover,
+            mat0: &planes.mat0,
+            mat1: &planes.mat1,
+            lamps: &lamps,
+            spec_lut: planes.spec_lut,
+            lut_width: planes.lut_width,
+            rough_levels: planes.rough_levels,
+            paper_body: planes.paper_body,
+        };
+        // Falling through UNLIT would silently drop the shading.
+        let lit = session.light.run(&session.gpu, comp_out, &input);
+        session.luz = Some((lamps, planes.paper_body));
+        session.planos = Some(planes);
+        lit.map(|_| ()).map_err(|e| {
+            ph2d_i18n::tr_with(
+                "app.painter.painter_gpu_preview.impasto_light",
+                &[("e_", &format!("{:?}", e))],
+            )
+        })?;
+        acesa = true;
+        tela_toda |= tocada == inteira;
+        tocadas.push(tocada);
+    }
+    if tela_toda {
+        tocadas = vec![inteira];
+    }
+    let finished: &wgpu::Texture = if acesa {
+        session.light.output_texture().ok_or(ph2d_i18n::tr(
+            "app.painter.painter_gpu_preview.composite_produced_no_texture",
+        ))?
+    } else {
+        session.compositor.output_texture().ok_or(ph2d_i18n::tr(
+            "app.painter.painter_gpu_preview.composite_produced_no_texture",
+        ))?
     };
 
     // 3) Premultiply into a COPY_SRC texture (the slot samples PREMULTIPLIED);
-    let Region { x, y, w, h } = tocada;
-    session
-        .premul
-        .run_region(&session.gpu, finished, width, height, (x, y, w, h))
-        .ok_or(ph2d_i18n::tr(
-            "app.painter.painter_gpu_preview.premultiply_produced_no_texture",
-        ))?;
-    Ok(tocada)
+    for &Region { x, y, w, h } in &tocadas {
+        session
+            .premul
+            .run_region(&session.gpu, finished, width, height, (x, y, w, h))
+            .ok_or(ph2d_i18n::tr(
+                "app.painter.painter_gpu_preview.premultiply_produced_no_texture",
+            ))?;
+    }
+    Ok(tocadas)
 }
 
 /// Ensure a `width × height` slot (reuse on matching dims, else release + acquire EMPTY);

@@ -32,9 +32,11 @@ pub(super) fn app_frame(
         toasts,
     );
     let mut dirty_bbox = None;
+    let mut caixas: Vec<(u32, u32, u32, u32)> = Vec::new();
     if gpu_owns {
         *preview = None;
     } else if let Some((drained, w, h)) = painter.take_preview_arc() {
+        caixas = painter.preview_upload_caixas().collect();
         dirty_bbox = painter.take_preview_upload_bbox();
         // The shell owns its preview buffer (drives the REAL helper), so the tool stays the sole
         let mirror = crate::painter_bridge_upload::own_preview_buffer(
@@ -44,6 +46,7 @@ pub(super) fn app_frame(
             h,
             &drained,
             dirty_bbox,
+            &caixas,
         );
         *preview = Some(PainterPreview {
             entity_bits: ENTITY,
@@ -58,6 +61,7 @@ pub(super) fn app_frame(
         renderer,
         preview.as_ref().filter(|_| !gpu_owns),
         dirty_bbox,
+        &caixas,
         cache_version,
         gpu_owns,
         preview_gpu,

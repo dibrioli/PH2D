@@ -512,3 +512,95 @@ fn a_regiao_suja_e_a_tela_inteira_ao_bit() {
         assert!(parciais > 10, "controlo: só {parciais} quadros pela região");
     }
 }
+
+/// **B17.5 — o Ctrl+Z de um traço em diagonal pela placa, caixa a caixa, dá o slot da semente inteira, ao
+/// bit.** O sujo do undo é a união (a tela) com as caixas dos tiles restaurados; a pista nova compõe,
+/// dobra, acende e copia cada caixa. Oráculo: a pista antiga (`SEMPRE_INTEIRA`).
+#[test]
+#[ignore = "needs a real GPU device; run with --ignored on the GPU lane"]
+fn um_ctrl_z_em_caixas_pela_placa_e_a_tela_inteira_ao_bit() {
+    use crate::painter_preview_pipeline_tests::{assert_screen_equals, cp, impasto_tool};
+    use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
+    let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
+        return;
+    };
+    // A diagonal fica abaixo de metade dos tiles do relevo (senão ele guarda a janela, não tiles).
+    let lado = 1024u32;
+    let pista = || {
+        let r = SpriteRenderer::new(
+            gpu.clone(),
+            ph2d_render::GameRt::FORMAT,
+            ph2d_render::TextureAtlas::dummy(&gpu),
+            8,
+        );
+        let mut t = impasto_tool(lado);
+        t.set_brush_size_px(12.0);
+        (t, r, None, None, ToastQueue::default())
+    };
+    let mut pistas = [pista(), pista()];
+    let mut caixas_vistas = 0usize;
+    // Dois traços: o 1.º semeia a placa; o 2.º, em diagonal, é o que o Ctrl+Z desfaz.
+    let tracos: [&[[f32; 2]]; 2] = [
+        &[[400.0, 500.0], [520.0, 500.0]],
+        &[[20.0, 20.0], [500.0, 500.0], [1000.0, 1000.0]],
+    ];
+    type Pista = (
+        PainterTool,
+        SpriteRenderer,
+        Option<PainterGpuPreview>,
+        Option<PainterPreviewGpu>,
+        ToastQueue,
+    );
+    let mut quadro = |pistas: &mut [Pista; 2], acao: &dyn Fn(&mut PainterTool), ctx: &str| {
+        let mut telas = Vec::new();
+        for (antigo, (t, r, s, g, toasts)) in pistas.iter_mut().enumerate() {
+            SEMPRE_INTEIRA.set(antigo == 1);
+            acao(t);
+            assert!(try_drive(s, r, t, Some(1), g, toasts), "a placa é dona");
+            if antigo == 0 {
+                caixas_vistas = caixas_vistas.max(t.preview_gpu_caixas().len());
+            }
+            let id = g.expect("o slot da placa").texture_id;
+            telas.push(r.individual().readback(&gpu, id).expect("readback").2);
+        }
+        SEMPRE_INTEIRA.set(false);
+        assert_screen_equals(&telas[0], &telas[1], lado, ctx);
+    };
+    for (n, traco) in tracos.iter().enumerate() {
+        for (i, &p) in traco.iter().enumerate() {
+            let fase = match i {
+                0 => PointerPhase::Down,
+                _ => PointerPhase::Move,
+            };
+            quadro(
+                &mut pistas,
+                &|t| {
+                    t.on_canvas_pointer(cp(p, fase));
+                },
+                &format!("traço {n}"),
+            );
+        }
+        let fim = traco[traco.len() - 1];
+        quadro(
+            &mut pistas,
+            &|t| {
+                t.on_canvas_pointer(cp(fim, PointerPhase::Up));
+            },
+            "pen-up",
+        );
+    }
+    quadro(
+        &mut pistas,
+        &|t| assert!(t.undo_last(), "há um passo"),
+        "Ctrl+Z",
+    );
+    quadro(
+        &mut pistas,
+        &|t| assert!(t.redo_last(), "há um passo"),
+        "Ctrl+Shift+Z",
+    );
+    assert!(
+        caixas_vistas >= 2,
+        "controlo: o Ctrl+Z da diagonal chega à placa em {caixas_vistas} caixa(s), não em várias"
+    );
+}

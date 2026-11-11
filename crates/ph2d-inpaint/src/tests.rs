@@ -214,8 +214,11 @@ fn fnv(b: &[u8]) -> u64 {
 }
 
 /// B38.2 — o oráculo: em imagem OPACA levar o alfa não muda um byte (hash do caminho de antes, RGB só).
+/// B38.3: o nível f32 guardado (`antigo`) é o oráculo verbatim — o mesmo hash; o nível inteiro muda o
+/// opaco em poucos níveis (`o_nivel_inteiro_mexe_pouco_no_opaco`).
 #[test]
 fn opaco_e_o_mesmo_byte_de_antes_de_levar_o_alfa() {
+    crate::prancha_b38_3_nivel_f32_de_antes(true);
     let (w, h) = (64, 64);
     let a = rgba_from(w, h, |x, y| {
         let s = if (x / 3) % 2 == 0 { 210 } else { 40 };
@@ -227,6 +230,7 @@ fn opaco_e_o_mesmo_byte_de_antes_de_levar_o_alfa() {
     let m = rect_mask(w, h, 20, 22, 18, 14);
     let ha = fnv(&run(w, h, &a, &m, InpaintParams::default()));
     let hb = fnv(&run(w, h, &b, &m, InpaintParams::default()));
+    crate::prancha_b38_3_nivel_f32_de_antes(false);
     assert_eq!(
         (ha, hb),
         (15_420_729_974_191_850_435, 4_319_057_658_824_733_258),
@@ -295,4 +299,29 @@ fn o_vazio_nao_casa_com_preto_opaco_no_alfa() {
         .filter(|&i| out[i] >= 128)
         .count();
     assert_eq!(opacos, 0, "texels opacos no buraco do vazio");
+}
+
+/// B38.3 — o nível inteiro (SSD u32, voto Q16) contra o f32 de antes, no opaco: as duas fixturas do hash.
+/// Mede quantos bytes do buraco mudam e o pior; o teto é a medição de 11/11 com folga de arredondamento.
+#[test]
+fn o_nivel_inteiro_mexe_pouco_no_opaco() {
+    let (w, h) = (64, 64);
+    let b = rgba_from(w, h, |x, y| {
+        [(x * 3) as u8, (y * 3) as u8, ((x + y) * 2) as u8]
+    });
+    let m = rect_mask(w, h, 20, 22, 18, 14);
+    crate::prancha_b38_3_nivel_f32_de_antes(true);
+    let antes = run(w, h, &b, &m, InpaintParams::default());
+    crate::prancha_b38_3_nivel_f32_de_antes(false);
+    let depois = run(w, h, &b, &m, InpaintParams::default());
+    let (mut n, mut pior) = (0usize, 0u8);
+    for (x, y) in antes.iter().zip(&depois) {
+        n += usize::from(x != y);
+        pior = pior.max(x.abs_diff(*y));
+    }
+    eprintln!("B38.3 opaco gradiente: {n} bytes mudam, pior {pior}");
+    assert!(
+        pior <= 2,
+        "o nível inteiro afastou-se do f32: {n} bytes, pior {pior}"
+    );
 }

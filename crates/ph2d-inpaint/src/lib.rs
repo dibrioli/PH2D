@@ -8,11 +8,11 @@
 //! copies instead of hallucinating (see ADR-0102).
 //!
 //! # Determinism
-//! [`inpaint_cpu`] is the gold reference: seeded [`rng::SplitMix64`], SSD that
-//! never takes a `sqrt`, radii that halve by integer shift, sRGB-float averaging
-//! (no `pow`). Same seed ⇒ byte-identical output on every platform (HR-5). The
-//! W2 GPU compute path (behind `feature = "gpu"`) runs the same jump-flood passes
-//! and reconciles within float ε; the runtime picks GPU, falling back to CPU.
+//! [`inpaint_cpu`] is the gold reference: counter-hash draws, radii that halve by
+//! integer shift, the pyramid in sRGB float (no `pow`). Each level's EM loop runs
+//! on premultiplied RGBA8 ([`Q8`]) with an integer SSD (ties to the lower source
+//! index) and a Q16 vote, so the W2 GPU path (behind `feature = "gpu"`) gives the
+//! SAME bytes (B38.3); the runtime picks GPU, falling back to CPU.
 //!
 //! # Contract
 //! Input is straight sRGB `RGBA8` (`w*h*4`) plus an 8-bit mask (`w*h`, byte
@@ -22,12 +22,14 @@
 
 #![forbid(unsafe_code)]
 
+mod antigo;
 #[cfg(feature = "gpu")]
 mod gpu;
 mod hash;
 mod mask;
 mod nnf;
 mod plane;
+mod q8;
 mod rng;
 mod vote;
 
@@ -36,6 +38,7 @@ pub use gpu::{GpuInpaintError, GpuInpainter};
 pub use mask::{Mask, Regions};
 pub use nnf::Nnf;
 pub use plane::Plane;
+pub use q8::{MAX_PATCH_RADIUS, Q8};
 pub use rng::SplitMix64;
 
 use mask::Mask as HoleMask;
@@ -46,7 +49,8 @@ use plane::Plane as Img;
 /// and speed for interactive use.
 #[derive(Clone, Copy, Debug)]
 pub struct InpaintParams {
-    /// Patch half-size; the patch is `(2*patch_radius+1)²`. Default 3 (7×7).
+    /// Patch half-size; the patch is `(2*patch_radius+1)²`. Default 3 (7×7); capped at
+    /// [`MAX_PATCH_RADIUS`].
     pub patch_radius: u32,
     /// EM iterations per pyramid level (E = NNF search, M = voting). Default 6.
     pub em_iters: u32,
@@ -87,6 +91,14 @@ pub struct InpaintResult {
 
 thread_local! {
     static ALFA_DE_ANTES: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    static NIVEL_F32_DE_ANTES: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Prancha B38.3 only: `true` runs each level in the f32 arithmetic of before (float SSD, float vote,
+/// CPU), so the before/after board is drawn in one process. Never set in the product.
+#[doc(hidden)]
+pub fn prancha_b38_3_nivel_f32_de_antes(on: bool) {
+    NIVEL_F32_DE_ANTES.set(on);
 }
 
 /// Prancha B38 only: `true` puts back the alpha-blind heal of before (alpha read as opaque, the hole
@@ -188,9 +200,9 @@ fn run_pyramid<F, E>(
     mut run_level: F,
 ) -> Result<Option<Img>, E>
 where
-    F: FnMut(&mut Img, &Img, &HoleMask, &Regions, i32, u32, u64) -> Result<(), E>,
+    F: FnMut(&mut Q8, &Q8, &HoleMask, &Regions, i32, u32, u64) -> Result<(), E>,
 {
-    let r = params.patch_radius as i32;
+    let r = params.patch_radius.min(MAX_PATCH_RADIUS) as i32;
 
     // Coarse-to-fine pyramid, index 0 = finest. Halve until the longest side
     // reaches `pyramid_min` (or a 1-px dimension).
@@ -255,15 +267,29 @@ where
             prev = Some(content); // defensive; finer levels always have sources
             continue;
         }
-        run_level(
-            &mut content,
-            img,
-            mask,
-            &reg,
-            r,
-            params.em_iters,
-            params.seed,
-        )?;
+        if NIVEL_F32_DE_ANTES.get() {
+            antigo::nivel(
+                &mut content,
+                img,
+                mask,
+                &reg,
+                r,
+                params.em_iters,
+                params.seed,
+            );
+        } else {
+            let mut q = Q8::from_plane(&content);
+            run_level(
+                &mut q,
+                &Q8::from_plane(img),
+                mask,
+                &reg,
+                r,
+                params.em_iters,
+                params.seed,
+            )?;
+            content = q.to_plane();
+        }
         prev = Some(content);
     }
 
@@ -276,7 +302,7 @@ where
 /// If `rgba.len() != width*height*4` or `mask.len() != width*height`.
 fn inpaint_with<F, E>(req: &InpaintRequest<'_>, level: F) -> Result<InpaintResult, E>
 where
-    F: FnMut(&mut Img, &Img, &HoleMask, &Regions, i32, u32, u64) -> Result<(), E>,
+    F: FnMut(&mut Q8, &Q8, &HoleMask, &Regions, i32, u32, u64) -> Result<(), E>,
 {
     let Some((base_img, base_mask)) = decode_request(req) else {
         return Ok(InpaintResult {
@@ -309,8 +335,8 @@ fn or_the_cpu<E: std::fmt::Display>(
 
 /// The CPU backend for one level: EM loop (E = jump-flood NNF search, M = vote).
 fn cpu_level(
-    content: &mut Img,
-    src: &Img,
+    content: &mut Q8,
+    src: &Q8,
     mask: &HoleMask,
     reg: &Regions,
     r: i32,
@@ -354,8 +380,8 @@ fn decode_request(req: &InpaintRequest<'_>) -> Option<(Img, HoleMask)> {
     Some((plane_from_rgba(w, h, req.rgba), base_mask))
 }
 
-/// Inpaint on the GPU (jump-flood NNF + voting compute), reconciled with the CPU
-/// reference within ε, on pipelines compiled once by the caller ([`GpuInpainter::new`]).
+/// Inpaint on the GPU (jump-flood NNF + voting compute), the same bytes as the CPU
+/// reference (B38.3), on pipelines compiled once by the caller ([`GpuInpainter::new`]).
 /// Prefer [`inpaint`] / [`inpaint_on`] for the runtime GPU-or-CPU choice.
 ///
 /// # Errors

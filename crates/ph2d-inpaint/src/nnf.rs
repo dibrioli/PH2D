@@ -4,9 +4,9 @@
 //! centre (`source = target + off`); `cost[idx]` is that match's SSD. The search
 //! is the **jump-flooding** PatchMatch variant (Barnes 2009 + jump-flood
 //! propagation): each pass reads the previous NNF and writes an improved one, so
-//! it is order-independent — the CPU reference and the W2 GPU compute run the
-//! *same* passes and reconcile within float ε (the GPU only differs in the last
-//! bits of the f32 SSD sums).
+//! it is order-independent. The score is an integer SSD over premultiplied RGBA8
+//! and a tie goes to the lower source index, so the CPU and the GPU pick the same
+//! patch (B38.3).
 //!
 //! One E-step = recompute costs against the current content, a sequence of
 //! jump-flood propagation passes (steps `n/2 … 2, 1`), then one random-search
@@ -16,7 +16,8 @@
 
 use crate::hash::{rand_range, rand_u32, seed32};
 use crate::mask::Regions;
-use crate::plane::{Plane, clampi};
+use crate::plane::clampi;
+use crate::q8::Q8;
 
 /// The 8 propagation directions (unit); scaled by the jump-flood step.
 const DIRS: [(i32, i32); 8] = [
@@ -36,7 +37,7 @@ pub struct Nnf {
     pub w: usize,
     pub h: usize,
     pub off: Vec<[i32; 2]>,
-    pub cost: Vec<f32>,
+    pub cost: Vec<u32>,
     /// The global seed — every per-pixel RNG stream is hashed from it (+ index +
     /// pass), so the field is reproducible and GPU-matchable.
     pub seed: u64,
@@ -44,22 +45,34 @@ pub struct Nnf {
 
 /// Sum of squared premultiplied RGBA differences between the target patch (read from the
 /// evolving `content`, centred at `t`) and the source patch (read from the fixed
-/// `src` image, centred at `s`), over the `(2r+1)²` window. Clamp-to-edge.
+/// `src` image, centred at `s`), over the `(2r+1)²` window. Clamp-to-edge. Exact in `u32` for
+/// `r ≤ MAX_PATCH_RADIUS`.
 #[inline]
-pub fn patch_ssd(content: &Plane, src: &Plane, t: [i32; 2], s: [i32; 2], r: i32) -> f32 {
-    let mut acc = 0.0f32;
+pub fn patch_ssd(content: &Q8, src: &Q8, t: [i32; 2], s: [i32; 2], r: i32) -> u32 {
+    let mut acc = 0u32;
     for dy in -r..=r {
         for dx in -r..=r {
             let a = content.get(t[0] + dx, t[1] + dy);
             let b = src.get(s[0] + dx, s[1] + dy);
-            let d0 = a[0] - b[0];
-            let d1 = a[1] - b[1];
-            let d2 = a[2] - b[2];
-            let d3 = a[3] - b[3];
-            acc += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
+            for k in 0..4 {
+                let d = u32::from(a[k].abs_diff(b[k]));
+                acc += d * d;
+            }
         }
     }
     acc
+}
+
+/// Is `(c, si)` a better match than `(best, bi)`? Lower score, then the lower (clamped) source index.
+#[inline]
+fn melhor(c: u32, si: usize, best: u32, bi: usize) -> bool {
+    c < best || (c == best && si < bi)
+}
+
+/// The clamped linear index of the source centre `t + o`.
+#[inline]
+fn fonte(t: [i32; 2], o: [i32; 2], w: usize, h: usize) -> usize {
+    clampi(t[1] + o[1], h) * w + clampi(t[0] + o[0], w)
 }
 
 #[inline]
@@ -76,11 +89,11 @@ impl Nnf {
     /// Random NNF init: each target centre points at a uniformly-chosen source
     /// centre (drawn from its own per-pixel stream), cost evaluated against the
     /// current content. Deterministic for a given `seed`; GPU-matchable.
-    pub fn init(content: &Plane, src: &Plane, reg: &Regions, r: i32, seed: u64) -> Nnf {
+    pub fn init(content: &Q8, src: &Q8, reg: &Regions, r: i32, seed: u64) -> Nnf {
         let (w, h) = (reg.w, reg.h);
         let s32 = seed32(seed);
         let mut off = vec![[0i32; 2]; w * h];
-        let mut cost = vec![f32::INFINITY; w * h];
+        let mut cost = vec![u32::MAX; w * h];
         let ns = reg.sources.len() as u32;
         for &ti in &reg.targets {
             let t = xy(ti, w);
@@ -103,7 +116,7 @@ impl Nnf {
     /// jump-flood propagation passes, then a random-search pass. `pass` is the EM
     /// iteration index — it salts the per-pixel search streams so successive
     /// iterations explore fresh candidates.
-    pub fn e_step(&mut self, content: &Plane, src: &Plane, reg: &Regions, r: i32, pass: u64) {
+    pub fn e_step(&mut self, content: &Q8, src: &Q8, reg: &Regions, r: i32, pass: u64) {
         // Costs are stale after an M-step changed the content — refresh them.
         for &ti in &reg.targets {
             let t = xy(ti, self.w);
@@ -125,7 +138,7 @@ impl Nnf {
     /// One double-buffered jump-flood pass at `step`: for every target centre,
     /// adopt a neighbour's source offset (aligned to this centre) if it scores
     /// better. Reads the old field, writes the new — order-independent.
-    fn propagate(&mut self, content: &Plane, src: &Plane, reg: &Regions, r: i32, step: i32) {
+    fn propagate(&mut self, content: &Q8, src: &Q8, reg: &Regions, r: i32, step: i32) {
         let old = self.off.clone();
         let old_cost = self.cost.clone();
         for &ti in &reg.targets {
@@ -133,6 +146,7 @@ impl Nnf {
             let t = xy(ti, self.w);
             let mut best_off = old[idx];
             let mut best = old_cost[idx];
+            let mut bi = fonte(t, best_off, self.w, self.h);
             for (dx, dy) in DIRS {
                 let qx = clampi(t[0] + dx * step, self.w) as i32;
                 let qy = clampi(t[1] + dy * step, self.h) as i32;
@@ -140,13 +154,15 @@ impl Nnf {
                 let cand = old[qi]; // neighbour's target→source offset
                 let sx = t[0] + cand[0];
                 let sy = t[1] + cand[1];
-                if !reg.is_source[clampi(sy, self.h) * self.w + clampi(sx, self.w)] {
+                let si = clampi(sy, self.h) * self.w + clampi(sx, self.w);
+                if !reg.is_source[si] {
                     continue;
                 }
                 let c = patch_ssd(content, src, t, [sx, sy], r);
-                if c < best {
+                if melhor(c, si, best, bi) {
                     best = c;
                     best_off = cand;
+                    bi = si;
                 }
             }
             self.off[idx] = best_off;
@@ -158,7 +174,7 @@ impl Nnf {
     /// exponentially shrinking radius (`R, R/2, … 1`), keeping any improvement.
     /// Each target draws from its own per-pixel stream (salted by `pass`), so the
     /// pass is order-independent and GPU-matchable.
-    fn random_search(&mut self, content: &Plane, src: &Plane, reg: &Regions, r: i32, pass: u64) {
+    fn random_search(&mut self, content: &Q8, src: &Q8, reg: &Regions, r: i32, pass: u64) {
         let s32 = seed32(self.seed);
         let salt = SALT_SEARCH.wrapping_add(pass as u32);
         let max_r = self.w.max(self.h) as i32;
@@ -167,6 +183,7 @@ impl Nnf {
             let t = xy(ti, self.w);
             let mut best_off = self.off[idx];
             let mut best = self.cost[idx];
+            let mut bi = fonte(t, best_off, self.w, self.h);
             let mut radius = max_r;
             let mut k = 0u32;
             while radius >= 1 {
@@ -176,11 +193,13 @@ impl Nnf {
                 let cy = t[1] + best_off[1] + jy;
                 let sx = clampi(cx, self.w) as i32;
                 let sy = clampi(cy, self.h) as i32;
-                if reg.is_source[sy as usize * self.w + sx as usize] {
+                let si = sy as usize * self.w + sx as usize;
+                if reg.is_source[si] {
                     let c = patch_ssd(content, src, t, [sx, sy], r);
-                    if c < best {
+                    if melhor(c, si, best, bi) {
                         best = c;
                         best_off = [sx - t[0], sy - t[1]];
+                        bi = si;
                     }
                 }
                 radius /= 2;
@@ -199,25 +218,33 @@ mod tests {
 
     #[test]
     fn ssd_of_identical_patches_is_zero() {
-        let mut p = Plane::new(8, 8);
+        let mut p = Q8 {
+            w: 8,
+            h: 8,
+            px: vec![[0; 4]; 64],
+        };
         for y in 0..8 {
             for x in 0..8 {
-                p.set(x, y, [x as f32 / 8.0, y as f32 / 8.0, 0.5, 1.0]);
+                p.px[y * 8 + x] = [(x * 32) as u8, (y * 32) as u8, 128, 255];
             }
         }
-        assert_eq!(patch_ssd(&p, &p, [4, 4], [4, 4], 2), 0.0);
-        assert!(patch_ssd(&p, &p, [4, 4], [2, 2], 2) > 0.0);
+        assert_eq!(patch_ssd(&p, &p, [4, 4], [4, 4], 2), 0);
+        assert!(patch_ssd(&p, &p, [4, 4], [2, 2], 2) > 0);
     }
 
     #[test]
     fn search_finds_the_matching_stripe_source() {
         // Vertical 2-px stripes: a hole patch should match a same-phase source.
         let (w, h) = (32, 32);
-        let mut img = Plane::new(w, h);
+        let mut img = Q8 {
+            w,
+            h,
+            px: vec![[0; 4]; w * h],
+        };
         for y in 0..h {
             for x in 0..w {
-                let v = if (x / 2) % 2 == 0 { 0.9 } else { 0.1 };
-                img.set(x, y, [v, v, v, 1.0]);
+                let v = if (x / 2) % 2 == 0 { 230 } else { 25 };
+                img.px[y * w + x] = [v, v, v, 255];
             }
         }
         let mut bytes = vec![0u8; w * h];
@@ -235,7 +262,7 @@ mod tests {
         // A hole centre should match a source at the same stripe phase ⇒ near-zero cost.
         let ti = 16 * w + 16;
         assert!(
-            nnf.cost[ti] < 0.05,
+            nnf.cost[ti] < 3_000,
             "stripe match cost too high: {}",
             nnf.cost[ti]
         );

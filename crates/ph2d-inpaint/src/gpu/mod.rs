@@ -2,8 +2,8 @@
 //! region classification and cross-level upsampling stay on the CPU (cheap); the
 //! per-level hot loop — NNF init, cost refresh, jump-flood propagation, random
 //! search, gather-voting — runs on the GPU via the WGSL in [`wgsl`]. One thread
-//! per pixel; the kernels mirror the CPU reference op-for-op, so the two
-//! reconcile within ε (`tests`). Runtime picks GPU, falling back to CPU when no
+//! per pixel; the kernels mirror the CPU reference op-for-op in integer
+//! arithmetic, so the two give the same bytes (`tests`, B38.3). Runtime picks GPU, falling back to CPU when no
 //! adapter is available ([`crate::inpaint`]).
 //!
 //! Each dispatch bakes its `step`/`pass` into its OWN `create_buffer_init`
@@ -17,7 +17,7 @@ mod wgsl;
 mod tests;
 
 use crate::mask::{Mask, Regions};
-use crate::plane::Plane;
+use crate::q8::Q8;
 use bytemuck::{Pod, Zeroable};
 use ph2d_gpu::GpuContext;
 use std::borrow::Cow;
@@ -149,8 +149,8 @@ impl GpuInpainter {
     pub fn run_level(
         &self,
         gpu: &GpuContext,
-        content: &mut Plane,
-        src: &Plane,
+        content: &mut Q8,
+        src: &Q8,
         mask: &Mask,
         reg: &Regions,
         r: i32,
@@ -219,7 +219,7 @@ impl GpuInpainter {
         }
 
         // Copy the reconstructed content back and decode into the Plane.
-        let bytes = (n * 4 * 4) as u64; // vec4<f32> per pixel
+        let bytes = (n * 4 * 4) as u64; // vec4<u32> per pixel
         let readback = gpu.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("inpaint.readback"),
             size: bytes,
@@ -242,8 +242,10 @@ impl GpuInpainter {
         let mapped = tests::injecta_falha(mapped);
         mapped.map_err(falhou("map_async"))?;
         let data = slice.get_mapped_range().map_err(falhou("mapped range"))?;
-        let floats: &[f32] = bytemuck::cast_slice(&data);
-        content.px.copy_from_slice(&floats[..n * 4]);
+        let canais: &[u32] = bytemuck::cast_slice(&data);
+        for (d, c) in content.px.iter_mut().zip(canais.as_chunks::<4>().0) {
+            *d = c.map(|v| v as u8);
+        }
         drop(data);
         readback.unmap();
         Ok(())
@@ -299,8 +301,8 @@ impl GpuInpainter {
     fn upload(
         &self,
         gpu: &GpuContext,
-        content: &Plane,
-        src: &Plane,
+        content: &Q8,
+        src: &Q8,
         mask: &Mask,
         reg: &Regions,
     ) -> LevelBuffers {
@@ -390,7 +392,7 @@ fn bind(binding: u32, buffer: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
     }
 }
 
-/// The premultiplied RGBA [`Plane`] is already `w*h` `vec4<f32>` for a storage buffer.
-fn pack_vec4(p: &Plane) -> Vec<f32> {
-    p.px.clone()
+/// The premultiplied RGBA8 level as `w*h` `vec4<u32>` for a storage buffer.
+fn pack_vec4(p: &Q8) -> Vec<u32> {
+    p.px.iter().flat_map(|c| c.map(u32::from)).collect()
 }

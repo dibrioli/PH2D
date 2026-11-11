@@ -5,6 +5,9 @@
 //! ```text
 //! cargo test -p ph2d-tool-painter --profile smoke --lib prancha_b38 -- --ignored --nocapture
 //! ```
+//!
+//! **B38.3** (`*_heal_opaco_*`): o Heal num fundo OPACO, «antes» = o nível f32 (`prancha_b38_3_*`), «depois» =
+//! o nível inteiro (SSD u32, voto Q16) que dá o mesmo byte na placa e na CPU.
 
 use crate::tool::PainterTool;
 use ph2d_editor_core::ids as core_ids;
@@ -59,9 +62,10 @@ fn modo(t: &mut PainterTool, m: &str) {
 
 /// A imagem achatada: faixa amarela macia na metade esquerda da camada nova; `heal` = o Heal atravessa
 /// a ponta da faixa; senão o Clone (Grain Checker Tiled) leva a faixa ao vazio da direita.
-fn cena(w: u32, h: u32, qual: u8, heal: bool, antes: bool) -> Vec<u8> {
-    ph2d_painter_brush::prancha_b38_mistura_recta(antes);
-    ph2d_inpaint::prancha_b38_alfa_de_antes(antes);
+fn cena(w: u32, h: u32, qual: u8, heal: bool, antes: bool, opaco: bool) -> Vec<u8> {
+    ph2d_painter_brush::prancha_b38_mistura_recta(antes && !opaco);
+    ph2d_inpaint::prancha_b38_alfa_de_antes(antes && !opaco);
+    ph2d_inpaint::prancha_b38_3_nivel_f32_de_antes(antes && opaco);
     let mut t = PainterTool::default();
     if qual == 2 {
         t.agenda_papel_texturizado(7);
@@ -69,7 +73,9 @@ fn cena(w: u32, h: u32, qual: u8, heal: bool, antes: bool) -> Vec<u8> {
     } else {
         t.set_source(fundo(w, h, qual == 1), w, h);
     }
-    t.add_raster_layer("tinta").expect("a camada transparente");
+    if !opaco {
+        t.add_raster_layer("tinta").expect("a camada transparente");
+    }
     let s = h as f32 / 1080.0;
     let (cx, cy, l) = (w as f32 / 2.0, h as f32 / 2.0, h as f32 / 4.0);
     t.set_brush_color_srgb8([250, 225, 20]);
@@ -101,6 +107,7 @@ fn cena(w: u32, h: u32, qual: u8, heal: bool, antes: bool) -> Vec<u8> {
     t.invalidate_composite();
     ph2d_painter_brush::prancha_b38_mistura_recta(false);
     ph2d_inpaint::prancha_b38_alfa_de_antes(false);
+    ph2d_inpaint::prancha_b38_3_nivel_f32_de_antes(false);
     t.take_preview_arc().expect("o preview").0.to_vec()
 }
 
@@ -135,9 +142,17 @@ fn prancha_b38_clone_e_heal_na_camada_transparente() {
     std::fs::create_dir_all(dir).expect("pasta");
     for (w, h, res) in [(1920u32, 1080u32, "1080p"), (3840, 2160, "4k")] {
         for (qual, nome) in [(0u8, "branco"), (1, "blocos"), (2, "papel")] {
-            for (heal, oque) in [(false, "clone"), (true, "heal")] {
-                let a = cena(w, h, qual, heal, true);
-                let d = cena(w, h, qual, heal, false);
+            let so_opaco = std::env::var_os("PRANCHA_B38_3").is_some();
+            for (heal, opaco, oque) in [
+                (false, false, "clone"),
+                (true, false, "heal"),
+                (true, true, "heal_opaco"),
+            ] {
+                if so_opaco && !opaco {
+                    continue;
+                }
+                let a = cena(w, h, qual, heal, true, opaco);
+                let d = cena(w, h, qual, heal, false, opaco);
                 let (mut difs, mut mais_claros, mut pior) = (0usize, 0usize, 0u8);
                 for (x, y) in a.as_chunks::<4>().0.iter().zip(d.as_chunks::<4>().0) {
                     if x[..3] != y[..3] {

@@ -3,11 +3,10 @@
 //! `#[ignore]` by default — run headless on Metal with
 //! `cargo test -p ph2d-inpaint --features gpu -- --ignored`.
 //!
-//! Parity target: because PatchMatch has arg-min branches (unlike a branchless
-//! filter), the GPU is not bit-exact with the CPU — float-summation order and
-//! rare arg-min ties differ. We assert the reconstruction agrees within a small
-//! PERCEPTUAL ε (mean ≤ ~2/255, bounded max), and — the stronger check — that the
-//! GPU independently satisfies the same known-answer properties the CPU does.
+//! Parity target (B38.3): each level is integer arithmetic on premultiplied RGBA8
+//! (SSD, ties to the lower source index, Q16 vote), so the GPU gives the CPU's
+//! bytes — on every fixture, opaque or with intermediate alpha and chroma. The GPU
+//! also satisfies the same known-answer properties the CPU does.
 
 use crate::{InpaintParams, InpaintRequest, inpaint_cpu, inpaint_gpu};
 use ph2d_gpu::GpuContext;
@@ -54,37 +53,79 @@ fn diff(a: &[u8], b: &[u8]) -> (f64, i32) {
     (sum as f64 / a.len() as f64, max)
 }
 
+/// The fixtures of the byte gate: opaque stripes, the edge of yellow paint on an empty layer, a
+/// chroma × alpha ramp, and one above the 128² size where the Heal routes to the GPU.
+fn fixturas_do_portao() -> Vec<(usize, usize, Vec<u8>, Vec<u8>)> {
+    let listras = rgba_from(96, 96, |x, y| {
+        let s = if (x / 3) % 2 == 0 { 210 } else { 40 };
+        [s, ((y * 3) % 256) as u8, ((x + y) % 256) as u8]
+    });
+    let mut borda = vec![0u8; 64 * 48 * 4];
+    for y in 0..48 {
+        for x in 32..64 {
+            let o = (y * 64 + x) * 4;
+            borda[o..o + 4].copy_from_slice(&[250, 225, 20, 255]);
+        }
+    }
+    let mut rampa = vec![0u8; 80 * 64 * 4];
+    for y in 0..64 {
+        for x in 0..80 {
+            let o = (y * 80 + x) * 4;
+            let a = ((x * 255) / 79) as u8;
+            rampa[o..o + 4].copy_from_slice(&[
+                (x * 3) as u8,
+                200 - y as u8,
+                ((x ^ y) * 4) as u8,
+                a,
+            ]);
+        }
+    }
+    let grande = rgba_from(160, 160, |x, y| {
+        [
+            (x * 7 % 256) as u8,
+            (y * 5 % 256) as u8,
+            ((x / 8 + y / 8) % 2 * 200) as u8,
+        ]
+    });
+    vec![
+        (96, 96, listras, rect_mask(96, 96, 36, 36, 20, 20)),
+        (64, 48, borda, rect_mask(64, 48, 20, 16, 24, 16)),
+        (80, 64, rampa, rect_mask(80, 64, 30, 20, 22, 18)),
+        (160, 160, grande, rect_mask(160, 160, 60, 50, 40, 44)),
+    ]
+}
+
+/// **B38.3 — the Heal is the same byte on the GPU and on the CPU** (the route by size/adapter no longer
+/// changes the patch). Red before: f32 SSD/vote, the 96² stripes differed (mean ≤ 2, max ≤ 48 was the gate).
 #[test]
 #[ignore = "needs a GPU adapter; run with --features gpu -- --ignored"]
-fn gpu_reconciles_with_cpu_within_epsilon() {
+fn heal_na_placa_e_na_cpu_e_o_mesmo_byte() {
     let Some(gpu) = try_gpu() else {
         eprintln!("no GPU adapter — skipping");
         return;
     };
-    let (w, h) = (96, 96);
-    let img = rgba_from(w, h, |x, y| {
-        let s = if (x / 3) % 2 == 0 { 210 } else { 40 };
-        [s, ((y * 3) % 256) as u8, ((x + y) % 256) as u8]
-    });
-    let mask = rect_mask(w, h, 36, 36, 20, 20);
-    let params = InpaintParams::default();
-    let req = InpaintRequest {
-        width: w as u32,
-        height: h as u32,
-        rgba: &img,
-        mask: &mask,
-        params,
-    };
-    let cpu = inpaint_cpu(&req).rgba;
-    let gpu_out = inpaint_gpu(&gpu, &req).expect("gpu level").rgba;
-    let (mean, max) = diff(&cpu, &gpu_out);
+    eprintln!("adapter: {:?}", gpu.adapter.get_info().name);
+    let mut mudaram = 0;
+    for (k, (w, h, img, mask)) in fixturas_do_portao().into_iter().enumerate() {
+        let req = InpaintRequest {
+            width: w as u32,
+            height: h as u32,
+            rgba: &img,
+            mask: &mask,
+            params: InpaintParams::default(),
+        };
+        let cpu = inpaint_cpu(&req).rgba;
+        let gpu_out = inpaint_gpu(&gpu, &req).expect("gpu level").rgba;
+        let (mean, max) = diff(&cpu, &gpu_out);
+        mudaram += usize::from(cpu != img);
+        assert!(
+            cpu == gpu_out,
+            "fixtura {k}: placa × CPU diferem (média {mean:.3}, pior {max})"
+        );
+    }
     assert!(
-        mean <= 2.0,
-        "GPU⇄CPU mean diff {mean:.3} too high (max {max})"
-    );
-    assert!(
-        max <= 48,
-        "GPU⇄CPU max diff {max} too high (mean {mean:.3})"
+        mudaram >= 3,
+        "CONTROLO: só {mudaram} fixturas mudaram o buraco"
     );
 }
 

@@ -3,9 +3,8 @@
 //! centre `t` maps to a source centre `s = t + off`; for every offset `(dx,dy)`
 //! in the patch, the source colour `src(s+dx, s+dy)` votes for the pixel
 //! `t+(dx,dy)` — but only if that pixel is a HOLE pixel (known pixels stay
-//! pinned to the real image). The weight is `1/(1+cost)` so sharper matches
-//! count more; it is division-only (transcendental-free), so the GPU voting
-//! kernel reproduces it within ε.
+//! pinned to the real image). The weight is `1/(1+cost)` in Q16 fixed point and
+//! the mean rounds half up, all `u32`, so the GPU vote is the same byte (B38.3).
 //!
 //! Covered pixels that fall outside the image are **skipped** (not clamped): the
 //! source read still clamps, but a target patch never scatters onto a clamped
@@ -15,21 +14,21 @@
 
 use crate::mask::{Mask, Regions};
 use crate::nnf::Nnf;
-use crate::plane::Plane;
+use crate::q8::{Q8, media, peso};
 
 /// Vote hole pixels of `content` in place. `src` is the fixed level image, `nnf`
 /// the just-searched field, `r` the patch radius.
-pub fn vote(content: &mut Plane, src: &Plane, mask: &Mask, reg: &Regions, nnf: &Nnf, r: i32) {
+pub fn vote(content: &mut Q8, src: &Q8, mask: &Mask, reg: &Regions, nnf: &Nnf, r: i32) {
     let (w, h) = (content.w, content.h);
-    let mut sum = vec![[0.0f32; 4]; w * h];
-    let mut wsum = vec![0.0f32; w * h];
+    let mut sum = vec![[0u32; 4]; w * h];
+    let mut wsum = vec![0u32; w * h];
 
     for &ti in &reg.targets {
         let idx = ti as usize;
         let tx = (idx % w) as i32;
         let ty = (idx / w) as i32;
         let o = nnf.off[idx];
-        let weight = 1.0 / (1.0 + nnf.cost[idx]);
+        let weight = peso(nnf.cost[idx]);
         for dy in -r..=r {
             for dx in -r..=r {
                 let px = tx + dx;
@@ -43,7 +42,7 @@ pub fn vote(content: &mut Plane, src: &Plane, mask: &Mask, reg: &Regions, nnf: &
                 }
                 let col = src.get(tx + o[0] + dx, ty + o[1] + dy);
                 for k in 0..4 {
-                    sum[vi][k] += weight * col[k];
+                    sum[vi][k] += weight * u32::from(col[k]);
                 }
                 wsum[vi] += weight;
             }
@@ -53,11 +52,8 @@ pub fn vote(content: &mut Plane, src: &Plane, mask: &Mask, reg: &Regions, nnf: &
     for y in 0..h {
         for x in 0..w {
             let vi = y * w + x;
-            if mask.hole[vi] && wsum[vi] > 0.0 {
-                let iw = 1.0 / wsum[vi];
-                // Alpha divides (not × iw): an all-opaque vote is then exactly 1, the colour unchanged.
-                let s = sum[vi];
-                content.set(x, y, [s[0] * iw, s[1] * iw, s[2] * iw, s[3] / wsum[vi]]);
+            if mask.hole[vi] && wsum[vi] > 0 {
+                content.px[vi] = sum[vi].map(|s| media(s, wsum[vi]));
             }
         }
     }
@@ -70,12 +66,11 @@ mod tests {
     #[test]
     fn voting_a_constant_image_reproduces_the_constant() {
         let (w, h) = (24, 24);
-        let mut img = Plane::new(w, h);
-        for y in 0..h {
-            for x in 0..w {
-                img.set(x, y, [0.4, 0.7, 0.2, 1.0]);
-            }
-        }
+        let img = Q8 {
+            w,
+            h,
+            px: vec![[102, 179, 51, 255]; w * h],
+        };
         let mut bytes = vec![0u8; w * h];
         for y in 10..14 {
             for x in 10..14 {
@@ -88,7 +83,7 @@ mod tests {
         let mut content = img.clone();
         for y in 10..14 {
             for x in 10..14 {
-                content.set(x, y, [0.0, 0.0, 0.0, 0.0]);
+                content.px[y * w + x] = [0; 4];
             }
         }
         let nnf = Nnf::init(&content, &img, &reg, 3, 3);
@@ -96,10 +91,7 @@ mod tests {
         // Any source patch is the constant colour, so the hole fills to it.
         for y in 10..14 {
             for x in 10..14 {
-                let c = content.get(x, y);
-                assert!((c[0] - 0.4).abs() < 1e-4, "R off at ({x},{y}): {c:?}");
-                assert!((c[1] - 0.7).abs() < 1e-4);
-                assert!((c[2] - 0.2).abs() < 1e-4);
+                assert_eq!(content.get(x, y), [102, 179, 51, 255], "at ({x},{y})");
             }
         }
     }

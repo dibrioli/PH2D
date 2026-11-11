@@ -6,10 +6,10 @@
 //! ⚠️ **Não move ÁGUA** e não tem decisão por célula: o peso é contínuo no filme (a W1f recusou toda a
 //! trava célula a célula na entrada do seco, 05 §4b). Conservativo (gather: quem recebe lê o que a
 //! fonte dá), independente de ordem, e `a = 0` ou `|g| = 0` não toca num byte.
-use crate::colorops::km_weighted_mean_color;
 use crate::grid::faixa_tiles::{span_runs, tiles_row_of};
 use crate::grid::{Grid, span_x_of};
 use crate::par::{self, Rows};
+use ph2d_pigment::espectral::media_pesada_255;
 
 /// O tecto da fracção por passo: a soma dos dois eixos fica `≤ 0,45·√2 < 1` (a célula nunca dá o que
 /// não tem).
@@ -166,7 +166,7 @@ pub fn sedimenta_rows(g: &mut Grid, a: f64, gx: f64, gy: f64, km: bool, mode: Ro
                                 cores[3 * k..3 * k + 3].copy_from_slice(&cc.map(f64::from));
                                 pesos[k] = *w;
                             }
-                            km_weighted_mean_color(&cores, &pesos, 3, inv, &mut km_out);
+                            media_pesada_255(&cores, &pesos, 3, inv, &mut km_out);
                             km_out
                         } else {
                             let mut o = [0.0; 3];

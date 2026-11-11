@@ -422,7 +422,7 @@ impl Sim {
         Params {
             values: tuning.snapshot(),
             mix: if self.km_mixing {
-                ColorMix::Km
+                ColorMix::Espectral
             } else {
                 ColorMix::Plain
             },

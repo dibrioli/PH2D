@@ -1,10 +1,10 @@
 //! §6.5 Advection + gravity (child of [`super`] — split for the workspace
 //! file-LOC cap; pure code motion, the session fingerprint pins byte-identity).
 
-use crate::colorops::km_weighted_mean_color;
 use crate::grid::Grid;
 use crate::sim::Params;
 use crate::tuning::Knob;
+use ph2d_pigment::espectral::media_pesada_255;
 
 /// Semi-Lagrangian CONSERVATIVE GATHER: each cell back-traces along its
 /// transient flow, pulls water + suspended pigment from the 4 bilinear source
@@ -184,7 +184,7 @@ pub fn advect(g: &mut Grid, p: &Params, gx: f64, gy: f64) -> f64 {
                     km_weights[1] = p10;
                     km_weights[2] = p01;
                     km_weights[3] = p11;
-                    km_weighted_mean_color(&km_colors, &km_weights, 4, inv, &mut km_out);
+                    media_pesada_255(&km_colors, &km_weights, 4, inv, &mut km_out);
                     r_in = km_out[0];
                     g_in = km_out[1];
                     b_in = km_out[2];

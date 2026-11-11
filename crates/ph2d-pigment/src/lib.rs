@@ -20,6 +20,7 @@
 //! torna o resultado bit-idêntico entre sistemas operativos, que é a propriedade que a lei do porte
 //! exige de um transcendental.
 
+pub mod espectral;
 pub mod transfer;
 
 pub use transfer::{
@@ -43,6 +44,8 @@ pub fn reflectance_of_ks(ks: f64) -> f64 {
 pub enum ColorMix {
     Plain,
     Km,
+    /// A lei espectral de 10 bandas ([`espectral`], B32.1): o «pigment mixing» do Wet.
+    Espectral,
 }
 
 impl ColorMix {
@@ -66,6 +69,9 @@ impl ColorMix {
         out: &mut [f64; 3],
     ) {
         match self {
+            ColorMix::Espectral => {
+                *out = espectral::mistura_255([dr, dg, db], [sr, sg, sb], w);
+            }
             ColorMix::Plain => {
                 out[0] = dr + (sr - dr) * w;
                 out[1] = dg + (sg - dg) * w;

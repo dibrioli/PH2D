@@ -2,6 +2,7 @@
 //! the workspace file-LOC cap; pure code motion, fingerprint-pinned).
 
 use crate::grid::Grid;
+use crate::grid::faixa_tiles::{span_runs, tile_words_for, tiles_row_of};
 use crate::par::{self, Rows};
 use crate::sim::Params;
 use crate::tuning::Knob;
@@ -49,9 +50,11 @@ pub fn project_rows(g: &mut Grid, p: &Params, mode: Rows) {
     let (gbx0, gbx1, gby0, gby1) = (fbx0, fbx1, fby0, fby1);
     g.refresh_flow_spans();
     let spans_on = g.spans_enabled;
+    let (ftw, tiles_on) = (tile_words_for(s), spans_on && g.tiles_enabled);
     let Grid {
         frow_lo,
         frow_hi,
+        frow_tiles,
         flow_x,
         flow_y,
         vel_x,
@@ -64,6 +67,10 @@ pub fn project_rows(g: &mut Grid, p: &Params, mode: Rows) {
     let row_lo: &[i32] = frow_lo;
     let row_hi: &[i32] = frow_hi;
     let active: &[u8] = active;
+    let frow_tiles: &[u64] = frow_tiles;
+    // Os troços vivos da linha (a máscara de tiles projetada dentro da faixa).
+    let runs =
+        |y: i32, lo: i32, hi: i32| span_runs(tiles_row_of(frow_tiles, ftw, tiles_on, y), lo, hi);
     // A faixa desta linha, com a margem de 1 que o estêncil pede.
     let span1 = |y: i32| -> (i32, i32) {
         let (lo, hi) = crate::grid::span_x_of(row_lo, row_hi, spans_on, gbx0, gbx1, y);
@@ -112,9 +119,11 @@ pub fn project_rows(g: &mut Grid, p: &Params, mode: Rows) {
             }
             let (bx0, bx1) = live(y);
             let base = y as usize * s;
-            for x in bx0..=bx1 {
-                if active[crate::flow::probe_idx(x, y, gw, gh, fine_s, geom.rf)] != 0 {
-                    dr[x as usize] = div_at(velx, vely, x as usize + base);
+            for (ra, rb) in runs(y, bx0, bx1) {
+                for x in ra..=rb {
+                    if active[crate::flow::probe_idx(x, y, gw, gh, fine_s, geom.rf)] != 0 {
+                        dr[x as usize] = div_at(velx, vely, x as usize + base);
+                    }
                 }
             }
         });
@@ -147,7 +156,7 @@ pub fn project_rows(g: &mut Grid, p: &Params, mode: Rows) {
                     return;
                 }
                 let base = y as usize * s;
-                for x in bx0..=bx1 {
+                for x in runs(y, bx0, bx1).flat_map(|(a, b)| a..=b) {
                     let i = x as usize + base;
                     if active[crate::flow::probe_idx(x, y, gw, gh, fine_s, geom.rf)] != 0 {
                         dr[x as usize] = div_at(velx, vely, i);
@@ -165,7 +174,7 @@ pub fn project_rows(g: &mut Grid, p: &Params, mode: Rows) {
                 return;
             }
             let base = y as usize * s;
-            for x in bx0..=bx1 {
+            for x in runs(y, bx0, bx1).flat_map(|(a, b)| a..=b) {
                 let i = x as usize + base;
                 // A relaxação de Jacobi é uma MÉDIA ponderada, adimensional —
                 // ela não leva o fator de diferença finita.
@@ -196,7 +205,7 @@ pub fn project_rows(g: &mut Grid, p: &Params, mode: Rows) {
                     return;
                 }
                 let base = y as usize * s;
-                for x in bx0..=bx1 {
+                for x in runs(y, bx0, bx1).flat_map(|(a, b)| a..=b) {
                     let i = x as usize + base;
                     if active[crate::flow::probe_idx(x, y, gw, gh, fine_s, geom.rf)] == 0 {
                         continue;

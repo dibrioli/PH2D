@@ -62,9 +62,9 @@ pub(crate) fn celulas_da_faixa(g: &Grid) -> Vec<usize> {
     let mut v = Vec::new();
     for y in g.by0..=g.by1 {
         let (lo, hi) = g.span_x(y);
-        if lo <= hi {
-            let base = y as usize * g.s;
-            v.extend((lo as usize..=hi as usize).map(|x| base + x));
+        let base = y as usize * g.s;
+        for (a, b) in crate::grid::faixa_tiles::span_runs(g.tiles_row(y), lo, hi) {
+            v.extend((a as usize..=b as usize).map(|x| base + x));
         }
     }
     v

@@ -253,6 +253,50 @@ fn run_far_blobs_rf(tiles: bool, rf: usize, jacobi: bool) -> Engine {
     e
 }
 
+/// Duas poças FUNDAS (filme até 7: o carimbo de umidade escreve) separadas por quatro tiles secos, com
+/// pigmento assentado no raso e meio orçamento de floração gasto (o backrun dispara nas DUAS). Três
+/// passes do Jacobi com `ExtBackrun`; devolve o grid.
+fn deep_far_pools_jacobi(tiles: bool, rf: usize) -> Grid {
+    use ph2d_wet_paint::solver::{build_flow_field_jacobi, rebuild_active_region};
+    use ph2d_wet_paint::tuning::{Knob, Tuning};
+    let (w, h) = (600usize, 34usize);
+    let mut g = Grid::with_flow_ratio(w, h, rf);
+    g.tiles_enabled = tiles;
+    let s = g.s;
+    for cx in [48.5f64, 500.5] {
+        for y in 5..=h - 5 {
+            for x in 1..=w {
+                let d = (x as f64 - cx).abs();
+                if d >= 30.0 {
+                    continue;
+                }
+                let i = x + y * s;
+                let teeth = if (d.floor() as i32) % 7 < 3 { 1.3 } else { 0.7 };
+                let bump = 1.0 - d / 30.0;
+                g.film[i] = (7.0 * bump * teeth) as f32;
+                g.susp[i] = (400.0 * bump) as f32;
+                g.susp_rgb[i] = [200.0, 40.0, 90.0];
+                g.paper[i] = (0.35 + 0.25 * teeth) as f32;
+                if g.film[i] < 2.0 {
+                    g.sett[i] = 500.0;
+                    g.sett_rgb[i] = [30.0, 120.0, 200.0];
+                } else if y % 2 == 0 {
+                    g.bloom[i] = 6;
+                }
+            }
+        }
+    }
+    g.expand_bbox(1, 1, w as i32, h as i32);
+    rebuild_active_region(&mut g);
+    let mut t = Tuning::default();
+    t.set(Knob::ExtBackrun, 1.5);
+    let p = ph2d_wet_paint::sim::Sim::default().gather_params(&t);
+    for _ in 0..3 {
+        build_flow_field_jacobi(&mut g, &p, 0.0, 0.6, false);
+    }
+    g
+}
+
 fn run_session_tiles(kind: usize, tiles: bool) -> Engine {
     // As formas de `run_session`, com a máscara ligada/desligada desde o 1.º passo.
     let mut e = Engine::new(220, 180);
@@ -324,6 +368,22 @@ fn a_mascara_de_tiles_da_faixa_reproduz_a_faixa_de_um_intervalo_ao_bit() {
                 );
             }
         }
+    }
+    // Poças fundas + backrun: o carimbo de umidade e o orçamento de floração na 2.ª poça.
+    for rf in [1usize, 2] {
+        let um = deep_far_pools_jacobi(false, rf);
+        let tiles = deep_far_pools_jacobi(true, rf);
+        let (a, b) = (digest(&um), digest(&tiles));
+        if let Some(at) = first_difference(&a, &b) {
+            panic!("pocas fundas rf {rf}: frow_tiles mudou o estado no byte {at}");
+        }
+        let s = um.s;
+        let far_wet =
+            (1..=um.h).filter(|y| um.wet[460 + y * s..540 + y * s].iter().any(|v| *v != 0));
+        assert!(
+            far_wet.count() > 0,
+            "rf {rf}: o carimbo nao rodou na 2.a poca (cena vazia)"
+        );
     }
     // A máscara não é vazia de efeito: nas duas manchas longe ela salta o seco do meio.
     let e = run_tiles(SESSIONS, true);

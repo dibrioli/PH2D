@@ -15,3 +15,20 @@ fn o_deslizar_de_lado_nao_muda_o_calendario() {
     }
     assert_eq!(format!("{:?}", m.docs().probe_calendar()), antes);
 }
+/// Onda 4 item 5: a roda anda o mês para o lado do Kanban (`a_roda_do_calendario_e_o_deslize_*`).
+#[test]
+fn a_roda_do_calendario_anda_para_o_mesmo_lado_que_no_kanban() {
+    let ((mut m, _), mut antes) = (crate::Mesa::cena(), None);
+    let p = crate::centro(m.docs().probe_mode().1);
+    for (i, dy) in [-480.0, -48.0, -48.0, 48.0].into_iter().enumerate() {
+        let _ = ph2d_editor_core::screens::hero::board_view::wheel(&mut m.hero, p.0, p.1, dy);
+        m.quadro();
+        let a = m.docs().probe_calendar().anchor;
+        assert_eq!(
+            (i, a.cmp(&antes) as i8),
+            (i, [1, 1, 1, -1][i]),
+            "{antes:?} → {a:?}"
+        );
+        antes = a;
+    }
+}

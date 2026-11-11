@@ -532,6 +532,7 @@ impl DocumentSurface for PlannerDocs {
     }
 
     fn wheel(&mut self, _id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
+        let dy = ph2d_kanban_views::wheel_px(dy); // a única conversão (a do Kanban)
         if let Some(d) = self.dest.as_mut()
             && d.rect.contains(x, y)
         {

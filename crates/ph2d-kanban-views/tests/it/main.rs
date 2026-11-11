@@ -7,5 +7,6 @@ mod photos;
 
 mod calendar;
 mod dashboard;
+mod deslize;
 mod table;
 mod timeline;

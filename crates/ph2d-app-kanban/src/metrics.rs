@@ -106,12 +106,6 @@ pub(crate) use ph2d_card_stack::shadow::{
     HOVER_RING, SHADOW_FLIGHT_DARK, SHADOW_FLIGHT_NEAR, SHADOW_HOVER_LIGHT, SHADOW_NEAR, SHADOW_RIM,
 };
 
-// ── O gesto ──
-/// Px da vista por «linha» de roda.
-pub(crate) const WHEEL_STEP: f32 = 48.0;
-/// Px que a janela dá por linha de roda (o espelho do `on_mouse_wheel` da shell e do Quadro).
-pub(crate) const WHEEL_LINE_PX: f32 = 16.0;
-
 // ── O campo de texto no lugar ──
 pub(crate) const FIELD_PAD_X: f32 = 8.0;
 pub(crate) const FIELD_PAD_Y: f32 = 6.0;

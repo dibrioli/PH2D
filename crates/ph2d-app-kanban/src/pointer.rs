@@ -618,10 +618,7 @@ fn panel_row(docs: &mut KanbanDocs, id: u64, row: crate::archive::Row) {
     }
 }
 
-/// A roda em px da vista: a janela dá 16 por linha, positivo = para longe (= ver mais acima).
-pub(crate) fn wheel_px(dy: f32) -> f32 {
-    -dy / m::WHEEL_LINE_PX * m::WHEEL_STEP
-}
+pub(crate) use ph2d_kanban_views::wheel_px;
 
 /// A roda: sobre o corpo de uma lista rola-a; no resto (ou com `shift`), o quadro na horizontal.
 /// `true` = tomada.

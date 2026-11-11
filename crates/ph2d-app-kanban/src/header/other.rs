@@ -176,6 +176,12 @@ impl KanbanDocs {
         self.tabs.iter().find(|t| t.id() == id)?.other
     }
 
+    /// ⚠️ SONDA: as vistas da aba `id` (o estado e o que pintaram).
+    #[must_use]
+    pub fn probe_views(&self, id: u64) -> Option<&ph2d_kanban_views::Views> {
+        Some(&self.tabs.iter().find(|t| t.id() == id)?.views)
+    }
+
     /// ⚠️ SONDA (J1): o cartão da linha `row` da Tabela e o rect da célula da coluna `col` (px da
     /// vista), como o último quadro os pintou.
     #[must_use]

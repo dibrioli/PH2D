@@ -32,6 +32,19 @@ use ph2d_tokens::Theme;
 use ph2d_vector::{Affine, Point, VectorScene};
 
 /// As vistas que o seletor oferece além do Quadro.
+/// Px que a janela dá por «linha» de roda (o espelho do `on_mouse_wheel` da shell e do Quadro).
+pub const WHEEL_LINE_PX: f32 = 16.0;
+/// Px da vista por linha de roda.
+pub const WHEEL_STEP: f32 = 48.0;
+
+/// A roda da janela (`dy` > 0 = para longe) em px da vista (> 0 = ver mais abaixo): a ÚNICA conversão, a das
+/// famílias que pintam estas vistas (Kanban e Planner) à entrada da superfície; [`Views::wheel`],
+/// [`Views::wheel_sideways`] e as vistas recebem-na já feita.
+#[must_use]
+pub fn wheel_px(dy: f32) -> f32 {
+    -dy / WHEEL_LINE_PX * WHEEL_STEP
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum ViewKind {
     #[default]

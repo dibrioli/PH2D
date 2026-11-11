@@ -55,7 +55,7 @@ pub use frame::{
     RenameView, Severity, SignatureView,
 };
 pub use geom::Column;
-pub use glyphs::{PaintWork, paint_work};
+pub use glyphs::{PaintWork, bg_probe, paint_work};
 pub use help::{HelpFrame, HelpHit, HelpProbe, HelpView};
 pub use hint::HintProbe;
 pub use line_cache::LineCache;

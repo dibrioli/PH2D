@@ -18,6 +18,37 @@ thread_local! {
     static WORK: std::cell::Cell<PaintWork> = const { std::cell::Cell::new(PaintWork { row_bytes: 0, glyphs: 0 }) };
 }
 
+/// Gravador para os testes de costura: com [`bg_probe::start`] ligado, cada [`paint_mono`] desta
+/// thread anota o texto e o fundo por que o escurecimento decide; desligado (o normal) não guarda nada.
+#[doc(hidden)]
+pub mod bg_probe {
+    use ph2d_vector::Color;
+    use std::cell::RefCell;
+
+    thread_local! {
+        static REC: RefCell<Option<Vec<(String, Color)>>> = const { RefCell::new(None) };
+    }
+
+    /// Liga o gravador desta thread, vazio.
+    pub fn start() {
+        REC.with_borrow_mut(|r| *r = Some(Vec::new()));
+    }
+
+    /// O que se gravou desde [`start`]; desliga o gravador.
+    #[must_use]
+    pub fn take() -> Vec<(String, Color)> {
+        REC.with_borrow_mut(Option::take).unwrap_or_default()
+    }
+
+    pub(crate) fn note(text: &str, bg: Color) {
+        REC.with_borrow_mut(|r| {
+            if let Some(v) = r {
+                v.push((text.to_owned(), bg));
+            }
+        });
+    }
+}
+
 /// O trabalho da pintura nesta thread desde o início, sem relógio: os bytes de linha preparados
 /// (o texto mostrado de cada fila) e os glifos entregues à cena. O gate da linha longa conta-o.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -233,6 +264,7 @@ pub(crate) fn paint_mono(
     row_y: f32,
     right: f32,
 ) -> f32 {
+    bg_probe::note(text, pal.bg);
     let k = cache.touch(ts, text, &[(0..text.len(), ink)], m.font_px);
     let Some(layout) = cache.peek(k) else {
         return x;

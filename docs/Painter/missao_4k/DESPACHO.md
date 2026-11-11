@@ -122,6 +122,43 @@
 | onda 14 | B40b | feito (b6edd8dc8c): prancha em pranchas/B40b, 12 PNG (3 fundos, 1080p e 4K). Line com Mirror X: o 1.º dab agora espelha; Ellipse no Mask: o contorno protege. «Antes» por oráculos no mesmo processo. Gates verdes; devolveu 3 linhas do BACKLOG. |
 | onda 14 | B22.2 | feito (5272823994): prancha em pranchas/B22.2, 3 fundos × 1080p/4K. 30, 60 e 144 q/s iguais à vista; a 30 a nuvem cresce na borda (240→285/s). Gate o_antes_a_30_qs_e_o_motor_novo_a_8_periodos_por_tique ao bit. Sem código de produção. |
 | onda 14 | verificação | verde. |
+| 11/11 06:43 | **janela pós-missão** (`e81e56bb1f..1d40807b12`, 82 commits): ondas 15–20 + fecho M1–M5/C1–C3/F1–F2. Onda atribuída pela ordem do `git log` | [handoff](../handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-11_POS_MISSAO_4K.md) |
+| onda 15 | rustfmt + B06.A2 | feito (bfe7c348e5 · ddd54e93fa): 24 fontes do tool-painter formatadas; sonda do Transform com relevo 2048²/4096². |
+| onda 15 | B17.5 D | parcial (9842534a52): upload da camada activa remenda só as caixas do Ctrl+Z (`LayerPixels.dirty_parts`); gate red→green. Falta A×B no app. |
+| onda 15 | W15-A (mutação) | feito (58982865d9): `funde_as_caixas` acima do tecto e folga B25.1 fechados; os 2 sobreviventes sangram. |
+| onda 15 | B13.2 cont7 | parcial (9edf92c364): a ladeira do óleo anda pelos tiles 64 da grade de fluxo, ao bit. |
+| onda 15 | B35.3 · B35.5 | feito (5590ac584d · 2d4bf06535): linha com pai desligado esconde; uma só fábrica do Wet (`WetKnobs::fabrica`). |
+| onda 16 | B36.1 Oil Wash | feito (74ffdd0c46 · efe15c5e63 · b8218ba570): preset novo pela lei E10g (Dilution 0,6), prancha B36. Largura sem aprovação (alarme). |
+| onda 16 | B13.2 cont8 | feito (7d1a08a84e): memset do outflow e zero do project só nos troços dos tiles, ao bit. |
+| onda 16 | B16d hash2 | feito (6962541dfc): warp do Ragged Edge lê os hash2 de uma grelha por composite. |
+| onda 16 | B35.6 · B35.7 | feito (03df88ea8c · e079c342fd · 36416d5b36): `KnobDef::na_lei`; interruptores = caixa; Pickup/Edge/Gravity em %. |
+| onda 16 | B16.8 | recusa medida (2186a13e01): a água da Dilution não é inerte (backrun); vermelho herdado com dois causadores aprovados. |
+| onda 16 | B28.3 | parcial (ade7d9c95a): Color mixing r100 2048² 21,59 ms/q → pegada em paralelo + amostra nos pares; falta ~4 ms/q. Prancha B28.3. |
+| onda 17 | B13.3 sono da água | parcial (dd0d231470 · b86207ad85 · 90f2e93bae): mecanismo e sonda; nasce DESLIGADO (ε=0 não é ao bit; não ganha a 4K). |
+| onda 17 | B34.1 · B34.1b | parcial (602f277f35 · 551a86db79): fator de aparência do documento, PROJECT_SCHEMA 232→233; papel à escala. Falta sombra do óleo. |
+| onda 17 | B29.3 | feito (d7f3af061a): sob a película do Impasto o grão é tecto; prancha B29. |
+| onda 18 | B31.1 · B31.2 | B31.1 feito (c898d4d62a · 47ec5ad159): sem aro branco no papel; B31.2 parcial (d950e98544): realce sem anéis 15,8×→1,18×. |
+| onda 18 | B34 relevo | feito (47ec5ad159): a luz lê declive × fator; dente 4K 4,561 → 9,318 (1080p 8,555). |
+| onda 18 | B32.1 | feito (00f3ca1751 · 6eed7cffb6): Wet pela espectral de 10 bandas (`PH2D_WET_MISTURA=km` volta); 20 miniaturas mudam; prancha B32. |
+| onda 18 | B35.8 | feito (d4e2700f0b · c8ead87301): ↺ e duplo clique voltam ao pincel que abriu. |
+| onda 18 | B18.Y | feito (e1da1e9f35 · 102adcec00): 3 vermelhos herdados = mudanças de lei (B29.3 ×2, B33.1); nenhum gate afrouxado. |
+| onda 18–20 | B29.1 tecto largo | feito (03c1d8cf0e … 9a7337ac68, 7 commits): u16 + recomposição; 10 pincéis mudam ≤ 4 níveis; prancha B29.1. |
+| onda 19 | B38.1–.3 | feito (59b02eea28 · 25f15170ae): Clone/Heal pré-multiplicados; Heal placa = CPU ao byte (SSD u32, Q16). Prancha B38. |
+| onda 19 | B32.2–.4 | feito (6b2b376e0b · b50b3731d3): uma lei de mistura no Digital/Impasto; pastel claro é tinta. |
+| onda 19 | B35.9–.12 | feito (74f47da27e · fbb0aa9212 · afca5db3d5 · e512b49f27 · 553e222290): Erase Strength único; Base evaporation = 2; «Tooth fill»; Opaque/Paint drag/Emboss no cartão. |
+| onda 19 | B39.1–.3 | feito (f3e0d71e13 · 5ffb92228b · ac93071017): Channel Mixer Monochrome, «−» do Falloff, seletor fecha com o Painter. |
+| onda 19 | B42.1 · B42.2 | feito (9f505bba98 · 96e06618af · d308636a7e): 64 camadas 4K na integrada, orçamento ao medido; device pede os limites do adaptador. |
+| onda 19 | B43.1 · B43.5 | feito (7c3fe5ca3d · 66f6034d67): `det_powi`; premissa «v3 contrai» corrigida no ADR-0174; portão do `RUSTFLAGS`. |
+| onda 19 | tectos | feito (603abe3de9 · c4bab596fb): `budget.rs`, `pass_collect.rs`. |
+| onda 20 | B39.4–.6 | B39.4/.5 feito (de290cd45e · d7939aa4ba · c4fd0cd418); B39.6 parcial (816daad4d9): prévia do papel = recorte do motor. |
+| onda 20 | B42.3–.5 | parcial (32ba879a1f · 6b502e3e55 · 138cce774b): undo pela RAM; 40 Hz e Spread de uma fonte; raio 512 medido. |
+| onda 20 | B43.6 | parcial (f8dc48c3de): cgu1 custa ~4× a edição; vai por drop-crate. |
+| onda 20 | B35.13 | parcial (892acec6f9): as 17 cerdas no cartão Shape; falta dustDrop/wetOpen* junto dos pais. |
+| fecho M1–M3 | B08c «depois» no app | feito (3df3206f86 · da1854fb75): 41 células; regressões Filbert soltar (= luz Cheia no repouso, B14.2) e Ctrl+Z Impasto. |
+| fecho C1 | Ctrl+Z Impasto 4K | feito (2121ecd849 · 23afcc19e0): 42,8 → 34,3 ms (= caminho antigo 34,1). |
+| fecho C2–C3 | soltar Filbert 4K | parcial (6f11399c70 · f983140019): 47,8 → 34,0 ms; Cheia no gesto daria 19,1 (DECISÃO DO DONO, B14.2). Defeito: metade do traço ficava Simples. |
+| fecho F1 | fmt/clippy, tectos, os_cartoes, B50.1, alarmes | feito (9cdcbb95b7 · 7c01a2a029 · 32d4989ccf · 5c326dabb5 · a41c9b5a8e): largura 2 · miniatura 74 vermelhos, não regravados. |
+| fecho F2 | B47.6 · B47.7 | feito (ba252b036f · 1d40807b12): presets no schema 2 sem píxel; secção Bristles vazia sai do Tuning. |
 
 ## Fatos medidos que mudam a ordem
 

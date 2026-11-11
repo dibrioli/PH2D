@@ -16,9 +16,9 @@ use super::keys::{ARROW_BOX, BAR_GAP, BAR_H};
 pub const HOVER_FACE: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::KanbanShadowHover;
 
 /// A face de repouso de toda tecla e parte do comando — e também o corpo da APERTADA (a plaquinha acesa marca o
-/// apertado). Vem do `KanbanCardRaised` desde a onda 1 (decisão aprovada); nenhum neutro de cromo deixa cada barra
-/// ≥ max(3:1, repouso) nos 12 temas × 12 cores (medida no plano §14.2).
-pub const REST_FACE: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::KanbanCardRaised;
+/// apertado). O token de cromo `key-face` (onda 4): o MESMO tom aprovado desde a onda 1 (o do `KanbanCardRaised`,
+/// byte a byte em todo tema); nenhum neutro antigo deixava cada barra ≥ max(3:1, repouso) (plano §14.2).
+pub const REST_FACE: ph2d_tokens::ColorToken = ph2d_tokens::ColorToken::KeyFace;
 
 /// A plaquinha ACESA (a tecla apertada no Try it) e o nome nela: um neutro de alto contraste, NUNCA a cor de uma acção
 /// (a ↑ com jump + move_up lia-se «só jump»); as cores ficam nas barras. Medido nos 12 temas (`onda3_tracos`).

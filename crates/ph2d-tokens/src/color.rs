@@ -171,11 +171,10 @@ color_tokens! {
     RailBg => "rail-bg",
     /// `row-hover` — a camada de estado NEUTRA de uma linha pairada (`mono` com o alfa do `tokens.json`).
     RowHover => "row-hover",
-    /// `panel-bg` — surface fill for floating side panels (Inspector,
-    /// Hierarchy). Same hue as `BgElev` but slightly translucent (~8 %
-    /// alpha bleed) so panels feel "floated over canvas" instead of
-    /// pure overlay. Lower transparency than `RailBg` — content
-    /// readability stays priority on panel bodies.
+    /// `key-face` — a face de repouso de uma tecla/parte desenhada (Input Map); o tom aprovado na onda 1.
+    KeyFace => "key-face",
+    /// `panel-bg` — surface fill for floating side panels (Inspector, Hierarchy): `BgElev`'s hue, slightly
+    /// translucent (~8 % alpha bleed) so panels float over the canvas; less transparent than `RailBg`.
     PanelBg => "panel-bg",
     /// ⭐⭐⭐ `window-ground` — **o CHÃO da janela**, um degrau abaixo do painel.
     ///

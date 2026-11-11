@@ -90,6 +90,8 @@ pub struct KbState {
     pub(crate) held: crate::raw_keys::HeldModifiers,
     /// As barras da última pintura: cada alvo desenhado e as acções que o usam (o censo da lei «uma barra por acção»).
     pub bars: Vec<(KbHit, Vec<ActionId>)>,
+    /// As segundas legendas do numérico da última pintura (onda 4, 7a).
+    pub subs: Vec<super::sub_legend::SubLook>,
     /// A marca do comando AO VIVO na barra do curso da última pintura (`None` = manche em repouso).
     pub live_dot: Option<ph2d_editor_core::zones::Rect>,
     /// O arranjo e o passo do teclado na última pintura (plano §13.2).

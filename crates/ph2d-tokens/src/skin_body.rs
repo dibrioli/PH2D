@@ -129,6 +129,7 @@ impl ColorToken {
             | T::KanbanCardRaised
             | T::CardFieldHover
             | T::RowHover
+            | T::KeyFace
             | T::KanbanHeaderBtnOn => Role::Surface(Rank::Raised),
             T::AccentSoft
             | T::DangerSoft

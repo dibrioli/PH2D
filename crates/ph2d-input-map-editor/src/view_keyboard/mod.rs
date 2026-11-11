@@ -11,6 +11,7 @@ pub mod keys_fit;
 mod list;
 mod pad;
 pub mod state;
+pub mod sub_legend;
 mod tiles;
 pub(crate) mod travel;
 

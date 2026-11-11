@@ -587,6 +587,8 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
         "danger-press" => r.error.lerp(Rgb::BLACK, 0.15).color(),
         // A camada de estado neutra: o `mono` com o alfa ESCRITO no `tokens.json` (o do clássico emprestado).
         "row-hover" => r.mono.with_alpha(f32::from(borrow().a) / 255.0),
+        // A face da tecla desenhada: o tom ESCRITO no `tokens.json` (o aprovado), emprestado como o do cartão.
+        "key-face" => borrow(),
         "success" => r.success.color(),
         "success-soft" => r.success.over(r.base, HIGHLIGHT_A).color(),
         "warn" => r.warning.color(),

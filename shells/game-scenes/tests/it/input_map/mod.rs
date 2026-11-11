@@ -22,6 +22,7 @@ mod onda3_premido;
 mod onda3_trackpad;
 mod onda3_tracos;
 mod onda4_altgr;
+mod onda4_numerico;
 mod paineis;
 mod polimento_b;
 mod polimento_c;

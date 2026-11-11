@@ -295,7 +295,7 @@ fn contraste_das_barras(m: &Mesa, k: Key, at: &str) -> (f64, f64) {
         for theme in Theme::ALL {
             let c = cor.resolve(theme);
             let agora = c.contrast_ratio(&l.body.resolve(theme));
-            let repouso = c.contrast_ratio(&ColorToken::KanbanCardRaised.resolve(theme));
+            let repouso = c.contrast_ratio(&REST_FACE.resolve(theme));
             let antes = c.contrast_ratio(&l.face.resolve(theme));
             eprintln!(
                 "{at} {theme:?} {cor:?}: atrás {agora:.2} · repouso {repouso:.2} · na face cheia {antes:.2}"
@@ -375,11 +375,7 @@ fn a_tecla_apertada_acende_a_plaquinha_e_nunca_engole_as_barras() {
         let at = format!("B {}", a.w);
         let l = olhar(&b, q);
         assert_eq!(l.face, ColorToken::AccentPress, "{at}: premida");
-        assert_eq!(
-            l.body,
-            ColorToken::KanbanCardRaised,
-            "{at}: o corpo apertado é o de repouso"
-        );
+        assert_eq!(l.body, REST_FACE, "{at}: o corpo apertado é o de repouso");
         vao(&b, q, &at);
         assert_eq!(
             l.plate_face,

@@ -375,6 +375,8 @@ pub(crate) fn paint_keys(
     };
     // O degrau da legenda por GRUPO (nunca por tecla): a B e a C, na mesma caixa, dão o mesmo.
     let levels = fit::levels(ts, f);
+    let subs = super::sub_legend::group_shows(ts, f);
+    doc.kb.subs.clear();
     let p = f.pitch;
     let (cols, _) = g::extent();
     let spare = (inner.w - cols * p).max(0.0);
@@ -405,7 +407,8 @@ pub(crate) fn paint_keys(
             .iter()
             .find(|(g, _)| *g == fit::group_of(key))
             .map_or(Level::ShortSmall, |l| l.1);
-        paint_key(doc, scene, ts, ink, (style, kr), (key, lit_of(key), level));
+        let look = (key, lit_of(key), level, subs);
+        paint_key(doc, scene, ts, ink, (style, kr), look);
     }
     if let Some(c) = clip {
         doc.hits.pop_clip();
@@ -428,7 +431,7 @@ fn paint_key(
     ts: &mut TextSystem,
     ink: CardInk,
     (style, kr): (Lit, Rect),
-    (key, lit, level): (ph2d_input::Key, bool, Level),
+    (key, lit, level, subs): (ph2d_input::Key, bool, Level, bool),
 ) {
     let system = key.system_owned().is_some();
     let b = Binding::Key(key);
@@ -482,8 +485,17 @@ fn paint_key(
     // ⭐ A legenda fica SEMPRE no centro da tecla, numa plaquinha opaca (dono 10/11: «como aqueles adesivos que
     // colocamos no teclado»), com a aresta fina que a lê como colada. Só se vê quando há barras por trás dela ou um
     // estado (D2: sem acção, nada de contorno à volta da legenda); acesa, a aresta escura separa-a das barras.
-    let lb = fit::legend_box(ts, kr, &legend);
-    let plate = fit::plate_of(kr, lb, matches!(legend, Legend::Icon(_)));
+    // A segunda legenda do numérico (7a) empilha-se por baixo do número, na mesma plaquinha.
+    let sub = (super::sub_legend::sub_of(key).filter(|_| subs))
+        .and_then(|s| super::sub_legend::stack(ts, kr, &legend, &s).map(|b| (s, b)));
+    let lb = sub
+        .as_ref()
+        .map_or_else(|| fit::legend_box(ts, kr, &legend), |(_, (mb, _))| *mb);
+    let block = sub.as_ref().map_or(lb, |(_, (_, sb))| {
+        let (x0, x1) = (lb.x.min(sb.x), (lb.x + lb.w).max(sb.x + sb.w));
+        Rect::new(x0, lb.y, x1 - x0, sb.y + sb.h - lb.y)
+    });
+    let plate = fit::plate_of(kr, block, matches!(legend, Legend::Icon(_)));
     let plate_face = if lit_plate {
         Some(bg)
     } else {
@@ -493,7 +505,7 @@ fn paint_key(
         // Acesa, a plaquinha tapa as barras no corpo da tecla e acende só por dentro: um vão do corpo entre as barras
         // e a cor (R2: a barra da mesma cor colava-se a ela).
         let (face_r, tone, rim) = if lit_plate {
-            let (halo, aceso) = fit::lit_plate(plate, lb);
+            let (halo, aceso) = fit::lit_plate(plate, block);
             fill_face(scene, ink, halo, fit::PLATE_RADIUS, body);
             (aceso, pf, ColorToken::CardField)
         } else {
@@ -536,6 +548,10 @@ fn paint_key(
             Some((format!("{a}{b2}"), *px))
         }
     };
+    if let (Some((s, (_, sb))), Some((_, px))) = (&sub, &text) {
+        let main = (lb, *px, fg_tok);
+        super::sub_legend::paint(doc, (ts, scene, ink), (key, kr, plate), main, (s, *sb));
+    }
     // O contorno da aberta por cima de tudo (as pontas das barras não o tapam).
     let outlined = lit && !system && style == Lit::Outline;
     let edge = outlined.then(|| {

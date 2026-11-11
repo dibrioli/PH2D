@@ -2319,7 +2319,9 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    `danger-soft`: `31 px` exactos (sonda com ela dobrada = `2 012`). Dobrar os estados esconderia cromo.
     // ⬆️ `2 043 → 2 074` em 2026-11-10 (InputMap onda 3, rodada 3), MEDIDO: UMA fileira de cromo `row-hover` (a
     //    camada de estado neutra da linha pairada da tela «Controls»), `31 px` exactos, a mesma de `danger-press`.
-    ("tokens", 2074.0),
+    // ⬆️ `2 074 → 2 104` em 2026-11-10 (InputMap onda 4, item 6), MEDIDO: UMA fileira de cromo `key-face` (a face
+    //    de repouso da tecla desenhada, que deixou o `KanbanCardRaised` emprestado), `30 px` medidos.
+    ("tokens", 2104.0),
     // ⬆️ `1 239 → 1 262` em 2026-10-04 (spec/06 F3 ▸ Vector, o OBJECTO vetorial): a fileira TOOL
     //    volta a mostrar a grelha INTEIRA — o Edit do objecto tem todas as ferramentas (escolha do
     //    dono: *«o menu exatamente como era antigamente»*). É o valor de antes do filtro por modo.

@@ -139,6 +139,14 @@ Chalk e Pastel com o Impasto ligado, um traço que vai e volta 4× no mesmo sít
 
 Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × Chalk/Pastel, em [B29/](B29/).
 
+## B29.1 — Flow baixo pára antes do preto (só o ANTES)
+
+Cinco traços pretos com o pincel de omissão, cada um repassado mais vezes que o de cima. Com Flow 2 % os três de baixo (15, 40 e 80 passadas) ficam iguais: a tinta pára em 25 de 255 e nunca chega ao preto. Com Flow 0,2 % o traço quase não aparece: 320 passadas sobre o branco ficam em 250 (um tom abaixo do branco). A cura já está provada na conta (chega ao alvo com erro de 1 tom), mas ainda não está ligada ao pincel; o DEPOIS entra aqui quando estiver.
+
+![B29.1](B29.1/1080p_branco_flow2_antes.png)
+
+Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × Flow 2 %/0,2 %, em [B29.1/](B29.1/).
+
 ## B34 — O papel acompanha o tamanho da tela (decisão 6)
 
 Numa imagem nova maior que 1080p, o desenho do papel cresce na mesma proporção (a 4K, 2× maior em pixels): a 4K o papel parece o mesmo que a 1080p, em vez de virar um chiado fino. Só imagens novas; até 1080p nada muda (diferença zero). Chalk (o papel como grão) e Wet Round, r40 a 1080p e r80 a 4K. Da esquerda: antes · depois · o que mudou (vermelho). O relevo do papel a 4K ainda fica mais raso que a 1080p (próximo passo).
@@ -153,7 +161,7 @@ Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × Chalk/Wet Round, em [B34/
 |---|---|---|---|
 | 1 | Água do Wet que parou dorme (fotos 1, 4, 10 s) | B13 | ainda não feita (B13.3/B13.4 abertos) |
 | 2 | Luz simples do Óleo Real só com o pincel na tela | B14 | [B14b](#b14b--óleo-real-luz-simples-enquanto-o-pincel-está-na-tela) |
-| 3 | Guardar a tinta com mais precisão | B29 | [B29.3](#b293--o-dente-do-papel-resiste-ao-repasse-no-impasto) (o dente resiste ao repasse); B29.1 medido, B29.2/B29.4 abertos |
+| 3 | Guardar a tinta com mais precisão | B29 | [B29.3](#b293--o-dente-do-papel-resiste-ao-repasse-no-impasto) (o dente resiste ao repasse); [B29.1](#b291--flow-baixo-pára-antes-do-preto-só-o-antes) só o antes (a cura provada na conta, por ligar); B29.2/B29.4 abertos |
 | 4 | Arrumar os controles do Wet | B35 | só controles; o que muda na tela (reset/rótulos) ainda aberto |
 | 5 | Pincel Oil Wash | B36 | [B36](#b36--pincel-oil-wash) |
 | 6 | Aparência acompanha o tamanho da tela | B34 | [B34](#b34--o-papel-acompanha-o-tamanho-da-tela-decisão-6) (o papel); a orla da aguada, warp, relevo e sombra do óleo ainda por escalar |

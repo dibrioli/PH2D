@@ -215,7 +215,7 @@ fn measure_the_dry_gap_between_two_blobs_on_the_same_rows() {
     for (k, e) in cenas.iter().enumerate() {
         let g = e.active_grid();
         let faixa: i64 = (0..g.rows)
-            .map(|y| i64::from((g.row_hi[y] - g.row_lo[y] + 1).max(0)))
+            .map(|y| (i64::from(g.row_hi[y]) - i64::from(g.row_lo[y]) + 1).max(0))
             .sum();
         let molhadas = g.film.iter().filter(|&&f| f > 0.0).count();
         println!(

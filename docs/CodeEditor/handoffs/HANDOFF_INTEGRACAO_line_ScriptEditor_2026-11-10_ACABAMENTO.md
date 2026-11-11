@@ -7,9 +7,9 @@
 
 ## 1. Identidade
 
-- Worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-ScriptEditor` · branch `line/ScriptEditor` · HEAD de código `40df6a8502`
+- Worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-ScriptEditor` · branch `line/ScriptEditor` · HEAD de código `364f6e1099` (3.ª ronda de 11/11)
   (o commit deste handoff vem a seguir: só docs).
-- Merge-base com o `main` = `bc4a6ce930`. **55 commits** (`git rev-list --count bc4a6ce930..HEAD`), **129 ficheiros, +4607 −1052**
+- Merge-base com o `main` = `bc4a6ce930`. **123 commits** (`git rev-list --count bc4a6ce930..HEAD`, sem o commit deste handoff), **242 ficheiros, +11 499 −1 728** (com os docs e as fotos)
   (`git diff --shortstat bc4a6ce930..HEAD`).
 - Smoke do dono 10/11: as rondas até `e082d45b6d` **APROVADAS («Smoke OK»)**. As rondas seguintes (divisor da coluna, pesos da
   maquete 14, medidas, tamanho da letra) — **smoke do dono PENDENTE**.
@@ -447,7 +447,7 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   a_lista_de_scripts_mostra_a_barra_quando_transborda}`. d)+e) entraram por engano em `eb420f131f` (estavam em stage); registo em
   `073201dde7`. Mutações 5/5 vermelhas (a reserva da pista do «In this script» não foi mutada).
   Fotos: [ay_aba_curta_antes.png](../ferramentas/smoke/ay_aba_curta_antes.png) · [ay_aba_curta_depois.png](../ferramentas/smoke/ay_aba_curta_depois.png)
-  (cena 3 a 1280×720). A foto da cena 12 parada (linha à vista) não foi gravada no repositório.
+  (cena 3 a 1280×720). [az_parado_linha_a_vista.png](../ferramentas/smoke/az_parado_linha_a_vista.png) (cena 12 a 1280×720: parado na 18, a linha à vista com o quadro aberto; `364f6e1099`).
   (3) **Curas do fecho** (`491e4e1294`): `#[must_use]` duplicado, `+=` no corte do caminho, `CODE_LEAST_ROWS` inteiro (`usize`),
   `LITERAL-PX-OK` nas duas larguras `pad * 4.0` dos menus (pré-existentes, HR-15), o laço do teste da aba curta em instruções (clippy),
   a pilha compacta sem `debug_card_h` (catraca `ph2d-app-code` 26 632 → 26 617 / 26 628).
@@ -458,7 +458,8 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
 
 Binário de smoke depois de `rm -rf target/*/incremental` (11/11, HEAD `d137ddac68`; 1.ª: 14,27 s); a 2.ª:
 
-Binário de smoke depois de `rm -rf target/*/incremental` (11/11, 3.ª ronda, HEAD `491e4e1294` + este commit); a 2.ª: <<BIN2>>
+Binário de smoke depois de `rm -rf target/*/incremental` (11/11, 3.ª ronda, HEAD `364f6e1099`; 1.ª: 0,32 s — o perfil `smoke` já estava feito do último build); a 2.ª:
+`Finished \`smoke\` profile [optimized] target(s) in 0.30s`
 
 ```
 ▸ linha line_scripteditor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s

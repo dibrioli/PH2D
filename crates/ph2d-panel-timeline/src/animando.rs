@@ -67,10 +67,15 @@ pub fn take_ended() -> bool {
     ACABOU.with(|c| c.replace(false))
 }
 
-/// **O Done foi clicado desde a última pergunta?** A shell desliga o Auto Key (dono 11/11): acabou de
-/// animar, arrastar o objecto volta a ser mexer na cena, não gravar chave.
-pub fn take_done() -> bool {
-    FEITO.with(|c| c.replace(false))
+/// **O Done foi clicado desde a última pergunta?** Se sim, `para` corre (a shell pausa a agulha) e a
+/// shell desliga o Auto Key (dono 11/11): acabou de animar, arrastar o objecto volta a ser mexer na
+/// cena. ⚠️ Antes da [`sessao`]: a agulha a tocar é um gesto, e desfaria o Done no mesmo quadro.
+pub fn take_done(para: impl FnOnce()) -> bool {
+    let feito = FEITO.with(|c| c.replace(false));
+    if feito {
+        para();
+    }
+    feito
 }
 
 /// O clique no Done.

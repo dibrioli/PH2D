@@ -212,3 +212,5 @@ mudança laranja some no Done; trocar de clipe/aba = Done.
   `ph2d_panel_timeline::take_done()` (aviso de uma vez) → a shell faz `flags.auto_key &= !…` no drain.
 - **O Done não larga a seleção** (defeito do smoke): o restauro usava `apply_project_with(&base, None)`, o caminho do
   load, que só transporta a seleção de campo; passa agora `Some(&field_selection_mark())`, como um passo de undo.
+- **O Done funciona com a agulha a tocar** (defeito do smoke): tocar é gesto e desfazia o Done no mesmo quadro.
+  `take_done(para)` corre ANTES da `sessao` e pausa a agulha; teste `done_while_playing_stays_done` (mutação sangra).

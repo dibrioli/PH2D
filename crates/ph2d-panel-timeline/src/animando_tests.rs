@@ -37,10 +37,36 @@ fn done_parks_and_resume_animates_again() {
 /// *Mutação: `done` sem o `FEITO` ⇒ o Auto Key fica ligado depois do Done.*
 #[test]
 fn done_tells_the_shell_once_to_turn_auto_key_off() {
-    let _ = take_done();
-    assert!(!take_done(), "sem clique não há aviso");
+    let _ = take_done(|| ());
+    assert!(
+        !take_done(|| panic!("sem clique não se pausa")),
+        "sem clique não há aviso"
+    );
     done();
-    assert!(take_done(), "o Done avisa a shell");
-    assert!(!take_done(), "e só uma vez");
+    let mut pausou = false;
+    assert!(take_done(|| pausou = true), "o Done avisa a shell");
+    assert!(pausou, "e pausa a agulha");
+    assert!(!take_done(|| ()), "e só uma vez");
     larga();
+}
+
+/// O Done com a agulha a TOCAR (dono 11/11): pausada antes da `sessao`, ela não é gesto e o Done fica.
+/// *Mutação: `take_done` sem chamar `para` ⇒ a agulha continua, o gesto desfaz o Done.*
+#[test]
+fn done_while_playing_stays_done() {
+    larga();
+    let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
+    publica(true);
+    let mut tocando = true;
+    assert_eq!(sessao(true, tocando).0, cartoes);
+    done();
+    publica(true);
+    let _ = take_done(|| tocando = false);
+    assert!(
+        !sessao(true, tocando).0,
+        "o Done pára a sessão mesmo a tocar"
+    );
+    assert_eq!(parked(), cartoes);
+    larga();
+    let _ = take_ended();
 }

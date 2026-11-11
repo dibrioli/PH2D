@@ -5,7 +5,6 @@ use crate::{Alca, Medida, Pose, no_ecra, ponto_local};
 use bevy_ecs::world::World;
 use ph2d_ecs::Entity;
 use ph2d_host::WindowSize;
-use ph2d_physics_ecs::Collider;
 use ph2d_render::Camera2d;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};

@@ -5,7 +5,6 @@
 use super::{CardCtx, Cell, Widget};
 use crate::widget::card_field;
 use ph2d_card_stack::metrics as m;
-use ph2d_text::TextSystem;
 
 /// `l` sem a unidade entre parênteses.
 fn sem_unidade(l: &str) -> &str {

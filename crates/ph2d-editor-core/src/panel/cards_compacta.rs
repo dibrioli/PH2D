@@ -8,7 +8,7 @@
 
 use super::censo::{self, CelulaMedida};
 use super::corpo::ctx as ctx_de_fora;
-use super::{CardCtx, Cell, Seg, Widget, rotulos};
+use super::{CardCtx, Cell, Seg, Widget};
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, WidgetStore};
 use crate::widget::CheckboxValue;

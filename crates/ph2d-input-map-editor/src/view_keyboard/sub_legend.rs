@@ -84,6 +84,23 @@ const KP5: u32 = 0xF745;
 /// tecla mede 25 a 1280 (o `KEY_MIN_H`) e 26,5–30,5 a 1600 — cabe sempre com ≥ 1,5 px.
 const CORNER_INSET_MIN: f32 = m::FIELD_BORDER;
 
+/// A folga da segunda à aresta, de cada lado: a mesma barra à vista que a plaquinha do número deixa à esquerda
+/// ([`fit::BAR_VISIBLE_MIN`], 2 px). Na faixa de baixo não há barras: a folga cheia ([`fit::LEGEND_PAD`]) não se paga.
+pub const SUB_PAD: f32 = fit::BAR_VISIBLE_MIN;
+
+/// O rectângulo `r` fica fora da curva dos cantos de baixo da tecla `kr` (raio `SEG_RADIUS`, o da face pintada)?
+#[must_use]
+pub fn clear_of_corners(r: Rect, kr: Rect) -> bool {
+    let rad = m::SEG_RADIUS;
+    let dy = (kr.y + kr.h) - (r.y + r.h);
+    [r.x - kr.x, (kr.x + kr.w) - (r.x + r.w)]
+        .into_iter()
+        .all(|dx| {
+            let (cx, cy) = ((rad - dx).max(0.0), (rad - dy).max(0.0));
+            dx >= 0.0 && dy >= 0.0 && cx * cx + cy * cy <= rad * rad
+        })
+}
+
 /// O arranjo de uma tecla de [`corner`].
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Corner {
@@ -96,7 +113,7 @@ pub(crate) struct Corner {
 
 /// ⭐ O canto de `key` na tecla `kr`, com as barras `bars` já empilhadas: o número à esquerda, a [`LEGEND_MARGIN`]
 /// mais a folga da plaquinha da aresta (a barra fica à vista dos dois lados dela); a segunda à direita na faixa de
-/// baixo, medida contra a largura ÚTIL da tecla (menos [`fit::LEGEND_PAD`] de cada lado) — só se nenhuma barra entra
+/// baixo, medida contra a largura ÚTIL da tecla (menos [`SUB_PAD`] de cada lado, fora da curva dos cantos) — só se nenhuma barra entra
 /// na faixa (ligada e sem lugar, as barras vencem). `None` = a tecla não é do canto, ou nem o número cabe em cima.
 pub(crate) fn corner_of(
     ts: &mut TextSystem,
@@ -124,14 +141,9 @@ pub(crate) fn corner_of(
     );
     let sub = sub_of(key).and_then(|sl| {
         let (sw, sh) = sub_size(ts, &sl);
-        let sr = Rect::new(
-            kr.x + kr.w - fit::LEGEND_PAD - sw,
-            kr.y + kr.h - inset - sh,
-            sw,
-            sh,
-        );
+        let sr = Rect::new(kr.x + kr.w - SUB_PAD - sw, kr.y + kr.h - inset - sh, sw, sh);
         let clear = bars.iter().all(|b| b.y + b.h <= sr.y || b.y >= sr.y + sr.h);
-        (sw + fit::LEGEND_PAD * 2.0 <= kr.w && clear).then_some((sl, sr))
+        (sw + SUB_PAD * 2.0 <= kr.w && clear && clear_of_corners(sr, kr)).then_some((sl, sr))
     });
     Some(Corner {
         legend: Legend::Text(s.clone(), px),

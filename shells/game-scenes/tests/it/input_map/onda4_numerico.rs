@@ -4,10 +4,10 @@
 use super::lista::onze;
 use super::{Mesa, em_cada_modo_de_texto};
 use ph2d_app_input_map::View;
-use ph2d_app_input_map::view_keyboard::keys_fit::{LEGEND_MARGIN, LEGEND_PAD, REST_FACE};
+use ph2d_app_input_map::view_keyboard::keys_fit::{LEGEND_MARGIN, REST_FACE};
 use ph2d_app_input_map::view_keyboard::state::{KbHit, Sub};
 use ph2d_app_input_map::view_keyboard::sub_legend::{
-    SUB_PX, SubLegend, SubLook, nav_of, sub_ink, sub_of,
+    SUB_PAD, SUB_PX, SubLegend, SubLook, clear_of_corners, nav_of, sub_ink, sub_of,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_input::{Binding, Key};
@@ -81,8 +81,12 @@ fn dentro(a: Rect, b: Rect) -> bool {
 /// barras na faixa — a `KP8`, o controlo, até 1600). A 1600 e a 1280 aparecem; a 1920 a `KP8` já tem lugar.
 #[test]
 fn as_segundas_legendas_do_numerico_cabem_inteiras_ou_somem() {
+    // MEDIDO (Default e CrispHeavyPlus): 1600 = 9 (só a KP8 ligada); 1280 e estreita = 6 (Home 28,8–29,5 px é mais
+    // larga que a tecla de 28,1; PgUp/PgDn 25,9–26,2 + 2 × SUB_PAD > 28,1, e sem folga entram na curva do canto);
+    // 1920 = 10.
+    const CONTAGEM: [usize; 4] = [9, 6, 6, 10];
     em_cada_modo_de_texto(|| {
-        for a in AREAS {
+        for (a, conta) in AREAS.into_iter().zip(CONTAGEM) {
             let mut m = pinta(a);
             let looks: Vec<SubLook> = m.tab().doc.kb.subs.clone();
             let keys = m.tab().doc.census.keys.clone();
@@ -92,6 +96,7 @@ fn as_segundas_legendas_do_numerico_cabem_inteiras_ou_somem() {
                 .collect();
             let at = format!("área {}", a.w);
             eprintln!("{at}: {} segundas legendas", looks.len());
+            assert_eq!(looks.len(), conta, "{at}: a tabela medida");
             for k in keys.iter().filter(|k| nav_of(k.key).is_some()) {
                 let kr = k.rect;
                 let Some(s) = looks.iter().find(|s| s.key == k.key) else {
@@ -100,7 +105,7 @@ fn as_segundas_legendas_do_numerico_cabem_inteiras_ou_somem() {
                         SubLegend::Text(t) => m.ts.prefix_width(&t, SUB_PX),
                         SubLegend::Icon(_) => SUB_PX,
                     };
-                    let nao_cabe = largura + LEGEND_PAD * 2.0 > kr.w;
+                    let nao_cabe = largura + SUB_PAD * 2.0 > kr.w;
                     let faixa = kr.y + kr.h * 0.5;
                     let barras = bars.iter().any(|b| dentro(*b, kr) && b.y + b.h > faixa);
                     eprintln!(
@@ -128,8 +133,13 @@ fn as_segundas_legendas_do_numerico_cabem_inteiras_ou_somem() {
                     "{at}: por baixo do número"
                 );
                 assert!(
-                    s.sub.x + s.sub.w <= kr.x + kr.w - LEGEND_PAD + 0.01,
+                    s.sub.x + s.sub.w <= kr.x + kr.w - SUB_PAD + 0.01,
                     "{at}: à direita, na folga"
+                );
+                assert!(
+                    clear_of_corners(s.sub, kr),
+                    "{at}: {:?} fora da curva do canto",
+                    s.key
                 );
                 assert!(
                     s.main.y < s.sub.y,

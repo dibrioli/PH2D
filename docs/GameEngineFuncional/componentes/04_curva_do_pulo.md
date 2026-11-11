@@ -121,3 +121,23 @@ curto mais alto que o Snappy (Cut G menor); se o dono sentir, sobe o Cut G do He
 - O arco termina na linha dos pés; seguir o terreno da cena (bater em plataformas) é outro passo.
 - O campo Jump Height do cartão continua a dizer a altura «de gravidade neutra» (2,00) quando a alça mostra o
   ápice real (2,04). Proposta: o rótulo da alça mostra o real; o campo fica como está.
+
+## O que foi construído (10/11, aguarda o smoke do dono)
+
+- **Lei:** `ph2d-platformer/src/arc.rs` (`jump_arcs`, `full_arc`, `height_for_apex`, `speed_for_apex`) corre o
+  `player_motor` com a integração da ponte (`v += accel·dt + boost`) e os **4 sub-passos** do mundo (a 1.ª versão sem
+  sub-passos ficava 6 cm abaixo do jogo — medido). `feel.rs`: Floaty · Snappy · Heavy + `feel_of` exacto.
+- **Componente:** `PlatformPlayer.show_jump_arc` (schema 233); `components/player_arc.rs` (`set_feel`, `pull_apex`,
+  `arc_world` das `PhysicsSettings`).
+- **Cartão:** `ph2d-panel-inspector/src/sections/player_pulo.rs` — caixa «Show Jump Arc» e seletor Feel no cartão Jump.
+- **Canvas:** `ph2d-app-physics/src/jump_arc.rs` — desenho a partir do chão sob o player (centro − `float_height`),
+  alça `PointHandleKind::JumpApex` (diâmetro padrão de gizmo), arrasto (undo = um diff no soltar), nome da curva no
+  hover a 9 px, readout `200 px high · 600 px/s` a arrastar. Só com o relógio PARADO.
+- **Cores (tokens):** Full `ObjPlayer` (forte) · Short `Warn` · Standing `Info` · Air `ObjMacro` (finas, tracejadas).
+  O `Accent` foi recusado: no tema escuro sai azul e confunde-se com o `Info` (foto).
+- **Medido:** gate `o_arco_do_desenho_e_o_do_jogo` (12 casos: padrão + 3 sensações × correndo, parado, curto) —
+  altura ≤ 1,3 cm, pouso no MESMO tique, alcance < 1 mm, lado do ápice ≤ 1 tique de corrida (topo achatado empata
+  dois tiques). Custo: **11,8 µs** por `jump_arcs` (release, Air Jumps 1), 2 por quadro.
+- **Fotos:** [`fotos_04/curva_no_canvas.png`](fotos_04/curva_no_canvas.png) ·
+  [`fotos_04/curva_zoom.png`](fotos_04/curva_zoom.png) · [`fotos_04/curva_e_cartao.png`](fotos_04/curva_e_cartao.png)
+  (`PH2D_GAME_SMOKE=4` + `PH2D_GAME_SMOKE_FOTO=fisica_player_pulo`: caixa marcada e 1 pulo do ar).

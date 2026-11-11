@@ -31,6 +31,7 @@
 | **`Cargo.lock`** | **TOCADO:** `ph2d-panel-code` ganha dev-deps `ph2d-gpu` e `ph2d-render` (teste `peso_na_placa`: tinta medida no píxel). `no_dependency_climbs` e `cycle_prevention` **passaram**. Merge de lockfile: refaça por `cargo` se conflitar. |
 | Hook / scripts / roteador | `.claude/hooks/prazo-do-agente.sh`, `scripts/processo.prova.d/I.sh`, `docs/Components/ferramentas/fotografa_cena.sh`, `CLAUDE.md` (só a linha §5.1 do módulo: o link do handoff) |
 | **`ph2d-code-scene-arena` (crate NOVA, 2)** | **A** `Cargo.toml`, `src/lib.rs` (a cena 15 e o `STEPS_15`, vindos de `ph2d-code-scenes`/`ph2d-code-smoke`); consumidores `ph2d-app-code` (`smoke_drive.rs`, `Cargo.toml`) e `ph2d-app-components` (`code_smoke.rs`, `Cargo.toml`); linha nova em `TETOS_DAS_CRATES_DA_FAMILIA`; `Cargo.lock` tocado |
+| Ronda «stem darkening» (`07d722387f`) | `ph2d-tokens/src/{typography,lib}.rs` (variante 4.ª de `TextRendering`, `ALL` = 4, campo `stem_darkening`, `stem_darkening_px`) · `ph2d-text`: nada · `ph2d-editor-core`: `published.rs` (+**A** `published_embolden_tests.rs`), `paint.rs`, `paint_text.rs` (692/700), `paint_text_rotated.rs`, `ids/menus_settings.rs`, `screens/hero/{chrome/settings_text,menu_row_mark,menu_tables_settings,pre_populate}.rs` · `ph2d-i18n/src/chrome_menus.rs` (`chrome.menu.crisp_stem_darkening`) · `ph2d-vector/src/lib.rs` (re-export `FontEmbolden`, `Diagonal2`; o contrato congelado vive em `ph2d-vector-doc`, intocado) · `ph2d-panel-code/src/glyphs.rs`, `tests/it/nitidez.rs`. ⚠️ Quem faça `match` exaustivo sobre `TextRendering` noutra linha parte aqui. |
 | Docs / fotos | 2 handoffs em `docs/CodeEditor/handoffs/`; fotos em `docs/CodeEditor/ferramentas/smoke/` (+`cena13/`); `cena14/fotos_q3.sh` (`ARRASTA=`, `DUPLO=`) |
 
 **Provas de contrato:**
@@ -230,6 +231,18 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   `pagina::cada_cor_pintada_vem_de_um_token` aceita o acento a `BAND_INK`. Mutação (o ramo dos cartões nunca entra) →
   vermelho. Fotos [ao_fundo.png](../ferramentas/smoke/ao_fundo.png) · [ao_fundo_claro.png](../ferramentas/smoke/ao_fundo_claro.png) ·
   [ao_nitidez_zoom.png](../ferramentas/smoke/ao_nitidez_zoom.png) (3×, linha 17 do código sobre a linha 17 da tabela).
+
+- **Quarto modo de Text rendering «Crisp + stem darkening»** (dono 10/11, `07d722387f`): `TextRendering::CrispPlusDarkened` =
+  `CrispHeavyPlus` + `stem_darkening` (preset e não toggle: o dono pediu «um quarto item»). `FontEmbolden` do Vello 0.11 por
+  `paint::font_embolden_for(px, ink)` em `paint_text` (2 sítios), `paint_text_rotated` e `ph2d-panel-code/src/glyphs.rs`: 0,05 px
+  por lado até 16 px, linear a zero aos 20 px, **só tinta clara** (luminância > 0,5). Tabela medida na placa no doc de
+  `ph2d_tokens::STEM_DARKENING_PX` (`nitidez::o_escurecimento_aproxima_a_franja`, 12/13 px × Dark/Light × 0–0,4 px): franja-luz
+  Dark 12 px 0,479 → 0,444 (Problems 0,413) com tinta +7 %; +0,075 já dá +14 % (lê negrito); no Light o código já está abaixo do
+  Problems e não se aproxima ⇒ não alarga. Vale dentro do `com_peso_exato` (borda, não peso); avanços iguais; de fábrica
+  byte-idêntico (`FontEmbolden::default`). Em memória como os outros (nenhum persiste). A arte vectorial do documento
+  (`ph2d-vector/src/record.rs`) NÃO recebe (é do artista). Testes: `settings_text::tests::every_text_rendering_row_picks_its_mode_and_closes_the_menu`,
+  `published::embolden_tests::*` (3), `typography::tests::{crisp_plus_darkened_is_crisp_heavy_plus_with_stem_darkening, stem_darkening_fades_with_size_and_only_in_its_mode}`,
+  `nitidez::a_aba_de_scripts_escurece_no_preset_escurecido`.
 
 Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,35 s, já construído pelas fotos); a 2.ª:
 

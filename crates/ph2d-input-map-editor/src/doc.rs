@@ -153,13 +153,19 @@ impl InputMapDoc {
 
     /// O mapa mudou fora da aba (load, undo/redo, o «Create this action» do Trigger): os `ActionId` são por
     /// mapa, então o número a meio, o arrasto, a escuta e os pedidos por aplicar caem; a acção aberta da B
-    /// fica só se o mapa novo ainda a tem.
+    /// fica só se o mapa novo tem, nesse id, a acção do MESMO nome (o `ActionId` é um índice: outro projecto reusa-o).
     pub fn map_swapped(&mut self, map: &ph2d_input::InputMap) {
         self.list.typing = None;
         self.list.scrub = None;
         self.list.listen_request = None;
         self.pending.clear();
-        if self.kb.open.is_some_and(|a| map.get(a).is_none()) {
+        let old = self.applied.as_ref().unwrap_or(&self.snap.map);
+        let name = |m: &ph2d_input::InputMap, a| m.get(a).map(|v| v.name.clone());
+        if self
+            .kb
+            .open
+            .is_some_and(|a| name(old, a).is_none() || name(old, a) != name(map, a))
+        {
             self.kb.open = None;
         }
     }
@@ -232,6 +238,10 @@ impl InputMapDoc {
     /// Carregar em `(x, y)`: um controlo do registo captura (dispara no Up dentro); o resto vai à vista. `true` =
     /// dentro da aba (tomado).
     pub fn press(&mut self, x: f32, y: f32) -> bool {
+        // Carregar numa linha da List (até num controlo dela) abre a acção dela: a do Inspector e a da vista Keyboard.
+        if self.view == View::List && self.layout.body.contains(x, y) {
+            self.kb.open = self.list.hover_row.or(self.kb.open);
+        }
         if let Some(took) = self.press_control(x, y) {
             return took;
         }
@@ -248,8 +258,6 @@ impl InputMapDoc {
             return crate::view_try::press(self, x, y);
         }
         if self.view == View::List && self.layout.body.contains(x, y) {
-            // Carregar numa linha abre a acção dela (a do Inspector e a da vista Keyboard).
-            self.kb.open = self.list.hover_row.or(self.kb.open);
             return crate::view_list::press(self, x, y);
         }
         if self.view == View::Keyboard && self.layout.body.contains(x, y) {

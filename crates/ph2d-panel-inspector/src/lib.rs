@@ -78,8 +78,8 @@ mod cards_anim;
 mod cards_componentes;
 mod cards_input_map;
 pub use cards_input_map::{
-    CARD_IM_ACTION, CARD_IM_KEYS, CARD_IM_PICK, CARD_IM_READERS, CARD_IM_STICK, InputMapAction,
-    InputMapPane, current_input_map, set_current_input_map,
+    CARD_IM_ACTION, CARD_IM_PICK, CARD_IM_STICK, InputMapAction, InputMapPane, current_input_map,
+    set_current_input_map,
 };
 mod cards_corpos;
 mod cards_objeto;

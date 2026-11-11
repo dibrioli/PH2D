@@ -5,9 +5,8 @@ use crate::o_inspector_em_cartoes_por_tipo::{chaves_da_lista, pinta};
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{
-    CARD_EMPTY, CARD_IM_ACTION, CARD_IM_KEYS, CARD_IM_PICK, CARD_IM_READERS, CARD_IM_STICK,
-    InputMapAction, InputMapPane, InspectorPanel, InspectorState, set_cards_on,
-    set_current_input_map,
+    CARD_EMPTY, CARD_IM_ACTION, CARD_IM_PICK, CARD_IM_STICK, InputMapAction, InputMapPane,
+    InspectorPanel, InspectorState, set_cards_on, set_current_input_map,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -45,10 +44,38 @@ fn a_aba_sem_accao_diz_o_que_fazer() {
 fn a_aba_com_accao_mostra_os_cartoes_dela() {
     assert_eq!(
         chaves_com(Some(jump(true))),
-        vec![CARD_IM_ACTION, CARD_IM_READERS, CARD_IM_KEYS, CARD_IM_STICK]
+        vec![CARD_IM_ACTION, CARD_IM_STICK]
     );
     // Uma tecla sem manche não tem Dead/Press.
     assert!(!chaves_com(Some(jump(false))).contains(&CARD_IM_STICK));
+}
+
+/// Os factos no estilo da casa: cada lista é UM valor «A, B, C» sob o seu rótulo (foto o4: um item por caixa lia-se
+/// como título), e o «×» do cabeçalho continua lá (a foto o4 só tinha «···»).
+#[test]
+fn as_listas_sao_um_valor_e_o_cabecalho_tem_o_fechar() {
+    use ph2d_editor_core::text_elide::elisao;
+    set_cards_on(true);
+    set_current_input_map(Some(jump(false)));
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let mut st = InspectorState::default();
+    let (r, medidos) = elisao::medindo(|| pinta(&mut host, &mut st));
+    set_current_input_map(None);
+    let textos: Vec<String> = medidos.iter().map(|m| m.texto.clone()).collect();
+    for t in [
+        "Read by",
+        "Keys",
+        "Platform Player, Door Trigger Left",
+        "A, Left Arrow, Left Stick",
+    ] {
+        assert!(textos.iter().any(|x| x == t), "{t} em {textos:?}");
+    }
+    assert!(
+        !textos.iter().any(|x| x == "Left Arrow"),
+        "um item sozinho: {textos:?}"
+    );
+    let fechar = ph2d_editor_core::ids::INSP_CLOSE;
+    assert!(r.iter().any(|(id, q)| *id == fechar && q.w > 0.0), "o ×");
 }
 
 /// Controlo: sem a aba à frente o Inspector de sempre (o cartão vazio da selecção), nenhum cartão da aba.

@@ -121,3 +121,57 @@ fn the_inspector_shows_the_new_snapshot_in_the_same_frame() {
     assert_eq!(current_input_map(), Some(InputMapPane::Pick));
     ph2d_input::inspected::set_current_input_map(None);
 }
+
+/// ⭐ Auditoria 7b: o `ActionId` é um índice. Outro projecto com os MESMOS ids e outros nomes ⇒ a acção aberta cai
+/// (o Inspector diz a frase). Controlo: o mesmo mapa com uma ligação a menos (undo) mantém-na aberta.
+#[test]
+fn a_swapped_map_with_the_same_ids_closes_the_open_action() {
+    use ph2d_input::InputMap;
+    use ph2d_input::inspected::InputMapPane;
+    let a = InputMap::with_player_defaults();
+    let jump = a.id(ph2d_input::PLAYER_JUMP).expect("jump");
+    let fresh = |d: &mut InputMapDoc| {
+        d.snap.map = a.clone();
+        d.applied = Some(a.clone());
+        d.kb.open = Some(jump);
+    };
+    let mut d = InputMapDoc::new(View::List);
+    fresh(&mut d);
+    let mut b = InputMap::new();
+    for i in 0..a.len() {
+        let _ = b.create(format!("other_{i}"));
+    }
+    assert!(b.get(jump).is_some(), "o mesmo id existe no outro projecto");
+    assert!(d.begin_frame(&b));
+    d.snap.map = b;
+    assert_eq!(crate::inspect::pane(&d), InputMapPane::Pick);
+    // Controlo: a mesma acção, com uma ligação a menos.
+    fresh(&mut d);
+    let mut a2 = a.clone();
+    a2.get_mut(jump).expect("jump").bindings.pop();
+    assert!(d.begin_frame(&a2));
+    d.snap.map = a2;
+    assert_eq!(d.kb.open, Some(jump));
+    assert!(matches!(crate::inspect::pane(&d), InputMapPane::Action(_)));
+}
+
+/// A vista Keyboard com a acção aberta sem ligações: a tecla F, com `held` em baixo e a bandeira Alt, liga-se?
+fn keyboard_binds_f(held: &str, alt: bool) -> bool {
+    use ph2d_input::InputMap;
+    let mut d = InputMapDoc::new(View::Keyboard);
+    let mut map = InputMap::new();
+    let id = map.create("fire");
+    d.snap.map = map;
+    d.kb.open = Some(id);
+    d.alt = alt;
+    let _ = d.raw_key(key(held), true, false);
+    d.raw_key(key("f"), true, true) && !d.pending.is_empty()
+}
+
+/// ⭐ AltGr na vista KEYBOARD (a linha de `view_keyboard/input.rs` com `chord_keys`): AltGr+F liga; Alt esquerdo+F é
+/// acorde do editor (controlo).
+#[test]
+fn keyboard_view_binds_altgr_f_and_not_left_alt_f() {
+    assert!(keyboard_binds_f("right_alt", false), "AltGr+F");
+    assert!(!keyboard_binds_f("left_alt", true), "Alt esquerdo+F");
+}

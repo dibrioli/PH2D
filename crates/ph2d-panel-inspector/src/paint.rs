@@ -49,6 +49,10 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
         && let Some(pane) = crate::cards_input_map::current_input_map()
     {
         let cards = crate::cards_input_map::cards(&pane);
+        // O «×» do cabeçalho, como no Inspector de objectos.
+        ctx.host
+            .store_mut()
+            .mark_card_list_close(ids::INSP_PANEL, ids::INSP_CLOSE);
         let title = <crate::InspectorPanel as Panel>::TITLE.tr();
         ph2d_editor_core::panel::cards::paint_card_list_pinned(
             ctx,

@@ -94,7 +94,7 @@ pub(crate) fn bar_view(state: &TimelinePanelState, snap: &TimelineViewSnapshot) 
     BarView {
         tab: state.tab,
         speed_view: state.speed_view,
-        curvas: state.vista == crate::curvas_vista::Vista::Curves,
+        curves_on_canvas: state.curves_on_canvas,
         source_container: state.source_container,
         source_clip: foreign(state, snap).map(|(i, _)| i),
     }

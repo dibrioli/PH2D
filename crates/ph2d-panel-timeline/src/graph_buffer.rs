@@ -31,11 +31,10 @@ pub(super) fn paint_buffer_buttons(
     theme: Theme,
     band_rect: Rect,
     track: &TrackView,
-    reserva_direita: f32,
 ) {
     let target = track.target.get();
     let top = band_rect.y + BUF_BTN_GAP;
-    let mut right = band_rect.x + band_rect.w - BUF_BTN_GAP - reserva_direita;
+    let mut right = band_rect.x + band_rect.w - BUF_BTN_GAP;
     let (swap, store) = (
         ph2d_i18n::tr("panel.timeline.buffer.swap"),
         ph2d_i18n::tr("panel.timeline.buffer.store"),

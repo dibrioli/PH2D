@@ -109,7 +109,17 @@ fn dragging_the_painted_point_writes_both_keys_in_one_undo_step() {
     let t1 = RationalTime::from_seconds(1.0);
     let k = key_points(true, &w, &st.doc, Some(e))[1];
     let (sx, sy) = camera().world_to_screen(k.at, window());
-    let grab = motion_path_hit_with_keys(true, &w, &st.doc, Some(e), &camera(), window(), sx, sy);
+    let grab = motion_path_hit_with_keys(
+        true,
+        false,
+        &w,
+        &st.doc,
+        Some(e),
+        &camera(),
+        window(),
+        sx,
+        sy,
+    );
     assert_eq!(grab, Some(MotionPathGrab::Key { entity: e, t: t1 }));
     let alvo = camera().screen_to_world((sx + 40.0, sy - 25.0), window());
     let pre = st.doc.clone();
@@ -193,6 +203,7 @@ fn nothing_is_offered_without_object_keys_tab_or_keys() {
     );
     let (sx, sy) = camera().world_to_screen(key_points(true, &w, &doc, Some(e))[0].at, window());
     assert!(
-        motion_path_hit_with_keys(false, &w, &doc, Some(e), &camera(), window(), sx, sy).is_none()
+        motion_path_hit_with_keys(false, false, &w, &doc, Some(e), &camera(), window(), sx, sy)
+            .is_none()
     );
 }

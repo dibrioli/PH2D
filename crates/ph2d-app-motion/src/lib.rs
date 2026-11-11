@@ -224,6 +224,8 @@ pub mod motion_glow_layer;
 pub mod motion_glow_passe;
 /// doc 132 §2: a história da fita dita na Timeline (a faixa) e no cartão das entradas.
 pub mod motion_historia;
+/// As alças que entortam o arco entre chaves de posição, com «Edit curves on canvas» (dono 10/11).
+pub mod motion_key_handles;
 /// As chaves de posição (eixos separados) no canvas, agarráveis (doc 17, Onda 2, item 7).
 pub mod motion_key_points;
 pub mod motion_lens;

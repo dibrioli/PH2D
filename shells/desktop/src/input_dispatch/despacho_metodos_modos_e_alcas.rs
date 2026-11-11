@@ -177,6 +177,7 @@ impl crate::App {
             .and_then(|h| h.gizmo.iter_selected().next());
         let Some(hit) = ph2d_app_motion::motion_key_points::motion_path_hit_with_keys(
             self.timeline.keys_mode,
+            ph2d_panel_timeline::state::curves_on_canvas(),
             gfx.sim.world(),
             &self.timeline.doc,
             selected,
@@ -294,7 +295,7 @@ impl crate::App {
     /// arrasto vivo — a mesma disciplina de early-return das alças do vetor.
     ///
     /// Porta ÚNICA de cada gesto: `move_path_anchor` translada, `move_path_tangent` molda,
-    /// `drag_key` escreve as chaves de X/Y do quadro.
+    /// `drag_grab` escreve as chaves de X/Y (ponto ou alça do arco).
     pub(super) fn motion_path_anchor_move(&mut self, x: f32, y: f32) -> bool {
         use ph2d_app_motion::motion_path_overlay::MotionPathGrab;
         let Some(grab) = self.motion_shell.path_drag else {
@@ -317,11 +318,10 @@ impl crate::App {
                     .doc
                     .move_path_tangent(target, i, out, [w[0], w[1]])
             }
-            MotionPathGrab::Key { entity, t } => ph2d_app_motion::motion_key_points::drag_key(
+            g => ph2d_app_motion::motion_key_points::drag_grab(
                 &mut self.timeline,
                 gfx.sim.world(),
-                entity,
-                t,
+                g,
                 [w[0], w[1]],
             ),
         }

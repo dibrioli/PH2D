@@ -177,14 +177,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // escrevia no fonte).
         "panel.timeline.buffer.swap" => "Swap",
         "panel.timeline.buffer.store" => "Store",
-        // Doc 17, item 5 — a vista «Keys | Curves» da aba Keys (maquetes B1/B2).
-        "panel.timeline.view.keys" => "Keys",
-        "panel.timeline.view.curves" => "Curves",
-        "panel.timeline.view.tip" => {
-            "Keys shows each row's keys; Curves shows every curve in one big graph"
+        // Dono 10/11 — a caixa «Edit curves on canvas» da aba Keys (no lugar da vista Curves).
+        "panel.timeline.curves_on_canvas" => "Edit curves on canvas",
+        "panel.timeline.curves_on_canvas.tip" => {
+            "Show handles on the canvas to bend the object's path"
         }
-        "panel.timeline.view.normalized" => "{name} · normalized, right axis",
-        "panel.timeline.view.eye_tip" => "Show or hide this curve",
         // O eixo do Flip image na faixa («Flip image H»), os glifos dos ícones do cartão.
         "panel.timeline.glyph.h" => "H",
         "panel.timeline.glyph.v" => "V",

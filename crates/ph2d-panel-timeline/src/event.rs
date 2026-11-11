@@ -161,7 +161,6 @@ pub(crate) fn apply_event(
         // The arm walks `tab::TABS` rather than naming ids, so a third tab is a row
         // in that table and nothing else — a hand-written match here would paint a
         // tab that clicks into the void.
-        WidgetEvent::Click(id) if crate::curvas_vista::route(state, id) => EventOutcome::Consumed,
         WidgetEvent::Click(id) if crate::tab::TABS.iter().any(|(tid, _)| *tid == id) => {
             let want = crate::tab::TABS
                 .iter()
@@ -188,6 +187,11 @@ pub(crate) fn apply_event(
         // gesture maps its pointer through the OLD view's value range — drop it
         // (and close its undo bracket) rather than let it resolve as garbage
         // (mirror of the hide-panel cleanup in `paint`).
+        // «Edit curves on canvas»: session view state, like Speed — `paint` publishes it.
+        WidgetEvent::Toggled(id) if id == ids::TIMELINE_CURVES_ON_CANVAS => {
+            state.curves_on_canvas = !state.curves_on_canvas;
+            EventOutcome::Consumed
+        }
         WidgetEvent::Toggled(id) if id == ids::TIMELINE_SPEED => {
             state.speed_view = !state.speed_view;
             let handle = state.handle_drag.take().is_some();

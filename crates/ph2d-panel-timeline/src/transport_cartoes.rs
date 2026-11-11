@@ -32,7 +32,10 @@ const DICAS: [(ph2d_a11y::NodeId, &str); 18] = [
     ),
     (ids::TIMELINE_ONION_MODE, "panel.timeline.tip.onion_keys"),
     (ids::TIMELINE_OPTIONS, "panel.timeline.tip.options"),
-    (ids::TIMELINE_VIEW_CURVES, "panel.timeline.view.tip"),
+    (
+        ids::TIMELINE_CURVES_ON_CANVAS,
+        "panel.timeline.curves_on_canvas.tip",
+    ),
     (ids::TIMELINE_CLIP_MENU, "panel.timeline.tip.clip_menu"),
     (
         ids::TIMELINE_CLIP_AUTOPLAY,
@@ -122,6 +125,7 @@ fn prepara(store: &mut WidgetStore, snap: &TimelineViewSnapshot, view: BarView) 
     for (_, id, on) in caixas(snap, view) {
         espelha(id, on);
     }
+    espelha(ids::TIMELINE_CURVES_ON_CANVAS, view.curves_on_canvas);
     for (id, chave) in DICAS {
         if store.tooltip_for(id).is_none() {
             store.set_tooltip(id, ph2d_i18n::tr(chave));
@@ -320,16 +324,29 @@ fn dono_e_opcoes(
 ) -> (ClipChip, Rect) {
     let ink = CardInk::of_list(theme);
     let mut c = cartao(ctx, ink, body);
-    // «Keys | Curves» (doc 17, item 5): só na aba Keys, antes do dono (maquete B1).
-    let segs = crate::curvas_vista::segs(view.curvas);
-    let vw = if view.tab == crate::tab::Tab::Keys {
-        c.segmentos_em_fila_w(&segs) + m::FIELD_GAP
+    // «Edit curves on canvas» (dono 10/11): só na aba Keys, antes do dono — no lugar do antigo «Keys | Curves».
+    let caixa = Emoldurada {
+        id: ids::TIMELINE_CURVES_ON_CANVAS,
+        nome: ph2d_i18n::tr("panel.timeline.curves_on_canvas"),
+        on: view.curves_on_canvas,
+        antes: None,
+        fim: None,
+    };
+    let mut vw = if view.tab == crate::tab::Tab::Keys {
+        c.emoldurada_w(&caixa) + m::FIELD_GAP
     } else {
         0.0
     };
-    let (x0, y) = f.a_direita(vw + ANIM_W + m::FIELD_GAP + banda::icones_w(1));
+    let dono_w = ANIM_W + m::FIELD_GAP + banda::icones_w(1);
+    // Numa fileira que não leva a caixa e o dono juntos, a caixa fica na fileira dela.
+    if vw > 0.0 && vw + dono_w > f.body.w {
+        let (cx, cy) = f.a_direita(vw - m::FIELD_GAP);
+        c.emoldurada_discreta_em(&caixa, cx, cy, tons_da_barra(theme));
+        vw = 0.0;
+    }
+    let (x0, y) = f.a_direita(vw + dono_w);
     if vw > 0.0 {
-        c.segmentos_em_fila(&segs, x0, y);
+        c.emoldurada_discreta_em(&caixa, x0, y, tons_da_barra(theme));
     }
     let x = x0 + vw;
     let rect = Rect::new(x, y, ANIM_W, m::FIELD_H);

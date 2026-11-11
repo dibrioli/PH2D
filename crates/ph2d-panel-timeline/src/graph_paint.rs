@@ -61,14 +61,19 @@ pub(crate) fn paint_track(
     theme: Theme,
     state: &mut TimelinePanelState,
     rect: Rect,
-    label_w: Option<f32>,
+    label_w: f32,
     view: TimeView,
     track: &TrackView,
     values: &TrackValues,
 ) {
     // Aligned with the lanes above it: the curve for `t = view_start` lands on
     // the band's left edge, clear of the splitter grip.
-    let band_rect = banda_de(rect, view);
+    let band_rect = Rect::new(
+        view.time_x,
+        rect.y + BAND_INSET,
+        (rect.x + rect.w - view.time_x).max(0.0),
+        (rect.h - BAND_INSET * 2.0).max(0.0),
+    );
     let target = track.target.get();
     // Fit to everything the row DRAWS — the curve (overshoot and all) and the
     // visible handles, not just the key values: fitting the keys alone let a
@@ -112,12 +117,7 @@ pub(crate) fn paint_track(
             let cor = resolve(ColorToken::Text3, theme);
             paint_curve(ctx, &band, view, ghost, GHOST_W, cor);
         }
-        // O grafo grande (`label_w` `None`) pinta a escolhida em lilás, à parte das secundárias.
-        let cor = if label_w.is_none() {
-            crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::CurvaPrincipal, theme)
-        } else {
-            resolve(ColorToken::TimelineCurve, theme)
-        };
+        let cor = resolve(ColorToken::TimelineCurve, theme);
         paint_curve(ctx, &band, view, &track.keys, CURVE_W, cor);
         paint_anchors(ctx, theme, state, &band, view, (track, values));
         paint_handles(ctx, theme, state, &band, view, track);
@@ -130,27 +130,8 @@ pub(crate) fn paint_track(
     if !state.speed_view {
         anchor_drag::resolve_drag(state, &band, track);
     }
-    // O grafo grande da vista Curves ocupa a área inteira: não tem altura para arrastar.
-    if !crate::curvas_vista::ativa(state) {
-        paint_height_grip(ctx, theme, state, rect, target);
-    }
-    // O grafo grande (`label_w` `None`) tem o eixo direito 0–1 no canto: os botões ficam à esquerda dele.
-    let reserva = if label_w.is_none() {
-        crate::curvas_vista::eixo_direito_w(ctx)
-    } else {
-        0.0
-    };
-    graph_buffer::paint_buffer_buttons(ctx, theme, band_rect, track, reserva);
-}
-
-/// The band inside `rect`, aligned with the lanes (`t = view_start` on its left edge).
-pub(crate) fn banda_de(rect: Rect, view: TimeView) -> Rect {
-    Rect::new(
-        view.time_x,
-        rect.y + BAND_INSET,
-        (rect.x + rect.w - view.time_x).max(0.0),
-        (rect.h - BAND_INSET * 2.0).max(0.0),
-    )
+    paint_height_grip(ctx, theme, state, rect, target);
+    graph_buffer::paint_buffer_buttons(ctx, theme, band_rect, track);
 }
 
 /// The grip along the bottom of an expanded row: a short centred bar plus a
@@ -215,7 +196,7 @@ fn paint_frame(
     ctx: &mut PaintCtx,
     theme: Theme,
     (row, band_rect): (Rect, Rect),
-    label_w: Option<f32>,
+    label_w: f32,
     band: &Band,
     texto: bool,
     grandeza: Option<ph2d_timeline::PropKind>,
@@ -255,17 +236,7 @@ fn paint_frame(
         (texto_de(band.v_max), band_rect.y),
         (texto_de(band.v_min), band_rect.y + band_rect.h - font),
     ];
-    // `None` = a escala pinta-se DENTRO da banda (vista Curves): a largura é a do texto, nunca cortada.
-    let w = label_w.map_or_else(
-        || {
-            ph2d_editor_core::paint::label_column_width(
-                ctx.text_system,
-                font,
-                rotulos.iter().map(|(t, _)| t.as_str()),
-            )
-        },
-        |l| (l - Spacing::Xs.px() * 2.0).max(0.0),
-    );
+    let w = (label_w - Spacing::Xs.px() * 2.0).max(0.0);
     for (t, y) in &rotulos {
         paint_text(ctx.text_system, ctx.scene, t, x, *y, font, w, color);
     }

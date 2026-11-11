@@ -62,6 +62,7 @@ fn publish_view(state: &mut TimelinePanelState, snapshot: &ph2d_timeline::Timeli
     // (The ruler CLOCK still coincides without a stack — `clip_playhead` is identity there;
     // that is a separate truth from the duration scope.)
     state::publish_keys_mode(state.tab.shows_keys());
+    state::publish_curves_on_canvas(state.curves_on_canvas && state.tab.shows_keys());
     // Arrange is always the SCENE's stack, so the breadcrumb trail does not apply there
     // however deep the animator walked (`tab::Tab::scene_root`).
     state::publish_scene_root(state.tab.scene_root());
@@ -70,7 +71,6 @@ fn publish_view(state: &mut TimelinePanelState, snapshot: &ph2d_timeline::Timeli
     // what the bar paints as dead cannot be two different views.
     let lista = crate::tab::rows(state.tab, snapshot) == crate::tab::Rows::Containers;
     state::publish_containers_list(lista);
-    crate::curvas_vista::volta_a_keys(state, snapshot.active_clip, lista);
 }
 
 /// **What a hidden panel has to LET GO of.**
@@ -106,6 +106,8 @@ fn release_everything_a_hidden_panel_must_not_hold(
     // A hidden panel is not editing keys: the timeline runs on its normal
     // (timeline) clock, not a soloed clip one.
     state::publish_keys_mode(false);
+    // ...nor bending a path on the canvas.
+    state::publish_curves_on_canvas(false);
     // ...and it is not showing the Containers list either — a stale `true`
     // here would keep refusing playback with no panel on screen to say why.
     state::publish_containers_list(false);

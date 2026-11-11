@@ -173,11 +173,10 @@ pub(crate) fn paint_rows(
     crate::container_list::paint(ctx, theme, g, view, state, snap);
     // The master row, above track 0 and scrolling with it.
     summary_paint::paint(ctx, theme, g, view, preview_dx, state, snap);
-    let curvas = crate::curvas_vista::ativa(state);
     let lay = crate::linhas::layout(
         snap,
         state.tab,
-        if curvas { &[] } else { &state.expanded },
+        &state.expanded,
         &state.grupos_abertos,
         state.graph_h,
         region.y,
@@ -291,10 +290,6 @@ pub(crate) fn paint_rows(
                 y,
             ),
         );
-        if curvas {
-            crate::curvas_vista::paint_olho(ctx, theme, state, t, (x0 + TWIRL_W, y));
-            continue;
-        }
         if let Some(ic) = icone {
             let cor = crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::TextoValor, theme);
             crate::linhas::paint_icone(ctx, ic, (x0 + TWIRL_W, y), cor);
@@ -305,12 +300,8 @@ pub(crate) fn paint_rows(
         paint_lane_keys(ctx, theme, track, view, preview_dx, y, lane);
         if h > ROW_H_PX {
             let band = Rect::new(region.x, y + ROW_H_PX, region.w, h - ROW_H_PX);
-            let escala = Some(label_w);
-            graph_paint::paint_track(ctx, theme, state, band, escala, view, track, &snap.values);
+            graph_paint::paint_track(ctx, theme, state, band, label_w, view, track, &snap.values);
         }
-    }
-    if curvas {
-        crate::curvas_vista::paint(ctx, theme, state, lane, view, snap);
     }
     // The time-scale box + grips over the current key selection (crown-jewels §4).
     // Registered AFTER the diamonds so the grips win the hit where they sit.

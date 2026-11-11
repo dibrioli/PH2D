@@ -137,6 +137,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     toggle(store, crate::ids::TIMELINE_MOTION_PATH, false);
     toggle(store, crate::ids::TIMELINE_SNAP, true);
     toggle(store, ids::TIMELINE_SPEED, false);
+    toggle(store, ids::TIMELINE_CURVES_ON_CANVAS, false);
     // Onion (ADR-0142): dois toggles de vista — on/off + modo (Keys/Frames).
     toggle(store, ids::TIMELINE_ONION, false);
     toggle(store, ids::TIMELINE_ONION_MODE, true);
@@ -213,8 +214,6 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         ids::TIMELINE_END_STOP,
         ids::TIMELINE_END_LOOP,
         ids::TIMELINE_END_PINGPONG,
-        ids::TIMELINE_VIEW_KEYS,
-        ids::TIMELINE_VIEW_CURVES,
     ] {
         button(store, id);
     }

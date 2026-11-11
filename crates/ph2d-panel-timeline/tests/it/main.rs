@@ -18,7 +18,7 @@ mod buffer_curves_seam;
 mod chip_para_faixa;
 mod close_button_seam;
 mod containers_tab_seam;
-mod curves_view_seam;
+mod curves_on_canvas_seam;
 mod duration_chip_gesture;
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod extrapolation_seam;

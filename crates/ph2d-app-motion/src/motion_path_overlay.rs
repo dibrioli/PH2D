@@ -91,7 +91,7 @@ const TANGENT_PX: f64 = 1.0; // LITERAL-PX-OK: chrome de overlay, espessura de t
 /// `2 × HIT_R_PX` é onde os dois alvos de raio `HIT_R_PX` só se tocam, sem sobrepor —
 /// então perto do quadrado pega-se a âncora, na ponta pega-se a alça. Numa alça curta
 /// demais (auto num zoom afastado) perder a alça é honesto; perder a âncora seria bug.
-const TANGENT_MIN_PX: f64 = 14.0; // LITERAL-PX-OK: chrome de overlay, alvo de mouse
+pub(crate) const TANGENT_MIN_PX: f64 = 14.0; // LITERAL-PX-OK: chrome de overlay, alvo de mouse
 
 /// Quantos segmentos aproximam o círculo de uma ponta. 12 é liso num alvo de ~5 px.
 const TIP_SEGS: usize = 12;
@@ -123,6 +123,14 @@ pub enum MotionPathGrab {
     Key {
         entity: u64,
         t: ph2d_anim::RationalTime,
+    },
+    /// A alça espacial do segmento `[ta, tb]` das chaves de posição — `out` = a que sai de `ta`,
+    /// senão a que chega a `tb` ([`crate::motion_key_handles`]).
+    Alca {
+        entity: u64,
+        ta: ph2d_anim::RationalTime,
+        tb: ph2d_anim::RationalTime,
+        out: bool,
     },
 }
 

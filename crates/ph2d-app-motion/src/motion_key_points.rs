@@ -67,7 +67,7 @@ fn axes(doc: &TimelineDoc, entity: u64) -> impl Iterator<Item = &ph2d_timeline::
     })
 }
 
-fn has_path(doc: &TimelineDoc, entity: u64) -> bool {
+pub(crate) fn has_path(doc: &TimelineDoc, entity: u64) -> bool {
     doc.bindings().iter().any(|b| {
         b.entity == entity
             && !b.missing
@@ -77,7 +77,7 @@ fn has_path(doc: &TimelineDoc, entity: u64) -> bool {
 }
 
 /// Os instantes com chave de X ou Y no clip ativo, ordenados e sem repetição.
-fn key_times(doc: &TimelineDoc, entity: u64) -> Vec<RationalTime> {
+pub(crate) fn key_times(doc: &TimelineDoc, entity: u64) -> Vec<RationalTime> {
     let clip = doc.active_clip();
     let mut ts: Vec<RationalTime> = axes(doc, entity)
         .filter_map(|b| clip.track(b.target))
@@ -148,11 +148,13 @@ pub fn local_for_world(
     Some([l.x, l.y])
 }
 
-/// O hit-test do caminho Path (âncoras e alças) e, depois, o dos pontos de chave.
+/// O hit-test do caminho Path (âncoras e alças), depois o dos pontos de chave e, com `curves`
+/// («Edit curves on canvas»), o das alças do arco ([`crate::motion_key_handles`]).
 #[allow(clippy::too_many_arguments)]
 #[must_use]
 pub fn motion_path_hit_with_keys(
     keys_tab: bool,
+    curves: bool,
     world: &World,
     doc: &TimelineDoc,
     selected: Option<u64>,
@@ -179,6 +181,31 @@ pub fn motion_path_hit_with_keys(
         .filter(|(d2, _)| *d2 <= r2)
         .min_by(|a, b| a.0.total_cmp(&b.0))
         .map(|(_, t)| MotionPathGrab::Key { entity, t })
+        .or_else(|| {
+            crate::motion_key_handles::alca_hit(
+                keys_tab, curves, world, doc, selected, camera, window, x, y,
+            )
+        })
+}
+
+/// **A porta única do arrasto** de um ponto de chave ou de uma alça do arco; as outras pegas
+/// (Path) não são daqui (`false`).
+pub fn drag_grab(
+    state: &mut TimelineState,
+    world: &World,
+    grab: MotionPathGrab,
+    p: [f32; 2],
+) -> bool {
+    match grab {
+        MotionPathGrab::Key { entity, t } => drag_key(state, world, entity, t, p),
+        MotionPathGrab::Alca {
+            entity,
+            ta,
+            tb,
+            out,
+        } => crate::motion_key_handles::drag_alca(state, world, entity, ta, tb, out, p),
+        MotionPathGrab::Anchor { .. } | MotionPathGrab::Tangent { .. } => false,
+    }
 }
 
 /// Leva o ponto do instante `t` ao ponto de mundo `p`: escreve a chave de cada eixo que a tem
@@ -278,22 +305,25 @@ fn ring(c: Point, r: f64) -> BezPath {
     p
 }
 
-/// O que está sob arrasto agora: o instante agarrado e o documento de ANTES do gesto.
+/// O que está sob arrasto agora: o instante agarrado (nenhum, numa alça) e o documento de ANTES.
 fn live_drag(
     drag: Option<MotionPathGrab>,
     history: &TimelineHistory,
     entity: u64,
-) -> Option<(RationalTime, &TimelineDoc)> {
+) -> Option<(Option<RationalTime>, &TimelineDoc)> {
     match drag? {
-        MotionPathGrab::Key { entity: e, t } if e == entity => Some((t, history.pending()?)),
+        MotionPathGrab::Key { entity: e, t } if e == entity => Some((Some(t), history.pending()?)),
+        MotionPathGrab::Alca { entity: e, .. } if e == entity => Some((None, history.pending()?)),
         _ => None,
     }
 }
 
-/// Pinta o caminho, o de antes (só durante o arrasto), os losangos e o anel do arrastado.
+/// Pinta as alças do arco (com `curves`), o caminho, o de antes (só durante o arrasto), os
+/// losangos e o anel do arrastado.
 #[allow(clippy::too_many_arguments)]
 pub fn draw(
     keys_tab: bool,
+    curves: bool,
     world: &World,
     doc: &TimelineDoc,
     history: &TimelineHistory,
@@ -308,6 +338,17 @@ pub fn draw(
     let Some(entity) = selected.filter(|_| !pts.is_empty()) else {
         return;
     };
+    crate::motion_key_handles::draw(
+        keys_tab,
+        curves,
+        world,
+        doc,
+        drag,
+        selected,
+        camera,
+        window,
+        vector_scene,
+    );
     let s = vector_scene.inner_mut();
     let solid = |c: [f32; 4]| Brush::Solid(Color::new(c));
     let id = Affine::IDENTITY;
@@ -325,7 +366,7 @@ pub fn draw(
     for k in &pts {
         let (sx, sy) = camera.world_to_screen(k.at, window);
         let c = Point::new(f64::from(sx), f64::from(sy));
-        let vivo = arrasto.is_some_and(|(t, _)| t == k.t);
+        let vivo = arrasto.is_some_and(|(t, _)| t == Some(k.t));
         if vivo {
             let brilho = solid(rgba(TimelineTinta::ChaveEscolhida, DRAG_GLOW_ALPHA));
             s.stroke(

@@ -38,6 +38,7 @@ impl crate::App {
         );
         ph2d_app_motion::motion_key_points::draw(
             self.timeline.keys_mode,
+            ph2d_panel_timeline::state::curves_on_canvas(),
             sim.world(),
             &self.timeline.doc,
             &self.timeline.history,

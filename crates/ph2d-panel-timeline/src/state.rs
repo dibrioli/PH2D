@@ -52,6 +52,10 @@ thread_local! {
     /// (Enio, 2026-07-22) — the shell stamps this onto `TimelineState::containers_list` and
     /// every playback refusal reads that one field.
     static CONTAINERS_LIST: Cell<bool> = const { Cell::new(false) };
+    /// **«Edit curves on canvas» is on AND the panel is on the Keys tab** — published every
+    /// paint beside [`KEYS_MODE`], `false` while hidden. The shell reads it to show the
+    /// path-bending handles on the canvas.
+    static CURVES_ON_CANVAS: Cell<bool> = const { Cell::new(false) };
 }
 
 /// **Navigation** — the tab/trail publish channel, in a sibling module (LOC cap).
@@ -65,11 +69,11 @@ mod state_nav;
 #[path = "state_requests.rs"]
 mod state_requests;
 pub use state_nav::{
-    containers_list, edit_host, edit_path, keys_mode, open_container, reset_trail,
+    containers_list, curves_on_canvas, edit_host, edit_path, keys_mode, open_container, reset_trail,
 };
 pub(crate) use state_nav::{
-    enter_container, open_container_root, pop_to_depth, publish_containers_list, publish_keys_mode,
-    publish_scene_root, set_tab, trail_len,
+    enter_container, open_container_root, pop_to_depth, publish_containers_list,
+    publish_curves_on_canvas, publish_keys_mode, publish_scene_root, set_tab, trail_len,
 };
 pub use state_requests::{
     request_arrange_tab, request_containers_tab, request_fit, request_keys_tab,
@@ -170,13 +174,10 @@ pub struct TimelinePanelState {
     /// (`d(value)/dt`) instead of the value curve, toggled from the transport
     /// bar. Panel-local view state — never undoable, never saved.
     pub speed_view: bool,
-    /// «Keys | Curves» (doc 17, item 5): a vista da área das faixas na aba Keys. Sessão — não grava,
-    /// não desfaz; mudar de aba volta a Keys.
-    pub vista: crate::curvas_vista::Vista,
-    /// As linhas cujo olho escondeu a curva na vista Curves (por `AnimTarget` cru). Sessão.
-    pub curvas_escondidas: Vec<u64>,
-    /// O clipe em que Curves se ligou: outro clipe na área volta a Keys ([`crate::curvas_vista::volta_a_keys`]).
-    pub curvas_do_clip: Option<usize>,
+    /// «Edit curves on canvas» (dono 10/11): the canvas shows handles that bend the object's path.
+    /// Session state — never saved, never undoable; published to the shell only on the Keys tab
+    /// ([`curves_on_canvas`]).
+    pub curves_on_canvas: bool,
     /// Which half of the document is on screen: the clip's keys, or the clip
     /// stack ([`crate::tab::Tab`]). Panel-local VIEW state — never undoable,
     /// never saved, and never the meaning of an edit.
@@ -336,9 +337,7 @@ impl Default for TimelinePanelState {
             expanded: Vec::new(),
             grupos_abertos: Vec::new(),
             speed_view: false,
-            vista: crate::curvas_vista::Vista::Keys,
-            curvas_escondidas: Vec::new(),
-            curvas_do_clip: None,
+            curves_on_canvas: false,
             tab: crate::tab::Tab::default(),
             source_container: None,
             source_clip: None,

@@ -93,7 +93,7 @@ const NUMEROS: [NodeId; 3] = [
 ];
 
 /// O que fica À VISTA na barra (doc 15, onda 1): título, clipes e tocar. O resto mora nas janelinhas.
-const NA_BARRA: [NodeId; 19] = [
+const NA_BARRA: [NodeId; 20] = [
     ids::TIMELINE_TAB_KEYS,
     ids::TIMELINE_TAB_CONTAINERS,
     ids::TIMELINE_TAB_ARRANGE,
@@ -113,6 +113,7 @@ const NA_BARRA: [NodeId; 19] = [
     ids::TIMELINE_FRAME_NUM,
     ids::TIMELINE_AUTOKEY,
     ids::TIMELINE_RECORD,
+    ids::TIMELINE_CURVES_ON_CANVAS,
 ];
 
 /// Os que se mudaram para «Timeline options» (a engrenagem).

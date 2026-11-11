@@ -10,13 +10,27 @@
 //! a second copy of it.
 
 use super::{
-    CONTAINERS_LIST, KEYS_MODE, OPEN_CONTAINER, SCENE_ROOT, TimelinePanelState, drop_row_gestures,
+    CONTAINERS_LIST, CURVES_ON_CANVAS, KEYS_MODE, OPEN_CONTAINER, SCENE_ROOT, TimelinePanelState,
+    drop_row_gestures,
 };
 use std::cell::Cell;
 
 /// Publish whether the panel is on the Keys tab (called by `paint` each frame).
 pub(crate) fn publish_keys_mode(on: bool) {
     KEYS_MODE.with(|c| c.set(on));
+}
+
+/// Publish «Edit curves on canvas» (called by `paint` each frame with the box AND the Keys tab;
+/// `false` when the panel is hidden). See [`CURVES_ON_CANVAS`].
+pub(crate) fn publish_curves_on_canvas(on: bool) {
+    CURVES_ON_CANVAS.with(|c| c.set(on));
+}
+
+/// **Does the canvas show the handles that bend the object's path?** Read by the shell each
+/// frame; `true` only while «Edit curves on canvas» is ticked on the Keys tab of a visible panel.
+#[must_use]
+pub fn curves_on_canvas() -> bool {
+    CURVES_ON_CANVAS.with(Cell::get)
 }
 
 /// Publish whether the panel is showing the Containers LIST (called by `paint` each
@@ -53,7 +67,6 @@ pub(crate) fn set_tab(state: &mut TimelinePanelState, want: crate::tab::Tab) {
         return;
     }
     state.tab = want;
-    state.vista = crate::curvas_vista::Vista::Keys;
     drop_row_gestures(state);
 }
 

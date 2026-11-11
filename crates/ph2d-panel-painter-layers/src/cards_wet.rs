@@ -89,8 +89,14 @@ fn todos_os_numeros(leis: &BrushSettings, valores: &BrushSettings) -> Vec<Numero
 /// As dicas em Plain English dos números do cartão: o Erase Strength (B35.9: o único controlo da borracha do Wet)
 /// e o Tooth fill (B35.11: o dente do papel, `paperGate`; o «Hardness» fica só o do Shape).
 const DICAS: [(NodeId, &str); 2] = [
-    (pids::PAINTER_WETPAINT_ERASE, "panel.painter_layers.wetpaint.erase_strength_tip"),
-    (pids::PAINTER_WETPAINT_HARDNESS, "panel.painter_layers.wetpaint.hardness_tip"),
+    (
+        pids::PAINTER_WETPAINT_ERASE,
+        "panel.painter_layers.wetpaint.erase_strength_tip",
+    ),
+    (
+        pids::PAINTER_WETPAINT_HARDNESS,
+        "panel.painter_layers.wetpaint.hardness_tip",
+    ),
 ];
 
 #[cfg(test)]

@@ -48,7 +48,12 @@ fn prancha_b31_1_o_aro_branco_do_impasto() {
             let antes = cena(w, h, qual, true);
             let depois = cena(w, h, qual, false);
             let (mut mudados, mut brancos_antes, mut brancos_depois) = (0usize, 0usize, 0usize);
-            for (a, d) in antes.chunks_exact(4).zip(depois.chunks_exact(4)) {
+            for (a, d) in antes
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .zip(depois.as_chunks::<4>().0.iter())
+            {
                 mudados += usize::from(a[..3] != d[..3]);
                 brancos_antes += usize::from(a[..3] == [255, 255, 255]);
                 brancos_depois += usize::from(d[..3] == [255, 255, 255]);

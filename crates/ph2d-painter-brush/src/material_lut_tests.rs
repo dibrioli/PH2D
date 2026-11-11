@@ -4,7 +4,7 @@ use super::*;
 
 /// O maior salto relativo de `f` entre duas amostras vizinhas de `N·H` a 1/4096 (16 por entrada da tabela), na zona
 /// onde o realce vale mais de 5 % do pico.
-fn maior_salto(level: usize, f: impl Fn(f32) -> f32) -> f32 {
+fn maior_salto(f: impl Fn(f32) -> f32) -> f32 {
     let mut pior = 0.0f32;
     let mut ant = f(0.0);
     for k in 1..=4096 {
@@ -26,8 +26,8 @@ fn o_realce_nao_salta_entre_entradas_da_tabela() {
     let saltos: Vec<(usize, f32)> = (0..ROUGH_LEVELS)
         .map(|l| {
             let e = Material::exponent(l as f32 / (ROUGH_LEVELS - 1) as f32);
-            let verdade = maior_salto(l, |x| x.powf(e));
-            (l, maior_salto(l, |x| lut.spec(l, x)) / verdade)
+            let verdade = maior_salto(|x| x.powf(e));
+            (l, maior_salto(|x| lut.spec(l, x)) / verdade)
         })
         .collect();
     let (l, pior) = saltos

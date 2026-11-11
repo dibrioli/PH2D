@@ -494,6 +494,10 @@ mod sobe_a_ladeira_porta_tests; // sonda J9 §2: por que porta a água entra no 
 #[cfg(test)]
 mod sonda_achatamento; // as rectas do escorrimento no S (W1f, prompt 12)
 #[cfg(test)]
+mod sonda_agua_quieta; // B13.3: quanto da água ainda mexe depois de soltar
+#[cfg(test)]
+mod sonda_b32_espectral; // B32.1: K–M × espectral, prancha e custo no mesmo processo
+#[cfg(test)]
 mod sonda_bordas_longe; // um traço novo longe não muda um byte do antigo (fotos do dono 05/11)
 #[cfg(test)]
 mod sonda_camadas; // as sondas das camadas de amarelo sobre azul (prompt 15)
@@ -510,8 +514,6 @@ mod sonda_macro_tests; // as MACROS: reproduzir ao byte contando passos da sim, 
 #[cfg(test)]
 mod sonda_mistura; // a mistura em tempo real, molhado × seco (dono 09/10)
 #[cfg(test)]
-mod sonda_b32_espectral; // B32.1: K–M × espectral, prancha e custo no mesmo processo
-#[cfg(test)]
 mod sonda_mistura_wet_drip;
 #[cfg(test)]
 mod sonda_opcoes; // as opções da W1g numa rodada só
@@ -523,8 +525,6 @@ mod sonda_pastel_tempo; // o Soft Pastel no TEMPO contra o Rebelle Dry Thin (pro
 mod sonda_presets;
 #[cfg(test)]
 mod sonda_primeiro_traco; // o travamento do começo do 1.º traço (dono 05/11)
-#[cfg(test)]
-mod sonda_agua_quieta; // B13.3: quanto da água ainda mexe depois de soltar
 #[cfg(test)]
 mod sonda_relevo_negativo; // a tinta afundada no papel de alto relevo (Bug #71)
 #[cfg(test)]

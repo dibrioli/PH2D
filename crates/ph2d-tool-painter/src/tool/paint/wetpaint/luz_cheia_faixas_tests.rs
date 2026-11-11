@@ -64,8 +64,7 @@ fn solta_com(
     let mut t = PainterTool::default();
     t.abre_a_sprite(blocos(w, h), w, h);
     t.set_paint_tool_mode("wetpaint");
-    t.preset_aplicar(&preset(pincel))
-        .expect("o preset");
+    t.preset_aplicar(&preset(pincel)).expect("o preset");
     t.set_wet_oleo_real_ligado(true);
     // A luz rasante (a da prancha B14b): a Simples difere da Cheia, senão a régua do repouso não vê a dívida.
     t.paint.wetpaint.oleo_real_valores.altitude = 12f64.to_radians();
@@ -182,10 +181,18 @@ fn a_luz_cheia_por_faixas_acaba_na_tela_de_casa_ao_byte() {
 /// em cada tique e a faixa seguinte esperava por um tique que o encontrasse em casa (nunca: o resto ficou Simples).
 #[test]
 fn a_divida_cheia_acaba_com_a_agua_a_correr() {
-    let (_, igual, drenou) =
-        solta_com("Oil/Flat/Filbert.ph2d-brush.png", 640, 360, Some(64 * 64), true);
+    let (_, igual, drenou) = solta_com(
+        "Oil/Flat/Filbert.ph2d-brush.png",
+        640,
+        360,
+        Some(64 * 64),
+        true,
+    );
     assert!(igual, "o repouso difere da composição de casa");
-    assert!(drenou, "a dívida Cheia não acabou em 1 s com a água a correr");
+    assert!(
+        drenou,
+        "a dívida Cheia não acabou em 1 s com a água a correr"
+    );
 }
 
 #[test]

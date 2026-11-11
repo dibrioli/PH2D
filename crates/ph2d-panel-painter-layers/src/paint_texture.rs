@@ -365,41 +365,14 @@ pub(crate) fn altura_do_preview(content_w: f32) -> f32 {
     (content_w * 0.5).clamp(56.0, 120.0) // LITERAL-PX-OK: preview-strip min/max height; CLAMP-OK: literais
 }
 
-/// Real-time preview of the active texture pattern: re-rendered each frame from the published snapshot
-/// (kind + params + size + offset) into a small buffer, then scale-blitted as one image. Grayscale by
-/// default; when the Color Ramp is on it is **ramp-coloured with the stop alpha** (translucent stops
-/// composite over a checker). Bounded resolution keeps it cheap; reflects every knob live.
-/// `image` is the slot's published luminance (heavy → out of the `Copy` snapshot): the Grain image for
-/// the Grain section, the Paper image for the Paper section, the Flow image for the Wash card's Flow.
-/// `pub(crate)` so `paint_watercolor` and `paint_watercolor_flow` reuse it.
-pub(crate) fn paint_texture_preview(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    brush: BrushSettings,
-    image: Option<(std::sync::Arc<Vec<u8>>, u32, u32)>,
-) -> f32 {
-    paint_texture_preview_com(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        brush,
-        image,
-        None,
-        ph2d_tool_painter::BRUSH_RAMP_ALPHA,
-    )
-}
-
 /// Um desenhista de pré-visualização no lugar do `render_texture_preview` — `(buffer RGBA, w, h)`.
 pub(crate) type Desenhista<'a> = &'a dyn Fn(&mut [u8], u32, u32);
 
-/// A [`paint_texture_preview`] com o padrão desenhado por `desenha` em vez do `render_texture_preview`
-/// — a MESMA faixa, moldura e resolução, para um padrão que o `TextureKind` não exprime (o Classic do
-/// Flow, BUGS #31). `None` é a `paint_texture_preview`.
+/// Real-time preview of the active texture pattern, re-rendered each frame from the published snapshot
+/// into a small buffer and scale-blitted (grayscale; ramp-coloured with the stop alpha when the Color
+/// Ramp is on). `image` is the slot's published luminance (Grain, Paper or Flow). `desenha` replaces
+/// the `render_texture_preview` for a pattern the `TextureKind` does not express (the Flow's Classic,
+/// BUGS #31); `None` draws the kind.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_texture_preview_com(
     ctx: &mut PaintCtx,

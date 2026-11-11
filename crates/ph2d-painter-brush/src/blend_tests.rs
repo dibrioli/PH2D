@@ -238,10 +238,15 @@ fn ryb_mix_endpoints_are_near_identity() {
 /// lei do Wet (`ph2d_pigment::espectral::mistura`, B32.1). Vermelho + azul nas duas ordens, pesos ¼ ½ ¾, tela opaca.
 #[test]
 fn o_digital_com_pigment_mistura_pela_lei_do_wet() {
-    let mut s = crate::BrushSpec::default();
-    s.pigment = true;
-    s.pigment_mix = 1.0;
-    let (r, b) = ([191.0 / 255.0, 0.0, 18.0 / 255.0], [23.0 / 255.0, 101.0 / 255.0, 179.0 / 255.0]);
+    let s = crate::BrushSpec {
+        pigment: true,
+        pigment_mix: 1.0,
+        ..Default::default()
+    };
+    let (r, b) = (
+        [191.0 / 255.0, 0.0, 18.0 / 255.0],
+        [23.0 / 255.0, 101.0 / 255.0, 179.0 / 255.0],
+    );
     for (baixo, cima) in [(r, b), (b, r)] {
         for a in [0.25_f32, 0.5, 0.75] {
             let dst = [baixo[0], baixo[1], baixo[2], 1.0];

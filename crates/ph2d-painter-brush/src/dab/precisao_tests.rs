@@ -242,12 +242,19 @@ fn com_o_tecto_largo_o_carimbo_chega_ao_alvo() {
         for n in ns {
             let alvo = 255.0 * (1.0 - flow).powi(n as i32);
             let largo = centro_largo(flow, n);
-            assert_eq!(largo, modelo(flow, n, true, true), "flow {flow} · {n}: modelo");
+            assert_eq!(
+                largo,
+                modelo(flow, n, true, true),
+                "flow {flow} · {n}: modelo"
+            );
             assert!(
                 (f32::from(largo) - alvo).abs() <= 1.0,
                 "flow {flow} · {n}: {largo} contra {alvo:.1}"
             );
-            assert!(f32::from(centro(flow, n).0) - alvo > 10.0 || n < 400, "flow {flow} · {n}: o u8 já não estanca?");
+            assert!(
+                f32::from(centro(flow, n).0) - alvo > 10.0 || n < 400,
+                "flow {flow} · {n}: o u8 já não estanca?"
+            );
         }
     }
 }

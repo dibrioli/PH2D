@@ -410,6 +410,8 @@ pub(super) fn janela_fora_do_neutro<T>(
 }
 
 impl<T> StoredMap<T> {
+    /// Só o `confine_report` (teste) lê as entradas: o `Confine` vai pela `janela_que_aparece` (B08c.M2 C1).
+    #[cfg(test)]
     pub(crate) fn entries(&self) -> impl Iterator<Item = &StoredEntry<T>> {
         self.entries.values()
     }

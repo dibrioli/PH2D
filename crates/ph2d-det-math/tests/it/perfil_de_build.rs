@@ -5,6 +5,10 @@ use std::hint::black_box;
 /// `RUSTFLAGS` à mão SUBSTITUI os `rustflags` do `.cargo/config.toml`: o binário volta ao x86-64 de 2003 em silêncio.
 #[test]
 #[cfg(target_arch = "x86_64")]
+#[expect(
+    clippy::assertions_on_constants,
+    reason = "o portão É sobre constantes de compilação: o cfg! do binário que o RUSTFLAGS decide"
+)]
 fn o_binario_e_x86_64_v2_e_o_rustflags_nao_o_apagou() {
     assert!(
         cfg!(target_feature = "sse4.2") && cfg!(target_feature = "popcnt"),

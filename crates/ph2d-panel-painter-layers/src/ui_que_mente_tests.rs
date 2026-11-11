@@ -28,7 +28,7 @@ fn uma_cor_escolhida_sai_uma_vez_enquanto_o_motor_nao_a_aplica() {
     host.store_mut().set_widget_color(sw, [10, 20, 30, 255]);
     let mut brush = crate::paint_brush::FALLBACK_BRUSH;
     brush.paper_color = [1.0, 1.0, 1.0];
-    let mut quadro = |host: &mut MockPanelHost, brush| {
+    let quadro = |host: &mut MockPanelHost, brush| {
         let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 360.0, 800.0);
         let layout = ph2d_editor_core::screens::HeroLayout::for_viewport(viewport);
         let mut scene = ph2d_vector::VectorScene::new();

@@ -48,14 +48,9 @@ fn a_captura_nao_herda_o_campo_opcional_desligado() {
     ] {
         let (p, limpo, opcionais) = as_duas(MEIO_DO_PRESET, &CAMPOS_DO_PINCEL, cap);
         assert!(
-            [
-                "pontas_rectas",
-                "dual",
-                "hose",
-                "size_max_px"
-            ]
-            .iter()
-            .all(|c| opcionais.iter().any(|o| o == c)),
+            ["pontas_rectas", "dual", "hose", "size_max_px"]
+                .iter()
+                .all(|c| opcionais.iter().any(|o| o == c)),
             "controlo ({via}): a base traz só {opcionais:?}"
         );
         assert_eq!(p.brush, limpo.brush, "{via} herdou da base");

@@ -68,15 +68,13 @@ mod cards_traco; // o cartão Stroke: só o título do Jitter capturado
 mod cards_watercolor;
 mod cards_wet; // o cartão Wet Paint em linhas de cartão
 mod composite_picker;
+mod cor_enviada;
 mod dropdown_popover;
 /// O nome do material do Real Oil que não cabe parte-se em duas linhas (W3 K9).
 pub mod duas_linhas;
 mod esmaecer; // a linha esmaecida: o controlo que depende de outro e agora não age (doc 46)
-mod cor_enviada;
 mod event;
 mod event_brush_forward;
-#[cfg(test)]
-mod ui_que_mente_tests;
 #[cfg(test)]
 mod foto_jitter_tests; // a foto do cartão Jitter, `#[ignore]` (dono 23/10)
 #[cfg(test)]
@@ -159,6 +157,8 @@ mod state_ramp;
 mod state_shape_cor; // a cor do Shape em duas camadas (prompt 38)
 mod state_wet_presets; // W1: a vista dos presets que a ponte publica
 pub mod stroke_method_offer; // the Method dropdown's narrowing law — pure, gate-tested from `tests/`
+#[cfg(test)]
+mod ui_que_mente_tests;
 
 pub use preview_pino::{a11y_do_pino, preview_fixada, rect_da_preview, rect_do_pino};
 pub use state::{

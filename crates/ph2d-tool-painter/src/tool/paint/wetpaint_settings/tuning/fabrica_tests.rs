@@ -27,7 +27,10 @@ fn defaults_do_wet_e_do_reset_coincidem() {
             diferem.push((def.key, da_linha, do_grupo, do_nan, fabrica));
         }
     }
-    assert!(diferem.is_empty(), "(knob, linha, grupo, NaN, fábrica): {diferem:?}");
+    assert!(
+        diferem.is_empty(),
+        "(knob, linha, grupo, NaN, fábrica): {diferem:?}"
+    );
 }
 
 /// B35.6: o `Tuning::set` do motor e o [`WetKnobs::set`] da ferramenta escrevem o MESMO número (faixa e degrau),
@@ -47,7 +50,11 @@ fn tuning_set_e_wetknobs_set_tem_a_mesma_lei() {
             }
         }
     }
-    assert!(diferem.is_empty(), "(knob, escrito, motor, app): {:?}", &diferem[..diferem.len().min(6)]);
+    assert!(
+        diferem.is_empty(),
+        "(knob, escrito, motor, app): {:?}",
+        &diferem[..diferem.len().min(6)]
+    );
 }
 
 /// B35.7: a caixa de marcar de um interruptor do Tuning manda o `Click` do chip dele; a ferramenta inverte o knob.
@@ -61,5 +68,8 @@ fn o_clique_na_caixa_do_interruptor_inverte_o_knob() {
     assert_eq!(t.paint.wetpaint.knobs.get(Knob::StrokeFilm), 1.0 - antes);
     assert!(t.route_wet_tuning_click(id));
     assert_eq!(t.paint.wetpaint.knobs.get(Knob::StrokeFilm), antes);
-    assert!(!t.route_wet_tuning_click(crate::ids::wet_tuning_chip_id("drag")), "chip de número não é caixa");
+    assert!(
+        !t.route_wet_tuning_click(crate::ids::wet_tuning_chip_id("drag")),
+        "chip de número não é caixa"
+    );
 }

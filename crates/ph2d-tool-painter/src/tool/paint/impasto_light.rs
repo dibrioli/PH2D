@@ -227,7 +227,8 @@ impl PainterTool {
                 let mut alt = vec![0.0f32; fw * (n + 2)];
                 let mut cob = vec![0.0f32; fw * n];
                 let mut mats: Vec<MaterialBytes> = vec![[0; 7]; fw * n];
-                let mut pap = super::impasto_luz_dobra::separa_o_papel(&fields).then(|| vec![0.0f32; alt.len()]);
+                let mut pap = super::impasto_luz_dobra::separa_o_papel(&fields)
+                    .then(|| vec![0.0f32; alt.len()]);
                 dobra_da_faixa(
                     &fields,
                     gy0,

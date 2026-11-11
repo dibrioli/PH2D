@@ -3,7 +3,7 @@
 //! No máximo (`1`) a borracha limpa o miolo do traço.
 
 use super::*;
-use crate::painter::{Engine, Tool};
+use crate::painter::Engine;
 
 const W: usize = 160;
 const H: usize = 120;

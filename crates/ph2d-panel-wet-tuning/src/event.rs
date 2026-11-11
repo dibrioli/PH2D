@@ -52,7 +52,9 @@ pub(crate) fn apply_event(
             true
         }
         // An on/off row's checkbox (B35.7): the tool flips the knob.
-        WidgetEvent::Click(id) if rows::row_for(id).is_some_and(|r| r.interruptor() && r.chip == id) => {
+        WidgetEvent::Click(id)
+            if rows::row_for(id).is_some_and(|r| r.interruptor() && r.chip == id) =>
+        {
             forward(host, PanelEvent::Click(id));
             true
         }

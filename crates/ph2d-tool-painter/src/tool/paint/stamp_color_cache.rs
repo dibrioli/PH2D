@@ -15,8 +15,8 @@ use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
     BrushSpec, ColorStampMask, Dab, Falloff, FalloffCurve, FusedDab, ImageRgb, StrokeMethod,
-    TextureSettings, accumulate_color_stamps_fused_batch, blend_over_pigment_modo, blit_color_stamp,
-    render_color_stamp_mask, render_ramp_color_stamp,
+    TextureSettings, accumulate_color_stamps_fused_batch, blend_over_pigment_modo,
+    blit_color_stamp, render_color_stamp_mask, render_ramp_color_stamp,
 };
 use ph2d_painter_effects::{BlendMode, apply_blend};
 use std::sync::Arc;

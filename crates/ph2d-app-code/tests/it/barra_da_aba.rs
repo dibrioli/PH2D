@@ -438,3 +438,61 @@ fn o_submenu_fecha_por_outra_linha_pelo_esc_e_por_fora() {
     let p3 = m.docs().bar_painted();
     assert!(p3.popup.is_none() && p3.sub.is_none(), "fora fecha os dois");
 }
+
+/// ⭐ 11/11: `View ▸ Card Style ▸` é o 2.º submenu (Sheet, Cards, Strip; ✓ no em vigor, de fábrica Sheet);
+/// escolher muda o estilo e o ✓ segue-o. As linhas soltas «Card Style: …» saíram do View.
+#[test]
+fn o_submenu_card_style_do_view_escolhe_o_estilo() {
+    use ph2d_app_code::commands::{CMD_CARD_CARDS, CMD_CARD_SHEET, CMD_CARD_STRIP};
+    use ph2d_app_code::tab_menu::ROW_CARD_STYLE;
+    let (mut m, id) = aberta();
+    let abre = |m: &mut Mesa| {
+        let view = titulo(m, TabMenu::View);
+        clica(m, id, view);
+        let p = m.docs().bar_painted().clone();
+        let mae = p
+            .rows
+            .iter()
+            .find(|r| r.0 == ROW_CARD_STYLE)
+            .expect("a linha")
+            .1;
+        let (x, y) = centro(mae);
+        m.rato(id, x, y);
+        m.pinta(id);
+        (p, m.docs().bar_painted().sub.clone().expect("o submenu"))
+    };
+    let (p, sub) = abre(&mut m);
+    let estilos = [CMD_CARD_SHEET, CMD_CARD_CARDS, CMD_CARD_STRIP];
+    assert!(
+        estilos.iter().all(|c| p.rows.iter().all(|r| r.0 != *c)),
+        "nada solto"
+    );
+    assert_eq!(sub.rows.iter().map(|r| r.0).collect::<Vec<_>>(), estilos);
+    assert_eq!(sub.checked, [CMD_CARD_SHEET], "de fábrica");
+    for i in [1, 2, 0] {
+        let (_, sub) = if i == 1 {
+            (p.clone(), sub.clone())
+        } else {
+            abre(&mut m)
+        };
+        let (x, y) = centro(sub.rows[i].1);
+        m.rato(id, x, y);
+        clica(&mut m, id, sub.rows[i].1);
+        assert!(m.docs().bar_painted().popup.is_none(), "fechou");
+        let (_, depois) = abre(&mut m);
+        assert_eq!(depois.checked, [estilos[i]]);
+        m.tecla(
+            id,
+            ph2d_editor_core::doc_surface::Key::Escape,
+            Modifiers::default(),
+            None,
+        );
+        m.tecla(
+            id,
+            ph2d_editor_core::doc_surface::Key::Escape,
+            Modifiers::default(),
+            None,
+        );
+        m.pinta(id);
+    }
+}

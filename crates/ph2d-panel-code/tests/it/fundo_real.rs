@@ -124,3 +124,21 @@ fn os_menus_da_barra_escurecem_pelo_fundo_debaixo_de_cada_linha() {
     force_cards_on_this_thread(None);
     assert!(distingue > 0, "nenhum tema distingue o fundo real do poço");
 }
+
+/// A linha acesa assenta no acento, a apagada no fundo do popover (o que o escurecimento lê).
+#[test]
+fn a_linha_acesa_assenta_no_acento_e_a_apagada_no_popover() {
+    use ph2d_panel_code::tab_bar::menu::row_bg;
+    for theme in Theme::ALL {
+        assert_eq!(
+            row_bg(true, &theme),
+            resolve(ColorToken::Accent, theme),
+            "{theme:?}"
+        );
+        assert_eq!(
+            row_bg(false, &theme),
+            Superficie::de(theme).fundo(),
+            "{theme:?}"
+        );
+    }
+}

@@ -3,7 +3,9 @@
 //! A mecânica é a dos menus de sistema (macOS, GTK, Windows): a linha com submenu tem a seta `›` à
 //! direita; **pairar** sobre ela abre o submenu ao lado (fica acesa enquanto ele está aberto);
 //! pairar noutra linha do menu fecha-o; o rato pode sair dos dois sem os fechar. As escolhas são
-//! um-entre-N: a em vigor leva o `✓` na coluna da esquerda (em acento). Escolher fecha tudo; o Esc
+//! um-entre-N: a em vigor leva o `✓` na coluna da esquerda (em acento). A caminho do submenu aberto
+//! (dentro do triângulo entre o ponto anterior e a borda dele) o rato passa por cima de outras linhas
+//! sem o fechar — a «mira» dos menus de sistema. Escolher fecha tudo; o Esc
 //! fecha **um** nível. O submenu abre à direita; se não cabe até à borda da barra, à esquerda; se
 //! nem assim, encosta à borda (fica sempre dentro da aba, onde o rato chega).
 
@@ -75,7 +77,7 @@ fn row_inks(hot: bool, live: bool) -> (ColorToken, ColorToken) {
 }
 
 /// O fundo sob uma linha: o acento se acesa, senão o do popover (o escurecimento lê-o).
-fn row_bg(hot: bool, theme: &Theme) -> ph2d_vector::Color {
+pub fn row_bg(hot: bool, theme: &Theme) -> ph2d_vector::Color {
     if hot {
         resolve(ColorToken::Accent, *theme)
     } else {
@@ -341,8 +343,14 @@ impl<M: Copy + PartialEq> TabBar<M> {
             self.open = Some(m);
             self.sub = None;
         }
+        let from = self.last.replace((x, y));
         if let Some(at) = self.sub_row_at(x, y) {
             self.hover = at;
+            return true;
+        }
+        if let (Some(p), Some(s)) = (from, self.painted.sub.as_ref())
+            && aims_at(p, (x, y), s.popup)
+        {
             return true;
         }
         self.hover = self.row_at(x, y);
@@ -360,4 +368,20 @@ impl<M: Copy + PartialEq> TabBar<M> {
         }
         self.open.take().is_some()
     }
+}
+
+/// `to` está no triângulo entre `from` e a borda de `sub` virada para ele (a mira até ao submenu)?
+fn aims_at(from: (f32, f32), to: (f32, f32), sub: Rect) -> bool {
+    let edge = if from.0 <= sub.x {
+        sub.x
+    } else {
+        sub.x + sub.w
+    };
+    let (a, b) = ((edge, sub.y), (edge, sub.y + sub.h));
+    let side = |p: (f32, f32), q: (f32, f32), r: (f32, f32)| {
+        (q.0 - p.0) * (r.1 - p.1) - (q.1 - p.1) * (r.0 - p.0)
+    };
+    let (d1, d2, d3) = (side(from, a, to), side(a, b, to), side(b, from, to));
+    let moved = (to.0 - from.0).abs() + (to.1 - from.1).abs() > 0.0;
+    moved && ((d1 >= 0.0 && d2 >= 0.0 && d3 >= 0.0) || (d1 <= 0.0 && d2 <= 0.0 && d3 <= 0.0))
 }

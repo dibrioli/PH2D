@@ -161,3 +161,63 @@ fn a_linha_mae_nao_corre_nada_e_o_esc_fecha_um_nivel() {
     assert!(bar.escape() && bar.open.is_none());
     assert!(!bar.escape());
 }
+
+const S2: ph2d_a11y::NodeId = hash_node_id("t_sub2");
+
+/// A mira (dois submenus vizinhos, como o View: Card Style ▸ e Text rendering ▸): ir na diagonal da
+/// mãe de cima até ao submenu dela passa por cima da mãe de baixo SEM trocar; descer a direito troca.
+#[test]
+fn a_caminho_do_submenu_a_linha_de_baixo_nao_o_troca() {
+    let mut ts = TextSystem::without_system_fonts();
+    let its = vec![
+        MenuItem::Sub {
+            id: SUB,
+            name: "Card Style".into(),
+            rows: vec![(C1, "Sheet".into(), true), (C2, "Cards".into(), false)],
+        },
+        MenuItem::Sub {
+            id: S2,
+            name: "Text rendering".into(),
+            rows: vec![(A, "Default".into(), true)],
+        },
+    ];
+    let pinta = |bar: &mut TabBar<u8>, ts: &mut TextSystem| {
+        let (mut scene, theme) = (VectorScene::new(), Theme::default());
+        let crumb = Crumb {
+            script: "a.luau".into(),
+            func: None,
+            line: 1,
+        };
+        let r = Rect::new(0.0, 0.0, 900.0, height());
+        bar.paint(r, &[(0u8, "View")], &crumb, &mut scene, ts, &theme);
+        bar.paint_popup(&its, &mut scene, ts, &theme, (0, 0));
+    };
+    let mut bar = TabBar::<u8>::default();
+    bar.open = Some(0);
+    pinta(&mut bar, &mut ts);
+    let row = |bar: &TabBar<u8>, id| bar.painted.rows.iter().find(|r| r.0 == id).expect("mãe").1;
+    let (cima, baixo) = (row(&bar, SUB), row(&bar, S2));
+    let p0 = (cima.x + cima.w * 0.6, cima.y + cima.h * 0.5);
+    assert!(bar.hover_move(p0.0, p0.1));
+    pinta(&mut bar, &mut ts);
+    let sub = bar.painted.sub.clone().expect("aberto").popup;
+    // Na diagonal até ao fundo do submenu: o próximo ponto cai na mãe de baixo, dentro do triângulo.
+    let alvo = (sub.x, sub.y + sub.h * 0.9);
+    let t = (baixo.y + baixo.h * 0.3 - p0.1) / (alvo.1 - p0.1);
+    let p1 = (p0.0 + (alvo.0 - p0.0) * t, baixo.y + baixo.h * 0.3);
+    assert!(
+        baixo.contains(p1.0, p1.1),
+        "controlo: o ponto está na mãe de baixo"
+    );
+    assert!(bar.hover_move(p1.0, p1.1));
+    assert_eq!(bar.sub, Some(SUB), "a mira segura o submenu");
+    pinta(&mut bar, &mut ts);
+    // A direito para baixo (fora do triângulo): troca.
+    let mut bar = TabBar::<u8>::default();
+    bar.open = Some(0);
+    pinta(&mut bar, &mut ts);
+    assert!(bar.hover_move(p0.0, p0.1));
+    pinta(&mut bar, &mut ts);
+    assert!(bar.hover_move(p0.0 - 30.0, baixo.y + baixo.h * 0.5));
+    assert_eq!(bar.sub, Some(S2), "fora da mira troca");
+}

@@ -18,6 +18,10 @@ pub type Bar = ph2d_panel_code::tab_bar::TabBar<TabMenu>;
 /// O que a barra pintou no último quadro.
 pub type BarPainted = ph2d_panel_code::tab_bar::BarPainted<TabMenu>;
 
+/// A linha `View ▸ Card Style` (o submenu do estilo do quadro do depurador).
+pub const ROW_CARD_STYLE: ph2d_a11y::NodeId =
+    ph2d_tool_registry::hash_node_id("code_menu_card_style");
+
 /// A linha `View ▸ Text rendering` (a do submenu dos modos da letra do código).
 pub const ROW_TEXT_RENDERING: ph2d_a11y::NodeId =
     ph2d_tool_registry::hash_node_id("code_menu_text_rendering");
@@ -29,7 +33,8 @@ pub fn menu_titles() -> [(TabMenu, &'static str); 6] {
 }
 
 /// As linhas do menu `m` com os interruptores em `state` e o jogo em `stop`: o Run leva a nota do
-/// Restart Code Assistant debaixo dele; o View acaba no submenu `Text rendering ▸` (dono 10/11).
+/// Restart Code Assistant debaixo dele; o View acaba nos submenus `Card Style ▸` e `Text rendering ▸`
+/// (escolhas um-entre-N; dono 10/11 e 11/11).
 #[must_use]
 pub fn menu_items(
     m: TabMenu,
@@ -53,6 +58,20 @@ pub fn menu_items(
         }
     }
     if m == TabMenu::View {
+        use crate::commands::{CMD_CARD_CARDS, CMD_CARD_SHEET, CMD_CARD_STRIP};
+        use ph2d_code_debugcard::CardStyle::{Cards, Sheet, Strip};
+        let styles = [
+            (CMD_CARD_SHEET, "code.menu.card.sheet", Sheet),
+            (CMD_CARD_CARDS, "code.menu.card.cards", Cards),
+            (CMD_CARD_STRIP, "code.menu.card.strip", Strip),
+        ];
+        out.push(MenuItem::Sub {
+            id: ROW_CARD_STYLE,
+            name: ph2d_i18n::tr("code.menu.card_style").to_owned(),
+            rows: styles
+                .map(|(id, k, s)| (id, ph2d_i18n::tr(k).to_owned(), state.card_style == s))
+                .to_vec(),
+        });
         out.push(MenuItem::Sub {
             id: ROW_TEXT_RENDERING,
             name: ph2d_i18n::tr("code.menu.text_rendering").to_owned(),
@@ -228,6 +247,28 @@ impl CodeDocs {
             return true;
         }
         false
+    }
+
+    /// A `k`-ésima escolha do menu aberto (o smoke): as linhas que valem e, no lugar de um submenu, as
+    /// escolhas dele, pela ordem. `Some(mãe)` = está num submenu.
+    pub(crate) fn tab_leaf(
+        &self,
+        id: u64,
+        k: usize,
+    ) -> Option<(ph2d_a11y::NodeId, Option<ph2d_a11y::NodeId>)> {
+        let m = self.bar.open?;
+        let doc = self.docs.iter().find(|d| d.script.0 == id);
+        let state = doc.map(|d| self.command_state(d)).unwrap_or_default();
+        menu_items(m, state, self.debug.game_stop)
+            .into_iter()
+            .flat_map(|it| match it {
+                MenuItem::Cmd { id, live: true, .. } => vec![(id, None)],
+                MenuItem::Sub { id: p, rows, .. } => {
+                    rows.into_iter().map(|r| (r.0, Some(p))).collect()
+                }
+                _ => Vec::new(),
+            })
+            .nth(k)
     }
 
     /// O que a barra pintou (os testes clicam por aqui).

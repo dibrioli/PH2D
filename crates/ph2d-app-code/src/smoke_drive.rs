@@ -312,6 +312,15 @@ fn click(docs: &mut CodeDocs, tab: u64, (x, y): (f32, f32), mods: Modifiers) {
 
 /// Um gesto que entra num quadro; `false` = o alvo ainda não está pintado (tenta-se no seguinte).
 fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
+    // Uma escolha dentro de um submenu (`View ▸ Card Style ▸ Cards`): o índice conta as escolhas pela
+    // ordem, como as linhas soltas de antes; corre o comando dela e fecha o menu, como o clique.
+    if let Gesture::ClickTabMenuRow(k) = g
+        && let Some((cmd, Some(_))) = docs.tab_leaf(id.0, k)
+    {
+        docs.open_tab_menu(None);
+        let _ = ph2d_editor_core::doc_surface::DocumentSurface::command(docs, id.0, cmd);
+        return true;
+    }
     match g {
         Gesture::Go { needle, ahead } => {
             let Some(text) = docs.text_of(id) else {
@@ -400,7 +409,10 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
                 Gesture::ClickDebug(k) => {
                     doc.and_then(|d| d.debug.view.painted.buttons.get(k).map(|b| b.1))
                 }
-                Gesture::ClickTabMenuRow(k) => bar.rows.get(k).map(|r| r.1),
+                Gesture::ClickTabMenuRow(k) => docs
+                    .tab_leaf(id.0, k)
+                    .and_then(|(c, _)| bar.rows.iter().find(|r| r.0 == c))
+                    .map(|r| r.1),
                 Gesture::ClickDebugRow(key) => doc.and_then(|d| d.debug.view.chevron_of(key)),
                 Gesture::ClickMark { needle } => doc.and_then(|d| d.mark_rect_of(needle)),
                 Gesture::ClickProblem(k) => band.and_then(|b| b.problems.get(k).map(|p| p.rect)),

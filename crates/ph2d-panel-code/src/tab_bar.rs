@@ -69,6 +69,8 @@ pub struct TabBar<M> {
     pub painted: BarPainted<M>,
     /// A dica sob o rato (índice em `painted.tips`) e desde quando.
     pub tip: Option<(usize, u128)>,
+    /// O último ponto do rato com o menu aberto (a mira até ao submenu, [`menu`]).
+    pub last: Option<(f32, f32)>,
 }
 
 impl<M> Default for TabBar<M> {
@@ -79,6 +81,7 @@ impl<M> Default for TabBar<M> {
             sub: None,
             painted: BarPainted::default(),
             tip: None,
+            last: None,
         }
     }
 }

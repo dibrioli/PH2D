@@ -90,15 +90,18 @@ pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool) -> bool {
     if doc.snap.play_running || doc.store.focus_id().is_some() || doc.list.typing.is_some() {
         return false;
     }
+    // Ctrl/Alt, os acordes e o F5 passam: o Ctrl+Z desfaz e o F5 dá Play mesmo com o Try it aberto. ⛔ A MESMA
+    // decisão diz o que o banco guarda (e o desenho acende): o F do Alt+F passa e não acende; o do AltGr+F acende.
     let kb = &mut doc.tryit.bench.keyboard;
-    if pressed {
-        kb.handle_key_down(key);
-    } else {
-        kb.handle_key_up(key);
-    }
-    // Ctrl/Alt, os acordes e o F5 passam: o Ctrl+Z desfaz e o F5 dá Play mesmo com o Try it aberto.
     let chord = ph2d_input::editor_keys::chord_keys(kb.iter_held(), doc.alt);
-    !crate::raw_keys::never_binds(key, chord)
+    let takes = !crate::raw_keys::never_binds(key, chord);
+    // Os modificadores ficam no banco: é por eles que a letra seguinte sabe que é acorde.
+    if !pressed {
+        kb.handle_key_up(key);
+    } else if takes || crate::raw_keys::is_modifier(key) {
+        kb.handle_key_down(key);
+    }
+    takes
 }
 
 /// **Antes do foco da aba** (o `doc.rs` chama-a primeiro): à escuta da tecla que abre a tela, TODA tecla é dela

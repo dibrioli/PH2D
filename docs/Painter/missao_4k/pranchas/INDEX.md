@@ -123,6 +123,14 @@ Hard Round e Sketch Pencil com Color mixing, tamanho 200. O pincel grande agora 
 
 Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × Hard Round/Sketch Pencil, em [B28.3/](B28.3/).
 
+## B36 — Pincel Oil Wash
+
+Óleo diluído (Dilution 0,6, pasta Oil/Flat) na tela inclinada, 15 s, ao lado do Filbert. O Oil Wash escorre mais (branco e papel: 77 × 63 px em 1080p, 143 × 126 em 4K); sobre os blocos de cor os dois descem igual.
+
+![B36](B36/4k_papel_filbert_oil_wash.png)
+
+Todas: 3 fundos × 1080p/4K em [B36/](B36/).
+
 ## As 10 decisões do dono (§0 do prompt da missão)
 
 | # | Decisão | Bloco | Prancha |
@@ -131,7 +139,7 @@ Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × Hard Round/Sketch Pencil,
 | 2 | Luz simples do Óleo Real só com o pincel na tela | B14 | [B14b](#b14b--óleo-real-luz-simples-enquanto-o-pincel-está-na-tela) |
 | 3 | Guardar a tinta com mais precisão | B29 | ainda não feita (aberto) |
 | 4 | Arrumar os controles do Wet | B35 | só controles; o que muda na tela (reset/rótulos) ainda aberto |
-| 5 | Pincel Oil Wash | B36 | ainda não feito (aberto) |
+| 5 | Pincel Oil Wash | B36 | [B36](#b36--pincel-oil-wash) |
 | 6 | Aparência acompanha o tamanho da tela | B34 | ainda não feita (aberto) |
 | 7a | Mistura de cores do Wet (vermelho + azul) | B32 | ainda não feita (aberto) |
 | 7b | Papel sem repetição a 256 px | B33 | [B33](#b33--papel-sem-repetição-a-cada-256-px) |

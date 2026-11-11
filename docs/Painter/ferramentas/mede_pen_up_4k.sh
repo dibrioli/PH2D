@@ -34,6 +34,9 @@ if [ "$1" = matriz ]; then
   PLACA_ENV=(VK_DRIVER_FILES=/usr/share/vulkan/icd.d/radeon_icd.json VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
     MESA_VK_WSI_DEBUG=sw __GLX_VENDOR_LIBRARY_NAME=mesa __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json)
   [ "$PLACA" = app ] && PLACA_ENV=()
+  # A VEZ da placa do princípio ao fim da matriz ($PPID do vez-da-placa = este script): sem ela o porteiro solta a
+  # placa entre lançamentos, outra árvore entra e o app seguinte sai `win NENHUMA` (medido B08c, 10/11).
+  bash "$R/scripts/vez-da-placa.sh" || exit 75
   for _ in $(seq 1 40); do [ -e "/tmp/.X11-unix/X${D#:}" ] || break; sleep 0.25; done
   Xvfb $D -screen 0 1600x1000x24 >/dev/null 2>&1 & XV=$!
   sleep 1

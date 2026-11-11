@@ -5,6 +5,7 @@
 
 use std::cell::Cell;
 
+use ph2d_app_painter::fila_da_caneta::Evento;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
 use ph2d_tool_painter::PainterTool;
 
@@ -107,7 +108,7 @@ impl App {
     }
 
     /// CursorMoved over an open stroke → [`PointerPhase::Move`]; re-stamp methods are BUFFERED (latest
-    /// wins, [`Self::flush_pending_painter_move`]); incremental ones deliver per event.
+    /// wins, [`Self::flush_pending_painter_move`]); incremental ones are QUEUED (every event, B27.1).
     pub(crate) fn painter_canvas_move(&mut self, px: f32, py: f32, pressure: f32) -> bool {
         if !STROKE_ACTIVE.with(Cell::get) {
             // HOVER: feeds the brush ring's orientation; consumes nothing.
@@ -120,20 +121,28 @@ impl App {
         }
         // A mid-stroke method flip must not leave a stale buffered move for the flush.
         self.pending_painter_move = None;
-        // Timed so the HUD's "paint ms" counts per-event stamps too.
-        let t0 = std::time::Instant::now();
         STROKE_PRESSURE.with(|s| s.set(pressure));
-        let delivered = self.deliver_canvas_pointer(px, py, pressure, PointerPhase::Move);
-        self.paint_stamp_us_this_frame = self
-            .paint_stamp_us_this_frame
-            .saturating_add(t0.elapsed().as_micros() as u64);
-        if delivered {
-            self.paint_stamps_this_frame = self.paint_stamps_this_frame.saturating_add(1);
-        } else {
-            // Painter no longer active / selection gone — abandon the stroke.
-            STROKE_ACTIVE.with(|s| s.set(false));
-        }
-        delivered
+        ph2d_app_painter::paint_perf::stamp_pointer();
+        ph2d_app_painter::fila_da_caneta::enfileira(self.evento_vivo(px, py, pressure));
+        true
+    }
+
+    /// Pressão, tilt e modificadores como a entrega os leria AGORA.
+    fn evento_vivo(&self, px: f32, py: f32, pressure: f32) -> Evento {
+        let m = self.modifiers;
+        let mods = [m.shift_key(), m.control_key() || m.super_key(), m.alt_key()];
+        Evento::novo((px, py), pressure, ph2d_pen::porta::tinta().tilt(), mods)
+    }
+
+    /// BARREIRA (todo `WindowEvent` ≠ `CursorMoved`, o `Up`) e topo do quadro: cada Move enfileirado, na
+    /// ordem; um recusado abandona o traço (`false`). Abaixo dela, o `window_event` é a tabela pura (PR 9b).
+    pub(crate) fn drena_a_caneta(&mut self) -> bool {
+        let fila = ph2d_app_painter::fila_da_caneta::drena;
+        let d = fila(|e| self.entrega(e, PointerPhase::Move, None, false));
+        self.paint_stamp_us_this_frame = self.paint_stamp_us_this_frame.saturating_add(d.us);
+        self.paint_stamps_this_frame = self.paint_stamps_this_frame.saturating_add(d.entregues);
+        STROKE_ACTIVE.with(|s| s.set(s.get() && d.vivo)); // morto = Painter/seleção já não estão
+        d.vivo
     }
 
     /// The Painter is in a method whose Moves may be coalesced to one delivery per frame.
@@ -210,8 +219,9 @@ impl App {
 
     /// Deliver the buffered painter Move, if any — once per frame and before a pen-up.
     pub(crate) fn flush_pending_painter_move(&mut self) {
-        let Some((px, py, pressure)) = self.pending_painter_move.take() else {
-            return; // nothing buffered — incremental stamps (if any) are timed in `painter_canvas_move`
+        let vivo = self.drena_a_caneta();
+        let Some((px, py, pressure)) = self.pending_painter_move.take().filter(|_| vivo) else {
+            return; // nothing buffered — queued stamps are timed in `drena_a_caneta`
         };
         let t0 = std::time::Instant::now();
         STROKE_PRESSURE.with(|s| s.set(pressure));
@@ -259,10 +269,12 @@ impl App {
         phase: PointerPhase,
         colordrop: Option<&str>,
     ) -> bool {
-        // Modifiers read before the `gfx` borrow; forwarded out-of-band (`CanvasPointer` has none).
-        let alt = self.modifiers.alt_key();
-        let shift = self.modifiers.shift_key();
-        let ctrl = self.modifiers.control_key() || self.modifiers.super_key();
+        self.entrega(self.evento_vivo(px, py, pressure), phase, colordrop, true)
+    }
+
+    /// A entrega de um [`Evento`]; `chega` = carimbar a chegada aqui (a fila carimbou-a no handler).
+    fn entrega(&mut self, e: Evento, phase: PointerPhase, cd: Option<&str>, chega: bool) -> bool {
+        let ((px, py), pressure, colordrop) = (e.pos, e.pressure, cd);
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -366,10 +378,10 @@ impl App {
         let ev = CanvasPointer {
             pos: [u * iw as f32, v * ih as f32],
             pressure,
-            tilt: ph2d_pen::porta::tinta().tilt(),
+            tilt: e.tilt,
             phase,
         };
-        super::painter_canvas_mods::forward(painter, shift, ctrl, alt);
+        super::painter_canvas_mods::forward(painter, e.shift, e.ctrl, e.alt);
         // Grid snap (only when ON) for shape point placement: nearest grid node in WORLD → image px.
         let grid_snap = if gfx
             .hero_screen
@@ -393,7 +405,7 @@ impl App {
         painter.set_grid_snap(grid_snap);
         // Carimbo da chegada DEPOIS das guardas (um Down recusado nunca vira pixel) e o custo da
         // entrega, que corre fora do `run_render_frame`.
-        ph2d_app_painter::paint_perf::stamp_pointer();
+        chega.then(ph2d_app_painter::paint_perf::stamp_pointer);
         let t0 = ph2d_app_painter::paint_perf::on().then(std::time::Instant::now);
         let phase = ph2d_app_painter::paint_perf::InputPhase::of(ev.phase);
         let consumed = painter.on_canvas_pointer(ev);

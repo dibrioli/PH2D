@@ -46,6 +46,8 @@ pub mod canvas_map;
 // ─────────────────────────────────────────────────────────────────────────
 /// Os documentos do Painter no ficheiro de projecto (a metade sem placa da porta da shell).
 pub mod documentos_no_projecto;
+/// A fila da caneta: o handler enfileira, o quadro drena (B27.1).
+pub mod fila_da_caneta;
 /// ⭐⭐ Image ▸ Paint — o modo que esta família declara (spec/06 F2).
 pub mod image_edit_mode;
 /// As macros do Painter em cena (ADR-0186, W4 item 5.5 D).

@@ -130,8 +130,8 @@ impl crate::App {
             self.last_pointer = (px, py);
             if matches!(p, Passo::Desce(_)) {
                 self.painter_canvas_down(px, py, 1.0);
-            } else {
-                self.painter_canvas_move(px, py, 1.0);
+            } else if self.painter_canvas_move(px, py, 1.0) {
+                self.drena_a_caneta(); // o passo seguinte pode ler a tela
             }
         }
     }
@@ -201,7 +201,7 @@ impl crate::App {
                     let ok = if matches!(g, Gesto::Desce(_)) {
                         self.painter_canvas_down(px, py, 1.0)
                     } else {
-                        self.painter_canvas_move(px, py, 1.0)
+                        self.painter_canvas_move(px, py, 1.0) && self.drena_a_caneta()
                     };
                     if !ok {
                         regista(&format!("the canvas refused {g:?} at ({px:.0}, {py:.0})"));

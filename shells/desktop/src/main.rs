@@ -911,7 +911,7 @@ impl ApplicationHandler for App {
         if let (Some(g), Some(w)) = (self.gfx.as_mut(), self.window.as_ref()) {
             g.cursores.prepara(event_loop, w.scale_factor(), g.theme);
         }
-        // A pure dispatch table (PR 9b): one arm here + one `input_dispatch::App::on_<arm>` there.
+        let _ = matches!(event, WindowEvent::CursorMoved { .. }) || self.drena_a_caneta(); // B27.1
         match event {
             // Com o jogo no palco, fechar pára o jogo; o app só fecha depois (dono 07/11).
             WindowEvent::CloseRequested

@@ -171,6 +171,8 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("canvas_wet_rect", SESSAO),
     ("canvas_wet_snapshot", SESSAO),
     ("canvas_wet_carry", SESSAO),
+    ("canvas_wet_rev", CACHE),
+    ("wet_veu", CACHE),
     ("wet_preview_intensity", UI),
     (
         "wet_session_wetness",

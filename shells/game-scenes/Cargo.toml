@@ -45,6 +45,8 @@ wgpu = "30.0.1"
 vello = "0.11.0"
 half = "2"
 ph2d-a11y = { path = "../../crates/ph2d-a11y" }
+# A P5: o hero trata o movimento físico do condutor (`handle_pointer_fisico` pede a arena do quadro).
+bumpalo = "3"
 ph2d-asset = { path = "../../crates/ph2d-asset" }
 ph2d-core = { path = "../../crates/ph2d-core" }
 ph2d-ecs = { path = "../../crates/ph2d-ecs" }

@@ -7788,6 +7788,7 @@ dependencies = [
 name = "ph2d-host-game-scenes"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "half",
  "ph2d-a11y",
  "ph2d-app-audio",
@@ -8216,6 +8217,7 @@ dependencies = [
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
+ "ph2d-host",
  "ph2d-input",
  "ph2d-input-map-editor",
  "ph2d-player-controls",

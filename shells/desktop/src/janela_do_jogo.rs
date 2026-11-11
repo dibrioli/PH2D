@@ -1,10 +1,9 @@
 //! ⭐ **O palco do jogo** (GameEngineFuncional R0b/R0c, `docs/GameEngineFuncional/04_R0_N0_plano.md`).
 //!
 //! Em ecrã cheio e numa janela o jogo é visto como o jogador o vê: o canvas ocupa tudo (o zen) e a
-//! câmara é a do jogo. Na janela o app MUDA-SE para ela enquanto o jogo corre — a janela, o host e a
-//! surface trocam de lugar com os do editor uma vez ao abrir e outra ao fechar, e os alvos seguem pela
-//! porta de resize de sempre. O quadro desenha-se uma só vez, lá; o editor fica com a última imagem
-//! (a vista dupla ao vivo é o R1 do plano).
+//! câmara é a do jogo. Na janela o app MUDA-SE para ela enquanto o jogo corre — a janela, o host e a surface trocam
+//! de lugar com os do editor uma vez ao abrir e outra ao fechar, e os alvos seguem pela porta de resize de sempre. O
+//! quadro desenha-se uma só vez, lá; o editor fica com a última imagem (a vista dupla ao vivo é o R1 do plano).
 
 use ph2d_editor_core::game_stage::{GameRun, GameStage};
 use ph2d_host::PlatformHost;
@@ -89,8 +88,7 @@ impl crate::App {
         }
     }
 
-    /// `PH2D_GAME_SMOKE` (o jogo de plataforma do plano 03): a cena e a física ligada, com o relógio
-    /// PARADO — o Play é do dono.
+    /// `PH2D_GAME_SMOKE` (o jogo de plataforma do plano 03): a cena e a física ligada, com o relógio PARADO.
     pub(crate) fn game_smoke(&mut self) {
         let Some(nivel) = ph2d_app_game::smoke::armed_level() else {
             return;
@@ -239,6 +237,9 @@ impl crate::App {
             }
         }
         let _ = mapa.and_then(|m| s::input_map::rato_do_p(nivel, quadro, jogador, m));
+        if let Some(e) = h.and_then(|h| s::input_map::rato_do_p5(nivel, quadro, h)) {
+            self.pointer_moved(e); // P5: o «Controls» da barra, pela porta única do movimento
+        }
         match s::gesto_no_quadro(nivel, stage, quadro) {
             Some(Gesto::Joga(stage)) => {
                 if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
@@ -396,8 +397,7 @@ impl crate::App {
         }
     }
 
-    /// Só a janela onde o app vive conduz; a outra (o editor parado atrás da janela do jogo) só sabe
-    /// fechar — e fechar pára o jogo. `true` = o evento era da outra janela.
+    /// Só a janela onde o app vive conduz; a outra (o editor atrás) só sabe fechar, e pára o jogo. `true` = era dela.
     pub(crate) fn da_outra_janela(
         &mut self,
         id: winit::window::WindowId,

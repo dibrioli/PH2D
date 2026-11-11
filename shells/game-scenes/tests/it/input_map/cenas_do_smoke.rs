@@ -264,3 +264,70 @@ fn as_cenas_p2_a_p4_poem_o_ponteiro_pela_porta_do_host() {
         .is_none()
     );
 }
+
+/// A P5 (dono 10/11, D32): a tela aberta e uma linha acesa, o condutor pousa o ponteiro no centro do «Controls» da
+/// barra — o de `rects` (editor) e o de `rects_palco` (tela cheia) — e o movimento é da barra: o hero acende o botão e
+/// a linha apaga. Controlo: sem a barra pintada (índice limpo), noutro quadro ou noutra cena, nenhum movimento.
+#[test]
+fn a_cena_p5_poe_o_ponteiro_no_controls_da_barra() {
+    use ph2d_app_game::smoke::input_map::{rato_do_p5, tecla_do_p1, troca_do_jogador};
+    use ph2d_app_input_map::ph2d_player_controls::{Hover, host};
+    use ph2d_editor_core::game_stage::GameRun;
+    use ph2d_editor_core::screens::hero::{menu_bar::MENU_BAR_H, transport_bar};
+    use ph2d_editor_core::zones::Rect;
+    let p5 = PRIMEIRA + 17;
+    assert_eq!(codigo(p5), Some("P5"));
+    let a = super::AREA;
+    let bar = Rect::new(a.x, a.y, a.w, MENU_BAR_H);
+    let modos = [
+        transport_bar::rects(bar, a.w * 0.25, a.w * 0.75),
+        transport_bar::rects_palco(a),
+    ];
+    for botoes in modos {
+        let mut m = armada("P5");
+        let map = m.hero.input_map.clone();
+        m.jogador.start_with(&map, troca_do_jogador(&map), None);
+        for k in (0..400).filter_map(|q| tecla_do_p1(p5, q)) {
+            let _ = m.jogador.key(k, true, &map);
+        }
+        let mut scene = ph2d_vector::VectorScene::new();
+        let t = ph2d_tokens::Theme::default();
+        m.jogador.paint(a, &map, &mut scene, &mut m.ts, t);
+        m.hero.hit_index.clear_for_frame();
+        assert!(
+            rato_do_p5(p5, 160, &m.hero).is_none(),
+            "sem a barra pintada"
+        );
+        let (hits, store) = (&mut m.hero.hit_index, &m.hero.store);
+        transport_bar::paint(&botoes, GameRun::default(), &mut scene, t, hits, store);
+        assert!(
+            rato_do_p5(p5, 159, &m.hero).is_none() && rato_do_p5(p5 - 1, 160, &m.hero).is_none()
+        );
+        let lay = m.jogador.layout().expect("a tela pintada").clone();
+        let jump = m.jogador.rows(&map).iter().position(|r| r.action == "jump");
+        let linha = lay.rows[jump.expect("jump na tela") - lay.first].band;
+        let _ = host::pointer_move(&mut m.jogador, Some((linha.x + 1.0, linha.y + 1.0)));
+        assert!(
+            matches!(m.jogador.screen().hovered(), Some(Hover::Row(_))),
+            "controlo: a linha acesa"
+        );
+        let e = rato_do_p5(p5, 160, &m.hero).expect("a barra pintada");
+        let at = m.hero.escala().to_logical((e.x, e.y));
+        let r = botoes.last().expect("o Controls").2;
+        assert!((at.0 - (r.x + r.w * 0.5)).abs() < 0.5 && (at.1 - (r.y + r.h * 0.5)).abs() < 0.5);
+        let dela = host::pointer_move_com_a_barra(&mut m.jogador, Some(&mut m.hero), Some(at)).0;
+        assert!(!dela, "sobre o botão o movimento é da barra");
+        let arena = bumpalo::Bump::new();
+        let _ = m.hero.handle_pointer_fisico(e, &mut m.ts, &arena);
+        assert_eq!(
+            m.hero.store.hot_id(),
+            Some(transport_bar::CONTROLS.0),
+            "o botão acende"
+        );
+        assert_eq!(
+            m.jogador.screen().hovered(),
+            None,
+            "nenhuma linha da tela acesa"
+        );
+    }
+}

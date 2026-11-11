@@ -4,7 +4,7 @@
 //! o aviso âmbar da B4) e o estado da aba de cada cena, posto pelas portas `InputMapDoc::smoke_*`. A shell compõe:
 //! acha a aba, chama [`arma`], instala o mapa e pede a aba (`request_input_map_tab`, o caminho do menu).
 //!
-//! **Numeração** (contada no roteiro, `CENAS` = 22; uma cena nova conta-o de novo e entra ao fim de [`CODIGOS`]):
+//! **Numeração** (contada no roteiro, `CENAS` = 23; uma cena nova conta-o de novo e entra ao fim de [`CODIGOS`]):
 //!
 //! | `PH2D_GAME_SMOKE` | Cena | Estado |
 //! |---|---|---|
@@ -25,10 +25,13 @@
 //! | 20 | P2 | Play (`DRIVE=editor`): a tela Controls aberta, o ponteiro sobre a linha Jump ([`rato_do_p`]) |
 //! | 21 | P3 | Play: o «Reset to defaults» premido (Down sem Up) |
 //! | 22 | P4 | Play: o «Reset to defaults» premido e arrastado para fora (o premido apaga) |
+//! | 23 | P5 | Play (`DRIVE=editor` ou `fullscreen`): a tela aberta, o ponteiro no botão «Controls» da barra ([`rato_do_p5`]) |
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{ActionEdge, ActionTriggerRow, Entity, Name, SignalOnAction, SimWorld, Transform};
+use ph2d_editor_core::screens::hero::{HeroScreen, transport_bar};
 use ph2d_editor_core::zones::Rect;
+use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_input::{Binding, GamepadAxis, InputMap, Key, PlayerKeys};
 use ph2d_input_map_editor::view_keyboard::state::Sub;
 use ph2d_input_map_editor::view_try::state::TryCard;
@@ -40,13 +43,13 @@ use ph2d_script::{LuauScript, ProjectScripts};
 pub const PRIMEIRA: u32 = 6;
 
 /// O código de cada cena, pela ordem do roteiro.
-pub const CODIGOS: [&str; 17] = [
+pub const CODIGOS: [&str; 18] = [
     "A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4", "C1", "C2", "C3", "C4", "P1", "B5", "P2", "P3",
-    "P4",
+    "P4", "P5",
 ];
 
 /// O que cada cena mostra (o terminal do smoke).
-const O_QUE: [&str; 17] = [
+const O_QUE: [&str; 18] = [
     "A · List: as 11 acções do dono (fábrica + fire J, reload sem tecla, laser H)",
     "A · List: a escutar no reload (o chip tracejado espera a próxima tecla)",
     "A · List: busca pela seta ↑ (só jump e move_up; o pé diz quem as lê)",
@@ -64,6 +67,7 @@ const O_QUE: [&str; 17] = [
     "P · Play: a tela Controls aberta, o ponteiro sobre a linha Jump (a linha acende)",
     "P · Play: a tela Controls aberta, o botão esquerdo premido sobre «Reset to defaults» (sem soltar)",
     "P · Play: o «Reset to defaults» premido e o ponteiro arrastado para fora dele (o premido apaga; soltar ali cancela)",
+    "P · Play: a tela Controls aberta, o ponteiro no botão Controls da barra (o botão acende, nenhuma linha da tela)",
 ];
 
 /// A manche esquerda das cenas C3: empurrada a 0.62 para a esquerda (maquete C·3: força (0.62 − 0.15) ÷ 0.85).
@@ -322,4 +326,27 @@ pub fn rato_do_p(
         ponto.0, ponto.1
     );
     Some(ponto)
+}
+
+/// O movimento do condutor da P5 no [`RATO_P`]`.0`: o ponteiro no centro do botão «Controls» da barra (o rect que a
+/// barra registou no último quadro — o da barra do Play no editor, o do palco na tela cheia), em píxeis FÍSICOS, para a
+/// porta única do movimento da shell (`pointer_moved`: a barra fica com ele, a tela solta o hover e o hero acende-o).
+#[must_use]
+pub fn rato_do_p5(nivel: u32, quadro: u32, hero: &HeroScreen) -> Option<PointerEvent> {
+    if codigo(nivel) != Some("P5") || quadro != RATO_P.0 {
+        return None;
+    }
+    let r = hero.hit_index.rect_for(transport_bar::CONTROLS.0)?;
+    let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    println!("[game-smoke] ={nivel} (P5) o ponteiro no Controls em ({x:.0}, {y:.0})");
+    let s = hero.escala().factor();
+    Some(PointerEvent {
+        x: x * s,
+        y: y * s,
+        pressure: 1.0,
+        kind: PointerKind::Move,
+        source: PointerSource::Mouse,
+        button: PointerButton::Primary,
+        timestamp_ns: 0,
+    })
 }

@@ -115,6 +115,14 @@ Nestas telas nada muda; o canto cortado só aparecia em casos raros. Agora o mes
 
 Todas: [1080p_blocos_antes_depois](B25a/1080p_blocos_antes_depois.png) · [1080p_branco_antes_depois](B25a/1080p_branco_antes_depois.png) · [1080p_papel_antes_depois](B25a/1080p_papel_antes_depois.png) · [4k_blocos_antes_depois](B25a/4k_blocos_antes_depois.png) · [4k_branco_antes_depois](B25a/4k_branco_antes_depois.png) · [4k_papel_antes_depois](B25a/4k_papel_antes_depois.png) · [notas](B25a/README.md)
 
+## B28.3 — Pincel grande com Color mixing mais leve
+
+Hard Round e Sketch Pencil com Color mixing, tamanho 200. O pincel grande agora «prova» a cor da tela olhando um ponto em cada quatro (a média é a mesma à vista). Diferença máxima: 1 nível de 255, em poucos pontos; no papel, nenhuma. Da esquerda: antes · depois · o que mudou (vermelho).
+
+![B28.3](B28.3/4k_blocos_hard_round_antes_depois.png)
+
+Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × Hard Round/Sketch Pencil, em [B28.3/](B28.3/).
+
 ## As 10 decisões do dono (§0 do prompt da missão)
 
 | # | Decisão | Bloco | Prancha |
@@ -129,5 +137,5 @@ Todas: [1080p_blocos_antes_depois](B25a/1080p_blocos_antes_depois.png) · [1080p
 | 7b | Papel sem repetição a 256 px | B33 | [B33](#b33--papel-sem-repetição-a-cada-256-px) |
 | 8 | Ritmo fixo a 60 e 144 Hz | B22 | [B22.2](#b222--spray-parado-igual-a-30-60-e-144-quadross) (spray); secagem B22.1 aberta |
 | 9 | A placa mostra a prévia, o processador dá o resultado | B20 | sem mudança visível ainda (B20.8 aberto) |
-| 10 | Pincel de mistura grande em meia definição | B28 | ainda não feita (aberto) |
+| 10 | Pincel de mistura grande em meia definição | B28 | [B28.3](#b283--pincel-grande-com-color-mixing-mais-leve) (a amostra do Color mixing); B28.1/2/4/5 abertos |
 | — | Janela fora de foco a 10 q/s | B23 | não muda a imagem |

@@ -163,20 +163,27 @@ impl PainterTool {
         // lote calculam-se de uma vez, em paralelo ENTRE os dabs, cada uma num buffer da caixa dela; a película corre
         // depois, em ordem. As bases do Grain sorteiam-se antes, na ordem do lote (o mesmo stream de RNG). A cópia que
         // cai no centro da anterior do grupo salta-se quase sempre: a pegada dela só se calcula se não saltar.
+        // Sem o Grain (o Hard Round, missão 4K B28.3) o mesmo: a pegada sem base não consome o stream.
+        let juntas = textured
+            || ph2d_painter_brush::mistura_opaca::PEGADAS_LOCAIS_SEM_GRAO
+                .load(std::sync::atomic::Ordering::Relaxed);
         let mut pegadas: Option<(Vec<_>, Vec<_>)> =
-            (!pixel && camadas_do_shape.is_none() && rampa.is_none() && !shape_active && textured)
+            (!pixel && camadas_do_shape.is_none() && rampa.is_none() && !shape_active && juntas)
                 .then(|| {
                     let bases: Vec<_> = dabs
                         .iter()
                         .enumerate()
                         .map(|(i, d)| {
                             let spec = brush.at_dab(d);
-                            let basis = ph2d_painter_brush::texture::dab_basis(
-                                &spec.texture,
-                                dab_rng.enter(&groups, i),
-                                [w as f32, h as f32],
-                                spec.dab_footprint_of(d),
-                            );
+                            let rng = dab_rng.enter(&groups, i);
+                            let basis = textured.then(|| {
+                                ph2d_painter_brush::texture::dab_basis(
+                                    &spec.texture,
+                                    rng,
+                                    [w as f32, h as f32],
+                                    spec.dab_footprint_of(d),
+                                )
+                            });
                             (spec, basis)
                         })
                         .collect();

@@ -29,6 +29,26 @@ pub use carimbo::mistura_opaca_carimbo;
 /// (Round mixing, Gouache, Oil paint). Acima disto a amostra por carimbo volta a fazer manchas.
 pub const PASSO_DA_MISTURA: f32 = 0.03;
 
+/// A partir deste raio (px) a AMOSTRA lê só os texels pares da grelha da tela (¼; a película continua inteira): a
+/// média de milhares de texels não muda à vista (decisão 10 do dono, missão 4K B28.3; prancha em
+/// `docs/Painter/missao_4k/pranchas/B28.3/`).
+pub const RAIO_DA_AMOSTRA_ESPARSA: f32 = 16.0;
+
+/// A sonda e a prancha comparam a amostra esparsa com a inteira no MESMO processo (`MEDIR_VELOCIDADE.md`).
+#[doc(hidden)]
+pub static AMOSTRA_ESPARSA: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(true);
+
+/// A pegada SEM Grain do lote também em buffers locais, em paralelo entre os dabs (como a do Grain, Bug #84); `false`
+/// = o kernel em série na máscara da tela inteira (a rota de antes, o oráculo do gate ao bit).
+#[doc(hidden)]
+pub static PEGADAS_LOCAIS_SEM_GRAO: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(true);
+
+/// Quantos carimbos amostraram esparsos (a prancha prova que a variante armou).
+#[doc(hidden)]
+pub static CARIMBOS_ESPARSOS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// O Amount a partir do qual a tinta do pincel cobre inteira o que não apanhou cor (o vazio).
 pub const AMOUNT_QUE_COBRE: f32 = 0.25;
 

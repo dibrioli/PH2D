@@ -384,3 +384,87 @@ fn wet_blend_o_dedo_esgota_no_papel_vazio() {
         "o dedo não se esgota no vazio: {alfa:?}"
     );
 }
+
+/// SONDA (missão 4K B28.3): o carimbo r100 com a amostra esparsa × a inteira, intercaladas, o mínimo de 7 rodadas
+/// (`MEDIR_VELOCIDADE.md`). Uma reta de 600 px ao passo da mistura sobre os blocos vermelho/azul.
+#[test]
+#[ignore = "sonda: o custo da amostra do Wet blend a r100"]
+fn sonda_b28_3_custo_da_amostra_esparsa() {
+    use crate::mistura_opaca::AMOSTRA_ESPARSA;
+    use std::sync::atomic::Ordering;
+    const LW: u32 = 800;
+    const LH: u32 = 300;
+    let fundo: Vec<u8> = (0..LW * LH)
+        .flat_map(|p| if p % LW < 400 { VERMELHO } else { AZUL })
+        .collect();
+    let spec = BrushSpec {
+        radius_px: 100.0,
+        ..pincel(0.25, 1.0, 0.5)
+    };
+    let corre = |esparsa: bool| -> (f64, Vec<u8>) {
+        AMOSTRA_ESPARSA.store(esparsa, Ordering::Relaxed);
+        let mut buf = fundo.clone();
+        let (mut res, mut sombra) = (ReservatorioOpaco::default(), Sombra::default());
+        let t0 = std::time::Instant::now();
+        let mut x = 100.0f32;
+        while x <= 700.0 {
+            let mut tela = Tela {
+                buf: &mut buf,
+                width: LW,
+                height: LH,
+                sombra: &mut sombra,
+                trava_alfa: false,
+                plano: false,
+            };
+            let _ = mistura_opaca_carimbo(
+                &mut tela,
+                |i| [fundo[i], fundo[i + 1], fundo[i + 2], fundo[i + 3]],
+                |i| [fundo[i], fundo[i + 1], fundo[i + 2], fundo[i + 3]],
+                &spec,
+                Carimbo {
+                    center: [x, 150.0],
+                    radius_px: 100.0,
+                    cor: AMARELO,
+                    coverage: 1.0,
+                    pressao: 1.0,
+                },
+                Pegada::Disco {
+                    centro: [x, 150.0],
+                    raio: 100.0,
+                },
+                &mut res,
+            );
+            x += 6.0;
+        }
+        let ms = t0.elapsed().as_secs_f64() * 1e3;
+        AMOSTRA_ESPARSA.store(true, Ordering::Relaxed);
+        (ms, buf)
+    };
+    let (mut inteira, mut esparsa) = (f64::INFINITY, f64::INFINITY);
+    let (mut a, mut d) = (Vec::new(), Vec::new());
+    for r in 0..7 {
+        for k in 0..2 {
+            let e = (k + r) % 2 == 1;
+            let (ms, buf) = corre(e);
+            if e {
+                esparsa = esparsa.min(ms);
+                d = buf;
+            } else {
+                inteira = inteira.min(ms);
+                a = buf;
+            }
+        }
+    }
+    let max = a
+        .iter()
+        .zip(&d)
+        .map(|(x, y)| x.abs_diff(*y))
+        .max()
+        .unwrap_or(0);
+    let load = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+    println!(
+        "[b28.3] 101 carimbos r100: inteira {inteira:.1} ms · esparsa {esparsa:.1} ms ({:.2}×) · Δ máx {max} · load {}",
+        inteira / esparsa,
+        load.trim()
+    );
+}

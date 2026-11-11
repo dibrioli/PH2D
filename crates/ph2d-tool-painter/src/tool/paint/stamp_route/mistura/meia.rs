@@ -232,7 +232,7 @@ impl PainterTool {
                     [w2 as f32, h2 as f32],
                     spec.dab_footprint_of(d),
                 );
-                (spec, basis)
+                (spec, Some(basis))
             })
             .collect();
         let mut pegadas: Vec<_> = (0..metades.len())

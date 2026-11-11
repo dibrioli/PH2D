@@ -257,9 +257,10 @@ fn pelicula(
     }
 }
 
-/// A pegada do dab `d` (só o Grain) num buffer da caixa dele: o kernel da rota normal, a branco, força 1, Flow 1.
+/// A pegada do dab `d` (só o Grain, ou nada) num buffer da caixa dele: o kernel da rota normal, a branco, força 1,
+/// Flow 1.
 fn pegada_do_dab(
-    (spec, basis): &(BrushSpec, ph2d_painter_brush::texture::TexDabBasis),
+    (spec, basis): &(BrushSpec, Option<ph2d_painter_brush::texture::TexDabBasis>),
     d: &Dab,
     w: u32,
     h: u32,
@@ -282,7 +283,7 @@ fn pegada_do_dab(
         d.center,
         &branco,
         1.0,
-        Some(basis),
+        basis.as_ref(),
         image,
         spec.dab_rotor(d),
         d.capsula(&branco),

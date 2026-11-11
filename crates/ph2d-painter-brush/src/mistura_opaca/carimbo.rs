@@ -90,11 +90,21 @@ pub fn mistura_opaca_carimbo(
     let (ty0, ty1) = (y0 / ALTO, (y1 - 1) / ALTO);
     let paralelo = ((x1 - x0) * (y1 - y0)) as usize >= crate::PARALLEL_MIN_AREA;
     let sombra_le: &Sombra = tela.sombra;
+    // Marca larga: a amostra só nos texels pares da TELA (a grelha não depende da caixa).
+    let salto = if c.radius_px >= RAIO_DA_AMOSTRA_ESPARSA
+        && AMOSTRA_ESPARSA.load(std::sync::atomic::Ordering::Relaxed)
+    {
+        CARIMBOS_ESPARSOS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        2
+    } else {
+        1
+    };
+    let par = |v: u32| v.next_multiple_of(salto);
     let soma_da_faixa = |ty: u32| -> [f32; 6] {
         // `[r, g, b]` pesados pelo alfa · o alfa · a carga · o peso.
         let mut s = [0.0f32; 6];
-        for y in (ty * ALTO).max(y0)..((ty + 1) * ALTO).min(y1) {
-            for x in x0..x1 {
+        for y in (par((ty * ALTO).max(y0))..((ty + 1) * ALTO).min(y1)).step_by(salto as usize) {
+            for x in (par(x0)..x1).step_by(salto as usize) {
                 let wt = peso(x, y);
                 if wt <= 0.0 || atras(x, y) < 0.0 {
                     continue;

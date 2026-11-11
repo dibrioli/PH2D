@@ -55,6 +55,7 @@ mod o_wash; // o Wash: o traço pára no maior dab (dono 25/10)
 mod os_fios;
 mod os_outros_meios_nao_mudam;
 mod pinceis_da_ponta;
+mod prancha_b28_3; // missão 4K B28.3: a amostra esparsa do Color mixing (prancha + relógio, ignored)
 mod presets_de_fabrica;
 mod presets_dos_meios;
 mod push_look_probe; // render-and-look do Push (veio do ph2d-app-painter, 10/11: só a API do PainterTool)

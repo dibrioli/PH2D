@@ -319,6 +319,33 @@ fn a_diagonal_com_tremor_da_mao_segura_o_submenu_e_a_pausa_troca() {
     assert_eq!(bar.sub, Some(SUB), "controlo: a caminho ainda mira");
     assert!(bar.hover_move_at(em.0 + 1.0, em.1, t + 8_000_000 + AIM_REST_NS + 1));
     assert_eq!(bar.sub, Some(S2), "a pausa acaba a mira");
+    // Uma folga de meia linha abaixo do submenu: mirar logo abaixo da última escolha ainda segura.
+    let novo = |bar: &mut TabBar<u8>, ts: &mut TextSystem| {
+        *bar = TabBar::<u8> {
+            open: Some(0),
+            ..TabBar::default()
+        };
+        pinta(bar, ts);
+        assert!(bar.hover_move_at(p0.0, p0.1, t));
+        pinta(bar, ts);
+    };
+    novo(&mut bar, &mut ts);
+    let canto = (sub.popup.x, sub.popup.y + sub.popup.h + height() * 0.4);
+    let ey = baixo.y + baixo.h * 0.5;
+    let fx = p0.0 + (canto.0 - p0.0) * (ey - p0.1) / (canto.1 - p0.1);
+    assert!(baixo.contains(fx, ey), "controlo: na mãe de baixo");
+    assert!(bar.hover_move_at(fx, ey, t + 8_000_000));
+    assert_eq!(bar.sub, Some(SUB), "a folga da borda segura a mira");
+    // Dentro do submenu a âncora vem com o rato: voltar dele à mãe de baixo troca logo.
+    novo(&mut bar, &mut ts);
+    assert!(bar.hover_move_at(alvo.0, alvo.1, t + 8_000_000));
+    assert_eq!(bar.hover, Some(A), "controlo: dentro do submenu");
+    assert!(bar.hover_move_at(em.0, em.1, t + 16_000_000));
+    assert_eq!(
+        bar.sub,
+        Some(S2),
+        "sair do submenu para a mãe de baixo troca"
+    );
 }
 
 /// Clicar fora do menu e do submenu fecha os dois (o clique é da barra: nada corre).

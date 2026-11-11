@@ -163,19 +163,44 @@ impl PainterTool {
 
     /// [`Self::apply_impasto_light`] com `linhas` por faixa (a sonda mede 32 × 64 no MESMO binário).
     pub(super) fn acende_em_faixas(&self, rgba: &mut [u8], region: Region, linhas: usize) {
+        self.acende_contando(rgba, region, linhas, true);
+    }
+
+    /// O passe por faixas; devolve os texels que DOBROU (o contador é o gate do B15.2). `podar`: sem papel nem filtro
+    /// no relevo, cada faixa só dobra as colunas onde a diferença central pode não ser zero ([`colunas_com_relevo`]) —
+    /// fora delas a altura composta é `±0` nos três vizinhos, o `shade` devolve `(1, 0)` e o píxel não muda: o mesmo bit.
+    pub(super) fn acende_contando(
+        &self,
+        rgba: &mut [u8],
+        region: Region,
+        linhas: usize,
+        podar: bool,
+    ) -> usize {
         if !self.impasto_visible() {
-            return;
+            return 0;
         }
         let Some(fields) = self.impasto_fields_para(region) else {
-            return;
+            return 0;
         };
         let (w, h) = (region.w as usize, region.h as usize);
         if w == 0 || h == 0 || rgba.len() < w * h * 4 {
-            return; // shape guard — bail rather than index out of a mis-sized buffer
+            return 0; // shape guard — bail rather than index out of a mis-sized buffer
         }
         let Some(light) = Rig::new(&self.paint.impasto_rig) else {
-            return; // every lamp switched off: the canvas comes back unlit, to the byte
+            return 0; // every lamp switched off: the canvas comes back unlit, to the byte
         };
+        // B15.2: os planos que fazem a altura composta; a poda só vale quando eles são TUDO o que ela lê.
+        let planos: Option<Vec<&[f32]>> = (podar
+            && fields.substrate.is_none()
+            && fields.folded.is_none())
+        .then(|| {
+            fields
+                .layers
+                .iter()
+                .filter_map(|l| l.height)
+                .chain(fields.live_h)
+                .collect()
+        });
         // ⭐ **Por FAIXAS de linhas, no pool** (dono 10/11: o pen-up a 4K travava 1,6 s — o `height_at` com o dente
         // do papel, amostrado 4× por píxel pelas diferenças centrais, num fio só). Cada faixa lê a altura UMA vez por
         // píxel numa moldura de 1 px e difere dentro dela: o mesmo `height_at` nos mesmos píxeis, logo o mesmo bit
@@ -184,22 +209,52 @@ impl PainterTool {
         // altura, corpo e material num passeio só; as duas linhas de moldura só precisam da altura.
         let paper_body = fields.paper_body();
         let (x0, y0) = (i64::from(region.x), i64::from(region.y));
+        let tela = (fields.width, fields.height);
         rgba[..w * h * 4]
             .par_chunks_mut(w * 4 * linhas)
             .enumerate()
-            .for_each(|(b, faixa)| {
+            .map(|(b, faixa)| {
                 let n = faixa.len() / (w * 4);
                 let gy0 = y0 + (b * linhas) as i64;
-                let fw = w + 2;
+                let (a, z) = match &planos {
+                    None => (0, w),
+                    Some(p) => match colunas_com_relevo(p, tela, gy0, n, region.x as usize, w) {
+                        Some(c) => c,
+                        None => return 0, // a faixa inteira é plana: nada a dobrar
+                    },
+                };
+                let sw = z - a;
+                let fw = sw + 2;
                 let mut alt = vec![0.0f32; fw * (n + 2)];
                 let mut cob = vec![0.0f32; fw * n];
                 let mut mats: Vec<MaterialBytes> = vec![[0; 7]; fw * n];
-                dobra_da_faixa(&fields, gy0, x0, fw, &mut alt, &mut cob, &mut mats);
+                dobra_da_faixa(
+                    &fields,
+                    gy0,
+                    x0 + a as i64,
+                    fw,
+                    &mut alt,
+                    &mut cob,
+                    &mut mats,
+                );
                 let cache =
                     light.resolve(ph2d_painter_brush::material::Material::NEUTRAL.to_bytes());
                 let fonte = PorBytes { mats: &mats, cache };
-                sombreia_faixa(&light, paper_body, &alt, &cob, faixa, w, fonte);
-            });
+                if sw == w {
+                    sombreia_faixa(&light, paper_body, &alt, &cob, faixa, w, fonte);
+                } else {
+                    let mut sub: Vec<u8> = faixa
+                        .chunks_exact(w * 4)
+                        .flat_map(|l| l[a * 4..z * 4].iter().copied())
+                        .collect();
+                    sombreia_faixa(&light, paper_body, &alt, &cob, &mut sub, sw, fonte);
+                    for (l, s) in faixa.chunks_exact_mut(w * 4).zip(sub.chunks_exact(sw * 4)) {
+                        l[a * 4..z * 4].copy_from_slice(s);
+                    }
+                }
+                n * sw
+            })
+            .sum()
     }
 
     /// O passe POR PÍXEL de antes das faixas (10/11), verbatim: o oráculo ao bit de [`Self::apply_impasto_light`].
@@ -272,6 +327,43 @@ impl PainterTool {
     }
 }
 
+/// As colunas `[a, z)` da faixa (relativas à região `x0..x0 + w`, linhas `gy0 .. gy0 + n`) cuja diferença central
+/// PODE não ser zero: as de algum texel não nulo dos `planos` nas linhas `gy0 - 1 ..= gy0 + n` (a moldura), dilatadas
+/// de 1 coluna. `None` = nenhum: a faixa é plana. Conservador por construção (a altura composta de planos nulos é `±0`).
+pub(super) fn colunas_com_relevo(
+    planos: &[&[f32]],
+    (cw, ch): (usize, usize),
+    gy0: i64,
+    n: usize,
+    x0: usize,
+    w: usize,
+) -> Option<(usize, usize)> {
+    if cw == 0 || ch == 0 {
+        return None;
+    }
+    let (c0, c1) = (x0.saturating_sub(1), (x0 + w + 1).min(cw));
+    let (y_lo, y_hi) = (
+        (gy0 - 1).max(0) as usize,
+        ((gy0 + n as i64) as usize).min(ch - 1),
+    );
+    let (mut lo, mut hi) = (usize::MAX, 0usize);
+    for p in planos {
+        for y in y_lo..=y_hi {
+            let linha = &p[y * cw + c0..y * cw + c1];
+            if let Some(i) = linha.iter().position(|&v| v != 0.0) {
+                lo = lo.min(c0 + i);
+                hi = hi.max(c0 + linha.iter().rposition(|&v| v != 0.0).unwrap_or(i));
+            }
+        }
+    }
+    if lo == usize::MAX {
+        return None;
+    }
+    let a = lo.saturating_sub(1).max(x0) - x0;
+    let z = (hi + 2).min(x0 + w) - x0;
+    (a < z).then_some((a, z))
+}
+
 /// Apply the shading to ONE channel: the diffuse **modulates**, the highlight is light **added
 /// against the headroom that is left** (a screen), never a flat `+ add`.
 ///
@@ -323,6 +415,10 @@ mod impasto_luz_tique_tests; // B15.3: o tique da lâmpada = a recomposição in
 #[cfg(test)]
 #[path = "dobra_da_linha_tests.rs"]
 mod dobra_da_linha_tests; // B15.6: a dobra de uma linha das duas pistas, ao bit com os laços de antes
+
+#[cfg(test)]
+#[path = "impasto_light_poda_tests.rs"]
+mod impasto_light_poda_tests; // B15.2: a luz só dobra as colunas com relevo, ao bit com o passe inteiro
 
 #[cfg(test)]
 mod tests {

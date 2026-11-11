@@ -110,3 +110,48 @@ fn a_ponta_reta_rodada_da_o_mesmo_byte_a_1_2_e_32_fios() {
         }
     }
 }
+
+/// B25.1 (a folga da rejeição por banda): o dab cuja caixa toca a banda em poucas linhas tem de ser carimbado
+/// lá. Varre o centro em 1/16 de píxel × 2..=32 fios para que uma fronteira de banda caia em cada linha da
+/// orla. As 2 linhas de base da caixa nunca são pintadas (`dab_write_bounds`: pad de AA + a linha de guarda),
+/// por isso as folgas `+1`/`+2` são mutantes equivalentes; `+3` já perde tinta (`mutacao_B.md`).
+#[test]
+#[allow(clippy::cast_precision_loss)]
+fn o_dab_que_toca_a_banda_numa_so_linha_e_carimbado_nela() {
+    let quadrada = BrushSpec {
+        dab_angle_deg: 0,
+        ..ponta_reta()
+    };
+    let redonda = BrushSpec {
+        dab_quina: 0.0,
+        ..ponta_reta()
+    };
+    let mut pior = (0usize, 0usize, 0u32, 0u32);
+    for brush in [quadrada, redonda] {
+        for k in 0..16u32 {
+            let dabs: Vec<Dab> = coluna()
+                .into_iter()
+                .map(|mut d| {
+                    d.center[1] += k as f32 / 16.0;
+                    d
+                })
+                .collect();
+            let (serial, _) = carimba(None, &brush, &dabs);
+            for fios in 2..=32usize {
+                let n = difere(&serial, &carimba(Some(fios), &brush, &dabs).0);
+                if n > pior.0 {
+                    pior = (n, fios, k, brush.dab_quina.to_bits());
+                }
+            }
+        }
+    }
+    assert_eq!(
+        pior.0,
+        0,
+        "{} píxeis divergem do laço serial a {} fios (deslocamento {}/16, quina {})",
+        pior.0,
+        pior.1,
+        pior.2,
+        f32::from_bits(pior.3)
+    );
+}

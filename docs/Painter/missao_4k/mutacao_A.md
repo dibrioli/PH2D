@@ -17,7 +17,7 @@ Placar: 8 mutações, 7 sangraram, 1 sobreviveu.
 | `uma_textura_que_nao_se_le_deixa_a_ferramenta_intacta` (perda de dados / estado meio-aplicado) | `macro_estado_aplica`: a verificação das texturas ilegíveis desligada (`if false && …`) | VERMELHO: só este teste (os 9 `macro_estado` correram) |
 | `um_estado_que_falha_no_trilho_deixa_a_ferramenta_intacta` | `macro_trilho_le`: o confere do tamanho da máscara sempre aceita (`… \|\| true`) | VERMELHO: só este teste |
 | `as_caixas_fundidas_cobrem_a_mesma_uniao_e_nao_dependem_da_ordem` (Ctrl+Z: a caixa fundida cobre a união) | `funde_as_caixas`: remove o `sort_unstable_by_key` (ordem de entrada) | VERMELHO: `a != b` |
-| idem | `funde_as_caixas`: `v[i] = union_region(v[i], v[j])` -> `v[i] = v[j]` (a fusão perde a cobertura de `i`) | **SOBREVIVEU** |
+| idem | `funde_as_caixas`: `v[i] = union_region(v[i], v[j])` -> `v[i] = v[j]` (a fusão perde a cobertura de `i`) | **SOBREVIVEU** → onda 15-A: SANGRA no gate novo `acima_do_teto_a_fusao_cobre_cada_tile_de_entrada` (o tile não fica coberto) |
 
 ## Sobrevivente
 
@@ -27,3 +27,7 @@ linear por linha, em exatamente 16 caixas = `MAX_CAIXAS` e nenhum par tem acrés
 acima do teto, onde um defeito perderia cobertura (dados do undo fora da janela), não é exercida. Gate em falta: uma
 entrada com > 16 caixas após o passo linear (p. ex. 40 tiles em diagonal com saltos) que force fundir, e a asserção de
 cobertura de cada tile de entrada.
+
+**Fechado (onda 15, item A):** gate `acima_do_teto_a_fusao_cobre_cada_tile_de_entrada` (`undo_delta_confine.rs`): 40 tiles
+`(2i, i)` de 128 px (nenhum par se toca; o passo linear não junta nada) ⇒ exatamente `MAX_CAIXAS`, a mesma resposta
+em ordem inversa e cada tile de entrada coberto. Verde no código; com a mutação `v[i] = v[j]` VERMELHO (cobertura); restaurado, verde.

@@ -641,4 +641,39 @@ mod tests {
             "a diagonal não vira a caixa dela: {area}"
         );
     }
+
+    /// Acima do teto a fusão gulosa CORRE: 40 tiles em escada com saltos (nenhum par se toca, o passo
+    /// linear não junta nada) caem para [`MAX_CAIXAS`] e cada tile de entrada continua coberto (o undo
+    /// não perde dados fora da janela publicada).
+    #[test]
+    fn acima_do_teto_a_fusao_cobre_cada_tile_de_entrada() {
+        use super::{MAX_CAIXAS, Region, funde_as_caixas};
+        let t = 128u32;
+        let v: Vec<Region> = (0..40)
+            .map(|i| Region {
+                x: 2 * i * t,
+                y: i * t,
+                w: t,
+                h: t,
+            })
+            .collect();
+        let a = funde_as_caixas(v.clone());
+        assert_eq!(a.len(), MAX_CAIXAS, "a fusão para no teto");
+        let mut r = v.clone();
+        r.reverse();
+        assert_eq!(
+            funde_as_caixas(r),
+            a,
+            "a ordem de entrada não muda a resposta"
+        );
+        for q in &v {
+            assert!(
+                a.iter().any(|c| c.x <= q.x
+                    && c.y <= q.y
+                    && c.x + c.w >= q.x + q.w
+                    && c.y + c.h >= q.y + q.h),
+                "o tile {q:?} fica coberto"
+            );
+        }
+    }
 }

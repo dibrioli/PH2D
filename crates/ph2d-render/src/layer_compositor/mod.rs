@@ -33,6 +33,7 @@
 use ph2d_gpu::GpuContext;
 use std::collections::BTreeMap;
 
+mod budget; // the layer cache's VRAM budget + slices per budget (LOC cap: sibling module)
 mod compositor;
 mod flatten; // the LayerOp list → the GPU op list + its reusable scratch (LOC cap: sibling module)
 mod ops; // the op-list model + its pure queries (LOC cap: sibling module)
@@ -41,6 +42,10 @@ mod readback; // the blocking test/verification readback (LOC cap: sibling modul
 #[cfg(test)]
 mod tests;
 
+pub use budget::{
+    HARD_CAP_LAYERS, LAYER_CACHE_BUDGET_DISCRETE_BYTES, LAYER_CACHE_BUDGET_SHARED_BYTES,
+    layer_cache_budget, max_layers_for_budget,
+};
 pub use flatten::{GpuOpScratch, flatten_layer_ops};
 use ops::{COMBINE_BLOOM, COMBINE_GAUSSIAN, COMBINE_SHARPEN};
 pub use ops::{
@@ -107,88 +112,6 @@ fn build_decode_lut(space: CompositeSpace) -> [f32; DECODE_LUT_LEN] {
             _ => f32::from(b) / 255.0,
         }
     })
-}
-
-/// VRAM the layer texture-array cache may hold on a **shared-memory** device
-/// (integrated GPU, software adapter): 512 MiB. Discrete cards get more — see
-/// [`layer_cache_budget`], which is what the compositor actually asks.
-///
-/// ⚠️ The doc this replaces claimed *"a 4K RGBA8 slice is ~33.2 MB, so this 512 MB
-/// budget holds ~15 layers at 4K"*. 33.2 MB is 4096×2048 — a "4K" **video** frame.
-/// A square 4096² canvas, which is what an illustrator actually opens, is
-/// **64 MiB a slice**, so the real answer was **8**, and on the ninth layer the
-/// compositor refused and handed the document to a producer 107× slower. A budget
-/// whose own arithmetic is off by 2× is not a budget; it is a number nobody
-/// re-derived.
-pub const LAYER_CACHE_BUDGET_SHARED_BYTES: u64 = 512 * 1024 * 1024;
-
-/// VRAM the layer cache may hold on a **discrete** GPU: 1 GiB — 16 slices at
-/// 4096², 64 at 2048², 256 at 1024².
-///
-/// **The resource is VRAM held by this cache**, and the number is measured, not
-/// chosen (`measure_how_far_the_array_actually_goes`, RTX 5060 Ti 16 GB, full
-/// recompose of a 4096² canvas):
-///
-/// | slices | VRAM | GPU floor | CPU fallback for the same document |
-/// |---|---|---|---|
-/// | 8 | 512 MiB | 2,06 ms | ~149 ms |
-/// | **16** | **1 GiB** | **3,86 ms** | **~254 ms** |
-/// | 32 | 2 GiB | 7,66 ms | — |
-/// | 48 | 3 GiB | 16,13 ms | — |
-/// | 64 | 4 GiB | 14,82 ms | — |
-///
-/// ⚠️ **The device is not the binding constraint and that is the point.** It held
-/// 4 GiB without complaining, and the interactive knee — where a full recompose
-/// stops fitting a 60 Hz frame — is around **32 slices / 2 GiB**. The budget is
-/// set below both because PH2D is not the card's only tenant (the sprite atlas,
-/// Vello's buffers, the preview slots and the impasto planes are all resident
-/// too), and because wgpu 28 **exposes no VRAM query at all** — `AdapterInfo`
-/// carries `device_type` and nothing about memory — so a bigger number would be
-/// an assumption about hardware this machine cannot measure.
-///
-/// Raising it further is a real option and it has a prerequisite, not a bigger
-/// literal: **make the array allocation fallible** (`push_error_scope(OutOfMemory)`)
-/// so a card that cannot hold the ask degrades to fewer slices instead of losing
-/// the device. Until then, 1 GiB is the largest number that is safe on hardware
-/// nobody here has.
-pub const LAYER_CACHE_BUDGET_DISCRETE_BYTES: u64 = 1024 * 1024 * 1024;
-
-/// The whole point of the split: a discrete card gets more. Asserted at COMPILE
-/// time, because it is a fact about two literals — a runtime test of it would
-/// only ever tell you what the compiler already knew.
-const _: () = assert!(LAYER_CACHE_BUDGET_DISCRETE_BYTES > LAYER_CACHE_BUDGET_SHARED_BYTES);
-
-/// The cache's VRAM budget on `device_type` — the one property wgpu exposes that
-/// says anything about where the memory comes from.
-///
-/// A discrete card has VRAM of its own; an integrated one spends the SYSTEM's
-/// RAM, where a gigabyte of layer cache competes with the document, the undo
-/// queue and the OS. Same cache, different resource, different number.
-#[must_use]
-pub fn layer_cache_budget(device_type: wgpu::DeviceType) -> u64 {
-    match device_type {
-        wgpu::DeviceType::DiscreteGpu => LAYER_CACHE_BUDGET_DISCRETE_BYTES,
-        // Integrated / virtual / CPU / unknown all share memory with the host.
-        _ => LAYER_CACHE_BUDGET_SHARED_BYTES,
-    }
-}
-
-/// Largest layer stack the contract allows — spec §2.2 `HARD_CAP_LAYERS = 999`
-/// (mirrors Procreate), matching `ph2d_tool_painter::layers::HARD_CAP_LAYERS`
-/// and the savefile `MAX_LAYERS = 1000` (999 + overflow headroom). Independent
-/// of the per-budget cap — the absolute ceiling the cache will never exceed.
-pub const HARD_CAP_LAYERS: u32 = 999;
-
-/// Maximum cached slices for a `width × height` canvas under `budget` bytes.
-/// `0` for a degenerate (zero-area) canvas. The compositor additionally clamps
-/// to the device's `max_texture_array_layers`.
-#[must_use]
-pub fn max_layers_for_budget(width: u32, height: u32, budget: u64) -> u32 {
-    let per_slice = (width as u64) * (height as u64) * 4;
-    if per_slice == 0 {
-        return 0;
-    }
-    (budget / per_slice).min(HARD_CAP_LAYERS as u64) as u32
 }
 
 /// A rectangular sub-region of the canvas (dirty rect). Clamped to canvas

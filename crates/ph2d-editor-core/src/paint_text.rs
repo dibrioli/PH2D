@@ -421,6 +421,7 @@ fn pinta_os_trechos(
                         .draw_glyphs(font)
                         .font_size(run_font_size)
                         .hint(hint)
+                        .font_embolden(super::font_embolden_for(run_font_size, chunk[0].1))
                         .normalized_coords(&coords)
                         .brush(chunk[0].1)
                         .transform(translate)
@@ -431,11 +432,9 @@ fn pinta_os_trechos(
             inner
                 .draw_glyphs(font)
                 .font_size(run_font_size)
-                // Hint per preset. `true` snapa stems ao pixel grid
-                // (crisp); `false` deixa o eixo wght variable fluir
-                // sem quantização (necessário para CrispHeavy ficar
-                // visualmente distinto de Crisp a 11-12 px).
+                // Hint per preset: `true` snapa stems ao pixel grid; `false` deixa o wght fluir.
                 .hint(hint)
+                .font_embolden(super::font_embolden_for(run_font_size, color))
                 // **Critical**: forward parley's per-run variation
                 // coordinates (already includes the wght axis we
                 // pushed in `layout_for_rendering`). Without this,

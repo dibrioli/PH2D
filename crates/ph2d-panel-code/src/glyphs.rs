@@ -315,6 +315,7 @@ fn draw(
         .draw_glyphs(font)
         .font_size(size)
         .hint(true)
+        .font_embolden(ph2d_editor_core::paint::font_embolden_for(size, color))
         .normalized_coords(coords)
         .brush(color)
         .transform(Affine::IDENTITY)

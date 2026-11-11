@@ -90,6 +90,8 @@ struct Medida {
     franja_srgb: f32,
     franja_luz: f32,
     borda: f32,
+    /// A soma do contraste de cada píxel da caixa contra o fundo (a «massa» da tinta).
+    tinta: f32,
 }
 
 /// A caixa da frase: a linha de base com mais glifos (corridas de 2+, sem os números de linha).
@@ -186,6 +188,7 @@ fn mede(rgba: &[u8], dark: bool, (x0, x1, y0, y1): (usize, usize, usize, usize))
         franja_srgb: franja(&cs),
         franja_luz: franja(&cl),
         borda: e / cs.iter().sum::<f32>().max(1.0),
+        tinta: px.iter().map(|&i| (luma(i) - lb).abs()).sum(),
     }
 }
 
@@ -233,4 +236,100 @@ fn a_letra_do_codigo_tem_o_fundo_dos_problemas() {
             "{theme:?}: o poço não saiu da placa no tom do cartão"
         );
     }
+}
+
+/// Alarga cada corrida da cena em `a` px por lado (o que o preset faz, sem recompilar).
+fn alarga(s: &mut VectorScene, a: f64) {
+    for g in &mut s.inner_mut().encoding_mut().resources.glyph_runs {
+        g.font_embolden = ph2d_vector::FontEmbolden::new(ph2d_vector::Diagonal2::new(a, a));
+    }
+}
+
+/// ⭐ **A tabela do `STEM_DARKENING_PX`** (dono 10/11): a linha do código a 12 e 13 px (Small e
+/// Normal; a mono não pinta a 11) com o contorno alargado 0–0,4 px, contra o texto do problema,
+/// no poço escuro e no Light. Afirma o tecto: no valor escolhido a tinta cresce ≤ 10 %.
+#[test]
+fn o_escurecimento_aproxima_a_franja() {
+    use ph2d_editor_core::paint::set_text_rendering;
+    use ph2d_tokens::{TextRendering, UiTextSize};
+    let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
+        eprintln!("sem placa — não mede");
+        return;
+    };
+    let mut pass = VelloPass::new(
+        &gpu,
+        ph2d_gpu::TextureFormat::Rgba8Unorm,
+        (W as u32, H as u32),
+    )
+    .expect("vello");
+    let mut ts = TextSystem::without_system_fonts();
+    set_text_rendering(TextRendering::CrispHeavyPlus);
+    force_cards_on_this_thread(Some(true));
+    let antes = ph2d_text::active_text_style();
+    let escolhido = f64::from(ph2d_tokens::STEM_DARKENING_PX);
+    for size in [UiTextSize::Small, UiTextSize::Normal] {
+        ph2d_text::set_active_text_style(ph2d_tokens::UiTextStyle { size, ..antes });
+        let px = ph2d_panel_code::code_font_px();
+        for theme in [Theme::Dark, Theme::Light] {
+            let dark = ColorToken::Text1.resolve(theme).relative_luminance() > 0.5;
+            let mut mede_em = |mut s: VectorScene, a: f64| {
+                alarga(&mut s, a);
+                let rgba = pass
+                    .render_and_readback(&gpu, s.inner(), (W as u32, H as u32))
+                    .expect("render");
+                mede(&rgba, dark, caixa(&s))
+            };
+            let p = mede_em(problema(&mut ts, theme), 0.0);
+            eprintln!(
+                "{theme:?} {px} px problema: franja sRGB {:.3} · luz {:.3} · borda {:.3}",
+                p.franja_srgb, p.franja_luz, p.borda
+            );
+            let base = mede_em(codigo(&mut ts, theme), 0.0).tinta;
+            for a in [0.0, 0.025, 0.05, 0.075, 0.1, 0.2, 0.3, 0.4] {
+                let m = mede_em(codigo(&mut ts, theme), a);
+                let cresce = m.tinta / base - 1.0;
+                eprintln!(
+                    "{theme:?} {px} px código +{a:.3}: franja sRGB {:.3} · luz {:.3} · borda {:.3} · tinta {:+.3}",
+                    m.franja_srgb, m.franja_luz, m.borda, cresce
+                );
+                if (a - escolhido).abs() < 1e-6 {
+                    assert!(
+                        cresce <= 0.10,
+                        "{theme:?} {px} px: +{a} lê-se negrito ({cresce:+.3})"
+                    );
+                }
+            }
+        }
+    }
+    ph2d_text::set_active_text_style(antes);
+    force_cards_on_this_thread(None);
+    set_text_rendering(TextRendering::default());
+}
+
+/// ⭐ A aba de scripts pinta dentro do `com_peso_exato` e o preset escurecido chega lá: cada
+/// a tinta clara do código leva o alargamento; no de fábrica, nenhuma corrida.
+#[test]
+fn a_aba_de_scripts_escurece_no_preset_escurecido() {
+    use ph2d_editor_core::paint::set_text_rendering;
+    use ph2d_tokens::TextRendering;
+    let mut ts = TextSystem::without_system_fonts();
+    let mut amostra = |mode| {
+        set_text_rendering(mode);
+        let s = codigo(&mut ts, Theme::Dark);
+        set_text_rendering(TextRendering::default());
+        let r = &s.inner().encoding().resources;
+        // Só as corridas de tinta clara (a sintaxe de cor escura e o esmaecido não alargam).
+        let a = r
+            .glyph_runs
+            .iter()
+            .filter(|g| g.font_embolden.amount.xx > 0.0)
+            .count();
+        let pos: Vec<(u32, f32)> = r.glyphs.iter().map(|g| (g.id, g.x)).collect();
+        (a, pos)
+    };
+    let (fabrica, pf) = amostra(TextRendering::CrispHeavyPlus);
+    let (escuro, pe) = amostra(TextRendering::CrispPlusDarkened);
+    assert!(escuro > 0, "a linha do código escurece");
+    assert_eq!(fabrica, 0, "o de fábrica não alarga nenhuma corrida");
+    assert_eq!(pf, pe, "os avanços não mudam");
 }

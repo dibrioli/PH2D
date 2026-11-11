@@ -76,8 +76,7 @@ pub(super) const SETTINGS_DISPLAY_SUBMENU_ROWS: &[MenuRow] = &[
     ),
 ];
 
-// Text rendering submenu — 4 presets, monotonic in aggressiveness: Default (historic) →
-// Crisp Light (boost 30/20/10 + snap-X) → Crisp (60/40/20) → Crisp Heavy (100/70/40).
+// Text rendering submenu — pela ordem de `ph2d_tokens::TextRendering::ALL`.
 /// As linhas de `ContextMenuKind::SettingsTextSubmenu`.
 pub(super) const SETTINGS_TEXT_SUBMENU_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_TEXT_DEFAULT, "chrome.menu.default"),
@@ -85,6 +84,10 @@ pub(super) const SETTINGS_TEXT_SUBMENU_ROWS: &[MenuRow] = &[
     menu_row(
         ids::CTX_MENU_TEXT_CRISP_HEAVY_PLUS,
         "chrome.menu.crisp_heavy_plus",
+    ),
+    menu_row(
+        ids::CTX_MENU_TEXT_CRISP_DARKENED,
+        "chrome.menu.crisp_stem_darkening",
     ),
 ];
 

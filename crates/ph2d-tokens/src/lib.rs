@@ -128,7 +128,8 @@ pub use text_style::{UiFont, UiTextSize, UiTextStyle, UiWeight};
 pub use theme::{PanelLayout, Theme};
 pub use timeline_tinta::TimelineTinta;
 pub use typography::{
-    FONT_DISPLAY, FONT_MONO, FONT_SANS, FontWeight, LetterSpacing, LineHeight, SnapX,
-    TextRendering, TextRenderingParams, TypeToken, crisp_weight_boost_for,
+    FONT_DISPLAY, FONT_MONO, FONT_SANS, FontWeight, LetterSpacing, LineHeight,
+    STEM_DARKENING_INK_LUMINANCE, STEM_DARKENING_PX, SnapX, TextRendering, TextRenderingParams,
+    TypeToken, crisp_weight_boost_for, stem_darkening_px,
 };
 pub use ui_scale::UiScale;

@@ -109,3 +109,25 @@ pub fn set_text_rendering(mode: ph2d_tokens::TextRendering) {
 pub fn text_rendering() -> ph2d_tokens::TextRendering {
     ph2d_text::active_text_rendering()
 }
+
+/// ⭐ O *stem darkening* do preset activo para um glifo de `font_size` px pintado com `ink`: o
+/// `FontEmbolden` que todo `draw_glyphs` do chrome e da aba de scripts passa. Só na tinta CLARA
+/// (a letra clara sobre o escuro é a que lê fina; no Light a medição não a aproxima — tabela no
+/// [`ph2d_tokens::STEM_DARKENING_PX`]). Lê só o preset — NÃO o `ph2d_text::com_peso_exato`, que
+/// tira o reforço de PESO; isto é a borda. Fora disso, o `FontEmbolden::default()` (zero) de sempre.
+pub fn font_embolden_for(font_size: f32, ink: ph2d_vector::Color) -> ph2d_vector::FontEmbolden {
+    let claro =
+        ink.discard_alpha().relative_luminance() > ph2d_tokens::STEM_DARKENING_INK_LUMINANCE;
+    let a = f64::from(ph2d_tokens::stem_darkening_px(
+        text_rendering().params(),
+        font_size,
+    ));
+    if a == 0.0 || !claro {
+        return ph2d_vector::FontEmbolden::default();
+    }
+    ph2d_vector::FontEmbolden::new(ph2d_vector::Diagonal2::new(a, a))
+}
+
+#[cfg(test)]
+#[path = "published_embolden_tests.rs"]
+mod embolden_tests;

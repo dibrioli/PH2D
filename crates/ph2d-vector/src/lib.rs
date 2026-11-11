@@ -94,5 +94,6 @@ pub use vello::peniko::{BlendMode as VelloBlend, Compose, Mix};
 // Glyph + Scene used by callers that drive `Scene::draw_glyphs`
 // directly (text rendering in ph2d-editor::paint). Same version-skew
 // rationale as kurbo/peniko above.
+pub use vello::kurbo::Diagonal2;
 pub use vello::peniko::FontData;
-pub use vello::{Glyph, NormalizedCoord, Scene};
+pub use vello::{FontEmbolden, Glyph, NormalizedCoord, Scene};

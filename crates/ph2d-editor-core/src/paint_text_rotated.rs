@@ -56,6 +56,7 @@ pub fn paint_text_rotated_ccw(
                 // skrifa snaps to the *layout* pixel grid pre-rotation,
                 // axis-aligned so post-rotation grid alignment is 1:1.
                 .hint(hint)
+                .font_embolden(crate::paint::font_embolden_for(run_font_size, color))
                 // Forward parley's per-run variation coords (wght +
                 // opsz). See `paint_text_weighted` for why this is
                 // critical — without it Vello ignores the weight stop.

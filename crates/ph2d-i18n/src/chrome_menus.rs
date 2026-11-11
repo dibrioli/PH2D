@@ -199,6 +199,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.default" => "Default",
         "chrome.menu.crisp_heavy" => "Crisp Heavy",
         "chrome.menu.crisp_heavy_plus" => "Crisp Heavy +",
+        "chrome.menu.crisp_stem_darkening" => "Crisp + stem darkening",
         "chrome.menu.expressive" => "Expressive",
         "chrome.menu.discrete" => "Discrete",
         "chrome.menu.reduced_motion" => "Reduced motion",

@@ -174,6 +174,10 @@ pub enum TextRendering {
     /// O de fábrica: boost de CrispHeavy + hint ON + half-pixel snap-X +
     /// letter-spacing -0.01em em corpos ≤16 px.
     CrispHeavyPlus,
+    /// `CrispHeavyPlus` + **stem darkening** (dono 10/11): o contorno do glifo alarga-se uma
+    /// fracção de píxel nos corpos pequenos ([`stem_darkening_px`]), à FreeType/macOS — a letra
+    /// clara sobre fundo escuro deixa de ler fina. Não muda avanços. Opcional, nunca de fábrica.
+    CrispPlusDarkened,
 }
 
 /// Estratégia de snap horizontal do glyph origin. Trade-off entre
@@ -220,6 +224,9 @@ pub struct TextRenderingParams {
     /// aperta a densidade horizontal — útil em presets com ExtraBold
     /// para compensar o "abrir" natural do weight. `0.0` = sem ajuste.
     pub letter_spacing_em_dense: f32,
+    /// Alarga o contorno nos corpos pequenos ([`stem_darkening_px`]). É qualidade de BORDA, não
+    /// peso: vale também dentro do `ph2d_text::com_peso_exato`.
+    pub stem_darkening: bool,
     //
     // ⛔ AQUI VIVIA `prefer_msaa: bool` (removido 2026-08-30). NÃO o
     // reintroduza, nem com outro nome.
@@ -265,14 +272,20 @@ impl TextRendering {
     /// teste de outra pessoa só por existir** — e a correcção óbvia (trocar «três» por
     /// «quatro») deixava a mesma armadilha armada para o seguinte. *Uma contagem literal num
     /// gate faz cada feature nova editar o teste de alguém.* Os gates derivam daqui.
-    pub const ALL: [Self; 3] = [Self::Default, Self::CrispHeavy, Self::CrispHeavyPlus];
+    pub const ALL: [Self; 4] = [
+        Self::Default,
+        Self::CrispHeavy,
+        Self::CrispHeavyPlus,
+        Self::CrispPlusDarkened,
+    ];
 
     /// Cycle entre as opções (toggle do menu).
     pub fn next(self) -> Self {
         match self {
             Self::Default => Self::CrispHeavy,
             Self::CrispHeavy => Self::CrispHeavyPlus,
-            Self::CrispHeavyPlus => Self::Default,
+            Self::CrispHeavyPlus => Self::CrispPlusDarkened,
+            Self::CrispPlusDarkened => Self::Default,
         }
     }
 
@@ -282,6 +295,7 @@ impl TextRendering {
             Self::Default => "default",
             Self::CrispHeavy => "crisp_heavy",
             Self::CrispHeavyPlus => "crisp_heavy_plus",
+            Self::CrispPlusDarkened => "crisp_plus_darkened",
         }
     }
 
@@ -308,6 +322,7 @@ impl TextRendering {
                 snap_x: SnapX::None,
                 hint: true,
                 letter_spacing_em_dense: 0.0,
+                stem_darkening: false,
             },
             Self::CrispHeavy => TextRenderingParams {
                 weight_boost_body: 300,
@@ -320,6 +335,7 @@ impl TextRendering {
                 // → CrispHeavy fica visualmente "pro" (ExtraBold real).
                 hint: false,
                 letter_spacing_em_dense: 0.0,
+                stem_darkening: false,
             },
             Self::CrispHeavyPlus => TextRenderingParams {
                 // Mesmo boost de CrispHeavy.
@@ -335,13 +351,56 @@ impl TextRendering {
                 // Aperta densidade dos corpos pequenos compensando o
                 // "abrir" do ExtraBold.
                 letter_spacing_em_dense: -0.01,
+                stem_darkening: false,
                 // ⛔ Este preset ligava `AaConfig::Msaa16` no passe do
                 // Vello. Retirado em 2026-08-30 — ver a nota longa no
                 // fim de `TextRenderingParams`: o `AaConfig` é por
                 // PASSE, e este passe também carrega os vectores.
             },
+            Self::CrispPlusDarkened => {
+                let mut p = Self::CrispHeavyPlus.params();
+                p.stem_darkening = true;
+                p
+            }
         }
     }
+}
+
+/// Alargamento do contorno (px por lado) nos corpos ≤ 16 px, com `stem_darkening`.
+/// Recurso: a COBERTURA do rasterizador — a haste da mono a 12–13 px tem ~1 px, e cada 0,025 px
+/// por lado soma ~3,6 % de tinta. Medido na placa (`ph2d-panel-code/tests/it/nitidez.rs`,
+/// `o_escurecimento_aproxima_a_franja`, 10/11), linha do código no preset de fábrica com o
+/// contorno alargado; franja luz = fracção da tinta com cobertura 0,25–0,75 (o Problems ao lado);
+/// tinta = massa contra o fundo, relativa ao `+0`:
+///
+/// | tema · px  | Problems | +0    | +0,025       | **+0,05**        | +0,075        | +0,1          | +0,2          |
+/// |------------|----------|-------|--------------|------------------|---------------|---------------|---------------|
+/// | Dark · 12  | 0,413    | 0,479 | 0,455 · +4 % | **0,444 · +7 %** | 0,450 · +14 % | 0,446 · +19 % | 0,362 · +38 % |
+/// | Dark · 13  | 0,365    | 0,474 | 0,444 · +4 % | **0,440 · +7 %** | 0,413 · +13 % | 0,425 · +18 % | 0,319 · +36 % |
+/// | Light · 12 | 0,284    | 0,233 | 0,240 · +4 % | 0,228 · +7 %     | 0,227 · +14 % | 0,218 · +19 % | 0,256 · +37 % |
+/// | Light · 13 | 0,326    | 0,207 | 0,200 · +3 % | 0,187 · +7 %     | 0,183 · +13 % | 0,183 · +18 % | 0,241 · +35 % |
+///
+/// ⇒ `0,05`: o maior com a tinta ≤ +10 % (acima lê negrito); leva o código ~1/3 do caminho até ao
+/// Problems no escuro. No Light a franja do código já está ABAIXO da do Problems e o alargamento
+/// não a aproxima: só a tinta clara o recebe ([`STEM_DARKENING_INK_LUMINANCE`]).
+pub const STEM_DARKENING_PX: f32 = 0.05;
+/// A tinta que recebe o alargamento: luminância relativa (WCAG) acima do meio — letra clara.
+pub const STEM_DARKENING_INK_LUMINANCE: f32 = 0.5;
+/// Até este corpo o alargamento é o inteiro; acima desce linear até [`CRISP_BOOST_TIER_MID_MAX`].
+const STEM_DARKENING_FULL_MAX: f32 = CRISP_BOOST_TIER_DENSE_MAX;
+
+/// O alargamento (px por lado) a aplicar a um glifo de `font_size_px`: `0` sem `stem_darkening`
+/// e acima de 20 px, como o *stem darkening* do FreeType (o ganho é só nos corpos pequenos).
+pub fn stem_darkening_px(params: TextRenderingParams, font_size_px: f32) -> f32 {
+    if !params.stem_darkening || font_size_px >= CRISP_BOOST_TIER_MID_MAX {
+        return 0.0;
+    }
+    if font_size_px <= STEM_DARKENING_FULL_MAX {
+        return STEM_DARKENING_PX;
+    }
+    let t = (CRISP_BOOST_TIER_MID_MAX - font_size_px)
+        / (CRISP_BOOST_TIER_MID_MAX - STEM_DARKENING_FULL_MAX);
+    STEM_DARKENING_PX * t
 }
 
 /// FontWeight boost (CSS units) dado os params do preset + tamanho
@@ -522,5 +581,37 @@ mod tests {
         for s in [10.0_f32, 11.0, 15.0, 20.0, 32.0, 44.0] {
             assert_eq!(crisp_weight_boost_for(p, s), 0);
         }
+    }
+
+    /// O quarto modo é o de fábrica com o *stem darkening* e mais nada.
+    #[test]
+    fn crisp_plus_darkened_is_crisp_heavy_plus_with_stem_darkening() {
+        let mut p = TextRendering::CrispPlusDarkened.params();
+        assert!(p.stem_darkening);
+        p.stem_darkening = false;
+        assert_eq!(p, TextRendering::CrispHeavyPlus.params());
+        assert_eq!(TextRendering::CrispPlusDarkened.id(), "crisp_plus_darkened");
+        for m in TextRendering::ALL {
+            assert_eq!(
+                m.params().stem_darkening,
+                m == TextRendering::CrispPlusDarkened
+            );
+        }
+    }
+
+    /// Inteiro até 16 px, desce até zero aos 20 px, zero sem o modo.
+    #[test]
+    fn stem_darkening_fades_with_size_and_only_in_its_mode() {
+        let on = TextRendering::CrispPlusDarkened.params();
+        let off = TextRendering::CrispHeavyPlus.params();
+        let sizes = [9.0_f32, 11.0, 12.0, 13.0, 16.0, 17.0, 19.0, 20.0, 24.0];
+        let a: Vec<f32> = sizes.iter().map(|s| stem_darkening_px(on, *s)).collect();
+        assert_eq!(a[0], STEM_DARKENING_PX);
+        assert_eq!(a[4], STEM_DARKENING_PX, "16 px ainda é o inteiro");
+        assert!(a[5] > 0.0 && a[5] < STEM_DARKENING_PX, "{a:?}");
+        assert!(a.windows(2).all(|w| w[1] <= w[0]), "monótono: {a:?}");
+        assert_eq!(a[7], 0.0);
+        assert_eq!(a[8], 0.0);
+        assert!(sizes.iter().all(|s| stem_darkening_px(off, *s) == 0.0));
     }
 }

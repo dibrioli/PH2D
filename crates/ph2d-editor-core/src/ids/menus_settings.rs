@@ -86,6 +86,8 @@ pub const CTX_MENU_SETTINGS_TEXT: NodeId = hash_node_id("ctx_menu_settings_text"
 pub const CTX_MENU_TEXT_DEFAULT: NodeId = hash_node_id("ctx_menu_text_default");
 pub const CTX_MENU_TEXT_CRISP_HEAVY: NodeId = hash_node_id("ctx_menu_text_crisp_heavy");
 pub const CTX_MENU_TEXT_CRISP_HEAVY_PLUS: NodeId = hash_node_id("ctx_menu_text_crisp_heavy_plus");
+/// `TextRendering::CrispPlusDarkened` — Crisp Heavy + com *stem darkening* (dono 10/11).
+pub const CTX_MENU_TEXT_CRISP_DARKENED: NodeId = hash_node_id("ctx_menu_text_crisp_darkened");
 
 /// Top-level Settings entry that opens the **Motion** submenu — o carácter da UI viva
 /// (`crate::motion::UiCharacter`) e o interruptor de *reduced motion*.

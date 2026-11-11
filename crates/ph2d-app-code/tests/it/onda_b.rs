@@ -217,6 +217,7 @@ fn sem_grelha_pintada_nenhum_alvo_do_quadro_anterior_responde() {
             text: &mut ts,
             mods: Modifiers::default(),
             now_ns: 1,
+            primary_held: true,
         };
         let (down, primary) = (
             ph2d_host::PointerKind::Down,

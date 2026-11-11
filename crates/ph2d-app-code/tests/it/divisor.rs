@@ -44,6 +44,7 @@ fn input(ts: &mut ph2d_text::TextSystem) -> ph2d_editor_core::doc_surface::Point
         text: ts,
         mods: Modifiers::default(),
         now_ns: 1,
+        primary_held: true,
     }
 }
 
@@ -338,4 +339,62 @@ fn o_in_this_script_escondido_sai_do_minimo() {
     let escondido = m.docs().bench.target(Aim::Entry(0)).is_none();
     assert!(escondido, "controlo: escondido");
     assert_eq!(m.docs().bench.outline_fit_w(), 0.0, "o fit sai da conta");
+}
+
+/// ⭐ O largar FORA da aba não chega a ela: o 1.º movimento sem o botão acaba o arrasto ali (dono 10/11,
+/// o rato real). A largura fica a do último movimento com o botão, e mexer mais não a muda.
+#[test]
+fn o_primeiro_movimento_sem_botao_acaba_o_arrasto() {
+    let (mut m, id) = aberta();
+    let (col, ..) = rects(&mut m, id);
+    let p = vao(col);
+    botao(&mut m, id, p, Down, PointerButton::Primary);
+    move_para(&mut m, id, (p.0 + 40.0, p.1));
+    m.rato(id, p.0 + 90.0, p.1);
+    m.rato(id, p.0 + 140.0, p.1);
+    m.pinta(id);
+    assert_eq!(
+        largura(&mut m, id),
+        col.w + 40.0,
+        "parou no último com o botão"
+    );
+    assert_ne!(
+        m.docs().pointer_look(id.0, p.0 + 140.0, p.1),
+        Some(PointerLook::ResizeEw),
+        "já não arrasta"
+    );
+}
+
+/// A mesma regra nos outros arrastos da aba: a selecção de texto deixa de seguir o rato, e o nome da
+/// lista largado noutro sítio NÃO cai onde o rato voltou (a marca apaga-se, o texto fica).
+#[test]
+fn o_largar_perdido_acaba_a_seleccao_e_cancela_o_nome_da_lista() {
+    let (mut m, id) = aberta();
+    let (_, code, _) = rects(&mut m, id);
+    let c = centro(code);
+    let em = |m: &mut Mesa, b: usize| m.docs().glyph_center(id, b).expect("o glifo");
+    let (a, b) = (em(&mut m, 2), em(&mut m, 12));
+    botao(&mut m, id, a, Down, PointerButton::Primary);
+    move_para(&mut m, id, b);
+    let sel = m.docs().selection_of(id);
+    assert!(
+        sel.iter().any(|r| !r.is_empty()),
+        "controlo: seleccionou {sel:?}"
+    );
+    m.rato(id, code.x + 300.0, c.1 + 40.0);
+    assert_eq!(m.docs().selection_of(id), sel, "a selecção parou");
+    let linha = centro(
+        m.docs()
+            .list_target(ph2d_panel_code::ListHit::Row(id.0))
+            .expect("a linha"),
+    );
+    botao(&mut m, id, linha, Down, PointerButton::Primary);
+    move_para(&mut m, id, c);
+    assert!(
+        m.docs().drop_mark_of(id).is_some(),
+        "controlo: a marca segue"
+    );
+    m.rato(id, c.0 + 10.0, c.1);
+    assert!(m.docs().drop_mark_of(id).is_none(), "a marca apagou-se");
+    assert_eq!(m.docs().text_of(id).as_deref(), Some(TEXTO), "nada caiu");
 }

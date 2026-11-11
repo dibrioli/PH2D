@@ -122,3 +122,60 @@ fn with_a_known_background_the_lighter_ink_is_emboldened() {
     assert_eq!(font_embolden_on(0.1, ESCURA, CLARA).amount.xx, 0.0);
     assert_eq!(font_embolden_on(0.0, CLARA, ESCURA).amount.xx, 0.0);
 }
+
+/// O texto RODADO (rótulos verticais) recebe o mesmo escurecimento do preset, e só nele.
+#[test]
+fn rotated_text_is_emboldened_only_in_the_darkened_preset() {
+    super::set_ui_theme(Theme::Dark);
+    let corre = |mode| {
+        let (mut ts, mut scene) = (TextSystem::without_system_fonts(), VectorScene::new());
+        set_text_rendering(mode);
+        crate::paint::paint_text_rotated_ccw(
+            &mut ts,
+            &mut scene,
+            "Hierarchy",
+            40.0,
+            200.0,
+            PX,
+            f32::INFINITY,
+            CLARA,
+        );
+        set_text_rendering(TextRendering::default());
+        let r = &scene.inner().encoding().resources;
+        let a: Vec<f64> = r
+            .glyph_runs
+            .iter()
+            .map(|g| g.font_embolden.amount.xx)
+            .collect();
+        a
+    };
+    let px = f64::from(ph2d_tokens::STEM_DARKENING_PX);
+    let (com, sem) = (
+        corre(TextRendering::CrispPlusDarkened),
+        corre(TextRendering::CrispHeavyPlus),
+    );
+    assert!(!com.is_empty() && com.iter().all(|a| *a == px), "{com:?}");
+    assert!(sem.iter().all(|a| *a == 0.0), "{sem:?}");
+}
+
+/// O pintor do herói publica o preset E o tema do quadro (`publish_text`): sem isso o chrome
+/// decidiria o escurecimento pelo tema de abertura, e um tema claro alargaria a tinta branca.
+#[test]
+fn the_hero_painter_publishes_the_preset_and_the_theme() {
+    use crate::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, HeroScreen, paint_hero_screen};
+    for (theme, mode) in [
+        (Theme::Light, TextRendering::CrispPlusDarkened),
+        (Theme::Forge, TextRendering::CrispHeavy),
+    ] {
+        super::set_ui_theme(Theme::Oled);
+        set_text_rendering(TextRendering::Default);
+        let mut hero = HeroScreen::new(crate::NodeId(1));
+        (hero.theme, hero.text_rendering) = (theme, mode);
+        let vp = crate::zones::Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
+        let mut ts = TextSystem::without_system_fonts();
+        paint_hero_screen(&mut hero, vp, &mut VectorScene::new(), &mut ts);
+        let got = (super::ui_theme(), super::text_rendering());
+        set_text_rendering(TextRendering::default());
+        assert_eq!(got, (theme, mode));
+    }
+}

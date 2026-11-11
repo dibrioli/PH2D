@@ -49,6 +49,7 @@ impl Mesa {
             text: &mut ts,
             mods,
             now_ns: 0,
+            primary_held: kind == PointerKind::Down,
         };
         self.docs().pointer(e, input, kind, button, at.0, at.1);
         self.ts = ts;

@@ -152,6 +152,11 @@ pub struct PointerInput<'a> {
     pub text: &'a mut TextSystem,
     pub mods: Modifiers,
     pub now_ns: u128,
+    /// O botão primário está premido AGORA (o da janela, não o deste evento): um movimento sem ele a
+    /// meio de um arrasto diz que o largar se perdeu fora da aba ([`Documents::note_button`]).
+    ///
+    /// [`Documents::note_button`]: crate::documents::Documents::note_button
+    pub primary_held: bool,
 }
 
 /// ⭐ **O que um arrasto ENTRE PAINÉIS traz a uma aba** (item 8 do CodeEditor). A aba decide o que

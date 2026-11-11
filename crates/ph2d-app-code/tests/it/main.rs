@@ -253,6 +253,7 @@ impl Mesa {
             text: &mut ts,
             mods: Modifiers::default(),
             now_ns: 1,
+            primary_held: false,
         };
         let _ = self.docs().pointer_move(id.0, input, x, y);
         self.ts = ts;
@@ -297,6 +298,7 @@ impl Mesa {
                 text: &mut ts,
                 mods,
                 now_ns: 1,
+                primary_held: kind.is_none_or(|k| k == PointerKind::Down),
             };
             let Some(kind) = kind else {
                 let _ = self.docs().pointer_move(id.0, input, x, y);

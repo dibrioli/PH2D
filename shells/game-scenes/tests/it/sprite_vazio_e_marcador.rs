@@ -210,6 +210,7 @@ impl Aba {
                 text: &mut ts,
                 mods: Modifiers::default(),
                 now_ns: 0,
+                primary_held: kind == PointerKind::Down,
             };
             self.docs()
                 .pointer(e, input, kind, PointerButton::Primary, x, y);

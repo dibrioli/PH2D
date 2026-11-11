@@ -94,11 +94,13 @@ pub(super) fn pointer(
     x: f32,
     y: f32,
 ) -> Option<bool> {
+    let primary_held = hero.documents.primary_held;
     let (f, id) = hero.documents.active_surface_mut()?;
     let pi = PointerInput {
         text: input.text,
         mods: input.mods,
         now_ns: input.now_ns,
+        primary_held,
     };
     let taken = f.pointer(id, pi, kind, button, x, y);
     // Carregar no documento tira o foco a um campo da interface: senão o texto iria para lá.
@@ -145,11 +147,13 @@ pub(super) fn pointer_move(
     x: f32,
     y: f32,
 ) -> Option<bool> {
+    let primary_held = hero.documents.primary_held;
     let (f, id) = hero.documents.active_surface_mut()?;
     let pi = PointerInput {
         text: input.text,
         mods: input.mods,
         now_ns: input.now_ns,
+        primary_held,
     };
     Some(f.pointer_move(id, pi, x, y))
 }

@@ -604,5 +604,6 @@ fn mk(ts: &mut TextSystem) -> ph2d_editor_core::doc_surface::PointerInput<'_> {
         text: ts,
         mods: Modifiers::default(),
         now_ns: 1,
+        primary_held: true,
     }
 }

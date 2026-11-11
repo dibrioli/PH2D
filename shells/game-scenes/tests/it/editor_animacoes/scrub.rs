@@ -16,6 +16,7 @@ fn mover(m: &mut Mesa, (x, y): (f32, f32), mods: Modifiers) {
         text: &mut ts,
         mods,
         now_ns: 0,
+        primary_held: true,
     };
     m.docs().pointer_move(e, input, x, y);
     m.ts = ts;

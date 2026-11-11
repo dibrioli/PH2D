@@ -473,6 +473,7 @@ fn arrastar_um_script_da_lista_para_o_texto_escreve_o_nome() {
             text: ts,
             mods: Modifiers::default(),
             now_ns: 1,
+            primary_held: true,
         }
     }
     let d = m.docs();

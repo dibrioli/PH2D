@@ -265,6 +265,19 @@ impl DocumentSurface for CodeDocs {
     }
 
     fn pointer_move(&mut self, id: u64, input: PointerInput<'_>, x: f32, y: f32) -> bool {
+        // O largar perdeu-se fora da aba: é aqui, no 1.º movimento sem o botão. A queda de um nome da
+        // lista foi noutro sítio: cancela-se, nunca cai onde o rato voltou.
+        let lost = !input.primary_held
+            && (self.pressed || self.left.dragging.is_some() || self.list.drag.is_some());
+        if lost {
+            if self.list.drag.take().is_some()
+                && let Some(d) = self.doc(id)
+            {
+                d.drop_hover(None);
+            }
+            let _ = self.pointer(id, input, PointerKind::Up, PointerButton::Primary, x, y);
+            return true;
+        }
         if self.left.drag_right_to(x) {
             return true;
         }

@@ -113,6 +113,7 @@ mod pela_aba {
                     text: &mut ts,
                     mods: Modifiers::default(),
                     now_ns: 0,
+                    primary_held: kind == PointerKind::Down,
                 };
                 self.docs()
                     .pointer(id, input, kind, PointerButton::Primary, x, y);

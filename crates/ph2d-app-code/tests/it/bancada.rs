@@ -1378,6 +1378,7 @@ fn ajuda_clique(
             text: &mut ts,
             mods: crate::ctrl(),
             now_ns,
+            primary_held: kind == PointerKind::Down,
         };
         let _ = m
             .docs()

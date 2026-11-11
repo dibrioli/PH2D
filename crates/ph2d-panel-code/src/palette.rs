@@ -48,8 +48,10 @@ impl Palette {
         let c = |t: ColorToken| resolve(t, theme);
         let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
         let well = Well::new(theme, cartoes);
+        let mut inks = Ink::ALL.map(|i| c(i.token()));
+        inks[Ink::Link as usize] = link_ink(theme, [well.bg, well.current_line]);
         Self {
-            inks: Ink::ALL.map(|i| c(i.token())),
+            inks,
             bg: well.bg,
             gutter: well.gutter,
             border: c(ColorToken::Border),
@@ -95,6 +97,45 @@ impl Palette {
     pub(crate) fn tint(&mut self, ink: Ink, color: Color) {
         self.inks[ink as usize] = color;
     }
+}
+
+/// O contraste de texto AA da WCAG (4,5:1).
+const AA_TEXT_RATIO: f32 = 4.5; // LITERAL-PX-OK: razão de contraste, não uma medida
+
+fn contrast(a: Color, b: Color) -> f32 {
+    let (x, y) = (
+        a.discard_alpha().relative_luminance(),
+        b.discard_alpha().relative_luminance(),
+    );
+    (x.max(y) + 0.05) / (x.min(y) + 0.05)
+}
+
+/// O link (o acento sob Ctrl, sublinhado) lê-se como TEXTO no poço e na linha do cursor: o acento da
+/// casa, senão o degrau vizinho que chega a 4,5:1 (Hover, depois Press); nenhum = o que lê mais. A
+/// paleta da sintaxe não muda. Medido 10/11 (linha do cursor): Oled Accent 4,29 → Hover 5,10;
+/// Sunstone Accent 4,41 · Hover 3,59 → Press 5,43; os outros dez ficam no Accent.
+fn link_ink(theme: Theme, surfaces: [Color; 2]) -> Color {
+    let worst = |c: Color| {
+        surfaces
+            .map(|s| contrast(c, s))
+            .into_iter()
+            .fold(f32::INFINITY, f32::min)
+    };
+    let steps = [
+        ColorToken::Accent,
+        ColorToken::AccentHover,
+        ColorToken::AccentPress,
+    ]
+    .map(|t| resolve(t, theme));
+    steps
+        .into_iter()
+        .find(|c| worst(*c) >= AA_TEXT_RATIO)
+        .unwrap_or_else(|| {
+            steps
+                .into_iter()
+                .max_by(|a, b| worst(*a).total_cmp(&worst(*b)))
+                .unwrap_or(steps[0])
+        })
 }
 
 /// As superfícies do poço do código. Nos cartões o poço é o tom do cartão — o MESMO das linhas de
@@ -202,8 +243,8 @@ mod tests {
 
     /// ⭐ Sobre o poço novo, em todo tema: cada tinta do código a ≥ 4,5:1 (comentário e dica ≥ 3:1) no
     /// fundo e na linha do cursor; os números a ≥ 3:1 na calha; o texto a ≥ 4,5:1 na selecção; e a
-    /// selecção, a linha do cursor e as ocorrências separam-se do fundo. O `Link` (o acento sob Ctrl,
-    /// sublinhado) fica de fora: é o traço do VS Code, medido no handoff.
+    /// selecção, a linha do cursor e as ocorrências separam-se do fundo. O `Link` (o acento sob Ctrl)
+    /// tem o teste dele, [`o_link_le_se_no_poco_e_na_linha_do_cursor_nos_12_temas`].
     #[test]
     fn as_tintas_leem_se_no_poco_dos_cartoes() {
         let mut falhas = Vec::new();
@@ -246,5 +287,45 @@ mod tests {
             }
         }
         assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+    }
+
+    /// ⭐ O link sob Ctrl lê-se a ≥ 4,5:1 no poço e na linha do cursor, nos 12 temas e nos dois modos,
+    /// e é um degrau do acento: o da casa onde ele chega (controlo: o Dark fica no Accent), outro no
+    /// Oled e no Sunstone (controlo: senão o teste não via a cura).
+    #[test]
+    fn o_link_le_se_no_poco_e_na_linha_do_cursor_nos_12_temas() {
+        let mut falhas = Vec::new();
+        for cartoes in [true, false] {
+            for tema in Theme::ALL {
+                let p = palette(tema, cartoes);
+                let link = p.ink(Ink::Link);
+                for (onde, f) in [("bg", p.bg), ("line", p.current_line)] {
+                    let k = contrast(link, f);
+                    if k < AA_TEXT_RATIO {
+                        falhas.push(format!(
+                            "{tema:?} cartões={cartoes}: link sobre {onde} = {k:.2}"
+                        ));
+                    }
+                }
+                let degraus = [
+                    ColorToken::Accent,
+                    ColorToken::AccentHover,
+                    ColorToken::AccentPress,
+                ];
+                assert!(
+                    degraus.iter().any(|t| resolve(*t, tema) == link),
+                    "{tema:?}: um degrau do acento"
+                );
+            }
+        }
+        assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+        let acento = |t: Theme| resolve(ColorToken::Accent, t);
+        assert_eq!(
+            palette(Theme::Dark, true).ink(Ink::Link),
+            acento(Theme::Dark)
+        );
+        for t in [Theme::Oled, Theme::Sunstone] {
+            assert_ne!(palette(t, true).ink(Ink::Link), acento(t), "{t:?}");
+        }
     }
 }

@@ -304,6 +304,7 @@ fn click(docs: &mut CodeDocs, tab: u64, (x, y): (f32, f32), mods: Modifiers) {
             text: &mut ts,
             mods,
             now_ns,
+            primary_held: kind == PointerKind::Down,
         };
         let _ = docs.pointer(tab, input, kind, PointerButton::Primary, x, y);
     }
@@ -361,6 +362,7 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
                 text: &mut ts,
                 mods: NONE,
                 now_ns: 1,
+                primary_held: false,
             };
             let _ = docs.pointer_move(id.0, input, x, y);
         }
@@ -378,6 +380,7 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
                 text: &mut ts,
                 mods: NONE,
                 now_ns: 1,
+                primary_held: false,
             };
             let _ = docs.pointer_move(id.0, input, r.x + r.w * 0.5, r.y + r.h * 0.5);
         }
@@ -417,6 +420,7 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
                     text: &mut ts,
                     mods: NONE,
                     now_ns: 1,
+                    primary_held: kind == PointerKind::Down,
                 };
                 let _ = docs.pointer(id.0, input, kind, PointerButton::Primary, x, y);
             }

@@ -392,10 +392,11 @@ impl App {
             _ => ElementState::Released,
         };
         self.any_input_this_frame = true;
-        if let (PointerKind::Down, Some(h)) =
-            (kind, self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()))
-        {
-            h.store.desarma_escuta_no_clique();
+        if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            if kind == PointerKind::Down {
+                h.store.desarma_escuta_no_clique();
+            }
+            h.documents.note_button(kind, mapped_button);
         }
         // W-Grab: soltar a mão (e a alça da âncora, §12) vem ANTES dos early-returns, qualquer botão.
         if state == ElementState::Released {

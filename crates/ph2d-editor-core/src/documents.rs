@@ -52,6 +52,8 @@ pub struct Documents {
     /// O botão premido sobre o chrome, até largar: o gesto é dele, e a área do documento não o ouve
     /// mesmo com o ponteiro por cima (ver `board_view::pointer`).
     pub(crate) chrome_press: Option<ph2d_host::PointerButton>,
+    /// O botão primário premido na janela (o largar fora da aba chega aqui, não à aba).
+    pub(crate) primary_held: bool,
     /// O quadro cuja aba é, agora, o campo de renomear.
     pub(crate) renaming: Option<BoardId>,
     /// Uma aba de quadro com o dedo em cima — ver `document_tabs_menu::pointer`.

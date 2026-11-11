@@ -50,6 +50,26 @@ impl Documents {
         self.surface_active = exists.then_some(tab);
     }
 
+    /// A shell anota CADA carregar e largar da janela, antes de qualquer desvio: o largar fora da aba
+    /// não lhe chega, mas o movimento seguinte leva-o em [`PointerInput::primary_held`].
+    ///
+    /// [`PointerInput::primary_held`]: crate::doc_surface::PointerInput::primary_held
+    pub fn note_button(&mut self, kind: ph2d_host::PointerKind, button: ph2d_host::PointerButton) {
+        if button == ph2d_host::PointerButton::Primary {
+            match kind {
+                ph2d_host::PointerKind::Down => self.primary_held = true,
+                ph2d_host::PointerKind::Up => self.primary_held = false,
+                ph2d_host::PointerKind::Move => {}
+            }
+        }
+    }
+
+    /// O botão primário está premido na janela?
+    #[must_use]
+    pub fn primary_held(&self) -> bool {
+        self.primary_held
+    }
+
     /// A família e o id da aba activa, juntos, para um evento.
     pub fn active_surface_mut(&mut self) -> Option<(&mut (dyn DocumentSurface + 'static), u64)> {
         let tab = self.surface_active?;
@@ -89,5 +109,26 @@ impl Documents {
                 self.surface_active = None;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ph2d_host::PointerButton::{Primary, Secondary};
+    use ph2d_host::PointerKind::{Down, Move, Up};
+
+    /// Só o primário conta, e o largar dele limpa-o onde quer que tenha caído.
+    #[test]
+    fn o_botao_primario_e_anotado_ate_largar() {
+        let mut d = super::Documents::default();
+        assert!(!d.primary_held());
+        d.note_button(Down, Primary);
+        d.note_button(Move, Primary);
+        d.note_button(Up, Secondary);
+        assert!(d.primary_held(), "outro botão não o larga");
+        d.note_button(Up, Primary);
+        assert!(!d.primary_held());
+        d.note_button(Down, Secondary);
+        assert!(!d.primary_held(), "outro botão não o prime");
     }
 }

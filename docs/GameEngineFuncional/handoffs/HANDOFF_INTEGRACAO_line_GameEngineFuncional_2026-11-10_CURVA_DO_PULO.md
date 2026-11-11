@@ -64,3 +64,9 @@ Fotos: [`fotos_04/`](../componentes/fotos_04/) (`PH2D_GAME_SMOKE_FOTO=fisica_pla
 - Floaty/Snappy/Heavy: valores são decisão técnica aprovada no smoke, afináveis.
 - O campo Jump Height mostra a altura de gravidade neutra (2,00); a alça mostra o ápice real (2,04).
 - Herdados do Character: o gate de geometria do `seam_player` prova menos; as dobras sem dica de hover; `open_all_sections` não abre as dobras novas.
+
+## Adendo do fecho (10/11, depois do smoke)
+
+- **Commits do fecho:** `44f04fffc8` (fmt) · `6c863b77a1` (clippy: import e constante sem uso no gate) · `b7ef9f1b9a` (**o desenho da curva desce à `ph2d-panel-physics`**: `src/curva_do_pulo.rs` + `_tests.rs`; a `ph2d-app-physics/src/jump_arc.rs` fica com o arrasto e `pub use ph2d_panel_physics::curva_do_pulo::*`; a shell não mudou). Causa: `the_shell_only_shrinks_and_every_app_crate_too` — `ph2d-app-physics` 38 126 > tecto 38 085; depois 37 823. `ph2d-panel-physics/Cargo.toml`: `ph2d-ecs` de dev-dep a dep, `+ ph2d-render`; `Cargo.lock` muda.
+- **Fecho corrido pela linha:** fmt e clippy `-D warnings` das 11 crates tocadas (inclui `ph2d-panel-physics`); por nome: `arc::tests`, `o_arco_do_desenho_e_o_do_jogo`, `jump_arc::tests`, `curva_do_pulo`, `point_gizmo`, `seam_player`, `o_inspector_armado`, `an_undo_that_keeps_the_cards_moves_nothing`, `project_schema`, `inspector_player`, os gates de LOC/cor/órfão/NodeId e os dois do catálogo — verdes. Não existe gate que compare o catálogo com os campos de `PlatformPlayer` (o campo 62 foi conferido à mão).
+- **Binário do smoke** (2.ª corrida): `Finished \`smoke\` profile [optimized] target(s) in 0.40s`, zero `Compiling`.

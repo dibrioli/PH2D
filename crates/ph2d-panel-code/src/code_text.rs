@@ -42,10 +42,12 @@ pub fn snap(x: f32) -> f32 {
     ph2d_editor_core::paint::snap_x_apply(x, params().snap_x)
 }
 
-/// O escurecimento de um glifo do código de `size` px na tinta `ink`.
+/// O escurecimento de um glifo do código de `size` px na tinta `ink` sobre o fundo `bg`: só a tinta
+/// mais clara que o fundo (claro sobre escuro) o recebe.
 #[must_use]
-pub fn embolden(size: f32, ink: ph2d_vector::Color) -> FontEmbolden {
-    ph2d_editor_core::paint::font_embolden_with(params(), size, ink)
+pub fn embolden(size: f32, ink: ph2d_vector::Color, bg: ph2d_vector::Color) -> FontEmbolden {
+    let a = ph2d_tokens::code_stem_darkening_px(params(), size);
+    ph2d_editor_core::paint::font_embolden_on(a, ink, bg)
 }
 
 /// As linhas do submenu, pela ordem de [`TextRendering::ALL`]: (id, rótulo, rótulo com a marca).

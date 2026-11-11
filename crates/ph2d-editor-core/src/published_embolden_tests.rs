@@ -71,3 +71,19 @@ fn dark_ink_is_never_emboldened() {
     let (a, _) = pinta(TextRendering::CrispPlusDarkened, false, ESCURA);
     assert!(!a.is_empty() && a.iter().all(|a| *a == 0.0), "{a:?}");
 }
+
+/// Com o fundo conhecido decide o CONTRASTE: a tinta mais clara que o fundo alarga (mesmo com
+/// `Y < 0,5`), a mais escura não (mesmo com `Y > 0,5`), e o `0` não alarga nada.
+#[test]
+fn with_a_known_background_the_lighter_ink_is_emboldened() {
+    use crate::paint::font_embolden_on;
+    let roxo = Color::from_rgb8(0x9d, 0x7c, 0xd8);
+    let cinza = Color::from_rgb8(0xe0, 0xe0, 0xe0);
+    assert_eq!(
+        font_embolden_on(0.1, roxo, ESCURA).amount.xx,
+        0.1_f32 as f64
+    );
+    assert_eq!(font_embolden_on(0.1, cinza, CLARA).amount.xx, 0.0);
+    assert_eq!(font_embolden_on(0.1, ESCURA, CLARA).amount.xx, 0.0);
+    assert_eq!(font_embolden_on(0.0, CLARA, ESCURA).amount.xx, 0.0);
+}

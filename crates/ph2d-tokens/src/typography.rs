@@ -392,15 +392,40 @@ const STEM_DARKENING_FULL_MAX: f32 = CRISP_BOOST_TIER_DENSE_MAX;
 /// O alargamento (px por lado) a aplicar a um glifo de `font_size_px`: `0` sem `stem_darkening`
 /// e acima de 20 px, como o *stem darkening* do FreeType (o ganho é só nos corpos pequenos).
 pub fn stem_darkening_px(params: TextRenderingParams, font_size_px: f32) -> f32 {
+    stem_darkening_of(STEM_DARKENING_PX, params, font_size_px)
+}
+
+/// Alargamento da letra do CÓDIGO (px por lado, ≤ 16 px): toda a tinta mais clara que o poço o
+/// recebe (`ph2d_editor_core::paint::font_embolden_on`). Recurso: a COBERTURA do rasterizador.
+/// Medido na placa (`ph2d-panel-code/tests/it/escurecimento.rs`, `a_quantidade_do_escurecimento_do_codigo`,
+/// 10/11): três linhas de Luau com o realce real no poço escuro (Dark; o Forge dá o mesmo ±0,1);
+/// mudam = píxeis da caixa do texto com algum canal > 4/255 contra o `+0`; tinta = massa contra o poço:
+///
+/// | px | +0,05          | +0,075          | **+0,1**            | +0,15           |
+/// |----|----------------|-----------------|---------------------|-----------------|
+/// | 12 | 7,2 % · +5,7 % | 10,3 % · +10,8 % | **11,1 % · +14,5 %** | 11,9 % · +21,8 % |
+/// | 13 | 6,3 % · +5,6 % | 8,8 % · +10,2 %  | **9,3 % · +13,7 %**  | 9,9 % · +20,4 %  |
+/// | 15 | 6,4 % · +5,1 % | 8,3 % · +9,2 %   | **8,6 % · +11,9 %**  | 9,1 % · +17,8 %  |
+///
+/// ⇒ `0,1`: o maior com a tinta ≤ +15 % (acima lê negrito); o dono não via o `0,05` (que, pela lei
+/// velha, só chegava às tintas com `Y > 0,5`). O chrome fica no [`STEM_DARKENING_PX`].
+pub const CODE_STEM_DARKENING_PX: f32 = 0.1;
+
+/// [`stem_darkening_px`] com o inteiro da letra do código ([`CODE_STEM_DARKENING_PX`]).
+pub fn code_stem_darkening_px(params: TextRenderingParams, font_size_px: f32) -> f32 {
+    stem_darkening_of(CODE_STEM_DARKENING_PX, params, font_size_px)
+}
+
+fn stem_darkening_of(full: f32, params: TextRenderingParams, font_size_px: f32) -> f32 {
     if !params.stem_darkening || font_size_px >= CRISP_BOOST_TIER_MID_MAX {
         return 0.0;
     }
     if font_size_px <= STEM_DARKENING_FULL_MAX {
-        return STEM_DARKENING_PX;
+        return full;
     }
     let t = (CRISP_BOOST_TIER_MID_MAX - font_size_px)
         / (CRISP_BOOST_TIER_MID_MAX - STEM_DARKENING_FULL_MAX);
-    STEM_DARKENING_PX * t
+    full * t
 }
 
 /// FontWeight boost (CSS units) dado os params do preset + tamanho

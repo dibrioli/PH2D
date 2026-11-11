@@ -110,25 +110,37 @@ pub fn text_rendering() -> ph2d_tokens::TextRendering {
     ph2d_text::active_text_rendering()
 }
 
-/// ⭐ O *stem darkening* do preset activo para um glifo de `font_size` px pintado com `ink`: o
-/// `FontEmbolden` que todo `draw_glyphs` do chrome e da aba de scripts passa. Só na tinta CLARA
-/// (a letra clara sobre o escuro é a que lê fina; no Light a medição não a aproxima — tabela no
-/// [`ph2d_tokens::STEM_DARKENING_PX`]). Lê só o preset — NÃO o `ph2d_text::com_peso_exato`, que
-/// tira o reforço de PESO; isto é a borda. Fora disso, o `FontEmbolden::default()` (zero) de sempre.
+/// ⭐ O *stem darkening* do preset activo para um glifo de `font_size` px pintado com `ink`, no
+/// chrome (o `paint_text` não sabe o fundo): só a tinta CLARA em termos absolutos
+/// ([`ph2d_tokens::STEM_DARKENING_INK_LUMINANCE`]) — as superfícies da interface são escuras nos
+/// temas escuros e claras no Light. Lê só o preset — NÃO o `ph2d_text::com_peso_exato`, que tira o
+/// reforço de PESO; isto é a borda. Fora disso, o `FontEmbolden::default()` (zero) de sempre.
 pub fn font_embolden_for(font_size: f32, ink: ph2d_vector::Color) -> ph2d_vector::FontEmbolden {
-    font_embolden_with(text_rendering().params(), font_size, ink)
-}
-
-/// [`font_embolden_for`] com os parâmetros de outro modo (a letra do código tem o seu).
-pub fn font_embolden_with(
-    params: ph2d_tokens::TextRenderingParams,
-    font_size: f32,
-    ink: ph2d_vector::Color,
-) -> ph2d_vector::FontEmbolden {
     let claro =
         ink.discard_alpha().relative_luminance() > ph2d_tokens::STEM_DARKENING_INK_LUMINANCE;
-    let a = f64::from(ph2d_tokens::stem_darkening_px(params, font_size));
-    if a == 0.0 || !claro {
+    alarga_se(
+        ph2d_tokens::stem_darkening_px(text_rendering().params(), font_size),
+        claro,
+    )
+}
+
+/// O escurecimento quando o FUNDO é conhecido (a letra do código sobre o poço): a lei física do
+/// *stem darkening* — a letra MAIS CLARA que o fundo em que assenta (claro sobre escuro) lê fina e
+/// recebe-o, seja qual for a luminância absoluta (o roxo da palavra-chave no poço escuro);
+/// a escura sobre o claro (o Light) não. `amount` = px por lado deste corpo
+/// ([`ph2d_tokens::code_stem_darkening_px`]).
+pub fn font_embolden_on(
+    amount: f32,
+    ink: ph2d_vector::Color,
+    bg: ph2d_vector::Color,
+) -> ph2d_vector::FontEmbolden {
+    let lum = |c: ph2d_vector::Color| c.discard_alpha().relative_luminance();
+    alarga_se(amount, lum(ink) > lum(bg))
+}
+
+fn alarga_se(amount: f32, sim: bool) -> ph2d_vector::FontEmbolden {
+    let a = f64::from(amount);
+    if a == 0.0 || !sim {
         return ph2d_vector::FontEmbolden::default();
     }
     ph2d_vector::FontEmbolden::new(ph2d_vector::Diagonal2::new(a, a))

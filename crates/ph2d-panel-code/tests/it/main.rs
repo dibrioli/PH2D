@@ -7,6 +7,7 @@ mod bancada;
 mod clique;
 mod coluna_do_lado;
 mod cronometro;
+mod escurecimento;
 mod estado;
 mod ligaduras;
 mod medicoes_do_fecho;

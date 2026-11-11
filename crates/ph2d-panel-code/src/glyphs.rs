@@ -104,7 +104,8 @@ impl CodeView {
         }
         add_work(0, batches.iter().map(|b| b.glyphs.len()).sum());
         for b in batches {
-            draw(scene, &b.font, b.size, &b.coords, pal.ink(b.ink), b.glyphs);
+            let ink = (pal.ink(b.ink), pal.bg);
+            draw(scene, &b.font, b.size, &b.coords, ink, b.glyphs);
         }
     }
 
@@ -197,15 +198,9 @@ impl CodeView {
             }
         }
         if let Some(d) = &self.digits {
-            draw(scene, &d.font, d.size, &d.coords, pal.number, plain);
-            draw(
-                scene,
-                &d.font,
-                d.size,
-                &d.coords,
-                pal.number_current,
-                current,
-            );
+            let (n, c) = ((pal.number, pal.gutter), (pal.number_current, pal.gutter));
+            draw(scene, &d.font, d.size, &d.coords, n, plain);
+            draw(scene, &d.font, d.size, &d.coords, c, current);
         }
         scene.pop_layer();
     }
@@ -266,7 +261,8 @@ pub(crate) fn paint_mono(
         }
     }
     for b in batches {
-        draw(scene, &b.font, b.size, &b.coords, pal.ink(b.ink), b.glyphs);
+        let ink = (pal.ink(b.ink), pal.bg);
+        draw(scene, &b.font, b.size, &b.coords, ink, b.glyphs);
     }
     x + off
 }
@@ -300,13 +296,14 @@ fn batch(v: &mut Vec<Batch>, font: &FontData, size: f32, coords: &[i16], ink: In
     })
 }
 
-/// Os glifos em coordenadas de ecrã, com dica.
+/// Os glifos em coordenadas de ecrã, com dica; `(color, bg)` = a tinta e o fundo em que assenta
+/// (o escurecimento decide pelos dois, [`crate::code_text::embolden`]).
 fn draw(
     scene: &mut VectorScene,
     font: &FontData,
     size: f32,
     coords: &[i16],
-    color: ph2d_vector::Color,
+    (color, bg): (ph2d_vector::Color, ph2d_vector::Color),
     glyphs: Vec<Glyph>,
 ) {
     if glyphs.is_empty() {
@@ -317,7 +314,7 @@ fn draw(
         .draw_glyphs(font)
         .font_size(size)
         .hint(crate::code_text::hint())
-        .font_embolden(crate::code_text::embolden(size, color))
+        .font_embolden(crate::code_text::embolden(size, color, bg))
         .normalized_coords(coords)
         .brush(color)
         .transform(Affine::IDENTITY)

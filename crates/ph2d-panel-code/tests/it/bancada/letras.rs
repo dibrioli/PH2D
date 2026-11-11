@@ -462,10 +462,10 @@ fn a_linha_do_codigo_tem_a_letra_do_texto_dos_problemas() {
         let quer = ph2d_text::displayed_font_px(TypeToken::Base.px());
         assert_eq!(quer.to_bits(), ph2d_panel_code::code_font_px().to_bits());
         let ids = ids_mono(&mut ts, texto);
-        // A dica é a mesma; o alargamento, o do modo do script na tinta clara do problema (o
-        // código «alive» é a cor de um nome, escura: não alarga, como no app).
+        // A dica é a mesma; o alargamento, o do modo do script (`code_stem_darkening_px`) na tinta
+        // do problema, mais clara que o fundo.
         let (bl, bp) = (borda(&sc, &ids), borda(&s, &ids));
-        let largo = f64::from(ph2d_tokens::stem_darkening_px(modo.params(), p.2)).to_bits();
+        let largo = f64::from(ph2d_tokens::code_stem_darkening_px(modo.params(), p.2)).to_bits();
         let borda_ok = bl.0 == modo.params().hint && bp == (bl.0, largo);
         if linha != p || p != alive || (linha.2 - quer).abs() > 1e-4 || !borda_ok {
             falhas.push(format!(

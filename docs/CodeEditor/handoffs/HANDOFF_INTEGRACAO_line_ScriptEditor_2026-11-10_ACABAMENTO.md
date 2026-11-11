@@ -291,6 +291,29 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
 
 - **Menu View ▸ Text rendering do script** (foto `smoke/ar_menu.png`): quatro linhas planas «Text rendering: …» (a barra da aba não tem submenu; ph2d-app-code no tecto). Clippy do workspace `-D warnings` verde depois de `0e1dc18d39`.
 - **Coluna do lado da Sheet rola (dono 10/11, `4d8c7789bf` + `28c6f53f2d`)** — Call stack · Waiting here passava por cima do pé com muitos à espera. Agora `debug_card/side.rs`: uma rolagem só (linhas inteiras, presa ao conteúdo, volta ao topo noutra paragem `linha:função:objecto`), barra da casa (`OwnBar`/`paint_scrollbar`) só se transborda, só linhas INTEIRAS à vista pintam e entram em `painted.stack`/`painted.waiting` (nada sob o pé recebe clique); roda (`side_wheel`, antes da tabela), arrasto da barra (`side_press`/`side_drag`), ponteiro ↕. `height()` = a de sempre `max` a natural com os respiros. A11y inalterada (o `text_rows` já lista todas as linhas, sem geometria). Testes `coluna_do_lado::*` (5). Mutações exit 1: tudo visível · roda morta · barra não agarra · sem reset na paragem · sem prender ao fim · roda sem linhas inteiras. Fotos (cena 14 passo 1, quadro baixado ao mínimo pelo puxador): `smoke/as_lado.png` (barra, recortada no pé), `smoke/as_lado_rolado.png` (`RODA_DEPOIS`, nova no `fotos_q3.sh`: Star e Hexagon à vista). A cena 15 para num ERRO (sem Waiting here): não serve.
+- **«Crisp + stem darkening» do script decide pelo FUNDO (dono 10/11: «não faz nada»)** — a causa medida: a lei
+  `Y_tinta > 0,5` deixava de fora, no poço escuro (`Y 0,022`), Keyword `0,398`, Function `0,474`, Number `0,440`,
+  Constant `0,378`, Comment `0,356`, Operator `0,486`, Unresolved `0,350`, Link `0,349` (e no Forge também
+  Punctuation/Hint `0,412`); só Text1/Property/Type/String/Builtin/Text2 alargavam, a `0,05` px. Agora
+  `font_embolden_on(amount, ink, bg)` (editor-core): alarga a tinta MAIS CLARA que o fundo; o código passa o poço
+  (`pal.bg`; a calha passa `pal.gutter`). Dark/Forge: as 17 tintas alargam; Light (poço `Y 1,0`): nenhuma. O chrome
+  (`font_embolden_for`, `paint_text` não sabe o fundo) fica na lei velha e nos `0,05`. Quantidade própria
+  `CODE_STEM_DARKENING_PX = 0,1` (sonda `escurecimento::a_quantidade_do_escurecimento_do_codigo`, placa, 3 linhas de
+  Luau realçadas no poço Dark; «mudam» = píxeis da caixa com canal > 4/255; tinta = massa vs `+0`):
+
+  | px | +0,05 | +0,075 | **+0,1** | +0,15 |
+  |----|-------|--------|----------|-------|
+  | 12 | 7,2 % · +5,7 % | 10,3 % · +10,8 % | **11,1 % · +14,5 %** | 11,9 % · +21,8 % |
+  | 13 | 6,3 % · +5,6 % | 8,8 % · +10,2 % | **9,3 % · +13,7 %** | 9,9 % · +20,4 % |
+  | 15 | 6,4 % · +5,1 % | 8,3 % · +9,2 % | **8,6 % · +11,9 %** | 9,1 % · +17,8 % |
+
+  Escolha = o maior com tinta ≤ +15 %. Fotos (cena 13 passo 1, menu fechado): `smoke/at_sem.png` (Crisp Heavy +),
+  `smoke/at_com.png`, `smoke/at_zoom.png` (3×, 4 linhas), `smoke/at_diff.png` (zoom + diferença ×8): no recorte de
+  460×80 mudam 4 356 píxeis > 4/255 (11,8 %), 2 667 > 16/255 (7,2 %), máx. 66/255 — todas as tintas, roxo incluído.
+  Veredicto: a 1:1 lê-se como traço um pouco mais cheio/claro lado a lado; isolado é subtil (é o *stem darkening*).
+  Testes `escurecimento::*` (6, novo), `embolden_tests::with_a_known_background_the_lighter_ink_is_emboldened`;
+  `letras::a_linha_do_codigo_tem_a_letra_do_texto_dos_problemas` passou a ler `code_stem_darkening_px`.
+  Mutações exit 1: lei velha `Y > 0,5` (tabela + poço escuro) · `!=` (Light) · fundo = a própria tinta (poço escuro).
 
 Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,40 s, já construído pelas fotos); a 2.ª:
 

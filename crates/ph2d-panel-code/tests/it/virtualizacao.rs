@@ -2,6 +2,7 @@
 
 use crate::{Deco, area_para, pinta, texto, ts};
 use ph2d_code_buffer::{Buffer, Range, Selection};
+use ph2d_editor_core::zones::Rect;
 use ph2d_panel_code::{CodeView, FoldMark};
 
 const LINHAS: usize = 7_500;
@@ -111,4 +112,58 @@ fn linhas_dobradas_nao_se_pintam_nem_ocupam_filas() {
     );
     assert_eq!(v.cache().len(), 20);
     assert_eq!(v.visible_lines(), 0..20 + 48);
+}
+
+/// A paragem do depurador pede a linha à vista ANTES do layout: o quadro de baixo abre no mesmo
+/// quadro e encolhe o código. A pintura seguinte resolve o pedido contra a área final (cena 12 a
+/// 1280×720: a linha 18 ficava abaixo da vista).
+#[test]
+fn o_pedido_de_vista_resolve_se_contra_a_area_que_encolheu() {
+    let mut buf = Buffer::new(&texto(LINHAS, 60));
+    let (mut v, mut ts) = (CodeView::new(), ts());
+    let alta = area_para(&mut v, &buf, &mut ts, VISTA);
+    pinta(&mut v, &buf, &mut ts, alta, &Deco::default());
+    let alvo = VISTA - 3;
+    let at = buf.text().byte_of_line(alvo);
+    buf.set_selection(Selection::single(Range::cursor(at)));
+    v.ensure_visible(&buf, at);
+    assert!(
+        v.visible_lines().contains(&alvo),
+        "controlo: à vista na área alta"
+    );
+    let baixa = Rect {
+        h: alta.h * 0.4,
+        ..alta
+    };
+    pinta(&mut v, &buf, &mut ts, baixa, &Deco::default());
+    assert!(
+        v.visible_lines().contains(&alvo),
+        "pedido: {:?}",
+        v.visible_lines()
+    );
+    assert!(v.caret_rect(&buf, at).is_some());
+    // O cursor à vista fica à vista quando a área volta a encolher, sem pedido nenhum.
+    let mais_baixa = Rect {
+        h: baixa.h * 0.5,
+        ..baixa
+    };
+    pinta(&mut v, &buf, &mut ts, mais_baixa, &Deco::default());
+    assert!(
+        v.visible_lines().contains(&alvo),
+        "encolher: {:?}",
+        v.visible_lines()
+    );
+    // A aba que a paragem abre ainda não tem área: o pedido espera pela primeira pintura.
+    let mut nova = CodeView::new();
+    let fundo = buf.text().byte_of_line(LINHAS / 2);
+    buf.set_selection(Selection::single(Range::cursor(fundo)));
+    nova.ensure_visible(&buf, fundo);
+    pinta(&mut nova, &buf, &mut ts, baixa, &Deco::default());
+    assert!(nova.visible_lines().contains(&(LINHAS / 2)), "aba nova");
+    buf.set_selection(Selection::single(Range::cursor(at)));
+    // Controlo: a roda depois do pedido manda (o pedido não desfaz a rolagem do artista).
+    v.ensure_visible(&buf, at);
+    v.scroll_by(-v.metrics().line_h * VISTA as f32);
+    pinta(&mut v, &buf, &mut ts, mais_baixa, &Deco::default());
+    assert_eq!(v.visible_lines().start, 0);
 }

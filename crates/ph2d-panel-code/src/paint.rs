@@ -111,9 +111,19 @@ impl CodeView {
             self.m = m;
             self.digits = d;
         }
+        // O cursor à vista continua à vista quando a área muda de altura (o quadro do depurador abre
+        // ou é arrastado); um pedido de `ensure_visible` resolve-se contra a área deste quadro.
+        let head = frame.buffer.selection().primary().head;
+        let shown = self
+            .visible_lines()
+            .contains(&t.line_of_byte(head.min(t.len())));
+        let kept = (self.area.h != area.h && shown).then_some(head);
         self.area = area;
         self.set_hidden(frame.closed, self.line_count);
         self.clamp_scroll();
+        if let Some(b) = self.reveal.take().or(kept) {
+            self.scroll_to(frame.buffer, b);
+        }
     }
 
     /// Molda (ou acha na cache) cada linha visível; os trechos de cor pedem-se por bloco contíguo.

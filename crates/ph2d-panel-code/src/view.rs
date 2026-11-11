@@ -89,6 +89,9 @@ pub struct CodeView {
     pub(crate) bancada_marks: Vec<(usize, Rect)>,
     /// O arrasto da barra de rolagem do texto.
     pub(crate) bar_drag: Option<ph2d_editor_core::widget::scroll_area::BarDrag>,
+    /// O byte que a próxima pintura volta a pôr à vista contra a área FINAL: o pedido chega antes
+    /// do layout (a paragem do depurador abre o quadro de baixo no mesmo quadro e encolhe o código).
+    pub(crate) reveal: Option<usize>,
 }
 
 /// ⛔ **Os bytes de uma linha que a pintura mostra** — o resto acaba num «…». ⚠️ **De que recurso
@@ -134,6 +137,7 @@ impl Default for CodeView {
             counter_label: String::new(),
             bancada_marks: Vec::new(),
             bar_drag: None,
+            reveal: None,
         }
     }
 }
@@ -333,6 +337,7 @@ impl CodeView {
 
     pub fn scroll_by(&mut self, dy_px: f32) {
         self.scroll_y += dy_px;
+        self.reveal = None;
         self.clamp_scroll();
     }
 
@@ -360,6 +365,7 @@ impl CodeView {
     pub fn bar_drag_to(&mut self, y: f32) -> bool {
         let Some(d) = self.bar_drag else { return false };
         self.scroll_y = d.scroll_at(y);
+        self.reveal = None;
         self.clamp_scroll();
         true
     }
@@ -379,6 +385,7 @@ impl CodeView {
 
     pub fn scroll_x_by(&mut self, dx_px: f32) {
         self.scroll_x += dx_px;
+        self.reveal = None;
         self.clamp_scroll();
     }
 
@@ -411,7 +418,13 @@ impl CodeView {
     }
 
     /// O cursor nunca fica fora da vista: rola o mínimo para mostrar `byte`.
+    /// Rola já com a área do último quadro e repete na pintura seguinte, contra a área nova.
     pub fn ensure_visible(&mut self, buffer: &Buffer, byte: usize) {
+        self.reveal = Some(byte);
+        self.scroll_to(buffer, byte);
+    }
+
+    pub(crate) fn scroll_to(&mut self, buffer: &Buffer, byte: usize) {
         self.line_count = buffer.text().line_count();
         let byte = byte.min(buffer.text().len());
         let line = buffer.text().line_of_byte(byte);

@@ -83,7 +83,7 @@ impl PainterTool {
         self.paint.pilha.lotes.clear();
         // ⛔ **O cap de Accumulate NÃO é limpo aqui, e a razão é que ele JÁ o é.** A 1.ª redacção
         // desta cura limpava o `composite_mask`, e a mutação que a apagava **sobreviveu**: o
-        // [`super::stamp_cache::prepare_stroke_mask`] já o zera para todo método que não é
+        // [`super::stamp_cache::MascaraDoTraco::prepara`] já o zera para todo método que não é
         // incremental, com esta lei escrita no doc dele desde que existe (*«os métodos de
         // preenchimento re-carimbam o TRAÇO INTEIRO, logo o cap tem de começar FRESCO»*) — e o
         // `composite_mask[pos]` está TROCADO para dentro do `stroke_mask` quando ele corre.

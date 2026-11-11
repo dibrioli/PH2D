@@ -183,14 +183,8 @@ impl PainterTool {
     pub(super) fn stamp_dabs_pixel(&mut self, dabs: &[Dab], brush: &BrushSpec, alpha_locked: bool) {
         let (w, h) = self.source_size;
         let cap = !brush.accumulate;
-        if cap {
-            super::stamp_cache::prepare_stroke_mask(
-                &mut self.paint.stroke_mask,
-                (w as usize) * (h as usize),
-                brush.stroke_method,
-            );
-        }
         let mut regiao: Option<Region> = None;
+        let mut footprints: Vec<Region> = Vec::new();
         for d in dabs {
             let r = pixel::diametro(d.radius_px) as f32 * 0.5 + 2.0;
             let x0 = (d.center[0] - r).floor().max(0.0) as u32;
@@ -205,7 +199,16 @@ impl PainterTool {
                     h: y1 - y0,
                 };
                 regiao = Some(regiao.map_or(q, |a| union_region(a, q)));
+                footprints.push(q);
             }
+        }
+        if cap {
+            self.paint.stroke_mask.prepara(
+                (w as usize) * (h as usize),
+                w as usize,
+                brush.stroke_method,
+                footprints,
+            );
         }
         if regiao.is_none() {
             return;
@@ -231,7 +234,7 @@ impl PainterTool {
             shape: self.paint.shape_camadas.motor(false),
             shift: [0.0; 3],
         });
-        let mut mask = cap.then_some(self.paint.stroke_mask.as_mut_slice());
+        let mut mask = cap.then_some(self.paint.stroke_mask.fatia_do_lote());
         let mut tocado: Option<Region> = None;
         for d in dabs {
             let spec = BrushSpec {

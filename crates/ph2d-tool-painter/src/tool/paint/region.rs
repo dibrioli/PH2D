@@ -307,28 +307,35 @@ pub(super) fn grow_region(r: Region, pad: u32, w: u32, h: u32) -> Option<Region>
 /// ponta de imagem rodada ou de Size < 1 escreve além de `± raio`. Um dab com passo (a cápsula do
 /// Continuous) escreve também até ao centro anterior, com o raio do maior dos dois ([`Dab::ante`]).
 pub(super) fn dabs_bounds(dabs: &[Dab], w: u32, h: u32, reach: f32) -> Option<Region> {
-    let mut acc: Option<Region> = None;
+    dabs_rects(dabs, w, h, reach).reduce(union_region)
+}
+
+/// A footprint de CADA dab de [`dabs_bounds`] (a cápsula: a união das duas pontas), por ordem.
+pub(super) fn dabs_rects(
+    dabs: &[Dab],
+    w: u32,
+    h: u32,
+    reach: f32,
+) -> impl Iterator<Item = Region> + '_ {
     let atras = |d: &Dab| {
         let r = d.ante.map_or(d.radius_px, |a| a.radius_px.max(d.radius_px));
         ([d.center[0] - d.step[0], d.center[1] - d.step[1]], r)
     };
-    for (c, raio) in dabs.iter().flat_map(|d| {
+    dabs.iter().filter_map(move |d| {
         [(d.center, d.radius_px)]
             .into_iter()
             .chain((d.step != [0.0, 0.0]).then(|| atras(d)))
-    }) {
-        let Some(r) = ph2d_painter_brush::dab_write_bounds(c, raio, [reach, reach], w, h) else {
-            continue;
-        };
-        let r = Region {
-            x: r.x,
-            y: r.y,
-            w: r.w,
-            h: r.h,
-        };
-        acc = Some(acc.map_or(r, |a| union_region(a, r)));
-    }
-    acc
+            .filter_map(|(c, raio)| {
+                let r = ph2d_painter_brush::dab_write_bounds(c, raio, [reach, reach], w, h)?;
+                Some(Region {
+                    x: r.x,
+                    y: r.y,
+                    w: r.w,
+                    h: r.h,
+                })
+            })
+            .reduce(union_region)
+    })
 }
 
 /// A união das footprints de todas as camadas de um lote — **com as cópias do Tiling**.

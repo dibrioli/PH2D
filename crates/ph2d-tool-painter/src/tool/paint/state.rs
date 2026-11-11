@@ -176,7 +176,7 @@ pub(crate) struct PaintState {
     /// **O cap de Accumulate de CADA camada** — trocado para dentro do `stroke_mask` à volta do passe
     /// dela (`mem::swap`, `O(1)`). Sem isto duas camadas Brush partilham o mapa e a segunda deposita
     /// ZERO abaixo de Strength `1,0`; o porquê e a medição vivem em [`composite`].
-    pub(super) composite_mask: [Vec<u8>; composite::N_CAMADAS],
+    pub(super) composite_mask: [super::stamp_cache::MascaraDoTraco; composite::N_CAMADAS],
     /// O `arc_len` do último dab que CADA camada guardou, para a subamostragem de uma camada maior
     /// que o pincel atravessar os lotes. `NEG_INFINITY` = ainda não guardou nenhum neste traço.
     pub(super) composite_arco: [f32; composite::N_CAMADAS],
@@ -354,7 +354,7 @@ pub(crate) struct PaintState {
     pub(super) pilha_por_replay: bool,
     /// **Uma camada do Composite deposita num plano de MEDIÇÃO?** Então o trinco de alfa e o RELEVO ([`super::composite_relevo`]) não se aplicam ali.
     pub(super) acumulando_no_plano: bool,
-    pub(super) stroke_mask: Vec<u8>,
+    pub(super) stroke_mask: super::stamp_cache::MascaraDoTraco,
     /// **O plano do traço** (L8/L5/L6, só no Digital, [`super::traco_plano`]); `None` fora de um traço que o pede.
     pub(super) plano_do_traco: Option<super::traco_plano::PlanoDoTraco>,
     /// **O pó pousado** do traço ([`super::po_do_papel`]): `None` = por preparar; vazio = nada a encher.

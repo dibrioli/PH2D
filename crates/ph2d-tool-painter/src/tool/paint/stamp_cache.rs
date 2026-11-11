@@ -74,21 +74,8 @@ pub(super) fn mask_size_for(radius: f32) -> u32 {
         .clamp(MIN, MAX)
 }
 
-/// Size the per-stroke coverage mask for the Accumulate-OFF (Strength < 1) cap. The FILL methods
-/// (Line/Curve/Ellipse/Polygon/Free Hand) re-stamp the WHOLE stroke each call (drag-preview restore), so
-/// the cap must start FRESH each time — else the mask is already AT the cap from the prior re-stamp and
-/// the new one adds nothing, so a Strength change (which re-fills) ERASES the stroke. The incremental
-/// methods (Space/Dots/Airbrush) accumulate across batches (resize only zero-fills the new tail). A free
-/// fn taking just the mask so it doesn't conflict with the per-pixel paths' other field borrows. Enio.
-pub(super) fn prepare_stroke_mask(mask: &mut Vec<u8>, len: usize, method: StrokeMethod) {
-    if !matches!(
-        method,
-        StrokeMethod::Space | StrokeMethod::Dots | StrokeMethod::Airbrush
-    ) {
-        mask.clear(); // fill re-stamp → fresh cap
-    }
-    mask.resize(len, 0);
-}
+mod mascara;
+pub(crate) use mascara::MascaraDoTraco;
 
 impl PainterTool {
     /// Scale-blit the cached stamp for each dab (the cacheable path of [`Self::stamp_dabs`]).
@@ -291,11 +278,13 @@ impl PainterTool {
         // the first dab of a stroke actually zero-fills — later dabs/frames keep the accumulation, which
         // is what makes the cap per-STROKE).
         let accumulate_cap = self.cobertura_tapada(brush);
+        let caixa = super::region::dabs_bounds(dabs, w, h, brush.tip_reach());
         if accumulate_cap {
-            prepare_stroke_mask(
-                &mut self.paint.stroke_mask,
+            self.paint.stroke_mask.prepara(
                 (w as usize) * (h as usize),
+                w as usize,
                 brush.stroke_method,
+                super::region::dabs_rects(dabs, w, h, brush.tip_reach()),
             );
         }
         // **O lote para o DISPOSITIVO**, resolvido antes de a tela ser forkada. Ele estreita o mesmo
@@ -334,10 +323,10 @@ impl PainterTool {
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            super::region::dabs_bounds(dabs, w, h, brush.tip_reach()),
+            caixa,
         );
         let mut mask: Option<&mut [u8]> =
-            accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());
+            accumulate_cap.then_some(self.paint.stroke_mask.fatia_do_lote());
         // ⚠️ **O LOTE, não o dab** (doc 28 §5.78). Um pincel de falloff puro — sem Shape, sem Grain,
         // sem cap de Accumulate — não tem estado por-dab nem compartilhado, então a figura inteira pode
         // ser dividida por LINHAS entre os núcleos. É a rota que este dispatch nomeia para o pincel

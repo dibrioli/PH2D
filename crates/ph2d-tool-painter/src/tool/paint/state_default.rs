@@ -190,7 +190,7 @@ impl Default for PaintState {
             // quantas o artista criou é o `composite_len`.
             composite_len: 0,
             composite_add_op: super::CompositeOp::Brush,
-            composite_mask: std::array::from_fn(|_| Vec::new()),
+            composite_mask: std::array::from_fn(|_| Default::default()),
             composite_arco: [f32::NEG_INFINITY; crate::tool::paint::composite::N_CAMADAS],
             pilha: crate::tool::paint::composite_pilha::PilhaDoTraco::default(),
             rng_camada: [0; crate::tool::paint::composite::N_CAMADAS],
@@ -272,7 +272,7 @@ impl Default for PaintState {
             ramp_lut_owner: ramp_lut::RampLutOwner::None,
             pilha_por_replay: std::env::var("PH2D_COMPOSITE_REPLAY").is_ok_and(|v| v == "1"),
             acumulando_no_plano: false,
-            stroke_mask: Vec::new(),
+            stroke_mask: Default::default(),
             plano_do_traco: None,
             po_do_papel: None,
             dual: Default::default(),

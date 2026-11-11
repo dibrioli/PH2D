@@ -3,7 +3,7 @@
 //! ([`PainterTool::stamp_dabs_ramped`]). Quem INDEXA a rampa é a dona dela — a lei vive numa porta só,
 //! [`ph2d_painter_brush::RampPaint`].
 
-use super::stamp_cache::{mask_size_for, prepare_stroke_mask};
+use super::stamp_cache::mask_size_for;
 use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{BrushSpec, Dab, blit_stamp_ramped, shift_ramp_lut};
@@ -149,21 +149,23 @@ impl PainterTool {
         // Color-Ramp stroke honours Accumulate (Enio 2026-06-25) without this route holding its own
         // opinion about the rule.
         let accumulate_cap = self.cobertura_tapada(brush);
+        let caixa = super::region::dabs_bounds(dabs, w, h, brush.tip_reach());
         if accumulate_cap {
-            prepare_stroke_mask(
-                &mut self.paint.stroke_mask,
+            self.paint.stroke_mask.prepara(
                 (w as usize) * (h as usize),
+                w as usize,
                 brush.stroke_method,
+                super::region::dabs_rects(dabs, w, h, brush.tip_reach()),
             );
         }
         let buf = super::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
             self.source_size.0,
-            super::region::dabs_bounds(dabs, w, h, brush.tip_reach()),
+            caixa,
         );
         let mut mask: Option<&mut [u8]> =
-            accumulate_cap.then_some(self.paint.stroke_mask.as_mut_slice());
+            accumulate_cap.then_some(self.paint.stroke_mask.fatia_do_lote());
         let mut touched: Option<Region> = None;
         for (di, d) in dabs.iter().enumerate() {
             let tex_rng = dab_rng.enter(&groups, di);

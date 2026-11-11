@@ -33,7 +33,7 @@ pub(crate) struct Ferramenta {
     /// A cobertura `a` da 1.ª ponta no traço (o alfa) — só fora do Multiply.
     cobertura: Option<Arc<Vec<u8>>>,
     /// O tecto do Accumulate e o trilho de píxel DA cobertura: os da ferramenta não andam duas vezes por lote.
-    stroke_mask: Vec<u8>,
+    stroke_mask: super::stamp_cache::MascaraDoTraco,
     trilhos: super::pixel_route::Trilhos,
 }
 

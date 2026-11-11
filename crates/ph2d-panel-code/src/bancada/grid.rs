@@ -212,7 +212,7 @@ impl BancadaView {
                 chrome::label_in(scene, ts, tr(key), r, ui.text3);
             } else {
                 // Na letra de «alive» (dono 10/11): a frase traz o código a escrever.
-                crate::mono_label::paint(ts, scene, *theme, tr(key), ui.text3, r);
+                crate::mono_label::paint_on(ts, scene, *theme, tr(key), ui.text3, ui.bg, r);
             }
             return;
         }

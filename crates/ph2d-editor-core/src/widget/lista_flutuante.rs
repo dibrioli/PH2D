@@ -77,6 +77,15 @@ impl Superficie {
         self.cartao.then(|| CardInk::of_list(self.theme))
     }
 
+    /// A cor que [`Self::moldura`] pinta por dentro (quem pinta texto por cima e decide pelo fundo lê-a).
+    #[must_use]
+    pub fn fundo(self) -> Color {
+        self.tinta().map_or_else(
+            || resolve(ColorToken::BgElev, self.theme),
+            |ink| ink.color(ColorToken::KanbanCardRaised).with_alpha(1.0),
+        )
+    }
+
     /// O fundo de uma lista flutuante.
     pub fn moldura(self, scene: &mut VectorScene, r: Rect) {
         if let Some(ink) = self.tinta() {

@@ -2,304 +2,69 @@
 //! caminho até o cursor à direita e a engrenagem de «Script options» no fim; as linhas saem da tabela
 //! de [`crate::commands`], e um clique corre o comando pelo MESMO caminho do `Ctrl+K` e da tecla.
 
-use crate::commands::{CMD_RESTART_ASSIST, CommandState, TabMenu, menu_rows_in, row_state};
+use crate::commands::{CMD_RESTART_ASSIST, TabMenu, menu_rows_in, row_state};
 use crate::docs::CodeDocs;
 use crate::help::page_of;
-use ph2d_a11y::NodeId;
-use ph2d_editor_core::icons::IconId;
-use ph2d_editor_core::paint::{folga_do_texto, paint_icon, paint_text_in_weight, resolve};
-use ph2d_editor_core::widget::{
-    Popover, paint_popover, paint_popover_row_highlight, pop_popover_clip, push_popover_clip,
-};
 use ph2d_editor_core::zones::Rect;
-use ph2d_panel_code::mono_label;
+use ph2d_panel_code::tab_bar::menu::{MenuItem, MenuPress};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
-use ph2d_tool_registry::hash_node_id;
+use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
 
-const TAB_MENU_POPOVER_ID: NodeId = hash_node_id("code_tab_menu_popover");
+pub use ph2d_panel_code::tab_bar::{Crumb, CrumbFunc, height, label, split, width_of};
 
-/// O que a barra pintou no último quadro (o rato e os testes lêem-no).
-#[derive(Clone, Debug, Default)]
-pub struct BarPainted {
-    pub header: Rect,
-    pub titles: Vec<(TabMenu, Rect)>,
-    /// As linhas do menu aberto: o comando e a caixa.
-    pub rows: Vec<(NodeId, Rect)>,
-    pub popup: Option<Rect>,
-    /// A parte «função» do caminho: a caixa, a linha e a coluna (0-based) da definição.
-    pub crumb_fn: Option<(Rect, usize, usize)>,
-    pub gear: Option<Rect>,
-    /// As dicas do rato: a engrenagem, a função do caminho e o alfinete do cartão das opções.
-    pub tips: Vec<(Rect, String)>,
-    /// A largura em que os menus e a engrenagem cabem sem se tocar (o mínimo da coluna do documento).
-    pub min_w: f32,
+/// A barra da aba: os seis menus de [`TabMenu`].
+pub type Bar = ph2d_panel_code::tab_bar::TabBar<TabMenu>;
+/// O que a barra pintou no último quadro.
+pub type BarPainted = ph2d_panel_code::tab_bar::BarPainted<TabMenu>;
+
+/// A linha `View ▸ Text rendering` (a do submenu dos modos da letra do código).
+pub const ROW_TEXT_RENDERING: ph2d_a11y::NodeId =
+    ph2d_tool_registry::hash_node_id("code_menu_text_rendering");
+
+/// Os títulos da barra, pela ordem.
+#[must_use]
+pub fn menu_titles() -> [(TabMenu, &'static str); 6] {
+    TabMenu::ALL.map(|m| (m, m.title()))
 }
 
-/// O estado da barra: o menu aberto e a linha sob o rato.
-#[derive(Clone, Debug, Default)]
-pub struct Bar {
-    pub open: Option<TabMenu>,
-    pub hover: Option<NodeId>,
-    pub painted: BarPainted,
-    /// O jogo parado: o menu Run apaga o que não vale e o F8 aparece numa linha só.
-    pub stop: crate::debug::GameStop,
-    /// A dica sob o rato (índice em `painted.tips`) e desde quando.
-    pub tip: Option<(usize, u128)>,
-    /// Os interruptores da aba activa (o rótulo do menu diz se estão ligados).
-    pub state: CommandState,
-}
-
-fn font() -> f32 {
-    TypeToken::Sm.px()
-}
-
-pub use ph2d_panel_code::cards::{bar_height as height, split_bar as split};
-
-pub(crate) fn width_of(ts: &mut TextSystem, s: &str) -> f32 {
-    use ph2d_panel_code::peso::{CORPO, largura_em};
-    largura_em(ts, s, font(), CORPO)
-}
-
-pub(crate) fn label(
-    ts: &mut TextSystem,
-    scene: &mut VectorScene,
-    s: &str,
-    r: Rect,
-    ink: ColorToken,
-    theme: &Theme,
-) {
-    let y = r.y + folga_do_texto(r.h, font());
-    let w = r.w.max(0.0) + Spacing::Xs.px();
-    let (c, corpo) = (resolve(ink, *theme), ph2d_panel_code::peso::CORPO);
-    paint_text_in_weight(ts, scene, s, [r.x, y], font(), w, c, corpo);
-}
-
-/// O caminho até o cursor: o script, a função que o contém (nome, linha e coluna da definição) e a
-/// linha do cursor (1-based).
-pub struct Crumb {
-    pub script: String,
-    pub func: CrumbFunc,
-    pub line: usize,
-}
-
-/// A função que contém o cursor: nome, linha e coluna da definição.
-pub type CrumbFunc = Option<(String, usize, usize)>;
-
-impl Bar {
-    /// Pinta a barra em `r` (o fundo é o do cartão, pintado por quem chama).
-    pub fn paint(
-        &mut self,
-        r: Rect,
-        crumb: &Crumb,
-        scene: &mut VectorScene,
-        ts: &mut TextSystem,
-        theme: &Theme,
-    ) {
-        let pad = crate::cards::well_pad();
-        let sm = Spacing::Sm.px();
-        self.painted = BarPainted {
-            header: r,
-            ..BarPainted::default()
-        };
-        let mut x = r.x + pad;
-        for m in TabMenu::ALL {
-            let w = mono_label::width(ts, m.title()) + sm * 2.0;
-            let tr = Rect::new(x, r.y, w, r.h);
-            if self.open == Some(m) {
-                paint_popover_row_highlight(scene, tr, *theme);
-            }
-            let ink = if self.open == Some(m) {
-                ColorToken::AccentFg
-            } else {
-                ColorToken::Text1
-            };
-            let lr = Rect::new(x + sm, r.y, f32::INFINITY, r.h);
-            mono_label::paint(ts, scene, *theme, m.title(), resolve(ink, *theme), lr);
-            self.painted.titles.push((m, tr));
-            x += w;
-        }
-        // A engrenagem no fim; o caminho encostado à esquerda dela.
-        let side = r.h;
-        self.painted.min_w = x - r.x + sm + side + pad;
-        let gear = Rect::new(r.x + r.w - pad - side, r.y, side, side);
-        let inset = Spacing::Xs.px();
-        let glyph = Rect::new(
-            gear.x + inset,
-            gear.y + inset,
-            side - inset * 2.0,
-            side - inset * 2.0,
-        );
-        paint_icon(
-            scene,
-            IconId::Settings,
-            glyph,
-            resolve(ColorToken::Text2, *theme),
-            StrokeToken::Default.px(),
-        );
-        self.painted.gear = Some(gear);
-        let gear_tip = ph2d_i18n::tr("code.menu.options_tip").to_owned();
-        self.painted.tips.push((gear, gear_tip));
-        let sep = "\u{203a}";
-        let line = ph2d_i18n::tr_with("code.crumb.line", &[("line", &crumb.line.to_string())]);
-        let parts: Vec<(String, bool)> = [
-            Some((crumb.script.clone(), false)),
-            crumb.func.as_ref().map(|f| (f.0.clone(), true)),
-            Some((line, false)),
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
-        let sep_pad = Spacing::Xs.px();
-        let sep_w = width_of(ts, sep) + sep_pad * 2.0;
-        let total: f32 = parts.iter().map(|p| width_of(ts, &p.0)).sum::<f32>()
-            + sep_w * (parts.len() - 1) as f32;
-        let mut cx = (gear.x - sm - total).max(x + sm);
-        for (i, (s, is_fn)) in parts.iter().enumerate() {
-            if i > 0 {
-                label(
-                    ts,
-                    scene,
-                    sep,
-                    Rect::new(cx + sep_pad, r.y, sep_w - sep_pad * 2.0, r.h),
-                    ColorToken::Text3,
-                    theme,
-                );
-                cx += sep_w;
-            }
-            let w = width_of(ts, s);
-            let pr = Rect::new(cx, r.y, w, r.h);
-            let ink = if *is_fn {
-                ColorToken::Accent
-            } else {
-                ColorToken::Text2
-            };
-            label(ts, scene, s, pr, ink, theme);
-            if *is_fn && let Some(f) = &crumb.func {
-                self.painted.crumb_fn = Some((pr, f.1, f.2));
-                let tip = ph2d_i18n::tr_with("code.crumb.go_tip", &[("name", &f.0)]);
-                self.painted.tips.push((pr, tip));
-            }
-            cx += w;
+/// As linhas do menu `m` com os interruptores em `state` e o jogo em `stop`: o Run leva a nota do
+/// Restart Code Assistant debaixo dele; o View acaba no submenu `Text rendering ▸` (dono 10/11).
+#[must_use]
+pub fn menu_items(
+    m: TabMenu,
+    state: crate::commands::CommandState,
+    stop: crate::debug::GameStop,
+) -> Vec<MenuItem> {
+    let mut out = Vec::new();
+    for (id, name, keys) in menu_rows_in(m, state) {
+        let (live, show_keys) = row_state(id, stop);
+        let keys = if show_keys { keys } else { String::new() };
+        out.push(MenuItem::Cmd {
+            id,
+            name,
+            keys,
+            live,
+        });
+        if m == TabMenu::Run && id == CMD_RESTART_ASSIST {
+            out.push(MenuItem::Note(
+                ph2d_i18n::tr("code.menu.restart_hint").to_owned(),
+            ));
         }
     }
-
-    /// Pinta o menu aberto por baixo do título dele (por cima de tudo: chame-a por último).
-    pub fn paint_popup(
-        &mut self,
-        scene: &mut VectorScene,
-        ts: &mut TextSystem,
-        theme: &Theme,
-        now: u128,
-    ) {
-        self.painted.rows.clear();
-        self.painted.popup = None;
-        let Some(m) = self.open else {
-            return self.paint_tip(scene, ts, theme, now);
-        };
-        let Some(&(_, title)) = self.painted.titles.iter().find(|t| t.0 == m) else {
-            return;
-        };
-        let rows = menu_rows_in(m, self.state);
-        let hint = (m == TabMenu::Run).then(|| ph2d_i18n::tr("code.menu.restart_hint"));
-        let pad = Spacing::Sm.px();
-        let gap = Spacing::Lg.px();
-        let name_w = rows
-            .iter()
-            .map(|r| mono_label::width(ts, &r.1))
-            .fold(0.0, f32::max);
-        let keys_w = rows.iter().map(|r| width_of(ts, &r.2)).fold(0.0, f32::max);
-        let hint_w = hint.map_or(0.0, |h| width_of(ts, h));
-        let w = (name_w + gap + keys_w).max(hint_w) + pad * 4.0;
-        let rh = height();
-        let n = rows.len() + usize::from(hint.is_some());
-        let popup = Rect::new(title.x, title.y + title.h, w, rh * n as f32 + pad);
-        paint_popover(&Popover::new(TAB_MENU_POPOVER_ID), popup, scene, *theme);
-        push_popover_clip(popup, scene);
-        let mut y = popup.y + pad * 0.5;
-        for (id, name, keys) in rows {
-            let (live, show_keys) = row_state(id, self.stop);
-            let keys = if show_keys { keys } else { String::new() };
-            let rr = Rect::new(
-                popup.x + Spacing::Xs.px(),
-                y,
-                popup.w - Spacing::Xs.px() * 2.0,
-                rh,
-            );
-            let hot = live && self.hover == Some(id);
-            if hot {
-                paint_popover_row_highlight(scene, rr, *theme);
-            }
-            let (ink, dim) = if hot {
-                (ColorToken::AccentFg, ColorToken::AccentFg)
-            } else if !live {
-                (ColorToken::Text3, ColorToken::Text3)
-            } else {
-                (ColorToken::Text1, ColorToken::Text3)
-            };
-            let nr = Rect::new(popup.x + pad, y, f32::INFINITY, rh);
-            mono_label::paint(ts, scene, *theme, &name, resolve(ink, *theme), nr);
-            let kw = width_of(ts, &keys);
-            label(
-                ts,
-                scene,
-                &keys,
-                Rect::new(popup.x + popup.w - pad * 2.0 - kw, y, kw, rh),
-                dim,
-                theme,
-            );
-            if live {
-                self.painted.rows.push((id, rr));
-            }
-            y += rh;
-            // A nota do Restart Code Assistant fica debaixo dele.
-            if let Some(h) = hint.filter(|_| id == CMD_RESTART_ASSIST) {
-                let hr = Rect::new(popup.x + pad, y, hint_w, rh);
-                label(ts, scene, h, hr, ColorToken::Text3, theme);
-                y += rh;
-            }
-        }
-        pop_popover_clip(scene);
-        self.painted.popup = Some(popup);
+    if m == TabMenu::View {
+        out.push(MenuItem::Sub {
+            id: ROW_TEXT_RENDERING,
+            name: ph2d_i18n::tr("code.menu.text_rendering").to_owned(),
+            rows: ph2d_panel_code::code_text::choices(),
+        });
     }
-
-    /// A dica sob o rato, depois da pausa do balão (a do `hint`), por baixo da caixa dela.
-    fn paint_tip(&self, scene: &mut VectorScene, ts: &mut TextSystem, theme: &Theme, now: u128) {
-        let Some((i, since)) = self.tip else { return };
-        let Some((r, msg)) = self.painted.tips.get(i) else {
-            return;
-        };
-        if now.saturating_sub(since) < crate::hint::HOVER_PAUSE_NS {
-            return;
-        }
-        let w = width_of(ts, msg) + Spacing::Sm.px() * 2.0;
-        let x = r.x.min(r.x + r.w - w);
-        let rect = Rect::new(x, r.y + r.h, w, height());
-        let tip = ph2d_editor_core::widget::Tooltip::new(TAB_MENU_POPOVER_ID, msg.clone());
-        ph2d_editor_core::widget::paint_tooltip(&tip, rect, scene, ts, *theme);
-    }
-
-    fn title_at(&self, x: f32, y: f32) -> Option<TabMenu> {
-        self.painted
-            .titles
-            .iter()
-            .find(|t| t.1.contains(x, y))
-            .map(|t| t.0)
-    }
-
-    fn row_at(&self, x: f32, y: f32) -> Option<NodeId> {
-        self.painted
-            .rows
-            .iter()
-            .find(|r| r.1.contains(x, y))
-            .map(|r| r.0)
-    }
+    out
 }
 
-/// O que um carregar na barra (ou no menu aberto) pede.
+/// O que um carregar na barra (fora do menu) pede.
 enum BarPress {
-    Run(NodeId),
+    Run(ph2d_a11y::NodeId),
     Crumb(usize, usize),
     Gear,
     Taken,
@@ -367,12 +132,10 @@ impl CodeDocs {
         theme: &Theme,
     ) {
         let Some(crumb) = self.crumb(id) else { return };
-        if let Some(d) = self.docs.iter().find(|d| d.script.0 == id) {
-            self.bar.state = self.command_state(d);
-        }
         let (head, _) = split(doc_r);
         crate::cards::open_bar(scene, head, doc_r.h, theme);
-        self.bar.paint(head, &crumb, scene, ts, theme);
+        self.bar
+            .paint(head, &menu_titles(), &crumb, scene, ts, theme);
         crate::cards::close_bar(scene, head, theme);
     }
 
@@ -389,7 +152,8 @@ impl CodeDocs {
             return;
         }
         let doc = self.docs.iter().find(|d| d.script.0 == id);
-        if let Some((state, title)) = doc.map(|d| (self.command_state(d), d.title.clone())) {
+        let state = doc.map(|d| self.command_state(d)).unwrap_or_default();
+        if let Some(title) = doc.map(|d| d.title.clone()) {
             let rows = crate::options_card::rows(state);
             let f = crate::options_card::frame(&title, &rows, self.intel.assist());
             let under = self.code_body(id, doc_r);
@@ -401,8 +165,13 @@ impl CodeDocs {
             let tip = ph2d_i18n::tr("code.options.pin").to_owned();
             self.bar.painted.tips.push((pin, tip));
         }
-        self.bar.stop = self.debug.game_stop;
-        self.bar.paint_popup(scene, ts, theme, self.clock.0);
+        let items = self
+            .bar
+            .open
+            .map(|m| menu_items(m, state, self.debug.game_stop))
+            .unwrap_or_default();
+        let clock = (self.clock.0, crate::hint::HOVER_PAUSE_NS);
+        self.bar.paint_popup(&items, scene, ts, theme, clock);
     }
 
     /// Um carregar primário: o menu aberto, a barra, o cartão das opções. `Some(true)` = tomado.
@@ -410,22 +179,11 @@ impl CodeDocs {
         if page_of(id).is_some() {
             return None;
         }
-        let press = if self.bar.open.is_some() {
-            match (self.bar.row_at(x, y), self.bar.title_at(x, y)) {
-                (Some(cmd), _) => BarPress::Run(cmd),
-                (None, Some(m)) if self.bar.open != Some(m) => {
-                    self.bar.open = Some(m);
-                    BarPress::Taken
-                }
-                _ => {
-                    self.bar.open = None;
-                    BarPress::Taken
-                }
+        let press = if let Some(p) = self.bar.press(x, y) {
+            match p {
+                MenuPress::Run(cmd) => BarPress::Run(cmd),
+                MenuPress::Taken => BarPress::Taken,
             }
-        } else if let Some(m) = self.bar.title_at(x, y) {
-            self.bar.open = Some(m);
-            self.bar.hover = None;
-            BarPress::Taken
         } else if let Some((r, l, c)) = self.bar.painted.crumb_fn
             && r.contains(x, y)
         {
@@ -442,7 +200,6 @@ impl CodeDocs {
         };
         match press {
             BarPress::Run(cmd) => {
-                self.bar.open = None;
                 let _ = ph2d_editor_core::doc_surface::DocumentSurface::command(self, id, cmd);
             }
             BarPress::Crumb(l, c) => {
@@ -454,31 +211,16 @@ impl CodeDocs {
         Some(true)
     }
 
-    /// O rato sem botão: a linha sob ele no menu aberto; passar a outro título troca de menu.
+    /// O rato sem botão: a dica, e no menu aberto a linha (e o submenu) sob ele.
     pub(crate) fn bar_move(&mut self, x: f32, y: f32) -> bool {
-        let at = self
-            .bar
-            .painted
-            .tips
-            .iter()
-            .position(|t| t.0.contains(x, y));
-        self.bar.tip = at.map(|i| match self.bar.tip {
-            Some((j, since)) if j == i => (i, since),
-            _ => (i, self.clock.0),
-        });
-        if self.bar.open.is_none() {
-            return self.options.hover(x, y);
-        }
-        if let Some(m) = self.bar.title_at(x, y) {
-            self.bar.open = Some(m);
-        }
-        self.bar.hover = self.bar.row_at(x, y);
-        true
+        self.bar.track_tip(x, y, self.clock.0);
+        self.bar.hover_move(x, y) || self.options.hover(x, y)
     }
 
-    /// O Esc fecha o menu aberto; sem menu, o cartão «Script options» sem alfinete. `true` = fechou algo.
+    /// O Esc fecha um nível do menu aberto; sem menu, o cartão «Script options» sem alfinete.
+    /// `true` = fechou algo.
     pub(crate) fn bar_escape(&mut self) -> bool {
-        if self.bar.open.take().is_some() {
+        if self.bar.escape() {
             return true;
         }
         if self.options.open && !self.options.pinned {

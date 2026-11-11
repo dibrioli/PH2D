@@ -245,7 +245,8 @@ fn o_menu_edit_tem_uma_linha_toggle_fold_que_faz_o_que_o_alt_f_faz() {
 /// Dono 10/11: títulos e linhas do menu na letra de «alive» (a mono do código: fonte, corpo, eixo).
 #[test]
 fn os_menus_da_barra_tem_a_letra_do_codigo() {
-    use ph2d_app_code::tab_menu::{Bar, Crumb};
+    use ph2d_app_code::commands::CommandState;
+    use ph2d_app_code::tab_menu::{Bar, Crumb, menu_items, menu_titles};
     use ph2d_text::{PositionedLayoutItem as Item, TextSystem};
     use ph2d_tokens::{Spacing, Theme, TypeToken};
     let (mut ts, px) = (
@@ -273,9 +274,10 @@ fn os_menus_da_barra_tem_a_letra_do_codigo() {
         line: 1,
     };
     let r = Rect::new(0.0, 0.0, 900.0, ph2d_app_code::tab_menu::height());
-    bar.paint(r, &crumb, &mut scene, &mut ts, &theme);
+    bar.paint(r, &menu_titles(), &crumb, &mut scene, &mut ts, &theme);
     bar.open = Some(TabMenu::Edit);
-    bar.paint_popup(&mut scene, &mut ts, &theme, 0);
+    let items = menu_items(TabMenu::Edit, CommandState::default(), Default::default());
+    bar.paint_popup(&items, &mut scene, &mut ts, &theme, (0, 0));
     let res = &scene.inner().encoding().resources;
     let cena: Vec<_> = res
         .glyph_runs
@@ -291,7 +293,7 @@ fn os_menus_da_barra_tem_a_letra_do_codigo() {
             )
         })
         .collect();
-    let rows = ph2d_app_code::commands::menu_rows_in(TabMenu::Edit, bar.state);
+    let rows = ph2d_app_code::commands::menu_rows_in(TabMenu::Edit, CommandState::default());
     let titulos = bar
         .painted
         .titles
@@ -329,28 +331,110 @@ fn um_fio_separa_a_barra_do_codigo_e_a_linha_1_respira_abaixo_dele() {
     assert!(mid > f.y + f.h + ph2d_tokens::Spacing::Md.px(), "{mid}");
 }
 
-/// ⭐ Dono 10/11: View ▸ Text rendering da aba tem os quatro modos do app, a marca no em vigor
-/// (de fábrica, Default), e clicar um escolhe a letra do CÓDIGO (a interface fica: `nitidez`).
+/// ⭐ Dono 10/11: `View ▸ Text rendering ▸` é um SUBMENU com os quatro modos, o `✓` no em vigor (de
+/// fábrica, Default); pairar na linha abre-o, escolher um muda a letra do CÓDIGO e fecha tudo.
 #[test]
-fn o_menu_view_escolhe_a_letra_do_codigo() {
-    use ph2d_app_code::commands::menu_rows;
+fn o_submenu_text_rendering_do_view_escolhe_a_letra_do_codigo() {
+    use ph2d_app_code::tab_menu::ROW_TEXT_RENDERING;
     use ph2d_panel_code::code_text::{ROWS, mode, set_mode};
     let (mut m, id) = aberta();
     for (i, want) in ph2d_tokens::TextRendering::ALL.into_iter().enumerate() {
-        let on = |r: &(_, String, _)| ROWS.iter().any(|t| t.0 == r.0) && r.1.ends_with('\u{2713}');
-        assert!(menu_rows(TabMenu::View).iter().any(on), "uma marca");
         let view = titulo(&mut m, TabMenu::View);
         clica(&mut m, id, view);
-        let rows = m.docs().bar_painted().rows.clone();
-        let row = rows.iter().find(|r| r.0 == ROWS[i].0).expect("no View");
-        clica(&mut m, id, row.1);
-        assert_eq!(mode(), want);
-        let marca: Vec<_> = menu_rows(TabMenu::View)
+        let p = m.docs().bar_painted().clone();
+        assert!(
+            ROWS.iter().all(|t| p.rows.iter().all(|r| r.0 != t.0)),
+            "nada solto"
+        );
+        assert!(p.sub.is_none(), "fechado até pairar");
+        let parent = p
+            .rows
             .iter()
-            .filter(|r| on(r))
-            .map(|r| r.0)
-            .collect();
-        assert_eq!(marca, [ROWS[i].0], "{want:?}");
+            .find(|r| r.0 == ROW_TEXT_RENDERING)
+            .expect("a linha");
+        let (x, y) = centro(parent.1);
+        m.rato(id, x, y);
+        m.pinta(id);
+        let sub = m
+            .docs()
+            .bar_painted()
+            .sub
+            .clone()
+            .expect("pairar abre o submenu");
+        assert_eq!(sub.parent, ROW_TEXT_RENDERING);
+        assert!(sub.popup.x >= p.popup.expect("o menu").x + p.popup.expect("o menu").w - 0.5);
+        let ids: Vec<_> = sub.rows.iter().map(|r| r.0).collect();
+        assert_eq!(ids, ROWS.map(|r| r.0), "os quatro, pela ordem");
+        let antes = ROWS[ph2d_tokens::TextRendering::ALL
+            .iter()
+            .position(|&t| t == mode())
+            .unwrap_or(0)]
+        .0;
+        assert_eq!(sub.checked, [antes], "o ✓ no em vigor");
+        let (x, y) = centro(sub.rows[i].1);
+        m.rato(id, x, y);
+        clica(&mut m, id, sub.rows[i].1);
+        assert_eq!(mode(), want);
+        let p = m.docs().bar_painted();
+        assert!(p.popup.is_none() && p.sub.is_none(), "escolher fecha tudo");
     }
     set_mode(ph2d_tokens::TextRendering::Default);
+}
+
+/// O submenu: pairar noutra linha fecha-o; o Esc fecha um nível (o submenu, depois o menu); clicar na
+/// linha-mãe também o abre; fora de tudo fecha os dois.
+#[test]
+fn o_submenu_fecha_por_outra_linha_pelo_esc_e_por_fora() {
+    use ph2d_app_code::tab_menu::ROW_TEXT_RENDERING;
+    let (mut m, id) = aberta();
+    let view = titulo(&mut m, TabMenu::View);
+    clica(&mut m, id, view);
+    let p = m.docs().bar_painted().clone();
+    let parent = p
+        .rows
+        .iter()
+        .find(|r| r.0 == ROW_TEXT_RENDERING)
+        .expect("a linha")
+        .1;
+    clica(&mut m, id, parent);
+    assert!(m.docs().bar_painted().sub.is_some(), "clicar abre");
+    let (x, y) = centro(p.rows[0].1);
+    m.rato(id, x, y);
+    m.pinta(id);
+    assert!(m.docs().bar_painted().sub.is_none(), "outra linha fecha");
+    let (x, y) = centro(parent);
+    m.rato(id, x, y);
+    m.pinta(id);
+    assert!(m.docs().bar_painted().sub.is_some());
+    m.tecla(
+        id,
+        ph2d_editor_core::doc_surface::Key::Escape,
+        Modifiers::default(),
+        None,
+    );
+    m.pinta(id);
+    let p2 = m.docs().bar_painted();
+    assert!(
+        p2.sub.is_none() && p2.popup.is_some(),
+        "o Esc fecha só o submenu"
+    );
+    m.tecla(
+        id,
+        ph2d_editor_core::doc_surface::Key::Escape,
+        Modifiers::default(),
+        None,
+    );
+    m.pinta(id);
+    assert!(
+        m.docs().bar_painted().popup.is_none(),
+        "o 2.º Esc fecha o menu"
+    );
+    clica(&mut m, id, view);
+    let (x, y) = centro(parent);
+    m.rato(id, x, y);
+    m.pinta(id);
+    let far = Rect::new(p.header.x + p.header.w - 40.0, p.header.y + 300.0, 4.0, 4.0);
+    clica(&mut m, id, far);
+    let p3 = m.docs().bar_painted();
+    assert!(p3.popup.is_none() && p3.sub.is_none(), "fora fecha os dois");
 }

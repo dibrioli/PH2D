@@ -75,19 +75,23 @@ pub fn elided<'a>(ts: &mut TextSystem, text: &'a str, w: f32) -> Cow<'a, str> {
 }
 
 /// Pinta `text` (cortado em `…` se não couber em `r.w`) na mono do código, na cor `color`,
-/// centrado na altura de `r`; devolve onde acabou.
-pub fn paint(
+/// centrado na altura de `r`, sobre o fundo `bg` (o REAL debaixo do rótulo: cartão, linha acesa,
+/// popover — o escurecimento do modo do script decide por ele, não pelo poço do código); devolve
+/// onde acabou.
+pub fn paint_on(
     ts: &mut TextSystem,
     scene: &mut VectorScene,
     theme: Theme,
     text: &str,
     color: Color,
+    bg: Color,
     r: Rect,
 ) -> f32 {
     let shown = elided(ts, text, r.w.max(0.0));
     with(ts, |c, m, ts| {
         let mut pal = Palette::new(theme);
         pal.tint(Ink::Plain, color);
+        pal.bg = bg;
         let row_y = r.y + (r.h - m.line_h) * 0.5;
         crate::glyphs::paint_mono(
             c,

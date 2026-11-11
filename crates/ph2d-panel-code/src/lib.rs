@@ -38,6 +38,7 @@ pub mod splitter;
 mod status;
 pub mod style;
 pub mod table_text;
+pub mod tab_bar;
 mod view;
 
 pub use a11y::RUN_CHARS;

@@ -349,7 +349,8 @@ impl ScriptListView {
         let color = if row.current { ui.text1 } else { ui.text2 };
         let w = (text_right - r.x - gap).max(0.0);
         let name_r = Rect::new(r.x + gap, r.y, w, r.h);
-        crate::mono_label::paint(ts, scene, theme, &name, color, name_r);
+        let bg = if row.current { ui.button_on } else { ui.bg };
+        crate::mono_label::paint_on(ts, scene, theme, &name, color, bg, name_r);
         // A linha inteira é alvo — depois do lixo, que ganha por vir primeiro.
         self.targets.push((ListHit::Row(row.id), r));
     }

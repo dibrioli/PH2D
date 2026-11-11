@@ -10,6 +10,7 @@ mod cronometro;
 mod escurecimento;
 mod escurecimento_da_ui;
 mod estado;
+mod fundo_real;
 mod ligaduras;
 mod medicoes_do_fecho;
 mod nitidez;
@@ -21,6 +22,7 @@ mod problemas;
 mod quadro_do_depurador;
 mod respiro;
 mod sublinhado;
+mod submenu;
 mod valores_ao_vivo;
 mod virtualizacao;
 

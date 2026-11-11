@@ -89,6 +89,25 @@ pub fn label(id: NodeId) -> Option<&'static str> {
     })
 }
 
+/// O nome curto de cada modo no submenu `View ▸ Text rendering ▸`, pela ordem de [`ROWS`].
+const SHORT: [&str; 4] = [
+    "code.menu.text.default",
+    "code.menu.text.crisp_heavy",
+    "code.menu.text.crisp_heavy_plus",
+    "code.menu.text.crisp_darkened",
+];
+
+/// As escolhas do submenu: `(id, nome curto, em vigor)`, pela ordem de [`TextRendering::ALL`].
+#[must_use]
+pub fn choices() -> Vec<(NodeId, String, bool)> {
+    let now = mode();
+    ROWS.iter()
+        .zip(SHORT)
+        .zip(TextRendering::ALL)
+        .map(|((r, k), m)| (r.0, ph2d_i18n::tr(k).to_owned(), m == now))
+        .collect()
+}
+
 /// Corre a linha `id` (escolhe o modo dela). `true` = era uma linha daqui.
 pub fn choose(id: NodeId) -> bool {
     index(id).map(|i| set_mode(TextRendering::ALL[i])).is_some()

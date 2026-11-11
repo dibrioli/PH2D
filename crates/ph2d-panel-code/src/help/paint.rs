@@ -199,6 +199,7 @@ impl HelpView {
         let tones = Tones::new(*theme);
         scene.push_clip(&rect_to_vello(vp));
         let mut copies = Vec::new();
+        let mut boxes = Vec::new();
         for (s, r) in l
             .shapes
             .iter()
@@ -206,12 +207,15 @@ impl HelpView {
         {
             let sr = self.screen(r[0], r[1], r[2], r[3]);
             match s {
-                Shape::CodeBox => fill_rounded_rect(
-                    scene,
-                    sr,
-                    frame_radius(*theme, Radius::Sm.px()),
-                    tones.code_box,
-                ),
+                Shape::CodeBox => {
+                    boxes.push(sr);
+                    fill_rounded_rect(
+                        scene,
+                        sr,
+                        frame_radius(*theme, Radius::Sm.px()),
+                        tones.code_box,
+                    );
+                }
                 Shape::Rule => {
                     let line = Rect::new(sr.x, sr.y, sr.w, StrokeToken::Thin.px());
                     scene.fill_rect(rect_to_vello(line), pal.border);
@@ -244,10 +248,20 @@ impl HelpView {
             paint_popover_row_focus(scene, sr, *theme);
         }
         let right = vp.x + vp.w;
+        // Um exemplo pinta-se sobre a caixa dele, não sobre o poço: o escurecimento decide por ela.
+        let mut boxed = pal.clone();
+        boxed.bg = tones.code_box;
         for r in runs {
             let lit = r.link.is_some()
                 && (frame.hover == r.link.map(HelpHit::Link) || frame.focus_link == r.link);
-            self.paint_run(r, lit, right, scene, ts, pal, &tones);
+            let s = self.screen(r.x, r.y, r.w, r.h);
+            let (cx, cy) = (s.x + s.w * 0.5, s.y + s.h * 0.5);
+            let on = if boxes.iter().any(|b| b.contains(cx, cy)) {
+                &boxed
+            } else {
+                pal
+            };
+            self.paint_run(r, lit, right, scene, ts, on, &tones);
         }
         for (n, r) in copies {
             let state = if frame.hover == Some(HelpHit::Copy(n)) {

@@ -172,7 +172,12 @@ impl BancadaView {
                 let rx = r.x + r.w - g * 0.5 - lw;
                 chrome::label_in(scene, ts, &ln, Rect::new(rx, y, lw, eh), ui.text3);
                 let name_r = Rect::new(r.x + g, y, (rx - g - r.x - g).max(0.0), eh);
-                crate::mono_label::paint(ts, scene, *theme, name, ui.text1, name_r);
+                let bg = if self.aim == Aim::Entry(*line) {
+                    ui.hover
+                } else {
+                    ui.bg
+                };
+                crate::mono_label::paint_on(ts, scene, *theme, name, ui.text1, bg, name_r);
                 if r.y + r.h > self.outline.rows.y
                     && r.y < self.outline.rows.y + self.outline.rows.h
                 {

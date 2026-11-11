@@ -93,7 +93,7 @@ pub struct CommandState {
     pub card_style: CardStyle,
 }
 
-/// `(id, chave do rótulo, menu da aba)` — `None` = só na paleta (as três caixas do cartão). Um
+/// `(id, chave do rótulo, menu da aba)` — `None` = só na paleta (as caixas do cartão; os modos da letra, que no View são o submenu). Um
 /// comando de ligar/desligar tem aqui a chave do estado DESLIGADO (a do ligado, em [`commands`]).
 const TABLE: [(NodeId, &str, Option<TabMenu>); 38] = [
     (CMD_NEW_SCRIPT, "code.cmd.new_script", Some(File)),
@@ -139,10 +139,10 @@ const TABLE: [(NodeId, &str, Option<TabMenu>); 38] = [
     (CMD_CARD_SHEET, "code.cmd.card_sheet", Some(View)),
     (CMD_CARD_CARDS, "code.cmd.card_cards", Some(View)),
     (CMD_CARD_STRIP, "code.cmd.card_strip", Some(View)),
-    (TEXT[0].0, TEXT[0].1, Some(View)),
-    (TEXT[1].0, TEXT[1].1, Some(View)),
-    (TEXT[2].0, TEXT[2].1, Some(View)),
-    (TEXT[3].0, TEXT[3].1, Some(View)),
+    (TEXT[0].0, TEXT[0].1, None),
+    (TEXT[1].0, TEXT[1].1, None),
+    (TEXT[2].0, TEXT[2].1, None),
+    (TEXT[3].0, TEXT[3].1, None),
     (CMD_STRICT, "code.cmd.strict", None),
     (CMD_FORMAT_ON_SAVE, "code.cmd.format_on_save", None),
     (CMD_TYPE_HINTS, "code.cmd.type_hints", None),

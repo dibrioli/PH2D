@@ -72,8 +72,11 @@ mod dropdown_popover;
 /// O nome do material do Real Oil que não cabe parte-se em duas linhas (W3 K9).
 pub mod duas_linhas;
 mod esmaecer; // a linha esmaecida: o controlo que depende de outro e agora não age (doc 46)
+mod cor_enviada;
 mod event;
 mod event_brush_forward;
+#[cfg(test)]
+mod ui_que_mente_tests;
 #[cfg(test)]
 mod foto_jitter_tests; // a foto do cartão Jitter, `#[ignore]` (dono 23/10)
 #[cfg(test)]

@@ -538,7 +538,8 @@ pub(crate) fn paint_reorder_btn(
 /// `register_if_absent` a per-row BARE slider (`0..1` storage) — opacity, and the relief line's
 /// Impasto depth. The
 /// dispatch maps a drag to a fresh value from the registered hit rect; the
-/// panel forwards the resulting `ValueChanged` as `SetValue` to the tool.
+/// panel forwards the resulting `ValueChanged` as `SetValue` to the tool. Outside a drag the widget
+/// re-reads `value` each frame, so it never holds what the layer no longer has.
 pub(crate) fn register_bare_slider(store: &mut WidgetStore, slider: ph2d_a11y::NodeId, value: f32) {
     store.register_if_absent(
         slider,
@@ -548,4 +549,15 @@ pub(crate) fn register_bare_slider(store: &mut WidgetStore, slider: ph2d_a11y::N
             orientation: SliderOrientation::Horizontal,
         },
     );
+    // B39.4: re-read the layer's value every frame (undo, preset), except under the artist's drag.
+    let arrastando = matches!(
+        store.get(slider),
+        Some(InteractiveState::Slider {
+            state: SliderState::Dragging,
+            ..
+        })
+    );
+    if !arrastando {
+        store.set_slider_value(slider, value);
+    }
 }

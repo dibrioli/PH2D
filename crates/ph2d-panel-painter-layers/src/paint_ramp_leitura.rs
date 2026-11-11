@@ -21,17 +21,18 @@ pub(crate) fn ramp_color_readback(ctx: &mut PaintCtx, ids: &RampIds, view: RampV
     }
     let s = view.stops[sel];
     let enc = |c: f32| (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8; // LITERAL-PX-OK: sRGB 8-bit normalize
-    if [enc(s[1]), enc(s[2]), enc(s[3]), enc(s[4])] == picked {
+    let aplicada = [enc(s[1]), enc(s[2]), enc(s[3]), enc(s[4])] == picked;
+    let stop_id = s[5] as u8;
+    let payload = format!(
+        "{stop_id},{},{},{},{}",
+        picked[0], picked[1], picked[2], picked[3]
+    );
+    if !crate::cor_enviada::deve_enviar(ids.swatch, &payload, aplicada) {
         return;
     }
-    let stop_id = s[5] as u8;
     ctx.host
         .bus_mut()
         .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-            ids.swatch,
-            format!(
-                "{stop_id},{},{},{},{}",
-                picked[0], picked[1], picked[2], picked[3]
-            ),
+            ids.swatch, payload,
         )));
 }

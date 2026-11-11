@@ -346,15 +346,15 @@ pub(crate) fn paper_color_readback(ctx: &mut PaintCtx, brush: BrushSettings) {
     let Some(picked) = ctx.host.store().widget_color(id) else {
         return;
     };
-    let cur = encode_rgb3(brush.paper_color);
-    if [picked[0], picked[1], picked[2]] == cur {
-        return; // already applied — don't spam the bus
+    let aplicada = [picked[0], picked[1], picked[2]] == encode_rgb3(brush.paper_color);
+    let payload = format!("{},{},{}", picked[0], picked[1], picked[2]);
+    if !crate::cor_enviada::deve_enviar(id, &payload, aplicada) {
+        return;
     }
     ctx.host
         .bus_mut()
         .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-            id,
-            format!("{},{},{}", picked[0], picked[1], picked[2]),
+            id, payload,
         )));
 }
 

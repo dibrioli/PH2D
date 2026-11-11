@@ -386,13 +386,14 @@ pub(crate) fn layer_color_readback(ctx: &mut PaintCtx, swatch_id: NodeId, i: u8,
     let Some(picked) = ctx.host.store().widget_color(swatch_id) else {
         return;
     };
-    if [enc(cur[0]), enc(cur[1]), enc(cur[2])] == [picked[0], picked[1], picked[2]] {
+    let aplicada = [enc(cur[0]), enc(cur[1]), enc(cur[2])] == [picked[0], picked[1], picked[2]];
+    let payload = format!("{i},{},{},{}", picked[0], picked[1], picked[2]);
+    if !crate::cor_enviada::deve_enviar(swatch_id, &payload, aplicada) {
         return;
     }
     ctx.host
         .bus_mut()
         .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
-            swatch_id,
-            format!("{i},{},{},{}", picked[0], picked[1], picked[2]),
+            swatch_id, payload,
         )));
 }

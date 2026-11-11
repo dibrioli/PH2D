@@ -6,6 +6,7 @@
 use super::edge_window::EdgePlane;
 use super::{DryConst, dry_cell};
 use crate::grid::Grid;
+use crate::grid::faixa_tiles::{span_runs, tiles_row_of};
 use crate::grid::tinta::CelulaTinta;
 use crate::grid::tinta::pigmento::optica_celula;
 use crate::grid::tinta::pigmento::{ABERTO, FILME, LadoEspectral, srgb_0_255};
@@ -115,12 +116,16 @@ pub(super) fn dry_jacobi<P: EdgePlane>(
         oleo,
         row_lo,
         row_hi,
+        row_tiles,
+        tile_words,
+        tiles_enabled,
         spans_enabled,
         bx0,
         bx1,
         ..
     } = g;
     let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
+    let (tw, tiles_on, row_tiles) = (*tile_words, spans_enabled && *tiles_enabled, &row_tiles[..]);
     let edge: &[u8] = &scratch.edge;
     let (paper, vela): (&[f32], &[f32]) = (paper, vela);
     let aparencia: &crate::grid::aparencia::CampoAparencia = aparencia;
@@ -137,12 +142,10 @@ pub(super) fn dry_jacobi<P: EdgePlane>(
                  mut lr: Option<&mut [LadoEspectral]>| {
         let y = by0 + ri as i32;
         let (lo, hi) = crate::grid::span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
-        if lo > hi {
-            return;
-        }
         let mut out = [0.0f64; 3];
         let base = y as usize * s;
-        for x in lo as usize..=hi as usize {
+        let runs = span_runs(tiles_row_of(row_tiles, tw, tiles_on, y), lo, hi);
+        for x in runs.flat_map(|(a, b)| a as usize..=b as usize) {
             if fr[x] <= 0.0 && sr[x] <= 0.0 {
                 continue;
             }

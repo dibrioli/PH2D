@@ -212,9 +212,23 @@ fn run_tiles(kind: usize, tiles: bool) -> Engine {
     if kind < SESSIONS {
         run_session_tiles(kind, tiles)
     } else {
+        run_far_blobs(tiles, false)
+    }
+}
+
+/// As duas manchas longe; `outra_lei` liga a tinta Pigmento, a borda graduada e o pigmento que desce
+/// (os estágios que a sessão de omissão não percorre: `drying/tinta`, `soft_plane`, `sedimenta`).
+fn run_far_blobs(tiles: bool, outra_lei: bool) -> Engine {
+    {
         let mut e = Engine::new(700, 160);
         for l in &mut e.layers {
             l.grid.tiles_enabled = tiles;
+        }
+        if outra_lei {
+            e.sim.tinta = ph2d_wet_paint::sim::LeiDaTinta::Pigmento;
+            e.sim.sedimenta = 0.5;
+            e.tuning
+                .set(ph2d_wet_paint::tuning::Knob::EdgeSoftMass, 0.5);
         }
         e.sliders.water = 1.0;
         e.sim.gravity_override = Some([1.0, 0.3]);
@@ -277,6 +291,13 @@ fn a_mascara_de_tiles_da_faixa_reproduz_a_faixa_de_um_intervalo_ao_bit() {
         if let Some(at) = first_difference(&um, &tiles) {
             panic!("rota do commit {rota}: a mascara de tiles mudou o estado no byte {at}");
         }
+    }
+    let um = digest(run_far_blobs(false, true).active_grid());
+    let tiles = digest(run_far_blobs(true, true).active_grid());
+    if let Some(at) = first_difference(&um, &tiles) {
+        panic!(
+            "Pigmento + borda graduada + sedimenta: a mascara de tiles mudou o estado no byte {at}"
+        );
     }
     // A máscara não é vazia de efeito: nas duas manchas longe ela salta o seco do meio.
     let e = run_tiles(SESSIONS, true);

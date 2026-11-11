@@ -7,6 +7,7 @@
 //! trava célula a célula na entrada do seco, 05 §4b). Conservativo (gather: quem recebe lê o que a
 //! fonte dá), independente de ordem, e `a = 0` ou `|g| = 0` não toca num byte.
 use crate::colorops::km_weighted_mean_color;
+use crate::grid::faixa_tiles::{span_runs, tiles_row_of};
 use crate::grid::{Grid, span_x_of};
 use crate::par::{self, Rows};
 
@@ -116,12 +117,17 @@ pub fn sedimenta_rows(g: &mut Grid, a: f64, gx: f64, gy: f64, km: bool, mode: Ro
             susp_rgb,
             row_lo,
             row_hi,
+            row_tiles,
+            tile_words,
+            tiles_enabled,
             spans_enabled,
             bx0,
             bx1,
             ..
         } = &mut *g;
         let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
+        let (tw, tiles_on, row_tiles) =
+            (*tile_words, spans_enabled && *tiles_enabled, &row_tiles[..]);
         let (film, susp, rgb): (&[f32], &[f32], &[[f32; 3]]) = (film, susp, susp_rgb);
         let (row_lo, row_hi): (&[i32], &[i32]) = (row_lo, row_hi);
         // Só `susp` e a cor mudam: o `dst_film` não é escrito nem lido.
@@ -136,7 +142,8 @@ pub fn sedimenta_rows(g: &mut Grid, a: f64, gx: f64, gy: f64, km: bool, mode: Ro
                 let mut cores = [0.0f64; 12];
                 let mut pesos = [0.0f64; 4];
                 let mut km_out = [0.0f64; 3];
-                for x in lo..=hi {
+                let runs = span_runs(tiles_row_of(row_tiles, tw, tiles_on, y), lo, hi);
+                for x in runs.flat_map(|(a, b)| a..=b) {
                     let i = p.at(x, y);
                     let (ox, oy) = p.da(film, x, y);
                     let fica = f64::from(susp[i]) * (1.0 - ox - oy);
@@ -199,12 +206,16 @@ pub fn sedimenta_rows(g: &mut Grid, a: f64, gx: f64, gy: f64, km: bool, mode: Ro
         susp_rgb,
         row_lo,
         row_hi,
+        row_tiles,
+        tile_words,
+        tiles_enabled,
         spans_enabled,
         bx0,
         bx1,
         ..
     } = g;
     let (spans_enabled, bx0, bx1) = (*spans_enabled, *bx0, *bx1);
+    let (tw, tiles_on, row_tiles) = (*tile_words, spans_enabled && *tiles_enabled, &row_tiles[..]);
     let (ds, dc): (&[f32], &[[f32; 3]]) = (&scratch.dst_susp, &scratch.dst_rgb);
     par::walk_rows2(
         mode,
@@ -214,13 +225,12 @@ pub fn sedimenta_rows(g: &mut Grid, a: f64, gx: f64, gy: f64, km: bool, mode: Ro
         |ri, sr, cr| {
             let y = by0 + ri as i32;
             let (lo, hi) = span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
-            if lo > hi {
-                return;
+            for (lo, hi) in span_runs(tiles_row_of(row_tiles, tw, tiles_on, y), lo, hi) {
+                let (lo, hi) = (lo as usize, hi as usize);
+                let (a, b) = (y as usize * s + lo, y as usize * s + hi);
+                sr[lo..=hi].copy_from_slice(&ds[a..=b]);
+                cr[lo..=hi].copy_from_slice(&dc[a..=b]);
             }
-            let (lo, hi) = (lo as usize, hi as usize);
-            let (a, b) = (y as usize * s + lo, y as usize * s + hi);
-            sr[lo..=hi].copy_from_slice(&ds[a..=b]);
-            cr[lo..=hi].copy_from_slice(&dc[a..=b]);
         },
     );
 }

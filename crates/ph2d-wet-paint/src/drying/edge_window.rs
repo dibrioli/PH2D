@@ -209,22 +209,31 @@ pub(crate) fn soft_plane(
     let (by0, by1) = (g.by0, g.by1);
     let (row_lo, row_hi) = (&g.row_lo, &g.row_hi);
     let (spans_enabled, bx0, bx1) = (g.spans_enabled, g.bx0, g.bx1);
+    let (tw, tiles_on, row_tiles) = (
+        g.tile_words,
+        spans_enabled && g.tiles_enabled,
+        &g.row_tiles[..],
+    );
     let susp: &[f32] = &g.susp;
     let band = by0 as usize * s..(by1 as usize + 1) * s;
     crate::par::walk_rows(mode, &mut plane[band], s, |ri, row| {
         let y = by0 + ri as i32;
         let (lo, hi) = crate::grid::span_x_of(row_lo, row_hi, spans_enabled, bx0, bx1, y);
-        if lo > hi {
-            return;
-        }
-        let mut i = lo as usize + y as usize * s;
-        let mut win = <EdgeWindowSoft as EdgeGather>::seed(susp, i, s, den);
-        for x in lo..=hi {
-            if x > lo {
-                win.advance(susp, i + 1, s);
+        let runs = crate::grid::faixa_tiles::span_runs(
+            crate::grid::faixa_tiles::tiles_row_of(row_tiles, tw, tiles_on, y),
+            lo,
+            hi,
+        );
+        for (lo, hi) in runs {
+            let mut i = lo as usize + y as usize * s;
+            let mut win = <EdgeWindowSoft as EdgeGather>::seed(susp, i, s, den);
+            for x in lo..=hi {
+                if x > lo {
+                    win.advance(susp, i + 1, s);
+                }
+                row[x as usize] = win.frac();
+                i += 1;
             }
-            row[x as usize] = win.frac();
-            i += 1;
         }
     });
     f(g, &plane);

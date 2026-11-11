@@ -2,7 +2,7 @@
 //! the workspace file-LOC cap; pure code motion, fingerprint-pinned).
 
 use crate::grid::Grid;
-use crate::grid::faixa_tiles::{span_runs, tile_words_for, tiles_row_of};
+use crate::grid::faixa_tiles::{span_runs, tile_words_for, tiles_row_of, zera_os_trocos};
 use crate::par::{self, Rows};
 use crate::sim::Params;
 use crate::tuning::Knob;
@@ -112,8 +112,9 @@ pub fn project_rows(g: &mut Grid, p: &Params, mode: Rows) {
             if zx0 > zx1 {
                 return;
             }
-            dr[zx0 as usize..=zx1 as usize].fill(0.0);
-            pr[zx0 as usize..=zx1 as usize].fill(0.0);
+            let (zl, zh) = (zx0 as usize, zx1 as usize);
+            zera_os_trocos(dr, runs(y, zx0, zx1), zl, zh);
+            zera_os_trocos(pr, runs(y, zx0, zx1), zl, zh);
             if y < gby0 || y > gby1 {
                 return;
             }
@@ -142,8 +143,9 @@ pub fn project_rows(g: &mut Grid, p: &Params, mode: Rows) {
                 if zx0 > zx1 {
                     return;
                 }
-                dr[zx0 as usize..=zx1 as usize].fill(0.0);
-                pr[zx0 as usize..=zx1 as usize].fill(0.0);
+                let (zl, zh) = (zx0 as usize, zx1 as usize);
+                zera_os_trocos(dr, runs(y, zx0, zx1), zl, zh);
+                zera_os_trocos(pr, runs(y, zx0, zx1), zl, zh);
             });
         }
         {

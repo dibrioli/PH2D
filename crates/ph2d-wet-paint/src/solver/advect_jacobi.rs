@@ -402,7 +402,7 @@ pub(super) fn outflow_row(
         return;
     }
     let (lo_u, hi_u) = (lo as usize, hi as usize);
-    row[lo_u..=hi_u].fill(0.0);
+    crate::grid::faixa_tiles::zera_os_trocos(row, c.runs(y), lo_u, hi_u);
     for ny in (y - c.reach).max(ny_lo)..=(y + c.reach).min(ny_hi) {
         // O destino puxa desta linha se a base dele é `y` (`ny − y0 = ny − y`) ou `y − 1`.
         let (d_base, d_cima) = ((ny - y) as i8, (ny - y + 1) as i8);

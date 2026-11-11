@@ -199,61 +199,64 @@ fn measure_where_the_rebelle_drying_starts_paying_in_parallel() {
 #[test]
 #[ignore = "sonda de medicao (perfil smoke)"]
 fn measure_the_dry_gap_between_two_blobs_on_the_same_rows() {
-    let cena = |xa: f64, xb: f64| {
-        let mut e = Engine::new(4096, 4096);
-        e.sliders.water = 1.0;
-        e.sliders.size = 1.0;
-        for x in [xa, xb] {
-            drive_stroke(&mut e, x, 1748.0, x, 2348.0, 60.0, 4);
+    for rf in [1usize, 2] {
+        let cena = |xa: f64, xb: f64| {
+            let mut e = Engine::with_flow_ratio(4096, 4096, rf);
+            e.sliders.water = 1.0;
+            e.sliders.size = 1.0;
+            for x in [xa, xb] {
+                drive_stroke(&mut e, x, 1748.0, x, 2348.0, 60.0, 4);
+            }
+            e
+        };
+        let mut cenas = [cena(400.0, 3700.0), cena(1800.0, 2300.0)];
+        let la = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
+        println!("\n  loadavg inicio: {}", la.trim());
+        let mut estado = Vec::new();
+        for (k, e) in cenas.iter().enumerate() {
+            let g = e.active_grid();
+            let faixa: i64 = (0..g.rows)
+                .map(|y| (i64::from(g.row_hi[y]) - i64::from(g.row_lo[y]) + 1).max(0))
+                .sum();
+            let molhadas = g.film.iter().filter(|&&f| f > 0.0).count();
+            println!(
+                "  cena {k}: bbox {}x{} · celulas na faixa {faixa} · molhadas {molhadas}",
+                g.by1 - g.by0 + 1,
+                g.bx1 - g.bx0 + 1
+            );
+            estado.push((snapshot_grid(g), e.sim.clone()));
         }
-        e
-    };
-    let mut cenas = [cena(400.0, 3700.0), cena(1800.0, 2300.0)];
-    let la = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
-    println!("\n  loadavg inicio: {}", la.trim());
-    let mut estado = Vec::new();
-    for (k, e) in cenas.iter().enumerate() {
-        let g = e.active_grid();
-        let faixa: i64 = (0..g.rows)
-            .map(|y| (i64::from(g.row_hi[y]) - i64::from(g.row_lo[y]) + 1).max(0))
-            .sum();
-        let molhadas = g.film.iter().filter(|&&f| f > 0.0).count();
-        println!(
-            "  cena {k}: bbox {}x{} · celulas na faixa {faixa} · molhadas {molhadas}",
-            g.by1 - g.by0 + 1,
-            g.bx1 - g.bx0 + 1
-        );
-        estado.push((snapshot_grid(g), e.sim.clone()));
-    }
-    // [tiles][cena]: a máscara de tiles de 64 (B13.2) desligada (a faixa de um intervalo) × ligada, intercalado.
-    let mut best = [[f64::MAX; 2]; 2];
-    for rep in 0..REPS {
-        for t in [rep % 2, 1 - rep % 2] {
-            for (k, e) in cenas.iter_mut().enumerate() {
-                let (snap, sim0) = &estado[k];
-                e.sim = sim0.clone();
-                e.sim.frame = 0;
-                let idx = e.active_layer;
-                restore_grid(&mut e.layers[idx].grid, snap);
-                e.layers[idx].grid.tiles_enabled = t == 1;
-                let t0 = Instant::now();
-                for _ in 0..12 {
-                    while sim_step_stage(&mut e.sim, &mut e.layers[idx].grid, &e.tuning).is_none() {
+        // [tiles][cena]: a máscara de tiles de 64 (B13.2) desligada (a faixa de um intervalo) × ligada, intercalado.
+        let mut best = [[f64::MAX; 2]; 2];
+        for rep in 0..REPS {
+            for t in [rep % 2, 1 - rep % 2] {
+                for (k, e) in cenas.iter_mut().enumerate() {
+                    let (snap, sim0) = &estado[k];
+                    e.sim = sim0.clone();
+                    e.sim.frame = 0;
+                    let idx = e.active_layer;
+                    restore_grid(&mut e.layers[idx].grid, snap);
+                    e.layers[idx].grid.tiles_enabled = t == 1;
+                    let t0 = Instant::now();
+                    for _ in 0..12 {
+                        while sim_step_stage(&mut e.sim, &mut e.layers[idx].grid, &e.tuning)
+                            .is_none()
+                        {}
                     }
+                    best[t][k] = best[t][k].min(t0.elapsed().as_secs_f64() * 1e3);
                 }
-                best[t][k] = best[t][k].min(t0.elapsed().as_secs_f64() * 1e3);
             }
         }
-    }
-    for (t, b) in best.iter().enumerate() {
-        println!(
-            "  tiles {}: ciclo de 12 quadros (min): longe {:.2} ms · perto {:.2} ms · vao {:.2} ms/quadro ({:.0} %)",
-            ["off", "on"][t],
-            b[0],
-            b[1],
-            (b[0] - b[1]) / 12.0,
-            100.0 * (b[0] - b[1]) / b[0]
-        );
+        for (t, b) in best.iter().enumerate() {
+            println!(
+                "  rf {rf} · tiles {}: ciclo de 12 quadros (min): longe {:.2} ms · perto {:.2} ms · vao {:.2} ms/quadro ({:.0} %)",
+                ["off", "on"][t],
+                b[0],
+                b[1],
+                (b[0] - b[1]) / 12.0,
+                100.0 * (b[0] - b[1]) / b[0]
+            );
+        }
     }
     let la = std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     println!("  loadavg fim: {}", la.trim());

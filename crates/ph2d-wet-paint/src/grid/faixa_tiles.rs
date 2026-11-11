@@ -78,6 +78,30 @@ pub fn span_runs(words: Option<&[u64]>, lo: i32, hi: i32) -> Runs<'_> {
     }
 }
 
+/// Oráculo dos gates: `> 0` faz o [`zera_os_trocos`] zerar o intervalo INTEIRO (o caminho de antes).
+#[cfg(test)]
+pub(crate) static ZERO_DO_INTERVALO: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+
+/// Zera `row` só nos troços (`runs`, dentro de `[lo, hi]`): o tile seco sem vizinho vivo ninguém lê.
+#[inline]
+pub fn zera_os_trocos(
+    row: &mut [f32],
+    runs: impl Iterator<Item = (i32, i32)>,
+    lo: usize,
+    hi: usize,
+) {
+    #[cfg(test)]
+    if ZERO_DO_INTERVALO.load(std::sync::atomic::Ordering::SeqCst) != 0 {
+        row[lo..=hi].fill(0.0);
+        return;
+    }
+    let _ = (lo, hi);
+    for (a, b) in runs {
+        row[a as usize..=b as usize].fill(0.0);
+    }
+}
+
 /// A máscara da linha `y`, em forma livre (split-borrow); `None` com a faixa ou os tiles desligados.
 #[inline]
 #[must_use]
@@ -183,3 +207,7 @@ pub(crate) fn unpack_live(w: u64) -> (i32, i32) {
 #[cfg(test)]
 #[path = "faixa_tiles_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "faixa_tiles_zero_tests.rs"]
+mod zero_tests;

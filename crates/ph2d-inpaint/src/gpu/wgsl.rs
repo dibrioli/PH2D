@@ -46,8 +46,8 @@ fn is_source(i: u32) -> bool { return (flags[i] & 1u) != 0u; }
 fn is_target(i: u32) -> bool { return (flags[i] & 2u) != 0u; }
 fn is_hole(i: u32) -> bool { return (flags[i] & 4u) != 0u; }
 
-fn get_content(x: i32, y: i32) -> vec3<f32> { return content[cidx(x, y)].xyz; }
-fn get_src(x: i32, y: i32) -> vec3<f32> { return src[cidx(x, y)].xyz; }
+fn get_content(x: i32, y: i32) -> vec4<f32> { return content[cidx(x, y)]; }
+fn get_src(x: i32, y: i32) -> vec4<f32> { return src[cidx(x, y)]; }
 
 // SSD of the (2r+1)^2 patch: target read from evolving content, source from src.
 fn ssd(tx: i32, ty: i32, sx: i32, sy: i32) -> f32 {
@@ -174,7 +174,7 @@ fn vote(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (!is_hole(idx)) { return; }
     let px = i32(idx % u.w);
     let py = i32(idx / u.w);
-    var sum = vec3<f32>(0.0, 0.0, 0.0);
+    var sum = vec4<f32>(0.0, 0.0, 0.0, 0.0);
     var wsum = 0.0;
     for (var cdy = -u.r; cdy <= u.r; cdy = cdy + 1) {
         for (var cdx = -u.r; cdx <= u.r; cdx = cdx + 1) {
@@ -191,7 +191,7 @@ fn vote(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
     }
     if (wsum > 0.0) {
-        content[idx] = vec4<f32>(sum / wsum, 1.0);
+        content[idx] = sum / wsum;
     }
 }
 "#;

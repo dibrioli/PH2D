@@ -42,7 +42,7 @@ pub struct Nnf {
     pub seed: u64,
 }
 
-/// Sum of squared RGB differences between the target patch (read from the
+/// Sum of squared premultiplied RGBA differences between the target patch (read from the
 /// evolving `content`, centred at `t`) and the source patch (read from the fixed
 /// `src` image, centred at `s`), over the `(2r+1)²` window. Clamp-to-edge.
 #[inline]
@@ -55,7 +55,8 @@ pub fn patch_ssd(content: &Plane, src: &Plane, t: [i32; 2], s: [i32; 2], r: i32)
             let d0 = a[0] - b[0];
             let d1 = a[1] - b[1];
             let d2 = a[2] - b[2];
-            acc += d0 * d0 + d1 * d1 + d2 * d2;
+            let d3 = a[3] - b[3];
+            acc += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
         }
     }
     acc
@@ -201,7 +202,7 @@ mod tests {
         let mut p = Plane::new(8, 8);
         for y in 0..8 {
             for x in 0..8 {
-                p.set(x, y, [x as f32 / 8.0, y as f32 / 8.0, 0.5]);
+                p.set(x, y, [x as f32 / 8.0, y as f32 / 8.0, 0.5, 1.0]);
             }
         }
         assert_eq!(patch_ssd(&p, &p, [4, 4], [4, 4], 2), 0.0);
@@ -216,7 +217,7 @@ mod tests {
         for y in 0..h {
             for x in 0..w {
                 let v = if (x / 2) % 2 == 0 { 0.9 } else { 0.1 };
-                img.set(x, y, [v, v, v]);
+                img.set(x, y, [v, v, v, 1.0]);
             }
         }
         let mut bytes = vec![0u8; w * h];

@@ -173,7 +173,7 @@ pub use blur::{BlurKernel, blur_blit_stamp, blur_dab, kernel_radius};
 pub use blur_grain::blur_blit_grain;
 pub use blur_peso::{blur_region_borrado, blur_region_por_peso, mistura_linha_por_peso};
 pub use clone::{clone_blit_stamp, clone_dab};
-pub use clone_grain::clone_blit_grain;
+pub use clone_grain::{clone_blit_grain, prancha_b38_mistura_recta};
 pub use cor_mao::CorDaMao;
 pub use curve_fit::{CurveFit, auto_handles, fit_curve, flatten_bezier};
 pub use dab::{

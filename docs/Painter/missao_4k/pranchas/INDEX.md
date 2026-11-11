@@ -171,6 +171,14 @@ Onde vermelho e azul se misturam no Wet, antes saía um cinza-escuro quase preto
 
 Todas: 3 fundos (branco, blocos, papel) × 1080p/4K × os 4 pincéis, em [B32/](B32/); as cores do cruzamento em [cruzamentos.txt](B32/cruzamentos.txt) · [notas](B32/README.md)
 
+## B38 — Clone e Heal numa camada transparente sem orla escura nem mancha preta
+
+Numa camada transparente, o Clone com grão levava a tinta ao vazio com uma orla cinza-escura; o Heal na borda de um traço enchia o vazio de preto. Agora o Clone leva a tinta na cor dela, meio transparente, e o Heal deixa o vazio vazio.
+
+![B38](B38/1080p_blocos_heal_antes_depois.png)
+
+Todas: [1080p_blocos_clone_antes_depois](B38/1080p_blocos_clone_antes_depois.png) · [1080p_blocos_heal_antes_depois](B38/1080p_blocos_heal_antes_depois.png) · [1080p_branco_clone_antes_depois](B38/1080p_branco_clone_antes_depois.png) · [1080p_branco_heal_antes_depois](B38/1080p_branco_heal_antes_depois.png) · [1080p_papel_clone_antes_depois](B38/1080p_papel_clone_antes_depois.png) · [1080p_papel_heal_antes_depois](B38/1080p_papel_heal_antes_depois.png) · [4k_blocos_clone_antes_depois](B38/4k_blocos_clone_antes_depois.png) · [4k_blocos_heal_antes_depois](B38/4k_blocos_heal_antes_depois.png) · [4k_branco_clone_antes_depois](B38/4k_branco_clone_antes_depois.png) · [4k_branco_heal_antes_depois](B38/4k_branco_heal_antes_depois.png) · [4k_papel_clone_antes_depois](B38/4k_papel_clone_antes_depois.png) · [4k_papel_heal_antes_depois](B38/4k_papel_heal_antes_depois.png) · [notas](B38/README.md)
+
 ## As 10 decisões do dono (§0 do prompt da missão)
 
 | # | Decisão | Bloco | Prancha |

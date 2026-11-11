@@ -1,4 +1,4 @@
-//! [`Plane`] — an interleaved RGB float image (`w*h*3`, sRGB in `[0,1]`) with
+//! [`Plane`] — an interleaved premultiplied RGBA float image (`w*h*4`, sRGB in `[0,1]`) with
 //! clamp-to-edge sampling and box-downsample / bilinear-upsample for the
 //! coarse-to-fine pyramid. The whole algorithm works in sRGB float: averaging
 //! and SSD stay transcendental-free (no sRGB↔linear `pow`), which keeps the CPU
@@ -6,7 +6,8 @@
 //! Clamp-to-edge sampling (never wraps, never reads out of bounds) mirrors a
 //! GPU sampler in `ClampToEdge`, so patch reads at the image border agree.
 
-/// Interleaved RGB float plane. `px.len() == w * h * 3`.
+/// Interleaved premultiplied RGBA float plane. `px.len() == w * h * 4`. Alpha travels with the
+/// colour so a transparent layer's empty texels match and vote as «nothing» (B38.2).
 #[derive(Clone, Debug)]
 pub struct Plane {
     pub w: usize,
@@ -32,42 +33,40 @@ impl Plane {
         Self {
             w,
             h,
-            px: vec![0.0; w * h * 3],
+            px: vec![0.0; w * h * 4],
         }
     }
 
-    /// Read RGB at `(x, y)` with clamp-to-edge (out-of-bounds coords snap to the
+    /// Read RGBA at `(x, y)` with clamp-to-edge (out-of-bounds coords snap to the
     /// nearest border pixel). Never panics — the border ring extends infinitely.
     #[inline]
-    pub fn get(&self, x: i32, y: i32) -> [f32; 3] {
+    pub fn get(&self, x: i32, y: i32) -> [f32; 4] {
         let cx = clampi(x, self.w);
         let cy = clampi(y, self.h);
-        let i = (cy * self.w + cx) * 3;
-        [self.px[i], self.px[i + 1], self.px[i + 2]]
+        let i = (cy * self.w + cx) * 4;
+        [self.px[i], self.px[i + 1], self.px[i + 2], self.px[i + 3]]
     }
 
-    /// Write RGB at an in-bounds `(x, y)`.
+    /// Write RGBA at an in-bounds `(x, y)`.
     #[inline]
-    pub fn set(&mut self, x: usize, y: usize, c: [f32; 3]) {
-        let i = (y * self.w + x) * 3;
-        self.px[i] = c[0];
-        self.px[i + 1] = c[1];
-        self.px[i + 2] = c[2];
+    pub fn set(&mut self, x: usize, y: usize, c: [f32; 4]) {
+        let i = (y * self.w + x) * 4;
+        self.px[i..i + 4].copy_from_slice(&c);
     }
 
-    /// Mean RGB over every pixel (used to seed the coarsest hole).
-    pub fn mean(&self) -> [f32; 3] {
+    /// Mean RGBA over every pixel (used to seed the coarsest hole).
+    pub fn mean(&self) -> [f32; 4] {
         let n = (self.w * self.h) as f32;
         if n == 0.0 {
-            return [0.0; 3];
+            return [0.0; 4];
         }
-        let mut s = [0.0f32; 3];
-        for p in self.px.as_chunks::<3>().0 {
-            s[0] += p[0];
-            s[1] += p[1];
-            s[2] += p[2];
+        let mut s = [0.0f32; 4];
+        for p in self.px.as_chunks::<4>().0 {
+            for k in 0..4 {
+                s[k] += p[k];
+            }
         }
-        [s[0] / n, s[1] / n, s[2] / n]
+        s.map(|v| v / n)
     }
 
     /// Halve resolution with a clamped 2×2 box filter. Odd dimensions round up
@@ -79,14 +78,14 @@ impl Plane {
         for y in 0..h2 {
             for x in 0..w2 {
                 let (sx, sy) = (x as i32 * 2, y as i32 * 2);
-                let mut c = [0.0f32; 3];
+                let mut c = [0.0f32; 4];
                 for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
                     let p = self.get(sx + dx, sy + dy);
-                    c[0] += p[0];
-                    c[1] += p[1];
-                    c[2] += p[2];
+                    for k in 0..4 {
+                        c[k] += p[k];
+                    }
                 }
-                out.set(x, y, [c[0] * 0.25, c[1] * 0.25, c[2] * 0.25]);
+                out.set(x, y, c.map(|v| v * 0.25));
             }
         }
         out
@@ -113,8 +112,8 @@ impl Plane {
                 let c10 = self.get(x0 + 1, y0);
                 let c01 = self.get(x0, y0 + 1);
                 let c11 = self.get(x0 + 1, y0 + 1);
-                let mut c = [0.0f32; 3];
-                for k in 0..3 {
+                let mut c = [0.0f32; 4];
+                for k in 0..4 {
                     let top = c00[k] + (c10[k] - c00[k]) * tx;
                     let bot = c01[k] + (c11[k] - c01[k]) * tx;
                     c[k] = top + (bot - top) * ty;
@@ -133,10 +132,10 @@ mod tests {
     #[test]
     fn clamp_reads_the_border_ring() {
         let mut p = Plane::new(2, 2);
-        p.set(0, 0, [1.0, 0.0, 0.0]);
-        p.set(1, 1, [0.0, 0.0, 1.0]);
-        assert_eq!(p.get(-5, -5), [1.0, 0.0, 0.0]);
-        assert_eq!(p.get(99, 99), [0.0, 0.0, 1.0]);
+        p.set(0, 0, [1.0, 0.0, 0.0, 1.0]);
+        p.set(1, 1, [0.0, 0.0, 1.0, 1.0]);
+        assert_eq!(p.get(-5, -5), [1.0, 0.0, 0.0, 1.0]);
+        assert_eq!(p.get(99, 99), [0.0, 0.0, 1.0, 1.0]);
     }
 
     #[test]
@@ -144,12 +143,12 @@ mod tests {
         let mut p = Plane::new(4, 4);
         for y in 0..4 {
             for x in 0..4 {
-                p.set(x, y, [0.5, 0.25, 0.75]);
+                p.set(x, y, [0.5, 0.25, 0.75, 1.0]);
             }
         }
         let d = p.downsample();
         assert_eq!((d.w, d.h), (2, 2));
-        for c in d.px.as_chunks::<3>().0 {
+        for c in d.px.as_chunks::<4>().0 {
             assert!((c[0] - 0.5).abs() < 1e-6);
             assert!((c[1] - 0.25).abs() < 1e-6);
             assert!((c[2] - 0.75).abs() < 1e-6);
@@ -161,12 +160,12 @@ mod tests {
         let mut p = Plane::new(2, 2);
         for y in 0..2 {
             for x in 0..2 {
-                p.set(x, y, [0.3, 0.6, 0.9]);
+                p.set(x, y, [0.3, 0.6, 0.9, 1.0]);
             }
         }
         let u = p.upsample_to(5, 5);
         assert_eq!((u.w, u.h), (5, 5));
-        for c in u.px.as_chunks::<3>().0 {
+        for c in u.px.as_chunks::<4>().0 {
             assert!((c[0] - 0.3).abs() < 1e-6);
             assert!((c[1] - 0.6).abs() < 1e-6);
             assert!((c[2] - 0.9).abs() < 1e-6);

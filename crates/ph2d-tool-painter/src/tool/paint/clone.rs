@@ -269,3 +269,7 @@ impl PainterTool {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "prancha_b38_tests.rs"]
+mod prancha_b38_tests;

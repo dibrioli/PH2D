@@ -243,12 +243,7 @@ impl GpuInpainter {
         mapped.map_err(falhou("map_async"))?;
         let data = slice.get_mapped_range().map_err(falhou("mapped range"))?;
         let floats: &[f32] = bytemuck::cast_slice(&data);
-        for i in 0..n {
-            let o = i * 4;
-            content.px[i * 3] = floats[o];
-            content.px[i * 3 + 1] = floats[o + 1];
-            content.px[i * 3 + 2] = floats[o + 2];
-        }
+        content.px.copy_from_slice(&floats[..n * 4]);
         drop(data);
         readback.unmap();
         Ok(())
@@ -395,19 +390,7 @@ fn bind(binding: u32, buffer: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
     }
 }
 
-/// Pack an RGB [`Plane`] into `w*h` `vec4<f32>` (a = 1) for a storage buffer.
+/// The premultiplied RGBA [`Plane`] is already `w*h` `vec4<f32>` for a storage buffer.
 fn pack_vec4(p: &Plane) -> Vec<f32> {
-    let mut v = vec![0.0f32; p.w * p.h * 4];
-    for (dst, srcpx) in v
-        .as_chunks_mut::<4>()
-        .0
-        .iter_mut()
-        .zip(p.px.as_chunks::<3>().0.iter())
-    {
-        dst[0] = srcpx[0];
-        dst[1] = srcpx[1];
-        dst[2] = srcpx[2];
-        dst[3] = 1.0;
-    }
-    v
+    p.px.clone()
 }

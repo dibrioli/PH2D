@@ -21,7 +21,7 @@ use crate::plane::Plane;
 /// the just-searched field, `r` the patch radius.
 pub fn vote(content: &mut Plane, src: &Plane, mask: &Mask, reg: &Regions, nnf: &Nnf, r: i32) {
     let (w, h) = (content.w, content.h);
-    let mut sum = vec![[0.0f32; 3]; w * h];
+    let mut sum = vec![[0.0f32; 4]; w * h];
     let mut wsum = vec![0.0f32; w * h];
 
     for &ti in &reg.targets {
@@ -42,9 +42,9 @@ pub fn vote(content: &mut Plane, src: &Plane, mask: &Mask, reg: &Regions, nnf: &
                     continue; // never overwrite a known pixel
                 }
                 let col = src.get(tx + o[0] + dx, ty + o[1] + dy);
-                sum[vi][0] += weight * col[0];
-                sum[vi][1] += weight * col[1];
-                sum[vi][2] += weight * col[2];
+                for k in 0..4 {
+                    sum[vi][k] += weight * col[k];
+                }
                 wsum[vi] += weight;
             }
         }
@@ -55,7 +55,9 @@ pub fn vote(content: &mut Plane, src: &Plane, mask: &Mask, reg: &Regions, nnf: &
             let vi = y * w + x;
             if mask.hole[vi] && wsum[vi] > 0.0 {
                 let iw = 1.0 / wsum[vi];
-                content.set(x, y, [sum[vi][0] * iw, sum[vi][1] * iw, sum[vi][2] * iw]);
+                // Alpha divides (not × iw): an all-opaque vote is then exactly 1, the colour unchanged.
+                let s = sum[vi];
+                content.set(x, y, [s[0] * iw, s[1] * iw, s[2] * iw, s[3] / wsum[vi]]);
             }
         }
     }
@@ -71,7 +73,7 @@ mod tests {
         let mut img = Plane::new(w, h);
         for y in 0..h {
             for x in 0..w {
-                img.set(x, y, [0.4, 0.7, 0.2]);
+                img.set(x, y, [0.4, 0.7, 0.2, 1.0]);
             }
         }
         let mut bytes = vec![0u8; w * h];
@@ -86,7 +88,7 @@ mod tests {
         let mut content = img.clone();
         for y in 10..14 {
             for x in 10..14 {
-                content.set(x, y, [0.0, 0.0, 0.0]);
+                content.set(x, y, [0.0, 0.0, 0.0, 0.0]);
             }
         }
         let nnf = Nnf::init(&content, &img, &reg, 3, 3);

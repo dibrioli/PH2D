@@ -13,6 +13,17 @@ use crate::footprint::FootprintDeform;
 use crate::spec::BrushSpec;
 use crate::texture::{ImageMask, TexDabBasis};
 
+thread_local! {
+    static MISTURA_RECTA_DE_ANTES: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Prancha B38 only: `true` puts back the straight-alpha blend of before (the dark fringe), so the
+/// before/after board is drawn in one process. Never set in the product.
+#[doc(hidden)]
+pub fn prancha_b38_mistura_recta(on: bool) {
+    MISTURA_RECTA_DE_ANTES.set(on);
+}
+
 /// Clone one dab whose **Grain Mapping is canvas-fixed** (Tiled / Stencil) or whose Shape/Grain rotates
 /// per dab (Rake / Random / Jitter Rotate) — cases the scale-invariant [`crate::StampMask`] can't bake.
 /// Lifts the source region at `center + offset` and blends it with the per-pixel weight
@@ -52,6 +63,7 @@ pub fn clone_blit_grain(
     let lifted = lift_offset(buf, fw, fh, min_x, min_y, bw, bh, off, wrap);
 
     let depth = spec.grain_depth();
+    let recta = MISTURA_RECTA_DE_ANTES.get();
     let (cx, cy) = (center[0], center[1]);
     let inv_r = 1.0 / radius;
     for j in 0..bh {
@@ -104,10 +116,13 @@ pub fn clone_blit_grain(
             }
             let src = lifted[j * bw + i];
             let di = ((py * fw + px) * 4) as usize;
-            for c in 0..4 {
-                let d = f32::from(buf[di + c]);
-                let s = f32::from(src[c]);
-                buf[di + c] = (d + (s - d) * w).round().clamp(0.0, 255.0) as u8;
+            if recta {
+                for c in 0..4 {
+                    let d = f32::from(buf[di + c]);
+                    buf[di + c] = (d + (f32::from(src[c]) - d) * w).round().clamp(0.0, 255.0) as u8;
+                }
+            } else {
+                crate::mistura::mistura_premultiplicada_u8(&mut buf[di..di + 4], src, w);
             }
         }
     }
@@ -123,6 +138,70 @@ pub fn clone_blit_grain(
 mod tests {
     use super::*;
     use crate::texture::{TextureKind, TextureMapping};
+
+    /// B38.1 (T1-09): a Tiled Grain clone that carries paint into the empty half of a transparent layer
+    /// keeps the paint's colour (half alpha), never a darker fringe.
+    #[test]
+    fn clone_com_grao_numa_camada_transparente_nao_escurece_a_tinta() {
+        const AMARELO: [u8; 4] = [250, 225, 20, 255];
+        let (w, h) = (40u32, 16u32);
+        let mut buf = vec![0u8; (w * h * 4) as usize];
+        for y in 0..h {
+            for x in 20..w {
+                let i = ((y * w + x) * 4) as usize;
+                buf[i..i + 4].copy_from_slice(&AMARELO);
+            }
+        }
+        let mut spec = BrushSpec {
+            radius_px: 8.0,
+            hardness: 0.3,
+            ..Default::default()
+        };
+        spec.texture.kind = TextureKind::Checker;
+        spec.texture.mapping = TextureMapping::Tiled;
+        let gb = crate::texture::dab_basis(
+            &spec.texture,
+            &mut 0u64,
+            [w as f32, h as f32],
+            crate::footprint::FootprintDeform::identity(),
+        );
+        let fp = spec.footprint_deform();
+        for off in [-8.0f32, 8.0] {
+            let mut b = buf.clone();
+            let _ = clone_blit_grain(
+                &mut b,
+                w,
+                h,
+                [20.0, 8.0],
+                [off, 0.0],
+                8.0,
+                &spec,
+                fp,
+                Some(&gb),
+                None,
+                None,
+                None,
+                None,
+                None,
+                0.6,
+                [false, false],
+            );
+            let (mut meio, mut escuros) = (0, 0);
+            for p in b.as_chunks::<4>().0 {
+                if p[3] > 0 && p[3] < 255 {
+                    meio += 1;
+                    if (0..3).any(|c| i32::from(p[c]) < i32::from(AMARELO[c]) - 1) {
+                        escuros += 1;
+                    }
+                }
+            }
+            assert!(meio > 0, "CONTROLO: off {off} levou tinta ao vazio");
+            assert_eq!(
+                escuros, 0,
+                "off {off}: {escuros} de {meio} texels escureceram"
+            );
+        }
+    }
 
     #[test]
     fn canvas_fixed_grain_changes_the_clone() {

@@ -206,3 +206,93 @@ fn um_nivel_que_a_placa_recusa_cai_na_cpu_sem_panico() {
         "a queda não é a referência da CPU ao byte"
     );
 }
+
+fn fnv(b: &[u8]) -> u64 {
+    b.iter().fold(0xcbf2_9ce4_8422_2325u64, |h, &x| {
+        (h ^ u64::from(x)).wrapping_mul(0x0100_0000_01b3)
+    })
+}
+
+/// B38.2 — o oráculo: em imagem OPACA levar o alfa não muda um byte (hash do caminho de antes, RGB só).
+#[test]
+fn opaco_e_o_mesmo_byte_de_antes_de_levar_o_alfa() {
+    let (w, h) = (64, 64);
+    let a = rgba_from(w, h, |x, y| {
+        let s = if (x / 3) % 2 == 0 { 210 } else { 40 };
+        [s, ((y * 3) % 256) as u8, ((x + y) % 256) as u8]
+    });
+    let b = rgba_from(w, h, |x, y| {
+        [(x * 3) as u8, (y * 3) as u8, ((x + y) * 2) as u8]
+    });
+    let m = rect_mask(w, h, 20, 22, 18, 14);
+    let ha = fnv(&run(w, h, &a, &m, InpaintParams::default()));
+    let hb = fnv(&run(w, h, &b, &m, InpaintParams::default()));
+    assert_eq!(
+        (ha, hb),
+        (15_420_729_974_191_850_435, 4_319_057_658_824_733_258),
+        "hash do caminho opaco"
+    );
+}
+
+/// **B38.2 (T1-07) — Heal na borda de um traço numa camada transparente leva o alfa.** Metade esquerda
+/// vazia (`0,0,0,0`), metade direita amarela opaca; o buraco atravessa a borda. Antes: o buraco
+/// enchia-se de preto OPACO no lado vazio (α forçado a 255, o RGB do vazio é zero).
+#[test]
+fn heal_na_borda_de_um_traco_transparente_leva_o_alfa() {
+    const AMARELO: [u8; 4] = [250, 225, 20, 255];
+    let (w, h) = (64, 48);
+    let mut img = vec![0u8; w * h * 4];
+    for y in 0..h {
+        for x in 32..w {
+            let o = (y * w + x) * 4;
+            img[o..o + 4].copy_from_slice(&AMARELO);
+        }
+    }
+    let m = rect_mask(w, h, 20, 16, 24, 16);
+    let out = run(w, h, &img, &m, InpaintParams::default());
+    let (mut escuros, mut opacos_no_vazio) = (0, 0);
+    for y in 16..32 {
+        for x in 20..44 {
+            let p = &out[(y * w + x) * 4..(y * w + x) * 4 + 4];
+            if p[3] > 0 && (0..3).any(|c| i32::from(p[c]) < i32::from(AMARELO[c]) - 2) {
+                escuros += 1;
+            }
+            if x < 28 && p[3] >= 128 {
+                opacos_no_vazio += 1;
+            }
+        }
+    }
+    let amarelo_dentro = (16..32)
+        .filter(|&y| out[(y * w + 40) * 4 + 3] == 255)
+        .count();
+    assert!(
+        amarelo_dentro > 0,
+        "CONTROLO: o lado da tinta encheu-se de tinta"
+    );
+    assert_eq!(
+        (escuros, opacos_no_vazio),
+        (0, 0),
+        "(texels escuros, opacos no vazio)"
+    );
+}
+
+/// B38.2 — o alfa entra no SSD: um buraco no vazio, ao lado de muito PRETO OPACO, não se enche de preto
+/// (sem o alfa no custo, vazio e preto opaco empatam a zero).
+#[test]
+fn o_vazio_nao_casa_com_preto_opaco_no_alfa() {
+    let (w, h) = (64, 48);
+    let mut img = vec![0u8; w * h * 4];
+    for y in 0..h {
+        for x in 14..w {
+            let o = (y * w + x) * 4;
+            img[o..o + 4].copy_from_slice(&[0, 0, 0, 255]);
+        }
+    }
+    let m = rect_mask(w, h, 2, 16, 9, 16);
+    let out = run(w, h, &img, &m, InpaintParams::default());
+    let opacos = (16..32)
+        .flat_map(|y| (2..11).map(move |x| (y * w + x) * 4 + 3))
+        .filter(|&i| out[i] >= 128)
+        .count();
+    assert_eq!(opacos, 0, "texels opacos no buraco do vazio");
+}

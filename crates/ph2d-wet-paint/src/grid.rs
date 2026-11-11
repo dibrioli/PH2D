@@ -195,6 +195,8 @@ pub struct Grid {
     pub tile_words: usize,
     /// Ablação da máscara: `false` varre o intervalo inteiro da linha (o oráculo do gate diferencial).
     pub tiles_enabled: bool,
+    /// A água parada dorme (B13.3, [`sono`]).
+    pub sono: sono::Sono,
     /// Ablação da faixa: `false` faz [`Grid::span_x`] devolver a bbox inteira,
     /// isto é, exatamente o que o motor varria antes dela.
     ///
@@ -341,6 +343,7 @@ impl Grid {
             live_tiles: vec![0; rows * (faixa_tiles::tile_words_for(s) + 1)],
             tile_words: faixa_tiles::tile_words_for(s),
             tiles_enabled: true,
+            sono: sono::Sono::novo(),
             spans_enabled: true,
             scratch: SolverScratch::default(),
             paper_preset: PaperPreset::Cold,
@@ -650,4 +653,6 @@ pub mod faixa_tiles; // a máscara de tiles da faixa (B13.2)
 #[path = "grid/snapshot.rs"]
 mod snapshot; // as fotografias do histórico (SPEC §15) — filho por LOC
 pub(crate) use snapshot::PassoEmVoo;
+/// A água parada dorme (B13.3).
+pub mod sono;
 pub use snapshot::{GridSnapshot, Registo, TILE, restore_grid, snapshot_grid};

@@ -188,6 +188,7 @@ fn planos_da_grade(g: &mut Grid) -> Vec<Plano<'_>> {
         live_tiles: _,
         tile_words: _,
         tiles_enabled: _,
+        sono: _,
         spans_enabled: _,
         scratch: _,
         paper_preset: _,

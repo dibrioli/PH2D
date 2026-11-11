@@ -141,6 +141,7 @@ impl Grid {
     /// Marca todo tile (quem não sabe o que há na linha: o restauro de histórico).
     pub fn fill_tiles_all(&mut self) {
         self.row_tiles.fill(u64::MAX);
+        self.sono.quietos.fill(0);
     }
 
     /// Declara `x0..=x1` vivo nas linhas `y0..=y1` (com o tile vizinho), como o [`Grid::note_live`].
@@ -148,6 +149,7 @@ impl Grid {
         if self.row_tiles.is_empty() {
             return;
         }
+        super::sono::acorda(self, x0, y0, x1, y1);
         let tw = self.tile_words;
         let t0 = ((x0 - TILE_FAIXA).max(0)) >> 6;
         let t1 = (x1 + TILE_FAIXA) >> 6;

@@ -504,6 +504,7 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
             }
             let p = sim.gather_params(tuning);
             let grav = sim.gravity(tuning);
+            crate::grid::sono::inicio(g, crate::grid::sono::chave(&p.values, grav));
             sim.frame += 1;
             StepCursor {
                 p,
@@ -545,6 +546,7 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
             }
         }
         2 => {
+            crate::grid::sono::adormece(g);
             if n.is_multiple_of(4) {
                 if sim.order_invariant {
                     crate::solver::build_flow_field_jacobi(
@@ -598,6 +600,7 @@ pub fn sim_step_stage(sim: &mut Sim, g: &mut Grid, tuning: &Tuning) -> Option<bo
                 sim.rewet_base = 0.000025;
             }
             crate::estreito::arredonda(g);
+            crate::grid::sono::conta(g);
             return Some(true);
         }
     }

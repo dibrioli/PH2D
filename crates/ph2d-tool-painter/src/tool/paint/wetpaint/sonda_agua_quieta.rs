@@ -167,3 +167,100 @@ fn sonda_agua_quieta_depois_de_soltar() {
             .trim()
     );
 }
+
+fn tela_pintada(lib: &Biblioteca, w: usize, h: usize) -> PainterTool {
+    let k = w as f32 / 1920.0;
+    let mut t = PainterTool::default();
+    t.abre_a_sprite(vec![255u8; w * h * 4], w as u32, h as u32);
+    t.set_paint_tool_mode("wetpaint");
+    t.preset_aplicar(por_nome(lib, "Wet Wash")).expect("preset");
+    t.set_brush_size_px(120.0 * k);
+    for lane in 0..3 {
+        let y = (300.0 + 200.0 * lane as f32) * k;
+        t.on_canvas_pointer(cp([200.0 * k, y], PointerPhase::Down));
+        for s in 1..=60 {
+            t.on_canvas_pointer(cp([(200.0 + 25.0 * s as f32) * k, y], PointerPhase::Move));
+            t.on_tick(1000.0 / 60.0);
+            let _ = t.take_preview_arc();
+        }
+        t.on_canvas_pointer(cp([1700.0 * k, y], PointerPhase::Up));
+    }
+    t.wet_bring_home();
+    t
+}
+
+/// B13.3: a mesma tela com o sono ligado × desligado, passo a passo INTERCALADO no mesmo processo: o digest de
+/// film/susp/sett/vel ao bit (ε = `PH2D_SONO_EPS`, 0 por omissão) e o ms do passo (mínimo por janela de 40).
+#[test]
+#[ignore = "sonda: corre à mão, no perfil smoke"]
+fn sonda_sono_ligado_e_desligado() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let lib = Biblioteca::carregar(&raiz, None);
+    let eps: f32 = std::env::var("PH2D_SONO_EPS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0.0);
+    for (w, h) in [(1920usize, 1080usize), (3840, 2160)] {
+        let mut ts = [tela_pintada(&lib, w, h), tela_pintada(&lib, w, h)];
+        let mut ms = [Vec::new(), Vec::new()];
+        let mut dif = 0;
+        for step in 0..400u32 {
+            let mut hs = [0u64; 2];
+            for lado in [step as usize % 2, 1 - step as usize % 2] {
+                let e: &mut ph2d_wet_paint::painter::Engine = &mut ts[lado]
+                    .paint
+                    .wetpaint
+                    .session
+                    .as_mut()
+                    .expect("sessao")
+                    .engine;
+                let idx = e.active_layer;
+                let ph2d_wet_paint::painter::Engine {
+                    sim,
+                    layers,
+                    tuning,
+                    ..
+                } = &mut *e;
+                let g = &mut layers[idx].grid;
+                g.sono.ligado = lado == 0;
+                g.sono.eps = eps;
+                let a = Instant::now();
+                while sim_step_stage(sim, g, tuning).is_none() {}
+                ms[lado].push(a.elapsed().as_secs_f64() * 1e3);
+                let mut x = 0xcbf2_9ce4_8422_2325u64;
+                for c in [&g.film, &g.susp, &g.sett, &g.vel_x, &g.vel_y] {
+                    for v in c.iter() {
+                        x = (x ^ u64::from(v.to_bits())).wrapping_mul(0x0100_0000_01b3);
+                    }
+                }
+                hs[lado] = x;
+            }
+            dif += usize::from(hs[0] != hs[1]);
+        }
+        let e: &ph2d_wet_paint::painter::Engine = &ts[0]
+            .paint
+            .wetpaint
+            .session
+            .as_ref()
+            .expect("sessao")
+            .engine;
+        let salt = e.layers[e.active_layer].grid.sono.saltados;
+        println!(
+            "\n  {w}x{h} · ε {eps:e} · passos que diferem {dif}/400 · tiles-linha saltados {salt}"
+        );
+        for j in 0..10 {
+            let m = |v: &[f64]| {
+                v[j * 40..(j + 1) * 40]
+                    .iter()
+                    .copied()
+                    .fold(f64::MAX, f64::min)
+            };
+            println!(
+                "    {:>4.1} s: com sono {:>6.2} ms · sem {:>6.2} ms (mín. de 40)",
+                (j + 1) as f64,
+                m(&ms[0]),
+                m(&ms[1])
+            );
+        }
+    }
+}

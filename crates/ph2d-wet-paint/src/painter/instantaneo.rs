@@ -156,6 +156,7 @@ impl crate::grid::Grid {
             live_tiles,
             tile_words: _,
             tiles_enabled: _,
+            sono: _,
             spans_enabled: _,
             scratch: _,
             paper_preset: _,

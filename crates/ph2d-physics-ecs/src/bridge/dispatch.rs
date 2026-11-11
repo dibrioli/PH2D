@@ -122,7 +122,7 @@ impl PhysicsBridge {
         // as voltar ao 1.º tique — um vai-e-vem que o empurrão do `reshape_push` não desfaz (medido,
         // Height animada com 3 tiques por quadro contra 1: 0,65 cm de desvio sem isto, 0 com).
         if target > self.last_stepped {
-            scene.put(sim, self.last_stepped + 1);
+            self.poe_a_cena(sim, scene, self.last_stepped + 1);
         }
         self.prepare(sim);
         // Transitions are a fresh list per dispatch; the forward loop appends to it,
@@ -191,7 +191,7 @@ impl PhysicsBridge {
                     // Ask the scene for THIS tick first. When it answers, the
                     // pose is exact and there is nothing to interpolate; when it
                     // does not, spread the frame's move across the ticks owed.
-                    let exact = scene.put(sim, self.last_stepped + i + 1);
+                    let exact = self.poe_a_cena(sim, scene, self.last_stepped + i + 1);
                     let f = if exact {
                         1.0
                     } else {

@@ -92,7 +92,7 @@ impl PhysicsBridge {
             // With a scene that answers, this restores the invariant the whole
             // bridge rests on: the world is a function of the tick, given the
             // authored rest state AND the authored curves — both reproducible.
-            scene.put(sim, from + i + 1);
+            self.poe_a_cena(sim, scene, from + i + 1);
             // E o DEDO daquele tick (W7) — sem isto o replay corria com a
             // entrada de AGORA aplicada a um tick do passado.
             self.take_taped_input(sim, tape, from + i + 1);
@@ -133,7 +133,7 @@ impl PhysicsBridge {
         // decide *"nada mudou"* e o solver corre com o número do checkpoint pelo
         // resto da corrida. Custo: um `put` + um push por rewind, nunca por tick.
         if replayed == 0 {
-            scene.put(sim, target);
+            self.poe_a_cena(sim, scene, target);
             self.drive_joint_params(sim, true);
             self.drive_shapes(sim);
         }

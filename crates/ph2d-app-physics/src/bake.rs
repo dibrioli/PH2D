@@ -88,16 +88,38 @@ impl BakeChannels {
 pub(crate) struct TimelineScene<'a> {
     pub doc: &'a mut ph2d_timeline::TimelineDoc,
     pub fixed_dt: f64,
-    /// O livro do quadro, que recebe o autorado que o tique tira à curva.
-    pub livro: Option<&'a mut crate::canais_corpo::ConducaoFisica>,
+    /// Os livros do quadro, que recebem o autorado que o tique tira à curva.
+    pub livro: Option<Livros<'a>>,
+}
+
+/// Os livros do quadro que cada tique alimenta: a prévia (as juntas), a forma, e a mão do mundo.
+pub(crate) struct Livros<'a> {
+    pub drive: &'a mut ph2d_preview_drive::PreviewDrive,
+    pub fisica: &'a mut crate::canais_corpo::ConducaoFisica,
+    pub mundo: &'a mut crate::canais_mundo::ConducaoMundo,
 }
 
 impl SceneAtTick for TimelineScene<'_> {
     fn put(&mut self, sim: &mut SimWorld, tick: u64) -> bool {
         let t = tick as f64 * self.fixed_dt;
         ph2d_timeline::apply_from_doc(sim.world_mut(), self.doc, t);
-        crate::canais_corpo::aplicar_do_tique(sim, self.doc, t, self.livro.as_deref_mut());
+        let fisica = self.livro.as_mut().map(|l| &mut *l.fisica);
+        crate::canais_corpo::aplicar_do_tique(sim, self.doc, t, fisica);
+        // A JUNTA do tique, no ledger do QUADRO (a lição da 8.3b); a ponte lê-a por `drive_joint_params`.
+        if let Some(l) = self.livro.as_mut() {
+            crate::canais_junta::aplicar(sim, l.drive, self.doc);
+        }
         true
+    }
+
+    /// O MUNDO do tique ([`crate::canais_mundo::alvo_do_tique`]).
+    fn mundo(
+        &mut self,
+        sim: &mut SimWorld,
+        autorado: ph2d_physics_ecs::PhysicsSettings,
+    ) -> Option<ph2d_physics_ecs::PhysicsSettings> {
+        let l = self.livro.as_ref()?;
+        crate::canais_mundo::alvo_do_tique(sim, autorado, l.mundo)
     }
 }
 

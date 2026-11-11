@@ -122,6 +122,8 @@ pub struct ConducaoMundo {
     /// Os `(campo, i)` que o painel mexeu no que MOSTRAVA ([`Self::tocar`]): a mão ganha neles
     /// mesmo quando o autorado já valia o que se pediu (a curva escondia-o).
     tocadas: std::collections::BTreeSet<(u16, u16)>,
+    /// Os `(campo, i)` em que a mão ganhou NESTE quadro: os tiques dele ([`alvo_do_tique`]) respeitam-nos.
+    maos: std::collections::BTreeSet<(u16, u16)>,
 }
 
 impl ConducaoMundo {
@@ -146,17 +148,10 @@ impl ConducaoMundo {
 /// ⭐ **Aplica ao mundo vivo o que a curva mandou neste quadro** (sem limpar o anel) e regista o eco.
 /// Devolve `true` se o mundo mudou.
 pub fn aplicar(sim: &mut SimWorld, ponte: &mut PhysicsBridge, cond: &mut ConducaoMundo) -> bool {
-    let escritas = sim
-        .world_mut()
-        .get_resource_mut::<CanaisEscritos>()
-        .map(|mut w| w.drenar(MUNDO))
-        .unwrap_or_default();
-    let Some(c) = cena(sim) else { return false };
-    let curva: BTreeMap<(u16, u16), f32> = escritas
-        .into_iter()
-        .filter(|&(e, kk, _)| e == c && kk.j == 0 && (kk.i == 0 || kk.campo == m::CAMADAS))
-        .map(|(_, kk, v)| ((kk.campo, kk.i), v))
-        .collect();
+    let Some((c, curva)) = curva_escrita(sim) else {
+        return false;
+    };
+    cond.maos.clear();
     let autorado = ponte.settings();
     let mut alvo = autorado;
     let mut ecos = Vec::with_capacity(m::CAMPOS.len() + usize::from(m::CELULAS));
@@ -165,6 +160,9 @@ pub fn aplicar(sim: &mut SimWorld, ponte: &mut PhysicsBridge, cond: &mut Conduca
         let tocada = cond.tocadas.remove(&(chave.campo, chave.i));
         let mao = (cond.visto.insert((chave.campo, chave.i), a)).is_some_and(|antes| antes != a)
             || tocada;
+        if mao {
+            cond.maos.insert((chave.campo, chave.i));
+        }
         let v = curva.get(&(chave.campo, chave.i)).copied().filter(|_| !mao);
         ecos.push((chave, v.unwrap_or(a), a));
         v
@@ -191,6 +189,54 @@ pub fn aplicar(sim: &mut SimWorld, ponte: &mut PhysicsBridge, cond: &mut Conduca
         lidos.eco(c, kk, escrito, ficou);
     }
     ponte.conduzir_settings(alvo)
+}
+
+/// A curva de um quadro ou tique, por `(campo, i)`.
+type Curva = BTreeMap<(u16, u16), f32>;
+
+/// A curva que a timeline escreveu na Cena desde o último dreno, por `(campo, i)`.
+fn curva_escrita(sim: &mut SimWorld) -> Option<(u64, Curva)> {
+    let escritas = sim
+        .world_mut()
+        .get_resource_mut::<CanaisEscritos>()
+        .map(|mut w| w.drenar(MUNDO))
+        .unwrap_or_default();
+    let c = cena(sim)?;
+    let curva = escritas
+        .into_iter()
+        .filter(|&(e, kk, _)| e == c && kk.j == 0 && (kk.i == 0 || kk.campo == m::CAMADAS))
+        .map(|(_, kk, v)| ((kk.campo, kk.i), v))
+        .collect();
+    Some((c, curva))
+}
+
+/// ⭐ **O mundo de UM tique** (GEF02, por tique como a forma): o autorado com a curva deste tique por
+/// cima, menos onde a mão ganhou no quadro. `None` = a curva não escreveu nada.
+pub(crate) fn alvo_do_tique(
+    sim: &mut SimWorld,
+    autorado: PhysicsSettings,
+    cond: &ConducaoMundo,
+) -> Option<PhysicsSettings> {
+    let (_, curva) = curva_escrita(sim).filter(|(_, c)| !c.is_empty())?;
+    let livre = |campo: u16, i: u16| {
+        curva
+            .get(&(campo, i))
+            .filter(|_| !cond.maos.contains(&(campo, i)))
+    };
+    let mut alvo = autorado;
+    for campo in m::CAMPOS {
+        if let Some(&v) = livre(campo, 0) {
+            escrever(&mut alvo, campo, v);
+        }
+    }
+    let mut mx = LayerMatrix::from_rows(autorado.layer_matrix);
+    for (i, a, b) in celulas() {
+        if let Some(&v) = livre(m::CAMADAS, i) {
+            mx.set(a, b, v >= 0.5);
+        }
+    }
+    alvo.layer_matrix = mx.rows();
+    Some(alvo)
 }
 
 #[cfg(test)]

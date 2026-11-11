@@ -186,7 +186,7 @@ fn a_cena_66_animada_leva_o_portao_ao_minimo_novo() {
             true,
             ph2d_physics_ecs::PlayerInput::default(),
             &mut ph2d_physics_ecs::InputTape::new(),
-            (&mut drive, &mut Default::default()),
+            (&mut drive, &mut Default::default(), &mut estado.mundo),
         );
         crate::aplicar_canais(&mut sim, &reg, &mut bridge, &mut estado, (&mut drive, &doc));
         estado.conducao.settle();

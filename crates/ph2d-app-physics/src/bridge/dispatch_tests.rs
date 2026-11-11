@@ -40,7 +40,11 @@ fn play(simulate: bool) -> (f32, u64) {
             simulate,
             ph2d_physics_ecs::PlayerInput::default(),
             &mut ph2d_physics_ecs::InputTape::new(),
-            (&mut Default::default(), &mut Default::default()),
+            (
+                &mut Default::default(),
+                &mut Default::default(),
+                &mut Default::default(),
+            ),
         );
     }
     (height(&sim, ball), bridge.steps_taken())
@@ -102,7 +106,11 @@ fn arming_mid_take_resumes_it_does_not_replay_what_was_skipped() {
             false,
             ph2d_physics_ecs::PlayerInput::default(),
             &mut ph2d_physics_ecs::InputTape::new(),
-            (&mut Default::default(), &mut Default::default()),
+            (
+                &mut Default::default(),
+                &mut Default::default(),
+                &mut Default::default(),
+            ),
         );
     }
     // The artist ticks the checkbox. One more frame goes by.
@@ -116,7 +124,11 @@ fn arming_mid_take_resumes_it_does_not_replay_what_was_skipped() {
         true,
         ph2d_physics_ecs::PlayerInput::default(),
         &mut ph2d_physics_ecs::InputTape::new(),
-        (&mut Default::default(), &mut Default::default()),
+        (
+            &mut Default::default(),
+            &mut Default::default(),
+            &mut Default::default(),
+        ),
     );
 
     assert_eq!(
@@ -184,7 +196,11 @@ fn taped(sim: &mut SimWorld, simulate: bool) -> usize {
             simulate,
             walking,
             &mut tape,
-            (&mut Default::default(), &mut Default::default()),
+            (
+                &mut Default::default(),
+                &mut Default::default(),
+                &mut Default::default(),
+            ),
         );
     }
     tape.len()

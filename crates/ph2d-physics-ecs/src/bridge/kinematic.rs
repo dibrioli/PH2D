@@ -38,6 +38,32 @@ use super::PhysicsBridge;
 /// intermediate poses were never recorded anywhere.
 pub trait SceneAtTick {
     fn put(&mut self, sim: &mut SimWorld, tick: u64) -> bool;
+    /// The world settings the scene gives the tick just [`Self::put`] over `authored` (a curve on the
+    /// Scene's gravity, say); `None` = leave the live ones. Asked by the same door as `put`.
+    fn mundo(
+        &mut self,
+        _sim: &mut SimWorld,
+        _authored: crate::PhysicsSettings,
+    ) -> Option<crate::PhysicsSettings> {
+        None
+    }
+}
+
+impl PhysicsBridge {
+    /// ⭐ **The scene at `tick`**, the ONE door of the four loops (first owed tick, owed ticks, replay,
+    /// zero-tick seed, the bake): the poses and parameters by [`SceneAtTick::put`], then the world settings.
+    pub(crate) fn poe_a_cena(
+        &mut self,
+        sim: &mut SimWorld,
+        scene: &mut dyn SceneAtTick,
+        tick: u64,
+    ) -> bool {
+        let exact = scene.put(sim, tick);
+        if let Some(s) = scene.mundo(sim, self.settings()) {
+            self.conduzir_settings(s);
+        }
+        exact
+    }
 }
 
 /// A scene that does not change with the tick — the answer for a caller with no

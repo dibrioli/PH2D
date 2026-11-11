@@ -75,7 +75,11 @@ fn run(sim: &mut SimWorld, simulate: bool, frames: u64, held: PlayerInput) -> In
             simulate,
             held,
             &mut tape,
-            (&mut Default::default(), &mut Default::default()),
+            (
+                &mut Default::default(),
+                &mut Default::default(),
+                &mut Default::default(),
+            ),
         );
     }
     tape

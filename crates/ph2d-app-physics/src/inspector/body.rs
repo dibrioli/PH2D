@@ -301,7 +301,7 @@ pub fn build_physics_info(
         lock_rotation,
         offset: col.offset,
         // O cartão Look só do objeto «Collision Shape» selecionado (um `Collider` sem corpo).
-        look: ph2d_shape_handles::look::fatos(world, forma, &col, forma == entity && rb.is_none()),
+        look: ph2d_shape_handles::look::fatos(world, forma, col, forma == entity && rb.is_none()),
         // A superfície AUTORADA — ausente, o neutro. Sem estas duas linhas as
         // rows seriam write-only, o defeito que a família das zonas shipou
         // inteira e que custou um report do Enio.

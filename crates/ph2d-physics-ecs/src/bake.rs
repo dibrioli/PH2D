@@ -321,7 +321,7 @@ pub fn bake_trajectories_with_scene_and_tape(
 
     // Tick 0 is the rest state, and it is a SAMPLE, not a warm-up: it is where
     // the artist placed the object, and the first key of the baked curve.
-    scene.put(sim, 0);
+    bridge.poe_a_cena(sim, scene, 0);
     bridge.dispatch_with_scene_and_tape(sim, false, 0, scene, tape);
     record(sim, &mut out, 0.0);
 
@@ -336,7 +336,7 @@ pub fn bake_trajectories_with_scene_and_tape(
     // Hand the scene back. The sim is a function of the tick, so this restores
     // the exact state the artist was looking at — the property `scrub.rs`
     // already gates, borrowed rather than re-proved.
-    scene.put(sim, resume_at);
+    bridge.poe_a_cena(sim, scene, resume_at);
     bridge.dispatch_with_scene_and_tape(sim, false, resume_at, scene, tape);
     out
 }

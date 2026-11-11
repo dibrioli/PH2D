@@ -63,7 +63,12 @@ fn quadro(
     let reg = registry();
     ph2d_timeline::apply_from_doc(sim.world_mut(), doc, alvo as f64 * DT);
     aplicar(sim, &reg, cond, doc);
-    let livro = Some(cond);
+    let (drive, mundo) = (&mut Default::default(), &mut Default::default());
+    let livro = Some(crate::bake::Livros {
+        drive,
+        fisica: cond,
+        mundo,
+    });
     let mut cena = TimelineScene {
         doc,
         fixed_dt: DT,
@@ -72,15 +77,16 @@ fn quadro(
     b.dispatch_with_scene(sim, joga, alvo, &mut cena);
 }
 
-fn corre(
-    passo: u64,
-) -> (
+/// As poses por tique e o estado no fim da corrida.
+type Corrida = (
     Vec<(u64, (f32, f32, f32))>,
     SimWorld,
     Entity,
     TimelineDoc,
     PhysicsBridge,
-) {
+);
+
+fn corre(passo: u64) -> Corrida {
     let (mut sim, c, mut doc) = cena();
     let mut b = PhysicsBridge::new();
     let mut cond = ConducaoFisica::default();
@@ -138,7 +144,7 @@ fn tiques_e_depois_o_quadro(sim: &mut SimWorld, doc: &mut TimelineDoc) -> Conduc
     relogio.play();
     let fita = &mut ph2d_physics_ecs::InputTape::new();
     let entrada = ph2d_physics_ecs::PlayerInput::default();
-    let livro = (&mut ph2d_preview_drive::PreviewDrive::default(), &mut cond);
+    let livro = (&mut Default::default(), &mut cond, &mut Default::default());
     crate::bridge::dispatch::dispatch(&mut b, sim, &relogio, DT, doc, true, entrada, fita, livro);
     quadro(sim, doc, &mut b, &mut cond, 101, true);
     cond

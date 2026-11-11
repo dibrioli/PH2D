@@ -33,9 +33,10 @@ pub fn dispatch(
     simulate: bool,
     input: ph2d_physics_ecs::PlayerInput,
     tape: &mut InputTape,
-    (drive, livro): (
+    (drive, fisica, mundo): (
         &mut ph2d_preview_drive::PreviewDrive,
         &mut crate::canais_corpo::ConducaoFisica,
+        &mut crate::canais_mundo::ConducaoMundo,
     ),
 ) {
     // ⭐ A marca de MESTRE em dia ANTES da ponte (ADR-0164 / F4.1): as consultas da ponte filtram
@@ -58,7 +59,12 @@ pub fn dispatch(
     }
     // ⚠️ The bridge is told where the timeline puts scene-driven bodies at each tick, the rewind
     // replay above all (`FrozenScene` here would compile and be `bake_and_scrub_agree_with_play`'s bug).
-    let livro = Some(livro);
+    let drive_do_tique = &mut *drive;
+    let livro = Some(crate::bake::Livros {
+        drive: drive_do_tique,
+        fisica,
+        mundo,
+    });
     let mut scene = crate::bake::TimelineScene {
         doc,
         fixed_dt,

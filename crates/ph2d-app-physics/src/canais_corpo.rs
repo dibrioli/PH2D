@@ -524,6 +524,10 @@ mod tests;
 mod por_tique_tests;
 
 #[cfg(test)]
+#[path = "canais_por_tique_jm_tests.rs"]
+mod por_tique_jm_tests;
+
+#[cfg(test)]
 #[path = "canais_donos_tests.rs"]
 mod donos;
 

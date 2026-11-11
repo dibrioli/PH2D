@@ -71,7 +71,7 @@ fn duas_vidas(soluco: bool, esquece: bool) -> Vec<(f32, f32, f32)> {
             true,
             anda,
             &mut tape,
-            (&mut drive, &mut Default::default()),
+            (&mut drive, &mut Default::default(), &mut Default::default()),
         );
     }
     // O recomeço: o relógio volta ao zero e a corrida CONTINUA a jogar (`fase_fabrica_e_morte`).
@@ -94,7 +94,7 @@ fn duas_vidas(soluco: bool, esquece: bool) -> Vec<(f32, f32, f32)> {
             true,
             PlayerInput::default(),
             &mut tape,
-            (&mut drive, &mut Default::default()),
+            (&mut drive, &mut Default::default(), &mut Default::default()),
         );
         vida.push(pose(&sim, e));
     }

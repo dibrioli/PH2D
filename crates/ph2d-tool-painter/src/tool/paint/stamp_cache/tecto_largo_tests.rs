@@ -94,6 +94,27 @@ fn com_o_tecto_largo_o_flow_baixo_chega_ao_alvo_na_ferramenta() {
     );
 }
 
+/// O pincel LISO (sem a cápsula: a rota em banda, `stamp_plain_dabs_banded`) também escolhe o largo e chega ao alvo;
+/// no mesmo teste o `u8` (o veto) estanca.
+#[test]
+fn o_pincel_liso_da_banda_leva_o_tecto_largo() {
+    let liso = |b: &mut BrushSpec| {
+        flow_baixo(b);
+        b.continuous_spacing = false;
+    };
+    let corre = |so_byte: bool| {
+        let mut t = ferramenta(liso);
+        t.paint.tecto_largo.so_byte = so_byte;
+        passadas(&mut t, 80)
+    };
+    let ((v_largo, e_largo), (v_byte, e_byte)) = (corre(false), corre(true));
+    let leitura = format!("largo {v_largo} ({e_largo:?}) · u8 {v_byte} ({e_byte:?})");
+    eprintln!("B29.1 banda na ferramenta: {leitura}");
+    assert_eq!((e_largo, e_byte), (Some(true), Some(false)), "{leitura}");
+    assert!(v_largo <= 1, "o largo devia chegar ao alvo: {leitura}");
+    assert!(v_byte > 10, "o u8 não estancou: {leitura}");
+}
+
 /// Um traço que NÃO pode recompor (Randomize Color: a cor muda por dab) fica no `u8`, ao bit com o veto.
 #[test]
 fn a_cor_que_muda_por_dab_fica_no_tecto_u8() {
@@ -151,5 +172,57 @@ fn sonda_b29_1_traco_4k_largo_x_u8() {
     eprintln!(
         "B29.1 traço 4K (40 passadas, r60, Flow 2 %): u8 {:.1} ms · largo {:.1} ms (mínimo de 7)",
         melhor[0], melhor[1]
+    );
+}
+
+thread_local! {
+    /// Veto de TESTE para quem não alcança o `PainterTool` (a miniatura cria o seu): o `u8` em todo o traço.
+    pub(super) static VETO_DA_SONDA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Sonda (B29.1): cada miniatura de fábrica com o tecto largo × o `u8` (o veto), no MESMO binário — a lista
+/// exacta dos pincéis que mudam pelo largo, com a tinta (Σ 255 − média RGB) e o alfa de cada lado.
+#[test]
+#[ignore = "sonda: corre à mão"]
+fn sonda_b29_1_miniaturas_largo_x_u8() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let bib = ph2d_brush_presets::Biblioteca::carregar(&raiz, None);
+    let tinta = |px: &[u8]| -> u64 {
+        px.chunks(4)
+            .map(|c| 765 - (u64::from(c[0]) + u64::from(c[1]) + u64::from(c[2])))
+            .sum()
+    };
+    let mut n = 0;
+    for e in &bib.entradas {
+        VETO_DA_SONDA.with(|v| v.set(false));
+        let largo = crate::miniatura_do_preset(&e.preset).rgba;
+        VETO_DA_SONDA.with(|v| v.set(true));
+        let byte = crate::miniatura_do_preset(&e.preset).rgba;
+        VETO_DA_SONDA.with(|v| v.set(false));
+        if largo == byte {
+            continue;
+        }
+        n += 1;
+        let px = largo
+            .chunks(4)
+            .zip(byte.chunks(4))
+            .filter(|(a, b)| a != b)
+            .count();
+        let dmax = largo
+            .iter()
+            .zip(&byte)
+            .map(|(a, b)| a.abs_diff(*b))
+            .max()
+            .unwrap_or(0);
+        let (tl, tb) = (tinta(&largo), tinta(&byte));
+        eprintln!(
+            "MUDA {}: {px} px · Δmax {dmax} · tinta largo {tl} × u8 {tb} ({:+.1} %)",
+            e.relativo,
+            (tl as f64 / tb.max(1) as f64 - 1.0) * 100.0
+        );
+    }
+    eprintln!(
+        "B29.1: {n} de {} miniaturas mudam pelo tecto largo",
+        bib.entradas.len()
     );
 }

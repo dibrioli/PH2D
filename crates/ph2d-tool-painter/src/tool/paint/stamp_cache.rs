@@ -269,8 +269,8 @@ impl PainterTool {
             && !brush.shape_silhouette_active(self.paint.shape_image.is_some())
             && !tem_imagem
             && !brush.lays_capsules();
-        // B29.1: o carimbo por dab de cor constante leva o tecto largo; a banda e as outras rotas ficam no `u8`.
-        let largo = accumulate_cap && !banded_ok && self.quer_o_tecto_largo(brush, alpha_locked);
+        // B29.1: o traço de cor constante (por dab ou em banda) leva o tecto largo; as outras rotas ficam no `u8`.
+        let largo = accumulate_cap && self.quer_o_tecto_largo(brush, alpha_locked);
         let image = if papel {
             &self.paint.paper_image
         } else {
@@ -384,15 +384,27 @@ impl PainterTool {
                 );
             }
             if !on_device {
-                touched = super::stamp_banded::stamp_plain_dabs_banded(
-                    buf,
-                    w,
-                    h,
-                    dabs,
-                    brush,
-                    alpha_locked,
-                    (mask.as_deref_mut(), plano.as_deref_mut()),
-                );
+                let (b, f) = (brush, plano.as_deref_mut());
+                touched = match mask_largo.as_deref_mut() {
+                    Some(ml) => super::stamp_banded::stamp_plain_dabs_banded(
+                        buf,
+                        w,
+                        h,
+                        dabs,
+                        b,
+                        alpha_locked,
+                        (Some(ml), f),
+                    ),
+                    None => super::stamp_banded::stamp_plain_dabs_banded(
+                        buf,
+                        w,
+                        h,
+                        dabs,
+                        b,
+                        alpha_locked,
+                        (mask.as_deref_mut(), f),
+                    ),
+                };
             }
             // O stream de RNG é consumido pelas BASES de textura, que este pincel não tem — mas o
             // `enter` por dab é o que faz o stream ANDAR, e ele tem de andar igual.

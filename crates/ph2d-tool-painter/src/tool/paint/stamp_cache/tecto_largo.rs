@@ -19,7 +19,8 @@ impl PainterTool {
             return e;
         }
         #[cfg(test)]
-        let veto = self.paint.tecto_largo.so_byte;
+        let veto =
+            self.paint.tecto_largo.so_byte || tests::VETO_DA_SONDA.with(std::cell::Cell::get);
         #[cfg(not(test))]
         let veto = false;
         let pig = brush.pigmento();

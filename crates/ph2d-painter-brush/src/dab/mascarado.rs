@@ -117,6 +117,40 @@ pub fn stamp_dab_textured_masked_with(
     dab_rotation: [f32; 2],
     min_area: usize,
 ) -> Option<DirtyRect> {
+    stamp_dab_masked_tecto(
+        buf,
+        width,
+        height,
+        center,
+        spec,
+        coverage,
+        preserve_alpha,
+        mask,
+        forca,
+        dab_rotation,
+        min_area,
+        None,
+    )
+}
+
+/// [`stamp_dab_textured_masked_with`] genérico no TEXEL do tecto (B29.1): `u8` monomorfiza o mesmo código; com
+/// [`crate::TexelLargo`] o lote em banda do pincel liso leva o tecto largo. Sem textura, imagem nem Shape.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn stamp_dab_masked_tecto<M: crate::Tecto>(
+    buf: &mut [u8],
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    spec: &BrushSpec,
+    coverage: f32,
+    preserve_alpha: bool,
+    mask: Option<&mut [M]>,
+    forca: Option<&mut [u16]>,
+    dab_rotation: [f32; 2],
+    min_area: usize,
+    capsula: Option<crate::capsula::Capsula>,
+) -> Option<DirtyRect> {
     stamp_dab_inner(
         buf,
         width,
@@ -134,7 +168,7 @@ pub fn stamp_dab_textured_masked_with(
         None,
         dab_rotation,
         min_area,
-        None,
+        capsula,
     )
 }
 

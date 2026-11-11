@@ -53,8 +53,7 @@
 //! avança. Isso é uma pergunta própria, e **entra quando for medida**, não por simetria.
 
 use ph2d_painter_brush::{
-    BrushSpec, Dab, DirtyRect, dab_write_bounds_of, stamp_dab_textured_masked,
-    stamp_dab_textured_masked_with,
+    BrushSpec, Dab, DirtyRect, Tecto, dab_write_bounds_of, stamp_dab_masked_tecto,
 };
 
 /// Trabalho abaixo do qual o lote não vale uma divisão — **literalmente** o
@@ -244,14 +243,14 @@ pub(super) fn wants_bands(work: usize, caixas: &[Option<DirtyRect>], min_area: u
 ///
 /// Devolve o retângulo tocado — a união dos spans dos dabs que de fato escreveram, a mesma resposta do
 /// laço serial —, ou `None` se o lote não vale a divisão (aí o chamador segue pelo caminho de sempre).
-pub(super) fn stamp_plain_dabs_banded(
+pub(super) fn stamp_plain_dabs_banded<M: Tecto>(
     buf: &mut [u8],
     w: u32,
     h: u32,
     dabs: &[Dab],
     brush: &BrushSpec,
     alpha_locked: bool,
-    planos: Planos<'_>,
+    planos: Planos<'_, M>,
 ) -> Option<DirtyRect> {
     banded_com_forca(buf, w, h, dabs, brush, alpha_locked, planos, BATCH_MIN_AREA)
 }
@@ -279,17 +278,17 @@ pub(super) fn stamp_plain_dabs_banded_with(
 
 /// Os planos que o carimbo escreve ao lado da tela: a cobertura do traço (o cap) e a força do lote (W10
 /// das macros, [`ph2d_painter_brush`]`::stroke_cover::compoe_forca`).
-pub(super) type Planos<'a> = (Option<&'a mut [u8]>, Option<&'a mut [u16]>);
+pub(super) type Planos<'a, M = u8> = (Option<&'a mut [M]>, Option<&'a mut [u16]>);
 
 #[allow(clippy::too_many_arguments)]
-fn banded_com_forca(
+fn banded_com_forca<M: Tecto>(
     buf: &mut [u8],
     w: u32,
     h: u32,
     dabs: &[Dab],
     brush: &BrushSpec,
     alpha_locked: bool,
-    (mask, forca): Planos<'_>,
+    (mask, forca): Planos<'_, M>,
     min_area: usize,
 ) -> Option<DirtyRect> {
     // ⚠️ **O balde é fechado DEPOIS do trabalho, não antes.** Ele era carimbado aqui em cima com os
@@ -326,14 +325,14 @@ fn banded_com_forca(
 /// pode segurar um `&mut [u8]` emprestado do chamador, e capturá-lo por valor tiraria a máscara de quem
 /// precisa dela no braço em banda. Uma `fn` com a máscara no argumento diz a mesma coisa e deixa o
 /// borrow checker escolher o braço.
-fn stamp_plain_serial(
+fn stamp_plain_serial<M: Tecto>(
     buf: &mut [u8],
     w: u32,
     h: u32,
     dabs: &[Dab],
     brush: &BrushSpec,
     alpha_locked: bool,
-    (mut mask, mut forca): Planos<'_>,
+    (mut mask, mut forca): Planos<'_, M>,
 ) -> Option<DirtyRect> {
     let mut touched: Option<DirtyRect> = None;
     for d in dabs {
@@ -341,7 +340,7 @@ fn stamp_plain_serial(
             color: d.color,
             ..brush.at_dab(d)
         };
-        if let Some(r) = stamp_dab_textured_masked(
+        if let Some(r) = stamp_dab_masked_tecto(
             buf,
             w,
             h,
@@ -349,12 +348,10 @@ fn stamp_plain_serial(
             &spec,
             d.coverage,
             alpha_locked,
-            None,
-            None,
-            None,
             mask.as_deref_mut(),
             forca.as_deref_mut(),
             spec.dab_rotor(d),
+            ph2d_painter_brush::PARALLEL_MIN_AREA,
             d.capsula(&spec),
         ) {
             touched = Some(touched.map_or(r, |a| union(a, r)));
@@ -365,14 +362,14 @@ fn stamp_plain_serial(
 
 /// A execução, separada da contagem — o `?` e os recuos dela ficam intactos.
 #[allow(clippy::too_many_arguments)]
-fn stamp_plain_dabs_banded_run(
+fn stamp_plain_dabs_banded_run<M: Tecto>(
     buf: &mut [u8],
     w: u32,
     h: u32,
     dabs: &[Dab],
     brush: &BrushSpec,
     alpha_locked: bool,
-    (mask, forca): Planos<'_>,
+    (mask, forca): Planos<'_, M>,
     (bands, work): (bool, usize),
     caixas: &[Option<DirtyRect>],
 ) -> Option<DirtyRect> {
@@ -422,7 +419,7 @@ fn stamp_plain_dabs_banded_run(
     // Uma banda percorre TODOS os dabs, recortando cada um às suas próprias linhas. O dab que não
     // alcança a banda é rejeitado por duas comparações — `dabs × bandas` testes, ruído contra o blit.
     let band_work = |chunk: &mut [u8],
-                     (mut mchunk, mut fchunk): Planos<'_>,
+                     (mut mchunk, mut fchunk): Planos<'_, M>,
                      band_y0: u32|
      -> Option<DirtyRect> {
         #[cfg(test)]
@@ -453,7 +450,7 @@ fn stamp_plain_dabs_banded_run(
             // dentro de cada banda (alcançável a 4096² com o pincel máximo — a nota da porta traz o
             // número), e trinta e duas bandas abrindo trinta e duas threads cada é contenção, não
             // capacidade. No braço serial acima ele SEGUE livre para dividir: lá não há quem o faça.
-            let r = stamp_dab_textured_masked_with(
+            let r = stamp_dab_masked_tecto(
                 chunk,
                 w,
                 band_h,
@@ -465,6 +462,7 @@ fn stamp_plain_dabs_banded_run(
                 fchunk.as_deref_mut(),
                 spec.dab_rotor(d),
                 usize::MAX,
+                None,
             );
             if let Some(r) = r {
                 // De volta às coordenadas do canvas.
@@ -489,8 +487,8 @@ fn stamp_plain_dabs_banded_run(
     let mut frest = forca_region;
     let mut y = y_top;
     /// A fatia de uma banda: tinta, os planos opcionais e a linha em que ela começa.
-    type Band<'a> = (&'a mut [u8], Planos<'a>, u32);
-    let mut parts: Vec<Band<'_>> = Vec::with_capacity(band_rows.len());
+    type Band<'a, M> = (&'a mut [u8], Planos<'a, M>, u32);
+    let mut parts: Vec<Band<'_, M>> = Vec::with_capacity(band_rows.len());
     for &bh in &band_rows {
         let (chunk, tail) = rest.split_at_mut(bh * stride);
         rest = tail;
@@ -538,6 +536,9 @@ mod panico_tests;
 
 #[cfg(test)]
 mod quina_tests;
+
+#[cfg(test)]
+mod largo_tests;
 
 #[cfg(test)]
 mod prancha_tests;

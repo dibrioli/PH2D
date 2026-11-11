@@ -178,9 +178,9 @@ pub use cor_mao::CorDaMao;
 pub use curve_fit::{CurveFit, auto_handles, fit_curve, flatten_bezier};
 pub use dab::{
     DirtyRect, PARALLEL_MIN_AREA, PegadaLocal, ShapeInput, band_count,
-    pegada_textured_masked_po_com_liso, stamp_dab, stamp_dab_ramped, stamp_dab_textured,
-    stamp_dab_textured_masked, stamp_dab_textured_masked_po, stamp_dab_textured_masked_po_com_liso,
-    stamp_dab_textured_masked_po_largo,
+    pegada_textured_masked_po_com_liso, stamp_dab, stamp_dab_masked_tecto, stamp_dab_ramped,
+    stamp_dab_textured, stamp_dab_textured_masked, stamp_dab_textured_masked_po,
+    stamp_dab_textured_masked_po_com_liso, stamp_dab_textured_masked_po_largo,
     stamp_dab_textured_masked_with,
 };
 pub use dual::{DualMode, DualTip};

@@ -66,6 +66,13 @@ if [ -n "${DUPLO:-}" ]; then
   xdotool mousemove $DUPLO; sleep 0.5
   xdotool click --repeat 2 --delay 80 1; sleep 1
 fi
+if [ -n "${RODA_DEPOIS:-}" ]; then
+  # `RODA_DEPOIS="x y n"`: n voltas da roda para baixo em x y DEPOIS do arrasto (a coluna do lado do
+  # quadro baixado pelo puxador, 10/11).
+  read -r RX RY RN <<<"$RODA_DEPOIS"
+  xdotool mousemove "$RX" "$RY"; sleep 0.5
+  xdotool click --repeat "$RN" --delay 120 5; sleep 1
+fi
 if [ -n "${TECLAS:-}" ]; then
   # Teclas reais (XTest) na janela da app, depois do passo e antes da foto: na Xvfb chegam (medido 10/11,
   # `PH2D_UNDO_LOG=1 TECLAS=ctrl+z` ⇒ «RECEBIDA pela janela» no log). Foco por `windowfocus`: sem gestor de

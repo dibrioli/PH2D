@@ -218,3 +218,48 @@ fn warp_perf_kill_criterion() {
         }
     }
 }
+
+/// B06.A2 — a coluna «com relevo» de `perf_transform_whole_image_table`: o Transform da camada inteira,
+/// com e sem corpo de Impasto, 2048² e 4096², ms/movimento (mínimo de 12). Alvo: relevo ≤ 1,5× a cor.
+///   bash scripts/cargo-test-narrow.sh ph2d-tool-painter --profile smoke perf_transform_whole_image_relief -- --ignored
+#[test]
+#[ignore = "perf measurement — --profile smoke -- --ignored --nocapture"]
+fn perf_transform_whole_image_relief_column() {
+    use std::time::Instant;
+    let run = |size: u32, mode: u8, relief: bool| -> f64 {
+        let mut t = warpable_canvas(size, relief);
+        t.set_paint_tool_mode("liquify");
+        t.set_shape_grab_tol_px(12.0);
+        t.set_deform_transform_on(true);
+        t.set_deform_transform_mode(mode);
+        let lifted = t.paint.deform.xform_patch.as_ref();
+        assert_eq!(lifted.is_some_and(|p| p.relief.is_some()), relief);
+        let _ = t.take_preview_arc();
+        let g = if mode == 3 {
+            size as f32 / 3.0
+        } else {
+            size as f32 * 0.5
+        };
+        t.on_canvas_pointer(cp([g, g], PointerPhase::Down));
+        let mut best = f64::MAX;
+        for k in 0..12u32 {
+            let d = ((k % 6) as f32) - 3.0;
+            let t0 = Instant::now();
+            let _ = t.on_canvas_pointer(cp([g + d, g + d], PointerPhase::Move));
+            best = best.min(t0.elapsed().as_secs_f64() * 1000.0);
+        }
+        t.on_canvas_pointer(cp([g, g], PointerPhase::Up));
+        best
+    };
+    eprintln!("Whole-image Transform, ms/move (min of 12): colour · colour+relief");
+    for size in [2048u32, 4096] {
+        for (label, mode) in [("Uniform", 0u8), ("Warp", 3)] {
+            let c = run(size, mode, false);
+            let r = run(size, mode, true);
+            eprintln!(
+                "  {size}² {label:<8} {c:>8.2} ms · {r:>8.2} ms · ratio {:.2}",
+                r / c
+            );
+        }
+    }
+}

@@ -98,22 +98,12 @@ pub(crate) fn sample_prop_value<'a>(
                 .get_resource::<ph2d_ecs::CanaisLidos>()?
                 .valor(entity_bits, k)?,
         ),
-        // **Os parâmetros de um joint são valores de CENA**, como o `t` do Morph:
-        // o artista afina o servo no Inspector até a máquina parecer certa e
-        // aperta K. (Sem `PhysicsJoint` na entidade não há o que capturar, e o
-        // `?` recusa — que é o mesmo que o Morph faz num sprite comum.)
-        PropKind::JointMotorTarget => {
-            Float(world.get::<ph2d_physics_ecs::PhysicsJoint>(e)?.motor_target)
-        }
-        PropKind::JointMotorSpeed => {
-            Float(world.get::<ph2d_physics_ecs::PhysicsJoint>(e)?.motor_speed)
-        }
-        PropKind::JointRestLength => {
-            Float(world.get::<ph2d_physics_ecs::PhysicsJoint>(e)?.rest_length)
-        }
-        PropKind::JointMaxLength => {
-            Float(world.get::<ph2d_physics_ecs::PhysicsJoint>(e)?.max_length)
-        }
+        // Os parâmetros de um joint são valores de CENA, lidos pela timeline (o motor no número do
+        // cartão: graus numa rotação, metros num curso) — a mesma leitura, nunca uma segunda.
+        PropKind::JointMotorTarget
+        | PropKind::JointMotorSpeed
+        | PropKind::JointRestLength
+        | PropKind::JointMaxLength => Float(ph2d_timeline::read_prop_kind(world, e, prop)?),
         // **As duas alças de um osso são valores de CENA**, como o `t` do Morph e os params de
         // joint: o artista arrasta a alça no canvas até a curva parecer certa e aperta K. (Sem
         // `Bone` na entidade não há o que capturar, e o `?` recusa.)

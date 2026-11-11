@@ -72,7 +72,7 @@ pub(crate) fn write_prop(
         && let Some(field) = joint_field(prop)
         && let Some(mut j) = world.get_mut::<ph2d_physics_ecs::PhysicsJoint>(entity)
     {
-        *field.of_mut(&mut j) = f;
+        field.set(&mut j, f);
         return;
     }
     // ⭐⭐⭐ **AS DUAS ALÇAS DE UM OSSO** — a curvatura autorada do *Bendy Bone* (ordem do dono,
@@ -238,7 +238,7 @@ pub(crate) fn read_prop(
 ///
 /// `Position` is not answerable here and returns `None`: a distance along a trajectory
 /// is a fact about a binding, not about an entity.
-pub(crate) fn read_prop_kind(world: &World, entity: Entity, prop: PropKind) -> Option<f32> {
+pub fn read_prop_kind(world: &World, entity: Entity, prop: PropKind) -> Option<f32> {
     if prop == PropKind::Position {
         return None;
     }
@@ -268,7 +268,7 @@ pub(crate) fn read_prop_kind(world: &World, entity: Entity, prop: PropKind) -> O
     if let Some(field) = joint_field(prop) {
         return world
             .get::<ph2d_physics_ecs::PhysicsJoint>(entity)
-            .map(|j| *field.of(j));
+            .map(|j| field.get(j));
     }
     // As duas alças de um osso — o braço espelho do `write_prop`, na mesma ordem.
     #[cfg(feature = "skeleton")]
@@ -349,21 +349,22 @@ pub(crate) enum JointField {
 
 #[cfg(feature = "physics")]
 impl JointField {
-    fn of(self, j: &ph2d_physics_ecs::PhysicsJoint) -> &f32 {
+    /// O valor da chave: o do CARTÃO (graus numa rotação, metros num curso — GEF02 onda 8 item 4).
+    fn get(self, j: &ph2d_physics_ecs::PhysicsJoint) -> f32 {
         match self {
-            JointField::MotorTarget => &j.motor_target,
-            JointField::MotorSpeed => &j.motor_speed,
-            JointField::RestLength => &j.rest_length,
-            JointField::MaxLength => &j.max_length,
+            JointField::MotorTarget => j.alvo_no_cartao(),
+            JointField::MotorSpeed => j.velocidade_no_cartao(),
+            JointField::RestLength => j.rest_length,
+            JointField::MaxLength => j.max_length,
         }
     }
 
-    fn of_mut(self, j: &mut ph2d_physics_ecs::PhysicsJoint) -> &mut f32 {
+    fn set(self, j: &mut ph2d_physics_ecs::PhysicsJoint, v: f32) {
         match self {
-            JointField::MotorTarget => &mut j.motor_target,
-            JointField::MotorSpeed => &mut j.motor_speed,
-            JointField::RestLength => &mut j.rest_length,
-            JointField::MaxLength => &mut j.max_length,
+            JointField::MotorTarget => j.motor_target = j.motor_do_cartao(v),
+            JointField::MotorSpeed => j.motor_speed = j.motor_do_cartao(v),
+            JointField::RestLength => j.rest_length = v,
+            JointField::MaxLength => j.max_length = v,
         }
     }
 }

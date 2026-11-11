@@ -19,6 +19,8 @@ mod bone_bend_channels;
 mod caixa_ordem;
 mod canal_field;
 mod canal_textos;
+#[cfg(feature = "physics")]
+mod chave_do_motor;
 mod clearing_a_formula_hands_the_pose_back;
 mod clip_clock;
 mod clip_entry;

@@ -8,7 +8,7 @@
 //! `o_vocabulario_da_junta_nao_renumera`).
 //!
 //! O valor é o do CARTÃO (como a FISICA): limites e motor da roldana em GRAUS numa dobradiça, metros
-//! num curso (o `PropKind::JointMotorTarget` ainda guarda o do componente); um bool é 0/1 (um marcador também: a
+//! num curso (o `PropKind::JointMotorTarget`/`Speed` também, por `PhysicsJoint::motor_no_cartao`); um bool é 0/1 (um marcador também: a
 //! presença); um enum é a `tag`. A §13 (a roldana) mora aqui: uma Pulley é um tipo de junta.
 //! Cada linha do painel é um grupo (um losango por linha).
 
@@ -54,7 +54,7 @@ pub const PONTA_NO_MUNDO: u16 = 53;
 
 /// **A §13 — a roldana selecionada** (`PulleyWheel`, numa entidade que não é a corda): o raio, o
 /// segundo raio, a talha de Weston (o marcador `WestonAxle`, 0/1), a posição na rota (`order`,
-/// 0-based), o lado da corda (`WrapSide`), o motor (rad/s) e a quebra do eixo.
+/// 0-based), o lado da corda (`WrapSide`), o motor (graus/s, o número do cartão) e a quebra do eixo.
 pub const RODA_RAIO: u16 = 60;
 pub const RODA_RAIO_SAIDA: u16 = 61;
 pub const RODA_WESTON: u16 = 62;

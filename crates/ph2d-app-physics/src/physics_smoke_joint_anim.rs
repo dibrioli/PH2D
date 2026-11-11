@@ -276,10 +276,10 @@ fn key(doc: &mut TimelineDoc, e: Entity, prop: PropKind, t: f64, v: f32) {
 
 /// **As quatro tracks** — a autoria que esta cena existe para demonstrar.
 pub fn author_joint_anim_tracks(doc: &mut TimelineDoc, j: [Entity; 4]) {
-    // O servo varre: centro → baixo → cima.
+    // O servo varre: centro → baixo → cima (o número do cartão: graus, e graus/s na roda).
     key(doc, j[0], PropKind::JointMotorTarget, 0.0, 0.0);
-    key(doc, j[0], PropKind::JointMotorTarget, 1.2, -1.15);
-    key(doc, j[0], PropKind::JointMotorTarget, 2.6, 0.85);
+    key(doc, j[0], PropKind::JointMotorTarget, 1.2, -66.0);
+    key(doc, j[0], PropKind::JointMotorTarget, 2.6, 49.0);
     key(doc, j[0], PropKind::JointMotorTarget, 4.0, 0.0);
     // O guincho recolhe.
     key(doc, j[1], PropKind::JointMaxLength, 0.0, 2.4);
@@ -290,7 +290,7 @@ pub fn author_joint_anim_tracks(doc: &mut TimelineDoc, j: [Entity; 4]) {
     key(doc, j[2], PropKind::JointRestLength, 3.5, 2.0);
     // A roda acelera.
     key(doc, j[3], PropKind::JointMotorSpeed, 0.0, 0.0);
-    key(doc, j[3], PropKind::JointMotorSpeed, 3.5, 11.0);
+    key(doc, j[3], PropKind::JointMotorSpeed, 3.5, 630.0);
 }
 
 #[cfg(test)]

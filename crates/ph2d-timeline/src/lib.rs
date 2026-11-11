@@ -100,6 +100,8 @@ pub use apply::{
 #[cfg(feature = "skeleton")]
 pub use apply_prop::bone_bend_refusal;
 pub use apply_prop::{clear_macro_clocks, read_opacity, write_opacity};
+/// O valor de cena que uma faixa conduz (a K e o Auto Key semeiam por aqui os params de joint).
+pub use apply_prop::read_prop_kind;
 pub use apply_views::{apply_active_clip, apply_container};
 pub use autokey::{
     AutokeyPlan, PoseSample, autokey_props, autokey_props_solo, curve_seen,

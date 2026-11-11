@@ -56,27 +56,6 @@ fn limit_in(kind: JointKind, v: f32) -> f32 {
     }
 }
 
-/// A motor quantity **out** of the component, in the unit the Inspector shows.
-///
-/// Separate from [`limit_out`] (a Rope has a linear motor and no limits); it takes the
-/// JOINT, not the kind — in `Custom` the motor axis is authored (`PhysicsJoint::motor_in_metres`).
-fn motor_out(j: &PhysicsJoint, v: f32) -> f32 {
-    if j.motor_in_metres() {
-        v
-    } else {
-        v.to_degrees()
-    }
-}
-
-/// A motor quantity **into** the component, from the unit the Inspector typed.
-fn motor_in(j: &PhysicsJoint, v: f32) -> f32 {
-    if j.motor_in_metres() {
-        v
-    } else {
-        v.to_radians()
-    }
-}
-
 fn motor_mode_tag(mode: MotorMode) -> u8 {
     match mode {
         MotorMode::Velocity => 0,
@@ -186,8 +165,8 @@ pub fn build_joint_info(
         limit_max_ui: limit_out(joint.kind, joint.limit_max),
         motor_enabled: joint.motor_enabled,
         motor_mode_tag: motor_mode_tag(joint.motor_mode),
-        motor_speed_ui: motor_out(&joint, joint.motor_speed),
-        motor_target_ui: motor_out(&joint, joint.motor_target),
+        motor_speed_ui: joint.motor_no_cartao(joint.motor_speed),
+        motor_target_ui: joint.motor_no_cartao(joint.motor_target),
         motor_max_force: joint.motor_max_force,
         rest_length: joint.rest_length,
         stiffness: joint.stiffness,
@@ -460,8 +439,8 @@ pub(crate) fn joint_with_edit(current: PhysicsJoint, edit: JointFieldEdit) -> Op
         // The UNIT is the kind's (`motor_in_metres`), through the same pair of
         // doors the limits use — and a DIFFERENT pair, because a Rope's answers
         // differ (no limits, linear motor).
-        JointFieldEdit::MotorSpeed(v) => next.motor_speed = motor_in(&next, v),
-        JointFieldEdit::MotorTarget(v) => next.motor_target = motor_in(&next, v),
+        JointFieldEdit::MotorSpeed(v) => next.motor_speed = next.motor_do_cartao(v),
+        JointFieldEdit::MotorTarget(v) => next.motor_target = next.motor_do_cartao(v),
         JointFieldEdit::MotorMaxForce(v) => next.motor_max_force = v,
         JointFieldEdit::RestLength(v) => next.rest_length = v,
         JointFieldEdit::Stiffness(v) => next.stiffness = v,

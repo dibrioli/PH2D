@@ -89,4 +89,37 @@ impl PhysicsJoint {
         }
         self.kind.motor_in_metres()
     }
+
+    /// Um número do motor (alvo ou velocidade) **do componente para o cartão**: graus numa rotação,
+    /// metros verbatim num curso. A porta ÚNICA: a §12 e a chave da Timeline (GEF02 onda 8 item 4).
+    #[must_use]
+    pub fn motor_no_cartao(&self, v: f32) -> f32 {
+        if self.motor_in_metres() {
+            v
+        } else {
+            v.to_degrees()
+        }
+    }
+
+    /// O alvo do motor no número do cartão (a chave da Timeline).
+    #[must_use]
+    pub fn alvo_no_cartao(&self) -> f32 {
+        self.motor_no_cartao(self.motor_target)
+    }
+
+    /// A velocidade do motor no número do cartão (a chave da Timeline).
+    #[must_use]
+    pub fn velocidade_no_cartao(&self) -> f32 {
+        self.motor_no_cartao(self.motor_speed)
+    }
+
+    /// O inverso de [`Self::motor_no_cartao`]: do número do cartão para o componente.
+    #[must_use]
+    pub fn motor_do_cartao(&self, v: f32) -> f32 {
+        if self.motor_in_metres() {
+            v
+        } else {
+            v.to_radians()
+        }
+    }
 }

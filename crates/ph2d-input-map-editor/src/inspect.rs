@@ -43,6 +43,12 @@ pub fn pane(doc: &InputMapDoc) -> InputMapPane {
     })
 }
 
+/// ⭐ O snapshot do quadro e, DEPOIS dele, a publicação: o Inspector e a aba mostram a mesma acção no MESMO quadro.
+pub fn set_snapshot(doc: &mut InputMapDoc, snap: crate::Snapshot, in_front: bool) {
+    doc.set_snapshot(snap);
+    publish(doc, in_front);
+}
+
 /// Publica (aba à frente) ou apaga (outra à frente) o que o Inspector mostra.
 pub fn publish(doc: &InputMapDoc, in_front: bool) {
     ph2d_input::inspected::set_current_input_map(in_front.then(|| pane(doc)));

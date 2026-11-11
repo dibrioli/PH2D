@@ -101,3 +101,23 @@ fn the_inspector_pane_follows_the_open_action() {
     assert!(ph2d_input::inspected::current_input_map().is_some());
     ph2d_input::inspected::set_current_input_map(None);
 }
+
+/// ⭐ 7b: a publicação vem DEPOIS do snapshot do quadro. A acção aberta é apagada no mapa novo ⇒ no MESMO quadro o
+/// Inspector já diz a frase. Controlo: publicar ANTES do snapshot (a ordem de antes) ainda mostra a acção velha.
+#[test]
+fn the_inspector_shows_the_new_snapshot_in_the_same_frame() {
+    use ph2d_input::InputMap;
+    use ph2d_input::inspected::{InputMapPane, current_input_map};
+    let mut d = InputMapDoc::new(View::List);
+    d.snap.map = InputMap::with_player_defaults();
+    let jump = d.snap.map.id(ph2d_input::PLAYER_JUMP).expect("jump");
+    d.kb.open = Some(jump);
+    let mut sem_jump = d.snap.clone();
+    let _ = sem_jump.map.remove(jump);
+    // Controlo: a ordem de antes publica o quadro velho.
+    crate::inspect::publish(&d, true);
+    assert!(matches!(current_input_map(), Some(InputMapPane::Action(_))));
+    crate::inspect::set_snapshot(&mut d, sem_jump, true);
+    assert_eq!(current_input_map(), Some(InputMapPane::Pick));
+    ph2d_input::inspected::set_current_input_map(None);
+}

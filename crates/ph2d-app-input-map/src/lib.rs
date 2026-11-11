@@ -65,7 +65,7 @@ pub fn frame(
     let keep = !swapped && tab.is_open() && (shown || open);
     tab.doc
         .end_frame(&hero.input_map, &mut hero.store, listen, keep);
-    ph2d_input_map_editor::inspect::publish(&tab.doc, tab.is_open() && (shown || open));
+    let front = tab.is_open() && (shown || open);
     let listening = hero
         .store
         .input_map_listening()
@@ -83,7 +83,7 @@ pub fn frame(
             .map_or(0, |g| g.0),
     };
     if let Some(tab) = hero.documents.surfaces_mut().find_mut::<InputMapTab>() {
-        tab.doc.set_snapshot(snap);
+        ph2d_input_map_editor::inspect::set_snapshot(&mut tab.doc, snap, front);
         tab.doc.tick_try(live);
         tab.doc.tick_motion(&mut hero.motion);
     }

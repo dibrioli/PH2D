@@ -130,7 +130,7 @@ impl Mesa {
         self.docs().pinned.expect("relógio fixo")
     }
 
-    fn rato(&mut self, kind: PointerKind, x: f32, y: f32) -> bool {
+    pub fn rato(&mut self, kind: PointerKind, x: f32, y: f32) -> bool {
         let input = Input {
             text: &mut self.ts,
             mods: Modifiers::default(),

@@ -22,9 +22,10 @@ use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::toast::Toast;
 use ph2d_kanban_model::{KanbanId, Member, Moment, splitmix64};
 
-pub use dest_pop::{DestHit, DestPop, Row, rows};
+pub use dest_pop::{DestHit, DestPop};
 pub use docs::{Hit, Mode, PlannerDocs, TAB};
 pub use event_pop::{Done, EventPop, PopHit};
+pub use ph2d_kanban_views::dest::{Row, rows};
 pub use scope::{ScopeHit, ScopePop};
 pub use surface::{CMD_CALENDAR, CMD_INBOX, CMD_MY_CARDS, CMD_PLANNER};
 pub use ui::notice_text;

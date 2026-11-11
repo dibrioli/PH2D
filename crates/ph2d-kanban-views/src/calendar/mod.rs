@@ -134,6 +134,12 @@ impl CalendarState {
         self.anchor.unwrap_or_else(|| day_of(cx.now.0, cx.zone))
     }
 
+    /// O botão do modo `mode` no seletor do último quadro (px da vista).
+    #[must_use]
+    pub fn mode_rect(&self, mode: Mode) -> Option<Rect> {
+        self.painted.modes.iter().find(|m| m.1 == mode).map(|m| m.0)
+    }
+
     /// O retângulo pintado da célula de `date` (px da vista).
     #[must_use]
     pub fn cell_rect(&self, date: CivilDate) -> Option<Rect> {

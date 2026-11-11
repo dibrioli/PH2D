@@ -148,3 +148,43 @@ fn o_deslize_de_lado_so_mexe_onde_o_conteudo_rola_na_horizontal() {
         assert!(v.timeline.scroll_x != x0, "controlo: o scroll x mudou");
     }
 }
+
+/// Onda 4: na Agenda a roda CONVERTIDA (`wheel_px`, a das famílias) para baixo leva as linhas para cima; a roda
+/// CRUA (o defeito que o Planner tinha) leva-as para baixo — o controlo do sinal antigo.
+#[test]
+fn a_roda_convertida_rola_a_agenda_para_baixo_e_a_crua_ao_contrario() {
+    let (w, mut ts) = (
+        World::scene1(),
+        ph2d_text::TextSystem::without_system_fonts(),
+    );
+    let a = Rect::new(0.0, 0.0, 600.0, 260.0); // baixa: a agenda transborda
+    for (dy, sinal) in [(wheel_px(-16.0), -1), (-16.0 * 3.0, 1)] {
+        let mut v = Views::default();
+        v.kind = ViewKind::Calendar;
+        v.calendar.mode = Mode::Agenda;
+        pinta(&mut v, &w, &mut ts, a);
+        let cx = w.cx();
+        v.wheel(
+            &w.set,
+            w.id,
+            &cx,
+            (300.0, 200.0),
+            wheel_px(-32.0),
+            (false, false),
+        );
+        pinta(&mut v, &w, &mut ts, a);
+        let (y0, k) = v.calendar.agenda_rows()[1];
+        v.wheel(&w.set, w.id, &cx, (300.0, 200.0), dy, (false, false));
+        pinta(&mut v, &w, &mut ts, a);
+        let y1 = v
+            .calendar
+            .agenda_rows()
+            .into_iter()
+            .find(|r| r.1 == k)
+            .expect("a linha")
+            .0
+            .y;
+        eprintln!("agenda {dy}: {} → {y1}", y0.y);
+        assert_eq!(y1.total_cmp(&y0.y) as i8, sinal, "{dy}: {} → {y1}", y0.y);
+    }
+}

@@ -20,6 +20,7 @@ use ph2d_vector::VectorScene;
 use crate::event_pop::chip;
 use crate::metrics as m;
 use crate::ui::{c, text_top};
+use ph2d_kanban_views::dest::{Row, first_pick, rows};
 
 /// Um sítio do popover.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,14 +29,6 @@ pub enum DestHit {
     List(ListRef),
     Top(bool),
     Move,
-}
-
-/// Uma linha da lista de destinos.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Row {
-    /// O nome do Kanban (não se escolhe).
-    Kanban(String),
-    List(ListRef, String),
 }
 
 /// O popover aberto.
@@ -58,43 +51,6 @@ pub enum DestDone {
     Stay,
     Close,
     Move { to: ListRef, top: bool },
-}
-
-/// As linhas que a pesquisa `q` deixa: um Kanban cujo nome casa mostra todas as listas; senão, só
-/// as listas que casam (e o Kanban delas por cima).
-#[must_use]
-pub fn rows(set: &KanbanSet, q: &str) -> Vec<Row> {
-    let q = q.trim().to_lowercase();
-    let mut out = Vec::new();
-    for k in set.iter() {
-        let all = q.is_empty() || k.header.name.to_lowercase().contains(&q);
-        let lists: Vec<Row> = k
-            .lists_in_order()
-            .into_iter()
-            .filter(|l| !l.archived && (all || l.title.to_lowercase().contains(&q)))
-            .map(|l| {
-                Row::List(
-                    ListRef {
-                        kanban: k.id,
-                        list: l.id,
-                    },
-                    l.title.clone(),
-                )
-            })
-            .collect();
-        if !lists.is_empty() {
-            out.push(Row::Kanban(k.header.name.clone()));
-            out.extend(lists);
-        }
-    }
-    out
-}
-
-fn first_pick(rows: &[Row]) -> Option<ListRef> {
-    rows.iter().find_map(|r| match r {
-        Row::List(l, _) => Some(*l),
-        Row::Kanban(_) => None,
-    })
 }
 
 impl DestPop {

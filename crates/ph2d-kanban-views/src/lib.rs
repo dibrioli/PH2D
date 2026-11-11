@@ -18,6 +18,7 @@ mod item;
 
 pub mod calendar;
 pub mod dashboard;
+pub mod dest;
 pub mod table;
 pub mod timeline;
 
@@ -31,7 +32,6 @@ use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::{Affine, Point, VectorScene};
 
-/// As vistas que o seletor oferece além do Quadro.
 /// Px que a janela dá por «linha» de roda (o espelho do `on_mouse_wheel` da shell e do Quadro).
 pub const WHEEL_LINE_PX: f32 = 16.0;
 /// Px da vista por linha de roda.
@@ -45,6 +45,7 @@ pub fn wheel_px(dy: f32) -> f32 {
     -dy / WHEEL_LINE_PX * WHEEL_STEP
 }
 
+/// As vistas que o seletor oferece além do Quadro.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum ViewKind {
     #[default]

@@ -59,10 +59,10 @@ Corrido (pela linha): fmt e clippy das crates tocadas; gates de LOC, HR-15 (stri
 
 ## 8. Smoke do dono (já feito em 10/11; para repetir)
 
-1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional && cargo run -p ph2d-host-desktop --profile smoke`
-2. Add ▸ Character; selecione o herói; no Inspector, cartão do Platform Player. Walk e Jump abertos; o resto dobrado com resumo.
+1. `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional && cargo build --profile smoke -p ph2d-host-desktop && PH2D_GAME_SMOKE=4 ./target/smoke/ph2d-host-desktop` (a cena do plataforma; fotos: `PH2D_GAME_SMOKE_FOTO=player_cartoes`, `PH2D_PLAYER_DOBRAS=1` abre as dobras)
+2. Hierarchy ▸ Player; no Inspector, cartão do Platform Player. Walk e Jump abertos; o resto dobrado com resumo.
 3. Clique em Walls, Dash, Crouch…: cada dobra abre pelo título, sem campo atrasado; a fechar, nada passa por cima do título de baixo.
-4. Marque/desmarque a caixa ao lado do chevron: os números ficam guardados. (o efeito no Play é coberto pelos testes de habilidade, não foi refeito neste smoke).
+4. Marque/desmarque a caixa ao lado do chevron: os números ficam guardados. Dash marcado + Run ▸ Play in a Window + Q = arrancada; desmarcado, o Q não faz nada (smoke do dono OK).
 5. Errado: dobra que não abre, campo que aparece depois da animação, ou caixa que perde o número.
 
 Fotos: [`fotos_03/`](../componentes/fotos_03/).

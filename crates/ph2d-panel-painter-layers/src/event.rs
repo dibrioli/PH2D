@@ -155,7 +155,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                     return true;
                 }
                 if painter_gradient_remove_id(lid) == id {
-                    let idx = state::selected_gradient_stop(lid);
+                    let idx = gradient_edit_stop(&stack, LayerId(lid));
                     host.bus_mut()
                         .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
                             ph2d_tool_painter::ids::PAINTER_GRADIENT_REMOVE,
@@ -281,7 +281,7 @@ fn route_value_changed(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) 
             && layer_is_gradient_map(&stack, layer)
         {
             let v = host.store().slider(id).map(|(_, v)| v).unwrap_or(0.0);
-            let stop = state::selected_gradient_stop(layer.0);
+            let stop = gradient_edit_stop(&stack, layer);
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::SelectOption(
                     ph2d_tool_painter::ids::PAINTER_GRADIENT_COLOR,
@@ -408,8 +408,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         }
         // Custom-falloff "−" → drop the selected point (else the first non-endpoint by stable id).
         WidgetEvent::Click(id) if id == ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF_REMOVE => {
-            let Some(target) = state::selected_falloff_point().or_else(default_falloff_remove_id)
-            else {
+            let Some(target) = falloff_remove_target() else {
                 return Some(true); // nothing to remove (only the 2 endpoints)
             };
             host.bus_mut()
@@ -417,6 +416,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                     ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF_REMOVE,
                     target.to_string(),
                 )));
+            state::set_selected_falloff_point(None);
             Some(true)
         }
         // Grain / Shape Color Ramp colour box → toggle the shared picker targeting the selected stop.
@@ -520,6 +520,31 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
         }
         _ => None,
     }
+}
+
+/// The point the Falloff "−" drops (B39.2): the selected one while it still exists.
+fn falloff_remove_target() -> Option<u8> {
+    let vivo = |id: u8| {
+        state::current_brush().is_some_and(|b| {
+            let n = usize::from(b.falloff_len);
+            n > 2 && b.falloff_points[1..n - 1].iter().any(|p| p.id == id)
+        })
+    };
+    state::selected_falloff_point()
+        .filter(|id| vivo(*id))
+        .or_else(default_falloff_remove_id)
+}
+
+/// The Gradient Map stop the RGB sliders and the "−" act on (B39.2): the stop the panel SHOWS.
+fn gradient_edit_stop(stack: &LayerStack, layer: LayerId) -> usize {
+    let n = match stack.get(layer).map(|l| &l.kind) {
+        Some(LayerKind::Adjustment(adj)) => match &adj.params {
+            AdjustmentParams::GradientMap(g) => g.stops.len(),
+            _ => 0,
+        },
+        _ => 0,
+    };
+    crate::cards_ajustes::parada(layer.0, n)
 }
 
 /// Fallback target for the Falloff "−" button when no point is selected: the

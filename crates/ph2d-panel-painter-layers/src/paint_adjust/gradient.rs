@@ -39,7 +39,7 @@ pub(super) fn paint_gradient_map(
     let gap = Spacing::Xs.px();
     let font = TypeToken::Base.px();
     let n_stops = g.stops.len();
-    let selected = state::selected_gradient_stop(layer_id).min(n_stops.saturating_sub(1));
+    let selected = crate::cards_ajustes::parada(layer_id, n_stops);
 
     // ── + / − stop buttons (right-aligned) ──
     let add_rect = Rect::new(x + w - CURVE_BTN_W * 2.0 - gap, y, CURVE_BTN_W, ROW_H_PX);

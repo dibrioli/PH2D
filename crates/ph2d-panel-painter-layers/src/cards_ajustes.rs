@@ -74,7 +74,8 @@ pub(crate) fn saida(layer: u64, p: &AdjustmentParams) -> u8 {
     }
 }
 
-fn parada(layer: u64, paradas: usize) -> usize {
+/// The Gradient Map stop the panel shows and the RGB sliders / "−" act on (B39.2).
+pub(crate) fn parada(layer: u64, paradas: usize) -> usize {
     state::selected_gradient_stop(layer).min(paradas.saturating_sub(1))
 }
 

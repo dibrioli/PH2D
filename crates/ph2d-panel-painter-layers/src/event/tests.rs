@@ -216,3 +216,67 @@ fn a_barra_do_gray_no_monochrome_escreve_a_linha_que_o_motor_le() {
         "colour: the picked tab"
     );
 }
+
+/// B39.2 (DF-71): the "−" sent the SELECTED id even after that point was gone — the 2nd click did
+/// nothing.
+#[test]
+fn o_menos_do_falloff_apaga_dois_pontos_seguidos() {
+    use ph2d_tool_painter::FalloffPoint;
+    let ponto = |id, x| FalloffPoint {
+        id,
+        x,
+        y: 1.0 - x,
+        ..crate::paint_brush::FALLBACK_BRUSH.falloff_points[0]
+    };
+    let mut b = crate::paint_brush::FALLBACK_BRUSH;
+    b.falloff_points[..4].copy_from_slice(&[
+        ponto(0, 0.0),
+        ponto(1, 0.3),
+        ponto(2, 0.6),
+        ponto(3, 1.0),
+    ]);
+    b.falloff_len = 4;
+    crate::state::set_current_brush(Some(b));
+    crate::state::set_selected_falloff_point(Some(2));
+    assert_eq!(
+        super::falloff_remove_target(),
+        Some(2),
+        "1st click: the selected point"
+    );
+    // The tool drops point 2 and republishes the brush.
+    b.falloff_points[2] = ponto(3, 1.0);
+    b.falloff_len = 3;
+    crate::state::set_current_brush(Some(b));
+    assert_eq!(
+        super::falloff_remove_target(),
+        Some(1),
+        "2nd click: the gone point 2 is no target — the first interior point is"
+    );
+    crate::state::set_selected_falloff_point(None);
+    crate::state::set_current_brush(None);
+}
+
+/// B39.2 (DF-72): after "−" on the last stop the selection pointed past the end; the panel showed
+/// the (clamped) last stop but R/G/B wrote the missing one — the sliders went dead.
+#[test]
+fn o_rgb_do_gradient_map_depois_de_tirar_a_ultima_paragem_mexe_a_paragem_vista() {
+    use ph2d_tool_painter::{AdjustmentKind, AdjustmentParams, LayerKind, LayerStack};
+    let mut stack = LayerStack::new();
+    let id = stack
+        .add_adjustment(AdjustmentKind::GradientMap)
+        .expect("layer");
+    let n = match stack.get(id).map(|l| &l.kind) {
+        Some(LayerKind::Adjustment(adj)) => match &adj.params {
+            AdjustmentParams::GradientMap(g) => g.stops.len(),
+            _ => 0,
+        },
+        _ => 0,
+    };
+    assert!(n >= 2);
+    crate::state::set_selected_gradient_stop(id.0, n);
+    assert_eq!(
+        super::gradient_edit_stop(&stack, id),
+        n - 1,
+        "the stop the panel shows"
+    );
+}

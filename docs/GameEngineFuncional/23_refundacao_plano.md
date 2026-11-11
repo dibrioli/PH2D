@@ -53,7 +53,7 @@ Também: `docs/Sprite_projeto/` e os docs `12`–`16` desta pasta.
 | Physics Body | Physics Body | Corpo físico | `em obra`, linha GEF02: [ficha](componentes/f1_physics_static_shape.md) |
 | Static Body | Static Body | Corpo físico | `em obra`, linha GEF02: mesma ficha |
 | Collision Shape | Collision Shape | Colisor | `em obra`, linha GEF02: mesma ficha |
-| Character | Character | — | `a revisar` |
+| Character | Character | — | `fechado` 10/11 ([ficha](componentes/03_character.md)) + curva do pulo no canvas `fechado` 10/11 ([ficha](componentes/04_curva_do_pulo.md) · [handoff](handoffs/HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-10_CURVA_DO_PULO.md)) |
 | Top-Down Player | Top-Down Player | — | `a revisar` |
 | Projectile Motion | Projectile Motion | — | `a revisar` |
 | Ray Sensor | Ray Sensor | — | `a revisar` |

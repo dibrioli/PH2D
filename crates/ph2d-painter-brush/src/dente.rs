@@ -47,7 +47,9 @@ impl Dente {
     #[inline]
     #[must_use]
     pub fn em(&self, w: f32, px: i64, py: i64) -> f32 {
-        self.papel.lei.factor(w, self.t(px, py), self.profundidade, 0.0)
+        self.papel
+            .lei
+            .factor(w, self.t(px, py), self.profundidade, 0.0)
     }
 
     /// O `t` do papel no píxel: a única amostra do dente.
@@ -99,7 +101,9 @@ pub(crate) fn dente_com(
     px: i64,
     py: i64,
 ) -> f32 {
-    spec.dente.as_ref().map_or(1.0, |d| d.em_com(mem, w, px, py))
+    spec.dente
+        .as_ref()
+        .map_or(1.0, |d| d.em_com(mem, w, px, py))
 }
 
 thread_local! {

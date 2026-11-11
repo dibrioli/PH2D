@@ -190,17 +190,15 @@ impl PainterTool {
             return 0; // every lamp switched off: the canvas comes back unlit, to the byte
         };
         // B15.2: os planos que fazem a altura composta; a poda só vale quando eles são TUDO o que ela lê.
-        let planos: Option<Vec<&[f32]>> = (podar
-            && fields.substrate.is_none()
-            && fields.folded.is_none())
-        .then(|| {
-            fields
-                .layers
-                .iter()
-                .filter_map(|l| l.height)
-                .chain(fields.live_h)
-                .collect()
-        });
+        let planos: Option<Vec<&[f32]>> =
+            (podar && fields.substrate.is_none() && fields.folded.is_none()).then(|| {
+                fields
+                    .layers
+                    .iter()
+                    .filter_map(|l| l.height)
+                    .chain(fields.live_h)
+                    .collect()
+            });
         // ⭐ **Por FAIXAS de linhas, no pool** (dono 10/11: o pen-up a 4K travava 1,6 s — o `height_at` com o dente
         // do papel, amostrado 4× por píxel pelas diferenças centrais, num fio só). Cada faixa lê a altura UMA vez por
         // píxel numa moldura de 1 px e difere dentro dela: o mesmo `height_at` nos mesmos píxeis, logo o mesmo bit

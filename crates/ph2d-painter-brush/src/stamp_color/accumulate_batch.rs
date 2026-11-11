@@ -227,9 +227,11 @@ pub fn accumulate_shape_layers_rgba_batch(
     let dentes: Vec<_> = boxes
         .iter()
         .map(|b| {
-            dabs[b.di].spec.dente.as_ref().and_then(|dt| {
-                crate::texture::grao_cache::para_o_dente(dt, width, height)
-            })
+            dabs[b.di]
+                .spec
+                .dente
+                .as_ref()
+                .and_then(|dt| crate::texture::grao_cache::para_o_dente(dt, width, height))
         })
         .collect();
     let wus = width as usize;

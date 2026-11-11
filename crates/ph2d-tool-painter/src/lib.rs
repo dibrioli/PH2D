@@ -26,6 +26,7 @@ pub mod ids;
 pub mod layers;
 /// A trilha do Painter numa macro (ADR-0186): gravar as portas e tocá-las num tool próprio.
 pub mod macro_track;
+pub mod paint_perf; // o agregador PH2D_PAINT_PERF (uma linha por janela), reexportado pela ph2d-app-painter
 pub mod params;
 /// Copiar um plano canvas-shaped, em paralelo — o primitivo que a porta de fork e o motor de delta
 /// compartilham.
@@ -36,7 +37,6 @@ pub mod undo;
 mod undo_delta;
 /// A LISTA dos planos que o delta cobre — o irmão de `undo_delta` (o motor).
 mod undo_planes;
-pub mod paint_perf; // o agregador PH2D_PAINT_PERF (uma linha por janela), reexportado pela ph2d-app-painter
 pub mod wash_diag; // o split do quadro da aquarela para o log do produto (PH2D_PAINT_PERF)
 pub mod wet_diag; // o split do tick da agua para o log do produto (PH2D_FLUID_PROFILE)
 pub mod wetpaint_casos;

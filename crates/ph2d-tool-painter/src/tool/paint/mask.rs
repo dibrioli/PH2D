@@ -617,11 +617,11 @@ pub(super) mod mask_shape;
 #[path = "mask_shape_tests.rs"]
 mod mask_shape_tests;
 #[cfg(test)]
-#[path = "prancha_b40b_tests.rs"]
-mod prancha_b40b_tests;
-#[cfg(test)]
 #[path = "mask_tests.rs"]
 mod mask_tests;
+#[cfg(test)]
+#[path = "prancha_b40b_tests.rs"]
+mod prancha_b40b_tests;
 
 /// The overlay tint palette (straight sRGB `0..=255`): index `0` a DARK gray (default), `1..=4`
 /// fluorescent highlighter hues (yellow / pink / green / orange). Out-of-range falls back to dark gray.

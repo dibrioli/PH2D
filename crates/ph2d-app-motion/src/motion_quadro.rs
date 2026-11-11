@@ -27,13 +27,20 @@ mod tests {
         let mut m = MotionState::new();
         let mut ativos = Vec::new();
         quer_quadro(&m, &mut ativos);
-        assert!(ativos.is_empty(), "parado e sem eco, o Motion não pede quadro: {ativos:?}");
+        assert!(
+            ativos.is_empty(),
+            "parado e sem eco, o Motion não pede quadro: {ativos:?}"
+        );
         m.piscada = Some(crate::motion_state::PiscadaPendente {
             nos: vec![1],
             fios: Vec::new(),
             inicio: 0.0,
         });
         quer_quadro(&m, &mut ativos);
-        assert_eq!(ativos, [Produtor::UiAnima], "o eco da largada não pede quadro");
+        assert_eq!(
+            ativos,
+            [Produtor::UiAnima],
+            "o eco da largada não pede quadro"
+        );
     }
 }

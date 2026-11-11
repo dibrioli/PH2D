@@ -18,10 +18,10 @@
 //! line-for-line identical code, so equality is exact (no tolerance) and a NaN
 //! could only arise from a real bug, which the test would correctly surface.
 
+use ph2d_det_math::DetMath;
 use ph2d_painter_effects::adjustments::{
     gaussian_weights as brush_gaussian, motion_weights as brush_motion,
 };
-use ph2d_det_math::DetMath;
 use ph2d_render::{
     gaussian_weights as render_gaussian, motion_direction, motion_weights as render_motion,
 };
@@ -65,5 +65,11 @@ fn motion_direction_gpu_is_det_sin_cos_bits() {
             wrong.push(a);
         }
     }
-    assert!(wrong.is_empty(), "{} of {} angles differ, e.g. {:?}", wrong.len(), angles.len(), &wrong[..wrong.len().min(5)]);
+    assert!(
+        wrong.is_empty(),
+        "{} of {} angles differ, e.g. {:?}",
+        wrong.len(),
+        angles.len(),
+        &wrong[..wrong.len().min(5)]
+    );
 }

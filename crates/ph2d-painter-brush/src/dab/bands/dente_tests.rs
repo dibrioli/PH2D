@@ -69,7 +69,11 @@ fn pinta(c: &DabCtx, f: Banda, dabs: usize) -> (Vec<u8>, Vec<u8>, u64) {
     for _ in 0..dabs {
         let _ = f(c, &mut d, None, Some(&mut m), None, 0);
     }
-    (d, m, crate::dente::AMOSTRAS.with(std::cell::Cell::get) - antes)
+    (
+        d,
+        m,
+        crate::dente::AMOSTRAS.with(std::cell::Cell::get) - antes,
+    )
 }
 
 /// **O dente amostra o papel no máximo uma vez por píxel do traço** (antes: uma vez por píxel de CADA dab; um
@@ -92,7 +96,10 @@ fn o_dente_do_papel_amostra_cada_pixel_uma_vez_e_pinta_os_mesmos_bytes() {
     assert!(amostras_antigas > caixa, "o fixture tem de repetir píxeis");
     assert!(dn == da, "o dst diverge da banda antiga");
     assert!(mn == ma, "a máscara diverge da banda antiga");
-    assert!(dn != vec![200u8; LADO * LADO * 4], "o fixture tem de pintar");
+    assert!(
+        dn != vec![200u8; LADO * LADO * 4],
+        "o fixture tem de pintar"
+    );
 }
 
 /// Sonda B26.A2 (`--profile smoke -- --ignored`): o carimbo com a memória do dente × sem ela, no MESMO processo,
@@ -121,5 +128,8 @@ fn sonda_o_dente_com_memoria_custa_menos() {
             a = a.min(mede(&sem));
         }
     }
-    println!("[B26.A2] dente sem memória {a:.4} ms/dab · com {b:.4} ms/dab · {:.2}×", a / b);
+    println!(
+        "[B26.A2] dente sem memória {a:.4} ms/dab · com {b:.4} ms/dab · {:.2}×",
+        a / b
+    );
 }

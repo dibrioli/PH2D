@@ -491,9 +491,9 @@ pub(super) fn stamp_band(
 }
 
 #[cfg(test)]
-mod oraculo_tests;
-#[cfg(test)]
 mod dente_tests;
+#[cfg(test)]
+mod oraculo_tests;
 
 #[inline]
 pub(crate) fn encode(v: f32) -> u8 {

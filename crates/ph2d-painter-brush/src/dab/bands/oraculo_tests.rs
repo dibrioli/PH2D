@@ -508,7 +508,7 @@ fn sonda_o_carimbo_com_invariantes_icadas_custa_menos() {
             lei: crate::capsula::lei(),
             po: None,
             grao: None,
-        dente: None,
+            dente: None,
         };
         let mede = |f: Banda| {
             let (mut d, mut m) = (vec![0u8; L * L * 4], vec![0u8; L * L]);

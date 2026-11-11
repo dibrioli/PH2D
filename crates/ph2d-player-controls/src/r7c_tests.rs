@@ -110,20 +110,46 @@ fn as_caixas_tem_o_tamanho_da_tecla() {
     assert!(lay.rule.y < lay.reset.y, "o fio separa as linhas do pé");
 }
 
+/// O mapa da cena P1 (o do dono e só Move left, Jump e Fire na tela; o Fire só com o `J`): nomes curtos e sem
+/// notas, a COLUNA DAS TECLAS é o termo que manda na largura — o caso em que o painel saltava 228 → 272 px.
+fn mapa_da_p1() -> InputMap {
+    let mut m = game();
+    let fire = m.create("fire");
+    if let Some(a) = m.get_mut(fire) {
+        a.bindings
+            .push(ph2d_input::Binding::Key(Key(u32::from('J'))));
+    }
+    let vistas: Vec<_> = (m.actions().iter())
+        .map(|a| {
+            (
+                a.id,
+                ["move_left", "jump", "fire"].contains(&a.name.as_str()),
+            )
+        })
+        .collect();
+    for (id, vista) in vistas {
+        m.controls_mut().set_shown_in_game(id, vista);
+    }
+    m
+}
+
 /// ⭐ Onda 4 (foto do dono-coordenador: 228 → 272 px ao entrar em «Press a key»): o painel tem a MESMA largura em
 /// repouso e à escuta, numa 2.ª caixa e numa «Add». Controlo: a caixa que escuta cresce de facto (o estado mudou).
 /// E as linhas, as caixas e o Reset ficam no MESMO y (a dica de 2 linhas em repouso e 1 à escuta não as empurra);
-/// controlo: a dica muda mesmo de altura. Mutação: voltar a somar as larguras do estado actual ⇒ o painel alarga; voltar
-/// o `lift` ao título ⇒ o conteúdo salta.
+/// controlo: a dica muda mesmo de altura. Mutações (medidas, onda 4): voltar a somar as larguras do estado actual ⇒ o
+/// painel alarga (o salto 228 → 272); tirar a `folga` da reserva ⇒ o painel fica estável mas ESTREITO e «Press a
+/// key» sai dele (no mapa da P1: 222 px com a caixa a 80); voltar o `lift` ao título ⇒ o conteúdo salta.
 #[test]
 fn o_painel_nao_muda_de_largura_ao_escutar() {
-    let g = game();
-    let r = rows(&g);
     let mut ts = TextSystem::new();
-    for area in [
-        Rect::new(0.0, 0.0, 1600.0, 1000.0),
-        Rect::new(0.0, 0.0, 1280.0, 720.0),
-    ] {
+    for (g, area) in [game(), mapa_da_p1()].into_iter().flat_map(|g| {
+        [
+            Rect::new(0.0, 0.0, 1600.0, 1000.0),
+            Rect::new(0.0, 0.0, 1280.0, 720.0),
+        ]
+        .map(|area| (g.clone(), area))
+    }) {
+        let r = rows(&g);
         let repouso = Layout::of(area, &r, &mut ts);
         let mut dica_mudou = false;
         for (i, row) in r.iter().enumerate() {
@@ -163,6 +189,13 @@ fn o_painel_nao_muda_de_largura_ao_escutar() {
                     row.action
                 );
                 dica_mudou |= (escuta.hint.h - repouso.hint.h).abs() > 0.01;
+                // A reserva (`folga`): a caixa que escuta cabe na faixa da linha, dentro do painel que não alargou.
+                let faixa = escuta.rows[i].band;
+                assert!(
+                    b.x + b.w <= faixa.x + faixa.w + 0.01,
+                    "{} slot {slot}: «Press a key» sai do painel ({b:?} × {faixa:?})",
+                    row.action
+                );
                 assert!(
                     (escuta.panel.w - repouso.panel.w).abs() < 0.01,
                     "{} slot {slot}: {} → {}",

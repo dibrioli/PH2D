@@ -151,7 +151,9 @@ impl DebugCardView {
             _ if !c.stopped() => live::body_height(self, c, area.w),
             CardStyle::Sheet => {
                 let table = natural_height(&sheet_rows(c), &self.table, &crate::peso::metricas());
-                let side = side::natural_height(c);
+                // A de sempre (uma linha de folga sem ninguém à espera), mais os respiros da coluna.
+                let rows = rh * (2 + c.stack.len() + c.waiting.len()) as f32;
+                let side = side::natural_height(c).max(rows);
                 table.max(side) + rh
             }
             CardStyle::Cards => {

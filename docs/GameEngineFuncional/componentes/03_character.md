@@ -1,9 +1,8 @@
 # Character (Platform Player)
 
-**Estado: `em construção`.** Dono 10/11: «faça conforme vc sugere» — **versão B**, **Walls com uma caixa só**, os dois «Vale rever?» ficam como estão (Make Platform Player em todo Dynamic; Character pronto). Estudos lidos: crítica `critica_ph2d.html#character`
+**Estado: `fechado`** (smoke do dono OK em 10/11, depois de três curas de UI pedidas no smoke). Dono 10/11: «faça conforme vc sugere» — **versão B**, **Walls com uma caixa só**, os dois «Vale rever?» ficam como estão (Make Platform Player em todo Dynamic; Character pronto). Estudos lidos: crítica `critica_ph2d.html#character`
 (§1–§7, os dois «Vale rever?») e «Lista consolidada» (itens 6, «Maiores acréscimos», «Duplicações»).
-Código conferido em 10/11/2026, sobre `cc9f1a1eb8` (base `bc4a6ce930`). Sem foto nova: a crítica usou
-a da NovaUI; a foto entra no smoke, com a cena que seleciona o herói.
+Seções «Como está» e «Perguntas» abaixo são o levantamento ANTES da obra (base `bc4a6ce930`); o que ficou está em «O desenho aprovado». Fotos: [`fotos_03/`](fotos_03/).
 
 ## Como está (conferido no código)
 
@@ -157,6 +156,38 @@ Cerca de 13 à vista no papel; o censo do teste dá o número real, como no Anim
 
 **Critério de parada:** se ligar uma habilidade pedir mudança na ponte de física (`bridge/*`, `physics_apply.rs`,
 da GEF02), volto ao dono antes.
+
+## O desenho aprovado
+
+Versão B, Walls com uma caixa só (dono 10/11). Painel em `sections/player_cartoes.rs` + `player_grupos.rs`.
+
+- **Walk e Jump abertos.** More, Gravity, Wall Sensor, Forgiveness, Leg e Advanced dobrados, cada um com resumo.
+- **Seis caixas de habilidade** (Walls, Dash, Crouch, Swim, Ledge, Glide) ao lado do chevron. Desmarcada: a lei recebe a habilidade inerte (`config()`) e os números ficam guardados. Marcada: voltam.
+- **Fall Limit e Emit Signals** viram caixas em Advanced (`fall_limit_on`; Emit = presença de `PlayerSignals`).
+- **Live** só aparece no Play. **Pure** diz «Kinematic, pushes nothing». As dicas deixam de dizer «in metres».
+- **Dados:** `PlatformPlayer` ganha sete `bool` no fim (`walls_on`, `dash_on`, `crouch_on`, `swim_on`, `ledge_on`, `glide_on`, `fall_limit_on`). Os números de nascença moram em `ph2d-physics-ecs/src/components/player_pronto.rs` (o Default já funciona ao ligar).
+- **Character nasce com Crouch marcado.** Marcar Crouch com altura que a lei recusa ajusta-a à cápsula (como o Fit crouch).
+- **`PROJECT_SCHEMA` 231 → 232** (§0.11, sem leitor do antigo). Catálogo: campos 55–61.
+- **Três curas de UI pedidas no smoke:** (1) as 12 dobras não abriam pelo clique (faltava `mark_collapsible_section`); (2) a dobra de cada habilidade revela-se na largura inteira (só o título começa depois da caixa); (3) FUNDAÇÃO dos cartões: `widget::corte_da_dobra` (o campo «à espera» do fluxo pinta-se dentro da banda da dobra em que nasceu) e `widget::chave_da_altura` (altura lembrada por modo de pintura; o levantamento fora do cartão e o cartão partilhavam a chave). Valem para TODA dobra em cartões.
+
+**Da crítica já não vale:** (mantido acima) «Crouch nasce desligado» · «rótulos em px, catálogo em m» · «seis chaves».
+
+## Provas
+
+- **Por nome:** `a_caixa_desmarcada_desliga_e_a_marcada_liga` · `a_parede_desmarcada_zera_as_tres_partes` · `cada_caixa_liga_so_a_sua_habilidade` · `marcar_o_crouch_com_altura_que_nao_serve_ajusta_a_a_capsula` · `every_ability_box_reaches_the_bus_in_both_directions` · `cada_row_da_tabela_tem_um_e_um_so_lugar_no_painel` · `cada_dobra_do_player_abre_pelo_clique_no_titulo` · `a_fechar_nenhum_campo_da_dobra_passa_por_cima_do_titulo_seguinte` (vermelho com `corte_da_dobra → None`) · `a_abrir_todo_campo_dentro_da_banda_aparece_inteiro` (vermelho com a chave única). Os três últimos em `ph2d-panel-inspector/tests/it/seam_player.rs`.
+- **Mutação: 16/16 sangram.** M1c e M10 sobreviviam e ganharam teste.
+- **Fotos:** [`fotos_03/`](fotos_03/) (`character_fechado.png`, `character_aberto.png`).
+- ~45 testes e cenas de smoke passaram a marcar a caixa onde ligavam a habilidade pelo número.
+
+## Abertos
+
+- O gate de geometria dos cards do player (`seam_player`) prova menos: «nenhuma row se sobrepõe» no lugar do passo da moldura por card da tabela.
+- As 12 dobras novas não têm dica de hover (isentas, como as da câmera e do HUD).
+- `open_all_sections` não abre as dobras novas.
+
+## Próximo (decisão do dono 10/11)
+
+A curva do pulo no CANVAS (`project-memory/project_jump_arc_on_canvas_2026_11_10.md`): no cartão só o botão que a liga e o seletor Floaty · Snappy · Heavy. O canvas mostra pulo inteiro, pulo curto, pulos no ar, parado e correndo; a alça dá a altura (Jump Height) e a distância (Speed).
 
 ## ⛔ Recusas (desta ficha)
 

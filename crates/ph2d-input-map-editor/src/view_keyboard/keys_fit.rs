@@ -44,7 +44,7 @@ pub fn lit_plate(plate: Rect, l: Rect) -> (Rect, Rect) {
 pub const KEY_MIN_H: f32 = m::VALUE_PX + m::SEG_PAD + (BAR_H + BAR_GAP) * 2.0 + m::SEG_INSET * 0.5;
 
 /// A margem mínima de cada lado da legenda, dentro da tecla (a plaquinha nunca passa dela).
-pub(crate) const LEGEND_PAD: f32 = m::SEG_INSET * 0.5;
+pub const LEGEND_PAD: f32 = m::SEG_INSET * 0.5;
 
 /// A folga da plaquinha («adesivo») à volta da legenda, e o raio dela.
 pub(crate) const PLATE_PAD_X: f32 = m::SEG_PAD * 2.0;
@@ -318,7 +318,7 @@ pub(crate) fn legend_at(key: Key, level: Level) -> Legend {
 
 /// A margem de cada lado da legenda que a faz «caber»: o recuo das barras e a barra à vista ([`BAR_VISIBLE_MIN`]) —
 /// a legenda nunca tapa a pilha de barras inteira (dono 10/11).
-pub(crate) const LEGEND_MARGIN: f32 = BAR_INSET_X + BAR_VISIBLE_MIN;
+pub const LEGEND_MARGIN: f32 = BAR_INSET_X + BAR_VISIBLE_MIN;
 
 fn fits(ts: &mut TextSystem, l: &Legend, w: f32) -> bool {
     match l {

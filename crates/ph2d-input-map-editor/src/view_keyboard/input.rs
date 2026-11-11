@@ -210,7 +210,10 @@ pub(crate) fn key(doc: &mut InputMapDoc, input: &KeyInput<'_>) -> bool {
 pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool, _writes_text: bool) -> bool {
     doc.kb.held.update(key, pressed);
     if !pressed
-        || crate::raw_keys::never_binds(key, doc.kb.held.iter())
+        || crate::raw_keys::never_binds(
+            key,
+            ph2d_input::editor_keys::chord_keys(doc.kb.held.iter(), doc.alt),
+        )
         || doc.snap.play_running
         || doc.store.focus_id().is_some()
         || doc.list.typing.is_some()

@@ -1,7 +1,8 @@
 //! ⭐ As SEGUNDAS legendas do numérico (dono, onda 4 item 7a; foto `docs/InputMap/maquetes/06_teclado_notebook_dono.png`):
 //! o que a tecla faz com o Num Lock apagado — End ↓ PgDn ← → Home ↑ PgUp Ins Del —, pequena, por baixo do número, mais
 //! fraca. A ligação continua pela tecla FÍSICA; a legenda é a `cap_short` da tecla de navegação (a tabela única de
-//! `ph2d_input`) ou a seta desenhada. Só onde cabe, MEDIDO: abaixo disso o grupo inteiro fica sem ela (nunca elide).
+//! `ph2d_input`) ou a seta desenhada. Arranjo da foto: número em cima à esquerda, segunda em baixo à direita. Só onde
+//! cabe, MEDIDO, tecla a tecla: sem lugar some inteira (nunca elide).
 
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::paint_icon;
@@ -13,9 +14,10 @@ use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::VectorScene;
 
 use super::geometry as g;
-use super::keys_fit::{self as fit, Fit, Group, LEGEND_MARGIN, Legend, Level};
+use super::keys_fit::{self as fit, LEGEND_MARGIN, Legend};
 use crate::doc::InputMapDoc;
 use crate::view_list::text::line;
+use ph2d_card_stack::metrics as m;
 
 /// O tamanho da segunda legenda: o menor texto da app (`TypeToken::Xxs`), abaixo do número (`VALUE_PX`).
 pub const SUB_PX: f32 = fit::MIN_LEGEND_PX;
@@ -61,7 +63,7 @@ pub fn sub_of(key: Key) -> Option<SubLegend> {
 }
 
 /// A caixa da segunda: a largura medida e a ALTURA DO CORPO (`SUB_PX`, sem a entrelinha — o texto centra-se pela
-/// altura da maiúscula, a linha empilhada não precisa do respiro de um parágrafo).
+/// altura da maiúscula).
 fn sub_size(ts: &mut TextSystem, s: &SubLegend) -> (f32, f32) {
     match s {
         SubLegend::Text(t) => (ts.prefix_width(t, SUB_PX), SUB_PX),
@@ -69,57 +71,84 @@ fn sub_size(ts: &mut TextSystem, s: &SubLegend) -> (f32, f32) {
     }
 }
 
-/// A legenda principal `main` e a segunda `sub` EMPILHADAS no centro da tecla `kr`: `(caixa do número, caixa da
-/// segunda)`, ou `None` se não cabem as duas (em altura, na folga da plaquinha; em largura, com a barra à vista). As
-/// duas caixas têm a altura do corpo: com a entrelinha `Tight` (25,3 px) não cabiam em tecla nenhuma das áreas reais.
-pub(crate) fn stack(
-    ts: &mut TextSystem,
-    kr: Rect,
-    main: &Legend,
-    sub: &SubLegend,
-) -> Option<(Rect, Rect)> {
-    let mut lb = fit::legend_box(ts, kr, main);
-    if let Legend::Text(_, px) = main {
-        lb.h = *px;
-    }
-    let (sw, sh) = sub_size(ts, sub);
-    let total = lb.h + sh;
-    if total > fit::label_h(kr.h) || sw + LEGEND_MARGIN * 2.0 > kr.w {
-        return None;
-    }
-    let top = kr.y + (kr.h - total) * 0.5;
-    let s = Rect::new(kr.x + (kr.w - sw) * 0.5, top + lb.h, sw, sh);
-    Some((Rect::new(lb.x, top, lb.w, lb.h), s))
+/// O numérico no arranjo da foto do dono: o número no canto de cima à esquerda (o 5 também) e a segunda legenda na
+/// faixa de baixo, à direita. `/ * - + Enter Num Lock` ficam ao centro.
+#[must_use]
+pub fn corner(key: Key) -> bool {
+    nav_of(key).is_some() || key.0 == KP5
 }
 
-/// ⭐ O numérico mostra as segundas legendas ao passo de `f`? Só se TODA tecla com uma a tem inteira (o grupo nunca
-/// mistura teclas com e sem).
-#[must_use]
-pub fn group_shows(ts: &mut TextSystem, f: Fit) -> bool {
-    let level = fit::levels(ts, f)
+const KP5: u32 = 0xF745;
+
+/// O recuo mínimo de cima e de baixo no canto: a aresta da tecla. Medido (onda 4): número 12 + segunda 10 = 22 px; a
+/// tecla mede 25 a 1280 (o `KEY_MIN_H`) e 26,5–30,5 a 1600 — cabe sempre com ≥ 1,5 px.
+const CORNER_INSET_MIN: f32 = m::FIELD_BORDER;
+
+/// O arranjo de uma tecla de [`corner`].
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Corner {
+    /// O número (o tamanho pode descer a `VALUE_PX`, o do ponto) e a sua caixa no canto de cima.
+    pub legend: Legend,
+    pub main: Rect,
+    /// A segunda e a sua caixa na faixa de baixo; `None` = não cabe NESTA tecla (largura, ou as barras na faixa).
+    pub sub: Option<(SubLegend, Rect)>,
+}
+
+/// ⭐ O canto de `key` na tecla `kr`, com as barras `bars` já empilhadas: o número à esquerda, a [`LEGEND_MARGIN`]
+/// mais a folga da plaquinha da aresta (a barra fica à vista dos dois lados dela); a segunda à direita na faixa de
+/// baixo, medida contra a largura ÚTIL da tecla (menos [`fit::LEGEND_PAD`] de cada lado) — só se nenhuma barra entra
+/// na faixa (ligada e sem lugar, as barras vencem). `None` = a tecla não é do canto, ou nem o número cabe em cima.
+pub(crate) fn corner_of(
+    ts: &mut TextSystem,
+    kr: Rect,
+    key: Key,
+    legend: &Legend,
+    bars: &[Rect],
+) -> Option<Corner> {
+    if !corner(key) {
+        return None;
+    }
+    let Legend::Text(s, px) = legend else {
+        return None;
+    };
+    let px = [*px, m::VALUE_PX]
         .into_iter()
-        .find(|(gr, _)| *gr == Group::Numpad)
-        .map_or(Level::ShortSmall, |l| l.1);
-    fit::placed(f).into_iter().all(|(c, x, y, w, h)| {
-        let Some(sub) = sub_of(c.key) else {
-            return true;
-        };
-        let kr = Rect::new(x, y, w, h);
-        let main = fit::choose(ts, c.key, (level, true), w, fit::label_h(h))
-            .unwrap_or_else(|| fit::legend_at(c.key, level));
-        stack(ts, kr, &main, &sub).is_some()
+        .find(|p| kr.h - p - SUB_PX >= CORNER_INSET_MIN * 2.0)?;
+    let inset = ((kr.h - px - SUB_PX) * 0.5).min(fit::PLATE_PAD_Y);
+    let mw = ts.prefix_width(s, px);
+    let main = Rect::new(
+        kr.x + LEGEND_MARGIN + fit::PLATE_PAD_X,
+        kr.y + inset,
+        mw,
+        px,
+    );
+    let sub = sub_of(key).and_then(|sl| {
+        let (sw, sh) = sub_size(ts, &sl);
+        let sr = Rect::new(
+            kr.x + kr.w - fit::LEGEND_PAD - sw,
+            kr.y + kr.h - inset - sh,
+            sw,
+            sh,
+        );
+        let clear = bars.iter().all(|b| b.y + b.h <= sr.y || b.y >= sr.y + sr.h);
+        (sw + fit::LEGEND_PAD * 2.0 <= kr.w && clear).then_some((sl, sr))
+    });
+    Some(Corner {
+        legend: Legend::Text(s.clone(), px),
+        main,
+        sub,
     })
 }
 
-/// A tinta da segunda legenda: um degrau mais fraca que a do número (medido nos 12 temas, `onda4_numerico`).
+/// A tinta da segunda legenda, na FACE da tecla (fora da plaquinha): ligada `Text2` (um degrau abaixo do `Text1` do
+/// número); sem acção fica no `Text3` do número, menor. Medido: `TextDisabled` dava 1,77:1 no Oled e lia-se MAIS que
+/// o `Text3` no Light e no Candy.
 #[must_use]
-pub fn sub_ink(main: ColorToken) -> ColorToken {
-    match main {
-        ColorToken::Text1 => ColorToken::Text2,
-        t if t == fit::LIT_INK => ColorToken::Bg3,
-        // Sem acção o número já está no degrau mais fraco que se lê (`Text3`): a segunda fica nele, menor. Medido:
-        // `TextDisabled` dava 1,77:1 no Oled e lia-se MAIS que o `Text3` no Light e no Candy.
-        other => other,
+pub fn sub_ink(bound: bool) -> ColorToken {
+    if bound {
+        ColorToken::Text2
+    } else {
+        ColorToken::Text3
     }
 }
 
@@ -143,9 +172,9 @@ pub(super) fn paint(
     (ts, scene, ink): (&mut TextSystem, &mut VectorScene, CardInk),
     (key, kr, plate): (Key, Rect, Rect),
     (main, main_px, main_ink): (Rect, f32, ColorToken),
-    (s, sb): (&SubLegend, Rect),
+    (s, sb, bound): (&SubLegend, Rect, bool),
 ) {
-    let tok = sub_ink(main_ink);
+    let tok = sub_ink(bound);
     let c = ink.color(tok);
     match s {
         SubLegend::Text(t) => {

@@ -325,7 +325,7 @@ fn as_teclas_do_sistema_tem_o_mesmo_olhar_desligado_na_b_e_na_c() {
                 (l.face, l.ink, l.edge)
             };
             // K2: sem aresta nenhuma — a face de repouso APAGADA e a letra desligada (menos ênfase que o repouso).
-            let want = (ColorToken::KanbanCardRaised, ColorToken::TextDisabled, None);
+            let want = (ColorToken::KeyFace, ColorToken::TextDisabled, None);
             assert_eq!(olhar(&b), want, "B {}: {}", area.w, k.label());
             assert_eq!(olhar(&c), want, "C {}: {}", area.w, k.label());
             assert!(
@@ -400,11 +400,7 @@ fn os_estados_da_tecla_tem_precedencia_premido_aceso_hover() {
     let area = AREAS[0];
     let mut b = pinta_b(area);
     let q = Key(u32::from('Q'));
-    assert_eq!(
-        olhar_de(&b, q).face,
-        ColorToken::KanbanCardRaised,
-        "repouso"
-    );
+    assert_eq!(olhar_de(&b, q).face, ColorToken::KeyFace, "repouso");
     b.hover(centro(&b, q));
     assert_eq!(olhar_de(&b, q).face, HOVER_FACE, "hover");
     b.down(centro(&b, q));
@@ -446,7 +442,7 @@ fn os_estados_da_tecla_tem_precedencia_premido_aceso_hover() {
     c.hover(centro(&c, kp8));
     let l = olhar_de(&c, kp8);
     assert_ne!(l.face, HOVER_FACE, "aceso > hover");
-    assert_ne!(l.face, ColorToken::KanbanCardRaised, "aceso enche-se");
+    assert_ne!(l.face, ColorToken::KeyFace, "aceso enche-se");
 }
 
 fn tecla(nome: &str) -> Key {
@@ -463,11 +459,7 @@ fn k2_a_face_cheia_nao_engole_as_barras() {
         assert!(c.physical(up));
         c.paint_in(area);
         let l = olhar_de(&c, up);
-        assert_eq!(
-            l.body,
-            ColorToken::KanbanCardRaised,
-            "a tecla fica no repouso"
-        );
+        assert_eq!(l.body, ColorToken::KeyFace, "a tecla fica no repouso");
         let strip = l.rect;
         let r = c.tab().doc.rect_of(KbHit::Key(up).id()).expect("alvo");
         let bars: Vec<Rect> = (c.tab().doc.census.bars.iter())
@@ -483,7 +475,7 @@ fn k2_a_face_cheia_nao_engole_as_barras() {
             );
         }
         // Uma tecla em repouso tem a mesma face neutra.
-        assert_eq!(olhar_de(&c, tecla("q")).body, ColorToken::KanbanCardRaised);
+        assert_eq!(olhar_de(&c, tecla("q")).body, ColorToken::KeyFace);
     }
 }
 
@@ -570,7 +562,7 @@ fn k2_hover_aberta_e_simbolos_lem_se_diferentes() {
         for l in open {
             assert_eq!(
                 l.face,
-                ColorToken::KanbanCardRaised,
+                ColorToken::KeyFace,
                 "{}: a aberta não é hover",
                 area.w
             );
@@ -594,13 +586,21 @@ fn adesivo(doc: &ph2d_app_input_map::InputMapDoc, k: Key, r: Rect, at: &str) -> 
     };
     assert!(dentro(p, r), "{at}: a plaquinha de {n} {p:?} sai de {r:?}");
     let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    // Onda 4 (7a): o número do numérico sobe ao canto de cima à esquerda (a foto do dono); o resto ao centro.
+    let canto = ph2d_app_input_map::view_keyboard::sub_legend::corner(k);
     assert!(
-        (p.x + p.w * 0.5 - cx).abs() < 0.5 && (p.y + p.h * 0.5 - cy).abs() < 0.5,
-        "{at}: a plaquinha de {n} fora do centro"
+        if canto {
+            p.x + p.w * 0.5 < cx && p.y + p.h * 0.5 < cy
+        } else {
+            (p.x + p.w * 0.5 - cx).abs() < 0.5 && (p.y + p.h * 0.5 - cy).abs() < 0.5
+        },
+        "{at}: a plaquinha de {n} fora do lugar (canto: {canto})"
     );
     let legends = (doc.census.texts.iter().map(|t| t.0))
         .chain(doc.census.icons.iter().map(|i| i.0))
-        .filter(|t| r.contains(t.x + t.w * 0.5, t.y + t.h * 0.5));
+        .filter(|t| r.contains(t.x + t.w * 0.5, t.y + t.h * 0.5))
+        // A segunda legenda do numérico (onda 4, 7a) fica na FACE, na faixa de baixo sem barras, fora da plaquinha.
+        .filter(|t| doc.kb.subs.iter().all(|s| s.sub != *t));
     for t in legends {
         assert!(
             dentro(t, p),

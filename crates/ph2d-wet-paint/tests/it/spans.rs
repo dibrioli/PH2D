@@ -238,6 +238,21 @@ fn run_far_blobs(tiles: bool, outra_lei: bool) -> Engine {
     }
 }
 
+/// As duas manchas longe na grade de FLUXO `rf` (a máscara projetada, `frow_tiles`), com o fluxo serial
+/// (`build_flow_field`) ou o Jacobi (`order_invariant`: núcleo, carimbo de umidade e backrun).
+fn run_far_blobs_rf(tiles: bool, rf: usize, jacobi: bool) -> Engine {
+    let mut e = Engine::with_flow_ratio(700, 160, rf);
+    for l in &mut e.layers {
+        l.grid.tiles_enabled = tiles;
+    }
+    e.sim.order_invariant = jacobi;
+    e.sliders.water = 1.0;
+    e.sim.gravity_override = Some([1.0, 0.3]);
+    drive_stroke(&mut e, 40.0, 30.0, 60.0, 130.0, 4.0, 10);
+    drive_stroke(&mut e, 620.0, 30.0, 640.0, 130.0, 4.0, 120);
+    e
+}
+
 fn run_session_tiles(kind: usize, tiles: bool) -> Engine {
     // As formas de `run_session`, com a máscara ligada/desligada desde o 1.º passo.
     let mut e = Engine::new(220, 180);
@@ -298,6 +313,17 @@ fn a_mascara_de_tiles_da_faixa_reproduz_a_faixa_de_um_intervalo_ao_bit() {
         panic!(
             "Pigmento + borda graduada + sedimenta: a mascara de tiles mudou o estado no byte {at}"
         );
+    }
+    for rf in [1usize, 2, 3] {
+        for jacobi in [false, true] {
+            let um = digest(run_far_blobs_rf(false, rf, jacobi).active_grid());
+            let tiles = digest(run_far_blobs_rf(true, rf, jacobi).active_grid());
+            if let Some(at) = first_difference(&um, &tiles) {
+                panic!(
+                    "grade de fluxo rf {rf} (jacobi {jacobi}): frow_tiles mudou o estado no byte {at}"
+                );
+            }
+        }
     }
     // A máscara não é vazia de efeito: nas duas manchas longe ela salta o seco do meio.
     let e = run_tiles(SESSIONS, true);

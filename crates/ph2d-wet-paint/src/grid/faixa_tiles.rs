@@ -98,6 +98,18 @@ impl Grid {
         )
     }
 
+    /// A máscara da linha de FLUXO `y` (projetada no [`Grid::refresh_flow_spans`]); `None` = o intervalo inteiro.
+    #[inline]
+    #[must_use]
+    pub fn ftiles_row(&self, y: i32) -> Option<&[u64]> {
+        tiles_row_of(
+            &self.frow_tiles,
+            tile_words_for(self.flow.s),
+            self.spans_enabled && self.tiles_enabled,
+            y,
+        )
+    }
+
     /// Marca todo tile (quem não sabe o que há na linha: o restauro de histórico).
     pub fn fill_tiles_all(&mut self) {
         self.row_tiles.fill(u64::MAX);

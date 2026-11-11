@@ -11,6 +11,7 @@
 //! constant braking keeps advancing on the free frames: that asymmetry is
 //! why drips run.
 
+use crate::grid::faixa_tiles::{span_runs, tile_words_for, tiles_row_of};
 use crate::grid::{Grid, wet_byte_from_paper};
 use crate::par::{self, Rows};
 use crate::rng::hash2_signed;
@@ -84,6 +85,7 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
     let (gbx0, by0, gbx1, by1) = crate::flow::flow_bbox((g.bx0, g.by0, g.bx1, g.by1), geom.rf);
     g.refresh_flow_spans();
     let spans_on = g.spans_enabled;
+    let (ftw, tiles_on) = (tile_words_for(geom.s), spans_on && g.tiles_enabled);
     let ladeira = ladeira_do_oleo::do_passe(
         g,
         (gbx0, by0, gbx1, by1),
@@ -96,6 +98,7 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
     let Grid {
         frow_lo: row_lo,
         frow_hi: row_hi,
+        frow_tiles,
         film,
         susp,
         susp_rgb,
@@ -163,240 +166,244 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
         let paper_u = &paper_full[fy_u * fine_s + fx_off as usize..][..fspan];
         let paper_d = &paper_full[fy_d * fine_s + fx_off as usize..][..fspan];
         let active_m = &active_full[frow..frow + fspan];
-        let mut i = bx0 as usize + base;
-        for x in bx0..=bx1 {
-            // `k` percorre a janela de FLUXO; `kf` a FINA (que anda de `rf` em
-            // `rf`, e cujos vizinhos são as células amostradas dos blocos ao
-            // lado — não as células finas adjacentes).
-            let k = (x - bx0) as usize + 1; // 1..=span-2
-            let px = crate::flow::flow_probe(x, gw, pr);
-            let kf = (px - fx_off) as usize;
-            let kfl = (crate::flow::flow_probe(x - 1, gw, pr) - fx_off) as usize;
-            let kfr = (crate::flow::flow_probe(x + 1, gw, pr) - fx_off) as usize;
-            // O índice FINO desta célula de fluxo (a porta única do probe).
-            let fi = fy_m * fine_s + px as usize;
-            if active_m[kf] == 0 {
-                i += 1;
-                continue;
-            }
-            let f = film_m[kf] as f64;
-            let mut ex = velx_m[k] as f64;
-            let mut ey = vely_m[k] as f64;
+        for (ra, rb) in span_runs(tiles_row_of(frow_tiles, ftw, tiles_on, y), bx0, bx1) {
+            let mut i = ra as usize + base;
+            for x in ra..=rb {
+                // `k` percorre a janela de FLUXO; `kf` a FINA (que anda de `rf` em
+                // `rf`, e cujos vizinhos são as células amostradas dos blocos ao
+                // lado — não as células finas adjacentes).
+                let k = (x - bx0) as usize + 1; // 1..=span-2
+                let px = crate::flow::flow_probe(x, gw, pr);
+                let kf = (px - fx_off) as usize;
+                let kfl = (crate::flow::flow_probe(x - 1, gw, pr) - fx_off) as usize;
+                let kfr = (crate::flow::flow_probe(x + 1, gw, pr) - fx_off) as usize;
+                // O índice FINO desta célula de fluxo (a porta única do probe).
+                let fi = fy_m * fine_s + px as usize;
+                if active_m[kf] == 0 {
+                    i += 1;
+                    continue;
+                }
+                let f = film_m[kf] as f64;
+                let mut ex = velx_m[k] as f64;
+                let mut ey = vely_m[k] as f64;
 
-            // Leveling: water flows thick -> thin, clamped per axis.
-            // (Diferença finita ⇒ leva o `dif`.)
-            let fx = fx_off as usize;
-            let mut lx = if let Some(l) = ladeira.as_ref() {
-                let o = l.em(frow + kfl) - l.em(frow + kfr);
-                let d = film_m[kfl] as f64 - film_m[kfr] as f64;
-                l.termo(d, o * l.assente(frow + kf), f, level_k, dif, level_clamp)
-            } else {
-                (film_m[kfl] as f64 - film_m[kfr] as f64 + 0.0) * level_k * dif
-            };
-            if lx > level_clamp {
-                lx = level_clamp;
-            } else if lx < -level_clamp {
-                lx = -level_clamp;
-            }
-            let mut ly = if let Some(l) = ladeira.as_ref() {
-                let o = l.em(fy_u * fine_s + fx + kf) - l.em(fy_d * fine_s + fx + kf);
-                let d = film_u[kf] as f64 - film_d[kf] as f64;
-                l.termo(d, o * l.assente(frow + kf), f, level_k, dif, level_clamp)
-            } else {
-                (film_u[kf] as f64 - film_d[kf] as f64 + 0.0) * level_k * dif
-            };
-            if ly > level_clamp {
-                ly = level_clamp;
-            } else if ly < -level_clamp {
-                ly = -level_clamp;
-            }
-            ex += lx;
-            ey += ly;
-
-            // Capillary: only thin paint follows the tooth. Steepest-descent
-            // pull — the asymmetric form picks the drop ACROSS the cell in
-            // the direction of the steeper fall, which channels water into
-            // grain rivulets. (Diferença finita ⇒ leva o `dif`.)
-            if (susp[fi] as f64 + sett[fi] as f64) < cap_gate {
-                let pc = paper_m[kf] as f64;
-                let pl = paper_m[kfl] as f64;
-                let prr = paper_m[kfr] as f64;
-                ex += if pl > pc {
-                    if pc < prr { pl - prr } else { pc - prr }
-                } else if pc < prr {
-                    pl - pc
+                // Leveling: water flows thick -> thin, clamped per axis.
+                // (Diferença finita ⇒ leva o `dif`.)
+                let fx = fx_off as usize;
+                let mut lx = if let Some(l) = ladeira.as_ref() {
+                    let o = l.em(frow + kfl) - l.em(frow + kfr);
+                    let d = film_m[kfl] as f64 - film_m[kfr] as f64;
+                    l.termo(d, o * l.assente(frow + kf), f, level_k, dif, level_clamp)
                 } else {
-                    pl - prr
-                } * cap_k
-                    * dif;
-                let pu = paper_u[kf] as f64;
-                let pd = paper_d[kf] as f64;
-                ey += if pu > pc {
-                    if pc < pd { pu - pd } else { pc - pd }
-                } else if pc < pd {
-                    pu - pc
+                    (film_m[kfl] as f64 - film_m[kfr] as f64 + 0.0) * level_k * dif
+                };
+                if lx > level_clamp {
+                    lx = level_clamp;
+                } else if lx < -level_clamp {
+                    lx = -level_clamp;
+                }
+                let mut ly = if let Some(l) = ladeira.as_ref() {
+                    let o = l.em(fy_u * fine_s + fx + kf) - l.em(fy_d * fine_s + fx + kf);
+                    let d = film_u[kf] as f64 - film_d[kf] as f64;
+                    l.termo(d, o * l.assente(frow + kf), f, level_k, dif, level_clamp)
                 } else {
-                    pu - pd
-                } * cap_k
-                    * dif;
-            }
+                    (film_u[kf] as f64 - film_d[kf] as f64 + 0.0) * level_k * dif
+                };
+                if ly > level_clamp {
+                    ly = level_clamp;
+                } else if ly < -level_clamp {
+                    ly = -level_clamp;
+                }
+                ex += lx;
+                ey += ly;
 
-            // Viscosity: deep water drags its persistent-field neighbours
-            // along. (The knob is the film THRESHOLD; the 0.2 blend weights
-            // are fixed.) É uma MÉDIA — adimensional, sem `dif`.
-            if f > visc_threshold {
-                ex = 0.2 * ex
-                    + 0.2
-                        * (velx_m[k - 1] as f64
-                            + velx_m[k + 1] as f64
-                            + velx_u[k] as f64
-                            + velx_d[k] as f64);
-                ey = 0.2 * ey
-                    + 0.2
-                        * (vely_m[k - 1] as f64
-                            + vely_m[k + 1] as f64
-                            + vely_u[k] as f64
-                            + vely_d[k] as f64);
-            }
+                // Capillary: only thin paint follows the tooth. Steepest-descent
+                // pull — the asymmetric form picks the drop ACROSS the cell in
+                // the direction of the steeper fall, which channels water into
+                // grain rivulets. (Diferença finita ⇒ leva o `dif`.)
+                if (susp[fi] as f64 + sett[fi] as f64) < cap_gate {
+                    let pc = paper_m[kf] as f64;
+                    let pl = paper_m[kfl] as f64;
+                    let prr = paper_m[kfr] as f64;
+                    ex += if pl > pc {
+                        if pc < prr { pl - prr } else { pc - prr }
+                    } else if pc < prr {
+                        pl - pc
+                    } else {
+                        pl - prr
+                    } * cap_k
+                        * dif;
+                    let pu = paper_u[kf] as f64;
+                    let pd = paper_d[kf] as f64;
+                    ey += if pu > pc {
+                        if pc < pd { pu - pd } else { pc - pd }
+                    } else if pc < pd {
+                        pu - pc
+                    } else {
+                        pu - pd
+                    } * cap_k
+                        * dif;
+                }
 
-            // Wetness stamp: deep film marks the sheet damp, valleys damper —
-            // future flow keeps running along established wet channels.
-            if f > 3.0 {
-                wet[fi] = wet_byte_from_paper(paper_m[kf] as f64);
-            }
+                // Viscosity: deep water drags its persistent-field neighbours
+                // along. (The knob is the film THRESHOLD; the 0.2 blend weights
+                // are fixed.) É uma MÉDIA — adimensional, sem `dif`.
+                if f > visc_threshold {
+                    ex = 0.2 * ex
+                        + 0.2
+                            * (velx_m[k - 1] as f64
+                                + velx_m[k + 1] as f64
+                                + velx_u[k] as f64
+                                + velx_d[k] as f64);
+                    ey = 0.2 * ey
+                        + 0.2
+                            * (vely_m[k - 1] as f64
+                                + vely_m[k + 1] as f64
+                                + vely_u[k] as f64
+                                + vely_d[k] as f64);
+                }
 
-            // Fingering (extension, PRE-brake): at a drip's leading edge, add
-            // a transverse sinusoidal ripple — push down at the peaks plus a
-            // slight sideways component; the brake then self-selects rivulet
-            // columns.
-            if fingering && f > 0.1 {
-                let dxs = js_round_i64(gnx);
-                let dys = js_round_i64(gny);
-                let j = i as i64 + dxs + dys * s as i64;
-                let jf = fi as i64 + dxs * rf + dys * rf * fine_s as i64;
-                if j >= 0
-                    && j < cells
-                    && jf >= 0
-                    && jf < fine_cells
-                    && film_full[jf as usize] as f64 <= 0.01
-                {
-                    let phase =
-                        (2.0 * std::f64::consts::PI * (x as f64 * t_axis_x + y as f64 * t_axis_y))
+                // Wetness stamp: deep film marks the sheet damp, valleys damper —
+                // future flow keeps running along established wet channels.
+                if f > 3.0 {
+                    wet[fi] = wet_byte_from_paper(paper_m[kf] as f64);
+                }
+
+                // Fingering (extension, PRE-brake): at a drip's leading edge, add
+                // a transverse sinusoidal ripple — push down at the peaks plus a
+                // slight sideways component; the brake then self-selects rivulet
+                // columns.
+                if fingering && f > 0.1 {
+                    let dxs = js_round_i64(gnx);
+                    let dys = js_round_i64(gny);
+                    let j = i as i64 + dxs + dys * s as i64;
+                    let jf = fi as i64 + dxs * rf + dys * rf * fine_s as i64;
+                    if j >= 0
+                        && j < cells
+                        && jf >= 0
+                        && jf < fine_cells
+                        && film_full[jf as usize] as f64 <= 0.01
+                    {
+                        let phase = (2.0
+                            * std::f64::consts::PI
+                            * (x as f64 * t_axis_x + y as f64 * t_axis_y))
                             / wave_len;
-                    let push = ext_fingering * f.min(2.0);
-                    let sn = libm::sin(phase);
-                    let cs = libm::cos(phase);
-                    ex += gnx * push * sn + t_axis_x * push * 0.3 * cs;
-                    ey += gny * push * sn + t_axis_y * push * 0.3 * cs;
+                        let push = ext_fingering * f.min(2.0);
+                        let sn = libm::sin(phase);
+                        let cs = libm::cos(phase);
+                        ex += gnx * push * sn + t_axis_x * push * 0.3 * cs;
+                        ey += gny * push * sn + t_axis_y * push * 0.3 * cs;
+                    }
                 }
-            }
 
-            // Look-ahead absorbency brake: probe a few px downstream; wet or
-            // flooded ground ahead lets flow keep running, dry ground stalls
-            // it. Linear index arithmetic, no 2-D clamp: a probe past the
-            // array end skips the brake entirely (flow at the sheet edge runs
-            // off it).
-            //
-            // ⚠️ O alcance é uma DISTÂNCIA na folha, então em passos de índice
-            // ele leva o `dif`: sondar `brake_reach` células FINAS custa
-            // `brake_reach / rf` passos de fluxo.
-            let s_len = brake_reach * dif / ((ex * ex + ey * ey).sqrt() + 0.01);
-            let dxs = (ex * s_len).trunc() as i64;
-            let dys = (ey * s_len).trunc() as i64;
-            let probe = i as i64 + dxs + dys * s as i64;
-            let probe_f = fi as i64 + dxs * rf + dys * rf * fine_s as i64;
-            if probe >= 0 && probe < cells && probe_f >= 0 && probe_f < fine_cells {
-                let pu = probe_f as usize;
-                let mut brake = film_full[pu] as f64 + (3.0 / 255.0) * wet[pu] as f64 - brake_bias;
-                if brake < 0.05 {
-                    brake = 0.05;
-                } else if brake > 1.0 {
-                    brake = 1.0;
+                // Look-ahead absorbency brake: probe a few px downstream; wet or
+                // flooded ground ahead lets flow keep running, dry ground stalls
+                // it. Linear index arithmetic, no 2-D clamp: a probe past the
+                // array end skips the brake entirely (flow at the sheet edge runs
+                // off it).
+                //
+                // ⚠️ O alcance é uma DISTÂNCIA na folha, então em passos de índice
+                // ele leva o `dif`: sondar `brake_reach` células FINAS custa
+                // `brake_reach / rf` passos de fluxo.
+                let s_len = brake_reach * dif / ((ex * ex + ey * ey).sqrt() + 0.01);
+                let dxs = (ex * s_len).trunc() as i64;
+                let dys = (ey * s_len).trunc() as i64;
+                let probe = i as i64 + dxs + dys * s as i64;
+                let probe_f = fi as i64 + dxs * rf + dys * rf * fine_s as i64;
+                if probe >= 0 && probe < cells && probe_f >= 0 && probe_f < fine_cells {
+                    let pu = probe_f as usize;
+                    let mut brake =
+                        film_full[pu] as f64 + (3.0 / 255.0) * wet[pu] as f64 - brake_bias;
+                    if brake < 0.05 {
+                        brake = 0.05;
+                    } else if brake > 1.0 {
+                        brake = 1.0;
+                    }
+                    ex *= brake;
+                    ey *= brake;
                 }
-                ex *= brake;
-                ey *= brake;
-            }
 
-            // Backrun / bloom (extension, POST-brake): where this cell is
-            // much wetter than a neighbour holding settled pigment, shove
-            // flow toward it and lift some of its settled mass back into
-            // suspension. A per-cell budget (max 6 blooming build-frames per
-            // fresh front) stops sloshing from pumping thin lines;
-            // integer-hash jitter crenellates the rim.
-            if backrun {
-                let thr = 0.8 + 0.2 * hash2_signed(x, y, BLOOM_SEED);
-                let mut met = false;
-                let can_bloom = bloom[fi] < 6;
-                for n_idx in 0..4 {
-                    let dxn: i64 = match n_idx {
-                        0 => -1,
-                        1 => 1,
-                        _ => 0,
-                    };
-                    let dyn_: i64 = match n_idx {
-                        2 => -1,
-                        3 => 1,
-                        _ => 0,
-                    };
-                    // ⚠️ O vizinho é de FLUXO, mas o pigmento que ele levanta é
-                    // FINO: a célula amostrada daquele bloco. Em `rf > 1` o
-                    // backrun fica ESPARSO (um sítio de nucleação por bloco) —
-                    // mudança de APARÊNCIA, para o smoke decidir.
-                    let nb = (fi as i64 + dxn * rf + dyn_ * rf * fine_s as i64) as usize;
-                    let gap = f - film_full[nb] as f64;
-                    if gap > thr && sett[nb] as f64 > 0.0 {
-                        met = true;
-                        if can_bloom {
-                            let push = ext_backrun * gap.min(1.5) * 0.5;
-                            if dxn != 0 {
-                                ex += dxn as f64 * push;
-                            } else {
-                                ey += dyn_ as f64 * push;
-                            }
-                            let lift = sett[nb] as f64 * 0.1;
-                            let w = lift / (susp[nb] as f64 + lift);
-                            let uc = susp_rgb[nb];
-                            let sc = sett_rgb[nb];
-                            mix.mix(
-                                uc[0] as f64,
-                                uc[1] as f64,
-                                uc[2] as f64,
-                                sc[0] as f64,
-                                sc[1] as f64,
-                                sc[2] as f64,
-                                w,
-                                &mut out,
-                            );
-                            susp_rgb[nb] = [out[0] as f32, out[1] as f32, out[2] as f32];
-                            susp[nb] = (susp[nb] as f64 + lift) as f32;
-                            sett[nb] = (sett[nb] as f64 - lift) as f32;
-                            if pigmento {
-                                tinta_transporte::levanta(tinta, pigmento_lado, nb, 0.1);
+                // Backrun / bloom (extension, POST-brake): where this cell is
+                // much wetter than a neighbour holding settled pigment, shove
+                // flow toward it and lift some of its settled mass back into
+                // suspension. A per-cell budget (max 6 blooming build-frames per
+                // fresh front) stops sloshing from pumping thin lines;
+                // integer-hash jitter crenellates the rim.
+                if backrun {
+                    let thr = 0.8 + 0.2 * hash2_signed(x, y, BLOOM_SEED);
+                    let mut met = false;
+                    let can_bloom = bloom[fi] < 6;
+                    for n_idx in 0..4 {
+                        let dxn: i64 = match n_idx {
+                            0 => -1,
+                            1 => 1,
+                            _ => 0,
+                        };
+                        let dyn_: i64 = match n_idx {
+                            2 => -1,
+                            3 => 1,
+                            _ => 0,
+                        };
+                        // ⚠️ O vizinho é de FLUXO, mas o pigmento que ele levanta é
+                        // FINO: a célula amostrada daquele bloco. Em `rf > 1` o
+                        // backrun fica ESPARSO (um sítio de nucleação por bloco) —
+                        // mudança de APARÊNCIA, para o smoke decidir.
+                        let nb = (fi as i64 + dxn * rf + dyn_ * rf * fine_s as i64) as usize;
+                        let gap = f - film_full[nb] as f64;
+                        if gap > thr && sett[nb] as f64 > 0.0 {
+                            met = true;
+                            if can_bloom {
+                                let push = ext_backrun * gap.min(1.5) * 0.5;
+                                if dxn != 0 {
+                                    ex += dxn as f64 * push;
+                                } else {
+                                    ey += dyn_ as f64 * push;
+                                }
+                                let lift = sett[nb] as f64 * 0.1;
+                                let w = lift / (susp[nb] as f64 + lift);
+                                let uc = susp_rgb[nb];
+                                let sc = sett_rgb[nb];
+                                mix.mix(
+                                    uc[0] as f64,
+                                    uc[1] as f64,
+                                    uc[2] as f64,
+                                    sc[0] as f64,
+                                    sc[1] as f64,
+                                    sc[2] as f64,
+                                    w,
+                                    &mut out,
+                                );
+                                susp_rgb[nb] = [out[0] as f32, out[1] as f32, out[2] as f32];
+                                susp[nb] = (susp[nb] as f64 + lift) as f32;
+                                sett[nb] = (sett[nb] as f64 - lift) as f32;
+                                if pigmento {
+                                    tinta_transporte::levanta(tinta, pigmento_lado, nb, 0.1);
+                                }
                             }
                         }
                     }
-                }
-                if met {
-                    if can_bloom {
-                        bloom[fi] += 1;
+                    if met {
+                        if can_bloom {
+                            bloom[fi] += 1;
+                        }
+                    } else {
+                        bloom[fi] = 0;
                     }
-                } else {
-                    bloom[fi] = 0;
                 }
-            }
 
-            if let Some(gt) = p.gota {
-                (ex, ey) = gt.aplica(ex, ey, fi, fine_s, film_full, wet);
+                if let Some(gt) = p.gota {
+                    (ex, ey) = gt.aplica(ex, ey, fi, fine_s, film_full, wet);
+                }
+                if !oleo.is_empty() {
+                    (ex, ey) = ladeira_do_oleo::cede(oleo, (susp, sett), fi, f, max_v, (ex, ey));
+                    let cel = crate::grid::oleo_celula::da_celula(oleo, fi);
+                    let k = crate::meio::mobilidade(f64::from(cel.meio));
+                    (ex, ey) = (ex * k, ey * k);
+                }
+                flow_x[i] = clamp_sym(ex, max_v) as f32;
+                flow_y[i] = clamp_sym(ey, max_v) as f32;
+                i += 1;
             }
-            if !oleo.is_empty() {
-                (ex, ey) = ladeira_do_oleo::cede(oleo, (susp, sett), fi, f, max_v, (ex, ey));
-                let cel = crate::grid::oleo_celula::da_celula(oleo, fi);
-                let k = crate::meio::mobilidade(f64::from(cel.meio));
-                (ex, ey) = (ex * k, ey * k);
-            }
-            flow_x[i] = clamp_sym(ex, max_v) as f32;
-            flow_y[i] = clamp_sym(ey, max_v) as f32;
-            i += 1;
         }
     }
     if let Some(l) = ladeira {
@@ -447,9 +454,11 @@ pub fn smooth_velocity_rows(g: &mut Grid, p: &Params, mode: Rows) {
     }
     g.refresh_flow_spans();
     let spans_on = g.spans_enabled;
+    let (ftw, tiles_on) = (tile_words_for(fs), spans_on && g.tiles_enabled);
     let Grid {
         frow_lo,
         frow_hi,
+        frow_tiles,
         film,
         vel_x,
         vel_y,
@@ -461,6 +470,7 @@ pub fn smooth_velocity_rows(g: &mut Grid, p: &Params, mode: Rows) {
     } = g;
     let row_lo: &[i32] = frow_lo;
     let row_hi: &[i32] = frow_hi;
+    let frow_tiles: &[u64] = frow_tiles;
     let film: &[f32] = film;
     let wet: &[u8] = wet;
     let velx: &[f32] = vel_x;
@@ -480,48 +490,50 @@ pub fn smooth_velocity_rows(g: &mut Grid, p: &Params, mode: Rows) {
                 return;
             }
             let base = y as usize * fs;
-            for x in bx0..=bx1 {
-                let i = x as usize + base;
-                let fi = crate::flow::probe_idx(x, y, gw, gh, s, geom.rf);
-                if active[fi] == 0 {
-                    continue;
+            for (ra, rb) in span_runs(tiles_row_of(frow_tiles, ftw, tiles_on, y), bx0, bx1) {
+                for x in ra..=rb {
+                    let i = x as usize + base;
+                    let fi = crate::flow::probe_idx(x, y, gw, gh, s, geom.rf);
+                    if active[fi] == 0 {
+                        continue;
+                    }
+                    let (mut fx, mut fy);
+                    if film[fi] as f64 > 0.05 {
+                        fx = 0.2 * velx[i] as f64
+                            + 0.2
+                                * (velx[i - 1] as f64
+                                    + velx[i + 1] as f64
+                                    + velx[i - fs] as f64
+                                    + velx[i + fs] as f64);
+                        fy = 0.2 * vely[i] as f64
+                            + 0.2
+                                * (vely[i - 1] as f64
+                                    + vely[i + 1] as f64
+                                    + vely[i - fs] as f64
+                                    + vely[i + fs] as f64);
+                    } else {
+                        // Whatever gravity the persistent field carries passes
+                        // straight through.
+                        fx = velx[i] as f64;
+                        fy = vely[i] as f64;
+                    }
+                    // A lei da gota (W1e, F1): também nos quadros sem freio.
+                    if let Some(gt) = p.gota {
+                        (fx, fy) = gt.aplica(fx, fy, fi, s, film, wet);
+                    }
+                    if fx > max_v {
+                        fx = max_v;
+                    } else if fx < -max_v {
+                        fx = -max_v;
+                    }
+                    if fy > max_v {
+                        fy = max_v;
+                    } else if fy < -max_v {
+                        fy = -max_v;
+                    }
+                    fxr[x as usize] = fx as f32;
+                    fyr[x as usize] = fy as f32;
                 }
-                let (mut fx, mut fy);
-                if film[fi] as f64 > 0.05 {
-                    fx = 0.2 * velx[i] as f64
-                        + 0.2
-                            * (velx[i - 1] as f64
-                                + velx[i + 1] as f64
-                                + velx[i - fs] as f64
-                                + velx[i + fs] as f64);
-                    fy = 0.2 * vely[i] as f64
-                        + 0.2
-                            * (vely[i - 1] as f64
-                                + vely[i + 1] as f64
-                                + vely[i - fs] as f64
-                                + vely[i + fs] as f64);
-                } else {
-                    // Whatever gravity the persistent field carries passes
-                    // straight through.
-                    fx = velx[i] as f64;
-                    fy = vely[i] as f64;
-                }
-                // A lei da gota (W1e, F1): também nos quadros sem freio.
-                if let Some(gt) = p.gota {
-                    (fx, fy) = gt.aplica(fx, fy, fi, s, film, wet);
-                }
-                if fx > max_v {
-                    fx = max_v;
-                } else if fx < -max_v {
-                    fx = -max_v;
-                }
-                if fy > max_v {
-                    fy = max_v;
-                } else if fy < -max_v {
-                    fy = -max_v;
-                }
-                fxr[x as usize] = fx as f32;
-                fyr[x as usize] = fy as f32;
             }
         },
     );

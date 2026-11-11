@@ -174,6 +174,7 @@ fn planos_da_grade(g: &mut Grid) -> Vec<Plano<'_>> {
         flow_y,
         frow_lo: _,
         frow_hi: _,
+        frow_tiles: _,
         wet,
         paper,
         active,

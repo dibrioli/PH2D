@@ -2,6 +2,7 @@
 //! (filho de [`super`], LOC cap). A prova de que o gather iguala o serial está no cabeçalho do pai.
 
 use super::*;
+use crate::grid::faixa_tiles::{span_runs, tile_words_for, tiles_row_of};
 
 /// Os dois predicados que o backrun pergunta aos VIZINHOS, materializados
 /// antes de qualquer escrita — ver o cabeçalho do módulo para a prova de que
@@ -54,6 +55,7 @@ pub(super) fn backrun_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
     bflag_rows(g, mode);
 
     let spans_on = g.spans_enabled;
+    let (ftw, tiles_on) = (tile_words_for(g.flow.s), spans_on && g.tiles_enabled);
     // ⚠️ O EMPURRÃO (`ext_backrun`) é do núcleo — ele escreve `flow`, e escrever
     // `flow` aqui seria a segunda porta do mesmo número. Aqui só o levante e o
     // orçamento de floração, que são as duas escritas cross-linha.
@@ -62,6 +64,7 @@ pub(super) fn backrun_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
         scratch,
         frow_lo: row_lo,
         frow_hi: row_hi,
+        frow_tiles,
         film,
         susp,
         sett,
@@ -75,6 +78,7 @@ pub(super) fn backrun_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
     let active_full: &[u8] = active;
     let sett_rgb_full: &[[f32; 3]] = sett_rgb;
     let bflags: &[u8] = &scratch.bflags;
+    let frow_tiles: &[u64] = frow_tiles;
 
     // ⚠️ **Tudo aqui caminha em espaço de FLUXO**, e não por conveniência: os
     // probes de duas células de fluxo vizinhas distam exatamente `rf` células
@@ -100,29 +104,31 @@ pub(super) fn backrun_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
             if bx0 > bx1 {
                 return;
             }
-            for x in bx0..=bx1 {
-                let px = crate::flow::flow_probe(x, gw, geom.rf) as usize;
-                let fi = fy * fine_s + px;
-                if active_full[fi] == 0 {
-                    continue;
-                }
-                let f = film_full[fi] as f64;
-                let thr = 0.8 + 0.2 * hash2_signed(x, y, BLOOM_SEED);
-                let can_bloom = bflags[fi] & BF_CAN_BLOOM != 0;
-                let mut met = false;
-                for (dxn, dyn_) in NB4 {
-                    let nb = probe_row(y + dyn_ as i32) * fine_s
-                        + crate::flow::flow_probe(x + dxn as i32, gw, geom.rf) as usize;
-                    if f - film_full[nb] as f64 > thr && bflags[nb] & BF_HAS_SETT != 0 {
-                        met = true;
+            for (ra, rb) in span_runs(tiles_row_of(frow_tiles, ftw, tiles_on, y), bx0, bx1) {
+                for x in ra..=rb {
+                    let px = crate::flow::flow_probe(x, gw, geom.rf) as usize;
+                    let fi = fy * fine_s + px;
+                    if active_full[fi] == 0 {
+                        continue;
                     }
-                }
-                if met {
-                    if can_bloom {
-                        br[px] += 1;
+                    let f = film_full[fi] as f64;
+                    let thr = 0.8 + 0.2 * hash2_signed(x, y, BLOOM_SEED);
+                    let can_bloom = bflags[fi] & BF_CAN_BLOOM != 0;
+                    let mut met = false;
+                    for (dxn, dyn_) in NB4 {
+                        let nb = probe_row(y + dyn_ as i32) * fine_s
+                            + crate::flow::flow_probe(x + dxn as i32, gw, geom.rf) as usize;
+                        if f - film_full[nb] as f64 > thr && bflags[nb] & BF_HAS_SETT != 0 {
+                            met = true;
+                        }
                     }
-                } else {
-                    br[px] = 0;
+                    if met {
+                        if can_bloom {
+                            br[px] += 1;
+                        }
+                    } else {
+                        br[px] = 0;
+                    }
                 }
             }
         },

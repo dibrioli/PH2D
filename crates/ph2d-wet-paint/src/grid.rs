@@ -144,6 +144,8 @@ pub struct Grid {
     /// Mora aqui para os passes de fluxo não alocarem.
     pub frow_lo: Vec<i32>,
     pub frow_hi: Vec<i32>,
+    /// A máscara de tiles da faixa PROJETADA na grade de fluxo ([`crate::flow::project_tiles`]).
+    pub frow_tiles: Vec<u64>,
     /// Wetness byte: "the sheet is damp here".
     pub wet: Vec<u8>,
     /// Paper tooth height 0..1, baked incl. the pad ring.
@@ -321,6 +323,7 @@ impl Grid {
             flow_y: vec![0.0; fn_],
             frow_lo: vec![i32::MAX; flow.rows],
             frow_hi: vec![i32::MIN; flow.rows],
+            frow_tiles: vec![0; flow.rows * faixa_tiles::tile_words_for(flow.s)],
             wet: vec![0; n],
             paper: vec![0.0; n],
             active: vec![0; n],
@@ -461,6 +464,13 @@ impl Grid {
             &self.flow,
             &mut self.frow_lo,
             &mut self.frow_hi,
+        );
+        crate::flow::project_tiles(
+            &self.row_tiles,
+            self.tile_words,
+            self.h,
+            &self.flow,
+            &mut self.frow_tiles,
         );
     }
 

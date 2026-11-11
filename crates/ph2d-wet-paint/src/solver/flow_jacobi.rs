@@ -59,6 +59,7 @@
 //! `extBackrun` é `Hidden` e nasce em `0.0`.
 
 use crate::flow::FlowGeom;
+use crate::grid::faixa_tiles::{span_runs, tile_words_for, tiles_row_of};
 use crate::grid::{Grid, wet_byte_from_paper};
 use crate::par::{self, Rows};
 use crate::rng::hash2_signed;
@@ -188,6 +189,7 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
         return;
     }
     let spans_on = g.spans_enabled;
+    let (ftw, tiles_on) = (tile_words_for(s), spans_on && g.tiles_enabled);
     let ladeira = if super::chao_forca::tira_do_nivelamento(c.oleo_na_mao) {
         None
     } else {
@@ -198,6 +200,7 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
     let Grid {
         frow_lo: row_lo,
         frow_hi: row_hi,
+        frow_tiles,
         film,
         susp,
         sett,
@@ -226,6 +229,7 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
     let susp_full: &[f32] = susp;
     let sett_full: &[f32] = sett;
     let bloom_full: &[u8] = bloom;
+    let frow_tiles: &[u64] = frow_tiles;
 
     let band = by0 as usize * s..(by1 as usize + 1) * s;
     par::walk_rows2(
@@ -267,199 +271,202 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
             let paper_u = &paper_full[fy_u * fine_s + fx_off as usize..][..fspan];
             let paper_d = &paper_full[fy_d * fine_s + fx_off as usize..][..fspan];
             let active_m = &active_full[frow..frow + fspan];
-            let mut i = bx0 as usize + base;
-            for x in bx0..=bx1 {
-                let k = (x - bx0) as usize + 1; // 1..=span-2
-                let px = crate::flow::flow_probe(x, gw, pr);
-                let kf = (px - fx_off) as usize;
-                let kfl = (crate::flow::flow_probe(x - 1, gw, pr) - fx_off) as usize;
-                let kfr = (crate::flow::flow_probe(x + 1, gw, pr) - fx_off) as usize;
-                let fi = fy_m * fine_s + px as usize;
-                if active_m[kf] == 0 {
-                    i += 1;
-                    continue;
-                }
-                let f = film_m[kf] as f64;
-                let mut ex = velx_m[k] as f64;
-                let mut ey = vely_m[k] as f64;
-
-                // Leveling: a água corre do grosso para o fino, clampada por
-                // eixo. (Diferença finita ⇒ leva o `dif`.)
-                let fx = fx_off as usize;
-                let mut lx = if let Some(l) = ladeira {
-                    let o = l.em(frow + kfl) - l.em(frow + kfr);
-                    let d = film_m[kfl] as f64 - film_m[kfr] as f64;
-                    l.termo(
-                        d,
-                        o * l.assente(frow + kf),
-                        f,
-                        c.level_k,
-                        c.dif,
-                        c.level_clamp,
-                    )
-                } else {
-                    (film_m[kfl] as f64 - film_m[kfr] as f64 + 0.0) * c.level_k * c.dif
-                };
-                if lx > c.level_clamp {
-                    lx = c.level_clamp;
-                } else if lx < -c.level_clamp {
-                    lx = -c.level_clamp;
-                }
-                let mut ly = if let Some(l) = ladeira {
-                    let o = l.em(fy_u * fine_s + fx + kf) - l.em(fy_d * fine_s + fx + kf);
-                    let d = film_u[kf] as f64 - film_d[kf] as f64;
-                    l.termo(
-                        d,
-                        o * l.assente(frow + kf),
-                        f,
-                        c.level_k,
-                        c.dif,
-                        c.level_clamp,
-                    )
-                } else {
-                    (film_u[kf] as f64 - film_d[kf] as f64 + 0.0) * c.level_k * c.dif
-                };
-                if ly > c.level_clamp {
-                    ly = c.level_clamp;
-                } else if ly < -c.level_clamp {
-                    ly = -c.level_clamp;
-                }
-                ex += lx;
-                ey += ly;
-
-                // Capilar: só tinta fina segue o dente do papel.
-                if (susp_full[fi] as f64 + sett_full[fi] as f64) < c.cap_gate {
-                    let pc = paper_m[kf] as f64;
-                    let pl = paper_m[kfl] as f64;
-                    let prr = paper_m[kfr] as f64;
-                    ex += if pl > pc {
-                        if pc < prr { pl - prr } else { pc - prr }
-                    } else if pc < prr {
-                        pl - pc
-                    } else {
-                        pl - prr
-                    } * c.cap_k
-                        * c.dif;
-                    let pu = paper_u[kf] as f64;
-                    let pd = paper_d[kf] as f64;
-                    ey += if pu > pc {
-                        if pc < pd { pu - pd } else { pc - pd }
-                    } else if pc < pd {
-                        pu - pc
-                    } else {
-                        pu - pd
-                    } * c.cap_k
-                        * c.dif;
-                }
-
-                // Viscosidade: água funda arrasta os vizinhos do campo
-                // persistente. É uma MÉDIA — adimensional, sem `dif`.
-                if f > c.visc_threshold {
-                    ex = 0.2 * ex
-                        + 0.2
-                            * (velx_m[k - 1] as f64
-                                + velx_m[k + 1] as f64
-                                + velx_u[k] as f64
-                                + velx_d[k] as f64);
-                    ey = 0.2 * ey
-                        + 0.2
-                            * (vely_m[k - 1] as f64
-                                + vely_m[k + 1] as f64
-                                + vely_u[k] as f64
-                                + vely_d[k] as f64);
-                }
-
-                // ⚠️ O CARIMBO DE UMIDADE não mora aqui — ver `wet_stamp_rows`.
-
-                // Fingering (extensão, PRÉ-freio).
-                if c.fingering && f > 0.1 {
-                    let dxs = js_round_i64(c.gnx);
-                    let dys = js_round_i64(c.gny);
-                    let j = i as i64 + dxs + dys * s as i64;
-                    let jf = fi as i64 + dxs * rf + dys * rf * fine_s as i64;
-                    if j >= 0
-                        && j < cells
-                        && jf >= 0
-                        && jf < fine_cells
-                        && film_full[jf as usize] as f64 <= 0.01
-                    {
-                        let phase = (2.0
-                            * std::f64::consts::PI
-                            * (x as f64 * c.t_axis_x + y as f64 * c.t_axis_y))
-                            / c.wave_len;
-                        let push = c.ext_fingering * f.min(2.0);
-                        let sn = libm::sin(phase);
-                        let cs = libm::cos(phase);
-                        ex += c.gnx * push * sn + c.t_axis_x * push * 0.3 * cs;
-                        ey += c.gny * push * sn + c.t_axis_y * push * 0.3 * cs;
+            for (ra, rb) in span_runs(tiles_row_of(frow_tiles, ftw, tiles_on, y), bx0, bx1) {
+                let mut i = ra as usize + base;
+                for x in ra..=rb {
+                    let k = (x - bx0) as usize + 1; // 1..=span-2
+                    let px = crate::flow::flow_probe(x, gw, pr);
+                    let kf = (px - fx_off) as usize;
+                    let kfl = (crate::flow::flow_probe(x - 1, gw, pr) - fx_off) as usize;
+                    let kfr = (crate::flow::flow_probe(x + 1, gw, pr) - fx_off) as usize;
+                    let fi = fy_m * fine_s + px as usize;
+                    if active_m[kf] == 0 {
+                        i += 1;
+                        continue;
                     }
-                }
+                    let f = film_m[kf] as f64;
+                    let mut ex = velx_m[k] as f64;
+                    let mut ey = vely_m[k] as f64;
 
-                // Freio de absorvência por look-ahead.
-                //
-                // ⚠️ **`wet_full` é o `wet` do INÍCIO do passo** — é aqui que a
-                // independência de ordem é ganha, e é a única diferença de
-                // desenho entre este passe e o Gauss-Seidel.
-                let s_len = c.brake_reach * c.dif / ((ex * ex + ey * ey).sqrt() + 0.01);
-                let dxs = (ex * s_len).trunc() as i64;
-                let dys = (ey * s_len).trunc() as i64;
-                let probe = i as i64 + dxs + dys * s as i64;
-                let probe_f = fi as i64 + dxs * rf + dys * rf * fine_s as i64;
-                if probe >= 0 && probe < cells && probe_f >= 0 && probe_f < fine_cells {
-                    let pu = probe_f as usize;
-                    let mut brake =
-                        film_full[pu] as f64 + (3.0 / 255.0) * wet_full[pu] as f64 - c.brake_bias;
-                    if brake < 0.05 {
-                        brake = 0.05;
-                    } else if brake > 1.0 {
-                        brake = 1.0;
+                    // Leveling: a água corre do grosso para o fino, clampada por
+                    // eixo. (Diferença finita ⇒ leva o `dif`.)
+                    let fx = fx_off as usize;
+                    let mut lx = if let Some(l) = ladeira {
+                        let o = l.em(frow + kfl) - l.em(frow + kfr);
+                        let d = film_m[kfl] as f64 - film_m[kfr] as f64;
+                        l.termo(
+                            d,
+                            o * l.assente(frow + kf),
+                            f,
+                            c.level_k,
+                            c.dif,
+                            c.level_clamp,
+                        )
+                    } else {
+                        (film_m[kfl] as f64 - film_m[kfr] as f64 + 0.0) * c.level_k * c.dif
+                    };
+                    if lx > c.level_clamp {
+                        lx = c.level_clamp;
+                    } else if lx < -c.level_clamp {
+                        lx = -c.level_clamp;
                     }
-                    ex *= brake;
-                    ey *= brake;
-                }
+                    let mut ly = if let Some(l) = ladeira {
+                        let o = l.em(fy_u * fine_s + fx + kf) - l.em(fy_d * fine_s + fx + kf);
+                        let d = film_u[kf] as f64 - film_d[kf] as f64;
+                        l.termo(
+                            d,
+                            o * l.assente(frow + kf),
+                            f,
+                            c.level_k,
+                            c.dif,
+                            c.level_clamp,
+                        )
+                    } else {
+                        (film_u[kf] as f64 - film_d[kf] as f64 + 0.0) * c.level_k * c.dif
+                    };
+                    if ly > c.level_clamp {
+                        ly = c.level_clamp;
+                    } else if ly < -c.level_clamp {
+                        ly = -c.level_clamp;
+                    }
+                    ex += lx;
+                    ey += ly;
 
-                // Backrun (extensão, PÓS-freio) — **só o EMPURRÃO**. O levante
-                // e o orçamento de floração são de `backrun_rows`, e é isso
-                // que tira a escrita cross-linha daqui.
-                if c.backrun && bloom_full[fi] < 6 {
-                    let thr = 0.8 + 0.2 * hash2_signed(x, y, BLOOM_SEED);
-                    for n_idx in 0..4 {
-                        let dxn: i64 = match n_idx {
-                            0 => -1,
-                            1 => 1,
-                            _ => 0,
-                        };
-                        let dyn_: i64 = match n_idx {
-                            2 => -1,
-                            3 => 1,
-                            _ => 0,
-                        };
-                        let nb = (fi as i64 + dxn * rf + dyn_ * rf * fine_s as i64) as usize;
-                        let gap = f - film_full[nb] as f64;
-                        if gap > thr && sett_full[nb] as f64 > 0.0 {
-                            let push = c.ext_backrun * gap.min(1.5) * 0.5;
-                            if dxn != 0 {
-                                ex += dxn as f64 * push;
-                            } else {
-                                ey += dyn_ as f64 * push;
+                    // Capilar: só tinta fina segue o dente do papel.
+                    if (susp_full[fi] as f64 + sett_full[fi] as f64) < c.cap_gate {
+                        let pc = paper_m[kf] as f64;
+                        let pl = paper_m[kfl] as f64;
+                        let prr = paper_m[kfr] as f64;
+                        ex += if pl > pc {
+                            if pc < prr { pl - prr } else { pc - prr }
+                        } else if pc < prr {
+                            pl - pc
+                        } else {
+                            pl - prr
+                        } * c.cap_k
+                            * c.dif;
+                        let pu = paper_u[kf] as f64;
+                        let pd = paper_d[kf] as f64;
+                        ey += if pu > pc {
+                            if pc < pd { pu - pd } else { pc - pd }
+                        } else if pc < pd {
+                            pu - pc
+                        } else {
+                            pu - pd
+                        } * c.cap_k
+                            * c.dif;
+                    }
+
+                    // Viscosidade: água funda arrasta os vizinhos do campo
+                    // persistente. É uma MÉDIA — adimensional, sem `dif`.
+                    if f > c.visc_threshold {
+                        ex = 0.2 * ex
+                            + 0.2
+                                * (velx_m[k - 1] as f64
+                                    + velx_m[k + 1] as f64
+                                    + velx_u[k] as f64
+                                    + velx_d[k] as f64);
+                        ey = 0.2 * ey
+                            + 0.2
+                                * (vely_m[k - 1] as f64
+                                    + vely_m[k + 1] as f64
+                                    + vely_u[k] as f64
+                                    + vely_d[k] as f64);
+                    }
+
+                    // ⚠️ O CARIMBO DE UMIDADE não mora aqui — ver `wet_stamp_rows`.
+
+                    // Fingering (extensão, PRÉ-freio).
+                    if c.fingering && f > 0.1 {
+                        let dxs = js_round_i64(c.gnx);
+                        let dys = js_round_i64(c.gny);
+                        let j = i as i64 + dxs + dys * s as i64;
+                        let jf = fi as i64 + dxs * rf + dys * rf * fine_s as i64;
+                        if j >= 0
+                            && j < cells
+                            && jf >= 0
+                            && jf < fine_cells
+                            && film_full[jf as usize] as f64 <= 0.01
+                        {
+                            let phase = (2.0
+                                * std::f64::consts::PI
+                                * (x as f64 * c.t_axis_x + y as f64 * c.t_axis_y))
+                                / c.wave_len;
+                            let push = c.ext_fingering * f.min(2.0);
+                            let sn = libm::sin(phase);
+                            let cs = libm::cos(phase);
+                            ex += c.gnx * push * sn + c.t_axis_x * push * 0.3 * cs;
+                            ey += c.gny * push * sn + c.t_axis_y * push * 0.3 * cs;
+                        }
+                    }
+
+                    // Freio de absorvência por look-ahead.
+                    //
+                    // ⚠️ **`wet_full` é o `wet` do INÍCIO do passo** — é aqui que a
+                    // independência de ordem é ganha, e é a única diferença de
+                    // desenho entre este passe e o Gauss-Seidel.
+                    let s_len = c.brake_reach * c.dif / ((ex * ex + ey * ey).sqrt() + 0.01);
+                    let dxs = (ex * s_len).trunc() as i64;
+                    let dys = (ey * s_len).trunc() as i64;
+                    let probe = i as i64 + dxs + dys * s as i64;
+                    let probe_f = fi as i64 + dxs * rf + dys * rf * fine_s as i64;
+                    if probe >= 0 && probe < cells && probe_f >= 0 && probe_f < fine_cells {
+                        let pu = probe_f as usize;
+                        let mut brake = film_full[pu] as f64 + (3.0 / 255.0) * wet_full[pu] as f64
+                            - c.brake_bias;
+                        if brake < 0.05 {
+                            brake = 0.05;
+                        } else if brake > 1.0 {
+                            brake = 1.0;
+                        }
+                        ex *= brake;
+                        ey *= brake;
+                    }
+
+                    // Backrun (extensão, PÓS-freio) — **só o EMPURRÃO**. O levante
+                    // e o orçamento de floração são de `backrun_rows`, e é isso
+                    // que tira a escrita cross-linha daqui.
+                    if c.backrun && bloom_full[fi] < 6 {
+                        let thr = 0.8 + 0.2 * hash2_signed(x, y, BLOOM_SEED);
+                        for n_idx in 0..4 {
+                            let dxn: i64 = match n_idx {
+                                0 => -1,
+                                1 => 1,
+                                _ => 0,
+                            };
+                            let dyn_: i64 = match n_idx {
+                                2 => -1,
+                                3 => 1,
+                                _ => 0,
+                            };
+                            let nb = (fi as i64 + dxn * rf + dyn_ * rf * fine_s as i64) as usize;
+                            let gap = f - film_full[nb] as f64;
+                            if gap > thr && sett_full[nb] as f64 > 0.0 {
+                                let push = c.ext_backrun * gap.min(1.5) * 0.5;
+                                if dxn != 0 {
+                                    ex += dxn as f64 * push;
+                                } else {
+                                    ey += dyn_ as f64 * push;
+                                }
                             }
                         }
                     }
-                }
 
-                if let Some(gt) = c.gota {
-                    (ex, ey) = gt.aplica(ex, ey, fi, fine_s, film_full, wet_full);
+                    if let Some(gt) = c.gota {
+                        (ex, ey) = gt.aplica(ex, ey, fi, fine_s, film_full, wet_full);
+                    }
+                    if com_tensao {
+                        let par = (susp_full, sett_full);
+                        (ex, ey) =
+                            super::ladeira_do_oleo::cede(oleo, par, fi, f, c.max_v, (ex, ey));
+                        let cel = crate::grid::oleo_celula::da_celula(oleo, fi);
+                        let k = crate::meio::mobilidade(f64::from(cel.meio));
+                        (ex, ey) = (ex * k, ey * k);
+                    }
+                    fxr[x as usize] = clamp_sym(ex, c.max_v) as f32;
+                    fyr[x as usize] = clamp_sym(ey, c.max_v) as f32;
+                    i += 1;
                 }
-                if com_tensao {
-                    let par = (susp_full, sett_full);
-                    (ex, ey) = super::ladeira_do_oleo::cede(oleo, par, fi, f, c.max_v, (ex, ey));
-                    let cel = crate::grid::oleo_celula::da_celula(oleo, fi);
-                    let k = crate::meio::mobilidade(f64::from(cel.meio));
-                    (ex, ey) = (ex * k, ey * k);
-                }
-                fxr[x as usize] = clamp_sym(ex, c.max_v) as f32;
-                fyr[x as usize] = clamp_sym(ey, c.max_v) as f32;
-                i += 1;
             }
         },
     );
@@ -483,15 +490,18 @@ fn wet_stamp_rows(g: &mut Grid, mode: Rows) {
         return;
     }
     let spans_on = g.spans_enabled;
+    let (ftw, tiles_on) = (tile_words_for(geom.s), spans_on && g.tiles_enabled);
     let Grid {
         frow_lo: row_lo,
         frow_hi: row_hi,
+        frow_tiles,
         film,
         paper,
         active,
         wet,
         ..
     } = g;
+    let frow_tiles: &[u64] = frow_tiles;
     let film_full: &[f32] = film;
     let paper_full: &[f32] = paper;
     let active_full: &[u8] = active;
@@ -512,14 +522,16 @@ fn wet_stamp_rows(g: &mut Grid, mode: Rows) {
         if bx0 > bx1 {
             return;
         }
-        for x in bx0..=bx1 {
-            let px = crate::flow::flow_probe(x, gw, geom.rf) as usize;
-            let fi = fy * fine_s + px;
-            if active_full[fi] == 0 {
-                continue;
-            }
-            if film_full[fi] as f64 > 3.0 {
-                wr[px] = wet_byte_from_paper(paper_full[fi] as f64);
+        for (ra, rb) in span_runs(tiles_row_of(frow_tiles, ftw, tiles_on, y), bx0, bx1) {
+            for x in ra..=rb {
+                let px = crate::flow::flow_probe(x, gw, geom.rf) as usize;
+                let fi = fy * fine_s + px;
+                if active_full[fi] == 0 {
+                    continue;
+                }
+                if film_full[fi] as f64 > 3.0 {
+                    wr[px] = wet_byte_from_paper(paper_full[fi] as f64);
+                }
             }
         }
     });

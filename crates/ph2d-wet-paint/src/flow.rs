@@ -437,6 +437,51 @@ pub fn project_spans(
     }
 }
 
+/// Projeta a máscara de tiles da faixa FINA ([`crate::grid::faixa_tiles`]) na grade de fluxo: o tile de
+/// fluxo de uma linha liga se algum tile fino do bloco cobre uma coluna fina dele. Superconjunto, como o
+/// [`project_spans`]: toda célula de fluxo cujo probe cai num tile fino ligado cai num tile de fluxo ligado.
+/// Em `rf = 1` é a cópia das linhas `1..=fine_h`.
+pub fn project_tiles(
+    row_tiles: &[u64],
+    tw: usize,
+    fine_h: usize,
+    geom: &FlowGeom,
+    out: &mut [u64],
+) {
+    use crate::grid::faixa_tiles::TILE_FAIXA;
+    let ftw = crate::grid::faixa_tiles::tile_words_for(geom.s);
+    out.fill(0);
+    if row_tiles.is_empty() || out.len() < geom.rows * ftw {
+        return;
+    }
+    for y in 1..=fine_h as i32 {
+        let fy = fine_to_flow(y, geom.rf) as usize;
+        let src = &row_tiles[y as usize * tw..(y as usize + 1) * tw];
+        let dst = &mut out[fy * ftw..(fy + 1) * ftw];
+        if geom.rf == 1 {
+            for (d, s) in dst.iter_mut().zip(src) {
+                *d |= s;
+            }
+            continue;
+        }
+        for (k, &w) in src.iter().enumerate() {
+            let mut w = w;
+            while w != 0 {
+                let t = (k * 64 + w.trailing_zeros() as usize) as i32;
+                w &= w - 1;
+                let a = fine_to_flow((t * TILE_FAIXA).max(1), geom.rf) / TILE_FAIXA;
+                let b = fine_to_flow(t * TILE_FAIXA + TILE_FAIXA - 1, geom.rf) / TILE_FAIXA;
+                for ft in a..=b {
+                    let ft = ft as usize;
+                    if let Some(d) = dst.get_mut(ft >> 6) {
+                        *d |= 1 << (ft & 63);
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "flow_tests.rs"]
 mod flow_tests;

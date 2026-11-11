@@ -138,6 +138,7 @@ impl crate::grid::Grid {
             flow_y,
             frow_lo,
             frow_hi,
+            frow_tiles,
             wet,
             paper,
             active,
@@ -186,6 +187,7 @@ impl crate::grid::Grid {
             + de(flow_y)
             + de(frow_lo)
             + de(frow_hi)
+            + de(frow_tiles)
             + de(wet)
             + de(paper)
             + de(active)

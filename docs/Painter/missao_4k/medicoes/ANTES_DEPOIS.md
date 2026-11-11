@@ -140,3 +140,22 @@ caso novo **M5** = `PH2D_WET_OTICA_FORA=1` (de fábrica) × `=0`. Mínimo de 3 p
   `merge_dirty_otica` funde a faixa no sujo do motor e `wetpaint_composite` compõe o RETÂNGULO que une a faixa ao sujo da
   água que ainda evolui no traço — quase a caixa toda; na sonda não há água a evoluir. Próximo passo: contar a área
   composta por chamada no 1.º quadro depois do up, e compor a faixa à parte do sujo do motor.
+
+## M5 — a cura C3 da dívida Cheia (11/11, sozinho, load 0,3–2,9)
+
+Log temporário (`PH2D_LOG_CAIXA`, não comitado) em `wetpaint_composite_veiled`: caixa, área e ms de cada composição,
+`SO=M5 … mede_pen_up_4k.sh faixas 3840x2160 blocos 1|3` (Filbert, Wet, 4K, blocos).
+
+- **A hipótese do M4 CAIU:** a faixa NÃO se funde ao sujo da água. Antes da C3 (HEAD 9f650eeeb6), depois do up: +49 ms
+  UMA composição da 1.ª faixa sozinha, (1609,919)–(2148,1041), **66 420 células em 23,8 ms** (~0,36 µs/px: a faixa de
+  64 Ki px custava 24 ms, não ~1 ms como na sonda do Dabber); +130 ms a água (79 220 células, 18,1 ms, Cheia).
+- **Defeito achado:** o RESTO da dívida (1610,1041)–(2147,1161) **nunca se compôs** até ao Ctrl+Z a +3,1 s — a metade de
+  baixo do traço ficava com a luz Simples no repouso. Com a água a correr o motor nunca está em casa à entrada do tique (o
+  tique trá-lo DEPOIS); a C2 só compunha à entrada.
+- **Cura C3:** o tique chama a dívida também depois de trazer o motor (com o sujo dele já composto: a faixa vai sozinha),
+  faixas de 16 Ki px (tamanho fixo: o mesmo byte por quadro em qualquer máquina) e a seguinte só se o custo da anterior
+  couber nos 8 ms contados desde o início do quadro. Depois: 1.ª faixa 14–15 ms, o resto em ~9 quadros de 8–11 ms até
+  +300 ms; a água a +110 ms 16–18 ms.
+- **Soltar 4K blocos (6 corridas, mesmo binário; o M5 A = B no app, ambos em casa):** 41,0 · 34,9 · 34,0 · 40,1 · 42,0 ·
+  39,0 — mín **34,0** × 41,2 (C2) × 19,1 (Cheia no gesto). A faixa de 16 Ki custa ~0,85 µs/px (×2,4 a de 64 Ki): o
+  alcance da luz (~32 células de cada lado) entra em cada faixa — faixas mais baixas pagam mais margem.

@@ -120,6 +120,7 @@ impl PainterTool {
     /// motor de volta. O `dt` do shell deixou de ser entrada da água: era ele
     /// que fechava o laço de realimentação da era do agendamento (doc 28 §5.31).
     pub(in crate::tool::paint) fn wetpaint_tick(&mut self, dt_s: f32) {
+        let t_tique = std::time::Instant::now();
         // Doc 21 §F layer 2: the deposit flag must never survive into a tick.
         debug_assert!(!self.paint.wetpaint.deposit_pass);
         if self.paint.wetpaint.session.is_none()
@@ -166,7 +167,7 @@ impl PainterTool {
             }
             return;
         }
-        self.wet_luz_cheia_no_repouso();
+        self.wet_luz_cheia_no_repouso(t_tique);
         // Os dabs dos eventos deste quadro entram na tela ANTES de o motor ir para o worker.
         self.wet_compoe_o_pendente();
         self.wet_varre_oleo();
@@ -253,6 +254,8 @@ impl PainterTool {
                     // frame ainda paga.
                     crate::wet_diag::note_composite(t_comp.elapsed().as_secs_f32() * 1e3);
                 }
+                // O motor só está cá aqui quando a água corre: a dívida Cheia segue (B08c.M2 C3).
+                self.wet_luz_cheia_no_repouso(t_tique);
             }
         }
         if fora {

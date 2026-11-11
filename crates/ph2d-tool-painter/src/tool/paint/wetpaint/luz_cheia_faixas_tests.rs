@@ -46,13 +46,25 @@ fn blocos(w: u32, h: u32) -> Vec<u8> {
 }
 
 /// Um traço de Dabber com Real Oil (o pen-up do Filbert: a mesma óptica), o compositor ligado; devolve o pior
-/// tique (ms) do 1 s depois de soltar e se a tela assentada é a composição de casa ao byte.
-fn solta(w: u32, h: u32, faixa: Option<usize>) -> (f64, bool) {
-    forca_no_teste(Some(true));
+/// tique (ms) do 1 s depois de soltar, se a tela assentada é a composição de casa ao byte e se a dívida acabou nesse
+/// 1 s com a água a correr (o motor no worker entre tiques, como no app).
+fn solta(w: u32, h: u32, faixa: Option<usize>) -> (f64, bool, bool) {
+    solta_com("Oil/Dabber/Dabber.ph2d-brush.png", w, h, faixa, false)
+}
+
+fn solta_com(
+    pincel: &str,
+    w: u32,
+    h: u32,
+    faixa: Option<usize>,
+    um_por_tique: bool,
+) -> (f64, bool, bool) {
+    // O um-por-tique é o app (o Filbert compõe em casa: `[otica] 0 imagens`): sem compositor.
+    forca_no_teste(Some(!um_por_tique));
     let mut t = PainterTool::default();
     t.abre_a_sprite(blocos(w, h), w, h);
     t.set_paint_tool_mode("wetpaint");
-    t.preset_aplicar(&preset("Oil/Dabber/Dabber.ph2d-brush.png"))
+    t.preset_aplicar(&preset(pincel))
         .expect("o preset");
     t.set_wet_oleo_real_ligado(true);
     // A luz rasante (a da prancha B14b): a Simples difere da Cheia, senão a régua do repouso não vê a dívida.
@@ -86,6 +98,7 @@ fn solta(w: u32, h: u32, faixa: Option<usize>) -> (f64, bool) {
             "premissa: o gesto compôs Simples"
         );
         sess.otica.faixa_cheia_px = faixa;
+        sess.otica.orcamento_cheia = um_por_tique.then_some(Duration::ZERO);
         divida = sess.otica.simples.expect("a dívida");
         assert_eq!(sess.ratio, 1, "premissa: a célula é o píxel");
     }
@@ -102,13 +115,13 @@ fn solta(w: u32, h: u32, faixa: Option<usize>) -> (f64, bool) {
         pior = pior.max(ms);
         std::thread::sleep(Duration::from_millis(16));
     }
+    let resta = t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .and_then(|s| s.otica.simples);
     if std::env::var_os("SONDA_SERIE").is_some() {
-        let resta = t
-            .paint
-            .wetpaint
-            .session
-            .as_ref()
-            .and_then(|s| s.otica.simples);
         eprintln!("faixa {faixa:?}: resta {resta:?} tiques {serie:?}");
     }
     // Assenta: a água pára e a tela mostra tudo.
@@ -150,19 +163,29 @@ fn solta(w: u32, h: u32, faixa: Option<usize>) -> (f64, bool) {
     }
     let igual = n == 0;
     forca_no_teste(None);
-    (pior, igual)
+    (pior, igual, resta.is_none())
 }
 
 /// O portão: por faixas a tela do repouso é a de casa ao byte (o A também, a régua do caminho antigo).
 #[test]
 fn a_luz_cheia_por_faixas_acaba_na_tela_de_casa_ao_byte() {
     for faixa in [Some(usize::MAX), Some(64 * 64)] {
-        let (_, igual) = solta(640, 360, faixa);
+        let (_, igual, _) = solta(640, 360, faixa);
         assert!(
             igual,
             "faixa {faixa:?}: o repouso difere da composição de casa"
         );
     }
+}
+
+/// C3 (B08c.M2): a dívida sai inteira em 1 s SEM ninguém trazer o motor para casa — no app o motor vai ao worker
+/// em cada tique e a faixa seguinte esperava por um tique que o encontrasse em casa (nunca: o resto ficou Simples).
+#[test]
+fn a_divida_cheia_acaba_com_a_agua_a_correr() {
+    let (_, igual, drenou) =
+        solta_com("Oil/Flat/Filbert.ph2d-brush.png", 640, 360, Some(64 * 64), true);
+    assert!(igual, "o repouso difere da composição de casa");
+    assert!(drenou, "a dívida Cheia não acabou em 1 s com a água a correr");
 }
 
 #[test]
@@ -186,7 +209,7 @@ fn sonda_o_pior_tique_depois_de_soltar() {
             let fx = std::env::var("SONDA_FAIXA")
                 .ok()
                 .and_then(|v| v.parse().ok());
-            let (ms, igual) = solta(w, h, if de_uma_vez { Some(usize::MAX) } else { fx });
+            let (ms, igual, _) = solta(w, h, if de_uma_vez { Some(usize::MAX) } else { fx });
             assert!(igual, "o repouso difere da casa");
             if de_uma_vez { a.push(ms) } else { b.push(ms) }
         }

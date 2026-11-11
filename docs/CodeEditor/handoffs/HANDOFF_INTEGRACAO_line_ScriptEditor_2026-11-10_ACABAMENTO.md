@@ -315,6 +315,36 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   `letras::a_linha_do_codigo_tem_a_letra_do_texto_dos_problemas` passou a ler `code_stem_darkening_px`.
   Mutações exit 1: lei velha `Y > 0,5` (tabela + poço escuro) · `!=` (Light) · fundo = a própria tinta (poço escuro).
 
+- **«Crisp + stem darkening» do CHROME decide pelo TEMA (dono 10/11: «para a UI também não faz diferença», `4a072abdab`)** —
+  a lei velha `Y_tinta > 0,5` deixava de fora Text3 (`0,17–0,38`) e Accent (`0,31–0,68`) em todos os temas escuros, e o
+  Text2 do Forge/Oled. O `paint_text` não sabe o fundo: a shell publica o tema com o preset (`published::publish_text`,
+  no lugar do `set_text_rendering` do `hero/paint.rs`); `font_embolden_for` alarga, num tema `is_dark()`, toda a tinta
+  mais clara que `STEM_DARKENING_UI_SURFACE = BgElev` (a superfície mais clara do chrome escuro, `Y 0,009–0,156`); num
+  claro, nenhuma (nem a branca). Sem publicação: `Theme::default_for(ui_look())`. Quantidade `STEM_DARKENING_PX`
+  `0,05 → 0,075` (sonda `escurecimento_da_ui::a_quantidade_do_escurecimento_da_interface`, placa; rótulo do chrome,
+  Text1/2/3/Accent × PanelBg/Bg1/Bg2/BgElev/KanbanList/KanbanCard × Dark/Forge = 48 pares; mudam > 4/255 na caixa · tinta vs `+0`):
+
+  | px | +0,05 | **+0,075** | +0,1 | +0,125 | +0,15 |
+  |----|-------|------------|------|--------|-------|
+  | 11 | 6,3 % · +6,1 % | **9,4 % · +11,6 %** | 10,4 % · +16,0 % | 10,9 % · +20,3 % | 11,3 % · +24,3 % |
+  | 12 | 9,9 % · +4,7 % | **14,1 % · +8,7 %** | 15,1 % · +11,8 % | 15,6 % · +15,0 % | 16,2 % · +18,0 % |
+  | 13 | 9,3 % · +5,2 % | **13,0 % · +9,3 %** | 14,0 % · +12,8 % | 14,7 % · +16,3 % | 15,1 % · +19,3 % |
+  | 15 | 10,1 % · +4,4 % | **14,3 % · +7,9 %** | 15,1 % · +10,7 % | 15,9 % · +13,6 % | 16,3 % · +16,1 % |
+
+  Escolha = o maior com tinta ≤ +15 % em TODOS os corpos (o `0,1` dá +16 % a 11 px). Pintores: `paint_text` (2 sítios) e
+  `paint_text_rotated` já passavam pelo `font_embolden_for`; o `RichEditor` (verso do cartão) não — agora via o campo
+  novo `GlyphStyle.embolden` (`ph2d-vector`); o texto do Quadro (`ph2d-board-layout`, conteúdo) fica com `default()`;
+  o código tem a lei própria (`font_embolden_on`). Fotos (cena 13 passo 1, Edit ▸ Preferences… ▸ Text rendering;
+  `CLIQUES="62 11;105 89;305 205;500 255"` / `…;525 277"`): `smoke/au_ui_sem.png` (Crisp Heavy +), `smoke/au_ui_com.png`,
+  `smoke/au_ui_zoom.png` (Hierarchy e Transform, sem | com, 3×). Recortes Hierarchy+Inspector+timeline (360 300 px):
+  10 667 mudam > 4/255 (2,96 %), 825 > 16/255 (0,23 %), máx. 56/255 fora do relógio da timeline (186). Veredicto
+  honesto: chega a todo o rótulo, mas sobre o Crisp Heavy + (já pesado) a 1:1 e mesmo a 3× é quase imperceptível.
+  Testes `embolden_tests::on_a_dark_theme_every_chrome_ink_lighter_than_the_surface_is_emboldened` (novo),
+  `dark_ink_is_never_emboldened` (agora com o tema Dark publicado: a preta, abaixo do BgElev); `nitidez::o_escurecimento_aproxima_a_franja`
+  só imprime (a quantidade do código e do chrome mede-se nas duas sondas). Mutações exit 1: sem `is_dark()` · sem a
+  comparação com a superfície · lei velha `Y > 0,5` · `STEM_DARKENING_PX = 0,1` (sonda de placa). Sem teste: a chamada
+  `publish_text` do hero (o tema por omissão é o escuro). Clippy do workspace `-D warnings` verde.
+
 Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,40 s, já construído pelas fotos); a 2.ª:
 
 ```

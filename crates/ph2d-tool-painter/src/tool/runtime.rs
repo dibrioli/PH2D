@@ -226,6 +226,12 @@ impl PainterTool {
         self.undo.retained_bytes()
     }
 
+    /// O orçamento do histórico em vigor ([`crate::undo::history_budget_here`]).
+    #[must_use]
+    pub fn undo_max_bytes(&self) -> usize {
+        self.undo.max_bytes()
+    }
+
     // ── Apply / preview drive ───────────────────────────────────────────
 
     /// Requisita commit (Apply): the bridge fires `EditorAction::OneShotImageOp`

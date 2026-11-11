@@ -571,6 +571,12 @@ impl UndoController {
         self.cap();
     }
 
+    /// O orçamento em vigor.
+    #[must_use]
+    pub fn max_bytes(&self) -> usize {
+        self.max_bytes
+    }
+
     /// Descarta a ramificação de redo, devolvendo os bytes dela ao orçamento.
     fn drop_redo(&mut self) {
         for e in self.redo.drain(..) {

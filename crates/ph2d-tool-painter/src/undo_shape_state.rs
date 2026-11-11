@@ -149,6 +149,26 @@ pub const fn history_budget_bytes(width: u32, height: u32) -> usize {
     2 * doc + 256 * 1024 * 1024
 }
 
+/// **O orçamento do histórico que ESTA máquina dá** (B42.3): a fórmula do documento é o piso, e a RAM física
+/// sobe-o à fração de cada cache ([`ph2d_core::razao::FRACAO_DA_RAM`], `1/32`). Recurso: a RAM. Sem leitura,
+/// o piso. Medido (`mede_o_passo_de_undo_a_4k`, 3840×2160, traço de impasto de lado a lado, passo 22,45 MB, 11/11):
+///
+/// | máquina | orçamento | traços a 4K |
+/// |---|---|---|
+/// | sem leitura / 8 GiB | 509 MiB (piso) | 23 |
+/// | 32 GiB | 1 024 MiB | 46 |
+/// | 123 GiB (a do dono) | 3 943 MiB | 176 |
+#[must_use]
+pub fn history_budget_on(width: u32, height: u32, ram: Option<u64>) -> usize {
+    ph2d_core::razao::tecto_pela_ram(ram, 0).max(history_budget_bytes(width, height))
+}
+
+/// [`history_budget_on`] com a RAM física lida (uma vez por processo).
+#[must_use]
+pub fn history_budget_here(width: u32, height: u32) -> usize {
+    history_budget_on(width, height, ph2d_core::razao::ram_fisica())
+}
+
 /// Guarda de sanidade sobre o NÚMERO de passos, muito acima de qualquer sessão real.
 ///
 /// Não é o cap — o cap é [`DEFAULT_MAX_BYTES`]. Ele existe porque uma entrada pode custar ~zero byte

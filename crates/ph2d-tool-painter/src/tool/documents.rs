@@ -313,7 +313,7 @@ impl PainterTool {
         // nunca passou pelo `set_source`) carregaria o teto de *documento desconhecido* — apertado
         // demais para uma tela grande. Derivar aqui torna a resposta função do documento em TODA rota,
         // em vez de depender de por onde ele entrou.
-        self.undo.set_max_bytes(crate::undo::history_budget_bytes(
+        self.undo.set_max_bytes(crate::undo::history_budget_here(
             doc.source_size.0,
             doc.source_size.1,
         ));

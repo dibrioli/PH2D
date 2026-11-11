@@ -74,7 +74,7 @@ impl RasterEditTool for PainterTool {
         // único ponto em que o tamanho do canvas é decidido, e o histórico acabou de ser esvaziado —
         // dimensioná-lo em qualquer outro lugar seria um segundo dono do mesmo número.
         self.undo
-            .set_max_bytes(crate::undo::history_budget_bytes(width, height));
+            .set_max_bytes(crate::undo::history_budget_here(width, height));
     }
 
     /// Borrow the current composite iff it changed: o MESMO dreno do editor ([`Self::take_preview_arc`],

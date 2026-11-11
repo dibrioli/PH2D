@@ -178,7 +178,10 @@ pub use tool::{
     brush_falloff_weight_at, render_classic_flow_preview, set_pending_select_mods,
 };
 pub use tool::{DICA_DO_PARAMETRO, Dependente, Inercias, Natureza};
-pub use undo::{DEFAULT_MAX_BYTES, MAX_HISTORY_STEPS, UndoController, history_budget_bytes};
+pub use undo::{
+    DEFAULT_MAX_BYTES, MAX_HISTORY_STEPS, UndoController, history_budget_bytes, history_budget_here,
+    history_budget_on,
+};
 
 use ph2d_a11y::Role;
 use ph2d_core::MemoryBudget;

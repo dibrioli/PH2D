@@ -22,9 +22,10 @@ pub(crate) struct SessaoNoRestauro {
     tela: Arc<Vec<u8>>,
 }
 
-/// Quantas vezes o orçamento do undo as adormecidas seguram, em RAM. O crescimento é por CAMADA adormecida: uma camada
-/// cheia a 4096×2560 retém 577 MB (sonda `sonda_tinta_adormecida_nos_outros_modos`), logo cabem 4 antes de a mais antiga
-/// virar tinta morta.
+/// Quantas vezes o orçamento do undo DA MÁQUINA ([`crate::undo::history_budget_here`]) as adormecidas seguram. Recurso:
+/// a RAM (4/32 dela; o piso do documento sem leitura). B42.3: a calibração antiga dizia «577 MB por camada», mas eram
+/// 5 081 MB (IN-18); a 4K o piso (2,14 GB) não segurava UMA camada cheia, e a de outra camada morria. Com 123 GiB o
+/// tecto é 15,4 GiB: três camadas cheias de 5 GB.
 const ORCAMENTOS_DE_UNDO: usize = 4;
 
 /// Uma sessão parada, com a tela de quando parou. O `Arc` deixa a cópia do estado (o tocador de uma macro) sem copiar a
@@ -259,7 +260,7 @@ impl PainterTool {
         }
         lista.push(tinta);
         let (w, h) = self.source_size;
-        let teto = ORCAMENTOS_DE_UNDO * crate::undo::history_budget_bytes(w, h);
+        let teto = ORCAMENTOS_DE_UNDO * crate::undo::history_budget_here(w, h);
         let soma = |l: &[TintaAdormecida]| -> usize {
             l.iter()
                 .map(|a| a.bytes.load(std::sync::atomic::Ordering::Relaxed))

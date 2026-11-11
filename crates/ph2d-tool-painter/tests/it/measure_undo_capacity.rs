@@ -11,7 +11,9 @@
 //! ```
 
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
-use ph2d_tool_painter::{PainterTool, history_budget_bytes};
+use ph2d_tool_painter::{
+    PainterTool, history_budget_bytes, history_budget_here, history_budget_on,
+};
 
 const MB: f64 = 1_048_576.0;
 
@@ -78,4 +80,64 @@ fn the_byte_cap_buys_this_many_steps() {
         "o delta compra so {worst_gain:.1}x mais passos que um documento por endpoint na pior tela — \
          um passo voltou a ter a ordem de grandeza do documento"
     );
+}
+
+/// **B42.3 — o tecto do undo é o da RAM, não o da fórmula do documento.** Recurso: a RAM física, à fração
+/// de cada cache (`1/32`); a fórmula `2·doc + 256 MB` fica como piso (máquina sem leitura).
+#[test]
+fn teto_do_undo_deriva_da_ram() {
+    const GIB: u64 = 1 << 30;
+    let piso = history_budget_bytes(3840, 2160);
+    assert_eq!(
+        history_budget_on(3840, 2160, None),
+        piso,
+        "sem leitura, o piso"
+    );
+    assert_eq!(
+        history_budget_on(3840, 2160, Some(8 * GIB)),
+        piso,
+        "8 GiB: RAM/32 < piso"
+    );
+    assert_eq!(
+        history_budget_on(3840, 2160, Some(128 * GIB)),
+        (4 * GIB) as usize
+    );
+    // O documento aberto leva o da máquina, nas duas rotas (set_source e a troca de documento).
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 3840 * 2160 * 4], 3840, 2160);
+    assert_eq!(t.undo_max_bytes(), history_budget_here(3840, 2160));
+}
+
+/// O passo de undo a 3840×2160 (a tela 4K do produto, não 4096²): a tabela de `history_budget_on`.
+#[test]
+#[ignore = "sonda: imprime o passo e quantos cabem na RAM desta máquina"]
+fn mede_o_passo_de_undo_a_4k() {
+    let mut t = PainterTool::default();
+    t.set_source(vec![255u8; 3840 * 2160 * 4], 3840, 2160);
+    t.toggle_brush_impasto();
+    t.set_brush_size_px(24.0);
+    for k in 0..8 {
+        #[allow(clippy::cast_precision_loss)]
+        let y = 100.0 + (k as f32) * 24.0;
+        t.on_canvas_pointer(cp([100.0, y], PointerPhase::Down));
+        t.on_canvas_pointer(cp([3740.0, y], PointerPhase::Move));
+        t.on_canvas_pointer(cp([3740.0, y], PointerPhase::Up));
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let passo = t.undo_retained_bytes() as f64 / 8.0;
+    for (nome, ram) in [
+        ("sem leitura", None),
+        ("8 GiB", Some(8u64 << 30)),
+        ("32 GiB", Some(32u64 << 30)),
+        ("esta", ph2d_core::razao::ram_fisica()),
+    ] {
+        #[allow(clippy::cast_precision_loss)]
+        let b = history_budget_on(3840, 2160, ram) as f64;
+        println!(
+            "[undo-4k] {nome:>11}: orcamento {:>7.0} MB · passo {:.2} MB => {:.0} tracos",
+            b / MB,
+            passo / MB,
+            b / passo
+        );
+    }
 }

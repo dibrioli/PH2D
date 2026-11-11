@@ -1,4 +1,5 @@
 use super::*;
+use ph2d_editor_core::paint::resolve;
 use ph2d_timeline::{AnimTarget, Interp, KeyId, KeyView, PropKind};
 use ph2d_tokens::ColorToken;
 
@@ -76,7 +77,10 @@ fn as_curvas_se_leem_sobre_o_fundo_do_grafo_em_todo_tema() {
     for theme in Theme::ALL {
         let fundo = resolve(ColorToken::Bg0, theme);
         let d = [
-            dist(resolve(ColorToken::TimelineCurve, theme), fundo),
+            dist(
+                crate::folha_tinta::tinta(TimelineTinta::CurvaPrincipal, theme),
+                fundo,
+            ),
             dist(
                 crate::folha_tinta::tinta(TimelineTinta::CurvaSecundaria, theme),
                 fundo,
@@ -97,5 +101,5 @@ fn as_curvas_se_leem_sobre_o_fundo_do_grafo_em_todo_tema() {
     }
 }
 
-const PISO_PRINCIPAL: f64 = 0.33; // medido 0,388 (Candy), 10/11
+const PISO_PRINCIPAL: f64 = 0.33; // medido 0,420 (Candy, lilás CurvaPrincipal), 10/11
 const PISO_SECUNDARIA: f64 = 0.37; // medido 0,433 (PlumberGreen), 10/11

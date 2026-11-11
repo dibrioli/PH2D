@@ -61,7 +61,7 @@ pub(crate) fn paint_track(
     theme: Theme,
     state: &mut TimelinePanelState,
     rect: Rect,
-    label_w: f32,
+    label_w: Option<f32>,
     view: TimeView,
     track: &TrackView,
     values: &TrackValues,
@@ -109,17 +109,16 @@ pub(crate) fn paint_track(
         // draws on top of its A/B reference. `buffer_ghost` is `Some` only for the
         // track that owns the buffer (§5) — the same fact that shows the Swap chip.
         if let Some(ghost) = &track.buffer_ghost {
-            paint_curve(ctx, theme, &band, view, ghost, GHOST_W, ColorToken::Text3);
+            let cor = resolve(ColorToken::Text3, theme);
+            paint_curve(ctx, &band, view, ghost, GHOST_W, cor);
         }
-        paint_curve(
-            ctx,
-            theme,
-            &band,
-            view,
-            &track.keys,
-            CURVE_W,
-            ColorToken::TimelineCurve,
-        );
+        // O grafo grande (`label_w` `None`) pinta a escolhida em lilás, à parte das secundárias.
+        let cor = if label_w.is_none() {
+            crate::folha_tinta::tinta(ph2d_tokens::TimelineTinta::CurvaPrincipal, theme)
+        } else {
+            resolve(ColorToken::TimelineCurve, theme)
+        };
+        paint_curve(ctx, &band, view, &track.keys, CURVE_W, cor);
         paint_anchors(ctx, theme, state, &band, view, (track, values));
         paint_handles(ctx, theme, state, &band, view, track);
     }
@@ -135,7 +134,13 @@ pub(crate) fn paint_track(
     if !crate::curvas_vista::ativa(state) {
         paint_height_grip(ctx, theme, state, rect, target);
     }
-    graph_buffer::paint_buffer_buttons(ctx, theme, band_rect, track);
+    // O grafo grande (`label_w` `None`) tem o eixo direito 0–1 no canto: os botões ficam à esquerda dele.
+    let reserva = if label_w.is_none() {
+        crate::curvas_vista::eixo_direito_w(ctx)
+    } else {
+        0.0
+    };
+    graph_buffer::paint_buffer_buttons(ctx, theme, band_rect, track, reserva);
 }
 
 /// The band inside `rect`, aligned with the lanes (`t = view_start` on its left edge).
@@ -210,7 +215,7 @@ fn paint_frame(
     ctx: &mut PaintCtx,
     theme: Theme,
     (row, band_rect): (Rect, Rect),
-    label_w: f32,
+    label_w: Option<f32>,
     band: &Band,
     texto: bool,
     grandeza: Option<ph2d_timeline::PropKind>,
@@ -237,27 +242,32 @@ fn paint_frame(
     }
     let font = TypeToken::Xs.px();
     let x = row.x + Spacing::Xs.px();
-    let w = (label_w - Spacing::Xs.px() * 2.0).max(0.0);
     let color = resolve(ColorToken::Text3, theme);
     let u = crate::tracks_value::Unidades::of(ctx.host.project());
-    for (v, y) in [
-        (band.v_max, band_rect.y),
-        (band.v_min, band_rect.y + band_rect.h - font),
-    ] {
-        paint_text(
-            ctx.text_system,
-            ctx.scene,
-            &grandeza
-                .and_then(|p| crate::tracks_value::com_unidade(p, v, u))
-                .unwrap_or_else(|| {
-                    ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.2}")).into_owned()
-                }),
-            x,
-            y,
-            font,
-            w,
-            color,
-        );
+    let texto_de = |v: f64| {
+        grandeza
+            .and_then(|p| crate::tracks_value::com_unidade(p, v, u))
+            .unwrap_or_else(|| {
+                ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.2}")).into_owned()
+            })
+    };
+    let rotulos = [
+        (texto_de(band.v_max), band_rect.y),
+        (texto_de(band.v_min), band_rect.y + band_rect.h - font),
+    ];
+    // `None` = a escala pinta-se DENTRO da banda (vista Curves): a largura é a do texto, nunca cortada.
+    let w = label_w.map_or_else(
+        || {
+            ph2d_editor_core::paint::label_column_width(
+                ctx.text_system,
+                font,
+                rotulos.iter().map(|(t, _)| t.as_str()),
+            )
+        },
+        |l| (l - Spacing::Xs.px() * 2.0).max(0.0),
+    );
+    for (t, y) in &rotulos {
+        paint_text(ctx.text_system, ctx.scene, t, x, *y, font, w, color);
     }
 }
 
@@ -267,12 +277,11 @@ fn paint_frame(
 /// draw a different shape than the live curve would for the same keys (§5).
 fn paint_curve(
     ctx: &mut PaintCtx,
-    theme: Theme,
     band: &Band,
     view: TimeView,
     keys: &[KeyView],
     width: f32,
-    token: ColorToken,
+    color: ph2d_vector::Color,
 ) {
     let (left, right) = (band.rect.x, band.rect.x + band.rect.w);
     if right <= left {
@@ -286,7 +295,7 @@ fn paint_curve(
             points.push((x, band.y(f64::from(v))));
         }
     }
-    stroke_polyline(ctx.scene, &points, width, resolve(token, theme));
+    stroke_polyline(ctx.scene, &points, width, color);
 }
 
 /// A dot per key, on the curve, each a grab target for the value drag (W3.E5).

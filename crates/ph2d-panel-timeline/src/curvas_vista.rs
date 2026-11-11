@@ -8,7 +8,8 @@
 
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve, stroke_polyline};
+use ph2d_editor_core::interaction::util::format_number;
+use ph2d_editor_core::paint::{paint_text, rect_to_vello, stroke_polyline};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::Seg;
 use ph2d_editor_core::widget::ButtonState;
@@ -177,7 +178,6 @@ pub(crate) fn paint(
     let banda = crate::graph_paint::banda_de(grafo, view);
     // A principal pelo pintor do grafo por linha (moldura, gestos e intents incluídos); as outras por
     // cima da moldura dela, a 60 % e tracejadas.
-    let label_w = Spacing::Xl.px() * 2.0;
     let rect = Rect::new(
         view.time_x,
         grafo.y,
@@ -189,7 +189,7 @@ pub(crate) fn paint(
         theme,
         state,
         rect,
-        label_w,
+        None,
         view,
         &snap.tracks[p],
         &snap.values,
@@ -208,17 +208,17 @@ pub(crate) fn paint(
     ctx.scene.pop_layer();
     if secundaria.is_some() {
         let cor_eixo = cor.multiply_alpha(EIXO_ALFA);
-        let x = banda.x + banda.w - Spacing::Md.px();
-        let digito = ph2d_editor_core::interaction::util::format_number;
+        let w = eixo_direito_w(ctx) - Spacing::Xs.px() * 2.0;
+        let x = banda.x + banda.w - Spacing::Xs.px() - w;
         for (v, y) in [(1.0, banda.y), (0.0, banda.y + banda.h - fonte)] {
             paint_text(
                 ctx.text_system,
                 ctx.scene,
-                &digito(v),
+                &format_number(v),
                 x,
                 y,
                 fonte,
-                Spacing::Md.px(),
+                w,
                 cor_eixo,
             );
         }
@@ -230,6 +230,17 @@ pub(crate) fn paint(
         (p, secundaria),
         (area.x, grafo.y + grafo.h + Spacing::Xs.px()),
     );
+}
+
+/// A largura do eixo direito 0–1 (os números medidos e a folga dos dois lados) — o canto que os botões
+/// Store/Swap do grafo grande deixam livre.
+pub(crate) fn eixo_direito_w(ctx: &mut PaintCtx) -> f32 {
+    let (zero, um) = (format_number(0.0), format_number(1.0));
+    ph2d_editor_core::paint::label_column_width(
+        ctx.text_system,
+        TypeToken::Xs.px(),
+        [zero.as_str(), um.as_str()],
+    ) + Spacing::Xs.px() * 2.0
 }
 
 /// A curva de `t` normalizada pelo próprio intervalo visível: o mínimo toca o fundo, o máximo o topo.
@@ -311,11 +322,11 @@ fn legenda(
         x += w + Spacing::Md.px();
     };
     let nome = |i: usize| crate::tracks::propriedade_snap(snap, snap.tracks[i].prop, u);
-    // A principal veste o token do grafo por linha (é o mesmo pintor que a desenha).
+    // A principal veste a cor com que o `paint_track` a pinta no grafo grande.
     item(
         ctx,
         nome(p),
-        resolve(ph2d_tokens::ColorToken::TimelineCurve, theme),
+        crate::folha_tinta::tinta(TimelineTinta::CurvaPrincipal, theme),
     );
     if let Some(s) = s {
         let t = ph2d_i18n::tr("panel.timeline.view.normalized").replace("{name}", &nome(s));

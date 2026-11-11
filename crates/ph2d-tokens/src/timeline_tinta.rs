@@ -88,6 +88,9 @@ pub enum TimelineTinta {
     MudadoContorno,
     /// Doc 17, item 5: a curva de outra linha na vista Curves, normalizada no eixo direito (maquete B2: `#5FBFF2`).
     CurvaSecundaria,
+    /// Doc 17, item 5: a curva ESCOLHIDA na vista Curves — lilás, para não se confundir com as
+    /// secundárias azuis (maquete B2: `#B79CFF`). O grafo por linha continua no `TimelineCurve`.
+    CurvaPrincipal,
 }
 
 /// As cores das peças de clipe, na ordem da maquete; o clipe `i` veste `PECAS[i % PECAS.len()]`.
@@ -135,6 +138,7 @@ impl TimelineTinta {
             Self::PesoPilula => (T::KanbanList, [33, 37, 52]),
             Self::OlhoMudo => (T::KanbanList, [137, 83, 87]),
             Self::CurvaSecundaria => (T::KanbanBlueBold, [95, 191, 242]),
+            Self::CurvaPrincipal => (T::KanbanPurpleBold, [183, 156, 255]),
         }
     }
 

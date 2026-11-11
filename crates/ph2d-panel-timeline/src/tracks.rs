@@ -305,7 +305,8 @@ pub(crate) fn paint_rows(
         paint_lane_keys(ctx, theme, track, view, preview_dx, y, lane);
         if h > ROW_H_PX {
             let band = Rect::new(region.x, y + ROW_H_PX, region.w, h - ROW_H_PX);
-            graph_paint::paint_track(ctx, theme, state, band, label_w, view, track, &snap.values);
+            let escala = Some(label_w);
+            graph_paint::paint_track(ctx, theme, state, band, escala, view, track, &snap.values);
         }
     }
     if curvas {

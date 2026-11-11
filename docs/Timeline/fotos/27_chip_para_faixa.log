@@ -2,18 +2,18 @@ gilrs: initialized; no gamepads connected yet
 audio: Default Audio Device @ 48000 Hz, 2 ch, F32
 PH2D desktop shell starting (close window or Cmd+Q to exit)…
 [ph2d-gpu] surface present mode: Fifo
-[   315ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
-[   342ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
-[   342ms] M7: ScriptHost initialized (placeholder script loaded)
+[   265ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   286ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   286ms] M7: ScriptHost initialized (placeholder script loaded)
 [ph2d] theme = dark
-[   350ms] M11: VelloPass initialized (1024×768 intermediate)
-[   357ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
-[   372ms] PR 8: tool registry built (14 manifests, installed in editor)
-[   402ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
-[   411ms] lifecycle: Foreground
-[   411ms] resize: 1024x768 @ 1.00x scale
+[   296ms] M11: VelloPass initialized (1024×768 intermediate)
+[   301ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   315ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   344ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   351ms] lifecycle: Foreground
+[   351ms] resize: 1024x768 @ 1.00x scale
 [nest-smoke] Hero: clips idle walk jump swing shake; Run & jump 2x na cena, Idle pack nao posto, Step 1x dentro do Idle pack; faixas Base 1.0, Upper body 0.6, FX MUDA (o olho solta o shake de +-0.6 X em [2.75, 3.75)). Abre em Arrange, a tocar [0,6): as sobreposicoes sao mesclas.
 [ph2d-gpu] surface present mode → Immediate
-[   420ms] resize: 1930x1012 @ 1.00x scale
-warn: dropped 0.267s of sim time (max_substeps cap)
+[   360ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 0.217s of sim time (max_substeps cap)
 [ph2d-gpu] surface present mode → Fifo

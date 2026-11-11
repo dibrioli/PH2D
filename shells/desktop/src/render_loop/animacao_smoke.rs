@@ -126,6 +126,8 @@ impl crate::App {
         key(doc, heroi, PropKind::TranslationY, 0.0, 0.0);
         key(doc, heroi, PropKind::TranslationY, 0.5, 1.5);
         key(doc, heroi, PropKind::TranslationY, 1.0, 0.0);
+        key(doc, heroi, PropKind::TranslationX, 0.0, -3.0);
+        key(doc, heroi, PropKind::TranslationX, 1.0, -1.0);
         doc.set_clip_length_override(pular, Some(1.0));
         doc.set_active(andar);
 

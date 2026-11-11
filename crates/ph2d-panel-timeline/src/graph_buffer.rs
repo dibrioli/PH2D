@@ -11,9 +11,9 @@ use super::*;
 use ph2d_editor_core::interaction::BufferAction;
 use ph2d_editor_core::paint::paint_text_centered;
 
-/// Buffer-curve chip: a fixed-width box so "Store" and "Swap" align; both words fit
-/// at the Xs type token.
-const BUF_BTN_W: f32 = 38.0; // LITERAL-PX-OK: buffer chip width
+/// Buffer-curve chip: the narrowest box (both chips the SAME width, so "Store" and "Swap" align);
+/// it grows to the wider word, measured — a fixed width cut "Store" to «St…» (foto 26, 10/11).
+const BUF_BTN_W: f32 = 38.0; // LITERAL-PX-OK: buffer chip minimum width
 const BUF_BTN_H: f32 = 15.0; // LITERAL-PX-OK: buffer chip height
 const BUF_BTN_GAP: f32 = 4.0; // LITERAL-PX-OK: buffer chip gap + band inset
 
@@ -31,17 +31,28 @@ pub(super) fn paint_buffer_buttons(
     theme: Theme,
     band_rect: Rect,
     track: &TrackView,
+    reserva_direita: f32,
 ) {
     let target = track.target.get();
     let top = band_rect.y + BUF_BTN_GAP;
-    let mut right = band_rect.x + band_rect.w - BUF_BTN_GAP;
+    let mut right = band_rect.x + band_rect.w - BUF_BTN_GAP - reserva_direita;
+    let (swap, store) = (
+        ph2d_i18n::tr("panel.timeline.buffer.swap"),
+        ph2d_i18n::tr("panel.timeline.buffer.store"),
+    );
+    let w = BUF_BTN_W.max(
+        ph2d_editor_core::paint::label_column_width(
+            ctx.text_system,
+            TypeToken::Xs.px(),
+            [swap, store],
+        ) + Spacing::Md.px() * 2.0, // o respiro de `label_budget`
+    );
     if track.buffer_ghost.is_some() {
         right = paint_buffer_chip(
             ctx,
             theme,
-            ph2d_i18n::tr("panel.timeline.buffer.swap"),
-            right,
-            top,
+            swap,
+            (right, top, w),
             target,
             BufferAction::Swap,
         );
@@ -49,9 +60,8 @@ pub(super) fn paint_buffer_buttons(
     paint_buffer_chip(
         ctx,
         theme,
-        ph2d_i18n::tr("panel.timeline.buffer.store"),
-        right,
-        top,
+        store,
+        (right, top, w),
         target,
         BufferAction::Store,
     );
@@ -65,13 +75,12 @@ fn paint_buffer_chip(
     ctx: &mut PaintCtx,
     theme: Theme,
     label: &str,
-    right: f32,
-    top: f32,
+    (right, top, w): (f32, f32, f32),
     target: u64,
     action: BufferAction,
 ) -> f32 {
     let accent = matches!(action, BufferAction::Swap);
-    let rect = Rect::new(right - BUF_BTN_W, top, BUF_BTN_W, BUF_BTN_H);
+    let rect = Rect::new(right - w, top, w, BUF_BTN_H);
     let id = ids::timeline_buffer_button_id(target, action as u8);
     let hot = ctx.host.store().hot_id() == Some(id);
     // ⭐ Raio e moldura pela porta do TEMA: plano num tema moderno.

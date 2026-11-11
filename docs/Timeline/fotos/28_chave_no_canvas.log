@@ -1,0 +1,19 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   275ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   298ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   298ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   306ms] M11: VelloPass initialized (1024×768 intermediate)
+[   311ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   324ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   353ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   361ms] lifecycle: Foreground
+[   361ms] resize: 1024x768 @ 1.00x scale
+[animacao-smoke] Herói ▸ Clips (andar, pular) · Espada (filha) · Inimigo (Animação da Cena). A Timeline diz «Animation: Herói»; clique no Inimigo e ela mostra a da Cena.
+[ph2d-gpu] surface present mode → Immediate
+[   371ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 0.233s of sim time (max_substeps cap)
+[ph2d-gpu] surface present mode → Fifo

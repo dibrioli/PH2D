@@ -40,45 +40,46 @@ const FAIXA: usize = 32;
 
 /// O pó da tela `rgba` (`w`×`h`): o alfa desfocado por três caixas em cada eixo; vazio se a camada não tem tinta.
 fn po_da_tela(rgba: &[u8], w: usize, h: usize) -> Vec<u8> {
-    if !rgba.as_chunks::<4>().0.iter().any(|p| p[3] != 0) {
+    let px = rgba.as_chunks::<4>().0;
+    if w == 0 || !px.par_chunks(w).any(|l| l.iter().any(|p| p[3] != 0)) {
         return Vec::new();
     }
-    let mut a: Vec<f32> = rgba
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .map(|p| f32::from(p[3]) / 255.0)
-        .collect();
-    a.par_chunks_mut(w)
-        .for_each_init(|| vec![0.0f32; w], |tmp, linha| {
-            for _ in 0..3 {
-                caixa(linha, tmp, RAIO_DA_CAIXA);
-                linha.copy_from_slice(tmp);
+    // Cada linha converte o seu alfa e corre as três caixas em pingue-pongue (a → tmp → a → tmp, tmp volta à linha).
+    let mut a = vec![0.0f32; w * h];
+    a.par_chunks_mut(w).zip(px.par_chunks(w)).for_each_init(
+        || vec![0.0f32; w],
+        |tmp, (linha, src)| {
+            if src.iter().all(|p| p[3] == 0) {
+                return; // a caixa de zeros dá +0.0: o que a linha já tem
             }
-        });
+            for (d, p) in linha.iter_mut().zip(src) {
+                *d = f32::from(p[3]) / 255.0;
+            }
+            caixa(linha, tmp, RAIO_DA_CAIXA);
+            caixa(tmp, linha, RAIO_DA_CAIXA);
+            caixa(linha, tmp, RAIO_DA_CAIXA);
+            linha.copy_from_slice(tmp);
+        },
+    );
     // Cada faixa copia as suas colunas (linha a linha, contíguas), corre as três caixas verticais e quantiza.
     let mut faixas = vec![0u8; w * h];
-    faixas
-        .par_chunks_mut(h * FAIXA)
-        .enumerate()
-        .for_each_init(
-            || (vec![0.0f32; h * FAIXA], vec![0.0f32; h * FAIXA]),
-            |(f, g), (s, saida)| {
-                let x0 = s * FAIXA;
-                let l = saida.len() / h;
-                let (f, g) = (&mut f[..h * l], &mut g[..h * l]);
-                for (y, dst) in f.chunks_exact_mut(l).enumerate() {
-                    dst.copy_from_slice(&a[y * w + x0..y * w + x0 + l]);
-                }
-                for _ in 0..3 {
-                    caixa_em_faixa(f, g, l, RAIO_DA_CAIXA);
-                    f.copy_from_slice(g);
-                }
-                for (o, v) in saida.iter_mut().zip(f.iter()) {
-                    *o = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
-                }
-            },
-        );
+    faixas.par_chunks_mut(h * FAIXA).enumerate().for_each_init(
+        || (vec![0.0f32; h * FAIXA], vec![0.0f32; h * FAIXA]),
+        |(f, g), (s, saida)| {
+            let x0 = s * FAIXA;
+            let l = saida.len() / h;
+            let (f, g) = (&mut f[..h * l], &mut g[..h * l]);
+            for (y, dst) in f.chunks_exact_mut(l).enumerate() {
+                dst.copy_from_slice(&a[y * w + x0..y * w + x0 + l]);
+            }
+            caixa_em_faixa(f, g, l, RAIO_DA_CAIXA);
+            caixa_em_faixa(g, f, l, RAIO_DA_CAIXA);
+            caixa_em_faixa(f, g, l, RAIO_DA_CAIXA);
+            for (o, v) in saida.iter_mut().zip(g.iter()) {
+                *o = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            }
+        },
+    );
     let mut out = vec![0u8; w * h];
     out.par_chunks_mut(w).enumerate().for_each(|(y, linha)| {
         for (s, faixa) in faixas.chunks(h * FAIXA).enumerate() {

@@ -108,6 +108,13 @@
 | onda 12 | B49 | bloqueado (cf846e49de): passo 2 do B49.1 (pó por ladrilho 256²) mexe em stamp_cache.rs e stamp_ramp_routes.rs, com mudanças do B26a por commitar. Pen-down 4K já 12,6 → 5,8 ms. Planeador decide. |
 | onda 12 | B26a | parcial (7d6ef9b53d): B26.A2 o t do dente do papel lido de memória própria do GraoCache: 0,149 → 0,045 ms/dab (3,31×), ao byte. Falta B26.1 (RLE da máscara) e a rota stamp.rs:644. |
 | onda 12 | verificação | verde. |
+| onda 13 | B13a-cont | parcial (9f9028a31b): secagem e sedimenta andam por span_runs, ao bit; longe 65,1 → 22,1 ms/12 quadros, vão 0,99 → 0,76. Falta a grade de fluxo (frow_tiles). Smear Wet já vermelho antes. |
+| onda 13 | B17b-cont5+B20.7 | bloqueado (nenhum): último fad04b99be; verde não visto, pois dormente.rs:140 não compilava (campos novos do Grid). Falta correr a_textura_e_o_espelho e medir Ctrl+Z 4K. |
+| onda 13 | B49-cont | feito (3f843b81b1): B49.1 fechado na crate real; pó por ladrilho 256², pen-down 4K Pastel 6,65 → 2,62 ms. Prancha B49-cont; alarmes de pincel vermelhos (46 presets), não regravados. |
+| onda 13 | B33 | recusa medida (618996fd16): B33.2 recusado; o Wet do app usa o papel comum (sample_tiled_rot_wrapped), o ladrilho 512 só existe no motor isolado. Só linha do BACKLOG, sem código. |
+| onda 13 | B35a | parcial (87034db1d0): B35.A3 feito; o cartão do Tuning não mede texto em quadro parado (cabe_memo). Gate o_tuning_nao_mede_texto_em_quadro_parado: 16 → 8 medidas. Falta B35.3, .5, .6, .7. |
+| onda 13 | B12a-cont2 | recusa medida (d3b11719a0): só medição, 2.ª rodada A·B 4K. Ctrl+Z Wet: Round 54 → 30 ms, Wash 59 → 46; B12.2 feito. B12.1 recusado: bring_home/COW fora do topo do perfil. |
+| onda 13 | verificação | verde: ph2d-painter-brush passou no check; o alvo ph2d-paint-brush do pedido não existe (erro de nome, não do código). |
 
 ## Fatos medidos que mudam a ordem
 

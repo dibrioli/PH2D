@@ -45,9 +45,32 @@ static N: [AtomicUsize; 4] = [
     AtomicUsize::new(0),
 ];
 
-/// Está armado?
+/// Leituras do ambiente feitas por [`on`] (o gate do B27.3 conta-as).
+#[cfg(test)]
+static LEITURAS: AtomicUsize = AtomicUsize::new(0);
+
+/// Está armado? Chamado por evento e por tique (B27.3).
 pub(crate) fn on() -> bool {
-    std::env::var_os("PH2D_RIBBON_DIAG").is_some()
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| {
+        #[cfg(test)]
+        LEITURAS.fetch_add(1, Ordering::Relaxed);
+        std::env::var_os("PH2D_RIBBON_DIAG").is_some()
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    /// B27.3: `note` corre a cada evento e a cada tique; o ambiente lê-se UMA vez no processo.
+    #[test]
+    fn o_diag_da_fita_le_o_ambiente_uma_vez_so() {
+        for _ in 0..1000 {
+            super::note(super::Source::Extend, 1);
+            super::note(super::Source::Tick, 1);
+        }
+        let n = super::LEITURAS.load(super::Ordering::Relaxed);
+        assert!(n <= 1, "{n} leituras do ambiente em 2000 eventos/tiques");
+    }
 }
 
 /// Quantos fios o MOTOR costurou, e quantos o depósito de fato CARIMBOU.

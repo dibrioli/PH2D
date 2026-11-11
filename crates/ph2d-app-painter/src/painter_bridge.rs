@@ -259,7 +259,9 @@ pub fn dispatch(
             ));
             // `PH2D_PREVIEW_DUMP=<dir>`: dump each frame's CPU composite (pre-overlay) as PNG,
             // capped (BUGS_painter.md #11). Zero cost when unset.
-            if let Some(dir) = std::env::var_os("PH2D_PREVIEW_DUMP") {
+            static DUMP: std::sync::OnceLock<Option<std::ffi::OsString>> =
+                std::sync::OnceLock::new();
+            if let Some(dir) = DUMP.get_or_init(|| std::env::var_os("PH2D_PREVIEW_DUMP")) {
                 use std::sync::atomic::{AtomicU32, Ordering};
                 static N: AtomicU32 = AtomicU32::new(0);
                 let n = N.fetch_add(1, Ordering::Relaxed);
@@ -306,7 +308,8 @@ pub fn dispatch(
         }
         // `PH2D_PREVIEW_DIAG=1`: logs the preview-slot producer + CPU bbox, on CHANGE only
         // (BUGS_painter.md #11).
-        if std::env::var_os("PH2D_PREVIEW_DIAG").is_some() {
+        static PREVIEW_DIAG: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        if *PREVIEW_DIAG.get_or_init(|| std::env::var_os("PH2D_PREVIEW_DIAG").is_some()) {
             let now = (gpu_owns_preview, painter_dirty_bbox);
             if crate::paint_perf::preview_diag_changed(now) {
                 eprintln!(

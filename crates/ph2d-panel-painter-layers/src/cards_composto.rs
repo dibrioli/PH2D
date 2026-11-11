@@ -61,7 +61,8 @@ fn arma_camada(store: &mut WidgetStore, b: &BrushSettings, f: &BrushSettings, po
             pids::PAINTER_BRUSH_COMPOSITE_STRENGTH_CHIP[pos],
         ],
         b.composite_strength[pos].clamp(0.0, 1.0),
-        f.composite_strength[pos].clamp(0.0, 1.0),
+        // Toda camada que existe nasceu pelo `+`: a fábrica dela é a da camada nova, nunca o 0 da cauda (B35.8).
+        ph2d_tool_painter::COMPOSITE_NEW_LAYER_STRENGTH,
         crate::cards_topo::CASAS_DO_PINCEL,
     );
     crate::populate_composite_chips::liga_tamanho(store, b, pos);
@@ -288,3 +289,6 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
     }
     adiciona(c, b, y)
 }
+
+#[cfg(test)]
+mod fabrica_tests; // B35.8

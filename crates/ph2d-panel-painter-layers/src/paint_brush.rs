@@ -26,7 +26,7 @@ use ph2d_tool_painter::{BrushBlend, BrushSettings, Falloff, MAX_BRUSH_BLEND_MODE
 
 // The pre-publish `FALLBACK_BRUSH` snapshot lives in the sibling `brush_fallback` module (file-LOC cap);
 // re-exported here so `crate::paint_brush::FALLBACK_BRUSH` (tests + the body) stays stable.
-pub(crate) use crate::brush_fallback::FALLBACK_BRUSH;
+pub(crate) use crate::brush_fallback::{FALLBACK_BRUSH, fabrica_do_pincel};
 
 /// Paint the Brush-properties body rows from `top_y` (already panel-scroll-offset), returning the
 /// content-bottom `y`. The caller clips to the body viewport, measures the height for the scrollbar,

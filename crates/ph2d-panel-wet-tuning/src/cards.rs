@@ -89,7 +89,7 @@ pub(crate) fn prepare(store: &mut WidgetStore, brush: &BrushSettings) {
             CardFieldSpec {
                 step: row.step,
                 scrub: row.step,
-                default: Some(row.default),
+                default: Some(brush.wet_preset_base.knobs[row.knob]),
             },
         );
         if arrastado != Some(row.chip) {
@@ -381,3 +381,6 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod preset_base_tests; // B35.8

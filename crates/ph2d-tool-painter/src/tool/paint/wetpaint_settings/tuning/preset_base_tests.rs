@@ -67,3 +67,25 @@ fn reset_depois_de_carregar_p_devolve_p() {
         &diferem[..diferem.len().min(6)]
     );
 }
+
+/// O instantâneo publica o pincel que abriu: o duplo clique dos campos (cartão Wet, Shape, Tuning) lê-o.
+#[test]
+fn o_instantaneo_publica_o_preset_base_de_cada_preset() {
+    let mut caminhos = Vec::new();
+    presets_do_wet(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes/WetPainter"),
+        &mut caminhos,
+    );
+    for c in &caminhos {
+        let preset = ph2d_brush_presets::ler(&std::fs::read(c).unwrap()).unwrap();
+        let mut t = PainterTool::default();
+        t.set_paint_media(PaintMedia::WetPaint);
+        t.preset_aplicar(&preset).unwrap();
+        let p = t.paint.wetpaint.knobs;
+        t.paint
+            .wetpaint
+            .knobs
+            .set(KNOB_DEFS[0].knob, KNOB_DEFS[0].max);
+        assert_eq!(t.brush_settings().wet_preset_base.knobs, p.knobs, "{c:?}");
+    }
+}

@@ -148,6 +148,7 @@ pub use ph2d_painter_brush::{
     // law, so the picture and the paint cannot drift -- see `ph2d_painter_brush::taper`.
     taper::{MAX_FALL_OFF_DIAMETERS, MAX_TAPER_DIAMETERS, Taper},
 };
+pub use tool::COMPOSITE_NEW_LAYER_STRENGTH;
 pub use tool::paint::ferramenta_linhas::{FerramentaDoPincel, LinhaDaFerramenta, NAO_LE};
 pub use tool::paint::mao::{LINHAS_DA_MAO, LinhaDaMao, MAO_DE_FABRICA, N_LINHAS_DA_MAO};
 pub use tool::paint::marca::{

@@ -72,6 +72,9 @@ pub const N_CAMADAS: usize = MAX_CAMADAS;
 /// quadro inteiro. ⇒ o tecto é **`4`**, e ele nomeia o relógio, não o conforto.
 pub const MAX_TAMANHO_DA_CAMADA: f32 = 4.0;
 
+/// A força com que o `+` cria uma camada: a fábrica do duplo clique no Strength (B35.8).
+pub const FORCA_DA_CAMADA_NOVA: f32 = 1.0;
+
 /// O multiplicador que a camada PINTA: o autorado entre o piso do Spacing e o tecto (ver
 /// [`PainterTool::tamanho_da_camada`]). Uma lei, dois leitores: o motor e o número do painel.
 fn tamanho_efectivo(autorado: f32, spacing: f32) -> f32 {
@@ -257,7 +260,7 @@ impl CompositeLayer {
     pub(crate) fn nova(op: CompositeOp) -> Self {
         Self {
             op,
-            strength: 1.0,
+            strength: FORCA_DA_CAMADA_NOVA,
             ..Self::default()
         }
     }

@@ -111,7 +111,7 @@ pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
     arma_numeros(
         store,
         &numeros,
-        &todos_os_numeros(b, &paint_brush::FALLBACK_BRUSH),
+        &todos_os_numeros(b, &paint_brush::fabrica_do_pincel(b)),
     );
     for id in CAIXAS {
         let _ = esmaecer::poe_dica(store, &[id]);
@@ -322,7 +322,8 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, y: f32) -> f32 {
 
 /// Os volumes do Wet Paint: o que o painel de antes semeava ao pintar, e os chips dos valores rápidos.
 pub(crate) fn prepara_volumes(store: &mut WidgetStore, b: &BrushSettings) {
-    let fabrica = paint_wetpaint_presets::numeros_dos_volumes(b, &paint_brush::FALLBACK_BRUSH);
+    let fabrica =
+        paint_wetpaint_presets::numeros_dos_volumes(b, &paint_brush::fabrica_do_pincel(b));
     for ((n, rapido), (f, _)) in paint_wetpaint_presets::numeros_dos_volumes(b, b)
         .iter()
         .zip(fabrica)
@@ -362,3 +363,6 @@ pub(crate) fn volume(c: &mut CardCtx<'_>, n: &Numero, rapido: Option<usize>, y: 
     c.w = w;
     fundo
 }
+
+#[cfg(test)]
+mod preset_base_tests; // B35.8

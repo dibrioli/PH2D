@@ -464,6 +464,8 @@ pub struct BrushSettings {
     pub wetpaint: bool,
     /// The full authored knob table (doc 22): the curated rows and the Tuning table read this one value.
     pub wet_knobs: crate::WetKnobs,
+    /// O pincel que abriu (B35.8): o duplo clique num campo e o ↺ voltam a ele, nunca à fábrica.
+    pub wet_preset_base: crate::WetKnobs,
     /// A MÃO do meio de agora, por linha do cartão Pen (`LINHAS_DA_MAO`; L2).
     pub mao: [f64; crate::N_LINHAS_DA_MAO],
     /// O «Reset to brush preset» do cartão Pen tem para onde voltar (`PainterTool::mao_do_preset_disponivel`).

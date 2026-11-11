@@ -295,6 +295,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     wetpaint: false,
     meios: 0b1111,
     wet_knobs: ph2d_tool_painter::WetKnobs::DEFAULT,
+    wet_preset_base: ph2d_tool_painter::WetKnobs::DEFAULT,
     mao: ph2d_tool_painter::MAO_DE_FABRICA,
     mao_do_preset: false,
     marca: ph2d_tool_painter::MARCA_DE_FABRICA,
@@ -407,3 +408,11 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     impasto_wax_color: [1.0, 1.0, 1.0],
     inercias: ph2d_tool_painter::Inercias::NENHUMA,
 };
+
+/// A fábrica dos campos do Wet (B35.8): o pincel que abriu (`wet_preset_base`); o resto é o [`FALLBACK_BRUSH`].
+pub(crate) fn fabrica_do_pincel(b: &BrushSettings) -> BrushSettings {
+    BrushSettings {
+        wet_knobs: b.wet_preset_base,
+        ..FALLBACK_BRUSH
+    }
+}

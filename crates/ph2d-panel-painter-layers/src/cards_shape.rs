@@ -376,12 +376,16 @@ pub(crate) fn prepare(ctx: &mut PaintCtx, b: &BrushSettings) {
     }
     let store = ctx.host.store_mut();
     let numeros = todos(b, b);
-    crate::cards_wet::arma_numeros(store, &numeros, &todos(b, &paint_brush::FALLBACK_BRUSH));
+    crate::cards_wet::arma_numeros(
+        store,
+        &numeros,
+        &todos(b, &paint_brush::fabrica_do_pincel(b)),
+    );
     if le_a_forma(b) {
         crate::cards_wet::arma_numeros(
             store,
             &cards_penteado::numeros(b),
-            &cards_penteado::numeros(&paint_brush::FALLBACK_BRUSH),
+            &cards_penteado::numeros(&paint_brush::fabrica_do_pincel(b)),
         );
     }
     for id in [

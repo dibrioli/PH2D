@@ -254,7 +254,7 @@ def lote(pasta):
         print(f"| {os.path.basename(d)} | {carga} | " + " · ".join(f"{m[1]}/{m[2]}" for m in rod if m) + " |")
     # O `composite xN` do [frame] é o do fio da tela: com o compositor fora do fio (omissão) lê 0 — não é imagens/s.
     print("\n| corrida | pincel | teclas `]` | carga | pen-down ms ×6 | soltar máx 3 s ms ×6 "
-          "| passos água/s ×6 |\n|---|---|---|---|---|---|---|")
+          "| passos água/s ×6 | Ctrl+Z ms |\n|---|---|---|---|---|---|---|---|")
     for meta_f in sorted(glob.glob(os.path.join(pasta, "wet6", "*.meta"))):
         tag = meta_f[:-5]
         meta = json.loads(open(meta_f).read())
@@ -280,9 +280,12 @@ def lote(pasta):
             so.append(max((i for p, i in quadros if up < p <= marcas[f"fim{t}"]), default=0))
             fr = [f for f in frames if up < f[0] <= marcas[f"fim{t}"] + 500_000_000 and f[3]]
             pa.append(sum(f[2] for f in fr) / max(sum(f[3] for f in fr), 1e-9) if fr else None)
+        # CTRLZ=n (B12a-cont2): o maior intervalo de quadro no segundo depois de cada Ctrl+Z.
+        cz = [max((i for p, i in quadros if marcas[f"cz{k}"] < p <= marcas[f"cz{k}"] + 1_000_000_000), default=0)
+              for k in range(1, 20) if f"czfim{k}" in marcas]
         fmt = lambda v: " · ".join("—" if x is None else f"{x:.1f}" for x in v)
         print(f"| {os.path.basename(tag).split('_')[0]}_{os.path.basename(tag).split('_')[1]} | {meta['pincel']} "
-              f"| {meta['teclas']} | {meta['carga']} | {fmt(pd)} | {fmt(so)} | {fmt(pa)} |")
+              f"| {meta['teclas']} | {meta['carga']} | {fmt(pd)} | {fmt(so)} | {fmt(pa)} | {fmt(cz) or '—'} |")
 
 
 def amostras(perf):
@@ -303,6 +306,53 @@ def amostras(perf):
     # O nome do processo é o do BINÁRIO (`antes`, `head_…`): o fio sem nome próprio tem-no também.
     return [("principal" if pid == tid else ("rayon" if nome == nomes.get(pid) else nome), t, c)
             for pid, tid, nome, t, c in r]
+
+
+def wet6fn(pasta, top=14):
+    """`--wet6fn <SAIDA>` (B12a-cont2, CICLOS=1 com STRIP=none): por corrida, a linha PRINCIPAL no pen-down (toque → 1.º
+    movimento + 150 ms) e no segundo depois de cada Ctrl+Z: amostras (-F 997 ⇒ ≈ ms de CPU) contra o maior intervalo de
+    quadro (parede); a diferença é espera fora da CPU (o `bring_home` no `recv`). E as funções-folha (sem -g) da principal."""
+    import collections
+    import glob
+    import os
+
+    for meta_f in sorted(glob.glob(os.path.join(pasta, "wet6", "*.meta"))):
+        tag = meta_f[:-5]
+        if not os.path.exists(tag + ".perf"):
+            continue
+        linhas = [l.split() for l in open(tag + ".marcas")]
+        rel = next((p for p in linhas if p[0] == "relogio"), None)
+        off = int(rel[1]) - int(rel[2])
+        m = {p[0]: int(p[1]) - off for p in linhas if len(p) >= 2 and p[0] != "relogio"}
+        quadros = []
+        for linha in open(tag + ".log", errors="replace"):
+            if linha.startswith("[quadro-lento]"):
+                kv = dict(x.split("=") for x in linha.split()[1:])
+                quadros.append((int(kv["parede"]) - off, float(kv["intervalo"])))
+        out = subprocess.run(["perf", "script", "-i", tag + ".perf", "-F", "pid,tid,time,ip,sym", "--ns"],
+                             capture_output=True, text=True).stdout
+        am = []
+        for l in out.splitlines():
+            p = l.split(None, 2)
+            if len(p) < 2 or "/" not in p[0] or not p[1].endswith(":"):
+                continue
+            p = p + [""] if len(p) == 2 else p
+            pid, tid = (int(x) for x in p[0].split("/"))
+            if pid == tid:
+                am.append((int(round(float(p[1][:-1]) * 1e9)), (p[2].split(None, 1) + ["?"])[1].strip() if p[2].strip() else "?"))
+        jan = {"pen-down": [(m[f"down{t}"], m[f"traco{t}"] + 150_000_000) for t in range(1, 7) if f"fim{t}" in m],
+               "Ctrl+Z": [(m[f"cz{k}"], m[f"cz{k}"] + 1_000_000_000) for k in range(1, 20) if f"czfim{k}" in m]}
+        print(f"\n### {os.path.basename(tag)}")
+        for nome, js in jan.items():
+            if not js:
+                continue
+            cpu = [sum(1 for t, _ in am if a < t <= b) for a, b in js]
+            par = [max((i for p, i in quadros if a < p <= b), default=0) for a, b in js]
+            print(f"{nome}: maior intervalo ms {' · '.join(f'{x:.0f}' for x in par)} · CPU principal ≈ ms "
+                  f"{' · '.join(map(str, cpu))}")
+            c = collections.Counter(s for t, s in am if any(a < t <= b for a, b in js))
+            for sym, n in c.most_common(top):
+                print(f"  {n:5d}  {sym[:140]}")
 
 
 def ciclos(pasta):
@@ -442,6 +492,9 @@ if len(sys.argv) > 1 and sys.argv[1] == "--lote":
     lote(sys.argv[2])
     sys.exit(0)
 
+if len(sys.argv) > 1 and sys.argv[1] == "--wet6fn":
+    wet6fn(sys.argv[2])
+    sys.exit(0)
 if len(sys.argv) > 1 and sys.argv[1] == "--ciclos":
     ciclos(sys.argv[2])
     sys.exit(0)

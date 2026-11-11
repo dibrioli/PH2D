@@ -521,6 +521,10 @@ if [ "$1" = wet6 ]; then
       marca traco$t; DISPLAY=$D xdotool $cmd
       marca up$t; DISPLAY=$D xdotool mouseup 1; sleep 3; marca fim$t
     done
+    # CTRLZ=n (B12a-cont2): depois dos traços (o pen-down fica intacto), n Ctrl+Z com 1,5 s cada; marcas cz<k>/czfim<k>.
+    for k in $(seq 1 "${CTRLZ:-0}"); do
+      marca cz$k; DISPLAY=$D xdotool key ctrl+z; sleep 1.5; marca czfim$k
+    done
     [ -n "$PNG" ] && DISPLAY=$D import -window root "$W6/$TAG.png" 2>/dev/null
   fi
   kill -INT $APP 2>/dev/null
@@ -555,11 +559,12 @@ if [ "$1" = lote ]; then
   for i in $(seq 1 "$N"); do for v in A B; do
     [ $v = A ] && B=$BA || B=$BB
     mkdir -p "$S/lote/${v}_$i"; cut -d' ' -f1-3 /proc/loadavg > "$S/lote/${v}_$i/carga_oleo"
-    SAIDA=$S/lote/${v}_$i bash "$0" oleo 2880 "$B" > /dev/null 2>&1
+    # SO_WET=1 (B12a-cont2): só os dois wet6 sem aguada (com CTRLZ=n, o Ctrl+Z Wet 4K).
+    [ -z "$SO_WET" ] && SAIDA=$S/lote/${v}_$i bash "$0" oleo 2880 "$B" > /dev/null 2>&1
     cut -d' ' -f1-3 /proc/loadavg >> "$S/lote/${v}_$i/carga_oleo"
     SAIDA=$S bash "$0" wet6 3840x2160 "Wet Round" 0 "$B" "${v}_$i"
     SAIDA=$S bash "$0" wet6 3840x2160 "Wet Wash" 0 "$B" "${v}_$i"
-    SAIDA=$S bash "$0" wet6 3840x2160 "Wet Wash" "$AG" "$B" "${v}_$i"
+    [ -z "$SO_WET" ] && SAIDA=$S bash "$0" wet6 3840x2160 "Wet Wash" "$AG" "$B" "${v}_$i"
   done; done
   echo "[lote] feito: $S"
   exit 0

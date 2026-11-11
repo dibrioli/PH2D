@@ -126,6 +126,116 @@ fn caixa_em_faixa(src: &[f32], dst: &mut [f32], l: usize, r: usize) {
     }
 }
 
+/// Passo 2 do B49.1 (lei por JANELA, sem história): a média de cada caixa soma os `≤ 2r+1` vizinhos em ordem crescente,
+/// de `0.0` — o bit de um texel não depende de onde a janela começa, e um ladrilho com apron `3r` dá o mesmo que a
+/// tela inteira. Muda raros `u8` face à soma corrida de [`po_da_tela`]: liga-se a `prepara_o_po` com a prancha.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "B49.1 passo 2: liga-se a prepara_o_po com a prancha"
+    )
+)]
+pub(super) fn po_na_janela(
+    rgba: &[u8],
+    w: usize,
+    h: usize,
+    (x0, y0, x1, y1): (usize, usize, usize, usize),
+) -> Vec<u8> {
+    let r = RAIO_DA_CAIXA;
+    let (x1, y1) = (x1.min(w), y1.min(h));
+    if x0 >= x1 || y0 >= y1 {
+        return Vec::new();
+    }
+    let px = rgba.as_chunks::<4>().0;
+    // Linhas e colunas que a janela lê: 3 caixas = apron 3r, cortado à tela.
+    let (ly0, ly1) = (y0.saturating_sub(3 * r), (y1 + 3 * r).min(h));
+    let (lx0, lx1) = (x0.saturating_sub(3 * r), (x1 + 3 * r).min(w));
+    let lw = x1 - x0;
+    // Passe horizontal: cada linha lida → as colunas [x0, x1).
+    let mut a = vec![0.0f32; (ly1 - ly0) * lw];
+    a.par_chunks_mut(lw).enumerate().for_each_init(
+        || (Vec::new(), Vec::new()),
+        |(f, g), (i, saida)| {
+            let src = &px[(ly0 + i) * w + lx0..(ly0 + i) * w + lx1];
+            if src.iter().all(|p| p[3] == 0) {
+                return;
+            }
+            f.clear();
+            f.extend(src.iter().map(|p| f32::from(p[3]) / 255.0));
+            // Cada caixa estreita o domínio válido em r de cada lado (salvo na borda da tela).
+            let mut ini = lx0;
+            for passo in 0..3 {
+                let (a0, a1) = if passo == 2 {
+                    (x0, x1)
+                } else {
+                    let m = 2 - passo;
+                    (x0.saturating_sub(m * r), (x1 + m * r).min(w))
+                };
+                media_em_janela(f, ini, w, a0, a1, 1, r, g);
+                std::mem::swap(f, g);
+                ini = a0;
+            }
+            saida.copy_from_slice(f);
+        },
+    );
+    // Passe vertical: as `lw` colunas lado a lado, linha a linha.
+    let (mut f, mut g) = (a, Vec::new());
+    let mut ini = ly0;
+    for passo in 0..3 {
+        let (a0, a1) = if passo == 2 {
+            (y0, y1)
+        } else {
+            let m = 2 - passo;
+            (y0.saturating_sub(m * r), (y1 + m * r).min(h))
+        };
+        media_em_janela(&f, ini, h, a0, a1, lw, r, &mut g);
+        std::mem::swap(&mut f, &mut g);
+        ini = a0;
+    }
+    f.iter()
+        .map(|v| (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8)
+        .collect()
+}
+
+/// A média em caixa de raio `r` (cortada a `[0, n)`, renormalizada) das posições `[a0, a1)` de `src`, que guarda as
+/// posições `ini..` com `l` faixas por posição; a soma corre os vizinhos em ordem crescente, de `0.0`.
+#[expect(clippy::too_many_arguments, reason = "o domínio da janela num eixo")]
+fn media_em_janela(
+    src: &[f32],
+    ini: usize,
+    n: usize,
+    a0: usize,
+    a1: usize,
+    l: usize,
+    r: usize,
+    dst: &mut Vec<f32>,
+) {
+    dst.clear();
+    dst.resize((a1 - a0) * l, 0.0);
+    let uma = |(i, d): (usize, &mut [f32])| {
+        let p = a0 + i;
+        let (lo, hi) = (p.saturating_sub(r), (p + r).min(n - 1));
+        for q in lo..=hi {
+            for (d, v) in d.iter_mut().zip(&src[(q - ini) * l..(q - ini + 1) * l]) {
+                *d += v;
+            }
+        }
+        let k = (hi - lo + 1) as f32;
+        for d in d.iter_mut() {
+            *d /= k;
+        }
+    };
+    if l == 1 {
+        dst.chunks_mut(1).enumerate().for_each(uma); // a linha do passe horizontal já é um job
+    } else {
+        dst.par_chunks_mut(l)
+            .with_min_len(16)
+            .enumerate()
+            .for_each(uma);
+    }
+}
+
 #[cfg(test)]
 #[path = "po_do_papel_tests.rs"]
 mod tests;

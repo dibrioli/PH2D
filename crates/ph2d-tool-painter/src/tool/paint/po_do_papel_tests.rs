@@ -1,4 +1,4 @@
-use super::po_da_tela;
+use super::{po_da_tela, po_na_janela};
 use ph2d_painter_brush::texture::{RAIO_DA_CAIXA, caixa};
 use rayon::prelude::*;
 
@@ -209,5 +209,84 @@ fn mede_o_po_a_4k() {
     eprintln!(
         "[po 4K, camada vazia] passo 1: mín {:.2} · med {:.2} | agora: mín {:.2} · med {:.2} ms",
         nada1[0], nada1[4], nada[0], nada[4]
+    );
+}
+
+/// O pó de uma janela montado de ladrilhos (256², ímpares, 1 texel, o apron a cortar a borda) é o da janela da tela
+/// INTEIRA ao bit: a lei por janela não tem história. E fica a menos de 1 nível `u8` da soma corrida de [`po_da_tela`].
+#[test]
+fn os_ladrilhos_do_po_sao_a_tela_inteira_ao_bit() {
+    for (i, &(w, h, t)) in [
+        (1, 1, 1),
+        (1, 40, 7),
+        (40, 1, 3),
+        (31, 31, 4),
+        (65, 23, 16),
+        (127, 97, 37),
+        (600, 300, 256),
+        (3840, 2160, 256),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let rgba = tela(w, h, i as u32 + 11);
+        let inteira = po_na_janela(&rgba, w, h, (0, 0, w, h));
+        let mut montada = vec![0u8; w * h];
+        for ty in (0..h).step_by(t) {
+            for tx in (0..w).step_by(t) {
+                let (x1, y1) = ((tx + t).min(w), (ty + t).min(h));
+                let l = po_na_janela(&rgba, w, h, (tx, ty, x1, y1));
+                for (y, linha) in l.chunks(x1 - tx).enumerate() {
+                    montada[(ty + y) * w + tx..(ty + y) * w + x1].copy_from_slice(linha);
+                }
+            }
+        }
+        let dif = inteira.iter().zip(&montada).filter(|(a, b)| a != b).count();
+        assert_eq!(
+            dif, 0,
+            "{w}x{h} ladrilho {t}: {dif} texels diferem da tela inteira"
+        );
+        let corrida = po_da_tela(&rgba, w, h);
+        let (n, max) = corrida.iter().zip(&inteira).fold((0, 0), |(n, m), (a, b)| {
+            let d = a.abs_diff(*b);
+            (n + usize::from(d != 0), m.max(d))
+        });
+        assert!(
+            max <= 1,
+            "{w}x{h}: a lei por janela afasta-se {max} níveis da soma corrida"
+        );
+        eprintln!(
+            "[po {w}x{h}] lei por janela × soma corrida: {n} de {} texels a 1 nível",
+            w * h
+        );
+    }
+}
+
+/// O custo de um ladrilho 256² (o 1.º lote de um traço pequeno) × a tela inteira, intercalados: `--profile smoke`.
+#[test]
+#[ignore = "medição: cargo test --profile smoke -- --ignored mede_o_ladrilho_do_po_a_4k --nocapture"]
+fn mede_o_ladrilho_do_po_a_4k() {
+    let (w, h) = (3840usize, 2160usize);
+    let rgba = tela(w, h, 5);
+    let (mut tela_ms, mut lad, mut quatro) = (Vec::new(), Vec::new(), Vec::new());
+    let ms = |t0: std::time::Instant| t0.elapsed().as_secs_f64() * 1e3;
+    for _ in 0..9 {
+        let t0 = std::time::Instant::now();
+        let a = po_da_tela(&rgba, w, h);
+        tela_ms.push(ms(t0));
+        let t0 = std::time::Instant::now();
+        let b = po_na_janela(&rgba, w, h, (1024, 768, 1280, 1024));
+        lad.push(ms(t0));
+        let t0 = std::time::Instant::now();
+        let c = po_na_janela(&rgba, w, h, (1024, 768, 1536, 1280));
+        quatro.push(ms(t0));
+        assert!(a.len() == w * h && b.len() == 256 * 256 && c.len() == 512 * 512);
+    }
+    for v in [&mut tela_ms, &mut lad, &mut quatro] {
+        v.sort_by(f64::total_cmp);
+    }
+    eprintln!(
+        "[po 4K] tela inteira: mín {:.2} · med {:.2} | 1 ladrilho 256²: mín {:.3} · med {:.3} | 2×2 ladrilhos: mín {:.3} · med {:.3} ms",
+        tela_ms[0], tela_ms[4], lad[0], lad[4], quatro[0], quatro[4]
     );
 }

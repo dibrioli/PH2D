@@ -75,7 +75,7 @@ pub use rounded::{
 /// (preserves subpixel kerning); `Half` snaps to 0.5 px (preserves ~50 %
 /// of kerning); `Full` snaps to 1 px integer (full pixel alignment, no
 /// subpixel kerning). Trade-off documented on [`ph2d_tokens::SnapX`].
-fn snap_x_apply(x: f32, snap: ph2d_tokens::SnapX) -> f32 {
+pub fn snap_x_apply(x: f32, snap: ph2d_tokens::SnapX) -> f32 {
     match snap {
         ph2d_tokens::SnapX::None => x,
         // No píxel do ECRÃ (`ui_scale::ao_pixel`): a `100 %` é o arredondamento de sempre.
@@ -124,8 +124,8 @@ pub fn rect_to_vello(r: Rect) -> VelloRect {
 //    mudou-se para o irmão [`crate::published`] pelo tecto de 700 LOC; os caminhos `paint::…`
 //    continuam a valer por este re-export.
 pub use crate::published::{
-    font_embolden_for, radius_scale, set_radius_scale, set_slider_style, set_text_rendering,
-    set_ui_look, slider_style, text_rendering, ui_is_redesign, ui_look,
+    font_embolden_for, font_embolden_with, radius_scale, set_radius_scale, set_slider_style,
+    set_text_rendering, set_ui_look, slider_style, text_rendering, ui_is_redesign, ui_look,
 };
 
 /// ⭐⭐ **A MOLDURA de um controlo, pela porta do TEMA** — o sítio único que substitui o

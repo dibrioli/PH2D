@@ -1,6 +1,7 @@
 //! ⭐ **Os glifos de um quadro**: o texto das filas (só a faixa horizontal à vista), os números da
 //! calha e o contador de trabalho da pintura — um `draw_glyphs` por grupo (fonte, tamanho, tinta).
 
+use crate::code_text::snap;
 use crate::frame::CodeFrame;
 use crate::line_cache::LineCache;
 use crate::metrics::Metrics;
@@ -51,7 +52,8 @@ impl CodeView {
         ))
     }
 
-    /// O texto: a lei do `paint_text` do app — dica ligada, linha de base no píxel do ecrã. Os glifos
+    /// O texto: a lei do `paint_text` do app com o modo da letra do código ([`crate::code_text`]), linha
+    /// de base no píxel do ecrã. Os glifos
     /// juntam-se por (fonte, tamanho, tinta) num `draw_glyphs` por grupo e por QUADRO, e lêem-se
     /// pelos grupos de cada corrida: o `line.items()`/`positioned_glyphs` do parley é quadrático na
     /// linha e custava 11,5 ms a 100 linhas coloridas (medido, `tests/it/cronometro.rs`).
@@ -91,7 +93,7 @@ impl CodeView {
                         for g in c.glyphs() {
                             batches[i].glyphs.push(Glyph {
                                 id: g.id,
-                                x: x + off + g.x,
+                                x: x + snap(off + g.x),
                                 y: top + ao_pixel(base + g.y),
                             });
                             off += g.advance;
@@ -215,7 +217,7 @@ impl CodeView {
         let base = ao_pixel(y + self.m.text_dy) + ao_pixel(self.m.baseline);
         out.extend(s.bytes().enumerate().map(|(i, b)| Glyph {
             id: d.glyphs[usize::from(b - b'0')],
-            x: right - (count - i) as f32 * self.m.advance,
+            x: snap(right - (count - i) as f32 * self.m.advance),
             y: base,
         }));
     }
@@ -255,7 +257,7 @@ pub(crate) fn paint_mono(
                 for g in c.glyphs() {
                     batches[i].glyphs.push(Glyph {
                         id: g.id,
-                        x: x + off + g.x,
+                        x: snap(x) + snap(off + g.x),
                         y: top + ao_pixel(base + g.y),
                     });
                     off += g.advance;
@@ -314,8 +316,8 @@ fn draw(
         .inner_mut()
         .draw_glyphs(font)
         .font_size(size)
-        .hint(true)
-        .font_embolden(ph2d_editor_core::paint::font_embolden_for(size, color))
+        .hint(crate::code_text::hint())
+        .font_embolden(crate::code_text::embolden(size, color))
         .normalized_coords(coords)
         .brush(color)
         .transform(Affine::IDENTITY)

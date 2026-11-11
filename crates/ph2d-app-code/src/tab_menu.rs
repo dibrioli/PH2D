@@ -1,8 +1,6 @@
-//! ⭐ **A barra da própria aba** (13 §4 itens 11 e 13b, decisão D3 do dono: «menu da própria aba»):
-//! uma linha no topo do cartão do código com `File · Edit · Find · Go To · Run` à esquerda, o caminho
-//! até o cursor (`player.luau › update › line 21`) à direita e a engrenagem do cartão «Script
-//! options» no fim. As linhas de cada menu saem da tabela única de [`crate::commands`]; um clique
-//! corre o comando pelo MESMO caminho do `Ctrl+K` e da tecla.
+//! ⭐ **A barra da própria aba** (13 §4 itens 11 e 13b, D3): os menus ([`TabMenu::ALL`]) à esquerda, o
+//! caminho até o cursor à direita e a engrenagem de «Script options» no fim; as linhas saem da tabela
+//! de [`crate::commands`], e um clique corre o comando pelo MESMO caminho do `Ctrl+K` e da tecla.
 
 use crate::commands::{CMD_RESTART_ASSIST, CommandState, TabMenu, menu_rows_in, row_state};
 use crate::docs::CodeDocs;

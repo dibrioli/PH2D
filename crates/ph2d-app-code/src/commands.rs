@@ -1,13 +1,14 @@
-//! ⭐ **Os comandos da aba** — a tabela única lida pelo menu PRÓPRIO da aba (`File · Edit · Find ·
-//! Go To · Run`, 13 §4 item 11, decisão D3 do dono), pela paleta `Ctrl+K` e pelo despacho. Os menus
-//! do app já não mudam com a aba ([`DocMenu::Tab`]). Correr um é o MESMO caminho da tecla.
+//! ⭐ **Os comandos da aba** — a tabela única do menu PRÓPRIO da aba (13 §4 item 11, D3), da paleta
+//! `Ctrl+K` e do despacho ([`DocMenu::Tab`]). Correr um é o MESMO caminho da tecla.
 
 use crate::doc::CodeDoc;
 use crate::docs::SaveKind;
+use TabMenu::{Edit, File, Find, GoTo, Run, View};
 use ph2d_a11y::NodeId;
 use ph2d_code_debugcard::CardStyle;
 use ph2d_editor_core::doc_surface::{DocCommand, DocMenu};
 use ph2d_i18n::tr;
+use ph2d_panel_code::code_text::{self, ROWS as TEXT};
 use ph2d_tool_registry::hash_node_id;
 
 pub const CMD_SAVE: NodeId = hash_node_id("code_cmd_save");
@@ -25,9 +26,8 @@ pub const CMD_FORWARD: NodeId = hash_node_id("code_cmd_forward");
 pub const CMD_NEXT_PROBLEM: NodeId = hash_node_id("code_cmd_next_problem");
 pub const CMD_FOLD_ALL: NodeId = hash_node_id("code_cmd_fold_all");
 pub const CMD_UNFOLD_ALL: NodeId = hash_node_id("code_cmd_unfold_all");
-/// Ctrl+/ comenta/descomenta; Alt+F dobra/desdobra o bloco do cursor (Onda A, item 3).
+/// Ctrl+/ comenta/descomenta; Alt+F (UMA linha no menu) dobra/desdobra o bloco do cursor (Onda A, 3).
 pub const CMD_TOGGLE_COMMENT: NodeId = hash_node_id("code_cmd_toggle_comment");
-/// Alt+F no menu: UMA linha, a mesma troca da tecla (dobra o bloco do cursor ou abre o fechado).
 pub const CMD_TOGGLE_FOLD: NodeId = hash_node_id("code_cmd_toggle_fold");
 /// O assistente de código parado: procura o programa outra vez e volta a ligá-lo (I2).
 pub const CMD_RESTART_ASSIST: NodeId = hash_node_id("code_cmd_restart_assistant");
@@ -36,11 +36,10 @@ pub const CMD_RENAME: NodeId = hash_node_id("code_cmd_rename");
 pub const CMD_REFERENCES: NodeId = hash_node_id("code_cmd_references");
 /// Abre/fecha o cartão «Script options» (item 12).
 pub const CMD_OPTIONS: NodeId = hash_node_id("code_cmd_script_options");
-/// Mostrar/esconder as dicas de tipo em todas as abas (I9). Caixa do cartão; na paleta pelo nome.
+/// Caixas do cartão (na paleta pelo nome): as dicas de tipo de todas as abas (I9), o `--!strict` deste
+/// script (I14) e formatar ao salvar em todas as abas (I13).
 pub const CMD_TYPE_HINTS: NodeId = hash_node_id("code_cmd_type_hints");
-/// Pôr/tirar o `--!strict` deste script (I14). Caixa do cartão; na paleta pelo nome.
 pub const CMD_STRICT: NodeId = hash_node_id("code_cmd_strict");
-/// Formatar ao salvar ligado/desligado em todas as abas (I13). Caixa do cartão; na paleta pelo nome.
 pub const CMD_FORMAT_ON_SAVE: NodeId = hash_node_id("code_cmd_format_on_save");
 /// O depurador (Onda D): F9, Continue, F10, Pause on Error, tirar todos os pontos.
 pub const CMD_TOGGLE_BREAKPOINT: NodeId = hash_node_id("code_cmd_toggle_breakpoint");
@@ -56,7 +55,7 @@ pub const CMD_CARD_SHEET: NodeId = hash_node_id("code_cmd_card_style_sheet");
 pub const CMD_CARD_CARDS: NodeId = hash_node_id("code_cmd_card_style_cards");
 pub const CMD_CARD_STRIP: NodeId = hash_node_id("code_cmd_card_style_strip");
 
-/// Os cinco menus da aba (os do Godot, enxutos).
+/// Os seis menus da aba (os do Godot, enxutos).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TabMenu {
     File,
@@ -68,14 +67,7 @@ pub enum TabMenu {
 }
 
 impl TabMenu {
-    pub const ALL: [Self; 6] = [
-        Self::File,
-        Self::Edit,
-        Self::Find,
-        Self::GoTo,
-        Self::View,
-        Self::Run,
-    ];
+    pub const ALL: [Self; 6] = [File, Edit, Find, GoTo, View, Run];
 
     #[must_use]
     pub fn title(self) -> &'static str {
@@ -103,66 +95,54 @@ pub struct CommandState {
 
 /// `(id, chave do rótulo, menu da aba)` — `None` = só na paleta (as três caixas do cartão). Um
 /// comando de ligar/desligar tem aqui a chave do estado DESLIGADO (a do ligado, em [`commands`]).
-const TABLE: [(NodeId, &str, Option<TabMenu>); 34] = [
-    (CMD_NEW_SCRIPT, "code.cmd.new_script", Some(TabMenu::File)),
-    (CMD_SAVE, "code.cmd.save", Some(TabMenu::File)),
-    (CMD_SAVE_AS, "code.cmd.save_as", Some(TabMenu::File)),
-    (CMD_CLOSE_TAB, "code.cmd.close_tab", Some(TabMenu::File)),
-    (CMD_UNDO, "code.cmd.undo", Some(TabMenu::Edit)),
-    (CMD_REDO, "code.cmd.redo", Some(TabMenu::Edit)),
-    (
-        CMD_TOGGLE_COMMENT,
-        "code.cmd.toggle_comment",
-        Some(TabMenu::Edit),
-    ),
-    (CMD_TOGGLE_FOLD, "code.cmd.toggle_fold", Some(TabMenu::Edit)),
-    (CMD_FOLD_ALL, "code.cmd.fold_all", Some(TabMenu::Edit)),
-    (CMD_UNFOLD_ALL, "code.cmd.unfold_all", Some(TabMenu::Edit)),
-    (CMD_RENAME, "code.cmd.rename", Some(TabMenu::Edit)),
-    (CMD_OPTIONS, "code.cmd.script_options", Some(TabMenu::Edit)),
-    (CMD_FIND, "code.cmd.find", Some(TabMenu::Find)),
-    (CMD_REPLACE, "code.cmd.replace", Some(TabMenu::Find)),
-    (CMD_REFERENCES, "code.cmd.references", Some(TabMenu::Find)),
-    (CMD_GOTO, "code.cmd.goto", Some(TabMenu::GoTo)),
+const TABLE: [(NodeId, &str, Option<TabMenu>); 38] = [
+    (CMD_NEW_SCRIPT, "code.cmd.new_script", Some(File)),
+    (CMD_SAVE, "code.cmd.save", Some(File)),
+    (CMD_SAVE_AS, "code.cmd.save_as", Some(File)),
+    (CMD_CLOSE_TAB, "code.cmd.close_tab", Some(File)),
+    (CMD_UNDO, "code.cmd.undo", Some(Edit)),
+    (CMD_REDO, "code.cmd.redo", Some(Edit)),
+    (CMD_TOGGLE_COMMENT, "code.cmd.toggle_comment", Some(Edit)),
+    (CMD_TOGGLE_FOLD, "code.cmd.toggle_fold", Some(Edit)),
+    (CMD_FOLD_ALL, "code.cmd.fold_all", Some(Edit)),
+    (CMD_UNFOLD_ALL, "code.cmd.unfold_all", Some(Edit)),
+    (CMD_RENAME, "code.cmd.rename", Some(Edit)),
+    (CMD_OPTIONS, "code.cmd.script_options", Some(Edit)),
+    (CMD_FIND, "code.cmd.find", Some(Find)),
+    (CMD_REPLACE, "code.cmd.replace", Some(Find)),
+    (CMD_REFERENCES, "code.cmd.references", Some(Find)),
+    (CMD_GOTO, "code.cmd.goto", Some(GoTo)),
     (
         CMD_GO_TO_DEFINITION,
         "code.cmd.go_to_definition",
-        Some(TabMenu::GoTo),
+        Some(GoTo),
     ),
-    (CMD_BACK, "code.cmd.back", Some(TabMenu::GoTo)),
-    (CMD_FORWARD, "code.cmd.forward", Some(TabMenu::GoTo)),
-    (
-        CMD_NEXT_PROBLEM,
-        "code.cmd.next_problem",
-        Some(TabMenu::GoTo),
-    ),
-    (
-        CMD_RESTART_ASSIST,
-        "code.cmd.restart_assistant",
-        Some(TabMenu::Run),
-    ),
+    (CMD_BACK, "code.cmd.back", Some(GoTo)),
+    (CMD_FORWARD, "code.cmd.forward", Some(GoTo)),
+    (CMD_NEXT_PROBLEM, "code.cmd.next_problem", Some(GoTo)),
+    (CMD_RESTART_ASSIST, "code.cmd.restart_assistant", Some(Run)),
     (
         CMD_TOGGLE_BREAKPOINT,
         "code.cmd.toggle_breakpoint",
-        Some(TabMenu::Run),
+        Some(Run),
     ),
-    (CMD_CONTINUE, "code.cmd.continue", Some(TabMenu::Run)),
-    (CMD_NEXT_LINE, "code.cmd.next_line", Some(TabMenu::Run)),
-    (
-        CMD_PAUSE_ON_ERROR,
-        "code.cmd.pause_on_error",
-        Some(TabMenu::Run),
-    ),
+    (CMD_CONTINUE, "code.cmd.continue", Some(Run)),
+    (CMD_NEXT_LINE, "code.cmd.next_line", Some(Run)),
+    (CMD_PAUSE_ON_ERROR, "code.cmd.pause_on_error", Some(Run)),
     (
         CMD_REMOVE_BREAKPOINTS,
         "code.cmd.remove_breakpoints",
-        Some(TabMenu::Run),
+        Some(Run),
     ),
-    (CMD_PEEK, "code.cmd.peek", Some(TabMenu::View)),
-    (CMD_MAP, "code.cmd.map", Some(TabMenu::View)),
-    (CMD_CARD_SHEET, "code.cmd.card_sheet", Some(TabMenu::View)),
-    (CMD_CARD_CARDS, "code.cmd.card_cards", Some(TabMenu::View)),
-    (CMD_CARD_STRIP, "code.cmd.card_strip", Some(TabMenu::View)),
+    (CMD_PEEK, "code.cmd.peek", Some(View)),
+    (CMD_MAP, "code.cmd.map", Some(View)),
+    (CMD_CARD_SHEET, "code.cmd.card_sheet", Some(View)),
+    (CMD_CARD_CARDS, "code.cmd.card_cards", Some(View)),
+    (CMD_CARD_STRIP, "code.cmd.card_strip", Some(View)),
+    (TEXT[0].0, TEXT[0].1, Some(View)),
+    (TEXT[1].0, TEXT[1].1, Some(View)),
+    (TEXT[2].0, TEXT[2].1, Some(View)),
+    (TEXT[3].0, TEXT[3].1, Some(View)),
     (CMD_STRICT, "code.cmd.strict", None),
     (CMD_FORMAT_ON_SAVE, "code.cmd.format_on_save", None),
     (CMD_TYPE_HINTS, "code.cmd.type_hints", None),
@@ -215,7 +195,7 @@ fn shown(id: NodeId, key: &'static str, state: CommandState) -> &'static str {
         CMD_CARD_SHEET if state.card_style == CardStyle::Sheet => "code.cmd.card_sheet_on",
         CMD_CARD_CARDS if state.card_style == CardStyle::Cards => "code.cmd.card_cards_on",
         CMD_CARD_STRIP if state.card_style == CardStyle::Strip => "code.cmd.card_strip_on",
-        _ => stateful(id, key),
+        _ => code_text::label(id).unwrap_or_else(|| stateful(id, key)),
     }
 }
 
@@ -280,6 +260,7 @@ impl crate::docs::CodeDocs {
             CMD_CARD_SHEET => self.card_style = CardStyle::Sheet,
             CMD_CARD_CARDS => self.card_style = CardStyle::Cards,
             CMD_CARD_STRIP => self.card_style = CardStyle::Strip,
+            c if code_text::choose(c) => {}
             _ => return self.debug_command(cmd),
         }
         true

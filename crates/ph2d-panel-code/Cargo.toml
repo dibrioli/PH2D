@@ -22,6 +22,7 @@ ph2d-i18n        = { path = "../ph2d-i18n" }
 ph2d-host        = { path = "../ph2d-host" }
 ph2d-a11y        = { path = "../ph2d-a11y" }
 ph2d-ui-table    = { path = "../ph2d-ui-table" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 parley = "0.12.0"
 accesskit = "0.25.2"
 unicode-segmentation = "1.13"

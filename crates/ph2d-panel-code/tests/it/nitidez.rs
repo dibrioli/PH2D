@@ -306,30 +306,104 @@ fn o_escurecimento_aproxima_a_franja() {
     set_text_rendering(TextRendering::default());
 }
 
-/// ⭐ A aba de scripts pinta dentro do `com_peso_exato` e o preset escurecido chega lá: cada
-/// a tinta clara do código leva o alargamento; no de fábrica, nenhuma corrida.
+/// A fonte da mono do código (o blob), para separar as corridas do código das da interface.
+fn mono_id(ts: &mut TextSystem) -> u64 {
+    let mut cache = ph2d_panel_code::LineCache::default();
+    let l = cache.get(ts, "a", &[], ph2d_panel_code::code_font_px());
+    let run = l
+        .lines()
+        .next()
+        .and_then(|l| l.runs().next())
+        .expect("moldado");
+    run.font().data.id()
+}
+
+/// As corridas do código pintado: (dica, alarga, x de cada glifo).
+fn corridas_do_codigo(ts: &mut TextSystem) -> Vec<(bool, bool, Vec<f32>)> {
+    let mono = mono_id(ts);
+    let s = codigo(ts, Theme::Dark);
+    let r = &s.inner().encoding().resources;
+    r.glyph_runs
+        .iter()
+        .filter(|g| g.font.data.id() == mono)
+        .map(|g| {
+            let xs = r.glyphs[g.glyphs.clone()].iter().map(|x| x.x).collect();
+            (g.hint, g.font_embolden.amount.xx > 0.0, xs)
+        })
+        .collect()
+}
+
+/// ⭐ Dono 10/11: a letra do código segue SÓ o View ▸ Text rendering da aba
+/// ([`ph2d_panel_code::code_text`]): cada modo dá a dica, o encaixe e o escurecimento dele; o
+/// encaixe move um glifo menos de um píxel (os avanços da mono não mudam); o modo do app já não
+/// chega ao código.
 #[test]
-fn a_aba_de_scripts_escurece_no_preset_escurecido() {
+fn a_letra_do_codigo_segue_o_modo_do_script_e_nao_o_do_app() {
     use ph2d_editor_core::paint::set_text_rendering;
+    use ph2d_panel_code::code_text::set_mode;
+    use ph2d_tokens::{SnapX, TextRendering};
+    let mut ts = TextSystem::without_system_fonts();
+    let base = corridas_do_codigo(&mut ts);
+    assert!(!base.is_empty());
+    for mode in TextRendering::ALL {
+        set_mode(mode);
+        let c = corridas_do_codigo(&mut ts);
+        set_mode(TextRendering::Default);
+        let p = mode.params();
+        assert_eq!(c.len(), base.len(), "{mode:?}");
+        assert!(c.iter().all(|r| r.0 == p.hint), "{mode:?}: a dica");
+        assert_eq!(
+            c.iter().any(|r| r.1),
+            p.stem_darkening,
+            "{mode:?}: o escurecimento"
+        );
+        for (r, b) in c.iter().zip(&base) {
+            for (x, x0) in r.2.iter().zip(&b.2) {
+                let passo = match p.snap_x {
+                    SnapX::None => 0.0,
+                    SnapX::Half => 2.0,
+                    SnapX::Full => 1.0,
+                };
+                assert!(
+                    passo == 0.0 || (x * passo).fract() == 0.0,
+                    "{mode:?}: {x} encaixado"
+                );
+                assert!((x - x0).abs() <= 0.5, "{mode:?}: {x} × {x0}");
+            }
+        }
+    }
+    for app in TextRendering::ALL {
+        set_text_rendering(app);
+        let c = corridas_do_codigo(&mut ts);
+        set_text_rendering(TextRendering::default());
+        assert_eq!(c, base, "o modo do app {app:?} chegou ao código");
+    }
+}
+
+/// O modo do script não chega à letra da interface (um rótulo do `paint_text` do app).
+#[test]
+fn o_modo_do_script_nao_muda_a_letra_da_interface() {
+    use ph2d_panel_code::code_text::set_mode;
     use ph2d_tokens::TextRendering;
     let mut ts = TextSystem::without_system_fonts();
-    let mut amostra = |mode| {
-        set_text_rendering(mode);
-        let s = codigo(&mut ts, Theme::Dark);
-        set_text_rendering(TextRendering::default());
+    let mut ui = |modo| {
+        set_mode(modo);
+        let mut s = VectorScene::new();
+        let ink = ph2d_editor_core::paint::resolve(ColorToken::Text1, Theme::Dark);
+        let px = ph2d_tokens::TypeToken::Sm.px();
+        ph2d_editor_core::paint::paint_text(&mut ts, &mut s, "bob.luau", 3.3, 4.0, px, 200.0, ink);
+        set_mode(TextRendering::Default);
         let r = &s.inner().encoding().resources;
-        // Só as corridas de tinta clara (a sintaxe de cor escura e o esmaecido não alargam).
-        let a = r
+        let runs: Vec<_> = r
             .glyph_runs
             .iter()
-            .filter(|g| g.font_embolden.amount.xx > 0.0)
-            .count();
-        let pos: Vec<(u32, f32)> = r.glyphs.iter().map(|g| (g.id, g.x)).collect();
-        (a, pos)
+            .map(|g| (g.hint, g.font_embolden.amount.xx.to_bits()))
+            .collect();
+        (runs, r.glyphs.iter().map(|g| g.x).collect::<Vec<f32>>())
     };
-    let (fabrica, pf) = amostra(TextRendering::CrispHeavyPlus);
-    let (escuro, pe) = amostra(TextRendering::CrispPlusDarkened);
-    assert!(escuro > 0, "a linha do código escurece");
-    assert_eq!(fabrica, 0, "o de fábrica não alarga nenhuma corrida");
-    assert_eq!(pf, pe, "os avanços não mudam");
+    let base = ui(TextRendering::Default);
+    assert!(!base.0.is_empty());
+    for modo in TextRendering::ALL {
+        assert_eq!(ui(modo), base, "{modo:?}");
+    }
 }

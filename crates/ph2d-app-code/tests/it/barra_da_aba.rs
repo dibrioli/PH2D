@@ -328,3 +328,29 @@ fn um_fio_separa_a_barra_do_codigo_e_a_linha_1_respira_abaixo_dele() {
     let mid = m.docs().glyph_center(id, 0).expect("a linha 1").1;
     assert!(mid > f.y + f.h + ph2d_tokens::Spacing::Md.px(), "{mid}");
 }
+
+/// ⭐ Dono 10/11: View ▸ Text rendering da aba tem os quatro modos do app, a marca no em vigor
+/// (de fábrica, Default), e clicar um escolhe a letra do CÓDIGO (a interface fica: `nitidez`).
+#[test]
+fn o_menu_view_escolhe_a_letra_do_codigo() {
+    use ph2d_app_code::commands::menu_rows;
+    use ph2d_panel_code::code_text::{ROWS, mode, set_mode};
+    let (mut m, id) = aberta();
+    for (i, want) in ph2d_tokens::TextRendering::ALL.into_iter().enumerate() {
+        let on = |r: &(_, String, _)| ROWS.iter().any(|t| t.0 == r.0) && r.1.ends_with('\u{2713}');
+        assert!(menu_rows(TabMenu::View).iter().any(on), "uma marca");
+        let view = titulo(&mut m, TabMenu::View);
+        clica(&mut m, id, view);
+        let rows = m.docs().bar_painted().rows.clone();
+        let row = rows.iter().find(|r| r.0 == ROWS[i].0).expect("no View");
+        clica(&mut m, id, row.1);
+        assert_eq!(mode(), want);
+        let marca: Vec<_> = menu_rows(TabMenu::View)
+            .iter()
+            .filter(|r| on(r))
+            .map(|r| r.0)
+            .collect();
+        assert_eq!(marca, [ROWS[i].0], "{want:?}");
+    }
+    set_mode(ph2d_tokens::TextRendering::Default);
+}

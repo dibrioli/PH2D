@@ -77,6 +77,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.cmd.card_cards_on" => "Card Style: Cards \u{2713}",
         "code.cmd.card_strip" => "Card Style: Strip",
         "code.cmd.card_strip_on" => "Card Style: Strip \u{2713}",
+        "code.cmd.text_default" => "Text rendering: Default",
+        "code.cmd.text_default_on" => "Text rendering: Default \u{2713}",
+        "code.cmd.text_crisp_heavy" => "Text rendering: Crisp Heavy",
+        "code.cmd.text_crisp_heavy_on" => "Text rendering: Crisp Heavy \u{2713}",
+        "code.cmd.text_crisp_heavy_plus" => "Text rendering: Crisp Heavy +",
+        "code.cmd.text_crisp_heavy_plus_on" => "Text rendering: Crisp Heavy + \u{2713}",
+        "code.cmd.text_crisp_darkened" => "Text rendering: Crisp + stem darkening",
+        "code.cmd.text_crisp_darkened_on" => "Text rendering: Crisp + stem darkening \u{2713}",
         _ => return None,
     })
 }

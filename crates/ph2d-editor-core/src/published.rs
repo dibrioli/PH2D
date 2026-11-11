@@ -116,12 +116,18 @@ pub fn text_rendering() -> ph2d_tokens::TextRendering {
 /// [`ph2d_tokens::STEM_DARKENING_PX`]). Lê só o preset — NÃO o `ph2d_text::com_peso_exato`, que
 /// tira o reforço de PESO; isto é a borda. Fora disso, o `FontEmbolden::default()` (zero) de sempre.
 pub fn font_embolden_for(font_size: f32, ink: ph2d_vector::Color) -> ph2d_vector::FontEmbolden {
+    font_embolden_with(text_rendering().params(), font_size, ink)
+}
+
+/// [`font_embolden_for`] com os parâmetros de outro modo (a letra do código tem o seu).
+pub fn font_embolden_with(
+    params: ph2d_tokens::TextRenderingParams,
+    font_size: f32,
+    ink: ph2d_vector::Color,
+) -> ph2d_vector::FontEmbolden {
     let claro =
         ink.discard_alpha().relative_luminance() > ph2d_tokens::STEM_DARKENING_INK_LUMINANCE;
-    let a = f64::from(ph2d_tokens::stem_darkening_px(
-        text_rendering().params(),
-        font_size,
-    ));
+    let a = f64::from(ph2d_tokens::stem_darkening_px(params, font_size));
     if a == 0.0 || !claro {
         return ph2d_vector::FontEmbolden::default();
     }

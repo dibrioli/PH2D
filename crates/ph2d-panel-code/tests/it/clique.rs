@@ -157,3 +157,43 @@ fn o_separador_sem_relogio_nunca_faz_duplo_clique() {
     }
     assert_eq!(s.side_w, Some(80.0), "a largura do artista fica");
 }
+
+/// ⭐ Dono 10/11: com o encaixe do View ▸ Text rendering, o cursor, o clique e a pintura leem o MESMO
+/// x encaixado: cada coluna começa num glifo pintado, o cursor fica nela e o clique devolve-a.
+#[test]
+fn o_cursor_e_o_clique_seguem_o_x_encaixado_de_cada_modo() {
+    use ph2d_panel_code::code_text::set_mode;
+    use ph2d_tokens::TextRendering;
+    let buf = Buffer::new("local alive = x1 + y2\n");
+    for mode in TextRendering::ALL {
+        set_mode(mode);
+        let (mut v, mut ts) = (CodeView::new(), ts());
+        let area = area_para(&mut v, &buf, &mut ts, 4);
+        let s = pinta(&mut v, &buf, &mut ts, area, &Deco::default());
+        let pintados: Vec<f32> = s
+            .inner()
+            .encoding()
+            .resources
+            .glyphs
+            .iter()
+            .map(|g| g.x)
+            .collect();
+        for (c, mid) in v.probe_columns() {
+            assert!(
+                pintados.contains(&c.x0),
+                "{mode:?}: coluna {} em {} sem glifo",
+                c.byte,
+                c.x0
+            );
+            let caret = v.caret_rect(&buf, c.byte).expect("à vista").x;
+            assert_eq!(caret, c.x0, "{mode:?}: o cursor do byte {}", c.byte);
+            let w = c.x1 - c.x0;
+            assert_eq!(
+                v.hit(&buf, c.x0 + w * 0.25, mid),
+                Hit::Text(c.byte),
+                "{mode:?}"
+            );
+        }
+        set_mode(TextRendering::Default);
+    }
+}

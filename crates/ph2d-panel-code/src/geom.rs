@@ -1,7 +1,8 @@
 //! ⭐ **A geometria de UMA porta** — o x de um byte e o byte de um x saem do MESMO passeio pelos
 //! grupos (clusters) do layout que a pintura desenhou; a pintura, o clique e o cursor nunca têm
-//! contas próprias.
+//! contas próprias. O x encaixa-se como os glifos ([`crate::code_text::snap`]).
 
+use crate::code_text::snap;
 use crate::display::DisplayLine;
 use crate::style::Ink;
 use parley::Layout;
@@ -22,7 +23,8 @@ fn walk(layout: &Layout<Ink>, mut f: impl FnMut(usize, f32, f32) -> bool) {
         for run in line.runs() {
             for c in run.visual_clusters() {
                 let adv = c.advance();
-                if !f(c.text_range().start, x, x + adv) {
+                let (x0, x1) = (snap(x), snap(x + adv));
+                if !f(c.text_range().start, x0, x1) {
                     return;
                 }
                 x += adv;

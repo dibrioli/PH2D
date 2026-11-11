@@ -406,19 +406,23 @@ fn a_linha_do_codigo_tem_a_letra_do_texto_dos_problemas() {
     use ph2d_tokens::{UiTextSize, UiTextStyle};
     let antes = ph2d_text::active_text_style();
     let mut falhas = Vec::new();
-    for size in [UiTextSize::Small, UiTextSize::Normal, UiTextSize::Large] {
+    let sizes = [UiTextSize::Small, UiTextSize::Normal, UiTextSize::Large];
+    let modos = ph2d_tokens::TextRendering::ALL;
+    for (size, modo) in sizes.into_iter().flat_map(|s| modos.map(|m| (s, m))) {
+        ph2d_panel_code::code_text::set_mode(modo);
         ph2d_text::set_active_text_style(UiTextStyle { size, ..antes });
         let mut ts = TextSystem::without_system_fonts();
         let texto = "alive";
         let mut code = CodeView::new();
         let aba = Rect::new(0.0, 0.0, 600.0, 400.0);
-        let cena = corridas(&crate::pinta(
+        let sc = crate::pinta(
             &mut code,
             &Buffer::new("alive\n"),
             &mut ts,
             aba,
             &crate::Deco::default(),
-        ));
+        );
+        let cena = corridas(&sc);
         let linha = letra(achar(&cena, &ids_mono(&mut ts, texto), "a linha do código"));
         let problemas = [ProblemRow {
             severity: Severity::Error,
@@ -457,14 +461,37 @@ fn a_linha_do_codigo_tem_a_letra_do_texto_dos_problemas() {
         );
         let quer = ph2d_text::displayed_font_px(TypeToken::Base.px());
         assert_eq!(quer.to_bits(), ph2d_panel_code::code_font_px().to_bits());
-        if linha != p || p != alive || (linha.2 - quer).abs() > 1e-4 {
+        let ids = ids_mono(&mut ts, texto);
+        // A dica é a mesma; o alargamento, o do modo do script na tinta clara do problema (o
+        // código «alive» é a cor de um nome, escura: não alarga, como no app).
+        let (bl, bp) = (borda(&sc, &ids), borda(&s, &ids));
+        let largo = f64::from(ph2d_tokens::stem_darkening_px(modo.params(), p.2)).to_bits();
+        let borda_ok = bl.0 == modo.params().hint && bp == (bl.0, largo);
+        if linha != p || p != alive || (linha.2 - quer).abs() > 1e-4 || !borda_ok {
             falhas.push(format!(
-                "{size:?}: código {linha:?} · problema {p:?} · alive {alive:?}"
+                "{size:?} {modo:?}: código {linha:?} {bl:?} · problema {p:?} {bp:?} · alive {alive:?}"
             ));
         }
+        ph2d_panel_code::code_text::set_mode(ph2d_tokens::TextRendering::Default);
     }
     ph2d_text::set_active_text_style(antes);
     assert!(falhas.is_empty(), "{falhas:#?}");
+}
+
+/// A borda da corrida de `ids` em `s`: (dica, alargamento).
+fn borda(s: &VectorScene, ids: &[u32]) -> (bool, u64) {
+    let r = &s.inner().encoding().resources;
+    let g = r
+        .glyph_runs
+        .iter()
+        .find(|g| {
+            r.glyphs[g.glyphs.clone()]
+                .iter()
+                .map(|x| x.id)
+                .eq(ids.iter().copied())
+        })
+        .expect("a corrida");
+    (g.hint, g.font_embolden.amount.xx.to_bits())
 }
 
 /// A grelha de `quem()` pintada com a mono medida em `theme`: as corridas e a tinta de cada uma

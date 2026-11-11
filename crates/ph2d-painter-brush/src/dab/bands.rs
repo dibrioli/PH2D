@@ -368,9 +368,69 @@ pub(super) struct DabCtx<'a> {
     pub(super) grao: Option<std::sync::Arc<crate::texture::grao_cache::GraoCache>>,
 }
 
+mod deposito;
+mod silhueta;
+mod tinta;
+use deposito::Onde;
+
+/// O que um dab decide UMA vez e o laço por texel só lê (PX-17, B26.1): antes cada texel recalculava a taxa da
+/// cápsula (`det_powf`), a orla em área, o Grain Depth/Granulation e o modo da rampa. Funções puras do dab e do
+/// buffer (`mask` presente ou não), logo os mesmos bits (`oraculo_tests`).
+pub(in crate::dab) struct Invariantes {
+    /// A capsule composes its sub-dabs at the pass opacity: the dab's own, or — under the Accumulate cap, where
+    /// `w` is a RATE toward the ceiling — the Flow of ONE sub-dab, `1 − (1 − flow)^(1/n)` (the step's rate, shared
+    /// by its `n` sub-dabs): the rates multiply across capsules exactly as inside one, so the seam between two
+    /// steps gets no extra pass (dono 25/10: Continuous + Flow < 1 em contas). Flow 1 ⇒ `1`, the law that shipped.
+    /// `n` is the STEP's: the opening dab the 1.st capsule carries ([`crate::Ante::fecho`]) is one more sub-dab.
+    pub(in crate::dab) c_cap: f32,
+    /// A orla em PÍXEIS (J3, `BrushSpec::borda_px`) sob o tecto do traço é ÁREA: o texel pára na fracção que o
+    /// dab cobre (o tecto da Smooth Edges, BUGS #16) e, na cápsula, no MAIOR sub-dab — a união deles enchia a
+    /// orla de volta ao duro (`basicos::a_orla_em_pixeis_e_a_mesma_a_40_e_a_200`).
+    pub(in crate::dab) orla_area: bool,
+    /// A capsule under a Shape ramp composes its COLOUR over the same sub-dabs ([`super::cor_capsula`], lista 26 A9).
+    pub(in crate::dab) cor_cap: bool,
+    pub(in crate::dab) depth: f32,
+    pub(in crate::dab) gran: f32,
+    pub(in crate::dab) texture_alpha: bool,
+    /// A taxa do tecto: a união da cápsula já leva a dos sub-dabs (`w·c_cap = 1 − Π(1 − c_cap·x_k)`).
+    pub(in crate::dab) flow_do_tecto: f32,
+    /// O tecto lê a cobertura como ÁREA (película com AA, ou a orla em píxeis).
+    pub(in crate::dab) area: bool,
+}
+
+impl Invariantes {
+    pub(in crate::dab) fn do_dab(ctx: &DabCtx, com_mascara: bool) -> Self {
+        let c_cap = match (com_mascara, ctx.capsula) {
+            (true, Some(cap)) if ctx.flow < 1.0 => {
+                1.0 - (1.0 - ctx.flow.max(0.0)).det_powf(1.0 / cap.n_do_passo() as f32)
+            }
+            (true, _) => 1.0,
+            (false, _) => ctx.coverage,
+        };
+        let orla_area = com_mascara && ctx.spec.borda_px > 0.0 && ctx.spec.leis_do_digital();
+        Self {
+            c_cap,
+            orla_area,
+            cor_cap: ctx.capsula.is_some() && ctx.ramp.is_some_and(|r| r.index == RampIndex::Shape),
+            depth: ctx.spec.grain_depth(),
+            gran: ctx.spec.effective_granulation(),
+            texture_alpha: ctx
+                .ramp
+                .is_some_and(|r| matches!(r.alpha_mode, RampAlphaMode::TextureAlpha)),
+            flow_do_tecto: if ctx.capsula.is_some() && !orla_area {
+                c_cap
+            } else {
+                ctx.flow
+            },
+            area: ctx.film_aa.is_some() || orla_area,
+        }
+    }
+}
+
 /// Stamp the dab's pixels for the full-width row band `dst` whose first row is `band_y0` (so global
 /// row `py` lives at local offset `(py - band_y0) * stride`). Returns whether any pixel was written.
 /// Pure over disjoint bands — no shared mutable state — so bands run in parallel deterministically.
+/// Três fases por texel: [`silhueta`] (o peso `w`), [`tinta`] (cor e `g`) e [`deposito`] (tecto, blend, encode).
 ///
 /// `liso` (o mesmo `stride` do `dst`): a pegada SEM o grão, escrita da silhueta `w` antes do Grain, do dente e do
 /// stencil — ao bit o que o MESMO kernel escreveria com a textura desligada e sem dente (cobertura `w·coverage`,
@@ -384,7 +444,8 @@ pub(super) fn stamp_band(
     mut forca: Option<&mut [u16]>,
     band_y0: i64,
 ) -> (bool, bool) {
-    let blend = ctx.spec.blend;
+    let inv = Invariantes::do_dab(ctx, mask.is_some());
+    let mrow = ctx.stride / 4;
     let mut touched = false;
     let mut liso_tocou = false;
     for r in 0..dst.len() / ctx.stride {
@@ -392,265 +453,43 @@ pub(super) fn stamp_band(
         let dy = (py as f32 + 0.5) - ctx.cy;
         let row = r * ctx.stride;
         for px in ctx.x0..ctx.x1 {
-            // SILHOUETTE — via the shared [`silhouette_at`], which the Impasto height kernel also
-            // calls: one definition of a dab's shape, so relief and pigment cannot drift apart.
             let dx = (px as f32 + 0.5) - ctx.cx;
-            // `w` is the DEFORMED point and `t` its length — byte-identical to `falloff_t`, which is
-            // exactly `apply` then the same `sqrt`. The vector itself is what the LUT's expansion
-            // needs (the metric is euclidean in that space), so it is kept instead of thrown away.
-            let wv = ctx
-                .footprint
-                .apply([dx * ctx.inv_radius, dy * ctx.inv_radius]);
-            let t = (wv[0] * wv[0] + wv[1] * wv[1]).sqrt();
-            // A ponta RETA (`dab_quina`, J3 A-4): a norma do `falloff_t`, o quadrado no referencial — sem quina
-            // o `sqrt` de cima, ao bit (`basicos::a_ponta_reta_do_digital_pinta_um_rectangulo`).
-            let t = if ctx.footprint.quina() > 0.0 {
-                ctx.footprint
-                    .falloff_t(dx * ctx.inv_radius, dy * ctx.inv_radius)
-            } else {
-                t
-            };
-            // The FILM ([`crate::height::film_coverage`]): a brush laying body lays no pigment where it
-            // lays no body. Applied to the SILHOUETTE — before the Grain, before the dynamics — so every
-            // funnel below (grain, Accumulate-OFF cap, ramps) inherits the cut with no arithmetic.
-            // With Smooth Edges ([`crate::height_film::FilmAa`], BUGS #16) the film at a rim texel is
-            // its fractional AREA coverage — every funnel inherits the anti-aliased cut the same way.
-            // A capsule composes its sub-dabs at the pass opacity: the dab's own, or — under the
-            // Accumulate cap, where `w` is a RATE toward the ceiling — the Flow of ONE sub-dab,
-            // `1 − (1 − flow)^(1/n)` (the step's rate, shared by its `n` sub-dabs): the rates multiply
-            // across capsules exactly as inside one, so the seam between two steps gets no extra pass
-            // (dono 25/10: Continuous + Flow < 1 em contas). Flow 1 ⇒ `1`, the law that shipped. `n` is the STEP's:
-            // the opening dab the 1.st capsule carries ([`crate::Ante::fecho`]) is one more sub-dab at that rate.
-            // A capsule under a Shape ramp composes its COLOUR over the same sub-dabs
-            // ([`super::cor_capsula`], lista 26 A9); `None` ⇒ the colour is read at this pixel below.
-            let c_cap = match (mask.is_some(), ctx.capsula) {
-                (true, Some(cap)) if ctx.flow < 1.0 => {
-                    1.0 - (1.0 - ctx.flow.max(0.0)).det_powf(1.0 / cap.n_do_passo() as f32)
-                }
-                (true, _) => 1.0,
-                (false, _) => ctx.coverage,
-            };
-            // A orla em PÍXEIS (J3, `BrushSpec::borda_px`) sob o tecto do traço é ÁREA: o texel pára na fracção que o
-            // dab cobre (o tecto da Smooth Edges, BUGS #16) e, na cápsula, no MAIOR sub-dab — a união deles enchia a
-            // orla de volta ao duro (`basicos::a_orla_em_pixeis_e_a_mesma_a_40_e_a_200`).
-            let orla_area = mask.is_some() && ctx.spec.borda_px > 0.0 && ctx.spec.leis_do_digital();
-            let mut maior_sub = 0.0f32;
-            let mut cor_cap = ctx
-                .capsula
-                .filter(|_| ctx.ramp.is_some_and(|r| r.index == RampIndex::Shape))
-                .map(|_| super::cor_capsula::CorCapsula::new(c_cap));
-            let w = match (ctx.capsula, &ctx.film_aa) {
-                (Some(cap), _) => {
-                    let uniao = crate::dab::silhouette_capsula_com(
-                        ctx.spec,
-                        ctx.shape,
-                        ctx.footprint,
-                        cap,
-                        ctx.lei,
-                        c_cap,
-                        px,
-                        py,
-                        ctx.center,
-                        ctx.radius,
-                        |s, r, x| {
-                            maior_sub = maior_sub.max(x);
-                            let Some(cc) = cor_cap.as_mut() else { return };
-                            cc.mais(x, || {
-                                let centro = [ctx.center[0] + s.off[0], ctx.center[1] + s.off[1]];
-                                let forma = ctx.shape_cor.map(|sh| {
-                                    let base = sh.basis.sub(s.rotor, s.arco);
-                                    let sh = crate::dab::ShapeInput { basis: &base, ..sh };
-                                    crate::dab::shape_value_at(ctx.spec, sh, px, py, centro, r)
-                                });
-                                crate::ramp_alpha::ramp_texel(
-                                    ctx.ramp.as_ref(),
-                                    x,
-                                    forma,
-                                    None,
-                                    0.0,
-                                    0.0,
-                                    &crate::texture::GrainLaw::NEUTRA,
-                                )
-                            });
-                        },
-                    );
-                    if orla_area { maior_sub } else { uniao }
-                }
-                (None, Some(aa)) => aa.film_at_planned(
-                    ctx.lut.as_ref(),
-                    t,
-                    wv,
-                    [dx, dy],
-                    || silhouette_at(ctx.spec, ctx.shape, t, px, py, ctx.center, ctx.radius),
-                    |ox, oy| {
-                        ctx.spec.falloff_weight(
-                            ctx.footprint
-                                .falloff_t((dx + ox) * ctx.inv_radius, (dy + oy) * ctx.inv_radius),
-                        )
-                    },
-                ),
-                (None, None) => crate::height::film_coverage(
-                    ctx.spec.deposits_height(),
-                    silhouette_at(ctx.spec, ctx.shape, t, px, py, ctx.center, ctx.radius),
-                ),
-            };
+            let s = silhueta::em(ctx, &inv, px, py, dx, dy);
+            let (w, maior_sub) = (s.w, s.maior_sub);
             // Skip pixels the silhouette already zeroes BEFORE the grain sample — the grain only
             // modulates where the dab paints, so sampling it there is pure waste (large Anchored).
             if w <= 0.0 {
                 continue;
             }
+            let col = (px - ctx.ox) as usize;
             if let Some(l) = liso.as_deref_mut() {
-                liso_tocou |=
-                    super::liso::escreve(ctx, l, row + ((px - ctx.ox) as usize) * 4, w, blend);
+                liso_tocou |= super::liso::escreve(ctx, l, row + col * 4, w, ctx.spec.blend);
             }
-            // `w` = dab PROFILE (falloff × silhouette, the build factor); `g` = texture COVERAGE factor
-            // (Grain / Strength-ramp) kept SEPARATE so it CAPS the pixel — a 0.3 grain texel tops at
-            // 0.3·Strength under re-passing, not climbing to full (the "fills in" bug). `g=1` ⇒ identical.
-            // The colour and the Grain's bite come from ONE door ([`crate::ramp_alpha::ramp_texel`]):
-            // the ramp is indexed by its OWNER's value (the Grain, or the Shape's layers: its texture
-            // value and the coverage `w`), and the Grain bites unless it is the one indexing the ramp.
-            let grain = ctx.tex.map(|b| {
-                let amostra = || {
-                    crate::texture::sample(
-                        &ctx.spec.texture,
-                        b,
-                        px,
-                        py,
-                        ctx.center,
-                        ctx.radius,
-                        ctx.image.as_ref(),
-                    )
-                };
-                match ctx.grao.as_deref() {
-                    Some(c) => c.em(px, py, amostra),
-                    None => amostra(),
-                }
-            });
-            let lei = &ctx.spec.texture.lei;
-            let grain = grain.map(|t| lei.papel_com_po(t, ctx.po.as_ref(), px, py));
-            let (depth, gran) = (ctx.spec.grain_depth(), ctx.spec.effective_granulation());
-            let tinta = match cor_cap {
-                Some(cc) => {
-                    let mordida =
-                        crate::ramp_alpha::ramp_texel(None, w, None, grain, depth, gran, lei).g;
-                    let Some(t) = cc.fim(mordida) else { continue };
-                    t
-                }
-                None => {
-                    let forma = ctx.shape_cor.map(|sh| {
-                        crate::dab::shape_value_at(ctx.spec, sh, px, py, ctx.center, ctx.radius)
-                    });
-                    crate::ramp_alpha::ramp_texel(
-                        ctx.ramp.as_ref(),
-                        w,
-                        forma,
-                        grain,
-                        depth,
-                        gran,
-                        lei,
-                    )
-                }
+            let Some(t) = tinta::em(ctx, &inv, s, px, py) else {
+                continue;
             };
-            let color = tinta.color.unwrap_or(ctx.spec.color);
-            let stamp_alpha = tinta.stamp_alpha; // mode TextureAlpha: the source pixel's own alpha
-            let mut g = tinta.g * crate::dente::dente_at(ctx.spec, w, px, py);
-            if let Some(b) = ctx.tex {
-                g *= crate::texture::stencil_gate(&ctx.spec.texture, b, px, py); // rect mask, ramp-safe
-                if w * g <= 0.0 {
-                    continue;
-                }
-            }
-            let i = row + ((px - ctx.ox) as usize) * 4;
-            let prev = [
-                f32::from(dst[i]) / 255.0,
-                f32::from(dst[i + 1]) / 255.0,
-                f32::from(dst[i + 2]) / 255.0,
-                f32::from(dst[i + 3]) / 255.0,
-            ];
-            // Mode TextureAlpha stamps the ramp as an RGBA image so translucent areas LOWER the
-            // sprite's own alpha (punch it transparent) — alpha-lock can't apply (it edits alpha).
-            // The other modes gate coverage by the dest alpha when alpha-locked + blend with the brush
-            // mode (colour blend modes keep the dest alpha; you only paint where there's coverage).
-            let out = if ctx
-                .ramp
-                .is_some_and(|r| matches!(r.alpha_mode, RampAlphaMode::TextureAlpha))
-            {
-                let m = w * g * ctx.coverage;
-                if m <= 0.0 {
-                    continue;
-                }
-                stamp_rgba(prev, color, stamp_alpha, m)
-            } else {
-                let a = match mask.as_deref_mut() {
-                    // The per-stroke coverage buffer answers "how much of THIS stroke's paint is here?",
-                    // and its law lives in ONE place ([`crate::stroke_cover::cover_add`]): the
-                    // Accumulate-OFF cap, where the dab profile is a RATE toward the ceiling. Whatever
-                    // the numbers, `a = add/(1 − m)` makes the canvas hold exactly
-                    // `pre_stroke·(1 − m) + colour·m` — the deposit lands on the state the stroke
-                    // started from, by telescoping and with no copy of the canvas (see the module).
-                    // At `cap = 1` this reduces to the EXACT maskless alpha sequence, so a full-strength
-                    // interior is byte-identical whether the buffer is threaded or not.
-                    Some(m_buf) => {
-                        let mi = r * (ctx.stride / 4) + (px - ctx.ox) as usize;
-                        let m = f32::from(m_buf[mi]) / 255.0;
-                        // The capsule's union already carries its sub-dabs' rate (`c_cap` above):
-                        // `w·c_cap = 1 − Π(1 − c_cap·x_k)`.
-                        let flow = if ctx.capsula.is_some() && !orla_area {
-                            c_cap
-                        } else {
-                            ctx.flow
-                        };
-                        // O Wash pára no MAIOR dab: na cápsula, o maior sub-dab.
-                        let add = if ctx.spec.wash {
-                            let w = if ctx.capsula.is_some() { maior_sub } else { w };
-                            crate::stroke_cover::cover_max(m, w, g, ctx.tecto, ctx.flow)
-                        } else {
-                            crate::stroke_cover::cover_add(
-                                m,
-                                w,
-                                g,
-                                ctx.tecto,
-                                flow,
-                                ctx.film_aa.is_some() || orla_area,
-                            )
-                        };
-                        let Some(add) = add else {
-                            continue; // this dab adds nothing here
-                        };
-                        m_buf[mi] = ((m + add) * 255.0 + 0.5) as u8;
-                        let a = add / (1.0 - m).max(1e-4);
-                        if ctx.preserve_alpha { a * prev[3] } else { a }
-                    }
-                    None if ctx.preserve_alpha => w * g * ctx.coverage * prev[3],
-                    None => w * g * ctx.coverage,
-                };
-                if a <= 0.0 {
-                    continue;
-                }
-                if let Some(f) = forca.as_deref_mut() {
-                    crate::stroke_cover::compoe_forca(
-                        &mut f[r * (ctx.stride / 4) + (px - ctx.ox) as usize],
-                        a,
-                    );
-                }
-                crate::blend_vazio::blend_over_pigment_modo(
-                    blend,
-                    prev,
-                    color,
-                    a,
-                    ctx.spec.pigmento(),
-                    ctx.spec.blend_sobre_vazio,
-                )
+            let onde = Onde {
+                i: row + col * 4,
+                mi: r * mrow + col,
             };
-            dst[i] = encode(out[0]);
-            dst[i + 1] = encode(out[1]);
-            dst[i + 2] = encode(out[2]);
-            dst[i + 3] = encode(out[3]);
-            touched = true;
+            touched |= deposito::pousa(
+                ctx,
+                &inv,
+                dst,
+                mask.as_deref_mut(),
+                forca.as_deref_mut(),
+                onde,
+                w,
+                maior_sub,
+                t,
+            );
         }
     }
     (touched, liso_tocou)
 }
+
+#[cfg(test)]
+mod oraculo_tests;
 
 #[inline]
 pub(crate) fn encode(v: f32) -> u8 {

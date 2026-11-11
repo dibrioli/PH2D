@@ -52,6 +52,12 @@ if [ -n "${CLIQUES:-}" ]; then
     xdotool click 1; sleep 1
   done
 fi
+if [ -n "${CAMINHO:-}" ]; then
+  # `CAMINHO=<ficheiro>`: o rato sem botão por cada «x y» do ficheiro a 8 ms (a mão real, em passos de
+  # 1–3 px com tremor), depois dos cliques: a diagonal até ao submenu (smoke do dono 11/11, `ax_diagonal`).
+  while read -r PX PY; do xdotool mousemove "$PX" "$PY"; sleep 0.008; done < "$CAMINHO"
+  sleep 0.5
+fi
 if [ -n "${ARRASTA:-}" ]; then
   read -r AX1 AY1 AX2 AY2 <<<"$ARRASTA"
   xdotool mousemove "$AX1" "$AY1"; sleep 0.5

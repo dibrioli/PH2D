@@ -245,6 +245,8 @@ impl InputMapDoc {
             return crate::view_try::press(self, x, y);
         }
         if self.view == View::List && self.layout.body.contains(x, y) {
+            // Carregar numa linha abre a acção dela (a do Inspector e a da vista Keyboard).
+            self.kb.open = self.list.hover_row.or(self.kb.open);
             return crate::view_list::press(self, x, y);
         }
         if self.view == View::Keyboard && self.layout.body.contains(x, y) {

@@ -138,6 +138,7 @@ mod inspector;
 /// ⭐ **As secções de JOGO do Inspector** (TOP-20 #9..#18) — tabela IRMÃ da `inspector.rs`: com os 151
 /// braços destes lá dentro ela passava o tecto de 700 LOC do HR-18; o corte é por ASSUNTO.
 mod inspector_game;
+mod inspector_input_map;
 mod inspector_macro;
 mod inspector_motion_input;
 mod inspector_nav;
@@ -629,6 +630,7 @@ fn tabela(key: &str) -> &'static str {
             .or_else(|| inspector_game::tr(k))
             .or_else(|| inspector_vida::tr(k))
             .or_else(|| inspector_nav::tr(k))
+            .or_else(|| inspector_input_map::tr(k))
             .or_else(|| luz2d::tr(k))
             .or_else(|| constraints::tr(k))
             .or_else(|| pixel_tabelas::tr(k))

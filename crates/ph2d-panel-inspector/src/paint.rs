@@ -45,6 +45,21 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
     state::set_current_display_unit(display_unit, ppm);
     state::set_current_display_angle(display_angle);
     // ⭐ CartoesUI (C4): o Inspector como LISTA de cartões; `PH2D_CARDS=0` = o de hoje.
+    if crate::cards::active()
+        && let Some(pane) = crate::cards_input_map::current_input_map()
+    {
+        let cards = crate::cards_input_map::cards(&pane);
+        let title = <crate::InspectorPanel as Panel>::TITLE.tr();
+        ph2d_editor_core::panel::cards::paint_card_list_pinned(
+            ctx,
+            ids::INSP_PANEL,
+            title,
+            &cards,
+            None,
+            &[],
+        );
+        return;
+    }
     if crate::cards::active() {
         crate::cards::prepare(ctx.host.store_mut());
         crate::cards_sprite::prepara(ctx.host.store_mut());

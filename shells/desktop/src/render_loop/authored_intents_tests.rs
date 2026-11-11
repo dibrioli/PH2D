@@ -415,3 +415,28 @@ fn the_three_deliberately_silent_arms_publish_nothing() {
         );
     }
 }
+
+/// ⭐ (GEF02 5.1) **O censo ouve os botões do painel do artista**: o botão dá a chave, a lista uma por opção
+/// (`chave/opção`), o slider nada (outro fio). *Mutação: a lista sem as opções ⇒ só `mode/a`.*
+#[test]
+fn o_painel_diz_ao_censo_os_nomes_que_pode_gritar() {
+    let row = |kind, label: &str, opcoes: &[&str]| Row {
+        kind,
+        label: label.to_owned(),
+        key: label.to_lowercase(),
+        id: ph2d_panel_authored::ids::authored_row_id(&label.to_lowercase()),
+        rgba: None,
+        body: None,
+        icon: None,
+        icon_id: None,
+        options: opcoes.iter().map(|o| (*o).to_owned()).collect(),
+    };
+    set_live_rows(Some(vec![
+        row(WidgetKind::Button, "Jump", &[]),
+        row(WidgetKind::Tabs, "Mode", &["A", "B"]),
+        row(WidgetKind::Slider, "Speed", &[]),
+    ]));
+    let nomes = super::nomes_do_painel();
+    set_live_rows(None);
+    assert_eq!(nomes, ["jump", "mode/a", "mode/b"]);
+}

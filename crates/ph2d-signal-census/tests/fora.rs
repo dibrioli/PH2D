@@ -53,15 +53,17 @@ fn cada_origem_de_fora_e_contada_no_papel_dela() {
     ]);
     let t = timeline(&n("TimelineDoc", "markers.signal"));
     let s = estados(&n("StateSets", "bindings.name"));
+    let painel = [n("AuthoredPanel", "rows.signal")];
     let f = Fora {
         motion: Some(&g),
         timeline: Some(&t),
         ui_states: Some(&s),
+        painel: Some(&painel),
     };
     let c = census(&World::new(), &f);
     // Controlo positivo: um nome por linha, nem mais nem menos.
     assert_eq!(c.names.len(), FORA.len(), "nomes: {:?}", c.names.keys());
-    assert_eq!(FORA.len(), 4);
+    assert_eq!(FORA.len(), 5);
     for o in FORA {
         let e = c.ends(&n(o.doc, o.field));
         let want = match o.role {
@@ -105,10 +107,12 @@ fn a_impressao_digital_muda_com_cada_documento_de_fora() {
     );
     let (t1, t2) = (timeline("a"), timeline("b"));
     let (s1, s2) = (estados("a"), estados("b"));
+    let (p1, p2) = (["a".to_owned()], ["b".to_owned()]);
     let base = Fora {
         motion: Some(&g1),
         timeline: Some(&t1),
         ui_states: Some(&s1),
+        painel: Some(&p1),
     };
     let f0 = fingerprint(&w, &base);
     assert_eq!(f0, fingerprint(&w, &base), "determinística");
@@ -123,6 +127,10 @@ fn a_impressao_digital_muda_com_cada_documento_de_fora() {
         },
         Fora {
             ui_states: Some(&s2),
+            ..base
+        },
+        Fora {
+            painel: Some(&p2),
             ..base
         },
     ];
@@ -142,6 +150,30 @@ fn a_impressao_digital_muda_com_cada_documento_de_fora() {
         assert_eq!(c.ends("b").emit, 1);
     });
     assert_eq!(vezes, 2);
+}
+
+/// ⭐ (GEF02 5.1) **Uma caixa que ouve a chave de um botão do painel do artista não diz «ninguém envia»**:
+/// o painel é uma origem de fora (Emit). CONTROLO: sem o painel, «ninguém».
+#[test]
+fn o_botao_do_painel_do_artista_envia_para_quem_o_ouve() {
+    let s = estados("jump");
+    let sem = Fora {
+        ui_states: Some(&s),
+        ..Fora::default()
+    };
+    assert_eq!(
+        census(&World::new(), &sem).hint("jump", Role::Listen),
+        Hint::Nobody
+    );
+    let painel = ["jump".to_owned(), "mode/a".to_owned()];
+    let com = sem.com_painel(&painel);
+    let c = census(&World::new(), &com);
+    assert_eq!(c.hint("jump", Role::Listen), Hint::Count(1));
+    assert_eq!(
+        c.ends("mode/a").emit,
+        1,
+        "a escolha de uma lista também envia"
+    );
 }
 
 /// Quem ouve de FORA do mundo (doc Timeline 17 item 8): a entrada do Motion e o estado de UI ouvem

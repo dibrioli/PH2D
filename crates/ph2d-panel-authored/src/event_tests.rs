@@ -251,3 +251,51 @@ fn every_list_family_marks_the_option_that_was_clicked() {
         );
     }
 }
+
+fn row_viva(kind: WidgetKind, opcoes: usize) -> crate::rows::Row {
+    crate::rows::Row {
+        kind,
+        label: "Mode".into(),
+        key: "mode".into(),
+        id: crate::ids::authored_row_id("mode"),
+        rgba: None,
+        body: None,
+        icon: None,
+        icon_id: None,
+        options: (0..opcoes).map(|i| format!("O{i}")).collect(),
+    }
+}
+
+/// ⭐ (GEF02 5.1) **O que cada row PODE publicar**, pela mesma decisão do clique: o botão dispara a chave,
+/// a lista dá uma escolha por opção, o slider dá um valor; o cabeçalho não é controle. É o que o censo de
+/// sinais lê para saber que um botão do painel ENVIA. *Mutação: a escolha sem expandir ⇒ só a opção 0.*
+#[test]
+fn cada_row_diz_o_que_pode_publicar() {
+    let fired = AuthoredIntent::Fired { key: "mode".into() };
+    assert_eq!(
+        intents_que_emite(&row_viva(WidgetKind::Button, 0)),
+        vec![fired.clone()]
+    );
+    assert_eq!(
+        intents_que_emite(&row_viva(WidgetKind::IconButton, 0)),
+        vec![fired]
+    );
+    for kind in [
+        WidgetKind::Tabs,
+        WidgetKind::RadioGroup,
+        WidgetKind::Dropdown,
+    ] {
+        let escolhas: Vec<AuthoredIntent> = (0..3)
+            .map(|index| AuthoredIntent::Choice {
+                key: "mode".into(),
+                index,
+            })
+            .collect();
+        assert_eq!(intents_que_emite(&row_viva(kind, 3)), escolhas, "{kind:?}");
+    }
+    assert!(matches!(
+        intents_que_emite(&row_viva(WidgetKind::Slider, 0)).as_slice(),
+        [AuthoredIntent::Value { .. }]
+    ));
+    assert!(intents_que_emite(&row_viva(WidgetKind::SectionHeader, 0)).is_empty());
+}

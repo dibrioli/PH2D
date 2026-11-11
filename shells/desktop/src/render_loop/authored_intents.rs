@@ -91,6 +91,24 @@ pub(crate) fn choice_name(key: &str, index: usize) -> String {
     }
 }
 
+/// ⭐ **Os nomes que o painel do artista pode gritar** (GEF02 5.1): cada row que ele pinta agora, pela
+/// mesma porta do dreno — o censo de sinais lê-os e uma caixa que ouve um botão deixa de dizer «ninguém».
+pub(crate) fn nomes_do_painel() -> Vec<String> {
+    let intents = ph2d_panel_authored::rows::with_rows(|rows| {
+        rows.iter()
+            .flat_map(ph2d_panel_authored::intents_que_emite)
+            .collect::<Vec<_>>()
+    });
+    intents.iter().filter_map(signal_name).collect()
+}
+
+/// O censo de sinais do quadro: os documentos de `fora` mais os [`nomes_do_painel`].
+pub(crate) fn publica_censo(w: &ph2d_ecs::World, fora: ph2d_signal_census::Fora<'_>) {
+    let painel = nomes_do_painel();
+    fora.com_painel(&painel)
+        .when_changed(w, ph2d_panel_inspector::set_signal_census);
+}
+
 /// **Publica o que um intent tem a dizer**, se tiver.
 ///
 /// ⚠️ **A CHAMADA a `drain_intents` fica no `render_loop/mod.rs`, de propósito** — e não aqui,

@@ -45,6 +45,7 @@ pub mod state;
 
 mod event;
 
+pub use event::intents_que_emite;
 pub use state::{AuthoredIntent, AuthoredPanelState, drain_intents};
 
 use ph2d_a11y::NodeId;

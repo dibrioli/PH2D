@@ -4,12 +4,13 @@
 //! (*"value-bearing variants carry only the `NodeId` — the caller re-reads from the store"*), e é
 //! o que garante que o número que sai daqui é o mesmo que o `paint` desenha no frame seguinte.
 
-use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_a11y::NodeId;
+use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::CheckboxValue;
 
 use crate::AuthoredPanel;
-use crate::rows::row_key_for;
+use crate::rows::{Row, row_key_for};
 use crate::state::{AuthoredIntent, AuthoredPanelState, push_intent};
 
 pub(crate) fn apply_event(
@@ -52,10 +53,15 @@ pub(crate) fn apply_event(
     let Some(key) = row_key_for(id) else {
         return EventOutcome::Ignored;
     };
-    let store = host.store();
+    push_intent(intent_de(host.store(), id, key));
+    EventOutcome::Consumed
+}
+
+/// **O que um gesto na row `id` publica** — a decisão única, que o clique e o [`intents_que_emite`] perguntam.
+fn intent_de(store: &WidgetStore, id: NodeId, key: String) -> AuthoredIntent {
     // A leitura é do store, e o braço escolhido é o do que o store DE FACTO guarda — não o do
     // tipo declarado. Registo trocado dá `Ignored`, nunca um valor inventado.
-    let intent = if let Some((_, value)) = store.slider(id) {
+    if let Some((_, value)) = store.slider(id) {
         AuthoredIntent::Value { key, value }
     } else if let Some((_, on)) = store.toggle(id) {
         AuthoredIntent::Flag { key, on }
@@ -76,9 +82,27 @@ pub(crate) fn apply_event(
         AuthoredIntent::Choice { key, index }
     } else {
         AuthoredIntent::Fired { key }
-    };
-    push_intent(intent);
-    EventOutcome::Consumed
+    }
+}
+
+/// ⭐ **Tudo o que `row` pode publicar** (GEF02 5.1, o censo de sinais): a row registada como o
+/// `populate` a regista, a decisão do [`intent_de`]; uma escolha dá uma por opção. Vazio = não é controle.
+#[must_use]
+pub fn intents_que_emite(row: &Row) -> Vec<AuthoredIntent> {
+    let mut store = WidgetStore::default();
+    crate::populate::adopt(&mut store, row);
+    if store.get(row.id).is_none() {
+        return Vec::new();
+    }
+    match intent_de(&store, row.id, row.key.clone()) {
+        AuthoredIntent::Choice { key, .. } => (0..row.options.len())
+            .map(|index| AuthoredIntent::Choice {
+                key: key.clone(),
+                index,
+            })
+            .collect(),
+        outro => vec![outro],
+    }
 }
 
 #[cfg(test)]

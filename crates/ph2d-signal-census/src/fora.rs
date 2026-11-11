@@ -21,6 +21,8 @@ pub struct Fora<'a> {
     pub motion: Option<&'a Graph>,
     pub timeline: Option<&'a TimelineDoc>,
     pub ui_states: Option<&'a StateSets>,
+    /// Os nomes que os botões e as listas do painel do artista podem gritar (`Signal::from_control`).
+    pub painel: Option<&'a [String]>,
 }
 
 impl<'a> Fora<'a> {
@@ -31,6 +33,16 @@ impl<'a> Fora<'a> {
             motion: Some(motion),
             timeline: Some(timeline),
             ui_states: Some(ui_states),
+            painel: None,
+        }
+    }
+
+    /// Com os nomes do painel do artista (a shell tira-os das rows que o painel pinta).
+    #[must_use]
+    pub fn com_painel(self, nomes: &'a [String]) -> Self {
+        Self {
+            painel: Some(nomes),
+            ..self
         }
     }
 
@@ -101,6 +113,13 @@ pub static FORA: &[Origem] = &[
                     .for_each(put);
             }
         },
+    },
+    // Os botões (a chave) e as listas (`chave/opção`) do painel do artista gritam o nome cru.
+    Origem {
+        doc: "AuthoredPanel",
+        field: "rows.signal",
+        role: Role::Emit,
+        read: |f, put| f.painel.into_iter().flatten().for_each(|n| put(n)),
     },
     Origem {
         doc: "StateSets",

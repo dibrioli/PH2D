@@ -222,9 +222,19 @@ impl CodeView {
         ao_pixel(self.scroll_y)
     }
 
-    /// O y do topo da fila visual `row`.
+    /// O y do topo da fila visual `row` (o respiro de cima rola com o texto).
     pub(crate) fn row_y(&self, row: usize) -> f32 {
-        self.text_rect().y + row as f32 * self.m.line_h - self.sy()
+        self.text_rect().y + self.content_y(row) - self.sy()
+    }
+
+    /// O y da fila `row` no conteúdo que rola: o respiro de cima e as filas acima dela.
+    fn content_y(&self, row: usize) -> f32 {
+        self.m.top_pad + row as f32 * self.m.line_h
+    }
+
+    /// A altura do conteúdo que rola.
+    fn content_h(&self) -> f32 {
+        self.content_y(self.total_rows())
     }
 
     /// As linhas escondidas pelas dobras fechadas `closed`.
@@ -295,8 +305,10 @@ impl CodeView {
         if self.m.line_h <= 0.0 {
             return 0..0;
         }
-        let first = (self.sy() / self.m.line_h) as usize;
-        let last = ((self.sy() + self.text_rect().h) / self.m.line_h).ceil() as usize;
+        let top = self.sy() - self.m.top_pad;
+        // Um negativo satura em 0: o respiro inteiro à vista começa na fila 0.
+        let first = (top / self.m.line_h) as usize;
+        let last = ((top + self.text_rect().h) / self.m.line_h).ceil() as usize;
         first.min(self.total_rows())..last.min(self.total_rows())
     }
 
@@ -311,7 +323,7 @@ impl CodeView {
     }
 
     fn max_scroll_y(&self) -> f32 {
-        (self.total_rows() as f32 * self.m.line_h - self.text_rect().h).max(0.0)
+        (self.content_h() - self.text_rect().h).max(0.0)
     }
 
     pub(crate) fn clamp_scroll(&mut self) {
@@ -327,10 +339,9 @@ impl CodeView {
     /// A barra de rolagem do texto (a mesma geometria pinta e agarra).
     pub(crate) fn bar(&self) -> ph2d_editor_core::widget::scroll_area::OwnBar {
         let tr = self.text_rect();
-        let content_h = self.total_rows() as f32 * self.m.line_h;
         ph2d_editor_core::widget::scroll_area::OwnBar {
             body: tr,
-            content_h,
+            content_h: self.content_h(),
             visible_h: tr.h,
         }
     }
@@ -404,10 +415,11 @@ impl CodeView {
         self.line_count = buffer.text().line_count();
         let byte = byte.min(buffer.text().len());
         let line = buffer.text().line_of_byte(byte);
-        let y = self.row_of_line(line) as f32 * self.m.line_h;
+        let y = self.content_y(self.row_of_line(line));
         let h = self.text_rect().h;
-        if y < self.scroll_y {
-            self.scroll_y = y;
+        // A subir, a linha pára com o respiro por cima (a linha 1 volta à rolagem 0).
+        if y - self.m.top_pad < self.scroll_y {
+            self.scroll_y = y - self.m.top_pad;
         } else if y + self.m.line_h > self.scroll_y + h {
             self.scroll_y = y + self.m.line_h - h;
         }
@@ -453,7 +465,8 @@ impl CodeView {
         if y >= tr.y + tr.h {
             return Hit::Status;
         }
-        let raw = ((y - tr.y + self.sy()) / self.m.line_h) as usize;
+        // No respiro de cima o negativo satura em 0: cai na linha 1 (VS Code, Zed).
+        let raw = ((y - tr.y + self.sy() - self.m.top_pad) / self.m.line_h) as usize;
         let row = raw.min(self.total_rows() - 1);
         let line = self.line_of_row(row).min(buffer.text().line_count() - 1);
         if x < tr.x {

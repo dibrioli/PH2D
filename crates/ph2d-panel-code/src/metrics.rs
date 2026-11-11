@@ -48,6 +48,8 @@ pub struct Metrics {
     pub gutter_w: f32,
     /// Folga entre a calha e o texto.
     pub text_pad: f32,
+    /// O respiro acima da linha 1: conteúdo que rola com o texto (VS Code `padding.top`, Zed).
+    pub top_pad: f32,
     pub status_h: f32,
     pub caret_w: f32,
 }
@@ -84,6 +86,7 @@ impl Metrics {
             fold_w,
             gutter_w,
             text_pad: Spacing::Xs.px(),
+            top_pad: Spacing::Md.px(),
             status_h: ao_pixel(
                 ph2d_text::displayed_font_px(TypeToken::Sm.px()) * LineHeight::Normal.ratio()
                     + Spacing::Sm.px(),

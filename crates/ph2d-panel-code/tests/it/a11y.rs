@@ -52,7 +52,8 @@ fn um_no_por_linha_visivel_e_rolar_troca_os_nos() {
         );
     }
     // Controlo: rolar dez linhas troca os nós.
-    v.scroll_by(10.0 * v.metrics().line_h);
+    // Dez linhas e o respiro de cima: a linha 11 fica rente ao topo.
+    v.scroll_by(10.0 * v.metrics().line_h + v.metrics().top_pad);
     pinta(&mut v, &buf, &mut ts, area, &Deco::default());
     let nos = v.a11y_nodes(&buf, BASE);
     assert_eq!(nos.len(), VISTA + 2);

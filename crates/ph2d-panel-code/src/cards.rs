@@ -84,6 +84,20 @@ pub fn close(scene: &mut VectorScene) {
     scene.pop_layer();
 }
 
+/// Fecha o cartão da barra de cima com o fio que a separa do código (dono 10/11): o da borda da
+/// calha (`Border`, `StrokeToken::Thin`), na última fila de píxeis de `head`, de lado a lado.
+pub fn close_bar(scene: &mut VectorScene, head: Rect, theme: &Theme) {
+    let t = ph2d_tokens::StrokeToken::Thin.px();
+    let fio = Rect::new(head.x, head.y + head.h - t, head.w, t);
+    fill_rounded_rect(
+        scene,
+        fio,
+        0.0,
+        ph2d_editor_core::paint::resolve(ColorToken::Border, *theme),
+    );
+    close(scene);
+}
+
 /// O contorno de um VALOR mostrado (o número ao vivo no código, a caixa de campo, a dica, o gráfico):
 /// não é a moldura de um controlo — é o que separa o número do que está à volta —, por isso não passa
 /// pela porta do tema, que num tema moderno o apaga em repouso (smoke do dono 10/11).

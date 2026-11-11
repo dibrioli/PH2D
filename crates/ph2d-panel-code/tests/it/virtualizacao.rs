@@ -20,7 +20,8 @@ fn rolar_uma_linha_molda_no_maximo_uma() {
         VISTA,
         "a cache tem as linhas visíveis, não o ficheiro"
     );
-    v.scroll_by(v.metrics().line_h);
+    // Uma linha e o respiro de cima: a linha 2 fica rente ao topo.
+    v.scroll_by(v.metrics().line_h + v.metrics().top_pad);
     pinta(&mut v, &buf, &mut ts, area, &d);
     assert!(
         v.cache().shapes() - s0 <= 1,

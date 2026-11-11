@@ -66,7 +66,7 @@ fn o_culpado_e_sublinhado_nas_colunas_dele() {
             (u[k].x1 - u[k].x0 - n as f32 * adv).abs() < 0.05,
             "largura do sublinhado {k}"
         );
-        let row_top = t.line_of_byte(b).min(1) as f32 * v.metrics().line_h;
+        let row_top = v.metrics().top_pad + t.line_of_byte(b).min(1) as f32 * v.metrics().line_h;
         assert!(
             u[k].y0 >= row_top && u[k].y1 <= row_top + v.metrics().line_h,
             "dentro da linha {k}"

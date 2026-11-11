@@ -16,6 +16,7 @@ mod peso_das_pecas;
 mod peso_na_placa;
 mod problemas;
 mod quadro_do_depurador;
+mod respiro;
 mod sublinhado;
 mod valores_ao_vivo;
 mod virtualizacao;
@@ -170,7 +171,8 @@ pub fn pinta_em(
     );
 }
 
-/// A área onde cabem exatamente `rows` linhas de texto (mede-se com uma pintura de aquecimento).
+/// A área de `rows` filas de texto (mede-se com uma pintura de aquecimento); em repouso o respiro de
+/// cima corta a última, e rolado o respiro cabem `rows` inteiras.
 pub fn area_para(v: &mut CodeView, buf: &Buffer, ts: &mut TextSystem, rows: usize) -> Rect {
     pinta(
         v,

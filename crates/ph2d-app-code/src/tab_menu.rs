@@ -395,7 +395,7 @@ impl CodeDocs {
         );
         crate::cards::open(scene, back, theme);
         self.bar.paint(head, &crumb, scene, ts, theme);
-        crate::cards::close(scene);
+        crate::cards::close_bar(scene, head, theme);
     }
 
     /// O que flutua por cima da aba: o cartão das opções e o menu aberto (este por último).

@@ -17,8 +17,8 @@ linker = "rust-lld.exe"
 # `compiler_builtins` (~20 instruções com ramos) em vez de uma instrução `roundss`: medido na
 # aquarela com uma thread, `v2` corta 20-23 % do traço e captura 77-86 % do ganho do `v3` (AVX2,
 # 2013+), que NÃO foi escolhido por excluir máquinas de 2009-2013.
-# ⚠️ O resultado numérico é o MESMO byte: `v2` não traz FMA (a contracção `a*b+c` que mudaria bits é
-# do `v3`), e `roundss` arredonda exactamente como a rotina de software.
+# ⚠️ O resultado numérico é o MESMO byte: o Rust nunca contrai `a*b+c` (nem no `v3`; só `mul_add`
+# funde, ao mesmo bit), e `roundss` arredonda exactamente como a rotina de software (B43.5).
 # ⚠️ Os `rustflags` de configs diferentes SOMAM-SE (o `mold` global do Linux continua), mas a
 # variável de ambiente `RUSTFLAGS` SUBSTITUI todos — quem a definir perde este nível em silêncio.
 # ⚠️ É por `cfg(target_arch)` e não por triplo: vale para Linux e Windows, e o macOS aarch64 do CI

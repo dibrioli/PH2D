@@ -59,16 +59,21 @@ rustflags = ["-C", "target-cpu=x86-64-v2"]
 
 ## Consequências
 
-- ⭐ **O resultado numérico é o MESMO byte.** O `v2` não traz FMA (a contracção `a*b + c` que muda
-  bits é do `v3`), e `roundss`/`floor` por instrução arredondam exactamente como as rotinas de
-  software. A prova é a suíte inteira do repo verde no alvo novo, mais o hash do canvas da aquarela
-  idêntico nas três variantes.
+- ⭐ **O resultado numérico é o MESMO byte.** O Rust nunca contrai `a*b + c` em FMA, em
+  nenhum alvo (nem no `v3`); só o `mul_add` explícito funde, e com o mesmo bit em software (`v2`) ou
+  em `vfmadd` (`v3`). Corrigido em B43.5 (11/11): a premissa antiga «o `v3` contrai» estava errada.
+  Prova: `perfil_de_build::a_vezes_b_mais_c_nao_se_contrai_em_nenhum_alvo` dá o mesmo hash em base,
+  `v2` e `v3` (`CARGO_TARGET_DIR` próprio), e o `objdump` do `v3` só tem `vfmadd` dentro de
+  `f32::mul_add`. `roundss`/`floor` por instrução arredondam exactamente como as rotinas de
+  software. A prova original é a suíte inteira do repo verde no alvo novo, mais o hash do canvas da
+  aquarela idêntico nas três variantes.
 - ⚠️ **Um processador sem SSE4.2 deixa de correr o app** (termina com instrução ilegal ao arrancar).
   É a decisão, não um efeito colateral.
 - ⚠️ **Os `rustflags` de configs diferentes SOMAM-SE** (o `-fuse-ld=mold` do `~/.cargo/config.toml`
   da workstation continua — conferido com `cargo check -v`, as duas bandeiras em cada `rustc`), **mas
   a variável de ambiente `RUSTFLAGS` SUBSTITUI-OS TODOS.** Quem definir `RUSTFLAGS` à mão perde o
-  nível em silêncio. O CI e o `ship.sh` já não usam `RUSTFLAGS` (usam `CARGO_BUILD_WARNINGS`, por
+  nível em silêncio — o portão `o_binario_e_x86_64_v2_e_o_rustflags_nao_o_apagou` (`ph2d-det-math`)
+  reprova esse binário (B43.5). O CI e o `ship.sh` já não usam `RUSTFLAGS` (usam `CARGO_BUILD_WARNINGS`, por
   outra razão escrita no `spike.yml`).
 - ⚠️ **Toda árvore recompila uma vez** depois de fundir isto: os `rustflags` entram na impressão
   digital do cargo e na chave do `sccache`.

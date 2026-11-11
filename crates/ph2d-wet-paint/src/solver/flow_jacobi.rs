@@ -439,7 +439,12 @@ fn flow_rows(g: &mut Grid, c: &FlowConst, mode: Rows) {
                                 3 => 1,
                                 _ => 0,
                             };
-                            let nb = (fi as i64 + dxn * rf + dyn_ * rf * fine_s as i64) as usize;
+                            // Fora da grade fina (a última linha em `rf > 1`) não há vizinho: a borda é seca.
+                            let nb = fi as i64 + dxn * rf + dyn_ * rf * fine_s as i64;
+                            if !(0..fine_cells).contains(&nb) {
+                                continue;
+                            }
+                            let nb = nb as usize;
                             let gap = f - film_full[nb] as f64;
                             if gap > thr && sett_full[nb] as f64 > 0.0 {
                                 let push = c.ext_backrun * gap.min(1.5) * 0.5;

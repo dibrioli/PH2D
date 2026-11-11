@@ -253,18 +253,60 @@ fn run_far_blobs_rf(tiles: bool, rf: usize, jacobi: bool) -> Engine {
     e
 }
 
+/// O meio de óleo da cena com óleo: listrado em `x` e `y`, para o gather do meio ter fontes diferentes.
+fn meio_listrado(x: usize, y: usize) -> f32 {
+    ((x * 7 + y * 3) % 11) as f32 * 0.09
+}
+
+/// As duas manchas longe com o campo `oleo.meio` listrado (o Jacobi: `meio_transporte` e a ladeira de Bingham).
+/// Devolve `(digest com o meio, o grid)`.
+fn run_far_blobs_oleo(tiles: bool, rf: usize) -> (Vec<u8>, Engine) {
+    use ph2d_wet_paint::grid::oleo_celula::{OleoCelula, campo_de};
+    let mut e = Engine::with_flow_ratio(700, 160, rf);
+    for l in &mut e.layers {
+        let g = &mut l.grid;
+        g.tiles_enabled = tiles;
+        let s = g.s;
+        let v: Vec<OleoCelula> = (0..g.cells)
+            .map(|i| OleoCelula {
+                meio: meio_listrado(i % s, i / s),
+                ..OleoCelula::NEUTRA
+            })
+            .collect();
+        g.oleo = campo_de(&v);
+    }
+    e.sim.order_invariant = true;
+    e.sliders.water = 1.0;
+    e.sim.gravity_override = Some([1.0, 0.3]);
+    drive_stroke(&mut e, 40.0, 30.0, 60.0, 130.0, 4.0, 10);
+    drive_stroke(&mut e, 620.0, 30.0, 640.0, 130.0, 4.0, 120);
+    let g = e.active_grid();
+    let mut d = digest(g);
+    for i in 0..g.cells {
+        d.extend_from_slice(&g.oleo[i].meio.to_bits().to_le_bytes());
+    }
+    (d, e)
+}
+
 /// Duas poças FUNDAS (filme até 7: o carimbo de umidade escreve) separadas por quatro tiles secos, com
 /// pigmento assentado no raso e meio orçamento de floração gasto (o backrun dispara nas DUAS). Três
 /// passes do Jacobi com `ExtBackrun`; devolve o grid.
-fn deep_far_pools_jacobi(tiles: bool, rf: usize) -> Grid {
-    use ph2d_wet_paint::solver::{build_flow_field_jacobi, rebuild_active_region};
+fn deep_far_pools_jacobi(tiles: bool, rf: usize, ate_a_borda: bool) -> Grid {
+    deep_far_pools(tiles, rf, ate_a_borda, true)
+}
+
+/// [`deep_far_pools_jacobi`] com o fluxo serial (`jacobi = false`, `build_flow_field`) ou o Jacobi.
+fn deep_far_pools(tiles: bool, rf: usize, ate_a_borda: bool, jacobi: bool) -> Grid {
+    use ph2d_wet_paint::solver::{
+        build_flow_field, build_flow_field_jacobi, rebuild_active_region,
+    };
     use ph2d_wet_paint::tuning::{Knob, Tuning};
     let (w, h) = (600usize, 34usize);
     let mut g = Grid::with_flow_ratio(w, h, rf);
     g.tiles_enabled = tiles;
     let s = g.s;
     for cx in [48.5f64, 500.5] {
-        for y in 5..=h - 5 {
+        for y in 5..=if ate_a_borda { h } else { h - 5 } {
             for x in 1..=w {
                 let d = (x as f64 - cx).abs();
                 if d >= 30.0 {
@@ -292,7 +334,11 @@ fn deep_far_pools_jacobi(tiles: bool, rf: usize) -> Grid {
     t.set(Knob::ExtBackrun, 1.5);
     let p = ph2d_wet_paint::sim::Sim::default().gather_params(&t);
     for _ in 0..3 {
-        build_flow_field_jacobi(&mut g, &p, 0.0, 0.6, false);
+        if jacobi {
+            build_flow_field_jacobi(&mut g, &p, 0.0, 0.6, false);
+        } else {
+            build_flow_field(&mut g, &p, 0.0, 0.6, false);
+        }
     }
     g
 }
@@ -369,10 +415,27 @@ fn a_mascara_de_tiles_da_faixa_reproduz_a_faixa_de_um_intervalo_ao_bit() {
             }
         }
     }
+    // Óleo: o meio anda com o líquido nas duas manchas (o gather do meio e a ladeira de Bingham).
+    for rf in [1usize, 2] {
+        let (um, _) = run_far_blobs_oleo(false, rf);
+        let (tiles, e) = run_far_blobs_oleo(true, rf);
+        if let Some(at) = first_difference(&um, &tiles) {
+            panic!("oleo rf {rf}: a mascara de tiles mudou o estado no byte {at}");
+        }
+        let g = e.active_grid();
+        let s = g.s;
+        let andou = (0..g.cells)
+            .filter(|i| i % s >= 560)
+            .any(|i| g.oleo[i].meio.to_bits() != meio_listrado(i % s, i / s).to_bits());
+        assert!(
+            andou,
+            "oleo rf {rf}: o meio nao andou na 2.a mancha (cena vazia)"
+        );
+    }
     // Poças fundas + backrun: o carimbo de umidade e o orçamento de floração na 2.ª poça.
     for rf in [1usize, 2] {
-        let um = deep_far_pools_jacobi(false, rf);
-        let tiles = deep_far_pools_jacobi(true, rf);
+        let um = deep_far_pools_jacobi(false, rf, false);
+        let tiles = deep_far_pools_jacobi(true, rf, false);
         let (a, b) = (digest(&um), digest(&tiles));
         if let Some(at) = first_difference(&a, &b) {
             panic!("pocas fundas rf {rf}: frow_tiles mudou o estado no byte {at}");
@@ -400,4 +463,19 @@ fn a_mascara_de_tiles_da_faixa_reproduz_a_faixa_de_um_intervalo_ao_bit() {
         troços * 2 < faixa,
         "a mascara nao saltou o vao: {troços} de {faixa}"
     );
+}
+
+/// A água na ÚLTIMA linha da grade com o backrun ligado: o empurrão olha o vizinho de baixo (`fi + rf·fine_s`), que em
+/// `rf > 1` cai fora da grade fina. Fora da grade não há vizinho, não há empurrão (a borda é seca).
+#[test]
+fn o_backrun_na_ultima_linha_nao_sai_da_grade() {
+    for rf in [1usize, 2, 3] {
+        for jacobi in [false, true] {
+            let g = deep_far_pools(true, rf, true, jacobi);
+            assert!(
+                g.film.iter().all(|v| v.is_finite()),
+                "rf {rf}: filme nao finito"
+            );
+        }
+    }
 }

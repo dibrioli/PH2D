@@ -37,9 +37,11 @@ pub(super) fn advect(g: &mut Grid, mode: Rows) {
     par::walk_rows(mode, &mut dst, s, |r, row| {
         let y = g0.by0 + r as i32;
         let (lo, hi) = g0.span_x(y);
-        for x in lo.max(0)..=hi {
-            if let Some(m) = gather(g0, x, y) {
-                row[x as usize] = m;
+        for (a, b) in crate::grid::faixa_tiles::span_runs(g0.tiles_row(y), lo.max(0), hi) {
+            for x in a..=b {
+                if let Some(m) = gather(g0, x, y) {
+                    row[x as usize] = m;
+                }
             }
         }
     });

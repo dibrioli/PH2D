@@ -348,7 +348,12 @@ pub fn build_flow_field(g: &mut Grid, p: &Params, gx: f64, gy: f64, ext_bypass: 
                         // FINO: a célula amostrada daquele bloco. Em `rf > 1` o
                         // backrun fica ESPARSO (um sítio de nucleação por bloco) —
                         // mudança de APARÊNCIA, para o smoke decidir.
-                        let nb = (fi as i64 + dxn * rf + dyn_ * rf * fine_s as i64) as usize;
+                        // Fora da grade fina (a última linha em `rf > 1`) não há vizinho: a borda é seca.
+                        let nb = fi as i64 + dxn * rf + dyn_ * rf * fine_s as i64;
+                        if !(0..fine_cells).contains(&nb) {
+                            continue;
+                        }
+                        let nb = nb as usize;
                         let gap = f - film_full[nb] as f64;
                         if gap > thr && sett[nb] as f64 > 0.0 {
                             met = true;

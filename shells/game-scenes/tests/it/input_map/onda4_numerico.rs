@@ -78,14 +78,15 @@ fn dentro(a: Rect, b: Rect) -> bool {
 /// ⭐ Item 7a, no arranjo da foto do dono: nas áreas reais e nos dois modos de texto, cada segunda legenda à vista
 /// está inteira (nunca cortada), na faixa de baixo à direita, por baixo do número, dentro da tecla e fora da curva do
 /// canto, menor que ele e sem barra na faixa dela. As de TEXTO são um conjunto e as SETAS outro: nunca um subconjunto,
-/// salvo a tecla ligada com barra na faixa (a `KP8`). Controlo da coerência: a 1280 o «End» caberia SOZINHO (18 px +
-/// 2 × `SUB_PAD` < 28,1) e mesmo assim falta, porque o «Home» não cabe.
+/// salvo a tecla ligada com barra na faixa (a `KP8`). Controlo da coerência: a 1600 o «End» caberia SOZINHO (8 + 18 +
+/// `SUB_PAD` < 34,5) e mesmo assim falta, porque o «Home» não cabe.
 #[test]
 fn as_segundas_legendas_do_numerico_cabem_inteiras_ou_somem() {
-    // MEDIDO (Default e CrispHeavyPlus): 1600 = 9 (6 palavras + 3 setas; a ↑ da KP8 ligada perde a faixa para as
-    // barras); 1280 e estreita = 3 (só as setas: «Home» 28,8–29,5 px > a tecla de 28,1, logo nenhuma palavra);
-    // 1920 = 10.
-    const CONTAGEM: [usize; 4] = [9, 3, 3, 10];
+    // MEDIDO (Default e CrispHeavyPlus), com o número a 15 px (revisão: a segunda ≤ 75 % dele) e a regra «nunca
+    // começa à esquerda do número» (o número a 8 px da aresta, a plaquinha deixa a barra à vista): a palavra mais
+    // larga, «Home» (28,8–29,5 px), pede 8 + 28,8 + 2 = 38,8 px de tecla. 1600 (34,5) e 1280 (28,1) = 3 (só as setas;
+    // a ↑ da KP8 ligada perde a faixa); estreita = 3; 1920 (48,9) = 10.
+    const CONTAGEM: [usize; 4] = [3, 3, 3, 10];
     em_cada_modo_de_texto(|| {
         for (a, conta) in AREAS.into_iter().zip(CONTAGEM) {
             let mut m = pinta(a);
@@ -95,17 +96,21 @@ fn as_segundas_legendas_do_numerico_cabem_inteiras_ou_somem() {
             let cortadas: Vec<String> = (m.tab().doc.census.elided().into_iter())
                 .map(str::to_owned)
                 .collect();
+            let regulares = m.tab().doc.census.regular.clone();
             let at = format!("área {}", a.w);
             eprintln!("{at}: {} segundas legendas", looks.len());
             assert_eq!(looks.len(), conta, "{at}: a tabela medida");
-            if a.w < 700.0 && a.w > 600.0 {
-                // LITERAL-PX-OK: 1280 — o CONTROLO da coerência: o «End» sozinho caberia na largura útil.
+            if a.w > 900.0 && a.w < 1000.0 {
+                // LITERAL-PX-OK: 1600 — o CONTROLO da coerência: o «End» sozinho caberia na largura útil.
                 let end = keys
                     .iter()
                     .find(|k| k.key == Key(0xF741))
                     .expect("Numpad 1");
                 let w = m.ts.prefix_width("End", SUB_PX);
-                assert!(w + SUB_PAD * 2.0 <= end.rect.w, "{at}: o End sozinho cabe");
+                // O número começa a `dx` da aresta (o mesmo em toda tecla do canto); a largura do peso do número é um
+                // tecto da do Regular.
+                let dx = looks.first().map_or(f32::MAX, |l| l.main.x - l.key_rect.x);
+                assert!(dx + w + SUB_PAD <= end.rect.w, "{at}: o End sozinho cabe");
                 assert!(
                     looks.iter().all(|l| l.key != end.key),
                     "{at}: e falta, pelo conjunto"
@@ -129,6 +134,7 @@ fn as_segundas_legendas_do_numerico_cabem_inteiras_ou_somem() {
                 };
                 if let SubLegend::Text(t) = &s.legend {
                     assert!(!cortadas.contains(t), "{at}: «{t}» cortada");
+                    assert!(regulares.contains(t), "{at}: «{t}» no peso Regular");
                     assert_eq!(
                         t,
                         nav_of(s.key).expect("nav").cap_short(),
@@ -153,7 +159,17 @@ fn as_segundas_legendas_do_numerico_cabem_inteiras_ou_somem() {
                     s.main.y < s.sub.y,
                     "{at}: o número em cima, a segunda na faixa de baixo"
                 );
-                assert!(s.sub.h < s.main.h, "{at}: menor que o número");
+                assert!(
+                    s.sub.h <= s.main.h * 0.75 + 0.01,
+                    "{at}: tinta da segunda {:.2} > 75 % da do número {:.2}",
+                    s.sub.h,
+                    s.main.h
+                );
+                assert!(
+                    s.sub.x >= s.main.x - 0.01,
+                    "{at}: {:?} começa à esquerda do número",
+                    s.key
+                );
                 let toca =
                     |b: &Rect| b.y < s.sub.y + s.sub.h && b.y + b.h > s.sub.y && dentro(*b, kr);
                 assert!(

@@ -15,9 +15,9 @@ use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_vector::{BezPath, Shape, VectorScene};
 
 use super::geometry as g;
-use super::keys_fit::{self as fit, Fit, Group, LEGEND_MARGIN, Legend, Level};
+use super::keys_fit::{self as fit, Fit, LEGEND_MARGIN, Legend};
 use crate::doc::InputMapDoc;
-use crate::view_list::text::line;
+use crate::view_list::text::{body, body_width};
 use ph2d_card_stack::metrics as m;
 
 /// O tamanho da segunda legenda: o menor texto da app (`TypeToken::Xxs`), abaixo do número (`VALUE_PX`).
@@ -106,7 +106,7 @@ fn arrow_drawn(icon: IconId) -> f32 {
 /// A caixa da tinta da segunda (o que ocupa a faixa): o texto, a largura medida e a altura do corpo; a seta, a tinta.
 fn sub_size(ts: &mut TextSystem, s: &SubLegend) -> (f32, f32) {
     match s {
-        SubLegend::Text(t) => (ts.prefix_width(t, SUB_PX), SUB_PX),
+        SubLegend::Text(t) => (body_width(ts, t, SUB_PX), cap_height_px(SUB_PX)),
         SubLegend::Icon(i) => {
             let (_, _, fw, fh) = ink_frac(*i);
             let dr = arrow_drawn(*i);
@@ -161,32 +161,43 @@ pub struct SubSets {
     pub icons: bool,
 }
 
-/// O tamanho do número no canto e o recuo de cima e de baixo; `None` = nem o número com a segunda cabem em altura.
-fn main_px(kr: Rect, legend: &Legend) -> Option<(f32, f32)> {
-    let Legend::Text(_, px) = legend else {
+/// O tamanho do número do canto: o `Md` da casa (15 px). MEDIDO (onda 4, revisão): maiúscula 10,71 px contra os
+/// 7,14 da segunda a `SUB_PX` = 67 % (alvo ≤ 75 %); o `Base` (13 px) dava 77 % e o `VALUE_PX` 83 %.
+pub const CORNER_NUMBER_PX: f32 = ph2d_tokens::TypeToken::Md.px();
+
+/// O vão mínimo entre a tinta do número e a da segunda.
+const CORNER_GAP: f32 = m::SEG_PAD;
+
+/// A geometria do canto pela TINTA: `(x do número, topo da tinta do número, topo da maiúscula da segunda, fundo da
+/// faixa)`. `None` = a tecla não tem a altura: recuo + maiúscula do número + vão + maiúscula e descendente da segunda
+/// + recuo (24,7 px; a tecla mede 25 a 1280 e 26,7 a 1600).
+fn geometry(kr: Rect) -> Option<(f32, f32, f32, f32)> {
+    let (cap_n, cap_s) = (cap_height_px(CORNER_NUMBER_PX), cap_height_px(SUB_PX));
+    let desc = SUB_PX - cap_s;
+    let need = CORNER_INSET_MIN * 2.0 + cap_n + CORNER_GAP + cap_s + desc;
+    if kr.h < need {
         return None;
-    };
-    let px = [*px, m::VALUE_PX]
-        .into_iter()
-        .find(|p| kr.h - p - SUB_PX >= CORNER_INSET_MIN * 2.0)?;
-    Some((px, ((kr.h - px - SUB_PX) * 0.5).min(fit::PLATE_PAD_Y)))
+    }
+    let inset =
+        (CORNER_INSET_MIN + (kr.h - need) * 0.5).min(fit::PLATE_PAD_Y.max(CORNER_INSET_MIN));
+    let bottom = kr.y + kr.h - inset;
+    let x = kr.x + LEGEND_MARGIN + fit::PLATE_PAD_X;
+    Some((x, kr.y + inset, bottom - desc - cap_s, bottom))
 }
 
-/// A caixa de tamanho `(w, h)` à direita na faixa de baixo de `kr` (recuo `inset`), e se cabe (folga e cantos).
-fn band(kr: Rect, inset: f32, (w, h): (f32, f32)) -> (Rect, bool) {
-    let band_y = kr.y + kr.h - inset - SUB_PX;
-    let r = Rect::new(kr.x + kr.w - SUB_PAD - w, band_y + (SUB_PX - h) * 0.5, w, h);
-    (r, w + SUB_PAD * 2.0 <= kr.w && clear_of_corners(r, kr))
+/// A caixa de TINTA `(w, h)` à direita na faixa de baixo (maiúscula a partir de `cap_top`, até `bottom`), e se cabe:
+/// a folga [`SUB_PAD`] à direita, nunca a começar à esquerda do número (`num_x`), fora da curva dos cantos.
+fn band(kr: Rect, (num_x, cap_top, bottom): (f32, f32, f32), (w, h): (f32, f32)) -> (Rect, bool) {
+    let cap_s = cap_height_px(SUB_PX);
+    let r = Rect::new(kr.x + kr.w - SUB_PAD - w, cap_top + (cap_s - h) * 0.5, w, h);
+    let whole = Rect::new(r.x, cap_top.min(r.y), w, bottom - cap_top.min(r.y));
+    (r, r.x >= num_x - 0.01 && clear_of_corners(whole, kr))
 }
 
 /// ⭐ Os conjuntos ao passo de `f`: o de texto se a MAIS LARGA das palavras cabe em TODA tecla com palavra; o das setas
 /// se a maior seta cabe em toda tecla com seta. Nunca um subconjunto (a 1280, End/Ins/Del sem Home liam-se como erro).
 #[must_use]
 pub fn sets(ts: &mut TextSystem, f: Fit) -> SubSets {
-    let level = fit::levels(ts, f)
-        .into_iter()
-        .find(|(gr, _)| *gr == Group::Numpad)
-        .map_or(Level::ShortSmall, |l| l.1);
     let mut widest = (0.0_f32, 0.0_f32, 0.0_f32);
     for (kp, _) in NUMPAD_NAV {
         if let Some(s) = sub_of(Key(kp)) {
@@ -206,14 +217,13 @@ pub fn sets(ts: &mut TextSystem, f: Fit) -> SubSets {
             continue;
         };
         let kr = Rect::new(x, y, w, h);
-        let legend = fit::choose(ts, c.key, (level, true), w, fit::label_h(h))
-            .unwrap_or_else(|| fit::legend_at(c.key, level));
-        let Some((_, inset)) = main_px(kr, &legend) else {
+        let Some((x, _, cap_top, bottom)) = geometry(kr) else {
             return SubSets::default();
         };
+        let at = (x, cap_top, bottom);
         match s {
-            SubLegend::Text(_) => out.text &= band(kr, inset, (widest.0, SUB_PX)).1,
-            SubLegend::Icon(_) => out.icons &= band(kr, inset, (widest.1, widest.2)).1,
+            SubLegend::Text(_) => out.text &= band(kr, at, (widest.0, cap_height_px(SUB_PX))).1,
+            SubLegend::Icon(_) => out.icons &= band(kr, at, (widest.1, widest.2)).1,
         }
     }
     out
@@ -243,27 +253,19 @@ pub(crate) fn corner_of(
     if !corner(key) {
         return None;
     }
-    let (px, inset) = main_px(kr, legend)?;
+    let (x, top, cap_top, bottom) = geometry(kr)?;
     let Legend::Text(s, _) = legend else {
         return None;
     };
-    let mw = ts.prefix_width(s, px);
-    let main = Rect::new(
-        kr.x + LEGEND_MARGIN + fit::PLATE_PAD_X,
-        kr.y + inset,
-        mw,
-        px,
-    );
+    let px = CORNER_NUMBER_PX;
+    let main = Rect::new(x, top, ts.prefix_width(s, px), cap_height_px(px));
     let sub = sub_of(key).and_then(|sl| {
         let set = match sl {
             SubLegend::Text(_) => on.text,
             SubLegend::Icon(_) => on.icons,
         };
-        let (sr, fits) = band(kr, inset, sub_size(ts, &sl));
-        let band_y = kr.y + kr.h - inset - SUB_PX;
-        let clear = bars
-            .iter()
-            .all(|b| b.y + b.h <= band_y || b.y >= band_y + SUB_PX);
+        let (sr, fits) = band(kr, (x, cap_top, bottom), sub_size(ts, &sl));
+        let clear = bars.iter().all(|b| b.y + b.h <= cap_top || b.y >= bottom);
         (set && fits && clear).then_some((sl, sr))
     });
     Some(Corner {
@@ -273,9 +275,10 @@ pub(crate) fn corner_of(
     })
 }
 
-/// A tinta da segunda legenda, na FACE da tecla (fora da plaquinha): ligada `Text2` (um degrau abaixo do `Text1` do
-/// número); sem acção fica no `Text3` do número, menor. Medido: `TextDisabled` dava 1,77:1 no Oled e lia-se MAIS que
-/// o `Text3` no Light e no Candy.
+/// A tinta da segunda legenda, na FACE da tecla: ligada `Text2` (um degrau abaixo do `Text1` do número, ≥ 5,46:1);
+/// sem acção fica no `Text3` do número — o degrau mais fraco é o peso Regular e o tamanho (67 %). MEDIDO: nenhum token
+/// de texto da casa fica abaixo do `Text3` nos 12 temas (`TextDisabled` passa-o no Light e no Candy, `CardLabel` no
+/// Sunstone), e no Oled o próprio número é 2,62:1.
 #[must_use]
 pub fn sub_ink(bound: bool) -> ColorToken {
     if bound {
@@ -312,7 +315,8 @@ pub(super) fn paint(
     let c = ink.color(tok);
     match s {
         SubLegend::Text(t) => {
-            line(&mut doc.census, ts, scene, t, sb, SUB_PX, c);
+            // Regular (o corpo da casa), um degrau abaixo do peso do número.
+            body(&mut doc.census, ts, scene, t, sb, SUB_PX, c);
         }
         SubLegend::Icon(i) => {
             // O traço das setas das teclas (`keys::paint_key`): o mesmo peso que a palavra ao lado.

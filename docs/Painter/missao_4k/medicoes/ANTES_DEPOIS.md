@@ -111,3 +111,32 @@ saída `target/mede-depois/cantos`), load 0,66–0,82. Só o binário «depois»
 | omissão | digital | 3840x2160 | papel | 10.0 | 19.8 | 11.0 / 12.0 | 11.2 | 11.2 | 14.1 | **50.3 ✗** / **51.3 ✗** | — |
 | omissão | impasto | 3840x2160 | papel | 10.2 | 21.2 | 10.8 / 11.8 | 16.9 | 16.9 | 24.0 | **50.3 ✗** / **49.9 ✗** | — |
 | omissão | wet | 3840x2160 | papel | 11.0 | **62.5 ✗** | 11.0 / 12.8 | 21.1 | 21.1 | **56.0 ✗** | **53.6 ✗** / **52.9 ✗** | 39.9 |
+
+## M4 — as curas C1 e C2 no app (11/11, HEAD 6f11399c70, sozinho)
+
+Binário do HEAD limpo (sem os interruptores temporários do M3): `cargo build -p ph2d-host-desktop --profile smoke` em
+`target/mede-m4/` (a medição com o binário com strip; o perf com `CARGO_PROFILE_SMOKE_STRIP=none`, o mesmo código).
+`SO="M3|M4|M5" … mede_pen_up_4k.sh faixas <tela> blocos 3` (A·B intercalados por rodada; saída `target/mede-m4/{4k,1k}/matriz`);
+caso novo **M5** = `PH2D_WET_OTICA_FORA=1` (de fábrica) × `=0`. Mínimo de 3 por variante, ms; load 0,20–1,61
+(`target/mede-m4/carga.txt`).
+
+| caso | A | B | A (3) | B (3) | mín A × B | antes da cura |
+|---|---|---|---|---|---|---|
+| C2 Filbert soltar 4K blocos (M3) | de fábrica (Simples no gesto) | `LUZ_GESTO=cheia` | 41,2 · 47,9 · 42,2 | 20,0 · 26,9 · 19,1 | **41,2 × 19,1** | 47,8 × 19,9 |
+| C2 Filbert soltar 4K blocos (M5) | compositor ligado (fábrica) | `OTICA_FORA=0` (em casa) | 48,2 · 43,7 · 42,9 | 42,1 · 48,3 · 42,2 | **42,9 × 42,1** | — |
+| C2 Filbert soltar 1024² blocos (M3) | de fábrica | `LUZ_GESTO=cheia` | 31,9 · 31,9 · 31,0 | 19,7 · 19,0 · 18,9 | **31,0 × 18,9** | 43,2 |
+| C2 Filbert soltar 1024² blocos (M5) | compositor ligado | `OTICA_FORA=0` | 32,0 · 30,0 · 31,2 | 31,1 · 34,9 · 32,1 | **30,0 × 31,1** | — |
+| C1 Impasto Ctrl+Z 4K blocos (M4, A = B) | HEAD | HEAD | 37,9 · 34,6 · 34,6 | 34,4 · 34,3 · 35,3 | **34,3** (6) | 42,8 → 38,0 (2121ecd849) · caminho antigo 34,1 |
+
+- **C1 confirmada:** Ctrl+Z do Impasto 4K blocos 38,0 → **34,3** ms = o caminho antigo (34,1). A regressão M4 fechou.
+- **C2 parcial no app:** soltar 4K 47,8 → **41,2** (−6,6) e 1024² 43,2 → **31,0** (−12), mas a Cheia no gesto ainda dá
+  19,1 / 18,9: o salto do pen-up continua (~+22 ms a 4K, ~+12 a 1024²). A sonda (275 → 25 ms) não o representa.
+- **O Filbert do app NÃO passa pelo compositor:** `[otica] … 0 imagens` em todo gesto e repouso, e M5 A × B iguais
+  (42,9 × 42,1; 30,0 × 31,1). O custo está no caminho de casa — o que a C2 tocou.
+- **Onde está o custo (perf, `FUNDO=blocos LENTO_MS=30 … perf 3840x2160 Filbert:wet`, `target/mede-m4/perf`):** ainda UM
+  quadro de 44 ms a +57 ms do up, **56 % em `ph2d_wet_paint`** (`visibilidade_e_ceu` 16,6 %, `luz_directa` 7,9 %,
+  `Sectores::ate` 6,3 %, `rebote_no_papel` 5,8 %, `desfoca` 6,7 %) — o perfil do M3. Os quadros seguintes voltam a
+  11–15 ms: a dívida não sai em faixas de 8 ms, sai quase inteira no 1.º quadro. Hipótese (não provada; perf sem pilha):
+  `merge_dirty_otica` funde a faixa no sujo do motor e `wetpaint_composite` compõe o RETÂNGULO que une a faixa ao sujo da
+  água que ainda evolui no traço — quase a caixa toda; na sonda não há água a evoluir. Próximo passo: contar a área
+  composta por chamada no 1.º quadro depois do up, e compor a faixa à parte do sujo do motor.

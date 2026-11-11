@@ -196,6 +196,8 @@ if [ "$1" = faixas ]; then
     "M3|Filbert:wet|PH2D_COMPOSITE_LUZ_GESTO=simples|PH2D_COMPOSITE_LUZ_GESTO=cheia"
     # M4: o Ctrl+Z do Impasto 4K sem interruptor — A e B são o MESMO caminho (a dispersão do binário «depois»).
     "M4|omissão:impasto|PH2D_M4=a|PH2D_M4=b"
+    # M5 (M4 do fecho, 11/11): o pen-up do Filbert pelo compositor da óptica (de fábrica) × em casa (a cura C2, faixas).
+    "M5|Filbert:wet|PH2D_WET_OTICA_FORA=1|PH2D_WET_OTICA_FORA=0"
   )
   [ -n "$SO" ] && mapfile -t CASOS < <(printf '%s\n' "${CASOS[@]}" | grep -E "^($SO)\|")
   for i in $(seq 1 "$N"); do for c in "${CASOS[@]}"; do

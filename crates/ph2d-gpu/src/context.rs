@@ -185,17 +185,7 @@ impl GpuContext {
         // cannot run the integrator; the sequencer REFUSES such a kernel at cook
         // time (`GpuCookError::TooManyBindings`) and the caller falls back to the
         // CPU, rather than the pipeline blowing up at first dispatch.
-        let adapter_limits = adapter.limits();
-        let mut required_limits = wgpu::Limits::default();
-        required_limits.max_storage_buffer_binding_size = required_limits
-            .max_storage_buffer_binding_size
-            .max(adapter_limits.max_storage_buffer_binding_size);
-        required_limits.max_buffer_size = required_limits
-            .max_buffer_size
-            .max(adapter_limits.max_buffer_size);
-        required_limits.max_storage_buffers_per_shader_stage = required_limits
-            .max_storage_buffers_per_shader_stage
-            .max(adapter_limits.max_storage_buffers_per_shader_stage);
+        let required_limits = limites_pedidos(&adapter.limits());
         let descritor = wgpu::DeviceDescriptor {
             label: Some("ph2d-gpu device"),
             required_features: compression_features,
@@ -321,9 +311,60 @@ impl PotenciaDeDez for u64 {
     }
 }
 
+/// Os limites pedidos ao dispositivo: o `Limits::default()` (o Vello precisa dele) com cada tecto
+/// de RECURSO subido ao que o adaptador anuncia — um superconjunto do default, logo o
+/// `request_device` não falha por ele e nada que funcionava parte.
+pub(crate) fn limites_pedidos(adapter: &wgpu::Limits) -> wgpu::Limits {
+    let mut l = wgpu::Limits::default();
+    l.max_storage_buffer_binding_size = l
+        .max_storage_buffer_binding_size
+        .max(adapter.max_storage_buffer_binding_size);
+    l.max_buffer_size = l.max_buffer_size.max(adapter.max_buffer_size);
+    l.max_storage_buffers_per_shader_stage = l
+        .max_storage_buffers_per_shader_stage
+        .max(adapter.max_storage_buffers_per_shader_stage);
+    // B42.2: o lado e as fatias de textura são VRAM da placa, não do default (8 192 / 256).
+    l.max_texture_dimension_1d = l
+        .max_texture_dimension_1d
+        .max(adapter.max_texture_dimension_1d);
+    l.max_texture_dimension_2d = l
+        .max_texture_dimension_2d
+        .max(adapter.max_texture_dimension_2d);
+    l.max_texture_dimension_3d = l
+        .max_texture_dimension_3d
+        .max(adapter.max_texture_dimension_3d);
+    l.max_texture_array_layers = l
+        .max_texture_array_layers
+        .max(adapter.max_texture_array_layers);
+    l
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// B42.2: a tela 4K de lado > 8 192 (o `Limits::default()`) não vai à CPU numa placa que a
+    /// aguenta. Medido 11/11 (`vulkaninfo`): Radeon integrada (RADV Raphael) 16 384 de lado e
+    /// 8 192 fatias; RTX 5060 Ti 32 768 e 2 048. O default dava 8 192 e 256.
+    /// *Mutação: tirar o `.max(adapter…)` de um campo ⇒ vermelho.*
+    #[test]
+    fn os_limites_de_textura_sao_os_do_adaptador() {
+        let radeon = wgpu::Limits {
+            max_texture_dimension_1d: 16_384,
+            max_texture_dimension_2d: 16_384,
+            max_texture_dimension_3d: 8_192,
+            max_texture_array_layers: 8_192,
+            ..wgpu::Limits::default()
+        };
+        let l = limites_pedidos(&radeon);
+        assert_eq!(l.max_texture_dimension_1d, 16_384);
+        assert_eq!(l.max_texture_dimension_2d, 16_384);
+        assert_eq!(l.max_texture_dimension_3d, 8_192);
+        assert_eq!(l.max_texture_array_layers, 8_192);
+        // Um adaptador abaixo do default nunca baixa o pedido (o Vello precisa do default).
+        let fraco = wgpu::Limits::downlevel_defaults();
+        assert_eq!(limites_pedidos(&fraco), wgpu::Limits::default());
+    }
 
     /// Regression guard (W2.T4): every texture-compression family the adapter
     /// advertises MUST be granted on the created device, or the cooked-texture

@@ -7,6 +7,7 @@
 //! every move (drift-free), and manual handles ride along while derived (Auto / Vector) ones are rebuilt.
 
 use super::curve_geom::dist2;
+use ph2d_det_math::DetMath;
 
 /// Margin (× the grab tolerance) the gizmo box is inflated beyond the control-point bounds, so its handles
 /// sit clear of the anchors / tangents (an extreme anchor under a corner is still grabbable — anchors win).
@@ -167,7 +168,7 @@ pub(super) fn grab(
         }
     }
     // Ring just OUTSIDE a corner (farther from the pivot than the corner) = rotate about the centre.
-    let band2 = (tol * GIZMO_ROTATE_BAND).powi(2);
+    let band2 = (tol * GIZMO_ROTATE_BAND).det_powi(2);
     for (i, &h) in hs.iter().enumerate().take(4) {
         let d2 = dist2(h, pos);
         if d2 > tol2 && d2 <= band2 && dist2(pivot, pos) > dist2(pivot, h) {

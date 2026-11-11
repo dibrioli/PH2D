@@ -4,6 +4,7 @@
 //! free fns with no `CurveEditor` access, so the editor calls them as `curve_geom::*`. The perpendicular
 //! **offset** lives in the sibling [`super::curve_offset`] (it reuses [`cubic_at`] + [`split_cubic`] here).
 
+use ph2d_det_math::DetMath;
 use ph2d_painter_brush::{flatten_bezier, flatten_catmull_rom};
 
 /// A curve's control geometry: anchor `points` + their parallel `[in, out]` Bézier `handles`. Aliased to
@@ -271,7 +272,8 @@ pub(super) fn densify_closed_curve(
         let j = (i + 1) % n;
         [points[i], handles[i][1], handles[j][0], points[j]]
     };
-    let dist = |a: [f32; 2], b: [f32; 2]| ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2)).sqrt();
+    let dist =
+        |a: [f32; 2], b: [f32; 2]| ((a[0] - b[0]).det_powi(2) + (a[1] - b[1]).det_powi(2)).sqrt();
     let mut counts: Vec<usize> = (0..n)
         .map(|i| {
             let b = seg(i);

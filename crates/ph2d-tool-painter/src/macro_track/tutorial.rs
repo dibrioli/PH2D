@@ -22,6 +22,7 @@ use super::passo::{Passo, abs};
 use super::tocar::{ErroDaMacro, TocadorDoPainter};
 use crate::PaintMedia;
 use crate::tool::PainterTool;
+use ph2d_det_math::DetMath;
 use ph2d_macro::{LeitorDaFamilia, Track};
 use std::sync::atomic::AtomicBool;
 
@@ -204,7 +205,7 @@ fn rasteriza(r: &RegiaoDaPincelada, w: u32, h: u32) -> Vec<u32> {
 }
 
 fn d2_ponto(a: [f32; 2], b: [f32; 2]) -> f32 {
-    (a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2)
+    (a[0] - b[0]).det_powi(2) + (a[1] - b[1]).det_powi(2)
 }
 
 fn d2_segmento(c: [f32; 2], a: [f32; 2], b: [f32; 2]) -> f32 {

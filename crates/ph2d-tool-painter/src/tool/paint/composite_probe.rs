@@ -38,6 +38,7 @@
 //!
 //! Enquanto isso não é decidido, este probe é o número: rode-o e compare com a tabela.
 use super::*;
+use ph2d_det_math::DetMath;
 use ph2d_editor_core::tool::RasterEditTool;
 use ph2d_painter_brush::Falloff;
 
@@ -480,7 +481,7 @@ fn probe_edge_staircase() {
         .enumerate()
         .map(|(i, e)| (i as f32 - mx) * (e - my))
         .sum();
-    let den: f32 = (0..edges.len()).map(|i| (i as f32 - mx).powi(2)).sum();
+    let den: f32 = (0..edges.len()).map(|i| (i as f32 - mx).det_powi(2)).sum();
     let k = num / den.max(1e-6);
     let worst = edges
         .iter()

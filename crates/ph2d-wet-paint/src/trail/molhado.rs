@@ -393,7 +393,7 @@ impl Trail {
                             let alvo = s * (1.0 + o);
                             // A pena (J6): a célula da borda reparte-se até `esbate` para FORA, a do centro nada
                             // (⛔ medido: repartida para os dois lados, a metade de dentro somava-se ao miolo num risco).
-                            let q = (s / rr.max(1e-9)).min(1.0).powi(2) * (o / abre).min(1.0);
+                            let q = (s / rr.max(1e-9)).min(1.0).det_powi(2) * (o / abre).min(1.0);
                             let pena = esbate * q;
                             if pena > 0.0 {
                                 // E RECUA metade dela (no máximo [`RECUO`] do raio aberto, para o mapa não dobrar): a

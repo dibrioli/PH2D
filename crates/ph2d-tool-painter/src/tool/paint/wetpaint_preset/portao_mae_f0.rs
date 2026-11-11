@@ -68,7 +68,7 @@ pub(super) fn fora_do_segmento(x: [f64; 3], seg: &[[f64; 3]], a: f64) -> f64 {
     seg.iter()
         .map(|m| {
             (0..3)
-                .map(|k| (x[k] - (m[k] * a + CREME[k] * (1.0 - a))).powi(2))
+                .map(|k| (x[k] - (m[k] * a + CREME[k] * (1.0 - a))).det_powi(2))
                 .sum::<f64>()
                 .sqrt()
         })

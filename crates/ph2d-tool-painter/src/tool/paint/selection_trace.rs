@@ -3,6 +3,8 @@
 //! Douglas–Peucker simplification to a handful of anchors that seed a `CurveState` (handles/gizmos +
 //! Offset reuse the Shape editors). Pure geometry — no `self`, transcendental-free (HR-5).
 
+use ph2d_det_math::DetMath;
+
 /// A texel is INSIDE the selection when its coverage is ≥ the half contour.
 #[inline]
 fn inside(mask: &[u8], w: usize, h: usize, x: i32, y: i32) -> bool {
@@ -432,7 +434,7 @@ fn farthest_from(pts: &[[f32; 2]], i: usize) -> usize {
     let mut best = i;
     let mut best_d = -1.0f32;
     for (j, q) in pts.iter().enumerate() {
-        let d = (q[0] - p[0]).powi(2) + (q[1] - p[1]).powi(2);
+        let d = (q[0] - p[0]).det_powi(2) + (q[1] - p[1]).det_powi(2);
         if d > best_d {
             best_d = d;
             best = j;
@@ -472,11 +474,11 @@ fn point_seg_dist2(p: [f32; 2], a: [f32; 2], b: [f32; 2]) -> f32 {
     let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
     let len2 = dx * dx + dy * dy;
     if len2 <= f32::EPSILON {
-        return (p[0] - a[0]).powi(2) + (p[1] - a[1]).powi(2);
+        return (p[0] - a[0]).det_powi(2) + (p[1] - a[1]).det_powi(2);
     }
     let t = (((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2).clamp(0.0, 1.0);
     let (px, py) = (a[0] + t * dx, a[1] + t * dy);
-    (p[0] - px).powi(2) + (p[1] - py).powi(2)
+    (p[0] - px).det_powi(2) + (p[1] - py).det_powi(2)
 }
 
 #[cfg(test)]

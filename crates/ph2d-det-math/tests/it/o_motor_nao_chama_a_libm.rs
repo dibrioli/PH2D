@@ -21,9 +21,9 @@ const CRATES: [&str; 15] = [
     "ph2d-sfx-lab",
     "ph2d-sfx-explore",
 ];
-const FUNCOES: [&str; 22] = [
+const FUNCOES: [&str; 23] = [
     "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "sin_cos", "sinh", "cosh", "tanh", "exp",
-    "exp2", "exp_m1", "ln", "ln_1p", "log", "log2", "log10", "powf", "cbrt", "hypot",
+    "exp2", "exp_m1", "ln", "ln_1p", "log", "log2", "log10", "powf", "powi", "cbrt", "hypot",
 ];
 
 fn e_de_teste(p: &Path) -> bool {
@@ -113,7 +113,36 @@ fn o_censo_ve_as_tres_formas_e_poupa_o_resto() {
     assert_eq!(proibidas("it.map(f64::cbrt);").len(), 1);
     assert_eq!(proibidas("let a = f32::atan2(y, x);").len(), 1);
     assert!(proibidas("let a = x.det_sin(); // x.sin()").is_empty());
+    assert_eq!(proibidas("let a = x.powi(3);").len(), 1);
+    assert!(proibidas("let a = x.det_powi(3);").is_empty());
     assert!(proibidas("let a = f32::cosine(x); y.sqrt();").is_empty());
     assert!(proibidas("#[cfg(test)]\nmod t {\n x.sin();\n}").is_empty());
     assert_eq!(proibidas("#[cfg(test)]\nmod t;\nx.sin();").len(), 1);
+}
+
+/// B43.1: o `det_powi` dá o bit do `powi` CORRIDO (o `__powisf2`), o que o motor pinta hoje; o dobrado em compilação
+/// (#65088: `pow` em `f64` arredondado) dá outro, e é por isso que o motor não chama o `powi`.
+#[test]
+fn det_powi_e_o_powi_corrido_ao_bit_e_o_dobrado_nao() {
+    use ph2d_det_math::DetMath;
+    use std::hint::black_box;
+    let mut dobrado_difere = 0;
+    for i in 0..20_000_u32 {
+        let x = 0.37_f32 + i as f32 * 1.7e-4;
+        for n in [-3, -1, 0, 1, 2, 3, 5, 7, 8, 13] {
+            let corrido = black_box(x).powi(black_box(n));
+            assert_eq!(x.det_powi(n).to_bits(), corrido.to_bits(), "f32 {x} ^ {n}");
+            let xd = f64::from(x) * 1.3;
+            assert_eq!(
+                xd.det_powi(n).to_bits(),
+                black_box(xd).powi(black_box(n)).to_bits()
+            );
+            dobrado_difere +=
+                usize::from((f64::from(x).powi(n) as f32).to_bits() != corrido.to_bits());
+        }
+    }
+    assert!(
+        dobrado_difere > 1000,
+        "o dobrado difere em {dobrado_difere}"
+    );
 }

@@ -3,6 +3,7 @@
 //! prende a identidade ao byte.
 
 use super::*;
+use ph2d_det_math::DetMath;
 
 #[path = "bico_tinta.rs"]
 mod tinta;
@@ -295,7 +296,7 @@ fn assentado(p: &Params, reservatorio: f64) -> f64 {
 #[inline]
 fn retido(fe: f64, reservatorio: f64, dabs: i32, tip_retain: f64) -> f64 {
     if reservatorio > 0.0 {
-        (1.0 - reservatorio * fe.min(1.0)).powi(dabs)
+        (1.0 - reservatorio * fe.min(1.0)).det_powi(dabs)
     } else {
         tip_retain + (1.0 - tip_retain) * (1.0 - fe.min(1.0))
     }

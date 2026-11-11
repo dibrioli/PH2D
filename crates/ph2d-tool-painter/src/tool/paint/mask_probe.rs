@@ -336,7 +336,7 @@ fn contour_roughness(cov: &[f32], size: u32, y0: u32, y1: u32) -> f32 {
         .map(|&(y, x)| {
             let u = f64::from(y - ybar);
             let fit = coef[0] + coef[1] * u + coef[2] * u * u;
-            (f64::from(x) - fit).powi(2)
+            (f64::from(x) - fit).det_powi(2)
         })
         .sum::<f64>()
         / pts.len() as f64;

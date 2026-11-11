@@ -7,6 +7,7 @@
 
 use super::*;
 use crate::tool::paint::region::dabs_bounds;
+use ph2d_det_math::DetMath;
 use std::sync::Arc;
 
 /// Quanto o sulco alisa a imagem no centro (0..1).
@@ -34,7 +35,7 @@ fn tira_com_o_contacto(p: f32) -> f32 {
     let piso = super::borracha_pressao_tests::piso::get().unwrap_or(PISO);
     #[cfg(not(test))]
     let piso = PISO;
-    piso + (1.0 - piso) * p.powi(EXPOENTE_DA_PRESSAO)
+    piso + (1.0 - piso) * p.det_powi(EXPOENTE_DA_PRESSAO)
 }
 
 /// Abaixo disto o alisar só deixou um rasto numérico: não custa um ponto de alfa.

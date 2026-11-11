@@ -68,7 +68,7 @@ fn measure_the_ribbon_rungs() {
             s.take_threads(&mut fios);
             for f in &fios {
                 total += 1;
-                comp += ((f[2] - f[0]).powi(2) + (f[3] - f[1]).powi(2)).sqrt();
+                comp += ((f[2] - f[0]).det_powi(2) + (f[3] - f[1]).det_powi(2)).sqrt();
             }
         }
         #[allow(clippy::cast_precision_loss)]
@@ -109,7 +109,7 @@ fn measure_where_the_band_spikes_come_from() {
             s.take_threads(&mut buf);
             all.append(&mut buf);
         }
-        let comp = |t: &[f32; 4]| ((t[2] - t[0]).powi(2) + (t[3] - t[1]).powi(2)).sqrt();
+        let comp = |t: &[f32; 4]| ((t[2] - t[0]).det_powi(2) + (t[3] - t[1]).det_powi(2)).sqrt();
         let mut trav: Vec<f32> = Vec::new();
         let mut trilho: Vec<f32> = Vec::new();
         for (i, t) in all.iter().enumerate() {
@@ -175,7 +175,7 @@ fn measure_which_phase_draws_the_spike() {
                 j += 1;
             }
             let e = dabs[fim].center;
-            melhor = melhor.max(((e[0] - a[0]).powi(2) + (e[1] - a[1]).powi(2)).sqrt());
+            melhor = melhor.max(((e[0] - a[0]).det_powi(2) + (e[1] - a[1]).det_powi(2)).sqrt());
             i = fim.max(i + 1);
         }
         melhor
@@ -250,7 +250,8 @@ fn measure_which_phase_draws_the_spike() {
 #[test]
 #[ignore = "sonda"]
 fn measure_the_ink_one_tick_lays_on_a_hand_that_slows_at_the_peaks() {
-    let dist2 = |a: [f32; 2], b: [f32; 2]| ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2)).sqrt();
+    let dist2 =
+        |a: [f32; 2], b: [f32; 2]| ((a[0] - b[0]).det_powi(2) + (a[1] - b[1]).det_powi(2)).sqrt();
     for (nome, kind, w) in [
         ("controle (sem fita)", LineKind::None, 0.0f32),
         ("fita w=0.08", LineKind::Ribbon, 0.08),

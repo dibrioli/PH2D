@@ -152,7 +152,7 @@ fn mistura_opaca(t_s: f64, uc: f64, c: f64) -> f64 {
 /// esverdeia o amarelo).
 #[inline]
 fn concentracao_opaca(a: f64) -> f64 {
-    1.0 - (1.0 - a.clamp(0.0, 1.0)).powi(CONCENTRACAO_OPACA_K)
+    1.0 - (1.0 - a.clamp(0.0, 1.0)).det_powi(CONCENTRACAO_OPACA_K)
 }
 
 /// O expoente de [`concentracao_opaca`] — escolhido, NÃO varrido: com ele a cena do amarelo sobre o azul seco

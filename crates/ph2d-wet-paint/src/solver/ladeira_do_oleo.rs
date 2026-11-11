@@ -11,6 +11,7 @@
 
 use crate::grid::Grid;
 use crate::grid::faixa_tiles::{TILE_FAIXA, span_runs, tile_words_for};
+use ph2d_det_math::DetMath;
 
 /// A rota da ladeira, em execução (sondas `sonda_oleo_derrete`, `sonda_oleo_furos`): `0` = o produto (= `7`), `1` = a de 30/10 sem peso,
 /// `2` = desligada, `3` = fotografia com a massa inteira (assente + suspensa), sem peso, `4` = peso pela fracção
@@ -87,7 +88,7 @@ pub(crate) fn tensao(t0: f64, m: f64, massa: f64, f: f64, max_v: f64) -> f64 {
     let phi = massa / (massa + crate::painter::receita::K_W * f.max(0.0));
     let pc = medida(&BINGHAM_PHI_C, PHI_C);
     let x = ((phi - pc) / (1.0 - pc)).max(0.0);
-    t0 * max_v * m.min(1.0) * x.powi(EXPOENTE)
+    t0 * max_v * m.min(1.0) * x.det_powi(EXPOENTE)
 }
 
 /// ⭐ **O CORPO do pincel** (E10, dono Q9): `τ_y = τ_meio(m, φ) + TAU_CORPO · MaxVelocity · corpo` — uma tensão de

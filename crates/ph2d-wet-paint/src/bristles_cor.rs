@@ -109,7 +109,7 @@ pub fn hsluv_para_rgb([h, s, l]: [f64; 3]) -> [f64; 3] {
     let y = if l <= 8.0 {
         l / KAPPA
     } else {
-        ((l + 16.0) / 116.0).powi(3)
+        ((l + 16.0) / 116.0).det_powi(3)
     };
     let (vu, vv) = (u / (13.0 * l) + REF_U, v / (13.0 * l) + REF_V);
     let x = -(9.0 * y * vu) / ((vu - 4.0) * vv - vu * vv);
@@ -126,7 +126,7 @@ pub fn hsluv_para_rgb([h, s, l]: [f64; 3]) -> [f64; 3] {
 /// O croma máximo dentro do gamute sRGB para a luminosidade `l` e o matiz `h` (graus).
 fn croma_maximo(l: f64, h: f64) -> f64 {
     let hr = h.to_radians();
-    let sub1 = (l + 16.0).powi(3) / 1_560_896.0;
+    let sub1 = (l + 16.0).det_powi(3) / 1_560_896.0;
     let sub2 = if sub1 > EPSILON { sub1 } else { l / KAPPA };
     let mut min = f64::MAX;
     for [m1, m2, m3] in M {

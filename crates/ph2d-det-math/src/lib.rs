@@ -1,6 +1,6 @@
 //! **A matemática do motor de pintura, a mesma em toda máquina** (Bug #58). Os métodos transcendentais de `f32`/`f64`
 //! chamam a libm do sistema, cujo último bit muda com a versão da glibc e com a CPU. Aqui, cada um vai ao `libm`
-//! fixado; `sqrt`, `floor`, `mul_add` e `powi` não precisam disto (exatos ou sem libc).
+//! fixado; `sqrt`, `floor` e `mul_add` não precisam disto (exatos); o `powi` tem `det_powi` (B43.1).
 
 /// Os transcendentais do motor. O gate `o_motor_nao_chama_a_libm_do_sistema` recusa o método de `std` nas crates dele.
 pub trait DetMath: Sized + Copy {
@@ -28,6 +28,9 @@ pub trait DetMath: Sized + Copy {
     fn det_cbrt(self) -> Self;
     #[must_use]
     fn det_hypot(self, o: Self) -> Self;
+    /// Quadrados em ordem fixa (a do `__powisf2`): o `powi` de `std` é dobrado pelo LLVM em compilação com outro bit (#65088).
+    #[must_use]
+    fn det_powi(self, n: i32) -> Self;
 }
 
 impl DetMath for f32 {
@@ -79,6 +82,23 @@ impl DetMath for f32 {
     fn det_hypot(self, o: Self) -> Self {
         libm::hypotf(self, o)
     }
+    #[inline]
+    fn det_powi(self, n: i32) -> Self {
+        let mut a = self;
+        let mut b = n.unsigned_abs();
+        let mut r = 1.0;
+        loop {
+            if b & 1 != 0 {
+                r *= a;
+            }
+            b >>= 1;
+            if b == 0 {
+                break;
+            }
+            a *= a;
+        }
+        if n < 0 { 1.0 / r } else { r }
+    }
 }
 
 impl DetMath for f64 {
@@ -129,5 +149,22 @@ impl DetMath for f64 {
     #[inline]
     fn det_hypot(self, o: Self) -> Self {
         libm::hypot(self, o)
+    }
+    #[inline]
+    fn det_powi(self, n: i32) -> Self {
+        let mut a = self;
+        let mut b = n.unsigned_abs();
+        let mut r = 1.0;
+        loop {
+            if b & 1 != 0 {
+                r *= a;
+            }
+            b >>= 1;
+            if b == 0 {
+                break;
+            }
+            a *= a;
+        }
+        if n < 0 { 1.0 / r } else { r }
     }
 }

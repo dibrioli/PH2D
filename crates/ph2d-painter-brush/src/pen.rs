@@ -230,7 +230,7 @@ impl Tilt {
         let t = self.amount(angle);
         // Ao comprido (`cos² = 1`) o lado do grafite alisa; de lado (`0`) o grão fica (o Rebelle: 8,5 → 5,5 %
         // ao longo, 8,6 através).
-        let ao_comprido = (azimuth[0] * heading[0] + azimuth[1] * heading[1]).powi(2);
+        let ao_comprido = (azimuth[0] * heading[0] + azimuth[1] * heading[1]).det_powi(2);
         let d = DabTilt {
             azimuth,
             length: 1.0 + (self.length - 1.0) * t,

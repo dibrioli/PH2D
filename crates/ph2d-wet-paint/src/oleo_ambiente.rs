@@ -5,6 +5,7 @@
 //! traz também a radiância BRUTA da metade de cima, que vira as [`Sectores`] do DIFUSO (o céu visível de
 //! cada fatia do GTAO integrado contra o HDRI).
 
+use ph2d_det_math::DetMath;
 use std::sync::OnceLock;
 
 /// O ambiente que a tinta reflecte. `Classico` = o céu uniforme de antes (sem reflexo do céu).
@@ -82,7 +83,7 @@ impl Sectores {
         let mut c = vec![[[0.0; 4]; 2]; (m + 1) * k];
         for j in 0..m {
             let (a0, a1) = (j as f64 * da, (j + 1) as f64 * da);
-            let i1 = (libm::sin(a1).powi(2) - libm::sin(a0).powi(2)) / 2.0;
+            let i1 = (libm::sin(a1).det_powi(2) - libm::sin(a0).det_powi(2)) / 2.0;
             let i2 =
                 ((a1 - libm::sin(a1) * libm::cos(a1)) - (a0 - libm::sin(a0) * libm::cos(a0))) / 2.0;
             for b in 0..k {

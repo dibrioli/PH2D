@@ -9,6 +9,7 @@ use super::stroke_boolean_raster::window_sub_rect;
 use super::stroke_multi::StrokeOp;
 use super::*;
 use crate::undo::ShapeEditState;
+use ph2d_det_math::DetMath;
 
 /// SUPERSAMPLE factor for the boolean mask: rasterise + trace at `SS×` the canvas resolution, then scale the
 /// contour back down, so the stroked boolean outline reads as SMOOTH as a direct (analytic) ellipse outline —
@@ -438,8 +439,8 @@ impl PainterTool {
             // A caixa exata de uma elipse girada: o extremo de `c + rx·cos t·u + ry·sin t·v` é
             // `hypot(rx·u, ry·v)` em cada eixo, com `v = perp(u)`.
             SelectionShape::Ellipse { center, u, rx, ry } => {
-                let hx = ((rx * u[0]).powi(2) + (ry * u[1]).powi(2)).sqrt();
-                let hy = ((rx * u[1]).powi(2) + (ry * u[0]).powi(2)).sqrt();
+                let hx = ((rx * u[0]).det_powi(2) + (ry * u[1]).det_powi(2)).sqrt();
+                let hy = ((rx * u[1]).det_powi(2) + (ry * u[0]).det_powi(2)).sqrt();
                 Some([
                     center[0] - hx,
                     center[1] - hy,

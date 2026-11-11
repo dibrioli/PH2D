@@ -23,6 +23,7 @@
 
 use super::{Dab, Stroke};
 use crate::line_kind::LineKind;
+use ph2d_det_math::DetMath;
 
 /// **A MEMÓRIA que os fios consomem** — ela mora aqui, e não no [`Stroke`], porque é o produtor que
 /// sabe o que cada campo significa e o que o mantém correto.
@@ -141,7 +142,7 @@ impl Stroke {
                 if !magnetify && (dab.arc_len - q[2]) > reach {
                     continue;
                 }
-                let d2 = (q[0] - p[0]).powi(2) + (q[1] - p[1]).powi(2);
+                let d2 = (q[0] - p[0]).det_powi(2) + (q[1] - p[1]).det_powi(2);
                 if d2 > r2 {
                     continue;
                 }

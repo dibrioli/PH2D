@@ -494,8 +494,9 @@ fn adensa(orig: &[Dab], j: &Janelas, passo: f32, flow: Option<f32>) -> (Vec<Dab>
     // O passo posto em cada segmento (`None` = o segmento não se adensa).
     let mut postos = Vec::with_capacity(orig.len().saturating_sub(1));
     for (a, b) in orig.iter().zip(orig.iter().skip(1)) {
-        let dist =
-            ((b.center[0] - a.center[0]).powi(2) + (b.center[1] - a.center[1]).powi(2)).sqrt();
+        let dist = ((b.center[0] - a.center[0]).det_powi(2)
+            + (b.center[1] - a.center[1]).det_powi(2))
+        .sqrt();
         if dist > 1.5 * passo || dist <= 0.0 {
             postos.push(None);
             continue;

@@ -16,6 +16,7 @@
 //! ```
 
 use super::*;
+use ph2d_det_math::DetMath;
 use ph2d_editor_core::tool::RasterEditTool;
 
 // ── PNG mínimo (RGBA8, sem compressão) ────────────────────────────────────────────────────────────
@@ -228,7 +229,7 @@ fn probe_composite_crossing_drift() {
     eprintln!("pilha   : {n1:.0} texels escuros, centroide ({x1:.2}, {y1:.2})");
     eprintln!(
         "deriva do cruzamento: {:.2} px",
-        ((x1 - x0).powi(2) + (y1 - y0).powi(2)).sqrt()
+        ((x1 - x0).det_powi(2) + (y1 - y0).det_powi(2)).sqrt()
     );
 }
 

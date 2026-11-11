@@ -20,6 +20,7 @@
 
 use super::watercolor_field::{Dono, WetStrokeStyle, box_blur, sample_bilinear};
 use super::watercolor_noise::{GradeDoWarp, NoiseTile, paper_height, snap_slot_size, warp_offset};
+use ph2d_det_math::DetMath;
 use ph2d_painter_brush::texture::{ImageMask, angle_basis, sample_tiled_rot_wrapped};
 use ph2d_painter_brush::{TEX_TILE_BASE_PX, TextureKind, TextureSettings};
 use std::sync::{Mutex, OnceLock};
@@ -560,7 +561,7 @@ impl<'a> Amostrador<'a> {
         }
         let n = (2 * N * N) as f64;
         let mu = (s1 / n) as f32;
-        let sigma = ((s2 / n - (s1 / n).powi(2)).max(0.0).sqrt() as f32).max(1e-6);
+        let sigma = ((s2 / n - (s1 / n).det_powi(2)).max(0.0).sqrt() as f32).max(1e-6);
         let parcial = Estat {
             mu,
             sigma,

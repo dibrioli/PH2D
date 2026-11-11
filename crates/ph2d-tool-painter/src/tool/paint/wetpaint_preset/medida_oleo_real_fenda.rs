@@ -344,7 +344,7 @@ pub(super) fn dente_na_tela(px: &[u8], liso: &[u8], m: &[bool]) -> f64 {
         .map(|((a, b), _)| l(a) - l(b))
         .collect();
     let mu = d.iter().sum::<f64>() / d.len() as f64;
-    (d.iter().map(|v| (v - mu).powi(2)).sum::<f64>() / d.len() as f64).sqrt()
+    (d.iter().map(|v| (v - mu).det_powi(2)).sum::<f64>() / d.len() as f64).sqrt()
 }
 
 /// ⭐ §BUG-papel: **o dente do papel não atravessa a tinta grossa** — o que o Relief 0,6 acrescenta ao miolo de

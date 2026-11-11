@@ -1,6 +1,7 @@
 //! **A lei da GOTA** (filho de [`super`], LOC cap) — o instrumento das sondas `sonda_gota`; o produto não a usa.
 
 use super::js_round_i64;
+use ph2d_det_math::DetMath;
 
 /// **A lei da GOTA** (W1e, F1) — quando a água pode DESCER para papel seco.
 ///
@@ -89,7 +90,7 @@ impl Gota {
         if j < 0 || j as usize >= film.len() {
             return (ex, ey);
         }
-        let q8 = (f64::from(film[j as usize]) / self.h_c).powi(8);
+        let q8 = (f64::from(film[j as usize]) / self.h_c).det_powi(8);
         let k = (2.0 * q8 / (1.0 + q8)).min(1.0);
         (ex - d * self.gnx * (1.0 - k), ey - d * self.gny * (1.0 - k))
     }

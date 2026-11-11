@@ -369,7 +369,8 @@ fn measure_where_the_ribbon_jumps() {
     let mut scan = |out: &[crate::stroke::Dab], fase: &str, prev: &mut Option<[f32; 2]>| {
         for d in out {
             if let Some(p) = *prev {
-                let g = ((d.center[0] - p[0]).powi(2) + (d.center[1] - p[1]).powi(2)).sqrt();
+                let g =
+                    ((d.center[0] - p[0]).det_powi(2) + (d.center[1] - p[1]).det_powi(2)).sqrt();
                 if g > spacing_px * 2.0 {
                     jumps += 1;
                     if g > worst.0 {

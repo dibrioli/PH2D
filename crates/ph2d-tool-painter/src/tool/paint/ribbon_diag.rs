@@ -59,20 +59,6 @@ pub(crate) fn on() -> bool {
     })
 }
 
-#[cfg(test)]
-mod tests {
-    /// B27.3: `note` corre a cada evento e a cada tique; o ambiente lê-se UMA vez no processo.
-    #[test]
-    fn o_diag_da_fita_le_o_ambiente_uma_vez_so() {
-        for _ in 0..1000 {
-            super::note(super::Source::Extend, 1);
-            super::note(super::Source::Tick, 1);
-        }
-        let n = super::LEITURAS.load(super::Ordering::Relaxed);
-        assert!(n <= 1, "{n} leituras do ambiente em 2000 eventos/tiques");
-    }
-}
-
 /// Quantos fios o MOTOR costurou, e quantos o depósito de fato CARIMBOU.
 ///
 /// ⚠️ **São dois números porque os dois modos de falha são distintos, e este módulo já pagou um
@@ -122,4 +108,18 @@ pub(crate) fn report(b: &ph2d_painter_brush::BrushSpec) {
         b.spacing,
         b.jitter,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    /// B27.3: `note` corre a cada evento e a cada tique; o ambiente lê-se UMA vez no processo.
+    #[test]
+    fn o_diag_da_fita_le_o_ambiente_uma_vez_so() {
+        for _ in 0..1000 {
+            super::note(super::Source::Extend, 1);
+            super::note(super::Source::Tick, 1);
+        }
+        let n = super::LEITURAS.load(super::Ordering::Relaxed);
+        assert!(n <= 1, "{n} leituras do ambiente em 2000 eventos/tiques");
+    }
 }

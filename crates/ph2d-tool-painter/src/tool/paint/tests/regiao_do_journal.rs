@@ -15,8 +15,8 @@ const LADO: u32 = 512;
 fn tela() -> PainterTool {
     let mut t = PainterTool::default();
     let mut src = vec![255u8; (LADO * LADO * 4) as usize];
-    for (i, p) in src.chunks_exact_mut(4).enumerate() {
-        if (i % LADO as usize / 8) % 2 == 0 {
+    for (i, p) in src.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+        if (i % LADO as usize / 8).is_multiple_of(2) {
             p[..3].copy_from_slice(&[20, 40, 200]);
         }
     }

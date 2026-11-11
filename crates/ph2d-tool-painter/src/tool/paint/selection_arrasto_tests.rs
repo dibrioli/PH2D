@@ -31,7 +31,7 @@ fn arrasta(mode: u8, oraculo: bool) -> Arrasto {
     let (w, h) = (96u32, 64u32);
     let mut t = PainterTool::default();
     let mut px = vec![0u8; (w * h * 4) as usize];
-    for (i, p) in px.chunks_exact_mut(4).enumerate() {
+    for (i, p) in px.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         p.copy_from_slice(&[(i % 251) as u8, (i % 97) as u8, 40, 255]);
     }
     t.set_source(px, w, h);

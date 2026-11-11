@@ -6,8 +6,7 @@ use super::barreira::{BARREIRA_ANTIGA, FIOS_DA_REGIAO};
 use super::*;
 use ph2d_painter_effects::MAX_BLEND_MODES;
 use ph2d_painter_effects::adjustments::{
-    AdjustmentKind, AdjustmentParams, BrightnessContrastParams, GaussianBlurParams,
-    MotionBlurParams, NoiseParams,
+    AdjustmentParams, BrightnessContrastParams, GaussianBlurParams, MotionBlurParams, NoiseParams,
 };
 use std::sync::atomic::Ordering::Relaxed;
 

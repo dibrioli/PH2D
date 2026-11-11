@@ -259,13 +259,10 @@ pub(super) fn wants_device(caixas: &[Option<DirtyRect>]) -> bool {
 /// bytes foram escritos — que é a pergunta que o `declare_wrote` faz, e não *"onde a imagem
 /// mudou"*. A rota da CPU devolve a união exata dos spans, menor; a diferença é o commit do undo
 /// varrer uma janela um pouco maior, nunca tinta a menos.
-// O irmão em banda leva o mesmo  pela mesma razão: são os argumentos que um carimbo tem.
-#[allow(clippy::too_many_arguments)]
 pub(super) fn stamp(
     bridge: &DeviceStamp,
     buf: &mut [u8],
     w: u32,
-    h: u32,
     dabs: &[DeviceDab],
     lut: &[f32],
     caixas: &[Option<DirtyRect>],

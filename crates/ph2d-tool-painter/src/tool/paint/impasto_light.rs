@@ -27,6 +27,7 @@
 use super::Region;
 use super::impasto_luz_dobra::{PorBytes, dobra_da_faixa, sombreia_faixa};
 use super::impasto_shade::Rig;
+#[cfg(doc)]
 use super::relief_fields::ReliefFields;
 use crate::layers::ReliefComposite;
 use crate::tool::PainterTool;

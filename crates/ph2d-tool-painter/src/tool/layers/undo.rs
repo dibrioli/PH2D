@@ -96,8 +96,9 @@ impl PainterTool {
         m
     }
 
-    /// A região a que o próximo undo (ou redo) está confinado ([`crate::undo::UndoController::peek_confined_region`]),
+    /// A região a que o próximo undo (ou redo) está confinado ([`crate::undo::UndoController::peek_confined_sujo`]),
     /// com a janela da tinta de cada camada cuja marca do Wet vira (o 1.º traço Wet dela, B10c).
+    #[cfg(test)]
     pub(crate) fn regiao_do_proximo_passo(&self, redo: bool) -> Option<crate::compositor::Region> {
         self.sujo_do_proximo_passo(redo).map(|(r, _)| r)
     }
@@ -179,7 +180,7 @@ impl PainterTool {
     /// figura é a mesma**, e a drenagem pode usar a pista PARCIAL — medido, um quadro pós-Ctrl+Z a
     /// 4096² com impasto cai de **381 ms para a ordem de 0,6** (doc 28 §5.62).
     ///
-    /// ⚠️ **Quem responde é a HISTÓRIA, não este método** ([`crate::undo::UndoController::peek_confined_region`]):
+    /// ⚠️ **Quem responde é a HISTÓRIA, não este método** ([`crate::undo::UndoController::peek_confined_sujo`]):
     /// a promessa exige os dezenove planos e os metadados dos DOIS endpoints, e nada disso está
     /// disponível aqui — o snapshot que chega já é o resultado.
     pub(crate) fn restore_model_confined(

@@ -208,6 +208,7 @@ impl ReliefFields<'_> {
     /// is a MIRROR, so bare paper would be the shiniest thing on the canvas and every stroke's
     /// translucent rim would fade toward glass.
     #[inline]
+    #[cfg(test)]
     pub(super) fn material_at(&self, x: i64, y: i64) -> MaterialBytes {
         let i = self.index(x, y);
         // Hoisted, and it matters: this runs once per TEXEL. Quantising the neutral material inside the
@@ -316,6 +317,7 @@ impl ReliefFields<'_> {
     /// Deliberately NOT scaled by the layers' Impasto depth: this is what the light uses to decide it is
     /// looking at *paint* rather than paper ([`paint_body`]), and muting a layer's relief does not make
     /// its pigment any less present on the canvas.
+    #[cfg(test)]
     #[inline]
     pub(super) fn cover_at(&self, x: i64, y: i64) -> f32 {
         let i = self.index(x, y);

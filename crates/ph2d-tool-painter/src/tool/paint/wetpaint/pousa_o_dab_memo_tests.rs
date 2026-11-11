@@ -111,7 +111,8 @@ fn a_silhueta_alem_da_pegada_nao_e_avaliada_e_a_tela_e_a_do_oraculo_ao_byte() {
 #[test]
 fn o_motor_nao_le_a_ponta_alem_da_pegada_e_a_tela_e_a_do_oraculo_ao_byte() {
     // O Thick Impasto não tem leituras do motor além da pegada nesta tela (2 027 504 → 2 027 504): só o Flat.
-    for (pincel, tamanho) in [("Oil/Flat/Flat Bristle.ph2d-brush.png", 70.0)] {
+    {
+        let (pincel, tamanho) = ("Oil/Flat/Flat Bristle.ph2d-brush.png", 70.0);
         let (velho, [_, _, m0]) = pinta_contando(true, pincel, tamanho);
         let (novo, [_, _, m1]) = pinta_contando(false, pincel, tamanho);
         assert!(

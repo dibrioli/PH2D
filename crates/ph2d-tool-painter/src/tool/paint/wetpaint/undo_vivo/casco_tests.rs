@@ -1,7 +1,6 @@
 //! B02.5: para lá do tecto, desfazer com a água a correr longe não a enterra.
 
 use super::super::undo_tinta_morre_tests::{AGUADA, tela, teto, tinta_viva_na_linha, traco};
-use super::*;
 
 /// A variante sem o casco (o enterro de todo o píxel que difere), para o vermelho.
 pub(in crate::tool::paint) mod sem_casco {

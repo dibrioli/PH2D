@@ -15,10 +15,9 @@
 
 use super::{ModelSnapshot, UndoController, UndoEntry};
 use crate::compositor::Region;
-use crate::layers::LayerId as RtLayerId;
 use crate::macro_track::forca::ForcaDoPincel;
 use crate::macro_track::marca::{self, DeltaDaMarca, MarcaDoArtista};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 /// Os ladrilhos de uma marca (o retrato do desfazer).

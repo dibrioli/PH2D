@@ -271,11 +271,10 @@ impl PainterTool {
         let volta = self
             .bound_doc
             .filter(|&d| d != entity && !self.canvas_rgba.is_empty())
-            .map(|d| {
+            .inspect(|&d| {
                 let tintas = self.wet_sai_do_documento();
                 let doc = self.stash_current_doc(tintas);
                 self.doc_cache.insert(d, doc);
-                d
             });
         if volta.is_some() {
             self.bound_doc = None;

@@ -9,7 +9,7 @@
 
 use super::*;
 use crate::tool::PainterTool;
-use ph2d_editor_core::tool::{RasterEditTool as _, Tool as _};
+use ph2d_editor_core::tool::Tool as _;
 use ph2d_painter_effects::adjustments::{
     AdjustWindow, AdjustmentKind, AdjustmentParams, ShadowsHighlightsParams,
     apply_shadows_highlights, separable_blur_scalar,
@@ -32,7 +32,7 @@ pub(super) fn fundo(w: u32, h: u32, qual: u8) -> Vec<u8> {
     ];
     let mut v = vec![255u8; (w * h * 4) as usize];
     if qual == 1 {
-        for (i, p) in v.chunks_exact_mut(4).enumerate() {
+        for (i, p) in v.as_chunks_mut::<4>().0.iter_mut().enumerate() {
             let (x, y) = (i as u32 % w, i as u32 / w);
             p[..3].copy_from_slice(&cores[usize::from(x * 2 >= w) + 2 * usize::from(y * 2 >= h)]);
         }
@@ -42,7 +42,7 @@ pub(super) fn fundo(w: u32, h: u32, qual: u8) -> Vec<u8> {
 
 pub(super) fn camada(w: u32, h: u32, f: impl Fn(u32, u32) -> Option<[u8; 4]>) -> LayerImage {
     let mut img = LayerImage::transparent(w, h);
-    for (i, p) in img.rgba8.chunks_exact_mut(4).enumerate() {
+    for (i, p) in img.rgba8.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         if let Some(c) = f(i as u32 % w, i as u32 / w) {
             p.copy_from_slice(&c);
         }
@@ -60,7 +60,9 @@ fn recorte(w: u32, h: u32, bg: &[u8], caso: u8) -> (Vec<u8>, Vec<u8>) {
     });
     let faixa = (h / 36).max(2);
     let riscas = camada(w, h, |x, y| {
-        ((x + y) / faixa % 2 == 0).then_some([210, 40, 60, 255])
+        ((x + y) / faixa)
+            .is_multiple_of(2)
+            .then_some([210, 40, 60, 255])
     });
     let monta_pilha = |com_base: bool| {
         let mut s = LayerStack::new();
@@ -184,7 +186,9 @@ fn sombras(w: u32, h: u32, bg: &[u8]) -> (Vec<u8>, Vec<u8>) {
     let depois = composite(&s, &src, w, h);
     let win = AdjustWindow::full(w, h);
     let acc0: Vec<[f32; 4]> = por_baixo
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|c| [0, 1, 2, 3].map(|k| decode_byte(c[k])))
         .collect();
     let mut hoje = acc0.clone();

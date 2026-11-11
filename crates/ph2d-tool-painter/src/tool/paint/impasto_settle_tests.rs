@@ -230,10 +230,12 @@ fn o_assentamento_paralelo_e_ladrilhado_e_o_da_rota_antiga_ao_bit() {
         (1000, 700),
         (4096, 2160),
     ];
-    assert!(
-        4096 * 2160 >= PAR_ROWS_MIN_CELLS,
-        "a tela 4K tem de cruzar o piso da transposicao, senao o pool nunca corre"
-    );
+    const {
+        assert!(
+            4096 * 2160 >= PAR_ROWS_MIN_CELLS,
+            "a tela 4K tem de cruzar o piso da transposicao, senao o pool nunca corre"
+        );
+    }
     for (w, h) in tamanhos {
         let mut src = ridged(w, h);
         src.extend_from_slice(&[7.25, -3.5, 1e-7]);

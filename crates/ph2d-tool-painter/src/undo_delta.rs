@@ -38,7 +38,6 @@
 //! - **`Whole`** — o plano mudou de tamanho, ou a janela é grande demais para compensar. É a frase do
 //!   ADR-0117 sobre o irredutível: *uma edição de camada inteira é irredutivelmente uma camada por passo.*
 
-use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::mem::size_of;
 use std::sync::Arc;

@@ -1,7 +1,9 @@
 //! **O RELEVO na janela** — filho de [`super`]: o empréstimo dos três journals de relevo e as perguntas
 //! sobre eles (B52.R4, movido à letra de `undo_window.rs`).
 
-use super::{ReliefJournals, WriteState};
+#[cfg(doc)]
+use super::ReliefJournals;
+use super::WriteState;
 
 /// **Os três journals de relevo, emprestados sob o guard** — ver [`WriteState::with_relief_before`].
 ///

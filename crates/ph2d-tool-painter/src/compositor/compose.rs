@@ -214,7 +214,7 @@ fn compor_regiao(
     region: Region,
     vidros: Option<&super::vidro::Vidros>,
 ) -> (Vec<[f32; 4]>, Option<Vec<[f32; 3]>>) {
-    let (rx, ry, rw, rh) = (region.x, region.y, region.w, region.h);
+    let (rw, rh) = (region.w, region.h);
     let mut acc = vec![[0.0f32; 4]; (rw as usize) * (rh as usize)];
     // A transparência do papel nasce 1 (nada por cima): o enchimento em paralelo (`plane_copy`).
     let mut t = vidros.map(|_| {

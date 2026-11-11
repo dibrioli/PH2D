@@ -150,7 +150,7 @@ impl Quadro<'_> {
         // serrated boundary anti-aliases too. "Smooth Edges" off = the pre-AA hard edge.
         let (cw, aa_alpha) = if smooth_edges {
             aa_coverage(
-                &cov_src,
+                cov_src,
                 rw,
                 rh,
                 |ox, oy| {
@@ -173,7 +173,7 @@ impl Quadro<'_> {
             )
         } else {
             (
-                smoothstep(SS0, SS1, sample_bilinear(&cov_src, rw, rh, sx, sy)),
+                smoothstep(SS0, SS1, sample_bilinear(cov_src, rw, rh, sx, sy)),
                 1.0,
             )
         };
@@ -259,7 +259,7 @@ impl Quadro<'_> {
         // from the owner's paper. See [`SubstrateSession::at`].
         let cached_ph = use_substrate_cache.then(|| substrate[gy * fw + gx]);
         let (paper_h, gran_h, paper_component) =
-            substrate_session.at(&st, dono_px, cached_ph, gx, gy);
+            substrate_session.at(st, dono_px, cached_ph, gx, gy);
         // Take 10: TODO termo wet-driven lê o campo borrado ([`sample_wet_field`]) —
         // o thinning do interior era o degrau de ~11 bytes/px na fronteira de dono.
         let st_wet_px = sample_wet_field(wet_field.as_ref(), (rw, rh), (sx, sy), st.wet);
@@ -450,7 +450,7 @@ impl Quadro<'_> {
         row[gx * 4 + 3] = px[3];
         // A seleção e a proteção misturam o texel com a base por `keep`: os alfas misturam-se
         // na mesma proporção. Com o alpha-lock a cobertura não muda: os alfas são os da base.
-        if let (Some(v), Some(b)) = (vrow.as_deref_mut(), vbase) {
+        if let (Some(v), Some(b)) = (vrow, vbase) {
             let da_base = crate::compositor::vidro::alfas(&base[gi..gi + 4], &b[gy * fw + gx]);
             let alfas = if alock_on {
                 da_base

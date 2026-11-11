@@ -7,8 +7,8 @@
 use super::{Region, union_region};
 use crate::tool::PainterTool;
 use ph2d_painter_brush::{
-    BrushSpec, Dab, Falloff, FalloffCurve, StrokeMethod, TextureSettings, blit_canvas_cached,
-    blit_stamp, render_stamp_mask,
+    BrushSpec, Dab, Falloff, FalloffCurve, TextureSettings, blit_canvas_cached, blit_stamp,
+    render_stamp_mask,
 };
 
 /// Lazily-filled CANVAS-SPACE texture cache for the **Tiled / Stencil** mappings (canvas-fixed): each
@@ -343,7 +343,7 @@ impl PainterTool {
             if let Some((dev, lut, bridge, caixas)) = device.as_ref() {
                 let t0 = std::time::Instant::now();
                 touched =
-                    super::stamp_device::stamp(bridge, buf, w, h, dev, lut, caixas, alpha_locked);
+                    super::stamp_device::stamp(bridge, buf, w, dev, lut, caixas, alpha_locked);
                 #[allow(clippy::cast_possible_truncation)]
                 {
                     dev_us = t0.elapsed().as_micros() as u64;

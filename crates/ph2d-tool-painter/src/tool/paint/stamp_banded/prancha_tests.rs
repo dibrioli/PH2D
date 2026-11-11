@@ -26,7 +26,7 @@ fn fundo(w: u32, h: u32, blocos: bool) -> Vec<u8> {
     ];
     let mut v = vec![255u8; (w * h * 4) as usize];
     if blocos {
-        for (i, p) in v.chunks_exact_mut(4).enumerate() {
+        for (i, p) in v.as_chunks_mut::<4>().0.iter_mut().enumerate() {
             let (x, y) = (i as u32 % w, i as u32 / w);
             let c = cores[usize::from(x * 2 >= w) + 2 * usize::from(y * 2 >= h)];
             p[..3].copy_from_slice(&c);
@@ -132,8 +132,10 @@ fn prancha_b25_2_a_quina_rodada_na_borda_da_banda() {
             for fios in [None, Some(2), Some(7)] {
                 let (a, d) = (cena(w, h, qual, true, fios), cena(w, h, qual, false, fios));
                 let n = a
-                    .chunks_exact(4)
-                    .zip(d.chunks_exact(4))
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .zip(d.as_chunks::<4>().0)
                     .filter(|(x, y)| x != y);
                 eprintln!("PRANCHA {res} {nome} fios {fios:?}: {} píxeis", n.count());
             }
@@ -141,8 +143,10 @@ fn prancha_b25_2_a_quina_rodada_na_borda_da_banda() {
             let a = cena(w, h, qual, true, Some(32));
             let d = cena(w, h, qual, false, Some(32));
             let difs: Vec<u32> = a
-                .chunks_exact(4)
-                .zip(d.chunks_exact(4))
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .zip(d.as_chunks::<4>().0)
                 .enumerate()
                 .filter(|(_, (x, y))| x != y)
                 .map(|(i, _)| i as u32)

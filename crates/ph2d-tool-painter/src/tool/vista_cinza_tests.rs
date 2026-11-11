@@ -86,7 +86,7 @@ fn a_vista_cinza_pela_caixa_e_a_inteira_ao_bit() {
     caixas.push(drena_e_confere(&mut t, "traço depois do Ctrl+Z"));
     // Fechar e reabrir o olho: o cache normal não serve de cinza.
     t.toggle_mask_view_grayscale(mascara);
-    t.take_preview_arc();
+    let _ = t.take_preview_arc();
     t.toggle_mask_view_grayscale(mascara);
     assert_eq!(drena_e_confere(&mut t, "reaberto"), None);
 

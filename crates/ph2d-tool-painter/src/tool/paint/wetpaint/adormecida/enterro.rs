@@ -252,6 +252,7 @@ impl Congelada {
 
 impl PainterTool {
     /// As células sob o que outro meio pintou acabam: a imagem de agora passa a ser a `base` delas. Devolve-as.
+    #[cfg(test)]
     pub(in crate::tool::paint::wetpaint) fn wet_enterra_o_que_mudou(
         &self,
         sess: &mut WetSession,

@@ -491,8 +491,8 @@ pub fn apply_motion_blur(p: &MotionBlurParams, acc: &mut [[f32; 4]], win: Adjust
 
 /// Chromatic aberration — a per-channel radial GATHER, in **premultiplied** display tones, on the
 /// GPU `cs_chroma` model: centre = the CANVAS centre `(cw/2, ch/2)`, `scale_c = shift_c / half_diag`
-/// (half the canvas diagonal), channel `c` of canvas pixel `p` reads `floor(p − (p − centre)·scale_c
-/// + ½)` (inward gather: a positive shift fringes outward), clamped to the window. Computed in
+/// (half the canvas diagonal), channel `c` of canvas pixel `p` reads
+/// `floor(p − (p − centre)·scale_c + ½)` (inward gather: a positive shift fringes outward), clamped to the window. Computed in
 /// ABSOLUTE canvas coordinates, so a dirty window is the crop of the whole canvas (its halo is
 /// [`window_halo`]). Alpha is gathered UNSHIFTED (the lens shifts colour, not coverage).
 /// `falloff_center` is RESERVED. Premultiplied, a transparent texel contributes nothing (no

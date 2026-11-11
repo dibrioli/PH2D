@@ -208,15 +208,7 @@ impl UndoController {
     /// um segundo lugar é onde uma resposta obsoleta sobrevive a um caminho que retornou cedo.
     ///
     /// `marca` é a janela da tinta de uma camada cuja marca do Wet vira ([`UndoEntry::confined_region`]).
-    pub(crate) fn peek_confined_region(
-        &self,
-        redo: bool,
-        marca: &dyn Fn(RtLayerId) -> PlaneReach,
-    ) -> Option<Region> {
-        self.peek_confined_sujo(redo, marca).map(|(r, _)| r)
-    }
-
-    /// [`Self::peek_confined_region`] e as caixas que a cobrem (B17.5; vazia quando uma só basta).
+    /// Com a região, as caixas que a cobrem (B17.5; vazia quando uma só basta).
     pub(crate) fn peek_confined_sujo(
         &self,
         redo: bool,

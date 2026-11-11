@@ -27,6 +27,9 @@ use crate::compositor::{
 use crate::layers::{LayerId as RtLayerId, LayerKind, LayerStack};
 use crate::params::PainterParams;
 
+/// O dente do papel amostrado: (substrato, tamanho, cargas).
+type PlanoDoDente = (crate::tool::paint::SubstrateKey, (u32, u32), Vec<f32>);
+
 thread_local! {
     // Pending Cmd/Shift modifiers for layer-row selects, KEYED BY the row's
     // widget NodeId. Written by the layers panel apply_event (the only place
@@ -316,8 +319,7 @@ pub struct PainterTool {
     lit_substrate: Option<crate::tool::paint::SubstrateKey>,
     /// O dente do papel amostrado 1× por (substrato, tamanho), em cargas: refeito no
     /// [`PainterTool::reconcile_substrate`].
-    plano_do_dente:
-        Option<std::sync::Arc<(crate::tool::paint::SubstrateKey, (u32, u32), Vec<f32>)>>,
+    plano_do_dente: Option<std::sync::Arc<PlanoDoDente>>,
     /// Multi-selection — the set of layer rows highlighted in the panel. Plain
     /// click collapses to one; Cmd/Ctrl-click toggles; Shift-click selects a run.
     selection: BTreeSet<RtLayerId>,

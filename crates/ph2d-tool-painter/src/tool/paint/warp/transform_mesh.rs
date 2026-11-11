@@ -34,6 +34,7 @@ pub(crate) struct Mesh {
 
 impl Mesh {
     /// Seed an evenly-spaced grid over the box corners `b = [TL, TR, BR, BL]` (bilinear), pristine == current.
+    #[cfg(test)]
     pub(crate) fn seed(b: [[f32; 2]; 4], cols: u32, rows: u32) -> Mesh {
         Mesh::seed_between(b, b, cols, rows)
     }
@@ -253,11 +254,14 @@ impl MeshCell {
         outer: [bool; 4],
         bbox: Region,
     ) -> Option<MeshCell> {
-        let (mut src_o, mut dst_o) = (src[0], dst[0]);
         #[cfg(test)]
-        if super::prancha_b06b_tests::antes() {
-            (src_o, dst_o) = ([0.0; 2], [0.0; 2]);
-        }
+        let (src_o, dst_o) = if super::prancha_b06b_tests::antes() {
+            ([0.0; 2], [0.0; 2])
+        } else {
+            (src[0], dst[0])
+        };
+        #[cfg(not(test))]
+        let (src_o, dst_o) = (src[0], dst[0]);
         let local = |q: [[f32; 2]; 4], o: [f32; 2]| q.map(|p| [p[0] - o[0], p[1] - o[1]]);
         let src = local(src, src_o);
         let hinv = homography_from_quads(&src, &local(dst, dst_o)).and_then(|m| m.inverse())?;

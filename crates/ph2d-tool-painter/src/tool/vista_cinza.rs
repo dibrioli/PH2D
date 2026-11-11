@@ -47,17 +47,6 @@ impl PainterTool {
             h,
         ))
     }
-
-    /// O cinza da máscara como um quadro RGBA opaco, a tela inteira (o `current_preview` do trait). Mostra
-    /// a máscara CRUA (sem o Invert).
-    #[must_use]
-    pub(crate) fn mask_grayscale_view_pixels(&self) -> Option<Vec<u8>> {
-        let src = self.mask_grayscale_view_source()?;
-        let (w, h) = self.source_size;
-        let mut out = vec![0u8; (w as usize) * (h as usize) * 4];
-        cinza_na_caixa(src, w, &mut out, Region { x: 0, y: 0, w, h });
-        Some(out)
-    }
 }
 
 /// Escreve em `out` (RGBA da tela, largura `w`) o cinza opaco da máscara `src` dentro de `r`.

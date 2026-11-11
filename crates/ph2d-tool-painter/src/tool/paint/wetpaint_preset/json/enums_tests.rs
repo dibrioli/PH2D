@@ -9,18 +9,20 @@ use ph2d_painter_brush::{
 use serde_json::{Value, json};
 
 fn mexido() -> BrushSpec {
-    let mut b = BrushSpec::default();
-    b.pixel = PixelTip::Perfect;
-    b.hose = ImageHose {
-        n: 3,
-        mode: HoseMode::Pressure,
-        ..ImageHose::NEUTRA
+    let mut b = BrushSpec {
+        pixel: PixelTip::Perfect,
+        hose: ImageHose {
+            n: 3,
+            mode: HoseMode::Pressure,
+            ..ImageHose::NEUTRA
+        },
+        dual: Some(DualTip {
+            modo: DualMode::Darken,
+            ..DualTip::DE_FABRICA
+        }),
+        ..BrushSpec::default()
     };
     b.texture.lei.mode = GrainMode::Height;
-    b.dual = Some(DualTip {
-        modo: DualMode::Darken,
-        ..DualTip::DE_FABRICA
-    });
     b.pen_tilt.rotation = DabRotation::PenTilt;
     // O Grain aplicado sem troca é o da textura (a ausência no ficheiro diz isso).
     b.grao_aplicado.grao = b.texture;

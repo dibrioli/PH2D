@@ -6,7 +6,6 @@ use crate::tool::PainterTool;
 use ph2d_painter_brush::mistura_opaca::{Carimbo, Pegada, ReservatorioOpaco};
 use ph2d_painter_brush::{BrushSpec, Dab};
 use rayon::prelude::*;
-use std::sync::Arc;
 
 impl PainterTool {
     pub(in crate::tool::paint::stamp_route) fn stamp_dabs_mistura_opaca(

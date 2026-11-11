@@ -40,9 +40,10 @@ fn dabs(n: usize) -> Vec<Dab> {
 }
 
 fn passagem(n: usize) -> UmaPassagem<f32> {
-    let mut p = UmaPassagem::<f32>::default();
-    p.dabs = dabs(n);
-    p
+    UmaPassagem::<f32> {
+        dabs: dabs(n),
+        ..Default::default()
+    }
 }
 
 /// A cobertura da régua: varia por texel para que o máximo dependa do grão de cada centro.

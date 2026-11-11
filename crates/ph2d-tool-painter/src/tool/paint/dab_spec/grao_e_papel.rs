@@ -177,20 +177,15 @@ impl PainterTool {
     }
 
     /// O Digital está em condições de pôr o papel como Grain (o Relief ligado com um papel, sem Grain
-    /// escolhido) — só falta o Tooth. É a lei do Tooth ESMAECIDO no Digital (`inercia`).
-    #[must_use]
-    pub(crate) fn papel_pode_ser_grain(&self) -> bool {
-        self.papel_pode_ser_grain_do(&self.paint.brush)
-    }
-
-    /// [`Self::papel_pode_ser_grain`] com o Grain e o papel de um pincel dado (o do LOTE, B25.4).
+    /// escolhido) — só falta o Tooth. É a lei do Tooth ESMAECIDO no Digital (`inercia`). Com o Grain e o
+    /// papel de um pincel dado (o do LOTE, B25.4).
     #[must_use]
     fn papel_pode_ser_grain_do(&self, brush: &ph2d_painter_brush::BrushSpec) -> bool {
         self.papel_pode_morder_do(brush) && !brush.texture.is_active()
     }
 
     /// O Digital em condições de o papel morder a tinta (o Relief ligado com um papel e o Tooth > 0): como
-    /// Grain sem Grain escolhido ([`Self::papel_pode_ser_grain`]), como dente por cima dele com um.
+    /// Grain sem Grain escolhido ([`Self::papel_pode_ser_grain_do`]), como dente por cima dele com um.
     #[must_use]
     pub(crate) fn papel_pode_morder(&self) -> bool {
         self.papel_pode_morder_do(&self.paint.brush)

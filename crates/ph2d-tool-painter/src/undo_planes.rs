@@ -105,6 +105,7 @@ impl PlaneDeltas {
     ///
     /// ⚠️ **`relief_indescribable` força `None`**: um passo cujo relevo não pôde ser descrito não pode
     /// prometer que só mexeu num retângulo.
+    #[cfg(test)]
     pub(crate) fn confined_region(&self, canvas_w: u32) -> Option<crate::compositor::Region> {
         self.confined_sujo(canvas_w).map(|(r, _)| r)
     }

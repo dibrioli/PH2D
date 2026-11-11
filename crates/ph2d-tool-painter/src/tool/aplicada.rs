@@ -51,10 +51,10 @@ impl CacheAplicada {
     pub(crate) fn marca(&mut self, r: Region, antes: u64, depois: u64) {
         let e = self.estado();
         e.sujo = Some(e.sujo.map_or(r, |a| une(a, r)));
-        if let Some((k, _)) = e.feita.as_mut() {
-            if k.relogio == antes {
-                k.relogio = depois;
-            }
+        if let Some((k, _)) = e.feita.as_mut()
+            && k.relogio == antes
+        {
+            k.relogio = depois;
         }
     }
 
@@ -72,10 +72,10 @@ impl CacheAplicada {
 
     /// Um passo confinado move `(revisão, relógio)` sem mudar nada fora da caixa que marcou: a guardada segue-o.
     pub(crate) fn segue_o_passo_confinado(&mut self, antes: (u64, u64), depois: (u64, u64)) {
-        if let Some((k, _)) = self.estado().feita.as_mut() {
-            if (k.rev, k.relogio) == antes {
-                (k.rev, k.relogio) = depois;
-            }
+        if let Some((k, _)) = self.estado().feita.as_mut()
+            && (k.rev, k.relogio) == antes
+        {
+            (k.rev, k.relogio) = depois;
         }
     }
 }

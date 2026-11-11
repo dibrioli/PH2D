@@ -54,7 +54,11 @@ fn mancha(w: usize, h: usize, x0: usize, y0: usize, x1: usize, y1: usize, sement
             s ^= s << 13;
             s ^= s >> 17;
             s ^= s << 5;
-            v[y * w + x] = if s % 3 == 0 { 255 } else { (s >> 8) as u8 };
+            v[y * w + x] = if s.is_multiple_of(3) {
+                255
+            } else {
+                (s >> 8) as u8
+            };
         }
     }
     v
@@ -86,7 +90,7 @@ fn a_soma_deslizante_da_o_box_blur_ao_bit() {
         }
     }
     assert_eq!(
-        super::feather(&vec![0u8; 64], 8, 8, 3),
+        super::feather(&[0u8; 64], 8, 8, 3),
         vec![0u8; 64],
         "seleção vazia"
     );

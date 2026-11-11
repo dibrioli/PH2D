@@ -503,7 +503,7 @@ impl WriteState {
 
 #[path = "undo_window_relief.rs"]
 mod relief;
-pub(crate) use relief::{ReliefBefore, ReliefPlane};
+pub(crate) use relief::ReliefPlane;
 
 #[cfg(test)]
 mod tests {

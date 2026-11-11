@@ -173,9 +173,11 @@ fn planos(
 /// Mutação que tem de sangrar: `li = (ry * w + dx)` → `(ry * w + rx)` na faixa.
 #[test]
 fn o_corpo_do_transform_em_faixas_e_o_serial_ao_bit() {
+    /// `(modo, índice, com seleção, de, para)`.
+    type Caso = (&'static str, u8, bool, [f32; 2], [f32; 2]);
     let w3 = fx::W as f32 / 3.0;
     // `sel`: re-levantar com uma seleção que tira a janela suja da coluna 0 (`dirty.x > 0`).
-    let cases: [(&str, u8, bool, [f32; 2], [f32; 2]); 5] = [
+    let cases: [Caso; 5] = [
         ("Uniform", 0, false, [80.0, 80.0], [100.0, 86.0]),
         ("Distort", 2, false, [0.0, 0.0], [30.0, 24.0]),
         ("Warp", 3, false, [w3, w3], [w3 + 18.0, w3 + 22.0]),

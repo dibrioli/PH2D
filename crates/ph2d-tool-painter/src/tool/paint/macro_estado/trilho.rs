@@ -121,7 +121,7 @@ impl PainterTool {
                 ))),
             }
         };
-        let (cv, mv, sv) = (&v["clone"], &v["mascara"], &v["selecao"]);
+        let sv = &v["selecao"];
         let mascara = toma(MASCARA, 4)?;
         let (sel, base, crisp) = (
             toma(SEL_MASCARA, 1)?,

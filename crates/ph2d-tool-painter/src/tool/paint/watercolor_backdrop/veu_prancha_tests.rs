@@ -24,7 +24,7 @@ fn fundo(w: u32, h: u32, qual: u8) -> Vec<u8> {
     ];
     let mut v = vec![255u8; (w * h * 4) as usize];
     if qual == 1 {
-        for (i, p) in v.chunks_exact_mut(4).enumerate() {
+        for (i, p) in v.as_chunks_mut::<4>().0.iter_mut().enumerate() {
             let (x, y) = (i as u32 % w, i as u32 / w);
             let c = cores[usize::from(x * 2 >= w) + 2 * usize::from(y * 2 >= h)];
             p[..3].copy_from_slice(&c);

@@ -59,6 +59,7 @@ impl PainterTool {
     /// presence, not a quantity — two layers of paint over one pixel do not make it 200% paint). Per-layer
     /// Subtract / Replace / Ignore is named and deferred. A hidden layer contributes neither: hide it and
     /// its paint stops catching the light.
+    #[cfg(test)]
     pub(super) fn impasto_fields(&self) -> Option<ReliefFields<'_>> {
         self.impasto_fields_em(None)
     }

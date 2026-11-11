@@ -72,8 +72,10 @@ fn corre(inicial: bool, troca_em: Option<usize>, molhado_antes: bool) -> (Foto, 
 }
 
 fn difere(a: &[u8], b: &[u8]) -> usize {
-    a.chunks_exact(4)
-        .zip(b.chunks_exact(4))
+    a.as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.as_chunks::<4>().0)
         .filter(|(x, y)| x != y)
         .count()
 }

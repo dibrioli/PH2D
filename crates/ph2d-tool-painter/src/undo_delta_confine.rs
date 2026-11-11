@@ -136,6 +136,7 @@ impl<T> StoredEntry<T> {
     /// ⚠️ `OnlyBefore`/`OnlyAfter` são **`Whole`**: o plano inteiro aparece ou desaparece, e restaurá-lo
     /// muda o relevo em todo lugar onde ele tinha cobertura — não há retângulo que descreva isso. É o
     /// caso do **primeiro** traço de relevo numa camada, que por isso cai no repaint inteiro.
+    #[cfg(test)]
     pub(crate) fn reach(&self) -> PlaneReach {
         match self {
             Self::Both(p) => p.reach(),

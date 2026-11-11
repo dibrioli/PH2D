@@ -189,8 +189,8 @@ fn cabe_em_duas_linhas(c: &mut CardCtx<'_>, label: &'static str) -> bool {
 /// A resposta de [`cabe`] por rótulo, à largura do último quadro: quadro parado não mede texto (B35.A3).
 fn cabe_memo(w: f32, label: &'static str, mede: impl FnMut(&str) -> f32) -> bool {
     thread_local! {
-        static CABE: std::cell::RefCell<(u32, std::collections::HashMap<&'static str, bool>)> =
-            std::cell::RefCell::new((0, std::collections::HashMap::new()));
+        static CABE: std::cell::RefCell<(u32, std::collections::BTreeMap<&'static str, bool>)> =
+            const { std::cell::RefCell::new((0, std::collections::BTreeMap::new())) };
     }
     CABE.with_borrow_mut(|(largura, memo)| {
         if *largura != w.to_bits() {

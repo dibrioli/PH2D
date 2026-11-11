@@ -166,12 +166,12 @@ fn a_mistura_do_wet_wash_mix_nao_custa_mais_que_sem_ela() {
     for v in vs {
         traco(&mut cena("Wet Wash Mix", 30.0, v));
     }
-    let mut amostras = [[0.0f64; VOLTAS]; 2];
+    let mut amostras: [Vec<f64>; 2] = [Vec::with_capacity(VOLTAS), Vec::with_capacity(VOLTAS)];
     for volta in 0..VOLTAS {
         for j in 0..2 {
             let vi = (j + volta) % 2;
             let mut t = cena("Wet Wash Mix", 30.0, vs[vi]);
-            amostras[vi][volta] = traco(&mut t);
+            amostras[vi].push(traco(&mut t));
         }
     }
     let [mistura, sem] = amostras.map(|mut a| {

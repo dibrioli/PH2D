@@ -147,7 +147,7 @@ impl<T: Copy + Default + PartialEq + Send + Sync> StoredPlane<T> {
         if n >= win.elems() || 2 * n >= plane_len {
             return None;
         }
-        let lados: Vec<(Box<[T]>, Box<[T]>)> = kept
+        let lados: Vec<_> = kept
             .par_iter()
             .map(|r| (before(r), r.extract(after)))
             .collect();

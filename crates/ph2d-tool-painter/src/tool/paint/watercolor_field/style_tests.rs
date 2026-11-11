@@ -48,7 +48,7 @@ pub(super) fn aguada_em_celulas() -> PainterTool {
 /// ficam longe um do outro.
 fn cor(k: u32) -> [f32; 3] {
     let g = (k % 7) as f32 * 0.1;
-    if k % 2 == 0 {
+    if k.is_multiple_of(2) {
         [0.1, g, 0.9]
     } else {
         [0.85, g, 0.1]

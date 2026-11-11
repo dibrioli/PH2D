@@ -239,7 +239,7 @@ fn sonda_begin_transform_4096_selecao_pequena() {
     t.on_canvas_pointer(cp([2100.0, 2000.0], PointerPhase::Up));
     t.set_paint_tool_mode("liquify");
     let layer = t.layers.active().expect("camada");
-    assert!(t.heights.get(&layer).is_some(), "sonda: sem corpo");
+    assert!(t.heights.contains_key(&layer), "sonda: sem corpo");
     let mut ms = f64::MAX;
     for _ in 0..6 {
         t.set_rect_selection(1900, 1900, 256, 256);

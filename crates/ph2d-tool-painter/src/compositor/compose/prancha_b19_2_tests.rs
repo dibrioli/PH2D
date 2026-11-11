@@ -49,7 +49,8 @@ fn pilha(w: u32, h: u32, bg: &[u8]) -> (LayerStack, MapPixelSource) {
     let aneis = camada(w, h, |x, y| {
         let d = ((x as f32 + 0.5 - cx).powi(2) + (y as f32 + 0.5 - cy).powi(2)).sqrt();
         let k = (d / (h as f32 / 24.0)) as u32;
-        (k % 2 == 0).then_some([[30, 30, 30, 255], [250, 250, 250, 255]][(k / 2 % 2) as usize])
+        k.is_multiple_of(2)
+            .then_some([[30, 30, 30, 255], [250, 250, 250, 255]][(k / 2 % 2) as usize])
     });
     let mut s = LayerStack::new();
     let mut src = MapPixelSource::default();
@@ -82,7 +83,9 @@ fn aberracao(w: u32, h: u32, bg: &[u8]) -> (Vec<u8>, Vec<u8>) {
     s.adjustment_mut(adj).unwrap().params = AdjustmentParams::ChromaticAberration(p);
     let depois = composite(&s, &src, w, h);
     let acc0: Vec<[f32; 4]> = por_baixo
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|c| [0, 1, 2, 3].map(|k| decode_byte(c[k])))
         .collect();
     let mut hoje = acc0.clone();

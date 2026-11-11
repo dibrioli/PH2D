@@ -38,8 +38,7 @@ impl PainterTool {
         self.mask_view_grayscale.map(|id| id.0)
     }
 
-    /// The mask whose grayscale the preview shows (see `PainterTool::mask_grayscale_view_pixels` in `tool::vista_cinza`), without
-    /// building the frame.
+    /// The mask whose grayscale the preview shows (painted by `tool::vista_cinza`), without building the frame.
     pub(crate) fn mask_grayscale_view_source(&self) -> Option<&[u8]> {
         let mv = self.mask_view_grayscale?;
         if !matches!(

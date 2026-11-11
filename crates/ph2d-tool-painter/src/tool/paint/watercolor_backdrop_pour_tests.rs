@@ -83,9 +83,12 @@ fn pincel(c: Cenario) -> PainterTool {
     t
 }
 
+/// `(canvas_wet, canvas_rgba)` de um tique.
+type Tique = (Vec<u8>, Vec<u8>);
+
 /// Dois traços longos (o 2.º cruza o 1.º na sessão molhada), com uma pausa parada a meio do 1.º.
 /// Devolve `(canvas_wet, canvas_rgba)` depois de cada tique e os texels que os pours caminharam.
-fn sessao(c: Cenario, cumulativo: bool) -> (Vec<(Vec<u8>, Vec<u8>)>, u64) {
+fn sessao(c: Cenario, cumulativo: bool) -> (Vec<Tique>, u64) {
     POUR_CUMULATIVO.set(cumulativo);
     POUR_PX.set(0);
     let mut t = pincel(c);

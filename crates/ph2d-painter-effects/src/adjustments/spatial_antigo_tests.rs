@@ -4,7 +4,6 @@
 #![allow(dead_code, clippy::all)]
 
 use super::super::*;
-use ph2d_det_math::DetMath as _;
 
 /// A única porta para o que era privado (o resto do ficheiro é a cópia).
 pub(super) fn downsample_box_antigo(

@@ -32,8 +32,8 @@ fn traco(t: &mut PainterTool, y: f32, de: f32, ate: f32) {
 /// A aguada que acaba sobre a borda direita com Tiling X, e o pincel do Smear com o Grain em Random Offset.
 fn depois_da_aguada() -> PainterTool {
     let mut src = vec![255u8; (N * N * 4) as usize];
-    for (i, p) in src.chunks_exact_mut(4).enumerate() {
-        if (i as u32 % N) / 8 % 2 == 0 {
+    for (i, p) in src.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+        if ((i as u32 % N) / 8).is_multiple_of(2) {
             p.copy_from_slice(&[200, 30, 40, 255]); // listras: o Smear tem o que arrastar
         }
     }

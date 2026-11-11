@@ -18,7 +18,7 @@ fn fundo(w: u32, h: u32, blocos: bool) -> Vec<u8> {
     ];
     let mut v = vec![255u8; (w * h * 4) as usize];
     if blocos {
-        for (i, p) in v.chunks_exact_mut(4).enumerate() {
+        for (i, p) in v.as_chunks_mut::<4>().0.iter_mut().enumerate() {
             let (x, y) = (i as u32 % w, i as u32 / w);
             let c = cores[usize::from(x * 2 >= w) + 2 * usize::from(y * 2 >= h)];
             p[..3].copy_from_slice(&c);
@@ -137,8 +137,10 @@ fn prancha_b49_o_po_por_ladrilho() {
             super::COM_A_SOMA_CORRIDA.set(false);
             let d = cena(w, h, qual);
             let difs = a
-                .chunks_exact(4)
-                .zip(d.chunks_exact(4))
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .zip(d.as_chunks::<4>().0)
                 .filter(|(x, y)| x != y)
                 .count();
             let pior = a.iter().zip(&d).map(|(x, y)| x.abs_diff(*y)).max();

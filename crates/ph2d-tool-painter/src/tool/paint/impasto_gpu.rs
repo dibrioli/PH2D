@@ -244,7 +244,11 @@ impl PainterTool {
                     // Byte a byte e não `copy_from_slice`: este não se alinhava (um `memcpy` de 4 bytes da libc por
                     // canal, 18 % do Ctrl+Z 4K, B15.6-cont). Os mesmos bytes.
                     let texels = crow.iter_mut().zip(cob.iter()).zip(mats.iter());
-                    let planos = m0row.chunks_exact_mut(4).zip(m1row.chunks_exact_mut(4));
+                    let planos = m0row
+                        .as_chunks_mut::<4>()
+                        .0
+                        .iter_mut()
+                        .zip(m1row.as_chunks_mut::<4>().0.iter_mut());
                     for (((c, cb), m), (m0, m1)) in texels.zip(planos) {
                         // Quantised the way the canvas already stores coverage, so the shader's unorm decode
                         // lands on the CPU's `f32::from(u8) / 255.0` and not merely near it.

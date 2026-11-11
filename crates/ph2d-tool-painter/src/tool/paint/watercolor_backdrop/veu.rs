@@ -122,6 +122,7 @@ impl VeuDeHumidade {
 
     /// Quantas vezes o véu foi construído (gate do quadro parado).
     #[must_use]
+    #[cfg(test)]
     pub fn construcoes(&self) -> u64 {
         self.construcoes
     }

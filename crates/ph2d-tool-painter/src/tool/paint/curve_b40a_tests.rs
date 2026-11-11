@@ -98,7 +98,7 @@ fn fundo(w: u32, h: u32, blocos: bool) -> Vec<u8> {
     ];
     let mut v = vec![255u8; (w * h * 4) as usize];
     if blocos {
-        for (i, p) in v.chunks_exact_mut(4).enumerate() {
+        for (i, p) in v.as_chunks_mut::<4>().0.iter_mut().enumerate() {
             let (x, y) = (i as u32 % w, i as u32 / w);
             p[..3].copy_from_slice(&cores[usize::from(x * 2 >= w) + 2 * usize::from(y * 2 >= h)]);
         }
@@ -189,7 +189,9 @@ fn prancha_b40a_trim_com_offset_zero_guarda_o_laco() {
             let a = cena(w, h, qual, true);
             let d = cena(w, h, qual, false);
             let pintou = d
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .filter(|p| p[0] < 40 && p[2] > 100)
                 .count();
             assert!(

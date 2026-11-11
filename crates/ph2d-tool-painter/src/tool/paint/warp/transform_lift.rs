@@ -26,13 +26,16 @@ pub(super) fn mask_bbox(mask: &[u8], w: u32, h: u32) -> Option<Region> {
     regiao(cx)
 }
 
+/// `(patch, base, src)` do levante da cor.
+type Levante = (Arc<Vec<u8>>, Arc<Vec<u8>>, Region);
+
 /// `(patch, base, src)` do levante da cor; `None` quando nada sobe. `sel` = (cobertura, caixa dela).
 pub(super) fn lift_colour(
     cur: &Arc<Vec<u8>>,
     sel: Option<(&[u8], Region)>,
     w: u32,
     h: u32,
-) -> Option<(Arc<Vec<u8>>, Arc<Vec<u8>>, Region)> {
+) -> Option<Levante> {
     let n = (w as usize) * (h as usize);
     let wu = w as usize;
     let mut base = cur.to_vec();

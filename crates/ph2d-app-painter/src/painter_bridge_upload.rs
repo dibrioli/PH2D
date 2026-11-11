@@ -93,6 +93,9 @@ pub(crate) fn janelas_do_upload(
 /// against the renderer, keep the bookkeeping, release the slot when the CPU cache is gone. The
 /// single door both [`dispatch`] and the display gates drive, so what the tests hold byte-exact is
 /// the code the app runs — not a mirror of it.
+// Os oito são o estado do quadro que o envio lê e escreve (renderer, prévia, sujeira, caixas, versão,
+// dono da placa, slot, avisos): agrupá-los num struct só para o lint criaria um tipo sem outro leitor.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn upload_cpu_preview(
     renderer: &mut SpriteRenderer,
     cpu_preview: Option<&PainterPreview>,

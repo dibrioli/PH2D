@@ -7,7 +7,7 @@ use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, Raste
 /// Papel Textured com relevo, um fundo de blocos de cor e duas cristas de Impasto (uma por camada).
 fn tela(w: u32, h: u32) -> PainterTool {
     let mut px = vec![255u8; (w * h * 4) as usize];
-    for (i, p) in px.chunks_exact_mut(4).enumerate() {
+    for (i, p) in px.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         let (x, y) = ((i as u32 % w) * 4 / w, (i as u32 / w) * 2 / h);
         p[..3].copy_from_slice(
             &[[230, 60, 40], [40, 160, 90], [50, 70, 200], [240, 200, 40]][((x + y) % 4) as usize],
@@ -63,11 +63,11 @@ fn o_tique_de_luz_pelo_gbuffer_e_a_luz_inteira() {
     let (w, h) = (240, 160);
     let (mut t, mut gemeo) = (tela(w, h), tela(w, h));
     drena(&mut t);
-    let mut confere = |t: &mut PainterTool,
-                       gemeo: &mut PainterTool,
-                       i: usize,
-                       ramo: DrainBranch,
-                       quando: &str| {
+    let confere = |t: &mut PainterTool,
+                   gemeo: &mut PainterTool,
+                   i: usize,
+                   ramo: DrainBranch,
+                   quando: &str| {
         arrasto(t, i);
         arrasto(gemeo, i);
         let tique = drena(t);
@@ -196,7 +196,7 @@ fn o_tique_da_lampada_na_placa_nao_redobra_a_tela() {
     let mut t = tela(w, h);
     let mut placa = Placa::default();
     assert_eq!(placa.quadro(&mut t, "semente"), tela_toda);
-    let mut tique = |t: &mut PainterTool, placa: &mut Placa, i: usize, caso: &str| {
+    let tique = |t: &mut PainterTool, placa: &mut Placa, i: usize, caso: &str| {
         let acesa = placa.acesa;
         arrasto(t, i);
         let area = placa.quadro(t, &format!("{caso}, arrasto {i}"));

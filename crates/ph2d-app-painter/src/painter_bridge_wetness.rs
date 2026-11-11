@@ -27,7 +27,7 @@ pub(super) fn draw_wetness_overlay(
     if intensity <= 0.0 {
         return;
     }
-    let Some((wet, cw, ch, [rx0, ry0, rx1, ry1])) = painter.canvas_wet_view() else {
+    let Some((_, cw, ch, [rx0, ry0, rx1, ry1])) = painter.canvas_wet_view() else {
         return;
     };
     let Some(bits) = hero.gizmo.selection else {

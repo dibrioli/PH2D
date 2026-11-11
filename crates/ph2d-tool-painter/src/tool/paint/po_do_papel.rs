@@ -35,61 +35,96 @@ pub(super) fn po(plano: Option<&Vec<u8>>, w: u32) -> Option<PoDoPapel<'_>> {
     })
 }
 
+/// Colunas por faixa do passe vertical: 32 somas corridas lado a lado (128 B por linha), sem transpor a tela.
+const FAIXA: usize = 32;
+
 /// O pó da tela `rgba` (`w`×`h`): o alfa desfocado por três caixas em cada eixo; vazio se a camada não tem tinta.
 fn po_da_tela(rgba: &[u8], w: usize, h: usize) -> Vec<u8> {
     if !rgba.as_chunks::<4>().0.iter().any(|p| p[3] != 0) {
         return Vec::new();
     }
-    let tres = |v: &mut Vec<f32>, n: usize| {
-        v.par_chunks_mut(n).for_each(|linha| {
-            let mut tmp = vec![0.0f32; n];
-            for _ in 0..3 {
-                caixa(linha, &mut tmp, RAIO_DA_CAIXA);
-                linha.copy_from_slice(&tmp);
-            }
-        });
-    };
     let mut a: Vec<f32> = rgba
         .as_chunks::<4>()
         .0
         .iter()
         .map(|p| f32::from(p[3]) / 255.0)
         .collect();
-    tres(&mut a, w);
-    let mut t = vec![0.0f32; w * h];
-    t.par_chunks_mut(h).enumerate().for_each(|(x, col)| {
-        for (y, c) in col.iter_mut().enumerate() {
-            *c = a[y * w + x];
-        }
-    });
-    tres(&mut t, h);
+    a.par_chunks_mut(w)
+        .for_each_init(|| vec![0.0f32; w], |tmp, linha| {
+            for _ in 0..3 {
+                caixa(linha, tmp, RAIO_DA_CAIXA);
+                linha.copy_from_slice(tmp);
+            }
+        });
+    // Cada faixa copia as suas colunas (linha a linha, contíguas), corre as três caixas verticais e quantiza.
+    let mut faixas = vec![0u8; w * h];
+    faixas
+        .par_chunks_mut(h * FAIXA)
+        .enumerate()
+        .for_each_init(
+            || (vec![0.0f32; h * FAIXA], vec![0.0f32; h * FAIXA]),
+            |(f, g), (s, saida)| {
+                let x0 = s * FAIXA;
+                let l = saida.len() / h;
+                let (f, g) = (&mut f[..h * l], &mut g[..h * l]);
+                for (y, dst) in f.chunks_exact_mut(l).enumerate() {
+                    dst.copy_from_slice(&a[y * w + x0..y * w + x0 + l]);
+                }
+                for _ in 0..3 {
+                    caixa_em_faixa(f, g, l, RAIO_DA_CAIXA);
+                    f.copy_from_slice(g);
+                }
+                for (o, v) in saida.iter_mut().zip(f.iter()) {
+                    *o = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                }
+            },
+        );
     let mut out = vec![0u8; w * h];
     out.par_chunks_mut(w).enumerate().for_each(|(y, linha)| {
-        for (x, o) in linha.iter_mut().enumerate() {
-            *o = (t[x * h + y].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+        for (s, faixa) in faixas.chunks(h * FAIXA).enumerate() {
+            let l = faixa.len() / h;
+            linha[s * FAIXA..s * FAIXA + l].copy_from_slice(&faixa[y * l..(y + 1) * l]);
         }
     });
     out
 }
 
-#[cfg(test)]
-mod tests {
-    /// O custo do pó no pen-down a 4K (3840×2160, metade com tinta): `PH2D_RELEASE` não — `--profile smoke`.
-    #[test]
-    #[ignore = "medição: cargo test --profile smoke -- --ignored mede_o_po_a_4k --nocapture"]
-    fn mede_o_po_a_4k() {
-        let (w, h) = (3840usize, 2160usize);
-        let rgba: Vec<u8> = (0..w * h)
-            .flat_map(|i| [0, 0, 0, if (i / 7) % 2 == 0 { 255 } else { 0 }])
-            .collect();
-        let mut t = Vec::new();
-        for _ in 0..7 {
-            let t0 = std::time::Instant::now();
-            let p = super::po_da_tela(&rgba, w, h);
-            t.push(t0.elapsed().as_secs_f64() * 1e3);
-            assert_eq!(p.len(), w * h);
+/// [`caixa`] em cada uma das `l` colunas de `src` (`n`×`l`, linha a linha): a mesma soma corrida, na mesma ordem de
+/// `y`, por coluna — o mesmo bit que a caixa sobre a coluna transposta.
+fn caixa_em_faixa(src: &[f32], dst: &mut [f32], l: usize, r: usize) {
+    let n = src.len() / l;
+    if n == 0 || dst.len() != src.len() {
+        return;
+    }
+    let mut soma = [-0.0f32; FAIXA];
+    let soma = &mut soma[..l];
+    for linha in src[..(r.min(n - 1) + 1) * l].chunks_exact(l) {
+        for (s, v) in soma.iter_mut().zip(linha) {
+            *s += v;
         }
-        t.sort_by(f64::total_cmp);
-        eprintln!("[po 4K] mínimo {:.1} ms · mediana {:.1} ms", t[0], t[3]);
+    }
+    let mut lo = 0usize;
+    let mut hi = r.min(n - 1);
+    for (y, d) in dst.chunks_exact_mut(l).enumerate() {
+        let k = (hi - lo + 1) as f32;
+        for (d, s) in d.iter_mut().zip(soma.iter()) {
+            *d = s / k;
+        }
+        if y + r + 1 < n {
+            hi += 1;
+            for (s, v) in soma.iter_mut().zip(&src[hi * l..(hi + 1) * l]) {
+                *s += v;
+            }
+        }
+        if y >= r {
+            for (s, v) in soma.iter_mut().zip(&src[lo * l..(lo + 1) * l]) {
+                *s -= v;
+            }
+            lo += 1;
+        }
     }
 }
+
+#[cfg(test)]
+#[path = "po_do_papel_tests.rs"]
+mod tests;

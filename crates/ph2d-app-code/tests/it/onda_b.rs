@@ -230,3 +230,36 @@ fn sem_grelha_pintada_nenhum_alvo_do_quadro_anterior_responde() {
         );
     }
 }
+
+/// Os gestos dos passos do Card Style da cena 14 (`ClickTabMenu(4)` + `ClickTabMenuRow(k)`, k = 3, 4, 2)
+/// escolhem `View ▸ Card Style ▸` Cards, Strip e Sheet pelo índice de sempre: as escolhas contam-se
+/// dentro do submenu (11/11).
+#[test]
+fn o_roteiro_escolhe_o_estilo_dentro_do_submenu_pelo_indice_de_sempre() {
+    use ph2d_code_debugcard::CardStyle::{Cards, Sheet, Strip};
+    use ph2d_code_smoke::Gesture::{ClickTabMenu, ClickTabMenuRow, Frame};
+    const CARDS: &[&[ph2d_code_smoke::Gesture]] = &[&[ClickTabMenu(4), Frame, ClickTabMenuRow(3)]];
+    const STRIP: &[&[ph2d_code_smoke::Gesture]] = &[&[ClickTabMenu(4), Frame, ClickTabMenuRow(4)]];
+    const SHEET: &[&[ph2d_code_smoke::Gesture]] = &[&[ClickTabMenu(4), Frame, ClickTabMenuRow(2)]];
+    let (m, ids) = Mesa::new(&[("player.luau", PLAYER)]);
+    let id = ids[0];
+    let mut m = m.com_cena(id, 0);
+    m.pede(id);
+    for (roteiro, estilo) in [(CARDS, Cards), (STRIP, Strip), (SHEET, Sheet)] {
+        let mut c = Conductor::scene(roteiro, 1);
+        for _ in 0..20 {
+            m.quadro();
+            m.pinta(id);
+            if c.finished() {
+                break;
+            }
+            drive(m.docs(), &mut c);
+        }
+        assert!(
+            c.finished() && !c.failed(),
+            "{estilo:?}: o roteiro chegou ao fim"
+        );
+        assert_eq!(m.docs().card_style, estilo);
+        assert!(m.docs().bar_painted().popup.is_none(), "o menu fechou");
+    }
+}

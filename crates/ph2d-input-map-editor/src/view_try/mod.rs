@@ -7,7 +7,8 @@ pub mod state;
 pub mod stick;
 
 pub use cards::{
-    METER_GUTTER, METER_NAME_X, METER_SWATCH, METER_TRACK, meter_fill, recipe_cols, tile_w,
+    METER_GUTTER, METER_NAME_X, METER_SWATCH, METER_TRACK, footer_parts, meter_fill, recipe_cols,
+    tile_w,
 };
 pub use controls::{KEY_CHIP_H, SHOWN_GAP, preview_frame_h};
 
@@ -96,10 +97,17 @@ pub(crate) fn raw_key(doc: &mut InputMapDoc, key: Key, pressed: bool) -> bool {
     let chord = ph2d_input::editor_keys::chord_keys(kb.iter_held(), doc.alt);
     let takes = !crate::raw_keys::never_binds(key, chord);
     // Os modificadores ficam no banco: é por eles que a letra seguinte sabe que é acorde.
+    let modifier = crate::raw_keys::is_modifier(key);
     if !pressed {
         kb.handle_key_up(key);
-    } else if takes || crate::raw_keys::is_modifier(key) {
+    } else if takes || modifier {
         kb.handle_key_down(key);
+    }
+    let t = &mut doc.tryit;
+    if pressed && !modifier {
+        t.kept = (!takes).then_some(key);
+    } else if !pressed && (t.kept == Some(key) || t.held_keys().is_empty()) {
+        t.kept = None;
     }
     takes
 }

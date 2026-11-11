@@ -249,17 +249,42 @@ fn bar_cols(w: f32) -> usize {
 }
 
 /// O pé do Try it em duas partes («You are pressing Up Arrow: jump and move_up are on. …»): o destaque em SemiBold («You are pressing Up Arrow:») e o resto em regular.
-fn footer_parts(doc: &InputMapDoc) -> (Option<String>, String) {
+#[must_use]
+pub fn footer_parts(doc: &InputMapDoc) -> (Option<String>, String) {
     if doc.snap.play_running {
         return (None, tr("input_map_try.idle_running").to_owned());
     }
-    let keys = doc.tryit.held_keys();
+    let mut keys = doc.tryit.held_keys();
+    let kept = doc.tryit.kept;
+    keys.extend(kept);
     if keys.is_empty() {
         return (None, tr("input_map_try.idle").to_owned());
     }
     let names: Vec<String> = keys.iter().map(|k| k.label()).collect();
-    let lead =
-        tr("input_map_try.pressing").replace("{keys}", &names.join(tr("input_map_try.list_sep")));
+    // A tecla que o editor guarda: o acorde lê-se «Left Alt + F» e o pé diz porquê.
+    let chord = kept.filter(|k| k.system_owned().is_none());
+    let sep = if chord.is_some() {
+        "input_map_try.chord_sep"
+    } else {
+        "input_map_try.list_sep"
+    };
+    let lead = tr("input_map_try.pressing").replace("{keys}", &names.join(tr(sep)));
+    if let Some(k) = kept {
+        let why = match k.system_owned() {
+            Some(why) => tr(why).to_owned(),
+            None => {
+                let left_alt = ph2d_input::Key::named_in_script("left_alt").unwrap_or_default();
+                let alt = keys.iter().any(|h| left_alt.contains(h));
+                let why = if alt {
+                    "input_map_try.kept_alt"
+                } else {
+                    "input_map_try.kept_chord"
+                };
+                tr(why).replace("{key}", &k.label())
+            }
+        };
+        return (Some(lead), why);
+    }
     let on: Vec<&str> = doc
         .snap
         .map

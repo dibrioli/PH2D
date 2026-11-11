@@ -63,6 +63,8 @@ pub struct TryState {
     pub listening_open_key: bool,
     /// A última tecla recusada para abrir a tela (Esc, F5), com o porquê à vista.
     pub refused: Option<Key>,
+    /// A tecla em baixo que o editor guarda para si (o F do Alt+F, a tecla do sistema): o pé diz porquê.
+    pub kept: Option<Key>,
     /// A pasta das prefs (`~/.ph2d`); os testes põem uma temporária.
     pub base: Option<PathBuf>,
     /// Quantas teclas o ficheiro do jogador troca (lido ao abrir a vista e depois do Forget, nunca a cada quadro).

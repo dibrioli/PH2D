@@ -127,10 +127,22 @@ fn na_try_it_o_alt_esquerdo_mais_f_nao_acende_e_o_altgr_mais_f_acende() {
         );
         let held = m.tab().doc.tryit.held_keys();
         assert_eq!(held.contains(&f), banco, "{caso}: o F aceso {held:?}");
+        // Pedido do dono (11/11): o F apagado diz porquê.
+        let pe = ph2d_app_input_map::view_try::footer_parts(&m.tab().doc).1;
+        assert_eq!(
+            pe.contains("shortcut of the editor"),
+            !banco,
+            "{caso}: {pe}"
+        );
         let _ = pela_shell(&mut m, modificador, alt, f, false);
         assert!(
             m.tab().doc.tryit.held_keys().is_empty(),
             "{caso}: soltar apaga tudo"
+        );
+        assert_eq!(
+            m.tab().doc.tryit.kept,
+            None,
+            "{caso}: soltar apaga o porquê"
         );
     }
     let mut m = Mesa::aberta(View::TryIt);

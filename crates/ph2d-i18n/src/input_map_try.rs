@@ -39,6 +39,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "input_map_try.on_one" => "{actions} is on. Nothing moves, because nothing runs.",
         "input_map_try.on_many" => "{actions} are on. Nothing moves, because nothing runs.",
         "input_map_try.on_none" => "no action uses it. Nothing moves, because nothing runs.",
+        "input_map_try.kept_chord" => "a shortcut of the editor, so your game never gets it.",
+        "input_map_try.kept_alt" => {
+            "a shortcut of the editor, so your game never gets it. Right Alt (AltGr) with {key} does reach it."
+        }
+        "input_map_try.chord_sep" => " + ",
         "input_map_try.and" => " and ",
         "input_map_try.list_sep" => ", ",
         "input_map_try.stick" => "The stick",

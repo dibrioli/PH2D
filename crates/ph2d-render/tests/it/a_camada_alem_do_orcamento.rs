@@ -77,3 +77,74 @@ fn mede_as_camadas_4k_alem_do_orcamento() {
         eprintln!("{n:<7} {mib:>8} {min:>12.2} {primeiro:>12.1}");
     }
 }
+
+/// B42.1 gate: a 33-layer 3840×2160 document stays on the GPU under the budget the compositor
+/// resolves for EITHER kind of device, and (when a card is present) composites there for real.
+#[test]
+fn a_33a_camada_nao_manda_o_documento_a_cpu() {
+    use ph2d_render::{layer_cache_budget, max_layers_for_budget};
+    let (w, h) = (3840u32, 2160u32);
+    for t in [
+        wgpu::DeviceType::IntegratedGpu,
+        wgpu::DeviceType::DiscreteGpu,
+        wgpu::DeviceType::Cpu,
+    ] {
+        let cabe = max_layers_for_budget(w, h, layer_cache_budget(t));
+        assert!(cabe >= 33, "{t:?}: o orçamento só segura {cabe} camadas 4K");
+    }
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let mut comp = LayerCompositor::new(&gpu);
+    let mut prov = MapProvider::default();
+    let ops: Vec<_> = (0..33u32)
+        .map(|k| {
+            prov.insert(u64::from(k), 1, tela(w, h, k + 1));
+            LayerOp::Layer {
+                key: u64::from(k),
+                blend_mode: 0,
+                opacity: 1.0,
+                mask: None,
+                clipping: false,
+            }
+        })
+        .collect();
+    comp.composite(&gpu, &ops, &prov, w, h, Region::full(w, h))
+        .expect("33 camadas 4K compõem na placa");
+    assert_eq!(comp.cached_len(), 33);
+}
+
+/// B42.1: an array ask the card refuses (999 slices of 8192², ~250 GiB) comes back as a refusal
+/// the caller can route to the CPU, and the budget recedes so the next frame does not ask again.
+#[test]
+fn o_array_recusado_recua_o_orcamento() {
+    use ph2d_render::LayerCompositeError;
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let mut comp = LayerCompositor::new(&gpu);
+    comp.set_cache_budget_bytes(u64::MAX / 2);
+    let ops: Vec<_> = (0..999u32)
+        .map(|k| LayerOp::Layer {
+            key: u64::from(k),
+            blend_mode: 0,
+            opacity: 1.0,
+            mask: None,
+            clipping: false,
+        })
+        .collect();
+    let s = 8192u32;
+    let r = comp.composite(
+        &gpu,
+        &ops,
+        &MapProvider::default(),
+        s,
+        s,
+        Region::full(s, s),
+    );
+    assert!(
+        matches!(r, Err(LayerCompositeError::TooManyLayers { requested: 999, cap }) if cap < 999),
+        "{r:?}"
+    );
+    assert!(comp.cache_budget_bytes() < 999 * u64::from(s) * u64::from(s) * 4);
+}

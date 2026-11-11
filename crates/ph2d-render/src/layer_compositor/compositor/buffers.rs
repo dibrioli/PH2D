@@ -33,20 +33,29 @@ impl LayerCompositor {
             .max(1)
             .max(self.array.as_ref().map_or(0, |a| a.capacity))
             .min(cap);
-        let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("ph2d-render layer_composite array"),
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: capacity,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8Unorm,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
+        // B42.1: the ask goes under an OutOfMemory scope; a card that refuses it retries at the
+        // stack's own need, and a refusal there lowers the budget to the slices it did give, so
+        // the next frame asks what fits instead of losing the device.
+        let mut pedido = capacity;
+        let texture = loop {
+            let (t, recusa) = ph2d_gpu::memoria::sob_escopo_de_memoria(&gpu.device, || {
+                self.create_array_texture(gpu, width, height, pedido)
+            });
+            if recusa.is_none() {
+                break t;
+            }
+            let per_slice = u64::from(width) * u64::from(height) * 4;
+            self.cache_budget_bytes = u64::from(pedido - 1) * per_slice;
+            if pedido > distinct.max(1) {
+                pedido = distinct.max(1);
+                continue;
+            }
+            return Err(LayerCompositeError::TooManyLayers {
+                requested: distinct,
+                cap: pedido - 1,
+            });
+        };
+        let capacity = pedido;
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
             label: Some("ph2d-render layer_composite array view"),
             dimension: Some(wgpu::TextureViewDimension::D2Array),
@@ -62,6 +71,29 @@ impl LayerCompositor {
         // Dims/capacity changed → existing slice assignments are invalid.
         self.cache.clear();
         Ok(())
+    }
+
+    fn create_array_texture(
+        &self,
+        gpu: &GpuContext,
+        width: u32,
+        height: u32,
+        capacity: u32,
+    ) -> wgpu::Texture {
+        gpu.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("ph2d-render layer_composite array"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: capacity,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        })
     }
 
     /// Resolve `key` to a slice, uploading its pixels if newly assigned or its

@@ -632,3 +632,45 @@ fn measure_the_adjustment_drag() {
     }
     println!();
 }
+
+/// B42.1 — **the CPU path at the layer counts the integrated card's budget sends to it**: 3840×2160,
+/// the same opaque noise layers as the GPU side (`ph2d-render`'s `mede_as_camadas_4k_alem_do_orcamento`),
+/// a full `compositor::composite`, minimum of 5.
+#[test]
+#[ignore = "measurement, not a gate"]
+fn mede_o_caminho_da_cpu_alem_do_orcamento() {
+    use crate::compositor::{LayerImage, MapPixelSource, composite};
+    let (w, h) = (3840u32, 2160u32);
+    println!("\n{:<8} {:>12}", "camadas", "cpu mín ms");
+    let mut stack = crate::layers::LayerStack::new();
+    let mut src = MapPixelSource::default();
+    for alvo in [16usize, 17, 32, 33, 48, 64] {
+        while stack.len() < alvo {
+            let seed = stack.len() as u32 + 1;
+            let id = stack.add_raster("L", w, h).expect("under the hard cap");
+            let rgba8 = (0..w * h)
+                .flat_map(|p| {
+                    let s = p.wrapping_mul(37).wrapping_add(seed.wrapping_mul(11));
+                    [s as u8, (s >> 3) as u8, (s >> 5) as u8, 255]
+                })
+                .collect();
+            src.insert(
+                id,
+                LayerImage {
+                    width: w,
+                    height: h,
+                    rgba8,
+                },
+            );
+        }
+        let mut min = f64::MAX;
+        for _ in 0..5 {
+            let t0 = Instant::now();
+            let out = composite(&stack, &src, w, h);
+            min = min.min(t0.elapsed().as_secs_f64() * 1e3);
+            assert_eq!(out.len(), (w * h * 4) as usize);
+        }
+        println!("{:<8} {:>12.1}", stack.len(), min);
+    }
+    println!();
+}

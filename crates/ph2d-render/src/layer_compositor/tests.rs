@@ -27,25 +27,25 @@ fn the_budget_follows_the_device_and_the_4k_counts_are_what_they_say() {
     // A square 4096² slice is 64 MiB. These are the numbers the docs quote.
     assert_eq!(
         max_layers_for_budget(4096, 4096, LAYER_CACHE_BUDGET_SHARED_BYTES),
-        8,
-        "the OLD budget held EIGHT layers at 4096², never the ~15 its doc claimed"
+        32,
+        "2 GiB shared holds 32 layers at 4096² (B42.1; the 512 MiB before it held 8)"
     );
     assert_eq!(
         max_layers_for_budget(4096, 4096, LAYER_CACHE_BUDGET_DISCRETE_BYTES),
-        16
+        64
     );
     assert_eq!(
         max_layers_for_budget(2048, 2048, LAYER_CACHE_BUDGET_DISCRETE_BYTES),
-        64
+        256
     );
 }
 
 #[test]
 fn max_layers_for_budget_4k_and_degenerate() {
-    // 4K RGBA8 = 33,177,600 B/slice; 512 MiB / that = 16 slices.
+    // 4K RGBA8 = 33,177,600 B/slice; 2 GiB / that = 64 slices.
     assert_eq!(
         max_layers_for_budget(3840, 2160, LAYER_CACHE_BUDGET_SHARED_BYTES),
-        16
+        64
     );
     // Zero-area canvas → 0 (no divide-by-zero).
     assert_eq!(

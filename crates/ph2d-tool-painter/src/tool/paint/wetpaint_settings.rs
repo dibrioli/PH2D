@@ -10,6 +10,7 @@ use ph2d_wet_paint::tuning::{KNOB_COUNT, KNOB_DEFS, Knob, KnobGroup, knob_defaul
 
 mod absorcao; // a Absorbency da tela (E10d2) — filho por LOC
 mod controlos_e10; // Dilution · Medium · Volume · Body · Hardness (E10) — filho por LOC
+mod porcento; // a vista em % de Pickup, Edge e Gravity (B35.7) — filho por LOC
 mod tabelas; // as tabelas dos knobs por ferramenta e por cartão — filho por LOC
 mod tela_e_oleo; // Smooth Edges, Óleo Real, Live Water, Heavy Edge — filho por LOC
 mod tuning; // o roteamento do painel Tuning — filho por LOC
@@ -579,15 +580,12 @@ impl PainterTool {
         }
         let w = &mut self.paint.wetpaint;
         let k = &mut w.knobs;
-        if k.set_controlo_e10(id, v) {
+        if k.set_controlo_e10(id, v) || k.set_em_porcento(id, v) {
             return true;
         }
         match id {
             x if x == crate::ids::PAINTER_WETPAINT_WATER => k.water = v.clamp(0.0, 1.0),
-            x if x == crate::ids::PAINTER_WETPAINT_PICKUP => k.set(Knob::Pickup, v),
             x if x == crate::ids::PAINTER_WETPAINT_DRY_SPEED => k.set(Knob::Evaporation, v),
-            x if x == crate::ids::PAINTER_WETPAINT_EDGE => k.set(Knob::EdgeDarkening, v),
-            x if x == crate::ids::PAINTER_WETPAINT_GRAVITY => k.set(Knob::Gravity, v),
             x if let Some(&(_, knob)) = KNOBS_NO_CARTAO.iter().find(|(i, _)| *i == x) => {
                 k.set(knob, v);
             }

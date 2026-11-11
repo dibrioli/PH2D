@@ -432,7 +432,7 @@ pub enum Rebuild {
 
 mod defs;
 
-pub use defs::{KNOB_DEFS, KnobDef};
+pub use defs::{KNOB_DEFS, KnobDef, VISTA_EM_PORCENTO};
 
 /// The boot value of every knob, in [`Knob`] discriminant order — `const` so
 /// a host's authored-state `DEFAULT` (a `const` item) can carry the exact

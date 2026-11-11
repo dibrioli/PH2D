@@ -29,7 +29,29 @@ impl KnobDef {
             _ => v,
         }
     }
+
+    /// A vista em % (B35.7): `min` = 0 %, `max` = 100 %. O painel mostra isto; [`Self::do_porcento`] é a volta.
+    #[must_use]
+    pub fn em_porcento(&self, v: f64) -> f64 {
+        (v - self.min) / (self.max - self.min) * 100.0
+    }
+
+    /// A volta da vista em %: o valor do motor, já na lei ([`Self::na_lei`]).
+    #[must_use]
+    pub fn do_porcento(&self, p: f64) -> f64 {
+        self.na_lei(self.min + p / 100.0 * (self.max - self.min))
+    }
+
+    /// O degrau do motor medido em %.
+    #[must_use]
+    pub fn passo_em_porcento(&self) -> f64 {
+        self.step / (self.max - self.min) * 100.0
+    }
 }
+
+/// Os knobs que o cartão Wet mostra em % (B35.7, decisão 4): Edge, Pickup e Gravity — o painel e o setter da
+/// ferramenta convertem pelas MESMAS [`KnobDef::em_porcento`] / [`KnobDef::do_porcento`].
+pub const VISTA_EM_PORCENTO: [Knob; 3] = [Knob::Pickup, Knob::EdgeDarkening, Knob::Gravity];
 
 const fn k(
     knob: Knob,

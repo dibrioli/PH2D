@@ -15,13 +15,10 @@ use ph2d_tool_painter::BrushSettings;
 // Knob ranges/steps: each mirrors the `set_wet_knob_value` clamp in the tool
 // (which mirrors SPEC §16's `KNOB_DEFS` slider table) — parameter domains of
 // the fluid engine, not design values.
-const PICKUP_MAX: f32 = 0.2; // LITERAL-PX-OK: wet-paint Pickup range bound (SPEC §16)
-const PICKUP_STEP: f64 = 0.001; // LITERAL-PX-OK: wet-paint Pickup slider step (SPEC §16)
 const DRY_SPEED_MAX: f32 = 8.0; // LITERAL-PX-OK: wet-paint Evaporation range bound (SPEC §16)
 const DRY_SPEED_STEP: f64 = 0.05; // LITERAL-PX-OK: wet-paint Evaporation slider step (SPEC §16)
-const EDGE_MAX: f32 = 200.0; // LITERAL-PX-OK: wet-paint Edge-darkening range bound (SPEC §16)
-const GRAVITY_MAX: f32 = 0.05; // LITERAL-PX-OK: wet-paint Gravity range bound (SPEC §16)
-const GRAVITY_STEP: f64 = 0.0005; // LITERAL-PX-OK: wet-paint Gravity slider step (SPEC §16)
+// Pickup, Edge Darkening e Gravity mostram-se em % (B35.7): `WetKnobs::em_porcento`, a função do motor.
+const PORCENTO_MAX: f64 = 100.0; // LITERAL-PX-OK: the percent view's upper bound (0–100 %)
 // A faixa da grade do fluido (px por célula) — espelha `wetpaint::grid_map`
 // MIN_RATIO/MAX_RATIO, do mesmo jeito que os knobs acima espelham os clamps do
 // tool. Não é valor de design: é o domínio do parâmetro.
@@ -238,6 +235,17 @@ pub(crate) fn numeros_da_ferramenta(leis: &BrushSettings, valores: &BrushSetting
         .collect()
 }
 
+/// Uma linha da vista em % (B35.7): valor e passo pela função do motor, faixa 0–100, casas do passo.
+fn em_porcento(
+    k: &ph2d_tool_painter::WetKnobs,
+    chave: &'static str,
+    id: ph2d_a11y::NodeId,
+) -> (&'static str, ph2d_a11y::NodeId, f32, f32, f32, f64, usize) {
+    let (v, passo) = k.em_porcento(id).expect("knob da vista em %");
+    let n = Numero::de_knob(chave, id, v, 0.0, PORCENTO_MAX, passo);
+    (chave, id, n.valor, n.min, n.max, n.passo, n.casas)
+}
+
 /// Quantos nomes de [`numeros_da_fisica`] são do grupo da espessura: os restantes são os do pigmento.
 const NOMES_DA_ESPESSURA: usize = 5;
 
@@ -248,14 +256,10 @@ pub(crate) fn numeros_da_fisica(leis: &BrushSettings, valores: &BrushSettings) -
     let pousa = leis.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado);
     let mut grupos: [Vec<Numero>; 3] = [Vec::new(), Vec::new(), Vec::new()];
     let rows: [(&'static str, ph2d_a11y::NodeId, f32, f32, f32, f64, usize); 5] = [
-        (
+        em_porcento(
+            &k,
             "panel.painter_layers.wetpaint.pickup",
             ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP,
-            k.pickup() as f32,
-            0.0,
-            PICKUP_MAX,
-            PICKUP_STEP,
-            3,
         ),
         (
             "panel.painter_layers.wetpaint.dry_speed",
@@ -266,23 +270,15 @@ pub(crate) fn numeros_da_fisica(leis: &BrushSettings, valores: &BrushSettings) -
             DRY_SPEED_STEP,
             2,
         ),
-        (
+        em_porcento(
+            &k,
             "panel.painter_layers.wetpaint.edge_darkening",
             ph2d_tool_painter::ids::PAINTER_WETPAINT_EDGE,
-            k.edge_darkening() as f32,
-            0.0,
-            EDGE_MAX,
-            1.0,
-            0,
         ),
-        (
+        em_porcento(
+            &k,
             "panel.painter_layers.wetpaint.gravity",
             ph2d_tool_painter::ids::PAINTER_WETPAINT_GRAVITY,
-            k.gravity() as f32,
-            0.0,
-            GRAVITY_MAX,
-            GRAVITY_STEP,
-            4,
         ),
         (
             "panel.painter_layers.wetpaint.erase_strength",

@@ -140,7 +140,7 @@ pub(crate) fn parallel_band_stamp<F>(
 where
     F: Fn(&mut [u8], i64) -> bool + Sync,
 {
-    band_split(
+    band_split::<u8, _>(
         buf,
         None,
         None,
@@ -213,10 +213,10 @@ where
 
 /// A divisão por linhas — **uma** resposta a *"vale dividir, e onde cada banda começa?"*.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn band_split<F>(
+pub(super) fn band_split<M: Send, F>(
     buf: &mut [u8],
     liso: Option<&mut [u8]>,
-    mask: Option<&mut [u8]>,
+    mask: Option<&mut [M]>,
     forca: Option<&mut [u16]>,
     y0: i64,
     y1: i64,
@@ -227,7 +227,7 @@ pub(super) fn band_split<F>(
     stamp: F,
 ) -> (bool, bool)
 where
-    F: Fn(&mut [u8], Option<&mut [u8]>, Option<&mut [u8]>, Option<&mut [u16]>, i64) -> (bool, bool)
+    F: Fn(&mut [u8], Option<&mut [u8]>, Option<&mut [M]>, Option<&mut [u16]>, i64) -> (bool, bool)
         + Sync,
 {
     let mrow = stride / 4;
@@ -398,6 +398,9 @@ pub(in crate::dab) struct Invariantes {
     pub(in crate::dab) flow_do_tecto: f32,
     /// O tecto lê a cobertura como ÁREA (película com AA, ou a orla em píxeis).
     pub(in crate::dab) area: crate::stroke_cover::Area,
+    /// B29.1: o texel largo recompõe a tela do pré-traço só sob a source-over pura (Mix, sem pigmento, sem rampa nem
+    /// cor do Shape, sem Preserve Alpha) — a cor constante ao longo do traço é de quem dá o [`crate::TexelLargo`].
+    pub(in crate::dab) recompoe: bool,
 }
 
 impl Invariantes {
@@ -425,6 +428,13 @@ impl Invariantes {
                 ctx.flow
             },
             area: crate::stroke_cover::Area::de(ctx.film_aa.is_some(), orla_area),
+            recompoe: com_mascara
+                && ctx.spec.blend == crate::BrushBlend::Mix
+                && ctx.spec.pigmento().mix <= 0.0
+                && !ctx.spec.pigmento().espectral
+                && ctx.ramp.is_none()
+                && ctx.shape_cor.is_none()
+                && !ctx.preserve_alpha,
         }
     }
 }
@@ -438,11 +448,11 @@ impl Invariantes {
 /// stencil — ao bit o que o MESMO kernel escreveria com a textura desligada e sem dente (cobertura `w·coverage`,
 /// cor do pincel, o blend dele). Só sem `mask`/`forca`/rampa/Shape ([`crate::stamp_dab_textured_masked_po_com_liso`]).
 /// Devolve `(tocou o dst, tocou o liso)`.
-pub(super) fn stamp_band(
+pub(super) fn stamp_band<M: crate::Tecto>(
     ctx: &DabCtx,
     dst: &mut [u8],
     mut liso: Option<&mut [u8]>,
-    mut mask: Option<&mut [u8]>,
+    mut mask: Option<&mut [M]>,
     mut forca: Option<&mut [u16]>,
     band_y0: i64,
 ) -> (bool, bool) {

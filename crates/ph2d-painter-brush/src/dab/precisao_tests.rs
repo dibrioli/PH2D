@@ -196,3 +196,58 @@ fn sonda_b29_1_custo_4k() {
         melhor[0], melhor[1]
     );
 }
+
+/// [`centro`] com o tecto LARGO no carimbo real ([`crate::stamp_dab_textured_masked_po_largo`]).
+fn centro_largo(flow: f32, n: u32) -> u8 {
+    let (w, h) = (16u32, 16u32);
+    let spec = BrushSpec {
+        radius_px: 5.0,
+        color: [0.0, 0.0, 0.0],
+        blend: BrushBlend::Mix,
+        falloff: Falloff::Constant,
+        hardness: 1.0,
+        strength: 1.0,
+        flow,
+        ..Default::default()
+    };
+    let mut dst = vec![255u8; (w * h * 4) as usize];
+    let mut mask = vec![crate::TexelLargo::default(); (w * h) as usize];
+    for _ in 0..n {
+        let _ = crate::stamp_dab_textured_masked_po_largo(
+            &mut dst,
+            w,
+            h,
+            [8.0, 8.0],
+            &spec,
+            spec.strength,
+            false,
+            None,
+            None,
+            None,
+            &mut mask,
+            None,
+            [1.0, 0.0],
+            None,
+            None,
+        );
+    }
+    dst[(8 * w as usize + 8) * 4]
+}
+
+/// ⭐ B29.1 no CARIMBO: o tecto largo leva a tinta ao alvo a ≤ 1 nível nos seis casos (o `u8` estanca: 25 contra
+/// 0,1 · 250 contra 4,7, [`com_o_tecto_u16_e_a_recomposicao_a_tinta_chega_ao_alvo`]) e é o modelo da cura ao bit.
+#[test]
+fn com_o_tecto_largo_o_carimbo_chega_ao_alvo() {
+    for (flow, ns) in CASOS {
+        for n in ns {
+            let alvo = 255.0 * (1.0 - flow).powi(n as i32);
+            let largo = centro_largo(flow, n);
+            assert_eq!(largo, modelo(flow, n, true, true), "flow {flow} · {n}: modelo");
+            assert!(
+                (f32::from(largo) - alvo).abs() <= 1.0,
+                "flow {flow} · {n}: {largo} contra {alvo:.1}"
+            );
+            assert!(f32::from(centro(flow, n).0) - alvo > 10.0 || n < 400, "flow {flow} · {n}: o u8 já não estanca?");
+        }
+    }
+}

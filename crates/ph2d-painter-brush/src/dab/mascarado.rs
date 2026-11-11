@@ -137,3 +137,46 @@ pub fn stamp_dab_textured_masked_with(
         None,
     )
 }
+
+/// [`stamp_dab_textured_masked_po`] com o tecto LARGO (B29.1, [`crate::TexelLargo`]): a cobertura em `u16` e, sob a
+/// source-over pura, a tela recomposta do pré-traço — o Flow baixo chega ao alvo. Fora dela, a lei de hoje com o
+/// tecto mais fino. Quem chama garante a cor constante ao longo do traço.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn stamp_dab_textured_masked_po_largo(
+    buf: &mut [u8],
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    spec: &BrushSpec,
+    coverage: f32,
+    preserve_alpha: bool,
+    tex: Option<&TexDabBasis>,
+    image: Option<&ImageMask>,
+    shape: Option<ShapeInput>,
+    mask: &mut [crate::TexelLargo],
+    forca: Option<&mut [u16]>,
+    dab_rotation: [f32; 2],
+    capsula: Option<crate::capsula::Capsula>,
+    po: Option<crate::texture::PoDoPapel<'_>>,
+) -> Option<DirtyRect> {
+    stamp_dab_inner(
+        buf,
+        width,
+        height,
+        center,
+        spec,
+        coverage,
+        preserve_alpha,
+        tex,
+        image,
+        shape,
+        None,
+        Some(mask),
+        forca,
+        po,
+        dab_rotation,
+        PARALLEL_MIN_AREA,
+        capsula,
+    )
+}

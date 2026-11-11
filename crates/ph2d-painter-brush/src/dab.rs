@@ -289,7 +289,7 @@ pub fn stamp_dab_textured(
     image: Option<&ImageMask>,
     shape: Option<ShapeInput>,
 ) -> Option<DirtyRect> {
-    stamp_dab_inner(
+    stamp_dab_inner::<u8>(
         buf,
         width,
         height,
@@ -359,7 +359,7 @@ pub fn stamp_dab_ramped(
 
 #[allow(clippy::too_many_arguments)]
 #[must_use]
-fn stamp_dab_inner_com(
+fn stamp_dab_inner_com<M: crate::Tecto>(
     buf: &mut [u8],
     liso: Option<&mut [u8]>,
     width: u32,
@@ -374,8 +374,8 @@ fn stamp_dab_inner_com(
     ramp: Option<crate::RampPaint<'_>>,
     // **Accumulate OFF** per-stroke coverage mask (canvas-sized, 1 byte/pixel). `Some` ⇒ cap each
     // pixel's stroke coverage at the dab target (the tool passes it when Accumulate is off and the cap
-    // is observable); `None` ⇒ the plain per-dab build-up.
-    mask: Option<&mut [u8]>,
+    // is observable); `None` ⇒ the plain per-dab build-up. `M` = o texel do tecto ([`crate::Tecto`], B29.1).
+    mask: Option<&mut [M]>,
     // A força com que o lote pinta cada texel (canvas-sized, `u16`; [`crate::stroke_cover::compoe_forca`]).
     forca: Option<&mut [u16]>,
     // O pó pousado antes do traço ([`crate::texture::PoDoPapel`]): o Height lê o papel com o dente cheio.
@@ -535,7 +535,7 @@ fn stamp_dab_inner_com(
         let (touched, liso_tocou) = liso::parallel_band_stamp_com_liso(
             &mut m,
             l.as_deref_mut(),
-            None,
+            None::<&mut [M]>,
             None,
             0,
             y1 - y0,
@@ -591,7 +591,8 @@ pub(crate) use bands::{parallel_band_cached, parallel_band_stamp};
 use liso::stamp_dab_inner;
 pub use liso::{pegada_textured_masked_po_com_liso, stamp_dab_textured_masked_po_com_liso};
 pub use mascarado::{
-    stamp_dab_textured_masked, stamp_dab_textured_masked_po, stamp_dab_textured_masked_with,
+    stamp_dab_textured_masked, stamp_dab_textured_masked_po, stamp_dab_textured_masked_po_largo,
+    stamp_dab_textured_masked_with,
 };
 
 #[cfg(test)]

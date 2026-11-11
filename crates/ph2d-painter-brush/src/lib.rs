@@ -154,6 +154,7 @@ mod walk_bounds_tests; // o batente de MEMÓRIA do percurso (achado do OOM de 20
 /// e o footprint que estica o carimbo até as bordas. Uma porta, três consumidores (motor, tool, overlay).
 pub mod grid_stamp;
 pub(crate) mod stroke_cover;
+pub use stroke_cover::{Tecto, TexelLargo};
 pub mod stroke_method;
 pub mod symmetry;
 pub mod taper;
@@ -179,6 +180,7 @@ pub use dab::{
     DirtyRect, PARALLEL_MIN_AREA, PegadaLocal, ShapeInput, band_count,
     pegada_textured_masked_po_com_liso, stamp_dab, stamp_dab_ramped, stamp_dab_textured,
     stamp_dab_textured_masked, stamp_dab_textured_masked_po, stamp_dab_textured_masked_po_com_liso,
+    stamp_dab_textured_masked_po_largo,
     stamp_dab_textured_masked_with,
 };
 pub use dual::{DualMode, DualTip};

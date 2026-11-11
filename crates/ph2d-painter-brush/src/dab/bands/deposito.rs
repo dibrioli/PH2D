@@ -4,6 +4,7 @@
 use super::tinta::Tinta;
 use super::{DabCtx, Invariantes};
 use crate::dab::{encode, stamp_rgba};
+use crate::stroke_cover::Tecto;
 
 /// Onde o texel mora: `i` no `dst` (RGBA) e `mi` na máscara / na força (um byte / um u16 por texel).
 pub(in crate::dab) struct Onde {
@@ -13,11 +14,11 @@ pub(in crate::dab) struct Onde {
 
 #[allow(clippy::too_many_arguments)]
 #[inline(always)]
-pub(in crate::dab) fn pousa(
+pub(in crate::dab) fn pousa<M: Tecto>(
     ctx: &DabCtx,
     inv: &Invariantes,
     dst: &mut [u8],
-    mask: Option<&mut [u8]>,
+    mask: Option<&mut [M]>,
     forca: Option<&mut [u16]>,
     onde: Onde,
     w: f32,
@@ -57,8 +58,8 @@ pub(in crate::dab) fn pousa(
             // At `cap = 1` this reduces to the EXACT maskless alpha sequence, so a full-strength
             // interior is byte-identical whether the buffer is threaded or not.
             Some(m_buf) => {
-                let mi = onde.mi;
-                let m = f32::from(m_buf[mi]) / 255.0;
+                let t = &mut m_buf[onde.mi];
+                let m = t.m();
                 // O Wash pára no MAIOR dab: na cápsula, o maior sub-dab.
                 let add = if ctx.spec.wash {
                     let w = if ctx.capsula.is_some() { maior_sub } else { w };
@@ -69,8 +70,19 @@ pub(in crate::dab) fn pousa(
                 let Some(add) = add else {
                     return false; // this dab adds nothing here
                 };
-                m_buf[mi] = ((m + add) * 255.0 + 0.5) as u8;
+                let pre = t.grava(m + add, [dst[i], dst[i + 1], dst[i + 2], dst[i + 3]]);
                 let a = add / (1.0 - m).max(1e-4);
+                // B29.1: a tela recomposta do pré-traço (só sob a source-over pura, [`Invariantes::recompoe`]).
+                if let Some(pre) = pre.filter(|_| inv.recompoe) {
+                    if let Some(f) = forca {
+                        crate::stroke_cover::compoe_forca(&mut f[onde.mi], a);
+                    }
+                    let out = crate::stroke_cover::recompoe(pre, color, t.m());
+                    for (k, v) in out.iter().enumerate() {
+                        dst[i + k] = encode(*v);
+                    }
+                    return true;
+                }
                 if ctx.preserve_alpha { a * prev[3] } else { a }
             }
             None if ctx.preserve_alpha => w * g * ctx.coverage * prev[3],

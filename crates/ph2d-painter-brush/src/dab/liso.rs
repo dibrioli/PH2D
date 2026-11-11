@@ -28,7 +28,7 @@ pub fn stamp_dab_textured_masked_po_com_liso(
     if liso.len() < buf.len() {
         return (None, None);
     }
-    stamp_dab_inner_com(
+    stamp_dab_inner_com::<u8>(
         buf,
         Some(liso),
         width,
@@ -69,7 +69,7 @@ pub fn pegada_textured_masked_po_com_liso(
 ) -> Option<(super::PegadaLocal, Option<DirtyRect>, Option<DirtyRect>)> {
     let mut saida = None;
     let mut liso_vazio: [u8; 0] = [];
-    let (r, r2) = stamp_dab_inner_com(
+    let (r, r2) = stamp_dab_inner_com::<u8>(
         &mut [],
         Some(&mut liso_vazio),
         width,
@@ -95,7 +95,7 @@ pub fn pegada_textured_masked_po_com_liso(
 
 #[allow(clippy::too_many_arguments)]
 #[must_use]
-pub(super) fn stamp_dab_inner(
+pub(super) fn stamp_dab_inner<M: crate::Tecto>(
     buf: &mut [u8],
     width: u32,
     height: u32,
@@ -107,7 +107,7 @@ pub(super) fn stamp_dab_inner(
     image: Option<&ImageMask>,
     shape: Option<ShapeInput>,
     ramp: Option<crate::RampPaint<'_>>,
-    mask: Option<&mut [u8]>,
+    mask: Option<&mut [M]>,
     forca: Option<&mut [u16]>,
     po: Option<crate::texture::PoDoPapel<'_>>,
     dab_rotation: [f32; 2],
@@ -142,10 +142,10 @@ pub(super) fn stamp_dab_inner(
 /// (o `stride` é o mesmo): a pegada SEM o grão que a rota da mistura lê ([`super::stamp_band`]). Devolve
 /// `(tocou o buf, tocou o liso)`.
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
-pub(super) fn parallel_band_stamp_com_liso<F>(
+pub(super) fn parallel_band_stamp_com_liso<M: Send, F>(
     buf: &mut [u8],
     liso: Option<&mut [u8]>,
-    mask: Option<&mut [u8]>,
+    mask: Option<&mut [M]>,
     forca: Option<&mut [u16]>,
     y0: i64,
     y1: i64,
@@ -156,7 +156,7 @@ pub(super) fn parallel_band_stamp_com_liso<F>(
     stamp: F,
 ) -> (bool, bool)
 where
-    F: Fn(&mut [u8], Option<&mut [u8]>, Option<&mut [u8]>, Option<&mut [u16]>, i64) -> (bool, bool)
+    F: Fn(&mut [u8], Option<&mut [u8]>, Option<&mut [M]>, Option<&mut [u16]>, i64) -> (bool, bool)
         + Sync,
 {
     super::bands::band_split(

@@ -105,6 +105,10 @@ pub fn compoe_forca(f: &mut u16, a: f32) {
     *f = ((1.0 - t) * 65535.0 + 0.5) as u16;
 }
 
+mod tecto;
+pub(crate) use tecto::recompoe;
+pub use tecto::{Tecto, TexelLargo};
+
 #[cfg(test)]
 #[path = "stroke_cover_tests.rs"]
 mod tests;

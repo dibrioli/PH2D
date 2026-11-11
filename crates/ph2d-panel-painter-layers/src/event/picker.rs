@@ -17,6 +17,7 @@ thread_local! {
 /// Every Painter swatch opens the shared picker HERE, so the Painter knows it is its own.
 pub(crate) fn abre(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     store.set_picker_target(Some(id));
+    crate::cor_enviada::esquece(id);
     ABERTO_PELO_PAINTER.with(|c| c.set(Some(id)));
 }
 

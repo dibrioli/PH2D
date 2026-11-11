@@ -76,6 +76,17 @@ impl HitIndex {
         crate::widget::card_censo::pintou_controlo(id, visible);
     }
 
+    /// Regista `id` POR BAIXO do que se registou desde `marca` ([`Self::len`] antes): um contentor cuja
+    /// altura só se sabe depois de pintar os filhos, medido no MESMO quadro, sem lhes tapar o clique.
+    pub fn register_beneath(&mut self, marca: usize, id: NodeId, rect: Rect) {
+        let Some(visible) = self.clipped(rect) else {
+            return;
+        };
+        self.rects
+            .insert(marca.min(self.rects.len()), (id, visible));
+        crate::widget::card_censo::pintou_controlo(id, visible);
+    }
+
     /// ⭐⭐ **Regista o cabeçalho de uma secção que se ARRASTA e muda de TEMA** — o rect do
     /// cabeçalho com o id dela, a pega por cima (`grip_rect`, registada DEPOIS para ganhar o clique),
     /// e a linha no livro das secções do quadro.

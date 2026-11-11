@@ -24,3 +24,9 @@ pub(crate) fn deve_enviar(id: NodeId, payload: &str, aplicada: bool) -> bool {
         true
     })
 }
+
+/// A new picker gesture on `id` (the picker opened on it again): what it picks goes out, even the
+/// colour sent last time — the tool may hold another colour now (undo, another document).
+pub(crate) fn esquece(id: NodeId) {
+    ENVIADA.with(|m| m.borrow_mut().remove(&id));
+}

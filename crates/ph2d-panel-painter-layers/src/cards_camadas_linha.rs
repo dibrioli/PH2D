@@ -14,18 +14,10 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, StrokeToken};
 use ph2d_tool_painter::ids::{PainterLayerWidget, painter_layer_widget_id};
 use ph2d_tool_painter::{BlendMode, Layer, LayerId, LayerKind, LayerStack, ReliefComposite};
-use std::collections::BTreeMap;
 
 /// O relevo mora num número com sinal: `-1..1`.
 const FUNDO_DO_RELEVO: f32 = -1.0; // LITERAL-PX-OK: profundidade com sinal, não é medida de UI
 const AMPLITUDE_DO_RELEVO: f32 = 2.0; // LITERAL-PX-OK: profundidade com sinal, não é medida de UI
-
-/// A altura de cada camada no último quadro: o rect da linha, que é o que o despacho lê, tem de ser o da linha inteira.
-type Alturas = BTreeMap<u64, f32>;
-
-thread_local! {
-    static ALTURAS: std::cell::RefCell<Alturas> = const { std::cell::RefCell::new(BTreeMap::new()) };
-}
 
 /// O olho e as duas setas, na linha da camada.
 const CELULAS_DE_ICONE: f32 = 3.0; // LITERAL-PX-OK: contagem de células, não é medida de UI
@@ -271,10 +263,8 @@ pub(crate) fn camada(c: &mut CardCtx<'_>, l: &Layer, lugar: Lugar, y: f32) -> f3
     nome.selected = lugar.ativa;
     nome.dim = lugar.voa || !l.visible;
     let mut y = c.list_row(&nome, topo);
-    // A linha inteira agarra-se e larga-se: o que se regista depois dela ganha a sua célula.
-    let alta = ALTURAS.with(|a| a.borrow().get(&l.id.0).copied().unwrap_or(m::FIELD_H));
-    c.hit_index
-        .register(nome_id, Rect::new(x, topo, largura, alta));
+    // A linha inteira agarra-se e larga-se: regista-se no fim, medida neste quadro, POR BAIXO dos filhos.
+    let marca = c.hit_index.len();
     c.bare(Rect::new(x, topo, m::FIELD_H, m::FIELD_H), &olho);
     let fim = x + largura;
     seta(
@@ -296,7 +286,8 @@ pub(crate) fn camada(c: &mut CardCtx<'_>, l: &Layer, lugar: Lugar, y: f32) -> f3
     if l.has_relief {
         y = relevo(c, l, y);
     }
-    ALTURAS.with(|a| a.borrow_mut().insert(l.id.0, y - topo));
+    c.hit_index
+        .register_beneath(marca, nome_id, Rect::new(x, topo, largura, y - topo));
     (c.x, c.w) = (x0, w0);
     y
 }

@@ -53,3 +53,70 @@ fn uma_cor_escolhida_sai_uma_vez_enquanto_o_motor_nao_a_aplica() {
     host.store_mut().set_widget_color(sw, [40, 50, 60, 255]);
     assert_eq!(quadro(&mut host, brush), 1);
 }
+
+/// B39.4 sweep: the «sent once» memory outlived its gesture — the same colour picked again in a new
+/// picker session (another document, after an undo) never went out. Opening the picker forgets it.
+#[test]
+fn abrir_o_seletor_de_novo_envia_a_mesma_cor_outra_vez() {
+    let mut store = WidgetStore::default();
+    let id = ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB;
+    assert!(crate::cor_enviada::deve_enviar(id, "1,2,3", false));
+    assert!(!crate::cor_enviada::deve_enviar(id, "1,2,3", false));
+    crate::event::picker::abre(&mut store, id);
+    assert!(
+        crate::cor_enviada::deve_enviar(id, "1,2,3", false),
+        "a new gesture sends its pick"
+    );
+}
+
+/// B39.5 (DF-84): the layer row's grab rect used the height of the PREVIOUS frame — on the frame the
+/// relief turned on, the relief band below the row was nobody's (the click fell through). The row is
+/// measured in the same frame and registered beneath its children.
+#[test]
+fn ligar_o_relevo_mede_a_linha_da_camada_no_mesmo_quadro() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_tool_painter::LayerStack;
+    use ph2d_tool_painter::ids::{PainterLayerWidget as W, painter_layer_widget_id};
+    crate::cards::force_cards_on_this_thread(Some(true));
+    crate::state::set_current_dock_shows_layers(true);
+    let mut stack = LayerStack::new();
+    let ids = [
+        stack.add_group("A").expect("layer"),
+        stack.add_group("B").expect("layer"),
+    ];
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::PainterLayersPanel>();
+    let mut st = crate::PainterLayersPanelState;
+    let vp = Rect::new(0.0, 0.0, 400.0, 4000.0);
+    let mut quadro = |host: &mut ph2d_ui_testkit::MockPanelHost, stack: &LayerStack| {
+        crate::state::set_current_layers(Some(stack.clone()));
+        host.paint::<crate::PainterLayersPanel>(&mut st, vp)
+    };
+    let _ = quadro(&mut host, &stack);
+    host.open_all_sections();
+    for _ in 0..400 {
+        let _ = quadro(&mut host, &stack);
+    }
+    for id in ids {
+        stack.get_mut(id).expect("layer").has_relief = true;
+    }
+    let regs = quadro(&mut host, &stack);
+    crate::state::set_current_layers(None);
+    crate::cards::force_cards_on_this_thread(None);
+    let ultimo = |id| regs.iter().rev().find(|(i, _)| *i == id).map(|(_, r)| *r);
+    let mut vistos = 0;
+    for id in ids {
+        let w = |k| painter_layer_widget_id(id.0, k);
+        let (Some(linha), Some(relevo)) = (ultimo(w(W::Row)), ultimo(w(W::ImpastoDepth))) else {
+            continue;
+        };
+        vistos += 1;
+        assert!(
+            linha.y + linha.h >= relevo.y + relevo.h,
+            "the row's grab rect reaches the relief bar on the same frame ({linha:?} × {relevo:?})"
+        );
+    }
+    assert!(
+        vistos > 0,
+        "a relief bar is painted on the frame it turns on"
+    );
+}

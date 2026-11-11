@@ -309,3 +309,24 @@ fn a_handle_collapsed_onto_its_key_is_not_offered() {
         None
     );
 }
+
+/// Dono 10/11: o caminho e os losangos das chaves também só existem com a caixa marcada.
+/// *Mutação: `key_points(keys_tab, …)` sem `&& curves` no hit ⇒ vermelho.*
+#[test]
+fn with_the_checkbox_off_the_key_diamonds_are_not_offered_either() {
+    let (w, st, e) = simples(false);
+    let cam = Camera2d::default();
+    let (sx, sy) = cam.world_to_screen(at(&w, &st.doc, e, 1.0), window());
+    let hit = |curves| {
+        motion_path_hit_with_keys(true, curves, &w, &st.doc, Some(e), &cam, window(), sx, sy)
+    };
+    assert_eq!(
+        hit(true),
+        Some(MotionPathGrab::Key {
+            entity: e,
+            t: rt(1.0)
+        }),
+        "controlo positivo"
+    );
+    assert_eq!(hit(false), None);
+}

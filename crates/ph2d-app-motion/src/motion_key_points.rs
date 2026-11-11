@@ -170,7 +170,8 @@ pub fn motion_path_hit_with_keys(
     }
     let entity = selected?;
     let r2 = HIT_R_PX * HIT_R_PX;
-    key_points(keys_tab, world, doc, selected)
+    // Dono 10/11: o caminho e os losangos só com «Edit curves on canvas» marcada.
+    key_points(keys_tab && curves, world, doc, selected)
         .into_iter()
         .map(|k| {
             let (sx, sy) = camera.world_to_screen(k.at, window);
@@ -334,7 +335,7 @@ pub fn draw(
     vector_scene: &mut VectorScene,
 ) {
     use ph2d_vector::{Affine, Brush, Color, Fill, Stroke};
-    let pts = key_points(keys_tab, world, doc, selected);
+    let pts = key_points(keys_tab && curves, world, doc, selected);
     let Some(entity) = selected.filter(|_| !pts.is_empty()) else {
         return;
     };

@@ -111,7 +111,7 @@ fn dragging_the_painted_point_writes_both_keys_in_one_undo_step() {
     let (sx, sy) = camera().world_to_screen(k.at, window());
     let grab = motion_path_hit_with_keys(
         true,
-        false,
+        true,
         &w,
         &st.doc,
         Some(e),

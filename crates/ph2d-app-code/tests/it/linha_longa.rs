@@ -23,6 +23,8 @@ fn trabalho_por_quadro(n: usize) -> ph2d_panel_code::PaintWork {
         paste: Some(longa),
     };
     let _ = m.docs().key(id.0, &mut ts, input);
+    // A colagem leva a vista ao fim da linha (além do tecto pintado): a régua mede o começo dela.
+    m.tecla(id, Key::Home, Modifiers::default(), None);
     m.pinta(id);
     let antes = ph2d_panel_code::paint_work();
     m.pinta(id);

@@ -89,9 +89,9 @@ pub struct CodeView {
     pub(crate) bancada_marks: Vec<(usize, Rect)>,
     /// O arrasto da barra de rolagem do texto.
     pub(crate) bar_drag: Option<ph2d_editor_core::widget::scroll_area::BarDrag>,
-    /// O byte que a próxima pintura volta a pôr à vista contra a área FINAL: o pedido chega antes
+    /// O byte (e a revisão do texto) que a próxima pintura volta a pôr à vista contra a área FINAL: o pedido chega antes
     /// do layout (a paragem do depurador abre o quadro de baixo no mesmo quadro e encolhe o código).
-    pub(crate) reveal: Option<usize>,
+    pub(crate) reveal: Option<(usize, u64)>,
 }
 
 /// ⛔ **Os bytes de uma linha que a pintura mostra** — o resto acaba num «…». ⚠️ **De que recurso
@@ -420,7 +420,7 @@ impl CodeView {
     /// O cursor nunca fica fora da vista: rola o mínimo para mostrar `byte`.
     /// Rola já com a área do último quadro e repete na pintura seguinte, contra a área nova.
     pub fn ensure_visible(&mut self, buffer: &Buffer, byte: usize) {
-        self.reveal = Some(byte);
+        self.reveal = Some((byte, buffer.revision()));
         self.scroll_to(buffer, byte);
     }
 

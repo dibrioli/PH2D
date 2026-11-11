@@ -102,6 +102,10 @@ impl CodeView {
     fn prepare(&mut self, frame: &CodeFrame<'_>, area: Rect, ts: &mut TextSystem) {
         let t = frame.buffer.text();
         self.line_count = t.line_count();
+        if self.revision != frame.buffer.revision() {
+            // As filas do último quadro são de outro texto: a rolagem abaixo não as pode ler.
+            self.rows.clear();
+        }
         self.revision = frame.buffer.revision();
         self.tab = frame.tab.max(1);
         let want = crate::metrics::code_font_px();
@@ -121,7 +125,9 @@ impl CodeView {
         self.area = area;
         self.set_hidden(frame.closed, self.line_count);
         self.clamp_scroll();
-        if let Some(b) = self.reveal.take().or(kept) {
+        let asked = self.reveal.take();
+        let asked = asked.filter(|r| r.1 == self.revision).map(|r| r.0);
+        if let Some(b) = asked.or(kept) {
             self.scroll_to(frame.buffer, b);
         }
     }

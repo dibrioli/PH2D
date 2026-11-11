@@ -21,6 +21,7 @@ impl LayerPixelProvider for DummyProvider<'_> {
             version: 0,
             rgba8: self.pixels,
             dirty: None,
+            dirty_parts: &[],
         })
     }
 }

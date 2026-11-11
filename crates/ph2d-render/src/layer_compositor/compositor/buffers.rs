@@ -95,7 +95,11 @@ impl LayerCompositor {
             // on a big canvas patches the dab footprint instead of the whole `width × height` slice
             // (64 MiB @ 4096² per move). `None` ⇒ the caller can't bound the change ⇒ full upload.
             match pixels.dirty {
-                Some(r) => self.upload_slice_region(gpu, slice, width, height, pixels.rgba8, r),
+                Some(r) => {
+                    for &w in super::super::upload_windows(&r, pixels.dirty_parts) {
+                        self.upload_slice_region(gpu, slice, width, height, pixels.rgba8, w);
+                    }
+                }
                 None => self.upload_slice(gpu, slice, width, height, pixels.rgba8),
             }
             return Ok(());

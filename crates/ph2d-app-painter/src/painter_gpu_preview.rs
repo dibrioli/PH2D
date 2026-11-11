@@ -173,6 +173,23 @@ struct PainterLayerProvider<'a> {
     anteriores: &'a [(u64, u64)],
     /// O que esta drenagem entrega.
     novas: RefCell<Vec<(u64, u64)>>,
+    /// B17.5: as caixas do sujo da camada activa (`preview_gpu_caixas`); vazia = o retângulo só.
+    partes: Vec<Region>,
+}
+
+impl<'a> PainterLayerProvider<'a> {
+    fn new(tool: &'a PainterTool, anteriores: &'a [(u64, u64)], novas: Vec<(u64, u64)>) -> Self {
+        let partes = tool
+            .preview_gpu_caixas()
+            .map(|(x, y, w, h)| Region { x, y, w, h })
+            .collect();
+        Self {
+            tool,
+            anteriores,
+            novas: RefCell::new(novas),
+            partes,
+        }
+    }
 }
 
 impl LayerPixelProvider for PainterLayerProvider<'_> {
@@ -187,6 +204,7 @@ impl LayerPixelProvider for PainterLayerProvider<'_> {
             dirty: dirty
                 .filter(|_| contigua)
                 .map(|(x, y, w, h)| Region { x, y, w, h }),
+            dirty_parts: &self.partes,
         })
     }
 }
@@ -405,11 +423,7 @@ fn compose_light_premul(
     // 1) GPU composite into the PERSISTENT canvas-sized `out`, writing at canvas
     let mut novas = std::mem::take(&mut session.a_entregar);
     novas.clear();
-    let provider = PainterLayerProvider {
-        tool,
-        anteriores: &session.entregue,
-        novas: RefCell::new(novas),
-    };
+    let provider = PainterLayerProvider::new(tool, &session.entregue, novas);
     // O PAPEL do documento: o compositor compõe cada saída SOBRE ele com a lei inteira da CPU
     session.compositor.set_paper(tool.papel());
     let composto = regioes.iter().try_for_each(|&region| {

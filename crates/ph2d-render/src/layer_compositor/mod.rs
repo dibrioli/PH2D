@@ -248,6 +248,34 @@ pub struct LayerPixels<'a> {
     /// not track regions. The compositor also ignores it on a first (non-resident)
     /// upload — a partial patch over an unallocated slice would leave it garbage.
     pub dirty: Option<Region>,
+    /// The pieces of `dirty` (B17.5): when ≥ 2 boxes all lie inside it, only they are re-uploaded
+    /// (a Ctrl+Z of two opposite 128² tiles on 4K patches 30 720 texels, not the 8 294 400 of
+    /// their union). Their union must still be every change; `&[]` ⇒ `dirty` alone.
+    pub dirty_parts: &'a [Region],
+}
+
+impl Region {
+    fn contains(self, o: Region) -> bool {
+        o.x >= self.x
+            && o.y >= self.y
+            && o.x + o.w <= self.x + self.w
+            && o.y + o.h <= self.y + self.h
+    }
+}
+
+/// The windows a resident slice re-uploads for `dirty` + its `parts`: the parts when there are ≥ 2,
+/// none empty, all inside `dirty`; else `dirty` alone. Allocation-free (borrows either).
+#[must_use]
+pub fn upload_windows<'a>(dirty: &'a Region, parts: &'a [Region]) -> &'a [Region] {
+    let usable = parts.len() > 1
+        && parts
+            .iter()
+            .all(|&p| p.w > 0 && p.h > 0 && dirty.contains(p));
+    if usable {
+        parts
+    } else {
+        std::slice::from_ref(dirty)
+    }
 }
 
 /// Resolves a layer key to its current pixels. Implemented by the painter tool

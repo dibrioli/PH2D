@@ -460,3 +460,19 @@ fn shader_dispatches_hsl_and_specials_by_canonical_discriminant() {
         composite_source().contains("mode == 16u || mode == 17u || mode == 18u || mode == 19u")
     );
 }
+
+/// B17.5: as partes só valem com ≥ 2, não vazias e todas dentro do sujo; senão sobe o sujo inteiro.
+#[test]
+fn upload_windows_takes_the_parts_only_when_they_lie_inside_the_dirty_rect() {
+    let r = |x, y, w, h| Region { x, y, w, h };
+    let sujo = r(0, 0, 3840, 2160);
+    let dois = [r(0, 0, 128, 120), r(3712, 2040, 128, 120)];
+    assert_eq!(upload_windows(&sujo, &dois), &dois);
+    assert_eq!(upload_windows(&sujo, &dois[..1]), &[sujo]);
+    assert_eq!(upload_windows(&sujo, &[]), &[sujo]);
+    assert_eq!(
+        upload_windows(&sujo, &[dois[0], r(3800, 0, 128, 8)]),
+        &[sujo]
+    );
+    assert_eq!(upload_windows(&sujo, &[dois[0], r(5, 5, 0, 8)]), &[sujo]);
+}

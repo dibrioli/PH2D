@@ -62,6 +62,7 @@ impl LayerPixelProvider for MapProvider {
             version: *v,
             rgba8: b,
             dirty: None, // this provider always re-uploads whole slices
+            dirty_parts: &[],
         })
     }
 }
@@ -696,6 +697,7 @@ impl LayerPixelProvider for DirtyLayerProvider {
                 version: self.version,
                 rgba8: &self.bytes,
                 dirty: self.dirty,
+                dirty_parts: &[],
             })
         } else {
             None

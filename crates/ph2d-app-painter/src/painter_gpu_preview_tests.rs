@@ -387,11 +387,7 @@ fn salto_de_versao_com_dirty_sobe_a_camada_inteira() {
     let key = t.layers().active().expect("a camada activa").0;
     let (versao, _, sujo) = t.preview_layer_pixels(key).expect("a activa");
     assert!(sujo.is_some(), "controlo: o instrumento dá um retângulo");
-    let sem_anterior = PainterLayerProvider {
-        tool: &t,
-        anteriores: &[],
-        novas: RefCell::default(),
-    };
+    let sem_anterior = PainterLayerProvider::new(&t, &[], Vec::new());
     assert_eq!(
         sem_anterior.layer_pixels(key).and_then(|l| l.dirty),
         None,
@@ -399,11 +395,7 @@ fn salto_de_versao_com_dirty_sobe_a_camada_inteira() {
     );
     assert_eq!(sem_anterior.novas.into_inner(), vec![(key, versao)]);
     let anterior = [(key, versao.wrapping_sub(3))];
-    let contigua = PainterLayerProvider {
-        tool: &t,
-        anteriores: &anterior,
-        novas: RefCell::default(),
-    };
+    let contigua = PainterLayerProvider::new(&t, &anterior, Vec::new());
     assert!(
         contigua.layer_pixels(key).and_then(|l| l.dirty).is_some(),
         "subiu na drenagem anterior: remenda só o retângulo, por mais que a versão salte"
@@ -631,5 +623,55 @@ fn the_gpu_preview_times_the_fold_where_its_window_is_resolved() {
         src[win..win + matched].contains("plane_win == tela,"),
         "o `full` parou de sair da comparacao com a tela inteira — um literal ali publica um relogio \
          sem a pergunta que decide a cura (retangulo x canvas dobrado)"
+    );
+}
+
+/// **B17.5 — o Ctrl+Z em caixas sobe à fatia da camada só as caixas.** Diagonal Impasto 1024²: a união
+/// do sujo é quase a tela; o provider entrega as caixas e o compositor (`upload_windows`, a mesma porta
+/// do `ensure_slice`) remenda só elas.
+#[test]
+fn um_ctrl_z_em_caixas_sobe_a_camada_so_nas_caixas() {
+    use crate::painter_preview_pipeline_tests::{cp, impasto_tool};
+    use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
+    use ph2d_render::layer_compositor::upload_windows;
+    let lado = 1024u32;
+    let mut t = impasto_tool(lado);
+    t.set_brush_size_px(12.0);
+    let tracos: [&[[f32; 2]]; 2] = [
+        &[[400.0, 500.0], [520.0, 500.0]],
+        &[[20.0, 20.0], [500.0, 500.0], [1000.0, 1000.0]],
+    ];
+    for traco in tracos {
+        for (i, &p) in traco.iter().enumerate() {
+            let fase = if i == 0 {
+                PointerPhase::Down
+            } else {
+                PointerPhase::Move
+            };
+            t.on_canvas_pointer(cp(p, fase));
+        }
+        t.on_canvas_pointer(cp(traco[traco.len() - 1], PointerPhase::Up));
+        let _ = t.take_preview_dirty();
+    }
+    assert!(t.undo_last(), "há um passo");
+    assert!(t.take_preview_dirty(), "o Ctrl+Z sujou a prévia");
+    let key = t.layers().active().expect("a camada activa").0;
+    let (versao, _, _) = t.preview_layer_pixels(key).expect("a activa");
+    let anterior = [(key, versao)];
+    let provider = PainterLayerProvider::new(&t, &anterior, Vec::new());
+    let px = provider.layer_pixels(key).expect("a activa");
+    let uniao = px.dirty.expect("controlo: o Ctrl+Z é confinado");
+    let area = |r: &Region| u64::from(r.w) * u64::from(r.h);
+    let subidos: u64 = upload_windows(&uniao, px.dirty_parts)
+        .iter()
+        .map(area)
+        .sum();
+    let caixas = t.preview_gpu_caixas().len();
+    assert!(caixas >= 2, "controlo: o Ctrl+Z chega em {caixas} caixa(s)");
+    assert!(
+        subidos > 0 && subidos * 2 < area(&uniao),
+        "o Ctrl+Z sobe {subidos} texels da união {} em {} caixas",
+        area(&uniao),
+        px.dirty_parts.len()
     );
 }

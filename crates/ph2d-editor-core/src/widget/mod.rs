@@ -287,7 +287,7 @@ pub use tool_rail::{
     paint_tool_rail_axis, paint_tool_rail_t, size_row_pulldowns, sub_label_font_px,
     tool_rail_width_px,
 };
-pub use tooltip::{Tooltip, paint_tooltip};
+pub use tooltip::{DicaMedida, Tooltip, mede_a_dica, paint_dica, paint_tooltip};
 pub use tree_view::{TreeNode, TreeView, paint_tree_view};
 pub use variant_editor::{
     MAX_VARIANT_DEPTH, VariantEditor, VariantKind, VariantRow, VariantValue,

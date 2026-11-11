@@ -85,13 +85,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "input_map_try.opens_with_named" => "Opens with {key}",
         "input_map_try.scrollbar" => "Scroll the Try it view",
         "input_map_try.bar_button_name" => "Controls",
-        "input_map_try.bar_button" => "Show or hide the Controls screen. Shortcut: {key}",
+        "input_map_try.bar_button" => "Show or hide the Controls screen. Key: {key}",
         "input_map_try.bar_button_off" => {
-            "Shows the Controls screen while the game runs. Press Play first. Shortcut: {key}"
+            "Press Play first. Then this shows the Controls screen. Key: {key}"
         }
         "input_map_try.bar_button_locked" => {
-            "This game doesn't let players change keys, so it has no Controls screen. \
-             Turn it on in Input Map, Try it."
+            "Players can't change keys in this game. To allow it: Input Map \u{25b8} Try it \u{25b8} \
+             Players can change keys."
         }
         _ => return None,
     })

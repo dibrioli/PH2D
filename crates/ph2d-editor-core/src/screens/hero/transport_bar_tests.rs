@@ -208,7 +208,7 @@ fn a_frase_do_controls_cita_a_tecla_do_mapa_e_o_porque() {
     publish(&mut hero, GameRun::default());
     let fora = frase(&hero);
     assert!(
-        fora.contains("while the game runs") && fora.ends_with("F4"),
+        fora.starts_with("Press Play first") && fora.ends_with("F4"),
         "{fora}"
     );
     let run = GameRun {
@@ -221,4 +221,85 @@ fn a_frase_do_controls_cita_a_tecla_do_mapa_e_o_porque() {
         dentro.starts_with("Show or hide") && dentro.ends_with("F4"),
         "{dentro}"
     );
+}
+
+/// ⛔ Smoke do dono 10/11: a dica «sem tela» saía em «Try…». As três frases, medidas como se pintam (Default e
+/// CrispHeavyPlus, a 1600 e 1280), saem INTEIRAS e dentro da janela; a longa quebra em linhas. Mutação: voltar a
+/// medir com o `layout` numa linha só ⇒ o censo da reticência apanha o corte.
+#[test]
+fn a_dica_do_controls_nunca_corta_e_cabe_na_janela() {
+    use crate::text_elide::elisao;
+    use ph2d_tokens::TextRendering;
+    let mut ts = ph2d_text::TextSystem::new();
+    for modo in [TextRendering::Default, TextRendering::CrispHeavyPlus] {
+        ph2d_text::set_active_text_rendering(modo);
+        for largura in [1600.0, 1280.0] {
+            let janela = Rect::new(0.0, 0.0, largura, 900.0);
+            let bar = Rect::new(0.0, 0.0, largura, 24.0);
+            for (pode, stage) in [(false, None), (true, None), (true, Some(GameStage::Editor))] {
+                let mut hero = crate::screens::hero::HeroScreen::new(NodeId(1));
+                hero.input_map.controls_mut().players_can_change_keys = pode;
+                let run = GameRun {
+                    stage,
+                    ..Default::default()
+                };
+                publish(&mut hero, run);
+                let botoes = rects(bar, largura * 0.25, largura * 0.75);
+                let (mut scene, mut hits) = (VectorScene::new(), HitIndex::default());
+                let run = hero.view.game_run;
+                paint(
+                    &botoes,
+                    run,
+                    &mut scene,
+                    Theme::Dark,
+                    &mut hits,
+                    &hero.store,
+                );
+                hero.store.set_hot(Some(CONTROLS.0));
+                let (pintou, medidos) = elisao::medindo(|| {
+                    crate::screens::hero::topbar::paint_hover_tooltip(
+                        &mut scene,
+                        &mut ts,
+                        Theme::Dark,
+                        &hits,
+                        &hero.store,
+                        janela,
+                    )
+                });
+                let frase = hero
+                    .store
+                    .tooltip_for(CONTROLS.0)
+                    .unwrap_or_default()
+                    .to_owned();
+                assert!(pintou, "{frase}");
+                assert!(!medidos.is_empty(), "o censo não viu a dica");
+                for m in &medidos {
+                    assert!(
+                        m.coube(),
+                        "{modo:?} a {largura}: «{}» saiu «{}»",
+                        m.texto,
+                        m.pintado
+                    );
+                }
+                let dica = crate::widget::mede_a_dica(&mut ts, &frase, janela.w);
+                assert_eq!(dica.linhas.join(" "), frase, "as linhas cobrem a frase");
+                let r = crate::screens::hero::topbar::tooltip_rect(
+                    botoes[5].2,
+                    dica.w,
+                    dica.h,
+                    Spacing::Sm.px(),
+                    janela,
+                );
+                assert!(
+                    r.x >= janela.x && r.x + r.w <= janela.x + janela.w,
+                    "{modo:?} {largura}: {r:?}"
+                );
+                assert!(r.y >= janela.y && r.y + r.h <= janela.y + janela.h);
+                if !pode {
+                    assert!(dica.linhas.len() > 1, "a longa quebra: {:?}", dica.linhas);
+                }
+            }
+        }
+    }
+    ph2d_text::set_active_text_rendering(TextRendering::Default);
 }

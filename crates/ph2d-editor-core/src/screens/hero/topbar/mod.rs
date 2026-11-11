@@ -6,7 +6,7 @@ use crate::icons::IconId;
 use crate::ids;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, resolve};
-use crate::widget::{ButtonState, IconGlyph, Tooltip, paint_tooltip};
+use crate::widget::{ButtonState, IconGlyph, mede_a_dica, paint_dica};
 // ⚠️ Do DONO, e não pela boleia de um widget: o `PILL_PADDING_PX` é um token, e viajava por um
 // `pub use` do `pill_group` — um widget que este cromo NUNCA chamou (censo de 2026-09-03).
 use crate::zones::Rect;
@@ -206,13 +206,9 @@ pub fn paint_elision_balloon(
     let Some((area, texto)) = crate::text_elide::balao::sob() else {
         return;
     };
-    let font_size = ph2d_tokens::TypeToken::Sm.px();
-    let measured_w = text_system.layout(&texto, font_size, f32::INFINITY).width();
-    let pill_w = (measured_w + Spacing::Xl.px()).max(60.0); // LITERAL-PX-OK: tooltip pill min width (chrome-specific)
-    let pill_h = (font_size + 10.0).max(22.0); // LITERAL-PX-OK: tooltip pill height composite + min (chrome-specific)
-    let tip_rect = tooltip_rect(area, pill_w, pill_h, Spacing::Sm.px(), viewport);
-    let tip = Tooltip::new(NodeId(0), &texto);
-    paint_tooltip(&tip, tip_rect, scene, text_system, theme);
+    let dica = mede_a_dica(text_system, &texto, viewport.w);
+    let tip_rect = tooltip_rect(area, dica.w, dica.h, Spacing::Sm.px(), viewport);
+    paint_dica(&dica, tip_rect, scene, text_system, theme);
 }
 
 /// ⭐⭐⭐ **AS DUAS BOLHAS, e a PRECEDÊNCIA entre elas** — a porta que o quadro chama.
@@ -290,17 +286,10 @@ pub fn paint_hover_tooltip(
     let Some(target_rect) = alvo_da_dica(hit_index, store, id) else {
         return false;
     };
-    // Real text measurement instead of `chars × 6.5` — for
-    // proportional fonts the approximation is off by 10-30 % and
-    // the pill ends up clipped or oversized. See
-    // `docs/UI_Bugs/README.md` §3.3.
-    let font_size = ph2d_tokens::TypeToken::Sm.px();
-    let measured_w = text_system.layout(text, font_size, f32::INFINITY).width();
-    let pill_w = (measured_w + Spacing::Xl.px()).max(60.0); // LITERAL-PX-OK: tooltip pill min width (chrome-specific)
-    let pill_h = (font_size + 10.0).max(22.0); // LITERAL-PX-OK: tooltip pill height composite + min (chrome-specific)
-    let tip_rect = tooltip_rect(target_rect, pill_w, pill_h, Spacing::Sm.px(), viewport);
-    let tip = Tooltip::new(NodeId(0), text);
-    paint_tooltip(&tip, tip_rect, scene, text_system, theme);
+    // Medida no peso e no modo em que se pinta, e quebrada em linhas: nunca corta (`mede_a_dica`).
+    let dica = mede_a_dica(text_system, text, viewport.w);
+    let tip_rect = tooltip_rect(target_rect, dica.w, dica.h, Spacing::Sm.px(), viewport);
+    paint_dica(&dica, tip_rect, scene, text_system, theme);
     true
 }
 

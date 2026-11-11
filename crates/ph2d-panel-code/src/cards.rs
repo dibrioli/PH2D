@@ -84,15 +84,43 @@ pub fn close(scene: &mut VectorScene) {
     scene.pop_layer();
 }
 
+/// A altura da barra de cima do código: a de uma linha de formulário.
+#[must_use]
+pub fn bar_height() -> f32 {
+    ph2d_tokens::row_pitch_px()
+}
+
+/// O cartão do código partido na barra (em cima) e no resto.
+#[must_use]
+pub fn split_bar(doc_r: Rect) -> (Rect, Rect) {
+    let h = bar_height().min(doc_r.h);
+    (
+        Rect::new(doc_r.x, doc_r.y, doc_r.w, h),
+        Rect::new(doc_r.x, doc_r.y + h, doc_r.w, (doc_r.h - h).max(0.0)),
+    )
+}
+
+/// Abre o cartão da barra de cima `head`: o fundo desce duas margens por baixo do cartão do código
+/// (até `max_h`), que se lê como a mesma moldura. Feche com [`close_bar`].
+pub fn open_bar(scene: &mut VectorScene, head: Rect, max_h: f32, theme: &Theme) {
+    let h = (head.h + margin() * 2.0).min(max_h);
+    open(scene, Rect::new(head.x, head.y, head.w, h), theme);
+}
+
+/// O fio da barra de cima: a última fila de píxeis de `head`, de lado a lado.
+#[must_use]
+pub fn bar_rule(head: Rect) -> Rect {
+    let t = ph2d_tokens::StrokeToken::Thin.px();
+    Rect::new(head.x, head.y + head.h - t, head.w, t)
+}
+
 /// Fecha o cartão da barra de cima com o fio que a separa do código (dono 10/11): `BorderStrong`
 /// («visible dividers»; o `Border` some no tom do cartão, como no separador da banda) a
 /// `StrokeToken::Thin`, na última fila de píxeis de `head`, de lado a lado.
 pub fn close_bar(scene: &mut VectorScene, head: Rect, theme: &Theme) {
-    let t = ph2d_tokens::StrokeToken::Thin.px();
-    let fio = Rect::new(head.x, head.y + head.h - t, head.w, t);
     fill_rounded_rect(
         scene,
-        fio,
+        bar_rule(head),
         0.0,
         ph2d_editor_core::paint::resolve(ColorToken::BorderStrong, *theme),
     );

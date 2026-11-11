@@ -57,21 +57,7 @@ fn font() -> f32 {
     TypeToken::Sm.px()
 }
 
-/// A altura da barra: a de uma linha de formulário.
-#[must_use]
-pub fn height() -> f32 {
-    ph2d_tokens::row_pitch_px()
-}
-
-/// O cartão do código partido na barra (em cima) e no resto.
-#[must_use]
-pub fn split(doc_r: Rect) -> (Rect, Rect) {
-    let h = height().min(doc_r.h);
-    (
-        Rect::new(doc_r.x, doc_r.y, doc_r.w, h),
-        Rect::new(doc_r.x, doc_r.y + h, doc_r.w, (doc_r.h - h).max(0.0)),
-    )
-}
+pub use ph2d_panel_code::cards::{bar_height as height, split_bar as split};
 
 pub(crate) fn width_of(ts: &mut TextSystem, s: &str) -> f32 {
     use ph2d_panel_code::peso::{CORPO, largura_em};
@@ -387,13 +373,7 @@ impl CodeDocs {
             self.bar.state = self.command_state(d);
         }
         let (head, _) = split(doc_r);
-        let back = Rect::new(
-            head.x,
-            head.y,
-            head.w,
-            (head.h + crate::cards::margin() * 2.0).min(doc_r.h),
-        );
-        crate::cards::open(scene, back, theme);
+        crate::cards::open_bar(scene, head, doc_r.h, theme);
         self.bar.paint(head, &crumb, scene, ts, theme);
         crate::cards::close_bar(scene, head, theme);
     }

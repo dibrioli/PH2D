@@ -317,46 +317,14 @@ fn os_menus_da_barra_tem_a_letra_do_codigo() {
     }
 }
 
-/// Os pontos de todos os caminhos da cena (o `path_data` do vello são pares de `f32`).
-fn pontos(scene: &ph2d_vector::VectorScene) -> Vec<(f32, f32)> {
-    let d = &scene.inner().encoding().path_data;
-    d.chunks_exact(2)
-        .map(|p| (f32::from_bits(p[0]), f32::from_bits(p[1])))
-        .collect()
-}
-
-/// ⭐ Dono 10/11: um fio separa a barra da aba do código — `BorderStrong` a
-/// `StrokeToken::Thin`, na última fila de píxeis da barra, de lado a lado do cartão; a linha 1
-/// começa abaixo dele, com o respiro de cima.
+/// Dono 10/11: o fio da barra (`cards::bar_rule`) pinta-se; a linha 1 respira abaixo dele.
 #[test]
 fn um_fio_separa_a_barra_do_codigo_e_a_linha_1_respira_abaixo_dele() {
-    use ph2d_text::TextSystem;
-    use ph2d_tokens::{StrokeToken, Theme};
     let (mut m, id) = aberta();
-    let mut scene = ph2d_vector::VectorScene::new();
-    let mut ts = std::mem::replace(&mut m.ts, TextSystem::without_system_fonts());
-    m.docs()
-        .paint(id.0, crate::AREA, &mut scene, &mut ts, &Theme::default());
-    let head = m.docs().bar_painted().header;
-    let (t, base) = (StrokeToken::Thin.px(), head.y + head.h);
-    let p = pontos(&scene);
-    let tem = |x: f32, y: f32| {
-        p.iter()
-            .any(|q| (q.0 - x).abs() < 0.01 && (q.1 - y).abs() < 0.01)
-    };
-    for (x, y) in [
-        (head.x, base - t),
-        (head.x + head.w, base - t),
-        (head.x + head.w, base),
-        (head.x, base),
-    ] {
-        assert!(tem(x, y), "o fio da barra tem o canto ({x}, {y})");
-    }
-    let (_, mid) = m.docs().glyph_center(id, 0).expect("a linha 1 à vista");
-    let lh = ph2d_panel_code::code_font_px() * ph2d_tokens::LineHeight::Normal.ratio();
-    let top = mid - ph2d_editor_core::ui_scale::ao_pixel(lh) * 0.5;
-    assert!(
-        top >= base + ph2d_tokens::Spacing::Md.px() - 1.0,
-        "a linha 1 ({top}) respira abaixo do fio ({base})"
-    );
+    let p = m.pinta(id).inner().encoding().path_data.clone();
+    let f = ph2d_panel_code::cards::bar_rule(m.docs().bar_painted().header);
+    let has = |x: f32, y: f32| p.as_chunks::<2>().0.contains(&[x.to_bits(), y.to_bits()]);
+    assert!(has(f.x, f.y) && has(f.x + f.w, f.y + f.h), "o fio {f:?}");
+    let mid = m.docs().glyph_center(id, 0).expect("a linha 1").1;
+    assert!(mid > f.y + f.h + ph2d_tokens::Spacing::Md.px(), "{mid}");
 }

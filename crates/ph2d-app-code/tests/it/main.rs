@@ -226,13 +226,14 @@ impl Mesa {
         }
     }
 
-    /// Pinta a aba `id` (a vista ganha área e linhas).
-    pub fn pinta(&mut self, id: ScriptId) {
+    /// Pinta a aba `id` (a vista ganha área e linhas); devolve a cena.
+    pub fn pinta(&mut self, id: ScriptId) -> VectorScene {
         let mut scene = VectorScene::new();
         let mut ts = std::mem::replace(&mut self.ts, TextSystem::without_system_fonts());
         self.docs()
             .paint(id.0, AREA, &mut scene, &mut ts, &Theme::default());
         self.ts = ts;
+        scene
     }
 
     /// Pinta a aba `id` numa área própria (a da cena do smoke, por exemplo).

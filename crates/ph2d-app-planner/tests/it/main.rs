@@ -40,12 +40,6 @@ pub struct Mesa {
     pub toasts: ToastQueue,
 }
 
-impl Default for Mesa {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Mesa {
     /// Um hero com a família do Planner (como a shell, `init.rs`), o relógio fixo e o fuso UTC.
     pub fn new() -> Self {

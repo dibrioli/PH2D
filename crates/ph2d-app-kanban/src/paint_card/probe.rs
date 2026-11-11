@@ -67,10 +67,4 @@ impl KanbanDocs {
             Some((p.h, p.image, p.veil, p.due, p.fields, p.badges))
         })
     }
-
-    /// ⚠️ SONDA: há capas de imagem a descodificar.
-    #[must_use]
-    pub fn probe_covers_pending(&self) -> bool {
-        crate::front::cover::pending()
-    }
 }

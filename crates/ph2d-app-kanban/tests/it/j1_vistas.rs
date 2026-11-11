@@ -21,10 +21,7 @@ fn j1_o_seletor_troca_para_a_tabela_e_o_cartao_dela_abre_o_verso_e_volta_ao_quad
     let (mut m, id) = Mesa::cena1();
     vista(&mut m, id, 1);
     assert_eq!(m.docs().probe_view_kind(id.0), Some(ViewKind::Table));
-    let (card, r) = m
-        .docs()
-        .probe_table_cell(id.0, 0, Column::Card)
-        .expect("a tabela pintou");
+    let (card, r) = m.vistas(id).table.cell(0, Column::Card).expect("pintou");
     m.clica(centro(r));
     assert_eq!(
         m.docs().probe_back(id.0),
@@ -76,10 +73,7 @@ fn j1_a_tabela_escreve_pelo_plano_na_porta_do_kanban_e_um_ctrl_z_desfaz() {
     };
     m.quadro();
     vista(&mut m, id, 1);
-    let (card, r) = m
-        .docs()
-        .probe_table_cell(id.0, 0, Column::Field(f))
-        .expect("a coluna do campo");
+    let (card, r) = m.vistas(id).table.cell(0, Column::Field(f)).unwrap();
     m.clica(centro(r));
     assert_eq!(
         m.kanban(id).cards[&card].fields.get(&f),

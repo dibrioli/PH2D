@@ -112,6 +112,12 @@ impl TableState {
         &self.painted.grid
     }
 
+    /// O cartão da linha `row` e o rect da célula da coluna `col` (px da vista), como o último quadro os pintou.
+    #[must_use]
+    pub fn cell(&self, row: usize, col: Column) -> Option<(CardId, Rect)> {
+        Some((*self.rows().get(row)?, self.grid().cell(row, col)?))
+    }
+
     /// Clicar no cabeçalho de `col`: ascendente → descendente → a ordem do quadro.
     pub fn toggle_sort(&mut self, col: Column) {
         self.sort = match self.sort {

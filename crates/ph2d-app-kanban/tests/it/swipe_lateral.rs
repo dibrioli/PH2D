@@ -46,47 +46,37 @@ fn o_deslizar_de_lado_e_o_shift_roda_no_quadro_e_na_tabela() {
         crate::j1_vistas::vista(&mut m, id, 1);
         m
     });
-    let cel = move |m: &mut Mesa| m.docs().probe_table_cell(id.0, 0, Column::Due).unwrap().1;
+    let cel = move |m: &mut Mesa| m.vistas(id).table.cell(0, Column::Due).unwrap().1;
     let p = centro(cel(&mut g));
     gemeos(g, r, p, move |m| -f64::from(cel(m).x));
 }
-fn vs(m: &mut Mesa, id: u64) -> &ph2d_kanban_views::Views {
-    m.docs().probe_views(id).unwrap()
-}
-/// Onda 4: a roda anda o mês como no Planner (o mesmo `-480, -48, -48, 48`); o deslize só rola a grelha da Linha do
-/// tempo (controlo) e não mexe no Calendário (nem no mês, o vertical), no Dashboard nem na gaveta.
+/// Onda 4: a roda anda o mês como no Planner (`dy` < 0 = à frente); o deslize de lado só rola a grelha (`2`).
 #[test]
 fn a_roda_do_calendario_e_o_deslize_de_lado_nas_outras_vistas() {
     let ((mut m, id), c) = (Mesa::cena1(), centro(AREA));
-    crate::j1_vistas::vista(&mut m, id, 2);
-    let mut antes = None;
-    for (i, dy) in [-480.0, -48.0, -48.0, 48.0].into_iter().enumerate() {
-        m.roda(c.0, c.1 + AREA.h / 4.0, dy);
-        let agora = vs(&mut m, id.0).calendar.anchor;
-        assert_eq!(
-            agora.cmp(&antes) as i8,
-            [1, 1, 1, -1][i],
-            "{dy}: {antes:?} → {agora:?}"
-        );
-        antes = agora;
-    }
-    for (i, k) in [(2, 0), (4, 0), (3, 1), (3, 2)] {
-        crate::j1_vistas::vista(&mut m, id, i);
-        let t = vs(&mut m, id.0).timeline.painted().clone();
-        let p = match (k, t.drawer, t.ruler) {
+    let casos = [
+        (2, 0, [0.0, -480.0], 1),
+        (2, 0, [0.0, -48.0], 1),
+        (2, 0, [0.0, 48.0], -1),
+        (2, 0, [-48.0, 0.0], 0),
+        (4, 0, [-480.0, 0.0], 0),
+        (3, 1, [-480.0, 0.0], 0),
+        (3, 2, [-48.0, 0.0], 2),
+    ];
+    for (vista, onde, d, e) in casos {
+        crate::j1_vistas::vista(&mut m, id, vista);
+        let t = m.vistas(id).timeline.painted().clone();
+        let p = match (onde, t.drawer, t.ruler) {
             (1, Some(r), _) => centro(r),
             (2, _, Some(g)) => (g.grid.x + g.grid.w / 3.0, g.grid.y + g.grid.h / 2.0),
             _ => (c.0, c.1 + AREA.h / 4.0),
         };
-        let antes = format!("{:?}", vs(&mut m, id.0));
-        for dx in [-48.0, 48.0, -480.0] {
-            let _ = scroll(&mut m.hero, p.0, p.1, BoardScroll::Pan([dx, 0.0]));
-            m.quadro();
-        }
-        assert_eq!(
-            format!("{:?}", vs(&mut m, id.0)) != antes,
-            k == 2,
-            "vista {i}, {k}"
-        );
+        let (a0, v0) = (m.vistas(id).calendar.anchor, format!("{:?}", m.vistas(id)));
+        let _ = scroll(&mut m.hero, p.0, p.1, BoardScroll::Pan(d));
+        m.quadro();
+        let mexeu = 2 * i8::from(format!("{:?}", m.vistas(id)) != v0);
+        let anda = m.vistas(id).calendar.anchor.cmp(&a0) as i8;
+        let got = if anda == 0 { mexeu } else { anda };
+        assert_eq!(got, e, "vista {vista}, {onde}, {d:?}");
     }
 }

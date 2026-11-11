@@ -70,12 +70,6 @@ pub struct Mesa {
     pub agora: u128,
 }
 
-impl Default for Mesa {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Mesa {
     /// Um hero com a família instalada, como a shell (`init.rs`).
     pub fn new() -> Self {
@@ -198,6 +192,10 @@ impl Mesa {
             now_ns: self.agora,
         };
         board_view::pointer_move(&mut self.hero, input, x, y)
+    }
+
+    pub fn vistas(&mut self, id: KanbanId) -> &ph2d_kanban_views::Views {
+        self.docs().probe_views(id.0).expect("a aba")
     }
 
     /// A roda em `(x, y)` (a porta do hero), e um quadro.

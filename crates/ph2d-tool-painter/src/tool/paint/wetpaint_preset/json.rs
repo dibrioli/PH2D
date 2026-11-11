@@ -16,6 +16,8 @@ use std::collections::BTreeMap;
 use std::fmt::Debug;
 
 mod curvas;
+#[cfg(test)]
+mod enums_tests;
 mod meio;
 use curvas::{curva_de_json, curva_para_json, pegada_de_json, pegada_para_json, taper_para_json};
 
@@ -89,7 +91,7 @@ fn textura_para_json(t: &TextureSettings) -> Value {
         o.insert(
             "lei".to_owned(),
             json!({
-                "mode": t.lei.mode.to_u8(),
+                "mode": nome(t.lei.mode),
                 "depth_min": num(t.lei.depth_min),
                 "depth_jitter": num(t.lei.depth_jitter),
                 "depth_pressure": t.lei.depth_pressure,
@@ -124,7 +126,11 @@ fn mangueira_de_json(v: Option<&Value>) -> ImageHose {
     };
     let mut h = ImageHose::NEUTRA;
     h.n = inteiro(o.get("n"), 1u8).clamp(1, HOSE_MAX as u8);
-    h.mode = HoseMode::from_u8(inteiro(o.get("mode"), 0u8));
+    h.mode = de_nome(
+        o.get("mode"),
+        (0..HoseMode::COUNT).map(HoseMode::from_u8),
+        HoseMode::Random,
+    );
     if let Some(a) = o.get("pesos").and_then(Value::as_array) {
         for (k, p) in h.pesos.iter_mut().enumerate() {
             *p = inteiro(a.get(k), *p);
@@ -140,7 +146,11 @@ fn lei_de_json(v: Option<&Value>) -> GrainLaw {
     };
     let n = GrainLaw::NEUTRA;
     GrainLaw {
-        mode: GrainMode::from_u8(inteiro(o.get("mode"), n.mode.to_u8())),
+        mode: de_nome(
+            o.get("mode"),
+            (0..GrainMode::COUNT).map(GrainMode::from_u8),
+            n.mode,
+        ),
         depth_min: f(o.get("depth_min"), n.depth_min),
         depth_jitter: f(o.get("depth_jitter"), n.depth_jitter),
         depth_pressure: booleano(o.get("depth_pressure"), n.depth_pressure),
@@ -305,10 +315,10 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
         "jitter_spacing" => num(b.jitter_spacing),
         "spray_count" => json!(b.spray_count),
         "dab_jitter" => marca_para_json(&b.dab_jitter),
-        "pixel" => json!(b.pixel.to_u8()),
+        "pixel" => nome(b.pixel),
         "hose" => json!({
             "n": b.hose.n,
-            "mode": b.hose.mode.to_u8(),
+            "mode": nome(b.hose.mode),
             "pesos": b.hose.pesos.to_vec(),
         }),
         "cor_mao" => {
@@ -487,7 +497,13 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "spray_count" => b.spray_count = inteiro(v, b.spray_count),
         "dab_jitter" => b.dab_jitter = marca_de_json(v, b.dab_jitter),
         // AUSENTE = desligada (só se grava ligada), nunca a do pincel anterior.
-        "pixel" => b.pixel = PixelTip::from_u8(inteiro(v, 0)),
+        "pixel" => {
+            b.pixel = de_nome(
+                v,
+                (0..PixelTip::COUNT).map(PixelTip::from_u8),
+                PixelTip::Off,
+            )
+        }
         // AUSENTE = a imagem única (só se grava com várias), nunca a ponta do pincel anterior.
         "hose" => b.hose = mangueira_de_json(v),
         "cor_mao" => b.cor_mao = cor_mao_de_json(v, b.cor_mao),

@@ -378,7 +378,8 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ **`238` em 2026-11-13** (`line/TimelinePrincipal`, acréscimo 13) — `Interp::Spline`, a Custom com pontos. A tripla NÃO vê.
         // ⚠️ **`239` em 2026-11-13** (`line/TimelinePrincipal`, acréscimo 14) — `HandleKind` por ponto da Custom. A tripla NÃO vê.
         // ⚠️ **`240` em 2026-11-13** (`line/JointEditor`, W1) — `JointAssembly` e `PhysicsJoint.assembly/role`. A tripla NÃO vê.
-        (240, 13, 29),
+        // ⚠️ **`241` em 2026-11-10** (`line/PainterWatercolor`, B50.1) — os enums do pincel pelo nome. A tripla NÃO vê.
+        (241, 13, 29),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

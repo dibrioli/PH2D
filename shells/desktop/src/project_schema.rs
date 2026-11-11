@@ -475,4 +475,10 @@
 /// é um objeto («Car 1») que diz de que gabarito veio e que objeto ocupa cada papel (ADR-0201). `PhysicsJoint`
 /// ganha `assembly: u64`, `role: u16` e `one_chain: bool` (o Pin resolvido como uma corrente, W2) no FIM. SEM leitura dos anteriores (§0.11). Gates: `ph2d-app-physics
 /// joint_assembly::`, `ph2d-joint-templates the_template_ids_are_pinned`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 240;
+///
+/// # `240 → 241` — **os enums do pincel pelo NOME** (`line/PainterWatercolor`, B50.1, 2026-11-10)
+///
+/// O JSON do pincel (preset e trilha da macro) grava `pixel`, `hose.mode`, `*.lei.mode`, `dual.modo` e
+/// `pen_tilt.rotation` pelo nome da variante (antes o índice); o preset sobe `ph2d_brush_presets::SCHEMA 1 → 2`.
+/// SEM leitura dos anteriores (§0.11). Gate: `os_enums_do_preset_gravam_o_nome`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 241;

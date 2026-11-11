@@ -3,8 +3,8 @@
 //! enums pelo nome da variante, chave ausente = o valor de `base`.
 
 use super::{booleano, de_nome, f, inteiro, nome, num, textura_de_json, textura_para_json};
-use ph2d_painter_brush::BrushSpec;
 use ph2d_painter_brush::height_modes::{DepthSource, DrawTo};
+use ph2d_painter_brush::{BrushSpec, DabRotation, DualMode};
 use serde_json::{Value, json};
 
 pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
@@ -81,7 +81,7 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
         // O dual brush (L6): gravado só ARMADO (`pincel_para_json`).
         "dual" => b.dual.map_or(Value::Null, |d| {
             json!({
-                "modo": d.modo.to_u8(),
+                "modo": nome(d.modo),
                 "forma": textura_para_json(&d.forma),
                 "escala": num(d.escala),
                 "passo": num(d.passo),
@@ -95,7 +95,7 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
         }),
         "pen_tilt" => {
             let t = b.pen_tilt;
-            json!({"rotation": t.rotation as u8, "start_deg": num(t.start_deg), "full_deg": num(t.full_deg),
+            json!({"rotation": nome(t.rotation), "start_deg": num(t.start_deg), "full_deg": num(t.full_deg),
                    "width": num(t.width), "length": num(t.length), "smooth": num(t.smooth), "lag_px": num(t.lag_px),
                    "opacity": num(t.opacity)})
         }
@@ -209,9 +209,11 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
             let fab = ph2d_painter_brush::PenTilt::default();
             let t = &mut b.pen_tilt;
             let c = |k: &str| v.and_then(|v| v.get(k));
-            t.rotation = c("rotation")
-                .and_then(Value::as_f64)
-                .map_or(fab.rotation, ph2d_painter_brush::DabRotation::from_index);
+            t.rotation = de_nome(
+                c("rotation"),
+                [0.0, 1.0, 2.0].map(DabRotation::from_index),
+                fab.rotation,
+            );
             t.start_deg = f(c("start_deg"), fab.start_deg);
             t.full_deg = f(c("full_deg"), fab.full_deg);
             t.width = f(c("width"), fab.width);
@@ -227,7 +229,11 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
             b.dual = v.filter(|v| v.is_object()).map(|v| {
                 let c = |k: &str| v.get(k);
                 ph2d_painter_brush::DualTip {
-                    modo: ph2d_painter_brush::DualMode::from_u8(inteiro(c("modo"), 0)),
+                    modo: de_nome(
+                        c("modo"),
+                        (0..DualMode::COUNT).map(DualMode::from_u8),
+                        DualMode::Multiply,
+                    ),
                     forma: textura_de_json(c("forma"), n.forma),
                     escala: f(c("escala"), n.escala),
                     passo: f(c("passo"), n.passo),

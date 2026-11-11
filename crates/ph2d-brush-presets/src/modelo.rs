@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 
 /// A versão do formato. Sobe SÓ numa mudança que um leitor velho leria errado; campo novo não a sobe.
-pub const SCHEMA: u32 = 1;
+pub const SCHEMA: u32 = 2;
 
 /// O lado da miniatura (px). A mesma do Rebelle e do Krita: cabe na grelha do navegador a 2× de escala.
 pub const LADO_MINIATURA: u32 = 256;

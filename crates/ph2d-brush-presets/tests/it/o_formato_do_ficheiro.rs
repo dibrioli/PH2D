@@ -146,9 +146,9 @@ fn as_recusas_dizem_porque() {
     assert_eq!(ler(&png_com(None)), Err(Erro::SemParametros));
     assert_eq!(
         ler(&png_com(Some(
-            r#"{"schema": 2, "media": "WetPaint", "name": "x"}"#
+            r#"{"schema": 3, "media": "WetPaint", "name": "x"}"#
         ))),
-        Err(Erro::SchemaFuturo(2))
+        Err(Erro::SchemaFuturo(3))
     );
     assert!(matches!(
         ler(&png_com(Some(r#"{"media": "WetPaint", "name": "x"}"#))),

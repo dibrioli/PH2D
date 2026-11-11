@@ -189,6 +189,8 @@ pub struct PainterTool {
     pub(crate) sem_vidro: bool,
     /// **O papel do documento** ([`papel`]): a cor sob as camadas, ou `None` (sem papel).
     papel: Option<[u8; 3]>,
+    /// O fator de aparência do documento ([`fator_aparencia`], B34): nasce do tamanho, viaja com ele.
+    fator_aparencia: f32,
     /// As camadas que receberam tinta do **Wet Paint**, que desenha o papel DENTRO dos píxeis
     /// (`grao_no_filme`): sob a tinta opaca delas a luz do dente esconde-se; sob a outra tinta (Digital,
     /// aguada) vê-se, e só o corpo do relevo a enche (`ReliefFields::height_at`, dono 08/11). Viaja como
@@ -423,6 +425,7 @@ impl Default for PainterTool {
             #[cfg(test)]
             sem_vidro: false,
             papel: None,
+            fator_aparencia: 1.0,
             tintas_molhadas: BTreeSet::new(),
             papel_texturizado_para: None,
             gate: None,
@@ -480,6 +483,7 @@ impl Default for PainterTool {
 
 // ── Submodules (god-object split, pure mechanical move) ──
 mod documents;
+pub mod fator_aparencia; // o fator de aparência do documento (B34, decisão 6)
 mod instantaneo; // a cópia de que o tocador de uma macro recomeça uma etapa (W5c)
 pub use instantaneo::SemInstantaneo;
 mod internal;

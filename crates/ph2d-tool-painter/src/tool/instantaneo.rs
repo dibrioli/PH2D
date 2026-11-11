@@ -40,6 +40,7 @@ impl PainterTool {
             #[cfg(test)]
             sem_vidro,
             papel,
+            fator_aparencia,
             tintas_molhadas,
             papel_texturizado_para,
             gate,
@@ -116,6 +117,7 @@ impl PainterTool {
             #[cfg(test)]
             sem_vidro: *sem_vidro,
             papel: *papel,
+            fator_aparencia: *fator_aparencia,
             tintas_molhadas: tintas_molhadas.clone(),
             papel_texturizado_para: *papel_texturizado_para,
             gate: gate.clone(),

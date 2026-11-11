@@ -140,7 +140,7 @@ Todas: 3 fundos × 1080p/4K em [B36/](B36/).
 | 3 | Guardar a tinta com mais precisão | B29 | ainda não feita (aberto) |
 | 4 | Arrumar os controles do Wet | B35 | só controles; o que muda na tela (reset/rótulos) ainda aberto |
 | 5 | Pincel Oil Wash | B36 | [B36](#b36--pincel-oil-wash) |
-| 6 | Aparência acompanha o tamanho da tela | B34 | ainda não feita (aberto) |
+| 6 | Aparência acompanha o tamanho da tela | B34 | ainda não feita: a imagem nova já guarda o seu tamanho de referência (B34.1, base), sem mudança visível; o papel e as orlas por escalar |
 | 7a | Mistura de cores do Wet (vermelho + azul) | B32 | ainda não feita (aberto) |
 | 7b | Papel sem repetição a 256 px | B33 | [B33](#b33--papel-sem-repetição-a-cada-256-px) |
 | 8 | Ritmo fixo a 60 e 144 Hz | B22 | [B22.2](#b222--spray-parado-igual-a-30-60-e-144-quadross) (spray); secagem B22.1 aberta |

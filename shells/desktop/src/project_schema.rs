@@ -481,4 +481,10 @@
 /// O JSON do pincel (preset e trilha da macro) grava `pixel`, `hose.mode`, `*.lei.mode`, `dual.modo` e
 /// `pen_tilt.rotation` pelo nome da variante (antes o índice); o preset sobe `ph2d_brush_presets::SCHEMA 1 → 2`.
 /// SEM leitura dos anteriores (§0.11). Gate: `os_enums_do_preset_gravam_o_nome`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 241;
+///
+/// # `241 → 242` — **o fator de aparência do documento pintado** (`line/PainterWatercolor`, B34.1, 2026-11-11)
+///
+/// `PaintedDocument.fator_aparencia: f32` no FIM (lado curto ÷ 1080, nunca < 1; nasce com o documento e viaja com
+/// ele): a base de «a aparência acompanha o tamanho da tela» (decisão 6 do dono). SEM leitura dos anteriores
+/// (§0.11). Gate: `o_fator_nasce_do_tamanho_e_viaja_com_o_documento`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 242;

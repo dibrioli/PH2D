@@ -20,6 +20,7 @@ impl RasterEditTool for PainterTool {
         self.wet_esquece_as_adormecidas();
         self.replace_canvas(Arc::new(rgba));
         self.source_size = (width, height);
+        self.fator_aparencia = super::fator_aparencia::do_tamanho(width, height); // documento novo (B34)
         self.preview_dirty = true;
         self.edited_since_bind = false; // fresh bind = no unbaked edits (canvas mirrors the sprite)
         // A fresh source = a fresh single-raster stack whose lone layer's pixels ARE `canvas_rgba` (trivial).

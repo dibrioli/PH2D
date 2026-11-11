@@ -56,6 +56,10 @@ pub struct PaintedDocument {
     /// ÚLTIMO campo (degrau `217 → 218`): bytes de antes leem-se dentro de [`LeituraSemTintas`].
     #[serde(deserialize_with = "le_as_tintas_molhadas")]
     pub tintas_molhadas: std::collections::BTreeSet<RtLayerId>,
+    /// O fator de aparência do documento ([`crate::tool::fator_aparencia`], B34): nasce do tamanho e não muda.
+    /// Degrau do `PROJECT_SCHEMA` do B34; os bytes da macro v1 (sem tintas) também não o têm.
+    #[serde(deserialize_with = "le_o_fator")]
+    pub fator_aparencia: f32,
 }
 
 thread_local! {
@@ -92,6 +96,13 @@ fn le_as_tintas_molhadas<'de, D: serde::Deserializer<'de>>(
     serde::Deserialize::deserialize(d)
 }
 
+fn le_o_fator<'de, D: serde::Deserializer<'de>>(d: D) -> Result<f32, D::Error> {
+    if SEM_TINTAS.with(std::cell::Cell::get) > 0 {
+        return Ok(1.0);
+    }
+    serde::Deserialize::deserialize(d)
+}
+
 /// **O documento pintado como os esquemas ANTERIORES ao papel o guardavam** — o tipo das migrações
 /// congeladas (`ProjectFileV95`, `ProjectFileV128`), que embutiam o vivo: posicional é posicional, e
 /// o campo novo do fim faria um documento antigo ler os bytes do seguinte.
@@ -121,6 +132,7 @@ impl From<PaintedDocumentSemPapel> for PaintedDocument {
             papel: None,
             vidros: BTreeMap::new(),
             tintas_molhadas: std::collections::BTreeSet::new(),
+            fator_aparencia: 1.0,
         }
     }
 }
@@ -187,6 +199,7 @@ impl PainterTool {
                 .map(|(k, v)| (*k, v.as_ref().clone()))
                 .collect(),
             tintas_molhadas: self.tintas_molhadas.clone(),
+            fator_aparencia: self.fator_aparencia,
         }
     }
 

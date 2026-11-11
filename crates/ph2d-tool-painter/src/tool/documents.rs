@@ -34,6 +34,8 @@ pub(crate) struct StashedDoc {
     vidros: crate::compositor::vidro::Vidros,
     /// O papel do documento ([`crate::tool::papel`]) — viaja com ele.
     papel: Option<[u8; 3]>,
+    /// O fator de aparência ([`crate::tool::fator_aparencia`]) — viaja com ele.
+    fator_aparencia: f32,
     /// As camadas com tinta do Wet ([`PainterTool::tintas_molhadas`]) — os ids colidem entre documentos.
     tintas_molhadas: BTreeSet<RtLayerId>,
     /// A tinta viva adormecida do documento (B02.1): fica com ele, como `tintas_molhadas`.
@@ -87,6 +89,7 @@ impl StashedDoc {
             vidros: unshare(&self.vidros),
             papel: self.papel,
             tintas_molhadas: self.tintas_molhadas.clone(),
+            fator_aparencia: self.fator_aparencia,
         }
     }
 
@@ -106,6 +109,7 @@ impl StashedDoc {
             mats: reshare(doc.mats),
             vidros: reshare(doc.vidros),
             papel: doc.papel,
+            fator_aparencia: doc.fator_aparencia,
             tintas_molhadas: doc.tintas_molhadas,
             adormecidas: Vec::new(),
             // Rebuilt on demand: a version cache and a fresh history. (`bump_layer_pixels` re-stamps
@@ -255,6 +259,7 @@ impl PainterTool {
             mats: std::mem::take(&mut self.mats),
             vidros: std::mem::take(&mut self.vidros),
             papel: self.papel.take(),
+            fator_aparencia: std::mem::replace(&mut self.fator_aparencia, 1.0),
             tintas_molhadas: std::mem::take(&mut self.tintas_molhadas),
             adormecidas,
             layer_pixel_versions: std::mem::take(&mut self.layer_pixel_versions),
@@ -290,6 +295,7 @@ impl PainterTool {
         self.vidro_congelado = Default::default();
         self.covers = doc.covers;
         self.papel = doc.papel;
+        self.fator_aparencia = doc.fator_aparencia;
         self.tintas_molhadas = doc.tintas_molhadas;
         self.wet_entra_no_documento(doc.adormecidas);
         self.drop_live_relief();

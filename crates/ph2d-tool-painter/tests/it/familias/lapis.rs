@@ -60,7 +60,7 @@ pub const WET: &[Receita] = &[
 /// A orla do 4B: a 2.ª ponta (dual Multiply) de DUAS marcas a 0,6 do diâmetro, espalhadas 0,25 e 0,2 através — os
 /// caroços FINOS da borda do Rebelle. Com uma marca a 0,8 os caroços eram grandes e regulares e o 1.º dab saía uma
 /// bolha separada (a 1.ª revisão cega); a 0,45 × 3 a onda caía abaixo da do Rebelle (0,056 contra 0,061).
-const ORLA_DO_4B: &str = r#"{"angulo": 0, "atraves": 0.2, "contagem": 2, "dureza": 0.3, "escala": 0.6, "espalhar": 0.25, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+const ORLA_DO_4B: &str = r#"{"angulo": 0, "atraves": 0.2, "contagem": 2, "dureza": 0.3, "escala": 0.6, "espalhar": 0.25, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": "Multiply", "passo": 0.25, "rotacao": 0.0}"#;
 /// O grão do 4B: Noise `Tiled` Size 128 (2 px) a 0,5. A 2.ª revisão cega com o Size 100 a 0,55 e a carga 200 tomou o
 /// nosso 8B pelo original e o Rebelle por «outro, translúcido» (o nosso «crivado de furinhos», o par do 8B a 0,43): mais
 /// leve e de grão mais fino ele fica a 0,54 do 8B e a 0,73 do Oil Pastel.
@@ -103,7 +103,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
 ];
 
 /// A orla do Sketch Pencil: a 2.ª ponta (dual Multiply) de duas marcas a 0,7 do diâmetro, espalhadas 0,3.
-const ORLA_DO_SKETCH: &str = r#"{"angulo": 0, "atraves": 0.2, "contagem": 2, "dureza": 0.4, "escala": 0.7, "espalhar": 0.3, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+const ORLA_DO_SKETCH: &str = r#"{"angulo": 0, "atraves": 0.2, "contagem": 2, "dureza": 0.4, "escala": 0.7, "espalhar": 0.3, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": "Multiply", "passo": 0.25, "rotacao": 0.0}"#;
 /// O papel do Sketch Pencil: o `Grain` procedural preso à tela; a profundidade segue a pressão (30 % → 100 %).
 const PAPEL_DO_SKETCH: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Grain", "lei": {"depth_jitter": 0.7, "depth_min": 0.0, "depth_pressure": true, "mode": 0}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 

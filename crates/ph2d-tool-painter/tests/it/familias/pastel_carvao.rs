@@ -209,7 +209,7 @@ pub const WET: &[Receita] = &[
 
 /// A orla aos caroços do giz de cera (J4): a 2.ª ponta (Multiply) a 0,8 do diâmetro, 2 marcas, espalhadas 0,6 e 0,5
 /// através, dureza 0,4 — a do 8B (`familias::grafite`) mais larga: os caroços grandes do Rebelle a 200 px.
-const ORLA_DA_CERA: &str = r#"{"angulo": 0, "atraves": 0.5, "contagem": 2, "dureza": 0.4, "escala": 0.8, "espalhar": 0.6, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+const ORLA_DA_CERA: &str = r#"{"angulo": 0, "atraves": 0.5, "contagem": 2, "dureza": 0.4, "escala": 0.8, "espalhar": 0.6, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": "Multiply", "passo": 0.25, "rotacao": 0.0}"#;
 
 /// O miolo manchado do giz de cera (J4): a Shape um Noise `Random` de lado 6 a 0,8 — com ela e a pressão em curva (3,5 · 1)
 /// o vizinho mais perto passa de Soft Pastel 0,528 a Graphite 8B 0,699 (a matriz das variantes, `exames/pastel_carvao.md`).
@@ -472,7 +472,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
 ];
 
 /// A orla do Charcoal Stick: a 2.ª ponta (dual Multiply) de três marcas a 0,5 do diâmetro, espalhadas e rodadas.
-const ORLA_DO_PAU: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dureza": 0.2, "escala": 0.5, "espalhar": 0.5, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 1.0}"#;
+const ORLA_DO_PAU: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dureza": 0.2, "escala": 0.5, "espalhar": 0.5, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": "Multiply", "passo": 0.25, "rotacao": 1.0}"#;
 /// O papel do Charcoal Stick: o `Noise` procedural preso à tela; a profundidade segue a pressão (10 % → 100 %).
 const PAPEL_DO_PAU: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.9, "depth_min": 0.0, "depth_pressure": true, "mode": 0}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [64.0, 64.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 

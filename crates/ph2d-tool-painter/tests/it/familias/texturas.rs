@@ -355,8 +355,8 @@ const GRUNGE: Receita = Receita {
     real_oil: false,
 };
 /// Os rasgos da borda do Grunge: a 2.ª ponta (Multiply) pequena e muito espalhada através.
-const RASGOS: &str = r#"{"angulo": 0, "atraves": 0.9, "contagem": 3, "dureza": 0.6, "escala": 0.5, "espalhar": 0.8, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
-const RASGOS_FORTES: &str = r#"{"angulo": 0, "atraves": 1.0, "contagem": 4, "dureza": 0.8, "escala": 0.35, "espalhar": 1.0, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.15, "rotacao": 0.0}"#;
+const RASGOS: &str = r#"{"angulo": 0, "atraves": 0.9, "contagem": 3, "dureza": 0.6, "escala": 0.5, "espalhar": 0.8, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": "Multiply", "passo": 0.25, "rotacao": 0.0}"#;
+const RASGOS_FORTES: &str = r#"{"angulo": 0, "atraves": 1.0, "contagem": 4, "dureza": 0.8, "escala": 0.35, "espalhar": 1.0, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": "Multiply", "passo": 0.15, "rotacao": 0.0}"#;
 
 /// A FRANJA (I-10): uma folha de 11 dentes agudos de comprimentos sorteados (gerador inteiro), o miolo cheio.
 fn franja() -> Vec<u8> {

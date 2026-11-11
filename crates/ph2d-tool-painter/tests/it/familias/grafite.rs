@@ -107,18 +107,18 @@ pub const WET: &[Receita] = &[
 /// a nossa era 0,026–0,034 com 1–2 px (só o grão) e passa a ~0,06 com 8 px; a 200 px ~0,056 (Rebelle 0,07–0,08).
 /// A 0,6 com 2 marcas a onda era a mesma, mas a 5 px as marcas de 3 px correlacionavam o colar (ac 0,43; Rebelle 0,24):
 /// a 0,45 com 3, ac 0,23. A revisão cega do 8B (J3) apontava a borda «aos caroços, ondulada» do original como a diferença maior.
-const ORLA_DO_LAPIS: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dureza": 0.0, "escala": 0.45, "espalhar": 0.25, "forma": {"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.3, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+const ORLA_DO_LAPIS: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dureza": 0.0, "escala": 0.45, "espalhar": 0.25, "forma": {"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.3, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": "Multiply", "passo": 0.25, "rotacao": 0.0}"#;
 
 /// A orla do 2H: a do lápis com o espalhar a 0,2 — a 0,25, com a carga leve, o colar a 40 px saía 0,047 (Rebelle 0,034;
 /// o portão do grão aceita ±35 %).
-const ORLA_DO_2H: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dureza": 0.0, "escala": 0.45, "espalhar": 0.2, "forma": {"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.3, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+const ORLA_DO_2H: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dureza": 0.0, "escala": 0.45, "espalhar": 0.2, "forma": {"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.3, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": "Multiply", "passo": 0.25, "rotacao": 0.0}"#;
 
 /// A orla do 8B: duas marcas a 0,6 do diâmetro, 0,4 espalhadas e 0,4 através (3.ª ronda, os caroços; ao longo deitado 1,30)
 /// — na 2.ª: 0,7 × 2, 0,3 e 0,1 — com a dos outros (0,45 × 3) o 8B DEITADO
 /// perdia o grão (textura através ÷ de pé 0,78, Rebelle 1,01 ± 0,15, `a_caneta_deitada`); assim 0,91, ao longo 1,33
 /// (1,24; a 0,8 × 1, 1,38 saía do vale), a onda 0,053 e o colar a 5 px 0,075 · ac 0,52 (Rebelle 0,072 · 0,50). A 2.ª
 /// revisão cega viu os caroços do Rebelle maiores que os nossos: o espalhar 0,1 → 0,3 (onda 0,045 → 0,053).
-const ORLA_DO_8B: &str = r#"{"angulo": 0, "atraves": 0.4, "contagem": 2, "dureza": 0.3, "escala": 0.6, "espalhar": 0.4, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+const ORLA_DO_8B: &str = r#"{"angulo": 0, "atraves": 0.4, "contagem": 2, "dureza": 0.3, "escala": 0.6, "espalhar": 0.4, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": "Multiply", "passo": 0.25, "rotacao": 0.0}"#;
 
 /// O grão de píxel do HB: Noise `Tiled` Size 256, contraste 0,4 (3.ª ronda, com os tufos; era 0,35) — na 2.ª ronda o colar a 5 px 0,071 (Rebelle 0,066; era
 /// 0,130), a autocorrelação 0,34 (0,24; era 0,78) e os poros brancos que a 1.ª revisão cega não via a 0,3 (a Textura da

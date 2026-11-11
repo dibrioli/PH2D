@@ -194,11 +194,11 @@ const SEM_FORMA_WET: &str = r#"{"angle_deg": 0, "flow": false, "kind": "None", "
 
 /// Os grumos do pau: marcas de ruído (0,45 D) espalhadas pela orla, Multiply — a borda que incha e encolhe (a 0,6 D os
 /// grumos saíam bolhas maiores que as do Rebelle; J6x: espalhar 0,15 e através 0,2, mais rasos — régua 392 contra 377).
-const GRUMOS_DO_PAU: &str = r#"{"angulo": 0, "atraves": 0.2, "contagem": 3, "dureza": 0.0, "escala": 0.45, "espalhar": 0.15, "forma": {"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.3, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+const GRUMOS_DO_PAU: &str = r#"{"angulo": 0, "atraves": 0.2, "contagem": 3, "dureza": 0.0, "escala": 0.45, "espalhar": 0.15, "forma": {"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.3, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": "Multiply", "passo": 0.25, "rotacao": 0.0}"#;
 
 /// A serrilha da cana (J6x): uma 2.ª ponta quase do tamanho da 1.ª (0,8 D), dura, pouco espalhada, Multiply — o miolo
 /// cheio e a orla a 1–2 px que entra e sai (a 0,3 D sem a pegada da 1.ª a ponta voltava ao disco).
-const SERRILHA_DA_CANA: &str = r#"{"angulo": 0, "atraves": 0.15, "contagem": 3, "dureza": 0.6, "escala": 0.8, "espalhar": 0.1, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.15, "rotacao": 0.0}"#;
+const SERRILHA_DA_CANA: &str = r#"{"angulo": 0, "atraves": 0.15, "contagem": 3, "dureza": 0.6, "escala": 0.8, "espalhar": 0.1, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "Random", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": "Multiply", "passo": 0.15, "rotacao": 0.0}"#;
 
 #[rustfmt::skip]
 pub const MIDIAS: &[Midia] = &[];

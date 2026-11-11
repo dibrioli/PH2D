@@ -308,7 +308,10 @@ fn cada_preset_de_fabrica_e_a_sua_receita() {
         let mut p = parametros(r);
         p.width_table.clone_from(&f.parametros.width_table);
         if p != f.parametros {
-            mudaram.push(rel);
+            mudaram.push(format!(
+                "{rel}: {:?}",
+                campos_que_diferem(&p, &f.parametros, true)
+            ));
         }
     }
     assert!(

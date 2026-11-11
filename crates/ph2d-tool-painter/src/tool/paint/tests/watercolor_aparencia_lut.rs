@@ -63,7 +63,10 @@ fn a_aparencia_pela_tabela_pinta_o_byte_da_conta() {
         let base = [200u8, 180, 150, alfa].repeat(novo.len() / 4);
         assert_ne!(novo, base, "alfa {alfa}: o traço tem de pintar");
         let dif = novo.iter().zip(&antes).filter(|(a, b)| a != b).count();
-        assert_eq!(dif, 0, "alfa {alfa}: {dif} bytes diferem do caminho de antes");
+        assert_eq!(
+            dif, 0,
+            "alfa {alfa}: {dif} bytes diferem do caminho de antes"
+        );
     }
 }
 

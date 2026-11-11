@@ -241,11 +241,19 @@ mod tests {
         PAR_CLONES.with(|c| c.set(0));
         assert_eq!(par_clone(&tela), tela);
         assert_eq!(par_clone(&vidro), vidro);
-        assert_eq!(PAR_CLONES.with(std::cell::Cell::get), 2, "a 4K não foi em blocos");
+        assert_eq!(
+            PAR_CLONES.with(std::cell::Cell::get),
+            2,
+            "a 4K não foi em blocos"
+        );
         // Abaixo do limiar (o Ctrl+Z de 1024², planos de 1 a 7,3 MB) segue em série.
         let m1024 = vec![[1u8; 7]; 1024 * 1024];
         assert_eq!(par_clone(&m1024), m1024);
-        assert_eq!(PAR_CLONES.with(std::cell::Cell::get), 2, "1024² foi para o rayon");
+        assert_eq!(
+            PAR_CLONES.with(std::cell::Cell::get),
+            2,
+            "1024² foi para o rayon"
+        );
     }
 
     /// **B17.2: o plano `u8` 4K (8 294 400 B, 1,1 % abaixo dos 8 MiB antigos) preenche-se em paralelo.**
@@ -254,7 +262,11 @@ mod tests {
         PAR_FILLS.with(|c| c.set(0));
         let mut par = Vec::<u8>::new();
         size_to(&mut par, 3840 * 2160, 255);
-        assert_eq!(PAR_FILLS.with(std::cell::Cell::get), 1, "o u8 4K ficou em série");
+        assert_eq!(
+            PAR_FILLS.with(std::cell::Cell::get),
+            1,
+            "o u8 4K ficou em série"
+        );
         assert_eq!(par, vec![255u8; 3840 * 2160]);
     }
 

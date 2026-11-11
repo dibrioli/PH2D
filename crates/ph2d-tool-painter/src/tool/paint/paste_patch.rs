@@ -188,7 +188,6 @@ impl PastePatch {
     }
 }
 
-
 impl PainterTool {
     /// `true` enquanto uma peça colada flutua — a pergunta que o shell faz para desenhar o gizmo, e a
     /// que o roteador de ponteiro faz para dar a ela a primeira palavra.

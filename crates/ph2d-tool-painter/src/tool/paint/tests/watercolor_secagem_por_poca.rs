@@ -440,7 +440,10 @@ fn sonda_a_ligacao_das_pocas_a_4096_com_papel() {
     espera(&mut t, 5.0);
     risca(&mut t, 3400.0);
     espera(&mut t, 6.0);
-    assert!(t.wet_session_continues(), "a régua: a C mantém a sessão viva");
+    assert!(
+        t.wet_session_continues(),
+        "a régua: a C mantém a sessão viva"
+    );
     let al = t.alcance_da_janela();
     let real = (
         t.paint.stroke_coverage.clone(),
@@ -466,7 +469,12 @@ fn sonda_a_ligacao_das_pocas_a_4096_com_papel() {
             p.stroke_water.fill(0);
             p.wet_soak.fill(0);
             p.canvas_wet.clone_from(&molhado_listras);
-            p.wet_cum_dirty = Some(Region { x: 0, y: 0, w: lado, h: lado });
+            p.wet_cum_dirty = Some(Region {
+                x: 0,
+                y: 0,
+                w: lado,
+                h: lado,
+            });
         }
     };
     let rotulo = ["traço de fábrica, assa a A", "listras de 2 px, nada assa"];
@@ -483,7 +491,10 @@ fn sonda_a_ligacao_das_pocas_a_4096_com_papel() {
             unioes[k] = UNIOES.with(std::cell::Cell::get);
         }
     }
-    let mut rel = format!("ALCANCE\tpad {}\treach {}\tdesloca {}\n", al.pad, al.reach, al.desloca);
+    let mut rel = format!(
+        "ALCANCE\tpad {}\treach {}\tdesloca {}\n",
+        al.pad, al.reach, al.desloca
+    );
     for k in 0..2 {
         rel += &format!(
             "LIGAÇÃO\t{}\t{} troços assados\t{} uniões\tmín {:.2} ms\n",

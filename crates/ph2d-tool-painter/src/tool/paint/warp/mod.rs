@@ -24,14 +24,14 @@ mod list_tests;
 #[cfg(test)]
 mod perf_tests;
 #[cfg(test)]
+mod prancha_b06b_tests;
+#[cfg(test)]
 mod rail_tests;
 mod reconstruct;
 pub(crate) mod relief;
 #[cfg(test)]
 mod relief_tests;
 pub(crate) mod session;
-#[cfg(test)]
-mod prancha_b06b_tests;
 mod transform;
 mod transform_float;
 mod transform_geom;

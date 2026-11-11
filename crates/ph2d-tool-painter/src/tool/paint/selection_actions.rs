@@ -120,7 +120,9 @@ impl PainterTool {
             mask
         } else {
             let tela = &self.canvas_rgba;
-            Arc::new(guarda.cobertura_que_deposita(&mask, |i| tela.get(i * 4 + 3).copied().unwrap_or(0)))
+            Arc::new(
+                guarda.cobertura_que_deposita(&mask, |i| tela.get(i * 4 + 3).copied().unwrap_or(0)),
+            )
         };
         self.mark_dirty(Region {
             x: 0,

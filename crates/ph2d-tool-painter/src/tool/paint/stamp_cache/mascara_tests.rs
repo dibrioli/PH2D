@@ -49,7 +49,11 @@ fn o_recarimbo_de_um_preenchimento_zera_so_a_caixa_do_anterior() {
     let antes = m.zerados();
     m.clear();
     m.prepara(n, w, StrokeMethod::Space, [a]);
-    assert_eq!(m.zerados(), antes, "a 1.ª pincelada do Space não zera 8,3 MB");
+    assert_eq!(
+        m.zerados(),
+        antes,
+        "a 1.ª pincelada do Space não zera 8,3 MB"
+    );
 }
 
 #[test]

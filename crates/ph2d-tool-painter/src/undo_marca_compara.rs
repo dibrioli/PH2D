@@ -1,8 +1,8 @@
 //! **O que mudou entre dois retratos** — filho de [`super`]: a comparação por texel que a lei da W9 usa
 //! quando o passo não traz a força (B52.R4, movido à letra de `undo_marca.rs`).
 
-use super::marca;
 use super::ModelSnapshot;
+use super::marca;
 use crate::compositor::Region;
 use crate::layers::LayerId as RtLayerId;
 use std::collections::{BTreeMap, BTreeSet};
@@ -62,7 +62,12 @@ fn de<T>(m: &BTreeMap<RtLayerId, Arc<Vec<T>>>, id: RtLayerId) -> Option<&[T]> {
 
 /// Liga em `out` os texels onde algum plano de alguma camada difere de `b` para `a`; a tela da camada
 /// ativa dos dois lados só dentro de `hint` (a janela que as escritas declararam desde o último registo).
-pub(super) fn texels_mudados(b: &ModelSnapshot, a: &ModelSnapshot, hint: Option<Region>, out: &mut [u64]) {
+pub(super) fn texels_mudados(
+    b: &ModelSnapshot,
+    a: &ModelSnapshot,
+    hint: Option<Region>,
+    out: &mut [u64],
+) {
     let (w, h) = (a.canvas_size.0 as usize, a.canvas_size.1 as usize);
     let n = w * h;
     let mut ids: BTreeSet<RtLayerId> = b.images.keys().chain(a.images.keys()).copied().collect();

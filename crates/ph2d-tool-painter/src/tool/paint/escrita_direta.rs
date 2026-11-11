@@ -34,7 +34,11 @@ impl GuardaDaEscrita {
     /// de antes) — corpo num texel transparente seria espessura sem pigmento.
     pub(in crate::tool::paint) fn fator_do_corpo(&self, i: usize, alfa: u8) -> f32 {
         let k = self.keep(i);
-        if self.trinco { k * f32::from(alfa) / 255.0 } else { k }
+        if self.trinco {
+            k * f32::from(alfa) / 255.0
+        } else {
+            k
+        }
     }
 
     /// Assenta o texel `i` já escrito em `px` contra o que ele era (`orig`).
@@ -43,7 +47,9 @@ impl GuardaDaEscrita {
         if keep < 1.0 {
             for c in 0..4 {
                 let (painted, o) = (f32::from(px[c]), f32::from(orig[c]));
-                px[c] = (painted * keep + o * (1.0 - keep)).round().clamp(0.0, 255.0) as u8;
+                px[c] = (painted * keep + o * (1.0 - keep))
+                    .round()
+                    .clamp(0.0, 255.0) as u8;
             }
         }
         if self.trinco {
@@ -52,7 +58,11 @@ impl GuardaDaEscrita {
     }
 
     /// A cobertura `cov` que DEPOSITA corpo (Color Fill), com o fator do corpo; `alfa(i)` = o de antes.
-    pub(in crate::tool::paint) fn cobertura_que_deposita(&self, cov: &[u8], alfa: impl Fn(usize) -> u8) -> Vec<u8> {
+    pub(in crate::tool::paint) fn cobertura_que_deposita(
+        &self,
+        cov: &[u8],
+        alfa: impl Fn(usize) -> u8,
+    ) -> Vec<u8> {
         escala(cov, |i| self.fator_do_corpo(i, alfa(i)))
     }
 

@@ -36,7 +36,15 @@ fn o_tom_linear_pela_tabela_da_o_bit_da_conta() {
         fora += usize::from((v * 255.0).fract() != 0.0);
     }
     assert!(fora > 100_000, "a orla tem de exercer a conta: {fora}");
-    for v in [-0.0f32, -1e-7, 1.0 + f32::EPSILON, 2.0, f32::NAN, f32::INFINITY, 0.04045] {
+    for v in [
+        -0.0f32,
+        -1e-7,
+        1.0 + f32::EPSILON,
+        2.0,
+        f32::NAN,
+        f32::INFINITY,
+        0.04045,
+    ] {
         assert_eq!(
             tom_linear(v, lut).to_bits(),
             srgb_to_linear_unit(v).to_bits(),

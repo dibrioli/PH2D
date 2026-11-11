@@ -1,7 +1,7 @@
 //! B16.A1: a ligação das poças funde os troços de cada linha antes de ligar as linhas — o mesmo
 //! veredicto que a ligação troço a troço (o oráculo), com as uniões em `O(linhas·elo)` nas listras.
 
-use super::{largos_secos, pocas_secas_troco_a_troco, trocos_da_linha, Troco, UNIOES};
+use super::{Troco, UNIOES, largos_secos, pocas_secas_troco_a_troco, trocos_da_linha};
 
 /// Uma cobertura: por linha, `(ocupado, molhado)` de cada texel.
 type Cobertura = Vec<Vec<(bool, bool)>>;
@@ -78,7 +78,11 @@ fn a_ligacao_das_pocas_funde_os_trocos_e_da_o_veredicto_do_oraculo() {
             .collect();
         for elo in [1, 2, 5, 16, 28] {
             let novo = os_que_assam(&c, elo);
-            assert_eq!(novo, os_que_assam_no_oraculo(&c, elo), "caso {caso}, elo {elo}");
+            assert_eq!(
+                novo,
+                os_que_assam_no_oraculo(&c, elo),
+                "caso {caso}, elo {elo}"
+            );
             assados += novo.len();
         }
     }
@@ -91,7 +95,11 @@ fn a_ligacao_das_pocas_funde_os_trocos_e_da_o_veredicto_do_oraculo() {
 fn as_listras_de_dois_px_ligam_se_em_linhas_vezes_elo_unioes() {
     let (linhas, largura, elo) = (512usize, 1024usize, 16usize);
     let c: Cobertura = (0..linhas)
-        .map(|y| (0..largura).map(|x| (x % 4 < 2, y == 0 && x == 0)).collect())
+        .map(|y| {
+            (0..largura)
+                .map(|x| (x % 4 < 2, y == 0 && x == 0))
+                .collect()
+        })
         .collect();
     let conta = |f: &dyn Fn() -> Vec<bool>| {
         UNIOES.with(|u| u.set(0));
@@ -102,8 +110,14 @@ fn as_listras_de_dois_px_ligam_se_em_linhas_vezes_elo_unioes() {
     let (estreitos, ie) = troços(&c, 0);
     let (seco, n_novo) = conta(&|| largos_secos(&largos, &il, elo));
     let (seca, n_velho) = conta(&|| pocas_secas_troco_a_troco(&estreitos, &ie, elo));
-    assert!(seco.iter().all(|&v| !v) && seca.iter().all(|&v| !v), "uma poça só, molhada");
+    assert!(
+        seco.iter().all(|&v| !v) && seca.iter().all(|&v| !v),
+        "uma poça só, molhada"
+    );
     let tecto = (linhas * elo) as u64;
     assert!(n_novo <= tecto, "{n_novo} uniões > {tecto}");
-    assert!(n_velho > 100 * tecto, "a régua morde: o oráculo fazia {n_velho}");
+    assert!(
+        n_velho > 100 * tecto,
+        "a régua morde: o oráculo fazia {n_velho}"
+    );
 }

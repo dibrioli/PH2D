@@ -84,12 +84,21 @@ fn incremental_igual_ao_inteiro_ao_bit() {
         v(&t, "traço depois do set_source");
         // O 1.º traço numa camada pode subir a revisão (o Impasto publica a camada esculpida); o resto é fixo.
         let caixa = ["2.º traço", "2.º traço na B", "traço sobre o papel"];
-        let livre = ["traço", "Ctrl+Z", "traço na B", "cor do papel", "traço depois do set_source"];
+        let livre = [
+            "traço",
+            "Ctrl+Z",
+            "traço na B",
+            "cor do papel",
+            "traço depois do set_source",
+        ];
         let erradas: Vec<_> = pistas
             .iter()
             .filter(|(p, pista)| !livre.contains(p) && *pista != caixa.contains(p))
             .collect();
-        assert!(erradas.is_empty(), "{meio:?}: a pista falhou em {erradas:?} (todas: {pistas:?})");
+        assert!(
+            erradas.is_empty(),
+            "{meio:?}: a pista falhou em {erradas:?} (todas: {pistas:?})"
+        );
     }
 }
 
@@ -107,10 +116,17 @@ fn a_luz_dos_vizinhos_anda_com_o_texel_marcado() {
     let alt = Arc::make_mut(t.heights.get_mut(&ativa).expect("a camada foi esculpida"));
     alt[(y * L + x) as usize] += 4.0;
     t.mark_dirty(Region { x, y, w: 1, h: 1 });
-    assert!(confere(&t, "texel marcado"), "controlo: a pista é a da caixa");
+    assert!(
+        confere(&t, "texel marcado"),
+        "controlo: a pista é a da caixa"
+    );
     let depois = t.imagem_aplicada_inteira().expect("documento").0;
     let vizinho = |p: &[u8]| p[(((y * L) + x + 1) * 4) as usize..][..3].to_vec();
-    assert_ne!(vizinho(&antes), vizinho(&depois), "controlo: a luz do vizinho mudou");
+    assert_ne!(
+        vizinho(&antes),
+        vizinho(&depois),
+        "controlo: a luz do vizinho mudou"
+    );
 }
 
 /// Um escritor que bate o `pixel_clock` sem caixa (o contrato de `content_revision`) faz a leitura inteira.
@@ -124,7 +140,10 @@ fn a_escrita_sem_caixa_faz_a_leitura_inteira() {
     t.replace_canvas(Arc::new(c));
     let ativa = t.layers.active();
     t.bump_layer_pixels(ativa);
-    assert!(!confere(&t, "escrita sem caixa"), "a leitura tinha de ser inteira");
+    assert!(
+        !confere(&t, "escrita sem caixa"),
+        "a leitura tinha de ser inteira"
+    );
 }
 
 /// A 2.ª leitura depois de um traço curto recompõe só a moldura dele: o contador do gate é a caixa.
@@ -156,7 +175,11 @@ fn sonda_aplicada_4k() {
     t.set_substrate_roughness(0.5);
     t.set_paint_media(PaintMedia::Impasto);
     t.set_brush_size_px(h as f32 * 0.3);
-    traco(&mut t, [w as f32 * 0.2, h as f32 * 0.5], [w as f32 * 0.8, h as f32 * 0.5]);
+    traco(
+        &mut t,
+        [w as f32 * 0.2, h as f32 * 0.5],
+        [w as f32 * 0.8, h as f32 * 0.5],
+    );
     t.set_brush_size_px(24.0);
     let _ = t.imagem_aplicada();
     let mut m = [f64::MAX; 2];
@@ -173,5 +196,8 @@ fn sonda_aplicada_4k() {
             m[v] = m[v].min(t0.elapsed().as_secs_f64() * 1e3);
         }
     }
-    eprintln!("[aplicada 4K] inteira {:.1} ms → pela caixa {:.1} ms", m[0], m[1]);
+    eprintln!(
+        "[aplicada 4K] inteira {:.1} ms → pela caixa {:.1} ms",
+        m[0], m[1]
+    );
 }

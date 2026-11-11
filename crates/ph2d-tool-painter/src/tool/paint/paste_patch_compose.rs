@@ -39,7 +39,12 @@ fn region_of<T: Copy + Default>(buf: &[T], rect: Region, canvas_w: u32) -> Vec<T
 
 impl PainterTool {
     /// Guarda o que a peça está prestes a cobrir: os pixels, e o corpo quando ela tem corpo a escrever.
-    pub(super) fn snapshot_paste_pristine(&self, patch: &PastePatch, rect: Region, w: u32) -> PastePristine {
+    pub(super) fn snapshot_paste_pristine(
+        &self,
+        patch: &PastePatch,
+        rect: Region,
+        w: u32,
+    ) -> PastePristine {
         // A peça vem por PARÂMETRO e não de `self.paint.paste_patch`: o chamador já a tem na mão, e
         // relê-la daqui seria uma segunda fonte para o mesmo fato. Camada sem plano guarda ZEROS do
         // tamanho: o composite cria o plano, e o restauro tem de o devolver liso (B06.5).
@@ -83,8 +88,13 @@ impl PainterTool {
             && let Some(e) = self.heights.get_mut(&layer)
             && e.len() == n
         {
-            let dst =
-                crate::tool::paint::plane_fork::fork_heights(e, &self.undo.write_state, layer, (w, ch), None);
+            let dst = crate::tool::paint::plane_fork::fork_heights(
+                e,
+                &self.undo.write_state,
+                layer,
+                (w, ch),
+                None,
+            );
             for ry in 0..pr.rect.h as usize {
                 let d = (pr.rect.y as usize + ry) * wu + pr.rect.x as usize;
                 dst[d..d + row].copy_from_slice(&h[ry * row..(ry + 1) * row]);
@@ -94,8 +104,13 @@ impl PainterTool {
             && let Some(e) = self.covers.get_mut(&layer)
             && e.len() == n
         {
-            let dst =
-                crate::tool::paint::plane_fork::fork_covers(e, &self.undo.write_state, layer, (w, ch), None);
+            let dst = crate::tool::paint::plane_fork::fork_covers(
+                e,
+                &self.undo.write_state,
+                layer,
+                (w, ch),
+                None,
+            );
             for ry in 0..pr.rect.h as usize {
                 let d = (pr.rect.y as usize + ry) * wu + pr.rect.x as usize;
                 dst[d..d + row].copy_from_slice(&c[ry * row..(ry + 1) * row]);
@@ -105,7 +120,13 @@ impl PainterTool {
             && let Some(e) = self.mats.get_mut(&layer)
             && e.len() == n
         {
-            let dst = crate::tool::paint::plane_fork::fork_mats(e, &self.undo.write_state, layer, (w, ch), None);
+            let dst = crate::tool::paint::plane_fork::fork_mats(
+                e,
+                &self.undo.write_state,
+                layer,
+                (w, ch),
+                None,
+            );
             for ry in 0..pr.rect.h as usize {
                 let d = (pr.rect.y as usize + ry) * wu + pr.rect.x as usize;
                 dst[d..d + row].copy_from_slice(&m[ry * row..(ry + 1) * row]);
@@ -172,7 +193,12 @@ impl PainterTool {
 
     /// A metade do [`Self::composite_patch`] que escreve os três planos do impasto. No-op sem relevo na
     /// peça ou sem camada ativa.
-    fn composite_patch_relief(&mut self, patch: &PastePatch, rect: Region, guarda: &GuardaDaEscrita) {
+    fn composite_patch_relief(
+        &mut self,
+        patch: &PastePatch,
+        rect: Region,
+        guarda: &GuardaDaEscrita,
+    ) {
         if patch.relief.is_none() {
             return;
         }

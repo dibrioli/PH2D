@@ -181,7 +181,10 @@ fn o_pen_down_so_repoe_o_substrato_que_o_traco_tocou() {
     assert!(memo > 0, "a fixtura tem de memorizar o papel");
     let (c, _) = t.paint.wet_substrate_caixa.expect("a caixa do memo");
     let longe = 5 * size + 250;
-    assert!((c.x + c.w) as usize <= 250, "o sentinela tem de ficar fora da caixa");
+    assert!(
+        (c.x + c.w) as usize <= 250,
+        "o sentinela tem de ficar fora da caixa"
+    );
     t.paint.wet_substrate[longe] = 0.5;
     t.on_canvas_pointer(cp([200.0, 200.0], PointerPhase::Down));
     let sub = &t.paint.wet_substrate;
@@ -191,9 +194,16 @@ fn o_pen_down_so_repoe_o_substrato_que_o_traco_tocou() {
         agora.is_some_and(|r| x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)
     };
     assert!(agora.is_none_or(|r| r.x >= c.x + c.w || r.y >= c.y + c.h));
-    let velho = sub.iter().enumerate().filter(|&(i, v)| i != longe && !v.is_nan() && !dentro(i));
+    let velho = sub
+        .iter()
+        .enumerate()
+        .filter(|&(i, v)| i != longe && !v.is_nan() && !dentro(i));
     assert_eq!(velho.count(), 0, "o pen-down deixou memo de outro traço");
-    assert_eq!(sub[longe].to_bits(), 0.5f32.to_bits(), "o reset varreu fora da caixa");
+    assert_eq!(
+        sub[longe].to_bits(),
+        0.5f32.to_bits(),
+        "o reset varreu fora da caixa"
+    );
 }
 
 /// Sonda B16.9 (`--ignored`): o pen-down da aguada a 3840×2160 com 1 e 3 camadas — o reset do memo
@@ -224,9 +234,20 @@ fn mede_o_pen_down_da_aguada_4k() {
         let mut best = [f64::MAX; 2];
         for i in 0..12u32 {
             let v = [0usize, 1, 1, 0][(i % 4) as usize];
-            let (x, y) = (300.0 + 280.0 * (i % 12) as f32, 400.0 + 100.0 * (i % 3) as f32);
+            let (x, y) = (
+                300.0 + 280.0 * (i % 12) as f32,
+                400.0 + 100.0 * (i % 3) as f32,
+            );
             if v == 1 {
-                t.paint.wet_substrate_caixa = Some((Region { x: 0, y: 0, w: fw, h: fh }, fw));
+                t.paint.wet_substrate_caixa = Some((
+                    Region {
+                        x: 0,
+                        y: 0,
+                        w: fw,
+                        h: fh,
+                    },
+                    fw,
+                ));
             }
             let t0 = std::time::Instant::now();
             t.on_canvas_pointer(cp([x, y], PointerPhase::Down));
@@ -260,7 +281,11 @@ fn o_chao_uniforme_da_aguada_nasce_uma_vez() {
     let a = t.chao_uniforme(n);
     let b = t.chao_uniforme(n);
     assert!(Arc::ptr_eq(&a, &b), "o 2.º quadro alocou outro chão");
-    assert_eq!(*a, de_antes(&t, n), "o chão guardado não é o byte do de antes");
+    assert_eq!(
+        *a,
+        de_antes(&t, n),
+        "o chão guardado não é o byte do de antes"
+    );
     let c = t.chao_uniforme(n / 2);
     assert_eq!(c.len(), n / 2 * 4, "tamanho novo ⇒ chão novo");
     assert_eq!(*c, de_antes(&t, n / 2));

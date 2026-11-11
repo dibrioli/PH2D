@@ -19,10 +19,15 @@ fn cp(pos: [f32; 2], phase: PointerPhase) -> CanvasPointer {
 }
 
 fn fundo(w: u32, h: u32, blocos: bool) -> Vec<u8> {
-    let cores = [[200u8, 60, 50], [60, 150, 210], [240, 200, 60], [90, 170, 90]];
+    let cores = [
+        [200u8, 60, 50],
+        [60, 150, 210],
+        [240, 200, 60],
+        [90, 170, 90],
+    ];
     let mut v = vec![255u8; (w * h * 4) as usize];
     if blocos {
-        for (i, p) in v.chunks_exact_mut(4).enumerate() {
+        for (i, p) in v.as_chunks_mut::<4>().0.iter_mut().enumerate() {
             let (x, y) = (i as u32 % w, i as u32 / w);
             p[..3].copy_from_slice(&cores[usize::from(x * 2 >= w) + 2 * usize::from(y * 2 >= h)]);
         }
@@ -53,7 +58,10 @@ fn cena(w: u32, h: u32, qual: u8, antes: bool) -> Vec<u8> {
         let x = cx + (k as f32 - 2.5) * 40.0 * s;
         t.on_canvas_pointer(cp([x, cy - 120.0 * s], PointerPhase::Down));
         for j in 1..=20 {
-            t.on_canvas_pointer(cp([x, cy - 120.0 * s + 12.0 * s * j as f32], PointerPhase::Move));
+            t.on_canvas_pointer(cp(
+                [x, cy - 120.0 * s + 12.0 * s * j as f32],
+                PointerPhase::Move,
+            ));
             t.paint_tick(1.0 / 60.0);
         }
         t.on_canvas_pointer(cp([x, cy + 120.0 * s], PointerPhase::Up));
@@ -98,11 +106,18 @@ fn prancha_b16_2_o_dono_do_halo() {
             let a = cena(w, h, qual, true);
             let d = cena(w, h, qual, false);
             let difs = a
-                .chunks_exact(4)
-                .zip(d.chunks_exact(4))
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .zip(d.as_chunks::<4>().0)
                 .filter(|(x, y)| x != y)
                 .count();
-            let pior = a.iter().zip(&d).map(|(x, y)| x.abs_diff(*y)).max().unwrap_or(0);
+            let pior = a
+                .iter()
+                .zip(&d)
+                .map(|(x, y)| x.abs_diff(*y))
+                .max()
+                .unwrap_or(0);
             eprintln!("PRANCHA {res} {nome}: {difs} píxeis diferentes, pior {pior}");
             monta(&a, &d, w, h)
                 .save(format!("{dir}/{res}_{nome}_antes_depois.png"))

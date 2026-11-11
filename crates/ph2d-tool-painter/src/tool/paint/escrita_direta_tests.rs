@@ -47,7 +47,10 @@ fn protege_a_esquerda(t: &mut PainterTool) {
     }
     t.paint.mask_scratch_rgba = Arc::new(m);
     t.bump_mask_scratch_gen();
-    assert!(t.mask_protection_active(), "fixtura: a proteção tem de estar viva");
+    assert!(
+        t.mask_protection_active(),
+        "fixtura: a proteção tem de estar viva"
+    );
 }
 
 fn alfas(t: &PainterTool) -> Vec<u8> {
@@ -86,8 +89,16 @@ fn color_fill_com_alfa_travado_nao_muda_o_alfa() {
     let antes = alfas(&t);
     t.set_rect_selection(0, 0, N, N);
     t.selection_color_fill();
-    assert_eq!(alfas(&t), antes, "o trinco de alfa tem de guardar a silhueta");
-    assert_eq!(px(&t, 4, 4), [0, 0, 255, 255], "o Color Fill pinta a cor onde há tinta");
+    assert_eq!(
+        alfas(&t),
+        antes,
+        "o trinco de alfa tem de guardar a silhueta"
+    );
+    assert_eq!(
+        px(&t, 4, 4),
+        [0, 0, 255, 255],
+        "o Color Fill pinta a cor onde há tinta"
+    );
 }
 
 #[test]
@@ -98,7 +109,11 @@ fn cut_com_alfa_travado_nao_muda_o_alfa() {
     t.set_rect_selection(0, 0, N, N);
     t.selection_cut();
     assert!(t.paint.selection_clipboard.is_some(), "o Cut ainda copia");
-    assert_eq!(alfas(&t), antes, "o trinco de alfa tem de guardar a silhueta");
+    assert_eq!(
+        alfas(&t),
+        antes,
+        "o trinco de alfa tem de guardar a silhueta"
+    );
 }
 
 #[test]
@@ -107,7 +122,11 @@ fn colar_com_alfa_travado_nao_muda_o_alfa() {
     trava(&mut t);
     let antes = alfas(&t);
     peca_sobre(&mut t, 16.0, 16.0); // meia peça sobre o vazio
-    assert_eq!(alfas(&t), antes, "a peça flutuante não pode mudar o alfa travado");
+    assert_eq!(
+        alfas(&t),
+        antes,
+        "a peça flutuante não pode mudar o alfa travado"
+    );
     assert!(t.paste_commit());
     assert_eq!(alfas(&t), antes, "o Enter não pode mudar o alfa travado");
 }
@@ -120,7 +139,11 @@ fn color_fill_nao_pinta_o_protegido() {
     t.set_rect_selection(0, 0, N, N);
     t.selection_color_fill();
     assert_eq!(esquerda(&t), antes, "a metade protegida não pode mudar");
-    assert_eq!(px(&t, 24, 4), [0, 0, 255, 255], "a metade livre recebe o fill");
+    assert_eq!(
+        px(&t, 24, 4),
+        [0, 0, 255, 255],
+        "a metade livre recebe o fill"
+    );
 }
 
 #[test]
@@ -130,7 +153,11 @@ fn cut_nao_apaga_o_protegido() {
     let antes = esquerda(&t);
     t.set_rect_selection(0, 0, N, N);
     t.selection_cut();
-    assert_eq!(esquerda(&t), antes, "a metade protegida não pode ser apagada");
+    assert_eq!(
+        esquerda(&t),
+        antes,
+        "a metade protegida não pode ser apagada"
+    );
 }
 
 #[test]
@@ -160,7 +187,10 @@ fn colar_nao_pinta_o_protegido() {
 #[test]
 fn o_caminho_antigo_reprova_os_seis_gates() {
     let casos: [(&str, fn()); 6] = [
-        ("color_fill_alfa", color_fill_com_alfa_travado_nao_muda_o_alfa),
+        (
+            "color_fill_alfa",
+            color_fill_com_alfa_travado_nao_muda_o_alfa,
+        ),
         ("cut_alfa", cut_com_alfa_travado_nao_muda_o_alfa),
         ("colar_alfa", colar_com_alfa_travado_nao_muda_o_alfa),
         ("color_fill_protegido", color_fill_nao_pinta_o_protegido),
@@ -173,6 +203,9 @@ fn o_caminho_antigo_reprova_os_seis_gates() {
             caso();
         });
         super::escrita_direta::CAMINHO_ANTIGO.set(false);
-        assert!(r.is_err(), "{nome}: o caminho antigo devia reprovar (o gate não discrimina)");
+        assert!(
+            r.is_err(),
+            "{nome}: o caminho antigo devia reprovar (o gate não discrimina)"
+        );
     }
 }

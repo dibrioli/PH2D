@@ -95,7 +95,8 @@ fn flatten_ids(
             continue;
         }
         let raster = matches!(layer.kind, LayerKind::Raster(_) | LayerKind::Texture(_));
-        let hidden_adj = matches!(&layer.kind, LayerKind::Adjustment(a) if !a.visible || a.opacity <= 0.0);
+        let hidden_adj =
+            matches!(&layer.kind, LayerKind::Adjustment(a) if !a.visible || a.opacity <= 0.0);
         if !layer.visible || layer.opacity <= 0.0 || hidden_adj {
             if raster && !layer.clipping {
                 (clip_hidden, clip_broken, clip_zero) = (!layer.visible, false, layer.visible);

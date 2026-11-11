@@ -44,7 +44,11 @@ fn iguais(a: &ImpastoPlanes, b: &ImpastoPlanes, caso: &str) {
     assert_eq!(a.cover, b.cover, "{caso}: cobertura");
     assert_eq!(a.mat0, b.mat0, "{caso}: mat0");
     assert_eq!(a.mat1, b.mat1, "{caso}: mat1");
-    assert_eq!(a.paper_body.to_bits(), b.paper_body.to_bits(), "{caso}: papel");
+    assert_eq!(
+        a.paper_body.to_bits(),
+        b.paper_body.to_bits(),
+        "{caso}: papel"
+    );
     assert_eq!(a.lamps.len(), b.lamps.len(), "{caso}: lâmpadas");
 }
 
@@ -58,7 +62,13 @@ fn os_planos_reusados_sao_os_novos_ao_bit() {
     let (w, h) = (96, 64);
     let t = papel_e_crista(w, h);
     let tela = (0, 0, w, h);
-    let janelas = [tela, (10, 7, 40, 30), (0, 0, 3, 64), (50, 20, 200, 200), tela];
+    let janelas = [
+        tela,
+        (10, 7, 40, 30),
+        (0, 0, 3, 64),
+        (50, 20, 200, 200),
+        tela,
+    ];
     for antes in janelas {
         for agora in janelas {
             let velho = com_lixo(t.impasto_gpu_planes_in(antes).expect("planos"));
@@ -69,7 +79,11 @@ fn os_planos_reusados_sao_os_novos_ao_bit() {
             let novo = t.impasto_gpu_planes_in(agora).expect("planos");
             iguais(&reusado, &novo, &format!("{antes:?} → {agora:?}"));
             if antes == agora {
-                assert_eq!(reusado.relief.as_ptr(), ptr, "a mesma janela alocou de novo");
+                assert_eq!(
+                    reusado.relief.as_ptr(),
+                    ptr,
+                    "a mesma janela alocou de novo"
+                );
             }
         }
     }

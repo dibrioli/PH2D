@@ -230,7 +230,14 @@ impl PainterTool {
             cov[i] > 0 || agua.is_some_and(|a| a[i] > 0) || soak.is_some_and(|s| s[i] > 0)
         };
         let linha = |y: usize, a: usize, b: usize, elo: usize| {
-            trocos_da_linha(y, a, b, elo, |x| ocupado(y * fw + x), |x| molhado[y * fw + x] > 0)
+            trocos_da_linha(
+                y,
+                a,
+                b,
+                elo,
+                |x| ocupado(y * fw + x),
+                |x| molhado[y * fw + x] > 0,
+            )
         };
         // Os troços LARGOS: os de uma linha a menos de `elo` um do outro já são da mesma poça.
         let linhas: Vec<Vec<Troco>> = (y0..y1)

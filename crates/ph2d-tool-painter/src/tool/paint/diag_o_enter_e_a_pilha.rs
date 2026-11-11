@@ -228,7 +228,10 @@ fn fixar_fecha_a_pilha() {
     // «nada apagado» não é a régua: o oráculo é a tela fixada aberta como DOCUMENTO NOVO e a mesma
     // figura por cima. Depois do Enter nada do traço anterior pode sobreviver para a distinguir.
     let (fixado_s, n_s, fechou_s) = corre(false, true);
-    assert!(fixado_s > 20_000, "com o Smear o Enter mal assou arte ({fixado_s} texels)");
+    assert!(
+        fixado_s > 20_000,
+        "com o Smear o Enter mal assou arte ({fixado_s} texels)"
+    );
     assert!(fechou_s, "com o Smear o Enter não fechou a pilha");
     let contra_o_novo = |sem_cura: bool| {
         super::composite_reposicoes::COMMIT_SEM_FECHAR.with(|c| c.set(sem_cura));
@@ -252,7 +255,10 @@ fn fixar_fecha_a_pilha() {
     };
     // CONTROLO: o oráculo DISCRIMINA — sem a cura do Enter a figura difere do documento novo.
     let (dif_sem, _, _) = contra_o_novo(true);
-    assert!(dif_sem > 5_000, "o oráculo não vê o defeito do Enter: só {dif_sem} bytes diferem");
+    assert!(
+        dif_sem > 5_000,
+        "o oráculo não vê o defeito do Enter: só {dif_sem} bytes diferem"
+    );
     let (dif, pior, n_novo) = contra_o_novo(false);
     assert!(
         n_novo > 1_000,
@@ -276,7 +282,9 @@ fn toda_porta_do_composite_fecha_a_figura_aberta() {
     let portas: [(&str, Porta); 3] = [
         ("retira_camada", |t| t.retira_camada(1)),
         ("move_composite_layer_up", |t| t.move_composite_layer_up(2)),
-        ("move_composite_layer_down", |t| t.move_composite_layer_down(2)),
+        ("move_composite_layer_down", |t| {
+            t.move_composite_layer_down(2)
+        }),
     ];
     for (nome, porta) in portas {
         let mut t = PainterTool::default();
@@ -297,16 +305,25 @@ fn toda_porta_do_composite_fecha_a_figura_aberta() {
         t.on_canvas_pointer(cp([c[0] + 110.0, c[1]], PointerPhase::Up));
         assert!(t.is_editing_shape(), "{nome}: a figura não ficou aberta");
         let aberta = t.canvas_rgba.to_vec();
-        assert!(aberta.iter().any(|&b| b != 0), "{nome}: a figura não pintou");
+        assert!(
+            aberta.iter().any(|&b| b != 0),
+            "{nome}: a figura não pintou"
+        );
         porta(&mut t);
         assert!(
             !t.is_editing_shape() && !t.has_parked_shapes() && t.paint.drag_preview.is_none(),
             "{nome}: a figura ficou aberta"
         );
         assert!(t.paint.pilha.pre.is_empty(), "{nome}: a pilha ficou aberta");
-        assert!(t.canvas_rgba[..] == aberta[..], "{nome}: a figura mudou ao fechar");
+        assert!(
+            t.canvas_rgba[..] == aberta[..],
+            "{nome}: a figura mudou ao fechar"
+        );
         t.cancel_open_shape();
-        assert!(t.canvas_rgba[..] == aberta[..], "{nome}: o Esc apagou a figura");
+        assert!(
+            t.canvas_rgba[..] == aberta[..],
+            "{nome}: o Esc apagou a figura"
+        );
     }
 }
 

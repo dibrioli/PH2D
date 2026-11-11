@@ -177,7 +177,11 @@ impl PainterTool {
             // como o afim que a tela já mostra (B06.3 — semear os dois no box movido amostrava o vazio).
             let lift = self.paint.deform.xform.map_or(x.pristine, |x| x.pristine);
             #[cfg(test)]
-            let lift = if super::prancha_b06b_tests::antes() { cur } else { lift };
+            let lift = if super::prancha_b06b_tests::antes() {
+                cur
+            } else {
+                lift
+            };
             self.paint.deform.xform_mesh = Some(Mesh::seed_between(
                 box4(&lift),
                 box4(&cur),

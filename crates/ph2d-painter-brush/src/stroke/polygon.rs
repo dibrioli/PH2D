@@ -73,8 +73,7 @@ impl Stroke {
         self.taper_head = false;
         if self.spec.dash_on(self.tot_samples) {
             let pr = self.method_pressure(1.0);
-            // B40.1: a porta única — Symmetry, spray, pó e Rough também no 1.º dab.
-            self.stamp_at(perim[0], pr, self.method_overlap(), self.arc_len, out);
+            self.primeiro_dab_da_forma(perim[0], pr, out);
         }
         self.tot_samples = self.tot_samples.wrapping_add(1);
         for &p in &perim[1..] {

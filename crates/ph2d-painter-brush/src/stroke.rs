@@ -635,7 +635,7 @@ mod speed;
 pub mod spray;
 /// A MEMÓRIA do traço e os FIOS que ela costura — `Sketchy` (W3) e `Wire` (W4).
 pub mod threads;
-pub use curve::flatten_catmull_rom;
+pub use curve::{PRIMEIRO_DAB_ANTIGO, flatten_catmull_rom};
 /// The Ellipse stroke method's perimeter generator + ellipse fill (same child-module rationale).
 mod ellipse;
 pub use ellipse::ellipse_perimeter;

@@ -603,7 +603,7 @@ impl PainterTool {
         // A freshly-created shape adopts the current panel Operation mode.
         self.paint.active_op = self.paint.stroke_op_mode;
         // B40.3: uma figura no modo Mask pinta o rascunho, que tem de existir já (como no `paint_begin`).
-        if matches!(self.paint.paint_mode, PaintMode::Mask) {
+        if matches!(self.paint.paint_mode, PaintMode::Mask) && !super::mask::mask_shape::forma_no_mask_antiga() {
             self.ensure_mask_scratch();
         }
         if !self.has_parked_shapes() {

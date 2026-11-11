@@ -612,10 +612,13 @@ pub(super) mod mask_probe; // a fixture de mascara serve tambem os gates do jour
 #[path = "mask_probe_gate.rs"]
 mod mask_probe_gate;
 #[path = "mask_shape.rs"]
-mod mask_shape;
+pub(super) mod mask_shape;
 #[cfg(test)]
 #[path = "mask_shape_tests.rs"]
 mod mask_shape_tests;
+#[cfg(test)]
+#[path = "prancha_b40b_tests.rs"]
+mod prancha_b40b_tests;
 #[cfg(test)]
 #[path = "mask_tests.rs"]
 mod mask_tests;

@@ -6,7 +6,23 @@
 
 use super::*;
 
+thread_local! {
+    /// Oráculo da prancha B40b (instrumento; o produto nunca o arma): o 1.º dab das formas pelo
+    /// caminho de antes do B40.1 (`dab_at` + `push`, sem Symmetry/spray/pó/Rough).
+    pub static PRIMEIRO_DAB_ANTIGO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 impl Stroke {
+    /// B40.1: o 1.º dab de Line/Arc/Free Hand/Ellipse/Polygon passa pela porta única `stamp_at`.
+    pub(super) fn primeiro_dab_da_forma(&mut self, p: [f32; 2], pr: f32, out: &mut Vec<Dab>) {
+        if PRIMEIRO_DAB_ANTIGO.get() {
+            let d = self.dab_at(p, pr, self.method_overlap(), self.arc_len);
+            out.push(d);
+        } else {
+            self.stamp_at(p, pr, self.method_overlap(), self.arc_len, out);
+        }
+    }
+
     /// Fill an authored Arc through the control points `pts` with spaced dabs for the live preview:
     /// auto-smooth the polygon with a Catmull-Rom spline ([`flatten_catmull_rom`]) and lay dabs at the
     /// brush spacing along it (constant full pressure — the curve is a geometric path, no per-point
@@ -46,8 +62,7 @@ impl Stroke {
         // First dab at the curve start (dash-gated), like `fill_segment`.
         if self.spec.dash_on(self.tot_samples) {
             let pr = self.method_pressure(1.0);
-            // B40.1: a porta única — Symmetry, spray, pó e Rough também no 1.º dab.
-            self.stamp_at(spine[0], pr, self.method_overlap(), self.arc_len, out);
+            self.primeiro_dab_da_forma(spine[0], pr, out);
         }
         self.tot_samples = self.tot_samples.wrapping_add(1);
         // Walk the flattened spine with continuous spacing (`walk_space` carries `accum`/dash/jitter

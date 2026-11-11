@@ -43,3 +43,17 @@ impl PainterTool {
         self.mark_dirty(*rect);
     }
 }
+
+#[cfg(test)]
+thread_local! {
+    /// Oráculo da prancha B40b: a figura no modo Mask pelo caminho de antes (sem o rascunho).
+    pub(in crate::tool::paint) static FORMA_NO_MASK_ANTIGA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// `true` só sob o oráculo de teste; no produto é sempre `false`.
+pub(in crate::tool::paint) fn forma_no_mask_antiga() -> bool {
+    #[cfg(test)]
+    return FORMA_NO_MASK_ANTIGA.get();
+    #[cfg(not(test))]
+    false
+}

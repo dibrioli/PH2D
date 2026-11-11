@@ -188,8 +188,8 @@ impl crate::App {
             hero.store.set_shift_held(self.modifiers.shift_key());
             hero.store
                 .set_cmd_held(self.modifiers.super_key() || self.modifiers.control_key());
-            // Motion Nodes M0.T3 — Alt cache, folded into `GestureMods.alt` for
-            // graph gestures (mirror of shift/cmd; pointer events carry no mods).
+            // O Alt do EDITOR (gestos, atalhos, a escuta): o winit já tira o AltGr desta bandeira
+            // (medido: `ph2d_input::editor_keys::chord_keys`).
             hero.store.set_alt_held(self.modifiers.alt_key());
         }
         // Shift (1:1) / Alt (do centro) durante um gesto de FORMA: reconstrói o preview

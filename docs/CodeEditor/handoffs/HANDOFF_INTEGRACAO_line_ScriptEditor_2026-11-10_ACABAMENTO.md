@@ -345,9 +345,9 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   comparação com a superfície · lei velha `Y > 0,5` · `STEM_DARKENING_PX = 0,1` (sonda de placa). Sem teste: a chamada
   `publish_text` do hero (o tema por omissão é o escuro). Clippy do workspace `-D warnings` verde.
 
-Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,40 s, já construído pelas fotos); a 2.ª:
+Binário de smoke depois de `rm -rf target/*/incremental` (1.ª: 0,49 s, já construído pelas fotos); a 2.ª:
 
 ```
-▸ linha line_scripteditor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.24s
+▸ linha line_scripteditor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1500s
+    Finished `smoke` profile [optimized] target(s) in 0.21s
 ```

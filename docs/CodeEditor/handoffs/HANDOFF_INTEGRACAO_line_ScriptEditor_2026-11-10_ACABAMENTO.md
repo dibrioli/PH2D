@@ -95,18 +95,18 @@ corre é o do primário; a cura só vale depois da integração.
 - **Auditoria, lentes independentes:** sem violação de regra; correcção curada (item F); a lente de ratchet gerou o aviso do §2.
 - **Binário do smoke:** ver o fim do §8.
 
-## 5. Folgas medidas (recontar na integração; `wc -l` no HEAD `c67465ff6e`, 11/11)
+## 5. Folgas medidas (recontar na integração; `wc -l` no HEAD `d137ddac68`, 11/11)
 
 | Ficheiro / crate | Medido / tecto | Folga |
 |---|---|---|
-| crate `ph2d-app-code` (catraca `the_shell_only_shrinks`) | **26 534** / 26 628 | 94 (era 2: a barra saiu −259, voltaram +167 de testes e do largar perdido) |
+| crate `ph2d-app-code` (catraca `the_shell_only_shrinks`) | **26 584** / 26 628 | 44 (era 2: a barra saiu −259; voltaram testes, o largar perdido, o Card Style e o `tab_leaf`; a mecânica fina do submenu foi testada na `ph2d-panel-code`) |
 | crate `ph2d-code-smoke` | 614 / 614 | **0** (não tocada) |
-| crate `ph2d-panel-code` | 21 725 | sem tecto de crate |
+| crate `ph2d-panel-code` | 22 129 | sem tecto de crate |
 | `ph2d-editor-core/src/paint.rs` | 700 / 700 | **0** (não tocado) |
 | `ph2d-editor-core/src/paint_text.rs` | 692 / 700 | 8 (não tocado) |
 | `ph2d-editor-core/src/screens/hero/paint.rs` | 700 / 700 | **0** (não tocado; o teste do `publish_text` vive em `published_embolden_tests.rs`) |
 | `ph2d-app-code/src/surface.rs` | 643 / 700 | 57 |
-| `ph2d-panel-code/src/tab_bar/menu.rs` · `tab_bar.rs` · `palette.rs` | 363 · 273 · 331 / 700 | — |
+| `ph2d-panel-code/src/tab_bar/menu.rs` · `tab_bar.rs` · `palette.rs` · `glyphs.rs` | 387 · 276 · 331 · 354 / 700 | — |
 | `ph2d-editor-core/src/documents_surface.rs` · `widget/lista_flutuante.rs` | 134 · 267 / 700 | — |
 | `shells/desktop/src/input_dispatch.rs` | 596 / 700 | 104 |
 | crate `ph2d-code-assist` | 4 088 × isenção 4 188 | — |
@@ -145,21 +145,16 @@ Os passos 1–3 vêm das rondas aprovadas (ficam para o próximo testador); **4�
 
 ## 7. Aberto
 
-1. ~~Largar fora da aba~~ **feito 11/11** (§8): o 1.º movimento sem botão acaba o arrasto. ⚠️ Sem teste ao nível do herói: a mutação
-   «`surface_input` passa sempre `primary_held: true`» **sobrevive** (nenhum teste conduz o `surface_input` com uma aba de família);
-   verificado com o rato real na Xvfb (`aw_divisor_largado_fora.png`).
-2. A cura do hook só vale depois da integração (corre o do primário).
-3. `paint.rs` 700/700 e `hero/paint.rs` 700/700 (não tocados); `paint_text.rs` 692/700.
-4. O integrador reconta a catraca (`ph2d-app-code` 26 534 × tecto 26 628; `ph2d-code-assist` 4 188).
-5. **Memória no primário `project-memory/`, NÃO comitada** (as do dono de 10/11) — o integrador funde-as.
-6. **Smoke do dono: PENDENTE** (o desta ronda e o das anteriores).
-7. A mutação «`row_bg` ignora a linha acesa» **sobrevive**: nos 12 temas `AccentFg` fica do mesmo lado de `Accent` e do popover, o
-   escurecimento sai igual — sem diferença visível hoje; o teste `fundo_real` guarda o título, a linha apagada e a etiqueta.
-8. A lista, o «In this script», a grelha e os exemplos da ajuda passam o fundo real, mas só a porta (`paint_on`) e a barra têm
-   teste; nenhum tema hoje separa esses fundos do poço para a tinta deles.
-9. Sugestão (não pedida): «Card Style: Sheet/Cards/Strip» são 3 linhas soltas no View, como eram os modos de letra — um 2.º
-   submenu deixava o View coerente (o dono decide; os passos 2–4 da cena 13 clicam nessas linhas por índice).
-10. O submenu não tem a «mira» diagonal (triângulo seguro): é a última linha do View, nenhuma linha fica no caminho.
+1. A cura do hook só vale depois da integração (corre o do primário).
+2. `ph2d-editor-core/src/paint.rs` 700/700 e `screens/hero/paint.rs` 700/700 — **não tocados de propósito**: nada desta linha
+   precisa deles, e partir ficheiros foundational que outras linhas editam só fabrica conflitos no merge; quem precisar de
+   crescer lá cura movendo. `paint_text.rs` 692/700.
+3. O integrador reconta a catraca (`ph2d-app-code` 26 584 × tecto 26 628; `ph2d-code-assist` 4 188).
+4. **Memória no primário `project-memory/`, NÃO comitada** (as do dono de 10/11) — o integrador funde-as.
+5. **Smoke do dono: PENDENTE** (esta ronda e as anteriores).
+
+Fechados em 11/11 (2.ª ronda, §8): o caminho do herói (`surface_input`) e a linha acesa (`row_bg`) com teste e mutação vermelha; os
+fundos reais da lista, do «In this script», da grelha e da ajuda com teste por sítio; o Card Style em submenu; a mira até ao submenu.
 
 Mantém-se: altura de linha = da casa (decisão do dono). O peso da maquete foi **aplicado** (já não fica «de propósito» de fora). Os abertos
 de desenho da Onda B/Q3_Q4 continuam nos handoffs deles. O ramo `backup/line-ScriptEditor-2026-11-08` foi apagado com o sim do dono.
@@ -387,9 +382,30 @@ por nome, vermelho por mutação e verde. Mecanismo da fase final (peso exacto, 
   (`ARRASTA="541 300 1750 300" RATO_DEPOIS="1200 300;900 300;700 300"`: largado no Inspector, o rato volta sem botão e a coluna
   não o segue; `RATO_DEPOIS` novo no `fotos_q3.sh`).
 
-Binário de smoke depois de `rm -rf target/*/incremental` (11/11, HEAD `c67465ff6e`; 1.ª: 48,69 s); a 2.ª:
+- **Ronda 11/11 (2.ª) — os abertos (`c5c350b0ee`, `d6a0d145df`, `4d2b1bff1f` e os commits de teste até `d137ddac68`).**
+  (1) **`View ▸ Card Style ▸`** (Sheet · Cards · Strip, ✓ = `CommandState.card_style`) antes do Text rendering; as linhas soltas
+  saem do View (ficam na paleta). O smoke conta as escolhas com os submenus abertos (`CodeDocs::tab_leaf`): `ClickTabMenuRow(3/4/2)`
+  da cena 14 continuam a dar Cards/Strip/Sheet (teste `onda_b::o_roteiro_escolhe_o_estilo_dentro_do_submenu_pelo_indice_de_sempre`).
+  (2) **Mira** (`TabBar.last` + `aims_at`): a caminho do submenu aberto (triângulo ponto anterior → borda do submenu) o rato passa
+  por cima da mãe vizinha sem trocar; fora do triângulo troca (`submenu::a_caminho_do_submenu_a_linha_de_baixo_nao_o_troca`).
+  (3) Herói: `surface_input_tests::o_botao_anotado_chega_a_aba_no_carregar_e_no_mover` (aba falsa `Grava`; `[true, true, false,
+  false]`). (4) `row_bg` pública + `fundo_real::a_linha_acesa_assenta_no_acento_e_a_apagada_no_popover`. (5) `glyphs::bg_probe`
+  (gravador de testes, desligado = nada) + `fundo_por_sitio::*` (4: nome na lista pela linha corrente, entrada do «In this script»
+  pelo realce, frase da grelha pelo cartão, exemplo da ajuda pela caixa e código da prosa pelo poço; cartões e clássico). (6) A
+  catraca: os testes do submenu da aba juntaram-se em `barra_da_aba::os_submenus_do_view_escolhem_o_estilo_e_a_letra`; a mecânica
+  fina (outra linha, clicar fora, a mãe, posição, mira) vive em `ph2d-panel-code` `submenu::*` (6). **Mutações, todas exit 1:**
+  `primary_held: true` no `pointer` e no `pointer_move` do herói · `row_bg` ignora a linha acesa · lista/«In this script»/grelha/ajuda
+  pelo fundo errado · gravador mudo · mira desligada · ✓ do Card Style trocado · `tab_leaf` desalinhado · a mãe não abre ao clicar ·
+  Esc fecha tudo. Crates inteiras: `ph2d-app-code` 280 ✓ · `ph2d-panel-code` 156 ✓; clippy `-D warnings` (4 crates) ✓; fmt ✓;
+  `the_shell_only_shrinks` e `architecture_workspace_file_loc_cap` ✓. Fotos (cena 13 passo 1, rato real):
+  [av_card_style.png](../ferramentas/smoke/av_card_style.png) (`CLIQUES="752 42;790 121"`) ·
+  [av_submenu.png](../ferramentas/smoke/av_submenu.png) (`"752 42;790 146"`) ·
+  [av_submenu_escolhido.png](../ferramentas/smoke/av_submenu_escolhido.png) · [av_submenu_zoom.png](../ferramentas/smoke/av_submenu_zoom.png).
+
+Binário de smoke depois de `rm -rf target/*/incremental` (11/11, HEAD `d137ddac68`; 1.ª: 14,27 s); a 2.ª:
 
 ```
 ▸ linha line_scripteditor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
-    Finished `smoke` profile [optimized] target(s) in 0.23s
+    Finished `smoke` profile [optimized] target(s) in 0.24s
 ```
+

@@ -156,6 +156,7 @@ fn a_linha_mae_nao_corre_nada_e_o_esc_fecha_um_nivel() {
         .expect("a linha-mãe")
         .1;
     let (x, y) = centro(parent);
+    bar.sub = None;
     assert_eq!(bar.press(x, y), Some(MenuPress::Taken), "a mãe só abre");
     assert_eq!(bar.sub, Some(SUB), "clicar na mãe abre o submenu");
     assert!(bar.escape() && bar.open.is_some() && bar.sub.is_none());

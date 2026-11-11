@@ -76,6 +76,8 @@ Cura escolhida (a): numa Sprite «Opacity» conduz `Sprite::opacity`; o alfa do 
 
 ### 5 — Keys | Curves (B1, B2)
 
+> ⛔ RECUSADA pelo dono 10/11 (smoke): substituída pela checkbox «Edit curves on canvas» + alças no canvas (onda 2b, `ab823f94ae`). Não reconstruir. O que segue é histórico.
+
 - **Maquete.** Segmentado `.seg.sm` na 1.ª fileira, à direita, antes do dono «Hero»: 100,4×25,6, raio 6, fundo
   `oklch(.235 .028 267)`, folga 2; células 42,6 / 53,8 × 21,6, raio 4, texto 10,5 px; ligada = fundo branco 14 % + texto
   `oklch(.916 .01 248)`, desligada = `oklch(.70 .02 255)`. Só na aba Keys. **Curves troca a ÁREA das faixas inteira**

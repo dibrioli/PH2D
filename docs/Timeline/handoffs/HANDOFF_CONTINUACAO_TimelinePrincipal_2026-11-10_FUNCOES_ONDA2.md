@@ -1,7 +1,26 @@
-# Continuação — `line/TimelinePrincipal`, plano 17 (funções novas), onda 2 (itens 5–7 + cura do Opacity) — FECHADA, à espera do smoke do dono
+# Continuação — `line/TimelinePrincipal`, plano 17 (funções novas), onda 2 (itens 5–7 + cura do Opacity) + onda 2b — à espera do smoke da 2b
 
 - Worktree `Worktrees/line-TimelinePrincipal` · branch `line/TimelinePrincipal` · commits da onda sobre `5d5c0616ab`: `8acfdb5040` (fix do smoke da onda 1),
-  `f52404c449` (parte 1), `0b7c8d058c` (parte 2), `b2438d11b1` (parte 3), `bd99e53549` (acabamento do Curves + fotos).
+  `f52404c449` (parte 1), `0b7c8d058c` (parte 2), `b2438d11b1` (parte 3), `bd99e53549` (acabamento do Curves + fotos), `ab823f94ae` (onda 2b).
+- **Smoke do dono 10/11:** itens 2–5 (chave no canvas, chip → faixa, Opacity, Flip) OK. **Item 1 (Curves) RECUSADO:** «esse tipo de curva deve ser ajustado no canvas e não
+  dentro da timeline. Na timeline só o botão pra editar as curvas no canvas». → onda 2b abaixo.
+
+## Onda 2b (`ab823f94ae`) — a vista Curves SAI; entra a checkbox «Edit curves on canvas» e as alças no canvas
+
+- **Saiu** (`ph2d-panel-timeline`): `curvas_vista*` e `curves_view_seam` apagados; ids `TIMELINE_VIEW_*` e olho por curva; i18n `panel.timeline.view.*`;
+  `TimelineTinta::CurvaPrincipal`/`CurvaSecundaria`; `paint_track` volta a `label_w: f32` (o `Option` do acabamento acaba). Chips Store/Swap mantêm a largura medida.
+- **Entrou:** checkbox `TIMELINE_CURVES_ON_CANVAS` (aba Keys, cartões; leitor público `state::curves_on_canvas()`; quebra para a sua fileira em janela estreita);
+  `publish_curves_on_canvas` no idioma do `keys_mode`. Teste `curves_on_canvas_seam` (4).
+- **Alças** (`ph2d-app-motion/src/motion_key_handles.rs`: `alcas`/`alca_hit`/`drag_alca`/`draw`; `MotionPathGrab::Alca` append-only; `drag_grab` porta única;
+  edições em `motion_key_points*`, `motion_path_overlay`): alça = controlo da cúbica espacial. `BezierW` 1/3–2/3 por canal torna o tempo linear no parâmetro, logo o
+  caminho é EXATAMENTE a cúbica (K0, C1, C2, K1). Posição pela derivada lateral (ajuste de 4 amostras); o arrasto escreve `bezier_w(1/3, C1−v0, 2/3, C2−v1)` com o
+  outro lado parado. Chave que falta nasce no valor amostrado (Linear/Hold exato; curvo pela BezierW que reproduz a cúbica). 1 undo. Alça colada à chave
+  (< `TANGENT_MIN_PX`) não se oferece. 7 testes (`motion_key_handles_tests`).
+- Shell: `despacho_metodos_modos_e_alcas.rs` (+8), `fase_canvas_overlays.rs` (+1). Superfície de colisão: soma-se às crates da secção abaixo `ph2d-tokens` (variantes
+  `CurvaPrincipal`/`CurvaSecundaria` REMOVIDAS: quem as usar parte), `ph2d-i18n/timeline.rs`.
+- Mutações (todas sangram): `shows_keys→true`, `1/3→0,5`, sem `longe_da_chave`. clippy `-D warnings` e fmt limpos. Foto: `../fotos/29_alcas_no_canvas.png` (+ `.log`).
+- Memória: `project-memory/project_timeline_curves_live_on_canvas_2026_11_10.md` (primário).
+- As fotos `../fotos/26_*` ficam como registo da vista recusada; o texto abaixo sobre Curves (acabamento `bd99e53549`, item 5) é HISTÓRICO.
 - Plano: [`17_plano_funcoes_novas.md`](../17_plano_funcoes_novas.md) — «Onda 2 — desenho medido» e «Onda 2 — respostas de produto» (dono 10/11 «escolha e siga»; ele pode vetar).
   Onda anterior: [`..._FUNCOES_ONDA1.md`](HANDOFF_CONTINUACAO_TimelinePrincipal_2026-11-10_FUNCOES_ONDA1.md).
 - Estado: código e testes por nome verdes (secção «Fecho»), **sem smoke do dono**. Maquetes: `../fotos/maquete_B1.png`, `_B2`, `_B4`, `_C3`, `_C4`.
@@ -20,12 +39,7 @@
   («Silhouette (Tint Fill)», «Per-corner Tint»). Flip nomeado «Flip image H/V» pela chave do Inspector (`nome_do_cartao`; portão sem pendentes).
 - `ph2d-app-components` ficou sob o teto (história verbatim em `docs/archive/integracao-jornadas/COMENTARIOS_CORTADOS_line_TimelinePrincipal_2026-11-10.md`).
 
-### Item 5 — Keys | Curves nos cartões
-- `TimelinePanelState.vista {Keys, Curves}` (sessão, não grava, não desfaz), ids `TIMELINE_VIEW_KEYS/_CURVES`, i18n `panel.timeline.view.{keys,curves}`.
-  `crates/ph2d-panel-timeline/src/curvas_vista.rs`. Segmentado na barra só na aba Keys; grafo grande pelo `paint_track`; curva escolhida cheia, secundárias
-  normalizadas 0–1 tracejadas no eixo direito (`TimelineTinta::CurvaSecundaria`); olho por linha esconde a curva; o twirl por linha da Keys FICA (resposta 1).
-  Curves volta a Keys ao mudar de aba/clipe/abrir a lista larga; 0/1 por `format_number`; dica do olho. `PH2D_CARDS=0`: sem botão.
-- Pisos OKLab 0,388 / 0,433. Testes: `curvas_vista_tests`, `tests/it/curves_view_seam.rs` (incl. `mudar_de_clipe_ou_abrir_a_lista_volta_a_keys`).
+### Item 5 — Keys | Curves — SUBSTITUÍDO pela onda 2b (vista recusada pelo dono; ver acima)
 
 ### Item 6 — chip → faixa
 - `TimelineHitKind::SourceChip{opcao}` (variante nova, append-only, em `ph2d-editor-core` `interaction/types.rs`) no lugar do `Button`; clique parado continua a escolher.
@@ -44,32 +58,26 @@
 ### Testes por nome — todos verdes
 - ph2d-app-components: `o_canal_diz_o_nome_do_campo_que_o_grava` (1), `marcas` (13).
 - ph2d-ecs: `canal_componente` (15). ph2d-panel-inspector: `seam_constraints` (14).
-- ph2d-panel-timeline: `the_channel_says_the_inspectors_word` (em `tracks_tests.rs`), `curves_view_seam` (5), `curvas_vista` (2), `graph` (27), `buffer` (6),
+- ph2d-panel-timeline: `the_channel_says_the_inspectors_word` (em `tracks_tests.rs`), `curves_on_canvas_seam` (4), `graph` (27), `buffer` (6),
   `tracks` (11), `chip_para_faixa` (4), `chip_drag` (2).
-- ph2d-app-motion: `motion_key_points` (5), `motion_path` (19). ph2d-render: `a_mistura_do_device_chega_ao_pixel` (3, não é `--ignored`). ph2d-tokens: `timeline_tinta` (2).
+- ph2d-app-motion: `motion_key_handles` (7), `motion_key_points` (5), `motion_path` (19). ph2d-render: `a_mistura_do_device_chega_ao_pixel` (3, não é `--ignored`). ph2d-tokens: `timeline_tinta` (2).
 - ph2d-editor-core: hr15, `architecture_panel_loc_cap`, `architecture_workspace_file_loc_cap`, `architecture_no_orphan_source_file`,
   `architecture_the_shell_only_shrinks`, `no_magic_numeric`, `no_literal_color`.
 - Shell: `project_schema`, `timeline_preview` (8), `animacao` (1). ph2d-app-constraints: `kill_w5` (`--ignored`, perfil smoke, 2).
 
 ### Mutações
-- `nome_do_cartao` → `None` sangra (`marcas_inspector_escritor_tests.rs:132`). `volta_a_keys` só pela lista sangra (`curves_view_seam.rs:211`). Ambas restauradas.
+- `nome_do_cartao` → `None` sangra (`marcas_inspector_escritor_tests.rs:132`). Ambas restauradas.
 
 ### fmt e clippy
 - clippy `-D warnings` das 16 crates da onda, e de novo ph2d-panel-timeline / ph2d-tokens / ph2d-host-desktop depois do acabamento: limpo. fmt limpo.
 
 ### Acabamento pela foto (`bd99e53549`)
-Defeitos que a foto 26 contra a B2 achou:
-- (a) A escala esquerda do grafo grande saía elidida («-3…» para «-320px»). `paint_track`/`paint_frame` recebem `label_w: Option<f32>`; `None` = escala DENTRO da banda
-  com a largura medida pelo texto (`label_column_width`); o grafo por linha passa `Some(label_w)`.
-- (b) O chip Store saía «St…» (largura fixa 38 contra o respiro de `label_budget`). Agora: o mínimo 38 ou a palavra mais larga de Store/Swap + 2×Md; no grafo grande
-  os chips ficam à esquerda do eixo direito 0–1 (`curvas_vista::eixo_direito_w`).
-- (c) A curva escolhida era azul como as secundárias. `TimelineTinta::CurvaPrincipal` (base KanbanPurpleBold, amostra `#B79CFF` da B2); piso OKLab sobre Bg0 medido
-  0,420 (Candy), o piso fica 0,33; legenda igual. O grafo por linha continua no `TimelineCurve`.
-- Cena `PH2D_ANIMACAO_SMOKE=1`: o clipe «pular» ganhou Position X (-3 → -1) para o caminho no canvas ser um arco (era uma linha vertical).
+- Mantido da parte Curves só: chips Store/Swap com a largura da palavra; resto (escala esquerda, `CurvaPrincipal`) saiu na 2b.
+- Cena `PH2D_ANIMACAO_SMOKE=1`: o clipe «pular» ganhou Position X (-3 → -1) para o caminho no canvas ser um arco.
 
 ### Fotos
 FOTO-HACK local revertido (`PH2D_FOTO_CURVES` em `paint.rs`, `PH2D_FOTO_CHIP` em `chip_drag::alveja`, `PH2D_FOTO_PULAR` em `animacao_smoke.rs`).
-- `../fotos/26_curves.png` + `26_lado_a_lado_curves.png` (B2).
+- `../fotos/26_curves.png` + `26_lado_a_lado_curves.png`: registo da vista RECUSADA. `../fotos/29_alcas_no_canvas.png`: alças (2b).
 - `../fotos/28_chave_no_canvas.png` + `28_lado_a_lado_c4.png` (C4).
 - `../fotos/27_chip_para_faixa.png` + `27_lado_a_lado_chip.png` (B4, agora na faixa VAZIA «Upper body»).
 
@@ -100,20 +108,13 @@ FOTO-HACK local revertido (`PH2D_FOTO_CURVES` em `paint.rs`, `PH2D_FOTO_CHIP` em
 - Tempo remapeado nos pontos do canvas = tempo da chave (como o onion).
 - Ciclos fundos no chip só são recusados pelo documento.
 
-## Smoke do dono
-Comando base: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TimelinePrincipal && <VAR>=<n> ./target/smoke/ph2d-host-desktop`
-1. **Curves** — `PH2D_ANIMACAO_SMOKE=1`. Na Timeline clique o clipe «pular», depois «Curves» (ao lado de «Keys», à direita da barra). Tem de aparecer: grafo grande,
-   Position X em lilás com os números inteiros à esquerda, Position Y tracejada azul com 0/1 à direita, botão «Store» inteiro. Arraste um ponto da curva lilás: a chave muda;
-   1 Ctrl+Z desfaz. O olho ao lado de «Position Y (px)» esconde a tracejada. Clique «andar»: volta a Keys.
-   Errado se: números cortados com «…», 2 Ctrl+Z para desfazer, ou continuar em Curves ao trocar de clipe.
-2. **Chave no canvas** — mesma cena, «pular» escolhido, aba Keys: no canvas um arco tracejado branco com 3 losangos. Arraste o losango do topo: o Herói vai junto e a chave muda;
-   a agulha não mexe; 1 Ctrl+Z desfaz. Errado se: a agulha salta, o Herói não acompanha, ou os losangos aparecem na aba Arrange.
-3. **Chip → faixa** — `PH2D_NEST_SMOKE=4`, aba Arrange. Arraste o chip «Idle pack» até a faixa «Upper body», depois do «swing»: aparece uma peça tracejada; solte e ela nasce.
-   Arraste de novo e solte abaixo de «FX»: nasce uma faixa nova com a peça; 1 Ctrl+Z desfaz as duas. Esc durante o arrasto cancela.
-   Errado se: um clique parado no chip deixa de o escolher, soltar fora da área cria algo, ou o Ctrl+Z deixa uma faixa vazia.
-4. **Opacity** — numa Sprite, a curva «Opacity» da Timeline mexe no «Opacity (%)» do Inspector (e o losango dele acende); apagar o pai apaga os filhos.
-   `PH2D_CONSTRAINT_SMOKE=13`: o cartão diz «Opacity». Errado se: o Inspector não mexe, os filhos continuam visíveis, ou o cartão diz «Tint».
-5. **Flip** — ponha uma chave no «Flip image» do Inspector: a linha na Timeline chama-se «Flip image H/V». Errado se aparecer um nome interno.
+## Smoke da 2b (itens 2–5 da onda 2 aprovados pelo dono)
+1. Comando: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-TimelinePrincipal && PH2D_ANIMACAO_SMOKE=1 ./target/smoke/ph2d-host-desktop`
+   Clique o clipe «pular» e marque «Edit curves on canvas» (à direita, em cima na Timeline). No canvas: o arco tracejado, os losangos das chaves e pontinhos rosa entre eles.
+   Arraste um pontinho para fora: o trecho entorta seguindo o ponteiro, o outro lado do trecho não mexe; dê play: o Herói percorre o arco torto. 1 Ctrl+Z desfaz.
+   Desmarque: os pontinhos somem (os losangos ficam). Na aba Arrange nada aparece no canvas.
+   Errado se: o arco não segue o ponteiro, o outro lado mexe, precisa de 2 Ctrl+Z, ou os pontinhos aparecem com a caixa desmarcada.
+2. A setinha ao lado de «Position Y (px)» ainda abre a curva daquela linha dentro da Timeline. Errado se não abrir.
 
 ## Próximo
-Onda 3 do plano 17 (item 8 quem ouve um sinal; item 9 Animating · Done), cada um aberto por uma investigação curta — só depois do smoke OK.
+Onda 3 do plano 17 (item 8 quem ouve um sinal; item 9 Animating · Done), cada um aberto por uma investigação curta — só depois do smoke OK da 2b.

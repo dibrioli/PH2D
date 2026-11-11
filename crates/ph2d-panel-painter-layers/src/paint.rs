@@ -48,9 +48,7 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
         // Painter closed while the brush colour picker was open → close it too,
         // else the floating picker lingers on the canvas. (Only ours — never the
         // Inspector's swatch target.)
-        if ctx.host.store().picker_target() == Some(core_ids::PAINTER_COLOR_THUMB) {
-            ctx.host.store_mut().set_picker_target(None);
-        }
+        crate::event::fecha_picker_do_painter(ctx.host.store_mut());
         ctx.host
             .store_mut()
             .clear_panel_rect(core_ids::PAINTER_LAYERS_PANEL);

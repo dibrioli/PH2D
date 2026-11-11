@@ -280,3 +280,41 @@ fn o_rgb_do_gradient_map_depois_de_tirar_a_ultima_paragem_mexe_a_paragem_vista()
         "the stop the panel shows"
     );
 }
+
+/// B39.3 (DF-76): closing the Painter closed only the brush-colour picker; a picker opened by any
+/// other Painter swatch (paper, ramp stop, shape layer, impasto…) stayed floating on the canvas.
+#[test]
+fn fechar_o_painter_fecha_o_seletor_de_qualquer_amostra_dele() {
+    use ph2d_editor_core::panel::{Panel, PanelHostInternal};
+    use ph2d_ui_testkit::MockPanelHost;
+    let sw = ph2d_tool_painter::ids::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB;
+    let mut host = MockPanelHost::with_panel::<crate::PainterLayersPanel>();
+    assert_eq!(
+        super::picker::try_toggle_shared_picker(&mut host, sw),
+        Some(true)
+    );
+    assert_eq!(host.store().picker_target(), Some(sw));
+    let fechado = |host: &mut MockPanelHost| {
+        let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 360.0, 800.0);
+        let layout = ph2d_editor_core::screens::HeroLayout::for_viewport(viewport);
+        let mut scene = ph2d_vector::VectorScene::new();
+        let mut text = ph2d_text::TextSystem::without_system_fonts();
+        host.set_panel_visible(crate::PainterLayersPanel::ID, false);
+        let mut ctx = ph2d_editor_core::panel::PaintCtx {
+            host,
+            layout: &layout,
+            slot: viewport,
+            viewport,
+            scene: &mut scene,
+            text_system: &mut text,
+        };
+        crate::paint::paint(&mut crate::PainterLayersPanelState, &mut ctx);
+    };
+    fechado(&mut host);
+    assert_eq!(host.store().picker_target(), None, "the Painter is closed");
+    // A picker the Painter did NOT open (the Inspector's) stays.
+    let alheio = ph2d_editor_core::ids::INSP_BLENDER_PICKER;
+    host.store_mut().set_picker_target(Some(alheio));
+    fechado(&mut host);
+    assert_eq!(host.store().picker_target(), Some(alheio));
+}

@@ -44,7 +44,7 @@ pub(crate) fn on_swatch_click(host: &mut dyn PanelHostInternal, id: NodeId, pos:
         ph2d_tokens::ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]),
     );
     store.set_widget_color(id, rgba);
-    store.set_picker_target(Some(id));
+    crate::event::abre_picker(store, id);
 }
 
 /// Com o picker apontado a esta amostra, encaminha a cor VIVA dele para a ferramenta — uma vez por

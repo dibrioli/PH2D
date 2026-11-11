@@ -27,6 +27,7 @@ mod impasto_picker;
 mod marca_picker;
 mod option_route;
 mod picker;
+pub(crate) use picker::{abre as abre_picker, fecha_o_do_painter as fecha_picker_do_painter};
 mod ramp_picker;
 mod shape_layer_picker;
 mod shape_ramp_picker;

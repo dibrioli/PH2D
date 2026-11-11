@@ -45,5 +45,5 @@ pub(super) fn on_swatch_click(host: &mut dyn PanelHostInternal, id: NodeId) {
         ph2d_tokens::ColorValue::from_rgba8(rgba[0], rgba[1], rgba[2], rgba[3]),
     );
     store.set_widget_color(id, rgba);
-    store.set_picker_target(Some(id));
+    super::picker::abre(store, id);
 }

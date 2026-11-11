@@ -272,8 +272,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.pivot" => "Pivot",
         "card.insp.pivot_px" => "Pivot (px)",
         "card.insp.shape_pivot_xy" => "Pivot from centre",
-        "card.insp.shape_color_reset_tip" => "Back to the layer color",
-        "card.insp.shape_opacity_reset_tip" => "Back to 100% opacity",
         "card.insp.pivot_nome_tip" => "Show the exact pivot position",
         "card.insp.pivot_in_editor" => "Edit in Animations",
         "card.insp.pivot_in_editor_tip" => {

@@ -67,8 +67,6 @@ pub fn aplica(
                 | PhysicsFieldEdit::LookPivotY(_)
                 | PhysicsFieldEdit::LookOpacity(_)
                 | PhysicsFieldEdit::LookTint(_)
-                | PhysicsFieldEdit::LookResetColor
-                | PhysicsFieldEdit::LookResetOpacity
         );
     };
     let h = meia_extensao(col.shape);
@@ -84,14 +82,6 @@ pub fn aplica(
         PhysicsFieldEdit::LookTint(c) => {
             l.tint = c;
             l.cor_propria = true;
-            None
-        }
-        PhysicsFieldEdit::LookResetColor => {
-            (l.tint, l.cor_propria) = (ShapeLook::default().tint, false);
-            None
-        }
-        PhysicsFieldEdit::LookResetOpacity => {
-            l.opacity = ShapeLook::default().opacity;
             None
         }
         _ => return false,

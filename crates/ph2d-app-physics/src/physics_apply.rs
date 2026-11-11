@@ -546,8 +546,6 @@ pub fn apply_physics_edit(
         | PhysicsFieldEdit::LookPivotY(_)
         | PhysicsFieldEdit::LookOpacity(_)
         | PhysicsFieldEdit::LookTint(_)
-        | PhysicsFieldEdit::LookResetColor
-        | PhysicsFieldEdit::LookResetOpacity
         | PhysicsFieldEdit::Kind(_)
         | PhysicsFieldEdit::GravityScale(_)
         | PhysicsFieldEdit::LinvelX(_)

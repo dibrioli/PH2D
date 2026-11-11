@@ -418,9 +418,6 @@ pub enum PhysicsFieldEdit {
     /// A opacidade (`0..=1`) e a cor do overlay da forma.
     LookOpacity(f32),
     LookTint([f32; 4]),
-    /// Os resets do Look: a cor volta à da camada; a opacidade a 100 %.
-    LookResetColor,
-    LookResetOpacity,
     /// **A tração desta superfície** (`W-Surface`) — escreve `WalkSurface.grip`.
     /// Só a lei do PLAYER a lê; um caixote não sabe que ela existe.
     WalkGrip(f32),
@@ -634,8 +631,6 @@ impl PhysicsFieldEdit {
                 | P::LookPivotY(_)
                 | P::LookOpacity(_)
                 | P::LookTint(_)
-                | P::LookResetColor
-                | P::LookResetOpacity
                 | P::WalkGrip(_)
                 | P::WalkBelt(_)
                 | P::Density(_)

@@ -113,9 +113,20 @@ pub(crate) fn grade(
     nome: Option<(NodeId, bool)>,
     aceso: Option<[u8; 2]>,
 ) -> f32 {
+    grade_de_lado(c, y, m::FIELD_H * 0.5 * CASAS_POR_LADO, pontos, nome, aceso)
+}
+
+/// A grade com o `lado` dado (o Look da forma: a altura dos campos X e Y juntos).
+pub(crate) fn grade_de_lado(
+    c: &mut CardCtx<'_>,
+    y: f32,
+    lado: f32,
+    pontos: &[NodeId; 9],
+    nome: Option<(NodeId, bool)>,
+    aceso: Option<[u8; 2]>,
+) -> f32 {
     let theme = c.ink.theme;
-    let casa = m::FIELD_H * 0.5;
-    let lado = casa * CASAS_POR_LADO;
+    let casa = lado / CASAS_POR_LADO;
     let caixa = Rect::new(c.x, y, lado, lado);
     ph2d_editor_core::paint::fill_rounded_rect(
         c.scene,

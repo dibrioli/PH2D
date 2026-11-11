@@ -141,8 +141,8 @@ fn a_cor_escolhida_no_seletor_chega_como_edicao() {
     sai();
 }
 
-/// ⭐ Dono 10/11: sem o «…», o «Pivot from centre» está sempre à vista (também num dos nove pontos), X por cima de Y
-/// e ao lado da grade.
+/// ⭐ Dono 10/11: sem o «…», o «Pivot from centre» está sempre à vista (também num dos nove pontos), X por cima de Y,
+/// ao lado da grade e da altura dela.
 #[test]
 fn os_campos_do_pivo_estao_sempre_a_vista_ao_lado_da_grade() {
     let (mut host, mut st) = cena(forma(ligado()), [1.0, 1.0]);
@@ -157,22 +157,17 @@ fn os_campos_do_pivo_estao_sempre_a_vista_ao_lado_da_grade() {
         (x.x - y.x).abs() < 0.5 && y.y > x.y + x.h * 0.5,
         "o Y por baixo do X: {x:?} {y:?}"
     );
+    // Dono 10/11: a grade tem a altura dos dois campos juntos (o canto de cima e o de baixo).
+    let fundo = achado(&r, INSP_SHAPE_PIVOT[6]).expect("o canto de baixo à esquerda");
+    assert!((g.y - x.y).abs() < 0.5, "a grade começa no X: {g:?} {x:?}");
+    let (fg, fy) = (fundo.y + fundo.h, y.y + y.h);
+    assert!((fg - fy).abs() < 0.5, "a grade acaba no Y: {fg} contra {fy}");
     sai();
 }
 
-/// Os dois resets: a Color volta à da camada, a Opacity a 100 %; e o chip não desce de 25 %.
+/// Sem botões de reset no Look da forma (dono 10/11: «retire esses botões»); o chip não desce de 25 %.
 #[test]
-fn os_resets_e_o_piso_da_opacidade() {
-    for (id, edit) in [
-        (INSP_SHAPE_TINT_RESET, E::LookResetColor),
-        (INSP_SHAPE_OPACITY_RESET, E::LookResetOpacity),
-    ] {
-        let (mut host, mut st) = cena(forma(ligado()), [1.0, 1.0]);
-        let r = pinta(&mut host, &mut st);
-        let q = achado(&r, id).expect("o reset");
-        assert_eq!(edicoes(&clica(&mut host, &mut st, q)), vec![edit]);
-        sai();
-    }
+fn sem_resets_e_o_piso_da_opacidade() {
     let (mut host, mut st) = cena(forma(ligado()), [1.0, 1.0]);
     let _ = pinta(&mut host, &mut st);
     let _ = host.drained_actions();

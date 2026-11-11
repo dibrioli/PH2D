@@ -14,7 +14,7 @@ use ph2d_editor_core::{PhysicsFieldEdit, ShapeLookFacts};
 use ph2d_i18n::tr;
 use ph2d_tool_registry::hash_node_id;
 
-use crate::cards_sprite_pivot::{NOMES_DO_PIVOT, grade};
+use crate::cards_sprite_pivot::{NOMES_DO_PIVOT, grade_de_lado};
 use crate::ids;
 
 /// O cartão.
@@ -45,9 +45,10 @@ fn corpo(c: &mut CardCtx<'_>, y: f32, f: ShapeLookFacts) -> f32 {
     let y = crate::cards_objeto::com_corpo(c, y, |t, theme, store, x, w, y| {
         crate::sections::look::paint_cor_da_forma(t.scene, t.text, theme, t.hit, store, x, w, y)
     });
-    // O Pivot (dono 10/11): a grade à esquerda e o «Pivot from centre» sempre à vista à direita, X por cima de Y.
-    let m = ph2d_card_stack::metrics::FIELD_H;
-    let lado = m * 0.5 * crate::cards_sprite_pivot::CASAS_POR_LADO;
+    // O Pivot (dono 10/11): a grade à esquerda, da altura dos campos X e Y juntos, e o «Pivot from centre» sempre à
+    // vista à direita, X por cima de Y.
+    use ph2d_card_stack::metrics::{FIELD_H as m, FIELD_ROW_GAP};
+    let lado = 2.0 * m + FIELD_ROW_GAP;
     let (x0, w0) = (c.x, c.w);
     c.w = lado;
     // O rótulo como o da Sprite: uma linha com «Pivot», e a grade pinta-se por cima da caixa dela.
@@ -55,7 +56,8 @@ fn corpo(c: &mut CardCtx<'_>, y: f32, f: ShapeLookFacts) -> f32 {
         &[Cell::new(Widget::Readout { text: "" }).label(tr("card.insp.pivot"))],
         y,
     );
-    let fim_grade = grade(c, fim_rotulo - m, &ids::INSP_SHAPE_PIVOT, None, f.ponto);
+    let pontos = &ids::INSP_SHAPE_PIVOT;
+    let fim_grade = grade_de_lado(c, fim_rotulo - m, lado, pontos, None, f.ponto);
     let folga = ph2d_tokens::Spacing::Md.px();
     (c.x, c.w) = (x0 + lado + folga, w0 - lado - folga);
     let (gx, gy) = (tr("card.glyph.x"), tr("card.glyph.y"));
@@ -129,16 +131,6 @@ pub(crate) fn prepara(host: &mut dyn PanelHostInternal) {
     for (id, nome) in ids::INSP_SHAPE_PIVOT.into_iter().zip(NOMES_DO_PIVOT) {
         crate::cards_sprite::botao(store, id, nome);
     }
-    crate::cards_sprite::botao(
-        store,
-        ids::INSP_SHAPE_TINT_RESET,
-        "card.insp.shape_color_reset_tip",
-    );
-    crate::cards_sprite::botao(
-        store,
-        ids::INSP_SHAPE_OPACITY_RESET,
-        "card.insp.shape_opacity_reset_tip",
-    );
     for id in ids::INSP_SHAPE_PIVOT_XY {
         store.mark_card_field(
             id,
@@ -215,12 +207,6 @@ pub(crate) fn evento(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
             // A semente é a cor que a amostra já mostra (a própria, ou a da camada): `prepara` espelha-a.
             host.store_mut().open_picker_on(id);
             return true;
-        }
-        WidgetEvent::Click(id) if id == ids::INSP_SHAPE_TINT_RESET => {
-            PhysicsFieldEdit::LookResetColor
-        }
-        WidgetEvent::Click(id) if id == ids::INSP_SHAPE_OPACITY_RESET => {
-            PhysicsFieldEdit::LookResetOpacity
         }
         WidgetEvent::Click(id) => {
             let Some(i) = ids::INSP_SHAPE_PIVOT.iter().position(|o| *o == id) else {

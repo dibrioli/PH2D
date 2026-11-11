@@ -172,7 +172,7 @@ impl PainterTool {
             && !brush.shape_silhouette_active(self.paint.shape_image.is_some())
             && self.color_ramp_owner(true) == RampLutOwner::None
             && !self.papel_como_grain()
-            && self.paint.po_do_papel.as_ref().is_none_or(Vec::is_empty)
+            && self.paint.po_do_papel.as_ref().is_none_or(|p| p.vazio())
             && !brush.taper.end_active()
             && brush.dual.is_none()
     }

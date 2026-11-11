@@ -1,43 +1,180 @@
 //! **O pó pousado** do traço ([`ph2d_painter_brush::texture::PoDoPapel`], dono 09/11): no 1.º lote de um traço cujo
 //! grão enche o dente ([`ph2d_painter_brush::GrainLaw::enche_o_dente`]), o alfa da camada no pen-down — a tela que o
 //! `before` do desfazer já segura — desfocado à escala de um vale ([`RAIO_DA_CAIXA`]). Imutável até o pen-up: a borracha, o desfazer e mover a camada
-//! ficam coerentes sem plano novo, e o que o próprio traço pousa só conta no traço seguinte.
+//! ficam coerentes sem plano novo, e o que o próprio traço pousa só conta no traço seguinte. Preguiçoso (B49.1): o 1.º
+//! lote guarda só o alfa; cada lote desfoca os ladrilhos [`LADO`]² da sua caixa que faltam ([`po_na_janela_do_alfa`]).
 
+use crate::compositor::Region;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::BrushSpec;
-use ph2d_painter_brush::texture::{PoDoPapel, RAIO_DA_CAIXA, caixa};
+#[cfg(test)]
+use ph2d_painter_brush::texture::caixa;
+use ph2d_painter_brush::texture::{PoDoPapel, RAIO_DA_CAIXA};
 use rayon::prelude::*;
 
-impl PainterTool {
-    /// Prepara o pó do traço para o pincel do lote, uma vez por traço; nada se o pincel não enche o dente.
-    pub(super) fn prepara_o_po(&mut self, brush: &BrushSpec, w: u32, h: u32) {
-        if self.paint.po_do_papel.is_some()
-            || !brush.texture.is_active()
-            || !brush.texture.lei.enche_o_dente()
-        {
+/// O lado (texels) do ladrilho do pó: desfocado inteiro na 1.ª leitura de um lote que o toca.
+pub(super) const LADO: usize = 256;
+
+/// O pó de UM traço: o alfa do pen-down e os ladrilhos já desfocados. `alfa` vazio = a camada não tinha tinta.
+#[derive(Clone, Default)]
+pub(crate) struct PoDoTraco {
+    alfa: Vec<u8>,
+    plano: Vec<u8>,
+    prontos: Vec<bool>,
+    w: usize,
+    h: usize,
+}
+
+impl PoDoTraco {
+    /// O pó do alfa `alfa` (`w`×`h`); vazio = nenhum pó (a camada sem tinta).
+    pub(super) fn do_alfa(alfa: Vec<u8>, w: usize, h: usize) -> Self {
+        if alfa.len() != w * h || !alfa.par_iter().any(|&a| a != 0) {
+            return Self::default();
+        }
+        let n = w.div_ceil(LADO) * h.div_ceil(LADO);
+        Self {
+            alfa,
+            plano: vec![0; w * h],
+            prontos: vec![false; n],
+            w,
+            h,
+        }
+    }
+
+    /// Nada a encher (a camada não tinha tinta no pen-down).
+    pub(super) fn vazio(&self) -> bool {
+        self.alfa.is_empty()
+    }
+
+    /// Desfoca os ladrilhos que tocam `caixa` e ainda faltam — numa janela só (a lei não tem história: o mesmo bit).
+    pub(super) fn garante(&mut self, caixa: Region) {
+        if self.vazio() {
             return;
         }
-        let (w, h) = (w as usize, h as usize);
-        let base = self
-            .tela_de_antes_do_traco(true)
-            .filter(|b| w > 0 && b.len() == w * h * 4);
-        let plano = base.map_or_else(Vec::new, |b| po_da_tela(&b, w, h));
-        self.paint.po_do_papel = Some(plano);
+        let (cx0, cy0) = (caixa.x as usize, caixa.y as usize);
+        let (cx1, cy1) = (
+            (cx0 + caixa.w as usize).min(self.w),
+            (cy0 + caixa.h as usize).min(self.h),
+        );
+        if cx0 >= cx1 || cy0 >= cy1 {
+            return;
+        }
+        let tw = self.w.div_ceil(LADO);
+        let (tx0, tx1, ty0, ty1) = (cx0 / LADO, (cx1 - 1) / LADO, cy0 / LADO, (cy1 - 1) / LADO);
+        let falta = |tx: usize, ty: usize| !self.prontos[ty * tw + tx];
+        let em_falta: Vec<(usize, usize)> = (ty0..=ty1)
+            .flat_map(|ty| (tx0..=tx1).map(move |tx| (tx, ty)))
+            .filter(|&(tx, ty)| falta(tx, ty))
+            .collect();
+        let Some(&(a, b)) = em_falta.first() else {
+            return;
+        };
+        let (mut fx0, mut fx1, mut fy0, mut fy1) = (a, a, b, b);
+        for &(tx, ty) in &em_falta {
+            (fx0, fx1, fy0, fy1) = (fx0.min(tx), fx1.max(tx), fy0.min(ty), fy1.max(ty));
+        }
+        let (x0, y0) = (fx0 * LADO, fy0 * LADO);
+        let (x1, y1) = (
+            ((fx1 + 1) * LADO).min(self.w),
+            ((fy1 + 1) * LADO).min(self.h),
+        );
+        let janela = po_na_janela_do_alfa(&self.alfa, self.w, self.h, (x0, y0, x1, y1));
+        for (tx, ty) in em_falta {
+            let (lx0, lx1) = (tx * LADO, ((tx + 1) * LADO).min(self.w));
+            for y in ty * LADO..((ty + 1) * LADO).min(self.h) {
+                let src = (y - y0) * (x1 - x0) + lx0 - x0;
+                self.plano[y * self.w + lx0..y * self.w + lx1]
+                    .copy_from_slice(&janela[src..src + lx1 - lx0]);
+            }
+            self.prontos[ty * tw + tx] = true;
+        }
+    }
+
+    /// Os texels já desfocados (o gate `o_po_so_toca_a_janela_do_traco`).
+    #[cfg(test)]
+    pub(super) fn texels_prontos(&self) -> usize {
+        let tw = self.w.div_ceil(LADO);
+        self.prontos
+            .iter()
+            .enumerate()
+            .filter(|&(_, &p)| p)
+            .map(|(i, _)| {
+                let (tx, ty) = (i % tw, i / tw);
+                (((tx + 1) * LADO).min(self.w) - tx * LADO)
+                    * (((ty + 1) * LADO).min(self.h) - ty * LADO)
+            })
+            .sum()
+    }
+
+    #[cfg(test)]
+    pub(super) fn plano(&self) -> &[u8] {
+        &self.plano
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    /// O «antes» da prancha B49: o pó da tela inteira pela soma corrida (`po_da_tela`), todo no 1.º lote.
+    pub(super) static COM_A_SOMA_CORRIDA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+impl PainterTool {
+    /// Prepara o pó do traço para o pincel do lote (o alfa uma vez por traço; nada se o pincel não enche o dente) e
+    /// desfoca os ladrilhos da `caixa` do lote (a pegada dos dabs) que ainda faltam.
+    pub(super) fn prepara_o_po(
+        &mut self,
+        brush: &BrushSpec,
+        w: u32,
+        h: u32,
+        caixa: Option<Region>,
+    ) {
+        if self.paint.po_do_papel.is_none() {
+            if !brush.texture.is_active() || !brush.texture.lei.enche_o_dente() {
+                return;
+            }
+            let (w, h) = (w as usize, h as usize);
+            let base = self
+                .tela_de_antes_do_traco(true)
+                .filter(|b| w > 0 && b.len() == w * h * 4);
+            let po = base.map_or_else(PoDoTraco::default, |b| {
+                let alfa = b.as_chunks::<4>().0.par_iter().map(|p| p[3]).collect();
+                #[cfg_attr(not(test), expect(unused_mut, reason = "o oráculo da prancha"))]
+                let mut po = PoDoTraco::do_alfa(alfa, w, h);
+                #[cfg(test)]
+                if COM_A_SOMA_CORRIDA.get() && !po.vazio() {
+                    po.plano = po_da_tela(&b, w, h);
+                    po.prontos.fill(true);
+                }
+                po
+            });
+            self.paint.po_do_papel = Some(po);
+        }
+        if let (Some(po), Some(c)) = (self.paint.po_do_papel.as_mut(), caixa) {
+            // + 1 texel: o arredondamento da pegada.
+            po.garante(Region {
+                x: c.x.saturating_sub(1),
+                y: c.y.saturating_sub(1),
+                w: c.w + 2,
+                h: c.h + 2,
+            });
+        }
     }
 }
 
 /// O pó do traço (o campo `po_do_papel`) numa tela de largura `w` (`None` = sem pó: o papel de sempre). Função do
 /// CAMPO, não do tool: as rotas seguram-no ao lado dos empréstimos mutáveis da tela.
-pub(super) fn po(plano: Option<&Vec<u8>>, w: u32) -> Option<PoDoPapel<'_>> {
-    plano.filter(|p| !p.is_empty()).map(|plano| PoDoPapel {
-        plano,
+pub(super) fn po(p: Option<&PoDoTraco>, w: u32) -> Option<PoDoPapel<'_>> {
+    p.filter(|p| !p.vazio()).map(|p| PoDoPapel {
+        plano: &p.plano,
         largura: w as usize,
     })
 }
 
+#[cfg(test)]
 /// Colunas por faixa do passe vertical: 32 somas corridas lado a lado (128 B por linha), sem transpor a tela.
 const FAIXA: usize = 32;
 
+#[cfg(test)]
 /// O pó da tela `rgba` (`w`×`h`): o alfa desfocado por três caixas em cada eixo; vazio se a camada não tem tinta.
 fn po_da_tela(rgba: &[u8], w: usize, h: usize) -> Vec<u8> {
     let px = rgba.as_chunks::<4>().0;
@@ -90,6 +227,7 @@ fn po_da_tela(rgba: &[u8], w: usize, h: usize) -> Vec<u8> {
     out
 }
 
+#[cfg(test)]
 /// [`caixa`] em cada uma das `l` colunas de `src` (`n`×`l`, linha a linha): a mesma soma corrida, na mesma ordem de
 /// `y`, por coluna — o mesmo bit que a caixa sobre a coluna transposta.
 fn caixa_em_faixa(src: &[f32], dst: &mut [f32], l: usize, r: usize) {
@@ -126,18 +264,23 @@ fn caixa_em_faixa(src: &[f32], dst: &mut [f32], l: usize, r: usize) {
     }
 }
 
-/// Passo 2 do B49.1 (lei por JANELA, sem história): a média de cada caixa soma os `≤ 2r+1` vizinhos em ordem crescente,
-/// de `0.0` — o bit de um texel não depende de onde a janela começa, e um ladrilho com apron `3r` dá o mesmo que a
-/// tela inteira. Muda raros `u8` face à soma corrida de [`po_da_tela`]: liga-se a `prepara_o_po` com a prancha.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "B49.1 passo 2: liga-se a prepara_o_po com a prancha"
-    )
-)]
+/// A rgba de `w`×`h` pela lei por janela ([`po_na_janela_do_alfa`] do seu alfa): os gates.
+#[cfg(test)]
 pub(super) fn po_na_janela(
     rgba: &[u8],
+    w: usize,
+    h: usize,
+    janela: (usize, usize, usize, usize),
+) -> Vec<u8> {
+    let alfa: Vec<u8> = rgba.as_chunks::<4>().0.iter().map(|p| p[3]).collect();
+    po_na_janela_do_alfa(&alfa, w, h, janela)
+}
+
+/// O pó da janela `[x0, x1)×[y0, y1)` do alfa `alfa` (`w`×`h`), lei por JANELA (sem história): a média de cada caixa
+/// soma os `≤ 2r+1` vizinhos em ordem crescente, de `0.0` — o bit de um texel não depende de onde a janela começa, e
+/// um ladrilho com apron `3r` dá o mesmo que a tela inteira (muda raros `u8` face à soma corrida de `po_da_tela`).
+pub(super) fn po_na_janela_do_alfa(
+    alfa: &[u8],
     w: usize,
     h: usize,
     (x0, y0, x1, y1): (usize, usize, usize, usize),
@@ -147,7 +290,6 @@ pub(super) fn po_na_janela(
     if x0 >= x1 || y0 >= y1 {
         return Vec::new();
     }
-    let px = rgba.as_chunks::<4>().0;
     // Linhas e colunas que a janela lê: 3 caixas = apron 3r, cortado à tela.
     let (ly0, ly1) = (y0.saturating_sub(3 * r), (y1 + 3 * r).min(h));
     let (lx0, lx1) = (x0.saturating_sub(3 * r), (x1 + 3 * r).min(w));
@@ -157,12 +299,12 @@ pub(super) fn po_na_janela(
     a.par_chunks_mut(lw).enumerate().for_each_init(
         || (Vec::new(), Vec::new()),
         |(f, g), (i, saida)| {
-            let src = &px[(ly0 + i) * w + lx0..(ly0 + i) * w + lx1];
-            if src.iter().all(|p| p[3] == 0) {
+            let src = &alfa[(ly0 + i) * w + lx0..(ly0 + i) * w + lx1];
+            if src.iter().all(|&a| a == 0) {
                 return;
             }
             f.clear();
-            f.extend(src.iter().map(|p| f32::from(p[3]) / 255.0));
+            f.extend(src.iter().map(|&a| f32::from(a) / 255.0));
             // Cada caixa estreita o domínio válido em r de cada lado (salvo na borda da tela).
             let mut ini = lx0;
             for passo in 0..3 {
@@ -236,6 +378,9 @@ fn media_em_janela(
     }
 }
 
+#[cfg(test)]
+#[path = "prancha_b49_tests.rs"]
+mod prancha;
 #[cfg(test)]
 #[path = "po_do_papel_tests.rs"]
 mod tests;

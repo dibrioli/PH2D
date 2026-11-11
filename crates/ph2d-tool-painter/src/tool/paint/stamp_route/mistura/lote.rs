@@ -18,7 +18,8 @@ impl PainterTool {
         h: u32,
     ) {
         let n4 = (w as usize) * (h as usize) * 4;
-        self.prepara_o_po(brush, w, h);
+        let caixa = super::super::super::region::dabs_bounds(dabs, w, h, brush.tip_reach());
+        self.prepara_o_po(brush, w, h, caixa);
         if self.mistura_meia_arma(brush, alpha_locked, n4) {
             self.stamp_dabs_mistura_meia(dabs, brush, w, h);
             return;
@@ -46,7 +47,8 @@ impl PainterTool {
         let mut sombra = std::mem::take(&mut self.paint.mistura_opaca.sombra);
         // A pegada real (Shape, Grain); o stream de RNG anda por dab como na rota normal.
         self.ensure_shape_ramp_lut();
-        self.prepara_o_po(brush, w, h);
+        let caixa = super::super::super::region::dabs_bounds(dabs, w, h, brush.tip_reach());
+        self.prepara_o_po(brush, w, h, caixa);
         let papel = self.papel_como_grain();
         let shape_tom = self.shape_tom_ativo();
         let shape_active = brush.shape_silhouette_active(self.paint.shape_image.is_some());

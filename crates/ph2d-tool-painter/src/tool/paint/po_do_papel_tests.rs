@@ -1,4 +1,5 @@
-use super::{po_da_tela, po_na_janela};
+use super::{LADO, PoDoTraco, po_da_tela, po_na_janela};
+use crate::compositor::Region;
 use ph2d_painter_brush::texture::{RAIO_DA_CAIXA, caixa};
 use rayon::prelude::*;
 
@@ -288,5 +289,117 @@ fn mede_o_ladrilho_do_po_a_4k() {
     eprintln!(
         "[po 4K] tela inteira: mín {:.2} · med {:.2} | 1 ladrilho 256²: mín {:.3} · med {:.3} | 2×2 ladrilhos: mín {:.3} · med {:.3} ms",
         tela_ms[0], tela_ms[4], lad[0], lad[4], quatro[0], quatro[4]
+    );
+}
+
+fn alfa_de(rgba: &[u8]) -> Vec<u8> {
+    rgba.as_chunks::<4>().0.iter().map(|p| p[3]).collect()
+}
+
+/// O pó preguiçoso só desfoca os ladrilhos que a caixa do lote toca, e o que desfoca é o da tela inteira ao bit; a
+/// tela sem tinta não tem pó; a tela toda garantida é a lei por janela inteira.
+#[test]
+fn o_po_so_toca_a_janela_do_traco() {
+    for (i, &(w, h, caixas)) in [
+        (
+            300usize,
+            200usize,
+            &[(10u32, 10u32, 20u32, 20u32), (250, 150, 50, 50)][..],
+        ),
+        (
+            1000,
+            700,
+            &[(500, 300, 60, 60), (240, 250, 40, 40), (999, 699, 1, 1)][..],
+        ),
+        (3840, 2160, &[(1900, 1000, 120, 90), (0, 0, 3, 3)][..]),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let rgba = tela(w, h, i as u32 + 31);
+        let inteira = po_na_janela(&rgba, w, h, (0, 0, w, h));
+        let mut po = PoDoTraco::do_alfa(alfa_de(&rgba), w, h);
+        assert!(!po.vazio());
+        let mut tocados = vec![false; w * h];
+        for &(x, y, cw, ch) in caixas {
+            po.garante(Region { x, y, w: cw, h: ch });
+            let (x0, y0) = (x as usize, y as usize);
+            let (x1, y1) = ((x0 + cw as usize).min(w), (y0 + ch as usize).min(h));
+            for ty in y0 / LADO..=(y1 - 1) / LADO {
+                for tx in x0 / LADO..=(x1 - 1) / LADO {
+                    for yy in ty * LADO..((ty + 1) * LADO).min(h) {
+                        for xx in tx * LADO..((tx + 1) * LADO).min(w) {
+                            tocados[yy * w + xx] = true;
+                        }
+                    }
+                }
+            }
+        }
+        let n = tocados.iter().filter(|&&t| t).count();
+        assert_eq!(
+            po.texels_prontos(),
+            n,
+            "{w}x{h}: desfocou fora dos ladrilhos da caixa"
+        );
+        assert!(
+            n < w * h || w * h <= LADO * LADO * 2,
+            "{w}x{h}: desfocou a tela inteira"
+        );
+        let mut dif = 0;
+        for (k, (&a, &b)) in po.plano().iter().zip(&inteira).enumerate() {
+            let esperado = if tocados[k] { b } else { 0 };
+            dif += usize::from(a != esperado);
+        }
+        assert_eq!(
+            dif, 0,
+            "{w}x{h}: {dif} texels do pó preguiçoso diferem da tela inteira"
+        );
+        po.garante(Region {
+            x: 0,
+            y: 0,
+            w: w as u32,
+            h: h as u32,
+        });
+        assert_eq!(po.texels_prontos(), w * h);
+        assert!(
+            po.plano() == inteira.as_slice(),
+            "{w}x{h}: a tela garantida não é a inteira"
+        );
+    }
+    assert!(PoDoTraco::do_alfa(vec![0; 12], 4, 3).vazio());
+}
+
+/// O pen-down 4K de um Pastel: a tela inteira (`po_da_tela`, o de antes) × o preguiçoso (o alfa + 1 caixa de dab de
+/// 120 px), intercalados: `--profile smoke`.
+#[test]
+#[ignore = "medição: cargo test --profile smoke -- --ignored mede_o_po_preguicoso_a_4k --nocapture"]
+fn mede_o_po_preguicoso_a_4k() {
+    use rayon::prelude::*;
+    let (w, h) = (3840usize, 2160usize);
+    let rgba = tela(w, h, 5);
+    let (mut antes, mut depois) = (Vec::new(), Vec::new());
+    let ms = |t0: std::time::Instant| t0.elapsed().as_secs_f64() * 1e3;
+    for _ in 0..9 {
+        let t0 = std::time::Instant::now();
+        let a = po_da_tela(&rgba, w, h);
+        antes.push(ms(t0));
+        let t0 = std::time::Instant::now();
+        let alfa = rgba.as_chunks::<4>().0.par_iter().map(|p| p[3]).collect();
+        let mut po = PoDoTraco::do_alfa(alfa, w, h);
+        po.garante(Region {
+            x: 1900,
+            y: 1000,
+            w: 122,
+            h: 122,
+        });
+        depois.push(ms(t0));
+        assert!(a.len() == w * h && po.plano().len() == w * h);
+    }
+    for v in [&mut antes, &mut depois] {
+        v.sort_by(f64::total_cmp);
+    }
+    eprintln!(
+        "[po 4K pen-down] tela inteira: mín {:.2} · med {:.2} | preguiçoso: mín {:.2} · med {:.2} ms",
+        antes[0], antes[4], depois[0], depois[4]
     );
 }

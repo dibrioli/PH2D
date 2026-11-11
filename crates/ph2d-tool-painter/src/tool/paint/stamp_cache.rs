@@ -150,7 +150,8 @@ impl PainterTool {
     ) {
         self.ensure_canvas_cache(brush, w, h);
         self.ensure_shape_ramp_lut();
-        self.prepara_o_po(brush, w, h);
+        let caixa = super::region::dabs_bounds(dabs, w, h, brush.tip_reach());
+        self.prepara_o_po(brush, w, h, caixa);
         let mut plano = self.undo.marca.toma_o_plano((w, h));
         // Disjoint borrows: the canvas (Arc), the cache (tex+ready), the imported images + the Shape
         // ramp LUT are all separate fields, so they can be held at once.
@@ -253,7 +254,8 @@ impl PainterTool {
         h: u32,
     ) {
         self.ensure_shape_ramp_lut();
-        self.prepara_o_po(brush, w, h);
+        let caixa = super::region::dabs_bounds(dabs, w, h, brush.tip_reach());
+        self.prepara_o_po(brush, w, h, caixa);
         let textured = brush.texture.is_active();
         let papel = self.papel_como_grain(); // a imagem do slot que faz de Grain (`dab_spec`)
         let image = if papel {

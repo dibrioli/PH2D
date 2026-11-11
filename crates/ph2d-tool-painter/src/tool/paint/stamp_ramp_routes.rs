@@ -107,7 +107,8 @@ impl PainterTool {
         w: u32,
         h: u32,
     ) {
-        self.prepara_o_po(brush, w, h);
+        let caixa = super::region::dabs_bounds(dabs, w, h, brush.tip_reach());
+        self.prepara_o_po(brush, w, h, caixa);
         let owner = self.color_ramp_owner(brush.texture.is_active());
         self.ensure_ramp_lut(owner);
         self.ensure_shape_ramp_lut();

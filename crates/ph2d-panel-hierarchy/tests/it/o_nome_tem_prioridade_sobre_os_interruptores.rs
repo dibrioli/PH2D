@@ -123,6 +123,17 @@ impl Mesa {
             .map(|(_, r)| *r)
     }
 
+    /// A linha `row` passa a escolhida (sem rato em lado nenhum).
+    fn escolhe(&mut self, row: NodeId) {
+        let ordem: Vec<NodeId> = (0..CENA.len()).map(id_de).collect();
+        let mut mapa: BTreeMap<_, _> = (0..CENA.len()).map(|i| (id_de(i), entidade(i))).collect();
+        mapa.get_mut(&row).expect("linha").selected = true;
+        ph2d_panel_hierarchy::sync_from_hierarchy(self.host.store_mut(), &ordem, mapa);
+        for _ in 0..30 {
+            let _ = self.pinta();
+        }
+    }
+
     fn aponta(&mut self, row: NodeId) {
         let r = self.rect(row).expect("linha pintada");
         let _ = self.host.dispatch_pointer_event(PointerEvent {
@@ -149,8 +160,8 @@ fn nome<'a>(medidos: &'a [Medido], texto: &str) -> &'a Medido {
 fn na_largura_do_dono_os_nomes_da_cena_do_jogo_saem_inteiros_sem_hover() {
     let mut mesa = Mesa::nova();
     let medidos = mesa.pinta();
-    // Medido 11/11 no piso (220): com os três interruptores o nome tinha 54 px («Collisio…»); sem
-    // eles, 102. ⚠️ «Collision Shape (6)» ainda não cabe no PISO: sai com «…» e o balão (abaixo).
+    // Medido 11/11 no piso (220): com os interruptores e o ícone de componente o nome tinha 54 px
+    // («Collisio…»); sem eles, 118 — «Collision Shape (6)» cabe.
     for i in [0, 1, 2, 3] {
         let m = nome(&medidos, CENA[i].0);
         eprintln!(
@@ -158,7 +169,7 @@ fn na_largura_do_dono_os_nomes_da_cena_do_jogo_saem_inteiros_sem_hover() {
             m.texto, m.largura, m.pintado
         );
         assert!(
-            i == 3 || m.coube(),
+            m.coube(),
             "{:?} saiu {:?} em {:.1} px",
             m.texto,
             m.pintado,
@@ -174,10 +185,47 @@ fn na_largura_do_dono_os_nomes_da_cena_do_jogo_saem_inteiros_sem_hover() {
         mesa.rect(core_ids::hier_eye_companion(id_de(4))).is_some(),
         "o olho FECHADO tem de ficar à vista sem hover"
     );
-    // O componente diz o que o objecto É: fica.
+    // Smoke do dono 11/11: em repouso, nenhum ícone de componente — nem no escondido.
+    for i in 0..CENA.len() {
+        for c in CENA[i].2 {
+            assert!(
+                mesa.rect(ids::hier_component_icon(id_de(i), *c)).is_none(),
+                "o ícone {c:?} da linha {:?} pinta-se sem hover",
+                CENA[i].0
+            );
+        }
+    }
+}
+
+/// Com o rato na Coin 1 voltam os quatro ícones de componente e os três interruptores, nas mesmas
+/// posições que a linha escolhida tem (todos juntos, nada desliza).
+#[test]
+fn com_hover_os_icones_de_componente_voltam_todos_nas_posicoes_de_sempre() {
+    let coin = id_de(2);
+    let todos: Vec<NodeId> = CENA[2]
+        .2
+        .iter()
+        .map(|c| ids::hier_component_icon(coin, *c))
+        .chain([
+            core_ids::hier_eye_companion(coin),
+            ids::hier_lock_companion(coin),
+            ids::hier_group_companion(coin),
+        ])
+        .collect();
+    let mut mesa = Mesa::nova();
+    mesa.aponta(coin);
+    let _ = mesa.pinta();
+    let com_hover: Vec<Option<Rect>> = todos.iter().map(|id| mesa.rect(*id)).collect();
+    let mut escolhida = Mesa::nova();
+    escolhida.escolhe(coin);
+    let de_sempre: Vec<Option<Rect>> = todos.iter().map(|id| escolhida.rect(*id)).collect();
     assert!(
-        mesa.rect(ids::hier_component_icon(id_de(0), C::Physics))
-            .is_some()
+        com_hover.iter().all(Option::is_some),
+        "faltou ícone com hover: {com_hover:?}"
+    );
+    assert_eq!(
+        com_hover, de_sempre,
+        "os ícones mudaram de sítio entre hover e escolha"
     );
 }
 

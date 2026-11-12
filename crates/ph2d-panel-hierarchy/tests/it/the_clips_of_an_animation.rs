@@ -128,6 +128,12 @@ fn a_cena_mostra_a_animacao_dela_e_o_clip_nao_mexe_na_seleccao() {
 #[test]
 fn o_icone_da_animacao_de_um_objecto_leva_a_timeline() {
     let (mut host, mut state) = host();
+    crate::rato::aponta(
+        &mut host,
+        &mut state,
+        Rect::new(0.0, 0.0, 1600.0, 900.0),
+        HEROI,
+    );
     click(
         &mut host,
         &mut state,

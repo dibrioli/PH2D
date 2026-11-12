@@ -309,22 +309,7 @@ fn dicas_da_linha(store: &mut WidgetStore, row: NodeId, e: Option<&HierarchyEnti
     }
 }
 
-/// O rato está sobre a linha ou sobre um dos ícones dela? (`hover_live` diz 1 a quem o relógio nunca viu.)
-/// ⚠️ Os ícones de componente contam: sem eles, o rato num deles apagava os interruptores e a linha
-/// mexia sob o dedo.
-fn sob_o_rato(store: &WidgetStore, id: NodeId, e: &HierarchyEntity) -> bool {
-    store.hot_id().is_some_and(|h| {
-        h == id
-            || core_ids::hier_expand_companion_to_row(h) == Some(id)
-            || core_ids::hier_eye_companion_to_row(h) == Some(id)
-            || core_ids::hier_lock_companion_to_row(h) == Some(id)
-            || core_ids::hier_group_companion_to_row(h) == Some(id)
-            || core_ids::hier_icon_companion_to_row(h) == Some(id)
-            || e.components
-                .iter()
-                .any(|c| ids::hier_component_icon(id, *c) == h)
-    })
-}
+use crate::row_name::under_pointer as sob_o_rato;
 
 /// O fundo de uma linha na largura inteira do cartão: à Kanban/Figma, sem moldura.
 fn fundo(c: &mut CardCtx<'_>, r: Rect, k: usize, e: &HierarchyEntity, id: NodeId) {

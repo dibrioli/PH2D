@@ -239,9 +239,12 @@ pub(crate) fn paint_hierarchy_row(
             right_x,
         );
     }
-    right_x = crate::row_components::paint_component_icons(
-        entity, rect, scene, ink, row_id, hit_index, right_x,
-    );
+    // Os ícones de componente seguem os interruptores: em repouso, nenhum (dono 11/11).
+    if crate::row_name::toggles_all_shown(entity) {
+        right_x = crate::row_components::paint_component_icons(
+            entity, rect, scene, ink, row_id, hit_index, right_x,
+        );
+    }
     if let Some(swatch) = entity.swatch {
         let sw = INLINE_ICON_PX;
         let sw_rect = Rect::new(right_x - sw, rect.y + (rect.h - sw) * 0.5, sw, sw);

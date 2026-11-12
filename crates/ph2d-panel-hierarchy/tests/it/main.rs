@@ -18,6 +18,7 @@ mod o_nome_tem_prioridade_sobre_os_interruptores;
 mod o_selo_de_uma_linha_cabe_no_selo;
 mod one_click_on_an_animated_sprite_row;
 mod os_cartoes;
+mod rato;
 mod seam;
 mod send_to_board_from_the_row;
 mod the_clips_of_an_animation;

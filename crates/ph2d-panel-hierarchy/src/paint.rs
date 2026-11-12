@@ -385,6 +385,8 @@ fn paint_hierarchy_body(
             && !search_active
             && crate::rows::is_collapsed(store, *id, entity_template);
         let mut entity = entity_template.clone();
+        entity.hovered =
+            entity.hovered || crate::row_name::under_pointer(store, *id, entity_template);
         let indent = (depth as f32) * indent_px;
         let direct_match = search_active && direct_match_mask.get(i).copied().unwrap_or(false);
         let row_rect = Rect::new(

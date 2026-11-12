@@ -102,6 +102,7 @@ fn click(host: &mut MockPanelHost, state: &mut HierarchyState, id: NodeId) -> Ve
 fn o_icone_de_um_componente_selecciona_o_objecto_e_pede_o_cartao() {
     let (mut host, mut state) = host_with_heroi();
     let icon = hier_component_icon(HEROI, ComponentCategory::Audio);
+    crate::rato::aponta(&mut host, &mut state, viewport(), HEROI);
     click(&mut host, &mut state, icon);
     let actions = host.drained_actions();
     assert!(

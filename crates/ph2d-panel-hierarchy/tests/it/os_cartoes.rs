@@ -729,6 +729,8 @@ fn arrastar_pela_coluna_do_olho_pinta_as_outras_linhas() {
 fn o_icone_de_componente_e_a_cena_respondem() {
     let mut mesa = Mesa::nova(4);
     let icone = ids::hier_component_icon(id_de(0), ComponentCategory::Physics);
+    // Em repouso a linha não pinta ícones de componente: o rato chega primeiro.
+    mesa.aponta(id_de(0));
     let got = mesa.clica(icone);
     assert!(
         got.contains(&seleciona(id_de(0), SelectModifier::Replace)),

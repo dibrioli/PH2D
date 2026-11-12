@@ -504,6 +504,52 @@ fn um_undo_confinado_so_sobe_a_versao_da_camada_que_mudou() {
     );
 }
 
+/// **Um undo NÃO confinado também só re-envia a camada que mudou** (auditoria 11/11): uma edição estrutural (a
+/// opacidade, a lei Wet da camada) subia a versão de TODAS as camadas — 33 MB por camada a 4K no Ctrl+Z.
+#[test]
+fn um_undo_nao_confinado_so_sobe_a_versao_da_camada_que_mudou() {
+    let mut t = armed(1024);
+    let baixo = t.layers.active().expect("camada de base");
+    let meio = t.add_raster_layer("meio").expect("camada do meio");
+    let topo = t.add_raster_layer("topo").expect("camada de cima");
+    stroke(&mut t, 200.0);
+    let before = t.snapshot_model();
+    t.set_layer_opacity(topo, 0.5);
+    {
+        let buf = std::sync::Arc::make_mut(&mut t.canvas_rgba);
+        for px in buf.as_chunks_mut::<4>().0.iter_mut().skip(600).take(40) {
+            px[0] = px[0].wrapping_add(37);
+        }
+    }
+    t.commit_structural_edit(before);
+    let _ = t.take_preview_arc();
+    let versao = |t: &PainterTool, id: crate::layers::LayerId| {
+        t.preview_layer_pixels(id.0).map(|(v, _, _)| v)
+    };
+    let antes: Vec<_> = [baixo, meio, topo]
+        .iter()
+        .map(|&id| versao(&t, id))
+        .collect();
+    assert!(
+        t.regiao_do_proximo_passo(false).is_none(),
+        "CONTROLO: a mudança de opacidade não é confinada"
+    );
+    assert!(t.undo_last());
+    let depois: Vec<_> = [baixo, meio, topo]
+        .iter()
+        .map(|&id| versao(&t, id))
+        .collect();
+    assert_ne!(
+        depois[2], antes[2],
+        "CONTROLO: a camada pintada tem de subir de versão"
+    );
+    assert_eq!(
+        (depois[0], depois[1]),
+        (antes[0], antes[1]),
+        "as camadas que o passo não tocou não sobem de versão"
+    );
+}
+
 /// **Um Ctrl+Z copia só os planos que o passo mudou** (B17b-cont). O `restore` reseta o journal no fim,
 /// então a captura do plano inteiro que a troca da tela fazia nele era jogada fora (debug/test: a rede).
 #[test]

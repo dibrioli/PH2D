@@ -139,7 +139,7 @@ impl PainterTool {
         }
     }
 
-    /// As camadas cujos píxeis um passo confinado pode trocar (B17.5): as duas ativas (a ativa lê a tela, que
+    /// As camadas cujos píxeis um passo pode trocar (B17.5): as duas ativas (a ativa lê a tela, que
     /// o re-carimbo do restauro reescreve) e as de `images` cujo `Arc` difere. As outras são o MESMO buffer
     /// nos dois lados: a versão delas fica, e a GPU não re-carrega a fatia. `None` = a pilha mudou: todas.
     fn camadas_que_o_passo_troca(
@@ -188,9 +188,9 @@ impl PainterTool {
         m: crate::undo::ModelSnapshot,
         confined: Option<(crate::compositor::Region, Vec<crate::compositor::Region>)>,
     ) {
-        let trocadas = confined
-            .as_ref()
-            .and_then(|_| self.camadas_que_o_passo_troca(&m));
+        // Confinado ou não: a camada cujo `Arc` é o mesmo nos dois lados tem os mesmos píxeis, e a fatia dela na
+        // placa continua certa (um Ctrl+Z não confinado a 4K subia 33 MB POR camada; a pilha que muda segue `None`).
+        let trocadas = self.camadas_que_o_passo_troca(&m);
         self.layers = m.layers;
         self.images = m.images;
         self.heights = m.heights;

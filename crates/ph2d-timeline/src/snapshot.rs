@@ -364,6 +364,8 @@ pub struct TimelineViewSnapshot {
     pub crumbs: Vec<(usize, String)>,
     /// The DOCUMENT index of the clip being edited — its row is [`Self::active_row`].
     pub active_clip: usize,
+    /// O container aberto NO LUGAR no Arrange (doc 17 item 10) — `crate::NoLugarView`.
+    pub no_lugar: Option<crate::NoLugarView>,
 }
 
 impl TimelineViewSnapshot {
@@ -555,65 +557,12 @@ impl TimelineViewSnapshot {
             |c| doc.container_loop(c),
         );
         self.lanes.clear();
-        for lane in host_lanes {
-            // ⚠️ **A costura é resolvida por LANE, uma vez** — e só sob um loop que ENVOLVE:
-            // sob ping-pong o playhead reflete, não há travessia da volta a desenhar.
-            let ctx = crate::stack::FadeCtx {
-                seam: if stack_ping {
-                    None
-                } else {
-                    lane.seam(stack_range)
-                },
-                reversed: doc.reverse_play(),
-            };
-            let seam = ctx.split_seam();
-            let mut strips = Vec::with_capacity(lane.strips.len());
-            for (i, st) in lane.strips.iter().enumerate() {
-                strips.push(StripView {
-                    id: st.id,
-                    // The strip's source names itself, whichever list it lives in — a
-                    // container strip that painted a blank label would read as a corrupt
-                    // clip strip rather than as what it is (ADR-0133).
-                    container: st.source.container_index().map(usize::from),
-                    clip_name: match st.source {
-                        crate::StripSource::Clip(i) => doc
-                            .clips()
-                            .get(i as usize)
-                            .map_or_else(String::new, |c| c.name.clone()),
-                        crate::StripSource::Container(i) => doc
-                            .containers()
-                            .get(i as usize)
-                            .map_or_else(String::new, |c| c.name.clone()),
-                    },
-                    t_start: st.t_start,
-                    t_end: st.t_end,
-                    blend_in: lane.blend_in(i),
-                    blend_out: lane.blend_out(i),
-                    lead_in: st.lead_in,
-                    lead_out: st.lead_out,
-                    marks: st.marks,
-                    ease_locked_in: lane.neighbour_reach_in(i) > 0.0,
-                    ease_locked_out: lane.neighbour_reach_out(i) > 0.0,
-                    // ⚠️ **A curva PUBLICADA é a efetiva do frame** — inclusive a direção:
-                    // com o relógio andando para trás o desenho decorativo tem de mostrar o
-                    // espelho, que é o que a pose faz. É por isso que o painel não precisa
-                    // saber da direção (Enio, 2026-08-01).
-                    curve_in: ctx.shape(lane.effective_curve(i, 0)),
-                    curve_out: ctx.shape(lane.effective_curve(i, 1)),
-                    seam: seam.and_then(|sm| sm.slice_for(i)),
-                    loop_mode: st.loop_mode,
-                    speed: st.speed,
-                    volta: st.volta(),
-                });
-            }
-            self.lanes.push(LaneView {
-                name: lane.name.clone(),
-                muted: lane.muted,
-                weight: lane.weight,
-                mode: lane.mode,
-                strips,
-            });
-        }
+        self.lanes.extend(
+            host_lanes
+                .iter()
+                .map(|l| crate::snapshot_lane::lane_view(doc, l, stack_range, stack_ping)),
+        );
+        self.no_lugar = crate::no_lugar::no_lugar_view(state, keys_mode);
 
         // Markers (reuse buffer).
         self.markers.clear();

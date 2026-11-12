@@ -234,6 +234,9 @@ pub struct TimelineState {
     /// looking. Session state; a document does not remember which container was open, exactly
     /// as Animate does not.
     pub edit_path: Vec<crate::EnterStep>,
+    /// **A instância de container aberta NO LUGAR** no Arrange (doc 17 item 10) — carimbada pela
+    /// shell a cada quadro, junto com [`Self::edit_path`]. Sessão; nunca gravada nem desfeita.
+    pub no_lugar: Option<crate::StripId>,
     /// **O onion da timeline** (ADR-0142): as configurações dos fantasmas de pose. Estado
     /// de VISTA como [`Self::flags`] — não serializado, nasce desligado. Fica FORA de
     /// `flags` porque tem `f32` (cores/opacidade) e `TimelineFlags` é `Eq`. O painel o

@@ -56,6 +56,7 @@ mod intent_apply_path;
 mod intent_seek;
 pub mod nest;
 pub mod nest_map;
+mod no_lugar;
 pub mod onion;
 pub mod path;
 pub mod path_convert;
@@ -71,6 +72,7 @@ pub mod record_fit;
 mod refusal;
 pub mod signal;
 pub mod snapshot;
+mod snapshot_lane;
 pub mod speed;
 pub mod sprite;
 pub mod stack;
@@ -130,6 +132,7 @@ pub use nest::{
 pub use nest_map::{
     ContainerMap, EnterStep, HostClock, clip_scene_map, entry_clock, entry_map, entry_reach,
 };
+pub use no_lugar::{InstanceMap, NoLugarLane, NoLugarStrip, NoLugarView, Volta, instance_map};
 pub use onion::{OnionMode, OnionSettings};
 pub use path::{MotionPath, PathAnchor, PathSample, TangentKind};
 pub use path_convert::{ConversionReport, PositionKeyMode};

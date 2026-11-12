@@ -47,9 +47,8 @@ use intent_settle::settle;
 pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: TimelineIntent) {
     use TimelineIntent as I;
     let fps = state.doc.fps_display;
-    // **Where a stack edit lands** — the document's own stack, or the interior of the
-    // container the animator has entered. Read ONCE, here, so every arm below routes through
-    // the same answer (ADR-0133 §5).
+    // **Where a stack edit lands** — the document's stack or the open container's interior.
+    // Read ONCE, here, so every arm routes through the same answer (ADR-0133 §5).
     let host = state.edit_host();
     match intent {
         I::Animation(a) => crate::animation_view::apply(state, playhead, a),
@@ -61,6 +60,9 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
         }
         // Já drenados por `take_runtime` (o relógio deles é o da cena); aqui não resta nada a fazer.
         I::RunScene | I::StopScene => {}
+        I::NoLugar { instancia, intent } => {
+            crate::no_lugar::aplicar(state, playhead, instancia, *intent)
+        }
         I::Scrub(t) => playhead.seek(snap(t, fps, state.flags.frame_snap)),
         I::SeekFrame(f) => playhead.seek_frame(f, fps),
         I::ScrubExact(t) => playhead.seek(t),

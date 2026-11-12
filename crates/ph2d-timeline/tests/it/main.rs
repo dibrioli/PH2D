@@ -61,6 +61,7 @@ mod nesting_data;
 mod nesting_leads;
 mod nesting_map;
 mod nesting_view;
+mod no_lugar;
 mod pingpong_scrub_exit;
 mod pingpong_tail_fade;
 mod prop_readback;

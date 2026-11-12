@@ -116,32 +116,57 @@ fn remap(x: f64, a0: f64, a1: f64, b0: f64, b1: f64) -> f64 {
 /// stack it LIVES in, `(u0, u1)` in the clock of what it READS — `None` when it is not a
 /// bijection (a wrap, a pose-length slice, a non-positive speed).
 fn window_of(s: &ClipStrip) -> Option<(f64, f64, f64, f64)> {
+    // A wrap that actually wraps has no inverse (module docs): só uma volta é bijecção.
+    match voltas_of(s).as_slice() {
+        [(t0, t1, u0, u1, _)] => Some((*t0, *t1, *u0, *u1)),
+        _ => None,
+    }
+}
+
+/// **Cada volta de uma fita** — `(t0, t1, u0, u1, invertida)`: `[t0, t1]` no relógio da pilha onde
+/// ela mora, `[u0, u1]` no do que ela LÊ (`u1 < u0` numa volta de ida-e-volta invertida). Vazio
+/// quando não há eixo (fatia-pose, velocidade ≤ 0). A ÚNICA conta do mapa de uma fita:
+/// [`window_of`] é o caso de uma volta só, e `crate::instance_map` lê todas.
+pub(crate) fn voltas_of(s: &ClipStrip) -> Vec<(f64, f64, f64, f64, bool)> {
     let (span, slice) = (s.span(), s.slice());
     if span <= 0.0 || slice <= 0.0 || s.speed <= 0.0 {
         // A zero-length slice is a POSE (`ClipStrip::fold` says so), and a pose has no axis
         // to scrub along. A non-positive speed is the same degeneracy from the other side.
-        return None;
+        return Vec::new();
     }
     // Timeline seconds one full pass through the slice takes.
     let pass = slice / s.speed;
-    match s.loop_mode {
+    if s.loop_mode == StripLoop::Once {
         // `Once` CLAMPS past the slice, so the tail holds a still frame: the moving part is
         // the window, and the hold is honestly outside it.
-        StripLoop::Once => {
-            let t1 = s.t_start + pass.min(span);
-            Some((
-                s.t_start,
-                t1,
-                s.src_in,
-                s.src_in + (t1 - s.t_start) * s.speed,
-            ))
-        }
-        // A wrap that actually wraps has no inverse (module docs). One that does not reach
-        // its own end never folds, so it is the `Once` case wearing another name.
-        StripLoop::Loop | StripLoop::PingPong => {
-            (span <= pass).then_some((s.t_start, s.t_end, s.src_in, s.src_in + span * s.speed))
-        }
+        let t1 = s.t_start + pass.min(span);
+        let u1 = s.src_in + (t1 - s.t_start) * s.speed;
+        return vec![(s.t_start, t1, s.src_in, u1, false)];
     }
+    // Uma fita que não chega ao fim da fatia nunca dobra: é o `Once` com outro nome.
+    if span <= pass {
+        return vec![(
+            s.t_start,
+            s.t_end,
+            s.src_in,
+            s.src_in + span * s.speed,
+            false,
+        )];
+    }
+    let mut out = Vec::new();
+    let mut k = 0_usize;
+    while (k as f64) * pass < span {
+        let t0 = s.t_start + (k as f64) * pass;
+        let t1 = (t0 + pass).min(s.t_end);
+        let len = (t1 - t0) * s.speed;
+        out.push(if s.loop_mode == StripLoop::PingPong && k % 2 == 1 {
+            (t0, t1, s.src_out, s.src_out - len, true)
+        } else {
+            (t0, t1, s.src_in, s.src_in + len, false)
+        });
+        k += 1;
+    }
+    out
 }
 
 /// The entry strip one [`EnterStep`] names, verified to actually PLAY the container it

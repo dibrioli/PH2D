@@ -214,3 +214,30 @@ mudança laranja some no Done; trocar de clipe/aba = Done.
   load, que só transporta a seleção de campo; passa agora `Some(&field_selection_mark())`, como um passo de undo.
 - **O Done funciona com a agulha a tocar** (defeito do smoke): tocar é gesto e desfazia o Done no mesmo quadro.
   `take_done(para)` corre ANTES da `sessao` e pausa a agulha; teste `done_while_playing_stays_done` (mutação sangra).
+
+## Onda 4 — desenho medido (11/11; maquete [C2](fotos/maquete_C2.png))
+
+### 10 — Container aberto no lugar (C2)
+
+**Medido (leitura do código):** entrar troca a folha inteira (`EnterStep` em `nest_map.rs:53`, pilha `OPEN_CONTAINER` em
+`state.rs:40`; `edit_host()` escolhe UMA pilha por quadro a partir do `edit_path` que a shell carimba em
+`fase_timeline_view.rs:123`). A fita de instância (`StripView`) não traz o interior; o mapa de uma fita (`window_of`,
+`nest_map.rs:118`, velocidade, recorte, loop) é privado. Nenhuma intenção leva caminho de container. Irmãs = o mesmo
+`StripSource::Container(u16)`. A cena `PH2D_NEST_SMOKE=4` já é a montagem da maquete (Run & jump 2×, idle, swing, shake mudo).
+
+**Desenho (estado da arte: Harmony symbol, Unity sub-timeline, Premiere nest):**
+- **Abrir:** no Arrange dos cartões, o clique no corpo de uma instância de container escolhe a peça (item 1) e ABRE-a no
+  lugar; a peça aberta é derivada da escolhida (um estado só, sem dessincronia). Esc, clique no vazio ou noutra peça fecha.
+  `PH2D_CARDS=0` como hoje.
+- **Modelo:** `TimelineState.no_lugar: Option<StripId>` (sessão, carimbado com o `edit_path` na MESMA linha da shell);
+  o snapshot publica `no_lugar: Option<NoLugarView>` — a instância, a lane dela, o nome do container, a janela na cena
+  (a pílula «plays a – b»), as lanes de dentro (nome, peso, mudo) com as fitas JÁ no tempo da cena para a aberta e para
+  cada irmã da MESMA lane (esmaecidas), e o loop do container no tempo da cena.
+- **Editar dentro:** `TimelineIntent::NoLugar { instancia, intent: Box<…> }` — o modelo resolve o mapa da instância
+  (público agora: `instance_map`), converte tempos (ponto = afim, duração = escala) e aplica na pilha do container. O
+  painel pinta e arrasta em tempo de cena; a conversão mora num sítio só e tem teste. Editar uma muda as irmãs (é a
+  mesma peça, como o symbol).
+- **Pintura:** as lanes de dentro entram logo abaixo da lane da instância, recuadas; moldura laranja só na janela da
+  aberta; irmãs em cinza com a dica «Same piece: what you change here changes here too»; o caminho mostra
+  «Scene › Run & jump» com o chip aceso; a barra do loop é a do container (arrastar = `SetContainerLoop` embrulhado).
+- **Shell:** zero linhas novas (o carimbo vira uma linha só).

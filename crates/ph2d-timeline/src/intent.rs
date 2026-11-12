@@ -1,17 +1,11 @@
-//! [`TimelineIntent`] — the panel→runtime command channel: **what the panel is
-//! allowed to ask for**, and nothing about what happens next.
-//! Its interpreter lives in the sibling [`crate::intent_apply`]: everyone who drives the panel reads
-//! the vocabulary, and only whoever changes what an edit does reads the router.
-//! The panel never mutates the document directly: it emits intents, the bridge
-//! drains them through [`crate::apply_intent`], and re-reads a snapshot. This
-//! keeps the panel free of document/undo semantics (mirrors the vector/motion
-//! bridges), and — because `apply_intent` is pure over `(state, playhead)` — every
-//! gesture is headless-testable without any UI (DIRETIVA: the seam test is the
-//! deliverable).
+//! [`TimelineIntent`] — the panel→runtime command channel: **what the panel is allowed to ask
+//! for**, and nothing about what happens next; the interpreter is [`crate::intent_apply`].
+//! The panel never mutates the document directly: it emits intents, the bridge drains them
+//! through [`crate::apply_intent`] — pure over `(state, playhead)`, so every gesture is
+//! headless-testable (DIRETIVA: the seam test is the deliverable).
 //!
-//! Each **document-mutating** intent is one undo step (history `begin` →
-//! `commit_if_changed`), so a no-op edit never pollutes the stack. Selection,
-//! transport and flag intents are not undoable.
+//! Each **document-mutating** intent is one undo step (history `begin` → `commit_if_changed`),
+//! so a no-op edit never pollutes the stack. Selection, transport and flag intents are not.
 
 use ph2d_anim::{AnimTarget, AnimValue, Easing, Extrap, ExtrapSide, Interp, KeyId, RationalTime};
 
@@ -638,13 +632,10 @@ pub enum TimelineIntent {
     /// A strip's playback rate, stated as a number rather than felt as a drag —
     /// the same edit [`Self::StretchStrip`] makes, from the other end.
     ///
-    /// The slice is held and the span is re-derived (`span = slice / speed`), with
-    /// `t_start` pinned. Setting the rate and stretching therefore mean the SAME
-    /// thing about the strip; a setter that moved the rate without the span would
-    /// leave the strip playing a slice that no longer fits it — the source would
-    /// run out mid-span (or overrun), and the number in the menu would describe a
-    /// strip nobody authored. `1.0` restores real time, which is the menu's
-    /// "Reset Speed".
+    /// The slice is held and the span is re-derived (`span = slice / speed`), with `t_start`
+    /// pinned: setting the rate and stretching mean the SAME thing. A setter that moved the rate
+    /// without the span would leave a slice that no longer fits — the source would run out
+    /// mid-span (or overrun). `1.0` restores real time, the menu's "Reset Speed".
     SetStripSpeed {
         /// Index into the stack.
         lane: usize,
@@ -696,5 +687,13 @@ pub enum TimelineIntent {
         edge: u8,
         /// The easing, or `None` for the factory `smoothstep`.
         curve: Option<Easing>,
+    },
+    /// **Uma edição DENTRO do container aberto no lugar** (doc 17 item 10): `intent` vem no tempo da
+    /// CENA; o modelo converte-o pelo [`crate::instance_map`] e aplica-o na pilha do container.
+    NoLugar {
+        /// A instância aberta — uma fita da pilha da cena.
+        instancia: StripId,
+        /// Uma edição de fita, de lane ou o loop do container; outra qualquer é ignorada.
+        intent: Box<TimelineIntent>,
     },
 }

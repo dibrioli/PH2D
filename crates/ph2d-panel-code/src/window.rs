@@ -3,6 +3,10 @@
 //! vista, nunca os primeiros: o cursor no fim de uma linha colada de 64 KB vê o fim dela.
 //!
 //! A janela começa num degrau de colunas (`cap / 8`): rolar dentro do degrau não volta a moldar.
+//! ⛔ O tecto é do QUADRO, mas a janela cobre SEMPRE as colunas à vista e o degrau: numa linha densa
+//! (CJK 3 B, emoji 4 B por coluna) 2 000 B são 500–666 colunas, e o degrau (250) comia metade — a
+//! vista larga ficava com um troço por pintar e o fim não se pintava. O tecto efectivo é então
+//! `max(cap, bytes de degrau + vista)`, o custo de pintar o que está à vista (que não se corta).
 //! O x do início da janela é a coluna de ecrã dele vezes o avanço da mono — a mesma conta do
 //! cursor fora da cache (`CodeView::x_in_line`), sem moldar o prefixo.
 
@@ -23,21 +27,21 @@ pub(crate) struct Window {
 #[derive(Default)]
 pub(crate) struct WindowMemo {
     rev: u64,
-    seen: Vec<((usize, usize, usize, usize), Window)>,
+    seen: Vec<((usize, usize, usize, usize, usize), Window)>,
 }
 
 /// Quantas janelas a memória guarda (as filas cortadas à vista de um quadro cabem folgadas).
 const MEMO_MAX: usize = 256;
 
 impl WindowMemo {
-    /// A janela da linha `line` (`ls..le`) para a coluna esquerda à vista `left`. Uma linha que cabe
-    /// no tecto mostra-se inteira.
+    /// A janela da linha `line` (`ls..le`) para a vista `(left, cols)`: a coluna esquerda e quantas
+    /// colunas se vêem. Uma linha que cabe no tecto mostra-se inteira.
     pub fn window(
         &mut self,
         t: &Text,
         rev: u64,
         line: usize,
-        left: usize,
+        (left, cols): (usize, usize),
         cap: usize,
         tab: usize,
     ) -> Window {
@@ -50,7 +54,7 @@ impl WindowMemo {
             };
         }
         let step = (cap / 8).max(1);
-        let key = (line, left / step * step, cap, tab);
+        let key = (line, left / step * step, cols, cap, tab);
         if self.rev != rev {
             self.rev = rev;
             self.seen.clear();
@@ -58,7 +62,7 @@ impl WindowMemo {
         if let Some(w) = self.seen.iter().find(|s| s.0 == key).map(|s| s.1) {
             return w;
         }
-        let w = resolve(t, ls, le, key.1, cap, tab);
+        let w = resolve(t, ls, le, key.1, step + cols, cap, tab);
         if self.seen.len() >= MEMO_MAX {
             self.seen.clear();
         }
@@ -67,12 +71,26 @@ impl WindowMemo {
     }
 }
 
-fn resolve(t: &Text, ls: usize, le: usize, col0: usize, cap: usize, tab: usize) -> Window {
+fn resolve(
+    t: &Text,
+    ls: usize,
+    le: usize,
+    col0: usize,
+    span: usize,
+    cap: usize,
+    tab: usize,
+) -> Window {
     let line = t.line_of_byte(ls);
+    let first = t.byte_at_display_col(line, col0, tab);
+    // O tecto cobre o degrau e a vista inteira (a vista no fim leva-o até ao fim da linha).
+    let cap = cap.max(t.byte_at_display_col(line, col0 + span, tab) - first);
     // Perto do fim a janela recua para levar o tecto inteiro, a acabar no fim da linha.
-    let start = t
-        .byte_at_display_col(line, col0, tab)
-        .min(grapheme_at_or_after(t, ls, le, le - cap));
+    let start = first.min(grapheme_at_or_after(
+        t,
+        ls,
+        le,
+        le.saturating_sub(cap).max(ls),
+    ));
     let end = if le - start > cap {
         grapheme_at_or_before(t, start, start + cap)
     } else {

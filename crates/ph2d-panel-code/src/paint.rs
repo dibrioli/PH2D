@@ -147,7 +147,9 @@ impl CodeView {
         rows.clear();
         self.folds.clear();
         let cap = self.render_cap.max(1);
-        let left = (self.scroll_x / self.m.advance.max(f32::EPSILON)).max(0.0) as usize;
+        let adv = self.m.advance.max(f32::EPSILON);
+        let left = (self.scroll_x / adv).max(0.0) as usize;
+        let cols = (self.text_rect().w / adv).ceil() as usize + 1;
         let rev = buffer.revision();
         let mut r = span.start;
         while r < span.end {
@@ -165,7 +167,9 @@ impl CodeView {
                 while i < n {
                     let line = first + i;
                     let (ls, le) = (t.byte_of_line(line), t.line_end(line));
-                    let w = self.windows.window(t, rev, line, left, cap, self.tab);
+                    let w = self
+                        .windows
+                        .window(t, rev, line, (left, cols), cap, self.tab);
                     block.push((r + i, ls, le, w));
                     i += 1;
                     if w.start > ls || w.end < le {

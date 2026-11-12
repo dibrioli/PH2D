@@ -148,7 +148,7 @@ fn colunas_da(v: &CodeView, buf: &Buffer, line: usize) -> Vec<(ph2d_panel_code::
 fn a_selecao_ate_ao_fim_da_linha_cortada_para_no_corte_sem_meia_coluna() {
     let (mut buf, line) = longa();
     let (mut v, mut ts) = (CodeView::new(), ts());
-    // Um tecto menor que a vista: o corte cai DENTRO dela (no app, bytes densos por coluna).
+    // Um tecto menor que a vista: a janela leva a vista e o degrau, e o corte cai logo depois dela.
     v.set_render_cap(60);
     let area = area_para(&mut v, &buf, &mut ts, 10);
     let t = buf.text();
@@ -187,7 +187,7 @@ fn a_selecao_ate_ao_fim_da_linha_cortada_para_no_corte_sem_meia_coluna() {
 fn a_linha_dobrada_e_cortada_mostra_um_so_fecho() {
     let (buf, line) = longa();
     let (mut v, mut ts) = (CodeView::new(), ts());
-    // Um tecto menor que a vista: o corte cai DENTRO dela (no app, bytes densos por coluna).
+    // Um tecto menor que a vista: a janela leva a vista e o degrau, e o corte cai logo depois dela.
     v.set_render_cap(60);
     let area = area_para(&mut v, &buf, &mut ts, 10);
     let d = Deco {
@@ -209,29 +209,83 @@ fn a_linha_dobrada_e_cortada_mostra_um_so_fecho() {
     assert_eq!(depois.len(), 1, "um só «…» depois do corte: {depois:?}");
 }
 
-/// ⛔ O clique fora da janela pintada de uma linha longa com caracteres largos (CJK, emoji, cuja
-/// largura moldada não é a da conta da mono): logo depois do corte cai DEPOIS do último byte
-/// pintado, nunca dentro da janela. (O corte esquerdo nunca está à vista: a janela começa na
-/// coluna esquerda ou antes dela.)
+/// ⛔ Com caracteres largos (CJK, emoji, cuja largura moldada não é a da conta da mono) e um tecto
+/// menor que a vista, o corte nunca fica À VISTA (a janela cobre as colunas à vista): o clique na
+/// borda direita cai num byte pintado, e logo depois do corte já é fora do texto. (O corte esquerdo
+/// também não: a janela começa na coluna esquerda ou antes dela.)
 #[test]
-fn o_clique_logo_fora_do_corte_com_caracteres_largos_cai_do_lado_certo() {
+fn o_corte_com_caracteres_largos_fica_fora_da_vista_e_a_borda_cai_dentro() {
     let l = format!("local s = \"{}\"", "中文字😀".repeat(2048));
     let buf = Buffer::new(&format!("local a = 1\n{l}\nlocal b = 2"));
     let line = 1;
     let (mut v, mut ts) = (CodeView::new(), ts());
-    // Um tecto menor que a vista: o corte cai DENTRO dela (no app, bytes densos por coluna).
     v.set_render_cap(60);
     let area = area_para(&mut v, &buf, &mut ts, 10);
     pinta(&mut v, &buf, &mut ts, area, &Deco::default());
-    let adv = v.metrics().advance;
+    let (adv, tr) = (v.metrics().advance, v.text_rect());
     let cols = colunas_da(&v, &buf, line);
     let (ultima, mid) = *cols.last().expect("a janela pinta-se");
     assert!(
         ultima.byte + 64 < buf.text().line_end(line),
         "cortada à direita"
     );
-    match v.hit(&buf, ultima.x1 + adv * 0.75, mid) {
-        Hit::Text(b) => assert!(b > ultima.byte, "{b} depois de {}", ultima.byte),
+    assert!(
+        ultima.x1 >= tr.x + tr.w,
+        "o corte {ultima:?} fora da vista {tr:?}"
+    );
+    match v.hit(&buf, tr.x + tr.w - adv * 0.5, mid) {
+        Hit::Text(b) => assert!(b <= ultima.byte, "{b} dentro da janela até {}", ultima.byte),
         h => panic!("{h:?}"),
+    }
+    assert!(matches!(
+        v.hit(&buf, ultima.x1 + adv * 0.75, mid),
+        Hit::Outside
+    ));
+}
+
+/// ⛔ **Uma linha DENSA (emoji 4 B, CJK 3 B por coluna) numa vista LARGA**: o tecto de 2 000 B são
+/// 500–666 colunas e o degrau da janela comia metade — no meio ficava um troço à vista por pintar e
+/// no fim o fim não se pintava. A janela cobre as colunas à vista, no meio e no fim.
+#[test]
+fn a_linha_densa_numa_vista_larga_pinta_a_vista_inteira_no_meio_e_no_fim() {
+    for unidade in ["😀", "中"] {
+        let l = unidade.repeat((64 << 10) / unidade.len());
+        let mut buf = Buffer::new(&format!("local a = 1\n{l}\nlocal b = 2"));
+        let line = 1;
+        let (mut v, mut ts) = (CodeView::new(), ts());
+        let mut area = area_para(&mut v, &buf, &mut ts, 10);
+        area.w = 8000.0;
+        let t = buf.text();
+        let (ls, le) = (t.byte_of_line(line), t.line_end(line));
+        let meio = t.floor_char((ls + le) / 2);
+        for alvo in [meio, le] {
+            buf.set_selection(Selection::single(Range::cursor(alvo)));
+            pinta(&mut v, &buf, &mut ts, area, &Deco::default());
+            v.ensure_visible(&buf, alvo);
+            pinta(&mut v, &buf, &mut ts, area, &Deco::default());
+            let t = buf.text();
+            let tr = v.text_rect();
+            let m = v.metrics();
+            let vistas = (tr.w - m.text_pad) / m.advance;
+            assert!(vistas > 700.0, "a vista é larga: {vistas} colunas");
+            let esq = coluna_em(&v, tr.x + m.text_pad);
+            let ultima_col = t.display_col(t.prev_grapheme(le), TAB);
+            let dir = coluna_em(&v, tr.x + tr.w - 1.0).min(ultima_col);
+            let cols = colunas_da(&v, &buf, line);
+            let (a, b) = (
+                cols.first().expect("pinta-se").0,
+                cols.last().expect("pinta-se").0,
+            );
+            let (ca, cb) = (t.display_col(a.byte, TAB), t.display_col(b.byte, TAB));
+            assert!(
+                ca <= esq && cb >= dir,
+                "{unidade} em {alvo}: a vista {esq}..={dir} e a janela pinta {ca}..={cb}"
+            );
+            // A janela começa antes (ou na) coluna esquerda: o «…» do corte esquerdo fica fora.
+            assert!(ca <= esq);
+            if alvo == le {
+                assert_eq!(t.next_grapheme(b.byte), le, "{unidade}: o fim pinta-se");
+            }
+        }
     }
 }

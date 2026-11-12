@@ -105,7 +105,8 @@ pub struct CodeView {
 /// ⛔ **Os bytes de uma linha que a pintura mostra** — o resto acaba num «…». ⚠️ **De que recurso
 /// é:** do QUADRO (preparar, colorir, moldar e pôr na cena cada fila à vista custa a fila inteira).
 /// Medido (`docs/CodeEditor/02_onda1.md` §Medições do fecho, C): 40 filas à vista, todas no tecto,
-/// custam 1.97 ms parado e 2.53 ms a moldar; a 10 000 B já 8.9/11.3 ms.
+/// custam 1.97 ms parado e 2.53 ms a moldar; a 10 000 B já 8.9/11.3 ms. É o PISO por fila: a janela
+/// leva sempre as colunas à vista e o degrau ([`crate::window`]) — o que se vê não se corta.
 pub const LINE_RENDER_BYTES_MAX: usize = 2_000;
 
 impl Default for CodeView {

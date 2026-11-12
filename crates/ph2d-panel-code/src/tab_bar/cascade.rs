@@ -1,6 +1,6 @@
 //! A posição dos menus na janela e o rato sobre os N níveis da cascata ([`super::menu`]).
 
-use super::menu::{AIM_REST_NS, MenuItem, MenuPress};
+use super::menu::{AIM_REST_NS, AUTO_ROLL_ROW_NS, MenuItem, MenuPress};
 use super::{TabBar, height};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::zones::Rect;
@@ -157,6 +157,7 @@ impl<M: Copy + PartialEq> TabBar<M> {
         self.open = m;
         self.set_chain(Vec::new());
         self.scroll.clear();
+        self.auto = None;
     }
 
     pub(super) fn close(&mut self) {
@@ -235,6 +236,7 @@ impl<M: Copy + PartialEq> TabBar<M> {
             return false;
         }
         let rested = now.saturating_sub(std::mem::replace(&mut self.moved_at, now)) > AIM_REST_NS;
+        self.track_arrows(x, y, now);
         if let Some(m) = self.title_at(x, y)
             && self.open != Some(m)
         {
@@ -270,6 +272,44 @@ impl<M: Copy + PartialEq> TabBar<M> {
             }
         }
         true
+    }
+
+    /// O rato sobre uma seta ▲▼ de um nível que rola liga a auto-rolagem (desde `now`); fora, desliga.
+    fn track_arrows(&mut self, x: f32, y: f32, now: u128) {
+        let on = self.levels().into_iter().enumerate().find_map(|(k, l)| {
+            let (up, down) = l.arrows?;
+            let dir = if up.contains(x, y) {
+                -1.0
+            } else if down.contains(x, y) {
+                1.0
+            } else {
+                return None;
+            };
+            Some((k, dir))
+        });
+        self.auto = match (on, self.auto) {
+            (Some(a), Some(b)) if (a.0, a.1) == (b.0, b.1) => Some(b),
+            (Some((k, dir)), _) => Some((k, dir, now)),
+            (None, _) => None,
+        };
+    }
+
+    /// Um menu a rolar sozinho (o rato parado numa seta ▲▼): quem pinta pede outro quadro.
+    #[must_use]
+    pub fn auto_rolling(&self) -> bool {
+        self.is_open() && self.auto.is_some()
+    }
+
+    /// Avança a auto-rolagem até `now`, uma linha a cada [`AUTO_ROLL_ROW_NS`].
+    pub(super) fn auto_roll(&mut self, now: u128) {
+        let Some((k, dir, t)) = self.auto.filter(|_| self.is_open()) else {
+            self.auto = None;
+            return;
+        };
+        let rows = now.saturating_sub(t) as f32 / AUTO_ROLL_ROW_NS as f32;
+        self.scroll_to(k, f32::INFINITY);
+        self.scroll[k] += dir * rows * height();
+        self.auto = Some((k, dir, now));
     }
 
     /// O Esc fecha um nível: o submenu mais fundo, senão o menu. `true` = fechou algo.

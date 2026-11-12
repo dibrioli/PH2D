@@ -38,6 +38,13 @@ const SUB_POPOVER_ID: NodeId = hash_node_id("code_tab_submenu_popover");
 /// atraso dos menus de sistema, ~300 ms no macOS e no GTK).
 pub const AIM_REST_NS: u128 = 300_000_000;
 
+/// A auto-rolagem com o rato parado numa seta ▲▼: uma linha a cada tanto (o passo dos menus de
+/// sistema).
+pub const AUTO_ROLL_ROW_NS: u128 = 80_000_000;
+
+/// Uma escolha de [`MenuItem::leaves`]: a linha e, num submenu, a mãe de topo.
+pub type Leaf = (NodeId, Option<NodeId>);
+
 /// Uma linha do menu aberto (o de um título e os submenus pintam-se pela MESMA função).
 #[derive(Clone, Debug, PartialEq)]
 pub enum MenuItem {
@@ -73,7 +80,7 @@ impl MenuItem {
     /// As linhas que se escolhem, pela ordem: os comandos que valem e, no lugar de um submenu, as
     /// escolhas dele (de qualquer nível) com a mãe de topo (`Some(mãe)`).
     #[must_use]
-    pub fn leaves(items: &[Self]) -> Vec<(NodeId, Option<NodeId>)> {
+    pub fn leaves(items: &[Self]) -> Vec<Leaf> {
         let mut out = Vec::new();
         for it in items {
             match it {
@@ -262,6 +269,7 @@ impl<M: Copy + PartialEq> TabBar<M> {
         };
         self.prune(items);
         self.take_first(items);
+        self.auto_roll(now);
         let (w, check_w) = measure(items, ts);
         // Sem janela, o menu fica debaixo do título, sem limite (a barra sozinha dos testes).
         let all = Rect::new(f32::MIN, f32::MIN, f32::INFINITY, f32::INFINITY);

@@ -163,12 +163,14 @@ impl DocumentSurface for CodeDocs {
         if page_of(id).is_some() {
             return;
         }
-        let doc = self.docs.iter().find(|d| d.script.0 == id);
-        let state = doc.map(|d| self.command_state(d)).unwrap_or_default();
         self.bar.window = Some(window);
-        let items = crate::tab_menu::open_items(&self.bar, state, self.debug.game_stop);
+        let items = self.tab_items(id);
         let clock = (self.clock.0, crate::hint::HOVER_PAUSE_NS);
         self.bar.paint_popup(&items, scene, text, theme, clock);
+    }
+
+    fn wants_frame(&self) -> bool {
+        self.bar.auto_rolling()
     }
 
     fn floats_at(&self, _id: u64, x: f32, y: f32) -> bool {

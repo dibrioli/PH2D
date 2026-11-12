@@ -7,7 +7,7 @@ use crate::docs::CodeDocs;
 use crate::help::page_of;
 use ph2d_editor_core::doc_surface::Key;
 use ph2d_editor_core::zones::Rect;
-use ph2d_panel_code::tab_bar::menu::{MenuItem, MenuPress};
+use ph2d_panel_code::tab_bar::menu::{Leaf, MenuItem, MenuPress};
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;
@@ -249,7 +249,7 @@ impl CodeDocs {
         }
     }
 
-    fn tab_items(&self, id: u64) -> Vec<MenuItem> {
+    pub(crate) fn tab_items(&self, id: u64) -> Vec<MenuItem> {
         let doc = self.docs.iter().find(|d| d.script.0 == id);
         let state = doc.map(|d| self.command_state(d)).unwrap_or_default();
         open_items(&self.bar, state, self.debug.game_stop)
@@ -257,11 +257,7 @@ impl CodeDocs {
 
     /// A `k`-ésima escolha do menu aberto (o smoke): as linhas que valem e, no lugar de um submenu, as
     /// escolhas dele, pela ordem. `Some(mãe)` = está num submenu.
-    pub(crate) fn tab_leaf(
-        &self,
-        id: u64,
-        k: usize,
-    ) -> Option<(ph2d_a11y::NodeId, Option<ph2d_a11y::NodeId>)> {
+    pub(crate) fn tab_leaf(&self, id: u64, k: usize) -> Option<Leaf> {
         MenuItem::leaves(&self.tab_items(id)).get(k).copied()
     }
 

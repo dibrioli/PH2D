@@ -104,6 +104,8 @@ pub struct TabBar<M> {
     pub moved_at: u128,
     /// O teclado passou a outro título: a 1.ª linha dele acende-se ao pintar.
     pub first_pending: bool,
+    /// A auto-rolagem do rato parado numa seta ▲▼: o nível, o sentido (±1) e o último passo (ns).
+    pub auto: Option<(usize, f32, u128)>,
 }
 
 impl<M> Default for TabBar<M> {
@@ -121,6 +123,7 @@ impl<M> Default for TabBar<M> {
             last: None,
             moved_at: 0,
             first_pending: false,
+            auto: None,
         }
     }
 }

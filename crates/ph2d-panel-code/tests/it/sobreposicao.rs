@@ -72,6 +72,17 @@ fn items_of(m: u8, n: usize) -> Vec<MenuItem> {
 
 /// A barra de `w` px no topo de uma aba, numa janela `win`; o menu do File tem `n` linhas.
 pub(super) fn pinta(bar: &mut TabBar<u8>, w: f32, win: Rect, n: usize, ts: &mut TextSystem) {
+    pinta_em(bar, (w, win, n), ts, 0);
+}
+
+/// [`pinta`] no relógio `now` (ns).
+pub(super) fn pinta_em(
+    bar: &mut TabBar<u8>,
+    at: (f32, Rect, usize),
+    ts: &mut TextSystem,
+    now: u128,
+) {
+    let (w, win, n) = at;
     let (mut scene, theme) = (VectorScene::new(), Theme::default());
     let crumb = Crumb {
         script: "problemas.luau".into(),
@@ -88,7 +99,7 @@ pub(super) fn pinta(bar: &mut TabBar<u8>, w: f32, win: Rect, n: usize, ts: &mut 
     );
     bar.window = Some(win);
     let items = itens(bar, n);
-    bar.paint_popup(&items, &mut scene, ts, &theme, (0, 0));
+    bar.paint_popup(&items, &mut scene, ts, &theme, (now, 0));
 }
 
 /// As linhas do menu aberto (as que [`pinta`] lhe dá).

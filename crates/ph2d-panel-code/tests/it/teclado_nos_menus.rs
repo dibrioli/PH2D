@@ -3,11 +3,11 @@
 //! topo ←/→ passam ao título vizinho (o `…` incluído), Enter corre, Esc fecha um nível; num menu que
 //! rola, o realce arrasta a rolagem.
 
-use super::sobreposicao::{id, itens, pinta, row_of};
+use super::sobreposicao::{id, itens, pinta, pinta_em, row_of};
 use ph2d_editor_core::doc_surface::Key;
 use ph2d_editor_core::zones::Rect;
-use ph2d_panel_code::tab_bar::TabBar;
-use ph2d_panel_code::tab_bar::menu::{MenuPress, more_row};
+use ph2d_panel_code::tab_bar::menu::{AUTO_ROLL_ROW_NS, MenuPress, more_row};
+use ph2d_panel_code::tab_bar::{TabBar, height};
 use ph2d_text::TextSystem;
 
 const WIN: Rect = Rect {
@@ -155,4 +155,46 @@ fn o_realce_por_teclado_arrasta_a_rolagem() {
     bar.key(&items, Key::Home);
     pinta(&mut bar, 600.0, win, n, &mut ts);
     assert_eq!(bar.scroll[0], 0.0, "o Home volta ao topo");
+}
+
+/// ⭐ O rato PARADO na seta ▼ de um menu que rola: o menu rola sozinho a passo constante pelo
+/// relógio ([`AUTO_ROLL_ROW_NS`]); sai da seta, pára; na ▲, volta.
+#[test]
+fn o_rato_parado_na_seta_rola_o_menu_pelo_relogio() {
+    let mut ts = TextSystem::without_system_fonts();
+    let at = (600.0, Rect::new(0.0, 0.0, 900.0, 200.0), 30);
+    let mut bar = TabBar::<u8> {
+        open: Some(0),
+        ..TabBar::default()
+    };
+    pinta_em(&mut bar, at, &mut ts, 0);
+    let (up, down) = bar.painted.arrows.expect("controlo: rola");
+    let menu = bar.painted.popup.expect("o File");
+    let c = |r: Rect| (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    let ms = 1_000_000u128;
+    let (x, y) = c(down);
+    assert!(bar.hover_move_at(x, y, 0));
+    assert!(
+        bar.auto_rolling(),
+        "na seta: rola sozinho (quem pinta pede quadros)"
+    );
+    pinta_em(&mut bar, at, &mut ts, 250 * ms);
+    let want = (250 * ms) as f32 / AUTO_ROLL_ROW_NS as f32 * height();
+    assert!(
+        (bar.scroll[0] - want).abs() < 0.5,
+        "{} ≈ {want}",
+        bar.scroll[0]
+    );
+    pinta_em(&mut bar, at, &mut ts, 500 * ms);
+    let s = bar.scroll[0];
+    assert!((s - want * 2.0).abs() < 0.5, "a passo constante: {s}");
+    let (x, y) = (menu.x + menu.w * 0.5, menu.y + menu.h * 0.5);
+    assert!(bar.hover_move_at(x, y, 500 * ms));
+    assert!(!bar.auto_rolling(), "fora da seta: pára");
+    pinta_em(&mut bar, at, &mut ts, 900 * ms);
+    assert_eq!(bar.scroll[0], s, "parado");
+    let (x, y) = c(up);
+    assert!(bar.hover_move_at(x, y, 900 * ms));
+    pinta_em(&mut bar, at, &mut ts, 1_000 * ms);
+    assert!(bar.scroll[0] < s, "a ▲ volta");
 }

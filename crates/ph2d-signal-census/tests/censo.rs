@@ -163,6 +163,21 @@ fn cada_linha_da_tabela_e_contada_no_papel_dela() {
     }
 }
 
+/// A suspeita (d) do handoff OUTLINE_E_F3 §11: «N listen» contaria a própria caixa. Cada linha
+/// sozinha com o seu nome: a caixa dela tem de dizer `Nobody`, nunca `Count(1)` de si mesma.
+#[test]
+fn nenhuma_caixa_e_a_sua_propria_outra_ponta() {
+    let c = census(&mundo_com_tudo());
+    for campo in CAMPOS {
+        let nome = n(campo.component, campo.field);
+        assert_eq!(
+            c.hint(&nome, campo.role),
+            Hint::Nobody,
+            "{nome} conta-se a si mesma"
+        );
+    }
+}
+
 #[test]
 fn letra_trocada_e_ninguem_e_o_proprio_campo_nao_se_conta() {
     let mut w = World::new();

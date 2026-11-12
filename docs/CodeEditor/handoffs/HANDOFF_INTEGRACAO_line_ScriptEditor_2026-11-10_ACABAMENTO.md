@@ -11,8 +11,8 @@
   (o commit deste handoff vem a seguir: só docs).
 - Merge-base com o `main` = `bc4a6ce930`. **123 commits** (`git rev-list --count bc4a6ce930..HEAD`, sem o commit deste handoff), **242 ficheiros, +11 499 −1 728** (com os docs e as fotos)
   (`git diff --shortstat bc4a6ce930..HEAD`).
-- Smoke do dono 10/11: as rondas até `e082d45b6d` **APROVADAS («Smoke OK»)**. As rondas seguintes (divisor da coluna, pesos da
-  maquete 14, medidas, tamanho da letra) — **smoke do dono PENDENTE**.
+- Smoke do dono 10/11: as rondas até `e082d45b6d` **APROVADAS («Smoke OK»)**. Smoke do dono 11/11 sobre `4718a9e536` (a mira
+  do submenu na diagonal, a pilha da aba curta e o resto da 3.ª ronda): **APROVADO («smoke OK»)**.
 
 ## 2. Superfície de colisão
 
@@ -153,7 +153,7 @@ Os passos 1–3 vêm das rondas aprovadas (ficam para o próximo testador); **4�
    crescer lá cura movendo. `paint_text.rs` 692/700.
 3. O integrador reconta a catraca (`ph2d-app-code` 26 617 × tecto 26 628, folga 11; `ph2d-code-assist` 4 188).
 4. **Memória no primário `project-memory/`, NÃO comitada** (as do dono de 10/11) — o integrador funde-as.
-5. **Smoke do dono: PENDENTE** (esta ronda e as anteriores).
+5. **Smoke do dono: APROVADO** em 11/11 sobre `4718a9e536` (todas as rondas).
 6. (3.ª ronda) A linha de 64 KB colada: o `reveal` leva agora de facto a vista ao fim, que cai no troço NÃO pintado (limite pré-existente de 2 000 bytes pintados por linha). Aberto.
 7. (3.ª ronda) O recorte do corpo do quadro do depurador ao seu rect (`cd1b7d7504`) não tem teste unitário: só foto (teste de píxel pede a placa).
 8. (3.ª ronda) Autocomplete, página de ajuda, go-to e popups de hover NÃO passaram pela auditoria de layout (o assistente de código — `luau-lsp` — falta neste ambiente).

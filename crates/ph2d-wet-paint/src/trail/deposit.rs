@@ -117,6 +117,9 @@ pub(super) struct DepositLaw {
     opacidade: f64,
     /// [`Knob::PressureGrain`]: a parte da [`Self::opacidade`] que entra antes do portão (`0` = nenhuma).
     grao_da_pressao: f64,
+    /// `(opacidade^k, opacidade^(1−k))` com `k` = [`Self::grao_da_pressao`]: constantes do dab, contadas 1× aqui e
+    /// não 3× por célula (12/11: o `pow` era ~6 % do depósito do Flat Bristle 240 a 4K).
+    opacidade_em_grao: (f64, f64),
     raio: f64,
 }
 
@@ -136,6 +139,14 @@ impl DepositLaw {
             po: Po::de(p.k(Knob::Dust), p.k(Knob::DustDrop), p.semente_do_po, dab),
             opacidade: dab.opacity,
             grao_da_pressao: p.k(Knob::PressureGrain),
+            opacidade_em_grao: {
+                let k = p.k(Knob::PressureGrain);
+                if k > 0.0 {
+                    (dab.opacity.det_powf(k), dab.opacity.det_powf(1.0 - k))
+                } else {
+                    (1.0, dab.opacity)
+                }
+            },
             raio: dab.r,
         }
     }
@@ -175,9 +186,10 @@ impl DepositLaw {
         // ⭐ A pressão leve desfaz em grão: a parte `k` da opacidade entra antes do portão (`opacidade^k`), o resto
         // (`opacidade^(1-k)`) depois — `k = 0` é a lei de sempre, ao bit.
         let opacidade_depois = if self.grao_da_pressao > 0.0 {
-            stamp *= self.opacidade.det_powf(self.grao_da_pressao);
-            cheio *= self.opacidade.det_powf(self.grao_da_pressao);
-            self.opacidade.det_powf(1.0 - self.grao_da_pressao)
+            let (antes, depois) = self.opacidade_em_grao;
+            stamp *= antes;
+            cheio *= antes;
+            depois
         } else {
             self.opacidade
         };

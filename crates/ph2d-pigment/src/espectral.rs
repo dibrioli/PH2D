@@ -77,6 +77,34 @@ fn rgb_do_log(l: &[f32; 10]) -> [f32; 3] {
     rgb.map(|v| ((v - EPS) / (1.0 - EPS)).clamp(0.0, 1.0))
 }
 
+/// O último espectro de cada lado da [`mistura`], por fio: a tinta de um dab e a célula de papel repetem-se de chamada
+/// em chamada, e [`log_espectro`] é pura — a chave são os BITS da entrada, a saída é a mesma ao bit (12/11: ~25 % do
+/// depósito do Flat Bristle 240 a 4K era esta conta).
+#[derive(Clone, Copy)]
+struct Memo {
+    base: ([u32; 3], [f32; 10]),
+    tinta: ([u32; 3], [f32; 10]),
+}
+
+thread_local! {
+    static MEMO: std::cell::RefCell<Option<Memo>> = const { std::cell::RefCell::new(None) };
+}
+
+#[inline]
+fn bits(c: [f32; 3]) -> [u32; 3] {
+    c.map(f32::to_bits)
+}
+
+/// O espectro de `c`, do memo se a entrada é a mesma (ao bit) da última deste lado.
+#[inline]
+fn do_memo(lado: &mut ([u32; 3], [f32; 10]), c: [f32; 3]) -> [f32; 10] {
+    let k = bits(c);
+    if lado.0 != k {
+        *lado = (k, log_espectro(c));
+    }
+    lado.1
+}
+
 /// ⭐ **A média geométrica pesada** de duas cores: `fac` da `tinta`, `1 − fac` da `base` (RGB `[0, 1]`).
 #[must_use]
 pub fn mistura(base: [f32; 3], tinta: [f32; 3], fac: f32) -> [f32; 3] {
@@ -87,7 +115,13 @@ pub fn mistura(base: [f32; 3], tinta: [f32; 3], fac: f32) -> [f32; 3] {
     if fac <= 0.0 {
         return base;
     }
-    let (lb, lt) = (log_espectro(base), log_espectro(tinta));
+    let (lb, lt) = MEMO.with_borrow_mut(|m| {
+        let memo = m.get_or_insert_with(|| Memo {
+            base: (bits(base), log_espectro(base)),
+            tinta: (bits(tinta), log_espectro(tinta)),
+        });
+        (do_memo(&mut memo.base, base), do_memo(&mut memo.tinta, tinta))
+    });
     rgb_do_log(&std::array::from_fn(|i| lb[i] + fac * (lt[i] - lb[i])))
 }
 

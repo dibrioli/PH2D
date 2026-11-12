@@ -217,6 +217,13 @@ incremental = false
 codegen-units = 1
 incremental = false
 
+# A mistura espectral de 10 bandas (B32.1) mora aqui e é chamada por célula em todo o Wet (depósito, recolha,
+# secagem, água): com 16 pedaços o `smoke` nem a comparação `base == tinta` embutia (12/11, Flat Bristle 240 a 4K:
+# ~25 % do depósito nesta conta). Pequena e quente, como as duas acima.
+[profile.smoke.package.ph2d-pigment]
+codegen-units = 1
+incremental = false
+
 # CI-tuned test profile. Used by the workflow's `cargo nextest run
 # --cargo-profile ci-test` and `cargo test --doc --profile ci-test`
 # calls instead of `--release`.

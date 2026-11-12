@@ -271,3 +271,20 @@ fn on_the_game_stage_the_curves_are_neither_painted_nor_reached() {
         );
     }
 }
+
+/// ⭐ **O ponto da curva em cima do PIVÔ do objeto agarra-se** (smoke do dono 12/11, item 13: «o objeto tem
+/// z-index maior que o ponto da curva; se tento mover o ponto, é o objeto que se move»). A guarda
+/// `over_canvas_or_gizmo` perguntava `gizmo_kind_for_id`, que exclui o pivô: com a âncora do fim do
+/// caminho sobre o centro do objeto, o clique nunca chegava à curva. A porta que inclui o pivô é
+/// `is_gizmo_id`. *Mutação: voltar a `gizmo_kind_for_id(id).is_some()` ⇒ vermelho.*
+#[test]
+fn the_canvas_guard_counts_the_pivot_as_part_of_the_gizmo() {
+    let src = src_of("src/vec_text_reopen.rs");
+    let b = body(&src, "over_canvas_or_gizmo");
+    assert!(
+        b.contains("ph2d_editor_core::gizmo::is_gizmo_id(id)"),
+        "a guarda do clique no canvas não conta o pivô como gizmo: o ponto da curva sobre o centro do \
+         objeto fica inalcançável"
+    );
+    assert!(!b.contains("gizmo_kind_for_id"), "a porta que exclui o pivô voltou");
+}

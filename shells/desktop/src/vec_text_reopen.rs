@@ -122,7 +122,7 @@ impl crate::app_state::App {
         match hero.chrome_hit(x, y) {
             None => true, // canvas cru
             Some(id) => {
-                ph2d_editor_core::gizmo_kind_for_id(id).is_some()
+                ph2d_editor_core::gizmo::is_gizmo_id(id)
                     || hero.gizmo.gizmo_hit_map.contains_key(&id)
             }
         }

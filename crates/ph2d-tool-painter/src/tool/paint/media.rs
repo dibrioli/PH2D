@@ -322,6 +322,7 @@ impl crate::tool::PainterTool {
             PaintMedia::WetPaint => self.set_wetpaint_armed(true),
         }
         self.settle_stroke_method();
+        self.arma_o_preparo_do_toque();
     }
 
     /// Deixa o método de traço num que o meio vigente de fato OFERECE — chamado no fim de

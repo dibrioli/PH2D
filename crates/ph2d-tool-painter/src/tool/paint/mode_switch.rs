@@ -185,6 +185,7 @@ impl PainterTool {
             // mask / inpaint / fill / brush / default.
             _ => self.paint.eraser = false,
         }
+        self.arma_o_preparo_do_toque();
     }
 
     /// The active paint mode as the `set_paint_tool_mode` string id — its inverse, used by the shell to

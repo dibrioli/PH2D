@@ -155,6 +155,14 @@ impl PainterTool {
         }
     }
 
+    /// O preparo arma-se onde a grade ou o meio mudam (documento, modo, meio), sem esperar o tique: até ao 1.º gesto a
+    /// ferramenta não recebe tique da shell (medido 12/11: o 1.º toque Wet a 4K nascia o motor na hora, 20–38 ms).
+    pub(in crate::tool) fn arma_o_preparo_do_toque(&mut self) {
+        if self.paint.wetpaint.session.is_none() {
+            self.prepara_o_toque();
+        }
+    }
+
     /// O tique sem sessão: adianta o que o próximo toque vai pedir. Uma comparação de chaves quando já está pronto.
     pub(super) fn prepara_o_toque(&mut self) {
         if !matches!(self.paint.paint_mode, PaintMode::WetPaint) {

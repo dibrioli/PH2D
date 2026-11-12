@@ -183,6 +183,7 @@ pub const PORTAS: &[(&str, Porta)] = &[
     ("ph2d::physics::Health", Gravado),
     ("ph2d::physics::HealthBar", Gravado),
     ("ph2d::physics::InitialVelocity", Gravado),
+    ("ph2d::physics::JointAssembly", Gravado),
     ("ph2d::physics::JointWorldAnchor", Gravado),
     ("ph2d::physics::LockPositionX", Gravado),
     ("ph2d::physics::LockPositionY", Gravado),

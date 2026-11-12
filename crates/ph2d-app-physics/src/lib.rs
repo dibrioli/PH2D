@@ -45,6 +45,7 @@ pub mod physics_smoke_joint_pair;
 pub mod physics_smoke_joint_pose;
 pub mod physics_smoke_joint_rig;
 pub mod physics_smoke_joint_slider;
+pub mod physics_smoke_joint_templates;
 pub mod physics_smoke_kinematic;
 pub mod physics_smoke_player_forgive;
 pub mod physics_smoke_player_tape;
@@ -154,6 +155,7 @@ pub fn aplicar_canais(
 }
 pub mod joint;
 pub mod joint_anchor_drag;
+pub mod joint_assembly;
 pub mod joint_create;
 pub mod joint_draw;
 pub mod joint_rig;

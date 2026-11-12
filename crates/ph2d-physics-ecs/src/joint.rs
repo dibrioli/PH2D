@@ -255,6 +255,14 @@ pub struct PhysicsJoint {
     // juntos: guardadas aqui o teto era **duas**, e *quantas roldanas* é metade
     // do que o artista pediu. A corda continua sendo este componente, e o
     // comprimento dela é o `max_length`.
+    /// **A montagem a que esta junta pertence** — o `StableId` da entidade que carrega o
+    /// [`crate::JointAssembly`] (ADR-0201). `0` = junta avulsa. Apendado no FIM (postcard é
+    /// posicional), com `PROJECT_SCHEMA` 238.
+    pub assembly: u64,
+    /// O índice da REGRA do gabarito que criou esta junta (`Template::joints[role]`) — é ele que
+    /// dá o nome do papel («Front wheel») e o grupo «iguais entre si». Só vale com
+    /// [`Self::assembly`] `!= 0`.
+    pub role: u16,
 }
 
 impl Default for PhysicsJoint {
@@ -305,6 +313,8 @@ impl Default for PhysicsJoint {
             // contrário (tudo travado) nasceria indistinguível de uma solda, e
             // o artista não veria diferença nenhuma ao escolher o tipo.
             custom: CustomAxes::default(),
+            assembly: 0,
+            role: 0,
         }
     }
 }

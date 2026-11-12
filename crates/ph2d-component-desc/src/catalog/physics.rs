@@ -277,6 +277,13 @@ pub const DESCS: &[D] = &[
     .row_of("ph2d::physics::RigidBody"),
     // O pino de MUNDO: ele chega com o gesto que prega a junta ao cenário (`joint_world`), e
     // sozinho não nomeia ponto nenhum.
+    // A montagem (ADR-0201): nasce e muda pelo Joint Editor e pelo gabarito; sem cartão próprio.
+    il(
+        "ph2d::physics::JointAssembly",
+        "component.joint_assembly.name",
+        JOINT_ASSEMBLY,
+    )
+    .hidden(H::OtherEditor),
     i(
         "ph2d::physics::JointWorldAnchor",
         "component.joint_world_anchor.name",
@@ -384,6 +391,8 @@ pub const DESCS: &[D] = &[
         ("anchored", H::Editor),
         // O cartão «Custom» pinta-o em linhas próprias (eixo a eixo, e o eixo do motor).
         ("custom", H::OwnSection),
+        // O papel no gabarito: escreve-o a montagem (Joint Editor), nunca o cartão.
+        ("role", H::OtherEditor),
     ]),
     // ⭐⭐ **O comportamento — e ele também chega com o corpo** (ordem do dono, 2026-09-14). A §14
     // volta a pintar-se sobre **todo corpo Dynamic**, com ou sem o componente, e a face vazia dela é

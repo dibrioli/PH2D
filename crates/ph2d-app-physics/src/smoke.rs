@@ -11,7 +11,7 @@ pub const PAUSED_SCENES: &[&str] = &[
     "72", "73", "74", "75",
     // Esperam um gesto (82), uma corrida jogada que se grava ou assa (95, 96), o Play do artista
     // (120) ou mostram o Inspector antes de cair (121); o porquê de cada uma: `git log -S`.
-    "82", "95", "96", "120", "121",
+    "82", "95", "96", "120", "121", "123",
 ];
 
 /// A cena nasce parada? `PH2D_PHYSICS_SMOKE_TOCA=1` é a foto do Play, numa tela onde a mão não chega.
@@ -26,7 +26,7 @@ pub fn nasce_parada(which: &str) -> bool {
 /// da próxima cena de smoke CONTA-SE lendo o roteador»*). O gate
 /// `o_roteador_responde_por_todo_nivel_que_promete` mede-o pelas DUAS pontas: a cena
 /// `CENAS` tem de ser dela própria, e a `CENAS + 1` tem de cair no `_`.
-pub const CENAS: u32 = 122;
+pub const CENAS: u32 = 123;
 
 /// **O nível que o dono pediu, lido DENTRO da crate.**
 ///
@@ -178,6 +178,7 @@ pub fn scene(which: &str, ctx: &mut crate::SceneCtx<'_>) {
         "120" => crate::physics_smoke_ficha::physics_smoke_ficha(ctx),
         "121" => crate::physics_smoke_signal_ends::physics_smoke_signal_ends(ctx),
         "122" => cenas::physics_smoke_grow::physics_smoke_grow(ctx),
+        "123" => crate::physics_smoke_joint_templates::physics_smoke_joint_templates(ctx),
         _ => crate::physics_smoke_base::physics_smoke_drop(ctx),
     }
 }

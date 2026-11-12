@@ -468,4 +468,11 @@
 /// `ph2d_anim::EaseSpline` ganha `kinds: u16` (o `HandleKind` Corner·Smooth·Symmetric de cada ponto, 2 bits por
 /// ponto, os do Vector). SEM leitura dos anteriores (§0.11). Gates: `ph2d-anim curve_spline::`. Registos: `0`.
 /// ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 239;
+///
+/// # `239 → 240` — **a montagem de juntas** (`line/JointEditor`, W1, 2026-11-12)
+///
+/// O componente `ph2d::physics::JointAssembly { template, parts, linked }` entra no registo (`+1`): a montagem
+/// é um objeto («Car 1») que diz de que gabarito veio e que objeto ocupa cada papel (ADR-0201). `PhysicsJoint`
+/// ganha `assembly: u64` e `role: u16` no FIM. SEM leitura dos anteriores (§0.11). Gates: `ph2d-app-physics
+/// joint_assembly::`, `ph2d-joint-templates the_template_ids_are_pinned`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 240;

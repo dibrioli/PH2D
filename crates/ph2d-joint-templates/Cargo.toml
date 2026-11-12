@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-joint-templates"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Os GABARITOS de montagem de juntas (ADR-0201) — dado puro: papéis, regras de junta, números de
+# fábrica. Sem ECS, sem UI. A única dependência é o vocabulário da junta (`JointKind`,
+# `PhysicsJoint::of_kind`), para que o gabarito diga «o padrão do tipo, mais estas diferenças».
+[dependencies]
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+
+[lints]
+workspace = true

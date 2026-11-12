@@ -80,7 +80,7 @@ impl ColliderPose {
     /// medir, e a falha honesta de uma régua indefinida é não deslocar nada — a
     /// mesma política que a `radial_fraction` já adota.
     #[must_use]
-    fn reach(&self, dir: [f32; 2]) -> f32 {
+    pub fn reach(&self, dir: [f32; 2]) -> f32 {
         // A direção no frame do collider. `libm`, não `f32::sin_cos`: este número
         // vira uma âncora, a âncora vira uma restrição, e a restrição alcança os
         // impulsos que o `physics_ecs_c9` compara entre os três OSes (lei 6).

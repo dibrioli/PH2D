@@ -34,6 +34,10 @@ pub(crate) const REMAPPERS: &[(&str, Remap)] = &[
         ph2d_ecs::hud_arranjo::remap_arranjo_refs,
     ),
     (
+        "ph2d::physics::JointAssembly",
+        ph2d_physics_ecs::remap_assembly_refs,
+    ),
+    (
         "ph2d::physics::PhysicsJoint",
         ph2d_physics_ecs::remap_joint_refs,
     ),

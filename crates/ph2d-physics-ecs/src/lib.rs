@@ -16,6 +16,7 @@
 //! lives in exactly one Cargo.toml (HR-5).
 
 pub mod arc_terrain;
+mod assembly;
 pub mod bake;
 mod bridge;
 mod components;
@@ -53,6 +54,7 @@ mod scale;
 mod seam;
 pub mod settings;
 
+pub use assembly::{AssemblyPart, JointAssembly};
 pub use bake::{
     BakedTrajectory, PoseChannel, RecordedRun, bake_trajectories, bake_trajectories_with_scene,
     bake_trajectories_with_scene_and_tape,
@@ -70,7 +72,7 @@ pub use keyboard_driven::{for_each_keyboard_driven, reads_the_keyboard};
 pub use name_refs::{ResolvedRefs, resolve_body_names};
 /// O estado da condução de um agente — o que o [`NavNow`] carrega (a lei vive em [`ph2d_nav`]).
 pub use ph2d_nav::Status as NavStatus;
-pub use ref_remap::{remap_joint_refs, remap_wheel_refs};
+pub use ref_remap::{remap_assembly_refs, remap_joint_refs, remap_wheel_refs};
 // O par de números que um readout de joint mostra. Re-exportado porque a shell
 // não depende de `ph2d-physics` direto.
 pub use bridge::Launch;
@@ -234,6 +236,8 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register::<Dominance>("ph2d::physics::Dominance");
     reg.register_default::<MaterialCombine>("ph2d::physics::MaterialCombine");
     reg.register_default::<PulleyWheel>("ph2d::physics::PulleyWheel");
+    // A montagem de juntas (ADR-0201): registo novo ⇒ `PROJECT_SCHEMA` 238.
+    reg.register_default::<JointAssembly>("ph2d::physics::JointAssembly");
     reg.register_default::<DampingOverride>("ph2d::physics::DampingOverride");
     reg.register_default::<OneWayPlatform>("ph2d::physics::OneWayPlatform");
     reg.register_default::<CollisionOverride>("ph2d::physics::CollisionOverride");

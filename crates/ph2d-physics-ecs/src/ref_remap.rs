@@ -46,7 +46,43 @@ pub fn remap_joint_refs(
             j.body_b = id;
             moved = true;
         }
+        // A montagem copiada junto leva as juntas dela; copiada sem ela, a junta fica na original.
+        if j.assembly != 0
+            && let Some(&id) = by_id.get(&j.assembly)
+        {
+            j.assembly = id;
+            moved = true;
+        }
         if moved {
+            hits += 1;
+        }
+    }
+    hits
+}
+
+/// **`JointAssembly.parts[].body`** — os objetos que ocupam os papéis (`0` = o mundo, nunca uma
+/// identidade).
+pub fn remap_assembly_refs(
+    world: &mut World,
+    entities: &[Entity],
+    by_id: &BTreeMap<u64, u64>,
+) -> usize {
+    let mut hits = 0;
+    for &e in entities {
+        let Some(mut a) = world.get_mut::<crate::JointAssembly>(e) else {
+            continue;
+        };
+        // O `0` é o mundo e o mapa nunca o contém (`StableId::FIRST` é 1).
+        let parts: Vec<_> = a
+            .parts
+            .iter()
+            .map(|p| crate::AssemblyPart {
+                body: by_id.get(&p.body).copied().unwrap_or(p.body),
+                ..*p
+            })
+            .collect();
+        if parts != a.parts {
+            a.parts = parts;
             hits += 1;
         }
     }

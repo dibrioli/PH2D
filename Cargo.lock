@@ -6167,6 +6167,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-inspector-ordering",
+ "ph2d-joint-templates",
  "ph2d-label-census",
  "ph2d-panel-inspector",
  "ph2d-panel-physics",
@@ -8271,6 +8272,13 @@ version = "0.0.0"
 dependencies = [
  "postcard",
  "serde",
+]
+
+[[package]]
+name = "ph2d-joint-templates"
+version = "0.0.0"
+dependencies = [
+ "ph2d-physics-ecs",
 ]
 
 [[package]]

@@ -370,6 +370,8 @@ fn junta_campo_a_campo(
         collide_connected,
         soft,
         custom,
+        assembly,
+        role,
     );
     out
 }

@@ -105,6 +105,9 @@ impl PhysicsJoint {
             // por isso viaja inteira: colar um Custom sobre outro é colar
             // exactamente essa descrição.
             custom,
+            // IDENTIDADE: a que montagem a junta pertence não se cola (como os dois corpos).
+            assembly: _,
+            role: _,
         } = *source;
 
         Self {
@@ -116,6 +119,8 @@ impl PhysicsJoint {
             // reposicionada e o reconcile precisa re-derivar (docs do módulo).
             anchored: self.anchored && kind == self.kind,
             active: self.active,
+            assembly: self.assembly,
+            role: self.role,
             kind,
             limits_enabled,
             limit_min,
@@ -194,6 +199,8 @@ mod tests {
             active: false,
             collide_connected: true,
             soft: true,
+            assembly: 9,
+            role: 3,
         }
     }
 
@@ -228,6 +235,9 @@ mod tests {
             // O tipo mudou (Pin -> Slider), logo a âncora pede re-derivação.
             anchored: false,
             active: dst.active,
+            // A montagem e o papel são identidade: colar não tira a junta da montagem dela.
+            assembly: dst.assembly,
+            role: dst.role,
             ..src
         };
         assert_eq!(out, expected);

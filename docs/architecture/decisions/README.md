@@ -214,10 +214,11 @@
 | [0198](0198-o-motor-do-sfx-lab-e-kernels-proprios-sobre-det-math.md) | Accepted — desenho técnico delegado (padrão-ouro); … | O motor do SFX Lab é de kernels próprios sobre `ph2d-det-math`; o FunDSP fica fora do render canônico |
 | [0199](0199-a-forma-de-colisao-e-um-objeto-filho-do-corpo.md) | Accepted — produto do dono (08/11, smoke da W3-B); … | A forma de colisão é um objeto filho do corpo |
 | [0200](0200-o-carimbo-de-mistura-e-o-kernel-em-faixas-no-pool-do-rayon.md) | Accepted — desempenho pedido pelo dono (10/11, «muito mais lento que o aceitável…… | O carimbo de mistura e o kernel correm em faixas no pool do `rayon` |
+| [0201](0201-a-montagem-de-juntas-e-um-objeto-e-o-gabarito-e-dado-puro.md) | Accepted — produto do dono (12/11, versão B da crítica «Joint Editor»); … | A montagem de juntas é um objeto, e o gabarito é dado puro |
 
 ---
 
-**205 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**206 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

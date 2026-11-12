@@ -39,6 +39,10 @@ const fn r(field_id: u16, label_key: &'static str) -> FieldDesc {
 /// de saltar por cima destes dois. Os nomes são os rótulos do cartão da §12; os limites e o motor
 /// guardam a unidade do TIPO (radianos numa dobradiça, metros num trilho) — o cartão pinta graus.
 /// Sem descritor (ocultos em `hiding`): `local_a/b` (14, 15), `anchored` (16) e `custom` (25).
+/// **`JointAssembly`** — `parts[].body` cita os objetos dos papéis pelo `StableId` (remapeador
+/// `ph2d_physics_ecs::remap_assembly_refs`).
+pub(super) const JOINT_ASSEMBLY: &[FieldDesc] = &[r(1, "component.field.joint_assembly.1")];
+
 pub(super) const JOINT_KINDS: View = crate::options![
     "pin" => Pin @ "panel.inspector.joint.pin",
     "spring" => Spring @ "panel.inspector.joint.spring",
@@ -81,6 +85,8 @@ pub(super) const JOINT: &[FieldDesc] = &[
     f(23, "component.field.joint.23", K::Toggle).named_as("collide", "collide_connected"),
     // «Weld: Rigid | Soft» — o rótulo é a linha da solda, o valor é `soft`.
     f(24, "component.field.joint.24", K::Toggle).named_as("weld", "soft"),
+    // A montagem a que a junta pertence (`0` = avulsa); o `role` (27) fica oculto em `hiding`.
+    r(26, "component.field.joint.26").named("assembly"),
 ];
 
 /// **`PlatformPlayer`** — as linhas da §14, na ordem da struct (`components/player.rs`).

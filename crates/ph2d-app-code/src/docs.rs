@@ -98,6 +98,8 @@ pub struct CodeDocs {
     pub(crate) left: ph2d_panel_code::splitter::Splitter,
 }
 
+pub(crate) use ph2d_panel_code::doc_rules::blink_on;
+
 /// O que a gramática de uma aba fez (a sonda do gate da tecla).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GrammarProbe {
@@ -105,14 +107,6 @@ pub struct GrammarProbe {
     pub sync_reparses: u64,
     /// A árvore ainda não tem as últimas edições.
     pub stale: bool,
-}
-
-/// O meio-período do piscar do cursor: o token `Slow` (o do piscar do F4, 1,25 Hz — abaixo dos 3 Hz
-/// da WCAG 2.3.1). Aceso um período, apagado outro; uma tecla recomeça-o aceso.
-pub(crate) fn blink_on(now_ns: u128, last_input_ns: u128, steady: bool) -> bool {
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let half = (f64::from(ph2d_tokens::Duration::Slow.ms()) * 1e6) as u128;
-    steady || (now_ns.saturating_sub(last_input_ns) / half.max(1)).is_multiple_of(2)
 }
 
 impl Default for CodeDocs {

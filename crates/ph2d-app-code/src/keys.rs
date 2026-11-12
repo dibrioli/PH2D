@@ -8,37 +8,7 @@ use crate::edit::FieldKey;
 use ph2d_code_buffer::Motion;
 use ph2d_editor_core::doc_surface::{Key, KeyOutcome};
 use ph2d_host::Modifiers;
-
-/// As letras dos acordes Ctrl/Cmd que o editor usa (no texto e nos campos da busca).
-/// `/` comenta (Ctrl+/); `[`/`]` com Shift dobram/desdobram — a shell traduz a tecla FÍSICA
-/// (`keyboard_board.rs`), porque com Ctrl o texto da tecla não chega.
-const CHORDS: [char; 14] = [
-    '/', '[', ']', 'a', 'c', 'd', 'f', 'g', 'h', 's', 'v', 'x', 'y', 'z',
-];
-
-/// O acorde é do editor? Os outros (Ctrl+K a paleta, Ctrl+O abrir…) NÃO são tomados: a shell segue
-/// para o atalho dela.
-pub(crate) fn foreign_chord(key: Key, mods: Modifiers) -> bool {
-    (mods.ctrl || mods.meta)
-        && !problems_chord(key, mods)
-        && match key {
-            Key::Char(c) => !CHORDS.contains(&c),
-            Key::Other => true,
-            _ => false,
-        }
-}
-
-/// Ctrl+Shift+M: a lista de problemas abre/fecha (o atalho do VS Code; o mesmo que o clique no
-/// contador da barra). Só com o Shift: o Ctrl+M segue para a shell.
-pub(crate) fn problems_chord(key: Key, mods: Modifiers) -> bool {
-    (mods.ctrl || mods.meta) && mods.shift && matches!(key, Key::Char('m' | 'M'))
-}
-
-/// Ctrl+Espaço: a lista de completação na hora — só com o TEXTO do script em foco (decisão do dono,
-/// 17/10); num campo (busca, lista de scripts) segue para a shell, onde é o modo foco.
-pub(crate) fn suggest_chord(key: Key, mods: Modifiers) -> bool {
-    (mods.ctrl || mods.meta) && key == Key::Space
-}
+pub(crate) use ph2d_panel_code::doc_rules::{foreign_chord, problems_chord, suggest_chord};
 
 impl CodeDoc {
     /// Uma tecla premida (ou solta: tomada sem efeito).

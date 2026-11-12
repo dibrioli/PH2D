@@ -12,6 +12,7 @@ pub mod console;
 pub mod debug_card;
 mod debug_marks;
 mod display;
+pub mod doc_rules;
 mod drop_mark;
 pub mod field;
 pub mod find_bar;

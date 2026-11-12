@@ -435,3 +435,32 @@ fn ctrl_espaco_abre_a_lista_na_hora() {
         }
     }
 }
+
+/// A barra da lista pelo rato REAL da aba (76b0d01d03): carregar no polegar não aceita a linha por
+/// baixo nem fecha a lista, e o arrasto rola-a sem mexer no texto nem na seleção.
+#[test]
+fn a_barra_da_lista_arrasta_pelo_rato_da_aba_sem_aceitar_nem_fechar() {
+    let (mut m, ids, _) = mesa(&[("a.luau", "")]);
+    let id = ids[0];
+    m.pede(id);
+    abre(&mut m, id, "ph2d.");
+    m.pinta(id);
+    let bar = m
+        .docs()
+        .completion_bar(id)
+        .expect("a lista não cabe: tem barra");
+    let (x, y) = (bar.x + bar.w * 0.5, bar.y + bar.h * 0.5);
+    let none = Modifiers::default();
+    let primary = ph2d_host::PointerButton::Primary;
+    m.arrasta_com(id, (x, y), (x, y + bar.h * 2.0), none, primary);
+    m.pinta(id);
+    assert_eq!(
+        m.docs().text_of(id).as_deref(),
+        Some("ph2d."),
+        "nada aceite"
+    );
+    let sel = m.docs().completion_of(id).map(|c| c.1);
+    assert_eq!(sel, Some(0), "a lista continua aberta, com a mesma seleção");
+    let p = m.docs().completion_painted(id).expect("pintada");
+    assert!(p[0].0 > 0, "o arrasto rolou a lista");
+}

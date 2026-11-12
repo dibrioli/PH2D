@@ -24,13 +24,7 @@ struct Entry {
 }
 
 pub(crate) use ph2d_code_assist::play_problems::{PlayKind, PlayProblem};
-
-/// O tempo de jogo como a linha o mostra (`m:ss`).
-pub(crate) fn game_time(at_us: u64) -> String {
-    let s = at_us / 1_000_000;
-    let (min, sec) = (s / 60, format!("{:02}", s % 60));
-    tr_with("code.console.time", &[("min", &min), ("sec", &sec)])
-}
+pub(crate) use ph2d_panel_code::doc_rules::game_time;
 
 /// As linhas de um script. Os tectos são os do console do motor ([`CONSOLE_LINES_MAX`] linhas e
 /// [`CONSOLE_BYTES_MAX`] bytes de texto, medidos; cada linha já chega cortada ao tecto por linha):

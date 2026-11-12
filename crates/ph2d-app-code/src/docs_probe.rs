@@ -89,6 +89,16 @@ impl CodeDocs {
         d.view.completion_painted()
     }
 
+    /// ⚠️ SONDA: o polegar da barra da lista aberta da aba `id` (pintada no último quadro).
+    #[must_use]
+    pub fn completion_bar(&self, id: ScriptId) -> Option<ph2d_editor_core::zones::Rect> {
+        self.docs
+            .iter()
+            .find(|d| d.script == id)?
+            .view
+            .completion_bar()
+    }
+
     /// ⚠️ SONDA: as linhas da lista pintada cujo rótulo saiu cortado (vazio = todas inteiras).
     #[must_use]
     pub fn completion_cut(&self, id: ScriptId) -> Option<Vec<usize>> {

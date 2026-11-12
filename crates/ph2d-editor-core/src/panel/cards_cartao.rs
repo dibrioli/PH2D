@@ -228,6 +228,11 @@ pub(super) fn paint_card_with(
     crate::widget::card_censo::titulo(card.title, tx + ocupado, resumo_x);
     let mut fundo = if sem_titulo { hy } else { hy + m::CARD_HEAD_H };
 
+    // ⭐ A busca acha os cartões do objeto e os campos deles (`global_palette_finds`).
+    let anota = panel == crate::ids::INSP_PANEL && !card.title.is_empty();
+    if anota {
+        store.card_painting(card.section, card.title);
+    }
     // ── O corpo (os campos e as notas, D6) ──
     if !dobrado && !ausente && card.body.is_some() {
         let topo = fundo + if sem_titulo { 0.0 } else { m::CARD_HEAD_BOTTOM };
@@ -238,6 +243,9 @@ pub(super) fn paint_card_with(
         fundo += m::CARD_PAD_BOTTOM;
     } else {
         fundo += m::CARD_PAD_TOP;
+    }
+    if anota {
+        store.card_painted();
     }
     let h = fundo - r.y;
     if let Some(cor) = store.section_outline_color(face) {

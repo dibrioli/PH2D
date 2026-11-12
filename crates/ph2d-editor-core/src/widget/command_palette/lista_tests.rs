@@ -304,7 +304,7 @@ fn sem_busca_cada_linha_leva_o_caminho_e_o_atalho() {
 fn o_rodape_separa_as_dicas_por_ponto() {
     assert_eq!(
         footer_text(),
-        "Enter to run \u{00b7} Up and Down to move \u{00b7} Esc to close"
+        "Enter to run \u{00b7} Alt+Enter to show where it lives \u{00b7} Up and Down to move \u{00b7} Esc to close"
     );
 }
 

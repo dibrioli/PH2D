@@ -62,8 +62,10 @@ fn every_global_palette_item_is_dispatched_by_somebody() {
         for it in items.iter().filter(|it| !dos_paineis.contains(&it.id)) {
             // Um hero NOVO por item: o dispatch muta estado, e um chip que só responde na 1a vez
             // passaria por acidente da ordem.
+            // ⭐ A porta da ESCOLHA (onda 3): as ações do Input Map, os objetos e os campos não são
+            //    botões, e a busca roteia-os antes de re-tocar o clique.
             let mut hero = HeroScreen::new(NodeId(1));
-            if !hero.apply_event(WidgetEvent::Click(it.id)) {
+            if !route_global_pick(&mut hero, it.id) {
                 dead.push(it.label.clone());
             }
         }
@@ -162,17 +164,6 @@ fn the_top_bar_pills_are_out_because_they_open_menus_anchored_to_a_rect() {
             cluster.palette_label().unwrap_or("(sem nome)")
         );
     }
-}
-
-/// O nome de um painel é DERIVADO do id; o único que a derivação estragava leva o título dele (f153f77153).
-#[test]
-fn a_panel_title_is_derived_from_its_id() {
-    assert_eq!(humanise_panel_id("audio_editor"), "Audio Editor");
-    assert_eq!(humanise_panel_id("wet_tuning"), "Wet Tuning");
-    assert_eq!(humanise_panel_id("vector"), "Vector");
-    assert_eq!(humanise_panel_id("bgremoval"), "Background Removal");
-    assert_eq!(humanise_panel_id("authored"), "Authored UI");
-    assert_eq!(humanise_panel_id("tokens"), "Design Tokens");
 }
 
 /// A paleta **segue o modo**: com o Painter em mãos ela oferece as ferramentas de pintura.

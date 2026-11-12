@@ -163,6 +163,7 @@ pub(super) const THEME_SELECTOR_ROWS: &[MenuRow] = &[
 pub(super) const MENU_BAR_FILE_ROWS: &[MenuRow] = &[
     menu_row(ids::MENUBAR_FILE_NEW_MENU, "chrome.menu.new_submenu"),
     menu_row(ids::CTX_MENU_OPEN_PROJECT, "chrome.menu.open_project_cmd_o"),
+    menu_row(ids::MENUBAR_FILE_RECENT_MENU, "chrome.menu.open_recent"),
     menu_row(ids::MENUBAR_FILE_SCENES, "chrome.menu.scenes"),
     menu_row(ids::CTX_MENU_SAVE, "chrome.menu.save_cmd_s"),
     menu_row(ids::CTX_MENU_SAVE_AS, "chrome.menu.save_as_cmd_shift_s"),

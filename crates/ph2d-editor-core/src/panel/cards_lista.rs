@@ -101,6 +101,9 @@ pub fn paint_card_list_top(
     if curta {
         store.set_card_guest_origin(origem);
     }
+    if panel == crate::ids::INSP_PANEL && assento.is_none() {
+        store.card_list_origin(origem);
+    }
     for k in &keys {
         store.mark_card_section(*k);
     }

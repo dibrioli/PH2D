@@ -32,6 +32,14 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     // *Help ▸ Commands…* — a paleta `Ctrl+K`, que nada na tela mostrava (dono 12/11).
     // *Help ▸ Commands…* e o campo «Find anything» da faixa: a mesma busca do `Ctrl+K`. A shell
     // reabre-a no mesmo quadro com as linhas das famílias que vivem fora do hero.
+    // O chip que ensina o atalho: o «×» diz «já sei»; o corpo só consome o clique.
+    if id == ids::MENUBAR_TEACH_CLOSE {
+        crate::screens::hero::menu_teach::dismiss(hero);
+        return true;
+    }
+    if id == ids::MENUBAR_TEACH {
+        return true;
+    }
     if id == ids::MENUBAR_HELP_COMMANDS || id == ids::MENUBAR_FIND {
         hero.store.close_context_menu();
         crate::screens::hero::global_palette::open(hero);

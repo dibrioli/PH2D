@@ -307,6 +307,7 @@ pub(super) fn paint_rows(
 pub fn footer_text() -> String {
     [
         "chrome.palette.hint_run",
+        "chrome.palette.hint_where",
         "chrome.palette.hint_move",
         "chrome.palette.hint_close",
     ]

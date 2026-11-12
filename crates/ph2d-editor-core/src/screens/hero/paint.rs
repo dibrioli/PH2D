@@ -140,6 +140,8 @@ pub fn paint_hero_screen(
     // ⭐ **E para a ROLAGEM** (D9): as alturas e os donos de barra que este quadro publicar são os
     // únicos que sobrevivem a ele — ver [`crate::interaction::WidgetStore::end_scroll_frame`].
     hero.store.begin_scroll_frame();
+    // E para a BUSCA: os cartões que este quadro pintar são os que ela oferece.
+    hero.store.begin_card_directory_frame();
     super::cromo_smoke::aplica(&mut hero.store);
     // A pré-edição do IME e o caret que a janela de candidatos segue ([`crate::ime`]).
     crate::ime::begin_frame(hero.store.focus_id(), hero.store.composition());
@@ -622,6 +624,12 @@ pub fn paint_hero_screen(
         &hero.store,
         viewport,
     );
+    // ⭐ O anel do que a busca escolheu e não pinta o piscar por si (objeto, campo de cartão).
+    if let Some((id, level)) = hero.store.ring_anywhere(hero.motion.reduced_motion())
+        && let Some(r) = hero.hit_index.rect_for(id)
+    {
+        crate::screens::hero::float_bar::flash::paint_ring(scene, hero.theme, r, level);
+    }
     // Command palette (Motion's "Add Node") — a full-screen dimmed modal painted over the whole app
     // (no-op when closed). Above the floating dialogs so it dominates; its full-viewport scrim registers
     // FIRST so the card + item pills (registered after) win the back-to-front hit walk.

@@ -58,6 +58,16 @@ impl App {
 }
 
 impl App {
+    /// `Alt+Enter` na busca global: em vez de executar, mostra onde o comando mora.
+    pub(crate) fn command_palette_show_where(&mut self) {
+        if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
+            && h.store.command_palette_model().is_some_and(|m| m.is_list())
+            && let Some(id) = h.store.command_palette_enter_target()
+        {
+            ph2d_editor_core::screens::hero::menu_reveal::show(h, id);
+        }
+    }
+
     /// ⭐ **A roda pertence à PALETA enquanto ela estiver aberta** — ver
     /// [`ph2d_app_components::component_attach::palette_wheel`], onde mora o porquê.
     pub(crate) fn command_palette_wheel(&mut self, dy: f32) -> bool {

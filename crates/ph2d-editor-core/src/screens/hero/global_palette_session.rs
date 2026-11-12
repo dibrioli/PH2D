@@ -1,36 +1,18 @@
-//! **A memória de SESSÃO da paleta `Ctrl+K`**: os comandos escolhidos por último («Recent») e a
-//! seleção que rola para ficar à vista. Vive no hero; gravar em disco é a onda 3.
+//! **A memória de SESSÃO da paleta `Ctrl+K`**: a seleção que rola para ficar à vista. Os recentes
+//! moram na memória gravada (`menu_memory`, onda 3).
 
 use crate::widget::command_palette::{CMD_PALETTE_CARD, follow_scroll, item_ids, row_span, scoped};
 use ph2d_a11y::NodeId;
 
-/// Quantos recentes a sessão guarda — mais do que a lista mostra, porque um recente que o modelo
-/// de agora não oferece não aparece. Escolha de desenho, não tecto de recurso.
-const RECENT_KEPT: usize = 20;
-
-/// Os recentes e o que a lista já seguiu.
+/// O que a lista já seguiu (os recentes moram na [`super::super::menu_memory::MenuMemory`]).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PaletteSession {
-    recent: Vec<NodeId>,
     /// O destaque para o qual a lista já rolou, e a busca que ele respondia.
     followed: Option<NodeId>,
     query: String,
 }
 
 impl PaletteSession {
-    /// Os últimos comandos escolhidos, o mais novo primeiro, sem repetir.
-    #[must_use]
-    pub fn recent(&self) -> &[NodeId] {
-        &self.recent
-    }
-
-    /// `id` foi escolhido: sobe ao topo.
-    pub fn remember(&mut self, id: NodeId) {
-        self.recent.retain(|r| *r != id);
-        self.recent.insert(0, id);
-        self.recent.truncate(RECENT_KEPT);
-    }
-
     /// A paleta abriu: nada foi seguido ainda.
     pub(super) fn opened(&mut self) {
         self.followed = None;

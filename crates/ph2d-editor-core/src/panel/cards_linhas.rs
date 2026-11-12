@@ -49,6 +49,9 @@ impl<'s> CardCtx<'s> {
             {
                 dicas::rotulo(id, l);
             }
+            if let (Some(l), Some(id)) = (c.label.or(grupo), c.widget.target()) {
+                self.store.card_field_painted(l, id, topo);
+            }
         }
         if rotulos {
             y += rotulos::faixa(self, cells, &cols, y);

@@ -60,6 +60,10 @@ impl App {
                         self.command_palette_close();
                         return true;
                     }
+                    KeyCode::Enter | KeyCode::NumpadEnter if self.modifiers.alt_key() => {
+                        self.command_palette_show_where();
+                        return true;
+                    }
                     KeyCode::Enter | KeyCode::NumpadEnter => {
                         self.command_palette_confirm();
                         return true;

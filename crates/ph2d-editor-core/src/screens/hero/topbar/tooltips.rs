@@ -94,6 +94,7 @@ pub(super) fn seed_tooltips(store: &mut WidgetStore) {
         (ids::TOPBAR_PLAY_BUTTON, tr("chrome.topbar.tip.play_space")),
         (ids::MENUBAR_W, tr("chrome.menu_bar.menu_tip")),
         (ids::MENUBAR_FIND, tr("chrome.menu_bar.find_tip")),
+        (ids::MENUBAR_TEACH_CLOSE, tr("chrome.menu_bar.teach_close")),
         (ids::MENUBAR_PLAY_MENU, tr("chrome.menu_bar.play_where")),
         (ids::MENUBAR_RUN_WINDOW, tr("chrome.menu.play_in_window")),
         (

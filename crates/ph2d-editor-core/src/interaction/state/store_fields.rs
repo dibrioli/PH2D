@@ -463,6 +463,8 @@ pub struct WidgetStore {
     pub(in crate::interaction) tool_bars: crate::interaction::ToolBarsSlot,
     /// Os pais da cascata de menus ([`super::menu_chain_ops`]).
     pub(in crate::interaction) menu_chain: super::MenuChain,
+    /// A busca que responde e o chip que ensina ([`super::faixa_ops`]).
+    pub(in crate::interaction) faixa: super::FaixaState,
     /// ⭐⭐⭐ **O QUE O MÓDULO ACRESCENTA A UM MENU QUE JÁ EXISTE** — a metade 1 da **D2**.
     ///
     /// O corte da D2 é por **âmbito**: *vale em todo o app ⇒ barra global; vale só naquele editor

@@ -82,6 +82,8 @@ impl WidgetStore {
                 && self.pixel_file_menu() != Some(true))
             // As do Pixel no File ▸ Import/Export sem um Pixel Sprite em Draw: cinzentas, nunca somem.
             || (self.pixel_file_menu().is_none() && Self::pixel_file_action(id).is_some())
+            // O *Open Recent* vazio diz que não há nenhum; a linha não faz nada.
+            || id == crate::ids::MENUBAR_FILE_RECENT_NONE
     }
 }
 

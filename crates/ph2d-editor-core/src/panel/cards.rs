@@ -117,6 +117,27 @@ pub enum Widget<'a> {
     },
 }
 
+impl Widget<'_> {
+    /// O alvo do controlo (o primeiro segmento de uma escolha); `None` = só pinta.
+    #[must_use]
+    pub fn target(&self) -> Option<NodeId> {
+        match *self {
+            Widget::Field { id, .. }
+            | Widget::Button { id, .. }
+            | Widget::FieldFace { id, .. }
+            | Widget::Text { id, .. }
+            | Widget::Search { id, .. }
+            | Widget::Swatch { id, .. }
+            | Widget::Check { id, .. }
+            | Widget::Dropdown { id, .. } => Some(id),
+            Widget::Choice(segs) | Widget::Icons(segs) | Widget::Bare(segs) => {
+                segs.first().map(|s| s.id)
+            }
+            _ => None,
+        }
+    }
+}
+
 /// Uma coluna: rótulo opcional (com a marca de animação dos `key` quando há), e o widget.
 #[derive(Copy, Clone, Debug)]
 pub struct Cell<'a> {

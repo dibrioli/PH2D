@@ -1,0 +1,7 @@
+# PH2D menu memory
+recent=9b62bf9c761d98a9
+recent=186bc
+pick=d4a269f6c582e5b6 3
+learned=d4a269f6c582e5b6
+project=/tmp/fotos_onda3.uUPS/home/Games/Forest/forest_level.ph2dproj
+project=/tmp/fotos_onda3.uUPS/home/Games/cave_boss.ph2dproj

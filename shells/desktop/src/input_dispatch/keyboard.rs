@@ -68,6 +68,16 @@ impl App {
         {
             self.diag_undo_chord("RECEBIDA pela janela");
         }
+        // ⭐ O chip que ensina o atalho ouve TODA tecla que desce, antes de qualquer ramo a tomar.
+        if state == ElementState::Pressed
+            && !repeat
+            && let PhysicalKey::Code(c) = physical_key
+            && let Some(k) = crate::keymap::winit_to_input_keycode(c)
+            && let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
+        {
+            let m = Self::convert_modifiers(self.modifiers);
+            ph2d_editor_core::screens::hero::menu_teach::heard_key(h, ph2d_input::Key(k), m);
+        }
         let keycode = match physical_key {
             PhysicalKey::Code(code) => code as u32,
             PhysicalKey::Unidentified(_) => 0,

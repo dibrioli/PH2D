@@ -128,6 +128,16 @@ pub fn sync_from_hierarchy(
             .filter_map(|(row, e)| e.entity.map(|b| (b, (*row, e.locked))))
             .collect(),
     );
+    // ⭐ Os objetos, pela ordem da lista, para a busca da faixa (escolher = selecionar a linha).
+    store.set_scene_objects(
+        ordered
+            .iter()
+            .filter_map(|row| {
+                let e = entries.get(row)?;
+                e.entity.map(|_| (*row, e.name.clone()))
+            })
+            .collect(),
+    );
     state::set_live_entries(Some(entries));
 }
 

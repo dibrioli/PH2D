@@ -93,10 +93,11 @@ pub(crate) fn sujeito_da_capa_dos_estilos(x: f32, y: f32) -> Option<Option<u64>>
 }
 
 pub use state::{
-    CardDrag, CardDrop, CardList, Ensaio, EstadosPresos, InteractiveState, LooseCard, LooseEdge,
-    NamedPalette, NoteDrag, SECCOES_FIXAS, SectionDrag, TAB_DRAG_THRESHOLD_PX, TabDragAnchor,
-    Trocados, WidgetStore, alvo_da_queda, capture_if_listening, fracao_para_pista, loose_edge_of,
-    loose_face_of, loose_ghost_of, loose_instance_of, loose_pin_of, loose_rect_of, loose_return_of,
+    CardDirectory, CardDrag, CardDrop, CardFieldSeen, CardList, Ensaio, EstadosPresos,
+    InteractiveState, LooseCard, LooseEdge, NamedPalette, NoteDrag, RecentRow, SECCOES_FIXAS,
+    SectionDrag, TAB_DRAG_THRESHOLD_PX, TabDragAnchor, TeachChip, Trocados, WidgetStore,
+    alvo_da_queda, capture_if_listening, fracao_para_pista, loose_edge_of, loose_face_of,
+    loose_ghost_of, loose_instance_of, loose_pin_of, loose_rect_of, loose_return_of,
     ordena_seccoes, pista_para_fracao, reordena_seccoes, restore_section_prefs_text,
     section_prefs_text,
 };

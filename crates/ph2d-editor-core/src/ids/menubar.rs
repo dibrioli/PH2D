@@ -149,3 +149,22 @@ pub const MENUBAR_W: NodeId = hash_node_id("menubar_w");
 pub const MENUBAR_FIND: NodeId = hash_node_id("menubar_find");
 /// A seta ao lado do Play: escolhe onde o jogo se mostra.
 pub const MENUBAR_PLAY_MENU: NodeId = hash_node_id("menubar_play_menu");
+
+// ── A busca que responde (onda 3) ─────────────────────────────────────────────────────────────
+/// O chip da faixa que ensina o atalho («Ctrl+E is Export Sheet…»).
+pub const MENUBAR_TEACH: NodeId = hash_node_id("menubar_teach");
+/// O «×» do chip: o artista já sabe; o chip deste comando nunca volta.
+pub const MENUBAR_TEACH_CLOSE: NodeId = hash_node_id("menubar_teach_close");
+/// *File ▸ Open Recent* — os projetos abertos por último.
+pub const MENUBAR_FILE_RECENT_MENU: NodeId = hash_node_id("menubar_file_recent_menu");
+/// A linha cinzenta do *Open Recent* vazio.
+pub const MENUBAR_FILE_RECENT_NONE: NodeId = hash_node_id("menubar_file_recent_none");
+/// *Open Recent ▸ Clear Recent*.
+pub const MENUBAR_FILE_RECENT_CLEAR: NodeId = hash_node_id("menubar_file_recent_clear");
+const RECENT_PROJECT_BASE: NodeId = hash_node_id("menubar_file_recent_project");
+
+/// A linha `i` do *Open Recent* (o projeto `i`, o mais novo primeiro).
+#[must_use]
+pub const fn recent_project_row(i: usize) -> NodeId {
+    NodeId(RECENT_PROJECT_BASE.0 ^ (i as u64 + 1))
+}

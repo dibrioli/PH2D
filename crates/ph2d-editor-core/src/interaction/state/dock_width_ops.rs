@@ -424,11 +424,16 @@ impl WidgetStore {
         &self,
         kind: crate::interaction::ContextMenuKind,
     ) -> impl Iterator<Item = (ph2d_a11y::NodeId, &str)> {
+        // ⭐ E as do *Open Recent* (os projetos lembrados), que também são linhas com texto.
+        let recent = (kind == crate::interaction::ContextMenuKind::MenuBarFileRecent)
+            .then_some(self.recent_rows())
+            .unwrap_or_default();
         self.area_menus
             .doc_rows
             .iter()
             .filter(move |(k, ..)| *k == kind)
             .map(|(_, id, l)| (*id, l.as_str()))
+            .chain(recent.iter().map(|r| (r.id, r.label.as_str())))
     }
 
     /// O que um módulo acrescenta a `kind` neste quadro — vazio quando ninguém contribui.

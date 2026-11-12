@@ -14,7 +14,7 @@
 //! para um irmão é a cura da casa — nunca uma isenção.
 
 /// As três bandeiras. Limpas pelo shell (`std::mem::take`) depois de agir.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FileMenuRequests {
     /// Gravar no ficheiro da sessão — ou perguntar, se ainda não houver um.
     pub save: bool,
@@ -26,4 +26,6 @@ pub struct FileMenuRequests {
     /// **Exportar o desenho vectorial como SVG** (plano 40). ⚠️ Pergunta sempre o caminho: um
     /// export não tem «o ficheiro da sessão» — o projecto tem, e não é o mesmo ficheiro.
     pub export_svg: bool,
+    /// *File ▸ Open Recent ▸ …*: abrir este projeto, sem perguntar onde.
+    pub open_path: Option<String>,
 }

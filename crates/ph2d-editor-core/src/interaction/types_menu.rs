@@ -126,6 +126,8 @@ pub enum ContextMenuKind {
     MenuBarFileImport,
     /// Ver [`Self::MenuBarFileNew`].
     MenuBarFileExport,
+    /// *File ▸ Open Recent*: as linhas são os projetos lembrados (`screens::hero::open_recent`).
+    MenuBarFileRecent,
     /// Ver [`Self::MenuBarFileNew`].
     MenuBarWindowAudio,
     /// Ver [`Self::MenuBarFileNew`].
@@ -495,6 +497,7 @@ impl ContextMenuKind {
         Self::MenuBarFileNew,
         Self::MenuBarFileImport,
         Self::MenuBarFileExport,
+        Self::MenuBarFileRecent,
         Self::MenuBarWindowAudio,
         Self::MenuBarWindowPixel,
         Self::MenuBarWindowPlan,

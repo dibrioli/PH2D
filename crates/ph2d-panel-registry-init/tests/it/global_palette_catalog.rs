@@ -70,31 +70,42 @@ fn every_registered_panel_is_a_command_that_toggles_it() {
     }
 }
 
-/// ⚠️ **Os dois títulos feios estão PINADOS, com os 23 medidos ao lado.**
-///
-/// A derivação `snake_case` → Title Case não tem tabela paralela (ver o doc-header do módulo), e o
-/// preço disso são dois nomes que saem feios. Pinar aqui é o que impede a feiura de ser descoberta
-/// num screenshot: quem lhes der um `TITLE` próprio um dia muda esta linha de propósito.
+/// ⭐ **O nome de um painel na busca é o da ABA** (dono 12/11): «Wet Paint», não «Wet Tuning».
+/// Mutação: voltar a derivar o rótulo do id ⇒ «Pixel Prefs» ≠ «Grid & Background», sangra.
 #[test]
-fn the_two_ugly_derived_titles_are_named_here() {
+fn a_panel_is_called_in_the_search_what_its_tab_says() {
     let h = hero();
     let model = build_global_model(&h);
-    let labels: Vec<String> = model
+    let labels: Vec<(NodeId, String)> = model
         .groups
         .iter()
         .flat_map(|g| &g.subs)
         .flat_map(|s| &s.items)
-        .map(|it| it.label.clone())
+        .map(|it| (it.id, it.label.clone()))
         .collect();
-    println!("[palette-catalog] títulos: {labels:?}");
-    // Nomes derivados que ESTE build regista — não a árvore inteira (ver o gate acima).
-    for pretty in ["Color Equalization", "Equalize Sizes", "Grid Snap"] {
+    let mut seen = 0;
+    ph2d_editor_core::panel::with_registry_opt(|reg| {
+        for p in reg.panels() {
+            let Some((_, label)) = labels
+                .iter()
+                .find(|(id, _)| *id == p.manifest.panel_node_id)
+            else {
+                continue;
+            };
+            seen += 1;
+            assert_eq!(
+                label,
+                p.manifest.title.tr(),
+                "o painel {:?} chama-se na busca outra coisa que a aba",
+                p.manifest.id
+            );
+        }
+    });
+    assert!(seen >= 10, "controlo positivo: só {seen} painéis na busca");
+    for tab in ["Wet Paint", "Grid & Background", "Keyboard Shortcuts"] {
         assert!(
-            labels.iter().any(|l| l == pretty),
-            "o título derivado {pretty:?} devia estar na paleta"
+            labels.iter().any(|(_, l)| l == tab),
+            "{tab:?} devia estar na busca"
         );
     }
-    // `f153f77153` deu ao painel o título dele na paleta: o feio morreu, a aba e a paleta dizem o mesmo.
-    assert!(!labels.iter().any(|l| l == "Bgremoval"));
-    assert!(labels.iter().any(|l| l == "Background Removal"));
 }

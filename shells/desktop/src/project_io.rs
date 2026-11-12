@@ -170,8 +170,31 @@ impl crate::App {
             return;
         };
         if self.project_load_from(&path) {
+            self.note_recent_project(&path);
             (self.recovery.project_path, self.title_dirty) = (Some(path), true);
             self.recovery_opened();
+        }
+    }
+
+    /// *File ▸ Open Recent ▸ …*: abre `path` sem perguntar; se o ficheiro sumiu, sai da lista.
+    fn project_open_recent(&mut self, path: String) {
+        if self.project_load_from(&path) {
+            self.note_recent_project(&path);
+            (self.recovery.project_path, self.title_dirty) = (Some(path), true);
+            self.recovery_opened();
+        } else if !std::path::Path::new(&path).exists() {
+            if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                h.menu_memory.forget_project(&path);
+            }
+            let name = ph2d_editor_core::screens::hero::open_recent::label_of(&path);
+            self.toast(tr_with("chrome.menu.recent_missing", &[("name", &name)]));
+        }
+    }
+
+    /// O projeto `path` foi aberto ou gravado: sobe ao topo do *Open Recent*.
+    pub(crate) fn note_recent_project(&mut self, path: &str) {
+        if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            h.menu_memory.note_project(path);
         }
     }
 
@@ -187,6 +210,9 @@ impl crate::App {
         };
         let asked = std::mem::take(&mut hero.file_menu);
         let (save, save_as, open) = (asked.save, asked.save_as, asked.open);
+        if let Some(path) = asked.open_path {
+            self.project_open_recent(path);
+        }
         if save || save_as {
             self.project_save_gesture(save_as);
         }

@@ -55,6 +55,8 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [crate::ids::MenuRow] {
         ContextMenuKind::MenuBarFileNew => menu_tables::MENU_BAR_FILE_NEW_ROWS,
         ContextMenuKind::MenuBarFileImport => menu_tables::MENU_BAR_FILE_IMPORT_ROWS,
         ContextMenuKind::MenuBarFileExport => menu_tables::MENU_BAR_FILE_EXPORT_ROWS,
+        // As linhas são dinâmicas (os projetos lembrados): entram pelo store.
+        ContextMenuKind::MenuBarFileRecent => &[],
         ContextMenuKind::MenuBarWindowAudio => menu_tables::MENU_BAR_WINDOW_AUDIO_ROWS,
         ContextMenuKind::MenuBarWindowPixel => menu_tables::MENU_BAR_WINDOW_PIXEL_ROWS,
         ContextMenuKind::MenuBarWindowPlan => menu_tables::MENU_BAR_WINDOW_PLAN_ROWS,

@@ -107,14 +107,22 @@ mod live;
 pub mod menu_bar;
 pub mod menu_cascade;
 pub mod menu_faixa;
+/// A memória da faixa por utilizador (recentes, escolhas pelo menu, Open Recent).
+pub mod menu_memory;
+/// «Alt+Enter: show me where it lives».
+pub mod menu_reveal;
 pub mod menu_rows;
 mod menu_tables;
 mod menu_tables_board;
 mod menu_tables_section;
 mod menu_tables_settings;
+/// O chip que ensina o atalho na 3.ª escolha pelo menu.
+pub mod menu_teach;
 pub mod mode_drive;
 /// O que esta tela OFERECE agora — as portas de *«esta superfície está viva?»*.
 mod offers;
+/// *File ▸ Open Recent*.
+pub mod open_recent;
 mod paint;
 mod paint_canvas_overlays;
 mod panel_host;
@@ -294,6 +302,8 @@ pub struct HeroScreen {
     pub documents: crate::documents::Documents,
     /// A memória de sessão da paleta `Ctrl+K` (os recentes) — ver [`global_palette::PaletteSession`].
     pub palette_session: global_palette::PaletteSession,
+    /// ⭐ O que a faixa lembra entre sessões — ver [`menu_memory::MenuMemory`]; a shell lê-a e grava-a.
+    pub menu_memory: menu_memory::MenuMemory,
     /// O que o menu Ficheiro pediu — ver [`file_menu::FileMenuRequests`].
     pub file_menu: file_menu::FileMenuRequests,
     /// O elo entre a fila global do undo e a história de uma família — [`crate::undo_link`].
@@ -432,6 +442,8 @@ impl HeroScreen {
     pub fn tick_motion(&mut self, dt: f64) {
         live::tick(self, dt);
         menu_cascade::tick(self, dt);
+        open_recent::publish(self);
+        menu_reveal::tick(self);
     }
 
     pub fn new(id: NodeId) -> Self {
@@ -471,6 +483,7 @@ impl HeroScreen {
             import_requested: false,
             documents: crate::documents::Documents::default(),
             palette_session: global_palette::PaletteSession::default(),
+            menu_memory: menu_memory::MenuMemory::default(),
             file_menu: file_menu::FileMenuRequests::default(),
             undo_links: crate::undo_link::UndoLinks::default(),
             project: crate::project::ProjectSettings::default(),

@@ -13,6 +13,7 @@ impl crate::App {
         match std::fs::write(path, &bytes) {
             Ok(()) => {
                 eprintln!("[proj] salvo: {path} ({} bytes)", bytes.len());
+                self.note_recent_project(path);
                 self.recovery.saved(&bytes, std::time::Instant::now());
                 let n = self.timeline.doc.bindings().len();
                 self.toast(tr_with(

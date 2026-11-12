@@ -332,6 +332,7 @@ fn boot_hero_screen(
 
     let hero_screen = if hero_screen_enabled {
         let mut hero = HeroScreen::new(NodeId(1)).theme(theme);
+        hero.menu_memory = ph2d_editor_core::screens::hero::menu_memory::MenuMemory::load_home();
         // Cross-session palettes: restore the named-palette set saved last run (the picker was just
         // seeded with the default by `pre_populate`; replace it when a save exists).
         let saved = crate::palette_persist::load();

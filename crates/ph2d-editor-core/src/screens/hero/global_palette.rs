@@ -45,17 +45,17 @@
 //! **tipo 1** — ver [`super::menu_rows::TOPBAR_LEAF_MENUS`], que nomeia as três classes de menu que
 //! **não** são servíveis e o mecanismo de cada uma.
 //!
-//! ## O nome de um painel é DERIVADO do id, e não uma tabela
+//! ## O nome de um painel é o da ABA
 //!
-//! O trait `Panel` carrega `ID`, `NODE_ID` e `DEFAULT_VISIBLE` — **não** um título. Acrescentar um
-//! `TITLE` tocaria as ~23 crates de painel (contrato foundational, churn próprio), e uma tabela
-//! `id → nome` aqui seria a segunda lista que apodrece. Então o título é `snake_case` → Title Case,
-//! uma **derivação do facto que já existe**: medido sobre os 23 ids registados, **21 saem limpos**
-//! (`audio_editor` → *Audio Editor*) e **dois saíam feios** (`bgremoval` → *Bgremoval*, e um painel
-//! que saiu com o 3D). Isso é cosmético e tem cura própria; uma tabela paralela não teria.
+//! O manifesto carrega o `title` (`Panel::TITLE`, um `TextKey`) — a mesma chave que a aba e o
+//! menu *Window* leem. A paleta diz o que a tela diz («Wet Paint», «Grid & Background»; dono 12/11),
+//! nunca uma derivação do id.
 
 #[path = "global_palette_bars.rs"]
 pub mod global_palette_bars;
+/// As ações do Input Map, os objetos da cena e os campos dos cartões na busca (onda 3).
+#[path = "global_palette_finds.rs"]
+pub mod global_palette_finds;
 /// Os comandos da barra de menus, com o caminho de onde moram.
 #[path = "global_palette_menus.rs"]
 pub mod global_palette_menus;
@@ -77,32 +77,6 @@ use ph2d_tokens::ColorToken;
 
 /// O título da paleta global — o que o cabeçalho mostra.
 pub const GLOBAL_PALETTE_TITLE: TextKey = TextKey::new("chrome.palette.commands");
-
-/// `snake_case` → `Title Case`. Ver o doc-header: é uma DERIVAÇÃO do id, nunca uma tabela.
-#[must_use]
-pub fn humanise_panel_id(id: &str) -> String {
-    // Os que a derivação estraga: o id colou as palavras («Bgremoval», «Sfxlab») ou é só metade
-    // do nome («Authored», «Tokens»). O nome é o título que a aba do painel já mostra.
-    match id {
-        "bgremoval" => return tr("panel.bg_removal.title").to_owned(),
-        "sfxlab" => return tr("panel.sfxlab.title").to_owned(),
-        "authored" => return tr("panel.authored.title").to_owned(),
-        "tokens" => return tr("panel.tokens.title").to_owned(),
-        _ => {}
-    }
-    let mut out = String::with_capacity(id.len());
-    for (i, word) in id.split('_').enumerate() {
-        if i > 0 {
-            out.push(' ');
-        }
-        let mut chars = word.chars();
-        if let Some(first) = chars.next() {
-            out.extend(first.to_uppercase());
-            out.push_str(chars.as_str());
-        }
-    }
-    out
-}
 
 /// O rótulo de uma row de menu, lido como NOME em vez de como linha de menu.
 ///
@@ -188,6 +162,8 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
             .any(|it| it.id == id)
     };
 
+    // ⭐ Os comandos dos MENUS vêm primeiro (dono 12/11): a busca vazia é o mapa da barra; as
+    //    ferramentas e os painéis, que têm porta à vista, ficam depois.
     let mut groups = Vec::new();
     // ── Os chips do RAIL (ferramentas + os toggles de painel do topo da coluna); o atalho vem da
     //    dica do chip («Translate · G»). ──
@@ -245,7 +221,7 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
             }
             panels.push(PaletteItem {
                 badge: None,
-                label: humanise_panel_id(p.manifest.id),
+                label: p.manifest.title.tr().to_owned(),
                 id: p.manifest.panel_node_id,
                 keywords: "",
             });
@@ -262,19 +238,35 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
             }],
         });
     }
-    groups.extend(bar);
+    // ── Os projetos do Open Recent, no lugar deles (`File · Open Recent`). ──
+    if let Some(at) =
+        global_palette_menus::place_of_menu(crate::interaction::ContextMenuKind::MenuBarFileRecent)
+    {
+        for r in hero.store.recent_rows().iter().filter(|r| r.path.is_some()) {
+            let item = PaletteItem {
+                badge: None,
+                label: shortcut_column(&r.label),
+                id: r.id,
+                keywords: "",
+            };
+            global_palette_menus::place(&mut bar, at.clone(), item);
+        }
+    }
+    bar.extend(groups);
+    // ── O que a busca acha além dos comandos: os campos do objeto, a cena, o Input Map. ──
+    bar.extend(global_palette_finds::groups(hero));
 
     as_list(
         PaletteModel {
             title: GLOBAL_PALETTE_TITLE.tr().into(),
-            groups,
+            groups: bar,
             // O `Ctrl+K` não tem caixa nenhuma — ver `PaletteModel::toggle`.
             toggle: None,
             tips: Vec::new(),
             select: None,
             layout: PaletteLayout::Cloud,
         },
-        hero.palette_session.recent(),
+        hero.menu_memory.recent(),
     )
 }
 
@@ -303,7 +295,7 @@ pub fn open(hero: &mut super::HeroScreen) {
 pub fn open_with(hero: &mut super::HeroScreen, family: Option<PaletteGroup>) {
     let mut model = build_global_model(hero);
     model.groups.extend(family);
-    let model = as_list(model, hero.palette_session.recent());
+    let model = as_list(model, hero.menu_memory.recent());
     hero.store.open_command_palette(model);
     hero.palette_session.opened();
     let scopes = global_palette_places::scopes(hero);
@@ -339,14 +331,14 @@ pub fn drain(hero: &mut super::HeroScreen) {
 pub fn route_global_pick(hero: &mut super::HeroScreen, id: NodeId) -> bool {
     let done = run_pick(hero, id);
     if done {
-        hero.palette_session.remember(id);
+        hero.menu_memory.remember(id);
     }
     done
 }
 
 fn run_pick(hero: &mut super::HeroScreen, id: NodeId) -> bool {
     let query = hero.store.command_pick_query().to_owned();
-    if global_palette_places::route(hero, id, &query) {
+    if global_palette_places::route(hero, id, &query) || global_palette_finds::route(hero, id) {
         return true;
     }
     let panel_id = {

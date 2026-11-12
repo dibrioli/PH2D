@@ -105,9 +105,9 @@ fn what_the_palette_ran_last_opens_on_top() {
         !route_global_pick(&mut hero, NodeId(0xDEAD_BEEF)),
         "id de ninguém"
     );
-    hero.palette_session.remember(NodeId(0xDEAD_BEEF));
+    hero.menu_memory.remember(NodeId(0xDEAD_BEEF));
     assert_eq!(
-        hero.palette_session.recent(),
+        hero.menu_memory.recent(),
         [NodeId(0xDEAD_BEEF), tema, ids::CTX_MENU_PPM_256]
     );
     open(&mut hero);

@@ -66,7 +66,7 @@ pub const MENUS: [(NodeId, TextKey, ContextMenuKind); 5] = [
 /// Uma tabela, quatro consumidores: o despacho (`chrome::menu_bar` abre o submenu ancorado na
 /// linha), o fecho antecipado ([`close_on_row_click`] deixa-as de fora), o pintor (o «›» só nelas)
 /// e [`leaf_rows`] (a paleta e os censos atravessam a cascata até às folhas).
-pub const CASCADES: [(NodeId, ContextMenuKind); 12] = [
+pub const CASCADES: [(NodeId, ContextMenuKind); 13] = [
     // Os cinco menus, linhas do botão «Menu» (onda 2).
     (ids::MENUBAR_FILE, ContextMenuKind::MenuBarFile),
     (ids::MENUBAR_EDIT, ContextMenuKind::MenuBarEdit),
@@ -81,6 +81,10 @@ pub const CASCADES: [(NodeId, ContextMenuKind); 12] = [
     (
         ids::MENUBAR_FILE_EXPORT_MENU,
         ContextMenuKind::MenuBarFileExport,
+    ),
+    (
+        ids::MENUBAR_FILE_RECENT_MENU,
+        ContextMenuKind::MenuBarFileRecent,
     ),
     (
         ids::MENUBAR_WINDOW_AUDIO_MENU,
@@ -152,11 +156,12 @@ pub fn leaf_rows(kind: ContextMenuKind) -> Vec<crate::ids::MenuRow> {
 /// ⚠️ Existe para o registo não ser uma lista escrita à mão ao lado da tabela de rows: quem
 /// acrescentar um verbo novo a um destes menus acrescenta-o aqui, e o gate
 /// `every_menu_bar_row_is_registered` reprova se esquecer.
-pub const OWN_ROWS: [NodeId; 20] = [
+pub const OWN_ROWS: [NodeId; 21] = [
     ids::MENUBAR_FILE_NEW,
     ids::MENUBAR_FILE_NEW_MENU,
     ids::MENUBAR_FILE_IMPORT_MENU,
     ids::MENUBAR_FILE_EXPORT_MENU,
+    ids::MENUBAR_FILE_RECENT_MENU,
     ids::MENUBAR_WINDOW_AUDIO_MENU,
     ids::MENUBAR_WINDOW_PIXEL_MENU,
     ids::MENUBAR_WINDOW_PLAN_MENU,
@@ -190,7 +195,12 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
-    for id in [ids::MENUBAR_W, ids::MENUBAR_FIND] {
+    for id in [
+        ids::MENUBAR_W,
+        ids::MENUBAR_FIND,
+        ids::MENUBAR_TEACH,
+        ids::MENUBAR_TEACH_CLOSE,
+    ] {
         let state = ButtonState::Normal;
         store.register(id, InteractiveState::Button { state });
     }
@@ -426,6 +436,7 @@ pub fn paint_menu_bar(
     let f = super::menu_faixa::faixa(bar, text_system);
     super::menu_faixa::paint(&f, scene, text_system, theme, hit_index, store, motion);
     super::transport_bar::paint(&f.jogo, run, scene, text_system, theme, hit_index, store);
+    super::menu_teach::paint(&f, scene, text_system, theme, hit_index, store);
     super::document_tabs::paint(
         bar,
         f.docs.0,
@@ -463,8 +474,9 @@ pub fn close_on_row_click(hero: &mut super::HeroScreen, event: WidgetEvent) {
     {
         return;
     }
-    // A linha de QUALQUER nível aberto fecha a cascata inteira.
+    // A linha de QUALQUER nível aberto fecha a cascata inteira — e conta como escolha PELO MENU.
     if super::menu_cascade::level_of_row(&hero.store, id).is_some() {
+        super::menu_teach::picked_from_menu(hero, id);
         hero.store.close_context_menu();
     }
 }

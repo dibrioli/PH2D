@@ -48,12 +48,17 @@ pub fn frame(
     (live, jogador): Live<'_>,
 ) {
     let open = hero.store.take_input_map_tab_request();
+    let focus = hero.store.take_input_map_action();
     let shown = ph2d_input_map_editor::active_is::<InputMapTab>(hero);
     let Some(tab) = hero.documents.surfaces_mut().find_mut::<InputMapTab>() else {
         return;
     };
     if open {
         tab.open();
+    }
+    // A busca escolheu uma ação: a vista Keyboard abre-a.
+    if let Some(a) = focus {
+        tab.doc.kb.open = Some(a);
     }
     let swapped = tab.doc.begin_frame(&hero.input_map);
     let edits = tab.doc.take_pending();

@@ -1,50 +1,6 @@
 //! ⭐⭐⭐ **AS VARIANTES, e a TROCA que preserva as excepções** (ADR-0164 / plano F5, critério 2).
 //!
 //! # O que uma variante é aqui — e porque não custou schema nenhum
-//!
-//! Uma **variante derivada** (o modelo Unity / flecs `IsA`) é *um mestre cuja raiz é ela própria
-//! uma instância de outro mestre*: `MasterRoot` **e** [`InstanceOf`] na mesma entidade. O sync não
-//! precisou de uma linha para isso — [`crate::instance_sync`] procura *toda* entidade cujo elo
-//! aponta para um `MasterRoot` vivo, e uma variante é exactamente isso.
-//!
-//! ⭐ **Medido por sonda antes de se escrever código** (2026-08-27): editar a base leva a alteração
-//! à variante **e às instâncias da variante** num passe só (`passe = 2`, duas escritas). A ordem
-//! topológica sai de graça pela mesma coincidência que a F5.1 nomeou — a ordem de criação é a de
-//! dependência, e `live_instances` ordena por `StableId`.
-//!
-//! # ⭐⭐ O MAPA de re-key já vive no mundo: são os próprios elos
-//!
-//! A tabela do doc 04 §2.6 promete *«trocar variant↔base preserva os overrides (re-key
-//! determinístico)»*, e a pesquisa do endereçamento chama-lhe *«a operação que nenhum outro sistema
-//! consegue, porque nenhum tem chave mestre-relativa com caminho»*. Aqui ela é mais barata do que a
-//! pesquisa previa, e a razão é a tese do ADR-0164: **a instância é uma entidade real**, então as
-//! peças da variante *já dizem* de que peça da base nasceram.
-//!
-//! ```text
-//! sonda 2026-08-27:  sid peca da base = 2 | sid peca da variante = 4 | link da peca da variante = 2
-//! ```
-//!
-//! ⇒ `base 2 → variante 4` lê-se invertendo os elos da variante. **Sem nomes, sem caminhos, sem
-//! heurística** — é a diferença entre este re-key e o `ByName`/`ByHierarchy` do Unity, que o próprio
-//! Unity documenta como não-reproduzível com nomes duplicados (HR-5).
-//!
-//! # A troca é um RE-KEY, e o resto já estava construído
-//!
-//! [`swap`] muda três coisas — o elo da raiz, os elos das peças e as chaves de override — e **para
-//! aí**. Quem materializa as peças que o mestre novo tem a mais, quem apaga as que ele não tem, e
-//! quem guarda a excepção de uma peça que morre ([`ObjectInstance::orphans`]) já é o passe
-//! estrutural da F5.1 + F5.3. *A peça que falta pode já estar construída — meça a estrutura dela
-//! primeiro.*
-//!
-//! ⭐ E é isso que faz a troca ser **reversível de graça**: trocar para uma variante que não tem a
-//! peça `X` sepulta a excepção de `X` nos órfãos; trocar de volta materializa `X` e **exuma-a**.
-//!
-//! # ⛔ Mestre NÃO aparentado: `None`, e é uma decisão
-//!
-//! Sem antepassado comum não há mapa — só heurística por nome ou por caminho. Os três modos do
-//! Unity (`Nenhum` · `Por nome` · `Por hierarquia`) são um gesto próprio, com relatório, e **nunca
-//! automáticos** (doc 04 §2.6). Aqui a resposta é a recusa, e ela é honesta: a alternativa seria
-//! aplicar a excepção do artista a um objeto que calhou de ter o mesmo nome.
 
 use ph2d_ecs::{Children, Entity, InstanceOf, MasterRoot, ObjectInstance, StableId};
 use std::collections::{BTreeMap, BTreeSet};

@@ -1,42 +1,6 @@
 //! ⭐⭐⭐ **OS VERBOS TARDIOS DA HIERARQUIA** — a promessa que a cura do reparent deixou por medir.
 //!
 //! # A pergunta, e a resposta que ela deu
-//!
-//! A F4.6c curou o *«reordenei objectos na hierarquia e não funcionou o undo»* movendo o dreno do
-//! reparent para **antes** da projecção de z, e o handoff de 2026-09-07 nomeou o que ficava:
-//!
-//! > *«Os outros verbos tardios da Hierarquia — apagar · duplicar · Remove from Sheet — escrevem a
-//! > árvore no MESMO sítio tardio e têm a mesma latência estrutural. NÃO foi medido se produzem o
-//! > fantasma.»*
-//!
-//! ⚠️ **Medir era o passo, não curar** — se o fantasma não aparecesse, a resposta seria uma recusa
-//! medida, e ela valeria tanto como uma cura. Os dois gates abaixo **nasceram vermelhos**: o
-//! fantasma existe para os dois, e a cura é o [`crate::vec_tree_settle`].
-//!
-//! # O mecanismo, medido no produto (2026-09-08)
-//!
-//! O [`ph2d_vec_entities::entities::sync`] é **bidireccional**, e é isso que fecha o ciclo:
-//!
-//! | verbo | o que o dreno escreve | o que o `sync` do quadro SEGUINTE faz sozinho |
-//! |---|---|---|
-//! | apagar | `despawn` da **entidade** (`hierarchy_delete.rs`) | tira o caminho do **documento** |
-//! | duplicar | um caminho novo no **documento** (`hierarchy_duplicate.rs`) | cunha a **entidade** |
-//!
-//! Os dois drenos vivem no `render_loop::hierarchy::dispatch`, que corre **~2 300 linhas depois**
-//! da projecção (`vec_scene.reorder_to`). ⇒ a fotografia do quadro do gesto guardava um mundo e um
-//! documento que discordavam, e o quadro seguinte reconciliava-os **sem entrada nenhuma** — que é
-//! a definição do passo fantasma.
-//!
-//! ⚠️ **Apagar tira do MUNDO e duplicar põe no DOCUMENTO**: as duas metades da mesma latência, e um
-//! gate só deixaria metade da classe por medir.
-//!
-//! # ⚠️ Os CONTROLOS destes gates mudaram com a cura, e a mudança é o achado
-//!
-//! Na 1.ª redacção eles afirmavam *«o caminho ainda está no documento neste quadro»* e *«a entidade
-//! ainda não existe»* — ou seja, descreviam o **defeito**, não a lei. Com a reconciliação a correr
-//! antes da captura, os dois passaram a ser falsos: o gesto tardio deixa o estado **já fechado** na
-//! fotografia. *Um controlo escrito contra o mundo doente reprova quando ele sara* — os de hoje
-//! afirmam que a reconciliação FEZ o trabalho, que é o que impede o ponto fixo de ser vácuo.
 
 use crate::vec_zorder_fixpoint_tests::{Frame, three_fresh_shapes, z};
 use ph2d_ecs::{Entity, SimWorld};

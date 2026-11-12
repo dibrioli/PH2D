@@ -1,46 +1,6 @@
 //! ⭐⭐⭐ **A RECONCILIAÇÃO ANTES DA CAPTURA** — a rede que apanha todo escritor TARDIO da árvore.
 //!
 //! # A lei, e porque ela precisou de uma segunda passagem
-//!
-//! A captura do undo tem de ser **PONTO FIXO dos sistemas**: fotografar, deixar o quadro seguinte
-//! correr sem entrada nenhuma, e fotografar outra vez tem de dar a MESMA foto. Quando não é, o
-//! diff por-quadro do [`crate::undo`] lê a convergência dos próprios sistemas como acção do
-//! artista — nasce um passo **fantasma**, ele limpa a pilha de redo, e o `Ctrl+Z` seguinte gasta-se
-//! a desfazer o lixo que o quadro acabou de criar. Para o dono: *«o undo só faz uma etapa»*.
-//!
-//! A F4.6c curou UM escritor — o arrasto da Hierarquia — **movendo-o** para antes da projecção de
-//! z, e o handoff de 2026-09-07 deixou a pergunta escrita: *«os outros verbos tardios — apagar,
-//! duplicar, Remove from Sheet — escrevem a árvore no MESMO sítio tardio e têm a mesma latência
-//! estrutural. NÃO foi medido se produzem o fantasma.»*
-//!
-//! **Foi medido, e produzem.** Os dois gates de [`crate::vec_zorder_late_writers_tests`] nasceram
-//! vermelhos, e o mecanismo é o do [`ph2d_vec_entities::entities::sync`], que é bidireccional:
-//!
-//! | verbo tardio | o que ele escreve | o que o `sync` do quadro SEGUINTE faz sozinho |
-//! |---|---|---|
-//! | apagar | despawna a **entidade** | tira o caminho do **documento** ⇒ passo `["vec"]` |
-//! | duplicar | põe o caminho no **documento** | cunha a **entidade** ⇒ passo `["world"]` |
-//!
-//! ⚠️ **As duas metades da mesma latência** — um gate só deixaria metade da classe por medir.
-//!
-//! # ⛔ Porque a cura NÃO foi mover estes, nem mover a leitura
-//!
-//! - **Mover os escritores** custou-nos uma linha no reparent porque o `drain_reparent` é
-//!   auto-contido; apagar e duplicar vivem dentro do [`crate::render_loop::hierarchy::dispatch`],
-//!   ~2 300 linhas de verbos com dependências no que o quadro computou entretanto. E **não fecha a
-//!   classe**: o próximo verbo tardio que alguém escrever renasce com o defeito.
-//! - **Mover a LEITURA para o fim** foi medido e recusado: entre a projecção (`reorder_to`) e o
-//!   `dispatch` correm ~40 consumidores da cena — `envelope_live`, `skeleton_live`, `pattern_live`,
-//!   `align_live`, o hit-test e o próprio desenho. A ordem das `paths` **é** a ordem de pintura;
-//!   projectar só no fim daria a todos eles um quadro de atraso.
-//!
-//! ⇒ a leitura fica onde está, **para o desenho**, e esta porta corre outra vez **para a
-//! fotografia**. São duas perguntas, não duas respostas à mesma: uma serve o que se VÊ neste
-//! quadro, a outra o que se GUARDA dele.
-//!
-//! ⚠️ **É o sítio e a razão do [`ph2d_app_components::instance_sync::App::sync_instances`]**, que corre a dois
-//! passos daqui com o mesmo doc: *depois do quadro, e antes da captura — senão a escrita do sync
-//! vira um passo de undo que ninguém deu.* A lei já estava escrita ali, para outro sistema.
 
 use crate::app_state::App;
 

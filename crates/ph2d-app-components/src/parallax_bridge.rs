@@ -4,48 +4,6 @@
 //! Irmã do [`crate::hud_bridge`] e pela mesma lei: o que um motor escreve agora é
 //! **pré-visualização**. A pose de quem tem [`ScrollFactor`] é recolocada a cada quadro e passa
 //! pelo ledger ⇒ **não entra no ficheiro nem no `Ctrl+Z`**.
-//!
-//! # A lei, e a referência que ela usa
-//!
-//! ```text
-//! saida = autorada + centro_da_vista · (1 − k)
-//! ```
-//!
-//! Com a câmera na **origem** nada se mexe: o artista põe o fundo onde ele deve estar *quando a
-//! câmera está em zero*. ⚠️ **A alternativa era guardar a posição da câmera no instante da
-//! autoria** — e ela custa ESTADO, que teria de sobreviver ao ficheiro, ao `Ctrl+Z` e ao
-//! rebobinar. A origem do mundo não custa nada, e **é o que o alvo faz** (medido: o declive do
-//! `Parallax2D` da Godot é exactamente `1 − scroll_scale`).
-//!
-//! # ⛔ Sem câmera de jogo, NADA é conduzido — e isso é a lei, não uma guarda
-//!
-//! A vista é a da **câmera do jogo**, nunca a do editor, pela razão que o `fase_game_camera` já
-//! escreve: uma corrida que dependesse de onde o artista rolou o ecrã seria outra corrida em cada
-//! máquina. Sem câmera na cena o fundo fica **onde o artista o pôs**.
-//!
-//! ⛔⛔ **E quem o devolve é esta ponte, nunca o `settle`** (auditoria 26, §1.2). A 1.ª redacção
-//! dizia *«o `settle` devolve-lhe a pose autorada»* — e ele só ESQUECE: a pose deslocada ficava
-//! no mundo, a captura seguinte gravava-a como documento, e quando a condução voltava ela era
-//! deslocada DUAS vezes (medido: `x = 200 → 400` com `k 0,5`). Hoje todo objecto que a ponte
-//! deixa de conduzir — sem câmera, `k` neutro, a câmera a atravessá-lo, o componente retirado, um
-//! `UiCanvas` anexado — é LARGADO por `release_to_authored`, numa varredura do ledger no fim.
-//!
-//! # ⚠️ O caso que decide se esta ponte está CERTA: o artista ARRASTA o fundo
-//!
-//! O ledger tem uma lei genérica — *«se o `before` deste quadro não é o que o motor deixou no
-//! anterior, outra mão escreveu»* — e ela sozinha **não serve aqui**, porque o que a outra mão
-//! deixou no mundo é a pose **DESLOCADA**, não a autorada. Tomá-la como autorada faria o fundo
-//! saltar `centro · (1 − k)` no quadro seguinte.
-//!
-//! ⇒ a ponte **reconhece a própria escrita**: ela sabe o que devia lá estar (`autorada` deslocada)
-//! e, quando o vivo é outro, **recupera** o autorado subtraindo o mesmo deslocamento. A comparação
-//! é exacta de propósito — o valor foi escrito por esta função, bit a bit.
-//!
-//! # ⛔ Quem tem `UiCanvas` fica de fora
-//!
-//! Um HUD já é conduzido pelo [`crate::hud_bridge`], e dois motores sobre o mesmo `Transform`
-//! escreveriam um por cima do outro. *A raiz de um HUD é a paralaxe com fracção `0`, e quem a
-//! implementa é aquela ponte.*
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{

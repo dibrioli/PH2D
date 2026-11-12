@@ -3,40 +3,6 @@
 //!
 //! > Enio, 2026-08-21: *"No menu do botão direito do mouse: Merge Sprites em camadas (cria uma
 //! > camada por sprite)."*
-//!
-//! # O que este verbo é, ao lado do vizinho
-//!
-//! | | **Merge Sprites** | **Merge to Layers** |
-//! |---|---|---|
-//! | pixels | uma imagem, achatada | uma imagem achatada **e** um documento com N camadas |
-//! | as fontes | despawnadas | despawnadas |
-//! | dá para separar depois | **não** | **sim** — abra o Painter |
-//!
-//! ⚠️ **A geometria é EXACTAMENTE a mesma**, e é de propósito: a mesma união, o mesmo warp, o mesmo
-//! «over». Duplicar aquele laço para o modo novo seria pedir que duas cópias concordassem para
-//! sempre — em vez disso o [`crate::hero_intents::sprite_merge`] ganhou um **modo** que, além de
-//! compor, guarda o que cada fonte pôs em cada pixel. *O que o Painter mostra é o que o ecrã já
-//! mostra, porque é a mesma conta.*
-//!
-//! # Por que a sprite continua a ter a textura achatada
-//!
-//! ⚠️ **A sprite tem de desenhar e de GRAVAR sem o Painter.** O documento vive na ferramenta; o
-//! ficheiro do projeto guarda os pixels da sprite. Se a única cópia fosse o documento, fechar o
-//! app antes de abrir o Painter perdia a fusão — o mesmo defeito das ilhas do BG-Removal
-//! (2026-08-20), que abriam perfeitas e gravavam vazias.
-//!
-//! Então há duas coisas, e as duas são verdade ao mesmo tempo: a **textura** (achatada, durável) e
-//! o **documento** (em camadas, na ferramenta). Abrir o Painter mostra o segundo; tudo o resto vê
-//! o primeiro.
-//!
-//! # A ordem das camadas
-//!
-//! ⚠️ **De baixo para cima, na ordem em que o «over» as compôs.** A fusão itera as fontes e põe
-//! cada uma *sobre* o acumulado, por isso a última fica em cima; o
-//! [`ph2d_tool_painter::PainterTool::add_raster_layer_with_pixels`]
-//! insere no topo, por isso adicioná-las por essa mesma ordem reproduz a pilha. Trocar a ordem aqui
-//! daria um documento que compõe diferente do que a sprite mostra — e ninguém saberia qual dos dois
-//! está certo.
 
 use ph2d_editor_core::{Toast, ToastQueue, ToolRegistry};
 use ph2d_i18n::{tr, tr_with};

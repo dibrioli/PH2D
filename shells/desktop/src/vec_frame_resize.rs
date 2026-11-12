@@ -2,40 +2,6 @@
 //! UI/UX, W3b).
 //!
 //! # O defeito, e o mecanismo dele
-//!
-//! O gizmo escreve a **pose** (`Transform.scale` da entidade) e a pose de um pai é herdada por
-//! todo descendente — é isso que um grafo de cena É. Numa forma-folha isso é exatamente o certo:
-//! escalar um desenho é escalar o desenho. Numa MOLDURA é o oposto do que o artista pede: os
-//! filhos esticam junto, a tipografia achata, e a regra de âncora que ele acabou de armar nunca
-//! chega a correr, porque a moldura não mudou de **caixa** — ela mudou de **escala**.
-//!
-//! O painel já fazia o certo: `W`/`H` reescrevem a GEOMETRIA da moldura
-//! ([`crate::input_dispatch::apply_vec_transform`]) e deixam a pose em paz. Este módulo é o que
-//! leva a alça do gizmo à mesma porta, para que as duas metades da interface não respondam
-//! diferente à mesma pergunta.
-//!
-//! # Quem decide é o OBJECTO, pelo checkbox **Resize Box** (decisão do Enio, 2026-08-03)
-//!
-//! A regra vive em [`ph2d_ecs::resizes_box`]: molduras e os filhos delas nascem marcados, todo o
-//! resto nasce desmarcado, e o checkbox da seção Transform é o override.
-//!
-//! ⚠️ **Eu argumentei contra o checkbox e a decisão foi revertida — as duas metades ficam aqui**,
-//! porque uma cerca de Chesterton sem o lado que perdeu é um convite a refazer o argumento. O que
-//! eu disse: um interruptor persistente responde com estado por-OBJECTO a uma pergunta sobre a
-//! intenção do GESTO, e esquecer de o restaurar torna o *próximo* gesto silenciosamente errado.
-//!
-//! O que a decisão viu e o argumento não: **o comportamento antigo é o CERTO para um objeto de
-//! game**, e ele tem de continuar alcançável *dentro* de uma moldura — um contentor que é cenário,
-//! e não layout, quer escalar o conteúdo junto. Sem o override isso ficava inexprimível: a única
-//! saída era seleccionar o conteúdo, o que muda o que o gizmo mede.
-//!
-//! ⚠️ **E nos FILHOS o checkbox não é decoração:** o tamanho de um filho é ENTRADA da disposição, e
-//! o passe de layout mede a **caixa**. Escalar a pose de um filho num fluxo deixa a caixa onde
-//! estava, e o fluxo re-flui em volta de um número que já não descreve o que se vê.
-//!
-//! O default derivado (em vez de um bool escrito em cada entidade) é o que faz uma forma arrastada
-//! para dentro de uma moldura passar a valer a regra de dentro no mesmo frame — ver
-//! [`ph2d_ecs::resize_box_default`].
 
 use ph2d_ecs::{Entity, SimWorld, VecPathRef};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};

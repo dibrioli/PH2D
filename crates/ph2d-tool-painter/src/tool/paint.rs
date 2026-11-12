@@ -33,6 +33,7 @@ mod curve_trim; // self-intersection trim of the offset spine (open + closed); s
 pub(crate) mod ferramenta_linhas; // o que cada ferramenta do trilho nunca lê (23/10)
 mod line_settings;
 mod ribbon_diag; // `PH2D_RIBBON_DIAG=1`: quem pinta o que num traco, impresso no pen-up
+mod ritmo; // B22.1: secagem e encharque em passos fixos (o mesmo byte a 30/60/144 Hz)
 mod solid_carimbos;
 mod solid_deposit;
 /// O `Style: Solid` na família dos shape editors — o laço que cada forma desenha (plano 38 §5.1).
@@ -416,5 +417,7 @@ mod impasto_fingerprint_tests; // the deposit's byte-for-byte pin — the net an
 mod sculpt_tests;
 #[cfg(test)]
 mod watercolor_aa_tests; // screen-space AA of the thin-stroke watercolor silhouette
+#[cfg(test)]
+mod ritmo_fixo_tests; // B22.1: o mesmo gesto a 30/60/144 Hz dá os mesmos bytes
 #[cfg(test)]
 mod watercolor_dry_tests; // o decaimento da umidade: janela deslizante + rect que encolhe

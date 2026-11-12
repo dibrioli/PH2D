@@ -443,6 +443,8 @@ pub(crate) struct PaintState {
     /// Current soak disc = the last dab's `(centre, radius)` — where the tick heartbeat pours dwell
     /// while the pointer is parked. `None` = stroke start.
     pub(super) wet_soak_pos: Option<([f32; 2], f32)>,
+    /// B22.1: o tempo por encharcar sob a ponta, em passos fixos ([`super::ritmo::passos_fixos`]).
+    pub(super) wet_soak_relogio: f64,
     /// Whether THIS stroke poured any soak yet — gates the composite's 2×-blur (far) fields, so a
     /// stroke with no dwell pays exactly the plain 4-blur rewet cost.
     pub(super) wet_soak_active: bool,
@@ -496,6 +498,8 @@ pub(crate) struct PaintState {
     pub(super) canvas_wet_snapshot: Vec<u8>,
     /// Fractional drying carry between whole-byte decay steps (heartbeat dt accumulator).
     pub(super) canvas_wet_carry: f32,
+    /// B22.1: o tempo por secar, em passos fixos ([`super::ritmo::passos_fixos`]).
+    pub(super) canvas_wet_relogio: f64,
     /// B16.10: a revisão de `canvas_wet` (nova a cada escrita) e o véu da prévia guardado por ela.
     pub(super) canvas_wet_rev: u64,
     pub(super) wet_veu: super::watercolor_backdrop::veu::VeuGuardado,

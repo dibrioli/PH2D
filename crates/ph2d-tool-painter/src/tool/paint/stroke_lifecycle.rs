@@ -475,7 +475,7 @@ impl PainterTool {
         // (≤1 frame later, mid-gesture — imperceptible; a sweeping nib pours almost no local dwell),
         // and the pen-up bake reads the full soak field regardless ⇒ the painted result is
         // byte-identical. Airbrush/settle dabs stamped by THIS tick still composite (`stamped` above).
-        if wet && let Some(r) = self.grow_wet_soak(dt_s) {
+        if wet && let Some(r) = self.grow_wet_soak_fixo(dt_s) {
             self.paint.wet_frame_dirty = Some(match self.paint.wet_frame_dirty {
                 Some(f) => union_region(f, r),
                 None => r,

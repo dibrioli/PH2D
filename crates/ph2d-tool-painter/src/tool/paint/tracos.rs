@@ -58,6 +58,7 @@ campos_do_traco!(
     wet_mix,
     mistura_opaca,
     wet_soak_pos,
+    wet_soak_relogio,
     plano_do_traco,
     pixel_trilhos,
     po_do_papel, // o pó é o da tela DESTE pen-down (`stroke_lifecycle` zera-o)
@@ -209,6 +210,7 @@ pub(crate) const PARTILHADO: &[&str] = &[
     "canvas_wet_rect",
     "canvas_wet_snapshot",
     "canvas_wet_carry",
+    "canvas_wet_relogio",
     "canvas_wet_rev",
     "wet_veu",
     "dry_rate_per_s",

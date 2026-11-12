@@ -77,8 +77,9 @@ pub struct Opcao {
     /// O valor guardado: json (`0`, `null`, `true`) ou, se não o for, o NOME serde de uma variante
     /// unitária (`Full`).
     pub valor: &'static str,
-    /// A chave `ph2d-i18n` do rótulo que o cartão do Inspector pinta — a mesma palavra que a
-    /// timeline escreve para esta escolha (F27 F).
+    /// A chave `ph2d-i18n` do nome INTEIRO da opção — a palavra que a timeline escreve para esta
+    /// escolha (F27 F) e que uma lista com espaço pinta. Um seletor estreito pode pintar um nome
+    /// curto; a dica dele diz este (`InspectorFacing::full_label`).
     pub rotulo: &'static str,
 }
 

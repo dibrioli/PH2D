@@ -327,10 +327,29 @@ fn toda_linha_e_a_dobra_tem_dica_de_hover() {
             "{id:?} sem dica de hover"
         );
     }
-    // O nome inteiro do Facing mora na dica do botão curto.
+    // ⭐ O nome inteiro mora na dica do botão curto, e é o do CATÁLOGO (o que a timeline escreve):
+    // uma só fonte. Mutação que deve sangrar: a dica pelo `label` curto em vez do `full_label`.
+    use ph2d_editor_core::topdown_edits::{InspectorFacing, InspectorMoveDirections};
+    let nomes = (i::INSP_TD_FACING
+        .iter()
+        .zip(InspectorFacing::ALL.map(InspectorFacing::full_label)))
+    .chain(
+        i::INSP_TD_DIRECTIONS
+            .iter()
+            .zip(InspectorMoveDirections::ALL.map(InspectorMoveDirections::full_label)),
+    );
+    for (&id, nome) in nomes {
+        let dica = h.store().tooltip_for(id).unwrap_or_default();
+        assert!(dica.starts_with(&format!("{nome}: ")), "{dica}");
+    }
     let still = h
         .store()
         .tooltip_for(i::INSP_TD_FACING[0])
         .unwrap_or_default();
-    assert!(still.starts_with("Don't turn"), "{still}");
+    assert!(still.starts_with("Don't turn: "), "{still}");
+    let x = h
+        .store()
+        .tooltip_for(i::INSP_TD_DIRECTIONS[3])
+        .unwrap_or_default();
+    assert!(x.starts_with("X only: "), "{x}");
 }

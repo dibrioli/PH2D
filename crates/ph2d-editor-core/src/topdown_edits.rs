@@ -25,6 +25,20 @@
 //! está a funcionar perfeitamente lê-se como partido, e os números no painel estão todos certos.
 
 use ph2d_i18n::tr;
+
+/// ⭐ **O nome INTEIRO da opção `tag` do campo `campo` do `TopDownPlayer`** — a fonte é o catálogo
+/// (`options!`), a mesma palavra que a timeline escreve. O botão estreito do cartão pinta o curto
+/// (`label`) e a dica dele diz este: um nome, uma chave.
+fn nome_inteiro(campo: u16, tag: u8) -> &'static str {
+    let rotulo = ph2d_component_desc::desc_for("ph2d::physics::TopDownPlayer")
+        .and_then(|d| d.field(campo))
+        .and_then(|f| match f.view {
+            ph2d_component_desc::View::Options(o) => o.get(usize::from(tag)).map(|o| o.rotulo),
+            _ => None,
+        })
+        .unwrap_or_default();
+    tr(rotulo)
+}
 /// Em que direcções o corpo aceita andar — o espelho do `ph2d_topdown::DirectionMode`.
 ///
 /// ⚠️ **Uma tag SEPARADA do enum da lei**, como todos os selectores deste painel: o painel fala em
@@ -60,11 +74,17 @@ impl InspectorMoveDirections {
     pub fn label(self) -> &'static str {
         match self {
             Self::Free => tr("panel.topdown.free"),
-            Self::Eight => tr("panel.topdown.8_dir"),
-            Self::Four => tr("panel.topdown.4_dir"),
+            Self::Eight => tr("panel.topdown.dir_8"),
+            Self::Four => tr("panel.topdown.dir_4"),
             Self::AxisX => tr("panel.topdown.dir_x"),
             Self::AxisY => tr("panel.topdown.dir_y"),
         }
+    }
+
+    /// O nome inteiro (a dica do botão curto, a timeline) — do catálogo, campo 3.
+    #[must_use]
+    pub fn full_label(self) -> &'static str {
+        nome_inteiro(3, self.tag())
     }
 
     /// A posição no segmentado — a tag do clique.
@@ -158,6 +178,12 @@ impl InspectorFacing {
         }
     }
 
+    /// O nome inteiro (a dica do botão curto, a timeline) — do catálogo, campo 6.
+    #[must_use]
+    pub fn full_label(self) -> &'static str {
+        nome_inteiro(6, self.tag())
+    }
+
     /// ⭐ **Este modo LÊ a velocidade de viragem?** — esconde a linha em `None`.
     #[must_use]
     pub const fn uses_turn_speed(self) -> bool {
@@ -242,6 +268,24 @@ mod tests {
         for (i, m) in InspectorFacing::ALL.into_iter().enumerate() {
             assert_eq!(usize::from(m.tag()), i, "o facing {m:?} mudou de posicao");
         }
+    }
+
+    /// ⭐ **O nome inteiro vem do CATÁLOGO, opção a opção** — o que a timeline escreve e a dica do
+    /// botão curto diz. Mutação que deve sangrar: o campo errado no `full_label` (3 ↔ 6).
+    #[test]
+    fn the_full_name_is_the_catalogs_option_word() {
+        let inteiros: Vec<_> = InspectorFacing::ALL.map(InspectorFacing::full_label).into();
+        assert_eq!(
+            inteiros,
+            ["Don't turn", "Face movement", "Snap to 4", "Snap to 8"]
+        );
+        let inteiros: Vec<_> = InspectorMoveDirections::ALL
+            .map(InspectorMoveDirections::full_label)
+            .into();
+        assert_eq!(
+            inteiros,
+            ["Free", "8 directions", "4 directions", "X only", "Y only"]
+        );
     }
 
     /// ⭐⭐ **Só um modo de cada família lê o knob condicional dela.**

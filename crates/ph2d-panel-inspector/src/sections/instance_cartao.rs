@@ -7,7 +7,6 @@ use super::*;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::panel::cards::Seg;
 use ph2d_editor_core::panel::cards::corpo::choices;
-use ph2d_editor_core::property_row::{abaixo_do_botao, caixa_do_botao};
 use ph2d_editor_core::screens::hero::{InspectorInstanceInfo, InspectorPropertiesInfo};
 use ph2d_i18n::{tr, tr_with};
 
@@ -20,6 +19,25 @@ struct Mao<'a> {
     store: &'a WidgetStore,
     x: f32,
     w: f32,
+}
+
+impl super::grupo_dobravel::Pincel for Mao<'_> {
+    #[allow(clippy::type_complexity)]
+    fn partes(
+        &mut self,
+    ) -> (
+        &mut VectorScene,
+        &mut TextSystem,
+        Theme,
+        &mut HitIndex,
+        &WidgetStore,
+        f32,
+        f32,
+    ) {
+        (
+            self.scene, self.text, self.theme, self.hit, self.store, self.x, self.w,
+        )
+    }
 }
 
 impl Mao<'_> {
@@ -37,13 +55,7 @@ impl Mao<'_> {
     }
 
     fn botao(&mut self, y: f32, id: NodeId, rotulo: &str) -> f32 {
-        let caixa = caixa_do_botao(self.text, self.x, self.w, y, rotulo);
-        self.hit.register(id, caixa);
-        let b = Button::new(id, rotulo.to_owned())
-            .kind(ButtonKind::Default)
-            .visual(self.store.button_visual(id));
-        paint_button(&b, caixa, self.scene, self.text, self.theme);
-        abaixo_do_botao(caixa)
+        super::grupo_dobravel::botao(self, y, id, rotulo)
     }
 
     /// Uma exceção sem alvo: a frase, e o «×» dela na mesma fila, da altura de todo controlo.

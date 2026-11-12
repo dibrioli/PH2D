@@ -12,14 +12,14 @@
 //! | `The body must be Kinematic` | um corpo dinâmico é do **solver** |
 //! | `A Platform Player on this object wins` | dois movers, um `Transform` |
 //! | `The clock is stopped` | a ponte corre no passo fixo |
-//! | `Off — the keys don't reach it` | Default Controls desligado; o botão «Turn on» liga-o |
+//! | `Default Controls is off` | nada o move até um script ou um nó; o botão «Turn on» liga-o |
 //!
 //! # ⭐ Duas linhas SOMEM conforme o modo
 //!
 //! O *Board Angle* só existe em `Custom` e o *Turn* só quando ele roda — a lei do
 //! `SignalVerb::uses_arg`: mostrar sempre entrega um controlo morto em cada modo.
 
-use super::grupo_dobravel::{Pincel, dobra};
+use super::grupo_dobravel::{Pincel, botao, dobra};
 use super::*;
 use ph2d_editor_core::property_row::Seccao;
 use ph2d_editor_core::topdown_edits::{
@@ -147,17 +147,6 @@ impl Td<'_> {
             self.seccao,
         )
     }
-
-    fn botao(&mut self, y: f32, id: NodeId, rotulo: &str) -> f32 {
-        let rect =
-            ph2d_editor_core::property_row::caixa_do_botao(self.text, self.x, self.w, y, rotulo);
-        let b = Button::new(id, rotulo)
-            .kind(ButtonKind::Default)
-            .visual(self.store.button_visual(id));
-        paint_button(&b, rect, self.scene, self.text, self.theme);
-        self.hit.register(id, rect);
-        ph2d_editor_core::property_row::abaixo_do_botao(rect)
-    }
 }
 
 /// **Os AVISOS** — vêm antes dos números: quem não vê nada mexer não quer afinar uma rampa.
@@ -194,10 +183,11 @@ fn avisos(p: &mut Td<'_>, y: f32) -> f32 {
     if !i.default_controls {
         y = p.aviso(
             y,
-            "panel.inspector.topdown.off_u_the_keys_don_t_reach_it_something_else_must_drive_it",
+            "panel.inspector.topdown.default_controls_is_off",
             ColorToken::Text3,
         );
-        y = p.botao(
+        y = botao(
+            p,
             y,
             ids::INSP_TD_TURN_ON_CONTROLS,
             tr("panel.inspector.topdown.turn_on"),

@@ -791,18 +791,12 @@ fn every_player_control_carries_a_hover_hint() {
     //    «stale» deste gate: o que fazia esta fixtura transbordar era o plano fechar um cartão
     //    antes de CADA secção da lista — no tema clássico, um separador inteiro por secção vazia.
     //    Com o `section_plan::Corredor` o corpo cabe, e a barra não aparece.
-    // ⚠️ **As DOBRAS (desenho da ficha 03_character) são cabeçalho de grupo**, o
-    // mesmo cromo das dobras da câmera e do HUD, cujo gate de dicas só olha campos:
-    // a dica mora na CAIXA da habilidade e nas rows de dentro, não no chevron.
-    let mut chrome: Vec<(&str, ph2d_a11y::NodeId)> = vec![
+    // ⭐ **As DOBRAS saíram desta lista (GEF 05)**: cada uma diz em Plain English o que mora dentro,
+    // como a dobra More do Top-Down.
+    let chrome: Vec<(&str, ph2d_a11y::NodeId)> = vec![
         ("o cabecalho da secao", ids::INSP_LIVE_PLAYER_SECTION),
         ("a pega de arrasto do cabecalho", ids::INSP_LIVE_PLAYER_GRIP),
     ];
-    chrome.extend(
-        ph2d_panel_inspector::ids::INSP_PLAYER_FOLDS
-            .iter()
-            .map(|&id| ("uma dobra do Platform Player", id)),
-    );
 
     let with_player = painted(player());
     let without: Vec<ph2d_a11y::NodeId> = {
@@ -1866,4 +1860,47 @@ fn a_abrir_todo_campo_dentro_da_banda_aparece_inteiro() {
     ph2d_panel_inspector::set_cards_on(false);
     assert!(vistos > 0, "a régua não viu campo nenhum");
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
+}
+
+/// ⭐ **Toda dobra do Platform Player tem dica de hover** — o que mora dentro, em Plain English, e
+/// nenhuma repete a de outra. Mutação que deve sangrar: tirar o `set_tooltip` do laço das dobras.
+#[test]
+fn toda_dobra_do_player_tem_dica() {
+    let mut host = host_aberto();
+    let mut state = InspectorState::default();
+    set_current_inspector_player(Some(player()));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    set_current_inspector_player(None);
+    let mut vistas = std::collections::BTreeSet::new();
+    for id in ph2d_panel_inspector::ids::INSP_PLAYER_FOLDS {
+        let dica = host.store().tooltip_for(id).unwrap_or_default();
+        assert!(dica.len() > 12, "a dobra {id:?} sem dica: {dica:?}");
+        assert!(vistas.insert(dica.to_owned()), "dica repetida: {dica}");
+    }
+}
+
+/// ⭐ **`open_all_sections` abre as dobras do Platform Player** — o aberto herdado (ondas 2–3) dizia
+/// que não; esta é a prova pela porta do produto: cada row de dentro de cada dobra pinta-se.
+#[test]
+fn abrir_todas_as_seccoes_abre_as_dobras_do_player() {
+    let mut host = crate::host_em_metros();
+    let mut state = InspectorState::default();
+    set_current_inspector_player(Some(player()));
+    let _ = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    host.open_all_sections();
+    let pintados: Vec<_> = host
+        .paint::<InspectorPanel>(&mut state, VIEWPORT)
+        .into_iter()
+        .map(|(id, _)| id)
+        .collect();
+    set_current_inspector_player(None);
+    for (dobra, dentro, _) in dobras_do_player() {
+        assert!(!host.store().is_collapsed(dobra), "{dobra:?} ficou fechada");
+        for id in dentro {
+            assert!(
+                pintados.contains(id),
+                "{id:?} (dentro de {dobra:?}) não pintou"
+            );
+        }
+    }
 }

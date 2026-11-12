@@ -144,3 +144,16 @@ pub(crate) fn dobra<P: Pincel>(
     let (scene, _, _, hit, store, _, _) = p.partes();
     g.fecha(store, scene, hit, fim)
 }
+
+/// ⭐ **O botão de uma linha do cartão** («Turn on» do Top-Down, «Fit to Collider» do Player, os do
+/// Instance): pintado com a face da casa e registado no hit. Devolve o `y` seguinte.
+pub(crate) fn botao<P: Pincel>(p: &mut P, y: f32, id: NodeId, rotulo: &str) -> f32 {
+    let (scene, text, theme, hit, store, x, w) = p.partes();
+    let rect = ph2d_editor_core::property_row::caixa_do_botao(text, x, w, y, rotulo);
+    let b = Button::new(id, rotulo)
+        .kind(ButtonKind::Default)
+        .visual(store.button_visual(id));
+    paint_button(&b, rect, scene, text, theme);
+    hit.register(id, rect);
+    ph2d_editor_core::property_row::abaixo_do_botao(rect)
+}

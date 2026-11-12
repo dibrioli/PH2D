@@ -182,8 +182,8 @@ Versão B, Walls com uma caixa só (dono 10/11). Painel em `sections/player_cart
 ## Abertos
 
 - O gate de geometria dos cards do player (`seam_player`) prova menos: «nenhuma row se sobrepõe» no lugar do passo da moldura por card da tabela.
-- As 12 dobras novas não têm dica de hover (isentas, como as da câmera e do HUD).
-- `open_all_sections` não abre as dobras novas.
+- ~~As 12 dobras novas não têm dica de hover~~ — fechado no GEF 05 (12/11): cada dobra diz o que mora dentro (`toda_dobra_do_player_tem_dica`; a isenção saiu do `every_player_control_carries_a_hover_hint`).
+- ~~`open_all_sections` não abre as dobras novas~~ — não era defeito (12/11): abre, provado por `abrir_todas_as_seccoes_abre_as_dobras_do_player`; o laço à mão do `seam_px_m` saiu.
 
 ## Próximo (decisão do dono 10/11)
 

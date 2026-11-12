@@ -278,9 +278,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.topdown.the_clock_is_stopped_u_it_moves_while_the_clock_plays" => {
             "The clock is stopped \u{2014} it moves while the clock plays."
         }
-        "panel.inspector.topdown.off_u_the_keys_don_t_reach_it_something_else_must_drive_it" => {
-            "Off \u{2014} the keys don't reach it; something else must drive it."
-        }
         "panel.inspector.script.stopped_fix_and_save" => {
             "Stopped: {msg} \u{2014} fix the script and save it."
         }

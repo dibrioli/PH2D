@@ -311,6 +311,41 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "How the jump feels. Floaty hangs at the top; Snappy rises fast and falls fast; Heavy drops like a stone. The jump height stays the same."
         }
         // ph2d-migrar-texto:end
+        // As dicas das dobras (GEF 05): o que mora dentro, em Plain English.
+        "panel.inspector.player.tip_fold_walk_more" => {
+            "Control in the air, braking, the steepest slope he walks up, and whether he walks off ledges."
+        }
+        "panel.inspector.player.tip_fold_jump_more" => {
+            "Air jump height, and how gravity and speed change on the way up, at the top, on the way down and when the key is let go."
+        }
+        "panel.inspector.player.tip_fold_walls" => {
+            "Sliding down walls, jumping off them and holding on to them."
+        }
+        "panel.inspector.player.tip_fold_wall_sensor" => {
+            "How far and how widely he feels for a wall beside him."
+        }
+        "panel.inspector.player.tip_fold_dash" => {
+            "A quick burst of speed: how fast, how long, and the wait before the next one."
+        }
+        "panel.inspector.player.tip_fold_crouch" => {
+            "Ducking: how low he gets and how fast he moves while down."
+        }
+        "panel.inspector.player.tip_fold_swim" => {
+            "Moving in water: how fast he swims, how quickly he gets there, and how he enters."
+        }
+        "panel.inspector.player.tip_fold_ledge" => {
+            "Grabbing the edge of a platform and climbing up onto it."
+        }
+        "panel.inspector.player.tip_fold_glide" => "Falling slowly while he glides.",
+        "panel.inspector.player.tip_fold_forgiveness" => {
+            "Small helps that make jumps feel fair: a late jump after leaving a ledge, an early press that still counts, and slipping past corners."
+        }
+        "panel.inspector.player.tip_fold_leg" => {
+            "The spring that holds him above the ground: how high, how firmly, and how many feet it checks."
+        }
+        "panel.inspector.player.tip_fold_advanced" => {
+            "How the body is moved, the signals he sends, riding moving platforms, the fall limit and how he reacts to hits."
+        }
         _ => return None,
     })
 }

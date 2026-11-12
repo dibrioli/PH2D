@@ -40,38 +40,8 @@ pub(crate) const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 8] = [
 ];
 
 /// As dicas de hover (Plain English). Accel, Decel e Turn têm a sua no `populate_dicas`.
-const DICAS: [(ph2d_a11y::NodeId, &str); 20] = [
+const DICAS: [(ph2d_a11y::NodeId, &str); 11] = [
     (ids::INSP_TD_SPEED, "panel.inspector.topdown.tip_speed"),
-    (
-        ids::INSP_TD_DIRECTIONS[0],
-        "panel.inspector.topdown.tip_dir_free",
-    ),
-    (
-        ids::INSP_TD_DIRECTIONS[1],
-        "panel.inspector.topdown.tip_dir_8",
-    ),
-    (
-        ids::INSP_TD_DIRECTIONS[2],
-        "panel.inspector.topdown.tip_dir_4",
-    ),
-    (
-        ids::INSP_TD_DIRECTIONS[3],
-        "panel.inspector.topdown.tip_dir_x",
-    ),
-    (
-        ids::INSP_TD_DIRECTIONS[4],
-        "panel.inspector.topdown.tip_dir_y",
-    ),
-    (
-        ids::INSP_TD_FACING[0],
-        "panel.inspector.topdown.tip_face_still",
-    ),
-    (
-        ids::INSP_TD_FACING[1],
-        "panel.inspector.topdown.tip_face_move",
-    ),
-    (ids::INSP_TD_FACING[2], "panel.inspector.topdown.tip_face_4"),
-    (ids::INSP_TD_FACING[3], "panel.inspector.topdown.tip_face_8"),
     (
         ids::INSP_TD_VIEWPOINT[0],
         "panel.inspector.topdown.tip_view_top",
@@ -114,9 +84,46 @@ const DICAS: [(ph2d_a11y::NodeId, &str); 20] = [
     ),
 ];
 
+/// O que cada botão curto do Directions faz, pela ordem de `InspectorMoveDirections::ALL`.
+const QUE_FAZ_DIRECAO: [&str; 5] = [
+    "panel.inspector.topdown.tip_dir_free",
+    "panel.inspector.topdown.tip_dir_8",
+    "panel.inspector.topdown.tip_dir_4",
+    "panel.inspector.topdown.tip_dir_x",
+    "panel.inspector.topdown.tip_dir_y",
+];
+
+/// O que cada botão curto do Facing faz, pela ordem de `InspectorFacing::ALL`.
+const QUE_FAZ_FACING: [&str; 4] = [
+    "panel.inspector.topdown.tip_face_still",
+    "panel.inspector.topdown.tip_face_move",
+    "panel.inspector.topdown.tip_face_4",
+    "panel.inspector.topdown.tip_face_8",
+];
+
+/// ⭐ A dica de um botão curto do Directions e do Facing: o nome INTEIRO (o do catálogo, um só) e o
+/// que ele faz — «Don't turn: the picture keeps its angle.».
+fn dica_com_nome(nome: &str, chave: &str) -> String {
+    ph2d_i18n::tr_with(
+        "panel.inspector.topdown.tip_named",
+        &[("name", &nome), ("what", &ph2d_i18n::tr(chave))],
+    )
+}
+
 pub(crate) fn populate_topdown(store: &mut WidgetStore) {
+    use ph2d_editor_core::topdown_edits::{InspectorFacing, InspectorMoveDirections};
     for (id, chave) in DICAS {
         store.set_tooltip(id, ph2d_i18n::tr(chave));
+    }
+    let direcoes = InspectorMoveDirections::ALL.map(InspectorMoveDirections::full_label);
+    let viragens = InspectorFacing::ALL.map(InspectorFacing::full_label);
+    let botoes = (ids::INSP_TD_DIRECTIONS
+        .iter()
+        .zip(direcoes)
+        .zip(QUE_FAZ_DIRECAO))
+    .chain(ids::INSP_TD_FACING.iter().zip(viragens).zip(QUE_FAZ_FACING));
+    for ((&id, nome), chave) in botoes {
+        store.set_tooltip(id, dica_com_nome(nome, chave));
     }
     store.set_tooltip(
         ids::INSP_TD_FOLD_MORE,

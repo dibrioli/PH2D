@@ -8,6 +8,7 @@ mod grupos;
 #[path = "player_pulo.rs"]
 mod pulo;
 
+use super::grupo_dobravel::botao;
 use super::rows::{Campo, caixa_row, card_frame_with, num_row_unit, par_row, seg_row};
 use super::table::{PLAYER_CARDS, PlayerRow};
 use super::*;
@@ -52,6 +53,7 @@ pub(super) fn coluna_da_secao(text: &mut TextSystem) -> Option<f32> {
 }
 
 impl super::grupo_dobravel::Pincel for Pintor<'_> {
+    #[allow(clippy::type_complexity)]
     fn partes(
         &mut self,
     ) -> (
@@ -206,17 +208,6 @@ impl Pintor<'_> {
         }
     }
 
-    fn botao(&mut self, y: f32, id: NodeId, label: &str) -> f32 {
-        let rect =
-            ph2d_editor_core::property_row::caixa_do_botao(self.text, self.x, self.w, y, label);
-        let btn = Button::new(id, label)
-            .kind(ButtonKind::Default)
-            .visual(self.store.button_visual(id));
-        paint_button(&btn, rect, self.scene, self.text, self.theme);
-        self.hit.register(id, rect);
-        ph2d_editor_core::property_row::abaixo_do_botao(rect)
-    }
-
     fn sim_ou_beira(
         &mut self,
         y: f32,
@@ -362,7 +353,7 @@ fn habilidades(p: &mut Pintor<'_>, mut y: f32) -> f32 {
                 );
             }
             match fit_crouch(p.info) {
-                Some(label) => p.botao(y, ids::INSP_PLAYER_FIT_CROUCH, &label),
+                Some(label) => botao(p, y, ids::INSP_PLAYER_FIT_CROUCH, &label),
                 None => y,
             }
         },
@@ -433,7 +424,7 @@ fn perdao_e_perna(p: &mut Pintor<'_>, y: f32) -> f32 {
         |p, y| {
             let y = p.rows(p.x, p.w, y, &LEG);
             match fit(p.info) {
-                Some(label) => p.botao(y, ids::INSP_PLAYER_FIT, &label),
+                Some(label) => botao(p, y, ids::INSP_PLAYER_FIT, &label),
                 None => y,
             }
         },

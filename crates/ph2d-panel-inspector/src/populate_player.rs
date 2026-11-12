@@ -120,11 +120,28 @@ fn populate_player_boxes(store: &mut WidgetStore) {
     }
     // As dobras nascem fechadas; depois manda o que o artista abriu. `PH2D_PLAYER_DOBRAS=1` abre-as para a foto.
     let abertas = std::env::var_os("PH2D_PLAYER_DOBRAS").is_some();
-    for id in ids::INSP_PLAYER_FOLDS {
+    for (id, dica) in ids::INSP_PLAYER_FOLDS.into_iter().zip(DICAS_DAS_DOBRAS) {
         store.mark_collapsible_section(id);
         store.set_collapsed_if_unchosen(id, !abertas);
+        store.set_tooltip(id, tr(dica));
     }
 }
+
+/// A dica de cada dobra, pela ordem de `INSP_PLAYER_FOLDS`: o que mora dentro.
+const DICAS_DAS_DOBRAS: [&str; 12] = [
+    "panel.inspector.player.tip_fold_walk_more",
+    "panel.inspector.player.tip_fold_jump_more",
+    "panel.inspector.player.tip_fold_walls",
+    "panel.inspector.player.tip_fold_wall_sensor",
+    "panel.inspector.player.tip_fold_dash",
+    "panel.inspector.player.tip_fold_crouch",
+    "panel.inspector.player.tip_fold_swim",
+    "panel.inspector.player.tip_fold_ledge",
+    "panel.inspector.player.tip_fold_glide",
+    "panel.inspector.player.tip_fold_forgiveness",
+    "panel.inspector.player.tip_fold_leg",
+    "panel.inspector.player.tip_fold_advanced",
+];
 
 pub(super) fn populate_player(store: &mut WidgetStore) {
     populate_player_chips(store);

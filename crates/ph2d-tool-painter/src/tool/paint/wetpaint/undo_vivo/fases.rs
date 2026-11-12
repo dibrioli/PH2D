@@ -1,6 +1,17 @@
 //! As fases do Ctrl+Z com a tinta viva, cronometradas SÓ em teste (`sonda_as_fases_do_ctrl_z_wet_a_4k`): fora dos
 //! testes as marcas não fazem nada.
 
+/// `comeca` abre o cronómetro do passo; as marcas somam por nome até a sonda as `tira`r.
+#[cfg(test)]
+pub(crate) use relogio::{comeca, tira};
+
+/// Fecha a fase `nome`: o tempo desde a marca anterior.
+#[inline]
+pub(crate) fn marca(_nome: &'static str) {
+    #[cfg(test)]
+    relogio::marca(_nome);
+}
+
 #[cfg(test)]
 mod relogio {
     use std::cell::{Cell, RefCell};
@@ -34,15 +45,4 @@ mod relogio {
         DESDE.with(|d| d.set(None));
         SOMA.with(|s| std::mem::take(&mut *s.borrow_mut()))
     }
-}
-
-/// `comeca` abre o cronómetro do passo; as marcas somam por nome até a sonda as `tira`r.
-#[cfg(test)]
-pub(crate) use relogio::{comeca, tira};
-
-/// Fecha a fase `nome`: o tempo desde a marca anterior.
-#[inline]
-pub(crate) fn marca(_nome: &'static str) {
-    #[cfg(test)]
-    relogio::marca(_nome);
 }

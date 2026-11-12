@@ -95,11 +95,8 @@ Comando: `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-InputMap && PH2D
 
 ## 10. ABERTO e fora da linha
 
-- (a) `AccentSoft` (seleção da casa) dá Text1 3,18:1 no PlumberRed e 3,36:1 no PlumberGreen — app inteiro; a cura é de token da casa (a vista Keyboard mantém o azul aprovado).
-- (b) Legendas de texto do numérico ausentes a 1280 (Home > tecla a 10 px; piso da casa).
-- (c) Na tecla não ligada a legenda tem a mesma cor do número (nenhum token dá ≥3:1 e < número).
-- (d) Nomes cortados «Collision Shape (…» na Hierarchy em Play.
-- (e) Faixa preta abaixo do chão na tela cheia (letterbox do jogo). (f) Num Lock é ícone e há fila de navegação sobre o numérico (onda 1, aprovado).
+- CURADOS 11/11 (pedido do dono): (a) AccentSoft Plumber escurecido até Text1 4,5:1 + par no gate (`87072d4f54`); (b) numérico estreito = símbolos ISO 9995-7 (`87072d4f54`); (c) tokens `key-ink`/`key-legend` (`87072d4f54`); (d) Hierarchy: ícones no valor normal só com hover/seleção, balão do nome cortado (`b31fcee90c`); (e) palco alarga, sem tarjas, retro guarda (`81ca051861`, `ph2d-camera-frame/src/palco.rs`). Fotos `o5_*`.
+- (f) Num Lock é ícone e há fila de navegação sobre o numérico (onda 1, aprovado).
 - (g) Sprite: o teste «nada muda» corre sem aba aberta (da onda 3, continua).
 - (h) Gamepad físico não smokado. (i) Smoke do dono desta onda (§9).
 

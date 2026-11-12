@@ -50,3 +50,32 @@ O par `inverso` + `restaura_com` (em série com `ANTIGO`) fica o oráculo: `a_tr
 compara o estado todo, a pilha (chaves e bytes) e a história desfeita e refeita até ao fim, nas duas leis; a mutação
 «a troca só copia para fora» reprova-o. Medido na sonda do motor (3840×2160, 958 tiles, `--profile smoke`, load ~180 em
 32 núcleos, mínimo de 9): undo do motor 32,1 ms (série) → 15,5 ms (troca); o par em pool desta ADR somava ~22 ms.
+
+### Adenda 2 (12/11): a troca chega aos planos esparsos
+
+Os três esparsos (`material`, `aparencia`, `oleo`) também trocam quando estão cheios na grade e do comprimento da base.
+O pedaço do `CampoEsparso` (4096 células LINEARES) não coincide com o tile 64×64 — um pedaço cobre ~uma linha da tela e é
+de dezenas de tiles —, então a troca é por TRECHO: cada linha do tile que tem o plano parte-se nas fronteiras dos pedaços
+e `CampoEsparso::troca_trechos_poupando` troca os trechos num job por fatia de pedaços (`chunks_mut` do vector de pedaços,
+~4 × fios fatias), no mesmo `rayon::scope` dos densos. A decisão de alocar é a do `escreve_intervalo_poupando` (pedaço
+ausente e trecho todo chão ao bit: não acorda, e o inverso recebe o chão que a célula lia) e, dentro de um pedaço, os
+trechos seguem a ordem dos tiles: os mesmos bits e os mesmos pedaços vivos. O tile que não tem o plano e o plano que o
+`ajusta` cria/esvazia continuam a copiar.
+
+Gate: `a_troca_da_o_bit_do_inverso_e_do_restauro` ganha a lei 2 (Óleo Real com Metallic/Opaque/OilDepth na célula: os
+três esparsos vivos, com controlo de que nasceram). Mutações temporárias: swap→copy reprova (lei 1, redo); «só troca no
+pedaço vivo» reprova (a volta da história). A régua A/B no MESMO processo é o `ESPARSOS_COPIAM` (por fio, `cfg(test)`).
+
+| sonda (3840×2160, `--profile smoke`, MÍNIMO)            | antes (troca densa) | depois (troca total) |
+|---------------------------------------------------------|---------------------|----------------------|
+| motor, Óleo Real, `troca` só (9 rodadas, load 26–34)    | 84,2 ms             | 68,0 ms              |
+| motor, aguada, undo (idem)                              | 15,9 ms             | 16,6 ms              |
+| app, Dabber 120, «caixa + motor undo» (B C B C C B, load 58→22) | 69,5 ms     | 48,4 ms              |
+| app, Wet Flat 240, idem                                  | 30,7 ms             | 31,0 ms              |
+
+**O que fica (medido, não feito):** a troca move os bytes de ~3,9 M células (958 tiles, metade da tela 4K) nos ~20
+planos — é a banda de memória (aguada ~16 ms, Óleo Real ~68 ms). Abaixo disto só trocando PONTEIROS: o pedaço do campo
+ser o tile 64×64 (4096 = 64², o mesmo tamanho) e o `TileFino` guardar o `Box` do pedaço — mas o `Index` por célula
+passaria a dividir por `s` (hoje `i >> 12`), e esse leitor é o do ecrã. O `FotoDoMotor::de` (3–6 ms) compara a ladeira
+e o fluxo tile a tile com a foto de antes: não há atalho EXACTO sem o motor marcar os tiles que o passo da água escreve
+nesses planos (o registo não os segue).

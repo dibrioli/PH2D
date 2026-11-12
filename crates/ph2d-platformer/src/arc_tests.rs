@@ -24,13 +24,20 @@ fn o_arco_inteiro_sobe_a_altura_e_volta_ao_chao() {
     let a = full_arc(&cfg(), W);
     // A lei resolve o arranque pelas fases: o ápice É a Jump Height (era 2,04 com v0 neutro).
     assert!((rise(&a) - 2.0).abs() < 0.02, "ápice {}", rise(&a));
+    // Sem terreno a lei desce abaixo do arranque até ao limite de queda (o corte é da cena).
     assert!(
-        a.points.last().unwrap()[1] <= 0.0,
-        "termina na linha dos pés"
+        a.points.last().unwrap()[1] <= -super::MAX_FALL_M,
+        "desce abaixo da linha dos pés: {:?}",
+        a.points.last()
     );
     assert!((1.40..1.50).contains(&a.air_time), "no ar {}", a.air_time);
-    // Correndo a 6 m/s, o alcance é a velocidade vezes o tempo no ar.
-    let reach = a.points.last().unwrap()[0];
+    // Correndo a 6 m/s, o alcance na linha dos pés é a velocidade vezes o tempo no ar.
+    let back = (a.air_time / W.dt).round() as usize;
+    assert!(
+        a.points[back][1] <= 0.0 && a.points[back - 1][1] > 0.0,
+        "volta à linha no air_time"
+    );
+    let reach = a.points[back][0];
     assert!((reach - 6.0 * a.air_time).abs() < 0.2, "alcance {reach}");
 }
 

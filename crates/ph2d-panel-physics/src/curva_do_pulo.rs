@@ -68,6 +68,18 @@ impl Desenho {
         add(self.chao, self.arcos.full.apex)
     }
 
+    /// Onde cada curva pousa (o toque no terreno), em mundo.
+    pub fn pousos(&self) -> impl Iterator<Item = (Curva, [f32; 2])> + '_ {
+        [
+            (Curva::Standing, &self.arcos.standing),
+            (Curva::Short, &self.arcos.short),
+        ]
+        .into_iter()
+        .chain(self.arcos.air.iter().map(|a| (Curva::Air, a)))
+        .chain(std::iter::once((Curva::Full, &self.arcos.full)))
+        .filter_map(|(c, a)| a.touch.map(|t| (c, add(self.chao, t))))
+    }
+
     /// Cada curva com o seu tipo, em mundo.
     pub fn curvas(&self) -> impl Iterator<Item = (Curva, Vec<[f32; 2]>)> + '_ {
         let em_mundo = |a: &JumpArc| a.points.iter().map(|p| add(self.chao, *p)).collect();
@@ -109,11 +121,21 @@ pub fn desenho(
         t.translation.x - up[0] * p.float_height,
         t.translation.y - up[1] * p.float_height,
     ];
+    let mut arcos = p.jump_arcs(mundo);
+    // Cada curva pára onde toca o terreno real da cena (a lei desce abaixo do arranque).
+    ph2d_physics_ecs::arc_terrain::cut_on_terrain(
+        sim.world(),
+        settings,
+        player,
+        chao,
+        up,
+        &mut arcos,
+    );
     Some(Desenho {
         player,
         chao,
         mundo,
-        arcos: p.jump_arcs(mundo),
+        arcos,
         speed: p.speed,
     })
 }
@@ -216,6 +238,20 @@ pub fn draw(
         scene
             .inner_mut()
             .stroke(&stroke, Affine::IDENTITY, &Brush::Solid(cor), None, &path);
+    }
+    // A marca do pouso: um anel pequeno na cor da curva, onde ela toca o terreno.
+    let raio = f64::from(Spacing::Xs.px());
+    for (c, at) in d.pousos() {
+        let cor = ph2d_editor_core::paint::resolve(c.cor(), theme);
+        let (x, y) = camera.world_to_screen(at, window);
+        let anel = ph2d_vector::Circle::new((f64::from(x), f64::from(y)), raio);
+        scene.inner_mut().stroke(
+            &Stroke::new(fino),
+            Affine::IDENTITY,
+            &Brush::Solid(cor),
+            None,
+            &anel,
+        );
     }
     let rotulo =
         |texto: &str, at: (f32, f32), cor: ColorToken, scene: &mut VectorScene, text: &mut _| {

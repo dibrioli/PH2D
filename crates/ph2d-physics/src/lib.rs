@@ -29,6 +29,7 @@
 pub mod rmath;
 pub mod world;
 
+pub use world::arc_cast::{PathHit, PlacedShape, sweep_path};
 pub use world::blast::{Attract, blast_falloff};
 pub use world::cast::CastHit;
 pub use world::character::{CharacterHit, CharacterMove, CharacterParams};

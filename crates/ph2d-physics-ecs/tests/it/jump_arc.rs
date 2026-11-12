@@ -250,3 +250,244 @@ fn o_pulo_do_jogo_sobe_a_jump_height() {
     }
     assert!(falhas.is_empty(), "o campo mente: {falhas:?}");
 }
+
+// ── GEF 04: a curva pousa no TERRENO ─────────────────────────────────────────────────────────────
+
+/// Uma caixa estática de topo em `top`, de `x0` a `x1`, com `h` de altura.
+fn caixa(sim: &mut SimWorld, x0: f32, x1: f32, top: f32, h: f32) -> Entity {
+    use ph2d_core::Vec2;
+    use ph2d_ecs::{Name, Transform};
+    use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
+    sim.world_mut()
+        .spawn((
+            Name::new("Terreno"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: (x1 - x0) * 0.5,
+                    half_y: h * 0.5,
+                },
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new((x0 + x1) * 0.5, top - h * 0.5)),
+        ))
+        .id()
+}
+
+/// Uma caixa-sensor (gatilho): o corpo atravessa-a.
+fn sensor(sim: &mut SimWorld, x0: f32, x1: f32, top: f32, h: f32) {
+    let e = caixa(sim, x0, x1, top, h);
+    let mut c = sim
+        .world_mut()
+        .get_mut::<ph2d_physics_ecs::Collider>(e)
+        .unwrap();
+    c.is_sensor = true;
+}
+
+/// Assenta o player 60 tiques (`correndo` ou parado). Devolve o tique corrente.
+fn assenta(sim: &mut SimWorld, bridge: &mut PhysicsBridge, player: Entity, correndo: bool) -> u64 {
+    for tick in 1..=60 {
+        bridge.set_player_input(
+            player,
+            PlayerInput {
+                drive: if correndo { 1.0 } else { 0.0 },
+                ..PlayerInput::default()
+            },
+        );
+        bridge.dispatch(sim, true, tick);
+    }
+    60
+}
+
+/// A curva desenhada (cortada no terreno) e o pulo real: pontos relativos ao centro do arranque.
+fn terreno(extra: impl Fn(&mut SimWorld, f32), correndo: bool) -> (JumpArc, Vec<[f32; 2]>) {
+    // O x em que o player fica depois de assentar: corrida de ensaio sem terreno extra.
+    let x_assentado = {
+        let (mut sim, mut bridge, player) = scene(0.0, 0.0);
+        assenta(&mut sim, &mut bridge, player, correndo);
+        pose(&sim).0
+    };
+    let (mut sim, mut bridge, player) = scene(0.0, 0.0);
+    extra(&mut sim, x_assentado);
+    let mut tick = assenta(&mut sim, &mut bridge, player, correndo);
+    let (x0, y0) = pose(&sim);
+    let settings = bridge.settings();
+    let w = ph2d_physics_ecs::arc_world(&settings, 1.0);
+    let (mut arcs, fh) = {
+        let p = sim.world().get::<PlatformPlayer>(player).unwrap();
+        (p.jump_arcs(w), p.float_height)
+    };
+    let chao = [x0, y0 - fh];
+    ph2d_physics_ecs::arc_terrain::cut_on_terrain(
+        sim.world(),
+        &settings,
+        player,
+        chao,
+        [0.0, 1.0],
+        &mut arcs,
+    );
+    let arco = if correndo { arcs.full } else { arcs.standing };
+    let mut pts = vec![[0.0, 0.0]];
+    for _ in 0..240 {
+        bridge.set_player_input(
+            player,
+            PlayerInput {
+                drive: 1.0,
+                jump: true,
+                ..PlayerInput::default()
+            },
+        );
+        tick += 1;
+        bridge.dispatch(&mut sim, true, tick);
+        let (x, y) = pose(&sim);
+        pts.push([x - x0, y - y0]);
+    }
+    (arco, pts)
+}
+
+/// O pouso do jogo sobre a altura `h` (relativa): o primeiro tique depois do ápice abaixo de
+/// `h + POUSO`, e a altura em que o corpo ASSENTA logo depois (a da superfície que o pegou).
+fn pouso_real(pts: &[[f32; 2]], h: f32) -> (usize, f32, f32) {
+    let top = pts
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1[1].total_cmp(&b.1[1]))
+        .map_or(0, |(i, _)| i);
+    let i = (top..pts.len())
+        .find(|&i| pts[i][1] < h + POUSO)
+        .unwrap_or(pts.len() - 1);
+    // Assenta: 20 tiques depois (a mola acaba de apanhar o corpo; ele continua a correr).
+    (i, pts[i][0], pts[(i + 20).min(pts.len() - 1)][1])
+}
+
+fn confere_pouso(nome: &str, arco: &JumpArc, pts: &[[f32; 2]], h_esperada: f32) {
+    let t = arco
+        .touch
+        .unwrap_or_else(|| panic!("{nome}: a curva não tocou o terreno"));
+    let tique = arco.points.len() - 1;
+    let (i, x, assenta) = pouso_real(pts, t[1]);
+    eprintln!(
+        "{nome}: desenho toca {t:?} no tique {tique} · jogo {i} x {x:.3} assenta {assenta:.3}"
+    );
+    assert!(
+        (t[1] - h_esperada).abs() < 0.02,
+        "{nome}: tocou a altura errada {t:?}"
+    );
+    assert!(
+        (assenta - t[1]).abs() < 0.03,
+        "{nome}: o jogo assenta em {assenta}, a curva em {}",
+        t[1]
+    );
+    assert!(tique.abs_diff(i) <= 1, "{nome}: tique {tique} × jogo {i}");
+    assert!((t[0] - x).abs() < 0.11, "{nome}: x {} × jogo {x}", t[0]);
+}
+
+/// Põe o player `dy` metros acima de onde a cena o pôs (antes do primeiro tique).
+fn ergue(sim: &mut SimWorld, dy: f32) {
+    let mut q = sim
+        .world_mut()
+        .query::<(&ph2d_ecs::Name, &mut ph2d_ecs::Transform)>();
+    for (n, mut t) in q.iter_mut(sim.world_mut()) {
+        if n.as_str() == "Player" {
+            t.translation.y += dy;
+        }
+    }
+}
+
+/// (a) Arranque numa plataforma 1 m acima do chão, que acaba à frente: a curva DESCE ao chão de
+/// baixo e pousa onde o player real pousa. Corrida e parado.
+#[test]
+fn a_curva_desce_ao_chao_de_baixo_e_pousa_onde_o_jogo_pousa() {
+    for correndo in [true, false] {
+        let (arco, pts) = terreno(
+            |sim, x| {
+                caixa(sim, x - 8.0, x + 0.6, 1.5, 1.0);
+                ergue(sim, 1.0);
+                // Uma zona-sensor atravessada pela curva: não a pára (o jogo atravessa-a).
+                sensor(sim, x + 2.0, x + 5.0, 4.0, 3.5);
+            },
+            correndo,
+        );
+        confere_pouso(&format!("desce correndo={correndo}"), &arco, &pts, -1.0);
+    }
+}
+
+/// (b) Uma plataforma 1 m mais alta à frente, que o pulo alcança: a curva pousa em cima dela.
+#[test]
+fn a_curva_pousa_na_plataforma_mais_alta() {
+    for correndo in [true, false] {
+        let ahead = if correndo { 3.0 } else { 1.5 };
+        let (arco, pts) = terreno(
+            |sim, x| {
+                caixa(sim, x + ahead, x + 20.0, 1.5, 1.0);
+            },
+            correndo,
+        );
+        confere_pouso(&format!("sobe correndo={correndo}"), &arco, &pts, 1.0);
+    }
+}
+
+/// (c) Uma parede à frente: a curva pára NA parede (o corpo encosta nela), onde o jogo encosta.
+#[test]
+fn a_curva_para_na_parede() {
+    let face = 2.0;
+    let (arco, pts) = terreno(
+        |sim, x| {
+            caixa(sim, x + face, x + face + 1.0, 10.0, 9.5);
+        },
+        true,
+    );
+    let t = arco.touch.expect("a curva não tocou a parede");
+    let real = pts.iter().map(|p| p[0]).fold(f32::MIN, f32::max);
+    eprintln!("parede: desenho {t:?} · jogo encosta em x {real:.3}");
+    // A cápsula (raio 0,2) encosta na face: o centro fica a 0,2 dela.
+    assert!(
+        (t[0] - (face - 0.2)).abs() < 0.02,
+        "a curva atravessa a parede: {t:?}"
+    );
+    assert!((t[0] - real).abs() < 0.11, "desenho {} × jogo {real}", t[0]);
+    assert!(t[1] > 0.0, "a parede pega-o no ar: {t:?}");
+}
+
+/// Sonda: o custo de UMA chamada do desenho (lei + corte no terreno) na cena (a), com Air Jumps 1.
+/// `PH2D_RELEASE="mede velocidade" bash scripts/ph2d-run.sh cargo test --release -p ph2d-physics-ecs custo_das_curvas_no_terreno -- --ignored --nocapture`
+#[test]
+#[ignore = "sonda: imprime o custo"]
+fn custo_das_curvas_no_terreno() {
+    let (mut sim, bridge, player) = scene(0.0, 0.0);
+    caixa(&mut sim, -8.0, 0.6, 1.5, 1.0);
+    sensor(&mut sim, 2.0, 5.0, 4.0, 3.5);
+    ergue(&mut sim, 1.0);
+    let settings = bridge.settings();
+    let w = ph2d_physics_ecs::arc_world(&settings, 1.0);
+    sim.world_mut()
+        .get_mut::<PlatformPlayer>(player)
+        .unwrap()
+        .air_jumps = 1;
+    let (x0, y0) = pose(&sim);
+    let chao = [x0, y0 - crate::platform_scene::FLOAT_HEIGHT];
+    let mut best = f64::MAX;
+    for _ in 0..5 {
+        let t = std::time::Instant::now();
+        for _ in 0..200 {
+            let p = sim.world().get::<PlatformPlayer>(player).unwrap();
+            let mut arcs = p.jump_arcs(w);
+            ph2d_physics_ecs::arc_terrain::cut_on_terrain(
+                sim.world(),
+                &settings,
+                player,
+                chao,
+                [0.0, 1.0],
+                &mut arcs,
+            );
+            std::hint::black_box(arcs);
+        }
+        best = best.min(t.elapsed().as_secs_f64() / 200.0);
+    }
+    eprintln!(
+        "lei + corte (3 formas, Air Jumps 1): {:.1} µs por chamada (mínimo de 5 blocos)",
+        best * 1e6
+    );
+}

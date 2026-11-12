@@ -14,6 +14,11 @@ use crate::{
 /// ~100 tiques custa microssegundos); só uma gravidade nula ou para cima chega aqui.
 pub const MAX_ARC_TICKS: usize = 600;
 
+/// Quanto a curva desce abaixo do arranque, em metros, se nada a pára antes. Recurso: o ECRÃ — a
+/// vista inicial tem ~11 m de altura, e 24 m são duas vistas de queda (um precipício que a câmara
+/// ainda mostra); o terreno corta antes em toda cena com chão.
+pub const MAX_FALL_M: f32 = 24.0;
+
 /// Quantos pulos do ar se desenham. Recurso: o ECRÃ — com os números de partida cada um sobe 2 m,
 /// e 8 já passam dos ~11 m de altura da vista inicial.
 pub const AIR_JUMPS_DRAWN: u32 = 8;
@@ -24,7 +29,10 @@ pub struct JumpArc {
     pub points: Vec<Vec2>,
     pub apex: Vec2,
     pub apex_time: f32,
+    /// Até voltar à linha do arranque.
     pub air_time: f32,
+    /// Onde a curva TOCA o terreno (o último ponto), se um corte o achou; a lei pura deixa `None`.
+    pub touch: Option<Vec2>,
 }
 
 /// Todas as curvas que o canvas mostra.
@@ -177,7 +185,8 @@ fn simulate(cfg: &PlayerConfig, w: ArcWorld, run: bool, hold: Hold) -> Sim {
             }
         }
         release_tick = false;
-        if dot(p, up) <= 0.0 && !first {
+        // Abaixo do arranque a curva continua: quem a pára é o terreno (`ph2d_physics_ecs::arc_terrain`).
+        if dot(p, up) <= -MAX_FALL_M && !first {
             break;
         }
     }
@@ -192,11 +201,16 @@ fn arc_of(points: &[Vec2], up: Vec2, dt: f32) -> JumpArc {
             let h = dot(*q, up);
             if h > bh { (i, h) } else { (bi, bh) }
         });
+    // O tempo no ar é até voltar à linha do arranque (a curva pode seguir abaixo dela).
+    let back = (i..points.len())
+        .find(|&k| k > 0 && dot(points[k], up) <= 0.0)
+        .unwrap_or(points.len().saturating_sub(1));
     JumpArc {
         apex: points.get(i).copied().unwrap_or_default(),
         apex_time: i as f32 * dt,
-        air_time: points.len().saturating_sub(1) as f32 * dt,
+        air_time: back as f32 * dt,
         points: points.to_vec(),
+        touch: None,
     }
 }
 

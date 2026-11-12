@@ -4,6 +4,7 @@
 //! add bodies + colliders, then call [`PhysicsWorld::step`] once per
 //! fixed-step tick (see [`ph2d_core::FixedStep`]).
 
+pub mod arc_cast;
 pub mod blast;
 /// A CONSTRUÇÃO de um corpo — irmão do `collider_build`, e pelo teto de 700 LOC.
 mod body_build;

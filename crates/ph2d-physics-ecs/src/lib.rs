@@ -15,6 +15,7 @@
 //! re-exported handle types, so the `enhanced-determinism` feature pin
 //! lives in exactly one Cargo.toml (HR-5).
 
+pub mod arc_terrain;
 pub mod bake;
 mod bridge;
 mod components;

@@ -21,7 +21,6 @@ impl crate::App {
             hero_screen,
             ..
         } = FrameGfx::of(gfx);
-        // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };

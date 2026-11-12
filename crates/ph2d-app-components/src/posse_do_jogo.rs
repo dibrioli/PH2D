@@ -27,6 +27,9 @@ pub struct Tapa {
     pub texto: bool,
     /// Um modo do editor dono do teclado: a paleta, um menu ou diálogo, a prévia do Morph.
     pub modo: bool,
+    /// A Timeline anima a cena (sessão «Animating», doc 17 item 11): a agulha a tocar é a prévia do
+    /// editor, e o rato na cena é das curvas e das chaves, não do jogo.
+    pub animar: bool,
 }
 
 impl Tapa {
@@ -34,7 +37,7 @@ impl Tapa {
     /// animações aberto a janela do jogo e o ecrã cheio não recebiam teclas); o texto e os modos tapam sempre.
     #[must_use]
     pub fn a_vista(self) -> bool {
-        (self.palco || !self.aba) && !self.texto && !self.modo
+        (self.palco || !self.aba) && !self.texto && !self.modo && !self.animar
     }
 }
 
@@ -278,6 +281,34 @@ mod tests {
             );
         }
         assert!(Tapa::default().a_vista());
+    }
+
+    /// Doc 17 item 11 (dono 10/11): com a Timeline a ANIMAR, tocar a agulha não dá a cena ao jogo — o
+    /// clique arrasta as chaves e as alças do canvas. *Mutação: `a_vista` sem o `animar` ⇒ o clique é do jogo.*
+    #[test]
+    fn a_previa_da_timeline_a_tocar_nao_da_o_rato_ao_jogo() {
+        let animar = Tapa {
+            animar: true,
+            ..Tapa::default()
+        };
+        assert!(!animar.a_vista(), "a animar, a cena é do editor");
+        let mut foco = FocoDoJogo::default();
+        let cena = Cena {
+            a_correr: true,
+            a_vista: animar.a_vista(),
+            palco: false,
+        };
+        let mut input = InputState::default();
+        assert!(
+            !foco.clique(
+                &mut input,
+                cena,
+                ph2d_host::PointerButton::Primary,
+                true,
+                true
+            ),
+            "o clique na cena a tocar chega ao editor"
+        );
     }
 
     const CORRE: Cena = Cena {

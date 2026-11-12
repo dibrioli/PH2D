@@ -16,6 +16,7 @@ impl crate::App {
                 aba: h.documents.active().is_some() || h.documents.surface_active().is_some(),
                 texto: h.text_entry_focused(),
                 modo: self.menu_aberto() || self.command_palette_open() || self.morph_preview,
+                animar: self.timeline.animating.0,
             }
             .a_vista()
         });

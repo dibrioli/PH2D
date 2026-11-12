@@ -166,7 +166,7 @@ fn pool_da_miniatura() -> Option<rayon::ThreadPool> {
     }
     rayon::ThreadPoolBuilder::new()
         .num_threads(fios)
-        .thread_name(|i| format!("ph2d-miniatura-{i}"))
+        .thread_name(|_| "ph2d-miniatura".to_owned())
         .build()
         .ok()
 }

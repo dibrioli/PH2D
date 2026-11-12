@@ -87,6 +87,7 @@ impl PlanoEmTiles {
     }
 
     /// Devolve o plano ao bit.
+    #[cfg(test)]
     pub(crate) fn repoe(&self, v: &mut Vec<f32>) {
         self.repoe_sobre(v, None);
     }

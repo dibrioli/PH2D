@@ -60,6 +60,7 @@ impl FotoDoMotor {
 
     /// Repõe o que fica fora das grades — DEPOIS do `undo`/`redo` do motor (que zera o fluxo). Nada disto é lido pela
     /// óptica (o espelho ignora `oleo_antes` e o fluxo): o sujo é o que o restauro do motor marcou (B12.2).
+    #[cfg(test)]
     pub(super) fn repoe(&self, e: &mut Engine) {
         self.repoe_sobre(e, None);
     }

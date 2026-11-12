@@ -45,9 +45,13 @@ fn degrau_1_encolhem_pela_ordem_ate_ao_minimo_e_o_codigo_guarda_o_seu() {
 fn degrau_2_sem_os_minimos_caem_ao_cabecalho_pela_ordem() {
     // Os mínimos: 40 + 50 + 56 + 24 = 170; os cabeçalhos: 30 + 26 + 28 + 24 = 108.
     let hs = fit(CODE + 150.0, CODE, GAP, WANTS, ORDER);
-    assert_eq!(hs[0], 30.0, "a Bancada: só o título");
-    assert_eq!(hs[2], 56.0, "a faixa fica no mínimo");
-    assert!((used(&hs) - 150.0).abs() < 1e-3, "{hs:?}");
+    // Cada um cai INTEIRO ao cabeçalho (nada de corpo meio cortado); o que sobra vai ao código.
+    assert_eq!(
+        hs,
+        [30.0, 26.0, 56.0],
+        "a Bancada e o depurador ao cabeçalho, a faixa no mínimo"
+    );
+    assert!(used(&hs) <= 150.0, "{hs:?}");
     assert_eq!(
         fit(CODE + 108.0, CODE, GAP, WANTS, ORDER),
         [30.0, 26.0, 28.0]
@@ -56,11 +60,8 @@ fn degrau_2_sem_os_minimos_caem_ao_cabecalho_pela_ordem() {
 
 #[test]
 fn degrau_3_saem_a_bancada_a_faixa_e_por_fim_o_depurador() {
-    // Sem a Bancada: 26 + 28 + 16 = 70 cabe em 80, e o que sobra volta à faixa (até ao mínimo).
-    let hs = fit(CODE + 80.0, CODE, GAP, WANTS, ORDER);
-    assert_eq!(hs[0], 0.0, "{hs:?}");
-    assert_eq!(hs[1], 26.0, "{hs:?}");
-    assert!((used(&hs) - 80.0).abs() < 1e-3, "{hs:?}");
+    // Sem a Bancada: 26 + 28 + 16 = 70 cabe em 80; os mínimos (50 + 56 + 16) não.
+    assert_eq!(fit(CODE + 80.0, CODE, GAP, WANTS, ORDER), [0.0, 26.0, 28.0]);
     assert_eq!(
         fit(CODE + 34.0, CODE, GAP, WANTS, ORDER),
         [0.0, 26.0, 0.0],

@@ -35,7 +35,8 @@ fn cost(hs: &[f32], gap: f32) -> f32 {
 }
 
 /// Os degraus 1 e 2 sobre os cartões `on`; devolve as alturas e o que ainda sobra de `room`
-/// (negativo = não coube).
+/// (negativo = não coube). O 1.º encolhe o que falta (o corpo rola); o 2.º cai INTEIRO ao cabeçalho
+/// (um corpo meio cortado, como a linha do erro a meio, não serve; o resto vai ao código).
 fn squeeze<const N: usize>(
     room: f32,
     gap: f32,
@@ -44,12 +45,14 @@ fn squeeze<const N: usize>(
 ) -> ([f32; N], f32) {
     let mut hs: [f32; N] = std::array::from_fn(|i| if on[i] { wants[i].h.max(0.0) } else { 0.0 });
     let mut over = cost(&hs, gap) - room;
-    for floor in [|w: &Want| w.least, |w: &Want| w.head] {
+    for whole in [false, true] {
         for (h, w) in hs.iter_mut().zip(wants) {
             if over <= 0.0 {
                 break;
             }
-            let cut = over.min((*h - floor(w).min(*h)).max(0.0));
+            let floor = if whole { w.head } else { w.least };
+            let give = (*h - floor.min(*h)).max(0.0);
+            let cut = if whole { give } else { over.min(give) };
             *h -= cut;
             over -= cut;
             if cut > 0.0 && *h <= 0.0 {

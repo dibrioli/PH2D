@@ -35,10 +35,6 @@ fn copiaram_em_blocos() -> Vec<&'static str> {
         .collect()
 }
 
-fn copiou(sitios: &[&str], ficheiro: &str) -> bool {
-    sitios.iter().any(|f| f.ends_with(ficheiro))
-}
-
 /// Os píxeis de `id` onde quer que vivam (a tela, se é a activa).
 fn pixeis(t: &PainterTool, id: RtLayerId) -> Vec<u8> {
     if t.layers.active() == Some(id) {

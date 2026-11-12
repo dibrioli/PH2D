@@ -194,6 +194,7 @@ impl CodeDocs {
                     t.find.focus = false;
                 }
                 match hit {
+                    _ if t.view.bar_press(x, y) => {}
                     Some(HelpHit::Back) => {
                         let _ = self.nav_step(tab_id(page), true);
                     }
@@ -217,6 +218,7 @@ impl CodeDocs {
             }
             (PointerKind::Up, _) => {
                 t.drag = None;
+                t.view.bar_release();
                 std::mem::take(&mut self.pressed)
             }
             _ => in_area,
@@ -234,6 +236,9 @@ impl CodeDocs {
         let Some(t) = self.help.open.get_mut(&page) else {
             return false;
         };
+        if t.view.bar_drag_to(y) {
+            return true;
+        }
         let hit = t.view.hit(input.text, x, y);
         if let Some(from) = t.drag {
             if let Some(HelpHit::Text(b)) = hit {

@@ -188,6 +188,10 @@ impl HelpView {
     /// seta no resto da página (medido no Godot: seta sobre o texto, mão sobre o link).
     #[must_use]
     pub fn pointer_look(&self, x: f32, y: f32) -> Option<PointerLook> {
+        let on_bar = self.own_bar().hit().is_some_and(|b| b.contains(x, y));
+        if on_bar || self.bar_drag.is_some() {
+            return Some(PointerLook::ResizeNs);
+        }
         if !self.area.contains(x, y) {
             return None;
         }

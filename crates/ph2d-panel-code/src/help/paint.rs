@@ -104,8 +104,13 @@ impl HelpView {
         scene.push_clip(&rect_to_vello(area));
         scene.fill_rect(rect_to_vello(area), pal.bg);
         self.paint_content(frame, scene, ts, &pal, theme);
-        // A barra da casa (só indica; a roda e PgDn rolam): sem ela não se via que a página continua.
-        let (vp, visual) = (self.viewport, (ScrollbarState::Normal, 0.0));
+        // A barra da casa (arrasta-se; a roda e PgDn rolam): sem ela não se via que a página continua.
+        let state = if self.bar_drag.is_some() {
+            ScrollbarState::Dragging
+        } else {
+            ScrollbarState::Normal
+        };
+        let (vp, visual) = (self.viewport, (state, 0.0));
         self.bar = paint_scrollbar(vp, self.scroll, self.height(), vp.h, visual, scene, *theme);
         self.paint_index(frame, scene, ts, &ui);
         self.paint_header(frame, scene, ts, &ui);

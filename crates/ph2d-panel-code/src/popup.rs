@@ -11,6 +11,7 @@ use crate::view::CodeView;
 use ph2d_a11y::{Node, NodeBuilder, NodeId, Role};
 use ph2d_editor_core::math::safe_clamp_ord;
 use ph2d_editor_core::paint::rect_to_vello;
+use ph2d_editor_core::widget::scroll_area::OwnBar;
 use ph2d_editor_core::widget::{
     Popover, SCROLLBAR_W, ScrollbarState, paint_popover, paint_scrollbar, pop_popover_clip,
     push_popover_clip, scrollbar_is_needed,
@@ -33,6 +34,8 @@ pub(crate) struct Painted {
     pub cut: Vec<usize>,
     /// O polegar da barra de rolagem (só quando a lista inteira não cabe nas linhas à vista).
     pub bar: Option<Rect>,
+    /// A geometria da barra (a mesma pinta e agarra).
+    pub own: Option<OwnBar>,
 }
 
 /// Uma linha pintada da lista, como a sonda a dá: o índice, o rótulo, se é a seleccionada e o centro.
@@ -111,6 +114,7 @@ impl CodeView {
             kind: c.kind,
             cut: Vec::new(),
             bar: None,
+            own: None,
         };
         for (k, row) in c.rows.iter().take(COMPLETION_ROWS).enumerate() {
             let i = c.top + k;
@@ -166,9 +170,19 @@ impl CodeView {
         }
         if bar_w > 0.0 {
             let body = Rect::new(x, y + pad, w, shown as f32 * lh);
-            let visual = (ScrollbarState::Normal, 0.0);
+            let state = if self.list_drag.is_some() {
+                ScrollbarState::Dragging
+            } else {
+                ScrollbarState::Normal
+            };
             let (top, total) = (c.top as f32 * lh, c.total as f32 * lh);
+            let visual = (state, 0.0);
             painted.bar = paint_scrollbar(body, top, total, body.h, visual, scene, pal.theme);
+            painted.own = Some(OwnBar {
+                body,
+                content_h: total,
+                visible_h: body.h,
+            });
         }
         pop_popover_clip(scene);
         if !c.preview.is_empty() {
@@ -291,11 +305,61 @@ impl CodeView {
         self.popup.as_ref().and_then(|p| p.bar)
     }
 
+    /// Carregar na barra da lista: no polegar agarra, na calha salta para debaixo do dedo (a lei do
+    /// [`OwnBar`], a da barra do texto). `Some(linhas)` = tomado, e quanto a lista rola.
+    pub fn list_bar_press(&mut self, x: f32, y: f32) -> Option<isize> {
+        let p = self.popup.as_ref()?;
+        let top = p.rows.first()?.0;
+        let (d, s) = p.own?.press(x, y, top as f32 * self.m.line_h)?;
+        let to = self.list_row_at(s);
+        self.list_drag = Some((d, to));
+        Some(to as isize - top as isize)
+    }
+
+    /// O arrasto da barra da lista: `Some(linhas)` desde o último pedido (`None` = não há arrasto).
+    pub fn list_bar_drag(&mut self, y: f32) -> Option<isize> {
+        let (d, last) = self.list_drag?;
+        let to = self.list_row_at(d.scroll_at(y));
+        self.list_drag = Some((d, to));
+        Some(to as isize - last as isize)
+    }
+
+    /// Largar a barra da lista. `true` = havia arrasto.
+    pub fn list_bar_release(&mut self) -> bool {
+        self.list_drag.take().is_some()
+    }
+
+    /// O ponteiro sobre a barra da lista, ou a arrastá-la: ↕.
+    #[must_use]
+    pub fn list_bar_look(
+        &self,
+        x: f32,
+        y: f32,
+    ) -> Option<ph2d_editor_core::doc_surface::PointerLook> {
+        let over = self
+            .popup
+            .as_ref()
+            .and_then(|p| p.own?.hit())
+            .is_some_and(|b| b.contains(x, y));
+        (over || self.list_drag.is_some())
+            .then_some(ph2d_editor_core::doc_surface::PointerLook::ResizeNs)
+    }
+
+    /// A 1.ª linha à vista com a rolagem `s` (em px) da lista.
+    fn list_row_at(&self, s: f32) -> usize {
+        (s / self.m.line_h.max(1.0)).round().max(0.0) as usize
+    }
+
     /// Onde caiu `(x, y)` na lista do último quadro (`None` = fora dela).
     #[must_use]
     pub fn completion_hit(&self, x: f32, y: f32) -> Option<CompletionHit> {
         let p = self.popup.as_ref()?;
-        if let Some((i, ..)) = p.rows.iter().find(|r| r.1.contains(x, y)) {
+        // Sobre a barra a linha por baixo não é escolhida nem aceite: a barra rola.
+        let on_bar = p
+            .own
+            .and_then(|o| o.hit())
+            .is_some_and(|b| b.contains(x, y));
+        if let Some((i, ..)) = p.rows.iter().find(|r| !on_bar && r.1.contains(x, y)) {
             return Some(CompletionHit::Row(*i));
         }
         (p.rect.contains(x, y) || p.doc.is_some_and(|d| d.contains(x, y)))

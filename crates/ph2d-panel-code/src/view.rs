@@ -94,6 +94,8 @@ pub struct CodeView {
     pub(crate) bancada_marks: Vec<(usize, Rect)>,
     /// O arrasto da barra de rolagem do texto.
     pub(crate) bar_drag: Option<ph2d_editor_core::widget::scroll_area::BarDrag>,
+    /// O arrasto da barra da lista (completação, acções, referências) e a 1.ª linha que ele pediu.
+    pub(crate) list_drag: Option<(ph2d_editor_core::widget::scroll_area::BarDrag, usize)>,
     /// O byte (e a revisão do texto) que a próxima pintura volta a pôr à vista contra a área FINAL: o pedido chega antes
     /// do layout (a paragem do depurador abre o quadro de baixo no mesmo quadro e encolhe o código).
     pub(crate) reveal: Option<(usize, u64)>,
@@ -143,6 +145,7 @@ impl Default for CodeView {
             counter_label: String::new(),
             bancada_marks: Vec::new(),
             bar_drag: None,
+            list_drag: None,
             reveal: None,
             windows: crate::window::WindowMemo::default(),
         }

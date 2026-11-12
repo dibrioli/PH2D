@@ -29,7 +29,7 @@ fn codigo(t: &str, ink: Ink) -> Span {
 }
 
 /// Uma página com ~200 blocos, todas as linhas distintas.
-fn pagina() -> HelpDoc {
+pub(super) fn pagina() -> HelpDoc {
     let mut blocks = vec![
         Block::Title("math".into()),
         Block::Strong(vec![prosa("Mathematical functions.")]),
@@ -78,7 +78,7 @@ fn pagina() -> HelpDoc {
     }
 }
 
-fn quadro(doc: &HelpDoc) -> HelpFrame<'_> {
+pub(super) fn quadro(doc: &HelpDoc) -> HelpFrame<'_> {
     HelpFrame {
         doc,
         back: true,
@@ -92,7 +92,12 @@ fn quadro(doc: &HelpDoc) -> HelpFrame<'_> {
     }
 }
 
-fn pinta(v: &mut HelpView, f: &HelpFrame<'_>, ts: &mut TextSystem, area: Rect) -> VectorScene {
+pub(super) fn pinta(
+    v: &mut HelpView,
+    f: &HelpFrame<'_>,
+    ts: &mut TextSystem,
+    area: Rect,
+) -> VectorScene {
     let mut scene = VectorScene::new();
     scene.record();
     v.paint(f, area, &mut scene, ts, &Theme::default());
@@ -103,7 +108,7 @@ fn meio(r: Rect) -> (f32, f32) {
     (r.x + r.w * 0.5, r.y + r.h * 0.5)
 }
 
-const LARGA: Rect = Rect::new(0.0, 0.0, 1000.0, 400.0);
+pub(super) const LARGA: Rect = Rect::new(0.0, 0.0, 1000.0, 400.0);
 
 #[test]
 fn so_a_faixa_a_vista_se_pinta_e_a_pagina_mostra_as_linhas_seguintes() {

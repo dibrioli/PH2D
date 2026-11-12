@@ -398,6 +398,13 @@ impl Completer {
     }
 
     /// A roda do rato sobre a lista: rola a janela, a seleção fica.
+    /// Rolar `by` linhas a lista que [`Self::shown`] dá agora (`rows` à vista).
+    pub fn scroll_shown(&mut self, text: &Text, head: usize, by: isize, rows: usize) {
+        if let Some(len) = self.shown(text, head).map(|l| l.len()) {
+            self.scroll(by, len, rows);
+        }
+    }
+
     pub fn scroll(&mut self, by: isize, len: usize, rows: usize) {
         if let Some(s) = self.session.as_mut() {
             let max = len.saturating_sub(rows) as isize;

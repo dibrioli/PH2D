@@ -226,6 +226,9 @@ impl CodeDoc {
     /// balão, a lista e a barra de busca são seta, menos os campos de texto; na faixa de baixo e no
     /// contador da barra, o que um clique leva a algum sítio é a mão; `None` = nada.
     fn overlay_look(&self, x: f32, y: f32) -> Option<PointerLook> {
+        if let Some(look) = self.view.list_bar_look(x, y) {
+            return Some(look);
+        }
         if (self.rename.is_some() && self.view.rename_contains(x, y))
             || self.view.hint_hover_contains(x, y)
             || self.view.completion_hit(x, y).is_some()

@@ -71,6 +71,10 @@ impl CodeDoc {
             }
             return true;
         }
+        if let Some(by) = self.view.list_bar_press(x, y) {
+            self.list_scroll(by);
+            return true;
+        }
         match self.view.completion_hit(x, y) {
             Some(ph2d_panel_code::CompletionHit::Row(i)) if acting => {
                 self.apply_action(i);
@@ -147,8 +151,9 @@ impl CodeDoc {
 
     /// O rato mexeu com o botão em baixo: a seleção vai do início do arrasto ao byte sob o rato.
     pub fn drag_to(&mut self, x: f32, y: f32) -> bool {
+        let list = self.view.list_bar_drag(y).map(|by| self.list_scroll(by));
         let bars = self.view.bar_drag_to(y) || self.console_view.drag_to(y);
-        if self.debug.view.drag_to(x, y) || bars {
+        if self.debug.view.drag_to(x, y) || bars || list.is_some() {
             return true;
         }
         let Some(anchor) = self.drag else {
@@ -168,7 +173,7 @@ impl CodeDoc {
 
     pub fn release(&mut self) -> bool {
         let resized = self.debug.view.release() | self.view.bar_release();
-        let resized = resized | self.console_view.release();
+        let resized = resized | self.console_view.release() | self.view.list_bar_release();
         self.drag.take().is_some() || resized
     }
 
@@ -190,6 +195,19 @@ impl CodeDoc {
         }
     }
 
+    /// Rolar a lista aberta (referências, acções ou completação) `rows` linhas.
+    fn list_scroll(&mut self, rows: isize) {
+        if self.refs.is_some() {
+            self.refs_scroll(rows);
+        } else if self.actions.is_some() {
+            self.actions_scroll(rows);
+        } else {
+            let (text, head) = (self.buffer.text(), self.buffer.selection().primary().head);
+            let shown = ph2d_panel_code::COMPLETION_ROWS;
+            self.complete.scroll_shown(text, head, rows, shown);
+        }
+    }
+
     /// A roda: sobre o console rola-o, senão rola o texto — na horizontal com o Shift.
     pub fn wheel(&mut self, x: f32, y: f32, dy: f32, shift: bool, console: &Store) {
         self.hints.hover = None;
@@ -197,20 +215,8 @@ impl CodeDoc {
         let over_list = self.view.completion_hit(x, y).is_some();
         if self.debug.view.wheel(x, y, dy) {
             // O quadro do depurador rola por dentro.
-        } else if over_list && self.refs.is_some() {
-            self.refs_scroll(rows);
-        } else if over_list && self.actions.is_some() {
-            self.actions_scroll(rows);
         } else if over_list {
-            let head = self.buffer.selection().primary().head;
-            if let Some(len) = self
-                .complete
-                .shown(self.buffer.text(), head)
-                .map(|l| l.len())
-            {
-                let shown = ph2d_panel_code::COMPLETION_ROWS;
-                self.complete.scroll(rows, len, shown);
-            }
+            self.list_scroll(rows);
         } else if self.console_view.area().contains(x, y) {
             self.console_view.scroll_by(dy, console.len());
         } else if shift {

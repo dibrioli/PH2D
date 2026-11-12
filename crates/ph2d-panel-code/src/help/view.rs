@@ -12,6 +12,7 @@ use crate::line_cache::{CODE_WEIGHT, LineCache};
 use crate::metrics::Metrics;
 use ph2d_editor_core::math::safe_clamp;
 use ph2d_editor_core::ui_scale::ao_pixel;
+use ph2d_editor_core::widget::scroll_area::{BarDrag, OwnBar};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::{FontWeight, TextSystem};
 use ph2d_tokens::{Spacing, TypeToken};
@@ -104,6 +105,8 @@ pub struct HelpView {
     pub(super) bar: Option<Rect>,
     /// As linhas de exemplo que acabaram em «…»: o texto pintado, o `x` dele e o fim permitido.
     pub(super) cut: Vec<(String, f32, f32)>,
+    /// O arrasto da barra de rolagem.
+    pub(super) bar_drag: Option<BarDrag>,
 }
 
 impl Default for HelpView {
@@ -131,6 +134,7 @@ impl Default for HelpView {
             section: None,
             bar: None,
             cut: Vec::new(),
+            bar_drag: None,
         }
     }
 }
@@ -161,6 +165,37 @@ impl HelpView {
 
     pub fn scroll_by(&mut self, dy: f32) {
         self.set_scroll(self.scroll + dy);
+    }
+
+    /// A barra de rolagem da página (a mesma geometria pinta e agarra).
+    pub(super) fn own_bar(&self) -> OwnBar {
+        OwnBar {
+            body: self.viewport,
+            content_h: self.height(),
+            visible_h: self.viewport.h,
+        }
+    }
+
+    /// Carregar na barra: no polegar agarra, na calha salta para debaixo do dedo. `true` = tomado.
+    pub fn bar_press(&mut self, x: f32, y: f32) -> bool {
+        let Some((d, s)) = self.own_bar().press(x, y, self.scroll) else {
+            return false;
+        };
+        self.set_scroll(s);
+        self.bar_drag = Some(d);
+        true
+    }
+
+    /// O arrasto da barra: a página segue o polegar. `true` = há arrasto.
+    pub fn bar_drag_to(&mut self, y: f32) -> bool {
+        let Some(d) = self.bar_drag else { return false };
+        self.set_scroll(d.scroll_at(y));
+        true
+    }
+
+    /// Largar a barra. `true` = havia arrasto.
+    pub fn bar_release(&mut self) -> bool {
+        self.bar_drag.take().is_some()
     }
 
     /// PgDn / PgUp: a altura da vista.

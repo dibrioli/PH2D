@@ -313,6 +313,7 @@ mod selection_offset;
 mod selection_offset_geom; // sharp-corner offset: trace(+holes) → refit → CAD offset per level (no SDF rounding)
 /// Selection on-canvas overlay (marching ants + hatching) + panel event routing. [LOC split].
 mod selection_overlay;
+pub mod selection_formigas; // B20.11: o overlay guardado por passo e identidade da mascara
 mod selection_pen; // a CANETA: o Pen do vetor autorando uma regiao de selecao (Enio 2026-08-07)
 #[cfg(test)]
 mod selection_pen_tests;

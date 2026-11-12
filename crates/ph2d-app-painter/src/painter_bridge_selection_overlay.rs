@@ -4,8 +4,8 @@
 //! like `painter_bridge_overlays::draw_repeat_image`. Split from `painter_bridge_overlays` for the HR-18
 //! file-LOC cap. Pure draw — mutates no tool/model state.
 //!
-//! The ants/hatch animate off a shell-local frame counter. This is view-only chrome (never simulation
-//! state), so it is exempt from HR-5 cross-platform determinism — a plain monotonic counter is correct.
+//! B20.11: the ants step on the WALL CLOCK ([`passo_das_formigas`]) and the tool keeps the built image per
+//! step, so an idle frame re-draws the same `StableImage` (no rebuild, no upload). View-only chrome.
 
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
@@ -13,10 +13,16 @@ use ph2d_host::WindowSize;
 use ph2d_render::Camera2d;
 use ph2d_tool_painter::PainterTool;
 use ph2d_vector::VectorScene;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::time::{Duration, Instant};
 
-/// Monotonic per-frame animation phase (advanced once per drawn frame while a selection is visible).
-static SELECTION_ANIM_PHASE: AtomicU32 = AtomicU32::new(0);
+/// O passo das formigas em `agora` e o instante em que o seguinte começa.
+pub(crate) fn passo_das_formigas(agora: Instant) -> (u32, Instant) {
+    static INICIO: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+    let inicio = *INICIO.get_or_init(|| agora);
+    let ms = ph2d_tool_painter::PASSO_DAS_FORMIGAS_MS;
+    let passo = agora.saturating_duration_since(inicio).as_millis() as u64 / ms;
+    (passo as u32, inicio + Duration::from_millis((passo + 1) * ms))
+}
 
 /// Draw the active selection's overlay (marching ants + deselected-area hatching) into `vector_scene`.
 /// No-op without a selected sprite or a live selection.
@@ -28,6 +34,21 @@ pub(super) fn draw_selection_overlay(
     camera: &Camera2d,
     window_size: WindowSize,
     vector_scene: &mut VectorScene,
+) {
+    let passo = passo_das_formigas(Instant::now()).0;
+    draw_selection_overlay_no_passo(painter, hero, sim, camera, window_size, vector_scene, passo);
+}
+
+/// [`draw_selection_overlay`] num passo dado das formigas.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn draw_selection_overlay_no_passo(
+    painter: &PainterTool,
+    hero: &HeroScreen,
+    sim: &SimWorld,
+    camera: &Camera2d,
+    window_size: WindowSize,
+    vector_scene: &mut VectorScene,
+    passo: u32,
 ) {
     let Some(bits) = hero.gizmo.selection else {
         return;
@@ -49,11 +70,9 @@ pub(super) fn draw_selection_overlay(
     // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula, e aí o quad do
     // afim é o de sempre, byte-idêntico.
     let sprite_grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
-    let phase = SELECTION_ANIM_PHASE.fetch_add(1, Ordering::Relaxed);
-    let Some((rgba, w, h)) = painter.selection_overlay_rgba(phase) else {
+    let Some(imagem) = painter.selection_overlay_imagem(passo) else {
         return;
     };
-    let rgba = std::sync::Arc::new(rgba);
     // image-px → screen via the FULL sprite affine, so the overlay rides scale / aspect / rotation.
     let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
         iw,
@@ -64,7 +83,7 @@ pub(super) fn draw_selection_overlay(
         camera,
         window_size,
     );
-    vector_scene.draw_image_rgba_transformed(&rgba, w, h, affine, ph2d_vector::ImageQuality::Low);
+    vector_scene.draw_stable_image_transformed(&imagem, affine, ph2d_vector::ImageQuality::Low);
 }
 
 /// The Selection tool's crosshair (over the canvas, not a panel), in place of the brush ring. Drawn with

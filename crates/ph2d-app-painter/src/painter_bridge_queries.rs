@@ -164,8 +164,10 @@ pub(crate) fn produtores(
             .filter(|(_, s)| *s)
             .map(|(q, _)| q),
     );
-    // As formigas da Seleção andam um passo por quadro desenhado (`SELECTION_ANIM_PHASE`).
+    // B20.11: as formigas da Seleção andam pelo relógio; o laço acorda no passo seguinte delas.
     if p.selection_active() {
-        fora.push(P::UiAnima);
+        let agora = std::time::Instant::now();
+        let (_, proximo) = crate::painter_bridge_selection_overlay::passo_das_formigas(agora);
+        ph2d_app_host::quadro::desperta_ate(proximo);
     }
 }

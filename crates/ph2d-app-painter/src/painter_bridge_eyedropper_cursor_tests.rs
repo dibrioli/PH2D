@@ -222,20 +222,43 @@ fn o_anel_some_com_o_ponteiro_fora_da_janela() {
     );
 }
 
-/// B23.2: as formigas da Seleção andam um passo por quadro desenhado — a Seleção viva segura o laço a pedido.
+/// B20.11: as formigas andam pelo relógio. A Seleção viva não segura o laço a 60 q/s: acorda-o no passo
+/// seguinte; e o quadro parado emite a MESMA imagem (o Vello não a sobe outra vez).
 #[test]
-fn as_formigas_da_selecao_pedem_quadro() {
-    use ph2d_app_host::quadro::Produtor;
-    let mut p = painter(false);
-    let pede = |p: &PainterTool| {
+fn as_formigas_da_selecao_acordam_o_laco_no_passo_e_parado_emitem_a_mesma_imagem() {
+    use ph2d_app_host::quadro::{PRAZO, Produtor, no_laco};
+    use std::time::{Duration, Instant};
+    let passo_ms = Duration::from_millis(ph2d_tool_painter::PASSO_DAS_FORMIGAS_MS);
+    let acorda = |p: &PainterTool| {
         let mut v = Vec::new();
         crate::painter_bridge_queries::produtores(p, &mut v);
-        v.contains(&Produtor::UiAnima)
+        let agora = Instant::now();
+        assert!(!v.contains(&Produtor::UiAnima), "ninguém pede 60 q/s");
+        no_laco(|l| l.acorda(&[], agora)).map(|t| t.saturating_duration_since(agora))
     };
-    assert!(!pede(&p), "sem Seleção nada anima");
+    let mut p = painter(false);
+    assert_eq!(acorda(&p), Some(PRAZO), "sem Seleção o laço dorme o prazo");
     p.set_rect_selection(4, 4, 20, 20);
     assert!(p.selection_active(), "a Seleção ficou viva");
-    assert!(pede(&p), "a Seleção viva não deixa o laço dormir");
+    let falta = acorda(&p).expect("a Seleção viva acorda o laço");
+    assert!(falta <= passo_ms, "no passo das formigas, não no prazo: {falta:?}");
+
+    let c = cena();
+    let ids = |passo| {
+        let mut vs = VectorScene::new();
+        crate::painter_bridge_selection_overlay::draw_selection_overlay_no_passo(
+            &p, &c.hero, &c.sim, &c.camera, JANELA, &mut vs, passo,
+        );
+        vs.probe_image_ids()
+    };
+    let (a, b, outro) = (ids(5), ids(5), ids(6));
+    assert_eq!(a.len(), 1, "o overlay é uma imagem");
+    assert_eq!(a, b, "parado, a cena emite a mesma imagem");
+    assert_ne!(a, outro, "o passo seguinte é outra");
+
+    let (p0, t0) = crate::painter_bridge_selection_overlay::passo_das_formigas(Instant::now());
+    let (p1, t1) = crate::painter_bridge_selection_overlay::passo_das_formigas(t0);
+    assert_eq!((p1, t1), (p0 + 1, t0 + passo_ms), "um passo por 100 ms de relógio");
 }
 
 /// A caixa nunca cobre o pixel amostrado, e vira para o outro lado na borda da janela.

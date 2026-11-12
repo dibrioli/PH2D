@@ -16,6 +16,15 @@ fn hero_com_o_player_aberto() -> HeroScreen {
     hero_com_aberto(PLAYER)
 }
 
+/// O Player em cartões (versão B) nasce com as dobras FECHADAS: o ensaio que mede uma linha de dentro abre a dobra dela.
+pub(super) fn abre_dobras(h: &mut HeroScreen, dobras: &[NodeId]) {
+    for &d in dobras {
+        h.store.set_collapsed(d, false);
+        h.store.set_section_open_live(d, 1.0);
+    }
+    pinta(h, 30);
+}
+
 /// O hero só com o Inspector e o cartão `sec` ABERTO.
 pub(super) fn hero_com_aberto(sec: NodeId) -> HeroScreen {
     let _ = ph2d_panel_registry_init::register_all_panels();
@@ -160,6 +169,7 @@ fn the_player_card_rows_never_overlap() {
 fn the_player_card_pairs_share_a_row() {
     super::o_inspector_armado::arma_tudo();
     let mut h = hero_com_o_player_aberto();
+    abre_dobras(&mut h, &ph2d_panel_inspector::ids::INSP_PLAYER_FOLDS);
     solto(&mut h, 270.0);
     // Rola o solto até ao fim e confere cada par que passa à vista.
     let mut vistos = std::collections::BTreeSet::new();
@@ -171,7 +181,8 @@ fn the_player_card_pairs_share_a_row() {
             };
             assert!(
                 (ra.y - rb.y).abs() < 0.5 && ra.x + ra.w <= rb.x,
-                "o par {a:?} {ra:?} | {b:?} {rb:?} não divide uma linha"
+                "o par n.º {} {a:?} {ra:?} | {b:?} {rb:?} não divide uma linha",
+                ph2d_panel_inspector::player_card_pairs().iter().position(|p| p.0 == a).unwrap_or(99)
             );
             vistos.insert(a);
         }
@@ -219,6 +230,7 @@ fn the_wheel_card_puts_its_two_radii_on_one_row() {
 fn a_loose_card_taller_than_the_canvas_scrolls_inside() {
     super::o_inspector_armado::arma_tudo();
     let mut h = hero_com_o_player_aberto();
+    abre_dobras(&mut h, &ph2d_panel_inspector::ids::INSP_PLAYER_FOLDS);
     let canvas = h.last_layout.expect("houve um quadro").canvas;
     solto(&mut h, 270.0);
     let r = h
@@ -233,7 +245,7 @@ fn a_loose_card_taller_than_the_canvas_scrolls_inside() {
         "o Player solto {r:?} passa do fundo {fundo} (canvas {canvas:?}, HUD {hud:?})"
     );
     let titulo = pega(&h);
-    let campo = ph2d_panel_inspector::player_card_spans()[0].1[0];
+    let campo = ph2d_panel_inspector::ids::INSP_PLAYER_SPEED; // a 1.ª linha do cartão Walk, o de cima
     let antes = h.hit_index.rect_for(campo).expect("a 1.ª linha do Player");
     let arena = bumpalo::Bump::new();
     let (cx, cy) = centro(r);

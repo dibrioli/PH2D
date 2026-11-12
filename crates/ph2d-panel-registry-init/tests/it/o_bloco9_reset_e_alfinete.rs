@@ -115,6 +115,7 @@ fn a_pinned_component_card_shows_and_edits_its_own_object() {
     let (hero, inimigo) = (super::o_inspector_armado::BITS, 77_u64);
     escolhe(hero, "Hero", 0.1);
     let mut h = hero_com_aberto(PLAYER);
+    super::o_bloco8_player_solto::abre_dobras(&mut h, &[insp::ids::INSP_PLAYER_CARD_LEG]);
     let do_hero = caixa(&h);
     solto_de(&mut h, PLAYER, 300.0);
     // Abaixo da barra de modos do canvas (ela fica por cima do cabeçalho de um solto colado ao topo).
@@ -153,6 +154,24 @@ fn a_pinned_component_card_shows_and_edits_its_own_object() {
         Some(do_hero),
         "o cartão preso não mostra o Float do Hero"
     );
+    // O Float mora na dobra Leg, no fundo do cartão (versão B): rola o preso até a linha entrar à vista.
+    for _ in 0..40 {
+        if h.hit_index.rect_for(FLOAT).is_some() {
+            break;
+        }
+        let arena = bumpalo::Bump::new();
+        let (x, y) = centro(r);
+        let roda = ph2d_host::WheelEvent {
+            x,
+            y,
+            delta_x: 0.0,
+            delta_y: -120.0,
+            modifiers: Default::default(),
+            timestamp_ns: 0,
+        };
+        let _ = ph2d_editor_core::interaction::dispatch_wheel(&mut h.store, roda, &arena);
+        pinta(&mut h, 4);
+    }
     let campo = h
         .hit_index
         .rect_for(FLOAT)

@@ -216,13 +216,13 @@ fn paint_verbs(
 
 /// ⭐ T59 (a lei da T56, smoke do dono 02/11): as linhas VIZINHAS que no cartão dividem uma linha —
 /// duas metades de um assunto, um rótulo sobre cada caixa. Fora do cartão, uma por linha.
-pub(crate) const PLAYER_PARES: [(ph2d_a11y::NodeId, ph2d_a11y::NodeId); 16] = {
+/// (Air Jumps e Air Jump Height saíram da lista na versão B: moram em partes diferentes, o cartão Jump e a dobra More.)
+pub(crate) const PLAYER_PARES: [(ph2d_a11y::NodeId, ph2d_a11y::NodeId); 15] = {
     use crate::ids as i;
     [
         (i::INSP_PLAYER_STIFFNESS, i::INSP_PLAYER_DAMPING),
         (i::INSP_PLAYER_FOOT_SAMPLES, i::INSP_PLAYER_FOOT_SPREAD),
         (i::INSP_PLAYER_SPEED, i::INSP_PLAYER_ACCEL),
-        (i::INSP_PLAYER_AIR_JUMPS, i::INSP_PLAYER_AIR_JUMP_H),
         (i::INSP_PLAYER_TAKEOFF_G, i::INSP_PLAYER_TAKEOFF_SPEED),
         (i::INSP_PLAYER_PEAK_G, i::INSP_PLAYER_PEAK_SPEED),
         (i::INSP_PLAYER_FALL_G, i::INSP_PLAYER_CUT_G),

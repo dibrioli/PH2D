@@ -456,6 +456,7 @@ analise = "analise"  # pt «análise» sem acento, nas chaves gravadas das medi�
 tramas = "tramas"  # pt «tramas» (padrões de pontilhado) no doc do smoke do Pixel Art
 percentagens = "percentagens"  # pt-PT «percentagens» no diálogo Sprite Size do Pixel Art
 anual = "anual"  # pt «anual» (yearly) — a recorrência do Planner e do Butler
+classicos = "classicos"  # pt «clássicos» sem acento num nome de teste (`…_temas_modernos_e_nos_classicos`, valores_ao_vivo.rs)
 exporte = "exporte"  # pt imperativo («exporte um quadro seu») no tutorial do Kanban
 familys = "familys"  # dentro de nomes de teste (`…its_familys_channel`): um nome de teste não leva apóstrofo
 clen = "clen"  # «comprimento do centro» da slice (alcas.rs do Pixel Art), par de `blen`
@@ -1125,6 +1126,9 @@ extend-exclude = [
     "docs/Painter/ferramentas/oraculo_camadas_gimp/*.bin",
     # Spike fixtures may contain Luau intentionally
     "docs/scripting/examples/spike/**/*.luau",
+    # O script do smoke do assistente de código erra os nomes DE PROPÓSITO (`jump_hieght`, `rotaton`…):
+    # é o que a Bancada tem de apontar na cena. Isenta-se o ficheiro, não as palavras.
+    "docs/CodeEditor/ferramentas/smoke/*.luau",
     # PT-BR docs — typos-cli only knows en-US, would flag every "rever",
     # "sinal", "ser", "vai" etc. as typo. Per SKILL §10.1, code comments
     # are in English (and *those* still get scanned via .rs/.toml).

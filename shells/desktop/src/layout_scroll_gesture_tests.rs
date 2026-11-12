@@ -82,7 +82,8 @@ fn the_wheel_never_writes_the_camera_itself() {
 /// a arte por baixo dele.
 #[test]
 fn a_panel_still_wins_the_wheel() {
-    let s = dispatch_src();
+    // Sem os comentários: o primeiro `wheel_scrolls_a_frame` tem de ser a CHAMADA, não a prosa que a cita.
+    let s = strip_line_comments(&dispatch_src());
     let i = s
         .find("wheel_scrolls_a_frame")
         .expect("a roda pergunta pela moldura");

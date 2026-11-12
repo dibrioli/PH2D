@@ -51,6 +51,20 @@ mesmo binário). Alarmes de pincel = a lista de sempre (largura: Oil_Wash, Smear
 `ea81d00445`: o vermelho herdado era o teste a pedir Medium 0,5 depois do degrau Water · Oil (`03df88ea8c`).
 Em voo (worktrees `.ph2d-ag-<x>`, base `7babb40720`): α2 (os próximos cortes exatos das cerdas), ε (Ctrl+Z do Wet),
 δ (camadas: B39.A3, B19.10, B18.1–18.3), γ (água com Óleo Real: B11.3, B13.5–13.7).
+**02:55 — na linha:** α2 `9ce5682066` `e9233800b9` `2d207f37c6` (corte por linha do motor + miolo + `CerdasDoDab`;
+Flat 240 427,5 → 388,5 G; acumulado 662 → ~388 G, −41 %, hash `fe1a4c3dc2e7193a`) · δ `e5ebe3f068` (current_layers
+devolve o Arc) `d648f295f9` (cópias de plano em par_clone) · ε `22010692a6` (restauro do histórico do Wet no pool,
+ADR-0203: desfazer do motor 28,9 → 22,5 ms na sonda) · γ `c7c3e2a9c2` `3602c2b884` (laços do Óleo Real fora do fio
+do quadro: 325 → 141 G instruções nele) · δ2 `d872d3811c` `3230d3ba5f` (trocar de camada sem recompor quando a figura
+é provada igual: o quadro seguinte 47 → 0 ms; a troca 12 → 9 ms). Em voo: ε2 (fases do Ctrl+Z do Wet no app, trocar
+tiles em vez de copiar 2×), bissecção dos 5 vermelhos herdados (verdes no main, vermelhos em `4381ee6d4a`:
+smooth_edges_no_zero…, arrastar_um_numero_do_oleo…, o_modo_blender_casa…, o_oleo_pouco_diluido…,
+a_subsuperficie_do_pincel…), verificação de 3 vermelhos novos vistos pelo δ2 (trocar_um_knob_de_render…, os dois do
+formato do documento da macro). `a_divida_cheia_acaba_com_a_agua_a_correr`: flake de carga (verde 2× no HEAD a load 175).
+Por fazer no fecho: matriz calma única base `4381ee6d4a` × HEAD (Wet/Filbert/Impasto 4K, W5, W6, W9, D1, trocar de
+camada), alarmes, fmt/clippy das crates tocadas, tectos, handoff, §5.1, binário smoke 2×, limpar as worktrees
+`.ph2d-ag-*`, `.ph2d-bis-4k`, `.ph2d-perf-target` e os targets.
+
 **Achado transversal (não é do Painter):** parado, cada quadro gasta ~38 M ciclos no fio da UI — estados dos widgets
 e a11y em BTreeMap (~12 %), o modelo do Quadro (`BoardId`, 4,4 %) numa cena de pintura, `format` por quadro. Vai ao
 handoff para a linha da UI/Editor.

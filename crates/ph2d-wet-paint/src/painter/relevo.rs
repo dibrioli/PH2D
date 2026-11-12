@@ -52,13 +52,23 @@ impl Engine {
         let faixa = &mut campo[y0 as usize * s..(y1 as usize + 1) * s];
         crate::par::walk_rows(mode, faixa, s, |k, linha| {
             let py = y0 + k as i32;
+            // O puxão da última cobertura vista na linha (o `pow` repete-se no miolo), pelos bits de `w`: ao bit.
+            let mut ultimo: Option<(u64, f64)> = None;
             for px in x0..=x1 {
                 let w = sil(px, py);
                 if w <= 0.0 {
                     continue;
                 }
+                let k = match ultimo {
+                    Some((b, k)) if b == w.to_bits() => k,
+                    _ => {
+                        let k = crate::bristles_relevo::puxao(w, passos);
+                        ultimo = Some((w.to_bits(), k));
+                        k
+                    }
+                };
                 let c = &mut linha[px as usize];
-                *c = crate::bristles_relevo::penteia(*c, alvo(px, py), w, passos);
+                *c = crate::bristles_relevo::penteia_com(*c, alvo(px, py), k);
             }
         });
         self.merge_dirty(x0, y0, x1, y1);

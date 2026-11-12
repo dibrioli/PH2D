@@ -73,12 +73,24 @@ pub fn entre(a: f64, b: f64, t: f64) -> f64 {
 /// células de traço puxa como as duas passagens do traço denso (`1 − (1 − TAXA·w)^passos`); `1` = a lei de sempre.
 #[must_use]
 pub fn penteia(h: f32, alvo: f64, w: f64, passos: f64) -> f32 {
+    penteia_com(h, alvo, puxao(w, passos))
+}
+
+/// A parte de [`penteia`] que só depende de `w` e `passos` (o `pow`): quem varre uma linha guarda-a pelos bits de `w` —
+/// o miolo da silhueta repete o mesmo `w` —, ao bit.
+#[must_use]
+pub fn puxao(w: f64, passos: f64) -> f64 {
     let k1 = (TAXA * w).clamp(0.0, 1.0);
-    let k = if passos == 1.0 {
+    if passos == 1.0 {
         k1
     } else {
         1.0 - (1.0 - k1).det_powf(passos.max(0.0))
-    };
+    }
+}
+
+/// [`penteia`] com o [`puxao`] `k` já contado.
+#[must_use]
+pub fn penteia_com(h: f32, alvo: f64, k: f64) -> f32 {
     (f64::from(h) + k * (alvo - f64::from(h))) as f32
 }
 

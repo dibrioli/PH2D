@@ -136,6 +136,9 @@ impl HeroScreen {
     /// A pressão fecha o que um cartão abriu, em qualquer sítio. ⛔ A shell chama isto ANTES dos
     /// ramos do canvas: eles tomam a pressão e nunca chegam ao despacho.
     pub fn premido_fisico(&mut self, mut event: ph2d_host::PointerEvent) {
+        if event.kind == ph2d_host::PointerKind::Down {
+            super::surface_input::dismiss_on_chrome_press(self, event.x, event.y);
+        }
         (event.x, event.y) = self.escala().to_logical((event.x, event.y));
         crate::panel::cards::ao_premir(&mut self.store, &self.hit_index, event);
     }

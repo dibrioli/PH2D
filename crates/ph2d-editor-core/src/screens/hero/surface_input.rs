@@ -160,6 +160,19 @@ pub fn dismiss_floating(hero: &mut HeroScreen) {
     }
 }
 
+/// Um carregar FÍSICO no chrome (painel ou controlo) fora do que a aba activa tem a flutuar fecha
+/// os menus dela. ⛔ Corre na pressão, ANTES dos ramos da shell que a tomam (o Preview, o Pixel, o
+/// áudio…) e nunca chegam ao `route_pointer` do quadro, que avisa pela mesma lei.
+pub fn dismiss_on_chrome_press(hero: &mut HeroScreen, x: f32, y: f32) {
+    let on_chrome = hero.chrome_panel_at(x, y).is_some() || hero.chrome_hit(x, y).is_some();
+    if hero.documents.surface_active().is_some()
+        && on_chrome
+        && !hero.documents.surface_floats_at(x, y)
+    {
+        dismiss_floating(hero);
+    }
+}
+
 pub(super) fn pointer_move(
     hero: &mut HeroScreen,
     input: Input<'_>,

@@ -307,3 +307,55 @@ fn o_carregar_num_painel_fora_do_menu_avisa_a_aba_e_segue_ao_painel() {
     crate::screens::hero::surface_input::dismiss_floating(&mut hero);
     assert_eq!(avisos(&mut hero), Some(2), "a perda de foco avisa a aba");
 }
+
+/// ⛔ A pressão física (`premido_fisico`, que a shell chama ANTES dos ramos que tomam o carregar:
+/// o Preview, o Pixel, o áudio) num controlo do chrome fora do menu avisa a aba; no menu (mesmo
+/// com chrome por baixo) e fora do chrome, não; o largar não avisa.
+#[test]
+fn a_pressao_no_chrome_fora_do_menu_avisa_a_aba_antes_dos_ramos_da_shell() {
+    use ph2d_host::{PointerEvent, PointerSource};
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.documents.install_surface(Box::<Flutua>::default());
+    hero.documents
+        .activate_surface(SurfaceTab { family: 0, id: 7 });
+    let chrome = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 400.0,
+        h: 400.0,
+    };
+    hero.hit_index.register(NodeId(9), chrome);
+    let carrega = |h: &mut HeroScreen, kind, x, y| {
+        h.premido_fisico(PointerEvent {
+            x,
+            y,
+            pressure: 1.0,
+            kind,
+            source: PointerSource::Mouse,
+            button: PointerButton::Primary,
+            timestamp_ns: 0,
+        });
+        h.documents.surfaces().find::<Flutua>().map(|f| f.avisos)
+    };
+    let (mx, my) = (MENU.x + 1.0, MENU.y + 1.0);
+    assert_eq!(
+        carrega(&mut hero, PointerKind::Down, mx, my),
+        Some(0),
+        "no menu"
+    );
+    assert_eq!(
+        carrega(&mut hero, PointerKind::Down, 500.0, 500.0),
+        Some(0),
+        "fora do chrome"
+    );
+    assert_eq!(
+        carrega(&mut hero, PointerKind::Up, 5.0, 5.0),
+        Some(0),
+        "o largar"
+    );
+    assert_eq!(
+        carrega(&mut hero, PointerKind::Down, 5.0, 5.0),
+        Some(1),
+        "o chrome avisa"
+    );
+}

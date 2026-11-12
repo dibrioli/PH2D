@@ -37,8 +37,10 @@ pub struct PainterGpuPreview {
     premul: PreviewPremul,
     /// A geração de memória da placa em que a sessão nasceu (F36): no fim de um episódio sem memória
     geracao: u64,
-    /// Os planos do último envio, cujos buffers a próxima dobra reescreve (B15-cont: sem os ~107 MB alocados e
-    planos: Option<ph2d_tool_painter::ImpastoPlanes>,
+    /// As texturas de plano da luz têm o relevo de AGORA fora de qualquer janela: `true` depois de cada envio,
+    /// `false` quando a dobra não deu planos (luz apagada: os traços seguintes não sobem, e a volta da luz dobra a
+    /// tela inteira).
+    planos_em_dia: bool,
     /// A placa produziu o último quadro do documento: ao largá-lo, a CPU compõe a tela já nesse quadro.
     dona: bool,
     /// B20.A2: `(camada, versão)` entregues ao compositor na última drenagem da placa. O sujo do instrumento
@@ -155,7 +157,7 @@ impl PainterGpuPreview {
             light: ImpastoLightPass::new(gpu),
             premul: PreviewPremul::new(gpu),
             geracao: ph2d_gpu::memoria::geracao(),
-            planos: None,
+            planos_em_dia: false,
             dona: false,
             entregue: Vec::new(),
             a_entregar: Vec::new(),
@@ -455,7 +457,7 @@ fn compose_light_premul(
     // one fold per box (the planes outside them did not change).
     let inteira = Region::full(width, height);
     let tela = (0, 0, width, height);
-    let confinado = session.planos.is_some() && session.light.planes_seeded(width, height);
+    let confinado = session.planos_em_dia && session.light.planes_seeded(width, height);
     let janelas: Vec<(u32, u32, u32, u32)> = match tool.preview_gpu_region().filter(|_| confinado) {
         None => vec![tela],
         Some(_) if !caixas.is_empty() && regioes.len() == caixas.len() => caixas.to_vec(),
@@ -466,14 +468,32 @@ fn compose_light_premul(
     for (i, &plane_win) in janelas.iter().enumerate() {
         // The fold clock travels with its window (rect vs canvas).
         let m_fold = crate::paint_perf::on().then(std::time::Instant::now);
-        let planes = tool.impasto_gpu_planes_reusing(plane_win, session.planos.take());
+        // A dobra escreve direto nos buffers de envio da luz (sem `Vec` nem o `memcpy` do `write_texture`).
+        session.planos_em_dia = false;
+        let planes = tool.impasto_dobra(plane_win).map(|dobra| {
+            let r = dobra.region;
+            let janela = Region {
+                x: r.0,
+                y: r.1,
+                w: r.2,
+                h: r.3,
+            };
+            let envio = session
+                .light
+                .planos_para_envio(&session.gpu, janela, dobra.com_papel());
+            dobra.dobrar_faixas(
+                |linhas| envio.faixa(linhas),
+                |f, j, l| f.escreve(j, l.relief, l.cover, l.mat0, l.mat1, l.papel),
+            );
+            (dobra, janela, envio)
+        });
         if let Some(t0) = m_fold {
             crate::paint_perf::note_gpu_fold(
                 t0.elapsed().as_secs_f64() as f32 * 1e3,
                 plane_win == tela,
             );
         }
-        let Some(planes) = planes else {
+        let Some((planes, plane_region, envio)) = planes else {
             // Sem relevo: a composição sai sem luz (todas as janelas respondem igual).
             tocadas = regioes.to_vec();
             if session.luz.take().is_some() {
@@ -506,28 +526,25 @@ fn compose_light_premul(
             width,
             height,
             region: tocada,
-            // …but the PLANES are only the fold's window (the textures persist).
-            plane_region: Region {
-                x: planes.region.0,
-                y: planes.region.1,
-                w: planes.region.2,
-                h: planes.region.3,
-            },
-            relief: &planes.relief,
-            cover: &planes.cover,
-            mat0: &planes.mat0,
-            mat1: &planes.mat1,
+            // …but the PLANES are only the fold's window (the textures persist); they come in `envio`.
+            plane_region,
+            relief: &[],
+            cover: &[],
+            mat0: &[],
+            mat1: &[],
             lamps: &lamps,
             spec_lut: planes.spec_lut,
             lut_width: planes.lut_width,
             rough_levels: planes.rough_levels,
             paper_body: planes.paper_body,
-            papel: &planes.papel,
+            papel: &[],
         };
         // Falling through UNLIT would silently drop the shading.
-        let lit = session.light.run(&session.gpu, comp_out, &input);
+        let lit = session
+            .light
+            .run_enviado(&session.gpu, comp_out, &input, envio);
         session.luz = Some((lamps, planes.paper_body));
-        session.planos = Some(planes);
+        session.planos_em_dia = lit.is_ok();
         lit.map(|_| ()).map_err(|e| {
             ph2d_i18n::tr_with(
                 "app.painter.painter_gpu_preview.impasto_light",

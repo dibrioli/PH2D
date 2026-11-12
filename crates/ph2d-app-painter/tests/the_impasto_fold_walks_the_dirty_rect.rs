@@ -44,20 +44,41 @@
 
 const SRC: &str = include_str!("../src/painter_gpu_preview.rs");
 
-/// A EXPRESSÃO que liga `plane_win` — do `let` até o `;` que a fecha.
+/// A EXPRESSÃO que liga `nome` — do `let` até o `;` que a fecha.
 ///
 /// Ler daqui, e não do arquivo, é o que impede um comentário de satisfazer as asserções abaixo. Se o
 /// binding for renomeado o gate falha alto, que é o modo certo de falhar: quem move a decisão tem de
 /// mover o gate junto.
-fn plane_win_binding() -> &'static str {
-    let start = SRC.find("let plane_win").expect(
-        "o produtor não liga mais `plane_win` — se a decisão foi movida, mova este gate junto",
-    );
+fn binding(nome: &str) -> &'static str {
+    let start = SRC.find(&format!("let {nome}")).unwrap_or_else(|| {
+        panic!("o produtor não liga mais `{nome}` — se a decisão foi movida, mova este gate junto")
+    });
     let end = SRC[start..]
         .find(';')
         .map(|o| start + o)
-        .expect("o binding de `plane_win` não termina");
+        .unwrap_or_else(|| panic!("o binding de `{nome}` não termina"));
     &SRC[start..end]
+}
+
+/// O corpo do laço que dobra cada janela: do `for … in janelas` até ao `}` que o fecha.
+fn fold_loop() -> &'static str {
+    let start = SRC
+        .find("&plane_win) in janelas.iter()")
+        .expect("o produtor não percorre mais `janelas` — se a decisão foi movida, mova este gate junto");
+    let mut depth = 0i32;
+    for (o, c) in SRC[start..].char_indices() {
+        match c {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return &SRC[start..start + o];
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("o laço sobre `janelas` não fecha")
 }
 
 /// Controle positivo: o arquivo foi mesmo lido, e é o que este gate pensa que é.
@@ -82,38 +103,41 @@ fn the_gate_reads_the_producer_it_claims_to_read() {
 ///
 /// Três afirmações, porque são três fatos independentes e cada um sozinho pode apodrecer:
 ///
-/// 1. a porta chamada é a regional (`impasto_gpu_planes_reusing`, a de `_in` com os buffers do quadro anterior);
+/// 1. a porta chamada é a regional (`impasto_dobra(plane_win)`, a de `_in` escrita nos buffers de envio da luz);
 /// 2. o que ela recebe nasce de `preview_gpu_region()` — o retângulo que o tool só oferece quando a
 ///    mudança FOI confinada a ele (uma edição estrutural passa por `invalidate_composite`, que o
 ///    derruba), e é isso que torna o upload parcial correto em vez de meramente rápido;
 /// 3. a shell **pergunta ao passe** se os planos já foram semeados, porque quem é dono da textura é
 ///    quem sabe se ela já teve a pintura inteira — um resize a reconstrói e a resposta volta a `false`.
 ///
-/// **Mutações que devem sangrar:** trocar `impasto_gpu_planes_in(plane_win)` por
-/// `impasto_gpu_planes()` (mata 1) · cravar `plane_win` em `(0, 0, width, height)` (mata 2) · tirar o
-/// `planes_seeded` do filtro (mata 3).
+/// **Mutações que devem sangrar:** trocar `impasto_dobra(plane_win)` por `impasto_dobra(tela)` (mata 1)
+/// · trocar a origem de `janelas` por `vec![tela]` (mata 2) · tirar o `planes_seeded` de `confinado`
+/// (mata 3).
 ///
-/// ⚠️ As asserções olham a EXPRESSÃO que liga `plane_win`, nunca o arquivo inteiro: sobre o arquivo elas
-/// seriam satisfazíveis por um COMENTÁRIO — bastaria alguém escrever `preview_gpu_region()` em prosa
-/// para desarmar o gate em silêncio (achado da auditoria adversarial, 2026-07-25). Uma âncora que aceita
-/// prosa não é um gate, é um lembrete.
+/// ⚠️ As asserções olham as EXPRESSÕES que ligam `janelas` e `confinado` e o corpo do laço que as dobra,
+/// nunca o arquivo inteiro: sobre o arquivo elas seriam satisfazíveis por um COMENTÁRIO — bastaria alguém
+/// escrever `preview_gpu_region()` em prosa para desarmar o gate em silêncio (achado da auditoria
+/// adversarial, 2026-07-25). Uma âncora que aceita prosa não é um gate, é um lembrete.
 #[test]
 fn the_shell_folds_the_window_the_tool_reports_dirty() {
-    let bind = plane_win_binding();
+    let laco = fold_loop();
     assert!(
-        bind.contains("impasto_gpu_planes_reusing(")
-            || SRC.contains("impasto_gpu_planes_reusing(plane_win, session.planos.take())"),
-        "a shell precisa chamar a porta REGIONAL do fold — a de tela cheia custa 202 ms/frame a 4096²"
+        laco.contains("&plane_win) in janelas") && laco.contains("tool.impasto_dobra(plane_win)"),
+        "a shell precisa dobrar pela porta REGIONAL cada janela de `janelas` — a de tela cheia custa \
+         202 ms/frame a 4096²"
     );
+    let janelas = binding("janelas");
     assert!(
-        bind.contains("preview_gpu_region()"),
-        "a janela tem de vir do retângulo sujo do tool; qualquer outra origem é um segundo dono do \
-         fato \"o que mudou neste frame\""
+        janelas.contains("preview_gpu_region()") && janelas.contains(".filter(|_| confinado)"),
+        "a janela tem de vir do retângulo sujo do tool, e só quando os planos estão semeados; qualquer \
+         outra origem é um segundo dono do fato \"o que mudou neste frame\""
     );
+    let confinado = binding("confinado");
     assert!(
-        bind.contains("planes_seeded("),
-        "a shell tem de perguntar ao PASSE se os planos já foram semeados — um upload parcial sobre \
-         uma textura recém-criada ilumina o resto da pintura como se fosse chapada"
+        confinado.contains("planes_seeded(") && confinado.contains("planos_em_dia"),
+        "a shell tem de perguntar ao PASSE se os planos já foram semeados, e saber que o último envio \
+         os deixou em dia — um upload parcial sobre uma textura recém-criada (ou sobre planos de antes \
+         de a luz se apagar) ilumina o resto da pintura como se fosse chapada"
     );
 }
 

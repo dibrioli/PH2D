@@ -160,7 +160,8 @@ pub use image_filter::{
     ImageFilterMode, create_sprite_sampler, filter_tag_magnifies_by_point, wgpu_filter,
 };
 pub use impasto_light::{
-    IMPASTO_MAX_LIGHTS, ImpastoLamp, ImpastoLightError, ImpastoLightInput, ImpastoLightPass,
+    FaixaDeEnvio, IMPASTO_MAX_LIGHTS, ImpastoLamp, ImpastoLightError, ImpastoLightInput,
+    ImpastoLightPass, PlanosEmEnvio,
 };
 pub use individual::{IndividualTextureError, IndividualTextureStore};
 pub use instance_buffer::InstanceBuffer;

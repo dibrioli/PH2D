@@ -490,7 +490,7 @@ mod internal;
 pub(crate) use internal::*;
 mod layers;
 pub(crate) mod paint;
-pub use paint::impasto_gpu::{ImpastoLamp, ImpastoPlanes};
+pub use paint::impasto_gpu::{ImpastoDobra, ImpastoLamp, ImpastoPlanes, LinhaDobrada};
 pub mod persist;
 // The parametric selection shape list is part of the model snapshot (undo/redo), so `crate::undo` needs
 // to name its entry type — re-export it crate-wide without opening the rest of `paint`.

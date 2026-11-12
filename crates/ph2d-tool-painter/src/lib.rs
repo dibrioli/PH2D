@@ -170,13 +170,14 @@ pub use tool::{
     BRUSH_AIRBRUSH_RATE_MAX_S, BRUSH_AIRBRUSH_RATE_MIN_S, BRUSH_COUNT_SLIDER_MAX,
     BRUSH_JITTER_ABS_MAX_PX, BRUSH_SIZE_MAX_PX, BRUSH_SIZE_MIN_PX, BRUSH_SPACING_MAX,
     BrushSettings, CurveOverlay, DEFORM_TEMPERAMENT_NONE, DEFORM_TEMPERAMENT_RESHAPE,
-    DEFORM_TEMPERAMENT_TRANSFORM, DrainBranch, EllipseOverlay, FilterScope, GridAxis, ImpastoLamp,
-    ImpastoLight, ImpastoPlanes, LightRig, LineCornerGizmo, LineDimensions, LineOverlay,
-    LinhaDoPenteado, MAX_COMPOSITE_LAYER_SIZE, MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, MIN_ELEV_DEG,
-    N_COMPOSITE_ERASE_SCOPES, N_COMPOSITE_LAYERS, N_COMPOSITE_OPS, PANEL_RAMP_STOPS, PaintMedia,
-    PainterTool, PolygonOverlay, SelectionGizmoView, StencilOverlay, StencilPreview, StrokeOpBadge,
-    TangentHandles, TransformGizmo, UsoDaCamada, WetKnobs, WetTool, brush_dab_weight_at,
-    brush_falloff_weight_at, render_classic_flow_preview, set_pending_select_mods,
+    DEFORM_TEMPERAMENT_TRANSFORM, DrainBranch, EllipseOverlay, FilterScope, GridAxis, ImpastoDobra,
+    ImpastoLamp, ImpastoLight, ImpastoPlanes, LightRig, LineCornerGizmo, LineDimensions,
+    LineOverlay, LinhaDoPenteado, LinhaDobrada, MAX_COMPOSITE_LAYER_SIZE, MAX_IMPASTO_LIGHTS,
+    MAX_SHAPE_LAYERS, MIN_ELEV_DEG, N_COMPOSITE_ERASE_SCOPES, N_COMPOSITE_LAYERS, N_COMPOSITE_OPS,
+    PANEL_RAMP_STOPS, PaintMedia, PainterTool, PolygonOverlay, SelectionGizmoView, StencilOverlay,
+    StencilPreview, StrokeOpBadge, TangentHandles, TransformGizmo, UsoDaCamada, WetKnobs, WetTool,
+    brush_dab_weight_at, brush_falloff_weight_at, render_classic_flow_preview,
+    set_pending_select_mods,
 };
 pub use tool::{DICA_DO_PARAMETRO, Dependente, Inercias, Natureza};
 pub use undo::{

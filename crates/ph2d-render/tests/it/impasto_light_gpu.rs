@@ -531,3 +531,110 @@ fn a_partial_plane_upload_lands_where_it_belongs_at_any_width() {
         );
     }
 }
+
+/// **O envio sem cópia desenha os MESMOS bytes que o `write_texture`** — a dobra escrita direto nos buffers de
+/// envio (`stride` alinhado a 256, padding) e copiada por `copy_buffer_to_texture`, contra os `Vec` da mesma dobra
+/// subidos pelo caminho antigo. Igualdade EXATA (a mesma luz sobre as mesmas texturas), na tela inteira e em
+/// janelas de largura não múltipla de 64 depois da semeadura, e de novo com os buffers da reserva já remapeados.
+///
+/// **Mutações que sangram:** o `bytes_per_row` da cópia trocado pela linha justa · a origem da cópia em `(0, 0)` ·
+/// um plano por copiar.
+#[test]
+#[ignore = "requires a GPU adapter"]
+fn o_envio_sem_copia_desenha_o_que_o_write_texture_desenhava() {
+    let Some(gpu) = try_headless_gpu() else {
+        return;
+    };
+    let t = sculpted(0.6, 0.4, 0.3, 0.5);
+    let base = backdrop();
+    let src = make_src(&gpu, &base);
+    let gpu_lamps = |p: &[ph2d_tool_painter::ImpastoLamp]| -> Vec<GpuLamp> {
+        p.iter()
+            .map(|l| GpuLamp {
+                dir: l.dir,
+                half: l.half,
+                tint: l.tint,
+            })
+            .collect()
+    };
+    let janela = |r: (u32, u32, u32, u32)| GpuRegion {
+        x: r.0,
+        y: r.1,
+        w: r.2,
+        h: r.3,
+    };
+    // O caminho antigo: os `Vec` pelo `write_texture`.
+    let antigo = |pass: &mut ImpastoLightPass, win| {
+        let p = t.impasto_gpu_planes_in(win).expect("planos");
+        let lamps = gpu_lamps(&p.lamps);
+        let input = ImpastoLightInput {
+            width: p.width,
+            height: p.height,
+            region: GpuRegion::full(p.width, p.height),
+            plane_region: janela(p.region),
+            relief: &p.relief,
+            cover: &p.cover,
+            mat0: &p.mat0,
+            mat1: &p.mat1,
+            lamps: &lamps,
+            spec_lut: p.spec_lut,
+            lut_width: p.lut_width,
+            rough_levels: p.rough_levels,
+            paper_body: p.paper_body,
+            papel: &p.papel,
+        };
+        readback(&gpu, pass.run(&gpu, &src, &input).expect("antigo"))
+    };
+    // O caminho novo: a dobra nas fatias de envio.
+    let novo = |pass: &mut ImpastoLightPass, win| {
+        let dobra = t.impasto_dobra(win).expect("dobra");
+        let pr = janela(dobra.region);
+        let envio = pass.planos_para_envio(&gpu, pr, dobra.com_papel());
+        dobra.dobrar_faixas(
+            |linhas| envio.faixa(linhas),
+            |f, j, l| f.escreve(j, l.relief, l.cover, l.mat0, l.mat1, l.papel),
+        );
+        let lamps = gpu_lamps(&dobra.lamps);
+        let input = ImpastoLightInput {
+            width: dobra.width,
+            height: dobra.height,
+            region: GpuRegion::full(dobra.width, dobra.height),
+            plane_region: pr,
+            relief: &[],
+            cover: &[],
+            mat0: &[],
+            mat1: &[],
+            lamps: &lamps,
+            spec_lut: dobra.spec_lut,
+            lut_width: dobra.lut_width,
+            rough_levels: dobra.rough_levels,
+            paper_body: dobra.paper_body,
+            papel: &[],
+        };
+        let out = readback(
+            &gpu,
+            pass.run_enviado(&gpu, &src, &input, envio).expect("novo"),
+        );
+        gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok();
+        out
+    };
+    let tela = (0, 0, W, H);
+    let (mut a, mut b) = (ImpastoLightPass::new(&gpu), ImpastoLightPass::new(&gpu));
+    let (sa, sb) = (antigo(&mut a, tela), novo(&mut b, tela));
+    assert!(
+        sa.iter().zip(&base).any(|(x, y)| x != y),
+        "controle: a fixtura tem de ACENDER alguma coisa"
+    );
+    assert_eq!(sa, sb, "tela inteira: o envio diverge do write_texture");
+    for _ in 0..2 {
+        for win in [
+            (3u32, 5u32, 17u32, 11u32),
+            (1, 2, 33, 40),
+            (0, 7, 63, 57),
+            tela,
+        ] {
+            let (la, lb) = (antigo(&mut a, win), novo(&mut b, win));
+            assert_eq!(la, lb, "janela {win:?}: o envio diverge do write_texture");
+        }
+    }
+}

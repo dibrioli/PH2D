@@ -200,19 +200,67 @@ impl PainterTool {
     /// caller being generous about what changed, which is safe, where refusing would drop a frame's light.
     #[must_use]
     pub fn impasto_gpu_planes_in(&self, region: (u32, u32, u32, u32)) -> Option<ImpastoPlanes> {
-        self.impasto_gpu_planes_reusing(region, None)
+        let dobra = self.impasto_dobra(region)?;
+        let (_, _, rw, rh) = dobra.region;
+        let (rww, n) = (rw as usize, (rw as usize) * (rh as usize));
+        let mut relief = vec![0f32; n];
+        let mut cover = vec![0u8; n];
+        let mut mat0 = vec![0u8; n * 4];
+        let mut mat1 = vec![0u8; n * 4];
+        let mut papel = vec![0f32; if dobra.com_papel() { n } else { 0 }];
+        let mut pap = papel.chunks_mut(rww);
+        let linhas: Vec<_> = relief
+            .chunks_mut(rww)
+            .zip(cover.chunks_mut(rww))
+            .zip(mat0.chunks_mut(rww * 4))
+            .zip(mat1.chunks_mut(rww * 4))
+            .map(|(((r, c), m0), m1)| std::sync::Mutex::new(Some((r, c, m0, m1, pap.next()))))
+            .collect();
+        dobra.dobrar_faixas(
+            |rows| {
+                rows.map(|j| {
+                    linhas[j as usize]
+                        .lock()
+                        .expect("cada linha abre-se uma vez")
+                        .take()
+                        .expect("cada linha abre-se uma vez")
+                })
+                .collect::<Vec<_>>()
+            },
+            |faixa, j, l| {
+                let (r, c, m0, m1, p) = &mut faixa[j];
+                r.copy_from_slice(l.relief);
+                c.copy_from_slice(l.cover);
+                m0.copy_from_slice(l.mat0);
+                m1.copy_from_slice(l.mat1);
+                if let (Some(p), Some(lp)) = (p, l.papel) {
+                    p.copy_from_slice(lp);
+                }
+            },
+        );
+        Some(ImpastoPlanes {
+            width: dobra.width,
+            height: dobra.height,
+            region: dobra.region,
+            relief,
+            cover,
+            mat0,
+            mat1,
+            paper_body: dobra.paper_body,
+            papel,
+            lamps: dobra.lamps,
+            spec_lut: dobra.spec_lut,
+            lut_width: dobra.lut_width,
+            rough_levels: dobra.rough_levels,
+        })
     }
 
-    /// The same fold, writing into the buffers of the previous frame's planes instead of allocating
-    /// four new ones (B15-cont: ~107 MB of `calloc` + page faults + `cfree` per 4K Ctrl+Z frame). Every
-    /// texel of the window is overwritten, so what `prev` held never reaches the result — the gate
-    /// `os_planos_reusados_sao_os_novos_ao_bit` pre-fills them with garbage to prove it.
+    /// **A dobra sem os planos** — o que a GPU precisa saber ANTES de reservar a memória de envio: a janela
+    /// (já recortada à tela), se há plano do papel, as lâmpadas e a tabela. `None` nos mesmos sítios de
+    /// [`Self::impasto_gpu_planes`]. A dobra em si é [`ImpastoDobra::dobrar_faixas`], para os destinos que o chamador
+    /// der (o do app: as linhas dos buffers de envio mapeados, sem `Vec` de tela inteira nem `write_texture`).
     #[must_use]
-    pub fn impasto_gpu_planes_reusing(
-        &self,
-        region: (u32, u32, u32, u32),
-        prev: Option<ImpastoPlanes>,
-    ) -> Option<ImpastoPlanes> {
+    pub fn impasto_dobra(&self, region: (u32, u32, u32, u32)) -> Option<ImpastoDobra<'_>> {
         if !self.impasto_visible() {
             return None;
         }
@@ -225,8 +273,7 @@ impl PainterTool {
         let ry = ry.min(h);
         let rw = rw.min(w - rx);
         let rh = rh.min(h - ry);
-        let n = (rw as usize) * (rh as usize);
-        if n == 0 {
+        if (rw as usize) * (rh as usize) == 0 {
             return None;
         }
         // B15.5: com Gaussiano/Nitidez a dobra é a da janela dilatada pela soma dos halos, não a da tela.
@@ -237,74 +284,130 @@ impl PainterTool {
             h: rh,
         })?;
         let lamps = super::impasto_shade::Rig::new(&self.paint.impasto_rig)?.export_lamps();
-        let (mut relief, mut cover, mut mat0, mut mat1, mut papel) = prev
-            .map_or_else(Default::default, |p| {
-                (p.relief, p.cover, p.mat0, p.mat1, p.papel)
-            });
-        papel.resize(if fields.substrate.is_some() { n } else { 0 }, 0.0);
-        // `resize` só escreve o que CRESCE: com a janela do quadro anterior (o caso do Ctrl+Z) não toca num byte.
-        relief.resize(n, 0.0);
-        cover.resize(n, 0);
-        mat0.resize(n * 4, 0);
-        mat1.resize(n * 4, 0);
-        // The samplers are the light's OWN, asked in the same order as before, so a texel inside the
-        // window carries the identical bytes a full fold would have given it. That is what makes
-        // "partial" a statement about how MUCH is folded and never about WHAT it says.
-        //
-        // **By ROWS, in parallel** (ADR-0109's exception, the same shape `sculpt_offset` and
-        // `watercolor_field` already run on): every texel here is a pure function of `(x, y)` and the
-        // frozen `fields`, so rows are disjoint and the result is **byte-identical by construction** —
-        // what changes is which thread evaluates which row, never what any row says.
-        //
-        // ⚠️ The cure is aimed at the FULL fold, which is the one the artist waits on. Measured at 4096²
-        // with 32 cores: the walk is the entire cost (0,1 ms of allocation against 183 ms of walk), and
-        // it is the biggest single number a Painter frame can produce.
-        // B15.6: a linha vem da MESMA dobra que as faixas da luz da CPU ([`ReliefFields::dobra_da_linha`]); só aqui o
-        // corpo vira byte, o do plano da placa.
-        let rww = rw as usize;
-        let linhas = relief
-            .par_chunks_mut(rww)
-            .zip(cover.par_chunks_mut(rww))
-            .zip(mat0.par_chunks_mut(rww * 4))
-            .zip(mat1.par_chunks_mut(rww * 4))
-            .enumerate();
-        let init = || (vec![0f32; rww], vec![[0u8; 7]; rww]);
-        if papel.is_empty() {
-            linhas.for_each_init(
-                init,
-                |(cob, mats), (row, (((rrow, crow), m0row), m1row))| {
-                    let y = i64::from(ry) + row as i64;
-                    fields.dobra_da_linha(y, i64::from(rx), rrow, cob, mats);
-                    planos_da_linha(crow, m0row, m1row, cob, mats);
-                },
-            );
-        } else {
-            linhas.zip(papel.par_chunks_mut(rww)).for_each_init(
-                init,
-                |(cob, mats), ((row, (((rrow, crow), m0row), m1row)), prow)| {
-                    let y = i64::from(ry) + row as i64;
-                    fields.dobra_da_linha_com_papel(y, i64::from(rx), rrow, cob, mats, Some(prow));
-                    planos_da_linha(crow, m0row, m1row, cob, mats);
-                },
-            );
-        }
         let lut = ph2d_painter_brush::material::SpecLut::get();
-        Some(ImpastoPlanes {
+        Some(ImpastoDobra {
             width: w,
             height: h,
             region: (rx, ry, rw, rh),
-            relief,
-            cover,
-            mat0,
-            mat1,
             paper_body: fields.paper_body(),
-            papel,
             lamps,
             spec_lut: lut.table(),
             lut_width: ph2d_painter_brush::material::SPEC_LUT as u32,
             rough_levels: ph2d_painter_brush::material::ROUGH_LEVELS as u32,
+            fields,
         })
     }
+}
+
+/// Uma linha da janela já dobrada, nos bytes dos planos ([`ImpastoPlanes`] diz o que cada um é); `papel` é `Some`
+/// exatamente quando [`ImpastoDobra::com_papel`].
+pub struct LinhaDobrada<'s> {
+    pub relief: &'s [f32],
+    pub cover: &'s [u8],
+    pub mat0: &'s [u8],
+    pub mat1: &'s [u8],
+    pub papel: Option<&'s [f32]>,
+}
+
+/// A dobra do relevo de uma janela, pronta a escrever onde o chamador mandar ([`PainterTool::impasto_dobra`]).
+pub struct ImpastoDobra<'a> {
+    pub width: u32,
+    pub height: u32,
+    /// `(x, y, w, h)`, já recortada à tela — o que [`ImpastoPlanes::region`] diria.
+    pub region: (u32, u32, u32, u32),
+    pub paper_body: f32,
+    pub lamps: Vec<ImpastoLamp>,
+    pub spec_lut: &'static [f32],
+    pub lut_width: u32,
+    pub rough_levels: u32,
+    fields: ReliefFields<'a>,
+}
+
+impl ImpastoDobra<'_> {
+    /// Há plano do papel (o substrato está ligado)?
+    #[must_use]
+    pub fn com_papel(&self) -> bool {
+        self.fields.substrate.is_some()
+    }
+
+    /// Dobra a janela por FAIXAS de linhas, em paralelo: para cada faixa, `abre(linhas)` dá o destino dela (no fio
+    /// que a dobra — não precisa de ser `Send`) e `escreve(destino, j, linha)` recebe cada linha `j` da faixa já
+    /// dobrada num rascunho do fio (memória normal, quente na cache). O destino do app são as vistas mapeadas da faixa
+    /// nos buffers de envio, que podem ser write-combining: só se escreve, em sequência.
+    ///
+    /// The samplers are the light's OWN, so a texel inside the window carries the identical bytes a full fold
+    /// would have given it. **In parallel** (ADR-0109's exception): every texel is a pure function of `(x, y)` and
+    /// the frozen `fields`, so rows are disjoint and the result is byte-identical by construction (4096²: 201,5 →
+    /// 14,55 ms). B15.6: the row is the SAME fold as the CPU light's bands ([`ReliefFields::dobra_da_linha`]); só
+    /// aqui o corpo vira byte. `linhas` são relativas à janela (`0..h`).
+    pub fn dobrar_faixas<E>(
+        &self,
+        abre: impl Fn(std::ops::Range<u32>) -> E + Sync,
+        escreve: impl Fn(&mut E, usize, LinhaDobrada<'_>) + Sync,
+    ) {
+        let (rx, ry, rw, rh) = self.region;
+        let rww = rw as usize;
+        let com_papel = self.com_papel();
+        let fields = &self.fields;
+        let init = || Rascunho {
+            relief: vec![0f32; rww],
+            cover: vec![0u8; rww],
+            mat0: vec![0u8; rww * 4],
+            mat1: vec![0u8; rww * 4],
+            papel: vec![0f32; if com_papel { rww } else { 0 }],
+            cob: vec![0f32; rww],
+            mats: vec![[0u8; 7]; rww],
+        };
+        (0..rh.div_ceil(LINHAS_POR_FAIXA))
+            .into_par_iter()
+            .for_each_init(init, |r, faixa| {
+                let y0 = faixa * LINHAS_POR_FAIXA;
+                let linhas = y0..(y0 + LINHAS_POR_FAIXA).min(rh);
+                let mut destino = abre(linhas.clone());
+                for (j, row) in linhas.enumerate() {
+                    let (y, x0) = (i64::from(ry + row), i64::from(rx));
+                    if com_papel {
+                        let pap = Some(&mut r.papel[..]);
+                        fields.dobra_da_linha_com_papel(
+                            y,
+                            x0,
+                            &mut r.relief,
+                            &mut r.cob,
+                            &mut r.mats,
+                            pap,
+                        );
+                    } else {
+                        fields.dobra_da_linha(y, x0, &mut r.relief, &mut r.cob, &mut r.mats);
+                    }
+                    planos_da_linha(&mut r.cover, &mut r.mat0, &mut r.mat1, &r.cob, &r.mats);
+                    escreve(
+                        &mut destino,
+                        j,
+                        LinhaDobrada {
+                            relief: &r.relief,
+                            cover: &r.cover,
+                            mat0: &r.mat0,
+                            mat1: &r.mat1,
+                            papel: com_papel.then_some(&r.papel[..]),
+                        },
+                    );
+                }
+            });
+    }
+}
+
+/// Linhas por tarefa do rayon: 4K = 135 faixas (o rayon equilibra), e uma vista mapeada por faixa e plano.
+const LINHAS_POR_FAIXA: u32 = 16;
+
+/// O rascunho de uma linha, um por fio do rayon.
+struct Rascunho {
+    relief: Vec<f32>,
+    cover: Vec<u8>,
+    mat0: Vec<u8>,
+    mat1: Vec<u8>,
+    papel: Vec<f32>,
+    cob: Vec<f32>,
+    mats: Vec<MaterialBytes>,
 }
 
 impl ReliefFields<'_> {
@@ -566,35 +669,41 @@ mod tests {
     /// número vive na sonda (`measure_the_fold_the_product_runs`); o que este gate guarda é que o
     /// mecanismo que o produziu continua lá.
     ///
-    /// **Mutação que deve sangrar:** `par_chunks_mut` → `chunks_mut` no walk.
+    /// **Mutação que deve sangrar:** `into_par_iter` → `into_iter` no walk.
     #[test]
     fn the_fold_walks_in_parallel_because_the_rows_are_disjoint() {
         let src = include_str!("impasto_gpu.rs");
         // Controle positivo: a função tem de ser ENCONTRADA, senão o gate passa por não achar nada — a
         // falha que o arch-gate do Shape Flow pegou em si mesmo.
-        // B15-cont: o walk mora no `_reusing`; o `_in` é `reusing(None)` e varreria zero.
+        // O walk mora no `dobrar_faixas` (o `_in` só lhe dá `Vec`s): UM `into_par_iter` sobre as linhas, e cada linha
+        // dobra os CINCO planos no rascunho do fio — nenhum plano pode ficar serial sem sair deste corpo.
         let at = src
-            .find("pub fn impasto_gpu_planes_reusing(")
+            .find("pub fn dobrar_faixas<")
             .expect("controle: a porta do fold tem de existir");
         let body = &src[at..];
         let end = body
             .find("\n    }\n")
             .expect("controle: a funcao tem de terminar");
         let body = &body[..end];
-        // Os planos TODOS, porque um `zip` serial no meio de paralelos serializa o conjunto todo:
-        // `par_chunks_mut(...).zip(cover.chunks_mut(...))` nem compila como `ParallelIterator`, mas a
-        // forma que compila e regride é trocar TODOS, e contar é o que distingue "três de quatro".
-        //
-        // ⚠️ 2026-10-05: 6 -> 4 — o 3D sai do PH2D (ADR-0179): os planos de FORMA e de OCLUSÃO doados
-        // saíram com ele. Quem integrar conta o DELTA, nunca o literal. B31.1: 4 -> 5, o plano do papel.
-        let par = body.matches("par_chunks_mut(").count();
-        assert_eq!(
-            par, 5,
-            "o walk do fold tem de percorrer os CINCO planos em paralelo (achei {par}) — as linhas sao \
-             disjuntas (ADR-0109) e este e o mecanismo dos 201,5 -> 14,55 ms a 4096². Nenhum gate de \
-             razao ou de bytes pega esta regressao: serial e paralelo dao os MESMOS bytes e os dois sao \
-             limitados pela janela"
+        assert!(
+            body.contains(".into_par_iter()") && body.contains(".for_each_init("),
+            "o walk do fold tem de correr as linhas no rayon — as linhas sao disjuntas (ADR-0109) e este e o \
+             mecanismo dos 201,5 -> 14,55 ms a 4096². Nenhum gate de razao ou de bytes pega esta regressao: \
+             serial e paralelo dao os MESMOS bytes e os dois sao limitados pela janela"
         );
+        // B31.1: os cinco planos — a linha que o fio dobra leva-os todos ao destino.
+        for plano in [
+            "relief: &r.relief",
+            "cover: &r.cover",
+            "mat0: &r.mat0",
+            "mat1: &r.mat1",
+            "papel: com_papel",
+        ] {
+            assert!(
+                body.contains(plano),
+                "o plano `{plano}` saiu da linha paralela"
+            );
+        }
     }
 
     /// **Trocar de sprite ESQUECE o retângulo sujo da pista GPU.**

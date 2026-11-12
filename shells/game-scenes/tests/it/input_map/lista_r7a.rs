@@ -201,7 +201,7 @@ fn o_add_e_um_botao_pequeno_a_direita_do_nome() {
 fn a_tecla_procurada_enche_se_do_amarelo_sem_mudar_de_tamanho() {
     let mut me = lista(onze());
     let before = text_rect(&me, "Up Arrow").expect("o chip").w;
-    let search = me.at(ids::SEARCH);
+    let search = me.at(ids::LIST_SEARCH);
     me.click(search);
     let up = Key::named_in_script("up").expect("seta")[0];
     assert!(me.physical(up));
@@ -215,7 +215,7 @@ fn a_tecla_procurada_enche_se_do_amarelo_sem_mudar_de_tamanho() {
         .collect();
     assert_eq!(lit.len(), 2, "o Up Arrow do jump e do move_up: {lit:?}");
     // A tecla procurada é texto regular DENTRO do campo (maquete A3, R9a): o chip mede-se nas linhas, abaixo dele.
-    let field = me.tab().doc.rect_of(ids::SEARCH).expect("a busca");
+    let field = me.tab().doc.rect_of(ids::LIST_SEARCH).expect("a busca");
     let ups: Vec<_> = me
         .tab()
         .doc

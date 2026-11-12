@@ -42,7 +42,7 @@ fn o_numpad_enter_na_busca_vazia_faz_o_que_o_enter_faz() {
         let mut m = Mesa::aberta(View::List);
         m.hero.input_map = onze();
         m.frame();
-        m.click(m.at(ids::SEARCH));
+        m.click(m.at(ids::LIST_SEARCH));
         let took = m.physical(k);
         (took, m.tab().doc.list.search_key.is_some())
     };
@@ -132,7 +132,7 @@ fn a_aba_parada_nao_pede_quadro_e_o_reduced_motion_para_o_caret() {
     assert!(!m.tab().doc.wants_frame(), "parada: sem repintura contínua");
     m.hover(m.segment(View::Keyboard));
     assert!(!m.tab().doc.wants_frame(), "o hover é instantâneo (D32)");
-    m.click(m.at(ids::SEARCH));
+    m.click(m.at(ids::LIST_SEARCH));
     assert!(m.tab().doc.wants_frame(), "o caret da busca focada pisca");
     m.hero.motion.set_reduced_motion(true);
     m.frame();

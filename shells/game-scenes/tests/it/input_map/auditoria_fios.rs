@@ -76,7 +76,7 @@ fn com_a_busca_focada_a_letra_de_um_acorde_e_o_f5_sem_foco_vao_ao_editor() {
     );
     assert!(!raw(&mut m, named("left_ctrl"), None));
     // Com a busca focada, a letra que escreve (o Z do Ctrl+Z traz «z» no texto) não vira filtro.
-    let search = m.at(ph2d_app_input_map::ids::SEARCH);
+    let search = m.at(ph2d_app_input_map::ids::LIST_SEARCH);
     m.click(search);
     assert!(
         !raw(&mut m, Key(u32::from('Z')), Some("z")),

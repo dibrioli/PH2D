@@ -64,13 +64,13 @@ fn defeito_3_o_shift_de_uma_maiuscula_nao_apaga_o_que_se_escreveu_na_busca() {
     let mut m = Mesa::aberta(View::List);
     m.hero.input_map = onze();
     m.frame();
-    m.click(m.at(ids::SEARCH));
+    m.click(m.at(ids::LIST_SEARCH));
     m.type_text("move ");
     for k in ["left_shift", "left_ctrl", "left_alt", "left"] {
         assert!(!m.physical(named(k)), "{k} com texto segue para o campo");
     }
     assert_eq!(
-        m.tab().doc.field_text(ids::SEARCH),
+        m.tab().doc.field_text(ids::LIST_SEARCH),
         "move ",
         "o Shift para escrever uma maiúscula apagou a busca"
     );
@@ -82,7 +82,7 @@ fn com_a_busca_vazia_o_espaco_e_o_shift_viram_o_filtro_por_tecla() {
     let mut m = Mesa::aberta(View::List);
     m.hero.input_map = onze();
     m.frame();
-    m.click(m.at(ids::SEARCH));
+    m.click(m.at(ids::LIST_SEARCH));
     let space = named("space");
     let took = ph2d_app_input_map::surface_raw_key(&mut m.hero, space.0, true, Some(" "));
     m.frame();

@@ -164,7 +164,7 @@ fn a_busca_por_tecla_deixa_jump_e_move_up_e_o_pe_diz_quem_le() {
     let mut m = Mesa::aberta(View::List);
     m.hero.input_map = onze();
     m.frame();
-    let search = m.at(ids::SEARCH);
+    let search = m.at(ids::LIST_SEARCH);
     m.click(search);
     assert!(m.physical(named("up")), "a seta é da busca");
     assert_eq!(shown_names(&m), ["jump", "move_up"]);
@@ -235,7 +235,7 @@ fn o_pe_da_busca_nomeia_o_trigger_e_o_script_que_leem_a_accao() {
         .world_mut()
         .insert_resource(ph2d_script::ProjectScripts::new(lib));
     m.frame();
-    let search = m.at(ids::SEARCH);
+    let search = m.at(ids::LIST_SEARCH);
     m.click(search);
     m.type_text("j");
     m.physical(Key(u32::from('J')));
@@ -261,7 +261,7 @@ fn cada_controlo_da_lista_tem_dica_em_ingles_simples() {
     for target in [
         ids::NEW_NAME,
         ids::ADD,
-        ids::SEARCH,
+        ids::LIST_SEARCH,
         ListHit::Listen(ml).id(),
         ListHit::RemoveBinding(ml, 0).id(),
         ListHit::Trash(ml).id(),

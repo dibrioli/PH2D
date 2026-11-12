@@ -135,7 +135,7 @@ fn um_controlo_desligado_nao_dispara_e_mostra_a_seta() {
 #[test]
 fn caret_e_pulso_seguem_o_relogio_e_o_reduced_motion() {
     let mut m = Mesa::aberta(View::Keyboard);
-    let id = ids::SEARCH;
+    let id = ids::LIST_SEARCH;
     m.hero
         .motion
         .set_character(ph2d_editor_core::motion::UiCharacter::Discrete);
@@ -296,13 +296,13 @@ fn o_campo_de_texto_foca_no_down_e_o_caret_cai_onde_se_carrega() {
     m.type_text("taunt");
     let r = m.tab().doc.rect_of(ids::NEW_NAME).expect("pintado");
     let (esq, dir, meio_y) = (r.x + 1.0, r.x + r.w - 2.0, r.y + r.h * 0.5); // LITERAL-PX-OK: dentro da borda
-    m.down(m.at(ids::SEARCH));
+    m.down(m.at(ids::LIST_SEARCH));
     assert_eq!(
         m.tab().doc.focus(),
-        Some(ids::SEARCH),
+        Some(ids::LIST_SEARCH),
         "a busca foca no Down"
     );
-    m.up(m.at(ids::SEARCH));
+    m.up(m.at(ids::LIST_SEARCH));
     m.down((esq, meio_y));
     assert_eq!(
         m.tab().doc.focus(),
@@ -357,7 +357,10 @@ fn o_caret_do_campo_pisca_e_fica_fixo_com_reduced_motion() {
         assert!(fase(&m), "reduced motion: fixo, aceso");
     }
     assert!(
-        m.tab().doc.field_caret(ids::SEARCH).is_some_and(|c| c.2),
+        m.tab()
+            .doc
+            .field_caret(ids::LIST_SEARCH)
+            .is_some_and(|c| c.2),
         "o campo sem foco não pisca"
     );
 }
@@ -425,7 +428,7 @@ fn o_hover_acende_so_o_controlo_pairado_da_lista() {
     let alvos = [
         ids::NEW_NAME,
         ids::ADD,
-        ids::SEARCH,
+        ids::LIST_SEARCH,
         ListHit::Listen(k).id(),
     ];
     for quem in alvos {
@@ -489,7 +492,7 @@ fn o_cursor_por_especie_de_controlo_da_lista() {
         m.tab().doc.look_at(x, y)
     };
     assert_eq!(look(&m, ids::NEW_NAME), Some(PointerLook::Text));
-    assert_eq!(look(&m, ids::SEARCH), Some(PointerLook::Text));
+    assert_eq!(look(&m, ids::LIST_SEARCH), Some(PointerLook::Text));
     assert_eq!(
         look(&m, ids::ADD),
         Some(PointerLook::Arrow),
@@ -531,7 +534,7 @@ fn cada_controlo_da_lista_tem_no_com_papel_e_nome() {
     }
     let papel = |id| nodes.iter().find(|(o, _)| *o == id).map(|(_, n)| n.role());
     assert_eq!(papel(ids::NEW_NAME), Some(R::TextInput));
-    assert_eq!(papel(ids::SEARCH), Some(R::TextInput));
+    assert_eq!(papel(ids::LIST_SEARCH), Some(R::TextInput));
     assert_eq!(papel(ids::ADD), Some(R::Button));
     assert_eq!(papel(ListHit::Dead(a).id()), Some(R::SpinButton));
     assert_eq!(papel(ListHit::Listen(k).id()), Some(R::Button));
@@ -657,7 +660,7 @@ fn o_clique_no_campo_rolado_cai_onde_o_texto_esta() {
 #[test]
 fn o_x_da_busca_tem_24_px_e_o_add_desligado_tem_aresta() {
     let mut m = Mesa::aberta(View::List);
-    m.click(m.at(ids::SEARCH));
+    m.click(m.at(ids::LIST_SEARCH));
     m.type_text("jump");
     let doc = &m.tab().doc;
     let x = doc.rect_of(ids::SEARCH_CLEAR).expect("o × da busca");

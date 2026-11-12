@@ -182,7 +182,10 @@ fn the_player_card_pairs_share_a_row() {
             assert!(
                 (ra.y - rb.y).abs() < 0.5 && ra.x + ra.w <= rb.x,
                 "o par n.º {} {a:?} {ra:?} | {b:?} {rb:?} não divide uma linha",
-                ph2d_panel_inspector::player_card_pairs().iter().position(|p| p.0 == a).unwrap_or(99)
+                ph2d_panel_inspector::player_card_pairs()
+                    .iter()
+                    .position(|p| p.0 == a)
+                    .unwrap_or(99)
             );
             vistos.insert(a);
         }

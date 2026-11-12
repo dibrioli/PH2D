@@ -293,12 +293,36 @@ const FORA_COM_NOME: &[(&str, ph2d_editor_core::NodeId, f32)] = &[
     // A caixa de cada HABILIDADE do Platform Player (dono 10/11, versão B): vive no cabeçalho da
     // dobra, ao lado do chevron, com a aresta do cabeçalho (`Sm + Xs` = 16) — uma marca de dobra,
     // não uma linha de formulário. Passa pela porta `rows::caixa_de_cabecalho`.
-    ("inspector", ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[0], 16.0),
-    ("inspector", ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[1], 16.0),
-    ("inspector", ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[2], 16.0),
-    ("inspector", ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[3], 16.0),
-    ("inspector", ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[4], 16.0),
-    ("inspector", ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[5], 16.0),
+    (
+        "inspector",
+        ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[0],
+        16.0,
+    ),
+    (
+        "inspector",
+        ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[1],
+        16.0,
+    ),
+    (
+        "inspector",
+        ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[2],
+        16.0,
+    ),
+    (
+        "inspector",
+        ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[3],
+        16.0,
+    ),
+    (
+        "inspector",
+        ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[4],
+        16.0,
+    ),
+    (
+        "inspector",
+        ph2d_panel_inspector::ids::INSP_PLAYER_ABILITY[5],
+        16.0,
+    ),
 ];
 
 /// ⭐⭐ **A PORTA da isenção** — `(painel, id)`, e é um par por uma razão medida.

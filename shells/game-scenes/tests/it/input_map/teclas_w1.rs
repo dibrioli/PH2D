@@ -75,7 +75,7 @@ fn the_list_search_by_numpad_7_skips_the_actions_on_7() {
     let mut m = Mesa::aberta(View::List);
     m.hero.input_map = map;
     m.frame();
-    m.click(m.at(ids::SEARCH));
+    m.click(m.at(ids::LIST_SEARCH));
     assert!(m.physical(kp7), "com a busca vazia, a tecla é a procurada");
     assert_eq!(m.tab().doc.list.search_key, Some(kp7));
     let shown = ph2d_app_input_map::view_list::shown(&m.tab().doc);

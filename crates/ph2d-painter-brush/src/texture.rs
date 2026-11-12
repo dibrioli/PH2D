@@ -27,7 +27,7 @@ mod po;
 mod shape;
 mod stencil;
 mod tiled;
-pub use bristles::{bristle_knobs, bristle_tile, bristles_at};
+pub use bristles::{CerdasDoDab, bristle_knobs, bristle_tile, bristles_at};
 pub use kind::TextureKind;
 pub use lei::{GrainLaw, GrainMode};
 #[doc(hidden)]

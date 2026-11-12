@@ -515,20 +515,13 @@ pub(super) fn pousa_o_dab(
     let cerdas_fn = cerdas_sb.map(|sb| {
         let forma = &spec_ref.shape;
         let px_por_celula = f64::from(ratio);
-        let raio = d.radius_px;
+        // O que é do dab sai 1× (o `bristles_at` refazia-o por célula, com o azulejo num `thread_local`).
+        let cd =
+            ph2d_painter_brush::texture::CerdasDoDab::nova(forma, sb, px_por_celula, d.radius_px);
         move |cx: i32, cy: i32| -> f64 {
             let (fx, fy) = (f64::from(cx), f64::from(cy));
             let dc = [fx - centro_x, fy - centro_y];
-            let tapete = |q: [f64; 2]| {
-                ph2d_painter_brush::texture::bristles_at(
-                    forma,
-                    sb,
-                    q,
-                    [fx, fy],
-                    px_por_celula,
-                    raio,
-                )
-            };
+            let tapete = |q: [f64; 2]| cd.em(q, [fx, fy]);
             let Some(f) = fios_dab else {
                 return tapete(dc);
             };

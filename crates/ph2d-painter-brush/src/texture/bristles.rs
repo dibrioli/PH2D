@@ -130,6 +130,82 @@ fn tile_coord(
 /// O piso do Size das cerdas depois da escala do hospedeiro: só a guarda da divisão (o slider fica em `TEX_SIZE_MIN`).
 const SIZE_ESCALADO_MIN: f32 = 1e-3;
 
+/// [`bristles_at`] com o que é do DAB resolvido UMA vez (o rotor, o raio, os eixos, o Size, o deslocamento e o azulejo,
+/// que era um `thread_local` por célula) — a mesma conta por célula, ao bit. `Sync`: o azulejo vai copiado.
+pub struct CerdasDoDab {
+    modo: ModoDasCerdas,
+    fp: crate::FootprintDeform,
+    r: f64,
+    flow: Option<f64>,
+    u: [f64; 2],
+    v: [f64; 2],
+    s: [f64; 2],
+    shift: [f64; 2],
+    tile: Vec<f32>,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum ModoDasCerdas {
+    Tiled,
+    Direto,
+    Rodado,
+}
+
+impl CerdasDoDab {
+    /// O dab de [`bristles_at`] com estes `s`, `b`, `px_per_texel` e `radius_px`.
+    #[must_use]
+    pub fn nova(s: &TextureSettings, b: &TexDabBasis, px_per_texel: f64, radius_px: f32) -> Self {
+        let fp = b.footprint.so_o_rotor();
+        let modo = if s.mapping == TextureMapping::Tiled {
+            ModoDasCerdas::Tiled
+        } else if fp.is_identity() && !s.flow {
+            ModoDasCerdas::Direto
+        } else {
+            ModoDasCerdas::Rodado
+        };
+        let shift = |o: f32, j: f32| (f64::from(o) + f64::from(j)) * UNIT_TEXELS;
+        Self {
+            modo,
+            fp,
+            r: f64::from(radius_px.max(1e-3)) / px_per_texel,
+            flow: s.flow.then(|| f64::from(b.frame.parts().0) / px_per_texel),
+            u: b.u.map(f64::from),
+            v: b.v.map(f64::from),
+            s: [0, 1].map(|i| f64::from(s.size[i].clamp(SIZE_ESCALADO_MIN, TEX_SIZE_MAX))),
+            shift: [
+                shift(s.offset[0], b.jitter[0]),
+                shift(s.offset[1], b.jitter[1]),
+            ],
+            tile: bristle_tile(&s.params).to_vec(),
+        }
+    }
+
+    /// [`bristles_at`] no desvio `d` e na posição `p` (texels).
+    #[inline]
+    #[must_use]
+    pub fn em(&self, d: [f64; 2], p: [f64; 2]) -> f64 {
+        let rel = match self.modo {
+            ModoDasCerdas::Tiled => p,
+            ModoDasCerdas::Direto => d,
+            ModoDasCerdas::Rodado => {
+                let r = self.r;
+                let f = self.fp.apply([(d[0] / r) as f32, (d[1] / r) as f32]);
+                let f = [f64::from(f[0]) * r, f64::from(f[1]) * r];
+                match self.flow {
+                    Some(a) => [a + f[0], f[1]],
+                    None => f,
+                }
+            }
+        };
+        let (u, v) = (self.u, self.v);
+        let q = [
+            (rel[0] * u[0] + rel[1] * u[1]) * self.s[0] + self.shift[0],
+            (rel[0] * v[0] + rel[1] * v[1]) * self.s[1] + self.shift[1],
+        ];
+        sample_bristle(&self.tile, q[0], q[1])
+    }
+}
+
 /// The same tile read at a footprint coordinate (`u, v` in footprint units — previews only).
 #[must_use]
 pub(super) fn sample_unit(params: &[f32; MAX_TEX_PARAMS], u: f32, v: f32) -> f32 {
@@ -232,6 +308,55 @@ mod tests {
         }
         assert_eq!(iguais, 6400);
         assert!(noise_muda > 3000, "o controlo não mede: {noise_muda}");
+    }
+
+    /// [`CerdasDoDab::em`] é o [`bristles_at`] ao bit: os três caminhos (Tiled, direto, rodado com e sem Flow), com
+    /// ângulo, Size, Offset, rotor por dab e a razão da grade.
+    #[test]
+    fn as_cerdas_do_dab_sao_o_bristles_at_ao_bit() {
+        use crate::FootprintDeform;
+        let mut casos = 0;
+        for mapping in [
+            TextureMapping::ViewPlane,
+            TextureMapping::Tiled,
+            TextureMapping::Random,
+        ] {
+            for flow in [false, true] {
+                for fp in [
+                    FootprintDeform::identity(),
+                    FootprintDeform::new(0.5, 30).rotated_by([0.6, 0.8]),
+                ] {
+                    let s = TextureSettings {
+                        kind: TextureKind::Bristles,
+                        params: params_de(BristleKnobs::default()),
+                        mapping,
+                        flow,
+                        angle_deg: 23,
+                        offset: [0.3, -0.2],
+                        size: [1.7, 0.6],
+                        ..TextureSettings::default()
+                    };
+                    let mut rng = 7u64;
+                    let b = texture::dab_basis(&s, &mut rng, [4000.0, 3000.0], fp);
+                    for (ppt, raio) in [(1.0, 37.5f32), (3.0, 240.0)] {
+                        let cd = CerdasDoDab::nova(&s, &b, ppt, raio);
+                        for j in -20..20 {
+                            for i in -20..20 {
+                                let d = [f64::from(i) * 1.3, f64::from(j) * 0.7];
+                                let p = [d[0] + 500.0, d[1] + 300.0];
+                                assert_eq!(
+                                    cd.em(d, p).to_bits(),
+                                    bristles_at(&s, &b, d, p, ppt, raio).to_bits(),
+                                    "{mapping:?} flow {flow} {fp:?} {d:?}"
+                                );
+                            }
+                        }
+                        casos += 1;
+                    }
+                }
+            }
+        }
+        assert_eq!(casos, 3 * 2 * 2 * 2, "o corpus mudou de tamanho");
     }
 
     /// Nenhum carimbo cacheado (independente do raio) pode guardar as cerdas — nem no Grain nem no Shape.

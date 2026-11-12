@@ -110,7 +110,7 @@ fn ruido(n: u32) -> Mask {
             s ^= s << 13;
             s ^= s >> 7;
             s ^= s << 17;
-            u8::from(s % 3 != 0)
+            u8::from(!s.is_multiple_of(3))
         })
         .collect();
     Mask { w: n, h: n, bits }

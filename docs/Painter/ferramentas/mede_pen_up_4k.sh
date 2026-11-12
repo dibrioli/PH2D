@@ -123,6 +123,18 @@ if [ "$1" = matriz ]; then
     if [ -n "$WIN" ] && [ -z "$PAINEL_CURTO" ]; then
       marca camada_aba; DISPLAY=$D xdotool mousemove ${CAMADA_ABA:-1510 159} click 1; sleep 1.5; foto camada1_aba
       marca camada_mais; DISPLAY=$D xdotool mousemove ${CAMADA_MAIS:-1332 233} click 1; sleep 1.5; foto camada2_mais
+      # NOVA=1 (12/11, o dono: «o 1.º traço da camada nova trava»): na camada nova o 1.º e o 2.º traço; a de baixo e
+      # o 1.º traço nela; a nova de volta (já pintada) e o 1.º traço depois da troca. Fases <r>_toque/_traco/_up.
+      if [ -n "$NOVA" ]; then
+        traco() { DISPLAY=$D xdotool mousemove 560 "$2"; sleep 0.3
+          marca "$1_toque"; DISPLAY=$D xdotool mousedown 1; sleep 0.4; marca "$1_toque_fim"
+          cmd=""; for i in $(seq 1 60); do cmd="$cmd mousemove $((560 + i * 3)) $2 sleep 0.008"; done
+          marca "$1_traco"; DISPLAY=$D xdotool $cmd; marca "$1_traco_fim"
+          marca "$1_up"; DISPLAY=$D xdotool mouseup 1; sleep 2; marca "$1_up_fim"; }
+        traco nova1 300; traco nova2 620
+        DISPLAY=$D xdotool mousemove ${CAMADA_OUTRA:-1430 397} click 1; sleep 1.5; traco baixo1 380
+        DISPLAY=$D xdotool mousemove ${CAMADA_VOLTA:-1430 306} click 1; sleep 1.5; traco volta1 700; foto nova
+      fi
       marca camada_troca; DISPLAY=$D xdotool mousemove ${CAMADA_OUTRA:-1430 397} click 1; sleep 1.5; foto camada3_troca
       marca camada_volta; DISPLAY=$D xdotool mousemove ${CAMADA_VOLTA:-1430 306} click 1; sleep 1.5; foto camada4_volta
       marca camada_dup; DISPLAY=$D xdotool mousemove ${CAMADA_DUP:-1389 233} click 1; sleep 1.5; foto camada5_dup
@@ -334,6 +346,10 @@ if [ "$1" = perf ]; then
     if [ "${TECLAS:-0}" -gt 0 ]; then
       DISPLAY=$D xdotool mousemove 560 300; sleep 0.3
       for _ in $(seq 1 "$TECLAS"); do DISPLAY=$D xdotool key bracketright; sleep 0.05; done; sleep 1
+    fi
+    if [ -n "$NOVA" ]; then  # 12/11: o traço perfilado é o 1.º da camada nova (aba Layers · «+»), como na matriz
+      DISPLAY=$D xdotool mousemove ${CAMADA_ABA:-1510 159} click 1; sleep 1.5
+      DISPLAY=$D xdotool mousemove ${CAMADA_MAIS:-1332 233} click 1; sleep 1.5
     fi
     marca parado0_ini; sleep 5; marca parado0_fim
     DISPLAY=$D xdotool mousemove 560 460; sleep 0.3

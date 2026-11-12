@@ -87,6 +87,9 @@ def matriz(pasta, saida=None):
         for k in ("controlo",) + CAMADA:
             if k in marcas:
                 r[k] = round(max(janela(marcas[k][0], marcas[k][0] + 1_000_000_000), default=0), 1)
+        for k in [f"{t}_{f}" for t in ("nova1", "nova2", "baixo1", "volta1") for f in ("toque", "traco", "up")]:
+            if k in marcas and k + "_fim" in marcas:  # NOVA=1: o pior quadro de cada fase do traço depois da camada nova
+                r[k] = round(max(janela(marcas[k][0], marcas[k + "_fim"][0] + 200_000_000), default=0), 1)
         if "luz" in marcas:  # o slider de luz do Impasto: o pior quadro do arrasto até 1 s depois, e a mediana do arrasto
             r["luz"] = round(max(janela(marcas["luz"][0], marcas["luz_fim"][0]), default=0), 1)
             r["luz_p50"] = pct(janela(marcas["luz"][0], marcas["luz_solta"][0]), 0.5)
@@ -151,6 +154,14 @@ def matriz(pasta, saida=None):
                    if "abrir" in r and "reabrir" in r else " | —")
                 + " |"
             )
+    nova = [r for r in linhas if "nova1_toque" in r]
+    if nova:  # NOVA=1: toque/traço/soltar de cada traço depois de «+ camada» (o pior quadro da fase + 200 ms)
+        print("\n| rotulo | nova 1.º toque/traço/up | nova 2.º | camada de baixo 1.º | nova de volta 1.º |")
+        print("|---|---|---|---|---|")
+        for r in nova:
+            print(f"| {r['rotulo']} | " + " | ".join(
+                " / ".join(str(r.get(f"{t}_{f}", "—")) for f in ("toque", "traco", "up"))
+                for t in ("nova1", "nova2", "baixo1", "volta1")) + " |")
 
 
 def perfil(base, top=15):

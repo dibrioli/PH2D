@@ -59,6 +59,8 @@ impl PainterTool {
         // primeiro `park_stroke` deste traço preencher um caminho que já não existe.
         self.paint.solid_fill_owed = false;
         self.paint.solid_passagem = super::uma_passagem::UmaPassagem::default();
+        self.paint.traco_relogio = 0.0; // B22.1: o relógio do traço nasce no pen-down
+        self.paint.movido_desde_o_passo = false;
         // **O passo de undo começa AQUI** (doc 28 §5.26): a cadeia é reconciliada e o journal passa a
         // descrever este traço em vez do intervalo desde o último commit.
         // Pinceladas sobrepostas (W16): o grupo inteiro é UM passo, aberto no primeiro pen-down.
@@ -448,48 +450,12 @@ impl PainterTool {
             return;
         };
         let mut dabs = std::mem::take(&mut self.paint.dabs);
-        stroke.tick(dt_s, &mut dabs);
-        self.dual_passo(|m, o| m.tick(dt_s, o));
-        super::ribbon_diag::note(super::ribbon_diag::Source::Tick, dabs.len());
         // Watercolor render-path: accumulate the airbrush/settle dabs, then recomposite over the frozen
         // base once — but only when a dab actually landed (a held stroke ticks every frame).
         let wet = self.watercolor_render_active();
-        let mut stamped = !dabs.is_empty();
-        self.stamp_dabs(&dabs);
-        if parked {
-            stroke.settle(&mut dabs); // clears `dabs` first
-            self.dual_passo(|m, o| m.settle(o));
-            super::ribbon_diag::note(super::ribbon_diag::Source::Settle, dabs.len());
-            stamped |= !dabs.is_empty();
-            self.stamp_dabs(&dabs);
-        }
-        // Water dwell: the heartbeat pours soak under the nib (parked OR moving) — a lingering wet
-        // brush deepens/widens its own bleed. When the soak grew with no new dab, fold its disc into
-        // the frame dirty so a composite picks it up.
-        //
-        // PARKED ⇒ recomposite NOW (the visible "bleed deepens under the held nib" — the whole point
-        // of the dwell). MOVING ⇒ do NOT force a composite here: the pointer-Move flush already
-        // recomposited this frame's window, and compositing it AGAIN for the soak DOUBLED the
-        // per-frame watercolor cost mid-gesture (frame profiler 2026-07-07: `stamps` + `tool-tick`
-        // both carried a full composite). The folded dirty carries the soak into the next composite
-        // (≤1 frame later, mid-gesture — imperceptible; a sweeping nib pours almost no local dwell),
-        // and the pen-up bake reads the full soak field regardless ⇒ the painted result is
-        // byte-identical. Airbrush/settle dabs stamped by THIS tick still composite (`stamped` above).
-        if wet && let Some(r) = self.grow_wet_soak_fixo(dt_s) {
-            self.paint.wet_frame_dirty = Some(match self.paint.wet_frame_dirty {
-                Some(f) => union_region(f, r),
-                None => r,
-            });
-            self.paint.wet_cum_dirty = Some(match self.paint.wet_cum_dirty {
-                Some(c) => union_region(c, r),
-                None => r,
-            });
-            self.paint.wet_stroke_dirty = Some(match self.paint.wet_stroke_dirty {
-                Some(c) => union_region(c, r),
-                None => r,
-            });
-            stamped |= parked;
-        }
+        // B22.1: aerógrafo, alcance do estabilizador e encharque andam em passos fixos (`ritmo.rs`).
+        self.paint.movido_desde_o_passo |= !parked;
+        let stamped = self.passos_do_traco(&mut stroke, &mut dabs, dt_s, wet);
         // THE frame composite. `stamped` is this tick's own airbrush/settle/dwell work; `owed` is the
         // frame's pointer Moves, which now accumulate without recompositing. Either way it runs at most
         // ONCE per frame, and the tick sits after the pointer flush and before the preview upload, so

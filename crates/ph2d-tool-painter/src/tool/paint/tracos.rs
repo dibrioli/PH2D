@@ -58,7 +58,8 @@ campos_do_traco!(
     wet_mix,
     mistura_opaca,
     wet_soak_pos,
-    wet_soak_relogio,
+    traco_relogio,
+    movido_desde_o_passo,
     plano_do_traco,
     pixel_trilhos,
     po_do_papel, // o pó é o da tela DESTE pen-down (`stroke_lifecycle` zera-o)

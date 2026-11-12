@@ -127,7 +127,7 @@ fn the_parallel_pass_decays_exactly_like_the_serial_one_it_replaced() {
             let (mut t, mut reference, rect) = dry_tool(n, step);
             let passes = (200 / u32::from(step)).max(3);
             for pass in 0..passes {
-                t.dry_canvas_wet(DT);
+                t.dry_canvas_wet_inner(DT); // UM passe: o passo fixo (B22.1) parte o DT em vários
                 // A rota congelada NUNCA encolhe o rect — é o comportamento que ela tinha.
                 let want = decay_snapshot(&mut reference, n, rect, step);
                 assert_eq!(

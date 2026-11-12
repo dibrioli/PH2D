@@ -1,5 +1,5 @@
 //! B22.1 (decisão 8, ritmo fixo): o que o Painter INTEGRA no tempo (a secagem do papel, o encharque sob
-//! a ponta) anda em passos fixos de [`PASSO_FIXO_S`], não no `dt` do quadro — o mesmo gesto pelo mesmo
+//! a ponta, o tique do traço e o alcance do estabilizador) anda em passos fixos de [`PASSO_FIXO_S`], não no `dt` do quadro — o mesmo gesto pelo mesmo
 //! tempo de parede dá o mesmo byte a 30, 60 ou 144 Hz. O `wall_dt` partilhado do shell fica intacto (C9).
 //! O passo é o de 60 Hz: a lei que o dono aprovou é a que 60 Hz pintava.
 
@@ -26,21 +26,52 @@ pub(super) fn passos_fixos(relogio: &mut f64, dt_s: f32) -> impl Iterator<Item =
     })
 }
 
+use super::{Dab, Stroke, union_region};
+
 impl super::PainterTool {
-    /// O encharque sob a ponta em passos fixos ([`Self::grow_wet_soak`] por passo; a caixa é a união).
-    pub(super) fn grow_wet_soak_fixo(&mut self, dt_s: f32) -> Option<super::Region> {
-        if self.paint.wet_soak_pos.is_none() || self.paint.brush.wet_rewet <= 0.0 {
-            self.paint.wet_soak_relogio = 0.0;
-            return None;
-        }
-        let mut relogio = self.paint.wet_soak_relogio;
-        let mut caixa = None;
+    /// Os passos fixos do traço aberto neste quadro: por passo, o relógio do traço ([`Stroke::tick`]:
+    /// aerógrafo, fita, velocidade), o alcance do estabilizador se a mão não se moveu desde o passo
+    /// anterior ([`Stroke::settle`]) e o encharque sob a ponta. Devolve se este quadro tem de recompor.
+    ///
+    /// Encharque: PARADO ⇒ recompõe já (o sangrado que cresce sob a ponta é o ponto). EM MOVIMENTO ⇒ só
+    /// dobra a caixa no sujo do quadro: o flush do Move já recompõe (recompor de novo dobrava o custo,
+    /// perfil 2026-07-07) e o bake do pen-up lê o campo inteiro.
+    pub(super) fn passos_do_traco(
+        &mut self,
+        stroke: &mut Stroke,
+        dabs: &mut Vec<Dab>,
+        dt_s: f32,
+        wet: bool,
+    ) -> bool {
+        let mut stamped = false;
+        let mut relogio = self.paint.traco_relogio;
         for dt in passos_fixos(&mut relogio, dt_s) {
-            if let Some(r) = self.grow_wet_soak(dt) {
-                caixa = Some(caixa.map_or(r, |c| super::union_region(c, r)));
+            let parked = !std::mem::take(&mut self.paint.movido_desde_o_passo);
+            stroke.tick(dt, dabs);
+            self.dual_passo(|m, o| m.tick(dt, o));
+            super::ribbon_diag::note(super::ribbon_diag::Source::Tick, dabs.len());
+            stamped |= !dabs.is_empty();
+            self.stamp_dabs(dabs);
+            if parked {
+                stroke.settle(dabs); // clears `dabs` first
+                self.dual_passo(|m, o| m.settle(o));
+                super::ribbon_diag::note(super::ribbon_diag::Source::Settle, dabs.len());
+                stamped |= !dabs.is_empty();
+                self.stamp_dabs(dabs);
+            }
+            if wet && let Some(r) = self.grow_wet_soak(dt) {
+                let p = &mut self.paint;
+                for caixa in [
+                    &mut p.wet_frame_dirty,
+                    &mut p.wet_cum_dirty,
+                    &mut p.wet_stroke_dirty,
+                ] {
+                    *caixa = Some(caixa.map_or(r, |c| union_region(c, r)));
+                }
+                stamped |= parked;
             }
         }
-        self.paint.wet_soak_relogio = relogio;
-        caixa
+        self.paint.traco_relogio = relogio;
+        stamped
     }
 }

@@ -37,7 +37,8 @@ impl PainterTool {
         crate::wash_diag::note_dry(t0.elapsed().as_secs_f32() * 1e3);
     }
 
-    fn dry_canvas_wet_inner(&mut self, dt_s: f32) {
+    /// UM passe da lei (o [`Self::dry_canvas_wet`] corre-o por passo fixo, B22.1).
+    pub(super) fn dry_canvas_wet_inner(&mut self, dt_s: f32) {
         let Some((x0, y0, x1, y1)) = self.paint.canvas_wet_rect else {
             return;
         };

@@ -49,8 +49,8 @@ fn quadros(t: &mut PainterTool, hz: u32, segundos: f32) {
 
 /// Traço curto, 0,5 s parado com a caneta em baixo (encharque), solta, 1 s a secar (tempos que as três taxas cobrem com quadros inteiros).
 ///
-/// `moves = 0` toca e segura num ponto (sem o estabilizador a alcançar a ponta). Com `moves > 0` o
-/// estabilizador alcança-a no primeiro QUADRO parado — um evento por quadro, fora do passo fixo.
+/// `moves = 0` toca e segura num ponto. Com `moves > 0` o estabilizador alcança a ponta nos passos
+/// fixos parados (B22.1).
 fn gesto(hz: u32, moves: u32) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
     let mut t = tela();
     let y = SIZE as f32 / 2.0;
@@ -102,8 +102,8 @@ fn o_mesmo_gesto_a_30_60_e_144_hz_da_a_mesma_tela() {
     }
 }
 
-/// O traço que anda e pára: a umidade é a mesma; tela e encharque diferem pelo alcance do
-/// estabilizador, que cai no primeiro quadro parado (B22.1 parcial — medido aqui, não escondido).
+/// O traço que anda e pára: tela, umidade e encharque iguais ao bit — o alcance do estabilizador e o
+/// encharque andam no passo fixo, e o primeiro passo depois dos Moves é o «em movimento» a qualquer taxa.
 #[test]
 fn o_traco_que_anda_e_para_seca_igual_a_30_60_e_144_hz() {
     let (tela60, umid60, soak60) = gesto(60, 6);
@@ -117,6 +117,10 @@ fn o_traco_que_anda_e_para_seca_igual_a_30_60_e_144_hz() {
         eprintln!(
             "B22.1 {hz} Hz × 60 Hz, traço que anda: tela {dt} · umidade {du} · encharque {ds}"
         );
-        assert_eq!(du, 0, "{hz} Hz × 60 Hz: a umidade divergiu ({du} bytes)");
+        assert_eq!(
+            (dt, du, ds),
+            (0, 0, 0),
+            "{hz} Hz × 60 Hz, traço que anda: bytes diferentes (tela, umidade, encharque)"
+        );
     }
 }

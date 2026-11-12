@@ -443,8 +443,12 @@ pub(crate) struct PaintState {
     /// Current soak disc = the last dab's `(centre, radius)` — where the tick heartbeat pours dwell
     /// while the pointer is parked. `None` = stroke start.
     pub(super) wet_soak_pos: Option<([f32; 2], f32)>,
-    /// B22.1: o tempo por encharcar sob a ponta, em passos fixos ([`super::ritmo::passos_fixos`]).
-    pub(super) wet_soak_relogio: f64,
+    /// B22.1: o relógio do traço (aerógrafo, alcance do estabilizador, encharque) em passos fixos
+    /// ([`super::ritmo::passos_fixos`]); a zero no pen-down.
+    pub(super) traco_relogio: f64,
+    /// B22.1: chegou um Move desde o último PASSO fixo (o `moved_this_frame` é do quadro; a 144 Hz um
+    /// quadro pode não ter passo).
+    pub(super) movido_desde_o_passo: bool,
     /// Whether THIS stroke poured any soak yet — gates the composite's 2×-blur (far) fields, so a
     /// stroke with no dwell pays exactly the plain 4-blur rewet cost.
     pub(super) wet_soak_active: bool,

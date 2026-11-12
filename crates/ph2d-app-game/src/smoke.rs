@@ -60,28 +60,14 @@ pub fn imagens_da_cena(nivel: u32) -> &'static [&'static str] {
     }
 }
 
-// As fotos do dono (`PH2D_GAME_SMOKE_FOTO`), irmãs pelo tecto de LOC.
-#[path = "smoke_foto.rs"]
-mod foto;
-pub use foto::{
+// As fotos do dono (`PH2D_GAME_SMOKE_FOTO`), folha própria pelo tecto de LOC.
+pub use ph2d_game_smoke_fotos::{
     CENTRO_DAS_FOTOS_13, CENTRO_DOS_USOS, Foto, FotoDaCamera, ONDE_LARGA, PassoDoDono, PlanoDaFoto,
     QUADROS_POR_USO, foto, plano_da_foto, tempo_da_chave, uso_no_quadro, usos_do_dono,
 };
 pub use ph2d_physics_scene::fotos_dos_cartoes::{CasoFisica, estado_do_player, plano_da_forma};
 
-/// O herói das cenas de smoke — nome de objecto da cena, não texto da interface.
-#[must_use]
-pub fn player(sim: &mut SimWorld) -> Option<Entity> {
-    por_nome(sim, "Player")
-}
-
-/// O objecto da raiz com este nome.
-#[must_use]
-pub fn por_nome(sim: &mut SimWorld, nome: &str) -> Option<Entity> {
-    let w = sim.world_mut();
-    let mut q = w.query::<(Entity, &ph2d_ecs::Name)>();
-    q.iter(w).find(|(_, n)| n.0 == nome).map(|(e, _)| e)
-}
+pub use ph2d_game_smoke_fotos::{player, por_nome};
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[
     ph2d_app_host::SmokeRouter {
@@ -436,7 +422,12 @@ pub const CEU_COR: [f32; 4] = [0.7379, 0.9216, 0.9131, 1.0];
 /// As camadas de fundo: (nome, fracção da câmara que guardam, centro no MUNDO na vista do início, ordem).
 pub const CAMADAS_2: [(&str, f32, [f32; 2], i32); 2] = [
     ("Clouds", 0.15, [-5.9, 5.6], -2),
-    ("Hills", crate::object_add::CAMADA_K, [-5.9, 0.44], -1),
+    (
+        ph2d_game_smoke_fotos::MONTES,
+        crate::object_add::CAMADA_K,
+        [-5.9, 0.44],
+        -1,
+    ),
 ];
 /// O centro da câmara quando o nível começa (o jogador em `[-8, 1,5]` encostado ao limite da esquerda, 16:9).
 pub const CENTRO_DO_INICIO: [f32; 2] = [-5.9, 3.0];

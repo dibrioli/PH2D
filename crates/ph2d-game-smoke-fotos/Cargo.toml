@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-game-smoke-fotos"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# As fotos e a mão do smoke do jogo (`PH2D_GAME_SMOKE_FOTO`) como FOLHA: saíram de `ph2d-app-game` pela
+# catraca `the_shell_only_shrinks_and_every_app_crate_too` (12/11), e com elas o miolo de
+# `shells/desktop/src/janela_do_jogo_smoke.rs` (o que a mão lê do mundo e as ações que empurra).
+[dependencies]
+ph2d-asset = { path = "../ph2d-asset" }
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-physics-scene = { path = "../ph2d-physics-scene" }
+ph2d-render = { path = "../ph2d-render" }
+ph2d-timeline = { path = "../ph2d-timeline" }
+
+[lints]
+workspace = true

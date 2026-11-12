@@ -1,7 +1,8 @@
 //! **As fotos do jogo** (`PH2D_GAME_SMOKE_FOTO`, planos GEF 12–15): cada uma é um instante pedido pelos MESMOS
-//! gestos da mão, resolvidos no mundo para o shell os executar. Irmão de [`super`] pelo tecto de LOC.
+//! gestos da mão, resolvidos no mundo para o shell os executar. Saiu de `ph2d-app-game` pelo tecto de LOC.
 
-use super::*;
+use crate::{MONTES, por_nome};
+use ph2d_ecs::{Entity, GameCamera, SimWorld};
 
 /// O instante que a foto quer (`PH2D_GAME_SMOKE_FOTO`); a mão do dono faz o mesmo pelo Inspector e pelos Assets.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -51,7 +52,7 @@ pub enum Foto {
     CameraLimites,
     CameraRetro,
     CameraOlhar,
-    /// Onda 17b: os GESTOS pelo ponteiro ([`crate::smoke_mao`]) — o miolo arrastado, o clique sem mexer, a borda dos
+    /// Onda 17b: os GESTOS pelo ponteiro ([`crate::mao`]) — o miolo arrastado, o clique sem mexer, a borda dos
     /// limites e o canto com a cerca.
     CameraArrasta,
     CameraClique,
@@ -251,7 +252,7 @@ pub struct PlanoDaFoto {
     pub camera: Option<FotoDaCamera>,
 }
 
-/// `ids` são as imagens da cena pela ordem de [`IMAGENS_4`]; `fabrica` dá a imagem de fábrica de uma chave.
+/// `ids` são as imagens da cena pela ordem de `ph2d_app_game::smoke::IMAGENS_4`; `fabrica` dá a imagem de fábrica de uma chave.
 #[must_use]
 pub fn plano_da_foto(
     sim: &mut SimWorld,
@@ -262,7 +263,7 @@ pub fn plano_da_foto(
     let [heroi, montes] = ids else {
         return None;
     };
-    let hills = por_nome(sim, CAMADAS_2[1].0)?.to_bits();
+    let hills = por_nome(sim, MONTES)?.to_bits();
     let player = por_nome(sim, "Player")?.to_bits();
     let alta = por_nome(sim, "Platform High")?.to_bits();
     let baixa = por_nome(sim, "Platform Low")?.to_bits();

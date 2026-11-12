@@ -37,6 +37,8 @@ ph2d-script = { path = "../ph2d-script" }
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-camera-frame = { path = "../ph2d-camera-frame" }
 ph2d-game-dicas = { path = "../ph2d-game-dicas" }
+# As fotos e a mão do smoke (`PH2D_GAME_SMOKE_FOTO`), folha que saiu desta crate pelo tecto (12/11).
+ph2d-game-smoke-fotos = { path = "../ph2d-game-smoke-fotos" }
 # A cena do `PH2D_SFX_SMOKE`, por cima do nível 2.
 ph2d-sfx-scene = { path = "../ph2d-sfx-scene" }
 ph2d-sprite-anim-scene = { path = "../ph2d-sprite-anim-scene" }

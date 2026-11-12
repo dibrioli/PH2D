@@ -212,7 +212,7 @@ const TETOS_DAS_CRATES_APP: &[(&str, usize)] = &[
     ("ph2d-app-components", 80_869),  // 79_284
     ("ph2d-app-constraints", 10_526), // 10_320
     ("ph2d-app-flip", 28_960),        // 28_393
-    ("ph2d-app-game", 2_728), // 2_628 (GEF 19: a moldura da câmera saiu para `ph2d-camera-frame`)
+    ("ph2d-app-game", 2_093), // 1_993 (12/11: as fotos e a mão do smoke saíram para `ph2d-game-smoke-fotos`)
     ("ph2d-app-input-map", 449), // 349 (InputMap R2a, 10/11: + `listen.rs`, a escuta do comando que saiu da shell)
     ("ph2d-app-kanban", 32_175), // 31_545
     ("ph2d-app-light2d", 25_523), // 25_023
@@ -241,6 +241,7 @@ const TETOS_DAS_CRATES_DA_FAMILIA: &[(&str, usize)] = &[
     ("ph2d-code-scenes", 666),      // 566
     ("ph2d-code-smoke", 614),       // 514
     ("ph2d-code-viewmodel", 304),   // 204
+    ("ph2d-game-smoke-fotos", 1_077), // 977 (12/11: as fotos e a mão saíram da `ph2d-app-game`, com o miolo de `janela_do_jogo_smoke.rs` da shell)
     ("ph2d-physics-smoke-scenes", 19_008), // 18_859 (integ 12/11: +149 da cena 49, `joint_break`, que saiu da `ph2d-app-physics` para curar o tecto dela); 18_732 (GEF02 onda 8: +287 da cena 48 com o tecto, +122 da cena 122)
 ];
 

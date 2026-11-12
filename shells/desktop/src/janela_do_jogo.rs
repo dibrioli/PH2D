@@ -379,7 +379,10 @@ impl crate::App {
                         eprintln!(
                             "[camera-chave] t={:.2} · {}",
                             self.playhead.time(),
-                            crate::janela_do_jogo::chaves_da_camera(&mut gfx.sim, &self.timeline)
+                            ph2d_app_game::smoke_janela::chaves_da_camera(
+                                &mut gfx.sim,
+                                &self.timeline
+                            )
                         );
                     }
                 }
@@ -551,4 +554,3 @@ impl crate::App {
 mod animado_do_smoke;
 #[path = "janela_do_jogo_smoke.rs"]
 mod smoke;
-pub(crate) use smoke::chaves_da_camera;

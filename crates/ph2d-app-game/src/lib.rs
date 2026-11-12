@@ -10,7 +10,7 @@ pub mod ordem_smoke;
 pub mod personagem;
 pub mod sessao;
 pub mod smoke;
-pub mod smoke_mao;
+pub use ph2d_game_smoke_fotos::{janela as smoke_janela, mao as smoke_mao};
 pub mod smoke_moedas;
 
 /// A declaração da família à shell.

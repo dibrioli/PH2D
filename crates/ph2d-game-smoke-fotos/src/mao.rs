@@ -1,6 +1,6 @@
 //! **A mão da câmera** (onda 17b): as fotos `camera_*` são GESTOS, pelas portas reais do ponteiro.
 
-use crate::smoke::Foto;
+use crate::Foto;
 use ph2d_ecs::{CameraFollow, CameraLimits, GameCamera, SimWorld};
 
 /// Um gesto num quadro, em metros.
@@ -153,7 +153,7 @@ pub fn relato(sim: &mut SimWorld, selecao: Option<u64>) -> String {
             .map_or_else(|| format!("{b:x}"), |n| n.0.clone())
     };
     let sel = selecao.map_or_else(|| "nada".to_owned(), |b| nome(sim, b));
-    let Some(cam) = crate::smoke::por_nome(sim, "Camera") else {
+    let Some(cam) = crate::por_nome(sim, "Camera") else {
         return format!("selecao={sel}");
     };
     let w = sim.world();

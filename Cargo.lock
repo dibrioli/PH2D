@@ -5865,6 +5865,7 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-game-dicas",
+ "ph2d-game-smoke-fotos",
  "ph2d-input",
  "ph2d-input-map-scene",
  "ph2d-physics-ecs",
@@ -7422,6 +7423,20 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-i18n",
  "ph2d-tokens",
+]
+
+[[package]]
+name = "ph2d-game-smoke-fotos"
+version = "0.0.0"
+dependencies = [
+ "ph2d-asset",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-physics-ecs",
+ "ph2d-physics-scene",
+ "ph2d-render",
+ "ph2d-timeline",
 ]
 
 [[package]]

@@ -188,9 +188,15 @@ fn o_preparo_fica_pronto_sem_tique_antes_do_primeiro_toque() {
         }
         std::thread::sleep(std::time::Duration::from_millis(5));
     }
-    assert!(pronto, "sem tique o preparo nunca correu: o 1.º toque nasce o motor na hora");
+    assert!(
+        pronto,
+        "sem tique o preparo nunca correu: o 1.º toque nasce o motor na hora"
+    );
     let tela = pinta(&mut t);
     assert_eq!(usados_no_teste(), (1, 1), "o 1.º toque não usou o preparo");
     liga_no_teste(false);
-    assert!(tela == referencia, "o preparo armado sem tique mudou os bytes");
+    assert!(
+        tela == referencia,
+        "o preparo armado sem tique mudou os bytes"
+    );
 }

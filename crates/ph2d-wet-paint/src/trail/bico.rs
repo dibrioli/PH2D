@@ -276,11 +276,11 @@ impl Trail {
 /// compilador vectoriza-o; a janela do traço largo é quase toda na cor base e o laço escalar pesava ~3,5 %).
 #[inline]
 fn toda_igual(v: &[f32], b: f32) -> bool {
-    let mut blocos = v.chunks_exact(16);
+    let (blocos, resto) = v.as_chunks::<16>();
     blocos
-        .by_ref()
+        .iter()
         .all(|c| c.iter().fold(true, |a, &x| a & (x == b)))
-        && blocos.remainder().iter().all(|&x| x == b)
+        && resto.iter().all(|&x| x == b)
 }
 
 /// O que a ponta vê da célula `i`: os pesos `(assentado, suspenso)` da cor que ela apanha. A tinta líquida

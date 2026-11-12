@@ -402,11 +402,14 @@ impl<'a> PreparoVista<'a> {
                         d0
                     }
                 });
+                // O antisserrilhado do brilho mede a curvatura no passo do PÍXEL que acende: na vista ele é `1/s` da
+                // célula (a `s = 1`, ao bit). Com a da célula a 400 % o lobo alargava-se 16× a mais e apagava o relevo.
+                let passo = 1.0 / self.vista.s;
                 let am = Amostra {
                     n,
-                    hxx,
-                    hyy,
-                    hxy,
+                    hxx: hxx * passo,
+                    hyy: hyy * passo,
+                    hxy: hxy * passo,
                     lc: LuzCeu {
                         luz: cr(ex, e, &|i, j| self.lc[idx(i, j)].luz),
                         v: cr(ex, e, &|i, j| self.lc[idx(i, j)].v),

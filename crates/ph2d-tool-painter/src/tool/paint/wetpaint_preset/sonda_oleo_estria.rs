@@ -323,6 +323,110 @@ fn grava_png(p: &std::path::Path, rgba: &[u8]) {
     write_png(p, &Canvas { w, h, px }).expect("png");
 }
 
+/// O brilho PICOTADO (smoke do dono 12/11: «o brilho da tinta da nova luz está picotado, pixelado e pontilhado»):
+/// na tinta (alfa ≥ 128) da tela com luz, os px cuja luma passa a média dos 8 vizinhos em mais de 40 (pontinhos
+/// soltos) e a energia de alta frequência média `|L − caixa 3×3|`.
+pub(super) fn picotado(rgba: &[u8]) -> (usize, f64) {
+    let (w, h) = (W as usize, H as usize);
+    let l = |x: usize, y: usize| {
+        let q = &rgba[(x + y * w) * 4..][..4];
+        let a = f64::from(q[3]) / 255.0;
+        let m = |c: u8| f64::from(c) * a + 250.0 * (1.0 - a);
+        0.2126 * m(q[0]) + 0.7152 * m(q[1]) + 0.0722 * m(q[2])
+    };
+    let (mut soltos, mut hf, mut n) = (0usize, 0.0f64, 0usize);
+    for y in 1..h - 1 {
+        for x in 1..w - 1 {
+            if (0..9).any(|k| rgba[(x + k % 3 - 1 + (y + k / 3 - 1) * w) * 4 + 3] < 128) {
+                continue;
+            }
+            let c = l(x, y);
+            let viz = (0..9)
+                .filter(|&k| k != 4)
+                .map(|k| l(x + k % 3 - 1, y + k / 3 - 1))
+                .sum::<f64>()
+                / 8.0;
+            soltos += usize::from(c - viz > 40.0);
+            hf += (c - (viz * 8.0 + c) / 9.0).abs();
+            n += 1;
+        }
+    }
+    (soltos, hf / n.max(1) as f64)
+}
+
+/// O arco do Thick Impasto, vermelho escuro, com o Óleo Real a raio 48, a óptica de fábrica mexida por `ajuste`: a tela
+/// com luz.
+fn arco_com_brilho(
+    p: &ph2d_brush_presets::Preset,
+    ajuste: fn(&mut ph2d_wet_paint::oleo_real::OleoReal),
+) -> Vec<u8> {
+    let mut t = PainterTool::default();
+    ajuste(&mut t.paint.wetpaint.oleo_real_valores);
+    t.set_source(vec![250u8; (W * H * 4) as usize], W, H);
+    t.set_paint_media(PaintMedia::WetPaint);
+    t.set_wet_relogio_fixo(true);
+    t.set_semente_dos_tracos(0);
+    assert!(t.wet_preset_aplicar(p).is_empty());
+    t.set_wet_oleo_real_ligado(true);
+    t.set_brush_size_px(48.0);
+    t.set_brush_color_srgb8([0x8a, 0x16, 0x1c]);
+    traco(&mut t, &|s| no_arco(-ABRE + 2.0 * ABRE * s), 2.0 * ABRE * R);
+    espera(&mut t, 60);
+    t.wet_recomposite_full();
+    t.canvas_rgba.to_vec()
+}
+
+/// ⭐ **O brilho do óleo não é picotado** (smoke do dono 12/11: «picotado, pixelado e pontilhado»): no arco do Thick
+/// Impasto os pontinhos soltos da tela com luz ficam abaixo de 2× os da mesma tela sem brilho. Medido: sem brilho 123;
+/// o reflexo do ambiente sem o antisserrilhado (`antisserrilhado_ambiente = 0`, o de 27/10) 553 — vermelho; a `1`, 173.
+#[test]
+fn o_brilho_do_oleo_nao_e_picotado() {
+    let b = Biblioteca::carregar(
+        &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes"),
+        None,
+    );
+    let p = thick_impasto(&b);
+    let (com, _) = picotado(&arco_com_brilho(&p, |_| {}));
+    let (sem, _) = picotado(&arco_com_brilho(&p, |o| o.brilho = 0.0));
+    assert!(sem > 50, "premissa: o relevo tem detalhe ({sem})");
+    assert!(
+        com <= 2 * sem,
+        "{com} pontinhos soltos com brilho × {sem} sem"
+    );
+}
+
+/// `PH2D_SONDA_OUT=<pasta> bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib
+/// sonda_brilho_picotado -- --ignored --nocapture`: o [`arco_com_brilho`] por variante da óptica; imprime os
+/// [`picotado`] e grava `brilho_<variante>.png`.
+#[test]
+#[ignore = "sonda — corre-se à mão no perfil smoke"]
+fn sonda_brilho_picotado() {
+    let b = Biblioteca::carregar(
+        &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes"),
+        None,
+    );
+    let p = thick_impasto(&b);
+    let out = std::env::var("PH2D_SONDA_OUT")
+        .ok()
+        .map(std::path::PathBuf::from);
+    type Ajuste = fn(&mut ph2d_wet_paint::oleo_real::OleoReal);
+    let variantes: [(&str, Ajuste); 4] = [
+        ("fabrica", |_| {}),
+        ("sem_brilho", |o| o.brilho = 0.0),
+        ("amb_0", |o| o.af.antisserrilhado_ambiente = 0.0),
+        ("amb_0_5", |o| o.af.antisserrilhado_ambiente = 0.5),
+    ];
+    for (nome, ajuste) in variantes {
+        let px = arco_com_brilho(&p, ajuste);
+        let (soltos, hf) = picotado(&px);
+        println!("BRILHO {nome}: {soltos} pontinhos soltos · alta frequência {hf:.3}");
+        if let Some(d) = &out {
+            std::fs::create_dir_all(d).expect("pasta");
+            grava_png(&d.join(format!("brilho_{nome}.png")), &px);
+        }
+    }
+}
+
 #[test]
 #[ignore = "sonda — corre-se à mão no perfil smoke"]
 fn sonda_oleo_estria() {

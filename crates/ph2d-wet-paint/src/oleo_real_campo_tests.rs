@@ -5,8 +5,8 @@ use super::*;
 
 /// ⭐ **Material NEUTRO = a imagem de antes** (W2 E3-B): com `MaterialCelula::NEUTRO` em toda a célula e o
 /// cartão no neutro, os QUATRO ambientes são BIT a BIT os de `5464db050b` (impressões gravadas antes do
-/// material entrar no sombreado) com o alargamento do reflexo do ambiente de W1c (`1`); com o de fábrica
-/// (`0`, a cura do brilho do Estúdio, `oraculo/README.md` §E3) o Clássico não muda e os HDRI são os de agora.
+/// material entrar no sombreado) com o alargamento do reflexo do ambiente de W1c (`1`) — desde 12/11 (o brilho
+/// picotado, dono) o de fábrica outra vez: as duas colunas são iguais.
 #[test]
 fn o_material_neutro_e_bit_identico_a_de_antes() {
     let mut erros = Vec::new();
@@ -24,25 +24,30 @@ fn o_material_neutro_e_bit_identico_a_de_antes() {
         // Decisão do dono 12/11: a luz do traço é a única — os quatro por desenho. Antes (a Cheia, `acb4e537f3`):
         // Clássico `0xc628_2478_0671_3a32` · Estúdio `0xf8b3_5f85_223d_cfb4` · `0xc66f_56f2_6140_3359` · Interior
         // `0x28bd_f703_1fff_08e4` · `0xa11d_ff5c_d937_0c9e` · Pátio `0xcff4_3d4f_54e3_fca9` · `0x2e48_98cb_6899_0c1e`.
+        // Dono 12/11 (o brilho picotado) e os portões da luz do traço: o céu lido inteiro (`CUNHA = 1/(2·FATIAS)`),
+        // 4 fatias × 9 distâncias de novo (a marcha da sombra fica a do traço) e o reflexo do ambiente com o
+        // antisserrilhado da lâmpada (`1`: W1c = fábrica). Antes: Clássico `0x4dbc_404d_8074_9c67` · Estúdio
+        // `0x8048_ab52_5c1f_f63d` · `0xfff8_d2b6_63e2_75fd` · Interior `0xdbc1_c829_d7dd_66ad` · `0x28ff_94f2_3b75_64e0` ·
+        // Pátio `0x8ac7_bed7_0e26_0f61` · `0xebd6_2df9_5c74_a0d2`.
         (
             Ambiente::Classico,
-            0x4dbc_404d_8074_9c67u64,
-            0x4dbc_404d_8074_9c67u64,
+            0x38d9_b798_ba26_97adu64,
+            0x38d9_b798_ba26_97adu64,
         ),
         (
             Ambiente::Estudio,
-            0x8048_ab52_5c1f_f63du64,
-            0xfff8_d2b6_63e2_75fdu64,
+            0xc428_4436_e0c5_209cu64,
+            0xc428_4436_e0c5_209cu64,
         ),
         (
             Ambiente::Interior,
-            0xdbc1_c829_d7dd_66adu64,
-            0x28ff_94f2_3b75_64e0u64,
+            0xe4e2_9f2b_215b_9e71u64,
+            0xe4e2_9f2b_215b_9e71u64,
         ),
         (
             Ambiente::Patio,
-            0x8ac7_bed7_0e26_0f61u64,
-            0xebd6_2df9_5c74_a0d2u64,
+            0xa665_430c_8069_6dfdu64,
+            0xa665_430c_8069_6dfdu64,
         ),
     ] {
         // K10: com o rebote no papel desligado (ele muda só o papel, por desenho).

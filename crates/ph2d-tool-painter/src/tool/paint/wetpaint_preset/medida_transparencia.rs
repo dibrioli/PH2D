@@ -540,9 +540,12 @@ fn o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes() {
     );
     // O Cycles na malha de HOJE (re-medido 02/11c, `cura-cycles.md`: Principled Transmission, 256 amostras, este
     // miolo); o erro MEDIDO depois da cura do lobo da lâmpada (0,5: L +1 %, sat −4 %; 1: L +16 %, sat +0 %), com folga.
+    // Dono 12/11 (o brilho picotado): o reflexo do ambiente passa a ter o antisserrilhado da lâmpada — o lobo mais
+    // largo vê mais da janela do Estúdio: 0,5: L +8,6 %, sat −8,5 %; 1: L +27,6 %, sat −5,7 %. O produto do dono decide
+    // contra o oráculo; as folgas sobem com a mesma margem (as de antes: 0,08 · 0,08 e 0,25 · 0,10).
     for (nome, l, s, (lc, sc), (tl, ts)) in [
-        ("0,5", lb05, sb05, (0.124, 0.801), (0.08, 0.08)),
-        ("1", lb1, sb1, (0.076, 0.705), (0.25, 0.10)),
+        ("0,5", lb05, sb05, (0.124, 0.801), (0.15, 0.12)),
+        ("1", lb1, sb1, (0.076, 0.705), (0.35, 0.15)),
     ] {
         assert!(
             (l / lc - 1.0).abs() <= tl,
@@ -578,5 +581,7 @@ fn o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes() {
 /// (`60c3bfcb6f`, dono 08/11 «usar o Tooth»); bisseção: `bc6167c6f2` dá os de antes, `60c3bfcb6f` estes.
 /// Regravado (B32.1 espectral) 12/11 (era `0xac49_1cf4_5ba7_e3fb` · `0x2ebc_2040_0011_d3fb`): o Wet mistura pela
 /// lei espectral de 10 bandas (`00f3ca1751`, decisão 7a do dono); com `PH2D_WET_MISTURA=km` voltam os de antes.
-const CLEAR_GLASS_05: u64 = 0x6f35_8929_a88e_2278;
-const CLEAR_GLASS_1: u64 = 0xb41f_d227_f619_2c77;
+/// Regravado 12/11 (era `0x6f35_8929_a88e_2278` · `0xb41f_d227_f619_2c77`): a luz única do traço (`7359c0095b`), o céu
+/// lido inteiro com 4 fatias × 9 distâncias e o reflexo do ambiente com o antisserrilhado (o brilho picotado, dono).
+const CLEAR_GLASS_05: u64 = 0x333b_fa93_94c2_2dc5;
+const CLEAR_GLASS_1: u64 = 0xffc2_b09e_85b1_5561;

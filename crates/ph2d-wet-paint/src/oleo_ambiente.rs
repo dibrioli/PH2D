@@ -71,9 +71,10 @@ pub(crate) struct Sectores {
     c: Vec<[[f64; 4]; 2]>,
 }
 
-/// A largura (em fracção da volta) da cunha de azimute de cada lado de uma fatia: a das 4 fatias de antes (8 lados);
-/// a luz do traço (2 fatias, dono 12/11) lê 4 delas, de duas em duas — outra cunha muda o bit do céu.
-pub(crate) const CUNHA: f64 = 1.0 / 8.0;
+/// A largura (em fracção da volta) da cunha de azimute de cada lado de uma fatia: `1 / (2·FATIAS)`, as cunhas
+/// cobrem a volta INTEIRA. Com a cunha das 4 fatias de antes (1/8) a luz do traço (2 fatias, dono 12/11) lia só
+/// metade das direcções do céu: o papel ao pé da parede via o céu do lado tapado (portões do Óleo Real, 12/11).
+pub(crate) const CUNHA: f64 = 1.0 / (2 * crate::oleo_real::FATIAS) as f64;
 
 impl Sectores {
     fn de(rad: &[[f32; 3]], k: usize, m: usize) -> Self {

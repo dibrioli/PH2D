@@ -438,7 +438,9 @@ fn a_fenda_neutra_e_bit_identica_a_de_antes() {
     // §BUG-ressalto: o papel ao pé da tinta mudou por desenho (sem saia; plano) — era `0xd577_67fb_dd93_1d70`.
     // Cura 02/11c: o lobo da lâmpada passa ao microfacet físico — era `0x47c1_f5e4_7399_15f8`.
     // Decisão do dono 12/11: a luz do traço é a única — era `0xc628_2478_0671_3a32` (a Cheia, `acb4e537f3`).
-    let (ambiente, antes) = (Ambiente::Classico, 0x4dbc_404d_8074_9c67u64);
+    // 12/11, os portões da luz do traço: 4 fatias × 9 distâncias de novo (a marcha da sombra fica a do traço) — era
+    // `0x4dbc_404d_8074_9c67`.
+    let (ambiente, antes) = (Ambiente::Classico, 0x38d9_b798_ba26_97adu64);
     // K10: o rebote da tinta no papel mudou o PAPEL por desenho; desligado, o de antes ao bit.
     let af = Afinacao {
         rebote_papel: 0.0,

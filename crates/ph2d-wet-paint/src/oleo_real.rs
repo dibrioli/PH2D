@@ -142,10 +142,10 @@ pub struct Afinacao {
     pub brilho_max: f64,
     /// Ganho do alargamento do lobo pela curvatura dentro da célula (Kaplanyan; `1` = o de W1c).
     pub antisserrilhado: f64,
-    /// O mesmo ganho no reflexo do AMBIENTE. `0` (W2 E3-B): o pré-filtrado já É um lobo filtrado (o mapa não
-    /// serrilha como o pico analítico da lâmpada); alargá-lo de novo pela curvatura deixava o brilho do
-    /// Estúdio em p99 0,26 × 0,48 do Cycles — a `0`: 0,53 × 0,48, área > 0,3 2,12 % × 2,13 %
-    /// (`oraculo/README.md` §E3). `1` = o de W1c.
+    /// O mesmo ganho no reflexo do AMBIENTE: `1`, o da lâmpada. Smoke do dono 12/11 («o brilho está picotado,
+    /// pixelado e pontilhado»): a `0` (W2 E3-B, que casava o p99 do Cycles, `oraculo/README.md` §E3) o pré-filtrado
+    /// lê a normal de cada píxel e a curvatura das cerdas acende-o em grãos — 553 pontinhos soltos no arco do Thick
+    /// Impasto contra 123 sem brilho; a `1`, 173 (0,5: 218 · 2: 166). O produto do dono decide, não o oráculo.
     pub antisserrilhado_ambiente: f64,
     /// K10: o peso do REBOTE de um salto da tinta vizinha no papel ([`rebote_no_papel`]); `0` = sem (a sombra no
     /// papel de antes, bit a bit), `1` = a física (`oraculo/README.md` §K10).
@@ -176,7 +176,7 @@ impl Default for Afinacao {
             penumbra: 0.6,
             brilho_max: 1.0,
             antisserrilhado: 1.0,
-            antisserrilhado_ambiente: 0.0,
+            antisserrilhado_ambiente: 1.0,
             rebote_papel: 1.0,
             // Cura 02/11c: o Cycles com a tinta assente no dente (`oraculo/relevo_papel_cycles.py`) lê miolo ÷ nu
             // 1,71; o produto (especular microfacet, `e7e49f465b`) 0,256 · 1,396 · 1,788 a 1 · 6 · 8 ⇒ 7,6. Tabela no
@@ -189,14 +189,17 @@ impl Default for Afinacao {
 
 /// O ALCANCE (células) da marcha da sombra; a [`marcha`] amostra-o de [`PASSO_DA_MARCHA`] em [`PASSO_DA_MARCHA`].
 pub const PASSOS_SOMBRA: usize = 24;
-/// O passo da [`marcha`]: `1, 3, …, 23`. Dono 12/11: a luz do traço (metade das amostras da antiga Cheia, no MESMO
-/// alcance) é a única luz do Óleo Real; a última com a Cheia (`1..=24`, 9 distâncias, 4 fatias) é `acb4e537f3`.
+/// O passo da [`marcha`]: `1, 3, …, 23`. Dono 12/11: a luz do traço é a única luz do Óleo Real; a última com a Cheia
+/// (`1..=24`) é `acb4e537f3`.
 pub const PASSO_DA_MARCHA: usize = 2;
 /// As distâncias (células) do horizonte da visibilidade, geométricas até à margem; as fatias (cada uma olha para os
-/// dois lados). A luz do traço (dono 12/11) — a antiga `[1, 2, 3, 4, 6, 8, 12, 16, 24]` × 4 fatias foi a calibrada
-/// contra o Cycles (`oraculo/candidatas_ao.py`, 26/10); a de agora é uma sim, uma não, no mesmo alcance.
-pub const HORIZONTE: [f64; 5] = [1.0, 3.0, 6.0, 12.0, 24.0];
-pub const FATIAS: usize = 2;
+/// dois lados) — as calibradas contra o Cycles (`oraculo/candidatas_ao.py`, 26/10). A luz do traço (12/11) cortava-as
+/// a 2 fatias × `[1, 3, 6, 12, 24]` e os portões de defeito acusaram: com só os 4 rumos dos eixos o vão fechado nos
+/// eixos ficava preto, o papel ao pé de uma parede baixa perdia o lado dela e o encaroçado do impasto (raio 16) dava
+/// 12 px pretos. Com 4 × 9 os cinco passam; com 4 × 5 o papel ao pé da parede volta a acusar (as diagonais falham a
+/// encosta).
+pub const HORIZONTE: [f64; 9] = [1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0];
+pub const FATIAS: usize = 4;
 /// O tecto do [`OleoReal::alcance_fenda`] = o horizonte de fábrica: além dele a amostra sai da
 /// [`MARGEM`] da região suja (a costura no recompor) — mais longe é a pirâmide de máximos da placa
 /// (`oraculo/README.md`, recusa «64 células na CPU»).

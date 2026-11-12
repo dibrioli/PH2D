@@ -18,15 +18,15 @@ fn molhado() -> PainterTool {
 }
 
 fn quadros(t: &PainterTool) -> Vec<Vec<u8>> {
+    quadros_da_cena(&t.wet_preview_cena())
+}
+
+fn quadros_da_cena(cena: &CenaDoPreview) -> Vec<Vec<u8>> {
     let mut v = Vec::new();
-    assert!(pintar_preview(
-        &t.wet_preview_cena(),
-        &|| false,
-        &mut |px, w, h| {
-            assert_eq!((w, h), (LARGURA_DO_PREVIEW, ALTURA_DO_PREVIEW));
-            v.push(px.to_vec());
-        }
-    ));
+    assert!(pintar_preview(cena, &|| false, &mut |px, w, h| {
+        assert_eq!((w, h), (LARGURA_DO_PREVIEW, ALTURA_DO_PREVIEW));
+        v.push(px.to_vec());
+    }));
     v
 }
 
@@ -421,4 +421,28 @@ fn o_preview_escorre_como_a_tela() {
         abaixo > 20,
         "o preview não mostra os fios que a tela inclinada faz ({abaixo} px)"
     );
+}
+
+/// O app pinta a miniatura num pool PRÓPRIO, menor que o global (`ph2d-app-painter`, `pool_da_miniatura`): os quadros
+/// têm de ser os mesmos, ao byte, com 1 fio ou o pool global.
+#[test]
+fn a_miniatura_nao_depende_do_numero_de_fios() {
+    let cena = molhado().wet_preview_cena();
+    let global = quadros_da_cena(&cena);
+    assert!(global.len() > 1, "a miniatura não animou");
+    for fios in [1] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(fios)
+            .build()
+            .expect("pool");
+        let noutro = pool.install(|| quadros_da_cena(&cena));
+        assert_eq!(
+            noutro.len(),
+            global.len(),
+            "{fios} fios: outro número de quadros"
+        );
+        for (i, (a, b)) in noutro.iter().zip(&global).enumerate() {
+            assert!(a == b, "{fios} fios: o quadro {i} mudou");
+        }
+    }
 }

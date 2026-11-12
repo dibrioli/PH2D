@@ -38,6 +38,8 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 # `ObjectKind` — o tipo que declara o modo Paint (spec/06 F2, `paint_mode::MODES`).
 ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-gpu = { path = "../ph2d-gpu" }
+# O pool PRÓPRIO da miniatura viva do pincel (`painter_bridge_preview::pool_da_miniatura`): fora do global da tela.
+rayon = "1"
 # `WindowSize` — o rectângulo em que as pontes desenham.
 ph2d-host = { path = "../ph2d-host" }
 # O carimbo no device.

@@ -150,7 +150,29 @@ struct PreviewVivo {
     publicado: Option<Quadro>,
 }
 
+/// O pool PRÓPRIO da miniatura: ¼ dos núcleos (`PH2D_MINIATURA_FIOS=n`; `0` = o pool global de antes). No global a
+/// água da miniatura recomeçada a cada `]` disputava os operários com o depósito da tela (12/11, Wet a 4K depois de
+/// `]`×10: 234–492 % de CPU sem entrada durante ~5 s, 44 % disso a rodopiar no `crossbeam_epoch`). As contas dela
+/// não dependem do número de fios (`a_miniatura_nao_depende_do_numero_de_fios`).
+fn pool_da_miniatura() -> Option<rayon::ThreadPool> {
+    let fios = std::env::var("PH2D_MINIATURA_FIOS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or_else(|| {
+            std::thread::available_parallelism().map_or(1, |n| (n.get() / 4).max(1))
+        });
+    if fios == 0 {
+        return None;
+    }
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(fios)
+        .thread_name(|i| format!("ph2d-miniatura-{i}"))
+        .build()
+        .ok()
+}
+
 fn trabalhador(pedido: Pedido, viva: Arc<AtomicU64>, envia: Sender<Mensagem>) {
+    let pool = pool_da_miniatura();
     loop {
         let (geracao, cena) = {
             let (m, cv) = &*pedido;
@@ -165,9 +187,15 @@ fn trabalhador(pedido: Pedido, viva: Arc<AtomicU64>, envia: Sender<Mensagem>) {
             }
         };
         let parar = || viva.load(Ordering::Relaxed) != geracao;
-        let completo = pintar_preview(&cena, &parar, &mut |px, _w, _h| {
-            let _ = envia.send(Mensagem::Quadro(geracao, Arc::new(px.to_vec())));
-        });
+        let pinta = || {
+            pintar_preview(&cena, &parar, &mut |px, _w, _h| {
+                let _ = envia.send(Mensagem::Quadro(geracao, Arc::new(px.to_vec())));
+            })
+        };
+        let completo = match &pool {
+            Some(p) => p.install(pinta),
+            None => pinta(),
+        };
         if completo && envia.send(Mensagem::Fim(geracao)).is_err() {
             return;
         }

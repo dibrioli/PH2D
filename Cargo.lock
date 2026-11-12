@@ -6170,6 +6170,7 @@ dependencies = [
  "ph2d-tool-runtime",
  "ph2d-ui-testkit",
  "ph2d-vector",
+ "rayon",
  "rfd",
  "wgpu",
 ]

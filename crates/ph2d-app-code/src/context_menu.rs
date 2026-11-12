@@ -79,9 +79,9 @@ fn qualified(doc: &CodeDoc, word: &std::ops::Range<usize>) -> String {
     let t = doc.buffer.text();
     let line_start = t.byte_of_line(t.line_of_byte(word.start));
     let before = t.slice(line_start..word.start);
-    let from = before
-        .rfind(|c: char| !(c.is_alphanumeric() || matches!(c, '_' | '.' | ':')))
-        .map_or(0, |i| i + 1);
+    let from = ph2d_panel_code::doc_rules::tail_start(&before, |c| {
+        c.is_alphanumeric() || matches!(c, '_' | '.' | ':')
+    });
     format!("{}{}", &before[from..], t.slice(word.clone()))
 }
 

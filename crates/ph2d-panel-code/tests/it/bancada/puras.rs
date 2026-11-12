@@ -136,7 +136,11 @@ fn a_coluna_do_cursor_atravessa_separadores_de_varios_bytes() {
     ];
     for (agulha, mais, esperado) in casos {
         let b = cursor_em(t, agulha, mais);
-        assert_eq!(caret_column(&b, &who), esperado, "cursor em {agulha:?}+{mais}");
+        assert_eq!(
+            caret_column(&b, &who),
+            esperado,
+            "cursor em {agulha:?}+{mais}"
+        );
     }
 }
 
@@ -385,4 +389,19 @@ fn a_marca_pintada_abre_o_balao_da_vista() {
     let (cx, cy) = meio(marca(&v, 3));
     b.hover(cx, cy, 1);
     assert_eq!(b.popover_line(), Some(3), "o balão do sinal ouvido");
+}
+
+#[test]
+fn o_inicio_da_palavra_salta_o_separador_inteiro() {
+    use ph2d_panel_code::doc_rules::tail_start;
+    let id = |c: char| c.is_alphanumeric() || c == '_';
+    for (s, esperado) in [
+        ("—ph2d", "ph2d"),
+        ("«rótulo", "rótulo"),
+        ("x 🎮go", "go"),
+        ("só", "só"),
+        ("a »", ""),
+    ] {
+        assert_eq!(&s[tail_start(s, id)..], esperado, "{s:?}");
+    }
 }

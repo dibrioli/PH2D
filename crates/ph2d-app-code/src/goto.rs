@@ -9,6 +9,7 @@ use ph2d_code_buffer::{Range, Selection, word_at};
 use ph2d_code_help::Anchor;
 use ph2d_code_help::resolve::{Query, resolve};
 use ph2d_code_intel::{Answer, Target, Ticket};
+use ph2d_panel_code::doc_rules::tail_start;
 
 #[derive(Debug, Default)]
 pub(crate) struct Goto {
@@ -78,12 +79,7 @@ impl CodeDoc {
         let before = t.slice(line_start..word.start);
         let sep = before.chars().last().filter(|c| matches!(c, '.' | ':'));
         let receiver = sep.map(|c| &before[..before.len() - c.len_utf8()]);
-        let ident = receiver.map(|r| {
-            let i = r
-                .rfind(|c: char| !(c.is_alphanumeric() || c == '_'))
-                .map_or(0, |i| i + 1);
-            &r[i..]
-        });
+        let ident = receiver.map(|r| &r[tail_start(r, |c| c.is_alphanumeric() || c == '_')..]);
         // `x().y` (um receptor que não é nome) não é a global `y`; `("x"):upper` pergunta pelo `:`.
         let qualifier = match (sep, ident) {
             (Some('.'), Some(q)) => Some(q),

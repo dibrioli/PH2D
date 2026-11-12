@@ -8,7 +8,7 @@ pub(crate) fn normalize(raw: &str) -> String {
 
 /// `bob.luau:12: attempt…` → `attempt…` (a posição de outro chunk, como o motor a dá).
 fn strip_position(m: &str) -> &str {
-    let head = &m[..m.len().min(120)];
+    let head = &m[..m.floor_char_boundary(120)];
     for (i, _) in head.match_indices(':') {
         let rest = &m[i + 1..];
         let digits = rest.bytes().take_while(u8::is_ascii_digit).count();

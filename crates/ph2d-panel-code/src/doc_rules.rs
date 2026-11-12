@@ -6,6 +6,16 @@ use ph2d_host::Modifiers;
 use ph2d_i18n::tr_with;
 use std::ops::Range;
 
+/// O byte onde começa o troço final de `s` feito só de caracteres `keep` (a palavra antes do cursor).
+/// O separador pode ter vários bytes («», —, é): somar 1 cortava-o a meio (pânico no smoke de 11/11).
+#[must_use]
+pub fn tail_start(s: &str, keep: impl Fn(char) -> bool) -> usize {
+    s.char_indices()
+        .rev()
+        .find(|&(_, c)| !keep(c))
+        .map_or(0, |(i, c)| i + c.len_utf8())
+}
+
 /// As letras dos acordes Ctrl/Cmd que o editor usa (no texto e nos campos da busca).
 /// `/` comenta (Ctrl+/); `[`/`]` com Shift dobram/desdobram — a shell traduz a tecla FÍSICA
 /// (`keyboard_board.rs`), porque com Ctrl o texto da tecla não chega.

@@ -260,6 +260,18 @@ const CORTADOS_HOJE: &[(&str, &str)] = &[
     //    cortado: *é isso que a régua existe para mostrar*. Nas outras três larguras ele cabe.
     //    ⚠️ Curar esta linha seria apagar a medição que o painel foi construído para fazer.
     ("widget_lab", "Geometry Offset"),
+    // ⬆️ **Os oito rótulos de cartão do `wet_tuning` (12/11b)** — a coluna do rótulo do cartão mede
+    //    `122 px` nos três degraus e, desde `e6bbb754be` (GEF02 8.6b, ordem do dono 10/11), o nome que
+    //    não cabe fica numa linha com reticências, antes da marca de animação, em vez de quebrar em
+    //    duas (maquete F). Todos têm balão; encurtar um é decisão de vocabulário do dono.
+    ("wet_tuning", "Pressure change length"),
+    ("wet_tuning", "Saturation jitter per bristle"),
+    ("wet_tuning", "Lightness jitter per bristle"),
+    ("wet_tuning", "Light touch lifts bristles"),
+    ("wet_tuning", "Smooth wash body (off · on)"),
+    ("wet_tuning", "Texture follows brush size"),
+    ("wet_tuning", "Texture size reference (px)"),
+    ("wet_tuning", "Bloom pushes paint away"),
     // ✅ **As três LEGENDAS de prosa saíram em 19/09** — a do cabeçalho da galeria (`290,76` px numa
     //    coluna de `268`) e as duas da bancada (`399,79` e `386,58` em `384`). Elas eram elididas a
     //    UMA linha; hoje QUEBRAM, que é a mesma cura das duas frases de estado vazio do produto em
@@ -635,7 +647,9 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    87 depois de as bordas do 9-Slice passarem a «Left / Top» por baixo do título da secção.
     // ⬇️ `87 → 86` em 2026-10-25 (GameEngineFuncional 07): «Show sheet on canvas» virou «Show
     //    Sheet» (o «onde» foi para o balão) — cortava no cartão Animation da foto do dono.
-    ("inspector", 80),
+    // ⬇️ `80 → 74` em 12/11b: medido, seis cortes a menos no Inspector da árvore combinada (não vêm da
+    //    coluna do Player: A/B com ela desligada dá o mesmo `74`; origem por atribuir). A catraca desce ao medido.
+    ("inspector", 74),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     // ⬇️ 04/11 (R6): as abas num cartão falam o corpo do segmentado (`authored` 2→0, `vector` 2→0); a fila do Delay
@@ -700,7 +714,18 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // `["Glaze layering (K-M)"]`
     // ⬇️ `2 → 1` em 2026-11-03 (integração 02/11c, árvore combinada `292110c7af`): MEDIDO `1` — o
     //    «Pigment mixing (K-M)» saiu do Tuning para o cartão Wet Paint (`56993f6f54`, 30/10).
-    ("wet_tuning", 0),
+    ("wet_tuning", 4),
+    ("widget_gallery", 10),
+    // ⬆️ `0 → 4` (wet_tuning) e `0 → 10` (widget_gallery) na integração de 12/11b, e NÃO é a
+    //    régua a mexer: o rótulo de um cartão que não cabe passou a ficar numa linha com
+    //    reticências, antes da marca de animação (`e6bbb754be`, GEF02 8.6b, ordem do dono 10/11 —
+    //    «a real é … na label ao estreitar o painel … é regra»); antes QUEBRAVA em duas linhas
+    //    (maquete F) e o censo lia o prefixo inteiro. Nomes: wet_tuning `Dab rotation (none ·
+    //    follow · pen tilt)`, `Edge darkening fades with the paint`, `Light pressure breaks into
+    //    grain`, `Wash body: loaded centre, soft sides`; widget_gallery `Angular Damping`, `Coyote
+    //    Time (s)`, `Influence (%)`, `Jump Buffer (s)`, `Jump Height (m)`, `Letter spacing (%)`,
+    //    `Line height (px)`, `Linear Damping`, `Lookahead (s)`, `Regen Delay (s)`. Todos têm
+    //    balão; encurtar um é decisão de vocabulário do dono.
 ];
 
 /// ⭐⭐⭐ **QUANTOS ROTULOS PERDEM LETRAS** — a catraca que o DONO ve, e a irmã da de cima.
@@ -731,7 +756,8 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬆️ `81 → 83` na integração de 2026-09-25, pelos mesmos dois rótulos do contador — ver a irmã acima.
     // ⬆️ `83 → 85` em 2026-09-29, pelo mesmo par da tabela de resistências — ver a irmã acima.
     // ⬇️ `85 → 84` em 2026-10-25, o «Show Sheet» da irmã acima (`87 → 86`).
-    ("inspector", 78),
+    // ⬇️ `78 → 72` em 12/11b: os mesmos seis da irmã (medido).
+    ("inspector", 72),
     // ⬇️ 04/11 (R6): as abas num cartão falam o corpo do segmentado (`authored` 2→0, `vector` 2→0); a fila do Delay
     //    e o par Foreground/Background descem (lei 5 de 05 §4, `audio_mixer` 6→3, `pixel_tools` 1→0), e os botões do
     //    Audio Editor (`grupo::fileiras`, 7→0) e o Sync do Painter (1→0) também.
@@ -765,6 +791,9 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⚠️ `5 → 4` em 2026-10-02: a linha Mapping do Paper saiu do painel (ver a nota da irmã).
     // ⚠️ `4 → 3` em 2026-10-27: medido `3` no fecho do Óleo Real W3 (ver a nota da irmã).
     // ⬇️ `3 → 0` em 2026-11-03: o nome QUEBRA em vez de elidir (ver a nota da irmã).
+    // ⬆️ `0 → 4` e `0 → 10` em 12/11b: as mesmas catorze palavras da irmã, agora com reticências.
+    ("wet_tuning", 4),
+    ("widget_gallery", 10),
 ];
 
 /// ⭐⭐⭐ **E NENHUM PAINEL PASSA A COMER MAIS LETRAS** — as duas metades, como a irmã.

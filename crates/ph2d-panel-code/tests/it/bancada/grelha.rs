@@ -266,3 +266,67 @@ fn a_primeira_coluna_da_grelha_chama_se_name_como_na_folha_do_stopped() {
     );
     assert_eq!(ph2d_i18n::tr("code.debug.col.name"), "Name");
 }
+
+/// Espremida pela pilha da aba até ao cabeçalho (11/11, janela 900×560), a Bancada pinta recortada
+/// ao seu rect: todo o texto cai num recorte, e cada recorte cabe no rect (sem ele, o que a grelha
+/// não pode encolher pintava por cima da faixa de baixo).
+#[test]
+fn espremida_ao_cabecalho_a_grelha_pinta_recortada_ao_seu_rect() {
+    let who = muitos(12);
+    let head = BancadaView::default().bench_want(&who, 900.0).head;
+    for h in [head, head + ROW_H_PX * 0.5, head + ROW_H_PX * 1.5] {
+        pinta_recortada(&who, Rect::new(0.0, 100.0, 1000.0, h));
+    }
+}
+
+fn pinta_recortada(who: &Who, r: Rect) {
+    const BEGIN_CLIP: u32 = 0x49; // `vello_encoding::DrawTag::BEGIN_CLIP`
+    const END_CLIP: u32 = 0x21;
+    use ph2d_vector::Shape;
+    let (mut v, mut ts) = (BancadaView::default(), ts());
+    let mut scene = VectorScene::new();
+    scene.record();
+    let mut code = CodeView::new();
+    v.paint_bench(
+        who,
+        r,
+        None,
+        &mut code,
+        &mut scene,
+        &mut ts,
+        &Theme::default(),
+    );
+    let clips: Vec<_> = (scene.take_record().into_iter())
+        .filter_map(|op| match op {
+            ph2d_vector::DrawOp::Layer { clip, .. } => Some(clip.bounding_box()),
+            _ => None,
+        })
+        .collect();
+    let e = scene.inner().encoding();
+    let tags: Vec<u32> = e.draw_tags.iter().map(|t| t.0).collect();
+    let (mut depth, mut open) = (0, 0);
+    let mut inside = vec![false; tags.len() + 1];
+    for (i, t) in tags.iter().enumerate() {
+        if *t == BEGIN_CLIP {
+            let c = clips[open];
+            let (x0, x1) = (f64::from(r.x), f64::from(r.x + r.w));
+            let ok = c.y0 >= f64::from(r.y) - 1e-3 && c.y1 <= f64::from(r.y + r.h) + 1e-3;
+            assert!(
+                ok && c.x0 >= x0 - 1e-3 && c.x1 <= x1 + 1e-3,
+                "{c:?} fora de {r:?}"
+            );
+            (depth, open) = (depth + 1, open + 1);
+        }
+        depth -= i32::from(*t == END_CLIP);
+        inside[i] = depth > 0;
+    }
+    let res = &e.resources;
+    assert!(
+        !res.glyph_runs.is_empty(),
+        "controlo: o título pintou texto"
+    );
+    for run in &res.glyph_runs {
+        let at = run.stream_offsets.draw_tags;
+        assert!(inside[at], "{r:?}: texto da Bancada fora de um recorte");
+    }
+}

@@ -116,7 +116,8 @@ Compilado 2× depois de `rm -rf target/*/incremental` (23 GB) sobre `b77199380c`
 
 Comando base (cada passo acrescenta só o que diz): `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor && PH2D_COMPOSITE_SMOKE=1 PH2D_COMPOSITE_PILHA=0 PH2D_COMPOSITE_PAINEL=wet PH2D_COMPOSITE_TELA=3840x2160 PH2D_COMPOSITE_FUNDO=papel PH2D_COMPOSITE_PAPEL=1 ./target/smoke/ph2d-host-desktop`
 
-1. **Brilho do óleo.** O comando base com `PH2D_COMPOSITE_PRESET="Thick Impasto"` na frente → pinte um traço grosso de óleo.
+1. **Brilho do óleo.** O comando base com `PH2D_COMPOSITE_PRESET="Thick Impasto"` na frente → no cartão **Wet Paint**, a caixa
+   **Real Oil** marcada (marque-a se não estiver) → pinte um traço grosso de óleo.
    Certo: o brilho é liso, sem grãos nem pontinhos soltos (veja a referência
    [antes × depois](Worktrees/line-PainterWatercolor/docs/Painter/smoke_2026-11-12/brilho_antes_depois.png)). Errado: pontinhos
    claros espalhados no brilho. O custo: o traço com óleo fica ~10 % mais pesado.

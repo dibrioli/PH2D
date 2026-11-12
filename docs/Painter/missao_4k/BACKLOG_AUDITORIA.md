@@ -138,7 +138,7 @@ Colunas: `| id | tema | origem | arquivos (file:line) | muda aparência? | medi�
 ### → junta-se ao B32 (mistura de cores)
 | id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |
 |---|---|---|---|---|---|---|---|---|---|---|
-| B32.A1 | Mistura espectral recomputa `log_espectro(tinta)` (constante do dab) por texel: metade dos 20 log2 + 10 exp2 é invariante | AU10-3 | PB/espectral.rs `mistura`; PB/dab/bands.rs:636 | não | medir antes (o K–M #84 pode dominar) | variante `mistura_com(lt)` com `log_espectro(color)` içado ao `DabCtx` | contador de `log2` ≤ texels+10 por dab; saída ao bit | | | aberto |
+| B32.A1 | Mistura espectral recomputa `log_espectro(tinta)` (constante do dab) por texel: metade dos 20 log2 + 10 exp2 é invariante | AU10-3 | PB/espectral.rs `mistura`; PB/dab/bands.rs:636 | não | medir antes (o K–M #84 pode dominar) | variante `mistura_com(lt)` com `log_espectro(color)` içado ao `DabCtx` | contador de `log2` ≤ texels+10 por dab; saída ao bit | já coberto: o `MEMO` por fio de `ph2d-pigment::espectral` (12/11, W5) guarda o `log_espectro` da tinta e da base pelos BITS — a tinta do dab é constante, logo cada dab paga 10 `log2` dela uma vez; ao bit pela prova exaustiva do `log2`/`exp2` | (janela 12/11 n.º 1) | feito (pelo memo) |
 
 ### → junta-se ao B35 (controlos do Wet)
 | id | tema | origem | arquivos (file:line) | muda aparência? | medição antes | cura | gate | medição depois | sha | estado |

@@ -52,16 +52,6 @@ impl PainterTool {
         let shape_tom = self.shape_tom_ativo();
         let shape_active = brush.shape_silhouette_active(self.paint.shape_image.is_some());
         let textured = brush.texture.is_active();
-        let mut mascara = std::mem::take(&mut self.paint.mistura_opaca.pegada);
-        if mascara.len() != n4 {
-            mascara.clear();
-            mascara.resize(n4, 0);
-        }
-        let mut liso = std::mem::take(&mut self.paint.mistura_opaca.pegada_lisa);
-        if (textured || shape_active) && liso.len() != n4 {
-            liso.clear();
-            liso.resize(n4, 0);
-        }
         // A COR da pegada (Bug #77): as rotas que dão cor por texel — a ponta de píxel, o Shape de várias camadas,
         // a rampa do Grain ou do Shape — pintam-na na máscara, e a mistura lê o RGB como a cor do pincel. Mesma
         // ordem do despacho (`stamp_dabs_inner`).
@@ -167,40 +157,54 @@ impl PainterTool {
         let juntas = textured
             || ph2d_painter_brush::mistura_opaca::PEGADAS_LOCAIS_SEM_GRAO
                 .load(std::sync::atomic::Ordering::Relaxed);
-        let mut pegadas: Option<(Vec<_>, Vec<_>)> =
-            (!pixel && camadas_do_shape.is_none() && rampa.is_none() && !shape_active && juntas)
-                .then(|| {
-                    let bases: Vec<_> = dabs
-                        .iter()
-                        .enumerate()
-                        .map(|(i, d)| {
-                            let spec = brush.at_dab(d);
-                            let rng = dab_rng.enter(&groups, i);
-                            let basis = textured.then(|| {
-                                ph2d_painter_brush::texture::dab_basis(
-                                    &spec.texture,
-                                    rng,
-                                    [w as f32, h as f32],
-                                    spec.dab_footprint_of(d),
-                                )
-                            });
-                            (spec, basis)
-                        })
-                        .collect();
-                    let pegadas = (0..dabs.len())
-                        .into_par_iter()
-                        .map(|i| {
-                            let copia = afina
-                                && i > 0
-                                && dabs[i - 1].center == dabs[i].center
-                                && groups.get(i - 1) == groups.get(i);
-                            (!copia).then(|| {
-                                pegada_do_dab(&bases[i], &dabs[i], w, h, image.as_ref(), po)
-                            })
-                        })
-                        .collect();
-                    (bases, pegadas)
-                });
+        let locais =
+            !pixel && camadas_do_shape.is_none() && rampa.is_none() && !shape_active && juntas;
+        // As máscaras da TELA inteira (33 MB cada a 4K) só servem à rota em série; a das pegadas locais solta-as.
+        let mut mascara = std::mem::take(&mut self.paint.mistura_opaca.pegada);
+        let mut liso = std::mem::take(&mut self.paint.mistura_opaca.pegada_lisa);
+        if locais {
+            mascara = Vec::new();
+            liso = Vec::new();
+        } else {
+            if mascara.len() != n4 {
+                mascara.clear();
+                mascara.resize(n4, 0);
+            }
+            if (textured || shape_active) && liso.len() != n4 {
+                liso.clear();
+                liso.resize(n4, 0);
+            }
+        }
+        let mut pegadas: Option<(Vec<_>, Vec<_>)> = locais.then(|| {
+            let bases: Vec<_> = dabs
+                .iter()
+                .enumerate()
+                .map(|(i, d)| {
+                    let spec = brush.at_dab(d);
+                    let rng = dab_rng.enter(&groups, i);
+                    let basis = textured.then(|| {
+                        ph2d_painter_brush::texture::dab_basis(
+                            &spec.texture,
+                            rng,
+                            [w as f32, h as f32],
+                            spec.dab_footprint_of(d),
+                        )
+                    });
+                    (spec, basis)
+                })
+                .collect();
+            let pegadas = (0..dabs.len())
+                .into_par_iter()
+                .map(|i| {
+                    let copia = afina
+                        && i > 0
+                        && dabs[i - 1].center == dabs[i].center
+                        && groups.get(i - 1) == groups.get(i);
+                    (!copia).then(|| pegada_do_dab(&bases[i], &dabs[i], w, h, image.as_ref(), po))
+                })
+                .collect();
+            (bases, pegadas)
+        });
         let mut touched: Option<Region> = None;
         let mut grupo_ant: Option<(usize, ReservatorioOpaco)> = None;
         let mut salta_o_grupo = None;

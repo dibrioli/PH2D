@@ -373,7 +373,8 @@ pub fn mistura_opaca_carimbo(
         // Uma tarefa por LINHA: as linhas da tela e, de cada ladrilho da caixa, a linha dele.
         let (tx0, tx1) = (x0 / LADO, (x1 - 1) / LADO);
         let nt = (tx1 - tx0 + 1) as usize;
-        let mut filas: Vec<Option<&mut [f32]>> = (0..(y1 - y0) as usize * nt).map(|_| None).collect();
+        let mut filas: Vec<Option<&mut [f32]>> =
+            (0..(y1 - y0) as usize * nt).map(|_| None).collect();
         for (ty, fila) in tela
             .sombra
             .ladrilhos
@@ -437,7 +438,13 @@ pub fn mistura_opaca_carimbo(
                         .expect("ladrilho da sombra garantido antes do toque");
                     let j = ((y - base) * lw + (x - tx * LADO)) as usize * POR_TEXEL;
                     let li = (((y - base) * w + x) * 4) as usize;
-                    aplica(x, y, q, &mut ladrilho[j..j + POR_TEXEL], &mut linhas[li..li + 4]);
+                    aplica(
+                        x,
+                        y,
+                        q,
+                        &mut ladrilho[j..j + POR_TEXEL],
+                        &mut linhas[li..li + 4],
+                    );
                 }
             }
         };
